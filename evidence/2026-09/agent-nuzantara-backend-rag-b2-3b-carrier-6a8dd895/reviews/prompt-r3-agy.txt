@@ -1,0 +1,23 @@
+ADVERSARIAL REVIEW — PR B2.3b (carrier + fenced writer), agy seat round 2, on the CURED candidate. Repository Bali-Zero/Teman2. You are a council seat: find what is WRONG. Read-only; do not modify any file, do not commit, do not run tests, no network.
+
+1. Read the file evidence/2026-09/agent-nuzantara-backend-rag-b2-3b-carrier-6a8dd895/reviews/prompt-r2.txt in full: its SPEC, REAL-DB FIXTURE MECHANISM and ATTACK list (1)-(10) are binding for this round too. Its CANDIDATE hashes, base/head and VERDICT line are SUPERSEDED by the ones below.
+2. The candidate is now base aab2debe78 -> head 83b011608c (two commits: 7402e56a13 the carrier, 83b011608c the cure). Read the whole candidate with: git diff aab2debe78 83b011608c -- <path> for the six paths below, and the cure alone with: git diff 7402e56a13 83b011608c.
+3. Your round 1 on 7402e56a13 returned ACCEPT 0/0/0 but MISSED two defects that another seat found and the Dux confirmed; your line citations were about 30 lines off. Cite exact line numbers from the head files (grep -n / sed -n), and attack these two areas first:
+   F1: apps/backend-rag/backend/services/integrations/wa_broker.py lines 585-616 reattach a prior live serve job selected by outbox_id without comparing package_hash, and OfferResult carries no hash. CURE (imperator ruling I83): the completed return in wa_codex_leg.py carries evidence_abstain_label / evidence_score / package_ref ONLY when offer.outcome is OFFERED; REATTACHED carries None -> both columns NULL. Accepted residual: a reattached label-true send is not counted; wa_broker.py deliberately untouched.
+   F2: asyncpg binds a Python float to $5::numeric through Decimal(float) (0.42 -> 0.4199999999999999844...). CURE: the worker binds decimal.Decimal(repr(score)); the real-Postgres tests assert evidence_score::text exactly.
+   Attack: is F1 fully closed; does the cure regress an OFFERED completion or the support-negative branch; is repr()->Decimal exact for every value the normaliser can return (int, tiny/huge floats, exponent form) and NULL preserved; do the new tests fail on the defects; anything outside scope.
+4. Verify the bytes: shasum -a 256 on the six paths must print exactly the CANDIDATE values.
+
+The Dux measured on these bytes (throwaway postgres:15 with migration 314): five suites 219 passed twice (15:25:08Z-15:25:16Z, 15:26:25Z-15:26:34Z); guilt: float bind -> the '0.42'/'0.08' text asserts red; carrying on REATTACHED -> the new leg test red. Treat as claims to attack.
+
+CANDIDATE sha256 (the verdict binds to these exact bytes):
+15e1f1974bdb9cb9eb30f29c01e2a582ab581fd0c30f6fbd57aa2b6a92f78205 apps/backend-rag/backend/services/integrations/wa_codex_leg.py
+575e7feb9b76e89f2836ec9da7bf5390dd2cc8c3f3432f0d7f149ad22cda50e6 apps/backend-rag/backend/services/integrations/wa_outbox_worker.py
+5f2602cfa29fa7d4076631946364dde675849ce19cdfa09e7e4e56da1472d342 apps/backend-rag/backend/tests/unit/services/integrations/test_wa_codex_leg_support_negative.py
+0db0b0e2bf6e38c4790dc7dab06918a198bd1a6ba95ae736a67c638fa89b2fe3 apps/backend-rag/backend/tests/unit/services/test_wa_codex_leg.py
+229ca6d2ed8e354e7c475362829d301698094956f68a034240ab1cf7ac1c8bda apps/backend-rag/backend/tests/unit/services/test_wa_outbox_worker.py
+46b0ab5aab8c78ae7dc10517da48a30db9f7489db212e2a8aa4410a039d54bbd apps/backend-rag/backend/tests/unit/services/test_wa_outbox_worker_carrier.py
+
+OUTPUT FORMAT: first one line `SHA256 CHECK: match` or `SHA256 CHECK: mismatch <path>`. Then findings as BLOCKER / MAJOR / MINOR / NOTE, each with file:line, the concrete failing scenario, and a falsifiable check. Then, as the LAST line, exactly:
+VERDICT {"ok": <true|false>, "candidate": "15e1f197 575e7feb 5f2602cf 0db0b0e2 229ca6d2 46b0ab5a", "blockers": N, "majors": N, "minors": N}
+ok is true only with 0 BLOCKER and 0 MAJOR.

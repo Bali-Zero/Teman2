@@ -197,7 +197,7 @@ class TestBuildShadowFacts:
         assert f1 is not None and f2 is not None
         assert f1.assessment_id != f2.assessment_id
 
-    def test_exactly_3_known_and_43_unknown_fields(self) -> None:
+    def test_exactly_3_known_and_53_unknown_fields(self) -> None:
         # Widened 2026-08-23: `family.stepchild_marriage_certificate_confirmed`,
         # `family.stepchild_birth_certificate_confirmed` and
         # `family.sponsor_permit_basis` joined the applicant fact vocabulary
@@ -207,15 +207,21 @@ class TestBuildShadowFacts:
         # `immigration.renewal_paid` (F4) joined the same way (45 total then),
         # same rollout-default treatment, so 3/41 becomes 3/42. Widened again
         # 2026-09-13 (PR-D4c-1, contract-only): `investment.investment_amount_usd`
-        # joined the same way (46 total now), so 3/42 becomes 3/43.
+        # joined the same way (46 total now), so 3/42 becomes 3/43. Widened
+        # again 2026-09-13 (W-VO-S21): the TEN seq-21 qualification booleans
+        # (five `sponsor.*`, five `investment.*`) joined the same way — 56
+        # total now — all rolling out UNKNOWN/NOT_ASKED, so 3/43 becomes
+        # 3/53. `build_shadow_facts` still only ever sets nationality,
+        # purpose and duration KNOWN; that 3 is the invariant this test is
+        # actually about, and a vocabulary extension must never move it.
         facts = shadow.build_shadow_facts(
             nationality="US", purpose=Purpose.LONG_TOURISM, duration_months=2, match_hash="h5"
         )
         assert facts is not None
         statuses = [getattr(facts.facts, name).status for name in type(facts.facts).model_fields]
-        assert len(statuses) == 46
+        assert len(statuses) == 56
         assert statuses.count("KNOWN") == 3
-        assert statuses.count("UNKNOWN") == 43
+        assert statuses.count("UNKNOWN") == 53
 
 
 # ---------------------------------------------------------------------------

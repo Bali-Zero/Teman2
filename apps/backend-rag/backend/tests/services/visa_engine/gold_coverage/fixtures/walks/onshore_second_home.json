@@ -114,6 +114,40 @@
     "study.admission_confirmed": { "status": "UNKNOWN", "reason": "NOT_ASKED" },
     "study.sponsor_confirmed": { "status": "UNKNOWN", "reason": "NOT_ASKED" },
     "sponsor.type": { "status": "UNKNOWN", "reason": "NOT_ASKED" },
+    "sponsor.government_invitation": {
+      "status": "UNKNOWN",
+      "reason": "NOT_ASKED"
+    },
+    "sponsor.government_collaboration": {
+      "status": "UNKNOWN",
+      "reason": "NOT_ASKED"
+    },
+    "sponsor.world_figure_invitation": {
+      "status": "UNKNOWN",
+      "reason": "NOT_ASKED"
+    },
+    "sponsor.diplomatic_household": {
+      "status": "UNKNOWN",
+      "reason": "NOT_ASKED"
+    },
+    "sponsor.trade_office": { "status": "UNKNOWN", "reason": "NOT_ASKED" },
+    "investment.establishes_indonesian_company": {
+      "status": "UNKNOWN",
+      "reason": "NOT_ASKED"
+    },
+    "investment.capital_market_only": {
+      "status": "UNKNOWN",
+      "reason": "NOT_ASKED"
+    },
+    "investment.foreign_branch_or_subsidiary": {
+      "status": "UNKNOWN",
+      "reason": "NOT_ASKED"
+    },
+    "investment.ikn_subsidiary": { "status": "UNKNOWN", "reason": "NOT_ASKED" },
+    "investment.meets_published_threshold": {
+      "status": "UNKNOWN",
+      "reason": "NOT_ASKED"
+    },
     "secondhome.bank_deposit_usd": { "status": "KNOWN", "value": 1000000000 },
     "secondhome.bank_deposit_at_state_bank": {
       "status": "KNOWN",

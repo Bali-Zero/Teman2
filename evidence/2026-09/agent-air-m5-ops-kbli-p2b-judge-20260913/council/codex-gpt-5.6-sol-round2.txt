@@ -1,0 +1,220 @@
+   181	    forbidden = {
+   182	        "claims_temporary": claims_temporary,
+   183	        "claims_every_kbli_banned": universal_unqualified,
+   184	        "quotes_a_moratorium_total": totals,
+   185	    }
+   186	    ok = all(required.values()) and not claims_temporary \
+   187	        and not universal_unqualified and not totals
+   188	    return {"pass": ok, "required": required, "forbidden": forbidden}
+   189	
+   190	
+   250	    by_code = load_dataset(root)
+   251	    corpus = json.loads(Path(corpus_p).read_text())
+   252	    rows = [json.loads(l) for l in Path(answers_p).read_text().splitlines() if l.strip()]
+   253	    byq = defaultdict(list)
+   254	    for r in rows:
+   255	        byq[r["qid"]].append(r)
+   256	    out = Path(outdir)
+   257	    out.mkdir(parents=True, exist_ok=True)
+   258	    for q in corpus["questions"]:
+   259	        qid = q["id"]
+   260	        runs = sorted(byq.get(qid, []), key=lambda r: r["run"])
+   261	        if not runs:
+   262	            continue
+   263	        # The judge must see the records the MODEL saw, not the records the corpus author
+   264	        # expected it to see. Measured on the W100 run: 22 of 30 fabrication flags were false,
+   265	        # every one of them a code that was in the served package and absent from
+   266	        # `expected.codes`, so the judge had no record to check it against and called an
+   267	        # accurate statement invented. The ground truth is therefore the UNION: expected.codes
+   268	        # (so a code the model failed to retrieve can still be judged missing) and every code
+   269	        # actually served in any run (so nothing the model was given is judged blind).
+   270	        expected_codes = list(q.get("expected", {}).get("codes", []))
+   271	        served_codes = []
+   272	        for r in runs:
+   273	            for c in (r.get("package_codes") or []):
+   274	                if c not in served_codes:
+   275	                    served_codes.append(c)
+   276	        gt_codes = [c for c in expected_codes if c in by_code]
+   277	        gt_codes += [c for c in served_codes if c in by_code and c not in gt_codes]
+   278	        recs = {c: record_slice(by_code[c]) for c in gt_codes}
+   279	        payload = {
+   280	            "qid": qid, "class": q["class"], "question": q["text"],
+   281	            "expected": q.get("expected", {}),
+   282	            "ground_truth_records": recs,
+   283	            "ground_truth_provenance": {
+   284	                "expected_codes": expected_codes,
+   285	                "served_package_codes": served_codes,
+   286	                "rule": "records supplied = expected.codes UNION the package codes served to the model",
+   287	            },
+   288	            "answers": [{"run": r["run"], "text": served_text(r),
+   289	                         "package_codes": r.get("package_codes") or []} for r in runs],
+   290	        }
+   291	        (out / f"{qid}.txt").write_text(JUDGE_RUBRIC + "\n\nINPUT:\n" + json.dumps(payload, ensure_ascii=False, indent=1))
+   292	    print(f"wrote {len(list(out.glob('*.txt')))} judge prompts to {out}")
+   293	
+   294	
+   295	def cmd_score(corpus_p, answers_p, judgedir):
+   296	    root = find_root()
+   297	    by_code = load_dataset(root)
+   298	    corpus = json.loads(Path(corpus_p).read_text())
+   299	    rows = [json.loads(l) for l in Path(answers_p).read_text().splitlines() if l.strip()]
+   300	    byq = defaultdict(list)
+   301	    for r in rows:
+   302	        byq[r["qid"]].append(r)
+   303	
+   304	    judge = {}
+   305	    for f in Path(judgedir).glob("*.json"):
+   306	        j = json.loads(f.read_text())
+   307	        judge[j["qid"]] = {v["run"]: v for v in j["verdicts"]}
+   308	
+   309	    fabrications, gate_saves, flagged = [], [], []
+   310	    class_rule_results = {}
+   311	    per_q = {}
+   312	    for q in corpus["questions"]:
+   313	        qid, qclass = q["id"], q["class"]
+   314	        class_rule = is_moratorium_scope_question(q)
+   315	        runs = sorted(byq.get(qid, []), key=lambda r: r["run"])
+
+hook: PostToolUse
+hook: PostToolUse
+hook: PostToolUse
+hook: PostToolUse
+hook: PostToolUse
+hook: PostToolUse
+hook: PostToolUse
+hook: PostToolUse Completed
+hook: PostToolUse Completed
+hook: PostToolUse Completed
+hook: PostToolUse Completed
+hook: PostToolUse Completed
+hook: PostToolUse Completed
+hook: PostToolUse Completed
+hook: PreToolUse
+hook: PreToolUse
+hook: PreToolUse
+hook: PreToolUse
+hook: PreToolUse
+hook: PreToolUse
+hook: PreToolUse
+hook: PreToolUse Completed
+hook: PreToolUse Completed
+hook: PreToolUse Completed
+hook: PreToolUse Completed
+hook: PreToolUse Completed
+hook: PreToolUse Completed
+hook: PreToolUse Completed
+exec
+/bin/zsh -lc "python3 -c 'import importlib.util; p=\"scripts/kbli_bench/score_p2b.py\"; s=importlib.util.spec_from_file_location(\"s\",p); m=importlib.util.module_from_spec(s); s.loader.exec_module(m); a=\"Sumber: B.27.000/642/PM/DPMPTSP. Sejak 13 Mei 2026, moratorium PMA Bali berlaku untuk seluruh KBLI dengan kategori risiko Rendah dan Menengah Rendah. Larangan ini tidak bersifat sementara.\"; print(m.moratorium_scope_check(a))'" in /Users/balizero/nuzantara/.worktrees/ops-kbli-p2b-judge-20260913
+ succeeded in 349ms:
+{'pass': False, 'required': {'cites_source_letter': True, 'cites_effective_date': True, 'states_risk_class_scope': True, 'states_permanence': False}, 'forbidden': {'claims_temporary': False, 'claims_every_kbli_banned': [], 'quotes_a_moratorium_total': []}}
+
+hook: PostToolUse
+hook: PostToolUse
+hook: PostToolUse
+hook: PostToolUse
+hook: PostToolUse
+hook: PostToolUse
+hook: PostToolUse
+hook: PostToolUse Completed
+hook: PostToolUse Completed
+hook: PostToolUse Completed
+hook: PostToolUse Completed
+hook: PostToolUse Completed
+hook: PostToolUse Completed
+hook: PostToolUse Completed
+hook: PreToolUse
+hook: PreToolUse
+hook: PreToolUse
+hook: PreToolUse
+hook: PreToolUse
+hook: PreToolUse
+hook: PreToolUse
+hook: PreToolUse Completed
+hook: PreToolUse Completed
+hook: PreToolUse Completed
+hook: PreToolUse Completed
+hook: PreToolUse Completed
+hook: PreToolUse Completed
+hook: PreToolUse Completed
+exec
+/bin/zsh -lc "git show HEAD:scripts/tests/test_score_p2b.py | nl -ba | sed -n '70,110p'" in /Users/balizero/nuzantara/.worktrees/ops-kbli-p2b-judge-20260913
+ succeeded in 447ms:
+    70	def test_guilt_each_missing_part_fails_its_own_criterion(score_mod, removed, missing_criterion):
+    71	    """GUILT: strike one required part out of an otherwise correct answer and exactly that
+    72	    criterion goes false — not a blanket failure that would pass for the wrong reason."""
+    73	    mutated = GOOD.replace(removed, "")
+    74	    r = score_mod.moratorium_scope_check(mutated)
+    75	    assert r["pass"] is False
+    76	    assert r["required"][missing_criterion] is False
+    77	    others = {k: v for k, v in r["required"].items() if k != missing_criterion}
+    78	    assert all(others.values()), (missing_criterion, others)
+    79	
+    80	
+    81	def test_guilt_claiming_the_ban_is_temporary(score_mod):
+    82	    r = score_mod.moratorium_scope_check(GOOD.replace("bersifat permanen, bukan sementara",
+    83	                                                      "hanya sementara"))
+    84	    assert r["pass"] is False
+    85	    assert r["forbidden"]["claims_temporary"] is True
+    86	
+    87	
+    88	@pytest.mark.parametrize("negated", [
+    89	    "Larangan ini permanen dan tidak bersifat sementara.",
+    90	    "Larangan ini permanen, bukan hanya sementara.",
+    91	    "The restriction is permanent and is not temporary.",
+    92	])
+    93	def test_innocence_a_negated_temporariness_phrase_is_the_correct_answer(score_mod, negated):
+    94	    """INNOCENCE, found by the council (tp1-qwen3.8-max, round 1, VERDICT DEFECT): "tidak
+    95	    bersifat sementara" SAYS the ban is not temporary and contains the literal "bersifat
+    96	    sementara". A guard matching the substring rejects the right answer — the over-match half
+    97	    of the same scar the under-match half of this window is curing."""
+    98	    text = (
+    99	        "Sumber: B.27.000/642/PM/DPMPTSP. Sejak 13 Mei 2026, moratorium PMA Bali berlaku "
+   100	        "untuk KBLI kategori risiko rendah dan menengah rendah. " + negated
+   101	    )
+   102	    r = score_mod.moratorium_scope_check(text)
+   103	    assert r["forbidden"]["claims_temporary"] is False, r
+   104	    assert r["pass"] is True, r
+   105	
+   106	
+   107	def test_guilt_claiming_every_kbli_is_banned(score_mod):
+   108	    bad = (
+   109	        "Sejak 13 Mei 2026 semua KBLI dilarang untuk PMA di Bali. "
+   110	        "Larangan permanen. Kategori risiko Menengah Rendah juga terkena. "
+
+hook: PostToolUse
+hook: PostToolUse
+hook: PostToolUse
+hook: PostToolUse
+hook: PostToolUse
+hook: PostToolUse
+hook: PostToolUse
+hook: PostToolUse Completed
+hook: PostToolUse Completed
+hook: PostToolUse Completed
+hook: PostToolUse Completed
+hook: PostToolUse Completed
+hook: PostToolUse Completed
+hook: PostToolUse Completed
+codex
+1. `Sources/Views/KBLIRegistryView.swift:240-250` — the card still uses the old binary rule; this diff never migrates it to `KBLIVerdict`. For record `20111` (`pma_status=TERBUKA`, `l4_bali.status=NON_CLASSIFICABILE`, `blocked=false`), line 241 computes `blocked=false` and line 250 renders “In Bali: open to a PT PMA”. `KBLIVerdict` correctly produces `BALI_UNDETERMINED`. The card and chat therefore still disagree, directly violating the frozen contract.
+
+2. `scripts/kbli_bench/score_p2b.py:135,172-173` — the Round 2 fix still rejects the exact correct negation when it is the sole permanence statement. This correct answer fails with `states_permanence=false`:
+   `Sumber: B.27.000/642/PM/DPMPTSP. Sejak 13 Mei 2026, moratorium PMA Bali berlaku untuk seluruh KBLI dengan kategori risiko Rendah dan Menengah Rendah. Larangan ini tidak bersifat sementara.`
+   The negator logic prevents the temporary-claim false positive, but `MORATORIUM_PERMANENCE` does not recognize `tidak bersifat sementara`. The tests at `scripts/tests/test_score_p2b.py:88-104` mask this because every negated fixture also contains an independent `permanen`/`permanent` token.
+
+3. `scripts/kbli_bench/score_p2b.py:271-282` — ground truth is unioned across all runs, then supplied as one common record set. Trigger: run 1 receives only `56303` but asserts a fact about `56101`; run 2 receives `56101`. Because run 2 adds `56101` to the shared `ground_truth_records`, the rubric allows the judge to treat run 1’s unsupported assertion as supported. Per-answer `package_codes` are included, but the rubric never requires claims to be supported by that answer’s own package.
+
+VERDICT: DEFECT
+hook: Stop
+hook: Stop Completed
+tokens used
+145.710
+1. `Sources/Views/KBLIRegistryView.swift:240-250` — the card still uses the old binary rule; this diff never migrates it to `KBLIVerdict`. For record `20111` (`pma_status=TERBUKA`, `l4_bali.status=NON_CLASSIFICABILE`, `blocked=false`), line 241 computes `blocked=false` and line 250 renders “In Bali: open to a PT PMA”. `KBLIVerdict` correctly produces `BALI_UNDETERMINED`. The card and chat therefore still disagree, directly violating the frozen contract.
+
+2. `scripts/kbli_bench/score_p2b.py:135,172-173` — the Round 2 fix still rejects the exact correct negation when it is the sole permanence statement. This correct answer fails with `states_permanence=false`:
+   `Sumber: B.27.000/642/PM/DPMPTSP. Sejak 13 Mei 2026, moratorium PMA Bali berlaku untuk seluruh KBLI dengan kategori risiko Rendah dan Menengah Rendah. Larangan ini tidak bersifat sementara.`
+   The negator logic prevents the temporary-claim false positive, but `MORATORIUM_PERMANENCE` does not recognize `tidak bersifat sementara`. The tests at `scripts/tests/test_score_p2b.py:88-104` mask this because every negated fixture also contains an independent `permanen`/`permanent` token.
+
+3. `scripts/kbli_bench/score_p2b.py:271-282` — ground truth is unioned across all runs, then supplied as one common record set. Trigger: run 1 receives only `56303` but asserts a fact about `56101`; run 2 receives `56101`. Because run 2 adds `56101` to the shared `ground_truth_records`, the rubric allows the judge to treat run 1’s unsupported assertion as supported. Per-answer `package_codes` are included, but the rubric never requires claims to be supported by that answer’s own package.
+
+VERDICT: DEFECT

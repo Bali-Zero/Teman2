@@ -1,0 +1,12 @@
+codex-gpt-5.6-sol r2 on the B2.3b candidate (six files at 7402e56a13; prompt reviews/prompt-r2.txt, diff-by-path, no inline diff)
+codex r2 start 2026-09-13T15:06:28Z
+codex r2 exit=0 end 2026-09-13T15:16:30Z
+tree-after: shasum -c of the six files + prompt, 0 non-OK lines
+OUTCOME: NO VERDICT. The seat's context hook (context_bridge.py checkpoint) fired again ("tokens used 176.588"); no SHA256 CHECK line and no VERDICT line were emitted. Counts for nothing toward R9.
+Interim statement before the rollover, verbatim (Italian in the original):
+Ho isolato un probabile BLOCKER nel percorso `REATTACHED` e un difetto di precisione `float → NUMERIC`; salvo ora il checkpoint operativo obbligatorio e riprenderò con la verifica finale degli hash e il verdetto nel continuation.
+Checkpoint "next_action" field, verbatim:
+Resume static inspection around broker consume retention if needed, then re-run six SHA256 checks and produce findings. Primary defect: REATTACHED consumes a prior job but wa_codex_leg returns label/score/package_ref from the freshly rebuilt current wire. Secondary defect: float passed to asyncpg NUMERIC is encoded through Decimal(float), storing binary-artifact decimal; tests mask this by float() conversion.
+Dux measurement of both interim defects (same window, 2026-09-13):
+- REATTACHED: wa_broker.py:585-616 selects the newest live serve job by outbox_id and returns OfferResult(REATTACHED, job_id, thread_epoch) without comparing package_hash; OfferResult carries no package_hash; wa_codex_leg.py:1073-1075 carries the local rebuilt wire's abstain/evidence_score/package_hash. A reattached completion generated from a prior package can therefore persist another package's label and score. CONFIRMED by reading.
+- NUMERIC: asyncpg 0.31.0 against the throwaway postgres:15 (port 15533), SELECT ($1::numeric)::text with Python floats: 0.42 -> 0.419999999999999984456877655247808434069156646728515625; 0.08 -> 0.08000000000000000166533453693773481063544750213623046875. CONFIRMED by measurement.

@@ -1,0 +1,77 @@
+You are a REVIEW seat on a Gear-3 council (round 3, final candidate). Repo worktree:
+/Users/balizero/nuzantara/.worktrees/backend-rag-vo-s21-freeze  (branch HEAD 5e5e74978e6bf8f245e62d607c1f355663b7291f, merge-base 52ebe96b62)
+Read the candidate with:
+  git -C /Users/balizero/nuzantara/.worktrees/backend-rag-vo-s21-freeze diff 52ebe96b62...HEAD -- ':!*gold_coverage/fixtures/walks/*' ':!*gold_harness/fixtures/personas/*' ':!*schema.d.ts' ':!*rulepack-prod-021.source.json' ':!evidence/*/council/*'
+(generated fixtures, schema.d.ts, the folded pack and council transcripts are excluded; inspect
+them only with targeted commands if a claim depends on them).
+
+BUDGET — the previous round of this seat ran out of context before answering. Therefore:
+never print a whole large file (no cat of the pack, the fixtures, PENDING-ARMS.md, docs/ or
+research/); use grep, sed -n ranges and short in-memory python that prints only counts or
+booleans; keep total tool output small; answer as soon as each claim is decided.
+Read-only: do not edit or create files, no git write commands, do not run pytest (no writable
+temp dir in this sandbox). In-memory python runs from apps/backend-rag with PYTHONPATH=. and
+dummy JWT_SECRET_KEY (32+ chars) / API_KEYS; the fold needs VISA_ENGINE_TRUST_STORE_KEYS_JSON,
+whose PUBLIC value is PROD_TRUST_STORE_JSON in test_seq21_pack.py. Do not quote secrets.
+
+WHAT THE CHANGE CLAIMS. Nine visa products (E23U E23V E28B E28C E28D E28F E33A E33B
+E33C) had ZERO ELIGIBILITY rules in rule pack sequence 20 (29 of 38 products had one).
+Sequence 21 (38 of 38), PRODUCED by apps/backend-rag/backend/scripts/visa_engine/fold_pack_seq21.py
+into apps/backend-rag/backend/services/visa_engine/contracts/packs/rulepack-prod-021.source.json,
+retires nine dormant REQUIRE_REVIEW rules keyed on intent.requested_product_code, adds nine
+SUPPORT rules each gated on one NEW qualifying boolean fact (ten facts registered in
+enums.py / fact_registry.py / models.py exactly as PR #6396 registered one), and adds two
+HARD_FILTER rules that name the cause on three dead-end walks. Unsigned, unactivated.
+
+Cures since the previous rounds (verify each):
+- REPRODUCIBILITY: the committed pack is prettier-formatted by the lint-staged pre-commit
+  hook (seq-19/20 carry the same reflow). test_seq21_pack.py::TestFoldIntegrity::
+  test_the_cli_reproduces_the_bytes_the_owner_signs runs the CLI and asserts its canonical
+  JCS bytes equal the committed file's, their sha256 equals SEQ21_PAYLOAD_SHA256
+  (a0c3359c49ca656b625db74422c9d27a5f0af4e6943de3176eb0cddc4a81e4ac), and that
+  RulePackPayload.model_dump(mode="json", by_alias=True) canonicalizes to the same bytes
+  (what sign_pack.py signs). Builder measurement: CLI output | prettier 3.9.6 = committed
+  file, sha256 1a9c5823f7ed51d0c1837df8036c27529b6bc9d6e4d927707d6429a7d9b1fe46.
+- MOUTH PARITY: eight REVIEW_REASON_COPY entries restored verbatim from origin/main; the
+  review guard in engine-adapter.test.ts reads the union of the highest-sequence SOURCE
+  pack and the highest-sequence SIGNED payload.
+- ACTIVATION: the pack-level valid_period is NOT moved (stays seq-20's 2026-07-25). The
+  previous draft set it to 2026-09-15, which migration_v2 253 step 4
+  (visa_activate_rule_pack partial legal-period overlap guard) would REFUSE over seq-20's
+  open activation after the immutable pack row is inserted. The nine+two NEW rules carry
+  valid_period.from 2026-09-15T00:00:00Z instead (seq-20's fold used the same rule-level
+  pattern).
+- SPONSOR PREMISES: E33B's premise is now sponsor.type = NONE and E33C's = GOVERNMENT,
+  i.e. each SUPPORT rule's sponsor premise is a subset of its product's catalogue
+  sponsor_types (checked at fold time by _assert_sponsor_premises_follow_the_catalogue),
+  instead of mirroring the wider seq-20 hard filters (GOVERNMENT or NONE).
+
+FALSIFY THESE NINE CLAIMS. For each: PROVEN or BROKEN, with file:line or the command
+output that decides it.
+1. FAIL-OPEN: no applicant stopped for review under seq-20 is silently supported under
+   seq-21 (each retired rule was dormant; its qualification is re-established by a fact).
+2. EVIDENCE: no SUPPORT rule can fire without its qualifying boolean KNOWN true, and no
+   sponsor premise admits a category the product's catalogue does not name.
+3. ON_UNKNOWN: on_unknown NEEDS_INPUT turns none of the 84 corpus walks into a question
+   (evidence/2026-09/agent-air-m5-backend-rag-vo-s21-freeze/census-replay-seq20-vs-seq21.txt:
+   states 67/15/2 before and after; exactly three walks change, only their no-path code).
+4. REPRODUCIBILITY: the byte contract above is sufficient for what sign_pack.py signs, and
+   previous_payload_sha256 equals the signed seq-20 digest.
+5. ACTIVATION: activate_pack.py + migration 253 would accept seq-21 over seq-20's open
+   activation (legal-period coverage, sequence monotonicity, hash chain).
+6. THRESHOLDS: no money figure is typed in the fold; second-home bounds are read from the
+   seq-20 rules; the E28 rules compare no invented USD figure.
+7. MOUTH PARITY: every reason code the highest signed pack (seq-20) or highest source pack
+   (seq-21) can emit has EN+ID copy; the eight restored entries are byte-identical to
+   origin/main; the two new EXCLUDE codes name the open door by product code.
+8. PINS: every moved literal (fact counts 50->60 / 46->56, NOT_ASKED list 5->15, the
+   evaluation-trace golden vector, the walk-corpus fingerprint, the openapi sha) moves only
+   because ten facts were added; walk and persona fixtures add only ten UNKNOWN/NOT_ASKED keys.
+9. PERIMETER: apps/mouth changes are only reason-code copy + the fact-derived no-path code
+   set in engine-adapter.ts, the guard test, fact-mapper.ts / applicant-fact-paths.ts
+   emitting the ten keys as UNKNOWN(NOT_ASKED) (no question/flow/tree change), the
+   regenerated schema.d.ts + sha, and the fixture fingerprint.
+
+Be terse: at most 8 lines per claim. Your LAST line must be exactly one of:
+VERDICT: OK
+VERDICT: CHANGES

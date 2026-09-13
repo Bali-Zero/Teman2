@@ -1,0 +1,72 @@
+task: >-
+  Deduplicate the public Bali Zero newsroom: the live feed carried seven exact-title duplicate
+  groups. Three backend-generated duplicates were already archived through the production news
+  API (verified out of the public feed before this PR). This PR removes the remaining four
+  truncated-slug static MDX duplicates and their 14 localized (.id/.it/.ru/.fr) copies — 18
+  files total — and adds four permanent redirects in apps/mouth/next.config.ts from each
+  removed truncated slug to its retained canonical article, so inbound links keep resolving.
+  It also carries the audit doc and cover-manifest JSON that back the "818 -> 811 articles,
+  zero exact-title duplicates" claim, and (this revision) a merge of origin/main that resolved
+  one add/add conflict in next.config.ts (kept both PRs' redirect blocks) plus an R1
+  adversarial-review section on the audit doc.
+lane: mouth/newsroom-live-dedup
+machine: M5
+date: 2026-09-14
+
+gear: 2
+gear_reason: >-
+  Deterministic floor 2, source `size`, measured with the repo's own
+  scripts/evidence_pack_lint.py --print-floor --numstat-file against the merge-base with
+  origin/main @ 4bc790f200: non-exempt churn = 30 (next.config.ts) + 315 (the four English
+  .mdx source deletions — .id/.it/.ru/.fr locale siblings are exempt under #6011, English
+  source is not) + 65 (research/marketing/2026-09-06-live-newsroom-dedup-cover-audit.md,
+  entirely new to main so its FULL line count is churn, not just this revision's delta) + 1
+  (research/marketing/2026-09-06-newsroom-cover-audit.json) = 411, over
+  SIZE_GEAR2_THRESHOLD=400 and under the Gear-3 threshold (1828). No hot-zone path
+  (apps/mouth content + config + research only).
+  A prior revision measured floor 1 (398) from the merge commit BEFORE the R1
+  adversarial-review section was added to the audit doc; adding that section (required by the
+  separate R1 "adversarial review present" gate, scripts/check_adversarial_review.py, which
+  scopes to research/**/*.md and this diff touches one) pushed the total over 400 even after
+  trimming the section to its minimum (frontmatter key + heading + one-line verdict + the one
+  real finding) — the audit doc's own pre-existing 52-line body already left only ~1 line of
+  size-term headroom before that gate's mandatory 4-line minimum (frontmatter + heading) is
+  even applied. The two gates cannot both be satisfied at floor 1 on this diff; this brief
+  accepts floor 2 rather than deleting/hollowing out the audit doc's own content to chase 1.
+
+appetite:
+  wall_clock_hours: 1
+  adversarial_rounds: 1
+
+acceptance:
+  A1: >-
+    All 18 removed files (4 truncated-slug groups x English source + up to 4 locale
+    siblings) are absent from the merged tree, and each of the 4 groups' canonical
+    full-slug twin is still present and loadable by the article loader in every locale it
+    shipped in.
+    probe: >-
+      cd apps/mouth && npx vitest run src/lib
+  A2: >-
+    next.config.ts declares exactly 4 new permanent redirects, one per removed truncated
+    slug, each pointing at its own group's retained canonical slug (non-cyclical,
+    source != destination), and the pre-existing ~98 legacy redirects from origin/main are
+    unchanged and in their original relative order.
+    probe: >-
+      node -e "const c=require('fs').readFileSync('apps/mouth/next.config.ts','utf8');
+      const s=(c.match(/source:/g)||[]).length, d=(c.match(/destination:/g)||[]).length,
+      p=(c.match(/permanent:/g)||[]).length; if(d!==p) throw new Error('unbalanced redirect entries');
+      console.log({source:s,destination:d,permanent:p})"
+  A3: >-
+    No regression on the mouth frontend's lib unit suite after the origin/main merge.
+    probe: >-
+      cd apps/mouth && npx vitest run src/lib
+      # measured this revision: 144 files / 1972 tests passed
+
+out_of_scope: >-
+  Live HTTP reachability of the redirect sources/destinations and confirmation that the three
+  backend-archived duplicates stayed out of the production feed — both need network access this
+  sandbox does not have (flagged by the R1 adversarial reviewer, codex, verdict LOW); a
+  post-deploy prove-live check owns that, not this brief. Recomputing the audit doc's "811
+  articles" figure against the current merged tree (it is the 2026-09-06 snapshot and predates
+  six 2026-09-11 articles that landed via this merge) — same prove-live step, not a defect in
+  this diff.

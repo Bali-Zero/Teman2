@@ -1,0 +1,289 @@
+# Gear-3 Evidence Pack — B2.3b, the carrier of the sealed evidence and the fenced writer of the abstain record.
+# Written by the Dux (claude-opus-5, successor-5 session bd8068c5, Pro). Receipts marked seat claude-opus-5 were
+# executed in this Dux chain; receipts marked claude-sonnet-5 were executed by the implementer subagent and are
+# quoted from its report (path in ts_note). Instants are pasted from `date -u` or the run's own printed line.
+task_id: backend-rag-b2-3b-carrier
+brief_ref: evidence/brief.yml
+base_sha: aab2debe784779d6f94acf8377d09863e2912811 # pragma: allowlist secret
+head_sha: 83b011608c43d5031df5b3e0dc8bfb93b65b67b8 # pragma: allowlist secret
+mandate: B2
+colour: BLUE
+pr: B2.3b
+gear: 3
+envelope: 20260912T091907Z-435d
+deadline: "2026-09-14T06:00:00Z"
+
+candidate:
+  commits:
+    - "7402e56a13 feat(backend-rag): B2.3b — carry the sealed evidence label and score to the fenced terminal write of wa_outbox"
+    - "83b011608c fix(backend-rag): B2.3b cure — a reattached completion carries no sealed evidence, and the score binds as exact decimal text (RULING I83)"
+  sha256_at_head:
+    wa_codex_leg.py: "15e1f1974bdb9cb9eb30f29c01e2a582ab581fd0c30f6fbd57aa2b6a92f78205" # pragma: allowlist secret
+    wa_outbox_worker.py: "575e7feb9b76e89f2836ec9da7bf5390dd2cc8c3f3432f0d7f149ad22cda50e6" # pragma: allowlist secret
+    test_wa_codex_leg_support_negative.py: "5f2602cfa29fa7d4076631946364dde675849ce19cdfa09e7e4e56da1472d342" # pragma: allowlist secret
+    test_wa_codex_leg.py: "0db0b0e2bf6e38c4790dc7dab06918a198bd1a6ba95ae736a67c638fa89b2fe3" # pragma: allowlist secret
+    test_wa_outbox_worker.py: "229ca6d2ed8e354e7c475362829d301698094956f68a034240ab1cf7ac1c8bda" # pragma: allowlist secret
+    test_wa_outbox_worker_carrier.py: "46b0ab5aab8c78ae7dc10517da48a30db9f7489db212e2a8aa4410a039d54bbd" # pragma: allowlist secret
+  superseded_bytes:
+    - "6c6836a0 2edc25cc 5f2602cf 275ac990 229ca6d2 ddf41304 — 7402e56a13 before the I83 cure (agy r1 ACCEPT on these bytes is superseded)" # pragma: allowlist secret
+
+acceptance:
+  - id: A1
+    status: MET
+    evidence: >-
+      git diff aab2debe78..83b011608c names exactly the six files above; wa_finalize.py and wa_broker.py
+      byte-identical (receipt R7); the carrier fields are set on the support-negative return and on the
+      completed return only when offer.outcome is OFFERED; the worker's locals are initialised above the
+      needs_generation branch, set in the text branch, reset in the except branch and written only by the
+      terminal fenced UPDATE. #5337 touches wa_codex_leg.py in its module docstring region only; no hunk of
+      this PR overlaps (receipt R8).
+  - id: A2
+    status: MET
+    evidence: >-
+      receipts R3/R6: the real-Postgres module runs the eight spec cases, support-negative for both sealed
+      labels and the I83 reattached case against postgres:15 carrying migration 314, columns read back from the
+      DB; the leg, support-negative, worker and finalize suites stay green. No skip in the run.
+  - id: A3
+    status: MET
+    evidence: >-
+      receipt R4 (writer predicate mutant on the cured head, support-negative True label case red) and R5
+      (restore byte-identical by sha256, suites green again); cure guilts G1/G2 in R10/R11.
+  - id: A4
+    status: MET
+    evidence: >-
+      journal.jsonl: codex-gpt-5.6-sol r3 and agy-gemini-3.1-pro r2 post VERDICT ok true bound to the six
+      head sha256 values; earlier rounds recorded as non-judgements or superseded; findings disposed below.
+  - id: A5
+    status: PENDING_POST_DEPLOY
+    evidence: >-
+      The Bites observation below, made after merge and reported by checkpoint, never inferred from this
+      file. Live telemetry stays UNPROVEN until B3's authorized cases.
+
+deploy_impact:
+  merging_deploys: true
+  path: "apps/backend-rag/** -> fly-deploy.yml (nuzantara-rag)"
+  schema_dependency: >-
+    Migration 314 (both columns) is already on main via #6440 (B2.3a). The terminal UPDATE writes
+    abstained_at and evidence_score, so this image requires 314 to be applied before it serves the WA outbox.
+  rollback: "revert this PR; the columns and any written history stay (B2 §3)"
+
+residual_and_debt:
+  residual: >-
+    A REATTACHED completion (wa_broker.py reattach path, selected by outbox_id alone, OfferResult carries no
+    package_hash) persists abstained_at NULL and evidence_score NULL even when the package that generated the
+    text was label-true: such a send is NOT counted as an abstention. Chosen by RULING I83 option (b): an
+    unbound record says nothing rather than another package's truth.
+  debt: >-
+    Option (c), a follow-up PR with its own perimeter: carry package_hash through wa_broker's reattach SELECT
+    and OfferResult, and carry the sealed fields on a REATTACHED completion only when the hashes are equal.
+    wa_broker.py stays outside B2.3b (B2 §2).
+  b3_note: "B3's takeover case expects NULL/NULL; the disposition column tells what happened."
+
+pii_scan: clean
+pii_scan_note: >-
+  The evidence directory carries sha256 digests, commit ids, test ids, runner summary lines, seat reviews of
+  code, envelope ids and prompts that quote code paths. Tests use synthetic phone numbers and bodies against a
+  throwaway docker postgres. No phone, name, email, message text or identity document; the new log field
+  package_ref is an opaque hash. No production read or write was made by this PR's evidence.
+
+secrets_note: >-
+  No credential read or printed. The throwaway DSN uses the CI test credentials published in tests.yml
+  (test/test on localhost). Seat dispatches stripped secret-named env vars. Detect Secrets may flag digests
+  quoted inside reviews/ and prompts; they are content digests.
+
+bites:
+  consumer: >-
+    B3's acceptance battery, which reads the record this PR writes:
+    SELECT abstained_at, evidence_score FROM wa_outbox WHERE id = ANY($1).
+  observation: >-
+    Before merge: the real-Postgres carrier tests PASSED, not skipped, in this PR's backend shard job log
+    (the shard bootstraps the schema, runs apply-all including 314 and sets TEST_DATABASE_URL). After
+    MERGED and deployed: a grep in the running nuzantara-rag container finds evidence_abstain_label in
+    wa_codex_leg.py and "abstained_at = CASE WHEN" in wa_outbox_worker.py. Live telemetry stays UNPROVEN
+    until B3's authorized cases write real rows.
+
+lanes:
+  - lane: b2-3b-design-and-verify
+    role: read
+    seat: claude-opus-5
+  - lane: b2-3b-carrier-and-cure-build
+    role: build
+    seat: claude-sonnet-5
+  - lane: b2-3b-council-red-team
+    role: review
+    seat: codex-gpt-5.6-sol
+  - lane: b2-3b-council-quorum-fallback
+    role: review
+    seat: agy-gemini-3.1-pro
+
+council_run: journal.jsonl
+seat_fallback_reason: "agy-gemini-3.1-pro replaces kimi-code/k3 (HTTP 403 monthly usage limit, probed 2026-09-13T14:43Z) and stands beside codex; tp1-qwen3.8-max unavailable (HTTP 429 insufficient_quota, 2026-09-13T14:42:06Z, resets 2026-09-18T08:39Z)"
+
+spend:
+  wall_clock_hours: 2.5
+  adversarial_rounds: 3
+appetite_exceeded: >-
+  codex-gpt-5.6-sol needed a third round: r1 and r2 ended in context rollover with no verdict (non-judgements,
+  but r2 named the two defects F1/F2 that I83 cured), r3 on the cure returned the verdict. agy ran two rounds
+  (r1 on the pre-cure bytes, r2 on the head). Wall clock measured from OPENED-B2.3B (13:46Z) to this pack.
+
+dissent:
+  - seat: codex-gpt-5.6-sol
+    objection: "r1 interim risk (no verdict, rollover): the real-DB fixture skips on an unreachable DB or missing schema, so CI could pass vacuously"
+    status: PLAUSIBLE
+    disposition: >-
+      The skip is the repo's documented conftest convention and stays. CI's backend shard job bootstraps the
+      schema, applies all migrations and sets TEST_DATABASE_URL (tests.yml), and the Bites observation reads
+      passed-not-skipped in this PR's own shard log before the gate signs.
+  - seat: codex-gpt-5.6-sol
+    objection: "r1 interim risks (no verdict): bool coercion of a malformed sealed label; score persisted for any text route; package_ref logged unvalidated"
+    status: PLAUSIBLE
+    disposition: >-
+      Kept by design: the label is carried from the sealed wire the leg already parsed (bool() of that wire
+      value, never inferred from text); the score is persisted for every sealed text route by spec (D6:
+      support-negative sets the score with abstained_at NULL); package_ref is the opaque sealed package hash.
+      Neither r3 seat re-raised them on the head.
+  - seat: codex-gpt-5.6-sol
+    objection: "r2 interim F1 (no verdict): a REATTACHED completion carries this claim's rebuilt wire, attributing another package's label and score (wa_broker.py reattach never compares package_hash)"
+    status: CONFIRMED
+    disposition: >-
+      Cured in 83b011608c per RULING I83 option (b): carry only on OFFERED. New tests
+      test_reattached_completion_carries_no_carrier_fields (leg) and test_reattached_completion_persists_nothing
+      (real PG). Guilt G2 red (R11). Residual and option (c) debt named under residual_and_debt.
+  - seat: codex-gpt-5.6-sol
+    objection: "r2 interim F2 (no verdict): asyncpg binds a Python float to $5::numeric through Decimal(float), storing 0.4199999999999999844..."
+    status: CONFIRMED
+    disposition: >-
+      Measured by the Dux on the throwaway postgres:15 (R9); cured in 83b011608c with Decimal(repr(score));
+      real-PG tests assert evidence_score::text exactly. Guilt G1 red (R10).
+  - seat: agy-gemini-3.1-pro
+    objection: "seat quality, r1 on the pre-cure bytes: ACCEPT 0/0/0 that missed both F1 and F2; line citations about 30 lines off; its fourth NOTE repeated the prompt's own mutant claim instead of measuring it"
+    status: CONFIRMED
+    disposition: >-
+      Its r1 ok line stays in the journal but is SUPERSEDED (different bytes). Its r2 verdict on the head
+      counts beside codex r3; the r2 prompt told it that it had missed both defects and asked for exact
+      citations first.
+  - seat: agy-gemini-3.1-pro
+    objection: "seat quality, r2 on the head: both NOTEs carry no file:line although the prompt required it"
+    status: CONFIRMED
+    disposition: >-
+      Recorded, not a finding against the code. The verdict line is well-formed and bound to the six head
+      hashes; codex r3 cites exact lines for the same F1/F2 closure and the Dux re-measured the guilt on the
+      head (R4).
+  - seat: codex-gpt-5.6-sol
+    objection: "r3 NOTE: even a same-package REATTACHED label-true completion is not counted"
+    status: CONFIRMED
+    disposition: "the named I83 residual; option (c) is the debt that removes it"
+  - seat: tp1-qwen3.8-max
+    objection: "r1: no answer, HTTP 429 insufficient_quota"
+    status: RETRACTED
+    disposition: "seat failure, not a judgement (journal ok false); replaced per I80, see seat_fallback_reason"
+  - seat: kimi-code/k3
+    objection: "availability probes: HTTP 403 monthly usage limit, no candidate content sent"
+    status: RETRACTED
+    disposition: "seat failure, not a judgement (journal ok false); replaced by agy-gemini-3.1-pro per I80"
+
+receipts:
+  - claim: "R1 sha256 of the six changed files at head 83b011608c equals the council-bound values"
+    cmd: "shasum -a 256 <the six paths>"
+    result: "15e1f197 575e7feb 5f2602cf 0db0b0e2 229ca6d2 46b0ab5a (full values under candidate.sha256_at_head)"
+    exit: 0
+    ts: "2026-09-13T15:33:35Z"
+    ts_note: "run printed no instant; executed right after the pasted 15:33:35Z date"
+    seat: claude-opus-5
+  - claim: "R2 origin/main moved to 52ebe96b62 without touching the six files or the pack lint scripts"
+    cmd: "git fetch origin main; git diff --stat aab2debe78 52ebe96b62 -- <six paths>; git diff --stat 137204768c 52ebe96b62 -- scripts/evidence_pack_lint.py scripts/ci/bites_parse.py"
+    result: "both diffs empty"
+    exit: 0
+    ts: "2026-09-13T15:33:35Z"
+    ts_note: "run printed no instant; executed right after the pasted 15:33:35Z date"
+    seat: claude-opus-5
+  - claim: "R3 innocent run on the head, throwaway postgres:15 with bootstrap + apply-all incl. 314, TEST_DATABASE_URL set"
+    cmd: "b23b_verify.sh -> pytest -rs test_wa_outbox_worker_carrier.py test_wa_codex_leg.py test_wa_codex_leg_support_negative.py test_wa_outbox_worker.py test_wa_finalize.py"
+    result: "219 passed, 1 warning; no skip line; carrier tests listed among the slowest durations"
+    exit: 0
+    ts: "2026-09-13T15:52:07Z"
+    ts_note: "script printed 15:52:07Z at start and 15:52:17Z at end"
+    seat: claude-opus-5
+  - claim: 'R4 guilt on the head: drop `leg.served_by == "codex" and` from the writer predicate'
+    cmd: "cp worker to scratchpad backup; Edit the predicate; b23b_verify.sh; guilt_ids.sh (pytest -rfs carrier + worker suites)"
+    result: >-
+      mutant sha256 d17ae38c11c6b89a8a9b6c306579a786c760fe9d521ebc0436e10a5ee41d522c; five suites 1 failed, 218 passed
+      (15:52:42Z-15:52:51Z); failing id test_wa_outbox_worker_carrier.py::test_support_negative_never_sets_abstained_at[True]
+      with "assert datetime.datetime(2026, 9, 13, 15, 53, 44, ...) is None" (15:53:38Z-15:53:46Z)
+    exit: 1
+    ts: "2026-09-13T15:52:42Z"
+    seat: claude-opus-5
+  - claim: "R5 restore byte-identical and green"
+    cmd: "cp scratchpad backup over the worker; shasum -a 256 wa_outbox_worker.py; b23b_verify.sh"
+    result: "575e7feb9b76e89f2836ec9da7bf5390dd2cc8c3f3432f0d7f149ad22cda50e6; git status shows no tracked change; 219 passed (15:54:02Z-15:54:10Z)"
+    exit: 0
+    ts: "2026-09-13T15:54:02Z"
+    seat: claude-opus-5
+  - claim: "R6 migration 314 columns present on the throwaway DB the suites ran against"
+    cmd: 'docker exec b23b-verify-s4 psql -Atc "SELECT column_name, data_type, is_nullable FROM information_schema.columns WHERE table_name=''wa_outbox'' AND column_name IN (''abstained_at'',''evidence_score'') ORDER BY 1"'
+    result: "abstained_at|timestamp with time zone|YES; evidence_score|numeric|YES"
+    exit: 0
+    ts: "2026-09-13T15:56:24Z"
+    ts_note: "run printed no instant; the pasted date ran in the same batch"
+    seat: claude-opus-5
+  - claim: "R7 wa_finalize.py and wa_broker.py untouched by the candidate"
+    cmd: "git diff --quiet aab2debe78 83b011608c -- wa_finalize.py wa_broker.py"
+    result: "exit=0"
+    exit: 0
+    ts: "2026-09-13T15:56:24Z"
+    seat: claude-opus-5
+  - claim: "R8 #5337 overlaps this PR only in wa_codex_leg.py, in hunks this PR does not touch"
+    cmd: "gh pr diff 5337 --name-only; gh pr diff 5337 | grep -E '^(\\+\\+\\+ |@@ )'"
+    result: "#5337 wa_codex_leg.py hunks start at old lines 173 and 256; this PR's hunks start at 105, 413, 435, 675 and 1031"
+    exit: 0
+    ts: "2026-09-13T15:57:00Z"
+    ts_note: "run printed no instant; executed after the pasted 15:56:24Z date"
+    seat: claude-opus-5
+  - claim: "R9 F2 measured: asyncpg float bind to numeric is a binary artifact"
+    cmd: "numeric_probe.py: SELECT ($1::numeric)::text with Python floats, asyncpg against the throwaway postgres:15"
+    result: "0.42 -> 0.419999999999999984456877655247808434069156646728515625; 0.08 -> 0.08000000000000000166533453693773481063544750213623046875"
+    exit: 0
+    ts: "2026-09-13T15:17:00Z"
+    ts_note: "successor-4 window 651d44d5; probe file written 15:17Z, record reviews/codex-gpt-5.6-sol-r2-no-verdict-rollover.txt"
+    seat: claude-opus-5
+  - claim: "R10 guilt G1 (cure F2 reverted: bind the raw float)"
+    cmd: "persist_score_bind = persist_score; pytest test_wa_outbox_worker_carrier.py -k 'generated_supported or generated_abstain'"
+    result: "2 failed: test_generated_supported_label_false_sets_score_only ('0.4199999999...' == '0.42'), test_generated_abstain_label_true_sets_abstained_at_eq_sent_at ('0.0800000000...' == '0.08'); restored from cp backup, sha256 verified"
+    exit: 1
+    ts: "2026-09-13T15:25:16Z"
+    ts_note: "implementer report 651d44d5 scratchpad cure-report.md; ran between verify #1 end 15:25:16Z and verify #2 start 15:26:25Z"
+    seat: claude-sonnet-5
+  - claim: "R11 guilt G2 (cure F1 reverted: carry on REATTACHED too)"
+    cmd: "unconditional carrier on the completed return; pytest test_wa_codex_leg.py -k reattached_completion_carries_no_carrier_fields"
+    result: "1 failed: assert False is None (evidence_abstain_label); restored, sha256 15e1f197 verified"
+    exit: 1
+    ts: "2026-09-13T15:25:16Z"
+    ts_note: "implementer report cure-report.md; ran between 15:25:16Z and 15:26:25Z"
+    seat: claude-sonnet-5
+  - claim: "R12 implementer verify runs on the cure"
+    cmd: "b23b_verify.sh (five suites, throwaway postgres:15 with 314)"
+    result: "219 passed at 15:25:08Z-15:25:16Z, 15:26:25Z-15:26:34Z and 15:28:26Z-15:28:31Z (after a format touch to cure-written lines)"
+    exit: 0
+    ts: "2026-09-13T15:28:26Z"
+    seat: claude-sonnet-5
+  - claim: "R13 ruff check on the six changed files at head"
+    cmd: "apps/backend-rag/.venv/bin/ruff check <six paths>"
+    result: "All checks passed!"
+    exit: 0
+    ts: "2026-09-13T15:57:00Z"
+    ts_note: "run printed no instant; same batch as R8"
+    seat: claude-opus-5
+  - claim: "R14 council r3 seats left the tree unchanged"
+    cmd: "seat_r3.sh: shasum -a 256 -c tree-before-<seat>-r3.txt after each seat exited"
+    result: "codex r3 exit 0 end 15:34:35Z, 0 non-OK lines; agy exit 0 end 15:39:51Z, 0 non-OK lines"
+    exit: 0
+    ts: "2026-09-13T15:39:51Z"
+    seat: claude-opus-5
+  - claim: "R15 CI-shaped pack lint with main's scripts (52ebe96b62 content) on a synthetic tree outside the evidence dir, plus main's Bites parser"
+    cmd: "evidence_pack_lint.py <scratch>/ci/evidence/pack.yml --repo-root <scratch>/ci --source-path <real pack path> --brief-source-path <real brief path> --changed-files-file <git diff --cached --name-only aab2debe78> --numstat-file <git diff --cached --numstat aab2debe78>; bites_parse.py --pack - < pack.yml"
+    result: "evidence_pack_lint: clean (NOTICE only: acceptance-probe field presence, appetite tokens unmeasured, adversarial_rounds acknowledged); bites_parse legacy true"
+    exit: 0
+    ts: "2026-09-13T15:59:54Z"
+    ts_note: "first clean run just before the pasted instant; re-run after adding this receipt is the committed state"
+    seat: claude-opus-5

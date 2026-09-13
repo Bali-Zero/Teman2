@@ -1,0 +1,8 @@
+codex-gpt-5.6-sol r1 on the B2.3b candidate (six files; prompt reviews/prompt-r1.txt, diff INLINED, 46.9 KB)
+codex r1 start 2026-09-13T14:42:05Z
+codex r1 exit=0 end 2026-09-13T14:46:51Z
+OUTCOME: NO VERDICT. The seat's Nuzantara context hook (context_bridge.py checkpoint) fired at the context threshold, the seat saved a rollover checkpoint and ended the turn ("tokens used 182.632"). No VERDICT line was emitted; this run counts for nothing toward R9. Worktree hashes unchanged across the run (predecessor's before/after shasum list).
+Checkpoint the seat saved, "risks" field quoted verbatim (unconfirmed interim risks, not findings):
+- "Potential major: critical DB fixture explicitly skips on unreachable/missing schema; must verify normal CI provisions and migrates DB before grading."
+- "Potential defects still unconfirmed: bool coercion of malformed sealed label, score persisted for any text route, and unvalidated package_ref logging."
+Cure of the cause: round 2 does not inline the diff; the seat reads it with git diff aab2debe78 7402e56a13 -- <path> (reviews/prompt-r2.txt).

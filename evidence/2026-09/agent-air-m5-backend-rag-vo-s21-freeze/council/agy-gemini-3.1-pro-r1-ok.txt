@@ -1,0 +1,53 @@
+### Claim 1: FAIL-OPEN
+**PROVEN**
+* Citation: `fold_pack_seq21.py` lines 32–56 (`RETIRED_REVIEW_RULES`), lines 211–304 (`SUPPORT_RULES`), and `test_seq21_pack.py` lines 619–633 (`test_an_unknown_qualification_asks_instead_of_supporting`).
+* The 9 retired `review.*` rules were dormant in seq-20 because `intent.requested_product_code` was hard-coded to `UNKNOWN(NOT_ASKED)`.
+* Each replacing `el.*` rule requires `{"op": "eq", "fact": qualifying_fact, "value": True}` with `on_unknown: NEEDS_INPUT`.
+* An unasked or missing qualification evaluates to `NEEDS_INPUT` (asking the applicant), never silently granting support.
+
+---
+
+### Claim 2: EVIDENCE
+**PROVEN**
+* Citation: `fold_pack_seq21.py` lines 211–304 (`SUPPORT_RULES`), lines 437–451 (`build_support_rule`), `models.py` lines 1094–1246, and `test_seq21_pack.py` lines 640–700 (`TestSponsorTypeAloneIsNotEvidence`).
+* Each of the 9 SUPPORT rules explicitly conjoins purpose and route premises with its own distinct qualifying fact.
+* All 10 qualification facts default to `UNKNOWN(NOT_ASKED)` in `models.py`.
+* Stripping the qualifying conjunct in mutation tests causes 16 walk regressions where products are granted without evidence, confirming the discriminator facts are strictly load-bearing.
+
+---
+
+### Claim 3: ON_UNKNOWN NEVER LOOPS DEAD ENDS
+**PROVEN**
+* Citation: `fold_pack_seq21.py` lines 58–71, lines 437–451 (`build_support_rule`), and `test_seq21_pack.py` lines 712–736 (`test_no_walk_changes_state_or_candidates`, `test_the_census_is_still_67_answers_15_no_paths_2_questions`).
+* Under Strong-Kleene evaluation, an `all` operator is definitely FALSE if any operand is FALSE, regardless of UNKNOWN operands.
+* For applicants on unrelated walks, the purpose or sponsor/route premise evaluates to FALSE, keeping the overall condition FALSE without triggering `on_unknown: NEEDS_INPUT`.
+* Census replay over the 84-walk corpus confirms all 15 dead-end walks remain `NO_SUPPORTED_PATH`.
+
+---
+
+### Claim 4: REPRODUCIBILITY
+**PROVEN**
+* Citation: `fold_pack_seq21.py` lines 164–167 (`SEQ20_PAYLOAD_SHA256`), lines 488–560 (`assert_only_expected_changes`, `fold`), and `test_seq21_pack.py` lines 343–353 (`test_fold_is_deterministic_and_matches_disk`), lines 400–418 (`test_chain_anchor_is_the_measured_seq20_digest`).
+* `fold_pack_seq21.py` validates the signed seq-20 envelope and matches its hash against `SEQ20_PAYLOAD_SHA256`.
+* `assert_only_expected_changes` enforces universal equality across all untouched top-level keys and base rules.
+* The generated output matches canonical JCS digest `c21a2aaaa33b939284a8d2ddaedef1f0c22859b3b3a87c9042b48c92814467cf`.
+
+---
+
+### Claim 5: THRESHOLDS
+**PROVEN**
+* Citation: `fold_pack_seq21.py` lines 379–404 (`_e33_guarantee_bounds`), lines 454–478 (`build_e33_guarantee_rule`), lines 481–507 (`build_employment_sponsor_rule`), and `test_seq21_pack.py` lines 525–548 (`test_e33_guarantee_rule_mirrors_the_packs_own_bounds`).
+* `_e33_guarantee_bounds()` extracts the deposit and property minimums directly from donor rules `el.e33.deposit-basis` and `el.e33.property-basis` at fold time.
+* `build_employment_sponsor_rule` checks only boolean `work.employer_is_indonesian_entity = false`.
+* Neither HARD_FILTER rule hard-codes financial constants.
+
+---
+
+### Claim 6: MOUTH PARITY
+**PROVEN**
+* Citation: `engine-adapter.ts` lines 476–525 (`SUPPORT_REASON_COPY`), lines 858–968 (`REVIEW_REASON_COPY`), and `engine-adapter.test.ts` lines 1221–1234.
+* `SUPPORT_REASON_COPY` gained 11 entries (9 eligibility support codes + 2 hard-filter exclude codes).
+* `REVIEW_REASON_COPY` removed 8 entries corresponding to the 9 retired dormant review rules (E33A and E33C shared `GOVT_INVITATION_REQUIRED`).
+* No active or live rule in seq-21 lost copy coverage, and the suite re-pins the pack review floor at 30.
+
+VERDICT: OK

@@ -95,11 +95,19 @@ def test_trace_golden_vector_and_observed_clock_invariance() -> None:
     # payload`), so every persona gaining one more UNKNOWN key necessarily
     # moves it, independent of whether any rule reads that key.
     #
+    # Moved a fifth time 2026-09-13 (`64d4f54e…` -> `4bda56cb…`) when
+    # W-VO-S21 registered the TEN seq-21 qualification booleans (five
+    # `sponsor.*`, five `investment.*`) — consumed only by rules in the
+    # unsigned `rulepack-prod-021.source.json`, never by the harness fixture
+    # `gold_rule_pack.json` this test compiles. Same verification as every move above: node count
+    # is still 84, and `test_gold_replay_artifact.py` is green. The literal
+    # moves because `facts_hmac` is over the WHOLE snapshot.
+    #
     # If this literal ever moves again while the node set or a persona's
     # decision ALSO changed, that is a behaviour change wearing a fixture's
     # clothes — do not update the number, find out what evaluated differently.
     assert (
-        first.trace.sha256() == "64d4f54e275cec97ae2ccd108171e487ab5a41ea297a691c8cc7426304930ce4"
+        first.trace.sha256() == "4bda56cb58817fca78cbcdef2bd89694f52e75709b876d3bbf007ddbf774a55b"
     )
     assert first.decision.trace_sha256 == first.trace.sha256()
     assert second.trace == first.trace

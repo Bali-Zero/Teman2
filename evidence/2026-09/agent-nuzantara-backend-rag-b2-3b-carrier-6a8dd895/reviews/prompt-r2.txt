@@ -1,0 +1,34 @@
+ADVERSARIAL REVIEW — PR B2.3b (carrier + fenced writer), round 2. Repository Bali-Zero/Teman2. You are a council seat: find what is WRONG. Read-only; do not modify any file, do not commit, do not run the test suite, no network.
+
+HOW TO READ THE CANDIDATE (round 1 inlined the diff and the seat ran out of context; this round the diff is NOT inlined — read it yourself from the git objects in your working directory):
+- base  = aab2debe78 (origin/main at branch creation)
+- head  = 7402e56a13 (the single local candidate commit on branch agent/nuzantara/backend-rag/b2-3b-carrier)
+- run:  git diff aab2debe78 7402e56a13 -- <path>   one path at a time, for the six paths listed under CANDIDATE below
+- verify the bytes you review: shasum -a 256 <the six paths>  must print exactly the CANDIDATE sha256 values (the working tree == head for these six files)
+- read surrounding code only by range (sed -n 'A,Bp' / grep -n), never whole large files: wa_codex_leg.py around the sealed wire parse and every return after it; wa_outbox_worker.py around the generation try-block, the `elif leg.text is not None:` branch, the pre-send fence and the terminal fenced UPDATE; wa_finalize.py only to confirm it is not in the diff.
+
+SPEC (binding, research/operations/2026-09-11-bot-staff-room/B2-engine.md §4 "PR B2.3b" + README §0 D6):
+- CodexLegResult carries the sealed evidence label, score and opaque package reference from the parsed sealed evidence (wa_codex_leg.py, the wire parse `parsed_wire = json.loads(wire)`; `evidence_inputs = parsed_wire.get("evidence_inputs")`) into completion.
+- The outbox worker persists them under the EXISTING fence at the terminal write (WHERE id AND claim_token AND expected status). wa_finalize.py stays free of DB writes (it is NOT in this diff). Scripted/unscored routes keep NULL.
+- D6: abstained_at = the successful-send timestamp of a GENERATED reply whose FROZEN evidence label was true (it does NOT mean a refusal stub was delivered). evidence_score = the same sealed package's frozen score. The B2.1 support-negative branch (served_by="support_abstain": nothing generated, a stub is sent) leaves abstained_at NULL with evidence_score SET.
+- Schema is already live (migration 314): wa_outbox.abstained_at timestamptz NULL, wa_outbox.evidence_score numeric NULL, no defaults.
+- Required tests, isolated DB + stubbed sender: generated-supported (label false -> abstained_at NULL, score set), generated-abstain-label (label true -> both set), retry, stale claim, takeover, failed send (nothing persisted as a send), discarded completion, scripted greeting (both NULL).
+- Constraints: no send/generation/network in tests; no client PII; PR #5337 (suspended, veto logic in wa_codex_leg.py) must be untouched apart from the carrier. Merge order: B2.3b first, #5337 re-bases afterwards.
+
+REAL-DB FIXTURE MECHANISM (imperator ruling I78 — review this path, not only the mocks): the eight B2.3b cases live in the NEW module apps/backend-rag/backend/tests/unit/services/test_wa_outbox_worker_carrier.py, separate from the mocked ScriptedConn file test_wa_outbox_worker.py. Its `db_pool` fixture copies the pattern of apps/backend-rag/backend/tests/app/routers/conftest.py: asyncpg pool on env TEST_DATABASE_URL (default postgresql://nuzantara@localhost:5432/nuzantara_test); it SKIPS with a reason when the DB is unreachable, when wa_outbox / meta_inbox_threads / meta_inbox_messages are missing, or when migration 314's two columns are missing. In CI the DB comes from the postgres service of .github/workflows/tests.yml (Backend Tests job, migrated schema). Assertions read the columns back from Postgres after the fenced write; they do not string-match SQL. The two pins in test_wa_outbox_worker.py were narrowed from "UPDATE wa_outbox SET status = 'done'" to "SET status = 'done'" because the terminal write is now multi-line.
+
+ATTACK AT LEAST: (1) any path where abstained_at or evidence_score is written for a row that was NOT successfully sent, or by a worker that lost the fence; (2) any path where a GENERATED+label-true send leaves abstained_at NULL, or a non-generated route (support_abstain, scripted greeting, human send) sets it; (3) stale carrier values surviving from one attempt into another (retry, requeue, exception after assignment, pre-send fence loss, window closed, send failure then later success); (4) NOW() vs meta_inbox_messages.sent_at equality claim; (5) asyncpg type binding of a Python float to `$5::numeric` (precision, NaN/inf, bool) and `$4::boolean`; (6) whether the label read is the SEALED wire value and not the forced abstain=True of the support-negative finalize call; (7) whether the new tests truly exercise the real SQL on a real Postgres or can pass vacuously (skip conditions, mocks around the write); whether a mutant (e.g. dropping `served_by == "codex"`, or always NOW()) turns them red; (8) log line: can package_ref or any logged value carry PII; (9) regressions in existing behaviour or tests (the two narrowed SQL pins in test_wa_outbox_worker.py); (10) anything in the diff outside this scope.
+
+The Dux measured on this candidate (2026-09-13T14:39:30Z-14:39:38Z, throwaway docker postgres 15 with scripts/ci_bootstrap_schema.py + `backend.db.migrate apply-all` incl. 314, TEST_DATABASE_URL set): the five touched suites 217 passed (carrier tests executed, not skipped); mutant "remove `leg.served_by == \"codex\" and`" -> 1 failed, 216 passed (14:39:57Z-14:40:05Z); cure restored from a cp backup. Treat these as claims to attack, not as facts.
+
+CANDIDATE sha256 (the verdict binds to these exact bytes):
+6c6836a0085d414c60b944d8f57baab724f154ec1e814cb8aea498ef7e17663c apps/backend-rag/backend/services/integrations/wa_codex_leg.py
+2edc25ccfb183362d1f059eac0d193161fa067cf866948c14eb13fd9f2571993 apps/backend-rag/backend/services/integrations/wa_outbox_worker.py
+5f2602cfa29fa7d4076631946364dde675849ce19cdfa09e7e4e56da1472d342 apps/backend-rag/backend/tests/unit/services/integrations/test_wa_codex_leg_support_negative.py
+275ac990a54a0c46706adccdd6ddbe0c6b9e7fcdb4757a98701425dfac9b9b2e apps/backend-rag/backend/tests/unit/services/test_wa_codex_leg.py
+229ca6d2ed8e354e7c475362829d301698094956f68a034240ab1cf7ac1c8bda apps/backend-rag/backend/tests/unit/services/test_wa_outbox_worker.py
+ddf41304e98294d9582f49b47e7af2345722e6932784b1a1d9ab9fedbd98da31 apps/backend-rag/backend/tests/unit/services/test_wa_outbox_worker_carrier.py
+
+OUTPUT FORMAT: first one line `SHA256 CHECK: match` or `SHA256 CHECK: mismatch <path>`. Then findings as BLOCKER / MAJOR / MINOR / NOTE, each with file:line, the concrete failing scenario, and a falsifiable check. Then, as the LAST line, exactly:
+VERDICT {"ok": <true|false>, "candidate": "6c6836a0 2edc25cc 5f2602cf 275ac990 229ca6d2 ddf41304", "blockers": N, "majors": N, "minors": N}
+ok is true only with 0 BLOCKER and 0 MAJOR.

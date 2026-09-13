@@ -847,6 +847,126 @@ CONTENT_KEYED_RULES: list[tuple[re.Pattern[str], re.Pattern[str], str]] = [
         "the pinned content sha256 of manifest_mandatory.json, asserted "
         "against at runtime, not a credential (PR #6429, I60)",
     ),
+    # Evidence Pack `council/*.txt` transcripts (multi-LLM review panel
+    # output, e.g. codex-gpt-5.6-sol.txt) — found live on PR #6449's own
+    # evidence pack: a reviewer's own `web search:` log line quoted the
+    # exact upstream commit SHA the PR was verifying
+    # (sonarsource/sonarqube-scan-action@5bc5285b684b9f0e940031dc8ddc4b6387a2f493,
+    # already public in .github/workflows/sonarqube.yml and the dependabot
+    # PR #5529 title/description), and the bare 40-hex string reads as a
+    # "Hex High Entropy String" with zero context awareness.
+    #
+    # Deliberately NOT a path-only rule on the whole council/ tree: unlike
+    # docs/*.md (AUTO_APPROVE_RULES below), a review-panel transcript is
+    # exactly the place a reviewer might legitimately QUOTE a genuinely
+    # leaked credential it just found elsewhere in the diff, as evidence —
+    # a path-only rule would blanket-hide that report (cicatrix-superscar
+    # #3, guard-over-match). Content-keyed to the EXACT known-public commit
+    # SHA this dependency pin already carries in the clear elsewhere in the
+    # repo, same discipline as the fold_pack_seq* exact-value chain-anchor
+    # pins above: any OTHER hex string a future transcript quotes — plausibly
+    # a real secret a reviewer is flagging — stays unaudited for human eyes.
+    (
+        re.compile(r"(^|/)evidence/[^/]+/[^/]+/council/.*\.txt$"),
+        re.compile(r"^.*5bc5285b684b9f0e940031dc8ddc4b6387a2f493.*$"),
+        "Evidence Pack council/*.txt review transcript: quotes the exact "
+        "known-public sonarqube-scan-action commit SHA already in the clear "
+        "in .github/workflows/sonarqube.yml (dependabot #5529/PR #6449), "
+        "never a credential — pinned to this exact value, not any hex "
+        "shape, so a genuinely leaked secret a reviewer quotes elsewhere "
+        "stays unaudited",
+    ),
+    # Evidence Pack `pack.yml` narrating a PAST `.secrets.baseline` audit —
+    # found live on PR #6449's own evidence pack (self-referential: the pack
+    # describing the council/*.txt fix above tripped a NEW finding by
+    # quoting the JSON field it had set, `` `is_secret: false` ``). The
+    # "Secret Keyword" plugin reads the literal "secret" immediately
+    # followed by `:` and a value as an assignment, with zero awareness that
+    # this is prose narrating a baseline decision, not a live secret.
+    #
+    # Content-keyed, not path-only, for the same open-writer-set reason as
+    # every other pack.yml rule in this list: pack.yml is free-form narration
+    # a human or agent edits by hand, so a blanket rule would hide a real
+    # credential typed onto any other line. Narrowed to the one shape this
+    # genre of narration actually produces — a backtick-quoted
+    # `is_secret: true`/`is_secret: false` JSON-field-literal, which is a
+    # baseline DECISION being quoted, structurally never a secret VALUE
+    # (detect-secrets' own baseline schema only ever stores that field as a
+    # bare JSON boolean, so no real secret can be shaped like this).
+    (
+        re.compile(r"(^|/)evidence/[^/]+/[^/]+/pack\.yml$"),
+        re.compile(r"^.*`is_secret:\s*(?:true|false)`.*$"),
+        "Evidence Pack pack.yml audit narration: quotes the "
+        "`.secrets.baseline` `is_secret` field's own name and boolean "
+        "value while describing a past audit decision, not a credential",
+    ),
+    # B2.3a schema PR (#6440) and B2.3b carrier PR (#6455) evidence packs
+    # (ledger close, RULING I73 C3 / I88 C1): every pack.yml's own
+    # `secrets_note:` field opens a YAML block scalar whose KEY NAME alone
+    # — "secret" immediately followed by `:` — trips the "Secret Keyword"
+    # plugin, before a single word of the note's prose is read. This is the
+    # schema field name itself, not a value.
+    #
+    # Anchored with `^` (not `(^|/)` like the older rules above) rather than
+    # admitting a nested path: a `pack.yml` several directories under
+    # `evidence/` would still match the older `(^|/)` rules, widening the
+    # scope past the one file per task this rule is meant to cover. Content-
+    # keyed to the exact `secrets_note: >-` block-scalar opener line, so a
+    # real secret typed onto a LATER line of the note's own prose is still
+    # left unaudited.
+    (
+        re.compile(r"^evidence/[^/]+/[^/]+/pack\.yml$"),
+        re.compile(r"^secrets_note:\s*>-\s*$"),
+        "Evidence Pack pack.yml secrets_note: the schema field's own key "
+        "name trips Secret Keyword on \"secret\" + \":\", before any prose "
+        "is read — never a credential (PR #6440 I73 C3, PR #6455 I88 C1)",
+    ),
+    # B2.3a schema PR (#6440) roundtrip receipt (I73 C3): the isolated
+    # migration test spins up a THROWAWAY dockerized Postgres and connects
+    # with the CI-identical `test:test` credential pair against
+    # `127.0.0.1`/`localhost` only — the same non-secret pair `tests.yml`
+    # already publishes in the clear, quoted here again because the receipt
+    # is a verbatim shell-script log, not because a new credential exists.
+    #
+    # Content-keyed to the exact `export DATABASE_URL=` line, and the DSN's
+    # own `test:test@` + loopback-host shape, so a receipt that later quotes
+    # a DIFFERENT (non-loopback, non-test/test) DSN — a real leak — stays
+    # unaudited.
+    (
+        re.compile(r"^evidence/[^/]+/[^/]+/receipts/.*\.txt$"),
+        re.compile(
+            r'^\s*export DATABASE_URL="postgresql://test:test@'
+            r'(?:127\.0\.0\.1|localhost):[^/"]+/[A-Za-z0-9_]+"\s*$'
+        ),
+        "Evidence Pack receipt: the isolated-DSN roundtrip test's own "
+        "CI-identical test:test@loopback credential, never a shared or "
+        "prod DSN (PR #6440, I73 C3)",
+    ),
+    # B2.3a schema PR (#6440) adversarial-review prompt (I73 C3, "the
+    # gate-6429 C1 rule applies to prompt files too"): `prompt-r1.txt`'s
+    # own VERDICT template embeds the SUPERSEDED sha256 of the prompt text
+    # it was generated from (round 1's own content digest, quoted back at
+    # the reviewer so it can assert which prompt version it answered) —
+    # a content-derived digest of the surrounding file, same class as the
+    # `measured_at`/`report_sha256` rules above, never a credential.
+    #
+    # Content-keyed to the exact VERDICT line shape carrying a literal
+    # `"sha256": "<64-hex>"` field (as opposed to the sibling
+    # `sha256_groups`/`candidate` VERDICT shapes used by the other rounds'
+    # prompts, which detect-secrets does not flag), so a real secret pasted
+    # into a DIFFERENT line of the same prompt file is still left unaudited.
+    (
+        re.compile(r"^evidence/[^/]+/[^/]+/reviews/prompt-r[0-9]+\.txt$"),
+        re.compile(
+            r'^VERDICT \{"ok": <true only if no BLOCKER and no MAJOR>, '
+            r'"sha256": "[0-9a-f]{64}", "blockers": <n>, "majors": <n>, '
+            r'"minors": <n>\}\s*$'
+        ),
+        "Evidence Pack review prompt VERDICT template: sha256 is the "
+        "content digest of the prompt round's own text, quoted back for "
+        "the reviewer to confirm which version it verdicted, not a "
+        "credential (PR #6440, I73 C3)",
+    ),
 ]
 
 # Each rule is (pattern, reason). The pattern matches the file path

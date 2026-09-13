@@ -1,0 +1,32 @@
+ADVERSARIAL REVIEW — PR B2.3b (carrier + fenced writer), round 3, NARROWED. Repository Bali-Zero/Teman2. You are a council seat: find what is WRONG. Read-only; do not modify any file, do not commit, do not run tests, no network.
+
+CONTEXT BUDGET (binding): your two previous rounds hit the context-rollover hook before emitting a verdict. This round is narrowed to the cure. Read ONLY the commands and ranges below; do not open other files; do not cat whole files; emit your verdict well before 120K tokens. A verdict on this scope is the deliverable.
+
+YOUR ROUND 2 INTERIM NOTES named two defects in candidate 7402e56a13; the Dux confirmed both and the imperator (ruling I83) chose these cures, now commit 83b011608c (parent 7402e56a13, base aab2debe78):
+F1: wa_broker.py reattach (lines 585-616) returns a prior live serve job selected by outbox_id without comparing package_hash; OfferResult has no hash. CURE: the completed return in wa_codex_leg.py carries evidence_abstain_label / evidence_score / package_ref ONLY when offer.outcome is OFFERED; REATTACHED carries None -> the worker persists abstained_at NULL and evidence_score NULL. Accepted residual: a reattached label-true send is not counted. wa_broker.py deliberately untouched (a precise hash-equality cure is a named debt for a separate PR).
+F2: asyncpg binds a Python float to $5::numeric via Decimal(float) (measured: 0.42 -> 0.4199999999999999844...). CURE: the worker binds decimal.Decimal(repr(score)); real-Postgres tests assert evidence_score::text exactly.
+
+READ:
+1. git diff 7402e56a13 83b011608c            (the cure, 4 files, ~110 lines)
+2. sed -n '1040,1095p' apps/backend-rag/backend/services/integrations/wa_codex_leg.py   (completed return)
+3. sed -n '640,720p'   apps/backend-rag/backend/services/integrations/wa_codex_leg.py   (sealed parse + support-negative return, returns before the offer)
+4. sed -n '840,860p'   apps/backend-rag/backend/services/integrations/wa_codex_leg.py   (REATTACHED handling)
+5. sed -n '870,882p;1020,1060p;1400,1470p' apps/backend-rag/backend/services/integrations/wa_outbox_worker.py   (carrier locals, text/except branches, fenced terminal write)
+6. sed -n '585,616p'   apps/backend-rag/backend/services/integrations/wa_broker.py
+7. shasum -a 256 on the six CANDIDATE paths below
+
+ATTACK: (a) is F1 closed — any path where a REATTACHED completion (or any completion whose generating package is not this claim's sealed wire) still persists a label or score; can offer.outcome be something other than OFFERED/REATTACHED at that return; (b) does the cure open a regression — an OFFERED completion losing its carrier, the support-negative branch changing, persist_abstained/persist_score stale across attempts; (c) F2: repr() of the normalised score (int, float, very small/large floats, exponent notation such as 1e-05 -> Decimal('1E-5')) bound to $5::numeric — exact, no exception, NULL preserved; (d) do the new tests fail on the defect (the Dux measured: float bind -> the '0.42'/'0.08' text asserts red; carrying on REATTACHED -> the new leg test red) and pass vacuously anywhere; (e) anything in the cure delta outside F1/F2.
+
+The Dux measured on 83b011608c's bytes (throwaway postgres:15 with migration 314, TEST_DATABASE_URL set): five suites 219 passed (15:25:08Z-15:25:16Z and again 15:26:25Z-15:26:34Z after guilt restores). Treat as claims to attack.
+
+CANDIDATE sha256 (the verdict binds to these exact bytes):
+15e1f1974bdb9cb9eb30f29c01e2a582ab581fd0c30f6fbd57aa2b6a92f78205 apps/backend-rag/backend/services/integrations/wa_codex_leg.py
+575e7feb9b76e89f2836ec9da7bf5390dd2cc8c3f3432f0d7f149ad22cda50e6 apps/backend-rag/backend/services/integrations/wa_outbox_worker.py
+5f2602cfa29fa7d4076631946364dde675849ce19cdfa09e7e4e56da1472d342 apps/backend-rag/backend/tests/unit/services/integrations/test_wa_codex_leg_support_negative.py
+0db0b0e2bf6e38c4790dc7dab06918a198bd1a6ba95ae736a67c638fa89b2fe3 apps/backend-rag/backend/tests/unit/services/test_wa_codex_leg.py
+229ca6d2ed8e354e7c475362829d301698094956f68a034240ab1cf7ac1c8bda apps/backend-rag/backend/tests/unit/services/test_wa_outbox_worker.py
+46b0ab5aab8c78ae7dc10517da48a30db9f7489db212e2a8aa4410a039d54bbd apps/backend-rag/backend/tests/unit/services/test_wa_outbox_worker_carrier.py
+
+OUTPUT FORMAT: first one line `SHA256 CHECK: match` or `SHA256 CHECK: mismatch <path>`. Then findings as BLOCKER / MAJOR / MINOR / NOTE, each with file:line, the concrete failing scenario, and a falsifiable check. Then, as the LAST line, exactly:
+VERDICT {"ok": <true|false>, "candidate": "15e1f197 575e7feb 5f2602cf 0db0b0e2 229ca6d2 46b0ab5a", "blockers": N, "majors": N, "minors": N}
+ok is true only with 0 BLOCKER and 0 MAJOR.
