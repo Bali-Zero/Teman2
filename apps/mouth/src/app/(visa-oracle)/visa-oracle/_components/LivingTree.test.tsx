@@ -178,7 +178,7 @@ describe("LivingTree jump sheet (W-VO-T)", () => {
 });
 
 describe("LivingTree at a follow-up question (W-VO-T, council round 2)", () => {
-  // codex-gpt-5.6-sol: the corrected trunk lived only inside the progress
+  // Council round finding: the corrected trunk lived only inside the progress
   // line, so at an appended follow-up the trunk beside it still painted
   // every step "pending" — and every jump target disappeared, exactly when
   // a visitor most wants to correct an answer.

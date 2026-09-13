@@ -408,7 +408,7 @@ describe("the NEEDS_INPUT follow-up node", () => {
 });
 
 describe("the council's skipped-spine lane, re-measured", () => {
-  // Council finding #2 (codex-gpt-5.6-sol, round 1) said the onshore
+  // Council finding #2 (round 1) said the onshore
   // urgent permit lane jumps from `permit_expiry` straight to
   // `review_gate`, leaving earlier questions unasked and the purpose fan
   // claiming eleven open branches. The claim quotes `getTreeSteps`'s own
@@ -498,7 +498,7 @@ describe("a non-ENGINE outcome is not an engine answer (council round 4)", () =>
 });
 
 describe("an ANSWERED follow-up stays on the trunk (council round 4)", () => {
-  // Reproduced by codex-gpt-5.6-sol: once the follow-up was answered the
+  // Reproduced by the council: once the follow-up was answered the
   // reducer returned to the verdict, the question left the projection, the
   // count fell from 10/11 back to 10/10 and the answer the ENGINE asked for
   // by name had no jump target.
