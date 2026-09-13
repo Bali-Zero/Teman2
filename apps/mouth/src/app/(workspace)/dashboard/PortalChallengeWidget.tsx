@@ -18,10 +18,11 @@
  * It reuses --bz-text-1 (a dark ink-navy TOKEN already declared for kita
  * body text, globals.css) as a BACKGROUND instead of introducing a new hex
  * literal — "tokens only" is honoured by reuse, not by a new declaration.
- * Every tone in this file was checked against globals.css's
- * [data-theme="operative-light"] block: --state-info is #1d4ed8 (blue) and
- * --state-success is #147a3a (green) on kita, so neither is used here —
- * only --bz-copper (#b5633a on kita) and neutral ink/paper tokens are.
+ * Every tone in this file was checked against globals.css's kita
+ * daylight theme block (see r19.tsx for the exact selector and values):
+ * --state-info resolves to a BLUE and --state-success to a GREEN there, so
+ * neither is used on this widget — only --bz-copper and neutral ink/paper
+ * tokens are.
  */
 
 import React from "react";
@@ -44,8 +45,8 @@ const R19_TYPE: React.CSSProperties = {
 };
 
 /**
- * The hero band's ink panel. `--bz-text-1` is kita's darkest body-text token
- * (#172033) — reused here as a background rather than declaring a new dark
+ * The hero band's ink panel. `--bz-text-1` is kita's darkest body-text
+ * token — reused here as a background rather than declaring a new dark
  * literal. `--bz-surface` (kita's card white) doubles as "paper" foreground.
  */
 const INK_PANEL = "bg-[var(--bz-text-1)] text-[var(--bz-surface)]";

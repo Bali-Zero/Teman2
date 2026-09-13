@@ -17,12 +17,15 @@
  *   waiting          -> --tx-secondary
  *   solid ink chip   -> --tx-pure (fill) / --bz-surface (text) — for the
  *                       "Tax" badge, which the shared idiom would otherwise
- *                       give --state-info (a BLUE, #1d4ed8 on kita's
- *                       [data-theme="operative-light"] block) — forbidden by
- *                       brand. `ok`/`ours` stay declared for idiom parity
- *                       with garuda-voa/r19.tsx but are never applied here:
- *                       --state-success is GREEN (#147a3a) and --state-info
- *                       is BLUE (#1d4ed8) on kita.
+ *                       give --state-info, which resolves to a BLUE on
+ *                       kita's daylight theme — forbidden by brand. `ok`/
+ *                       `ours` stay declared for idiom parity with
+ *                       garuda-voa/r19.tsx but are never applied here:
+ *                       --state-success resolves to a GREEN and --state-info
+ *                       to a BLUE on kita (verified against globals.css's
+ *                       kita daylight theme block; run token_lint.py or grep
+ *                       the two token names there for the exact values —
+ *                       never restate them as a literal here).
  *
  * NO RED ON THIS WIDGET. --state-danger is never read here. r19.test.tsx
  * fails if a danger read or a hardcoded hex comes back in this widget's own
