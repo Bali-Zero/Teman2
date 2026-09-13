@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { KBLIBuilderCTA } from "./_components/KBLIBuilderCTA";
+import { KBLIBreadcrumbJsonLd } from "@/components/kbli/KBLIStructuredData";
 
 export const metadata: Metadata = {
   title: "KBLI Builder — Susun Struktur Kode KBLI untuk PT PMA Anda",
@@ -27,6 +28,12 @@ export default function KBLIBuilderPage() {
         minHeight: "100vh",
       }}
     >
+      <KBLIBreadcrumbJsonLd
+        items={[
+          { name: "KBLI Navigator", url: "https://balizero.com/kbli" },
+          { name: "KBLI Builder", url: "https://balizero.com/kbli/builder" },
+        ]}
+      />
       <KBLIBuilderCTA />
     </main>
   );
