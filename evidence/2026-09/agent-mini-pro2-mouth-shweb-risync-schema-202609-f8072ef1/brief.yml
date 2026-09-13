@@ -6,12 +6,14 @@ gate_class: opus
 l_level: L2
 gear_note: >-
   Declared 3 to match the floor computed by
-  `scripts/evidence_pack_lint.py --print-floor --changed-files-file
-  <changed> --numstat-file <numstat>` (source: size), re-run after the LAST
-  commit (150c8d36e4). Total churn 3,185 across 5 files
-  (schema.d.ts 2,894; sitemap.test.ts 185; test_generate_openapi_schema_pin.py
-  60; generate_openapi.py 45; the pin file 1), above SIZE_GEAR3_THRESHOLD
-  (1828).
+  `python3 scripts/evidence_pack_lint.py <evidence dir> --print-floor
+  --changed-files-file <changed> --numstat-file <numstat>` (source: size),
+  re-run after the LAST commit (150c8d36e4). No bare churn figure is recorded
+  here, on purpose — this PR's own commits kept moving it, so any number
+  typed would be stale before it is read (`pack.yml` in this same directory
+  carries the same note, for the same reason). The measurement IS the
+  command, reproducible at whatever head it runs on, over the 5 CODE files
+  (evidence/*.yml excluded), above SIZE_GEAR3_THRESHOLD (1828).
 base_sha: 88ef221d632a3e463b80cc439fbe39f473f37a12 # pragma: allowlist secret (a git commit SHA, not a credential)
 objective: >-
   PR-RISYNC of the Visa Oracle rebuild (mandate SHWEB-20260911).
