@@ -1,0 +1,13 @@
+# agy-gemini-3.1-pro council merge round, rerun with --print-timeout 20m, text-only with the remerge diff and the S21 overlap embedded; judged merge commit e0dde5c53d; full stdout
+
+Here are the findings from reviewing the S21 merge changes against the VO-D invariants:
+
+1. **`apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter.ts:494`**
+   - **Severity:** HIGH
+   - **Why:** The comment explicitly notes the exclusion reason emitted by the engine is `"hf.e33a.sponsor-not-government"`, but the new entry in `SUPPORT_REASON_COPY` is registered under the capitalized key `E33A_SPONSOR_NOT_GOVERNMENT`. When the engine returns this exclusion code as a `no_path_reasons` under VO-D determinism, the mouth app's `reasonMessage()` will fail to find it in the map and throw a `"Missing copy for engine reason code"` error, completely breaking the visitor walk.
+
+2. **`apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter.ts:803`**
+   - **Severity:** MEDIUM
+   - **Why:** The `reason()` function applies a single, shared ternary fallback sequence for all three codes in `FACT_DERIVED_NO_PATH_CODES`. If the engine explicitly emits `PAID_ACTIVITY_WITHOUT_INDONESIAN_SPONSOR` but the visitor's `facts` payload happens to contain a second home deposit below the threshold (e.g., leftover from a multi-intent walk), `secondHomeBelowThresholdReason(facts)` will evaluate first, return a string, and short-circuit the logic. The visitor will incorrectly be shown the Second Home rejection copy instead of the Paid Activity copy. The ternary chain should verify the exact `code` before applying fact-derived overrides.
+
+VERDICT: DEFECT

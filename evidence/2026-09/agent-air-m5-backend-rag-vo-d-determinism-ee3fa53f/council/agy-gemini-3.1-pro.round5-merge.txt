@@ -1,0 +1,3 @@
+# agy-gemini-3.1-pro council merge round, first run: agy's own 5-minute print timeout returned partial (empty) output; not a review; judged merge commit e0dde5c53d; full stdout
+
+[agy] print timeout after 5m0s with turn in progress; returning partial output

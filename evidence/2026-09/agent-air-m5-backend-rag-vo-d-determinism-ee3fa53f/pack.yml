@@ -7,7 +7,7 @@ lanes:
     seat: Claude Opus 5 (Dux of window vo-d-determinism, implements directly, backend-rag + mouth)
   - lane: VO3-W-VO-D-council-codex
     role: review
-    seat: codex-gpt-5.6-sol (codex exec --sandbox read-only on the merge-base diff; rounds 1-2 ended in the seat's own context checkpoint with no verdict, rounds 3-5 VERDICT OK, round 5 on the shipped head 0c38b8fab6)
+    seat: codex-gpt-5.6-sol (codex exec --sandbox read-only on the merge-base diff; rounds 1-2 ended in the seat's own context checkpoint with no verdict, rounds 3-5 VERDICT OK up to head 0c38b8fab6, merge round 6 VERDICT OK on e0dde5c53d)
   - lane: VO3-W-VO-D-council-agy
     role: review
     seat: agy-gemini-3.1-pro (agy --mode plan -p, text-only, the merge-base diff embedded in the prompt; reserve seat, see seat_fallback_reason)
@@ -15,7 +15,8 @@ lanes:
     role: ground_truth
     seat: session (M5) - this PR asserts no regulatory fact; its ground truth is Zero's ruling text, the imperator decision in the window brief, and code plus a signed pack already on the merge base
     nb: >-
-      merge base 8664b1ba30ce6eeba5d75e5347f75c86ee86f03e, three files read verbatim:
+      merge base 77af6c7ada8e1fc3de2f50ba3e64a78e330f9adf (the three files are byte-identical at
+      the branch's first base 8664b1ba30, same concatenated digest), three files read verbatim:
       contracts/packs/rulepack-prod-020.signed.json (the highest signed production pack,
       UNTOUCHED by this diff - `git diff --quiet <base> HEAD -- .../contracts/packs/` exits
       0 - whose HUMAN_REVIEW-stage rules and hard filters the conversion reads),
@@ -27,7 +28,7 @@ lanes:
     query_hash: "6001f1d93c6363466f46ed8abd7221553551d48e830d04a0b2849ddbacc58765"
     note: >-
       query_hash = sha256 of the three files concatenated in that order, taken with
-      `for f in <the three>; do git show 8664b1ba30:"$f"; done | shasum -a 256`. Per-file:
+      `for f in <the three>; do git show 77af6c7ada:"$f"; done | shasum -a 256`. Per-file:
       rulepack-prod-020.signed.json
       9cdf2c3151003c6b9ebfd0f403bea37dd92f1af32eb6f37c585980f73e769cbb ; evaluate_path.py
       32fc622b57295f8a2a0e06fd9046f84536419585397a962327372ef7706e22eb ; evaluator.py
@@ -49,7 +50,8 @@ decisions:
     decision: >-
       Gear DECLARED 3; the deterministic floor computed by evidence_pack_lint.py
       --print-floor on the merge-base diff is 3, source "size" (36 files, +2372/-272 at
-      head 0c38b8fab6, before this evidence directory). The brief also declares it: the
+      head 0c38b8fab6 before this evidence directory; 3 again with it included, against
+      origin/main after the merge). The brief also declares it: the
       diff lands under apps/backend-rag/**, where merging IS the deploy, and it changes
       what the engine tells a visitor.
   - id: D-one-pr
@@ -97,15 +99,25 @@ decisions:
       hold, the engine no longer holds, and every expected cause is still NAMED (one pinned
       rename, one pinned asked-first persona). Measured 10 literal + 7 converted = 17,
       unexplained {1, 9, 10} unchanged.
+  - id: D-merge
+    decision: >-
+      origin/main was merged in ONCE more (e0dde5c53d), never rebased, because a real
+      conflict forced it: W-VO-S21 (#6466) landed on the same contract, enums, models,
+      adapter test and openapi pin after both seats had passed 0c38b8fab6. Resolutions: the
+      adapter test's review-code floor keeps VO-D's 39 with S21's note; the openapi pin was
+      rewritten by scripts/generate_openapi.py from the merged app (1f86a083...); contract
+      schemas and schema.d.ts re-exported from the merged tree came out byte-identical to
+      the auto-merge. A dedicated merge round was run on both seats (codex 6-merge OK; agy
+      5b-merge DEFECT adjudicated, 5c-merge OK) and the full suites re-run on the merged head.
   - id: D-council-rounds
     decision: >-
       codex-gpt-5.6-sol rounds 1 and 2 ended in the seat's own harness context checkpoint
       with no verdict (recorded ok:false, never counted); round 3 got a hard command budget
       and returned OK, round 4 covered what round 3 had not read, round 5 judged the last
       fix commit. agy-gemini-3.1-pro found real defects in rounds 1b, 2 and 3, each cured at
-      depth 1 with a guilt test that fails under mutation, and returned OK on the shipped
-      head in round 4. Both counted seats returned VERDICT OK on 0c38b8fab6; the only later
-      commit adds this evidence directory.
+      depth 1 with a guilt test that fails under mutation, and returned OK on 0c38b8fab6 in
+      round 4. Both seats then returned VERDICT OK on the merge e0dde5c53d; the commits after
+      it only touch this evidence directory.
 receipts:
   - claim: Council seats probed before the council (COMMON-ADD section D).
     cmd: 'perl -e ''alarm 120; exec @ARGV'' -- codex exec -m gpt-5.6-sol --sandbox read-only --skip-git-repo-check "Reply OK" ; qwen -p "Reply OK" ; agy --model gemini-3.1-pro --effort high --mode plan -p "Reply OK" ; kimi -p "Reply OK"'
@@ -143,6 +155,12 @@ receipts:
     exit: 0
     ts: "2026-09-13T19:32:56Z"
     seat: Claude Opus 5
+  - claim: Merged head e0dde5c53d - the whole visa_engine backend suite, the mouth suites and typecheck, after the conflict-forced merge of origin/main.
+    cmd: .venv/bin/python -m pytest -p no:cacheprovider backend/tests/services/visa_engine backend/tests/scripts/visa_engine backend/tests/unit/scripts/test_generate_openapi_schema_pin.py ; node_modules/.bin/vitest run "src/app/(visa-oracle)" src/lib/api ; node_modules/.bin/tsc --noEmit
+    result: "1 failed, 2576 passed, 1 skipped, 39 errors; 40 red ids, 0 not in the origin/main baseline set ; vitest Test Files 76 passed (76), Tests 1444 passed (1444) ; tsc exit 0, no output"
+    exit: 1
+    ts: "2026-09-13T20:16:00Z"
+    seat: Claude Opus 5
   - claim: D-5 - renders of the real interview, 1440 and 390, EN and ID, answered with the engine outcome computed for the same walk and flags.
     cmd: "tsx vo-d-shots.mts against next dev on the worktree (synthetic walks: flagged-health, multi-purpose, minor, criminal)"
     result: "16 PNGs under /Users/balizero/Desktop/R3-RENDERS-20260913/vo-d/ plus render-log.json; the flags the mouth sent matched the expected flags on every render; flagged-health shows C1 SUPPORTED with the health condition (EN and ID), minor shows NO_SUPPORTED_PATH with the guardian next step and no product, criminal shows the hold with its cause once and CONSULTANT_REVIEW as the only condition line"
@@ -174,6 +192,26 @@ receipts:
     ts: "2026-09-13T19:53:10Z"
     seat: agy-gemini-3.1-pro
 dissent:
+  - seat: agy-gemini-3.1-pro (merge round 5b)
+    objection: >-
+      F1 HIGH the mouth copy key E33A_SPONSOR_NOT_GOVERNMENT does not match the emitted code
+      hf.e33a.sponsor-not-government, so that no-path outcome throws.
+    status: RETRACTED
+    cure: >-
+      Rejected with evidence: hf.e33a.sponsor-not-government is the rule id; the engine
+      emits effect.reason_code, which is E33A_SPONSOR_NOT_GOVERNMENT in both the signed
+      seq-20 pack and the seq-21 source. The seat accepted the rejection in round 5c.
+  - seat: agy-gemini-3.1-pro (merge round 5b)
+    objection: >-
+      F2 MEDIUM reason() applies the fact-derived sentence chain to all three
+      FACT_DERIVED_NO_PATH_CODES, so a PAID_ACTIVITY_WITHOUT_INDONESIAN_SPONSOR outcome can
+      be worded with the second-home sentence when the facts also reconstruct a
+      below-threshold deposit.
+    status: PLAUSIBLE
+    cure: >-
+      Not cured here: the block is byte-identical on origin/main (W-VO-S21), and it is copy
+      selection, not a VO-D invariant; recorded as a leftover for the S21 owner. The seat
+      accepted it as out of scope in round 5c.
   - seat: agy-gemini-3.1-pro (council round 1b)
     objection: >-
       F1 the minor adapter dropped conditions already on a held decision; F3 a criminal
@@ -275,3 +313,4 @@ leftovers:
   - "PRODUCTION_REPLAY_EXPECTATIONS still expects review holds for personas 2 3 4 5 6 12 20; an independent legal reviewer should re-read those rows under the ruling."
   - "Vendor names in comments on untouched lines of test_interview_walk_census.py pre-date this diff."
   - "Prove-live (D-6) runs only after the merge deploys; the baseline probe above is the before."
+  - "origin/main (W-VO-S21): engine-adapter.ts reason() tries the second-home sentence before the paid-activity one for every FACT_DERIVED_NO_PATH_CODES code, so a PAID_ACTIVITY_WITHOUT_INDONESIAN_SPONSOR outcome can carry the wrong sentence when both fact sets are present (council agy 5b-merge F2)."
