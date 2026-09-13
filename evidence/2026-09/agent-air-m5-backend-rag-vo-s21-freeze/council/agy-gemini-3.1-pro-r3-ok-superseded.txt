@@ -1,0 +1,11 @@
+1. FAIL-OPEN: PROVEN. `fold_pack_seq21.py::_assert_retired_review_rules_are_dormant` ensures all retired rules require `intent.requested_product_code`. `fact-mapper.ts` emits the 10 new booleans as `UNKNOWN`, defaulting to `NEEDS_INPUT`.
+2. EVIDENCE: PROVEN. `fold_pack_seq21.py::build_support_rule` requires `qualifying_fact` to be `True`. `_assert_sponsor_premises_follow_the_catalogue` strictly enforces that sponsor premises match the product catalogue.
+3. ON_UNKNOWN: PROVEN. `census-replay-seq20-vs-seq21.txt` confirms states remain 67/15/2. Only 3 dead-end walks change, exclusively updating their `no_path_reason_codes` to named causes.
+4. REPRODUCIBILITY: PROVEN. `test_seq21_pack.py::TestFoldIntegrity` proves `produced == committed` (JCS bytes match) and `previous_payload_sha256` anchors to `SEQ20_PAYLOAD_SHA256`.
+5. ACTIVATION: PROVEN. `test_seq21_pack.py::test_the_activation_writer_would_accept_it_over_seq20` passes because `valid_period` is identical to seq-20, guaranteeing exact legal-period coverage without orphans.
+6. THRESHOLDS: PROVEN. `fold_pack_seq21.py::_e33_guarantee_bounds` extracts limits directly from the E33 donor rules. `enums.py` clarifies E28 routes use a declared boolean fact rather than an invented USD comparison.
+7. MOUTH PARITY: PROVEN. `engine-adapter.test.ts` reads the union of signed and source rules to prevent premature stale-key deletion. The 8 restored keys are untouched in the diff. The new EXCLUDE codes explicitly name C1, E33E, E33G, and C2.
+8. PINS: PROVEN. `models.py` adds the 10 booleans with the rollout default. `test_gold_replay_driver.py` (56), `test_reachability_report.py` (24 unused, 15 not asked), and `test_shadow_match.py` (53 unknown) all move exactly by +10.
+9. PERIMETER: PROVEN. The diff confirms `apps/mouth` edits are constrained to `engine-adapter.ts`/`.test.ts`, `fact-mapper.ts` (emitting UNKNOWNs), `applicant-fact-paths.ts`, and schema SHAs. No `flow.ts`/`tree.ts` changes exist.
+VERDICT: OK
+exit=0

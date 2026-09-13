@@ -160,7 +160,9 @@ from backend.services.visa_engine.models import RulePackPayload
 #: production is serving now. Measured from ``rulepack-prod-020.signed.json``'s
 #: own ``payload_sha256`` AND by re-hashing ``rulepack-prod-020.source.json``
 #: (both agree, checked again at every fold by :func:`fold`).
-SEQ20_PAYLOAD_SHA256 = "df02287b7fc8f572a9e6674fdf3445a2131c428e8a1492ab8a388dee5bf01a4d"
+SEQ20_PAYLOAD_SHA256 = (
+    "df02287b7fc8f572a9e6674fdf3445a2131c428e8a1492ab8a388dee5bf01a4d"  # pragma: allowlist secret
+)
 
 FOLD_CREATED_AT = "2026-09-13T00:00:00Z"
 FOLD_CREATED_BY = "agent.air-m5.backend-rag.visa-oracle-qualification-seq21.fold-2026-09-13"

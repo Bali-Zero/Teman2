@@ -1,0 +1,11 @@
+1. PROVEN. `backend/scripts/visa_engine/fold_pack_seq21.py` uses `_assert_retired_review_rules_are_dormant` to guarantee retired rules were gated on `intent.requested_product_code`.
+2. PROVEN. `fold_pack_seq21.py`'s `build_support_rule` requires `{"op": "eq", "fact": row["qualifying_fact"], "value": True}`. `_assert_sponsor_premises_follow_the_catalogue` enforces the catalog constraint.
+3. PROVEN. `census-replay-seq20-vs-seq21.txt` confirms states are unchanged (67/15/2) and 3 walks change only their no-path codes to named reasons.
+4. PROVEN. `test_seq21_pack.py::test_the_cli_reproduces_the_bytes_the_owner_signs` asserts canonicalized typed output matches the committed file, and `previous_payload_sha256` is `SEQ20_PAYLOAD_SHA256`.
+5. PROVEN. `test_seq21_pack.py::test_the_activation_writer_would_accept_it_over_seq20` verifies that `valid_period` does not overlap improperly with seq-20.
+6. PROVEN. `fold_pack_seq21.py`'s `_e33_guarantee_bounds` extracts figures dynamically. E28 rules check `investment.meets_published_threshold` instead of hardcoded USD values.
+7. PROVEN. `engine-adapter.test.ts` reads the union of source and signed payloads. `SUPPORT_REASON_COPY` names open doors by code (C1, E33E, E33G, C2).
+8. PROVEN. Test literals moved precisely by +10 across `fact_registry.py`, `test_reachability_report.py`, `models.py`, `enums.py`, and traces, reflecting only the 10 added facts.
+9. PROVEN. `apps/mouth/` edits are limited to adapters, `fact-mapper.ts` (mapping 10 keys to `UNKNOWN(NOT_ASKED)`), schemas, and fixtures. No question flow or tree changes occurred.
+VERDICT: OK
+exit=0
