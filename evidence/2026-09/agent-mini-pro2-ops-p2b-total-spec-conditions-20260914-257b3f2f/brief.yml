@@ -3,7 +3,7 @@ gear: 2
 gear_reason: >-
   Deterministic floor is 1, measured with
   `python scripts/evidence_pack_lint.py --print-floor --changed-files-file <name-only>
-  --numstat-file <numstat>` over the COMPLETE staged set including this brief: 250 net lines, no
+  --numstat-file <numstat>` over the COMPLETE staged set including this brief: 277 net lines, no
   hot-zone path. Measured twice, as the predecessor's brief learned to: 97 net without this brief
   staged, still floor 1, so here the order does not change the class. Gear 2 is a deliberate RAISE
   above the floor, which CI permits — the floor is a minimum and never a ceiling. The raise is not
@@ -112,6 +112,25 @@ receipts:
     exit: 0
     ts: "2026-09-13T20:38:36Z"
     seat: claude-opus-5
+  - claim: "nothing in CI runs these tests, and curing that is a DIFFERENT class of PR"
+    cmd: >-
+      grep -rc kbli_bench .github/workflows/*.yml; then write the missing workflow and measure its
+      floor alone with --print-floor / --print-floor-source; then remove it from this branch
+    result: >-
+      ZERO workflow files mention kbli_bench. The repo documents this exact trap in
+      .github/workflows/asyncpg-lint.yml — "nothing globs scripts/tests/ in CI, a test file there
+      executes only if a workflow NAMES it" — so the 20 fixtures the predecessor added, and the 4
+      added here, are decorative against CI: a future edit could delete a guard and stay green.
+      Cicatrix #2, exists != armed. The cure was written and lint-clean (workflow timeout-floor
+      clean at 158 jobs scanned, errexit-decap clean at 615 run blocks, prettier clean, pytest 80
+      passed), then measured: the workflow file ALONE floors at 3, source `path`, because
+      `.github/workflows/*` is a HOTZONE_PATTERN and the path-term exemption covers only
+      first-party action VERSION PINS — a new workflow file is not exempt, by construction. Gear 3
+      demands a council quorum. That is a second concern at a different class, so it was removed
+      from this branch and is NOT in this diff. Without it this set floors at 1.
+    exit: 0
+    ts: "2026-09-13T20:50:53Z"
+    seat: claude-opus-5
   - claim: "suite green on a fresh base, nothing else regressed"
     cmd: "git merge --ff-only origin/main, then python3.11 -m pytest scripts/tests/test_score_p2b.py -q"
     result: "fast-forward e54beb6b97..316a8e84fa with the four modifications intact; 80 passed"
@@ -136,9 +155,17 @@ open_findings_for_the_gate: >-
   total is the expensive one — but it is a real widening of the judge's bill and the gate should
   weigh it rather than assume it was free. The left boundary still binds both sides, so `barcodes`
   and `mengkode` reach neither outcome.
-  (2) The predecessor's unmet council quorum is still uncured and still on main. This PR does not
+  (2) C3 is discharged in the only sense this branch can discharge it, and the gate should know the
+  limit. The new test bites the SUITE — a criterion added to the deferral list fails it, measured —
+  but the suite is not wired to CI at all, so nothing bites a merge. Read strictly, C3 asked for a
+  test that bites and what exists is a test that would bite if anything ran it. The cure is written,
+  lint-clean and measured at floor 3 by path; it ships as its own PR, because a workflow file is a
+  hot-zone concern at a council-quorum class and not a rider on this one. If the gate prefers to
+  mark C3 UNDISCHARGED until that lands, that reading is defensible and this brief does not argue
+  against it.
+  (3) The predecessor's unmet council quorum is still uncured and still on main. This PR does not
   claim to close it, and no ledger row closes it either.
-  (3) The author of this diff must NOT sign it. A fresh session outside the contribution chain
+  (4) The author of this diff must NOT sign it. A fresh session outside the contribution chain
   signs, per the generator-is-never-grader rule.
 
 lesson:
