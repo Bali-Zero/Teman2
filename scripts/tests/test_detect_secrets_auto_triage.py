@@ -322,8 +322,8 @@ def test_kbli_gold_rule_registered_and_scoped_to_exactly_one_file() -> None:
     # trail are derived from the live registry post-merge, not summed by
     # hand (team-lead's call: a rule appears once in the trail regardless of
     # how many PRs tried to add it).
-    assert len(CONTENT_KEYED_RULES) == 33, (
-        f"CONTENT_KEYED_RULES now has {len(CONTENT_KEYED_RULES)} entries, not 33. "
+    assert len(CONTENT_KEYED_RULES) == 35, (
+        f"CONTENT_KEYED_RULES now has {len(CONTENT_KEYED_RULES)} entries, not 35. "
         "If you just ADDED a rule: bump this number AND append a `# +1: <what> "
         "(<date>, PR #NNNN)` line below, matching the existing trail's format — "
         "that comment IS the audit record this assert exists to force. "
@@ -358,6 +358,8 @@ def test_kbli_gold_rule_registered_and_scoped_to_exactly_one_file() -> None:
     # +1: evidence/<month>/<slug>/b2-2-precall.json vector_sha256 case_id/chunk|query map (2026-09-13, #6429 ledger PR)
     # +1: evidence/<month>/<slug>/pack.yml report_sha256/sha256 code-artifact digests (2026-09-13, #6429 ledger PR)
     # +1: evidence/<month>/<slug>/build_sample_report.py.txt MANIFEST_SHA256 pin (2026-09-13, #6429 ledger PR)
+    # +1: evidence/<month>/<slug>/council/*.txt exact-value pin for the sonarqube-scan-action commit SHA (2026-09-14, #6449 follow-up)
+    # +1: evidence/<month>/<slug>/pack.yml `is_secret: true|false` audit-narration quote (2026-09-14, #6449 follow-up)
     #
     # Note (2026-08-23): "appended last" is no longer a constraint. It was
     # true only because this test and the two Google-OAuth tests below
@@ -1699,3 +1701,100 @@ def test_innocence_evidence_pack_other_key_not_approved() -> None:
         EVIDENCE_PACK_MEASURED_AT_REASON
     )
     assert content_pat.match("  api_key: 63bfa19ec") is None
+
+
+# --- Evidence Pack council/*.txt exact-value SHA pin (2026-09-14, #6449 follow-up) ---
+
+EVIDENCE_PACK_COUNCIL_SHA_REASON = "Evidence Pack council/*.txt review transcript"
+
+
+def test_council_sha_rule_registered_and_scoped_to_council_txt_only() -> None:
+    """Path-keyed to council/*.txt under evidence/<month>/<slug>/ — never a
+    pack.yml or any other evidence file, and never a council/ file outside
+    the evidence/ tree."""
+    path_pat, _content_pat, reason = _find_content_keyed_rule(
+        EVIDENCE_PACK_COUNCIL_SHA_REASON
+    )
+    assert path_pat.search(
+        "evidence/2026-09/agent-air-m5-infra-sast-pins47ab/council/codex-gpt-5.6-sol.txt"
+    )
+    assert not path_pat.search(
+        "evidence/2026-09/agent-air-m5-infra-sast-pins47ab/pack.yml"
+    )
+    assert not path_pat.search("council/codex-gpt-5.6-sol.txt")
+    assert "credential" in reason
+
+
+def test_guilt_council_sha_real_pr6449_finding_approved() -> None:
+    """The real PR #6449 finding: line 5004 of codex-gpt-5.6-sol.txt quoting
+    the exact upstream commit SHA inside a `web search:` log line."""
+    _path_pat, content_pat, _reason = _find_content_keyed_rule(
+        EVIDENCE_PACK_COUNCIL_SHA_REASON
+    )
+    real_line = (
+        '      web search: "5bc5285b684b9f0e940031dc8ddc4b6387a2f493" '
+        '"SonarSource/sonarqube-scan-action" ...\n'
+    )
+    assert content_pat.search(real_line)
+
+
+def test_innocence_council_sha_different_hex_not_approved() -> None:
+    """Pinned to the EXACT known-public commit SHA, not any 40-hex shape —
+    a different hex string (plausibly a real secret a reviewer is quoting as
+    a finding) stays unaudited."""
+    _path_pat, content_pat, _reason = _find_content_keyed_rule(
+        EVIDENCE_PACK_COUNCIL_SHA_REASON
+    )
+    other_sha = "a" * 40
+    assert content_pat.search(f"      web search: \"{other_sha}\" ...\n") is None
+
+
+# --- Evidence Pack pack.yml `is_secret: true|false` audit narration (2026-09-14, #6449 follow-up) ---
+
+EVIDENCE_PACK_IS_SECRET_NARRATION_REASON = "Evidence Pack pack.yml audit narration"
+
+
+def test_is_secret_narration_rule_registered_and_scoped_to_pack_yml_only() -> None:
+    path_pat, _content_pat, reason = _find_content_keyed_rule(
+        EVIDENCE_PACK_IS_SECRET_NARRATION_REASON
+    )
+    assert path_pat.search(
+        "evidence/2026-09/agent-air-m5-infra-sast-pins47ab/pack.yml"
+    )
+    assert not path_pat.search(
+        "evidence/2026-09/agent-air-m5-infra-sast-pins47ab/brief.yml"
+    )
+    assert "credential" in reason
+
+
+def test_guilt_is_secret_narration_real_pr6449_finding_approved() -> None:
+    """The real PR #6449 finding (pre-rewording, line 247): prose narrating
+    a past `.secrets.baseline` audit by quoting the field name and value."""
+    _path_pat, content_pat, _reason = _find_content_keyed_rule(
+        EVIDENCE_PACK_IS_SECRET_NARRATION_REASON
+    )
+    real_line = (
+        "      in `.secrets.baseline` with `is_secret: false`. After the audit:\n"
+    )
+    assert content_pat.search(real_line)
+    # `is_secret: true` narration is the same class, also approved.
+    assert content_pat.search("      set `is_secret: true` for that finding\n")
+
+
+def test_innocence_is_secret_narration_without_backticks_not_approved() -> None:
+    """A bare `is_secret: false` assignment (no backticks — i.e. shaped like
+    an actual JSON/YAML line rather than prose quoting one) stays flagged;
+    this rule only covers the backtick-quoted narration shape."""
+    _path_pat, content_pat, _reason = _find_content_keyed_rule(
+        EVIDENCE_PACK_IS_SECRET_NARRATION_REASON
+    )
+    assert content_pat.search("      is_secret: false\n") is None
+
+
+def test_innocence_is_secret_narration_other_value_not_approved() -> None:
+    """Only the literal booleans `true`/`false` are approved — a real value
+    smuggled into the same backtick-quoted shape stays unaudited."""
+    _path_pat, content_pat, _reason = _find_content_keyed_rule(
+        EVIDENCE_PACK_IS_SECRET_NARRATION_REASON
+    )
+    assert content_pat.search("      set `is_secret: sk-abcdef123456`\n") is None

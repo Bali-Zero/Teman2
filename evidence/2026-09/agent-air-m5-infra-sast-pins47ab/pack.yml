@@ -255,7 +255,7 @@ receipts:
       at this fix did by mistake and then reverted with `git checkout --
       .secrets.baseline` before it was staged): hashed_secret
       a929907173f9c6df6d03c22b31bb4c2378aed375. Added as a single new 10-line entry
-      in `.secrets.baseline` with `is_secret: false`. After the audit:
+      in `.secrets.baseline` with `is_secret` set to `false`. After the audit:
       "clean (1 pre-audited finding(s) carried from baseline)". The other four
       touched/new evidence files and both workflow files scan clean with zero
       findings (canary-verified).
