@@ -1,0 +1,53 @@
+**VERDICT:** BLOCK
+
+---
+
+### FINDINGS
+
+#### 1. BLOCKER — Item 3: File-wide `/closing PR/i` regex is a vacuous check that passes on existing comments
+- **Claim:** `expect(guard).toMatch(/closing PR/i)` does not enforce that new exception entries name a closing PR; it passes vacuously because the guard script already contains the phrase "closing PR" elsewhere in its documentation.
+- **Why it breaks:** `guard` is the entire source of `scripts/assert-roster-not-in-public-chunks.mjs`. As admitted by your own test probe (*"removed every 'closing PR' marker from the guard -> 1 failed of 9"*), multiple "closing PR" markers already exist in the file. Consequently, if a future engineer adds an un-timeboxed prefix to both `ALLOWED_CHUNK_PREFIXES` and `EXPECTED_CHUNK_EXCEPTIONS` (e.g. `["app/(workspace)/reports/"]`) without referencing any closing PR, `listed.length > 0` evaluates to `true`, but `guard.match(/closing PR/i)` matches the pre-existing comments in the file. The test stays green, completely defeating its stated goal of preventing un-timeboxed entries. Furthermore:
+  - It does not associate closing PRs with individual entries; one entry (or general comment) satisfies it for all entries.
+  - It matches only the exact string `"closing PR"`, falsely failing on valid alternatives like `"Closes #123"`, `"Closing pull request"`, or `"Fixed in PR #45"`.
+- **What to check:** Without removing existing comments from `scripts/assert-roster-not-in-public-chunks.mjs`, add a dummy entry to `ALLOWED_CHUNK_PREFIXES` and `EXPECTED_CHUNK_EXCEPTIONS` without any closing PR comment. Run vitest. Observe that the test passes green instead of failing. To fix, parse `ALLOWED_CHUNK_PREFIXES` or inspect the comment directly attached to each entry.
+
+---
+
+#### 2. MAJOR — Item 3: Inline entry comments break `JSON.parse` in the test runner
+- **Claim:** The test expects exceptions to be annotated with closing PRs, but `JSON.parse` on `m![1]` will throw a fatal `SyntaxError` if an engineer adds a comment inside `ALLOWED_CHUNK_PREFIXES = [...]`.
+- **Why it breaks:** Line 282 executes `const listed: string[] = JSON.parse(m![1].replace(/'/g, '"'));`. The regex `/ALLOWED_CHUNK_PREFIXES\s*=\s*(\[[^\]]*\])/` captures everything between the brackets. If an engineer documents the closing PR directly next to the entry (e.g. `["app/(workspace)/clients/", // closing PR: #123]`) or includes a trailing comma, `m![1]` contains `// ...`. Since JSON does not support comments or trailing commas, `JSON.parse` crashes with a syntax error rather than producing a clean assertion failure. This creates a structural conflict between requiring an inline closing PR and how the test parses the array.
+- **What to check:** Add an inline comment inside the array literal `ALLOWED_CHUNK_PREFIXES = [ /* closing PR: #100 */ "app/foo" ]`. Run the test and verify that `JSON.parse` throws an unhandled `SyntaxError`.
+
+---
+
+#### 3. MAJOR — Item 2: `typeof value !== "object"` permits functions and callable objects
+- **Claim:** The assertion `value === null || typeof value !== "object"` does not enforce that fields are primitives, allowing functions/methods to pass unchecked.
+- **Why it breaks:** In JavaScript, `typeof fn === "function"`. The condition `typeof value !== "object"` evaluates to `true` for functions. Functions are reference types (callable objects), not primitives. A shallow spread `{ ...c }` copies function references directly. If an option carries a method, formatter, or closure that mutates internal state, callers will share that reference across requests. The test will remain green while violating the very immutability invariant it claims to enforce.
+- **What to check:** Add a method or callback property (e.g. `format: () => "test"`) to an entry in `TAX_CONSULTANTS`. Run the test. It passes green because `typeof format !== "object"`. The check must explicitly enforce standard primitive types (`string`, `number`, `boolean`, `symbol`, `bigint`, `undefined`, `null`) or exclude `function`.
+
+---
+
+#### 4. MAJOR — Item 1: Unsubstantiated operational assumption and missing automated build guard
+- **Claim:** Documenting dynamic route assumptions solely in `assert-roster-not-in-public-chunks.mjs` comments provides zero protection against static leaks, and the claim that route authors will read this file is false.
+- **Why it breaks:** The comment claims: *"the person who adds `generateStaticParams` will be reading this file, not that PR"*. Developers adding `generateStaticParams` or route configurations modify `src/app/(workspace)/.../page.tsx`; they do not touch build verification scripts in `scripts/`. Relying on a comment in an unrelated script to trigger guard changes is an un-enforced human process. Because Next.js outputs `.next/prerender-manifest.json` at build time, the guard script could deterministically assert that no `(workspace)` routes appear in the prerender manifest rather than leaving an unmonitored comment.
+- **What to check:** Search the repository workflow for any mechanism that points a developer editing `src/app/(workspace)/` to `scripts/assert-roster-not-in-public-chunks.mjs`. There is none.
+
+---
+
+#### 5. MINOR — Item 2: Vacuous pass on empty collection
+- **Claim:** The test loops over `taxConsultants()` with no assertion that any records or fields were actually evaluated.
+- **Why it breaks:** If `taxConsultants()` returns `[]` (e.g. during refactoring, dynamic loading, or environment-specific data mocking), the nested loops execute zero iterations. Vitest marks tests with zero assertions as passed.
+- **What to check:** Mock `TAX_CONSULTANTS` as `[]`. Run the test. It will pass green without executing any `expect` calls. Add `expect(options.length).toBeGreaterThan(0)` or `expect.hasAssertions()`.
+
+---
+
+#### 6. MINOR — Item 1: Incomplete definition of Next.js App Router static prerendering triggers
+- **Claim:** The comment omits the primary default trigger for static generation in Next.js App Router.
+- **Why it breaks:** The comment states that workspace routes only become build artifacts if they gain `generateStaticParams`, `dynamic = "force-static"`, or static export. In App Router, non-parameterized routes (e.g. `app/(workspace)/clients/page.tsx`) are statically prerendered to `.html`/`.rsc` by default unless they invoke dynamic functions (`cookies()`, `headers()`) or uncached requests. If a developer refactors a workspace index page to fetch on the client or removes dynamic calls, Next.js will automatically emit static payloads into `.next/server/app` without `generateStaticParams` or `force-static` ever being added.
+- **What to check:** Check Next.js App Router documentation on default route segment config and static optimization for routes without dynamic segments.
+
+---
+
+### ATTACK ON PROBES
+- **ITEM 3 guilt probe is invalid:** The author reported that the test failed only after they *"removed every 'closing PR' marker from the guard"*. This proves the probe had to artificially clean the script to induce failure. In a real-world scenario where those markers exist, the test will not fail when an un-timeboxed prefix is added.
+- **ITEM 2 guilt probe is incomplete:** The probe tested an array (`scopes: ["pph"]`), but failed to test function properties (`format: () => {}`) or empty collections, masking the hole in `typeof value !== "object"`.

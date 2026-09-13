@@ -113,7 +113,6 @@ export const navigation: NavSection[] = [
         href: "/intelligence/analytics",
         icon: "BarChart3",
       },
-      { title: "Tax Pilot", href: "/clients/tax-pilot", icon: "Receipt" },
     ],
   },
 ];
@@ -204,7 +203,6 @@ export const routeTitles: Record<string, string> = {
   "/admin/team-activity": "Team Activity",
   "/agents": "Agents",
   "/intelligence/analytics": "Intelligence Analytics",
-  "/clients/tax-pilot": "Tax Pilot",
   "/settings": "Settings",
   // Portal routes
   "/portal": "Dashboard",

@@ -270,7 +270,7 @@ describe("the roster does not cross the client boundary", () => {
     expect(src).toContain("publicEntries");
   });
 
-  it("the guard's chunk exception is exactly the one declared, time-boxed entry", () => {
+  it("the guard's exception list matches this suite's, and any entry names its closing PR", () => {
     // Read the guard's source rather than importing it: the script exits the
     // process on failure, which a test runner should never invite.
     const guard = readFileSync(
@@ -281,8 +281,43 @@ describe("the roster does not cross the client boundary", () => {
     expect(m, "ALLOWED_CHUNK_PREFIXES not found in the guard").toBeTruthy();
     const listed: string[] = JSON.parse(m![1].replace(/'/g, '"'));
     expect(listed).toEqual(EXPECTED_CHUNK_EXCEPTIONS);
-    // and the entry has to carry its closing PR, or it is not time-boxed
-    expect(guard).toContain("C4b");
+
+    // An exception must be TIME-BOXED: the guard has to name the PR that removes
+    // it, or "temporary" is just a word. That requirement is conditional on there
+    // BEING an entry — and the conditional is the whole point of this change.
+    //
+    // It used to read `expect(guard).toContain("C4b")`, unconditionally. That was
+    // right while the list held one entry whose closing PR was C4b. Once C4b landed
+    // and emptied the list, the requirement went vacuous but the assertion did not:
+    // it stopped checking behaviour and started checking that the string "C4b"
+    // appeared somewhere in the guard's PROSE. It passed only because the rewritten
+    // comment still narrated that history, and it would have gone red the day
+    // someone tidied the paragraph — a test failing for a reason unrelated to what
+    // it protects. Deleting it outright was the other tempting move and is worse:
+    // the next time-boxed exception would then be free to arrive with nothing
+    // naming its removal.
+    // The closing-PR contract is NOT re-checked here, on purpose.
+    //
+    // It lived here first, as `expect(guard).toContain("C4b")`, then as a regex over
+    // the guard's text. Two adversarial rounds broke both, and both breaks had one
+    // root: a test that PARSES source judges strings, not values — it cannot see an
+    // empty prefix (`"".startsWith()` matches every chunk and would disable the whole
+    // scan), a prototype-inherited lookup (`CLOSERS["constructor"]` is truthy), or a
+    // closer whose value is the word "TODO".
+    //
+    // So the contract moved into the guard itself, where the real objects are, and it
+    // runs on every build. What stays here is the pin above — the lists must match,
+    // so an exception cannot appear without editing this file in the same commit —
+    // plus the assertion below that the runtime contract has not been deleted.
+    //
+    // The limit this used to carry is gone: the contract's BEHAVIOUR is now executed
+    // by src/lib/chunk-exception-contract.test.ts, which imports the same module the
+    // guard does. What is checked here is only that the guard still CONSULTS it — the
+    // one thing a behavioural test on the module cannot see.
+    expect(
+      guard,
+      "the guard no longer consults the exception contract — the closing-PR rule is unenforced",
+    ).toContain("chunkExceptionViolations(");
   });
 
   it("the initials helper carries no roster data of its own", () => {

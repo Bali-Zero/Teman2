@@ -1,0 +1,531 @@
+brief_ref: evidence/brief.yml
+plan_ref: >-
+  PR-RISYNC (SHWEB-20260911, Visa Oracle rebuild) — regenerate
+  `apps/mouth/src/lib/api/schema.d.ts` against today's backend, guard the
+  drift permanently, and cure the defect the first council round found in
+  the ruling that shaped the guard. Single-lane implementer task,
+  resequenced twice: attempt 1 stopped-and-reported on a broken frontend
+  test; the orchestrator's ruling on that stop was itself found defective
+  by an independent two-seat council round (commit-order MAJOR + two
+  MINORs); this pack covers the cured build.
+
+lanes:
+  - lane: risync-build
+    role: build
+    seat: claude-sonnet-5 (implementer session, Mini — both regenerations,
+      both guard rewrites, the drift-pin guard, all five cures, the single
+      squashed commit, floor measurement, this pack)
+  - lane: risync-ruling-1
+    role: review
+    seat: coordinator session (first ruling — entity-based guard, the
+      PublicLeadSource inversion, the since-superseded two-commit order)
+  - lane: risync-council-1
+    role: review
+    seat: tp1-qwen3.8-max + gemini-3.1-pro (independent council round —
+      journal at council-journal.jsonl; both REWORK, same MAJOR converged
+      on without priming, same two MINORs)
+  - lane: risync-ruling-2
+    role: review
+    seat: coordinator session (verified the MAJOR empirically before
+      accepting — checked out the guard-only commit alone, measured 1
+      failed | 16 passed; ruled the five cures in this pack)
+
+diff:
+  files: 5
+  churn: see_command
+  measured_at: HEAD of this branch
+  note: >-
+    No bare churn figure is recorded here, on purpose. This PR's own commits
+    keep moving it — it read 3185, then 3252, and the condition-fix push that
+    added this sentence moves it again — so any number typed here is stale
+    before it is read, exactly as `gear_reason` explains for the same reason.
+    It also did not reproduce across observers: the gate measured a different
+    total than this pack declared, which is the symptom that decided this
+    rewrite. The measurement IS the command, reproducible at whatever head it
+    runs on, over the 5 CODE files (evidence/*.yml excluded, the convention
+    this repo's other Gear-3 packs use), anchored on the merge base:
+    `git diff --numstat origin/main...HEAD -- <the 5 code files>` summed
+    added+deleted. Floor
+    re-computed via `scripts/evidence_pack_lint.py --print-floor
+    --changed-files-file <5 code files> --numstat-file <their numstat>`
+    after this LAST code commit — 3, source `size` (unchanged from the
+    prior round's measurement; still above SIZE_GEAR3_THRESHOLD 1828).
+
+pii_scan: clean
+
+council_run: council-journal.jsonl
+
+seat_override: >-
+  Only one of the three canonical COUNCIL_REVIEW_SEATS was reachable this
+  session, not zero — one real seat plus an override, not zero seats plus
+  an override. `kimi-code/k3`: "403 You've reached your monthly usage
+  limit for this billing cycle", attempted 2026-09-13 (Mini). `codex-gpt-5.6-sol`:
+  BALANCE_DEAD per this session's arsenal probe. `tp1-qwen3.8-max`: the one
+  live seat — reviewed both rounds, REWORK then PASS
+  (council-journal.jsonl). `gemini-3.1-pro` reviewed round 1 alongside it
+  but is not one of the three canonical seats this quorum check counts.
+  authorized by imperator 6a02cd16 on 2026-09-13, key
+  shweb-imp-oracle-risync-seat-override-authorized.
+
+spec: |
+  PART A — the first ruling, after attempt 1's stop-and-report on
+  `sitemap.test.ts` going RED under a faithful regeneration. Each fact
+  independently re-verified in this session (git show, git log -S, direct
+  reads) before being built on:
+
+  (i) ENTITY-BASED GUARD. Six of eight forbidden markers are real RETIRED
+  wire-surface identifiers from #4344 (2026-08-21) — verified at zero
+  occurrences in the regenerated schema. The other two were TYPE names
+  (`CaseType`, `backend__services__garuda_flow__intake__Purpose`) that
+  legitimately reappear: verified import at
+  `apps/backend-rag/backend/app/routers/garuda_voa_public.py:54`
+  (`from backend.services.garuda_flow.intake import CaseType, Purpose`),
+  verified that router live via its own docstring ("Wired into the running
+  app as of 2026-08-25... a RouterEntry in router_manifest.py plus a bare
+  include_router in BOTH include_routers() and include_light_routers()")
+  and via `main_api.py:741`'s import from the same module. RULING: keep the
+  six, drop the two, guilt+innocence both directions.
+
+  (ii) `garuda_voa` REAPPEARING IS NOT A NEW EXPOSURE DECISION. Traced via
+  `git log -S'GARUDA_VOA = "garuda_voa"'`/`git show` on
+  `apps/backend-rag/backend/services/lead_capture/source.py`: #4344
+  (2026-08-21, `665bfd40d7`) created `PublicLeadSource` excluding it,
+  correct then. #4960 (2026-08-25, `f95d7bd730`, "train 4/4 — the public
+  funnel UI, dark by flag") relaunched the funnel under owner decision 5
+  (`product.yaml` id 5, `ratified: Concept A — "The Stamp"`), capturing
+  leads under exactly `garuda_voa`. #5173 (2026-08-28, `018b55c9cc`)
+  re-admitted it on the backend and inverted its own sibling test,
+  `test_public_capture_accepts_garuda_but_never_resurrects_its_url`
+  (`apps/backend-rag/backend/tests/services/lead_capture/
+  test_whatsapp_deeplink.py`). CORRECTION FOUND IN THIS SESSION, not taken
+  on faith: the coordinator's citation of "#4959 (2026-08-26)" for the
+  source.py change is off — the real commit is #5173 (2026-08-28); #4959
+  ("train 2/4 — the whole backend, dark by flag") is real and adjacent but
+  never touches that file, and the 2026-08-25 relaunch date matches #4960,
+  not #4959. Recorded here, not silently corrected; substance of the ruling
+  unaffected. RULING: invert the assertion.
+
+  (iii) ONE PR, TWO COMMITS, IN ORDER — this half of the FIRST ruling was
+  WRONG. Superseded by Part C cure 1 below.
+
+  PART B — FIRST COUNCIL ROUND (journal: `council-journal.jsonl`, both
+  entries `role: review`, `ok: false`, `verdict: REWORK` — neither counts
+  toward this repo's council quorum check, which is correct: round 1 did
+  not approve anything). Two independent seats — `tp1-qwen3.8-max` and
+  `gemini-3.1-pro` (the latter outside this repo's canonical
+  COUNCIL_REVIEW_SEATS tuple, recorded anyway for the historical record) —
+  converged on the SAME MAJOR without either being primed with the other's
+  finding: a two-commit split (guard commit, then regeneration commit)
+  leaves the GUARD commit red when checked out ALONE, because at that
+  commit `schema.d.ts` is still pre-regeneration and the corrected
+  `PublicLeadSource` assertion fails against it. Reversing the order only
+  moves the redness to the other commit — the guard and the regenerated
+  bytes describe the same fact and must change together.
+
+  The coordinator verified this EMPIRICALLY before accepting the finding,
+  not on the council's word alone: checked out the guard-only commit
+  (`9eaeb53dab` from the prior round) alone and ran `sitemap.test.ts` ->
+  measured 1 failed | 16 passed (17); at HEAD (both changes together), 17/17.
+  Both seats also independently flagged the same two MINORs: the
+  `PublicLeadSource` extraction regex assumed the next token is a JSDoc
+  comment, and the guilt fixture was a tautological string concatenation.
+
+  Two things the council explicitly CONFIRMED and this pack does NOT
+  re-litigate: dropping the two type-name markers loses no real protection;
+  inverting the `PublicLeadSource` assertion is correct ("dark" means
+  hidden behind a UI flag, not erased from the network contract, and a
+  generated schema mechanically reflects the live spec).
+
+  PART C — FIVE CURES, ruled by the coordinator, all landed in this pack's
+  single code commit `150c8d36e4`:
+
+  1. MAJOR, cured: squashed the guard rewrite and the regeneration into ONE
+     commit. This evidence-pack commit stays separate (it is green on its
+     own — nothing in it is executable code the suite runs).
+
+  2. The drift guard replaces the PENDING-ARMS debt row from the previous
+     round entirely, built inside a strict 30-minute time-box (met, not
+     exceeded): a backend pytest
+     (`apps/backend-rag/backend/tests/unit/scripts/
+     test_generate_openapi_schema_pin.py`) regenerates the OpenAPI schema
+     via `scripts.generate_openapi.create_app` + `.openapi()` — the SAME
+     code path `npm run contract:visa-oracle`'s `generate:openapi` step
+     already uses — hashes it with that module's own new
+     `compute_schema_sha256` (one implementation, imported not
+     reimplemented into the test, so the writer and the checker cannot
+     drift apart from each other the way the schema and the backend did),
+     and compares against `apps/mouth/src/lib/api/
+     schema.d.ts.openapi-sha256`, written by `generate_openapi.py`'s
+     `main()` as a side effect of every future regeneration.
+
+     DETERMINISM PROVED, not assumed, before this was committed: two
+     separate `python -m scripts.generate_openapi` invocations, each a
+     FRESH interpreter process (not the same long-lived process, which
+     could hide non-determinism), produced byte-identical `openapi.json`
+     (`diff` exit 0) and an identical SHA-256 hash
+     (`9cfd9d0b60f2e1e2207f86aebe2488ab4cfb6e642e4c608d64e1ba7c9dea2084`)
+     both times.
+
+     GUILT PROVED too: the pin file was corrupted to a dummy 64-hex-char
+     string and the test went RED with the exact intended message
+     ("openapi changed: run npm run contract:visa-oracle in apps/mouth and
+     commit schema.d.ts + pin"); restoring the real pin turned it GREEN
+     again.
+
+     Noted per the ruling: this PR now touches `apps/backend-rag` for a
+     TEST file only — zero runtime code changed (the pin-writing addition
+     to `generate_openapi.py` runs only inside that offline generation
+     script, never inside the deployed FastAPI app) — so merging this is a
+     Fly deploy of behaviorally identical runtime code.
+
+  3. MINOR (brittle regex), cured: the old
+     `/PublicLeadSource:[\s\S]*?;\n\s+\/\*\*/` assumed the NEXT schema
+     declaration always opens with a JSDoc comment. Replaced with
+     `extractPublicLeadSourceBlock()`, matching
+     `/PublicLeadSource:[\s\S]*?;/` — no member of a TypeScript union type
+     can itself contain a semicolon, so the FIRST one after the key is
+     unambiguously the union's own terminator, independent of whatever
+     follows. Throws `"PublicLeadSource block not found in schema.d.ts"`
+     on a miss instead of returning `undefined` silently — a parse miss
+     must never read as a contract violation. A dedicated test
+     (`"the PublicLeadSource extractor fails loudly, not silently, when
+     the block is missing"`) proves the throw.
+
+  4. MINOR (tautological guilt), cured: the fixture is now a REALISTIC
+     schema fragment — a `paths` entry referencing `operations[...]` by
+     the two retired operationIds, an `operations`-block-shaped
+     declaration, and two component schema names — modelled on the shape
+     openapi-typescript still emits today for the live
+     `/api/visa/voa/eligibility-checks` entry, not a bare string
+     concatenation. The guilt test asserts the check catches all six
+     markers embedded together AND, per marker, that redacting exactly one
+     drops only that one from the findings (precision, not just "something
+     matched").
+
+     THE NEAR-MISS QUESTION, answered plainly (in the code comment above
+     `RETIRED_GARUDA_MARKERS` and in the commit body, not promised beyond
+     what the markers deliver): these six markers are EXACT substrings,
+     not prefixes. A re-mount under `/api/visa/voa-v2` would be quoted as
+     `"/api/visa/voa-v2"` in a regenerated schema, which does NOT contain
+     the substring `"/api/visa/voa"` (the character immediately after
+     "voa" is `-`, not the closing quote that the marker requires); its
+     operationId would also be a fresh, FastAPI-derived name, unrelated to
+     `submit_voa_api_visa_voa_post`. So a near-miss path is NOT covered —
+     this guard catches literal resurrection of these six retired
+     identifiers only, never an analogous new one under a similar name.
+
+  5. This evidence pack itself — carries the round-1 journal
+     (`council-journal.jsonl`, this pack's `council_run:` pointer) and
+     leaves `dissent: []`. The second council round (qwen on the cured
+     diff) and the final verdict are the orchestrator's to run and record,
+     outside this session's contribution chain.
+
+receipts:
+  - claim: >-
+      Full `apps/mouth` vitest suite passes after the cured, single commit,
+      with `fact-mapper.test.ts` and `sitemap.test.ts` named explicitly.
+    cmd: cd apps/mouth && npx vitest run --reporter=verbose
+    result: >-
+      Test Files 476 passed (476); Tests 5132 passed (5132).
+      fact-mapper.test.ts: 140/140 passed, verified by running that file
+      alone (`npx vitest run ".../fact-mapper.test.ts" --reporter=verbose`)
+      — CORRECTED 2026-09-13 by the round-2 gate: the earlier "141/141" in
+      this pack was a `grep -c "fact-mapper.test.ts"` measurement bug, the
+      exact guard-over-match class (cicatrix #3) this PR is about — one of
+      the 141 matched lines was e4-tier-fence.test.ts's own test
+      description, which quotes the string "fact-mapper.test.ts" in its
+      prose. The gate re-ran the file alone at HEAD (140) and at the fork
+      point 88ef221d63 (also 140): nothing regressed, the number was simply
+      never true. sitemap.test.ts: 18/18 passed (grep -c, zero non-passing
+      lines — safe here since no OTHER file's test description contains the
+      substring "sitemap.test.ts") — was 17 before this round's fifth new
+      test (the extractor's loud-failure guilt test).
+    exit: 0
+    ts: 2026-09-13T09:23Z
+    seat: session (Mini, implementer lane)
+
+  - claim: "`tsc --noEmit` (apps/mouth) is clean after the cured commit."
+    cmd: cd apps/mouth && npx tsc --noEmit
+    result: "exit 0, zero output."
+    exit: 0
+    ts: 2026-09-13T09:23Z
+    seat: session (Mini, implementer lane)
+
+  - claim: >-
+      Determinism of the drift-guard hash: two fresh-process regenerations
+      produce byte-identical openapi.json and an identical pin.
+    cmd: >-
+      cd apps/backend-rag && zsh -c 'source .venv/bin/activate &&
+      PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=. python -m
+      scripts.generate_openapi'   (run twice, separately; then `diff` the
+      two saved openapi.json copies and the two saved pin copies)
+    result: >-
+      Both runs: SHA-256
+      9cfd9d0b60f2e1e2207f86aebe2488ab4cfb6e642e4c608d64e1ba7c9dea2084.
+      `diff` on both the openapi.json pair and the pin-file pair: exit 0
+      (byte-identical).
+    exit: 0
+    ts: 2026-09-13T09:20Z
+    seat: session (Mini, implementer lane)
+
+  - claim: >-
+      The new backend pytest passes (innocence) against the real,
+      regenerated schema and pin.
+    cmd: >-
+      cd apps/backend-rag && zsh -c 'source .venv/bin/activate &&
+      PYTHONDONTWRITEBYTECODE=1 pytest
+      backend/tests/unit/scripts/test_generate_openapi_schema_pin.py'
+    result: "1 passed in 6.85s (no -q added on the command line — addopts already carries one)."
+    exit: 0
+    ts: 2026-09-13T09:21Z
+    seat: session (Mini, implementer lane)
+
+  - claim: >-
+      The new backend pytest is not toothless (guilt) — a corrupted pin
+      turns it RED with the exact intended failure message, and restoring
+      the real pin turns it GREEN again.
+    cmd: >-
+      echo deadbeef... > apps/mouth/src/lib/api/schema.d.ts.openapi-sha256
+      && pytest backend/tests/unit/scripts/test_generate_openapi_schema_pin.py
+      ; then restore the real pin and re-run
+    result: >-
+      Corrupted: "1 failed ... AssertionError: openapi changed: run npm run
+      contract:visa-oracle in apps/mouth and commit schema.d.ts + pin".
+      Restored: "1 passed in 6.90s".
+    exit: 1
+    ts: 2026-09-13T09:22Z
+    seat: session (Mini, implementer lane)
+
+  - claim: >-
+      Ruff (Golden Rule Python linting, pre-commit gate) is clean on the two
+      new/modified Python files.
+    cmd: >-
+      apps/backend-rag/.venv/bin/ruff check
+      backend/tests/unit/scripts/test_generate_openapi_schema_pin.py
+      scripts/generate_openapi.py
+    result: "All checks passed!"
+    exit: 0
+    ts: 2026-09-13T09:24Z
+    seat: session (Mini, implementer lane)
+
+  - claim: >-
+      The single combined commit passes this repo's full pre-commit gate,
+      including its own embedded tsc typecheck, ruff, and the FastAPI
+      import-chain anti-rogue-AI check (triggered because backend-rag files
+      are staged for the first time in this PR).
+    cmd: git commit -m "..." (commit 150c8d36e4)
+    result: >-
+      "✅ All pre-commit checks passed!" including "🔗 Testing FastAPI
+      import chain (anti-rogue-AI check)... ✅ import chain OK".
+    exit: 0
+    ts: 2026-09-13T09:25Z
+    seat: session (Mini, implementer lane)
+
+  - claim: >-
+      Gear-3 floor re-measured twice: after commit 150c8d36e4 (3, size) and
+      again after the round-2 code cures' commit caa5df48bc — the true
+      LAST code commit — by command, not assumed either time.
+    cmd: >-
+      git diff --name-only 88ef221d632a3e463b80cc439fbe39f473f37a12 HEAD >
+      changed.txt && git diff --numstat
+      88ef221d632a3e463b80cc439fbe39f473f37a12 HEAD > numstat.txt &&
+      apps/backend-rag/.venv/bin/python3 scripts/evidence_pack_lint.py
+      --print-floor --changed-files-file changed.txt --numstat-file
+      numstat.txt
+    result: >-
+      3 both times, and --print-floor-source on the same inputs: size both
+      times. The churn figure itself is deliberately not quoted here — it
+      moved between measurements and did not reproduce across observers, so
+      the command above is the record; what is stable, and what this receipt
+      asserts, is that the floor stayed 3 and never approached
+      SIZE_GEAR3_THRESHOLD from below in either direction.
+    exit: 0
+    ts: 2026-09-13T09:53Z
+    seat: session (Mini, implementer lane)
+
+  - claim: >-
+      `ApplicantFactsData`'s key set is unchanged by the regeneration
+      (unaffected by any of the five cures — no cure touches this block).
+    cmd: >-
+      diff of the dotted-key extraction from the fork-point blob
+      (`git show HEAD:...schema.d.ts`) vs. the regenerated working file
+    result: "45 keys before, 45 keys after, diff exit 0 (zero difference)."
+    exit: 0
+    ts: 2026-09-13T08:41Z
+    seat: session (Mini, implementer lane)
+
+dissent:
+  - seat: tp1-qwen3.8-max
+    objection: >-
+      Round-1 MAJOR — commit order. The two-commit split (guard commit, then
+      regeneration commit) leaves the GUARD commit red when checked out
+      alone: at that commit `schema.d.ts` is still the pre-regeneration
+      blob, so the corrected `PublicLeadSource` assertion fails against it.
+      Reversing the order only moves the redness to the other commit.
+    status: CONFIRMED
+    note: >-
+      Cured by squashing guard + regeneration into the single commit
+      `150c8d36e4`. `gemini-3.1-pro` converged on this same finding
+      independently, without either seat being primed with the other's
+      result. The coordinator verified empirically before accepting:
+      checked out the prior round's guard-only commit (`9eaeb53dab`) alone
+      and measured `sitemap.test.ts` at 1 failed | 16 passed (17); at
+      `150c8d36e4` (guard + regen together), 18/18.
+
+  - seat: gemini-3.1-pro
+    objection: >-
+      Round-1 MAJOR — the drift guard shipped as a named PENDING-ARMS debt
+      row instead of real, working code, leaving the 20-day-drift failure
+      mode this PR exists to fix structurally unguarded in CI.
+    status: CONFIRMED
+    note: >-
+      Cured by `apps/backend-rag/backend/tests/unit/scripts/
+      test_generate_openapi_schema_pin.py` + `generate_openapi.py`'s
+      `compute_schema_sha256`/pin-writer, built inside a 30-minute
+      time-box. Determinism proved (two fresh-process regenerations,
+      identical hash both times) and guilt proved (a corrupted pin turned
+      the test RED with the exact intended message; restoring it turned it
+      GREEN) before this was committed. The PENDING-ARMS row from the prior
+      round was removed as superseded.
+
+  - seat: tp1-qwen3.8-max + gemini-3.1-pro
+    objection: >-
+      Round-1 MINOR — brittle `PublicLeadSource` extraction regex
+      (`/PublicLeadSource:[\s\S]*?;\n\s+\/\*\*/`) assumed the next schema
+      declaration always opens with a JSDoc comment; a parse miss would
+      silently return `undefined`, reading as a contract violation instead
+      of a broken extractor. Both seats raised this independently.
+    status: CONFIRMED
+    note: >-
+      Cured: `extractPublicLeadSourceBlock()` now matches
+      `/PublicLeadSource:[\s\S]*?;/` (no TS union member can contain a
+      semicolon, so the first one is unambiguously the terminator,
+      independent of whatever follows) and throws
+      `"PublicLeadSource block not found in schema.d.ts"` on a miss. A
+      dedicated test proves the throw.
+
+  - seat: tp1-qwen3.8-max + gemini-3.1-pro
+    objection: >-
+      Round-1 MINOR — tautological guilt fixture
+      (`` `export interface components {}\n${marker}\n` ``) only proved
+      `filter`+`includes` finds a string that was just concatenated, not
+      that the check survives a realistic schema shape.
+    status: CONFIRMED
+    note: >-
+      Cured: the fixture is now a realistic schema fragment (a `paths`
+      entry referencing `operations[...]` by the retired operationIds, an
+      `operations`-shaped block, two component schema names) modelled on
+      the generator's real output, plus per-marker redaction proving
+      precision. The near-miss scope (`/api/visa/voa-v2` is NOT caught) is
+      stated plainly in both the code comment and the commit body.
+
+  - seat: tp1-qwen3.8-max
+    objection: >-
+      Round-2 MINOR — the drift pin guards one layer upstream of what its
+      name implies: it covers OpenAPI JSON ↔ backend, not `schema.d.ts` ↔
+      OpenAPI JSON, because the `openapi-typescript` rendering step is
+      never hashed or re-run. A tool version bump or output-format change
+      could diverge `schema.d.ts` from a fresh render while the pin stays
+      green. (The coordinator reached the same conclusion independently,
+      reading the docstring before the seat raised it.)
+    status: CONFIRMED
+    note: >-
+      Cured by stating the scope honestly rather than closing the gap with
+      a decorative fix: both `generate_openapi.py`'s module docstring and
+      `test_generate_openapi_schema_pin.py`'s docstring now say precisely
+      what the pin catches (the backend moving ahead of a regeneration —
+      the exact 20-day failure) and what it does not (a `schema.d.ts` that
+      is wrong for any other reason). A second pin over `schema.d.ts`'s own
+      bytes was considered and deliberately NOT added: nothing in this
+      backend-only Python CI job can re-derive `schema.d.ts` via a fresh
+      `openapi-typescript` render to check it against — that needs Node in
+      a job that currently has none — so an unchecked second pin would be
+      exactly cicatrix family #2 (esiste≠armato), a file nothing arms.
+      Closing that gap for real is named as a follow-up, not hidden.
+
+  - seat: tp1-qwen3.8-max
+    objection: >-
+      Round-2 MINOR — `Path(__file__).resolve().parents[6]` is a magic
+      depth constant; a future file move/restructure would break the pin
+      path with an opaque `FileNotFoundError` deep inside the test body.
+    status: CONFIRMED
+    note: >-
+      Cured: a one-line sanity assert now checks
+      `(_REPO_ROOT / "apps" / "mouth" / "package.json").is_file()`
+      immediately after computing `_REPO_ROOT`, with a message naming
+      exactly what moved and which constant to fix.
+
+  - seat: tp1-qwen3.8-max
+    objection: >-
+      Round-2 MINOR — `create_app()` is constructed inside the test
+      function with no fixture; if construction acquires a DB handle or a
+      socket, this repo's real CI parallelism
+      (`-n auto --dist loadfile`, `.github/workflows/tests.yml`) could
+      make the test flaky. Needs verification, not assumption.
+    status: PLAUSIBLE
+    note: >-
+      Verified, not assumed: `create_app()` → `register_middleware()` →
+      importing `backend.middleware.rate_limiter` instantiates the
+      module-level singleton `rate_limiter = RateLimiter()`, whose
+      constructor calls `RedisManager.get_instance().get_sync_client()` —
+      but `RedisManager.__init__` is a no-op (attributes only); the actual
+      blocking `redis.from_url(...).ping()` call lives in the SEPARATE
+      `RedisManager.initialize()` method, invoked only from the app's
+      `lifespan` startup handler, which `create_app()` + `.openapi()` never
+      triggers. `get_sync_client()` therefore returns `None` immediately —
+      confirmed by the "no Redis available" log line appearing instantly on
+      every run in this PR (never a 5-second stall) and by the consistent
+      ~1-2s total runtime across every regeneration in the determinism
+      proof. `PricingService`'s eager load is a local JSON file read, not
+      network I/O. `create_app()` is already called this same way, no
+      fixture, by 5 other files in this suite
+      (`test_app_factory.py`, `test_endpoints_reachable.py`,
+      `test_evaluate_endpoint.py`, `test_intake_review.py`,
+      `test_garuda_voa_openapi_parity.py`), already running under this
+      exact parallel regime with no recorded flake for this pattern.
+      Status left PLAUSIBLE rather than CONFIRMED per the coordinator's own
+      instruction ("let the evidence decide, not the tidiness") — no
+      gating fixture was needed, so this is a verified-harmless finding,
+      not a cured defect.
+
+tests:
+  - "apps/mouth vitest — 476 test files passed (476), 5132 tests passed (5132)."
+  - "sitemap.test.ts — 18/18 passed, including the realistic guilt fixture, the loud-failure extractor test, and the corrected PublicLeadSource assertion."
+  - "fact-mapper.test.ts — 140/140 passed (corrected from a prior '141/141' grep-substring miscount; see the receipt above), unaffected throughout every round of this PR."
+  - "backend/tests/unit/scripts/test_generate_openapi_schema_pin.py — 1 passed; separately proven RED on a corrupted pin and GREEN again once restored."
+
+static:
+  - "npx tsc --noEmit (apps/mouth) — 0 errors."
+  - "apps/backend-rag/.venv/bin/ruff check (the two Python files) — All checks passed!"
+  - "pre-commit hooks passed on the single commit, including the FastAPI import-chain check newly triggered by backend-rag files in this PR."
+
+bites: >-
+  The drift guard SHIPS as real code in this pack's commit, not as a debt
+  row: (1) `sitemap.test.ts`'s entity-based guard runs on every subsequent
+  vitest run touching `schema.d.ts` or the backend's GARUDA intake types,
+  proven capable of failing (guilt, realistic fixture) as well as passing
+  (innocence). (2) The new backend pytest runs on every subsequent pytest
+  run in `apps/backend-rag`, comparing the live OpenAPI contract's hash
+  against the committed pin, proven capable of failing (a corrupted pin
+  turned it RED with the exact intended message) as well as passing. Both
+  observations were made in THIS session, not deferred to "a future job
+  will run it".
+
+notes:
+  - >-
+    This PR was attempted once, STOPPED on a broken frontend test (per its
+    own brief's instruction), ruled by the orchestrator, then found
+    defective in ONE part of that ruling (commit order) by an independent
+    two-seat council round that converged without priming — and the ruling
+    was corrected rather than defended. Recorded here in full because a
+    future reader should see the whole arc, not just the final shape.
+  - >-
+    Single code commit `150c8d36e4` (squashed from the prior round's
+    `9eaeb53dab` + `53d5ce6a79`, which are no longer reachable from this
+    branch — reshaping an unpushed branch, never an amend of published
+    history). This evidence-pack commit is the second, separate commit; it
+    carries no executable code and is green on its own.
+  - >-
+    No push, no PR, no arming, no merge performed by this session — commit
+    locally and report, per the brief's standing rule. The orchestrator
+    ships.

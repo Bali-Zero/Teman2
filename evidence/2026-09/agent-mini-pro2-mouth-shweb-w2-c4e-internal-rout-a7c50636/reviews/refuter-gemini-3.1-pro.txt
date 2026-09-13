@@ -1,0 +1,48 @@
+VERDICT: GO-WITH-CONDITIONS
+
+---
+
+### SEVERITY: HIGH
+- **Claim**: Il nuovo test dichiara di "chiudere la classe" delle route non protette, ma non rileva pagine nidificate prive di un file index/page diretto nella directory genitore (es. `(workspace)/settings/security/page.tsx` senza `(workspace)/settings/page.tsx`).
+- **Why it breaks**: `workspaceRoutes()` esegue una lettura non ricorsiva di primo livello:
+  ```typescript
+  fs.readdirSync(WORKSPACE_DIR, { withFileTypes: true })
+    .filter((d) => d.isDirectory())
+    .map((d) => d.name)
+    .filter((n) => PAGE_FILES.some((f) => fs.existsSync(path.join(WORKSPACE_DIR, n, f))))
+  ```
+  Se una sezione di workspace ha sottopagine ma non un file `page.*` direttamente nella cartella di primo livello (es. esiste `settings/security/page.tsx` ma non `settings/page.tsx`), `PAGE_FILES.some(...)` restituisce `false` per `settings`. La directory viene scartata e il walker non scende nei sotto-livelli. Di conseguenza `/settings` non compare tra le route scoperte, il test passa con esito verde, ma `https://public.domain/settings/security` non corrisponde ad alcuna voce di `INTERNAL_ROUTES` nel proxy e continua a essere servita con HTTP 200 dal dominio pubblico con la shell workspace.
+- **What to check**: Sostituire la scansione shallow a 1 livello con un file-walker ricorsivo che estragga il primo segmento URL effettivo per **qualsiasi** file `page.*` discendente dentro `(workspace)`.
+
+---
+
+### SEVERITY: MEDIUM
+- **Claim**: Il test ignora completamente i Route Group di Next.js all'interno di `(workspace)` (es. `(workspace)/(portal)/tickets/page.tsx`).
+- **Why it breaks**: La riga 21 scarta esplicitamente qualsiasi cartella tra parentesi tonde:
+  ```typescript
+  .filter((n) => !(n.startsWith("(") && n.endsWith(")")) && !n.startsWith("["))
+  ```
+  In Next.js App Router, i route group non fanno parte del path URL: la pagina viene servita a `/tickets`. Scartando `(portal)` a monte senza scendere al suo interno, `/tickets` non viene mai censito da `workspaceRoutes()`. Se `/tickets` non è presente in `INTERNAL_ROUTES`, il dominio pubblico lo servirà indisturbato senza che il test fallisca.
+- **What to check**: Modificare la funzione affinché attraversi ricorsivamente le cartelle `(...)` per raccogliere le rotte reali sottostanti invece di escluderle.
+
+---
+
+### SEVERITY: MEDIUM
+- **Claim**: L'uso di `process.cwd()` per individuare i percorsi rende il test dipendente dalla directory di esecuzione e rischia crash `ENOENT` nei runner monorepo.
+- **Why it breaks**:
+  ```typescript
+  const WORKSPACE_DIR = path.join(process.cwd(), "src", "app", "(workspace)");
+  const PROXY = path.join(process.cwd(), "src", "proxy.ts");
+  ```
+  Se Vitest viene eseguito dalla root del monorepo (`nuzantara/`) tramite Turborepo, workspace configs o script globali anziché dall'interno di `apps/mouth`, `process.cwd()` punterà alla root del repository. `fs.readdirSync(WORKSPACE_DIR)` lancerà un'eccezione non gestita `ENOENT: no such file or directory`, bloccando la pipeline di test.
+- **What to check**: Risolvere i percorsi relativi al file di test tramite `import.meta.url` o `__dirname` (es. `path.resolve(__dirname, "../app/(workspace)")` e `path.resolve(__dirname, "../proxy.ts")`).
+
+---
+
+### SEVERITY: LOW
+- **Claim**: L'estrazione di `INTERNAL_ROUTES` tramite regex su stringa sorgente è fragile rispetto a formattazione, tipi e commenti.
+- **Why it breaks**: 
+  1. `block![1].matchAll(/"([^"]+)"/g)` cattura solo stringhe tra doppi apici (`"`). Se una regola Prettier/ESLint converte il file in apici singoli (`'`), la regex restituirà un array vuoto facendo fallire l'intera suite.
+  2. Se un commento all'interno dell'array contiene virgolette (es. `// Fixed "temp-route"`), `"temp-route"` verrà erroneamente considerata una rotta interna.
+  3. L'aggiunta di annotazioni di tipo TypeScript (es. `const INTERNAL_ROUTES: readonly string[] = [...] as const;`) impedisce il match della regex principale `src.match(/const INTERNAL_ROUTES = \[([\s\S]*?)\];/)`.
+- **What to check**: Esportare `INTERNAL_ROUTES` da `src/proxy.ts` (`export const INTERNAL_ROUTES`) e importarla direttamente nel file di test come array TypeScript nativo, eliminando il parsing via regex su file di testo.

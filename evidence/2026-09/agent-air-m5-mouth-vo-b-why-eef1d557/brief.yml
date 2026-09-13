@@ -1,0 +1,46 @@
+gear: 2
+ruling: RULED 2026-09-12 SAETTA
+mission: SAETTA-VO window W-VO-B (BLUE, host M5) — the Oracle says WHY a person must look (PR-O4 / scope delta Δ2)
+objective: >-
+  A visitor whose Visa Oracle interview ends in HUMAN_REVIEW_REQUIRED reads a
+  DEMONSTRATED cause, not one flat list of sentences. The OutcomeSheet now
+  splits the review reasons in two groups under their own headings — the holds
+  about this applicant's own case, and the holds about our sources and our
+  process (DECISIVE_*, SAFETY_CRITICAL_*, MINOR_GUARDIAN_PRIVACY_REVIEW,
+  CLIENT_UNABLE_TO_VERIFY_DETAIL) — and, under an applicant-attributable hold,
+  names the answers of THIS interview that raised it ("You answered 'Not sure'
+  to: <question>") with an edit link back to that question. The contact panel
+  stops showing a visitor the string "WhatsApp handoff is not configured": it
+  renders a neutral, honest sentence and reports the misconfiguration
+  internally instead. Copy source is the code's own copy map and the
+  interview's own answers; the component invents no sentence and no number.
+scope:
+  - apps/mouth/src/app/(visa-oracle)/visa-oracle/_components/OutcomeSheet.tsx
+  - apps/mouth/src/app/(visa-oracle)/visa-oracle/_components/OutcomeSheet.test.tsx
+  - apps/mouth/src/app/(visa-oracle)/visa-oracle/_components/ConsentHandoff.tsx
+  - apps/mouth/src/app/(visa-oracle)/visa-oracle/_components/ConsentHandoff.test.tsx
+  - apps/mouth/src/app/(visa-oracle)/visa-oracle/_components/ConfirmationCard.tsx
+  - apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/i18n.ts
+  - apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/telemetry.ts
+  - apps/mouth/e2e/visa-oracle-v2.spec.ts
+constraints:
+  - oracle.css is READ-ONLY even under Δ2 (D6 verbatim) — no new class, no new custom property, only classes that already exist.
+  - No engine file, no rule pack, no flow.ts/tree.ts, no fact-mapper.ts write, no Decision schema change.
+  - Never invent a contact number and never a positive fixture for it (D3 = "NON ORA").
+  - Every rendered cause must be demonstrated by a fact of THIS interview; nothing plausible-looking.
+  - An edit link is offered only for a question this walk actually answered — flow.ts's EDIT resets the whole interview on an absent target.
+  - No client PII in any artifact; synthetic interview only.
+  - No ledger PR, no PENDING-ARMS.md edit, no gate status posted by this window.
+acceptance:
+  - A1 a HUMAN_REVIEW walk renders a named cause (not only the generic code sentence) in EN and in ID.
+  - A2 the string "is not configured" appears zero times in the rendered HTML of the Oracle route while an internal alert fires.
+  - A3 an answer-attributable hold offers an edit link that returns to the exact question and does not violate its prerequisites.
+  - A4 source/system holds are grouped and worded as system/source facts, never as something the applicant did.
+  - A5 screenshots of a held-for-review outcome at 1440x900 and 390x844, light and dark, keyboard focus visible, reduced motion respected.
+consumer_map:
+  - The live balizero.com/visa-oracle verdict screen served by the apps/mouth Vercel deploy on merge to main — OracleShell renders OutcomeSheet for every HUMAN_REVIEW_REQUIRED decision the ENFORCE engine returns.
+  - The required GitHub check "Frontend Tests (Next.js) (mouth, true)", which runs OutcomeSheet.test.tsx and ConsentHandoff.test.tsx on every future PR touching this route.
+  - e2e/visa-oracle-v2.spec.ts, which now pins the grouped block and the edit round-trip on a real browser walk.
+appetite:
+  budget: 5h active, 1 PR
+  stop_loss: three reds on the same cause suspends; a harness-caused red is reported, never cured by rebuilding the branch

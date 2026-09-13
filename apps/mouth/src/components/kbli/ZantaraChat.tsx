@@ -135,7 +135,7 @@ export function ZantaraChat({
         </div>
         {codeContext && (
           <div className="ml-auto flex flex-col items-end">
-            <span className="text-[10px] text-zinc-500 uppercase tracking-wider">
+            <span className="text-[10px] text-zinc-400 uppercase tracking-wider">
               Context
             </span>
             <span className="text-xs font-semibold text-zinc-300 bg-white/5 px-2 py-0.5 rounded-md border border-white/10">
@@ -148,6 +148,9 @@ export function ZantaraChat({
       {/* Messages Area */}
       <div
         ref={messagesBoxRef}
+        role="log"
+        aria-live="polite"
+        aria-label="Conversation with Zantara AI"
         className="relative z-10 max-h-96 min-h-[300px] space-y-5 overflow-y-auto p-5 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent"
       >
         {opener && messages.length === 0 && (
@@ -191,13 +194,21 @@ export function ZantaraChat({
         ))}
 
         {loading && (
-          <div className="flex justify-start animate-fade-in-up">
-            <div className="shrink-0 mr-3 mt-1">
+          <div
+            role="status"
+            aria-live="polite"
+            className="flex justify-start animate-fade-in-up"
+          >
+            <span className="sr-only">Zantara is typing…</span>
+            <div aria-hidden="true" className="shrink-0 mr-3 mt-1">
               <div className="flex items-center justify-center w-6 h-6 rounded-full bg-accent-warm/20 border border-accent-warm/30 shadow-[0_0_10px_rgba(212,132,90,0.2)]">
                 <Loader2 className="h-3 w-3 text-accent-warm animate-spin" />
               </div>
             </div>
-            <div className="max-w-[85%] rounded-2xl rounded-tl-sm bg-transparent px-2 py-3">
+            <div
+              aria-hidden="true"
+              className="max-w-[85%] rounded-2xl rounded-tl-sm bg-transparent px-2 py-3"
+            >
               <div className="flex space-x-1">
                 <div
                   className="w-1.5 h-1.5 bg-accent-warm/60 rounded-full animate-bounce"

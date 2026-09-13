@@ -10,8 +10,14 @@ import { normalizeHostname } from "@/lib/hostname";
  * - kita.balizero.com (internal app)
  */
 
-// Internal app routes that should only be on zantara subdomain
-const INTERNAL_ROUTES = [
+// Internal app routes that should only be on zantara subdomain.
+//
+// EXPORTED so the test that proves every (workspace) page is covered can read the
+// real array instead of parsing this file with a regex. The parsing version worked
+// until it didn't: it matched only double quotes, it would have swallowed any quoted
+// token inside a comment, and a type annotation on this line would have broken it
+// outright — a test whose weaker half was a hand-maintained coupling to source text.
+export const INTERNAL_ROUTES = [
   "/login",
   "/dashboard",
   "/clients",
@@ -25,6 +31,22 @@ const INTERNAL_ROUTES = [
   "/analytics",
   "/intelligence",
   "/notifications",
+  // The eight below were workspace pages that answered 200 on the PUBLIC domain —
+  // the same hole /lkpm had, eight times over, and present since long before it was
+  // found. Each was verified before being listed: the public body is BYTE-IDENTICAL
+  // to the one kita serves, HTTP 200, and carries 0 staff markers, so each is the
+  // workspace shell and not a public page someone meant to publish.
+  // Measured 2026-09-13 against the deployment then serving:
+  //   accounting 49,666 B · garuda-voa 49,185 · hr 46,166 · obligations 45,414
+  //   omnichannel 45,922 · partners 45,951 · review 45,396 · terminal 46,299
+  "/accounting",
+  "/garuda-voa",
+  "/hr",
+  "/obligations",
+  "/omnichannel",
+  "/partners",
+  "/review",
+  "/terminal",
 ];
 
 // /knowledge is NOT a route on kita — it maps 1:1 to a standalone app on its

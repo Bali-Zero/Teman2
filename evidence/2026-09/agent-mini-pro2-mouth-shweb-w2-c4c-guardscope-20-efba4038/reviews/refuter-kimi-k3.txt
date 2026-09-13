@@ -1,0 +1,555 @@
+kimi version 0.35.0
+• We need answer pure review, no tools. Need scrutinize diff and probes. Need verdict severity-claim-why-what check. Need attack fixes and find missed issues.
+
+  We need think deeply. We have complete hunks, no context beyond. Guard script source test parses const arrays / objects with regex.
+
+  We need evaluate corrected diff.
+
+  Key areas:
+  1 guard build-time loop: for each prefix, checks `ALLOWED_CHUNK_PREFIX_CLOSERS[prefix]` truthiness. But test regex expects exact structure and substring prefix. Potential bypass: closer object key containing prefix anywhere? Since test loops listed prefixes and expects `closers![1]` `.toContain(prefix)`. If closers object contains some key/value with the prefix string anywhere, passes, perhaps e.g. `"app/(workspace)/reports/closing": "C5"` for prefix "app/(workspace)/reports/"? Need understand listed prefix from JSON parse of array. If prefix exact substring could appear in closer mapping but not as exact key. Build guard however requires actual key. Unit test not exact key, but build-time enforces. Yet unit test source regex only captures non-`}` content. Could be malformed object or multiline values? Guard parse exact regex likely. Main issue first seat claimed judging entity by substring; fix still judges prefix as substring of closers object, not parse entity. The guard's runtime check is robust to exact key. But test could pass if exact prefix appears as substring in a different key/value while build guard would fail anyway? Then suite would be green but build red—less severe? Unit is supposed enforce build time? The guard catches at build. But test claims matching entries and names closing PR. It doesn't parse closer object, doesn't compare keys with listed. It doesn't validate closing PR value is real PR identifier/nonempty. Runtime only truthiness. Thus arbitrary `{}`? empty fail. `{ "prefix": 1 }` or `"prefix": "TODO"` passes both. Also comments? `(\{[^}]*\})` captures comments too. Prefix can occur in comment inside object while actual property absent; unit test passes, runtime fails. Conversely runtime may pass with non-string truthy, unit not validate PR. More severe perhaps unit test may be bypassed by closers object with key `"prefix"` and value `"anything"` but that's acceptable? Requirement names PR likely value must look PR; not specified exact format.
+
+  Potential key mapping issue with object duplicate? no.
+
+  Regex extraction of ALLOWED_CHUNK_PREFIXES: existing `m` presumably `/const ALLOWED_CHUNK_PREFIXES = (\[[^\]]*\]);/` not shown. It does JSON parse with replace `'`->`"`. Test list is empty. It then extract closers. If guard refactors `Object.freeze({})`, test red. okay.
+
+  Build-time closer loop placement occurs after files scanned? Looking context: at line 122, all length check then rel/isAllowed then loop then offenders. It scans all chunks before validating allowlist. If allowlist invalid and there are huge files, still exits but later than ideal. Not security bypass.
+
+  More critical: The guard validates every prefix has closer, but does NOT validate every closer key corresponds to an allowlisted prefix. Unit test also only one direction (listed -> closers contains prefix), not closers -> listed. Stale closers entries can linger. Is that meaningful? The JSDoc says every prefix must appear as key, not converse. Test name "exception list matches suite's, and any entry names closer"; closers not matched to suite's expected exceptions. If allowlist empty but closers has stale entry, runtime no-op and test passes. Is that a security issue? No, but hygiene/time-boxing: stale promises. First seat? "ALLOWED_CHUNK_PREFIXES and suite EXPECTED... both []", corrected says every prefix must appear here. Empty because above empty. If closers empty now. But future removal of prefix could leave key, no failure. Not blocker.
+
+  Potential runtime guard allows empty string prefix. `ALLOWED_CHUNK_PREFIXES = [""]` and CLOSERS `{ "": "C5" }`. Object property `closers[""]` truthy. Then isAllowed all files because startsWith(""). Unit test: listed contains "", `closers[1].toContain("")` always true. Build passes, skips all chunks. Is that a significant hole! Also whitespace prefix `" "`? startsWith likely none except weird. Empty string is catastrophic. The original allowlist mechanism may already allow empty prefix; but new time-box check doesn't prevent. The PR's scope? Attack fixes. The first seat didn't mention. A malicious/accidental entry `""` plus closer maps all chunks skipped. Is that plausible? Guard is source-controlled and review should catch, but guard's enforcement meant prevent un-timeboxed entries, not validate prefix shape. Should assert prefix nonempty and maybe not "/" etc. Severity major because blanket bypass possible. The closing requirement can be fulfilled, so new checks pass. What to check: add `""` entry + `"": "C5"` and see offenders skipped; probe currently only used `"app/(workspace)/reports/"`. This is a real finding.
+
+  Another bypass: prefix could be `"../"`? rel(file) relative to CHUNK_DIR. If all is within chunks dir, `"../"` won't match. Empty is blanket. Could be `"a"` broad prefix, but that's declared. No inherent.
+
+  Runtime closers object can include getter? `Object.create`? Since source is static, no.
+
+  Prefix value could be `__proto__`: `ALLOWED_CHUNK_PREFIX_CLOSERS[prefix]` on object literal `{}` for `"__proto__"` returns Object.prototype (truthy!) even if no own key. Ah! Very important. `ALLOWED_CHUNK_PREFIX_CLOSERS = {};` and prefix `"__proto__"` -> closers["__proto__"] is Object.prototype truthy, passes runtime without a declared closer. Unit test `closers[1]` empty object source `{}` does not contain `"__proto__"`, so unit red. But if closers object has some unrelated textual occurrence `"__proto__"` in a comment or value, unit passes. But easier add allowlist `"__proto__"` and closers `{"__proto__": ???}` object literal semantics? `{"__proto__": "C5"}` sets prototype? In object literal, special __proto__ property sets prototype if value object/null; if string, ignored? Actually object literal `__proto__` special syntax sets prototype if value object or null, does not create own property. If string, likely no own property but prototype unchanged? So runtime sees Object.prototype truthy. Unit text contains __proto__, passes. Guard allows all chunks whose rel starts `"__proto__"`; not blanket unless filenames can start __proto__, which maybe chunk filename could. Not major. Other inherited properties `"constructor"`, `"toString"` return functions truthy. An allowlisted prefix `"constructor"` passes closer runtime with no own key if object text includes prefix somewhere maybe in comment; unit. Chunk paths could begin constructor? possible but narrow. Better use Object.hasOwn. This is a genuine bug in exact runtime check: truthy property lookup accepts inherited properties. Prefix `"toString"` / `"constructor"` in allowlist can be treated as having closer even when closers empty; unit test would fail unless prose/object contains string, but unit can be tricked by e.g. `{"constructorName":"C5"}` contains "constructor", runtime own key? `closers["constructor"]` inherited function yes. Then passes both: allowlist `"constructor"`, closers `{"constructorName": "C5"}`. It does name some PR but not key. All files beginning constructor skipped. Lower severity but entity/substring remains.
+
+  Actually more general unit regex plus substring: If prefix is `"app"` and closers object has `"application/x": "C5"` no own `"app"`, unit passes but runtime fails, so build red. If prefix is `"constructor"`, runtime passes due prototype and unit can pass due `"constructorName"`. A bypass.
+
+  Empty string passes both with legitimate own key and closes all. Strong.
+
+  Potential property ordering issue? no.
+
+  Another key flaw: closers regex `/const ALLOWED_CHUNK_PREFIX_CLOSERS = (\{[^}]*\});/` is not robust if closing PR string contains `}`; PR IDs don't. Comments with `}` truncate. Test would maybe not include key. Guard runtime unaffected. Test false red, okay fail-safe.
+
+  Potential regex matches commented-out declaration? It searches first `const` exact. A commented line `// const ALLOWED...` could match because regex not anchored. If real declaration later, test may parse commented stub while runtime uses real. But diff adds declaration. If someone comments it out? Unit may still find comment. Runtime build-time check would throw ReferenceError if loop remains; so fails build. If loop removed too, unit maybe sees closers comment and allowlist actual with prefix; closers text can contain prefix; suite green, guard no check (but isAllowed still skips chunks). Existing test historically parses source too. Could anchor regex / disallow comments. Is that within attack? Yes: source-regex tests are inherently brittle. They import no runtime due process exit. They could instead factor config into JSON/module or regex anchored and ensure not comment. Current test parses source strings. An attacker can add a commented fake `const ALLOWED_CHUNK_PREFIX_CLOSERS = { "prefix": "C5" };` before real empty object; test match returns fake first. Runtime real object lacks key -> build fails. To get guard pass, also modify runtime? Could reorder: define actual object with key, then comment fake? no need. For test-only bypass accompanied by build fail not useful. Could modify runtime loop to use another object? Then source test sees declared expected object fake; guard skips. But attacker can always modify guard. Guards aren't adversarial against code modifications unless tests detect. The unit test should catch undeclared changes, but regex can be bypassed. Example:
+  ```
+  const ALLOWED_CHUNK_PREFIXES = ["static/chunks/"];
+  const ALLOWED_CHUNK_PREFIX_CLOSERS = {};
+  const INTERNAL_CLOSERS = {"static/chunks/": "C5"};
+  for (...) if (!INTERNAL_CLOSERS[prefix]) exit
+  ```
+  Test: prefixes listed, closers match empty `{}` (doesn't contain prefix) -> red. Could put comment inside real object `// "static/chunks/" closes C5`, test pass; runtime uses INTERNAL. But diff change itself obvious. However guard's purpose? Maybe suite isn't expected to resist malicious edits, only accidents. Still "a guard that judges substring" remains partially.
+
+  Bigger: `ALLOWED_CHUNK_PREFIX_CLOSERS` value is never used except truthiness. It says mapped to PR that removes it, but doesn't require value to match expected closing PR format or even be a string. `{}` values truthy? `{prefix: {}}` truthy. Unit only toContain prefix key. Thus `{ "prefix": "TODO" }`, `0` fails, `false` fails, but `{}` passes. Is this major? The enforceability requirement is time-boxed naming PR; truthy isn't naming. They fixed vacuity of prose but only partially. Should assert `/^[A-Z]\d+[a-z]?$/` or whatever PR syntax, or issue/URL. The first blocker was un-timeboxed entry satisfies prose. Now entry with a bogus placeholder still satisfies all. The runtime error says names PR but doesn't check. The test error says names no closing PR if prefix absent, but doesn't inspect value. This is likely a key finding. Severity maybe MAJOR, not blocker? A guard intended to enforce time-boxing can be bypassed with `{"foo": "TODO"}`. The entire purpose of the new structure. If closing PR identifiers have known format (C4b), validate. It also doesn't ensure the named PR exists or is open—can't statically. But format minimal.
+
+  Potential issue: The re-probe says entry in both lists, prose untouched -> unit RED and guard exits 1 with complaint. Wait if entry is in BOTH lists—what are "both lists"? First seat wording likely "entry added to ALLOWED_CHUNK_PREFIXES and EXPECTED_CHUNK_EXCEPTIONS with prose untouched", not closers. Then unit red, guard exit 1. Good. But if entry added to guard allowlist and closers plus expected exceptions, passes—this is expected time-boxed.
+
+  Test primitive:
+  PRIMITIVE set includes undefined but not? `typeof null === "object"`, they special-case null. Is `undefined` a field value in Object.entries possible if property exists with undefined, yes. Copying undefined field reference no issue. Functions excluded. Good.
+  They loop options returned by taxConsultants, not module TAX_CONSULTANTS. If taxConsultants itself adds nested/computed fields or filters fields, test only checks output contract. That's appropriate: spread copy safety concerns output fields. But if function mutates? no.
+  Could fields with symbol keys be nested and shared? `Object.entries` only string-keyed enumerable properties. Spread copies symbol-keyed enumerable props too. If a consultant later has a symbol-keyed object field, spread shares it and test won't see it. Similarly non-enumerable properties are not spread? Object spread copies enumerable own string/symbol; non-enumerable not copied, not shared in output. Symbol-keyed enumerable object is shared but Object.entries misses. Also `Object.entries` doesn't include symbol primitive field checked either. The invariant says every consultant field primitive; symbol-keyed fields are fields. Should use `Reflect.ownKeys(option)` + enumerable maybe and Object.getOwnPropertyDescriptor. Is that likely? Maybe minor. Also getters: Object.entries invokes getter and checks returned value primitive; spread also invokes getter and copies resulting value. fine.
+  Arrays/functions caught.
+  Null special-case okay (null no shared mutation). Bigint/symbol okay.
+  Potential Date/class caught.
+  They assert options.length > 0 and checked >0. Good.
+  But test calls `taxConsultants()` once. If function returns new objects but retains nested refs? output checked.
+  Could mutate module via a field that's an object but non-enumerable? Spread won't copy non-enumerable, so not shared.
+  Symbol-keyed is the only gap.
+  Also `Object.entries` misses properties in prototype, but spread only own, and prototype reference? If options objects have custom prototype with mutable methods/shared state? Spread creates plain object? Actually object spread into `{}` creates ordinary object, so prototype not copied. no.
+
+  Comment in guard: The phrase "five `(workspace)` index routes are statically prerendered ... `/clients`, `/dashboard`, `/lkpm`, `/partners`, `/settings`". Fine. It says no `force-static` anywhere. okay measured.
+  "Wire it moment decision lands" no enforcement. Not done on purpose acceptable? Need judge. The question asks say if disagree. We need decide if not asserting prerender manifest is acceptable. Since PR is residual and exposure escalated, hard failing build would be bad. But maybe guard should emit warning (non-blocking) so visibility? The comment says not asserted yet. Guard currently scans chunks/public and could perhaps scan prerender-manifest as warning. Is absence a finding? The guard's name is roster-not-in-public-chunks. It doesn't claim payload. The PR only documents. Given decision not done, likely agree—should not block. But there may be issue that static `.html`/`.rsc` payloads are publicly accessible with no session? Context says Next serves static chunks no session; workspace routes may have middleware auth? Prerendered files on disk maybe served only after auth? They say exposure escalated workspace-auth. The guard comment says `.next/server/app` static files carrying staff data, guard not scan. It says public? It says not public files? It covers "chunks and public files; some workspace payloads already static files..." It does not assert. Is staff data in .next server payload anonymously readable? If Next server serves route with middleware? Could still require auth? But "workspace-auth item" suggests maybe. They intentionally exclude server payloads. We shouldn't re-litigate unless premise false. They explicitly ask if disagree; answer likely no, with condition maybe non-blocking warning.
+
+  Need inspect all possible issues in code.
+
+  Guard diff:
+  - Comments at top refer to previous paragraph not shown. ALLOWED_CHUNK_PREFIXES [] unchanged.
+  - CLOSERS {}.
+  - Build loop before offenders.
+  Potential loop error message says no entry if value falsy. If closer names PR `"C0"` truthy. If empty string fails (good). But no format.
+  - If prefix is `__proto__`, inherited bug.
+  - If prefix duplicates? `ALLOWED_CHUNK_PREFIXES = ["a","a"]` and closer one passes. Unit listed equal expected duplicates if expected duplicate. no issue.
+  - Overlapping prefixes? e.g. `""`, broad. no validation.
+  - `startsWith` prefix means allowed prefix may match deeper than intended, but existing mechanism.
+  - no validation closers values correspond to open PR or removal date. "time-boxed" in name but naming a future PR is not a time box; there is no deadline/expiry. A "closing PR" identifier isn't necessarily time-boxed. This was pre-existing concept. Could require expiry date or issue. But scope first seat demanded PR names. Maybe not.
+  - Unit test parses `EXPECTED_CHUNK_EXCEPTIONS` from suite source? We don't see definition. It compares list exactly. If both empty. Could attacker change expected list too—tests self-referential. But that's intentional suite declares exceptions. Code review catches.
+  - Unit test for closers does not compare closers keys exactly to listed; it just substring. Mentioned.
+  - `listed` parse with `JSON.parse(m![1].replace(/'/g, '"'))` is unsafe/brittle: apostrophe in comment/string. If array uses template literals or trailing comments? Not security. Empty currently.
+  - Regex `const ALLOWED_CHUNK_PREFIXES` may match JSDoc prose or commented code. Similar.
+  - Source read path likely uses `../../scripts/...` not shown. okay.
+  - `expect(closers![1]).toContain(prefix)` does not ensure prefix is a key. E.g. if listed prefix "reports" and closers value `"close app/reports in C5"` contains it. Runtime exact key catches unless inherited edge. But unit test's claim false.
+  - They don't parse closers and verify each listed prefix key maps to valid PR and no extra. Could use `Function`? Better factor constants to JSON? Since guard is ESM and process exits only when run as main perhaps import possible. But no need prescribe full implementation, what to check.
+
+  Potential issue with `Object.entries` and null: `option` itself could be null? `taxConsultants()` returns array of objects; if one null, Object.entries throws -> red. fine.
+  - `PRIMITIVE` includes `"undefined"` but optional absent fields don't appear. Existing property undefined is copied. okay.
+  - Function-valued properties can be non-enumerable; spread doesn't copy non-enumerable. no shared.
+  - Accessor property returning function: Object.entries invokes and catches function. Spread invokes too and would copy function; caught.
+  - Object with null prototype? Object.entries works.
+  - `checked` increments per field; if options have no fields checked zero catches.
+  - It checks `taxConsultants()` but not `TAX_CONSULTANTS` directly. If taxConsultants deep-copies later, test remains green and no red prompt. But comment says deliberately test not structuredClone; if future implementation deep-copies, test passes. That's fine—the invariant is no longer needed, but test isn't fail. The stated purpose "fails at moment decision made" only if nested field added and shallow copy retained. If someone adds nested and deep copies, green, appropriate. If someone adds symbol-keyed nested, hole.
+
+  Could use a Proxy/object field that mutates? caught.
+  - If primitive field is a boxed String object caught.
+
+  Potential issue in copy test above: They expect first label Veronika. Not relevant.
+
+  Comment "The invariant the copy above silently depends on" okay.
+
+  Probes:
+  - Re-probe only one shape: entry in both lists but no closers. It doesn't probe bogus closer value, substring key, inherited property, empty prefix, extra closers. We can list.
+  - Innocence byte-identical and full suite good.
+  - "0 skipped by declared time-boxed exception (none)" output likely comes from later guard code not shown. With empty lists.
+  - Full suite 479 files/5138 tests green.
+
+  Need determine verdict. Since there's at least one Major likely GO-WITH-CONDITIONS or BLOCK? We need choose based on severity. Adversarial review of a guard whose primary fix is enforceability. If new enforcement can be trivially bypassed with `ALLOWED_CHUNK_PREFIX_CLOSERS = { "prefix": "TODO" }`, is that BLOCK? The first seat called vacuous check BLOCKER. The fix is no longer vacuous but incomplete validation. Does bogus value undermine requirement "names the PR"? Yes, `TODO` is not a PR. Both build-time and unit test pass. Thus the central claim "any entry names its closing PR" is false. Also unit check still substring not entity. I lean BLOCK because security guard PR's central purpose. But need perhaps distinguish actual exposure: Today allowlist empty, no immediate bypass. The guard still scans all chunks. If future entry added with bogus closer, code review perhaps. Yet automated guard intended. A blocker maybe if current PR can merge and later holes. The prior seat used BLOCK for vacuous future rule. The analogous remaining hole could be BLOCKER. They ask attack fixes; likely expected find test remains weak. Need be precise.
+
+  Let's map severity format: "SEVERITY - claim - why - what to check." Could output verdict BLOCK then findings ordered.
+
+  Need maybe include no tools disclaimer? They instructed no tools; answer directly.
+
+  Let's deeply reason possible bypass examples to make concrete:
+
+  1. Bogus closer:
+  ```
+  const ALLOWED_CHUNK_PREFIXES = ["app/(workspace)/reports/"];
+  const ALLOWED_CHUNK_PREFIX_CLOSERS = {
+    "app/(workspace)/reports/": "TODO",
+  };
+  ```
+  Runtime `CLOSERS[prefix]` truthy, no exit. Unit extracts object body, `toContain(prefix)` true. Full suite passes if EXPECTED includes prefix. This violates "mapped to the PR that removes it". What to check: set value to `"TODO"`/`{}` and confirm green. Fix: parse/evaluate? Better guard validates value with strict PR ID regex, and test parses actual object keys/values, not raw text. However even regex can't ensure PR exists. Could require `C\d+[a-z]?` or GitHub issue URL. Since values may have prose, define schema. Could require value starts "C" maybe. The code says "mapped to the PR that removes it"; examples C4b. Use `/^C\d+[a-z]?$/` if naming convention. Or perhaps closing PR may be `#123`. Define accepted format. At minimum non-empty string matching known PR reference.
+  - Also guard should check with `Object.hasOwn` and `typeof closer === "string"` + regex.
+  - Unit test should compare exact key set: extract actual config from a data module or JSON schema. If regex parsing, require exact quoted key and value regex, no comments.
+
+  2. Empty prefix:
+  ```
+  ALLOWED_CHUNK_PREFIXES = [""]
+  CLOSERS = { "": "C9" }
+  ```
+  Guard runtime: own property `""` value C9 truthy. `isAllowed` `r.startsWith("")` true for every chunk. Offenders none, output "510 skipped". Unit: JSON list [""] equals expected if updated; `closers![1].toContain("")` is always true. This is a blanket bypass with a valid-looking closer. Even strict closer format doesn't stop. Fix: assert each prefix non-empty, probably `/` terminated? maybe at least length > 0 and not "."; perhaps require prefix not match all. Severity blocker/major. What to check probe. This is more concrete and severe. Does `ALLOWED_CHUNK_PREFIXES` JSON parse of `[""]` and expected exceptions updated. Yes.
+  Should we call this BLOCKER. A guard bypass letting all chunks skip roster check. Although changing expected exceptions is visible in diff, same for any allowlist entry. Time-box exceptions by design permit specific paths; empty prefix is accidentally broad. Need enforce.
+  Also prefix `"."`? rel paths likely don't start dot unless file hidden. `"/"` none. Only empty universal.
+  - Prefix could be `"static/"` if all chunk paths under static? `rel` relative to chunk dir maybe chunks filenames. A broad declared prefix can skip lots. Empty is extreme. There is no max specificity. Maybe require at least e.g. 8 chars? Hard.
+  - Check log "0 skipped" maybe would show 510 skipped and catch? Build does not fail on skipped by allowed; output visible but CI may not inspect. Guard should validate.
+
+  3. Prototype pollution/inherited closers:
+  ```
+  ALLOWED_CHUNK_PREFIXES = ["constructor"];
+  CLOSERS = { "constructorName": "C9" };
+  ```
+  Unit raw body contains `"constructor"` substring? `"constructorName"` contains constructor, yes. Runtime `CLOSERS["constructor"]` returns Function constructor inherited, truthy. Guard passes though no own key. Files starting constructor skipped. Similarly toString. Severity major/minor. Fix Object.hasOwn(CLOSERS, prefix), unit parse exact keys.
+  But if strict exact keys via regex, caught. Is this worth separate finding or fold into "not entity-keyed". We can include under same Major.
+
+  4. Unit regex doesn't verify key. Example:
+  ```
+  listed prefix "reports"
+  CLOSERS = { "closing-reports": "C9" }
+  ```
+  Unit pass, runtime fails (unless inherited). This produces false green unit but build red. Not a security bypass but shows test not entity. Better example value contains prefix:
+  ```
+  { "unrelated": "app/(workspace)/reports/" }
+  ```
+  Unit passes, runtime red. It fails closed at build, so not vulnerability. But combined with inherited key is bypass. The key issue: unit still judges substring. Need state.
+  - Also regex captures comments. Example object body:
+  ```
+  {
+    // "app/(workspace)/reports/" closes in C9
+  }
+  ```
+  Unit pass, runtime red. Again fail closed.
+  Could be false confidence.
+
+  5. Extra/stale closers:
+  - If prefix removed but closer remains, no failure. Contradicts "Empty, because list above is empty" only initially; future drift. Does this matter? A stale closer for a removed prefix is harmless until same prefix re-added? If re-added, it may use stale closing PR perhaps already merged, and passes. This is significant: The time-box mechanism is supposed to name removal PR. Suppose C4b entry removed but closer accidentally left `{ "foo": "C4b" }`; nothing fails. Later foo re-added, already names C4b (a past PR), passes, though time-box is meaningless. Or stale entries accumulate. Check exact key-set equality both directions and maybe closing PR not already merged impossible. At least stale key validation. Severity minor/major. The JSDoc says every prefix must appear, not every key active. Test title says exception list matches suite's (prefix list does), not closers. "Empty because list above is empty" can drift. I'd include MINOR or MAJOR. It is an unenforced invariant that could allow recycling old closer. The empty prefix and bogus value are more central.
+
+  6. Value could be inherited even if no own property. covered.
+
+  7. The guard's runtime loop checks closers after `isAllowed` defined and after scanning file list. It doesn't print skip count? later. no.
+
+  8. Time-box concept not actually time-boxed: no date, no existence/status. A closing PR identifier is a pointer, not a deadline. First seat used term. Maybe requirement is specifically names PR, not date. Don't overreach.
+
+  9. The top comment says "the fix that moved its table server-side genuinely removed the data from everything this guard can see." But guard scans chunks/public only. If clients/[id] is dynamic, server payload may still include roster? The fix moved table server-side, but if page sends staff data to client in RSC payload, guard cannot see. They measured 0 prerender artifacts but dynamic responses can carry staff data to authenticated users; public? Need context: Original issue hardcoded staff table in "use client" anonymously readable. Moving table server-side perhaps means server component renders data into RSC/html, still sent to client if page displays it, but not as JS chunk. If route is dynamic and requires session? Maybe workspace auth. The comment says "genuinely removed the data from everything this guard can see", true tautologically. But "which is why fix ... genuinely removed the data" only from guard-visible artifacts, not necessarily exposure. It says that. Fine.
+
+  10. "some workspace payloads are ALREADY static files carrying staff data; and that exposure is the escalated workspace-auth item". They decide not to scan. Could guard at least include `.next/prerender-manifest.json` as a non-failing warning. Is no assertion acceptable? They explicitly justify. I can say I agree: BLOCKING build on known exposure would make guard red permanently and hide new regressions; separate item should own. But perhaps condition: add a non-failing warning or tracked issue to prevent forgotten. However user asked verdict on PR; if we block on code holes, no need.
+
+  11. Source test regex for closers requires literal `const` not `export const`, and exact no newline between `=` and `{`? Regex `= (\{[^}]*\});` matches newline inside braces but exactly one space after =. Current code. Fine.
+  - If object contains nested object value (bogus closer `{}`) regex stops at inner `}`! Let's examine:
+  ```
+  const CLOSERS = { "prefix": {} };
+  ```
+  Regex `\{[^}]*\}` captures `{ "prefix": {}`? It starts outer `{`, [^}]* stops before inner `}`, captures ` "prefix": {`, then match expects `;` immediately after `}`? Actual after inner `}` is ` };`, not `;`, so regex may fail entirely. It might match outer? [^}]* can't include inner }, so no. Thus bogus `{}` value makes closers not found -> red. But `"TODO"` passes. Good.
+  - If closing PR string contains apostrophe? irrelevant.
+  - `listed` regex parse with replace apostrophes can turn comment? current.
+  - If closers object is empty `{}`, regex matches. Good.
+  - If prefix contains regex? no, toContain string.
+
+  12. Guard runtime object can have `__proto__` behavior. Mention.
+
+  13. `Object.entries(option)` invokes values and checks `value === null || primitive`. What about `NaN` etc primitive. fine.
+  - An object with `toString`? field function caught.
+  - A field with `undefined` passes but spread copies key; harmless.
+  - A property with a `symbol` value: typeof symbol passes; immutable.
+  - A shared symbol? symbols immutable.
+  - Bigint okay.
+
+  14. The primitive test can be bypassed with an object created with `Object.create(null)`? typeof object caught.
+  - A Proxy around primitive? typeof object/function caught.
+  - Nested data exposed via getter that returns object caught.
+  - Shared mutable state hidden in closure returned as primitive? no.
+
+  15. Copy is only one level. If option object itself gets frozen? no.
+
+  16. `taxConsultants()` may return objects with extra fields later; test catches string-key enumerable nested. Good.
+
+  17. No check `options` itself is a fresh array? Existing mutation test only mutates element label; if taxConsultants returned same array but copies elements, mutating `a[0].label` doesn't mutate. But mutating array (push/pop) could mutate module constant if same array returned. Existing test does not check array identity or structural mutation. The new test checks fields primitive but not that `taxConsultants()` returns a fresh array. The doc comment says invariant the copy above depends on. Wait actual code `TAX_CONSULTANTS.map((c)=>({...c}))` returns fresh array and fresh elements. But future implementation could return `TAX_CONSULTANTS` directly; existing test mutating `label` would catch because mutates module. Could return same array with cloned elements (`TAX_CONSULTANTS.map...` no, map fresh). Could assign `const result = TAX_CONSULTANTS.map...; return result` fresh. Hard to accidentally same array with copied elements: `TAX_CONSULTANTS.splice?` no. Could return cached array of cloned elements; first mutation doesn't affect module elements, but second call sees mutated label, existing test might? It only compares module after mutation, not second call. But out of scope.
+  - Existing mutation test only mutates top-level label; new test asserts flatness to ensure spread deep enough. Good.
+
+  18. Comment says "every field is a primitive — which is the case today, `{ value: string; label: string }`." If there are actually more fields not shown, test handles.
+
+  19. Build guard comments: They include names? FORBIDDEN regex includes staff names. PII boundary? Staff names maybe not client PII. Existing.
+  - Public chunks guard source itself includes forbidden names; built chunk? Guard not bundled. okay.
+
+  20. Potential issue `FORBIDDEN` regex case-insensitive substring can false positive. existing.
+
+  21. The guard's own build loop validates allowlist but not `EXPECTED_CHUNK_EXCEPTIONS` (test only). If expected suite list changed but guard allowlist empty, unit fails. fine.
+
+  22. Full suite count "479 files / 5138 tests" no issue.
+
+  23. Re-probe says guard exits 1 "with same complaint" for entry in both lists no closer. But because runtime loop checks prefix exact; yes. Unit red message. Fine.
+
+  24. First seat (a) vacuous fixed? Not fully because bogus value and substring. We should explicitly say central fix is directionally right but not sufficient. Maybe verdict BLOCK due BLOCKER(s).
+
+  Let's decide severity labels. User asks "SEVERITY - claim - why - what to check." We can use BLOCKER / MAJOR / MINOR. Maybe only report real issues, no padding.
+
+  Potential finding 1: BLOCKER — allowlist prefix can be empty string and skip all chunks.
+  Claim: time-boxing enforcement doesn't validate prefix scope.
+  Why: `startsWith("")` true for every rel; closer lookup accepts empty-string own key; unit substring check `toContain("")` vacuously true. An entry `""` + `"": "C9"` passes both guard and suite, disabling roster scan entirely. This is a direct bypass and worse than bogus PR.
+  What check: add `""` to both lists and `{ "": "C9" }`; expect guard/test red. Fix: reject empty/over-broad prefixes before closer check; exact schema.
+
+  Is unit `toContain("")` definitely true in Vitest? Yes, JavaScript string includes empty string true. matcher toContain uses includes. Good.
+
+  Finding 2: BLOCKER or MAJOR — closer value not validated. Claim: entry can name no PR and still pass. Why: only truthiness runtime; unit only key substring. `"TODO"` passes. This directly undermines fix. Check add valid prefix, expected, closer value `"TODO"`; green. Fix strict PR reference format + own property.
+  Could this be same BLOCKER? Separate.
+
+  Finding 3: MAJOR — test still doesn't bind prefix to an own key; raw substring + prototype chain. Why: exact examples inherited properties. What check: `ALLOWED_CHUNK_PREFIXES=["constructor"]`, CLOSERS `{ "constructorName": "C9" }`; unit sees substring, runtime sees inherited `Object.prototype.constructor`, both green. Also stale extra keys pass. Fix parse object and compare key sets, `Object.hasOwn`.
+  Could combine with finding 2. But user wants detailed. Separate as MAJOR.
+
+  Wait example: `ALLOWED_CHUNK_PREFIX_CLOSERS = { "constructorName": "C9" }`; `CLOSERS["constructor"]`: Does object literal inherit constructor from Object.prototype? Yes, `obj.constructor` is Object function. Truthy. It skips chunks starting "constructor". Unit body includes `"constructorName"` which contains `"constructor"`. Thus no own key, but passes. Strong. Need note only paths with that prefix, not blanket; demonstrates entity check broken.
+  Could choose `"toString"` similarly. Chunk filenames could start "constructor" maybe unlikely. But proof of flaw.
+  - Strict PR value would pass "C9". Need own property fix.
+  - If prefix `"__proto__"` and closers `{"__protoName":"C9"}`, runtime `obj["__proto__"]` returns Object.prototype truthy, unit substring. Good.
+  - If `Object.hasOwn` unsupported Node? Modern Node yes. Could use `Object.prototype.hasOwnProperty.call`.
+
+  Finding 4: MINOR — closers not checked for stale/extra keys. Why: after prefix removed, key can remain; later reused with stale closing PR. Check remove prefix only; suite remains green. Fix key-set equality both directions.
+  Could fold into #3 (exact key-set). Maybe still separate severity minor.
+
+  Finding 5: MINOR — primitive field check misses symbol-keyed fields. Why: spread copies enumerable symbol-keyed references; Object.entries only string keys. Check add `const META=Symbol("meta"); {[META]: []}` to fixture and mutate via returned option; current test green while shared. Fix Reflect.ownKeys + enumerable descriptors. Is this a likely issue? It is a genuine residual hole. Could report MINOR.
+  - Are symbol-keyed fields copied by object spread? Yes, ECMAScript CopyDataProperties copies own enumerable string and symbol keys. So yes.
+  - Also Object.entries misses string-key non-enumerable but spread also misses, so no issue. Prototype fields not copied.
+  - What about symbol-keyed primitive not checked but harmless if primitive; object harmful.
+  Severity MINOR/MAJOR? Future shape edge; low.
+
+  Potential finding 6: Unit regex can match commented declaration or prose. Is this worth? Source regex parsing is brittle but fail directions mostly. Could be used to bypass test if guard changed to use a different map. Example:
+  ```
+  // const ALLOWED_CHUNK_PREFIX_CLOSERS = { "prefix": "C9" };
+  const REAL_CLOSERS = { "prefix": "C9" };
+  ...
+  if (!REAL_CLOSERS[prefix])
+  ```
+  Regex matches commented fake first and suite green; guard passes. This requires malicious modification of runtime loop to use a different variable. A test can't prevent arbitrary deletion of guard logic anyway; but could assert loop references the constant. The first seat's scar is substring vs entity. Current test still source substring. Maybe report as MINOR: regex isn't anchored and doesn't prove the matched object is the one enforced. What to check: insert commented fake before real and rewire loop? Hmm "what to check" should be reasonable. But perhaps too adversarial beyond accidental. The entire test reads source to avoid process exit; a malicious actor can delete guard. The point is tripwire for well-intentioned edits, not attacker-proof. Don't overdo.
+
+  Potential finding 7: Guard's closer validation is in guard, but unit source regex can become stale if guard refactors. Fine.
+
+  Potential finding 8: Guard doesn't validate `ALLOWED_CHUNK_PREFIXES` values are strings. If `null`: `r.startsWith(null)` coerces "null", closers[null] property "null". Could be weird. Empty string is key. Fix schema.
+
+  Potential finding 9: On empty allowlist, runtime loop is no-op (previous minor fixed). But closers can be nonempty and no check. stale.
+
+  Potential finding 10: There is no direct test of guard runtime behavior, only source. But probe did manual. Should they add unit/integration tests for build loop? The guard exits process, hard to import. Could spawn child in test. The PR adds runtime check but permanent test only source-parses; if loop is accidentally removed, source test could still pass as long as constants exist. Wait important! The unit test only verifies closers declaration and prefixes; it does NOT assert the guard actually enforces the mapping at build time. The runtime loop is new. If someone later deletes/bypasses the loop, unit test remains green. But the guard's primary behavior (scan forbidden names) maybe tested elsewhere? It greps source only. Manual probe now verifies, but no automated test does. Is that a finding? The first seat's probe was manual too. The suite test is intentionally source-based. To ensure guard logic, add a child-process fixture test or factor predicate. However this PR maybe only requires guard itself; CI runs guard, so if loop removed future build won't catch invalid mapping, but unit test would still green. A future malicious/accidental deletion is outside current diff but guard robustness. Could mention minor: no regression test executes the new build-time branch; source test would stay green if the loop were removed. What to check: temporarily delete loop and run suite. If green, coverage gap. Fix factor `validateAllowedPrefixes(prefixes, closers)` pure function and unit-test, or spawn guard with fixture.
+  But user says probes after fix include guard exits at build. They manually tested. For lasting enforcement, automated test needed? The unit test is supposed to bind. Yet the build-time check itself will run whenever guard runs; if present. If removed, no check. Source test doesn't check its presence. Could assert source contains `ALLOWED_CHUNK_PREFIX_CLOSERS[prefix]` but that's substring again. Better pure function. Is this a blocker? no.
+
+  Potential issue: The source test regex extracts `ALLOWED_CHUNK_PREFIX_CLOSERS` but if its object contains an inner `}` in a template string, fail. Not security.
+
+  Potential issue: The build guard now exits before scanning offenders if a prefix lacks closer. This can mask roster offenders behind config error. That's fail-closed, fine.
+
+  Potential issue: `process.exit(1)` in loop only reports first invalid prefix. Fine.
+
+  Potential issue: no `Object.freeze`; code could mutate arrays before check? Same file control. no.
+
+  Potential issue: closers object is a plain object and prefix keys could be `__proto__`, as above.
+
+  Potential issue: `ALLOWED_CHUNK_PREFIXES` entries not normalized (`\` on Windows). `rel` normalizes to `/`, so Windows-style prefix never matches. Fail closed (offenders flagged), okay.
+
+  Potential issue: `startsWith` prefix `app/(workspace)/reports` without trailing slash also matches `reports-old`. Over-broad. Could require trailing slash? Current example includes trailing. Empty is universal. Maybe include in schema finding.
+
+  Potential issue: `FORBIDDEN` itself can match allowed names in sourcemaps? chunks? existing.
+
+  Potential issue on route comment: It says five routes "index routes" but `/clients` may have dynamic child. no.
+
+  Potential issue not asserting prerender manifest: The comment names five current routes but no automated guard against a sixth prerendered route. They say "wire it when decision lands". But until then, new routes can quietly become static and carry staff data. The exposure is escalated, but an informational check could fail only if marker hits? They deliberately avoid failing. Is that acceptable? Let's think adversarially: The guard's rationale "server payloads not files" is now known false. It continues to not scan `.next/server/app`. A new route added with roster payload will not be caught. If exposure decision is to accept existing five routes temporarily, you could assert an exact allowlist of those five and fail on any NEW prerendered route. This would not fail today's build and would prevent expansion. The "NOT DONE ON PURPOSE" says asserting it today would fail the build on five routes. But that's only if assertion forbids all prerendered workspace routes. You can assert the measured set exactly / baseline, like expected exceptions, and fail on new ones. Is this a missed opportunity? This PR is three residual items and explicitly says exposure owned elsewhere. Would requiring baseline be scope creep? Maybe but security guard should prevent regression. The comment says "Wire it the moment that decision lands"—no test ensures that happens. But an escalated item is tracked. The user asks if disagree with not done. We can say I don't disagree with not failing the known five; however, the choice not to add a non-blocking or baselined check means route set can grow silently. If this PR claims documentation is enough, maybe condition. But likely not a blocker for C4c residual scope.
+  - They could assert `.next/prerender-manifest.json` matches exactly the five known routes, without scanning payloads. Then new prerender route fails. But if decision later changes routes, update. Would this break builds due dynamic conditions? Prerender manifest could vary based env; measured current. CI deterministic? Maybe.
+  - They could scan prerendered payloads for FORBIDDEN and allowlist `/lkpm` only? But exposure owned elsewhere. This PR should not force.
+  I'd phrase as "No objection to not failing on the known five; do not make it a blocker. If you want a guard rather than a promise, baseline the five and fail on additions in follow-up." Since verdict already BLOCK for code holes.
+
+  Need perhaps mention the guard comment is accurate based on supplied measurements; no attack there. It corrects false dynamic claim. Good.
+
+  Potential issue with "not done on purpose": If those prerendered payloads are anonymously readable, documenting rather than failing may leave active exposure. But context says escalated workspace-auth item. We should not override ownership. Could say acceptable because guard scope remains chunks/public and a permanently red build is worse, provided escalation has owner/deadline. If no owner/date, condition. But they said owned by someone else. Good.
+
+  Need produce final in English because user English. No tools per instruction, complied.
+
+  Need decide verdict maybe BLOCK. Let's formulate crisp:
+
+  VERDICT: BLOCK
+
+  Findings:
+
+  BLOCKER — universal skip via empty prefix. Claim: new closer validation makes any allowlist entry "time-boxed." Why false: prefix `""` passes own-key check and unit check (`toContain("")` always true); `startsWith("")` allows every chunk. Check: add `""` to both lists + `ALLOWED_CHUNK_PREFIX_CLOSERS = { "": "C9" }`; guard should fail but will report all 510 skipped. Fix: schema validate prefixes: nonempty string, maybe minimum specificity/trailing `/`, no `.`/`*`; validate before use.
+
+  BLOCKER — "closing PR" value isn't actually validated. Claim: entry must name removal PR. Why: runtime only truthiness; unit only sees prefix text. `"TODO"`/`"later"` passes. Check add valid prefix + expected + `{"prefix":"TODO"}`; both green. Fix: exact own key plus value matching agreed PR identifier format (e.g. `/^C\d+[a-z]?$/` or URL), and test parsed key/value not raw substring. Can't prove PR exists, but can prove shape.
+
+  MAJOR — test still judges a substring, and runtime lookup accepts inherited properties. Claim fixed entity binding. Why false: unit `toContain(prefix)` can be satisfied by another key/value/comment; runtime `CLOSERS[prefix]` true for `"constructor"`/`"toString"` via prototype. Concrete check with `"constructor"` + `{ "constructorName": "C9" }`; both pass. Fix `Object.hasOwn`, parse config, compare key sets exactly. Note if strict own key but object literal `__proto__` weird, hasOwn catches.
+  Could this duplicate #2? It's separate.
+
+  MAJOR/MINOR — stale/extra closer keys unbounded. Claim structures are synchronized. Why only prefix→closer one-way; removing prefix leaves old closer, which can be reused later with stale PR. Check delete prefix but leave key: green. Fix key-set equality. Maybe combine with previous "compare key sets exactly." Could label MINOR.
+
+  MINOR — primitive check misses symbol-keyed object fields. Claim every consultant field primitive. Why `Object.entries` string keys only; spread copies enumerable symbols. Check add symbol-keyed array and mutate via returned option. Fix Reflect.ownKeys/descriptors.
+
+  MINOR — runtime branch not automatically tested. Claim probe proves guard exits. Why manual only; source test passes if loop later removed. Check delete loop, suite green. Fix pure validator or child-process test. Is this worth adding? Maybe yes as MINOR.
+
+  Could there be a BLOCKER with closers regex and object body comments? Let's maybe not overload.
+
+  Need maybe include "What looked fixed":
+  - Function-hole fixed via allowlist.
+  - Empty-list vacuity fixed.
+  - Comment corrected.
+  - re-probe no-closer fixed.
+  But verdict still block. User wants attack; brief note.
+
+  Need ensure no false claim about `toContain("")`: Vitest `toContain` on string uses `.includes`; yes.
+
+  Check `ALLOWED_CHUNK_PREFIX_CLOSERS` with empty key syntax `{ "": "C9" }` valid. yes.
+
+  Check guard's `rel(file)` could ever be empty? Files only, rel filename nonempty. startsWith("") true.
+
+  Check skip log perhaps "510 chunks, 510 skipped..." but no failure. yes.
+
+  Check bogus value `{}` unit regex fails due inner brace, but `"TODO"` works. Use string.
+
+  Check value `"C9"` actually format? They don't define. `"TODO"` definitely not PR.
+
+  Check exact PR format: Project PR IDs like C4b? They call PR C4c, C4b. Could be mission IDs, not GitHub PR numbers. Suggest agreed format rather than assert exact.
+
+  Potential issue: `Object.hasOwn` static is Node 16.9; likely Next modern. Could use hasOwnProperty.
+
+  Check "unit test reads guard source and compares them." The suite's expected exceptions both lists. If add prefix to guard and expected, then closers bogus. yes.
+
+  Could a bogus value be caught by reviewer? Sure, but automated claim false. This is same standard first seat applied.
+
+  Severity choice: Two BLOCKERs may be seen as too harsh because require code changes to lists. But first seat called vacuity blocker despite requiring code change. Consistent.
+
+  Maybe combine universal prefix and bogus closer as one BLOCKER: "validation checks presence/truthiness, not schema, so it can be satisfied while bypassing guard." But user expects separate SEVERITY lines. We can separate.
+
+  Let's scrutinize if there is an even more direct issue with `ALLOWED_CHUNK_PREFIX_CLOSERS = { "app/(workspace)/reports/": "" }` failing because empty. They intend value must truthy. `"0"` truthy (string), `0` falsy. "TODO" yes.
+
+  What about key order/unicode normalization? Prefix with Unicode? path names. no.
+
+  Could closers object contain duplicate keys? JS last wins, test substring. no.
+
+  Could `ALLOWED_CHUNK_PREFIXES` contain `null` and JSON parse; closers key `"null"`; `r.startsWith(null)` only files beginning "null". no.
+
+  Could prefix be regex `.*`? startsWith literal, no.
+
+  Could `path.relative` produce paths with `..` if symlink? `all` probably glob within chunk dir; symlinks maybe. no.
+
+  Could allowlist skip source maps only? no.
+
+  Could runtime loop be circumvented by prefix property getter throwing? object literal no getters perhaps possible:
+  ```
+  CLOSERS = { get x() { return "C9"; } }
+  ```
+  truthy. own key. valid. okay.
+
+  Could closing PR be `true`; truthy. yes, same bogus.
+
+  Potential issue in test primitive: `PRIMITIVE` Set includes undefined but not "object" except null. Good.
+  - `value === null` message says `${field} is ${typeof value}, not a primitive`; null passes due condition. fine.
+  - If `option` is an array itself (taxConsultants returns nested array elements), Object.entries(array) checks indices values maybe primitives, so a consultant as `["a","b"]` would pass primitive-field test despite being an array reference shared by spread? Wait important! Suppose `TAX_CONSULTANTS` elements themselves are arrays or objects with symbol? The copy `({ ...c })` on an array produces a plain object with numeric properties, not an array; it copies elements. If array elements primitive, output options are objects with numeric fields, all primitive; test passes. But this changes shape; type contract maybe. More relevant: If a consultant option itself is a primitive string, spread string into object yields char fields, Object.entries passes. But TypeScript shape. Not likely.
+  - Suppose option has an object field but it's non-enumerable: spread doesn't copy it, so returned option lacks it; no shared reference. okay.
+  - Suppose option has symbol-keyed object: hole.
+  - Suppose option has an enumerable getter returning object: Object.entries invokes and catches. Spread would also invoke and copy object. good.
+  - Suppose option has an object under `__proto__` own data property? Object literal `__proto__` semantics can set prototype; object spread behavior? If module object has own `__proto__` via defineProperty, Object.entries sees it, catches. good.
+  - Deeply nested under string key caught.
+
+  Potential issue: shallow copy concern is not just nested fields but option objects could share a mutable prototype. Spread creates new plain object, not shared prototype. fine.
+
+  Potential issue: `taxConsultants()` itself may return frozen? no.
+
+  Potential issue with test `expect(options.length).toBeGreaterThan(0)` then `checked` ensures fields. fixed vacuity.
+
+  Now consider the top comment's claim "no generateStaticParams and no force-static anywhere"—maybe route could use `dynamic = 'force-dynamic'` on clients/[id], but comment says only exception stays dynamic. Fine.
+  - App Router prerenders by default unless dynamic API. Correct.
+  - Static payload with markers maybe marker from source code? `.rsc` can include labels. measured.
+  - "server payloads, on purpose, not yet" okay.
+
+  No tools means no file reads. We can cite line-ish? We don't have file line exact except diff. Could mention code snippets not path lines. They asked format, not citations. We can reference file names.
+
+  Need maybe state "I do not object to prerender-manifest exclusion" after findings.
+
+  Let's think if the `ALLOWED_CHUNK_PREFIX_CLOSERS` test has a regex issue with empty object and comments. It matches first occurrence of exact `const ALLOWED_CHUNK_PREFIX_CLOSERS = { ... };`. Since current object `{}`. Good.
+  - If there are two declarations (one commented fake earlier), `guard.match` picks first. Could lead false green. Runtime likely second declaration with same name in same scope would SyntaxError if both actual; but commented fake + real different variable used. Mention under source-regex fragility maybe not.
+  - The array regex likely same issue. Not shown; don't attack unknown.
+
+  Could the closer validation be bypassed by defining `ALLOWED_CHUNK_PREFIX_CLOSERS` with a Proxy? Since const object could be `new Proxy({}, { get: () => "C9" })`; regex unit expects literal `{...};` so test red. If test somehow sees a literal earlier, no.
+  - Could define object with getter for any prefix via `new Proxy` but not regex. no.
+
+  Could `Object.hasOwn` fail for object created null prototype? works.
+
+  Could unit parse actual object safely? Suggest moving allowlist config to JSON module shared by guard/test. That would eliminate regex. But guard currently reads arrays from source because process exit. A pure module `roster-chunk-policy.mjs` exporting arrays/objects could be imported by both guard and test without side effects. That's a good fix recommendation. Then exact key sets and schema. However user only asks review, not implementation. Include briefly.
+
+  Potential issue: "closing PR" identifier can be in key instead of value? Structure maps prefix to PR. fine.
+
+  Potential issue: The build-time loop's error message says "adding an exception without declaring its closer fails HERE, at build time". But if `ALLOWED_CHUNK_PREFIXES` is empty and `CLOSERS` has entry, build passes. Not exactly exception, so okay.
+
+  Potential issue: The unit test error "allowed but names no closing PR" triggers if prefix absent in raw body, but not if value bogus. Message mismatches. covered.
+
+  Potential issue: Full suite 5138 green after byte restore doesn't prove adversarial cases; we list probes.
+
+  Should we call severity "BLOCKER" for empty prefix, "MAJOR" for bogus PR value, "MAJOR" for own-key binding, "MINOR" stale keys, "MINOR" symbol fields, "MINOR" no automated runtime test. Then verdict BLOCK due blocker. Need maybe not overdo with 6 findings; desired oververbosity 5. The prompt explicitly asks attack; detailed is okay.
+
+  Let's ensure each line follows "SEVERITY - claim - why - what to check." Use bullets with bold severity. Maybe:
+
+  - **BLOCKER — claim:** "Every allowed prefix is scoped and time-boxed." **Why false:** ... **Check:** ...
+  This matches.
+
+  At end:
+  "On the deliberate non-goal: I agree ... Do not block C4c on scanning known five; but track/baseline. The block is solely the validation holes."
+
+  Would we say GO-WITH-CONDITIONS instead? If verdict BLOCK, conditions are fixes. If user expects adversarial review maybe BLOCK is right. Let's assess severity standard:
+  - A build guard preventing staff names public chunks. An empty allowlist bypass requires modifying source and expected test. But any allowlist entry is source change and can bypass a prefix; that's intended if reviewed. The automated guard cannot judge whether prefix is too broad. Empty string is obvious in code review, but tests should catch. First blocker similarly required adding entry to lists. So consistent.
+  - Bogus closing PR requires obvious "TODO" in code review. Again guard not attacker-proof. But first seat's standard was automated vacuity. So block.
+
+  Could empty prefix be prevented by the test comparing `listed` to `EXPECTED_CHUNK_EXCEPTIONS`: If attacker adds `""` to expected too, that's visible. But first probe also added entry to both lists. So yes.
+
+  One nuance: If add empty string to `EXPECTED_CHUNK_EXCEPTIONS`, the unit test's `expect(listed).toEqual(EXPECTED...)` passes. It then loops prefix `""` and `expect(closers body).toContain("")`. Is Vitest `toContain("")` on string maybe throws? According Jest `.toContain` string works and empty string is always contained. likely.
+  - Runtime object with empty key is valid. `CLOSERS[""]` returns "C9". yes.
+
+  Potential fix for prefix validation: `if (typeof prefix !== "string" || prefix.length === 0) fail`. Maybe also require no prefix matching all? length enough for universal empty. Could require `prefix.endsWith("/")`? Example chunk prefix maybe filename prefix without slash intended, e.g. `framework-`. Don't overprescribe.
+
+  Own-key binding: The unit should perhaps not regex parse object because JS object can contain inherited etc. Move policy into `.json`:
+  ```
+  {
+   "allowedChunkPrefixes": { "prefix": "C9" }
+  }
+  ```
+  Guard reads JSON; test imports same JSON; validate schema with zod/manual. This also allows exact key. Good.
+
+  Stale closer check: If exact key-set equality, stale caught. Should mention.
+
+  Automated runtime branch: If policy module validator used by guard and unit-tested, solved.
+
+  Could primitive test use `Object.getOwnPropertySymbols` plus `Object.entries`; to mirror spread, use `Reflect.ownKeys(option).filter(k => Object.prototype.propertyIsEnumerable.call(option,k))`. Also check getters? Access. Fine.
+
+  Maybe check arrays: `Object.entries` catches arrays as object. Functions caught by allow-list. Good.
+
+  What about primitive function test's `PRIMITIVE` includes `"undefined"` but not `null`; they special-case. Good. No issue.
+
+  Potential concern: A symbol-keyed object is rare and maybe over-adversarial. But review is adversarial; include as minor.
+
+  Potential concern: No automated check for closers values being open/unmerged. Can't verify without GitHub API and should not add external dependency. Format only. Maybe note "a string format check cannot prove the PR exists; that's a review/ownership issue." Good candidness.
+
+  Potential concern: Unit source regex is still brittle. We can recommend importing pure policy module. Maybe fold into own-key finding.
+
+  Let's draft final answer in English:
+
+  ```
+  VERDICT: BLOCK
+
+  - BLOCKER - The new time-box gate can approve a blanket exemption. `""` ...
+    Check: ...
+  - BLOCKER - "names its closing PR" is not enforced. Truthiness only ...
+    Check ...
+  - MAJOR - Entry binding is still textual, not structural, and runtime lookup is prototype-unsafe...
+  - MINOR - synchronization is one-way...
+  - MINOR - primitive invariant misses symbol-keyed fields...
+  - MINOR - build-time loop has no lasting executable regression test...
+  ```
+
+  Maybe stale key is part of structural key-set and can be major. Let's choose MAJOR because recycled closer undermines time-box:
+  ```
+  ALLOWED_CHUNK_PREFIXES=[]; CLOSERS={"old":"C4b"} passes. Later re-add old with C4b already merged.
+  ```
+  But unit currently initial closers {}. If someone removes prefix but leaves key, no failure. Good.
+
+  No need mention source-regex commented fake separately if recommend module.
+
+  Then "What is fixed": function allow-list, nonvacuous loop, comment correction all sound. Maybe one sentence.
+
+  "Prerender-manifest non-goal": agree not to hard-fail existing five; a permanently red guard would train bypass. Consider follow-up baseline to fail new routes, but not condition for this verdict? Since verdict block already.
+
+  Need avoid saying "all 510 skipped" exact maybe current 510; if universal prefix, offenders empty. The log likely says skipped count. Use "would skip every chunk."
+
+  Let's make sure no tools used—yes.
+
+  Potential alternative verdict GO-WITH-CONDITIONS if active exposure not worsened. But central guard's new check has direct bypass, so BLOCK.
+
+  Let's formulate with exact code examples inline. Keep concise but enough.
+
+  Need maybe not use tables. Bullets.
+
+  Let's answer.
+
+• VERDICT: **BLOCK**
+
+  - **BLOCKER** — **Claim:** every exception is scoped and time-boxed.  
+    **Why:** an empty prefix bypasses the entire guard:
+    ```js
+    const ALLOWED_CHUNK_PREFIXES = [""];
+    const ALLOWED_CHUNK_PREFIX_CLOSERS = { "": "C9" };
+    ```
+    `r.startsWith("")` is true for every chunk, `CLOSERS[""]` is truthy, and the unit test’s `toContain("")` is always true. With the suite expectation updated, every chunk is skipped while both checks stay green.  
+    **What to check:** add exactly that entry and confirm the guard reports all chunks skipped. Reject empty or otherwise underspecified prefixes before consulting the closer map.
+
+  - **BLOCKER** — **Claim:** an allowed prefix must name the PR that removes it.  
+    **Why:** the guard checks only that the mapped value is truthy; the test checks only that the prefix appears somewhere in the object text. This passes both:
+    ```js
+    ALLOWED_CHUNK_PREFIX_CLOSERS = {
+      "app/(workspace)/reports/": "TODO",
+    };
+    ```
+    So does `"later"`, `"TBD"`, or `true`. The central requirement repaired after the first review is therefore still not enforced.  
+    **What to check:** use a valid prefix with a bogus non-PR value and rerun both probes. Validate that the value is a string matching the repository’s agreed PR-reference format. A static check cannot prove that PR exists, but it can at least prove that a PR-shaped identifier was declared.
+
+  - **MAJOR** — **Claim:** the prefix is now bound to its own closer entry.  
+    **Why:** the unit test still judges a substring rather than a key, and the runtime lookup follows the prototype chain:
+    ```js
+    ALLOWED_CHUNK_PREFIXES = ["constructor"];
+    ALLOWED_CHUNK_PREFIX_CLOSERS = {
+      "constructorName": "C9",
+    };
+    ```
+    The test sees `"constructor"` inside `"constructorName"`, while `CLOSERS["constructor"]` inherits `Object.prototype.constructor`, which is truthy. Neither check found an actual own key.  
+    **What to check:** run that probe. Use `Object.hasOwn(CLOSERS, prefix)` or equivalent, and make the test compare parsed key sets instead of searching the raw object text.
+
+  - **MAJOR** — **Claim:** `ALLOWED_CHUNK_PREFIXES` and `ALLOWED_CHUNK_PREFIX_CLOSERS` are synchronized.  
+    **Why:** synchronization is checked in only one direction. Removing an allowlist prefix while leaving its closer behind remains green:
+    ```js
+    ALLOWED_CHUNK_PREFIXES = [];
+    ALLOWED_CHUNK_PREFIX_CLOSERS = {
+      "app/(workspace)/reports/": "C4b",
+    };
+    ```
+    That stale closer can later be reused for a new exception whose alleged closing PR is already historical.  
+    **What to check:** remove only the prefix and leave the key. The guard and suite should both fail. Compare the exact key set to the prefix set, not merely prefix → closer.
+
+  - **MINOR** — **Claim:** every consultant field is primitive.  
+    **Why:** `Object.entries()` sees only string-keyed enumerable properties, but object spread also copies enumerable symbol-keyed properties. A future symbol-keyed array or object would still be shared by reference and would evade this test.  
+    **What to check:** add an enumerable `Symbol()`-keyed array field, mutate it through a returned option, and observe the module state. Enumerate own string and symbol keys, using property descriptors to match spread semantics.
+
+  - **MINOR** — **Claim:** the new build-time closer enforcement is protected by the suite.  
+    **Why:** the permanent test parses declarations but never executes the new loop. If that loop is later deleted or rewired to another object, the source-based test can remain green. The current proof is a manual probe, not a lasting regression test.  
+    **What to check:** temporarily remove the runtime loop and run the suite. Prefer a side-effect-free policy/validator module imported by both guard and test, or a child-process fixture test.
+
+  The function-field hole, the vacuous empty-list loop, and the prerendering comment are all materially fixed.
+
+  I do **not** object to leaving the five known prerendered routes out of this guard: making every build red for an already-escalated exposure would likely train people to bypass the guard. A useful follow-up would be a baseline that permits those five measured routes but fails on any newly prerendered workspace route.
+
+To resume this session: kimi -r session_393cb2a0-81a4-472f-9438-d5e0202c3cf1

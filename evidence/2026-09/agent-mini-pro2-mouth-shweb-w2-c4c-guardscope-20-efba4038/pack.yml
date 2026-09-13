@@ -1,0 +1,332 @@
+# Canonical pack — SHWEB-20260911 / W2-C4c: the three things C4b's review round found and C4b was not allowed to fix
+gear: 2 # floor measured WITH --numstat-file over the COMPLETE changed set = 2
+gear_floor_note: >-
+  Measured twice, and the first number was wrong for a reason worth writing down. Over the three
+  CODE files alone the floor is 1; over the complete changed set — the three code files PLUS this
+  pack and brief — it is 2, which is what CI computes because CI sees the whole PR. The code change
+  is +199/-3 across three files, none of it behavioural to the scan; the size comes from comments
+  and from a review round that produced six confirmed findings worth recording. Declared so the
+  gear is not read as risk it is not.
+gear_floor_note: >-
+  To be declared from `scripts/evidence_pack_lint.py --print-floor` WITH `--numstat-file` supplied.
+  Recorded here as a standing instruction because C4b declared gear 1 and the CI floor was 3: run
+  without the numstat and the SIZE term is silently absent from the computation, so the number that
+  comes back is not the number CI will compute. This diff is expected to be small (three files,
+  comments and one assertion), so the floor should be 1 — but "expected" is not "measured", and the
+  measurement needs both flags.
+task_id: shweb-w2-c4c-guardscope-20260913
+mandate_id: SHWEB-20260911/W2-C4c
+colour: BLUE
+l_level: L2
+host: Mini-Pro2 (nuzantara)
+worktree: .worktrees/mouth-shweb-w2-c4c-guardscope-20260913
+branch: agent/mini-pro2/mouth/shweb-w2-c4c-guardscope-20260913
+base_sha: ac05dfc6f4 # pragma: allowlist secret - public Git commit ID, fresh origin/main containing the C4b merge
+opened_at: "2026-09-12T20:45Z"
+
+predecessor: >-
+  #6361 (merged af91e41e5b, SERVED — proved on production: the clients/[id] chunk went from 2
+  markers to 0, 74/74 chunks anonymous with 0 markers inside AND outside clients/, health contains
+  the merge by ancestry) closed C4's time-boxed guard exception at its cause. Its review round
+  produced three findings that were deliberately NOT fixed there, because the only push the
+  imperator authorised on that frozen head was evidence-only. This PR is those three, and nothing
+  else.
+
+objective: >-
+  Close the three residual items from C4b's review round: give the guard's scope boundary a named
+  trigger, make the server table's copy safe against a field it does not yet have, and retire an
+  assertion that now constrains prose instead of behaviour.
+
+brief_ref: evidence/brief.yml # the STAGING name the validator resolves against
+pii_scan: clean
+pii_scan_note: >-
+  No personal data is added, moved or quoted. Two of the three changes are comments and one
+  assertion; the third touches how a table is copied, not what it contains.
+
+scope:
+  - apps/mouth/scripts/assert-roster-not-in-public-chunks.mjs # header: name the trigger that forces the scan scope to widen
+  - apps/mouth/src/lib/workspace/roster-directory.ts # taxConsultants(): a copy that survives a nested field
+  - apps/mouth/src/lib/workspace/roster-directory.test.ts # pin that the option fields stay primitive
+  - apps/mouth/src/lib/client-roster-boundary.test.ts # retire the vestigial C4b assertion, and fix the test name that no longer describes it
+
+items:
+  - id: C4c-1
+    raised_by: tp1-qwen3.8-max (council seat on C4b), INFO
+    what: >-
+      The guard's header explains at length that it does NOT scan `.next/server/app`, and why that
+      is deliberate. What it never says is what would make that choice WRONG. Measured on main:
+      the words `generateStaticParams` and "static export" appear zero times in the file.
+    why_it_matters: >-
+      The whole justification rests on an unstated assumption — that the workspace routes stay
+      DYNAMIC. C4b measured that assumption holding: `clients/[id]` emits no prerender artifact, so
+      the flight payload is built per request and never lands on disk. Add `generateStaticParams`
+      or a static export to one of those routes and the payload becomes a build artifact under
+      `.next/server/app`, which this guard does not look at — and nothing in the file tells the
+      person making that change that they have just moved data outside the guard's eyes. An
+      assumption that is load-bearing and unwritten is the shape that decays silently.
+    cure: >-
+      One paragraph in the header naming the trigger explicitly: if any `(workspace)` route gains
+      `generateStaticParams`, `export const dynamic = "force-static"`, or a static export mode,
+      then the scan MUST be extended to `.next/server/app` — and stating that the current
+      justification is measured, not assumed, by naming the measurement (0 prerender artifacts for
+      `clients/[id]`).
+    acceptance:
+      - text: WHEN a reader opens the guard, THEN the condition that invalidates its scope is written in it.
+        probe: "grep for the trigger terms in the guard; they must appear"
+  - id: C4c-2
+    raised_by: tp1-qwen3.8-max (council seat on C4b), LOW
+    what: >-
+      `taxConsultants()` returns `TAX_CONSULTANTS.map((c) => ({ ...c }))` — a SHALLOW copy.
+      `TaxConsultantOption` is `{ value: string; label: string }`, so today every field is a
+      primitive and the copy is a true copy.
+    why_it_matters: >-
+      Inert today and not a live defect — the seat said so itself, and RSC serialisation deep-copies
+      everything that crosses to the client anyway. It matters because the function's PURPOSE is to
+      hand out something the caller cannot use to mutate the module constant, and the spread only
+      achieves that while the shape stays flat. Add one array or object field — a permissions list,
+      a locale map — and the copy starts sharing that reference with the module constant, on the
+      server, silently, with no test failing.
+    cure: >-
+      Either `structuredClone` in `taxConsultants()`, or a test in `roster-directory.test.ts` that
+      asserts every value in every option is a primitive so a nested field cannot be added without
+      a red test. PREFER THE TEST, and say why in the brief rather than leaving it to taste: the
+      test states the invariant the type is relied upon to have, and it fails at the moment someone
+      changes the shape — which is the moment the decision is actually being made. `structuredClone`
+      would silently absorb the change instead, making the copy correct while leaving the reader
+      with no idea the constraint ever existed. Doing both is acceptable; doing only the clone is not.
+    acceptance:
+      - text: WHEN an option gains a non-primitive field, THEN a test SHALL fail.
+        probe: "mutant: add a nested array field to one TAX_CONSULTANTS entry and to the interface; the new test must go red, and must be green with the shape as it stands"
+  - id: C4c-3
+    raised_by: the imperator, reading C4b's merged diff
+    what: >-
+      `client-roster-boundary.test.ts:285` still asserts `expect(guard).toContain("C4b")`, under the
+      comment "and the entry has to carry its closing PR, or it is not time-boxed". Its enclosing
+      test is named "the guard's chunk exception is exactly the one declared, time-boxed entry".
+      Both date from when the allowlist had one entry. C4b emptied the allowlist — verified on main,
+      `ALLOWED_CHUNK_PREFIXES = []` and `EXPECTED_CHUNK_EXCEPTIONS: readonly string[] = []`.
+    why_it_matters: >-
+      With no entry, "the entry must name its closing PR" is vacuous, and the assertion no longer
+      checks behaviour: it checks that the string "C4b" appears somewhere in the guard's PROSE. It
+      passes today only because C4b's rewritten comment narrates the history that closed the
+      exception. So it is now a rule that the guard must mention a merged PR forever, and it would
+      go red the day someone tidies that paragraph — a test failing for a reason that has nothing to
+      do with what it exists to protect. The test NAME is wrong in the same way: it promises to
+      check "exactly the one declared entry" when the correct state is none.
+    cure: >-
+      Make the closing-PR requirement CONDITIONAL on the list being non-empty, which restores the
+      guilt/innocence pair the rule was written for: an allowlist entry with no closing-PR reference
+      must fail, and an EMPTY allowlist must require no PR name at all. Rename the test to describe
+      what it now enforces. Do NOT simply delete the assertion — the requirement is still right for
+      the case it was written for, and deleting it would let the next time-boxed exception arrive
+      with no closing PR named.
+    acceptance:
+      - text: WHEN the allowlist is empty, THEN no PR name SHALL be required anywhere in the guard.
+        probe: "with the lists empty, strip every occurrence of 'C4b' from the guard's comments — the suite must stay green"
+      - text: WHEN an allowlist entry exists without a closing-PR reference, THEN the test SHALL fail.
+        probe: "mutant: add one prefix to ALLOWED_CHUNK_PREFIXES and to EXPECTED_CHUNK_EXCEPTIONS, with no PR name in the comment — must go red"
+
+constraints:
+  - No behaviour change to the guard's actual scan. C4b's measured result (0 of 522 chunks, empty allowlist) must be reproduced by the build after this PR.
+  - apps/mouth/src/data/team-roster.ts stays FROZEN with no hunk.
+  - package.json and package-lock.json untouched.
+  - >-
+    R-A, R-B and R-C are NOT in scope. C4c must not widen the guard to `.next/server/app`; it only
+    writes down the condition under which that becomes necessary. The decision itself is Zero's, and
+    encoding it here would be exactly the "allowlist that encodes the thing under review" the guard's
+    own header warns against.
+  - Every other path #6277 forbade stays forbidden.
+
+lanes:
+  - lane: build
+    role: build
+    seat: claude-opus-5
+    what: the three items, one commit each or one commit total — they share no code
+  - lane: review-refuter
+    role: review
+    seat: gemini-3.1-pro
+    what: the diff, out of the contribution chain
+  - lane: review-second-reader
+    role: review
+    seat: kimi-code/k3
+    what: the same, independently
+
+dissent: []
+
+lessons_carried_from_c4b:
+  - >-
+    Run `--print-floor` WITH `--numstat-file`. C4b declared gear 1 against a CI floor of 3 because
+    the SIZE term was absent from a computation that looked complete.
+  - >-
+    PROSE ABOUT A SCANNER IS INPUT TO THAT SCANNER. C4b's receipt documenting a detect-secrets audit
+    turned the check red by quoting the hash next to the words the scanner keys on. If this PR
+    documents anything about detect-secrets, name values by reference, never by literal.
+  - >-
+    Hand reviewers CONTIGUOUS excerpts. A `sed -n '1,5p;46,54p'` packet spliced two valid halves into
+    an unclosed `import {`, and a refuter correctly reported a BLOCKER that did not exist. An excerpt
+    that cuts a multi-line statement does not omit context, it fabricates a defect.
+  - >-
+    Diff against the MERGE-BASE, never against a ref that moves. Two separate checks in C4b reported
+    phantom results — ten frozen-path violations and thirteen collisions — both because `origin/main`
+    had advanced mid-session.
+  - >-
+    In zsh, `for x in $VAR` does not word-split. A 19-route sweep ran once with the whole string and
+    printed "0 chunk URLs", which is indistinguishable from a pass. Use arrays.
+
+council_run: journal.jsonl
+
+dissent:
+  - seat: gemini-3.1-pro
+    objection: >-
+      BLOCKER — the new rule was VACUOUS. Making the closing-PR requirement conditional on a
+      non-empty list still checked it with `expect(guard).toMatch(/closing PR/i)` over the WHOLE
+      file, and the guard's prose already says "closing PR" twice while narrating history. A new
+      un-timeboxed entry would therefore satisfy it. The seat also said the author's own guilt probe
+      was invalid, because it had to delete those markers to force a failure — which is not the
+      regression anyone would actually make.
+    status: CONFIRMED
+    disposition: >-
+      Reproduced before touching anything: an entry added to BOTH lists with the prose untouched
+      passed 9/9 GREEN. The seat was right on the finding AND on the probe being rigged, and the
+      shape is this repo's #3 scar family — a guard judging a substring of a file instead of an
+      entity. Fixed by binding the promise to the ENTRY (a closers map keyed by prefix) and then,
+      after the second seat, by moving the whole contract out of source-parsing entirely.
+  - seat: gemini-3.1-pro
+    objection: >-
+      MINOR — the comment claims the workspace routes stay dynamic and names generateStaticParams /
+      force-static / static export as the future triggers. App Router prerenders a route by DEFAULT
+      unless it uses a dynamic API, so a route can become a static payload with none of those.
+    status: CONFIRMED
+    disposition: >-
+      CONFIRMED, and it overturned the PREMISE of the item rather than just its wording.
+      Measured on this build, and the seat is right in a way that matters more than the wording:
+      FIVE (workspace) index routes are ALREADY prerendered with no opt-in trigger anywhere —
+      /clients, /dashboard, /lkpm, /partners, /settings all appear in .next/prerender-manifest.json
+      with .html and .rsc on disk. Of those, /lkpm's payload carries 4 marker hits: staff data
+      already baked into a build artifact this guard does not scan. So the item as briefed — "write
+      down the trigger that would make the scope wrong" — was describing as hypothetical something
+      already true. The comment now states the measured situation instead. The one claim that
+      survives is the narrow one C4b actually proved: clients/[id] is dynamic, 0 prerender
+      artifacts, which is why moving its table server-side genuinely removed the data from
+      everything this guard can see.
+  - seat: gemini-3.1-pro
+    objection: >-
+      MAJOR — `typeof value !== "object"` admits FUNCTIONS, which a spread copies by reference just
+      as it would an array. MINOR — the loop is vacuous on an empty table, and vitest passes a test
+      that asserts nothing.
+    status: CONFIRMED
+    disposition: >-
+      Both taken. The check is now an ALLOW-list of primitive `typeof` results rather than a
+      deny-list of "object", and the test asserts the table is non-empty and that it actually
+      examined fields. Probed: a `format: () => string` field turns it red.
+  - seat: gemini-3.1-pro
+    objection: >-
+      MAJOR — a comment in a build script enforces nothing, and the claim that a route author will
+      read this file is false; the guard could instead assert that no (workspace) route appears in
+      .next/prerender-manifest.json.
+    status: CONFIRMED
+    disposition: >-
+      CONFIRMED in principle and DECLINED here, with a measurement rather than a preference.
+      The mechanism the seat proposes is right and is written into the guard as the test to use.
+      It is NOT asserted, and the reason is a number rather than a preference: asserting it today
+      fails the build on the five routes measured above. Turning an escalated, owner-held exposure
+      into a red build for every window is not how that decision gets made — and the second seat
+      independently agreed, adding that it would train people to bypass the guard. Recorded as the
+      follow-up: a baseline that accepts those five measured routes and fails on any NEWLY
+      prerendered workspace route.
+  - seat: kimi-code/k3
+    objection: >-
+      BLOCKER — an empty prefix disables the entire scan: `"".startsWith()` is true for every chunk,
+      and with a closer declared for it both checks stay green. BLOCKER — the closer value is never
+      validated, so "TODO", "later" or `true` satisfy the requirement that an entry name its closing
+      PR. MAJOR — the lookup follows the prototype chain, so `CLOSERS["constructor"]` is truthy, and
+      the test's substring match sees "constructor" inside "constructorName". MAJOR — synchronisation
+      is one-directional: a closer left behind after its prefix is removed stays green and can be
+      reused by a later exception.
+    status: CONFIRMED
+    disposition: >-
+      All four reproduced and all four fixed. The deeper point was that two rounds of holes shared
+      one root: the rule lived in a test that PARSED this source with a regex, so it judged strings
+      instead of values — and strings cannot show you an empty prefix, an inherited key, or a
+      closer whose value is a word. So the contract moved INTO the guard, where the real objects
+      are, and runs on every build: blank prefixes rejected, `Object.hasOwn` instead of truthiness,
+      the closer required to look like a PR reference, and both directions of the pairing checked.
+      Measured after: empty prefix exit 1, "TODO" closer exit 1, inherited key exit 1, stale closer
+      exit 1, and a properly declared exception exit 0 — the innocence case, so the rule is not
+      merely "always fail".
+  - seat: kimi-code/k3
+    objection: >-
+      MINOR — `Object.entries` sees only string keys, but a spread also copies enumerable
+      SYMBOL-keyed properties, so a symbol-keyed array would still be shared by reference.
+      MINOR — the guard's new runtime loop is never executed by a permanent test; the source-based
+      test could stay green if the loop were deleted.
+    status: CONFIRMED
+    disposition: >-
+      The symbol hole is fixed — the walk uses Reflect.ownKeys and a symbol-keyed array now turns
+      the test red (probed). The second is accepted and NOT fully cured, stated plainly rather than
+      glossed: the suite asserts the runtime contract EXISTS (so it cannot be silently deleted) and
+      its BEHAVIOUR is proved by the four probes recorded above, not by a test that runs it. Making
+      that permanent means extracting the contract into a module both the guard and the suite
+      import, which is a larger change than this PR was opened for. Named as the follow-up rather
+      than done quietly.
+
+receipts:
+  - claim: "the rule the first seat called vacuous really was vacuous, and is not any more"
+    cmd: "add an entry to BOTH lists with the guard's prose untouched; run the suite; then the same after the fix, plus the guard itself"
+    result: >-
+      BEFORE: 9 of 9 passed — green with an un-timeboxed exception in place. AFTER: the suite is red
+      naming the prefix, and the guard exits 1 at build time with the same complaint.
+    exit: 0
+    ts: "2026-09-12T23:20:00Z"
+    seat: claude-opus-5
+  - claim: "the exception contract holds against every probe the second seat designed"
+    cmd: "five runs of the guard: empty prefix; closer 'TODO'; prefix 'constructor' with key 'constructorName'; closer with its prefix removed; and a properly declared exception"
+    result: >-
+      exit 1, exit 1, exit 1, exit 1 — each with a message naming what is wrong — and exit 0 for the
+      properly declared one, which is the innocence half. Guard restored byte-identical afterwards.
+    exit: 0
+    ts: "2026-09-12T23:50:00Z"
+    seat: claude-opus-5
+  - claim: "the flatness test now catches what it claimed to catch"
+    cmd: "three mutants: a nested array field; a function field; a symbol-keyed array field"
+    result: "red, red, red — and 6 of 6 green with the shape as it stands. The first draft passed the function and symbol cases."
+    exit: 0
+    ts: "2026-09-12T23:45:00Z"
+    seat: claude-opus-5
+  - claim: "the premise of item 1 was wrong, and the corrected comment states what was measured"
+    cmd: "read .next/prerender-manifest.json; list workspace routes in it; grep their .html/.rsc payloads for markers; check clients/[id]"
+    result: >-
+      5 workspace routes prerendered (/clients, /dashboard, /lkpm, /partners, /settings) with
+      .html/.rsc on disk; /lkpm's payload carries 4 marker hits; clients/[id] emits 0 prerender
+      artifacts and is genuinely dynamic.
+    exit: 0
+    ts: "2026-09-12T23:15:00Z"
+    seat: claude-opus-5
+  - claim: "no behaviour of the scan changed, and the whole suite is green"
+    cmd: "npm run build (guard runs inside it); npx vitest run with no filter; npx tsc --noEmit; npx eslint; npx prettier --check"
+    result: >-
+      "ROSTER_CHUNK_ASSERT OK: scanned 510 chunks, 0 skipped by the declared time-boxed exception
+      (none)" — the same line C4b produced. 479 files / 5138 tests passed, 0 failed. typecheck 0,
+      eslint 0 errors, prettier clean.
+    exit: 0
+    ts: "2026-09-13T00:05:00Z"
+    seat: claude-opus-5
+
+lesson:
+  what: >-
+    A full-suite run reported 31 files and 155 tests RED, on the pristine base as well as on this
+    branch, and the obvious conclusion — "origin/main is broken" — was one sentence away from being
+    sent to the imperator. It was false. The runs used `npx --prefix <dir> vitest run --root <dir>`,
+    and `--root` makes vitest load its DEFAULT config instead of apps/mouth/vitest.config.ts: the
+    printed `include` was vitest's default, and `setupFiles: ["./src/test/setup.tsx"]` never ran, so
+    suites that depend on that setup failed on a gitignored data file. Run as the project intends —
+    `cd apps/mouth && npx vitest run` — the same tree is 479 files / 5138 tests green.
+  why_it_matters: >-
+    This is the fourth time in this mandate that a measurement with the wrong FRAME produced a
+    confident, dramatic, false result: zsh not word-splitting turned a 19-route sweep into one
+    iteration and printed "0 chunk URLs"; a diff against a moved origin/main invented ten frozen-path
+    violations and thirteen collisions; a spliced excerpt fabricated a syntax error a refuter duly
+    reported. Every one of them looked exactly like a real finding, and the tell was always the same
+    — the result was far more dramatic than the change could explain. "Main is red" from a
+    three-file comment-and-test diff deserved the suspicion it eventually got, BEFORE the report and
+    not after.

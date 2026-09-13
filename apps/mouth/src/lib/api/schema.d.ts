@@ -2238,11 +2238,14 @@ export interface paths {
     put?: never;
     /**
      * Compose Article
-     * @description Compose/enrich an article with Bali Zero style via DeepSeek.
+     * @description Compose/enrich an article with Bali Zero style via DeepSeek (TP1 gateway).
      *
      *     Migrated from Claude Max OAuth (which hangs inside Fly containers on
      *     Linux non-TTY — see ``memory/feedback_claude_cli_linux_hang.md``) to
-     *     ``deepseek-v4-flash`` (~100x cheaper, structured JSON output, clean exit).
+     *     ``deepseek-v4-flash-0731`` (~100x cheaper, structured JSON output, clean
+     *     exit) — routed through the TP1/Alibaba gateway since 2026-08-29
+     *     (the original direct ``api.deepseek.com`` door was retired 2026-07-19;
+     *     see ``backend.llm.deepseek_client`` module docstring).
      */
     post: operations["compose_article_api_articles_compose_post"];
     delete?: never;
@@ -3927,6 +3930,176 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/compliance/obligations": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** List Obligations */
+    get: operations["list_obligations_api_compliance_obligations_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/compliance/obligations/catalog": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Get Catalog
+     * @description The obligations catalog the reviewer screen labels proposals with.
+     *
+     *     Rule metadata only — no client data and no database read (``_cached_rules``
+     *     is the process-wide YAML load). The UI must render `rule_id` through THIS
+     *     endpoint instead of duplicating the catalog in the frontend.
+     */
+    get: operations["get_catalog_api_compliance_obligations_catalog_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/compliance/obligations/generate": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Generate Obligations */
+    post: operations["generate_obligations_api_compliance_obligations_generate_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/compliance/obligations/profile/{client_id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Get Client Profile
+     * @description The profile ``POST /generate`` would compute for this client, with provenance.
+     *
+     *     ``present_keys`` are the custom_fields keys the engine recognised AND parsed;
+     *     ``missing_keys`` the engine ATTRIBUTES still sitting at their ClientProfile
+     *     default, which is what makes ``applies()`` propose the minimum. 404 when the
+     *     client does not exist. A client with no company row is NOT an error here (the
+     *     profile is simply all defaults); only PATCH needs a row to write to, and says
+     *     409 instead.
+     */
+    get: operations["get_client_profile_api_compliance_obligations_profile__client_id__get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    /**
+     * Patch Client Profile
+     * @description Merge engine ATTRIBUTES into the client's companies.custom_fields.
+     *
+     *     Body = any subset of ATTRIBUTES. ``company_type`` is accepted only as one of
+     *     COMPANY_TYPES and is stored under the custom_fields key
+     *     ``compliance_company_type``, which ``profile_inputs`` honours BEFORE the
+     *     companies.company_type string mapping — that precedence is what lets the
+     *     reviewer fix a company the string reads as OTHER, and it is documented at the
+     *     single place that implements it (``profile_inputs``'s docstring).
+     *
+     *     The write is the JSONB merge ``crm_enhanced.py`` already uses
+     *     (``COALESCE(custom_fields, '{}'::jsonb) || $1::text::jsonb``), so unrelated
+     *     keys survive untouched and no read-modify-write race can drop one. Nothing is
+     *     created: 409 when the client has no linked company row, 404 when the client
+     *     does not exist. A PATCH only ever SETS keys; it never removes one.
+     *
+     *     Logs the keys written, never their values (they are client data).
+     */
+    patch: operations["patch_client_profile_api_compliance_obligations_profile__client_id__patch"];
+    trace?: never;
+  };
+  "/api/compliance/obligations/{obligation_id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Get Obligation */
+    get: operations["get_obligation_api_compliance_obligations__obligation_id__get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/compliance/obligations/{obligation_id}/approve": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Approve Obligation
+     * @description Approve a proposal and bridge it into compliance_alerts, atomically.
+     *
+     *     Both writes (client_obligations proposed->approved->alerted, and the ONE
+     *     compliance_alerts insert) happen inside a single transaction on the SAME
+     *     connection (``ObligationsRepository.with_connection`` /
+     *     ``AlertRepository.with_connection``): a failure anywhere — including the
+     *     alert insert — rolls back the obligation transition too, so a caller never
+     *     observes an obligation stuck ``approved`` with no alert, nor an alert with
+     *     no matching ``alerted`` obligation. No compensation logic is needed because
+     *     nothing is committed until the end of the ``async with conn.transaction()``
+     *     block. A concurrent second approve/reject loses the race at the guarded
+     *     ``UPDATE ... WHERE status='proposed'`` inside ``set_status`` (0 rows
+     *     returned under READ COMMITTED once the winner commits) and gets 409.
+     */
+    post: operations["approve_obligation_api_compliance_obligations__obligation_id__approve_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/compliance/obligations/{obligation_id}/reject": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Reject Obligation */
+    post: operations["reject_obligation_api_compliance_obligations__obligation_id__reject_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/crm-guardian/drive/external-owner-risks": {
     parameters: {
       query?: never;
@@ -5380,6 +5553,29 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/crm/garuda/assignment-targets": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Get Assignment Targets
+     * @description `{"items": [{"email", "label"}]}` — every email `assignPractice` accepts.
+     *
+     *     Sorted by the roster's own `ORDER BY name`, deduplicated, with ambiguous
+     *     labels disambiguated by the service (see its docstring).
+     */
+    get: operations["get_assignment_targets_api_crm_garuda_assignment_targets_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/crm/intelligence/evidence-dossiers": {
     parameters: {
       query?: never;
@@ -6186,6 +6382,11 @@ export interface paths {
      * Add Document To Practice
      * @description Add a document to a practice
      *
+     *     Access Control:
+     *     - Admin users: can add documents to any practice
+     *     - Team members: can only add documents to practices they created or
+     *       are assigned to (mirrors update_practice; crm-mutation-scope)
+     *
      *     - **document_name**: Name/type of document (e.g., "Passport Copy")
      *     - **drive_file_id**: Google Drive file ID
      *     - **uploaded_by**: Email of person uploading
@@ -6245,6 +6446,11 @@ export interface paths {
     /**
      * Add Required Document
      * @description Add a required document to a practice (team member only).
+     *
+     *     Access Control:
+     *     - Admin users: can add required documents to any practice
+     *     - Team members: can only add required documents to practices they
+     *       created or are assigned to (mirrors update_practice; crm-mutation-scope)
      */
     post: operations["add_required_document_api_crm_practices__practice_id__required_documents_post"];
     delete?: never;
@@ -6266,6 +6472,11 @@ export interface paths {
     /**
      * Delete Required Document
      * @description Delete a required document from a practice.
+     *
+     *     Access Control:
+     *     - Admin users: can delete required documents on any practice
+     *     - Team members: can only delete required documents on practices they
+     *       created or are assigned to (mirrors update_practice; crm-mutation-scope)
      */
     delete: operations["delete_required_document_api_crm_practices__practice_id__required_documents__doc_id__delete"];
     options?: never;
@@ -6273,6 +6484,11 @@ export interface paths {
     /**
      * Update Required Document
      * @description Update a required document (team member review).
+     *
+     *     Access Control:
+     *     - Admin users: can update required documents on any practice
+     *     - Team members: can only update required documents on practices they
+     *       created or are assigned to (mirrors update_practice; crm-mutation-scope)
      */
     patch: operations["update_required_document_api_crm_practices__practice_id__required_documents__doc_id__patch"];
     trace?: never;
@@ -8105,8 +8321,11 @@ export interface paths {
      * @description Mint a new E33 case starting at ``fit_memo``.
      *
      *     Property basis is out of V1 scope (pending addendum 007 —
-     *     ``property_validation_standard``). Client existence, archival state and
-     *     RBAC are checked BEFORE any insert.
+     *     ``property_validation_standard``). Before any insert, validate the requested
+     *     client's existence, archival state and caller access, the optional practice's
+     *     client association, and the optional principal client's existence, archival
+     *     state and caller access. Principal and dependent may have different client IDs;
+     *     this access check does not establish their family relationship.
      *
      *     On a case_id collision (``asyncpg.UniqueViolationError``) re-mint once;
      *     a second collision is a 500 (astronomically unlikely — 6 hex chars).
@@ -10842,7 +11061,8 @@ export interface paths {
      * Publish Staging Item
      * @description Publish approved item to Qdrant knowledge base and register in anti-duplicate system.
      *
-     *     Optional body: {"position": "hero_main"} to set homepage position.
+     *     News Room requests must carry an explicit body such as
+     *     ``{"position": "hero_main"}``; there is no editorial placement default.
      *
      *     This endpoint:
      *     1. Ingests article to Qdrant (knowledge base)
@@ -15202,6 +15422,12 @@ export interface paths {
      * Get Team Members
      * @description Get list of team members visible to the current user.
      *
+     *     Access: team members only (``require_team_member``). Clients, service
+     *     accounts and external partners get 403 — no partner-portal page consumes
+     *     this roster (it is the staff workspace's people list), so a partner JWT
+     *     previously received 200 with an empty or department-scoped list, which
+     *     answered "what does the team look like" to a caller who is not on it.
+     *
      *     Visibility rules:
      *     1. User-specific visibility rules (team_member_visibility_rules table)
      *     2. Department-based visibility (all users in same department)
@@ -16455,6 +16681,378 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/visa/voa/auth/magic-links": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Request Magic Link
+     * @description Always 202 for an unknown or non-owned result and never returns the
+     *     token (contract, verbatim). Exact replay returns the original 202
+     *     without another email.
+     */
+    post: operations["requestMagicLink"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/visa/voa/auth/magic-links/preview": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Preview Magic Link
+     * @description Answers "whose application does this link open?" WITHOUT consuming
+     *     the token -- the residual login-CSRF finding
+     *     `continue/page.tsx` (`apps/mouth/src/app/visa/voa/auth/`) has carried
+     *     since 2026-08-28: a generic "Continue" button behind an unbound landing
+     *     GET lets an attacker mail a victim the attacker's OWN link, and the
+     *     victim's click plants the attacker's session in the victim's browser.
+     *     Showing the customer whose application they are about to open, before
+     *     they commit, is the mitigation; `MagicLinkStore.peek` (never `exchange`)
+     *     is what makes it safe to call from an unauthenticated GET-adjacent flow
+     *     without spending the very credential it describes.
+     *
+     *     NOT part of the frozen contract (`products/garuda-voa/contracts/
+     *     openapi.yaml`) -- see this module's own docstring for why a lane does
+     *     not fold a new operation into that file unilaterally. Takes the exact
+     *     same request shape as `exchangeMagicLink` (`MagicLinkExchange`, a
+     *     `token` field) rather than inventing a second one for an operation that
+     *     asks the identical question of the store, just without consuming the
+     *     answer.
+     *
+     *     Non-enumerating like `exchangeMagicLink`, scoped the same way that
+     *     handler's own docstring scopes itself: a well-formed but unknown,
+     *     expired, already-consumed, or foreign token all answer the identical
+     *     401 `MAGIC_LINK_INVALID` -- `store.peek`'s own docstring is the
+     *     authority on why those cases collapse into one `PeekOutcome(valid=
+     *     False)` rather than a router-level distinction being layered back on
+     *     top of it. An absent or malformed `token` (failing `MagicLinkExchange`'s
+     *     own `min_length=32`/`max_length=2048`) never reaches `store.peek` at
+     *     all -- Pydantic rejects it before this function runs, and
+     *     `_ContractErrorRoute` turns that into a 422 `INVALID_REQUEST`, not a
+     *     401. That is a DIFFERENT, orthogonal signal (the request didn't parse,
+     *     a fact the caller already knows about its own input) rather than a
+     *     second distinguishable outcome about any real token's existence -- the
+     *     same reason `exchange_magic_link`'s docstring never folds "malformed"
+     *     into its own non-enumeration claim either (Gear-3 council finding,
+     *     codex-gpt-5.6-sol, 2026-09-02: an earlier draft of this docstring did
+     *     make that overclaim).
+     *
+     *     No `Idempotency-Key`: unlike `issue`/`exchange`, this mutates nothing
+     *     (see `PostgresMagicLinkStore.peek`'s docstring), so the contract's
+     *     "every mutation requires Idempotency-Key" rule (`openapi.yaml`
+     *     `info.description`) does not apply, and a caller may retry freely.
+     *
+     *     Rate limiting: no store-level throttle here, the same considered choice
+     *     `PostgresMagicLinkStore.exchange` already documents for the identical
+     *     anonymous-token-guessing shape -- this Protocol carries no client IP to
+     *     key a per-identity limit on. This path answers under the generic
+     *     per-IP `/api/` `RateLimitMiddleware` bucket (120 req/min,
+     *     `backend/middleware/rate_limiter.py`), the SAME bucket `/magic-links`
+     *     and `/sessions` already answer under today (neither has a more specific
+     *     entry in `RATE_LIMITS`).
+     */
+    post: operations["previewMagicLink"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/visa/voa/auth/sessions": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Exchange Magic Link
+     * @description Invalid, expired, and consumed tokens return ONE non-enumerating
+     *     error (DECISIONS.md Q1 — a consumed and an expired token MUST be
+     *     indistinguishable to the caller). An exact Idempotency-Key replay returns
+     *     the original 204 but creates no second session and emits no second
+     *     Set-Cookie; a consumed token under a new key is invalid.
+     */
+    post: operations["exchangeMagicLink"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/visa/voa/eligibility-checks": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Create Eligibility Check */
+    post: operations["createEligibilityCheck"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/visa/voa/eligibility-checks/{result_id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Get Eligibility Result */
+    get: operations["getEligibilityResult"];
+    put?: never;
+    post?: never;
+    /** Delete Eligibility Result */
+    delete: operations["deleteEligibilityResult"];
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/visa/voa/eligibility-checks/{result_id}/documents": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * List Intake Documents
+     * @description Customer-safe metadata only (contract: `DocumentList` -> `DocumentSummary`).
+     *
+     *     `list_for_actor` is NOT part of `DocumentStorePort` (`ports.py` has no
+     *     enumeration method at all today — see `_UnconfiguredDocumentStore`'s
+     *     docstring) — called via duck typing so this endpoint has something to call
+     *     without editing L5's frozen file; any store that lacks it, or that raises,
+     *     answers the contract's single documented 503 `SERVICE_UNAVAILABLE`, never a
+     *     stack trace or raw OCR diagnostic.
+     */
+    get: operations["listIntakeDocuments"];
+    put?: never;
+    /** Upload Intake Document */
+    post: operations["uploadIntakeDocument"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/visa/voa/orders": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Create Order From Check */
+    post: operations["createOrderFromCheck"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/visa/voa/orders/{order_id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Get Order And Practice
+     * @description Read-only tracker. Deliberately NOT `Depends(get_repository)`.
+     *
+     *     It used to declare that dependency and never reference it: the handler
+     *     answers entirely from `PracticeRepository(pool)` below. FastAPI resolves a
+     *     parameter dependency before the handler body runs, so the declaration was
+     *     not inert -- `get_repository` 503s whenever
+     *     `app.state.garuda_order_repository` is unset, and that object is only ever
+     *     constructed when `GARUDA_XENDIT_SECRET_KEY` is present
+     *     (`service_initializer.py` §5.7). Net effect: a customer who had ALREADY
+     *     PAID could not see their own order the moment the payment credential was
+     *     absent, rotated badly, or the provider wiring raised -- on a route whose
+     *     real work needs nothing but the database pool.
+     *
+     *     Measured in production 2026-08-27, before the Xendit sandbox account
+     *     exists: `GET /api/visa/voa/orders/{id}` answered `503
+     *     SERVICE_UNAVAILABLE`, indistinguishable from the checkout routes that
+     *     genuinely do need the provider. An availability coupling that buys nothing
+     *     is the whole defect; removing the parameter is the whole fix.
+     *
+     *     The `pool is None` guard below still 503s, correctly: that IS this route's
+     *     only real dependency.
+     */
+    get: operations["getOrderAndPractice"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/visa/voa/orders/{order_id}/browser-return-observations": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Observe Payment Browser Return */
+    post: operations["observePaymentBrowserReturn"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/visa/voa/staff/orders/{order_id}/late-resolution": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Resolve Late Order */
+    post: operations["resolveLateOrder"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/visa/voa/staff/practices": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * List Staff Practices
+     * @description Admin sees all; non-admin sees only `assigned_to = actor`
+     *     regardless of the `assigned` query param — `assigned=me` is a
+     *     convenience filter for an admin, never a way for a non-admin to widen
+     *     their own visibility.
+     */
+    get: operations["listStaffPractices"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/visa/voa/staff/practices/{practice_id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Get Staff Practice */
+    get: operations["getStaffPractice"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/visa/voa/staff/practices/{practice_id}/assignment": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Assign Practice
+     * @description Admin only. `body.assigned_to` is either a staff email or `null`
+     *     (unassign).
+     */
+    post: operations["assignPractice"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/visa/voa/staff/practices/{practice_id}/transitions": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Transition Practice
+     * @description Thin HTTP-shape layer (round-3 disposition item E): body parsing,
+     *     idempotency reserve/complete and the contract's error mapping live here;
+     *     the guarded UPDATE, evidence write, journal append and outbox enqueue
+     *     live in `services/garuda_portal/staff_transitions.py::apply_transition`,
+     *     which this handler calls INSIDE the same transaction/idempotency
+     *     envelope `resolve_late_order` uses (STEP8-SPEC point on reuse).
+     */
+    post: operations["transitionPractice"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/visa/voa/webhooks/payment": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Receive Payment Webhook */
+    post: operations["receivePaymentWebhook"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/voice/elevenlabs/kbli-audit": {
     parameters: {
       query?: never;
@@ -17082,6 +17680,166 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/workspace-marketing/capabilities": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Workspace Marketing Capabilities
+     * @description Describe the deployed, route-scoped marketing contract.
+     */
+    get: operations["workspace_marketing_capabilities_api_workspace_marketing_capabilities_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/workspace-marketing/news/pending": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Workspace Marketing Pending News
+     * @description Return a bounded News Room projection to the private marketing bridge.
+     */
+    get: operations["workspace_marketing_pending_news_api_workspace_marketing_news_pending_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/workspace-marketing/news/{item_id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Workspace Marketing News Article
+     * @description Return one field-projected News Room article to the private bridge.
+     */
+    get: operations["workspace_marketing_news_article_api_workspace_marketing_news__item_id__get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/workspace-marketing/news/{item_id}/confirm-live": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Workspace Marketing Confirm Live
+     * @description Persist ``published`` only after the external live proof has passed.
+     */
+    post: operations["workspace_marketing_confirm_live_api_workspace_marketing_news__item_id__confirm_live_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/workspace-marketing/news/{item_id}/cover": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Workspace Marketing Attach Cover
+     * @description Attach one native-ImageGen cover to a still-pending article.
+     */
+    post: operations["workspace_marketing_attach_cover_api_workspace_marketing_news__item_id__cover_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/workspace-marketing/news/{item_id}/editorial": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    /**
+     * Workspace Marketing Update News
+     * @description Replace the public editorial package for one still-pending article.
+     */
+    put: operations["workspace_marketing_update_news_api_workspace_marketing_news__item_id__editorial_put"];
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/workspace-marketing/news/{item_id}/publication-status": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Workspace Marketing Publication Status
+     * @description Return only the public publication proof fields retained in staging.
+     */
+    get: operations["workspace_marketing_publication_status_api_workspace_marketing_news__item_id__publication_status_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/workspace-marketing/news/{item_id}/publish": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Workspace Marketing Publish News
+     * @description Publish one ready News Room item after Damar explicitly confirms.
+     */
+    post: operations["workspace_marketing_publish_news_api_workspace_marketing_news__item_id__publish_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/workspace/analytics/funnel": {
     parameters: {
       query?: never;
@@ -17602,6 +18360,9 @@ export interface paths {
      * @description Handle incoming Instagram DMs — ack-first pattern (P0-6 audit 2026-04-29).
      *
      *     Flow:
+     *       0. Verify X-Hub-Signature-256 HMAC (Meta App Secret) via
+     *          ``_verify_instagram_signature`` — added 2026-08-25; see that
+     *          function's docstring for the gap this closes.
      *       1. Parse payload + filter echo/read/delivery events.
      *       2. Persist each message to ``inbound_webhooks`` (idempotent on
      *          message.mid via UNIQUE(channel, dedup_key)).
@@ -18565,6 +19326,17 @@ export interface components {
      * @enum {string}
      */
     ApplicationChannel: "OFFSHORE" | "ONSHORE_CONVERSION" | "STATUS_BRIDGING";
+    /** ApproveBody */
+    ApproveBody: {
+      /** Note */
+      note?: string | null;
+    };
+    /** ApproveOut */
+    ApproveOut: {
+      /** Alert Id */
+      alert_id: string;
+      obligation: components["schemas"]["ObligationOut"];
+    };
     /** ArticleIngestRequest */
     ArticleIngestRequest: {
       /**
@@ -19099,6 +19871,37 @@ export interface components {
       practice_id?: number | null;
       /** Principal Case Id */
       principal_case_id?: string | null;
+    };
+    /**
+     * CaseType
+     * @enum {string}
+     */
+    CaseType: "issuance" | "extension";
+    /**
+     * CatalogRuleOut
+     * @description One catalog rule, flattened for the reviewer screen. No client data.
+     */
+    CatalogRuleOut: {
+      /** Authority */
+      authority: string;
+      /** Frequency */
+      frequency: string;
+      /** Id */
+      id: string;
+      /** Legal Source */
+      legal_source: string;
+      /** Name */
+      name: string;
+      /** Needs Review Reason */
+      needs_review_reason: string | null;
+      /** Notes */
+      notes: string | null;
+      /** Roll */
+      roll: string;
+      /** Trigger */
+      trigger: string | null;
+      /** Verified */
+      verified: boolean;
     };
     /** ChatRequest */
     ChatRequest: {
@@ -20516,6 +21319,37 @@ export interface components {
       query?: string | null;
     };
     /**
+     * EligibilityCheckRequest
+     * @description `#/components/schemas/EligibilityCheckRequest`, verbatim including the
+     *     `allOf` issuance/extension shape guard.
+     */
+    EligibilityCheckRequest: {
+      case_type: components["schemas"]["CaseType"];
+      /**
+       * Entry Date
+       * Format: date
+       */
+      entry_date: string;
+      /** Extension Already Used */
+      extension_already_used: boolean;
+      /** Nationality */
+      nationality: string;
+      /**
+       * Passport Expiry Date
+       * Format: date
+       */
+      passport_expiry_date: string;
+      purpose: components["schemas"]["backend__services__garuda_flow__intake__Purpose"];
+      /** Retention Notice Acknowledged */
+      retention_notice_acknowledged: boolean;
+      /** Self Pay */
+      self_pay: boolean;
+      /** Travellers */
+      travellers: number;
+      /** Voa Expiry Date */
+      voa_expiry_date?: string | null;
+    };
+    /**
      * EmailAttachment
      * @description Email attachment (base64-encoded).
      */
@@ -20650,6 +21484,8 @@ export interface components {
       category: string;
       /** Cover Image */
       cover_image?: string | null;
+      /** Cover Image Alt */
+      cover_image_alt?: string | null;
       /** Enriched At */
       enriched_at: string;
       /** Facts */
@@ -20661,6 +21497,10 @@ export interface components {
       priority: string;
       /** Relevance Score */
       relevance_score: number;
+      /** Seo Description */
+      seo_description?: string | null;
+      /** Seo Title */
+      seo_title?: string | null;
       /** Source */
       source: string;
       /** Source Url */
@@ -21054,6 +21894,31 @@ export interface components {
      * @enum {string}
      */
     FunnelType: "visa" | "kbli" | "tax" | "property" | "home";
+    /** GenerateBody */
+    GenerateBody: {
+      /** Client Id */
+      client_id: number;
+      /**
+       * Horizon Days
+       * @default 90
+       */
+      horizon_days: number;
+    };
+    /** GenerateOut */
+    GenerateOut: {
+      /** Client Id */
+      client_id: number;
+      /** Company Type */
+      company_type: string;
+      /** Inserted Count */
+      inserted_count: number;
+      /** Needs Manual Classification */
+      needs_manual_classification: boolean;
+      /** Rows */
+      rows: components["schemas"]["ObligationOut"][];
+      /** Warning */
+      warning: string | null;
+    };
     /** GenerateRequest */
     GenerateRequest: {
       /**
@@ -22473,15 +23338,23 @@ export interface components {
       property_code?: string | null;
     };
     /**
-     * MagicLinkRequest
-     * @description Request body for passwordless magic-link login (FASE 6).
+     * MagicLinkExchange
+     * @description `#/components/schemas/MagicLinkExchange`, verbatim.
      */
-    MagicLinkRequest: {
-      /**
-       * Email
-       * Format: email
-       */
-      email: string;
+    MagicLinkExchange: {
+      /** Token */
+      token: string;
+    };
+    /**
+     * MagicLinkPreviewResult
+     * @description Response body for ``previewMagicLink`` -- NOT in the frozen contract
+     *     (see module docstring). `masked_email` is produced by
+     *     `backend.services.garuda_portal.masking.mask_email`; this model never
+     *     carries the raw address.
+     */
+    MagicLinkPreviewResult: {
+      /** Masked Email */
+      masked_email: string;
     };
     /**
      * MaritalStatus
@@ -22516,7 +23389,7 @@ export interface components {
       expected_arrival_date?: string | null;
       /** Nationality */
       nationality: string;
-      purpose: components["schemas"]["Purpose"];
+      purpose: components["schemas"]["backend__services__visa_check__match_tree__Purpose"];
     };
     /** MatchResponse */
     MatchResponse: {
@@ -22823,6 +23696,49 @@ export interface components {
       };
       /** Timestamp */
       timestamp: string;
+    };
+    /** ObligationListOut */
+    ObligationListOut: {
+      /** Items */
+      items: components["schemas"]["ObligationOut"][];
+      /** Limit */
+      limit: number;
+      /** Offset */
+      offset: number;
+      /** Total */
+      total: number;
+    };
+    /** ObligationOut */
+    ObligationOut: {
+      /** Alert Id */
+      alert_id: string | null;
+      /** Client Id */
+      client_id: number;
+      /** Created At */
+      created_at: unknown | null;
+      /**
+       * Due Date
+       * Format: date
+       */
+      due_date: string;
+      /** Id */
+      id: number;
+      /** Needs Review Reason */
+      needs_review_reason: string | null;
+      /** Period Key */
+      period_key: string;
+      /** Review Note */
+      review_note: string | null;
+      /** Reviewed At */
+      reviewed_at: unknown | null;
+      /** Reviewer Email */
+      reviewer_email: string | null;
+      /** Rule Id */
+      rule_id: string;
+      /** Status */
+      status: string;
+      /** Updated At */
+      updated_at: unknown | null;
     };
     /** ObservationPayload */
     ObservationPayload: {
@@ -23395,7 +24311,7 @@ export interface components {
       /** Notes */
       notes?: string | null;
       /** Practice Type Code */
-      practice_type_code: string;
+      practice_type_code?: string | null;
       /**
        * Priority
        * @default normal
@@ -23485,6 +24401,8 @@ export interface components {
       paid_amount?: number | string | null;
       /** Payment Status */
       payment_status?: string | null;
+      /** Practice Type Code */
+      practice_type_code?: string | null;
       /** Priority */
       priority?: string | null;
       /** Quoted Price */
@@ -23634,6 +24552,26 @@ export interface components {
       id: string;
     };
     /**
+     * ProfileOut
+     * @description The computed ClientProfile plus the provenance the reviewer UI needs.
+     */
+    ProfileOut: {
+      /** Client Id */
+      client_id: number;
+      /** Company Type Raw */
+      company_type_raw: string | null;
+      /** Missing Keys */
+      missing_keys: string[];
+      /** Needs Manual Classification */
+      needs_manual_classification: boolean;
+      /** Present Keys */
+      present_keys: string[];
+      /** Profile */
+      profile: {
+        [key: string]: unknown;
+      };
+    };
+    /**
      * ProposedRole
      * @enum {string}
      */
@@ -23647,13 +24585,33 @@ export interface components {
      * PublicLeadSource
      * @description Lead sources accepted by the public capture API.
      *
-     *     ``LeadSource.GARUDA_VOA`` intentionally remains in the persistence enum so
-     *     historical rows continue to decode. It is absent here because the public
-     *     GARUDA funnel is retired.
+     *     This enum — not ``LeadSource`` — is what ``POST /api/lead/capture``
+     *     validates against (``LeadCaptureRequest.source``). A frontend value absent
+     *     HERE is rejected with 422, ``AppWhatsAppCTA`` swallows that in its catch,
+     *     and the visitor is redirected to the bare wa.me link: no prefilled message,
+     *     no lead row, no error anywhere. Keep it in step with the frontend — the
+     *     tripwire ``test_frontend_lead_sources_are_accepted_by_the_public_capture_api``
+     *     is what enforces that.
+     *
+     *     ``GARUDA_VOA`` was excluded on 2026-08-21 (#4344) when the then-public
+     *     GARUDA routes were retired — correct at the time. The funnel was RELAUNCHED
+     *     four days later (#4960, 2026-08-25, "the public funnel UI, dark by flag")
+     *     with a result page that captures under ``garuda_voa``, and nobody re-opened
+     *     this enum. The exclusion therefore described a state that had stopped being
+     *     true, and the mine was armed for go-live day: the moment
+     *     ``GARUDA_PUBLIC_ENABLED`` flips, every WhatsApp handoff off the VOA result
+     *     page 422s — clicks tracked, leads unlogged, exactly the homepage_hero bug
+     *     (#2495) on the flagship launch. It is re-admitted here.
+     *
+     *     ``LeadSource.GARUDA_VOA.result_url_path`` deliberately stays ``None``: the
+     *     deeplink builder simply omits the "Reference:" back-link for it, the lead is
+     *     captured either way, and re-pointing that URL is the separate question #4344
+     *     closed on purpose.
      * @enum {string}
      */
     PublicLeadSource:
       | "visa_clock"
+      | "garuda_voa"
       | "visa_match"
       | "kbli_decoder"
       | "kbli_builder"
@@ -23719,6 +24677,11 @@ export interface components {
        */
       position: string;
       /**
+       * Publication Key
+       * @description Stable internal identity used to resume the same publication PR
+       */
+      publication_key?: string | null;
+      /**
        * Slug
        * @description Custom slug, auto-generated if not provided
        */
@@ -23731,6 +24694,8 @@ export interface components {
     PublishResponse: {
       /** Article Url */
       article_url?: string | null;
+      /** Auto Merge Enabled */
+      auto_merge_enabled?: boolean | null;
       /** Commit Sha */
       commit_sha?: string | null;
       /** Error */
@@ -23741,34 +24706,32 @@ export interface components {
       mdx_path?: string | null;
       /** Message */
       message: string;
+      /** Pull Request Number */
+      pull_request_number?: number | null;
       /** Success */
       success: boolean;
     };
     /**
      * PublishToSiteRequest
-     * @description Optional request body for publish with homepage position.
+     * @description Explicit homepage position for a publication request.
      */
     PublishToSiteRequest: {
       /**
        * Position
        * @description Homepage position: hero_main, hero_2-5, insight_1-3, or latest
-       * @default latest
+       * @enum {string}
        */
-      position: string;
+      position:
+        | "latest"
+        | "hero_main"
+        | "hero_2"
+        | "hero_3"
+        | "hero_4"
+        | "hero_5"
+        | "insight_1"
+        | "insight_2"
+        | "insight_3";
     };
-    /**
-     * Purpose
-     * @enum {string}
-     */
-    Purpose:
-      | "work_remote"
-      | "investor"
-      | "work_employee"
-      | "family"
-      | "long_tourism"
-      | "retirement"
-      | "student"
-      | "other";
     /**
      * QueryRequest
      * @description Request model for custom query execution
@@ -24039,6 +25002,11 @@ export interface components {
       success: boolean;
       /** User Id */
       user_id?: string | null;
+    };
+    /** RejectBody */
+    RejectBody: {
+      /** Reason */
+      reason: string;
     };
     /**
      * RelationType
@@ -25889,17 +26857,23 @@ export interface components {
     };
     /**
      * UpdatePreferencesRequest
-     * @description Request to update preferences
+     * @description Request to update LOCALE preferences.
+     *
+     *     Notification consent is not settable here: `notification_prefs`
+     *     (`PUT /api/portal/notifications/prefs`) is the single source of truth,
+     *     because it is the only store `alert_dispatcher` reads. Declaring
+     *     `email_notifications` / `whatsapp_notifications` on this endpoint is how
+     *     the two came to disagree live (portal audit F-04): it answered
+     *     `whatsapp_notifications: true` for an account whose enforced setting was
+     *     false. Pydantic ignores unknown keys by default, so an older client build
+     *     that still sends them keeps working — its values are simply no longer
+     *     written anywhere.
      */
     UpdatePreferencesRequest: {
-      /** Email Notifications */
-      email_notifications?: boolean | null;
       /** Language */
       language?: ("it" | "en" | "id") | null;
       /** Timezone */
       timezone?: string | null;
-      /** Whatsapp Notifications */
-      whatsapp_notifications?: boolean | null;
     };
     /**
      * UpdateProfileRequest
@@ -26915,6 +27889,79 @@ export interface components {
       /** Status */
       status: string;
     };
+    /** WorkspaceNewsCoverRequest */
+    WorkspaceNewsCoverRequest: {
+      /** Cover Image Base64 */
+      cover_image_base64: string;
+      /** Cover Image Filename */
+      cover_image_filename: string;
+    };
+    /**
+     * WorkspaceNewsPublishRequest
+     * @description Explicit authorization carried by the Damar workspace agent.
+     */
+    WorkspaceNewsPublishRequest: {
+      /**
+       * Confirmation
+       * @constant
+       */
+      confirmation: "DAMAR_CONFIRMED";
+      /**
+       * Position
+       * @enum {string}
+       */
+      position:
+        | "latest"
+        | "hero_main"
+        | "hero_2"
+        | "hero_3"
+        | "hero_4"
+        | "hero_5"
+        | "insight_1"
+        | "insight_2"
+        | "insight_3";
+    };
+    /**
+     * WorkspaceNewsUpdateRequest
+     * @description Public editorial fields the Damar agent may update before review.
+     */
+    WorkspaceNewsUpdateRequest: {
+      /**
+       * Category
+       * @enum {string}
+       */
+      category:
+        | "immigration"
+        | "business"
+        | "tax"
+        | "property"
+        | "lifestyle"
+        | "tech"
+        | "legal";
+      /** Content */
+      content: string;
+      /** Cover Image Alt */
+      cover_image_alt: string;
+      /** Seo Description */
+      seo_description: string;
+      /** Seo Title */
+      seo_title: string;
+      /** Slug */
+      slug: string;
+      /** Title */
+      title: string;
+    };
+    /**
+     * WorkspacePublicationConfirmedRequest
+     * @description Durable transition allowed only after the MCP live verifier passes.
+     */
+    WorkspacePublicationConfirmedRequest: {
+      /**
+       * Confirmation
+       * @constant
+       */
+      confirmation: "LIVE_VERIFIED";
+    };
     /**
      * WorkspaceQueryRequest
      * @description Request schema for the authenticated workspace agent endpoint.
@@ -27135,6 +28182,17 @@ export interface components {
       success: boolean;
     };
     /**
+     * MagicLinkRequest
+     * @description Request body for passwordless magic-link login (FASE 6).
+     */
+    backend__app__routers__auth__MagicLinkRequest: {
+      /**
+       * Email
+       * Format: email
+       */
+      email: string;
+    };
+    /**
      * ApprovalRequest
      * @description Request body for approving/rejecting a step.
      */
@@ -27173,6 +28231,19 @@ export interface components {
       subject?: string | null;
       /** To Node */
       to_node: string;
+    };
+    /**
+     * MagicLinkRequest
+     * @description `#/components/schemas/MagicLinkRequest`, verbatim.
+     */
+    backend__app__routers__garuda_portal_auth__MagicLinkRequest: {
+      /**
+       * Email
+       * Format: email
+       */
+      email: string;
+      /** Result Id */
+      result_id: string;
     };
     /**
      * FileItem
@@ -27458,6 +28529,30 @@ export interface components {
        */
       to: string[];
     };
+    /**
+     * Purpose
+     * @description B1-permitted purposes, distinct from this pilot's eligibility.
+     *
+     *     B1 permits tourism, family visits, transit and short business meetings;
+     *     this pilot accepts simple tourism only. Business meetings are also marked
+     *     as a business-purpose exclusion; family purpose is not a traveller group.
+     * @enum {string}
+     */
+    backend__services__garuda_flow__intake__Purpose:
+      "tourism" | "family" | "transit" | "business-meeting";
+    /**
+     * Purpose
+     * @enum {string}
+     */
+    backend__services__visa_check__match_tree__Purpose:
+      | "work_remote"
+      | "investor"
+      | "work_employee"
+      | "family"
+      | "long_tourism"
+      | "retirement"
+      | "student"
+      | "other";
   };
   responses: never;
   parameters: never;
@@ -30990,7 +32085,7 @@ export interface operations {
     };
     requestBody: {
       content: {
-        "application/json": components["schemas"]["MagicLinkRequest"];
+        "application/json": components["schemas"]["backend__app__routers__auth__MagicLinkRequest"];
       };
     };
     responses: {
@@ -32806,6 +33901,263 @@ export interface operations {
           "application/json": {
             [key: string]: unknown;
           };
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  list_obligations_api_compliance_obligations_get: {
+    parameters: {
+      query?: {
+        client_id?: number | null;
+        /** @description One of ['alerted', 'approved', 'done', 'proposed', 'rejected'], or 'all' for no status filter. */
+        status?: string | null;
+        limit?: number;
+        offset?: number;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ObligationListOut"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  get_catalog_api_compliance_obligations_catalog_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["CatalogRuleOut"][];
+        };
+      };
+    };
+  };
+  generate_obligations_api_compliance_obligations_generate_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["GenerateBody"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["GenerateOut"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  get_client_profile_api_compliance_obligations_profile__client_id__get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        client_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProfileOut"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  patch_client_profile_api_compliance_obligations_profile__client_id__patch: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        client_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": {
+          [key: string]: unknown;
+        };
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProfileOut"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  get_obligation_api_compliance_obligations__obligation_id__get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        obligation_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ObligationOut"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  approve_obligation_api_compliance_obligations__obligation_id__approve_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        obligation_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: {
+      content: {
+        "application/json": components["schemas"]["ApproveBody"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ApproveOut"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  reject_obligation_api_compliance_obligations__obligation_id__reject_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        obligation_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["RejectBody"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ObligationOut"];
         };
       };
       /** @description Validation Error */
@@ -35225,6 +36577,30 @@ export interface operations {
         content: {
           "application/json": {
             [key: string]: unknown;
+          };
+        };
+      };
+    };
+  };
+  get_assignment_targets_api_crm_garuda_assignment_targets_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            [key: string]: {
+              [key: string]: string;
+            }[];
           };
         };
       };
@@ -51577,6 +52953,1174 @@ export interface operations {
       };
     };
   };
+  requestMagicLink: {
+    parameters: {
+      query?: never;
+      header: {
+        "Idempotency-Key": string | null;
+      };
+      path?: never;
+      cookie?: {
+        garuda_result_session?: string | null;
+      };
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["backend__app__routers__garuda_portal_auth__MagicLinkRequest"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      202: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": unknown;
+        };
+      };
+      /** @description IDEMPOTENCY_KEY_REQUIRED */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description GARUDA_PUBLIC_DISABLED */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description IDEMPOTENCY_CONFLICT */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description INVALID_REQUEST */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description RATE_LIMITED */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description INTERNAL_ERROR */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description PERSISTENCE_POLICY_UNAVAILABLE */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  previewMagicLink: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["MagicLinkExchange"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["MagicLinkPreviewResult"];
+        };
+      };
+      /** @description MAGIC_LINK_INVALID */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description GARUDA_PUBLIC_DISABLED */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description INVALID_REQUEST */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description INTERNAL_ERROR */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description PERSISTENCE_POLICY_UNAVAILABLE */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  exchangeMagicLink: {
+    parameters: {
+      query?: never;
+      header: {
+        "Idempotency-Key": string | null;
+      };
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["MagicLinkExchange"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description IDEMPOTENCY_KEY_REQUIRED */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description MAGIC_LINK_INVALID */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description GARUDA_PUBLIC_DISABLED */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description IDEMPOTENCY_CONFLICT */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description INVALID_REQUEST */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description RATE_LIMITED */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description INTERNAL_ERROR */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description PERSISTENCE_POLICY_UNAVAILABLE */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  createEligibilityCheck: {
+    parameters: {
+      query?: never;
+      header: {
+        "Idempotency-Key": string | null;
+      };
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["EligibilityCheckRequest"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": unknown;
+        };
+      };
+      /** @description IDEMPOTENCY_KEY_REQUIRED */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description GARUDA_PUBLIC_DISABLED */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description IDEMPOTENCY_CONFLICT */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description INVALID_REQUEST / NOTICE_ACKNOWLEDGEMENT_REQUIRED */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description RATE_LIMITED */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description INTERNAL_ERROR */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description PERSISTENCE_POLICY_UNAVAILABLE / PRICE_UNRESOLVABLE */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  getEligibilityResult: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        result_id: string;
+      };
+      cookie?: {
+        garuda_result_session?: string | null;
+      };
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": unknown;
+        };
+      };
+      /** @description GARUDA_PUBLIC_DISABLED / RESULT_NOT_FOUND */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description INTERNAL_ERROR */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description SERVICE_UNAVAILABLE */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  deleteEligibilityResult: {
+    parameters: {
+      query?: never;
+      header: {
+        "Idempotency-Key": string | null;
+      };
+      path: {
+        result_id: string;
+      };
+      cookie?: {
+        garuda_result_session?: string | null;
+      };
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description IDEMPOTENCY_KEY_REQUIRED */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description GARUDA_PUBLIC_DISABLED */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description IDEMPOTENCY_CONFLICT */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description INTERNAL_ERROR */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description SERVICE_UNAVAILABLE */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  listIntakeDocuments: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        result_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description See `products/garuda-voa/contracts/errors.yaml`. */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            [key: string]: unknown;
+          };
+        };
+      };
+      /** @description See `products/garuda-voa/contracts/errors.yaml`. */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description See `products/garuda-voa/contracts/errors.yaml`. */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description See `products/garuda-voa/contracts/errors.yaml`. */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description See `products/garuda-voa/contracts/errors.yaml`. */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  uploadIntakeDocument: {
+    parameters: {
+      query?: never;
+      header: {
+        "Idempotency-Key": string | null;
+      };
+      path: {
+        result_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description See `products/garuda-voa/contracts/errors.yaml`. */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": unknown;
+        };
+      };
+      /** @description See `products/garuda-voa/contracts/errors.yaml`. */
+      202: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description See `products/garuda-voa/contracts/errors.yaml`. */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description See `products/garuda-voa/contracts/errors.yaml`. */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description See `products/garuda-voa/contracts/errors.yaml`. */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description See `products/garuda-voa/contracts/errors.yaml`. */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description See `products/garuda-voa/contracts/errors.yaml`. */
+      413: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description See `products/garuda-voa/contracts/errors.yaml`. */
+      415: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description See `products/garuda-voa/contracts/errors.yaml`. */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description See `products/garuda-voa/contracts/errors.yaml`. */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description See `products/garuda-voa/contracts/errors.yaml`. */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  createOrderFromCheck: {
+    parameters: {
+      query?: never;
+      header: {
+        "Idempotency-Key": string | null;
+      };
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": {
+          [key: string]: unknown;
+        };
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            [key: string]: unknown;
+          };
+        };
+      };
+      /** @description See `products/garuda-voa/contracts/errors.yaml`. */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description See `products/garuda-voa/contracts/errors.yaml`. */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description See `products/garuda-voa/contracts/errors.yaml`. */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description See `products/garuda-voa/contracts/errors.yaml`. */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description See `products/garuda-voa/contracts/errors.yaml`. */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description See `products/garuda-voa/contracts/errors.yaml`. */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description See `products/garuda-voa/contracts/errors.yaml`. */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description See `products/garuda-voa/contracts/errors.yaml`. */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  getOrderAndPractice: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        order_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            [key: string]: unknown;
+          };
+        };
+      };
+      /** @description See `products/garuda-voa/contracts/errors.yaml`. */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description See `products/garuda-voa/contracts/errors.yaml`. */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description See `products/garuda-voa/contracts/errors.yaml`. */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description See `products/garuda-voa/contracts/errors.yaml`. */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  observePaymentBrowserReturn: {
+    parameters: {
+      query?: never;
+      header: {
+        "Idempotency-Key": string | null;
+      };
+      path: {
+        order_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": {
+          [key: string]: unknown;
+        };
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description See `products/garuda-voa/contracts/errors.yaml`. */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description See `products/garuda-voa/contracts/errors.yaml`. */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description See `products/garuda-voa/contracts/errors.yaml`. */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description See `products/garuda-voa/contracts/errors.yaml`. */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description See `products/garuda-voa/contracts/errors.yaml`. */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description See `products/garuda-voa/contracts/errors.yaml`. */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  resolveLateOrder: {
+    parameters: {
+      query?: never;
+      header: {
+        authorization?: string | null;
+        "Idempotency-Key": string | null;
+      };
+      path: {
+        order_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": {
+          [key: string]: unknown;
+        };
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            [key: string]: unknown;
+          };
+        };
+      };
+      /** @description See `products/garuda-voa/contracts/errors.yaml`. */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description See `products/garuda-voa/contracts/errors.yaml`. */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description See `products/garuda-voa/contracts/errors.yaml`. */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description See `products/garuda-voa/contracts/errors.yaml`. */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description See `products/garuda-voa/contracts/errors.yaml`. */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description See `products/garuda-voa/contracts/errors.yaml`. */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description See `products/garuda-voa/contracts/errors.yaml`. */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  listStaffPractices: {
+    parameters: {
+      query?: {
+        state?: string | null;
+        assigned?: string;
+        cursor?: string | null;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            [key: string]: unknown;
+          };
+        };
+      };
+      /** @description See `products/garuda-voa/contracts/errors.yaml`. */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description See `products/garuda-voa/contracts/errors.yaml`. */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description See `products/garuda-voa/contracts/errors.yaml`. */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description See `products/garuda-voa/contracts/errors.yaml`. */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  getStaffPractice: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        practice_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            [key: string]: unknown;
+          };
+        };
+      };
+      /** @description See `products/garuda-voa/contracts/errors.yaml`. */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description See `products/garuda-voa/contracts/errors.yaml`. */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description See `products/garuda-voa/contracts/errors.yaml`. */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description See `products/garuda-voa/contracts/errors.yaml`. */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description See `products/garuda-voa/contracts/errors.yaml`. */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  assignPractice: {
+    parameters: {
+      query?: never;
+      header: {
+        "Idempotency-Key": string | null;
+      };
+      path: {
+        practice_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": {
+          [key: string]: unknown;
+        };
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            [key: string]: unknown;
+          };
+        };
+      };
+      /** @description See `products/garuda-voa/contracts/errors.yaml`. */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description See `products/garuda-voa/contracts/errors.yaml`. */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description See `products/garuda-voa/contracts/errors.yaml`. */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description See `products/garuda-voa/contracts/errors.yaml`. */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description See `products/garuda-voa/contracts/errors.yaml`. */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description See `products/garuda-voa/contracts/errors.yaml`. */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description See `products/garuda-voa/contracts/errors.yaml`. */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  transitionPractice: {
+    parameters: {
+      query?: never;
+      header: {
+        "Idempotency-Key": string | null;
+      };
+      path: {
+        practice_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": {
+          [key: string]: unknown;
+        };
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          /** @description "true" on an exact command replay, absent otherwise. */
+          "Idempotency-Replayed"?: "true";
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            [key: string]: unknown;
+          };
+        };
+      };
+      /** @description See `products/garuda-voa/contracts/errors.yaml`. */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description See `products/garuda-voa/contracts/errors.yaml`. */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description See `products/garuda-voa/contracts/errors.yaml`. */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description See `products/garuda-voa/contracts/errors.yaml`. */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description See `products/garuda-voa/contracts/errors.yaml`. */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description See `products/garuda-voa/contracts/errors.yaml`. */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description See `products/garuda-voa/contracts/errors.yaml`. */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description See `products/garuda-voa/contracts/errors.yaml`. */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  receivePaymentWebhook: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description See `products/garuda-voa/contracts/errors.yaml`. */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description See `products/garuda-voa/contracts/errors.yaml`. */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description See `products/garuda-voa/contracts/errors.yaml`. */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description See `products/garuda-voa/contracts/errors.yaml`. */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description See `products/garuda-voa/contracts/errors.yaml`. */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
   elevenlabs_kbli_audit_api_voice_elevenlabs_kbli_audit_post: {
     parameters: {
       query?: never;
@@ -52593,6 +55137,276 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["JobStatusResponse"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  workspace_marketing_capabilities_api_workspace_marketing_capabilities_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            [key: string]: unknown;
+          };
+        };
+      };
+    };
+  };
+  workspace_marketing_pending_news_api_workspace_marketing_news_pending_get: {
+    parameters: {
+      query?: {
+        limit?: number;
+        offset?: number;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            [key: string]: unknown;
+          };
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  workspace_marketing_news_article_api_workspace_marketing_news__item_id__get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        item_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            [key: string]: unknown;
+          };
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  workspace_marketing_confirm_live_api_workspace_marketing_news__item_id__confirm_live_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        item_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["WorkspacePublicationConfirmedRequest"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            [key: string]: unknown;
+          };
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  workspace_marketing_attach_cover_api_workspace_marketing_news__item_id__cover_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        item_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["WorkspaceNewsCoverRequest"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            [key: string]: unknown;
+          };
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  workspace_marketing_update_news_api_workspace_marketing_news__item_id__editorial_put: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        item_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["WorkspaceNewsUpdateRequest"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            [key: string]: unknown;
+          };
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  workspace_marketing_publication_status_api_workspace_marketing_news__item_id__publication_status_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        item_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            [key: string]: unknown;
+          };
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  workspace_marketing_publish_news_api_workspace_marketing_news__item_id__publish_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        item_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["WorkspaceNewsPublishRequest"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            [key: string]: unknown;
+          };
         };
       };
       /** @description Validation Error */

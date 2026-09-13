@@ -36,7 +36,12 @@ import {
   type ServiceAvailabilityStatus,
 } from "../_lib/outcome-view-model";
 import { translate, type I18nKey } from "../_lib/i18n";
-import { DISPLAY_ORDER, formatFactDisplay } from "./ConfirmationCard";
+import { ACTIVITY_BOUNDARY_DECIDABLE_ANSWERS } from "../_lib/fact-mapper";
+import {
+  DISPLAY_ORDER,
+  assumptionDisplay,
+  formatFactDisplay,
+} from "./ConfirmationCard";
 
 export interface OutcomeSheetProps {
   language: Language;
@@ -131,14 +136,227 @@ function buildShareSummary(
   return lines.join("\n");
 }
 
+/**
+ * PR-O4 / Δ2 (spec §3, D6 "Δ2: SÌ"): review codes whose hold is about OUR
+ * sources or OUR process, never about anything the applicant answered. The
+ * spec names the three families — `DECISIVE_*`, `SAFETY_CRITICAL_*`,
+ * `MINOR_GUARDIAN_PRIVACY` — and PR-O2 documents `CLIENT_UNABLE_TO_VERIFY_
+ * DETAIL` (outcome-fallbacks.ts) as the client-side technical exception of
+ * the same kind. They render under their own heading so a reader can tell a
+ * hold we owe them from a hold their own answers caused.
+ *
+ * Every other code — known or not — renders under the neutral "about your
+ * case" heading, which is true of any review reason and never says the
+ * applicant did something wrong. That is the fail-closed direction: an
+ * unclassified new code can at worst be under-specific, never mis-attributed
+ * to the visitor. `OutcomeSheet.test.tsx` pins the three families against
+ * `REVIEW_REASON_COPY` so a new source/system code cannot ship unclassified.
+ */
+export const SYSTEM_REVIEW_REASON_CODES: ReadonlySet<string> = new Set([
+  "DECISIVE_PRIMARY_SOURCE_NOT_APPLICABLE",
+  "DECISIVE_SOURCE_FRESHNESS_UNKNOWN",
+  "DECISIVE_SOURCE_STALE",
+  "SAFETY_CRITICAL_PRIMARY_SOURCE_NOT_APPLICABLE",
+  "SAFETY_CRITICAL_SOURCE_FRESHNESS_UNKNOWN",
+  "SAFETY_CRITICAL_SOURCE_STALE",
+  "MINOR_GUARDIAN_PRIVACY_REVIEW",
+  "CLIENT_UNABLE_TO_VERIFY_DETAIL",
+]);
+
+/** One answer of this interview that demonstrably triggered a review code. */
+export interface DemonstratedReviewCause {
+  questionId: string;
+  value: string;
+}
+
+/**
+ * Review codes raised by a `review_gate` checklist item, keyed by the item
+ * the applicant actually ticked. `fact-mapper.ts::mapDisclosedReviewFlags`
+ * reads the same CSV fact and `evaluate_path.py::_DISCLOSED_REVIEW_REASON_
+ * CODES` turns each flag into the code on the left, so ticking the item IS
+ * the demonstrated cause. Mirrored rather than imported because the mapper's
+ * own table is module-private; `OutcomeSheet.test.tsx` re-derives every row
+ * through `mapDisclosedReviewFlags` so a drift in either file goes red.
+ */
+const REVIEW_GATE_CAUSE_ITEM: Readonly<Record<string, string>> = {
+  DISCLOSED_CRIMINAL_RECORD_REVIEW: "criminal_record",
+  DISCLOSED_HEALTH_CONCERN_REVIEW: "health_flag",
+  DISCLOSED_PRIOR_VISA_REFUSAL_REVIEW: "prior_refusal",
+  DISCLOSED_PEP_OR_SANCTIONS_REVIEW: "pep_or_sanctions",
+  DISCLOSED_SOURCE_OF_FUNDS_REVIEW: "source_of_funds_unclear",
+  DISCLOSED_DIPLOMATIC_PASSPORT_REVIEW: "diplomatic_passport",
+  DISCLOSED_AMBIGUOUS_SPONSOR_REVIEW: "ambiguous_sponsor",
+  DISCLOSED_UNCERTAINTY_REVIEW: "not_certain",
+  DISCLOSED_ACTIVITY_BOUNDARY_REVIEW: "activity_boundary",
+};
+
+/**
+ * The answers of THIS interview that demonstrably raised `code` — never a
+ * guess, never a plausible-looking cause. Each branch mirrors the exact
+ * trigger `fact-mapper.ts::mapDisclosedReviewFlags` uses to raise the flag
+ * the backend turns into this code, so a cause shown here is one the
+ * applicant can act on. When nothing demonstrates the code (a backend-only
+ * trigger, or a relation-driven hold the interview cannot attribute to one
+ * answer), this returns `[]` and only the code's own copy is shown — an
+ * unexplained hold is better than an invented explanation.
+ *
+ * Every returned `questionId` is a key of `facts`, and `flow.ts::pruneFacts`
+ * keeps `facts` a subset of the questions this walk actually asked — so
+ * reopening one is always `EDIT` on a node present in history, which
+ * truncates back to it and keeps every prerequisite. `EDIT` on a never-asked
+ * question resets the whole interview (flow.ts `EDIT` case): that is why the
+ * guard below is `facts[id] !== undefined`, not `QUESTIONS[id] !== undefined`.
+ */
+export function demonstratedReviewCauses(
+  code: string,
+  facts: OracleFacts,
+): DemonstratedReviewCause[] {
+  const causes = new Map<string, string>();
+  const add = (questionId: string) => {
+    const value = facts[questionId];
+    if (value === undefined || !QUESTIONS[questionId]) return;
+    causes.set(questionId, value);
+  };
+
+  if (code === "DISCLOSED_UNCERTAINTY_REVIEW") {
+    for (const [questionId, value] of Object.entries(facts)) {
+      if (value === "unsure") add(questionId);
+    }
+  }
+  if (code === "DISCLOSED_ACTIVITY_BOUNDARY_REVIEW") {
+    for (const [questionId, decidable] of Object.entries(
+      ACTIVITY_BOUNDARY_DECIDABLE_ANSWERS,
+    ) as [string, readonly string[]][]) {
+      const answer = facts[questionId];
+      if (answer !== undefined && !decidable.includes(answer)) add(questionId);
+    }
+  }
+  if (code === "DISCLOSED_MULTI_PURPOSE_TRIP_REVIEW") {
+    if (facts.trip_scope === "multiple") add("trip_scope");
+  }
+  if (code === "DISCLOSED_AMBIGUOUS_SPONSOR_REVIEW") {
+    // Only the "unsure" half of the NARROW-1 trigger is attributable: the
+    // other half is the STEPCHILD relation itself, which no single answer
+    // demonstrates.
+    for (const questionId of [
+      "family_sponsor_status_code",
+      "family_sponsor_confirmed",
+    ]) {
+      if (facts[questionId] === "unsure") add(questionId);
+    }
+  }
+  const gateItem = REVIEW_GATE_CAUSE_ITEM[code];
+  if (gateItem && (facts.review_gate?.split(",") ?? []).includes(gateItem)) {
+    add("review_gate");
+  }
+
+  return [...causes].map(([questionId, value]) => ({ questionId, value }));
+}
+
+function ReviewCauseList({
+  language,
+  facts,
+  causes,
+  onEditMissingInput,
+}: {
+  language: Language;
+  facts: OracleFacts;
+  causes: readonly DemonstratedReviewCause[];
+  onEditMissingInput?: (questionId: string) => void;
+}) {
+  if (causes.length === 0) return null;
+  return (
+    <ul className="oracle-action-list">
+      {causes.map((cause) => {
+        const question = QUESTIONS[cause.questionId];
+        const prompt = translate(
+          language,
+          questionPromptI18nKey(question, facts) as I18nKey,
+        );
+        return (
+          <li key={cause.questionId} data-review-cause={cause.questionId}>
+            <span>
+              {cause.value === "unsure"
+                ? translate(language, "outcome.review_cause_unsure", {
+                    question: prompt,
+                  })
+                : translate(language, "outcome.review_cause_answer", {
+                    question: prompt,
+                    answer: formatFactDisplay(
+                      language,
+                      cause.questionId,
+                      cause.value,
+                    ),
+                  })}
+            </span>
+            {onEditMissingInput && (
+              <button
+                type="button"
+                className="oracle-confirmation__edit"
+                aria-label={translate(
+                  language,
+                  "outcome.review_cause_edit_aria",
+                  { question: prompt },
+                )}
+                onClick={() => onEditMissingInput(cause.questionId)}
+              >
+                {translate(language, "confirmation.edit")}
+              </button>
+            )}
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
+function ReviewReasonGroup({
+  language,
+  titleKey,
+  reasons,
+  sources,
+  facts,
+  onEditMissingInput,
+}: {
+  language: Language;
+  titleKey: I18nKey;
+  reasons: readonly OutcomeReason[];
+  sources: ReadonlyMap<string, OutcomeSource>;
+  facts: OracleFacts;
+  onEditMissingInput?: (questionId: string) => void;
+}) {
+  if (reasons.length === 0) return null;
+  return (
+    <>
+      <h2 className="oracle-outcome__section-title">
+        {translate(language, titleKey)}
+      </h2>
+      <ReasonList
+        language={language}
+        reasons={reasons}
+        sources={sources}
+        causeFacts={facts}
+        onEditMissingInput={onEditMissingInput}
+      />
+    </>
+  );
+}
+
 function ReasonList({
   language,
   reasons,
   sources,
+  causeFacts,
+  onEditMissingInput,
 }: {
   language: Language;
   reasons: readonly OutcomeReason[];
   sources: ReadonlyMap<string, OutcomeSource>;
+  /** Supplied only under HUMAN_REVIEW: the interview whose answers may be
+   * shown as the demonstrated cause of each reason. Absent elsewhere — a
+   * candidate's support reason is not something the applicant "caused". */
+  causeFacts?: OracleFacts;
+  onEditMissingInput?: (questionId: string) => void;
 }) {
   if (reasons.length === 0) return null;
   return (
@@ -164,6 +382,14 @@ function ReasonList({
                 );
               })}
             </span>
+          )}
+          {causeFacts && (
+            <ReviewCauseList
+              language={language}
+              facts={causeFacts}
+              causes={demonstratedReviewCauses(reason.code, causeFacts)}
+              onEditMissingInput={onEditMissingInput}
+            />
           )}
         </li>
       ))}
@@ -425,6 +651,14 @@ export function OutcomeSheet({
           return true;
         })
       : [];
+  const reviewReasons =
+    outcome.state === "HUMAN_REVIEW_REQUIRED" ? outcome.reviewReasons : [];
+  const systemReviewReasons = reviewReasons.filter((reason) =>
+    SYSTEM_REVIEW_REASON_CODES.has(reason.code),
+  );
+  const caseReviewReasons = reviewReasons.filter(
+    (reason) => !SYSTEM_REVIEW_REASON_CODES.has(reason.code),
+  );
   const [checkedDocs, setCheckedDocs] = useState<Set<string>>(new Set());
   const [shareState, setShareState] = useState<
     "idle" | "copied" | "shared" | "failed"
@@ -555,10 +789,21 @@ export function OutcomeSheet({
       {outcome.state === "HUMAN_REVIEW_REQUIRED" && (
         <section>
           <p>{translate(language, "outcome.human_review_body")}</p>
-          <ReasonList
+          <ReviewReasonGroup
             language={language}
-            reasons={outcome.reviewReasons}
+            titleKey={"outcome.review_group_case.title" as I18nKey}
+            reasons={caseReviewReasons}
             sources={sourceIndex}
+            facts={facts}
+            onEditMissingInput={onEditMissingInput}
+          />
+          <ReviewReasonGroup
+            language={language}
+            titleKey={"outcome.review_group_system.title" as I18nKey}
+            reasons={systemReviewReasons}
+            sources={sourceIndex}
+            facts={facts}
+            onEditMissingInput={onEditMissingInput}
           />
         </section>
       )}
@@ -710,12 +955,12 @@ export function OutcomeSheet({
           <ul>
             {outcome.assumptions.map((assumption) => (
               <li key={assumption.id}>
+                {/* Never the raw `assumption.<id>` key: an unsure answer
+                    whose question has no dedicated copy still gets the
+                    generic sentence, with the question named in it. */}
                 {assumption.message
                   ? localized(assumption.message, language)
-                  : translate(
-                      language,
-                      `assumption.${assumption.questionId}` as I18nKey,
-                    )}
+                  : assumptionDisplay(language, assumption.questionId)}
               </li>
             ))}
           </ul>

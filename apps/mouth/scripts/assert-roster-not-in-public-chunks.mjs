@@ -44,9 +44,42 @@
 // would mean writing an allowlist that encodes the very thing under review.
 //
 // So: chunks and public files, absolutely. Server payloads, on purpose, not yet.
+//
+// THE ASSUMPTION UNDERNEATH, AND ITS MEASURED STATE — written here because the
+// paragraph above rests on it and never said so.
+//
+// The reasoning "those payloads are per-request, so they are not files" holds only
+// while a route is DYNAMIC. It is NOT true of this app today, and the first draft of
+// this comment got that wrong by describing it as a future risk.
+//
+// MEASURED on this build, and the number C4c published was WRONG: SEVENTEEN
+// `(workspace)` routes are statically prerendered, not five. Every workspace
+// top-level route is — none is dynamic. C4c said five because the probe that
+// produced it filtered the manifest against a hardcoded tuple of five names instead
+// of enumerating `src/app/(workspace)/<route>/page.tsx`, so five was the most it
+// could ever return. The correction is recorded here rather than quietly applied.
+//
+// The exposure is narrower than seventeen suggests, which is worth stating in the
+// same breath: of the seventeen payloads, exactly ONE carries staff-name markers —
+// `/lkpm`, 4 hits. The other sixteen are the client shell.
+//
+// `clients/[id]` is the exception that stays dynamic — 0 prerender artifacts,
+// measured — which is why the fix that moved its table server-side genuinely removed
+// the data from everything this guard can see.
+//
+// THE BOUNDARY IS NOW A FLOOR, not just a paragraph. `.next/prerender-manifest.json`
+// is the mechanical test — if a `(workspace)` route is in it, its payload is a file —
+// and the check below enforces a BASELINE rather than a blanket rule: the seventeen
+// already-static routes are accepted with their measurement, and a NEW one fails.
+// Asserting the blanket rule would fail every build today over an exposure that is
+// already escalated and owner-held, which teaches people to bypass the guard rather
+// than fixing anything. A route that becomes static tomorrow is a different matter:
+// nobody has accepted it, and until now it landed in silence.
 
 import fs from "node:fs";
 import path from "node:path";
+import { chunkExceptionViolations } from "./lib/chunk-exception-contract.mjs";
+import { unacceptedPrerenderedWorkspaceRoutes } from "./lib/prerendered-workspace-baseline.mjs";
 
 const CHUNK_DIR = path.join(".next", "static", "chunks");
 // Keep in step with PUBLIC_EXCLUDED_SLUGS / PUBLIC_EXCLUDED_NAME_ALIASES in
@@ -75,6 +108,22 @@ const FORBIDDEN = /faisha|faysha|sahira/i;
  * quiet one.
  */
 const ALLOWED_CHUNK_PREFIXES = [];
+
+/**
+ * Every prefix in ALLOWED_CHUNK_PREFIXES must appear here as a key, mapped to the PR
+ * that removes it. Empty, because the list above is empty.
+ *
+ * This exists because "the guard mentions a closing PR somewhere" is not a check. The
+ * previous rule asked exactly that — `expect(guard).toContain("C4b")` — and a refuter
+ * showed it was vacuous: this file already says "closing PR" twice while narrating
+ * history, so a NEW un-timeboxed entry would have satisfied it and the suite would
+ * have stayed green. Measured before fixing: an entry added to both lists with no
+ * prose touched passed 9/9.
+ *
+ * Keying the promise to the ENTRY is what makes it enforceable — the repo's own scar
+ * family for this is "a guard that judges a substring instead of an entity".
+ */
+const ALLOWED_CHUNK_PREFIX_CLOSERS = {};
 
 /** Where the app's public static files live — served with no session, like chunks. */
 const PUBLIC_DIR = "public";
@@ -119,8 +168,109 @@ if (all.length === 0) {
   process.exit(1);
 }
 
+// THE PRERENDER BASELINE. Derived from the filesystem, never from a list of names —
+// that is exactly how C4c's "five" happened.
+{
+  const WS_DIR = path.join("src", "app", "(workspace)");
+  const MANIFEST = path.join(".next", "prerender-manifest.json");
+  // Refuse to pass a check that did not run — the same rule this guard already applies
+  // to an empty chunk scan. A missing manifest used to mean "silently green".
+  if (!fs.existsSync(WS_DIR)) {
+    console.error(
+      `ROSTER_CHUNK_ASSERT FAILED: ${WS_DIR} does not exist, so the prerender baseline ` +
+        `could not be checked. Refusing to report success on a check that did not run.`,
+    );
+    process.exit(1);
+  }
+  if (!fs.existsSync(MANIFEST)) {
+    console.error(
+      `ROSTER_CHUNK_ASSERT FAILED: ${MANIFEST} is missing — run \`npm run build\` first. ` +
+        `Refusing to report success on a prerender baseline it could not check.`,
+    );
+    process.exit(1);
+  }
+  {
+    // RECURSIVE. The first version read one level and only where a directory had its
+    // own page.tsx, so every nested route was invisible — and 25 of them were already
+    // prerendered. A shallow walk is not a smaller version of this check, it is a
+    // different check that happens to pass.
+    // Next resolves a page from several extensions, not just .tsx — a route added as
+    // page.jsx would otherwise never enter this list and could never be flagged.
+    const PAGE_FILES = [
+      "page.tsx",
+      "page.ts",
+      "page.jsx",
+      "page.js",
+      "page.mdx",
+    ];
+    const hasPage = (dir) =>
+      PAGE_FILES.some((f) => fs.existsSync(path.join(dir, f)));
+    const walk = (dir, prefix = "") => {
+      const out = [];
+      for (const d of fs.readdirSync(dir, { withFileTypes: true })) {
+        if (!d.isDirectory()) continue;
+        const route = prefix ? `${prefix}/${d.name}` : d.name;
+        if (hasPage(path.join(dir, d.name))) out.push(route);
+        out.push(...walk(path.join(dir, d.name), route));
+      }
+      return out;
+    };
+    // A route with a dynamic segment cannot be prerendered without
+    // generateStaticParams, and its manifest key is not the literal path.
+    // A page.tsx directly inside (workspace) is the "/" route under that layout.
+    const workspaceRoutes = [
+      ...(hasPage(WS_DIR) ? [""] : []),
+      ...walk(WS_DIR),
+    ].filter((r) => !r.includes("["));
+    let prerenderedPaths = [];
+    try {
+      prerenderedPaths = Object.keys(
+        JSON.parse(fs.readFileSync(MANIFEST, "utf8")).routes ?? {},
+      );
+    } catch (err) {
+      console.error(
+        `ROSTER_CHUNK_ASSERT FAILED: could not read ${MANIFEST} (${err.message}). ` +
+          `Refusing to report success on a baseline it could not check.`,
+      );
+      process.exit(1);
+    }
+    const unaccepted = unacceptedPrerenderedWorkspaceRoutes({
+      workspaceRoutes,
+      prerenderedPaths,
+    });
+    if (unaccepted.length > 0) {
+      console.error(
+        `ROSTER_CHUNK_ASSERT FAILED: ${unaccepted.length} (workspace) route(s) are now ` +
+          `statically prerendered and are NOT in the accepted baseline: ` +
+          `${unaccepted.join(", ")}. A prerendered route's payload is a FILE under ` +
+          `.next/server/app, served without a session, and this guard does not scan it. ` +
+          `Either keep the route dynamic, or add it to ` +
+          `scripts/lib/prerendered-workspace-baseline.mjs with the measurement that ` +
+          `says what its payload contains.`,
+      );
+      process.exit(1);
+    }
+  }
+}
+
 const rel = (f) => path.relative(CHUNK_DIR, f).split(path.sep).join("/");
 const isAllowed = (r) => ALLOWED_CHUNK_PREFIXES.some((p) => r.startsWith(p));
+
+// THE EXCEPTION CONTRACT. The decision lives in ./lib/chunk-exception-contract.mjs
+// so that a TEST can execute it — see that file's header for why it is not inline.
+// This site keeps what belongs to a build script: formatting and the exit code.
+{
+  const violations = chunkExceptionViolations({
+    prefixes: ALLOWED_CHUNK_PREFIXES,
+    closers: ALLOWED_CHUNK_PREFIX_CLOSERS,
+  });
+  if (violations.length > 0) {
+    for (const v of violations) {
+      console.error(`ROSTER_CHUNK_ASSERT FAILED: ${v}`);
+    }
+    process.exit(1);
+  }
+}
 
 const offenders = [];
 for (const file of all) {

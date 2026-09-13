@@ -88,4 +88,62 @@ describe("workspace roster directory", () => {
     a[0].label = "mutated";
     expect(taxConsultants()[0].label).toBe("Veronika");
   });
+
+  /**
+   * The invariant the copy above silently depends on.
+   *
+   * `taxConsultants()` copies with `TAX_CONSULTANTS.map((c) => ({ ...c }))`, and a
+   * spread copies one level. That is a TRUE copy only while every field is a
+   * primitive — which is the case today, `{ value: string; label: string }`.
+   *
+   * The test above cannot see the difference: it mutates `label`, a top-level
+   * string, so it passes whether the copy is shallow or deep. Add one array or
+   * object field — a permissions list, a locale map — and callers would start
+   * sharing that reference with the module constant, on the server, with every
+   * existing test still green.
+   *
+   * So the flatness is asserted directly. This is deliberately a test and not a
+   * `structuredClone` in the function: the clone would make the copy correct while
+   * leaving no trace that the constraint ever existed, so the next person to add a
+   * nested field would learn nothing. A red test here fails at the moment that
+   * decision is actually being made, and whoever is making it can then choose
+   * between deep-copying and keeping the shape flat — with the trade-off in front
+   * of them rather than behind them.
+   */
+  it("keeps every consultant field primitive, which is what makes a spread a copy", () => {
+    // An ALLOW-list of primitive `typeof` results, not a deny-list of "object".
+    // `typeof fn === "function"`, so a deny-list on "object" alone would wave a
+    // method or closure straight through — and a spread copies that reference just
+    // as it would an array. A refuter caught exactly that hole in the first draft.
+    const PRIMITIVE = new Set([
+      "string",
+      "number",
+      "boolean",
+      "bigint",
+      "symbol",
+      "undefined",
+    ]);
+
+    const options = taxConsultants();
+    // Without this, an empty table would make the loops below vacuous and the test
+    // would pass having asserted nothing — also a refuter's catch.
+    expect(options.length).toBeGreaterThan(0);
+
+    let checked = 0;
+    for (const option of options) {
+      // Reflect.ownKeys, not Object.entries: a spread also copies enumerable
+      // SYMBOL-keyed properties, and Object.entries cannot see them — so a
+      // symbol-keyed array would have been shared by reference with this test green.
+      for (const key of Reflect.ownKeys(option)) {
+        const field = String(key);
+        const value = (option as unknown as Record<PropertyKey, unknown>)[key];
+        checked += 1;
+        expect(
+          value === null || PRIMITIVE.has(typeof value),
+          `${field} is ${typeof value}, not a primitive — a spread no longer copies it`,
+        ).toBe(true);
+      }
+    }
+    expect(checked).toBeGreaterThan(0);
+  });
 });

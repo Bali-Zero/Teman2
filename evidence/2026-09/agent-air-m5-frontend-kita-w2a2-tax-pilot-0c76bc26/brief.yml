@@ -1,0 +1,62 @@
+task_id: kita-w2a2-tax-pilot
+gear: 2
+l_level: L1
+gate_class: sonnet
+base_sha: 310c5ed1b86de9e6e548483b094d36d9bc321961 # pragma: allowlist secret
+# Floor for this diff: 2, source `size`. Churn 1229 lines over 6 files (3 added, 1226 deleted).
+# No hot-zone path, no PII path, no ground-truth path.
+objective: >-
+  Kita pruning wave 2, PR-B (split from PR-A per team-lead direction, 2026-09-13, to keep each
+  PR's blast radius under the Gear-3 size threshold): delete the /clients/tax-pilot page and its
+  dedicated TaxCompanyPilotWorkspace component from apps/mouth — a prototype workspace that
+  hardcoded two real client company slugs directly in its data-fetching call.
+constraints:
+  - >-
+    Deletion only, one concern, no new feature, no redesign, no backend change.
+  - >-
+    Verified TaxCompanyPilotWorkspace.tsx (and its own test, and token-drain.guard.test.ts which
+    only pins that component's render-token-drain) had zero importers outside the deleted page
+    and its own tests: `git grep -n "TaxCompanyPilotWorkspace" apps/mouth/src apps/mouth/e2e`
+    after deletion returns nothing.
+  - >-
+    Verified the shared API methods/types the page used (getEvidenceDossiers,
+    getWorkspaceAiReviewQueue, approveWorkspaceAiSnapshot, autoApproveWorkspaceAiSnapshots,
+    TaxCompanyPilotMap and related types) are KEPT — they are also consumed by the
+    /clients/[id] BusinessStoryPanel via useClientDetail.ts, so deleting them would break a
+    live surface outside this PR's scope.
+  - >-
+    Dropped the "Tax Pilot" entry from navigation.ts's owner-only "Da fare" section and its
+    routeTitles entry; swapped an unrelated fixture label in AppSidebar.test.tsx (inline mock
+    data, not real navigation.ts) so no grep for the deleted route survives in apps/mouth.
+  - >-
+    No client PII in this pack, in the PR body or in any log — the two hardcoded company slugs
+    that motivated this deletion are described but never reproduced here.
+appetite:
+  wall_clock_hours: 1
+  adversarial_rounds: 0
+  tokens: 200000
+acceptance:
+  - text: >-
+      A1: WHEN `tsc --noEmit` runs in apps/mouth on this head SHALL exit 0.
+    probe: cd apps/mouth && npx tsc --noEmit
+  - text: >-
+      A2: WHEN the mouth unit suite runs with its own config on this head SHALL pass every file.
+    probe: cd apps/mouth && npx vitest --run --root . --config vitest.config.ts
+  - text: >-
+      A3: WHEN `npm run build` runs in apps/mouth on this head SHALL complete `next build` and
+      SHALL print PUBLIC_LOGIN_BUNDLE_OK.
+    probe: cd apps/mouth && npm run build
+assumptions:
+  - text: >-
+      getEvidenceDossiers/getWorkspaceAiReviewQueue/approveWorkspaceAiSnapshot/
+      autoApproveWorkspaceAiSnapshots and the TaxCompanyPilotMap/WorkspaceAiSnapshotReviewItem/
+      WorkspaceAiAutoApproveResult types are live outside the deleted page, via
+      useClientDetail.ts -> BusinessStoryPanel.tsx (/clients/[id]).
+    status: verified
+    probe: >-
+      grep -rn "getEvidenceDossiers\|TaxCompanyPilotMap" apps/mouth/src/hooks/useClientDetail.ts
+      "apps/mouth/src/app/(workspace)/clients/[id]/components/BusinessStoryPanel.tsx"
+  - text: >-
+      No e2e spec references /clients/tax-pilot.
+    status: verified
+    probe: 'grep -rln "tax-pilot" apps/mouth/e2e'
