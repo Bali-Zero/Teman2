@@ -1,0 +1,225 @@
+gear: 2
+brief_ref: evidence/brief.yml
+ruling: RULED 2026-09-12 SAETTA
+lanes:
+  - lane: SAETTA-VO-W-VO-B
+    role: build
+    seat: Claude Opus 5 (Dux of window vo-b-why, implements directly)
+  - lane: vo-b-review-cause-ground-truth
+    role: ground_truth
+    seat: session (M5) — the ground truth of every sentence this PR renders is code already on origin/main, not a notebook
+    nb: >-
+      origin/main @ e4acad358d3bf4103061984ea216e6e8418c463e, four files read verbatim:
+      _lib/engine-adapter.ts (REVIEW_REASON_COPY, 29 codes, KNOWN_UNMAPPED empty — this PR
+      adds no sentence to it and changes none), _lib/fact-mapper.ts
+      (mapDisclosedReviewFlags + ACTIVITY_BOUNDARY_DECIDABLE_ANSWERS — the triggers the
+      attribution mirrors), services/visa_engine/evaluate_path.py
+      (_DISCLOSED_REVIEW_REASON_CODES, flag -> review code), and
+      docs/plans/mouth-final-20260911/evidence/02-DECISIONI-ZERO-snapshot-20260911.md
+      (D3 "NON ORA", D5 criterion (c), D6 "Δ2: SÌ").
+    query_hash: "2d1c86776676dac50e0e9d201dbf486e66614e562bb707d03dd71fd3f50e5889"
+    note: >-
+      query_hash = sha256 of the four files concatenated in that order, taken with
+      `for f in <the four>; do git show origin/main:"$f"; done | shasum -a 256`. Per-file
+      digests are in the receipt below, so a drift in any one of them is locatable. No new
+      legal or regulatory claim is introduced by this PR: the two genuinely new sentences
+      are the two group headings and the neutral contact fallback, none of which asserts
+      anything about Indonesian immigration law.
+pii_scan: clean
+decisions:
+  - id: D-gear
+    decision: >-
+      Gear 2. The deterministic floor computed by evidence_pack_lint.py
+      --print-floor on the merge-base diff is 2 (8 files, +641/-17: churn far
+      below the 1828 SIZE term, no hot-zone path). The window brief's own
+      judgement is also 2, so gear = max(2, 2) = 2 and no council is owed.
+  - id: D-groups
+    decision: >-
+      Two groups, not three, and the SECOND one is the closed list. Membership of
+      "checks on our side" is exactly the spec's three families (DECISIVE_*,
+      SAFETY_CRITICAL_*, MINOR_GUARDIAN_PRIVACY_REVIEW) plus PR-O2's documented
+      client-side technical exception CLIENT_UNABLE_TO_VERIFY_DETAIL. Everything
+      else falls in the first group, whose heading ("What a person will check
+      about your case") is true of ANY review code and blames nobody — so an
+      unclassified future code can at worst be under-specific, never
+      mis-attributed to the visitor. A test re-derives the three families from
+      REVIEW_REASON_COPY so a new source/system code cannot ship unclassified.
+  - id: D-cause
+    decision: >-
+      A cause is rendered only when an answer of THIS interview demonstrates it.
+      Each branch of demonstratedReviewCauses mirrors the exact trigger
+      fact-mapper.ts::mapDisclosedReviewFlags uses to raise the flag that
+      evaluate_path.py::_DISCLOSED_REVIEW_REASON_CODES turns into the code:
+      any "unsure" fact (NOT_CERTAIN), a classified answer outside
+      ACTIVITY_BOUNDARY_DECIDABLE_ANSWERS (ACTIVITY_BOUNDARY, imported from the
+      mapper rather than copied), trip_scope="multiple" (MULTI_PURPOSE_TRIP),
+      the two sponsor facts answered "unsure" (the attributable half of
+      AMBIGUOUS_SPONSOR), and the ticked review_gate item for the six
+      self-disclosure codes. When nothing demonstrates the code — a
+      backend-only trigger, or the STEPCHILD relation half of AMBIGUOUS_SPONSOR
+      — the list is empty and only the code's own copy is shown. An unexplained
+      hold beats an invented explanation.
+  - id: D-edit
+    decision: >-
+      The edit link reuses the existing onEditMissingInput slot (flow.ts EDIT),
+      and is offered only for a questionId present in `facts`. flow.ts's EDIT
+      resets the WHOLE interview when its target is absent from history, and
+      pruneFacts keeps `facts` a subset of the questions this walk asked — so
+      "present in facts" is exactly the prerequisite-safe condition. Pinned by a
+      test that asserts no cause is produced for an unanswered question.
+  - id: D-handoff
+    decision: >-
+      The two "not configured" strings are replaced by a neutral sentence that
+      states what the visitor CAN do (print/save the result, bring it to a
+      consultant). No number is invented and no positive fixture is added:
+      D3 is "NON ORA" and the number stays Zero's. Recorded in leftovers.
+  - id: D-alert
+    decision: >-
+      Hiding the misconfiguration from the reader without reporting it to us
+      would turn a visible defect into a silent one (cicatrix family #2). One
+      event name, visa_oracle_v2_handoff_unconfigured, is added to
+      telemetry.ts's closed list and fired from ConsentHandoff when the number
+      is absent or invalid. telemetry.ts is one file beyond the report's listed
+      perimeter — a 5-line additive change inside the same route group, needed
+      by acceptance A2's second half, declared here rather than taken silently.
+      It carries the terminal state at most: no number, no facts.
+  - id: D-receipt
+    decision: >-
+      The OutcomeSheet's assumptions receipt rendered the RAW key
+      "assumption.trip_scope" for any unsure answer whose question has no
+      dedicated copy — visible in the first capture of this very window, on the
+      same sheet, for the same "unsure" case the window exists to explain.
+      ConfirmationCard already had the correct fallback (the specific key, else
+      the generic sentence NAMING the question); it is exported and reused
+      instead of being duplicated. One word changed in ConfirmationCard.tsx
+      (function -> export function), no behaviour change there.
+  - id: D-css
+    decision: >-
+      No CSS. The new block reuses classes that already exist in oracle.css
+      (oracle-outcome__section-title, oracle-reason-list, oracle-action-list,
+      oracle-confirmation__edit); focus-visible and prefers-reduced-motion come
+      from that file's existing global rules. oracle.css is READ-ONLY under D6
+      and was not opened. A styling need would be a further delta to report.
+  - id: D-a11y
+    decision: >-
+      Several edit buttons can appear on one sheet, so each carries an
+      aria-label naming its own question while the visible label stays the
+      existing "Edit" string. The existing axe-clean keyboard journeys (EN and
+      ID) in e2e/visa-oracle-v2.spec.ts pass unchanged over the new markup.
+receipts:
+  - claim: The worktree was created by the broker on the mouth lane for this task id.
+    cmd: python3 scripts/agent_start.py --lane mouth --task-id vo-b-why
+    result: "WORKTREE_READY /Users/balizero/nuzantara/.worktrees/mouth-vo-b-why ; branch agent/air-m5/mouth/vo-b-why ; base e4acad358d3bf4103061984ea216e6e8418c463e"
+    exit: 0
+    ts: "2026-09-13T09:33:00+08:00"
+    seat: Claude Opus 5
+  - claim: The ground-truth lane's per-file digests, so a drift is locatable and not merely detectable.
+    cmd: 'for f in <engine-adapter.ts fact-mapper.ts evaluate_path.py 02-DECISIONI-ZERO-snapshot-20260911.md>; do git show origin/main:"$f" | shasum -a 256; done'
+    result: "engine-adapter.ts d6a7b723a6f02f0c182e00cdc79e7e1fdbb94d7ec2a8e12339d159cd7071767b ; fact-mapper.ts 43505b1a95084cd485cb50f0f997f721dd7984a6d8bfcf200dbddc42879c1480 ; evaluate_path.py 32fc622b57295f8a2a0e06fd9046f84536419585397a962327372ef7706e22eb ; 02-DECISIONI-ZERO-snapshot e86065b0c8336ab3c49eee674d6e62a65d1132cab9991ecdabca30aa120a07e6"
+    exit: 0
+    ts: "2026-09-13T10:02:00+08:00"
+    seat: Claude Opus 5
+  - claim: D-gear - the deterministic floor for this diff is 2.
+    cmd: python3 scripts/evidence_pack_lint.py --print-floor --print-floor-source --changed-files-file <cf> --numstat-file <ns> ; --print-measured
+    result: "floor 2 ; measured: 8 files, +641/-17, commit count unmeasured"
+    exit: 0
+    ts: "2026-09-13T09:53:00+08:00"
+    seat: Claude Opus 5
+  - claim: A1/A3/A4 - the grouped block, the demonstrated causes, the EN and ID copy and the prerequisite-safe edit are pinned by unit tests.
+    cmd: cd apps/mouth && ./node_modules/.bin/vitest run "src/app/(visa-oracle)"
+    result: "Test Files 39 passed (39) ; Tests 759 passed (759). OutcomeSheet.test.tsx carries 10 new cases incl. the EN and ID cause sentences, the source-hold grouping, the classification-exhaustiveness guard over REVIEW_REASON_COPY, and the mapDisclosedReviewFlags mirror."
+    exit: 0
+    ts: "2026-09-13T09:50:49+08:00"
+    seat: Claude Opus 5
+  - claim: A2 - the internal alert fires exactly when the number is missing or invalid, and never when it is configured.
+    cmd: cd apps/mouth && ./node_modules/.bin/vitest run ".../ConsentHandoff.test.tsx"
+    result: 'green; the new cases assert container.textContent has no "is not configured" and that visa_oracle_v2_handoff_unconfigured is emitted for "not-a-phone", "" and "+62", and is NOT emitted for 628123456789.'
+    exit: 0
+    ts: "2026-09-13T09:43:44+08:00"
+    seat: Claude Opus 5
+  - claim: A1/A3/A4 on a real browser - a held walk names the answer, groups the two kinds of hold, and the edit returns to that exact question.
+    cmd: ./node_modules/.bin/playwright test --config=<scratchpad>/pw.config.cjs (external server on 127.0.0.1:3111, channel chrome)
+    result: '19 passed (14.7s) for the whole e2e/visa-oracle-v2.spec.ts, including the new "a held walk names the answer that caused it and edits back to that question" and both axe-clean keyboard-only journeys (EN, ID) over the new markup.'
+    exit: 0
+    ts: "2026-09-13T09:58:30+08:00"
+    seat: Claude Opus 5
+  - claim: A2 measured on a real server whose WhatsApp number is genuinely absent - the visitor reads no configuration string.
+    cmd: next build + next start -p 3111 WITHOUT NEXT_PUBLIC_VISA_ORACLE_WHATSAPP_NUMBER ; playwright page.content() searched for "is not configured" on all four captures
+    result: 'CONFIG_STRING_HITS=0. The panel renders "WhatsApp is not available from this page right now. You can print or save this result and bring it to a Bali Zero consultant."'
+    exit: 0
+    ts: "2026-09-13T09:54:10+08:00"
+    seat: Claude Opus 5
+  - claim: A5 - eight captures of a held-for-review outcome, two viewports x light/dark x (full page, keyboard focus), reduced motion forced.
+    cmd: playwright chromium channel=chrome, colorScheme light|dark, reducedMotion "reduce", viewports 1440x900 and 390x844, evaluate route mocked with review_reasons [DISCLOSED_UNCERTAINTY_REVIEW, DECISIVE_SOURCE_STALE], synthetic interview (trip_scope answered "Not sure")
+    result: "held-review-{light,dark}-{1440x900,390x844}.png and held-review-keyboard-focus-{light,dark}-{1440x900,390x844}.png under /Users/balizero/Desktop/R3-RENDERS-20260913/vo-b/. The focus ring on the Edit button of the demonstrated cause is visible in all four focus captures."
+    exit: 0
+    ts: "2026-09-13T09:54:10+08:00"
+    seat: Claude Opus 5
+  - claim: Typecheck, lint and formatting are green on every touched file.
+    cmd: cd apps/mouth && ./node_modules/.bin/tsc --noEmit -p tsconfig.json ; ./node_modules/.bin/eslint <touched> ; ../../node_modules/.bin/prettier --check <touched>
+    result: "tsc exit 0 ; eslint 0 errors (the two .test.tsx files are matched by an ignore pattern, reported as warnings) ; prettier clean on every file this window touched. pnpm -F mouth typecheck refuses on a worktree (ERR_PNPM_UNSAFE_MODULES_DIR, node_modules symlinks to the main checkout), so the underlying binary was run directly."
+    exit: 0
+    ts: "2026-09-13T09:50:40+08:00"
+    seat: Claude Opus 5
+  - claim: The e2e run's two WhatsApp reds were the local build, not this change - named before any gesture and then proven.
+    cmd: first run with the number set only at RUNTIME (2 failed / 17 passed) ; error-context.md read ; rebuild with NEXT_PUBLIC_VISA_ORACLE_WHATSAPP_NUMBER set at BUILD time ; rerun
+    result: "The snapshot showed the neutral unavailable panel, i.e. number===null in the component: NEXT_PUBLIC_* is inlined at build time, and the repo's own playwright webServer therefore sets it on the BUILD command. After rebuilding with it, 19/19 pass."
+    exit: 0
+    ts: "2026-09-13T09:58:30+08:00"
+    seat: Claude Opus 5
+  - claim: The e2e privacy-policy test rewrote two committed screenshots as a side effect; they were restored, so this PR carries no unrelated binary churn.
+    cmd: git -C <wt> checkout -- docs/audits/screenshots/visa-oracle-v2/visa-oracle-privacy-v1-{desktop,mobile-320}.png ; git status --porcelain
+    result: "Only the 8 intended files plus the evidence directory remain modified/untracked."
+    exit: 0
+    ts: "2026-09-13T10:00:00+08:00"
+    seat: Claude Opus 5
+dissent:
+  - seat: Claude Opus 5 (self-refutation, on the attribution)
+    objection: >-
+      demonstratedReviewCauses MIRRORS fact-mapper.ts's triggers instead of
+      sharing one implementation with it, because the mapper's REVIEW_FLAG_MAP
+      is module-private and fact-mapper.ts is outside this window's write
+      perimeter. A mirror can drift, and a drifted mirror would name an answer
+      the engine did not actually hold on.
+    status: CONFIRMED
+    cure: >-
+      Only partly cured, deliberately. The one table that IS exported
+      (ACTIVITY_BOUNDARY_DECIDABLE_ANSWERS) is imported rather than copied, and
+      a test re-derives four representative rows through the real
+      mapDisclosedReviewFlags so a drift on either side goes red. The remaining
+      risk is a code whose trigger changes without either side being touched;
+      it degrades to "no cause shown", never to a wrong cause, because the
+      attribution is a predicate over the interview's own facts. Folding the two
+      into one exported helper is a fact-mapper change and a separate mandate —
+      recorded in leftovers.
+  - seat: Claude Opus 5 (self-refutation, on the perimeter)
+    objection: >-
+      Two files outside the report's listed perimeter are edited: telemetry.ts
+      (+5 lines, one event name) and ConfirmationCard.tsx (+8/-1, exporting an
+      existing helper). Either could be called a silent widening.
+    status: CONFIRMED
+    cure: >-
+      Not hidden: both are declared here (D-alert, D-receipt) and in the PR
+      body. Neither changes behaviour for any existing caller, both are inside
+      the (visa-oracle) group this mission owns exclusively, and both exist to
+      satisfy an acceptance criterion of THIS window (A2's internal alert; the
+      raw i18n key visible in this window's own proof). The alternative to the
+      second one was duplicating an 8-line helper into OutcomeSheet.tsx.
+  - seat: Claude Opus 5 (self-refutation, on size)
+    objection: >-
+      +641/-17 is above the "~400 net lines" guidance of the PR contract.
+    status: PLAUSIBLE
+    cure: >-
+      Not split. 338 of the 641 added lines are tests (OutcomeSheet.test.tsx
+      235, ConsentHandoff.test.tsx 47, e2e 56) and a large share of the rest is
+      the rationale comments this repo requires on a guard. The customer-visible
+      concern is single (why a person must look, and the contact panel that goes
+      with it); splitting the tests from the code they pin would ship an
+      unpinned behaviour first.
+leftovers:
+  - "D3 stays open: NEXT_PUBLIC_VISA_ORACLE_WHATSAPP_NUMBER is still unset on Vercel mouth Production. Until Zero sets it (number + consent are his), every visitor sees the neutral panel and visa_oracle_v2_handoff_unconfigured fires on every held result. The window may only ship the neutral fallback."
+  - 'DISCLOSED_AMBIGUOUS_SPONSOR_REVIEW is attributed only when a sponsor fact was answered "unsure"; the STEPCHILD-relation half of NARROW-1''s trigger has no single answer to name, so those walks still read the code''s own copy with no cause line.'
+  - "CONFLICTING_IMMIGRATION_STATUS_REVIEW has no trigger in fact-mapper.ts at all today, so it can never carry a demonstrated cause from the frontend."
+  - "Folding demonstratedReviewCauses and mapDisclosedReviewFlags into one exported helper needs a fact-mapper.ts change — a separate mandate, see the first dissent."
+  - "The shared apps/mouth/node_modules/.bin/tsx shim now points into .worktrees/mouth-vo-c-doors (a sibling window's pnpm store), so `npm run build` in any mouth worktree dies on its llms prebuild; `next build` directly is unaffected. Cicatrix family #5, sibling race on the shared checkout — imperator-level, not cured from inside this window."
+  - "Only the EN screenshots were captured; the ID rendering of the same block is pinned by the unit test and by the axe-clean keyboard-only ID e2e journey, not by an image."

@@ -650,6 +650,62 @@ test.describe("Visa Oracle v2 integration — page Page", () => {
     );
   });
 
+  // PR-O4 / Δ2 (spec §3): a held visitor reads a DEMONSTRATED cause, edits
+  // the answer behind it, and never reads a configuration string.
+  test("a held walk names the answer that caused it and edits back to that question", async ({
+    page,
+  }) => {
+    await seedVerdictResume(page, { ...VERDICT_FACTS, trip_scope: "unsure" });
+    await page.route("**/api/visa-oracle/evaluate**", (route) => {
+      const response = makeVisaOracleResponse("HUMAN_REVIEW_REQUIRED");
+      return fulfillJson(route, {
+        ...response,
+        decision: {
+          ...response.decision,
+          review_reasons: [
+            {
+              code: "DISCLOSED_UNCERTAINTY_REVIEW",
+              rule_ids: [],
+              source_refs: [],
+            },
+            { code: "DECISIVE_SOURCE_STALE", rule_ids: [], source_refs: [] },
+          ],
+        },
+      });
+    });
+    await page.goto("/visa-oracle");
+    await expectEngineState(page, "HUMAN_REVIEW_REQUIRED");
+
+    // The two holds are separated: one about this applicant's answers, one
+    // about our own sources.
+    await expect(
+      page.getByRole("heading", {
+        name: translate("en", "outcome.review_group_case.title"),
+      }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("heading", {
+        name: translate("en", "outcome.review_group_system.title"),
+      }),
+    ).toBeVisible();
+
+    const cause = page.locator('[data-review-cause="trip_scope"]');
+    await expect(cause).toHaveCount(1);
+    await expect(cause).toContainText(translate("en", "q.trip_scope"));
+    // The source hold attributes nothing to the applicant.
+    await expect(page.locator("[data-review-cause]")).toHaveCount(1);
+
+    // A visitor never reads an internal configuration string (A2).
+    expect(await page.content()).not.toContain("is not configured");
+
+    await cause.getByRole("button").click();
+    await expect(
+      page.getByRole("heading", {
+        name: translate("en", "q.trip_scope"),
+      }),
+    ).toBeVisible();
+  });
+
   test("minor handoff requires guardian confirmation before separate WhatsApp consent", async ({
     page,
   }) => {
