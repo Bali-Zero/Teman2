@@ -6,10 +6,29 @@ the user lives in: replay the **94 real interview walks** — every distinct
 path through ``flow.ts``'s two-arm spine and ``getCategoryQuestionIds``'
 eleven categories, each answered through the real ``fact-mapper.ts`` —
 against the highest signed PRODUCTION pack, and pin the outcome census.
-Current census (W-VO-E, 2026-09-13): **1 HUMAN_REVIEW_REQUIRED / 2
-NEEDS_INPUT / 15 NO_SUPPORTED_PATH / 76 SUPPORTED_CANDIDATES**; the
-paragraphs below are the historical record of how it got here, each keeping
-the count that was true when it was written.
+Current ENGINE census (W-VO-E, 2026-09-13): **1 HUMAN_REVIEW_REQUIRED / 2
+NEEDS_INPUT / 15 NO_SUPPORTED_PATH / 76 SUPPORTED_CANDIDATES**; the FUNNEL
+census the applicant actually meets is the second column of the table under
+"THE DISCLOSURE-FLAG LAYER" below. The paragraphs below are the historical
+record of how it got here, each keeping the count that was true when it was
+written.
+
+W-VO-E adds a THIRD question to the two this file already answered ("where
+does each walk end" and "what does the applicant meet"): **which products
+can the interview name at all.** Twelve of the 29 products carrying a
+SUPPORT rule in the signed pack were named by ZERO of the 84 walks — a gap
+no test in the repository could see, because a census grades the walks that
+exist and a coverage floor grades the pack, and neither notices a product
+the funnel never offers. ``test_every_support_bearing_product_is_named_by_
+some_walk`` reads the universe from the COMPILED pack (not from a list
+maintained here) and fails when a SUPPORT-bearing product is named on no
+walk; ``UNREACHABLE_BY_RULING`` is the one documented, self-invalidating
+excuse table. Eleven of the twelve needed NO tree change — only new answers
+to questions ``tree.ts`` already asks — and the twelfth (BRIDGING) is
+unreachable by ruling, not by accident. ENGINE-named distinct products:
+**17 -> 28**; public ones **17 -> 27** (E31E is named at engine level and
+held by the minor-privacy adapter at public level — see
+``PRIVACY_HELD_WALKS``).
 
 Measured 2026-09-07 on ``rulepack-prod-020.signed.json``, with PR-3's
 interview on top and PR-5's age dimension on top of that: **2 NEEDS_INPUT /
@@ -135,30 +154,43 @@ two different questions:
   is ``None``, which no evaluated decision is — council round 1,
   tp1-qwen3.8-max, on the word "unconditional".)
 
-MEASURED 2026-09-13 on ``rulepack-prod-020.signed.json`` over all 84 walks,
+MEASURED 2026-09-13 on ``rulepack-prod-020.signed.json`` over all 94 walks,
 both censuses in the same run (``test_the_flagged_census_is_the_funnel_the_
 applicant_meets``):
-   - **51 SUPPORTED_CANDIDATES means 51 walks reach candidates AT ENGINE
-     LEVEL, with no disclosure flags supplied.** It does NOT mean 51
-     applicants see a recommendation without human review.
-   - **The public-hold assertion below is a property of these fixtures, not
-     of production.** It was ``HUMAN_REVIEW_REQUIRED == 0`` until W-VO-E; it
-     now allows exactly one hold and pins its walk and its reason code
-     (``MINOR_GUARDIAN_PRIVACY_REVIEW``). Either way the review-FLAG arm of
-     ``apply_public_policy_adapters`` is not exercised by any walk here.
-   - **A regression that ADDS a disclosure flag — or fails to REMOVE one —
-     passes this census invisibly.** That is not hypothetical: it is exactly
-     what ``work_role`` did, and it is why the E23 claim in this PR rests on
-     a separate replay rather than on this table.
+   - **76 SUPPORTED_CANDIDATES means 76 walks reach candidates AT ENGINE
+     LEVEL, with no disclosure flags supplied.** It does NOT mean 76
+     applicants see a recommendation without human review — the FUNNEL
+     column, 69, is the one an applicant meets.
+   - **The hold counts are a property of these fixtures, not of
+     production.** The ENGINE column's single hold was ``== 0`` until
+     W-VO-E; it now allows exactly one and pins its walk and its reason code
+     (``MINOR_GUARDIAN_PRIVACY_REVIEW``). The FUNNEL column's nine are that
+     same one plus the eight walks that raise a disclosure flag.
+   - **Both arms of ``apply_public_policy_adapters`` are now exercised, and
+     the two sentences that used to stand here are retired.** They said the
+     review-FLAG arm was untouched by any walk and that "a regression which
+     ADDS a disclosure flag — or fails to REMOVE one — passes this census
+     invisibly"; both stopped being true when the disclosure-flag layer
+     landed. ``test_guilt_a_walk_that_gains_a_flag_is_caught`` and
+     ``test_guilt_a_walk_that_loses_its_flag_is_caught`` are what stopped it
+     (council round 4, codex-gpt-5.6-sol, on exactly this contradiction).
+     The ``work_role`` episode the old text cited remains the reason the
+     layer exists at all.
 
 ===========================  ======  =======
 state                        ENGINE  FUNNEL
 ===========================  ======  =======
-SUPPORTED_CANDIDATES             67       60
+SUPPORTED_CANDIDATES             76       69
 NO_SUPPORTED_PATH                15       15
 NEEDS_INPUT                       2        1
-HUMAN_REVIEW_REQUIRED             0        8
+HUMAN_REVIEW_REQUIRED             1        9
 ===========================  ======  =======
+
+W-VO-E moved both columns by the same +9/-1 shape: nine of its ten new
+walks answer at both levels, and the tenth — the minor — is the single
+ENGINE hold. The FUNNEL column keeps its 8 flag-driven holds and gains
+that same one: no new walk raises a disclosure flag (the per-flag table
+below is unchanged from the 84-walk corpus, measured, not derived).
 
 Per flag — ``test_every_disclosure_flag_reports_the_walks_it_rewrites``
 prints this table on every run:
@@ -386,6 +418,7 @@ WALK_DEAD_END_ALLOWLIST: dict[str, tuple[DeadEnd, ...]] = {
         ),
     ),
 }
+
 
 #: Products the highest signed pack gives a SUPPORT rule and NO interview
 #: walk can name — the class `test_every_support_bearing_product_is_named_by_
@@ -815,6 +848,19 @@ EXPECTED_DISCLOSED_REVIEW_FLAGS: dict[str, tuple[str, ...]] = {
     "offshore/work/sponsor_unsure": ("NOT_CERTAIN",),
 }
 
+#: The walks held by a PUBLIC adapter that is not the disclosure layer — one,
+#: and it is the minor-privacy control (`evaluate_path._apply_minor_privacy_
+#: hold`, Privacy Policy V1: the public contract has no guardian-consent fact,
+#: so a known minor's candidates are emptied unconditionally). W-VO-E's minor
+#: walk is the first corpus walk to exercise it.
+#:
+#: Its own table because the two causes must not be summed: a flag DELETES a
+#: proven verdict and is the subject of `EXPECTED_DISCLOSED_REVIEW_FLAGS`,
+#: while this hold fires on `derived.is_minor` alone, on BOTH censuses, with
+#: or without flags. Counting them together would let a new flag-driven hold
+#: hide behind the privacy one, or the reverse.
+PRIVACY_HELD_WALKS: set[str] = {"offshore/family/PARENT/spNat=IT/minor"}
+
 #: The FUNNEL-level state census, DERIVED from the two tables above rather
 #: than pinned as a third one — and the derivation is itself the claim under
 #: test. `_apply_disclosed_review_flags` is monotone, and unconditional for
@@ -824,7 +870,10 @@ EXPECTED_DISCLOSED_REVIEW_FLAGS: dict[str, tuple[str, ...]] = {
 #: decided, and a walk that raises none keeps its engine state exactly. If
 #: either half of that stops being true, `test_the_flagged_census_is_the_
 #: funnel_the_applicant_meets` goes red without anyone having to re-pin a
-#: number. Measured 2026-09-13: 60 / 15 / 1 / 8.
+#: number. Measured 2026-09-13 over the 94-walk corpus: 69 SUPPORTED_CANDIDATES
+#: / 15 NO_SUPPORTED_PATH / 1 NEEDS_INPUT / 9 HUMAN_REVIEW_REQUIRED. (It read
+#: `60 / 15 / 1 / 8` — the 84-walk numbers — until council round 4 caught that
+#: W-VO-E had moved the corpus under it.)
 EXPECTED_FLAGGED_STATE_CENSUS: dict[str, int] = dict(
     Counter(
         "HUMAN_REVIEW_REQUIRED" if label in EXPECTED_DISCLOSED_REVIEW_FLAGS else state
@@ -1272,10 +1321,7 @@ def _ruling_rows_without_a_proven_dependency(
     offenders: list[str] = []
     for code, row in excused.items():
         rules = support_rules.get(code, ())
-        if any(
-            not _proves_it_cannot_fire_without(rule.when, row.forbidden_fact)
-            for rule in rules
-        ):
+        if any(not _proves_it_cannot_fire_without(rule.when, row.forbidden_fact) for rule in rules):
             offenders.append(code)
     return sorted(offenders)
 
@@ -1467,18 +1513,12 @@ def test_walk_state_census_is_2_dead_ends_15_no_paths_1_privacy_hold_and_76_answ
     # walk, a DIFFERENT walk holding, or the same walk held for another reason
     # all fail here.
     held = {
-        label
-        for label, outcome in outcomes.items()
-        if outcome["state"] == "HUMAN_REVIEW_REQUIRED"
+        label for label, outcome in outcomes.items() if outcome["state"] == "HUMAN_REVIEW_REQUIRED"
     }
-    assert held == {"offshore/family/PARENT/spNat=IT/minor"}
+    assert held == PRIVACY_HELD_WALKS == {"offshore/family/PARENT/spNat=IT/minor"}
     minor_walk = _load_walks()["offshore/family/PARENT/spNat=IT/minor"]
-    public = _public_decision(
-        minor_walk["overrides"], "offshore/family/PARENT/spNat=IT/minor"
-    )
-    assert [reason.code for reason in public.review_reasons] == [
-        "MINOR_GUARDIAN_PRIVACY_REVIEW"
-    ]
+    public = _public_decision(minor_walk["overrides"], "offshore/family/PARENT/spNat=IT/minor")
+    assert [reason.code for reason in public.review_reasons] == ["MINOR_GUARDIAN_PRIVACY_REVIEW"]
     assert census["NO_SUPPORTED_PATH"] == 15
 
 
@@ -2026,11 +2066,20 @@ def test_the_flagged_census_is_the_funnel_the_applicant_meets(
     flagged_outcomes: dict[str, dict[str, Any]],
 ) -> None:
     """The two censuses, side by side — and the headline this file existed
-    without: **0 human review at engine level, 8 at funnel level.**
+    without: **8 of the funnel's holds come from the disclosure layer, and
+    exactly one does not.**
 
     `EXPECTED_FLAGGED_STATE_CENSUS` is derived, not pinned, so this asserts
     the monotone property itself: a flagged walk ends HUMAN_REVIEW_REQUIRED
     whatever the pack decided, an unflagged walk keeps its engine state.
+
+    W-VO-E: the "0 human review at engine level" half of that headline is no
+    longer true and the number is not what replaced it. One walk —
+    `offshore/family/PARENT/spNat=IT/minor` — raises NO disclosure flag and is
+    still held on BOTH sides, by `evaluate_path._apply_minor_privacy_hold`, a
+    different adapter on the same public path. Subtracting it by NAME keeps
+    this test measuring what it was written to measure (the flag layer's own
+    contribution) instead of quietly absorbing a second cause into the count.
     """
 
     engine_census = dict(Counter(actual["state"] for actual in outcomes.values()))
@@ -2042,17 +2091,32 @@ def test_the_flagged_census_is_the_funnel_the_applicant_meets(
 
     assert engine_census == EXPECTED_STATE_CENSUS
     assert funnel_census == EXPECTED_FLAGGED_STATE_CENSUS
-    assert engine_census.get("HUMAN_REVIEW_REQUIRED", 0) == 0
-    assert funnel_census["HUMAN_REVIEW_REQUIRED"] == len(EXPECTED_DISCLOSED_REVIEW_FLAGS)
+    # The minor-privacy hold is named, not counted away: it is the ONLY hold
+    # either census may carry that no disclosure flag produced, and it must be
+    # the same walk on both sides (the adapter reads `derived.is_minor`, which
+    # no flag can change).
+    assert PRIVACY_HELD_WALKS == {"offshore/family/PARENT/spNat=IT/minor"}
+    for census in (outcomes, flagged_outcomes):
+        held_without_a_flag = {
+            label
+            for label, actual in census.items()
+            if actual["state"] == "HUMAN_REVIEW_REQUIRED"
+            and label not in EXPECTED_DISCLOSED_REVIEW_FLAGS
+        }
+        assert held_without_a_flag == PRIVACY_HELD_WALKS
+    assert funnel_census["HUMAN_REVIEW_REQUIRED"] == len(EXPECTED_DISCLOSED_REVIEW_FLAGS) + len(
+        PRIVACY_HELD_WALKS
+    )
 
 
 def test_innocence_an_unflagged_walk_keeps_its_whole_engine_outcome(
     outcomes: dict[str, dict[str, Any]],
     flagged_outcomes: dict[str, dict[str, Any]],
 ) -> None:
-    """The 76 walks that raise nothing are byte-for-byte the same decision in
+    """The 86 walks that raise nothing are byte-for-byte the same decision in
     both censuses — not merely the same state, the same candidates, missing
-    facts, reason codes and notices.
+    facts, reason codes and notices. (86 = 94 - 8; it said 76 until council
+    round 4, which is the 84-walk figure this window superseded.)
 
     This is the innocence half of the guard: supplying flags must change
     NOTHING for a walk that raises none, or the flagged census would be
@@ -2165,6 +2229,8 @@ def test_the_flagged_rebuild_names_every_field_of_the_wire_model() -> None:
     assert set(VisaOracleEvaluateRequest.model_fields) == set(
         gold_coverage_eval._REBUILT_REQUEST_FIELDS
     )
+
+
 def test_every_support_bearing_product_is_named_by_some_walk(
     engine_named: dict[str, tuple[str, ...]],
 ) -> None:
@@ -2205,10 +2271,7 @@ def test_unreachable_by_ruling_holds_only_the_bridging_row() -> None:
     added without touching this test is not possible."""
 
     assert set(UNREACHABLE_BY_RULING) == {"BRIDGING"}
-    assert (
-        UNREACHABLE_BY_RULING["BRIDGING"].forbidden_fact
-        == "intent.requested_product_code"
-    )
+    assert UNREACHABLE_BY_RULING["BRIDGING"].forbidden_fact == "intent.requested_product_code"
     assert "never asks which visa" in UNREACHABLE_BY_RULING["BRIDGING"].ruling
 
 
@@ -2268,9 +2331,7 @@ def test_guilt_a_support_bearing_product_no_walk_names_is_caught(
     """
 
     assert "E33G" in engine_named, "fixture drift: E33G must be named by a walk"
-    without_e33g = {
-        code: labels for code, labels in engine_named.items() if code != "E33G"
-    }
+    without_e33g = {code: labels for code, labels in engine_named.items() if code != "E33G"}
     assert _unreached_support_products(without_e33g) == ["E33G"]
 
 
@@ -2343,9 +2404,9 @@ def test_guilt_a_rule_that_only_mentions_the_forbidden_fact_is_not_a_dependency(
             FactPath.INTENT_PURPOSES: KnownFact(frozenset({"OTHER"})),
         }
     )
-    assert forbidden in {
-        str(path) for path in ast_module.collect_fact_paths(bypass)
-    }, "the counterexample must MENTION the fact — that is what makes it a trap"
+    assert forbidden in {str(path) for path in ast_module.collect_fact_paths(bypass)}, (
+        "the counterexample must MENTION the fact — that is what makes it a trap"
+    )
     assert ast_module.evaluate_condition(bypass, snapshot).truth is TruthValue.TRUE
     assert _proves_it_cannot_fire_without(bypass, forbidden) is False
 

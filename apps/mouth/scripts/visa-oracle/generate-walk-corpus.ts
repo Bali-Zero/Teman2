@@ -776,8 +776,10 @@ export function buildWalkCorpus(): Map<string, WalkFixture> {
       throw new Error(`duplicate walk file name ${name} (${scenario.label})`);
     }
     // Key order is the file's line order (prettier preserves it), so the flag
-    // list goes LAST: the 76 walks that raise none keep byte-identical
+    // list goes LAST: the 86 walks that raise none keep byte-identical
     // fixtures, and only the walks that actually carry the layer change.
+    // (86 of 94 as of W-VO-E — none of that window's ten new walks raises a
+    // flag; the comment said 76, the 84-walk figure, until council round 4.)
     corpus.set(name, {
       label: scenario.label,
       asked,
