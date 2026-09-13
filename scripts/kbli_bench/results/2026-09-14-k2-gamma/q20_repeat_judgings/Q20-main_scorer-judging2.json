@@ -1,0 +1,25 @@
+{
+  "qid": "Q20",
+  "verdicts": [
+    {
+      "run": 1,
+      "verdict": "wrong",
+      "reason": "Cap 49% and single national majority are supported, but required confirmation that Bali moratorium does not block 51101 is omitted."
+    },
+    {
+      "run": 2,
+      "verdict": "wrong",
+      "reason": "Cap 49% and single national majority are supported, but required confirmation that Bali moratorium does not block 51101 is omitted."
+    },
+    {
+      "run": 3,
+      "verdict": "correct",
+      "reason": "Cap, national single-majority condition, and OPEN_IN_BALI status all follow from the supplied 51101 record."
+    }
+  ],
+  "_judging": {
+    "prompt": "main_scorer",
+    "repeat": 2,
+    "prompt_sha256": "a4c5f0b113d0bbeb0054f46c668b76bbce907601751c085021312dafaffd88be"
+  }
+}

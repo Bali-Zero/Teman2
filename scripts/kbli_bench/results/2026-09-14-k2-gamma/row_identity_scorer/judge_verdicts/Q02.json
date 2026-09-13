@@ -1,0 +1,20 @@
+{
+  "qid": "Q02",
+  "verdicts": [
+    {
+      "run": 1,
+      "verdict": "correct",
+      "reason": "Abstains because capital requirements are absent, while accurately pointing to the available OJK/BI timing data."
+    },
+    {
+      "run": 2,
+      "verdict": "correct",
+      "reason": "Clearly abstains and accurately identifies the only supplied KBLI records; no capital facts are invented."
+    },
+    {
+      "run": 3,
+      "verdict": "correct",
+      "reason": "Clearly abstains due to missing capital facts and accurately identifies the available records and their general contents."
+    }
+  ]
+}

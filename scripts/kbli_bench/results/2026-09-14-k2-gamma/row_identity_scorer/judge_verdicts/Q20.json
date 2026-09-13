@@ -1,0 +1,20 @@
+{
+  "qid": "Q20",
+  "verdicts": [
+    {
+      "run": 1,
+      "verdict": "wrong",
+      "reason": "Cap and national-majority condition are supported, but the required Bali moratorium outcome is omitted."
+    },
+    {
+      "run": 2,
+      "verdict": "wrong",
+      "reason": "Cap and national-majority condition are supported, but the required Bali moratorium outcome is omitted."
+    },
+    {
+      "run": 3,
+      "verdict": "correct",
+      "reason": "States the supported 49% cap, single national majority condition, and OPEN_IN_BALI outcome."
+    }
+  ]
+}

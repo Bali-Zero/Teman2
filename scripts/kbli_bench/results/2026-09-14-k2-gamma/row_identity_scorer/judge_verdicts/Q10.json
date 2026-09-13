@@ -1,0 +1,20 @@
+{
+  "qid": "Q10",
+  "verdicts": [
+    {
+      "run": 1,
+      "verdict": "correct",
+      "reason": "Declared the OSS correction mechanics absent and pointed to the available KBLI records; no unsupported procedural claim."
+    },
+    {
+      "run": 2,
+      "verdict": "correct",
+      "reason": "Declared abstention on OSS correction mechanics and identified the package’s limited KBLI coverage; no unsupported absolute."
+    },
+    {
+      "run": 3,
+      "verdict": "correct",
+      "reason": "Declared the procedure absent and pointed to the Navigator’s available classification, risk, and PMA data; no invented mechanics."
+    }
+  ]
+}

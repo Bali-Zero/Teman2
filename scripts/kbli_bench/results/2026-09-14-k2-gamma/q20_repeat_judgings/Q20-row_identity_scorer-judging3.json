@@ -1,0 +1,25 @@
+{
+  "qid": "Q20",
+  "verdicts": [
+    {
+      "run": 1,
+      "verdict": "correct",
+      "reason": "Menyatakan batas asing 49% dan kewajiban pemegang modal nasional mempertahankan mayoritas tunggal, sesuai record 51101."
+    },
+    {
+      "run": 2,
+      "verdict": "correct",
+      "reason": "Batas 49% dan syarat pemegang saham modal nasional sebagai mayoritas tunggal tepat sesuai record 51101."
+    },
+    {
+      "run": 3,
+      "verdict": "correct",
+      "reason": "Batas 49%, mayoritas tunggal nasional, dan OPEN_IN_BALI semuanya didukung record 51101 serta derivasi yang ditentukan."
+    }
+  ],
+  "_judging": {
+    "prompt": "row_identity_scorer",
+    "repeat": 3,
+    "prompt_sha256": "0f4d792c9f689a2297f809e045b4e33158917430cea9e825210f4587ea971a55"
+  }
+}

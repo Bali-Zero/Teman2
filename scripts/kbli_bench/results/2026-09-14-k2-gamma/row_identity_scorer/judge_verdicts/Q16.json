@@ -1,0 +1,20 @@
+{
+  "qid": "Q16",
+  "verdicts": [
+    {
+      "run": 1,
+      "verdict": "correct",
+      "reason": "Declares the requested distinction absent, refuses unsupported explanation, and points to the available KBLI records."
+    },
+    {
+      "run": 2,
+      "verdict": "correct",
+      "reason": "Declares the requested distinction absent; the supplementary Bali verdict examples follow from the supplied records."
+    },
+    {
+      "run": 3,
+      "verdict": "correct",
+      "reason": "Declares the requested distinction absent and points to the available KBLI codes without supplying ungrounded doctrine."
+    }
+  ]
+}

@@ -1,0 +1,11 @@
+# stdout of mono-council-agy-r2.txt — verbatim; emails redacted: 0; sha256 of the complete unredacted stdout: 24a916182c03b519283b86f65e6da538e6312d75d1c95f1de9b4c1f15e8b38f6
+I have reviewed the report and the provided diffstat against the digest of the committed files. 
+
+1. **Metrics & Math Verification:** All numbers in the report (the 4/8 and 3/8 for floor ii, the 1/8 wrongful abstention, the 21/21 gap abstention) perfectly match the `p2b_score.json` outputs for both the main and row-identity scorers. The number of rows (87), errors (0), duplicate rows (0), and synthesized rows (0) all match the run integrity block.
+2. **Q20 Disagreement:** The report correctly identifies that only Q20 differs between the two score files (`correct/correct/correct` on main vs `wrong/wrong/correct` on row-identity). The distribution of the repeat judgings (4 majority wrongs, 2 majority corrects) maps exactly to the provided `q20_repeat_judgings` data.
+3. **Gate Rejections:** The percentages and codes referenced in the report for Q13 (`87303` and `63900` at 51%) and Q22 (`25200` at actual 49 vs claimed 100) match the gate rejection tuples precisely.
+4. **Judge Reasons:** The explanations for Q05 (missing 68200 statement), Q11 (omitting 56101), Q23 (failing to mention Low/Medium-Low scope), and Q26 (Bali axis OPEN vs 0% cap) faithfully reflect the raw Indonesian/English judge reasons committed in the digest.
+5. **Manifest & Hashes:** The commit hash, branch, bundle sha256, executable sha256, dataset sha256 (`c69a260d...`), and runtime versions cited in the report all flawlessly correspond to the generated `manifest.json`.
+6. **No Spurious Claims/Changes:** The diffstat confirms that only data/results files, the brief, and the markdown report were added (68 files). No source code, scorer code, dataset, or app files were touched. No PII or credentials are leaked.
+
+VERDICT: OK

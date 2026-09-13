@@ -1,0 +1,152 @@
+gear: 3
+brief_ref: evidence/brief.yml
+ruling: RULED 2026-09-12 SAETTA
+lanes:
+  - lane: K2-GAMMA
+    role: build
+    seat: Claude Opus 5 (Dux of window k2-gamma, implements directly)
+  - lane: K2-GAMMA-council-codex
+    role: review
+    seat: codex-gpt-5.6-sol (OpenAI, codex exec --sandbox read-only, independent review of the merge-base diff with the data files and the scorer)
+  - lane: K2-GAMMA-council-agy
+    role: review
+    seat: agy-gemini-3.1-pro (Google, agy -p headless, reserve seat, review of the report and brief against a mechanical digest of the data files)
+council_run: council/journal.jsonl
+seat_fallback_reason: >-
+  agy-gemini-3.1-pro replaces tp1-qwen3.8-max, observed DEAD in this session — `qwen -p "Reply OK"`
+  failed twice at 2026-09-13T17:26:20Z and 17:26:58Z with rc=1 and "1-week quota has been
+  exhausted ... reset at 09-18 08:39:00 UTC" (council/probe-qwen-1.txt, probe-qwen-2.txt) — and
+  kimi-code/k3, declared quota-exhausted (403) by the mission addendum COMMON-ADD-0913b section D
+  and not probed here. codex-gpt-5.6-sol, the only live titolare, sits beside it.
+pii_scan: clean
+decisions:
+  - id: D-gear
+    decision: >-
+      Gear 3 = the deterministic floor: evidence_pack_lint.py --print-floor on the merge-base diff
+      printed 3 with source SIZE (2224 added lines at the first measurement, all additions), and the
+      judgement agrees: the PR files a benchmark verdict that a release decision will read.
+  - id: D-no-row-identity-code
+    decision: >-
+      The window brief asked for scoring "under the row-identity contract" and for basing the
+      monorepo work on W-K-SPEC's merge. W-K-SPEC closed with gate BLOCK/BLOCK, its branch
+      agent/air-m5/ops/k2-row-identity (c3f4bb32) was never pushed and has no PR. Carrying its
+      2,585 lines here would ship blocked work outside its own gate, so this PR is based on fresh
+      origin/main and carries none of it. PR #6428 merged meanwhile (8664b1ba30), so origin/main
+      has a scorer: its score is the canonical, reproducible one; the row-identity score is filed
+      as a declared secondary, produced from a git archive of c3f4bb32.
+  - id: D-prettier
+    decision: >-
+      The repo pre-commit hook refused the JSON as the scorer prints it (indent=1). The files were
+      formatted with the repo's prettier; reproduction is therefore JSON-equal, not byte-identical,
+      and the report and brief say so.
+  - id: D-transcripts
+    decision: >-
+      The complete codex stdout of every round is dominated by the outputs of the commands the seat
+      ran — dumps of repository files carrying staff e-mail addresses and high-entropy blobs. Filing
+      it verbatim would copy personal data into a new artifact (builder contract section 4). The
+      filed codex transcripts keep the seat's own messages, the first line of every command it ran,
+      and its final verdict; e-mails are redacted; each header carries the sha256 of the complete
+      unredacted stdout, kept on M5. agy transcripts are verbatim (no tools, no dumps).
+  - id: D-q23
+    decision: >-
+      No field-predicate retrieval tier was built (brief deliverable 3, "if it fits the appetite").
+      Measured instead: all 1,559 records of c69a260d carry the identical l4_bali.moratorium block
+      and Q23's package is identical on all three runs, so the rule is already served; the failure
+      is the answer framing. Recorded as a leftover naming Q23; no lexical re-weight.
+  - id: D-ci-reds
+    decision: >-
+      The first CI run on 2ded1a046f had three reds, each read before any gesture. (1) Harness floor
+      recompute — `harness_gate_read: PENDING`, expected until the fresh gate posts; the pack
+      validation step before it passed. (2) R1 gate — the research report had no YAML frontmatter
+      (`adversarial_review:` and an "Adversarial review" section): added, `check_adversarial_review.py
+      --files` PASS. (3) Detect Secrets — 14 unaudited "Hex High Entropy String" findings, every one a
+      sha256 or git sha on its line (corpus, dataset, bundle, benchrunner, prompt, commit): added to
+      .secrets.baseline, each audited as a false positive, by textual insertion (+128 lines, no other entry touched);
+      the CI sequence replayed locally ends `All findings audited (14 total)`. Auto-merge was disabled
+      before the fix commit and re-armed after, so the armed branch was never mutated. The second CI
+      run on af2fe6115f flagged one more finding, a Secret Keyword detector hit on this decision's own
+      earlier wording (a baseline field name followed by a colon); the wording was changed and the
+      CI sequence replayed again on the full changed-file set before the next push.
+receipts:
+  - claim: The monorepo worktree was created by the broker for this task id.
+    cmd: python3 scripts/agent_start.py --lane ops --task-id k2-gamma
+    result: "WORKTREE_READY /Users/balizero/nuzantara/.worktrees/ops-k2-gamma"
+    exit: 0
+    ts: "2026-09-13T18:25:16Z"
+    seat: Claude Opus 5
+  - claim: Codex versions measured at absolute paths; no binary answering 0.148.0 on disk.
+    cmd: ssh localhost '<runtime>/codex.js --version; /opt/homebrew/bin/codex --version; find ~/.local /usr/local/lib /opt/homebrew/lib ~/Library/pnpm -maxdepth 12 -path "*@openai/codex/package.json"'
+    result: "app runtime codex-cli 0.147.0 ; homebrew codex-cli 0.147.0 ; mise 22.22.3 package 0.154.0 ; homebrew package 0.147.0 ; no 0.148.0 (first measured before the build, re-measured at this ts)"
+    exit: 0
+    ts: "2026-09-13T19:28:46Z"
+    seat: Claude Opus 5
+  - claim: The INTERNAL variant was built once at app commit 69933ab.
+    cmd: ssh localhost './build.sh --variant internal' in /Users/balizero/Desktop/logo/kbli-navigator-app.wt/gamma
+    result: "BUILD_RC=0 ; build/KBLI Navigator - INTERNAL.app ; BZVariant internal ; universal x86_64 arm64 ; adhoc ; executable sha256 60b0ed64… ; bundle digest 72c7b4c6… (46 files) ; bundled dataset c69a260d…"
+    exit: 0
+    ts: "2026-09-13T17:41:37Z"
+    seat: Claude Opus 5
+  - claim: The 87-row run exists, answered by the product runner on the allow-listed runtime.
+    cmd: /tmp/k2g-benchrunner run p2b_corpus.json p2b_answers_gamma.jsonl --runs 3 (KBLI_JSON=app Resources, benchrunner sha256 803bb567…)
+    result: "run_rc=0 ; 87 lines ; errors 0 ; package_outcome built x87 ; dataset_sha256 c69a260d… on every row ; 2026-09-13T17:42:41Z -> 18:00:32Z"
+    exit: 0
+    ts: "2026-09-13T18:00:32Z"
+    seat: Claude Opus 5
+  - claim: A1 — origin/main's scorer reproduces the committed canonical score from this branch.
+    cmd: python3 scripts/kbli_bench/score_p2b.py score scripts/kbli_bench/p2b_corpus.json scripts/kbli_bench/results/2026-09-14-k2-gamma/p2b_answers.jsonl scripts/kbli_bench/results/2026-09-14-k2-gamma/main_scorer/judge_verdicts
+    result: "rc=0 ; output JSON-equal to main_scorer/p2b_score.json (True) ; independently re-run by codex-gpt-5.6-sol rounds 1-3"
+    exit: 0
+    ts: "2026-09-13T19:28:34Z"
+    seat: Claude Opus 5
+  - claim: A3 — the floors under both scorers.
+    cmd: python3 -c 'json.load(p2b_score.json)["floors"]' on main_scorer and row_identity_scorer
+    result: "main — i 0/87 pass, ii 4/8 fail, iii 1/8 fail, iv 21/21 pass, gate False ; row-identity — i 0/87 pass, ii 3/8 fail, iii 1/8 fail, iv 21/21 pass, gate False ; integrity complete, answered 87"
+    exit: 0
+    ts: "2026-09-13T19:28:34Z"
+    seat: Claude Opus 5
+  - claim: A3 — Q20's flip is judge variance on byte-identical prompts.
+    cmd: q20_repeat.sh — codex.js exec -m gpt-5.6-sol twice per prompt (sha256 a4c5f0b1… main, 0f4d792c… row-identity)
+    result: "main wrong/wrong/correct, wrong/wrong/correct ; row-identity wrong/wrong/correct, correct/correct/correct"
+    exit: 0
+    ts: "2026-09-13T18:46:04Z"
+    seat: Claude Opus 5
+  - claim: The census the scorer prints (518) is stale on the anchored dataset.
+    cmd: git show origin/main:data/source_documents/KBLI_2025_FINAL_CLEAN.json | python3 -c '<count l4_bali.blocked is True by status>'
+    result: "blocked_true 519 — BLOCCATO_CLASSE_RISCHIO 373, TERTUTUP 68, CHIUSO_MORATORIA_BALI 48, NON_CLASSIFICABILE 17, others 13"
+    exit: 0
+    ts: "2026-09-13T19:29:03Z"
+    seat: Claude Opus 5
+  - claim: The app half — allow-list suites and council — on app branch k2/gamma.
+    cmd: ssh localhost 'docs/gates/2026-09-14-k2-gamma/run_suites.sh rowidentitytest packagetest verdicttest gatetest codexrunnertest benchrunner' at b44f29a
+    result: "every suite exit 0, benchrunner COMPILED OK, SUITES_RC=0 ; mutants prefix/no-trim/ceiling each rc=1 ; app council codex-gpt-5.6-sol OK and agy-gemini-3.1-pro OK on 20ac1be..b44f29a (app repo docs/gates/2026-09-14-k2-gamma/council/journal.jsonl)"
+    exit: 0
+    ts: "2026-09-13T18:20:35Z"
+    seat: Claude Opus 5
+dissent:
+  - seat: codex-gpt-5.6-sol
+    objection: >-
+      Round 1: the report called Q20's disagreement a judge instability "not because of their
+      code", although the two judgings used prompts from two scorer versions; one pair cannot
+      separate judge variance from prompt sensitivity.
+    status: CONFIRMED
+    cure: Two repeat judgings per byte-identical prompt (q20_repeat_judgings/); the claim rewritten to what they show (938e14f5d9).
+  - seat: codex-gpt-5.6-sol
+    objection: >-
+      Round 2: both score files state l4_bali.blocked is true on 518 records "in this dataset";
+      on c69a260d the count is 519.
+    status: CONFIRMED
+    cure: Declared in the report and handed to the scorer lane; the score files are left as printed so the reproduction holds (87cd3c2d06).
+  - seat: Claude Opus 5 (self-refutation, on the headline number)
+    objection: >-
+      Floor (ii) reads 4/8 in the committed canonical score, which is one of the two minority
+      outcomes of Q20's six judgings; quoting 4/8 alone would overstate the candidate.
+    status: CONFIRMED
+    cure: The report states 3/8 in four judgings of six and 4/8 in two, and that no outcome turns the gate green.
+leftovers:
+  - The row-identity contract rewrite (round-5 finding 4) and W-K-SPEC's re-gate; then re-score results/2026-09-14-k2-gamma/p2b_answers.jsonl with the ruled scorer.
+  - The app answer gate over-matches a user's own figure and a negated figure (Q13 runs 1/3, Q22 run 3) — window A's KBLIAnswerGate.
+  - Answer framing against the served verdict (Q11, Q23, Q26 run 1) and Q05's absent-code statement — window A's brain.
+  - Q23 field-predicate retrieval tier not built; question id Q23.
+  - One sol judging per question does not hold floor (ii) still (Q20); a repeat-judging protocol is the harness lane's to decide.
+  - score_p2b.py prints a 518 census measured on 3dafab17; c69a260d counts 519.
+  - The seeded random hand-check sample (17 rows) was not hand-read.

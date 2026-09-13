@@ -1,0 +1,32 @@
+gear: 3
+ruling: RULED 2026-09-12 SAETTA
+mission: SAETTA-K2 window W-K-GAMMA (BLUE, host M5) — one KBLI Navigator candidate, built once on M5, run once on the 87-row P2b
+objective: >-
+  File the bench half of the k2-gamma candidate on origin/main: the 87 answers the INTERNAL build
+  at app commit 69933ab produced on the allow-listed runtime codex-cli 0.147.0 over the canonical
+  dataset c69a260d, the sol judge verdicts, the floors computed by origin/main's
+  scripts/kbli_bench/score_p2b.py (reproducible from this branch) and, beside them as a declared
+  secondary, the floors from the unshipped row-identity scorer the brief named; the §C.4.5
+  manifest generated from the bundle; and the report that reads them. No scorer, harness or
+  dataset code changes: the app half (codex allow-list, build, run) lives on app branch k2/gamma.
+scope:
+  - scripts/kbli_bench/results/2026-09-14-k2-gamma/**
+  - research/operations/2026-09-14-kbli-navigator-p2b-candidate-k2-gamma.md
+  - evidence/2026-09/agent-air-m5-ops-k2-gamma/**
+constraints:
+  - No change to score_p2b.py, p2b_corpus.json, the dataset, or any app/web file.
+  - Do not ship the row-identity contract or scorer (branch agent/air-m5/ops/k2-row-identity, gate BLOCK) — cite it, never carry it.
+  - No client PII (the corpus is synthetic benchmark questions); no credential in any transcript.
+  - No ledger PR, no PENDING-ARMS.md edit.
+acceptance:
+  - A1 the canonical command on this branch reproduces main_scorer/p2b_score.json (JSON-equal; the committed copy is prettier-formatted).
+  - A2 87 rows = 29 x 3, complete, one dataset sha (c69a260d) on every row, 0 runner errors.
+  - A3 every floor stated with numerator and denominator under both scorers, gate False stated, the Q20 disagreement named and its cause measured (repeat judgings), not asserted.
+  - A4 manifest carries commit, variant, bundle sha256, dataset sha256, runtime path and version, marker, built_on/built_at, run timestamps — generated, not typed.
+  - A5 Q23 recorded as a leftover with its question id and the measured reason; no lexical re-weight.
+consumer_map:
+  - The next P2b gate decision on the KBLI Navigator app (release owner Zero) reads research/operations/2026-09-14-kbli-navigator-p2b-candidate-k2-gamma.md and the floors in main_scorer/p2b_score.json.
+  - The row-identity contract rewrite (W-K-SPEC successor) re-scores results/2026-09-14-k2-gamma/p2b_answers.jsonl and compares against row_identity_scorer/p2b_score.json.
+appetite:
+  budget: 8 hours active, 1 monorepo PR + app commits on k2/gamma
+  stop_loss: three reds on the same cause suspends; a fix-of-a-fix stops at depth 1

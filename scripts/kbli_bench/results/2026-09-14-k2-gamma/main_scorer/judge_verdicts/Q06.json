@@ -1,0 +1,20 @@
+{
+  "qid": "Q06",
+  "verdicts": [
+    {
+      "run": 1,
+      "verdict": "correct",
+      "reason": "Declared abstention; correctly states the served KBLI records lack LKPM frequency, deadlines, and penalties, with record-code pointer."
+    },
+    {
+      "run": 2,
+      "verdict": "correct",
+      "reason": "Declared abstention; correctly identifies the LKPM facts as absent and points to the only available KBLI records."
+    },
+    {
+      "run": 3,
+      "verdict": "correct",
+      "reason": "Declared abstention; accurately distinguishes generic mining reporting obligations from LKPM and points to the available KBLI records."
+    }
+  ]
+}

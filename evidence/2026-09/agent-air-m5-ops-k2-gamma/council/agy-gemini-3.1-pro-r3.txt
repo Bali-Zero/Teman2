@@ -1,0 +1,18 @@
+# stdout of mono-council-agy-r3.txt — verbatim; emails redacted: 0; sha256 of the complete unredacted stdout: b2906c4d3d79884f2bb64e74dc98f55b61dd343c29159ec4864c0d37399c017b
+I have reviewed the PR diff, the report, the brief, and the data files digest against the constraints. 
+
+Here is the verification breakdown:
+1. **Numbers and per-question verdicts**: 
+   - All floor scores (0/87, 4/8, 1/8, 21/21 for the main scorer and 3/8 accuracy for the row-identity scorer) exactly match the digest.
+   - Run integrity correctly states 87 rows (29 questions × 3 runs), complete, 0 errors, no duplicates/synthesized rows, and exactly one dataset SHA (`c69a260d...`).
+   - The Q20 disagreement is precisely captured: main scorer initial judging `correct/correct/correct`, row-identity initial judging `wrong/wrong/correct`. The repeat judgings exactly mirror the digest (main prompt yields `wrong/wrong/correct` twice; row-identity prompt yields `wrong/wrong/correct` once and `correct/correct/correct` once, resulting in 4 `wrong` majorities out of 6).
+   - Package contents cited in the report (e.g., 56101 and 56303 for Q11, 64330 for Q23, 79122 for Q26) exactly match the `packages_per_question` in the digest.
+   - Gate rejections for Q13 (`percentCodeMismatch` on 51%) and Q22 (code 25200, claimed 100, actual 49) perfectly align with the `gate_rejections` array.
+2. **Canonical command output**: The report clearly affirms reproduction of the `main_scorer/p2b_score.json` output as required by the brief's acceptance criteria A1.
+3. **Claims and attributions**: The report strictly adheres to the data. It explicitly lists the multiple moving parts (brain commits, dataset, scorer) and properly states that "no delta is attributed to any one of them".
+4. **Files and scope**: The diffstat confirms that exactly 68 files were modified (29 judge verdicts per scorer, 4 repeat judgings, 2 score files, 1 answers file, 1 manifest, 1 report, 1 brief). No application code, scorer code, or dataset files were altered in this PR. No credentials or PII are present.
+5. **Leftover and Cures**: Q23 is correctly identified as a leftover with the exact measured reason (reporting one code's verdict instead of the class rule), and the scorer's stale 518 vs 519 dataset census gap is properly declared and assigned back to the scorer lane without doctoring the committed score files.
+
+Every detail is faithful to the committed data files. 
+
+VERDICT: OK

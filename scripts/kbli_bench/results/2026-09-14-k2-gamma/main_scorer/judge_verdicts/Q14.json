@@ -1,0 +1,20 @@
+{
+  "qid": "Q14",
+  "verdicts": [
+    {
+      "run": 1,
+      "verdict": "correct",
+      "reason": "Declared abstention: records lack definitions or comparison of the three OSS-RBA terms."
+    },
+    {
+      "run": 2,
+      "verdict": "correct",
+      "reason": "Declared abstention and accurately limited the supplied data to KBLI-specific licensing and risk rows."
+    },
+    {
+      "run": 3,
+      "verdict": "correct",
+      "reason": "Declared abstention, explicitly avoiding unsupported doctrine; no relevant named KBLI was presented in the question."
+    }
+  ]
+}

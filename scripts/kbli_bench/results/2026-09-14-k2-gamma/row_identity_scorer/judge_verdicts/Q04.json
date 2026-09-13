@@ -1,0 +1,20 @@
+{
+  "qid": "Q04",
+  "verdicts": [
+    {
+      "run": 1,
+      "verdict": "correct",
+      "reason": "Declares the OSS procedure absent and points to the available KBLI data without inventing steps."
+    },
+    {
+      "run": 2,
+      "verdict": "correct",
+      "reason": "Explicitly abstains because the supplied KBLI records contain no post-NIB amendment procedure."
+    },
+    {
+      "run": 3,
+      "verdict": "correct",
+      "reason": "Declares the procedural gap and distinguishes available PMA, risk, and obligation fields from missing NIB-change steps."
+    }
+  ]
+}

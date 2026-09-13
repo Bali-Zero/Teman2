@@ -1,0 +1,20 @@
+{
+  "qid": "Q15",
+  "verdicts": [
+    {
+      "run": 1,
+      "verdict": "correct",
+      "reason": "Declared abstention because supplied records contain no virtual-office or physical-office rule."
+    },
+    {
+      "run": 2,
+      "verdict": "correct",
+      "reason": "Declared abstention and accurately pointed to the package’s limited KBLI scope."
+    },
+    {
+      "run": 3,
+      "verdict": "correct",
+      "reason": "Declared abstention and accurately identified that the supplied KBLI records do not answer the question."
+    }
+  ]
+}

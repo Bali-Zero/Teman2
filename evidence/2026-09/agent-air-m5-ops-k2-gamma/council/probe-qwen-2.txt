@@ -1,0 +1,4 @@
+# stdout of probe-qwen-2.txt — verbatim; emails redacted: 0; sha256 of the complete unredacted stdout: a48160d48f07a55fca78540311c2870941c5e12e89a5ee9a1cbf240c2a74ab54
+Quota exhausted: Your token-plan 1-week quota has been exhausted. The quota will reset at 09-18 08:39:00 UTC.
+
+Please retry after the reset time, or switch to another API key / auth method. (cause: insufficient_quota: 429 Your token-plan 1-week quota has been exhausted. The quota will reset at 09-18 08:39:00 UTC.)

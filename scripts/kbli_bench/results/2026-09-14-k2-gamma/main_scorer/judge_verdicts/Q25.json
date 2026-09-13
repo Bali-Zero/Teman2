@@ -1,0 +1,20 @@
+{
+  "qid": "Q25",
+  "verdicts": [
+    {
+      "run": 1,
+      "verdict": "correct",
+      "reason": "Declared abstention: states Permenkes, SLHS validity, and covered KBLI are absent, asserting no missing regulatory facts."
+    },
+    {
+      "run": 2,
+      "verdict": "correct",
+      "reason": "Declared abstention because the available data lacks Permenkes, SLHS validity, and covered-KBLI facts."
+    },
+    {
+      "run": 3,
+      "verdict": "correct",
+      "reason": "Declared abstention and correctly points out that supplied KBLI records contain no relevant Permenkes or SLHS information."
+    }
+  ]
+}

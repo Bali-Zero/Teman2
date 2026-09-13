@@ -1,0 +1,20 @@
+{
+  "qid": "Q03",
+  "verdicts": [
+    {
+      "run": 1,
+      "verdict": "correct",
+      "reason": "Menolak jawaban universal, membatasi kesimpulan pada KBLI tersedia, dan seluruh klaim tentang kolom perizinan serta ketergantungan konteks didukung."
+    },
+    {
+      "run": 2,
+      "verdict": "correct",
+      "reason": "Jawaban bersyarat per KBLI; contoh persyaratan, akreditasi, pelaporan, dan status 91111 seluruhnya didukung paket."
+    },
+    {
+      "run": 3,
+      "verdict": "correct",
+      "reason": "Secara eksplisit menolak jawaban umum tanpa KBLI dan hanya menyampaikan klaim bersyarat yang didukung seluruh record paket."
+    }
+  ]
+}

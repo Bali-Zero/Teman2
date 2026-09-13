@@ -1,0 +1,20 @@
+{
+  "qid": "Q02",
+  "verdicts": [
+    {
+      "run": 1,
+      "verdict": "correct",
+      "reason": "Declared abstention; accurately notes supplied records contain no capital requirements and points to the available KBLI data."
+    },
+    {
+      "run": 2,
+      "verdict": "correct",
+      "reason": "Declared abstention with pointer to available KBLI records; asserts no unsupported capital figures or rules."
+    },
+    {
+      "run": 3,
+      "verdict": "correct",
+      "reason": "Declared abstention and identifies available record scope; no invented sector capital examples or applicability rules."
+    }
+  ]
+}

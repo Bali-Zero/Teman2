@@ -1,0 +1,20 @@
+{
+  "qid": "P29",
+  "verdicts": [
+    {
+      "run": 1,
+      "verdict": "correct",
+      "reason": "Abstains and states wage data is absent; no forbidden wage figure is asserted."
+    },
+    {
+      "run": 2,
+      "verdict": "correct",
+      "reason": "Explicitly abstains because the navigator lacks the requested wage data; no wage figure asserted."
+    },
+    {
+      "run": 3,
+      "verdict": "correct",
+      "reason": "Abstains and correctly notes the supplied KBLI data is irrelevant; no wage figure asserted."
+    }
+  ]
+}

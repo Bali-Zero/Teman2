@@ -1,0 +1,20 @@
+{
+  "qid": "Q04",
+  "verdicts": [
+    {
+      "run": 1,
+      "verdict": "correct",
+      "reason": "Declared abstention: states supplied KBLI records do not contain post-NIB amendment steps and points to the available record scope."
+    },
+    {
+      "run": 2,
+      "verdict": "correct",
+      "reason": "Declared abstention: correctly identifies that no supplied KBLI record contains the requested NIB amendment procedure."
+    },
+    {
+      "run": 3,
+      "verdict": "correct",
+      "reason": "Declared abstention: accurately distinguishes available PMA, risk, and obligation data from the missing post-NIB procedure."
+    }
+  ]
+}

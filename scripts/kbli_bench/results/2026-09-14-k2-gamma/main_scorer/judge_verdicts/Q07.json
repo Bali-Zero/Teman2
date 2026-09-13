@@ -1,0 +1,20 @@
+{
+  "qid": "Q07",
+  "verdicts": [
+    {
+      "run": 1,
+      "verdict": "correct",
+      "reason": "Declares the procedural gap, refuses to invent steps, and limits additional claims to supported package records and derived Bali verdicts."
+    },
+    {
+      "run": 2,
+      "verdict": "correct",
+      "reason": "Explicitly abstains from the missing setup procedure and points to the available KBLI-specific data without inventing regulatory steps."
+    },
+    {
+      "run": 3,
+      "verdict": "correct",
+      "reason": "Explicitly abstains from the unavailable general procedure and appropriately redirects to the supplied KBLI-specific information."
+    }
+  ]
+}

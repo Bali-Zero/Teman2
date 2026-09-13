@@ -1,0 +1,20 @@
+{
+  "qid": "Q16",
+  "verdicts": [
+    {
+      "run": 1,
+      "verdict": "correct",
+      "reason": "Menyatakan gap, menolak menambah doktrin, dan menunjuk kode yang tersedia tanpa menjawab substantif."
+    },
+    {
+      "run": 2,
+      "verdict": "correct",
+      "reason": "Menyatakan gap; contoh verdict mengikuti data: 26420/26602 terbuka di Bali, 90200 diblokir."
+    },
+    {
+      "run": 3,
+      "verdict": "correct",
+      "reason": "Menyatakan fakta pembeda tidak tersedia dan hanya menunjuk cakupan data serta kode yang disajikan."
+    }
+  ]
+}

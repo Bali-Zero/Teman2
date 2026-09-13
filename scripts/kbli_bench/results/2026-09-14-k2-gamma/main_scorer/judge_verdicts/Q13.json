@@ -1,0 +1,20 @@
+{
+  "qid": "Q13",
+  "verdicts": [
+    {
+      "run": 1,
+      "verdict": "abstained",
+      "reason": "Gate rejected the response; no regulatory facts were asserted."
+    },
+    {
+      "run": 2,
+      "verdict": "correct",
+      "reason": "Denies universality; all five 100% caps and Bali OPEN/BLOCKED verdicts follow from that run's records."
+    },
+    {
+      "run": 3,
+      "verdict": "abstained",
+      "reason": "Gate rejected the response; no regulatory facts were asserted."
+    }
+  ]
+}

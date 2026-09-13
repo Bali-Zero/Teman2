@@ -1,0 +1,20 @@
+{
+  "qid": "Q01",
+  "verdicts": [
+    {
+      "run": 1,
+      "verdict": "correct",
+      "reason": "Declines the unsupported paid-up figure and legal basis; KBLI title, Bali openness, and 100% foreign ownership are supported."
+    },
+    {
+      "run": 2,
+      "verdict": "correct",
+      "reason": "Declines the unsupported figure and basis; OPEN_IN_BALI, 100% cap, and Menengah Tinggi risk follow from the served 56101 record."
+    },
+    {
+      "run": 3,
+      "verdict": "correct",
+      "reason": "Declines the unsupported paid-up figure and legal basis; the restaurant classification, Bali openness, and 100% foreign ownership are supported."
+    }
+  ]
+}

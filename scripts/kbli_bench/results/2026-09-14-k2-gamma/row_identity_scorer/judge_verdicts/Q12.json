@@ -1,0 +1,20 @@
+{
+  "qid": "Q12",
+  "verdicts": [
+    {
+      "run": 1,
+      "verdict": "correct",
+      "reason": "Declared abstention: states the supplied records contain no relevant PBG/SLF requirements."
+    },
+    {
+      "run": 2,
+      "verdict": "correct",
+      "reason": "Declared abstention: explicitly notes PBG/SLF facts are absent from the supplied records."
+    },
+    {
+      "run": 3,
+      "verdict": "correct",
+      "reason": "Declared abstention with an accurate pointer to the available, irrelevant KBLI records."
+    }
+  ]
+}

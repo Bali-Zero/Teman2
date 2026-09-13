@@ -1,0 +1,20 @@
+{
+  "qid": "Q15",
+  "verdicts": [
+    {
+      "run": 1,
+      "verdict": "correct",
+      "reason": "Declared abstention because the served records contain no virtual-office or physical-office rule."
+    },
+    {
+      "run": 2,
+      "verdict": "correct",
+      "reason": "Declared abstention and accurately identified that served records cover KBLI manufacturing facts, not domicile or virtual-office rules."
+    },
+    {
+      "run": 3,
+      "verdict": "correct",
+      "reason": "Declared abstention and correctly noted the package contains only the listed KBLI records, none addressing virtual offices."
+    }
+  ]
+}

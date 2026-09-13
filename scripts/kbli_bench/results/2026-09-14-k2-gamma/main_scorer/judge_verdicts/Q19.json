@@ -1,0 +1,20 @@
+{
+  "qid": "Q19",
+  "verdicts": [
+    {
+      "run": 1,
+      "verdict": "correct",
+      "reason": "Declares the checklist absent, distinguishes activity-specific requirements, and points to the supplied KBLI records in English."
+    },
+    {
+      "run": 2,
+      "verdict": "correct",
+      "reason": "Declares the checklist absent and accurately points to supported examples from KBLI 61105, 66193, and 29300."
+    },
+    {
+      "run": 3,
+      "verdict": "correct",
+      "reason": "Clearly abstains in English and explains that the records cover activity-specific requirements rather than incorporation documents."
+    }
+  ]
+}

@@ -1,0 +1,20 @@
+{
+  "qid": "Q11",
+  "verdicts": [
+    {
+      "run": 1,
+      "verdict": "wrong",
+      "reason": "Tidak membedakan kandidat 56101 yang tidak terblokir; hanya menyajikan 56303, sehingga expected behavior tidak terpenuhi."
+    },
+    {
+      "run": 2,
+      "verdict": "wrong",
+      "reason": "Mengabaikan kandidat 56101 dan statusnya yang tidak terblokir; pembedaan kedua kode yang diwajibkan tidak dilakukan."
+    },
+    {
+      "run": 3,
+      "verdict": "wrong",
+      "reason": "Hanya membahas 56303; tidak menyajikan atau membedakan 56101 sebagai opsi restoran yang tidak terblokir di Bali."
+    }
+  ]
+}

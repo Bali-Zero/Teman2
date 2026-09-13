@@ -1,0 +1,20 @@
+{
+  "qid": "Q24",
+  "verdicts": [
+    {
+      "run": 1,
+      "verdict": "correct",
+      "reason": "Declared the required abstention and asserted neither paid-up-capital figure; the duplicated code listing does not affect the regulatory response."
+    },
+    {
+      "run": 2,
+      "verdict": "correct",
+      "reason": "Declared the required abstention and did not choose either paid-up-capital figure from the package."
+    },
+    {
+      "run": 3,
+      "verdict": "correct",
+      "reason": "Explicitly declined to determine either figure because the supplied records lacked the relevant fact."
+    }
+  ]
+}
