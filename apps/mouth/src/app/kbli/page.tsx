@@ -71,7 +71,7 @@ export default async function KBLIHomePage({
           <div
             className="hidden lg:block absolute top-[-15%] left-[10%] w-[500px] h-[500px] rounded-full opacity-[0.06] blur-[120px]"
             style={{
-              background: "radial-gradient(circle, #dc2626, transparent)",
+              background: "radial-gradient(circle, #D01033, transparent)",
             }}
           />
           <div
@@ -83,7 +83,7 @@ export default async function KBLIHomePage({
           <div
             className="hidden lg:block absolute bottom-[-15%] right-[-5%] w-[350px] h-[350px] rounded-full opacity-[0.05] blur-[100px]"
             style={{
-              background: "radial-gradient(circle, #dc2626, transparent)",
+              background: "radial-gradient(circle, #D01033, transparent)",
             }}
           />
 
@@ -130,7 +130,7 @@ export default async function KBLIHomePage({
               {/* CTA — glassmorphism button */}
               <Link
                 href="#search"
-                className="mt-8 inline-flex items-center gap-2 rounded-xl bg-white/[0.06] backdrop-blur-md border border-white/[0.1] px-7 py-3.5 text-sm font-bold text-white shadow-[0_4px_20px_rgba(0,0,0,0.3),inset_0_1px_0_rgba(255,255,255,0.06)] transition-all duration-300 hover:bg-[#dc2626]/90 hover:border-[#dc2626]/60 hover:shadow-[0_0_40px_rgba(220,38,38,0.3)] active:scale-[0.98]"
+                className="mt-8 inline-flex items-center gap-2 rounded-xl bg-white/[0.06] backdrop-blur-md border border-white/[0.1] px-7 py-3.5 text-sm font-bold text-white shadow-[0_4px_20px_rgba(0,0,0,0.3),inset_0_1px_0_rgba(255,255,255,0.06)] transition-all duration-300 hover:bg-[#D01033]/90 hover:border-[#D01033]/60 hover:shadow-[0_0_40px_rgba(208,16,51,0.3)] active:scale-[0.98]"
               >
                 Explore All KBLI Sectors &rarr;
               </Link>
@@ -143,7 +143,7 @@ export default async function KBLIHomePage({
                 className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[320px] h-[320px] blur-[80px] pointer-events-none"
                 style={{
                   background:
-                    "radial-gradient(circle, rgba(220,38,38,0.06), transparent 70%)",
+                    "radial-gradient(circle, rgba(208,16,51,0.06), transparent 70%)",
                 }}
               />
               <div
@@ -153,7 +153,7 @@ export default async function KBLIHomePage({
                     "perspective(1000px) rotateY(-12deg) rotateX(4deg) rotate(-3deg)",
                   transformStyle: "preserve-3d",
                   filter:
-                    "drop-shadow(0 40px 60px rgba(0,0,0,0.6)) drop-shadow(0 0 30px rgba(220,38,38,0.08))",
+                    "drop-shadow(0 40px 60px rgba(0,0,0,0.6)) drop-shadow(0 0 30px rgba(208,16,51,0.08))",
                 }}
               >
                 {/* Tablet frame — glassmorphism */}
