@@ -1,0 +1,194 @@
+task_id: backend-rag-b2-4-judge-reach
+mandate: B2.4
+colour: BLUE
+pr: B2.4 PR-1
+base_sha: 77af6c7ada8e1fc3de2f50ba3e64a78e330f9adf # pragma: allowlist secret
+brief_ref: evidence/brief.yml
+gear: 3
+spend:
+  wall_clock_hours: 1.7
+  wall_clock_note: >-
+    Two windows on one mandate: 41da1564 (19:5xZ-20:55Z: verify defect, design,
+    C1 measurement, build, rounds 1-2) and its nz-jump successor 5f34a6fa
+    (20:55Z-: round-2 cure, a run-order test defect found by running the two
+    suites in one process, provisioning precheck, round 3, this pack). Hops 1 of 3.
+  adversarial_rounds: 3
+  tokens: 1400000
+result: >-
+  SHIP PR-1, inert on Fly. The Pro daemon now carries the I26 support judge
+  (unchanged RUBRIC, three concurrent repetitions, strict majority, split =
+  NOT_SUPPORTED) on the package it has just claimed, before generating, and
+  seals every ruling in an HMAC envelope bound to package_hash; an absent judge
+  is error_class support_judge_unavailable. Nothing on Fly consumes the
+  envelope until PR-2, and the daemon change reaches production only after
+  Zero re-provisions Pro (NEEDS-ZERO, C3). The production defect itself is not
+  cured by this PR and is not claimed as cured.
+measured:
+  defect_before:
+    at: "2026-09-13T19:5xZ, read-only, by window 41da1564"
+    observation: >-
+      wa_outbox 422-424 status=done, generation_route NULL (never offered),
+      evidence_score 0.08; 422 attempt 1 fell off package_build_error. Fly image
+      and fly.toml carry neither codex nor Ollama; no WA_CODEX_BIN / CODEX_HOME /
+      OLLAMA_* secret names. Five production builds for synthetic questions all
+      sealed support_verdict=UNAVAILABLE, support_judge=absent (C1-judge-latency.md).
+  c1_judge_latency:
+    at: "2026-09-13T20:10Z on Pro"
+    single_rep: "n=6, p50 6.30 s, max 7.53 s"
+    three_concurrent: "n=5, p50 6.49 s, max 7.22 s"
+    verdicts: "PT PMA registration S,S,S · PT PMA capital S,S,S · E33G docs S,S,S · Nusa Penida ferry N,N,N · overstay fine N,N,N"
+    budget: "judge_budget = min(20 s, 0.45 * ~44 s) = 19.8 s, 2.6x the concurrent max; UNAVAILABLE is not the normal path"
+    declared_difference: "measured on the nuzantara user's acct2 seat, not as zantara-codex (no sudo); same CLI family, model and adapter argv"
+    record: C1-judge-latency.md
+pii_scan: clean
+pii_scan_note: >-
+  Every test fixture and every C1 question is synthetic. The C1 package wires
+  stayed in the session scratchpad and none of their content is recorded. The
+  daemon logs verdict, votes, judge and job id only — never query, context,
+  answer or key (TestPiiBoundary asserts it on every log record).
+receipts:
+  - claim: >-
+      A2 — daemon support stage, envelope codec, broker vocabulary, support
+      signal and the whole rag/agentic + integrations unit trees green in ONE
+      process (the shape CI runs), after the round-2 cure and the import-probe
+      isolation.
+    cmd: "cd apps/backend-rag && PYTHONPATH=. .venv/bin/python -m pytest -p no:cacheprovider backend/tests/unit/services/rag/agentic backend/tests/unit/services/integrations backend/tests/unit/services/test_wa_codex_daemon.py backend/tests/unit/routers/test_wa_broker_router.py"
+    exit: 0
+    ts: "2026-09-13T21:03Z"
+    seat: claude-opus-5
+    note: "on 9a1f32406e: 2729 passed, 30 skipped, 7 xfailed (all pre-existing xfails in test_wa_dlp.py)"
+  - claim: >-
+      Guilt for the round-3 cure: reverting the parser rule to str.strip() and
+      no role check turns exactly the five new cases red (two built through the
+      real _sanitize_history, the non-user turn, two daemon cases); restored
+      file cmp -s identical to the cure.
+    cmd: "mutate _support_signal.py (scratchpad backup via cp) then pytest test_support_signal.py test_wa_codex_daemon.py -> 5 failed / 180 passed; cp restore"
+    exit: 1
+    ts: "2026-09-13T21:04Z"
+    seat: claude-opus-5
+  - claim: >-
+      Guilt for the run-order defect: before the isolation, test_support_signal.py
+      followed by test_wa_codex_daemon.py in one process gave 21 failed / 158
+      passed (importlib.reload rebound SupportVerdict); after it, 179 passed.
+    cmd: "cd apps/backend-rag && .venv/bin/python -m pytest -p no:cacheprovider backend/tests/unit/services/rag/agentic/test_support_signal.py backend/tests/unit/services/test_wa_codex_daemon.py"
+    exit: 0
+    ts: "2026-09-13T20:58Z"
+    seat: claude-opus-5
+  - claim: >-
+      A3 — a tree holding ONLY the six __init__.py files and four modules that
+      provisioning installs imports wa_codex_daemon under the daemon's own
+      root-owned venv python (3.14, env -i, -I), and sys.modules then holds no
+      other backend module.
+    cmd: "env -i PATH=/usr/bin:/bin /usr/local/lib/wa-codex-broker/.venv/bin/python3 -I -c 'import backend.services.integrations.wa_codex_daemon' (cwd = scratchpad copy of the provisioned tree)"
+    exit: 0
+    ts: "2026-09-13T21:03Z"
+    seat: claude-opus-5
+  - claim: "provisioning script parses after the precheck change"
+    cmd: "bash -n scripts/provision_zantara_codex.sh"
+    exit: 0
+    ts: "2026-09-13T21:04Z"
+    seat: claude-opus-5
+  - claim: "A4 — C1 measured before the budget constants were fixed"
+    cmd: "scratchpad c1_judge_latency.py over five production-built packages (record C1-judge-latency.md)"
+    exit: 0
+    ts: "2026-09-13T20:10Z"
+    seat: claude-opus-5
+lanes:
+  - {
+      lane: daemon-support-stage-and-envelope,
+      role: build,
+      seat: claude-sonnet-5,
+    }
+  - { lane: c1-judge-latency, role: read, seat: claude-opus-5 }
+  - { lane: adversarial-review, role: review, seat: codex-gpt-5.6-sol }
+  - {
+      lane: second-reader,
+      role: review,
+      seat: agy-gemini-3.1-pro,
+      seat_fallback_reason: "kimi-code/k3 HTTP 403 monthly limit; tp1-qwen HTTP 429 until 2026-09-18T08:39Z",
+    }
+council_run: council-journal.jsonl
+bites:
+  consumer: >-
+    wa_codex_daemon on Pro (launchd system/com.balizero.wa-codex-broker), which
+    this PR changes and whose runtime copy provisioning refreshes; the Fly leg
+    consumes the envelope only after PR-2, shipped separately in the stated
+    merge order.
+  observation: >-
+    Owed after merge, NOT claimed here: Zero runs the two NEEDS-ZERO commands
+    from a checkout of the merged sha; then the Dux proves the four runtime
+    modules cmp -s identical to origin/main, a new daemon pid, and
+    wa_broker_gauge.broker_last_seen_at advancing on two reads (A5). The
+    end-to-end Bites (a supported question released with abstained_at NULL and
+    a log naming codex:gpt-5.6-terra; the ferry question still stubbed) belongs
+    to PR-2.
+adversarial:
+  - seat: codex-gpt-5.6-sol
+    round: 1
+    verdict: NO-VERDICT
+    findings: 0
+    note: "context rollover at ~162k tokens after repo-wide exploration; counts for nothing (reviews/codex-pr1-round1-no-verdict-rollover.md)"
+  - seat: agy-gemini-3.1-pro
+    round: 1
+    verdict: BLOCK
+    findings: 4
+    cured: 0
+    refuted: 4
+    note: >-
+      All four refuted on disk: G1 the provisioned-only tree imports cleanly
+      under the daemon venv (receipt A3); G2 codex stdout is decoded
+      errors=replace so no lone surrogate reaches encode_completion, and
+      run_forever catches; G3 the 120 KiB result cap keeps the declared 8 KiB
+      headroom under the router's 128 KiB body limit (pre-existing); G4 the
+      budget_s <= 0 early return precedes the judge stage.
+  - seat: codex-gpt-5.6-sol
+    round: 2
+    verdict: FIX-FIRST
+    findings: 1
+    cured: 1
+    note: >-
+      MAJOR accepted: history=[] was judged as query='' on context alone.
+      Cured in 025fc275e1 (empty history and blank last content raise ->
+      support_judge_unavailable, parametrized daemon test).
+  - seat: codex-gpt-5.6-sol
+    round: 3
+    verdict: FIX-FIRST
+    findings: 2
+    cured: 2
+    note: >-
+      Verification of the round-2 cure (reviews/codex-pr1-prompt-r3.md ->
+      reviews/codex-pr1-round3.md). MAJOR: str.strip() keeps U+200B/U+FEFF and
+      the real builder emits such a query; MAJOR UNSURE: a non-user last turn
+      was read as the question. Cured in 9a1f32406e as the one allowed
+      fix-of-a-fix (depth 1): role == user and at least one character outside
+      Unicode categories Z/C. No further round on this surface; the gate reads it.
+dissent:
+  - seat: agy-gemini-3.1-pro
+    status: REFUTED
+    objection: "BLOCK on four findings (import reach, surrogate crash, cap bytes, non-positive budget)"
+    disposition: "each refuted by a measurement or a line on disk, listed under adversarial round 1; no code changed for them"
+vulnerabilities:
+  - id: V1-no-ollama-fallback-on-daemon-path
+    severity: declared-and-accepted
+    what: "An absent Codex seat on Pro is UNAVAILABLE with no local fallback judge."
+    disposition: "Deviation ACCEPTED by ruling I97; loud via error_class support_judge_unavailable now and fall-off support_judge_absent in PR-2."
+  - id: V2-quota-cost
+    severity: declared
+    what: "An answered question costs 4 codex execs (3 votes + 1 generation); an unsupported one costs 3."
+    disposition: "Inherent to majority-of-3 on the only sanctioned seat (I96-2, I96-4)."
+  - id: V3-c1-measured-off-seat
+    severity: named-and-open
+    what: "C1 ran on the nuzantara acct2 seat, not as zantara-codex."
+    disposition: "The first post-provision daemon log carries real exec_ms; if the judge stage approaches its 19.8 s budget there, the constants are revisited before PR-2 opens."
+  - id: V4-question-less-package-folds-into-the-breaker
+    severity: named-and-open
+    what: >-
+      A builder-possible query with no visible character now reports
+      support_judge_unavailable, which the broker folds into its circuit breaker
+      like any seat failure; three consecutive such turns with no healthy job
+      between them would open it (fail-closed: fall-offs, never a release).
+    disposition: >-
+      Carried to PR-2 by name: the Fly leg refuses to OFFER a question-less
+      package (same visible-character rule, before the offer), so the daemon
+      path only ever sees it from a broken producer. Inert until PR-2, because
+      the production leg today stubs every package before any offer.

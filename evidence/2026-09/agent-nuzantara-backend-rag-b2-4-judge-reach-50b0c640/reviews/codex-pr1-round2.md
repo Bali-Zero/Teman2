@@ -1,0 +1,3 @@
+VERDICT: FIX-FIRST
+
+1. MAJOR — `apps/backend-rag/backend/services/rag/agentic/_support_signal.py:473`: an empty `history` is accepted and converted to `query=""`, unlike the required builder formula `history[-1].content`. A malformed claimed package with `history=[]` can therefore be judged against context alone; two `SUPPORTED` votes then permit generation and a valid SUPPORTED envelope despite no actual query. Minimal fix: require `history` to be non-empty and raise `ValueError` otherwise; add an empty-history assertion to `TestSupportJudgeStage.test_malformed_package_reports_support_judge_unavailable`.

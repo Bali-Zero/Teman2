@@ -1,0 +1,67 @@
+task_id: backend-rag-b2-4-judge-reach
+gear: 3
+l_level: L2
+gate_class: opus
+base_sha: 77af6c7ada8e1fc3de2f50ba3e64a78e330f9adf # pragma: allowlist secret
+mandate: B2.4
+colour: BLUE
+pr: B2.4 PR-1 (the Pro daemon judges support on the claimed job before generating; inert on Fly)
+envelope: I96 (Desk) — generation authority under Zero's full delegation
+checkpoint_refs:
+  - 20260913T200021Z-0e26 # B2.4 OPEN, acked by B2-ack RULING I97 (shape approved, C1-C3)
+rulings:
+  - "I96 fail-closed gate stays; judge runs on the Pro broker side; judge latency outside the 10 s build; majority-of-3 + votes preserved; absent judge LOUD"
+  - "I97 shape APPROVED as written; no-Ollama-fallback deviation ACCEPTED; C1 measure one real rep on Pro (>=5 samples, p50/max) before fixing the budget; C2 PR-2 refuses an old daemon with a test; C3 NEEDS-ZERO carries merged sha + two commands verbatim"
+deadline: "2026-09-14T08:00:00Z"
+objective: >-
+  Make the I26 support judge reachable in production without touching the
+  fail-closed gate: the zantara-codex daemon on Pro runs CodexSupportJudge
+  (unchanged RUBRIC, three repetitions, strict majority, split = NOT_SUPPORTED)
+  on the package it has just claimed, before generating; it reports an absent
+  judge as error_class support_judge_unavailable and every ruling as an
+  HMAC-authenticated completion envelope bound to package_hash. PR-1 ships the
+  daemon side, the envelope codec, the widened broker vocabulary and the
+  provisioning that installs the two new runtime modules. Fly behaviour is
+  unchanged until PR-2. Design: B2-4-design.md (this directory).
+appetite:
+  wall_clock_hours: 5
+  adversarial_rounds: 2
+  tokens: 1500000
+acceptance:
+  - id: A1
+    text: >-
+      Diff = _support_signal.py (client injection + support_inputs_from_wire),
+      wa_completion_envelope.py (new), wa_codex_daemon.py (support stage before
+      generation), wa_broker.py (one vocabulary entry), provision_zantara_codex.sh
+      (section 3 installs), declared-pairs.json (two pairs), tests, this directory.
+      wa_codex_leg.py, wa_package_builder.py, reasoning_utils.py and migrations untouched.
+  - id: A2
+    text: >-
+      Daemon unit tests prove: SUPPORTED -> 3 judge calls + 1 generation and a
+      decodable envelope carrying the answer; NOT_SUPPORTED / UNKNOWN / split ->
+      no generation, envelope answer null; majority UNAVAILABLE or unreadable wire
+      -> error_class support_judge_unavailable, no generation; judge prompt equals
+      RUBRIC over history[-1].content and the joined chunk texts; judge model
+      pinned MODEL_TERRA; oversized envelope -> oversized_output; exhausted budget
+      -> exec_timeout. Envelope tests prove every forgery/tamper/mismatch decodes None.
+  - id: A3
+    text: >-
+      A runtime tree holding ONLY the files provisioning installs imports
+      backend.services.integrations.wa_codex_daemon with no other backend module.
+  - id: A4
+    text: >-
+      C1: one real CodexSupportJudge repetition measured on Pro against real
+      packages built by the production builder for synthetic questions (>= 5
+      samples, p50/max, plus three-concurrent wall time) and recorded in pack.yml;
+      the judge budget constants are set from that measurement.
+  - id: A5
+    text: >-
+      After merge and Zero's re-provisioning: the four runtime modules cmp -s
+      identical to origin/main, a new daemon pid, and wa_broker_gauge
+      broker_last_seen_at advancing on two reads (the new imports loaded).
+seats:
+  dux: "Opus 5 xhigh (Pro)"
+  implementer: "Sonnet 5 subagent under PR-1-build-spec.md, verified by the Dux"
+  adversarial_reviewer: "codex-gpt-5.6-sol (CODEX_HOME=~/.codex-acct2, read-only sandbox, effort high)"
+  second_quorum_seat: "agy-gemini-3.1-pro (fallback: kimi-code/k3 HTTP 403 monthly limit; tp1-qwen HTTP 429 until 2026-09-18T08:39Z)"
+  gate: "a FRESH Opus 5 session outside the contribution chain, commissioned by the imperator"
