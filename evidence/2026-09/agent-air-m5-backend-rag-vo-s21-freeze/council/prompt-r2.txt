@@ -1,0 +1,66 @@
+You are a REVIEW seat on a Gear-3 council (round 2). Repo worktree:
+/Users/balizero/nuzantara/.worktrees/backend-rag-vo-s21-freeze
+The candidate is the branch HEAD over merge-base 52ebe96b62 (three commits). Read it with:
+  git -C /Users/balizero/nuzantara/.worktrees/backend-rag-vo-s21-freeze diff 52ebe96b62...HEAD -- ':!*gold_coverage/fixtures/walks/*' ':!*gold_harness/fixtures/personas/*' ':!*schema.d.ts' ':!*rulepack-prod-021.source.json'
+(84 generated walk fixtures, 23 persona fixtures, the generated schema.d.ts and the
+folded pack JSON are excluded from that view on purpose; inspect them only if a claim
+depends on them. The pack is PRODUCED by the fold script.)
+
+WHAT THE CHANGE CLAIMS. Nine visa products (E23U E23V E28B E28C E28D E28F E33A E33B
+E33C) had ZERO ELIGIBILITY rules in rule pack sequence 20. Sequence 21, produced by
+apps/backend-rag/backend/scripts/visa_engine/fold_pack_seq21.py into
+apps/backend-rag/backend/services/visa_engine/contracts/packs/rulepack-prod-021.source.json,
+retires nine dormant REQUIRE_REVIEW rules keyed on intent.requested_product_code, adds
+nine SUPPORT rules each gated on one NEW qualifying boolean fact (ten facts registered
+in enums.py / fact_registry.py / models.py, as PR #6396 registered one), and adds two
+HARD_FILTER rules that give a NAMED cause on three dead-end walks. The pack is unsigned
+and unactivated; nothing here signs or activates it.
+
+ROUND 1 found two BROKEN claims; commit 1105604535 claims to cure both:
+- REPRODUCIBILITY: the committed pack is prettier-formatted by the repo's lint-staged
+  pre-commit hook (seq-19 and seq-20 carry the same reflow), so the cure pins the CANONICAL
+  JCS bytes: test_seq21_pack.py::TestFoldIntegrity::test_the_cli_reproduces_the_bytes_the_owner_signs
+  runs the CLI and compares canonicalize_json of its output to the committed file's and to
+  SEQ21_PAYLOAD_SHA256. Measured by the builder: CLI output piped through prettier 3.9.6 is
+  sha256-identical to the committed file (74cea8ab6ba389065490cd7673e822ad2cac65889f6685a6b11b2ec511757980).
+- MOUTH PARITY: the eight REVIEW_REASON_COPY entries are restored verbatim from origin/main,
+  and the review guard in engine-adapter.test.ts reads the union of the highest-sequence
+  SOURCE pack and the highest-sequence SIGNED payload.
+
+FALSIFY THESE EIGHT CLAIMS. For each say PROVEN or BROKEN and name the file+line or the
+command whose output decides it.
+
+1. FAIL-OPEN. No applicant who was stopped for review under seq-20 is silently supported
+   under seq-21: each retired rule was dormant (gated on a fact the browser hard-codes
+   UNKNOWN(NOT_ASKED)) and its qualification is re-established by the replacing SUPPORT rule.
+2. EVIDENCE. No SUPPORT rule can fire on sponsor.type (or any pre-existing fact) ALONE; each
+   needs its qualifying boolean KNOWN true. Note E33B/E33C accept sponsor.type in
+   {GOVERNMENT, NONE} conjoined with their qualifying fact: judge whether that is sound.
+3. ON_UNKNOWN. on_unknown: NEEDS_INPUT on the nine SUPPORT rules cannot turn any of the 84
+   corpus walks into a question: evidence/2026-09/agent-air-m5-backend-rag-vo-s21-freeze/census-replay-seq20-vs-seq21.txt
+   records states 67/15/2 before and after and exactly three walks changing only their
+   no-path reason code. Find a walk where that is not true.
+4. REPRODUCIBILITY (cured?). Decide whether pinning canonical JCS bytes plus the digest is a
+   sufficient byte contract for what sign_pack.py signs (read sign_pack.py), and whether the
+   chain (previous_payload_sha256 = seq-20 digest) and valid_period.from 2026-09-15T00:00:00Z hold.
+5. THRESHOLDS. Neither HARD_FILTER hard-codes a money figure; the second-home bounds are
+   extracted from seq-20 rules at fold time; the E28 rules compare no invented USD figure.
+6. MOUTH PARITY (cured?). Every reason code that the highest signed pack (seq-20) OR the
+   highest source pack (seq-21) can emit has EN+ID copy; the eight restored entries are
+   byte-identical to origin/main; the two new EXCLUDE codes name the door that IS open by
+   product code; the guard would go red if a live seq-20 review code lost its copy.
+7. PINS. Every moved literal (fact counts 50->60 and 46->56, NOT_ASKED list 5->15, the
+   evaluation-trace golden vector, the walk-corpus fingerprint, the openapi sha) moves only
+   because the ten facts were added; no behaviour change hides inside a fixture update. The
+   walk and persona fixtures add only the ten UNKNOWN/NOT_ASKED keys.
+8. PERIMETER. apps/mouth changes are limited to: reason-code copy + the fact-derived no-path
+   code set in engine-adapter.ts, the guard test, fact-mapper.ts and applicant-fact-paths.ts
+   emitting the ten keys as UNKNOWN(NOT_ASKED) with no question/flow/tree change, the
+   regenerated schema.d.ts + its sha, and the fixture fingerprint.
+
+RULES. Read-only. Do not edit or create files, do not run git write commands, do not run the
+full test suite. You may run read-only git commands and short in-memory python (from
+apps/backend-rag with PYTHONPATH=. and dummy JWT_SECRET_KEY/API_KEYS env). Do not quote
+secrets. Be terse: at most 10 lines per claim. Your LAST line must be exactly one of:
+VERDICT: OK
+VERDICT: CHANGES

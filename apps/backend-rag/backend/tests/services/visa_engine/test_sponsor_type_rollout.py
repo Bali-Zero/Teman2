@@ -125,7 +125,11 @@ class TestSponsorTypeRolloutDefault:
         and narrowed back to five the same day once D4c-2's interview
         question shipped and the ``default=`` came out of ``models.py`` —
         the ``TestFactVocabularyExtensionRolloutDefaultD4c1`` class that
-        pinned that field's transitional window is gone with it. Widening
+        pinned that field's transitional window is gone with it. It widened
+        to fifteen on 2026-09-13 (W-VO-S21): the TEN seq-21 qualification
+        booleans — five ``sponsor_*``, five ``investment_*`` — whose
+        questions ship in a following lane (mouth ``tree.ts``/``flow.ts``/
+        ``fact-mapper.ts``, reading ``FACTS-FOR-THE-TREE.md``). Widening
         is deliberate and tracked HERE — this stops a field from silently
         acquiring a default under cover of an existing one without anyone
         updating the expected set. When any one field's interview ships and
@@ -145,6 +149,17 @@ class TestSponsorTypeRolloutDefault:
             "family_stepchild_birth_certificate_confirmed",
             "family_sponsor_permit_basis",
             "immigration_renewal_paid",
+            # W-VO-S21, 2026-09-13 — the ten seq-21 qualification booleans.
+            "sponsor_government_invitation",
+            "sponsor_government_collaboration",
+            "sponsor_world_figure_invitation",
+            "sponsor_diplomatic_household",
+            "sponsor_trade_office",
+            "investment_establishes_indonesian_company",
+            "investment_capital_market_only",
+            "investment_foreign_branch_or_subsidiary",
+            "investment_ikn_subsidiary",
+            "investment_meets_published_threshold",
         }, (
             "ApplicantFactsData's optional-field set changed. If you added a "
             "field with a default, don't: every fact is required so that an "

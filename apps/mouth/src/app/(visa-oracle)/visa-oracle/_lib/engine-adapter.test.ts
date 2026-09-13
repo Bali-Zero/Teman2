@@ -1127,12 +1127,59 @@ describe("review reasons cover every code the current pack can emit", () => {
     return best.file;
   }
 
+  /**
+   * The highest-sequence SIGNED pack's payload. Only a signed pack can be in
+   * force, so this is the upper bound of what production can emit today —
+   * while `latestProductionPackFile()` is the upper bound of what it will
+   * emit next. W-VO-S21 (2026-09-13) is why both are read: an unsigned
+   * seq-21 source retires eight review codes that the signed, live seq-20
+   * still carries. Reading only the source would call their copy "stale"
+   * and delete it from the live pack's sheet; reading only the signed pack
+   * would miss a code the next pack adds. The union keeps every code either
+   * pack can emit covered — and the day seq-21's signed bundle lands, the
+   * eight retired keys stop being in the union and the stale-key test below
+   * names them, which is the moment their copy is allowed to go.
+   */
+  function latestSignedProductionPayload(): {
+    rules?: Array<Record<string, unknown>>;
+  } {
+    let best: {
+      payload: { rules?: Array<Record<string, unknown>> };
+      sequence: number;
+    } | null = null;
+    for (const name of fs.readdirSync(PACKS_DIR)) {
+      if (!/^rulepack-prod-\d+\.signed\.json$/.test(name)) continue;
+      const envelope = JSON.parse(
+        fs.readFileSync(path.join(PACKS_DIR, name), "utf-8"),
+      ) as {
+        payload?: {
+          sequence?: unknown;
+          rules?: Array<Record<string, unknown>>;
+        };
+      };
+      const payload = envelope.payload;
+      if (!payload || typeof payload.sequence !== "number") continue;
+      if (best === null || payload.sequence > best.sequence) {
+        best = { payload, sequence: payload.sequence };
+      }
+    }
+    if (best === null) {
+      throw new Error(
+        `no signed pack under ${PACKS_DIR} had a numeric sequence`,
+      );
+    }
+    return best.payload;
+  }
+
   function reviewReasonCodesInPack(): string[] {
-    const payload = JSON.parse(
+    const source = JSON.parse(
       fs.readFileSync(latestProductionPackFile(), "utf-8"),
     ) as { rules?: Array<Record<string, unknown>> };
     const codes = new Set<string>();
-    for (const rule of payload.rules ?? []) {
+    for (const rule of [
+      ...(source.rules ?? []),
+      ...(latestSignedProductionPayload().rules ?? []),
+    ]) {
       const effect = rule.effect as Record<string, unknown> | undefined;
       if (!effect || typeof effect.reason_code !== "string") continue;
       // A HUMAN_REVIEW-stage rule contributes its reason on a definite TRUE
@@ -1221,6 +1268,11 @@ describe("review reasons cover every code the current pack can emit", () => {
     // from 32 to the measured 38 (round-1 refuter finding, Gemini 3.1 Pro +
     // Kimi K3): 32 would still pass a regression that silently dropped up
     // to 5 real codes.
+    //
+    // Unchanged at 38 by W-VO-S21 (2026-09-13): the unsigned seq-21 source
+    // retires eight of the 20 pack codes, but `reviewReasonCodesInPack()`
+    // reads the signed seq-20 payload too, so all 20 are still counted
+    // while seq-20 is the newest pack that can be in force.
     expect(allRealCodes.length).toBeGreaterThanOrEqual(38);
 
     const unaccounted = allRealCodes.filter(

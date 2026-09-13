@@ -225,8 +225,11 @@ def _spec(
 #: ``family.stepchild_*`` evidence paths, ``family.sponsor_permit_basis``
 #: and ``derived.has_active_stay_permit`` (2026-08-23, three owner rulings),
 #: plus ``immigration.renewal_paid`` (2026-08-24, F4, owner ruling), plus
-#: ``investment.investment_amount_usd`` (2026-09-13, PR-D4c-1, contract-only)
-#: — 50 entries total.
+#: ``investment.investment_amount_usd`` (2026-09-13, PR-D4c-1, contract-only),
+#: plus the TEN seq-21 qualification booleans (2026-09-13, W-VO-S21 — five
+#: ``sponsor.*``, five ``investment.*``; see ``enums.FactPath`` for which
+#: product each one unblocks and why one fact per qualification)
+#: — 60 entries total.
 #: PII classification rationale: immigration status/violation history and
 #: investment capital amounts are SENSITIVE (UU PDP heightened-treatment
 #: analogues per CLAUDE.md §14 — closest to "criminal"/"financial" data in
@@ -378,6 +381,17 @@ _DEFAULT_SPECS: tuple[FactSpec, ...] = (
         "money_usd",
         pii_class=PiiClass.SENSITIVE,
     ),
+    # The five seq-21 investor-route qualification booleans (2026-09-13,
+    # W-VO-S21). Plain BOOLEAN/PERSONAL, modeled exactly like
+    # ``investment.pt_pma_committed`` directly above: they say WHICH Golden
+    # Visa route the applicant is on and THAT the route's published minimum
+    # is met — never an amount, so none of them is the SENSITIVE financial
+    # tier the two IDR amounts and ``investment_amount_usd`` carry.
+    _spec(FactPath.INVESTMENT_ESTABLISHES_INDONESIAN_COMPANY, FactValueKind.BOOLEAN, "boolean"),
+    _spec(FactPath.INVESTMENT_CAPITAL_MARKET_ONLY, FactValueKind.BOOLEAN, "boolean"),
+    _spec(FactPath.INVESTMENT_FOREIGN_BRANCH_OR_SUBSIDIARY, FactValueKind.BOOLEAN, "boolean"),
+    _spec(FactPath.INVESTMENT_IKN_SUBSIDIARY, FactValueKind.BOOLEAN, "boolean"),
+    _spec(FactPath.INVESTMENT_MEETS_PUBLISHED_THRESHOLD, FactValueKind.BOOLEAN, "boolean"),
     _spec(
         FactPath.FAMILY_RELATION_TO_SPONSOR,
         FactValueKind.STRING,
@@ -408,6 +422,19 @@ _DEFAULT_SPECS: tuple[FactSpec, ...] = (
             {"NONE", "INDIVIDUAL", "EMPLOYER", "EDUCATION", "INVESTMENT", "GOVERNMENT"}
         ),
     ),
+    # The five seq-21 sponsor-qualification booleans (2026-09-13, W-VO-S21).
+    # Plain BOOLEAN/PERSONAL, the same idiom as
+    # ``work.indonesian_work_sponsor_confirmed``: the applicant declares that
+    # the invitation / collaboration / household role / trade-office standing
+    # exists, and the Oracle names the document the consultation must see.
+    # PERSONAL, not SENSITIVE: none of them is financial or criminal-history
+    # data per the module rationale above. No ``allowed_values`` — a
+    # boolean's only legal literals are true/false.
+    _spec(FactPath.SPONSOR_GOVERNMENT_INVITATION, FactValueKind.BOOLEAN, "boolean"),
+    _spec(FactPath.SPONSOR_GOVERNMENT_COLLABORATION, FactValueKind.BOOLEAN, "boolean"),
+    _spec(FactPath.SPONSOR_WORLD_FIGURE_INVITATION, FactValueKind.BOOLEAN, "boolean"),
+    _spec(FactPath.SPONSOR_DIPLOMATIC_HOUSEHOLD, FactValueKind.BOOLEAN, "boolean"),
+    _spec(FactPath.SPONSOR_TRADE_OFFICE, FactValueKind.BOOLEAN, "boolean"),
     _spec(FactPath.FAMILY_SPONSOR_CONFIRMED, FactValueKind.BOOLEAN, "boolean"),
     # family.stepchild_* — evidence for RelationType.STEPCHILD (2026-08-23
     # owner ruling: "figliastro = figlio del coniuge, serve akta nikah +

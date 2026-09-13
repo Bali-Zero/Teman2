@@ -1,0 +1,173 @@
+You are a REVIEW seat on a Gear-3 council (round 5, final candidate) for the repository
+worktree /Users/balizero/nuzantara/.worktrees/backend-rag-vo-s21-freeze (HEAD 4bea118cdc001508202431914577791e90caa932, merge-base 52ebe96b62).
+Shell commands are NOT available to you in this mode (they are auto-denied): do not try them.
+The reviewable diff is inlined at the end; you may also READ files under the worktree with your
+file-reading tool. Read-only: do not edit or create any file. Do not quote secrets.
+
+Delta since round 3 (commit 4bea118cdc): the seq-20 exclusion code E33A_SPONSOR_NOT_GOVERNMENT,
+which seq-21 newly surfaces on the corpus walk offshore/other/paid/employer_no (E33A is now
+purpose-feasible for EMPLOYMENT), gains EN/ID copy in SUPPORT_REASON_COPY, and
+test_seq21_pack.py::TestCensusReplay::test_every_no_path_code_seq21_emits_on_the_corpus_has_visitor_copy
+replays the 84 walks and asserts every emitted no-path code has a copy key (guilt measured:
+removing the entry turns it red). Claim 7 below now reads: every reason code that any corpus
+walk emits under seq-21, and every review code of the highest signed/source pack, has EN+ID copy.
+
+WHAT THE CHANGE CLAIMS. Nine visa products (E23U E23V E28B E28C E28D E28F E33A E33B
+E33C) had ZERO ELIGIBILITY rules in rule pack sequence 20 (29 of 38 products had one).
+Sequence 21 (38 of 38), PRODUCED by apps/backend-rag/backend/scripts/visa_engine/fold_pack_seq21.py
+into apps/backend-rag/backend/services/visa_engine/contracts/packs/rulepack-prod-021.source.json,
+retires nine dormant REQUIRE_REVIEW rules keyed on intent.requested_product_code, adds nine
+SUPPORT rules each gated on one NEW qualifying boolean fact (ten facts registered in
+enums.py / fact_registry.py / models.py exactly as PR #6396 registered one), and adds two
+HARD_FILTER rules that name the cause on three dead-end walks. Unsigned, unactivated.
+
+Cures since the previous rounds (verify each):
+- REPRODUCIBILITY: the committed pack is prettier-formatted by the lint-staged pre-commit
+  hook (seq-19/20 carry the same reflow). test_seq21_pack.py::TestFoldIntegrity::
+  test_the_cli_reproduces_the_bytes_the_owner_signs runs the CLI and asserts its canonical
+  JCS bytes equal the committed file's, their sha256 equals SEQ21_PAYLOAD_SHA256
+  (a0c3359c49ca656b625db74422c9d27a5f0af4e6943de3176eb0cddc4a81e4ac), and that
+  RulePackPayload.model_dump(mode="json", by_alias=True) canonicalizes to the same bytes
+  (what sign_pack.py signs). Builder measurement: CLI output | prettier 3.9.6 = committed
+  file, sha256 1a9c5823f7ed51d0c1837df8036c27529b6bc9d6e4d927707d6429a7d9b1fe46.
+- MOUTH PARITY: eight REVIEW_REASON_COPY entries restored verbatim from origin/main; the
+  review guard in engine-adapter.test.ts reads the union of the highest-sequence SOURCE
+  pack and the highest-sequence SIGNED payload.
+- ACTIVATION: the pack-level valid_period is NOT moved (stays seq-20's 2026-07-25). The
+  previous draft set it to 2026-09-15, which migration_v2 253 step 4
+  (visa_activate_rule_pack partial legal-period overlap guard) would REFUSE over seq-20's
+  open activation after the immutable pack row is inserted. The nine+two NEW rules carry
+  valid_period.from 2026-09-15T00:00:00Z instead (seq-20's fold used the same rule-level
+  pattern).
+- SPONSOR PREMISES: E33B's premise is now sponsor.type = NONE and E33C's = GOVERNMENT,
+  i.e. each SUPPORT rule's sponsor premise is a subset of its product's catalogue
+  sponsor_types (checked at fold time by _assert_sponsor_premises_follow_the_catalogue),
+  instead of mirroring the wider seq-20 hard filters (GOVERNMENT or NONE).
+
+FALSIFY THESE NINE CLAIMS. For each: PROVEN or BROKEN, with file:line or the command
+output that decides it.
+1. FAIL-OPEN: no applicant stopped for review under seq-20 is silently supported under
+   seq-21 (each retired rule was dormant; its qualification is re-established by a fact).
+2. EVIDENCE: no SUPPORT rule can fire without its qualifying boolean KNOWN true, and no
+   sponsor premise admits a category the product's catalogue does not name.
+3. ON_UNKNOWN: on_unknown NEEDS_INPUT turns none of the 84 corpus walks into a question
+   (evidence/2026-09/agent-air-m5-backend-rag-vo-s21-freeze/census-replay-seq20-vs-seq21.txt:
+   states 67/15/2 before and after; exactly three walks change, only their no-path code).
+4. REPRODUCIBILITY: the byte contract above is sufficient for what sign_pack.py signs, and
+   previous_payload_sha256 equals the signed seq-20 digest.
+5. ACTIVATION: activate_pack.py + migration 253 would accept seq-21 over seq-20's open
+   activation (legal-period coverage, sequence monotonicity, hash chain).
+6. THRESHOLDS: no money figure is typed in the fold; second-home bounds are read from the
+   seq-20 rules; the E28 rules compare no invented USD figure.
+7. MOUTH PARITY: every reason code the highest signed pack (seq-20) or highest source pack
+   (seq-21) can emit has EN+ID copy; the eight restored entries are byte-identical to
+   origin/main; the two new EXCLUDE codes name the open door by product code.
+8. PINS: every moved literal (fact counts 50->60 / 46->56, NOT_ASKED list 5->15, the
+   evaluation-trace golden vector, the walk-corpus fingerprint, the openapi sha) moves only
+   because ten facts were added; walk and persona fixtures add only ten UNKNOWN/NOT_ASKED keys.
+9. PERIMETER: apps/mouth changes are only reason-code copy + the fact-derived no-path code
+   set in engine-adapter.ts, the guard test, fact-mapper.ts / applicant-fact-paths.ts
+   emitting the ten keys as UNKNOWN(NOT_ASKED) (no question/flow/tree change), the
+   regenerated schema.d.ts + sha, and the fixture fingerprint.
+
+Be terse: at most 8 lines per claim. Your LAST line must be exactly one of:
+VERDICT: OK
+VERDICT: CHANGES
+
+===== INLINE DIFF (git diff 52ebe96b62...HEAD; generated fixtures, schema.d.ts, pack JSON, council transcripts excluded) =====
+diff --git a/apps/backend-rag/backend/scripts/visa_engine/fold_pack_seq21.py b/apps/backend-rag/backend/scripts/visa_engine/fold_pack_seq21.py
+new file mode 100644
+index 0000000000..4351d5ce40
+--- /dev/null
++++ b/apps/backend-rag/backend/scripts/visa_engine/fold_pack_seq21.py
+@@ -0,0 +1,954 @@
++"""fold_pack_seq21.py — the qualification fold: the nine products with no
++SUPPORT rule become recommendable on the fact each one actually names, and the
++three generic dead ends get a cause.
++
++WHY, AND WHAT IT REPLACES
++=========================
++Nine of the pack's 38 products — ``E23U``, ``E23V``, ``E28B``, ``E28C``,
++``E28D``, ``E28F``, ``E33A``, ``E33B``, ``E33C`` — carry ZERO ``ELIGIBILITY``
++rules in seq-20, so ``evaluate_product``'s ``declared_coverage`` is empty for
++them and they are structurally unrecommendable: no interview answer, however
++complete, can reach them. Each one instead carries a dormant
++``REQUIRE_REVIEW`` rule keyed on ``intent.requested_product_code``, a fact
++``fact-mapper.ts`` hard-codes to ``UNKNOWN(NOT_ASKED)``. The measured effect is
++"route to a human", and the owner's ruling of 2026-09-13 is the opposite:
++«portare 38 prodotti su 38 raggiungibili dal percorso senza rimandare a
++revisione umana ma spiegati deterministicamente».
++
++This fold is the PACK half of that ruling. It SUPERSEDES the seq-21 candidate
++of PR #6362, which reached the same five sponsor products by keying three of
++its rules on ``sponsor.type = GOVERNMENT`` ALONE — ``el.e33a``, ``el.e33b`` and
++``el.e23v`` shared one byte-identical ``when``, so a visitor declaring
++employment with a government sponsor received E23V + E33A + E33B together with
++nothing having established an invitation, a collaboration or a trade office.
++``enums.FactPath``'s own ``sponsor.type`` comment had already recorded why that
++cannot work ("sponsor.type alone does not supply a safe eligibility gate for
++any of the three... Unblocking any of them needs new, legally grounded
++discriminator facts"). Those discriminators are the ten wire facts registered
++alongside this fold, and every SUPPORT rule below depends on ONE of them.
++
++THE EDITS, BY RULE ID
++=====================
++1. **Nine dormant ``review.*`` rules RETIRED.** Each is a HUMAN_REVIEW rule
++   whose ``when`` conjoins ``intent.requested_product_code eq "<code>"`` — the
++   fact the browser never sets — and whose review question is exactly the
++   qualification the new SUPPORT rule now establishes as a fact:
++   ``GOVT_INVITATION_REQUIRED`` becomes ``sponsor.government_invitation``,
++   ``E33B_EXPERTISE_QUALIFICATION_CHECK`` becomes
++   ``sponsor.government_collaboration``, the four E28 threshold checks become
++   ``investment.meets_published_threshold`` plus a route boolean, and the two
++   E23 staff reviews become ``sponsor.diplomatic_household`` /
++   ``sponsor.trade_office``.
++
++   They are RETIRED rather than flipped to ``on_unknown: NO_EFFECT`` — the
++   shape PR #6362 used and the dossier of 2026-09-13 §4 named as a fail-open:
++   ``NO_EFFECT`` on a REQUIRE_REVIEW rule leaves a rule in the pack that still
++   claims to police a qualification while never being able to block anything,
++   which is strictly worse than not having it. Retiring is also NOT optional
++   here and this is the causal fact the dossier measured: ``evaluate_product``
++   tests ``review_input_unknowns`` BEFORE ``purposes <= covered``, so a
++   REQUIRE_REVIEW rule that is UNKNOWN on ``intent.requested_product_code``
++   makes its product ``BLOCKED_UNKNOWN`` even when every eligibility fact is
++   present. Left in place, the nine new SUPPORT rules could never produce a
++   single SUPPORTED product. :func:`_assert_retired_review_rules_are_dormant`
++   checks the premise instead of trusting this paragraph: each one must be a
++   REQUIRE_REVIEW rule reading ``intent.requested_product_code``, and its
++   product must have no ELIGIBILITY rule yet.
++
++2. **Nine new ``ELIGIBILITY``/``SUPPORT`` rules, one per product**, each
++   conjoining its product's sponsor/route premise AND its own qualifying
++   fact, with ``on_unknown: NEEDS_INPUT``. ``NEEDS_INPUT`` (not the
++   fail-CLOSED ``NO_EFFECT``) because the owner's doctrine for an unasked
++   qualification is to ASK it — the outcome vocabulary is
++   ``SUPPORTED_CANDIDATES`` / ``NO_SUPPORTED_PATH`` / ``NEEDS_INPUT``, and a
++   qualification the interview has not yet asked is a question, not a denial.
++   That choice is only safe because every rule's ``when`` is an ``all`` whose
++   FIRST premises (purpose, sponsor type / route) are DEFINITE FALSE for
++   applicants the product does not concern — Strong-Kleene ``all`` makes the
++   whole condition FALSE, never UNKNOWN, so no unrelated walk is turned into
++   a question. :func:`_assert_no_walk_regresses_is_the_tests_job` is not a
++   function; that invariant is pinned by ``test_seq21_pack.py``'s census
++   replay, because it is a property of the 84-walk corpus rather than of this
++   payload.
++
++3. **Two new ``HARD_FILTER``/``EXCLUDE`` rules that NAME a cause.** Three of
++   the fifteen dead-end walks answer with
++   ``OPERATIONAL_NO_PRODUCT_MATCHES_DECLARED_PURPOSES`` —
++   ``evaluator._fallback_no_path_reason``, emitted only when no
++   purpose-feasible product carries an exclusion reason. Both rules below
++   exist to replace that sentence with a reason the visitor can act on:
++
++   * ``hf.e33.guarantee-below-threshold`` — the two ``offshore/invest/
++     {bank_deposit,property}/below_threshold`` walks declare SECOND_HOME with
++     a deposit under the pack's own USD 130,000 bound and a property under its
++     own USD 1,000,000 bound. Both numbers are EXTRACTED from
++     ``el.e33.deposit-basis`` / ``el.e33.property-basis`` at fold time
++     (:func:`_e33_guarantee_bounds`), never typed here, so a pack whose bound
++     has moved aborts the fold instead of shipping a stale threshold.
++   * ``hf.employment-without-indonesian-sponsor`` — the
++     ``offshore/other/paid/employer_no`` walk declares paid EMPLOYMENT and
++     ``work.employer_is_indonesian_entity = false``. Scoped to the thre

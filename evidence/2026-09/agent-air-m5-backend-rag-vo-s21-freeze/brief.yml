@@ -1,0 +1,55 @@
+gear: 3
+gear_reason: >-
+  Floor measured with scripts/evidence_pack_lint.py --print-floor --print-floor-source on the
+  merge-base diff (git diff --name-only / --numstat 52ebe96b62...HEAD): floor 3, source "size"
+  (the folded pack and the regenerated walk/persona fixtures). Judgement agrees: a production
+  rule pack candidate that Zero signs, plus apps/backend-rag/** where merging is the deploy.
+ruling: RULED 2026-09-12 SAETTA
+mission: SAETTA-VO3 FRECCIA (BLUE, host M5), window W-VO-S21 vo-s21-freeze — the ONE seq-21 pack Zero signs
+objective: >-
+  A frozen, green, re-executable seq-21 candidate that makes every one of the nine products with
+  no SUPPORT rule in seq-20 (E23U, E23V, E28B, E28C, E28D, E28F, E33A, E33B, E33C) supportable on a
+  fact the interview can ask, and replaces the generic OPERATIONAL_NO_PRODUCT_MATCHES_DECLARED_PURPOSES
+  on the three dead-end walks (coverage report B2 rows 13-15) with a named cause and the open door.
+  Successor of PR #6362, which is closed as superseded. Not signed and not activated by this window.
+scope:
+  - apps/backend-rag/backend/scripts/visa_engine/fold_pack_seq21.py
+  - apps/backend-rag/backend/services/visa_engine/contracts/packs/rulepack-prod-021.source.json
+  - apps/backend-rag/backend/services/visa_engine/{enums,fact_registry,models}.py (fact registration only, as PR #6396)
+  - apps/backend-rag/backend/services/visa_engine/contracts/{contract,condition}.schema.json (regenerated)
+  - apps/backend-rag/backend/tests/** (dedicated test_seq21_pack.py, count pins, regenerated walk/persona fixtures)
+  - apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter.ts (+ test) — reason-code copy EN/ID
+  - apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/fact-mapper.ts, apps/mouth/src/lib/api/{applicant-fact-paths.ts,schema.d.ts,schema.d.ts.openapi-sha256} — the ten keys as UNKNOWN(NOT_ASKED), forced by the contract tests
+  - apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/fixtures/no-path-doors.replay.json (corpus fingerprint)
+  - evidence/2026-09/agent-air-m5-backend-rag-vo-s21-freeze/**
+constraints:
+  - Forbidden - evaluate_path.py, evaluator.py, models.py beyond fact registration, oracle.css, tree.ts/flow.ts (W-VO-Q), pricing, any signing key, any DB.
+  - Every SUPPORT rule depends on a qualifying fact, never on sponsor.type alone; on_unknown NEEDS_INPUT.
+  - The nine review.* rules are never flipped to NO_EFFECT (fail-open).
+  - No figure invented - the E28 rules turn on a declared boolean and cite the source record.
+  - No client PII; no credential value anywhere; never sign or activate; never edit PENDING-ARMS.md.
+  - Push once, complete.
+acceptance:
+  - text: "A1 WHEN the fold CLI re-runs on seq-20, its output SHALL canonicalize to the committed pack's JCS bytes (also via sign_pack's typed dump) with previous_payload_sha256 = the seq-20 digest"
+    probe: "pytest test_seq21_pack.py::TestFoldIntegrity::test_the_cli_reproduces_the_bytes_the_owner_signs"
+  - text: "A2 IF the qualifying conjunct is stripped, the corpus replay SHALL move walks, and sponsor.type NONE alone SHALL never gain E33B"
+    probe: "pytest test_seq21_pack.py::TestSponsorTypeAloneIsNotEvidence"
+  - text: "A3 WHEN a gold fixture carries a product's qualifying fact the engine SHALL name that product, and IF the fact is unknown it SHALL return NEEDS_INPUT"
+    probe: "pytest test_seq21_pack.py::TestTheNineProductsAreReachable"
+  - text: "A4 WHEN the 84 walks are replayed at 2026-09-15T12:00Z the three dead ends SHALL carry named causes, states SHALL stay 67/15/2 and no walk SHALL ask intent.requested_product_code"
+    probe: "pytest test_seq21_pack.py::TestCensusReplay"
+  - text: "A5 every reason code the highest signed and highest source pack can emit, and every no-path code seq-21 emits on the corpus, SHALL have EN/ID copy"
+    probe: "npx vitest --run engine-adapter.test.ts ; pytest test_seq21_pack.py -k visitor_copy ; npx tsc --noEmit"
+  - text: "A6 WHEN activated over seq-20 the pack SHALL pass migration 253's legal-period coverage"
+    probe: "pytest test_seq21_pack.py::TestIdentity::test_the_activation_writer_would_accept_it_over_seq20"
+  - text: "A7 FACTS-FOR-THE-TREE.md SHALL list fact -> question EN/ID -> product -> rule for the ten facts"
+    probe: "the table in evidence/2026-09/agent-air-m5-backend-rag-vo-s21-freeze/FACTS-FOR-THE-TREE.md"
+  - text: "A8 the dossier rev.4 SHALL carry the one signing command and the ceremony in Italian within 60 lines and no credential"
+    probe: "wc -l and grep on /Users/balizero/Desktop/R3-RENDERS-20260913/vo-s21/SEQ-21-SIGNATURE-DOSSIER.md"
+consumer_map:
+  - Zero's offline signing ceremony (sign_pack.py on rulepack-prod-021.source.json) and the activation ceremony that follows it.
+  - W-VO-Q, which reads FACTS-FOR-THE-TREE.md to add the ten interview questions.
+  - The required checks that run test_seq21_pack.py, the contract pins and engine-adapter.test.ts on every future visa-engine PR.
+appetite:
+  budget: 8 hours, 1 PR
+  stop_loss: three reds on the same cause suspends; a fix-of-a-fix stops at depth 1

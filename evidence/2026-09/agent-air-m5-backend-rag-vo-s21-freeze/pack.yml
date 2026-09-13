@@ -1,0 +1,218 @@
+# Gear-3 evidence pack — W-VO-S21 vo-s21-freeze, the ONE seq-21 candidate Zero signs.
+# Written by the Dux of the window (Claude Opus 5, M5), resumed after a session-limit crash of the
+# previous instance (commit eaad4d30d2 and the round-1 transcripts are that instance's work, re-verified here).
+gear: 3
+brief_ref: evidence/brief.yml
+ruling: RULED 2026-09-12 SAETTA
+mission: SAETTA-VO3 FRECCIA (BLUE, M5), window W-VO-S21
+lanes:
+  - lane: vo-s21-freeze
+    role: build
+    seat: Claude Opus 5 (Dux of the window, implements directly)
+  - lane: vo-s21-freeze-council-codex
+    role: review
+    seat: codex-gpt-5.6-sol (codex exec --sandbox read-only, rounds 1-4)
+  - lane: vo-s21-freeze-council-quorum-fallback
+    role: review
+    seat: agy-gemini-3.1-pro (reserve, rounds 1-5)
+  - lane: vo-s21-freeze-ground-truth
+    role: ground_truth
+    seat: session (M5) - the pack asserts no new regulatory figure; its ground truth is the signed seq-20 pack and the activation code already on origin/main, not a notebook
+    nb: >-
+      origin/main merge-base 52ebe96b62d8e5f076c5f4a33c68e8f34793a8bc, five files read verbatim and all
+      five UNTOUCHED by this diff: contracts/packs/rulepack-prod-020.signed.json (chain anchor, kid,
+      signature verified by the fold), rulepack-prod-020.source.json (products, sponsor_types, source
+      records, the E33 bounds the fold extracts, the dormant review rules it retires),
+      db/migrations_v2/253_visa_activation_writer_hardening.sql (visa_activate_rule_pack step 4 overlap
+      guard, sequence/chain triggers), scripts/visa_engine/activate_pack.py (legal_period from
+      valid_period, trust store before the dry-run return, separation after it) and
+      scripts/visa_engine/sign_pack.py (typed payload canonicalization).
+    query_hash: "1950b20510ec0d3639654d442a05d1e19463f7a720e3d94d03bfaf7e4e1c4c84" # pragma: allowlist secret
+    note: >-
+      query_hash = sha256 of the five files concatenated in that order via git show 52ebe96b62:<path>.
+      No NotebookLM query exists for this lane and none was invented: no USD minimum is stated anywhere
+      in the pack's source records, which is why the E28 rules turn on a declared boolean.
+council_run: council/journal.jsonl
+seat_fallback_reason: "agy-gemini-3.1-pro replaces kimi-code/k3 (HTTP 403 monthly usage limit on two probes, 2026-09-13T17:22:07Z and ~17:23Z) and stands beside codex-gpt-5.6-sol; tp1-qwen3.8-max is also unavailable (HTTP 429 insufficient_quota on two probes at the same instants, resets 2026-09-18T08:39Z). Probe records council/probe-*.txt."
+pii_scan: clean
+decisions:
+  - id: D-gear
+    decision: >-
+      Gear 3. Floor measured with evidence_pack_lint.py --print-floor --print-floor-source on the
+      merge-base diff: 3, source "size" (16,127 added / 49 deleted lines at 960af4acbb, dominated by the
+      folded pack and the regenerated fixtures). Judgement agrees (a production pack Zero signs).
+  - id: D-review-rules
+    decision: >-
+      The nine dormant review.* rules are DELETED (retired), none flipped to NO_EFFECT: each was gated on
+      intent.requested_product_code, which the mapper hard-codes UNKNOWN(NOT_ASKED), and each one's
+      qualification is re-established by the SUPPORT rule that replaced it (fold-time dormancy census +
+      guilt test).
+  - id: D-e28
+    decision: >-
+      No source record in the pack states the E28 Golden Visa USD minimums, so E28B/C/D/F depend on a
+      declared investment.meets_published_threshold conjoined with a route boolean and cite the catalogue
+      record; investment.investment_amount_usd is not compared to any figure.
+  - id: D-valid-period
+    decision: >-
+      The brief asked for valid_period.from = 2026-09-15T00:00:00Z on the pack. Measured against
+      migrations_v2/253 (visa_activate_rule_pack step 4, lines 415-431) and activate_pack.py:131-143: the
+      activation's legal_period IS the payload valid_period, and an activation whose legal period overlaps a
+      still-open prior one without covering it is refused. seq-20's open activation starts 2026-07-25, so the
+      ceremony would have inserted the immutable pack row and then failed at --yes, burning sequence 21. The
+      brief's purpose (no rule in force before the signature, replays pinned inside validity) is kept at the
+      RULE level: the pack valid_period stays seq-20's (as every fold since seq-13), the eleven new rules carry
+      valid_period.from 2026-09-15T00:00:00Z (seq-20's fold used the same rule-level pattern). Guilt test
+      restates the step-4 predicate.
+  - id: D-sponsor-premise
+    decision: >-
+      el.e33b and el.e33c first mirrored seq-20's hard filters (GOVERNMENT or NONE). A hard filter excludes; a
+      SUPPORT rule recommends, so its sponsor premise must be a subset of the product's catalogue sponsor_types
+      (statutorily verbatim for E33A/B/C per enums.FactPath sponsor.type): E33B = NONE, E33C = GOVERNMENT,
+      asserted at fold time with a guilt test. Cost: an applicant who answers GOVERNMENT and a collaboration is
+      not offered E33B; recorded as dissent.
+  - id: D-mouth-perimeter
+    decision: >-
+      The brief allows only the i18n copy edit in mouth. Also touched, each forced by a contract test and kept
+      to the minimum: fact-mapper.ts and applicant-fact-paths.ts emit the ten keys as UNKNOWN(NOT_ASKED)
+      (fact-mapper.test.ts compares the key set with models.py), schema.d.ts + its openapi sha are regenerated,
+      the no-path-doors replay fixture carries the new walk-corpus fingerprint, and engine-adapter.test.ts's
+      review guard now reads the union of the highest source and highest signed pack. No tree.ts / flow.ts
+      change; no question added.
+  - id: D-redact
+    decision: >-
+      The CI Detect Secrets gate, simulated locally on the changed files (scan with the baseline, auto-triage,
+      check_unaudited; baseline restored byte-identical), flagged hex digests (content/payload sha256 of public
+      pack records) quoted in the four codex transcripts and the SEQ20_PAYLOAD_SHA256 constant in the fold.
+      64 transcript lines had the digest replaced by "[redacted hex digest]" (nothing else changed; verdict
+      lines intact); the fold constant carries "# pragma: allowlist secret" (comment only, after the council
+      OK on 4bea118cdc; test_seq21_pack.py re-run, 51 passed). Re-simulation: zero unaudited findings.
+  - id: D-6362
+    decision: >-
+      PR #6362 is never rebased: once this PR is open it gets a comment linking the successor and is closed.
+receipts:
+  - claim: Resume state re-verified before any edit - one commit ahead, two uncommitted paths.
+    cmd: git -C <wt> log --oneline origin/main..HEAD ; git -C <wt> status --short
+    result: "eaad4d30d2 feat(visa-engine) ... ; M no-path-doors.replay.json ; ?? evidence/.../council/"
+    exit: 0
+    ts: "2026-09-13T17:08:40Z"
+    seat: Claude Opus 5
+  - claim: The previous instance's commit left one pin red, found by running its tests.
+    cmd: pytest test_seq21_pack.py test_fact_registry.py test_shadow_match.py test_sponsor_type_rollout.py test_reachability_report.py test_gold_replay_driver.py test_interview_walk_census.py
+    result: "1 failed (test_not_asked_facts_are_exactly_the_five_hardcoded_in_the_mapper), 273 passed, 2 errors (test_shadow_match DB: migration 264 state of the local Postgres clone)"
+    exit: 1
+    ts: "2026-09-13T17:11:00Z"
+    seat: Claude Opus 5
+  - claim: Byte reproducibility at the file level.
+    cmd: fold_pack_seq21 --seq20-source rulepack-prod-020.source.json --output <scratch> ; prettier 3.9.6 --stdin-filepath <pack path> < <scratch> | shasum -a 256 ; shasum -a 256 <committed pack>
+    result: "fold payload_sha256 a0c3359c49ca656b625db74422c9d27a5f0af4e6943de3176eb0cddc4a81e4ac ; both file digests 1a9c5823f7ed51d0c1837df8036c27529b6bc9d6e4d927707d6429a7d9b1fe46" # pragma: allowlist secret
+    exit: 0
+    ts: "2026-09-13T17:37:00Z"
+    seat: Claude Opus 5
+  - claim: sign_pack.py signs the same bytes the tests pin (typed dump == raw JCS).
+    cmd: python -c RulePackPayload.model_validate(raw).model_dump(mode=json, by_alias=True) canonicalized vs canonicalize_json(raw), packs 020 and 021
+    result: "020 equal True ; 021 equal True (before the final cures; re-asserted inside test_the_cli_reproduces_the_bytes_the_owner_signs on the final pack)"
+    exit: 0
+    ts: "2026-09-13T17:30:00Z"
+    seat: Claude Opus 5
+  - claim: Census replay at 2026-09-15T12:00Z on the final pack.
+    cmd: cd apps/backend-rag && PYTHONPATH=. .venv/bin/python evidence/.../census_replay.py
+    result: "84 walks ; states 67/15/2 seq-20 and seq-21 ; distinct named products 17 -> 17 ; 3 walks differ, only no-path codes (2x SECOND_HOME_GUARANTEE_BELOW_THRESHOLD, 1x PAID_ACTIVITY_WITHOUT_INDONESIAN_SPONSOR + E33A_SPONSOR_NOT_GOVERNMENT) ; nine gold fixtures NEEDS_INPUT on seq-20, SUPPORTED on seq-21 (one product each). File census-replay-seq20-vs-seq21.txt."
+    exit: 0
+    ts: "2026-09-13T17:37:00Z"
+    seat: Claude Opus 5
+  - claim: Products with a SUPPORT rule.
+    cmd: python over products/rules of rulepack-prod-020.source.json and -021.source.json
+    result: "seq-20 29 of 38 (missing E23U E23V E28B E28C E28D E28F E33A E33B E33C), 17 HUMAN_REVIEW rules ; seq-21 38 of 38, 8 HUMAN_REVIEW rules, 111 rules"
+    exit: 0
+    ts: "2026-09-13T17:39:00Z"
+    seat: Claude Opus 5
+  - claim: Guilt and innocence of the mouth review guard.
+    cmd: scratchpad guilt-mouth.sh (cp backup, mutate, vitest engine-adapter.test.ts, cp restore, sha256 compare)
+    result: "guard reading only the source pack -> 2 failed (floor, stale keys) ; GOVT_INVITATION_REQUIRED removed -> 1 failed ; restored byte-identical -> 55 passed"
+    exit: 0
+    ts: "2026-09-13T17:19:00Z"
+    seat: Claude Opus 5
+  - claim: Guilt and innocence of the no-path copy guard.
+    cmd: scratchpad guilt-copy.sh (remove E33A_SPONSOR_NOT_GOVERNMENT copy, pytest -k visitor_copy, restore, sha256 compare)
+    result: "guilt 1 failed naming E33A_SPONSOR_NOT_GOVERNMENT ; restored byte-identical ; test_seq21_pack.py 51 passed ; mouth vitest 76 files / 1435 tests passed"
+    exit: 0
+    ts: "2026-09-13T17:46:00Z"
+    seat: Claude Opus 5
+  - claim: Backend visa-engine suites on the final code (before the pragma-only change).
+    cmd: pytest -n 6 backend/tests/services/visa_engine backend/tests/scripts/visa_engine backend/tests/unit/scripts/test_generate_openapi_schema_pin.py
+    result: "2553 passed, 1 skipped, 1 failed, 39 errors. The failure (test_visa_engine_retention_fk_registry: '281 must be live in the deployed schema') fails identically on a git-archive export of origin/main (1 failed, 2 passed); the 39 errors are asyncpg/migration state of the local Postgres clone."
+    exit: 1
+    ts: "2026-09-13T17:41:00Z"
+    seat: Claude Opus 5
+  - claim: Mouth typecheck, lint, format.
+    cmd: cd apps/mouth && npx tsc --noEmit ; npx eslint <touched ts> ; prettier --check <touched ts>
+    result: "tsc exit 0 ; eslint 0 errors (engine-adapter.test.ts ignored by pattern, 1 warning) ; prettier clean after --write on the test file"
+    exit: 0
+    ts: "2026-09-13T17:15:00Z"
+    seat: Claude Opus 5
+  - claim: Council seats probed before the council.
+    cmd: perl alarm 120 codex exec -m gpt-5.6-sol "Reply OK" ; agy -p "Reply OK" ; kimi -p "Reply OK" -m kimi-code/k3 ; qwen -p "Reply OK"
+    result: "codex OK ; agy OK ; kimi HTTP 403 (twice) ; qwen HTTP 429 until 2026-09-18T08:39Z (twice)"
+    exit: 0
+    ts: "2026-09-13T17:23:09Z"
+    seat: Claude Opus 5
+  - claim: Detect Secrets gate simulated on the changed files.
+    cmd: detect-secrets scan --baseline .secrets.baseline <changed files> ; detect_secrets_auto_triage.py --apply ; detect_secrets_check_unaudited.py ; baseline restored by cp
+    result: "before redaction 49 unaudited (48 transcript lines + fold constant) ; after D-redact 0 ; baseline sha256 restored identical"
+    exit: 0
+    ts: "2026-09-13T18:02:00Z"
+    seat: Claude Opus 5
+  - claim: Acceptance probes A1-A6 re-run on the final code (after the pragma-only change).
+    cmd: >-
+      pytest test_seq21_pack.py::TestFoldIntegrity::test_the_cli_reproduces_the_bytes_the_owner_signs ;
+      pytest test_seq21_pack.py::TestSponsorTypeAloneIsNotEvidence ;
+      pytest test_seq21_pack.py::TestTheNineProductsAreReachable ;
+      pytest test_seq21_pack.py::TestCensusReplay ;
+      pytest test_seq21_pack.py::TestIdentity::test_the_activation_writer_would_accept_it_over_seq20 ;
+      npx vitest --run engine-adapter.test.ts ; pytest test_seq21_pack.py -k visitor_copy ; npx tsc --noEmit
+    result: "1 passed ; 3 passed ; 3 passed ; 7 passed ; 1 passed ; vitest 55 passed ; visitor_copy 1 passed ; tsc exit 0"
+    exit: 0
+    ts: "2026-09-13T18:07:15Z"
+    seat: Claude Opus 5
+  - claim: "A7 - the table in evidence/2026-09/agent-air-m5-backend-rag-vo-s21-freeze/FACTS-FOR-THE-TREE.md lists the ten facts with EN/ID question, product and rule id, premises updated for E33B NONE / E33C GOVERNMENT and the new payload digest."
+    cmd: the table in evidence/2026-09/agent-air-m5-backend-rag-vo-s21-freeze/FACTS-FOR-THE-TREE.md
+    result: "10 rows (facts 1-10), premise table 9 rows"
+    exit: 0
+    ts: "2026-09-13T17:36:00Z"
+    seat: Claude Opus 5
+  - claim: A8 - the dossier rev.4 exists, in Italian, within 60 lines, with no credential shape.
+    cmd: wc -l and grep on /Users/balizero/Desktop/R3-RENDERS-20260913/vo-s21/SEQ-21-SIGNATURE-DOSSIER.md
+    result: "35 lines ; grep for password=/PGPASSWORD=<literal>/DSN/private-key headers exit 1 (no match). PR number and head sha are filled into the file after the PR opens (file outside the repo)."
+    exit: 0
+    ts: "2026-09-13T18:07:29Z"
+    seat: Claude Opus 5
+dissent:
+  - seat: codex-gpt-5.6-sol (round 1)
+    objection: The committed pack is not the fold script's byte output, and eight review copies of the signed, live seq-20 were deleted.
+    status: CONFIRMED
+    cure: 1105604535 - canonical-bytes CLI test + prettier byte receipt; copies restored verbatim, guard reads source + signed.
+  - seat: Claude Opus 5 (self-refutation, activation)
+    objection: A pack valid_period moved to 2026-09-15 cannot be activated over seq-20 (migration 253 step 4).
+    status: CONFIRMED
+    cure: 5e5e74978e - pack valid_period unchanged, rule-level validity for the new rules, guilt test.
+  - seat: codex-gpt-5.6-sol (round 3, interim before rollover)
+    objection: seq-21 surfaces E33A_SPONSOR_NOT_GOVERNMENT on a corpus walk with no visitor copy.
+    status: CONFIRMED
+    cure: 4bea118cdc - EN/ID copy + cross-app test over every no-path code seq-21 emits on the 84 walks.
+  - seat: Claude Opus 5 (self-refutation, reachability)
+    objection: >-
+      Narrowing E33B to sponsor NONE means an applicant who answers GOVERNMENT and declares a collaboration is
+      not offered E33B, although seq-20's hard filter admits GOVERNMENT for it.
+    status: PLAUSIBLE
+    cure: >-
+      Not cured, deliberately: a recommendation that exceeds the catalogue's statutory sponsor category is the
+      false-SUPPORT class dossier rev.3 refused. W-VO-Q routes fact 2 on the NONE answer (FACTS-FOR-THE-TREE.md).
+  - seat: Claude Opus 5 (self-refutation, visible effect)
+    objection: Signing and activating seq-21 changes no census state and names no new product on any real walk today.
+    status: CONFIRMED
+    cure: Not a defect of this window - the ten questions are W-VO-Q's; the nine gold fixtures are the proof the pack side is ready. Stated in the PR body and the dossier.
+leftovers:
+  - Eleven seq-20 EXCLUDE codes still have no visitor copy (D12_NOT_CONVERTIBLE, E28A_PAID_CAPITAL_BELOW_MIN, E28A_TOTAL_INVESTMENT_BELOW_MIN, E33B_SPONSOR_NOT_GOVERNMENT_OR_NONE, E33C_SPONSOR_NOT_GOVERNMENT_OR_NONE, LEVEL_BAND_DASMEN, LEVEL_BAND_DIKTI, OVERSTAY_EXCEEDS_60_DAYS, REQ_PARENT_SPONSOR_INDONESIAN, REQ_UNDER_18, REQ_UNMARRIED); no corpus walk emits them on seq-20 or seq-21 (measured), a real visitor could.
+  - The PR that lands the signed seq-21 bundle must remove the eight seq-20 review copies (the stale-key test names them the moment the highest signed pack is 21).
+  - W-VO-Q adds the ten questions; until then no visitor reaches the nine products.
+  - The local Postgres clone on M5 carries broken migration state (264/281) that errors 39 DB-backed visa-engine tests and fails one on origin/main too.

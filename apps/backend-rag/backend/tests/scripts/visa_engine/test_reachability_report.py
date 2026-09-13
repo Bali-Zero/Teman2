@@ -152,7 +152,17 @@ def test_unused_fact_paths_is_registry_minus_used(seq7_report) -> None:
     # unused *by design* until a future seq folds a rule that reads it: a
     # deliberately dormant fact, not an accidentally orphaned one — do not
     # "fix" it by bumping the number down.
-    assert len(seq7_report.unused_fact_paths) == 14
+    #
+    # Was 14; W-VO-S21 (2026-09-13) adds the TEN seq-21 qualification
+    # booleans, taking it to 24. The same receipt reading applies with one
+    # difference worth stating: unlike `investment.investment_amount_usd`,
+    # these ten ARE read by rules — but by rules that live in
+    # `rulepack-prod-021.source.json`, and this fixture is pinned to the
+    # FROZEN seq-7 pack. "Unused against seq-7" is therefore the expected
+    # reading of a fact introduced fourteen sequences later, and the number
+    # rising by exactly ten is the receipt that the registry grew by exactly
+    # ten. `test_seq21_pack.py` is where those rules' readers are proven.
+    assert len(seq7_report.unused_fact_paths) == 24
 
 
 def test_required_facts_ast_invariant_holds_on_the_real_pack(seq7_report) -> None:
@@ -193,12 +203,30 @@ def test_not_asked_facts_are_exactly_the_five_hardcoded_in_the_mapper() -> None:
     # UNKNOWN otherwise), never an unconditional NOT_ASKED placeholder. It
     # correctly drops out of this list, the same way `immigration.
     # renewal_paid` did before it — six back to five.
+    #
+    # W-VO-S21 (2026-09-13) puts TEN back in: the seq-21 qualification
+    # booleans (five `investment.*`, five `sponsor.*`) are contract-only in
+    # the mapper, exactly as `investment.investment_amount_usd` was between
+    # PR-D4c-1 and PR-D4c-2. Their questions belong to the tree lane that
+    # reads `evidence/2026-09/agent-air-m5-backend-rag-vo-s21-freeze/
+    # FACTS-FOR-THE-TREE.md`; each one drops out of this list the day its
+    # question ships — five plus ten is fifteen.
     assert found == [
         "commercial.service_fee_budget_idr",
         "commercial.wants_quote",
         "immigration.last_entry_date",
         "intent.desired_entry_date",
         "intent.requested_product_code",
+        "investment.capital_market_only",
+        "investment.establishes_indonesian_company",
+        "investment.foreign_branch_or_subsidiary",
+        "investment.ikn_subsidiary",
+        "investment.meets_published_threshold",
+        "sponsor.diplomatic_household",
+        "sponsor.government_collaboration",
+        "sponsor.government_invitation",
+        "sponsor.trade_office",
+        "sponsor.world_figure_invitation",
     ]
 
     report = build_report(SEQ7_PACK)

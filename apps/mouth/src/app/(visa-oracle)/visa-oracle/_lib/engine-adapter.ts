@@ -462,6 +462,77 @@ export const SUPPORT_REASON_COPY: Record<string, LocalizedText> = {
     "No visa in our verified catalogue covers the purpose you described. Bali Zero can review your case and suggest what to do next.",
     "Tidak ada visa dalam katalog terverifikasi kami yang mencakup tujuan yang Anda sebutkan. Bali Zero dapat meninjau kasus Anda dan menyarankan langkah selanjutnya.",
   ),
+
+  // --- seq-21 (W-VO-S21, 2026-09-13): the nine products that had NO
+  // eligibility rule at all until this pack, plus the two hard filters that
+  // replace the OPERATIONAL sentence above on the three walks that used to
+  // fall back to it. Every sentence states the rule's OWN `when` clause
+  // (rulepack-prod-021.source.json) and nothing more, and each product name
+  // is copied verbatim from that pack's `products[].names.en` / `.id` —
+  // never shortened or re-described. No amount is restated for the four E28
+  // routes: no source record in the pack states the Golden Visa USD
+  // minimums, so the rule turns on a DECLARED "meets the published minimum"
+  // and the copy says exactly that.
+  E23U_DIPLOMATIC_HOUSEHOLD_ELIGIBLE: text(
+    "Employment for a foreign diplomat's household, sponsored by that diplomat as an individual — the Working Visa — Foreign Diplomat House Assistant (E23U).",
+    "Pekerjaan untuk rumah tangga diplomat asing, dengan diplomat tersebut sebagai penjamin perorangan — Visa Kerja Asisten Rumah Tangga Diplomat Asing (E23U).",
+  ),
+  E23V_TRADE_OFFICE_ELIGIBLE: text(
+    "Employment with a foreign trade and economic representative office, sponsored by a government body — the Working Visa — Trade and Economic Office (E23V).",
+    "Pekerjaan pada kantor perwakilan dagang dan ekonomi asing, dengan penjamin instansi pemerintah — Visa Kerja Kantor Dagang dan Ekonomi (E23V).",
+  ),
+  E33A_GOVERNMENT_INVITATION_ELIGIBLE: text(
+    "You hold a central government invitation for special expertise, with a government body as sponsor — the Second Home Visa — Special-Expertise Government Invitation (E33A).",
+    "Anda memiliki undangan pemerintah pusat untuk tenaga ahli, dengan penjamin instansi pemerintah — Visa Rumah Kedua Tenaga Ahli Undangan Pemerintah (E33A).",
+  ),
+  E33B_GOVERNMENT_COLLABORATION_ELIGIBLE: text(
+    "You hold a confirmed special-expertise collaboration commitment with an Indonesian government body — the Second Home Golden Visa — Special-Expertise Collaboration (E33B).",
+    "Anda memiliki komitmen kolaborasi keahlian khusus yang terkonfirmasi dengan instansi pemerintah Indonesia — Visa Rumah Kedua Kolaborasi Keahlian Khusus (E33B).",
+  ),
+  E33C_WORLD_FIGURE_INVITATION_ELIGIBLE: text(
+    "You hold a central government invitation extended to you as a world figure — the Second Home Golden Visa — World-Figure Government Invitation (E33C).",
+    "Anda memiliki undangan pemerintah pusat yang diberikan kepada Anda sebagai tokoh dunia — Visa Rumah Kedua Tokoh Dunia Undangan Pemerintah (E33C).",
+  ),
+  E28B_COMPANY_ESTABLISHMENT_ELIGIBLE: text(
+    "You are establishing a company in Indonesia and declared that your investment meets the published minimum for that route — the Investor Golden Visa — Company Establishment (E28B). We confirm the amount against the official schedule with you.",
+    "Anda mendirikan perusahaan di Indonesia dan menyatakan bahwa investasi Anda memenuhi batas minimum yang dipublikasikan untuk jalur tersebut — Visa Investor Pendirian Perusahaan (E28B). Kami mengonfirmasi jumlahnya terhadap ketentuan resmi bersama Anda.",
+  ),
+  E28C_CAPITAL_MARKET_ELIGIBLE: text(
+    "You are investing in capital-market instruments without establishing a company, and declared that your investment meets the published minimum for that route — the Investor Golden Visa — Capital Market (E28C). We confirm the amount against the official schedule with you.",
+    "Anda berinvestasi pada instrumen pasar modal tanpa mendirikan perusahaan, dan menyatakan bahwa investasi Anda memenuhi batas minimum yang dipublikasikan untuk jalur tersebut — Visa Investor Tanpa Mendirikan Perusahaan (E28C). Kami mengonfirmasi jumlahnya terhadap ketentuan resmi bersama Anda.",
+  ),
+  E28D_BRANCH_OR_SUBSIDIARY_ELIGIBLE: text(
+    "You are establishing a branch or subsidiary of a foreign company and declared that it meets the published minimums for that route — the Investor Golden Visa — Branch or Subsidiary (E28D). We confirm the investment and turnover figures against the official schedule with you.",
+    "Anda mendirikan kantor cabang atau anak perusahaan dari perusahaan asing dan menyatakan bahwa hal itu memenuhi batas minimum yang dipublikasikan untuk jalur tersebut — Visa Investor Pendirian Kantor Cabang atau Anak Perusahaan (E28D). Kami mengonfirmasi angka investasi dan omzetnya terhadap ketentuan resmi bersama Anda.",
+  ),
+  E28F_IKN_SUBSIDIARY_ELIGIBLE: text(
+    "You are establishing a subsidiary in the new capital, IKN, and declared that your investment meets the published minimum for that route — the Investor Golden Visa — New Capital (IKN) Subsidiary (E28F). We confirm the amount against the official schedule with you.",
+    "Anda mendirikan anak perusahaan di Ibukota Nusantara (IKN) dan menyatakan bahwa investasi Anda memenuhi batas minimum yang dipublikasikan untuk jalur tersebut — Visa Investor Anak Perusahaan Ibukota Nusantara (E28F). Kami mengonfirmasi jumlahnya terhadap ketentuan resmi bersama Anda.",
+  ),
+  // The two EXCLUDE codes that replace the OPERATIONAL sentence on the three
+  // dead-end walks that used to render it. Each one names the door that IS
+  // open by product code, which is the whole point of naming the cause: a
+  // visitor who reads only "no" learns nothing they can act on. The two
+  // Second Home amounts are interpolated from the constants above (which the
+  // pack owns) rather than typed a third time.
+  SECOND_HOME_GUARANTEE_BELOW_THRESHOLD: text(
+    `The Second Home route is granted against a guarantee: a bank deposit of at least ${usd(SECOND_HOME_DEPOSIT_THRESHOLD_USD, "en-US")} held in your own name at a state bank, or qualifying property worth at least ${usd(SECOND_HOME_PROPERTY_THRESHOLD_USD, "en-US")}. What you declared is below both. If you are 55 or over, the Retirement KITAS (E33E) is assessed on a smaller deposit plus monthly passive income; for a visit rather than a stay, the open door is the Tourism Visit Visa (C1).`,
+    `Jalur Rumah Kedua diberikan atas dasar jaminan: deposito bank minimal ${usd(SECOND_HOME_DEPOSIT_THRESHOLD_USD, "id-ID")} atas nama Anda sendiri di bank milik negara, atau properti yang memenuhi syarat senilai minimal ${usd(SECOND_HOME_PROPERTY_THRESHOLD_USD, "id-ID")}. Yang Anda nyatakan berada di bawah keduanya. Jika usia Anda 55 tahun atau lebih, KITAS Pensiun (E33E) dinilai atas deposito yang lebih kecil ditambah penghasilan pasif bulanan; untuk kunjungan dan bukan tinggal, pintu yang terbuka adalah Visa Kunjungan Wisata (C1).`,
+  ),
+  // A seq-20 exclusion that no census walk surfaced until seq-21: once E33A
+  // has an eligibility rule covering EMPLOYMENT it is purpose-feasible for a
+  // paid-work walk, so its existing `hf.e33a.sponsor-not-government` reason is
+  // reported beside PAID_ACTIVITY_WITHOUT_INDONESIAN_SPONSOR instead of the
+  // generic sentence (offshore/other/paid/employer_no). Product name verbatim
+  // from the pack's `names.en` / `names.id`.
+  E33A_SPONSOR_NOT_GOVERNMENT: text(
+    "The Second Home Visa — Special-Expertise Government Invitation (E33A) is sponsored only by an Indonesian government body, and you did not name one as your sponsor.",
+    "Visa Rumah Kedua Tenaga Ahli Undangan Pemerintah (E33A) hanya dijamin oleh instansi pemerintah Indonesia, dan Anda tidak menyebutkan instansi pemerintah sebagai penjamin Anda.",
+  ),
+  PAID_ACTIVITY_WITHOUT_INDONESIAN_SPONSOR: text(
+    "You told us the activity is paid and that your employer is not an Indonesian entity. An Indonesian work permit is issued to a sponsoring entity in Indonesia, so the work routes are closed on that answer. If the work is done from Indonesia for that same employer abroad and none of the pay comes from an Indonesian source, the open door is the Second Home Visa — Remote Worker (E33G); if you are coming for meetings rather than to work, it is the Business Visit Visa (C2).",
+    "Anda menyampaikan bahwa aktivitas tersebut dibayar dan pemberi kerja Anda bukan badan usaha Indonesia. Izin kerja Indonesia diterbitkan kepada badan penjamin di Indonesia, sehingga jalur kerja tertutup atas jawaban tersebut. Jika pekerjaan dilakukan dari Indonesia untuk pemberi kerja yang sama di luar negeri dan tidak ada bayaran yang berasal dari sumber di Indonesia, pintu yang terbuka adalah Visa Rumah Kedua Pekerja Jarak Jauh (E33G); jika Anda datang untuk pertemuan dan bukan untuk bekerja, pintunya adalah Visa Kunjungan Bisnis (C2).",
+  ),
 };
 
 function reasonMessage(code: string): LocalizedText {
@@ -691,18 +762,37 @@ function paidActivityWithoutIndonesianPayerReason(
   );
 }
 
+/**
+ * The no-path reason codes whose sentence is reconstructed from the
+ * interview's OWN facts when those facts allow it. seq-20 reaches these three
+ * walks through the engine's generic OPERATIONAL fallback; seq-21 reaches
+ * them through two named EXCLUDE rules instead. Both spellings are listed so
+ * the behaviour is identical before and after that pack is activated.
+ */
+const FACT_DERIVED_NO_PATH_CODES: ReadonlySet<string> = new Set([
+  "OPERATIONAL_NO_PRODUCT_MATCHES_DECLARED_PURPOSES",
+  "SECOND_HOME_GUARANTEE_BELOW_THRESHOLD",
+  "PAID_ACTIVITY_WITHOUT_INDONESIAN_SPONSOR",
+]);
+
 function reason(
   code: string,
   sourceIds: readonly string[],
   trustedIds: ReadonlySet<string>,
   facts?: OracleFacts,
 ): OutcomeReason {
-  const message =
-    code === "OPERATIONAL_NO_PRODUCT_MATCHES_DECLARED_PURPOSES"
-      ? (secondHomeBelowThresholdReason(facts ?? {}) ??
-        paidActivityWithoutIndonesianPayerReason(facts ?? {}) ??
-        reasonMessage(code))
-      : reasonMessage(code);
+  // seq-21 (W-VO-S21) gives the same three dead ends a NAMED code, so the
+  // fact-derived sentences below have to follow the rename or they would
+  // silently stop firing the day that pack is activated — the applicant's own
+  // declared amount is strictly more useful than the static copy, which is
+  // why it was written in the first place (#6441). The static entry in
+  // SUPPORT_REASON_COPY remains the fallback for every walk whose facts do
+  // not reconstruct the number.
+  const message = FACT_DERIVED_NO_PATH_CODES.has(code)
+    ? (secondHomeBelowThresholdReason(facts ?? {}) ??
+      paidActivityWithoutIndonesianPayerReason(facts ?? {}) ??
+      reasonMessage(code))
+    : reasonMessage(code);
   return {
     code,
     message,
