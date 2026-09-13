@@ -37,10 +37,11 @@ import {
   runWalk,
 } from "../../../../../scripts/visa-oracle/generate-walk-corpus";
 import { OutcomeSheet } from "../_components/OutcomeSheet";
-import { buildEngineOutcome } from "./engine-adapter";
+import { buildEngineOutcome, buildNoPathDoors } from "./engine-adapter";
 import { CATEGORY_TO_PURPOSE } from "./fact-mapper";
 import replay from "./fixtures/no-path-doors.replay.json";
 import type { Language } from "./flow";
+import type { NoSupportedPathAlternative } from "./outcome-view-model";
 import type { OracleFacts } from "./tree";
 import type { VisaOracleEvaluateResponse } from "./visa-oracle-contract";
 import {
@@ -64,14 +65,17 @@ const SCENARIOS = new Map(
   enumerateScenarios().map((scenario) => [scenario.label, scenario]),
 );
 
-function factsFor(walk: ReplayWalk): OracleFacts {
+function factsFor(
+  walk: ReplayWalk,
+  overrides: Record<string, string> = {},
+): OracleFacts {
   const scenario = SCENARIOS.get(walk.label);
   if (!scenario) {
     throw new Error(
       `walk "${walk.label}" is no longer enumerated by the corpus generator — re-run replay-no-path-doors.py`,
     );
   }
-  return runWalk(scenario.overrides).facts;
+  return { ...runWalk(scenario.overrides).facts, ...overrides };
 }
 
 /** The engine response this walk produced, rebuilt from the replay's own
@@ -97,6 +101,30 @@ function responseFor(walk: ReplayWalk): VisaOracleEvaluateResponse {
 
 function outcomeFor(walk: ReplayWalk) {
   return buildEngineOutcome(responseFor(walk), { facts: factsFor(walk) });
+}
+
+/** Every rendered door names a product the replay actually returned behind
+ * that door for these facts — and an empty recorded list means the rule had
+ * to abstain. */
+function expectDoorsProven(
+  rendered: readonly NoSupportedPathAlternative[],
+  recorded: Record<string, readonly string[]>,
+  label: string,
+): void {
+  for (const door of rendered) {
+    expect(door.productCode).toBeTruthy();
+    expect(door.productName).toBeTruthy();
+    // An unanswerable door is proven by the age replay; every other one by
+    // the purpose its own tile declares. No third source exists.
+    const proven =
+      door.actionable === false
+        ? (recorded.AGE_55 ?? [])
+        : (recorded[CATEGORY_TO_PURPOSE[door.category] ?? ""] ?? []);
+    expect(
+      proven,
+      `${label} names ${door.productCode} behind the ${door.category} door, which the replay does not support`,
+    ).toContain(door.productCode);
+  }
 }
 
 describe("no-path doors — the evidence behind every named alternative", () => {
@@ -131,21 +159,28 @@ describe("no-path doors — the evidence behind every named alternative", () => 
         throw new Error(`expected NO_SUPPORTED_PATH, got ${outcome.state}`);
       }
       expect(outcome.alternatives.length).toBeGreaterThan(0);
-      for (const door of outcome.alternatives) {
-        expect(door.productCode).toBeTruthy();
-        expect(door.productName).toBeTruthy();
-        const doors: Record<string, readonly string[]> = walk.doors;
-        // An unanswerable door is proven by the age replay; every other one
-        // by the purpose its own tile declares. No third source exists.
-        const proven =
-          door.actionable === false
-            ? doors.AGE_55
-            : (doors[CATEGORY_TO_PURPOSE[door.category] ?? ""] ?? []);
-        expect(
-          proven,
-          `${walk.label} names ${door.productCode} behind the ${door.category} door, which the replay does not support`,
-        ).toContain(door.productCode);
-      }
+      expectDoorsProven(outcome.alternatives, walk.doors, walk.label);
+    });
+  }
+
+  // The innocence half (Codex council round 1): one answer changed, the same
+  // dead end, and a door the pack measurably SHUTS. A rule that fires here is
+  // an OVER-match — cicatrix family #3 — no matter how green the 15 walks
+  // above are.
+  for (const row of replay.counterexamples) {
+    it(`abstains where the pack shuts the door: ${row.id}`, () => {
+      const walk = replay.walks.find(
+        (candidate) => candidate.walk_fixture === row.walk_fixture,
+      );
+      if (!walk) throw new Error(`${row.walk_fixture} is not a recorded walk`);
+      // The JSON import types each row's `ui` as its own literal shape; the
+      // answers are plain strings and the interview reads them as such.
+      const facts = factsFor(walk, row.ui as unknown as Record<string, string>);
+      const doors = buildNoPathDoors(
+        row.no_path_reason_codes as string[],
+        facts,
+      );
+      expectDoorsProven(doors, row.doors, row.id);
     });
   }
 

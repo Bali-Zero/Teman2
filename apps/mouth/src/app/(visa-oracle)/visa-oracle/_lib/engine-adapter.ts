@@ -530,9 +530,21 @@ const DOOR_PRODUCT_NAMES: Record<string, LocalizedText> = {
   ),
 };
 
-/** A declared Second Home basis whose declared value clears the pack's own
- * bound — the mirror of `secondHomeBelowThresholdReason`, and the only fact
- * shape on which the E33 door below may be named. */
+/**
+ * The declared stay C1 still covers, measured against
+ * rulepack-prod-020.signed.json on 2026-09-13: 180 days returns C1, 181
+ * returns no path at all. Pinned here for the same reason the Second Home
+ * thresholds above are — a bound the pack owns, copied once, tested against
+ * the replay fixture rather than remembered.
+ */
+export const TOURIST_VISIT_MAX_STAY_DAYS = 180;
+
+/** A declared Second Home basis the pack's own conditions accept: the right
+ * amount AND, on the deposit basis, the two answers the rule also reads (the
+ * bank and whose name holds it). Codex council round 1 caught the first draft
+ * testing the amount alone — with the deposit outside a state bank the pack
+ * returns NEEDS_INPUT and names no product (counterexample
+ * `deposit-not-at-state-bank` in the replay fixture). */
 function secondHomeBasisClearsThreshold(facts: OracleFacts): boolean {
   const basis =
     facts.category === "invest"
@@ -550,9 +562,25 @@ function secondHomeBasisClearsThreshold(facts: OracleFacts): boolean {
   }
   if (basis === "bank_deposit") {
     const value = Number(facts.secondhome_deposit_usd);
-    return Number.isFinite(value) && value >= SECOND_HOME_DEPOSIT_THRESHOLD_USD;
+    return (
+      Number.isFinite(value) &&
+      value >= SECOND_HOME_DEPOSIT_THRESHOLD_USD &&
+      facts.secondhome_state_bank === "yes" &&
+      facts.secondhome_own_name === "yes"
+    );
   }
   return false;
+}
+
+/** Indonesian citizenship shuts every door under every purpose — the pack
+ * answers `APPLICANT_IS_INDONESIAN_CITIZEN` and names no product at all
+ * (counterexample `indonesian-nationality`). The interview stores the answer
+ * as a comma-separated list of ISO codes. */
+function declaresIndonesianNationality(facts: OracleFacts): boolean {
+  return (facts.nationalities ?? "")
+    .split(",")
+    .map((code) => code.trim().toUpperCase())
+    .includes("ID");
 }
 
 /**
@@ -578,56 +606,70 @@ export function buildNoPathDoors(
   const doors: NoSupportedPathAlternative[] = [];
   const category = facts.category;
   if (category === undefined || category === "unsure") return doors;
+  // Shuts every door under every purpose — measured, not assumed.
+  if (declaresIndonesianNationality(facts)) return doors;
 
-  // 1. TOURISM — open on all 17 non-supported walks in the replay. Worded as
-  //    the engine established it: a visit with no paid activity, nothing
-  //    about how long or how many entries (the pack owns those numbers).
-  if (category !== "tourism") {
+  // 1. TOURISM — the purpose the applicant did NOT declare, and the one the
+  //    pack supports on all 17 non-supported corpus walks. Abstains beyond
+  //    the declared stay C1 covers (counterexample
+  //    `stay-beyond-tourist-bound`), and when no stay was declared at all.
+  const stayDays = Number(facts.stay_days);
+  if (
+    category !== "tourism" &&
+    Number.isFinite(stayDays) &&
+    stayDays <= TOURIST_VISIT_MAX_STAY_DAYS
+  ) {
     doors.push({
       category: "tourism",
       productCode: "C1",
       productName: DOOR_PRODUCT_NAMES.C1,
       message: text(
-        "With the same answers, the verified rules do support a tourist visit — a stay with no paid activity in Indonesia.",
-        "Dengan jawaban yang sama, aturan terverifikasi mendukung kunjungan wisata — masa tinggal tanpa aktivitas berbayar di Indonesia.",
+        "You were assessed only for the purpose you declared. A tourist visit — no paid activity in Indonesia — is a separate assessment on the C1 route: switch to it and the verified rules check it with the same answers.",
+        "Anda hanya dinilai untuk tujuan yang Anda nyatakan. Kunjungan wisata — tanpa aktivitas berbayar di Indonesia — adalah penilaian terpisah pada jalur C1: beralihlah ke sana dan aturan terverifikasi akan memeriksanya dengan jawaban yang sama.",
       ),
       actionable: true,
     });
   }
 
-  // 2. SECOND HOME — only where the applicant DECLARED a basis and a value
-  //    that clears the pack's bound. No figure is restated here: the amount
-  //    belongs to the pack, and the sheet already states it where the value
-  //    falls short.
+  // 2. SECOND HOME — only where the applicant DECLARED a basis whose amount
+  //    and conditions the pack's own rule accepts. No figure is restated
+  //    here: the amount belongs to the pack, and the sheet already states it
+  //    where the declared value falls short.
   if (category !== "second_home" && secondHomeBasisClearsThreshold(facts)) {
     doors.push({
       category: "second_home",
       productCode: "E33",
       productName: DOOR_PRODUCT_NAMES.E33,
       message: text(
-        "The deposit or property you declared already meets what the verified rules require for the Second Home route, and that route is not age-gated.",
-        "Deposito atau properti yang Anda nyatakan sudah memenuhi syarat aturan terverifikasi untuk jalur Rumah Kedua, dan jalur tersebut tidak dibatasi usia.",
+        "The deposit or property you declared already meets what the verified rules ask for the Second Home route, and that route carries no age condition: switch to it and the rules check it with the same answers.",
+        "Deposito atau properti yang Anda nyatakan sudah memenuhi syarat aturan terverifikasi untuk jalur Rumah Kedua, dan jalur tersebut tidak memiliki syarat usia: beralihlah ke sana dan aturan akan memeriksanya dengan jawaban yang sama.",
       ),
       actionable: true,
     });
   }
 
-  // 3. AGE — the one door nothing answered today can open, so it carries no
-  //    button. Fires only when age is the SOLE named cause on a retirement
-  //    interview: on the two `business` walks the same code rides along with
-  //    another one, and the replay shows age alone opens nothing there.
+  // 3. AGE — the one door nothing answerable opens, so it carries no button
+  //    and no promise: it names what the rules said (age, and nothing else)
+  //    and what happens at 55. Fires only when age is the SOLE named cause on
+  //    a retirement interview that also declared an income the over-55 route
+  //    reads — with that income at zero the pack supports nothing at 55
+  //    either (counterexample `no-passive-income`), and on the two `business`
+  //    walks the same code rides along with another one.
+  const passiveIncome = Number(facts.secondhome_passive_income_usd);
   if (
     category === "retirement" &&
     noPathReasonCodes.length === 1 &&
-    noPathReasonCodes[0] === "AGE_BELOW_55"
+    noPathReasonCodes[0] === "AGE_BELOW_55" &&
+    Number.isFinite(passiveIncome) &&
+    passiveIncome > 0
   ) {
     doors.push({
       category: "retirement",
       productCode: "E33F",
       productName: DOOR_PRODUCT_NAMES.E33F,
       message: text(
-        "Age is the only thing standing in the way. From 55, the same answers reach a supported retirement route.",
-        "Usia adalah satu-satunya penghalang. Mulai usia 55 tahun, jawaban yang sama menjangkau jalur pensiun yang didukung.",
+        "Age is the only cause the verified rules gave. From 55 the same answers are assessed against the over-55 retirement route, and the rest of your answers decide it.",
+        "Usia adalah satu-satunya penyebab yang diberikan aturan terverifikasi. Mulai usia 55 tahun, jawaban yang sama dinilai terhadap jalur pensiun untuk usia di atas 55, dan sisa jawaban Anda yang menentukan.",
       ),
       actionable: false,
     });

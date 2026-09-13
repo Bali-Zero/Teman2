@@ -175,5 +175,59 @@
         "AGE_55": ["E33E", "E33F"]
       }
     }
+  ],
+  "counterexamples": [
+    {
+      "id": "indonesian-nationality",
+      "walk_fixture": "offshore_business.json",
+      "why": "the pack answers APPLICANT_IS_INDONESIAN_CITIZEN under every purpose",
+      "ui": { "nationalities": "ID" },
+      "state": "NO_SUPPORTED_PATH",
+      "no_path_reason_codes": [
+        "APPLICANT_IS_INDONESIAN_CITIZEN",
+        "BUSINESS_LOCAL_COMPENSATION_NOT_ALLOWED",
+        "AGE_BELOW_55"
+      ],
+      "doors": { "TOURISM": [], "SECOND_HOME": [], "AGE_55": [] }
+    },
+    {
+      "id": "stay-beyond-tourist-bound",
+      "walk_fixture": "offshore_business.json",
+      "why": "C1 covers the declared stay up to 180 days; 181 already has no path",
+      "ui": { "stay_days": "400" },
+      "state": "NO_SUPPORTED_PATH",
+      "no_path_reason_codes": [
+        "BUSINESS_LOCAL_COMPENSATION_NOT_ALLOWED",
+        "AGE_BELOW_55"
+      ],
+      "doors": { "TOURISM": [], "SECOND_HOME": [], "AGE_55": [] }
+    },
+    {
+      "id": "deposit-not-at-state-bank",
+      "walk_fixture": "offshore_retirement_bank_deposit.json",
+      "why": "the Second Home deposit basis is conditioned on the bank, not only the amount",
+      "ui": { "secondhome_state_bank": "no" },
+      "state": "NO_SUPPORTED_PATH",
+      "no_path_reason_codes": ["AGE_BELOW_55"],
+      "doors": { "TOURISM": ["C1"], "SECOND_HOME": [], "AGE_55": ["E33F"] }
+    },
+    {
+      "id": "deposit-not-in-own-name",
+      "walk_fixture": "offshore_retirement_bank_deposit.json",
+      "why": "same basis, conditioned on whose name holds the deposit",
+      "ui": { "secondhome_own_name": "no" },
+      "state": "NO_SUPPORTED_PATH",
+      "no_path_reason_codes": ["AGE_BELOW_55"],
+      "doors": { "TOURISM": ["C1"], "SECOND_HOME": [], "AGE_55": ["E33F"] }
+    },
+    {
+      "id": "no-passive-income",
+      "walk_fixture": "offshore_retirement_bank_deposit.json",
+      "why": "age is still the only named cause, yet at 55 the pack supports nothing",
+      "ui": { "secondhome_passive_income_usd": "0" },
+      "state": "NO_SUPPORTED_PATH",
+      "no_path_reason_codes": ["AGE_BELOW_55"],
+      "doors": { "TOURISM": ["C1"], "SECOND_HOME": ["E33"], "AGE_55": [] }
+    }
   ]
 }

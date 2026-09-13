@@ -54,6 +54,55 @@ from backend.tests.services.visa_engine.test_interview_walk_census import (  # n
 AGE_55_BIRTH_DATE = "1971-09-01"
 PURPOSE_DOORS = ("TOURISM", "SECOND_HOME")
 
+# Counterexamples — the adversarial half of the evidence (Codex council round
+# 1, 2026-09-13: "the rules are proven on 17 synthetic fact sets and
+# generalised to every visitor"). Each row changes ONE answer a real visitor
+# can give, on a walk that keeps its dead end, and records the doors the pack
+# leaves SHUT. `no-path-doors.test.tsx` asserts the UI names none of them —
+# the innocence half of the guilt/innocence pair, without which a door rule is
+# only ever tested where it happens to be right.
+#
+# `ui` is the interview answer; `engine` is the wire fact the mapper derives
+# from it. The two are written side by side on purpose: a counterexample that
+# cannot be expressed as an ANSWER is not a counterexample about this UI.
+COUNTEREXAMPLES = (
+    {
+        "id": "indonesian-nationality",
+        "walk_fixture": "offshore_business.json",
+        "ui": {"nationalities": "ID"},
+        "engine": {"person.nationalities": ["ID"]},
+        "why": "the pack answers APPLICANT_IS_INDONESIAN_CITIZEN under every purpose",
+    },
+    {
+        "id": "stay-beyond-tourist-bound",
+        "walk_fixture": "offshore_business.json",
+        "ui": {"stay_days": "400"},
+        "engine": {"intent.stay_days": 400},
+        "why": "C1 covers the declared stay up to 180 days; 181 already has no path",
+    },
+    {
+        "id": "deposit-not-at-state-bank",
+        "walk_fixture": "offshore_retirement_bank_deposit.json",
+        "ui": {"secondhome_state_bank": "no"},
+        "engine": {"secondhome.bank_deposit_at_state_bank": False},
+        "why": "the Second Home deposit basis is conditioned on the bank, not only the amount",
+    },
+    {
+        "id": "deposit-not-in-own-name",
+        "walk_fixture": "offshore_retirement_bank_deposit.json",
+        "ui": {"secondhome_own_name": "no"},
+        "engine": {"secondhome.bank_deposit_in_own_name": False},
+        "why": "same basis, conditioned on whose name holds the deposit",
+    },
+    {
+        "id": "no-passive-income",
+        "walk_fixture": "offshore_retirement_bank_deposit.json",
+        "ui": {"secondhome_passive_income_usd": "0"},
+        "engine": {"secondhome.passive_monthly_income_usd": 0},
+        "why": "age is still the only named cause, yet at 55 the pack supports nothing",
+    },
+)
+
 
 def supported_codes(actual: dict) -> list[str]:
     """The products the pack supports behind this door — empty when the door
@@ -61,6 +110,46 @@ def supported_codes(actual: dict) -> list[str]:
     if actual["state"] != "SUPPORTED_CANDIDATES":
         return []
     return list(actual.get("candidates") or [])
+
+
+def doors_for(overrides: dict) -> dict:
+    """The three doors, replayed on one fact record."""
+    doors = {}
+    for purpose in PURPOSE_DOORS:
+        variant = json.loads(json.dumps(overrides))
+        variant["intent.purposes"] = {"status": "KNOWN", "value": [purpose]}
+        doors[purpose] = supported_codes(
+            gce._evaluate(variant, f"door::{purpose}", as_of=_AS_OF)["actual"]
+        )
+    variant = json.loads(json.dumps(overrides))
+    variant["person.birth_date"] = {"status": "KNOWN", "value": AGE_55_BIRTH_DATE}
+    doors["AGE_55"] = supported_codes(
+        gce._evaluate(variant, "door::age55", as_of=_AS_OF)["actual"]
+    )
+    return doors
+
+
+def counterexamples() -> list[dict]:
+    rows = []
+    for row in COUNTEREXAMPLES:
+        overrides = json.loads(
+            (CORPUS_DIR / row["walk_fixture"]).read_text(encoding="utf-8")
+        )["overrides"]
+        for path, value in row["engine"].items():
+            overrides[path] = {"status": "KNOWN", "value": value}
+        actual = gce._evaluate(overrides, row["id"], as_of=_AS_OF)["actual"]
+        rows.append(
+            {
+                "id": row["id"],
+                "walk_fixture": row["walk_fixture"],
+                "why": row["why"],
+                "ui": row["ui"],
+                "state": actual["state"],
+                "no_path_reason_codes": list(actual.get("no_path_reason_codes") or []),
+                "doors": doors_for(overrides),
+            }
+        )
+    return rows
 
 
 def main() -> int:
@@ -78,18 +167,7 @@ def main() -> int:
             continue
         digest.update(path.name.encode("utf-8"))
         digest.update(hashlib.sha256(raw).hexdigest().encode("utf-8"))
-        doors = {}
-        for purpose in PURPOSE_DOORS:
-            overrides = json.loads(json.dumps(spec["overrides"]))
-            overrides["intent.purposes"] = {"status": "KNOWN", "value": [purpose]}
-            doors[purpose] = supported_codes(
-                gce._evaluate(overrides, f"{label}::{purpose}", as_of=_AS_OF)["actual"]
-            )
-        overrides = json.loads(json.dumps(spec["overrides"]))
-        overrides["person.birth_date"] = {"status": "KNOWN", "value": AGE_55_BIRTH_DATE}
-        doors["AGE_55"] = supported_codes(
-            gce._evaluate(overrides, f"{label}::age55", as_of=_AS_OF)["actual"]
-        )
+        doors = doors_for(spec["overrides"])
         walks.append(
             {
                 "label": label,
@@ -126,6 +204,22 @@ def main() -> int:
         )
         lines.append(f'      "missing_facts": {json.dumps(walk["missing_facts"])},')
         lines.append(f'      "doors": {json.dumps(walk["doors"])}')
+        lines.append(f"    }}{tail}")
+    lines.append("  ],")
+    lines.append('  "counterexamples": [')
+    rows = counterexamples()
+    for index, row in enumerate(rows):
+        tail = "" if index == len(rows) - 1 else ","
+        lines.append("    {")
+        lines.append(f'      "id": {json.dumps(row["id"])},')
+        lines.append(f'      "walk_fixture": {json.dumps(row["walk_fixture"])},')
+        lines.append(f'      "why": {json.dumps(row["why"])},')
+        lines.append(f'      "ui": {json.dumps(row["ui"])},')
+        lines.append(f'      "state": {json.dumps(row["state"])},')
+        lines.append(
+            f'      "no_path_reason_codes": {json.dumps(row["no_path_reason_codes"])},'
+        )
+        lines.append(f'      "doors": {json.dumps(row["doors"])}')
         lines.append(f"    }}{tail}")
     lines.append("  ]")
     lines.append("}")
