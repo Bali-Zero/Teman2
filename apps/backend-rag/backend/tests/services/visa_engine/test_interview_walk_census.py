@@ -361,12 +361,50 @@ WALK_DEAD_END_ALLOWLIST: dict[str, tuple[DeadEnd, ...]] = {
     ),
 }
 
+#: Products the highest signed pack gives a SUPPORT rule and NO interview
+#: walk can name — the class `test_every_support_bearing_product_is_named_by_
+#: some_walk` below exists to keep at zero. A row may only be a RULING; an
+#: omission is a bug and gets a walk, not a row. Each row states the fact the
+#: product's own rules need, and why the funnel may not collect it.
+#:
+#: Measured 2026-09-13 on rulepack-prod-020.signed.json: 29 products carry a
+#: SUPPORT rule, 17 were named by some walk, and the 12 that were not are
+#: this window's subject. Eleven of them needed no code at all — every fact
+#: their rules read was already collected, and only the corpus's
+#: answer-with-the-first-option convention kept them dark. The twelfth is
+#: below.
+UNREACHABLE_BY_RULING: dict[str, str] = {
+    "BRIDGING": (
+        "All four BRIDGING SUPPORT rules (`el.bridging.destination-stated`, "
+        "`.t3-window-manual`, `.overstay-shield-payment`, "
+        "`.source-status-verify`) require `intent.requested_product_code` to "
+        "be KNOWN — the permit the applicant wants to switch TO. "
+        "`fact-mapper.ts` hard-codes that fact to UNKNOWN(NOT_ASKED), and the "
+        "owner's D4 ruling quoted in `tree.ts` is explicit: the Oracle says "
+        "the product, it never asks which visa the applicant wants. Asking it "
+        "is the ONLY route to this product, so the row is a ruling and not an "
+        "omission — verified 2026-09-13 by supplying the fact on an onshore "
+        "OTHER-purpose walk whose `immigration.current_status_code` is "
+        "outside `hf.bridging.from-visit-itk`'s visit-class list: the engine "
+        "answers SUPPORTED_CANDIDATES [BRIDGING, C6]. BRIDGING is also one of "
+        "the two products in this pack with `public_catalog: false` (the "
+        "other, E30, the funnel already names), so surfacing it publicly is "
+        "Zero's call twice over."
+    ),
+}
+
 #: Per-walk outcome pin: state plus the candidate products, in rank order.
 #: Candidates are pinned too — a pack edit that adds or drops a product for a
 #: walk that already had an answer is exactly as much of a shift as a state
 #: change, and this table is the only place either becomes visible.
 EXPECTED_OUTCOME: dict[str, tuple[str, tuple[str, ...]]] = {
     "offshore/business": ("NO_SUPPORTED_PATH", ()),
+    # W-VO-E: the business visitor who is NOT paid from inside Indonesia —
+    # `el.d2-*`, the multiple-entry business visa. The walk above answers
+    # `work_indonesia_compensation`'s first option (`yes`) and is excluded
+    # on BUSINESS_LOCAL_COMPENSATION_NOT_ALLOWED, which is a correct answer
+    # to a different question; D2 had no walk at all.
+    "offshore/business/no_local_compensation": ("SUPPORTED_CANDIDATES", ("D2",)),
     "offshore/diaspora/CHILD/spNat=ID": ("SUPPORTED_CANDIDATES", ("C1", "E31G")),
     # D4a (owner ruling SHWEB-20260911, 2026-09-13): `family_sponsor_status_
     # code` is now a closed-catalogue FACT instead of always-UNVERIFIED — the
@@ -399,6 +437,16 @@ EXPECTED_OUTCOME: dict[str, tuple[str, tuple[str, ...]]] = {
     "offshore/family/OTHER/spNat=IT": ("SUPPORTED_CANDIDATES", ("C1",)),
     "offshore/family/PARENT/spNat=ID": ("SUPPORTED_CANDIDATES", ("C1", "E31C", "E31F")),
     "offshore/family/PARENT/spNat=IT": ("SUPPORTED_CANDIDATES", ("C1",)),
+    # W-VO-E: the SAME walk with a minor's birth date — the only corpus walk
+    # whose PUBLIC outcome is a hold, and deliberately so. The ENGINE names
+    # C1 and E31E (`el.e31e-child-itas-support`, whose `derived.age_years <
+    # 18` gate no adult walk can clear); `evaluate_path.
+    # _apply_minor_privacy_hold` then empties the candidates of ANY known
+    # minor, unconditionally, because the public contract has no
+    # guardian-consent fact. That is Privacy Policy V1, a product control,
+    # not engine incompleteness — and it is the reason the reachability
+    # guard below reads the engine decision rather than this table.
+    "offshore/family/PARENT/spNat=IT/minor": ("HUMAN_REVIEW_REQUIRED", ()),
     "offshore/family/SIBLING/spNat=ID": ("SUPPORTED_CANDIDATES", ("C1",)),
     "offshore/family/SIBLING/spNat=IT": ("SUPPORTED_CANDIDATES", ("C1", "E31J")),
     "offshore/family/SPOUSE/spNat=ID": ("SUPPORTED_CANDIDATES", ("C1", "E31A")),
@@ -430,6 +478,22 @@ EXPECTED_OUTCOME: dict[str, tuple[str, tuple[str, ...]]] = {
     "offshore/invest/merit/currency_usd": ("SUPPORTED_CANDIDATES", ("C2",)),
     "offshore/invest/property": ("SUPPORTED_CANDIDATES", ("E33",)),
     "offshore/invest/pt_pma": ("SUPPORTED_CANDIDATES", ("C2",)),
+    # W-VO-E: the investor applying from abroad with the capital figures
+    # `el.e28a.investment` actually reads. `full_capital` differs from
+    # `offshore_application` in exactly the two amounts (the rule's own
+    # bounds), which is what separates D12 from the Investor KITAS itself.
+    "offshore/invest/pt_pma/full_capital": (
+        "SUPPORTED_CANDIDATES",
+        ("C2", "D12", "E28A"),
+    ),
+    # W-VO-E: `hf.d12-onshore-conversion-excluded` is why D12 had no walk —
+    # `wants_onshore_conversion`'s first option is `yes`, which excludes the
+    # multiple-entry investment visa by regulation. Answering `no` is the
+    # ordinary offshore applicant this product exists for.
+    "offshore/invest/pt_pma/offshore_application": (
+        "SUPPORTED_CANDIDATES",
+        ("C2", "D12"),
+    ),
     # PR-D4d (seq-21 corpus prep, unsigned — activation caveat in the PR
     # body): `el.e33c.world-figure-invitation` needs INVESTMENT purpose +
     # `sponsor.type eq GOVERNMENT`, so this is the `invest` walk that would
@@ -507,6 +571,13 @@ EXPECTED_OUTCOME: dict[str, tuple[str, tuple[str, ...]]] = {
     # sibling's purpose-mate: E23.
     "offshore/other/paid/sponsor_government": ("SUPPORTED_CANDIDATES", ("E23",)),
     "offshore/remote": ("NO_SUPPORTED_PATH", ()),
+    # W-VO-E: the digital nomad the remote branch was built for —
+    # `el.e33g.remote-work` plus `hf.e33g`'s local-ownership exclusion, all
+    # four facts answered the way a genuinely offshore-paid remote worker
+    # answers them. The walk above says yes to every one of them by default
+    # and is correctly excluded, which left the highest-demand public
+    # product named by no walk in the corpus.
+    "offshore/remote/foreign_only": ("SUPPORTED_CANDIDATES", ("E33G",)),
     "offshore/retirement/bank_deposit": ("NO_SUPPORTED_PATH", ()),
     # D3-3 (PR-D3): now ALSO asks `family_sponsor_confirmed` (default "yes"),
     # and the corpus's canned passive-income default clears E33F's own
@@ -553,7 +624,35 @@ EXPECTED_OUTCOME: dict[str, tuple[str, tuple[str, ...]]] = {
     "offshore/second_home/bank_deposit": ("SUPPORTED_CANDIDATES", ("E33",)),
     "offshore/second_home/property": ("SUPPORTED_CANDIDATES", ("E33",)),
     "offshore/study": ("SUPPORTED_CANDIDATES", ("E30", "E30A")),
+    # W-VO-E: `el.e30e-*`/`el.e30f-*` both read `sponsor.type`, which the
+    # study branch has asked all along — the corpus only ever answered its
+    # first option (NONE), so two student products were unreachable through
+    # the corpus while being one click away in the interview.
+    "offshore/study/education_sponsor": (
+        "SUPPORTED_CANDIDATES",
+        ("E30", "E30A", "E30E", "E30F"),
+    ),
+    # W-VO-E: E30B shares the student SUPPORT rule with E30/E30A but carries
+    # its own `hf.e30b-level-band` HARD FILTER (VOCATIONAL/UNDERGRADUATE/
+    # POSTGRADUATE only). `study_level`'s first option is PRIMARY, so E30B
+    # was excluded on every study walk — and E30A drops out here for the
+    # mirror reason, its own level band.
+    "offshore/study/vocational/education_sponsor": (
+        "SUPPORTED_CANDIDATES",
+        ("E30", "E30B", "E30E", "E30F"),
+    ),
     "offshore/tourism": ("SUPPORTED_CANDIDATES", ("C1",)),
+    # W-VO-E: `el.d1-multi-entry-support`. `entry_pattern` is on the tourism
+    # branch already; every walk answered SINGLE, its first option.
+    "offshore/tourism/multiple_entry": ("SUPPORTED_CANDIDATES", ("C1", "D1")),
+    # W-VO-E: `el.a1.tourism` — a visa-free nationality and a stay inside
+    # the 30-day bound. The corpus default identity (IT, 121 days) clears
+    # neither, so both visa-free arms were dark; `el.b1.tourism` rides the
+    # same answers.
+    "offshore/tourism/visa_free_30d": ("SUPPORTED_CANDIDATES", ("A1", "B1", "C1")),
+    # W-VO-E: `el.b1.tourism` alone — Visa on Arrival's own 60-day bound,
+    # with the corpus's default nationality.
+    "offshore/tourism/voa_60d": ("SUPPORTED_CANDIDATES", ("B1", "C1")),
     "offshore/work": ("SUPPORTED_CANDIDATES", ("E23",)),
     # PR-D4d (seq-21 corpus prep, unsigned — activation caveat in the PR
     # body). `el.e33a/b.government-*`/`el.e23v.trade-office` share an
@@ -938,6 +1037,73 @@ def _scoped_expectation(*labels: str) -> dict[str, tuple[str, tuple[str, ...]]]:
     return {label: EXPECTED_OUTCOME[label] for label in labels if label in EXPECTED_OUTCOME}
 
 
+def _support_bearing_product_codes() -> set[str]:
+    """Every product code the HIGHEST SIGNED pack gives at least one SUPPORT
+    rule, read from the signed payload itself.
+
+    Read from the pack and never from a list in this file on purpose: the
+    day a new pack is signed, this set moves by itself and the guard below
+    starts demanding a walk for whatever the pack just made supportable.
+    A hand-kept list would have to be remembered, and the gap this guard
+    exists to close is precisely the one nobody remembered to look for.
+    """
+
+    payload = _HIGHEST_SIGNED_PACK["payload"]
+    by_version_id = {
+        product["product_version_id"]: product["product_code"]
+        for product in payload["products"]
+    }
+    return {
+        by_version_id[version_id]
+        for rule in payload["rules"]
+        if rule["effect"]["type"] == "SUPPORT"
+        for version_id in rule.get("product_version_ids") or ()
+        if version_id in by_version_id
+    }
+
+
+def _engine_named_products(
+    walks: dict[str, dict[str, Any]],
+) -> dict[str, tuple[str, ...]]:
+    """``product_code -> the walks whose ENGINE decision names it``.
+
+    The ENGINE decision, not ``EXPECTED_OUTCOME``'s public one, because the
+    question this answers is "can an interview produce facts under which the
+    pack supports this product" — a public policy adapter that later abstains
+    (the minor privacy hold) is a different layer with a different owner, and
+    grading reachability through it would report a product as unreachable
+    when the interview reaches it perfectly well.
+    """
+
+    named: dict[str, list[str]] = {}
+    for label, spec in sorted(walks.items()):
+        for candidate in _engine_decision(spec["overrides"], label).candidates:
+            named.setdefault(candidate.product_code, []).append(label)
+    return {code: tuple(labels) for code, labels in sorted(named.items())}
+
+
+def _unreached_support_products(
+    named: dict[str, tuple[str, ...]],
+    *,
+    excused: dict[str, str] | None = None,
+) -> list[str]:
+    """SUPPORT-bearing products no walk names, minus the ruling rows."""
+
+    excused = UNREACHABLE_BY_RULING if excused is None else excused
+    return sorted(_support_bearing_product_codes() - set(named) - set(excused))
+
+
+def _stale_ruling_rows(
+    named: dict[str, tuple[str, ...]],
+    *,
+    excused: dict[str, str] | None = None,
+) -> list[str]:
+    """Ruling rows whose product a walk DOES name — cure the row away."""
+
+    excused = UNREACHABLE_BY_RULING if excused is None else excused
+    return sorted(set(excused) & set(named))
+
+
 @pytest.fixture(scope="module")
 def walks() -> dict[str, dict[str, Any]]:
     return _load_walks()
@@ -953,7 +1119,12 @@ def flagged_outcomes(walks: dict[str, dict[str, Any]]) -> dict[str, dict[str, An
     return _evaluate_walks_with_flags(walks)
 
 
-def test_corpus_is_the_84_real_interview_walks(walks: dict[str, dict[str, Any]]) -> None:
+@pytest.fixture(scope="module")
+def engine_named(walks: dict[str, dict[str, Any]]) -> dict[str, tuple[str, ...]]:
+    return _engine_named_products(walks)
+
+
+def test_corpus_is_the_94_real_interview_walks(walks: dict[str, dict[str, Any]]) -> None:
     """An empty or shrunken corpus fails loudly: a census that passes because
     nobody fed it any walks is the green-but-dead shape (cicatrix #2).
 
@@ -1003,9 +1174,22 @@ def test_corpus_is_the_84_real_interview_walks(walks: dict[str, dict[str, Any]])
     `test_every_walk_ends_in_its_pinned_outcome` staying green on their
     unmoved EXPECTED_OUTCOME entries. `pt_pma`/`property`/`bank_deposit` are
     untouched, byte-for-byte — that branch, and the E28A rules that read it,
-    are deliberately out of this PR's scope."""
+    are deliberately out of this PR's scope.
 
-    assert len(walks) == 84, f"expected 84 interview walks, found {len(walks)}"
+    W-VO-E (THIS PR) adds 10, corpus 84 -> 94, and changes NO existing
+    fixture by a single byte (no tree/mapper edit: `git status` showed ten
+    new files and no modified one). Every one of the ten answers a question
+    the interview ALREADY asks with something other than its FIRST option —
+    a visa-free nationality and a 21-day stay, a 45-day stay, MULTIPLE
+    entry, business pay from abroad, an offshore investment application,
+    that application with the capital figures E28A's rule reads, an
+    education sponsor, a vocational level, a remote worker with no
+    Indonesian employer/clients/pay/company, and a minor joining a parent.
+    Eleven products that carried a SUPPORT rule in the signed pack and were
+    named on zero walks are now named; the twelfth (BRIDGING) is
+    unreachable by owner ruling — see `UNREACHABLE_BY_RULING` below."""
+
+    assert len(walks) == 94, f"expected 94 interview walks, found {len(walks)}"
     assert sorted(walks) == sorted(EXPECTED_OUTCOME), "corpus and EXPECTED_OUTCOME disagree"
     for label, spec in walks.items():
         assert spec["asked"], f"{label}: walk carries no asked-question history"
@@ -1017,7 +1201,7 @@ def test_every_walk_ends_in_its_pinned_outcome(outcomes: dict[str, dict[str, Any
     assert not violations, "interview-walk outcomes moved:\n  " + "\n  ".join(violations)
 
 
-def test_walk_state_census_is_2_dead_ends_15_no_paths_and_67_answers(
+def test_walk_state_census_is_2_dead_ends_15_no_paths_1_privacy_hold_and_76_answers(
     outcomes: dict[str, dict[str, Any]],
 ) -> None:
     """The headline number of the decisiveness wave. Every PR that changes it
@@ -1067,28 +1251,58 @@ def test_walk_state_census_is_2_dead_ends_15_no_paths_and_67_answers(
        exercised. Corpus 78 → 76, SUPPORTED_CANDIDATES 61 → 59.
 
     D4a net over both parts: 2/14/62 → 2/15/59. PR-D4d adds 6: 2/15/59 →
-    2/15/65. PR-D4c-2 (THIS PR) adds 2: 2/15/65 → 2/15/67."""
+    2/15/65. PR-D4c-2 adds 2: 2/15/65 → 2/15/67.
+
+    W-VO-E (THIS PR) adds 10 walks over an 84 → 94 corpus: 9 of them
+    SUPPORTED_CANDIDATES (2/15/67 → 2/15/76) and one — the minor walk —
+    HUMAN_REVIEW_REQUIRED, the FIRST review-ending walk this census has ever
+    pinned. Its cause is named and asserted below: `MINOR_GUARDIAN_PRIVACY_
+    REVIEW`, raised by `_apply_minor_privacy_hold` on `derived.is_minor`
+    alone. No existing walk moves state OR bytes."""
 
     census = dict(Counter(outcome["state"] for outcome in outcomes.values()))
     assert (
         census
         == EXPECTED_STATE_CENSUS
         == {
+            "HUMAN_REVIEW_REQUIRED": 1,
             "NEEDS_INPUT": 2,
             "NO_SUPPORTED_PATH": 15,
-            "SUPPORTED_CANDIDATES": 67,
+            "SUPPORTED_CANDIDATES": 76,
         }
     )
     assert census["NEEDS_INPUT"] == 2
     # NOT a claim about production, and no longer a claim the corpus cannot
-    # check. This fixture evaluates every walk WITHOUT its flags, so the zero
-    # says the PACK alone holds nobody — the ENGINE half. The review arm of
-    # `apply_public_policy_adapters` is exercised by the `flagged_outcomes`
-    # fixture instead, where the same 84 walks produce 8 holds; the comment
-    # that used to stand here said "a regression that adds a disclosure flag
-    # passes it invisibly", and `test_the_flagged_census_is_the_funnel_the_
-    # applicant_meets` is what stopped that being true.
-    assert census.get("HUMAN_REVIEW_REQUIRED", 0) == 0
+    # check. This fixture evaluates every walk WITHOUT its flags, so what it
+    # reports is the PACK's own verdict — the ENGINE half. The disclosure arm
+    # of `apply_public_policy_adapters` is exercised by the `flagged_outcomes`
+    # fixture instead, where the same walks produce 8 holds; the comment that
+    # used to stand here said "a regression that adds a disclosure flag passes
+    # it invisibly", and `test_the_flagged_census_is_the_funnel_the_applicant_
+    # meets` is what stopped that being true.
+    #
+    # W-VO-E: the zero became a one, and the count became the CAUSE. The minor
+    # walk carries NO disclosure flag — it is held by
+    # `evaluate_path._apply_minor_privacy_hold`, a different adapter on the
+    # same public path — so this is a narrow, deliberate relaxation of the
+    # zero-hold invariant with the one permitted cause pinned, not the
+    # "strictly stronger" it first claimed to be (council round 1). It is
+    # strictly stronger than the `== 1` it could have been: a second held
+    # walk, a DIFFERENT walk holding, or the same walk held for another reason
+    # all fail here.
+    held = {
+        label
+        for label, outcome in outcomes.items()
+        if outcome["state"] == "HUMAN_REVIEW_REQUIRED"
+    }
+    assert held == {"offshore/family/PARENT/spNat=IT/minor"}
+    minor_walk = _load_walks()["offshore/family/PARENT/spNat=IT/minor"]
+    public = _public_decision(
+        minor_walk["overrides"], "offshore/family/PARENT/spNat=IT/minor"
+    )
+    assert [reason.code for reason in public.review_reasons] == [
+        "MINOR_GUARDIAN_PRIVACY_REVIEW"
+    ]
     assert census["NO_SUPPORTED_PATH"] == 15
 
 
@@ -1771,3 +1985,89 @@ def test_the_flagged_rebuild_names_every_field_of_the_wire_model() -> None:
     assert set(VisaOracleEvaluateRequest.model_fields) == set(
         gold_coverage_eval._REBUILT_REQUEST_FIELDS
     )
+def test_every_support_bearing_product_is_named_by_some_walk(
+    engine_named: dict[str, tuple[str, ...]],
+) -> None:
+    """W-VO-E's binding: a product the signed pack SUPPORTS, that no
+    interview walk can name, is a coverage gap no other test in this
+    repository can see.
+
+    ``test_gold_coverage_floor.py`` proves the pack can support a product
+    when every fact arrives. This file's census proves what the funnel
+    answers. NEITHER notices a product that simply never appears: a walk
+    cannot lose a candidate it could never gain, so a product unreachable
+    through the interview is invisible in every count above — it looks
+    exactly like a product nobody happened to qualify for. Measured
+    2026-09-13 before this test existed: 12 of the pack's 29 SUPPORT-bearing
+    products were in that state, including the digital-nomad and Investor
+    KITAS products, and had been for the whole life of the corpus.
+
+    The two halves are read from DIFFERENT sources on purpose — the
+    supported set from the signed pack's own payload, the named set by
+    replaying the corpus — so neither can be edited into agreement with the
+    other. Curing a red here means giving the product a WALK (an applicant
+    who answers the questions its rules read), never widening this test.
+    """
+
+    unreached = _unreached_support_products(engine_named)
+    assert not unreached, (
+        "the signed pack supports these products and no interview walk "
+        f"names any of them: {unreached}. Add a walk to "
+        "`generate-walk-corpus.ts` that answers the facts their rules read, "
+        "or — only if an owner ruling forbids collecting one of those facts "
+        "— add a row to UNREACHABLE_BY_RULING quoting the ruling."
+    )
+
+
+def test_unreachable_by_ruling_holds_only_the_bridging_row() -> None:
+    """One row, and it is a ruling. This table is the single place a product
+    may be excused from the guard above, so its CONTENTS are pinned: a row
+    added without touching this test is not possible."""
+
+    assert set(UNREACHABLE_BY_RULING) == {"BRIDGING"}
+    assert "intent.requested_product_code" in UNREACHABLE_BY_RULING["BRIDGING"]
+
+
+def test_no_unreachable_by_ruling_row_is_stale(
+    engine_named: dict[str, tuple[str, ...]],
+) -> None:
+    """The mirror of the guard: a row whose product a walk DOES name is a
+    stale excuse, and stale excuses are how an allowlist outlives the thing
+    it was written for. Delete the row instead of leaving it to cover a gap
+    that closed."""
+
+    stale = _stale_ruling_rows(engine_named)
+    assert not stale, f"UNREACHABLE_BY_RULING rows now reached by a walk: {stale}"
+
+
+def test_guilt_a_support_bearing_product_no_walk_names_is_caught(
+    engine_named: dict[str, tuple[str, ...]],
+) -> None:
+    """Guilt for the guard: delete the only product-naming this corpus has
+    for E33G — exactly what happens when a tree change stops routing to a
+    product — and the guard must name E33G.
+
+    E33G is chosen because W-VO-E gave it its first and only walk
+    (`offshore/remote/foreign_only`), so dropping it from the named map is
+    the faithful simulation of the gap reopening.
+    """
+
+    assert "E33G" in engine_named, "fixture drift: E33G must be named by a walk"
+    without_e33g = {
+        code: labels for code, labels in engine_named.items() if code != "E33G"
+    }
+    assert _unreached_support_products(without_e33g) == ["E33G"]
+
+
+def test_guilt_a_fabricated_ruling_row_that_is_reachable_is_caught(
+    engine_named: dict[str, tuple[str, ...]],
+) -> None:
+    """Guilt for the staleness mirror: excuse a product 35 walks DO name and
+    the staleness check must catch it, so the excuse table can never be used
+    to silence a product that is perfectly reachable."""
+
+    fabricated = {"C1": "fabricated row — C1 is named by most of the corpus"}
+    assert _stale_ruling_rows(engine_named, excused=fabricated) == ["C1"]
+    # ...and the guard itself stays silent about C1, which is the half that
+    # would hide the fabrication if the mirror above did not exist.
+    assert "C1" not in _unreached_support_products(engine_named, excused=fabricated)
