@@ -20,7 +20,7 @@
           "candidates": ["E33G"],
           "state": "SUPPORTED_CANDIDATES"
         },
-        "false|true": { "candidates": [], "state": "HUMAN_REVIEW_REQUIRED" },
+        "false|true": { "candidates": [], "state": "NO_SUPPORTED_PATH" },
         "true|false": { "candidates": [], "state": "NO_SUPPORTED_PATH" },
         "true|true": { "candidates": [], "state": "NO_SUPPORTED_PATH" }
       },

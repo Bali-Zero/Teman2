@@ -109,6 +109,13 @@ export const SECOND_HOME_PROPERTY_THRESHOLD_USD = 1_000_000;
 export const SECOND_HOME_DEPOSIT_THRESHOLD_USD = 130_000;
 
 export const SUPPORT_REASON_COPY: Record<string, LocalizedText> = {
+  // RULED 2026-09-13 (W-VO-D): `_apply_minor_privacy_hold` answers a minor
+  // with NO_SUPPORTED_PATH under this named cause. Privacy posture kept: the
+  // sentence names no product, and `buildNoPathDoors` opens no door for it.
+  GUARDIAN_MUST_APPLY: text(
+    "The applicant is under 18. This assessment cannot recommend a permit to a minor directly: a parent or legal guardian has to apply on the applicant's behalf.",
+    "Pemohon berusia di bawah 18 tahun. Penilaian ini tidak dapat merekomendasikan izin langsung kepada anak di bawah umur: orang tua atau wali yang sah harus mengajukan atas nama pemohon.",
+  ),
   A1_BVK_ELIGIBLE: text(
     "Your nationality is on the visa-free (BVK) list for tourism or transit, and your stay is 30 days or less.",
     "Kewarganegaraan Anda ada dalam daftar bebas visa (BVK) untuk wisata atau transit, dan masa tinggal Anda 30 hari atau kurang.",
@@ -604,11 +611,27 @@ function declaresIndonesianNationality(facts: OracleFacts): boolean {
  * because the applicant declared no basis to point at). Naming one honest
  * door beats naming three that need a caveat.
  */
+/** The one uncited no-path cause (`evaluate_path._apply_minor_privacy_hold`). */
+const GUARDIAN_MUST_APPLY_CODE = "GUARDIAN_MUST_APPLY";
+
+/** Freshness conditions (RULED 2026-09-13): the cited law is unchanged, our
+ * re-verification is overdue, and the backend keeps the verdict. Only a ref
+ * NAMED by one of these conditions may be served while not CURRENT. */
+const SOURCE_FRESHNESS_CONDITION_CODES: ReadonlySet<string> = new Set([
+  "DECISIVE_SOURCE_STALE",
+  "DECISIVE_SOURCE_FRESHNESS_UNKNOWN",
+  "SAFETY_CRITICAL_SOURCE_STALE",
+  "SAFETY_CRITICAL_SOURCE_FRESHNESS_UNKNOWN",
+]);
+
 export function buildNoPathDoors(
   noPathReasonCodes: readonly string[],
   facts: OracleFacts,
 ): NoSupportedPathAlternative[] {
   const doors: NoSupportedPathAlternative[] = [];
+  // Privacy posture (RULED 2026-09-13): a door names a product, and no
+  // product is ever named to a minor.
+  if (noPathReasonCodes.includes(GUARDIAN_MUST_APPLY_CODE)) return doors;
   const category = facts.category;
   if (category === undefined || category === "unsure") return doors;
   // Shuts every door under every purpose — measured, not assumed.
@@ -1101,8 +1124,8 @@ export const CONDITION_NEXT_STEP_COPY: Record<
   // you" here would be true and useless; naming who is doing the work, and
   // what it is, is what makes the hold readable instead of arbitrary.
   AWAIT_SOURCE_REFRESH: text(
-    "Next step is ours, not yours: Bali Zero re-verifies the regulation cited below against the official source, and this assessment is re-run on the refreshed record. The source is named above so you can check it yourself in the meantime.",
-    "Langkah berikutnya ada pada kami, bukan pada Anda: Bali Zero memverifikasi ulang peraturan yang dikutip di bawah ini terhadap sumber resminya, dan penilaian ini dijalankan kembali atas catatan yang telah diperbarui. Sumbernya disebutkan di atas agar Anda dapat memeriksanya sendiri sementara itu.",
+    "Next step is ours, not yours: Bali Zero re-verifies the regulation cited with this note against the official source, and the assessment is re-run on the refreshed record. The source is linked here so you can check it yourself in the meantime.",
+    "Langkah berikutnya ada pada kami, bukan pada Anda: Bali Zero memverifikasi ulang peraturan yang dikutip pada catatan ini terhadap sumber resminya, dan penilaian dijalankan kembali atas catatan yang telah diperbarui. Sumbernya ditautkan di sini agar Anda dapat memeriksanya sendiri sementara itu.",
   ),
 };
 
@@ -1161,6 +1184,7 @@ function decisiveSource(
   source: VisaOracleSourceRecord | undefined,
   decisionEffectiveAt: string,
   decisionObservedAt: string,
+  freshnessPending = false,
 ): boolean {
   if (!source) return false;
   const effectiveAt = Date.parse(decisionEffectiveAt);
@@ -1182,7 +1206,7 @@ function decisiveSource(
     source.is_primary_authority &&
     source.status === "VERIFIED" &&
     source.applicability.status === "APPLICABLE" &&
-    source.freshness.status === "CURRENT" &&
+    (source.freshness.status === "CURRENT" || freshnessPending) &&
     trustedPrimarySourceUrl(source.canonical_url) !== null &&
     legalFrom <= effectiveAt &&
     (legalTo === null || effectiveAt < legalTo) &&
@@ -1391,6 +1415,16 @@ function buildValidatedOutcome(
     .filter((source): source is OutcomeSource => source !== null);
   const trustedIds = new Set(sources.map((source) => source.id));
 
+  // Every other decisive requirement (primary, VERIFIED, APPLICABLE, trusted
+  // URL, clocks) still binds a pending-freshness ref; only CURRENT is waived,
+  // and only for the exact ids the backend named in a freshness condition.
+  const freshnessPendingIds = new Set(
+    (response.decision.conditions ?? [])
+      .filter((condition) =>
+        SOURCE_FRESHNESS_CONDITION_CODES.has(condition.code),
+      )
+      .flatMap((condition) => condition.source_refs),
+  );
   const requireDecisiveRefs = (sourceIds: readonly string[]) => {
     if (
       sourceIds.length === 0 ||
@@ -1400,6 +1434,7 @@ function buildValidatedOutcome(
             sourcesById.get(id),
             response.decision.effective_at,
             response.decision.observed_at,
+            freshnessPendingIds.has(id),
           ),
       )
     ) {
@@ -1552,7 +1587,15 @@ function buildValidatedOutcome(
         candidates: [],
         pathsRemaining: 0,
         noPathReasons: response.decision.no_path_reasons.map((item) => {
-          requireDecisiveRefs(item.source_refs);
+          // The minor privacy cause is a product/privacy control with no
+          // regulatory citation by design; every other no-path reason still
+          // has to stand on decisive sources.
+          if (!(
+            item.code === GUARDIAN_MUST_APPLY_CODE &&
+            item.source_refs.length === 0
+          )) {
+            requireDecisiveRefs(item.source_refs);
+          }
           return reason(item.code, item.source_refs, trustedIds, options.facts);
         }) as [OutcomeReason, ...OutcomeReason[]],
         alternatives: buildNoPathDoors(

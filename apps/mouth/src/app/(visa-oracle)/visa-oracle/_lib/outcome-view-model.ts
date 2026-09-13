@@ -197,9 +197,10 @@ interface OutcomeBase {
   sources: readonly OutcomeSource[];
   nextSteps: OutcomeNextSteps;
   /** Named conditions on this verdict. On `OutcomeBase` and not on one state
-   * because the whole ruling is that a condition does not pick a state: the
-   * same disclosed criminal record conditions a SUPPORTED verdict, a
-   * NEEDS_INPUT one and a NO_SUPPORTED_PATH one identically. */
+   * because a condition does not pick a state: the same disclosed health
+   * concern conditions a SUPPORTED verdict, a NEEDS_INPUT one and a
+   * NO_SUPPORTED_PATH one identically. A held outcome carries one too, so the
+   * hold explains itself. */
   conditions: readonly OutcomeCondition[];
 }
 

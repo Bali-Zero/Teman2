@@ -156,6 +156,84 @@ describe("Visa Oracle authoritative outcome adapter", () => {
     }
   });
 
+  // RULED 2026-09-13 (W-VO-D): a stale or freshness-unknown decisive source
+  // conditions the verdict instead of deleting it. The waiver is by ENTITY —
+  // the exact source id the backend named in a freshness condition — never by
+  // state: an unnamed stale ref must still fail closed.
+  it("keeps a verdict whose stale source is named by a freshness condition", () => {
+    const response = makeVisaOracleResponse();
+    response.sources[0].freshness.status = "STALE";
+    response.decision.conditions = [
+      {
+        code: "DECISIVE_SOURCE_STALE",
+        rule_ids: ["support-c1"],
+        source_refs: [response.sources[0].source_record_id],
+        explanation_key: "oracle.condition.decisive_source_stale",
+        next_step: "AWAIT_SOURCE_REFRESH",
+      },
+    ];
+    const outcome = buildEngineOutcome(response);
+    expect(outcome.state).toBe("SUPPORTED_CANDIDATES");
+    expect(outcome.candidates.map((candidate) => candidate.code)).toEqual([
+      "C1",
+    ]);
+    expect(
+      outcome.conditions.map((condition) => [
+        condition.code,
+        condition.nextStep,
+      ]),
+    ).toEqual([["DECISIVE_SOURCE_STALE", "AWAIT_SOURCE_REFRESH"]]);
+  });
+
+  it("still fails closed when the stale ref is not the one a condition names", () => {
+    for (const conditions of [
+      [],
+      [
+        {
+          code: "DISCLOSED_HEALTH_CONCERN_REVIEW",
+          rule_ids: [],
+          source_refs: [],
+          explanation_key: "oracle.condition.disclosed_health_concern_review",
+          next_step: "BRING_TO_CONSULTATION" as const,
+        },
+      ],
+    ]) {
+      const response = makeVisaOracleResponse();
+      response.sources[0].freshness.status = "STALE";
+      response.decision.conditions = conditions;
+      expect(() => buildEngineOutcome(response)).toThrow();
+    }
+  });
+
+  it("answers a minor with the named guardian cause and never names a door", () => {
+    const response = makeVisaOracleResponse("NO_SUPPORTED_PATH");
+    response.decision.no_path_reasons = [
+      {
+        code: "GUARDIAN_MUST_APPLY",
+        rule_ids: ["system.privacy.minor-guardian-review"],
+        source_refs: [],
+      },
+    ];
+    response.decision.conditions = [
+      {
+        code: "GUARDIAN_MUST_APPLY",
+        rule_ids: ["system.privacy.minor-guardian-review"],
+        source_refs: [],
+        explanation_key: "oracle.condition.guardian_must_apply",
+        next_step: "APPLY_THROUGH_GUARDIAN",
+      },
+    ];
+    const outcome = buildEngineOutcome(response, {
+      facts: { category: "business", stay_days: "30" },
+    });
+    expect(outcome.state).toBe("NO_SUPPORTED_PATH");
+    if (outcome.state !== "NO_SUPPORTED_PATH") return;
+    expect(outcome.noPathReasons[0].message.en).toContain("under 18");
+    expect(outcome.noPathReasons[0].message.id).toContain("di bawah 18");
+    expect(outcome.alternatives).toEqual([]);
+    expect(outcome.conditions[0].nextStep).toBe("APPLY_THROUGH_GUARDIAN");
+  });
+
   it("never renders a known operational or service axis without decisive evidence", () => {
     for (const axis of [
       "operational_availability",

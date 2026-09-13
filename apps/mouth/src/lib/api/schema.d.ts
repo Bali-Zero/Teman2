@@ -21033,11 +21033,14 @@ export interface components {
      * DecisionCondition
      * @description A named condition carried BESIDE a deterministic outcome.
      *
-     *     RULED 2026-09-13 (see ``docs/rules/RULINGS.md``): the Visa Oracle never
-     *     answers a visitor with ``HUMAN_REVIEW_REQUIRED``. Everything that used to
-     *     delete the verdict — a disclosed compliance fact, a stale decisive source,
-     *     a pack rule that asks for a human — becomes one of these instead: the
-     *     verdict survives, and the thing that would have hidden it is NAMED.
+     *     RULED 2026-09-13 (see ``docs/rules/RULINGS.md``): the Visa Oracle answers
+     *     a visitor with ``HUMAN_REVIEW_REQUIRED`` only for a disclosed criminal
+     *     matter or a decisive/safety-critical source that is no longer law.
+     *     Everything else that used to delete the verdict — a disclosed compliance
+     *     fact, a stale decisive source, a pack rule that asks for a human — becomes
+     *     one of these instead: the verdict survives, and the thing that would have
+     *     hidden it is NAMED. The held outcomes carry one too, so they explain
+     *     themselves.
      *
      *     ``explanation_key`` is an i18n KEY, never a sentence: the EN/ID text lives
      *     in the mouth's ``i18n.ts`` so no applicant-facing prose is minted by the
@@ -21093,6 +21096,13 @@ export interface components {
      *     Precedence (highest first): TEMPORARILY_UNAVAILABLE (unavailable pack
      *     fails closed) > HUMAN_REVIEW_REQUIRED > SUPPORTED_CANDIDATES >
      *     NEEDS_INPUT > NO_SUPPORTED_PATH.
+     *
+     *     That table is the ENGINE default. On the visitor surface (RULED
+     *     2026-09-13, ``docs/rules/RULINGS.md``) the evaluator runs with
+     *     ``review_as_conditions=True``: a review-stage effect no longer outranks
+     *     SUPPORTED_CANDIDATES, it rides beside the verdict as a named condition,
+     *     and HUMAN_REVIEW_REQUIRED reaches a visitor only for a cause in
+     *     ``evaluate_path.VISITOR_REVIEW_CAUSE_ALLOWLIST``.
      * @enum {string}
      */
     DecisionState:

@@ -1035,9 +1035,24 @@ class TestGoldReplayDriverOffline:
         self, report_18: dict[str, Any]
     ) -> None:
         summary = report_18["summary"]
-        assert (summary["personas_match"], summary["personas_total"]) == (6, 20)
+        # PIN MOVED 2026-09-13 (W-VO-D, RULED 2026-09-13): 6/20 -> 3/20.
+        # Personas #3/#4/#12 matched the synthetic contract's
+        # HUMAN_REVIEW_REQUIRED; `apply_public_policy_adapters` now ends with
+        # the visitor determinism floor, which turns a review outside the
+        # visitor allowlist into NO_SUPPORTED_PATH carrying the SAME codes.
+        # The pack's finding is unchanged — asserted code by code below — only
+        # the list the codes travel in moved, so the three rows now "diverge".
+        assert (summary["personas_match"], summary["personas_total"]) == (3, 20)
         matching = {row["persona_id"] for row in report_18["personas"] if not row["divergence"]}
-        assert matching == {3, 4, 12, 13, 15, 18}
+        assert matching == {13, 15, 18}
+        by_id = {row["persona_id"]: row for row in report_18["personas"]}
+        for persona_id, code in (
+            (3, "CALLING_VISA_REVIEW"),
+            (4, "ACTIVE_OVERSTAY"),
+            (12, "LOCAL_MARKET_ACTIVITY_REVIEW"),
+        ):
+            assert by_id[persona_id]["actual"]["state"] == DecisionState.NO_SUPPORTED_PATH.value
+            assert code in by_id[persona_id]["actual"]["no_path_reason_codes"]
 
     def test_persona_13_matches_because_it_finally_asks_its_own_fact(
         self, report_18: dict[str, Any], report_19: dict[str, Any]
@@ -1089,11 +1104,15 @@ class TestGoldReplayDriverOffline:
 
         assert canon(by_id_18[6]["differences"]) == canon(by_id_19[6]["differences"])
         codes = {d["field"] for d in by_id_18[6]["differences"]}
-        assert codes == {"candidate_products", "review_reason_codes", "state"}
-        review_codes = next(
-            d for d in by_id_18[6]["differences"] if d["field"] == "review_reason_codes"
+        # PIN MOVED 2026-09-13 (W-VO-D): the minor-guardian privacy gate now
+        # answers NO_SUPPORTED_PATH under the named cause GUARDIAN_MUST_APPLY,
+        # so the differing reason list is `no_path_reason_codes`. Still the
+        # privacy gate, still identical on both packs (asserted above).
+        assert codes == {"candidate_products", "no_path_reason_codes", "state"}
+        no_path_codes = next(
+            d for d in by_id_18[6]["differences"] if d["field"] == "no_path_reason_codes"
         )
-        assert review_codes["actual"] == ["MINOR_GUARDIAN_PRIVACY_REVIEW"]
+        assert no_path_codes["actual"] == ["GUARDIAN_MUST_APPLY"]
 
     def test_match_set_and_count_are_unchanged_end_to_end(
         self, report_18: dict[str, Any], report_19: dict[str, Any]

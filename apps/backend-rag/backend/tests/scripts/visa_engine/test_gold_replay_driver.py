@@ -17,6 +17,7 @@ from backend.services.visa_engine.api_models import (
     DisclosedReviewFlag,
     VisaOracleEvaluateRequest,
 )
+from backend.services.visa_engine.enums import DecisionState
 from backend.services.visa_engine.models import ApplicantFactsData, Decision
 from backend.tests.services.visa_engine import _gold_fixtures as gf
 from backend.tests.services.visa_engine.gold_replay import _persona_expected
@@ -296,20 +297,51 @@ def test_offline_replay_match_count_does_not_regress_below_measured_floor() -> N
     """
 
     report = driver.build_offline_report(generated_at=_OFFLINE_AT)
+    decisions, _pack_path = driver.replay_offline_decisions(evaluated_at=_OFFLINE_AT)
+    decision_by_id = {
+        persona.id: decision for persona, decision in zip(PERSONAS, decisions, strict=True)
+    }
 
+    # RULED 2026-09-13 (W-VO-D, docs/rules/RULINGS.md): the visitor surface no
+    # longer holds on a review cause outside `VISITOR_REVIEW_CAUSE_ALLOWLIST`.
+    # The legal table above is NOT rewritten from this engine run (its own
+    # header forbids that); instead a divergence counts toward the floor only
+    # when the ruling itself explains it: the legal reading expected a review
+    # hold on non-allowlisted causes, and the visitor now gets a deterministic
+    # state that still NAMES a consideration (a condition, a no-path cause or
+    # a fact to ask). Measured 2026-09-13 on sequence 20: 10 literal matches +
+    # 7 ruling-converted (#2 #3 #4 #5 #6 #12 #20) = the same 17, and the same
+    # three unexplained divergences.
+    def ruling_converted(row: dict) -> bool:
+        expected = PRODUCTION_REPLAY_EXPECTATIONS[row["persona_id"]]
+        decision = decision_by_id[row["persona_id"]]
+        return (
+            expected.state is DecisionState.HUMAN_REVIEW_REQUIRED
+            and set(expected.review_codes).isdisjoint(
+                driver.evaluate_path.VISITOR_REVIEW_CAUSE_ALLOWLIST
+            )
+            and decision.state is not DecisionState.HUMAN_REVIEW_REQUIRED
+            and bool(decision.conditions or decision.no_path_reasons or decision.missing_facts)
+        )
+
+    converted = {
+        row["persona_id"]
+        for row in report["personas"]
+        if row["divergence"] and ruling_converted(row)
+    }
     summary = report["summary"]
     assert summary["personas_total"] == 20
-    assert summary["personas_match"] >= 17, (
+    assert converted == {2, 3, 4, 5, 6, 12, 20}
+    assert summary["personas_match"] + len(converted) >= 17, (
         f"gold-persona offline replay regressed below the measured floor: "
-        f"{summary['personas_match']}/20 matched (floor=17), "
-        f"{summary['unexplained_divergences']} unexplained divergences "
-        f"(ceiling=3) against pack sequence={report['pack']['sequence']}"
+        f"{summary['personas_match']}/20 matched + {len(converted)} ruling-converted "
+        f"(floor=17) against pack sequence={report['pack']['sequence']}"
     )
-    assert summary["unexplained_divergences"] <= 3
     unexplained_persona_ids = {
         row["persona_id"]
         for row in report["personas"]
         if row["divergence"]
+        and row["persona_id"] not in converted
         and (not isinstance(row["explanation"], str) or not row["explanation"].strip())
     }
     assert unexplained_persona_ids == {1, 9, 10}
@@ -406,10 +438,15 @@ def test_public_policy_helper_preserves_endpoint_adapter_order(
         calls.append("_apply_disclosed_review_flags")
         return current
 
+    def floor(current):
+        calls.append("_apply_visitor_determinism_floor")
+        return current
+
     monkeypatch.setattr(driver.evaluate_path, "_apply_minor_privacy_hold", minor)
     monkeypatch.setattr(driver.evaluate_path, "_apply_decisive_source_authority_hold", decisive)
     monkeypatch.setattr(driver.evaluate_path, "_apply_safety_critical_source_hold", safety)
     monkeypatch.setattr(driver.evaluate_path, "_apply_disclosed_review_flags", disclosed)
+    monkeypatch.setattr(driver.evaluate_path, "_apply_visitor_determinism_floor", floor)
 
     assert driver.evaluate_path.apply_public_policy_adapters(decision, facts, compiled) is decision
     assert calls == list(driver.evaluate_path.PUBLIC_POLICY_ADAPTER_NAMES)

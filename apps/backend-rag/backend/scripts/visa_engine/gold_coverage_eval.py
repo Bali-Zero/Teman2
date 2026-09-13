@@ -151,11 +151,13 @@ def _evaluate(
     # caller — the coverage floor, the authoring CLI — evaluates exactly as
     # before. It exists because a walk's facts are only HALF its wire request:
     # the browser also sends whatever `mapDisclosedReviewFlags` (fact-mapper.ts)
-    # raised, and `evaluate_path.py::_apply_disclosed_review_flags` rewrites the
-    # whole decision to HUMAN_REVIEW_REQUIRED on any one of them. Evaluating
-    # facts alone therefore measures a funnel the applicant never meets — which
-    # is why the interview-walk census reported 0 human review from the day it
-    # was written (2026-09-06) until the corpus gained this field. The
+    # raised, and `evaluate_path.py::_apply_disclosed_review_flags` acts on them
+    # (until 2026-09-13 it rewrote the whole decision to HUMAN_REVIEW_REQUIRED
+    # on any one; since W-VO-D only CRIMINAL_RECORD holds and every other flag
+    # adds a named condition). Evaluating facts alone therefore measures a
+    # funnel the applicant never meets — which is why the interview-walk census
+    # reported 0 human review from the day it was written (2026-09-06) until the
+    # corpus gained this field. The
     # flags are validated through `VisaOracleEvaluateRequest`, never injected
     # into `apply_public_policy_adapters` directly, so an unknown flag name is a
     # loud ValidationError here and not a silently ignored string.
@@ -209,6 +211,10 @@ def _evaluate(
         effective_at=now,
         observed_at=now,
         identity_provider=_offline_identity_provider,
+        # RULED 2026-09-13 (W-VO-D): the same mode `evaluate_path.run_evaluation`
+        # uses for a visitor, so the census and the coverage floor measure the
+        # outcome the applicant is served, review-stage effects as conditions.
+        review_as_conditions=True,
     )
     decision = evaluate_path.apply_public_policy_adapters(
         decision,
@@ -225,6 +231,9 @@ def _evaluate(
             "version": compiled.version,
         },
         "actual": actual,
+        # Beside `actual`, not inside it: `actual` is compared field by field
+        # with the gold expectations, which carry no conditions.
+        "condition_codes": [condition.code for condition in decision.conditions],
     }
 
 

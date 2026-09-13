@@ -187,6 +187,11 @@ def test_option_matrix_is_bounded_and_legally_anchored() -> None:
 
 
 def test_option_matrix_replay_matches_all_twelve_pinned_cases() -> None:
+    # PIN MOVED 2026-09-13 (W-VO-D, RULED 2026-09-13): `remote_work` case
+    # `false|true` (a remote worker serving Indonesian clients) was
+    # HUMAN_REVIEW_REQUIRED; evaluated as the visitor is now served, the review
+    # rule rides as the condition LOCAL_MARKET_ACTIVITY_REVIEW and E33G's own
+    # eligibility leaves NO_SUPPORTED_PATH. Still no candidate, now a named cause.
     report = _matrix_report()
     assert report["summary"] == {"total": 12, "passed": 12, "failed": 0}, [
         case for case in report["cases"] if not case["pass"]

@@ -664,3 +664,78 @@ describe("OutcomeSheet — PR-O4 review causes", () => {
     ).toEqual([]);
   });
 });
+
+describe("OutcomeSheet — named conditions (W-VO-D, RULED 2026-09-13)", () => {
+  const health = {
+    code: "DISCLOSED_HEALTH_CONCERN_REVIEW",
+    message: text("Health note fixture", "Catatan kesehatan fixture"),
+    sourceIds: [],
+    nextStep: "BRING_TO_CONSULTATION" as const,
+  };
+
+  it.each([
+    [
+      "en",
+      "Conditions on this answer",
+      "Health note fixture",
+      "Next step: bring this to the consultation",
+    ],
+    [
+      "id",
+      "Ketentuan atas jawaban ini",
+      "Catatan kesehatan fixture",
+      "Langkah berikutnya: bawa hal ini ke konsultasi",
+    ],
+  ] as const)(
+    "keeps the candidates and names the condition under them in %s",
+    (language, title, message, nextStep) => {
+      const outcome = {
+        ...outcomeFor("SUPPORTED_CANDIDATES"),
+        conditions: [health],
+      } as OutcomeViewModel;
+      render(
+        <OutcomeSheet language={language} outcome={outcome} facts={FACTS} />,
+      );
+      expect(
+        screen.getByText(language === "en" ? "Test path" : "Jalur uji"),
+      ).toBeInTheDocument();
+      const section = screen
+        .getByRole("heading", { name: title })
+        .closest("section");
+      expect(section).toHaveTextContent(message);
+      expect(section).toHaveTextContent(nextStep);
+    },
+  );
+
+  it("states a held cause once and adds only its next step", () => {
+    const criminal = {
+      code: "CRIMINAL_MATTER_DISCLOSED",
+      message: text("Criminal matter fixture sentence"),
+      sourceIds: [],
+    };
+    const outcome = {
+      ...outcomeFor("HUMAN_REVIEW_REQUIRED"),
+      reviewReasons: [criminal],
+      conditions: [{ ...criminal, nextStep: "CONSULTANT_REVIEW" as const }],
+    } as HumanReviewOutcome;
+    const { container } = render(
+      <OutcomeSheet language="en" outcome={outcome} facts={FACTS} />,
+    );
+    expect(
+      container.textContent?.split("Criminal matter fixture sentence").length,
+    ).toBe(2);
+    const section = screen
+      .getByRole("heading", { name: "Conditions on this answer" })
+      .closest("section");
+    expect(section).toHaveTextContent(
+      "Next step: a Bali Zero consultant reviews this with you",
+    );
+  });
+
+  it("renders no conditions section when there are none", () => {
+    renderSheet("SUPPORTED_CANDIDATES");
+    expect(
+      screen.queryByRole("heading", { name: "Conditions on this answer" }),
+    ).not.toBeInTheDocument();
+  });
+});

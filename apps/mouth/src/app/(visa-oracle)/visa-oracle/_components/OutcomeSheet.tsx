@@ -665,6 +665,15 @@ export function OutcomeSheet({
   const caseReviewReasons = reviewReasons.filter(
     (reason) => !SYSTEM_REVIEW_REASON_CODES.has(reason.code),
   );
+  // A condition whose code is already rendered as the verdict's own cause (the
+  // criminal-matter hold, the guardian no-path cause) contributes only its
+  // next step: the cause sentence is on the sheet once, never twice.
+  const causeCodesShown = new Set<string>([
+    ...reviewReasons.map((reason) => reason.code),
+    ...(outcome.state === "NO_SUPPORTED_PATH"
+      ? outcome.noPathReasons.map((reason) => reason.code)
+      : []),
+  ]);
   const [checkedDocs, setCheckedDocs] = useState<Set<string>>(new Set());
   const [shareState, setShareState] = useState<
     "idle" | "copied" | "shared" | "failed"
@@ -941,9 +950,10 @@ export function OutcomeSheet({
           <ul className="oracle-reason-list">
             {outcome.conditions.map((condition) => (
               <li key={condition.code}>
-                <span>{localized(condition.message, language)}</span>
+                {!causeCodesShown.has(condition.code) && (
+                  <span>{localized(condition.message, language)} </span>
+                )}
                 <span>
-                  {" "}
                   {localized(
                     CONDITION_NEXT_STEP_COPY[condition.nextStep],
                     language,

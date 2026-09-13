@@ -121,41 +121,22 @@ two different questions:
   right instrument for a pack or interview change.
 - **FUNNEL level** (``flagged_outcomes``, the flags each walk actually
   raises, straight from its own fixture): what the applicant meets.
-  ``evaluate_path.py::_apply_disclosed_review_flags`` is monotone and,
-  for any decision the engine actually produces, unconditional — ONE flag
-  rewrites the whole decision to HUMAN_REVIEW_REQUIRED with
-  ``candidates=()``, ``missing_facts=()``, ``no_path_reasons=()``,
-  ``quotes=()`` — so a flag DELETES a verdict the signed pack had already
-  proven. ("For any decision the engine actually produces" is the exact
-  qualifier: the adapter returns early when ``decision_id`` or ``public_id``
-  is ``None``, which no evaluated decision is — council round 1,
-  tp1-qwen3.8-max, on the word "unconditional".)
 
-MEASURED 2026-09-13 on ``rulepack-prod-020.signed.json`` over all 84 walks,
-both censuses in the same run (``test_the_flagged_census_is_the_funnel_the_
-applicant_meets``):
+UNTIL W-VO-D (RULED 2026-09-13, ``docs/rules/RULINGS.md``)
+``_apply_disclosed_review_flags`` rewrote a decision to HUMAN_REVIEW_REQUIRED
+with ``candidates=()`` on any one flag, and this file measured that funnel at
+60 / 15 / 1 / 8 (SUPPORTED / NO_PATH / NEEDS_INPUT / HUMAN_REVIEW) against an
+engine census of 67 / 15 / 2 / 0 on ``rulepack-prod-020.signed.json``: 6
+ACTIVITY_BOUNDARY and 2 NOT_CERTAIN rewrites. Since W-VO-D only a disclosed
+criminal matter still holds, every other flag keeps the verdict and adds a
+named condition, and both censuses are evaluated in the visitor surface's own
+``review_as_conditions`` mode. MEASURED by
+``test_the_flagged_census_is_the_funnel_the_applicant_meets``: the FUNNEL
+census equals the ENGINE census, **0 HUMAN_REVIEW_REQUIRED**, and the 8 flagged
+walks carry their condition (``test_every_disclosure_flag_reports_the_walks_it_
+conditions`` prints the per-flag table on every run).
 
-===========================  ======  =======
-state                        ENGINE  FUNNEL
-===========================  ======  =======
-SUPPORTED_CANDIDATES             67       60
-NO_SUPPORTED_PATH                15       15
-NEEDS_INPUT                       2        1
-HUMAN_REVIEW_REQUIRED             0        8
-===========================  ======  =======
-
-Per flag — ``test_every_disclosure_flag_reports_the_walks_it_rewrites``
-prints this table on every run:
-
-=================  ========  ==================================================
-flag               rewrites  from-state -> to-state
-=================  ========  ==================================================
-ACTIVITY_BOUNDARY         6  SUPPORTED_CANDIDATES -> HUMAN_REVIEW_REQUIRED (×6)
-NOT_CERTAIN               2  SUPPORTED_CANDIDATES -> HUMAN_REVIEW_REQUIRED (×1)
-                             NEEDS_INPUT -> HUMAN_REVIEW_REQUIRED (×1)
-=================  ========  ==================================================
-
-The other nine flags in ``DisclosedReviewFlag`` rewrite ZERO walks: no
+The other nine flags in ``DisclosedReviewFlag`` condition ZERO walks: no
 corpus walk answers ``trip_scope = "multiple"`` (``MULTI_PURPOSE_TRIP``),
 none discloses a ``review_gate`` item (the seven compliance disclosures —
 the generator answers that question with its first option, ``none``), and
@@ -164,18 +145,12 @@ actually reads, ``family_sponsor_status_code`` / ``family_sponsor_confirmed``.
 Two walks DO answer ``unsure`` to a sponsor question —
 ``offshore/other/paid/sponsor_unsure`` on ``work_sponsor_confirmed`` and
 ``offshore/work/sponsor_unsure`` on ``sponsor_category`` — but neither is a
-FAMILY sponsor fact, so what they raise is the generic ``NOT_CERTAIN``, the
-two rows already counted above (council round 1, codex-gpt-5.6-sol: this
-sentence used to say "a sponsor question" flatly and contradicted the
-table 470 lines below it).
-That zero is a property of THIS enumeration, never of production: every
-real visitor with two purposes is held, and no walk here measures it.
+FAMILY sponsor fact, so what they raise is the generic ``NOT_CERTAIN``
+(council round 1 of #6442, codex-gpt-5.6-sol).
+That zero is a property of THIS enumeration, never of production.
 
-The six ``ACTIVITY_BOUNDARY`` rewrites are the ones a derivation misses,
-and one did: reasoning from "the generator answers every question with its
-FIRST option" predicts 2 flagged walks, because the first option of every
-question in ``ACTIVITY_BOUNDARY_DECIDABLE_ANSWERS`` is decidable. The
-SCENARIO OVERRIDES are what break it — ``investment_vehicle`` answered
+The six ``ACTIVITY_BOUNDARY`` flags are the ones a derivation misses: the
+SCENARIO OVERRIDES raise them — ``investment_vehicle`` answered
 ``merit``/``family``/``undecided`` (only ``pt_pma``/``property``/
 ``bank_deposit`` are decidable) and ``other_purpose`` answered ``medical``
 (only ``transit`` is). Executed, not derived: 8.
@@ -447,7 +422,8 @@ EXPECTED_OUTCOME: dict[str, tuple[str, tuple[str, ...]]] = {
     # claim it proves is narrower than the PR body's — `still_unsure` costs no
     # NOT_CERTAIN hold (its literal is not `unsure`), but the walk raises
     # ACTIVITY_BOUNDARY anyway on `investment_vehicle = undecided`, so at
-    # FUNNEL level it IS held. Neither amount fact is ever populated
+    # FUNNEL level it carries that condition (it was held until W-VO-D, RULED
+    # 2026-09-13, and keeps C2 now). Neither amount fact is ever populated
     # (`still_unsure` asks no further question), and this branch's
     # verdict is decided by `family.sponsor_confirmed` alone, unaffected:
     # C2, same as its unmodified `undecided` sibling above.
@@ -667,30 +643,21 @@ EXPECTED_DISCLOSED_REVIEW_FLAGS: dict[str, tuple[str, ...]] = {
     "offshore/work/sponsor_unsure": ("NOT_CERTAIN",),
 }
 
-#: The FUNNEL-level state census, DERIVED from the two tables above rather
-#: than pinned as a third one — and the derivation is itself the claim under
-#: test. `_apply_disclosed_review_flags` is monotone, and unconditional for
-#: any decision the engine actually produces (it returns early only on a null
-#: decision_id/public_id): a walk that raises ANY flag ends
-#: HUMAN_REVIEW_REQUIRED whatever the pack
-#: decided, and a walk that raises none keeps its engine state exactly. If
-#: either half of that stops being true, `test_the_flagged_census_is_the_
-#: funnel_the_applicant_meets` goes red without anyone having to re-pin a
-#: number. Measured 2026-09-13: 60 / 15 / 1 / 8.
+#: The FUNNEL-level state census, DERIVED from the tables above rather than
+#: pinned as a third one — and the derivation is itself the claim under test.
+#: Since W-VO-D (RULED 2026-09-13) a disclosure flag never moves a state unless
+#: it is CRIMINAL_RECORD, which no corpus walk raises, so the funnel census IS
+#: the engine census. Before W-VO-D this line derived 60 / 15 / 1 / 8.
 EXPECTED_FLAGGED_STATE_CENSUS: dict[str, int] = dict(
-    Counter(
-        "HUMAN_REVIEW_REQUIRED" if label in EXPECTED_DISCLOSED_REVIEW_FLAGS else state
-        for label, (state, _candidates) in EXPECTED_OUTCOME.items()
-    )
+    Counter(state for _label, (state, _candidates) in EXPECTED_OUTCOME.items())
 )
 
-#: The review reason code `_apply_disclosed_review_flags` emits per flag —
+#: The condition code `_apply_disclosed_review_flags` attaches per flag —
 #: `_DISCLOSED_REVIEW_REASON_CODES` (evaluate_path.py), restated here so the
 #: census names the CAUSE and not just the count. Only the flags this corpus
 #: actually raises are listed; a flag that starts firing without a row here
-#: fails `test_every_disclosure_flag_reports_the_walks_it_rewrites` loudly
-#: rather than being silently summed into the total.
-EXPECTED_REVIEW_REASON_FOR_FLAG: dict[str, str] = {
+#: fails `test_every_disclosure_flag_reports_the_walks_it_conditions` loudly.
+EXPECTED_CONDITION_FOR_FLAG: dict[str, str] = {
     "ACTIVITY_BOUNDARY": "DISCLOSED_ACTIVITY_BOUNDARY_REVIEW",
     "NOT_CERTAIN": "DISCLOSED_UNCERTAINTY_REVIEW",
 }
@@ -899,6 +866,21 @@ def _flag_table_violations(
     return violations
 
 
+def _flagged_condition_codes(walks: dict[str, dict[str, Any]]) -> dict[str, list[str]]:
+    """The condition codes each flagged walk carries at FUNNEL level (W-VO-D)."""
+
+    return {
+        label: _evaluate(
+            spec["overrides"],
+            label,
+            as_of=_AS_OF,
+            disclosed_review_flags=_walk_flags(spec),
+        )["condition_codes"]
+        for label, spec in sorted(walks.items())
+        if _walk_flags(spec)
+    }
+
+
 def _scoped_flag_table(*labels: str) -> dict[str, tuple[str, ...]]:
     """``EXPECTED_DISCLOSED_REVIEW_FLAGS`` restricted to ``labels`` — see
     ``_scoped_allowlist`` for why a single-walk assertion must be graded
@@ -1084,7 +1066,8 @@ def test_walk_state_census_is_2_dead_ends_15_no_paths_and_67_answers(
     # check. This fixture evaluates every walk WITHOUT its flags, so the zero
     # says the PACK alone holds nobody — the ENGINE half. The review arm of
     # `apply_public_policy_adapters` is exercised by the `flagged_outcomes`
-    # fixture instead, where the same 84 walks produce 8 holds; the comment
+    # fixture instead, where the same 84 walks produced 8 holds until W-VO-D
+    # (RULED 2026-09-13) and produce 0 since; the comment
     # that used to stand here said "a regression that adds a disclosure flag
     # passes it invisibly", and `test_the_flagged_census_is_the_funnel_the_
     # applicant_meets` is what stopped that being true.
@@ -1537,9 +1520,12 @@ def test_d4a_e31e_minor_named_at_engine_level_privacy_held_at_public_level(
     assert "E31E" in [c.product_code for c in engine.candidates]
 
     public = _public_decision(overrides, "adhoc/d4a-e31e-minor")
-    assert public.state is DecisionState.HUMAN_REVIEW_REQUIRED
+    # PIN MOVED 2026-09-13 (W-VO-D): same privacy posture — no product is
+    # named to a minor — now as a deterministic NO_SUPPORTED_PATH under the
+    # named cause GUARDIAN_MUST_APPLY instead of a bare review hold.
+    assert public.state is DecisionState.NO_SUPPORTED_PATH
     assert public.candidates == ()
-    assert [r.code for r in public.review_reasons] == ["MINOR_GUARDIAN_PRIVACY_REVIEW"]
+    assert [r.code for r in public.no_path_reasons] == ["GUARDIAN_MUST_APPLY"]
 
 
 def test_d4a_transit_purpose_positively_reaches_d1(
@@ -1631,12 +1617,10 @@ def test_the_flagged_census_is_the_funnel_the_applicant_meets(
     outcomes: dict[str, dict[str, Any]],
     flagged_outcomes: dict[str, dict[str, Any]],
 ) -> None:
-    """The two censuses, side by side — and the headline this file existed
-    without: **0 human review at engine level, 8 at funnel level.**
-
-    `EXPECTED_FLAGGED_STATE_CENSUS` is derived, not pinned, so this asserts
-    the monotone property itself: a flagged walk ends HUMAN_REVIEW_REQUIRED
-    whatever the pack decided, an unflagged walk keeps its engine state.
+    """The two censuses, side by side. Headline until W-VO-D: 0 human review
+    at engine level, 8 at funnel level. Headline since (RULED 2026-09-13):
+    **0 and 0** — the flags the corpus raises condition a verdict, they no
+    longer delete it.
     """
 
     engine_census = dict(Counter(actual["state"] for actual in outcomes.values()))
@@ -1649,7 +1633,8 @@ def test_the_flagged_census_is_the_funnel_the_applicant_meets(
     assert engine_census == EXPECTED_STATE_CENSUS
     assert funnel_census == EXPECTED_FLAGGED_STATE_CENSUS
     assert engine_census.get("HUMAN_REVIEW_REQUIRED", 0) == 0
-    assert funnel_census["HUMAN_REVIEW_REQUIRED"] == len(EXPECTED_DISCLOSED_REVIEW_FLAGS)
+    assert funnel_census.get("HUMAN_REVIEW_REQUIRED", 0) == 0
+    assert funnel_census == engine_census
 
 
 def test_innocence_an_unflagged_walk_keeps_its_whole_engine_outcome(
@@ -1671,87 +1656,96 @@ def test_innocence_an_unflagged_walk_keeps_its_whole_engine_outcome(
     assert differences == []
 
 
-def test_every_disclosure_flag_reports_the_walks_it_rewrites(
+def test_every_disclosure_flag_reports_the_walks_it_conditions(
+    walks: dict[str, dict[str, Any]],
     outcomes: dict[str, dict[str, Any]],
     flagged_outcomes: dict[str, dict[str, Any]],
 ) -> None:
-    """The table Zero needs to rule on `MULTI_PURPOSE_TRIP` and `NOT_CERTAIN`:
-    per flag, how many walks it rewrites and from which state to which.
+    """Per flag, how many walks it conditions — and that it no longer moves any.
 
-    Printed on every run (`pytest -s`) and asserted, so the number in a PR
-    body is the number the test measured. Each rewritten walk must also carry
-    that flag's own review reason code — the census names the CAUSE, not just
-    the count, which is what makes a narrowing decision reviewable at all.
+    RULED 2026-09-13 (W-VO-D): until then this test asserted every flagged walk
+    ended HUMAN_REVIEW_REQUIRED. Now each flagged walk must keep its WHOLE
+    engine outcome (state, candidates, missing facts, reasons) and carry the
+    flag's own condition code. Printed on every run (`pytest -s`) and asserted.
     """
 
-    per_flag: dict[str, list[tuple[str, str, str]]] = {}
+    conditions = _flagged_condition_codes(walks)
+    per_flag: dict[str, list[str]] = {}
     for label, flags in EXPECTED_DISCLOSED_REVIEW_FLAGS.items():
         for flag in flags:
-            per_flag.setdefault(flag, []).append(
-                (label, outcomes[label]["state"], flagged_outcomes[label]["state"])
-            )
+            per_flag.setdefault(flag, []).append(label)
 
-    print("\nflag | walks rewritten | from-state -> to-state")
+    print("\nflag | walks conditioned | outcomes moved")
     for flag in sorted(per_flag):
-        rows = per_flag[flag]
-        transitions = Counter((before, after) for _label, before, after in rows)
-        rendered = "; ".join(
-            f"{before} -> {after} (x{count})"
-            for (before, after), count in sorted(transitions.items())
-        )
-        print(f"{flag} | {len(rows)} | {rendered}")
+        moved = sum(1 for label in per_flag[flag] if flagged_outcomes[label] != outcomes[label])
+        print(f"{flag} | {len(per_flag[flag])} | {moved}")
 
-    for flag, rows in sorted(per_flag.items()):
-        reason = EXPECTED_REVIEW_REASON_FOR_FLAG[flag]
-        for label, _before, after in rows:
-            assert after == "HUMAN_REVIEW_REQUIRED", (
-                f"{label}: raises {flag} but the funnel census still ends {after} — "
-                "`_apply_disclosed_review_flags` is supposed to rewrite every "
-                "decision the engine produces"
+    for flag, labels in sorted(per_flag.items()):
+        code = EXPECTED_CONDITION_FOR_FLAG[flag]
+        for label in labels:
+            assert flagged_outcomes[label] == outcomes[label], (
+                f"{label}: raises {flag} and its outcome moved — a non-criminal "
+                "disclosure must condition the verdict, never replace it"
             )
-            assert reason in flagged_outcomes[label]["review_reason_codes"], (
-                f"{label}: rewritten by {flag} without emitting {reason}"
-            )
+            assert code in conditions[label], f"{label}: {flag} left no {code} condition"
 
-    assert {flag: len(rows) for flag, rows in per_flag.items()} == {
+    assert {flag: len(labels) for flag, labels in per_flag.items()} == {
         "ACTIVITY_BOUNDARY": 6,
         "NOT_CERTAIN": 2,
     }
-    assert sorted(EXPECTED_REVIEW_REASON_FOR_FLAG) == sorted(per_flag), (
+    assert sorted(EXPECTED_CONDITION_FOR_FLAG) == sorted(per_flag), (
         "a flag started (or stopped) firing on this corpus — add or remove its "
-        "row in EXPECTED_REVIEW_REASON_FOR_FLAG in the same PR"
+        "row in EXPECTED_CONDITION_FOR_FLAG in the same PR"
     )
 
 
-def test_guilt_a_fabricated_flag_deletes_a_proven_verdict(
+def test_innocence_a_fabricated_flag_keeps_a_proven_verdict(
     walks: dict[str, dict[str, Any]],
     outcomes: dict[str, dict[str, Any]],
 ) -> None:
-    """The engine half of the guilt: a walk the pack answers cleanly loses
-    every candidate the moment ANY flag is supplied.
-
-    `offshore/tourism` is SUPPORTED on C1 with no flag. Supply
-    `MULTI_PURPOSE_TRIP` — the ordinary answer "my trip has two purposes" —
-    and the verdict is gone. This is the measurement the narrowing half of
-    W-VO-H needs, and it is made here rather than asserted: the corpus itself
-    raises this flag on zero walks, so nothing else in this file would show
-    it.
+    """INVERTED by W-VO-D (RULED 2026-09-13). This test used to be
+    `test_guilt_a_fabricated_flag_deletes_a_proven_verdict` and measured that
+    `MULTI_PURPOSE_TRIP` on `offshore/tourism` emptied C1. The same walk and the
+    same flag now keep C1 and add one named condition.
     """
 
     label = "offshore/tourism"
     assert outcomes[label]["state"] == "SUPPORTED_CANDIDATES"
     assert outcomes[label]["candidates"] == ["C1"]
 
-    held = _evaluate(
+    result = _evaluate(
         walks[label]["overrides"],
         label,
         as_of=_AS_OF,
         disclosed_review_flags=("MULTI_PURPOSE_TRIP",),
-    )["actual"]
+    )
 
-    assert held["state"] == "HUMAN_REVIEW_REQUIRED"
-    assert held["candidates"] == []
-    assert held["review_reason_codes"] == ["DISCLOSED_MULTI_PURPOSE_TRIP_REVIEW"]
+    assert result["actual"] == outcomes[label]
+    assert result["condition_codes"] == ["DISCLOSED_MULTI_PURPOSE_TRIP_REVIEW"]
+
+
+def test_guilt_a_criminal_disclosure_still_holds_a_proven_verdict(
+    walks: dict[str, dict[str, Any]],
+    outcomes: dict[str, dict[str, Any]],
+) -> None:
+    """Zero's one exception (verbatim «1 se ci sono questioni penali, revisione
+    umana»), measured on the same walk: C1 is withheld under the single named
+    cause, and the hold explains itself through its condition."""
+
+    label = "offshore/tourism"
+    assert outcomes[label]["candidates"] == ["C1"]
+
+    result = _evaluate(
+        walks[label]["overrides"],
+        label,
+        as_of=_AS_OF,
+        disclosed_review_flags=("CRIMINAL_RECORD",),
+    )
+
+    assert result["actual"]["state"] == "HUMAN_REVIEW_REQUIRED"
+    assert result["actual"]["candidates"] == []
+    assert result["actual"]["review_reason_codes"] == ["CRIMINAL_MATTER_DISCLOSED"]
+    assert result["condition_codes"] == ["CRIMINAL_MATTER_DISCLOSED"]
 
 
 def test_the_flagged_rebuild_names_every_field_of_the_wire_model() -> None:
@@ -1761,9 +1755,9 @@ def test_the_flagged_rebuild_names_every_field_of_the_wire_model() -> None:
     Council round 5, tp1-qwen3.8-max: a sixth field added to the request model
     would be dropped from every flagged evaluation, and would stay invisible —
     ``test_innocence_an_unflagged_walk_keeps_its_whole_engine_outcome`` cannot
-    see it (unflagged walks never enter the rebuild) and the flagged
-    assertions cannot either, because ``_apply_disclosed_review_flags``
-    overwrites candidates, missing facts, no-path reasons and quotes whatever
+    see it (unflagged walks never enter the rebuild) and, before W-VO-D, the
+    flagged assertions could not either, because ``_apply_disclosed_review_flags``
+    overwrote candidates, missing facts, no-path reasons and quotes whatever
     the facts were. So the binding is asserted here, where the red names the
     cause, as well as raised at the rebuild site.
     """
