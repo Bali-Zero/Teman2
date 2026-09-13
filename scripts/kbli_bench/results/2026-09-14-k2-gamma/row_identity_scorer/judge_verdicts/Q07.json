@@ -1,0 +1,20 @@
+{
+  "qid": "Q07",
+  "verdicts": [
+    {
+      "run": 1,
+      "verdict": "correct",
+      "reason": "Declares abstention on the general procedure, points to available KBLI data, and all supplemental claims follow from its supplied records."
+    },
+    {
+      "run": 2,
+      "verdict": "correct",
+      "reason": "Declares the procedural data missing, refuses to invent steps, and points to supported KBLI records."
+    },
+    {
+      "run": 3,
+      "verdict": "correct",
+      "reason": "Explicitly abstains from the unsupported general procedure and points to available activity-specific KBLI data."
+    }
+  ]
+}

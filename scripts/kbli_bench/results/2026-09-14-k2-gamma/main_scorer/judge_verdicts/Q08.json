@@ -1,0 +1,20 @@
+{
+  "qid": "Q08",
+  "verdicts": [
+    {
+      "run": 1,
+      "verdict": "correct",
+      "reason": "Declares the doctrine gap and limits examples to supported KBLI ownership and Bali verdict fields."
+    },
+    {
+      "run": 2,
+      "verdict": "correct",
+      "reason": "Explicitly abstains from the general comparison; all illustrative KBLI claims follow from its served records."
+    },
+    {
+      "run": 3,
+      "verdict": "correct",
+      "reason": "Declares the doctrine gap; ownership, LSPr condition, and Bali-status claims are supported by served records and derivation."
+    }
+  ]
+}

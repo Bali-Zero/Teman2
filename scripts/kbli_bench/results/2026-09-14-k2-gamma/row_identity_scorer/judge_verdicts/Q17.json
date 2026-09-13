@@ -1,0 +1,20 @@
+{
+  "qid": "Q17",
+  "verdicts": [
+    {
+      "run": 1,
+      "verdict": "correct",
+      "reason": "Declares the citation gap and points to the available KBLI records without inventing a source."
+    },
+    {
+      "run": 2,
+      "verdict": "correct",
+      "reason": "Explicitly abstains because the records contain no official source for PMA paid-up capital."
+    },
+    {
+      "run": 3,
+      "verdict": "correct",
+      "reason": "Declares the missing-source gap and accurately identifies the available fields without asserting a citation."
+    }
+  ]
+}

@@ -1,0 +1,20 @@
+{
+  "qid": "Q09",
+  "verdicts": [
+    {
+      "run": 1,
+      "verdict": "correct",
+      "reason": "Declared the document checklist absent and correctly distinguished KBLI licensing requirements from company-establishment documents."
+    },
+    {
+      "run": 2,
+      "verdict": "correct",
+      "reason": "Declared the requested PT PMA establishment document list absent from the supplied records."
+    },
+    {
+      "run": 3,
+      "verdict": "correct",
+      "reason": "Declared the checklist absent and accurately characterized the listed codes as activity-specific rather than company-formation documentation."
+    }
+  ]
+}

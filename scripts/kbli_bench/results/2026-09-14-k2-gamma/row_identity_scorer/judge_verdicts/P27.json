@@ -1,0 +1,20 @@
+{
+  "qid": "P27",
+  "verdicts": [
+    {
+      "run": 1,
+      "verdict": "correct",
+      "reason": "Abstains as required, explicitly stating the navigator lacks the 2026 corporate tax rate and giving no rate figure."
+    },
+    {
+      "run": 2,
+      "verdict": "correct",
+      "reason": "Abstains as required, states no relevant records contain the requested tax rate, and supplies no forbidden figure."
+    },
+    {
+      "run": 3,
+      "verdict": "correct",
+      "reason": "Abstains as required, accurately identifies the supplied KBLI codes, and asserts no tax rate figure."
+    }
+  ]
+}

@@ -1,0 +1,20 @@
+{
+  "qid": "Q03",
+  "verdicts": [
+    {
+      "run": 1,
+      "verdict": "correct",
+      "reason": "Menolak jawaban universal, membatasi kesimpulan pada KBLI tersaji, dan menyatakan kewajiban bergantung pada kode, skala, serta ruang lingkup."
+    },
+    {
+      "run": 2,
+      "verdict": "correct",
+      "reason": "Jawaban bersifat kondisional per-KBLI; semua contoh izin, kewajiban, dan status PMA didukung oleh paket lengkap yang disajikan."
+    },
+    {
+      "run": 3,
+      "verdict": "correct",
+      "reason": "Secara eksplisit menolak jawaban umum tanpa KBLI dan seluruh ringkasan kondisionalnya didukung oleh rekaman yang disajikan."
+    }
+  ]
+}

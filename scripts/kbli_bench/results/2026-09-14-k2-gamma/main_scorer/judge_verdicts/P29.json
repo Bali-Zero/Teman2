@@ -1,0 +1,20 @@
+{
+  "qid": "P29",
+  "verdicts": [
+    {
+      "run": 1,
+      "verdict": "correct",
+      "reason": "Declared the wage data absent and gave no wage figure."
+    },
+    {
+      "run": 2,
+      "verdict": "correct",
+      "reason": "Declared the wage data absent and gave no wage figure."
+    },
+    {
+      "run": 3,
+      "verdict": "correct",
+      "reason": "Declared the wage fact absent and gave no wage figure."
+    }
+  ]
+}

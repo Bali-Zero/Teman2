@@ -1,0 +1,20 @@
+{
+  "qid": "Q09",
+  "verdicts": [
+    {
+      "run": 1,
+      "verdict": "correct",
+      "reason": "Menyatakan data tidak memuat checklist dokumen pendirian dan menunjuk batas cakupan records; sesuai abstention yang diharapkan."
+    },
+    {
+      "run": 2,
+      "verdict": "correct",
+      "reason": "Secara eksplisit abstain karena records tidak memuat persyaratan dokumen pendirian PT PMA; sesuai perilaku yang diharapkan."
+    },
+    {
+      "run": 3,
+      "verdict": "correct",
+      "reason": "Menyatakan gap dan menunjuk records KBLI sebagai persyaratan kegiatan usaha, bukan dokumen pembentukan; sesuai expected behavior."
+    }
+  ]
+}

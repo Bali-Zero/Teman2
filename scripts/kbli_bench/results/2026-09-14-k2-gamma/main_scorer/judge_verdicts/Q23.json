@@ -1,0 +1,20 @@
+{
+  "qid": "Q23",
+  "verdicts": [
+    {
+      "run": 1,
+      "verdict": "wrong",
+      "reason": "Hanya menyebut 64330; tidak menyatakan cakupan semua KBLI risiko Rendah dan Menengah-Rendah atau sumber surat gubernur."
+    },
+    {
+      "run": 2,
+      "verdict": "wrong",
+      "reason": "Permanensi dan status 64330 didukung, tetapi jawaban tidak menyebut cakupan semua KBLI risiko Rendah dan Menengah-Rendah atau sumbernya."
+    },
+    {
+      "run": 3,
+      "verdict": "wrong",
+      "reason": "Permanensi dan 64330 didukung, tetapi menyangkal kemampuan menyebut cakupan kelas risiko yang justru tersedia dalam rekod moratorium."
+    }
+  ]
+}

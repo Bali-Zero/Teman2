@@ -1,0 +1,20 @@
+{
+  "qid": "Q24",
+  "verdicts": [
+    {
+      "run": 1,
+      "verdict": "correct",
+      "reason": "Declared the paid-up-capital fact absent and did not choose either figure; minor duplicated code does not affect abstention."
+    },
+    {
+      "run": 2,
+      "verdict": "correct",
+      "reason": "Declared the required fact absent, referenced available KBLI data, and asserted neither forbidden figure."
+    },
+    {
+      "run": 3,
+      "verdict": "correct",
+      "reason": "Explicitly declined to determine either figure from the records and correctly identified the package as lacking a basis."
+    }
+  ]
+}

@@ -1,0 +1,20 @@
+{
+  "qid": "Q17",
+  "verdicts": [
+    {
+      "run": 1,
+      "verdict": "correct",
+      "reason": "Declared abstention: records contain no official source or paid-capital rule; it accurately points to the fields and KBLI codes available."
+    },
+    {
+      "run": 2,
+      "verdict": "correct",
+      "reason": "Explicitly abstains because the records contain no official source or paid-capital facts."
+    },
+    {
+      "run": 3,
+      "verdict": "correct",
+      "reason": "Declared abstention with an accurate pointer to available fields, none of which provide paid-capital rules or citations."
+    }
+  ]
+}

@@ -1,0 +1,20 @@
+{
+  "qid": "Q21",
+  "verdicts": [
+    {
+      "run": 1,
+      "verdict": "correct",
+      "reason": "Menyatakan larangan, batas asing 0%, syarat modal domestik dan Islam, serta membedakan sumbu moratorium dari kepemilikan."
+    },
+    {
+      "run": 2,
+      "verdict": "correct",
+      "reason": "Tepat menyatakan NATIONALLY_CLOSED, kepemilikan asing maksimum 0%, serta syarat modal domestik dan agama Islam."
+    },
+    {
+      "run": 3,
+      "verdict": "correct",
+      "reason": "Tepat menyatakan penutupan nasional, batas asing 0%, syarat domestik-Islam, dan bahwa status moratorium Bali tidak mengubahnya."
+    }
+  ]
+}

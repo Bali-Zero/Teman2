@@ -1,0 +1,20 @@
+{
+  "qid": "Q18",
+  "verdicts": [
+    {
+      "run": 1,
+      "verdict": "correct",
+      "reason": "Explicitly abstains in English and points to the available KBLI records, which do not contain the requested setup procedure."
+    },
+    {
+      "run": 2,
+      "verdict": "correct",
+      "reason": "Explicitly abstains in English and accurately identifies the records as activity-specific rather than a company-formation procedure."
+    },
+    {
+      "run": 3,
+      "verdict": "correct",
+      "reason": "Explicitly abstains in English and points to the available KBLI records; no unsupported setup steps are asserted."
+    }
+  ]
+}

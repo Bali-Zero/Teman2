@@ -1,0 +1,20 @@
+{
+  "qid": "Q10",
+  "verdicts": [
+    {
+      "run": 1,
+      "verdict": "correct",
+      "reason": "Declared abstention: states supplied records do not cover OSS correction mechanics and identifies the available KBLI records."
+    },
+    {
+      "run": 2,
+      "verdict": "correct",
+      "reason": "Declared abstention: explicitly says the package lacks OSS data-change rules and makes no unsupported procedural claim."
+    },
+    {
+      "run": 3,
+      "verdict": "correct",
+      "reason": "Declared abstention: explains that supplied data covers classifications, risks, and PMA positions, not OSS correction procedures."
+    }
+  ]
+}

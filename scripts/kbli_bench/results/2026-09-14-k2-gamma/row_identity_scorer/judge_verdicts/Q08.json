@@ -1,0 +1,20 @@
+{
+  "qid": "Q08",
+  "verdicts": [
+    {
+      "run": 1,
+      "verdict": "correct",
+      "reason": "Declares the doctrine gap and limits examples to supported KBLI ownership caps and derived Bali verdicts."
+    },
+    {
+      "run": 2,
+      "verdict": "correct",
+      "reason": "Explicitly abstains on general PT doctrine; all illustrative KBLI claims follow from the run’s supplied records."
+    },
+    {
+      "run": 3,
+      "verdict": "correct",
+      "reason": "Explicitly abstains on missing doctrine; KBLI caps, Bali blocks, moratorium, and LSPr condition are supported by supplied records."
+    }
+  ]
+}

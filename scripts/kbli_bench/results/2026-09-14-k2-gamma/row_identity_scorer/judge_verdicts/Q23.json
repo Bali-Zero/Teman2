@@ -1,0 +1,20 @@
+{
+  "qid": "Q23",
+  "verdicts": [
+    {
+      "run": 1,
+      "verdict": "wrong",
+      "reason": "Hanya menyebut KBLI 64330; tidak menyatakan cakupan seluruh KBLI berisiko Rendah dan Menengah-Rendah sebagaimana diwajibkan."
+    },
+    {
+      "run": 2,
+      "verdict": "wrong",
+      "reason": "Permanensi dan status 64330 didukung, tetapi jawaban tidak menyebut cakupan semua KBLI berisiko Rendah dan Menengah-Rendah."
+    },
+    {
+      "run": 3,
+      "verdict": "wrong",
+      "reason": "Menolak menyebut cakupan kelas risiko, padahal rekod menyatakan semua KBLI berisiko Rendah dan Menengah-Rendah terdampak."
+    }
+  ]
+}

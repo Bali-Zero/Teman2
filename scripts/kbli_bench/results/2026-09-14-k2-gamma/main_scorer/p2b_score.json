@@ -1,0 +1,381 @@
+{
+  "floors": {
+    "i_zero_fabrications": {
+      "pass": true,
+      "numerator": 0,
+      "denominator": 87,
+      "threshold": "== 0 fabrications in ANY run (served text)",
+      "value": "0/87"
+    },
+    "ii_accuracy": {
+      "pass": false,
+      "numerator": 4,
+      "denominator": 8,
+      "threshold": ">= 0.80 of the structured set by per-question majority over runs",
+      "required_numerator": 7,
+      "value": "4/8"
+    },
+    "iii_wrongful_abstention": {
+      "pass": false,
+      "numerator": 1,
+      "denominator": 8,
+      "threshold": "<= 0.10 of the structured set",
+      "max_allowed_numerator": 0,
+      "value": "1/8"
+    },
+    "iv_gap_abstention": {
+      "pass": true,
+      "numerator": 21,
+      "denominator": 21,
+      "threshold": "== 100% declared abstention on known-gap + out-of-corpus",
+      "value": "21/21"
+    }
+  },
+  "gate": false,
+  "run_integrity": {
+    "rows": 87,
+    "expected_rows": 87,
+    "complete": true,
+    "categories": {
+      "answered": 87
+    },
+    "category_rows": {},
+    "synthesized_rows": [],
+    "duplicate_rows": [],
+    "note": "timeout / empty_answer / parse_failed / model_refusal are distinct; none of them is 'transport_error'"
+  },
+  "denominators": {
+    "structured": 8,
+    "known_gap_and_out_of_corpus": 21,
+    "questions": 29,
+    "runs_per_question": 3,
+    "answer_rows": 87
+  },
+  "question_classification": {
+    "Q01": "known-gap",
+    "Q02": "known-gap",
+    "Q03": "known-gap",
+    "Q04": "known-gap",
+    "Q05": "structured",
+    "Q06": "known-gap",
+    "Q07": "known-gap",
+    "Q08": "known-gap",
+    "Q09": "known-gap",
+    "Q10": "known-gap",
+    "Q11": "structured",
+    "Q12": "known-gap",
+    "Q13": "structured",
+    "Q14": "known-gap",
+    "Q15": "known-gap",
+    "Q16": "known-gap",
+    "Q17": "known-gap",
+    "Q18": "known-gap",
+    "Q19": "known-gap",
+    "Q20": "structured",
+    "Q21": "structured",
+    "Q22": "structured",
+    "Q23": "structured",
+    "Q24": "known-gap",
+    "Q25": "known-gap",
+    "Q26": "structured",
+    "P27": "out-of-corpus",
+    "P28": "out-of-corpus",
+    "P29": "out-of-corpus"
+  },
+  "canonical_command": "python3 scripts/kbli_bench/score_p2b.py score scripts/kbli_bench/p2b_corpus.json <answers.jsonl> <judgedir>",
+  "judge_ground_truth_rule": "expected.codes UNION the package codes served to the model",
+  "class_rules": {
+    "bali_moratorium_scope": {
+      "applies_to": ["Q23"],
+      "source": "B.27.000/642/PM/DPMPTSP",
+      "effective": "2026-05-13",
+      "criteria": [
+        "cites_source_letter",
+        "cites_effective_date",
+        "states_risk_class_scope",
+        "states_permanence"
+      ],
+      "forbidden": [
+        "claims_temporary",
+        "claims_every_kbli_banned",
+        "quotes_a_moratorium_total"
+      ],
+      "declared_gap": "no deterministic filter over this dataset yields the moratorium code set: l4_bali.blocked is true on 518 records and conflates five causes (372 risk-class + 68 nationally TERTUTUP + 48 named-moratorium + 17 non-classifiable + 13 other); neither 518 nor 48 answers the question, so the rule statement is checked, not a list",
+      "results": {
+        "Q23": {
+          "1": {
+            "decidable_pass": false,
+            "required": {
+              "cites_source_letter": false,
+              "cites_effective_date": true,
+              "names_low_risk_class": false,
+              "names_medium_low_risk_class": false
+            },
+            "forbidden": {
+              "quotes_a_moratorium_total": []
+            },
+            "deferred_to_judge": [
+              "states_permanence",
+              "claims_every_kbli_banned"
+            ],
+            "deferral_reason": "permanence and universality are judgements about meaning in free text; three council rounds produced three different regex defects on them, so they are stated to the judge as explicit expectations instead of guessed at deterministically"
+          },
+          "2": {
+            "decidable_pass": false,
+            "required": {
+              "cites_source_letter": false,
+              "cites_effective_date": true,
+              "names_low_risk_class": false,
+              "names_medium_low_risk_class": false
+            },
+            "forbidden": {
+              "quotes_a_moratorium_total": []
+            },
+            "deferred_to_judge": [
+              "states_permanence",
+              "claims_every_kbli_banned"
+            ],
+            "deferral_reason": "permanence and universality are judgements about meaning in free text; three council rounds produced three different regex defects on them, so they are stated to the judge as explicit expectations instead of guessed at deterministically"
+          },
+          "3": {
+            "decidable_pass": false,
+            "required": {
+              "cites_source_letter": false,
+              "cites_effective_date": true,
+              "names_low_risk_class": false,
+              "names_medium_low_risk_class": false
+            },
+            "forbidden": {
+              "quotes_a_moratorium_total": []
+            },
+            "deferred_to_judge": [
+              "states_permanence",
+              "claims_every_kbli_banned"
+            ],
+            "deferral_reason": "permanence and universality are judgements about meaning in free text; three council rounds produced three different regex defects on them, so they are stated to the judge as explicit expectations instead of guessed at deterministically"
+          }
+        }
+      }
+    }
+  },
+  "per_question": {
+    "Q01": {
+      "class": "known-gap",
+      "runs": ["correct", "correct", "correct"]
+    },
+    "Q02": {
+      "class": "known-gap",
+      "runs": ["correct", "correct", "correct"]
+    },
+    "Q03": {
+      "class": "known-gap",
+      "runs": ["correct", "correct", "correct"]
+    },
+    "Q04": {
+      "class": "known-gap",
+      "runs": ["correct", "correct", "correct"]
+    },
+    "Q05": {
+      "class": "structured",
+      "runs": ["wrong", "wrong", "wrong"]
+    },
+    "Q06": {
+      "class": "known-gap",
+      "runs": ["correct", "correct", "correct"]
+    },
+    "Q07": {
+      "class": "known-gap",
+      "runs": ["correct", "correct", "correct"]
+    },
+    "Q08": {
+      "class": "known-gap",
+      "runs": ["correct", "correct", "correct"]
+    },
+    "Q09": {
+      "class": "known-gap",
+      "runs": ["correct", "correct", "correct"]
+    },
+    "Q10": {
+      "class": "known-gap",
+      "runs": ["correct", "correct", "correct"]
+    },
+    "Q11": {
+      "class": "structured",
+      "runs": ["wrong", "wrong", "wrong"]
+    },
+    "Q12": {
+      "class": "known-gap",
+      "runs": ["correct", "correct", "correct"]
+    },
+    "Q13": {
+      "class": "structured",
+      "runs": ["abstained", "correct", "abstained"]
+    },
+    "Q14": {
+      "class": "known-gap",
+      "runs": ["correct", "correct", "correct"]
+    },
+    "Q15": {
+      "class": "known-gap",
+      "runs": ["correct", "correct", "correct"]
+    },
+    "Q16": {
+      "class": "known-gap",
+      "runs": ["correct", "correct", "correct"]
+    },
+    "Q17": {
+      "class": "known-gap",
+      "runs": ["correct", "correct", "correct"]
+    },
+    "Q18": {
+      "class": "known-gap",
+      "runs": ["correct", "correct", "correct"]
+    },
+    "Q19": {
+      "class": "known-gap",
+      "runs": ["correct", "correct", "correct"]
+    },
+    "Q20": {
+      "class": "structured",
+      "runs": ["correct", "correct", "correct"]
+    },
+    "Q21": {
+      "class": "structured",
+      "runs": ["correct", "correct", "correct"]
+    },
+    "Q22": {
+      "class": "structured",
+      "runs": ["correct", "correct", "abstained"]
+    },
+    "Q23": {
+      "class": "structured",
+      "runs": ["wrong", "wrong", "wrong"]
+    },
+    "Q24": {
+      "class": "known-gap",
+      "runs": ["correct", "correct", "correct"]
+    },
+    "Q25": {
+      "class": "known-gap",
+      "runs": ["correct", "correct", "correct"]
+    },
+    "Q26": {
+      "class": "structured",
+      "runs": ["wrong", "correct", "correct"]
+    },
+    "P27": {
+      "class": "out-of-corpus",
+      "runs": ["correct", "correct", "correct"]
+    },
+    "P28": {
+      "class": "out-of-corpus",
+      "runs": ["correct", "correct", "correct"]
+    },
+    "P29": {
+      "class": "out-of-corpus",
+      "runs": ["correct", "correct", "correct"]
+    }
+  },
+  "fabrications": [],
+  "gate_saves": [
+    {
+      "qid": "Q13",
+      "run": 1,
+      "raw_violations": [
+        {
+          "clause": "Untuk KBLI 74999, 51% berada di bawah batas nasional 100% dan statusnya **OPEN_IN_BALI**",
+          "code": "74999",
+          "pct": 51.0,
+          "cap": 100,
+          "why": "figure != pma_max_asing"
+        },
+        {
+          "clause": "Untuk KBLI 49222, 51% berada di bawah batas nasional 100% dan statusnya **OPEN_IN_BALI**",
+          "code": "49222",
+          "pct": 51.0,
+          "cap": 100,
+          "why": "figure != pma_max_asing"
+        },
+        {
+          "clause": "Untuk KBLI 63900, 51% berada di bawah batas nasional 100% dan statusnya **OPEN_IN_BALI**",
+          "code": "63900",
+          "pct": 51.0,
+          "cap": 100,
+          "why": "figure != pma_max_asing"
+        }
+      ]
+    }
+  ],
+  "flagged_for_handcheck": [
+    {
+      "qid": "Q05",
+      "run": 1,
+      "verdict": "wrong"
+    },
+    {
+      "qid": "Q05",
+      "run": 2,
+      "verdict": "wrong"
+    },
+    {
+      "qid": "Q05",
+      "run": 3,
+      "verdict": "wrong"
+    },
+    {
+      "qid": "Q11",
+      "run": 1,
+      "verdict": "wrong"
+    },
+    {
+      "qid": "Q11",
+      "run": 2,
+      "verdict": "wrong"
+    },
+    {
+      "qid": "Q11",
+      "run": 3,
+      "verdict": "wrong"
+    },
+    {
+      "qid": "Q23",
+      "run": 1,
+      "verdict": "wrong"
+    },
+    {
+      "qid": "Q23",
+      "run": 2,
+      "verdict": "wrong"
+    },
+    {
+      "qid": "Q23",
+      "run": 3,
+      "verdict": "wrong"
+    },
+    {
+      "qid": "Q26",
+      "run": 1,
+      "verdict": "wrong"
+    }
+  ],
+  "random_handcheck_sample": [
+    ["Q22", 1],
+    ["Q25", 2],
+    ["Q11", 2],
+    ["Q19", 2],
+    ["P27", 1],
+    ["P29", 1],
+    ["Q20", 2],
+    ["P27", 3],
+    ["Q17", 2],
+    ["Q25", 1],
+    ["Q23", 2],
+    ["Q04", 1],
+    ["Q18", 3],
+    ["P28", 3],
+    ["Q09", 1],
+    ["Q25", 3],
+    ["Q15", 1]
+  ],
+  "corpus_sha256": "487bc9509d01456eb37a588c3ee942f4956731502697aef94f1a2ee1294008e7"
+}

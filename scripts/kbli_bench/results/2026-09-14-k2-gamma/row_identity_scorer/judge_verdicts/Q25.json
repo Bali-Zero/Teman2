@@ -1,0 +1,20 @@
+{
+  "qid": "Q25",
+  "verdicts": [
+    {
+      "run": 1,
+      "verdict": "correct",
+      "reason": "Menyatakan data tidak memuat Permenkes/SLHS dan menolak mengonfirmasi masa berlaku maupun KBLI."
+    },
+    {
+      "run": 2,
+      "verdict": "correct",
+      "reason": "Abstensi dinyatakan jelas; tidak menegaskan tiga tahun atau mengarang daftar KBLI."
+    },
+    {
+      "run": 3,
+      "verdict": "correct",
+      "reason": "Menyatakan kesenjangan data dan tidak memberikan fakta substantif tentang validitas SLHS atau cakupan KBLI."
+    }
+  ]
+}

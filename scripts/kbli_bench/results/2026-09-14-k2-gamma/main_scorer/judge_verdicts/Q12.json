@@ -1,0 +1,20 @@
+{
+  "qid": "Q12",
+  "verdicts": [
+    {
+      "run": 1,
+      "verdict": "correct",
+      "reason": "Menyatakan data PBG/SLF tidak tersedia dan menolak menyebut persyaratan; sesuai abstention dengan pointer ke KBLI_RECORDS."
+    },
+    {
+      "run": 2,
+      "verdict": "correct",
+      "reason": "Menyatakan data PBG/SLF tidak tersedia dalam KBLI_RECORDS; memenuhi abstention dengan pointer."
+    },
+    {
+      "run": 3,
+      "verdict": "correct",
+      "reason": "Menyatakan kode yang tersedia tidak memuat ketentuan PBG/SLF; memenuhi abstention dengan pointer."
+    }
+  ]
+}
