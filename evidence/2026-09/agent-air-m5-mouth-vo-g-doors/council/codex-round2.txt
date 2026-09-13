@@ -1,0 +1,11 @@
+seat: codex-gpt-5.6-sol (codex exec -m gpt-5.6-sol -c model_reasoning_effort=high --sandbox read-only)
+round: 2 — final answer only (the full stdout re-echoes the prompt and the diff; kept in the session scratchpad)
+---
+169.230
+- [engine-adapter.ts:658](/Users/balizero/nuzantara/.worktrees/mouth-vo-g-doors/apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter.ts:658): `passiveIncome > 0` over-matches the E33F age door. Replaying the signed pack with income `1` or `2999` leaves `NO_SUPPORTED_PATH` after changing only the birth date to age 55; support begins at `3000`. The fixture tests only zero, so this boundary defect escapes.
+
+- [engine-adapter.ts:460](/Users/balizero/nuzantara/.worktrees/mouth-vo-g-doors/apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter.ts:460): raw codes still reach readers through the fallback. The new `indonesian-nationality` counterexample records `APPLICANT_IS_INDONESIAN_CITIZEN`, but that code has no `SUPPORT_REASON_COPY` entry, rendering `Verified reason: APPLICANT_IS_INDONESIAN_CITIZEN` and its ID equivalent. The wording test checks only `replay.walks`, while counterexamples test doors only.
+
+- [engine-adapter.ts:670](/Users/balizero/nuzantara/.worktrees/mouth-vo-g-doors/apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter.ts:670): both translations contradict the exact-age counterfactual. “From 55” is immediately described as an “over-55” route; Indonesian likewise says `di atas 55`. The pack admits age 55, not only ages above 55.
+
+VERDICT: DEFECT

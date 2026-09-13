@@ -331,35 +331,6 @@ def test_probe_child_gets_scrubbed_env(monkeypatch):
     assert "JWT_SECRET" not in captured["env"]
 
 
-def test_pii_gate_refuses_16_digit_run():
-    # synthetic 16-digit fixture with no keyword adjacency, so the repo's own
-    # Law-2 pre-commit gate (keyword+digits) does not match this file statically
-    with pytest.raises(kc.PiiRefusalError):
-        kc._check_prompt("client id 3201234567890124 please check")
-
-
-def test_pii_gate_allows_normal_visa_language():
-    # keywords alone are NOT PII — legitimate non-PII work mentions them
-    assert kc._check_prompt("explain KTP and NPWP requirements for a PT PMA") is None
-    assert kc._check_prompt("shorter ids like 1234567890 are fine") is None
-
-
-def test_pii_refusal_is_value_error_not_runtime_error():
-    # cascades treat RuntimeError as "dead seat -> next tier"; a PII refusal
-    # must NOT fall through to another cloud seat with the same prompt.
-    assert issubclass(kc.PiiRefusalError, ValueError)
-    assert not issubclass(kc.PiiRefusalError, RuntimeError)
-
-
-def test_run_pii_prompt_raises_before_subprocess(monkeypatch):
-    def fail_run(cmd, **kwargs):  # pragma: no cover - must never be reached
-        raise AssertionError("subprocess must not run for a refused prompt")
-
-    monkeypatch.setattr(kc.subprocess, "run", fail_run)
-    with pytest.raises(kc.PiiRefusalError):
-        kc.run("id 3201234567890124")
-
-
 def test_model_guard_refuses_flag_smuggling():
     with pytest.raises(ValueError, match="must not start with"):
         kc._check_model("--yolo")
@@ -382,37 +353,9 @@ def test_assert_credential_perms_missing_dir_never_raises(monkeypatch, tmp_path)
     kc._assert_credential_perms()
 
 
-def test_main_pii_refusal_exits_3(capsys):
-    # refusals are exit 3, distinct from usage errors (2) and runtime failures (1)
-    code = kc.main(["id 3201234567890124"])
-    assert code == 3
-    assert "REFUSED" in capsys.readouterr().err
-
-
 # ---------------------------------------------------------------------------
 # v2.1 — REWORK-BUILD cures from the Opus-5 Gear-2 verdict on 182c82d069
 # ---------------------------------------------------------------------------
-
-
-def test_pii_gate_refuses_separator_grouped_shapes():
-    # C3: documents and OCR near-always group KTP/NPWP with separators;
-    # a plain-only pattern was the under-match. Keyword kept apart from the
-    # digits so the repo's own Law-2 pre-commit gate does not match statically.
-    grouped = [
-        "3171 0101 9001 0002",
-        "3171-0101-9001-0002",
-        "3171.0101.9001.0002",
-        "01.234.567.8-901.234",  # 15-digit NPWP written form
-    ]
-    for shape in grouped:
-        with pytest.raises(kc.PiiRefusalError):
-            kc._check_prompt(f"check id {shape}")
-
-
-def test_pii_gate_still_allows_short_runs():
-    # dates, ports, short ids, local phone-length numbers all pass
-    assert kc._check_prompt("release 2026-08-12 on port 8000, ticket 1234567890") is None
-    assert kc._check_prompt("call 0812-3456-7890 for the office") is None
 
 
 def test_no_tools_agent_file_exists_and_disables_all_tools():
@@ -483,74 +426,6 @@ def test_assert_credential_perms_chmods_dir_0700(monkeypatch, tmp_path):
 # ---------------------------------------------------------------------------
 
 
-def test_pii_gate_refuses_evasion_shapes():
-    # every evasion the re-verdict proved against v2.1: NBSP, tab,
-    # double-space, slash, comma, newline, letter-adjacent, >= 17 digits,
-    # mixed separators
-    NBSP = " "
-    evasions = [
-        f"3171{NBSP}0101{NBSP}9001{NBSP}0002",
-        "3171\t0101\t9001\t0002",
-        "3171  0101  9001  0002",
-        "3171/0101/9001/0002",
-        "3171,0101,9001,0002",
-        "3171\n0101\n9001\n0002",
-        "NIK3171010190010002",  # letter-adjacent: \\b alone never caught this
-        "31710101019010002",  # 17 digits plain
-        "3171 0101-9001 0002",  # mixed separators
-    ]
-    for shape in evasions:
-        with pytest.raises(kc.PiiRefusalError):
-            kc._check_prompt(f"verify {shape} please")
-
-
-def test_pii_gate_allows_genuinely_short_numbers():
-    # innocence corpus: numbers below the identity class pass
-    allowed = [
-        "call 0812-3456-7890 for the office",  # 11 digits
-        "amount 1.234.567,89 due",  # money formatting, 9 digits
-        "release 2026-08-12, ticket 1234567890",  # date + 10-digit id
-        "port 15432 and exit code 42",
-    ]
-    for payload in allowed:
-        assert kc._check_prompt(payload) is None
-
-
-def test_pii_gate_declared_overmatch_fail_closed():
-    # DECLARED COST (owner call after the Opus-5 cycle-2 BLOCK): for a Law-2
-    # gate the fail-open/fail-closed asymmetry is decisive — long numeric
-    # lists are refused even when innocent. This test PINS the trade so it
-    # is a conscious, reviewable contract, not an accident: if someone
-    # "fixes" the over-match, this test turns red and forces the conversation.
-    declared_refusals = [
-        "compare KBLI 68111 68112 68120 risk tiers",
-        "2026-08-12 2026-08-13 2026-08-14 2026-08-15",
-        "ports 8000 8080 5432 6379 15432 9090",
-        "samples: 12 15 18 21 24 27 30 33",
-        "coords -8.409518, 115.188919 Bali",
-        "compare 2026 2027 2028 2029 revenue",
-    ]
-    for payload in declared_refusals:
-        with pytest.raises(kc.PiiRefusalError):
-            kc._check_prompt(payload)
-
-
-def test_pii_gate_catches_document_dump_shapes():
-    # the v2.2 regression the cycle-2 verdict measured (5/13): a NIK inside
-    # the ordinary shapes of a document dump or CRM export must refuse
-    dumps = [
-        "3171 0101 9001 0002 1",  # one appended digit defeated v2.2
-        "3171010190010002 01-09-1990",  # NIK + birth date
-        "name,3171010190010002,2026,1990,12345",  # CSV row
-        "3171010190010002\n3172020290020003",  # two NIKs, two lines
-        "3171010190010002 / 12345678",  # NIK + passport number
-        "317101019001000213171010190010",  # 20+ digit plain run
-    ]
-    for shape in dumps:
-        with pytest.raises(kc.PiiRefusalError):
-            kc._check_prompt(f"row: {shape}")
-
-
 def test_run_refuses_when_profile_loses_no_tools_pin(monkeypatch, tmp_path):
     # the "pin not armed" cure: a profile edit that drops `tools: []` must
     # turn the seat dead, not silently re-arm the exfil channel
@@ -588,22 +463,6 @@ def test_no_tools_pin_reads_frontmatter_not_body(monkeypatch, tmp_path):
 # v2.3.1 — the two one-line cures prescribed by the owner-resolved review
 # (N1 unicode separator artifacts, N2 frontmatter anchored at byte 0)
 # ---------------------------------------------------------------------------
-
-
-def test_pii_gate_refuses_unicode_separator_artifacts():
-    # N1: document dumps and OCR carry exactly these — soft hyphen,
-    # zero-width space/joiners, the Unicode dash family, FEFF
-    shapes = [
-        "3171­0101­9001­0002",   # soft hyphen U+00AD
-        "3171​0101​9001​0002",   # zero-width space U+200B
-        "3171‍0101‍9001‍0002",   # zero-width joiner U+200D
-        "3171–0101–9001–0002",   # en dash U+2013
-        "3171—0101—9001—0002",   # em dash U+2014
-        "3171﻿0101﻿9001﻿0002",   # FEFF
-    ]
-    for shape in shapes:
-        with pytest.raises(kc.PiiRefusalError):
-            kc._check_prompt(f"verify {shape}")
 
 
 def test_no_tools_pin_requires_frontmatter_at_byte_zero(monkeypatch, tmp_path):

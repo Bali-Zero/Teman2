@@ -1,0 +1,33 @@
+Reading additional input from stdin...
+OpenAI Codex v0.154.0
+--------
+workdir: /Users/balizero/nuzantara/.worktrees/backend-rag-vo-h-schema
+model: gpt-5.6-sol
+provider: openai
+approval: never
+sandbox: read-only
+reasoning effort: high
+reasoning summaries: none
+session id: 01a09afa-0acf-7b53-85cd-9bf31dfeead9
+--------
+
+-- EXCERPT ---------------------------------------------------------------
+Raw stdout was 871033 bytes / 7991 lines; sha256 3fd745902aa329a4df5b7489b7fcd68a38e8633b3a8710206e1a99f35b34a5e1.
+The cut part is the codex harness preamble and its per-tool-call echoes:
+this repo's own doctrine files (AGENTS.md, army-map, model roster) injected
+by the codex hooks, plus the full stdout of every rg/python probe the seat
+ran. None of it is review content and committing 5.3 MB of it would bury
+the PR. Kept below: the session header above, the seat's own final answer,
+and its VERDICT line verbatim.
+--------------------------------------------------------------------------
+
+codex
+No defects found.
+
+- Omit-when-empty is safely double-bound: generator output is byte-checked, while the backend table validates missing, extra, and stale flag rows in both directions ([generator](/Users/balizero/nuzantara/.worktrees/backend-rag-vo-h-schema/apps/mouth/scripts/visa-oracle/generate-walk-corpus.ts:605), [determinism test](/Users/balizero/nuzantara/.worktrees/backend-rag-vo-h-schema/apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/walk-corpus-determinism.test.ts:79), [table guard](/Users/balizero/nuzantara/.worktrees/backend-rag-vo-h-schema/apps/backend-rag/backend/tests/services/visa_engine/test_interview_walk_census.py:874)).
+- The scoped guilt tests are non-vacuous; an evaluation mutation that ignored flags failed both the funnel census and fabricated-flag test. Innocence compares the complete outcome for all 76 unflagged walks ([tests](/Users/balizero/nuzantara/.worktrees/backend-rag-vo-h-schema/apps/backend-rag/backend/tests/services/visa_engine/test_interview_walk_census.py:1599)).
+- Existing callers retain behavior because the parameter is keyword-only, defaults empty, and rebuilding occurs only for non-empty flags ([helper](/Users/balizero/nuzantara/.worktrees/backend-rag-vo-h-schema/apps/backend-rag/backend/scripts/visa_engine/gold_coverage_eval.py:143)).
+- The Round-7 field-set guard correctly fails at runtime on model drift and has an unconditional model-vs-pin test ([runtime guard](/Users/balizero/nuzantara/.worktrees/backend-rag-vo-h-schema/apps/backend-rag/backend/scripts/visa_engine/gold_coverage_eval.py:190), [test](/Users/balizero/nuzantara/.worktrees/backend-rag-vo-h-schema/apps/backend-rag/backend/tests/services/visa_engine/test_interview_walk_census.py:1757)).
+- Independent execution reproduced 84/84 generator byte matches, the claimed 67/15/2/0 and 60/15/1/8 censuses, and the 6/2 flag split. No non-goal files, PII, or credentials are changed.
+
+VERDICT: OK

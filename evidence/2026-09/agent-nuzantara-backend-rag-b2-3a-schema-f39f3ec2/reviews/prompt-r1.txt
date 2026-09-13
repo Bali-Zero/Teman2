@@ -1,0 +1,73 @@
+You are an ADVERSARIAL red-team reviewer (Gear-3 council, R9) for ONE frozen candidate file of the Nuzantara repo. You did not write it. Try to break it. Read-only: do not modify any file, do not run anything against a network database.
+
+CANDIDATE: apps/backend-rag/backend/db/migrations_v2/314_wa_outbox_evidence.sql
+SHA256 OF THE FROZEN BYTES: 8064d5288145b573268f2bb54ba163c0b7dedf4e229093766290ef80f947bad3
+Base: origin/main 461a4a93ac095cd723515eda06a8955d82bcefda. The PR adds this one SQL file plus an evidence pack (evidence/ only). No code, no test, no other file.
+
+THE SPEC IT MUST SATISFY (verbatim from research/operations/2026-09-11-bot-staff-room/B2-engine.md §4 B2.3a):
+"PR B2.3a — the schema. migrations_v2/NNN_wa_outbox_evidence.sql: abstained_at timestamptz NULL, evidence_score numeric NULL, no defaults, no backfill, forward SQL above -- === ROLLBACK ===. Required green: migration-number lint, Squawk, backend.db.migrate apply-all --dry-run, isolated up/down/up validation."
+Stop condition (§6): "the migration would touch a row" -> stop and escalate.
+Rollback rule (§3): "Normal rollback = retire the writer (revert B2.3b) and KEEP the nullable columns and the applied migration history; a production schema down is a separately authorized destructive operation after dependent writers are drained, never part of a routine rollback."
+Meaning (README §0 D6): "wa_outbox.abstained_at timestamptz NULL = the successful-send timestamp of a GENERATED reply whose frozen evidence label was true (it does not mean a refusal stub was delivered); wa_outbox.evidence_score numeric NULL = the same sealed package's frozen score; scripted/unscored routes keep NULL, nothing is inferred from reply text; final disposition is recorded separately by B3. Schema (B2.3a) and carrier/writer (B2.3b) ship as two PRs because fly-deploy.yml:262-282 runs pre-deploy migrations on the PREVIOUS image."
+
+RUNNER FACTS (repo): backend/db/migration_base.py splits the file at the ROLLBACK marker (ROLLBACK_MARKER_RE :342), runs only the forward section inside one asyncpg transaction (:879), stores the rollback section in _schema_versions.rollback_sql; migration_manager.py rollback_migration (:343) executes it and clears both ledgers. fly-deploy.yml: pre-deploy job `run-migrations` runs `python -m backend.db.migrate apply-all` via flyctl ssh on the PREVIOUS image; `run-sql-v2-migrations-post-deploy` re-runs apply-all on the fresh image.
+
+PRODUCTION FACTS measured read-only by the Dux 2026-09-13T11:15Z: Postgres 17.9; wa_outbox has 16 columns, none named abstained_at or evidence_score; 420 rows (179 done, 241 failed); _schema_versions max = 313.
+
+DUX RECEIPTS (local, isolated docker postgres:15.19 AND postgres:17.11, CI test credentials, bootstrap + apply-all to 313 BEFORE the file existed, 7 synthetic outbox rows): dry-run "Found 1 pending migrations ... 314: 314_wa_outbox_evidence.sql"; up -> both columns (timestamp with time zone|YES|<none>, numeric|YES|<none>), 18 columns, 314 in _schema_versions and schema_migrations; down via rollback_migration -> 16 columns, 314 absent from both ledgers; up again -> same as first up; rerun -> "No pending migrations". On every step the fingerprint sha256 of (id, status, xmin) over the cohort and pg_relation_filenode('wa_outbox') were UNCHANGED; guilt: an UPDATE inside a rolled-back transaction changed the fingerprint. Number lint (CI shell + scripts/lint_migration_numbers.py) green; scripts/lint_migration_rollback.py green; Squawk 2.65.0 with the CI exclude list: 0 issues (without excludes it reports only require-lock-timeout / require-statement-timeout, which CI excludes via require-timeout-settings).
+
+THE FILE (exact bytes):
+-----BEGIN FILE-----
+-- 314_wa_outbox_evidence.sql
+--
+-- B2.3a — the abstain record's SCHEMA, and nothing else (staff-room spec
+-- research/operations/2026-09-11-bot-staff-room/README.md §0 D6 and
+-- B2-engine.md §4 B2.3a). Before this, an abstain decision left no row:
+-- the sealed evidence label and score are parsed in wa_codex_leg.py and
+-- consumed by wa_finalize, and consumption clears the broker's copy
+-- (wa_broker.py), so nothing durable says which generated reply went out
+-- under a true abstain label or with which frozen score. Cycle 360 (B3)
+-- has to read that in SQL.
+--
+-- MEANING (D6, one meaning each, nothing inferred from reply text):
+--   abstained_at   = the successful-send timestamp of a GENERATED reply
+--                    whose frozen evidence label was true. It does NOT mean
+--                    a refusal stub was delivered.
+--   evidence_score = the same sealed package's frozen score.
+-- Scripted and unscored routes keep both NULL. The final disposition is
+-- recorded separately by B3.
+--
+-- WHY A SCHEMA-ONLY FILE: fly-deploy.yml runs the pre-deploy migration job
+-- on the PREVIOUS image and applies new SQL again after the new image
+-- starts. A writer shipped in the same PR would meet absent columns during
+-- that window, so the carrier and the fenced worker write (B2.3b) open only
+-- after this file is proven applied in production.
+--
+-- Nullable, no default, no backfill: on Postgres >= 11 an ADD COLUMN with
+-- no default is a catalog change — no table rewrite, no row touched — and
+-- the running image never reads either column, so a mixed-version deploy is
+-- safe in both directions.
+--
+-- NUMBERING: measured on fresh origin/main 461a4a93ac with `git ls-tree`:
+-- 313_garuda_practice_artifacts.sql is the last file. Open PRs carrying
+-- migrations_v2 SQL at cut time: #5037 (293/294/295), #5526 (304), #5337
+-- (304, a constraint on this table, no column of this file). A number is
+-- reserved only by merging it (cicatrix W40).
+
+ALTER TABLE wa_outbox ADD COLUMN IF NOT EXISTS abstained_at TIMESTAMPTZ NULL;
+ALTER TABLE wa_outbox ADD COLUMN IF NOT EXISTS evidence_score NUMERIC NULL;
+
+-- === ROLLBACK ===
+-- For isolated up/down/up validation. In production the routine rollback of
+-- the abstain record is reverting B2.3b (the writer) while KEEPING these
+-- nullable columns and the applied history; dropping them there is a
+-- separately authorized destructive operation after dependent writers are
+-- drained (B2-engine.md §3), never part of a routine rollback.
+ALTER TABLE wa_outbox DROP COLUMN IF EXISTS evidence_score;
+ALTER TABLE wa_outbox DROP COLUMN IF EXISTS abstained_at;
+-----END FILE-----
+
+ATTACK AT LEAST THESE: (1) does any statement touch, rewrite or lock-scan a row on PG 15 or 17 (ADD COLUMN ... NULL without default; IF NOT EXISTS semantics); (2) does IF NOT EXISTS hide a pre-existing column of a different type, and does the spec's post-deploy probe (\d wa_outbox exact types/nullability/no default) catch that; (3) is the explicit NULL keyword or NUMERIC without precision a deviation from "numeric NULL"; (4) previous-image window: can the previous image or the fresh image break when the columns appear; (5) is the ROLLBACK section correct, order-safe, and consistent with the §3 rule (it is stored in _schema_versions.rollback_sql — is that a hazard?); (6) ACCESS EXCLUSIVE lock without lock_timeout against a live worker table — a real risk or not at this table's size/traffic; (7) does any comment claim something false (check the cited files if you can read the repo); (8) anything in the spec the file does not satisfy.
+
+OUTPUT: findings first, each with severity BLOCKER/MAJOR/MINOR/NOTE and a falsifiable reason. Then, as the LAST line of your answer, exactly one line:
+VERDICT {"ok": <true only if no BLOCKER and no MAJOR>, "sha256": "8064d5288145b573268f2bb54ba163c0b7dedf4e229093766290ef80f947bad3", "blockers": <n>, "majors": <n>, "minors": <n>}

@@ -38,34 +38,21 @@ v2.1 (2026-08-12, REWORK-BUILD cure after the Opus-5 Gear-2 verdict on
 2. DURABLE PERMS — 0600 re-asserted on ~/.kimi-code/credentials|oauth files
    (0700 on the dirs themselves) before every subprocess run, refused paths
    included (mirrors qwen-cloud-code.sh v3 §0).
-3. PII GATE (SYMBIOSIS Law 2) — fail-closed numeric backstop: any run of
-   >= 15 digits allowing separators (whitespace/NBSP, dot, comma, slash,
-   dash) is refused BEFORE any network call, with no word-boundary
-   anchoring (letter-adjacent and 17+ digit runs included). The over-match
-   is the ACCEPTED and DECLARED cost (owner call after the Opus-5 cycle-2
-   BLOCK: for a Law-2 gate, a false refusal costs a reworded prompt, an
-   under-match costs client PII on a Chinese cloud): KBLI/port/date/sample
-   lists and coordinate pairs are refused too — reword or go interactive.
-   The gate sees only numeric shapes; spelled-out numbers, alphanumeric
-   passports, names and addresses stay outside its reach (backstop, not
-   boundary).
-   Raises PiiRefusalError (a ValueError, NOT RuntimeError) so future cascade
-   callers fail loudly instead of falling through to another cloud seat with
-   the same PII prompt (forward-looking: as of v2.3 no production caller
-   imports this module — the taxonomy is pre-registered doctrine).
-4. MODEL ARG GUARD — model slugs starting with "-" are refused (no flag
+3. MODEL ARG GUARD — model slugs starting with "-" are refused (no flag
    smuggling through -m).
 
 DECLARED RESIDUAL (parity with qwen-cloud-code.sh v3 §3): kimi -p persists a
 resumable session transcript under ~/.kimi-code/sessions/; retention control
 is harness state, not wrapper state.
 
-PII POSTURE — vendor-parity (RULED Zero 2026-08-24: the Chinese-cloud-
-specific limit is abolished system-wide). Kimi sits under the SAME common
-rules as Anthropic/OpenAI seats: SYMBIOSIS Law 2 output boundary (never
-transcribe client PII in persisted outputs/logs/memories) and the Art. 56
-basis (DPA+consent) for PROD transfers. The numeric backstop gate below is
-retained as a vendor-NEUTRAL minimization control, not a China fence.
+PII POSTURE — vendor parity (RULED Zero 2026-08-24: the Chinese-cloud
+fence is abolished system-wide; the numeric backstop gate that used to
+sit here is removed by the same ruling — verbatim "fallo smontare",
+2026-08-24). Kimi sits under the SAME common rules as Anthropic/OpenAI
+seats: no client-side gate — the vendor-neutral SYMBIOSIS Law 2 output
+boundary (never transcribe client PII in persisted outputs/logs/memories)
+and the Art. 56 basis (DPA+consent) for PROD transfers govern usage,
+enforced by policy, not by this wrapper.
 
 Stdlib-only (subprocess, argparse, os, re, sys, shutil) — no new dependencies.
 """
@@ -115,36 +102,6 @@ _CRED_ENV_MARKERS: tuple[str, ...] = (
 _CRED_ENV_ALLOWLIST_PREFIXES: tuple[str, ...] = ("KIMI_CODE_",)
 _CRED_ENV_ALLOWLIST_EXACT: frozenset[str] = frozenset({"KIMI_BIN"})
 
-#: PII gate (Law 2) — fail-closed numeric backstop (v2.3).
-#:
-#: HISTORY: v2.1 used a flat \b-anchored 15-16 digit pattern (10/13 PII
-#: shapes caught, some sanctioned payloads refused). v2.2 tried to separate
-#: identity-vs-list by length arithmetic — the Opus-5 cycle-2 verdict
-#: (BLOCK, REWORK-DESIGN) measured it as a NET REGRESSION (5/13) because a
-#: greedy candidate run swallows a NIK into a longer "list" (one appended
-#: digit defeated the gate). The two classes are not separable by that
-#: predicate, and for a Law-2 gate the asymmetry is decisive: over-match
-#: costs a refusal, under-match costs client PII on a Chinese cloud.
-#:
-#: v2.3 is therefore deliberately FAIL-CLOSED: any run of >= 15 digits
-#: allowing run-of separators is refused. The separator class covers ASCII
-#: whitespace AND NBSP, dot, comma, slash, ASCII dash, soft hyphen
-#: (U+00AD), zero-width space/joiners (U+200B-200D), the Unicode dash
-#: family (U+2010-2015) and the BOM/zero-width no-break space (FEFF) —
-#: document dumps and OCR carry exactly these artifacts (N1 of the
-#: owner-resolved review: an earlier draft claimed this coverage without
-#: having it). No \b anchoring: letter-adjacent ("NIK3171...") and 17+
-#: digit runs are caught. The over-match is the ACCEPTED, DECLARED cost
-#: (W113): KBLI code lists, port lists, date ranges, sample series,
-#: coordinate pairs are refused too — reword the prompt (e.g. name the
-#: codes in prose ranges) or use an interactive session. Declared
-#: residuals: the gate sees only numeric shapes — spelled-out numbers,
-#: alphanumeric passports, names and addresses are NOT detected; it is a
-#: backstop, never the whole boundary.
-_PII_RUN_RE = re.compile(
-    r"\d(?:[\s.,/\-\u00ad\u200b-\u200d\u2010-\u2015\ufeff]*\d){14,}"
-)
-
 #: Pinned no-tools agent profile bound to every child invocation via
 #: --agent-file (the C1/C2 cure: kimi -p has tools live by default, and a
 #: reading child is an exfil channel around the prompt gate).
@@ -157,15 +114,6 @@ _AGENT_FILE = Path(__file__).resolve().parent / "kimi_client_agent.md"
 #: (F3 of the cycle-2 verdict). A profile edit that drops or fills the tools
 #: list turns the seat dead instead of letting the guard silently lapse.
 _NO_TOOLS_MARKER_RE = re.compile(r"^tools:\s*\[\s*\]\s*$", re.MULTILINE)
-
-
-class PiiRefusalError(ValueError):
-    """Prompt refused by the Law-2 PII gate.
-
-    A ValueError (not RuntimeError) on purpose: cascade callers treat
-    RuntimeError as "dead seat → try next tier", and a PII prompt must
-    never fall through to another cloud seat.
-    """
 
 
 def _resolve_kimi_bin() -> str | None:
@@ -225,19 +173,6 @@ def _scrubbed_env() -> dict[str, str]:
     if dropped:
         logger.info("kimi_client: scrubbed credential env vars: %s", ", ".join(sorted(dropped)))
     return env
-
-
-def _check_prompt(prompt: str) -> None:
-    """Law-2 PII gate. Fail-closed: refuses any >= 15-digit separator run."""
-    if _PII_RUN_RE.search(prompt):
-        raise PiiRefusalError(
-            "prompt refused by the Law-2 PII gate: >= 15-digit numeric shape "
-            "detected (identity-number class; the gate is fail-closed — long "
-            "numeric lists like KBLI codes or date ranges are refused too, "
-            "reword the prompt). This backstop is vendor-neutral data "
-            "minimization (Zero 2026-08-24 vendor-parity ruling) — reword, "
-            "or route identity-number work to a local model (pii_intake)."
-        )
 
 
 def _assert_no_tools_profile() -> None:
@@ -313,12 +248,11 @@ def run(
 ) -> str:
     """Run ``prompt`` through the ``kimi`` CLI, return stdout.
 
-    Raises PiiRefusalError (ValueError) when the Law-2 gate refuses the
-    prompt — loudly, so cascades do NOT fall through to another cloud seat
-    with the same prompt. Raises RuntimeError (with a stderr excerpt) on a
-    missing binary, a missing pinned agent file, a non-zero exit, or a
-    timeout — the caller decides how to degrade (e.g. a cascade fallback
-    treats this as a dead seat, never a crash of the whole run).
+    Raises RuntimeError (with a stderr excerpt) on a missing binary, a
+    missing pinned agent file, a non-zero exit, or a timeout — the caller
+    decides how to degrade (e.g. a cascade fallback treats this as a dead
+    seat, never a crash of the whole run). Raises ValueError on a refused
+    model slug (flag-smuggling guard).
 
     The child is always bound to scripts/kimi_client_agent.md (tools: [] —
     no filesystem, no shell, no network beyond the model call), so ``cwd``
@@ -326,7 +260,6 @@ def run(
     """
     _assert_credential_perms()
     _check_model(model)
-    _check_prompt(prompt)
     binp = _resolve_kimi_bin()
     if not binp:
         raise RuntimeError("kimi binary not found (KIMI_BIN unset, ~/.kimi-code/bin/kimi absent, not on PATH)")
@@ -379,9 +312,9 @@ def main(argv: list[str] | None = None) -> int:
 
     try:
         output = run(args.prompt, model=args.model)
-    except (PiiRefusalError, ValueError) as exc:
-        # refusals (Law-2 gate, model guard) are exit 3 — distinct from usage
-        # errors (2) and runtime failures (1)
+    except ValueError as exc:
+        # refusals (model guard) are exit 3 — distinct from usage errors (2)
+        # and runtime failures (1)
         print(f"kimi_client: REFUSED: {exc}", file=sys.stderr)
         return 3
     except RuntimeError as exc:

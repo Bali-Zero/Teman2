@@ -1,0 +1,33 @@
+Reading additional input from stdin...
+OpenAI Codex v0.154.0
+--------
+workdir: /Users/balizero/nuzantara/.worktrees/backend-rag-vo-h-schema
+model: gpt-5.6-sol
+provider: openai
+approval: never
+sandbox: read-only
+reasoning effort: high
+reasoning summaries: none
+session id: 01a09ab4-9945-76c2-a4c6-cc4fa1f0cea3
+--------
+
+-- EXCERPT ---------------------------------------------------------------
+Raw stdout was 666227 bytes / 8029 lines; sha256 572e8b98259c4fc380678a3dcaec5ab909fd68afb71e33c8f9cfbd5716956c4a.
+The cut part is the codex harness preamble and its per-tool-call echoes:
+this repo's own doctrine files (AGENTS.md, army-map, model roster) injected
+by the codex hooks, plus the full stdout of every rg/python probe the seat
+ran. None of it is review content and committing 5.3 MB of it would bury
+the PR. Kept below: the session header above, the seat's own final answer,
+and its VERDICT line verbatim.
+--------------------------------------------------------------------------
+
+codex
+Nessun difetto trovato.
+
+- Il generatore omette correttamente il campo vuoto ([generate-walk-corpus.ts:603](/Users/balizero/nuzantara/.worktrees/backend-rag-vo-h-schema/apps/mouth/scripts/visa-oracle/generate-walk-corpus.ts:603)); la rigenerazione in memoria ha prodotto 84 file byte-identici, con esattamente gli 8 flag fissati dalla tabella ([test_interview_walk_census.py:639](/Users/balizero/nuzantara/.worktrees/backend-rag-vo-h-schema/apps/backend-rag/backend/tests/services/visa_engine/test_interview_walk_census.py:639)). Il controllo bidirezionale e i test lost/gained impediscono che l’omissione nasconda una regressione ([test_interview_walk_census.py:847](/Users/balizero/nuzantara/.worktrees/backend-rag-vo-h-schema/apps/backend-rag/backend/tests/services/visa_engine/test_interview_walk_census.py:847), [test_interview_walk_census.py:1569](/Users/balizero/nuzantara/.worktrees/backend-rag-vo-h-schema/apps/backend-rag/backend/tests/services/visa_engine/test_interview_walk_census.py:1569)).
+- L’esecuzione diretta dei nuovi test conferma ENGINE 67/15/2/0, FUNNEL 60/15/1/8, sei `ACTIVITY_BOUNDARY`, due `NOT_CERTAIN`, e nessuna differenza sui 76 walk innocenti.
+- Il nuovo parametro è keyword-only e inattivo per default; replay e CLI continuano a chiamarlo senza flag ([gold_coverage_eval.py:124](/Users/balizero/nuzantara/.worktrees/backend-rag-vo-h-schema/apps/backend-rag/backend/scripts/visa_engine/gold_coverage_eval.py:124), [gold_coverage_eval.py:226](/Users/balizero/nuzantara/.worktrees/backend-rag-vo-h-schema/apps/backend-rag/backend/scripts/visa_engine/gold_coverage_eval.py:226)).
+- Entrambe le correzioni prose sono ora coerenti col mapper e con i due soli override letterali `unsure` ([test_interview_walk_census.py:154](/Users/balizero/nuzantara/.worktrees/backend-rag-vo-h-schema/apps/backend-rag/backend/tests/services/visa_engine/test_interview_walk_census.py:154), [test_interview_walk_census.py:181](/Users/balizero/nuzantara/.worktrees/backend-rag-vo-h-schema/apps/backend-rag/backend/tests/services/visa_engine/test_interview_walk_census.py:181)).
+- Nessun cambiamento ai non-goal e nessuna esposizione di PII o credenziali.
+
+VERDICT: OK

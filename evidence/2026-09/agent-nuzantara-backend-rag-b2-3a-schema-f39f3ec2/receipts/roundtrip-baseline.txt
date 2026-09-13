@@ -1,0 +1,19 @@
+### bytes 6b5d3d8b — baselines pg15d / pg17d (file moved aside during setup; completed before 2026-09-13T11:52:38Z)
+server_version=15.19 (Debian 15.19-1.pgdg13+2)
+baseline_max=313
+baseline_max=313 outbox_rows=7
+## probe: baseline (313, no 314 file)
+column_count=16
+sv_314=0 sm_314=0
+relfilenode=18525
+cohort_sha256=45190630ffaf26a050194fe31a16b252ef15e389e4acba739b5e595c7f452b60
+rc=0
+server_version=17.11 (Debian 17.11-1.pgdg13+2)
+baseline_max=313
+baseline_max=313 outbox_rows=7
+## probe: baseline (313, no 314 file)
+column_count=16
+sv_314=0 sm_314=0
+relfilenode=18525
+cohort_sha256=7e0375a6e45cd5e888bddd2e311fd4b4d205fcb9c599c02214c2ca7024a84af2
+rc=0

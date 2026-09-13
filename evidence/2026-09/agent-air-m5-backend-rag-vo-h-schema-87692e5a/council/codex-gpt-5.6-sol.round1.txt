@@ -1,0 +1,31 @@
+Reading additional input from stdin...
+OpenAI Codex v0.154.0
+--------
+workdir: /Users/balizero/nuzantara/.worktrees/backend-rag-vo-h-schema
+model: gpt-5.6-sol
+provider: openai
+approval: never
+sandbox: read-only
+reasoning effort: high
+reasoning summaries: none
+session id: 01a09aa5-462e-75c0-b3a9-dbd86edeb95f
+--------
+
+-- EXCERPT ---------------------------------------------------------------
+Raw stdout was 1048621 bytes / 11651 lines; sha256 482525f961b503a116dacf066dfd15c298cfba9371413a8f91d208c9a383a1fb.
+The cut part is the codex harness preamble and its per-tool-call echoes:
+this repo's own doctrine files (AGENTS.md, army-map, model roster) injected
+by the codex hooks, plus the full stdout of every rg/python probe the seat
+ran. None of it is review content and committing 5.3 MB of it would bury
+the PR. Kept below: the session header above, the seat's own final answer,
+and its VERDICT line verbatim.
+--------------------------------------------------------------------------
+
+codex
+Finding:
+
+- LOW — La documentazione aggiunta si contraddice. [test_interview_walk_census.py:154](/Users/balizero/nuzantara/.worktrees/backend-rag-vo-h-schema/apps/backend-rag/backend/tests/services/visa_engine/test_interview_walk_census.py:154) afferma che nessun walk risponde `unsure` a una sponsor question; [test_interview_walk_census.py:622](/Users/balizero/nuzantara/.worktrees/backend-rag-vo-h-schema/apps/backend-rag/backend/tests/services/visa_engine/test_interview_walk_census.py:622) dichiara invece due walk del genere, confermati dal generatore a [generate-walk-corpus.ts:391](/Users/balizero/nuzantara/.worktrees/backend-rag-vo-h-schema/apps/mouth/scripts/visa-oracle/generate-walk-corpus.ts:391) e [generate-walk-corpus.ts:531](/Users/balizero/nuzantara/.worktrees/backend-rag-vo-h-schema/apps/mouth/scripts/visa-oracle/generate-walk-corpus.ts:531). È vero soltanto che quei campi non attivano `AMBIGUOUS_SPONSOR`; attivano `NOT_CERTAIN`.
+
+Le verifiche funzionali confermano invece i claim principali: parità generatore/fixture su 84 file, censimenti 67/15/2/0 e 60/15/1/8, flag 6+2, guilt/innocence sensibili alle mutazioni, reason code corretti, caller esistenti invariati e nessuna modifica a non-goal, PII o credenziali.
+
+VERDICT: DEFECT - The added census documentation falsely says no walk answers unsure to a sponsor question even though two generated walks do exactly that.

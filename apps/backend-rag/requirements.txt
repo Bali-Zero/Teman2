@@ -32,10 +32,10 @@ boto3>=1.43.71
 
 # AI/ML - UPGRADED FOR HTTPX 0.28+ COMPATIBILITY
 openai>=2.53.0  # Upgraded for httpx 0.28+ (proxies parameter removed)
-anthropic>=0.122.0  # Upgraded for httpx 0.28+ compatibility
+anthropic>=1.2.0  # Upgraded for httpx 0.28+ compatibility
 # PyTorch - Explicitly specify compatible version to avoid RuntimeError with sentence-transformers
 # PyTorch 2.2.0+ required for transformers compatibility (register_pytree_node)
-torch>=2.13.0  # Security: RCE via torch.load fixed in 2.6.0 (CVE-2025-32434)
+torch>=2.14.0  # Security: RCE via torch.load fixed in 2.6.0 (CVE-2025-32434)
 sentence-transformers>=5.7.0  # Updated 2026-03-14: tested compatible, CrossEncoder API stable, sparse embeddings support
 transformers>=5.15.0  # Security: HIGH GHSA-fgcw-684q-jj6r (<5.5.0) + GHSA-29pf-2h5f-8g72 (<5.3.0), fixed 5.5.0
 huggingface-hub>=1.27.0,<2.0  # transformers>=5.15.0 requires hub>=1.5.0,<2.0; sentence-transformers itself has no upper cap (verified via wheel METADATA)
@@ -136,7 +136,7 @@ googleapis-common-protos>=1.75.1  # Fix pkg_resources deprecation warning
 # Langfuse POC (observability) - kill-switch via LANGFUSE_ENABLED env var
 # Added 2026-04-21 in feat/observability-langfuse-poc (see apps/backend-rag/README.md)
 langfuse>=4.14.4,<5.0.0  # LLM observability, OTEL-based v2+
-openinference-instrumentation-anthropic>=1.1.2  # Auto-trace Anthropic calls
+openinference-instrumentation-anthropic>=2.1.1  # Auto-trace Anthropic calls
 openinference-instrumentation-google-genai>=1.4.0  # Auto-trace google-genai SDK (Gemini)
 openinference-instrumentation-openai>=0.1.54  # Auto-trace OpenAI-compat (DeepSeek, Ollama)
 
