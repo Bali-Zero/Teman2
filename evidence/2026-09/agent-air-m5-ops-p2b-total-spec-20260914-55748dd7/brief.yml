@@ -1,0 +1,114 @@
+# Brief — P2b: the moratorium-total criterion gets a spec instead of an eighth alternation
+gear: 2
+gear_reason: >-
+  Deterministic floor is 2, measured with
+  `python3 scripts/evidence_pack_lint.py --print-floor --changed-files-file <name-only>
+  --numstat-file <numstat>` over the COMPLETE staged set including this brief (source: size —
+  419 net lines, no hot-zone path). Gear 2 EQUALS the floor, it does not exceed it. Measured
+  twice on purpose: without this brief staged the same command returns 1, so a floor read before
+  the evidence exists understates the class of its own PR — the number that governs is the one
+  taken over the complete set, which is what the harness recomputes in CI. Independently of the
+  floor, the change alters what the P2b benchmark counts as a failing answer, moving four clause
+  shapes out of "convicted" and one into it, so it wants a gate verdict. The author of this diff
+  must NOT sign it.
+task_id: p2b-total-spec-20260914
+mandate_id: KBLI-P2b / post-#6428 spec
+colour: BLUE
+l_level: L2
+host: M5 (Air-M5)
+worktree: .worktrees/ops-p2b-total-spec-20260914
+branch: agent/air-m5/ops/p2b-total-spec-20260914
+base: origin/main at the merge of #6428 (8664b1ba30)
+pii_scan: clean
+pii_scan_note: >-
+  No personal data. Indonesian and English clause fixtures about KBLI code counts, two regex
+  constants, and a specification document. No client identifiers, no staff names.
+
+predecessor: >-
+  PR #6428 merged carrying its own `council_quorum: NOT_MET` and two declared open findings. Its
+  round 5 and round 6 both patched the same criterion. A fallback council seat seated under RULING
+  I80 returned DEFECT twice on that surface, and the gate verdict on #6428 was BLOCK — the PR
+  merged anyway. That verdict and both seat transcripts are at
+  /Users/balizero/BATTAGLIA-20260911/GATE-6428-VERDICT.md (not in-repo: written by the gate
+  session, outside the contribution chain).
+
+objective: >-
+  Write the spec the code itself asked for, and implement it. The comment above COUNTED_NOUN on
+  origin/main ends "The spec this needs is 'what counts as quoting a total', written down — not
+  another alternation." This is that document plus its implementation and fixtures.
+
+the_finding: >-
+  Seven council rounds patched the NOUN. The cause was the RELATION. The criterion asked only that
+  the numeral and the noun sit within 40 characters of one clause, and proximity is not a count.
+  Measured on origin/main, all four of these CONVICT and none quotes a code total:
+  "biaya rp 48 juta untuk kode baru" (48 million rupiah for a new code); "pasal 48 mengatur kode
+  etik perusahaan" (article 48 governs the code of ethics); "518 halaman berisi daftar kode"
+  (518 pages contain the list); "48 dari kode yang berstatus itu". Separately, round 6's
+  right-hand \b lost "48 kodenya terkena moratorium", which convicted before it — and that
+  direction inflates the score, because decidable_pass is `all(required) and not totals`.
+
+scope:
+  - docs/specs/p2b-quoting-a-moratorium-total-v1.md # new: the spec, with the measured table
+  - scripts/kbli_bench/score_p2b.py # entity + adjacency + ternary outcome; criterion stated to the judge
+  - scripts/tests/test_score_p2b.py # 17 fixtures across the three outcomes, plus four contract tests
+
+constraints:
+  - "One concern: the moratorium-total criterion. No other scorer surface touched."
+  - >-
+    The two declared open findings of #6428 (row identity over row count; reduceRow's six-item
+    cap) are NOT addressed and stay declared.
+  - >-
+    An unquoted " #" opens a YAML comment, so a plain list item naming a PR number silently
+    loses its tail. Both items that name one are block scalars for that reason.
+  - decidable_pass keeps its exact formula. An undecidable clause lowers nothing — that is the point.
+  - Two pre-existing tests pinned the deferral list by exact value and by bare count. Both were
+    updated with the reason written beside them, and the complete list is now pinned in exactly ONE
+    place so a criterion silently DROPPED still fails.
+
+receipts:
+  - claim: "the five behaviour changes are exactly the intended ones, and nothing else moves"
+    cmd: "import both module versions, run all 17 fixtures through moratorium_scope_check, diff the outcomes"
+    result: >-
+      17 fixtures, 5 changed: "48 kodenya" clear -> CONVICTED (false negative closed); four
+      proximity cases CONVICTED -> undecidable (false positives closed); 12 unchanged, including
+      the two false positives round 5's widening had produced.
+    exit: 0
+    ts: "2026-09-14T09:05:00Z"
+    seat: claude-opus-5
+  - claim: "the new tests bite on origin/main"
+    cmd: "cp the cure aside, restore origin/main's score_p2b.py, pytest -k spec_, restore the cure with cp"
+    result: "19 of 20 spec tests FAIL on origin/main; 75/75 pass with the cure. Restored from the cp backup, never with git checkout."
+    exit: 0
+    ts: "2026-09-14T09:12:00Z"
+    seat: claude-opus-5
+  - claim: "suite green, nothing else regressed"
+    cmd: "python3 -m pytest scripts/tests/test_score_p2b.py -q"
+    result: "75 passed"
+    exit: 0
+    ts: "2026-09-14T09:15:00Z"
+    seat: claude-opus-5
+  - claim: "the path the source cites exists"
+    cmd: "ls docs/specs/p2b-quoting-a-moratorium-total-v1.md"
+    result: "present; the first draft of the comment cited a filename that did not exist and it was corrected before commit"
+    exit: 0
+    ts: "2026-09-14T09:18:00Z"
+    seat: claude-opus-5
+
+open_findings_for_the_gate: >-
+  (1) The deferral now hands a third criterion to the judge, which costs judge tokens and covers
+  fewer cases deterministically. Zero approved the ternary outcome explicitly on 2026-09-14.
+  (2) The enclitic set is closed and Indonesian-only: -nya, -ku, -mu, -kah, -lah. A form outside it
+  lands in `undecidable`, not in `clear`, so the failure mode is a judge read rather than a missed
+  total. Widening it means editing the spec first, by its own acceptance criterion 6.
+  (3) #6428's council quorum was never met and its pack still says so on main. This PR does not
+  cure that and does not claim to.
+
+lesson:
+  what: >-
+    Seven adversarial rounds, three seats, and every one of them argued about the alternation. The
+    defect was one line away, in the `[^.;]{0,40}` that nobody read as a claim.
+  why_it_matters: >-
+    A guard with two outcomes on a three-outcome question will keep producing defects, and each
+    round will look like progress because it fixes the case in front of it. The fix was not a better
+    regex, it was admitting that the third class exists — which the same function had already done
+    twice, for the same reason, in the same docstring.

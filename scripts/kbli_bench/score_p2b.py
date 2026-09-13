@@ -155,12 +155,46 @@ DASH_FOLD = {ord(c): "-" for c in "­‐‑‒–—―−﹘﹣－"}
 # total; what makes 518 forbidden is being quoted AS THE COUNT of what the moratorium covers, and
 # that is a claim about meaning.
 #
-# This is the FIFTH round of one cause on this surface, and the surface was already suspended for
-# it at round 4 (see moratorium_scope_check's docstring). So the widening is withdrawn rather than
-# patched a second time: the criterion goes back to the narrow form the ruling left standing, the
-# under-match is DECLARED here and carried as an open finding, and nothing pretends to decide it.
-# The spec this needs is "what counts as quoting a total", written down — not another alternation.
-COUNTED_NOUN = r"\b(kbli|kode|codes?)\b"
+# Rounds 5 and 6 both patched the NOUN — widened, withdrawn, then bounded on both sides. Seven
+# rounds of that, and the cause was never the noun: it was the RELATION. The criterion asked only
+# that the numeral and the noun sit within 40 characters of the same clause, and 40 characters of
+# proximity is not a count. Measured on the merged candidate (#6428, 054c780b8b), all four of
+# these CONVICTED and none of them quotes a code total:
+#     "biaya rp 48 juta untuk kode baru"        48 million rupiah for a new code
+#     "pasal 48 mengatur kode etik perusahaan"  article 48 governs the code of ethics
+#     "518 halaman berisi daftar kode"          518 pages contain the list of codes
+#     "... lihat 48 jam kerja dan kode sumber"  48 working hours and the source code
+# And round 6's right-hand \b opened the opposite error: "48 kodenya terkena moratorium" convicted
+# before it and escapes after, because `-nya` is a word character. That one matters more, because
+# `decidable_pass` is `all(required) and not totals`: a false negative INFLATES the score.
+#
+# So this is the spec that comment asked for, written down:
+# docs/specs/p2b-quoting-a-moratorium-total-v1.md. Three changes it makes, and each one is
+# a fixture below:
+#   ENTITY   left boundary mandatory (excludes `barcodes`, and the Indonesian prefixed verbs
+#            `mengkode`/`dikode`/`berkode`, which are not the noun); on the right a CLOSED set of
+#            Indonesian enclitics precedes the boundary, because `kodenya` IS the noun.
+#   RELATION adjacency, not proximity. The 40-character window is ABOLISHED. A numeral counts the
+#            noun when it is adjacent to it, or joined by an explicit quantity connective.
+#   OUTCOME  TERNARY. A clause where numeral and noun coexist but not in the adjacent form is
+#            UNDECIDABLE — neither convicted nor cleared — and the criterion is stated to the
+#            judge instead, which is what this same function already does for permanence and
+#            universality after three regex defects each.
+MORATORIUM_TOTAL_NUM = r"(?:518|48)"
+COUNTED_NOUN = r"\b(?:kbli|kode|codes?)(?:nya|ku|mu|kah|lah)?\b"
+# Quantity connectives that make an adjacent numeral a COUNT of the noun, in both directions.
+_COUNT_BEFORE_NOUN = r"(?:buah|jenis|macam)\s+"
+_COUNT_AFTER_NOUN = r"(?:sebanyak|berjumlah|totalling|totaling)\s+"
+QUOTES_TOTAL = (
+    rf"\b{MORATORIUM_TOTAL_NUM}\b[\s\-]*(?:{_COUNT_BEFORE_NOUN})?{COUNTED_NOUN}"
+    rf"|{COUNTED_NOUN}[\s\-]*{_COUNT_AFTER_NOUN}\b{MORATORIUM_TOTAL_NUM}\b"
+)
+# Coexistence without adjacency. Deliberately the OLD shape, kept only to tell "undecidable"
+# apart from "clear": if the two never meet in a clause there is nothing for a judge to read.
+TOTAL_NUM_AND_NOUN_COEXIST = (
+    rf"\b{MORATORIUM_TOTAL_NUM}\b[^.;]*{COUNTED_NOUN}"
+    rf"|{COUNTED_NOUN}[^.;]*\b{MORATORIUM_TOTAL_NUM}\b"
+)
 BAN_WORDS = r"(dilarang|diblokir|terkena|ditutup|banned|blocked|moratorium|moratoria)"
 UNIVERSAL_WORDS = r"((semua|seluruh)\s+kbli|all\s+kbli|every\s+kbli|setiap\s+kbli)"
 
@@ -208,10 +242,12 @@ def moratorium_scope_check(text: str) -> dict:
     clauses = re.split(r"[.;\n]", t)
 
     totals = []
+    undecidable_totals = []
     for cl in clauses:
-        if re.search(rf"\b(518|48)\b[^.;]{{0,40}}{COUNTED_NOUN}", cl) or \
-           re.search(rf"{COUNTED_NOUN}[^.;]{{0,40}}\b(518|48)\b", cl):
+        if re.search(QUOTES_TOTAL, cl):
             totals.append(cl.strip()[:120])
+        elif re.search(TOTAL_NUM_AND_NOUN_COEXIST, cl):
+            undecidable_totals.append(cl.strip()[:120])
 
     names_medium_low = bool(re.search(MEDIUM_LOW, t))
     # strip the medium-low spans before looking for the low class, or "menengah rendah" answers
@@ -227,11 +263,19 @@ def moratorium_scope_check(text: str) -> dict:
     }
     forbidden = {"quotes_a_moratorium_total": totals}
     return {
+        # UNCHANGED on purpose: only a clause convicted by the adjacent form can fail a question.
+        # An undecidable clause does NOT lower this — that is the whole point of the third outcome.
         "decidable_pass": all(required.values()) and not totals,
         "required": required,
         "forbidden": forbidden,
-        "deferred_to_judge": ["states_permanence", "claims_every_kbli_banned"],
+        "undecidable": {"quotes_a_moratorium_total": undecidable_totals},
+        "deferred_to_judge": ["states_permanence", "claims_every_kbli_banned",
+                              "quotes_a_moratorium_total_when_undecidable"],
         "deferral_reason": (
+            "quoting a total is the THIRD criterion on this surface to reach the judge for the same "
+            "reason, after seven rounds of regex defects: a numeral adjacent to the noun is decided "
+            "here, a numeral merely CO-OCCURRING with it is not, because proximity is not a count "
+            "and guessing either way was measured wrong in both directions. "
             "permanence and universality are judgements about meaning in free text; three council "
             "rounds produced three different regex defects on them, so they are stated to the judge "
             "as explicit expectations instead of guessed at deterministically"
@@ -246,6 +290,13 @@ CLASS_RULE_EXPECTATIONS = {
         "The answer must NOT claim the moratorium covers every KBLI. It covers the Low and "
         "Medium-Low risk classes only. 'All KBLI in the Low and Medium-Low classes' is correct; "
         "'all KBLI' with a class mentioned only as an example is WRONG.",
+        "The answer must NOT quote a code TOTAL as the answer to 'which KBLI'. Neither 518 (every "
+        "blocked record, five causes conflated) nor 48 (only the codes whose status names the "
+        "moratorium) answers it. The scorer convicts the unambiguous forms ('48 kode', '518 codes') "
+        "on its own; where a number merely appears near the word for codes it is left to you, "
+        "because a number beside a noun is not a count of it ('article 48 governs the code of "
+        "ethics' is not a total). Judge whether the answer PRESENTS a number as the count of "
+        "affected KBLI.",
     ],
 }
 

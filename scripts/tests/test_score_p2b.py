@@ -144,13 +144,20 @@ def test_the_semantic_criteria_are_deferred_not_guessed(score_mod, sentence):
             "untuk seluruh KBLI dengan kategori risiko Rendah dan Menengah Rendah. ")
     r = score_mod.moratorium_scope_check(head + sentence)
     assert r["decidable_pass"] is True
-    assert r["deferred_to_judge"] == ["states_permanence", "claims_every_kbli_banned"]
+    # MEMBERSHIP, not an exact list. This test's subject is that permanence and universality are
+    # DEFERRED and that the three sentences are indistinguishable to the decidable rule; it is not
+    # the place that owns the length of the deferral list. The 2026-09-14 spec added a third
+    # criterion to that list, and an exact-list assertion here would have made this test fail for
+    # a reason it does not care about. The complete list is pinned in exactly one place, below:
+    # test_the_deferred_criteria_reach_the_judge, so a criterion silently DROPPED is still caught.
+    assert "states_permanence" in r["deferred_to_judge"]
+    assert "claims_every_kbli_banned" in r["deferred_to_judge"]
     assert r["deferral_reason"]
 
 
 def test_the_deferred_criteria_reach_the_judge(score_mod, tmp_path, monkeypatch):
     """A criterion that is deferred and then never stated to anyone is not deferred, it is
-    dropped. The judge prompt for this class carries both expectations in full."""
+    dropped. The judge prompt for this class carries every expectation in full."""
     corpus = json.loads(CORPUS_PATH.read_text())
     q23 = [q for q in corpus["questions"] if score_mod.is_moratorium_scope_question(q)]
     assert len(q23) == 1
@@ -163,9 +170,18 @@ def test_the_deferred_criteria_reach_the_judge(score_mod, tmp_path, monkeypatch)
     monkeypatch.setattr(score_mod, "find_root", lambda: REPO_ROOT)
     score_mod.cmd_prompts(str(cp), str(ap), str(outdir))
     payload = json.loads((outdir / f"{q23[0]['id']}.txt").read_text().split("INPUT:\n", 1)[1])
-    assert len(payload["class_rule_expectations"]) == 2
-    assert "PERMANENT" in payload["class_rule_expectations"][0]
-    assert "every KBLI" in payload["class_rule_expectations"][1]
+    # Pinned by IDENTITY, and the whole set at once. A bare count was the earlier form and it
+    # names no set: this repo's own lesson is that a number does not say WHICH. Each criterion is
+    # asserted present by a phrase only it carries, and the length is asserted last so that ADDING
+    # one is a deliberate edit here while DROPPING one fails on its own phrase.
+    stated = payload["class_rule_expectations"]
+    assert any("PERMANENT" in e for e in stated), "permanence must reach the judge"
+    assert any("every KBLI" in e for e in stated), "universality must reach the judge"
+    assert any("code TOTAL" in e for e in stated), (
+        "quoting a total must reach the judge too (spec 2026-09-14): the scorer decides only the "
+        "adjacent forms and hands the rest over"
+    )
+    assert len(stated) == 3, stated
 
 
 # ── which question the class rule applies to ──────────────────────────────────────────────
@@ -605,3 +621,109 @@ def test_round6_a_boolean_is_not_an_int_for_per_skala_rows_included(score_mod):
     # INNOCENCE: a real 0 (the round 5 case) is still read as a real 0, not swept up by the fix.
     row_zero = {"package_fields": {"01140": {"per_skala_rows_included": 0, "per_skala_rows_total": 8}}}
     assert score_mod.served_per_skala_map(row_zero) == {"01140": 0}
+
+
+# ── SPEC 2026-09-14: what counts as quoting a moratorium total ────────────────────────────
+#
+# docs/specs/2026-09-14-p2b-quoting-a-moratorium-total.md
+#
+# WHY THIS BLOCK EXISTS AND THE SEVEN ROUNDS ABOVE DID NOT SETTLE IT. Rounds 5 and 6 both
+# patched the NOUN: widened, withdrawn, then bounded on both sides. The cause was never the
+# noun, it was the RELATION. The criterion asked only that the numeral and the noun sit within
+# 40 characters of the same clause, and every one of the four `undecidable` cases below
+# CONVICTED under that rule on the merged candidate (#6428, 054c780b8b) while quoting no total
+# at all. Round 6's right-hand `\b` then opened the opposite error on `kodenya`.
+#
+# The outcome is now TERNARY, and each fixture names which of the three it must reach:
+#   convicted   -> lowers decidable_pass, as before
+#   undecidable -> lowers NOTHING, and the criterion is stated to the judge instead
+#   clear       -> the numeral and the noun never meet in a clause
+QUOTES_TOTAL_CONVICTED = [
+    "Ada 48 kode terkena moratorium.",
+    # `-nya` is the commonest suffix in Indonesian and `kodenya` IS the noun. Round 6's
+    # right-hand \b lost this one: it convicted before that round and escaped after.
+    "Ada 48 kodenya terkena moratorium.",
+    "518 KBLI diblokir.",
+    "518 codes are blocked.",
+    "There are 48 codes affected.",
+    "Kode sebanyak 518.",
+    "48 buah kode.",
+    "48 kode-kode.",
+]
+
+QUOTES_TOTAL_UNDECIDABLE = [
+    # All four convicted under the 40-character proximity window. None quotes a code total.
+    "Biaya Rp 48 juta untuk kode baru.",
+    "Pasal 48 mengatur kode etik perusahaan.",
+    "518 halaman berisi daftar kode.",
+    # Probably a total, and `probably` is exactly why it is not decided here.
+    "48 dari kode yang berstatus itu.",
+]
+
+QUOTES_TOTAL_CLEAR = [
+    # Entity, not substring: `codes` inside `barcodes` is not the noun.
+    "There are 48 new barcodes affected.",
+    # Indonesian prefixation makes a VERB, not the noun.
+    "Mengkode 48 baris.",
+    "Dikode 518 kali.",
+    # The two false positives round 5's widening produced, kept as fixtures so a future
+    # widening of the noun set cannot reintroduce them unnoticed.
+    "Foreign ownership is allowed in 48% of sectors.",
+    "See page 518 for affected activities.",
+]
+
+
+@pytest.mark.parametrize("text", QUOTES_TOTAL_CONVICTED)
+def test_spec_a_quoted_total_is_convicted(score_mod, text):
+    r = score_mod.moratorium_scope_check(text)
+    assert r["forbidden"]["quotes_a_moratorium_total"], f"must convict: {text!r}"
+    assert not r["undecidable"]["quotes_a_moratorium_total"]
+
+
+@pytest.mark.parametrize("text", QUOTES_TOTAL_UNDECIDABLE)
+def test_spec_a_number_near_the_noun_is_undecidable_not_guilty(score_mod, text):
+    r = score_mod.moratorium_scope_check(text)
+    assert not r["forbidden"]["quotes_a_moratorium_total"], (
+        f"proximity is not a count — must NOT convict: {text!r}"
+    )
+    assert r["undecidable"]["quotes_a_moratorium_total"], (
+        f"must reach the judge rather than be cleared: {text!r}"
+    )
+
+
+@pytest.mark.parametrize("text", QUOTES_TOTAL_CLEAR)
+def test_spec_the_noun_is_an_entity_not_a_substring(score_mod, text):
+    r = score_mod.moratorium_scope_check(text)
+    assert not r["forbidden"]["quotes_a_moratorium_total"], f"must not convict: {text!r}"
+    assert not r["undecidable"]["quotes_a_moratorium_total"], (
+        f"nothing for a judge to read here: {text!r}"
+    )
+
+
+def test_spec_an_undecidable_clause_does_not_lower_decidable_pass(score_mod):
+    """The third outcome earns its name or it is just a second way to fail."""
+    passing = score_mod.moratorium_scope_check(GOOD)
+    assert passing["decidable_pass"] is True
+
+    with_grey = score_mod.moratorium_scope_check(
+        GOOD + " Pasal 48 mengatur kode etik perusahaan."
+    )
+    assert with_grey["undecidable"]["quotes_a_moratorium_total"], "fixture must be undecidable"
+    assert with_grey["decidable_pass"] is True, (
+        "an undecidable clause must lower nothing — under the 40-character window this same "
+        "sentence failed the question"
+    )
+
+    with_real = score_mod.moratorium_scope_check(GOOD + " Ada 48 kode terkena moratorium.")
+    assert with_real["decidable_pass"] is False, "a real quoted total must still fail it"
+
+
+def test_spec_the_criterion_is_stated_to_the_judge(score_mod):
+    """A deferral with no consumer is a claim, not a routing."""
+    assert "quotes_a_moratorium_total_when_undecidable" in (
+        score_mod.moratorium_scope_check(GOOD)["deferred_to_judge"]
+    )
+    stated = " ".join(score_mod.CLASS_RULE_EXPECTATIONS["bali_moratorium_scope"])
+    assert "code TOTAL" in stated and "count of" in stated, (
+        "the judge must be told the criterion verbatim, not just have it withheld from the scorer"
+    )
