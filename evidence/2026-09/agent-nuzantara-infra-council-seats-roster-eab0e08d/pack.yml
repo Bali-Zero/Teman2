@@ -1,0 +1,226 @@
+brief_ref: evidence/brief.yml
+council_run: journal.jsonl
+plan_ref: >-
+  Owner ruling 2026-09-02 (Zero), verbatim "le riserve non intervengono se i titolari ci sono" —
+  correcting a first draft of this same rule mid-flight that only required `seat_fallback_reason`
+  when the council was seated ENTIRELY on reserves. The stronger rule shipped: ANY reserve counted
+  toward quorum, even one standing beside an available titolare, obliges the pack to name which
+  titolare it replaced and how the unavailability was observed.
+
+lanes:
+  - lane: roster-build
+    role: build
+    seat: >-
+      claude-fable-5.1 (per commit f0878b956c's own co-author trailer). Split
+      COUNCIL_REVIEW_SEATS into COUNCIL_REVIEW_SEATS_TITOLARI (3) and _FALLBACK (3), added the
+      second-limb check inside check_council_run_gear3 (benched-seat detection via set
+      intersection + isinstance/strip validation of seat_fallback_reason), and 192 lines of new
+      guilt/innocence tests in scripts/tests/test_evidence_pack_lint.py. MODEL_ROSTER.md changes
+      CONTENT, not only alignment (corrected by the gate session 2026-09-04 — an earlier draft
+      called it "Prettier only", which `git diff -w` refutes at 27+/12-): the k3 row now reads
+      "among the 3 titolari", the deepseek-v4-pro and glm-5.2 rows flip to `quorum: YES`, and a
+      new paragraph records the titolari/reserve ruling verbatim. Prettier re-aligns the columns
+      around those longer cells on top.
+  - lane: roster-review-codex
+    role: review
+    seat: >-
+      codex-gpt-5.6-sol (titolare), dispatched read-only with the defeating-input task in
+      council2.txt. Verdict recorded in journal.jsonl.
+  - lane: roster-review-kimi
+    role: review
+    seat: >-
+      kimi-code/k3 (titolare), dispatched. Returned HTTP 403 weekly-quota-dead — a NON-JUDGEMENT,
+      not counted toward quorum, recorded in journal.jsonl for the record rather than silently
+      dropped.
+  - lane: roster-review-qwen
+    role: review
+    seat: >-
+      tp1-qwen3.8-max (titolare), dispatched twice (effort high, then medium). Both times
+      scripts/tp1_call.py raised an unparseable-response JSONDecodeError on the streamed
+      thinking-model shape before returning an answer — the seat itself answered (its raw
+      reasoning trails the error, ending in finish_reason "stop"), the CLIENT could not parse it.
+      NON-JUDGEMENT, not counted, recorded in journal.jsonl.
+  - lane: roster-review-agy
+    role: review
+    seat: >-
+      agy-gemini-3.1-pro (RESERVE), seated after both remaining titolari above produced
+      non-judgements, to reach the >=2-distinct-seat quorum alongside codex. Verdict recorded in
+      journal.jsonl. Because a reserve is counted, this pack carries `seat_fallback_reason` below
+      — the rule this PR introduces, applied to its own pack on day one.
+
+seat_diversity: satisfied
+seat_diversity_note: >-
+  ONE build lane; D3's non-Anthropic build-seat requirement does not bind by its own terms
+  (">= 2 build lanes"). Cross-family pressure sits on REVIEW instead, where it is load-bearing for
+  a rule about review-seat quorum: codex (OpenAI family) and agy (Google family) are both
+  non-Anthropic, and between them they are the ONLY two seats out of three titolari + one reserve
+  that actually produced a judgement on this diff.
+
+diff:
+  files: 6
+  net_lines: 615
+  measured_at: >-
+    `git diff --numstat $(git merge-base origin/main HEAD)...HEAD` (three-dot — a two-dot diff
+    would accuse this branch of deleting main's later additions, scar W102) against merge-base
+    c52a04c9ee. No line count is quoted here, and that omission is deliberate rather than lazy:
+    this pack is part of the diff it describes, so any figure written before the commit that
+    lands these evidence files is stale the instant it lands. The earlier draft did quote
+    per-file counts, taken honestly at the moment of writing and wrong by the time CI read them,
+    and the countable-claims rule was right to reject all three. Run the command above at the
+    branch tip for the live figure. Surfaces touched: MODEL_ROSTER.md (the roster table),
+    scripts/evidence_pack_lint.py (the change under review), and
+    scripts/tests/test_evidence_pack_lint.py (its tests).
+
+seat_fallback_reason: >-
+  NO RESERVE IS COUNTED IN THE FINAL STATE OF THIS PACK, so this field is inert and is kept only
+  because the sequence it records is the honest history of the dispatch. At first dispatch two of
+  the three titolari were unavailable, both observed rather than assumed: kimi-code/k3 returned
+  HTTP 403 "You've reached your weekly (7-day) usage limit" (a weekly window, not an hourly dip),
+  and tp1-qwen3.8-max answered while its door did not — scripts/tp1_call.py failed twice with an
+  unparseable-response JSONDecodeError, the seat alive and the CLIENT the defect. The reserve
+  agy-gemini-3.1-pro was therefore seated and returned a PASS. That client defect was then
+  root-caused (it scrubbed the raw body before json.loads, and its length-based redaction broke
+  the JSON), repaired, and tp1-qwen3.8-max re-dispatched: exit 0 at effort medium, verdict GO.
+  Quorum now stands on two titolari, codex-gpt-5.6-sol and tp1-qwen3.8-max, and the reserve was
+  stood back down to ok:false — because the ruling is that reserves do not play while the titolari
+  are available, and a titolare that was only unreachable through a broken door was never truly
+  unavailable. Gemini's verdict stays in the journal because it happened, not because it counts.
+
+residual_risks:
+  - >-
+    THE RESERVE BENCH IS NARROWER IN PRACTICE THAN THE SIX-SEAT ROSTER SUGGESTS. Two of the three
+    reserves — tp1-deepseek-v4-pro and tp1-glm-5.2 — sit behind the exact same DashScope/TP1
+    client, scripts/tp1_call.py, that just failed twice on this pack's own dispatch (see
+    seat_fallback_reason). A titolari outage that also implicates that client's parsing path could
+    take out one titolare (tp1-qwen3.8-max) and up to two of the three reserves at once, leaving
+    only agy-gemini-3.1-pro and codex-gpt-5.6-sol as the effective quorum pool that day — the same
+    "a single quota reset can take the quorum to zero" shape the roster expansion itself was ruled
+    to fix, one client-failure-domain deeper than the seat-slug count shows. Declared as a real,
+    stated limitation of this change, not a defect in it: the roster counts distinct seat slugs,
+    not distinct failure domains, and fixing that is future work. UPDATE, same day: the specific
+    parsing defect that caused this pack's own outage has been root-caused and repaired on branch
+    agent/nuzantara/infra/tp1-scrub-before-parse, and the repaired client is what let
+    tp1-qwen3.8-max return the GO recorded in the journal. That repair is NOT merged, so the
+    shared-failure-domain risk above stands in full on origin/main until it is — and it will not
+    stop standing merely because this pack says the cure exists. A second, separate over-match
+    defect in the same client remains unrepaired and was measured while writing this pack: its
+    redaction eats any token longer than about 24 characters, so a council verdict passed through
+    it loses long identifiers — this pack's own qwen verdict reads <REDACTED> where the model
+    named COUNCIL_REVIEW_SEATS_FALLBACK and COUNCIL_REVIEW_SEATS_TITOLARI.
+  - >-
+    ONE RESERVE HAS NEVER BEEN SEATED. Measured over every journal under evidence/ (78 files),
+    parsing each line and comparing the `seat` field for exact equality the way the lint does:
+    tp1-deepseek-v4-pro has never been the seat value of a council line, in any spelling. It is
+    named only in prose, in five files, two of which are this pack and its brief — so the seat this
+    PR makes quorum-eligible has no precedent to imitate, and a wrong spelling on its first real
+    use would have nothing to look like. Stated precisely rather than as "zero occurrences in
+    evidence/", which a raw grep would refute: the structured tool and the substring tool disagree
+    here, and only the structured one answers the question the quorum actually asks. The other two
+    reserves are not in this position — agy-gemini-3.1-pro and tp1-glm-5.2 both carry real mileage
+    — so the gap is a point, not a pattern, and it is not a second independent way for the bench to
+    be thin beyond the shared-client failure domain already declared above.
+  - >-
+    THE TITOLARE/RISERVA SPLIT IS A RULING, NOT A MEASURED RANKING, and a future reader must not
+    mistake one for the other. It was decided by Zero. It is not derived from usage, and the usage
+    figures do not support reading it that way: counting quorum-eligible lines across every journal
+    under evidence/, the reserve agy-gemini-3.1-pro sits above the titolare tp1-qwen3.8-max, two
+    lines apart. That is fine — the roster is an authority decision about which seats a council may
+    lean on, not a leaderboard — but it is written down here because an unstated ordering invites
+    the next reader to reconstruct a rationale that was never given, and then to argue for a
+    promotion nobody deliberated. If the split is ever to change, it changes by a ruling, the same
+    way it was made.
+  - >-
+    check_council_run_gear3 cannot verify the TRUTH of a seat_fallback_reason string, only that a
+    non-empty one was written (constraints section of brief.yml, deliberate — the lint has no
+    liveness data, and a guard that judges what it cannot see is scar family #3, guard-over-match).
+    A council could in principle claim a titolare was down when it was not. Unenforced by design,
+    named here so the next reader does not mistake the silence for an oversight.
+  - >-
+    Every EXISTING Gear-3 pack that predates `council_run` entirely still only NOTICEs (does not
+    FAIL) until 2026-09-02 per check_council_run_gear3's own docstring — a known day-0 measure
+    unrelated to the roster split, inherited unchanged from the original council_run rule and not
+    re-litigated here.
+
+pii_scan: clean
+
+receipts:
+  - claim: >-
+      The two council_run checks (quorum short-circuit, second-limb fallback-reason requirement)
+      each independently gate the pack, mutation-tested in the source rather than trusted from
+      reading the tests
+    cmd: >-
+      python -m pytest scripts/tests/test_evidence_pack_lint.py -k "council_run_gear3 or
+      council_fallback_reason"
+    result: >-
+      All new guilt/innocence cases green (192 added lines of test corpus): titolari-only quorum
+      passes with no reason required; a single reserve beside an available titolare requires
+      seat_fallback_reason; an empty/whitespace-only/non-string reason still fails; quorum already
+      failing reports that violation alone, not stacked with a fallback-reason violation.
+    exit: 0
+    ts: 2026-09-02T05:20Z
+    seat: session (Pro), on the committed diff
+  - claim: >-
+      The full test_evidence_pack_lint.py suite stays green after the roster split — the change
+      does not regress the pre-existing council_run behaviour it extends
+    cmd: "python -m pytest scripts/tests/test_evidence_pack_lint.py"
+    result: "green, no regressions in the pre-existing council_run(3-seat) or any other rule's tests."
+    exit: 0
+    ts: 2026-09-02T05:20Z
+    seat: session (Pro)
+  - claim: >-
+      This pack's own council journal genuinely reaches quorum only via a reserve — verified by
+      running the checker against this pack directory, not asserted from the journal text
+    cmd: >-
+      python3 -c "import sys; sys.path.insert(0,'scripts'); from evidence_pack_lint import
+      _read_council_journal_seats; from pathlib import Path;
+      print(_read_council_journal_seats(Path('evidence/2026-09/agent-nuzantara-infra-council-seats-roster-eab0e08d'),
+      'journal.jsonl'))"
+    result: >-
+      {'codex-gpt-5.6-sol', 'agy-gemini-3.1-pro'} — exactly the two ok:true review lines in
+      journal.jsonl; kimi and tp1-qwen3.8-max's ok:false NON-JUDGEMENT lines correctly excluded.
+      agy-gemini-3.1-pro intersects COUNCIL_REVIEW_SEATS_FALLBACK, matching the declared
+      seat_fallback_reason above.
+    exit: 0
+    ts: 2026-09-02T07:12Z
+    seat: session (Pro)
+  - claim: "Diff size measured on the real branch, not estimated"
+    cmd: "git diff --numstat $(git merge-base origin/main HEAD)...HEAD"
+    result: >-
+      Measured by the gate session at head ac4855e4 (2026-09-04): MODEL_ROSTER.md 41/26,
+      scripts/evidence_pack_lint.py 79/4, scripts/tests/test_evidence_pack_lint.py 192/0, plus
+      this pack's own brief.yml 108/0, journal.jsonl 5/0 and pack.yml 220/0 — six files, 645
+      insertions, 30 deletions. The evidence-correction commit after that head adds pack.yml lines
+      only; re-run the command at the tip for the live figure.
+    exit: 0
+    ts: 2026-09-02T07:15Z
+    seat: session (Pro)
+
+dissent:
+  - seat: session (Pro), on the reserve-bench claim in residual_risks
+    status: CONFIRMED
+    objection: >-
+      "The six-seat roster overstates the effective bench, because two of the three reserves share
+      a client with a titolare that just failed." Verified rather than assumed: the fleet's own
+      door map (arsenal probe, same day) lists tp1-deepseek-v4-pro, tp1-deepseek-v4-flash-0731,
+      tp1-glm-5.2, tp1-qwen3.8-max, tp1-qwen3.7-max/plus and tp1-qwen3.6-flash as all resolving
+      through the single DashScope door via scripts/tp1_call.py, and this pack's own dispatch hit
+      that exact client's JSONDecodeError twice on tp1-qwen3.8-max. Recorded as a residual risk
+      rather than cured here — the fix (a second TP1-independent reserve, or a client-side retry
+      with a non-streaming fallback) is out of scope for a roster-composition PR and named so the
+      next reader does not have to rediscover the shared-failure-domain shape.
+  - seat: codex-gpt-5.6-sol, on the diff itself
+    status: RETRACTED
+    objection: >-
+      Considered whether the new second-limb check could double-count a violation when quorum is
+      already failing (stacking "no quorum" and "no fallback reason" on the same pack). Retracted
+      after reading `check_council_run_gear3`: the function returns immediately on `not
+      has_quorum`, before the benched-seat check ever runs, so the two violations cannot stack by
+      construction. Verdict: PASS, no defeating input.
+  - seat: agy-gemini-3.1-pro, on the diff itself
+    status: RETRACTED
+    objection: >-
+      Considered whether `sorted(benched)` / `COUNCIL_REVIEW_SEATS_TITOLARI` string-joining in the
+      violation message could raise on a non-string seat value sneaking into the journal. Retracted
+      on inspection: `_read_council_journal_seats` only ever adds `seat.strip()` after an
+      `isinstance(seat, str)` guard, so `benched` and the titolari tuple are both plain strings by
+      construction before they ever reach the join. Verdict: PASS, no defeating input.
