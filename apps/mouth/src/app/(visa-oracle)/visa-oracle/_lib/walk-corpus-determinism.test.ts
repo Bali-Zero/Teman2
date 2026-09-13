@@ -67,8 +67,17 @@ import {
  * `investment.investment_capital_idr` moves UNKNOWN(NOT_ASKED) ->
  * KNOWN(1000000000) on all three, `pt_pma`/`property`/`bank_deposit` stay
  * byte-identical (that branch, and the E28A rules that read it, are
- * deliberately untouched). See generate-walk-corpus.ts. */
-const EXPECTED_WALK_COUNT = 84;
+ * deliberately untouched). See generate-walk-corpus.ts.
+ *
+ * 84 → 94 on W-VO-E (2026-09-13): ten walks that answer an EXISTING question
+ * with something other than its first option, together covering the eleven
+ * products the signed pack supports and no walk could name (several walks
+ * name more than one of them) — the visa-free and Visa-on-Arrival
+ * stays, MULTIPLE entry, business pay from abroad, the offshore investment
+ * application and its capital figures, an education sponsor, a vocational
+ * study level, a fully offshore remote worker, and a minor joining a parent.
+ * No existing fixture changes by a byte: the interview tree is untouched. */
+const EXPECTED_WALK_COUNT = 94;
 
 function jsonFilesIn(dir: string): string[] {
   return readdirSync(dir)

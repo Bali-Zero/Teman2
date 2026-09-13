@@ -2,10 +2,33 @@
 
 ``test_gold_coverage_floor.py`` proves the pack can support a product when
 every fact arrives. This file proves the opposite half, and it is the half
-the user lives in: replay the **67 real interview walks** — every distinct
+the user lives in: replay the **94 real interview walks** — every distinct
 path through ``flow.ts``'s two-arm spine and ``getCategoryQuestionIds``'
 eleven categories, each answered through the real ``fact-mapper.ts`` —
 against the highest signed PRODUCTION pack, and pin the outcome census.
+Current ENGINE census (W-VO-E, 2026-09-13): **1 HUMAN_REVIEW_REQUIRED / 2
+NEEDS_INPUT / 15 NO_SUPPORTED_PATH / 76 SUPPORTED_CANDIDATES**; the FUNNEL
+census the applicant actually meets is the second column of the table under
+"THE DISCLOSURE-FLAG LAYER" below. The paragraphs below are the historical
+record of how it got here, each keeping the count that was true when it was
+written.
+
+W-VO-E adds a THIRD question to the two this file already answered ("where
+does each walk end" and "what does the applicant meet"): **which products
+can the interview name at all.** Twelve of the 29 products carrying a
+SUPPORT rule in the signed pack were named by ZERO of the 84 walks — a gap
+no test in the repository could see, because a census grades the walks that
+exist and a coverage floor grades the pack, and neither notices a product
+the funnel never offers. ``test_every_support_bearing_product_is_named_by_
+some_walk`` reads the universe from the COMPILED pack (not from a list
+maintained here) and fails when a SUPPORT-bearing product is named on no
+walk; ``UNREACHABLE_BY_RULING`` is the one documented, self-invalidating
+excuse table. Eleven of the twelve needed NO tree change — only new answers
+to questions ``tree.ts`` already asks — and the twelfth (BRIDGING) is
+unreachable by ruling, not by accident. ENGINE-named distinct products:
+**17 -> 28**; public ones **17 -> 27** (E31E is named at engine level and
+held by the minor-privacy adapter at public level — see
+``PRIVACY_HELD_WALKS``).
 
 Measured 2026-09-07 on ``rulepack-prod-020.signed.json``, with PR-3's
 interview on top and PR-5's age dimension on top of that: **2 NEEDS_INPUT /
@@ -131,18 +154,47 @@ two different questions:
   is ``None``, which no evaluated decision is — council round 1,
   tp1-qwen3.8-max, on the word "unconditional".)
 
-MEASURED 2026-09-13 on ``rulepack-prod-020.signed.json`` over all 84 walks,
+MEASURED 2026-09-13 on ``rulepack-prod-020.signed.json`` over all 94 walks,
 both censuses in the same run (``test_the_flagged_census_is_the_funnel_the_
 applicant_meets``):
+   - **76 SUPPORTED_CANDIDATES means 76 walks reach candidates AT ENGINE
+     LEVEL, with no disclosure flags supplied.** It does NOT mean 76
+     applicants see a recommendation without human review — the FUNNEL
+     column, 69, is the one an applicant meets.
+   - **The hold counts are a property of these fixtures, not of
+     production.** The ENGINE column's single hold was ``== 0`` until
+     W-VO-E; it now allows exactly one and pins its walk and its reason code
+     (``MINOR_GUARDIAN_PRIVACY_REVIEW``). The FUNNEL column's nine are that
+     same one plus the eight walks that raise a disclosure flag.
+   - **Both arms of ``apply_public_policy_adapters`` are now exercised, and
+     the two sentences that used to stand here are retired.** They said the
+     review-FLAG arm was untouched by any walk and that "a regression which
+     ADDS a disclosure flag — or fails to REMOVE one — passes this census
+     invisibly"; both stopped being true when the disclosure-flag layer
+     landed. ``test_guilt_a_walk_that_gains_a_flag_is_caught`` and
+     ``test_guilt_a_walk_that_loses_its_flag_is_caught`` are what stopped it
+     (council round 4 (council/journal.jsonl), on exactly this
+     contradiction).
+     The ``work_role`` episode the old text cited remains the reason the
+     layer exists at all.
 
 ===========================  ======  =======
 state                        ENGINE  FUNNEL
 ===========================  ======  =======
-SUPPORTED_CANDIDATES             67       60
+SUPPORTED_CANDIDATES             76       69
 NO_SUPPORTED_PATH                15       15
 NEEDS_INPUT                       2        1
-HUMAN_REVIEW_REQUIRED             0        8
+HUMAN_REVIEW_REQUIRED             1        9
 ===========================  ======  =======
+
+W-VO-E moved both columns by the same +9/+1 shape — +9
+SUPPORTED_CANDIDATES and +1 HUMAN_REVIEW_REQUIRED, i.e. ENGINE 67/15/2/0 ->
+76/15/2/1 and FUNNEL 60/15/1/8 -> 69/15/1/9 (an earlier draft of this
+sentence said "+9/-1", which sums to eight walks, not ten — council round 6,
+reserve seat (council/journal.jsonl)): nine of its ten new walks answer at both levels, and
+the tenth — the minor — is the single ENGINE hold. The FUNNEL column keeps its 8 flag-driven holds and gains
+that same one: no new walk raises a disclosure flag (the per-flag table
+below is unchanged from the 84-walk corpus, measured, not derived).
 
 Per flag — ``test_every_disclosure_flag_reports_the_walks_it_rewrites``
 prints this table on every run:
@@ -184,7 +236,7 @@ WHAT THIS CENSUS STILL DOES NOT SEE:
 
 1. **The enumeration is a chosen sample, not a cover.** Every question is
    answered with its FIRST option unless the scenario overrides it, only
-   TWO of the 84 walks ever answer the literal ``unsure`` (the two
+   TWO of the 94 walks ever answer the literal ``unsure`` (the two
    ``NOT_CERTAIN`` rows of ``EXPECTED_DISCLOSED_REVIEW_FLAGS`` below — this
    sentence used to say "no walk ever answers ``unsure``", which stopped
    being true when PR-D3/PR-D4d added them and was caught by council round 2,
@@ -197,7 +249,8 @@ WHAT THIS CENSUS STILL DOES NOT SEE:
 
 The corpus under ``gold_coverage/fixtures/walks/`` is DATA, generated by driving the
 real ``computeNextNode``/``getCategoryQuestionIds``/``mapOracleFactsToApplicantFacts``
-(first option answered at every question, 121 stay-days), never hand-written:
+(first option answered at every question a scenario does not override, 121
+stay-days), never hand-written:
 each file carries the walk's ``asked`` question ids, the exact wire
 ``overrides`` that walk produced, and — when the walk raises any — the
 ``disclosed_review_flags`` the same mapper computed for it. The expectations
@@ -231,9 +284,18 @@ from backend.scripts.visa_engine.gold_replay_driver import (
     build_persona_request,
     select_highest_repository_pack,
 )
+from backend.services.visa_engine import ast as ast_module
 from backend.services.visa_engine import evaluate_path, evaluator
 from backend.services.visa_engine.api_models import VisaOracleEvaluateRequest
-from backend.services.visa_engine.enums import DecisionState
+from backend.services.visa_engine.ast import KnownFact, UnknownFact
+from backend.services.visa_engine.enums import (
+    DecisionState,
+    FactPath,
+    RuleEffectType,
+    TruthValue,
+    UnknownReason,
+    VisaProductStatus,
+)
 from backend.tests.services.visa_engine.test_evaluator_gold import Persona
 
 CORPUS_DIR = Path(__file__).resolve().parent / "gold_coverage" / "fixtures" / "walks"
@@ -361,12 +423,72 @@ WALK_DEAD_END_ALLOWLIST: dict[str, tuple[DeadEnd, ...]] = {
     ),
 }
 
+
+#: Products the highest signed pack gives a SUPPORT rule and NO interview
+#: walk can name — the class `test_every_support_bearing_product_is_named_by_
+#: some_walk` below exists to keep at zero. A row may only be a RULING; an
+#: omission is a bug and gets a walk, not a row. Each row states the fact the
+#: product's own rules need, and why the funnel may not collect it.
+#:
+#: Measured 2026-09-13 on rulepack-prod-020.signed.json: 29 products carry a
+#: SUPPORT rule, 17 were named by some walk, and the 12 that were not are
+#: this window's subject. Eleven of them needed no code at all — every fact
+#: their rules read was already collected, and what kept them dark was the
+#: corpus's own answering convention: its first-option default for choice
+#: questions, and its ONE fixed synthetic identity for typed ones (a 25-year
+#: -old, 121 stay-days, IDR 1,000,000,000 for every amount), which is what
+#: hid A1/B1 (stay-day bounds), E28A (both capital bounds) and E31E (age).
+#: The twelfth is below.
+#: The excuse is STRUCTURED, not prose, on the first council round's finding
+#: (council round 1 (council/journal.jsonl)): a row that only carried a
+#: sentence would go on silencing this product even if a FUTURE pack gave it a
+#: SUPPORT route that does not read the forbidden fact at all. Naming the fact
+#: lets `test_every_ruled_unreachable_product_still_depends_on_its_forbidden_fact`
+#: re-derive the excuse from the pack on every run.
+@dataclass(frozen=True)
+class RuledUnreachable:
+    """One excused product: the fact its SUPPORT rules need, which the funnel
+    is forbidden to collect, and the ruling that forbids collecting it."""
+
+    forbidden_fact: str
+    ruling: str
+
+
+UNREACHABLE_BY_RULING: dict[str, RuledUnreachable] = {
+    "BRIDGING": RuledUnreachable(
+        forbidden_fact="intent.requested_product_code",
+        ruling=(
+            "All four BRIDGING SUPPORT rules (`el.bridging.destination-stated`, "
+            "`.t3-window-manual`, `.overstay-shield-payment`, "
+            "`.source-status-verify`) require `intent.requested_product_code` to "
+            "be KNOWN — the permit the applicant wants to switch TO. "
+            "`fact-mapper.ts` hard-codes that fact to UNKNOWN(NOT_ASKED), and the "
+            "owner's D4 ruling quoted in `tree.ts` is explicit: the Oracle says "
+            "the product, it never asks which visa the applicant wants. Asking it "
+            "is the ONLY route to this product, so the row is a ruling and not an "
+            "omission — verified 2026-09-13 by supplying the fact on an onshore "
+            "OTHER-purpose walk whose `immigration.current_status_code` is "
+            "outside `hf.bridging.from-visit-itk`'s visit-class list: the engine "
+            "answers SUPPORTED_CANDIDATES [BRIDGING, C6]. BRIDGING is also one of "
+            "the two products in this pack with `public_catalog: false` (the "
+            "other, E30, the funnel already names), so surfacing it publicly is "
+            "Zero's call twice over."
+        ),
+    ),
+}
+
 #: Per-walk outcome pin: state plus the candidate products, in rank order.
 #: Candidates are pinned too — a pack edit that adds or drops a product for a
 #: walk that already had an answer is exactly as much of a shift as a state
 #: change, and this table is the only place either becomes visible.
 EXPECTED_OUTCOME: dict[str, tuple[str, tuple[str, ...]]] = {
     "offshore/business": ("NO_SUPPORTED_PATH", ()),
+    # W-VO-E: the business visitor who is NOT paid from inside Indonesia —
+    # `el.d2-*`, the multiple-entry business visa. The walk above answers
+    # `work_indonesia_compensation`'s first option (`yes`) and is excluded
+    # on BUSINESS_LOCAL_COMPENSATION_NOT_ALLOWED, which is a correct answer
+    # to a different question; D2 had no walk at all.
+    "offshore/business/no_local_compensation": ("SUPPORTED_CANDIDATES", ("D2",)),
     "offshore/diaspora/CHILD/spNat=ID": ("SUPPORTED_CANDIDATES", ("C1", "E31G")),
     # D4a (owner ruling SHWEB-20260911, 2026-09-13): `family_sponsor_status_
     # code` is now a closed-catalogue FACT instead of always-UNVERIFIED — the
@@ -399,6 +521,16 @@ EXPECTED_OUTCOME: dict[str, tuple[str, tuple[str, ...]]] = {
     "offshore/family/OTHER/spNat=IT": ("SUPPORTED_CANDIDATES", ("C1",)),
     "offshore/family/PARENT/spNat=ID": ("SUPPORTED_CANDIDATES", ("C1", "E31C", "E31F")),
     "offshore/family/PARENT/spNat=IT": ("SUPPORTED_CANDIDATES", ("C1",)),
+    # W-VO-E: the SAME walk with a minor's birth date — the only corpus walk
+    # whose PUBLIC outcome is a hold, and deliberately so. The ENGINE names
+    # C1 and E31E (`el.e31e-child-itas-support`, whose `derived.age_years <
+    # 18` gate no adult walk can clear); `evaluate_path.
+    # _apply_minor_privacy_hold` then empties the candidates of ANY known
+    # minor, unconditionally, because the public contract has no
+    # guardian-consent fact. That is Privacy Policy V1, a product control,
+    # not engine incompleteness — and it is the reason the reachability
+    # guard below reads the engine decision rather than this table.
+    "offshore/family/PARENT/spNat=IT/minor": ("HUMAN_REVIEW_REQUIRED", ()),
     "offshore/family/SIBLING/spNat=ID": ("SUPPORTED_CANDIDATES", ("C1",)),
     "offshore/family/SIBLING/spNat=IT": ("SUPPORTED_CANDIDATES", ("C1", "E31J")),
     "offshore/family/SPOUSE/spNat=ID": ("SUPPORTED_CANDIDATES", ("C1", "E31A")),
@@ -430,6 +562,22 @@ EXPECTED_OUTCOME: dict[str, tuple[str, tuple[str, ...]]] = {
     "offshore/invest/merit/currency_usd": ("SUPPORTED_CANDIDATES", ("C2",)),
     "offshore/invest/property": ("SUPPORTED_CANDIDATES", ("E33",)),
     "offshore/invest/pt_pma": ("SUPPORTED_CANDIDATES", ("C2",)),
+    # W-VO-E: the investor applying from abroad with the capital figures
+    # `el.e28a.investment` actually reads. `full_capital` differs from
+    # `offshore_application` in exactly the two amounts (the rule's own
+    # bounds), which is what separates D12 from the Investor KITAS itself.
+    "offshore/invest/pt_pma/full_capital": (
+        "SUPPORTED_CANDIDATES",
+        ("C2", "D12", "E28A"),
+    ),
+    # W-VO-E: `hf.d12-onshore-conversion-excluded` is why D12 had no walk —
+    # `wants_onshore_conversion`'s first option is `yes`, which excludes the
+    # multiple-entry investment visa by regulation. Answering `no` is the
+    # ordinary offshore applicant this product exists for.
+    "offshore/invest/pt_pma/offshore_application": (
+        "SUPPORTED_CANDIDATES",
+        ("C2", "D12"),
+    ),
     # PR-D4d (seq-21 corpus prep, unsigned — activation caveat in the PR
     # body): `el.e33c.world-figure-invitation` needs INVESTMENT purpose +
     # `sponsor.type eq GOVERNMENT`, so this is the `invest` walk that would
@@ -507,6 +655,15 @@ EXPECTED_OUTCOME: dict[str, tuple[str, tuple[str, ...]]] = {
     # sibling's purpose-mate: E23.
     "offshore/other/paid/sponsor_government": ("SUPPORTED_CANDIDATES", ("E23",)),
     "offshore/remote": ("NO_SUPPORTED_PATH", ()),
+    # W-VO-E: the digital nomad the remote branch was built for —
+    # `el.e33g.remote-work` plus `hf.e33g`'s local-ownership exclusion,
+    # answered the way a genuinely offshore-paid remote worker answers them.
+    # Three of the four facts had to move: `remote_clients` already defaults
+    # to `foreign`, but `work_payer`, `remote_compensation` and
+    # `remote_pt_pma` all default to `yes`, and each alone excludes the
+    # product — which left the highest-demand public product named by no walk
+    # in the corpus.
+    "offshore/remote/foreign_only": ("SUPPORTED_CANDIDATES", ("E33G",)),
     "offshore/retirement/bank_deposit": ("NO_SUPPORTED_PATH", ()),
     # D3-3 (PR-D3): now ALSO asks `family_sponsor_confirmed` (default "yes"),
     # and the corpus's canned passive-income default clears E33F's own
@@ -553,7 +710,35 @@ EXPECTED_OUTCOME: dict[str, tuple[str, tuple[str, ...]]] = {
     "offshore/second_home/bank_deposit": ("SUPPORTED_CANDIDATES", ("E33",)),
     "offshore/second_home/property": ("SUPPORTED_CANDIDATES", ("E33",)),
     "offshore/study": ("SUPPORTED_CANDIDATES", ("E30", "E30A")),
+    # W-VO-E: `el.e30e-*`/`el.e30f-*` both read `sponsor.type`, which the
+    # study branch has asked all along — the corpus only ever answered its
+    # first option (NONE), so two student products were unreachable through
+    # the corpus while being one click away in the interview.
+    "offshore/study/education_sponsor": (
+        "SUPPORTED_CANDIDATES",
+        ("E30", "E30A", "E30E", "E30F"),
+    ),
+    # W-VO-E: E30B shares the student SUPPORT rule with E30/E30A but carries
+    # its own `hf.e30b-level-band` HARD FILTER (VOCATIONAL/UNDERGRADUATE/
+    # POSTGRADUATE only). `study_level`'s first option is PRIMARY, so E30B
+    # was excluded on every study walk — and E30A drops out here for the
+    # mirror reason, its own level band.
+    "offshore/study/vocational/education_sponsor": (
+        "SUPPORTED_CANDIDATES",
+        ("E30", "E30B", "E30E", "E30F"),
+    ),
     "offshore/tourism": ("SUPPORTED_CANDIDATES", ("C1",)),
+    # W-VO-E: `el.d1-multi-entry-support`. `entry_pattern` is on the tourism
+    # branch already; every walk answered SINGLE, its first option.
+    "offshore/tourism/multiple_entry": ("SUPPORTED_CANDIDATES", ("C1", "D1")),
+    # W-VO-E: `el.a1.tourism` — a visa-free nationality and a stay inside
+    # the 30-day bound. The corpus default identity (IT, 121 days) clears
+    # neither, so both visa-free arms were dark; `el.b1.tourism` rides the
+    # same answers.
+    "offshore/tourism/visa_free_30d": ("SUPPORTED_CANDIDATES", ("A1", "B1", "C1")),
+    # W-VO-E: `el.b1.tourism` alone — Visa on Arrival's own 60-day bound,
+    # with the corpus's default nationality.
+    "offshore/tourism/voa_60d": ("SUPPORTED_CANDIDATES", ("B1", "C1")),
     "offshore/work": ("SUPPORTED_CANDIDATES", ("E23",)),
     # PR-D4d (seq-21 corpus prep, unsigned — activation caveat in the PR
     # body). `el.e33a/b.government-*`/`el.e23v.trade-office` share an
@@ -667,6 +852,19 @@ EXPECTED_DISCLOSED_REVIEW_FLAGS: dict[str, tuple[str, ...]] = {
     "offshore/work/sponsor_unsure": ("NOT_CERTAIN",),
 }
 
+#: The walks held by a PUBLIC adapter that is not the disclosure layer — one,
+#: and it is the minor-privacy control (`evaluate_path._apply_minor_privacy_
+#: hold`, Privacy Policy V1: the public contract has no guardian-consent fact,
+#: so a known minor's candidates are emptied unconditionally). W-VO-E's minor
+#: walk is the first corpus walk to exercise it.
+#:
+#: Its own table because the two causes must not be summed: a flag DELETES a
+#: proven verdict and is the subject of `EXPECTED_DISCLOSED_REVIEW_FLAGS`,
+#: while this hold fires on `derived.is_minor` alone, on BOTH censuses, with
+#: or without flags. Counting them together would let a new flag-driven hold
+#: hide behind the privacy one, or the reverse.
+PRIVACY_HELD_WALKS: set[str] = {"offshore/family/PARENT/spNat=IT/minor"}
+
 #: The FUNNEL-level state census, DERIVED from the two tables above rather
 #: than pinned as a third one — and the derivation is itself the claim under
 #: test. `_apply_disclosed_review_flags` is monotone, and unconditional for
@@ -676,7 +874,10 @@ EXPECTED_DISCLOSED_REVIEW_FLAGS: dict[str, tuple[str, ...]] = {
 #: decided, and a walk that raises none keeps its engine state exactly. If
 #: either half of that stops being true, `test_the_flagged_census_is_the_
 #: funnel_the_applicant_meets` goes red without anyone having to re-pin a
-#: number. Measured 2026-09-13: 60 / 15 / 1 / 8.
+#: number. Measured 2026-09-13 over the 94-walk corpus: 69 SUPPORTED_CANDIDATES
+#: / 15 NO_SUPPORTED_PATH / 1 NEEDS_INPUT / 9 HUMAN_REVIEW_REQUIRED. (It read
+#: `60 / 15 / 1 / 8` — the 84-walk numbers — until council round 4 caught that
+#: W-VO-E had moved the corpus under it.)
 EXPECTED_FLAGGED_STATE_CENSUS: dict[str, int] = dict(
     Counter(
         "HUMAN_REVIEW_REQUIRED" if label in EXPECTED_DISCLOSED_REVIEW_FLAGS else state
@@ -938,6 +1139,197 @@ def _scoped_expectation(*labels: str) -> dict[str, tuple[str, tuple[str, ...]]]:
     return {label: EXPECTED_OUTCOME[label] for label in labels if label in EXPECTED_OUTCOME}
 
 
+def _support_rules_by_product() -> dict[str, tuple[Any, ...]]:
+    """``product_code -> the compiled SUPPORT rules that can fire for it``,
+    read from the COMPILED highest signed pack at ``_AS_OF``.
+
+    Read from the pack and never from a list in this file on purpose: the
+    day a new pack is signed, this set moves by itself and the guard below
+    starts demanding a walk for whatever the pack just made supportable.
+    A hand-kept list would have to be remembered, and the gap this guard
+    exists to close is precisely the one nobody remembered to look for.
+
+    Compiled and effective-filtered rather than read off the raw JSON, on
+    the first council round's finding (council round 1, 2026-09-13
+    (council/journal.jsonl)). Scanning ``product_version_ids`` in the
+    payload gets BOTH directions wrong the moment a pack stops looking like
+    today's:
+
+    * a GLOBAL-scope SUPPORT rule carries ``product_version_ids: null`` and
+      applies to EVERY product (``compiler.rules_for``), so a payload scan
+      would miss it and the guard would stay green over the exact class it
+      exists to catch. seq-20 has 6 GLOBAL rules and none of them is a
+      SUPPORT — the false green is latent, not present.
+    * a payload scan also counts rules and products the evaluator itself
+      would skip at ``_AS_OF`` — a rule outside its ``valid_period``, a
+      product that is not ACTIVE or outside its own period — which is a
+      false RED: the guard would demand a walk naming a product the engine
+      cannot emit. Every product in seq-20 is ACTIVE with an open period, so
+      this half is latent too.
+
+    Mirroring ``evaluator.evaluate``'s own product selection and
+    ``CompiledRulePack.rules_for`` keeps the guard's universe equal to the
+    engine's by construction instead of by coincidence.
+    """
+
+    _pack_path, compiled = gold_coverage_eval._verified_compiled_pack(_AS_OF)
+    by_product: dict[str, tuple[Any, ...]] = {}
+    for compiled_product in compiled.products:
+        if compiled_product.product.status is not VisaProductStatus.ACTIVE:
+            continue
+        if not evaluator._period_contains(compiled_product.product.valid_period, _AS_OF):
+            continue
+        support = tuple(
+            rule
+            for rule in compiled.rules_for(compiled_product, effective_at=_AS_OF)
+            # `==`, not `is`: `RuleEffect.type` is the plain string
+            # discriminator, and `RuleEffectType` is a `str` Enum, so equality
+            # holds for both shapes while identity holds for neither today.
+            if rule.effect.type == RuleEffectType.SUPPORT
+        )
+        if support:
+            by_product[compiled_product.product_code] = support
+    return by_product
+
+
+def _support_bearing_product_codes() -> set[str]:
+    """The product codes ``_support_rules_by_product`` finds a SUPPORT rule for."""
+
+    return set(_support_rules_by_product())
+
+
+def _engine_named_products(
+    walks: dict[str, dict[str, Any]],
+) -> dict[str, tuple[str, ...]]:
+    """``product_code -> the walks whose ENGINE decision names it``.
+
+    The ENGINE decision, not ``EXPECTED_OUTCOME``'s public one, because the
+    question this answers is "can an interview produce facts under which the
+    pack supports this product" — a public policy adapter that later abstains
+    (the minor privacy hold) is a different layer with a different owner, and
+    grading reachability through it would report a product as unreachable
+    when the interview reaches it perfectly well.
+    """
+
+    named: dict[str, list[str]] = {}
+    for label, spec in sorted(walks.items()):
+        for candidate in _engine_decision(spec["overrides"], label).candidates:
+            named.setdefault(candidate.product_code, []).append(label)
+    return {code: tuple(labels) for code, labels in sorted(named.items())}
+
+
+def _unreached_support_products(
+    named: dict[str, tuple[str, ...]],
+    *,
+    excused: dict[str, RuledUnreachable] | None = None,
+) -> list[str]:
+    """SUPPORT-bearing products no walk names, minus the ruling rows."""
+
+    excused = UNREACHABLE_BY_RULING if excused is None else excused
+    return sorted(_support_bearing_product_codes() - set(named) - set(excused))
+
+
+def _stale_ruling_rows(
+    named: dict[str, tuple[str, ...]],
+    *,
+    excused: dict[str, RuledUnreachable] | None = None,
+) -> list[str]:
+    """Ruling rows whose product a walk DOES name — cure the row away."""
+
+    excused = UNREACHABLE_BY_RULING if excused is None else excused
+    return sorted(set(excused) & set(named))
+
+
+def _proves_it_cannot_fire_without(condition: Any, fact: str) -> bool:
+    """Whether ``condition`` is PROVABLY unable to evaluate TRUE while ``fact``
+    is UNKNOWN.
+
+    One-directional on purpose, and the name says which direction: ``True``
+    means proven, ``False`` means NOT PROVEN by this analysis — never "proven
+    reachable". Council round 3 (council/journal.jsonl) rejected the earlier name
+    (``_condition_cannot_fire_without``) for exactly that confusion: it read
+    as a decision procedure, and the caller then turned "my conservative
+    analysis could not prove it" into "this route is reachable, delete the
+    ruling". The conservative direction is the safe one — an unproven row
+    demands re-justification, not a silent pass — but it must not be reported
+    as a proof of the opposite.
+
+    Council round 2 (council/journal.jsonl) showed
+    why membership in ``CompiledRule.required_facts`` is not this property:
+    that set is SYNTACTIC — every fact the AST mentions — so a rule shaped
+    ``any(eq(requested_product_code, "BRIDGING"), intersects(purposes, OTHER))``
+    lists the forbidden fact and still evaluates TRUE with the fact UNKNOWN.
+    The seat reproduced exactly that. A ruling row justified by such a rule
+    would be an excuse for a route the funnel can already walk.
+
+    So the test is structural and sound rather than syntactic: under Kleene
+    semantics (``ast.py``) an ``all`` node is FALSE if any child is FALSE and
+    UNKNOWN if any child is UNKNOWN, so it can never be TRUE when a child is
+    not TRUE. A scalar/set leaf on an UNKNOWN fact is UNKNOWN; ``known(fact)``
+    on an UNKNOWN fact is FALSE. Either way, a leaf reading the fact anywhere
+    on the AND-spine keeps the whole condition away from TRUE.
+
+    ``unknown(fact)`` is the one leaf that is TRUE *because* the fact is
+    missing, and is excluded explicitly — a rule that fires ON the absence is
+    the opposite of a rule that depends on the presence. Its negation,
+    ``not(unknown(fact))``, is accepted: it is ``known(fact)`` spelled the long
+    way, FALSE whenever the fact is missing (round 3's own counterexample).
+    ``any`` is accepted only when EVERY branch is itself proven — a
+    disjunction cannot be TRUE unless some branch is, so if no branch can be,
+    neither can it. Anything else returns False, which is not a claim that the
+    rule fires without the fact, only that this analysis did not prove it did
+    not.
+    """
+
+    op = getattr(condition, "op", None)
+    if op == "all":
+        return any(_proves_it_cannot_fire_without(arg, fact) for arg in condition.args)
+    if op == "any":
+        return bool(condition.args) and all(
+            _proves_it_cannot_fire_without(arg, fact) for arg in condition.args
+        )
+    if op == "not":
+        inner = condition.arg
+        return (
+            getattr(inner, "op", None) == "unknown"
+            and getattr(getattr(inner, "fact", None), "value", None) == fact
+        )
+    if op == "unknown":
+        return False
+    referenced = getattr(condition, "fact", None)
+    if referenced is None:
+        return False
+    return getattr(referenced, "value", referenced) == fact
+
+
+def _ruling_rows_without_a_proven_dependency(
+    *,
+    excused: dict[str, RuledUnreachable] | None = None,
+) -> list[str]:
+    """Ruling rows carrying a SUPPORT route whose dependency on the forbidden
+    fact this analysis cannot prove — either because the route genuinely no
+    longer needs the fact, or because it is written in a shape
+    ``_proves_it_cannot_fire_without`` does not reason about.
+
+    Both readings demand the same gesture (re-justify the row against the new
+    pack, or give the product a walk and delete the row), which is why they
+    share a return value — but they are NOT the same claim, and the assertion
+    that consumes this says so. This is the half a "does a walk name it?"
+    check cannot see: the product is still named by no walk, so the guard and
+    the staleness mirror both stay green, while the reason the row was granted
+    may have evaporated.
+    """
+
+    excused = UNREACHABLE_BY_RULING if excused is None else excused
+    support_rules = _support_rules_by_product()
+    offenders: list[str] = []
+    for code, row in excused.items():
+        rules = support_rules.get(code, ())
+        if any(not _proves_it_cannot_fire_without(rule.when, row.forbidden_fact) for rule in rules):
+            offenders.append(code)
+    return sorted(offenders)
+
+
 @pytest.fixture(scope="module")
 def walks() -> dict[str, dict[str, Any]]:
     return _load_walks()
@@ -953,7 +1345,12 @@ def flagged_outcomes(walks: dict[str, dict[str, Any]]) -> dict[str, dict[str, An
     return _evaluate_walks_with_flags(walks)
 
 
-def test_corpus_is_the_84_real_interview_walks(walks: dict[str, dict[str, Any]]) -> None:
+@pytest.fixture(scope="module")
+def engine_named(walks: dict[str, dict[str, Any]]) -> dict[str, tuple[str, ...]]:
+    return _engine_named_products(walks)
+
+
+def test_corpus_is_the_94_real_interview_walks(walks: dict[str, dict[str, Any]]) -> None:
     """An empty or shrunken corpus fails loudly: a census that passes because
     nobody fed it any walks is the green-but-dead shape (cicatrix #2).
 
@@ -1003,9 +1400,22 @@ def test_corpus_is_the_84_real_interview_walks(walks: dict[str, dict[str, Any]])
     `test_every_walk_ends_in_its_pinned_outcome` staying green on their
     unmoved EXPECTED_OUTCOME entries. `pt_pma`/`property`/`bank_deposit` are
     untouched, byte-for-byte — that branch, and the E28A rules that read it,
-    are deliberately out of this PR's scope."""
+    are deliberately out of this PR's scope.
 
-    assert len(walks) == 84, f"expected 84 interview walks, found {len(walks)}"
+    W-VO-E (THIS PR) adds 10, corpus 84 -> 94, and changes NO existing
+    fixture by a single byte (no tree/mapper edit: `git status` showed ten
+    new files and no modified one). Every one of the ten answers a question
+    the interview ALREADY asks with something other than its FIRST option —
+    a visa-free nationality and a 21-day stay, a 45-day stay, MULTIPLE
+    entry, business pay from abroad, an offshore investment application,
+    that application with the capital figures E28A's rule reads, an
+    education sponsor, a vocational level, a remote worker with no
+    Indonesian employer/clients/pay/company, and a minor joining a parent.
+    Eleven products that carried a SUPPORT rule in the signed pack and were
+    named on zero walks are now named; the twelfth (BRIDGING) is
+    unreachable by owner ruling — see `UNREACHABLE_BY_RULING` below."""
+
+    assert len(walks) == 94, f"expected 94 interview walks, found {len(walks)}"
     assert sorted(walks) == sorted(EXPECTED_OUTCOME), "corpus and EXPECTED_OUTCOME disagree"
     for label, spec in walks.items():
         assert spec["asked"], f"{label}: walk carries no asked-question history"
@@ -1017,7 +1427,7 @@ def test_every_walk_ends_in_its_pinned_outcome(outcomes: dict[str, dict[str, Any
     assert not violations, "interview-walk outcomes moved:\n  " + "\n  ".join(violations)
 
 
-def test_walk_state_census_is_2_dead_ends_15_no_paths_and_67_answers(
+def test_walk_state_census_is_2_dead_ends_15_no_paths_1_privacy_hold_and_76_answers(
     outcomes: dict[str, dict[str, Any]],
 ) -> None:
     """The headline number of the decisiveness wave. Every PR that changes it
@@ -1067,28 +1477,52 @@ def test_walk_state_census_is_2_dead_ends_15_no_paths_and_67_answers(
        exercised. Corpus 78 → 76, SUPPORTED_CANDIDATES 61 → 59.
 
     D4a net over both parts: 2/14/62 → 2/15/59. PR-D4d adds 6: 2/15/59 →
-    2/15/65. PR-D4c-2 (THIS PR) adds 2: 2/15/65 → 2/15/67."""
+    2/15/65. PR-D4c-2 adds 2: 2/15/65 → 2/15/67.
+
+    W-VO-E (THIS PR) adds 10 walks over an 84 → 94 corpus: 9 of them
+    SUPPORTED_CANDIDATES (2/15/67 → 2/15/76) and one — the minor walk —
+    HUMAN_REVIEW_REQUIRED, the FIRST review-ending walk this census has ever
+    pinned. Its cause is named and asserted below: `MINOR_GUARDIAN_PRIVACY_
+    REVIEW`, raised by `_apply_minor_privacy_hold` on `derived.is_minor`
+    alone. No existing walk moves state OR bytes."""
 
     census = dict(Counter(outcome["state"] for outcome in outcomes.values()))
     assert (
         census
         == EXPECTED_STATE_CENSUS
         == {
+            "HUMAN_REVIEW_REQUIRED": 1,
             "NEEDS_INPUT": 2,
             "NO_SUPPORTED_PATH": 15,
-            "SUPPORTED_CANDIDATES": 67,
+            "SUPPORTED_CANDIDATES": 76,
         }
     )
     assert census["NEEDS_INPUT"] == 2
     # NOT a claim about production, and no longer a claim the corpus cannot
-    # check. This fixture evaluates every walk WITHOUT its flags, so the zero
-    # says the PACK alone holds nobody — the ENGINE half. The review arm of
-    # `apply_public_policy_adapters` is exercised by the `flagged_outcomes`
-    # fixture instead, where the same 84 walks produce 8 holds; the comment
-    # that used to stand here said "a regression that adds a disclosure flag
-    # passes it invisibly", and `test_the_flagged_census_is_the_funnel_the_
-    # applicant_meets` is what stopped that being true.
-    assert census.get("HUMAN_REVIEW_REQUIRED", 0) == 0
+    # check. This fixture evaluates every walk WITHOUT its flags, so what it
+    # reports is the PACK's own verdict — the ENGINE half. The disclosure arm
+    # of `apply_public_policy_adapters` is exercised by the `flagged_outcomes`
+    # fixture instead, where the same walks produce 8 holds; the comment that
+    # used to stand here said "a regression that adds a disclosure flag passes
+    # it invisibly", and `test_the_flagged_census_is_the_funnel_the_applicant_
+    # meets` is what stopped that being true.
+    #
+    # W-VO-E: the zero became a one, and the count became the CAUSE. The minor
+    # walk carries NO disclosure flag — it is held by
+    # `evaluate_path._apply_minor_privacy_hold`, a different adapter on the
+    # same public path — so this is a narrow, deliberate relaxation of the
+    # zero-hold invariant with the one permitted cause pinned, not the
+    # "strictly stronger" it first claimed to be (council round 1). It is
+    # strictly stronger than the `== 1` it could have been: a second held
+    # walk, a DIFFERENT walk holding, or the same walk held for another reason
+    # all fail here.
+    held = {
+        label for label, outcome in outcomes.items() if outcome["state"] == "HUMAN_REVIEW_REQUIRED"
+    }
+    assert held == PRIVACY_HELD_WALKS == {"offshore/family/PARENT/spNat=IT/minor"}
+    minor_walk = _load_walks()["offshore/family/PARENT/spNat=IT/minor"]
+    public = _public_decision(minor_walk["overrides"], "offshore/family/PARENT/spNat=IT/minor")
+    assert [reason.code for reason in public.review_reasons] == ["MINOR_GUARDIAN_PRIVACY_REVIEW"]
     assert census["NO_SUPPORTED_PATH"] == 15
 
 
@@ -1511,8 +1945,12 @@ def test_d4a_e31e_minor_named_at_engine_level_privacy_held_at_public_level(
 ) -> None:
     """D4a (owner ruling SHWEB-20260911) proof for E31E specifically.
 
-    No EXISTING corpus walk exercises a minor identity: every family/diaspora
-    walk uses the corpus's default 25-year-old birth date, so
+    No corpus walk exercised a minor identity when this test was written, and
+    the ad-hoc override below is how it proved the point; W-VO-E later added
+    `offshore/family/PARENT/spNat=IT/minor`, a real walk on the same facts,
+    which is why this test now has a corpus sibling rather than being the only
+    witness. Every OTHER family/diaspora
+    walk still uses the corpus's default 25-year-old birth date, so
     `el.e31e-child-itas-support`'s `derived.age_years < 18` gate fails
     regardless of this PR's fix. This test overrides ONLY `person.birth_date`
     on the real `offshore/family/PARENT/spNat=IT` walk — relation PARENT,
@@ -1632,11 +2070,20 @@ def test_the_flagged_census_is_the_funnel_the_applicant_meets(
     flagged_outcomes: dict[str, dict[str, Any]],
 ) -> None:
     """The two censuses, side by side — and the headline this file existed
-    without: **0 human review at engine level, 8 at funnel level.**
+    without: **8 of the funnel's holds come from the disclosure layer, and
+    exactly one does not.**
 
     `EXPECTED_FLAGGED_STATE_CENSUS` is derived, not pinned, so this asserts
     the monotone property itself: a flagged walk ends HUMAN_REVIEW_REQUIRED
     whatever the pack decided, an unflagged walk keeps its engine state.
+
+    W-VO-E: the "0 human review at engine level" half of that headline is no
+    longer true and the number is not what replaced it. One walk —
+    `offshore/family/PARENT/spNat=IT/minor` — raises NO disclosure flag and is
+    still held on BOTH sides, by `evaluate_path._apply_minor_privacy_hold`, a
+    different adapter on the same public path. Subtracting it by NAME keeps
+    this test measuring what it was written to measure (the flag layer's own
+    contribution) instead of quietly absorbing a second cause into the count.
     """
 
     engine_census = dict(Counter(actual["state"] for actual in outcomes.values()))
@@ -1648,17 +2095,32 @@ def test_the_flagged_census_is_the_funnel_the_applicant_meets(
 
     assert engine_census == EXPECTED_STATE_CENSUS
     assert funnel_census == EXPECTED_FLAGGED_STATE_CENSUS
-    assert engine_census.get("HUMAN_REVIEW_REQUIRED", 0) == 0
-    assert funnel_census["HUMAN_REVIEW_REQUIRED"] == len(EXPECTED_DISCLOSED_REVIEW_FLAGS)
+    # The minor-privacy hold is named, not counted away: it is the ONLY hold
+    # either census may carry that no disclosure flag produced, and it must be
+    # the same walk on both sides (the adapter reads `derived.is_minor`, which
+    # no flag can change).
+    assert PRIVACY_HELD_WALKS == {"offshore/family/PARENT/spNat=IT/minor"}
+    for census in (outcomes, flagged_outcomes):
+        held_without_a_flag = {
+            label
+            for label, actual in census.items()
+            if actual["state"] == "HUMAN_REVIEW_REQUIRED"
+            and label not in EXPECTED_DISCLOSED_REVIEW_FLAGS
+        }
+        assert held_without_a_flag == PRIVACY_HELD_WALKS
+    assert funnel_census["HUMAN_REVIEW_REQUIRED"] == len(EXPECTED_DISCLOSED_REVIEW_FLAGS) + len(
+        PRIVACY_HELD_WALKS
+    )
 
 
 def test_innocence_an_unflagged_walk_keeps_its_whole_engine_outcome(
     outcomes: dict[str, dict[str, Any]],
     flagged_outcomes: dict[str, dict[str, Any]],
 ) -> None:
-    """The 76 walks that raise nothing are byte-for-byte the same decision in
+    """The 86 walks that raise nothing are byte-for-byte the same decision in
     both censuses — not merely the same state, the same candidates, missing
-    facts, reason codes and notices.
+    facts, reason codes and notices. (86 = 94 - 8; it said 76 until council
+    round 4, which is the 84-walk figure this window superseded.)
 
     This is the innocence half of the guard: supplying flags must change
     NOTHING for a walk that raises none, or the flagged census would be
@@ -1771,3 +2233,190 @@ def test_the_flagged_rebuild_names_every_field_of_the_wire_model() -> None:
     assert set(VisaOracleEvaluateRequest.model_fields) == set(
         gold_coverage_eval._REBUILT_REQUEST_FIELDS
     )
+
+
+def test_every_support_bearing_product_is_named_by_some_walk(
+    engine_named: dict[str, tuple[str, ...]],
+) -> None:
+    """W-VO-E's binding: a product the signed pack SUPPORTS, that no
+    interview walk can name, is a coverage gap no other test in this
+    repository can see.
+
+    ``test_gold_coverage_floor.py`` proves the pack can support a product
+    when every fact arrives. This file's census proves what the funnel
+    answers. NEITHER notices a product that simply never appears: a walk
+    cannot lose a candidate it could never gain, so a product unreachable
+    through the interview is invisible in every count above — it looks
+    exactly like a product nobody happened to qualify for. Measured
+    2026-09-13 before this test existed: 12 of the pack's 29 SUPPORT-bearing
+    products were in that state, including the digital-nomad and Investor
+    KITAS products, and had been for the whole life of the corpus.
+
+    The two halves are read from DIFFERENT sources on purpose — the
+    supported set from the signed pack, COMPILED and effective-filtered, the named set by
+    replaying the corpus — so neither can be edited into agreement with the
+    other. Curing a red here means giving the product a WALK (an applicant
+    who answers the questions its rules read), never widening this test.
+    """
+
+    unreached = _unreached_support_products(engine_named)
+    assert not unreached, (
+        "the signed pack supports these products and no interview walk "
+        f"names any of them: {unreached}. Add a walk to "
+        "`generate-walk-corpus.ts` that answers the facts their rules read, "
+        "or — only if an owner ruling forbids collecting one of those facts "
+        "— add a row to UNREACHABLE_BY_RULING quoting the ruling."
+    )
+
+
+def test_unreachable_by_ruling_holds_only_the_bridging_row() -> None:
+    """One row, and it is a ruling. This table is the single place a product
+    may be excused from the guard above, so its CONTENTS are pinned: a row
+    added without touching this test is not possible."""
+
+    assert set(UNREACHABLE_BY_RULING) == {"BRIDGING"}
+    assert UNREACHABLE_BY_RULING["BRIDGING"].forbidden_fact == "intent.requested_product_code"
+    assert "never asks which visa" in UNREACHABLE_BY_RULING["BRIDGING"].ruling
+
+
+def test_every_ruled_unreachable_product_still_depends_on_its_forbidden_fact() -> None:
+    """The excuse is re-derived from the pack, not trusted.
+
+    A row says "no walk can name this product because its SUPPORT rules need a
+    fact an owner ruling forbids the funnel to collect". That claim is only
+    true while EVERY effective SUPPORT route for the product provably cannot
+    fire without the fact. The day a signed pack adds a BRIDGING route keyed
+    on something the interview does collect, the product becomes reachable —
+    and the guard above would stay green anyway, because the excuse subtracts
+    the code unconditionally. This test is what turns that into a red (council
+    round 1 (council/journal.jsonl)).
+
+    The analysis is conservative (council round 3): it proves dependency, it
+    never proves the absence of one, so a red here means "re-justify", not
+    "the route is reachable" — the message says which.
+    """
+
+    offenders = _ruling_rows_without_a_proven_dependency()
+    assert not offenders, (
+        "these UNREACHABLE_BY_RULING rows carry a SUPPORT route whose "
+        f"dependency on their forbidden fact is no longer provable: {offenders}. "
+        "Either the pack gave the product a route that does not need the fact "
+        "— give it a walk and delete the row — or the route is written in a "
+        "shape this conservative check cannot reason about, in which case "
+        "extend the check and say so. Do not widen the excuse."
+    )
+    # ...and an excuse for a product the pack does not support at all is a
+    # typo, not a ruling.
+    assert set(UNREACHABLE_BY_RULING) <= _support_bearing_product_codes()
+
+
+def test_no_unreachable_by_ruling_row_is_stale(
+    engine_named: dict[str, tuple[str, ...]],
+) -> None:
+    """The mirror of the guard: a row whose product a walk DOES name is a
+    stale excuse, and stale excuses are how an allowlist outlives the thing
+    it was written for. Delete the row instead of leaving it to cover a gap
+    that closed."""
+
+    stale = _stale_ruling_rows(engine_named)
+    assert not stale, f"UNREACHABLE_BY_RULING rows now reached by a walk: {stale}"
+
+
+def test_guilt_a_support_bearing_product_no_walk_names_is_caught(
+    engine_named: dict[str, tuple[str, ...]],
+) -> None:
+    """Guilt for the guard: delete the only product-naming this corpus has
+    for E33G — exactly what happens when a tree change stops routing to a
+    product — and the guard must name E33G.
+
+    E33G is chosen because W-VO-E gave it its first and only walk
+    (`offshore/remote/foreign_only`), so dropping it from the named map is
+    the faithful simulation of the gap reopening.
+    """
+
+    assert "E33G" in engine_named, "fixture drift: E33G must be named by a walk"
+    without_e33g = {code: labels for code, labels in engine_named.items() if code != "E33G"}
+    assert _unreached_support_products(without_e33g) == ["E33G"]
+
+
+def test_guilt_a_fabricated_ruling_row_that_is_reachable_is_caught(
+    engine_named: dict[str, tuple[str, ...]],
+) -> None:
+    """Guilt for the staleness mirror: excuse a product the corpus DOES name
+    (C1, on 39 of the 94 walks) and the staleness check must catch it, so the
+    excuse table can never be used to silence a product that is perfectly
+    reachable."""
+
+    fabricated = {
+        "C1": RuledUnreachable(
+            forbidden_fact="intent.requested_product_code",
+            ruling="fabricated row — C1 is named by most of the corpus",
+        )
+    }
+    assert _stale_ruling_rows(engine_named, excused=fabricated) == ["C1"]
+    # ...and the guard itself stays silent about C1, which is the half that
+    # would hide the fabrication if the mirror above did not exist.
+    assert "C1" not in _unreached_support_products(engine_named, excused=fabricated)
+
+
+def test_guilt_a_ruling_row_whose_product_has_a_free_support_route_is_caught() -> None:
+    """Guilt for the fact-dependency check: excuse C6 — a product no ruling
+    covers, whose SUPPORT rule (`el.c6.social`) reads `intent.purposes`, never
+    `intent.requested_product_code` — and the check must name it.
+
+    C6 stands in for the future BRIDGING route the real row could not see: a
+    product excused for a fact its rules do not actually need.
+    """
+
+    fabricated = {
+        "C6": RuledUnreachable(
+            forbidden_fact="intent.requested_product_code",
+            ruling="fabricated row — C6's SUPPORT rule reads no such fact",
+        )
+    }
+    assert _ruling_rows_without_a_proven_dependency(excused=fabricated) == ["C6"]
+
+
+def test_guilt_a_rule_that_only_mentions_the_forbidden_fact_is_not_a_dependency() -> None:
+    """Guilt for the SEMANTIC half of the dependency check — the round-2
+    council finding, as its own counterexample.
+
+    ``any(eq(requested_product_code, "BRIDGING"), intersects(purposes, OTHER))``
+    MENTIONS the forbidden fact, so `required_facts` contains it and a
+    membership test would call the ruling row justified. The condition
+    nonetheless evaluates TRUE with the fact UNKNOWN, on the OTHER branch —
+    verified here against the real evaluator, not asserted. The AND-spine
+    test must reject it, and must still accept the conjunction shape every
+    real BRIDGING rule uses.
+    """
+
+    forbidden = "intent.requested_product_code"
+    bypass = ast_module.AnyCondition(
+        op="any",
+        args=(
+            ast_module.EqCondition(
+                op="eq", fact=FactPath.INTENT_REQUESTED_PRODUCT_CODE, value="BRIDGING"
+            ),
+            ast_module.IntersectsCondition(
+                op="intersects", fact=FactPath.INTENT_PURPOSES, values=("OTHER",)
+            ),
+        ),
+    )
+    snapshot = ast_module.FactSnapshot(
+        values={
+            FactPath.INTENT_REQUESTED_PRODUCT_CODE: UnknownFact(UnknownReason.NOT_ASKED),
+            FactPath.INTENT_PURPOSES: KnownFact(frozenset({"OTHER"})),
+        }
+    )
+    assert forbidden in {str(path) for path in ast_module.collect_fact_paths(bypass)}, (
+        "the counterexample must MENTION the fact — that is what makes it a trap"
+    )
+    assert ast_module.evaluate_condition(bypass, snapshot).truth is TruthValue.TRUE
+    assert _proves_it_cannot_fire_without(bypass, forbidden) is False
+
+    # Innocence: the shape the four real BRIDGING rules use is accepted, and
+    # the real rules themselves are what the row rests on.
+    conjunction = ast_module.AllCondition(op="all", args=(bypass.args[0], bypass.args[1]))
+    assert _proves_it_cannot_fire_without(conjunction, forbidden) is True
+    for rule in _support_rules_by_product()["BRIDGING"]:
+        assert _proves_it_cannot_fire_without(rule.when, forbidden), rule.rule_id

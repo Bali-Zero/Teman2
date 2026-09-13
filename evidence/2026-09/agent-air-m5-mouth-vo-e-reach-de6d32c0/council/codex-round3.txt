@@ -1,0 +1,127 @@
+TRIMMED TRANSCRIPT — codex-round3.txt
+
+The raw `codex exec` transcript of this round was 12042 lines / 1219410 bytes: the seat's
+own tool calls, every hook line and the full text of every file it read (this
+repository's docs are large, and the seat read several). Committing three of
+those is 3 MB of evidence nobody can review, so each is trimmed HERE to the two
+parts a reader needs: the PROMPT the seat was given, and its FINAL ANSWER up to
+and including the verdict line. Nothing between them is a claim — it is the
+seat's own navigation — and nothing after the verdict is review (it is the
+harness's checkpoint hook failing against the read-only sandbox). The trim is
+mechanical and reproducible: prompt = first 70 lines, answer = from the last
+`codex` speaker marker before the last VERDICT line, through that line.
+
+========================================================================
+PROMPT (first 70 lines, verbatim)
+========================================================================
+Reading additional input from stdin...
+OpenAI Codex v0.154.0
+--------
+workdir: /Users/balizero/nuzantara/.worktrees/mouth-vo-e-reach
+model: gpt-5.6-sol
+provider: openai
+approval: never
+sandbox: read-only
+reasoning effort: high
+reasoning summaries: none
+session id: 01a09b35-b359-7a91-8843-78892a9cfc3b
+--------
+user
+You are an adversarial correctness reviewer. Read the patch at
+.probe-voe/review-diff.patch in this worktree (622 lines: the hand-written half of
+the change). The patch is the diff between origin/main (eecd7f06) and HEAD of a PR
+in the Nuzantara monorepo. The PR ALSO adds 10 generated JSON fixtures under
+apps/backend-rag/backend/tests/services/visa_engine/gold_coverage/fixtures/walks/,
+omitted from the patch because they are machine-generated output of the modified
+generator and are byte-compared against a fresh generation by
+walk-corpus-determinism.test.ts.
+
+CONTEXT — what the change claims, so you can try to falsify it:
+
+1. The Visa Oracle interview (apps/mouth, tree.ts/flow.ts/fact-mapper.ts) is a
+   hand-written decision tree. A signed rule pack
+   (apps/backend-rag/backend/services/visa_engine/contracts/packs/rulepack-prod-020.signed.json)
+   decides which visa products a set of facts supports.
+2. generate-walk-corpus.ts drives the REAL interview state machine over a list of
+   scenarios and writes each walk's wire facts as a fixture; the backend census test
+   replays every fixture against the signed pack and pins the outcome.
+3. Measured before this PR: 29 products have at least one SUPPORT rule in the signed
+   pack, and only 17 were ever named by a walk. The 12 missing ones were invisible to
+   every test in the repo.
+4. This PR adds 10 scenarios (reaching 11 of the 12 products), pins their outcomes,
+   and adds a guard test that reads the SUPPORT-bearing product codes from the signed
+   pack payload and fails when any is named by no walk. The 12th product (BRIDGING)
+   is excused in a one-row UNREACHABLE_BY_RULING table because all its SUPPORT rules
+   need a fact an owner ruling forbids collecting.
+5. No file in tree.ts / flow.ts / fact-mapper.ts is touched: the claim is that every
+   fact those 11 products' rules read was ALREADY collected by the interview, and only
+   the corpus convention of answering each question with its FIRST option kept them
+   unexercised.
+
+Judge these specifically:
+(a) Is the new guard test real, or can it pass vacuously? Could it be green while the
+    class it exists to catch is present? Is reading the ENGINE decision (not the public
+    one) the right subject, given the public layer's minor-privacy hold?
+(b) Is UNREACHABLE_BY_RULING a hole? Can a future engineer silence a real gap with a row?
+    Are the guilt tests genuinely guilt (do they fail if the checker is broken)?
+(c) Does replacing the census assertion
+    `census.get("HUMAN_REVIEW_REQUIRED", 0) == 0` with an assertion that names the one
+    held walk and its reason WEAKEN the guard? Argue both ways and conclude.
+(d) Any claim in the comments/docstrings that the code does not support, any number that
+    cannot be true, or any test whose name lies about what it asserts.
+(e) Correctness bugs of any kind in the added Python or TypeScript.
+
+Rules: you may read any file in this worktree. Do not run git commands that write.
+Be specific: file + line + why. If you find nothing that would change the code, say so.
+End your answer with exactly one final line, either
+VERDICT: OK
+or
+VERDICT: DEFECT
+
+ROUND 2 ADDENDUM (2026-09-13): round 1 returned DEFECT and the findings were fixed
+at depth 1 in a second commit that is INSIDE the patch you are reading:
+(1) the SUPPORT universe is now derived from the COMPILED pack via
+rules_for(product, effective_at=_AS_OF), filtering products the way
+evaluator.evaluate filters them (ACTIVE + valid period), so a GLOBAL-scope SUPPORT
+rule is covered and an out-of-period rule or non-ACTIVE product cannot cause a false red;
+
+========================================================================
+FINAL ANSWER (transcript lines 11919-11954, verbatim)
+========================================================================
+codex
+[M5] **Finding — MEDIUM:** il nuovo controllo è sound contro i falsi verdi, ma non implementa il predicato esatto dichiarato.
+
+In [test_interview_walk_census.py:995](/Users/balizero/nuzantara/.worktrees/mouth-vo-e-reach/apps/backend-rag/backend/tests/services/visa_engine/test_interview_walk_census.py:995), `_condition_cannot_fire_without` riconosce soltanto foglie sullo “AND-spine”. Per esempio, questa condizione valida:
+
+```python
+not(unknown(intent.requested_product_code))
+```
+
+non può essere `TRUE` quando il fatto è sconosciuto: il vero evaluator restituisce `FALSE`. Il nuovo helper restituisce però `False`, perché non attraversa `not`. Lo stesso falso negativo avviene con:
+
+```python
+any(eq(fact, "A"), eq(fact, "B"))
+```
+
+Con `fact=UNKNOWN`, entrambi i rami sono `UNKNOWN` e l’intera condizione non può essere `TRUE`, ma il helper la rifiuta.
+
+Questo non riapre il buco del round 2: non ho trovato alcun falso verde. Produce però falsi rossi su AST legittimi. [La chiamante:1032](/Users/balizero/nuzantara/.worktrees/mouth-vo-e-reach/apps/backend-rag/backend/tests/services/visa_engine/test_interview_walk_census.py:1032) trasforma “dipendenza non provata dal mio algoritmo conservativo” in “route raggiungibile”, e [il messaggio:1785](/Users/balizero/nuzantara/.worktrees/mouth-vo-e-reach/apps/backend-rag/backend/tests/services/visa_engine/test_interview_walk_census.py:1785) ordina erroneamente di aggiungere una walk e cancellare il ruling. Con l’esempio sopra, il ruling sarebbe ancora valido e la walk resterebbe vietata. Serve almeno rinominare il predicato/caller come “not proven dependent”, oppure estendere l’analisi astratta a `not` e ai casi `any` dove tutti i rami dipendono dal fatto.
+
+Gli altri risultati:
+
+- Il fix round 2 sull’universo SUPPORT è reale: [linee 927–943](/Users/balizero/nuzantara/.worktrees/mouth-vo-e-reach/apps/backend-rag/backend/tests/services/visa_engine/test_interview_walk_census.py:927) usano il pack compilato, `rules_for`, periodo effettivo e prodotti ACTIVE, includendo correttamente le regole GLOBAL.
+- La tabella strutturata e i controlli stale/guilt sono reali. La guilt del round 3 riproduce davvero il controesempio `any(...)` contro l’evaluator e impedisce il precedente falso verde.
+- Leggere la decisione ENGINE è corretto per questa proprietà: misura tree → facts → supporto del pack. La privacy hold è un adapter pubblico successivo ed è verificata separatamente.
+- Il guard non è vacuo nell’asset corrente: invocando direttamente tutte le 25 funzioni di test ho ottenuto 94 walk, 29 prodotti SUPPORT-bearing, 28 nominati, nessun prodotto non coperto dopo l’unica eccezione BRIDGING, e nessuna riga stale/offender.
+- Il determinism test confronta realmente sia il file-set sia i byte. Non ho potuto eseguirlo tramite Vitest: i `node_modules` del worktree puntano a un worktree inesistente e il sandbox non consente directory temporanee.
+
+La pulizia testuale resta inoltre incompleta:
+
+- [Linea 1743](/Users/balizero/nuzantara/.worktrees/mouth-vo-e-reach/apps/backend-rag/backend/tests/services/visa_engine/test_interview_walk_census.py:1743) dice ancora “signed pack’s own payload”, mentre ora la sorgente è il pack compilato.
+- [Linee 1775–1789](/Users/balizero/nuzantara/.worktrees/mouth-vo-e-reach/apps/backend-rag/backend/tests/services/visa_engine/test_interview_walk_census.py:1775) parlano ancora di regole che “read” il fatto; il round 3 ha dimostrato proprio che leggerlo non basta.
+- [Linee 358–363](/Users/balizero/nuzantara/.worktrees/mouth-vo-e-reach/apps/backend-rag/backend/tests/services/visa_engine/test_interview_walk_census.py:358) attribuiscono ancora tutti gli undici prodotti alla convenzione “first option”, sebbene alcuni dipendessero dai valori sintetici di domande typed, come data, durata e capitale.
+
+Nessun nuovo falso verde o errore nei dieci scenari è emerso; il difetto residuo è la falsa equivalenza tra mancata prova AND-spine e route realmente raggiungibile, accompagnata da documentazione ancora contraddittoria.
+
+VERDICT: DEFECT
+

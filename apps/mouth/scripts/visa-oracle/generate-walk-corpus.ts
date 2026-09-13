@@ -5,10 +5,12 @@
  * The corpus is DATA, never hand-written: it is produced by driving the REAL
  * interview state machine — `computeNextNode` from `flow.ts` (which itself
  * calls `getCategoryQuestionIds` to expand each category branch) and the REAL
- * `mapOracleFactsToApplicantFacts` from `fact-mapper.ts`. Every question is
- * answered with its FIRST option; typed questions get one fixed synthetic
- * identity (see `answerFor`), notably 121 stay-days, so the walk depends only
- * on the tree and not on the answers.
+ * `mapOracleFactsToApplicantFacts` from `fact-mapper.ts`. Every question a
+ * scenario does not OVERRIDE is answered with its FIRST option; typed
+ * questions get one fixed synthetic identity (see `answerFor`), notably 121
+ * stay-days, so a walk that overrides nothing depends only on the tree. What
+ * a scenario DOES override is the answer that product's rules read, and the
+ * override list is the walk's whole content — see the W-VO-E block below.
  *
  * The enumerated scenarios are the two-arm spine (offshore / onshore) crossed
  * with the eleven `CATEGORY_KEYS`, plus the sub-branches that exist today
@@ -20,6 +22,12 @@
  * neutral walk) re-run at `RETIREMENT_AGE_64_BIRTH_DATE` — every other walk
  * still applies at `YOUNG_APPLICANT_BIRTH_DATE`, since `birth_date` is a
  * spine question no branch reads (see `answerFor`).
+ *
+ * The last block (W-VO-E, 2026-09-13) adds ten walks that answer something
+ * other than a question's FIRST option: a first option is an answer, not a
+ * neutral value, and eleven products with a SUPPORT rule in the signed pack
+ * were named by no walk purely because the default answer excluded them.
+ * Each of those ten names the pack rule it exists to exercise.
  *
  * Diaspora is crossed rather than sampled once because its wire facts are
  * NOT a copy of the family arm's: `mapDisclosureFlags` adds
@@ -102,6 +110,14 @@ const YOUNG_APPLICANT_BIRTH_DATE = "2000-11-11";
  * than a silent absorption into this one.
  */
 const RETIREMENT_AGE_64_BIRTH_DATE = "1961-11-11";
+
+/**
+ * Birth date for the ONE minor walk (W-VO-E): 13 on `CORPUS_TODAY`, well
+ * inside `el.e31e-child-itas-support`'s `derived.age_years < 18` gate and
+ * far from its edge, so a future birthday-inclusive change to
+ * `_derive_age_years` cannot flip this walk by a day.
+ */
+const MINOR_APPLICANT_BIRTH_DATE = "2012-11-11";
 
 /** Runaway guard: no real walk is anywhere near this long. */
 const MAX_STEPS = 200;
@@ -593,6 +609,151 @@ export function enumerateScenarios(): Scenario[] {
     },
   });
 
+  // W-VO-E ("every product the engine knows can be reached by an
+  // interview"). Eleven products carried a SUPPORT rule in the highest
+  // signed pack and were named on ZERO walks, so nothing in the repository
+  // could tell a product the funnel cannot reach from one it simply never
+  // exercised. Measured 2026-09-13 on rulepack-prod-020.signed.json: none
+  // of the eleven needed a new question — every fact their rules read is
+  // already collected by a branch the applicant can walk today. What was
+  // missing is the corpus (and the guard that now binds it,
+  // `test_every_support_bearing_product_is_named_by_some_walk`). Each walk
+  // below is one ordinary applicant, and names the pack rule it exercises.
+
+  // `el.a1.tourism`: TOURISM/TRANSIT, a visa-free nationality, 30 days or
+  // fewer. The corpus-wide defaults (IT, 121 days) clear neither bound, so
+  // the visa-free arm had never been walked. `el.b1.tourism` (60 days,
+  // wider nationality list) fires on the same answers.
+  scenarios.push({
+    label: "offshore/tourism/visa_free_30d",
+    overrides: {
+      ...base,
+      category: "tourism",
+      nationalities: "SG",
+      stay_days: "21",
+    },
+  });
+  // `el.b1.tourism` alone: the default nationality with a stay inside the
+  // 60-day Visa-on-Arrival bound but outside A1's 30-day one.
+  scenarios.push({
+    label: "offshore/tourism/voa_60d",
+    overrides: { ...base, category: "tourism", stay_days: "45" },
+  });
+  // `el.d1-multi-entry-support`: the `entry_pattern` question has been on
+  // the tourism branch all along; every walk answered its FIRST option
+  // (SINGLE), so the multiple-entry product was unreachable by default
+  // alone. This is the applicant-driven twin of
+  // `test_d4a_transit_purpose_positively_reaches_d1`, which proves the same
+  // gate by patching the wire fact instead of answering the question.
+  scenarios.push({
+    label: "offshore/tourism/multiple_entry",
+    overrides: { ...base, category: "tourism", entry_pattern: "MULTIPLE" },
+  });
+  // `el.d2-multi-entry-support`: business meetings, 180 days or fewer. The
+  // plain `offshore/business` walk answers `work_indonesia_compensation`'s
+  // first option (`yes`), and `hf.*` then excludes every product on
+  // BUSINESS_LOCAL_COMPENSATION_NOT_ALLOWED — a correct answer to a
+  // different question. A business visitor paid from abroad is the normal
+  // case and had no walk.
+  scenarios.push({
+    label: "offshore/business/no_local_compensation",
+    overrides: {
+      ...base,
+      category: "business",
+      work_indonesia_compensation: "no",
+    },
+  });
+  // `el.d12-*`: INVESTMENT, 360 days or fewer, and NOT converting status
+  // onshore — `hf.d12-onshore-conversion-excluded` is the gate the
+  // `wants_onshore_conversion` question was added for (flow.ts, 2026-09-06),
+  // and the corpus only ever answered its first option (`yes`), which
+  // excludes D12 by regulation.
+  scenarios.push({
+    label: "offshore/invest/pt_pma/offshore_application",
+    overrides: {
+      ...base,
+      category: "invest",
+      investment_vehicle: "pt_pma",
+      wants_onshore_conversion: "no",
+    },
+  });
+  // `el.e28a.investment`: the same investor, with the capital figures the
+  // rule actually reads (IDR 10,000,000,000 investment plan and IDR
+  // 2,500,000,000 paid-up — the rule's own bounds, not a figure this file
+  // invents). `answerFor`'s generic numeric default is IDR 1,000,000,000,
+  // under BOTH bounds (a tenth of the first, and under half the second), so
+  // the Investor KITAS was unreachable through the corpus while being
+  // perfectly reachable through the interview.
+  scenarios.push({
+    label: "offshore/invest/pt_pma/full_capital",
+    overrides: {
+      ...base,
+      category: "invest",
+      investment_vehicle: "pt_pma",
+      wants_onshore_conversion: "no",
+      investment_capital_idr: "10000000000",
+      investment_paid_up_capital_idr: "2500000000",
+    },
+  });
+  // `el.e30e-student-support` / `el.e30f-student-support`: both read
+  // `sponsor.type`, and the study branch has asked `sponsor_category` all
+  // along — the corpus just never answered anything but its first option
+  // (`NONE`). EDUCATION reaches both; INDIVIDUAL would reach E30E only.
+  scenarios.push({
+    label: "offshore/study/education_sponsor",
+    overrides: { ...base, category: "study", sponsor_category: "EDUCATION" },
+  });
+  // `el.e30b-izin-belajar`: E30B shares the student SUPPORT rule with
+  // E30/E30A but carries its own `hf.e30b-level-band` HARD FILTER, which
+  // excludes every study level outside VOCATIONAL/UNDERGRADUATE/
+  // POSTGRADUATE. `study_level`'s first option is PRIMARY, so E30B was
+  // excluded on every study walk.
+  scenarios.push({
+    label: "offshore/study/vocational/education_sponsor",
+    overrides: {
+      ...base,
+      category: "study",
+      sponsor_category: "EDUCATION",
+      study_level: "VOCATIONAL",
+    },
+  });
+  // `el.e33g.remote-work`: the digital-nomad product. Its three negative
+  // facts (no Indonesian employer, no Indonesian clients, no
+  // Indonesia-source pay) are asked by the `remote` branch, and `hf.e33g.*`
+  // also excludes local company ownership. `remote_clients`'s first option
+  // is already `foreign`, but the other three questions default to `yes`
+  // and each one alone excludes the product — so the highest-demand public
+  // product was named by no walk at all.
+  scenarios.push({
+    label: "offshore/remote/foreign_only",
+    overrides: {
+      ...base,
+      category: "remote",
+      remote_compensation: "no",
+      work_payer: "no",
+      remote_pt_pma: "no",
+    },
+  });
+  // `el.e31e-child-itas-support`: a minor joining a parent who holds a
+  // stay permit. Every other family/diaspora walk uses the corpus's
+  // 25-year-old identity, so the `derived.age_years < 18` gate could never
+  // clear. This walk is the ONE in the corpus whose PUBLIC outcome is a
+  // hold: `evaluate_path._apply_minor_privacy_hold` empties the candidates
+  // of any known minor unconditionally (Privacy Policy V1 — a product
+  // control, not a claim of ineligibility). The ENGINE names E31E, which
+  // is what the reachability guard reads; see the census test's
+  // HUMAN_REVIEW_REQUIRED pin for the boundary.
+  scenarios.push({
+    label: "offshore/family/PARENT/spNat=IT/minor",
+    overrides: {
+      ...base,
+      category: "family",
+      family_relation: "PARENT",
+      family_sponsor_nationalities: "IT",
+      birth_date: MINOR_APPLICANT_BIRTH_DATE,
+    },
+  });
+
   return scenarios;
 }
 
@@ -615,8 +776,10 @@ export function buildWalkCorpus(): Map<string, WalkFixture> {
       throw new Error(`duplicate walk file name ${name} (${scenario.label})`);
     }
     // Key order is the file's line order (prettier preserves it), so the flag
-    // list goes LAST: the 76 walks that raise none keep byte-identical
+    // list goes LAST: the 86 walks that raise none keep byte-identical
     // fixtures, and only the walks that actually carry the layer change.
+    // (86 of 94 as of W-VO-E — none of that window's ten new walks raises a
+    // flag; the comment said 76, the 84-walk figure, until council round 4.)
     corpus.set(name, {
       label: scenario.label,
       asked,

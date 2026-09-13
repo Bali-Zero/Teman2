@@ -1,0 +1,67 @@
+TRANSCRIPT — agy-gemini-3.1-pro, council round 8
+
+cmd: agy --model gemini-3.1-pro-high --print-timeout 14m -p "<prompt>" < /dev/null
+     (text-only; the patch is INLINED in the prompt instead of read from disk)
+start: 2026-09-13T20:06:58Z   end: 2026-09-13T20:07:54Z   exit: 0
+inlined after the prompt text below: .probe-voe/fix-r7.patch = `git diff de2836423d 8caa54f99c`, sha256 f879581a5b9f3ddbb851eebb5def848f4a22d55ef2d515e6600fb8e0066a4f59
+The inlined patch is omitted here (it is the diff this PR already carries).
+
+========================================================================
+PROMPT (verbatim, patch omitted)
+========================================================================
+You are agy-gemini-3.1-pro, a council reviewer on PR #6470. ROUND 8, NARROW. You have
+NO tools: everything you may judge is inlined below. Say so plainly where a check
+needs a file you cannot see.
+
+Your round 7 returned VERDICT: OK on head e7e1034edf. Since then the PR was pushed
+and CI went red for ONE cause, a sibling race: PR #6466 merged into main after this
+branch's merge-base. It (a) added ten new wire facts to the interview's fact mapper
+and regenerated the 84 existing walk fixtures, but not this PR's ten new ones, so
+walk-corpus-determinism.test.ts failed on exactly those ten; and (b) added
+test_seq21_pack.py, whose census test pinned SUPPORTED_CANDIDATES == 67 over the
+corpus and failed with "assert 76 == 67" once this PR's ten walks were in it.
+
+The cure: merge origin/main into the branch (clean), re-run the generator, and move
+the seq-21 census pin. The complete cure diff is inlined below.
+
+Measured by the author on the merged tree (you cannot re-run these; judge whether the
+diff is consistent with them):
+- generator re-run: exactly the ten W-VO-E fixtures changed, +340 lines, 0 deletions;
+- the seq-21 module's own _replay over 94 walks, seq-20 AND seq-21:
+  76 SUPPORTED / 15 NO_SUPPORTED_PATH / 2 NEEDS_INPUT / 1 HUMAN_REVIEW_REQUIRED,
+  no walk drifts between the two packs, the single hold is
+  offshore/family/PARENT/spNat=IT/minor;
+- census + seq-21 suites 84 passed; Oracle vitest 40 files / 856 tests passed.
+
+CHECK ONLY:
+1. Are the ten fixture hunks ONLY the addition of new facts as UNKNOWN / NOT_ASKED,
+   identical in every file, with nothing else moved?
+2. Does the test_seq21_pack.py edit weaken anything the old test proved? Is its
+   docstring true given the numbers above? Is pinning the hold by walk label sound?
+3. Anything in the diff that is internally inconsistent.
+
+End your answer with exactly one final line, either
+VERDICT: OK
+or
+VERDICT: DEFECT
+
+===== CURE DIFF (git diff de2836423d 8caa54f99c) =====
+
+========================================================================
+ANSWER (verbatim, complete stdout+stderr)
+========================================================================
+Here is my review of the provided cure diff:
+
+**1. Fixture Hunks**
+The 10 JSON fixture hunks in the diff strictly add the 10 new facts (`sponsor.*` and `investment.*`) as `UNKNOWN` with reason `NOT_ASKED`. The inserted blocks are identical across all 10 files and correctly placed. No other lines were moved, deleted, or modified. This flawlessly accounts for the reported +340 lines (10 files × 34 lines/file).
+
+**2. Test Edits & Soundness**
+The edit to `test_seq21_pack.py` does not weaken the test; it actually makes it stronger. 
+* By updating the assertions (SUPPORTED goes 67 -> 76, HUMAN_REVIEW_REQUIRED goes 0 -> 1), it accurately reflects the 94-walk corpus (+10 walks).
+* The docstring accurately explains the math and context based on the measurements you provided. 
+* Pinning the `HUMAN_REVIEW_REQUIRED` state to the exact walk label (`offshore/family/PARENT/spNat=IT/minor`) is a very sound practice. It guarantees that the count didn't accidentally stay at `1` because this walk succeeded but another unrelated walk regressed into a hold state. 
+
+**3. Internal Consistency**
+The changes are perfectly consistent. The file `offshore_family_PARENT_spNat_IT_minor.json` is one of the 10 updated walks, directly corresponding to the `offshore/family/PARENT/spNat=IT/minor` label asserted in the test to be held by the minor privacy rule. 
+
+VERDICT: OK
