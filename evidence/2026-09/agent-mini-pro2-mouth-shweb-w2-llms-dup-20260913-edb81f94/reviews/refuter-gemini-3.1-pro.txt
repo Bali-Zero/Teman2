@@ -1,0 +1,82 @@
+**VERDICT**: **GO-WITH-CONDITIONS**
+
+---
+
+### 1. HIGH — Map insertion order does not guarantee the top 5 most recent articles without an explicit sort
+- **Claim**: *"keeps one entry per URL, with the most recent date"* and `[...byUrl.values()].slice(0, 5)` returns the 5 latest articles.
+- **Why it breaks**: 
+  In JavaScript, `Map.prototype.set(key, val)` on an **existing** key updates its value in-place but **does not update its insertion order**. 
+  - If `enArticles` is already sorted descending by date: the first encounter of any URL is already the newest date. The check `new Date(a.publishedAt) > new Date(kept.publishedAt)` will *never* be true on subsequent duplicates, making the date comparison dead code.
+  - If `enArticles` is *not* guaranteed to be sorted strictly descending by date (e.g., loaded across folders in filesystem order): suppose an older duplicate is encountered first at Map index 7, and the newest article across the entire site arrives later sharing that URL. Calling `byUrl.set(a.url, a)` updates the value at Map index 7. When `[...byUrl.values()].slice(0, 5)` is executed, that newest article is **dropped entirely from `latest5`** because it was never moved up or re-sorted.
+  - Test 2 missed this because it tested a toy fixture with only **one** distinct URL, so `byUrl` only ever had 1 element.
+- **What to check**:
+  Verify whether `enArticles` is strictly sorted descending before line 156. If it is, deduplicating simply on first seen (`if (!byUrl.has(a.url)) byUrl.set(a.url, a)`) is cleaner and sufficient. If it is not (or if out-of-order arrival is expected), sort the deduplicated entries before slicing:
+  ```typescript
+  const latest5 = [...byUrl.values()]
+    .sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime())
+    .slice(0, 5);
+  ```
+
+---
+
+### 2. HIGH — `execFileSync(require.resolve("tsx/cli"), ...)` risks `EACCES` failures in CI
+- **Claim**: Test 2 safely executes the generator child process via `require.resolve("tsx/cli")`.
+- **Why it breaks**:
+  `require.resolve("tsx/cli")` resolves to the raw JS/MJS entry point (e.g. `node_modules/tsx/dist/cli.mjs`), **not** the `node_modules/.bin/tsx` binary wrapper. 
+  On POSIX environments (macOS/Linux), if `cli.mjs` is installed with standard `0644` file permissions (common in Docker containers, clean CI checkouts, or certain npm/pnpm setups), attempting to invoke it directly as the executable without a Node interpreter will throw `EACCES: permission denied`. On Windows, it fails with `ENOEXEC`.
+- **What to check**:
+  Change the invocation in `apps/mouth/src/lib/llms-article-exports.test.ts` to execute Node explicitly:
+  ```typescript
+  execFileSync(
+    process.execPath,
+    [require.resolve("tsx/cli"), join(app, "scripts/generate-llms-full.ts")],
+    ...
+  );
+  ```
+
+---
+
+### 3. MEDIUM — Code comment in `generate-llms-full.ts` enshrines a disproven root cause
+- **Claim**: `// The committed llms.txt carried exactly that — the same two articles listed twice in this block`
+- **Why it breaks**:
+  Your own measured diagnosis explicitly disproved this:
+  > *"running the CURRENT generator unchanged removes the duplication by itself... Each duplicated slug has exactly one canonical .mdx plus .it/.id translations, and only the .mdx is isCanonical — so there is no published-vs-updated pair."*
+  
+  The duplicates in the committed file were caused by staleness (generated before `.filter(a => a.isCanonical)` was applied to translations), **not** by two canonical files sharing a slug across collapsing folders. Writing a comment that claims the committed file was caused by collapsing folders records a false diagnosis in the permanent codebase.
+- **What to check**:
+  Update the comment in `apps/mouth/scripts/generate-llms-full.ts` to state that URL deduplication is a defense against potential slug collisions across collapsing folders (`tax/` vs `tax-legal/`), rather than claiming the committed duplicate was caused by it.
+
+---
+
+### 4. LOW — Dead scratch code left behind in Test 2
+- **Claim**: Clean test implementation.
+- **Why it breaks**:
+  Lines 375–378 of `apps/mouth/src/lib/llms-article-exports.test.ts`:
+  ```typescript
+  const { scripts } = JSON.parse(
+    readFileSync(join(app, "package.json"), "utf8"),
+  );
+  void scripts;
+  ```
+  `scripts` is read, parsed, and immediately discarded with `void scripts`. This is leftover scaffolding from test development.
+- **What to check**:
+  Remove lines 375–378 from `apps/mouth/src/lib/llms-article-exports.test.ts`.
+
+---
+
+### 5. LOW — Freshness signal ignores `updatedAt` despite block heading
+- **Claim**: Deduplicating on `publishedAt` captures article freshness.
+- **Why it breaks**:
+  The block heading is `"## Recently Published & Updated (Freshness Signal)"`. 
+  The deduplication logic checks `new Date(a.publishedAt) > new Date(kept.publishedAt)`. If an article was published months ago but revised today with an `updatedAt` frontmatter field, it is evaluated strictly on its older `publishedAt` date.
+- **What to check**:
+  Check how `enArticles` defines article dates. If articles carry `updatedAt`, consider `new Date(a.updatedAt ?? a.publishedAt)` so updated canonical articles aren't superseded by older published dates.
+
+---
+
+### 6. ADVISORY — Stale `llms-full.txt` and `llms-id.txt` remain a ~166k line ticking diff
+- **Claim**: Restoring `llms-full.txt` and `llms-id.txt` preserves scope discipline.
+- **Why it breaks**:
+  Valid for this PR's reviewability, but running `generate-llms-full.ts` normally (without `LLMS_GENERATE_ARTICLES_ONLY=1`) will immediately dirty the working directory by +135k/-130k and +31k/-29k lines.
+- **What to check**:
+  Verify if CI or any pre-commit hook runs the full generator. If so, a follow-up commit/PR is needed to regenerate the full artifacts.

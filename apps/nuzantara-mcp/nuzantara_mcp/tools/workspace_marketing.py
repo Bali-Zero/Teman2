@@ -52,6 +52,22 @@ class EditorFacingRuntimeError(ToolError, RuntimeError):
     """An operational refusal whose message is safe to show the editor."""
 
 
+class EditorialProviderFailure(RuntimeError):
+    """Closed provider status; never retain subprocess output or credentials."""
+
+    def __init__(self, provider: str, status: str) -> None:
+        self.status = status
+        if status == "auth_required" and provider == "nlm":
+            message = "NotebookLM authentication expired. Run nlm login on Pro, then retry the fact check."
+        elif status == "auth_required" and provider == "claude":
+            message = "Independent reviewer authentication is unavailable. Restore its subscription login on Pro."
+        elif status == "timeout":
+            message = "Editorial verification timed out"
+        else:
+            message = "Editorial verification provider is unavailable"
+        super().__init__(message)
+
+
 def _editor_facing(function: Callable[..., Awaitable[Any]]) -> Callable[..., Awaitable[Any]]:
     """Let this module's own refusal messages reach the ChatGPT editor.
 
@@ -831,26 +847,62 @@ async def _run_public_subprocess(
             Path(argv[0]).name,
             timeout_seconds,
         )
-        raise RuntimeError("Editorial verification timed out") from None
+        raise EditorialProviderFailure(Path(argv[0]).name, "timeout") from None
     if process.returncode != 0:
-        # The exit code alone hid a "Not logged in" for two days (2026-09-01..02).
-        # The claude CLI prints that refusal on STDOUT, so log a redacted tail of
-        # both streams: the public message stays constant, the Pro log says WHY.
-        output_tail = _clean_text(
-            stdout.decode("utf-8", errors="replace")[-600:], limit=300
-        )
-        stderr_tail = _clean_text(
-            _stderr.decode("utf-8", errors="replace")[-600:], limit=300
-        )
+        provider = Path(argv[0]).name
+        # Match only known failure shapes, on failure only. Arbitrary provider
+        # output can contain article text or secrets our regexes do not know.
+        output = (stdout + b"\n" + _stderr).decode("utf-8", errors="replace").lower()
+        auth_required = (
+            provider == "nlm"
+            and any(marker in output for marker in (
+                "authentication expired", "credentials have expired", "nlm login",
+            ))
+        ) or (provider == "claude" and "not logged in" in output)
+        status = "auth_required" if auth_required else "unavailable"
         logger.warning(
-            "Editorial verification provider %s exited %s: stdout=%r stderr=%r",
-            Path(argv[0]).name,
+            "Editorial verification provider %s exited %s: status=%s",
+            provider,
             process.returncode,
-            output_tail,
-            stderr_tail,
+            status,
         )
-        raise RuntimeError("Editorial verification provider is unavailable")
+        raise EditorialProviderFailure(provider, status)
     return stdout.decode("utf-8", errors="replace")
+
+
+async def _editorial_auth_health() -> dict[str, Any]:
+    """Probe the actual verifier identities; authentication is not a verdict."""
+
+    async def probe(provider: str) -> str:
+        env = _verification_env(provider)
+        binary = shutil.which("nlm" if provider == "notebooklm" else "claude", path=env["PATH"])
+        if binary is None:
+            return "unavailable"
+        arguments = ["login", "--check"] if provider == "notebooklm" else ["auth", "status", "--json"]
+        try:
+            output = await _run_public_subprocess(
+                [binary, *arguments], timeout_seconds=60, env=env,
+            )
+            if provider == "notebooklm":
+                return "authenticated"
+            payload = json.loads(output)
+            # auth status sees configuration, not quota or server-side validity.
+            if isinstance(payload, dict) and payload.get("loggedIn") is True:
+                return "configured"
+            return "auth_required"
+        except EditorialProviderFailure as exc:
+            return exc.status
+        except (OSError, RuntimeError, ValueError):
+            return "unavailable"
+
+    notebooklm, reviewer = await asyncio.gather(probe("notebooklm"), probe("claude"))
+    return {
+        "notebooklm_auth": notebooklm,
+        "reviewer_identity": reviewer,
+        "authentication_ready": notebooklm == "authenticated" and reviewer == "configured",
+        "verdict": "not_run",
+        "checked_at": datetime.now(timezone.utc).isoformat(),
+    }
 
 
 def _verification_env(provider: str) -> dict[str, str]:
@@ -1624,6 +1676,7 @@ def register(mcp: Any, backend_call: BackendCall) -> None:
             "sol_model": "gpt-5.6-sol",
             "publication": "damar_explicit_request_only",
             "write_actions_armed": _writes_enabled(),
+            "editorial_verification": await _editorial_auth_health(),
             "checked_at": datetime.now(timezone.utc).isoformat(),
             "forbidden_domains": [
                 "client_pii",
