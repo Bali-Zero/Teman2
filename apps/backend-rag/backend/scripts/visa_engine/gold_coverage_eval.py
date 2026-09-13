@@ -158,9 +158,23 @@ def _evaluate(
     )
     request = build_persona_request(persona)
     if disclosed_review_flags:
-        wire = request.model_dump(mode="json", by_alias=True)
-        wire["disclosed_review_flags"] = list(disclosed_review_flags)
-        request = VisaOracleEvaluateRequest.model_validate(wire)
+        # Rebuilt field by field from the ALREADY-VALIDATED request, never via
+        # a JSON dump/re-validate round trip of the whole payload (council
+        # round 2, tp1-qwen3.8-max): only the flags are new input and only the
+        # flags need validating. A round trip would put every fact through
+        # JSON coercion and alias resolution on the path the census uses and
+        # NOT on the path every other caller uses, so a coercion asymmetry
+        # would move a flagged walk's facts while the census still saw the
+        # HUMAN_REVIEW_REQUIRED it expected. `facts` is handed over as the
+        # model object it already is — same idiom as
+        # `VisaOracleEvaluateRequest.applicant_facts()` itself.
+        request = VisaOracleEvaluateRequest(
+            schema_version=request.schema_version,
+            assessment_id=request.assessment_id,
+            collected_at=request.collected_at,
+            facts=request.facts,
+            disclosed_review_flags=tuple(disclosed_review_flags),  # type: ignore[arg-type]
+        )
     facts = request.applicant_facts()
     decision = evaluator.evaluate(
         facts,

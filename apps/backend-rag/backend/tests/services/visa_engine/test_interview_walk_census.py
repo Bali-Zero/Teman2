@@ -625,7 +625,15 @@ EXPECTED_DEAD_END_FACT_CENSUS: dict[str, int] = {
 
 #: Which walks raise which disclosure flags — the OTHER half of the wire
 #: request, carried by the corpus since 2026-09-13 (W-VO-H schema half) and
-#: pinned here so the layer can never move unobserved again.
+#: pinned here so the layer cannot move without a red.
+#:
+#: Read the reach of that claim exactly (council round 2, tp1-qwen3.8-max):
+#: this table is compared against the COMMITTED FIXTURES, never re-derived from
+#: `mapDisclosedReviewFlags`. A mapper regression that stops raising a flag
+#: therefore goes red in the FRONTEND lane — `walk-corpus-determinism.test.ts`,
+#: which regenerates the corpus and compares bytes — and only reaches this
+#: table once someone commits the regenerated fixture. Same shape as
+#: `overrides`, which this file has always read the same way.
 #:
 #: A walk ABSENT from this table must carry no flag at all, and a walk present
 #: must carry exactly these: `test_the_corpus_carries_the_disclosure_flag_layer`
@@ -642,8 +650,11 @@ EXPECTED_DEAD_END_FACT_CENSUS: dict[str, int] = {
 #:     `other_purpose` answered `medical` (only `transit` is decidable).
 #:   - NOT_CERTAIN on 2 walks: the two scenarios that answer a sponsor question
 #:     with the literal string `unsure`. The `still_unsure` walks deliberately
-#:     use a DIFFERENT literal and therefore cost zero holds — that claim is
-#:     now MEASURED by this table rather than asserted in a PR body.
+#:     use a DIFFERENT literal and therefore cost zero NOT_CERTAIN holds —
+#:     which is ALL they cost zero of: `offshore/invest/undecided/
+#:     currency_still_unsure` is held anyway, by ACTIVITY_BOUNDARY on its
+#:     `investment_vehicle = undecided` answer. Both halves are now MEASURED by
+#:     this table rather than asserted in a PR body.
 EXPECTED_DISCLOSED_REVIEW_FLAGS: dict[str, tuple[str, ...]] = {
     "offshore/invest/family": ("ACTIVITY_BOUNDARY",),
     "offshore/invest/merit": ("ACTIVITY_BOUNDARY",),
@@ -657,8 +668,10 @@ EXPECTED_DISCLOSED_REVIEW_FLAGS: dict[str, tuple[str, ...]] = {
 
 #: The FUNNEL-level state census, DERIVED from the two tables above rather
 #: than pinned as a third one — and the derivation is itself the claim under
-#: test. `_apply_disclosed_review_flags` is unconditional and monotone: a
-#: walk that raises ANY flag ends HUMAN_REVIEW_REQUIRED whatever the pack
+#: test. `_apply_disclosed_review_flags` is monotone, and unconditional for
+#: any decision the engine actually produces (it returns early only on a null
+#: decision_id/public_id): a walk that raises ANY flag ends
+#: HUMAN_REVIEW_REQUIRED whatever the pack
 #: decided, and a walk that raises none keeps its engine state exactly. If
 #: either half of that stops being true, `test_the_flagged_census_is_the_
 #: funnel_the_applicant_meets` goes red without anyone having to re-pin a
@@ -711,7 +724,12 @@ def _evaluate_walks(walks: dict[str, dict[str, Any]]) -> dict[str, dict[str, Any
 
 
 def _walk_flags(spec: dict[str, Any]) -> tuple[str, ...]:
-    """The disclosure flags one fixture carries, in the order it carries them.
+    """The disclosure flags one fixture carries, as a SET in tuple clothing.
+
+    Order is not meaningful and is not asserted anywhere: both
+    ``mapDisclosedReviewFlags`` (fact-mapper.ts) and
+    ``VisaOracleEvaluateRequest``'s own ``_canonical_review_flags`` validator
+    sort the list, and ``_flag_table_violations`` compares sorted tuples.
 
     An absent key is the EMPTY tuple and nothing else — the same default
     ``api_models.py::VisaOracleEvaluateRequest`` gives the field on the wire, so
@@ -1687,7 +1705,8 @@ def test_every_disclosure_flag_reports_the_walks_it_rewrites(
         for label, _before, after in rows:
             assert after == "HUMAN_REVIEW_REQUIRED", (
                 f"{label}: raises {flag} but the funnel census still ends {after} — "
-                "`_apply_disclosed_review_flags` is supposed to be unconditional"
+                "`_apply_disclosed_review_flags` is supposed to rewrite every "
+                "decision the engine produces"
             )
             assert reason in flagged_outcomes[label]["review_reason_codes"], (
                 f"{label}: rewritten by {flag} without emitting {reason}"

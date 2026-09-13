@@ -118,9 +118,10 @@ export interface WalkFixture {
    * `mapDisclosedReviewFlags` — the other half of the wire request the browser
    * actually sends, and until now the half the corpus threw away. A fixture
    * carrying facts only is evaluated with `disclosed_review_flags = ()`, so
-   * `evaluate_path.py::_apply_disclosed_review_flags` — unconditional and
-   * monotone — was invisible to the census: it reported 0 HUMAN_REVIEW_REQUIRED
-   * for a funnel that produces it.
+   * `evaluate_path.py::_apply_disclosed_review_flags` — monotone, and
+   * unconditional for any decision the engine actually produces — was
+   * invisible to the census: it reported 0 HUMAN_REVIEW_REQUIRED for a funnel
+   * that produces it.
    *
    * OMITTED when the walk raises no flag, and that absence is the empty tuple,
    * not an unknown: it mirrors `api_models.py::VisaOracleEvaluateRequest`,
