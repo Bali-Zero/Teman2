@@ -167,6 +167,74 @@ test.describe("KBLI sector off-canvas page Page", () => {
     await expect(page).toHaveURL(/\/kbli$/);
   });
 
+  test("the active section letter is not a hop: close still lands on /kbli", async ({
+    page,
+  }) => {
+    // Letting the router run a click to the URL it is already on replaces the
+    // entry and drops the depth marker it carried; the next Back then read no
+    // depth and close landed one section behind, panel still open.
+    await gotoKbli(page);
+    await page.locator('a[href="/kbli/sectors/A"]').first().click();
+    const sheet = page.getByTestId(panel);
+    const activeLetter = sheet.locator(
+      '[data-testid="kbli-panel-strip"] a[aria-current="page"]',
+    );
+    await sheet.getByTestId("kbli-panel-next").click();
+    await expect(page).toHaveURL(/\/kbli\/sectors\/B$/);
+    await activeLetter.click();
+    await expect(page).toHaveURL(/\/kbli\/sectors\/B$/);
+    await sheet.getByTestId("kbli-panel-next").click();
+    await expect(page).toHaveURL(/\/kbli\/sectors\/C$/);
+
+    await page.goBack();
+    await expect(page).toHaveURL(/\/kbli\/sectors\/B$/);
+    await expect(sheet).toBeVisible();
+
+    await page.keyboard.press("Escape");
+    await expect(sheet).toBeHidden();
+    await expect(page).toHaveURL(/\/kbli$/);
+  });
+
+  test("the active section letter from a drill-down returns to the grid", async ({
+    page,
+  }) => {
+    await gotoKbli(page);
+    await page.locator('a[href="/kbli/sectors/A"]').first().click();
+    const sheet = page.getByTestId(panel);
+    await sheet
+      .locator('[data-testid="kbli-panel-code-grid"] a')
+      .first()
+      .click();
+    await expect(sheet.getByTestId("kbli-panel-code-detail")).toBeVisible();
+
+    await sheet
+      .locator('[data-testid="kbli-panel-strip"] a[aria-current="page"]')
+      .click();
+    await expect(sheet.getByTestId("kbli-panel-code-grid")).toBeVisible();
+    await expect(page).toHaveURL(/\/kbli\/sectors\/A$/);
+
+    await page.keyboard.press("Escape");
+    await expect(sheet).toBeHidden();
+    await expect(page).toHaveURL(/\/kbli$/);
+  });
+
+  test("open full page from a drill-down leaves the panel behind", async ({
+    page,
+  }) => {
+    await gotoKbli(page);
+    await page.locator('a[href="/kbli/sectors/A"]').first().click();
+    const sheet = page.getByTestId(panel);
+    await sheet
+      .locator('[data-testid="kbli-panel-code-grid"] a')
+      .first()
+      .click();
+    await expect(sheet.getByTestId("kbli-panel-code-detail")).toBeVisible();
+
+    await sheet.getByTestId("kbli-panel-detail-full").click();
+    await expect(page).toHaveURL(/\/kbli\/\d{5}$/);
+    await expect(page.getByTestId(panel)).toBeHidden();
+  });
+
   test("a code drills down inside the panel and comes back", async ({
     page,
   }) => {

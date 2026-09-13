@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { ArrowLeft, ExternalLink } from "lucide-react";
 import type { KBLIPanelDetail } from "@/lib/kbli-panel-detail";
 import { PMABadge } from "./PMABadge";
@@ -94,7 +93,10 @@ export function KBLIPanelCodeDetail({
         that know how to state what is verified and what is derived.
       </p>
 
-      <Link
+      {/* A plain <a>, like "open as full page" in the panel header: a client
+          navigation keeps the @panel slot's last state, so a <Link> here was
+          measured landing on /kbli/<code> with the panel still drawn over it. */}
+      <a
         href={`/kbli/${detail.code}`}
         data-testid="kbli-panel-detail-full"
         className="mt-6 inline-flex items-center gap-2 rounded-xl border border-white/[0.10] bg-white/[0.06]
@@ -104,7 +106,7 @@ export function KBLIPanelCodeDetail({
       >
         Open full page for {detail.code}
         <ExternalLink size={14} />
-      </Link>
+      </a>
     </div>
   );
 }

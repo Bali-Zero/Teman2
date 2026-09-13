@@ -268,8 +268,18 @@ export function KBLISectorOffcanvas({
    * depth being left behind and the URL being navigated to are both known, so
    * it hands them over.
    *
-   * It only observes: nothing is prevented, no navigation is taken over. A
-   * modified click (new tab), a middle click or a hard `<a>` such as "open as
+   * It observes every hop and takes over exactly one click: the strip letter
+   * of the section already open (`aria-current="page"`). That click is not a
+   * hop, and letting the router run it was MEASURED to break the count two
+   * ways: to the same URL the router replaces the entry and drops its marker
+   * (hop B, click B, hop C, Back, Escape landed on /kbli/sectors/A with the
+   * panel open), and from a drill-down it pushes an entry nobody counted
+   * (drill, click the letter, Escape landed on /kbli/sectors/A with no panel).
+   * So on the grid it does nothing, and from a drill-down it is the same
+   * history step as the in-panel back control — both end on that section's
+   * URL, which is where the letter points.
+   *
+   * A modified click (new tab), a middle click or a hard `<a>` such as "open as
    * full page" leaves this page entirely, and the note it would leave behind
    * is discarded by the href check on the other side.
    */
@@ -278,10 +288,17 @@ export function KBLISectorOffcanvas({
       if (event.defaultPrevented || event.button !== 0) return;
       if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey)
         return;
-      const href = (event.target as HTMLElement)
-        .closest("a")
-        ?.getAttribute("href");
+      const anchor = (event.target as HTMLElement).closest("a");
+      const href = anchor?.getAttribute("href");
       if (!href || !SECTOR_HREF.test(href)) return;
+      if (
+        anchor?.getAttribute("aria-current") === "page" &&
+        href === window.location.pathname
+      ) {
+        event.preventDefault();
+        if (codeFromLocation()) window.history.back();
+        return;
+      }
       pendingHop = { depth: depth.current, href };
     },
     [],
