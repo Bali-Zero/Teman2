@@ -764,6 +764,89 @@ CONTENT_KEYED_RULES: list[tuple[re.Pattern[str], re.Pattern[str], str]] = [
         "searched for (_API_KEY=, sk-, Bearer , Authorization:) to describe "
         "the scan's scope — the pattern text itself, never a found secret",
     ),
+    # B2.2 no-send retrieval harness evidence pack (PR #6429, gate ruling
+    # I60, C1): the harness's precall snapshot (b2-2-precall.json) records
+    # every text/vector it touched as a content-derived sha256 digest, so a
+    # reviewer can confirm WHAT was hashed without re-running embeddings.
+    # Same reasoning as the diff.measured_at rule above — a digest of
+    # content already named elsewhere in the same file (case_id, role,
+    # source) is not a credential.
+    #
+    # Content-keyed to the two field names the harness actually emits
+    # (`artifact_sha256` for the whole pack, `text_sha256` per query/chunk
+    # item), each paired with a 64-hex value — an unrelated real secret on
+    # a different key in the same file is still left unaudited.
+    (
+        re.compile(r"(^|/)evidence/[^/]+/[^/]+/b2-2-precall\.json$"),
+        re.compile(
+            r'^\s*"(?:artifact_sha256|text_sha256)"\s*:\s*"[0-9a-f]{64}"\s*,?\s*$'
+        ),
+        "B2.2 harness precall snapshot: artifact_sha256/text_sha256 are "
+        "content-derived sha256 digests of the pack's own artifact/query/"
+        "chunk text, not credentials (PR #6429, I60)",
+    ),
+    # Same file, the `base_sha` field: the git commit SHA (40-hex, not a
+    # sha256 hex-64) the harness ran against, recorded so a reviewer can
+    # reproduce the exact tree. Same class as the pack.yml measured_at rule
+    # above — a commit hash, not a credential.
+    (
+        re.compile(r"(^|/)evidence/[^/]+/[^/]+/b2-2-precall\.json$"),
+        re.compile(r'^\s*"base_sha"\s*:\s*"[0-9a-f]{40}"\s*,?\s*$'),
+        "B2.2 harness precall snapshot: base_sha is the git commit SHA the "
+        "harness ran against, not a credential (PR #6429, I60)",
+    ),
+    # Same file, the `vector_sha256` map: keyed by `<case_id>/chunk` or
+    # `<case_id>/query` (case_id is the harness's own vector-store id, e.g.
+    # bs-17806bb4), valued by the sha256 digest of the embedded vector's
+    # bytes — proves which vector was measured without shipping the vector
+    # itself. Content-keyed to the exact `/chunk` or `/query` key suffix
+    # paired with a 64-hex value, so an unrelated secret keyed some other
+    # way in the same object is still left unaudited.
+    (
+        re.compile(r"(^|/)evidence/[^/]+/[^/]+/b2-2-precall\.json$"),
+        re.compile(
+            r'^\s*"[A-Za-z0-9-]+/(?:chunk|query)"\s*:\s*"[0-9a-f]{64}"\s*,?\s*$'
+        ),
+        "B2.2 harness precall snapshot: vector_sha256 entries are "
+        "content-derived sha256 digests of an embedded vector's bytes, "
+        "keyed by case_id/chunk or case_id/query, not credentials "
+        "(PR #6429, I60)",
+    ),
+    # B2.2 harness evidence pack.yml (PR #6429, I60, C1): `report_sha256`
+    # (the live-result report's own digest) and the per-file `sha256:` list
+    # under what_this_pr_changes.code (the digest of each shipped source
+    # file, so a reviewer can confirm the pack cites the exact bytes that
+    # merged) — same class as the existing measured_at/diff rules above,
+    # content-derived digests of artifacts named elsewhere in the same
+    # pack, not credentials. Content-keyed to the exact `report_sha256:` or
+    # `sha256:` YAML scalar shape (optionally trailed by a `#` comment, as
+    # one entry here is), so an unrelated secret under a different key in
+    # the same pack.yml is still left unaudited.
+    (
+        re.compile(r"(^|/)evidence/[^/]+/[^/]+/pack\.yml$"),
+        re.compile(
+            r'^\s*(?:report_)?sha256:\s*[0-9a-f]{64}\s*(?:#.*)?$'
+        ),
+        "B2.2 harness evidence pack.yml: report_sha256/sha256 are "
+        "content-derived sha256 digests of the report/shipped source "
+        "files the pack cites, not credentials (PR #6429, I60)",
+    ),
+    # B2.2 harness's offline report-rebuild script, snapshotted into the
+    # evidence pack as build_sample_report.py.txt (PR #6429, I60, C1):
+    # MANIFEST_SHA256 pins the expected sha256 of manifest_mandatory.json
+    # (re-pinned by #6338) so the script asserts the manifest has not
+    # drifted before rebuilding the report — a content pin, not a
+    # credential, same reasoning as the contracts/rulepack content_sha256
+    # rule elsewhere in this file.
+    (
+        re.compile(
+            r"(^|/)evidence/[^/]+/[^/]+/build_sample_report\.py\.txt$"
+        ),
+        re.compile(r'^MANIFEST_SHA256\s*=\s*"[0-9a-f]{64}"\s*$'),
+        "B2.2 harness report-rebuild script snapshot: MANIFEST_SHA256 is "
+        "the pinned content sha256 of manifest_mandatory.json, asserted "
+        "against at runtime, not a credential (PR #6429, I60)",
+    ),
 ]
 
 # Each rule is (pattern, reason). The pattern matches the file path

@@ -1,0 +1,21 @@
+tp1-qwen3.8-max r2 on SUPERSEDED bytes 314 sha256 groups 705e9165 bee19702 8a3940b4 f1d75284 c684e2d3 d0f59623 d7a22825 1d8040d5 (prompt reviews/prompt-r2.txt)
+tp1 r2 start 2026-09-13T11:33:09Z
+tp1 r2 exit=0 end 2026-09-13T11:44:31Z
+----- seat output verbatim -----
+BLOCKER: none found. The forward section is metadata-only on PG 15/17: `ADD COLUMN ... NULL` without a default does not rewrite `wa_outbox`, and the DO block reads only catalogs. No `UPDATE`/`DELETE`/`INSERT` backfill is present. This is corroborated by the supplied up/down/up receipts (`xmin`/filenode unchanged).
+
+MAJOR: none found. The file adds exactly the two spec'd nullable columns, no defaults, no backfill; the forward section is above the rollback marker; the rollback section enables isolated down/up; and the stated runner wraps both forward and rollback in transactions, so `SET LOCAL` is effective on the intended path.
+
+MINOR-1: The 5s `lock_timeout` / 30s `statement_timeout` can turn transient lock contention into a failed-but-safe migration. Falsifiable: hold an `ACCESS EXCLUSIVE` lock on `wa_outbox` for >5s while applying 314; the ALTER aborts, the transaction rolls back, 314 is unrecorded, and the migration job is red, requiring rerun. This is operational, not destructive.
+
+MINOR-2: The stored rollback is destructive (`DROP COLUMN`) despite §3’s policy that routine production rollback should keep the columns. The mitigation is procedural: no deploy workflow or migrate subcommand invokes it, and the comment states the policy. Falsifiable: directly invoke `rollback_migration` on a database where 314 is applied; the columns are dropped and ledger entries cleared.
+
+MINOR-3: The DO postcondition is a catalog-shape check, not a full semantic nullability/no-backfill guarantee. It checks `attnotnull` and `pg_attrdef`, but would not catch, for example, a pre-existing `CHECK (abstained_at IS NOT NULL)` constraint or a historical fast-default `atthasmissing` state after a dropped default. Falsifiable: pre-create `abstained_at` with a CHECK constraint that rejects NULL; the DO block passes.
+
+NOTE-1: The file’s atomicity and `SET LOCAL` behavior depend on the runner executing it inside one transaction. If manually run in autocommit (e.g. `psql -f` without `-1`), `SET LOCAL` is a no-op/warning and a later DO failure can leave earlier ALTERs committed. Falsifiable: run the file in autocommit against a database with a planted wrong `abstained_at`; `evidence_score` can remain after the DO exception.
+
+NOTE-2: Both the ALTER and the DO use unqualified `'wa_outbox'` / `regclass`, so they rely on the session `search_path`. A temporary or shadowing `wa_outbox` in a nonstandard session could be resolved instead of the intended table. Falsifiable: create a temp table named `wa_outbox` in a session and observe resolution. This is a general unqualified-DDL hazard, not unique to this file.
+
+NOTE-3: `lock_timeout` bounds, but does not eliminate, blocking: while waiting for the lock, the DDL can queue worker reads/writes for up to 5s before failing. The comment “fails … instead of stalling” is therefore slightly imprecise. Falsifiable: hold the lock for ~4s and observe concurrent queries queue behind the DDL before it fails at 5s.
+
+VERDICT {"ok": true, "sha256_groups": "705e9165 bee19702 8a3940b4 f1d75284 c684e2d3 d0f59623 d7a22825 1d8040d5", "blockers": 0, "majors": 0, "minors": 3}

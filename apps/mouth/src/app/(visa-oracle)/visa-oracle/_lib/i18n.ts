@@ -710,7 +710,7 @@ const en = {
   "verdict.state_description.HUMAN_REVIEW_REQUIRED":
     "Nothing here is guessed. A Bali Zero advisor reviews cases like yours by hand.",
   "verdict.state_description.NO_SUPPORTED_PATH":
-    "We won’t force a fit that isn’t there — three alternatives worth a look.",
+    "We won’t force a fit that isn’t there — here is what your answers do open.",
   "verdict.state_description.TEMPORARILY_UNAVAILABLE":
     "We’d rather say so plainly than fake a result.",
   "verdict.state_description.NEEDS_INPUT":
@@ -824,9 +824,9 @@ const en = {
     "It is not an approval, a guarantee, or a filing.",
   "outcome.disclaimer.complex_to_human":
     "Complex or flagged cases always go to a human — Ditjen Imigrasi decides, not this tool.",
-  "outcome.alternatives_title": "Three paths worth a look instead",
+  "outcome.alternatives_title": "The door that is open",
   "outcome.alternatives_intro":
-    "None of these are a downgrade — they’re simply what fits.",
+    "Another route the verified rules can assess for you.",
   "outcome.no_path_body":
     "The combination you described does not match a path supported by the verified decision rules.",
   "outcome.temporarily_unavailable_body":
@@ -1559,7 +1559,7 @@ const id: Record<Keys, string> = {
   "verdict.state_description.HUMAN_REVIEW_REQUIRED":
     "Tidak ada yang ditebak di sini. Konsultan Bali Zero meninjau kasus seperti ini secara langsung.",
   "verdict.state_description.NO_SUPPORTED_PATH":
-    "Kami tidak akan memaksakan jalur yang tidak cocok — tiga alternatif yang layak dilihat.",
+    "Kami tidak akan memaksakan jalur yang tidak cocok — inilah yang dibuka oleh jawaban Anda.",
   "verdict.state_description.TEMPORARILY_UNAVAILABLE":
     "Kami lebih memilih berterus terang daripada memalsukan hasil.",
   "verdict.state_description.NEEDS_INPUT":
@@ -1676,9 +1676,9 @@ const id: Record<Keys, string> = {
     "Ini bukan persetujuan, jaminan, atau pengajuan resmi.",
   "outcome.disclaimer.complex_to_human":
     "Kasus kompleks atau ditandai selalu diteruskan ke manusia — Ditjen Imigrasi yang memutuskan, bukan alat ini.",
-  "outcome.alternatives_title": "Tiga jalur alternatif yang layak dilihat",
+  "outcome.alternatives_title": "Pintu yang terbuka",
   "outcome.alternatives_intro":
-    "Ini bukan penurunan kelas — hanya yang paling sesuai.",
+    "Jalur lain yang dapat dinilai oleh aturan terverifikasi untuk Anda.",
   "outcome.no_path_body":
     "Kombinasi yang Anda jelaskan tidak cocok dengan jalur yang didukung oleh aturan keputusan terverifikasi.",
   "outcome.temporarily_unavailable_body":

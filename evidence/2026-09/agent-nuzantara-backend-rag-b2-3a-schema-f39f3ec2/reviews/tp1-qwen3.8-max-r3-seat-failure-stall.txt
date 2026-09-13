@@ -1,0 +1,5 @@
+tp1-qwen3.8-max r3 on bytes df347c3b (prompt reviews/prompt-r3.txt)
+tp1 r3 start 2026-09-13T11:43:37Z
+tp1 r3 exit=1 end 2026-09-13T12:03:06Z
+OUTCOME: SEAT FAILURE, not a review. stdout empty; stderr verbatim:
+tp1_call: no data for 300s after 10507 chunks and 0 chars of answer, 1168s into the call — the seat stopped responding mid-stream

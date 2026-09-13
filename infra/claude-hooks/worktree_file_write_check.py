@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""PreToolUse hook (Edit|Write|MultiEdit) — block file writes to main checkout.
+"""PreToolUse hook (Edit|Write|MultiEdit|apply_patch) — protect main checkout.
 
 L5.1 SOTA wave 2026-05-25 — Codex unique amendment (P0).
 
@@ -163,6 +163,83 @@ def _increment_block_counter():
         pass
 
 
+def _patch_targets(command: object) -> list[str]:
+    """Read canonical apply_patch targets, never patch content or shell text.
+
+    Codex normalizes apply_patch to tool_input.command (not file_path). A
+    malformed/unknown envelope cannot establish the write boundary: reject it.
+    """
+    if not isinstance(command, str):
+        raise ValueError("invalid patch")
+    lines = command.strip("\r\n").split("\n")
+    lines = [line.removesuffix("\r") for line in lines]
+    if not lines or lines[0] != "*** Begin Patch" or lines[-1] != "*** End Patch":
+        raise ValueError("invalid patch")
+    targets: list[str] = []
+    operation, body_seen, move_allowed, at_end = "", False, False, False
+    marker_pending = False
+    for line in lines[1:-1]:
+        header = re.fullmatch(r"\*\*\* (Add File|Update File|Delete File|Move to): (.+)", line)
+        if header:
+            kind, target = header.groups()
+            if target != target.strip() or any(ord(char) < 32 for char in target):
+                raise ValueError("ambiguous path")
+            if kind == "Move to":
+                if not move_allowed:
+                    raise ValueError("ambiguous move")
+                move_allowed = False
+            else:
+                if operation == "Update File" and not body_seen:
+                    raise ValueError("empty update")
+                operation, body_seen, at_end, marker_pending = kind, False, False, False
+                move_allowed = kind == "Update File"
+            targets.append(target)
+            continue
+        move_allowed = False
+        if at_end:
+            raise ValueError("unexpected patch content")
+        if operation == "Add File" and line.startswith("+"):
+            body_seen = True
+        elif operation == "Update File":
+            if line == "@@" or line.startswith("@@ "):
+                if marker_pending:
+                    raise ValueError("empty hunk")
+                body_seen = False
+                marker_pending = True
+            elif line == "*** End of File" and body_seen:
+                at_end = True
+            elif not line or line[0] in " +-":
+                body_seen = True
+                marker_pending = False
+            else:
+                raise ValueError("invalid update")
+        else:
+            raise ValueError("invalid patch body")
+    if not targets or (operation == "Update File" and not body_seen):
+        raise ValueError("empty patch")
+    return targets
+
+
+def _guard_patch(payload: dict) -> int:
+    """Check every source/destination against event cwd; emit no patch data."""
+    try:
+        cwd = payload.get("cwd")
+        if not isinstance(cwd, str) or not pathlib.Path(cwd).is_absolute():
+            raise ValueError("ambiguous cwd")
+        targets = _patch_targets(payload.get("tool_input", {}).get("command"))
+        repo_real = pathlib.Path(REPO_ROOT).resolve()
+        for target in targets:
+            path_real = (pathlib.Path(cwd) / target).resolve()
+            if path_real.is_relative_to(repo_real) and not _is_path_under_allowed_worktree(path_real):
+                _increment_block_counter()
+                sys.stderr.write("WORKTREE ISOLATION VIOLATION: apply_patch targets main checkout. Use a dedicated worktree.\n")
+                return 2
+    except (AttributeError, OSError, RuntimeError, TypeError, ValueError):
+        sys.stderr.write("WORKTREE ISOLATION: cannot establish apply_patch targets; provide a canonical patch and absolute cwd.\n")
+        return 2
+    return 0
+
+
 def main():
     if _kill_switch_active():
         sys.exit(0)
@@ -173,6 +250,8 @@ def main():
         sys.exit(0)
 
     tool_name = payload.get("tool_name", "")
+    if tool_name == "apply_patch":
+        sys.exit(_guard_patch(payload))
     if tool_name not in {"Edit", "Write", "MultiEdit"}:
         sys.exit(0)
 

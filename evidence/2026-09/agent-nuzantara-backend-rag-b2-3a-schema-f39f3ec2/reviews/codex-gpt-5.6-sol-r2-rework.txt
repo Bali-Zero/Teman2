@@ -1,0 +1,16 @@
+codex-gpt-5.6-sol r2 on SUPERSEDED bytes 314 sha256 groups 705e9165 bee19702 8a3940b4 f1d75284 c684e2d3 d0f59623 d7a22825 1d8040d5 (prompt reviews/prompt-r2.txt)
+codex r2 start 2026-09-13T11:33:03Z
+codex r2 exit=0 end 2026-09-13T11:38:34Z
+tree unchanged (shasum -c of candidate + prompt after the run: OK)
+----- seat final answer verbatim (Italian in the original) -----
+- **MAJOR — risoluzione `search_path` non deterministica.** Le righe 53–54 e 65 usano tutte `wa_outbox` senza schema. Con un `search_path=shadow,public` e una `shadow.wa_outbox`, gli `ALTER` e la postcondizione operano sulla tabella shadow, quindi 314 può essere registrata mentre `public.wa_outbox` resta invariata. Il rollback ha lo stesso difetto e può eliminare colonne dalla relazione sbagliata. È falsificabile configurando il `search_path` della connessione e creando una tabella omonima. Occorre qualificare la relazione o fissare localmente un `search_path` sicuro.
+
+- **MINOR — la postcondizione non rileva valori “missing” prodotti da un precedente fast default.** Su PG15/17: aggiungere una colonna del tipo corretto con default costante, poi rimuovere il default, lascia `attnotnull=false`, nessuna riga in `pg_attrdef`, tipo corretto, ma `pg_attribute.atthasmissing=true`. Il controllo passa, mentre le righe storiche restituiscono valori non-NULL, contraddicendo “scripted and unscored routes keep both NULL”. Le ricevute che mostrano entrambe le colonne assenti escludono questa condizione nello snapshot produttivo verificato, ma il dichiarato drift guard non la copre.
+
+- **NOTE — i timeout possono rendere rosso un deploy corretto.** Un lock concorrente oltre 5 secondi abortisce atomicamente la migrazione; inoltre entrambi i `SET LOCAL` restano attivi anche durante verify e scrittura dei ledger nella stessa transazione. Nessuna modifica o registrazione parziale sopravvive. Nel post-deploy la nuova immagine è già attiva, ma questa PR è schema-only, quindi resta compatibile; un rerun può applicare 314 dalla nuova immagine. L’outbox può comunque essere accodata fino a 5 secondi: il timeout limita lo stallo, non lo elimina.
+
+- **NOTE — il rollback distruttivo è protetto soltanto dalla policy.** `rollback_migration()` lo esegue realmente dentro una transazione e poi cancella entrambi i ledger; non esiste un controllo tecnico che dimostri writer drenati o autorizzazione separata. Non è però invocato dal deploy né esposto da `migrate.py`, ed è richiesto dall’up/down/up, quindi non lo considero un difetto bloccante di questa candidata.
+
+Gli altri attacchi risultano verdi: su PG15/17 gli `ADD COLUMN` nullable senza default sono catalog-only e non scansionano/riscrivono `wa_outbox`; il `DO` legge soltanto cataloghi. Nei due percorsi supportati forward e rollback sono dentro transazioni, quindi `SET LOCAL` lega correttamente gli `ALTER`. Tipo, typmod, `NOT NULL`, default corrente e colonne dropped/re-added sono gestiti correttamente. Il percorso previous-image/fresh-image è compatibile perché questa PR non introduce lettori o writer. Hash dei byte congelati verificato.
+
+VERDICT {"ok": false, "sha256_groups": "705e9165 bee19702 8a3940b4 f1d75284 c684e2d3 d0f59623 d7a22825 1d8040d5", "blockers": 0, "majors": 1, "minors": 1}
