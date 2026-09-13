@@ -264,9 +264,10 @@ async def test_newsroom_projection_redacts_identifiers_and_raw_enrichment() -> N
 
 @pytest.mark.asyncio
 async def test_workspace_health_requires_live_v2_contract_and_write_arm(
-    monkeypatch,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setenv("WORKSPACE_MARKETING_WRITES_ENABLED", "true")
+    monkeypatch.setattr(marketing, "_editorial_auth_health", AsyncMock(return_value={"authentication_ready": False}))
     backend_call = AsyncMock(
         return_value={
             "contract": marketing.NEWSROOM_CONTRACT,
@@ -283,12 +284,16 @@ async def test_workspace_health_requires_live_v2_contract_and_write_arm(
     assert result["ok"] is True
     assert result["ready"] is True
     assert result["backend_reachable"] is True
+    assert result["editorial_verification"]["authentication_ready"] is False
     backend_call.assert_awaited_once_with("/api/workspace-marketing/capabilities")
 
 
 @pytest.mark.asyncio
-async def test_workspace_health_fails_closed_on_missing_capability(monkeypatch) -> None:
+async def test_workspace_health_fails_closed_on_missing_capability(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     monkeypatch.setenv("WORKSPACE_MARKETING_WRITES_ENABLED", "true")
+    monkeypatch.setattr(marketing, "_editorial_auth_health", AsyncMock(return_value={"authentication_ready": True}))
     backend_call = AsyncMock(
         return_value={
             "contract": marketing.NEWSROOM_CONTRACT,
@@ -2085,11 +2090,10 @@ def test_verification_env_reads_batch_seat_from_secrets_file_when_env_is_empty(
     assert marketing._secrets_file_value("CLAUDE_CODE_OAUTH_TOKEN_3", tmp_path / "nope") == ""
 
 
-async def test_failed_verifier_logs_redacted_output_tail(
+async def test_failed_verifier_never_logs_provider_output(
     caplog: pytest.LogCaptureFixture,
 ) -> None:
-    """`claude --print` reports "Not logged in" on STDOUT with exit 1: the Pro
-    log must say so, while the editor-facing message stays constant."""
+    """Even unfamiliar credentials and article text must stay out of logs."""
 
     import sys as _sys
 
@@ -2108,7 +2112,8 @@ async def test_failed_verifier_logs_redacted_output_tail(
 
     record = "\n".join(rec.getMessage() for rec in caplog.records)
     assert "exited 1" in record
-    assert "Not logged in" in record
+    assert "status=unavailable" in record
+    assert "Not logged in" not in record
     assert "user@example.com" not in record
     assert "sk-abcdefghijklmnopqrstuvwxyz" not in record
 
