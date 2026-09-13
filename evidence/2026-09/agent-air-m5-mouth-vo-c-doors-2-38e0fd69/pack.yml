@@ -212,6 +212,32 @@ receipts:
     exit: 0
     ts: "2026-09-13T11:19:00+08:00"
     seat: Claude Opus 5
+  - claim: >-
+      D8 — the consumer-map pre-push guard blocked this push with 79 findings,
+      and all 79 are a basename over-match on the deleted
+      apps/mouth/src/app/visa/match/page.test.tsx. Read before judged, as that
+      tool's own docstring demands.
+    cmd: git -C <wt> push -u origin <branch> ; then grep -rn "visa/match/page" over the repo excluding .git/node_modules/.worktrees
+    result: >-
+      "consumer-map: 79 live consumers of deleted/renamed files — push blocked".
+      Every row in the printed table is a DIFFERENT file that merely contains the
+      string "page.test.tsx": apps/mouth/vitest.config.ts:60 (a glob),
+      visa/voa/page.test.tsx:14 (a comment), (workspace)/process/[id]/page.test.tsx,
+      i18n/initial-locale.test.tsx, merahPutihDayVars.ts:208, and so on. The grep
+      for the deleted path itself returns ZERO hits anywhere in the repo — every
+      "visa/match/page" hit is to page.tsx, in research/ and products/ prose, and
+      page.tsx is already on the tool's COMMON_BASENAMES skip list (its own table
+      prints both deleted page.tsx files as SKIPPED-common-basename).
+      consumer_map.py's docstring states the posture: "basename matching
+      OVER-matches by design ... Read the printed table before trusting the
+      verdict". Pushed with the hook's own documented kill switch
+      PREPUSH_SKIP_CONSUMER_MAP=1 after that reading, and only for this reason.
+      The fix is one line in scripts/consumer_map.py — "page.test.tsx" belongs in
+      COMMON_BASENAMES beside "page.tsx" — which is a harness PR, not a visa one.
+      Recorded as a leftover.
+    exit: 1
+    ts: "2026-09-13T11:28:00+08:00"
+    seat: Claude Opus 5
 dissent:
   - seat: Claude Opus 5 (self-refutation, on the first attempt)
     objection: >-
@@ -278,6 +304,7 @@ dissent:
       post-merge fact.
 leftovers:
   - 'NO CI CHECK IN THIS REPO PROBES AN HTTP RESPONSE STATUS. That is how #6401 reached `armed` while serving a 200 in place of a redirect. The e2e suite could do it, but the PR gate collects only `--grep "page Page|@offline"`. Imperator-level; a redirect/status smoke over the promoted deploy would close a whole class.'
+  - 'scripts/consumer_map.py COMMON_BASENAMES holds "page.tsx", "route.ts" and "layout.tsx" but not "page.test.tsx" — so deleting any colocated App Router page test blocks the push with a wall of unrelated rows (79 here, zero of them real). One line, same measured justification the page.tsx entry already carries. Harness PR, not this window.'
   - "/visa/clock loses its only internal inbound link (it was visa/page.tsx:104). It keeps its sitemap entry, its canonical and its direct URL, but nothing on the site links to it any more. Re-homing it needs a surface this window may not touch."
   - "apps/mouth/src/proxy.ts:331-338 still maps visa.balizero.com / -> /visa and /quiz|/result|/chat -> /visa/match, so those become two-hop chains (302 then 308). Correct, just not minimal; collapsing them is a one-line change in a file with 25 middleware tests, outside this perimeter."
   - "/visa/match/[hash] inherits alternates.canonical https://balizero.com/visa/match from visa/match/layout.tsx, which now redirects to a noindex page. Left exactly as found because the window override says robots stay untouched; it belongs with Zero's A4 ratification."
