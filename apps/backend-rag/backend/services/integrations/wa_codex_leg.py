@@ -538,7 +538,9 @@ async def _stub_unsupported(
         reason=reason,
         served_by="support_abstain",
         evidence_abstain_label=(
-            bool(evidence_inputs.get("abstain_unsupported")) if carry_evidence else None
+            # Absent only on a package sealed before this PR: a stub is an
+            # abstention, so the label defaults fail-closed (Gemini PR-2 r1).
+            bool(evidence_inputs.get("abstain_unsupported", True)) if carry_evidence else None
         ),
         evidence_score=(
             _normalize_evidence_score(evidence_inputs.get("evidence_score_unsupported"))
