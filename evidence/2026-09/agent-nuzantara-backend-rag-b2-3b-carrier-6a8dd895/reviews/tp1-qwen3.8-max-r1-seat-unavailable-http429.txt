@@ -1,0 +1,6 @@
+tp1-qwen3.8-max r1 on the B2.3b candidate (prompt reviews/prompt-r1.txt)
+tp1 r1 start 2026-09-13T14:42:05Z
+tp1 r1 exit=1 end 2026-09-13T14:42:06Z
+OUTCOME: SEAT UNAVAILABLE, not a judgement. stdout empty; stderr verbatim (response id redacted by the client):
+tp1_call: HTTP 429: {"error":{"message":"Your token-plan 1-week quota has been exhausted. The quota will reset at 09-18 08:39:00 UTC.","id":"<REDACTED>","type":"insufficient_quota","code":"insufficient_quota"}}
+No paid top-up (imperator ruling I80). Replaced for R9 by agy-gemini-3.1-pro, recorded in pack.yml seat_fallback_reason.

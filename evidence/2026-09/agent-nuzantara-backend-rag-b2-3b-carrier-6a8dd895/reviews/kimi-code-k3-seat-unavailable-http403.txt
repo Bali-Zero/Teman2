@@ -1,0 +1,8 @@
+kimi-code/k3 — availability probes for the B2.3b council (no candidate content sent)
+Probe 1 (predecessor Dux window ef0e4dfa, reported in checkpoint 20260913T145808Z-4cf5): 2026-09-13T14:43Z, HTTP 403 monthly usage limit.
+Probe 2 (this Dux window 651d44d5, re-measured first-hand), command:
+  env -u <secret-named vars> timeout 120 kimi -p "Reply with the single word PONG." -m kimi-code/k3
+  exit 1, finished 2026-09-13T15:07:23Z (date -u right after), output verbatim:
+  kimi version 0.38.0
+  error: failed to run prompt: provider.auth_error: 403 You've reached your monthly usage limit for this billing cycle. Your quota will be refreshed in the next cycle. To continue now, purchase extra usage or upgrade your plan: https://www.kimi.com/membership/subscription?tab=quota
+OUTCOME: SEAT UNAVAILABLE, not a judgement. No paid extra usage (imperator ruling I80). Replaced for R9 by agy-gemini-3.1-pro, recorded in pack.yml seat_fallback_reason.

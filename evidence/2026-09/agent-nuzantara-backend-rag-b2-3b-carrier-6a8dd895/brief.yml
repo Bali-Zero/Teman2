@@ -1,0 +1,72 @@
+task_id: backend-rag-b2-3b-carrier
+gear: 3
+l_level: L2
+gate_class: opus
+base_sha: aab2debe784779d6f94acf8377d09863e2912811 # pragma: allowlist secret
+mandate: B2
+colour: BLUE
+pr: B2.3b (the carrier and the fenced writer of the abstain record)
+envelope: 20260912T091907Z-435d # generation authority (the B1-ack that triggered wave 2)
+checkpoint_refs:
+  - 20260913T134604Z-7645 # OPENED-B2.3B, acked by 20260913T134953Z-0fc0 (scope confirmed)
+  - 20260913T144251Z-289d # B2.3b FROZEN / council quorum blocked, acked by 20260913T144858Z-1b81 (commit locally, deadline renewed)
+  - 20260913T145808Z-4cf5 # B2.3b COMMITTED LOCALLY 7402e56a13, acked by 20260913T150129Z-31a1
+  - 20260913T150319Z-4c1b # OPENED-SUCCESSOR-4, acked by 20260913T150556Z-6723 (plan approved)
+  - 20260913T151913Z-6133 # COUNCIL-R2 two defects confirmed, acked by 20260913T152114Z-2e26 (RULING I83)
+  - 20260913T153220Z-2cbb # CURE COMMITTED 83b011608c + council r3 dispatched + handover, acked by 20260913T153248Z-2b55
+  - 20260913T153417Z-264c # OPENED-SUCCESSOR-5, acked by 20260913T153658Z-54ea
+rulings:
+  - "I76 (ack 20260913T134414Z-2181) B2.3a CLOSED; GO for B2.3b exactly per B2-engine.md §4 B2.3b"
+  - "I78 (ack 20260913T141903Z-4a44) the eight cases in a NEW real-Postgres module (TEST_DATABASE_URL, skip-with-reason), columns asserted through the DB, no real-DB fixture in the ScriptedConn file"
+  - "I80 (ack 20260913T145610Z-6812) quorum = codex-gpt-5.6-sol + agy-gemini-3.1-pro (R9 reserve bench) with seat_fallback_reason; no paid top-up, no rule edit"
+  - "I83 (ack 20260913T152114Z-2e26) F1 option (b): carry only on OFFERED, REATTACHED -> both NULL, residual named, option (c) = named debt outside B2.3b; F2: bind Decimal(repr(score)), exact ::text asserts; cure = one new commit, depth 1"
+deadline: "2026-09-14T06:00:00Z" # renewed by ack 20260913T144858Z-1b81
+objective: >-
+  B2 §4 PR B2.3b + README §0 D6. CodexLegResult carries the sealed evidence
+  label, the frozen score and the opaque package reference from the parsed
+  sealed wire into completion; wa_outbox_worker persists abstained_at and
+  evidence_score in the SAME fenced terminal UPDATE (id, claim_token, expected
+  status). abstained_at = the successful-send instant of a GENERATED reply whose
+  frozen label was true; evidence_score = the sealed package's frozen score;
+  support-negative leaves abstained_at NULL with the score set; scripted,
+  human and unscored routes keep both NULL. wa_finalize stays free of DB writes.
+appetite:
+  wall_clock_hours: 4
+  adversarial_rounds: 2
+  tokens: 900000
+acceptance:
+  - id: A1
+    text: >-
+      Diff = wa_codex_leg.py (three CodexLegResult fields set only on the two
+      text-bearing returns after the sealed parse), wa_outbox_worker.py (locals
+      initialised before generation, set in the text branch, reset in the except
+      branch, written only by the terminal fenced UPDATE), the tests, and this
+      evidence directory. wa_finalize.py byte-identical; #5337's hunks untouched.
+  - id: A2
+    text: >-
+      The eight spec cases (generated-supported, generated-abstain-label, retry,
+      stale claim, takeover, failed send, discarded completion, scripted
+      greeting) plus support-negative pass against a real Postgres carrying
+      migration 314, with the columns read back from the DB; carrier unit tests
+      pass; the existing worker/leg/finalize suites stay green.
+  - id: A3
+    text: >-
+      A guilt mutant of the writer predicate turns the carrier suite red, and
+      the cure is restored byte-identical (sha256).
+  - id: A4
+    text: >-
+      Gear-3 council on the frozen bytes: two R9 seats post VERDICT ok:true bound
+      to the six sha256 values, journalled through council_journal.py; findings
+      disposed in pack.yml and the PR body before arming.
+  - id: A5
+    text: >-
+      After deploy: the carrier fields and the terminal UPDATE text present in
+      the running container (grep), while live telemetry stays UNPROVEN until
+      B3's authorized cases.
+seats:
+  dux: "Opus 5 xhigh (Dux windows ef0e4dfa, successor-4 651d44d5, successor-5 bd8068c5, Pro)"
+  implementer: "Sonnet 5 subagent under the Dux design ~/.organism/b2-3b-design.md, verified by the Dux"
+  adversarial_reviewer: "codex-gpt-5.6-sol (CODEX_HOME=~/.codex-acct2, read-only sandbox, effort high)"
+  second_quorum_seat: "agy-gemini-3.1-pro (reserve for kimi-code/k3 HTTP 403; tp1-qwen3.8-max HTTP 429) per I80"
+  gate: "a FRESH Opus 5 session outside the contribution chain, commissioned by the imperator"
+brief_ref: evidence/brief.yml
