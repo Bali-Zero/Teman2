@@ -98,13 +98,14 @@ def test_all_canonical_personas_map_to_the_real_wire_model() -> None:
 
         assert validated.assessment_id == driver._persona_assessment_id(persona.id)
         assert set(payload["facts"]) == expected_fact_aliases
-        # 46, not 41 (2026-08-23 vocabulary extension, PR #4650; 44→45
+        # 56, not 41 (2026-08-23 vocabulary extension, PR #4650; 44→45
         # 2026-08-24 F4/PR #4719 adds `immigration.renewal_paid`; 45→46
-        # PR-D4c-1 adds `investment.investment_amount_usd`): the count
+        # PR-D4c-1 adds `investment.investment_amount_usd`; 46→56 W-VO-S21
+        # adds the ten seq-21 qualification booleans): the count
         # is derived structurally above from `ApplicantFactsData.model_fields`
         # aliases, so this literal is a redundant pin, not the source of
         # truth — bump it in lockstep whenever that model gains a field.
-        assert len(payload["facts"]) == 46
+        assert len(payload["facts"]) == 56
         assert payload["disclosed_review_flags"] == []
 
 

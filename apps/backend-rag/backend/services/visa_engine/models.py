@@ -921,7 +921,7 @@ SponsorPermitBasisFact = Annotated[
 
 
 # ---------------------------------------------------------------------------
-# ApplicantFacts (spec §2) — the 46 applicant-collected fact paths, each
+# ApplicantFacts (spec §2) — the 56 applicant-collected fact paths, each
 # typed per its own *Fact union above. Field names use Python-safe
 # identifiers with the dotted wire name as the Pydantic alias (same pattern
 # as ``TimeRange.from_``/``alias="from"``) since a dotted path cannot be a
@@ -983,13 +983,37 @@ _RENEWAL_PAID_ROLLOUT_DEFAULT: Final[UnknownFact] = UnknownFact(
     status="UNKNOWN", reason="NOT_ASKED"
 )
 
+# The same rollout mechanism a tenth through nineteenth time, 2026-09-13, for
+# the TEN seq-21 qualification facts (W-VO-S21 — five ``sponsor.*``, five
+# ``investment.*``; see ``enums.FactPath`` for which product each unblocks).
+# ONE shared constant rather than ten identical ones: every field below is a
+# tri-state fact whose only correct absent-value is "nobody asked", the
+# constant is frozen (``UnknownFact`` is a Pydantic model, and Pydantic deep-
+# copies a model default per instance rather than sharing it), and ten copies
+# of the same two lines would be ten places for a future edit to miss one.
+# The default MUST be this declared UNKNOWN/NOT_ASKED object, never ``False``:
+# a qualification boolean defaulting to False would read as "this applicant
+# declared they have NO government invitation" — a fabricated answer, not a
+# missing one — and the seq-21 rules that read them are ``on_unknown:
+# NEEDS_INPUT`` precisely so an unasked qualification asks the question
+# instead of silently denying the product.
+# The question that fills them ships in W-VO-Q (mouth ``tree.ts``/
+# ``flow.ts``/``fact-mapper.ts``), which reads
+# ``evidence/<pack>/FACTS-FOR-THE-TREE.md`` for the fact -> question map.
+# FOLLOW-UP (remove the defaults): once those questions ship and no client
+# omits these keys.
+_S21_QUALIFICATION_ROLLOUT_DEFAULT: Final[UnknownFact] = UnknownFact(
+    status="UNKNOWN", reason="NOT_ASKED"
+)
+
 
 class ApplicantFactsData(BaseModel):
     """``ApplicantFacts.facts`` (spec §2) — ``additionalProperties: false``
-    with all keys required except the five transitional fields documented on
+    with all keys required except the transitional fields documented on
     ``sponsor_type``, the three ``family.stepchild_*``/
-    ``family.sponsor_permit_basis`` fields (2026-08-23), and
-    ``immigration_renewal_paid`` (2026-08-24) below — all the same rollout
+    ``family.sponsor_permit_basis`` fields (2026-08-23),
+    ``immigration_renewal_paid`` (2026-08-24) and the ten seq-21
+    qualification facts (2026-09-13) below — all the same rollout
     mechanism. Field order mirrors ``enums.FactPath``'s
     ``person.*``/``immigration.*``/``intent.*``/``work.*``/``investment.*``/
     ``family.*``/``study.*``/``secondhome.*``/``process.*``/``commercial.*``
@@ -1074,6 +1098,46 @@ class ApplicantFactsData(BaseModel):
     investment_amount_usd: Annotated[
         MoneyFact, Field(alias="investment.investment_amount_usd")
     ]
+    # The five seq-21 investor-route qualification facts (2026-09-13,
+    # W-VO-S21). Defaulted for the same rollout reason as ``sponsor_type``
+    # below: no interview asks them yet, so an absent key must not 422 an
+    # existing caller — and the 84-walk corpus is another lane's file, so a
+    # required key here would be a cross-lane edit as well as a break.
+    investment_establishes_indonesian_company: Annotated[
+        BooleanFact,
+        Field(
+            alias="investment.establishes_indonesian_company",
+            default=_S21_QUALIFICATION_ROLLOUT_DEFAULT,
+        ),
+    ]
+    investment_capital_market_only: Annotated[
+        BooleanFact,
+        Field(
+            alias="investment.capital_market_only",
+            default=_S21_QUALIFICATION_ROLLOUT_DEFAULT,
+        ),
+    ]
+    investment_foreign_branch_or_subsidiary: Annotated[
+        BooleanFact,
+        Field(
+            alias="investment.foreign_branch_or_subsidiary",
+            default=_S21_QUALIFICATION_ROLLOUT_DEFAULT,
+        ),
+    ]
+    investment_ikn_subsidiary: Annotated[
+        BooleanFact,
+        Field(
+            alias="investment.ikn_subsidiary",
+            default=_S21_QUALIFICATION_ROLLOUT_DEFAULT,
+        ),
+    ]
+    investment_meets_published_threshold: Annotated[
+        BooleanFact,
+        Field(
+            alias="investment.meets_published_threshold",
+            default=_S21_QUALIFICATION_ROLLOUT_DEFAULT,
+        ),
+    ]
     family_relation_to_sponsor: Annotated[RelationFact, Field(alias="family.relation_to_sponsor")]
     family_sponsor_nationalities: Annotated[
         CountrySetFact, Field(alias="family.sponsor_nationalities")
@@ -1143,6 +1207,46 @@ class ApplicantFactsData(BaseModel):
     sponsor_type: Annotated[
         SponsorTypeFact,
         Field(alias="sponsor.type", default=_SPONSOR_TYPE_ROLLOUT_DEFAULT),
+    ]
+    # The five seq-21 sponsor-qualification facts (2026-09-13, W-VO-S21) —
+    # the discriminators that let E33A/E33B/E33C/E23U/E23V be recommended on
+    # the qualification each product actually names, instead of on
+    # ``sponsor.type`` alone. Same rollout default as ``sponsor_type``
+    # directly above, for the same reason.
+    sponsor_government_invitation: Annotated[
+        BooleanFact,
+        Field(
+            alias="sponsor.government_invitation",
+            default=_S21_QUALIFICATION_ROLLOUT_DEFAULT,
+        ),
+    ]
+    sponsor_government_collaboration: Annotated[
+        BooleanFact,
+        Field(
+            alias="sponsor.government_collaboration",
+            default=_S21_QUALIFICATION_ROLLOUT_DEFAULT,
+        ),
+    ]
+    sponsor_world_figure_invitation: Annotated[
+        BooleanFact,
+        Field(
+            alias="sponsor.world_figure_invitation",
+            default=_S21_QUALIFICATION_ROLLOUT_DEFAULT,
+        ),
+    ]
+    sponsor_diplomatic_household: Annotated[
+        BooleanFact,
+        Field(
+            alias="sponsor.diplomatic_household",
+            default=_S21_QUALIFICATION_ROLLOUT_DEFAULT,
+        ),
+    ]
+    sponsor_trade_office: Annotated[
+        BooleanFact,
+        Field(
+            alias="sponsor.trade_office",
+            default=_S21_QUALIFICATION_ROLLOUT_DEFAULT,
+        ),
     ]
     # secondhome.* — E33 Second Home vertical (2026-07-23). USD amounts use
     # NonNegativeIntegerFact, NOT MoneyFact: ``KnownMoney`` is documented as

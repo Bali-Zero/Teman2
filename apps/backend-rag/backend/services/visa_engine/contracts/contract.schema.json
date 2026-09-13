@@ -209,7 +209,7 @@
     },
     "ApplicantFactsData": {
       "additionalProperties": false,
-      "description": "``ApplicantFacts.facts`` (spec \u00a72) \u2014 ``additionalProperties: false``\nwith all keys required except the five transitional fields documented on\n``sponsor_type``, the three ``family.stepchild_*``/\n``family.sponsor_permit_basis`` fields (2026-08-23), and\n``immigration_renewal_paid`` (2026-08-24) below \u2014 all the same rollout\nmechanism. Field order mirrors ``enums.FactPath``'s\n``person.*``/``immigration.*``/``intent.*``/``work.*``/``investment.*``/\n``family.*``/``study.*``/``secondhome.*``/``process.*``/``commercial.*``\ngrouping.\n\n``populate_by_name=False`` (PR1b item 4): every wire key here is a dotted\n``FactPath`` string (e.g. ``\"person.birth_date\"``) that cannot be a\nPython attribute name, so each field carries a Python-safe name\n(``person_birth_date``) purely to exist in the class body, with the\ndotted string as its ``alias``. Allowing the Python name to *also*\npopulate the model would let a caller construct\n``ApplicantFactsData(person_birth_date=...)`` directly \u2014 a name that\nnever appears on the wire (every real payload is alias-keyed JSON/dict),\nso accepting it is pure smuggling surface with no legitimate caller.",
+      "description": "``ApplicantFacts.facts`` (spec \u00a72) \u2014 ``additionalProperties: false``\nwith all keys required except the transitional fields documented on\n``sponsor_type``, the three ``family.stepchild_*``/\n``family.sponsor_permit_basis`` fields (2026-08-23),\n``immigration_renewal_paid`` (2026-08-24) and the ten seq-21\nqualification facts (2026-09-13) below \u2014 all the same rollout\nmechanism. Field order mirrors ``enums.FactPath``'s\n``person.*``/``immigration.*``/``intent.*``/``work.*``/``investment.*``/\n``family.*``/``study.*``/``secondhome.*``/``process.*``/``commercial.*``\ngrouping.\n\n``populate_by_name=False`` (PR1b item 4): every wire key here is a dotted\n``FactPath`` string (e.g. ``\"person.birth_date\"``) that cannot be a\nPython attribute name, so each field carries a Python-safe name\n(``person_birth_date``) purely to exist in the class body, with the\ndotted string as its ``alias``. Allowing the Python name to *also*\npopulate the model would let a caller construct\n``ApplicantFactsData(person_birth_date=...)`` directly \u2014 a name that\nnever appears on the wire (every real payload is alias-keyed JSON/dict),\nso accepting it is pure smuggling surface with no legitimate caller.",
       "properties": {
         "commercial.service_fee_budget_idr": {
           "discriminator": {
@@ -623,6 +623,94 @@
           ],
           "title": "Intent.Stay Days"
         },
+        "investment.capital_market_only": {
+          "default": {
+            "reason": "NOT_ASKED",
+            "status": "UNKNOWN"
+          },
+          "discriminator": {
+            "mapping": {
+              "KNOWN": "#/$defs/KnownBoolean",
+              "UNKNOWN": "#/$defs/UnknownFact"
+            },
+            "propertyName": "status"
+          },
+          "oneOf": [
+            {
+              "$ref": "#/$defs/UnknownFact"
+            },
+            {
+              "$ref": "#/$defs/KnownBoolean"
+            }
+          ],
+          "title": "Investment.Capital Market Only"
+        },
+        "investment.establishes_indonesian_company": {
+          "default": {
+            "reason": "NOT_ASKED",
+            "status": "UNKNOWN"
+          },
+          "discriminator": {
+            "mapping": {
+              "KNOWN": "#/$defs/KnownBoolean",
+              "UNKNOWN": "#/$defs/UnknownFact"
+            },
+            "propertyName": "status"
+          },
+          "oneOf": [
+            {
+              "$ref": "#/$defs/UnknownFact"
+            },
+            {
+              "$ref": "#/$defs/KnownBoolean"
+            }
+          ],
+          "title": "Investment.Establishes Indonesian Company"
+        },
+        "investment.foreign_branch_or_subsidiary": {
+          "default": {
+            "reason": "NOT_ASKED",
+            "status": "UNKNOWN"
+          },
+          "discriminator": {
+            "mapping": {
+              "KNOWN": "#/$defs/KnownBoolean",
+              "UNKNOWN": "#/$defs/UnknownFact"
+            },
+            "propertyName": "status"
+          },
+          "oneOf": [
+            {
+              "$ref": "#/$defs/UnknownFact"
+            },
+            {
+              "$ref": "#/$defs/KnownBoolean"
+            }
+          ],
+          "title": "Investment.Foreign Branch Or Subsidiary"
+        },
+        "investment.ikn_subsidiary": {
+          "default": {
+            "reason": "NOT_ASKED",
+            "status": "UNKNOWN"
+          },
+          "discriminator": {
+            "mapping": {
+              "KNOWN": "#/$defs/KnownBoolean",
+              "UNKNOWN": "#/$defs/UnknownFact"
+            },
+            "propertyName": "status"
+          },
+          "oneOf": [
+            {
+              "$ref": "#/$defs/UnknownFact"
+            },
+            {
+              "$ref": "#/$defs/KnownBoolean"
+            }
+          ],
+          "title": "Investment.Ikn Subsidiary"
+        },
         "investment.investment_amount_usd": {
           "discriminator": {
             "mapping": {
@@ -658,6 +746,28 @@
             }
           ],
           "title": "Investment.Investment Capital Idr"
+        },
+        "investment.meets_published_threshold": {
+          "default": {
+            "reason": "NOT_ASKED",
+            "status": "UNKNOWN"
+          },
+          "discriminator": {
+            "mapping": {
+              "KNOWN": "#/$defs/KnownBoolean",
+              "UNKNOWN": "#/$defs/UnknownFact"
+            },
+            "propertyName": "status"
+          },
+          "oneOf": [
+            {
+              "$ref": "#/$defs/UnknownFact"
+            },
+            {
+              "$ref": "#/$defs/KnownBoolean"
+            }
+          ],
+          "title": "Investment.Meets Published Threshold"
         },
         "investment.paid_up_capital_idr": {
           "discriminator": {
@@ -893,6 +1003,94 @@
           ],
           "title": "Secondhome.Qualifying Property Value Usd"
         },
+        "sponsor.diplomatic_household": {
+          "default": {
+            "reason": "NOT_ASKED",
+            "status": "UNKNOWN"
+          },
+          "discriminator": {
+            "mapping": {
+              "KNOWN": "#/$defs/KnownBoolean",
+              "UNKNOWN": "#/$defs/UnknownFact"
+            },
+            "propertyName": "status"
+          },
+          "oneOf": [
+            {
+              "$ref": "#/$defs/UnknownFact"
+            },
+            {
+              "$ref": "#/$defs/KnownBoolean"
+            }
+          ],
+          "title": "Sponsor.Diplomatic Household"
+        },
+        "sponsor.government_collaboration": {
+          "default": {
+            "reason": "NOT_ASKED",
+            "status": "UNKNOWN"
+          },
+          "discriminator": {
+            "mapping": {
+              "KNOWN": "#/$defs/KnownBoolean",
+              "UNKNOWN": "#/$defs/UnknownFact"
+            },
+            "propertyName": "status"
+          },
+          "oneOf": [
+            {
+              "$ref": "#/$defs/UnknownFact"
+            },
+            {
+              "$ref": "#/$defs/KnownBoolean"
+            }
+          ],
+          "title": "Sponsor.Government Collaboration"
+        },
+        "sponsor.government_invitation": {
+          "default": {
+            "reason": "NOT_ASKED",
+            "status": "UNKNOWN"
+          },
+          "discriminator": {
+            "mapping": {
+              "KNOWN": "#/$defs/KnownBoolean",
+              "UNKNOWN": "#/$defs/UnknownFact"
+            },
+            "propertyName": "status"
+          },
+          "oneOf": [
+            {
+              "$ref": "#/$defs/UnknownFact"
+            },
+            {
+              "$ref": "#/$defs/KnownBoolean"
+            }
+          ],
+          "title": "Sponsor.Government Invitation"
+        },
+        "sponsor.trade_office": {
+          "default": {
+            "reason": "NOT_ASKED",
+            "status": "UNKNOWN"
+          },
+          "discriminator": {
+            "mapping": {
+              "KNOWN": "#/$defs/KnownBoolean",
+              "UNKNOWN": "#/$defs/UnknownFact"
+            },
+            "propertyName": "status"
+          },
+          "oneOf": [
+            {
+              "$ref": "#/$defs/UnknownFact"
+            },
+            {
+              "$ref": "#/$defs/KnownBoolean"
+            }
+          ],
+          "title": "Sponsor.Trade Office"
+        },
         "sponsor.type": {
           "default": {
             "reason": "NOT_ASKED",
@@ -914,6 +1112,28 @@
             }
           ],
           "title": "Sponsor.Type"
+        },
+        "sponsor.world_figure_invitation": {
+          "default": {
+            "reason": "NOT_ASKED",
+            "status": "UNKNOWN"
+          },
+          "discriminator": {
+            "mapping": {
+              "KNOWN": "#/$defs/KnownBoolean",
+              "UNKNOWN": "#/$defs/UnknownFact"
+            },
+            "propertyName": "status"
+          },
+          "oneOf": [
+            {
+              "$ref": "#/$defs/UnknownFact"
+            },
+            {
+              "$ref": "#/$defs/KnownBoolean"
+            }
+          ],
+          "title": "Sponsor.World Figure Invitation"
         },
         "study.admission_confirmed": {
           "discriminator": {
@@ -2356,7 +2576,7 @@
       "type": "object"
     },
     "FactPath": {
-      "description": "Every fact path the engine may ever reference \u2014 46 applicant-collected\n+ 4 derived (spec \u00a72 ``ApplicantFactPath`` + ``FactPath``, extended by the\n``secondhome.*`` group for the E33 Second Home vertical, 2026-07-23, by\n``sponsor.type`` for the sponsor-category question, 2026-08-10, by the\ntwo ``family.stepchild_*`` evidence facts, ``family.sponsor_permit_basis``\nand ``derived.has_active_stay_permit`` (2026-08-23, three owner rulings),\nby ``immigration.renewal_paid`` (2026-08-24, F4 \u2014 see its own inline\ncomment for the grounding), and by ``investment.investment_amount_usd``\n(2026-09-13, PR-D4c-1 \u2014 contract-only: a later PR, D4c-2, asks an\ninvestment applicant for a USD amount; this PR only declares the wire\nkey so that question can exist, and no rule reads it yet).\n\nClosed by design (spec \u00a75.2): a Condition's ``fact`` field and a Rule's\n``required_facts`` array are both typed against this enum, so a rule\nthat references an unknown fact path is a Pydantic ``ValidationError``\nat parse time, not a runtime surprise. ``fact_registry.py`` layers typed\nmetadata (value kind, PII class, commercial flag) on top of this same\nvocabulary \u2014 see that module's docstring for why both exist.",
+      "description": "Every fact path the engine may ever reference \u2014 56 applicant-collected\n+ 4 derived (spec \u00a72 ``ApplicantFactPath`` + ``FactPath``, extended by the\n``secondhome.*`` group for the E33 Second Home vertical, 2026-07-23, by\n``sponsor.type`` for the sponsor-category question, 2026-08-10, by the\ntwo ``family.stepchild_*`` evidence facts, ``family.sponsor_permit_basis``\nand ``derived.has_active_stay_permit`` (2026-08-23, three owner rulings),\nby ``immigration.renewal_paid`` (2026-08-24, F4 \u2014 see its own inline\ncomment for the grounding), by ``investment.investment_amount_usd``\n(2026-09-13, PR-D4c-1 \u2014 contract-only: a later PR, D4c-2, asks an\ninvestment applicant for a USD amount; this PR only declares the wire\nkey so that question can exist, and no rule reads it yet), and by the\nTEN seq-21 qualification facts (2026-09-13, W-VO-S21 \u2014 five\n``sponsor.*`` and five ``investment.*`` booleans, each the ONE\nqualification a zero-SUPPORT product's new eligibility rule tests; see\ntheir own inline comments and\n``backend/scripts/visa_engine/fold_pack_seq21.py``).\n\nClosed by design (spec \u00a75.2): a Condition's ``fact`` field and a Rule's\n``required_facts`` array are both typed against this enum, so a rule\nthat references an unknown fact path is a Pydantic ``ValidationError``\nat parse time, not a runtime surprise. ``fact_registry.py`` layers typed\nmetadata (value kind, PII class, commercial flag) on top of this same\nvocabulary \u2014 see that module's docstring for why both exist.",
       "enum": [
         "person.birth_date",
         "person.nationalities",
@@ -2383,6 +2603,11 @@
         "investment.paid_up_capital_idr",
         "investment.proposed_role",
         "investment.investment_amount_usd",
+        "investment.establishes_indonesian_company",
+        "investment.capital_market_only",
+        "investment.foreign_branch_or_subsidiary",
+        "investment.ikn_subsidiary",
+        "investment.meets_published_threshold",
         "family.relation_to_sponsor",
         "family.sponsor_nationalities",
         "family.sponsor_status_code",
@@ -2395,6 +2620,11 @@
         "study.admission_confirmed",
         "study.sponsor_confirmed",
         "sponsor.type",
+        "sponsor.government_invitation",
+        "sponsor.government_collaboration",
+        "sponsor.world_figure_invitation",
+        "sponsor.diplomatic_household",
+        "sponsor.trade_office",
         "secondhome.bank_deposit_usd",
         "secondhome.bank_deposit_at_state_bank",
         "secondhome.bank_deposit_in_own_name",
