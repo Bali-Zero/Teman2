@@ -70,8 +70,9 @@ import {
  * deliberately untouched). See generate-walk-corpus.ts.
  *
  * 84 → 94 on W-VO-E (2026-09-13): ten walks that answer an EXISTING question
- * with something other than its first option, one per product the signed
- * pack supports and no walk could name — the visa-free and Visa-on-Arrival
+ * with something other than its first option, together covering the eleven
+ * products the signed pack supports and no walk could name (two walks name
+ * three of them at once, and one names two) — the visa-free and Visa-on-Arrival
  * stays, MULTIPLE entry, business pay from abroad, the offshore investment
  * application and its capital figures, an education sponsor, a vocational
  * study level, a fully offshore remote worker, and a minor joining a parent.

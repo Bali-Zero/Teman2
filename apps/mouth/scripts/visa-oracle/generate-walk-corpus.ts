@@ -5,10 +5,10 @@
  * The corpus is DATA, never hand-written: it is produced by driving the REAL
  * interview state machine — `computeNextNode` from `flow.ts` (which itself
  * calls `getCategoryQuestionIds` to expand each category branch) and the REAL
- * `mapOracleFactsToApplicantFacts` from `fact-mapper.ts`. Every question is
- * answered with its FIRST option; typed questions get one fixed synthetic
- * identity (see `answerFor`), notably 121 stay-days, so the walk depends only
- * on the tree and not on the answers.
+ * `mapOracleFactsToApplicantFacts` from `fact-mapper.ts`. Every question a
+ * scenario does not OVERRIDE is answered with its FIRST option; typed
+ * questions get one fixed synthetic identity (see `answerFor`), notably 121
+ * stay-days, so the walk depends only on the tree and not on the answers.
  *
  * The enumerated scenarios are the two-arm spine (offshore / onshore) crossed
  * with the eleven `CATEGORY_KEYS`, plus the sub-branches that exist today
@@ -679,9 +679,9 @@ export function enumerateScenarios(): Scenario[] {
   // rule actually reads (IDR 10,000,000,000 investment plan and IDR
   // 2,500,000,000 paid-up — the rule's own bounds, not a figure this file
   // invents). `answerFor`'s generic numeric default is IDR 1,000,000,000,
-  // one order of magnitude under both, so the Investor KITAS was
-  // unreachable through the corpus while being perfectly reachable through
-  // the interview.
+  // under BOTH bounds (a tenth of the first, and under half the second), so
+  // the Investor KITAS was unreachable through the corpus while being
+  // perfectly reachable through the interview.
   scenarios.push({
     label: "offshore/invest/pt_pma/full_capital",
     overrides: {
@@ -717,10 +717,11 @@ export function enumerateScenarios(): Scenario[] {
   });
   // `el.e33g.remote-work`: the digital-nomad product. Its three negative
   // facts (no Indonesian employer, no Indonesian clients, no
-  // Indonesia-source pay) are asked by the `remote` branch, and
-  // `hf.e33g.*` also excludes local company ownership — the corpus's
-  // first-option answers said yes to all of them, so the highest-demand
-  // public product was named by no walk at all.
+  // Indonesia-source pay) are asked by the `remote` branch, and `hf.e33g.*`
+  // also excludes local company ownership. `remote_clients`'s first option
+  // is already `foreign`, but the other three questions default to `yes`
+  // and each one alone excludes the product — so the highest-demand public
+  // product was named by no walk at all.
   scenarios.push({
     label: "offshore/remote/foreign_only",
     overrides: {
