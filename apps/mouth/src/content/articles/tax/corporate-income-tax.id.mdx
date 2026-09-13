@@ -73,62 +73,54 @@ canonicalUrl: "https://balizero.com/tax/corporate-income-tax"
 ogImage: "/static/insights/tax/corporate-tax.jpg"
 twitterCard: "summary_large_image"
 locale: "id"
-source_sha256: "877f9197f2758d0c20b42ced1fb4c651563a9abc3921bc9c6cdee8574b85a0c9"
+source_sha256: "d4445f69a7de10c5818e80de88a18594de129b14268e70ed4a87bc126d871c0d"
 ---
-
-import {
-  ComparisonTable,
-  Calculator,
-  InfoCard,
-  Checklist,
-  AskZantara,
-} from "@/components/insights/interactive";
 
 # Pajak Penghasilan Badan Indonesia 2026: Panduan Lengkap
 
-Pajak penghasilan badan (PPh Badan) adalah pertimbangan signifikan bagi bisnis apa pun yang beroperasi di Indonesia. Inilah yang perlu Anda ketahui.
+Pajak penghasilan badan (PPh Badan) adalah pertimbangan signifikan bagi setiap bisnis yang beroperasi di Indonesia. Berikut adalah hal-hal yang perlu Anda ketahui.
 
-## Ikhtisar Tarif Pajak
+## Gambaran Tarif Pajak
 
 <ComparisonTable
   title="Tarif Pajak Penghasilan Badan"
-  description="Tarif saat ini untuk berbagai entitas"
+  description="Tarif saat ini untuk berbagai jenis entitas"
   items={[
     {
       name: "Tarif Standar",
-      subtitle: "Sebagian besar perusahaan",
+      subtitle: "Kebanyakan perusahaan",
       values: {
-        Tarif: "22%",
-        "Berlaku Untuk": "Penghasilan kena pajak bersih",
-        "Jenis Entitas": "PT, CV, dll.",
+        Rate: "22%",
+        "Applies To": "Pendapatan kena pajak bersih",
+        "Entity Type": "PT, CV, dll.",
       },
       highlight: true,
     },
     {
-      name: "Perusahaan Terbuka",
-      subtitle: "Perusahaan terdaftar di bursa",
+      name: "Perusahaan Publik",
+      subtitle: "Perusahaan yang terdaftar",
       values: {
-        Tarif: "19%",
-        "Berlaku Untuk": "IPO dengan 40%+ saham publik",
-        "Jenis Entitas": "PT Terbuka",
+        Rate: "19%",
+        "Applies To": "IPO dengan free float 40%+",
+        "Entity Type": "PT Terdaftar",
       },
     },
     {
       name: "Tarif UMKM",
       subtitle: "Bisnis kecil",
       values: {
-        Tarif: "0,5% dari omzet",
-        "Berlaku Untuk": "Omzet < Rp 4,8 Miliar",
-        "Jenis Entitas": "CV, PT dengan pendapatan rendah",
+        Rate: "0.5% dari omzet",
+        "Applies To": "Omzet < IDR 4.8Miliar",
+        "Entity Type": "CV, PT dengan pendapatan rendah",
       },
     },
     {
-      name: "Pajak Final",
+      name: "Pajak Akhir",
       subtitle: "Sektor tertentu",
       values: {
-        Tarif: "Bervariasi (0,5-10%)",
-        "Berlaku Untuk": "Industri spesifik",
-        "Jenis Entitas": "Konstruksi, dll.",
+        Rate: "Bervariasi (0.5-10%)",
+        "Applies To": "Industri spesifik",
+        "Entity Type": "Konstruksi, dll.",
       },
     },
   ]}
@@ -139,8 +131,8 @@ Pajak penghasilan badan (PPh Badan) adalah pertimbangan signifikan bagi bisnis a
 ## Perhitungan Pajak
 
 <Calculator
-  title="Estimasi Pajak Badan"
-  description="Estimasi pajak badan tahunan Anda"
+  title="Estimator Pajak Badan"
+  description="Perkirakan pajak badan tahunan Anda"
   fields={[
     {
       id: "revenue",
@@ -153,7 +145,7 @@ Pajak penghasilan badan (PPh Badan) adalah pertimbangan signifikan bagi bisnis a
     },
     {
       id: "expenses",
-      label: "Biaya yang Dapat Dikurangkan (IDR)",
+      label: "Beban yang Dapat Dikurangkan (IDR)",
       type: "number",
       defaultValue: 3500000000,
       min: 0,
@@ -166,8 +158,8 @@ Pajak penghasilan badan (PPh Badan) adalah pertimbangan signifikan bagi bisnis a
       type: "select",
       options: [
         { value: "standard", label: "PT Standar/PT PMA" },
-        { value: "public", label: "Perusahaan Terbuka" },
-        { value: "sme", label: "UMKM (Pendapatan < Rp 4,8 Miliar)" }
+        { value: "public", label: "Perusahaan Publik Terdaftar" },
+        { value: "sme", label: "UMKM (< IDR 4.8Miliar pendapatan)" }
       ],
       defaultValue: "standard"
     }
@@ -182,7 +174,7 @@ Pajak penghasilan badan (PPh Badan) adalah pertimbangan signifikan bagi bisnis a
 
     if (values.type === "sme" && revenue <= 4800000000) {
       tax = revenue * 0.005;
-      rate = "0,5% dari omzet";
+      rate = "0.5% dari omzet";
     } else if (values.type === "public") {
       tax = profit > 0 ? profit * 0.19 : 0;
       rate = "19%";
@@ -195,9 +187,9 @@ Pajak penghasilan badan (PPh Badan) adalah pertimbangan signifikan bagi bisnis a
       total: tax,
       breakdown: [
         { label: "Pendapatan", amount: revenue },
-        { label: "Biaya", amount: expenses },
+        { label: "Beban", amount: expenses },
         { label: "Laba Kena Pajak", amount: profit > 0 ? profit : 0 },
-        { label: "Pajak Terutang", amount: tax }
+        { label: "Pajak yang Harus Dibayar", amount: tax }
       ],
       currency: "IDR",
       note: `Tarif yang diterapkan: ${rate}`
@@ -208,116 +200,116 @@ Pajak penghasilan badan (PPh Badan) adalah pertimbangan signifikan bagi bisnis a
 
 ---
 
-## Pajak Final UMKM (PP 55/2022)
+## Pajak Akhir UMKM (PP 55/2022)
 
-<InfoCard variant="tip" title="Penyederhanaan untuk Bisnis Kecil">
-Bisnis dengan omzet bruto di bawah **Rp 4,8 miliar/tahun** dapat menggunakan pajak final yang disederhanakan:
+<InfoCard variant="tip" title="Disederhanakan untuk Bisnis Kecil">
+Bisnis dengan omzet kotor di bawah **IDR 4.8 miliar/tahun** dapat menggunakan pajak akhir yang disederhanakan:
 
-- **Tarif**: 0,5% dari omzet bruto
-- **Tanpa perhitungan yang kompleks**
+- **Tarif**: 0.5% dari omzet kotor
+- **Tidak ada perhitungan rumit**
 - **Pembayaran bulanan**
-- **Berlaku untuk**: PT, CV, individu dengan bisnis
-- **Durasi**: Maksimum 7 tahun untuk PT, 4 tahun untuk CV/individu
+- **Berlaku untuk**: PT, CV, individu dengan usaha
+- **Durasi**: Maksimal 7 tahun untuk PT, 4 tahun untuk CV/individu
 
-Setelah periode maksimum, tarif reguler berlaku.
+Setelah periode maksimal, tarif reguler berlaku.
 
 </InfoCard>
 
 ### Contoh Pajak UMKM
 
-| Pendapatan Bulanan | Pajak Terutang |
-| ------------------ | -------------- |
-| Rp 100 Juta        | Rp 500 Ribu    |
-| Rp 200 Juta        | Rp 1 Juta      |
-| Rp 400 Juta        | Rp 2 Juta      |
+| Pendapatan Bulanan | Pajak yang Harus Dibayar |
+| --------------- | -------- |
+| IDR 100M        | IDR 500K |
+| IDR 200M        | IDR 1M   |
+| IDR 400M        | IDR 2M   |
 
 ---
 
-## Biaya yang Dapat Dikurangkan
+## Beban yang Dapat Dikurangkan
 
 ### Apa yang Dapat Dikurangkan?
 
 <Checklist
-  title="Biaya Umum yang Dapat Dikurangkan"
-  description="Biaya yang mengurangi penghasilan kena pajak"
+  title="Beban Umum yang Dapat Dikurangkan"
+  description="Beban yang mengurangi pendapatan kena pajak"
   persistKey="deductible-expenses-checklist"
   items={[
     {
       id: "salaries",
       label: "Gaji dan tunjangan karyawan",
-      description: "Upah, kontribusi BPJS",
+      description: "Upah, iuran BPJS",
       required: false,
-      category: "operasional",
+      category: "operational",
     },
     {
       id: "rent",
       label: "Sewa kantor",
       description: "Pembayaran sewa",
       required: false,
-      category: "operasional",
+      category: "operational",
     },
     {
       id: "utilities",
       label: "Utilitas",
       description: "Listrik, air, internet",
       required: false,
-      category: "operasional",
+      category: "operational",
     },
     {
       id: "depreciation",
       label: "Penyusutan",
-      description: "Aset dari waktu ke waktu",
+      description: "Aset seiring waktu",
       required: false,
-      category: "modal",
+      category: "capital",
     },
     {
       id: "interest",
-      label: "Biaya bunga",
-      description: "Bunga pinjaman (dalam batas tertentu)",
+      label: "Beban bunga",
+      description: "Bunga pinjaman (dalam batas)",
       required: false,
-      category: "finansial",
+      category: "financial",
     },
     {
       id: "training",
       label: "Pelatihan karyawan",
       description: "Pengembangan profesional",
       required: false,
-      category: "operasional",
+      category: "operational",
     },
     {
       id: "marketing",
       label: "Pemasaran & iklan",
       description: "Promosi bisnis",
       required: false,
-      category: "operasional",
+      category: "operational",
     },
     {
       id: "professional",
       label: "Biaya profesional",
       description: "Hukum, akuntansi, konsultasi",
       required: false,
-      category: "jasa",
+      category: "services",
     },
   ]}
   categories={[
-    { id: "operasional", label: "Operasional", color: "blue" },
-    { id: "modal", label: "Modal", color: "green" },
-    { id: "finansial", label: "Finansial", color: "amber" },
-    { id: "jasa", label: "Jasa", color: "purple" },
+    { id: "operational", label: "Operasional", color: "blue" },
+    { id: "capital", label: "Modal", color: "green" },
+    { id: "financial", label: "Keuangan", color: "amber" },
+    { id: "services", label: "Layanan", color: "purple" },
   ]}
   showProgress={false}
 />
 
-### Biaya yang Tidak Dapat Dikurangkan
+### Beban yang Tidak Dapat Dikurangkan
 
-| Biaya                   | Catatan                           |
-| ----------------------- | --------------------------------- |
-| Dividen                 | Bukan merupakan biaya             |
-| Biaya pribadi           | Harus terkait dengan bisnis       |
-| Donasi (sebagian besar) | Ada beberapa pengecualian         |
-| Denda dan sanksi        | Denda pemerintah                  |
-| Hiburan (tanpa dokumen) | Memerlukan dokumentasi yang tepat |
-| Premi pihak berelasi    | Di atas tarif pasar               |
+| Beban                      | Catatan                     |
+| ---------------------------- | ------------------------- |
+| Dividen                    | Bukan beban               |
+| Pengeluaran pribadi            | Harus terkait bisnis      |
+| Donasi (kebanyakan)             | Ada beberapa pengecualian |
+| Denda dan sanksi          | Denda pemerintah          |
+| Hiburan (tidak terdokumentasi) | Perlu dokumentasi yang tepat |
+ Premi pihak terkait        | Di atas tingkat pasar     |
 
 ---
 
@@ -325,61 +317,59 @@ Setelah periode maksimum, tarif reguler berlaku.
 
 ### Kelompok Penyusutan
 
-| Kelompok                  | Aset               | Tarif (Garis Lurus) | Tarif (Saldo Menurun) |
-| ------------------------- | ------------------ | ------------------- | --------------------- |
-| 1                         | Masa manfaat 4 th  | 25%                 | 50%                   |
-| 2                         | Masa manfaat 8 th  | 12,5%               | 25%                   |
-| 3                         | Masa manfaat 16 th | 6,25%               | 12,5%                 |
-| 4                         | Masa manfaat 20 th | 5%                  | 10%                   |
-| Bangunan (permanen)       | 20 tahun           | 5%                  | -                     |
-| Bangunan (tidak permanen) | 10 tahun           | 10%                 | -                     |
+| Kelompok                    | Aset       | Tarif (Garis Lurus) | Tarif (Menurun) |
+| ------------------------ | ------------ | -------------------- | ---------------- |
+| 1                        | Umur 4 tahun  | 25%                  | 50%              |
+| 2                        | Umur 8 tahun  | 12.5%                | 25%              |
+| 3                        | Umur 16 tahun | 6.25%                | 12.5%            |
+| 4                        | Umur 20 tahun | 5%                   | 10%              |
+| Bangunan (tetap)     | 20 tahun      | 5%                   | -                |
+| Bangunan (tidak tetap) | 10 tahun      | 10%                  | -                |
 
 ---
 
-## Persyaratan Pelaporan Pajak
+## Kewajiban Pelaporan Pajak
 
-### SPT Tahunan PPh Badan
+### SPT Tahunan Badan
 
 <InfoCard variant="note" title="Batas Waktu Pelaporan">
 
-  **SPT Tahunan Badan**: - **Batas Waktu**: 4 bulan setelah akhir tahun fiskal -
-  **Untuk tahun kalender**: 30 April - **Perpanjangan**: Hingga 2 bulan
-  dimungkinkan - **Metode**: e-Filing wajib
+  **SPT Tahunan Badan** (Pajak Penghasilan Tahunan): - **Batas Waktu**: 4 bulan setelah akhir tahun fiskal - **Untuk tahun kalender**: 30 April - **Perpanjangan**: Hingga 2 bulan mungkin - **Metode**: e-Filing wajib
 </InfoCard>
 
 ### Kewajiban Bulanan
 
-| Kewajiban | Batas Waktu                 | Deskripsi                          |
-| --------- | --------------------------- | ---------------------------------- |
-| PPh 21    | Tanggal 10 bulan berikutnya | Pemotongan pajak karyawan          |
-| PPh 23    | Tanggal 10 bulan berikutnya | Pemotongan pajak jasa              |
-| PPh 25    | Tanggal 15 bulan berikutnya | Angsuran PPh Badan dibayar di muka |
-| PPh 4(2)  | Tanggal 10 bulan berikutnya | Item pajak final                   |
-| PPN (VAT) | Akhir bulan berikutnya      | Jika terdaftar PPN                 |
+| Kewajiban | Batas Waktu                | Keterangan             |
+| ---------- | ----------------------- | ----------------------- |
+| PPh 21     | Tanggal 10 bulan berikutnya | Penyetoran karyawan    |
+| PPh 23     | Tanggal 10 bulan berikutnya | Penyetoran jasa        |
+| PPh 25     | Tanggal 15 bulan berikutnya | Angsuran pajak penghasilan badan prabayar |
+| PPh 4(2)   | Tanggal 10 bulan berikutnya | Item pajak akhir       |
+| PPN        | Akhir bulan berikutnya  | Jika terdaftar PPN      |
 
 ---
 
-## Transfer Pricing
+## Harga Transfer
 
-<InfoCard variant="warning" title="Transaksi Pihak Berelasi">
-Indonesia memiliki aturan **transfer pricing** yang ketat untuk transaksi antar pihak berelasi:
+<InfoCard variant="warning" title="Transaksi Pihak Terkait">
+Indonesia memiliki aturan **harga transfer** yang ketat untuk transaksi antara pihak terkait:
 
-- Harus menggunakan harga **wajar (arm's length)**
+- Harus pada harga **arm's length**
 - **Dokumentasi diperlukan** (Master File, Local File)
-- **Pelaporan Per Negara (CbC Reporting)** untuk grup besar
+- **Pelaporan Negara per Negara** untuk kelompok besar
 - **Sanksi** untuk ketidakpatuhan
 
-Bekerjalah dengan penasihat pajak yang berkualifikasi untuk transaksi pihak berelasi.
+Bekerja dengan penasihat pajak yang berkualifikasi untuk transaksi pihak terkait.
 
 </InfoCard>
 
-### Persyaratan Dokumentasi
+### Kebutuhan Dokumentasi
 
-| Laporan     | Diperlukan Untuk         | Ambang Batas               |
-| ----------- | ------------------------ | -------------------------- |
-| Master File | Wajib pajak besar        | Pendapatan Rp 50M+         |
-| Local File  | Transaksi pihak berelasi | Transaksi material apa pun |
-| Laporan CbC | Multinasional            | Pendapatan grup €750 Juta+ |
+| Laporan      | Diperlukan Untuk        | Ambang Batas                |
+| ----------- | ------------------- | ------------------------ |
+| Master File | Pajak besar         | Pendapatan IDR 50Miliar+         |
+| Local File  | Transaksi pihak terkait | Setiap transaksi material |
+| CbC Report  | Multinasional      | Pendapatan kelompok €750M+     |
 
 ---
 
@@ -387,48 +377,48 @@ Bekerjalah dengan penasihat pajak yang berkualifikasi untuk transaksi pihak bere
 
 ### Insentif yang Tersedia
 
-| Insentif               | Manfaat                     | Untuk Siapa                    |
-| ---------------------- | --------------------------- | ------------------------------ |
-| Industri Pionir        | Tax holiday hingga 20 tahun | Investasi besar                |
-| Allowance Investasi    | 30% super deduction         | Investasi yang memenuhi syarat |
-| Insentif Litbang       | 300% deduksi                | Aktivitas penelitian           |
-| Pelatihan Vokasi       | 200% deduksi                | Program pelatihan              |
-| Kawasan Ekonomi Khusus | Berbagai macam              | Bisnis yang berlokasi di KEK   |
+| Insentif             | Manfaat                    | Untuk Siapa               |
+| --------------------- | -------------------------- | ---------------------- |
+| Industri Perintis      | Cuti pajak hingga 20 tahun | Investasi besar        |
+| Izin Investasi        | Pengurangan super 30%      | Investasi yang memenuhi syarat |
+| Insentif R&D          | Pengurangan 300%           | Kegiatan penelitian    |
+| Pelatihan Vokasi      | Pengurangan 200%           | Program pelatihan      |
+| Zona Ekonomi Khusus    | Berbagai                   | Bisnis di ZEK          |
 
 ---
 
-## Masalah Umum bagi Perusahaan Asing
+## Masalah Umum untuk Perusahaan Asing
 
 ### Pertimbangan PT PMA
 
-1. **Thin Capitalization** - Batas rasio utang/modal (4:1)
-2. **Transfer Pricing** - Pengawasan transaksi pihak berelasi
-3. **Pajak Pemotongan** - Pembayaran kepada afiliasi asing
-4. **Bentuk Usaha Tetap (BUT)** - Perlu struktur yang hati-hati
-5. **Perjanjian Pajak (Tax Treaty)** - Periksa keberlakuannya
+1. **Thin Capitalization** - Batas rasio utang/ekuitas (4:1)
+2. **Harga Transfer** - Pemeriksaan transaksi pihak terkait
+3. **Pajak Penyetoran** - Pembayaran ke afiliasi asing
+4. **Kantor Cabang Tetap** - Perlu perancangan hati-hati
+5. **Perjanjian Pajak** - Periksa keterapan
 
 ---
 
 ## Kalender Kepatuhan
 
-| Bulan     | Aktivitas                                |
-| --------- | ---------------------------------------- |
-| Januari   | Rekonsiliasi tahun sebelumnya            |
-| Maret     | Siapkan SPT tahunan                      |
-| April     | Lapor SPT tahunan (jatuh tempo 30 April) |
-| Bulanan   | Angsuran PPh dan pemotongan              |
-| Kuartalan | Tinjau dan sesuaikan estimasi            |
+| Bulan     | Aktivitas                          |
+| --------- | --------------------------------- |
+| Januari   | Rekonsiliasi tahun sebelumnya      |
+| Maret     | Siapkan SPT tahunan               |
+| April     | Ajukan SPT tahunan (jatuh tempo 30 April) |
+| Bulanan   | Angsuran PPh dan penyetoran       |
+| Triwulan  | Tinjau dan sesuaikan estimasi     |
 
 ---
 
 ## Sanksi
 
-| Pelanggaran     | Sanksi                          |
-| --------------- | ------------------------------- |
-| Terlambat lapor | Rp 1 Juta/bulan (maks 24 bulan) |
-| Terlambat bayar | 2% per bulan                    |
-| Kurang bayar    | 2% per bulan + potensi 200%     |
-| Fraud pajak     | Potensi sanksi pidana           |
+| Pelanggaran    | Sanksi                       |
+| ------------ | ----------------------------- |
+| Terlambat mengajukan | IDR 1M/bulan (maksimal 24 bulan)  |
+| Terlambat membayar | 2% per bulan                  |
+| Kurang bayar   | 2% per bulan + potensi 200% |
+| Kecurangan pajak    | Sanksi pidana mungkin         |
 
 ---
 
@@ -436,12 +426,12 @@ Bekerjalah dengan penasihat pajak yang berkualifikasi untuk transaksi pihak bere
 
 <AskZantara
   context="Pajak penghasilan badan Indonesia, PPh Badan, pajak bisnis, pajak PT PMA"
-  placeholder="Tanyakan tentang pajak badan..."
+  placeholder="Tanya tentang pajak badan..."
   suggestedQuestions={[
     "Berapa ambang batas tarif pajak UMKM?",
     "Bagaimana cara menghitung penyusutan?",
-    "Biaya apa saja yang dapat dikurangkan?",
-    "Kapan SPT tahunan badan jatuh tempo?",
+    "Beban apa yang dapat dikurangkan?",
+    "Kapan SPT tahunan jatuh tempo?",
   ]}
 />
 
@@ -449,6 +439,6 @@ Bekerjalah dengan penasihat pajak yang berkualifikasi untuk transaksi pihak bere
 
 ## Artikel Terkait
 
-- [Panduan Pendirian PT PMA](/business/pt-pma-registration-guide?lang=id)
-- [Panduan PPN (VAT)](/insights/tax-legal/vat-ppn-guide)
-- [Panduan Pajak Pemotongan (Withholding Tax)](/insights/tax-legal/withholding-tax-guide)
+- [Panduan Setup PT PMA](/business/pt-pma-registration-guide)
+- [Panduan PPN](/insights/tax-legal/vat-ppn-guide)
+- [Panduan Pajak Penyetoran](/insights/tax-legal/withholding-tax-guide)

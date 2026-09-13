@@ -69,67 +69,58 @@ tags:
 canonicalUrl: "https://balizero.com/id/lifestyle/driving-license-foreigners"
 ogImage: "/static/insights/lifestyle/driving-license.jpg"
 twitterCard: "summary_large_image"
-source_sha256: "46477888f25c2fbb471b0c6cce487183843d1221c15ee3f725e27b08d55b90c2"
+source_sha256: "45cad01b23d1d9d7ae44eabca1d90a8029f151f9363a6176ec51c40b530433c9"
 ---
 
-import {
-  DecisionTree,
-  ComparisonTable,
-  JourneyMap,
-  Checklist,
-  InfoCard,
-  AskZantara,
-} from "@/components/insights/interactive";
+# Izin Mengemudi untuk Asing di Indonesia 2026
 
-# Surat Izin Mengemudi (SIM) untuk Orang Asing di Indonesia 2026
+Mengemudi di Indonesia memerlukan lisensi yang tepat. Berikut adalah hal-hal yang perlu diketahui orang asing tentang cara mendapatkan izin mengemudi secara legal.
 
-Mengemudi di Indonesia memerlukan perizinan yang tepat. Berikut adalah hal-hal yang perlu diketahui orang asing agar dapat mengemudi secara legal.
-
-## Apakah Anda Membutuhkan SIM?
+## Apakah Anda Butuh Izin?
 
 <DecisionTree
-  title="SIM Apa yang Anda Butuhkan?"
-  description="Temukan pilihan yang tepat"
+  title="Izin Apa yang Anda Butuhkan?"
+  description="Temukan opsi yang tepat"
   nodes={[
     {
       id: "start",
       question: "Berapa lama Anda tinggal di Indonesia?",
       options: [
-        { label: "Di bawah 1 tahun (turis/kunjungan singkat)", next: "short" },
-        { label: "1 tahun ke atas (pemegang KITAS)", next: "long" },
+        { label: "Di bawah 1 tahun (wisatawan/pendek)", next: "short" },
+        { label: "1+ tahun (pemegang KITAS)", next: "long" },
       ],
     },
     {
       id: "short",
-      question: "Apa yang akan Anda kendarai?",
+      question: "Apa yang akan Anda kemudikan?",
       options: [
         { label: "Mobil saja", next: "idp-car" },
-        { label: "Skuter/sepeda motor", next: "idp-scooter" },
+        { label: "Skuter/motor", next: "idp-scooter" },
         { label: "Keduanya", next: "idp-both" },
       ],
     },
     {
       id: "long",
       result: {
-        title: "Buat SIM Indonesia",
+        title: "Dapatkan SIM Indonesia",
         description:
-          "Sebagai pemegang KITAS, Anda bisa dan harus memiliki SIM (Surat Izin Mengemudi) Indonesia. Ini adalah pilihan legal yang tepat bagi penduduk jangka panjang.",
+          "Sebagai pemegang KITAS, Anda dapat dan sebaiknya mendapatkan SIM Indonesia (Surat Izin Mengemudi). Ini adalah opsi legal yang tepat untuk penduduk jangka panjang.",
       },
     },
     {
       id: "idp-car",
       result: {
-        title: "Surat Izin Mengemudi Internasional (IDP)",
+        title: "Izin Mengemudi Internasional",
         description:
-          "Gunakan IDP dari negara asal Anda. Berlaku untuk mengemudi mobil tetapi pastikan IDP tersebut mencakup wilayah Indonesia. Pertimbangkan untuk membuat SIM lokal untuk masa tinggal yang lebih lama.",
+          "Gunakan IDP Anda dari negara asal. Berlaku untuk mengemudi mobil tetapi pastikan mencakup Indonesia. Pertimbangkan untuk mendapatkan SIM lokal untuk tinggal yang lebih lama.",
       },
     },
     {
       id: "idp-scooter",
       result: {
-        title: "IDP dengan Kelas Sepeda Motor + SIM Lokal",
+        title: "IDP dengan Kelas Motor + SIM Lokal",
         description:
-          "IDP Anda harus secara spesifik mencantumkan kelas sepeda motor. Banyak yang tidak mencantumkannya! Pertimbangkan untuk membuat SIM C Indonesia meskipun hanya tinggal sebentar.",
+          "IDP Anda harus secara khusus mencakup kelas motor. Banyak yang tidak! Pertimbangkan untuk mendapatkan SIM C Indonesia bahkan untuk tinggal singkat.",
       },
     },
     {
@@ -137,7 +128,7 @@ Mengemudi di Indonesia memerlukan perizinan yang tepat. Berikut adalah hal-hal y
       result: {
         title: "IDP + Pertimbangkan SIM Lokal",
         description:
-          "Pastikan IDP mencakup mobil dan sepeda motor. Untuk masa tinggal lebih dari 3 bulan, disarankan untuk membuat SIM lokal.",
+          "Pastikan IDP mencakup mobil dan motor. Untuk tinggal lebih dari 3 bulan, disarankan untuk mendapatkan SIM lokal.",
       },
     },
   ]}
@@ -145,51 +136,51 @@ Mengemudi di Indonesia memerlukan perizinan yang tepat. Berikut adalah hal-hal y
 
 ---
 
-## Jenis-Jenis SIM
+## Jenis Izin Mengemudi
 
 <ComparisonTable
-  title="Surat Izin Mengemudi (SIM) Indonesia"
+  title="Izin Mengemudi Indonesia (SIM)"
   description="Jenis yang tersedia untuk orang asing"
   items={[
     {
       name: "SIM A",
-      subtitle: "SIM Mobil",
+      subtitle: "Izin mobil",
       values: {
         Kendaraan: "Mobil, SUV",
-        Persyaratan: "KITAS + 17th+",
-        Masa Berlaku: "5 tahun (maks)",
-        Biaya: "~Rp 250rb",
+        Syarat: "KITAS + 17+",
+        Berlaku: "5 tahun (maks)",
+        Biaya: "~IDR 250K",
       },
     },
     {
       name: "SIM C",
-      subtitle: "SIM Sepeda Motor",
+      subtitle: "Izin motor",
       values: {
-        Kendaraan: "Skuter, sepeda motor",
-        Persyaratan: "KITAS + 17th+",
-        Masa Berlaku: "5 tahun (maks)",
-        Biaya: "~Rp 150rb",
+        Kendaraan: "Skuter, motor",
+        Syarat: "KITAS + 17+",
+        Berlaku: "5 tahun (maks)",
+        Biaya: "~IDR 150K",
       },
       highlight: true,
     },
     {
       name: "SIM B1",
-      subtitle: "Truk/Bus",
+      subtitle: "Truk/bus",
       values: {
         Kendaraan: "Kendaraan besar",
-        Persyaratan: "KITAS + pengalaman",
-        Masa Berlaku: "5 tahun",
-        Biaya: "~Rp 250rb",
+        Syarat: "KITAS + pengalaman",
+        Berlaku: "5 tahun",
+        Biaya: "~IDR 250K",
       },
     },
     {
       name: "IDP",
-      subtitle: "Izin Internasional",
+      subtitle: "Izin internasional",
       values: {
-        Kendaraan: "Sesuai SIM asal",
-        Persyaratan: "SIM asal yang valid",
-        Masa Berlaku: "1 tahun",
-        Biaya: "Variatif tiap negara",
+        Kendaraan: "Sesuai izin asal",
+        Syarat: "Izin asal valid",
+        Berlaku: "1 tahun",
+        Biaya: "Bervariasi per negara",
       },
     },
   ]}
@@ -197,7 +188,7 @@ Mengemudi di Indonesia memerlukan perizinan yang tepat. Berikut adalah hal-hal y
 
 ---
 
-## Membuat SIM Indonesia (Pemegang KITAS)
+## Mendapatkan SIM Indonesia (Pemegang KITAS)
 
 ### Proses Pengajuan
 
@@ -215,58 +206,58 @@ Mengemudi di Indonesia memerlukan perizinan yang tepat. Berikut adalah hal-hal y
       documents: [
         "Paspor (asli + fotokopi)",
         "KITAS (asli + fotokopi)",
-        "SIM negara asal (jika ada)",
-        "Surat keterangan sehat",
-        "Pas foto (4x6, latar belakang merah)",
+        "Izin mengemudi negara asal (jika ada)",
+        "Sertifikat medis",
+        "Foto paspor (4x6, latar merah)",
       ],
     },
     {
       id: "medical",
-      title: "Pemeriksaan Kesehatan",
-      description: "Di rumah sakit polisi atau klinik",
+      title: "Pemeriksaan Medis",
+      description: "Di rumah sakit atau klinik polisi",
       duration: "30 menit",
       status: "required",
       tips: [
         "Pemeriksaan kesehatan dasar",
         "Tes buta warna",
         "Tinggi/berat badan",
-        "Biaya: ~Rp 150-300rb",
+        "Biaya: ~IDR 150-300K",
       ],
     },
     {
       id: "samsat",
-      title: "Kunjungi SAMSAT/Polres",
-      description: "Kantor pelayanan SIM",
+      title: "Kunjungi SAMSAT/Polisi",
+      description: "Kantor izin mengemudi",
       duration: "1-2 jam",
       status: "required",
-      tips: ["Datang lebih awal", "Ambil nomor antrean", "Serahkan dokumen"],
+      tips: ["Datang pagi", "Ambil nomor antrean", "Serahkan dokumen"],
     },
     {
       id: "test",
-      title: "Ujian Tertulis + Praktik",
+      title: "Tes Teori + Praktis",
       description: "Teori dan mengemudi",
       duration: "1-2 jam",
       status: "required",
       tips: [
-        "Ujian tertulis di komputer",
-        "Ujian praktik di lapangan",
+        "Tes teori di komputer",
+        "Tes praktis di lintasan",
         "Mungkin perlu kembali jika gagal",
       ],
     },
     {
       id: "issue",
       title: "Terima SIM",
-      description: "SIM diterbitkan",
+      description: "Izin diterbitkan",
       duration: "Hari yang sama",
       status: "final",
-      tips: ["Foto dan biometrik", "Bayar biaya akhir", "SIM terbit di tempat"],
+      tips: ["Foto dan biometrik", "Bayar biaya akhir", "SIM diterbitkan di tempat"],
     },
   ]}
 />
 
 ---
 
-## Daftar Periksa Dokumen
+## Daftar Dokumen
 
 <Checklist
   title="Dokumen Pengajuan SIM"
@@ -289,29 +280,29 @@ Mengemudi di Indonesia memerlukan perizinan yang tepat. Berikut adalah hal-hal y
     },
     {
       id: "home-license",
-      label: "SIM negara asal",
-      description: "Jika Anda punya",
+      label: "Izin mengemudi negara asal",
+      description: "Jika Anda memilikinya",
       required: false,
       category: "identity",
     },
     {
       id: "medical",
-      label: "Surat keterangan sehat",
+      label: "Sertifikat medis",
       description: "Dari klinik yang disetujui",
       required: true,
       category: "medical",
     },
     {
       id: "photos",
-      label: "Pas foto",
-      description: "4x6cm, latar belakang merah",
+      label: "Foto paspor",
+      description: "4x6cm, latar merah",
       required: true,
       category: "identity",
     },
     {
       id: "cash",
-      label: "Uang tunai",
-      description: "Total ~Rp 500rb",
+      label: "Tunai untuk biaya",
+      description: "~IDR 500K total",
       required: true,
       category: "payment",
     },
@@ -326,115 +317,115 @@ Mengemudi di Indonesia memerlukan perizinan yang tepat. Berikut adalah hal-hal y
 
 ---
 
-## Ujian Mengemudi
+## Tes Mengemudi
 
-### Ujian Tertulis
+### Tes Teori
 
-<InfoCard variant="note" title="Ujian Berbasis Komputer">
-Ujian tertulis terdiri dari:
-- Sekitar **30 pertanyaan**
+<InfoCard variant="note" title="Tes Berbasis Komputer">
+Tes teori adalah:
+- **30 pertanyaan** (sekitar)
 - Pilihan ganda
 - Tersedia dalam **Bahasa Inggris** (biasanya)
-- Harus lulus dengan nilai **70%+**
-- Mencakup aturan lalu lintas, rambu, keamanan
+- Harus lulus dengan **70%+**
+- Mencakup aturan lalu lintas, rambu, keselamatan
 
 Pelajari dasar-dasarnya - tidak sulit!
 
 </InfoCard>
 
-### Ujian Praktik
+### Tes Praktis
 
-| Ujian | Kendaraan                  | Apa yang Diuji                |
-| ----- | -------------------------- | ----------------------------- |
-| SIM A | Mobil Anda atau disediakan | Angka 8, parkir, jalan raya   |
-| SIM C | Skuter yang disediakan     | Angka 8, slalom, keseimbangan |
+| Tes  | Kendaraan              | Apa yang Diuji             |
+| ----- | ---------------------- | --------------------------- |
+| SIM A | Mobil Anda atau yang disediakan | Figure 8, parkir, jalan    |
+| SIM C | Skuter yang disediakan | Figure 8, slalom, keseimbangan |
 
 ---
 
-## Surat Izin Mengemudi Internasional (IDP)
+## Izin Mengemudi Internasional (IDP)
 
 ### Apa itu IDP?
 
-<InfoCard variant="warning" title="IDP BUKAN-lah SIM">
-IDP adalah sebuah **terjemahan** dari SIM negara asal Anda, bukan SIM yang terpisah.
+<InfoCard variant="warning" title="IDP BUKAN Izin">
+IDP adalah **terjemahan** dari izin negara asal Anda, bukan izin terpisah.
 
 Anda harus:
 
-- Memiliki SIM negara asal yang valid
-- Membawa IDP DAN SIM asli secara bersamaan
-- Mematuhi hukum setempat
+- Memiliki izin negara asal yang valid
+- Membawa baik IDP DAN izin asli
+- Mematuhi hukum lokal
 </InfoCard>
 
 ### Mendapatkan IDP
 
 Dapatkan IDP Anda **sebelum** datang ke Indonesia:
 
-| Negara    | Tempat Mendapatkan |
-| --------- | ------------------ |
-| AS        | Kantor AAA         |
-| Inggris   | Kantor Pos         |
-| Australia | AAA, RACV          |
-| Kanada    | Kantor CAA         |
-| UE        | Otoritas lokal     |
+| Negara   | Di Mana Mendapatkannya    |
+| --------- | ------------------------- |
+| USA       | Kantor AAA                |
+| UK        | Kantor Pos                |
+| Australia | AAA, RACV                 |
+| Kanada    | Kantor CAA                |
+| UE        | Otoritas lokal            |
 
 Biaya: Biasanya $15-50
 
-### Masa Berlaku IDP di Indonesia
+### Berlakunya IDP di Indonesia
 
-- **Secara teknis valid** untuk kunjungan singkat
-- Polisi mungkin menerima atau tidak menerimanya
-- Asuransi mungkin bermasalah
-- **Kelas sepeda motor** harus dicantumkan secara spesifik
-- Sebaiknya digunakan sebagai cadangan, bukan yang utama
+- **Secara teknis valid** untuk tinggal singkat
+- Polisi mungkin atau mungkin tidak menerimanya
+- Asuransi mungkin memiliki masalah
+- **Kelas motor** harus disebutkan
+- Terbaik digunakan sebagai cadangan, bukan utama
 
 ---
 
-## Realita di Jalan Raya
+## Realitas di Jalan Raya
 
 <InfoCard variant="warning" title="Pertimbangan Praktis">
 **Apa yang sebenarnya terjadi:**
 
-- Banyak turis mengendarai skuter tanpa SIM yang memadai
-- Polisi terkadang menghentikan orang asing
-- Denda: ~Rp 250rb-500rb (bisa dinegosiasikan)
-- Klaim asuransi bisa ditolak tanpa SIM
-- Kecelakaan bisa menjadi sangat rumit
+- Banyak wisatawan mengendarai skuter tanpa izin yang tepat
+- Polisi kadang menghentikan orang asing
+- Denda: ~IDR 250K-500K (bisa dinegosiasikan)
+- Klaim asuransi bisa ditolak tanpa izin
+- Kecelakaan bisa rumit
 
-**Rekomendasi:** Dapatkan SIM yang tepat demi ketenangan pikiran.
+**Rekomendasi:** Dapatkan lisensi yang tepat untuk ketenangan pikiran.
 
 </InfoCard>
 
-### Jika Dihentikan Polisi
+### Jika Ditahan oleh Polisi
 
 1. Tetap tenang dan sopan
 2. Tunjukkan dokumen
-3. Jika tidak punya SIM, kemungkinan besar kena denda
+3. Jika tidak ada izin, denda kemungkinan besar akan dikenakan
 4. Jangan berdebat
-5. Minta surat tilang (resmi)
+5. Minta tanda terima (tilang)
 
 ---
 
-## Sewa Skuter Tanpa SIM
+## Sewa Skuter Tanpa Izin
 
-Kebanyakan tempat persewaan tidak mengecek SIM. Namun:
+Sebagian besar toko sewa tidak memeriksa izin. Namun:
 
 ### Risiko
 
-| Risiko             | Konsekuensi                       |
-| ------------------ | --------------------------------- |
-| Dihentikan polisi  | Denda Rp 250-500rb                |
-| Kecelakaan         | Asuransi mungkin tidak menanggung |
-| Kecelakaan serius  | Potensi masalah hukum             |
-| Melukai orang lain | Tanggung jawab tidak jelas        |
+| Risiko             | Konsekuensi               |
+| ------------------ | ------------------------- |
+| Ditahan polisi     | Denda IDR 250-500K        |
+| Kecelakaan         | Asuransi mungkin tidak menutup |
+| Kecelakaan serius  | Masalah hukum potensial    |
+| Cedera pada orang lain | Tanggung jawab tidak jelas   |
 
 ### Catatan Asuransi
 
 <InfoCard variant="warning" title="Peringatan Asuransi">
-Kebanyakan polis asuransi perjalanan mewajibkan:
-- SIM yang valid untuk jenis kendaraan tersebut
-- Mematuhi hukum setempat
+Sebagian besar kebijakan asuransi perjalanan memerlukan:
+- Izin valid untuk jenis kendaraan
+- Mematuhi hukum lokal
 
-Tanpa SIM yang memadai, klaim mungkin **ditolak**.
+Tanpa izin yang tepat, klaim mungkin **ditolak**.
 
 </InfoCard>
 
@@ -442,38 +433,38 @@ Tanpa SIM yang memadai, klaim mungkin **ditolak**.
 
 ## Ringkasan Biaya
 
-| Item                   | Biaya        |
-| ---------------------- | ------------ |
-| Surat keterangan sehat | Rp 150-300rb |
-| SIM A (mobil)          | Rp 250rb     |
-| SIM C (motor)          | Rp 150rb     |
-| Perpanjangan           | Rp 100-200rb |
-| Ujian ulang            | Rp 50-100rb  |
+| Item                | Biaya              |
+| ------------------- | ------------------ |
+| Sertifikat medis    | IDR 150-300K       |
+| SIM A (mobil)       | IDR 250K           |
+| SIM C (motor)       | IDR 150K           |
+| Perpanjangan        | IDR 100-200K       |
+| Ulang tes           | IDR 50-100K        |
 
 ---
 
 ## Tips untuk Orang Asing
 
-1. **Buat SIM C jika mengendarai skuter** - Sebanding dengan ketenangan pikiran yang didapat
-2. **Bawa SIM negara asal** - Dapat membantu saat pengujian
+1. **Dapatkan SIM C jika mengendarai skuter** - Sepadan dengan ketenangan pikiran
+2. **Bawa izin negara asal** - Mungkin membantu dalam pengujian
 3. **Pergi ke SAMSAT Denpasar** - Paling ramah bagi orang asing di Bali
 4. **Datang lebih awal** - Antrean bisa panjang
-5. **Bawa penerjemah** - Membantu tetapi tidak wajib
-6. **Berlatih di lintasan ujian** - Perhatikan orang lain terlebih dahulu
-7. **Bersabar** - Birokrasi membutuhkan waktu
+5. **Bawa pembicara Bahasa Indonesia** - Membantu tetapi tidak wajib
+6. **Latih lintasan tes** - Lihat orang lain terlebih dahulu
+7. **Jadilah sabar** - Birokrasi membutuhkan waktu
 
 ---
 
 ## Pertanyaan Umum
 
 <AskZantara
-  context="Surat izin mengemudi Indonesia, SIM, mengemudi orang asing, sim motor, IDP"
-  placeholder="Tanya tentang surat izin mengemudi..."
+  context="Izin mengemudi Indonesia, SIM, asing mengemudi, izin skuter, IDP"
+  placeholder="Tanya tentang izin mengemudi..."
   suggestedQuestions={[
-    "Bisakah saya mengemudi hanya dengan SIM asing saya?",
-    "Seberapa sulit ujian sepeda motor?",
-    "Apakah saya butuh SIM untuk menyewa skuter?",
-    "Bisakah saya mengonversi SIM asing saya?",
+    "Apakah saya bisa mengemudi hanya dengan izin asing?",
+    "Seberapa sulit tes motor?",
+    "Apakah saya butuh izin untuk menyewa skuter?",
+    "Bisakah saya mengubah izin asing saya?",
   ]}
 />
 
@@ -481,6 +472,6 @@ Tanpa SIM yang memadai, klaim mungkin **ditolak**.
 
 ## Artikel Terkait
 
-- [Biaya Hidup di Bali](/id/insights/lifestyle/cost-of-living-bali)
-- [Panduan Izin Kerja KITAS](/visas/working-kitas-e23-indonesias-revised-legal-framework-explained?lang=id)
-- [Asuransi Kesehatan untuk Orang Asing](/id/insights/lifestyle/health-insurance-foreigners)
+- [Biaya Hidup di Bali](/insights/lifestyle/cost-of-living-bali)
+- [Panduan Izin Kerja KITAS](/visas/working-kitas-e23-indonesias-revised-legal-framework-explained)
+- [Asuransi Kesehatan untuk Asing](/insights/lifestyle/health-insurance-foreigners)

@@ -19,53 +19,53 @@ seoDescription: "This whole series has shown you locked doors one at a time — 
 aiGenerated: true
 aiConfidenceScore: 0.9
 locale: "id"
-source_sha256: "154209227d3ae44f120ab444166d27dca0a71cc528c6c2bd213622c32f0bcc44"
+source_sha256: "c5dfa584d12961cf5148f8f55c32412e35361c315f86d0b6034d6232a4d04f39"
 ---
 
-Serangkaian artikel ini telah menunjukkan kepada Anda pintu-pintu tertutup satu per satu — villa, kafe, minimarket, perusahaan konsultan. Artikel terakhir ini mundur sejenak dan menghitungnya. Seberapa besar peta bisnis Bali sebenarnya terkunci dari investasi asing? Bukan sebagai slogan, tetapi sebagai angka yang dapat diaudit.
+Serangkaian artikel ini telah menunjukkan pintu-pintu terkunci satu per satu — vila, kafe, minimarket, dan firma konsultasi. Artikel terakhir ini mundur langkah dan menghitungnya. Berapa banyak dari peta bisnis Bali yang sebenarnya dibatasi bagi investasi asing? Bukan sebagai slogan, melainkan sebagai angka yang dapat diaudit.
 
-Jadi kami menghitungnya. Dan karena hal yang jujur adalah menunjukkan pekerjaan kami, berikut adalah tepat apa yang kami ukur — dan di mana perkiraan awal kami ternyata terlalu tinggi.
+Jadi kami menghitungnya. Dan karena hal jujur yang harus dilakukan adalah menunjukkan pekerjaan kami, berikut adalah persis apa yang kami ukur — dan di mana perkiraan awal kami ternyata terlalu tinggi.
 
 ## Metode
 
-Kami mengambil dataset klasifikasi 2025 yang telah dibersihkan — file yang sama yang menjadi dasar setiap artikel dalam rangkaian ini — dan menghitung secara mekanis setiap kode yang memiliki keputusan status Bali. Dataset ini berisi **1.559 kode terklasifikasi**, masing-masing ditandai apakah PT PMA milik asing dapat mendaftarkannya di Bali (sebuah flag sederhana `blocked: true / false` yang berasal dari status nasional kode tersebut dan kelas risiko OSS-nya di bawah moratorium 13 Mei 2026).
+Kami mengambil dataset klasifikasi 2025 yang telah dibersihkan — file kebenaran lapangan (ground-truth) yang sama yang digunakan setiap artikel dalam seri ini untuk melacak kode — dan secara mekanis menghitung setiap kode yang membawa putusan status Bali. Dataset tersebut berisi **1.559 kode yang diklasifikasikan**, masing-masing ditandai dengan apakah PT PMA milik asing dapat mendaftarkannya di Bali (sebuah bendera sederhana `blocked: true / false` yang diturunkan dari status nasional kode dan kelas risiko OSS-nya di bawah moratorium 13 Mei 2026).
 
-Perhitungan ini bukan sekadar perasaan. Ini adalah filter atas sebuah file.
+Penghitungan ini bukan sekadar perasaan. Ini adalah filter atas sebuah file.
 
 ## Angkanya
 
-**Dari 1.559 kode KBLI terklasifikasi, 519 diblokir untuk PT PMA asing di Bali. Itu adalah 33,3% — hampir tepat satu dari tiga.**
+**Dari 1.559 kode KBLI yang diklasifikasikan, 519 diblokir untuk PT PMA asing di Bali. Itu adalah 33,3% — hampir persis satu dari tiga.**
 
-Itulah headline yang jujur. Bukan "setengah perekonomian," bukan angka menakutkan — tetapi juga bukan angka kecil. **Hampir sepertiga** dari aktivitas bisnis yang mungkin dipertimbangkan secara wajar oleh seorang asing, pada tahun 2026 di Bali, tidak tersedia untuk kepemilikan asing.
+Itu adalah judul utama yang jujur. Bukan "setengah ekonomi", bukan angka menakutkan — tetapi juga tidak kecil. **Hampir sepertiga** dari kegiatan bisnis yang mungkin dipertimbangkan secara wajar oleh seorang asing, di Bali tahun 2026, tertutup bagi kepemilikan asing.
 
-Dan berikut adalah bagian yang paling sering disembunyikan oleh perhitungan: 519 tersebut terbagi menjadi jenis-jenis _tidak_ yang berbeda —
+Dan berikut adalah bagian yang paling sering disembunyikan dalam penghitungan: kelima ratus sembilan belas itu terurai menjadi jenis-jenis "tidak" yang berbeda —
 
-- **372 — diblokir oleh kelas risiko** (`BLOCCATO_CLASSE_RISCHIO`): hampir semua terbuka secara nasional, tetapi risiko rendah/medium-rendah, sehingga moratorium menangkapnya. Ini adalah kategori dominan — kafe, wholesaler perhiasan, retailer umum.
-- **48 — diblokir oleh moratorium atas alasan lain** (`CHIUSO_MORATORIA_BALI`): permintaan Gubernur yang sama, dicapai melalui jalur yang berbeda.
-- **68 — ditutup atas aktivitas itu sendiri** (`TERTUTUP`): 62 di antaranya memiliki 0% kepemilikan asing dalam katalog, sehingga pertanyaan Bali tidak muncul. Enam lainnya adalah jebakan — katalog menyatakan 100%, tetapi profesi atau cadangan menutupnya tetap: konsultasi hukum (69102), notaris (69104), praktik medis solo dan spesialis (86201, 86202), minimarket (47112), pertanian tanaman pangan pokok (01111).
-- **17 — tidak dapat dinyatakan posisi Bali** (`NON_CLASSIFICABILE`): kami tidak memiliki baris lisensi yang diverifikasi untuk kode tersebut, sehingga kami tidak akan menyatakan satu. Anggap sebagai diblokir hingga diverifikasi langsung.
-- **7 — cadangan untuk koperasi dan UMKM** (`CHIUSO_PMA_NO_BESAR`): dialokasikan dalam Lampiran II Perpres 10/2021 sebagaimana diubah oleh 49/2021, sehingga PT PMA tidak dapat mengambil _bidang usaha_. Ini adalah jebakan villa yang tepat.
-- **6 — sisanya**: 2 ditutup oleh regulator sektornya sendiri, 2 bergantung pada cakupan, 2 di bawah penutupan yang diumumkan Bali sendiri (70209 dan satu yang diusulkan).
+- **372 — diblokir oleh kelas risiko** (`BLOCCATO_CLASSE_RISCHIO`): hampir semua terbuka secara nasional, namun berisiko rendah/rendah-sedang, sehingga tertangkap oleh moratorium. Ini adalah kategori dominan — kafe, grosir perhiasan, dan pengecer umum.
+- **48 — diblokir oleh moratorium atas alasan lain** (`CHIUSO_MORATORIA_BALI`): permintaan Gubernur yang sama, dicapai melalui rute berbeda.
+- **68 — ditutup pada aktivitas itu sendiri** (`TERTUTUP`): 62 di antaranya membawa kepemilikan asing 0% dalam katalog, sehingga tidak timbul pertanyaan Bali. Lainnya 6 adalah jebakan — katalog menyatakan 100%, tetapi profesi atau reservasi tetap menutupnya: konsultasi hukum (69102), notaris (69104), praktik medis solo dan spesialis (86201, 86202), minimarket (47112), dan pertanian tanaman pangan (01111).
+- **17 — tidak dapat dinyatakan posisi Bali** (`NON_CLASSIFICABILE`): kami tidak memiliki baris lisensi terverifikasi untuk kode tersebut, sehingga kami tidak akan menyatakan satu pun. Anggap sebagai diblokir hingga diverifikasi secara langsung.
+- **7 — dialokasikan untuk koperasi dan UMKM** (`CHIUSO_PMA_NO_BESAR`): dialokasikan dalam Lampiran II Perpres 10/2021 sebagaimana diubah oleh 49/2021, sehingga PT PMA tidak dapat mengambil _bidang usaha_. Ini adalah jebakan vila yang tepat.
+- **6 — sisanya**: 2 ditutup oleh regulator sektor mereka sendiri, 2 bergantung pada cakupan, dan 2 di bawah penutupan yang diumumkan Bali sendiri (70209 dan satu yang diusulkan).
 
-Dinding-dinding itu bukan satu dinding. Mereka adalah enam dinding yang berbeda, dan seorang asing bisa mengenai salah satunya.
+Dinding-dinding ini bukan satu dinding. Mereka adalah enam dinding berbeda, dan seorang asing dapat menabrak salah satunya.
 
-## Di mana perkiraan kami sendiri terlalu tinggi
+## Di mana perkiraan kami terlalu tinggi
 
-Awalnya dalam merencanakan rangkaian ini, kami membawa angka kerja "sekitar 945 kode, sekitar 39% diblokir." Kami memperbaikinya secara publik, karena rangkaian yang dibangun atas _verifikasi-bukan-anggapan_ tidak dapat diam-diam mempertahankan angka yang tidak lagi dapat dibela.
+Pada awal perencanaan seri ini, kami membawa angka kerja "sekitar 945 kode, sekitar 39% diblokir." Kami mengoreksinya secara publik, karena seri yang dibangun atas prinsip _verify-don't-presume_ tidak dapat diam-diam menyimpan angka yang tidak lagi dapat dipertahankan.
 
-Angka 945/39% berasal dari **perhitungan yang lebih besar dan lebih longgar** — ekspor OSS lengkap 2.422 baris, yang mencakup beberapa baris cakupan dan sub-skala per aktivitas, sehingga satu kode bisnis dapat muncul beberapa kali. Menghitung pada tingkat granularitas ini menggelembungkan baik pembilang maupun penyebut dan mencampur baris cakupan dengan kode aktivitas. Saat kami menghitung pada tingkat yang benar-benar penting bagi seorang pendiri — **satu keputusan per kode bisnis**, di antara 1.559 kode yang telah dibersihkan — tingkatnya stabil pada **33,2%.**
+Angka 945/39% berasal dari **penghitungan yang lebih besar dan lebih longgar** — ekspor OSS penuh 2.422 baris, yang mencakup beberapa baris cakupan dan sub-skala per aktivitas, sehingga satu kode bisnis dapat muncul beberapa kali. Menghitung pada tingkat granularitas tersebut membesar-besarkan pembilang dan penyebut serta mencampur baris cakupan dengan kode aktivitas. Ketika kami menghitung pada tingkat yang benar-benar penting bagi seorang pendiri — **satu putusan per kode bisnis**, di seluruh 1.559 kode yang dibersihkan — lajunya menetap di **33,2%.**
 
-Kedua pernyataan menggambarkan realitas yang sama (blok struktural yang besar terhadap investasi asing berisiko rendah). Namun, angka yang dapat Anda pertahankan, kode demi kode, adalah **519 dari 1.559 — 33,3%**, bukan 39%. Angka ini sudah berubah sekali sejak rangkaian dimulai: ini adalah filter atas dataset, dan dataset tersebut terus diperbaiki. Angka ini masih jauh di bawah 39%, dan masih cukup besar untuk mengubah hampir setiap rencana seorang asing.
+Kedua pernyataan tersebut menggambarkan realitas yang sama (blok besar dan struktural pada investasi asing berisiko rendah). Namun, angka yang dapat Anda dukung, kode demi kode, adalah **519 dari 1.559 — 33,3%**, bukan 39%. Angka ini telah bergerak sekali sejak seri dimulai: itu adalah filter atas dataset, dan dataset tersebut diperbaiki. Angka ini masih jauh di bawah 39%, dan masih cukup besar untuk mengubah hampir setiap rencana seorang asing.
 
-## Apa yang sebenarnya dikatakan peta
+## Apa yang sebenarnya diberitahu oleh peta
 
-Dua interpretasi mengikuti dari perhitungan ini, dan keduanya menunjuk ke arah yang sama:
+Dua pembacaan mengikuti dari penghitungan tersebut, dan keduanya menunjuk ke arah yang sama:
 
 - **Hampir sepertiga tertutup** berarti jangan berasumsi ide Anda dapat didaftarkan. Tingkat dasar "diblokir" cukup tinggi sehingga harapan bukanlah strategi.
-- **Sedikit lebih dari dua pertiga tidak diblokir** (1.040 kode tanpa penanda blokir — meski 70 di antaranya bergantung ruang lingkup dan segelintir belum terklasifikasi) berarti pintu yang Anda inginkan _mungkin_ dapat ditemukan — biasanya sebagai versi berisiko lebih tinggi dari kode yang pertama kali Anda tuju. Pivot sering kali ada.
+- **Lebih dari dua pertiga tidak diblokir** (1.040 kode tidak membawa bendera diblokir — meskipun 70 di antaranya bergantung pada cakupan dan sejumlah kecil tidak diklasifikasikan) berarti pintu yang Anda inginkan _mungkin_ dapat ditemukan — biasanya sebagai saudara berisiko lebih tinggi dari kode yang pertama kali Anda tuju. Titik balik ada lebih sering daripada tidak.
 
-Peta ini bukan "Bali tertutup." Ini adalah "Bali tertutup untuk versi _mudah, berisiko rendah_ dari sebagian besar hal, dan terbuka untuk versi _serius, berisiko lebih tinggi_ dari banyak hal tersebut." Kalimat tunggal ini, didukung oleh 519 kode yang dihitung, adalah seluruh moratorium dalam satu baris.
+Peta ini bukan "Bali tertutup." Ini adalah "Bali tertutup bagi versi _mudah, berisiko rendah_ dari kebanyakan hal, dan terbuka bagi versi _serius, berisiko lebih tinggi_ dari banyak di antaranya." Kalimat tunggal tersebut, didukung oleh 519 kode yang dihitung, adalah keseluruhan moratorium dalam satu baris.
 
-Kami akan memperbarui perhitungan ini seiring data OSS dan moratorium berkembang — dan kami akan terus menunjukkan aritmetikanya, karena saat sebuah angka tidak dapat direproduksi dari file, ia berhenti menjadi jurnalisme dan mulai menjadi rumor.
+Kami akan menjaga penghitungan ini tetap terkini seiring berkembangnya data OSS dan moratorium — dan kami akan terus menunjukkan aritmatikanya, karena saat sebuah angka tidak dapat direproduksi dari file, itu berhenti menjadi jurnalistik dan mulai menjadi rumor.
 
-_Jangan menerima agregat atas keyakinan — periksa kode Anda sendiri terhadap perhitungan langsung di Bali Zero KBLI Navigator di balizero.com, di mana status nasional setiap kode dan keputusan Bali berdampingan, diambil dari data yang sama yang dihitung artikel ini._
+_Jangan mengambil agregat berdasarkan iman — periksa kode Anda yang tepat terhadap penghitungan langsung di Bali Zero KBLI Navigator di balizero.com, di mana status nasional setiap kode dan putusan Bali bersebelahan, digambar dari data yang sama yang dihitung dalam artikel ini._

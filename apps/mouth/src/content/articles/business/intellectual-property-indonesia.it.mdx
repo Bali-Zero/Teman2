@@ -5,7 +5,7 @@ description: >-
   Proteggere la proprietà intellettuale in Indonesia. Marchi, brevetti, diritti d'autore e segreti commerciali per le
   imprese.
 excerpt: Proteggi il tuo marchio e le tue innovazioni in Indonesia. Ecco la tua guida alla PI.
-locale: it
+locale: "it"
 category: business
 publishedAt: "2026-01-15"
 coverImage: /static/insights/business/intellectual-property-indonesia.jpg
@@ -91,34 +91,25 @@ ogImage: /static/insights/business/intellectual-property-indonesia.jpg
 ogType: article
 twitterCard: summary_large_image
 status: published
-source_sha256: "a9065b1e12f20824b7aaf7fd1c107c6a03f2d5932c6cbb64bc6608ba70957f58"
+source_sha256: "068f92b30e453ab4c6c2572f0eef15aa5a88c837455f7d143d4588cbf3c91dde"
 ---
-
-import {
-  DecisionTree,
-  ComparisonTable,
-  JourneyMap,
-  Checklist,
-  InfoCard,
-  AskZantara,
-} from "@/components/insights/interactive";
 
 # Proprietà Intellettuale in Indonesia 2026: Guida alla Protezione
 
-Proteggere la tua proprietà intellettuale è essenziale quando fai affari in Indonesia. Ecco cosa devi sapere.
+Proteggere la propria proprietà intellettuale è essenziale quando si fa business in Indonesia. Ecco cosa devi sapere.
 
-## Tipi di Protezione PI
+## Tipi di Protezione della PI
 
 <DecisionTree
-  title="Quale Protezione PI?"
+  title="Quale Protezione della PI?"
   description="Trova la protezione giusta per i tuoi asset"
   nodes={[
     {
       id: "start",
       question: "Cosa stai proteggendo?",
       options: [
-        { label: "Nome marchio/logo", next: "trademark" },
-        { label: "Invenzione/process", next: "patent" },
+        { label: "Nome del marchio/logo", next: "trademark" },
+        { label: "Invenzione/processo", next: "patent" },
         { label: "Opera creativa", next: "copyright" },
         { label: "Segreti commerciali", next: "trade-secret" },
       ],
@@ -128,7 +119,7 @@ Proteggere la tua proprietà intellettuale è essenziale quando fai affari in In
       result: {
         title: "Marchio (Merek)",
         description:
-          "Registra il tuo nome commerciale, logo o slogan con DGIP. La protezione dura 10 anni, rinnovabile. Essenziale per qualsiasi impresa che opera in Indonesia.",
+          "Registra il tuo nome del marchio, logo o slogan con la DGIP. La protezione dura 10 anni ed è rinnovabile. Fondamentale per qualsiasi azienda che opera in Indonesia.",
       },
     },
     {
@@ -136,15 +127,15 @@ Proteggere la tua proprietà intellettuale è essenziale quando fai affari in In
       result: {
         title: "Brevetto (Paten)",
         description:
-          "Proteggi invenzioni, processi o soluzioni tecniche. Brevetto standard: 20 anni. Brevetto semplice: 10 anni. Devono essere nuovi e industrialmente applicabili.",
+          "Proteggi invenzioni, processi o soluzioni tecniche. Brevetto standard: 20 anni. Brevetto semplificato: 10 anni. Deve essere nuovo e industrialmente applicabile.",
       },
     },
     {
       id: "copyright",
       result: {
-        title: "Diritto d'Autore (Hak Cipta)",
+        title: "Diritto d'autore (Hak Cipta)",
         description:
-          "Protezione automatica per opere creative. Registrazione opzionale ma consigliata come prova. Dura 70 anni dopo la morte del creatore per la maggior parte delle opere.",
+          "Protezione automatica per le opere creative. Il registro è facoltativo ma raccomandato per la prova. Dura 70 anni dopo la morte dell'autore per la maggior parte delle opere.",
       },
     },
     {
@@ -152,7 +143,7 @@ Proteggere la tua proprietà intellettuale è essenziale quando fai affari in In
       result: {
         title: "Segreto Commerciale (Rahasia Dagang)",
         description:
-          "Proteggi informazioni commerciali confidenziali attraverso contratti e misure di sicurezza. Nessuna registrazione richiesta. La protezione dura finché il segreto è mantenuto.",
+          "Proteggi le informazioni aziendali riservate tramite contratti e misure di sicurezza. Non è richiesto il registro. La protezione dura finché il segreto è mantenuto.",
       },
     },
   ]}
@@ -160,50 +151,50 @@ Proteggere la tua proprietà intellettuale è essenziale quando fai affari in In
 
 ---
 
-## Confronto Protezione PI
+## Confronto sulla Protezione della PI
 
 <ComparisonTable
-  title="Tipi PI a Colpo d'Occhio"
+  title="Tipi di Proprietà Intellettuale in Breve"
   description="Scegli la protezione giusta"
   items={[
     {
       name: "Marchio",
       subtitle: "Protezione del brand",
       values: {
-        Protects: "Nomi, logo, slogan",
+        Protects: "Nomi, loghi, slogan",
         Duration: "10 anni (rinnovabile)",
-        Registration: "Richiesta",
+        Registration: "Obbligatorio",
         Cost: "IDR 2-10M",
       },
       highlight: true,
     },
     {
       name: "Brevetto",
-      subtitle: "Protezione invenzioni",
+      subtitle: "Protezione delle invenzioni",
       values: {
         Protects: "Invenzioni, processi",
         Duration: "20 anni (standard)",
-        Registration: "Richiesta",
+        Registration: "Obbligatorio",
         Cost: "IDR 10-50M+",
       },
     },
     {
-      name: "Diritto d'Autore",
+      name: "Diritto d'autore",
       subtitle: "Opere creative",
       values: {
         Protects: "Arte, musica, software, scrittura",
-        Duration: "70 anni post-morte",
-        Registration: "Opzionale",
+        Duration: "70 anni post-mortem",
+        Registration: "Facoltativo",
         Cost: "IDR 500K-2M",
       },
     },
     {
-      name: "Design Industriale",
-      subtitle: "Aspetto prodotto",
+      name: "Disegno Industriale",
+      subtitle: "Aspetto del prodotto",
       values: {
-        Protects: "Forma, pattern, colore",
+        Protects: "Forma, motivo, colore",
         Duration: "10 anni",
-        Registration: "Richiesta",
+        Registration: "Obbligatorio",
         Cost: "IDR 3-8M",
       },
     },
@@ -212,165 +203,157 @@ Proteggere la tua proprietà intellettuale è essenziale quando fai affari in In
 
 ---
 
-## Registrazione Marchio
+## Registrazione del Marchio
 
-### Perché Registrare in Indonesia?
+### Perché Registrarsi in Indonesia?
 
 <InfoCard variant="warning" title="Sistema First-to-File">
-L'Indonesia usa il sistema **first-to-file**:
-- Chi si registra per primo possiede il marchio
-- Il tuo marchio altrove non ti protegge qui
-- Gli "squatter" possono registrare il tuo brand per primi
+Indonesia utilizza il sistema **first-to-file**:
+- Chi per primo registra possiede il marchio
+- Il tuo marchio all'estero non ti protegge qui
+- I "squatter" possono registrare il tuo marchio in anticipo
 - Senza registrazione, enforcement limitato
 
-**Registra il tuo marchio prima di entrare nel mercato Indonesia!**
+**Registra il tuo marchio prima di entrare nel mercato indonesiano!**
 
 </InfoCard>
 
 ### Processo di Registrazione
 
 <JourneyMap
-  title="Registrazione Marchio"
+  title="Registrazione del Marchio"
   description="Passi per registrare il tuo marchio"
   estimatedTotal="12-18 mesi"
   steps={[
     {
       id: "search",
-      title: "Ricerca Marchio",
-      description: "Verifica disponibilità",
+      title: "Ricerca del Marchio",
+      description: "Verifica la disponibilità",
       duration: "1-2 settimane",
-      status: "required",
+      status: "richiesto",
       tips: [
-        "Cerca database DGIP",
-        "Verifica marchi simili",
+        "Cerca nel database DGIP",
+        "Controlla marchi simili",
         "Considera somiglianze fonetiche",
       ],
     },
     {
       id: "prepare",
-      title: "Prepara Domanda",
-      description: "Raccogli documenti",
+      title: "Prepara la Domanda",
+      description: "Raccogli i documenti",
       duration: "1-2 settimane",
-      status: "required",
+      status: "richiesto",
       documents: [
-        "Campione marchio (logo)",
-        "Elenco beni/servizi",
-        "Dettagli richiedente",
-        "Procura (se usi agente)",
+        "Specimen del marchio (logo)",
+        "Elenco di beni/servizi",
+        "Dettagli del richiedente",
+        "Procura speciale (se si usa un agente)",
       ],
     },
     {
       id: "file",
-      title: "Deposita Domanda",
-      description: "Invia a DGIP",
+      title: "Presenta la Domanda",
+      description: "Invia alla DGIP",
       duration: "1-2 giorni",
-      status: "required",
-      tips: [
-        "Online via sistema DGIP",
-        "O tramite agente PI",
-        "Paga tassa di deposito",
-      ],
+      status: "richiesto",
+      tips: ["Online tramite sistema DGIP", "O tramite agente della PI", "Paga le tasse di presentazione"],
     },
     {
       id: "examine",
       title: "Esame Formale",
-      description: "DGIP verifica documenti",
+      description: "La DGIP controlla i documenti",
       duration: "1-2 mesi",
-      status: "required",
+      status: "richiesto",
       tips: [
         "Revisione amministrativa",
         "Può richiedere correzioni",
-        "Data deposito assegnata",
+        "Data di presentazione assegnata",
       ],
     },
     {
       id: "substantive",
       title: "Esame Sostanziale",
-      description: "Revisione merito marchio",
+      description: "Valuta il valore del marchio",
       duration: "6-9 mesi",
-      status: "required",
-      tips: [
-        "Verifica distintività",
-        "Ricerca conflitti",
-        "Può incontrare opposizioni",
-      ],
+      status: "richiesto",
+      tips: ["Controllo distintività", "Ricerca conflitti", "Puoi incontrare obiezioni"],
     },
     {
       id: "publish",
       title: "Pubblicazione",
-      description: "Sulla Gazzetta Ufficiale",
+      description: "Sull'Ufficiale Gazzetta",
       duration: "2 mesi",
-      status: "required",
+      status: "richiesto",
       tips: [
-        "Periodo opposizione",
-        "Terzi possono obiettare",
-        "Rispondi se contestato",
+        "Periodo di opposizione",
+        "Terzi possono opporsi",
+        "Rispondi se sfidato",
       ],
     },
     {
       id: "certificate",
-      title: "Certificato Rilasciato",
+      title: "Certificato Erogato",
       description: "Marchio registrato",
       duration: "1-2 mesi",
-      status: "final",
+      status: "finale",
       tips: [
-        "Inizia protezione 10 anni",
-        "Puoi usare simbolo ®",
+        "Inizia la protezione di 10 anni",
+        "Puoi usare il simbolo ®",
         "Rinnova prima della scadenza",
       ],
     },
   ]}
 />
 
-### Classi Marchio
+### Classi dei Marchi
 
-| Classe | Categoria                  | Esempi               |
-| ------ | -------------------------- | -------------------- |
-| 25     | Abbigliamento              | Vestiti, calzature   |
-| 35     | Servizi business           | Retail, pubblicità   |
-| 41     | Istruzione/Intrattenimento | Formazione, eventi   |
-| 42     | Tecnologia                 | Software, servizi IT |
-| 43     | Servizi alimentari         | Ristoranti, caffè    |
-| 9      | Elettronica                | Software, app        |
+| Classe | Categoria                | Esempi              |
+| ----- | ----------------------- | --------------------- |
+| 25    | Abbigliamento           | Vestiti, calzature    |
+| 35    | Servizi commerciali     | Retail, pubblicità   |
+| 41    | Istruzione/Intrattenimento | Formazione, eventi      |
+| 42    | Tecnologia              | Software, servizi IT |
+| 43    | Servizi alimentari      | Ristoranti, caffè    |
+| 9     | Elettronica             | Software, app        |
 
-Devi registrarti in ogni classe pertinente separatamente.
+Devi registrarti in ciascuna classe rilevante separatamente.
 
 ---
 
-## Registrazione Brevetto
+## Registrazione del Brevetto
 
-### Tipi di Brevetto
+### Tipi di Brevetti
 
-| Tipo              | Durata  | Per                      |
-| ----------------- | ------- | ------------------------ |
-| Brevetto Standard | 20 anni | Invenzioni complesse     |
-| Brevetto Semplice | 10 anni | Innovazioni più semplici |
+| Tipo            | Durata   | Per                 |
+| --------------- | -------- | ------------------- |
+| Brevetto Standard | 20 anni | Invenzioni complesse |
+| Brevetto Semplificato | 10 anni | Innovazioni più semplici |
 
-### Requisiti Brevetto
+### Requisiti del Brevetto
 
 <Checklist
-  title="Domanda Brevetto"
+  title="Domanda di Brevetto"
   description="Elementi richiesti"
   persistKey="patent-checklist"
   items={[
     {
       id: "novel",
       label: "Novità",
-      description: "Non conosciuta prima del deposito",
+      description: "Non noto prima della presentazione",
       required: true,
       category: "requirements",
     },
     {
       id: "inventive",
-      label: "Attività inventiva",
-      description: "Non ovvia per esperti",
+      label: "Passo inventivo",
+      description: "Non ovvio per gli esperti",
       required: true,
       category: "requirements",
     },
     {
       id: "industrial",
       label: "Applicabilità industriale",
-      description: "Può essere prodotta/utilizzata",
+      description: "Può essere prodotto/utilizzato",
       required: true,
       category: "requirements",
     },
@@ -383,8 +366,8 @@ Devi registrarti in ogni classe pertinente separatamente.
     },
     {
       id: "claims",
-      label: "Rivendicazioni brevetto",
-      description: "Ambito protezione",
+      label: "Requisizioni del brevetto",
+      description: "Ambito di protezione",
       required: true,
       category: "documents",
     },
@@ -397,8 +380,8 @@ Devi registrarti in ogni classe pertinente separatamente.
     },
     {
       id: "abstract",
-      label: "Abstract",
-      description: "Riassunto invenzione",
+      label: "Astratto",
+      description: "Sintesi dell'invenzione",
       required: true,
       category: "documents",
     },
@@ -410,19 +393,19 @@ Devi registrarti in ogni classe pertinente separatamente.
   showProgress={true}
 />
 
-<InfoCard variant="note" title="Tempistiche Brevetto">
-La registrazione brevetto tipicamente richiede **3-5 anni** in Indonesia.
+<InfoCard variant="note" title="Cronologia del Brevetto">
+La registrazione del brevetto richiede tipicamente **3-5 anni** in Indonesia.
 
 **Importante:**
 
-- Deposita presto (sistema first-to-file)
-- Mantieni segreta l'invenzione fino al deposito
-- Puoi rivendicare priorità da deposito estero (12 mesi)
+- Presenta presto (sistema first-to-file)
+- Mantieni l'invenzione segreta fino alla presentazione
+- Puoi rivendicare priorità dalla domanda estera (12 mesi)
   </InfoCard>
 
 ---
 
-## Protezione Diritto d'Autore
+## Protezione del Diritto d'Autore
 
 ### Protezione Automatica
 
@@ -435,53 +418,53 @@ La protezione del diritto d'autore è **automatica** in Indonesia per:
 - Software e database
 - Architettura
 
-### Perché Registrare Comunque?
+### Perché Registrarsi Comunque?
 
-| Beneficio    | Spiegazione               |
-| ------------ | ------------------------- |
-| Prova        | Dimostra data proprietà   |
-| Enforcement  | Azione legale più facile  |
-| Licenze      | Proprietà più chiara      |
-| Valore asset | Per valutazione aziendale |
+| Beneficio     | Spiegazione            |
+| ----------- | ---------------------- |
+| Prova        | Dimostra la data di proprietà |
+| Enforcement   | Azione legale più facile    |
+| Licenziamento   | Proprietà più chiara      |
+| Valore asset  | Per valutazione aziendale |
 
 ### Processo di Registrazione
 
-| Passo                  | Durata        |
-| ---------------------- | ------------- |
-| Prepara documenti      | 1 settimana   |
-| Domanda online         | 1 giorno      |
-| Revisione DGIP         | 1-3 mesi      |
-| Certificato rilasciato | 1-2 settimane |
+| Passo               | Durata   |
+| ------------------ | ---------- |
+| Prepara i documenti  | 1 settimana     |
+| Domanda online       | 1 giorno      |
+| Revisione DGIP        | 1-3 mesi |
+| Certificato erogat    | 1-2 settimane  |
 
 ---
 
 ## Segreti Commerciali
 
-### Requisiti Protezione
+### Requisiti di Protezione
 
 <InfoCard variant="tip" title="Proteggi i Tuoi Segreti">
-Per mantenere la protezione dei segreti commerciali:
+Per mantenere la protezione del segreto commerciale:
 
-1. **Identifica** cosa è confidenziale
-2. **Marca** i documenti come confidenziali
-3. **Limita** l'accesso al bisogno
+1. **Identifica** cosa è riservato
+2. **Segna** i documenti come riservati
+3. **Limita** l'accesso a chi ne ha bisogno
 4. **NDA** con dipendenti e partner
-5. **Misure di sicurezza** (fisiche e digitali)
-6. **Formazione** del personale sulla confidenzialità
+5. **Sicurezza** (fisica e digitale)
+6. **Formazione** del personale sulla riservatezza
 
-Una volta pubblici, la protezione è persa per sempre.
+Una volta reso pubblico, la protezione è persa per sempre.
 
 </InfoCard>
 
-### Elementi NDA
+### Fondamentali dell'NDA
 
-| Elemento      | Scopo                         |
-| ------------- | ----------------------------- |
-| Definizione   | Cosa è confidenziale          |
-| Obblighi      | Come proteggere               |
-| Durata        | Per quanto tempo vincolante   |
-| Eccezioni     | Divulgazioni permesse         |
-| Rimedi        | Conseguenze violazione        |
+| Elemento      | Scopo                  |
+| ------------ | ------------------------ |
+| Definizione   | Cosa è riservato      |
+| Obblighi  | Come proteggere           |
+| Durata     | Per quanto tempo vincolante         |
+| Eccezioni   | Divulgazioni consentite    |
+| Rimedi     | Conseguenze della violazione      |
 | Giurisdizione | Tipicamente legge indonesiana |
 
 ---
@@ -490,55 +473,55 @@ Una volta pubblici, la protezione è persa per sempre.
 
 ### Se la Tua PI è Violata
 
-| Azione                 | Dettagli                  |
-| ---------------------- | ------------------------- |
-| Diffida                | Lettera che richiede stop |
-| Mediazione             | Negozia accordo           |
-| Causa civile           | Danni, ingiunzione        |
-| Denuncia penale        | Violazione dolosa         |
-| Registrazione doganale | Blocca importazioni       |
+| Azione              | Dettagli               |
+| ------------------- | --------------------- |
+| Cease and desist    | Lettera che richiede il stop |
+| Mediazione           | Negoziare un accordo  |
+| Cause civili       | Danni, inibitoria   |
+| Denuncia penale  | Violazione dolosa  |
+| Registrazione doganale | Blocca le importazioni          |
 
 ### Rimedi Disponibili
 
-| Rimedio             | Tipo               |
-| ------------------- | ------------------ |
-| Ingiunzione         | Ferma violazione   |
-| Danni               | Risarcimento       |
-| Rendiconto profitti | Guadagni violatore |
-| Distruzione         | Beni violatori     |
-| Pene criminali      | Multe, reclusione  |
+| Rimedio             | Tipo                |
+| ------------------ | ------------------- |
+| Inibitoria         | Ferma la violazione   |
+| Danni              | Indennizzo        |
+| Rendiconto profitti | Guadagni del violatore   |
+| Distruzione        | Beni in violazione    |
+| Penali penali     | Multe, detenzione |
 
 ---
 
-## Riepilogo Costi
+## Riepilogo dei Costi
 
-| Tipo PI            | Tasse Governo | Onorari Agente | Stima Totale |
-| ------------------ | ------------- | -------------- | ------------ |
-| Marchio            | IDR 1-2M      | IDR 3-8M       | IDR 4-10M    |
-| Brevetto           | IDR 2-5M      | IDR 15-50M+    | IDR 20-60M+  |
-| Diritto d'Autore   | IDR 200-500K  | IDR 1-3M       | IDR 1.5-4M   |
-| Design Industriale | IDR 1-2M      | IDR 3-6M       | IDR 4-8M     |
+| Tipo di PI           | Tasse Governative | Tasse Agente  | Stima Totale |
+| ----------------- | --------------- | ----------- | -------------- |
+| Marchio         | IDR 1-2M        | IDR 3-8M    | IDR 4-10M      |
+| Brevetto            | IDR 2-5M        | IDR 15-50M+ | IDR 20-60M+    |
+| Diritto d'autore         | IDR 200-500K    | IDR 1-3M    | IDR 1.5-4M     |
+| Disegno Industriale | IDR 1-2M        | IDR 3-6M    | IDR 4-8M       |
 
 ---
 
 ## Protezione Internazionale
 
-### Trattati Seguiti dall'Indonesia
+### Trattati Seguiti da Indonesia
 
-| Trattato              | Beneficio                         |
-| --------------------- | --------------------------------- |
-| Convenzione di Parigi | Rivendicazioni priorità (12 mesi) |
-| TRIPS                 | Standard minimi                   |
-| Protocollo di Madrid  | Sistema marchi internazionale     |
-| PCT                   | Deposito brevetto internazionale  |
-| Convenzione di Berna  | Riconoscimento diritto d'autore   |
+| Trattato           | Beneficio                     |
+| ---------------- | --------------------------- |
+| Convenzione di Parigi | Priorità (12 mesi)          |
+| TRIPS            | Standard minimi             |
+| Protocollo di Madrid  | Sistema internazionale marchi     |
+| PCT              | Presentazione brevetti internazionali |
+| Convenzione di Berna | Riconoscimento diritto d'autore       |
 
-<InfoCard variant="note" title="Rivendicazioni Priorità">
-Se hai una registrazione PI esistente all'estero, puoi rivendicare **priorità** in Indonesia:
-- Marchi: 6 mesi dal primo deposito
-- Brevetti: 12 mesi dal primo deposito
+<InfoCard variant="note" title="Rivendicazioni di Priorità">
+Se hai una registrazione della PI esistente all'estero, puoi rivendicare **priorità** in Indonesia:
+- Marchi: 6 mesi dalla prima presentazione
+- Brevetti: 12 mesi dalla prima presentazione
 
-Questo retrodata il tuo deposito indonesiano.
+Questo fa risale la tua domanda indonesiana.
 
 </InfoCard>
 
@@ -546,27 +529,27 @@ Questo retrodata il tuo deposito indonesiano.
 
 ## Errori Comuni
 
-| Errore                         | Conseguenza                       |
-| ------------------------------ | --------------------------------- |
-| Non cercare prima              | Rifiuto, spreco tasse             |
-| Usare prima registrazione      | Rischio rivendicazioni violazione |
-| Selezione classe sbagliata     | Protezione incompleta             |
-| Lasciare scadere registrazione | Perdita diritti                   |
-| Documentazione scarsa          | Difficoltà enforcement            |
-| Ignorare violazione            | Indebolisce diritti               |
+| Errore                    | Conseguenza                 |
+| -------------------------- | --------------------------- |
+| Non cercare prima          | Rifiuto, spreco di tasse    |
+| Uso prima della registrazione  | Rischio di accuse di violazione |
+| Scelta sbagliata classe      | Protezione incompleta       |
+| Lasciare scadere la registrazione | Perdere diritti                 |
+   Documentazione scarsa         | Difficoltà enforcement     |
+| Ignorare le violazioni      | Indebolisce i diritti              |
 
 ---
 
-## Domande Frequenti
+## Domande Comuni
 
 <AskZantara
   context="Proprietà intellettuale Indonesia, marchio, brevetto, diritto d'autore, segreto commerciale"
-  placeholder="Chiedi informazioni sulla protezione PI..."
+  placeholder="Chiedi sulla protezione della PI..."
   suggestedQuestions={[
     "Posso registrare un marchio in inglese?",
-    "Come fermo qualcuno che usa il mio brand?",
+    "Come posso fermare qualcuno che usa il mio brand?",
     "Il mio brevetto USA mi protegge in Indonesia?",
-    "Cosa succede se qualcuno ha già registrato il mio marchio?",
+    "Cosa se qualcuno ha già registrato il mio marchio?",
   ]}
 />
 
@@ -574,6 +557,6 @@ Questo retrodata il tuo deposito indonesiano.
 
 ## Articoli Correlati
 
-- [Guida Setup PT PMA](/business/pt-pma-registration-guide?lang=it)
-- [Panoramica Licenze Business](/insights/business/business-licenses-overview)
-- [Contratti Sotto Legge Indonesiana](/insights/business/contracts-indonesian-law)
+- [Guida alla Setup PT PMA](/business/pt-pma-registration-guide)
+- [Panoramica Licenze Commerciali](/insights/business/business-licenses-overview)
+- [Contratti sotto Legge Indonesiana](/insights/business/contracts-indonesian-law)
