@@ -1183,10 +1183,17 @@ def _apply_minor_privacy_hold(decision: Decision, facts: ApplicantFacts) -> Deci
         rule_ids=("system.privacy.minor-guardian-review",),
         source_refs=(),
     )
+    held = decision.state is DecisionState.HUMAN_REVIEW_REQUIRED
+    if held and any(
+        reason.code in SOURCE_INTEGRITY_HOLD_CODES for reason in decision.review_reasons
+    ):
+        # The source-integrity hold is not ours to dissolve (it names no
+        # product either, so the privacy posture already holds): keep it, and
+        # add the guardian step beside it.
+        return _attach_conditions(decision, (cause,))
     carried = (
-        _conditions_from_reasons(decision.review_reasons)
-        if decision.state is DecisionState.HUMAN_REVIEW_REQUIRED
-        else decision.conditions
+        *decision.conditions,
+        *(_conditions_from_reasons(decision.review_reasons) if held else ()),
     )
     payload = decision.model_dump(mode="python")
     payload.update(
@@ -1469,7 +1476,15 @@ def _apply_disclosed_review_flags(
             # the flag table mints: the applicant-facing cause the owner asked
             # for is CRIMINAL_MATTER_DISCLOSED, and it carries no citation
             # because a disclosure is not a regulatory claim.
-            "review_reasons": (criminal_cause,),
+            "review_reasons": (
+                *(
+                    reason
+                    for reason in decision.review_reasons
+                    if decision.state is DecisionState.HUMAN_REVIEW_REQUIRED
+                    and reason.code in SOURCE_INTEGRITY_HOLD_CODES
+                ),
+                criminal_cause,
+            ),
             # The hold is EXPLAINED, not bare — Zero asked for the exception,
             # not for the silence the exception used to come with. The same
             # cause rides as a condition so it carries a next step
@@ -1536,8 +1551,24 @@ def _apply_visitor_determinism_floor(decision: Decision) -> Decision:
     if decision.state is not DecisionState.HUMAN_REVIEW_REQUIRED:
         return decision
     reasons = decision.review_reasons
-    if reasons and all(reason.code in VISITOR_REVIEW_CAUSE_ALLOWLIST for reason in reasons):
-        return decision
+    allowed = tuple(reason for reason in reasons if reason.code in VISITOR_REVIEW_CAUSE_ALLOWLIST)
+    if allowed:
+        if len(allowed) == len(reasons):
+            return decision
+        # An allowlisted hold can never be lost to a cause standing beside it:
+        # keep the hold on the allowlisted causes, name the rest as conditions.
+        payload = decision.model_dump(mode="python")
+        payload.update(
+            {
+                "review_reasons": allowed,
+                "conditions": _dedupe_conditions(
+                    (*decision.conditions, *_conditions_from_reasons(reasons))
+                ),
+                "trace_sha256": decision.trace_sha256,
+                "decision_integrity": None,
+            }
+        )
+        return Decision.model_validate(payload)
     payload = decision.model_dump(mode="python")
     payload.update(
         {

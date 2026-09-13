@@ -2126,6 +2126,45 @@ def test_minor_privacy_hold_is_global_monotone_and_uncited() -> None:
     assert held.conditions[0].next_step is ConditionNextStep.APPLY_THROUGH_GUARDIAN
 
 
+def test_minor_privacy_hold_keeps_conditions_and_an_integrity_hold() -> None:
+    """Council round 1: the minor adapter must neither drop conditions already
+    on a decision nor dissolve a source-integrity hold (imperator decision
+    2026-09-13); a criminal disclosure must not drop that hold either."""
+
+    compiled = gold_loader.load_and_compile_rule_pack()
+    facts = gold_loader.load_persona(gold_loader.PERSONAS_DIR / "02_business_c2.json").facts
+    baseline = evaluate(
+        facts,
+        compiled,
+        effective_at=gold_loader.GOLD_EFFECTIVE_AT,
+        observed_at=gold_loader.GOLD_EFFECTIVE_AT,
+    )
+    integrity = Reason(
+        code="DECISIVE_PRIMARY_SOURCE_NOT_APPLICABLE",
+        rule_ids=("system.tamper-test",),
+        source_refs=(),
+    )
+    held = evaluate_path._apply_source_gate_outcome(baseline, (integrity,))
+    assert held.state is DecisionState.HUMAN_REVIEW_REQUIRED
+    minor_wire = facts.model_dump(mode="json", by_alias=True)
+    minor_wire["facts"]["person.birth_date"] = {"status": "KNOWN", "value": "2015-01-01"}
+    minor_facts = ApplicantFacts.model_validate(minor_wire)
+
+    minor_held = evaluate_path._apply_minor_privacy_hold(held, minor_facts)
+    assert minor_held.state is DecisionState.HUMAN_REVIEW_REQUIRED
+    assert [r.code for r in minor_held.review_reasons] == [integrity.code]
+    assert {c.code for c in minor_held.conditions} == {integrity.code, "GUARDIAN_MUST_APPLY"}
+    assert minor_held.candidates == ()
+
+    criminal = evaluate_path._apply_disclosed_review_flags(
+        held, (DisclosedReviewFlag.CRIMINAL_RECORD,)
+    )
+    assert [r.code for r in criminal.review_reasons] == [
+        integrity.code,
+        "CRIMINAL_MATTER_DISCLOSED",
+    ]
+
+
 def test_unknown_minor_status_cannot_preserve_supported_candidates() -> None:
     compiled = gold_loader.load_and_compile_rule_pack()
     adult_facts = gold_loader.load_persona(gold_loader.PERSONAS_DIR / "02_business_c2.json").facts

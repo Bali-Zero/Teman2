@@ -146,7 +146,7 @@ Two walks DO answer ``unsure`` to a sponsor question —
 ``offshore/other/paid/sponsor_unsure`` on ``work_sponsor_confirmed`` and
 ``offshore/work/sponsor_unsure`` on ``sponsor_category`` — but neither is a
 FAMILY sponsor fact, so what they raise is the generic ``NOT_CERTAIN``
-(council round 1 of #6442, codex-gpt-5.6-sol).
+(council round 1 of #6442).
 That zero is a property of THIS enumeration, never of production.
 
 The six ``ACTIVITY_BOUNDARY`` flags are the ones a derivation misses: the

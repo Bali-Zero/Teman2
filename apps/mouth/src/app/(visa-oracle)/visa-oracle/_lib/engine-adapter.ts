@@ -1095,20 +1095,20 @@ export const CONDITION_NEXT_STEP_COPY: Record<
   LocalizedText
 > = {
   ANSWER_AGAIN: text(
-    "Next step: answer that question again with a definite yes or no — the result below is what we can prove from everything else you told us.",
-    "Langkah berikutnya: jawab lagi pertanyaan itu dengan ya atau tidak yang pasti — hasil di bawah ini adalah yang dapat kami buktikan dari seluruh jawaban Anda yang lain.",
+    "Next step: answer that question again with a definite answer if you can — the result may then change.",
+    "Langkah berikutnya: jawab lagi pertanyaan itu dengan jawaban yang pasti jika bisa — hasilnya kemudian dapat berubah.",
   ),
   BRING_TO_CONSULTATION: text(
-    "Next step: bring this to the consultation. It does not remove the options below; Immigration assesses it case by case, and Bali Zero prepares the file with you.",
-    "Langkah berikutnya: bawa hal ini ke konsultasi. Ini tidak menghapus pilihan di bawah; Imigrasi menilainya kasus per kasus, dan Bali Zero menyiapkan berkasnya bersama Anda.",
+    "Next step: bring this to the consultation. It does not change the result shown; Immigration assesses it case by case, and Bali Zero prepares the file with you.",
+    "Langkah berikutnya: bawa hal ini ke konsultasi. Ini tidak mengubah hasil yang ditampilkan; Imigrasi menilainya kasus per kasus, dan Bali Zero menyiapkan berkasnya bersama Anda.",
   ),
   APPLY_THROUGH_GUARDIAN: text(
     "Next step: a parent or legal guardian applies on the applicant's behalf and starts this assessment in their own name.",
     "Langkah berikutnya: orang tua atau wali yang sah mengajukan atas nama pemohon dan memulai penilaian ini dengan namanya sendiri.",
   ),
   ASSISTED_APPLICATION: text(
-    "Next step: this permit is prepared with a Bali Zero consultant rather than filed on its own — the eligibility below stands, the paperwork is assisted.",
-    "Langkah berikutnya: izin ini disiapkan bersama konsultan Bali Zero, bukan diajukan sendiri — kelayakan di bawah ini tetap berlaku, hanya berkasnya yang dibantu.",
+    "Next step: this permit is prepared with a Bali Zero consultant rather than filed on its own — the eligibility shown stands, the paperwork is assisted.",
+    "Langkah berikutnya: izin ini disiapkan bersama konsultan Bali Zero, bukan diajukan sendiri — kelayakan yang ditampilkan tetap berlaku, hanya berkasnya yang dibantu.",
   ),
   NO_ACTION_NEEDED: text(
     "Nothing is required from you for this — it is recorded so you know it was taken into account.",
@@ -1129,6 +1129,101 @@ export const CONDITION_NEXT_STEP_COPY: Record<
   ),
 };
 
+// A condition rides BESIDE a verdict, so it cannot reuse the review sentences
+// above: those were written for a hold ("a person needs to review the details
+// before any path can be confirmed") and would contradict the answer printed
+// right above them. Render found it (W-VO-D, 2026-09-13). Each sentence names
+// what was taken into account and that the result shown stands; the next step
+// is appended from CONDITION_NEXT_STEP_COPY. A code without an entry here
+// gets CONDITION_GENERIC_COPY — never a review sentence, never a raw code.
+export const CONDITION_COPY: Record<string, LocalizedText> = {
+  DISCLOSED_HEALTH_CONCERN_REVIEW: text(
+    "You flagged a health condition immigration may ask about. The result shown still stands; the health point is assessed by Immigration on the application itself.",
+    "Anda menandai kondisi kesehatan yang mungkin ditanyakan imigrasi. Hasil yang ditampilkan tetap berlaku; hal kesehatan ini dinilai Imigrasi pada permohonannya sendiri.",
+  ),
+  DISCLOSED_PRIOR_VISA_REFUSAL_REVIEW: text(
+    "You flagged a prior visa refusal. The result shown still stands; the earlier refusal is assessed by Immigration on the application itself.",
+    "Anda menandai penolakan visa sebelumnya. Hasil yang ditampilkan tetap berlaku; penolakan sebelumnya dinilai Imigrasi pada permohonannya sendiri.",
+  ),
+  DISCLOSED_PEP_OR_SANCTIONS_REVIEW: text(
+    "You flagged a politically-exposed-person or sanctions-list point. The result shown still stands; that point is checked on the application itself.",
+    "Anda menandai status orang yang terekspos secara politik atau daftar sanksi. Hasil yang ditampilkan tetap berlaku; hal tersebut diperiksa pada permohonannya sendiri.",
+  ),
+  DISCLOSED_SOURCE_OF_FUNDS_REVIEW: text(
+    "You flagged that the source of your funds is not yet documented. The result shown still stands; the funds are evidenced with documents when the application is prepared.",
+    "Anda menandai bahwa sumber dana Anda belum terdokumentasi. Hasil yang ditampilkan tetap berlaku; dana tersebut dibuktikan dengan dokumen saat permohonan disiapkan.",
+  ),
+  DISCLOSED_DIPLOMATIC_PASSPORT_REVIEW: text(
+    "You said you hold a diplomatic passport. The result shown still stands for the facts you gave; the passport type is confirmed when the application is prepared.",
+    "Anda menyatakan memegang paspor diplomatik. Hasil yang ditampilkan tetap berlaku untuk fakta yang Anda berikan; jenis paspor dikonfirmasi saat permohonan disiapkan.",
+  ),
+  DISCLOSED_UNCERTAINTY_REVIEW: text(
+    "You answered “Not sure” to one question. The result shown is what the verified rules prove from everything else you told us.",
+    "Anda menjawab “Tidak yakin” pada satu pertanyaan. Hasil yang ditampilkan adalah yang dibuktikan aturan terverifikasi dari seluruh jawaban Anda yang lain.",
+  ),
+  DISCLOSED_MULTI_PURPOSE_TRIP_REVIEW: text(
+    "You said your trip has more than one purpose. The result shown covers the purposes you declared.",
+    "Anda menyatakan perjalanan Anda memiliki lebih dari satu tujuan. Hasil yang ditampilkan mencakup tujuan yang Anda nyatakan.",
+  ),
+  DISCLOSED_ACTIVITY_BOUNDARY_REVIEW: text(
+    "One of your answers about your planned activity is one the verified rules cannot decide on their own. The result shown is what they prove from your other answers.",
+    "Salah satu jawaban Anda tentang kegiatan yang direncanakan tidak dapat diputuskan sendiri oleh aturan terverifikasi. Hasil yang ditampilkan adalah yang dibuktikan dari jawaban Anda yang lain.",
+  ),
+  DISCLOSED_AMBIGUOUS_SPONSOR_REVIEW: text(
+    "Whether your sponsor holds a stay permit of their own was not established. The result shown is what the verified rules prove from your other answers.",
+    "Apakah sponsor Anda memegang izin tinggal sendiri belum dapat dipastikan. Hasil yang ditampilkan adalah yang dibuktikan aturan terverifikasi dari jawaban Anda yang lain.",
+  ),
+  CONFLICTING_IMMIGRATION_STATUS_REVIEW: text(
+    "Two of your answers about your current immigration status do not agree. The result shown is what the verified rules prove; the correct status is confirmed on your documents.",
+    "Dua jawaban Anda tentang status imigrasi saat ini tidak sejalan. Hasil yang ditampilkan adalah yang dibuktikan aturan terverifikasi; status yang benar dikonfirmasi pada dokumen Anda.",
+  ),
+  ACTIVE_OVERSTAY: text(
+    "You reported active overstay days. Clearing the overstay with Immigration comes before any new application.",
+    "Anda melaporkan hari overstay yang masih berjalan. Penyelesaian overstay dengan Imigrasi dilakukan sebelum permohonan baru.",
+  ),
+  CALLING_VISA_REVIEW: text(
+    "Your nationality is on Indonesia's Calling Visa list, or it was not established. Calling-visa nationals follow an additional clearance step with Immigration.",
+    "Kewarganegaraan Anda termasuk dalam daftar Calling Visa Indonesia, atau belum dapat dipastikan. Warga negara calling visa menjalani tahap izin tambahan dengan Imigrasi.",
+  ),
+  CITIZENSHIP_LIST_DIVERGENCE: text(
+    "You declared nationalities that fall into different eligibility lists. The passport you travel on decides which list applies.",
+    "Anda menyatakan kewarganegaraan yang masuk ke daftar kelayakan berbeda. Paspor yang Anda gunakan untuk bepergian menentukan daftar mana yang berlaku.",
+  ),
+  LOCAL_MARKET_ACTIVITY_REVIEW: text(
+    "You said your remote work serves Indonesian clients. The Remote Worker visa (E33G) is for income from outside Indonesia only.",
+    "Anda menyatakan pekerjaan jarak jauh Anda melayani klien Indonesia. Visa Pekerja Jarak Jauh (E33G) hanya untuk penghasilan dari luar Indonesia.",
+  ),
+  GUARDIAN_MUST_APPLY: text(
+    "The applicant is under 18: a parent or legal guardian applies on the applicant's behalf.",
+    "Pemohon berusia di bawah 18 tahun: orang tua atau wali yang sah mengajukan atas nama pemohon.",
+  ),
+  MINOR_WITHOUT_CONFIRMED_GUARDIAN: text(
+    "The applicant is a minor whose sponsor is not yet confirmed.",
+    "Pemohon adalah anak di bawah umur yang sponsornya belum dikonfirmasi.",
+  ),
+  DECISIVE_SOURCE_STALE: text(
+    "A regulation this result cites is past its re-verification date. The regulation has not changed because of that; our check of it is overdue.",
+    "Peraturan yang dikutip hasil ini telah melewati tanggal verifikasi ulangnya. Peraturannya tidak berubah karena itu; pemeriksaan kami atasnya yang tertunda.",
+  ),
+  DECISIVE_SOURCE_FRESHNESS_UNKNOWN: text(
+    "A regulation this result cites has no recorded re-verification schedule, so we cannot show it as current.",
+    "Peraturan yang dikutip hasil ini tidak memiliki jadwal verifikasi ulang tercatat, sehingga kami tidak dapat menampilkannya sebagai terkini.",
+  ),
+  SAFETY_CRITICAL_SOURCE_STALE: text(
+    "A safety-critical regulation used in this evaluation is past its re-verification date. The regulation has not changed because of that; our check of it is overdue.",
+    "Peraturan kritis keselamatan yang dipakai dalam evaluasi ini telah melewati tanggal verifikasi ulangnya. Peraturannya tidak berubah karena itu; pemeriksaan kami atasnya yang tertunda.",
+  ),
+  SAFETY_CRITICAL_SOURCE_FRESHNESS_UNKNOWN: text(
+    "A safety-critical regulation used in this evaluation has no recorded re-verification schedule, so we cannot show it as current.",
+    "Peraturan kritis keselamatan yang dipakai dalam evaluasi ini tidak memiliki jadwal verifikasi ulang tercatat, sehingga kami tidak dapat menampilkannya sebagai terkini.",
+  ),
+};
+
+export const CONDITION_GENERIC_COPY: LocalizedText = text(
+  "An additional point from the verified rules applies to this result.",
+  "Satu ketentuan tambahan dari aturan terverifikasi berlaku untuk hasil ini.",
+);
+
 function outcomeCondition(
   item: {
     code: string;
@@ -1137,11 +1232,10 @@ function outcomeCondition(
   },
   trustedIds: ReadonlySet<string>,
 ): OutcomeCondition {
-  // The SAME copy table the review sentences used. Reusing it is what makes
-  // this window a re-siting of an explanation rather than a rewrite of forty
-  // reviewed bilingual strings.
   return {
-    ...reviewReason(item.code, item.source_refs, trustedIds),
+    code: item.code,
+    message: CONDITION_COPY[item.code] ?? CONDITION_GENERIC_COPY,
+    sourceIds: item.source_refs.filter((id) => trustedIds.has(id)),
     nextStep: item.next_step,
   };
 }

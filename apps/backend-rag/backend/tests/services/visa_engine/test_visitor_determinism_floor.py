@@ -48,6 +48,7 @@ from backend.services.visa_engine.conditions import (
 )
 from backend.services.visa_engine.enums import ConditionNextStep, DecisionState
 from backend.services.visa_engine.evaluate_path import VISITOR_REVIEW_CAUSE_ALLOWLIST
+from backend.services.visa_engine.models import Reason
 
 #: Inside `rulepack-prod-020`'s validity window and after seq-21's own
 #: `valid_period.from`. Pinned rather than "now" so this file cannot start
@@ -262,6 +263,39 @@ def test_the_floor_converts_an_engine_mode_review_for_an_offline_caller(
     )
     assert public.state is DecisionState.NO_SUPPORTED_PATH
     assert {c.code for c in public.conditions} == {r.code for r in raw.review_reasons}
+
+
+def test_an_allowlisted_hold_survives_a_non_allowlisted_cause_beside_it(
+    compiled: Any,
+) -> None:
+    """Council round 1: a review carrying BOTH an allowlisted and a
+    non-allowlisted cause must keep the hold on the allowlisted one, never be
+    converted wholesale. Persona 4 is a real engine-mode review
+    (ACTIVE_OVERSTAY); the criminal cause is added beside it by hand, the
+    shape an offline caller could produce."""
+
+    persona = next(p for p in driver.PERSONAS if p.id == 4)
+    facts = driver.build_persona_request(persona).applicant_facts()
+    raw = evaluator.evaluate(
+        facts,
+        compiled,
+        effective_at=_AS_OF,
+        observed_at=_AS_OF,
+        identity_provider=driver._offline_identity_provider,
+    )
+    assert raw.state is DecisionState.HUMAN_REVIEW_REQUIRED, "premise lost"
+    mixed = raw.model_copy(
+        update={
+            "review_reasons": (
+                *raw.review_reasons,
+                Reason(code=CRIMINAL_MATTER_REVIEW_CODE, rule_ids=(), source_refs=()),
+            )
+        }
+    )
+    floored = evaluate_path._apply_visitor_determinism_floor(mixed)
+    assert floored.state is DecisionState.HUMAN_REVIEW_REQUIRED
+    assert [r.code for r in floored.review_reasons] == [CRIMINAL_MATTER_REVIEW_CODE]
+    assert {r.code for r in raw.review_reasons} <= {c.code for c in floored.conditions}
 
 
 def test_the_floor_is_the_last_adapter_in_the_chain() -> None:

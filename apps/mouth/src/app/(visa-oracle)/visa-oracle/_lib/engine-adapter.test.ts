@@ -3,6 +3,8 @@ import path from "path";
 import { fileURLToPath } from "url";
 import { describe, expect, it } from "vitest";
 import {
+  CONDITION_COPY,
+  CONDITION_NEXT_STEP_COPY,
   REVIEW_REASON_COPY,
   SECOND_HOME_DEPOSIT_THRESHOLD_USD,
   SECOND_HOME_PROPERTY_THRESHOLD_USD,
@@ -183,6 +185,58 @@ describe("Visa Oracle authoritative outcome adapter", () => {
         condition.nextStep,
       ]),
     ).toEqual([["DECISIVE_SOURCE_STALE", "AWAIT_SOURCE_REFRESH"]]);
+  });
+
+  it("never words a condition on a live verdict as a hold", () => {
+    // Render finding (W-VO-D): the review sentences say "before any path can
+    // be confirmed", which contradicts the verdict printed above a condition.
+    const disclosures = [
+      "DISCLOSED_HEALTH_CONCERN_REVIEW",
+      "DISCLOSED_PRIOR_VISA_REFUSAL_REVIEW",
+      "DISCLOSED_PEP_OR_SANCTIONS_REVIEW",
+      "DISCLOSED_SOURCE_OF_FUNDS_REVIEW",
+      "DISCLOSED_DIPLOMATIC_PASSPORT_REVIEW",
+      "DISCLOSED_UNCERTAINTY_REVIEW",
+      "DISCLOSED_MULTI_PURPOSE_TRIP_REVIEW",
+      "DISCLOSED_ACTIVITY_BOUNDARY_REVIEW",
+      "DISCLOSED_AMBIGUOUS_SPONSOR_REVIEW",
+      "CONFLICTING_IMMIGRATION_STATUS_REVIEW",
+    ];
+    for (const code of disclosures) {
+      expect(code in CONDITION_COPY).toBe(true);
+    }
+    for (const copy of [
+      ...Object.values(CONDITION_COPY),
+      ...Object.values(CONDITION_NEXT_STEP_COPY),
+    ]) {
+      for (const sentence of [copy.en, copy.id]) {
+        expect(sentence).not.toMatch(
+          /before any path|is held|options below|di bawah ini/i,
+        );
+      }
+    }
+    const response = makeVisaOracleResponse();
+    response.decision.conditions = [
+      {
+        code: "DISCLOSED_HEALTH_CONCERN_REVIEW",
+        rule_ids: [],
+        source_refs: [],
+        explanation_key: "oracle.condition.disclosed_health_concern_review",
+        next_step: "BRING_TO_CONSULTATION",
+      },
+      {
+        code: "SOME_FUTURE_PACK_CODE",
+        rule_ids: [],
+        source_refs: [],
+        explanation_key: "oracle.condition.some_future_pack_code",
+        next_step: "BRING_TO_CONSULTATION",
+      },
+    ];
+    const outcome = buildEngineOutcome(response);
+    expect(outcome.conditions[0].message).toEqual(
+      CONDITION_COPY.DISCLOSED_HEALTH_CONCERN_REVIEW,
+    );
+    expect(outcome.conditions[1].message.en).not.toContain("SOME_FUTURE");
   });
 
   it("still fails closed when the stale ref is not the one a condition names", () => {
@@ -1303,7 +1357,7 @@ describe("review reasons cover every code the current pack can emit", () => {
     // every assertion below vacuously true. 20 pack (16 HUMAN_REVIEW-stage +
     // 4 HARD_FILTER with on_unknown=HUMAN_REVIEW, PR-O2) + 19
     // pack-independent = 39, all of them mapped. Floor raised from 32 to
-    // the measured 38 (round-1 refuter finding, Gemini 3.1 Pro + Kimi K3):
+    // the measured 38 (round-1 refuter finding):
     // 32 would still pass a regression that silently dropped up to 5 real
     // codes. 39 since VO-D: CRIMINAL_MATTER_DISCLOSED joined the
     // pack-independent set (RULED 2026-09-13).
