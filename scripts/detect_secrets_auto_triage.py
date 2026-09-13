@@ -847,6 +847,59 @@ CONTENT_KEYED_RULES: list[tuple[re.Pattern[str], re.Pattern[str], str]] = [
         "the pinned content sha256 of manifest_mandatory.json, asserted "
         "against at runtime, not a credential (PR #6429, I60)",
     ),
+    # Evidence Pack `council/*.txt` transcripts (multi-LLM review panel
+    # output, e.g. codex-gpt-5.6-sol.txt) — found live on PR #6449's own
+    # evidence pack: a reviewer's own `web search:` log line quoted the
+    # exact upstream commit SHA the PR was verifying
+    # (sonarsource/sonarqube-scan-action@5bc5285b684b9f0e940031dc8ddc4b6387a2f493,
+    # already public in .github/workflows/sonarqube.yml and the dependabot
+    # PR #5529 title/description), and the bare 40-hex string reads as a
+    # "Hex High Entropy String" with zero context awareness.
+    #
+    # Deliberately NOT a path-only rule on the whole council/ tree: unlike
+    # docs/*.md (AUTO_APPROVE_RULES below), a review-panel transcript is
+    # exactly the place a reviewer might legitimately QUOTE a genuinely
+    # leaked credential it just found elsewhere in the diff, as evidence —
+    # a path-only rule would blanket-hide that report (cicatrix-superscar
+    # #3, guard-over-match). Content-keyed to the EXACT known-public commit
+    # SHA this dependency pin already carries in the clear elsewhere in the
+    # repo, same discipline as the fold_pack_seq* exact-value chain-anchor
+    # pins above: any OTHER hex string a future transcript quotes — plausibly
+    # a real secret a reviewer is flagging — stays unaudited for human eyes.
+    (
+        re.compile(r"(^|/)evidence/[^/]+/[^/]+/council/.*\.txt$"),
+        re.compile(r"^.*5bc5285b684b9f0e940031dc8ddc4b6387a2f493.*$"),
+        "Evidence Pack council/*.txt review transcript: quotes the exact "
+        "known-public sonarqube-scan-action commit SHA already in the clear "
+        "in .github/workflows/sonarqube.yml (dependabot #5529/PR #6449), "
+        "never a credential — pinned to this exact value, not any hex "
+        "shape, so a genuinely leaked secret a reviewer quotes elsewhere "
+        "stays unaudited",
+    ),
+    # Evidence Pack `pack.yml` narrating a PAST `.secrets.baseline` audit —
+    # found live on PR #6449's own evidence pack (self-referential: the pack
+    # describing the council/*.txt fix above tripped a NEW finding by
+    # quoting the JSON field it had set, `` `is_secret: false` ``). The
+    # "Secret Keyword" plugin reads the literal "secret" immediately
+    # followed by `:` and a value as an assignment, with zero awareness that
+    # this is prose narrating a baseline decision, not a live secret.
+    #
+    # Content-keyed, not path-only, for the same open-writer-set reason as
+    # every other pack.yml rule in this list: pack.yml is free-form narration
+    # a human or agent edits by hand, so a blanket rule would hide a real
+    # credential typed onto any other line. Narrowed to the one shape this
+    # genre of narration actually produces — a backtick-quoted
+    # `is_secret: true`/`is_secret: false` JSON-field-literal, which is a
+    # baseline DECISION being quoted, structurally never a secret VALUE
+    # (detect-secrets' own baseline schema only ever stores that field as a
+    # bare JSON boolean, so no real secret can be shaped like this).
+    (
+        re.compile(r"(^|/)evidence/[^/]+/[^/]+/pack\.yml$"),
+        re.compile(r"^.*`is_secret:\s*(?:true|false)`.*$"),
+        "Evidence Pack pack.yml audit narration: quotes the "
+        "`.secrets.baseline` `is_secret` field's own name and boolean "
+        "value while describing a past audit decision, not a credential",
+    ),
 ]
 
 # Each rule is (pattern, reason). The pattern matches the file path
