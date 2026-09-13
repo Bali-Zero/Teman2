@@ -321,6 +321,39 @@ def test_a_criminal_hold_keeps_the_review_causes_it_replaces_as_conditions(
     assert {r.code for r in raw.review_reasons} <= {c.code for c in held.conditions}
 
 
+def test_a_review_rule_named_as_a_condition_is_an_applied_effect_in_the_trace(
+    compiled: Any,
+) -> None:
+    """Council round 3: under ``review_as_conditions`` a per-product review
+    rule that fires becomes a condition; the evaluation trace (whose digest is
+    ``trace_sha256``) must record it as applied, never as a rule that fired
+    and did nothing."""
+
+    fired = []
+    for persona in driver.PERSONAS:
+        facts = driver.build_persona_request(persona).applicant_facts()
+        result = evaluator.evaluate_with_trace(
+            facts,
+            compiled,
+            effective_at=_AS_OF,
+            observed_at=_AS_OF,
+            identity_provider=driver._offline_identity_provider,
+            review_as_conditions=True,
+        )
+        fired.extend(
+            node
+            for node in result.trace.ordered_nodes
+            if node.evaluation_scope == "PRODUCT_PROOF"
+            and node.stage.value == "HUMAN_REVIEW"
+            and node.condition_result.value == "TRUE"
+            # an EXCLUDED proof returns at the hard filter: its review rules
+            # were evaluated but never applied, and carry no condition
+            and node.product_proof_status != "EXCLUDED"
+        )
+    assert fired, "premise lost: no gold persona fires a per-product review rule"
+    assert [node.rule_id for node in fired if node.applied_effect is None] == []
+
+
 def test_the_floor_is_the_last_adapter_in_the_chain() -> None:
     """Order is behaviour here. Any adapter running AFTER the floor could hand
     a visitor the review state the floor just removed, so the floor's position

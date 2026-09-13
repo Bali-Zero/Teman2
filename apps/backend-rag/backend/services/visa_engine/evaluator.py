@@ -716,6 +716,11 @@ def evaluate_product(
         else frozenset()
     )
     purpose_feasible = purposes <= declared_coverage
+    # Review-stage rules named as conditions (``review_as_conditions``) did
+    # apply their effect: the trace must say so on every proof that carries
+    # them, exactly as it does for the same rules on a REVIEW proof (council
+    # round 3). Rebound below, read by ``finish`` at call time.
+    condition_rule_ids: frozenset[str] = frozenset()
 
     def finish(
         proof: ProductProof,
@@ -735,6 +740,7 @@ def evaluate_product(
                         applied_effect=(
                             _effect_for_result(rule, result)
                             if rule.rule_id in applied_rule_ids
+                            or rule.rule_id in condition_rule_ids
                             else None
                         ),
                     )
@@ -774,6 +780,7 @@ def evaluate_product(
         # asking an applicant a fact whose only possible effect is to summon a
         # reviewer is noise, not determinism.
         conditions = _dedupe_reasons(_true_reasons(true_review) + _unknown_reasons(review_safety))
+        condition_rule_ids = frozenset(rule.rule_id for rule, _ in true_review + review_safety)
         review_review_unknowns, review_input_unknowns = (), ()
     else:
         conditions = ()
