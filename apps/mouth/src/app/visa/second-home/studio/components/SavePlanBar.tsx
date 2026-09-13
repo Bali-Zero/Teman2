@@ -294,7 +294,14 @@ const buttonStyle: React.CSSProperties = {
   // (var(--space-4, 1.5rem)), well clear of that section's own 12px
   // corner curve, so there's no tight-nesting mismatch to avoid.
   borderRadius: 12,
-  border: "1px solid var(--color-border-subtle)",
+  // WCAG 2.2 SC 1.4.11 (2026-09-01): this is the ONLY resting-state boundary
+  // for Save/Copy-Link/Print (transparent fill) — --color-border-subtle
+  // composited to 1.21:1 on carta / 1.31:1 on white, decorative-only per
+  // merahPutihDayVars.ts's own comment. --border-strong (#7a8093) measures
+  // 3.64:1 on carta / 3.94:1 on white, clearing the 3:1 non-text floor — the
+  // same token StudioApp.tsx's navButtonStyle already uses for its Back
+  // button boundary.
+  border: "1px solid var(--border-strong)",
   background: "transparent",
   color: "var(--text-primary)",
   cursor: "pointer",
@@ -328,25 +335,43 @@ const clearButtonLayoutStyle: React.CSSProperties = {
  *  abandoned-branch answer (e.g. a leftover `capital` value after
  *  switching to the property route) never leaks into a shared link. */
 export function SavePlanBar({ plan, onClear }: SavePlanBarProps) {
-  const [savedFeedback, setSavedFeedback] = useState(false);
-  const [copiedFeedback, setCopiedFeedback] = useState(false);
+  const [feedback, setFeedback] = useState<
+    | "savedConfirmation"
+    | "saveFailed"
+    | "copiedConfirmation"
+    | "copyFailed"
+    | null
+  >(null);
+  const [showManualLink, setShowManualLink] = useState(false);
+
+  useEffect(() => {
+    if (feedback !== "savedConfirmation" && feedback !== "copiedConfirmation")
+      return;
+    const timeout = window.setTimeout(() => setFeedback(null), 2500);
+    return () => window.clearTimeout(timeout);
+  }, [feedback]);
+
+  function planLink(): string {
+    if (typeof window === "undefined") return "";
+    return `${window.location.origin}${STUDIO_PATH}#p=${encodePlanFragment(relevantPlan(plan))}`;
+  }
 
   function handleSave() {
-    savePlan(plan);
-    setSavedFeedback(true);
-    window.setTimeout(() => setSavedFeedback(false), 2500);
+    const saved = savePlan(plan);
+    setFeedback(saved ? "savedConfirmation" : "saveFailed");
+    setShowManualLink(!saved);
   }
 
   async function handleCopyLink() {
     if (typeof window === "undefined") return;
-    const url = `${window.location.origin}${STUDIO_PATH}#p=${encodePlanFragment(relevantPlan(plan))}`;
+    setFeedback(null);
     try {
-      await navigator.clipboard.writeText(url);
-      setCopiedFeedback(true);
-      window.setTimeout(() => setCopiedFeedback(false), 2500);
+      await navigator.clipboard.writeText(planLink());
+      setFeedback("copiedConfirmation");
+      setShowManualLink(false);
     } catch {
-      // Clipboard blocked (permissions/private mode) — silent no-op; the
-      // user can still select the link text manually if we ever render it.
+      setFeedback("copyFailed");
+      setShowManualLink(true);
     }
   }
 
@@ -470,7 +495,7 @@ export function SavePlanBar({ plan, onClear }: SavePlanBarProps) {
         </button>
       </div>
       <div role="status" aria-live="polite" style={{ minHeight: "1.2em" }}>
-        {savedFeedback ? (
+        {feedback ? (
           <p
             style={{
               margin: 0,
@@ -478,18 +503,7 @@ export function SavePlanBar({ plan, onClear }: SavePlanBarProps) {
               color: "var(--text-primary)",
             }}
           >
-            {getCopy("savePlanBar.savedConfirmation")}
-          </p>
-        ) : null}
-        {copiedFeedback ? (
-          <p
-            style={{
-              margin: 0,
-              fontSize: "var(--text-sm, 0.85rem)",
-              color: "var(--text-primary)",
-            }}
-          >
-            {getCopy("savePlanBar.copiedConfirmation")}
+            {getCopy(`savePlanBar.${feedback}`)}
           </p>
         ) : null}
         {clearArmed ? (
@@ -504,6 +518,31 @@ export function SavePlanBar({ plan, onClear }: SavePlanBarProps) {
           </p>
         ) : null}
       </div>
+      {showManualLink ? (
+        <label
+          style={{
+            display: "grid",
+            gap: "var(--space-2, 0.5rem)",
+            minWidth: 0,
+          }}
+        >
+          {getCopy("savePlanBar.manualLinkLabel")}
+          <input
+            type="text"
+            readOnly
+            value={planLink()}
+            onFocus={(event) => event.currentTarget.select()}
+            style={{
+              ...buttonStyle,
+              cursor: "text",
+              width: "100%",
+              minWidth: 0,
+              boxSizing: "border-box",
+              background: "var(--surface-base)",
+            }}
+          />
+        </label>
+      ) : null}
       <p
         style={{
           margin: 0,

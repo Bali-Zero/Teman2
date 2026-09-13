@@ -1,0 +1,19 @@
+{
+  "schema_version": 1,
+  "scope": "final acknowledgment of exact prescribed schema pin and strengthened existing test; completes prior accepted source and prerequisite reviews",
+  "session_id": "9db691ab-8167-459b-a921-54857dde0d49",
+  "observed_model": "claude-fable-5-1",
+  "runtime_version": "2.1.261",
+  "permission_mode": "plan",
+  "tools": [],
+  "finish_reason": "end_turn",
+  "timestamp": "2026-09-05T23:48:16.924Z",
+  "response_sha256": "3386935f7301251b9fe6d867d02da03c15c8c91d0acd8c43138e1d5e09d49bde",
+  "input_packet_path": "fable-review-round-4-input.txt",
+  "input_packet_sha256": "bbb811b949b116b3c951f484d190176b4a0943b3b653920a0c7b76f16d864c5e",
+  "input_file_sha256": {
+    "apps/backend-rag/backend/db/migrations_v2/306_autonomous_lab_consul_leases.sql": "f2f95ffff2cdbe6b9d00c291dad7fd2fb264f0f2c1565a321823686de5a14f7d",
+    "apps/backend-rag/backend/tests/integration/test_dual_consul_postgres.py": "d73eb8932a1d894eef11e0b9f87d2a1a70259c441c6489e4d4753e9bbb0faf17"
+  },
+  "claim_limit": "Source review only, not independent test execution, release-gate publication or native provider qualification."
+}

@@ -1,0 +1,87 @@
+task_id: fly-cost-guard-red-on-findings
+gear: 3
+l_level: L2
+gate_class: opus
+# Floor computed for THIS diff (re-run 2026-09-09T16:47:25Z):
+# `git diff --name-only origin/main...HEAD > /tmp/6044_changed.txt && git diff
+# --numstat origin/main...HEAD > /tmp/6044_numstat.txt && python3
+# scripts/evidence_pack_lint.py --print-floor --changed-files-file
+# /tmp/6044_changed.txt --numstat-file /tmp/6044_numstat.txt` returns 3 via the
+# PATH term alone (.github/workflows/cron-fly-cost-alert.yml is hot-zone by
+# `HOTZONE_PATTERNS`'s `.github/workflows/*` entry). Gear 3 declared to match.
+objective: >-
+  Make the weekly Fly.io resource guard (cron-fly-cost-alert.yml, Mon 01:00
+  UTC) fail on findings instead of merely warning, and carry ceilings equal to
+  the measured 2026-09-10 footprint (7 machines / 6 started / 12288 MB started
+  RAM / 77 GB volumes / 0 paid IPv4) — owner mandate 2026-09-10 item 4. The
+  inline `::warning::`-only guard had been silently breached since the third
+  Postgres replica landed on 2026-08-18 (volumes 77GB > the old 60GB ceiling,
+  machines 7 > the old 6) and every one of the 8 scheduled runs since still
+  concluded `success` — cicatrix family #2, Esiste≠Armato. The guard logic
+  moves out of an inline `python3 <<'PY'` heredoc into `scripts/fly_cost_guard.py`
+  (a pure `evaluate()` plus a `flyctl` collector), gains a guilt+innocence test
+  module, exits 1 with `::error::` on any finding, and the workflow's own
+  `timeout-minutes` moves 5→10 to budget the new `actions/checkout` step
+  (sparse-checkout of just the script) per `lint_workflow_timeout_floor.py`.
+constraints:
+  - >-
+    No `fly.toml` edit, anywhere. Every Fly interaction is read-only
+    (`apps list` / `status` / `volumes list` / `ips list` via `flyctl ...
+    --json`) — the guard observes billable inventory, it never mutates it.
+  - >-
+    No secret is echoed, printed or committed. `FLY_API_TOKEN` stays scoped to
+    the one step's `env:` exactly as before this PR; the script never logs it.
+  - >-
+    One-PR-one-concern target is ~400 net lines where the work allows —
+    exceeded here (+730/-157, net +573 at e4441c7eb8) because a 102-line live
+    inventory fixture (`fly_inventory_2026-09-10.json`, dumped from the real
+    fleet) and a 238-line guilt+innocence test module ship in the same PR as
+    the 232-line guard script they prove; splitting the fixture/tests into a
+    follow-up PR would leave the guard merged untested for one merge-queue
+    cycle, which is a worse trade on a hot-zone workflow file.
+  - >-
+    Council NOT convened (modus anti-sperpero: convene only if divergent
+    priors can change the answer AND error cost >15x tokens AND genuine
+    parallel breadth — none apply to a deterministic threshold script with a
+    14-case guilt/innocence corpus). One independent, non-Anthropic
+    adversarial seat (Codex CLI, read-only sandbox) dispatched instead of a
+    2-seat COUNCIL_REVIEW_SEATS quorum; see `seat_override` in pack.yml.
+acceptance:
+  - text: >-
+      A1: WHEN scripts/tests/test_fly_cost_guard.py and
+      scripts/tests/test_fly_workflow_guards.py are run under pytest SHALL
+      exit 0 with every case passing (14 total: guilt+innocence for each of
+      machines/started-machines/started-RAM/volumes/dedicated-IPv4, the
+      unexpected/missing-apps and inventory-errors findings, the CLI exit
+      code, env-vs-flag ceiling precedence, and the live flyctl JSON shapes).
+    probe: >-
+      apps/backend-rag/.venv/bin/python -m pytest
+      scripts/tests/test_fly_cost_guard.py
+      scripts/tests/test_fly_workflow_guards.py -q
+  - text: >-
+      A2: WHEN scripts/fly_cost_guard.py is run against the captured
+      2026-09-10 fixture with the script's own default ceilings (which now
+      equal the measured footprint) SHALL exit 0 and print "within limits".
+    probe: >-
+      python3 scripts/fly_cost_guard.py --inventory-json
+      scripts/tests/fixtures/fly_inventory_2026-09-10.json
+  - text: >-
+      A3: WHERE any single ceiling is set 1 unit below the measured footprint
+      SHALL exit 1 with an `::error::Fly resource guard: ...` finding —
+      proves the guard is not merely green by construction.
+    probe: >-
+      python3 scripts/fly_cost_guard.py --inventory-json
+      scripts/tests/fixtures/fly_inventory_2026-09-10.json --max-volume-gb 76
+  - text: >-
+      A4: WHEN the deterministic gear floor is recomputed from this PR's own
+      changed-file set SHALL be 3, equal to the declared gear (never below
+      it, per harness-v2 §1 monotonia).
+    probe: >-
+      python3 scripts/evidence_pack_lint.py --print-floor --changed-files-file
+      /tmp/6044_changed.txt --numstat-file /tmp/6044_numstat.txt
+  - text: >-
+      A5: WHEN scripts/lint_workflow_timeout_floor.py is run after the
+      checkout-budget fix (timeout-minutes 5→10) SHALL exit 0 clean.
+    probe: python3 scripts/lint_workflow_timeout_floor.py
+appetite:
+  wall_clock_hours: 2

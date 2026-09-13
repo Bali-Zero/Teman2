@@ -50,7 +50,7 @@ from pathlib import Path
 _SCRIPT = Path(__file__).resolve()
 # agent-library/learn/lesson_harvester.py -> repo root is two parents up.
 REPO_ROOT = _SCRIPT.parent.parent.parent
-SCAR_LEDGER = REPO_ROOT / ".claude" / "rules" / "cicatrix-scars.md"
+SCAR_LEDGER = REPO_ROOT / "docs" / "scars" / "cicatrix-scars.md"
 OUT_JSON = REPO_ROOT / "agent-library" / "learn" / "proposals" / "lesson-proposals.json"
 OUT_MD = REPO_ROOT / "agent-library" / "learn" / "proposals" / "lesson-proposals.md"
 

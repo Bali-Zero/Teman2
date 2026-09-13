@@ -1,0 +1,108 @@
+task_id: antidotes-xdist
+gear: 3
+l_level: L2
+gate_class: opus
+# Floor computed this run:
+#   python3 scripts/evidence_pack_lint.py --print-floor --print-floor-source \
+#     --changed-files-file <changed> --numstat-file <numstat>
+# returns `3`, source `path`: .github/workflows/immune-enforcement.yml is a hot-zone file.
+objective: >-
+  Cut the `antidotes` required check's "Unit tests (guilt + innocence per
+  tool)" step from 68 sequential pytest interpreter invocations to one
+  pytest-xdist invocation. Measured on M5 2026-09-09 with the same 66-68
+  files (repo grew by a couple of test files between the two measurements
+  the same day): sequential loop 288s, one pytest invocation (no xdist)
+  258s, `pytest -n 4` 161s, identical pass/skip set (1879 passed originally,
+  1919 passed / 1 skipped in this worktree's later run — same 1 skip, more
+  tests because the repo grew). The cure installs pytest-xdist and replaces
+  the per-file `python -m pytest "$t" -q` call inside the loop body with an
+  array collection, then runs `python -m pytest -q -p no:cacheprovider -n 4
+  "${tests[@]}"` once after the loop.
+constraints:
+  - >-
+    The `for t in \ ... ; do` shell-loop SHAPE is kept byte-identical on
+    purpose: scripts/tests/test_immune_enforcement_trigger_symmetry.py
+    parses exactly that shape (`_LOOP_OPEN_RE` matches `for \w+ in \`,
+    `_LOOP_RE` requires each line to be a `scripts/*.py` path ending in `\`
+    or `; do`) to pair every looped test file with a sentinel case-list
+    trigger path (cicatrix-superscar.md #2, "Esiste != Armato"). Converting
+    the list to a bash array (`tests=( ... )`) would make that pin's
+    `_LOOP_OPEN_RE` find zero loop regions, silently disarming
+    `test_apparatus_loop_set_is_non_empty` (asserts >= 10 parsed) and
+    `test_this_test_is_itself_both_looped_and_triggered`. Verified by
+    reading the pin's source before editing — this is why only the loop
+    BODY changed (collect into `tests+=("$t")` instead of executing `"$t"`
+    immediately), not the loop's shell syntax.
+  - >-
+    The 68 file-list lines stay byte-identical, same order, one path per
+    line — confirmed via `git diff` showing 0 changed lines inside the list
+    itself (only the loop body before/after the list changed).
+  - >-
+    The `if [ -f "$t" ]` per-file existence-skip semantics, the `fail=`
+    exit-code accounting, and the `if:` gate on
+    `steps.paths.outputs.relevant` / `ledger_only` are all preserved
+    unchanged.
+  - No `--no-verify`, no `--amend` on a pushed commit, no force-push;
+    worktree infra-antidotes-xdist-0909.
+  - actionlint and prettier must pass on the workflow file, no new warning.
+acceptance:
+  - text: >-
+      A1: the "Unit tests (guilt + innocence per tool)" step installs
+      pytest-xdist and, after the unchanged `for t in \ ... ; do` loop
+      (which now only collects existing files into `tests=()`), runs
+      exactly one `python -m pytest -q -p no:cacheprovider -n 4
+      "${tests[@]}"` invocation.
+    probe: >-
+      awk '/name: Unit tests \(guilt \+ innocence per tool\)/,/exit \$fail/'
+      .github/workflows/immune-enforcement.yml | grep -E "pytest-xdist|tests\+=|pytest -q -p no:cacheprovider -n 4"
+  - text: "A2: actionlint reports the same warning count as before this diff (pre-existing SC2221/SC2222 on the sentinel case list only, no new error)."
+    probe: /opt/homebrew/bin/actionlint .github/workflows/immune-enforcement.yml
+  - text: "A3: prettier reports the workflow file already formatted."
+    probe: npx --no-install prettier --check .github/workflows/immune-enforcement.yml
+  - text: >-
+      A4: the four pins that read this workflow all still pass —
+      trigger-symmetry (loop/sentinel pairing), the runtime-truth
+      meta-contract, the antidotes ledger-tier diet, and the unreachable
+      workflow-conditions probe.
+    probe: >-
+      python -m pytest -q
+      scripts/tests/test_immune_enforcement_trigger_symmetry.py
+      scripts/tests/test_runtime_truth_ci_gauntlet.py
+      scripts/tests/test_antidotes_ledger_tier.py
+      scripts/tests/test_unreachable_workflow_conditions.py
+  - text: >-
+      A5: the exact new command, run once locally against the file list
+      extracted from the edited step, passes with the same 1-skip set and
+      zero failures.
+    probe: >-
+      python -m pytest -q -p no:cacheprovider -n 4 <68 files extracted from
+      the edited step>
+  - text: >-
+      A6 (Bites): the `antidotes` job on THIS PR's own run shows the "Unit
+      tests (guilt + innocence per tool)" step duration below the 116s
+      sequential-loop CI baseline, with the same passed/skipped test count
+      visible in the step log.
+    probe: >-
+      gh api repos/Bali-Zero/Teman2/actions/jobs/<antidotes job id>
+      --jq '.steps[] | "\(((.completed_at|fromdate)-(.started_at|fromdate)))s \(.name)"'
+assumptions:
+  - text: >-
+      None of the 66-68 looped test files write to a shared fixed path,
+      bind a fixed port, or touch a shared SQLite/Postgres file across
+      files — the scar-W131 shape (three xdist probes once cloned their
+      own database concurrently and blocked an unrelated PR) does not
+      recur here because this lane is pure unit/policy/AST/regex tests
+      (workflow-shape pins, lint policy loaders, ledger readers), not
+      integration tests against live infrastructure.
+    status: verified
+    probe: >-
+      Cross-family review (both agy/Gemini, see revision_note in pack.yml
+      for why codex and kimi's native answers could not be used), and a
+      manual grep for `tempfile.mkdtemp\(\)` / hardcoded `/tmp/` paths /
+      fixed port literals across the 68 files, confirmed no shared-fixture
+      pattern that xdist workers would race on.
+  - text: "`-n 4` matches ubuntu-latest's 4 vCPU allocation."
+    status: verified
+    probe: GitHub Actions ubuntu-latest runner spec (4 vCPU, 16GB RAM), both reviewer lanes confirmed 1:1 worker-to-vCPU mapping is correct.
+appetite:
+  wall_clock_hours: 1

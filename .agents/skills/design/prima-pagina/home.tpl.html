@@ -1,0 +1,407 @@
+<title>Bali Zero Front Page</title>
+<meta name="description" content="PT PMA, KITAS and tax filing in Bali. Licensed. Kerobokan.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;600;800&display=swap">
+<style>
+/* ═══════════════════════════════════════════════════════════════════════════
+   Rebuilt 2026-09-01 after the owner's verdict on v1: "an entire home page
+   that hammers over and over that we're real? no image, nothing interesting."
+   He was right, and the diagnosis is precise: v1 optimised for passing the
+   study's gates instead of for the person arriving. Six of eight sections
+   asserted legitimacy. Nobody lands on a visa page wanting to audit an agency.
+
+   The inversion: proof drops from ~60% of the page to one line and a row of
+   real faces. What it buys is a photograph and a thing that WORKS — the
+   product's promise delivered in ten seconds, which is the only trust signal
+   that cannot be faked by someone who does not know the answer.
+
+   Knobs unchanged and still declared at the foot of the page. Ground L 19.0%,
+   hue distance 32°, elevation +7 L, spacing ratio 3.6x, one peak per viewport
+   (now the hero), PAS framing, VERIFY screen class.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+:root{
+  --ground:#FCFAF8; --surface:#FFFFFF; --surface-2:#EEEAE7;
+  --ink:#17120F; --ink-muted:#574E49; --ink-faint:#7A6F69;
+  --rule-subtle:#E9E3DC; --rule-strong:#8A7F77;
+  --accent:#C8102E; --accent-ink:#A50D26; --on-accent:#FFFFFF;
+  --focus:#17120F; --grain:.08; --logo-lift:none;
+  --step-0:14px; --step-1:15px; --step-2:17px; --step-3:21px; --step-4:27px;
+  --display:38px; --hero:40px;
+  --lh-tight:1.1; --lh:1.5;
+  --gap-in:20px; --gap-out:72px;
+  --t-instant:80ms; --t-fast:150ms; --t-base:220ms;
+  --ease:cubic-bezier(.2,0,.38,.9);
+  --measure:34ch;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --ground:#161311; --surface:#272321; --surface-2:#393432;
+    --ink:#EEEAE7; --ink-muted:#B5B0AC; --ink-faint:#95908C;
+    --rule-subtle:#2E2B29; --rule-strong:#67625F;
+    --accent:#C8102E; --accent-ink:#F0808F; --on-accent:#FFFFFF;
+    --focus:#EEEAE7; --grain:.06; --logo-lift:brightness(1.32) saturate(1.06);
+  }
+  :root:not([data-theme="light"])[data-night="oxblood"]{
+    --ground:#28070A; --surface:#3C1619; --surface-2:#512729;
+    --ink:#F6ECEA; --ink-muted:#D1B7B6; --ink-faint:#A78A89;
+    --rule-subtle:#452223; --rule-strong:#835D5E;
+    --accent:#F6ECEA; --accent-ink:#F6C9C0; --on-accent:#28070A; --focus:#F6ECEA;
+  }
+}
+:root[data-theme="dark"]{
+  --ground:#161311; --surface:#272321; --surface-2:#393432;
+  --ink:#EEEAE7; --ink-muted:#B5B0AC; --ink-faint:#95908C;
+  --rule-subtle:#2E2B29; --rule-strong:#67625F;
+  --accent:#C8102E; --accent-ink:#F0808F; --on-accent:#FFFFFF;
+  --focus:#EEEAE7; --grain:.06; --logo-lift:brightness(1.32) saturate(1.06);
+}
+:root[data-theme="dark"][data-night="oxblood"]{
+  --ground:#28070A; --surface:#3C1619; --surface-2:#512729;
+  --ink:#F6ECEA; --ink-muted:#D1B7B6; --ink-faint:#A78A89;
+  --rule-subtle:#452223; --rule-strong:#835D5E;
+  --accent:#F6ECEA; --accent-ink:#F6C9C0; --on-accent:#28070A; --focus:#F6ECEA;
+}
+
+[hidden]{display:none !important}
+*{box-sizing:border-box}
+body{margin:0; background:var(--ground); color:var(--ink);
+  font-family:"Public Sans","Helvetica Neue",Arial,sans-serif;
+  font-size:var(--step-2); line-height:var(--lh); -webkit-font-smoothing:antialiased}
+h1,h2,h3{margin:0; font-weight:600; letter-spacing:-.018em; text-wrap:balance}
+p{margin:0; text-wrap:pretty}
+a{color:inherit}
+img{display:block; max-width:100%}
+:focus-visible{outline:2px solid var(--focus); outline-offset:2px; border-radius:2px}
+.num{font-variant-numeric:tabular-nums lining-nums}
+.wrap{max-width:680px; margin:0 auto; padding:0 20px}
+
+/* ── HERO ──────────────────────────────────────────────────────────────────
+   The one peak (knob 6). The photograph is not decoration: the headline says
+   people get this wrong in their first month, and the picture is the place
+   they are getting it wrong in, with the weather coming. */
+.hero{position:relative; isolation:isolate; overflow:hidden;
+  background:#0E0C0B; color:#F6F2ED; min-height:520px; display:flex; flex-direction:column}
+.hero img{position:absolute; inset:0; width:100%; height:100%; object-fit:cover; z-index:0}
+.hero::after{content:""; position:absolute; inset:0; z-index:1;
+  background:linear-gradient(178deg, rgba(8,7,6,.62) 0%, rgba(8,7,6,.30) 34%, rgba(8,7,6,.80) 78%, rgba(8,7,6,.94) 100%)}
+.hero > *{position:relative; z-index:2}
+.masthead{display:flex; align-items:center; justify-content:space-between; gap:16px;
+  padding:16px 20px 0; max-width:680px; margin:0 auto; width:100%}
+.brand{display:flex; align-items:center; gap:7px; text-decoration:none;
+  min-height:44px; padding-right:8px; margin-left:-4px; padding-left:4px}
+.brand img{position:static; height:26px; width:auto; object-fit:contain;
+  filter:brightness(1.28) saturate(1.06)}
+.brand .word{font-size:var(--step-2); font-weight:600; letter-spacing:.15em; text-transform:uppercase}
+.dateline{font-size:var(--step-0); letter-spacing:.04em; text-align:right; opacity:.82}
+.hero-body{margin-top:auto; padding:64px 20px 46px; max-width:680px; margin-left:auto; margin-right:auto; width:100%}
+.hero h1{font-size:var(--hero); line-height:var(--lh-tight); max-width:16ch; font-weight:800;
+  letter-spacing:-.028em; text-shadow:0 1px 26px rgba(0,0,0,.42)}
+.hero p{margin-top:16px; max-width:38ch; font-size:var(--step-2); opacity:.9}
+
+/* ── THE THING THAT WORKS ─────────────────────────────────────────────────
+   Delivered before anything is claimed. Knowing the answer IS the trust
+   signal; asserting legitimacy is what the copycats do. */
+.ask{margin-top:-30px; position:relative; z-index:3}
+.ask-card{background:var(--surface); border:1px solid var(--rule-strong); padding:22px 20px 20px}
+.ask h2{font-size:var(--step-3); margin-bottom:4px}
+.ask .hint{font-size:var(--step-1); color:var(--ink-muted); margin-bottom:16px}
+.opts{display:flex; flex-wrap:wrap; gap:8px}
+.opts button{min-height:44px; padding:0 14px; font:inherit; font-size:var(--step-1);
+  color:var(--ink); background:transparent; border:1px solid var(--rule-strong);
+  border-radius:2px; cursor:pointer; transition:background var(--t-instant) var(--ease)}
+.opts button:hover{background:var(--surface-2)}
+.opts button[aria-pressed="true"]{background:var(--ink); color:var(--ground); border-color:var(--ink)}
+.answer{margin-top:18px; padding-top:18px; border-top:1px solid var(--rule-subtle)}
+.answer[hidden]{display:none}
+.answer .code{display:inline-block;
+      min-width:1.6em; text-align:center; font-size:var(--step-0); font-weight:600;
+  letter-spacing:.09em; padding:4px 9px; background:var(--accent); color:var(--on-accent); border-radius:2px}
+.answer .name{font-size:var(--step-3); font-weight:600; margin-top:10px}
+.answer .detail{font-size:var(--step-1); color:var(--ink-muted); margin-top:6px; max-width:46ch}
+.answer .go{display:inline-flex; align-items:center; min-height:44px; margin-top:12px;
+  font-size:var(--step-1); color:var(--accent-ink); text-underline-offset:3px}
+.caveat{margin-top:16px; padding-top:14px; border-top:1px solid var(--rule-subtle);
+  font-size:var(--step-1); color:var(--ink-muted); max-width:52ch}
+
+section{margin-top:var(--gap-out)}
+.label{font-size:var(--step-0); text-transform:uppercase; letter-spacing:.1em;
+  color:var(--ink-faint); font-weight:600; margin-bottom:16px}
+
+/* ── doors ─────────────────────────────────────────────────────────────── */
+.door{display:grid; grid-template-columns:1fr auto; align-items:center; gap:14px;
+  min-height:64px; padding:16px 0; border-bottom:1px solid var(--rule-subtle);
+  text-decoration:none; transition:padding-left var(--t-fast) var(--ease)}
+.door:first-of-type{border-top:1px solid var(--rule-subtle)}
+.door:hover,.door:focus-visible{padding-left:8px}
+.door .q{font-size:var(--step-3); line-height:1.24; font-weight:600}
+.door .a{display:block; margin-top:5px; font-size:var(--step-1); color:var(--ink-muted)}
+.door .arrow{font-size:var(--step-3); color:var(--accent-ink)}
+
+/* ── the team: proof rendered as people, not as claims ─────────────────── */
+.team{margin-top:var(--gap-out)}
+.team-inner{max-width:1160px; margin:0 auto; padding:0 20px}
+.team-scroll{display:grid; grid-auto-flow:column; grid-auto-columns:148px; gap:12px;
+  overflow-x:auto; padding-bottom:10px; scroll-snap-type:x mandatory; scrollbar-width:thin;
+  /* the crop was doing the signalling by accident: a card sliced mid-name reads
+     as a layout bug, not as "there is more". Fade the edge and say the count. */
+  -webkit-mask-image:linear-gradient(90deg,#000 86%,rgba(0,0,0,.15));
+  mask-image:linear-gradient(90deg,#000 86%,rgba(0,0,0,.15))}
+.team-scroll figure{margin:0; scroll-snap-align:start}
+.team-scroll img{width:100%; height:auto; border:1px solid var(--rule-subtle)}
+.team-head{display:flex; align-items:baseline; justify-content:space-between; gap:16px}
+.team-head .label,.team-head .swipe{white-space:nowrap; margin-bottom:16px}
+.team-head .swipe{font-size:var(--step-0); color:var(--ink-faint)}
+.team-note{margin-top:14px; font-size:var(--step-1); color:var(--ink-muted); max-width:52ch}
+.door .q,.door .a{max-width:52ch}
+
+/* ── one proof line. One. ─────────────────────────────────────────────── */
+.proof{display:flex; flex-wrap:wrap; align-items:baseline; gap:8px 14px;
+  padding:18px 0; border-top:1px solid var(--rule-strong); border-bottom:1px solid var(--rule-strong);
+  font-size:var(--step-1)}
+.proof b{font-size:var(--step-3); font-weight:600}
+.proof a{display:inline-flex; align-items:center; min-height:44px;
+  text-underline-offset:3px; color:var(--accent-ink)}
+.proof .as-of{font-size:var(--step-0); color:var(--ink-faint); width:100%}
+
+footer{margin-top:calc(var(--gap-out) * .55); padding:26px 0 44px; border-top:1px solid var(--rule-strong);
+  font-size:var(--step-1); color:var(--ink-muted)}
+footer p{max-width:58ch; margin-bottom:12px}
+footer .credit{font-size:var(--step-0); color:var(--ink-faint)}
+.reg{display:flex; flex-wrap:wrap; gap:6px 18px; margin:16px 0 4px; font-size:var(--step-0)}
+.reg a{display:inline-flex; align-items:center; min-height:44px; color:var(--accent-ink); text-underline-offset:3px}
+.pending{display:inline-block; padding:2px 8px; border:1px dashed var(--rule-strong);
+  border-radius:3px; font-size:var(--step-0); color:var(--ink-muted)}
+.controls{display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-top:24px;
+  padding-top:16px; border-top:1px dashed var(--rule-subtle); font-size:var(--step-0); color:var(--ink-faint)}
+.controls button{min-height:44px; padding:0 12px; font:inherit; color:var(--ink);
+  background:var(--surface); border:1px solid var(--rule-strong); border-radius:2px; cursor:pointer}
+.controls button[aria-pressed="true"]{background:var(--ink); color:var(--ground); border-color:var(--ink)}
+details.decl{margin-top:16px; font-size:var(--step-0)}
+details.decl summary{cursor:pointer; min-height:44px; display:flex; align-items:center;
+  letter-spacing:.06em; text-transform:uppercase}
+details.decl pre{overflow-x:auto; padding:14px; background:var(--surface-2);
+  border:1px solid var(--rule-subtle); font-size:12px; line-height:1.6}
+
+@media (min-width:760px){
+  :root{--hero:64px; --display:52px; --step-3:23px; --step-4:34px; --gap-out:96px}
+  .hero{min-height:720px}
+  .hero-body{padding:96px 20px 62px}
+  /* at desktop width all six fit; a scroller here was the mobile compromise
+     leaking upward, so drop the scroll, the mask and the swipe hint together. */
+  .team-scroll{grid-auto-flow:row; grid-template-columns:repeat(6,1fr); gap:16px;
+    overflow-x:visible; -webkit-mask-image:none; mask-image:none}
+  .team-head .swipe{display:none}
+}
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{transition-duration:.001ms !important; animation-duration:.001ms !important}
+}
+@media (prefers-contrast:more){:root{--rule-subtle:var(--rule-strong); --ink-muted:var(--ink)}}
+@media (forced-colors:active){
+  .ask-card,.controls button,.opts button{border:1px solid CanvasText}
+  .hero::after{display:none}
+}
+</style>
+
+<header class="hero">
+  <img src="data:image/jpeg;base64,__HERO__" alt="Rice terraces below Gunung Agung at sunset, with a storm cell breaking over the sea">
+  <div class="masthead">
+    <a class="brand" href="https://balizero.com">
+      <img src="data:image/png;base64,__LOGO__" alt="Bali Zero" width="73" height="102">
+      <span class="word">Bali&nbsp;Zero</span>
+    </a>
+    <div class="dateline num">Kerobokan<br>1 September 2026</div>
+  </div>
+  <div class="hero-body">
+    <h1>Most people moving to Bali pick the wrong visa in the first month.</h1>
+    <p>Tell us how long you are staying and what you will be doing. You will know
+       which permit that is before you tell us your name.</p>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <div class="ask">
+    <div class="ask-card">
+      <h2>How long are you staying?</h2>
+      <p class="hint">Pick one. No form, no email.</p>
+      <div class="opts" id="dur" role="group" aria-label="Length of stay">
+        <button type="button" data-k="30" aria-pressed="false">Up to 30 days</button>
+        <button type="button" data-k="60" aria-pressed="false">Up to 60 days</button>
+        <button type="button" data-k="180" aria-pressed="false">About 6 months</button>
+        <button type="button" data-k="year" aria-pressed="false">A year or more</button>
+      </div>
+
+      <div class="opts" id="why" style="margin-top:10px" role="group" aria-label="Reason" hidden>
+        <button type="button" data-k="tourism" aria-pressed="false">Holiday, family, surfing</button>
+        <button type="button" data-k="remote" aria-pressed="false">Remote work, foreign employer</button>
+        <button type="button" data-k="company" aria-pressed="false">Running a company here</button>
+        <button type="button" data-k="retire" aria-pressed="false">Retiring, 55 or over</button>
+      </div>
+
+      <div class="answer" id="ans" hidden aria-live="polite">
+        <span class="code" id="ans-code"></span>
+        <div class="name" id="ans-name"></div>
+        <p class="detail" id="ans-detail"></p>
+        <a class="go" href="https://balizero.com/visa-oracle">Check it properly in the Visa Oracle →</a>
+      </div>
+
+      <p class="caveat">This is an orientation, not a determination — it reads two answers, and your
+        case has more than two. The price you are quoted afterwards is the whole price, government
+        fee included, and it does not grow at the end.</p>
+    </div>
+  </div>
+
+  <section>
+    <h2 class="label">Or start where you are</h2>
+    <a class="door" href="https://balizero.com/services">
+      <span><span class="q">I'm starting a business</span>
+        <span class="a">PT PMA, NIB, OSS licensing, and the KBLI code that decides everything</span></span>
+      <span class="arrow" aria-hidden="true">→</span></a>
+    <a class="door" href="https://balizero.com/tax-calendar">
+      <span><span class="q">Taxes confuse me</span>
+        <span class="a">NPWP, monthly SPT, Coretax. Indonesian tax has its own alphabet</span></span>
+      <span class="arrow" aria-hidden="true">→</span></a>
+    <a class="door" href="https://balizero.com/property">
+      <span><span class="q">I'm buying property</span>
+        <span class="a">Hak pakai, leasehold, and the due diligence that comes before the deposit</span></span>
+      <span class="arrow" aria-hidden="true">→</span></a>
+  </section>
+
+</div><!-- /.wrap -->
+
+  <section class="team">
+   <div class="team-inner">
+    <div class="team-head">
+      <h2 class="label">The people who file it</h2>
+      <span class="swipe">6 people &rarr;</span>
+    </div>
+    <div class="team-scroll">
+      <figure><img src="data:image/jpeg;base64,__SURYA__" alt="Surya, senior consultant, setup team"></figure>
+      <figure><img src="data:image/jpeg;base64,__ARI__" alt="Ari"></figure>
+      <figure><img src="data:image/jpeg;base64,__SAHIRA__" alt="Sahira"></figure>
+      <figure><img src="data:image/jpeg;base64,__DAMAR__" alt="Damar"></figure>
+      <figure><img src="data:image/jpeg;base64,__KRISNA__" alt="Krisna"></figure>
+      <figure><img src="data:image/jpeg;base64,__DEWAAYU__" alt="Dewa Ayu"></figure>
+    </div>
+    <p class="team-note">One of them signs your file and answers when you write. A copycat can
+      clone a website in an afternoon; it cannot clone the person who takes the call.</p>
+   </div>
+  </section>
+
+<div class="wrap">
+
+  <section>
+    <p class="proof">
+      <b class="num">47</b> KITAS and <b class="num">9</b> PT PMA filed in August ·
+      <b class="num">4.9 ★</b>
+      <a href="https://maps.app.goo.gl/whiMUTNchcDR5naz8" rel="noopener">693 reviews on Google</a>
+      <span class="as-of">Filings counted on submission, not approval, as of 31 August 2026 — the
+        number goes down in quiet months and we leave it up. Reviews hosted by Google, read 14 August 2026.</span>
+    </p>
+  </section>
+
+  <footer>
+    <p>Bali Zero handles immigration, company setup, tax and property matters for foreigners in
+      Indonesia. We do not guarantee outcomes, and no agency lawfully can — the decision belongs to
+      the authority, every time. If the right answer is a different permit, or none, that is the
+      answer you get.</p>
+
+    <div class="reg">
+      <span>Look us up:</span>
+      <a href="https://oss.go.id">NIB on oss.go.id</a>
+      <a href="https://ahu.go.id/pencarian/profil-pt">entity on ahu.go.id</a>
+      <a href="https://sikop.kemenkeu.go.id">tax licence on sikop.kemenkeu.go.id</a>
+    </div>
+    <p><span class="pending">registry numbers + street address — owner supplies</span><br>
+      Kerobokan, Badung, Bali · English · Bahasa Indonesia</p>
+    <p class="credit">Photograph: Sidemen, East Bali — Gunung Agung with the afternoon storm
+      coming in off the Lombok Strait.</p>
+
+    <div class="controls">
+      <span>Preview:</span>
+      <button type="button" data-set="theme" data-val="light" aria-pressed="false">Day</button>
+      <button type="button" data-set="theme" data-val="dark" aria-pressed="false">Night</button>
+      <span style="margin-left:10px">Night polarity (Q10):</span>
+      <button type="button" data-set="night" data-val="neutral" aria-pressed="true">Neutral ground</button>
+      <button type="button" data-set="night" data-val="oxblood" aria-pressed="false">Red field</button>
+    </div>
+
+    <details class="decl">
+      <summary>Generator declaration</summary>
+      <pre>ground lightness         L 19.0%   envelope 18-20%
+H(ground) - H(accent)    32.0deg   envelope 26-46
+elevation step, dark     +7.0 L    gate 8 floor +7
+spacing ratio            3.6x      20px in / 72px between
+intensity peak           the hero  exactly one per viewport
+type                     1 family, 3 weights, discrete steps, no clamp
+easing                   productive  cubic-bezier(.2,0,.38,.9)
+awareness stage          PAS / problem-first (cold traffic)
+screen class             VERIFY - shows everything, hides nothing
+images                   hero 70 KB + 6 team cards 79 KB, all inline, 0 requests
+
+v2 correction: v1 gave six of eight sections to proving we are real. Proof is
+now one line and six faces. The ten-second answer above is the trust signal
+that a copycat cannot reproduce, because it requires knowing the answer.
+
+Absent on purpose: any rank superlative, any affiliation or outcome claim from
+the blocked-string list, a padlock, a self-issued badge, a testimonial signed
+with an initial, a countdown, an animated number, a bento grid, a hero video,
+and the lifetime client total (which has no verifiable source in any system).</pre>
+    </details>
+  </footer>
+</div>
+
+<script>
+(function(){
+  var root=document.documentElement;
+  document.querySelectorAll('.controls button').forEach(function(b){
+    b.addEventListener('click',function(){
+      var k=b.dataset.set,v=b.dataset.val;
+      root.setAttribute(k==='theme'?'data-theme':'data-night',v);
+      document.querySelectorAll('.controls button[data-set="'+k+'"]').forEach(function(o){
+        o.setAttribute('aria-pressed',String(o===b));});
+    });
+  });
+
+  // Orientation only. Real permit families; the Oracle does the actual work.
+  var MAP={
+    "30": {c:"B1", n:"Visa on Arrival",
+      d:"Thirty days, extended once for thirty more, and sixty is the ceiling. Tourism only \u2014 not business meetings, not study, not work."},
+    "60": {c:"C1", n:"Single-entry tourist visa",
+      d:"Applied for before you fly. Sixty days, extendable twice, so a hundred and eighty in one stay. This is the one most people should have taken instead of the VOA."},
+    "180": {c:"C2", n:"Business visit visa",
+      d:"Single entry, sixty days, extendable twice to a hundred and eighty \u2014 which is your six months, in one continuous stay. Needs an Indonesian company to sponsor it, and it does not permit salaried work here."},
+    "year|tourism": {c:"\u2014", n:"You are past what a visit permits",
+      d:"Beyond about six months the honest answer is a stay permit, not a longer visa. Which one depends on what you will actually be doing \u2014 that is the next question, and it is the one that matters."},
+    "year|remote": {c:"E33G", n:"Remote worker KITAS",
+      d:"One year, renewable, self-filed \u2014 no sponsor. The published bar is USD 60,000 a year and a contract with a company incorporated outside Indonesia. It does not let you work for an Indonesian company, invoice Indonesian clients, or own a PT PMA."},
+    "year|company": {c:"E28A", n:"Investor KITAS",
+      d:"Two years, tied to a PT PMA where you hold a director or commissioner seat \u2014 owning shares alone does not qualify. Paid-up capital from IDR 2.5 billion. It covers managing the company, not doing its operational work; that is a different permit."},
+    "year|retire": {c:"E33F", n:"Retirement KITAS",
+      d:"One year, renewable, with proof of USD 3,000 a month from outside Indonesia and an Indonesian sponsor who files it for you. The official page states no age figure \u2014 anyone who tells you the cutoff with certainty is guessing, so we check yours against the office."}
+  };
+  var dur=null, why=null;
+  function press(group,btn){
+    group.querySelectorAll('button').forEach(function(o){o.setAttribute('aria-pressed',String(o===btn));});
+  }
+  function render(){
+    var whyBox=document.getElementById('why'), ans=document.getElementById('ans');
+    whyBox.hidden = (dur!=="year");
+    var key = dur==="year" ? (why? "year|"+why : null) : dur;
+    if(!key||!MAP[key]){ ans.hidden=true; return; }
+    var m=MAP[key];
+    document.getElementById('ans-code').textContent=m.c;
+    document.getElementById('ans-name').textContent=m.n;
+    document.getElementById('ans-detail').textContent=m.d;
+    ans.hidden=false;
+  }
+  document.querySelectorAll('#dur button').forEach(function(b){
+    b.addEventListener('click',function(){ dur=b.dataset.k; press(document.getElementById('dur'),b); render(); });
+  });
+  document.querySelectorAll('#why button').forEach(function(b){
+    b.addEventListener('click',function(){ why=b.dataset.k; press(document.getElementById('why'),b); render(); });
+  });
+})();
+</script>

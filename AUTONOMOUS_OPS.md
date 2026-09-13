@@ -34,6 +34,9 @@ dozen unrelated ISO dates that must never govern.)
 (re-certified 2026-07-19 by Antonello — routine 30-day refresh; Level 2 unchanged.
 As of 2026-08-31 that is 43 days: this contract is LAPSED by its own rule below,
 and no session was told, because of the defect described above.)
+(re-certified 2026-09-01 by Antonello — ordered in the M5 interactive session
+("rinnova il contratto") after the wave-2 dashboard surfaced the 43-day lapse;
+Level 2 unchanged.)
 
 If today's date is >30 days after "active since" without a refresh commit,
 Claude falls back to conservative mode and pings the user to re-certify.
@@ -282,6 +285,10 @@ decides this.
   two of four sampled merges read "3 not green" purely as a function of when the sample
   was taken. Still open and NOT closed by this audit: the monthly restore drill, the three
   unrequired suites (see L2.1 above), and enforcement-under-race.
+- **2026-09-01** — Re-certified by Antonello ("rinnova il contratto", M5 interactive
+  session). The 2026-07-19 certification lapsed on 2026-08-18 and no session was told:
+  the mtime-based staleness hook was dead on all three machines. The durable check now
+  lives in `scripts/check_autonomous_ops_staleness.py` (PR #5425). Level 2 unchanged.
 - **2026-07-19** — Re-certified by Antonello (routine 30-day refresh after the
   2026-06-11 certification lapsed). Level 2 unchanged.
 - **2026-04-21** — File created by Claude at Zero's request. Level 1 active

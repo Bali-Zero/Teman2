@@ -1,7 +1,7 @@
 """Tests for ``backend.services.visa_engine.fact_registry``.
 
-Covers: the default catalog is seeded 1:1 with ``enums.FactPath`` (49
-entries, 45 applicant + 4 derived); ``spec()``/``missing_paths()`` behavior
+Covers: the default catalog is seeded 1:1 with ``enums.FactPath`` (50
+entries, 46 applicant + 4 derived); ``spec()``/``missing_paths()`` behavior
 (the PR1 brief's "required_facts subset-of registry" primitive); commercial
 classification exactly matches ``enums.COMMERCIAL_FACT_PATHS``; PII
 classification spot-checks per this module's own documented rationale;
@@ -43,8 +43,8 @@ class TestDefaultCatalogCompleteness:
             spec = DEFAULT_FACT_REGISTRY.spec(path)
             assert spec.path is path
 
-    def test_catalog_has_exactly_49_entries(self) -> None:
-        assert len(DEFAULT_FACT_REGISTRY.all_paths()) == 49
+    def test_catalog_has_exactly_50_entries(self) -> None:
+        assert len(DEFAULT_FACT_REGISTRY.all_paths()) == 50
 
     def test_all_paths_matches_fact_path_enum(self) -> None:
         assert DEFAULT_FACT_REGISTRY.all_paths() == frozenset(FactPath)
@@ -137,7 +137,7 @@ class TestRegistryImmutability:
         # must be impossible, not merely type-annotated as read-only.
         with pytest.raises(AttributeError):
             DEFAULT_FACT_REGISTRY._specs.clear()  # type: ignore[attr-defined]
-        assert len(DEFAULT_FACT_REGISTRY.all_paths()) == 49
+        assert len(DEFAULT_FACT_REGISTRY.all_paths()) == 50
 
     def test_specs_mapping_cannot_be_item_assigned(self) -> None:
         with pytest.raises(TypeError):
@@ -262,7 +262,7 @@ class TestValueFormatKindConsistency:
         # hotfix's __post_init__ addition must not retroactively break
         # _DEFAULT_SPECS (module import already proves this at collection
         # time; this is the explicit, readable assertion of it).
-        assert len(DEFAULT_FACT_REGISTRY.all_paths()) == 49
+        assert len(DEFAULT_FACT_REGISTRY.all_paths()) == 50
 
 
 class TestRegistryConstruction:
@@ -294,14 +294,14 @@ class TestRegistryConstruction:
             ]
         )
         assert custom.all_paths() == frozenset({FactPath.PERSON_BIRTH_DATE})
-        assert len(DEFAULT_FACT_REGISTRY.all_paths()) == 49
+        assert len(DEFAULT_FACT_REGISTRY.all_paths()) == 50
 
 
 _UNKNOWN_WIRE = {"status": "UNKNOWN", "reason": "NOT_ASKED"}
 
 
 def _applicant_facts(overrides: dict[str, Any], *, assessment_id: uuid.UUID | None = None) -> ApplicantFacts:
-    """Build an ``ApplicantFacts`` with every one of the 45 required
+    """Build an ``ApplicantFacts`` with every one of the 46 required
     applicant paths defaulted to UNKNOWN, then override the given wire keys
     with KNOWN wire values —
     the minimal builder ``derive()``'s tests need (distinct from
@@ -332,6 +332,7 @@ def _applicant_facts(overrides: dict[str, Any], *, assessment_id: uuid.UUID | No
         "investment.investment_capital_idr": _UNKNOWN_WIRE,
         "investment.paid_up_capital_idr": _UNKNOWN_WIRE,
         "investment.proposed_role": _UNKNOWN_WIRE,
+        "investment.investment_amount_usd": _UNKNOWN_WIRE,
         "family.relation_to_sponsor": _UNKNOWN_WIRE,
         "family.sponsor_nationalities": _UNKNOWN_WIRE,
         "family.sponsor_status_code": _UNKNOWN_WIRE,
@@ -518,9 +519,9 @@ class TestCanonicalFactPayload:
         payload = canonical_fact_payload(_applicant_facts({}))
         assert list(payload.keys()) == sorted(payload.keys())
 
-    def test_covers_all_45_applicant_paths(self) -> None:
+    def test_covers_all_46_applicant_paths(self) -> None:
         payload = canonical_fact_payload(_applicant_facts({}))
-        assert len(payload) == 45
+        assert len(payload) == 46
 
     def test_is_json_serializable(self) -> None:
         import json

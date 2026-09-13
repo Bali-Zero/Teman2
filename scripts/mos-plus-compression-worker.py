@@ -33,6 +33,13 @@ Tailscale IP — see the OLLAMA_HOST comment below for why (cascade-fix
 translate-articles.py's cron on the same machine).
 
 Scheduled: every 10min via launchd. NOT inline.
+
+Headless claude invocation (perf, 2026-09-01, D-006): the claude_haiku call runs
+with `--setting-sources "" --strict-mcp-config` — a bare headless `claude -p` run
+from `~/scripts` still pays full harness bootstrap (SessionStart hooks + CLAUDE.md
++ MCP schemas), measured at ~350K input tokens/call vs ~13K with these flags
+(tokenaudit 2026-09-01, ~/.tokenaudit/reports/04-rightsizing.md). This compression
+prompt needs no tools, no hooks, no MCP — it is a single-turn synthesis call.
 """
 import json
 import os
@@ -173,7 +180,11 @@ def save_counter(c: dict) -> None:
 def call_claude_haiku(prompt: str) -> str | None:
     try:
         r = subprocess.run(
-            [CLAUDE_BIN, "--model", "claude-haiku-4-5-20251001", "-p", prompt],
+            [
+                CLAUDE_BIN, "--model", "claude-haiku-4-5-20251001",
+                "--setting-sources", "", "--strict-mcp-config",
+                "-p", prompt,
+            ],
             capture_output=True, text=True, timeout=LLM_TIMEOUT,
             env={**os.environ, "ANTHROPIC_API_KEY": ""},
         )

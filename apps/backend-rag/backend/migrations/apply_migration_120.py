@@ -23,6 +23,7 @@ import asyncpg
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+from migrations._lock_guard import run_ddl_with_lock_timeout
 from migrations.migration_120_partner_email_outbox import apply
 
 logging.basicConfig(
@@ -54,7 +55,11 @@ async def main() -> None:
             sys.exit(2)
 
         logger.info("Applying migration 120: partner_email_outbox")
-        await apply(conn)
+        try:
+            await run_ddl_with_lock_timeout(conn, apply)
+        except asyncpg.exceptions.LockNotAvailableError:
+            logger.error("Migration 120 failed: DDL lock unavailable after retries")
+            sys.exit(3)
 
         # Verify
         exists = await conn.fetchval(

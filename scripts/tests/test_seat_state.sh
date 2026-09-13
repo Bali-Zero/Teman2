@@ -271,25 +271,25 @@ case_cascade_wiring() {
     ln_src="$(grep -n '^[[:space:]]*\.[[:space:]]\+"\$SEAT_STATE_LIB"' "$CASCADE" | head -1 | cut -d: -f1)"
     [ -n "$ln_src" ] && [ "$ln_src" -lt "$ln_firstcall" ] || return 1
 
-    local mine origin attempt
-    mine="$(grep -n '^for index in 1 2 3 4 5; do' "$CASCADE" || true)"
-    [ -n "$mine" ] || return 1
-    # This worktree is shared with concurrent sibling squad activity (observed
-    # live: SQUAD-LEDGER.md changing underfoot mid-run) — `git show ref:path`
-    # can transiently race a sibling's ref/object-db write. Retry a few times
-    # before treating an empty read as a real failure, so a git-lock blip
-    # never masquerades as "the dispatch loop got touched".
-    for attempt in 1 2 3; do
-        origin="$(git -C "$REPO_ROOT" show origin/main:infra/launchagents/wrappers/claude-cascade.sh 2>/dev/null \
-            | grep -n '^for index in 1 2 3 4 5; do' || true)"
-        [ -n "$origin" ] && break
-        sleep 0.2
-    done
-    [ -n "$origin" ] || return 1
-    # Only the line NUMBER may legitimately differ (this PR adds lines above
-    # it); the line TEXT itself — the dispatch loop's own numbering, which
-    # belongs to PR #4644 — must be byte-identical to origin/main.
-    [ "${mine#*:}" = "${origin#*:}" ]
+    # The dispatch loop's own numbering. This block used to re-read
+    # claude-cascade.sh from origin/main and require this line to be
+    # BYTE-IDENTICAL to main's. That was a SCOPE guard for PR #5290 — its own
+    # comment said so: "the dispatch loop's own numbering ... belongs to PR
+    # #4644". It cannot survive the change it was deferring to. Any PR that
+    # legitimately edits this line differs from main by construction until it
+    # merges, so the comparison could never go green — the guard's premise
+    # expired the moment slot 6 landed, and it was never an invariant.
+    #
+    # The ordering it stood in for is now proved directly, and far better, in
+    # scripts/tests/test_claude_oauth_slot6_coverage.py:
+    # test_slot6_marker_follows_slot5_marker compares source POSITIONS, and
+    # test_claude_cascade_team_config_dir_only_on_slot6 pins the Team config
+    # dir to case branch 6. What stays here is the anti-gutting fingerprint
+    # this case is really for: the numbered picker loop must still exist,
+    # ascending from 1, with the Team seat's slot last.
+    local mine
+    mine="$(grep -n '^for index in 1 2 3 4 5 6; do' "$CASCADE" || true)"
+    [ -n "$mine" ]
 }
 
 # --- 15: SYNTAX ---------------------------------------------------------
@@ -553,7 +553,7 @@ run_case "regression: future-dated report is UNKNOWN, never a skip" case_future_
 run_case "innocence: small clock skew is still a usable report" case_small_clock_skew_still_tolerated
 run_case "regression: timezone-less timestamp is UNKNOWN" case_naive_timestamp_is_unknown
 run_case "wiring: every real cascade label parses to a slot" case_real_cascade_labels_match_precheck
-run_case "cascade wiring: sourced, called, kill-switched, loop untouched" case_cascade_wiring
+run_case "cascade wiring: sourced, called, kill-switched, picker loop intact" case_cascade_wiring
 run_case "syntax: bash -n on seat_state.sh" case_syntax_bash
 run_case "syntax: zsh -n on claude-cascade.sh" case_syntax_zsh
 

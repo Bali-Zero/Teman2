@@ -75,6 +75,31 @@ export const PENDING_COOKIE_MAX_AGE_SECONDS = 600;
  */
 export const PENDING_COOKIE_PATH = "/visa/voa/auth";
 
+/**
+ * Clears the pending cookie. Same Path, or the browser keeps the old one.
+ *
+ * Lives HERE, not in `exchange/route.ts` where it was born, because BOTH
+ * routes out of the landing GET have to emit it and only one of them did.
+ * The landing GET's `!usable` branch returned the failure redirect with no
+ * cookie argument at all, so a malformed second link left an ALREADY-LIVE
+ * pending credential from a previous good link usable for the rest of its
+ * `PENDING_COOKIE_MAX_AGE_SECONDS` — from another tab, or a direct
+ * same-origin POST — while the customer was looking at a failure page.
+ * Bounded by that Max-Age and the token's own server-side TTL, which is why
+ * it was ledgered LOW rather than fixed in the PR that found it; it is fixed
+ * here because the funnel is about to stop being dark.
+ */
+export function expirePending(secure: boolean): string {
+  return [
+    `${PENDING_COOKIE}=`,
+    "HttpOnly",
+    `Path=${PENDING_COOKIE_PATH}`,
+    "Max-Age=0",
+    "SameSite=Lax",
+    ...(secure ? ["Secure"] : []),
+  ].join("; ");
+}
+
 /** The account cookie the backend mints; this flow forwards it verbatim. */
 export const ACCOUNT_COOKIE_PREFIX = "garuda_session=";
 

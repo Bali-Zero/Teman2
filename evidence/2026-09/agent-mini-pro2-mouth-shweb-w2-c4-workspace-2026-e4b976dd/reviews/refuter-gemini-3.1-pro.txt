@@ -1,0 +1,39 @@
+# Refuter — Gemini 3.1 Pro on the C4 diff
+
+seat: gemini-3.1-pro
+ok: true
+verdict: NO-GO (3 BLOCKER, 1 MAJOR, 1 MINOR)
+
+## Verbatim
+
+1. **LEAK**: BLOCKER
+File: `apps/mouth/src/app/(workspace)/lkpm/page.tsx`
+Line: `return <LkpmBatchClient taxConsultants={taxConsultants()} />;`
+Scenario: Props passed from Server Components to Client Components are serialized into the RSC flight payload. Because `LKPMBatchPage` (and `TeamPage`) takes no dynamic parameters (no `params`, `cookies()`, or `headers()`), Next.js treats the route as fully static. It statically generates the `.rsc` payload at build time, serializing the `taxConsultants` array (which contains the forbidden "Faisha") into it. This static `.rsc` asset is then served from the CDN, bypassing session checks just like the chunks did.
+Fix: Add `export const dynamic = "force-dynamic";` to the server wrappers so the RSC payload requires on-demand execution behind auth.
+
+2. **THE GUARD**: BLOCKER
+File: `apps/mouth/scripts/assert-roster-not-in-public-chunks.mjs`
+Line: `else if (p.endsWith(".js")) out.push(p);`
+Scenario: The walker strictly filters for `.js` files in `.next/static/chunks`. Because the leak was moved into the serialized props of a Server Component, the names now live in Next.js statically generated `.rsc` and `.html` files located in `.next/server/app/`. The guard completely ignores these file types and directories, meaning it will happily exit 0 while the names are still publicly exposed in the static RSC assets.
+Fix: Widen the walker to scan `.rsc` and `.html` files, and include `.next/server/app` in the scan path.
+
+3. **BEHAVIOUR**: MINOR
+File: `apps/mouth/src/lib/workspace/roster-directory.ts`
+Line: `if (photo) out[alias] = photo;`
+Scenario: The alias logic now depends on the base slug existing in `TEAM_ROSTER` with a valid photo. If a slug like "ari" is removed from the roster or loses its portrait, `out["ari"]` will be undefined, and the alias `"ari.firda"` will be silently skipped. The old hand-written map unconditionally guaranteed `"ari.firda": "/static/team/ari.jpg"` regardless of the roster's state. 
+Fix: Acknowledge this as a feature of having a single source of truth, or hardcode fallbacks for the aliases if they must survive roster deletions.
+
+4. **THE SERVER/CLIENT SPLIT**: MAJOR
+File: `apps/mouth/src/app/(workspace)/clients/[id]/page.tsx`
+Line: `return <ClientDetailClient taxConsultants={taxConsultants()} />;`
+Scenario: `ClientDetailClient` calls `useSearchParams()`. In the Next.js App Router, a `"use client"` component that calls `useSearchParams()` must be wrapped in a `<Suspense>` boundary; otherwise, it throws a build error or forces the entire route to de-opt to client-side rendering. Moving the component behind a raw Server Wrapper without adding that boundary violates this constraint.
+Fix: Wrap the client component in the server wrapper: `return <Suspense fallback={null}><ClientDetailClient taxConsultants={taxConsultants()} /></Suspense>;`
+
+5. **CORRECTNESS**: BLOCKER
+File: `apps/mouth/src/app/(workspace)/team-management/TeamManagementClient.tsx`
+Line: `-                          src={getTeamPhoto(member.email)!}`
+Scenario: The `getTeamPhoto` function signature was changed to require two arguments (`photos` and `email`), but the `<Image>` component's `src` prop was left using the 1-argument signature (or deleted without replacement, as the truncated diff shows no addition). This is a type hole that breaks the build or causes a runtime crash.
+Fix: Update the prop to `src={getTeamPhoto(teamPhotos, member.email)!}`.
+
+VERDICT: NO-GO. The fix merely moved the leaked names from JS chunks to static RSC payloads which the guard is entirely blind to, while introducing Suspense boundary violations and type holes.

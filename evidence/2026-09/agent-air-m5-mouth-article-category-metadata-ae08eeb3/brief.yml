@@ -1,0 +1,20 @@
+task_id: article-category-metadata
+gear: 2
+l_level: L2
+gate_class: opus
+objective: Prevent unknown article categories from overriding the not-found boundary with indexable article metadata.
+constraints:
+  - Change only article generateMetadata and focused tests; preserve layouts, category mappings and editorial content.
+  - Preserve valid canonical categories, declared aliases, localized lookups and article.noIndex behavior.
+acceptance:
+  - text: WHEN a category is unknown the article metadata SHALL be nonindexable without looking up an article.
+    probe: page.metadata.test.tsx
+  - text: WHEN the category is canonical or a declared alias the article metadata SHALL retain the existing article behavior.
+    probe: page.metadata.test.tsx
+  - text: WHEN an article has noIndex or is missing the route SHALL retain its existing exclusion or not-found behavior.
+    probe: page.metadata.test.tsx
+consumer_map:
+  - Article-route generateMetadata for /[category]/[slug], including /blog/bali-digital-nomad-complete-guide.
+risks:
+  - Focused metadata tests do not prove a deployed rendered head; independent review and production proof remain pending.
+grader: Independent Anthropic review requested from the Fable consul; no verdict asserted here.

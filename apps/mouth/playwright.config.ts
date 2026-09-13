@@ -102,7 +102,7 @@ export default defineConfig({
           NEXT_PUBLIC_VISA_ORACLE_WHATSAPP_NUMBER: "628123456789",
         },
         reuseExistingServer: !process.env.CI,
-        timeout: 180 * 1000,
+        timeout: 300 * 1000,
         stdout: "pipe",
         stderr: "pipe",
       },

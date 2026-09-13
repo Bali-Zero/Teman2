@@ -2,7 +2,7 @@
 organs_registry.yaml (Innervation Genoma — file renamed 2026-05-08 IG-3
 from `genome.yaml`).
 
-Cicatrix ref: STRUCTURAL P1 in `.claude/rules/cicatrix-scars.md` line 8 —
+Cicatrix ref: STRUCTURAL P1 in `docs/scars/cicatrix-scars.md` line 8 —
 13 launchd labels firing simultaneously on Pro + Mini. Once the cleanup PR
 ships (this one), no `recovery_params.label` should appear with both
 `host: pro` AND `host: mini`. An empty whitelist enforces that.

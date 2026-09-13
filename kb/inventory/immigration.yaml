@@ -1,10 +1,22 @@
 # kb/inventory/immigration.yaml — Lane A (immigration & visa), KB current-live campaign
 # MANDATE.md §2, third artifact. `kind: topic` — what the store ACTUALLY holds,
 # measured directly against production Qdrant (legal_unified, physical
-# legal_unified_hybrid_hybrid) on 2026-08-25 by lane A. Every count below came from a
-# live scroll/count against that collection in this session — none inherited
-# unverified from kb/inventory/legal_unified_2026.yaml (the retired-collection
-# triage), though several conclusions independently corroborate it.
+# legal_unified_hybrid_hybrid). Every count below came from a live scroll/count
+# against that collection — none inherited unverified from
+# kb/inventory/legal_unified_2026.yaml (the retired-collection triage), though
+# several conclusions independently corroborate it.
+#
+# RE-MEASURED 2026-09-04 (`scripts/kb/kb_inventory_probe.py kb/inventory/immigration.yaml
+# --json`, run on the Pro against production). The 2026-08-25 baseline read DRIFT, and
+# the cause is known rather than mysterious: `data/kb_sources/2026_updates/` was ingested
+# on 2026-09-04 (16 of 21 documents, 5,022 chunks), which added points to two of this
+# topic's own instruments — Permen_22_2023 402→434 and Permen_11_2024 345→390 — and
+# rewrote the payload-shape mix for the topic (modern_id_only 1103→356, modern_full
+# 413→1237) as the newer ingest generation writes the document_id+chunk_key+section
+# triple where the older one wrote document_id alone. NO instrument LOST points, and the
+# eight instruments not touched by that batch are byte-for-byte at their 2026-08-25
+# counts. This commit records the new ground; it does not re-audit the completeness
+# verdicts below, which still rest on the 2026-08-25 evidence their own notes describe.
 #
 # payload_shapes vocabulary is CLOSED and imported by the CI gate from
 # scripts/kb/kb_inventory_probe.py::PAYLOAD_SHAPES — never restated here.
@@ -13,17 +25,17 @@ schema_version: 1
 kind: topic
 lane: A
 topic: immigration
-measured_at: "2026-08-25"
+measured_at: "2026-09-04"
 
 measured_against:
   collection: legal_unified
-  points: 1868
+  points: 1945
   payload_shapes:
     legacy_metadata_text: 352
     orphan_no_identity: 0
-    modern_id_only: 1103
+    modern_id_only: 356
     modern_id_chunk: 0
-    modern_full: 413
+    modern_full: 1237
 
 instruments:
   - id: UU_6_2011
@@ -58,10 +70,16 @@ instruments:
       against the official amendment's article list", not on any found damage.
 
   - id: Permen_22_2023
-    points: 402
+    points: 434
     present: true
     complete: true
     note: >-
+      434 points as re-measured 2026-09-04, up from the 402 measured 2026-08-25: the
+      2026-09-04 `2026_updates/` batch re-ingested this instrument's own source file
+      (`Permenkumham_22_2023_Visa_dan_Izin_Tinggal.pdf`) under a newer chunking. The
+      2026-08-25 evidence below describes the 402-point generation and is NOT restated
+      as proven of the 32 added points — no one has scrolled those.
+
       402 points, shape `modern_id_only`. Golden Visa provisions (BAB VI Pasal 198,
       BAB V Pasal 184) confirmed present verbatim by direct scroll+substring search
       of all 402 points — this is the strongest completeness evidence in this
@@ -75,10 +93,15 @@ instruments:
       kb/journeys/immigration.yaml for the retrieval consequence this causes.
 
   - id: Permen_11_2024
-    points: 345
+    points: 390
     present: true
     complete: true
     note: >-
+      390 points as re-measured 2026-09-04, up from the 345 measured 2026-08-25, for
+      the same reason as Permen_22_2023 above: the 2026-09-04 `2026_updates/` batch
+      re-ingested `Permenkumham_11_2024_Perubahan_Visa_dan_Izin_Tinggal.pdf`. The
+      identity evidence below still holds; the 45 added points are recorded, not audited.
+
       345 points, shape `modern_id_only`. Identity confirmed both by the ingest's
       own CONTEXT-header text and by cross-reference from Permen_22_2023's official
       page (names this as the regulation that amends it). No journey targets this
@@ -332,6 +355,45 @@ open_findings:
       tuning — no amount of re-ranking legal_unified surfaces a token it does not
       contain.
     severity: medium
+
+  - id: LANE-A-7
+    title: "The metadata extractor names the first law CITED in a preamble as the document's own identity — 1,402 points purged from production 2026-09-04"
+    owner: "Lane P (parser capability) — the cure is in the extractor, not in a data edit"
+    detail: >-
+      MEASURED 2026-09-04 by a full scroll of legal_unified_hybrid_hybrid (87,149 points,
+      6,759 of them from `data/kb_sources/2026_updates/`), grouping every 2026_updates
+      point by (source file, document_id). Seven document_ids named an instrument the
+      file is NOT: PP 9/2026 (THR) carried `UUD_17_2003` (105 pts) and `UU_17_2026`
+      (58 pts — a law that does not exist); Pergub Bali 14/2023 carried `UU_14_2023`
+      (954 pts); SE Gubernur Bali 09/2025 carried `PP_18_2025` (114) and `SE_18_2008`
+      (114); Perpres 157/2024 — the regulation that CREATES the Kementerian Imigrasi
+      dan Pemasyarakatan, hence this lane's interest — carried `Perpres_39_2024` (46);
+      Kepmen MIP 19/2025 carried `UU_28_2025` (11). The mechanism is the same shape as
+      LANE-A-1's `legal_status` defect and belongs to the same superscar family #3
+      (guard-over-match): identity decided by first-match against text, with no check
+      that the matched instrument is the one the file IS. The live consequence was
+      reproduced before the purge: `ask_legal` on PP 9/2026 cited "UU No. 17 Tahun 2026",
+      an instrument that does not exist.
+
+      DISPOSITION, carried out (owner-authorized 2026-09-04, `operator[consent]`): the
+      1,402 points above were deleted from production by point id, after a full
+      snapshot of ids+payloads to `~/logs/purge_snapshot_2026_updates_20260904.jsonl`
+      on the Pro, and PP 9/2026, SE Gub Bali 09/2025 and Kepmen MIP 19/2025 — the three
+      files left at zero points — were re-ingested under #5649, which declares
+      `document_id` explicitly for all 21 laws so the extractor is no longer consulted
+      for identity. NONE of the seven purged ids is an instrument of this inventory, so
+      no count above moved because of the purge. Perpres 157/2024 and Pergub Bali
+      14/2023 were deliberately NOT re-ingested: their correct-identity points (48 and
+      1,223) survived the purge, and re-ingesting would have created a second generation
+      under #5649's longer id spelling for content already present.
+
+      OPEN, and the reason this is a finding rather than a closed repair: #5649 declares
+      `Permenkumham_22_2023` / `Permenkumham_11_2024`, while production and this
+      inventory both use the short form `Permen_22_2023` / `Permen_11_2024`. Any future
+      re-ingest of those two source files under #5649 will write a SECOND document_id
+      for instruments this file tracks by the short one. Nothing reconciles the two
+      spellings today.
+    severity: high
 
   - id: LANE-A-6
     title: "hak pakai / property-tenure mechanics for second-home KITAS are absent from legal_unified's lane-A corpus"

@@ -1,0 +1,142 @@
+task_id: craft-h-l02-pr1-scar-cold-storage
+gear: 3
+l_level: L1
+gate_class: opus
+objective: |
+  Take the scar corpus out of the turn-1 injected context surface without losing
+  a byte of it, and leave behind something that can tell when it comes back.
+
+  Measured on 2026-08-31, before this diff: a session on M5 received 783,444
+  bytes before the first user turn — the global CLAUDE.md (27,377), the repo
+  CLAUDE.md (45,826) and every file in `.claude/rules/` (710,241), of which
+  692,852 were two scar bodies. Roughly 190-220K tokens, paid by every session
+  AND every subagent, for a corpus almost none of them read in full. The wave-2
+  plan's Lever 1 calls this the single largest change available to "what every
+  session has in its head at turn 1" (§3.1, L02-PR1).
+
+  This diff moves both bodies to `docs/scars/`, repoints every consumer, and
+  adds the guards that make the reduction durable rather than momentary. It
+  deletes and summarises nothing: the corpus is byte-identical, `git mv`,
+  reachable by `scar query` and grep exactly as before.
+
+  Gear 3 by PATH, not by ambition. The lane spec calls this PR Gear 2 and that is
+  what this brief first declared; the deterministic floor recomputed from the real
+  52-file changed set is 3, because the diff touches `.github/workflows/`. The
+  floor is a lower bound computed from the diff and never the conductor's choice,
+  so it is honored rather than argued with — and it is what pulled a SECOND
+  cross-family council seat (Kimi K3) onto this diff, after Codex sol had already
+  found twelve real defects in it. The rule earned its keep here.
+constraints:
+  - "RELOCATE, never delete or compress. The failure-memory corpus is an asset
+    the organism uniquely owns; the problem is where it sits, not that it exists.
+    Both files move under `git mv` with content untouched."
+  - "The 14 KB bridge `.claude/rules/cicatrix-superscar.md` STAYS injected —
+    being in the window is its entire job — and its content is out of scope here.
+    It has 2 bytes of headroom under its own 14,000-byte budget, so it cannot be
+    annotated in this PR at all; the location note it deserves lands with L10-PR3
+    (the prune), which the L02 spec already sequences after this PR."
+  - "The budget number is NOT decided here. 120,000 bytes is the wave-2 plan's
+    §6.3 default, carried as a named INTERIM constant, editable in one line, and
+    it NOTICEs rather than FAILs. What fails hard is the membership pin — a new
+    file appearing in `.claude/rules/` undeclared."
+  - "No PII. The diff touches doctrine, guards and path strings only."
+  - "Workflow-class diff: three files under `.github/workflows/` change. Per the
+    wave-2 rules those get Codex sol blind refutation + actionlint + the lease,
+    and auto-merge stays OFF — the conductor merges on gates-green evidence."
+acceptance:
+  - text: >-
+      WHEN the move has landed, `.claude/rules/` SHALL contain exactly the five pinned files, and 
+      the injected surface SHALL read 90,592 B where it read 783,444 B before.
+    probe: "python3 scripts/injected_surface_attest.py"
+  - text: >-
+      WHEN the corpus has moved out of `.claude/rules/`, retrieval SHALL be unchanged for both hal
+      ves, which now live in different directories.
+    probe: "python3 scripts/scar_query.py W76 --titles"
+  - text: >-
+      IF a guard in this PR cannot be made to fail by mutating the code it guards, it SHALL NOT co
+      unt as a guard.
+    probe: "PYTHONDONTWRITEBYTECODE=1 python -B -m pytest scripts/tests/test_injected_surface_budget.py scripts/tests/test_injected_surface_attest.py -p no:cacheprovider"
+  - text: >-
+      WHERE any tracked code or config still resolves the old path, CI SHALL go red rather than th
+      e author's grep being trusted.
+    probe: "pytest scripts/tests/test_injected_surface_budget.py::test_no_stale_resolvers_point_to_moved_scars"
+  - text: >-
+      WHILE this diff touches `.github/workflows/`, the new guards SHALL actually execute on a PR 
+      rather than merely being listed.
+    probe: "actionlint .github/workflows/immune-enforcement.yml"
+consumer_map:
+  - "`.claude/rules/` — the auto-injected directory itself. Consumer: the Claude
+    Code harness, at turn 1, for every session and every subagent on all three
+    machines. This is the surface the PR exists to shrink, and the one the bite
+    observation measures."
+  - "`scripts/scar_query.py` — the retrieval half. Now resolves TWO directories
+    (bodies in docs/scars, bridge in .claude/rules) because they no longer live
+    together; `--rules-dir` is kept as a deprecated alias so older wrappers and
+    muscle memory keep working."
+  - "12 load-bearing resolvers repointed: `.husky/pre-commit`, `.prettierignore`
+    (the W112 antibody — unpointed, Prettier resumes corrupting scar records),
+    `infra/launchagents/cicatrix_autoarchive.sh` + its installer,
+    `scripts/check_cicatrix_size.sh`, `scripts/agent-library-evolver-run.sh`,
+    `scripts/exclude_cicatrix_from_context.sh`, `scripts/lint_scar_number_collision.py`,
+    `scripts/archive_cicatrix_scars.py`, `scripts/_evidence_lint.py`,
+    `agent-library/learn/lesson_harvester.py`, `apps/evaluator/core_guardian/{learn,bootstrap_learn}.py`,
+    plus the two cicatrix guards and `.claude/commands/scar.md`."
+  - "3 workflow path-filters/allowlists: `check-cicatrix-scar-pointers.yml`,
+    `p7-lesson-harvester.yml`, `lint-cross-import.yml` (comment only)."
+  - "`scripts/tests/test_injected_surface_budget.py` — NEW, runs in CI on every
+    PR. Membership pin FAILs; byte budget NOTICEs; anti-regrowth scan FAILs."
+  - "`scripts/injected_surface_attest.py` + `scripts/hooks/injected_surface_sessionstart.sh`
+    — NEW. The machine-local probe: it sees the global CLAUDE.md and the machine's
+    own `claudeMdExcludes`, neither of which exists on a CI runner. Runnable
+    standalone (that is how the three-machine bite is observed); registering it as
+    a SessionStart hook is `operator[control-plane]` on three HOME copies and is
+    fenced in PENDING-ARMS, not claimed here."
+risks:
+  - "19 of the repointed references are prose in docstrings, comments and
+    markdown rather than runtime resolvers. Repointing them is deliberate — a
+    comment that names a path IS a pointer, and one that dangles sends the next
+    reader to a file that is not there — but it inflates the file count of this
+    diff well beyond its behavioural blast radius. Four of them are existing rows
+    in `.claude/skills/modus/PENDING-ARMS.md`: path-only corrections to rows other
+    squads own, no semantic change, named here so nobody reads it as a ledger edit."
+  - "The diff is ~640 net lines, above the ~400 guideline. It does not split: the
+    move and its repoints are atomic (any intermediate state leaves consumers
+    reading a file that is not there), and the guards must land WITH the move or
+    nothing pins it. 557 of the insertions are the three new instrumented
+    artifacts; the remaining ~30 files are one-line path edits."
+  - "`scripts/lint_scar_number_collision.py` reads `git show origin/main:<file>`,
+    and on THIS PR origin/main still carries only the old path. A dated
+    `LEGACY_FILE` fallback covers that single merge window, with its own
+    delete-condition written at the constant. Verified live: the new path returns
+    rc=128 on origin/main and the fallback reads 291,970 bytes / 65 W-numbers."
+  - "`.claude/rules/cicatrix-superscar.md` sits at 13,998 of its 14,000-byte
+    budget. Any future PR that wants to add a line there must prune first; this
+    one deliberately does not touch it."
+  - "`actionlint` reports SC2034 (`rc appears unused`) on
+    `.github/workflows/lint-cross-import.yml:74`. Verified pre-existing: the
+    identical finding reproduces on `git show origin/main:` of the same file, and
+    this diff's only change to it is a one-line comment path. Not fixed here —
+    it is a different concern and fixing it would widen a workflow-class diff."
+grader: |
+  generator != grader, enforced by construction. The new CI guard
+  (`test_injected_surface_budget.py`) was authored by kimi-for-coding, the
+  non-Anthropic build lane — D3 is satisfied by a real seat, never by
+  `seat_override`. This session graded it and rejected two defects before it ran:
+  its anti-regrowth scan matched its OWN `_NEEDLE` literal (a guaranteed red, the
+  W108 shape where the guard that forbids a string ends up writing it), and it did
+  not scan `.claude/` at all, which is exactly where the scar command and the
+  bridge point from. A third defect survived into the first green run and was
+  caught by mutation rather than by reading: its docstring test matched the
+  summary line "Structural and delivery attestation ...", so deleting the
+  explanation underneath left it green — a guard that could not fail for the
+  reason it existed. It is now anchored to the docstring BODY and mutation-proved.
+
+  The cross-family adversarial refutation on the staged diff is Codex GPT-5.6 sol
+  at xhigh effort, read-only sandbox, given the diff rather than a narrative and
+  instructed to hunt missed consumers, guards that cannot fail, exemptions that
+  are holes, and false measured claims in the new headers.
+budget: |
+  One Claude seat (M5, orchestrator + gate), one non-Anthropic build lane
+  (kimi-for-coding), one cross-family refuter (Codex sol). Flat-subscription
+  seats only; no metered API spend. Gear 2 -> xhigh effort.
+pii: none

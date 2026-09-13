@@ -4,7 +4,7 @@ verdict from a null-comparison on `autoMergeRequest` in isolation.
 
 WHY THIS EXISTS (measured this session, 2026-08-29, against this repo).
 The GitHub merge queue has a documented, live-measured trap (cicatrix
-W111/W123, `.claude/rules/cicatrix-scars.md` and `-superscar.md` family
+W111/W123, `docs/scars/cicatrix-scars.md` and `.claude/rules/cicatrix-superscar.md` family
 #2): `autoMergeRequest` reads `null` for TWO opposite reasons — (1) the
 request was never armed, or (2) the queue just ACCEPTED it (the field is
 consumed on entry). A file that compares `autoMergeRequest` to null/None

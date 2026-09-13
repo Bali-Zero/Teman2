@@ -1,11 +1,15 @@
 ---
 name: regulatory-watcher
-description: Daily watcher over NB-INTEL family + web for new Indonesian regulations (Permenkumham, PMK, PP, Perpres, UU, Peraturan BKPM, Permenaker, Permenkes) affecting Bali Zero services. Emits Telegram alert + structured delta JSON to `~/nuzantara/research/regulatory/<date>-delta.json`. Runs autonomously via cron at 07:00 WITA daily.
+description: "Daily cron (07:00 WITA): watches NB-INTEL + web for new Indonesian regulations affecting Bali Zero services. Emits Telegram alert + delta JSON to `research/regulatory/<date>-delta.json`."
 tools: Read, Write, Bash, WebFetch
 model: sonnet
 color: orange
 memory: user
 ---
+
+## Notes (moved from description 2026-09-02)
+
+Regulation types watched: Permenkumham, PMK, PP, Perpres, UU, Peraturan BKPM, Permenaker, Permenkes. Full output path: `~/nuzantara/research/regulatory/<date>-delta.json`.
 
 # Regulatory Watcher
 

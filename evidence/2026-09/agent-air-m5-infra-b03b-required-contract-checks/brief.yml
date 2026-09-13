@@ -1,0 +1,26 @@
+task_id: b03b-required-contract-checks
+gear: 3
+objective:
+  Make the required mouth CI leg compile generated contract consumers and explicitly route product
+  contract edits to both backend and frontend tests.
+constraints:
+  - Change only the five assigned CI/test/documentation files and lane evidence.
+  - Preserve frontend matrix, needs, cancellation and fail-open behavior. No runtime or frozen contract
+    edits.
+  - Existing OAuth reviewers only; no PII, paid API keys or production actions.
+acceptance:
+  - text:
+      WHEN a contract path changes, CI SHALL select backend and mouth explicitly; unknown siblings SHALL
+      remain fail-open.
+    probe: scripts/ci/test_change_map.py
+  - text:
+      WHEN the required mouth leg runs, it SHALL compile after freshness and before coverage without
+      swallowing errors.
+    probe: scripts/tests/test_required_context_map.py
+  - text: WHEN checked against the current contract, generated types and full mouth TypeScript SHALL pass.
+    probe: .github/workflows/tests.yml
+consumer_map:
+  - "Frontend Tests (Next.js) (mouth, true): mouth-typecheck step."
+  - Required antidotes job runs test_required_context_map.py on the candidate checkout.
+  - Backend shard corpus contains the live GARUDA OpenAPI parity test.
+grader: Independent Anthropic gate by Fable remains pending.

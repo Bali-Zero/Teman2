@@ -1,0 +1,453 @@
+task_id: clients-phone-core-expression-indexes
+gear: 3
+gate_class: opus
+brief_ref: evidence/brief.yml
+council_run: council-journal.jsonl
+
+seat_override: >-
+  R9 quorum (>=2 distinct review seats from (codex-gpt-5.6-sol, kimi-code/k3,
+  tp1-qwen3.8-max) marked ok:true) is NOT met — only kimi-code/k3 judged. This
+  is a real shortfall, not an owner-is-builder exception (that claim appeared
+  in a sibling-race pack.yml overwritten by this one; verified false — commit
+  3f7906cc06 carries `Co-Authored-By: Claude Fable 5.1`, an agent build, not
+  Zero typing directly). codex-gpt-5.6-sol was attempted TWICE: attempt 1
+  (2026-09-09T17:36:16Z-17:46:12Z, `codex exec --sandbox read-only "<prompt>"`)
+  timed out at 600s with only its own internal pytest tool-call failing
+  (`FileNotFoundError: No usable temporary directory found` — read-only
+  sandbox had no writable TMPDIR); attempt 2
+  (2026-09-09T17:49:34Z-17:59:34Z, `TMPDIR=/tmp/codex-6048 codex exec
+  --sandbox read-only --skip-git-repo-check -` with the prompt on stdin,
+  fixing the TMPDIR issue) again timed out at 600s, this time mid-exploration
+  of an unrelated file (schema_audit.py) with no verdict reached. The third
+  seat tp1-qwen3.8-max has no dedicated CLI on this machine; the only match
+  for `which qwen tp1` is the generic Qwen Code CLI, which returned
+  `API Error: 403 Access to model denied` at 2026-09-09T17:46:08Z, matching
+  this session's own SessionStart arsenal probe showing both qwen-cloud-code
+  and tp1-qwen3.8-max as broken (UNKNOWN_ERR, 10h stale at session start).
+  All four attempts are journaled in council-journal.jsonl with real
+  timestamps. This build seat independently re-verified every one of
+  kimi-code/k3's 7 findings against the actual code (see dissent below) and
+  found no P1 and nothing requiring a code change — the single-seat review is
+  substantive, not a rubber stamp, but it is one seat, not two, and this pack
+  says so plainly rather than inventing a second one.
+
+lanes:
+  - lane: build
+    role: build
+    seat: claude-fable-5.1
+    note: >-
+      PR #6048 code author (migration + parity test + brief), commit
+      3f7906cc06 (`Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>`).
+      Commit message notes an independent verifier caught the test's own
+      parents[3]->parents[2] path bug before this commit (4 passed after).
+  - lane: evidence-pack
+    role: review
+    seat: claude-sonnet-5 (this worktree session, build seat for the pack)
+    note: >-
+      Ran A1-A3 acceptance probes, read the migration runner and
+      UPSERT_MATCH_SQL/client_repository.py to ground the council prompt,
+      convened and journaled the council, independently verified every
+      finding against the tree, authored this pack.
+  - lane: independent-diff-review
+    role: review
+    seat: codex-gpt-5.6-sol
+    note: >-
+      Two attempts, both timed out at 600s with no verdict (non-judgement;
+      see council-journal.jsonl and seat_override above for detail).
+  - lane: independent-diff-review-2
+    role: review
+    seat: kimi-code/k3
+    note: >-
+      Full adversarial review, self-verified against the actual worktree
+      (ran the parity test itself, 4 passed). BLOCKING:no. 7 findings,
+      P2/P3 only, none requiring a code change — see dissent below.
+  - lane: independent-diff-review-3
+    role: review
+    seat: tp1-qwen3.8-max
+    note: "Attempted per instruction; HTTP 403 access denied. non-judgement."
+  - lane: final-gate
+    role: review
+    seat: claude-opus-5
+    note: "Pending — gate_verdict is added by the final-gate seat, not here."
+
+spend:
+  wall_clock_hours: 1.2
+  adversarial_rounds: 4
+
+appetite_exceeded: none
+
+pii_scan: clean
+pii_scan_note: >-
+  `git diff origin/main...HEAD` grepped for phone/email/passport/KTP/NPWP/
+  WhatsApp-shaped literal patterns (9+ digit runs, +62/0-prefixed numbers,
+  an email regex, case-insensitive passport/ktp/npwp) — zero matches (grep
+  exit 1). The diff is index/column DEFINITIONS and SQL text only; the
+  parity test compares SQL TEXT (UPSERT_MATCH_SQL vs the migration's CASE
+  expressions) and never queries, selects or prints a `clients` row. No
+  SELECT against `clients` was run by this build seat at any point.
+
+receipts:
+  - probe: A1
+    claim: >-
+      WHEN test_migration_308_phone_core_index_parity.py is run SHALL pass
+      all four cases (expression-parity, per-column coverage, rollback
+      symmetry, one-character-drift guilt).
+    cmd: >-
+      cd apps/backend-rag && PYTHONPATH=.:../crm-cell .venv/bin/python -m
+      pytest backend/tests/migrations/test_migration_308_phone_core_index_parity.py
+      -p no:cacheprovider
+    result: "4 passed, 1 warning in 0.61s"
+    exit: 0
+    ts: "2026-09-09T17:33:04Z"
+    seat: claude-sonnet-5 (build)
+
+  - probe: A2
+    claim: >-
+      lint_migration_rollback.py, lint_migration_numbers.py, ruff check and
+      ruff format --check on the new test file SHALL all report zero
+      violations.
+    cmd: >-
+      python3 scripts/lint_migration_rollback.py && python3
+      scripts/lint_migration_numbers.py && ruff check
+      apps/backend-rag/backend/tests/migrations/test_migration_308_phone_core_index_parity.py
+      && ruff format --check
+      apps/backend-rag/backend/tests/migrations/test_migration_308_phone_core_index_parity.py
+    result: >-
+      "✅ migration-rollback lint: 180 post-cutoff migrations, all have
+      ROLLBACK marker" / "✅ migration-numbers lint: 185 files, all unique
+      prefixes" / "All checks passed!" / "1 file already formatted"
+    exit: 0
+    ts: "2026-09-09T17:33:09Z"
+    seat: claude-sonnet-5 (build)
+
+  - probe: A3
+    claim: >-
+      The deterministic gear floor recomputed from this PR's own
+      changed-file set equals 3, matching the declared gear exactly.
+    cmd: >-
+      git diff --name-only origin/main...HEAD > /tmp/p6048_changed && find
+      evidence/2026-09/agent-nuzantara-backend-phone-core-indexes-a007f7e5
+      -type f >> /tmp/p6048_changed && git diff --numstat
+      origin/main...HEAD > /tmp/p6048_numstat && python3
+      scripts/evidence_pack_lint.py --print-floor --changed-files-file
+      /tmp/p6048_changed --numstat-file /tmp/p6048_numstat
+    result: "3"
+    exit: 0
+    ts: "2026-09-09T17:33:12Z"
+    seat: claude-sonnet-5 (build)
+    note: >-
+      changed-files-file lists the 2 code files plus brief.yml (3 total);
+      numstat: 56/0 for the migration, 78/0 for the test file.
+
+  - probe: slot-308-free
+    claim: Migration slot 308 is still free on origin/main (no collision).
+    cmd: >-
+      git ls-tree --name-only origin/main
+      apps/backend-rag/backend/db/migrations_v2/ | grep -E "^.*/308_"
+    result: "(no output — no 308_* file on origin/main; 306/307 exist, 308 does not)"
+    exit: 1
+    ts: "2026-09-09T17:19:20Z"
+    seat: claude-sonnet-5 (build)
+    note: "exit 1 is the expected/correct outcome for an absence grep."
+
+  - probe: gate-ci-state
+    claim: >-
+      CI state observed by the final-gate seat on branch head
+      747d24f62c0ed4207fba1d6172e8a577ad13c231.
+    cmd: "gh pr view 6048 --json headRefOid,statusCheckRollup"
+    result: >-
+      head=747d24f62c0ed4207fba1d6172e8a577ad13c231; 71 SUCCESS, 6 SKIPPED,
+      1 NEUTRAL, 4 FAILURE. "Backend (Python)"=success. Reds: "Harness floor
+      recompute" (job 102579016682, red by construction until this verdict is
+      posted); "E2E Tests (Playwright)" (job 102579447615) and "Visa Oracle
+      fullstack smoke" (job 102579447507), both failing in step "Install
+      Playwright browsers" with `E: Failed to fetch
+      https://dl.google.com/linux/chrome-stable/deb/dists/stable/main/binary-amd64/Packages.gz
+      Hash Sum mismatch` = infrastructure noise, repo-wide today; "Test
+      Summary" (job 102582837045) fails only because it aggregates E2E
+      (E2E_RESULT: failure, every other required result success/skipped).
+    exit: 0
+    ts: "2026-09-09T18:10:50Z"
+    seat: claude-opus-5
+
+dissent:
+  - seat: kimi-code/k3
+    objection: >-
+      (F1, P2, not blocking) No proof the planner actually adopts the three
+      expression indexes — the PR asserts "BitmapOr of three index probes"
+      but ships no EXPLAIN output; on a 12k-row table the planner could in
+      principle still pick a seq scan and nobody would know, since the
+      parity test only pins text, not the plan.
+    status: PLAUSIBLE
+    disposition: >-
+      No code change. Verified via `gh pr view 6048`: the PR body's own
+      `Bites:` section already commits exactly this observation post-deploy
+      — `SELECT idx_scan FROM pg_stat_user_indexes WHERE indexrelname LIKE
+      'idx_clients_phone_core_%'` expected >0 and growing while `seq_scan`
+      on `clients` plateaus, plus `fly_instance_cpu_balance` recovery within
+      24h. The council prompt did not include the PR body, so the seat could
+      not see this; the gap it names is real in isolation but already
+      covered by an existing, committed artifact.
+  - seat: kimi-code/k3
+    objection: >-
+      (F2, P3) The parity test pins only UPSERT_MATCH_SQL. Two other hot
+      queries in client_repository.py — DUP_OWNER_SQL (create-dedup
+      pre-check) and CORE_OWNER_IDS_SQL (upload-ownership re-proof) —
+      express the identical phone-core logic through a `WITH norm AS (...)`
+      CTE with aliases (dn/dr/dw) and `= ANY($1::text[])`, textually
+      different from the pinned query, so the tripwire cannot and does not
+      cover them; a future rewrite that defeats CTE inlining could silently
+      lose any incidental index service to these two.
+    status: CONFIRMED
+    disposition: >-
+      No code change — declared OUT-OF-SCOPE RESIDUAL. Verified against
+      `apps/backend-rag/backend/db/repositories/client_repository.py`
+      lines 19-72: the CTE-aliased shape is real and textually distinct, so
+      the parity test structurally cannot pin it (by design — its docstring
+      names only "the query", singular). This PR's mandate (brief.yml,
+      PR body) is the MEASURED wa-mirror-driven UPSERT_MATCH_SQL hot path
+      (0.6 upserts/s sustained, 2.54M seq scans measured) specifically;
+      DUP_OWNER_SQL/CORE_OWNER_IDS_SQL run on lower-frequency create/upload
+      paths that were not part of the measured incident. The new indexes
+      may incidentally serve them once Postgres inlines the single-use,
+      non-MATERIALIZED CTE (pulling the subquery's WHERE up so the CASE
+      expressions dereference the raw columns) — unverified, not claimed by
+      this PR, and left here as a residual for a future PR if those paths
+      are ever themselves measured hot.
+  - seat: kimi-code/k3
+    objection: >-
+      (F3, P3) The migration comment's "canonical phone_core" framing is
+      overstated: the SQL CASE has no minimum-length guard, while
+      `backend.phone_lock.phone_core` returns None below 6 digits.
+    status: PLAUSIBLE
+    disposition: >-
+      No code change. Verified against `backend/phone_lock.py:27-42`:
+      `phone_core()` does enforce `len(digits) >= 6 else None`; the inline
+      SQL CASE (in UPSERT_MATCH_SQL, unchanged by this PR) has no such
+      guard. Harmless for index correctness — $1 is always produced by
+      Python's `phone_core()` before the query runs, so a sub-6-digit value
+      never reaches the placeholder. The migration comment's phrase points
+      at the concept/module the SQL mirrors, not a literal-equivalence
+      claim; not worth a comment edit for a pre-existing, unchanged query.
+  - seat: kimi-code/k3
+    objection: >-
+      (F4, P2, not blocking) Non-CONCURRENTLY CREATE INDEX takes a SHARE
+      lock on `clients`, conflicting with ROW EXCLUSIVE (every upsert/
+      create/update transaction) and SHARE UPDATE EXCLUSIVE (autovacuum);
+      `lock_timeout=5s` makes the deploy fail-closed on contention, and
+      while the SHARE request queues, new writers queue behind it too (up
+      to a ~5s stall on POST /api/crm/clients/* during deploy).
+    status: CONFIRMED
+    disposition: >-
+      No code change. Matches this build seat's own reading of
+      `migration_base.py`'s `apply()` (single asyncpg transaction, whole
+      file as one exec, non-CONCURRENTLY is the only option this runner
+      permits since CONCURRENTLY cannot run in a transaction block at all)
+      and matches brief.yml's own stated constraint verbatim. Failure mode
+      is fail-closed and retryable: transaction aborts, `apply_all_pending`
+      records the failure, `cmd_apply` exits 1, `release_command` fails,
+      Fly release aborts, old machines keep serving, DB state untouched.
+      Accepted, declared risk — not a defect.
+  - seat: kimi-code/k3
+    objection: >-
+      (F5, P3) Two runner footnotes: `IF NOT EXISTS` is keyed on index
+      NAME not expression (a same-named, differently-defined stale index
+      would silently survive a re-run after a manual ledger clear); and
+      `BaseMigration.apply()` opens its own connection without the pool's
+      60s `command_timeout`.
+    status: CONFIRMED
+    disposition: >-
+      No code change. Both verified against `migration_base.py` and are
+      pre-existing properties of the runner, not introduced by this
+      migration; `lock_timeout=5s` already bounds the only wait relevant
+      here (index build on a 50MB table).
+  - seat: kimi-code/k3
+    objection: >-
+      (F6, P3) Index bloat / write amplification from three new expression
+      indexes on a table with frequent upserts.
+    status: CONFIRMED
+    disposition: >-
+      No code change. Verified by arithmetic: ~12k rows x ~30-40 bytes/entry
+      < 1MB per index vs. a 50MB table; phone columns change rarely (a
+      trigger only recomputes `phone_normalized` on `UPDATE OF phone`), so
+      most upserts leave these expression indexes untouched and HOT updates
+      mostly preserved. Non-issue at this scale.
+  - seat: kimi-code/k3
+    objection: >-
+      (F7, P3) The parity test proves whitespace-normalised TEXT equality
+      between the migration's indexed expressions and UPSERT_MATCH_SQL's
+      CASE expressions — sufficient but not necessary for the planner's
+      actual structural (AST) match requirement; not W81 theater, but it
+      doesn't prove planner adoption and doesn't cover DUP_OWNER_SQL/
+      CORE_OWNER_IDS_SQL (F2).
+    status: CONFIRMED
+    disposition: >-
+      No code change. Matches this build seat's own independent analysis:
+      Postgres expression-index matching is structural/AST equality after
+      parse analysis, and identical text parses to identical trees given
+      identical catalog resolution — which the migration's own `SET LOCAL
+      search_path = public, pg_catalog;` line defends (no `public`-schema
+      shadowing of `regexp_replace`/`substr` was found in migrations_v2/).
+      The residual gaps this finding names are F1 and F2, already
+      dispositioned above.
+
+bites:
+  consumer: >-
+    UPSERT_MATCH_SQL (three CASE/regexp_replace expressions) via
+    POST /api/crm/clients/upsert-by-phone, hit by
+    com.balizero.wa-mirror-auto-promote on Pro every ~12 min (345
+    upsert calls per cycle).
+  where: >-
+    production — Fly Postgres primary (nuzantara-postgres, machine
+    0801696b541568), observable once merging this PR triggers
+    fly-deploy.yml's release_command migration.
+  observe: >-
+    `fly ssh console -a nuzantara-postgres --machine 0801696b541568 -C
+    "psql -U postgres -h /run/postgresql -p 5433 -d nuzantara_rag -Atc
+    \"SELECT idx_scan FROM pg_stat_user_indexes WHERE indexrelname LIKE
+    'idx_clients_phone_core_%'\""`; also `SELECT seq_scan FROM
+    pg_stat_user_tables WHERE relname='clients'` and the
+    `fly_instance_cpu_balance{instance="0801696b541568"}` Prometheus metric.
+  expect: >-
+    All three idx_clients_phone_core_% indexes show idx_scan > 0 and
+    growing with each wa-mirror-auto-promote cycle, while `clients`'
+    seq_scan stops growing (was 2 540 720 at 2026-09-09T16:17Z); within
+    24h `fly_instance_cpu_balance` climbs off 234 and the `vm` health
+    check on the primary returns to passing.
+gate_verdict:
+  verdict: PASS-WITH-CONDITIONS
+  seat: claude-opus-5
+  graded_sha: 3f7906cc06 # pragma: allowlist secret — a git sha, short on purpose; detect-secrets still reads this one as hex entropy
+  conditions:
+    - >-
+      C1 — commit `council-journal.jsonl` into the pack directory before the
+      merge. The pack declares `council_run: council-journal.jsonl`, but
+      `scripts/ci/stage_council_journal.py --staged-pack ... --head-sha
+      747d24f62c...` printed "is not a regular file at HEAD — staging
+      nothing": the four journaled attempts that SUBSTANTIATE the
+      seat_override never reach main, so the override is unauditable there.
+      Owner: the conducting session docs-fly-cost-review-44 (Fable on Pro).
+      Deadline: 2026-09-09T22:00:00Z, and in any case before the merge.
+    - >-
+      C2 — A4 prove-live, first promote cycle. Within 30 minutes of the
+      release step, on the primary: all three `idx_clients_phone_core_%`
+      show `idx_scan > 0` and `clients.seq_scan` stops growing from its
+      2 540 720 baseline (2026-09-09T16:17Z). If `idx_scan` stays 0 the
+      planner did NOT adopt the indexes and this PR bought nothing —
+      report it, do not let it pass silently.
+      Owner: the conducting session docs-fly-cost-review-44 (Fable on Pro).
+      Deadline: 2026-09-09T23:00:00Z.
+    - >-
+      C3 — A4 prove-live, 24h horizon:
+      `fly_instance_cpu_balance{instance="0801696b541568"}` climbs off 234
+      and `fly checks list -a nuzantara-postgres` shows the primary `vm`
+      check back to passing.
+      Owner: the conducting session docs-fly-cost-review-44 (Fable on Pro).
+      Deadline: 2026-09-10T18:00:00Z.
+    - >-
+      C4 — if the release step aborts on the 5 s lock wait, RE-RUN the
+      deploy; do not "fix" it by switching to CREATE INDEX CONCURRENTLY,
+      which `BaseMigration.apply()` cannot run (one transaction per file).
+      After two consecutive lock-timeout aborts, stop and escalate to the
+      owner rather than taking a third round.
+      Owner: the conducting session docs-fly-cost-review-44 (Fable on Pro).
+      Deadline: 2026-09-10T06:00:00Z.
+  reasons:
+    - >-
+      Graded surface is exactly the code sha: `git diff --numstat 3f7906cc06
+      747d24f62c -- ':!evidence'` returns 0 lines; `git diff --stat
+      origin/main...3f7906cc06` is 2 files, +134/-0 (migration 56, parity
+      test 78). Nothing but evidence rides on the head commit.
+    - >-
+      A1 re-run by this seat: `cd apps/backend-rag && PYTHONPATH=.:../crm-cell
+      .venv/bin/python -m pytest
+      backend/tests/migrations/test_migration_308_phone_core_index_parity.py
+      -p no:cacheprovider` -> "4 passed, 1 warning in 1.52s". (An extra `-q`
+      is refused by scripts/pytest_guards/pytest_verbosity_guard.py — the
+      pack's recorded cmd, without it, is the runnable one.)
+    - >-
+      A2 re-run by this seat, exit 0: "180 post-cutoff migrations, all have
+      ROLLBACK marker" / "185 files, all unique prefixes" / ruff check "All
+      checks passed!" / ruff format "1 file already formatted".
+    - >-
+      Slot 308 is still free on FRESH origin/main: `git fetch -q origin main
+      && git ls-tree --name-only origin/main
+      apps/backend-rag/backend/db/migrations_v2/ | grep -E "/308_"` prints
+      nothing, exit 1.
+    - >-
+      Planner match holds on the semantics, not only the text: the three
+      indexed CASE expressions are, whitespace-normalised, the same
+      characters as the WHERE-clause CASEs at crm_clients.py:94-108 (same
+      COALESCE '' defaults, same '[^0-9]' pattern and 'g' flag, same
+      62%-then-0%-then-ELSE branch order), and regexp_replace/substr/
+      COALESCE/LIKE on text are IMMUTABLE — so identical text parse-analyses
+      to identical expression trees, which is what expression-index matching
+      compares. Residual NAMED, not blocking: the migration's `SET LOCAL
+      search_path = public, pg_catalog` places public BEFORE pg_catalog, so a
+      future `public.regexp_replace`/`public.substr` would bind at CREATE
+      INDEX time to a different OID than the app resolves under its default
+      search_path and the match would fail SILENTLY; `grep -rniE "CREATE (OR
+      REPLACE )?FUNCTION (public\.)?(regexp_replace|substr|coalesce)"
+      apps/backend-rag/backend/db/` returns zero today.
+    - >-
+      Deploy-time lock is fail-closed and retryable — read from the runner,
+      not assumed. `BaseMigration.apply()` opens one connection and executes
+      the whole forward file inside a single `async with conn.transaction()`,
+      so `SET LOCAL lock_timeout = '5s'` is in scope; a lock-wait abort
+      raises MigrationError -> `_apply_all_pending_locked` puts it in
+      `failed` -> `cmd_apply` returns False -> migrate.py `sys.exit(1)` ->
+      fly.toml `release_command` fails -> the fly-deploy.yml retry loop
+      matches only lease/depot strings and falls through to `exit "$status"`.
+      Deploy aborts, old machines keep serving, and the DB is untouched
+      because the `_schema_versions`/`schema_migrations` INSERT is inside the
+      same aborted transaction. The re-run is therefore idempotent by
+      transaction rollback, with `IF NOT EXISTS` only as belt-and-braces.
+    - >-
+      "Sub-second build" is a fair claim at this size (one btree entry per
+      row over 12 218 rows / 50 MB, per index), but the build is not the
+      exposure: the exposure is the up-to-5 s SHARE-lock queue in front of
+      ROW EXCLUSIVE writers on POST /api/crm/clients/upsert-by-phone during
+      the release step. That cost is declared verbatim in brief.yml and in
+      dissent F4 rather than hidden — which is why it is accepted, not
+      excused.
+    - >-
+      The migration is auto-discovered, so it will actually run:
+      `MigrationManager.discover_migrations()` globs `migrations_v2/*.sql`
+      and parses the numeric prefix — no registration list to forget.
+    - >-
+      seat_override states the truth. `git log -1 --format=%b 3f7906cc06 |
+      tail -1` is `Co-Authored-By: Claude Fable 5.1
+      <noreply@anthropic.com>` — an agent build, so the superseded pack's
+      "owner-is-builder" exception was false (it leaned on the git author
+      string `Antonello Siano`, which is only this machine's identity).
+      council-journal.jsonl records exactly four attempts: kimi-code/k3
+      ok:true, codex-gpt-5.6-sol ok:false twice (600 s timeout, 17:46:11Z and
+      17:59:51Z), tp1-qwen3.8-max ok:false (HTTP 403, 17:46:35Z). One
+      judging seat, not two — declared, not invented.
+    - >-
+      No receipt is backdated: pack receipts run 17:19:20Z-17:33:12Z, the
+      journal 17:46:11Z-17:59:51Z, all strictly earlier than `date -u
+      +%Y-%m-%dT%H:%M:%SZ` = 2026-09-09T18:05:52Z read at the start of this
+      gate.
+    - >-
+      Evidence-pack lint, staged the way CI stages it, last line
+      `evidence_pack_lint: clean`, exit 0, with exactly the two expected
+      NOTICEs (seat_override; A4 + the --print-floor probe unrecorded
+      because both are non-reproducible here). `python3
+      scripts/council_journal.py check --pack-dir <D>` exits 0, reporting
+      R9 as overridden rather than failing it.
+    - >-
+      PII boundary held by this gate too: no row of `clients` and no phone,
+      email or passport value was selected, read or printed at any point;
+      the graded diff is index DEFINITIONS and SQL text only, and the parity
+      test compares SQL text, never data.
+pending_proofs:
+  - >-
+    A4 post-deploy probe (brief.yml acceptance A4, PR body Bites): on the
+    primary, `SELECT idx_scan FROM pg_stat_user_indexes WHERE indexrelname
+    LIKE 'idx_clients_phone_core_%'` > 0 on all three after one wa-mirror
+    auto-promote cycle, `SELECT seq_scan FROM pg_stat_user_tables WHERE
+    relname='clients'` flat from 2 540 720, and within 24 h
+    `fly_instance_cpu_balance{instance="0801696b541568"}` off 234 with the
+    primary `vm` check passing. Unobservable before the merge, because
+    merging this PR IS the deploy.

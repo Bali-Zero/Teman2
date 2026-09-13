@@ -1,0 +1,24 @@
+mandate: >
+  Remove the shared, actor-keyed Dependabot concurrency group from all 21 workflow files that
+  carry it. The group drops runs before any job starts, which creates no check-run object and
+  leaves a required status check at "Expected — waiting for status" indefinitely.
+gear: 3
+gear_reason: >
+  21 files under .github/workflows/ — CODEOWNERS-TIER1 hot zone, and a real change to CI
+  scheduling behaviour under load. Deliberately NOT covered by the first-party pin exemption
+  merged in #5499: measured floor 3 with the patch supplied, which is the exemption's own
+  innocence check.
+appetite:
+  wall_clock_hours: 3
+  adversarial_rounds: 2
+origin: >
+  PENDING-ARMS row opened 2026-08-27 (PR #5043 gate, PASS-WITH-CONDITIONS on ab0723ea).
+  Condition (1) verbatim: the design "has no real-batch proof yet; the next natural test is the
+  2026-08-31 Monday Dependabot batch." That batch ran. It disproved the design.
+instruction_to_the_grader: >
+  Do not grade this brief. Read the diff and the workflow files on disk. The claim that must be
+  attacked hardest is that removing the actor test cannot cause two merge-queue entries to
+  collide in one concurrency group and cancel each other — verify it against every one of the 21
+  cancel-in-progress expressions, not against this sentence. The second claim to attack is that a
+  598-job worst-case burst is harmless; the counter-evidence is measured but comes from a
+  25-second window, not a week.

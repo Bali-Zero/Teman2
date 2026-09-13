@@ -52,7 +52,7 @@ Same as `carousel-ig` surface for any text laid on image:
 
 Subset of full brand palette — FB feed crops dark images visually:
 
-- Background overlay: `#373D42` antracite at 70-85% opacity over photo OR `#FFFFFF` flat for "explainer" posts.
+- Background overlay: `#363A3E` antracite at 70-85% opacity over photo OR `#FFFFFF` flat for "explainer" posts.
 - Text on antracite overlay: `#FFFFFF`.
 - Text on white: `#1A1A1A`.
 - Accent yellow `#F4C430` for the regulation number / concrete data point.

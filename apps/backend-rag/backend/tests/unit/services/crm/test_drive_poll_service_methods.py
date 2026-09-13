@@ -9,7 +9,7 @@ method invoked on the local variable `drive_service`, and asserts that
 ServiceAccountDriveService exposes each one. It will fail at PR-check time
 before deploy, regardless of which method is added or renamed in the future.
 
-Memories: 1865 / 1867 / 1870. Scar: .claude/rules/cicatrix-scars.md.
+Memories: 1865 / 1867 / 1870. Scar: docs/scars/cicatrix-scars.md.
 """
 
 from __future__ import annotations

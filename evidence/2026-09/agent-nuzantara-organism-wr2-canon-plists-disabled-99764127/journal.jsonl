@@ -1,0 +1,2 @@
+{"seat": "tp1-qwen3.8-max", "role": "review", "ok": true, "ts": "2026-09-01T12:15:00Z", "verdict": "GO", "findings": 0}
+{"seat": "codex-gpt-5.6-sol", "role": "review", "ok": true, "ts": "2026-09-01T12:18:00Z", "verdict": "NO-GO", "findings": 2}

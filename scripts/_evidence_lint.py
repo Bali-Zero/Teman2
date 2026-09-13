@@ -49,7 +49,7 @@ logger = logging.getLogger(__name__)
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_RULES = REPO_ROOT / "agent-library" / "config" / "evidence-rules.yaml"
-CICATRIX_FILE = REPO_ROOT / ".claude" / "rules" / "cicatrix-scars.md"
+CICATRIX_FILE = REPO_ROOT / "docs" / "scars" / "cicatrix-scars.md"
 
 
 # ─── Config dataclasses ──────────────────────────────────────────────

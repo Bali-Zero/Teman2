@@ -69,9 +69,14 @@ def test_every_corpus_persona_is_supported_for_its_product(
 
 
 def test_corpus_file_names_match_their_product_code() -> None:
-    """``<CODE>.json`` must declare ``product_code == CODE`` — a renamed file
-    that keeps another product's expectations would otherwise pass silently."""
+    """``<CODE>[__CASE].json`` must declare ``product_code == CODE``.
+
+    A named suffix permits multiple legally distinct personas for one product;
+    the prefix still prevents a renamed fixture from silently claiming another
+    product's expectations.
+    """
     for path in sorted(CORPUS_DIR.glob("*.json")):
         spec = json.loads(path.read_text(encoding="utf-8"))
-        assert spec.get("product_code") == path.stem, path.name
-        assert path.stem in (spec.get("expected_candidates") or []), path.name
+        product_code = path.stem.split("__", 1)[0]
+        assert spec.get("product_code") == product_code, path.name
+        assert product_code in (spec.get("expected_candidates") or []), path.name

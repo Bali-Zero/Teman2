@@ -367,13 +367,24 @@ CLI:
                     of --net-lines, the FLOOR's size term (S1, 2026-08-27 —
                     see compute_floor()'s docstring), which needs the raw
                     per-file rows rather than one pre-summed integer.
+  --patch-file PATH  raw `git diff` text for the `.github/workflows/`
+                    files in this diff (any -U level). Feeds ONE thing: the
+                    FLOOR's path-term EXEMPTION for first-party action
+                    version pins (2026-09-01 — see
+                    workflow_paths_exempt_from_path_term()). Strictly
+                    opt-in and strictly fail-closed: omitted, missing or
+                    unreadable, NOTHING is exempted and the floor is
+                    exactly what it was before the exemption existed —
+                    which is why, unlike --numstat-file, an unreadable
+                    --patch-file is a stderr notice and not exit 3.
   --print-floor    given --changed-files-file, print the computed floor int
                     and exit 0 (no pack read) — lets any caller (CI, a human)
                     ask "what floor would this diff impose" without spinning
                     up a second implementation of HOTZONE_PATTERNS. Also
                     honors --numstat-file when given (S1's size term) — omit
                     it for the path-only floor exactly as before that term
-                    existed.
+                    existed. Honors --patch-file the same way (the
+                    first-party-pin exemption).
   --print-floor-source  given --changed-files-file, print WHY the floor is
                     what it is (S2, 2026-08-27) — one of "none"/"path"/
                     "size"/"both" (see compute_floor_source()'s docstring)
@@ -411,6 +422,24 @@ from typing import Any
 
 import yaml
 
+# W2 reviewer-independence integration (2026-09-07): the ONE implementation of
+# the "reviewer is not a contributor" rule lives in
+# scripts/conductor/review_eligibility.py — this file calls into it rather
+# than re-deriving the comparison (implementation-plan.md §2: "migrate the
+# actual policy consumer... no copied eligibility list"). `sys.path` is
+# defensive, not required for the real invocation shapes measured (direct
+# `python3 scripts/evidence_pack_lint.py` from repo root, and
+# council_journal.py's dynamic load — both already put this file's own
+# directory on `sys.path[0]`, which is all `conductor.review_eligibility`
+# needs since `scripts/conductor/__init__.py` exists) — kept anyway so an
+# unanticipated third loader does not silently lose this import.
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from conductor.review_eligibility import (  # noqa: E402
+    Decision as _ReviewerDecision,
+    SCHEMA_VERSION as _REVIEWER_SCHEMA_VERSION,
+    evaluate as _evaluate_reviewer_eligibility,
+)
+
 # ---------------------------------------------------------------------------
 # Hot-zone floor (rule 6) — DELIBERATE, DECLARED duplication of the case-block
 # in .github/workflows/hot-zone-pr-gate.yml. Keep the two lists in sync by
@@ -433,6 +462,243 @@ HOTZONE_PATTERNS: tuple[str, ...] = (
     "fly.toml",
     "apps/backend-rag/fly.toml",
 )
+
+# ---------------------------------------------------------------------------
+# Path-term EXEMPTION: first-party action version pins (2026-09-01, owner
+# ruling "Cambio la regola adesso").
+#
+# `.github/workflows/*` is in HOTZONE_PATTERNS because a workflow edit can
+# disarm a gate. A version bump of an action it already uses cannot: it adds
+# no step, removes no step, and changes no `if:`, `permissions:` or `paths:`.
+# Yet it floored at Gear 3 and demanded a full evidence pack — measured
+# 2026-09-01 on PRs #5442 / #5444 / #5445, each a ONE-to-TWO-line `uses:` pin
+# whose ONLY red check was "Harness floor recompute". Three mechanical bumps
+# sat blocked behind a ceremony that reads none of what they changed.
+#
+# The exemption is decided by the DIFF's CONTENT, never by its AUTHOR. That is
+# deliberate and is the whole safety argument: scar W98 is a Dependabot bump
+# that shipped a malicious `fastapi` to PROD past a constraint the updater
+# could not see, so "dependabot[bot] opened it" must never be a key that opens
+# a gate. A human hand-editing the same line gets the same treatment, and a
+# bot that changes anything else gets none.
+#
+# Three conditions, ALL required, per workflow file:
+#   1. every ADDED and REMOVED line parses as a `uses: <owner>/<repo>@<ref>`
+#      line — one non-conforming changed line re-arms the path term for the
+#      whole file;
+#   2. every such owner is FIRST-PARTY (FIRST_PARTY_ACTION_OWNERS) — a
+#      third-party action IS a live supply-chain surface and keeps its floor;
+#   3. the multiset of action IDENTITIES on the minus side EQUALS the one on
+#      the plus side — so only refs may move. This is what stops the swap
+#      attack (`actions/checkout` -> `actions/chekcout`): the identities would
+#      differ and the file falls back to Gear 3.
+#
+# FAIL-CLOSED by construction: the exemption needs a patch to be PROVEN, and
+# `patch=None` (every caller that does not pass one) exempts nothing at all —
+# so a missing, unreadable or truncated patch floors exactly as it did before
+# this existed. A file with no parsed hunks (mode change only) is likewise not
+# proven safe and is not exempted.
+#
+# What this does NOT touch: `.github/workflows/*` stays in HOTZONE_PATTERNS
+# verbatim, so hot-zone-pr-gate.yml's deliberately duplicated case-block still
+# matches these PRs and no drift is introduced between the two lists. This is
+# an exemption applied to the FLOOR term, not a change to hot-zone membership.
+# ---------------------------------------------------------------------------
+FIRST_PARTY_ACTION_OWNERS: frozenset[str] = frozenset({"actions", "github"})
+
+WORKFLOW_DIR_PREFIX = ".github/workflows/"
+
+#: A single `uses:` step reference. Tolerates the list-item dash, quotes, and
+#: the trailing `# v4.37.9` comment that accompanies a SHA pin (PR #5444's
+#: exact shape) — the comment is discarded, the identity and ref are not.
+_USES_LINE_RE = re.compile(
+    r"""^\s*(?:-\s+)?uses:\s*
+        ["']?(?P<identity>[A-Za-z0-9][A-Za-z0-9._-]*/[A-Za-z0-9._/-]+)
+        @(?P<ref>[^\s"'\#]+)["']?
+        \s*(?:\#.*)?$""",
+    re.VERBOSE,
+)
+
+
+#: A ref that PINS. Either a full 40-hex commit SHA (what Dependabot writes when
+#: a repo pins by SHA, and what GitHub Actions requires — an abbreviated SHA is
+#: not a valid `uses:` ref) or a version-shaped tag: `v4`, `v7`, `4.37.9`,
+#: `v4.37.9`, `v1.2.3-beta.1`. Deliberately NOT `main`, `master`, `latest`,
+#: `release` or any other branch name.
+_PINNED_REF_RE = re.compile(
+    r"^(?:[0-9a-f]{40}|v?\d+(?:\.\d+)*(?:-[A-Za-z0-9.]+)?)$"
+)
+
+
+def _first_party_uses_identity(line: str) -> str | None:
+    """The `<owner>/<repo>[/<path>]` of a first-party `uses:` line, else None.
+
+    None means BOTH "this is not a uses: line at all" and "this is a uses:
+    line for a third-party action" — the caller treats them identically
+    (the file keeps its Gear-3 floor), so they deliberately share a return."""
+    m = _USES_LINE_RE.match(line)
+    if m is None:
+        return None
+    identity = m.group("identity")
+    if identity.split("/", 1)[0] not in FIRST_PARTY_ACTION_OWNERS:
+        return None
+    # The ref must PIN. "Only refs may move" was under-specified: it permitted
+    # `actions/checkout@v4` -> `@main`, which is not a version bump at all but an
+    # UNPINNING — the action stops being fixed and starts tracking a branch
+    # somebody else can move. That is a supply-chain change of exactly the kind
+    # this hot zone exists to catch, and the rule is named for version PINS.
+    # Found 2026-09-01 by the adversarial reviewer as attack 1b, which it called
+    # "worth a conscious decision, not obviously a blocker" — the decision is to
+    # refuse it. Both sides are checked (each line goes through here), so a
+    # re-pin `@main` -> `@v4` also floors at 3: rare, deliberate, and worth a
+    # human look in the direction that adds a constraint as well as the one that
+    # removes it.
+    if not _PINNED_REF_RE.match(m.group("ref")):
+        return None
+    return identity
+
+
+def workflow_paths_exempt_from_path_term(patch: str) -> set[str]:
+    """Workflow files in `patch` whose ENTIRE change is first-party version pins.
+
+    `patch` is raw `git diff` text (any -U level; -U0 is what harness-floor.yml
+    produces). Returns a subset of the `.github/workflows/` paths it contains —
+    never any other path, so this can only ever narrow the path term for the
+    one directory it was written for (asserted by its own innocence test).
+
+    Pure function, no I/O — guilt+innocence tests drive it directly."""
+    per_file: dict[str, dict[str, Any]] = {}
+    current: str | None = None
+    in_hunk = False
+
+    for raw in patch.splitlines():
+        if raw.startswith("diff --git "):
+            # b-side is the post-image path; refined by the `+++ ` line below
+            # when there is one (a pure deletion has `+++ /dev/null`).
+            current, in_hunk = None, False
+            _, _, b_side = raw.partition(" b/")
+            if b_side:
+                current = b_side
+                per_file.setdefault(current, {"minus": [], "plus": [], "clean": True})
+            continue
+        if raw.startswith("+++ ") and not in_hunk:
+            # `and not in_hunk` is load-bearing, not defensive tidiness. A diff
+            # ADDS a single "+", so a workflow line that itself begins "++ " is
+            # emitted as "+++ …" — indistinguishable, by prefix alone, from a
+            # new-file header. Reading it as a header reassigned `current` to a
+            # phantom path AND set in_hunk=False, after which every remaining
+            # line of that hunk was SILENTLY SKIPPED: a `+permissions:
+            # write-all` following the forged line never reached the parser, so
+            # a privilege escalation rode along inside a diff the floor scored
+            # as a pure version pin. Found 2026-09-01 by the independent gate.
+            #
+            # It also falsified this function's own comment ("one non-conforming
+            # changed line re-arms the path term for the whole file") — a
+            # non-conforming ADDED line did not re-arm. Inside a hunk these
+            # bytes are CONTENT: they fall through to the +/- branch below,
+            # fail to parse as a `uses:` line, and set clean=False, which is
+            # what the comment always claimed.
+            #
+            # `diff --git ` needs no such guard: git prefixes every content line
+            # with " ", "+", "-" or "\\", so column 0 can never be "d" inside a
+            # hunk. `--- ` needs none either — in a hunk it is already read as a
+            # removed line whose body "-- …" does not parse.
+            candidate = raw[4:].split("\t", 1)[0]
+            if candidate.startswith("b/"):
+                candidate = candidate[2:]
+            if candidate and candidate != "/dev/null":
+                current = candidate
+                per_file.setdefault(current, {"minus": [], "plus": [], "clean": True})
+            in_hunk = False
+            continue
+        if current is None:
+            continue
+        if raw.startswith("@@"):
+            in_hunk = True
+            continue
+        if not in_hunk:
+            # `index`, `old mode`, `--- a/...`, `similarity index` — headers,
+            # not content. Checked BEFORE the +/- branch below precisely so a
+            # `--- a/path` line is never mistaken for a removed content line.
+            continue
+        state = per_file[current]
+        if raw.startswith("+"):
+            body, bucket = raw[1:], "plus"
+        elif raw.startswith("-"):
+            body, bucket = raw[1:], "minus"
+        else:
+            continue  # context line, or `\ No newline at end of file`
+        identity = _first_party_uses_identity(body)
+        if identity is None:
+            state["clean"] = False
+        else:
+            state[bucket].append(identity)
+
+    exempt: set[str] = set()
+    for path, state in per_file.items():
+        if not path.startswith(WORKFLOW_DIR_PREFIX) or ".." in path.split("/"):
+            # `.github/workflows/../../fly.toml` passes a naive
+            # startswith() and names ANOTHER hot zone. It is already
+            # harmless — compute_floor intersects this set against the
+            # REAL changed-file list, where git records the normalised
+            # path — but a defence that only holds because of a property
+            # two functions away is one refactor from not holding, so
+            # the boundary is restated at the parser too.
+            continue
+        if not state["clean"]:
+            continue
+        if not state["plus"] and not state["minus"]:
+            continue  # no content hunk parsed -> not PROVEN safe -> no exemption
+        if state["minus"] != state["plus"]:
+            # SEQUENCE equality, not multiset. The first cut compared
+            # sorted() and was defeated by a REORDER: two bare one-line
+            # steps whose `uses:` lines swap places have an identical
+            # multiset of identities, so they were exempted — while
+            # actually changing execution order, which is a semantic change
+            # and can vacuously disarm a scan that ran before the step
+            # producing what it scans. Found 2026-09-01 by a cross-family
+            # refuter (tp1 deepseek-v4-flash-0731), whose answer was cut off
+            # at 214 bytes and still contained this. Both lists are in file
+            # order, so a pure ref change leaves them identical and anything
+            # that adds, removes, swaps or REORDERS an action does not.
+            continue
+        exempt.add(path)
+    return exempt
+
+
+def _read_patch_file(path: str | None) -> str | None:
+    """Read a --patch-file, or None. Unreadable is None, NOT an error exit.
+
+    Deliberately asymmetric with --numstat-file's `return 3`: that file can
+    only ever RAISE a floor, so losing it silently would under-gate; this one
+    can only ever LOWER a floor, so losing it fails CLOSED all by itself —
+    no patch, no exemption, Gear 3 exactly as before. Turning an unreadable
+    patch into a usage error would instead take a workflow that is behaving
+    conservatively and paint it red."""
+    if not path:
+        return None
+    try:
+        return Path(path).read_text(encoding="utf-8")
+    except (OSError, UnicodeDecodeError) as exc:
+        # UnicodeDecodeError is NOT an OSError — it is a ValueError — so an
+        # earlier cut of this caught only OSError and let a patch containing one
+        # invalid UTF-8 byte raise straight through: traceback, no floor on
+        # stdout, exit 1. That could never UNDER-gate (the crash precedes
+        # compute_floor), but it broke the contract this docstring promises and
+        # the comment above it was therefore false. Found 2026-09-01 by the
+        # adversarial reviewer, which graded it a suggestion rather than a hole;
+        # a comment that lies about a fail-closed path is worth curing anyway,
+        # because the next reader trusts it. Discards the WHOLE patch rather
+        # than decoding with errors="replace": a workflow file that is not valid
+        # UTF-8 is anomalous, and refusing every exemption in that patch is the
+        # conservative reading.
+        print(
+            f"evidence_pack_lint: --patch-file unreadable ({exc}) — "
+            "no path-term exemption applied (fail-closed)",
+            file=sys.stderr,
+        )
+        return None
+
 
 RECEIPT_REQUIRED_FIELDS = ("claim", "cmd", "exit", "ts", "seat")
 SIZE_TOKEN_CAP = 30_000
@@ -580,10 +846,72 @@ SIZE_TERM_EXCLUDE_FILENAMES: tuple[str, ...] = (
     "package-lock.json", "yarn.lock", "pnpm-lock.yaml", "poetry.lock",
     "Cargo.lock", "uv.lock", "Gemfile.lock", "composer.lock",
 )
+#: Exact repo-relative PATHS (never a basename, never a glob) for this
+#: repo's own pip-compile-style, hash-pinned, machine-derived lockfiles —
+#: added 2026-09-02 after measurement on PR #5530 (a routine 55-package pip
+#: dependabot bump, `gh api repos/Bali-Zero/Teman2/pulls/5530/files`): the
+#: two files carried 3570 of 3672 total churned lines (97%); the remaining
+#: 102 lines, spread across 5 human-reviewable `requirements*.txt` files,
+#: still count in full.
+#:
+#: Went through TWO adversarial rounds on this same PR before landing here:
+#: (1) a glob `requirements*.lock.txt` matched any basename in that shape,
+#: including a hand-added `requirements-backdoor.lock.txt` nobody's tooling
+#: produced; (2) fixing that to two exact LITERALS still matched by
+#: basename only (`PurePosixPath(path).name`), so the same fabricated
+#: content at `docs/requirements.lock.txt` or any other directory still
+#: exempted itself — the well-known package-manager names above accept
+#: that basename-only risk because they are unambiguous, single-ecosystem
+#: conventions; "requirements.lock.txt" is generic enough that a decoy
+#: elsewhere in the tree is a real, not hypothetical, shape. This repo
+#: already treats exactly that shape as suspicious in the OTHER direction
+#: (`scripts/prepush_classify.py`'s `NEVER_INNOCENT_BASENAMES`, proven by
+#: `test_guilt_requirements_family_under_an_allowlisted_prefix_forces_full`
+#: in `scripts/tests/test_prepush_classify.py`: a requirements manifest
+#: under an allowlisted prefix it doesn't really live under must force
+#: full attention, never read as innocent) — matching that discipline here
+#: means exempting by FULL PATH, not name. Only these two exact,
+#: currently-real paths are exempted; a genuine future sibling (e.g. a
+#: split requirements-dev.lock.txt) needs its own literal added here.
+#:
+#: `docs/AUTOMATIONS_REFERENCE.md` (2026-09-11, measured on PR #6184, the FIRST
+#: PR the nightly promote job — `scripts/automations-reference-cron-wrapper.sh`
+#: → `scripts/generate_automations_reference.py` — ever opened): a full
+#: machine regeneration from live launchd/cron state churned 483 lines
+#: (240+/243-) in that ONE file, net -3, floor==2 via the SIZE term alone,
+#: and the job by construction carries no evidence/brief.yml — so the very
+#: first promote PR was BLOCKED on "Harness floor recompute" and every
+#: nightly after it would be too. Same class as the translations below: a
+#: GENERATED artifact of the system state (the generator is the reviewable
+#: object, and it lives under scripts/ where it counts in full). Exact
+#: path, never a basename: a hand-written `AUTOMATIONS_REFERENCE.md`
+#: anywhere else in the tree still counts.
+SIZE_TERM_EXCLUDE_EXACT_PATHS: tuple[str, ...] = (
+    "apps/backend-rag/requirements.lock.txt",
+    "apps/backend-rag/requirements-prod.lock.txt",
+    "docs/AUTOMATIONS_REFERENCE.md",
+)
 SIZE_TERM_EXCLUDE_SUFFIXES: tuple[str, ...] = (
     ".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg", ".ico", ".bmp",
     ".pdf", ".zip", ".gz", ".woff", ".woff2", ".ttf", ".otf", ".eot",
     ".mp4", ".mp3", ".wav", ".mov",
+)
+# Machine-generated article translations (2026-09-09, measured: 68 identical
+# `chore(mouth): promote hourly-translated articles` PRs open at once, every
+# one BLOCKED since 2026-09-04). scripts/translate-articles.py writes
+# `<slug>.<lang>.mdx` next to the English `<slug>.mdx` source, ~95 lines per
+# file, 20 files per hourly batch — churn 1946 > SIZE_GEAR3_THRESHOLD, so the
+# size term floored every batch at Gear 3 and no brief ever existed for a bot
+# diff nobody reviews line-by-line. The translation is a GENERATED artifact of
+# the source (regenerated on source_sha256 staleness), the same class as the
+# `generated/` directories above: it inflates churn without inflating review
+# burden. Scoped on BOTH the directory prefix and the language suffix so a
+# same-suffix decoy elsewhere in the tree, or the English source itself (no
+# language suffix), still counts in full — the reviewable artifact is the
+# source; the translation is derived from it.
+SIZE_TERM_EXCLUDE_GENERATED_TRANSLATION_DIR = "apps/mouth/src/content/articles/"
+SIZE_TERM_EXCLUDE_GENERATED_TRANSLATION_SUFFIXES: tuple[str, ...] = (
+    ".id.mdx", ".it.mdx", ".ru.mdx", ".fr.mdx",
 )
 
 
@@ -591,20 +919,34 @@ def _is_size_term_excluded(path: str) -> bool:
     """True when `path` should NOT count toward the size term (S1):
     generated/vendored output, well-known lockfiles, minified bundles, and
     binary/image assets. See the SIZE_TERM_EXCLUDE_* tuples above for what
-    and why. Deliberately NOT a blanket `*.lock` suffix match (adversarial
-    review, PR #5049): the mandate's "lockfiles" meant the well-known
-    package-manager ones enumerated above, not every file a script happens
-    to name `*.lock` — this repo's own coordination primitives use that
-    suffix for real hand-written state (CLAUDE.md's `agent_lock:<resource>`
-    Redis keys), and a blanket suffix match would have let a diff touching
-    real lock-coordination code hide behind the same exemption."""
+    and why. Deliberately NOT a blanket `*.lock`/`*.lock.txt` suffix or glob
+    match (adversarial review, PR #5049 and again PR #5531): the mandate's
+    "lockfiles" meant the well-known, actually-produced ones enumerated
+    above, not every file a script happens to name that way — this repo's
+    own coordination primitives use `*.lock` for real hand-written state
+    (CLAUDE.md's `agent_lock:<resource>` Redis keys), and a blanket
+    suffix/glob match would let a diff touching real lock-coordination
+    code — or a fabricated file chosen to LOOK like a lockfile — hide
+    behind the same exemption (superscar #3, W98-class). The well-known
+    package-manager names in SIZE_TERM_EXCLUDE_FILENAMES match by BASENAME
+    (any directory) because each is an unambiguous single-ecosystem
+    convention; SIZE_TERM_EXCLUDE_EXACT_PATHS matches by FULL repo-relative
+    PATH ONLY (PR #5531 round 2) because "requirements.lock.txt" is a
+    generic enough name that a same-named decoy elsewhere in the tree is a
+    real risk, not a hypothetical one."""
     p = PurePosixPath(path)
     if any(part in SIZE_TERM_EXCLUDE_DIR_NAMES for part in p.parts[:-1]):
+        return True
+    if p.as_posix() in SIZE_TERM_EXCLUDE_EXACT_PATHS:
         return True
     name = p.name
     if name in SIZE_TERM_EXCLUDE_FILENAMES:
         return True
     if ".min." in name.lower():
+        return True
+    if p.as_posix().startswith(SIZE_TERM_EXCLUDE_GENERATED_TRANSLATION_DIR) and any(
+        name.endswith(suf) for suf in SIZE_TERM_EXCLUDE_GENERATED_TRANSLATION_SUFFIXES
+    ):
         return True
     return any(name.lower().endswith(suf) for suf in SIZE_TERM_EXCLUDE_SUFFIXES)
 
@@ -628,11 +970,21 @@ def _size_term_net_lines(numstat: str) -> int:
     excludes generated/vendored/binary paths (_is_size_term_excluded) that
     inflate churn without inflating review burden. Binary rows
     ("-\\t-\\tpath") and malformed lines are skipped, same as
-    sum_numstat()."""
+    sum_numstat(). CORRECTED again 2026-09-02 (adversarial review, codex-sol,
+    PR #5531, round 3): the blankness check used to be `line = line.strip()`
+    on the WHOLE line before splitting, which silently strips leading/
+    trailing whitespace off the PATH field too — git permits a trailing
+    space in a real filename, so a decoy committed as
+    "apps/backend-rag/requirements.lock.txt " (note the space) numstat's as
+    that literal string, gets stripped to the real lockfile's exact name,
+    and its churn vanishes from the size term entirely. `sum_numstat()`
+    above does the identical whole-line strip but is safe from this class —
+    it never looks at `path` for a decision, only at the two numeric
+    fields. Here, where `path` gates an exclusion, blankness is checked
+    without mutating the line the path is sliced from."""
     net = 0
     for line in numstat.splitlines():
-        line = line.strip()
-        if not line:
+        if not line.strip():
             continue
         parts = line.split("\t")
         if len(parts) < 3:
@@ -657,7 +1009,7 @@ FLOOR_SOURCES = (FLOOR_SOURCE_NONE, FLOOR_SOURCE_PATH, FLOOR_SOURCE_SIZE, FLOOR_
 
 
 def _compute_floor_with_source(
-    changed_files: list[str], numstat: str | None = None
+    changed_files: list[str], numstat: str | None = None, patch: str | None = None
 ) -> tuple[int, str]:
     """Single source of truth for compute_floor()/compute_floor_source() — the
     two public entry points are thin wrappers over this so they can never
@@ -703,8 +1055,17 @@ def _compute_floor_with_source(
     directly without a filesystem fixture; the caller is responsible for
     producing `numstat` (e.g. `git diff --numstat`, merge-base anchored —
     never a two-dot diff, W102)."""
+    # Files PROVEN to be nothing but first-party action version pins are
+    # skipped by the path term (2026-09-01) — see
+    # workflow_paths_exempt_from_path_term()'s own block for the three
+    # conditions and the W98 reason the test is on CONTENT, not on author.
+    # `patch=None` yields an empty set, so every caller that does not supply
+    # a patch computes exactly the floor it computed before this existed.
+    exempt = workflow_paths_exempt_from_path_term(patch) if patch else frozenset()
     path_hit = False
     for f in changed_files:
+        if f in exempt:
+            continue
         for pat in HOTZONE_PATTERNS:
             if fnmatch.fnmatchcase(f, pat):
                 path_hit = True
@@ -736,12 +1097,17 @@ def _compute_floor_with_source(
     return floor, source
 
 
-def compute_floor(changed_files: list[str], numstat: str | None = None) -> int:
+def compute_floor(
+    changed_files: list[str], numstat: str | None = None, patch: str | None = None
+) -> int:
     """The deterministic floor (rule 6 docstring): the HIGHER of two
     independent terms.
 
-    PATH TERM (original, unchanged): 3 on any hot-zone hit
-    (HOTZONE_PATTERNS), else 1.
+    PATH TERM: 3 on any hot-zone hit (HOTZONE_PATTERNS), else 1 — EXCEPT
+    for a `.github/workflows/` file whose entire change is first-party
+    action version pins, when an optional `patch` proves it (2026-09-01;
+    see workflow_paths_exempt_from_path_term). `patch=None` exempts
+    nothing, so the term is unchanged for every caller that omits it.
 
     SIZE TERM (S1, 2026-08-27, optional — only asserted when `numstat` is
     given): a blast-radius measure over raw `git diff --numstat` text — see
@@ -756,10 +1122,12 @@ def compute_floor(changed_files: list[str], numstat: str | None = None) -> int:
     Thin wrapper over _compute_floor_with_source() — see that function for
     the shared implementation and compute_floor_source() for the sibling
     entry point that returns WHY, not just the number (S2, 2026-08-27)."""
-    return _compute_floor_with_source(changed_files, numstat)[0]
+    return _compute_floor_with_source(changed_files, numstat, patch)[0]
 
 
-def compute_floor_source(changed_files: list[str], numstat: str | None = None) -> str:
+def compute_floor_source(
+    changed_files: list[str], numstat: str | None = None, patch: str | None = None
+) -> str:
     """Sibling of compute_floor(), same inputs, returns WHY the floor is
     what it is instead of the floor itself — one of FLOOR_SOURCES
     ("none"/"path"/"size"/"both"). Added S2 (2026-08-27, gate round 2 on PR
@@ -772,7 +1140,7 @@ def compute_floor_source(changed_files: list[str], numstat: str | None = None) -
 
     Thin wrapper over _compute_floor_with_source() — never duplicates its
     logic, so the two can never drift apart."""
-    return _compute_floor_with_source(changed_files, numstat)[1]
+    return _compute_floor_with_source(changed_files, numstat, patch)[1]
 
 
 # ---------------------------------------------------------------------------
@@ -1860,6 +2228,164 @@ def check_lanes_build_seat_diversity(
 
 
 # ---------------------------------------------------------------------------
+# Reviewer independence (W2, dual-consul army mission, 2026-09-07). RULED
+# 2026-09-06 (see docs/rules/RULINGS.md): "the required release verdict comes
+# from a qualified verifier who is independent of the artifact's authors and
+# material implementation contributors" — and "rank confers no exemption":
+# a pack naming `opus` or `sol` as reviewer is judged the SAME as any other
+# name. Doctrine existed and a standalone validator (review_eligibility.py)
+# existed, but nothing installed called it — this is that call.
+#
+# THE GAP THIS DOES NOT CLOSE, stated rather than hidden: review_eligibility's
+# `evaluate()` also judges artifact/reviewed-hash STALENESS (A18) and carries
+# required `*_family` fields. No field in this pack format tracks a
+# reviewed-vs-current artifact hash today (grepped: no `artifact_hash`,
+# `reviewed_hash`, `commit_sha`, or `head_sha` key anywhere in this module or
+# `lint()`'s own parameters) — the smallest addition that would close it is a
+# `reviewed_diff_sha`/`artifact_sha` pack field, not invented here. Rather
+# than fabricate a hash this consumer cannot actually observe, both hash
+# arguments below are the SAME literal sentinel (`"unattested"`), which makes
+# `evaluate()`'s staleness comparison neutral BY CONSTRUCTION (equal inputs
+# never trigger `stale_review_hash`) instead of asserting a freshness fact
+# nobody measured. `*_family` is real but coarse — this file's own
+# `_is_anthropic_seat` already tokenizes a seat as "everything before its
+# first `-`"; `_reviewer_family` reuses that exact tokenization. Both
+# `evaluate()`'s own docstring and its test corpus already establish that
+# family is validated for presence only and never drives its verdict, so this
+# coarseness cannot affect the one property that matters here.
+#
+# WHAT DOES NOT NEED INVENTING: contributor and reviewer IDENTITY. The
+# `lanes:` list already names both — a `role: build` lane's `seat` is who
+# materially implemented the artifact; a `role: review` lane's `seat` is who
+# reviewed it. No new pack field is required for the actual A17 comparison.
+REVIEWER_INDEPENDENCE_ENFORCEMENT_DATE = datetime.date(2026, 9, 21)
+
+
+def _reviewer_family(seat: str) -> str:
+    """Coarse vendor/family token for a seat string: everything before its
+    FIRST `-`, lowercased — the same tokenization `_is_anthropic_seat` already
+    uses. Never empty for a non-empty `seat` (callers only pass validated,
+    stripped, non-empty strings)."""
+    return seat.strip().lower().split("-", 1)[0]
+
+
+def check_reviewer_independence(
+    pack: dict[str, Any],
+    gear: int | None = None,
+    today: datetime.date | None = None,
+) -> tuple[list[str], str | None]:
+    """W2: a declared reviewer must be independent of the pack's declared
+    contributors, per `scripts/conductor/review_eligibility.py` (the ONE
+    implementation of this rule — see the module comment above for why this
+    calls it rather than re-deriving the comparison).
+
+    SCOPE, deliberately narrow: this fires only when the pack names BOTH a
+    reviewer (>=1 `role: review` lane with a non-empty `seat`) AND a
+    contributor (>=1 `role: build` lane with a non-empty `seat`) — comparing
+    "is this specific reviewer also this specific contributor" needs both
+    sides present. A pack naming a reviewer with NO declared build lane at
+    all is not this rule's concern (a separate, larger policy question this
+    increment does not decide); D3/rule-8 already requires `lanes:` at all on
+    Gear >= 2, and a shape gap there is D3's finding, not duplicated here.
+    Gear < 2 (or ungraded) is exempt outright, mirroring D3's own gear gate.
+
+    MULTIPLE review lanes are each judged independently against the SAME
+    contributor set — every one that fails produces its own message naming
+    that seat, mirroring how R10 collects every offending seat rather than
+    stopping at the first.
+
+    KNOWN, DOCUMENTED LIMITATION: comparison is exact-normalized-string
+    match (via review_eligibility's own case/whitespace folding) on
+    whatever the pack author typed into `seat:`. Several real packs use
+    free-form prose there (e.g. "claude opus-5 xhigh (this orchestrator) --
+    final on-disk gate, empirical") rather than a clean seat token — the
+    SAME real seat described differently between a build and a review lane
+    will NOT be caught. Fixing that would need NLP-level fuzzy matching,
+    which risks its own over/under-match failure (cicatrix family #3) and is
+    not attempted here.
+
+    GUILT/NOTICE: a reviewer seat that normalizes to the same identity as a
+    contributor seat -> phased violation naming the offending seat. INNOCENCE:
+    no review lane, no build lane, gear < 2, or every reviewer is independent
+    of every contributor -> clean. `seat_override: <reason>` clears it exactly
+    like the other seat rules, always reported."""
+    if gear is None or gear < 2:
+        return [], None
+
+    lanes = pack.get("lanes")
+    if not isinstance(lanes, list):
+        lanes = []
+
+    build_seats: list[str] = []
+    review_seats: list[str] = []
+    for entry in lanes:
+        if not isinstance(entry, dict):
+            continue
+        role = str(entry.get("role", "")).strip().lower()
+        seat = entry.get("seat")
+        if not isinstance(seat, str) or not seat.strip():
+            continue
+        if role == "build":
+            build_seats.append(seat.strip())
+        elif role == "review":
+            review_seats.append(seat.strip())
+
+    if not build_seats or not review_seats:
+        return [], None
+
+    contributors = tuple(dict.fromkeys(build_seats))  # de-dup, order-preserving
+    contributor_families = tuple(_reviewer_family(s) for s in contributors)
+
+    offending: list[str] = []
+    for reviewer in dict.fromkeys(review_seats):
+        record = {
+            "schema_version": _REVIEWER_SCHEMA_VERSION,
+            "artifact_hash": "unattested",
+            "reviewed_hash": "unattested",
+            "reviewer": reviewer,
+            "reviewer_family": _reviewer_family(reviewer),
+            "contributors": contributors,
+            "contributor_families": contributor_families,
+        }
+        result = _evaluate_reviewer_eligibility(record)
+        if result.decision is _ReviewerDecision.BLOCK and "reviewer_is_contributor" in result.reason_codes:
+            offending.append(reviewer)
+
+    if not offending:
+        return [], None
+
+    message = (
+        f"reviewer_independence: reviewer seat(s) {offending} also declared "
+        f"on a build lane in the same pack — rank confers no exemption, this "
+        f"applies identically whatever the seat is named "
+        f"(RULED 2026-09-06, docs/rules/RULINGS.md)"
+    )
+    return _reviewer_independence_verdict(message, pack, today)
+
+
+def _reviewer_independence_verdict(
+    message: str,
+    pack: dict[str, Any],
+    today: datetime.date | None,
+) -> tuple[list[str], str | None]:
+    """Own phasing clock, deliberately NOT `_seat_rule_verdict` (already
+    hard-flipped at SEAT_RULES_ENFORCEMENT_DATE, 2026-08-31 — reusing it
+    would make this rule violate on day one) — same reasoning `_r9_r11_verdict`
+    documents for why R9/R11 got their own clock instead of borrowing D3's:
+    this program has never fired before, so its own enforcement date is the
+    honest one. `seat_override: <reason>` wins outright, always reported,
+    exactly like every other seat rule's escape hatch."""
+    override = pack.get("seat_override")
+    if isinstance(override, str) and override.strip():
+        return [], f"{message} (overridden) — {override.strip()}"
+    if today is None:
+        today = datetime.datetime.now(datetime.timezone.utc).date()
+    if today < REVIEWER_INDEPENDENCE_ENFORCEMENT_DATE:
+        return [], message
+    return [message], None
+
+
+# ---------------------------------------------------------------------------
 # Seat rules by path class (E3/R8-R11 — 2026-08-26 seat-rules program, spec
 # §8 in 2026-08-26-PIANO-SPEC-receptor-live.md). Two rules ship here (R8
 # ground-truth, R10 PII-local); two more (R11 cheap-seat floor, R9 Gear-3
@@ -2535,6 +3061,7 @@ def lint(
     source_path: str | None = None,
     measured_commits: int | None = None,
     brief_source_path: str | None = None,
+    today: datetime.date | None = None,
 ) -> tuple[int, list[str]]:
     """Returns (exit_code, violations). exit_code: 0 clean, 1 guilty, 2 blind.
 
@@ -2546,7 +3073,12 @@ def lint(
     corrected 2026-08-27, was a cancelable per-file Σ|added−deleted| before
     the round-2 refuter fix), not the ceiling's pre-summed global net, so
     the two parameters are independent and neither substitutes for the
-    other."""
+    other.
+
+    `today` is the SAME seam `check_brief_not_at_deprecated_root` already
+    exposes, threaded one level up so an end-to-end test can pin which side of
+    a flip date it is asserting. Default None means the real UTC date, which is
+    what every CLI and CI caller gets."""
     if not pack_path.exists():
         return 2, [f"BLIND: evidence pack not found at {pack_path}"]
     try:
@@ -2597,6 +3129,11 @@ def lint(
     if lane_notice:
         print(f"evidence_pack_lint: NOTICE — {lane_notice}", file=sys.stderr)
 
+    reviewer_violations, reviewer_notice = check_reviewer_independence(pack, gear)
+    violations += reviewer_violations
+    if reviewer_notice:
+        print(f"evidence_pack_lint: NOTICE — {reviewer_notice}", file=sys.stderr)
+
     # E3/R8-R11 seat rules (2026-08-26 program) — one call site. R8/R10
     # land here; R11 (seat_floor) and R9 (council_run) join this same
     # tuple in a follow-up PR (split per the mandate's PR-size contract),
@@ -2622,7 +3159,7 @@ def lint(
     # judge a brief against the pack's constant, which is precisely the
     # blind spot this rule exists to close.
     brief_root_violations, brief_root_notice = check_brief_not_at_deprecated_root(
-        brief_source_path, repo_root
+        brief_source_path, repo_root, today=today
     )
     violations += brief_root_violations
     if brief_root_notice:
@@ -3029,11 +3566,35 @@ def selftest() -> int:
         p.parent.mkdir(parents=True, exist_ok=True)
         p.write_text(yaml.safe_dump(obj, sort_keys=False), encoding="utf-8")
 
+    def write_journal(p: Path, entries: list[dict]) -> None:
+        p.parent.mkdir(parents=True, exist_ok=True)
+        p.write_text(
+            "\n".join(json.dumps(e) for e in entries) + "\n", encoding="utf-8"
+        )
+
     good_receipt = {"claim": "tests pass", "cmd": "pytest -q", "exit": 0,
                      "ts": "2026-08-10T00:00:00Z", "seat": "sonnet-5"}
 
+    #: R9 quorum fixture — 2 DISTINCT COUNCIL_REVIEW_SEATS, role:review,
+    #: ok:true, ts present. Written once and reused by every Gear-3
+    #: innocence fixture below THAT ISN'T ITSELF TESTING R9 (dissent-shape,
+    #: hotzone-floor, ceiling gear_override): those fixtures need R9
+    #: satisfied like any real Gear-3 pack would, not bypassed — R9's own
+    #: `seat_override` escape is reserved for a genuine "we skipped the
+    #: council, here's why" human call (_r9_r11_verdict's docstring), which
+    #: none of these synthetic packs has, so a real journal is the honest
+    #: cure (added post-2026-09-02 R9_R11_ENFORCEMENT_DATE flip — see the
+    #: comment above that constant).
+    good_council_journal = [
+        {"seat": "codex-gpt-5.6-sol", "role": "review", "ok": True,
+         "ts": "2026-09-01T00:00:00Z"},
+        {"seat": "kimi-code/k3", "role": "review", "ok": True,
+         "ts": "2026-09-01T00:00:00Z"},
+    ]
+
     with tempfile.TemporaryDirectory() as td:
         root = Path(td)
+        write_journal(root / "evidence" / "council.jsonl", good_council_journal)
 
         # ---- unit-level: compute_floor is pure, test directly -------------
         check("compute_floor: hotzone hit -> 3",
@@ -3107,6 +3668,7 @@ def selftest() -> int:
             "receipts": [good_receipt],
             "dissent": [{"seat": "codex-sol", "objection": "x", "status": "PLAUSIBLE"}],
             "pii_scan": "clean",
+            "council_run": "council.jsonl",
         })
         rc, viol = lint(root / "evidence" / "pack.yml", root, None)
         check("innocence: non-empty dissent on gear-3 passes", rc == 0 and viol == [])
@@ -3201,6 +3763,7 @@ def selftest() -> int:
             "receipts": [good_receipt],
             "dissent": [{"seat": "codex-sol", "objection": "x", "status": "PLAUSIBLE"}],
             "pii_scan": "clean",
+            "council_run": "council.jsonl",
         })
         rc, viol = lint(root / "evidence" / "pack.yml", root, hotzone_changed)
         check("innocence: gear 3 on hotzone diff passes", rc == 0 and viol == [])
@@ -3239,6 +3802,7 @@ def selftest() -> int:
             "pii_scan": "clean",
             "council": True,
             "gear_override": "hotfix under active incident, verified live",
+            "council_run": "council.jsonl",
         })
         rc, viol = lint(root / "evidence" / "pack.yml", root, ["docs/x.md"])
         check("innocence: gear_override on the same diff passes (ceiling reports, not fails)",
@@ -3288,6 +3852,7 @@ def selftest() -> int:
             "receipts": [good_receipt],
             "dissent": [{"seat": "codex-sol", "objection": "x", "status": "CONFIRMED"}],
             "pii_scan": "clean",
+            "council_run": "council.jsonl",
         })
         rc, viol = lint(root / "evidence" / "pack.yml", root, None)
         check("innocence: fully-structured dissent entry passes", rc == 0 and viol == [])
@@ -3935,6 +4500,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--changed-files-file", default=None)
     parser.add_argument("--net-lines", type=int, default=None, metavar="INT")
     parser.add_argument("--numstat-file", default=None, metavar="PATH")
+    parser.add_argument("--patch-file", default=None, metavar="PATH")
     parser.add_argument("--source-path", default=None, metavar="PATH")
     # Rule 12's input: THIS PR's own real brief path, as resolved from its
     # changed-files list (`scripts/ci/evidence_paths.py --resolve brief`).
@@ -3981,7 +4547,8 @@ def main(argv: list[str] | None = None) -> int:
             except OSError as exc:
                 print(f"evidence_pack_lint: --numstat-file unreadable: {exc}", file=sys.stderr)
                 return 3
-        print(compute_floor(changed, numstat_text_for_floor))
+        patch_text_for_floor = _read_patch_file(args.patch_file)
+        print(compute_floor(changed, numstat_text_for_floor, patch_text_for_floor))
         return 0
 
     if args.print_floor_source:
@@ -3997,7 +4564,8 @@ def main(argv: list[str] | None = None) -> int:
             except OSError as exc:
                 print(f"evidence_pack_lint: --numstat-file unreadable: {exc}", file=sys.stderr)
                 return 3
-        print(compute_floor_source(changed, numstat_text_for_source))
+        patch_text_for_source = _read_patch_file(args.patch_file)
+        print(compute_floor_source(changed, numstat_text_for_source, patch_text_for_source))
         return 0
 
     changed_files = _read_changed_files(args.changed_files_file)

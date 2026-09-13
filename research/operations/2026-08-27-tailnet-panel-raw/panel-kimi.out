@@ -1,0 +1,89 @@
+kimi version 0.38.0
+• This is an advisory panel question. Answer directly, max ~900 words, numbered 1-4, opinionated. No tools needed. One seat of 4-LLM panel — give a distinct, opinionated view.
+
+  Let me think critically as a panel member.
+
+  **1. Critique — weak/naive/missing:**
+
+  - Company account on personal computers (BYOD with managed account) — macOS user separation is weak: the employee's personal admin account can still access the company account's files (admin on a Mac can read other users' files, keychain, install keyloggers). Signed consent doesn't make it secure; FileVault helps per-disk but the personal user is root. Also resignations: wiping a company account is fine, but leakage already happened. Also app-level: Tailscale runs per-user; switching accounts is friction. Non-technical staff will use the wrong account.
+  - Exit node on office Mac for gov portals: single point of failure, and 14 people sharing one Indonesian IP for tax/immigration portals is exactly the pattern that triggers rate-limiting/captcha/fraud flags (DJPNLINE, e-Visa). Also sends ALL staff traffic through one home/office broadband — bandwidth and an office Mac being rebooted kills everyone's access. Also legal-ish: doesn't solve identity, gov portals are account-based.
+  - Vaultwarden: good, but "shared government-portal credentials" in a shared vault = no per-person accountability. Gov portals increasingly need OTP/2FA tied to a person's phone. Need per-credential audit + TOTP in vault. Risk: one leaker has every client account.
+  - Open WebUI + Ollama on a 24GB Mac Mini serving 14 people: concurrent load will crawl. One 24GB machine can run one ~13B-ish model decently or a 32B slowly; two concurrent users and latency is terrible. Non-technical staff will conclude "the internal AI is dumb/slow" and go back to ChatGPT with PII — the exact thing you built it to prevent. Shadow IT risk #1.
+  - Intake via phone-photo page: better than WhatsApp, but staff will still use WhatsApp because clients use WhatsApp. The boundary problem is client-side, not staff-side. Design doesn't address client→agency leg.
+  - Coda Review queue: whose job? Human review queues die without SLA + assignment. "Review queue" with no owner = unbounded backlog in week 2.
+  - Bacheca read-only dashboards: fine, low risk.
+  - Zantara Desk "per-assignment CRM visibility" — RBAC per practice is real work; underspecified. The bot brain with no channel is a big swing.
+  - Missing: no mention of device health/posture (Tailscale device posture on BYOD is weak), no MDM, no offboarding of the personal device when employee leaves (you can wipe company account, but creds in personal account?), no logging/audit trail requirement under UU PDP (access logs for client data), no backup of Vaultwarden, no DR if the server Mac dies (it's now a single point of failure for: vault, LLM, dashboards, intake — one dead Mac Mini halts the agency), no monitoring/alerting for ~170 daemons + new services on one owner who's the only technical person — bus factor is the elephant.
+  - The "1-click offboarding via ACL groups" is naive: offboarding = revoke node key, vault master access, CRM accounts, gov portal credentials that the person knew — ACL is 10% of it.
+  - 10-minute onboarding for non-technical staff with a separate macOS account, Tailscale, filevault, printer... unrealistic; plan a half-day with a checklist.
+
+  **2. Five ideas:**
+
+  - Field capture with offline-first + auto-redact: phone app/PWA at immigration offices that captures docs offline, queues, syncs when back, auto-OCR + auto-redaction preview before storage. Actually listed partially. Let me pick truly unlisted ones.
+    1. Practice-state machine driven by document events: intake OCR → auto-checklist of what's missing per KITAS/PT PMA case type; "case can't advance until doc X present" — the dashboards become actionable. That's arguably near Coda/Bacheca.
+    2. Local LLM deadline/compliance watcher: read-only over case DB + document expirations (KITAS expiry, passport expiry, tax deadlines) → daily digest per department pushed to Bacheca/phone. Local LLM summarizes "what expires in 30/14/7 days." This is the highest-ROI local AI use: structured extraction, not chat.
+    3. Gov-portal session recorder / audit log: since portals are shared creds, log every access (Vaultwarden audit + a tiny proxy or browser extension) — who used which portal account, when, for which client. UU PDP accountability + dispute resolution ("immigration says we never filed").
+    4. Per-role knowledge assistant over internal handbook with citations (Biblioteca + local RAG): staff ask "what docs for spouse KITAS renewal" and get cited answer from internal SOPs — reduces interruptions of senior staff. Local-only, so procedures + client examples stay inside.
+    5. Client-facing status page / magic-link portal: replace "client asks on WhatsApp, staff copy-pastes status" — per-client read-only status of their case from CRM, time-limited links. Kills the biggest WhatsApp time-sink. Though "client docs stop travelling via WhatsApp" — the inbound channel stays; this handles outbound status.
+    6. Signed receipt/chain-of-custody for physical+scanned docs: hash + timestamp at intake; when a client claims the agency lost a document, you have proof of what arrived and when.
+    7. Tailscale-serve ephemeral "one-question rooms" — nah.
+    8. Fingerprint/dedupe service: dedupe documents, detect when a passport scan for client A gets filed under client B — local LLM/embeddings cross-check.
+
+  Pick five: (1) document-driven case state machine with missing-doc checklists; (2) expiry/deadline watcher with per-role digests; (3) portal-access audit trail; (4) internal SOP assistant with citations; (5) client status magic-links. Mention chain-of-custody hash as honorable mention maybe within one.
+
+  **3. Sequence:**
+
+  Week 1 most valuable: not Vaultwarden/Open WebUI (zero-dev rooms are easy but not value). The most valuable week-1 room is Intake Drop — because it attacks the PII-over-WhatsApp risk, which is the top legal exposure, and it's used daily by everyone. Actually I'd argue: ACL hardening first (already stated), then Vaultwarden (credentials chaos is immediate, zero-dev, security), then Intake Drop. But "single room delivers most value week 1": Intake Drop if OCR pipeline already exists and works — it's a thin UI on existing backend. I'd say: Intake Drop, because it removes the #1 UU PDP violation vector immediately and produces adoption (everyone touches documents daily), which funds political capital for the rest. Open WebUI first is a trap: a slow internal ChatGPT teaches staff to distrust internal tools.
+
+  Change order: ACL → Intake Drop + Coda Review (they're one workflow; shipping intake without review queue is incomplete) → Vaultwarden (move shared creds with audit) → Bacheca + expiry watcher → Zantara Desk → Officina AI last (once you know what models/load you need, maybe upgrade Mini RAM first). Also: exit node idea — pilot with 2-3 people only; watch for portal fraud flags.
+
+  **4. Pitfalls:**
+
+  1. Technical: single-server failure / bus factor. Server Mac dies → vault+LLM+dashboards+intake all down; owner is only person who can fix. Countermeasure: cheapest = documented recovery runbook + restore drills + a cheap second host (even an old Mac) for Vaultwarden replica, automated backup export. Plus: don't run ~170 daemons + new campus on same box without monitoring; add dead-simple uptime alerts (Uptime Kuma + push).
+  2. Human: staff bypass — WhatsApp for client docs and personal ChatGPT for PII persist because the internal tools are slower/harder. Countermeasure: make the right path the easy path (one-tap phone capture, QR on desks), plus one enforced rule with teeth: client docs outside the system = disciplinary issue; measure bypass monthly by sampling. Cheapest: pick one department as champion, weekly 15-min usage review.
+  3. Legal: UU PDP compliance isn't achieved by "processed locally" alone — need access logs, consent records, retention/deletion policy, breach-notification readiness. Countermeasure: cheapest = turn on audit logging everywhere from day 1 (Vaultwarden audit, intake access log, CRM access log) into an append-only log, and write a one-page retention/deletion SOP. Also BYOD: the "company account on personal laptop" model is legally and practically fragile — when someone leaves, you can't prove no copies remain. Cheapest countermeasure: FileVault on company account + no local persistence rules + cert in liberatoria; longer-term: agency-owned Mac minis are cheap relative to a PDP fine.
+
+  Word budget ~900. Write tight. Use numbered structure with short paragraphs/bullets. English. No preamble. I am "one seat" — just answer, opinionated.
+
+• ## 1. Critique
+
+  **BYOD via "company account on personal Mac" is the weakest link, legally and practically.** On macOS the employee's personal admin account can read the company account's files, install keyloggers, and dump the Keychain. A signed liberatoria gives you paper cover, not control. When someone leaves, you cannot prove no copies walked out. For an agency whose entire value is client PII under UU PDP, this is a structural risk you are accepting silently. At minimum: FileVault on, no local persistence outside the company account, and a leaver checklist that goes beyond "revoke ACL group."
+
+  **Officina AI on a 24GB Mini serving 14 people will fail by Friday.** Two concurrent users on a 13B-class model and latency becomes embarrassing. Non-technical staff don't debug — they conclude "the internal AI is slow and dumb" and return to personal ChatGPT with client text. You will have built the compliance tool *and* the shadow-IT incentive. Either run it single-seat for the owner, or budget a hardware upgrade before rolling it out. A bad internal tool is worse than none.
+
+  **Intake Drop fixes the staff→server leg but not the client→staff leg.** Clients will keep sending passports over WhatsApp; staff will keep re-uploading. That's fine — but say so, and design the "forward from WhatsApp to intake in one tap" flow, because that's the real daily path.
+
+  **Coda Review with no owner and no SLA is a backlog generator.** Queues don't die from bad UI; they die from nobody being assigned. Every queue item needs an owner and a same-day SLA, or week 2 it's 400 items deep and everyone ignores it.
+
+  **Exit node for gov portals is fragile and possibly counterproductive.** Fourteen people hitting DGT/immigration from one residential IP is a fraud-heuristic pattern; expect captchas and rate limits. Also one office Mac reboot = whole agency locked out. Pilot with 2–3 users before making it policy.
+
+  **Missing entirely:** audit logging (UU PDP accountability isn't optional — you must be able to show *who accessed which client record, when*), Vaultwarden backup/DR, server-Mac single point of failure (it now holds vault + LLM + intake + dashboards — one dead Mini halts the agency), and the bus factor: ~170 daemons plus a whole campus maintained by one person with no runbook.
+
+  **"10-minute onboarding / 1-click offboarding" is fantasy.** Offboarding is node key + vault + CRM + gov-portal creds the person memorized. ACL groups are 10% of it.
+
+  ## 2. Five ideas
+
+  1. **Expiry/deadline watcher (local LLM, structured — not chat).** Nightly job over the case DB: KITAS/passport/tax deadlines → per-department 30/14/7-day digest to Bacheca and phones. Highest-ROI local AI use: extraction and dates, not conversation. This alone probably pays for the program.
+  2. **Document-driven case state machine.** OCR intake events update a per-case checklist ("KITAS renewal: missing sponsor letter, akta, passport validity <18mo"). Bacheca stops being a dashboard and becomes a work list. Non-technical staff don't need training on a checklist.
+  3. **Gov-portal access audit trail.** Shared credentials + shared exit node = zero accountability. Vaultwarden audit logs plus a lightweight browser extension logging portal sessions (who, which account, which client case, timestamp). Cheap, and it's your defense in both PDP audits and "immigration says you never filed" disputes.
+  4. **Chain-of-custody receipts at intake.** Hash + timestamp every document on arrival; auto-receipt to the client. When a client claims you lost their akta (it happens), you have cryptographic proof of what arrived and when. ~1 day of work, permanent legal value.
+  5. **Cited SOP assistant over Biblioteca.** Local RAG answering "what documents for a spouse-sponsored KITAS renewal?" with citations to the handbook page. Senior staff currently answer these questions 20×/day; each interruption costs more than the Mini.
+
+  ## 3. Sequence
+
+  Change it. Zero-dev rooms first is backwards: they build nothing the team touches daily, and Open WebUI early teaches distrust.
+
+  1. ACL hardening (already precondition).
+  2. **Week 1 room: Intake Drop + Coda Review, shipped as one workflow.** The OCR pipeline exists; this is a thin UI on working backend. It removes the top UU PDP violation vector (client PII in WhatsApp threads) *and* is used by everyone daily — adoption here funds political capital for everything else.
+  3. Vaultwarden with audit logging + move gov-portal creds (immediate credential-chaos win).
+  4. Expiry watcher + Bacheca.
+  5. Zantara Desk (hardest; needs per-assignment RBAC to be real).
+  6. Officina AI last, after you know actual load — and likely after a RAM upgrade.
+
+  ## 4. Pitfalls
+
+  1. **Technical: server-Mac SPOF + bus factor.** One hardware failure or one owner's bad week stops the agency. *Cheapest countermeasure:* restore-drill twice, documented one-page recovery runbook, Vaultwarden DB replicated nightly to a second host (any old Mac), and dead-simple uptime alerting (Uptime Kuma → push). Don't add campus services to the 170-daemon box without monitoring.
+  2. **Human: quiet bypass.** Staff keep using WhatsApp and personal ChatGPT because the official path is slower. *Cheapest countermeasure:* make the right path one-tap (QR codes in the office, phone home-screen icon), one named champion per department, and a monthly 15-minute sampling check: "docs found outside the system" as a metric, with teeth behind the rule.
+  3. **Legal: "local processing" ≠ UU PDP compliance.** You need demonstrable access logs, consent records, retention/deletion policy, and breach-readiness — none of which are in the design. *Cheapest countermeasure:* turn on append-only audit logging everywhere on day one (vault, intake, CRM) and write a one-page retention/deletion SOP before the pilot. Retrofitting accountability in month 9 costs 10× more and reads terribly to a regulator.
+
+To resume this session: kimi -r session_e60466af-689e-4b7c-b11f-c1ba4f1215e5

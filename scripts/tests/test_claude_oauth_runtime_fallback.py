@@ -300,7 +300,9 @@ def test_mata_keychain_fallbacks_strip_paid_api_key(
     monkeypatch: Any,
 ) -> None:
     monkeypatch.syspath_prepend(str(REPO_ROOT / "apps/mata-garuda"))
-    for slot in range(1, 6):
+    # cli_runtime.py's chain reaches slot 6 since the Team-seat remap; a loop
+    # that stops at 5 leaves the ambient seat in place and the chain runs long.
+    for slot in range(1, 7):
         monkeypatch.delenv(f"CLAUDE_CODE_OAUTH_TOKEN_{slot}", raising=False)
     monkeypatch.delenv("CLAUDE_CODE_OAUTH_TOKEN", raising=False)
     monkeypatch.setenv("ANTHROPIC_API_KEY", "must-not-leak")
@@ -645,6 +647,9 @@ def test_all_python_token_chains_deduplicate_values_before_budgeting(
     monkeypatch.setenv("CLAUDE_CODE_OAUTH_TOKEN_3", "other")
     monkeypatch.delenv("CLAUDE_CODE_OAUTH_TOKEN_4", raising=False)
     monkeypatch.delenv("CLAUDE_CODE_OAUTH_TOKEN_5", raising=False)
+    # This case fixes the chain at three numbered seats to exercise dedup; slot
+    # 6 is cleared so all seven widened modules see the same shape here.
+    monkeypatch.delenv("CLAUDE_CODE_OAUTH_TOKEN_6", raising=False)
     monkeypatch.setenv("CLAUDE_CODE_OAUTH_TOKEN", "same")
     modules_and_chains = (
         (
@@ -915,6 +920,10 @@ def test_ai_dispatch_shell_tries_legacy_before_keychain(tmp_path: Path) -> None:
         }
     )
     env.update(_cross_provider_shell_sentinels())
+    # env starts from os.environ.copy(), so an ambient slot 6 would be tried
+    # BEFORE the legacy token this case is about. The five sentinels above are
+    # the whole numbered chain this case models.
+    env.pop("CLAUDE_CODE_OAUTH_TOKEN_6", None)
 
     result = subprocess.run(
         [
@@ -1118,7 +1127,7 @@ def _base_shell_env(
         }
     )
     env.update(_cross_provider_shell_sentinels())
-    for slot in (3, 4, 5):
+    for slot in (3, 4, 5, 6):
         env.pop(f"CLAUDE_CODE_OAUTH_TOKEN_{slot}", None)
     env.pop("CLAUDE_CODE_OAUTH_TOKEN", None)
     return env

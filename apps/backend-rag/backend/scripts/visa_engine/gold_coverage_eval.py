@@ -26,6 +26,7 @@ import argparse
 import json
 import sys
 from datetime import UTC, datetime
+from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
@@ -39,7 +40,7 @@ from backend.scripts.visa_engine.gold_replay_driver import (
 )
 from backend.services.visa_engine import evaluate_path, evaluator
 from backend.services.visa_engine.bundle import verify_rule_pack
-from backend.services.visa_engine.compiler import build_compiled_pack
+from backend.services.visa_engine.compiler import CompiledRulePack, build_compiled_pack
 from backend.services.visa_engine.enums import DecisionState
 from backend.services.visa_engine.fact_registry import DEFAULT_FACT_REGISTRY
 from backend.tests.services.visa_engine import _gold_fixtures as gf
@@ -90,6 +91,34 @@ def _registry_rows() -> list[dict[str, Any]]:
     return rows
 
 
+@lru_cache(maxsize=4)
+def _verified_compiled_pack(observed_at: datetime) -> tuple[Path, CompiledRulePack]:
+    """Verify + compile the highest signed PRODUCTION pack, once per instant.
+
+    Memoized on ``observed_at`` and ONLY on it, because that is the sole
+    caller-supplied input either step grades against: a different instant is
+    a different freshness/signature-validity verdict and must re-verify, and
+    two calls at the SAME instant on the same checkout cannot disagree. The
+    saving is not cosmetic — ``verify_rule_pack`` costs ~1.6s per call
+    (measured 2026-09-06 on seq-19), which a 43-walk census pays 43 times
+    for one useful answer.
+
+    ``maxsize=4`` bounds the unpinned callers: ``_evaluate(as_of=None)``
+    resolves a fresh ``datetime.now(UTC)`` per call, so those keys are all
+    distinct and would otherwise grow without limit.
+
+    The cache also skips re-READING ``PACKS_DIR``; a process that writes a
+    new signed pack mid-run must call ``_verified_compiled_pack.cache_clear()``
+    before evaluating against it.
+    """
+
+    pack_path, raw_pack = select_highest_repository_pack(PACKS_DIR)
+    verified = verify_rule_pack(
+        raw_pack, trust_store=_repository_trust_store(), observed_at=observed_at
+    )
+    return pack_path, build_compiled_pack(verified.pack)
+
+
 def _evaluate(
     overrides: dict[str, dict[str, Any]], label: str, *, as_of: datetime | None = None
 ) -> dict[str, Any]:
@@ -105,9 +134,7 @@ def _evaluate(
     # started returning HUMAN_REVIEW_REQUIRED — the engine was right, the
     # wall-clock evaluation was the bug.
     now = as_of if as_of is not None else datetime.now(UTC)
-    pack_path, raw_pack = select_highest_repository_pack(PACKS_DIR)
-    verified = verify_rule_pack(raw_pack, trust_store=_repository_trust_store(), observed_at=now)
-    compiled = build_compiled_pack(verified.pack)
+    pack_path, compiled = _verified_compiled_pack(now)
     persona = Persona(
         id=0, label=label, overrides=overrides, expected_state=DecisionState.NEEDS_INPUT
     )

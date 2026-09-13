@@ -1,0 +1,5 @@
+• **PASS.**
+
+  The added `dependent_code: "E31B"` and `principal_case_id: "E33-2026-abc123"` close the prior gap — the payload now matches the dependent-request shape, so the 403 provably comes from requested-client access denial, not from a schema 422 or a generic-422 principal failure.
+
+  Ordering holds: access assertion runs before practice lookup, so `conn.fetchval.assert_not_awaited()` remains a valid discriminator — principal-case validation and the principal repository are never reached, and the 403-conversion wrapper is irrelevant to this path. The supplied principal IDs are valid-format and cannot short-circuit earlier than the client check per the stated policy and implementation order. No defect introduced; testcase is self-consistent with both mock (`fetchrow` = client row lookup) and assertion.

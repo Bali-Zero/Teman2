@@ -326,10 +326,15 @@ def _collect_claude_seats(
     values = os.environ if source is None else source
     seats: list[tuple[str, str]] = []
     seen: set[str] = set()
-    for slot in range(1, 6):
+    # Slot order IS the rule: the five MAX seats first, the Team seat LAST (it is
+    # weekly-capped, so it is the last resort — Zero's ruling 2026-08-23). The Team moved
+    # from slot 5 to slot 6 when the fleet was re-mapped that morning; until this fix the
+    # label said "slot5-team" while slot 5 held kaiser198719871987@, a plain MAX seat, and
+    # the real Team seat was never tried at all.
+    for slot in range(1, 7):
         token = values.get(f"{_OAUTH_TOKEN_ENV}_{slot}", "").strip()
         if token and token not in seen:
-            label = "slot5-team" if slot == 5 else f"slot{slot}"
+            label = "slot6-team" if slot == 6 else f"slot{slot}"
             seats.append((label, token))
             seen.add(token)
     legacy = values.get(_OAUTH_TOKEN_ENV, "").strip()

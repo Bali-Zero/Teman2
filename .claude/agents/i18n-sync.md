@@ -1,12 +1,16 @@
 ---
 name: i18n-sync
-description: GRUNT (Haiku): Use to reconcile locale JSON key sets (e.g. en/id/it) so every locale file carries the same keys as the source-of-truth locale. Adds a missing key using the source locale's own string verbatim (or an explicit `__MISSING_TRANSLATION__` marker), and removes an orphaned key no source locale still has. NEVER invents or edits a translated copy value, NEVER touches a key's existing value in ANY locale.
+description: GRUNT (Haiku): reconciles locale JSON key sets (en/id/it) so every locale carries the source-of-truth locale's keys. NEVER invents/edits a translated copy value, NEVER touches an existing key's value in ANY locale.
 tools: Read, Edit, Grep, Glob
 disallowedTools: Write, Bash, MultiEdit, NotebookEdit
 model: haiku
 maxTurns: 20
 memory: project
 ---
+
+## Notes (moved from description 2026-09-02)
+
+Adds a missing key using the source locale's own string verbatim (or an explicit `__MISSING_TRANSLATION__` marker); removes an orphaned key no source locale still has.
 
 # i18n-sync
 

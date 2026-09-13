@@ -419,14 +419,12 @@ describe("Middleware - Multi-domain Routing", () => {
       );
     });
 
-    it("should allow /team-management on app domain", () => {
-      const request = createRequest(
-        "https://kita.balizero.com/team-management",
-      );
+    it("should allow /lkpm on the app domain", () => {
+      const request = createRequest("https://kita.balizero.com/lkpm");
       const response = proxy(request);
 
-      expect(response.status).not.toBe(307);
-      expect(response.headers.get("x-pathname")).toBe("/team-management");
+      expect(response.status).not.toBe(301);
+      expect(response.headers.get("x-pathname")).toBe("/lkpm");
     });
 
     it("should allow internal app routes", () => {
@@ -444,14 +442,6 @@ describe("Middleware - Multi-domain Routing", () => {
 
       expect(response.status).not.toBe(307);
       expect(response.headers.get("x-pathname")).toBe("/clients");
-    });
-
-    it("should allow /whatsapp route", () => {
-      const request = createRequest("https://kita.balizero.com/whatsapp");
-      const response = proxy(request);
-
-      expect(response.status).not.toBe(307);
-      expect(response.headers.get("x-pathname")).toBe("/whatsapp");
     });
 
     it("should preserve query params when redirecting to public domain", () => {
@@ -746,5 +736,58 @@ describe("Middleware - Multi-domain Routing", () => {
         expect(url.pathname).toBe(to);
       });
     }
+  });
+
+  // =======================================================================
+  // nuzantara.co.id → (nuzantara) route group at /nuzantara/*, same rewrite
+  // shape as tax.balizero.com → /tax-calendar/*.
+  // =======================================================================
+  describe("Nuzantara Domain (nuzantara.co.id)", () => {
+    const rewrittenPath = (res: Response) => {
+      const target = res.headers.get("x-middleware-rewrite");
+      return target ? new URL(target).pathname : null;
+    };
+
+    const cases: Array<[string, string, string]> = [
+      ["nuzantara.co.id", "/", "/nuzantara"],
+      ["www.nuzantara.co.id", "/", "/nuzantara"],
+      ["nuzantara.co.id", "/privasi", "/nuzantara/privasi"],
+      ["www.nuzantara.co.id", "/privasi", "/nuzantara/privasi"],
+      ["nuzantara.co.id", "/nuzantara", "/nuzantara"],
+      ["nuzantara.co.id", "/nuzantara/metode", "/nuzantara/metode"],
+      ["nuzantara.co.id", "/nuzantarax", "/nuzantara/nuzantarax"],
+    ];
+
+    for (const [host, from, to] of cases) {
+      it(`rewrites ${host}${from} → ${to} with noindex`, () => {
+        const res = proxy(createRequest(`https://${host}${from}`));
+
+        expect(res.status).toBe(200);
+        expect(res.headers.get("location")).toBeNull();
+        expect(rewrittenPath(res)).toBe(to);
+        expect(res.headers.get("x-pathname")).toBe(from);
+        expect(res.headers.get("X-Robots-Tag")).toBe("noindex, nofollow");
+      });
+    }
+
+    it.each(["NUZANTARA.CO.ID:443", "nuzantara.co.id."])(
+      "normalizes host %s before matching",
+      (host) => {
+        const res = proxy(
+          new NextRequest("https://nuzantara.co.id/", { headers: { host } }),
+        );
+
+        expect(rewrittenPath(res)).toBe("/nuzantara");
+      },
+    );
+
+    it.each(["evilnuzantara.co.id", "nuzantara.co.id.evil.test"])(
+      "does not rewrite lookalike host %s",
+      (host) => {
+        const res = proxy(createRequest(`https://${host}/`));
+
+        expect(rewrittenPath(res)).toBeNull();
+      },
+    );
   });
 });

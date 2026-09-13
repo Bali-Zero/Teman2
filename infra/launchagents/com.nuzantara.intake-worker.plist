@@ -30,8 +30,12 @@
 		<string>900</string>
 		<key>INTAKE_LOG_LEVEL</key>
 		<string>INFO</string>
+		<!-- 15m, not 5s (tokenaudit 2026-09-02, action 50): with 5s the worker unloads the
+		     vision/text model after every poll and reloads it on the next one — measured 13
+		     llama-server loads/h on Pro before, 5-6/h after (night windows, ollama-single-manager.log).
+		     ollama-single-manager caps MAX_LOADED=2 / KEEP_ALIVE=30m, so 15m stays inside its budget. -->
 		<key>INTAKE_OLLAMA_KEEP_ALIVE</key>
-		<string>5s</string>
+		<string>15m</string>
 		<key>INTAKE_OLLAMA_MAX_INFLIGHT</key>
 		<string>1</string>
 		<key>INTAKE_NAMEID_AUTO_ATTACH_ENABLED</key>
@@ -41,7 +45,7 @@
 		<key>INTAKE_QUARANTINE_ENABLED</key>
 		<string>true</string>
 		<key>INTAKE_REPO_ROOT</key>
-		<string>/Users/nuzantara/nuzantara-deploy</string>
+		<string>/Users/nuzantara/nuzantara</string>
 		<key>INTAKE_TEXT_LLM_CLASSIFY_ENABLED</key>
 		<string>true</string>
 		<key>INTAKE_TEXT_LLM_MODEL</key>
@@ -66,7 +70,7 @@
 	<key>ProgramArguments</key>
 	<array>
 		<string>/bin/bash</string>
-		<string>/Users/nuzantara/nuzantara-deploy/apps/backend-rag/backend/services/intake/intake-worker-run.sh</string>
+		<string>/Users/nuzantara/nuzantara/apps/backend-rag/backend/services/intake/intake-worker-run.sh</string>
 	</array>
 	<key>RunAtLoad</key>
 	<true/>
@@ -77,6 +81,6 @@
 	<key>ThrottleInterval</key>
 	<integer>30</integer>
 	<key>WorkingDirectory</key>
-	<string>/Users/nuzantara/nuzantara-deploy/apps/backend-rag</string>
+	<string>/Users/nuzantara/nuzantara/apps/backend-rag</string>
 </dict>
 </plist>

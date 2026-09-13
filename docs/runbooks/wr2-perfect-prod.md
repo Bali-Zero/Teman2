@@ -55,7 +55,7 @@ launchctl bootout gui/$(id -u)/com.balizero.wr2.supervisor
 launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.balizero.wr2.supervisor.plist
 ```
 
-Stato PID supervisor + worktree: vedi cicatrice 2026-05-19 "WR2 zombies" in `.claude/rules/cicatrix-scars.md`.
+Stato PID supervisor + worktree: vedi cicatrice 2026-05-19 "WR2 zombies" in `docs/scars/cicatrix-scars.md`.
 
 ## 5. Rollback nuclear
 

@@ -119,6 +119,7 @@ from backend.services.integrations.wa_finalize import (
     FinalizeOutcome,
     finalize_wa_answer,
 )
+from backend.services.integrations.wa_greeting import match_greeting
 
 # Same-package deliberate reuse of the bot leg's lazy-singleton RAG client,
 # thread-context loader, notifier and kill switch: ONE persistent HTTP
@@ -134,6 +135,7 @@ from backend.services.integrations.wa_inbox_bot import (
     _tell_a_human,
     is_bot_autoreply_enabled,
 )
+from backend.services.rag.agentic._support_signal import SupportVerdict
 from backend.services.rag.agentic.wa_dlp import restore_text
 
 logger = logging.getLogger(__name__)
@@ -426,6 +428,13 @@ class CodexLegResult:
     stand_down: bool = False
     fail: str = ""
     reason: str = ""
+    # Which path produced `text`. "codex" is the broker completion; the
+    # deterministic greeting turn sets "scripted_greeting" so the worker's
+    # log line does not claim a broker round-trip that never happened
+    # (cross-family refuter finding 4, 2026-09-03 — `generation_route` stays
+    # NULL on that row, so a log saying "codex leg served" was the only
+    # record of it and it was false).
+    served_by: str = "codex"
 
 
 async def attempt(
@@ -511,6 +520,41 @@ async def _attempt(
         # autoreply_disabled above.
         return CodexLegResult(reason="no_customer_message")
 
+    # Deterministic greeting turn — BEFORE the package build, which is the
+    # first step that can retrieve anything. A bare "halo" classifies as
+    # QueryDomain.GREETING, whose collection list is empty by design, so the
+    # builder refuses with PackageUnbuildable("greeting_domain") and (since
+    # the Gemini cut) the row takes the full five-attempt retry ladder to
+    # arrive at an English error stub ~7m45s later. Measured on the real
+    # thread, cycle 359. `match_greeting` is a pure function with no I/O and
+    # answers None for anything that is not a BARE greeting — "halo, berapa
+    # harga PT PMA?" still goes down the normal route untouched.
+    #
+    # Placed here rather than in the worker because this is where the query
+    # actually exists (one DB read, already done above), and here rather
+    # than in the package builder because a greeting is not an unbuildable
+    # package — it is a turn with a scripted answer.
+    #
+    # Deliberately does NOT run wa_finalize: that pipeline exists to police
+    # GENERATED text (abstain labels, monologue leaks, KG scaffold, pricing
+    # veto, secret egress). This text is a module constant — nothing in it
+    # came from a model, from retrieval, or from the client.
+    #
+    # Known gap, declared: `wa_outbox.generation_route` stays NULL on these
+    # rows, because that column is one half of the codex OFFER's CAS fence
+    # and this row is never offered. A scripted greeting is therefore not
+    # yet countable in SQL; the log line below is the only marker. Same
+    # ledger family as "an abstain leaves no record" — a column, and its own
+    # PR.
+    greeting = match_greeting(query)
+    if greeting is not None:
+        logger.info(
+            "wa_codex_leg: scripted greeting served outbox=%s lang=%s",
+            outbox_id,
+            greeting.language,
+        )
+        return CodexLegResult(text=greeting.text, served_by="scripted_greeting")
+
     epoch = int(thread["handling_version"])
 
     try:
@@ -562,6 +606,76 @@ async def _attempt(
     # pre-offer, and falls off via the outer catch.
     parsed_wire = json.loads(wire)
     evidence_inputs = parsed_wire.get("evidence_inputs") or {}
+
+    phone = str(thread["counterpart_phone"])
+
+    async def _tell(reason: str) -> bool:
+        return await _tell_a_human(phone=phone, reason=reason, thread_id=thread_id)
+
+    # B2.1 support-negative branch (Terminal route — research/operations/
+    # 2026-09-11-bot-staff-room/B2-engine.md §4 B2.1 "Terminal route"),
+    # BEFORE the broker offer below. Stopping package construction is NOT
+    # this disposition: an unbuildable package returns a fall-off reason
+    # that the worker raises as `codex_leg_fell_off` into its retry ladder
+    # (spec: five attempts for a question that can never become
+    # answerable). The sealed `evidence_inputs` already carry the support
+    # signal's verdict (TASK 1, `wa_package_builder.build_context_package`)
+    # — when it is anything other than SUPPORTED, this leg generates
+    # NOTHING and hands the sealed decision straight to the UNCHANGED
+    # finalizer's safe-abstention path with an empty "answer": since
+    # `answer=""`, `_abstain_answer_worth_sending` always returns "" (its
+    # own length gate on `_ABSTAIN_MIN_SENDABLE_CHARS` fails regardless of
+    # `context_length`/`evidence_score`), so the localized safe-abstention
+    # stub is served and a human is told (`human_reason="rag_abstain"`) —
+    # never the release of unsupported substantive advice. `abstain=True`
+    # is forced here rather than read from the sealed `evidence_inputs`:
+    # this branch exists precisely because the answer must not release, so
+    # the disposition must not depend on whether the scorer's own
+    # fail-closed relevance-zeroing (B2.1 §2 point 5) already produced the
+    # same label by a different path.
+    #
+    # `support_verdict` absent (`None`) means "not consulted" (the package
+    # was built with `dlp=False` — never true for this leg's own build call
+    # above, which always passes `dlp=True`, but the field is read
+    # defensively rather than assumed) — that case does NOT enter this
+    # branch, matching `calculate_evidence_score`'s own "not consulted, no
+    # change" contract.
+    support_verdict = evidence_inputs.get("support_verdict")
+    if support_verdict is not None and support_verdict != SupportVerdict.SUPPORTED.value:
+        unsupported_price_sources: list[str] = [
+            str(chunk.get("text", "")) for chunk in parsed_wire.get("chunks", [])
+        ]
+        if parsed_wire.get("pricing_block") is not None:
+            unsupported_price_sources.append(
+                json.dumps(parsed_wire["pricing_block"], ensure_ascii=False, sort_keys=True)
+            )
+        unsupported_result = await finalize_wa_answer(
+            data={
+                "answer": "",
+                "abstain": True,
+                "abstain_reason": "support_unsupported",
+                "context_length": evidence_inputs.get("context_length"),
+                "evidence_score": evidence_inputs.get("evidence_score"),
+            },
+            query=query,
+            thread_id=thread_id,
+            tell_a_human=_tell,
+            provider="codex",
+            price_sources=unsupported_price_sources,
+            secret_scan=True,
+            canary_tokens=_canary_tokens(),
+        )
+        logger.info(
+            "wa_codex_leg: support signal unsupported (outbox=%s verdict=%s) — "
+            "terminal stub, no broker offer",
+            outbox_id,
+            support_verdict,
+        )
+        return CodexLegResult(
+            text=unsupported_result.text,
+            reason="support_unsupported",
+            served_by="support_abstain",
+        )
 
     # The offer boundary is FAIL-CLOSED only where the outcome is
     # genuinely UNCERTAIN (Codex r3, sharpened by r4): the three phases
@@ -877,11 +991,10 @@ async def _attempt(
             json.dumps(parsed_wire["pricing_block"], ensure_ascii=False, sort_keys=True)
         )
 
-    phone = str(thread["counterpart_phone"])
-
-    async def _tell(reason: str) -> bool:
-        return await _tell_a_human(phone=phone, reason=reason, thread_id=thread_id)
-
+    # `phone` and `_tell` are defined once, above, right after `evidence_inputs`
+    # is parsed — reused here unchanged (moved up in B2.1 so the support-
+    # negative branch above can call `finalize_wa_answer` with the same
+    # `tell_a_human` closure before any broker offer exists).
     result = await finalize_wa_answer(
         data={
             "answer": text,

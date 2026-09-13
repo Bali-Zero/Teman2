@@ -1,0 +1,35 @@
+task_id: claude-md-index-0904
+gear: 2
+l_level: L2
+gate_class: opus
+objective: |
+  Fase 1+2 of the context-diet plan approved by Zero on 2026-09-04 (plan file
+  goofy-purring-pillow): repo-root CLAUDE.md becomes an INDEX (51,270 -> 9,779 bytes) and the
+  specialist content MOVES — never rewritten, never deleted — to lazily-loaded per-folder files
+  (apps/backend-rag/CLAUDE.md appended, research/CLAUDE.md, docs/rules/RULINGS.md,
+  docs/rules/operations.md), with a CI-armed byte budget (scripts/tests/test_claude_md_budget.py,
+  15 tests) so the diet cannot silently regrow. Trigger: the /context panel measured ~137k fixed
+  per-session overhead, ~52k of it memory files; the SOTA research (PR #5628) named the
+  over-specified CLAUDE.md as the one anti-SOTA surface.
+
+  Floor 2 by SIZE (net +564/-247 across 8 files; measured with evidence_pack_lint --print-floor).
+  Built by a Sonnet 5 implementer in its own worktree; gated by the conducting session.
+constraints:
+  - "Move-only guarantee, machine-checked: every non-empty line of origin/main:CLAUDE.md must be
+    found verbatim (whitespace-normalized) in the new root or a destination file. Verified
+    independently by the gate: 263 lines, 1 lost and it is the bare '# Part B' heading separator."
+  - "CANON builder-contract block byte-identical across CLAUDE.md/AGENTS.md/GEMINI.md/QWEN.md and
+    vs origin/main (door_canon_parity) — hash-verified before and after, unchanged."
+  - "Auto-injection trap cured mid-build: .claude/rules/*.md files WITHOUT paths: frontmatter are
+    injected into every session (proven: cicatrix-superscar.md), so RULINGS/operations first
+    landed there would have nullified the diet. Moved to docs/rules/ + a guard test that fails if
+    any future paths-less file lands in .claude/rules/ besides the named superscar exception."
+  - "apps/backend-rag/CLAUDE.md pre-existed with 20.5KB of load-bearing content the mandate did
+    not know about — preserved append-only with an explicit provenance header, plus a NAMED
+    budget exception in the test (goes red if the exception stops being needed)."
+acceptance:
+  - "pytest scripts/tests/test_claude_md_budget.py green (15/15)."
+  - "Root CLAUDE.md <= 16KB; INDICE pointers all resolve; no stale .claude/rules/RULINGS or
+    /operations pointer outside the test's own documentation lines."
+  - "PROVE-LIVE (Fase 6 of the plan, after merge): a fresh session's /context shows memory-files
+    category shrunk; the per-folder file loads when working under apps/backend-rag/."

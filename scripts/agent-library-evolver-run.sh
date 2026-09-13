@@ -301,9 +301,9 @@ gather_context() {
         git -C "${REPO_ROOT}" log --since=7days --oneline --no-merges 2>/dev/null | head -200 || true
         printf '```\n\n'
 
-        printf '## Cicatrix scars (.claude/rules/cicatrix-scars.md)\n\n'
-        if [[ -f "${REPO_ROOT}/.claude/rules/cicatrix-scars.md" ]]; then
-            head -300 "${REPO_ROOT}/.claude/rules/cicatrix-scars.md" || true
+        printf '## Cicatrix scars (docs/scars/cicatrix-scars.md)\n\n'
+        if [[ -f "${REPO_ROOT}/docs/scars/cicatrix-scars.md" ]]; then
+            head -300 "${REPO_ROOT}/docs/scars/cicatrix-scars.md" || true
         else
             printf '(no cicatrix-scars.md found)\n'
         fi

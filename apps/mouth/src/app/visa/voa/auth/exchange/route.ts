@@ -4,8 +4,8 @@ import { logger } from "@/lib/logger";
 import {
   FAILURE_LOCATION,
   PENDING_COOKIE,
-  PENDING_COOKIE_PATH,
   decodePending,
+  expirePending,
   hasAccountSession,
   isLoopback,
 } from "../contract";
@@ -49,18 +49,6 @@ import {
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-
-/** Clears the pending cookie. Same Path, or the browser keeps the old one. */
-function expirePending(secure: boolean): string {
-  return [
-    `${PENDING_COOKIE}=`,
-    "HttpOnly",
-    `Path=${PENDING_COOKIE_PATH}`,
-    "Max-Age=0",
-    "SameSite=Lax",
-    ...(secure ? ["Secure"] : []),
-  ].join("; ");
-}
 
 function seeOther(location: string, cookies: string[]): Response {
   const headers = new Headers({

@@ -110,14 +110,14 @@ single file).
 
 **Sintesi**: nuz-sync / parallel claude sessions fanno `git stash + checkout` automatico. `git stash` senza `-u` non stasha untracked. 2 incidenti 2026-04-29 in 9h, recovery via `git fsck --dangling --no-reflogs` (solo se `git add`-ed).
 **Quando applica**: lunga sessione con untracked files; pre-sessione check `ps aux | grep claude | wc -l <3`. WIP-commit-every-10min se untracked exist.
-**Fonte primaria**: `.claude/rules/cicatrix-scars.md:144` (Untracked files lost entry)
+**Fonte primaria**: `docs/scars/cicatrix-scars.md:144` (Untracked files lost entry)
 **Pattern correlato**: meta `Silent failure shape`
 
 ### 8. `fs_usage -w -f filesys` come trap 24/7 fonde il Mac
 
 **Sintesi**: `fs_usage -f filesys` è firehose kernel. 4h30min idle = 158min CPU + 5.2GB RAM, load 12.07/14 core. Mai daemon hot 24/7. Alternative: eslogger (kernel-side filter), LaunchAgent intervallato + timeout, auto-kill watchdog su RSS>2GB/CPU>50%.
 **Quando applica**: forensic trap per eventi rari (plist corruption, file deletion mystery). Decidi window max a priori.
-**Fonte primaria**: SessionStart hook entry 2026-04-29 + `.claude/rules/cicatrix-scars.md` (P0-3 plist corruption)
+**Fonte primaria**: SessionStart hook entry 2026-04-29 + `docs/scars/cicatrix-scars.md` (P0-3 plist corruption)
 **Pattern correlato**: meta `Self-induced load`
 
 ### 9. SSH non-interactive PATH trap

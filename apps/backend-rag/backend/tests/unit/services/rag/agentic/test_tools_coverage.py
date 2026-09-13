@@ -120,6 +120,18 @@ class TestVectorSearchTool:
         assert "visa_oracle" in tool.description
         assert "FEDERATED" in tool.description
 
+    def test_legal_unified_description_mentions_immigration_statutes(self):
+        """legal_unified holds 5,022+ chunks of immigration law (UU Keimigrasian,
+        Permenkumham/PermenImipas on visa & izin tinggal, visa-free lists) alongside
+        tax/labour/company/KUHP/Perda text - the LLM must be told this or it never
+        routes immigration-statute questions there (2026-09-04 measured miss)."""
+        tool = self._make_tool()
+        description = tool.description
+        assert "immigration" in description.lower()
+        assert "Keimigrasian" in description or "PermenImipas" in description
+        # immigration_circulars must be explicitly contrasted with the statutory text
+        assert "legal_unified" in description.split("immigration_circulars:")[1]
+
     def test_parameters_schema(self):
         tool = self._make_tool()
         schema = tool.parameters_schema

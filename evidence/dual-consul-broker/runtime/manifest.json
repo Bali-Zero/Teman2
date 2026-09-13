@@ -1,0 +1,19 @@
+{
+  "schema_version": 1,
+  "meaning": "Retained selected normalized artifacts; manifest excludes itself. Original collected bytes and semantic comparison origins are recorded in qualification.json.",
+  "files": {
+    "README.md": "d0a98cb4da74a9f382ea035bc99059462f93d7bc21fd31df2b4a536560a07db0",
+    "m5-catalog.json": "65545f7016066039ed5a5e77da33b03befac3ec37d20490f97f8d605570b572e",
+    "m5-config-lifecycle.json": "49f3178c704ff297b1595b7f13c73f74e9d4b8fc616bed0cb7b14608826cc6a1",
+    "m5-schema-selection.json": "daed55cc8c40a69bdbcdd405427d1d1fdc478d09d5f5b35447505d5806d421bb",
+    "mini-candidate-catalog.json": "c35d2ea78581f8693d954ffa4cd7cca6b8d869542caa52e77480695f3d3ca533",
+    "mini-catalog.json": "2b232b85ab2c94afb5f3569f100c373590ae6d14a464140dc0e67f79d2a7c958",
+    "mini-schema-selection.json": "daed55cc8c40a69bdbcdd405427d1d1fdc478d09d5f5b35447505d5806d421bb",
+    "pro-candidate-catalog.json": "7ce50e00eaf169c971ca0b0be5edc8ba0abb27fe908aee1df6d36f0bb05383bd",
+    "pro-catalog.json": "c79b371edc2ce45108505df62f40023af9fe29588c4e5f7253a3e9a7e5bf6fb6",
+    "pro-config-lifecycle.json": "2d5f96d3a88efb5af65cd92c5593a9ad6574e134b8449ba0ac5573cece62ca97",
+    "pro-schema-selection.json": "d624e205a939be8288fcdd657722bccf99e9f0682c36821a7de26901ba635b81",
+    "qualification.json": "ec3225ab0afe974c887a3828298c25d6df6a8b9863ea1fd3fb1d2c680e497cb3"
+  },
+  "files_total_bytes": 43266
+}

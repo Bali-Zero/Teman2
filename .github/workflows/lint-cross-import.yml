@@ -4,7 +4,7 @@ name: Lint Cross-Import
 # import violations BEFORE Vercel monorepo build cascades a single broken
 # package.json across all 21 apps. See:
 #   docs/audits/2026-04-29-zero-crash-audit/09_intervention_plan.md  (NB-D)
-#   .claude/rules/cicatrix-scars.md                                  (entry to be added on resolution)
+#   docs/scars/cicatrix-scars.md                                     (entry to be added on resolution)
 on:
   pull_request:
     paths:

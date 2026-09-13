@@ -1,0 +1,192 @@
+task_id: visaoracle-skill-diet-0909
+gear: 3
+gate_class: opus
+brief_ref: evidence/brief.yml
+date: 2026-09-09
+machine: Pro
+seat_override: >-
+  No multi-seat council convened before this build — this is a mechanical, low-semantic-risk
+  docs/skill reorganization (move a dated log verbatim into a new file, no logic/content
+  rewritten) whose Gear-3 floor comes entirely from --no-renames churn (3,079 lines) on a
+  git-mv-shaped diff, not from any hot-zone path or judgment-heavy change. The coordinating
+  session (team-lead) is instead spawning an independent verifier to read/post the real
+  harness/fable-gate verdict on this exact head SHA per CLAUDE.md §5 (generator != grader) —
+  that adversarial read is the substantive review this task gets; this override only clears
+  the pre-build multi-seat council requirement (R9), it does not claim the review happened.
+date_ratified: n/a — process override, not a content ratification
+machine_note: worktree /Users/nuzantara/nuzantara/.worktrees/docs-visaoracle-skill-diet-0909, branch agent/nuzantara/docs/visaoracle-skill-diet-0909
+lanes:
+  - lane: SKILL.md split (build)
+    role: build
+    seat: claude-sonnet-5 (Pro worktree agent)
+    note: >-
+      Extracted the entire ## LIVE STATE dated-entry log (66 entries, 1,513 lines) verbatim
+      via sed into a new references/live-state-log.md with a 6-line header; git mv'd
+      CURRENT_STATE.md and HANDOFF-2026-08-08-voa-conclusive-rate.md into references/;
+      updated the three in-skill path references to those two files (previously inline in
+      the moved LIVE STATE text) plus CURRENT_STATE.md's own self-reference; rewrote
+      SKILL.md as an index keeping frontmatter, Mission, ENFORCE-GATE, Established truths,
+      Arsenal & seat status, Loop protocol, TRACKS and PENDING byte-identical, replacing
+      LIVE STATE with a 22-line CURRENT POSITION block derived only from the two newest
+      (2026-09-06) dated entries.
+outcome: >-
+  .agents/skills/visaoracle/SKILL.md reduced from 1,689 lines / 145,262 bytes to 203 lines /
+  14,713 bytes. references/live-state-log.md carries all 66 dated LIVE STATE entries
+  verbatim (byte-for-byte match against the original section, confirmed by diff before any
+  edit was applied to the extracted copy). The ENFORCE-GATE section is byte-identical to
+  origin/main. The .claude/skills/visaoracle symlink still resolves. No file outside
+  .agents/skills/visaoracle/ touched.
+diff:
+  files: 8
+  net_lines: >-
+    2,948 insertions, 2,675 deletions across eight files (churn 5,623) — see
+    `git diff --no-renames --numstat $(git merge-base origin/main HEAD)..HEAD`. The
+    6 skill files (SKILL.md 34/1520; CURRENT_STATE.md 0/875 old path + 876/0 new path;
+    HANDOFF 0/280 old path + 280/0 new path; the new references/live-state-log.md
+    1522/0) are the split itself; the 2 evidence files (brief.yml 51/0, pack.yml
+    185/0) are this commit. --no-renames counts each git-mv'd file as a full
+    delete+add rather than crediting the rename, which is why the two moved
+    reference files show as 0/875+876/0 and 0/280+280/0 here even though `git mv`
+    was used — this is the same convention the CI floor computation uses, not a
+    measurement error. The split alone, before this pack's own two evidence files,
+    was already 1,558 insertions / 1,521 deletions / 3,079 churn across four files,
+    already past the Gear-3 SIZE threshold (1,828 churn) on its own.
+  shape: >-
+    A section move, not a content rewrite: SKILL.md's ## LIVE STATE body (lines 133-1647
+    of the pre-split file) was cut and pasted verbatim into a new file with a 6-line
+    header; two existing files were git mv'd one directory level down; three internal
+    path references and one self-reference were repointed; SKILL.md's own top matter
+    (frontmatter, Notes, CURRENT HANDOFF blockquote) and every other section were either
+    left untouched or, for LIVE STATE only, replaced with a short derived summary. No
+    code, no test, no non-docs file in the diff.
+pii_scan: clean
+pii_scan_note: >-
+  The moved text is byte-identical to text already public on origin/main (this repo's own
+  internal ops skill, no client names/phones/emails/passport numbers ever lived in it — it
+  documents RulePack signing ceremonies, Fly/Vercel ops, and engineering state, not client
+  cases). No new content was authored except the short CURRENT POSITION summary and the
+  references/ header, both of which name only pack IDs, SHAs, dates and infra commands —
+  verified by re-reading the diff before commit.
+receipts:
+  - claim: "SKILL.md before the split was 1,689 lines / 145,262 bytes"
+    cmd: "wc -lc .agents/skills/visaoracle/SKILL.md (worktree just created, pre-edit)"
+    result: "1689 145262 .agents/skills/visaoracle/SKILL.md"
+    ts: "2026-09-09T13:20:00Z"
+    seat: claude-sonnet-5 (Pro worktree agent)
+    exit: 0
+  - claim: "the extracted LIVE STATE body (lines 134-1646) is byte-identical to the source range before any edit was applied to the copy"
+    cmd: "diff <(sed -n '134,1646p' SKILL.md) $SCRATCH/live-state-body.md"
+    result: "no output (files identical); echo IDENTICAL printed"
+    ts: "2026-09-09T13:22:00Z"
+    seat: claude-sonnet-5 (Pro worktree agent)
+    exit: 0
+  - claim: "the original LIVE STATE section carried exactly 66 dated entries"
+    cmd: "grep -c '^- 2026-' .agents/skills/visaoracle/SKILL.md (pre-edit) and, post-commit, git show origin/main:.agents/skills/visaoracle/SKILL.md | grep -c '^- 2026-'"
+    result: "66"
+    ts: "2026-09-09T13:23:00Z"
+    seat: claude-sonnet-5 (Pro worktree agent)
+    exit: 0
+  - claim: "references/live-state-log.md carries the same 66 dated entries after the header was prepended and the three path references were edited"
+    cmd: "grep -c '^- 2026-' .agents/skills/visaoracle/references/live-state-log.md"
+    result: "66"
+    ts: "2026-09-09T13:47:04Z"
+    seat: claude-sonnet-5 (Pro worktree agent)
+    exit: 0
+  - claim: "the new SKILL.md is 203 lines / 14,713 bytes, within the <=220/<=20KB target"
+    cmd: "wc -lc .agents/skills/visaoracle/SKILL.md"
+    result: "203 14713 .agents/skills/visaoracle/SKILL.md"
+    ts: "2026-09-09T13:47:04Z"
+    seat: claude-sonnet-5 (Pro worktree agent)
+    exit: 0
+  - claim: "the ## ENFORCE-GATE section is byte-identical between origin/main's SKILL.md and the new SKILL.md"
+    cmd: >-
+      git show origin/main:.agents/skills/visaoracle/SKILL.md | sed -n '/^## ENFORCE-GATE/,/^##
+      /p' | sed '$d' > /tmp/eg-orig.md ; sed -n '/^## ENFORCE-GATE/,/^## /p'
+      .agents/skills/visaoracle/SKILL.md | sed '$d' > /tmp/eg-new.md ; diff /tmp/eg-orig.md
+      /tmp/eg-new.md
+    result: "no output (empty diff); echo 'EMPTY DIFF (identical)' printed"
+    ts: "2026-09-09T13:47:04Z"
+    seat: claude-sonnet-5 (Pro worktree agent)
+    exit: 0
+  - claim: "the .claude/skills/visaoracle symlink resolves through to the split SKILL.md and the new references/ directory"
+    cmd: "ls -la .claude/skills/visaoracle/"
+    result: "lists SKILL.md (15k) and references (dir) through the symlink"
+    ts: "2026-09-09T13:47:04Z"
+    seat: claude-sonnet-5 (Pro worktree agent)
+    exit: 0
+  - claim: "the four changed markdown files pass this repo's Prettier check"
+    cmd: >-
+      npx prettier --check .agents/skills/visaoracle/SKILL.md
+      .agents/skills/visaoracle/references/CURRENT_STATE.md
+      .agents/skills/visaoracle/references/HANDOFF-2026-08-08-voa-conclusive-rate.md
+      .agents/skills/visaoracle/references/live-state-log.md
+    result: "Checking formatting...\nAll matched files use Prettier code style!"
+    ts: "2026-09-09T13:47:30Z"
+    seat: claude-sonnet-5 (Pro worktree agent)
+    exit: 0
+  - claim: "this diff's deterministic floor is 3, source size (churn 3,079 > SIZE_GEAR3_THRESHOLD 1,828)"
+    cmd: >-
+      python3 scripts/evidence_pack_lint.py --print-floor --changed-files-file
+      $SCRATCH/changed-files.txt --numstat-file $SCRATCH/numstat.txt ; --print-floor-source
+      with the same args
+    result: "3 / size"
+    ts: "2026-09-09T13:40:00Z"
+    seat: claude-sonnet-5 (Pro worktree agent)
+    exit: 0
+  - claim: "CI's own 'Compute deterministic floor from diff' step independently confirmed floor 3 / source size on head 9d6210902b, and the 'FAIL — floor >= 2 diff with no evidence/brief.yml' step is what failed the check before this evidence commit existed"
+    cmd: "gh run view 34358187039 --job 102488120757 --log"
+    result: >-
+      \"deterministic floor for this diff: 3\" / \"deterministic floor source for this diff:
+      size\" / \"##[error]this diff's deterministic floor is 3 (source: size ...) but
+      carries no evidence/brief.yml ... requires at minimum a brief declaring gear>=3\"
+    ts: "2026-09-09T13:44:00Z"
+    seat: claude-sonnet-5 (Pro worktree agent)
+    exit: 1
+  - claim: "pre-commit and pre-push hooks passed on the split commit with no --no-verify"
+    cmd: "git commit ...; git push -u origin agent/nuzantara/docs/visaoracle-skill-diet-0909"
+    result: >-
+      \"All pre-commit checks passed!\" / prettier quickcheck OK / skills-canon OK /
+      backend suite SKIPPED (path-aware allowlist, all 6 changed files are
+      .agents/skills/**.md) / \"All pre-push checks passed!\"
+    ts: "2026-09-09T13:35:00Z"
+    seat: claude-sonnet-5 (Pro worktree agent)
+    exit: 0
+dissent:
+  - seat: claude-sonnet-5 (Pro worktree agent, self-review directed by team-lead)
+    status: CONFIRMED
+    objection: >-
+      LIVE STATE — CURRENT POSITION is a DERIVED summary (hand-written from only the two
+      newest 2026-09-06 entries), not a mechanical extract — a reader who trusts only that
+      block and never opens references/live-state-log.md can miss a constraint or caveat
+      that lives in an older dated entry the summary did not carry forward (e.g. a
+      still-open PENDING item from an earlier date not repeated in the summary).
+      Mitigated, not eliminated: the block ends with an explicit pointer line ("Full
+      chronology: references/live-state-log.md (read the newest entries before claiming a
+      track)"), and the CURRENT HANDOFF blockquote at the top of SKILL.md repeats the same
+      pointer as the very first thing a session reads.
+  - seat: claude-sonnet-5 (Pro worktree agent, self-review directed by team-lead)
+    status: CONFIRMED
+    objection: >-
+      The update protocol now spans two files instead of one: a state change must append
+      to references/live-state-log.md AND refresh SKILL.md's CURRENT POSITION block. These
+      two can drift if a future session updates only one of them — the split trades a
+      single-file discipline problem (the file was too large to read) for a two-file
+      consistency problem. Mitigated by making the rule explicit and hard to miss: the new
+      live-state-log.md's own 6-line header states "update protocol: whoever changes state
+      appends the entry HERE (newest first) and refreshes the CURRENT POSITION block in
+      SKILL.md in the same commit" — but this is a written convention, not a machine-
+      enforced one; no lint currently checks that both files change together.
+  - seat: claude-sonnet-5 (Pro worktree agent, self-review directed by team-lead)
+    status: CONFIRMED
+    objection: >-
+      The Gear-3 floor on this PR is a --no-renames churn artifact (3,079 lines) of a diff
+      that is, semantically, a single section relocation with no logic, price, rule, or
+      claim changed — git cannot express "move this text to a new file" as anything other
+      than a full delete + full add when the destination is a brand-new file, so the size
+      term floors this at the same gear as a genuine 3,000-line rewrite. This is a real
+      process-cost-vs-risk mismatch worth recording as a rule observation for whoever
+      reviews the S1 size-term calibration next, not something this pack tries to route
+      around: the diff genuinely IS that large by the numbers the rule reads, so Gear 3 is
+      what the rule says, and this pack does the Gear-3 work rather than disputing the
+      floor.
+appetite_exceeded: ""

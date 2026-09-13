@@ -127,7 +127,12 @@ SCORE_KEYWORD_MATCH = 2.0
 SCORE_DURATION_FIT = 1.5
 SCORE_FAMILY_MATCH = 1.0
 
-WHATSAPP_NUMBER = "+62 821 3465 159"
+# The client-facing handoff line (Ari's, `settings.CLIENT_CONTACT_WHATSAPP`),
+# used by build_whatsapp_message() below. A second constant `WHATSAPP_NUMBER`
+# sat here carrying the bot's INBOUND number instead; it was referenced
+# nowhere in the repo, which is the only reason it never reached a client —
+# a dead wrong number one line above the live right one is a trap, not
+# harmless. Removed 2026-09-01 with the owner's client-facing ruling.
 WHATSAPP_BASE_URL = "https://wa.me/628213454721"
 
 # PR0 hardening (Codex red-team P1 #4, Markdown injection): the 4 chars

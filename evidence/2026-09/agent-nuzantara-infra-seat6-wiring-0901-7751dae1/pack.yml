@@ -1,0 +1,264 @@
+brief_ref: evidence/brief.yml
+council_run: journal.jsonl
+plan_ref: >-
+  Consolidation of three stale PRs (#4640 seat6-consumers, #4644 seat6-cascade, #4645
+  seat6-reflexion), opened 2026-08-23 and stuck 9 days. Zero's ruling 2026-09-01: close the three
+  and cut ONE PR from current main carrying their content plus the test fix they never made.
+
+lanes:
+  - lane: seat6-ground
+    role: read
+    seat: >-
+      claude-opus-5 (conducting session, Pro). Established by measurement, not by reading the PRs'
+      claims: the three branches' seat6 content is IDENTICAL to seat6-reflexion on the wrapper,
+      the wr3 scripts and the slot-6 coverage test (blob-SHA equality), and their remaining
+      differences against this branch are main's own advancement, not content they hold and this
+      branch lacks — the W102 shape, seen from the other side.
+  - lane: seat6-build
+    role: build
+    seat: >-
+      claude-opus-5 (conducting session, Pro). Carries the wiring authored in the seat6-* lanes
+      onto a fresh base, and adds the two things those lanes never had: a behavioural test of the
+      NUMBERED slot-6 branch, and the removal of a test_seat_state.sh check that could only ever
+      compare against a sibling PR's tip.
+  - lane: seat6-refute-codex
+    role: review
+    seat: >-
+      codex gpt-5.6-sol, --sandbox read-only, cross-family. REFUTED the first draft — returned
+      BLOCK with three findings, of which two were upheld and drove this PR's content (the missing
+      behavioural test; the -z/.strip() divergence). Its most serious finding (the Team token still
+      sitting in slot 5) was checked and NOT realised — slot5 and slot6 hashes differ.
+  - lane: seat6-grade
+    role: review
+    seat: >-
+      claude-sonnet-5 subagent (spalla-review), grading a diff it did not author, told to build a
+      control tree and RUN the new tests rather than read their docstrings. Returned BLOCK with
+      two blockers, both reproduced independently before being accepted, both CURED in this PR.
+
+seat_diversity: satisfied
+seat_diversity_note: >-
+  One build lane, so D3's non-Anthropic BUILD-seat requirement does not apply by its own terms
+  (">= 2 build lanes"); no second build lane was invented to satisfy a rule that does not bind.
+  Cross-family adversarial pressure is present where it is load-bearing — on REVIEW: codex
+  gpt-5.6-sol refuted the draft and its findings are the reason this PR contains a behavioural
+  test at all. A kimi-code/k3 refuter was attempted first and is NOT counted: it exited 0 while
+  carrying a 403 weekly-limit error in its output, which is a non-judgement, not a clean one.
+
+diff:
+  files: 29
+  net_lines: 729
+  measured_at: >-
+    counted with `git diff --numstat <merge-base>...HEAD` (three-dot: two-dot on this branch
+    accuses it of deleting main's later additions, W102) immediately before this commit. Above the
+    ~400 net-line guideline by 25 lines and deliberately so: the alternative is three PRs that have
+    been mutually blocked for nine days, which is the cost the guideline exists to avoid.
+
+residual_risks:
+  - >-
+    ONE cross-family seat judged this PR, not two. codex-gpt-5.6-sol reviewed and returned BLOCK;
+    kimi-code/k3 exited 0 carrying a 403 weekly-limit error and tp1-qwen3.8-max exited 0 carrying
+    "tp1_call: timed out". Both are non-judgements and neither is counted — the pack's council_run
+    NOTICE is left standing rather than satisfied with a seat that never spoke.
+  - >-
+    try_claude()'s internals were checked by READING the function body, not by executing it — the
+    grader said so in its own words rather than letting it pass as run. It is the one place a slot
+    could in principle be attempted twice; the outer loop was verified by execution, the inner body
+    was not. Recorded as unverified rather than as clean.
+  - >-
+    The exhaustive sweep invoked each affected file directly with pytest/bash, which is the same
+    assertion surface as CI but NOT the identical invocation (it did not replay immune-enforcement.yml's
+    own job steps). The sweep declared this limit itself.
+  - >-
+    MERGING THIS DOES NOT MAKE IT LIVE, and the reason is not the usual one. `~/scripts/claude-cascade.sh`
+    on Pro and Mini is a SYMLINK into the main checkout (the HOME-fork for this file was cured
+    2026-07-26, the old copy is archived), so there is no path drift. The gap is checkout
+    staleness: Pro's and Mini's main checkouts are separate clones that do not track origin/main,
+    and Pro's HEAD is already behind today, independently of this PR. Five loaded launchd
+    consumers resolve through that symlink — healer-pro.6h, nb-curator.daily,
+    competitor-monitor.monthly, regulatory-watcher.daily and meta-dispatcher (live PID, but it
+    re-execs the script per call, so no restart is needed). A single `git pull` in each checkout
+    re-arms all five. M5 is not a runtime consumer: no daemon infrastructure, no symlink, and a
+    checkout at an older HEAD entirely.
+  - >-
+    test_team_slot_is_not_spent_when_an_earlier_max_seat_succeeds passes VACUOUSLY against a
+    wrapper that has no slot 6 at all — measured, not suspected. It is kept because it pins a
+    future regression that the other test cannot see (a slot-6 branch spliced in at the wrong
+    point in the loop is CALLED, just too early), and its docstring says plainly that its
+    anti-vacuity control is the sibling test in the same file. The pair is the guard.
+  - >-
+    The shell reads a token with `[ -n "$token" ]` while the two Python consumers read it with
+    `.strip()`, so a token carrying a trailing newline is USED by Python (normalised) and FAILS
+    auth under the shell (passed through raw) — the same slot, two verdicts, family #9. Measured
+    NOT live today (0 of 6 slots carry leading/trailing whitespace), and it predates slot 6 for
+    slots 1-5, so it is specced rather than cured here: curing it inside this PR would change
+    behaviour on five slots this PR does not otherwise touch.
+  - >-
+    This branch's base is behind origin/main. A guard merged to main after that base stays INERT
+    on this PR until the branch is synced, so `gh pr update-branch` is part of opening it, not a
+    follow-up.
+
+pii_scan: clean
+
+dissent:
+  - seat: codex-gpt-5.6-sol
+    status: RETRACTED
+    objection: >-
+      "The Team token is still sitting in slot 5, so the remap never took effect." Checked by
+      hashing both slots' values and comparing the hashes, never the values: they differ. The
+      objection is not realised and no change was made for it.
+  - seat: codex-gpt-5.6-sol
+    status: CONFIRMED
+    objection: >-
+      "The shell tests the token with `[ -n "$token" ]` while the two Python consumers read it
+      with `.strip()`, so the same slot gets two verdicts." Confirmed as a real defect: a token
+      carrying a trailing newline is normalised and USED by Python, and passed through raw and
+      FAILED by the shell. Deliberately NOT cured in this PR — it predates slot 6 on slots 1-5
+      and was measured not-live (0 of 6 slots carry leading or trailing whitespace), so curing it
+      here would change behaviour on five slots this PR does not otherwise touch. The
+      disagreement with the refuter is about SCOPE, not about the defect; carried in
+      residual_risks.
+  - seat: claude-sonnet-5 (independent grader)
+    status: CONFIRMED
+    objection: >-
+      "test_claude_oauth_slot6_coverage.py is named by ZERO pull_request-triggered workflows, so
+      the 259-line proof that all 16 consumers reach slot 6 has no standing CI enforcement."
+      Reproduced: `grep -rln` across .github/workflows/ returned NOTHING — not even the sweep,
+      which would not have counted anyway (schedule-triggered, continue-on-error). The PR that
+      exists to close an enforcement gap had reproduced it for its own artifact. CURED.
+  - seat: claude-sonnet-5 (independent grader)
+    status: CONFIRMED
+    objection: >-
+      "test_vision_circuit_breaker.py breaks when CLAUDE_CODE_OAUTH_TOKEN_6 is set, which it is on
+      every fleet machine." Reproduced exactly: 2 failed / 5 passed with the slot present, 7
+      passed after the fix. Green on a clean runner, red on the machines that actually run it.
+      CURED.
+  - seat: claude-opus-5 (session, own hypothesis)
+    status: RETRACTED
+    objection: >-
+      While checking the grader's second finding the session suspected the SAME ambient leak in
+      test_wr3_dispatch_v2_oauth_fleet.py, on the strength of three `range(1, 6)` occurrences.
+      Not realised: run WITH and WITHOUT the slot in the environment, 8 passed both ways. The grep
+      had matched fixture ranges, not the isolation helper — the instrument answered a
+      neighbouring question, and the positive control is what caught it.
+  - seat: claude-opus-5 (session, own audit of the grader's classification)
+    status: CONFIRMED
+    objection: >-
+      The grader classified scripts/zantara-gateway/test_claude_client.py as "pre-existing class,
+      broadened by one slot, not newly introduced". Half right, and the half it missed was mine:
+      measured, the file reports 21 failed / 3 passed on a CLEAN environment AND on origin/main
+      (RuntimeError: no current event loop, a Python 3.14 artefact — genuinely inherited), but
+      slot 6 specifically pushed it to 22 while slot 5 did not. Exactly one test flipped,
+      test_token_chain_reaches_slot_five_in_order, and this diff is what flipped it. Cured by
+      pinning the new six-slot contract rather than by adding a delenv, which would have gone
+      green while leaving the ordering — the whole point of the slot — untested.
+  - seat: claude-opus-5 (session, self-refutation)
+    status: CONFIRMED
+    objection: >-
+      One of the two tests this PR adds passes VACUOUSLY against a wrapper with no slot 6 —
+      measured in a control tree, not suspected. Kept deliberately, because it pins a regression
+      its sibling cannot see (a slot-6 branch spliced in at the wrong point is called, just too
+      early), and its own docstring records the vacuity so no later reader mistakes it for proof.
+
+receipts:
+  - claim: >-
+      The gap Codex named was real and was measured before anything was written — no test
+      exercised the NUMBERED slot-6 branch on either side
+    cmd: >-
+      git ls-tree <ref> -- scripts/tests/test_claude_cascade_shell.py, then
+      git cat-file -p <blob> | grep -c token6, for origin/main and for this branch
+    result: >-
+      token6 = 0 on BOTH (blobs 1f6e35a4 / 5d9b101e, 42760 / 43524 bytes), against a positive
+      control of token5 = 6 on main and 7 on the branch. The colon-free instrument was used on
+      purpose: `git show "$ref:path"` is eaten by zsh's :s modifier and greps a clean false 0.
+    exit: 0
+    ts: 2026-09-01T11:45Z
+    seat: session (Pro)
+  - claim: >-
+      THE NEW ORDERING TEST IS LOAD-BEARING, proven by running it against the wrapper it is meant
+      to reject rather than by reading it
+    cmd: >-
+      control tree with origin/main's claude-cascade.sh + this branch's test file, then
+      pytest scripts/tests/test_claude_cascade_shell.py -k "numbered_team_slot or team_slot_is_not_spent"
+    result: >-
+      1 failed, 1 passed. test_numbered_team_slot_fires_only_after_the_five_max_seats_fail goes RED
+      there ("assert 1 == 0" — the cascade exhausts through legacy and keychain and never reaches
+      slot 6). The last-resort test passes VACUOUSLY on that wrapper; recorded as a residual risk
+      rather than presented as coverage.
+    exit: 1
+    ts: 2026-09-01T11:52Z
+    seat: session (Pro)
+  - claim: "Acceptance probe 1 — the slot-6 marker follows the slot-5 marker in every consumer"
+    cmd: "python -m pytest scripts/tests/test_claude_oauth_slot6_coverage.py::test_slot6_marker_follows_slot5_marker -q"
+    result: "5 passed in 0.06s"
+    exit: 0
+    ts: 2026-09-01T12:03Z
+    seat: session (Pro)
+  - claim: "Acceptance probe 2 — the Team config dir appears ONLY inside case branch 6"
+    cmd: "python -m pytest scripts/tests/test_claude_oauth_slot6_coverage.py::test_claude_cascade_team_config_dir_only_on_slot6 -q"
+    result: "1 passed in 0.05s"
+    exit: 0
+    ts: 2026-09-01T12:03Z
+    seat: session (Pro)
+  - claim: "Acceptance probe 3 — every automation consumer in the coverage table reaches slot 6"
+    cmd: "python -m pytest scripts/tests/test_claude_oauth_slot6_coverage.py::test_every_automation_consumer_reaches_slot6 -q"
+    result: "16 passed in 0.08s"
+    exit: 0
+    ts: 2026-09-01T12:03Z
+    seat: session (Pro)
+  - claim: >-
+      Acceptance probe 4 — the seat-state precheck still proves sourcing, kill-switch POLARITY,
+      the skip return and the call site, after this PR replaced the check that compared the
+      dispatch loop against a sibling PR's tip
+    cmd: "bash scripts/tests/test_seat_state.sh"
+    result: >-
+      SUMMARY 26 passed, 0 failed — including "cascade wiring: sourced, called, kill-switched,
+      picker loop intact". The four real protections were left untouched; what was removed could
+      only ever compare this branch against another open PR's moving tip, which is why it was
+      replaced by a local fingerprint of the picker loop.
+    exit: 0
+    ts: 2026-09-01T12:05Z
+    seat: session (Pro)
+  - claim: >-
+      Acceptance probe 5 — an unset or empty slot-6 token falls through exactly as before, with no
+      new failure path
+    cmd: "python -m pytest scripts/tests/test_claude_cascade_shell.py scripts/tests/test_claude_oauth_slot6_coverage.py -q"
+    result: >-
+      95 passed in 48.02s. The pre-existing team-wrapper tests still pass unchanged, which is the
+      evidence for this criterion: they run precisely in the "slot-6 token absent" world, and
+      _fake_fleet was deliberately NOT taught to set it by default so they keep doing so.
+    exit: 0
+    ts: 2026-09-01T12:00Z
+    seat: session (Pro)
+  - claim: >-
+      THE TWO BLOCKERS WERE CURED AND EACH CURE WAS MEASURED — not declared
+    cmd: >-
+      CLAUDE_CODE_OAUTH_TOKEN_6=<dummy> pytest test_vision_circuit_breaker.py ; pytest
+      test_immune_enforcement_trigger_symmetry.py ; actionlint immune-enforcement.yml on
+      origin/main vs this branch
+    result: >-
+      vision suite 2-failed/5-passed -> 7 passed with the slot present; trigger symmetry 12 passed
+      (the check whose whole job is to catch a looped test that is not also a trigger path);
+      actionlint reports the SAME 4 pre-existing shellcheck warnings before and after, so wiring
+      the test into a required workflow introduced no lint regression.
+    exit: 0
+    ts: 2026-09-01T12:20Z
+    seat: session (Pro)
+  - claim: >-
+      THE DEFECT CLASS IS CLOSED BY AN EXHAUSTIVE SWEEP, not by a sample — four files, found one
+      at a time, each only after the previous was cured
+    cmd: >-
+      for every test file repo-wide that touches CLAUDE_CODE_OAUTH_TOKEN (20+ candidates, found by
+      content not by filename convention): pytest with `env -u CLAUDE_CODE_OAUTH_TOKEN_6` vs
+      `CLAUDE_CODE_OAUTH_TOKEN_6=<dummy>`, counts and FAILED-name lists diffed; INTRODUCED vs
+      INHERITED decided against a real origin/main tree built with `git archive | tar -x`
+    result: >-
+      COMPLETE LIST IS 4 FILES — test_vision_circuit_breaker.py, zantara-gateway/test_claude_client.py,
+      test_t4_monitor.py, test_claude_oauth_runtime_fallback.py — all four cured on this branch, each
+      verified to report identical counts AND identical FAILED sets with and without the slot. The
+      previously "ruled out" files were re-run rather than trusted (wr3 fleet pair, wr2_html_render_apply,
+      meta_agent, claude_cli_enricher_cascade, arsenal_probe — 0 delta each). Four false positives that
+      matched the `range(1, 6)` grep were excluded by reading context, which is why the grep was never
+      the instrument.
+    exit: 0
+    ts: 2026-09-01T12:50Z
+    seat: general-purpose subagent (independent sweep)

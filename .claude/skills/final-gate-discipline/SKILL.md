@@ -1,7 +1,11 @@
 ---
 name: final-gate-discipline
-description: "Load at modus VERIFY and SHIP+ARM — the non-delegable final-gate checklist for Fable 5, plus the five questions anyone must answer with a command run NOW (never from memory) before declaring a task done. Use whenever a subagent reports completion, a merge is about to be armed, or you are about to say 'finished' on a feature/fix/doc change."
+description: "Load at modus VERIFY/SHIP+ARM: the final-gate checklist + five questions to answer with a command run NOW. Use when a subagent reports completion or a merge is about to be armed."
 ---
+
+## Notes (moved from description 2026-09-02)
+
+Checklist framing (as written): "the non-delegable final-gate checklist for Fable 5." Additional trigger: you are about to say 'finished' on a feature/fix/doc change.
 
 # Final-gate & pre-"done" verification discipline
 

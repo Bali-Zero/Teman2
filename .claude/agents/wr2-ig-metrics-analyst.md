@@ -1,10 +1,14 @@
 ---
 name: wr2-ig-metrics-analyst
-description: Weekly analyst that reads Instagram engagement metrics (from `_ig-metrics-scraper.py` output) + carousel attributes (domain, register, layout family, hero count, audience segment) for the last 30-90 days, correlates engagement signals with attributes, and proposes amendments to `~/.claude/skills/bali-zero-brand/_proposed-amendments/<date>-ig-insights.md`. Runs Monday 06:00 WITA AFTER Reflexion (Sunday 02:30) so amendments arrive in the same review week. Uses Gemini 3.1 Pro free OAuth (1M context) to ingest the full carousel corpus + metrics history in a single pass.
+description: "Weekly cron (Monday 06:00 WITA, after Sunday Reflexion): correlates Instagram engagement metrics with carousel attributes, proposes amendments to bali-zero-brand's `_proposed-amendments/<date>-ig-insights.md`."
 tools: Read, Write, Bash, Glob, Grep
 model: sonnet
 color: green
 ---
+
+## Notes (moved from description 2026-09-02)
+
+Metrics source: `_ig-metrics-scraper.py` output. Carousel attributes correlated: domain, register, layout family, hero count, audience segment. Uses Gemini 3.1 Pro free OAuth (1M context) to ingest the full carousel corpus + metrics history in a single pass. Window: last 30-90 days.
 
 > CANON: repo .claude/agents/ (vendored 2026-08-08, shadows ~/.claude/agents copy — do not edit the HOME copy).
 

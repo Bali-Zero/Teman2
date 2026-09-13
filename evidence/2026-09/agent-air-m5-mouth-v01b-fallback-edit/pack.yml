@@ -1,0 +1,72 @@
+gear: 1
+brief_ref: evidence/brief.yml
+lanes:
+  - lane: v01b
+    role: build
+    seat: OpenAI GPT-6 (exact variant not exposed)
+  - lane: v01b-review
+    role: review
+    seat: kimi-code/k3
+pii_scan: clean
+seat_override:
+  "R8 applicability only: existing visa-route UI message rendering and interview navigation;
+  no immigration rule, claim, eligibility or price is authored. Tests use synthetic outcomes and existing
+  fixtures."
+receipts:
+  - claim: Removing display deduplication is rejected.
+    cmd:
+      Temporarily render outcome.missingInputs rather than visibleMissingInputs; cd apps/mouth && npx
+      vitest run 'src/app/(visa-oracle)/visa-oracle/_components/OutcomeSheet.test.tsx' -t 'shows repeated
+      unroutable' (restore original source in finally)
+    result: 2 failed, 24 skipped; duplicate fallback rendered twice instead of once in EN and ID.
+    exit: 1
+    ts: "2026-09-05T11:34:39.192492+00:00"
+    seat: Codex V-01b builder
+  - claim: Deduplicating editable rows is rejected by the mixed fallback/editable regression.
+    cmd:
+      Temporarily remove the questionId early return from display filtering; cd apps/mouth && npx vitest
+      run 'src/app/(visa-oracle)/visa-oracle/_components/OutcomeSheet.test.tsx' -t 'keeps editable details'
+      (restore original source in finally)
+    result: 1 failed, 25 skipped; editable rows were hidden, leaving one repeated label instead of three.
+    exit: 1
+    ts: "2026-09-05T11:34:41.667869+00:00"
+    seat: Codex V-01b builder
+  - claim: Removing the EDIT history guard is rejected.
+    cmd:
+      Temporarily remove the EDIT history guard/reset; cd apps/mouth && npx vitest run 'src/app/(visa-oracle)/visa-oracle/_lib/flow.test.ts'
+      -t 'EDIT resets an absent target' (restore original source in finally)
+    result:
+      2 failed, 79 skipped; both known-unvisited and unknown targets retained attempt 7/history/facts
+      instead of reset attempt 8.
+    exit: 1
+    ts: "2026-09-05T11:34:43.758399+00:00"
+    seat: Codex V-01b builder
+  - claim: Final focused renderer, adapter, parity and flow suites pass.
+    cmd:
+      cd apps/mouth && npx vitest run 'src/app/(visa-oracle)/visa-oracle/_components/OutcomeSheet.test.tsx'
+      'src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter.test.ts' 'src/app/(visa-oracle)/visa-oracle/_lib/shadow-parity.test.ts'
+      'src/app/(visa-oracle)/visa-oracle/_lib/flow.test.ts'
+    result: 150 passed across 4 files after all temporary mutations were restored.
+    exit: 0
+    ts: "2026-09-05T11:34:46.219997+00:00"
+    seat: Codex V-01b builder
+  - claim: Full frontend TypeScript project passes.
+    cmd: cd apps/mouth && npx tsc --noEmit
+    result: Exited 0.
+    exit: 0
+    ts: "2026-09-05T11:36:43.584910+00:00"
+    seat: Codex V-01b builder
+  - claim:
+      Independent Kimi inspected the final diff, actual files and unchanged semantic invariants; verdict
+      PASS.
+    cmd: kimi -m kimi-code/k3 -p <read-only review prompt with final diff and unchanged context>
+    result:
+      PASS; no blocking findings. Active-language fallback deduplication and retention of editable
+      rows match scope. Prompt SHA-256 a2916b5cd902203c828249ff7f5310825439b15fb2e61ea88531d9d18834b7f0
+    exit: 0
+    ts: "2026-09-05T11:37:08.543611+00:00"
+    seat: kimi-code/k3
+dissent: []
+residual_risks:
+  - Display deduplication intentionally leaves all missing-fact codes in the semantic outcome.
+  - Required CI, independent Anthropic review and production observation remain pending.

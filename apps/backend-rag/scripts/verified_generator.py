@@ -346,7 +346,7 @@ def _gen_oauth_env(token: str) -> dict[str, str]:
 def _gen_token_chain() -> list[tuple[str, str]]:
     chain: list[tuple[str, str]] = []
     seen: set[str] = set()
-    for i in (1, 2, 3, 4, 5):
+    for i in (1, 2, 3, 4, 5, 6):
         tok = os.environ.get(f"CLAUDE_CODE_OAUTH_TOKEN_{i}", "").strip()
         if tok and tok not in seen:
             chain.append((f"token_{i}", tok))
@@ -404,7 +404,7 @@ def generate_document(
     existing_text: str | None = None,
 ) -> str:
     """Step 6: Generate T2 document via claude CLI (Max subscription).
-    Multi-account fallback: TOKEN_1→2→3→4→5→legacy→keychain."""
+    Multi-account fallback: TOKEN_1→2→3→4→5→6 (Team, last-resort)→legacy→keychain."""
     claims_summary = build_claims_summary(claims_db)
 
     research_ctx = (research_context[:2000] if research_context else "Not available — proceed from claims_db only")

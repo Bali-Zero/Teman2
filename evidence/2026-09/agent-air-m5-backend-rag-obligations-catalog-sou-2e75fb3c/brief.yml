@@ -1,0 +1,124 @@
+task_id: obligations-catalog-sources
+gear: 2
+l_level: L2
+gate_class: opus
+# Floor computed this run, on the FINAL diff:
+#   python3 scripts/evidence_pack_lint.py --print-floor \
+#     --changed-files-file <changed> --numstat-file <numstat>
+# returns `2`, source `size`: no hot-zone path is touched, but the size term counts
+# CHURN (added + deleted), and 415 + 65 = 480 crosses SIZE_GEAR2_THRESHOLD = 400.
+# Net lines are 350. The first commit alone sat at gear 1 (480 churn is mostly the
+# second commit: the source write-up plus the three citation fixes the adversarial
+# review forced). Declared at the floor rather than trimming the write-up to drop
+# under it — the evidence is the deliverable here, and shrinking it to dodge a gate
+# would be the one move this PR exists to argue against.
+# The change is data and documentation: one YAML catalog of statutory obligations,
+# its test expectations, and the source write-up. No Python module is touched, no
+# endpoint, no migration, no workflow.
+# Gear 2 means harness-floor Step 7c requires a harness/fable-gate verdict on this
+# head sha (RULED 2026-09-10). This Dux does not post it: the imperator commissions
+# a FRESH Opus 5 gate, generator never grader.
+objective: >-
+  Make the obligations catalog's legal citations trustworthy enough for a reviewer to
+  act on. Measured 2026-09-12: all 21 rules in
+  apps/backend-rag/backend/data/obligations_catalog.yaml carried `verified: false`
+  and every legal_source carried a "(verify)" note, so the reviewer queue could show
+  a proposal without being able to show why it was owed. Each of the 21 claims — the
+  legal basis AND the due-date rule — was read on a primary source: a government page
+  that rendered as text, or the regulation PDF downloaded from a government domain and
+  extracted locally. 16 rules flip to `verified: true`, each carrying its source URL
+  inside legal_source; five stay false with a sharper needs_review_reason. Four
+  corrections change what the engine proposes: the LKPM deadline moves from the 10th to
+  the 15th (Permen Investasi/BKPM 5/2025 art. 286(5) replaced Perka BKPM 5/2021), BOTH
+  BPJS rules gain the holiday roll their own regulations require (Perpres 82/2018
+  art. 39(4); PP 44/2015 art. 21(3) and PP 46/2015 art. 19(3)), and the halal UMK
+  deadline is 17 October 2026, not 18 (PP 42/2024 art. 160(2)).
+  docs/compliance/obligations-catalog-sources-2026-09.md records the quote, the URL and
+  the verdict for all 21 rows, and the section on the adversarial review names the three
+  citations it caught.
+constraints:
+  - >-
+    No rule added, removed or renamed; the 21 ids are unchanged, so every row already
+    in client_obligations keeps its rule_id.
+  - >-
+    `verified: true` only where BOTH the basis and the due-date rule were read on a
+    primary source, and only with the URL inside legal_source. A secondary source
+    (tax commentary, law-firm note, LLM answer) locates an article and never settles
+    one. Three rules stay false because their schedule is Bali Zero's cadence and not a
+    statutory date; two stay false because PMK 81/2024's official PDF is a 642-page
+    scan with no text layer and jdih.kemenkeu.go.id times out from this machine.
+  - >-
+    No Python module changed. The only code edit is the test expectations that the
+    corrections invalidate.
+  - >-
+    No client data: the catalog and the doc name regulations only.
+acceptance:
+  - text: >-
+      A1: the catalog SHALL load and validate, with 21 rules and at least 12 verified.
+    probe: >-
+      PYTHONPATH=.:../crm-cell python -c "from
+      backend.services.compliance.obligations_register import load_catalog;
+      r=load_catalog(); print(len(r), sum(x.verified for x in r))" → `21 16`
+  - text: >-
+      A2: every `verified: true` rule SHALL carry a URL in legal_source and no
+      "(verify)" note, and every unverified rule SHALL carry a needs_review_reason.
+    probe: >-
+      pytest -k verified_rules_cite_a_source_url_and_unverified_ones_say_why
+  - text: >-
+      A3: the engine test suite SHALL pass, with the two expectations the corrections
+      invalidate updated (LKPM_2026 on the 15th; the "no rule is verified" assertion
+      replaced).
+    probe: >-
+      PYTHONPATH=.:../crm-cell pytest
+      backend/tests/services/compliance/test_obligations_register.py → 70 passed
+  - text: >-
+      A4: the LKPM correction SHALL change the proposed dates, not just the prose.
+    probe: >-
+      PYTHONPATH=.:../crm-cell python -c "…due_dates(catalog['lkpm_quarterly'], PMA,
+      date(2026,1,1), 365)" → the four 2026 dates on the 15th
+  - text: >-
+      A5 (Bites): the reviewer reading legal_source in the queue SHALL see a citable
+      article and URL rather than "(verify)", for 16 of 21 rules.
+    probe: >-
+      grep -c '(verify' on the catalog → 0; the doc's verdict column carries 21 rows.
+assumptions:
+  - text: >-
+      pajak.go.id is DJP's own site, so a deadline stated there is a primary statement
+      of the authority's position even when the underlying PMK PDF cannot be read.
+    status: verified
+    probe: >-
+      The rules that depend on PMK 81/2024 for a DATE are independently sourced: UU KUP
+      art. 9(1) caps a Masa Pajak payment at 15 days after the period ends
+      (pajak.go.id/en/node/35330), and DJP's Coretax payment page states the monthly
+      self-deposited PPh deadline as the 15th of the following month AND states the roll,
+      naming hari libur as Saturday, Sunday, libur nasional and cuti bersama
+      (pajak.go.id/en/node/113710). The adversarial review forced this second source: the
+      first cut leaned on a statutory MAXIMUM plus a generic announcement, which does not
+      prove the date for each tax.
+  - text: >-
+      PMK 81/2024 art. 171(1) is confirmed at article level; art. 94 is not.
+    status: unverified
+    probe: >-
+      DJP names Pasal 171 ayat (1) by number for the 20 January 2026 filing
+      (pajak.go.id/en/node/118937). art. 94 is the one article number in this file that no
+      primary page states — the PDF is a scan with no text layer — so the catalog says so
+      in the rule itself. The PMSE rules, which have no statutory backstop at all, stay
+      `verified: false` for exactly this reason.
+  - text: >-
+      Perpres 82/2018 art. 39 was read in full, not to ayat (3).
+    status: verified
+    probe: >-
+      art. 39(4) rolls a 10th falling on a hari libur to the next hari kerja. The first
+      pass of this sweep missed it because the article straddles a page break in the PDF,
+      and certified bpjs_kesehatan_monthly as roll: none against its own source. The
+      Codex spalla caught it; a test now asserts Sat 10 Oct 2026 becomes Mon the 12th.
+  - text: >-
+      Changing bpjs_ketenagakerjaan_monthly to roll next_business_day composes with the
+      M1 holiday-roll PR rather than fighting it.
+    status: verified
+    probe: >-
+      PP 44/2015 art. 21(3) says "jatuh pada hari libur … hari kerja berikutnya", which
+      is precisely what M1 teaches next_business_day to mean. 2026-10-15 is a Thursday,
+      so the existing test expectation is unchanged either way.
+appetite:
+  wall_clock_hours: 3

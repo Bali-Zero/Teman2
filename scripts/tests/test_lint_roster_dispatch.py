@@ -180,5 +180,89 @@ def test_real_model_roster_is_clean():
     assert result.returncode == 0, f"stdout={result.stdout!r} stderr={result.stderr!r}"
 
 
+# ------------------------------------- roster quorum column vs the gate that enforces it
+
+def _roster_quorum_claims() -> dict[str, bool]:
+    """Parse MODEL_ROSTER.md's TP1 table into {slug: says_quorum_yes}.
+
+    Parsed, not hardcoded: a test that restates the expected answer would pass
+    while both sides are wrong together, which is the exact failure being
+    guarded against."""
+    import re
+
+    claims: dict[str, bool] = {}
+    roster_text = (REPO_ROOT / "MODEL_ROSTER.md").read_text(encoding="utf-8")
+    for line in roster_text.splitlines():
+        if not line.startswith("|") or "quorum:" not in line:
+            continue
+        slug_match = re.match(r"\|\s*`([^`]+)`", line)
+        if not slug_match:
+            continue
+        quorum_match = re.search(r"quorum:\s*\**\s*(yes|no)", line, re.IGNORECASE)
+        if not quorum_match:
+            continue
+        claims[slug_match.group(1)] = quorum_match.group(1).lower() == "yes"
+    return claims
+
+
+def test_roster_quorum_column_matches_the_lint():
+    """MODEL_ROSTER.md's `quorum:` column must agree with the tuple that
+    actually decides quorum.
+
+    They disagreed from 2026-08-14 to 2026-09-02: the roster said `quorum: no`
+    for qwen3.8-max while evidence_pack_lint.COUNCIL_REVIEW_SEATS counted it,
+    and R9 was a NOTICE for that whole window — so nothing failed, and the
+    contradiction was found by hand rather than by CI, one day before it turned
+    into a hard gate. A conductor trusting the roster would not have dispatched
+    a seat the gate required.
+
+    Both sides are READ here, neither is asserted from memory. The seat token
+    in the lint carries a `tp1-` prefix the roster's slug does not, so the
+    comparison strips it."""
+    sys.path.insert(0, str(REPO_ROOT / "scripts"))
+    from evidence_pack_lint import COUNCIL_REVIEW_SEATS  # noqa: E402
+
+    counted = {
+        seat[len("tp1-") :] for seat in COUNCIL_REVIEW_SEATS if seat.startswith("tp1-")
+    }
+    claims = _roster_quorum_claims()
+    assert claims, (
+        "parsed no `quorum:` rows out of MODEL_ROSTER.md — the parser broke, not the docs"
+    )
+
+    for slug, says_yes in sorted(claims.items()):
+        is_counted = slug in counted
+        if says_yes and not is_counted:
+            raise AssertionError(
+                f"MODEL_ROSTER.md says `quorum: yes` for {slug!r}, but "
+                f"evidence_pack_lint.COUNCIL_REVIEW_SEATS does not contain it. A conductor "
+                f"would dispatch this seat expecting it to count toward R9, and it would not."
+            )
+        if is_counted and not says_yes:
+            raise AssertionError(
+                f"evidence_pack_lint.COUNCIL_REVIEW_SEATS counts {slug!r} toward the Gear-3 "
+                f"quorum, but MODEL_ROSTER.md says `quorum: no` for it. A conductor following "
+                f"the roster would NOT dispatch it and could then fail R9 on a properly "
+                f"reviewed PR — the exact 2026-08-14..09-02 contradiction this test exists to "
+                f"prevent recurring."
+            )
+
+
+def test_at_least_one_tp1_seat_is_actually_in_the_quorum_tuple():
+    """Innocence control for the test above.
+
+    Without this, deleting every TP1 seat from COUNCIL_REVIEW_SEATS and writing
+    `quorum: no` on every roster row would leave the agreement test vacuously
+    green while the quorum pool silently shrank from three families to two."""
+    sys.path.insert(0, str(REPO_ROOT / "scripts"))
+    from evidence_pack_lint import COUNCIL_REVIEW_SEATS  # noqa: E402
+
+    assert any(seat.startswith("tp1-") for seat in COUNCIL_REVIEW_SEATS), (
+        "no TP1 seat counts toward Gear-3 quorum any more. That may be a deliberate ruling, "
+        "but it drops the pool to two families — every Gear-3 PR then needs BOTH survivors "
+        "alive. Update this test WITH the ruling, do not delete it."
+    )
+
+
 if __name__ == "__main__":
     sys.exit(pytest.main([__file__, "-v"]))

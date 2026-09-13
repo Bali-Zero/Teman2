@@ -6,6 +6,20 @@
 #   fleet_mail.sh <host> --list
 #   fleet_mail.sh <host> <session_id|broadcast> [--key <k>] [--ttl <hours>] "<message text>"
 #   fleet_mail.sh <host> <session_id|broadcast> [--key <k>] [--ttl <hours>] -   # message on stdin
+#   fleet_mail.sh <host> retract --key <k>
+#
+# retract (2026-09-02): sender-side cleanup — renames every LIVE broadcast
+# matching --key to `.retracted-<ts>` (same self-cleaning pattern
+# mailbox_inject.py already uses for `.superseded-`/`.expired-`/
+# `.delivered-`, so a retracted file drops out of every future scan for
+# every session, immediately, not just after --ttl expires). Broadcast-only
+# by design: measured 2026-09-02 (34 live broadcasts on Pro sampled against
+# `gh pr view`), 33/34 (97%) were stale `queue_unstick:<PR#>` pages for PRs
+# already MERGED/CLOSED/no-longer-DIRTY — direct/session mail was not part
+# of the measured disease. Best-effort + fail-open: a key that matches
+# nothing (already delivered/expired/never sent) is a silent no-op, not an
+# error — the caller (queue_unstick.py) must never let a cleanup step wall
+# its actual work.
 #
 # <host> is local|pro|mini|air. local runs directly; the rest go via
 # `ssh -o BatchMode=yes <host>`. Exits non-zero with a one-line reason on
@@ -153,6 +167,56 @@ if [ "${1:-}" = "--list" ]; then
         ssh -o BatchMode=yes -o ConnectTimeout=8 "$SSH_HOST" bash -s <<< "$LIST_SCRIPT" \
             || die "ssh list on $HOST (via $SSH_HOST) failed"
     fi
+    exit 0
+fi
+# ---- retract (sender-side cleanup, broadcast dir only — see header) ----
+if [ "${1:-}" = "retract" ]; then
+    MSG_KEY="$(printf '%s' "$MSG_KEY" | tr -cd 'A-Za-z0-9:_./-')"
+    [ -n "$MSG_KEY" ] || die "retract needs --key <k>"
+    read -r -d '' PY_RETRACT <<'PYEOF' || true
+import glob, os, sys, time
+root = os.environ.get("NUZ_MAILBOX_DIR") or os.path.expanduser("~/.nuzantara-mailbox")
+key = sys.argv[1]
+bdir = os.path.join(root, "broadcast")
+ts = time.strftime("%Y%m%dT%H%M%S", time.gmtime())
+n = 0
+for path in sorted(glob.glob(os.path.join(bdir, "*.md"))):
+    if os.path.islink(path):  # containment: never follow a symlinked message
+        continue
+    try:
+        with open(path, "r", encoding="utf-8", errors="replace") as fh:
+            head = fh.read(2048)  # front matter only, never the full body
+    except OSError:
+        continue
+    found_key = ""
+    for line in head.split("\n", 10)[:10]:
+        if not line.strip() or ":" not in line:
+            break
+        k, _, v = line.partition(":")
+        if k.strip().lower() == "key":
+            found_key = v.strip()
+            break
+    if found_key != key:
+        continue
+    try:
+        os.rename(path, path + ".retracted-" + ts)
+        n += 1
+    except OSError:
+        pass  # best-effort: a rename failure leaves the file live, re-tried by --ttl instead
+print(n)
+PYEOF
+    if [ "$HOST" = "local" ]; then
+        N="$(python3 -c "$PY_RETRACT" "$MSG_KEY")" || die "local retract failed"
+    else
+        B64="$(printf '%s' "$PY_RETRACT" | base64 | tr -d '\n')"
+        POP_AND_EXEC='import base64,sys;b=sys.argv.pop(1);exec(base64.b64decode(b).decode())'
+        REMOTE_CMD="python3 -c \"$POP_AND_EXEC\" '$B64' '$MSG_KEY'"
+        SSH_HOST="$(ssh_target "$HOST")" \
+            || die "no reachable ssh route for '$HOST' (tried '$HOST' and '$(ssh_fallback_for "$HOST")')"
+        N="$(ssh -o BatchMode=yes -o ConnectTimeout=8 "$SSH_HOST" "$REMOTE_CMD")" \
+            || die "ssh retract on $HOST (via $SSH_HOST) failed"
+    fi
+    echo "retracted $N message(s) matching key '$MSG_KEY' on $HOST${SSH_HOST:+ via $SSH_HOST}"
     exit 0
 fi
 # ---- send ----

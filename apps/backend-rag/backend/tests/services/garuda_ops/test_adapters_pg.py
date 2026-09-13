@@ -55,6 +55,52 @@ pytestmark = pytest.mark.asyncio
 PRACTICE_TYPE = "visa_b1_voa"
 
 
+async def _reset_suite_rows(p: asyncpg.Pool) -> None:
+    """Clear everything this suite's tests can have written.
+
+    Called both BEFORE a test (clean up after a previous run that crashed
+    mid-test, or a stale pool from a prior file in this same process) and
+    AFTER one (so the LAST test in this file never leaves committed rows
+    behind for whatever runs next on this connection/worker).
+
+    That second call site closes a real cross-file leak, not a hypothetical
+    one: every write in this file goes through a plain `pool.acquire()`
+    connection, not a transaction that rolls back at teardown, so anything
+    written here is COMMITTED. Before this function was also called after
+    yield, the row this suite writes with `practice_type_code = 'visa_b1_voa'`
+    (see `PRACTICE_TYPE` above) survived past the last test — and on
+    whichever xdist worker/shard happened to also run
+    `test_migration_303_voa_price_roundtrip.py` afterwards, that test's
+    `DELETE FROM practice_types WHERE code = 'visa_b1_voa'` hit
+    `practices_practice_type_id_fkey` on a row this file left behind. Sharding
+    is a partition over test FILES (round-robin, `scripts/ci/shard_tests.py`),
+    so ANY new test file added to the corpus can shift this file onto the same
+    shard/worker as 303's — this suite must not depend on which neighbours it
+    happens to get.
+    """
+    async with p.acquire() as conn:
+        await conn.execute(
+            "TRUNCATE garuda_practices, garuda_order_outbox, "
+            "garuda_order_journal, garuda_orders, garuda_voa_check_results "
+            "CASCADE"
+        )
+        # Two deletes, in this order, and the SECOND is not redundant.
+        # The first clears rows this suite's adapter wrote (they all carry a
+        # key). The second clears rows a test wrote with a NULL key — which
+        # the first cannot see — and it must run BEFORE the client delete or
+        # `practices_client_id_fkey` rejects it. Found the hard way: a test
+        # that inserts a NULL-key practice to demonstrate what the partial
+        # index does NOT constrain left the client undeletable, and every
+        # later test in the file errored in teardown rather than in its own
+        # body, which points the blame at the wrong test.
+        await conn.execute("DELETE FROM practices WHERE source_idempotency_key IS NOT NULL")
+        await conn.execute(
+            "DELETE FROM practices WHERE client_id IN "
+            "(SELECT id FROM clients WHERE email LIKE '%@example.invalid')"
+        )
+        await conn.execute("DELETE FROM clients WHERE email LIKE '%@example.invalid'")
+
+
 @pytest.fixture
 async def pool():
     try:
@@ -64,28 +110,11 @@ async def pool():
             pytest.fail(f"no reachable Postgres in CI at {_DSN}: {exc}")
         pytest.skip(f"no reachable Postgres at {_DSN}: {exc}")
     try:
-        async with p.acquire() as conn:
-            await conn.execute(
-                "TRUNCATE garuda_practices, garuda_order_outbox, "
-                "garuda_order_journal, garuda_orders, garuda_voa_check_results "
-                "CASCADE"
-            )
-            # Two deletes, in this order, and the SECOND is not redundant.
-            # The first clears rows this suite's adapter wrote (they all carry a
-            # key). The second clears rows a test wrote with a NULL key — which
-            # the first cannot see — and it must run BEFORE the client delete or
-            # `practices_client_id_fkey` rejects it. Found the hard way: a test
-            # that inserts a NULL-key practice to demonstrate what the partial
-            # index does NOT constrain left the client undeletable, and every
-            # later test in the file errored in teardown rather than in its own
-            # body, which points the blame at the wrong test.
-            await conn.execute("DELETE FROM practices WHERE source_idempotency_key IS NOT NULL")
-            await conn.execute(
-                "DELETE FROM practices WHERE client_id IN "
-                "(SELECT id FROM clients WHERE email LIKE '%@example.invalid')"
-            )
-            await conn.execute("DELETE FROM clients WHERE email LIKE '%@example.invalid'")
+        await _reset_suite_rows(p)
         yield p
+        # Post-test cleanup, not just pre-test: see `_reset_suite_rows`'s
+        # docstring for the cross-file FK violation this closes.
+        await _reset_suite_rows(p)
     finally:
         await p.close()
 

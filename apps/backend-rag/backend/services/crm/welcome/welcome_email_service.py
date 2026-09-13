@@ -330,8 +330,13 @@ _SVG_BUSINESS = "PHN2ZyB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIHZpZXdCb3g9IjAgMCAyNCAyNCI
 _SVG_TAX = "PHN2ZyB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cGF0aCBkPSJNMTIgMnYyME0xNyA1SDkuNWExLjUgMS41IDAgMDAwIDNIMTVhMS41IDEuNSAwIDAxMCAzSDciIHN0cm9rZT0iI2Y5Y2E1NSIgc3Ryb2tlLXdpZHRoPSIxLjUiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIvPjwvc3ZnPg=="
 _SVG_PROPERTY = "PHN2ZyB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cGF0aCBkPSJNMyAyMWgxOE05IDIxVjNINXYxOE0xNSAyMVY4aDR2MTMiIHN0cm9rZT0iI2Y5Y2E1NSIgc3Ryb2tlLXdpZHRoPSIxLjUiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIvPjxwYXRoIGQ9Ik03IDdoLjAxTTcgMTFoLjAxTTcgMTVoLjAxTTE3IDEyaC4wMU0xNyAxNmguMDEiIHN0cm9rZT0iI2Y5Y2E1NSIgc3Ryb2tlLXdpZHRoPSIyIiBzdHJva2UtbGluZWNhcD0icm91bmQiLz48L3N2Zz4="
 
-# Default WhatsApp for Bali Zero (used when no per-advisor number available)
-_BZ_WHATSAPP = "628213454721"
+# Default WhatsApp for Bali Zero (used when no per-advisor number available).
+# DERIVED, never typed: this is the wa.me digits form of the ONE client-contact
+# line. It used to be a hand-typed duplicate of those digits, which is the drift
+# class this module's own neighbours were just cured of — correct today, silently
+# wrong the next time the number moves, with every test green. Pinned by
+# test_every_repo_side_copy_of_the_client_number_agrees.
+_BZ_WHATSAPP = settings.CLIENT_CONTACT_WHATSAPP.replace(" ", "").lstrip("+")
 
 
 def _build_html(

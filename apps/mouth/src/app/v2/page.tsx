@@ -6,6 +6,7 @@ import { NavWhatsAppCTA } from "./_components/NavWhatsAppCTA";
 import { MobileNav } from "./_components/MobileNav";
 import { HeroBlueprint } from "./_components/HeroBlueprint";
 import { SocialProof } from "./_components/SocialProof";
+import { socialProofRoster } from "./_components/socialProofRoster";
 import { TopicPills } from "./_components/TopicPills";
 import { FunnelFeature } from "./_components/FunnelFeature";
 import { NewsHero } from "./_components/NewsHero";
@@ -91,7 +92,7 @@ export default async function HomeV2() {
         <FunnelFeature funnel="kbli" layout="full" />
         <FunnelFeature funnel="tax" layout="full" />
         <FunnelFeature funnel="property" layout="full" />
-        <SocialProof />
+        <SocialProof {...socialProofRoster()} />
         <NewsHero articles={heroArticles} />
         <TopicPills />
         <LatestNews articles={latest} />

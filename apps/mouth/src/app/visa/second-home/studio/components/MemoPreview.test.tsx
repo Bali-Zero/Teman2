@@ -140,6 +140,21 @@ describe("MemoPreview", () => {
     expect(spine).toBeInTheDocument();
   });
 
+  it("the 'Your plan so far' summary uses Inter 600, not Cormorant, at --text-sm (14px) — below the R4 §3 24px display floor", () => {
+    render(<MemoPreview plan={basePlan({ age: "under_55" })} />);
+    const summary = screen.getByText("Your plan so far");
+    const styleAttr = summary.getAttribute("style") ?? "";
+    const fontFamily = styleAttr.match(/font-family:\s*([^;]+)/)?.[1]?.trim();
+    const fontSize = styleAttr.match(/font-size:\s*([^;]+)/)?.[1]?.trim();
+    const fontWeight = styleAttr.match(/font-weight:\s*([^;]+)/)?.[1]?.trim();
+
+    expect(fontFamily).toBe(
+      "var(--font-sans, ui-sans-serif, system-ui, sans-serif)",
+    );
+    expect(fontSize).toBe("var(--text-sm, 0.9rem)");
+    expect(fontWeight).toBe("600");
+  });
+
   describe("desktop/mobile dual nature of the disclosure toggle", () => {
     it("makes the summary non-interactive and hides it from AT on desktop", () => {
       mockMatchMedia(true);

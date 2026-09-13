@@ -1,8 +1,15 @@
 """
 Brute force detection for login endpoint (S03 Sprint 3).
 
-Uses IP+email pair to avoid NAT/coworking collateral blocking.
-5 failures in 5 minutes per IP+email → 429 for 5 minutes.
+TWO counters, because one was not enough:
+  - IP+email pair: 5 failures / 5 min -> 429 for 5 min. Keyed on the pair to
+    avoid NAT/coworking collateral blocking.
+  - email alone, across every source IP: 30 failures / 15 min -> 429 for
+    15 min. Added 2026-09-11 (authz audit F2) because rotating the source IP
+    reset the pair counter on every new IP, leaving only the generic
+    120 req/min-per-IP bucket between an attacker and a 4-digit PIN space.
+    See the constants below for the thresholds' reasoning and the
+    account-lockout trade-off it accepts.
 Fail-open: Redis down = no blocking.
 
 Fail-open means the login endpoint keeps serving with NO rate limiting at all,
@@ -27,6 +34,33 @@ logger = logging.getLogger(__name__)
 DEFAULT_MAX_FAILURES = 5
 DEFAULT_WINDOW_SECONDS = 300
 DEFAULT_BLOCK_SECONDS = 300
+
+# A SECOND counter, keyed by email alone, across every source IP.
+#
+# WHY (portal authz audit F2, 2026-09-11): the per-(IP, email) counter is
+# NAT-friendly by design, and that is exactly what defeats it. An attacker
+# rotating source IPs — a residential proxy pool or a botnet — resets the
+# pair counter on every new IP, so against a KNOWN email the only remaining
+# backstop was the generic 120 req/min-per-IP RateLimitMiddleware bucket.
+# A PIN is 4-6 digits, minimum 4 = 10,000 combinations, so the whole space
+# was reachable in well under an hour at that rate.
+#
+# The thresholds are deliberately looser than the pair's: this key aggregates
+# every IP, and a real client on a flaky mobile connection can change IP
+# mid-attempt. 30 failures in 15 minutes for ONE account is far past any
+# human typo pattern, and it cuts a full 4-digit sweep from under an hour to
+# weeks.
+#
+# ACCEPTED TRADE-OFF, stated rather than hidden: because this key ignores the
+# source IP, an attacker who knows a client's email CAN deliberately burn 30
+# failures to lock that client out for the block window. The pair counter
+# never had that property. The block window is therefore kept SHORT (15
+# minutes, not hours) to bound the damage, and the alternative is worse — a
+# rotating-IP attacker walking a 4-digit PIN space unimpeded. Revisit if
+# targeted lockouts are ever observed.
+DEFAULT_EMAIL_MAX_FAILURES = 30
+DEFAULT_EMAIL_WINDOW_SECONDS = 900
+DEFAULT_EMAIL_BLOCK_SECONDS = 900
 
 # Process-wide last-reported state. None = nothing reported yet, so the first
 # call always logs. Logging on TRANSITION (not per request) keeps an outage to
@@ -83,11 +117,17 @@ class BruteForceDetector:
         max_failures: int = DEFAULT_MAX_FAILURES,
         window_seconds: int = DEFAULT_WINDOW_SECONDS,
         block_seconds: int = DEFAULT_BLOCK_SECONDS,
+        email_max_failures: int = DEFAULT_EMAIL_MAX_FAILURES,
+        email_window_seconds: int = DEFAULT_EMAIL_WINDOW_SECONDS,
+        email_block_seconds: int = DEFAULT_EMAIL_BLOCK_SECONDS,
     ) -> None:
         self._redis = redis_client
         self._max_failures = max_failures
         self._window_seconds = window_seconds
         self._block_seconds = block_seconds
+        self._email_max_failures = email_max_failures
+        self._email_window_seconds = email_window_seconds
+        self._email_block_seconds = email_block_seconds
 
     def _fail_key(self, ip: str, email: str) -> str:
         return f"auth_fail:{ip}:{email.lower()}"
@@ -95,11 +135,22 @@ class BruteForceDetector:
     def _block_key(self, ip: str, email: str) -> str:
         return f"auth_block:{ip}:{email.lower()}"
 
+    def _email_fail_key(self, email: str) -> str:
+        return f"auth_fail_email:{email.lower()}"
+
+    def _email_block_key(self, email: str) -> str:
+        return f"auth_block_email:{email.lower()}"
+
     async def is_blocked(self, ip: str, email: str) -> bool:
         if not self._redis:
             return False
         try:
-            return bool(await self._redis.exists(self._block_key(ip, email)))
+            # BOTH keys, and the email one is not optional: checking only the
+            # pair is what let an IP rotation walk straight past the block.
+            blocked = await self._redis.exists(self._block_key(ip, email))
+            if blocked:
+                return True
+            return bool(await self._redis.exists(self._email_block_key(email)))
         except (RedisError, OSError) as e:
             logger.warning("S03: Brute force check failed (fail-open): %s", e)
             return False
@@ -107,23 +158,59 @@ class BruteForceDetector:
             logger.exception("S03: Brute force check unexpected error (fail-open)")
             return False
 
+    async def _record_one(
+        self,
+        *,
+        fail_key: str,
+        block_key: str,
+        window_seconds: int,
+        block_seconds: int,
+        max_failures: int,
+        scope: str,
+        ip: str,
+        email: str,
+    ) -> None:
+        count = await self._redis.incr(fail_key)
+        if count == 1:
+            await self._redis.expire(fail_key, window_seconds)
+        if count > max_failures:
+            await self._redis.setex(
+                block_key,
+                block_seconds,
+                f"brute_force:{count}_attempts",
+            )
+            logger.warning(
+                "S03: Brute force block scope=%s ip=%s email=%s attempts=%s",
+                scope,
+                ip,
+                email,
+                count,
+            )
+
     async def record_failure(self, ip: str, email: str) -> None:
         if not self._redis:
             return
         try:
-            key = self._fail_key(ip, email)
-            count = await self._redis.incr(key)
-            if count == 1:
-                await self._redis.expire(key, self._window_seconds)
-            if count > self._max_failures:
-                await self._redis.setex(
-                    self._block_key(ip, email),
-                    self._block_seconds,
-                    f"brute_force:{count}_attempts",
-                )
-                logger.warning(
-                    "S03: Brute force block ip=%s email=%s attempts=%s", ip, email, count
-                )
+            await self._record_one(
+                fail_key=self._fail_key(ip, email),
+                block_key=self._block_key(ip, email),
+                window_seconds=self._window_seconds,
+                block_seconds=self._block_seconds,
+                max_failures=self._max_failures,
+                scope="ip+email",
+                ip=ip,
+                email=email,
+            )
+            await self._record_one(
+                fail_key=self._email_fail_key(email),
+                block_key=self._email_block_key(email),
+                window_seconds=self._email_window_seconds,
+                block_seconds=self._email_block_seconds,
+                max_failures=self._email_max_failures,
+                scope="email",
+                ip=ip,
+                email=email,
+            )
         except (RedisError, OSError) as e:
             logger.warning("S03: Brute force record failed: %s", e)
         except Exception:

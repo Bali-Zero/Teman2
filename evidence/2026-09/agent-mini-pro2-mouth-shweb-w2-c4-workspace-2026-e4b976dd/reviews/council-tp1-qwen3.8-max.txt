@@ -1,0 +1,75 @@
+# Council seat — tp1-qwen3.8-max on the C4 core
+
+seat: tp1-qwen3.8-max
+cmd: python3 scripts/tp1_call.py --model qwen3.8-max --task-file <focused packet> --timeout 420 --max-tokens 4000
+ok: true
+exit: 0
+verdict: GO (1 MINOR, 8 NIT)
+
+## Verbatim
+
+## Findings
+
+**1 · MINOR · Attack 1 – RSC payload carries the names**
+
+> `return <LkpmBatchClient taxConsultants={taxConsultants()} />;` (and the other two wrappers)
+
+The prop values (label `"Faisha"`, slug keys `faisha`/`sahira` in the photo map) are serialised into the RSC flight payload. This **does not matter today**: all three routes are now in `INTERNAL_ROUTES` and 301 before the handler runs, so no anonymous request ever receives the flight data. It *would* matter if any route were removed from that list, or if the proxy were bypassed (direct-to-origin). The guard deliberately does not scan `.next/server/app` and the comment says why. No fix required in this PR; the escalation of the missing server-side session gate is the right call.
+
+**2 · MINOR · Attack 2 – chunk walker only matches `.js`**
+
+> `else if (entry.endsWith(".js")) out.push(full);`
+
+If a future Next or webpack config emits `.mjs` chunks (or a plugin emits `.cjs`), the walker silently skips them and the guard reports success. Smallest fix: change the predicate to `/\.[cm]?js$/.test(entry)`. With `--webpack` pinned today this is theoretical, hence MINOR not BLOCKER.
+
+**3 · NIT · Attack 2 – FORBIDDEN is a closed enumeration**
+
+> `const FORBIDDEN = /faisha|faysha|sahira/i;`
+
+Adding a third excluded person requires editing this regex *and* `ACCEPTED_PUBLIC_FILES`. The guard will not fail; it will silently pass. Acceptable if the regex is co-located with the roster-exclusion decision, but a one-line comment ("update this when the exclusion list changes") would make the coupling explicit.
+
+**4 · NIT · Attack 2 – ACCEPTED_PUBLIC_FILES is case-sensitive**
+
+> `!<REDACTED>(f)`
+
+On a case-sensitive FS (Linux CI), a file named `Faisha.jpg` would match `FORBIDDEN` but miss the `includes` check, producing a false-positive build failure. Extremely unlikely given the files already exist as lowercase, but `f.toLowerCase()` on both sides costs nothing.
+
+**5 · NIT · Attack 2 – empty-scan refusals are correct**
+
+Both `all.length === 0` and `publicFiles.length === 0` exit 1. The walkers return `[]` on a missing directory, which feeds the same guard. No bypass found. `ALLOWED_CHUNK_PREFIXES` is empty and the comment makes adding to it a review event. No issue.
+
+**6 · NIT · Attack 3 – derived photo map gains four entries, loses none**
+
+> `if (m.photo) out[m.slug] = m.photo;`
+
+The hand-written map had 16 entries; the derived map produces those same 16 (14 roster + 2 aliases) plus zainal, heru, ruslana, vino, who had roster photos but were missing from the hand-written table. Nothing is lost. The four new portraits are a deliberate one-source-of-truth consequence, declared in the PR body. No excluded name is among them (verified against `FORBIDDEN`). No finding.
+
+**7 · NIT · Attack 4 – tax list MOVED, not derived: correct call**
+
+> `export const TAX_CONSULTANTS: readonly TaxConsultantOption[] = [`
+
+The CHECK constraint (migration 093) is the source of truth for what the backend accepts. The roster disagrees on two addresses (`faysha` vs `faisha`, `tax@` vs `veronika.tax@`). Deriving would have silently changed the submitted values and violated the constraint. Preserving the values byte-for-byte and flagging the disagreement for the owner is the right call and the reasoning is sound.
+
+**8 · NIT · Attack 5 – redundant local alias in LkpmBatchClient**
+
+> `const TAX_CONSULTANTS = taxConsultants;`
+
+The prop is `taxConsultants`; this line re-binds it to the old constant name so the rest of the file didn't need renaming. It works, but it re-introduces the exact identifier that previously held the leaked data and could confuse a future grep. Smallest fix: delete the alias and use `taxConsultants` at the two call-sites.
+
+**9 · NIT · Attack 5 – `taxConsultants()` copies a readonly array**
+
+> `return TAX_CONSULTANTS.map((c) => ({ ...c }));`
+
+`TAX_CONSULTANTS` is `readonly` and the prop crosses the RSC serialisation boundary, which already produces a fresh object graph. The runtime copy is belt-and-suspenders. Harmless; drop it or keep it, no correctness issue.
+
+**10 · NIT · Attack 5 – type-only imports are correct; no runtime leak path**
+
+> `import type { TaxConsultantOption } from "@/lib/workspace/roster-directory";`
+
+All three client files use `import type`, which is erased at compile time. The bundler never includes `roster-directory.ts` or `TEAM_ROSTER` in a client chunk. The guard would catch a regression if someone switched to a value import. No hole.
+
+---
+
+## VERDICT: **GO**
+
+The leak is closed at both layers (data moved server-side; last missing route added to the 301 list). The guard is wired into the build, refuses empty scans, and has no allowlist. The residual exposures (public portrait files, RSC payload behind the proxy, no server-side session gate on the workspace layout) are all explicitly documented, accepted by the owner or escalated as separate work. The MINOR/NIT items above are hardening, not blockers.

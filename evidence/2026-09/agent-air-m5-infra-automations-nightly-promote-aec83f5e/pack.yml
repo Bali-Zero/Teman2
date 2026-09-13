@@ -1,0 +1,140 @@
+brief_ref: evidence/brief.yml
+effort_for_gear: xhigh
+plan_ref: >-
+  PR #6169 (agent/air-m5/infra/automations-nightly-promote) — nightly regen
+  of docs/AUTOMATIONS_REFERENCE.md from an isolated worktree, promoted as a
+  supersede-aware docs-only PR with auto-merge armed, plus the LaunchAgent,
+  the home-fork declared pair, and the organism registry repoint.
+lanes:
+  - lane: automations-nightly-promote
+    role: build
+    seat: "session (Air-M5, Opus 5 — dispatched by team-lead per CLAUDE.md §5 implementer routing)"
+  - lane: automations-nightly-promote-gate
+    role: review
+    seat: "gate-wrapper (claude-opus-5, independent on-disk gate)"
+seat_diversity: not_applicable
+seat_diversity_note: >-
+  Exactly ONE build lane, so the D3 floor (>=2 build lanes needing a
+  non-Anthropic seat) does not fire. The review side ran a single
+  independent Opus 5 on-disk gate, not a cross-family council — see
+  `seat_override` below for why R9's council-quorum rule is honestly
+  overridden rather than satisfied with a journal this task never ran.
+seat_override: >-
+  No cross-family council (codex-gpt-5.6-sol / kimi-code/k3 /
+  tp1-qwen3.8-max) was dispatched for this task. The Gear-3 review that
+  actually happened was an independent on-disk gate seat, "gate-wrapper"
+  (claude-opus-5), whose three findings are recorded in `dissent:` below,
+  one already cured in commit 1851cb5da0. Declared here rather than
+  fabricating a council-journal.jsonl naming seats that never reviewed
+  this diff — anti-hallucination (CLAUDE.md §6bis) outranks a clean R9
+  pass on a journal that would be a receipt for a review that did not
+  happen.
+diff:
+  net_lines: >-
+    7 files, +757/-4, measured by `git diff --numstat` against the merge-base
+    with origin/main. CI's countable-claims check reads this against the
+    WHOLE PR diff (code plus this evidence pair itself), so a single
+    measured total is kept here rather than a secondary per-file gloss
+    that would go stale on the next edit to this same file — same lesson
+    as the xendit-quarantine-alarm pack's `diff.net_lines` field. The code
+    itself is five files: the wrapper script, its 7-scenario/32-assert
+    test file, the plist, the declared-pairs entry and the organism
+    repoint.
+  behaviour_change: >-
+    Adds a new nightly cron surface (wrapper + plist) and repoints the
+    organism registry's automations-reference organ at it. No existing
+    runtime path is modified — this is a net-new promote lane, not an edit
+    to a live one, so the blast radius is "a new job can misfire", not "an
+    existing job now behaves differently".
+receipts:
+  - claim: "The full 7-scenario / 32-assert test suite for the wrapper passes on this worktree's current HEAD"
+    cmd: "bash scripts/tests/test_automations_reference_cron_wrapper.sh"
+    result: "PASS (all checks) — changed/no-change/generator-failure/push-failure/gh-pr-create-failure/auto-merge-degraded scenarios all green, including the words-only supersede --search assertion"
+    exit: 0
+    ts: "2026-09-10T22:17:49Z"
+    seat: "claude-sonnet-5 evidence author, M5"
+  - claim: "The new LaunchAgent plist is well-formed XML/plist"
+    cmd: "plutil -lint infra/launchagents/com.nuzantara.automations-reference.plist"
+    result: "infra/launchagents/com.nuzantara.automations-reference.plist: OK"
+    exit: 0
+    ts: "2026-09-10T22:17:57Z"
+    seat: "claude-sonnet-5 evidence author, M5"
+  - claim: "The KeepAlive/one-shot lint (superscar #7 antidote) reports zero findings across the repo, including the new plist"
+    cmd: "python3 scripts/lint_plist_keepalive.py"
+    result: "[findings] 0; [warns] 12 (all pre-existing, unrelated exec-into-payload WARNs on other plists); 'clean — no KeepAlive=true wrapper shows a one-shot smell'"
+    exit: 0
+    ts: "2026-09-10T22:18:03Z"
+    seat: "claude-sonnet-5 evidence author, M5"
+  - claim: "The new declared-pairs.json entry keeps the file valid JSON"
+    cmd: "python3 -m json.tool infra/home-fork/declared-pairs.json >/dev/null"
+    result: "exit 0, no output (valid JSON)"
+    exit: 0
+    ts: "2026-09-10T22:17:58Z"
+    seat: "claude-sonnet-5 evidence author, M5"
+  - claim: "The repointed organism registry entry validates against the organs registry schema"
+    cmd: "cd apps/organism && python3 -m organism.tools.validate_organs_registry organism/organs_registry.yaml"
+    result: "✓ organs_registry.yaml valid (organism/organs_registry.yaml)"
+    exit: 0
+    ts: "2026-09-10T22:18:04Z"
+    seat: "claude-sonnet-5 evidence author, M5"
+  - claim: "The wrapper script parses cleanly (zsh syntax check)"
+    cmd: "zsh -n scripts/automations-reference-cron-wrapper.sh"
+    result: "no output, exit 0"
+    exit: 0
+    ts: "2026-09-10T22:17:59Z"
+    seat: "claude-sonnet-5 evidence author, M5"
+  - claim: "The dissent-1 finding is real: a `type(scope):` prefixed supersede search matches zero merged PRs where the words-only search matches five — proving the original predicate was a silent no-op and the fix in 1851cb5da0 is load-bearing"
+    cmd: 'gh pr list --state merged --limit 5 --search "promote hourly-translated in:title" --json number ; gh pr list --state merged --limit 5 --search "chore(mouth): promote hourly-translated in:title" --json number'
+    result: 'words-only: [{"number":6129},{"number":6010},{"number":5663},{"number":5375},{"number":5171}]; prefixed: [] (zero matches)'
+    exit: 0
+    ts: "2026-09-10T22:18:09Z"
+    seat: "claude-sonnet-5 evidence author, M5"
+pii_scan: clean
+dissent:
+  - seat: "gate-wrapper (claude-opus-5, independent on-disk gate)"
+    objection: >-
+      Superseding with a `--search` predicate that includes a
+      `type(scope):` conventional-commit prefix matches nothing on GitHub
+      — GitHub's PR search ignores punctuation inside `in:title`, so a
+      prefixed predicate is a silent no-op inherited from the reference
+      wrapper this one was modeled on. Every nightly run would open a new
+      promote PR without ever closing the previous one, recreating the
+      exact "two authors overwrite each other" defect this PR exists to
+      cure, one PR at a time instead of one commit at a time.
+    status: CONFIRMED
+    resolution: >-
+      Cured in commit 1851cb5da0 — the search predicate is now words-only.
+      Verified independently in this pack's own receipts: the prefixed
+      form returns zero merged PRs against a query the words-only form
+      returns five for, on the same live repo.
+  - seat: "gate-wrapper (claude-opus-5, independent on-disk gate)"
+    objection: >-
+      Pro's main checkout keeps a dirty, stale docs/AUTOMATIONS_REFERENCE.md
+      that the puller's keep-local allowlist preserves, masking main's real
+      copy after the switch to the generator-owned nightly regen — an
+      operator looking at Pro's working tree would see a file that no
+      longer matches what main actually carries.
+    status: CONFIRMED
+    note: >-
+      Not cured in this diff — it is a Pro-side install-time condition
+      (a dirty file already sitting in that checkout), not something this
+      PR's own commits can fix from M5. Follow-up at install time: restore
+      the file on Pro from origin/main before/when the new plist is
+      bootstrapped, and consider retiring the keep-local allowlist entry
+      that lets it drift again. Not ledgered as a PENDING-ARMS row by this
+      lane, since the fix is an operator action at deploy time rather than
+      a future code change; flagged here so the deploying session does not
+      skip it.
+  - seat: "gate-wrapper (claude-opus-5, independent on-disk gate)"
+    objection: >-
+      `_check_log_health_pro` will run over 24 more matagaruda jobs after
+      the companion PR #6171 lands (the generator's expanded scheduled-
+      workflows/plist tables), and may emit new warnings on the first
+      night this cron actually fires against the enlarged output.
+    status: PLAUSIBLE
+    note: >-
+      Not verified either way — this pack cannot observe a run that has
+      not happened yet. Accepted as a plausible first-night risk rather
+      than dismissed; the heartbeat this wrapper emits (`pro.automations_reference`)
+      is exactly the mechanism that would surface it if it materializes,
+      per cicatrix-superscar #2 (monitor outcome, not exit code).

@@ -1,7 +1,11 @@
 ---
 name: skill-catalog
-description: Use when a user request does NOT match any currently-loaded skill — BEFORE answering "I don't have a skill for that". The full Claude Code skill ecosystem (Tier 2/3 + hundreds of community skills) is NOT all installed; their descriptions are catalogued in the MOS, not in context. This skill tells you to query the MOS catalog and install the right skill on-demand.
+description: "Use when a user request does NOT match any currently-loaded skill — BEFORE answering 'I don't have a skill for that'. Query the MOS catalog and install the right skill on-demand."
 ---
+
+## Notes (moved from description 2026-09-02)
+
+The full Claude Code skill ecosystem (Tier 2/3 + hundreds of community skills) is NOT all installed — their descriptions are catalogued in the MOS, not in context.
 
 > **CANON**: repo `.claude/` (vendored 2026-07-17, PR process-toolkit SSOT) — shadows the `~/.claude/` HOME copy. Edit HERE, never in `$HOME`. Pro/Mini shadow it on `git pull`.
 

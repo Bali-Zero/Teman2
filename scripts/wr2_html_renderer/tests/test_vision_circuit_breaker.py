@@ -52,7 +52,14 @@ def _isolate_state(monkeypatch, tmp_path: Path) -> None:
     monkeypatch.setenv("CLAUDE_CODE_OAUTH_TOKEN_2", "tok2")
     for key in (
         "CLAUDE_CODE_OAUTH_TOKEN_3", "CLAUDE_CODE_OAUTH_TOKEN_4",
-        "CLAUDE_CODE_OAUTH_TOKEN_5", "CLAUDE_CODE_OAUTH_TOKEN",
+        "CLAUDE_CODE_OAUTH_TOKEN_5",
+        # Slot 6 exists since the 2026-08-23 remap and claude_vision.py now
+        # iterates to it. This helper builds the subprocess env from ambient
+        # os.environ, so leaving 6 set here makes the chain one attempt longer
+        # than the mocks are sized for — green on a clean runner, red on every
+        # fleet machine, which is the docstring's "regardless of what's
+        # configured on the machine" promise broken.
+        "CLAUDE_CODE_OAUTH_TOKEN_6", "CLAUDE_CODE_OAUTH_TOKEN",
     ):
         monkeypatch.delenv(key, raising=False)
 

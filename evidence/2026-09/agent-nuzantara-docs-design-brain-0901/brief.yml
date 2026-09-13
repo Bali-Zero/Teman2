@@ -1,0 +1,88 @@
+task_id: design-corner-brain-0901
+gear: 2
+l_level: L1
+gate_class: opus
+objective: |
+  The other half of Zero's 2026-09-01 order to open a /design corner ("salva tutto in un nuovo
+  corner /design che casomai vai a unire cn altre skill/corner"): the SKILL.md brain, the
+  front-page build chain, and the .claude/skills symlink that makes the corner loadable. The
+  calibrated probes are the sibling PR, which is serialized BEFORE this one because SKILL.md's
+  file inventory names its directory.
+
+  SKILL.md carries four things a future session cannot re-derive from the code: the north star
+  (deliver the product's promise before claiming anything — on a visa surface that means an
+  answer in ten seconds, because knowing the answer is the only trust signal a copycat cannot
+  reproduce); the doctrine rules, of which the load-bearing one is that your own server renders
+  decoration while a registrar renders evidence; LIVE STATE naming what is still Zero's and not
+  a session's; and nine blood-bought rules that each cost a real defect during the rebuild. §7
+  names the merge seams with bali-zero-brand, wr2 and visaoracle instead of duplicating them,
+  because Zero's order explicitly anticipated consolidation.
+
+  prima-pagina/ is the 2026-09-01 front page, rebuildable from repo sources. Nothing
+  images-shaped is copied in on purpose: the mark, the hero and the six staff cards are
+  re-encoded on demand from apps/mouth/public by assets.py. A second copy of a staff photograph
+  is a second thing to keep in sync and a second place it can leak from.
+
+  Two portability fixes travel with the build chain: assets.py pointed at a throwaway worktree
+  and a session scratchpad and now takes <repo-root> and <out-dir>, and it now FAILS LOUDLY if
+  a staff card is missing rather than shipping a page with dead images — which is precisely the
+  defect that motivated verify_images.py existing at all.
+constraints:
+  - "Additive only: 9 new files under .agents/skills/design/ plus one symlink at
+    .claude/skills/design. Touches zero existing file, no workflow, no product code."
+  - "Serialized after the sibling strumenti PR. If this one landed first, SKILL.md §4 would
+    name a directory that does not yet exist — a transient false claim in a docs file, not a
+    broken gate, but disclosed rather than discovered."
+  - "Fresh worktree cut from origin/main after PR #5505 (the unsplit version) was closed."
+  - "No PII and no image bytes: home.tpl.html carries __LOGO__/__HERO__/__SURYA__ tokens, never
+    encoded image data. The photographs live in apps/mouth/public and are read at build time."
+  - "Asserts no visa verdict. The front page's widget says 'orientation, not a determination'
+    and links to the Oracle — visaoracle owns the RulePack and the ENFORCE gate, and this
+    corner must never move that boundary."
+acceptance:
+  - "The corner rebuilds end-to-end from a clean directory on repo sources alone: assets.py ->
+    159 KB inline, build.py -> home.html 240,998 bytes, verify_images 8/8 decoded, verify_copy
+    7/7 widget branches, measure.py 0 mechanical failures across 6 states, defects.py 'probe
+    trusted' and clean on all six classes. Observed 2026-09-01."
+  - "The symlink resolves: .claude/skills/design -> ../../.agents/skills/design, and SKILL.md
+    is readable through it. Verified by an independent reader, not by the author."
+  - "Every file SKILL.md §4 names exists, and no file exists in this half that §4 fails to
+    account for. Checked in both directions."
+  - "Every script's argv arity matches the command block in §5 — checked by reading each
+    script's sys.argv handling rather than by running the block."
+consumer_map:
+  - "A session invoking /design. The Skill tool reads .claude/skills/design/SKILL.md, which is
+    the symlink this PR creates; without it the corner is files on disk that nothing loads."
+  - "The sibling strumenti PR (#5509), whose files SKILL.md §4 inventories and whose command
+    block §5 documents. That PR must land first."
+  - "apps/mouth/public/static/team/*.jpg and news/perfect-storm-bali.jpg — read by assets.py at
+    build time, never copied. A rename there breaks the rebuild loudly (assets.py raises)
+    rather than silently shipping a page with dead images."
+risks:
+  - "SKILL.md §1 LIVE STATE is a dated snapshot and will rot. Its own header says so; the
+    honest mitigation is the instruction to update it, not a mechanism, because nothing in CI
+    can know whether a claim about an unmerged contest vote is still true."
+  - "The design dossier this corner summarises is NOT in git — 29MB under ~/Desktop, on a
+    TCC-denied path. §1 records that and tells the reader to open files by explicit path rather
+    than glob. Committing it was rejected as 29MB of PNG renders for a vote still pending."
+  - "One claim was removed rather than corrected during review: a 'since 2019 vs since 2020,
+    10 vs 14 occurrences' count that an independent verifier could not reproduce under any
+    scoping. The contradiction it pointed at is real and is retained with full paths; the
+    number is gone, because a corrected-looking figure with no method behind it is the same
+    defect with a friendlier face."
+grader: |
+  Generator != grader held, and it bit. This session wrote the corner; an independent subagent
+  on fresh context checked SKILL.md's claims against disk rather than against the description.
+  It confirmed the symlink, the inventory in both directions, the argv arities, and defects.py's
+  actual main() contract — and it caught the unreproducible occurrence count described under
+  risks, which was removed in a follow-up commit before this PR was opened. A second, earlier
+  adversarial dispatch against the front page itself found three regulatory errors in the
+  widget's visa mappings (a C2 branch carrying D2's facts, an E33F missing its mandatory
+  sponsor, an E28A asking for shares where the hard filter is a management role); each was
+  re-verified by this session against research/visa/2026-07-24-w2-factbase-*.md before being
+  fixed, and the episode is rule 1 of SKILL.md §3.
+budget: |
+  Gear 2, solo-orchestrator, 2 independent verification dispatches (one adversarial against the
+  page, one against the corner's own claims). No council: the divergent-priors test does not
+  fire on a docs artifact whose factual claims are each individually checkable on disk.
+pii: none

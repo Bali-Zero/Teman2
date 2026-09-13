@@ -41,8 +41,13 @@ was measured lying, in this repo, on 2026-09-01):
      the actionable fact — it is the difference between "twelve problems"
      and "one problem, twelve times".
 
-Read-only. Runs `gh` and `git`; writes exactly one HTML file. Never mutates
-a PR, never arms, never merges.
+Read-only in the sense that matters, and NOT write-free — worth stating
+precisely rather than claiming more than is true. It never mutates a PR, never
+arms, never merges, and never touches an index or a working tree. It does
+write: the HTML file, the JSON dump when `--json` is passed, and — via
+`git fetch` and `git merge-tree --write-tree` — objects and remote-tracking
+refs in the SHARED `.git` store. Per git-merge-tree(1) that last pair cannot
+disturb a concurrent session's work.
 
 Usage:
     python3 scripts/fleet_dashboard.py --out /tmp/dashboard.html
@@ -64,10 +69,34 @@ from typing import Any
 
 REPO = "Bali-Zero/Teman2"
 
-# git is refused in the main checkout by the worktree-isolation hook, and a
-# worktree shares the object database, so every git probe runs from wherever
-# this script lives — which is always inside a worktree or the checkout root.
+# The fleet is in Bali. Every date boundary on this page is WITA, never UTC —
+# a UTC "today" drops the 00:00-08:00 local window, which is exactly when the
+# overnight autonomous runs land.
+WITA = dt.timedelta(hours=8)
+
+# Every git probe runs from wherever this script lives. That is normally a
+# worktree, which shares the object database and is what the worktree-isolation
+# hook expects. If it ever resolves to the guarded MAIN checkout, the hook
+# refuses each git call and the page renders with every conflict verdict
+# missing and nothing saying why — so that case is named out loud at startup
+# rather than degrading quietly (adversarial review, 2026-09-01).
 GIT_CWD = Path(__file__).resolve().parent.parent
+
+
+def _warn_if_main_checkout() -> None:
+    # Judged on the FACT, not on the folder's name. An earlier version also
+    # required `GIT_CWD.name == "nuzantara"` and a parent not named
+    # `.worktrees`, which silently false-negatives on any differently-named
+    # clone. In a linked worktree `.git` is a FILE pointing at the real object
+    # store; only a primary checkout has it as a DIRECTORY. That single test is
+    # naming-independent and is the whole signal.
+    if (GIT_CWD / ".git").is_dir():
+        sys.stderr.write(
+            f"fleet_dashboard: running from what looks like the MAIN checkout "
+            f"({GIT_CWD}). If the worktree-isolation hook is armed it will refuse "
+            "every git call and the conflict section will be empty for the wrong "
+            "reason. Run this from a worktree.\n"
+        )
 
 
 def _run(args: list[str], timeout: int = 90) -> tuple[int, str, str]:
@@ -97,17 +126,10 @@ query {
       nodes {
         number title isDraft mergeable mergeStateStatus headRefName headRefOid
         updatedAt
-        author { login }
+        author { __typename login }
         autoMergeRequest { enabledAt }
         mergeQueueEntry { position state }
-        commits(last: 1) { nodes { commit { statusCheckRollup {
-          state
-          contexts(first: 100) { nodes {
-            __typename
-            ... on CheckRun { name conclusion }
-            ... on StatusContext { context state }
-          } }
-        } } } }
+        commits(last: 1) { nodes { commit { statusCheckRollup { state } } } }
       }
     }
   }
@@ -160,10 +182,34 @@ def resolve_mergeable(number: int, attempts: int = 3, delay: float = 2.0) -> tup
 
 
 def fetch_open_prs() -> list[dict[str, Any]]:
-    rc, out, err = _run(["gh", "api", "graphql", "-f", f"query={GRAPHQL}"])
-    if rc != 0 or not out.strip():
-        raise SystemExit(f"gh graphql failed (rc={rc}): {(err or out)[:400]}")
-    prs = json.loads(out)["data"]["repository"]["pullRequests"]["nodes"]
+    # The retry is now BELT-AND-BRACES, and the comment that used to live here
+    # was wrong about why. It justified the retry by this query being heavy —
+    # "100 PRs each with up to 100 check contexts" — but the commit that added
+    # that sentence is the same one that removed `contexts` from this query
+    # (it now asks only for `statusCheckRollup { state }`; per-check contexts
+    # moved to CONTEXTS_ONE, fetched one red PR at a time). So the sentence
+    # described the query as it was BEFORE the diff it was attached to.
+    # The real history: the heavy version timed out on 3 of 3 runs even WITH
+    # three attempts — a retry on a too-heavy query makes it fail more slowly,
+    # it does not make it succeed. Lightening the query is what fixed it.
+    # The retry stays only for ordinary transient network failure.
+    prs = None
+    for attempt in range(3):
+        rc, out, err = _run(["gh", "api", "graphql", "-f", f"query={GRAPHQL}"], timeout=120)
+        if rc == 0 and out.strip():
+            prs = json.loads(out)["data"]["repository"]["pullRequests"]["nodes"]
+            break
+        sys.stderr.write(
+            f"fleet_dashboard: bulk query attempt {attempt + 1}/3 failed "
+            f"(rc={rc}): {(err or out).strip()[:200]}\n"
+        )
+        if attempt < 2:
+            time.sleep(4.0)
+    if prs is None:
+        raise SystemExit(
+            "fleet_dashboard: gh graphql failed 3 times — refusing to render a "
+            "page from no data."
+        )
     # Re-ask, per PR, for every row the bulk query left uncomputed. This is the
     # only field on the page whose wrongness points a reader AWAY from work that
     # exists, so it is the one worth up to N extra API calls.
@@ -175,20 +221,149 @@ def fetch_open_prs() -> list[dict[str, Any]]:
     return prs
 
 
-def failing_checks(pr: dict[str, Any]) -> list[str]:
-    commits = pr["commits"]["nodes"]
+CONTEXTS_ONE = """
+query($n: Int!) {
+  repository(owner: "%s", name: "%s") {
+    pullRequest(number: $n) {
+      commits(last: 1) { nodes { commit { statusCheckRollup {
+        contexts(first: 100) { nodes {
+          __typename
+          ... on CheckRun { name conclusion }
+          ... on StatusContext { context state }
+        } }
+      } } } }
+    }
+  }
+}
+""" % tuple(REPO.split("/"))
+
+
+#: Not a check name and deliberately not shaped like one: it is the answer to
+#: "why is this PR red?" when the instrument that was supposed to answer never
+#: replied. It groups into its own row in the causes table so the reader sees
+#: that the tally is incomplete rather than reading a short list as a full one.
+#: A rollup context is FAILING on any of these. The bug this replaces tested
+#: `verdict == "FAILURE"` alone, so a check that TIMED_OUT, was CANCELLED,
+#: needed ACTION_REQUIRED, hit a STARTUP_FAILURE, or (on a StatusContext)
+#: ERRORed left the PR counted as red while contributing to NO row in the
+#: causes table — it read as "nothing wrong here" by omission, which is worse
+#: than the unreadable sentinel, because not even a row said the tally was
+#: short. Found by adversarial review of the very commit that claimed to have
+#: cured this disease everywhere in this function.
+FAILING_VERDICTS = frozenset({
+    "FAILURE", "TIMED_OUT", "CANCELLED", "ACTION_REQUIRED", "STARTUP_FAILURE", "ERROR",
+})
+#: Explicitly NOT failing. Kept as its own list rather than "everything else",
+#: so a verdict in neither set is surfaced instead of silently bucketed.
+BENIGN_VERDICTS = frozenset({
+    "SUCCESS", "NEUTRAL", "SKIPPED", "STALE", "EXPECTED", "PENDING", "QUEUED",
+    "IN_PROGRESS", "WAITING", "REQUESTED", None,
+})
+
+PROBE_UNREADABLE = "\u00b7 la sonda dei controlli non ha risposto"
+
+
+def failing_checks(number: int) -> list[str]:
+    """Names of the checks that are FAILURE on this PR's head commit.
+
+    WHY THIS IS A SEPARATE, PER-PR QUERY. The first version asked for
+    `contexts(first:100)` inside the bulk 100-PR query — 100 x 100 nodes in one
+    request. GitHub answered "We couldn't respond to your request in time" on
+    every attempt with a 3x retry, measured 2026-09-01: the retry made a heavy
+    query fail more slowly, it did not make it succeed. The contexts are only
+    needed for PRs whose ROLLUP is already FAILURE — about twenty, not a
+    hundred — so the bulk query now carries the rollup state alone (cheap) and
+    the detail is fetched only where it is actually read.
+    """
+    def unreadable(why: str) -> list[str]:
+        # A probe that could not measure says so ON THE PAGE, not only to
+        # stderr. Returning a bare [] rendered as "red, with no reason given"
+        # and silently under-counted that check's tally in the grouped table —
+        # indistinguishable from a PR that genuinely has no named failing
+        # context. The sentinel is deliberately not check-shaped so it can
+        # never be mistaken for one, and it groups into its own row, which is
+        # what makes the incompleteness visible instead of silent.
+        sys.stderr.write(f"fleet_dashboard: checks unreadable for #{number}: {why[:160]}\n")
+        return [PROBE_UNREADABLE]
+
+    rc, out, err = _run(
+        ["gh", "api", "graphql", "-f", f"query={CONTEXTS_ONE}", "-F", f"n={number}"]
+    )
+    if rc != 0 or not out.strip():
+        return unreadable(err or out)
+    try:
+        commits = json.loads(out)["data"]["repository"]["pullRequest"]["commits"]["nodes"]
+    except (KeyError, TypeError, json.JSONDecodeError):
+        return unreadable("risposta GraphQL malformata")
     if not commits:
-        return []
+        return unreadable("nessun commit nella risposta")
     rollup = commits[0]["commit"]["statusCheckRollup"]
     if not rollup:
-        return []
-    out = []
+        # The bulk query already said this PR's rollup is FAILURE. A per-PR
+        # answer of "no rollup at all" contradicts that, so it is a disagreement
+        # between two probes, never a clean "no checks ran".
+        return unreadable("nessun rollup, in contraddizione con la query d'insieme")
+    names = []
     for ctx in rollup["contexts"]["nodes"]:
         name = ctx.get("name") or ctx.get("context") or "?"
         verdict = ctx.get("conclusion") or ctx.get("state")
-        if verdict == "FAILURE":
-            out.append(name)
-    return out
+        if verdict in BENIGN_VERDICTS:
+            continue
+        if verdict in FAILING_VERDICTS:
+            names.append(name)
+            continue
+        # An verdict in NEITHER list is a value GitHub added after this was
+        # written. It is named, not dropped: a check the page cannot classify
+        # is news. Erring toward "failing" is the SAFE direction — it makes the
+        # page more alarming than reality, never more reassuring, which is the
+        # asymmetry every defect this file shipped got backwards.
+        names.append(f"{name} ({verdict})")
+    return names
+
+
+def is_armed(pr: dict[str, Any]) -> bool:
+    """Has someone asked GitHub to merge this on its own? NEITHER field alone answers it.
+
+    This module's header already records half of this: `autoMergeRequest` is null in
+    three different states — never armed, armed-then-ejected, and armed-then-CONSUMED
+    by the queue — so a PR holding queue position 1 reports "not armed" (measured on
+    #5458/#5459/#5460, and again on #5490 while it sat at position 1). The cure recorded
+    there was "read mergeQueueEntry instead".
+
+    That cure has its OWN blind spot, and it is the one that matters for a stuck board:
+    a RED PR never receives a queue entry at all. GitHub admits a PR to the merge queue
+    only once its required checks pass, so `mergeQueueEntry` is null for every armed PR
+    that is failing — precisely the population a reader needs to see. Measured 2026-09-01:
+    #5158 carried `autoMergeRequest.enabledAt = 2026-09-01T00:48:51Z` with
+    `mergeQueueEntry = null` and one failing check.
+
+    So `mergeQueueEntry` answers "is it in the queue?" and `autoMergeRequest` answers
+    "is a request still pending?" — and ARMED is the union, never either one. Each field
+    is null in a state the other covers, which is why a single-field probe reads as a
+    confident answer to a neighbouring question.
+    """
+    return pr.get("autoMergeRequest") is not None or pr.get("mergeQueueEntry") is not None
+
+
+def is_dependabot(pr: dict[str, Any]) -> bool:
+    """True only for Dependabot, judged on the ENTITY and its login together.
+
+    Two bugs are pinned here, one in each direction. A first cut tested
+    `login.endswith("[bot]")` and returned False for every real Dependabot PR:
+    the GraphQL Bot login is the bare string `dependabot`, and the `[bot]`
+    suffix exists only in REST renderings. The correction then tested
+    `__typename == "Bot"` alone, which answers "is ANY bot" — Renovate,
+    github-actions and Copilot share that concrete type — where this flag means
+    "is Dependabot" and drives the note about arming lockfile PRs one at a time.
+
+    It is a named function rather than an inline expression because the test
+    that guarded it could only grep the source, and grepping for two substrings
+    never pinned the `and` joining them: flipping it to `or` reinstated the bug
+    with the test still green. A predicate you can call is a predicate you can
+    actually pin.
+    """
+    author = pr.get("author") or {}
+    return author.get("__typename") == "Bot" and author.get("login") == "dependabot"
 
 
 def rollup_state(pr: dict[str, Any]) -> str:
@@ -211,7 +386,18 @@ def conflict_kind(pr: dict[str, Any]) -> str:
     if pr["mergeable"] != "CONFLICTING":
         return "none"
     branch = pr["headRefName"]
-    _run(["git", "fetch", "origin", branch, "--quiet"], timeout=120)
+    # The fetch's rc is READ, not discarded (adversarial review, round 2): a
+    # failed fetch leaves the trial merge running against a stale ref, so the
+    # probe answers a question about the past while looking like an answer
+    # about now. Same failure direction as the two defects above — an
+    # unusable probe must not produce a verdict.
+    rc, _, err = _run(["git", "fetch", "origin", branch, "--quiet"], timeout=120)
+    if rc != 0:
+        sys.stderr.write(
+            f"fleet_dashboard: fetch failed for #{pr['number']} ({branch}): "
+            f"rc={rc} {err.strip()[:200]}\n"
+        )
+        return "unknown"
     rc, sha, err = _run(["git", "rev-parse", f"origin/{branch}"])
     if rc != 0:
         return "unknown"
@@ -245,25 +431,52 @@ def merged_today() -> list[dict[str, Any]]:
     )
     if rc != 0 or not out.strip():
         return []
-    today = dt.datetime.now(dt.timezone.utc).date()
+    # "Today" is WITA, not UTC. The page prints a WITA clock for a reader in
+    # Bali, and a UTC cutoff silently drops everything merged between midnight
+    # and 08:00 local — the exact hours an overnight autonomous run lands in.
+    # Reported by adversarial review, 2026-09-01.
+    today = (dt.datetime.now(dt.timezone.utc) + WITA).date()
     rows = []
     for m in json.loads(out):
         when = dt.datetime.fromisoformat(m["mergedAt"].replace("Z", "+00:00"))
-        if when.date() == today:
+        if (when + WITA).date() == today:
             rows.append(m)
     return rows
 
 
 def collect() -> dict[str, Any]:
+    # If THIS fetch fails, every trial merge below compares against a stale
+    # origin/main and the whole conflict section becomes fiction. It is the one
+    # probe whose failure poisons every other, so it aborts rather than
+    # degrades: a page that does not render is recoverable, a page that renders
+    # yesterday's answer as today's is not.
+    rc, _, err = _run(["git", "fetch", "origin", "main", "--quiet"], timeout=120)
+    if rc != 0:
+        raise SystemExit(
+            f"fleet_dashboard: could not fetch origin/main (rc={rc}): {err.strip()[:300]}\n"
+            "Refusing to render — every conflict verdict on the page would be "
+            "computed against a stale base."
+        )
     prs = fetch_open_prs()
-    _run(["git", "fetch", "origin", "main", "--quiet"], timeout=120)
 
     live = [p for p in prs if not p["isDraft"]]
     queued = [p for p in prs if p["mergeQueueEntry"]]
+
+    # One query per RED PR, and only red ones — the rollup state already says
+    # which those are, and a green PR has no failing check to name. Computed
+    # once here and read twice below; the first version called it once per
+    # caller and paid for every PR twice.
+    # `== "FAILURE"` here was the same defect as in failing_checks(), one level
+    # up and worse: a PR whose rollup state is ERROR matched NEITHER this nor
+    # the SUCCESS test below, so it vanished from both cards and appeared only
+    # in the raw total — not "red with no reason", but absent. Found by
+    # adversarial review while tracing the fix to the function below it.
+    red = [p for p in live if rollup_state(p) in FAILING_VERDICTS]
+    fail_map = {p["number"]: failing_checks(p["number"]) for p in red}
     causes: dict[str, list[int]] = defaultdict(list)
-    for p in live:
-        for name in failing_checks(p):
-            causes[name].append(p["number"])
+    for number, names in fail_map.items():
+        for name in names:
+            causes[name].append(number)
 
     conflicts = {p["number"]: conflict_kind(p) for p in prs if p["mergeable"] == "CONFLICTING"}
     phantom = [n for n, k in conflicts.items() if k == "phantom"]
@@ -273,8 +486,23 @@ def collect() -> dict[str, Any]:
     # Kept as its own bucket and kept OUT of `ready`: "not known" is not "fine".
     unknown_merge = [p["number"] for p in live if p["mergeable"] == "UNKNOWN"]
 
-    red = [p for p in live if rollup_state(p) == "FAILURE"]
     green = [p for p in live if rollup_state(p) == "SUCCESS"]
+    # Anything in neither set and not a known in-flight state is a rollup value
+    # this page cannot classify. It is COUNTED and reported, because the whole
+    # failure mode being cured here is a PR quietly belonging to no bucket.
+    unclassified = sorted(
+        p["number"] for p in live
+        if rollup_state(p) not in FAILING_VERDICTS
+        and rollup_state(p) not in BENIGN_VERDICTS
+        and rollup_state(p) != "—"
+    )
+    if unclassified:
+        sys.stderr.write(
+            "fleet_dashboard: rollup state not classifiable on "
+            f"{len(unclassified)} PR(s) {unclassified} — they are counted in the "
+            "total and in no card. Add the value to FAILING_VERDICTS or "
+            "BENIGN_VERDICTS.\n"
+        )
     # ready = green AND known-mergeable AND not queued: the pile that would move
     # with no work at all. `mergeable == "MERGEABLE"` is asserted positively,
     # never inferred from "not CONFLICTING" — that inference is what put a
@@ -283,6 +511,16 @@ def collect() -> dict[str, Any]:
         p for p in green
         if p["mergeable"] == "MERGEABLE" and not p["mergeQueueEntry"]
     ]
+
+    # ARMED AND RED: the shape that cannot clear itself. Arming freezes the branch
+    # (THE BUILDER CONTRACT §1), and several gates are designed so the only possible
+    # fix lives INSIDE that same PR's files — check_adversarial_review.py's own
+    # docstring says it outright ("the fix for a FAIL is always 'edit THIS file in THIS
+    # commit', never a follow-up PR"). A PR in this set therefore waits for a
+    # deliberate disarm, and nothing on the board said so before this row existed:
+    # `queued` cannot show it (a red PR never gets a queue entry) and `red` shows it
+    # without saying it is also frozen.
+    stalled_armed = [p for p in red if is_armed(p)]
 
     return {
         "measured_at": dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds"),
@@ -296,9 +534,18 @@ def collect() -> dict[str, Any]:
             key=lambda d: d["pos"] or 999,
         ),
         "red": [{"n": p["number"], "title": p["title"],
-                 "why": failing_checks(p)} for p in red],
+                 "why": fail_map.get(p["number"], [])} for p in red],
         "green": [p["number"] for p in green],
-        "ready": [{"n": p["number"], "title": p["title"]} for p in ready],
+        "ready": [
+            {"n": p["number"], "title": p["title"],
+             "bot": is_dependabot(p)}
+            for p in ready
+        ],
+        "stalled_armed": [
+            {"n": p["number"], "title": p["title"],
+             "why": fail_map.get(p["number"], [])}
+            for p in stalled_armed
+        ],
         "phantom_conflicts": sorted(phantom),
         "real_conflicts": sorted(real),
         "unprobeable_conflicts": sorted(unprobeable),
@@ -437,6 +684,7 @@ def render(d: dict[str, Any]) -> str:
         ("is-wait", len(d["queued"]), "in coda, si fondono da sole"),
         ("is-ok", len(d["ready"]), "verdi e pronte, nessun lavoro da fare"),
         ("is-merah", red_n, "ferme su un controllo rosso"),
+        ("is-merah", len(d["stalled_armed"]), "armate E rosse: congelate, non si sbloccano da sole"),
         ("is-warn", len(d["real_conflicts"]), "conflitti veri, serve una persona"),
         ("is-wait", len(d["phantom_conflicts"]), "conflitti finti (li scioglie una fusione)"),
         ("is-wait", len(d["draft"]), "bozze, non ancora proposte"),
@@ -463,7 +711,8 @@ def render(d: dict[str, Any]) -> str:
     ) or '<tr><td colspan="3">Nessun controllo rosso.</td></tr>'
 
     queue_rows = "\n".join(
-        f'<tr><td class="num">{q["pos"]}</td><td class="num">{prlink(q["n"])}</td>'
+        f'<tr><td class="num">{esc(q["pos"]) if q["pos"] is not None else "—"}</td>'
+        f'<td class="num">{prlink(q["n"])}</td>'
         f'<td>{esc(q["title"])}</td></tr>'
         for q in d["queued"]
     ) or '<tr><td colspan="3">La coda è vuota.</td></tr>'
@@ -474,12 +723,27 @@ def render(d: dict[str, Any]) -> str:
         for r in d["ready"]
     ) or '<tr><td colspan="3">Nessuna in attesa: tutto ciò che è verde è già in coda.</td></tr>'
 
+    stalled_rows = "".join(
+        f'<tr><td>{prlink(x["n"])}</td><td>{esc(x["title"])}</td>'
+        f'<td>{esc(", ".join(x["why"])) or "&mdash;"}</td></tr>'
+        for x in d["stalled_armed"]
+    ) or '<tr><td colspan="3">Nessuna: niente è insieme armato e rosso.</td></tr>'
+
     # The "ready" pile is routinely dominated by dependency bumps, and they are
     # the one case where "all green, arm them all" is the WRONG move: bumps that
     # share a lockfile invalidate each other the moment the first one lands, so
     # arming them together burns a queue cycle per PR. Saying so here is the
     # difference between a page that informs and a page that misleads.
-    bumps = [r for r in d["ready"] if r["title"].lower().startswith("chore(deps")]
+    # Identify bumps by AUTHOR first and title only as a fallback. Measured on
+    # this repo's history, the title prefix caught 245/245 with no false
+    # positives — but that is this repo's convention, not a property of
+    # Dependabot: GitHub's default title carries no prefix at all, so a config
+    # change would silently switch this note off. The author login is already
+    # paid for by the query; use it.
+    bumps = [
+        r for r in d["ready"]
+        if r.get("bot") or r["title"].lower().startswith("chore(deps")
+    ]
     ready_note = ""
     if len(bumps) >= 2:
         ready_note = (
@@ -581,11 +845,26 @@ def render(d: dict[str, Any]) -> str:
       <tr><th>Pos.</th><th>Proposta</th><th>Titolo</th></tr>
       {queue_rows}
     </table></div>
-    <div class="note"><b>Nota tecnica, per chi verrà dopo:</b> lo stato «armata» qui è letto da
-    <span class="mono">mergeQueueEntry</span>. Il campo che sembra dirlo,
-    <span class="mono">autoMergeRequest</span>, è vuoto in tre situazioni diverse — mai armata,
-    armata e poi espulsa, armata e <em>consumata dalla coda</em> — quindi una proposta in prima
-    posizione risulterebbe «non armata».</div>
+    <div class="note"><b>Nota tecnica, per chi verrà dopo:</b> «armata» si legge dall\u2019<em>unione</em>
+    di due campi, mai da uno solo. <span class="mono">autoMergeRequest</span> è vuoto in tre
+    situazioni diverse — mai armata, armata e poi espulsa, armata e <em>consumata dalla coda</em> —
+    quindi una proposta in prima posizione risulterebbe «non armata».
+    <span class="mono">mergeQueueEntry</span> ha il difetto opposto: una proposta <em>rossa</em> non
+    entra mai in coda, quindi risulterebbe «non armata» proprio quando è armata e bloccata. Ogni
+    campo è vuoto in uno stato che l\u2019altro copre.</div>
+  </section>
+
+  <section>
+    <div class="eyebrow">Ferme e congelate</div>
+    <h2>Armate e rosse</h2>
+    <p class="sub">Queste hanno chiesto di fondersi da sole, ma un controllo è rosso. Armare
+    <em>congela</em> il ramo, e diversi controlli si riparano solo modificando un file
+    <em>dentro la proposta stessa</em>. Finché nessuno la disarma di proposito, una proposta qui
+    non si sblocca da sola.</p>
+    <div class="scroll"><table>
+      <tr><th>Proposta</th><th>Titolo</th><th>Cosa è rosso</th></tr>
+      {stalled_rows}
+    </table></div>
   </section>
 
   <section>
@@ -623,6 +902,7 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--json", dest="json_out", help="also dump the raw measurements")
     args = ap.parse_args(argv)
 
+    _warn_if_main_checkout()
     data = collect()
     Path(args.out).write_text(render(data), encoding="utf-8")
     if args.json_out:

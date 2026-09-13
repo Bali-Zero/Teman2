@@ -146,7 +146,7 @@ describe("savePlan / loadPlan — localStorage roundtrip", () => {
       route: "deposit",
       capital: "ready_130k",
     };
-    savePlan(plan);
+    expect(savePlan(plan)).toBe(true);
     expect(loadPlan()).toEqual(plan);
   });
 
@@ -171,6 +171,23 @@ describe("savePlan / loadPlan — localStorage roundtrip", () => {
     );
     expect(loadPlan()).toBeNull();
   });
+
+  it.each(["SecurityError", "QuotaExceededError"])(
+    "returns false when storage rejects the write with %s",
+    (name) => {
+      const setItem = vi
+        .spyOn(window.localStorage, "setItem")
+        .mockImplementation(() => {
+          throw new DOMException("Cannot store plan", name);
+        });
+      try {
+        expect(savePlan(emptyPlan())).toBe(false);
+        expect(loadPlan()).toBeNull();
+      } finally {
+        setItem.mockRestore();
+      }
+    },
+  );
 });
 
 describe("clearPlan — SavePlanBar 'Clear saved plan' action", () => {
@@ -337,6 +354,7 @@ describe("P2-C12 — a throwing localStorage GETTER never crashes the codec", ()
 
   it("savePlan is a safe no-op and never throws", () => {
     expect(() => savePlan(emptyPlan())).not.toThrow();
+    expect(savePlan(emptyPlan())).toBe(false);
   });
 
   it("clearPlan is a safe no-op and never throws", () => {
@@ -352,6 +370,7 @@ describe("SSR-safety — functions never throw when window is undefined", () => 
   it("savePlan is a no-op and loadPlan returns null without window", () => {
     vi.stubGlobal("window", undefined);
     expect(() => savePlan(emptyPlan())).not.toThrow();
+    expect(savePlan(emptyPlan())).toBe(false);
     expect(loadPlan()).toBeNull();
   });
 

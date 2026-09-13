@@ -326,7 +326,11 @@ class TestHaikuClassifyHonesty:
     @pytest.mark.asyncio
     async def test_timeout_returns_none_not_zero(self, monkeypatch):
         filt = T4RelevanceFilter()
-        for slot in range(1, 6):
+        # t4_monitor.py iterates to slot 6 since this change; a loop that stops
+        # at 5 leaves the Team seat in the ambient environment, so the chain is
+        # one attempt longer than the mock is sized for — green on a clean CI
+        # runner, red on every fleet machine, where slot 6 is exported.
+        for slot in range(1, 7):
             monkeypatch.delenv(
                 f"CLAUDE_CODE_OAUTH_TOKEN_{slot}",
                 raising=False,
@@ -446,6 +450,11 @@ class TestHaikuClassifyHonesty:
             monkeypatch.setenv(
                 f"CLAUDE_CODE_OAUTH_TOKEN_{slot}", f"sentinel-{slot}"
             )
+        # This case deliberately models FIVE numbered seats (see its name and the
+        # five-item `outcomes` below). Slot 6 is scrubbed rather than seeded, so
+        # the chain length is what the case says it is instead of whatever the
+        # machine happens to export.
+        monkeypatch.delenv("CLAUDE_CODE_OAUTH_TOKEN_6", raising=False)
         monkeypatch.delenv("CLAUDE_CODE_OAUTH_TOKEN", raising=False)
         monkeypatch.setenv("ANTHROPIC_API_KEY", "must-not-leak")
         monkeypatch.setenv("ANTHROPIC_AUTH_TOKEN", "must-not-leak")

@@ -1,0 +1,47 @@
+mandate: >
+  Stop Dependabot from treating the two uv-compiled locks (apps/backend-rag/requirements.lock.txt,
+  apps/backend-rag/requirements-prod.lock.txt) as editable pip manifests. For the pip ecosystem
+  Dependabot "supports updates to any .txt file" — there is no heuristic that distinguishes a
+  hand-written manifest from `uv pip compile` output, so bumping one ==-pin inside a compiled
+  lock without re-running the compile yields an internally unsatisfiable pin set: the PR is born
+  dead at `Install dependencies (uv, lock-pinned)` and its ~9 reds are ONE failure fanning out
+  (measured 2026-09-01 across #5452, #5453, #5454, #5530 — four distinct conflicts, one
+  mechanism). Fix: `exclude-paths: ["*.lock.txt"]` on the pip block of .github/dependabot.yml,
+  a 216-line guilt+innocence test guarding the exclusion class-level (not per-filename), and
+  wiring that test into the `antidotes` job of .github/workflows/immune-enforcement.yml — a
+  REQUIRED status check — so a future silent drop of the exclude-paths line is caught in CI.
+gear: 3
+gear_reason: >
+  The diff touches .github/workflows/immune-enforcement.yml — a CODEOWNERS-TIER1 hot-zone path
+  (HOTZONE_PATTERNS: ".github/workflows/*") — which floors this pack at Gear 3 regardless of the
+  diff's small size (3 files, +261/-0). Measured: `python3 scripts/evidence_pack_lint.py
+  --print-floor --changed-files-file <changed> --patch-file <workflow-patch>` returns `3`, and
+  `--print-floor-source` returns `path`. The optional first-party-action-pin exemption
+  (2026-09-01) does NOT apply here — the workflow edit adds two new case-list entries to an
+  existing bash `case` block and a new test-invocation line, not a `uses:` version-pin swap, so
+  `workflow_paths_exempt_from_path_term()` finds no exemptable content and the file keeps its
+  Gear-3 floor. This matches the PR's own CI failure: "Harness floor recompute" reported
+  `FLOOR: 3, SOURCE: path`.
+origin: >
+  PR #5556 (agent/nuzantara/infra/dependabot-uv-lock-scope), branch already pushed with one
+  commit (4189d0f2e2) before this evidence pack was built. "Harness floor recompute" failed on
+  the PR demanding a Gear-3 evidence ceremony because the diff touches a hot-zone path.
+instruction_to_the_grader: >
+  Do not grade this brief — read the diff and the three changed files on disk
+  (.github/dependabot.yml, .github/workflows/immune-enforcement.yml,
+  scripts/tests/test_dependabot_excludes_compiled_locks.py) and attack the claims directly. The
+  claim to attack hardest is SAFETY: that a source-manifest bump landing with a stale,
+  un-recompiled lock is still caught loudly by
+  apps/backend-rag/backend/tests/test_lock_honors_requirements.py, which runs inside the
+  REQUIRED "Backend Tests (Python)" check — verify this against that test's own two documented
+  blind spots (it skips a manifest line with NO version specifier, and it skips a package absent
+  from the lock entirely) rather than against this sentence: does either blind spot become
+  NEWLY reachable BECAUSE Dependabot can no longer touch the lock files directly? The second
+  claim to attack is SCOPE: whether `exclude-paths: ["*.lock.txt"]`, evaluated relative to the
+  pip block's own `/apps/backend-rag` directory, matches too much or too little on the real
+  on-disk tree. The third is PREMISE: whether Dependabot's pip resolver still needs to READ the
+  excluded lock files to compute a version bump, so that hiding them from the updater could
+  silently change which version it proposes for a manifest bump.
+appetite:
+  wall_clock_hours: 1.5
+  adversarial_rounds: 1

@@ -4,7 +4,7 @@ Claude CLI client for the gateway — spawns claude -p per request.
 
 Used for admin (Zero) who wants Sonnet 4.6 instead of Gemini.
 Claude CLI has native MCP support via --mcp-config.
-Multi-account fallback: TOKEN_1→2→3→4→5→legacy→keychain.
+Multi-account fallback: TOKEN_1→2→3→4→5→6 (Team, last-resort)→legacy→keychain.
 
 Backend selection (``ZANTARA_CLAUDE_BACKEND``, default ``subprocess``):
   - ``subprocess`` (default): spawns the ``claude`` CLI directly (unchanged
@@ -106,7 +106,7 @@ def _token_chain() -> list[tuple[str, str]]:
     """Build ordered list of (label, token_or_empty) for fallback."""
     chain: list[tuple[str, str]] = []
     seen: set[str] = set()
-    for i in (1, 2, 3, 4, 5):
+    for i in (1, 2, 3, 4, 5, 6):
         tok = os.environ.get(f"CLAUDE_CODE_OAUTH_TOKEN_{i}", "").strip()
         if tok and tok not in seen:
             chain.append((f"token_{i}", tok))
@@ -192,7 +192,7 @@ def _build_sdk_env() -> dict[str, str]:
     SDK's underlying CLI silently pick up a pay-as-you-go key).
 
     Seeds ``CLAUDE_CODE_OAUTH_TOKEN`` from the first non-empty entry of
-    ``_token_chain()`` (TOKEN_1→2→3→4→5→legacy). Without this, a deployment
+    ``_token_chain()`` (TOKEN_1→2→3→4→5→6→legacy). Without this, a deployment
     that only sets the indexed ``CLAUDE_CODE_OAUTH_TOKEN_N`` vars (no
     legacy ``CLAUDE_CODE_OAUTH_TOKEN``) left the SDK-spawned CLI with no
     token at all — it fell through to keychain (or failed outright)

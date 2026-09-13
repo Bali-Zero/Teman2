@@ -1,0 +1,62 @@
+mandate: >
+  Close the objection both council seats raised on PR #5571 — "a comment is not a control" —
+  for the one Dependabot shape that #5556 provably does NOT cover. #5556 added
+  `exclude-paths: ["*.lock.txt"]` so Dependabot stops proposing edits to the two uv-compiled
+  locks, but that option has NO effect on Dependabot SECURITY updates (dependabot-core #14408,
+  OPEN, verbatim: "has no effect on security update PRs"), and line 1 of
+  .github/dependabot.yml declares an auto-merge-patch posture. So a security PR can still edit
+  apps/backend-rag/*.lock.txt; for a package present in no source manifest (a transitive like
+  portalocker) there is no specifier for test_lock_honors_requirements.py to fail against, and
+  the PR can be green, mergeable, and merged with nobody having read it. The control here is
+  ONE regex added to the PROTECTED array of .github/workflows/auto-merge-whitelist.yml: a PR
+  touching such a lock never gets auto-merge ARMED. Nothing goes red; the PR simply waits for a
+  human. Plus 12 guilt+innocence tests and a hook that makes them actually run.
+gear: 3
+gear_reason: >
+  The diff touches .github/workflows/ (two files) — CODEOWNERS-TIER1, matched by
+  HOTZONE_PATTERNS ".github/workflows/*" — so the floor is 3 by path regardless of size.
+  Measured on this branch this turn: `scripts/evidence_pack_lint.py --print-floor
+  --changed-files-file <4 files>` returns 3, `--print-floor-source` returns `path`. Stated for
+  contrast, because the sibling PR #5571 deliberately shipped WITHOUT a pack: its changed-file
+  set (.github/dependabot.yml plus a ledger row) returned floor 1 / source none, and building
+  ceremony there would have been the waste the gear-ceiling rule exists to stop. Same lane, two
+  honest and different answers.
+origin: >
+  This is the SECOND design for this mandate, and the first one was killed by the council, not
+  patched. Round 1 built scripts/ci/dependabot_lock_pairing_gate.py — a CI step that FAILED any
+  bot-authored PR changing a lock without its paired manifest (150+172 lines, 25 tests, 3
+  mutants verified red, real-world receipts against #5452/#5453). Both seats returned BLOCKING,
+  independently, on two different grounds: codex-gpt-5.6-sol — "filename co-presence is
+  trivially spoofable while legitimate lock-only changes on bot-authored PRs are rejected";
+  tp1-qwen3.8-max — "it blocks legitimate lock-only transitive/grouped security updates and can
+  be bypassed by unrelated manifest edits/renames". Both were right, and the second one names
+  the worse disease: a required check that goes red on legitimate security updates would be
+  permanently red, and a permanently red check stops being read (superscar #2). The whole design
+  was discarded and the branch rebuilt on a clean origin/main; those files do not exist here.
+  The redesign answers both objections by construction rather than by argument — it never
+  refuses anything, so it cannot false-refuse; and bringing the paired manifest along buys
+  nothing, so there is nothing to spoof.
+instruction_to_the_grader: >
+  Do not grade this brief — read the four changed files on disk and attack the control itself.
+  Attack hardest the UNDER-match direction, because this control's failure mode is silence:
+  when the PROTECTED array does not match, no check goes red and no log line is emitted on the
+  PR — auto-merge simply arms. Verify on disk that '^apps/backend-rag/[^/]*\.lock\.txt$'
+  actually matches the two locks that exist today (list them yourself, do not trust this
+  sentence) and decide whether the [^/]* anchoring — which deliberately does NOT reach a lock in
+  a subdirectory or in another app — is the right scope or an under-match worth widening now.
+  Second, attack the HOSTING decision: this control lives in a workflow that only proceeds past
+  its branch check for docs/auto-sync-*, dependabot/(pip|npm_and_yarn)/* and chore/fmt-* —
+  confirm that on disk and judge whether a security-update branch actually lands inside that
+  namespace, because if it does not, this control never fires for the exact case the mandate
+  names. That is the single question that decides whether this PR is worth merging. Third,
+  judge the REVOKE gap that round 2 surfaced and that this PR deliberately does NOT close (see
+  dissent in pack.yml): the workflow declines to ARM on a protected-path match but never
+  disarms an auto-merge already armed before a later push introduced the lock. Verify for
+  yourself whether that gap is inherited by all 31 entries or introduced by the 31st, and say
+  plainly if you think leaving it open is wrong. Fourth, the new test file duplicates a harness
+  from a sibling file whose other 26 tests are RED on main and which no workflow names — check
+  that claim against origin/main and judge whether importing from a broken neighbour is
+  acceptable or whether it should have been fixed first.
+appetite:
+  wall_clock_hours: 3.0
+  adversarial_rounds: 2

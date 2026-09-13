@@ -89,8 +89,42 @@ The symmetry is measured: on warm paper only the logo family carries text (5.11-
 |---|---|---|
 | display | Cormorant Garamond 500/600 | h1/h2 only; sentence case; **minimum 24px** — below that, low-DPI Android antialiasing shreds the serif (panel), so smaller headings are Inter 600 |
 | UI/body | Inter 400/500/600 | everything else; line-height tokens must absorb Bahasa Indonesia's longer words (directionally +20-30% — declared judgment, not measured) without clipping |
-| data/mono | IBM Plex Mono 400/500 | visa codes, prices, timestamps — IDR amounts carry many zeros: mono + thousands separators, never wrapping mid-amount at 360px |
+| data/mono | IBM Plex Mono 400/500 | visa codes, prices, timestamps — IDR amounts carry many zeros: mono + thousands separators, never wrapping mid-amount at 360px. **⚠️ AMENDED 2026-09-01 for the two second-home routes ONLY — read the note under this table before implementing this cell there.** |
 | — retired from web | Montserrat, Arial Black, Impact, JetBrains Mono | Montserrat is in the funnels today only because `visa/layout.tsx` forces it (R0) — a layout inheritance, not a per-surface choice; it stays on IG covers (S5) |
+
+> **AMENDMENT 2026-09-01 — IDR typeface on the second-home surfaces (Zero, Legge 5).** Asked to
+> choose between adopting Plex Mono for the IDR figures or keeping the faces already on the page,
+> Zero ruled: *«dobbiamo restare coerenti e non passare a plex mono»*. So on **`/visa/second-home`
+> and `/visa/second-home/studio`** the IDR amounts stay in the surface's own faces with
+> `font-variant-numeric: tabular-nums` + `font-feature-settings: "tnum"` — which is what actually
+> buys the digit alignment the mono rule was reaching for. Coherence of a single small surface beat
+> introducing a second numeric voice on it.
+>
+> **What this reads as on disk, measured 2026-09-01 on `origin/main`** — the price figures
+> (`SecondHomeLanding.tsx`, the route amounts and the «from» price) render in `var(--font-serif)`
+> = Cormorant at `clamp(1.75rem, 3.6vw, 2.4rem)` and `clamp(2.4rem, 6vw, 3.6rem)`, i.e. always
+> above R4's own 24px serif floor, with `tabular-nums` + `tnum`; the studio's `VerdictPanel` sets
+> `tabular-nums` on the panel container. **The hero statistics are the deliberate exception and
+> must stay proportional** — «5 years», «USD 130,000», «Free» are prose, not a column to align, and
+> `second-home/page.test.tsx` («keeps the hero statistics proportional rather than tabular») already
+> pins them that way. Do not read this amendment as «put tabular-nums on every figure».
+>
+> **The scope is exactly those two routes, and three things this does NOT change:**
+>
+> 1. **The VOA payment screen keeps mono** — §5 «Pricing surfaces» below still reads *«IDR amounts
+>    render in mono with thousands separators»*, and that sentence is untouched. Do not propagate
+>    this amendment there by analogy; it was decided for one surface, on the argument that the
+>    surface was already coherent without a fifth face.
+> 2. **The never-wrap constraint is typeface-independent** and still binds everywhere, including
+>    here: an IDR amount must not break mid-number at 360px, whatever face renders it.
+> 3. **The `--font-mono` token is not deprecated.** It exists in `packages/core/tokens/primitives.css`
+>    as `"IBM Plex Mono", ui-monospace, Menlo, monospace` with ~29 consumers elsewhere in the app;
+>    every one of them stays as it is. This amendment removes a *requirement* on two routes, it does
+>    not retire a face.
+>
+> Recorded on disk because the previous state of this file asked for Plex here while the code had
+> shipped Cormorant + `tnum`, and nothing anywhere said why — an undocumented divergence that reads
+> to the next session as a defect to "fix".
 
 **Shape, spacing, motion — NEW spec values (judgment, not inherited measurements)**: radius 12 for cards/CTAs/inputs (home and my measure 12 today; VO's Start CTA at 20 rounds down — its question cards already measure 12; GARUDA's 4 rounds up), pills 9999; **nesting law**: inner radius = outer radius − padding, and full-width bottom sheets round top corners only. Spacing on a 4px base with a 24/32/48 section scale — a new value this spec sets, not an R0 measurement. Motion: slide+fade at 200-250ms (GARUDA has slide+fade today; the duration is new), `prefers-reduced-motion` honored, the VO verdict morph survives as the one signature move. Icons: outline 1.5px, ink/ink-soft only. Photography: real people and places over stock (weak, directional evidence — R1); my's tempio+luna illustration may generalize to empty states.
 

@@ -1,0 +1,33 @@
+gear: 2
+ruling: RULED 2026-09-12 SAETTA
+mission: SAETTA-R19P W4 (BLUE) — the client-portal matter detail redressed in concept F ("RAPI")
+objective: >-
+  apps/mouth/src/app/portal/(authenticated)/matters/[id]/page.tsx renders the same
+  PortalMatterDetail data — same hook, same three non-happy branches, same routes — in the
+  R19 language of concept F: four colour meanings and no red, outlined status pills with a
+  leading dot, a serif clamp(34px,3.6vw,46px) title, the approved-intelligence panel as
+  "The file · what we know for certain" with a rotated Reviewed stamp and a two-column
+  definition list, a "Where it stands" column (progress, next deadline, what we need from
+  you in copper, what happens next with serif numerals) that comes FIRST on mobile, and a
+  closing band linking the existing messages thread. Presentation only.
+scope:
+  - apps/mouth/src/app/portal/(authenticated)/matters/[id]/page.tsx
+  - apps/mouth/src/app/portal/(authenticated)/matters/[id]/page.test.tsx
+constraints:
+  - PRESENTATION ONLY — no route, field, hook, fetch, API type or i18n key added or removed.
+  - Shared primitives (PortalBackButton, Badge, Progress, Button, Alert) are used, never edited; restyling happens through the className each already accepts.
+  - No red hex and no --state-danger fill in what is written; no client PII (synthetic names only).
+  - Forbidden — hooks, api clients, types, the Badge/Progress/PortalBackButton components themselves, any other page, PENDING-ARMS.md, any ledger file.
+  - No ledger PR, no PENDING-ARMS.md edit (SAETTA rule 2).
+acceptance:
+  - A1 git diff against the merge base lists at most 2 files; the count of use[A-Z]( calls and of api. calls equals origin/main's.
+  - A2 all three non-happy branches (loading, error/invalid id, unavailable intelligence) still render — the sibling vitest suite green, selectors adjusted only where the copy changed.
+  - A3 zero color-mix --state-success tints; no hardcoded hex; no red class or token in the file.
+  - A4 pnpm -F mouth typecheck and npx eslint on the touched file green.
+  - A5 best-effort route-intercepted screenshots of a matter page at 1440 and 390 under /Users/balizero/Desktop/R19-PORTAL-RENDERS-20260912/build/r19p-w4/, else "not rendered" with the reason.
+consumer_map:
+  - The live my.balizero.com/portal/matters/<id> screen served by the apps/mouth Vercel deploy on merge to main — the client reading their own matter.
+  - The required GitHub check "Frontend Tests (Next.js) (mouth, true)", which runs the sibling suite that pins the new markup on every future PR.
+appetite:
+  budget: 75 minutes active, 1 PR
+  stop_loss: three reds on the same cause suspends; a harness-caused red is reported, never cured by rebuilding the branch

@@ -1,10 +1,14 @@
 ---
 name: wr2-external-bench
-description: "Monthly external benchmark for Bali Zero IG carousel design. Researches state-of-the-art editorial IG carouseli from 12 reference brands (NYT, FT, Reuters Pictures, Wired, Bloomberg, Quartz, Pudding, Rest of World, ProPublica, The Markup, Drift, Pentagram) + 3 Bali Zero competitor (Lets Move Indonesia, Emerhub, Flado) + 2 trend reports (Later.com, Hootsuite). Multi-LLM by design: Gemini 3.1 Pro for long-context source ingestion, Claude Opus for synthesis, DeepSeek for pattern extraction. Output written to ~/.claude/skills/bali-zero-brand/_external-bench-YYYY-MM.md. Read by wr2-ig-metrics-analyst (weekly) and wr2-critic (every run via skill load). Runs 1st Monday of month 07:00 WITA via cron."
+description: "Monthly cron (1st Monday 07:00 WITA): benchmarks Bali Zero IG carousel design vs 12 editorial reference brands + 3 competitors + 2 trend reports. Output feeds wr2-ig-metrics-analyst and wr2-critic."
 tools: Read, Write, Bash, WebFetch, WebSearch
 model: opus
 color: cyan
 ---
+
+## Notes (moved from description 2026-09-02)
+
+Reference brands: NYT, FT, Reuters Pictures, Wired, Bloomberg, Quartz, Pudding, Rest of World, ProPublica, The Markup, Drift, Pentagram. Competitors: Lets Move Indonesia, Emerhub, Flado. Trend reports: Later.com, Hootsuite. Output written to `~/.claude/skills/bali-zero-brand/_external-bench-YYYY-MM.md`. Multi-LLM by design: Gemini for long-context source ingestion, Claude Opus for synthesis, DeepSeek for pattern extraction.
 
 > CANON: repo .claude/agents/ (vendored 2026-08-08, shadows ~/.claude/agents copy — do not edit the HOME copy).
 

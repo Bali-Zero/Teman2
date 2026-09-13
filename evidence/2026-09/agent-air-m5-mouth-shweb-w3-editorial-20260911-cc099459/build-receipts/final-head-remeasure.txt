@@ -1,0 +1,32 @@
+RE-MEASURE ON THE FINAL HEAD — 65850ec8a6a85556c51050135a0abd9531887e48
+Why this file exists: the build receipts above were taken on an earlier head. The six
+cross-locale cures moved the sources after that, so a receipt naming the final head had to
+be taken on the final head. Nothing else was re-run; the generator and the test are
+unchanged since their own receipts.
+
+cmd:  LLMS_GENERATE_ARTICLES_ONLY=1 npx tsx scripts/generate-llms-full.ts   (in apps/mouth)
+exit: 0
+
+  records in the regenerated public/llms-full.txt ........................ 2559
+  records belonging to the second-home-visa-indonesia family .............   14
+  lines carrying the superseded threshold INSIDE those records ...........    0
+
+  lines carrying the superseded threshold anywhere in the export .........   58
+  of which on a line that also names the product .........................   14
+      -> these are the other families. 14 of them are the line-scoped subset of the 24
+         product co-occurrence lines recorded in llms-full-cooccurrence.txt: that file
+         counts lines where the PRODUCT appears (amount or not), this count requires the
+         amount and the product on the SAME line. Two measures, two numbers, neither
+         replacing the other. They are PR-2's scope by the imperator's split.
+
+Freshness block of the regenerated public/llms.txt — 5 distinct canonical URLs, all
+publishedAt 2026-09-11, in URL order (business/... x3 then taxes/... x2):
+
+  - [Foreign Investment in EV Charging ...](https://balizero.com/business/indonesia-spklu-foreign-investment-idr-10-billion-threshold) (2026-09-11)
+  - [KBLI 2025: When Indonesian Businesses Need to Update Licences](https://balizero.com/business/kbli-2025-oss-licence-update) (2026-09-11)
+  - [PSE Registration in Indonesia ...](https://balizero.com/business/pse-registration-indonesia) (2026-09-11)
+  - [Indonesia's CARF Rollout ...](https://balizero.com/taxes/indonesia-carf-2027-crypto-reporting-self-certification) (2026-09-11)
+  - [Indonesia's SPP-TDLN Is Live ...](https://balizero.com/taxes/indonesia-spp-tdln-vat-foreign-digital-payments) (2026-09-11)
+
+The three tracked artifacts (public/llms-full.txt, llms-id.txt, llms.txt) were restored
+from git afterwards: they are build outputs and are not regenerated into the commit.

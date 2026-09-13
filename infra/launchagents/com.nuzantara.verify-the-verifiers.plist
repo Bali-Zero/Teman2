@@ -17,11 +17,11 @@
         <string>-c</string>
         <string>
 set -euo pipefail
-exec "/Users/nuzantara/nuzantara-deploy/apps/backend-rag/.venv/bin/python" "/Users/nuzantara/nuzantara-deploy/scripts/verify_the_verifiers.py" --scope all
+exec "/Users/nuzantara/nuzantara/apps/backend-rag/.venv/bin/python" "/Users/nuzantara/nuzantara/scripts/verify_the_verifiers.py" --scope all
 </string>
     </array>
     <key>WorkingDirectory</key>
-    <string>/Users/nuzantara/nuzantara-deploy</string>
+    <string>/Users/nuzantara/nuzantara</string>
     <key>StartInterval</key>
     <integer>600</integer>
     <key>RunAtLoad</key>

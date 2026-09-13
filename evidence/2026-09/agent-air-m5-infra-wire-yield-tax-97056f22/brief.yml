@@ -1,0 +1,82 @@
+task_id: wire-yield-tax-0902
+gear: 3
+l_level: L1
+gate_class: opus
+objective: |
+  Close .claude/skills/modus/PENDING-ARMS.md L1629 (scripts/council_yield_report.py,
+  opened 2026-08-29) and L1630 (scripts/correction_tax.py, opened 2026-08-30): both instruments
+  were built with no executor anywhere in the fleet.
+
+  GROUND CORRECTED THE MANDATE MID-FLIGHT: the mandate as handed off assumed both ledger rows
+  described a truly unwired instrument. They no longer do — PR #5343 (merged 2026-08-30) already
+  added .github/workflows/craft-instruments-daily.yml, a scheduled (daily 21:17 UTC) job that
+  runs both scripts and their test corpora. But its two live scheduled runs since merge
+  (33341983998 on 2026-08-30, 33455502574 on 2026-09-01) BOTH went red at the pytest step with
+  `ModuleNotFoundError: No module named 'yaml'` — council_yield_report.py's test corpus imports
+  pyyaml directly and the workflow's `pip install --quiet pytest` never installed it. Neither
+  report script has EVER actually executed via this workflow. So the real gap is not "build a
+  caller" (one already exists) — it is "the caller that exists is broken, and even fixed it never
+  produced the durable ledger row L1630 explicitly asks for" (no `--ledger-append` was ever
+  passed to correction_tax.py; the job summary a fixed run WOULD produce is not "a real row in
+  the ledger artifact on disk").
+constraints:
+  - "One PR, one concern: fix the existing scheduled caller so it actually runs and produces
+    durable proof, not a second parallel workflow."
+  - "No behaviour change to scripts/council_yield_report.py or scripts/correction_tax.py
+    themselves — both are Gear-1-shaped, deliberately untouched. This PR is workflow-only plus
+    one evidence directory."
+  - "L1630's third gesture (whether v1's heuristic word-boundary bug is a v2) is explicitly a
+    SPEC decision per the ledger row's own text, NOT to be silently applied here."
+  - "GH Actions' implicit `run:` shell (no `shell:` key) is `bash -e {0}` — `-e` only, NOT
+    `-eo pipefail` (verified against GitHub's own docs, contradicting an easy assumption).
+    `A | tee B` under that default masks A's exit code. Any step chaining a report script into
+    `tee` needs an explicit `shell: bash` or the crash it exists to surface goes green instead."
+acceptance:
+  - text: >
+      WHEN craft-instruments-daily.yml runs (schedule or workflow_dispatch), it SHALL install
+      pyyaml so scripts/tests/test_council_yield_report.py's corpus can collect and run.
+    status: verified
+    probe: "local: python3 -m pytest scripts/tests/test_council_yield_report.py scripts/tests/test_correction_tax.py -q -> 120 passed"
+  - text: >
+      WHEN correction_tax.py runs in the workflow, it SHALL be invoked with --ledger-append
+      against a path restored/saved via actions/cache across scheduled runs, so a real JSONL
+      row persists day to day rather than living only in a step summary.
+    status: verified
+    probe: "local: two sequential --ledger-append calls over the SAME window -> run 1 'ledger: appended', run 2 'ledger: skipped (duplicate...)', ledger file stays 1 row throughout — see receipts"
+  - text: >
+      IF a report script crashes (including a ledger-append conflict raising RuntimeError), the
+      job SHALL go red, not green — the file's own pre-existing "Emptiness gate" step comment
+      already claims this and it was false for both report steps before this PR (codex refuter
+      finding, round 1).
+    status: verified
+    probe: "actionlint clean; shell: bash added to both report steps so GH Actions' explicit-bash pipefail applies to the tee pipeline; a live CI dispatch on this branch is the acceptance probe for the actual runtime behaviour (see PR body / receipts for the run link)"
+  - text: >
+      WHEN the job succeeds, it SHALL upload a durable artifact (retention-days: 90) containing
+      both report outputs AND the ledger file, with an explicit pre-upload check that the
+      ledger specifically landed non-empty — not merely that upload-artifact's combined glob
+      found something.
+    status: verified
+    probe: "Verify ledger row landed step: test -s + tail -n1, before the always() upload step"
+risks:
+  - "The very first scheduled/dispatched run after this PR merges is the actual proof-of-armed
+    this ledger row demands — everything above is local simulation plus actionlint. A live CI
+    run on THIS branch (via workflow_dispatch, since craft-instruments-daily.yml already exists
+    on main with that trigger) is dispatched as part of this PR's own verification, and its
+    result is the receipt that actually closes the loop, not a promise about tomorrow's cron."
+  - "actions/cache's save runs its own post-step gated on the JOB's success at that point — a
+    run that fails AFTER a successful append does not persist that append to tomorrow's restore.
+    Accepted as the conservative direction (a compromised run's state should not propagate), not
+    cured — documented inline in the workflow."
+  - "L1630's v1-heuristic-accuracy gap (547/858 vs a cited 106/866 baseline, both already
+    disclosed in correction_tax.py's own docstring) is unchanged by this PR. Arming the caller
+    does not make the number more trustworthy, only more regularly produced."
+instruction_to_the_grader: |
+  This is a workflow-file fix, not new instrument logic — grade whether the wiring is CORRECT
+  and whether the two report scripts genuinely execute and persist, not whether
+  council_yield_report.py/correction_tax.py's own measurements are good numbers (out of scope,
+  both pre-existing and explicitly Gear-1). The productive attack is: does `shell: bash` really
+  change GH Actions' pipefail behaviour on a `run:` step (verify against GH's own docs, do not
+  assume); does the cache key/restore-keys pattern actually persist across separate scheduled
+  runs (mirrors cron-fly-restart-detector.yml — check that precedent, not just this diff); does
+  the "Verify ledger row landed" step's `test -s` actually run BEFORE the upload step it gates.
+pii: none

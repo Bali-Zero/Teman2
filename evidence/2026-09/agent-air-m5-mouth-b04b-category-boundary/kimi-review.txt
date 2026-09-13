@@ -1,0 +1,13 @@
+• PASS
+
+  The diff satisfies the stated requirement: the parent layout and article metadata now share one raw-segment boundary (`CATEGORY_SEO` keys), prototype keys are rejected on both sides (`hasOwnProperty` in `layout.tsx`, array `includes` in `page.tsx` — neither consults `Object.prototype`), aliases are rejected before either `getArticleBySlug` or `getArticleByLocale`, and the six SEO strings were moved to `category-seo.ts` verbatim. Tests cover the matrix described (6 canonical × EN/FR, 14 aliases × EN/FR, prototype keys, noIndex).
+
+  Findings, in severity order:
+
+  - **Medium — unverifiable `digital-nomad` handling (`page.tsx`).** The old `VALID_CATEGORIES` contained `"digital-nomad"` (and a duplicated `"living"`); the new list is `Object.keys(CATEGORY_SEO)`, which drops it. The old code also called `resolveCategoryAlias` before validating, so `/digital-nomad/<slug>` previously passed validation whenever the alias resolved. If `digital-nomad` is one of the 14 declared `CATEGORY_MAP` aliases, this is exactly the intended fix. But `CATEGORY_MAP` is not in the supplied diff, so I cannot confirm that — if it is *not* a declared alias, previously indexable `/digital-nomad/<slug>` articles now serve `noindex` "Page not found" metadata. Confirm alias membership before ship.
+
+  - **Low — render-path alias resolution not provable from this diff (`page.tsx`).** The requirement says alias resolution must be preserved inside `ArticlePage` render for existing redirects. The diff shows no deletion of `resolveCategoryAlias` from the render path, and the guilt-test history in the brief is consistent with it being present — but the supplied hunks only show `generateMetadata`, so this rests on the 125-pass report, not on code I can see. Also confirm the `resolveCategoryAlias` import is still referenced (vitest won't flag an unused import; lint/typecheck would).
+
+  - **Nit — redundant double assertion (`page.metadata.test.tsx`).** The alias rejection test asserts `result` equals a literal `{ title: "Page not found", robots: … }` and then equals `{ title: parent.title, robots: parent.robots }`. The second subsumes nothing the first doesn't already pin, and if the parent's literal ever changes the two assertions can drift into contradicting each other. Keep one — preferably the parent-derived one.
+
+  No correctness defects found in the boundary logic itself; the two lookup functions are provably unreachable for rejected segments, and the parent layout's `hasOwnProperty` guard makes the subsequent `as ArticleCategory` cast sound.

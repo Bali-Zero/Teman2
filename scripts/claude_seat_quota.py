@@ -36,7 +36,11 @@ stale: every report carries `generated_at`, and a reader refuses one older than
 they were now. A cached report that outlives its truth is the same disease as the watcher
 this file replaced — it just fails one layer further out.
 
-Output: a table by default, `--json` for machines. Exit codes are the alerting surface:
+Output: a table by default, `--json` for machines. Each row carries the SEAT label
+(`A2/_5` = slot A2 in FLEET_TOPOLOGY.json, token CLAUDE_CODE_OAUTH_TOKEN_5) so the answer
+to "which of the six is free?" does not need a second lookup, and BOTH resets — the 5h
+session window and the weekly one — in local time with a countdown, because a percentage
+without its reset is half a number. Exit codes are the alerting surface:
   0 = every discovered profile reported a number (or a FRESH published report was read)
   1 = at least one named seat could not be read (expired/revoked/no scope) — NEVER silent
   2 = zero profiles discovered, endpoint unreachable for all of them, or the only report
@@ -67,6 +71,7 @@ import sys
 import time
 import urllib.error
 import urllib.request
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -78,6 +83,50 @@ UA = "claude-cli (external, cli)"
 OAUTH_BETA = "oauth-2025-04-20"
 KEYCHAIN_SERVICE_PREFIX = "Claude Code-credentials"
 HTTP_TIMEOUT = 25
+TOPOLOGY_PATH = Path(__file__).resolve().parent.parent / "FLEET_TOPOLOGY.json"
+
+
+def seat_labels(path: Path = TOPOLOGY_PATH) -> dict[str, str]:
+    """email -> 'A2/_5' from FLEET_TOPOLOGY.json accounts.anthropic.slots.
+
+    The topology is the ONLY registry that ties an account to its token slot (see its
+    oauth_slot_note); an unreadable or unexpected file degrades to no labels, never to a
+    crash — the percentages are the payload, the label is the convenience.
+    """
+    try:
+        slots = json.loads(path.read_text())["accounts"]["anthropic"]["slots"]
+    except (OSError, ValueError, KeyError, TypeError):
+        return {}
+    out: dict[str, str] = {}
+    for label, slot in slots.items():
+        if not isinstance(slot, dict) or not slot.get("email"):
+            continue
+        num = str(slot.get("oauth_token_slot") or "").rsplit("_", 1)[-1]
+        out[str(slot["email"]).lower()] = f"{label}/_{num}" if num.isdigit() else str(label)
+    return out
+
+
+def when(iso: str | None, now: datetime | None = None) -> str:
+    """'Fri 11 11:40 (in 4h47m)' in LOCAL time, or 'passed' — a reset is a countdown."""
+    if not iso:
+        return "-"
+    try:
+        t = datetime.fromisoformat(iso)
+    except ValueError:
+        return iso[:16]
+    if t.tzinfo is None:
+        t = t.replace(tzinfo=timezone.utc)
+    now = now or datetime.now(timezone.utc)
+    mins = int((t - now).total_seconds() // 60)
+    if mins <= 0:
+        rel = "passed"
+    elif mins < 60:
+        rel = f"in {mins}m"
+    elif mins < 24 * 60:
+        rel = f"in {mins // 60}h{mins % 60:02d}m"
+    else:
+        rel = f"in {mins // (24 * 60)}d{(mins // 60) % 24:02d}h"
+    return f"{t.astimezone():%a %d %H:%M} ({rel})"
 
 
 def keychain_services() -> list[str]:
@@ -113,6 +162,9 @@ def access_token(service: str) -> str | None:
     return tok or None
 
 
+RETRYABLE = {429, 500, 502, 503, 529}
+
+
 def api_get(path: str, token: str, attempts: int = 3) -> tuple[int, Any]:
     """GET with backoff on 429.
 
@@ -141,7 +193,7 @@ def api_get(path: str, token: str, attempts: int = 3) -> tuple[int, Any]:
             except json.JSONDecodeError:
                 payload = {"raw": body[:200]}
             last = (exc.code, payload)
-            if exc.code not in (429, 500, 502, 503, 529):
+            if exc.code not in RETRYABLE:
                 return last
         except (urllib.error.URLError, OSError, json.JSONDecodeError) as exc:
             last = (0, {"error": {"message": str(exc)[:160]}})
@@ -208,7 +260,7 @@ def collect(pace: float = 1.2) -> list[dict]:
             rows.append({"account": None, "stale": True,
                          "error": "no access token in keychain entry"})
             continue
-        _, prof = api_get(PROFILE_PATH, tok)
+        pcode, prof = api_get(PROFILE_PATH, tok)
         email = None
         if isinstance(prof, dict):
             acct = prof.get("account") or {}
@@ -218,8 +270,13 @@ def collect(pace: float = 1.2) -> list[dict]:
             msg = "unreadable"
             if isinstance(usage, dict):
                 msg = (usage.get("error") or {}).get("message", msg)
+            # A 429 outlives api_get's retries and leaves the account unnamed: that is a
+            # REFUSED PROBE, not an old login. Calling it stale is how ten logged-in seats
+            # read as ten dead credentials on 2026-09-11.
+            throttled = RETRYABLE & {code, pcode}
             rows.append({"account": email, "error": msg[:80], "http": code,
-                         "stale": email is None})
+                         "throttled": bool(throttled),
+                         "stale": email is None and not throttled})
             continue
         rows.append({
             "account": email,
@@ -371,6 +428,10 @@ def main() -> int:
               "python3 scripts/claude_seat_quota.py --publish", file=sys.stderr)
         return 2
 
+    labels = seat_labels()
+    for r in rows:
+        r["seat"] = labels.get(str(r.get("account") or "").lower())
+
     readable = [r for r in rows if r.get("weekly_pct") is not None]
     # A stale Keychain leftover has no account name and no live credential: it is noise
     # from an old login, not a seat that failed. Only a NAMED account that could not be
@@ -383,17 +444,30 @@ def main() -> int:
     else:
         if source != "live":
             print(f"source: {source}")
-        print(f"{'account':34s} | {'5h':>5} | {'weekly':>6} | weekly resets at")
-        print("-" * 34 + "-+-" + "-" * 5 + "-+-" + "-" * 6 + "-+-" + "-" * 20)
+        now = datetime.now(timezone.utc)
+        print(f"{'seat':6s} | {'account':30s} | {'5h':>4} | {'5h resets':26s} | "
+              f"{'week':>4} | week resets")
+        print("-" * 6 + "-+-" + "-" * 30 + "-+-" + "-" * 4 + "-+-" + "-" * 26 + "-+-"
+              + "-" * 4 + "-+-" + "-" * 26)
         for r in rows:
+            seat = r.get("seat") or "?"
             if r.get("error"):
-                label = r.get("account") or "(stale keychain entry)"
-                print(f"{label:34s} | {'-':>5} | {'-':>6} | {r['error']}")
+                label = (r.get("account")
+                         or ("(probe refused)" if r.get("throttled")
+                             else "(stale keychain entry)"))
+                print(f"{seat:6s} | {label:30s} | {'-':>4} | {'-':26s} | {'-':>4} | "
+                      f"{r['error']}")
                 continue
-            reset = (r.get("weekly_resets_at") or "")[:16].replace("T", " ")
             flag = " <<<" if (r.get("weekly_pct") or 0) >= 85 else ""
-            print(f"{r['account']:34s} | {fmt(r.get('session_pct')):>5} | "
-                  f"{fmt(r.get('weekly_pct')):>6} | {reset}{flag}")
+            print(f"{seat:6s} | {r['account']:30s} | {fmt(r.get('session_pct')):>4} | "
+                  f"{when(r.get('session_resets_at'), now):26s} | "
+                  f"{fmt(r.get('weekly_pct')):>4} | "
+                  f"{when(r.get('weekly_resets_at'), now)}{flag}")
+        throttled = [r for r in rows if r.get("throttled")]
+        if throttled:
+            print(f"\n{len(throttled)} profile{'' if len(throttled) == 1 else 's'} "
+                  f"rate-limited by the endpoint: credential is LIVE, quota unreadable now. "
+                  f"Not a dead seat — retry later or measure from another egress.")
         if stale:
             print(f"\n{len(stale)} stale keychain entr{'y' if len(stale) == 1 else 'ies'} "
                   f"(old logins, no live credential) — informational, not a seat failure")

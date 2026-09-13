@@ -55,6 +55,13 @@ compound one. What stays with the human: business decisions, credentials and con
 physical/GUI actions. **The one exception both ways:** an external builder seat (`AGENTS.md`,
 `GEMINI.md`, `QWEN.md`) prepares and never ships — it does not merge, arm or deploy its own
 work, and a Claude session verifies it. Generator is never grader, in either direction.
+**PARABELLUM narrows that fence; it does not open it** (RULED 2026-09-10,
+`docs/rules/RULINGS.md`). On a mission Zero has declared ORANGE, the ONE appointed Dux Sol
+session ships its own mission — push, PR-open with auto-merge armed at once, queue merge,
+deploy, prove-live — and a FRESH Sol session outside the contribution chain signs the final
+on-disk gate, which only signs and never arms or alters the candidate. Every other external
+seat — Astra, Kimi, Qwen, GLM, Gemini, and Sol itself whenever it is not the appointed Dux —
+stays prepare-only. An undeclared mission is BLUE and the sentence above binds unchanged.
 
 <!-- /CANON:builder-contract -->
 
@@ -96,7 +103,7 @@ Crediti esauriti → la catena di fallback di `FLEET_TOPOLOGY.json` decide; mai 
 ## 4. Confini Nuzantara (identici a tutti gli external agent)
 
 - PII cliente: parità vendor (RULED Zero 2026-08-24 — limite CN/SG abolito a livello di sistema): stesse regole comuni di Anthropic/OpenAI — frontiera-output Law 2 + cascata Art. 56 per i trasferimenti PROD. SEA-LION/locale resta la prima scelta per costo/latenza, non per recinto.
-- Mai merge, mai deploy, mai output client-facing, mai pubblicazioni (Legge 5).
+- Mai merge, mai deploy, mai output client-facing, mai pubblicazioni **di propria iniziativa** (Legge 5) — l'unica deroga nominata (ordine esplicito di Zero o Damar da canale autenticato, gate dell'artefatto verdi) è definita in `AGENTS.md` §0.0 punto 2, che governa anche te; non ri-derivarne l'estensione da questa riga.
 - Worktree discipline (AGENTS.md §0.5) per ogni mutazione; off-limits files invariati.
 - Lingua: italiano con Zero, inglese per codice/commit.
 - Roster completo modelli × punti di forza × effort di TUTTA la flotta: `MODEL_ROSTER.md` (repo root) — leggilo prima di scegliere un seat (ruling Zero 2026-08-14).

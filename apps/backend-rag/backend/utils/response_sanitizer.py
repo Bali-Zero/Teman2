@@ -6,6 +6,8 @@ Fixes Phase 1 & 2: Remove training data artifacts and enforce quality standards
 import logging
 import re
 
+from backend.app.core.config import settings
+
 logger = logging.getLogger(__name__)
 
 
@@ -168,7 +170,7 @@ def add_contact_if_appropriate(response: str, query_type: str) -> str:
         and "whatsapp" not in response.lower()
         and "+62" not in response
     ):
-        contact = "\n\nNeed help? Contact us on WhatsApp +62 821 3465 159"
+        contact = f"\n\nNeed help? Contact us on WhatsApp {settings.CLIENT_CONTACT_WHATSAPP}"
         return response + contact
 
     return response

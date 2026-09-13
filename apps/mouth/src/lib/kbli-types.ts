@@ -1,6 +1,6 @@
 // =============================================================================
 // KBLI 2025 TypeScript Types
-// Source: KBLI_2025_FINAL_CLEAN.json (1,563 codes, BPS 7/2025 + PP28/2025)
+// Source: KBLI_2025_FINAL_CLEAN.json (BPS 7/2025 + PP28/2025)
 // =============================================================================
 
 // -----------------------------------------------------------------------------
@@ -55,7 +55,7 @@ export interface KBLIDisputedScaleRow {
   skala_usaha?: KBLIBusinessScale[];
   kategori_risiko?: string;
   perizinan?: string | string[];
-  kewenangan?: string;
+  kewenangan?: string | string[];
   jangka_waktu?: string;
   scope_uraian?: string;
   [key: string]: unknown;

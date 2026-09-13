@@ -1,0 +1,11 @@
+{
+  "checkedAt": "2026-09-10T18:41:23.136Z",
+  "head": "074b4fde010aa6d4228decffc568d802ae2914f8",
+  "topLevelDocs": 10,
+  "windowSpecs": 8,
+  "importedArtifacts": 19,
+  "contractDrift": 0,
+  "productCodeChanged": false,
+  "productTestsRun": false,
+  "errors": []
+}

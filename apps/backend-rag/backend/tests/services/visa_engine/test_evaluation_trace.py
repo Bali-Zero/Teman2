@@ -82,11 +82,24 @@ def test_trace_golden_vector_and_observed_clock_invariance() -> None:
     # the WHOLE snapshot (`canonical_fact_payload`), so every persona
     # gaining one more UNKNOWN key necessarily moves it, independent of
     # whether any rule reads that key.
+    # Moved a fourth time 2026-09-13 (`cbdf4e61…` -> `64d4f54e…`) when
+    # PR-D4c-1 added `investment.investment_amount_usd` to the fact
+    # vocabulary (contract-only — no question/mapper/rule yet, D4c-2 adds
+    # those). Same precedent, same verification as every move above: node
+    # count is still 84 (no new trace node — nothing references this fact
+    # yet), and `test_gold_replay_artifact.py::test_report_has_zero_
+    # divergences` is green — all 23 gold personas plus all canonical
+    # `test_evaluator_gold` personas replay their expected decisions
+    # unchanged. The literal moves for the same reason as every prior
+    # move: `facts_hmac` is over the WHOLE snapshot (`canonical_fact_
+    # payload`), so every persona gaining one more UNKNOWN key necessarily
+    # moves it, independent of whether any rule reads that key.
+    #
     # If this literal ever moves again while the node set or a persona's
     # decision ALSO changed, that is a behaviour change wearing a fixture's
     # clothes — do not update the number, find out what evaluated differently.
     assert (
-        first.trace.sha256() == "cbdf4e61dfadcb510f679ee772c6691532adb431f90ad81f9e0ef0e8bf34eebd"
+        first.trace.sha256() == "64d4f54e275cec97ae2ccd108171e487ab5a41ea297a691c8cc7426304930ce4"
     )
     assert first.decision.trace_sha256 == first.trace.sha256()
     assert second.trace == first.trace

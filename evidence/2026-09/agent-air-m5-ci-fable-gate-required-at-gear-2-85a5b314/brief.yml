@@ -1,0 +1,113 @@
+task_id: ci-fable-gate-required-at-gear-2
+gear: 3
+l_level: L2
+gate_class: opus
+# Floor computed this run:
+#   python3 scripts/evidence_pack_lint.py --print-floor --print-floor-source \
+#     --changed-files-file <changed> --numstat-file <numstat>
+# returns `3`, source `path`: .github/workflows/harness-floor.yml is a
+# hot-zone file (.github/workflows/*). Not size: the code diff is well under
+# the 400-net-line Gear-2 size threshold.
+objective: >-
+  Make the final on-disk gate verdict `harness/fable-gate` REQUIRED from
+  Gear 2, not only from Gear 3 (RULED 2026-09-10, Zero, verbatim "1 ok" —
+  PARABELLUM lane 6). The required check "Harness floor recompute"
+  (.github/workflows/harness-floor.yml) reads — never writes — the commit
+  status that scripts/harness_fable_gate.py posts on the PR's REAL head sha,
+  and fails when a gated PR carries no `success` verdict. Until this change
+  that read fired only on `gear == '3'`: Step 7a passed EVERY brief with
+  `gear != '3'` through with a notice, so a Gear-2 brief merged with no
+  verdict on its head sha at all. Measured the night of the ruling: PRs #6089
+  and #6090 (both Gear 1) went through the merge queue before or against
+  their gate verdict. Inert at Gear 1 — the ruling leaves Gear 1 advisory —
+  but the identical shape at Gear 2 ships an UNSIGNED Gear-2 diff, and Gear 2
+  is where this fleet does most of its load-bearing work. The cure is two
+  `if:` conditions: Step 7a ("not applicable") narrows from `gear != '3'` to
+  `gear == '1'`, and Step 7c (the verdict read) widens from `gear == '3'` to
+  `gear != '1'`. Together they partition {1,2,3} with no gap and no overlap.
+constraints:
+  - >-
+    Floor 1 must still resolve to SUCCESS with no human input. This job is a
+    required context on every PR in the repo, so an ordinary small diff (no
+    evidence/brief.yml, floor 1) must reach a green conclusion by itself —
+    the "pending-forever trap" the 2026-08-21 redesign exists to avoid. Steps
+    5a/5b/5c are unchanged in behaviour; only Step 5c's ERROR TEXT is updated
+    to name the new Gear-2 obligation.
+  - >-
+    The Evidence Pack stays a Gear-3-only demand. harness-v2 §6 closes a
+    Gear-2 task on a session verdict + AI review + CI, never on a pack, so
+    Step 7b's `gear == '3'` condition is deliberately NOT widened — a
+    Gear-2 PR reaches Step 7c without passing through Step 7b.
+  - >-
+    The merge-queue relay is untouched. Branch protection requires this
+    JOB's own check-run (natively associated with whatever SHA it runs
+    against, including the queue's synthetic test-merge SHA), never the
+    `harness/fable-gate` commit status itself — adding that context to
+    required_status_checks would deadlock the queue forever, and this diff
+    does not. scripts/ci/harness_gate_read.py still resolves the PR's REAL
+    head sha per event shape (`gh pr view` on merge_group) and is not
+    modified at all by this PR.
+  - >-
+    Every existing guard is preserved verbatim: the `HARNESS_ENFORCEMENT`
+    kill switch, the three bootstrap sentinels (BOOTSTRAP_PR 4539 / 5190),
+    the fail-closed missing-script branches, the brief diff-membership check,
+    and the CASE-A/CASE-B re-trigger documentation. No step was added or
+    removed; no `permissions:` block changed (still `statuses: read`).
+  - No `--no-verify`, no `--amend` on a pushed commit, no force-push; worktree ci-fable-gate-required-at-gear-2.
+acceptance:
+  - text: >-
+      A1 (guilt): reverting Step 7c's condition to `gear == '3'` makes the
+      new pins fail — the regression is actually caught, not merely
+      described.
+    probe: >-
+      sed-mutate harness-floor.yml Step 7c to `gear == '3'`, then
+      python3 -m pytest scripts/tests/test_harness_gate_read.py -q
+  - text: >-
+      A2 (innocence): on the real file, the whole corpus passes, including
+      the gear-1 exemption and the floor-1 trivial-pass pins.
+    probe: python3 -m pytest scripts/tests/test_harness_gate_read.py -q
+  - text: >-
+      A3: no gear falls through both steps or is caught by both — the two
+      conditions partition {1,2,3}.
+    probe: python3 -m pytest scripts/tests/test_harness_gate_read.py -q -k partition
+  - text: >-
+      A4: the Evidence-Pack validation is still Gear-3-only (the deliberate
+      non-change is pinned, so a future "symmetry" edit cannot sneak it in).
+    probe: python3 -m pytest scripts/tests/test_harness_gate_read.py -q -k evidence_pack_validation_stays_gear_3
+  - text: A5 — the workflow still parses as YAML and actionlint is clean on it.
+    probe: actionlint .github/workflows/harness-floor.yml
+  - text: >-
+      A6 (Bites): THIS PR is itself floor 3, so its own "Harness floor
+      recompute" run is the first consumer of the widened rule — it goes RED
+      on the PENDING verdict and GREEN only after a fresh gate session posts
+      `harness/fable-gate` success on this head sha.
+    probe: >-
+      gh pr checks <N> --json name,state | grep "Harness floor recompute";
+      gh api repos/Bali-Zero/Teman2/commits/<head sha>/status --jq '.statuses[] | select(.context=="harness/fable-gate")'
+  - text: >-
+      A7 — the sibling harness corpora still pass, so the widening did not
+      disturb the bootstrap sentinel or the brief diff-membership guard.
+    probe: bash scripts/tests/test_harness_floor_brief_diff_membership.sh
+assumptions:
+  - text: >-
+      `steps.gearcheck.outputs.gear` can only ever be "1", "2" or "3" when
+      Step 7a/7c evaluate, so `== '1'` and `!= '1'` are a total partition.
+    status: verified
+    probe: >-
+      Step 6 (gearcheck) validates `[[ ! "$GEAR" =~ ^[123]$ ]] -> exit 1`
+      BEFORE writing the output, and both Step 7a and Step 7c additionally
+      require `steps.brief.outputs.present == 'true'`, which is the only
+      path on which gearcheck runs at all.
+  - text: >-
+      A floor>=2 diff that carries no brief cannot reach Step 7c (there is
+      no gear to read), so the floor half of the threshold is enforced
+      elsewhere and did not need widening here.
+    status: verified
+    probe: >-
+      Step 5c already fires on `floor != '1'` (widened 2026-08-27, codex-sol
+      finding 1 HIGH) and exits 1; Step 5b's size-only floor==2 grace period
+      expired on its own SIZE_GEAR2_ENFORCEMENT_DATE (2026-09-02), so it
+      also exits 1 today. Pinned by
+      test_floor_2_without_a_brief_is_a_failure_not_a_pass.
+appetite:
+  wall_clock_hours: 2

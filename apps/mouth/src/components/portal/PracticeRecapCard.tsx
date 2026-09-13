@@ -1,5 +1,5 @@
 import React from "react";
-import { Sparkles, Info } from "lucide-react";
+import { Info } from "lucide-react";
 import type { DashboardRecap } from "@/lib/api/portal/portal.types";
 
 /**
@@ -25,11 +25,7 @@ export function PracticeRecapCard({
   if (loading) {
     return (
       <div
-        className={`rounded-2xl border p-5 ${className ?? ""}`}
-        style={{
-          background: "var(--bz-elevated)",
-          borderColor: "var(--bz-border)",
-        }}
+        className={`border-l-[3px] border-[var(--bz-copper)] bg-[var(--bz-card)] rounded-r-[0.5rem] px-6 py-5 ${className ?? ""}`}
       >
         <div
           className="h-4 w-24 rounded animate-pulse"
@@ -51,43 +47,22 @@ export function PracticeRecapCard({
 
   return (
     <div
-      className={`rounded-2xl border p-5 ${className ?? ""}`}
-      style={{
-        background: "var(--bz-elevated)",
-        borderColor: "var(--bz-border-accent)",
-        boxShadow: "0 1px 3px rgba(0,0,0,0.04)",
-      }}
+      className={`border-l-[3px] border-[var(--bz-copper)] bg-[var(--bz-card)] rounded-r-[0.5rem] px-6 py-5 ${className ?? ""}`}
     >
-      <div className="flex items-center gap-2 mb-2">
-        <Sparkles
-          className="w-4 h-4"
-          style={{ color: "var(--bz-accent-warm)" }}
-          aria-hidden
-        />
-        <span
-          className="text-xs font-bold uppercase tracking-wider"
-          style={{ color: "var(--bz-accent-warm)" }}
-        >
-          Your update
-        </span>
-      </div>
+      <span className="block text-[10px] font-[650] uppercase tracking-[.14em] text-[var(--tx-secondary)]">
+        Your update
+      </span>
 
       <p
-        className="text-base leading-relaxed"
-        style={{
-          color: "var(--bz-text-1)",
-          fontFamily: "var(--font-serif, inherit)",
-        }}
+        className="mt-3 text-[21px] leading-[1.35] tracking-[-0.015em] text-[var(--tx-pure)]"
+        style={{ fontFamily: "var(--font-serif, inherit)" }}
       >
         {recap.text}
       </p>
 
       {/* Permanent not-legal-advice disclaimer, never hidden */}
-      <p
-        className="mt-3 flex items-start gap-1.5 text-[11px] leading-snug"
-        style={{ color: "var(--bz-text-3)" }}
-      >
-        <Info className="w-3 h-3 mt-0.5 shrink-0" aria-hidden />
+      <p className="mt-[10px] flex items-start gap-1.5 text-[12px] leading-snug text-[var(--tx-secondary)]">
+        <Info className="w-3 h-3 mt-1 shrink-0" aria-hidden />
         <span>{recap.disclaimer}</span>
       </p>
     </div>

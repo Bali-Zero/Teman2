@@ -48,9 +48,14 @@ describe("ScenarioToggle", () => {
     expect(inlineStyle).not.toMatch(
       /(?:^|;)\s*(?:border|background|color)\s*:/,
     );
-    expect(restingRule).toContain(
-      "border: 1px solid var(--color-border-subtle)",
-    );
+    // WCAG 2.2 SC 1.4.11 regression guard: this is the trigger's ONLY
+    // resting-state boundary (transparent fill) — --border-strong measures
+    // 3.64:1 on carta / 3.94:1 on white, clearing the 3:1 non-text floor.
+    // --color-border-subtle (1.21:1 / 1.31:1) is decorative-only per
+    // merahPutihDayVars.ts's own comment and must never be the sole
+    // identifier of this control.
+    expect(restingRule).toContain("border: 1px solid var(--border-strong)");
+    expect(restingRule).not.toContain("--color-border-subtle");
     expect(restingRule).toContain("color: var(--text-secondary)");
     expect(restingRule).not.toContain("--accent-funnel");
     // The hover label reads the FLAT accent token. It used to be

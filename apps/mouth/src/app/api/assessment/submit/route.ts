@@ -11,12 +11,23 @@ import { logger } from "@/lib/logger";
  * Temporary — will be removed after the assessment.
  */
 
-const BACKEND_URL =
-  process.env.NUZANTARA_API_URL ||
-  process.env.NEXT_PUBLIC_API_URL ||
-  "https://nuzantara-rag.fly.dev";
+// Read at request time, never at module scope. A module-scope read is
+// evaluated once per lambda build/boot, so a corrected secret does not reach a
+// running deployment until something forces a fresh build — which is invisible,
+// because the symptom is a 401 from the backend that looks like a backend
+// problem. Measured 2026-09-01: the key on Vercel was the one revoked on
+// 2026-07-12, and two redeploys did not pick up the replacement.
+function backendUrl(): string {
+  return (
+    process.env.NUZANTARA_API_URL ||
+    process.env.NEXT_PUBLIC_API_URL ||
+    "https://nuzantara-rag.fly.dev"
+  );
+}
 
-const API_KEY = process.env.INTERNAL_API_KEY || process.env.API_KEY || "";
+function apiKey(): string {
+  return process.env.INTERNAL_API_KEY || process.env.API_KEY || "";
+}
 
 interface SubmitBody {
   to: string;
@@ -33,13 +44,35 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Invalid recipient" }, { status: 400 });
     }
 
+    // Say plainly that the deployment has no credential, instead of forwarding
+    // an empty header and letting the backend answer 401. That 401 reads as
+    // "the backend rejected us" and sends the reader hunting in the wrong
+    // service; this names the actual cause, in the only place that can see it.
+    const key = apiKey();
+    if (!key) {
+      logger.error(
+        "[assessment/submit] INTERNAL_API_KEY is not set on this deployment — refusing to send",
+        { component: "assessment", action: "submit" },
+      );
+      return NextResponse.json(
+        {
+          error: "Email relay is not configured",
+          detail:
+            "INTERNAL_API_KEY is missing from this deployment's environment.",
+        },
+        { status: 503 },
+      );
+    }
+
     // Forward to backend
-    const backendUrl = BACKEND_URL.replace(/\/+$/, "").replace(/\/api$/, "");
-    const res = await fetch(`${backendUrl}/api/notifications/send-email`, {
+    const base = backendUrl()
+      .replace(/\/+$/, "")
+      .replace(/\/api$/, "");
+    const res = await fetch(`${base}/api/notifications/send-email`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "X-API-Key": API_KEY,
+        "X-API-Key": key,
       },
       body: JSON.stringify({
         to: payload.to,

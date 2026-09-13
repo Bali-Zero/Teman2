@@ -1,0 +1,57 @@
+brief_ref: evidence/brief.yml
+scope_status: Runtime qualification only; source integration review pending.
+seat_override:
+  The owner's accepted dual-consul v4 mandate and request to add Astra use one OpenAI builder and an
+  independent native Fable review of this bounded increment, without another model council.
+lanes:
+  - lane: astra-runtime
+    role: build
+    seat: codex OpenAI
+  - lane: astra-runtime-review
+    role: review
+    seat: claude-fable-5-1 native interactive
+receipts:
+  - claim: Launcher and probe tests pass with the new qualified binary; Ruff passes.
+    cmd:
+      python -m pytest scripts/tests/test_codex_shadow_launch.py scripts/tests/test_codex_shadow_probe.py -q; ruff
+      check touched Python files
+    exit: 0
+    ts: "2026-09-06T07:02:17.002263+00:00"
+    seat: codex builder
+    result: 27 passed in 0.22s; timestamp is recording minute, not measured test start
+  - claim:
+      The exact 0.153.4 runtime lists Astra on all three hosts with zero catalog inference calls. Recorded in
+      evidence/dual-consul-astra/README.md.
+    cmd:
+      python -m scripts.conductor.codex_shadow_probe --auth-home <local-subscription-home> --model gpt-6-astra
+      --catalog
+    exit: 0
+    ts: "2026-09-06T07:02:17.002541+00:00"
+    seat: codex builder
+    evidence: evidence/dual-consul-astra/README.md
+  - claim:
+      Two M5 synthetic Astra turns completed in the same thread, with request-observed model identity. Recorded
+      in evidence/dual-consul-astra/m5-invoke.json.
+    cmd:
+      python -m scripts.conductor.codex_shadow_probe --auth-home <local-subscription-home> --model gpt-6-astra
+      --invoke
+    exit: 0
+    ts: "2026-09-06T07:02:17.002548+00:00"
+    seat: codex builder
+    evidence: evidence/dual-consul-astra/m5-invoke.json
+  - claim:
+      The actual canary consumer generates its default Astra/medium binding without broker effects. Recorded
+      in evidence/dual-consul-astra/m5-consumer-discovery.json.
+    cmd: python -m scripts.conductor.consul_native --mission-id qualification-astra-01534 --discover
+    exit: 0
+    ts: "2026-09-06T07:02:17.002552+00:00"
+    seat: codex builder
+    evidence: evidence/dual-consul-astra/m5-consumer-discovery.json
+dissent: []
+pii_scan: clean
+remaining:
+  - Independent review and integration of this increment.
+  - Privileged Pro service/role/grant activation remains outside this runtime qualification.
+timestamp_semantics:
+  Receipt ts values are recording times; native observed_at timestamps remain in the referenced
+  artifacts.

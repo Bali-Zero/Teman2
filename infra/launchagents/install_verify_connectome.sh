@@ -4,7 +4,7 @@
 #
 # Schedule by machine:
 #   Pro (user nuzantara) : DAILY  07:30 WITA — canonical guardian, runs from
-#                          ~/nuzantara-deploy (hourly-synced, W71 rule)
+#                          ~/nuzantara (15-min puller, one-tree 2026-09-10)
 #   M5  (user balizero)  : WEEKLY Monday 08:30 WITA — covers m5-local edges
 #                          the Pro cannot probe (no ssh map to M5)
 #
@@ -28,7 +28,7 @@ if [[ "$(whoami)" == "balizero" ]]; then
             <key>Minute</key><integer>30</integer>
         </dict>'
 else
-    REPO_ROOT="$HOME/nuzantara-deploy"
+    REPO_ROOT="$HOME/nuzantara"
     # Daily 07:30
     CALENDAR='<dict>
             <key>Hour</key><integer>7</integer>

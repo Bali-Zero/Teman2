@@ -1,0 +1,174 @@
+{
+  "schema_version": "1.0.0",
+  "recorded_date": "2026-09-06",
+  "source_session_id": "433c29dd-e09f-4070-b1e9-a8da0136970c",
+  "source_locator": "native Claude transcript named <source_session_id>.jsonl; private absolute path intentionally omitted",
+  "source_of_authority": "user consolidated v4 design intent; evidence records authenticate selected historical text only",
+  "retention": {
+    "scope": "selected design assistant text plus redacted provenance",
+    "excluded": [
+      "thinking blocks",
+      "reasoning streams",
+      "credentials",
+      "account identifiers",
+      "full native transcript"
+    ],
+    "selected_artifact_budget_bytes": 65536
+  },
+  "artifacts": [
+    {
+      "path": "fable-v2-review.txt",
+      "sha256": "1632ae11ca7bbb1326a97386e2c12e3f3c1b134da5371b6b384bc3ba6f700029",
+      "bytes": 8816,
+      "source_jsonl_line": 15,
+      "selection": "assistant.message.content[type=text] only; exact UTF-8 bytes, no appended newline",
+      "model": "claude-fable-5-1",
+      "runtime_version": "2.1.261",
+      "native_stop_reason": "end_turn",
+      "identity_assurance": "response_observed",
+      "scope": "historical design response; not an implementation review or runtime qualification"
+    },
+    {
+      "path": "fable-v3-revised.txt",
+      "sha256": "715a665f9ae3f90d7d4ead019bef7cb8796d0afe9085b02f389e3bb8c669bf43",
+      "bytes": 6040,
+      "source_jsonl_line": 28,
+      "selection": "assistant.message.content[type=text] only; exact UTF-8 bytes, no appended newline",
+      "model": "claude-fable-5-1",
+      "runtime_version": "2.1.261",
+      "native_stop_reason": "end_turn",
+      "identity_assurance": "response_observed",
+      "scope": "historical design response; not an implementation review or runtime qualification"
+    },
+    {
+      "path": "fable-v4-final.txt",
+      "sha256": "2a6af479053f98e6da77366e4e9538bab66afc2032ac6f6cccbb96af17af616f",
+      "bytes": 7001,
+      "source_jsonl_line": 34,
+      "selection": "assistant.message.content[type=text] only; exact UTF-8 bytes, no appended newline",
+      "model": "claude-fable-5-1",
+      "runtime_version": "2.1.261",
+      "native_stop_reason": "end_turn",
+      "identity_assurance": "response_observed",
+      "scope": "historical design response; not an implementation review or runtime qualification"
+    },
+    {
+      "path": "consultation-observations.json",
+      "sha256": "d5eeeba0e2d8bed04e10a1ef26eda3c5a0308bc5f41f0d2cb1916aee05d9d76f",
+      "bytes": 2797,
+      "selection": "index of original final answers and allowlisted metadata recovered from recorded tool outputs"
+    },
+    {
+      "path": "tp1-qwen-answer.txt",
+      "sha256": "11c735dd1e741f1ba5aea9dee3aa49c986e82a55cb15726f3e53ec97d0bd7074",
+      "bytes": 3434,
+      "source_session_id": "01a073b2-70a5-7ff2-b25b-25d4f5f03a73",
+      "source_file": "rollout-2026-09-06T06-31-09-01a073b2-70a5-7ff2-b25b-25d4f5f03a73.jsonl",
+      "source_jsonl_line": 470,
+      "source_tool_call_id": "call_zK2hizCCI8loNK11cawuztWa",
+      "selection": "selected final-answer text or allowlisted metadata from original recorded tool output; no reasoning stream",
+      "identity_assurance": "response_observed",
+      "original_answer_sha256_verified": true
+    },
+    {
+      "path": "tp1-qwen-metadata.json",
+      "sha256": "98c3516240769244eb5a51a3f18f6694941e5d64df1744a033ecaad0a99df516",
+      "bytes": 1019,
+      "source_session_id": "01a073b2-70a5-7ff2-b25b-25d4f5f03a73",
+      "source_file": "rollout-2026-09-06T06-31-09-01a073b2-70a5-7ff2-b25b-25d4f5f03a73.jsonl",
+      "source_jsonl_line": 470,
+      "source_tool_call_id": "call_zK2hizCCI8loNK11cawuztWa",
+      "selection": "selected final-answer text or allowlisted metadata from original recorded tool output; no reasoning stream"
+    },
+    {
+      "path": "tp1-deepseek-answer.txt",
+      "sha256": "d0eac772539f324e759a6ed6095ecd62cbe6202d7d6ab210b05c1db9aadd0f50",
+      "bytes": 3658,
+      "source_session_id": "01a073b2-70a5-7ff2-b25b-25d4f5f03a73",
+      "source_file": "rollout-2026-09-06T06-31-09-01a073b2-70a5-7ff2-b25b-25d4f5f03a73.jsonl",
+      "source_jsonl_line": 494,
+      "source_tool_call_id": "call_hZ3G70mmwODnwiLbqNpyUfru",
+      "selection": "selected final-answer text or allowlisted metadata from original recorded tool output; no reasoning stream",
+      "identity_assurance": "response_observed",
+      "original_answer_sha256_verified": true
+    },
+    {
+      "path": "tp1-deepseek-metadata.json",
+      "sha256": "3120dc97bc04d95a676163bc51840f59f35eccb2a79f5e0b5f9d3f80ef489642",
+      "bytes": 971,
+      "source_session_id": "01a073b2-70a5-7ff2-b25b-25d4f5f03a73",
+      "source_file": "rollout-2026-09-06T06-31-09-01a073b2-70a5-7ff2-b25b-25d4f5f03a73.jsonl",
+      "source_jsonl_line": 494,
+      "source_tool_call_id": "call_hZ3G70mmwODnwiLbqNpyUfru",
+      "selection": "selected final-answer text or allowlisted metadata from original recorded tool output; no reasoning stream"
+    },
+    {
+      "path": "tp1-glm-answer.txt",
+      "sha256": "2d30f0dcb3b74959601c2cea721a80413216687aca502b5c55d8faa4c9ae7067",
+      "bytes": 2510,
+      "source_session_id": "01a073b2-70a5-7ff2-b25b-25d4f5f03a73",
+      "source_file": "rollout-2026-09-06T06-31-09-01a073b2-70a5-7ff2-b25b-25d4f5f03a73.jsonl",
+      "source_jsonl_line": 523,
+      "source_tool_call_id": "call_5XcEKRCRKlrZRB0O5xK2YzoP",
+      "selection": "selected final-answer text or allowlisted metadata from original recorded tool output; no reasoning stream",
+      "identity_assurance": "response_observed",
+      "original_answer_sha256_verified": true
+    },
+    {
+      "path": "tp1-glm-metadata.json",
+      "sha256": "355807e5128bddd7aba6c64418e923fe554f3cefb423e292f2bc5049cf2e17e8",
+      "bytes": 955,
+      "source_session_id": "01a073b2-70a5-7ff2-b25b-25d4f5f03a73",
+      "source_file": "rollout-2026-09-06T06-31-09-01a073b2-70a5-7ff2-b25b-25d4f5f03a73.jsonl",
+      "source_jsonl_line": 523,
+      "source_tool_call_id": "call_5XcEKRCRKlrZRB0O5xK2YzoP",
+      "selection": "selected final-answer text or allowlisted metadata from original recorded tool output; no reasoning stream"
+    },
+    {
+      "path": "kimi-answer.txt",
+      "sha256": "165cf07b9f6e5617e11b4b7f2b8717a073aa6db0d1c643b92d4ff02b6c27cf81",
+      "bytes": 3838,
+      "source_session_id": "01a073b1-a3a4-7521-9a14-4586f9cc0213",
+      "source_file": "rollout-2026-09-06T06-30-16-01a073b1-a3a4-7521-9a14-4586f9cc0213.jsonl",
+      "source_jsonl_line": 631,
+      "source_tool_call_id": "call_v7MDKCFgN0KpwHBulXxA7ypg",
+      "selection": "selected final-answer text or allowlisted metadata from original recorded tool output; no reasoning stream",
+      "identity_assurance": "request_observed",
+      "original_answer_sha256_verified": true
+    },
+    {
+      "path": "kimi-metadata.json",
+      "sha256": "23c1de449a1715befa82eea980f33b24ea568035c0ed078c3a1ffaf4f2803b80",
+      "bytes": 1109,
+      "source_session_id": "01a073b1-a3a4-7521-9a14-4586f9cc0213",
+      "source_file": "rollout-2026-09-06T06-30-16-01a073b1-a3a4-7521-9a14-4586f9cc0213.jsonl",
+      "source_jsonl_line": 631,
+      "source_tool_call_id": "call_v7MDKCFgN0KpwHBulXxA7ypg",
+      "selection": "selected final-answer text or allowlisted metadata from original recorded tool output; no reasoning stream"
+    },
+    {
+      "path": "gemini-answer.txt",
+      "sha256": "3e17794372af183688e3a2ac56b1bede5804ac03b08d1ddb44641ebc87d61061",
+      "bytes": 3420,
+      "source_session_id": "01a073b1-a3a4-7521-9a14-4586f9cc0213",
+      "source_file": "rollout-2026-09-06T06-30-16-01a073b1-a3a4-7521-9a14-4586f9cc0213.jsonl",
+      "source_jsonl_line": 671,
+      "source_tool_call_id": "call_gCYByrc8Rxk9gtb9yGS424g2",
+      "selection": "selected final-answer text or allowlisted metadata from original recorded tool output; no reasoning stream",
+      "identity_assurance": "unknown",
+      "original_stdout_sha256_verified": false
+    },
+    {
+      "path": "gemini-metadata.json",
+      "sha256": "b944d9c26cbe82043f5e1049108b6e0d4a4e774b5a4428f0a272c89c5f137190",
+      "bytes": 940,
+      "source_session_id": "01a073b1-a3a4-7521-9a14-4586f9cc0213",
+      "source_file": "rollout-2026-09-06T06-30-16-01a073b1-a3a4-7521-9a14-4586f9cc0213.jsonl",
+      "source_jsonl_line": 671,
+      "source_tool_call_id": "call_gCYByrc8Rxk9gtb9yGS424g2",
+      "selection": "selected final-answer text or allowlisted metadata from original recorded tool output; no reasoning stream"
+    }
+  ],
+  "supersession": "v2 is historical. v3 corrections supersede v2; v4 final amendments supersede v3. Original TP1 tool outputs recovered during implementation confirm finish_reason=stop, correcting the missing-field premise in the final Fable review.",
+  "qualification": "No deployment, host eligibility promotion, paid model call, or independent implementation review is implied."
+}

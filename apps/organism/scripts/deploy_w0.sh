@@ -33,7 +33,7 @@
 #   VERIFY_TIMEOUT_SECONDS — bootstrap-to-running timeout (default 30)
 #
 # Authoritative spec: docs/innervation-2026-04-29/99c_w0a_bis_kickoff.md §3.3
-# Cicatrix ref: .claude/rules/cicatrix-scars.md "Unknown agent overwrites
+# Cicatrix ref: docs/scars/cicatrix-scars.md "Unknown agent overwrites
 # loaded LaunchAgent plist files" (2026-04-29 15:09 + 16:05).
 
 set -euo pipefail

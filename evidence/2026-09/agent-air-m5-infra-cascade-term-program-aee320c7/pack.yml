@@ -1,0 +1,157 @@
+brief_ref: evidence/brief.yml
+council_run: journal.jsonl
+plan_ref: >-
+  Residual declared in PR #5990's pack (evidence/2026-09/agent-air-m5-infra-
+  window-jump-headless-28841dea, dissent "the injector honours TERM_PROGRAM")
+  and in the 13:58 WITA handoff of the shipping session: the seat inherits
+  the operator's TERM_PROGRAM. Cut from fresh origin/main after #5990 landed.
+
+lanes:
+  - lane: build
+    role: build
+    seat: claude-fable-5-1
+  - lane: review-cross-family-codex
+    role: review
+    seat: codex-gpt-5.6-sol
+  - lane: review-cross-family-kimi
+    role: review
+    seat: kimi-code/k3
+
+what_changed: |
+  3 code files, +30/-2 (git numstat merge-base..HEAD, pack excluded). infra/launchagents/wrappers/claude-cascade.sh:
+  build_isolated_provider_env() seeds ISOLATED_PROVIDER_ENV with
+  `env -u TERM_PROGRAM -u TERM_PROGRAM_VERSION` (was `env`) plus a comment
+  naming the reader (context_window_guard.py's seat choice) and the failure
+  it prevents. infra/launchagents/wrappers/cron-agent.sh: the same two flags
+  on claude_oauth_env's env_args (review finding, same concern).
+  scripts/tests/test_claude_cascade_shell.py: one hermetic test — the parent
+  exports TERM_PROGRAM=ghostty and TERM_PROGRAM_VERSION=1.2.3, the fake seat
+  prints both, the assertion is `term=unset ver=unset`; run red first
+  (`term=ghostty`) against the unpatched wrapper.
+
+proof: |
+  Receipts below. Floor 3 sourced from PATH (infra/launchagents/*) reproduced
+  on the merge-base diff (aee320c764); zsh -n green; the whole cascade shell
+  suite green (71 = 70 pre-existing + 1 new); the new test is falsifiable
+  (red without the shell change). The change is inert on main until the
+  reader lands: PR #5987 merged as fcbba8930b while this pack was written, so
+  from now on a manual cascade run from Ghostty produces exactly one
+  continuation. Bites: consumer is ~/scripts/claude-cascade.sh on Pro/Mini
+  (home-fork pair, refreshed by the shipping session after merge, verified by
+  md5 against origin/main); observation is `lint_home_fork.py` staying green
+  on that pair and the CI run of Backend Tests (Python) carrying
+  test_seat_never_sees_the_operators_terminal_program.
+
+dissent:
+  - seat: codex-gpt-5.6-sol
+    objection: >-
+      The comment's mechanism ("the guard opens a window AND the wrapper
+      re-invokes: a double jump") is inexact: headless_jump_raised_by already
+      skips seat=ghostty files, so the wrapper never re-invokes on a Ghostty
+      trip. kimi #9 identical.
+    status: CONFIRMED
+    resolution: >-
+      Comment rewritten to the real failure: the guard hands the mandate to a
+      GUI window nobody asked for and the wrapper accepts the seat's partial
+      output as complete. The fix is unchanged.
+  - seat: codex-gpt-5.6-sol
+    objection: >-
+      The test asserts only the first token1 invocation; hops and the team
+      path are not directly covered.
+    status: PLAUSIBLE
+    resolution: >-
+      Hops call the same claude_seat_invoke and every seat path expands the
+      same ISOLATED_PROVIDER_ENV array (receipt: grep, 9 sites, none outside
+      it); one -u at the array head is the whole mechanism, so one probe of
+      the array suffices. Not extended.
+  - seat: kimi-code/k3
+    objection: >-
+      Ghostty also exports TERM_PROGRAM_VERSION, which survives `-u
+      TERM_PROGRAM`; cheap hardening not taken.
+    status: CONFIRMED
+    resolution: >-
+      `-u TERM_PROGRAM_VERSION` added; the test exports both and asserts
+      both unset.
+  - seat: kimi-code/k3
+    objection: >-
+      On this base the guard has no TERM_PROGRAM reader (it is on PR #5987's
+      branch): the diff is inert until #5987 lands.
+    status: CONFIRMED
+    resolution: >-
+      Overtaken by events: #5987 merged as fcbba8930b while this pack was
+      written; the brief's assumption probe names it. The change is live the
+      moment it lands.
+  - seat: kimi-code/k3
+    objection: >-
+      infra/launchagents/wrappers/cron-agent.sh has the identical isolation
+      pattern (claude_oauth_env) and was not scrubbed — inconsistent with the
+      "tutti i seat" ruling.
+    status: CONFIRMED
+    resolution: >-
+      Same two -u flags added to cron-agent.sh's env_args with the same
+      comment; bash -n green and its two shell suites
+      (test_cron_agent_oauth_cascade.sh, test_cron_agent_context_diet.sh)
+      pass. One concern, three files.
+
+receipts:
+  - claim: "deterministic Gear floor is 3, sourced from PATH (infra/launchagents/*)"
+    cmd: "python3 scripts/evidence_pack_lint.py --print-floor --changed-files-file <changed> --numstat-file <numstat>; --print-floor-source (same args); merge-base aee320c764d1156b1cac2e3229e596d4bb5d298f"
+    result: "3 / path"
+    exit: 0
+    ts: "2026-09-09T06:26:00Z"
+    seat: claude-fable-5-1
+  - claim: "brief acceptance 2: the whole suite stays green and the wrapper parses under zsh (#!/bin/zsh — bash -n is the wrong tool)"
+    cmd: "pytest scripts/tests/test_claude_cascade_shell.py -q; zsh -n infra/launchagents/wrappers/claude-cascade.sh"
+    result: "71 passed in 81.09s (after the review cures); ZSH_SYNTAX_OK"
+    exit: 0
+    ts: "2026-09-09T06:30:38Z"
+    seat: claude-fable-5-1
+  - claim: "the whole cascade shell suite is green with the change (70 pre-existing + 1 new)"
+    cmd: "python3 -m pytest scripts/tests/test_claude_cascade_shell.py -q"
+    result: "71 passed in 81.09s"
+    exit: 0
+    ts: "2026-09-09T06:53:38Z"
+    seat: claude-fable-5-1
+  - claim: "the new test is falsifiable: red against the unpatched wrapper"
+    cmd: "python3 -m pytest scripts/tests/test_claude_cascade_shell.py -q -k terminal_program  # test appended, shell change NOT applied"
+    result: "AssertionError: assert 'term=ghostty\\n' == 'term=unset\\n'"
+    exit: 1
+    ts: "2026-09-09T06:12:00Z"
+    seat: claude-fable-5-1
+  - claim: "the acceptance probe of the brief passes"
+    cmd: "python3 -m pytest scripts/tests/test_claude_cascade_shell.py -q -k terminal_program"
+    result: "1 passed, 70 deselected in 0.35s"
+    exit: 0
+    ts: "2026-09-09T06:53:38Z"
+    seat: claude-fable-5-1
+  - claim: "cron-agent.sh keeps parsing and its two shell suites stay green with the sibling scrub"
+    cmd: "bash -n infra/launchagents/wrappers/cron-agent.sh; bash scripts/tests/test_cron_agent_oauth_cascade.sh; bash scripts/tests/test_cron_agent_context_diet.sh"
+    result: "BASH_OK; PASS; PASS"
+    exit: 0
+    ts: "2026-09-09T06:52:00Z"
+    seat: claude-fable-5-1
+  - claim: "two seats outside the author's family reviewed the first cut (b65596850c); both MERGE, five findings cured or answered (see dissent)"
+    cmd: "codex exec --sandbox read-only -C <worktree> -o codex_last.md <review prompt>; kimi -p <review prompt + diff + wrapper excerpt>"
+    result: "codex: 6 findings (4 OK, 2 RISCHIO), MERGE; kimi: 9 findings (6 OK, 3 RISCHIO, 0 BUG), MERGE"
+    exit: 0
+    ts: "2026-09-09T06:48:00Z"
+    seat: codex-gpt-5.6-sol
+  - claim: "every seat invocation runs under ISOLATED_PROVIDER_ENV, so one -u at the array head covers first run, hops, kimi/codex/team paths"
+    cmd: "grep -n 'ISOLATED_PROVIDER_ENV' infra/launchagents/wrappers/claude-cascade.sh"
+    result: "lines 244 (typeset), 251 (seed), 262 (+= -u), 412/417 (claude_seat_invoke), 552/556, 610, 657, 847 (other seats) — no invocation outside the array"
+    exit: 0
+    ts: "2026-09-09T06:29:00Z"
+    seat: claude-fable-5-1
+
+pii_scan: clean
+pii_scan_note: >-
+  Diff is one env flag in a launchd wrapper, a comment, and a shell test
+  fixture under a temp HOME. No client data, OSINT or credentials; the
+  wrapper's credential isolation is extended, not weakened.
+
+spend:
+  wall_clock_hours: 1
+  adversarial_rounds: 1
+
+diff:
+  net_lines: "measured by CI from git numstat at merge-base..HEAD; +28 of code locally after the review cures; the CI value governs"

@@ -32,8 +32,17 @@ async def append_event(
     idempotency_key_digest: bytes | None = None,
     canonical_payload_digest: bytes | None = None,
     detail: dict[str, Any] | None = None,
+    event_id: str | None = None,
 ) -> str:
-    event_id = new_opaque_id("evt")
+    """`event_id` is normally generated here. A caller that must know the
+    event's identity BEFORE this insert runs — `garuda_staff_router.py`'s
+    block transitions (PR-03/05/08), which store this same id as
+    `garuda_practices.active_block_id` in the SAME UPDATE statement that
+    changes state — pre-generates it via `new_opaque_id("evt")` and passes
+    it through, so the journal row and the column agree on one identity
+    rather than the router inventing a second one."""
+
+    event_id = event_id or new_opaque_id("evt")
     await conn.execute(
         """
         INSERT INTO garuda_order_journal

@@ -18,10 +18,27 @@ mkdir -p "$HOME/nuzantara/research/competitive" "$HOME/.claude/projects/-Users-n
 LOG="$HOME/logs/competitor-monitor.log"
 MONTH=$(TZ=Asia/Makassar date +%Y-%m)
 
+# The OPERATIVE SPEC is the git-tracked `.claude/agents/<name>.md`: reviewed, gated by
+# scripts/tests/test_agent_defs_model_pins.py, and identical on every checkout. It is named
+# by absolute path below rather than reached by cd: making the repo copy the one the HARNESS
+# loads would require the process cwd to be the repo, which drags the project CLAUDE.md,
+# .claude/settings.json hooks and git visibility into a headless cron -- two cross-family
+# reviewers independently showed that re-opens autonomous `git commit` against the main
+# checkout (the failure this repo already closed three times). Left to its own PR.
+# WHERE the checkout is absent (not yet pulled), fall back to the machine-local copy -- the
+# only spec that exists today -- and say so in the log, so a run is never silently spec-less.
+NUZ_ROOT="${NUZ_ROOT:-$HOME/nuzantara}"
+SPEC_PATH="$NUZ_ROOT/.claude/agents/competitor-monitor.md"
+if [ ! -f "$SPEC_PATH" ]; then
+  SPEC_PATH="$HOME/.claude/agents/competitor-monitor.md"
+  echo "[$(date)] WARN: $NUZ_ROOT/.claude/agents/competitor-monitor.md absent -- using the machine-local spec $SPEC_PATH instead" >> "$LOG"
+fi
+echo "[$(date)] spec: $SPEC_PATH" >> "$LOG"
+
 echo "[$(date)] competitor-monitor run starting for $MONTH" >> "$LOG"
 
 PROMPT="Run competitor-monitor agent for month $MONTH.
-Read ~/.claude/agents/competitor-monitor.md for full spec.
+Read $SPEC_PATH for full spec.
 - Web fetch 3 competitors: Lets Move Indonesia, Emerhub, Flado
 - Compare vs last month's snapshot in ~/.claude/projects/-Users-nuzantara/competitive-snapshots/
 - IG screenshot triage via Ollama qwen2.5vl:7b LOCAL pre-filter

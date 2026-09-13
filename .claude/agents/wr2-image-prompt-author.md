@@ -1,11 +1,15 @@
 ---
 name: wr2-image-prompt-author
-description: Authors original, vivid, editorial image-gen prompts for each hero slide of a WR2 carousel. Reads brief + storyboard + slide context, performs an editorial reading of THIS specific topic (not a template), proposes a visual metaphor, varies across 9 image-style modes (constitution Art 5.8), and outputs prompts ready for Codex `$imagegen`. Avoids the monotone-template trap from S11 (12 carouseli all "paper documents on dark desk"). Used by wr2-design-architect between Step 3 (storyboard) and Step 4 (image generation).
+description: "Used by wr2-design-architect between Step 3 (storyboard) and Step 4 (image generation). Authors original, vivid, editorial image-gen prompts per hero slide, outputs Codex `$imagegen`-ready prompts."
 tools: Read, Glob, Grep
 disallowedTools: Write, Edit
 model: opus
 color: pink
 ---
+
+## Notes (moved from description 2026-09-02)
+
+Performs an editorial reading of THIS specific topic (not a template) — avoids the monotone-template trap from S11 (12 carouseli all "paper documents on dark desk"). Varies across 9 image-style modes (constitution Art 5.8). Reads brief+storyboard and proposes a visual metaphor rather than templating.
 
 > CANON: repo .claude/agents/ (vendored 2026-07-16, shadows ~/.claude/agents copy — do not edit the HOME copy).
 

@@ -74,6 +74,53 @@ describe("StudioApp", () => {
     window.location.hash = "";
   });
 
+  it.each(["question", "verdict"])(
+    "keeps the real consent banner inside its measured reservation at the %s stage",
+    async (stage) => {
+      if (stage === "verdict") {
+        window.location.hash = `#p=${encodePlanFragment(fullPlan())}`;
+      }
+      const { container } = render(<StudioApp />);
+      const dismiss = await screen.findByRole("button", { name: "Got it" });
+      const reservation = container.querySelector(".bz-shs-consent-space");
+      const banner = dismiss.closest(".fixed");
+
+      // StudioApp measures the first child of this host. Assert the actual
+      // banner occupies that position, not merely that the class exists.
+      expect(reservation).not.toBeNull();
+      expect(banner).not.toBeNull();
+      expect(reservation?.firstElementChild).toBe(banner);
+      expect(reservation).toContainElement(dismiss);
+    },
+  );
+
+  it("hides the consent reservation with an important display:none rule in the mounted print stylesheet", async () => {
+    const { container } = render(<StudioApp />);
+    await screen.findByRole("button", { name: "Got it" });
+
+    // Inspect parsed CSS attached to this render. jsdom cannot prove printed
+    // geometry, but it can prove the shipped rule targets the reservation.
+    const printRules = Array.from(container.querySelectorAll("style"))
+      .flatMap((style) => Array.from(style.sheet?.cssRules ?? []))
+      .filter(
+        (rule): rule is CSSMediaRule =>
+          rule.type === CSSRule.MEDIA_RULE &&
+          (rule as CSSMediaRule).media.mediaText === "print",
+      )
+      .flatMap((rule) => Array.from(rule.cssRules))
+      .filter(
+        (rule): rule is CSSStyleRule =>
+          rule.type === CSSRule.STYLE_RULE &&
+          (rule as CSSStyleRule).selectorText === ".bz-shs-consent-space",
+      );
+
+    expect(printRules).toHaveLength(1);
+    expect(printRules[0].style.getPropertyValue("display")).toBe("none");
+    expect(printRules[0].style.getPropertyPriority("display")).toBe(
+      "important",
+    );
+  });
+
   it("full happy path (under_55 + deposit + ready_130k) renders a strong-fit verdict with the Imigrasi sentence", async () => {
     render(<StudioApp />);
 
@@ -480,6 +527,24 @@ describe("StudioApp", () => {
       const masthead = screen.getByText("Check your fit");
       expect(masthead).toBeInTheDocument();
       expect(masthead.closest("h1,h2,h3,h4,h5,h6")).toBeNull();
+    });
+
+    it("verdict stage: the demoted masthead label is Inter 600, not Cormorant, at its 1.05rem (16.8px) size — below the R4 §3 24px display floor", async () => {
+      window.location.hash = `#p=${encodePlanFragment(fullPlan())}`;
+      render(<StudioApp />);
+      await screen.findByRole("heading", { name: /strong match/i });
+
+      const masthead = screen.getByText("Check your fit");
+      const styleAttr = masthead.getAttribute("style") ?? "";
+      const fontFamily = styleAttr.match(/font-family:\s*([^;]+)/)?.[1]?.trim();
+      const fontSize = styleAttr.match(/font-size:\s*([^;]+)/)?.[1]?.trim();
+      const fontWeight = styleAttr.match(/font-weight:\s*([^;]+)/)?.[1]?.trim();
+
+      expect(fontFamily).toBe(
+        "var(--font-sans, ui-sans-serif, system-ui, sans-serif)",
+      );
+      expect(fontSize).toBe("1.05rem");
+      expect(fontWeight).toBe("600");
     });
   });
 

@@ -200,9 +200,17 @@ export function QuestionCard({
          * actually take effect — an inline style attribute always beats a
          * stylesheet rule regardless of pseudo-class, so a hover rule
          * targeting a JS-computed inline border/background would silently
-         * never apply. */
+         * never apply.
+         * WCAG 2.2 SC 1.4.11 (2026-09-01): this is the sole resting-state
+         * boundary of every wizard option, and --color-border-subtle
+         * composites to 1.21:1 on carta / 1.31:1 on white — the hairline is
+         * decorative-only (merahPutihDayVars.ts's own comment says so) and
+         * never the sole identifier of an interactive component. RadioAffordance
+         * and CheckAffordance below already use --border-strong (3.64:1 on
+         * carta / 3.94:1 on white) for the same reason; this outer boundary
+         * now matches instead of undercutting them. */
         .bz-shs-option {
-          border: 1px solid var(--color-border-subtle);
+          border: 1px solid var(--border-strong);
           background: transparent;
           box-shadow: inset 0 0 0 0 transparent;
           transition:

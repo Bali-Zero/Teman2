@@ -23,6 +23,7 @@ import asyncpg
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+from migrations._lock_guard import run_ddl_with_lock_timeout
 from migrations.migration_121_practices_family_member import apply
 
 logging.basicConfig(
@@ -55,7 +56,11 @@ async def main() -> None:
                 sys.exit(2)
 
         logger.info("Applying migration 121: practices.family_member_id")
-        await apply(conn)
+        try:
+            await run_ddl_with_lock_timeout(conn, apply)
+        except asyncpg.exceptions.LockNotAvailableError:
+            logger.error("Migration 121 failed: DDL lock unavailable after retries")
+            sys.exit(3)
 
         # Verify column + FK
         col_exists = await conn.fetchval(

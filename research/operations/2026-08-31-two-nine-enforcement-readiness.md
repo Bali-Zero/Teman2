@@ -162,6 +162,35 @@ failure is the seat-outage one). The rule is about layout and the fix is availab
 and pulling it forward buys five days at the price of hard-blocking three PRs whose authors
 have had no notice. Ready in every sense except that one.
 
+### 4b. RE-MEASURED 2026-09-01 — the one reason §4 gave is gone
+
+§4's verdict rests on exactly one reason: *"pulling it forward buys five days at the price of
+hard-blocking three PRs whose authors have had no notice."* That reason no longer holds. Measured
+2026-09-01T08:46Z, one day after §4 was written:
+
+| PR | state on 2026-09-01 | writes `evidence/pack.yml` at the ROOT? |
+|---|---|---|
+| #5072 | OPEN | **no** — migrated to `evidence/2026-09/agent-air-m5-ops-practice-status-log-0827-e4d14e87/` |
+| #5037 | OPEN | **no** — migrated to `evidence/2026-08/agent-pro-visa-oracle-slice0-migrations-e59cb527/` |
+| #4640 | **CLOSED** | n/a |
+
+Swept across ALL open PRs, not just those three: **zero** open PRs write `evidence/pack.yml` or
+`evidence/brief.yml` at the repo root. So `EVIDENCE_ROOT_DEPRECATION_DATE` (2026-09-05) and
+`EVIDENCE_ROOT_BRIEF_DEPRECATION_DATE` (2026-09-12) now each cost **0** newly-red PRs, where §4
+measured 3 and the rule-12 comment measured 6. **Neither date needs pulling forward — both simply
+arrive free.** Nothing here proposes moving a date; it removes the stale reason for deferring one.
+
+**How this was measured, because an absent result is the one to distrust.** Two independent probes
+(`gh pr view --json files` and the paginated `gh api .../pulls/N/files`) agree per PR, and neither
+was truncated — the three PRs have 9, 5 and 15 files, far under the 100-file cap that would have
+made a short answer look like a clean one. Positive control: the same sweep DOES find `evidence/`
+paths on five open PRs (#5432 #5337 #5158 #5072 #5037), so a zero at the root is a real zero and
+not a probe reading nothing.
+
+**Why this note exists at all.** §4's number was accurate the day it was written and wrong the day
+after, and its conclusion inverts with it — which is the failure this document elsewhere warns
+about. Anyone reading §4 alone would defer a date that is now free.
+
 ## 5. The 23 without a pack — six of them should have one
 
 Treating "no pack" as out of scope was the report's own blind spot until a refuter pushed on

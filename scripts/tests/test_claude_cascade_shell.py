@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import importlib.util
 import os
+import json
 import subprocess
 import time
 from pathlib import Path
@@ -30,7 +31,8 @@ TOKEN_VALUES = {
     "token2": "fixture-seat-two-secret",
     "token3": "fixture-seat-three-secret",
     "token4": "fixture-seat-four-secret",
-    "token5": "fixture-zero-team-secret",
+    "token5": "fixture-seat-five-secret",
+    "token6": "fixture-zero-team-secret",
     "legacy": "fixture-legacy-secret",
 }
 
@@ -55,7 +57,15 @@ def _fake_fleet(
 
     cases = "\n".join(
         f'  "{TOKEN_VALUES[label]}") label="{label}" ;;'
-        for label in ("token1", "token2", "token3", "token4", "token5", "legacy")
+        for label in (
+            "token1",
+            "token2",
+            "token3",
+            "token4",
+            "token5",
+            "token6",
+            "legacy",
+        )
     )
     actions = "\n".join(
         f'  "{label}") {seat_bodies[label]} ;;'
@@ -65,6 +75,7 @@ def _fake_fleet(
             "token3",
             "token4",
             "token5",
+            "token6",
             "legacy",
             "keychain",
         )
@@ -197,6 +208,7 @@ def _default_bodies() -> dict[str, str]:
         "token3": "exit 1",
         "token4": "exit 1",
         "token5": "exit 1",
+        "token6": "exit 1",
         "legacy": "exit 1",
         "keychain": "exit 1",
         "team-wrapper": "exit 1",
@@ -440,6 +452,10 @@ def test_explicit_order_reaches_team_then_legacy_then_keychain(
         "token3",
         "token4",
         "token5",
+        # Team seat moved to slot 6 in the 2026-08-23 remap. CLAUDE_CODE_OAUTH_TOKEN_6
+        # is never set by _fake_fleet, so the numbered slot-6 attempt is skipped and
+        # the compatibility "team-wrapper" fallback fires here, before legacy/keychain.
+        "team-wrapper",
         "legacy",
         "keychain",
     ]
@@ -452,7 +468,13 @@ def test_team_wrapper_is_only_used_when_explicit_team_token_is_absent(
     bodies = _default_bodies()
     bodies["team-wrapper"] = 'printf "protected-team-success\\n"\nexit 0'
     call_log, _, env = _fake_fleet(tmp_path, bodies)
-    env.pop("CLAUDE_CODE_OAUTH_TOKEN_5")
+    # The Team seat's own explicit slot is 6 since the 2026-08-23 remap (it used
+    # to be 5). _fake_fleet never sets CLAUDE_CODE_OAUTH_TOKEN_6 in the first
+    # place, so this is already the "explicit team token absent" case by
+    # construction — the pop documents that intent rather than changing it.
+    # Slot 5 (kaiser, a plain MAX seat since the remap) is left in place and is
+    # still tried on the way to the team-wrapper compat fallback.
+    env.pop("CLAUDE_CODE_OAUTH_TOKEN_6", None)
 
     result = _run_cascade(env, "hermetic prompt", "--claude-only")
 
@@ -463,9 +485,85 @@ def test_team_wrapper_is_only_used_when_explicit_team_token_is_absent(
         "token2",
         "token3",
         "token4",
+        "token5",
         "team-wrapper",
     ]
-    assert "used: claude-token-5-team-wrapper" in result.stderr
+    assert "used: claude-token-6-team-wrapper" in result.stderr
+
+
+def test_numbered_team_slot_fires_only_after_the_five_max_seats_fail(
+    tmp_path: Path,
+) -> None:
+    """The Team seat is LAST RESORT: it is reached, but only at the end.
+
+    Every other slot-6 test in this file exercises the compatibility
+    "team-wrapper" fallback, which fires precisely BECAUSE
+    CLAUDE_CODE_OAUTH_TOKEN_6 is unset. That leaves the numbered slot-6 branch
+    -- the one the 2026-08-23 remap actually added -- unexercised. This test
+    sets the token so that branch runs, and pins the ORDER rather than the mere
+    fact of the call.
+    """
+    bodies = _default_bodies()
+    bodies.update(
+        {
+            "token1": 'printf "authentication required\\n" >&2\nexit 0',
+            "token2": 'printf "weekly limit reached\\n"\nexit 0',
+            "token3": "exit 1",
+            "token4": 'printf "401 Unauthorized\\n" >&2\nexit 1',
+            "token5": "exit 1",
+            "token6": 'printf "team-seat-success\\n"\nexit 0',
+        }
+    )
+    call_log, temp_dir, env = _fake_fleet(tmp_path, bodies)
+    env["CLAUDE_CODE_OAUTH_TOKEN_6"] = TOKEN_VALUES["token6"]
+
+    result = _run_cascade(env, "hermetic prompt", "--claude-only")
+
+    assert result.returncode == 0, result.stderr
+    assert result.stdout == "team-seat-success\n"
+    assert _labels(call_log) == [
+        "token1",
+        "token2",
+        "token3",
+        "token4",
+        "token5",
+        "token6",
+    ]
+    # The label is asymmetric with slots 1-5 on purpose: the wrapper marks the
+    # premium seat so a log reader can see when it was spent.
+    assert "used: claude-token-6-team-env" in result.stderr
+    assert list(temp_dir.iterdir()) == []
+
+
+def test_team_slot_is_not_spent_when_an_earlier_max_seat_succeeds(
+    tmp_path: Path,
+) -> None:
+    """The half of "last resort" that costs money if it regresses.
+
+    The five MAX x20 seats reset on a rolling 5h window; the Team premium seat
+    has WEEKLY caps with no rolling reset (CLAUDE.md, RULING Zero 2026-08-23),
+    so spending it early is exactly how it is found empty when it is needed.
+    A slot-6 branch inserted at the wrong point in the loop would still pass
+    the test above -- it would be called, just too early -- and only this test
+    goes red.
+
+    Measured against origin/main's wrapper (no slot 6 at all) this assertion
+    passes VACUOUSLY: nothing is ever labelled token6 there. What keeps it
+    honest is the test above, which goes red the moment slot 6 stops being
+    reachable -- the pair is the guard, neither half alone.
+    """
+    bodies = _default_bodies()
+    bodies["token3"] = 'printf "seat-three-success\\n"\nexit 0'
+    bodies["token6"] = 'printf "TEAM SEAT SPENT TOO EARLY\\n"\nexit 0'
+    call_log, _, env = _fake_fleet(tmp_path, bodies)
+    env["CLAUDE_CODE_OAUTH_TOKEN_6"] = TOKEN_VALUES["token6"]
+
+    result = _run_cascade(env, "hermetic prompt", "--claude-only")
+
+    assert result.returncode == 0, result.stderr
+    assert result.stdout == "seat-three-success\n"
+    assert _labels(call_log) == ["token1", "token2", "token3"]
+    assert "token6" not in _labels(call_log)
 
 
 def test_claude_only_never_crosses_provider_boundary_when_all_seats_fail(
@@ -1206,3 +1304,362 @@ def test_a_directory_without_auth_json_is_not_a_seat(tmp_path: Path) -> None:
     assert result.stdout == "ollama-answer\n"
     lines = call_log.read_text(encoding="utf-8").splitlines()
     assert not any(l.startswith("codex-") for l in lines), lines
+
+
+
+# ── window jump, headless half (Ruling Zero 2026-09-09) ──────────────────────
+# The fake seat writes the SAME file context_window_guard.py writes when it
+# trips in `-p` mode — named after the `--session-id` the wrapper hands every
+# invocation — then answers on the next call: the wrapper must re-invoke the
+# same seat with a fresh id, a continuation prompt on stdin and
+# NZ_JUMP_FROM=<previous id>, and emit the accumulated outputs.
+# Fake bodies run under /bin/sh (dash on CI): POSIX only, no ${var:0:n}.
+
+_SID_FROM_ARGV = (
+    'sid=""; while [ $# -gt 0 ]; do [ "$1" = --session-id ] && sid="$2"; shift; done; '
+    'echo "$sid" >> "$HOME/jump-sids"; '
+)
+_JUMP_FILE = (
+    'mkdir -p "$HOME/.organism/context-guard"; '
+    "python3 -c 'import json,os,sys,time; "
+    'json.dump({"from_session":sys.argv[1],"to_session":None,"seat":sys.argv[2],'
+    '"cwd":os.getcwd(),"hops":1,"ts":time.time(),"mandate":"M"},'
+    'open(os.path.expanduser("~/.organism/context-guard/pending-jump-"+sys.argv[1]+".json"),"w"))\' '
+)
+# What the guard leaves on a trip besides the jump file: the handoff (also
+# written by precompact-mnemos.py on an ordinary compaction — NOT a trip
+# signal) and its own marker <sid>.last-handoff (guard-only — THE signal).
+_HANDOFF_FILE = (
+    'mkdir -p "$HOME/.claude/state/context-window-guard"; '
+    'printf \'{"session_id":"%s","mandate":"M"}\' "$sid" > "$HOME/.claude/state/precompact-handoff-$sid.json"; '
+    'date +%s > "$HOME/.claude/state/context-window-guard/$sid.last-handoff"; '
+)
+_COMPACTION_ONLY = (
+    'mkdir -p "$HOME/.claude/state"; '
+    'printf \'{"session_id":"%s","mandate":"M"}\' "$sid" > "$HOME/.claude/state/precompact-handoff-$sid.json"; '
+)
+# A real trip leaves marker + handoff + jump file; the guard's own chain cap
+# leaves marker + handoff and refuses the jump file — see _TRIP_NO_JUMP.
+_JUMP_WRITER = _SID_FROM_ARGV + _HANDOFF_FILE + _JUMP_FILE
+_TRIP_NO_JUMP = _SID_FROM_ARGV + _HANDOFF_FILE
+
+
+def _counting_body(first: str, later: str) -> str:
+    return (
+        'n="$HOME/jump-calls"; c=$(cat "$n" 2>/dev/null || echo 0); c=$((c+1)); echo "$c" > "$n"; '
+        'if [ "$c" = 1 ]; then ' + first + "; else " + later + "; fi"
+    )
+
+
+def _sids(tmp_path: Path) -> list[str]:
+    return (tmp_path / "home" / "jump-sids").read_text().split()
+
+
+def test_headless_jump_reinvokes_the_same_seat_with_a_fresh_id_and_the_previous_one_in_env(
+    tmp_path: Path,
+) -> None:
+    bodies = _default_bodies()
+    bodies["token1"] = _counting_body(
+        _JUMP_WRITER + '"$sid" headless; printf "first-part\\n"; exit 0',
+        # the hop must READ the continuation prompt on stdin and carry the
+        # previous session id in NZ_JUMP_FROM (what context_jump_resume.py keys on)
+        _SID_FROM_ARGV + 'p=$(cat); printf "second-part[%s][from=%s]\\n" '
+        '"$(printf %s "$p" | cut -c1-24)" "${NZ_JUMP_FROM:-unset}"; exit 0',
+    )
+    call_log, temp_dir, env = _fake_fleet(tmp_path, bodies)
+    result = _run_cascade(env, "hermetic prompt", "--claude-only")
+    assert result.returncode == 0, result.stderr
+    first, second = _sids(tmp_path)
+    assert first != second and len(first) == 36 and len(second) == 36
+    assert result.stdout == f"first-part\nsecond-part[Sei la sessione successi][from={first}]\n"
+    assert _labels(call_log) == ["token1", "token1"]
+    assert "[jump] claude-token-1-env" in result.stderr and "hops: 1" in result.stderr
+    assert "INCOMPLETE" not in result.stderr
+    assert list(temp_dir.iterdir()) == []
+
+
+def test_headless_jump_is_capped_at_three_hops_and_says_so(tmp_path: Path) -> None:
+    bodies = _default_bodies()
+    # every call raises a fresh jump for ITS OWN id → 1 run + 3 hops, then stop
+    bodies["token1"] = (
+        'n="$HOME/jump-calls"; c=$(cat "$n" 2>/dev/null || echo 0); c=$((c+1)); echo "$c" > "$n"; '
+        + _JUMP_WRITER + '"$sid" headless; printf "part%s\\n" "$c"; exit 0'
+    )
+    call_log, _, env = _fake_fleet(tmp_path, bodies)
+    result = _run_cascade(env, "hermetic prompt", "--claude-only")
+    assert result.returncode == 0, result.stderr
+    assert result.stdout == "part1\npart2\npart3\npart4\n"
+    assert _labels(call_log) == ["token1"] * 4
+    assert len(set(_sids(tmp_path))) == 4
+    assert "hop 3/3" in result.stderr and "cap 3 reached" in result.stderr and "INCOMPLETE" in result.stderr
+
+
+def test_headless_jump_kill_switch_runs_once(tmp_path: Path) -> None:
+    bodies = _default_bodies()
+    bodies["token1"] = _JUMP_WRITER + '"$sid" headless; printf "only\\n"; exit 0'
+    call_log, _, env = _fake_fleet(tmp_path, bodies)
+    env["CONTEXT_JUMP_OFF"] = "1"
+    result = _run_cascade(env, "hermetic prompt", "--claude-only")
+    assert result.returncode == 0 and result.stdout == "only\n"
+    assert _labels(call_log) == ["token1"] and "[jump]" not in result.stderr
+
+
+def test_headless_jump_ignores_a_ghostty_seat_file_and_another_sessions_file(tmp_path: Path) -> None:
+    bodies = _default_bodies()
+    # a ghostty file under this run's id, plus a headless file under SOMEONE
+    # ELSE's id in the same cwd (a sibling seat on Pro): neither is ours
+    bodies["token1"] = (
+        _JUMP_WRITER + '"$sid" ghostty; ' + _JUMP_FILE + '"other-seat" headless; '
+        'printf "only\\n"; exit 0'
+    )
+    call_log, _, env = _fake_fleet(tmp_path, bodies)
+    result = _run_cascade(env, "hermetic prompt", "--claude-only")
+    assert result.returncode == 0 and result.stdout == "only\n", result.stderr
+    assert _labels(call_log) == ["token1"]
+
+
+def test_headless_jump_hop_quota_banner_rotates_seat_without_partial_stdout(tmp_path: Path) -> None:
+    bodies = _default_bodies()
+    bodies["token1"] = _counting_body(
+        _JUMP_WRITER + '"$sid" headless; printf "partial-from-one\\n"; exit 0',
+        'printf "weekly limit reached\\n"; exit 0',
+    )
+    bodies["token2"] = 'printf "from-two\\n"; exit 0'
+    call_log, temp_dir, env = _fake_fleet(tmp_path, bodies)
+    result = _run_cascade(env, "hermetic prompt", "--claude-only")
+    assert result.returncode == 0, result.stderr
+    assert result.stdout == "from-two\n"
+    assert _labels(call_log) == ["token1", "token1", "token2"]
+    assert "[retry] claude-token-1-env hop 1" in result.stderr
+    assert list(temp_dir.iterdir()) == []
+
+
+def test_headless_jump_hop_failure_rotates_seat_without_partial_stdout(tmp_path: Path) -> None:
+    bodies = _default_bodies()
+    bodies["token1"] = _counting_body(
+        _JUMP_WRITER + '"$sid" headless; printf "partial-from-one\\n"; exit 0',
+        'exit 3',
+    )
+    bodies["token2"] = 'printf "from-two\\n"; exit 0'
+    call_log, temp_dir, env = _fake_fleet(tmp_path, bodies)
+    result = _run_cascade(env, "hermetic prompt", "--claude-only")
+    assert result.returncode == 0, result.stderr
+    assert result.stdout == "from-two\n"
+    assert _labels(call_log) == ["token1", "token1", "token2"]
+    assert "[error] claude-token-1-env hop 1 exit=3" in result.stderr
+    assert list(temp_dir.iterdir()) == []
+
+
+def test_seat_never_sees_the_operators_terminal_program(tmp_path: Path) -> None:
+    # A cascade launched by hand from Ghostty inherits TERM_PROGRAM=ghostty; the
+    # context guard reads that variable to pick its jump seat (ghostty → spawn a
+    # GUI window, else headless). The seat must always look headless, or a manual
+    # run would open a window AND be re-invoked by the wrapper — a double jump.
+    bodies = _default_bodies()
+    bodies["token1"] = (
+        'printf "term=%s ver=%s\\n" "${TERM_PROGRAM:-unset}" "${TERM_PROGRAM_VERSION:-unset}"; exit 0'
+    )
+    call_log, _, env = _fake_fleet(tmp_path, bodies)
+    env["TERM_PROGRAM"] = "ghostty"
+    env["TERM_PROGRAM_VERSION"] = "1.2.3"
+    result = _run_cascade(env, "hermetic prompt", "--claude-only")
+    assert result.returncode == 0, result.stderr
+    assert result.stdout == "term=unset ver=unset\n"
+    assert _labels(call_log) == ["token1"]
+
+
+# ── headless cap receptor: a chain that ends at the cap with a jump still
+# pending is an INCOMPLETE mandate with exit 0 — it must reach the
+# escalations board as one HIGH line (Ruling Zero 2026-09-09).
+
+def _cap_scenario(tmp_path: Path) -> tuple[dict[str, str], Path]:
+    bodies = _default_bodies()
+    bodies["token1"] = (
+        'n="$HOME/jump-calls"; c=$(cat "$n" 2>/dev/null || echo 0); c=$((c+1)); echo "$c" > "$n"; '
+        + _JUMP_WRITER + '"$sid" headless; printf "part%s\\n" "$c"; exit 0'
+    )
+    _, _, env = _fake_fleet(tmp_path, bodies)
+    board = tmp_path / "escalations.jsonl"
+    env["CASCADE_ESCALATIONS_FILE"] = str(board)
+    return env, board
+
+
+def test_headless_cap_writes_one_high_escalation(tmp_path: Path) -> None:
+    env, board = _cap_scenario(tmp_path)
+    result = _run_cascade(env, "hermetic prompt", "--claude-only")
+    assert result.returncode == 0, result.stderr
+    assert result.stdout == "part1\npart2\npart3\npart4\n"  # the hops' work is still emitted
+    lines = [json.loads(l) for l in board.read_text(encoding="utf-8").splitlines()]
+    assert len(lines) == 1, lines
+    rec = lines[0]
+    assert rec["type"] == "cascade_headless_cap" and rec["priority"] == "HIGH"
+    assert rec["status"] == "pending" and rec["seat"] == "claude-token-1-env" and rec["hops"] == 3
+    assert rec["session"] == _sids(tmp_path)[-1]  # the still-pending session
+    assert rec["jump_file"].endswith(f"pending-jump-{rec['session']}.json")
+    assert "INCOMPLETE" in rec["error_summary"] and rec["cure_lane"]["owner"] == "session"
+    assert isinstance(rec["ts"], float)  # the board reader sorts on the raw value
+    assert "cap escalation HIGH written" in result.stderr
+    # the cap line names the pending file by basename only (kimi cut-2 #1:
+    # a ${x:+..}${x:-..} pair printed basename AND full path)
+    assert f"still pending (pending-jump-{rec['session']}.json): mandate may be INCOMPLETE" in result.stderr
+    assert "JUMP_MAX_HOPS does not help" in rec["cure_lane"]["note"]
+
+
+def test_headless_cap_escalation_dedupes_on_the_pending_session(tmp_path: Path) -> None:
+    # the 4th (last, still-pending) run seeds the board with a line for ITS OWN
+    # session before returning — as a receptor re-run by hand would have — so
+    # the wrapper's receptor must recognise it and add nothing
+    bodies = _default_bodies()
+    bodies["token1"] = (
+        'n="$HOME/jump-calls"; c=$(cat "$n" 2>/dev/null || echo 0); c=$((c+1)); echo "$c" > "$n"; '
+        + _JUMP_WRITER + '"$sid" headless; '
+        'if [ "$c" = 4 ]; then printf \'{"type":"cascade_headless_cap","session":"%s","seed":true}\\n\' "$sid" '
+        '>> "$CASCADE_ESCALATIONS_FILE"; fi; printf "part%s\\n" "$c"; exit 0'
+    )
+    _, _, env = _fake_fleet(tmp_path, bodies)
+    board = tmp_path / "escalations.jsonl"
+    env["CASCADE_ESCALATIONS_FILE"] = str(board)
+    result = _run_cascade(env, "hermetic prompt", "--claude-only")
+    assert result.returncode == 0, result.stderr
+    assert "(dedupe)" in result.stderr, result.stderr
+    lines = [json.loads(l) for l in board.read_text(encoding="utf-8").splitlines()]
+    assert len(lines) == 1 and lines[0].get("seed") is True, lines
+
+
+def test_headless_cap_escalation_kill_switch_keeps_the_warning_only(tmp_path: Path) -> None:
+    env, board = _cap_scenario(tmp_path)
+    env["CASCADE_CAP_ESCALATION_OFF"] = "1"
+    result = _run_cascade(env, "hermetic prompt", "--claude-only")
+    assert result.returncode == 0, result.stderr
+    assert "INCOMPLETE" in result.stderr and not board.exists()
+
+
+def test_headless_cap_without_a_board_warns_and_still_answers(tmp_path: Path) -> None:
+    env, board = _cap_scenario(tmp_path)
+    del env["CASCADE_ESCALATIONS_FILE"]  # temp HOME has no known checkout either
+    result = _run_cascade(env, "hermetic prompt", "--claude-only")
+    assert result.returncode == 0, result.stderr
+    assert result.stdout == "part1\npart2\npart3\npart4\n"
+    assert "cap escalation NOT written: no escalations board found" in result.stderr
+    assert not board.exists()
+
+
+def test_clean_headless_chain_writes_no_escalation(tmp_path: Path) -> None:
+    bodies = _default_bodies()
+    bodies["token1"] = _counting_body(
+        _JUMP_WRITER + '"$sid" headless; printf "first\\n"; exit 0', 'printf "second\\n"; exit 0'
+    )
+    _, _, env = _fake_fleet(tmp_path, bodies)
+    board = tmp_path / "escalations.jsonl"
+    env["CASCADE_ESCALATIONS_FILE"] = str(board)
+    result = _run_cascade(env, "hermetic prompt", "--claude-only")
+    assert result.returncode == 0, result.stderr
+    assert result.stdout == "first\nsecond\n" and not board.exists()
+
+
+# ── headless guard threshold: trip late (80%) unless the caller says otherwise.
+
+def test_headless_seat_gets_the_late_guard_threshold_by_default(tmp_path: Path) -> None:
+    bodies = _default_bodies()
+    bodies["token1"] = 'printf "pct=%s\\n" "${CONTEXT_GUARD_PCT:-unset}"; exit 0'
+    _, _, env = _fake_fleet(tmp_path, bodies)
+    result = _run_cascade(env, "hermetic prompt", "--claude-only")
+    assert result.returncode == 0, result.stderr
+    assert result.stdout == "pct=80\n"
+
+
+def test_headless_guard_threshold_honours_the_callers_env(tmp_path: Path) -> None:
+    bodies = _default_bodies()
+    bodies["token1"] = 'printf "pct=%s\\n" "${CONTEXT_GUARD_PCT:-unset}"; exit 0'
+    _, _, env = _fake_fleet(tmp_path, bodies)
+    env["CONTEXT_GUARD_PCT"] = "55"
+    result = _run_cascade(env, "hermetic prompt", "--claude-only")
+    assert result.returncode == 0, result.stderr
+    assert result.stdout == "pct=55\n"
+
+
+# ── the guard's own chain cap: the run trips, writes the handoff, refuses the
+# jump file. Keyed on the jump file alone the wrapper would call that clean
+# (kimi #1, 2026-09-09; observed live on Pro: pro-healer hop 2, f3c0ade2).
+
+def test_guard_refusing_the_jump_at_the_wrappers_cap_is_still_incomplete(tmp_path: Path) -> None:
+    bodies = _default_bodies()
+    bodies["token1"] = (
+        'n="$HOME/jump-calls"; c=$(cat "$n" 2>/dev/null || echo 0); c=$((c+1)); echo "$c" > "$n"; '
+        'if [ "$c" -lt 4 ]; then ' + _JUMP_WRITER + '"$sid" headless; else ' + _TRIP_NO_JUMP + 'fi; '
+        'printf "part%s\\n" "$c"; exit 0'
+    )
+    _, _, env = _fake_fleet(tmp_path, bodies)
+    board = tmp_path / "escalations.jsonl"
+    env["CASCADE_ESCALATIONS_FILE"] = str(board)
+    result = _run_cascade(env, "hermetic prompt", "--claude-only")
+    assert result.returncode == 0, result.stderr
+    assert result.stdout == "part1\npart2\npart3\npart4\n"
+    assert "no jump file: guard refused" in result.stderr and "INCOMPLETE" in result.stderr
+    rec = json.loads(board.read_text(encoding="utf-8").splitlines()[0])
+    assert rec["session"] == _sids(tmp_path)[-1] and rec["hops"] == 3 and rec["jump_file"] is None
+    assert rec["handoff_path"].endswith(f"precompact-handoff-{rec['session']}.json")
+    assert "guard refused" in rec["error_summary"]
+
+
+def test_guard_refusing_the_jump_before_the_wrappers_cap_is_incomplete_too(tmp_path: Path) -> None:
+    # the guard counts chain links the wrapper cannot see (a Ghostty link
+    # upstream): it may refuse at the wrapper's hop 1 or 2 — Pro, 15:46 WITA
+    bodies = _default_bodies()
+    bodies["token1"] = _counting_body(
+        _JUMP_WRITER + '"$sid" headless; printf "first\\n"; exit 0',
+        _TRIP_NO_JUMP + 'printf "second\\n"; exit 0',
+    )
+    _, _, env = _fake_fleet(tmp_path, bodies)
+    board = tmp_path / "escalations.jsonl"
+    env["CASCADE_ESCALATIONS_FILE"] = str(board)
+    result = _run_cascade(env, "hermetic prompt", "--claude-only")
+    assert result.returncode == 0, result.stderr
+    assert result.stdout == "first\nsecond\n"
+    assert "raised no jump (its chain cap)" in result.stderr
+    rec = json.loads(board.read_text(encoding="utf-8").splitlines()[0])
+    assert rec["hops"] == 1 and rec["session"] == _sids(tmp_path)[-1]
+    assert rec["job"] == f"cascade-headless-cap-claude-token-1-env-{rec['session'][:8]}"
+
+
+def test_a_run_that_never_tripped_leaves_no_handoff_and_no_escalation(tmp_path: Path) -> None:
+    bodies = _default_bodies()
+    bodies["token1"] = _SID_FROM_ARGV + 'printf "done\\n"; exit 0'
+    _, _, env = _fake_fleet(tmp_path, bodies)
+    board = tmp_path / "escalations.jsonl"
+    env["CASCADE_ESCALATIONS_FILE"] = str(board)
+    result = _run_cascade(env, "hermetic prompt", "--claude-only")
+    assert result.returncode == 0, result.stderr
+    assert result.stdout == "done\n" and "INCOMPLETE" not in result.stderr and not board.exists()
+
+
+def test_an_ordinary_compaction_handoff_is_not_a_trip(tmp_path: Path) -> None:
+    # precompact-mnemos.py writes precompact-handoff-<sid>.json on auto-compact
+    # too; only the guard writes <sid>.last-handoff (codex #2)
+    bodies = _default_bodies()
+    bodies["token1"] = _SID_FROM_ARGV + _COMPACTION_ONLY + 'printf "done\\n"; exit 0'
+    _, _, env = _fake_fleet(tmp_path, bodies)
+    board = tmp_path / "escalations.jsonl"
+    env["CASCADE_ESCALATIONS_FILE"] = str(board)
+    result = _run_cascade(env, "hermetic prompt", "--claude-only")
+    assert result.returncode == 0, result.stderr
+    assert result.stdout == "done\n" and "INCOMPLETE" not in result.stderr and not board.exists()
+
+
+def test_a_jump_file_without_the_marker_still_counts_as_a_trip(tmp_path: Path) -> None:
+    # the guard creates the jump file even when its handoff write failed
+    # (no marker then) — the jump file alone must still be read as a trip
+    # (codex #3); with the jump disabled nobody continues it → INCOMPLETE
+    bodies = _default_bodies()
+    bodies["token1"] = _SID_FROM_ARGV + _JUMP_FILE + '"$sid" headless; printf "only\\n"; exit 0'
+    _, _, env = _fake_fleet(tmp_path, bodies)
+    env["CONTEXT_JUMP_OFF"] = "1"
+    board = tmp_path / "escalations.jsonl"
+    env["CASCADE_ESCALATIONS_FILE"] = str(board)
+    result = _run_cascade(env, "hermetic prompt", "--claude-only")
+    assert result.returncode == 0, result.stderr
+    assert result.stdout == "only\n" and "[jump]" not in result.stderr
+    assert "jump disabled (CONTEXT_JUMP_OFF=1): mandate may be INCOMPLETE" in result.stderr
+    rec = json.loads(board.read_text(encoding="utf-8").splitlines()[0])
+    assert rec["hops"] == 0 and rec["session"] == _sids(tmp_path)[-1]
+

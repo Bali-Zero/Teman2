@@ -1,0 +1,196 @@
+task_id: wa-contact-all-surfaces-0901
+gear: 3
+l_level: L2
+gate_class: opus
+objective: >-
+  Put the CLIENT-CONTACT WhatsApp line on every remaining client-facing surface in the backend,
+  and make it structurally impossible for the bot's inbound number to appear on one again.
+
+  Ordered by Zero on 2026-09-01, four words -- "metti ari anche in quelle" -- put Ari on those too.
+  "Those" is the eleven surfaces this organism itself ledgered the day before, in the PENDING-ARMS
+  row opened while shipping PR #5486, as an open operator[business] question. This message is the
+  answer to that question, and it closes the row.
+
+  The distinction the previous PR gave a name to is the whole point here. settings.SUPPORT_WHATSAPP
+  is the Meta-verified line the BOT RECEIVES on -- an inbound routing identity, consumed by
+  whatsapp_chat.py::_is_meta_inbox_public_number. No human answers it.
+  settings.CLIENT_CONTACT_WHATSAPP is the line a client is invited to write to, where a person
+  replies. Until now the backend told clients to write to the first one -- in the invoice email,
+  the birthday email, the practice-status email, the completion email, two CRM process-start
+  emails, the shared notification footer, and the balizero.com website-widget prompt.
+
+  Gear 3 by PATH, deterministically -- --print-floor returns 3 on this changed-file list.
+constraints:
+  - >-
+    settings.SUPPORT_WHATSAPP is NOT touched, and neither is any file that legitimately names the
+    bot's inbound number as an IDENTITY -- config.py, whatsapp_chat.py's double-reply defense,
+    pii_log_identifier.py, _memory_identity.py, wa_outbox_worker.py's docstring. Changing any of
+    them breaks message delivery. The ruling is about outbound invitations only.
+  - >-
+    No behaviour outside the number itself changes. Every edit is one literal becoming one
+    attribute read, plus the module-level import that makes it resolve. No signature, no schema,
+    no endpoint, no template variable.
+  - >-
+    The guard must be a guard, not a spelling. The number is written five different ways across
+    this repo -- spaced, dashed, dotted, bare digits, local 08 form -- and the one occurrence my own
+    grep missed (wa_outbox_worker.py line 4) was missed precisely because it is dashed. The guard
+    therefore collapses separators before comparing, and its allowlist is guilt-tested for
+    staleness.
+  - >-
+    A guard that matches DIGITS is half a guard. The same defect can be written with no digits at
+    all, by reading settings.SUPPORT_WHATSAPP by name -- which is exactly how the third pricing
+    fallback producer stayed invisible to my sweep, my grep and my first guard. Both halves are now
+    pinned: one guard on the digits, one on the attribute read.
+  - >-
+    Formatting parity is measured with the repo config in scope. A first parity probe ran ruff
+    against copies in a scratchpad directory, where the project config is not resolved, and it
+    answered a neighbouring question -- it reported email_branding.py FORMATTED at base when it is
+    not, and I reformatted the file on that reading, silently collapsing an unrelated SQL string.
+    Reverted. The corrected probe pipes git show into ruff with --stdin-filename.
+acceptance:
+  - text: >-
+      WHEN any module under apps/backend-rag/backend/ (tests excluded) names the bot's inbound
+      number in ANY separator spelling, the suite SHALL go red -- measured under both the spaced and
+      the dash-separated form.
+    probe: test_no_backend_module_hands_a_client_the_bots_inbound_number
+  - text: >-
+      WHEN a path is allow-listed for the inbound identity but no longer exists, the suite SHALL go
+      red, so the allowlist cannot rot into a blanket exemption.
+    probe: test_no_backend_module_hands_a_client_the_bots_inbound_number
+  - text: >-
+      WHERE a module merely carries an IDR price literal, the client-contact number in any
+      spelling, or an unrelated digit run, the guard SHALL stay green -- the innocence control is run
+      on the same file as the guilt control, not on a different one.
+    probe: test_no_backend_module_hands_a_client_the_bots_inbound_number
+  - text: >-
+      IF any of the fourteen edited sites is a plain string carrying the placeholder text rather
+      than an f-string, the client SHALL receive literal braces. Proven absent by AST, not by eye.
+    probe: ast walk for str constants containing CLIENT_CONTACT_WHATSAPP
+  - text: >-
+      WHEN any backend module other than the Meta webhook router READS
+      settings.SUPPORT_WHATSAPP, the suite SHALL go red -- the twin defect the digit guard is blind
+      to, because reading the setting by name puts no digits in the file. Guilt-proved by reverting
+      the exact miss the cross-family reviewer found.
+    probe: test_only_the_meta_webhook_router_reads_the_bots_inbound_number
+  - text: >-
+      WHEN a module reaches the bot's inbound identity by NAME rather than by digits --
+      getattr(settings, "SUPPORT_WHATSAPP") or os.getenv("SUPPORT_WHATSAPP") -- the suite SHALL go
+      red. Both forms walked through BOTH guards in the first draft: no attribute node for one to
+      see, no digits for the other.
+    probe: test_only_the_meta_webhook_router_reads_the_bots_inbound_number
+  - text: >-
+      WHEN a module assembles the number from pieces no single literal contains -- a `+` chain of
+      constants, or SEP.join([...]) over constants -- the suite SHALL go red. WHERE the pieces are
+      bound to separate NAMES and interpolated, it will NOT: that is a declared residual limit,
+      stated in the guard's own docstring rather than left for a reader to discover.
+    probe: test_no_backend_module_hands_a_client_the_bots_inbound_number
+  - text: >-
+      WHEN a file that is permitted to name the inbound number grows ONE MORE occurrence, the suite
+      SHALL go red -- and equally WHEN it stops using the occurrence it was budgeted for, so a
+      budget cannot decay into a standing exemption for whatever lands in that file next.
+    probe: test_no_backend_module_hands_a_client_the_bots_inbound_number
+  - text: >-
+      WHILE this machine's local Postgres carries pre-existing state, the backend suite SHALL be no
+      worse on this branch than on origin/main, compared count-for-count, never against zero.
+    probe: pytest backend/tests -p no:cacheprovider
+consumer_map:
+  - >-
+    backend/services/notifications/email_branding.py::team_email_html -- the shared footer, 11
+    non-def references. The widest-reach surface in the diff.
+  - >-
+    backend/services/invoicing/invoice_service.py::_send_invoice_email_to_client -- the invoice a
+    client receives.
+  - >-
+    Five CRM lifecycle emails, all with live callers --
+    birthday_notifier_service.py::build_email_content,
+    practice_status_listener.py::_send_payment_emails,
+    completed_process_service.py::_send_completion_email,
+    automation.py::_send_client_process_start_email,
+    process_automation_service.py::_send_client_process_start_email.
+  - >-
+    backend/prompts/channel_overlays.py -- the website channel's extra_instructions, injected into
+    the system prompt for the balizero.com widget. build_channel_context has 2 references.
+  - >-
+    backend/services/pricing/pricing_service.py -- a THIRD fallback_contact producer that neither I
+    nor the ledger row had found, surfaced by the cross-family reviewer mid-review. Its helper
+    returned (SUPPORT_EMAIL, SUPPORT_WHATSAPP) and three call sites shipped the second element to
+    clients: the fallback_contact of get_pricing and get_all_prices, and the Contact: line of the
+    LLM pricing context. Zero digits in the file, so the digit guard passed it. Helper renamed
+    _client_facing_contacts, returns CLIENT_CONTACT_WHATSAPP, all five call sites updated.
+  - >-
+    backend/utils/response_sanitizer.py::add_contact_if_appropriate -- DORMANT, and said so rather
+    than counted as a cure. Its only caller is process_zantara_response, whose only caller is
+    ResponseHandler.sanitize, and ResponseHandler is referenced nowhere in the repo outside
+    docs/LIVING_ARCHITECTURE.md. Fixed anyway, because a dormant constant holding the wrong number
+    is a landmine for whoever wires it up.
+  - >-
+    backend/services/crm/welcome/welcome_templates.py WELCOME_EMAIL_CTA -- likewise DORMANT. The
+    constant is defined in five languages and read by nothing; welcome_email_service.py imports
+    WELCOME_EMAIL_SUBJECT from the same module, not this. Fixed for the same reason.
+  - >-
+    apps/mouth (the whole balizero.com frontend) -- NOT touched and needs no touch. WA_NUMBER is
+    628213454721 and a separator-collapsing sweep of apps/mouth finds zero occurrences of either
+    the bot's or the retired number. Verified by me directly, not only by the subagent that
+    reported it.
+  - >-
+    docs/WHATSAPP_STRATEGY_2026.md -- its stale-numbers banner gains the one thing it could not say
+    before, that the two roles now have two names.
+  - >-
+    apps/backend-rag/backend/app/core/config.py and scripts/pricelist_2026/schema.py -- two comments
+    this PR makes FALSE. Both still asserted that eleven client-facing surfaces emit
+    SUPPORT_WHATSAPP; after this diff none does. Flagged by the cross-family reviewer as the most
+    dangerous thing in the change, and he is right: #5418 chose the wrong number because a TEST said
+    so, and a comment carries the same authority to the next reader. Both amended, with the retired
+    sentence quoted and dated rather than deleted.
+  - >-
+    backend/services/crm/welcome/welcome_email_service.py -- a SIXTH hand-typed copy of the client
+    digits (`_BZ_WHATSAPP = "628213454721"`), feeding the welcome email's WhatsApp CTA button and
+    its footer link. It was ALREADY CORRECT, which is exactly why it is dangerous: it agrees today
+    and drifts silently on the next move with the whole suite green. Now derived from the setting
+    and pinned.
+  - >-
+    .claude/skills/modus/PENDING-ARMS.md -- the operator[business] row opened 2026-09-01 is closed
+    by append, never rewritten in place (merge=union).
+risks:
+  - >-
+    MERGING THIS DEPLOYS. fly-deploy.yml fires on push to main under apps/backend-rag/**, and this
+    diff touches eight backend services. The WhatsApp deploy window (outside 08:00-20:00 WITA) is
+    honoured at the MERGE, not by holding flyctl -- the merge is what starts it.
+  - >-
+    The guard's scope is apps/backend-rag/backend/**/*.py. A number in a JSON, SQL, YAML or MDX
+    file, or in apps/mouth or packages/, is not covered by it. Measured clean today across the whole
+    repo -- 19,822 text files scanned, 82 occurrences of the bot's number and every one of them a
+    legitimate inbound-identity reference -- but pinned only inside the backend. Named, not fixed
+    here: a repo-wide ban is a different PR and would need its own per-language instrument.
+  - >-
+    The digit guard over-matches by construction: ANY string containing the bot's twelve digits in
+    order fails, phone number or not. Measured rather than argued -- across 19,822 files there is
+    not one such string that is not the real number, and the longest real IDR price digit-run in
+    the tree is 8, far short of 12. Narrowing it (refusing to collapse dots, demanding a phone-like
+    prefix) would buy the contrived case back by reintroducing a spelling the reviewer had already
+    broken the guard with. That is a trade, not a fix, so it is not made. Escape hatch for a genuine
+    collision: one budget row carrying its reason.
+  - >-
+    A number assembled across separate variable bindings and then interpolated is outside what a
+    constant fold can see. Declared in the guard's docstring. Closing it means constant propagation
+    inside a tripwire -- a larger and more fragile instrument than the defect warrants -- and the
+    realistic version of the same hole (reaching the value with no digits at all, by reading the
+    setting) is closed completely by the twin guard.
+  - >-
+    The guard cannot see an environment override of CLIENT_CONTACT_WHATSAPP, and cannot see a
+    number that arrives from the database. Same exposure SUPPORT_WHATSAPP has always had; not made
+    worse.
+  - >-
+    The two DORMANT surfaces above mean the eleven ledgered surfaces yield eight LIVE cures, not ten.
+    Counting the three pricing_service call sites the reviewer surfaced, the diff cures eleven live
+    client-facing emissions across nine live modules. Spelled out because the ledger row said
+    eleven surfaces and the arithmetic does not line up with it -- two of its rows are dormant and
+    three sites it never knew about are cured here.
+grader: >-
+  Opus 5 at xhigh -- the final on-disk gate (CLAUDE.md section 5, 2026-08-20 ruling). Build lane is
+  this session. The adversarial lane is codex-gpt-5.6-sol at xhigh in a read-only sandbox,
+  cross-family, dispatched on the DIFF with the two-number context and no conclusions to confirm,
+  and pointed specifically at the new guard -- the artefact most likely to be wrong, since the
+  guard in the previous PR had to be replaced twice under exactly this review. A second,
+  independent Anthropic-family spalla was dispatched in parallel on two falsifiable claims (the
+  two dormant surfaces) rather than on a request to agree.

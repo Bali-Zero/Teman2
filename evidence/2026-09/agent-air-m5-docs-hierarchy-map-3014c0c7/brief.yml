@@ -1,0 +1,20 @@
+task_id: hierarchy-workflow-study-and-army-map-20260908
+gear: 2
+objective: Record the study of Zero's 2026-09-06 Astra session and the 2026-09-08 Zero+Subhi voice workshop on the two-imperator hierarchy, and rebuild the army map (ranks, communication chain, W0 protocol, context by level, enforcement state, bootstrap prompts) that was lost with the pruned docs-army-command-map worktree.
+constraints:
+  - Docs only; no doctrine file, hook, validator or settings changed in this PR (they land in their own PRs, listed in the study §7).
+  - The map grants no permission; the Builder Contract, the Gear floor, the PII boundary and the external-builder shipping fence bind every rank.
+  - Enforcement state is written as LIVE / PR / PROMISE and never as "enforced" where nothing executes.
+acceptance:
+  - text: WHEN the R1 gate runs on this PR, the study SHALL carry adversarial_review=codex and a populated "Adversarial review" section with the red-team findings and their dispositions.
+    probe: adversarial-review-gate
+  - text: WHEN an imperator window opens docs/architecture/dual-consul/army-map.md, it SHALL find the W0 protocol, the per-rank boot packet and the bootstrap prompts without following a link outside the repository.
+    probe: manual-read
+consumer_map:
+  - scripts/check_adversarial_review.py via .github/workflows/adversarial-review-gate.yml (R1 gate on this PR).
+  - The imperator/general windows Zero opens (bootstrap prompts in army-map.md §6).
+  - The doctrine PR "docs(doctrine): the two-imperator hierarchy replaces the permanent Opus gate", which cites the study §7 blockquote.
+risks:
+  - The study quotes local Codex transcripts and local pilot branches that are not in the repository; provenance is declared in the study §0, verifiable only on Air-M5.
+  - The second Codex pass verdict is recorded as observed; it does not make the map's PROMISE rows enforced.
+pii: none

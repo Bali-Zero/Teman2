@@ -1,8 +1,12 @@
 ---
 name: sota-architecture-loop
-description: Use BEFORE architecting code, designing a feature, or making a structural/architectural decision. Evidence-backed 8-step loop (frame → ground → reason → council → decision-gate → execute → verify → capture) that improves on a naive 'reason → council → research → brainstorm' loop. Decides WHEN to invoke the multi-LLM council vs single-orchestrator, and runs review as asymmetric-adversarial (never consensus). Orchestrator-agnostic: works whether Claude, Codex, or Gemini drives.
+description: "Use BEFORE architecting code, designing a feature, or a structural decision. 8-step loop (frame→ground→reason→council→execute→verify→capture); review is asymmetric-adversarial, never consensus."
 allowed-tools: Read, Write, Edit, Bash, Skill, Agent, WebFetch
 ---
+
+## Notes (moved from description 2026-09-02)
+
+Full loop: frame → ground → reason → council → decision-gate → execute → verify → capture. Improves on a naive 'reason → council → research → brainstorm' loop. Decides WHEN to invoke the multi-LLM council vs single-orchestrator. Orchestrator-agnostic: works whether Claude, Codex, or Gemini drives.
 
 > **CANON**: repo `.claude/` (vendored 2026-07-17, PR process-toolkit SSOT) — shadows the `~/.claude/` HOME copy. Edit HERE, never in `$HOME`. Pro/Mini shadow it on `git pull`.
 

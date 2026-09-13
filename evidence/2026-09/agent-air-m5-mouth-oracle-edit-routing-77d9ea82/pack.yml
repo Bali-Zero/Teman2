@@ -1,0 +1,59 @@
+brief_ref: evidence/brief.yml
+plan_ref: V-01 from the two-consul GARUDA VOA, Second Home, and Visa Oracle completion mandate.
+lanes:
+  - lane: oracle-edit-routing
+    role: build
+    seat: gpt-6-astra
+seat_override: >-
+  R8 applicability only: these Visa Oracle paths change navigation among
+  existing questions and reuse their existing translations. No regulatory
+  claim, eligibility rule, visa fact, or price is authored or changed, so
+  there is no new legal assertion to verify with NotebookLM. Independent
+  cross-family Fable review remains pending and is not waived by this note.
+pii_scan: clean
+receipts:
+  - claim: Before the fix, regression tests exposed wrong shared-fact targets and dead Edit offers.
+    cmd: >-
+      ../../node_modules/.bin/vitest run
+      'src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter.test.ts'
+      --maxWorkers=1 -t 'routes missing|offers no arbitrary edit'
+    result: >-
+      9 failed before the production-code change. REMOTE compensation
+      selected work_indonesia_compensation; INVEST PT PMA selected
+      remote_pt_pma; stay_permit_code selected current_status_code.
+    exit: 1
+    ts: "2026-09-05T06:29:37Z"
+    seat: gpt-6-astra
+  - claim: Scoped regression, preview, SHADOW parity, and deduplication verification.
+    cmd: >-
+      ../../node_modules/.bin/vitest run
+      'src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter.test.ts'
+      'src/app/(visa-oracle)/visa-oracle/_components/OracleShell.test.tsx'
+      'src/app/(visa-oracle)/visa-oracle/_lib/shadow-parity.test.ts'
+      'src/app/(visa-oracle)/visa-oracle/_lib/preview-adapter.test.ts'
+      'src/app/(visa-oracle)/visa-oracle/_lib/gold-oracle-baseline.test.ts'
+      'src/app/(visa-oracle)/visa-oracle/_components/OracleShell.shadow-dedupe-adversarial.test.tsx'
+      --maxWorkers=1
+    result: 6 files passed, 80 tests passed; one worker, no backend or real client data.
+    exit: 0
+    ts: "2026-09-05T06:30:47Z"
+    seat: gpt-6-astra
+  - claim: ESLint reports no errors on the changed production files.
+    cmd: >-
+      ../../node_modules/.bin/eslint
+      'src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter.ts'
+      'src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter.test.ts'
+      'src/app/(visa-oracle)/visa-oracle/_components/OracleShell.tsx'
+      'src/app/(visa-oracle)/visa-oracle/_components/OracleShell.test.tsx'
+    result: >-
+      Exit 0. Existing privacy-link warnings remain; test files are ignored
+      by the repository ESLint configuration and are checked by Vitest.
+    exit: 0
+    ts: "2026-09-05T06:33:01Z"
+    seat: gpt-6-astra
+dissent: []
+review_status: pending-independent-fable-review
+notes:
+  - Receipt commands run from apps/mouth in the isolated mouth-oracle-edit-routing worktree.
+  - Existing SHADOW/NO-GO posture is unchanged. Passing tests are not an independent review verdict.
+  - No full Next.js build or production-browser proof has been performed by this lane.

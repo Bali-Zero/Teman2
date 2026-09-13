@@ -1,0 +1,139 @@
+brief_ref: evidence/brief.yml
+council_run: journal.jsonl
+
+lanes:
+  - lane: intake-keepalive-build
+    role: build
+    seat: >-
+      claude-fable-5 (this worktree session on Pro, branch
+      agent/nuzantara/infra/tokenaudit-intake-keepalive; Fable selected
+      manually by Zero via /model for this session, not routed). One value
+      changed in one plist plus a four-line comment. Single build lane.
+  - lane: intake-keepalive-review
+    role: review
+    seat: >-
+      tp1-qwen3.8-max (DashScope/TP1 gateway via scripts/tp1_call.py,
+      cross-family refuter, fresh context, fed the raw diff and the
+      quota/keep-alive contracts). Its verbatim findings are in the
+      receipts/dissent below; Kimi K3 (the doctrinal permanent refuter)
+      was 403 weekly-quota-dead and Codex timed out on the 15 s arsenal
+      probe at dispatch time (~/.organism/arsenal/last.json 2026-09-01T18:02Z).
+  - lane: intake-keepalive-review-codex
+    role: review
+    seat: >-
+      codex-gpt-5.6-sol at effort xhigh (`codex exec --sandbox read-only`),
+      cross-family, fresh context, fed the same task file as the TP1 seat and
+      convened 2026-09-02 by a session that did NOT author this diff. The
+      arsenal probe had reported this seat TIMEOUT: that is the probe's flat
+      15 s ceiling, not the seat — called directly it answered in well under
+      its 900 s budget. Verbatim verdict in journal.jsonl.
+
+seat_diversity: satisfied
+seat_diversity_note: >-
+  ONE build lane, so the >= 2-build-lane non-Anthropic requirement does not
+  bind; the cross-family seat sits on REVIEW (qwen3.8-max), which is the
+  seat the roster counts toward Gear-3 quorum.
+
+diff:
+  files: 1
+  net_lines: 4
+  measured_at: >-
+    `git -C <worktree> diff --numstat $(git merge-base origin/main HEAD)..HEAD`
+    before this pack's own files were added: 5 insertions, 1 deletion, in
+    infra/launchagents/com.nuzantara.intake-worker.plist.
+
+pii_scan: clean
+
+receipts:
+  - claim: "Plist valid for both plutil and plistlib; value reads 15m"
+    cmd: 'plutil -lint infra/launchagents/com.nuzantara.intake-worker.plist && python3 -c "import plistlib;d=plistlib.load(open(''infra/launchagents/com.nuzantara.intake-worker.plist'',''rb''));print(d[''EnvironmentVariables''][''INTAKE_OLLAMA_KEEP_ALIVE''])"'
+    result: "OK / plistlib OK 15m"
+    exit: 0
+    ts: "2026-09-01T20:29:40Z"
+    seat: session (Pro)
+  - claim: "Measurement behind the value: night cohort 00-04h, loads/h across four days"
+    cmd: "python3 -c '...' over ~/logs/ollama-single-manager.log counting lines containing 'llama-server started in' grouped by (day,hour)"
+    result: "30/8 12.0/h · 31/8 11.2/h · 1/9 15.2/h · 2/9 5.2/h (26 loads in 5 h) — same hourly population"
+    exit: 0
+    ts: "2026-09-01T20:27:00Z"
+    seat: session (Pro)
+  - claim: "Real diffstat used for diff.files/net_lines — never hand-typed"
+    cmd: "git -C .worktrees/infra-tokenaudit-intake-keepalive diff --numstat $(git merge-base origin/main HEAD)..HEAD"
+    result: "5\t1\tinfra/launchagents/com.nuzantara.intake-worker.plist"
+    exit: 0
+    ts: "2026-09-01T20:41:00Z"
+    seat: session (Pro)
+  - claim: "Pre-commit hooks (secrets, off-limits, lint) green on the staged plist"
+    cmd: "git commit (pre-commit: lease-check, anti-reward-hacking, secrets, off-limits)"
+    result: "All pre-commit checks passed; commit 6d18aa9986"
+    exit: 0
+    ts: "2026-09-01T20:30:30Z"
+    seat: session (Pro)
+
+  - claim: "Cross-family refuter (qwen3.8-max, fresh context) on the raw diff — verbatim verdict"
+    cmd: "python3 scripts/tp1_call.py --model qwen3.8-max --task-file review_task_1.txt --effort medium --max-tokens 3000 --no-stream"
+    result: |
+      NO_DEFECTS
+
+      What I checked:
+
+      1. **XML/plist validity of the multi-line comment.** `<!-- … -->` spanning four lines is legal XML; Apple's CoreFoundation plist parser and `plutil -lint` both accept it. The em-dash (`—`) is valid UTF-8 content inside a comment. No structural break between the surrounding `<string>INFO</string>` and `<key><REDACTED></key>` pairs.
+
+      2. **Value vs. stated constraint.** The comment claims 15 m "stays inside" the ollama-single-manager `KEEP_ALIVE=30m` cap. 15 < 30, so the value is consistent with the rationale. `MAX_LOADED=2` is unaffected by a keep-alive duration change.
+
+      3. **Duration-string format regression.** The old value was `5s`; the new value is `15m`. Both follow the same `<integer><unit-suffix>` pattern. Any parser that accepted `5s` will accept `15m` (and this is an env-var consumed by the intake worker, not by the shell, so no zsh arithmetic or glob expansion is in play).
+
+      4. **Shell semantics / exit-code / fail-open contract.** None of these apply: the diff touches only a launchd plist `<string>` value and an XML comment. No `quota_gate.sh` logic, no `#!/bin/zsh` cascade, no exit codes are introduced or altered.
+
+      5. **Path correctness.** No filesystem paths appear in the diff.
+
+      6. **Contradiction between comment narrative and change.** The comment says 5 s caused 13 loads/h and the fix brings it to 5–6/h. Increasing keep-alive from 5 s to 15 m is directionally correct for that goal and does not contradict any other value visible in the diff.
+
+      No defect found.
+    exit: 0
+    ts: "2026-09-01T20:47:00Z"
+    seat: tp1-qwen3.8-max (DashScope/TP1)
+  - claim: "Acceptance probe 1 executed as written"
+    cmd: 'plutil -lint infra/launchagents/com.nuzantara.intake-worker.plist && python3 -c "import plistlib;print(plistlib.load(open(''infra/launchagents/com.nuzantara.intake-worker.plist'',''rb''))[''EnvironmentVariables''][''INTAKE_OLLAMA_KEEP_ALIVE''])"'
+    result: "OK / 15m"
+    exit: 0
+    ts: "2026-09-01T20:29:40Z"
+    seat: session (Pro)
+
+residual_risks:
+  - >-
+    The live copy on Pro still reads 5s until pro-healer's next home-fork-drift
+    tick after merge (<= 6h). Until that tick the change is merged but NOT live;
+    the PR's Bites: line names the exact post-tick observation.
+  - >-
+    Daytime load magnitude unmeasured (see brief risks); the sign is established
+    on the night cohort only.
+
+dissent:
+  - seat: codex-gpt-5.6-sol at effort xhigh, cross-family, fresh context
+    status: RETRACTED
+    objection: >-
+      Second independent cross-family seat, convened 2026-09-02 on the same
+      task file with no shared context. Attacked the same claim — that "15m"
+      is a valid value and that nothing parses this env var as integer seconds
+      — and found no defeating input: the value is an opaque environment
+      string and the diff shows no integer parser. Tried and found nothing, so
+      recorded as a retraction rather than as agreement.
+  - seat: tp1-qwen3.8-max (DashScope/TP1), cross-family, fresh context
+    status: RETRACTED
+    objection: >-
+      Attacked six surfaces (multi-line XML comment validity incl. the em-dash,
+      15m vs the 30m manager cap, duration-string format regression 5s->15m,
+      shell/exit-code semantics, paths, comment-vs-change contradiction) and
+      found none — verdict NO_DEFECTS, recorded verbatim in receipts. A refuter
+      that tried and found nothing is reported as a retraction, not as consent.
+  - seat: session (Pro), self-caught
+    status: PLAUSIBLE
+    objection: >-
+      The worker's own code default stays DEFAULT_OLLAMA_KEEP_ALIVE = "5s"
+      (apps/backend-rag/backend/services/intake/inference_runtime.py:31): any
+      invocation that does not go through this plist (a manual run, a future
+      second machine — the pair is declared pro-only) keeps the reload storm.
+      Real, narrow, NOT CURED HERE: this PR is one canon value; changing the
+      code default is a backend-rag diff with its own deploy (merging it is the
+      deploy) and its own gate.

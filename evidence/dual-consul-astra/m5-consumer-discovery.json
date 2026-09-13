@@ -1,0 +1,17 @@
+{
+  "mode": "discovery",
+  "binding": {
+    "mission_id": "qualification-astra-01534",
+    "input_hash": "4aee21465a58aa104b062be442211980788c7e17aa1a0aa095ce9c1788f70c87",
+    "discovery_key": {
+      "runtime_version": "codex-cli 0.153.4@b973d440acac501fd2594a43e7ca9ce41e0a65b9dfb28d0d7a7837c99e1261e3",
+      "config_hash": "87e70647f236b9aff8f10374225312566fe698f1dbcf18b5336c1bc456579bc9",
+      "host": "Air-M5",
+      "auth_context_hash": "2346cd6f19919f5ca5dffcf6600b994deb7da16cf953ff8ec316283e0c1c12ac"
+    },
+    "model": "gpt-6-astra",
+    "effort": "medium",
+    "thread_id": null
+  },
+  "inference_performed": false
+}

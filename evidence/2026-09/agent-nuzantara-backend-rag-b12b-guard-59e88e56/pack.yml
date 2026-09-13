@@ -1,0 +1,250 @@
+brief_ref: evidence/2026-09/agent-nuzantara-backend-rag-b12b-guard-59e88e56/brief.yml
+plan_ref: >-
+  B1.2 PR-B of mandate B1 generation 4, the guard half of the split that replaced the closed
+  #6266. Split rationale and per-cause disposition: B1-2-successor-spec.md, same directory.
+lanes:
+  - lane: "the tripwire guard G1-G13"
+    role: build
+    seat: >-
+      claude-opus-5 (Dux) with a claude-sonnet-5 implementer child for G1-G10. ONE build lane,
+      not three: it is one file, and the three cure rounds on it (G11 for round 2, G12+G13 for
+      round 3, leg A for the gate) are successive corrections to the same surface rather than
+      independent lanes. Each cure was measured against the reviewer's own bypass BEFORE being
+      accepted as a defect.
+    state: >-
+      delivered. The leg-A correction is depth 1 on this surface: round 3's cure was itself
+      wrong and this is its single correction. If THIS correction is wrong the surface is
+      under-specified and the next step is a spec, not a third attempt.
+  - lane: "adversarial rounds 1-3"
+    role: review
+    seat: "codex gpt-5.6-sol, effort high, read-only — r1 account 1 Pro, r2/r3 account 2 Mini"
+    state: >-
+      Three BLOCK verdicts on ONE cause, all cured: r1 F3 duplicate def -> G7; r2 N1 class-body
+      rebinding -> G11; r3 forged clone -> G12 and collection hook -> G13. NO fourth round.
+      Verbatim records: codex-round-1/2/3-b1-2.md here.
+  - lane: "on-disk gate on the predecessor #6266"
+    role: review
+    seat: "fresh claude-opus-5 commissioned by the staff room (M5, isolated detached worktree)"
+    state: >-
+      BLOCK 2026-09-12T02:10Z, three causes, all disposed of: cause 1 cured here, cause 2 by the
+      split, cause 3 by this pack's allowlist pragmas. A gate red is not an adversarial round.
+seat_diversity: not_applicable
+seat_diversity_note: >-
+  Declared, not left to read as satisfied: the build seat here is Anthropic. B1.2's mandatory
+  external-builder lane (tp1-glm-5.2, then tp1-qwen3.8-max) produced the nine VARIANTS, which
+  ship in PR-A; no external seat wrote any of the guard. Why a second builder family adds nothing
+  here: every load-bearing question about this file is settled by a probe's exit code, not an
+  opinion — G12 either catches the forged clone or does not, leg A either reports 18 of 18 or does
+  not, and the guilt/innocence receipts below are the arbiter. Review diversity is present where
+  it matters: codex gpt-5.6-sol across three rounds plus a fresh Anthropic on-disk gate outside
+  the contribution chain. Generator is never grader — the Dux wrote G12/G13 and does not sign the
+  gate.
+diff:
+  net_lines: >-
+    Per-file numbers are the numstat receipt below, not a narrated total here, which would go
+    stale on the next edit to this file. One shipped file changed and it is a test (the guard);
+    the rest is evidence; counted churn is under SIZE_GEAR3_THRESHOLD 1828 and the floor is 2.
+  behaviour_change: >-
+    None in any shipped code path — structural assertions about test code. CI goes RED if the
+    registry is weakened, a protected name is rebound, the runtime code object stops matching the
+    parsed def, pytest's collected item stops being the class-body def, or an undeclared
+    collection hook appears in the tripwire files' conftest chain.
+receipts:
+  - claim: >-
+      THE CENTRAL RECEIPT (A2). One invocation collecting the guard together with the four
+      tripwire files and the six B1 §4 innocence files — the shard-3 shape that convicted the
+      predecessor — is green apart from two pre-existing failures, AND G13 leg A is NON-VACUOUS
+    cmd: >-
+      one pytest invocation over the guard + the four tripwire files + the six innocence files,
+      -o addopts= -p no:randomly -q -s; and the same multi-file run WITHOUT the guard, to show
+      the two TestDetectTeamQuery failures are not this diff's — on a throwaway tree built from
+      PR-A's HEAD by `git archive` plus this PR's guard
+    result: >-
+      "2 failed, 649 passed, 2 xfailed" and "G13 leg A: 18 of 18 protected items collected in
+      this session and verified; not collected: []". The 2 are
+      TestDetectTeamQuery::test_dynamic_company_name_marker_matches and ..._uppercase_in_query.
+    exit: 1
+    ts: 2026-09-12T02:25Z
+    seat: session (Dux, Pro)
+  - claim: "Those 2 failures are NOT this diff's — they reproduce with the guard removed entirely"
+    cmd: the same four tripwire files in one session WITHOUT the guard, -o addopts= -p no:randomly -q
+    result: '"2 failed, 237 passed" — the same two node ids'
+    exit: 1
+    ts: 2026-09-12T02:25Z
+    seat: session (Dux, Pro)
+  - claim: "A1 — the guard alone is green, no skip and no xfail"
+    cmd: pytest the guard file, -o addopts= -p no:randomly -q
+    result: "97 passed"
+    exit: 0
+    ts: 2026-09-12T02:25Z
+    seat: session (Dux, Pro)
+  - claim: >-
+      A3 guilt, G12 — a forged-metadata clone is caught, and G11/G13 stay GREEN while it is,
+      which is what proves G12 load-bearing rather than redundant
+    cmd: >-
+      guilt A planted in the git-archive proof tree; guard + the mutated tripwire file — the
+      mutation being exec/compile under the original co_filename, padded co_firstlineno, copied
+      __qualname__
+    result: >-
+      "1 failed, 183 passed" — the one failure is
+      test_g12_runtime_code_object_is_the_compiled_parsed_def on node id
+      unit/services/rag/agentic/test_reasoning.py::TestCalculateEvidenceScore::test_no_keyword_overlap
+    exit: 1
+    ts: 2026-09-12T02:25Z
+    seat: session (Dux, Pro)
+  - claim: >-
+      A4 guilt, G13 — a collection hook replacing item._obj is caught on leg B even when nothing
+      protected is collected, and on both legs when it is
+    cmd: >-
+      guilt B planted in the proof tree; two runs — run 1 the guard alone, run 2 the guard plus
+      the tripwire file
+    result: >-
+      guard alone "1 failed, 96 passed" = test_g13_no_undeclared_collection_hook_in_the_conftest_chain;
+      with the tripwire file "2 failed, 182 passed" = that census test AND
+      test_g13_collected_items_run_the_class_body_def
+    exit: 1
+    ts: 2026-09-12T02:25Z
+    seat: session (Dux, Pro)
+  - claim: >-
+      A5 — the deterministic floor for THIS PR's changed-file list is 2, matching the declared
+      gear. Measured twice: the first assembly computed 3 at 1910 counted lines, and the evidence
+      prose was tightened until the linter agreed rather than the gear being bumped
+    cmd: >-
+      evidence_pack_lint --print-floor --print-floor-source with this PR's changed-files and
+      numstat, written by git diff --name-only and --numstat
+    result: "floor 2, source `size`, no hot-zone path. Quoted in the PR body on the head sha."
+    exit: 0
+    ts: 2026-09-12T02:40Z
+    seat: session (Dux, Pro)
+  - claim: >-
+      Additions only, and the one code file changed is the guard — no variant, registry or shipped
+      module is touched
+    cmd: git diff --numstat $(git merge-base origin/main HEAD)..HEAD
+    result: >-
+      deletions column 0 on every file; one .py path (the guard) plus the evidence directory. No
+      path under backend/services, backend/core, backend/app, no migration, no workflow, no corner.
+    exit: 0
+    ts: 2026-09-12T02:40Z
+    seat: session (Dux, Pro)
+  - claim: "ruff accepts the guard, and the proofs were re-run on the FORMATTED file"
+    cmd: ruff check && ruff format on the guard, then the proof suite again
+    result: >-
+      "All checks passed"; one I001 import-sort and one reformat applied BEFORE the final proof
+      run, so the file proved is the file shipped, not a pre-format variant.
+    exit: 0
+    ts: 2026-09-12T02:35Z
+    seat: session (Dux, Pro)
+pii_scan: clean
+pii_scan_note: >-
+  Nothing transcribes client data. The guard reads test source with `ast` and compares code
+  objects; the evidence quotes counts, node ids, function names, CI run numbers and shas only.
+dissent:
+  - seat: "codex gpt-5.6-sol (round 1)"
+    objection: >-
+      F3: `_find_function` takes the FIRST matching def in a class body while Python binds the
+      LAST, so a duplicate def would let the guard inspect a definition pytest never runs.
+    status: CONFIRMED
+    resolution: "Cured by G7, which counts def nodes per protected name and is red on a duplicate."
+  - seat: "codex gpt-5.6-sol (round 1)"
+    objection: >-
+      F2/F4/F5: G4 only checked that a correct `pipeline_sources` call existed SOMEWHERE; G5
+      compared the variant only against whatever the original currently said; G1/G2 left rank,
+      collection, fusion and carried_keys unpinned.
+    status: CONFIRMED
+    resolution: >-
+      Cured by G6 (whole-body AST parity), G8 (each original against an independent sha256 AST
+      snapshot) and G9 (every registry field against an independent literal EXPECTED table).
+  - seat: "codex gpt-5.6-sol (round 2)"
+    objection: >-
+      N1: G7 counts only `def` nodes, so a later class-body rebinding that is not a def — an
+      assignment, a class decorator, a module-level setattr — replaces the runtime attribute
+      pytest collects while every AST check stays green.
+    status: CONFIRMED
+    resolution: "Cured by G11, which pins the runtime binding rather than enumerating rebinding syntaxes."
+  - seat: "codex gpt-5.6-sol (round 3)"
+    objection: >-
+      Blocker 1: every field G11 compares is forgeable metadata. A function compiled by
+      exec/compile under the original co_filename, padded to the same co_firstlineno, with
+      __qualname__ copied, takes all eight of G11's assertions green while pytest runs an empty body.
+    status: CONFIRMED
+    resolution: >-
+      Cured by G12, and MEASURED before being accepted: G11's chain was replayed against the
+      reviewer's own bypass and went fully green, so the finding was real, not hypothetical. G12
+      compares a structural digest of the runtime code object against the guard's own
+      pytest-style compile of the parsed def; co_filename and co_firstlineno are excluded from
+      the digest on purpose, being the forged fields G11 already pins.
+  - seat: "codex gpt-5.6-sol (round 3)"
+    objection: >-
+      Blocker 2: G11/G12 read cls.__dict__[name] while pytest runs the callable cached on the
+      pytest.Function item, which a pytest_collection_modifyitems hook can replace without
+      touching the class.
+    status: CONFIRMED
+    resolution: >-
+      Cured by G13, also measured first (with the hook present G11 stayed green and the protected
+      body never ran). Leg A compares the collected item's callable by identity; leg B censuses
+      the conftest chain's collection hooks against an expected literal set and so binds in every
+      session, including the guard-alone run where leg A has nothing to compare.
+  - seat: "codex gpt-5.6-sol (round 3)"
+    objection: >-
+      Minor 3: the docstring called this file purely static with no app init while G11 imports
+      four test modules and executes their top-level code; dotted-name resolution could inspect a
+      shadow copy.
+    status: CONFIRMED
+    resolution: >-
+      Applied: the docstring discloses the imports, and G12 asserts module.__file__ resolves to
+      the parsed path plus obj.__globals__ is module.__dict__.
+  - seat: "fresh claude-opus-5 on-disk gate (M5), on the predecessor #6266"
+    objection: >-
+      G13 leg A CONVICTED AN HONEST TREE. CI Backend Shard 3, 1 failed / 2113 passed: leg A
+      resolved `expected` by dotted-name re-import while pytest had imported the same file under a
+      different dotted name, giving two module objects and two function objects for one source
+      def. Every local per-file run was green because none put the guard and the protected files
+      in one session.
+    status: CONFIRMED
+    resolution: >-
+      Cured here, and the credit is the gate's: leg A now takes `expected` from the item's own
+      class (self-consistent by construction, still red on the hook bypass), and G11/G12 resolve
+      modules by FILE IDENTITY across sys.modules, checking EVERY loaded copy rather than one.
+      Proved in the session shape that caught it, leg A reporting 18 of 18.
+  - seat: "session (self-review — the lesson is worth more than the fix)"
+    objection: >-
+      The round-3 cure was measured in the scratchpad with plain importlib and came back GREEN AND
+      WRONG twice: first a plain compile disagreed with the runtime code object on all 18 names
+      because pytest rewrites asserts at import time; then leg A disagreed with itself across two
+      dotted names. Both times the scratchpad measurement was the thing that lied.
+    status: CONFIRMED
+    resolution: >-
+      Recorded as the generalisation, not as two incidents: a guard asserting anything about what
+      pytest RUNS must be proved inside a pytest session of the same SHAPE as CI's, and a per-file
+      run is not that shape. The central receipt above is written to be that shape and prints its
+      own non-vacuity.
+  - seat: "session (declared limit, unresolved)"
+    objection: >-
+      G12/G13 raise the cost of a deliberate in-process substitution but cannot exclude it: any
+      check living in the same interpreter as the code it judges can be defeated by code in that
+      interpreter. The reviewer's own suggested fix is in-process too.
+    status: PLAUSIBLE
+    resolution: >-
+      Left standing and labelled, per ruling I14. Accidental weakening is what G1-G13 pin;
+      deliberate sabotage is the review and gate boundary, and a new conftest or plugin file is
+      visible in review — which is why leg B censuses rather than tolerates.
+  - seat: "session (declared limit, unresolved)"
+    objection: >-
+      This PR's own checks cannot be green until PR-A merges: the guard imports PR-A's fixtures
+      module and its census reads PR-A's variants. An armed branch must not be pushed to, so the
+      re-trigger after PR-A lands belongs to whoever is live then.
+    status: PLAUSIBLE
+    resolution: >-
+      Stated in the brief's `depends_on`, in the PR body and in the checkpoint, rather than left
+      to surprise the queue. The alternative — stacking B on A's branch — would put A's lines back
+      into B's diff and restore the floor violation the split exists to cure.
+bites:
+  consumer: >-
+    The CI `Backend Tests (Python)` shards. The guard runs in the same shards that collect the
+    four tripwire files — precisely the session shape that exposed the leg-A defect — and it is
+    the consumer that goes red when the registry or a protected binding is weakened.
+  observation: >-
+    On the cured guard: 97 passed alone; in the one-session shard-3 shape "2 failed, 649 passed,
+    2 xfailed" where the 2 are pre-existing (reproduced with the guard removed) and G13 leg A
+    reports 18 of 18 verified; guilt A "1 failed" on G12 with G11/G13 green; guilt B "1 failed"
+    on leg B guard-alone and "2 failed" on legs B and A together.

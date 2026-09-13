@@ -452,6 +452,273 @@ def test_hold_labels_are_case_insensitive():
     assert plan["skipped"][50] == "hold_label"
 
 
+# ── re-warm: the first read after a base-branch merge is the warm-up ─────
+#
+# Measured 2026-08-25 (main frozen at b5b1be8e3, HEAD checked before AND
+# after): 37 UNKNOWN -> 1 -> 1 -> 3 across three minutes of repeated
+# querying, no merges in between. Asking is what fixes it, so a tick that
+# asks ONCE classifies on the blind answer and silently acts on nothing.
+
+
+def _blind(n_unknown: int, n_other: int, *, other_status: str = "BLOCKED") -> list[dict]:
+    prs = [make_pr(100 + i, merge_state_status="UNKNOWN") for i in range(n_unknown)]
+    prs += [make_pr(900 + i, merge_state_status=other_status) for i in range(n_other)]
+    return prs
+
+
+def test_rewarm_GUILT_a_blind_read_is_refetched_and_the_FRESH_values_are_returned():
+    """Delete the re-warm and this goes red: the blind list would come back."""
+    blind = _blind(30, 9)
+    fresh = [make_pr(100, merge_state_status="BEHIND")] + _blind(1, 8)
+    slept: list[int] = []
+    out, info = qu.rewarm_if_blind(
+        blind, "o/r", fetch=lambda repo: fresh, sleep=slept.append, wait_seconds=45
+    )
+    assert out is fresh, "must classify on the refetched values, not the blind ones"
+    assert info["rewarmed"] is True
+    assert info["unknown_before"] == 30
+    assert info["unknown_after"] == 1
+    assert slept == [45], "must actually wait — refetching instantly re-reads the same cache"
+
+
+def test_rewarm_GUILT_main_acts_on_the_refetched_values_not_the_blind_ones(
+    monkeypatch, tmp_path, capsys
+):
+    """End-to-end: a PR that is really BEHIND is invisible on the blind read."""
+    monkeypatch.delenv("QUEUE_UNSTICK_ENABLED", raising=False)
+    monkeypatch.delenv("QUEUE_UNSTICK_REWARM", raising=False)
+    monkeypatch.setattr(qu, "STATE_DIR", tmp_path)
+    monkeypatch.setattr(qu, "DIRTY_SEEN_FILE", tmp_path / "seen.json")
+    monkeypatch.setattr(qu, "REWARM_WAIT_SECONDS", 0)
+
+    real_now = _dt.datetime.now(_dt.timezone.utc)
+    old = _iso(real_now - _dt.timedelta(minutes=30))
+
+    def stamp(prs):
+        for pr in prs:
+            pr["last_commit_date"] = old
+        return prs
+
+    blind = stamp(_blind(30, 9))
+    fresh = stamp([make_pr(100, merge_state_status="BEHIND")] + _blind(1, 8))
+
+    calls = {"n": 0}
+
+    def fetch(repo):
+        calls["n"] += 1
+        return blind if calls["n"] == 1 else fresh
+
+    monkeypatch.setattr(qu, "fetch_open_prs", fetch)
+
+    rc = qu.main(["--dry-run"])
+    out = capsys.readouterr().out
+    assert rc == 0
+    assert calls["n"] == 2, "the blind read must have been followed by exactly one refetch"
+    assert "updated=1" in out, "the BEHIND PR is only visible on the refetched read"
+
+
+def test_rewarm_GUILT_the_summary_line_reports_it(monkeypatch, tmp_path, capsys):
+    """A behaviour that changes what the tick acts on must not be silent (#2)."""
+    monkeypatch.delenv("QUEUE_UNSTICK_ENABLED", raising=False)
+    monkeypatch.delenv("QUEUE_UNSTICK_REWARM", raising=False)
+    monkeypatch.setattr(qu, "STATE_DIR", tmp_path)
+    monkeypatch.setattr(qu, "DIRTY_SEEN_FILE", tmp_path / "seen.json")
+    monkeypatch.setattr(qu, "REWARM_WAIT_SECONDS", 0)
+    monkeypatch.setattr(qu, "fetch_open_prs", lambda repo: _blind(30, 9))
+
+    qu.main(["--dry-run"])
+    out = capsys.readouterr().out
+    assert "rewarmed=true" in out
+    assert "rewarm_reason=" in out
+    assert "rewarm:" in out, "the human-readable line must name why the read was blind"
+
+
+# ── innocence ────────────────────────────────────────────────────────────
+
+
+def test_rewarm_INNOCENCE_a_warm_read_never_refetches_and_never_sleeps():
+    """A warm read must cost nothing.
+
+    Uses 6/100 rather than the measured 3/38 baseline on purpose: 3 is below
+    REWARM_UNKNOWN_MIN, so it would exit on the absolute floor and never reach
+    the ratio branch this test exists to cover. 6 clears the floor and still
+    sits far under the ratio.
+    """
+    warm = _blind(6, 94)
+    extra: list[str] = []
+    slept: list[int] = []
+    out, info = qu.rewarm_if_blind(
+        warm,
+        "o/r",
+        fetch=lambda repo: extra.append(repo) or [],
+        sleep=slept.append,
+        wait_seconds=45,
+    )
+    assert out is warm
+    assert info["rewarmed"] is False
+    assert extra == [], "a warm tick must not spend a second API call"
+    assert slept == [], "a warm tick must not add 45s of wall clock"
+    assert "already_warm" in info["reason"]
+
+
+def test_rewarm_BOUNDED_at_most_one_extra_fetch_even_if_still_blind():
+    """If the base keeps moving the honest outcome is 'still blind', not a loop."""
+    fetches: list[str] = []
+
+    def fetch(repo):
+        fetches.append(repo)
+        return _blind(30, 9)
+
+    out, info = qu.rewarm_if_blind(
+        _blind(30, 9), "o/r", fetch=fetch, sleep=lambda s: None, wait_seconds=45
+    )
+    assert len(fetches) == 1, "exactly one extra fetch, never a retry loop inside a cron"
+    assert info["rewarmed"] is True
+    assert info["unknown_after"] == 30, "must report honestly that it is still blind"
+
+
+def test_rewarm_INNOCENCE_kill_switch_disables_it(monkeypatch):
+    monkeypatch.setenv("QUEUE_UNSTICK_REWARM", "false")
+    extra: list[str] = []
+    blind = _blind(30, 9)
+    out, info = qu.rewarm_if_blind(
+        blind, "o/r", fetch=lambda repo: extra.append(repo) or [], sleep=lambda s: None
+    )
+    assert out is blind
+    assert info["rewarmed"] is False
+    assert info["reason"] == "disabled"
+    assert extra == []
+
+
+def test_rewarm_INNOCENCE_empty_pr_list_does_not_divide_by_zero_or_refetch():
+    extra: list[str] = []
+    out, info = qu.rewarm_if_blind(
+        [], "o/r", fetch=lambda repo: extra.append(repo) or [], sleep=lambda s: None
+    )
+    assert out == []
+    assert info["reason"] == "no_open_prs"
+    assert extra == []
+
+
+def test_rewarm_DEGRADES_refetch_failure_falls_back_to_the_first_read():
+    """Blind was the old normal — degrading back to it must not raise or redden."""
+    blind = _blind(30, 9)
+
+    def boom(repo):
+        raise RuntimeError("gh api graphql failed rc=1: simulated flap")
+
+    out, info = qu.rewarm_if_blind(blind, "o/r", fetch=boom, sleep=lambda s: None)
+    assert out is blind
+    assert info["rewarmed"] is False
+    assert "refetch_failed" in info["reason"]
+
+
+def test_rewarm_threshold_separates_the_two_MEASURED_populations():
+    """Pins the derivation, so a later tweak has to argue with the data.
+
+    Warm baseline measured 1-3 of ~38 (3-8%); blind measured 29-37 of 38-39
+    (75-95%). The default separator must sit strictly between them.
+    """
+    quiet = lambda s: None  # noqa: E731
+    never = lambda repo: (_ for _ in ()).throw(AssertionError("must not refetch"))
+
+    for unknown, other in ((1, 37), (3, 35)):
+        _, info = qu.rewarm_if_blind(
+            _blind(unknown, other), "o/r", fetch=never, sleep=quiet
+        )
+        assert info["rewarmed"] is False, f"{unknown}/{unknown + other} is a WARM baseline"
+
+    for unknown, other in ((29, 10), (37, 2)):
+        _, info = qu.rewarm_if_blind(
+            _blind(unknown, other), "o/r", fetch=lambda repo: [], sleep=quiet
+        )
+        assert info["rewarmed"] is True, f"{unknown}/{unknown + other} is BLIND"
+
+
+def test_rewarm_GUILT_runs_in_PRODUCTION_not_only_in_dry_run(monkeypatch, tmp_path, capsys):
+    """The gutting a cross-family refuter found: gate the re-warm on
+    `args.dry_run` and every other test here stays green while production goes
+    back to reading blind. This is the only test that can see that."""
+    monkeypatch.delenv("QUEUE_UNSTICK_ENABLED", raising=False)
+    monkeypatch.delenv("QUEUE_UNSTICK_REWARM", raising=False)
+    monkeypatch.setattr(qu, "STATE_DIR", tmp_path)
+    monkeypatch.setattr(qu, "DIRTY_SEEN_FILE", tmp_path / "seen.json")
+    monkeypatch.setattr(qu, "REWARM_WAIT_SECONDS", 0)
+
+    real_now = _dt.datetime.now(_dt.timezone.utc)
+    old = _iso(real_now - _dt.timedelta(minutes=30))
+
+    def stamp(prs):
+        for pr in prs:
+            pr["last_commit_date"] = old
+        return prs
+
+    blind = stamp(_blind(30, 9))
+    fresh = stamp([make_pr(100, merge_state_status="BEHIND")] + _blind(1, 8))
+
+    fetches = {"n": 0}
+
+    def fetch(repo):
+        fetches["n"] += 1
+        return blind if fetches["n"] == 1 else fresh
+
+    monkeypatch.setattr(qu, "fetch_open_prs", fetch)
+
+    # Record the real mutation instead of performing it — no network, but this
+    # is the PRODUCTION code path, not the --dry-run one.
+    updates: list[int] = []
+
+    def fake_update(number, *, repo=qu.REPO, dry_run, queue_recheck=None):
+        assert dry_run is False, "this test must exercise the production path"
+        updates.append(number)
+        return "ok", f"updated #{number}"
+
+    monkeypatch.setattr(qu, "do_update_branch", fake_update)
+
+    rc = qu.main([])  # NO --dry-run
+    out = capsys.readouterr().out
+    assert rc == 0
+    assert fetches["n"] == 2, "production must re-warm too, not just --dry-run"
+    assert updates == [100], "the BEHIND PR is visible only on the refetched read"
+    assert "rewarmed=true" in out
+
+
+def test_rewarm_INNOCENCE_small_repo_with_one_stuck_UNKNOWN_never_pays_the_wait():
+    """A ratio alone is trivially satisfied on a small repo: 1/1 = 1.0 and
+    1/4 = 0.25 both clear the ratio, so without an absolute floor the tick
+    would sleep and refetch forever without ever converging."""
+    quiet = lambda s: None  # noqa: E731
+    never = lambda repo: (_ for _ in ()).throw(AssertionError("must not refetch"))
+
+    for unknown, other in ((1, 0), (1, 3), (2, 2), (4, 8)):
+        _, info = qu.rewarm_if_blind(
+            _blind(unknown, other), "o/r", fetch=never, sleep=quiet
+        )
+        assert info["rewarmed"] is False, f"{unknown}/{unknown + other} must not re-warm"
+        assert "below_floor" in info["reason"]
+
+
+def test_rewarm_reports_STILL_BLIND_rather_than_claiming_success():
+    """A second read that is still blind must not be reported as a warm one —
+    monitoring has to be able to tell the two apart."""
+    _, info = qu.rewarm_if_blind(
+        _blind(30, 9), "o/r", fetch=lambda repo: _blind(30, 9), sleep=lambda s: None
+    )
+    assert info["rewarmed"] is True, "a refetch DID happen — that part is honest"
+    assert info["still_blind"] is True
+    assert "STILL_BLIND" in info["reason"]
+
+
+def test_rewarm_refetch_failure_does_not_swallow_a_programming_error():
+    """`except Exception` would downgrade a GraphQL schema change (KeyError)
+    into 'network flap' and hide it behind a successful exit."""
+    import pytest
+
+    def schema_change(repo):
+        raise KeyError("mergeStateStatus")
+
+    with pytest.raises(KeyError):
+        qu.rewarm_if_blind(_blind(30, 9), "o/r", fetch=schema_change, sleep=lambda s: None)
 
 
 # ---------------------------------------------------------------------------
@@ -672,3 +939,272 @@ def test_the_pinned_advice_still_forbids_both_gestures(tmp_path):
     assert "do not rebase" in lowered
     assert "origin/main" in lowered
     assert "+n/-0" in lowered
+
+
+# ── sender-side retraction of resolved DIRTY pages (2026-09-02) ─────────────
+#
+# Measured 2026-09-02 (research/operations/2026-09-02-mailbox-broadcast-
+# staleness-audit.md): 33/34 (97%) of live queue_unstick:<PR#> broadcasts on
+# Pro were for PRs already MERGED/CLOSED/no-longer-DIRTY. `resolved_dirty_prs`
+# is the pure classifier; `retract_dirty_signal` is the side-effecting call;
+# main() wires the two together and drops a retracted PR from `dirty_seen`.
+
+
+def test_resolved_dirty_prs_GUILT_pr_absent_from_open_set_is_resolved():
+    """PR 501 was signalled dirty, then merged/closed — it no longer appears
+    in fetch_open_prs() at all, so prs_by_number has no entry for it."""
+    seen = {"501": "a" * 40 + ":abcd1234"}
+    resolved = qu.resolved_dirty_prs(seen, prs_by_number={})
+    assert resolved == ["501"]
+
+
+def test_resolved_dirty_prs_GUILT_pr_present_but_no_longer_dirty_is_resolved():
+    """PR 502 is still open but the queue un-stuck it by itself (BLOCKED,
+    not DIRTY) — resolved even though it never left the open set."""
+    seen = {"502": "b" * 40 + ":abcd1234"}
+    prs_by_number = {502: make_pr(502, merge_state_status="BLOCKED")}
+    resolved = qu.resolved_dirty_prs(seen, prs_by_number)
+    assert resolved == ["502"]
+
+
+def test_resolved_dirty_prs_INNOCENCE_still_dirty_pr_is_not_resolved():
+    seen = {"503": "c" * 40 + ":abcd1234"}
+    prs_by_number = {503: make_pr(503, merge_state_status="DIRTY")}
+    resolved = qu.resolved_dirty_prs(seen, prs_by_number)
+    assert resolved == []
+
+
+def test_resolved_dirty_prs_INNOCENCE_untouched_state_entries_are_left_alone():
+    """A mix: only the resolved one comes back, the still-dirty one does not
+    contaminate the result (guards against an off-by-one over the dict)."""
+    seen = {
+        "504": "d" * 40 + ":aaaa",  # still dirty
+        "505": "e" * 40 + ":bbbb",  # resolved (merged/closed)
+    }
+    prs_by_number = {504: make_pr(504, merge_state_status="DIRTY")}
+    resolved = qu.resolved_dirty_prs(seen, prs_by_number)
+    assert resolved == ["505"]
+
+
+def test_resolved_dirty_prs_GUILT_unknown_status_must_not_be_treated_as_resolved():
+    """CONFIRMED cross-family finding (codex-gpt-5.6-sol, round 1, PR #5561):
+    the pre-fix version compared `merge_state_status != "DIRTY"`, which reads
+    UNKNOWN as resolved. UNKNOWN is this file's OWN documented transient
+    state right after `main` moves (see the module's Re-warm section,
+    REWARM_UNKNOWN_RATIO/REWARM_UNKNOWN_MIN) — a PR that is STILL actually
+    DIRTY can read UNKNOWN for tens of seconds while GitHub recomputes.
+    Retracting on that reading would take back a genuinely live page. Fails
+    on the pre-fix `!= "DIRTY"` comparison; must stay green on the fixed
+    fail-closed version."""
+    seen = {"506": "f" * 40 + ":cccc"}
+    prs_by_number = {506: make_pr(506, merge_state_status="UNKNOWN")}
+    resolved = qu.resolved_dirty_prs(seen, prs_by_number)
+    assert resolved == [], "UNKNOWN must never be read as a retraction signal"
+
+
+def test_resolved_dirty_prs_INNOCENCE_a_definite_non_dirty_status_still_retracts():
+    """The fix must not overcorrect into never retracting anything: a
+    DEFINITE (non-UNKNOWN, non-DIRTY) reading — CLEAN here — still resolves,
+    same as the pre-existing merged/closed (absent) and BLOCKED cases above."""
+    seen = {
+        "507": "1" * 40 + ":dddd",  # CLEAN — definite, must retract
+        "508": "2" * 40 + ":eeee",  # merged/closed (absent) — must retract
+    }
+    prs_by_number = {507: make_pr(507, merge_state_status="CLEAN")}
+    resolved = qu.resolved_dirty_prs(seen, prs_by_number)
+    assert sorted(resolved) == ["507", "508"]
+
+
+def test_mailbox_key_is_shared_between_send_and_retract():
+    """send_dirty_signal and retract_dirty_signal must key the SAME broadcast
+    — a drift here would mean retraction silently retracts nothing."""
+    assert qu._mailbox_key(9001) == qu._mailbox_key("9001") == "queue_unstick:9001"
+
+
+# ── retract_dirty_signal: dry-run / missing-file / non-zero-rc / success ────
+
+
+def test_retract_dirty_signal_dry_run_never_calls_run():
+    calls = []
+
+    def _never_called(cmd, timeout=30):
+        calls.append(cmd)
+        return 0, "", ""
+
+    original_run = qu._run
+    qu._run = _never_called
+    try:
+        ok, detail = qu.retract_dirty_signal("601", dry_run=True)
+    finally:
+        qu._run = original_run
+    assert ok is True
+    assert "[dry-run]" in detail
+    assert "queue_unstick:601" in detail
+    assert calls == []
+
+
+def test_retract_dirty_signal_missing_fleet_mail_reports_failure(tmp_path):
+    ok, detail = qu.retract_dirty_signal("602", dry_run=False, repo_root=tmp_path)
+    assert ok is False
+    assert "FAILED" in detail
+    assert "fleet_mail.sh not found" in detail
+
+
+def test_retract_dirty_signal_nonzero_rc_reports_failure():
+    original_run = qu._run
+    qu._run = lambda cmd, timeout=30: (1, "", "no reachable ssh route for 'pro'")
+    try:
+        ok, detail = qu.retract_dirty_signal("603", dry_run=False)
+    finally:
+        qu._run = original_run
+    assert ok is False
+    assert "FAILED" in detail
+    assert "no reachable ssh route" in detail
+
+
+def test_retract_dirty_signal_success_reports_ok_and_uses_retract_argv_shape():
+    original_run = qu._run
+    calls = []
+
+    def fake_run(cmd, timeout=30):
+        calls.append(cmd)
+        return 0, "retracted 1 message(s) matching key 'queue_unstick:604' on pro", ""
+
+    qu._run = fake_run
+    try:
+        ok, detail = qu.retract_dirty_signal("604", dry_run=False)
+    finally:
+        qu._run = original_run
+    assert ok is True
+    assert "OK" in detail
+    cmd = calls[0]
+    assert cmd[0] == "bash"
+    assert cmd[2] == qu.FLEET_MAIL_HOST
+    assert cmd[3] == "retract"
+    key_index = cmd.index("--key") + 1
+    assert cmd[key_index] == "queue_unstick:604"
+
+
+# ── send_dirty_signal: --ttl is actually wired through ──────────────────────
+
+
+def test_send_dirty_signal_dry_run_names_the_ttl_flag():
+    pr = make_pr(605, merge_state_status="DIRTY", head_sha="f" * 40)
+    ok, detail = qu.send_dirty_signal(pr, dry_run=True)
+    assert ok is True
+    assert f"--ttl {qu.DIRTY_SIGNAL_TTL_HOURS}" in detail
+
+
+def test_send_dirty_signal_production_argv_includes_ttl():
+    pr = make_pr(606, merge_state_status="DIRTY", head_sha="1" * 40)
+    original_run = qu._run
+    calls = []
+
+    def fake_run(cmd, timeout=30):
+        calls.append(cmd)
+        return 0, "delivered", ""
+
+    qu._run = fake_run
+    try:
+        ok, _ = qu.send_dirty_signal(pr, dry_run=False, files_desc="scripts/foo.py")
+    finally:
+        qu._run = original_run
+    assert ok is True
+    cmd = calls[0]
+    ttl_index = cmd.index("--ttl") + 1
+    assert cmd[ttl_index] == str(qu.DIRTY_SIGNAL_TTL_HOURS)
+
+
+# ── main(): retraction wired end-to-end ──────────────────────────────────────
+
+
+def test_main_GUILT_pr_merged_since_last_signal_is_retracted_and_dropped_from_state(
+    monkeypatch, tmp_path, capsys
+):
+    """Deleting the retraction wiring from main() makes this go red: `_run`
+    would never be called and '701' would still be in the saved state file."""
+    monkeypatch.delenv("QUEUE_UNSTICK_ENABLED", raising=False)
+    monkeypatch.setattr(qu, "STATE_DIR", tmp_path)
+    seen_file = tmp_path / "seen.json"
+    monkeypatch.setattr(qu, "DIRTY_SEEN_FILE", seen_file)
+    qu.save_dirty_seen({"701": "a" * 40 + ":aaaa1111"}, path=seen_file)
+
+    # PR 701 no longer appears in the open set at all (merged/closed).
+    monkeypatch.setattr(qu, "fetch_open_prs", lambda repo: [])
+
+    calls = []
+
+    def fake_run(cmd, timeout=30):
+        calls.append(cmd)
+        return 0, "retracted 1 message(s)", ""
+
+    monkeypatch.setattr(qu, "_run", fake_run)
+
+    rc = qu.main([])
+    out = capsys.readouterr().out
+
+    assert rc == 0
+    retract_calls = [c for c in calls if "retract" in c]
+    assert len(retract_calls) == 1
+    key_index = retract_calls[0].index("--key") + 1
+    assert retract_calls[0][key_index] == "queue_unstick:701"
+    assert "dirty_retracted=1" in out
+    assert "dirty_retract_failed=0" in out
+    assert qu.load_dirty_seen(seen_file) == {}
+
+
+def test_main_INNOCENCE_still_dirty_pr_with_unchanged_fingerprint_is_not_retracted(
+    monkeypatch, tmp_path, capsys
+):
+    monkeypatch.delenv("QUEUE_UNSTICK_ENABLED", raising=False)
+    monkeypatch.setattr(qu, "STATE_DIR", tmp_path)
+    seen_file = tmp_path / "seen.json"
+    monkeypatch.setattr(qu, "DIRTY_SEEN_FILE", seen_file)
+
+    real_now = _dt.datetime.now(_dt.timezone.utc)
+    old_commit = _iso(real_now - _dt.timedelta(minutes=30))
+    pr = make_pr(702, merge_state_status="DIRTY", minutes_since_commit=30, head_sha="b" * 40)
+    pr["last_commit_date"] = old_commit
+    monkeypatch.setattr(qu, "fetch_open_prs", lambda repo: [pr])
+    monkeypatch.setattr(qu, "get_conflicting_files", lambda pr, repo_root=qu.REPO_ROOT, timeout=25: "scripts/foo.py")
+    stored_key = qu._dirty_fingerprint("b" * 40, "scripts/foo.py")
+    qu.save_dirty_seen({"702": stored_key}, path=seen_file)
+
+    calls = []
+
+    def _never_called(cmd, timeout=30):
+        calls.append(cmd)
+        return 0, "", ""
+
+    monkeypatch.setattr(qu, "_run", _never_called)  # still DIRTY, unchanged fingerprint -> deduped, no send, no retract
+
+    rc = qu.main([])
+    out = capsys.readouterr().out
+
+    assert rc == 0
+    assert "dirty_retracted=0" in out
+    assert qu.load_dirty_seen(seen_file) == {"702": stored_key}
+    assert calls == [], f"still-dirty unchanged PR must trigger neither a send nor a retract; ran {calls}"
+
+
+def test_main_retract_failure_never_reddens_the_tick_but_still_drops_state(
+    monkeypatch, tmp_path, capsys
+):
+    """A failed retraction is reported, not swallowed — but never treated as
+    a tick failure: the un-retracted broadcast still self-expires via
+    DIRTY_SIGNAL_TTL_HOURS (see retract_dirty_signal's docstring)."""
+    monkeypatch.delenv("QUEUE_UNSTICK_ENABLED", raising=False)
+    monkeypatch.setattr(qu, "STATE_DIR", tmp_path)
+    seen_file = tmp_path / "seen.json"
+    monkeypatch.setattr(qu, "DIRTY_SEEN_FILE", seen_file)
+    qu.save_dirty_seen({"703": "c" * 40 + ":cccc"}, path=seen_file)
+    monkeypatch.setattr(qu, "fetch_open_prs", lambda repo: [])
+    monkeypatch.setattr(qu, "_run", lambda cmd, timeout=30: (1, "", "ssh timed out"))
+
+    rc = qu.main([])
+    out = capsys.readouterr().out
+
+    assert rc == 0, "a retract failure must never redden the tick"
+    assert "dirty_retracted=0" in out
+    assert "dirty_retract_failed=1" in out
+    assert qu.load_dirty_seen(seen_file) == {}, "dropped from state even though the retract call failed"

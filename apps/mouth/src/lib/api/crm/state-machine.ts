@@ -24,7 +24,10 @@ export type PracticeStatus =
  * Allowed forward transitions: from → set of valid `to` states.
  * Mirrors `VALID_TRANSITIONS` in the backend module.
  */
-export const VALID_TRANSITIONS: Record<PracticeStatus, readonly PracticeStatus[]> = {
+export const VALID_TRANSITIONS: Record<
+  PracticeStatus,
+  readonly PracticeStatus[]
+> = {
   inquiry: ["waiting_documents", "cancelled"],
   waiting_documents: ["sending_invoice", "inquiry", "cancelled"],
   sending_invoice: ["on_process", "waiting_documents", "cancelled"],
@@ -37,7 +40,9 @@ export const VALID_TRANSITIONS: Record<PracticeStatus, readonly PracticeStatus[]
  * Transitions that require an admin role on the user object.
  * Mirrors `ADMIN_ONLY_TRANSITIONS` in the backend module.
  */
-export const ADMIN_ONLY_TRANSITIONS: ReadonlyArray<readonly [PracticeStatus, PracticeStatus]> = [
+export const ADMIN_ONLY_TRANSITIONS: ReadonlyArray<
+  readonly [PracticeStatus, PracticeStatus]
+> = [
   ["completed", "cancelled"],
   ["cancelled", "inquiry"],
 ] as const;
@@ -53,6 +58,27 @@ export const STATUS_LABELS: Record<PracticeStatus, string> = {
 };
 
 const ALL_STATES = new Set<string>(Object.keys(VALID_TRANSITIONS));
+
+/**
+ * Placeholder practice type for an inquiry opened WITHOUT a service.
+ * Mirrors `OPEN_INQUIRY_TYPE_CODE` / `STATES_WITHOUT_SERVICE` in the backend
+ * module: the backend refuses to move such a practice past the inquiry stage
+ * until a real service is chosen (migration 311, 2026-09-11).
+ */
+export const OPEN_INQUIRY_TYPE_CODE = "open_inquiry";
+
+const STATES_WITHOUT_SERVICE = new Set<string>(["inquiry", "cancelled"]);
+
+/** True when moving to `target` requires a real service to be chosen first. */
+export function needsServiceBefore(
+  target: PracticeStatus | string,
+  practiceTypeCode: string | null | undefined,
+): boolean {
+  return (
+    practiceTypeCode === OPEN_INQUIRY_TYPE_CODE &&
+    !STATES_WITHOUT_SERVICE.has(target)
+  );
+}
 
 /**
  * Return the list of states the user can transition INTO from `current`,

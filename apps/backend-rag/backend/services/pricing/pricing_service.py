@@ -44,18 +44,29 @@ _FLAT_CATEGORIES = (
 _NESTED_CATEGORIES = ("tax_accounting",)
 
 
-def _support_contacts() -> tuple[str, str]:
+def _client_facing_contacts() -> tuple[str, str]:
     """Load application settings only for contact fallbacks that need them.
 
     Exact catalogue lookups are pure file reads and intentionally do not
     initialize the application's environment-backed settings object. This
     keeps narrow stateless consumers, including GARUDA's child process, free
     of unrelated database/JWT/API-key requirements.
+
+    The WhatsApp half is ``CLIENT_CONTACT_WHATSAPP``, NOT ``SUPPORT_WHATSAPP``.
+    Every caller below puts this number in front of a client — a
+    ``fallback_contact`` block returned when the catalogue fails to load, or
+    the ``Contact:`` line of the LLM pricing context. ``SUPPORT_WHATSAPP`` is
+    the bot's INBOUND identity: the line Meta delivers webhooks to, which no
+    human answers. This function used to return it, and the old name is why —
+    "support contacts" reads like the number a client contacts for support,
+    and it is the one number that is not. Renamed so the next reader cannot
+    make the same substitution; pinned by
+    ``test_only_the_meta_webhook_router_reads_the_bots_inbound_number``.
     """
 
     from backend.app.core.config import settings
 
-    return settings.SUPPORT_EMAIL, settings.SUPPORT_WHATSAPP
+    return settings.SUPPORT_EMAIL, settings.CLIENT_CONTACT_WHATSAPP
 
 
 def _format_tier_range(tier_range: list[str] | tuple[str, str] | None) -> str | None:
@@ -200,12 +211,12 @@ class PricingService:
             Pricing data for the requested service type
         """
         if not self.loaded:
-            support_email, support_whatsapp = _support_contacts()
+            support_email, client_whatsapp = _client_facing_contacts()
             return {
                 "error": "Official prices not loaded",
                 "fallback_contact": {
                     "email": support_email,
-                    "whatsapp": support_whatsapp,
+                    "whatsapp": client_whatsapp,
                 },
             }
 
@@ -311,12 +322,12 @@ class PricingService:
     def get_all_prices(self) -> dict[str, Any]:
         """Get all official prices"""
         if not self.loaded:
-            support_email, support_whatsapp = _support_contacts()
+            support_email, client_whatsapp = _client_facing_contacts()
             return {
                 "error": "Official prices not loaded",
                 "fallback_contact": {
                     "email": support_email,
-                    "whatsapp": support_whatsapp,
+                    "whatsapp": client_whatsapp,
                 },
             }
         return self.prices
@@ -487,7 +498,7 @@ class PricingService:
                 "contact_info": contact_info,
                 "disclaimer": self.prices.get("disclaimer", {}),
             }
-        support_email, _support_whatsapp = _support_contacts()
+        support_email, _client_whatsapp = _client_facing_contacts()
         return {
             "official_notice": "🔒 PREZZI UFFICIALI BALI ZERO 2026",
             "search_query": query,
@@ -664,7 +675,7 @@ class PricingService:
         consultant, tax & accounting, urgent processing.
         """
         if not self.loaded:
-            support_email, _support_whatsapp = _support_contacts()
+            support_email, _client_whatsapp = _client_facing_contacts()
             return f"⚠️ Official prices not available. Contact {support_email}"
 
         context_parts = [
@@ -719,9 +730,9 @@ class PricingService:
 
         # Contact info
         contact = self._contact_info()
-        support_email, support_whatsapp = _support_contacts()
+        support_email, client_whatsapp = _client_facing_contacts()
         context_parts.append(
-            f"Contact: {contact.get('email', support_email)} | WhatsApp: {contact.get('whatsapp', support_whatsapp)}",
+            f"Contact: {contact.get('email', support_email)} | WhatsApp: {contact.get('whatsapp', client_whatsapp)}",
         )
 
         return "\n".join(context_parts)

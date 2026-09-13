@@ -7,7 +7,7 @@
 # scar must never be archived just to fit a threshold. This cron is left in place
 # but DORMANT (limit 10M); auto-archive logic preserved for optional cleanup.
 #
-# WHY (original): /scar APPENDS to .claude/rules/cicatrix-scars.md but nothing
+# WHY (original): /scar APPENDS to docs/scars/cicatrix-scars.md but nothing
 # PRUNES. The pre-commit hook auto-archives only when someone commits THAT file;
 # this cron catches the case where /scar appends and no commit touches it — now a
 # no-op until the magazzino exceeds 10M.
@@ -30,8 +30,8 @@ if [ "${CICATRIX_ARCHIVE_ENFORCEMENT:-true}" = "false" ]; then
 fi
 
 REPO_ROOT="${REPO_ROOT:-$HOME/nuzantara}"
-ACTIVE=".claude/rules/cicatrix-scars.md"
-ARCHIVE=".claude/rules/cicatrix-scars-archive.md"
+ACTIVE="docs/scars/cicatrix-scars.md"
+ARCHIVE="docs/scars/cicatrix-scars-archive.md"
 LIMIT="${CICATRIX_SIZE_LIMIT_CHARS:-10000000}"
 
 cd "$REPO_ROOT" || { echo "[cicatrix-cron] FATAL: cannot cd $REPO_ROOT"; exit 1; }

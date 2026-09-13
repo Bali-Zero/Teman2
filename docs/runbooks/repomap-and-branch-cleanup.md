@@ -202,6 +202,6 @@ installer's first run.
 
 - SOTA synthesis brief: `research/operations/2026-05-24-sota-multi-agent-repo-architecture-synthesis.md`
 - Cicatrix family (sibling-agent branch swap during long sessions): see
-  `.claude/rules/cicatrix-scars.md` 2026-04-29 entry "Untracked files lost
+  `docs/scars/cicatrix-scars.md` 2026-04-29 entry "Untracked files lost
   when sibling automation switches branches mid-session".
 - Aider repomap docs: <https://aider.chat/docs/repomap.html>

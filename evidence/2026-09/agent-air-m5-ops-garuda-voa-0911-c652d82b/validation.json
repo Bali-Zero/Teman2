@@ -1,0 +1,23 @@
+{
+  "date_wita": "2026-09-11",
+  "host": "Pro",
+  "database": "disposable PostgreSQL17 loopback cluster",
+  "initial_run": {
+    "passed": 3,
+    "failed": 1,
+    "seconds": 0.97,
+    "failure": "explicit legacy DSN inherited global dedicated guard"
+  },
+  "corrected_run": {
+    "passed": 50,
+    "failed": 0,
+    "skipped": 0,
+    "warnings": 2,
+    "seconds": 1.73
+  },
+  "cleanup": "DISPOSABLE_PG_STOPPED after each run",
+  "ruff": "All checks passed",
+  "review_snapshot_matches_tested_candidate": true,
+  "prod_writes": false,
+  "new_policy_rows": 0
+}

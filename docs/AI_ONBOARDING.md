@@ -313,7 +313,7 @@ Pages: `src/app/`, Components: `src/components/`, API: `src/lib/api/`
 5. Lazy loading — health returns 200 during startup, don't panic
 6. bali-intel-scraper runs ONLY on Pro locally, NOT on Fly.io
 7. Core Guardian V3 runs every 3h — don't interfere with its worktree fixes
-8. See `.claude/rules/cicatrix-scars.md` before modifying files it references
+8. See `docs/scars/cicatrix-scars.md` before modifying files it references
 9. For behavioral rules, delegation, language protocol → see `CLAUDE.md`
 10. This is a production system serving 5000+ real clients. Be careful.
 11. System Doctor (`scripts/system_doctor.py`) runs 47 health checks — check its output before and after changes

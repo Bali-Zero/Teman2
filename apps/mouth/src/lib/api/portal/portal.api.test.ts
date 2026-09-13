@@ -36,7 +36,7 @@ const createMockDashboard = (
     totalCompanies: 1,
   },
   taxes: {
-    status: "compliant",
+    status: "upcoming",
     nextDeadline: null,
     daysToDeadline: null,
   },
@@ -100,7 +100,7 @@ const createMockTaxOverview = (
   overrides?: Partial<TaxOverview>,
 ): TaxOverview => ({
   summary: {
-    status: "ok",
+    status: "none",
     totalDue: 0,
     nextDeadline: null,
     daysToDeadline: null,
@@ -140,8 +140,8 @@ const createMockMessage = (
 const createMockPreferences = (
   overrides?: Partial<PortalPreferences>,
 ): PortalPreferences => ({
-  emailNotifications: true,
-  whatsappNotifications: false,
+  // Locale only: notification consent lives in `notification_prefs`
+  // (portal audit F-04, 2026-09-11).
   language: "en",
   timezone: "Asia/Jakarta",
   ...overrides,
@@ -608,11 +608,11 @@ describe("PortalApi", () => {
   describe("updatePreferences", () => {
     it("should update preferences successfully", async () => {
       const updates: Partial<PortalPreferences> = {
-        emailNotifications: false,
+        language: "id",
       };
 
       const mockPreferences = createMockPreferences({
-        emailNotifications: false,
+        language: "id",
       });
       mockRequest.mockResolvedValue({ data: mockPreferences });
 

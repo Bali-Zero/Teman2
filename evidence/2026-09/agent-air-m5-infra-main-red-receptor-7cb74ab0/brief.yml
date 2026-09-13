@@ -1,0 +1,67 @@
+task_id: main-red-receptor
+gear: 2
+l_level: L1
+gate_class: opus
+objective: >-
+  Give the healer a receptor for a REQUIRED status check red on main (Ruling Zero
+  2026-09-09: nothing in the system waits for Zero for a fix). Since 2026-09-08 a
+  required context (Backend Tests (Python), red through Backend Static (Python)'s
+  pip-audit on httpx2 2.10.0) stalled the merge queue and no receptor sensed it:
+  the seven existing receptors watch organs, ledgers, hooks and sessions, never the
+  branch every PR must pass.
+
+  scripts/healer_receptor_main_red.py walks main from HEAD back to each required
+  context's newest non-skipped conclusion (measured before writing: HEAD was a
+  docs-only merge where the context read `skipped`; the failure sat two commits
+  back — a HEAD-only reader says GREEN). For each red it collects the run URL,
+  every failed job of the run with its failed steps and the log window around the
+  root-cause job's last ##[error]; appends ONE HIGH line per (context, sha) to
+  shared/escalations_pro.jsonl with a cure_lane; dedupes by sha in
+  ~/.organism/healer/main_red_state.json; appends a resolved line when the context
+  turns green; never reruns. Wired as receptor 8 in infra/healer/healer-run.sh.
+
+  Gear is 2 via the SIZE term alone (601 net lines: 330 receptor incl. doctrine
+  docstring, 200 guilt+innocence tests, wiring). No hot-zone path is touched.
+constraints:
+  - >-
+    Never `gh run rerun`: a blind rerun replays a stale merge ref (Builder Contract
+    §1). Asserted by test on the module AST and on the fake gh call log.
+  - >-
+    Healer perimeter unchanged: `.github/workflows/**` and `apps/**` stay OUT. The
+    escalation names `cure_lane.owner: session` so the first Claude session that
+    reads the board (SessionStart injects HIGH first) owns the cure; the healer
+    session only triages.
+  - >-
+    Fail-visible, not fail-open: gh or branch protection unreadable = exit 2 BLIND,
+    which healer-run.sh treats as ACTIONABLE (same contract as receptor 4). Kill
+    switch HEALER_MAIN_RED_OFF=1.
+  - >-
+    No PII: the board line carries CI job names, step names and a capped, ANSI- and
+    timestamp-stripped log window of a public-runner job.
+acceptance:
+  - >-
+    WHEN main HEAD reads `skipped` for a required context and the newest non-skipped
+    conclusion two commits back is `failure`, THEN the receptor exits 1, names the
+    context, the sha at depth 2, the failed jobs of that run and the root-cause log
+    window. probe: test_red_two_commits_back_is_red_and_escalates_high; live 2026-09-09
+    10:40 WITA on M5 — `red Backend Tests (Python) @ac9538af70 depth=2`, failed_jobs
+    [Backend Static (Python) [pip-audit], ...], log tail with the httpx2 CVE rows.
+  - >-
+    WHEN the same (context, sha) is still red on the next tick, THEN no second board
+    line is written. probe: test_same_red_second_tick_is_deduped; live second run
+    `+0 escalated`.
+  - >-
+    WHEN the context turns green on a newer sha, THEN a `status: resolved` line for the
+    same job is appended and the receptor exits 0. probe:
+    test_new_sha_still_red_escalates_again_and_green_resolves; live 2026-09-09 11:09
+    WITA after #5971 merged — `board: +0 escalated, 1 resolved`, exit 0, SessionStart
+    receptor back to mute.
+  - >-
+    WHEN a non-required check fails, or a required one is in_progress on HEAD, or
+    HEALER_MAIN_RED_OFF=1, THEN the receptor stays green / pending / disabled and
+    writes nothing. probe: test_non_required_failure_is_ignored,
+    test_in_progress_on_head_is_pending_not_red, test_kill_switch.
+  - >-
+    WHEN branch protection is unreadable, THEN exit 2 and no board write.
+    probe: test_blind_when_protection_unreadable.
+pii_scan: clean

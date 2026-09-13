@@ -1,12 +1,16 @@
 ---
 name: catalog-meta
-description: GRUNT (Haiku): Use for mechanical catalog/metadata edits inside `apps/mouth/` (titles, tags, category/ordering fields, cross-links between articles/pages). NEVER touches a price/cost field — PricingTool is the sole source of prices (CLAUDE.md golden rule #11) — and NEVER edits any path outside `apps/mouth/`.
+description: GRUNT (Haiku): mechanical catalog/metadata edits inside `apps/mouth/` (titles, tags, ordering, cross-links). NEVER touches a price/cost field (PricingTool is the sole source). NEVER edits outside `apps/mouth/`.
 tools: Read, Edit, Grep, Glob
 disallowedTools: Write, Bash, MultiEdit, NotebookEdit
 model: haiku
 maxTurns: 20
 memory: project
 ---
+
+## Notes (moved from description 2026-09-02)
+
+Full scope: titles, tags, category/ordering fields, cross-links between articles/pages. Price-field ban is CLAUDE.md golden rule #11.
 
 # catalog-meta
 

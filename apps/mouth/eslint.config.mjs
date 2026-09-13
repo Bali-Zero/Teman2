@@ -7,6 +7,7 @@ const config = [
       'node_modules/',
       '.next/',
       'out/',
+      'coverage/',
       'playwright-report/',
       'test-results/',
       'scripts/',

@@ -1,0 +1,192 @@
+gear: 2
+gear_reason: >-
+  Measured the way CI measures it, with BOTH inputs:
+  `scripts/evidence_pack_lint.py --print-floor --changed-files-file <f> --numstat-file <n>`
+  returns 2 and `--print-floor-source` returns `size`. An earlier revision of this brief declared
+  1 after reasoning from the shape of the diff without running the tool — the same mistake that
+  got #6240 rejected in this mandate and that PR-O2's brief repeated. Run both invocations to
+  check; no digit is typed here, because a count written into a file that is itself in the diff is
+  stale the moment it is written. Frontend tests and copy only: no rule pack, no evaluator, no
+  deploy config, no runtime behaviour of the engine.
+task_id: shweb-w-oracle-d3c-20260913
+mandate_id: SHWEB-20260911/W-ORACLE/PR-D3c
+colour: BLUE
+l_level: L1
+gate_class: opus
+objective: >-
+  Closes the three conditions the PR-D3 half-2 gate left open, plus a fourth (C-D5) the owner
+  added mid-task: (C-D1) an anchor test guarding the premise that lets the frontend synthesise the
+  twin Second Home basis's four facts as KNOWN(0)/KNOWN(false) — safe only while no signed-pack
+  rule reads them in a HARD_FILTER/EXCLUDE stage or compares one with `eq false`; (C-D2) a pin test
+  named for "the signed pack" that actually read the unsigned `.source.json`, now reading
+  `.signed.json` and taking rules from `payload`; (C-C4) a hardcoded machine-local absolute path in
+  the already-committed D3b evidence brief's probe 3, made repo-relative and proven portable
+  somewhere the old path cannot resolve; (C-D5) three more SUPPORT_REASON_COPY legal figures
+  anchored to the signed pack's own `gte` thresholds (six more found to have NO backing rule at
+  all and had their figures removed), and the Second Home deposit/property sentences rewritten to
+  interpolate the two constants D3 half-2 already pinned instead of restating the digits a third
+  time. Frontend tests + one evidence-doc fix only; no rule-pack change, no backend change.
+scope:
+  - apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter.ts
+  - apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter.test.ts
+  - evidence/2026-09/agent-mini-pro2-mouth-shweb-w-oracle-d3b-2026091-2cae648a/brief.yml (probe-3 path only)
+  - this brief
+constraints:
+  - >-
+    fact-mapper.ts, flow.ts, tree.ts and every walk fixture are untouched — a sibling PR (D4a) is
+    live on them, and the owner later confirmed this PR owns engine-adapter.ts/.test.ts
+    exclusively. `git diff --stat` (this brief's gear_reason) names only the three files above.
+  - No client PII in any file added or edited.
+  - >-
+    Depth 1: every fix is a single-round change, no fix-of-a-fix. Where a SUPPORT-copy figure had
+    no backing rule, the figure was removed or flagged — never a fabricated rule mapping and never
+    a quiet deletion of a figure a rule DOES support (owner's explicit instruction).
+acceptance:
+  - text: >-
+      WHEN a future signed-pack rule reads a synthesised twin-basis Second Home fact
+      (`secondhome.bank_deposit_usd` / `..._at_state_bank` / `..._in_own_name` /
+      `secondhome.qualifying_property_value_usd`) in a HARD_FILTER/EXCLUDE stage, or compares one
+      with `eq false`, THEN the new anchor test SHALL go red.
+    status: verified
+    ts: "2026-09-13T03:11:19+08:00"
+    probe: "cd apps/mouth && npx --no-install vitest run 'src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter.test.ts' -t 'never lets a HARD_FILTER'"
+  - text: >-
+      Mutation proof for the same test: setting `el.e33e.retirement`'s stage/effect to
+      HARD_FILTER/EXCLUDE in the signed pack on disk turns it red; reverting turns it green.
+    status: verified
+    ts: "2026-09-13T03:11:34+08:00"
+    probe: "cd apps/mouth && npx --no-install vitest run 'src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter.test.ts' 2>&1 | tail -10"
+  - text: >-
+      WHEN the pin test named for "the signed pack" runs, THEN it SHALL read
+      `rulepack-prod-*.signed.json` and take rules from the envelope's `payload`, never the
+      unsigned `.source.json` its old body actually read.
+    status: verified
+    ts: "2026-09-13T03:09:49+08:00"
+    probe: "cd apps/mouth && npx --no-install vitest run 'src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter.test.ts' -t 'track the signed pack'"
+  - text: >-
+      Mutation proof for the pin: SECOND_HOME_DEPOSIT_THRESHOLD_USD set to 131_000 fails 3 tests
+      (the pin itself plus two `secondHomeBelowThresholdReason` regex checks); reverted to
+      130_000, all 54 tests in the file pass again.
+    status: verified
+    ts: "2026-09-13T03:10:58+08:00"
+    probe: |
+      sed -i '' 's/SECOND_HOME_DEPOSIT_THRESHOLD_USD = 130_000/SECOND_HOME_DEPOSIT_THRESHOLD_USD = 131_000/' apps/mouth/src/app/\(visa-oracle\)/visa-oracle/_lib/engine-adapter.ts
+      (cd apps/mouth && npx --no-install vitest run 'src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter.test.ts' 2>&1 | tail -6)
+      sed -i '' 's/SECOND_HOME_DEPOSIT_THRESHOLD_USD = 131_000/SECOND_HOME_DEPOSIT_THRESHOLD_USD = 130_000/' apps/mouth/src/app/\(visa-oracle\)/visa-oracle/_lib/engine-adapter.ts
+      (cd apps/mouth && npx --no-install vitest run 'src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter.test.ts' 2>&1 | tail -6)
+  - text: >-
+      WHEN D3b brief probe 3's OLD hardcoded absolute path
+      (`/Users/nuzantara/nuzantara/apps/backend-rag/.venv/bin/python`) is made genuinely
+      unreachable, THEN the OLD probe text SHALL fail and the FIXED, repo-relative probe text
+      (`.venv/bin/python`, run after `cd apps/backend-rag`) SHALL still succeed, run from an
+      independent repo root. An exit 0 obtained on the host that owns the hardcoded path proves
+      nothing by itself (D3b's own defect) — the path was made unreachable with `sandbox-exec`
+      denying file-read-data/file-read-metadata/process-exec on that exact absolute subpath, and
+      the FIXED probe was run from a SEPARATE repo root whose own `apps/backend-rag/.venv` is an
+      independent APFS clonefile copy (different inode, different absolute path entirely; every
+      other file symlinked back to the real worktree) under the identical denial.
+    status: verified
+    ts: "2026-09-13T03:20:18+08:00"
+    probe: |
+      cat > /tmp/deny-old-venv.sb <<'EOF'
+      (version 1)
+      (allow default)
+      (deny file-read-data (subpath "/Users/nuzantara/nuzantara/apps/backend-rag/.venv"))
+      (deny file-read-metadata (subpath "/Users/nuzantara/nuzantara/apps/backend-rag/.venv"))
+      (deny process-exec (subpath "/Users/nuzantara/nuzantara/apps/backend-rag/.venv"))
+      EOF
+      sandbox-exec -f /tmp/deny-old-venv.sb bash -c 'cd apps/backend-rag && PYTHONPATH=. /Users/nuzantara/nuzantara/apps/backend-rag/.venv/bin/python -m pytest backend/tests/services/visa_engine/test_interview_walk_census.py -q -o addopts=""'
+      # OLD probe: exit 126, "Operation not permitted"
+      sandbox-exec -f /tmp/deny-old-venv.sb bash -c 'cd apps/backend-rag && PYTHONPATH=. .venv/bin/python -m pytest backend/tests/services/visa_engine/test_interview_walk_census.py -q -o addopts=""'
+      # FIXED probe, run from the independent clone repo root: exit 0, "15 passed"
+  - text: >-
+      WHEN every SUPPORT_REASON_COPY figure with a backing signed-pack rule is compared to that
+      rule's own `gte` threshold, THEN EN and ID SHALL both match exactly; WHEN a
+      SUPPORT_REASON_COPY entry has NO backing rule anywhere in the signed pack, THEN neither its
+      EN nor its ID text SHALL contain a digit.
+    status: verified
+    ts: "2026-09-13T03:09:49+08:00"
+    probe: "cd apps/mouth && npx --no-install vitest run 'src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter.test.ts' -t 'anchors every remaining SUPPORT-copy figure'"
+  - text: >-
+      WHEN the full visa-oracle frontend suite runs, THEN every test SHALL pass; WHEN the project
+      typechecks, THEN it SHALL succeed.
+    status: verified
+    ts: "2026-09-13T03:21:10+08:00"
+    probe: "cd apps/mouth && npx --no-install vitest run 'src/app/(visa-oracle)' --maxWorkers=2 && npx --no-install tsc --noEmit -p ."
+figure_audit:
+  method: >-
+    Every `gte` (fact, value) pair in the highest-sequence SIGNED pack (rulepack-prod-020.signed.json,
+    sequence 20) was enumerated by walking every rule's `when` tree structurally (`all`/`any` via
+    `args`, `not` via its singular `arg` — never regexed off the JSON text). Every
+    SUPPORT_REASON_COPY entry naming a USD/IDR/Rp figure was then checked against it by
+    (reason_code -> rule_id -> fact). Counts below are commands, not typed numbers.
+  anchored_count_probe: >-
+    cd apps/mouth && awk '/const FIGURE_BACKED_BY_RULE/,/^  \};$/'
+    'src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter.test.ts' | grep -cE '^    [A-Z0-9_]+: \{$'
+  anchored_count: 3
+  anchored:
+    - key: E28A_INVESTMENT_ELIGIBLE
+      rule_id: el.e28a.investment
+      fact: investment.paid_up_capital_idr
+      pack_gte_value: 2500000000
+    - key: E33E_RETIREMENT_ELIGIBLE
+      rule_id: el.e33e.retirement
+      fact: secondhome.bank_deposit_usd
+      pack_gte_value: 50000
+    - key: E33F_RETIREMENT_ELIGIBLE
+      rule_id: el.e33f.retirement
+      fact: secondhome.passive_monthly_income_usd
+      pack_gte_value: 3000
+  already_pinned_by_d3_half2_now_interpolated:
+    - key: E33_DEPOSIT_BASIS_ELIGIBLE
+      rule_id: el.e33.deposit-basis
+      fact: secondhome.bank_deposit_usd
+      note: >-
+        Was a THIRD literal copy of the number SECOND_HOME_DEPOSIT_THRESHOLD_USD already pins;
+        this PR rewrote the sentence to interpolate the constant (via a shared `usd()` formatter)
+        instead of restating 130,000.
+    - key: E33_PROPERTY_BASIS_ELIGIBLE
+      rule_id: el.e33.property-basis
+      fact: secondhome.qualifying_property_value_usd
+      note: Same treatment, SECOND_HOME_PROPERTY_THRESHOLD_USD.
+  removed_count_probe: >-
+    cd apps/mouth && awk '/const NO_BACKING_KEYS/,/\] as const;/'
+    'src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter.test.ts' | grep -cE '^\s*"[A-Z0-9_]+",?$'
+  removed_count: 6
+  removed_no_open_questions:
+    - key: PROOF_OF_FUNDS_D1
+      was: "USD 2,000"
+      why: "el.d1-funds-usd-2000's when-tree tests purpose/entry-pattern/stay-days only — no funds fact exists anywhere in the pack (verified: full fact-name enumeration across all 109 rules has no proof-of-funds field)."
+    - key: PROOF_OF_FUNDS_D2
+      was: "USD 2,000"
+      why: "el.d2-funds-usd-2000, same reason."
+    - key: PROOF_OF_FUNDS_D12
+      was: "USD 5,000"
+      why: "el.d12-funds-usd-5000, same reason."
+    - key: REQ_FUNDS_2000
+      was: "USD 2,000"
+      why: "el.e31a-funds-2000, same reason."
+    - key: LIVING_COST_USD2000
+      was: "USD 2,000"
+      why: "el.e30-living-cost-2000.* (three rule ids) test purpose/admission/sponsor only — no living-cost fact exists."
+    - key: E33G_INCOME_60K_ADVISOR_CHECK
+      was: "USD 60,000"
+      why: >-
+        No rule anywhere in the pack carries this reason_code at all, and no income fact exists.
+        Rewritten to the same figure-free template the three sibling Golden Visa advisor checks
+        (E28B/C/D) already use for the identical documented reason (no engine fact to test).
+  open_questions: []
+pii: none
+self_report:
+  probe_portability_defect: >-
+    D3b's committed brief reported probe 3 discharged on an exit 0 obtained on the one host that
+    owns the hardcoded absolute path — that measurement proved nothing about portability. This PR
+    is the correction: the fixed probe is proven to still succeed while the old absolute path is
+    made genuinely unreachable, from an independent repo root, not merely re-run in place.
+  scratch_artifacts: >-
+    The independent repo-root clone used for the portability proof (APFS `cp -c` clonefile of
+    .venv, symlinks for everything else) was built and torn down under this session's own
+    scratchpad directory; nothing under the tracked repo or the main checkout was modified by it.
+  note: >-
+    `figure_audit`, this `self_report` block and this note are this session's record, not a
+    machine-re-verified artifact beyond the counted probes named above.

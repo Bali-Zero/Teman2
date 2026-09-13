@@ -1,0 +1,39 @@
+source_base: 58e8b0b027a25f8e213414577f154f16599d7ce6 # pragma: allowlist secret - verified Git commit SHA, not credential
+command: cd apps/mouth && npx vitest run src/app/visa/second-home/studio/StudioApp.test.tsx src/app/visa/second-home/studio/components/SavePlanBar.test.tsx
+tests:
+  - case: wrapper-removed
+    cmd: git apply --unidiff-zero evidence/2026-09/agent-air-m5-mouth-s01b-consent-reservation/wrapper-removed.patch && (cd apps/mouth && npx vitest run src/app/visa/second-home/studio/StudioApp.test.tsx src/app/visa/second-home/studio/components/SavePlanBar.test.tsx)
+    exit: 1
+    ts: "2026-09-05T11:34:13.072144+00:00"
+    summary:
+      - Test Files  1 failed | 1 passed (2)
+      - Tests  2 failed | 52 passed (54)
+    log_sha256: 43c7b7a4424c2a92d48665bf0c8fa3749bbca92d133fad5e5be029b45bb9bd42 # pragma: allowlist secret - verified artifact SHA-256, not credential
+    patch_sha256: 128300d9ba5649d5160209f1b8cdab7ba9bf686577522cb76e108b759960a74c # pragma: allowlist secret - verified artifact SHA-256, not credential
+  - case: banner-outside
+    cmd: git apply --unidiff-zero evidence/2026-09/agent-air-m5-mouth-s01b-consent-reservation/banner-outside.patch && (cd apps/mouth && npx vitest run src/app/visa/second-home/studio/StudioApp.test.tsx src/app/visa/second-home/studio/components/SavePlanBar.test.tsx)
+    exit: 1
+    ts: "2026-09-05T11:34:18.835216+00:00"
+    summary:
+      - Test Files  1 failed | 1 passed (2)
+      - Tests  2 failed | 52 passed (54)
+    log_sha256: e1e2da0f3ff6deac38510cbf1e5c1592eb4972c435d9e946906f7e5c5f89612d # pragma: allowlist secret - verified artifact SHA-256, not credential
+    patch_sha256: 32a2b32fce5285d6e4284122a38cd738e6ee3574af2ae3d9070f16e8e3b53eec # pragma: allowlist secret - verified artifact SHA-256, not credential
+  - case: print-rule-removed
+    cmd: git apply --unidiff-zero evidence/2026-09/agent-air-m5-mouth-s01b-consent-reservation/print-rule-removed.patch && (cd apps/mouth && npx vitest run src/app/visa/second-home/studio/StudioApp.test.tsx src/app/visa/second-home/studio/components/SavePlanBar.test.tsx)
+    exit: 1
+    ts: "2026-09-05T11:34:24.582806+00:00"
+    summary:
+      - Test Files  1 failed | 1 passed (2)
+      - Tests  1 failed | 53 passed (54)
+    log_sha256: 1874ccb2918f56552d1f8021003899ec6e2830614bd873be2fe34f7e5149491c # pragma: allowlist secret - verified artifact SHA-256, not credential
+    patch_sha256: 1feb4d4390d6658e100cfe5af3fe04e1b10cdfb852e734cccac9c206b138ee36 # pragma: allowlist secret - verified artifact SHA-256, not credential
+  - case: candidate-restored
+    cmd: cd apps/mouth && npx vitest run src/app/visa/second-home/studio/StudioApp.test.tsx src/app/visa/second-home/studio/components/SavePlanBar.test.tsx
+    exit: 0
+    ts: "2026-09-05T11:34:30.122636+00:00"
+    summary:
+      - Test Files  2 passed (2)
+      - Tests  54 passed (54)
+    log_sha256: f103679c54d88316f3c96a2518568dfda3a87678b293520352eb8e7d5f0267f4 # pragma: allowlist secret - verified artifact SHA-256, not credential
+restored_runtime_sha256: 9b904e19f3da96203b532998aaa885163da78a62c208ae9d42d103a510951a8a # pragma: allowlist secret - verified artifact SHA-256, not credential

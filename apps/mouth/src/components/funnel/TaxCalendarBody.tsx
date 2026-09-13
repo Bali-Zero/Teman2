@@ -79,6 +79,9 @@ export function TaxCalendarBody({
           download="bali-tax-deadlines.ics"
           className="btn"
           style={{
+            display: "inline-flex",
+            alignItems: "center",
+            minHeight: "44px",
             padding: "var(--space-2) var(--space-4)",
             borderRadius: "var(--radius-md)",
             border: "1px solid var(--color-border-subtle)",
@@ -137,6 +140,9 @@ export function TaxCalendarBody({
               rel="noopener noreferrer"
               className="btn btn-primary"
               style={{
+                display: "inline-flex",
+                alignItems: "center",
+                minHeight: "44px",
                 padding: "var(--space-2) var(--space-4)",
                 borderRadius: "var(--radius-md)",
                 background: "var(--accent-funnel)",

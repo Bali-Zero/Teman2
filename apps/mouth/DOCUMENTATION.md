@@ -212,9 +212,7 @@ apps/mouth/
 │   │   ├── chat/                     # Chat UI
 │   │   │   ├── ChatHeader.tsx
 │   │   │   ├── ChatInputBar.tsx
-│   │   │   ├── ChatMessageList.tsx
-│   │   │   ├── ChatSourcesPanel.tsx
-│   │   │   ├── FeedbackWidget.tsx
+│   │   │   ├── ChatMessageListVirtualized.tsx
 │   │   │   ├── MessageBubble.tsx
 │   │   │   └── ThinkingIndicator.tsx
 │   │   ├── dashboard/                # Dashboard widgets
@@ -294,8 +292,7 @@ apps/mouth/
 ```bash
 # .env.local
 
-# Backend API
-NEXT_PUBLIC_API_URL=https://nuzantara-rag.fly.dev
+# Backend API (server only; src/app browser clients use the same-origin /api proxy)
 NUZANTARA_API_URL=https://nuzantara-rag.fly.dev
 
 # WebSocket
@@ -345,7 +342,8 @@ Or use Vercel dashboard/GitHub integration for automatic deployments.
 
 **Environment Variables (Vercel Dashboard):**
 
-- `NEXT_PUBLIC_API_URL` - Backend API URL (https://nuzantara-rag.fly.dev)
+- `NUZANTARA_API_URL` - Server-side backend URL (https://nuzantara-rag.fly.dev). Browser clients under `src/app` use `/api`, forwarded by `src/app/api/[...path]/route.ts`, to preserve same-origin authentication and CSRF handling. The guard scans `src/app` only; it does not cover browser references in `src/lib`, hooks, or transitive imports.
+- `NEXT_PUBLIC_API_URL` - Legacy fallback in server routes, after `NUZANTARA_API_URL`. Do not use it as a browser API base URL.
 - `NEXT_PUBLIC_FRONTEND_URL` - Frontend URL (https://www.balizero.com)
 - `SENTRY_DSN` - Error tracking
 
@@ -450,8 +448,6 @@ API Routes:
 ├── /api/[...path]          → Proxy universale al backend
 ├── /api/blog/articles      → Lista articoli
 ├── /api/blog/articles/[category]/[slug]  → Articolo singolo
-├── /api/blog/articles/[category]/[slug]/views  → Track views
-├── /api/blog/ai-generate   → Genera articolo AI
 ├── /api/blog/newsletter    → Subscribe newsletter
 └── /api/blog/newsletter/confirm  → Conferma email
 ```
@@ -486,9 +482,8 @@ App
 │       │       │   └── ComplianceWidget
 │       │       ├── ChatPage
 │       │       │   ├── ChatHeader
-│       │       │   ├── ChatMessageList
+│       │       │   ├── ChatMessageListVirtualized
 │       │       │   │   └── MessageBubble[]
-│       │       │   ├── ChatSourcesPanel
 │       │       │   └── ChatInputBar
 │       │       └── ...
 │       └── BlogLayout
@@ -502,15 +497,13 @@ App
 
 ### Componenti Chat
 
-| Componente          | File                         | Props                                     | Descrizione                |
-| ------------------- | ---------------------------- | ----------------------------------------- | -------------------------- |
-| `ChatHeader`        | `chat/ChatHeader.tsx`        | sessionId, onNewChat                      | Header con info sessione   |
-| `ChatInputBar`      | `chat/ChatInputBar.tsx`      | input, isLoading, onSend, onImageGenerate | Input multimodale          |
-| `ChatMessageList`   | `chat/ChatMessageList.tsx`   | messages, onFollowUp                      | Lista messaggi scrollabile |
-| `MessageBubble`     | `chat/MessageBubble.tsx`     | message, isLast, onFollowUp               | Singolo messaggio          |
-| `ChatSourcesPanel`  | `chat/ChatSourcesPanel.tsx`  | sources, isOpen                           | Panel sorgenti laterale    |
-| `ThinkingIndicator` | `chat/ThinkingIndicator.tsx` | status                                    | Indicatore elaborazione    |
-| `FeedbackWidget`    | `chat/FeedbackWidget.tsx`    | messageId, onSubmit                       | Feedback thumbs            |
+| Componente                   | File                                  | Props                                     | Descrizione                |
+| ---------------------------- | ------------------------------------- | ----------------------------------------- | -------------------------- |
+| `ChatHeader`                 | `chat/ChatHeader.tsx`                 | sessionId, onNewChat                      | Header con info sessione   |
+| `ChatInputBar`               | `chat/ChatInputBar.tsx`               | input, isLoading, onSend, onImageGenerate | Input multimodale          |
+| `ChatMessageListVirtualized` | `chat/ChatMessageListVirtualized.tsx` | messages, onFollowUp                      | Lista messaggi scrollabile |
+| `MessageBubble`              | `chat/MessageBubble.tsx`              | message, isLast, onFollowUp               | Singolo messaggio          |
+| `ThinkingIndicator`          | `chat/ThinkingIndicator.tsx`          | status                                    | Indicatore elaborazione    |
 
 ### Componenti Blog
 
@@ -566,16 +559,21 @@ import { Toast } from "@/components/ui/toast";
 
 ### API Client Base
 
+`ApiClientBase` requires an explicit `baseUrl`; the constructor does not supply a default.
+
 ```typescript
-// /lib/api/client.ts
+// src/lib/api/client.ts (abridged)
+import { safeStorage } from "@/lib/utils/storage";
 
 class ApiClientBase {
   protected baseUrl: string;
-  protected token: string | null;
+  protected token: string | null = null;
 
-  constructor(baseUrl?: string) {
-    this.baseUrl = baseUrl || process.env.NEXT_PUBLIC_API_URL;
-    this.token = localStorage.getItem("auth_token");
+  constructor(baseUrl: string) {
+    this.baseUrl = baseUrl;
+    if (typeof window !== "undefined") {
+      this.token = safeStorage.getItem("auth_token");
+    }
   }
 
   protected async fetch<T>(
@@ -692,21 +690,6 @@ const {
 
 // useMemoryContext - User memory
 const { profileFacts, summary, counters, refresh } = useMemoryContext(userId);
-
-// useWebSocket - Real-time
-const { isConnected, connect, disconnect, send, subscribe } = useWebSocket();
-```
-
-### Providers
-
-```typescript
-// WebSocket Provider
-<WebSocketProvider url={wsUrl}>
-  <App />
-</WebSocketProvider>
-
-// Usage in components
-const { send, subscribe } = useWebSocketContext();
 ```
 
 ### Local Storage Keys
@@ -818,16 +801,14 @@ MDX File → gray-matter (frontmatter) → next-mdx-remote/serialize → MDXCont
 
 ### API Endpoints Blog
 
-| Endpoint                                | Method | Descrizione               |
-| --------------------------------------- | ------ | ------------------------- |
-| `/api/blog/articles`                    | GET    | Lista articoli con filtri |
-| `/api/blog/articles?category=X`         | GET    | Filtra per categoria      |
-| `/api/blog/articles?featured=true`      | GET    | Solo featured             |
-| `/api/blog/articles?q=search`           | GET    | Cerca articoli            |
-| `/api/blog/articles/[cat]/[slug]`       | GET    | Singolo articolo          |
-| `/api/blog/articles/[cat]/[slug]/views` | POST   | Track view                |
-| `/api/blog/newsletter`                  | POST   | Subscribe                 |
-| `/api/blog/ai-generate`                 | POST   | Genera con AI             |
+| Endpoint                           | Method | Descrizione               |
+| ---------------------------------- | ------ | ------------------------- |
+| `/api/blog/articles`               | GET    | Lista articoli con filtri |
+| `/api/blog/articles?category=X`    | GET    | Filtra per categoria      |
+| `/api/blog/articles?featured=true` | GET    | Solo featured             |
+| `/api/blog/articles?q=search`      | GET    | Cerca articoli            |
+| `/api/blog/articles/[cat]/[slug]`  | GET    | Singolo articolo          |
+| `/api/blog/newsletter`             | POST   | Subscribe                 |
 
 ---
 
@@ -1040,26 +1021,42 @@ const imageUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(prom
    - nz_access_token (HttpOnly)
    - nz_csrf_token
                      ↓
-3. Frontend stores in localStorage:
-   - auth_token (for API calls)
+3. Frontend caches auth_token via safeStorage (optional bearer support):
+   - localStorage when available; memory fallback when unavailable
                      ↓
-4. Subsequent requests include:
-   - Authorization: Bearer {token}
-   - X-CSRF-Token: {csrf}
-   - Cookie: nz_access_token=...
+4. Subsequent requests use credentials: "include":
+   - Cookie: nz_access_token=... (primary session)
+   - Authorization: Bearer {token} (when available)
+   - X-CSRF-Token: {csrf} (state-changing requests, when available)
 ```
 
 ### Protected Routes
 
-```typescript
-// Middleware pattern (in page components)
-useEffect(() => {
-  const token = localStorage.getItem("auth_token");
-  if (!token) {
-    router.push("/login");
-  }
-}, []);
+Client pages use `useSessionState()`, backed by `api.hasSession()`, so a missing
+bearer token does not eject a valid cookie-only session. The hook starts at
+`pending`; only `anonymous` redirects to login. `pending` and `unknown` keep
+protected data loads gated until the session is `authenticated`.
 
+```typescript
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { useSessionState } from "@/hooks/useSessionState";
+
+// Inside a client page component (abridged from src/app/agents/page.tsx).
+const router = useRouter();
+const session = useSessionState();
+
+useEffect(() => {
+  if (session === "anonymous") {
+    router.push("/login");
+    return;
+  }
+  if (session !== "authenticated") return;
+  // Apply page-specific authorization and load protected data here.
+}, [session, router]);
+```
+
+```typescript
 // Server-side (API routes)
 const token = request.cookies.get("nz_access_token");
 if (!token) {

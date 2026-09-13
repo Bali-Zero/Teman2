@@ -41,7 +41,7 @@ _PROVIDER_KEYS = {
 
 @pytest.fixture
 def clean_auth_env(monkeypatch: pytest.MonkeyPatch) -> None:
-    for slot in range(1, 6):
+    for slot in range(1, 7):
         monkeypatch.delenv(f"CLAUDE_CODE_OAUTH_TOKEN_{slot}", raising=False)
     monkeypatch.delenv("CLAUDE_CODE_OAUTH_TOKEN", raising=False)
     for key in _PROVIDER_KEYS:
@@ -52,12 +52,12 @@ def _synthesis(note: str = "slot-five-success") -> str:
     return json.dumps({"week": "2026-W30", "lessons": [], "synthesis_notes": note})
 
 
-def test_slot5_team_succeeds_after_quota_auth_empty_and_429(
+def test_slot6_team_succeeds_after_quota_auth_empty_and_429(
     clean_auth_env: None,
     monkeypatch: pytest.MonkeyPatch,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    tokens = [f"reflexion-secret-{slot}" for slot in range(1, 6)]
+    tokens = [f"reflexion-secret-{slot}" for slot in range(1, 7)]
     for slot, token in enumerate(tokens, start=1):
         monkeypatch.setenv(f"CLAUDE_CODE_OAUTH_TOKEN_{slot}", token)
     monkeypatch.setenv("CLAUDE_CODE_OAUTH_TOKEN", tokens[0])
@@ -71,7 +71,8 @@ def test_slot5_team_succeeds_after_quota_auth_empty_and_429(
             (0, "authentication failed: refresh_token revoked", "", False),
             (0, " \n", "", False),
             (1, "", "429 rate limit", False),
-            (0, _synthesis(), "", False),
+            (0, "You've hit your weekly limit", "", False),
+            (0, _synthesis("slot-six-success"), "", False),
         ]
     )
     seen_envs: list[dict[str, str]] = []
@@ -89,13 +90,16 @@ def test_slot5_team_succeeds_after_quota_auth_empty_and_429(
 
     output = reflexion._run_claude_fleet("safe prompt")
 
-    assert json.loads(output or "")["synthesis_notes"] == "slot-five-success"
+    assert json.loads(output or "")["synthesis_notes"] == "slot-six-success"
     assert [env["CLAUDE_CODE_OAUTH_TOKEN"] for env in seen_envs] == tokens
     for env in seen_envs:
         assert not (_PROVIDER_KEYS & env.keys())
         assert not any(key.startswith("CLAUDE_CODE_OAUTH_TOKEN_") for key in env)
     stderr = capsys.readouterr().err
-    assert "slot5-team" in stderr
+    # The Team seat is slot 6 since the fleet re-map of 2026-08-23; before that this
+    # asserted "slot5-team", which described a mapping that no longer exists.
+    assert "slot6-team" in stderr
+    assert "slot5-team" not in stderr
     assert all(token not in stderr for token in tokens)
     assert all(f"provider-secret-{key}" not in stderr for key in _PROVIDER_KEYS)
 
@@ -106,12 +110,12 @@ def test_token_chain_is_deduplicated_and_keychain_is_last(
 ) -> None:
     monkeypatch.setenv("CLAUDE_CODE_OAUTH_TOKEN_1", "same")
     monkeypatch.setenv("CLAUDE_CODE_OAUTH_TOKEN_2", "same")
-    monkeypatch.setenv("CLAUDE_CODE_OAUTH_TOKEN_5", "team")
+    monkeypatch.setenv("CLAUDE_CODE_OAUTH_TOKEN_6", "team")
     monkeypatch.setenv("CLAUDE_CODE_OAUTH_TOKEN", "legacy")
 
     assert reflexion._collect_claude_seats() == [
         ("slot1", "same"),
-        ("slot5-team", "team"),
+        ("slot6-team", "team"),
         ("legacy", "legacy"),
         ("keychain", ""),
     ]

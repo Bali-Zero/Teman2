@@ -1,8 +1,12 @@
 ---
 name: karpathy-discipline
-description: Use BEFORE any feature implementation, refactor, bug fix, or non-trivial code change. Applies 4 Karpathy principles to reduce common LLM coding mistakes (silent assumptions, hypertrophy, collateral changes, vague success criteria).
+description: "Use BEFORE any feature implementation, refactor, bug fix, or non-trivial code change. Applies 4 Karpathy principles against common LLM coding mistakes."
 allowed-tools: Read, Edit, Write, Bash(git diff:*), Bash(git status:*), Bash(grep:*), Bash(rg:*)
 ---
+
+## Notes (moved from description 2026-09-02)
+
+The 4 Karpathy principles target: silent assumptions, hypertrophy, collateral changes, vague success criteria.
 
 > **CANON**: repo `.claude/` (vendored 2026-07-17, PR process-toolkit SSOT) — shadows the `~/.claude/` HOME copy. Edit HERE, never in `$HOME`. Pro/Mini shadow it on `git pull`.
 

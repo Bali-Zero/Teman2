@@ -208,7 +208,7 @@ def _claude_token_chain() -> list[tuple[str, str]]:
     """Build the OAuth chain once per unique credential value."""
     chain: list[tuple[str, str]] = []
     seen: set[str] = set()
-    for index in (1, 2, 3, 4, 5):
+    for index in (1, 2, 3, 4, 5, 6):
         token = os.environ.get(
             f"CLAUDE_CODE_OAUTH_TOKEN_{index}", ""
         ).strip()

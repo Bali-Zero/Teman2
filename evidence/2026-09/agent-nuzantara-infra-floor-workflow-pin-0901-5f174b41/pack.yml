@@ -1,0 +1,341 @@
+brief_ref: evidence/brief.yml
+council_run: journal.jsonl
+plan_ref: >-
+  Owner ruling 2026-09-01, verbatim "Cambio la regola adesso" — asked whether to unblock the three
+  affected PRs first and decide the rule later, or change the rule now, and choosing the second.
+  One concern: narrow the harness floor's PATH term for first-party action version pins.
+
+lanes:
+  - lane: floor-ground
+    role: read
+    seat: >-
+      claude-opus-5 (conducting session, Pro). Established the premise by measurement rather than
+      from the mandate text: read the three blocked PRs' real diffs and their real check lists, and
+      confirmed the twin gate hot-zone-pr-gate.yml is NOT red on them — which is why HOTZONE_PATTERNS
+      is left byte-identical here and no drift is introduced against its duplicated case-block.
+  - lane: floor-build
+    role: build
+    seat: >-
+      claude-opus-5 (conducting session, Pro). Wrote the exemption, the CLI flag, the producer step
+      in harness-floor.yml, and a guilt-first test corpus. Mutation-tested all six conditions in the
+      source: each independently reddens the suite, none reddens all of it. One write that printed
+      success did not land on disk and was caught by its own test going red, not by trusting the
+      write — re-applied and verified by re-reading the file plus an independent grep.
+  - lane: floor-grade-claude
+    role: review
+    seat: >-
+      claude-sonnet-5 subagent (spalla-review), grading a diff it did not author, on fresh context,
+      instructed to CONSTRUCT defeating inputs and run them rather than read the code and agree, and
+      to mutate at least two of the new tests and report whether they go red. Verdict recorded in
+      journal.jsonl.
+  - lane: floor-refute-crossfamily
+    role: review
+    seat: >-
+      tp1-qwen3.8-max at effort xhigh, cross-family, read-only (it cannot run code — asked to reason
+      from the diff text and name a defeating input, a line and a consequence). Verdict recorded in
+      journal.jsonl; a timeout or an exit-0-carrying-an-error is logged as a NON-JUDGEMENT and not
+      counted as a review seat.
+
+seat_diversity: satisfied
+seat_diversity_note: >-
+  ONE build lane, so D3's non-Anthropic BUILD-seat requirement does not bind by its own terms
+  (">= 2 build lanes"); no second build lane was invented to satisfy a rule that does not apply.
+  Cross-family pressure is placed where it is load-bearing for THIS change — on REVIEW. An exemption
+  is a hole in a gate, so the grading effort went into adversarial input construction, not into
+  parallel authorship.
+
+diff:
+  files: 5
+  net_lines: 626
+  measured_at: >-
+    counted with `git diff --numstat $(git merge-base origin/main HEAD)...HEAD` (three-dot — a
+    two-dot diff would accuse this branch of deleting main's later additions, W102) immediately
+    before this commit.
+
+residual_risks:
+  - >-
+    THE CROSS-FAMILY REVIEW IS PARTIAL, and the part that landed was decisive. Three seats were
+    dispatched: tp1-qwen3.8-max returned ZERO bytes in ~20 minutes (timeout), tp1-glm-5.2 exhausted
+    its reasoning budget before emitting an answer TWICE (once at --max-tokens 16000), and
+    tp1 deepseek-v4-flash-0731 was cut off at 214 bytes — having already named a REAL defect that
+    the same-family reviewers and the author had all missed (the reorder hole, see dissent). So the
+    finding rate on ~214 bytes of cross-family output was one confirmed defect, while ~40 minutes of
+    same-family review found none. The remaining risk is therefore NOT "the seats agreed": it is
+    that the deepseek answer was truncated mid-list and its findings 2..N were never seen. Its
+    prompt named eleven more shapes to attack and its findings 2..N were never emitted. Nine were
+    then probed BY HAND (author probing, not refuter answering) and all nine matched the
+    prediction — but two of those predictions are "EXEMPTED, and that is a declared limit rather
+    than a passed test", so 9/9 must not be read as 9 clean: (a) a `uses:` line inside a `run:`
+    heredoc is indistinguishable from a real step to this parser, so a ref inside GENERATED content
+    can move under the exemption; the blast radius is bounded by condition 3 to a version string,
+    and no such workflow exists in this repo today; (b) appending a trailing `# comment` to a
+    `uses:` line is exempt, which is correct in YAML and would not be inside a heredoc feeding a
+    format where `#` is not a comment. Neither is cured here; both are named so the next reader
+    does not have to rediscover them.
+  - >-
+    A first-party action version could be compromised UPSTREAM, and this exemption does not defend
+    against that. Neither did the Gear-3 ceremony it replaces, which reads a brief and a pack and
+    not the action's changelog — the real defences (SHA pinning, actionlint, CodeQL, the CODEOWNERS
+    tier) are untouched here. Stated as a limit, not as a thing this PR solves.
+  - >-
+    The parser reads a unified diff by hand rather than through a diff library, so its blind spots
+    are its own. The `--- a/path` header trap is handled explicitly and a real diff envelope is in
+    the fixtures for that reason; `diff --cc` is tested only to prove it is REFUSED, not parsed.
+    CI never feeds it one (the producer runs a two-endpoint `git diff`), so the exposure is a
+    future caller, not this one.
+  - >-
+    The exemption widens only when someone edits FIRST_PARTY_ACTION_OWNERS or the parser. Nothing
+    in this PR alarms on that beyond the test corpus — there is no lint that would notice a future
+    diff adding a third owner to the frozenset. Recorded as unguarded rather than as covered.
+
+pii_scan: clean
+
+receipts:
+  - claim: >-
+      The gate's forged-header bypass reproduced, then closed, then the closure proved to
+      discriminate — and the real header path proved NOT broken by the fix
+    cmd: >-
+      scratch `git init`; head adds `++ b/zzz: \"x\"` and `permissions: write-all` alongside a pin
+      bump; `git diff -U0` into compute_floor. Then mutate `and not in_hunk` away and re-run.
+    result: >-
+      before: exempt={ci.yml}, floor 1 — the `+permissions: write-all` line invisible. after:
+      exempt=set(), floor 3. Removing `and not in_hunk` reddens the forged-header guilt test and
+      leaves its innocence twin (a two-file patch whose REAL `+++ b/<path>` headers must still be
+      read) GREEN — so the guard is not passing by breaking header parsing outright. Suite 336
+      passed; all three real blocked PR diffs still 3 -> 1.
+    exit: 0
+    ts: 2026-09-01T20:55Z
+    seat: session (Pro), on the independent gate's finding
+  - claim: >-
+      Every attack the reviewer tried and FAILED to break — recorded because a review that lists
+      only its hits is indistinguishable from one that stopped early
+    cmd: "reviewer-constructed patches through compute_floor / workflow_paths_exempt_from_path_term"
+    result: >-
+      Held: quoted refs · CRLF · SHA pin with trailing version comment · tab-separated timestamps
+      on the +++/--- lines · a path literally containing " b/" (the `diff --git` partition IS
+      corrupted, and the following `+++ b/<path>` line re-sets it — self-healing, confirmed rather
+      than assumed) · Cyrillic homoglyph owner · wrong-case `Actions/` · `diff --cc` · brand-new
+      and fully-deleted workflow files (structurally excluded: one side's list is empty, so
+      sequence equality can never hold) · rename · `..` traversal.
+    exit: 0
+    ts: 2026-09-01T20:35Z
+    seat: claude-sonnet-5 subagent (spalla-review)
+  - claim: >-
+      The pinned-ref rule is load-bearing in BOTH directions — it is neither refusing everything
+      nor accepting everything, which is the only measurement that distinguishes a real constraint
+      from a broken one
+    cmd: >-
+      (a) replace `if not _PINNED_REF_RE.match(...)` with `if False:`; (b) restore, then narrow the
+      regex to `^v\\d+$`; pytest -k path_term_exemption after each; restore and re-run
+    result: >-
+      baseline 32 passed. Without the check: 5 failed — exactly the five unpinning guilt cases
+      (@main/@master/@latest/@HEAD/re-pin). With the regex too tight: 6 failed — the innocence
+      cases carrying full semver, unprefixed semver, a prerelease suffix and a 40-hex SHA.
+      Restored: 32 passed. The three real blocked PR diffs still go 3 -> 1 after the rule.
+    exit: 1
+    ts: 2026-09-01T20:25Z
+    seat: session (Pro), on the reviewer's attack 1b
+  - claim: >-
+      The nine shapes named in the cross-family prompt but never reached by its truncated answer
+      were probed by hand, and the two that come back EXEMPTED are limits I can state rather than
+      surprises
+    cmd: "python3 <scratchpad>/shapes.py — nine hand-built patches through compute_floor()"
+    result: >-
+      9/9 matched the prediction. Floor 3 (refused): shell command appended after the ref · YAML
+      anchor changed alongside the pin · block scalar indicator changed alongside the pin ·
+      brand-new file via `--- /dev/null` · uppercase owner `Actions/`. Floor 1 (exempted): pure pin
+      · CRLF line endings · `+++` with a TAB-separated timestamp · a trailing `# comment` added ·
+      a `uses:` line inside a `run:` heredoc. The last two are declared limits, see residual_risks.
+    exit: 0
+    ts: 2026-09-01T20:05Z
+    seat: session (Pro)
+  - claim: >-
+      The shape a peer named as adjacent to the reorder hole — two FULL steps swapping, where the
+      surrounding `with:` blocks are identical — is real, git really does hide the move, and
+      sequence equality really does catch it
+    cmd: >-
+      scratch `git init`, write the two steps, commit, swap them, `git diff -U0 --no-renames`,
+      then feed that ACTUAL output to workflow_paths_exempt_from_path_term
+    result: >-
+      git emits a minimal diff whose ONLY changed lines are the two `uses:` lines — the identical
+      `with:` blocks align as CONTEXT, so "a non-uses line would have changed too" is not a
+      defence. exempt set: empty. floor: 3. Pinned as a test carrying that command's real bytes;
+      under the superseded sorted() comparison the same test goes RED.
+    exit: 0
+    ts: 2026-09-01T19:55Z
+    seat: session (Pro), on a peer session's lead
+  - claim: >-
+      The reorder hole the cross-family refuter named was REAL, and the cure discriminates — the
+      old comparison is what let it through, and restoring it reddens exactly one test while its
+      innocence twin stays green
+    cmd: >-
+      revert condition 3 to `sorted(state["minus"]) != sorted(state["plus"])`, then pytest
+      scripts/tests/test_evidence_pack_lint.py -k path_term_exemption ; restore ; re-run
+    result: >-
+      with sorted(): 1 failed, 20 passed — the failure is
+      test_path_term_exemption_guilt_reordering_two_bare_steps_keeps_gear_three, and its innocence
+      twin (both actions bumped, order unchanged) stays GREEN. Restored: 21 passed. The three real
+      PR diffs still go 3 -> 1 after the cure, checked before and after.
+    exit: 1
+    ts: 2026-09-01T19:40Z
+    seat: session (Pro)
+  - claim: >-
+      The exemption actually moves the floor on the REAL blocked PR, not on a fixture — and the
+      same call without the patch still floors at 3, which is the control that proves the patch is
+      what did it
+    cmd: "gh pr diff 5442 > /tmp/p.patch && python scripts/evidence_pack_lint.py --print-floor --changed-files-file /tmp/cf.txt --patch-file /tmp/p.patch"
+    result: "without the patch: 3. With it: 1. Same command, same changed-files list."
+    exit: 0
+    ts: 2026-09-01T19:04Z
+    seat: session (Pro)
+  - claim: >-
+      FAIL-CLOSED is a behaviour, not a comment — an unreadable patch file lowers nothing and does
+      not paint the job red either
+    cmd: "evidence_pack_lint.py --print-floor --changed-files-file <#5442 files> --patch-file /tmp/NOPE.patch"
+    result: >-
+      prints 3, exits 0, and writes one stderr line naming the errno and saying "no path-term
+      exemption applied (fail-closed)". Deliberately not the `return 3` --numstat-file uses: that
+      file can only RAISE a floor, this one can only LOWER one.
+    exit: 0
+    ts: 2026-09-01T19:04Z
+    seat: session (Pro)
+  - claim: >-
+      EACH of the six conditions is independently load-bearing — measured by breaking them in the
+      SOURCE one at a time and re-running, not by reading the tests and agreeing with them
+    cmd: >-
+      for each condition: replace its `if <cond>:` with `if False:` in scripts/evidence_pack_lint.py,
+      then pytest scripts/tests/test_evidence_pack_lint.py -k path_term_exemption
+    result: >-
+      clean-line check -> 1 failed / multiset equality -> 3 failed / .github/workflows boundary ->
+      3 failed / the exempt filter in the path term -> 3 failed / first-party owner check -> 1
+      failed / no-hunk check -> 1 failed. Baseline 15 passed; restore verified back to 15 passed.
+      NONE of the six reddens the whole suite, which is the discriminating signature — a control
+      where every assertion goes red is indistinguishable from a broken test.
+    exit: 1
+    ts: 2026-09-01T18:41Z
+    seat: session (Pro)
+  - claim: "Acceptance probes 2, 3 and 5 — the guilt corpus and the structural-confinement test"
+    cmd: "python -m pytest scripts/tests/test_evidence_pack_lint.py -k path_term_exemption_guilt ; python -m pytest scripts/tests/test_evidence_pack_lint.py -k never_returns_a_non_workflow_path"
+    result: "green, inside a full-file run of 319 passed."
+    exit: 0
+    ts: 2026-09-01T19:04Z
+    seat: session (Pro)
+  - claim: "Acceptance probe 4 — no patch, missing patch and empty patch all exempt nothing"
+    cmd: "python -m pytest scripts/tests/test_evidence_pack_lint.py -k path_term_exemption_defaults_to_no_exemption"
+    result: "green. Asserts compute_floor([wf]) == compute_floor([wf], None, None) == compute_floor([wf], None, '') == 3."
+    exit: 0
+    ts: 2026-09-01T19:04Z
+    seat: session (Pro)
+  - claim: >-
+      Acceptance probe 6 — this PR's OWN diff still floors at 3, so the new rule does not exempt
+      the change that introduces it
+    cmd: "python scripts/evidence_pack_lint.py --print-floor-source --changed-files-file <this diff> --numstat-file <this diff>  # -> path, floor 3"
+    result: "floor=3, source=path."
+    exit: 0
+    ts: 2026-09-01T19:04Z
+    seat: session (Pro)
+  - claim: >-
+      The new helper is NOT a censused guard that needs its own registry entry — checked by
+      running the census rather than by reasoning about the `check_` prefix convention
+    cmd: "python3 infra/guard-conformance/check_guard_conformance.py"
+    result: >-
+      "10 bridge guards, 19 hook entries, 7 wr2-pregate checks, 17 evidence-pack-lint checks, 6
+      required-workflow-conformance checks, 0 violation(s)". Unchanged counts, exit 0.
+    exit: 0
+    ts: 2026-09-01T19:05Z
+    seat: session (Pro)
+  - claim: >-
+      hot-zone-pr-gate.yml needs no change, so HOTZONE_PATTERNS stays byte-identical to its
+      declared duplicate and this PR introduces no drift between the two lists
+    cmd: "gh pr checks 5442 / 5444 / 5445, filtered to non-pass"
+    result: >-
+      "Harness floor recompute" is the ONLY non-pass line on #5442 and #5445; #5444 has none and is
+      BLOCKED for an unrelated reason. The twin gate is not red on any of them.
+    exit: 0
+    ts: 2026-09-01T18:30Z
+    seat: session (Pro)
+
+dissent:
+  - seat: claude-opus-5 (independent Gear-3 gate)
+    status: CONFIRMED
+    objection: >-
+      The gate's ONE successful bypass, built as a real `git diff`: a diff prefixes an added line
+      with a single "+", so a workflow line beginning `++ ` is emitted as `+++ …` and was read as a
+      NEW-FILE header — reassigning the current path to a phantom file and setting in_hunk=False,
+      after which every remaining line of the hunk was SILENTLY SKIPPED. A `+permissions:
+      write-all` following the forged line never reached the parser: floor 1 on a diff carrying a
+      privilege escalation. It also falsified this function's own comment — a non-conforming ADDED
+      line did NOT re-arm the path term. The gate returned PASS anyway, correctly, because every
+      triggering payload is an INVALID workflow (column-0 `++ …` is not a legal top-level key) and
+      required actionlint rejects all of them — verified end to end against main's branch
+      protection. CURED ANYWAY: header recognition is now gated on `not in_hunk`. The reason is the
+      COUPLING the gate itself named — the floor's non-gameability had become conditional on
+      another gate's schema strictness, and CLAUDE.md leans on the floor being the one classifier a
+      task cannot be talked out of. A ledger entry would have left that coupling standing.
+  - seat: claude-sonnet-5 subagent (spalla-review), fresh context
+    status: CONFIRMED
+    objection: >-
+      "_read_patch_file catches OSError only. A patch file with invalid UTF-8 bytes raises
+      UnicodeDecodeError (a ValueError subclass), uncaught." Reproduced verbatim before curing: one
+      0xff byte gave a traceback, no floor on stdout, exit 1. The reviewer graded it a SUGGESTION,
+      correctly noting it can never under-gate because the crash precedes compute_floor — cured
+      anyway, because the comment sitting above that except block promised the opposite and the
+      next reader trusts a comment. Now catches (OSError, UnicodeDecodeError): floor 3, exit 0,
+      one stderr notice. Reverting to `except OSError` reddens the new test and leaves its
+      missing-file twin green.
+  - seat: claude-sonnet-5 subagent (spalla-review), fresh context
+    status: CONFIRMED
+    objection: >-
+      Attack 1: two first-party actions SWAP identities across two hunks, generated with the EXACT
+      production command rather than a hand fixture. It named the consequence I had not — an `if:`
+      block sitting OFF-HUNK as unchanged context is silently rebound to a DIFFERENT action, so an
+      `always()`-gated debug step becomes the deploy and the main-gated deploy merely uploads an
+      artifact. It reviewed d82a68525f and the hole was already cured at 4213ec1cb8 by the sequence
+      fix (verified: its exact patch returns floor 3, exempt set empty, source "path"), but its
+      statement of the defect is better than the one that drove the fix and is recorded as the
+      canonical one. Same root cause the cross-family seat found; two independent seats, one hole.
+  - seat: claude-sonnet-5 subagent (spalla-review), fresh context
+    status: CONFIRMED
+    objection: >-
+      Attack 1b, which the reviewer itself graded "worth a conscious decision, not obviously a
+      blocker": `actions/checkout@v4` -> `@main` was EXEMPT. That is not a version bump, it is an
+      UNPINNING — the action stops being fixed and starts tracking a branch someone else can move,
+      which is the supply-chain change this hot zone exists for. Treated as a defect, not a scope
+      note: "only refs may move" was under-specified by me, not a decision I had made. CURED — both
+      refs must now be a 40-hex SHA or a version-shaped tag. `@main` -> `@v4` (a re-pin) also floors
+      at 3: rare, deliberate, and worth a look in the direction that ADDS a constraint too.
+  - seat: claude-sonnet-5 subagent (spalla-review), fresh context
+    status: RETRACTED
+    objection: >-
+      Attack 2, over-match: a legitimate pin bump that ALSO deletes a blank line elsewhere in the
+      file is refused, because a blank-line deletion does not parse as a `uses:` line. Real, and
+      deliberately not fixed — loosening condition 1 to permit "harmless" non-`uses:` lines is how
+      the whole exemption unravels. Recorded as a declared limit; the reviewer agreed it is the
+      safe direction.
+  - seat: tp1 deepseek-v4-flash-0731
+    status: CONFIRMED
+    objection: >-
+      "False positive 1 — reordering steps." Condition 3 compared the SORTED identities, so two
+      bare one-line steps whose `uses:` lines swap places have an identical multiset and were
+      EXEMPTED — while actually changing execution order, which can put a scan before the step
+      producing what it scans and pass it vacuously. Real, and cured in this PR: condition 3 now
+      compares the SEQUENCES (both lists are in file order, so a pure ref change leaves them
+      identical). Reverting to sorted() reddens exactly the new reorder test and leaves its
+      innocence twin green. The seat's answer was TRUNCATED at 214 bytes and this finding is all
+      it managed to emit — which is the argument for the seat, not against it.
+  - seat: session (Pro), self-caught during BUILD
+    status: CONFIRMED
+    objection: >-
+      A write that reported success did not land on disk — the `..`-traversal guard was absent from
+      the file after the edit printed "traversal guard added". It was caught because the test
+      written for that line went RED, not because the write was trusted; re-applied and verified by
+      re-reading the file AND an independent grep in the same command. Recorded because the lesson
+      is the ORDER: the test existed before the guard was believed.
+  - seat: session (Pro), on the scope of the rule
+    status: CONFIRMED
+    objection: >-
+      An author-based exemption (skip the floor for dependabot[bot]) is far simpler and was the
+      obvious first design. REJECTED on W98: a Dependabot bump shipped a malicious fastapi to PROD
+      past a `!=` constraint the updater could not see. The rule is therefore content-based, which
+      costs a diff parser and buys the property that a human editing the same line is treated
+      identically and a bot changing anything else is not exempt at all.
