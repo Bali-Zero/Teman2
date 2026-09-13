@@ -1067,10 +1067,24 @@ async def _attempt(
             reason=f"finalize:{result.defect_reason or 'blank_send_text'}"
         )
 
+    # A REATTACHED completion was offered by an EARLIER claim with ITS OWN
+    # package (`wa_broker.py`'s reattach path selects the still-alive job by
+    # `outbox_id` alone and never compares `package_hash`; `OfferResult`
+    # carries no hash at all), so THIS claim's rebuilt sealed wire does not
+    # describe the package that actually generated `text` — carrying it
+    # here would attribute the completion to a package it never came from.
+    # Only OFFERED (this claim's own offer, first leg or a fresh retry leg)
+    # carries the three fields; REATTACHED leaves them None rather than
+    # naming another package (D6: nothing inferred).
+    if offer.outcome is wa_broker.OfferOutcome.OFFERED:
+        return CodexLegResult(
+            text=result.text,
+            reason="completed",
+            evidence_abstain_label=bool(evidence_inputs.get("abstain")),
+            evidence_score=_normalize_evidence_score(evidence_inputs.get("evidence_score")),
+            package_ref=package_hash,
+        )
     return CodexLegResult(
         text=result.text,
         reason="completed",
-        evidence_abstain_label=bool(evidence_inputs.get("abstain")),
-        evidence_score=_normalize_evidence_score(evidence_inputs.get("evidence_score")),
-        package_ref=package_hash,
     )

@@ -1801,6 +1801,30 @@ async def test_completed_carries_sealed_label_true(
 
 
 @pytest.mark.asyncio
+async def test_reattached_completion_carries_no_carrier_fields(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """I83 (F1, option b): a REATTACHED completion was offered by an
+    EARLIER claim with its own package — this claim's rebuilt sealed wire
+    does not describe the package that generated the text, so the three
+    carrier fields stay None even though the completion still serves
+    (``served_by`` stays "codex", unlike the support-negative/fall-off/
+    stand-down branches which never reach here at all)."""
+    job_id = uuid.uuid4()
+    _wire_stubs(
+        monkeypatch,
+        offer=OfferResult(OfferOutcome.REATTACHED, job_id=job_id, thread_epoch=3),
+    )
+    conn = ScriptedConn(fetchrow_results=[{"human_handling": False, "handling_version": 3}])
+    result = await _run(conn=conn)
+    assert result.text == "the broker reply"
+    assert result.served_by == "codex"
+    assert result.evidence_abstain_label is None
+    assert result.evidence_score is None
+    assert result.package_ref is None
+
+
+@pytest.mark.asyncio
 async def test_fall_off_return_carries_no_carrier_fields(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

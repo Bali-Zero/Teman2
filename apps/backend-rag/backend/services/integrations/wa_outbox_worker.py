@@ -107,6 +107,7 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
+import decimal
 import logging
 import os
 import uuid
@@ -1401,6 +1402,13 @@ async def _process_claimed_row(
     #    receipt into any 'sending'-stuck row older than N minutes; that is
     #    out of scope for F1a.
     wamid = _extract_wamid(send_result)
+    # I83: bind the exact decimal text of the sealed score, not the float
+    # itself — asyncpg would otherwise hand $5::numeric a binary float
+    # round-trip that can differ from the JSON text the score was sealed
+    # as. `repr(float)` is the shortest string that round-trips to that
+    # exact float, so `Decimal(repr(persist_score))` reproduces the sealed
+    # text digit-for-digit instead of a binary-float artifact.
+    persist_score_bind = decimal.Decimal(repr(persist_score)) if persist_score is not None else None
     async with conn.transaction():
         # B2.3b carrier (research/operations/2026-09-11-bot-staff-room/
         # B2-engine.md §4 PR B2.3b, D6): same statement, same fence as
@@ -1423,7 +1431,7 @@ async def _process_claimed_row(
             claim_token,
             expected_status,
             persist_abstained,
-            persist_score,
+            persist_score_bind,
         )
         await conn.execute(
             """

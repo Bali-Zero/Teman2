@@ -266,6 +266,18 @@ async def _fetch_sent_at(pool: asyncpg.Pool, message_id: int) -> Any:
         )
 
 
+async def _fetch_evidence_score_text(pool: asyncpg.Pool, outbox_id: int) -> str | None:
+    """I83 (F2): the exact NUMERIC column text, not a float round-trip —
+    proves the worker bound ``decimal.Decimal(repr(score))`` rather than
+    the raw float (asyncpg would otherwise hand ``$5::numeric`` a binary
+    float artifact that can print with trailing digits the sealed JSON
+    text never had)."""
+    async with pool.acquire() as conn:
+        return await conn.fetchval(
+            "SELECT evidence_score::text FROM wa_outbox WHERE id = $1", outbox_id
+        )
+
+
 # ── 1. generated-supported ──────────────────────────────────────────────────
 
 
@@ -296,6 +308,8 @@ async def test_generated_supported_label_false_sets_score_only(
     carrier = await _fetch_carrier(db_pool, row["outbox_id"])
     assert carrier["abstained_at"] is None
     assert float(carrier["evidence_score"]) == 0.42
+    # I83: exact NUMERIC text, not just the float-equal check above.
+    assert await _fetch_evidence_score_text(db_pool, row["outbox_id"]) == "0.42"
 
 
 # ── 2. generated-abstain-label ──────────────────────────────────────────────
@@ -329,6 +343,8 @@ async def test_generated_abstain_label_true_sets_abstained_at_eq_sent_at(
     assert float(carrier["evidence_score"]) == 0.08
     sent_at = await _fetch_sent_at(db_pool, row["message_id"])
     assert carrier["abstained_at"] == sent_at
+    # I83: exact NUMERIC text, not just the float-equal check above.
+    assert await _fetch_evidence_score_text(db_pool, row["outbox_id"]) == "0.08"
 
 
 # ── 3. retry, then the later successful attempt persists its own carrier ───
@@ -595,3 +611,42 @@ async def test_support_negative_never_sets_abstained_at(
     # abstain FROM).
     assert carrier["abstained_at"] is None
     assert float(carrier["evidence_score"]) == 0.15
+    # I83: exact NUMERIC text equals repr() of the stubbed score, proving
+    # the fenced write binds decimal.Decimal(repr(score)) on this branch
+    # too, not just the OFFERED-completed branch above.
+    assert await _fetch_evidence_score_text(db_pool, row["outbox_id"]) == repr(0.15)
+
+
+# ── 10. reattached completion — served_by="codex", all three carrier
+#        fields None (F1/I83: a REATTACHED completion's rebuilt sealed wire
+#        does not describe the package that generated the text) ───────────
+
+
+async def test_reattached_completion_persists_nothing(
+    db_pool: asyncpg.Pool, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    row = await _seed_row(db_pool)
+    monkeypatch.setattr(
+        wa_codex_leg,
+        "attempt",
+        _codex_leg_stub(
+            [
+                wa_codex_leg.CodexLegResult(
+                    text="Testo da un job riagganciato da una claim precedente.",
+                    reason="completed",
+                    served_by="codex",
+                    evidence_abstain_label=None,
+                    evidence_score=None,
+                    package_ref=None,
+                )
+            ]
+        ),
+    )
+    whatsapp = _StubWhatsApp()
+    outcome = await process_outbox_once(db_pool, whatsapp, _never_bot_gen)
+    assert outcome == "sent"
+    assert len(whatsapp.calls) == 1
+    carrier = await _fetch_carrier(db_pool, row["outbox_id"])
+    assert carrier["status"] == "done"
+    assert carrier["abstained_at"] is None
+    assert carrier["evidence_score"] is None
