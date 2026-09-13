@@ -1,0 +1,14 @@
+diff --git a/apps/mouth/src/app/visa/second-home/studio/components/SavePlanBar.tsx b/apps/mouth/src/app/visa/second-home/studio/components/SavePlanBar.tsx
+index 6cb529994a..0ae277f24a 100644
+--- a/apps/mouth/src/app/visa/second-home/studio/components/SavePlanBar.tsx
++++ b/apps/mouth/src/app/visa/second-home/studio/components/SavePlanBar.tsx
+@@ -345,8 +345,7 @@ export function SavePlanBar({ plan, onClear }: SavePlanBarProps) {
+   const [showManualLink, setShowManualLink] = useState(false);
+ 
+   useEffect(() => {
+-    if (feedback !== "savedConfirmation" && feedback !== "copiedConfirmation")
+-      return;
++    if (!feedback) return;
+     const timeout = window.setTimeout(() => setFeedback(null), 2500);
+     return () => window.clearTimeout(timeout);
+   }, [feedback]);

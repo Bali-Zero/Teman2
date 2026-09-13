@@ -1,0 +1,453 @@
+diff --git a/apps/mouth/src/app/visa/second-home/studio/StudioApp.tsx b/apps/mouth/src/app/visa/second-home/studio/StudioApp.tsx
+index 699b3ffbd5..4708fad5c6 100644
+--- a/apps/mouth/src/app/visa/second-home/studio/StudioApp.tsx
++++ b/apps/mouth/src/app/visa/second-home/studio/StudioApp.tsx
+@@ -537,6 +537,40 @@ export function StudioApp() {
+   const [plan, setPlan] = useState<PlanState>(emptyPlan);
+   const [stepIndex, setStepIndex] = useState(0);
+   const hydratedOnce = useRef(false);
++  const consentSpaceRef = useRef<HTMLDivElement>(null);
++  const [consentHeight, setConsentHeight] = useState(0);
++
++  useEffect(() => {
++    const host = consentSpaceRef.current;
++    if (!host) return;
++
++    // The fixed banner contributes no document height. Reserve its measured
++    // size here so recovery controls can scroll fully above it at any width.
++    const measure = () =>
++      setConsentHeight(
++        host.firstElementChild?.getBoundingClientRect().height ?? 0,
++      );
++    const resizeObserver =
++      typeof ResizeObserver === "undefined"
++        ? null
++        : new ResizeObserver(measure);
++    const observeBanner = () => {
++      resizeObserver?.disconnect();
++      if (host.firstElementChild)
++        resizeObserver?.observe(host.firstElementChild);
++      measure();
++    };
++    const mutationObserver = new MutationObserver(observeBanner);
++    mutationObserver.observe(host, { childList: true });
++    observeBanner();
++    window.addEventListener("resize", measure);
++
++    return () => {
++      resizeObserver?.disconnect();
++      mutationObserver.disconnect();
++      window.removeEventListener("resize", measure);
++    };
++  }, []);
+ 
+   const sequence = computeSequence(plan);
+   const isVerdictStage = stepIndex >= sequence.length;
+@@ -790,7 +824,16 @@ export function StudioApp() {
+           </div>
+         ) : null}
+ 
+-        <ConsentBanner />
++        <div
++          ref={consentSpaceRef}
++          className="bz-shs-consent-space"
++          style={{
++            height: consentHeight,
++            display: consentHeight > 0 ? "block" : "contents",
++          }}
++        >
++          <ConsentBanner />
++        </div>
+ 
+         <style>{`
+         .bz-shs-layout {
+@@ -820,6 +863,11 @@ export function StudioApp() {
+             animation: none !important;
+           }
+         }
++        @media print {
++          .bz-shs-consent-space {
++            display: none !important;
++          }
++        }
+       `}</style>
+       </div>
+     </div>
+diff --git a/apps/mouth/src/app/visa/second-home/studio/components/SavePlanBar.test.tsx b/apps/mouth/src/app/visa/second-home/studio/components/SavePlanBar.test.tsx
+index 11ae723da6..0b2ef4689a 100644
+--- a/apps/mouth/src/app/visa/second-home/studio/components/SavePlanBar.test.tsx
++++ b/apps/mouth/src/app/visa/second-home/studio/components/SavePlanBar.test.tsx
+@@ -1,7 +1,17 @@
+-import { act, fireEvent, render, screen } from "@testing-library/react";
++import {
++  act,
++  fireEvent,
++  render,
++  screen,
++  waitFor,
++} from "@testing-library/react";
+ import { afterEach, describe, expect, it, vi } from "vitest";
+ 
+-import { emptyPlan } from "@/lib/secondhome-studio/plan-codec";
++import {
++  decodePlanFragment,
++  emptyPlan,
++  loadPlan,
++} from "@/lib/secondhome-studio/plan-codec";
+ import { SavePlanBar } from "./SavePlanBar";
+ 
+ const originalPrintDescriptor = Object.getOwnPropertyDescriptor(
+@@ -9,6 +19,140 @@ const originalPrintDescriptor = Object.getOwnPropertyDescriptor(
+   "print",
+ );
+ 
++describe("SavePlanBar persistence feedback", () => {
++  const originalClipboard = Object.getOwnPropertyDescriptor(
++    navigator,
++    "clipboard",
++  );
++
++  afterEach(() => {
++    vi.restoreAllMocks();
++    vi.unstubAllGlobals();
++    window.localStorage.clear();
++    if (originalClipboard) {
++      Object.defineProperty(navigator, "clipboard", originalClipboard);
++    } else {
++      Reflect.deleteProperty(navigator, "clipboard");
++    }
++  });
++
++  it("confirms a save only after the plan is persisted", () => {
++    const plan = emptyPlan();
++    render(<SavePlanBar plan={plan} onClear={vi.fn()} />);
++    fireEvent.click(
++      screen.getByRole("button", { name: "Save on this device" }),
++    );
++    expect(loadPlan()).toEqual(plan);
++    expect(screen.getByRole("status")).toHaveTextContent(
++      "Plan saved on this device",
++    );
++  });
++
++  it.each(["SecurityError", "QuotaExceededError"])(
++    "replaces an earlier save confirmation with recovery instructions when %s prevents saving",
++    (name) => {
++      const plan = emptyPlan();
++      render(<SavePlanBar plan={plan} onClear={vi.fn()} />);
++      const saveButton = screen.getByRole("button", {
++        name: "Save on this device",
++      });
++      fireEvent.click(saveButton);
++      vi.spyOn(window.localStorage, "setItem").mockImplementation(() => {
++        throw new DOMException("Cannot store plan", name);
++      });
++      fireEvent.click(saveButton);
++      expect(screen.getByRole("status")).not.toHaveTextContent(
++        "Plan saved on this device",
++      );
++      expect(screen.getByRole("status")).toHaveTextContent(/couldn't save/i);
++      expect(
++        screen.getByRole("textbox", { name: "Plan link" }),
++      ).toHaveAttribute("readonly");
++    },
++  );
++
++  it.each(["denied", "absent"])(
++    "offers a selectable, branch-sanitized link when the clipboard is %s, without a network call",
++    async (clipboardState) => {
++      const fetch = vi.fn();
++      vi.stubGlobal("fetch", fetch);
++      Object.defineProperty(navigator, "clipboard", {
++        configurable: true,
++        value:
++          clipboardState === "absent"
++            ? undefined
++            : {
++                writeText: vi
++                  .fn()
++                  .mockRejectedValue(
++                    new DOMException("Denied", "NotAllowedError"),
++                  ),
++              },
++      });
++      const plan = {
++        ...emptyPlan(),
++        age: "under_55" as const,
++        route: "property" as const,
++        property: "owns_qualifying_strata" as const,
++        capital: "ready_130k" as const,
++      };
++      const { rerender } = render(
++        <SavePlanBar plan={plan} onClear={vi.fn()} />,
++      );
++      fireEvent.click(screen.getByRole("button", { name: "Copy plan link" }));
++      const input = (await screen.findByRole("textbox", {
++        name: "Plan link",
++      })) as HTMLInputElement;
++      const url = new URL(input.value);
++      expect(url.pathname).toBe("/visa/second-home/studio");
++      expect(url.search).toBe("");
++      expect(decodePlanFragment(url.hash.slice(3))).toEqual({
++        ...plan,
++        capital: null,
++      });
++      input.focus();
++      expect(input.selectionStart).toBe(0);
++      expect(input.selectionEnd).toBe(input.value.length);
++      expect(screen.getByRole("status")).not.toHaveTextContent(
++        "Plan link copied",
++      );
++      expect(screen.getByRole("status")).toHaveTextContent(/select and copy/i);
++      expect(fetch).not.toHaveBeenCalled();
++      rerender(
++        <SavePlanBar
++          plan={{ ...plan, checklist: { passport_bio_page: true } }}
++          onClear={vi.fn()}
++        />,
++      );
++      expect(
++        decodePlanFragment(new URL(input.value).hash.slice(3))?.checklist,
++      ).toEqual({ passport_bio_page: true });
++    },
++  );
++
++  it("confirms a successful copy and removes the manual fallback on retry", async () => {
++    const writeText = vi
++      .fn()
++      .mockRejectedValueOnce(new DOMException("Denied", "NotAllowedError"))
++      .mockResolvedValue(undefined);
++    Object.defineProperty(navigator, "clipboard", {
++      configurable: true,
++      value: { writeText },
++    });
++    render(<SavePlanBar plan={emptyPlan()} onClear={vi.fn()} />);
++    const copyButton = screen.getByRole("button", { name: "Copy plan link" });
++    fireEvent.click(copyButton);
++    await screen.findByRole("textbox", { name: "Plan link" });
++    fireEvent.click(copyButton);
++    await waitFor(() =>
++      expect(screen.getByRole("status")).toHaveTextContent("Plan link copied"),
++    );
++    expect(
++      screen.queryByRole("textbox", { name: "Plan link" }),
++    ).not.toBeInTheDocument();
++  });
++});
++
+ describe("SavePlanBar resting-state boundary (WCAG 2.2 SC 1.4.11)", () => {
+   // Regression guard (2026-09-01): Save/Copy-Link/Print share `buttonStyle`,
+   // whose border is their ONLY resting-state boundary (transparent fill).
+diff --git a/apps/mouth/src/app/visa/second-home/studio/components/SavePlanBar.tsx b/apps/mouth/src/app/visa/second-home/studio/components/SavePlanBar.tsx
+index d876e475f8..0ae277f24a 100644
+--- a/apps/mouth/src/app/visa/second-home/studio/components/SavePlanBar.tsx
++++ b/apps/mouth/src/app/visa/second-home/studio/components/SavePlanBar.tsx
+@@ -335,25 +335,42 @@ const clearButtonLayoutStyle: React.CSSProperties = {
+  *  abandoned-branch answer (e.g. a leftover `capital` value after
+  *  switching to the property route) never leaks into a shared link. */
+ export function SavePlanBar({ plan, onClear }: SavePlanBarProps) {
+-  const [savedFeedback, setSavedFeedback] = useState(false);
+-  const [copiedFeedback, setCopiedFeedback] = useState(false);
++  const [feedback, setFeedback] = useState<
++    | "savedConfirmation"
++    | "saveFailed"
++    | "copiedConfirmation"
++    | "copyFailed"
++    | null
++  >(null);
++  const [showManualLink, setShowManualLink] = useState(false);
++
++  useEffect(() => {
++    if (!feedback) return;
++    const timeout = window.setTimeout(() => setFeedback(null), 2500);
++    return () => window.clearTimeout(timeout);
++  }, [feedback]);
++
++  function planLink(): string {
++    if (typeof window === "undefined") return "";
++    return `${window.location.origin}${STUDIO_PATH}#p=${encodePlanFragment(relevantPlan(plan))}`;
++  }
+ 
+   function handleSave() {
+-    savePlan(plan);
+-    setSavedFeedback(true);
+-    window.setTimeout(() => setSavedFeedback(false), 2500);
++    const saved = savePlan(plan);
++    setFeedback(saved ? "savedConfirmation" : "saveFailed");
++    setShowManualLink(!saved);
+   }
+ 
+   async function handleCopyLink() {
+     if (typeof window === "undefined") return;
+-    const url = `${window.location.origin}${STUDIO_PATH}#p=${encodePlanFragment(relevantPlan(plan))}`;
++    setFeedback(null);
+     try {
+-      await navigator.clipboard.writeText(url);
+-      setCopiedFeedback(true);
+-      window.setTimeout(() => setCopiedFeedback(false), 2500);
++      await navigator.clipboard.writeText(planLink());
++      setFeedback("copiedConfirmation");
++      setShowManualLink(false);
+     } catch {
+-      // Clipboard blocked (permissions/private mode) — silent no-op; the
+-      // user can still select the link text manually if we ever render it.
++      setFeedback("copyFailed");
++      setShowManualLink(true);
+     }
+   }
+ 
+@@ -477,7 +494,7 @@ export function SavePlanBar({ plan, onClear }: SavePlanBarProps) {
+         </button>
+       </div>
+       <div role="status" aria-live="polite" style={{ minHeight: "1.2em" }}>
+-        {savedFeedback ? (
++        {feedback ? (
+           <p
+             style={{
+               margin: 0,
+@@ -485,18 +502,7 @@ export function SavePlanBar({ plan, onClear }: SavePlanBarProps) {
+               color: "var(--text-primary)",
+             }}
+           >
+-            {getCopy("savePlanBar.savedConfirmation")}
+-          </p>
+-        ) : null}
+-        {copiedFeedback ? (
+-          <p
+-            style={{
+-              margin: 0,
+-              fontSize: "var(--text-sm, 0.85rem)",
+-              color: "var(--text-primary)",
+-            }}
+-          >
+-            {getCopy("savePlanBar.copiedConfirmation")}
++            {getCopy(`savePlanBar.${feedback}`)}
+           </p>
+         ) : null}
+         {clearArmed ? (
+@@ -511,6 +517,31 @@ export function SavePlanBar({ plan, onClear }: SavePlanBarProps) {
+           </p>
+         ) : null}
+       </div>
++      {showManualLink ? (
++        <label
++          style={{
++            display: "grid",
++            gap: "var(--space-2, 0.5rem)",
++            minWidth: 0,
++          }}
++        >
++          {getCopy("savePlanBar.manualLinkLabel")}
++          <input
++            type="text"
++            readOnly
++            value={planLink()}
++            onFocus={(event) => event.currentTarget.select()}
++            style={{
++              ...buttonStyle,
++              cursor: "text",
++              width: "100%",
++              minWidth: 0,
++              boxSizing: "border-box",
++              background: "var(--surface-base)",
++            }}
++          />
++        </label>
++      ) : null}
+       <p
+         style={{
+           margin: 0,
+diff --git a/apps/mouth/src/lib/secondhome-studio/__tests__/plan-codec.test.ts b/apps/mouth/src/lib/secondhome-studio/__tests__/plan-codec.test.ts
+index d028a0fd75..aa40f56136 100644
+--- a/apps/mouth/src/lib/secondhome-studio/__tests__/plan-codec.test.ts
++++ b/apps/mouth/src/lib/secondhome-studio/__tests__/plan-codec.test.ts
+@@ -146,7 +146,7 @@ describe("savePlan / loadPlan — localStorage roundtrip", () => {
+       route: "deposit",
+       capital: "ready_130k",
+     };
+-    savePlan(plan);
++    expect(savePlan(plan)).toBe(true);
+     expect(loadPlan()).toEqual(plan);
+   });
+ 
+@@ -171,6 +171,23 @@ describe("savePlan / loadPlan — localStorage roundtrip", () => {
+     );
+     expect(loadPlan()).toBeNull();
+   });
++
++  it.each(["SecurityError", "QuotaExceededError"])(
++    "returns false when storage rejects the write with %s",
++    (name) => {
++      const setItem = vi
++        .spyOn(window.localStorage, "setItem")
++        .mockImplementation(() => {
++          throw new DOMException("Cannot store plan", name);
++        });
++      try {
++        expect(savePlan(emptyPlan())).toBe(false);
++        expect(loadPlan()).toBeNull();
++      } finally {
++        setItem.mockRestore();
++      }
++    },
++  );
+ });
+ 
+ describe("clearPlan — SavePlanBar 'Clear saved plan' action", () => {
+@@ -337,6 +354,7 @@ describe("P2-C12 — a throwing localStorage GETTER never crashes the codec", ()
+ 
+   it("savePlan is a safe no-op and never throws", () => {
+     expect(() => savePlan(emptyPlan())).not.toThrow();
++    expect(savePlan(emptyPlan())).toBe(false);
+   });
+ 
+   it("clearPlan is a safe no-op and never throws", () => {
+@@ -352,6 +370,7 @@ describe("SSR-safety — functions never throw when window is undefined", () =>
+   it("savePlan is a no-op and loadPlan returns null without window", () => {
+     vi.stubGlobal("window", undefined);
+     expect(() => savePlan(emptyPlan())).not.toThrow();
++    expect(savePlan(emptyPlan())).toBe(false);
+     expect(loadPlan()).toBeNull();
+   });
+ 
+diff --git a/apps/mouth/src/lib/secondhome-studio/copy.ts b/apps/mouth/src/lib/secondhome-studio/copy.ts
+index e9e2fd9f22..85d4454719 100644
+--- a/apps/mouth/src/lib/secondhome-studio/copy.ts
++++ b/apps/mouth/src/lib/secondhome-studio/copy.ts
+@@ -470,8 +470,13 @@ export const COPY = {
+     body: "Your saved plan stays on this device unless you copy and share its link.",
+     saveButton: "Save on this device",
+     savedConfirmation: "Plan saved on this device",
++    saveFailed:
++      "This browser couldn't save your plan. Copy the link below or save a PDF to keep it.",
+     copyLinkButton: "Copy plan link",
+     copiedConfirmation: "Plan link copied",
++    copyFailed:
++      "Copying is unavailable in this browser. Select and copy the plan link below.",
++    manualLinkLabel: "Plan link",
+     printButton: "Print / Save as PDF",
+     linkWarning:
+       "Anyone who receives the link may be able to view the answers it contains.",
+diff --git a/apps/mouth/src/lib/secondhome-studio/plan-codec.ts b/apps/mouth/src/lib/secondhome-studio/plan-codec.ts
+index 7b885f0c31..a56bced9c3 100644
+--- a/apps/mouth/src/lib/secondhome-studio/plan-codec.ts
++++ b/apps/mouth/src/lib/secondhome-studio/plan-codec.ts
+@@ -143,12 +143,15 @@ function isValidPlanShape(value: unknown): value is PlanState {
+   return true;
+ }
+ 
+-export function savePlan(p: PlanState): void {
+-  if (!hasLocalStorage()) return;
++/** True only after storage accepts the write, so callers can give honest feedback. */
++export function savePlan(p: PlanState): boolean {
++  if (!hasLocalStorage()) return false;
+   try {
+     window.localStorage.setItem(PLAN_STORAGE_KEY, JSON.stringify(p));
++    return true;
+   } catch {
+-    // Storage full, blocked (private mode), or unavailable — no-op.
++    // Storage full, blocked (private mode), or unavailable — keep the plan in memory.
++    return false;
+   }
+ }
+ 

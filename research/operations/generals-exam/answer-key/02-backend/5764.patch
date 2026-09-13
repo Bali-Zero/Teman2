@@ -1,0 +1,299 @@
+commit f217cce93f91879d09d121618d8340d2d398a45e
+Author: Bali Zero <zero@balizero.com>
+Date:   Sat Sep 5 11:12:40 2026 +0000
+
+    fix(e33): validate practice ownership before case creation (#5764)
+    
+    * fix(e33): validate practice ownership before case creation
+    
+    Reject missing or cross-client practice references before inserting an E33 case,
+    while preserving staff authorization and optional-practice behavior.
+    
+    Synthetic Pro verification: 41 router tests passed. Independent Fable review
+    remains pending; inherited Ruff formatting debt is recorded in the evidence.
+    
+    Co-Authored-By: Codex Opus 4.8 (1M context) <noreply@anthropic.com>
+    
+    * fix(e33): scope evidence secret-scan exceptions
+    
+    Mark only verified public commit and content hashes as non-secret evidence.
+    Replay the Pro test receipt with a credential-free loopback DSN and record
+    that unrelated synthetic secret controls still fail the unchanged CI guard.
+    
+    Co-Authored-By: Codex Opus 4.8 (1M context) <noreply@anthropic.com>
+    
+    ---------
+    
+    Co-authored-by: Balizero (Air-M5) <antonellosiano@gmail.com>
+    Co-authored-by: Codex Opus 4.8 (1M context) <noreply@anthropic.com>
+
+diff --git a/apps/backend-rag/backend/app/routers/e33_cases.py b/apps/backend-rag/backend/app/routers/e33_cases.py
+index 5a246d50cb..2bc6f7924e 100644
+--- a/apps/backend-rag/backend/app/routers/e33_cases.py
++++ b/apps/backend-rag/backend/app/routers/e33_cases.py
+@@ -128,6 +128,12 @@ async def _fetch_client_for_create(db_pool: asyncpg.Pool, client_id: int) -> Any
+         )
+ 
+ 
++async def _fetch_practice_client_id(db_pool: asyncpg.Pool, practice_id: int) -> int | None:
++    """Read only the owning client ID needed to validate the optional practice link."""
++    async with db_pool.acquire() as conn:
++        return await conn.fetchval("SELECT client_id FROM practices WHERE id = $1", practice_id)
++
++
+ async def _fetch_client_name_and_owner(
+     db_pool: asyncpg.Pool, client_id: int
+ ) -> tuple[str | None, str | None]:
+@@ -312,7 +318,7 @@ async def create_case(
+ 
+     Property basis is out of V1 scope (pending addendum 007 —
+     ``property_validation_standard``). Client existence, archival state and
+-    RBAC are checked BEFORE any insert.
++    RBAC and the optional practice's client association are checked BEFORE any insert.
+ 
+     On a case_id collision (``asyncpg.UniqueViolationError``) re-mint once;
+     a second collision is a 500 (astronomically unlikely — 6 hex chars).
+@@ -338,6 +344,14 @@ async def create_case(
+     _assert_client_access(current_user, client_row["assigned_to"])
+     client_name = client_row["full_name"]
+ 
++    if body.practice_id is not None:
++        practice_client_id = await _fetch_practice_client_id(db_pool, body.practice_id)
++        if practice_client_id != body.client_id:
++            raise HTTPException(
++                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
++                detail="practice is not available for this client",
++            )
++
+     repo = E33CaseRepository(db_pool)
+     today = date.today()
+     case: E33Case | None = None
+diff --git a/apps/backend-rag/backend/tests/routers/test_e33_cases.py b/apps/backend-rag/backend/tests/routers/test_e33_cases.py
+index 2936105a8d..24795a6a11 100644
+--- a/apps/backend-rag/backend/tests/routers/test_e33_cases.py
++++ b/apps/backend-rag/backend/tests/routers/test_e33_cases.py
+@@ -109,6 +109,92 @@ class TestCreateCase:
+         assert CASE_ID_RE.match(body["case_id"]), body["case_id"]
+         assert body["stage_history"] == []
+         fake_repo.insert.assert_awaited_once()
++        assert fake_repo.insert.await_args.args[0].practice_id is None
++        conn.fetchval.assert_not_awaited()
++
++    @pytest.mark.integration
++    @pytest.mark.parametrize("role", ["admin", "team_member"])
++    def test_practice_for_requested_client_is_linked(
++        self, mock_db_pool, admin_user, role: str
++    ) -> None:
++        pool, conn = mock_db_pool
++        user = {**admin_user, "role": role}
++        client = TestClient(_make_app(pool, user), raise_server_exceptions=False)
++        conn.fetchrow = AsyncMock(
++            return_value={
++                "full_name": "Alice Example",
++                "assigned_to": user["email"],
++                "deleted_at": None,
++            }
++        )
++        conn.fetchval = AsyncMock(return_value=1)
++        fake_repo = MagicMock()
++        fake_repo.insert = AsyncMock(side_effect=lambda case: case)
++
++        with patch.object(e33_cases_module, "E33CaseRepository", return_value=fake_repo):
++            response = client.post(
++                "/api/e33/cases",
++                json={"client_id": 1, "basis": "deposit", "practice_id": 42},
++            )
++
++        assert response.status_code == 201
++        fake_repo.insert.assert_awaited_once()
++        case = fake_repo.insert.await_args.args[0]
++        assert (case.client_id, case.practice_id) == (1, 42)
++        conn.fetchval.assert_awaited_once()
++        assert conn.fetchval.await_args.args[1:] == (42,)
++
++    @pytest.mark.integration
++    @pytest.mark.parametrize("practice_client_id", [None, 2], ids=["missing", "other-client"])
++    def test_unavailable_practice_returns_same_422_and_never_inserts(
++        self, mock_db_pool, admin_user, practice_client_id: int | None
++    ) -> None:
++        pool, conn = mock_db_pool
++        client = TestClient(_make_app(pool, admin_user), raise_server_exceptions=False)
++        conn.fetchrow = AsyncMock(
++            return_value={
++                "full_name": "Alice Example",
++                "assigned_to": admin_user["email"],
++                "deleted_at": None,
++            }
++        )
++        conn.fetchval = AsyncMock(return_value=practice_client_id)
++        fake_repo = MagicMock()
++        fake_repo.insert = AsyncMock(side_effect=lambda case: case)
++
++        with patch.object(e33_cases_module, "E33CaseRepository", return_value=fake_repo):
++            response = client.post(
++                "/api/e33/cases",
++                json={"client_id": 1, "basis": "deposit", "practice_id": 42},
++            )
++
++        assert response.status_code == 422
++        assert response.json() == {"detail": "practice is not available for this client"}
++        fake_repo.insert.assert_not_awaited()
++
++    @pytest.mark.integration
++    def test_explicit_null_practice_preserves_case_creation(self, mock_db_pool, admin_user) -> None:
++        pool, conn = mock_db_pool
++        client = TestClient(_make_app(pool, admin_user), raise_server_exceptions=False)
++        conn.fetchrow = AsyncMock(
++            return_value={
++                "full_name": "Alice Example",
++                "assigned_to": admin_user["email"],
++                "deleted_at": None,
++            }
++        )
++        fake_repo = MagicMock()
++        fake_repo.insert = AsyncMock(side_effect=lambda case: case)
++
++        with patch.object(e33_cases_module, "E33CaseRepository", return_value=fake_repo):
++            response = client.post(
++                "/api/e33/cases",
++                json={"client_id": 1, "basis": "deposit", "practice_id": None},
++            )
++
++        assert response.status_code == 201
++        assert fake_repo.insert.await_args.args[0].practice_id is None
++        conn.fetchval.assert_not_awaited()
+ 
+     @pytest.mark.integration
+     def test_dependent_without_principal_case_id_returns_422(
+@@ -207,10 +293,11 @@ class TestCreateCase:
+ 
+         response = client.post(
+             "/api/e33/cases",
+-            json={"client_id": 1, "basis": "deposit"},
++            json={"client_id": 1, "basis": "deposit", "practice_id": 42},
+         )
+ 
+         assert response.status_code == 403
++        conn.fetchval.assert_not_awaited()
+ 
+     @pytest.mark.integration
+     def test_fk_violation_returns_422_generic_detail(self, mock_db_pool, admin_user) -> None:
+@@ -227,6 +314,8 @@ class TestCreateCase:
+         fake_repo = MagicMock()
+         raw_pg_detail = "insert or update on table violates foreign key constraint pk_practice_42"
+         fake_repo.insert = AsyncMock(side_effect=asyncpg.ForeignKeyViolationError(raw_pg_detail))
++        # The practice can disappear after the pre-insert ownership lookup.
++        conn.fetchval = AsyncMock(return_value=1)
+ 
+         with patch.object(e33_cases_module, "E33CaseRepository", return_value=fake_repo):
+             response = client.post(
+@@ -238,6 +327,7 @@ class TestCreateCase:
+         detail = response.json()["detail"]
+         assert raw_pg_detail not in detail  # no raw asyncpg exception text leaked to the client
+         assert "does not exist" in detail
++        fake_repo.insert.assert_awaited_once()
+ 
+     @pytest.mark.integration
+     def test_unique_violation_remints_once_then_500(self, mock_db_pool, admin_user) -> None:
+diff --git a/evidence/2026-09/agent-air-m5-backend-rag-e33-practice-owner-174e8d00/brief.yml b/evidence/2026-09/agent-air-m5-backend-rag-e33-practice-owner-174e8d00/brief.yml
+new file mode 100644
+index 0000000000..a37e7750bc
+--- /dev/null
++++ b/evidence/2026-09/agent-air-m5-backend-rag-e33-practice-owner-174e8d00/brief.yml
+@@ -0,0 +1,29 @@
++task_id: e33-practice-owner
++gear: 2
++l_level: L2
++gate_class: opus
++objective: >-
++  Reject an E33 create-case request whose optional practice belongs to a different client
++  or does not exist, before inserting a case. Preserve client authorization and creation
++  without a practice. This is S-02 of the owner-requested three-product collaboration.
++constraints:
++  - Only e33_cases.py, its router tests and this branch's evidence are changed.
++  - Synthetic data and mock database only; backend tests execute on Pro.
++  - Draft PR only. Independent Fable review is pending; no merge, arming or deployment.
++acceptance:
++  - text: >-
++      WHEN the practice is missing or belongs to another client, create_case SHALL return
++      the same 422 response and never insert. Valid admin/team requests and omitted/null
++      practice requests SHALL retain their successful behavior.
++    probe: backend/tests/routers/test_e33_cases.py
++  - text: The changed Python files SHALL pass Ruff lint without collateral reformatting.
++    probe: ruff check backend/app/routers/e33_cases.py backend/tests/routers/test_e33_cases.py
++consumer_map:
++  - Staff E33 console POST /api/e33/cases consumes the pre-insert relationship check.
++risks:
++  - Verification uses the real router with a mocked pool, not a production database.
++  - The existing FK handler still handles deletion between lookup and insertion.
++  - Ruff format reports nine inherited hunks outside the change; formatting is not clean.
++grader: Independent Fable review requested by the coordinating session; not yet performed.
++budget: Existing subscription only; no paid API calls.
++pii: none
+diff --git a/evidence/2026-09/agent-air-m5-backend-rag-e33-practice-owner-174e8d00/pack.yml b/evidence/2026-09/agent-air-m5-backend-rag-e33-practice-owner-174e8d00/pack.yml
+new file mode 100644
+index 0000000000..75b03d461b
+--- /dev/null
++++ b/evidence/2026-09/agent-air-m5-backend-rag-e33-practice-owner-174e8d00/pack.yml
+@@ -0,0 +1,61 @@
++brief_ref: evidence/brief.yml
++plan_ref: Owner three-product mandate, delegated S-02 E33 practice-client ownership fix.
++lanes:
++  - lane: s02-e33-practice-owner
++    role: build
++    seat: gpt-6-astra
++dissent: []
++pii_scan: clean
++review_status: pending independent Fable review
++diff:
++  behaviour_change: >-
++    After existing client/RBAC validation, look up the optional practice's owning client.
++    Missing and mismatched practices return identical 422 responses before repository insert.
++    No practice preserves the existing path and performs no additional lookup.
++baseline:
++  commit: af949e6eb5d1767454dd788cd7a8e5be4b89967d # pragma: allowlist secret - public Git commit ID
++  regression_result: >-
++    Before the router fix, the expanded suite produced 4 failed and 37 passed in 0.87s:
++    missing/mismatched practices incorrectly returned 201, and valid links had no ownership lookup.
++verification_scope:
++  host: Pro
++  snapshot: /tmp/e33-practice-owner.29PNVE
++  venv: /Users/nuzantara/nuzantara/apps/backend-rag/.venv
++  data: Synthetic fixtures with mock_db_pool; operational databases were not accessed.
++  snapshot_source: git archive of the baseline backend and pytest guards, plus the two changed files.
++  router_sha256: 40888f2c3c3b342f79cf34be6ca5d88e439c0b43860a0f5ae4d7ce8b1475a92c # pragma: allowlist secret - source file content hash
++  tests_sha256: 0a4ba99acfaf65677bc6a7f631a7a1f981e24468e5d42c72f2aaa4d62e6a0d44 # pragma: allowlist secret - test file content hash
++  hash_check: Both file hashes matched between the M5 worktree and Pro snapshot.
++  database_fixture: Credential-free synthetic database on loopback port 1; no operational DSN.
++receipts:
++  - claim: Final router suite covers ownership, authorization, omission and existing lifecycle routes.
++    cmd: >-
++      ssh pro 'cd /tmp/e33-practice-owner.29PNVE/apps/backend-rag;
++      source /Users/nuzantara/nuzantara/apps/backend-rag/.venv/bin/activate;
++      export DATABASE_URL=postgresql://127.0.0.1:1/test;
++      export TEST_DATABASE_URL="$DATABASE_URL" INTAKE_TEST_DSN="$DATABASE_URL";
++      PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=. ENVIRONMENT=test
++      python -m pytest backend/tests/routers/test_e33_cases.py'
++    result: 41 passed, 1 existing LangChain deprecation warning, in 1.79s.
++    exit: 0
++    ts: "2026-09-05T06:44:47Z"
++    seat: gpt-6-astra via Pro existing venv
++  - claim: Ruff lint of both changed Python files.
++    cmd: >-
++      ssh pro 'cd /tmp/e33-practice-owner.29PNVE/apps/backend-rag;
++      source /Users/nuzantara/nuzantara/apps/backend-rag/.venv/bin/activate;
++      python -m ruff check backend/app/routers/e33_cases.py backend/tests/routers/test_e33_cases.py'
++    result: All checks passed.
++    exit: 0
++    ts: "2026-09-05T06:35:28Z"
++    seat: gpt-6-astra via Pro existing venv
++known_debt:
++  - Ruff format --check is not clean; its nine remaining hunks are inherited and outside this diff.
++  - No deployment or production behavior is claimed; final independent review remains pending.
++secret_scan_followup:
++  cause: CI flagged three public commit/content hashes and the original synthetic DSN as secrets.
++  scope: Inline exceptions cover only the three verified hash lines; the command uses no credentials.
++  verification: >-
++    Scan, auto-triage and unaudited-findings gate reproduced in an isolated copy: corrected pack
++    returned 0 with no findings; an unrelated synthetic hash and Basic Auth control on separate
++    lines returned 1 with two unaudited findings; removing those controls restored 0.
