@@ -152,7 +152,17 @@ def test_unused_fact_paths_is_registry_minus_used(seq7_report) -> None:
     # unused *by design* until a future seq folds a rule that reads it: a
     # deliberately dormant fact, not an accidentally orphaned one — do not
     # "fix" it by bumping the number down.
-    assert len(seq7_report.unused_fact_paths) == 14
+    #
+    # Was 14; W-VO-S21 (2026-09-13) adds the TEN seq-21 qualification
+    # booleans, taking it to 24. The same receipt reading applies with one
+    # difference worth stating: unlike `investment.investment_amount_usd`,
+    # these ten ARE read by rules — but by rules that live in
+    # `rulepack-prod-021.source.json`, and this fixture is pinned to the
+    # FROZEN seq-7 pack. "Unused against seq-7" is therefore the expected
+    # reading of a fact introduced fourteen sequences later, and the number
+    # rising by exactly ten is the receipt that the registry grew by exactly
+    # ten. `test_seq21_pack.py` is where those rules' readers are proven.
+    assert len(seq7_report.unused_fact_paths) == 24
 
 
 def test_required_facts_ast_invariant_holds_on_the_real_pack(seq7_report) -> None:

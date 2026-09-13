@@ -19090,10 +19090,11 @@ export interface components {
     /**
      * ApplicantFactsData
      * @description ``ApplicantFacts.facts`` (spec §2) — ``additionalProperties: false``
-     *     with all keys required except the five transitional fields documented on
+     *     with all keys required except the transitional fields documented on
      *     ``sponsor_type``, the three ``family.stepchild_*``/
-     *     ``family.sponsor_permit_basis`` fields (2026-08-23), and
-     *     ``immigration_renewal_paid`` (2026-08-24) below — all the same rollout
+     *     ``family.sponsor_permit_basis`` fields (2026-08-23),
+     *     ``immigration_renewal_paid`` (2026-08-24) and the ten seq-21
+     *     qualification facts (2026-09-13) below — all the same rollout
      *     mechanism. Field order mirrors ``enums.FactPath``'s
      *     ``person.*``/``immigration.*``/``intent.*``/``work.*``/``investment.*``/
      *     ``family.*``/``study.*``/``secondhome.*``/``process.*``/``commercial.*``
@@ -19222,6 +19223,46 @@ export interface components {
       "intent.stay_days":
         | components["schemas"]["UnknownFact"]
         | components["schemas"]["KnownNonNegativeInteger"];
+      /**
+       * Investment.Capital Market Only
+       * @default {
+       *       "reason": "NOT_ASKED",
+       *       "status": "UNKNOWN"
+       *     }
+       */
+      "investment.capital_market_only":
+        | components["schemas"]["UnknownFact"]
+        | components["schemas"]["KnownBoolean"];
+      /**
+       * Investment.Establishes Indonesian Company
+       * @default {
+       *       "reason": "NOT_ASKED",
+       *       "status": "UNKNOWN"
+       *     }
+       */
+      "investment.establishes_indonesian_company":
+        | components["schemas"]["UnknownFact"]
+        | components["schemas"]["KnownBoolean"];
+      /**
+       * Investment.Foreign Branch Or Subsidiary
+       * @default {
+       *       "reason": "NOT_ASKED",
+       *       "status": "UNKNOWN"
+       *     }
+       */
+      "investment.foreign_branch_or_subsidiary":
+        | components["schemas"]["UnknownFact"]
+        | components["schemas"]["KnownBoolean"];
+      /**
+       * Investment.Ikn Subsidiary
+       * @default {
+       *       "reason": "NOT_ASKED",
+       *       "status": "UNKNOWN"
+       *     }
+       */
+      "investment.ikn_subsidiary":
+        | components["schemas"]["UnknownFact"]
+        | components["schemas"]["KnownBoolean"];
       /** Investment.Investment Amount Usd */
       "investment.investment_amount_usd":
         | components["schemas"]["UnknownFact"]
@@ -19230,6 +19271,16 @@ export interface components {
       "investment.investment_capital_idr":
         | components["schemas"]["UnknownFact"]
         | components["schemas"]["KnownMoney"];
+      /**
+       * Investment.Meets Published Threshold
+       * @default {
+       *       "reason": "NOT_ASKED",
+       *       "status": "UNKNOWN"
+       *     }
+       */
+      "investment.meets_published_threshold":
+        | components["schemas"]["UnknownFact"]
+        | components["schemas"]["KnownBoolean"];
       /** Investment.Paid Up Capital Idr */
       "investment.paid_up_capital_idr":
         | components["schemas"]["UnknownFact"]
@@ -19283,6 +19334,46 @@ export interface components {
         | components["schemas"]["UnknownFact"]
         | components["schemas"]["KnownNonNegativeInteger"];
       /**
+       * Sponsor.Diplomatic Household
+       * @default {
+       *       "reason": "NOT_ASKED",
+       *       "status": "UNKNOWN"
+       *     }
+       */
+      "sponsor.diplomatic_household":
+        | components["schemas"]["UnknownFact"]
+        | components["schemas"]["KnownBoolean"];
+      /**
+       * Sponsor.Government Collaboration
+       * @default {
+       *       "reason": "NOT_ASKED",
+       *       "status": "UNKNOWN"
+       *     }
+       */
+      "sponsor.government_collaboration":
+        | components["schemas"]["UnknownFact"]
+        | components["schemas"]["KnownBoolean"];
+      /**
+       * Sponsor.Government Invitation
+       * @default {
+       *       "reason": "NOT_ASKED",
+       *       "status": "UNKNOWN"
+       *     }
+       */
+      "sponsor.government_invitation":
+        | components["schemas"]["UnknownFact"]
+        | components["schemas"]["KnownBoolean"];
+      /**
+       * Sponsor.Trade Office
+       * @default {
+       *       "reason": "NOT_ASKED",
+       *       "status": "UNKNOWN"
+       *     }
+       */
+      "sponsor.trade_office":
+        | components["schemas"]["UnknownFact"]
+        | components["schemas"]["KnownBoolean"];
+      /**
        * Sponsor.Type
        * @default {
        *       "reason": "NOT_ASKED",
@@ -19292,6 +19383,16 @@ export interface components {
       "sponsor.type":
         | components["schemas"]["UnknownFact"]
         | components["schemas"]["KnownSponsorType"];
+      /**
+       * Sponsor.World Figure Invitation
+       * @default {
+       *       "reason": "NOT_ASKED",
+       *       "status": "UNKNOWN"
+       *     }
+       */
+      "sponsor.world_figure_invitation":
+        | components["schemas"]["UnknownFact"]
+        | components["schemas"]["KnownBoolean"];
       /** Study.Admission Confirmed */
       "study.admission_confirmed":
         | components["schemas"]["UnknownFact"]
@@ -21637,17 +21738,22 @@ export interface components {
     };
     /**
      * FactPath
-     * @description Every fact path the engine may ever reference — 46 applicant-collected
+     * @description Every fact path the engine may ever reference — 56 applicant-collected
      *     + 4 derived (spec §2 ``ApplicantFactPath`` + ``FactPath``, extended by the
      *     ``secondhome.*`` group for the E33 Second Home vertical, 2026-07-23, by
      *     ``sponsor.type`` for the sponsor-category question, 2026-08-10, by the
      *     two ``family.stepchild_*`` evidence facts, ``family.sponsor_permit_basis``
      *     and ``derived.has_active_stay_permit`` (2026-08-23, three owner rulings),
      *     by ``immigration.renewal_paid`` (2026-08-24, F4 — see its own inline
-     *     comment for the grounding), and by ``investment.investment_amount_usd``
+     *     comment for the grounding), by ``investment.investment_amount_usd``
      *     (2026-09-13, PR-D4c-1 — contract-only: a later PR, D4c-2, asks an
      *     investment applicant for a USD amount; this PR only declares the wire
-     *     key so that question can exist, and no rule reads it yet).
+     *     key so that question can exist, and no rule reads it yet), and by the
+     *     TEN seq-21 qualification facts (2026-09-13, W-VO-S21 — five
+     *     ``sponsor.*`` and five ``investment.*`` booleans, each the ONE
+     *     qualification a zero-SUPPORT product's new eligibility rule tests; see
+     *     their own inline comments and
+     *     ``backend/scripts/visa_engine/fold_pack_seq21.py``).
      *
      *     Closed by design (spec §5.2): a Condition's ``fact`` field and a Rule's
      *     ``required_facts`` array are both typed against this enum, so a rule
@@ -21683,6 +21789,11 @@ export interface components {
       | "investment.paid_up_capital_idr"
       | "investment.proposed_role"
       | "investment.investment_amount_usd"
+      | "investment.establishes_indonesian_company"
+      | "investment.capital_market_only"
+      | "investment.foreign_branch_or_subsidiary"
+      | "investment.ikn_subsidiary"
+      | "investment.meets_published_threshold"
       | "family.relation_to_sponsor"
       | "family.sponsor_nationalities"
       | "family.sponsor_status_code"
@@ -21695,6 +21806,11 @@ export interface components {
       | "study.admission_confirmed"
       | "study.sponsor_confirmed"
       | "sponsor.type"
+      | "sponsor.government_invitation"
+      | "sponsor.government_collaboration"
+      | "sponsor.world_figure_invitation"
+      | "sponsor.diplomatic_household"
+      | "sponsor.trade_office"
       | "secondhome.bank_deposit_usd"
       | "secondhome.bank_deposit_at_state_bank"
       | "secondhome.bank_deposit_in_own_name"

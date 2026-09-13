@@ -507,22 +507,27 @@ class Environment(str, Enum):
 
 
 # ---------------------------------------------------------------------------
-# FactPath — the closed 50-path fact vocabulary (46 applicant + 4 derived; spec §2 ``FactPath``)
+# FactPath — the closed 60-path fact vocabulary (56 applicant + 4 derived; spec §2 ``FactPath``)
 # ---------------------------------------------------------------------------
 
 
 class FactPath(str, Enum):
-    """Every fact path the engine may ever reference — 46 applicant-collected
+    """Every fact path the engine may ever reference — 56 applicant-collected
     + 4 derived (spec §2 ``ApplicantFactPath`` + ``FactPath``, extended by the
     ``secondhome.*`` group for the E33 Second Home vertical, 2026-07-23, by
     ``sponsor.type`` for the sponsor-category question, 2026-08-10, by the
     two ``family.stepchild_*`` evidence facts, ``family.sponsor_permit_basis``
     and ``derived.has_active_stay_permit`` (2026-08-23, three owner rulings),
     by ``immigration.renewal_paid`` (2026-08-24, F4 — see its own inline
-    comment for the grounding), and by ``investment.investment_amount_usd``
+    comment for the grounding), by ``investment.investment_amount_usd``
     (2026-09-13, PR-D4c-1 — contract-only: a later PR, D4c-2, asks an
     investment applicant for a USD amount; this PR only declares the wire
-    key so that question can exist, and no rule reads it yet).
+    key so that question can exist, and no rule reads it yet), and by the
+    TEN seq-21 qualification facts (2026-09-13, W-VO-S21 — five
+    ``sponsor.*`` and five ``investment.*`` booleans, each the ONE
+    qualification a zero-SUPPORT product's new eligibility rule tests; see
+    their own inline comments and
+    ``backend/scripts/visa_engine/fold_pack_seq21.py``).
 
     Closed by design (spec §5.2): a Condition's ``fact`` field and a Rule's
     ``required_facts`` array are both typed against this enum, so a rule
@@ -581,6 +586,38 @@ class FactPath(str, Enum):
     # `models.py`'s `investment_amount_usd` field for the transitional
     # default this PR ships alongside it.
     INVESTMENT_INVESTMENT_AMOUNT_USD = "investment.investment_amount_usd"
+    # The five seq-21 investor-route qualification facts (2026-09-13,
+    # W-VO-S21). E28B/E28C/E28D/E28F had ZERO eligibility rules and could
+    # never be recommended; the only thing that distinguished them in the
+    # pack was `intent.requested_product_code`, which `fact-mapper.ts`
+    # hard-codes to UNKNOWN(NOT_ASKED), so their four REQUIRE_REVIEW rules
+    # were dormant by construction. Each route below is the ONE fact the
+    # catalogue (Kepmen M.IP-08.GR.01.01/2025) uses to tell the four Golden
+    # Visa investor products apart, declared by the applicant rather than
+    # inferred: establishing an Indonesian company (E28B), holding capital
+    # -market instruments WITHOUT establishing one (E28C), establishing a
+    # branch or subsidiary of a foreign company (E28D), or a subsidiary in
+    # the new capital, IKN (E28F). They are deliberately independent
+    # booleans, not one closed enum: an applicant doing two of these at once
+    # is real, and a single-valued route fact would force the interview to
+    # make them choose one.
+    INVESTMENT_ESTABLISHES_INDONESIAN_COMPANY = "investment.establishes_indonesian_company"
+    INVESTMENT_CAPITAL_MARKET_ONLY = "investment.capital_market_only"
+    INVESTMENT_FOREIGN_BRANCH_OR_SUBSIDIARY = "investment.foreign_branch_or_subsidiary"
+    INVESTMENT_IKN_SUBSIDIARY = "investment.ikn_subsidiary"
+    # investment.meets_published_threshold — the financial half of the same
+    # four qualifications, and a DECLARATION, never a computed comparison.
+    # NO source record in the pack states the Golden Visa USD minimums (the
+    # catalogue record cites PAGE locators only, no figure), so a rule
+    # comparing `investment.investment_amount_usd` against a hard-coded
+    # number would be inventing the number — banned. The applicant instead
+    # declares that their investment meets EVERY published financial minimum
+    # for the route they chose (capital, and, where the route publishes one,
+    # annual turnover — that is what makes it sufficient for E28D, whose
+    # retired review rule named turnover as well as the threshold), and the
+    # rule's explanation cites the source record the figure must be read
+    # from. A figure arrives in the pack the day a source record states it.
+    INVESTMENT_MEETS_PUBLISHED_THRESHOLD = "investment.meets_published_threshold"
     # family.*
     FAMILY_RELATION_TO_SPONSOR = "family.relation_to_sponsor"
     FAMILY_SPONSOR_NATIONALITIES = "family.sponsor_nationalities"
@@ -660,6 +697,34 @@ class FactPath(str, Enum):
     # against the then-current pack rather than treating either snapshot as
     # permanent.
     SPONSOR_TYPE = "sponsor.type"
+    # The five seq-21 sponsor-qualification facts (2026-09-13, W-VO-S21),
+    # and they exist because of the paragraph directly above: `sponsor.type`
+    # alone "does not supply a safe eligibility gate" for E33A/E33B/E33C,
+    # and E23U/E23V collide with them on it. Each fact below is the
+    # "legally grounded discriminator" that paragraph says unblocking those
+    # products needs — one fact per qualification, so no two products can
+    # ever be recommended on the same evidence:
+    #   * E33A (Permenkumham 22/2023 jo. 11/2024 Ps. 57) — a confirmed
+    #     central-government invitation for special expertise;
+    #   * E33B (Ps. 58) — a confirmed special-expertise COLLABORATION
+    #     commitment with an Indonesian government body or institution
+    #     (this is the fact E33B's retired `expertise-qualification` review
+    #     rule asked a human to establish);
+    #   * E33C (Ps. 59) — a confirmed government invitation extended to the
+    #     applicant as a world figure;
+    #   * E23U — the employer is a foreign diplomat and the role is in that
+    #     diplomat's household;
+    #   * E23V — the sponsor is a foreign trade or economic representative
+    #     office.
+    # All five are self-declared booleans, exactly like
+    # `work.indonesian_work_sponsor_confirmed` and `study.sponsor_confirmed`:
+    # the Oracle states which document the consultation must see, it never
+    # certifies the document itself.
+    SPONSOR_GOVERNMENT_INVITATION = "sponsor.government_invitation"
+    SPONSOR_GOVERNMENT_COLLABORATION = "sponsor.government_collaboration"
+    SPONSOR_WORLD_FIGURE_INVITATION = "sponsor.world_figure_invitation"
+    SPONSOR_DIPLOMATIC_HOUSEHOLD = "sponsor.diplomatic_household"
+    SPONSOR_TRADE_OFFICE = "sponsor.trade_office"
     # secondhome.* — E33 Second Home vertical (bank-route scope, owner decision
     # 2026-07-23): the qualifying-basis facts the base E33 / E33E / E33F
     # eligibility rules test. ``bank_deposit_*`` is one deposit, evidenced as
@@ -692,7 +757,7 @@ class FactPath(str, Enum):
     DERIVED_HAS_ACTIVE_STAY_PERMIT = "derived.has_active_stay_permit"
 
 
-#: The 46 applicant-collected paths (everything except ``derived.*``).
+#: The 56 applicant-collected paths (everything except ``derived.*``).
 APPLICANT_FACT_PATHS: frozenset[FactPath] = frozenset(
     path for path in FactPath if not path.value.startswith("derived.")
 )

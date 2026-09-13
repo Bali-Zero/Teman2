@@ -1221,7 +1221,17 @@ describe("review reasons cover every code the current pack can emit", () => {
     // from 32 to the measured 38 (round-1 refuter finding, Gemini 3.1 Pro +
     // Kimi K3): 32 would still pass a regression that silently dropped up
     // to 5 real codes.
-    expect(allRealCodes.length).toBeGreaterThanOrEqual(38);
+    //
+    // Lowered to 30 on 2026-09-13 (W-VO-S21), and this is a RETIREMENT, not
+    // a weakening: `reviewReasonCodesInPack()` reads the HIGHEST-sequence
+    // source pack, which is now rulepack-prod-021, and that fold retires the
+    // NINE dormant `review.*` rules gated on `intent.requested_product_code`
+    // — eight distinct codes (E33A and E33C shared
+    // GOVT_INVITATION_REQUIRED). Measured after the fold: 12 pack + 18
+    // pack-independent = 30. The floor is deliberately re-pinned to the new
+    // measurement rather than left at 38 (which would be permanently red) or
+    // dropped to a round number (which would stop catching a silent loss).
+    expect(allRealCodes.length).toBeGreaterThanOrEqual(30);
 
     const unaccounted = allRealCodes.filter(
       (code) =>
