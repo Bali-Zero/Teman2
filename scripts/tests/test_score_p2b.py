@@ -341,3 +341,27 @@ def test_run_integrity_innocence_a_complete_run_is_complete(score_mod):
     assert r["complete"] is True
     assert r["categories"] == {"answered": 6}
     assert r["duplicate_rows"] == [] and r["synthesized_rows"] == []
+
+
+def test_judge_is_told_about_the_derived_verdict_block(score_mod, tmp_path, monkeypatch):
+    """Measured on the 2026-09-13 run: the served package carries a `pma_bali_verdict` block the
+    product derives from the record's own fields, the model quoted it, and the judge — holding
+    only the raw record — called it invented. Three questions were marked "fabricated" for
+    repeating the product's own adjudication back. The cure is provenance, not a second
+    implementation of the derivation."""
+    corpus = {"questions": [{"id": "T04", "class": "structured", "text": "68111",
+                             "expected": {"codes": ["68111"]}}]}
+    cp = tmp_path / "corpus.json"
+    cp.write_text(json.dumps(corpus))
+    ap = tmp_path / "answers.jsonl"
+    ap.write_text(json.dumps({"qid": "T04", "run": 1, "raw_answer": "68111 is OPEN_IN_BALI.",
+                              "gate_ok": True, "package_codes": ["68111"]}))
+    outdir = tmp_path / "prompts"
+    monkeypatch.setattr(score_mod, "find_root", lambda: REPO_ROOT)
+    score_mod.cmd_prompts(str(cp), str(ap), str(outdir))
+    payload = json.loads((outdir / "T04.txt").read_text().split("INPUT:\n", 1)[1])
+    note = payload["ground_truth_provenance"]["derived_fields_in_the_served_package"]
+    assert "pma_bali_verdict" in note
+    assert "is NOT inventing a regulatory fact" in note
+    # the derivation is stated, so the judge can check it FOLLOWS instead of hunting the string
+    assert "NON_CLASSIFICABILE" in note and "dominates" in note

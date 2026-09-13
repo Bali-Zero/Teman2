@@ -330,6 +330,33 @@ def record_slice(rec: dict) -> dict:
     return out
 
 
+# WHAT THE MODEL SAW THAT THE RAW RECORD DOES NOT SHOW.
+#
+# The same defect class as the expected.codes/package_codes one, one layer down, and it was
+# measured on the 2026-09-13 run before this note existed: the context package serves each
+# record with a `pma_bali_verdict` block the product DERIVES from that record's own fields, the
+# model quoted it, and the judge — holding only the raw record — called it invented. Three
+# questions were marked "fabricated" for repeating the product's own adjudication back.
+#
+# The cure is NOT to re-implement the derivation here (that would be a second rule, which is
+# exactly what the product side of this window exists to abolish). It is to tell the judge the
+# provenance, so it checks whether the verdict FOLLOWS from the fields instead of whether the
+# string appears in them.
+DERIVED_FIELDS_NOTE = (
+    "Each served record ALSO carried a `pma_bali_verdict` block, which the product derives "
+    "deterministically from the very fields supplied below (l4_bali.blocked, l4_bali.status, "
+    "pma_status, pma_max_asing, per_skala.kategori_risiko). Its `headline` is one of "
+    "NATIONALLY_CLOSED, BALI_BLOCKED, NATIONAL_UNDETERMINED, BALI_UNDETERMINED, OPEN_IN_BALI, "
+    "with a `reason`, a `national_cap_percent` and a `risk_category` that may be null. An answer "
+    "that quotes that verdict is NOT inventing a regulatory fact: judge whether the verdict "
+    "FOLLOWS from the fields below, and call it wrong only if it does not. The derivation is: an "
+    "established national closure (pma_status TERTUTUP, or a 0% cap) dominates; then "
+    "l4_bali.blocked == true; then l4_bali.status == NON_CLASSIFICABILE with blocked == false, "
+    "which is BALI_UNDETERMINED; otherwise OPEN_IN_BALI. A provisional or proposed Bali status "
+    "with blocked == false is NOT a closure."
+)
+
+
 JUDGE_RUBRIC = """You are an adversarial benchmark judge. You receive: a benchmark question, its
 classification, the ground-truth structured record(s) (the ONLY admissible source of regulatory
 facts), the expected behavior, and N candidate answers (independent runs of the same system).
@@ -400,6 +427,7 @@ def cmd_prompts(corpus_p, answers_p, outdir):
                 "expected_codes": expected_codes,
                 "served_package_codes": served_codes,
                 "rule": "records supplied = expected.codes UNION the package codes served to the model",
+                "derived_fields_in_the_served_package": DERIVED_FIELDS_NOTE,
             },
             "answers": [{"run": r["run"], "text": served_text(r),
                          "package_codes": r.get("package_codes") or []} for r in runs],
