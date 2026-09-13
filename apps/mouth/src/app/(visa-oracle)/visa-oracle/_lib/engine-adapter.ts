@@ -18,6 +18,7 @@ import type {
   OutcomeSource,
   OutcomeTimeline,
   OutcomeViewModel,
+  NoSupportedPathAlternative,
   ServiceAvailabilityStatus,
 } from "./outcome-view-model";
 import type {
@@ -407,6 +408,32 @@ export const SUPPORT_REASON_COPY: Record<string, LocalizedText> = {
     "A business visit visa does not allow payment from an Indonesian source. Paid activity in Indonesia needs a work route.",
     "Visa kunjungan bisnis tidak mengizinkan pembayaran dari sumber di Indonesia. Aktivitas berbayar di Indonesia memerlukan jalur kerja.",
   ),
+  // EXCLUDE codes reachable on a real dead end and UNCOPIED until 2026-09-13,
+  // when a browser walk of the 15 no-path interviews read
+  // `Verified reason: AGE_BELOW_55` back at a visitor. Each sentence states
+  // the rule's OWN `when` clause (rulepack-prod-020.source.json) and nothing
+  // more: `hf.e33e.age-below-55` / `hf.e33f.age-below-55` test
+  // `derived.age_years < 55`; `hf.e33g.indonesian-employer` and
+  // `hf.e33g.indonesian-source-compensation` test the two remote-work facts
+  // by name; `hf.a1.not-bvk-nationality` tests membership of the visa-free
+  // nationality list. The numbers and the lists belong to the signed pack —
+  // none is restated here beyond the bound the code itself names.
+  AGE_BELOW_55: text(
+    "The retirement routes in our verified catalogue start at age 55, and the date of birth you gave is below that.",
+    "Jalur pensiun dalam katalog terverifikasi kami dimulai pada usia 55 tahun, dan tanggal lahir yang Anda berikan berada di bawah usia tersebut.",
+  ),
+  INDONESIAN_EMPLOYER_NOT_ALLOWED: text(
+    "You told us your employer is an Indonesian entity. The remote-work route covers work done for an employer outside Indonesia.",
+    "Anda menyampaikan bahwa pemberi kerja Anda adalah badan usaha Indonesia. Jalur kerja jarak jauh mencakup pekerjaan untuk pemberi kerja di luar Indonesia.",
+  ),
+  INDONESIAN_SOURCE_COMPENSATION_BANNED: text(
+    "You told us the pay for this activity comes from an Indonesian source. The remote-work route does not allow compensation paid from Indonesia.",
+    "Anda menyampaikan bahwa bayaran untuk aktivitas ini berasal dari sumber di Indonesia. Jalur kerja jarak jauh tidak mengizinkan kompensasi yang dibayarkan dari Indonesia.",
+  ),
+  BVK_NATIONALITY_ONLY: text(
+    "Visa-free entry is open only to a fixed list of nationalities, and the passport you gave is not on that list.",
+    "Bebas visa hanya terbuka untuk daftar kewarganegaraan tertentu, dan paspor yang Anda berikan tidak termasuk dalam daftar tersebut.",
+  ),
   D12_CUMULATIVE_STAY_ADVISOR_CHECK: text(
     "Long or repeated stays are counted cumulatively. We check your total against the limit with one of our advisors.",
     "Masa tinggal panjang atau berulang dihitung secara kumulatif. Kami memeriksa total Anda terhadap batasnya bersama konsultan kami.",
@@ -488,6 +515,149 @@ function secondHomeBelowThresholdReason(
   return undefined;
 }
 
+/**
+ * The pack's own names for the products a dead end may point at, copied
+ * verbatim from `rulepack-prod-020.source.json` `products[].names` (the same
+ * source the candidate sheet renders from when the engine returns one). A
+ * door may never name a product that is not in this map.
+ */
+const DOOR_PRODUCT_NAMES: Record<string, LocalizedText> = {
+  C1: text("Tourist Visit Visa (C1)", "Visa Kunjungan Wisata (C1)"),
+  E33: text("Second Home Visa (E33)", "Visa Rumah Kedua (E33)"),
+  E33F: text(
+    "Second Home Visa — Elderly 1-Year (E33F)",
+    "Visa Rumah Kedua Lansia untuk 1 Tahun (E33F)",
+  ),
+};
+
+/** A declared Second Home basis whose declared value clears the pack's own
+ * bound — the mirror of `secondHomeBelowThresholdReason`, and the only fact
+ * shape on which the E33 door below may be named. */
+function secondHomeBasisClearsThreshold(facts: OracleFacts): boolean {
+  const basis =
+    facts.category === "invest"
+      ? facts.investment_vehicle
+      : facts.category === "retirement"
+        ? facts.retirement_basis
+        : facts.category === "second_home"
+          ? facts.secondhome_basis
+          : undefined;
+  if (basis === "property") {
+    const value = Number(facts.secondhome_property_value_usd);
+    return (
+      Number.isFinite(value) && value >= SECOND_HOME_PROPERTY_THRESHOLD_USD
+    );
+  }
+  if (basis === "bank_deposit") {
+    const value = Number(facts.secondhome_deposit_usd);
+    return Number.isFinite(value) && value >= SECOND_HOME_DEPOSIT_THRESHOLD_USD;
+  }
+  return false;
+}
+
+/**
+ * A dead end names the door that IS open.
+ *
+ * Each rule below is PROVEN, not argued: `_lib/fixtures/no-path-doors.replay
+ * .json` replays every non-supported walk of the interview corpus against the
+ * signed pack with exactly ONE declared field changed, and
+ * `no-path-doors.test.ts` fails if any rule here names a product that replay
+ * does not return for that walk's own facts. Three rules survive that test
+ * today; a fourth that merely reads well does not belong here until a replay
+ * carries it.
+ *
+ * The rules deliberately UNDER-claim where the evidence is uneven (the
+ * `undecided` Second Home basis opens E33 in the replay but is not named,
+ * because the applicant declared no basis to point at). Naming one honest
+ * door beats naming three that need a caveat.
+ */
+export function buildNoPathDoors(
+  noPathReasonCodes: readonly string[],
+  facts: OracleFacts,
+): NoSupportedPathAlternative[] {
+  const doors: NoSupportedPathAlternative[] = [];
+  const category = facts.category;
+  if (category === undefined || category === "unsure") return doors;
+
+  // 1. TOURISM — open on all 17 non-supported walks in the replay. Worded as
+  //    the engine established it: a visit with no paid activity, nothing
+  //    about how long or how many entries (the pack owns those numbers).
+  if (category !== "tourism") {
+    doors.push({
+      category: "tourism",
+      productCode: "C1",
+      productName: DOOR_PRODUCT_NAMES.C1,
+      message: text(
+        "With the same answers, the verified rules do support a tourist visit — a stay with no paid activity in Indonesia.",
+        "Dengan jawaban yang sama, aturan terverifikasi mendukung kunjungan wisata — masa tinggal tanpa aktivitas berbayar di Indonesia.",
+      ),
+      actionable: true,
+    });
+  }
+
+  // 2. SECOND HOME — only where the applicant DECLARED a basis and a value
+  //    that clears the pack's bound. No figure is restated here: the amount
+  //    belongs to the pack, and the sheet already states it where the value
+  //    falls short.
+  if (category !== "second_home" && secondHomeBasisClearsThreshold(facts)) {
+    doors.push({
+      category: "second_home",
+      productCode: "E33",
+      productName: DOOR_PRODUCT_NAMES.E33,
+      message: text(
+        "The deposit or property you declared already meets what the verified rules require for the Second Home route, and that route is not age-gated.",
+        "Deposito atau properti yang Anda nyatakan sudah memenuhi syarat aturan terverifikasi untuk jalur Rumah Kedua, dan jalur tersebut tidak dibatasi usia.",
+      ),
+      actionable: true,
+    });
+  }
+
+  // 3. AGE — the one door nothing answered today can open, so it carries no
+  //    button. Fires only when age is the SOLE named cause on a retirement
+  //    interview: on the two `business` walks the same code rides along with
+  //    another one, and the replay shows age alone opens nothing there.
+  if (
+    category === "retirement" &&
+    noPathReasonCodes.length === 1 &&
+    noPathReasonCodes[0] === "AGE_BELOW_55"
+  ) {
+    doors.push({
+      category: "retirement",
+      productCode: "E33F",
+      productName: DOOR_PRODUCT_NAMES.E33F,
+      message: text(
+        "Age is the only thing standing in the way. From 55, the same answers reach a supported retirement route.",
+        "Usia adalah satu-satunya penghalang. Mulai usia 55 tahun, jawaban yang sama menjangkau jalur pensiun yang didukung.",
+      ),
+      actionable: false,
+    });
+  }
+  return doors;
+}
+
+/**
+ * The second cause the generic `OPERATIONAL_NO_PRODUCT_MATCHES_DECLARED_
+ * PURPOSES` stands in for (walk `offshore/other/paid/employer_no`, measured
+ * 2026-09-13): the applicant declared paid activity in Indonesia AND that the
+ * payer is not an Indonesian entity. Like the threshold copy above, this
+ * names the applicant's OWN two answers instead of letting the catalogue
+ * sentence stand in for them; it does NOT claim a rule the pack never
+ * emitted, because the pack emits no reason code of its own here. Returns
+ * `undefined` unless both answers are actually present, so a future cause of
+ * the same generic code is never mis-attributed to this one.
+ */
+function paidActivityWithoutIndonesianPayerReason(
+  facts: OracleFacts,
+): LocalizedText | undefined {
+  if (facts.other_paid_activity !== "yes" || facts.work_payer !== "no") {
+    return undefined;
+  }
+  return text(
+    "You told us you will be paid for activity in Indonesia, and that the payer is not an Indonesian entity. No visa in our verified catalogue covers that combination.",
+    "Anda menyampaikan bahwa Anda akan dibayar untuk aktivitas di Indonesia, dan bahwa pihak yang membayar bukan badan usaha Indonesia. Tidak ada visa dalam katalog terverifikasi kami yang mencakup kombinasi tersebut.",
+  );
+}
+
 function reason(
   code: string,
   sourceIds: readonly string[],
@@ -496,7 +666,9 @@ function reason(
 ): OutcomeReason {
   const message =
     code === "OPERATIONAL_NO_PRODUCT_MATCHES_DECLARED_PURPOSES"
-      ? (secondHomeBelowThresholdReason(facts ?? {}) ?? reasonMessage(code))
+      ? (secondHomeBelowThresholdReason(facts ?? {}) ??
+        paidActivityWithoutIndonesianPayerReason(facts ?? {}) ??
+        reasonMessage(code))
       : reasonMessage(code);
   return {
     code,
@@ -1269,7 +1441,10 @@ function buildValidatedOutcome(
           requireDecisiveRefs(item.source_refs);
           return reason(item.code, item.source_refs, trustedIds, options.facts);
         }) as [OutcomeReason, ...OutcomeReason[]],
-        alternatives: [],
+        alternatives: buildNoPathDoors(
+          response.decision.no_path_reasons.map((item) => item.code),
+          options.facts ?? {},
+        ),
       };
     case "TEMPORARILY_UNAVAILABLE":
       return {

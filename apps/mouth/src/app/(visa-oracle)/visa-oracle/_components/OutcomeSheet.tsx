@@ -821,24 +821,60 @@ export function OutcomeSheet({
               <h2 className="oracle-outcome__section-title">
                 {translate(language, "outcome.alternatives_title")}
               </h2>
+              <p>{translate(language, "outcome.alternatives_intro")}</p>
               <ul className="oracle-action-list oracle-no-print">
-                {outcome.alternatives.map((alternative) => (
-                  <li key={alternative.category}>
-                    <button
-                      type="button"
-                      className="oracle-option-card"
-                      onClick={() => onSelectCategory?.(alternative.category)}
-                    >
-                      <span>
-                        {translate(
-                          language,
-                          `q.category.opt.${alternative.category}` as I18nKey,
-                        )}
-                      </span>
-                      <ArrowRight aria-hidden="true" size={18} />
-                    </button>
-                  </li>
-                ))}
+                {outcome.alternatives.map((alternative) => {
+                  // The product code is the headline when the door names one:
+                  // "Tourist Visit Visa (C1)" is the answer a dead end owes
+                  // the visitor, and the tile name alone never was.
+                  const title = alternative.productName
+                    ? localized(alternative.productName, language)
+                    : translate(
+                        language,
+                        `q.category.opt.${alternative.category}` as I18nKey,
+                      );
+                  const body = alternative.message
+                    ? localized(alternative.message, language)
+                    : undefined;
+                  const key = `${alternative.category}:${alternative.productCode ?? ""}`;
+                  // A door nothing answerable opens is a SENTENCE, never a
+                  // button: the button would restart an interview that ends
+                  // in exactly the same place.
+                  // `oracle.css` is READ-ONLY by ruling, so the two-line
+                  // shape (product name, then why that door is open) is set
+                  // inline here rather than by a new class.
+                  const lines = (
+                    <span>
+                      <strong>{title}</strong>
+                      {body && (
+                        <span
+                          style={{ display: "block", marginTop: "0.35rem" }}
+                        >
+                          {body}
+                        </span>
+                      )}
+                    </span>
+                  );
+                  if (alternative.actionable === false) {
+                    return (
+                      <li key={key} style={{ padding: "0.5rem 0" }}>
+                        {lines}
+                      </li>
+                    );
+                  }
+                  return (
+                    <li key={key}>
+                      <button
+                        type="button"
+                        className="oracle-option-card"
+                        onClick={() => onSelectCategory?.(alternative.category)}
+                      >
+                        {lines}
+                        <ArrowRight aria-hidden="true" size={18} />
+                      </button>
+                    </li>
+                  );
+                })}
               </ul>
             </>
           )}
