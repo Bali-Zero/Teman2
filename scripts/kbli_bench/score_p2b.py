@@ -134,6 +134,13 @@ MORATORIUM_EFFECTIVE_PATTERNS = [
 MORATORIUM_RISK_SCOPE = r"(menengah\s+rendah|medium[\s-]*low)"
 MORATORIUM_PERMANENCE = r"(permanen|permanent|tidak\s+sementara|bukan\s+sementara|not\s+temporary|no\s+end\s+date)"
 MORATORIUM_TEMPORARY_CLAIM = r"((hanya|bersifat|only|merely)\s+(bersifat\s+)?(sementara|temporary)|is\s+temporary)"
+# A NEGATED temporariness phrase is the CORRECT answer, not a violation: "larangan ini permanen
+# dan tidak bersifat sementara" says exactly what the corpus asks for and contains the literal
+# "bersifat sementara". Found by the council (tp1-qwen3.8-max, round 1, VERDICT DEFECT) on that
+# exact sentence — the over-match half of cicatrix family #3, and the reason a guard is never
+# written without its innocence corpus. Python's lookbehind must be fixed-width, so the negator
+# is checked in the text preceding each match instead.
+MORATORIUM_NEGATORS = r"(tidak|bukan|belum|tak|not|never|non)\s+(\w+\s+){0,2}$"
 BAN_WORDS = r"(dilarang|diblokir|terkena|ditutup|banned|blocked|moratorium|moratoria)"
 UNIVERSAL_WORDS = r"((semua|seluruh)\s+kbli|all\s+kbli|every\s+kbli|setiap\s+kbli)"
 
@@ -165,12 +172,18 @@ def moratorium_scope_check(text: str) -> dict:
         "states_risk_class_scope": bool(re.search(MORATORIUM_RISK_SCOPE, t)),
         "states_permanence": bool(re.search(MORATORIUM_PERMANENCE, t)),
     }
+    claims_temporary = False
+    for m in re.finditer(MORATORIUM_TEMPORARY_CLAIM, t):
+        if re.search(MORATORIUM_NEGATORS, t[max(0, m.start() - 40):m.start()]):
+            continue
+        claims_temporary = True
+        break
     forbidden = {
-        "claims_temporary": bool(re.search(MORATORIUM_TEMPORARY_CLAIM, t)),
+        "claims_temporary": claims_temporary,
         "claims_every_kbli_banned": universal_unqualified,
         "quotes_a_moratorium_total": totals,
     }
-    ok = all(required.values()) and not forbidden["claims_temporary"] \
+    ok = all(required.values()) and not claims_temporary \
         and not universal_unqualified and not totals
     return {"pass": ok, "required": required, "forbidden": forbidden}
 

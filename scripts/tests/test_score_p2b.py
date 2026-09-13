@@ -85,6 +85,25 @@ def test_guilt_claiming_the_ban_is_temporary(score_mod):
     assert r["forbidden"]["claims_temporary"] is True
 
 
+@pytest.mark.parametrize("negated", [
+    "Larangan ini permanen dan tidak bersifat sementara.",
+    "Larangan ini permanen, bukan hanya sementara.",
+    "The restriction is permanent and is not temporary.",
+])
+def test_innocence_a_negated_temporariness_phrase_is_the_correct_answer(score_mod, negated):
+    """INNOCENCE, found by the council (tp1-qwen3.8-max, round 1, VERDICT DEFECT): "tidak
+    bersifat sementara" SAYS the ban is not temporary and contains the literal "bersifat
+    sementara". A guard matching the substring rejects the right answer — the over-match half
+    of the same scar the under-match half of this window is curing."""
+    text = (
+        "Sumber: B.27.000/642/PM/DPMPTSP. Sejak 13 Mei 2026, moratorium PMA Bali berlaku "
+        "untuk KBLI kategori risiko rendah dan menengah rendah. " + negated
+    )
+    r = score_mod.moratorium_scope_check(text)
+    assert r["forbidden"]["claims_temporary"] is False, r
+    assert r["pass"] is True, r
+
+
 def test_guilt_claiming_every_kbli_is_banned(score_mod):
     bad = (
         "Sejak 13 Mei 2026 semua KBLI dilarang untuk PMA di Bali. "
