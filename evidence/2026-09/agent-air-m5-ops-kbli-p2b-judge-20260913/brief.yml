@@ -1,0 +1,57 @@
+gear: 3
+ruling: RULED 2026-09-12 SAETTA
+mission: SAETTA-KBLI window W-alpha (BLUE, host M5) — the native app gives ONE verdict and proves it on a re-run benchmark
+objective: >-
+  The monorepo half of window W-alpha. The KBLI Navigator's P2b benchmark scorer
+  lives here (scripts/kbli_bench/), the product it scores lives in a standalone
+  repo on M5 with no remote. Two defects of METHOD, both measured on the
+  2026-08-20 run and neither of them in the product: the judge was fed
+  `expected.codes` while the model had answered from `package_codes` (22 of 30
+  fabrication flags were false), and Q23 passed for a reason unrelated to what it
+  measures, because the corpus gives it no expected codes and its acceptance was
+  left to the judge's discretion. Fix the ground truth to the union of the two
+  code sets; write Q23's acceptance down as a deterministic class rule with the
+  Gubernur letter, the effective date, the risk-class scope and the permanence;
+  make the floors report their own numerators, denominators and thresholds; and
+  give the run its four DISTINCT failure categories so a timeout, an empty
+  answer, a parse failure and a refusal by the model stop arriving as one
+  "error" string.
+scope:
+  - scripts/kbli_bench/score_p2b.py
+  - scripts/tests/test_score_p2b.py
+constraints:
+  - scripts/kbli_bench/p2b_corpus.json is FROZEN (sha256 487bc950…) and is not amended — the class rule selects its question from the corpus's own expected behaviour, never from a hard-coded qid.
+  - The dataset the scorer reads must be the one the RUN was anchored on (sha 3dafab17…), not the monorepo's current canonical (c69a260d…).
+  - No widening of the product's answer gate to make a floor green. The gate lives in the app repo and is not touched by this PR.
+  - No client PII; the benchmark corpus is regulatory text only.
+acceptance:
+  - text: >-
+      WHEN the judge prompt for a question is built, it SHALL carry ground-truth records for every
+      code SERVED to the model in that run, not only the codes the corpus expected.
+    probe: "python3 -m pytest scripts/tests/test_score_p2b.py -q"
+  - text: >-
+      WHERE the corpus declares no expected codes for the moratorium question, the class rule
+      SHALL be deterministic and in code, with a guilt case AND an innocence case per criterion.
+    probe: "python3 -m pytest scripts/tests/test_score_p2b.py -q"
+  - text: >-
+      WHEN a run is scored, each floor SHALL emit its numerator, denominator and threshold, and
+      the report SHALL carry the denominators, the question classification and the canonical command.
+    probe: "the four floors emit their own numerator, denominator and threshold, and the gate is RED in both runs"
+  - text: >-
+      IF a row is not an answer, it SHALL be classified as timeout, empty_answer, parse_failed,
+      model_refusal, transport_error or package_not_built — never as one collapsed error string —
+      and the run SHALL report synthesized or duplicated rows.
+    probe: "the CONSUMER ran and shipped with this PR"
+  - text: >-
+      WHILE this PR is open, scripts/tests/test_score_p2b.py SHALL be green.
+    probe: "python3 -m pytest scripts/tests/test_score_p2b.py -q"
+acceptance_note: >-
+  The `probe:` fields and the EARS shape were added to these five bullets at pack time; their
+  MEANING is unchanged from the brief written at window start. Each probe names a command that
+  actually ran in this session and is bound to a receipt in pack.yml.
+consumer_map:
+  - The P2b benchmark run of 2026-09-13 on M5 — 87 rows, 29 questions x 3 runs — scored by this exact script against the run-anchored dataset. The run is the consumer and it ships with this PR, not after it.
+  - Every future §8 re-run of the KBLI Navigator chat brain, which reads this scorer's floors to decide the P2b gate.
+appetite:
+  budget: 8 hours active for the whole window, 1 PR here
+  stop_loss: three reds on the same cause suspends; a seat that is out of quota is declared, never paid for and never substituted

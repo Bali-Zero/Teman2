@@ -1,0 +1,25 @@
+DEFECT — `scripts/kbli_bench/score_p2b.py`
+
+In `moratorium_scope_check`, the corrected negation guard is too broad. The line
+
+```python
+if re.search(MORATORIUM_NEGATORS, t[max(0, m.start() - 40):m.start()]):
+```
+
+skips a matched temporary claim whenever any negator appears in the preceding 40 characters with up to two intervening words, even when that negator is negating a different word.
+
+Triggering Q23 answer:
+
+```text
+Sumber B.27.000/642/PM/DPMPTSP. Sejak 13 Mei 2026, moratorium PMA Bali berlaku untuk KBLI menengah rendah. Larangan ini tidak permanen dan hanya sementara.
+```
+
+This answer says the ban is temporary and must fail. It passes because:
+
+- `cites_source_letter`, `cites_effective_date`, and `states_risk_class_scope` all match.
+- `states_permanence` incorrectly matches `permanen` inside the negated phrase `tidak permanen`.
+- `hanya sementara` matches `<REDACTED>`, but the preceding text `tidak permanen dan ` satisfies `MORATORIUM_NEGATORS`, so `claims_temporary` remains `False`.
+
+Thus a wrong answer asserting the ban is temporary is accepted by the deterministic class rule and would be scored `correct`.
+
+VERDICT: DEFECT
