@@ -3,7 +3,7 @@
 > Mission SAETTA-K2 (BLUE, host M5), window W-K-GAMMA, task-id `k2-gamma`. Every number here
 > comes from a command run on 2026-09-13/14 (UTC) on M5 and from the files under
 > `scripts/kbli_bench/results/2026-09-14-k2-gamma/`. The app repo has no remote; its half of this
-> window is branch `k2/gamma` (head `10f05f9`, evidence in `docs/gates/2026-09-14-k2-gamma/`).
+> window is branch `k2/gamma` (head `82349ca`, evidence in `docs/gates/2026-09-14-k2-gamma/`).
 
 ## 0. Verdict
 
@@ -106,10 +106,20 @@ The failure is the answer reporting one code's verdict instead of the class rule
 tier would make Q23's retrieval earned rather than lexical luck, but would not by itself change that
 answer. Question it would address: **Q23**. No lexical re-weight was made.
 
+**A stale sentence inside both score files.** Both `p2b_score.json` carry the scorer's fixed
+`class_rules.bali_moratorium_scope.declared_gap` text, which says `l4_bali.blocked` is true on
+518 records (372 risk-class + 68 TERTUTUP + 48 + 17 + 13). That census was measured on
+`3dafab17…`. On the dataset this run is anchored to, `c69a260d…`, the same count is **519**
+(373 BLOCCATO_CLASSE_RISCHIO + 68 TERTUTUP + 48 CHIUSO_MORATORIA_BALI + 17 NON_CLASSIFICABILE +
+13 others), measured on origin/main's file. The text is not a threshold and decides no floor; the
+score files are left exactly as the scorer printed them, and the sentence is the scorer lane's to
+re-measure (section 4).
+
 ## 4. What goes back to the lane that owns it
 
 - The app answer gate over-matches a user's own figure and a negated figure: Q13 runs 1/3, Q22 run 3.
 - Answer framing against the served verdict: Q11, Q23, Q26 run 1; Q05's absent-code statement.
+- The scorer's embedded `declared_gap` census (518) is stale on `c69a260d…` (519): the scorer lane.
 - Q20's judge variance: one sol judging per question cannot hold floor (ii) still; a judging protocol with repeats is the harness lane's to decide.
 - The row-identity contract rewrite and its re-gate; then re-score `p2b_answers.jsonl` (kept for that).
 - Hand-check: the judge reason of every structured row and the raw answers of Q05 r1, Q13 r1/r3,
