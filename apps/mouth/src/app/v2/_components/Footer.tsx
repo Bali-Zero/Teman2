@@ -119,7 +119,6 @@ export function Footer() {
                 Icon={MessageCircle}
                 label="WhatsApp"
                 value="+62 821 3454 721"
-                accent="#25D366"
                 external
                 onClick={() =>
                   void trackFunnelEvent(FOOTER_EVENT[footerFunnel], {
@@ -133,7 +132,6 @@ export function Footer() {
                 Icon={Send}
                 label="Telegram"
                 value="@Balizerobot"
-                accent="#26A5E4"
                 external
               />
               <ContactLink
@@ -141,21 +139,18 @@ export function Footer() {
                 Icon={Mail}
                 label="Email"
                 value="zantara@balizero.com"
-                accent="#f59e0b"
               />
               <ContactLink
                 href="tel:+628213454721"
                 Icon={Phone}
                 label="Phone"
                 value="+62 821 3454 721"
-                accent="#a78bfa"
               />
               <ContactLink
                 href="https://maps.google.com/?q=Bali+Indonesia"
                 Icon={MapPin}
                 label="Location"
                 value="Bali, Indonesia"
-                accent="#22c55e"
                 external
               />
             </div>
@@ -240,7 +235,6 @@ function ContactLink({
   Icon,
   label,
   value,
-  accent,
   external,
   onClick,
 }: {
@@ -248,7 +242,6 @@ function ContactLink({
   Icon: LucideIcon;
   label: string;
   value: string;
-  accent: string;
   external?: boolean;
   onClick?: () => void;
 }) {
@@ -260,13 +253,23 @@ function ContactLink({
       onClick={onClick}
       className="flex items-center gap-3 group"
     >
+      {/* Editorial monochrome badge: no per-platform fill. One brand accent
+          (--accent-zantara, the funnel-agnostic chrome accent — the footer must
+          NOT read --accent-funnel, semantic.css §3) appears only on hover/focus.
+          Contrast measured against the live --footer-bg (#162d50, editorial
+          theme): resting icon white @72% = 7.8:1, hover accent #8b5cf6 = 3.3:1
+          — both clear WCAG AA (3:1 for non-text UI components). */}
       <div
-        className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0 transition-all"
-        style={{
-          background: `color-mix(in srgb, ${accent} 15%, transparent)`,
-          border: `1px solid color-mix(in srgb, ${accent} 30%, transparent)`,
-          color: accent,
-        }}
+        className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0
+          border border-[color:var(--border-strong)] bg-transparent
+          text-[color:rgba(255,255,255,0.72)]
+          transition-[color,border-color,background-color] duration-200 ease-out
+          group-hover:border-[color:var(--accent-zantara)]
+          group-hover:text-[color:var(--accent-zantara)]
+          group-hover:bg-[color-mix(in_srgb,var(--accent-zantara)_10%,transparent)]
+          group-focus-visible:border-[color:var(--accent-zantara)]
+          group-focus-visible:text-[color:var(--accent-zantara)]
+          group-focus-visible:bg-[color-mix(in_srgb,var(--accent-zantara)_10%,transparent)]"
       >
         <Icon size={15} strokeWidth={2} />
       </div>
