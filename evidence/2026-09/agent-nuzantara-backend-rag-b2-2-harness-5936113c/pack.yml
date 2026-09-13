@@ -1,0 +1,381 @@
+# Gear-3 Evidence Pack — B2.2 harness (live retrieval sample on the B1.5 vectors + the I15
+# residual-cosine batch record). Written by the Gear-3 evidence-pack lane (claude-sonnet-5) from
+# scratchpad/pack_facts.md (Dux 7dc466d9, all facts measured this mission) plus the new receipts
+# this lane measured itself (below, seat claude-sonnet-5).
+task_id: backend-rag-b2-2-harness
+brief_ref: evidence/brief.yml
+base_sha: d3b4a12ce9ab2b90e4480d7dd7ce8fb139b380ec # pragma: allowlist secret — fresh origin/main, fast-forwarded 2026-09-13 (was bf5bea8360)
+mandate: B2
+colour: BLUE
+pr: B2.2-harness
+gear: 3
+envelope: 20260912T091907Z-435d
+
+rulings:
+  - "I48 (20260913T051715Z-70d8) F1-F6 cures"
+  - "I49 (20260913T053422Z-751e) exactly 5 provider attempts"
+  - "I51/I52 (20260913T060641Z-28f0) batch executed once by the imperator; INCOMPATIBLE recorded verbatim"
+  - "I53 (20260913T061310Z-47af) spec first, one build, Codex r3; tp1-qwen3.8-max for Kimi; deadline renewed"
+  - "I54 (20260913T061514Z-5082) spec S1-S6 adopted, replaces I48 F4; report rule"
+  - "I55 (20260913T065921Z-04c5) spec amendment: collection resolution, error shape, filter, BM25 vocab_size"
+  - "I56 (20260913T070212Z-1c4c)"
+  - "I57 (20260913T074532Z-1086) B2.2 harness bytes 2a2024817db48460 / test 37ba990fab740f5 shipped"
+  - "I58 (20260913T075042Z-4e6d) B2.2 live sample acceptance adjudication — Fable imperator M5, 8933d19d, 07:58Z"
+
+checkpoint_refs:
+  - 20260913T060919Z-5ef7 # CP29 OPENED-SUCCESSOR-2
+  - 20260913T061154Z-0f6f # CP30 council gate red on the cured bytes
+  - 20260913T061329Z-2961 # CP31 no threshold consumer routes through QueryRouter
+  - 20260913T061649Z-3809 # CP32 spec written
+  - 20260913T070121Z-16fc # CP33
+  - 20260913T074417Z-1106 # CP34
+  - 20260913T074840Z-1e51 # CP35 LIVE SAMPLE DONE
+
+objective: >-
+  B2 §4 PR B2.2, the LIVE half of criterion 5: a live retrieval sample through a no-send /
+  no-generation harness on the frozen B1.5 vectors, its per-case report beside the frozen
+  mandatory manifest, and the record of the I15 batch that re-measured the V1/V2 residual
+  cosines (V1 INCOMPATIBLE, not broken).
+
+acceptance:
+  ruling: I58 (20260913T075042Z-4e6d), stated in the order I58 requires
+  statement: >-
+    B2.2 = "CLOSED on a measurement: reliefs kept, band unexercised, live sample upper-bound
+    and unfit alone."
+  order:
+    - id: a
+      text: >-
+        production retrieval path measured faithfully — 23/23 hybrid_rrf_formatted, 6 hits/case,
+        the I55 substitution observed live once.
+    - id: b
+      text: >-
+        no real score lands in [0.10,0.15)/[0.12,0.15) — min live score 0.55 — reliefs
+        unexercised on BOTH corpora AND on the live path: I40 stands, reliefs KEPT, B2.2 UNFIT
+        to move tax 0.10 / visa 0.12 on its own.
+    - id: c
+      text: >-
+        ZERO planner-domain TAX cases in the B1.5 set — the sample cannot speak to the tax
+        relief at all.
+    - id: d
+      text: >-
+        every live case passes label+generation on the retrieval-primary score with support
+        UNCONSULTED = UPPER BOUND: a live pass proves nothing about support; the fail-closed
+        support gate (B2.1, method iii) decides these — design, not defect.
+  disagreement_verbatim: >-
+    Disagreement table recorded VERBATIM with I58 (1): frozen per-case contexts vs production
+    chunks = different inputs; category error; no relabel, no threshold move.
+  adjudication_i58_verbatim: >-
+    The disagreement is NOT a B2 §6 stop in substance: the mandatory manifest's expected labels
+    bind the FROZEN per-case contexts (insufficient by construction), while the live sample
+    scores the chunks production retrieval returns for the same query — two different inputs;
+    a label comparison between them is a category error, so no relabel, no threshold move, and
+    the disagreement table is recorded VERBATIM with this adjudication (the imperator's, not the
+    Dux's) beside it. — Fable imperator M5, 8933d19d, RULING I58, 07:58Z.
+  support_none_sentence_verbatim: >-
+    "a false acceptance seen is real; a pass does not prove support"
+
+live_result:
+  report_sha256: c009693b373023ba719bda2d66a3adaa7a46753b281848c29733dfe18655ac8d
+  summary: >-
+    23/23 scored, 0 hard stops, 0 score_kind_divergent, all hybrid_rrf_formatted, 6 hits/case
+    (one pricing-ID case 3), substitutions 1 (ID pricing query nuzantara_general_hybrid ->
+    legal_unified), inferable_case_count 8, embedding_divergent 15, threshold domains default 14
+    / visa 5 / pricing 4 / tax 0, scores only 0.55/0.75/0.8 (min 0.55), relief_band_cases [],
+    every case label pass + generation pass, canary UNVERIFIABLE (baseline absent on this host).
+    Manifest expected label abstain for 21/23 rows (2 pricing rows agree); 7 of 8 inferable
+    disagree.
+
+i15_batch:
+  record_sha256: 00a6691237d6df9c0a228678ee1753ab04d5c3207c3dc4ba75100e06dd9d89fd # pragma: allowlist secret
+  run_once_by: imperator, 06:05:54Z-06:06:01Z, ack 751e
+  attempts: 5
+  failures: 0
+  max_retries: 0
+  budget: "23 -> 28 (12 remain of 40)"
+  v1_verbatim: >-
+    V1 bs-17806bb4 raw 0.36974 vs declared 0.373 -> INCOMPATIBLE (|d| 0.0033 >= 0.0005;
+    NOT broken, >= 0.32).
+  v2_note: "V2 sup-d-4984a0c2 0.585856, sup-d-4d058bdc 0.5879 recorded, no verdict."
+  second_anchor_0_32: >-
+    the 0.32-boundary debt second anchor: 0.370, margin 0.050 (I52).
+
+named_debts:
+  - id: D1
+    text: re-embed the 15 embedding_divergent queries (15 attempts > 12 remaining; Zero's ceiling decision pending).
+  - id: D2
+    text: >-
+      a SUPPORT-CONSULTED live run through the Codex judge (method iii) turning upper-bound
+      passes into verdicts — B2.3/B3.
+  - id: D3
+    text: >-
+      main --execute never calls build_report (report built offline by build_sample_report.py.txt
+      from the raw outcomes; shipped bytes council-bound, not edited).
+  - id: D4
+    text: >-
+      BM25_VOCAB_SIZE production presence probe: `fly ssh console -a nuzantara-rag -C "sh -c
+      'printenv | grep -c ^BM25_VOCAB_SIZE='"` REFUSED by the auto-mode classifier
+      [Production Reads] at ~2026-09-13T07:49Z; not routed around; local presence all False,
+      vocab_size 30000 used.
+  - id: D5
+    text: >-
+      the silent nuzantara_general_hybrid -> legal_unified substitution (search_service.py:526-532;
+      planner query_planner.py:254-262) — production defect observed live — B2.3/B3.
+  - id: D6
+    text: >-
+      V1 score_raw re-pin 0.373 -> 0.370 in a fixture successor PR that shows through the real
+      formatter whether transform(0.370) == transform(0.373) at the label gate (I52).
+  - id: D7
+    text: >-
+      backend/tests/unit/services/rag/agentic/conftest.py:39-55 replaces
+      sys.modules['backend.app.core.config'] with MagicMock settings at module level
+      (pre-existing test fragility, root cause of the build-1 order-dependent red).
+  - id: declared_fragility
+    text: >-
+      DECLARED FRAGILITY (I56): HC5 held by _import_pure_leaf (three package __init__.py import
+      Settings eagerly: services/rag/agentic, services/search, services/ingestion).
+
+what_this_pr_changes:
+  code:
+    - path: apps/backend-rag/backend/tests/benchmarks/evidence_sufficiency/retrieval_harness.py
+      sha256: 2a2024817db48460c76f41c03fa945d041c1acd57a7a5e2f842f88a20159172b
+    - path: apps/backend-rag/backend/tests/unit/services/rag/test_b2_2_retrieval_harness.py
+      sha256: 37ba990fab740f564657b29e431f2960733c6cee9ce01c6071e6ad2a9b845819
+    - path: apps/backend-rag/backend/tests/benchmarks/evidence_sufficiency/measure_residual_cosines.py
+      sha256: ecf47c048bbd4ecb4c32ad6d12f66fdc09e84ed2729b8eca08e131a98a4a11bf # EXECUTED bytes, shipped verbatim, I53 R-b
+    - path: apps/backend-rag/backend/tests/unit/services/rag/test_b2_2_measure_residual_cosines.py
+      sha256: 6227e7dd13e77aa001d6a30afb53c48b72114056f19def6d404666531c3adad1
+  evidence:
+    - evidence/2026-09/agent-nuzantara-backend-rag-b2-2-harness-5936113c/b2-2-precall.json
+    - evidence/2026-09/agent-nuzantara-backend-rag-b2-2-harness-5936113c/b2-2-live-plan.json
+    - evidence/2026-09/agent-nuzantara-backend-rag-b2-2-harness-5936113c/b2-2-live-report.json
+    - evidence/2026-09/agent-nuzantara-backend-rag-b2-2-harness-5936113c/b2-2-live-sample-report.json
+    - evidence/2026-09/agent-nuzantara-backend-rag-b2-2-harness-5936113c/build_sample_report.py.txt
+    - evidence/2026-09/agent-nuzantara-backend-rag-b2-2-harness-5936113c/brief.yml
+    - evidence/2026-09/agent-nuzantara-backend-rag-b2-2-harness-5936113c/pack.yml
+    - evidence/2026-09/agent-nuzantara-backend-rag-b2-2-harness-5936113c/journal.jsonl
+    - evidence/2026-09/agent-nuzantara-backend-rag-b2-2-harness-5936113c/reviews/
+
+deploy_impact:
+  verdict: NOT_TRIGGERED
+  note: >-
+    .github/workflows/fly-deploy.yml:6-18 includes "apps/backend-rag/**" but excludes
+    "!apps/backend-rag/**/tests/**", "!apps/backend-rag/**/test_*.py" and
+    "!apps/backend-rag/**/*_test.py". All four shipped code files live under
+    apps/backend-rag/backend/tests/** (two of the four also match the test_*.py exclude a
+    second time), and every evidence/ file sits outside apps/ entirely. Merging this PR does
+    NOT match the workflow's effective path set, so it does not trigger fly-deploy: no
+    container change, and this PR's prove-live is a blob-on-main check, not a release.
+
+pii_scan: clean
+pii_scan_note: >-
+  grep -rn -E for email/phone/16-digit/passport patterns over the whole evidence directory
+  (all files) found zero real hits (exit 1 — no match). The 32/64-hex sha256 digests present
+  throughout this pack and its sibling evidence files are content hashes, not 16-digit
+  NIK/KTP/passport runs — inspected, none is a bare 16-digit run. All queries named in the plan/
+  report are synthetic benchmark queries, not client data.
+
+bites:
+  consumer: apps/backend-rag/backend/services/rag/agentic/wa_package_builder.py:629 build_abstain_policy (the WA bot's threshold read)
+  observation: >-
+    the live report's relief_band_cases = [] (b2-2-live-sample-report.json c009693b) on the
+    production retrieval path + the two corpora hashes (manifest_mandatory d23a66ca, B1.5
+    artifact 0021c327).
+
+lanes:
+  - lane: b2-harness-build
+    role: build
+    seat: claude-sonnet-5
+  - lane: b2-harness-dux-oversight
+    role: read
+    seat: claude-opus-5
+    what: >-
+      Spec (brief.yml HC1-HC10 + I55 amendment), verification on bytes,
+      live sample run, offline report, adjudication requests. DISCLOSED, not
+      hidden: the Dux also made three small code edits inside the build
+      lane's files — (1) the HC5 class-identity assert replaced by the
+      same-file/same-plan assert the build-1 implementer drafted but could not
+      apply; (2) one ruff C408 dict() -> literal; (3) the two TP1 r3 MINOR
+      cures in run_query's hit loop plus test
+      test_chunks_keep_the_planned_name_and_skip_empty_text_hits (mutation ->
+      red). All three are in the bytes codex-gpt-5.6-sol r4 and
+      tp1-qwen3.8-max r4 accepted. Role stays `read` because two Anthropic
+      `build` lanes fail the seat-diversity rule; the fresh gate reads this.
+  - lane: b2-harness-review-codex
+    role: review
+    seat: codex-gpt-5.6-sol
+  - lane: b2-harness-review-tp1
+    role: review
+    seat: tp1-qwen3.8-max
+  - lane: b2-harness-review-kimi
+    role: review
+    seat: kimi-code/k3
+  - lane: b2-harness-ground-truth-imperator
+    role: read
+    seat: fable-imperator-m5
+
+dissent:
+  - seat: codex-gpt-5.6-sol
+    objection: >-
+      r2 F-1..F-4, F-9 against the superseded QueryRouter harness.
+    status: CONFIRMED
+    disposition: >-
+      surface under-specified -> spec HC1-HC10 (I53/I54) + I55 amendment, rebuilt, r4 ACCEPT.
+      F-9 semantic cache: zero-caller receipt (below).
+  - seat: codex-gpt-5.6-sol
+    objection: >-
+      r2 F-5 non-atomic run-once, F-6 trusts record hard_stop, F-7 attempt spent before
+      completion on a malformed vector, F-8 ack_envelope/status_code free text — all against
+      measure_residual_cosines.py.
+    status: CONFIRMED
+    disposition: >-
+      latent, not traversed by the only authorized run; any reuse requires new authorization
+      AND the cure first; no byte change (I53 R-b).
+  - seat: tp1-qwen3.8-max
+    objection: >-
+      r3 MINOR-1 empty-text hits kept, MINOR-2 chunk carried resolved not planned collection.
+    status: CONFIRMED
+    disposition: >-
+      cured by the Dux (hit loop) + test test_chunks_keep_the_planned_name_and_skip_empty_text_hits;
+      mutation back to 'resolved' -> 1 failed.
+  - seat: codex-gpt-5.6-sol
+    objection: >-
+      r3 interim risks (no verdict): RetrievalError interpolates query_key/collection; parity
+      test substring-based; _import_pure_leaf raising-import edge.
+    status: RETRACTED
+    disposition: >-
+      retracted by the same seat's r4 non-findings (HC8 intent met; cleanup in finally).
+  - seat: fable-imperator-m5
+    objection: >-
+      I55 — production silently substitutes nuzantara_general_hybrid -> legal_unified for
+      TAX/PROPERTY/PRICING (search_service.py:526-532; query_planner.py:254-262).
+    status: CONFIRMED
+    disposition: "named debt D5 (B2.3/B3), not fixed here."
+  - seat: claude-opus-5
+    objection: >-
+      live sample vs mandatory manifest label disagreement on 21/23 rows.
+    status: CONFIRMED
+    disposition: >-
+      adjudicated by I58 as a category error (frozen per-case contexts vs production chunks =
+      different inputs) — no relabel, no threshold move; recorded verbatim above.
+  - seat: kimi-code/k3
+    objection: "no objection raised — seat failure, not a review."
+    status: CONFIRMED
+    disposition: >-
+      provider.auth_error 403 monthly quota exhausted, exit 1 in 5 s; no verdict produced or
+      claimed; lane filled by tp1-qwen3.8-max per I53 R-c; recorded in the journal as
+      outcome=non-judgement (does not count toward R9 quorum).
+
+council_run: journal.jsonl
+
+receipts:
+  # --- measured by the Dux (claude-opus-5) earlier this mission, pasted exactly ---
+  - claim: "backend/tests/services/rag suite green on A 2a202481 / B 37ba990f"
+    cmd: "cd apps/backend-rag && PYTHONPATH=. .venv/bin/python -m pytest backend/tests/services/rag -p no:cacheprovider"
+    result: "1714 passed, 12 skipped"
+    exit: 0
+    ts: "2026-09-13T07:36:31Z"
+    seat: claude-opus-5
+  - claim: "backend/tests/unit/services/rag suite green"
+    cmd: "cd apps/backend-rag && PYTHONPATH=. .venv/bin/python -m pytest backend/tests/unit/services/rag -p no:cacheprovider"
+    result: "3184 passed, 30 skipped, 7 xfailed, 0 failed"
+    exit: 0
+    ts: "2026-09-13T07:38:05Z"
+    seat: claude-opus-5
+  - claim: "backend/tests/unit/services/integrations suite green"
+    cmd: "cd apps/backend-rag && PYTHONPATH=. .venv/bin/python -m pytest backend/tests/unit/services/integrations -p no:cacheprovider"
+    result: "347 passed"
+    exit: 0
+    ts: "2026-09-13T07:38:14Z"
+    seat: claude-opus-5
+  - claim: "plan mode produced the 23-case B1.5 plan, sha-pinned"
+    cmd: "PYTHONPATH=. .venv/bin/python -m backend.tests.benchmarks.evidence_sufficiency.retrieval_harness --out <E>/b2-2-live-plan.json"
+    result: >-
+      exit 0; 23 cases, translation_changes_query 15, planner domains company 12 / general 6 /
+      visa 4 / pricing 1, TAX 0
+    exit: 0
+    ts: "2026-09-13T07:44:31Z"
+    seat: claude-opus-5
+  - claim: ".env carries QDRANT_URL and QDRANT_API_KEY (presence only, value never read)"
+    cmd: "grep -c -E '^(QDRANT_URL|QDRANT_API_KEY)=' <main checkout>/apps/backend-rag/.env"
+    result: "2"
+    exit: 0
+    ts: "2026-09-13T07:45:17Z"
+    seat: claude-opus-5
+  - claim: "the one authorized live execute run against production Qdrant, read-only"
+    cmd: >-
+      python -c with os.chdir to main-checkout apps/backend-rag, sys.path worktree-first,
+      runpy.run_path(retrieval_harness.py) --execute --plan-file b2-2-live-plan.json
+      --plan-sha256 fea2d923... --out b2-2-live-report.json
+    result: "exit 0; stderr 524 B, 0 error/exception/traceback lines, 0 key shapes"
+    exit: 0
+    ts: "2026-09-13T07:46:03Z"
+    seat: claude-opus-5
+  - claim: "council r4 codex-gpt-5.6-sol VERDICT ACCEPT ok true on the shipped bytes"
+    cmd: "codex review round r4 on A 2a2024817db48460 B 37ba990fab740f56 (reviews/codex-gpt-5.6-sol-r4-accept.txt)"
+    result: "ok true; tree unchanged"
+    exit: 0
+    ts: "2026-09-13T07:42:50Z"
+    seat: claude-opus-5
+  - claim: "council r4 tp1-qwen3.8-max VERDICT ACCEPT ok true on the shipped bytes"
+    cmd: "tp1 review round r4 on A 2a2024817db48460 B 37ba990fab740f56 (reviews/tp1-qwen3.8-max-r4-accept.txt)"
+    result: "ok true; r3 MINORs verified cured; tree unchanged"
+    exit: 0
+    ts: "2026-09-13T07:37:45Z"
+    seat: claude-opus-5
+  # --- measured by this evidence-pack lane (claude-sonnet-5), this session ---
+  - claim: "ruff check is clean on the harness + its test"
+    cmd: "cd apps/backend-rag && .venv/bin/ruff check backend/tests/benchmarks/evidence_sufficiency/retrieval_harness.py backend/tests/unit/services/rag/test_b2_2_retrieval_harness.py"
+    result: "All checks passed!"
+    exit: 0
+    ts: "2026-09-13T08:47:40Z"
+    seat: claude-sonnet-5
+  - claim: "ruff format --check is clean on the harness + its test"
+    cmd: "cd apps/backend-rag && .venv/bin/ruff format --check backend/tests/benchmarks/evidence_sufficiency/retrieval_harness.py backend/tests/unit/services/rag/test_b2_2_retrieval_harness.py"
+    result: "2 files already formatted"
+    exit: 0
+    ts: "2026-09-13T08:47:42Z"
+    seat: claude-sonnet-5
+  - claim: "the harness's own test file is green, re-measured on this head"
+    cmd: "cd apps/backend-rag && PYTHONPATH=. .venv/bin/python -m pytest backend/tests/unit/services/rag/test_b2_2_retrieval_harness.py -p no:cacheprovider"
+    result: "77 passed, 1 warning"
+    exit: 0
+    ts: "2026-09-13T08:48:02Z"
+    seat: claude-sonnet-5
+  - claim: "the four shipped code files' sha256 are byte-identical to pack_facts.md's declared shas"
+    cmd: "shasum -a 256 retrieval_harness.py test_b2_2_retrieval_harness.py measure_residual_cosines.py test_b2_2_measure_residual_cosines.py"
+    result: >-
+      2a2024817db48460c76f41c03fa945d041c1acd57a7a5e2f842f88a20159172b,
+      37ba990fab740f564657b29e431f2960733c6cee9ce01c6071e6ad2a9b845819,
+      ecf47c048bbd4ecb4c32ad6d12f66fdc09e84ed2729b8eca08e131a98a4a11bf,
+      6227e7dd13e77aa001d6a30afb53c48b72114056f19def6d404666531c3adad1 — all four match pack_facts exactly
+    exit: 0
+    ts: "2026-09-13T08:48:25Z"
+    seat: claude-sonnet-5
+  - claim: "every file under evidence/2026-09/agent-nuzantara-backend-rag-b2-2-harness-5936113c/ hashed for this pack's own provenance record"
+    cmd: "find evidence/2026-09/agent-nuzantara-backend-rag-b2-2-harness-5936113c -type f | sort | xargs shasum -a 256"
+    result: "18 files hashed (see report); one stray reviews/.tmp_tail6000.txt noted, not referenced by council_run or any journal line"
+    exit: 0
+    ts: "2026-09-13T08:48:30Z"
+    seat: claude-sonnet-5
+  - claim: "the offline sample report is deterministically reproducible from the raw outcomes"
+    cmd: "cd apps/backend-rag && PYTHONPATH=. .venv/bin/python ../../evidence/2026-09/agent-nuzantara-backend-rag-b2-2-harness-5936113c/build_sample_report.py.txt"
+    result: "c009693b373023ba719bda2d66a3adaa7a46753b281848c29733dfe18655ac8d b2-2-live-sample-report.json — matches the shipped report's sha256 exactly"
+    exit: 0
+    ts: "2026-09-13T08:49:50Z"
+    seat: claude-sonnet-5
+  - claim: "SemanticCache.cache_result has zero external callers in backend/ outside tests"
+    cmd: "grep -rn 'cache_result(' apps/backend-rag/backend | grep -v /tests/"
+    result: >-
+      executor.py:178 and :372 (its own _cache_result def+call), nlm_orchestrator.py:208 and :354
+      (its own _cache_result def+call), ragas_evaluator.py:253,352,379,417,455,491 (its own
+      _cache_result def + five internal calls), semantic_cache.py:98 (SemanticCache.cache_result's
+      own def) — no external caller of SemanticCache.cache_result anywhere in backend/ outside tests
+    exit: 0
+    ts: "2026-09-13T08:49:55Z"
+    seat: claude-sonnet-5
+  - claim: "PII scan over the whole evidence directory is clean"
+    cmd: "grep -rn -E '[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[a-z]{2,}|(\\+62|\\b08)[0-9 -]{8,}|\\b[0-9]{16}\\b' evidence/2026-09/agent-nuzantara-backend-rag-b2-2-harness-5936113c"
+    result: "0 matches (grep exit 1 = no match); no email, phone, or 16-digit run found; all queries in the plan/report are synthetic benchmarks"
+    exit: 1
+    ts: "2026-09-13T08:49:55Z"
+    seat: claude-sonnet-5

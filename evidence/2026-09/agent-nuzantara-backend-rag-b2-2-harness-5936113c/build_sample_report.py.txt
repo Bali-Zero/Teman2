@@ -1,0 +1,62 @@
+# Offline, network-free: rebuilds the HC9/HC10 report from the outcomes the ONE
+# --execute run wrote (b2-2-live-report.json) by calling the shipped
+# retrieval_harness.build_report with the frozen mandatory manifest. No retrieval
+# is repeated. Run from apps/backend-rag of the worktree:
+#   PYTHONPATH=. .venv/bin/python <this file>
+import hashlib
+import json
+from pathlib import Path
+
+from backend.tests.benchmarks.evidence_sufficiency import retrieval_harness as rh
+
+EVIDENCE = Path("../../evidence/2026-09/agent-nuzantara-backend-rag-b2-2-harness-5936113c")
+MANIFEST = Path("backend/tests/benchmarks/evidence_sufficiency/manifest_mandatory.json")
+# Re-pinned by #6338 (eb90568371) from B1.3's 9d7ea833...; the live pin is
+# test_evidence_sufficiency_benchmark.py:43 MANDATORY_MANIFEST_SHA256.
+MANIFEST_SHA256 = "d23a66ca27f48d2bf186f941e902a99c6991803ae53c651fedbab201772da745"
+
+manifest_bytes = MANIFEST.read_bytes()
+assert hashlib.sha256(manifest_bytes).hexdigest() == MANIFEST_SHA256, "manifest drifted"
+manifest = json.loads(manifest_bytes)
+manifest_cases = manifest["cases"] if isinstance(manifest, dict) else manifest
+
+raw = json.loads((EVIDENCE / "b2-2-live-report.json").read_bytes())
+outcomes = []
+for case in raw["cases"]:
+    outcomes.append(
+        rh.QueryOutcome(
+            query_key=case["query_key"],
+            query=case["query"],
+            query_lang=case["query_lang"],
+            case=case["case"],
+            query_domain=case["query_domain"],
+            translation_changes_query=case["translation_changes_query"],
+            embedding_divergent=case["embedding_divergent"],
+            planned_collections=tuple(case["planned_collections"]),
+            collection_hit_counts=tuple(case["collection_hit_counts"].items()),
+            score=case["score"],
+            score_kinds=tuple(case["score_kinds"]),
+            generation_decision=case["generation_decision"],
+            label_decision=case["label_decision"],
+            generation_threshold=case["generation_threshold"],
+            label_threshold=case["label_threshold"],
+            source_count=case["source_count"],
+            source_refs=tuple(case["source_refs"]),
+            collection_resolutions=tuple(
+                (
+                    r["collection_planned"],
+                    r["collection_resolved"],
+                    r["substituted"],
+                    r["duplicate_after_resolution"],
+                )
+                for r in case["collection_resolutions"]
+            ),
+            score_kind_divergent=case["score_kind_divergent"],
+        )
+    )
+
+report = rh.build_report(outcomes, manifest_cases=manifest_cases)
+report["run"] = raw["run"]
+out = EVIDENCE / "b2-2-live-sample-report.json"
+out.write_text(json.dumps(report, indent=2, sort_keys=True, ensure_ascii=False) + "\n")
+print(hashlib.sha256(out.read_bytes()).hexdigest(), out.name)
