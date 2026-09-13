@@ -57,33 +57,9 @@ The companion JSON stores the exact aligned and replacement slug sets. It is the
 
 ## Adversarial review
 
-Reviewer: `codex` (OpenAI Codex CLI, `gpt-6-astra`, reasoning effort xhigh, sandbox
-read-only), dispatched via `.claude/scripts/codex-spalla.sh review origin/main` against the
-`origin/main`-merged branch (base `origin/main`, 21 files / ~2000 committed diff lines).
-Full transcript: `~/logs/codex-spalla/20260913T135535Z-17e59-review-Adversarial-review-for-R1-gate-audit-the.md`
-(local log, not committed — path recorded for audit).
+Reviewer: `codex` — transcript `~/logs/codex-spalla/20260913T135535Z-17e59-review-Adversarial-review-for-R1-gate-audit-the.md`.
 
-**Verdict: LOW**
+Verdict: LOW — no BLOCKER/MEDIUM.
 
-> Claude propone di eliminare quattro articoli duplicati e le loro 14 traduzioni, aggiungere
-> quattro redirect permanenti e registrare l'audit delle copertine e tre archiviazioni backend
-> dichiarate.
-
-- **LOW — conteggio previsto ormai datato.** Questo audit (riga 7) prevede ancora 811 articoli
-  dopo il deploy, ma il merge con `origin/main` incorpora sei articoli pubblicati l'11 settembre
-  e assenti da questo manifest (es. `apps/mouth/src/content/articles/tax-legal/indonesia-spp-tdln-vat-foreign-digital-payments.mdx`).
-  Il numero 811 descrive lo snapshot del 6 settembre, non il totale post-merge — va ricalcolato
-  prima della verifica live, non usato come conteggio finale.
-- **Verifiche superate:** tutti i 18 file duplicati rimossi hanno un gemello canonico ancora
-  leggibile dal loader nella lingua corrispondente; i quattro redirect terminano sulle
-  destinazioni corrette senza cicli; il parser TypeScript non riporta errori e tutti i redirect
-  preesistenti restano nello stesso ordine (`apps/mouth/next.config.ts:223`).
-- **Coerenza interna confermata:** 818 − 3 − 4 = 811; i sette gruppi duplicati corrispondono
-  esattamente a quattro eliminazioni statiche + tre archiviazioni backend dichiarate. Il
-  manifest JSON allegato contiene 266 + 545 slug distinti, senza sovrapposizioni.
-- **Limite della verifica:** raggiungibilità HTTP e archiviazioni backend non confermate in
-  questa sessione (sandbox read-only, nessun accesso di rete); gli endpoint elencati sopra
-  richiedono verifica da un ambiente con accesso alla rete prima del prove-live.
-
-No BLOCKER or MEDIUM finding. The stale-count observation does not block this PR's merge; it is
-a note for whoever runs the post-deploy prove-live count.
+Finding: the "811 articles" count above is the 2026-09-06 snapshot; it predates six
+2026-09-11 articles merged in from `origin/main` — recompute at prove-live, don't treat as final.
