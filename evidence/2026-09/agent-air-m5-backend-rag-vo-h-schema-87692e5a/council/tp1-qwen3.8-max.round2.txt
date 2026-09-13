@@ -1,0 +1,33 @@
+**Round-1 corrections — verified in the diff text**
+
+1. `EXPECTED_OUTCOME` / `currency_still_unsure`: now states the narrow claim and it agrees with the table row `offshore/invest/undecided/currency_still_unsure: ("ACTIVITY_BOUNDARY",)` — no NOT_CERTAIN, still held at funnel level. ✅
+2. `HUMAN_REVIEW_REQUIRED == 0` comment: names it the ENGINE half, points at `test_the_flagged_census_is_the_funnel_the_applicant_meets`, and the "8 holds" it cites matches the derived census. ✅
+3. "for years" → "from the day it was written (2026-09-06) until the corpus gained this field". ✅
+4. "unconditional" qualified with the `decision_id`/`public_id` early return. ✅ — but only in the module docstring. Three copies stay unqualified: the `EXPECTED_FLAGGED_STATE_CENSUS` comment, the `generate-walk-corpus.ts` `WalkFixture` docstring, and the guilt assertion message ("is supposed to be unconditional"). Incomplete, not wrong.
+
+**FATAL — `test_interview_walk_census.py`, the `flagged_outcomes` fixture**
+
+```
++ @pytest.fixture(scope="module")
++def flagged_outcomes(walks: dict[str, dict[str, Any]]) -> dict[str, dict[str, Any]]:
+```
+
+The decorator line carries a **one-space leading indent** while the `def` below it sits at column 0. That is `IndentationError: unexpected indent` at module scope — the file never imports, so *every* test in it (the whole pre-existing census, the allowlist invariants, the dead-end tables) errors at collection. This is the green-but-dead shape inverted into red-but-total, and it directly contradicts the builder's "MEASURED 2026-09-13 … both censuses in the same run" claim: those numbers cannot have come from this file as pasted. Every other added line in the diff is correctly indented, so this is not a paste-wide artifact. Fix: delete the space.
+
+**A. omit-when-empty.** The two-directional pin is sound as far as it goes: `carrying` non-empty catches a generator that stops emitting the key wholesale; `_flag_table_violations` catches under-match, over-match, and stale pins; `set(pins) - set(walks)` catches a pin outliving its walk. Two residual gaps, both lesser:
+- The Python side compares **fixture bytes to a hand-pinned table**, never re-deriving from `mapDisclosedReviewFlags`. A TS mapper regression that drops a flag is invisible here until someone regenerates; only the npm determinism test catches it. Same shape as `overrides`, so pre-existing and accepted — but the docstring's "the layer can never move unobserved again" overstates it: it can never move unobserved *by the determinism test*, which is a different lane.
+- `_flag_table_violations` compares `tuple(sorted(carried))` vs `tuple(sorted(pinned))`, while `_walk_flags`' docstring promises "in the order it carries them". A reordering passes. Harmless only if `_apply_disclosed_review_flags` is order-insensitive — assert that or drop the order claim.
+
+**B. guilt/innocence.** Genuinely real, with one hole. Under-match and over-match guilt are correctly scoped — `_scoped_flag_table("offshore/tourism")` returns `{}` because tourism is absent from the pin table, so the over-match assertion `table pins []` is graded against the scoped table, not the whole one. The derived (not pinned) `EXPECTED_FLAGGED_STATE_CENSUS` is the right instrument: silently dropped flags collapse the funnel census to 67/15/2/0 and go red with no re-pin. `test_innocence_...` compares **whole dicts**, not states — strong.
+
+The hole: the innocence test covers only the 76 walks that **never take the `model_dump`/`model_validate` round-trip** (`if disclosed_review_flags:` gates it). So nothing proves the round-trip preserves *facts* for the 8 flagged walks. A JSON-mode coercion or an alias/`populate_by_name` asymmetry would mutate a flagged walk's facts, and as long as it still lands HUMAN_REVIEW_REQUIRED the derived census matches. Add one assertion that a flagged walk's `applicant_facts()` is identical with and without the round-trip, or build via `model_copy(update=...)` plus an explicit flag-name check.
+
+**C. existing callers.** Safe, and safe *because* of the `if disclosed_review_flags:` guard — the coverage floor and authoring CLI never enter the round-trip, so their behaviour is byte-identical. Keyword-only, default `()`. New module-level import of `api_models` is a leaf; no cycle apparent.
+
+**D. constants/arithmetic.** All internally consistent: 67+15+2+0 = 84; 60+15+1+8 = 84; 67−6−1 = 60; 2−1 = 1; 6 ACTIVITY_BOUNDARY rows + 2 NOT_CERTAIN rows = 8 pinned rows; "nine flags rewrite ZERO" + 2 firing = 11, and the enumeration (MULTI_PURPOSE_TRIP + seven compliance + AMBIGUOUS_SPONSOR) = 9; 84−8 = 76. The "predicts 2 flagged walks" derivation is right (the 2 `unsure` walks) and correctly identifies scenario overrides as the miss. Reason-code strings and `EXPECTED_STATE_CENSUS`/`copy`/`Counter`/`DisclosedReviewFlagWire` are not defined in this diff — assumed pre-existing; a wrong reason code fails loudly, so no silent risk. The retained docstring tail visible in the second hunk header ("…below move, per the invariant section above:") still has a live antecedent after the renumbering; worth an eyeball, not a finding.
+
+**E. PII/credentials.** Clean. Fixtures carry synthetic interview answers (visa category, sponsor status, currency) — no names, KTP/passport/NPWP, no CRM rows, no OSINT, no keys or env vars.
+
+**Non-goals.** Respected: `_apply_disclosed_review_flags`, `mapDisclosedReviewFlags`, `tree.ts`, `flow.ts` and every rule pack are untouched. Only the generator script, the eval helper, 8 fixtures and the census test move.
+
+VERDICT: DEFECT - the added `flagged_outcomes` decorator is indented one space at module scope (` @pytest.fixture(scope="module")`), an IndentationError that prevents the entire census test file from being collected.

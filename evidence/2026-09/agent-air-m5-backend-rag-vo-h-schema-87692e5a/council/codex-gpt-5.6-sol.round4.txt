@@ -1,0 +1,31 @@
+Reading additional input from stdin...
+OpenAI Codex v0.154.0
+--------
+workdir: /Users/balizero/nuzantara/.worktrees/backend-rag-vo-h-schema
+model: gpt-5.6-sol
+provider: openai
+approval: never
+sandbox: read-only
+reasoning effort: high
+reasoning summaries: none
+session id: 01a09ad4-8584-7302-8a8d-9c403145afec
+--------
+
+-- EXCERPT ---------------------------------------------------------------
+Raw stdout was 992759 bytes / 10288 lines; sha256 16fe61712a98fb0d32776807aa2e4b68bbdef3e825dda84ed75a48192a3840e2.
+The cut part is the codex harness preamble and its per-tool-call echoes:
+this repo's own doctrine files (AGENTS.md, army-map, model roster) injected
+by the codex hooks, plus the full stdout of every rg/python probe the seat
+ran. None of it is review content and committing 5.3 MB of it would bury
+the PR. Kept below: the session header above, the seat's own final answer,
+and its VERDICT line verbatim.
+--------------------------------------------------------------------------
+
+codex
+[MEDIUM] The fourth prose correction is incomplete. The main docstring now correctly qualifies “unconditional,” but new statements still call the adapter unconditional in [generate-walk-corpus.ts](/Users/balizero/nuzantara/.worktrees/backend-rag-vo-h-schema/apps/mouth/scripts/visa-oracle/generate-walk-corpus.ts:121), [test_interview_walk_census.py](/Users/balizero/nuzantara/.worktrees/backend-rag-vo-h-schema/apps/backend-rag/backend/tests/services/visa_engine/test_interview_walk_census.py:660), and its failure message at [line 1690](/Users/balizero/nuzantara/.worktrees/backend-rag-vo-h-schema/apps/backend-rag/backend/tests/services/visa_engine/test_interview_walk_census.py:1690). The implementation explicitly returns unchanged when either ID is absent at [evaluate_path.py:1318](/Users/balizero/nuzantara/.worktrees/backend-rag-vo-h-schema/apps/backend-rag/backend/services/visa_engine/evaluate_path.py:1318).
+
+[LOW] The new flag-table comment says `still_unsure` “cost[s] zero holds” at [test_interview_walk_census.py:643](/Users/balizero/nuzantara/.worktrees/backend-rag-vo-h-schema/apps/backend-rag/backend/tests/services/visa_engine/test_interview_walk_census.py:643), but the same table assigns the currency walk `ACTIVITY_BOUNDARY` at [line 652](/Users/balizero/nuzantara/.worktrees/backend-rag-vo-h-schema/apps/backend-rag/backend/tests/services/visa_engine/test_interview_walk_census.py:652), and the measured funnel outcome is human review. It should only claim zero `NOT_CERTAIN` holds.
+
+The remaining claims checked out: generator output matches all 84 committed fixtures byte-for-byte; the direct new-test execution passed; censuses were 67/15/2/0 and 60/15/1/8; rewrite counts were 6 `ACTIVITY_BOUNDARY` and 2 `NOT_CERTAIN`; omitted versus explicit-empty flags produced identical results for all walks; no PII or credentials were introduced.
+
+VERDICT: DEFECT - The round-4 unconditionality correction is incomplete because the diff still describes an adapter with a null-ID early return as unconditional.
