@@ -17,7 +17,7 @@ lanes:
       (isPmaVerdictVerified / isLicensingVerificationPending - the PMA verdict and the
       licensing disclosure the panel projects), apps/mouth/src/lib/kbli-data.ts (the
       server-only reader), apps/mouth/data/KBLI_2025_FINAL_CLEAN.json (the corpus).
-    query_hash: "eeed0a3683808b848e3f15b8af33718eb1480fa2c24d5855eee7e7a50243492c"
+    query_hash: "eeed0a3683808b848e3f15b8af33718eb1480fa2c24d5855eee7e7a50243492c" # pragma: allowlist secret - sha256 of three public repo files, not a credential
     note: >-
       query_hash = sha256 of the three files concatenated in that order:
       `for f in <the three>; do git show origin/main:"$f"; done | shasum -a 256`.
@@ -149,6 +149,17 @@ receipts:
     ts: "2026-09-14T01:30:00+08:00"
     seat: Claude Opus 5
 
+  - claim: The 'Detect Secrets' red on 5e3302e was this pack's own query_hash, not a credential; the allowlist pragma clears it.
+    cmd: gh api repos/Bali-Zero/Teman2/actions/jobs/103778913979/logs (residue lines only) ; python3 scripts/detect_secrets_check_file.py <pack> on the 5e3302e version and on this one
+    result: >-
+      CI: "Residue (unaudited): 1", by file "evidence/2026-09/sancho-kbli-sector-offcanvas-d19eba8f/pack.yml",
+      by type "Hex High Entropy String". Local, 5e3302e version: "1 unaudited finding(s): line 20:
+      Hex High Entropy String" (the query_hash line). This version: "clean (0 findings -
+      canary-verified this scan actually examined it)". Auto-merge was disarmed before this commit
+      and re-armed after it, so no armed branch was written to.
+    exit: 0
+    ts: "2026-09-14T03:32:00+08:00"
+    seat: Claude Opus 5
 dissent:
   - seat: Claude Opus 5 (self-refutation, on the mechanism)
     objection: >-
