@@ -494,7 +494,10 @@
     "routes": {
       "agy-gemini-3.1-pro-high": "Pro/Mini agy --model gemini-3.1-pro-high --effort high --mode plan --sandbox (M5 agy not signed in)",
       "kimi-code/k3": "Pro kimi -m kimi-code/k3",
-      "tp1-*": "M5 via ssh air, Qwen Code CLI 0.23.0 existing profile"
+      "codex-gpt-5.6-sol": "Pro codex exec -m gpt-5.6-sol --sandbox read-only --json (eligible only when OpenAI did not contribute)",
+      "tp1-qwen3.8-max": "M5 via ssh air, Qwen Code CLI 0.23.0 existing profile, -m qwen3.8-max",
+      "tp1-glm-5.2": "M5 via ssh air, Qwen Code CLI 0.23.0 existing profile, -m glm-5.2",
+      "tp1-deepseek-v4-pro": "M5 via ssh air, Qwen Code CLI 0.23.0 existing profile, -m deepseek-v4-pro"
     }
   },
   "pending_arms": [

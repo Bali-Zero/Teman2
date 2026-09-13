@@ -3084,7 +3084,8 @@ def check_council_policy_v2(pack: dict[str, Any], pack_dir: Path, gear: int | No
         invoked = [
             e for e in entries
             if e.get("eligible") is True and e.get("invoked") is True
-            and isinstance(e.get("dispatch"), dict) and isinstance(e["dispatch"].get("pid"), int)
+            and isinstance(e.get("dispatch"), dict)
+            and (isinstance(e["dispatch"].get("pid"), int) or bool(e["dispatch"].get("spawn_error")))
             and isinstance(e["dispatch"].get("timeout_s"), (int, float))
             and 0 < e["dispatch"]["timeout_s"] <= COUNCIL_V2_MAX_TIMEOUT_S
         ]
@@ -3093,6 +3094,10 @@ def check_council_policy_v2(pack: dict[str, Any], pack_dir: Path, gear: int | No
             violations.append(f"{rule}: eligible seat {seat} was never invoked on {candidate[:12]} (all eligible seats are invoked on the frozen candidate, reserves included)")
         if len(bound) > 1:
             violations.append(f"{rule}: seat {seat} invoked {len(bound)} times on {candidate[:12]} — one invocation per revision")
+        for entry in bound:
+            closure = entry["dispatch"].get("closure")
+            if closure not in ("verified", "not_spawned"):
+                violations.append(f"{rule}: seat {seat} process closure on {candidate[:12]} is {closure!r} — ambiguous closure blocks release even beside a PASS")
         for entry in invoked:
             outcome = entry.get("outcome")
             if outcome not in ("PASS", "BLOCK"):

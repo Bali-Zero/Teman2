@@ -36,7 +36,7 @@ def _line(seat, outcome="NON_JUDGMENT", **kw):
     entry = {
         "policy": lint.COUNCIL_POLICY_V2, "seat": seat, "family": family, "role": "review",
         "eligible": True, "invoked": True, "candidate_sha": CAND, "outcome": outcome, "ts": POST,
-        "dispatch": {"pid": 101, "exit_code": 0, "timed_out": False, "timeout_s": 300},
+        "dispatch": {"pid": 101, "exit_code": 0, "timed_out": False, "timeout_s": 300, "closure": "verified"},
     }
     if outcome in ("PASS", "BLOCK"):
         entry.update(resolved_model=accepted[0], verdict_sha256="f" * 64, findings=[])
@@ -147,7 +147,7 @@ def test_echoed_prompt_literal_is_not_a_verdict():
 
 
 def test_timeout_is_recorded_and_not_a_judgment(tmp_path):
-    timed = _line(GEM, "PASS", dispatch={"pid": 9, "exit_code": None, "timed_out": True, "timeout_s": 300})
+    timed = _line(GEM, "PASS", dispatch={"pid": 9, "exit_code": None, "timed_out": True, "timeout_s": 300, "closure": "verified"})
     pack, d = _pack(tmp_path, _all_invoked(**{GEM: timed}))
     assert any("timed-out" in v for v in lint.check_council_policy_v2(pack, d, 3))
     verdict = cj.classify_output(GEM, "", None, True)
@@ -224,3 +224,159 @@ def test_dispatch_cli_invokes_every_eligible_seat_once(tmp_path, monkeypatch):
     assert lint.check_council_policy_v2(yaml.safe_load((pack_dir / "pack.yml").read_text()), pack_dir, 3) == []
     assert cj.main(["dispatch", "--pack-dir", str(pack_dir), "--worktree", str(repo), "--base-sha", base,
                     "--candidate-sha", base, "--capture-dir", str(tmp_path / "cap")]) == 2
+
+
+# ---- correction cycle 2: dispatch lifecycle spec (evidence/.../dispatch-lifecycle-spec.md) ----
+
+import os
+import signal
+import sys
+import time
+
+_REPO = _SCRIPTS.parent
+
+
+def _fake(tmp_path, name, body):
+    path = tmp_path / name
+    path.write_text("#!/bin/sh\n" + body)
+    path.chmod(path.stat().st_mode | stat.S_IEXEC)
+    return str(path)
+
+
+def _repo_with_candidate(tmp_path):
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    env = ["-c", "user.email=t@t", "-c", "user.name=t"]
+    _git(repo, "init", "-q")
+    (repo / "a.py").write_text("x = 1\n")
+    _git(repo, *env, "add", "a.py")
+    _git(repo, *env, "commit", "-qm", "base")
+    base = _git(repo, "rev-parse", "HEAD")
+    (repo / "a.py").write_text("x = 2\n")
+    _git(repo, *env, "commit", "-qam", "cand")
+    return repo, base, _git(repo, "rev-parse", "HEAD")
+
+
+def _dispatch(tmp_path, repo, base, cand):
+    pack_dir = tmp_path / "pack"
+    pack_dir.mkdir()
+    rc = cj.main(["dispatch", "--pack-dir", str(pack_dir), "--worktree", str(repo), "--base-sha", base,
+                  "--candidate-sha", cand, "--contributing-family", "openai", "--timeout", "30",
+                  "--capture-dir", str(tmp_path / "cap")])
+    lines = [json.loads(x) for x in (pack_dir / "council-journal.jsonl").read_text().splitlines()]
+    pack = {"council_run": "council-journal.jsonl", "candidate_sha": cand, "contributing_families": ["anthropic", "openai"]}
+    return rc, {x["seat"]: x for x in lines}, pack, pack_dir
+
+
+def _pass_routes(tmp_path, calls):
+    routes = {}
+    for seat, (family, accepted) in lint.COUNCIL_V2_SEATS.items():
+        verdict = "VERDICT=PASS" if seat == GEM else "429 quota exceeded"
+        body = (f"echo {seat} >> {calls}\n"
+                f"echo '{json.dumps({'model': accepted[0]})}'\necho '{json.dumps({'text': verdict})}'\n")
+        routes[seat] = {"host": "test", "account_ref": "fixture", "argv": [_fake(tmp_path, f"seat-{family}", body), "{prompt}"]}
+    return routes
+
+
+def test_spawn_errors_are_isolated_and_every_other_seat_is_invoked(tmp_path, monkeypatch):
+    repo, base, cand = _repo_with_candidate(tmp_path)
+    calls = tmp_path / "calls.log"
+    routes = _pass_routes(tmp_path, calls)
+    routes["kimi-code/k3"]["argv"] = [str(tmp_path / "missing-kimi-binary"), "{prompt}"]
+    real_popen = cj.subprocess.Popen
+
+    def popen(argv, *a, **kw):
+        if str(argv[0]).endswith("seat-glm"):
+            raise RuntimeError("spawn exploded")
+        return real_popen(argv, *a, **kw)
+
+    monkeypatch.setattr(cj, "SEAT_ROUTES", routes)
+    monkeypatch.setattr(cj.subprocess, "Popen", popen)
+    rc, by_seat, pack, pack_dir = _dispatch(tmp_path, repo, base, cand)
+    for seat in ("kimi-code/k3", "tp1-glm-5.2"):
+        assert by_seat[seat]["non_judgment_reason"] == "spawn_error"
+        assert by_seat[seat]["dispatch"]["closure"] == "not_spawned" and by_seat[seat]["dispatch"]["pid"] is None
+    assert sorted(calls.read_text().split()) == [GEM, "tp1-deepseek-v4-pro", "tp1-qwen3.8-max"]
+    assert by_seat[GEM]["outcome"] == "PASS" and rc == 0
+    assert lint.check_council_policy_v2(pack, pack_dir, 3) == []
+
+
+def test_cleanup_exception_is_isolated_and_blocks_beside_a_pass(tmp_path, monkeypatch):
+    repo, base, cand = _repo_with_candidate(tmp_path)
+    calls = tmp_path / "calls.log"
+    monkeypatch.setattr(cj, "SEAT_ROUTES", _pass_routes(tmp_path, calls))
+    real_close = cj._close_group
+
+    def close(proc, *a, **kw):
+        if str(proc.args[0]).endswith("seat-qwen"):
+            raise OSError("cleanup exploded")
+        return real_close(proc, *a, **kw)
+
+    monkeypatch.setattr(cj, "_close_group", close)
+    rc, by_seat, pack, pack_dir = _dispatch(tmp_path, repo, base, cand)
+    assert by_seat["tp1-qwen3.8-max"]["dispatch"]["closure"] == "ambiguous"
+    assert by_seat["tp1-qwen3.8-max"]["dispatch"]["closure_error"] == "OSError"
+    assert len(calls.read_text().split()) == 5 and by_seat[GEM]["outcome"] == "PASS"
+    assert rc == 1
+    out = lint.check_council_policy_v2(pack, pack_dir, 3)
+    assert out == [f"council_policy_v2: seat tp1-qwen3.8-max process closure on {cand[:12]} is 'ambiguous' — ambiguous closure blocks release even beside a PASS"]
+
+
+def _alive(pid):
+    state = subprocess.run(["ps", "-o", "stat=", "-p", str(pid)], capture_output=True, text=True).stdout.strip()
+    return bool(state) and not state.startswith("Z")
+
+
+def test_resistant_descendant_is_killed_while_the_leader_is_unreaped(tmp_path, monkeypatch):
+    child = tmp_path / "child.pid"
+    leader = _fake(tmp_path, "leader", f"sh -c 'trap \"\" TERM; while :; do sleep 1; done' &\necho $! > {child}\n"
+                                        f"echo '{json.dumps({'model': 'gemini-3.1-pro-high'})}'\necho VERDICT=PASS\n")
+    signalled = []
+    real_killpg = os.killpg
+
+    def killpg(pgid, sig):
+        # A reaped leader disappears from the process table; it must still be there (zombie) here.
+        still_owned = subprocess.run(["ps", "-o", "stat=", "-p", str(pgid)], capture_output=True, text=True).stdout.strip()
+        signalled.append((sig, bool(still_owned)))
+        return real_killpg(pgid, sig)
+
+    monkeypatch.setattr(cj.os, "killpg", killpg)
+    ran = cj.run_seat(GEM, {"host": "test", "account_ref": "x", "argv": [leader]}, "packet", str(tmp_path), 20)
+    d = ran["dispatch"]
+    grandchild = int(child.read_text())
+    assert d["members_before"] >= 1 and d["members_after"] == 0 and d["closure"] == "verified"
+    assert signalled and all(owned for _sig, owned in signalled)
+    assert signal.SIGKILL in [sig for sig, _o in signalled]
+    deadline = time.monotonic() + 3
+    while _alive(grandchild) and time.monotonic() < deadline:
+        time.sleep(0.1)
+    assert not _alive(grandchild)
+    assert d["exit_code"] == 0 and d["timed_out"] is False
+    assert cj.classify_output(GEM, ran["stdout"], d["exit_code"], d["timed_out"])["outcome"] == "PASS"
+
+
+def test_timeout_is_recorded_with_verified_closure(tmp_path):
+    slow = _fake(tmp_path, "slow", "sleep 30\n")
+    ran = cj.run_seat(GEM, {"host": "test", "account_ref": "x", "argv": [slow]}, "p", str(tmp_path), 1)
+    d = ran["dispatch"]
+    assert d["timed_out"] is True and d["exit_code"] is None and d["closure"] == "verified"
+    assert "SIGTERM" in d["signals"]
+
+
+def test_no_signal_when_the_group_is_already_empty(tmp_path, monkeypatch):
+    quick = _fake(tmp_path, "quick", "echo done\n")
+    monkeypatch.setattr(cj.os, "killpg", lambda *a: (_ for _ in ()).throw(AssertionError("signalled an empty group")))
+    ran = cj.run_seat(GEM, {"host": "test", "account_ref": "x", "argv": [quick]}, "p", str(tmp_path), 10)
+    assert ran["dispatch"]["signals"] == [] and ran["dispatch"]["closure"] == "verified"
+
+
+def test_unobserved_remote_closure_is_ambiguous():
+    assert cj._remote_closure("nohost.invalid", "no marker here")["remote_closure"] == "ambiguous"
+
+
+def test_fleet_topology_routes_name_every_seat_including_codex():
+    topo = json.loads((_REPO / "FLEET_TOPOLOGY.json").read_text())["council_policy_v2"]
+    assert set(topo["routes"]) == set(cj.SEAT_ROUTES) == set(lint.COUNCIL_V2_SEATS)
+    assert topo["seats"] == {seat: family for seat, (family, _a) in lint.COUNCIL_V2_SEATS.items()}
+    assert "codex exec -m gpt-5.6-sol" in topo["routes"]["codex-gpt-5.6-sol"]
+    assert cj.SEAT_ROUTES["codex-gpt-5.6-sol"]["argv"][:4] == ["codex", "exec", "-m", "gpt-5.6-sol"]
