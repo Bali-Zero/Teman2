@@ -52,31 +52,34 @@
 // while a route is DYNAMIC. It is NOT true of this app today, and the first draft of
 // this comment got that wrong by describing it as a future risk.
 //
-// MEASURED on this build: five `(workspace)` index routes are statically prerendered
-// with no `generateStaticParams` and no `force-static` anywhere — App Router
-// prerenders a route by default unless it uses a dynamic API. `/clients`,
-// `/dashboard`, `/lkpm`, `/partners` and `/settings` all appear in
-// `.next/prerender-manifest.json`, and `.next/server/app/<route>.html` / `.rsc`
-// exist on disk for each. Of those, `/lkpm`'s prerendered payload carries 4 marker
-// hits — staff data baked into a build artifact that this guard does not scan.
+// MEASURED on this build, and the number C4c published was WRONG: SEVENTEEN
+// `(workspace)` routes are statically prerendered, not five. Every workspace
+// top-level route is — none is dynamic. C4c said five because the probe that
+// produced it filtered the manifest against a hardcoded tuple of five names instead
+// of enumerating `src/app/(workspace)/<route>/page.tsx`, so five was the most it
+// could ever return. The correction is recorded here rather than quietly applied.
 //
-// So the honest statement is not "server payloads are per-request". It is: this
-// guard covers chunks and public files; some workspace payloads are ALREADY static
-// files carrying staff data; and that exposure is the escalated workspace-auth item,
-// not something this guard silently handles.
+// The exposure is narrower than seventeen suggests, which is worth stating in the
+// same breath: of the seventeen payloads, exactly ONE carries staff-name markers —
+// `/lkpm`, 4 hits. The other sixteen are the client shell.
 //
-// `clients/[id]` is the exception and stays dynamic — 0 prerender artifacts,
+// `clients/[id]` is the exception that stays dynamic — 0 prerender artifacts,
 // measured — which is why the fix that moved its table server-side genuinely removed
 // the data from everything this guard can see.
 //
-// WHEN TO WIDEN THE SCAN. The mechanical test is `.next/prerender-manifest.json`: if
-// a `(workspace)` route is in it, its payload is a file. That check is deliberately
-// NOT asserted here yet, because asserting it today would fail the build on the five
-// routes above — and failing every build is not how a declared, escalated exposure
-// gets decided. Wire it the moment that decision lands.
+// THE BOUNDARY IS NOW A FLOOR, not just a paragraph. `.next/prerender-manifest.json`
+// is the mechanical test — if a `(workspace)` route is in it, its payload is a file —
+// and the check below enforces a BASELINE rather than a blanket rule: the seventeen
+// already-static routes are accepted with their measurement, and a NEW one fails.
+// Asserting the blanket rule would fail every build today over an exposure that is
+// already escalated and owner-held, which teaches people to bypass the guard rather
+// than fixing anything. A route that becomes static tomorrow is a different matter:
+// nobody has accepted it, and until now it landed in silence.
 
 import fs from "node:fs";
 import path from "node:path";
+import { chunkExceptionViolations } from "./lib/chunk-exception-contract.mjs";
+import { unacceptedPrerenderedWorkspaceRoutes } from "./lib/prerendered-workspace-baseline.mjs";
 
 const CHUNK_DIR = path.join(".next", "static", "chunks");
 // Keep in step with PUBLIC_EXCLUDED_SLUGS / PUBLIC_EXCLUDED_NAME_ALIASES in
@@ -165,62 +168,107 @@ if (all.length === 0) {
   process.exit(1);
 }
 
+// THE PRERENDER BASELINE. Derived from the filesystem, never from a list of names —
+// that is exactly how C4c's "five" happened.
+{
+  const WS_DIR = path.join("src", "app", "(workspace)");
+  const MANIFEST = path.join(".next", "prerender-manifest.json");
+  // Refuse to pass a check that did not run — the same rule this guard already applies
+  // to an empty chunk scan. A missing manifest used to mean "silently green".
+  if (!fs.existsSync(WS_DIR)) {
+    console.error(
+      `ROSTER_CHUNK_ASSERT FAILED: ${WS_DIR} does not exist, so the prerender baseline ` +
+        `could not be checked. Refusing to report success on a check that did not run.`,
+    );
+    process.exit(1);
+  }
+  if (!fs.existsSync(MANIFEST)) {
+    console.error(
+      `ROSTER_CHUNK_ASSERT FAILED: ${MANIFEST} is missing — run \`npm run build\` first. ` +
+        `Refusing to report success on a prerender baseline it could not check.`,
+    );
+    process.exit(1);
+  }
+  {
+    // RECURSIVE. The first version read one level and only where a directory had its
+    // own page.tsx, so every nested route was invisible — and 25 of them were already
+    // prerendered. A shallow walk is not a smaller version of this check, it is a
+    // different check that happens to pass.
+    // Next resolves a page from several extensions, not just .tsx — a route added as
+    // page.jsx would otherwise never enter this list and could never be flagged.
+    const PAGE_FILES = [
+      "page.tsx",
+      "page.ts",
+      "page.jsx",
+      "page.js",
+      "page.mdx",
+    ];
+    const hasPage = (dir) =>
+      PAGE_FILES.some((f) => fs.existsSync(path.join(dir, f)));
+    const walk = (dir, prefix = "") => {
+      const out = [];
+      for (const d of fs.readdirSync(dir, { withFileTypes: true })) {
+        if (!d.isDirectory()) continue;
+        const route = prefix ? `${prefix}/${d.name}` : d.name;
+        if (hasPage(path.join(dir, d.name))) out.push(route);
+        out.push(...walk(path.join(dir, d.name), route));
+      }
+      return out;
+    };
+    // A route with a dynamic segment cannot be prerendered without
+    // generateStaticParams, and its manifest key is not the literal path.
+    // A page.tsx directly inside (workspace) is the "/" route under that layout.
+    const workspaceRoutes = [
+      ...(hasPage(WS_DIR) ? [""] : []),
+      ...walk(WS_DIR),
+    ].filter((r) => !r.includes("["));
+    let prerenderedPaths = [];
+    try {
+      prerenderedPaths = Object.keys(
+        JSON.parse(fs.readFileSync(MANIFEST, "utf8")).routes ?? {},
+      );
+    } catch (err) {
+      console.error(
+        `ROSTER_CHUNK_ASSERT FAILED: could not read ${MANIFEST} (${err.message}). ` +
+          `Refusing to report success on a baseline it could not check.`,
+      );
+      process.exit(1);
+    }
+    const unaccepted = unacceptedPrerenderedWorkspaceRoutes({
+      workspaceRoutes,
+      prerenderedPaths,
+    });
+    if (unaccepted.length > 0) {
+      console.error(
+        `ROSTER_CHUNK_ASSERT FAILED: ${unaccepted.length} (workspace) route(s) are now ` +
+          `statically prerendered and are NOT in the accepted baseline: ` +
+          `${unaccepted.join(", ")}. A prerendered route's payload is a FILE under ` +
+          `.next/server/app, served without a session, and this guard does not scan it. ` +
+          `Either keep the route dynamic, or add it to ` +
+          `scripts/lib/prerendered-workspace-baseline.mjs with the measurement that ` +
+          `says what its payload contains.`,
+      );
+      process.exit(1);
+    }
+  }
+}
+
 const rel = (f) => path.relative(CHUNK_DIR, f).split(path.sep).join("/");
 const isAllowed = (r) => ALLOWED_CHUNK_PREFIXES.some((p) => r.startsWith(p));
 
-// THE EXCEPTION CONTRACT, enforced HERE rather than by reading this file's text.
-//
-// Two adversarial rounds broke earlier versions of this rule, and both breaks had the
-// same root: the check lived in a unit test that PARSED this source with a regex, so
-// it judged strings instead of values. Source-parsing cannot see an empty prefix, a
-// prototype-inherited lookup, or a closer whose value is the word "TODO". This loop
-// runs on every build with the real objects, so it can.
-//
-// Both structures are empty today, so all of this is a no-op — which is the point: it
-// costs nothing until someone adds an exception, and then it is strict.
-const CLOSER_SHAPE = /(#\d+|\bC\d+[a-z]?\b)/; // a PR number, or a lane id like C4b
+// THE EXCEPTION CONTRACT. The decision lives in ./lib/chunk-exception-contract.mjs
+// so that a TEST can execute it — see that file's header for why it is not inline.
+// This site keeps what belongs to a build script: formatting and the exit code.
 {
-  const prefixes = ALLOWED_CHUNK_PREFIXES;
-  const closerKeys = Object.keys(ALLOWED_CHUNK_PREFIX_CLOSERS);
-  const fail = (msg) => {
-    console.error(`ROSTER_CHUNK_ASSERT FAILED: ${msg}`);
+  const violations = chunkExceptionViolations({
+    prefixes: ALLOWED_CHUNK_PREFIXES,
+    closers: ALLOWED_CHUNK_PREFIX_CLOSERS,
+  });
+  if (violations.length > 0) {
+    for (const v of violations) {
+      console.error(`ROSTER_CHUNK_ASSERT FAILED: ${v}`);
+    }
     process.exit(1);
-  };
-
-  for (const prefix of prefixes) {
-    // An empty or blank prefix makes `startsWith` true for EVERY chunk, which would
-    // skip the whole scan while both lists still looked declared and paired.
-    if (typeof prefix !== "string" || prefix.trim() === "") {
-      fail(
-        `an allowlist entry is empty or blank (${JSON.stringify(prefix)}). ` +
-          `"".startsWith() matches every chunk, so this would disable the scan.`,
-      );
-    }
-    // `Object.hasOwn`, not truthiness: `CLOSERS["constructor"]` inherits a truthy
-    // value from Object.prototype and would otherwise wave an exception through.
-    if (!Object.hasOwn(ALLOWED_CHUNK_PREFIX_CLOSERS, prefix)) {
-      fail(
-        `"${prefix}" is allowed but has no OWN entry in ALLOWED_CHUNK_PREFIX_CLOSERS. ` +
-          `An exception that does not name the PR removing it is not time-boxed.`,
-      );
-    }
-    const closer = ALLOWED_CHUNK_PREFIX_CLOSERS[prefix];
-    if (typeof closer !== "string" || !CLOSER_SHAPE.test(closer)) {
-      fail(
-        `"${prefix}" names ${JSON.stringify(closer)} as its closer, which is not a PR ` +
-          `reference. "TODO", "later" and true are not closing PRs. Use #1234 or a lane id.`,
-      );
-    }
-  }
-  // Both directions. A closer left behind after its prefix is removed is a stale
-  // promise that the next exception could quietly reuse.
-  for (const key of closerKeys) {
-    if (!prefixes.includes(key)) {
-      fail(
-        `ALLOWED_CHUNK_PREFIX_CLOSERS has "${key}" with no matching entry in ` +
-          `ALLOWED_CHUNK_PREFIXES — a stale closing-PR claim.`,
-      );
-    }
   }
 }
 

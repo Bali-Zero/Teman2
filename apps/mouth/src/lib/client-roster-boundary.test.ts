@@ -310,15 +310,14 @@ describe("the roster does not cross the client boundary", () => {
     // so an exception cannot appear without editing this file in the same commit —
     // plus the assertion below that the runtime contract has not been deleted.
     //
-    // Known limit, stated rather than implied: this asserts the contract EXISTS, not
-    // that it works. Its behaviour is proved by probes recorded in the pack (empty
-    // prefix, inherited key, non-PR closer and stale closer each exit 1), not by a
-    // test that executes it. Making that permanent means extracting the contract into
-    // a module both sides import, which is a larger change than this PR was opened for.
+    // The limit this used to carry is gone: the contract's BEHAVIOUR is now executed
+    // by src/lib/chunk-exception-contract.test.ts, which imports the same module the
+    // guard does. What is checked here is only that the guard still CONSULTS it — the
+    // one thing a behavioural test on the module cannot see.
     expect(
       guard,
-      "the guard's runtime exception contract is gone — the closing-PR rule is unenforced",
-    ).toContain("Object.hasOwn(ALLOWED_CHUNK_PREFIX_CLOSERS, prefix)");
+      "the guard no longer consults the exception contract — the closing-PR rule is unenforced",
+    ).toContain("chunkExceptionViolations(");
   });
 
   it("the initials helper carries no roster data of its own", () => {
