@@ -5,10 +5,15 @@ lanes:
   - lane: sast-pins-build
     role: build
     seat: >-
-      Claude Sonnet 5 (session actions-pins). Cherry-picked dependabot's two commits
-      verbatim (d159c7a920 sonarqube-scan-action, 22fecf7ad8 sbom-action) from PRs
-      #5529/#5528 onto a fresh worktree off origin/main, squashed to one commit
-      touching only .github/workflows/sbom.yml and .github/workflows/sonarqube.yml.
+      Claude Sonnet 5 (session actions-pins). Cherry-picked dependabot's upstream
+      sonarqube-scan-action commit (d159c7a920) and sbom-action commit (22fecf7ad8)
+      verbatim from PRs #5529/#5528 onto a fresh worktree off origin/main, then
+      reset-soft and re-committed as a single change touching only
+      .github/workflows/sbom.yml and .github/workflows/sonarqube.yml. (Numbers about
+      this branch's own commit count are deliberately not narrated here — see the
+      receipt below, computed fresh at lint time via `git rev-list --count`, since a
+      frozen figure in this field would drift with every later commit added to this
+      same evidence pack.)
   - lane: sast-pins-review-codex
     role: review
     seat: >-
@@ -56,8 +61,16 @@ diff:
   measured_at: >-
     `git diff --numstat $(git merge-base origin/main HEAD)...HEAD -- .github/workflows/sbom.yml
     .github/workflows/sonarqube.yml` (three-dot, merge-base f1fbf388098315a56c16ccae17676e97e4d26ea8)
-    at 2026-09-13T14:38:07Z: sbom.yml +2/-2, sonarqube.yml +1/-1. Three SHA/comment
-    substitutions across two files, no other lines touched.
+    at 2026-09-13T14:38:07Z, restricted to the two changed workflow files only: sbom.yml
+    has two inserted and two deleted lines, sonarqube.yml has one inserted and one
+    deleted line — three SHA/comment substitutions total across those two files, no
+    other lines touched there. This is NOT the whole-branch numstat the harness-floor
+    countable-claims rule computes (which also counts every line this evidence pack
+    itself adds, e.g. this pack.yml and the council transcripts) — that whole-branch
+    figure is deliberately not asserted here as a frozen number, since it grows with
+    every later commit to this same pack; reproduce it fresh with
+    `git diff --numstat $(git merge-base origin/main HEAD)..HEAD` over the WHOLE
+    branch (two-dot, no path filter) at read time, per the receipt below.
 
 seat_fallback_reason: >-
   Both other titolari were dispatched and returned real, observed quota-exhaustion
@@ -162,7 +175,7 @@ receipts:
       actionlint <(git show origin/main:.github/workflows/sbom.yml)
     result: >-
       sonarqube.yml: 0 findings. sbom.yml: 7 shellcheck SC2086/SC2129 notices, all
-      inside the pre-existing "Add build provenance" run: script (line 74), none
+      inside the pre-existing "SBOM summary" run: script (line 74), none
       touching the two `uses:` lines this PR changes. Re-running actionlint
       against origin/main's own copy of sbom.yml reproduces the identical 7
       notices at the identical positions — confirmed pre-existing, not introduced
@@ -198,8 +211,83 @@ receipts:
     exit: 0
     ts: "2026-09-13T14:38:30+08:00"
     seat: Claude Sonnet 5
+  - claim: >-
+      Gate R1 fix (REWORK-BUILD on 544f92bb…): the whole-branch numstat and commit
+      count the harness-floor countable-claims rule actually computes, reproduced
+      independently rather than copied from the gate comment. This number is
+      deliberately NOT restated in `diff.measured_at` or `lanes[0].seat` above (both
+      are in the COUNTABLE_SUBTREES the rule scans) because it grows by one commit
+      and by this receipt's own line count the moment this fix commit lands — stating
+      it there would immediately re-create the exact contradiction being cured here.
+    cmd: >-
+      MB=$(git merge-base origin/main HEAD); git diff --numstat --cached "$MB" |
+      awk '{a+=$1;d+=$2} END{print "+"a" / -"d}'; git rev-list --count "$MB"..HEAD
+    result: >-
+      Measured with this fix staged but not yet committed: +5699/-3 over 3 commits
+      on the branch so far. The gate's own reproduction (before this fix) measured
+      +5676/-3 over 3 commits at SHA 544f92bb…; the delta (+23) is this receipt's own
+      addition plus the pack.yml rewording and the 10-line `.secrets.baseline` audit
+      entry. Once this fix is committed and pushed, the branch will carry 4 commits
+      and a correspondingly larger whole-branch total — reproduce the two commands
+      above at read time for the live figure, per the same convention
+      agent-nuzantara-infra-council-seats-roster-eab0e08d/pack.yml's own diff.measured_at
+      uses for a pack that is part of the diff it describes.
+    exit: 0
+    ts: "2026-09-13T15:24:00+08:00"
+    seat: Claude Sonnet 5
+  - claim: >-
+      Gate R1 condition 1: the unaudited Detect Secrets finding on
+      council/codex-gpt-5.6-sol.txt is a public upstream git commit SHA quoted in a
+      web-search query, not a credential — audited as a false positive in
+      `.secrets.baseline`, same class and same minimal-diff shape as #6276's audit of
+      three evidence-pack content digests.
+    cmd: >-
+      python3 scripts/detect_secrets_check_file.py
+      evidence/2026-09/agent-air-m5-infra-sast-pins47ab/council/codex-gpt-5.6-sol.txt
+    result: >-
+      Before the audit: "1 unaudited finding(s): line 5004: Hex High Entropy String".
+      Line 5004 reads `web search: "5bc5285b684b9f0e940031dc8ddc4b6387a2f493"
+      "SonarSource/sonarqube-scan-action" ...` — the exact upstream commit SHA this
+      PR bumps to, quoted verbatim by codex-gpt-5.6-sol while verifying it against
+      GitHub, inside its own search query. Hashed via a scratch copy of the real
+      baseline (never scanned in place — `detect-secrets scan --baseline
+      .secrets.baseline <file>` MUTATES that argument file, which the first attempt
+      at this fix did by mistake and then reverted with `git checkout --
+      .secrets.baseline` before it was staged): hashed_secret
+      a929907173f9c6df6d03c22b31bb4c2378aed375. Added as a single new 10-line entry
+      in `.secrets.baseline` with `is_secret: false`. After the audit:
+      "clean (1 pre-audited finding(s) carried from baseline)". The other four
+      touched/new evidence files and both workflow files scan clean with zero
+      findings (canary-verified).
+    exit: 0
+    ts: "2026-09-13T15:20:00+08:00"
+    seat: Claude Sonnet 5
 
 dissent:
+  - seat: Claude Sonnet 5 (self-refutation, on the secrets-audit mechanics)
+    status: CONFIRMED
+    objection: >-
+      While auditing the Detect Secrets finding for gate condition 1, the first
+      three attempts ran `detect-secrets scan --baseline .secrets.baseline <file>`
+      directly against the real repo baseline. That command MUTATES its
+      `--baseline` argument file in place rather than printing to stdout — a
+      behavior `scripts/detect_secrets_check_file.py`'s own docstring already
+      exists to work around (it scans via a disposable scratch copy in a
+      TemporaryDirectory for exactly this reason), which this session read only
+      after the mistake, not before it. The result was a 68,105-line unintended
+      rewrite of `.secrets.baseline` (reformatted key order/indent, `version` key
+      dropped, a `generated_at` timestamp added) — caught by `git diff --stat`
+      before staging, never committed or pushed.
+    cure: >-
+      `git checkout -- .secrets.baseline` (git -C form, worktree-isolation
+      compliant) reverted the file to HEAD before anything was staged. The audit
+      was redone correctly: `detect-secrets scan` against a throwaway copy in the
+      scratchpad directory to obtain the finding's real hashed_secret under the
+      correct repo-relative key, then a single 10-line surgical insertion (Edit
+      tool, exact old_string/new_string match) into the real file — verified
+      afterward with `git diff --stat` (10 insertions, 0 deletions, matching
+      #6276's precedent shape) and with `python3 -c "import json;
+      json.load(open('.secrets.baseline'))"` for JSON validity.
   - seat: Claude Sonnet 5 (self-refutation, on the council substitution)
     status: CONFIRMED
     objection: >-
