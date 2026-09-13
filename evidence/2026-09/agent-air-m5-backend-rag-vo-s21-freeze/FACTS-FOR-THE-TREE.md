@@ -3,8 +3,9 @@
 > **Audience: W-VO-Q** (the window that adds the interview questions in
 > `apps/mouth/.../_lib/tree.ts`, `flow.ts` and `fact-mapper.ts`).
 > **Pack:** `rulepack-prod-021.source.json`, payload
-> `c21a2aaaa33b939284a8d2ddaedef1f0c22859b3b3a87c9042b48c92814467cf`,
-> `valid_period.from = 2026-09-15T00:00:00Z`. Unsigned, unactivated.
+> `a0c3359c49ca656b625db74422c9d27a5f0af4e6943de3176eb0cddc4a81e4ac`; pack
+> `valid_period` unchanged from seq-20, every new rule `valid_period.from =
+2026-09-15T00:00:00Z`. Unsigned, unactivated.
 > **Registry:** `backend/services/visa_engine/enums.py::FactPath` is now 60 paths
 > (56 applicant + 4 derived); every fact below is a `BOOLEAN`, `PiiClass.PERSONAL`,
 > and carries a rollout default of `UNKNOWN / NOT_ASKED` in `models.py`, so an
@@ -49,23 +50,24 @@ ones that make it DEFINITELY FALSE for an applicant the product does not
 concern. They are all facts the tree already asks; the branch that asks a new
 question must keep asking them.
 
-| rule                               | purpose premise                | sponsor / route premise             | qualifying fact |
-| ---------------------------------- | ------------------------------ | ----------------------------------- | --------------- |
-| `el.e23u.diplomatic-household`     | `intent.purposes ⊇ EMPLOYMENT` | `sponsor.type = INDIVIDUAL`         | 4               |
-| `el.e23v.trade-office`             | `intent.purposes ⊇ EMPLOYMENT` | `sponsor.type = GOVERNMENT`         | 5               |
-| `el.e33a.government-invitation`    | `intent.purposes ⊇ EMPLOYMENT` | `sponsor.type = GOVERNMENT`         | 1               |
-| `el.e33b.government-collaboration` | `intent.purposes ⊇ EMPLOYMENT` | `sponsor.type ∈ {GOVERNMENT, NONE}` | 2               |
-| `el.e33c.world-figure-invitation`  | `intent.purposes ⊇ INVESTMENT` | `sponsor.type ∈ {GOVERNMENT, NONE}` | 3               |
-| `el.e28b.company-establishment`    | `intent.purposes ⊇ INVESTMENT` | fact 6 = true                       | 10              |
-| `el.e28c.capital-market`           | `intent.purposes ⊇ INVESTMENT` | fact 7 = true                       | 10              |
-| `el.e28d.branch-or-subsidiary`     | `intent.purposes ⊇ INVESTMENT` | fact 8 = true                       | 10              |
-| `el.e28f.ikn-subsidiary`           | `intent.purposes ⊇ INVESTMENT` | fact 9 = true                       | 10              |
+| rule                               | purpose premise                | sponsor / route premise     | qualifying fact |
+| ---------------------------------- | ------------------------------ | --------------------------- | --------------- |
+| `el.e23u.diplomatic-household`     | `intent.purposes ⊇ EMPLOYMENT` | `sponsor.type = INDIVIDUAL` | 4               |
+| `el.e23v.trade-office`             | `intent.purposes ⊇ EMPLOYMENT` | `sponsor.type = GOVERNMENT` | 5               |
+| `el.e33a.government-invitation`    | `intent.purposes ⊇ EMPLOYMENT` | `sponsor.type = GOVERNMENT` | 1               |
+| `el.e33b.government-collaboration` | `intent.purposes ⊇ EMPLOYMENT` | `sponsor.type = NONE`       | 2               |
+| `el.e33c.world-figure-invitation`  | `intent.purposes ⊇ INVESTMENT` | `sponsor.type = GOVERNMENT` | 3               |
+| `el.e28b.company-establishment`    | `intent.purposes ⊇ INVESTMENT` | fact 6 = true               | 10              |
+| `el.e28c.capital-market`           | `intent.purposes ⊇ INVESTMENT` | fact 7 = true               | 10              |
+| `el.e28d.branch-or-subsidiary`     | `intent.purposes ⊇ INVESTMENT` | fact 8 = true               | 10              |
+| `el.e28f.ikn-subsidiary`           | `intent.purposes ⊇ INVESTMENT` | fact 9 = true               | 10              |
 
 ## Where to ask them, and the trap to avoid
 
-- Facts **1–3** belong on the branch that already asks `sponsor_category` and
-  gets `GOVERNMENT` or `NONE`; facts **4–5** on the same question's `INDIVIDUAL`
-  and `GOVERNMENT` answers. Asking all five unconditionally would ask a tourist
+- Facts **1** and **3** belong on the branch that already asks `sponsor_category`
+  and gets `GOVERNMENT`; fact **2** on its `NONE` answer (each premise is the
+  product's own catalogue `sponsor_types`); facts **4–5** on the same question's
+  `INDIVIDUAL` and `GOVERNMENT` answers. Asking all five unconditionally would ask a tourist
   about a diplomatic household.
 - Facts **6–10** belong on the `invest` branch, after the existing
   investment-vehicle question. Facts 6–9 are independent booleans on purpose —
@@ -92,7 +94,7 @@ question must keep asking them.
   disappears and the outcome becomes `NEEDS_INPUT` — the exact state the
   interview must cure by asking the question.
 - `TestSponsorTypeAloneIsNotEvidence` strips the qualifying conjunct out of the
-  rules and shows 16 corpus walks then gain products on no evidence: that is the
+  rules and shows 9 corpus walks then gain products on no evidence: that is the
   measurement of what these ten facts are load-bearing for.
 
 ## Honest limits

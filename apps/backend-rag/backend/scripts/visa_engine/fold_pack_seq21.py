@@ -166,13 +166,22 @@ FOLD_CREATED_AT = "2026-09-13T00:00:00Z"
 FOLD_CREATED_BY = "agent.air-m5.backend-rag.visa-oracle-qualification-seq21.fold-2026-09-13"
 FOLD_VERSION = "2026.9.13"
 
-#: The pack's own validity window opens AFTER the signature is expected, so a
-#: replay of this candidate is never evaluated at an instant the rules were not
-#: yet in force — the exact false-negative that made the first seq-21 census
-#: report "0 walks moved" (it evaluated at seq-20's ``signed_at``, before the
-#: candidate's own ``valid_period.from``). Every new rule below carries the
-#: same ``from``.
-PACK_VALID_FROM = "2026-09-15T00:00:00Z"
+#: Every rule this fold INSERTS opens AFTER the signature is expected, so no new
+#: rule claims to have been law before it was signed, and a replay of this
+#: candidate must pin an instant at or after this ``from`` — the exact
+#: false-negative that made the first seq-21 census report "0 walks moved".
+#:
+#: The PACK's own ``valid_period`` is deliberately NOT moved (it stays
+#: seq-20's, like every fold since seq-13). ``activate_pack.py`` binds the
+#: activation's ``legal_period`` to the payload's ``valid_period``, and
+#: ``visa_activate_rule_pack`` (migration 253, step 4) REFUSES an activation
+#: whose legal period overlaps a still-open prior one without fully covering
+#: it: a pack opening on 2026-09-15 over seq-20's open 2026-07-25 activation
+#: would be inserted (immutable) and then refused — burning sequence 21. The
+#: bitemporal split is the design: ``legal_period`` is what the rules cover,
+#: ``system_period`` is when the engine started serving them, and the new
+#: rules' own ``valid_period`` is where "not before the signature" lives.
+NEW_RULE_VALID_FROM = "2026-09-15T00:00:00Z"
 
 _RULE_PACK_ID_URL_PREFIX = (
     "https://balizero.com/visa-oracle/rule-pack/PRODUCTION/ID/IMMIGRATION_VISA/"
@@ -238,13 +247,14 @@ SUPPORT_RULES: tuple[dict[str, Any], ...] = (
         "rule_id": "el.e33b.government-collaboration",
         "product_code": "E33B",
         "purposes": ["EMPLOYMENT"],
-        # E33B's catalogue ``sponsor_types`` is ["NONE"] and its own hard
-        # filter admits GOVERNMENT or NONE, so the premise mirrors the hard
-        # filter rather than narrowing it: the collaboration, not the sponsor
-        # category, is what this product turns on.
-        "premises": [
-            {"op": "in", "fact": "sponsor.type", "values": ["GOVERNMENT", "NONE"]},
-        ],
+        # The premise is the product's own catalogue ``sponsor_types``
+        # (["NONE"]), not the wider seq-20 hard filter (GOVERNMENT or NONE):
+        # the hard filter only EXCLUDES, while this rule RECOMMENDS, and a
+        # recommendation may not admit a sponsor category the catalogue
+        # record — statutorily verbatim for E33A/B/C, see ``enums.FactPath``
+        # ``sponsor.type`` — does not name. Checked at fold time by
+        # :func:`_assert_sponsor_premises_follow_the_catalogue`.
+        "premises": [{"op": "eq", "fact": "sponsor.type", "value": "NONE"}],
         "qualifying_fact": "sponsor.government_collaboration",
         "reason_code": "E33B_GOVERNMENT_COLLABORATION_ELIGIBLE",
     },
@@ -252,9 +262,9 @@ SUPPORT_RULES: tuple[dict[str, Any], ...] = (
         "rule_id": "el.e33c.world-figure-invitation",
         "product_code": "E33C",
         "purposes": ["INVESTMENT"],
-        "premises": [
-            {"op": "in", "fact": "sponsor.type", "values": ["GOVERNMENT", "NONE"]},
-        ],
+        # Catalogue ``sponsor_types`` is ["GOVERNMENT"]: a central-government
+        # invitation, never a self-sponsored route — same reasoning as E33B.
+        "premises": [{"op": "eq", "fact": "sponsor.type", "value": "GOVERNMENT"}],
         "qualifying_fact": "sponsor.world_figure_invitation",
         "reason_code": "E33C_WORLD_FIGURE_INVITATION_ELIGIBLE",
     },
@@ -329,7 +339,6 @@ _IDENTITY_KEYS = frozenset(
         "rule_pack_id",
         "created_at",
         "created_by",
-        "valid_period",
         "previous_payload_sha256",
         "rollback_of_payload_sha256",
     }
@@ -574,6 +583,35 @@ def _assert_employment_sponsor_scope_is_coherent(payload: dict[str, Any]) -> Non
 # ---------------------------------------------------------------------------
 
 
+def _sponsor_premise_values(row: dict[str, Any]) -> set[str] | None:
+    for node in row["premises"]:
+        if node.get("fact") != "sponsor.type":
+            continue
+        if node["op"] == "eq":
+            return {node["value"]}
+        if node["op"] == "in":
+            return set(node["values"])
+        _fail(f"{row['rule_id']}: unsupported sponsor.type premise op {node['op']!r}")
+    return None
+
+
+def _assert_sponsor_premises_follow_the_catalogue(payload: dict[str, Any]) -> None:
+    """A SUPPORT rule may only admit sponsor categories its product's catalogue
+    record names. A wider premise would RECOMMEND a product on a sponsor answer
+    the product itself says it does not take."""
+    products = _products_by_code(payload)
+    for row in SUPPORT_RULES:
+        admitted = _sponsor_premise_values(row)
+        if admitted is None:
+            continue
+        catalogue = set(products[row["product_code"]]["sponsor_types"])
+        if not admitted <= catalogue:
+            _fail(
+                f"{row['rule_id']} admits sponsor.type {sorted(admitted - catalogue)} that "
+                f"{row['product_code']}'s catalogue sponsor_types {sorted(catalogue)} does not name"
+            )
+
+
 def build_support_rule(payload: dict[str, Any], row: dict[str, Any]) -> dict[str, Any]:
     """One ELIGIBILITY/SUPPORT rule, with its scope, covered purposes and
     citations DERIVED from the product catalogue rather than transcribed."""
@@ -613,7 +651,7 @@ def build_support_rule(payload: dict[str, Any], row: dict[str, Any]) -> dict[str
         "priority": 100,
         "on_unknown": "NEEDS_INPUT",
         "source_refs": list(product["source_refs"]),
-        "valid_period": {"to": None, "from": PACK_VALID_FROM},
+        "valid_period": {"to": None, "from": NEW_RULE_VALID_FROM},
         "required_facts": _required_facts(when),
         "explanation_key": f"explain.{row['rule_id']}",
         "safety_critical": False,
@@ -642,7 +680,7 @@ def build_e33_guarantee_rule(payload: dict[str, Any]) -> dict[str, Any]:
         "priority": 100,
         "on_unknown": "NO_EFFECT",
         "source_refs": list(product["source_refs"]),
-        "valid_period": {"to": None, "from": PACK_VALID_FROM},
+        "valid_period": {"to": None, "from": NEW_RULE_VALID_FROM},
         "required_facts": _required_facts(when),
         "explanation_key": f"explain.{E33_GUARANTEE_RULE_ID}",
         "safety_critical": False,
@@ -673,7 +711,7 @@ def build_employment_sponsor_rule(payload: dict[str, Any]) -> dict[str, Any]:
         "priority": 100,
         "on_unknown": "NO_EFFECT",
         "source_refs": sorted(source_refs),
-        "valid_period": {"to": None, "from": PACK_VALID_FROM},
+        "valid_period": {"to": None, "from": NEW_RULE_VALID_FROM},
         "required_facts": _required_facts(when),
         "explanation_key": f"explain.{EMPLOYMENT_SPONSOR_RULE_ID}",
         "safety_critical": False,
@@ -744,7 +782,6 @@ def assert_changed_fields_hold_their_expected_values(
         "version": FOLD_VERSION,
         "created_at": FOLD_CREATED_AT,
         "created_by": FOLD_CREATED_BY,
-        "valid_period": {"to": None, "from": PACK_VALID_FROM},
         "previous_payload_sha256": SEQ20_PAYLOAD_SHA256,
         "rollback_of_payload_sha256": None,
     }
@@ -822,6 +859,7 @@ def fold(
     _assert_target_products_have_no_eligibility_rule(seq20)
     _assert_retired_review_rules_are_dormant(seq20)
     _assert_employment_sponsor_scope_is_coherent(seq20)
+    _assert_sponsor_premises_follow_the_catalogue(seq20)
 
     new_rules = build_new_rules(seq20)
 
@@ -834,7 +872,6 @@ def fold(
     out["version"] = FOLD_VERSION
     out["created_at"] = FOLD_CREATED_AT
     out["created_by"] = FOLD_CREATED_BY
-    out["valid_period"] = {"to": None, "from": PACK_VALID_FROM}
     out["previous_payload_sha256"] = SEQ20_PAYLOAD_SHA256
     out["rollback_of_payload_sha256"] = None
 

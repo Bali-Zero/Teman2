@@ -6116,9 +6116,9 @@
             "values": ["EMPLOYMENT"]
           },
           {
-            "op": "in",
+            "op": "eq",
             "fact": "sponsor.type",
-            "values": ["GOVERNMENT", "NONE"]
+            "value": "NONE"
           },
           {
             "op": "eq",
@@ -6164,9 +6164,9 @@
             "values": ["INVESTMENT"]
           },
           {
-            "op": "in",
+            "op": "eq",
             "fact": "sponsor.type",
-            "values": ["GOVERNMENT", "NONE"]
+            "value": "GOVERNMENT"
           },
           {
             "op": "eq",
@@ -8366,7 +8366,7 @@
   "rule_pack_id": "22c2718d-c001-55c2-8bcc-2b71b257185a",
   "valid_period": {
     "to": null,
-    "from": "2026-09-15T00:00:00Z"
+    "from": "2026-07-25T00:00:00Z"
   },
   "source_records": [
     {

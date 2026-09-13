@@ -47,12 +47,13 @@ from backend.scripts.visa_engine.fold_pack_seq21 import (
     EMPLOYMENT_SPONSOR_REASON,
     EMPLOYMENT_SPONSOR_RULE_ID,
     NEW_RULE_IDS,
-    PACK_VALID_FROM,
+    NEW_RULE_VALID_FROM,
     RETIRED_REVIEW_RULES,
     SEQ20_PAYLOAD_SHA256,
     SUPPORT_RULES,
     TARGET_PRODUCT_CODES,
     _assert_retired_review_rules_are_dormant,
+    _assert_sponsor_premises_follow_the_catalogue,
     _rule_pack_id,
     fold,
     main,
@@ -101,9 +102,9 @@ PROD_TRUST_STORE_JSON = json.dumps(
 OBSERVED_AT = datetime(2026, 9, 13, 0, 30, 0, tzinfo=timezone.utc)
 
 #: Pinned instant for every evaluator call, and the discipline the first
-#: seq-21 census got WRONG: at/after this candidate's own
-#: ``valid_period.from`` (2026-09-15T00:00:00Z, deliberately AFTER the
-#: expected signature) and inside the pack's shortest freshness window (the
+#: seq-21 census got WRONG: at/after the ``valid_period.from`` of every rule
+#: this fold inserts (2026-09-15T00:00:00Z, deliberately AFTER the expected
+#: signature) and inside the pack's shortest freshness window (the
 #: 32-day policy on sources verified 2026-08-30T13:18:00Z expires
 #: 2026-10-01T13:18:00Z). Evaluating a candidate at the INCUMBENT's
 #: ``signed_at`` reports "nothing moved" for rules that are not yet in force.
@@ -113,7 +114,7 @@ AS_OF = datetime(2026, 9, 15, 12, 0, 0, tzinfo=timezone.utc)
 #: prettier pass and re-measured after it, unchanged — the pack's identity is
 #: JCS over the PARSED document, never the file bytes. This is the digest the
 #: owner signs.
-SEQ21_PAYLOAD_SHA256 = "c21a2aaaa33b939284a8d2ddaedef1f0c22859b3b3a87c9042b48c92814467cf"
+SEQ21_PAYLOAD_SHA256 = "a0c3359c49ca656b625db74422c9d27a5f0af4e6943de3176eb0cddc4a81e4ac"
 
 #: The ten wire facts registered with this fold — the qualification half of
 #: the vocabulary. Declared here so the tests can assert against the SET
@@ -309,7 +310,7 @@ def _gold_overrides() -> dict[str, dict[str, Any]]:
         "E33C": {
             **investment,
             **_NO_WORK_FACTS,
-            "sponsor.type": _known("NONE"),
+            "sponsor.type": _known("GOVERNMENT"),
             "sponsor.world_figure_invitation": _known(True),
         },
         "E28B": {
@@ -410,6 +411,11 @@ class TestFoldIntegrity:
         committed = canonicalize_json(seq21_source)
         assert produced == committed
         assert hashlib.sha256(produced).hexdigest() == SEQ21_PAYLOAD_SHA256
+        # sign_pack.py canonicalizes the TYPED payload
+        # (``RulePackPayload.model_dump(mode="json", by_alias=True)``), not the
+        # raw JSON: the digest above is only the signed one if both agree.
+        typed = RulePackPayload.model_validate(seq21_source).model_dump(mode="json", by_alias=True)
+        assert canonicalize_json(typed) == committed
 
     def test_fold_is_deterministic(
         self,
@@ -526,25 +532,64 @@ class TestIdentity:
         digest = hashlib.sha256(canonicalize_json(seq21_source)).hexdigest()
         assert digest == SEQ21_PAYLOAD_SHA256
 
-    def test_validity_opens_after_the_expected_signature(
+    def test_pack_legal_period_is_the_incumbents(
         self, seq21_source: dict[str, Any], seq20_source: dict[str, Any]
     ) -> None:
-        """seq-21's window opens on a FUTURE date, not on the fold date.
+        """The pack's ``valid_period`` does not move, as in every fold since
+        seq-13: it becomes the activation's ``legal_period``, and "not before
+        the signature" is carried by the NEW rules' own validity instead."""
+        assert seq21_source["valid_period"] == seq20_source["valid_period"]
 
-        A candidate whose ``valid_period.from`` is already in the past is a
-        retroactive legal claim, and it is also what made the first seq-21
-        census report "0 walks moved": the replay ran at an instant before the
-        rules were in force. Opening after the expected signature makes every
-        replay in this module reproducible by a third party at any instant
-        inside the window.
-        """
-        assert seq21_source["valid_period"] == {"to": None, "from": PACK_VALID_FROM}
-        opens = datetime.fromisoformat(PACK_VALID_FROM.replace("Z", "+00:00"))
+    @staticmethod
+    def _activation_would_be_refused(new: dict[str, Any], incumbent: dict[str, Any]) -> bool:
+        """``visa_activate_rule_pack`` step 4 (migration 253), restated: an
+        open prior activation whose legal period OVERLAPS the new one without
+        being fully covered by it is an orphan, and the function refuses.
+        Both periods here are ``[from, to)`` with ``to = None`` meaning open."""
+
+        def bounds(period: dict[str, Any]) -> tuple[datetime, datetime]:
+            low = datetime.fromisoformat(period["from"].replace("Z", "+00:00"))
+            high = (
+                datetime.max.replace(tzinfo=timezone.utc)
+                if period["to"] is None
+                else datetime.fromisoformat(period["to"].replace("Z", "+00:00"))
+            )
+            return low, high
+
+        new_low, new_high = bounds(new["valid_period"])
+        old_low, old_high = bounds(incumbent["valid_period"])
+        overlaps = new_low < old_high and old_low < new_high
+        covers = new_low <= old_low and old_high <= new_high
+        return overlaps and not covers
+
+    def test_the_activation_writer_would_accept_it_over_seq20(
+        self, seq21_source: dict[str, Any], seq20_source: dict[str, Any]
+    ) -> None:
+        assert not self._activation_would_be_refused(seq21_source, seq20_source)
+
+    def test_guilt_a_pack_opening_after_the_incumbent_would_be_refused(
+        self, seq21_source: dict[str, Any], seq20_source: dict[str, Any]
+    ) -> None:
+        """GUILT: the first draft of this fold opened the PACK on
+        2026-09-15. Over seq-20's open activation (legal period from
+        2026-07-25) the DB would have inserted the immutable pack row and then
+        refused the activation — sequence 21 burned at the ``--yes`` step."""
+        mutated = copy.deepcopy(seq21_source)
+        mutated["valid_period"] = {"to": None, "from": NEW_RULE_VALID_FROM}
+        assert self._activation_would_be_refused(mutated, seq20_source)
+
+    def test_every_new_rule_opens_after_the_expected_signature(
+        self, seq21_source: dict[str, Any]
+    ) -> None:
+        """No inserted rule claims to have been law before the fold, and the
+        census instant sits inside every new rule's window."""
+        opens = datetime.fromisoformat(NEW_RULE_VALID_FROM.replace("Z", "+00:00"))
         assert opens > datetime.fromisoformat(seq21_source["created_at"].replace("Z", "+00:00"))
-        assert opens > datetime.fromisoformat(
-            seq20_source["valid_period"]["from"].replace("Z", "+00:00")
-        )
         assert AS_OF >= opens
+        new_rules = [r for r in seq21_source["rules"] if r["rule_id"] in NEW_RULE_IDS]
+        assert len(new_rules) == len(NEW_RULE_IDS)
+        for rule in new_rules:
+            assert rule["valid_period"] == {"to": None, "from": NEW_RULE_VALID_FROM}
 
     def test_rollback_of_payload_sha256_is_null(self, seq21_source: dict[str, Any]) -> None:
         assert seq21_source["rollback_of_payload_sha256"] is None
@@ -672,6 +717,46 @@ class TestSupportRuleShape:
                 and node.get("value") is True
             ]
             assert len(eq_nodes) == 1, row["rule_id"]
+
+    def test_sponsor_premises_admit_only_the_catalogues_sponsor_types(
+        self, seq20_source: dict[str, Any], seq21_source: dict[str, Any]
+    ) -> None:
+        """INNOCENCE on the base pack, then measured on the output: every
+        ``sponsor.type`` premise of a SUPPORT rule is a subset of its product's
+        catalogue ``sponsor_types`` (E33B -> NONE, E33C -> GOVERNMENT, never
+        the wider seq-20 hard filters' GOVERNMENT-or-NONE)."""
+        _assert_sponsor_premises_follow_the_catalogue(seq20_source)
+        products = {p["product_code"]: p for p in seq21_source["products"]}
+        rules = {r["rule_id"]: r for r in seq21_source["rules"]}
+        for row in SUPPORT_RULES:
+            for node in rules[row["rule_id"]]["when"]["args"]:
+                if node.get("fact") != "sponsor.type":
+                    continue
+                admitted = {node["value"]} if node["op"] == "eq" else set(node["values"])
+                assert admitted <= set(products[row["product_code"]]["sponsor_types"])
+
+    def test_guilt_a_premise_wider_than_the_catalogue_aborts_the_fold(
+        self, seq20_source: dict[str, Any], monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """GUILT: re-widen E33C to the hard filter's GOVERNMENT-or-NONE, the
+        shape of the first draft, and the fold-time check refuses."""
+        import backend.scripts.visa_engine.fold_pack_seq21 as fold_module
+
+        widened = tuple(
+            {
+                **row,
+                "premises": [
+                    {"op": "in", "fact": "sponsor.type", "values": ["GOVERNMENT", "NONE"]}
+                ],
+            }
+            if row["product_code"] == "E33C"
+            else row
+            for row in SUPPORT_RULES
+        )
+        monkeypatch.setattr(fold_module, "SUPPORT_RULES", widened)
+        with pytest.raises(SystemExit) as excinfo:
+            fold_module._assert_sponsor_premises_follow_the_catalogue(seq20_source)
+        assert "E33C" in str(excinfo.value)
 
     def test_no_two_support_rules_share_a_condition(self, seq21_source: dict[str, Any]) -> None:
         """GUILT, and the precise defect PR #6362 shipped: ``el.e33a``,
@@ -874,7 +959,10 @@ class TestSponsorTypeAloneIsNotEvidence:
         cured = _replay(seq21_compiled, walks)
         uncured = _replay(_compiled(self._uncured(seq21_source)), walks)
         moved = [label for label in cured if cured[label] != uncured[label]]
-        assert len(moved) >= 16, (
+        # Measured 2026-09-14: 9 walks. It was 16 while E33B/E33C admitted
+        # GOVERNMENT-or-NONE; aligning both premises to the catalogue removed
+        # seven of the would-be gains before this guilt witness even runs.
+        assert len(moved) >= 9, (
             "removing the qualifying facts moved only "
             f"{len(moved)} walks — the conjuncts are not load-bearing"
         )
@@ -894,19 +982,22 @@ class TestSponsorTypeAloneIsNotEvidence:
         assert "E33B" not in cured["candidates"]
         assert "E33B" in uncured["candidates"]
 
-    def test_a_government_sponsor_would_gain_three_products_at_once(
+    def test_a_government_sponsor_would_gain_two_products_at_once(
         self,
         seq21_source: dict[str, Any],
         seq21_compiled: compiler.CompiledRulePack,
         walks: dict[str, dict[str, Any]],
     ) -> None:
         """The dossier's §4 finding, reproduced: un-cured, ONE answer produces
-        E23V + E33A + E33B together because nothing tells them apart."""
+        E23V + E33A together because nothing tells them apart. (The dossier
+        measured three with E33B; E33B's premise is now the catalogue's NONE,
+        so a government sponsor no longer reaches it even un-cured.)"""
         label = "offshore/work/sponsor_government"
         cured = _decide(seq21_compiled, walks[label]["overrides"], label)
         uncured = _decide(_compiled(self._uncured(seq21_source)), walks[label]["overrides"], label)
         assert cured["candidates"] == ["E23"]
-        assert {"E23V", "E33A", "E33B"} <= set(uncured["candidates"])
+        assert {"E23V", "E33A"} <= set(uncured["candidates"])
+        assert "E33B" not in uncured["candidates"]
 
 
 # ---------------------------------------------------------------------------
