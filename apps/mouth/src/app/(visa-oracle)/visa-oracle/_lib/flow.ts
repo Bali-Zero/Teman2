@@ -1766,7 +1766,9 @@ export function getProcessModel(
           ? facts[step.id] === undefined
             ? ("pending" as const)
             : ("done" as const)
-          : atFollowUp
+          : // The framing node is behind ANY open question — the visitor
+            // left it to reach one — so it is done off the spine too.
+            atFollowUp || step.id === "framing"
             ? ("done" as const)
             : step.status,
       }))
@@ -1792,19 +1794,33 @@ export function getProcessModel(
     labelI18nKey: `tree.${id}`,
     status: (id === openId ? "current" : "done") as TreeStepStatus,
   }));
-  // The outcome stays the LAST node of the tree, which is the whole framing
-  // of this rail. Appending a follow-up after it put an ANSWERED question at
-  // the end of the trunk, so once that answer was given the breadcrumb ended
-  // on it while the visitor was looking at the verdict (council round 7).
-  const verdictIdx = remapped.findIndex((step) => step.id === "verdict");
-  const trunk: TreeStep[] =
-    verdictIdx === -1
-      ? [...remapped, ...extras]
-      : [
-          ...remapped.slice(0, verdictIdx),
-          ...extras,
-          ...remapped.slice(verdictIdx),
-        ];
+  // Each off-spine question joins the trunk inside its OWN stage, ahead of
+  // that stage's first step not yet done — so the jump list reads in the
+  // order the stages list reads, answers before the open question. Placing
+  // every extra just before the verdict put a location question asked
+  // second after "Your answers" and every pending step (council round 12).
+  // A question whose stage has no step on the spine still goes before the
+  // verdict: the outcome stays the LAST node of the tree, so an answered
+  // question never ends the breadcrumb while the visitor is looking at the
+  // verdict (council round 7).
+  const trunk: TreeStep[] = [...remapped];
+  for (const extra of extras) {
+    const phase = phaseOfStep(extra.id);
+    const sameStage = trunk
+      .map((step, index) => ({ step, index }))
+      .filter(({ step }) => phase !== null && phaseOfStep(step.id) === phase);
+    const firstOpen = sameStage.find(({ step }) => step.status !== "done");
+    let at: number;
+    if (firstOpen) {
+      at = firstOpen.index;
+    } else if (sameStage.length > 0) {
+      at = sameStage[sameStage.length - 1].index + 1;
+    } else {
+      const verdictIdx = trunk.findIndex((step) => step.id === "verdict");
+      at = verdictIdx === -1 ? trunk.length : verdictIdx;
+    }
+    trunk.splice(at, 0, extra);
+  }
   const questionSteps = trunk.filter((step) =>
     Object.prototype.hasOwnProperty.call(QUESTIONS, step.id),
   );

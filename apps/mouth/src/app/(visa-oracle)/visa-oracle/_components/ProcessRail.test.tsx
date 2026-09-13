@@ -591,6 +591,37 @@ describe("an off-spine question that is NOT the engine's follow-up (council roun
     );
   });
 
+  it("places the question inside its own stage on the trunk, and the framing behind it (council round 12)", () => {
+    const { current, facts } = skippedLocation();
+    const ids = (model: ReturnType<typeof m>) =>
+      model.trunk.map((step) => step.id);
+    const open = m(current, facts);
+    const order = ids(open);
+    expect(order.indexOf("holds_stay_permit")).toBe(
+      order.indexOf("in_indonesia") + 1,
+    );
+    expect(order.indexOf("holds_stay_permit")).toBeLessThan(
+      order.indexOf("confirmation"),
+    );
+    expect(open.trunk.find((step) => step.id === "framing")?.status).toBe(
+      "done",
+    );
+    // …and once answered, it stays there rather than trailing the pending steps.
+    let state = initialFlowState();
+    state = flowReducer(state, { type: "ADVANCE" });
+    state = flowReducer(state, { type: "SKIP", questionId: "in_indonesia" });
+    state = flowReducer(state, {
+      type: "ANSWER",
+      questionId: "holds_stay_permit",
+      value: "no",
+    });
+    const next = state.history[state.history.length - 1];
+    const answered = ids(m(next, state.facts));
+    expect(answered.indexOf("holds_stay_permit")).toBe(
+      answered.indexOf("in_indonesia") + 1,
+    );
+  });
+
   it("still opens the stage the skipped-over question belongs to", () => {
     const { current, facts } = skippedLocation();
     render(
