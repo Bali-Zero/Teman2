@@ -1,4 +1,13 @@
-gear: 1
+task_id: portal-invite-tax-dept
+gear: 2
+l_level: L1
+gate_class: sonnet
+base_sha: b8162521b58ea441c9890e41c2ae0bfa2a70cb65 # pragma: allowlist secret
+# Floor for this diff: 2, source `size`. Churn 463 lines over 6 files (2 source, 2 test, 2
+# evidence-pack) — above SIZE_GEAR2_THRESHOLD (400), below SIZE_GEAR3_THRESHOLD (1828). No
+# hot-zone path. Bumped from the gear:1 this brief originally declared (computed before the
+# evidence-pack files themselves were added to the diff, which is what crossed the threshold) —
+# `Harness floor recompute` caught it; see the pack's own receipt.
 objective: >-
   Tax-department team members can send/resend the client portal invitation for ANY
   client, not only clients assigned to them (Zero mandate, 2026-09-14). Today

@@ -1,6 +1,6 @@
 task_id: portal-invite-tax-dept
-gear: 1
-gate_class: none
+gear: 2
+gate_class: sonnet
 brief_ref: evidence/brief.yml
 date: 2026-09-14
 machine: M5
@@ -19,10 +19,12 @@ outcome: >-
   assigned to them. `get_client_invitations` (read) and `verify_client_access` itself
   are unchanged, so no other router's RBAC widened.
 diff:
-  files: 4
+  files: 6
   net_lines: >-
-    284 insertions(+), 11 deletions(-) across 4 files (2 source, 2 test) — see
-    `git diff --numstat origin/main...HEAD`.
+    452 insertions(+), 11 deletions(-) across 6 files (2 source, 2 test, 2 evidence-pack) — see
+    `git diff --numstat origin/main...HEAD`. Churn (added+deleted, the floor's SIZE term) is 463,
+    which crosses SIZE_GEAR2_THRESHOLD (400) once the evidence-pack files themselves are counted
+    — the code+test diff alone (284/11, churn 295) stays under it.
   shape: >-
     `is_active_tax_department_member(current_user, conn)` in crm_utils.py (email-keyed
     team_members lookup, exact-match on normalised department + active flag);
@@ -80,10 +82,16 @@ receipts:
     ts: "2026-09-14T00:07:00Z"
     seat: claude-sonnet-5 (M5 worktree agent)
     exit: 0
-  - claim: "the gear floor for this diff is 1 (no hot-zone path, 295-line churn below the Gear-2 threshold)"
+  - claim: >-
+      the gear floor for this diff, measured against origin/main AFTER the evidence-pack files
+      were added to the diff, is 2 (no hot-zone path; churn 463 lines over 6 files crosses
+      SIZE_GEAR2_THRESHOLD=400). `Harness floor recompute` on PR #6480 caught the pack's
+      earlier gear:1 declaration, which had been computed before the evidence-pack files
+      existed (code+test churn alone is 295, below the Gear-2 threshold) — corrected here per
+      team-lead's direction, no code change.
     cmd: "python3 scripts/evidence_pack_lint.py --print-floor --changed-files-file cf --numstat-file ns"
-    result: "1"
-    ts: "2026-09-14T00:08:00Z"
+    result: "2"
+    ts: "2026-09-14T01:00:00Z"
     seat: claude-sonnet-5 (M5 worktree agent)
     exit: 0
 dissent: []
