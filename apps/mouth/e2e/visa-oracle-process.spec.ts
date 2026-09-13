@@ -23,9 +23,10 @@ import { makeVisaOracleResponse } from "../src/app/(visa-oracle)/visa-oracle/_li
  */
 
 const RESUME_KEY = "visa-oracle:v2:resume:v1";
+/** Renders land in the git-ignored `test-results/` by default, so the spec
+ * runs on any machine; point `VO_T_RENDER_DIR` elsewhere to keep a set. */
 const RENDER_DIR =
-  process.env.VO_T_RENDER_DIR ??
-  path.resolve("/Users/balizero/Desktop/R3-RENDERS-20260913/vo-t");
+  process.env.VO_T_RENDER_DIR ?? path.resolve("test-results", "vo-t-renders");
 
 const VIEWPORTS = {
   desktop: { width: 1440, height: 900 },
