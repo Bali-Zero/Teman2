@@ -1,0 +1,205 @@
+brief_ref: evidence/brief.yml
+council_run: journal.jsonl
+plan_ref: >-
+  Ruling Zero 2026-09-09 «tutti i seat» (research/operations/2026-09-09-window-jump-
+  automatic-handoff-it.md §4b): the headless half of the window jump lives in
+  the cascade wrapper, the interactive half in PR #5987. This pack covers the
+  wrapper only.
+
+lanes:
+  - lane: build
+    role: build
+    seat: claude-fable-5-1
+  - lane: review-cross-family-codex
+    role: review
+    seat: codex-gpt-5.6-sol
+  - lane: review-cross-family-kimi
+    role: review
+    seat: kimi-code/k3
+
+what_changed: |
+  2 files. infra/launchagents/wrappers/claude-cascade.sh: every claude
+  invocation gets its own --session-id (fresh UUID); after a run the wrapper
+  checks ~/.organism/context-guard/pending-jump-<that id>.json (seat=headless,
+  unclaimed) and, if the guard tripped, re-invokes the SAME seat with a new id,
+  a short continuation prompt on stdin (PROMPT_FILE swap) and
+  NZ_JUMP_FROM=<previous id> in the env; hop outputs accumulate and are emitted
+  only when the chain ends cleanly; every hop passes retryable_failure_detected
+  (quota banner → 98, rotate seat); non-zero/empty hop → 96 (rotate), nothing
+  emitted; cap JUMP_MAX_HOPS=3 with an INCOMPLETE stderr warning when a jump is
+  still pending; kill switch CONTEXT_JUMP_OFF=1. scripts/tests/
+  test_claude_cascade_shell.py: 6 tests (re-invocation with fresh id + env,
+  cap + warning, kill switch, ghostty/sibling files ignored, hop quota banner
+  rotates without partial stdout, hop failure rotates without partial stdout).
+
+proof: |
+  Receipts below. Floor 3 sourced from PATH (infra/launchagents/*) reproduced
+  on the merge-base diff; zsh -n green; the whole cascade shell suite green
+  (70 = 64 pre-existing + 6 new). Two cross-family reviews on the first cut
+  (a84bc72715) both returned NO-GO; every CONFIRMED finding is fixed in
+  f1be599d02 and pinned by a test (see dissent). Live proof needs PR #5987's
+  guard on a headless seat: against today's main the wrapper is inert by
+  construction (no file → zero hops; the 64 pre-existing tests are that
+  proof). Bites: the first Pro/Mini cron run whose seat trips the guard logs
+  `[jump] <seat> — context guard tripped` on stderr and `used: <seat> (hops: N)`.
+
+dissent:
+  - seat: codex-gpt-5.6-sol
+    objection: >-
+      Detection by newest file in the cwd (ts/cwd heuristic, from_session
+      ignored): two wrappers in one checkout (Pro runs many seats from
+      ~/Desktop/nuzantara) can adopt each other's trip; a file without cwd
+      matched any cwd. kimi raised the same (its #5).
+    status: CONFIRMED
+    resolution: >-
+      Every invocation now carries --session-id <fresh UUID> and the wrapper
+      looks only for pending-jump-<that id>.json. Test
+      test_headless_jump_ignores_a_ghostty_seat_file_and_another_sessions_file
+      plants a sibling's headless file in the same cwd and asserts one run.
+  - seat: codex-gpt-5.6-sol
+    objection: >-
+      A hop's result skipped retryable_failure_detected: a quota/auth banner
+      with exit 0 on hop N ended the cascade as success. kimi #1 identical.
+    status: CONFIRMED
+    resolution: >-
+      Each hop runs the same classification as the first run and returns 98
+      (rotate). Test test_headless_jump_hop_quota_banner_rotates_seat_without_partial_stdout.
+  - seat: codex-gpt-5.6-sol
+    objection: >-
+      Partial output was emitted before the hop; a failed hop then returned
+      96 with stdout already contaminated, and the next seat restarted the
+      mandate on top of it. kimi #7 identical.
+    status: CONFIRMED
+    resolution: >-
+      Outputs accumulate in a temp file and are emitted only when the chain
+      ends cleanly; a failed hop emits nothing (the handoff on disk keeps the
+      partial work, path logged). Tests hop_quota_banner / hop_failure assert
+      stdout == the next seat's output only, and the temp dir is empty.
+  - seat: codex-gpt-5.6-sol
+    objection: >-
+      Cap reached with a jump still pending returned 0 as if complete.
+    status: PLAUSIBLE
+    resolution: >-
+      Kept exit 0 (the emitted hops are real work; failing would make the
+      next seat redo the mandate from scratch and burn its quota) but the
+      wrapper now logs `cap 3 reached … mandate may be INCOMPLETE` on stderr;
+      the cap test asserts the warning. The guard caps the chain at 3 too, so
+      in practice the loop ends because no new file is written.
+  - seat: codex-gpt-5.6-sol
+    objection: >-
+      Fresh session not guaranteed: unchanged argv could carry --resume/
+      --continue/--session-id from EXTRA_ARGS.
+    status: CONFIRMED
+    resolution: >-
+      --session-id <fresh UUID> is appended per invocation; no plist passes
+      --resume/--continue (grep infra/launchagents: none). The reinvocation
+      test asserts two distinct 36-char ids.
+  - seat: codex-gpt-5.6-sol
+    objection: >-
+      Test fakes used ${p:0:24} under #!/bin/sh (dash on CI: Bad substitution)
+      and simulated the injector's stamp instead of exercising it.
+    status: CONFIRMED
+    resolution: >-
+      Fakes are POSIX (cut -c1-24); the wrapper no longer depends on the stamp
+      at all (it keys on its own session id), so the simulation is gone. The
+      injector's NZ_JUMP_FROM contract is tested in PR #5987
+      (test_context_jump_resume.py, +2 tests).
+  - seat: codex-gpt-5.6-sol
+    objection: >-
+      At HEAD the guard writes precompact-handoff, never pending-jump, and
+      context_jump_resume.py is absent: the loop waits for an artifact main
+      does not produce.
+    status: CONFIRMED
+    resolution: >-
+      True of main today: the producer is PR #5987 (armed, same ruling). This
+      PR is inert without it and declares the dependency in the brief and the
+      PR body; merge order is #5987 first. Not a defect of the wrapper.
+  - seat: kimi-code/k3
+    objection: >-
+      `${hop:+ (hops: $hop)}` expands for hop=0, so every run logged
+      `(hops: 0)`.
+    status: CONFIRMED
+    resolution: >-
+      Replaced with an explicit -gt 0 test; the reinvocation test asserts
+      `hops: 1`, and the pre-existing suite (which greps `used: <label>`)
+      stays green.
+  - seat: kimi-code/k3
+    objection: >-
+      A failed hop returns 96 (hard fail) instead of 97, skipping the quota
+      fallback mid-chain.
+    status: RETRACTED
+    resolution: >-
+      The caller rotates on ANY non-zero return (`[ $rc -eq 0 ] && exit 0`,
+      claude-cascade.sh main loop); 96/97/98 are labels, not branches. The
+      hop_failure test shows token1 → hop fails → token2 answers.
+  - seat: kimi-code/k3
+    objection: >-
+      The continuation prompt asserts the mandate is injected; if the
+      SessionStart injector is not active in -p, each hop is a task-less
+      session whose output is still accepted.
+    status: PLAUSIBLE
+    resolution: >-
+      Residual, declared: the injector is a HOME-fork pair (declared-pairs.json)
+      armed on M5/Pro/Mini by PR #5987's shipping session and linted by
+      lint_home_fork.py; a missing injector shows as a proprioception
+      divergence, not silently. Not fixable from the wrapper without
+      re-implementing the injector.
+
+receipts:
+  - claim: "deterministic Gear floor is 3, sourced from PATH (infra/launchagents/*)"
+    cmd: "python3 scripts/evidence_pack_lint.py --print-floor --changed-files-file <changed> --numstat-file <numstat>; --print-floor-source (same args); merge-base 422609311f366c35b1bd0c106c17b8607ce794e0"
+    result: "3 / path"
+    exit: 0
+    ts: "2026-09-09T05:25:00Z"
+    seat: claude-fable-5-1
+  - claim: "the wrapper parses under zsh (it is #!/bin/zsh — shellcheck refuses zsh, bash -n is the wrong tool)"
+    cmd: "zsh -n infra/launchagents/wrappers/claude-cascade.sh"
+    result: "ZSH_SYNTAX_OK"
+    exit: 0
+    ts: "2026-09-09T05:27:00Z"
+    seat: claude-fable-5-1
+  - claim: "the whole cascade shell suite is green after the review fixes (64 pre-existing + 6 new)"
+    cmd: "python3 -m pytest scripts/tests/test_claude_cascade_shell.py -q"
+    result: "70 passed in 54.23s"
+    exit: 0
+    ts: "2026-09-09T05:33:00Z"
+    seat: claude-fable-5-1
+  - claim: "the first cut (a84bc72715) was reviewed by two seats outside the author's family, both NO-GO"
+    cmd: "codex exec --sandbox read-only -C <worktree> <review prompt>; kimi -p <review prompt + diff>"
+    result: "codex: 7 findings (5 BUG, 1 RISCHIO, 1 OK), NON MERGE; kimi: 10 findings (3 BUG, 4 RISCHIO, 3 OK), NON MERGE — see dissent"
+    exit: 0
+    ts: "2026-09-09T05:45:00Z"
+    seat: codex-gpt-5.6-sol
+  - claim: "the interactive half's injector honours NZ_JUMP_FROM as this wrapper sends it"
+    cmd: "python3 -m pytest infra/claude-hooks/test_context_jump_resume.py infra/claude-hooks/test_context_window_jump.py -q  # PR #5987 branch, 7feb9809b8"
+    result: "22 passed in 0.66s"
+    exit: 0
+    ts: "2026-09-09T05:48:00Z"
+    seat: claude-fable-5-1
+  - claim: "no plist or wrapper passes --resume/--continue that a fresh --session-id could conflict with"
+    cmd: "grep -n 'session-id\\|--resume\\|--continue' infra/launchagents/wrappers/claude-cascade.sh infra/launchagents/*.plist"
+    result: "one docs mention (army-jules-harvest.plist inbox path), no CLI flag"
+    exit: 0
+    ts: "2026-09-09T05:26:00Z"
+    seat: claude-fable-5-1
+  - claim: "the four acceptance probes of the brief (reinvokes / capped_at_three / kill_switch_runs_once / ignores_a_ghostty_seat) pass"
+    cmd: 'pytest scripts/tests/test_claude_cascade_shell.py -q -k "headless_jump_reinvokes or capped_at_three or kill_switch_runs_once or ignores_a_ghostty_seat"'
+    result: "4 passed, 66 deselected in 1.61s"
+    exit: 0
+    ts: "2026-09-09T05:52:00Z"
+    seat: claude-fable-5-1
+
+pii_scan: clean
+pii_scan_note: >-
+  Diff is a launchd wrapper's control flow, its shell test fixtures (fake
+  seats writing synthetic JSON under a temp HOME) and this pack. No client
+  data, OSINT or credentials; the wrapper's existing credential isolation
+  (ISOLATED_PROVIDER_ENV) is untouched and the fake fleet's LEAK probe stays
+  in every test.
+
+spend:
+  wall_clock_hours: 2.5
+  adversarial_rounds: 1
+
+diff:
+  net_lines: "measured by CI from git numstat at merge-base..HEAD; ~+200 locally (two-dot vs merge ref differ — the CI value governs)"

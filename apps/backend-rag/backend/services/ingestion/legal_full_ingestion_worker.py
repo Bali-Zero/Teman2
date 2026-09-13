@@ -78,12 +78,47 @@ async def _update_job(conn: asyncpg.Connection, job_id: str, **fields: Any) -> N
     )
 
 
+_DOWNLOAD_USER_AGENT = "Mozilla/5.0 (compatible; NuzantaraLegalIngest/1.0; +https://balizero.com)"
+
+
+def _format_job_error(current_status: str, exc: Exception) -> str:
+    """Format a job's failure for the `error` column.
+
+    Some exceptions (notably httpx timeouts) have an empty str(), which made
+    prior failures undiagnosable from the job row alone (error="pending: ").
+    Naming the exception class keeps the row informative even then.
+    """
+    return f"{current_status}: {type(exc).__name__}: {exc}"
+
+
 async def _download_pdf(url: str, tipo: str, nomor: str, anno: str) -> Path:
-    """Download PDF from URL to a temp file. Returns path."""
+    """Download PDF from URL to a temp file. Returns path.
+
+    Some source hosts (peraturan.go.id) reject or stall requests without a
+    browser-like User-Agent, and the default 60s timeout was too tight for
+    larger instruments (500KB+). On failure, re-raise a RuntimeError naming
+    the host and the exception class — never the full URL (may carry query
+    params) and never bare `str(e)`, which is empty for some httpx timeout
+    exceptions and left prior failures undiagnosable from the job row.
+    """
     dest = Path(tempfile.mkdtemp()) / f"{tipo}_{nomor}_{anno}.pdf"
-    async with httpx.AsyncClient(timeout=60.0) as client:
-        resp = await client.get(str(url), follow_redirects=True)
-        resp.raise_for_status()
+    host = httpx.URL(str(url)).host
+    try:
+        async with httpx.AsyncClient(
+            timeout=httpx.Timeout(180.0, connect=30.0),
+            follow_redirects=True,
+            headers={"User-Agent": _DOWNLOAD_USER_AGENT},
+        ) as client:
+            resp = await client.get(str(url))
+            resp.raise_for_status()
+    except httpx.HTTPStatusError as exc:
+        raise RuntimeError(
+            f"PDF download failed: HTTP {exc.response.status_code} from host={host}"
+        ) from exc
+    except (httpx.TimeoutException, httpx.TransportError) as exc:
+        raise RuntimeError(
+            f"PDF download failed: {type(exc).__name__} from host={host}"
+        ) from exc
     dest.write_bytes(resp.content)
     logger.info(f"📥 Downloaded PDF: {dest} ({len(resp.content)} bytes)")
     return dest
@@ -424,7 +459,7 @@ async def _process_one_job(db_pool: asyncpg.Pool, app_state: Any) -> None:
             logger.info("🎉 Job %s complete!", job_id)
 
     except Exception as e:
-        error_msg = f"{current_status}: {e}"
+        error_msg = _format_job_error(current_status, e)
         logger.error("❌ Job %s failed at %s: %s", job_id, current_status, e, exc_info=True)
         async with db_pool.acquire() as conn:
             await _update_job(conn, job_id, status="failed", error=error_msg)

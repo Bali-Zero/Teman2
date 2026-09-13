@@ -1182,6 +1182,58 @@
         "description_en": "Urgent processing surcharge for 3-day turnaround on eligible immigration services.",
         "icon_id": "urgent-3day"
       }
+    },
+    "compliance_retainers": {
+      "compliance_takeover": {
+        "name": "Compliance Takeover",
+        "price": "9.500.000 IDR",
+        "tier_range": null,
+        "duration": "",
+        "validity": "",
+        "notes": "USD reference: 600. Historical clean-up is quoted separately.",
+        "description_en": "One-off compliance takeover for a foreign-owned company (PT PMA): records review, obligations map, gap list and remediation quote. Per legal entity, government fees excluded.",
+        "icon_id": "consultant-update"
+      },
+      "compliance_core_retainer_monthly": {
+        "name": "Compliance Core Retainer (Monthly)",
+        "price": "9.500.000 IDR",
+        "tier_range": null,
+        "duration": "",
+        "validity": "monthly",
+        "notes": "USD reference: 600 per month. Bookkeeping, audit, disputes and transfer pricing are not included.",
+        "description_en": "Monthly compliance retainer for a PT PMA: monthly tax filings on Coretax, quarterly LKPM, obligations calendar, submission receipts and a compliance report. Per legal entity, government fees excluded.",
+        "icon_id": "tax-monthly"
+      },
+      "compliance_employer_retainer_monthly": {
+        "name": "Compliance Employer Retainer (Monthly)",
+        "price": "19.000.000 IDR",
+        "tier_range": null,
+        "duration": "",
+        "validity": "monthly",
+        "notes": "USD reference: 1,200 per month. Payroll processing itself is not included.",
+        "description_en": "Core retainer plus payroll compliance for up to 15 employees: BPJS for local and foreign staff, residency reviews, RPTKA and KITAS expiry tracking. Per legal entity, government fees excluded.",
+        "icon_id": "consultant-bpjs-tk"
+      },
+      "pse_registration_fixed": {
+        "name": "PSE Registration (Fixed Fee)",
+        "price": "19.000.000 IDR",
+        "tier_range": null,
+        "duration": "",
+        "validity": "",
+        "notes": "USD reference: 1,200. Ongoing liaison is a separate monthly service.",
+        "description_en": "Electronic System Operator (PSE) registration: applicability assessment, document pack, submission and follow-up until the TD-PSE is issued. Per legal entity, government fees excluded.",
+        "icon_id": "consultant-efin"
+      },
+      "pmse_vat_assessment": {
+        "name": "PMSE VAT Assessment",
+        "price": "14.000.000 IDR",
+        "tier_range": null,
+        "duration": "",
+        "validity": "",
+        "notes": "USD reference: 900. Monthly VAT reporting is not included.",
+        "description_en": "Fixed-fee assessment of the foreign digital-trade (PMSE) VAT threshold, readiness pack and support during the DJP appointment. Per legal entity, government fees excluded.",
+        "icon_id": "tax-annual"
+      }
     }
   }
 }

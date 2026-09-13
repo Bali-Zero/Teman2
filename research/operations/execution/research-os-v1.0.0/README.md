@@ -4,13 +4,30 @@ adversarial_review: codex
 
 # Research OS v1.0.0 — Execution Control Room
 
-**Program state:** `prepared_not_dispatched`
+**Program state:** `active` — P06 slice 2 is running (R1 DESIGN + R2 ENGINE)
 **Frozen architecture:** [`research-os/v1.0.0`](../../specs/evidence-to-action-freeze-2026-08-15/README.md)
 **Execution-plan date:** 2026-08-15 WITA
 **Authoritative runtime:** Pro
 **Control surface:** Air-M5
 **Campaign topology:** Pro execution + Air-M5 control; Mini-Pro2 `OUT_OF_CAMPAIGN`
 **Execution amendment:** 2026-08-23 — control plane substituted, builder concurrency 2
+
+**Program-state detail (2026-09-11).** `prepared_not_dispatched` was true at creation time and is
+FALSE today. Authority: `research/operations/2026-09-10-fable-max-sessions/R-research-os.md` (§0
+and the R1 DESIGN / R2 ENGINE battle windows) — the staff-room mandate (Fable session
+`nuzantara-04` + Astra/Codex, both readings 2026-09-11) that this control room now defers to for
+program state. What is running: this tranche is **P06 slice 2**, split into two disjoint windows —
+**R1 DESIGN** (this window: the contract surface's tests, the P06 preparation bundle, and this
+control room) and **R2 ENGINE** (persistence, admission and the migration under
+`services/research_os/naga_*`), releasing R2 only after R1 merges. Measured facts carried from the
+mandate's §0 and dated 2026-09-11 (not re-measured by this window): P05 and P06 preparation
+bundles merged 2026-08-26 (#4996, #4997); RULING B1 applied (#5029) — supersession derived at read
+from the successor edge, never written on the predecessor; a P06 build lane (slice 1) started the
+same day and stopped ON PURPOSE on a valid-time ordering defect (the canonical valid-time text is
+not orderable — the fraction is optional and `.` (0x2E) sorts before `Z` (0x5A), so a
+microsecond-zero instant sorts last although it is chronologically first); ledger row
+`.claude/skills/modus/PENDING-ARMS.md:21` has recorded that stop and stayed open since, and in the
+2026-08-27→09-10 search scope no lane, PR, branch or worktree ever took it.
 
 This directory turns the frozen architecture into an executable program without changing the freeze itself. It separates work that can be prepared in parallel from shared integration points that must remain serial.
 

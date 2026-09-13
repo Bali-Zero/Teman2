@@ -279,7 +279,10 @@ claude_retryable_files() {
 
 claude_oauth_env() {
     local token="$1"
-    local -a env_args=(env)
+    # Same reason as claude-cascade.sh's build_isolated_provider_env: the seat
+    # must never see the operator's terminal, or context_window_guard.py
+    # would open a GUI window from a cron run started by hand.
+    local -a env_args=(env -u TERM_PROGRAM -u TERM_PROGRAM_VERSION)
     local provider_var
     while IFS= read -r provider_var; do
         case "$provider_var" in

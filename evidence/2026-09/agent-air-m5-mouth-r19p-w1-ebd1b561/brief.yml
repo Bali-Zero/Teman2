@@ -1,0 +1,38 @@
+gear: 2
+ruling: RULED 2026-09-12 SAETTA
+mission: SAETTA-R19P window W1 (BLUE) — R19 tokens and fonts at the portal's data-product="my" seam
+objective: >-
+  Every /portal/** screen whose <html> carries data-product="my" must render in
+  the R19 language — paper #F7F4EE ground, ink #1D2C3B type, copper #A44B36 for
+  "needs you", forest #253E33 for "done", no red anywhere — and in the R19
+  typefaces (Fraunces display serif, Manrope UI sans), with NO markup change.
+  The token seam alone carries it: the two [data-product="my"] theme blocks in
+  globals.css, plus the self-hosted variable font binaries and the @font-face
+  file that declares them. The dark theme gains the matching R19 dark block,
+  which did not exist before this window.
+scope:
+  - apps/mouth/src/app/globals.css (ONLY the [data-theme="operative-light"][data-product="my"] block and a NEW sibling [data-theme="operative-dark"][data-product="my"] block)
+  - apps/mouth/src/app/portal/r19-fonts.css (new)
+  - apps/mouth/src/app/portal/layout.tsx (a single import line, nothing else)
+  - apps/mouth/public/fonts/{fraunces,manrope}-variable.ttf and their OFL licences (new)
+constraints:
+  - PRESENTATION ONLY — no route, field, hook, fetch, API type or i18n key touched; no behavioural change.
+  - Shared primitives are never restyled globally — every declaration stays behind the [data-product="my"] qualifier, so kita and prime read their own blocks unchanged.
+  - No red hex and no --state-danger red fill; danger speaks copper in R19.
+  - No client PII anywhere in the output; no vendor names in code comments.
+  - Font binaries must be byte-identical to the R19 source blobs, verified by size and md5 against an independent copy.
+  - Forbidden — every .tsx except the one import line, packages/core/**, tailwind config, the root layout.tsx, any other CSS block.
+  - No ledger PR, no PENDING-ARMS.md edit (SAETTA rule 2).
+acceptance:
+  - A1 the branch diff against its merge-base lists exactly globals.css, portal/layout.tsx (+1 import line), portal/r19-fonts.css (new), 4 new files under public/fonts, and this evidence pair. Nothing else.
+  - A2 the two my blocks carry no red hex; grep -nE "#(d91e3f|ff2d4c|e11d48|dc2626|ef4444)" on the diff = 0.
+  - A3 pnpm -F mouth typecheck green and the portal vitest suites green.
+  - A4 visual — a dev server renders a /portal route at 1440 and 390 on the R19 paper ground with copper accents, and the computed --font-serif / --font-sans on <html> are Fraunces / Manrope with both faces reporting loaded.
+  - A5 fonts served — curl -sI /fonts/*-variable.ttf returns 200 with content-length equal to the file size on disk.
+  - A6 non-regression on kita — the data-product="kita" occurrence count in globals.css is unchanged and no rule without the [data-product="my"] qualifier was added.
+consumer_map:
+  - The live my.balizero.com client portal surface served by the apps/mouth Vercel deploy on merge to main — every /portal/** screen reads these tokens on the <html> element the pre-paint theme script already stamps with data-product="my".
+  - apps/mouth/src/app/portal/layout.tsx, which now pulls r19-fonts.css into every portal route's CSS graph, so the two @font-face declarations ship with the portal bundle and nowhere else.
+appetite:
+  budget: 75 minutes active, 1 PR
+  stop_loss: three reds on the same cause suspends; a harness-caused red is reported, never cured by rebuilding the branch

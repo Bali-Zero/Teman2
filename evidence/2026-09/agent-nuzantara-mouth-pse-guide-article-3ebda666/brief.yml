@@ -1,0 +1,54 @@
+task_id: pse-guide-article
+gear: 2
+gear_reason: >-
+  The deterministic floor for this diff is 1, source `none`: one MDX content file,
+  112 net lines, no hot-zone path. Reproduced with
+  `bash scripts/ci/hotzone_changed_files.sh be45266252 HEAD` then
+  `python3 scripts/evidence_pack_lint.py --changed-files-file <list> --net-lines 112 --print-floor`
+  (prints 1) and `--print-floor-source` (prints none). Declared one above the floor
+  because the compliance-stack build contract (DESIGN-lanes.md) sets Gear 2 as the
+  minimum per lane, and the page makes regulatory claims to external readers.
+l_level: L1
+gate_class: opus
+objective: >-
+  Publish an English guide at /business/pse-registration-indonesia on PSE
+  (Penyelenggara Sistem Elektronik) registration in Indonesia, built from Page 2 of
+  the compliance-stack page-content draft. The file lives in
+  apps/mouth/src/content/articles/business_regulations/ because the article loader
+  (apps/mouth/src/lib/blog/articles.ts, ARTICLE_FOLDER_NAMES) only reads category
+  folders; a flat file under src/content/articles/ would never be indexed.
+  business_regulations is served under /business (lib/blog/categories.ts).
+constraints:
+  - >-
+    Every "(verify)" item in the draft was checked against a primary source and cited
+    in the article's Sources section: the Art. 2(2) scope categories, the Art. 14-15
+    takedown limits (24 hours, 4 hours for urgent requests) and the Art. 7 sanctions
+    are from the Permenkominfo 5/2020 text on peraturan.bpk.go.id; the 30 July 2022
+    blocks are from PTUN Jakarta ruling 424/G/TF/2022 on jdih.komdigi.go.id; the June
+    2025 and June 2026 enforcement is from Komdigi releases on portal.komdigi.go.id.
+  - >-
+    Domestic and foreign data requirements were rewritten from the regulation text
+    (Art. 3(4), 3(5), 4(2), 4(3)) in place of the draft's secondary-source list.
+    "Registration is free" is stated as "no fee set in Permenkominfo 5/2020", which is
+    what the text supports.
+  - >-
+    No price literal. The draft's "from USD 1,200" is a roundtable test price that
+    lane W1 keeps unlisted and noindex until the owner confirms it; publishing it on
+    an indexed article would bypass that gate and the price-SSOT rule.
+acceptance:
+  - >-
+    WHEN the app builds, THEN it exits 0. probe: cd apps/mouth && npm run build
+  - >-
+    WHEN the app lint runs, THEN it exits 0. probe: cd apps/mouth && npm run lint
+  - >-
+    WHEN the forbidden-phrase list is grepped against the article, THEN there are zero
+    hits. probe: grep -i -f <pattern file built from
+    skills/bali-zero-brand/voice/forbidden-phrases.md> on the article (exit 1)
+  - >-
+    WHEN the built app is served, THEN /business/pse-registration-indonesia returns
+    200, the sitemap lists it, and /api/blog/articles?category=business carries its
+    slug. probe: next start plus curl
+  - >-
+    WHEN the content integrity suites run, THEN they pass with the new file in the
+    corpus. probe: npx vitest --run src/content/*.test.ts
+pii_scan: clean

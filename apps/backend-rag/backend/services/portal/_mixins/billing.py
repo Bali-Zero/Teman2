@@ -9,12 +9,12 @@ fields are whitelisted here (PROFILE_EDITABLE_FIELDS).
 from typing import Any
 
 import asyncpg
-import httpx
 
 from backend.app.services.crm.audit_logger import audit_logger
 from backend.app.utils.logging_utils import get_logger
 from backend.phone_lock import lock_phone_cores, phone_core
 from backend.services.common.cache import cache_invalidating
+from backend.services.portal._drive_fetch import fetch_drive_file
 from backend.services.portal._rbac import ClientContext, require_client_access
 from backend.services.portal.qa_document_sink import QADocumentSinkClient
 
@@ -212,45 +212,19 @@ class PortalBillingMixin:
                 "mime_type": "application/pdf",
             }
 
-        from backend.services.integrations.google_drive_service import GoogleDriveService
-
-        drive_service = GoogleDriveService(self.pool)
-        access_token = await drive_service.get_valid_token(GoogleDriveService.SYSTEM_USER_ID)
-        if not access_token:
-            raise RuntimeError("Google Drive is not connected")
-
-        headers = {"Authorization": f"Bearer {access_token}"}
-        async with httpx.AsyncClient(timeout=30.0) as client:
-            meta_response = await client.get(
-                f"https://www.googleapis.com/drive/v3/files/{file_id}",
-                params={"fields": "mimeType,name,size"},
-                headers=headers,
-            )
-            if meta_response.status_code == 404:
-                return None
-            if meta_response.status_code != 200:
-                logger.error("Portal invoice metadata fetch failed: %s", meta_response.status_code)
-                raise RuntimeError("Failed to fetch invoice metadata")
-
-            metadata = meta_response.json()
-            mime_type = metadata.get("mimeType") or "application/pdf"
-            file_name = metadata.get("name") or f"{row['invoice_number']}.pdf"
-
-            download_response = await client.get(
-                f"https://www.googleapis.com/drive/v3/files/{file_id}",
-                params={"alt": "media"},
-                headers=headers,
-            )
-            if download_response.status_code == 404:
-                return None
-            if download_response.status_code != 200:
-                logger.error("Portal invoice download failed: %s", download_response.status_code)
-                raise RuntimeError("Failed to download invoice")
+        drive_file = await fetch_drive_file(
+            file_id,
+            fallback_file_name=f"{row['invoice_number']}.pdf",
+            fallback_mime_type="application/pdf",
+            what="invoice",
+        )
+        if drive_file is None:
+            return None
 
         return {
-            "content": download_response.content,
-            "file_name": file_name,
-            "mime_type": mime_type,
+            "content": drive_file.content,
+            "file_name": drive_file.file_name,
+            "mime_type": drive_file.mime_type,
         }
 
     # ================================================
@@ -476,7 +450,14 @@ class PortalBillingMixin:
                    c.nationality, c.passport_number, c.passport_expiry,
                    c.date_of_birth, c.gender, c.address, c.created_at as member_since,
                    tm.email as assigned_to_email, tm.full_name as assigned_to_name,
-                   tm.avatar_url as assigned_to_avatar
+                   -- `avatar`, not `avatar_url`: team_members carries the former and
+                   -- has never carried the latter (information_schema, live, 2026-09-10).
+                   -- The read path in routers/portal.py always had this right; this copy
+                   -- drifted, and because it is the ONLY caller here, every profile SAVE
+                   -- raised UndefinedColumnError AFTER the UPDATE had committed — a 500
+                   -- on a write that succeeded. See the tripwire in
+                   -- tests/test_data_invariant_tripwires.py.
+                   tm.avatar as assigned_to_avatar
             FROM clients c
             LEFT JOIN team_members tm ON tm.email = c.assigned_to AND tm.active = true
             WHERE c.id = $1 AND c.deleted_at IS NULL

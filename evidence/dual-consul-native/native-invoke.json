@@ -1,0 +1,120 @@
+{
+  "observed_at": "2026-09-06T02:20:35.414958+00:00",
+  "mode": "invoke",
+  "mission_id": "native-shadow-7ea96891-9dbc-48c7-a7ec-f3ea31ccc530",
+  "runtime": {
+    "runtime_version": "codex-cli 0.147.0",
+    "binary_hash": "19c4f144c5226a9f17c58e6f0fa854843b0f77a6eb420f40e2745a12f10f5d37",
+    "profile_hash": "e20525ea18dfcfa3b9d086543a0e3b6cd609ba1d2f9fadc875c0df89a27f8278"
+  },
+  "host": "Air-M5",
+  "model": "gpt-5.6-terra",
+  "supported_efforts": ["high", "low", "max", "medium", "ultra", "xhigh"],
+  "config_hash": "929175b4108e57004fbbfde621e6b75a7dd976cad34c8b918a17efdfebb055e1",
+  "auth_context_hash": "2346cd6f19919f5ca5dffcf6600b994deb7da16cf953ff8ec316283e0c1c12ac",
+  "authorization_checks": [
+    "start",
+    "turn",
+    "complete",
+    "resume",
+    "turn",
+    "complete"
+  ],
+  "results": [
+    {
+      "mission_id": "native-shadow-7ea96891-9dbc-48c7-a7ec-f3ea31ccc530",
+      "thread_id": "01a07484-8359-7993-bd74-ae9b794ed344",
+      "turn_id": "01a07484-836e-7651-ac85-a9b7461a1aa1",
+      "input_hash": "4aee21465a58aa104b062be442211980788c7e17aa1a0aa095ce9c1788f70c87",
+      "output_hash": "4b6309e28aa66f537dd627c9871c5a9eacaad4c5ec783442f3baaf2ca943ff51",
+      "requested_model": "gpt-5.6-terra",
+      "runtime_model": "gpt-5.6-terra",
+      "inference_model": null,
+      "identity_evidence": "request_observed",
+      "model_evidence_source": "native_thread_configuration",
+      "effort": "medium",
+      "runtime_version": "codex-cli 0.147.0@19c4f144c5226a9f17c58e6f0fa854843b0f77a6eb420f40e2745a12f10f5d37",
+      "config_hash": "929175b4108e57004fbbfde621e6b75a7dd976cad34c8b918a17efdfebb055e1",
+      "auth_context_hash": "2346cd6f19919f5ca5dffcf6600b994deb7da16cf953ff8ec316283e0c1c12ac",
+      "host": "Air-M5",
+      "status": "completed",
+      "native_usage": {
+        "last": {
+          "inputTokens": 7945,
+          "cachedInputTokens": 5888,
+          "cacheWriteInputTokens": 0,
+          "outputTokens": 11,
+          "reasoningOutputTokens": 0,
+          "totalTokens": 7956
+        },
+        "total": {
+          "inputTokens": 7945,
+          "cachedInputTokens": 5888,
+          "cacheWriteInputTokens": 0,
+          "outputTokens": 11,
+          "reasoningOutputTokens": 0,
+          "totalTokens": 7956
+        },
+        "modelContextWindow": 258400
+      },
+      "local_interrupted": false,
+      "remote_cancelled": null
+    },
+    {
+      "mission_id": "native-shadow-7ea96891-9dbc-48c7-a7ec-f3ea31ccc530",
+      "thread_id": "01a07484-8359-7993-bd74-ae9b794ed344",
+      "turn_id": "01a07484-983b-7ed1-bc14-a3ee1e0b7c59",
+      "input_hash": "4aee21465a58aa104b062be442211980788c7e17aa1a0aa095ce9c1788f70c87",
+      "output_hash": "4b6309e28aa66f537dd627c9871c5a9eacaad4c5ec783442f3baaf2ca943ff51",
+      "requested_model": "gpt-5.6-terra",
+      "runtime_model": "gpt-5.6-terra",
+      "inference_model": null,
+      "identity_evidence": "request_observed",
+      "model_evidence_source": "native_thread_configuration",
+      "effort": "medium",
+      "runtime_version": "codex-cli 0.147.0@19c4f144c5226a9f17c58e6f0fa854843b0f77a6eb420f40e2745a12f10f5d37",
+      "config_hash": "929175b4108e57004fbbfde621e6b75a7dd976cad34c8b918a17efdfebb055e1",
+      "auth_context_hash": "2346cd6f19919f5ca5dffcf6600b994deb7da16cf953ff8ec316283e0c1c12ac",
+      "host": "Air-M5",
+      "status": "completed",
+      "native_usage": {
+        "last": {
+          "inputTokens": 7978,
+          "cachedInputTokens": 6912,
+          "cacheWriteInputTokens": 0,
+          "outputTokens": 11,
+          "reasoningOutputTokens": 0,
+          "totalTokens": 7989
+        },
+        "total": {
+          "inputTokens": 15923,
+          "cachedInputTokens": 12800,
+          "cacheWriteInputTokens": 0,
+          "outputTokens": 22,
+          "reasoningOutputTokens": 0,
+          "totalTokens": 15945
+        },
+        "modelContextWindow": 258400
+      },
+      "local_interrupted": false,
+      "remote_cancelled": null
+    }
+  ],
+  "cancellation": {},
+  "remote_cancelled": null,
+  "effect_authority": "none",
+  "fleet_activation": false,
+  "local_process_group_stopped": true,
+  "source_producer": {
+    "files": {
+      "scripts/conductor/adapter_contracts.py": "a17c922a4d29d7817c3999c600cc4c4084510cb7b81693a7ba96c29ffc05a1ea",
+      "scripts/conductor/contracts.py": "4cab11a9a4a04b63c30a40ef6c0b570394082c49fb222b34397a83e113cf7327",
+      "scripts/conductor/app_server_rpc.py": "46c94e71dc0f8c7dacec011ecc63ff81c27e15072afb2abf6645e30d65c02538",
+      "scripts/conductor/codex_shadow.py": "5cc637895e9b0e412455241063155c1c0355b7c098a02981ab2b99939e1dc350",
+      "scripts/conductor/codex_shadow_launch.py": "cdeac644ab2fbec8dce3dfe49b5c304d4df675028a7b264a2e4b66de79b9faab",
+      "scripts/conductor/codex_shadow_probe.py": "5265de9298d2b09aa467fcb2ac1b7f321774349d66c060a65b1907fea0012f44"
+    },
+    "manifest_sha256": "0cacda67949c2e5413e4f28790b218f54a044b7b2891ddf70283cf91375e4e19"
+  },
+  "source_verification": "unchanged"
+}

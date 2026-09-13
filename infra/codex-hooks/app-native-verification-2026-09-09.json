@@ -1,0 +1,45 @@
+{
+  "host": "Air-M5",
+  "surface": "desktop task, native collaboration tools",
+  "task_id": "01a08574-6ec8-78a1-a897-ffbb2b901026",
+  "passed": true,
+  "independent_fixture_comparison": "# Nuzantara v5.2.0",
+  "records": [
+    {
+      "session_id": "01a08574-6ec8-78a1-a897-ffbb2b901026",
+      "role": "builder",
+      "event_counts": {
+        "SessionStart": 1,
+        "PreToolUse": 8,
+        "PostToolUse": 8,
+        "Stop": 1
+      },
+      "last_event": "Stop",
+      "model": "gpt-6-astra",
+      "window": 258400,
+      "transport_status": "stopped",
+      "acceptance_status": "unverified",
+      "state_sha256": "1917538fae6a2850324a3d4e11eeeb7cf4a4f409b48ac78fa4cdf10c28829aad"
+    },
+    {
+      "session_id": "01a08574-cc4e-78d0-9451-a75715f5dbc8",
+      "parent_session": "01a08574-6ec8-78a1-a897-ffbb2b901026",
+      "topology": "child",
+      "role": "builder",
+      "event_counts": {
+        "SubagentStart": 1,
+        "PreToolUse": 1,
+        "PostToolUse": 1,
+        "SubagentStop": 1
+      },
+      "last_event": "SubagentStop",
+      "model": "gpt-6-astra",
+      "window": 258400,
+      "measurement": "observed",
+      "transport_status": "stopped",
+      "acceptance_status": "unverified",
+      "completion_status": "returned_unverified",
+      "state_sha256": "ca621a8696ddd94ce2b67dedddd296167d197650cde99401d7636e90e1355dfa"
+    }
+  ]
+}

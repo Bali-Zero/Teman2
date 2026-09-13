@@ -238,6 +238,50 @@ describe("LKPMPage (list)", () => {
     expect(panel?.style.borderColor).toContain("var(--state-success) 30%");
   });
 
+  // Portal audit ux F3 (2026-09-11): the card rendered only
+  // `deadlines.find((d) => !d.is_overdue)`, so a client whose every filing
+  // was overdue saw NO deadline card at all — the most urgent state showing
+  // as if nothing were due.
+  it("shows the most-overdue filing when every deadline is overdue", async () => {
+    mockApiGet.mockImplementation((url: string) => {
+      if (url === "/api/v1/lkpm/history/me")
+        return Promise.resolve({ success: true, items: HISTORY });
+      if (url === "/api/v1/lkpm/deadlines")
+        return Promise.resolve({
+          success: true,
+          deadlines: [
+            {
+              quarter: "Q1",
+              year: 2026,
+              deadline: new Date(Date.now() - 12 * 86400000).toISOString(),
+              days_remaining: -12,
+              is_overdue: true,
+            },
+            {
+              quarter: "Q2",
+              year: 2026,
+              deadline: new Date(Date.now() - 95 * 86400000).toISOString(),
+              days_remaining: -95,
+              is_overdue: true,
+            },
+          ],
+        });
+      if (url === "/api/v1/lkpm/receipts/me")
+        return Promise.resolve({ success: true, items: RECEIPTS });
+      return Promise.reject(new Error(`unexpected ${url}`));
+    });
+    render(<LKPMPage />);
+
+    // The card exists, is labelled as overdue, and names the WORST one.
+    expect(await screen.findByText("Overdue Filing")).toBeInTheDocument();
+    const overdueText = screen.getByText(/overdue by 95 days/);
+    expect(overdueText).toBeInTheDocument();
+    expect(screen.queryByText(/days remaining/)).not.toBeInTheDocument();
+    // and it reads danger, not the success token 41-days-out would get
+    const panel = overdueText.closest("div")?.parentElement;
+    expect(panel?.style.background).toContain("var(--state-danger) 8%");
+  });
+
   it("renders OSS receipt statuses and copper accents with tokens", async () => {
     await renderLoaded();
 

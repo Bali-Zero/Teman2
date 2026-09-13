@@ -15,61 +15,72 @@ font-size = 15
 # Catppuccin background and sits at ~1.9:1 on the ivory paper below — the block
 # cursor was hard to FIND on the line. The Dock-icon blue is left pastel: it is
 # drawn on the icon's own dark screen, not on the terminal background.
-cursor-color = #1B62D6
-cursor-text = #F6EFE1
-split-divider-color = #1B62D6
+# Re-inked 2026-09-11 for the Tiffany background below: #1B62D6 sits at ~2.2:1
+# on #0ABAB5 and the block cursor vanished again. #10307F clears 5:1 there.
+cursor-color = #10307F
+cursor-text = #E6FFFE
+split-divider-color = #10307F
 
 macos-icon = custom-style
 macos-icon-frame = chrome
 macos-icon-ghost-color = #89b4fa
 macos-icon-screen-color = #1e1e2e,#1e2a3a
 
-# ─── Window colour: "Avorio" — warm light paper (Zero, 2026-08-29) ─────────
-# Rewritten after the 2026-08-28 ivory was reported illegible. TWO causes, both
-# measured on this machine, not deduced:
+# ─── Window colour: "Tiffany" — Tiffany Blue paper (Zero, 2026-09-11) ─────
+# Replaces the 2026-08-29 ivory ("fai color blu tiffany il bg della tua
+# window che poi sarà anche del team"). Machine profile first; promoting it to
+# fleet.ghostty is one move once Zero says so for Pro and Mini.
 #
-#  1. `background-blur = macos-glass-regular` (set in fleet.ghostty) keeps the
-#     window TRANSLUCENT on macOS 26 even at background-opacity = 1.0 — the
-#     earlier note here assumed opacity alone would stop the bleed and it does
-#     not. `ghostty +show-config` confirmed opacity was already 1.0 while the
-#     wallpaper was still washing the ivory orange. Blur is therefore turned OFF
-#     here, not just neutralised.
-#  2. The palette was a DARK-background palette (neon pastels: #FFD93D yellow,
-#     #4CD97B green, #6BEEDD cyan) painted on paper — those sit at ~1.5:1
-#     against #FDF6EC, i.e. invisible. Every colour below is picked to clear
-#     4.5:1 on this background, INCLUDING palette 8 (bright black), which is the
-#     colour every TUI uses for dimmed/secondary text and is the single line
-#     that decides whether a light theme reads or not.
+# The ground is Tiffany Blue proper, #0ABAB5 (Pantone 1837 approximation),
+# relative luminance ≈ 0.385 — a MID tone, which is the whole difficulty: white
+# text lands at ~2.4:1 (illegible) and every saturated hue authored for a dark
+# or a light ground lands between 1.5:1 and 2.5:1. The only ink that reads on
+# this paper is DARK ink, so every colour below is a deep, low-luminance
+# variant of its hue, computed (WCAG relative luminance, not eyeballed):
+#   · foreground / palette 15 at ≈ 7:1
+#   · palette 0-7 and 8 (the dim-text colour every TUI uses) at ≥ 4.3:1
+#   · palette 9-14 (the "bright" set) at ≥ 3.0:1 — large-text floor, the
+#     ceiling a bright hue can reach on a 0.385 ground without going black
+# No colour here is a mix toward white or black of a Mocha token; each is
+# declared outright, so it neither inherits a token nor inverts if the ground
+# ever flips (memory 2026-08-31).
 #
-# Companion change, in the same breath: ~/.claude/settings.json theme = light.
-# Claude Code's own dim greys are authored for a dark terminal; no palette here
-# can rescue them. Terminal light + Claude Code dark is unreadable by design.
-# Needs a full Ghostty QUIT+relaunch, not just cmd+shift+comma.
+# Both 2026-08-29 findings still apply and are kept: blur OFF (the glass keeps
+# the window translucent at opacity 1.0 on macOS 26), and Claude Code's own
+# theme stays `light` in ~/.claude/settings.json — its dim greys are dark ink,
+# which is the only ink that reads here too. Full Ghostty QUIT+relaunch to
+# apply, cmd+shift+comma is not enough for background/opacity.
 background-opacity = 1.0
 background-blur = false
 unfocused-split-opacity = 0.95
 
-background = #F6EFE1
-foreground = #2A2520
-selection-background = #F0DCB0
-selection-foreground = #2A2520
+background = #0ABAB5
+foreground = #0B1F1F
+selection-background = #8FE6E1
+selection-foreground = #0B1F1F
 
-palette = 0=#3B342B
-palette = 1=#C0392B
-palette = 2=#1E7A44
-palette = 3=#96590A
-palette = 4=#1F5FD0
-palette = 5=#8B2FC9
-palette = 6=#0E7490
-palette = 7=#4F4739
-palette = 8=#756B5C
-palette = 9=#A32E22
-palette = 10=#15693A
-palette = 11=#855206
-palette = 12=#1A4FB0
-palette = 13=#76259F
-palette = 14=#0B6076
-palette = 15=#2A2520
+# minimum-contrast is the safety net for TUIs that paint their own colours
+# (lazygit, btop, htop) — Ghostty re-inks any fg/bg pair below the floor at
+# render time. Fleet floor is 1.5; on a mid-luminance ground 3.0 is what keeps
+# a third-party palette readable without repainting it here.
+minimum-contrast = 3.0
+
+palette = 0=#062A29
+palette = 1=#78160C
+palette = 2=#0F4A22
+palette = 3=#553800
+palette = 4=#10307F
+palette = 5=#641565
+palette = 6=#063E46
+palette = 7=#1E3A38
+palette = 8=#1F403E
+palette = 9=#9C1E14
+palette = 10=#12602C
+palette = 11=#6E4A00
+palette = 12=#143C9E
+palette = 13=#7D1B7E
+palette = 14=#0A525C
+palette = 15=#0B1F1F
 
 # 24 GB and a full interactive load — keep scrollback at the fleet default.
 window-width = 124
@@ -85,8 +96,8 @@ window-height = 36
 adjust-cell-height = 10%
 
 # The fleet default is `background` — the padding is painted with the
-# `background` colour, which on this machine is already the ivory, so there is
-# no black frame to fix. `extend` matters for a different case: a full-screen
+# `background` colour, which on this machine is already the Tiffany, so there
+# is no black frame to fix. `extend` matters for a different case: a full-screen
 # TUI (btop, lazygit, yazi) paints its own darker background, and with
 # `background` that colour stops 12px short of the window edge, leaving an
 # ivory band around the app. `extend` carries the nearest grid cell's colour

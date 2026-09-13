@@ -1,0 +1,6 @@
+{
+  "requested_model": "claude-opus-5",
+  "requested_effort": "xhigh",
+  "elapsed_seconds": 180,
+  "status": "TIMEOUT_NO_VERDICT"
+}

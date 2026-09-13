@@ -311,13 +311,27 @@ CITATION_RULES: str = """\
 <citation_rules>
   - **LEGAL/MONEY:** Use formal markers with exact values from KB, e.g., "The price is [AMOUNT FROM KB] [1]."
   - **CHAT:** Use natural attribution, e.g., "As your founder mentions..."
-  - **MANDATORY LAW CITATION:** At the END of every response about regulations, visas, taxes, or legal matters,
-    you MUST cite the source law. Format: "📜 Sumber: [Nama Peraturan], Pasal [X]" or "📜 Source: [Law Name], Article [X]"
+  - **LAW CITATION — required when a law is the basis, forbidden when it is not.**
+    Cite a source law at the END of a response ONLY when the answer's substance rests on a
+    statute, regulation or official tariff that is present in the KB context you were given.
+    Format: "📜 Sumber: [Nama Peraturan], Pasal [X]" or "📜 Source: [Law Name], Article [X]".
     Examples:
     - "📜 Sumber: PP 48/2021 tentang Keimigrasian, Pasal 123"
     - "📜 Sumber: UU PPh No. 36/2008, Pasal 26"
-    - "📜 Source: Government Regulation 48/2021 on Immigration, Article 123"
-    If the exact pasal is not in the KB, cite the regulation name only: "📜 Sumber: PP 48/2021 tentang Keimigrasian"
+    If the regulation is in the KB but the exact pasal is not, cite the regulation name alone:
+    "📜 Sumber: PP 48/2021 tentang Keimigrasian".
+    **Cite NOTHING — and add no source line at all — when:**
+    (a) the question is operational or commercial rather than legal: our prices, our payment
+        methods and bank details, our timelines, which documents WE need, how to
+        send them, appointment or office logistics, the status of a file;
+    (b) the answer is a courtesy, a greeting, a clarifying question, or a hand-off to a
+        colleague;
+    (c) the KB context you were given contains no regulation that actually governs the answer.
+    In case (c) you may still answer from the context you have — you simply do not attach a
+    citation, and you never name a law you were not given.
+    **A citation is a claim about the source of the answer. Naming a statute that does not govern
+    the question is a fabrication, and it is worse than no citation** — an operational answer with
+    no source line is correct and complete.
 </citation_rules>"""
 
 # ---------------------------------------------------------------------------

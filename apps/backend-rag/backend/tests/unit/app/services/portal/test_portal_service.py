@@ -268,9 +268,9 @@ class TestPortalServiceHelpers:
         exc.sqlstate = "42P01"
         assert PortalService._is_undefined_table_error(exc) is True
 
-    def test_get_tax_status_compliant(self, portal_service):
-        """Tax status is compliant with no deadline."""
-        assert portal_service._get_tax_status(None) == "compliant"
+    def test_get_tax_status_none(self, portal_service):
+        """Tax status is 'none' with no deadline."""
+        assert portal_service._get_tax_status(None) == "none"
 
     def test_get_tax_status_overdue(self, portal_service):
         """Tax status is overdue when days < 0."""
@@ -280,9 +280,14 @@ class TestPortalServiceHelpers:
         """Tax status is attention when days <= 14."""
         assert portal_service._get_tax_status({"days_until": 7}) == "attention"
 
-    def test_get_tax_status_compliant_far(self, portal_service):
-        """Tax status is compliant when days > 14."""
-        assert portal_service._get_tax_status({"days_until": 30}) == "compliant"
+    def test_get_tax_status_upcoming_far(self, portal_service):
+        """Tax status is 'upcoming' when days > 14."""
+        assert portal_service._get_tax_status({"days_until": 30}) == "upcoming"
+
+    def test_get_tax_status_never_compliant(self, portal_service):
+        """Tax status never asserts compliance regardless of deadline distance."""
+        assert portal_service._get_tax_status(None) != "compliant"
+        assert portal_service._get_tax_status({"days_until": 400}) != "compliant"
 
 
 # ============================================================================
@@ -478,27 +483,19 @@ class TestPortalServiceDocumentDownload:
             "status": "verified",
         }
 
-        meta_response = MagicMock(status_code=200)
-        meta_response.json.return_value = {
-            "name": "passport.pdf",
-            "mimeType": "application/pdf",
-        }
-        download_response = MagicMock(status_code=200, content=b"PDF_CONTENT")
+        # Service Account, not the SYSTEM OAuth token: that token has been
+        # dead by design since 2026-05-10, which is why every portal download
+        # 500'd until 2026-09-11 (audit F-01).
+        sa = MagicMock()
+        sa.get_file_metadata = AsyncMock(
+            return_value={"name": "passport.pdf", "mimeType": "application/pdf"}
+        )
+        sa.download_file_content = AsyncMock(return_value=b"PDF_CONTENT")
 
-        async_http = MagicMock()
-        async_http.get = AsyncMock(side_effect=[meta_response, download_response])
-
-        with (
-            patch(
-                "backend.services.integrations.google_drive_service.GoogleDriveService"
-            ) as drive_cls,
-            patch("httpx.AsyncClient") as client_cls,
+        with patch(
+            "backend.services.integrations.service_account_drive_service.ServiceAccountDriveService",
+            return_value=sa,
         ):
-            drive_cls.SYSTEM_USER_ID = "SYSTEM"
-            drive_cls.return_value.get_valid_token = AsyncMock(return_value="access-token")
-            client_cls.return_value.__aenter__ = AsyncMock(return_value=async_http)
-            client_cls.return_value.__aexit__ = AsyncMock(return_value=False)
-
             result = await portal_service.download_document(
                 1,
                 10,
@@ -511,16 +508,8 @@ class TestPortalServiceDocumentDownload:
             "mime_type": "application/pdf",
         }
         mock_conn.fetchrow.assert_called_once()
-        async_http.get.assert_any_call(
-            "https://www.googleapis.com/drive/v3/files/drive_file_123",
-            params={"fields": "mimeType,name,size"},
-            headers={"Authorization": "Bearer access-token"},
-        )
-        async_http.get.assert_any_call(
-            "https://www.googleapis.com/drive/v3/files/drive_file_123",
-            params={"alt": "media"},
-            headers={"Authorization": "Bearer access-token"},
-        )
+        sa.get_file_metadata.assert_awaited_once_with("drive_file_123")
+        sa.download_file_content.assert_awaited_once_with("drive_file_123")
 
 
 # ============================================================================
@@ -647,9 +636,7 @@ class TestPortalServicePreferences:
             client_id=1,
             current_user=ctx_client_1,
         )
-        assert result["email_notifications"] is True
-        assert result["language"] == "en"
-        assert result["timezone"] == "Asia/Jakarta"
+        assert result == {"language": "en", "timezone": "Asia/Jakarta"}
 
     @pytest.mark.asyncio
     async def test_get_preferences_stored(
@@ -658,10 +645,15 @@ class TestPortalServicePreferences:
         mock_conn,
         ctx_client_1,
     ):
-        """Returns stored preferences."""
+        """Returns stored LOCALE preferences — and no notification consent.
+
+        Portal audit F-04 (2026-09-11): this endpoint used to answer
+        `whatsapp_notifications: true` for an account whose enforced setting
+        — in `notification_prefs`, the only store `alert_dispatcher` reads —
+        was false. Two answers to one consent question. Guilt-proof: put
+        either field back into `get_preferences` and this fails.
+        """
         mock_conn.fetchrow.return_value = {
-            "email_notifications": False,
-            "whatsapp_notifications": True,
             "language": "it",
             "timezone": "Europe/Rome",
         }
@@ -669,8 +661,38 @@ class TestPortalServicePreferences:
             client_id=1,
             current_user=ctx_client_1,
         )
-        assert result["language"] == "it"
-        assert result["email_notifications"] is False
+        assert result == {"language": "it", "timezone": "Europe/Rome"}
+
+    @pytest.mark.asyncio
+    async def test_update_preferences_refuses_to_write_notification_consent(
+        self,
+        portal_service,
+        mock_conn,
+        ctx_client_1,
+    ):
+        """A payload carrying notification fields is ignored, not written.
+
+        An older client build must keep working; what it can no longer do is
+        write a consent value that nothing enforces.
+        """
+        mock_conn.fetchrow.return_value = {
+            "language": "en",
+            "timezone": "Asia/Jakarta",
+        }
+        await portal_service.update_preferences(
+            client_id=1,
+            preferences={
+                "whatsapp_notifications": False,
+                "email_notifications": False,
+                "language": "id",
+            },
+            current_user=ctx_client_1,
+        )
+
+        written = "".join(str(call) for call in mock_conn.execute.call_args_list)
+        assert "language" in written
+        assert "whatsapp_notifications" not in written
+        assert "email_notifications" not in written
 
 
 # ============================================================================

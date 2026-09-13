@@ -1,0 +1,25 @@
+**Minimal adapter surface and unknowns**  
+The adapter wraps `scripts/tp1_call.py` to present a text-completion-only facade. It accepts a prompt, an optional system directive, and a `max_tokens` bound (default 4096). It forwards these to the Alibaba TP1 gateway, strips the response to `choices[0].message.content` only, never exposing raw reasoning, tool calls, or structured output. It records bounded redacted protocol metadata (request ID, latency, token usage from the API response) and attaches provenance-bearing memory scoped by the shared lifecycle. The adapter does **not** manage conversation history, multi-turn state, or cancellation; it does **not** impersonate a native agent runtime.  
+
+**Unknowns:**  
+- Whether `reasoning_effort` (omitted) is actually supported by the route, and if the model emits hidden reasoning tokens that the API surfaces in a separate field (e.g., `reasoning_content`).  
+- How the provider’s usage object counts reasoning tokens vs. output tokens (output cap is not reasoning cap).  
+- The exact error and timeout semantics of the gateway beyond the 180 s wall deadline.
+
+**Model-specific strengths / pitfalls (hypotheses)**  
+1. **Strength:** DeepSeek‑v4‑Pro likely possesses strong chain‑of‑thought capabilities, which can yield more accurate, verifiable outputs for complex Nuzantara tasks without extra prompting.  
+2. **Pitfall:** If the model autonomously generates internal reasoning tokens and the route passes them through, the adapter may inadvertently consume excessive tokens (blowing budget) and could leak raw reasoning if not aggressively stripped, violating the “no raw reasoning retained” policy.
+
+**Three cheap discriminating smoke/contract tests**  
+1. **Reasoning‑leak guard:** Send a trivial prompt (“echo ‘test’”) and verify the adapter’s output contains exactly the expected content, with no `reasoning` substring in the bounded evidence log.  
+2. **Timeout→reconcile:** Issue a request with `max_tokens=4096` and a deliberately slow‑to‑resolve prompt; let the wall clock reach 180 s. Confirm the adapter returns a `reconcile_required` status (not a retry) and the evidence records the timeout without raw model internals.  
+3. **Budget‑overflow detection:** Craft a prompt that causes the model to reply with a known‑large token count (but still within the 4096 output cap). Check that the adapter logs the actual usage from the response metadata, and if the configured budget is exceeded, the executor can reconcile (pre‑call budget enforcement is not possible, but post‑call measurement is).  
+
+**Minimizing tokens without silent capability degradation**  
+The adapter adds no extra tokens. Token minimization is achieved by the invoker: set `max_tokens` to the smallest value the task contract allows, and craft prompts as concisely as possible. The adapter does not enlarge the prompt or response, and it strips any reasoning token bloat from the output (keeping only the final `content`). The real burden lies with the upstream system, not the adapter.
+
+**Acceptance of contract**  
+We accept the supplied constraints (shared governance, DC‑v3 terms, bounded redacted evidence, no direct service credentials, etc.).  
+**Explicit disagreement:** The phrase “budgets enforced where measurable” is partially realizable only post‑call. The adapter cannot pre‑emptively cap cost because it lacks a pre‑flight cost API and cannot abort generation mid‑stream. It can measure and report token usage, but overspend may occur before the executor sees the evidence. This is the limit of enforcement at the adapter layer.
+
+END_ADAPTER_MODEL

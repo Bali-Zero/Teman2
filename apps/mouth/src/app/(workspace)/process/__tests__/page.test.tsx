@@ -48,6 +48,7 @@ vi.mock("@/lib/api", () => ({
     getProfile: vi.fn(),
     crm: {
       getPractices: vi.fn(),
+      getPracticeTypesCatalog: vi.fn(),
     },
   },
 }));
@@ -138,6 +139,27 @@ describe("Cases Page", () => {
     localStorage.clear();
     vi.spyOn(console, "error").mockImplementation(() => {});
     vi.mocked(api.crm.getPractices).mockResolvedValue(mockPractices);
+    // Process Type filter now reads the live catalog (kita-prune lot 6)
+    // instead of a hardcoded legacy list; one category/service is enough
+    // to exercise the dropdown, and its code matches mockPractices above.
+    vi.mocked(api.crm.getPracticeTypesCatalog).mockResolvedValue({
+      categories: [
+        {
+          code: "kitas",
+          label: "KITAS Permits",
+          services: [
+            {
+              code: "kitas_application",
+              name: "KITAS Application",
+              description: null,
+              base_price: null,
+              typical_duration_days: null,
+            },
+          ],
+        },
+      ],
+      total_services: 1,
+    });
     vi.mocked(api.getProfile).mockResolvedValue({
       id: "1",
       email: "zero@balizero.com",
@@ -537,7 +559,12 @@ describe("Cases Page", () => {
       await user.selectOptions(statusSelect, "inquiry");
 
       const typeSelect = screen.getByLabelText(/Process Type/i);
-      await user.selectOptions(typeSelect, "kitas");
+      await waitFor(() => {
+        expect(
+          within(typeSelect).getByText("KITAS Application"),
+        ).toBeInTheDocument();
+      });
+      await user.selectOptions(typeSelect, "kitas_application");
 
       await waitFor(() => {
         // Filter count badge should show "2"

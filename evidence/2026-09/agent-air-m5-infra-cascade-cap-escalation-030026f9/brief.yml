@@ -1,0 +1,68 @@
+task_id: cascade-cap-escalation
+gear: 3
+l_level: L1
+gate_class: opus
+objective: |
+  Residual declared in PR #5990's pack (headless half of the window jump):
+  a chain that hits JUMP_MAX_HOPS with a jump still pending returns exit 0
+  with one stderr line ("mandate may be INCOMPLETE") that no cron reads —
+  an INCOMPLETE mandate wearing a green exit code, superscar #2
+  (Esiste≠Armato). Ruling Zero 2026-09-09: «tutto ciò che succede nel
+  sistema non deve aspettare me per un fix» — the event must reach the
+  escalations board, which every SessionStart surfaces HIGH-first.
+
+  Fix, in the wrapper only: cascade_cap_escalation() appends ONE HIGH line
+  (type cascade_headless_cap: seat, hops, pending session id, jump file,
+  handoff path, cwd, model, cure lane) to the board; dedupe on the pending
+  session id (from_session of the jump file); board from
+  CASCADE_ESCALATIONS_FILE, else the first known checkout's
+  shared/escalations_pro.jsonl; a missing board is a stderr warning; kill
+  switch CASCADE_CAP_ESCALATION_OFF=1. The receptor can never fail the run
+  or touch stdout: the emitted hops are real work.
+
+  Gear is 3 DETERMINISTICALLY, sourced from PATH: infra/launchagents/* is a
+  hot zone in scripts/evidence_pack_lint.py's HOTZONE_PATTERNS. See receipts.
+
+acceptance:
+  - text: >-
+      WHEN a headless chain ends at the cap with a jump still pending, the
+      board SHALL gain exactly one line with type cascade_headless_cap,
+      priority HIGH, status pending, the seat label, hops=3 and the pending
+      session id, and stdout SHALL still carry every hop's output.
+    probe: pytest scripts/tests/test_claude_cascade_shell.py -q -k headless_cap_writes_one_high
+  - text: >-
+      WHEN the board already carries a cascade_headless_cap line for the
+      pending session, the wrapper SHALL add nothing and say "dedupe".
+    probe: pytest scripts/tests/test_claude_cascade_shell.py -q -k dedupes_on_the_pending_session
+  - text: >-
+      WHEN CASCADE_CAP_ESCALATION_OFF=1, no line SHALL be written and the
+      INCOMPLETE warning SHALL remain.
+    probe: pytest scripts/tests/test_claude_cascade_shell.py -q -k kill_switch_keeps_the_warning_only
+  - text: >-
+      WHEN no board can be resolved, the wrapper SHALL warn on stderr and
+      still emit the answer with exit 0.
+    probe: pytest scripts/tests/test_claude_cascade_shell.py -q -k without_a_board_warns
+  - text: >-
+      WHEN a chain ends cleanly (no pending jump), no line SHALL be written.
+    probe: pytest scripts/tests/test_claude_cascade_shell.py -q -k clean_headless_chain_writes_no
+  - text: >-
+      WHILE the change is in force, the pre-existing cascade shell suite SHALL
+      stay green and the wrapper SHALL parse under zsh -n.
+    probe: pytest scripts/tests/test_claude_cascade_shell.py -q; zsh -n infra/launchagents/wrappers/claude-cascade.sh
+
+assumptions:
+  - text: >-
+      The board's consumers (SessionStart escalations receptor, digest)
+      key on priority/status/ts/machine/_writer as strings, the same shape
+      scripts/healer_receptor_main_red.py writes.
+    status: verified
+    probe: "grep -n 'priority.*HIGH\\|status.*pending\\|_writer' scripts/healer_receptor_main_red.py"
+  - text: >-
+      The pending jump file carries from_session, handoff_path, cwd, model
+      (written by context_window_guard.py on main).
+    status: verified
+    probe: "grep -n 'from_session\\|handoff_path\\|\"cwd\"\\|\"model\"' infra/claude-hooks/context_window_guard.py"
+
+appetite:
+  wall_clock_hours: 2
+  adversarial_rounds: 1

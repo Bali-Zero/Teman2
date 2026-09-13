@@ -61,9 +61,24 @@ async def test_publish_allowed_for_admin() -> None:
 
     with patch.object(intel_scraper.staging_service, "load_staging_item", return_value=None):
         async with _client(intel_scraper.router, ADMIN_USER) as client:
-            resp = await client.post("/api/intel/staging/publish/news/item-1")
+            resp = await client.post(
+                "/api/intel/staging/publish/news/item-1",
+                json={"position": "latest"},
+            )
 
     assert resp.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_news_publish_requires_explicit_position_for_admin() -> None:
+    """A privileged caller still cannot inherit an editorial placement default."""
+    from backend.app.routers import intel_scraper
+
+    async with _client(intel_scraper.router, ADMIN_USER) as client:
+        resp = await client.post("/api/intel/staging/publish/news/item-1")
+
+    assert resp.status_code == 422
+    assert "explicit homepage position" in resp.json()["detail"]
 
 
 @pytest.mark.asyncio

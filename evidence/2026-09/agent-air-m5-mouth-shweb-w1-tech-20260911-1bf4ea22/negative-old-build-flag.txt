@@ -1,0 +1,7 @@
+# Negative: the pre-W1 build flag must fail the export test — 2026-09-11T13:41:42Z (rerun after the round-2 rework)
+$ mutated build script: "build": "LLMS_GENERATE_FULL_ONLY=1
+   × the build refreshes both article exports and freshness, excluding drafts and noIndex (inherited FULL_ONLY=0) 507ms
+   × the build refreshes both article exports and freshness, excluding drafts and noIndex (inherited FULL_ONLY=1) 213ms
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+      Tests  2 failed (2)
+restored build script: "build": "LLMS_GENERATE_ARTICLES_ONLY=1

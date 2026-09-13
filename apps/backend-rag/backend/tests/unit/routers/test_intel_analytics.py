@@ -72,30 +72,29 @@ class TestGetSystemMetrics:
     @pytest.mark.asyncio
     async def test_metrics_basic_success(self, _patch_imports):
         """Metrics returns expected keys when everything is healthy."""
-        with patch("backend.app.routers.intel_analytics.QdrantClient") as mock_qd:
-            mock_qd.return_value = MagicMock()
-            from backend.app.routers.intel_analytics import get_system_metrics
+        from backend.app.routers.intel_analytics import get_system_metrics
 
-            result = await get_system_metrics()
+        result = await get_system_metrics()
 
         assert "agent_status" in result
-        assert "qdrant_health" in result
-        assert result["qdrant_health"] == "healthy"
+        assert "last_run" in result
         assert "items_processed_today" in result
-        assert "avg_response_time_ms" in result
 
     @pytest.mark.asyncio
-    async def test_metrics_qdrant_degraded(self, _patch_imports):
-        """When Qdrant constructor raises, health should be degraded."""
-        with patch(
-            "backend.app.routers.intel_analytics.QdrantClient",
-            side_effect=Exception("connection refused"),
-        ):
-            from backend.app.routers.intel_analytics import get_system_metrics
+    async def test_metrics_fake_fields_removed(self, _patch_imports):
+        """uptime_percentage/avg_response_time_ms/next_scheduled_run/qdrant_health
+        were fake constants (fixed 99.8, content-length-derived latency, a
+        hardcoded +2h guess, and a QdrantClient constructor that never contacts
+        the server) with no live consumer — kita pruning wave 2d removed them
+        instead of shipping fake data."""
+        from backend.app.routers.intel_analytics import get_system_metrics
 
-            result = await get_system_metrics()
+        result = await get_system_metrics()
 
-        assert result["qdrant_health"] == "degraded"
+        assert "uptime_percentage" not in result
+        assert "avg_response_time_ms" not in result
+        assert "next_scheduled_run" not in result
+        assert "qdrant_health" not in result
 
     @pytest.mark.asyncio
     async def test_metrics_with_staging_files(self, _patch_imports):
@@ -107,10 +106,9 @@ class TestGetSystemMetrics:
         news_dir.exists.return_value = True
         news_dir.glob.return_value = [Path("c.json")]
 
-        with patch("backend.app.routers.intel_analytics.QdrantClient"):
-            from backend.app.routers.intel_analytics import get_system_metrics
+        from backend.app.routers.intel_analytics import get_system_metrics
 
-            result = await get_system_metrics()
+        result = await get_system_metrics()
 
         assert result["items_processed_today"] == 3
 
@@ -123,12 +121,9 @@ class TestGetSystemMetrics:
         mock_scheduler = MagicMock()
         mock_scheduler.tasks = {"t1": mock_task}
 
-        with (
-            patch("backend.app.routers.intel_analytics.QdrantClient"),
-            patch(
-                "backend.services.misc.autonomous_scheduler.get_autonomous_scheduler",
-                return_value=mock_scheduler,
-            ),
+        with patch(
+            "backend.services.misc.autonomous_scheduler.get_autonomous_scheduler",
+            return_value=mock_scheduler,
         ):
             from backend.app.routers.intel_analytics import get_system_metrics
 
@@ -139,28 +134,15 @@ class TestGetSystemMetrics:
     @pytest.mark.asyncio
     async def test_metrics_scheduler_not_configured(self, _patch_imports):
         """When no scheduler exists, agent_status=not_configured."""
-        with (
-            patch("backend.app.routers.intel_analytics.QdrantClient"),
-            patch(
-                "backend.services.misc.autonomous_scheduler.get_autonomous_scheduler",
-                return_value=None,
-            ),
+        with patch(
+            "backend.services.misc.autonomous_scheduler.get_autonomous_scheduler",
+            return_value=None,
         ):
             from backend.app.routers.intel_analytics import get_system_metrics
 
             result = await get_system_metrics()
 
         assert result["agent_status"] == "not_configured"
-
-    @pytest.mark.asyncio
-    async def test_metrics_default_avg_response_time(self, _patch_imports):
-        """When no archived files exist, default response time used."""
-        with patch("backend.app.routers.intel_analytics.QdrantClient"):
-            from backend.app.routers.intel_analytics import get_system_metrics
-
-            result = await get_system_metrics()
-
-        assert isinstance(result["avg_response_time_ms"], int)
 
 
 # ---------------------------------------------------------------------------

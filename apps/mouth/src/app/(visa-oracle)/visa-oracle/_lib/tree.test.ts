@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import * as treeRegistry from "./tree";
 import {
+  CATEGORY_KEYS,
   QUESTIONS,
+  STAY_PERMIT_CODES,
   daysRemaining,
   formatIsoDateForDisplay,
   getLane,
@@ -70,14 +72,44 @@ describe("tree.ts — interview decision boundary", () => {
     });
   });
 
-  it("keeps free-text sponsor status and legacy buckets outside engine facts", () => {
-    expect(QUESTIONS.family_sponsor_status_code.decisionMapping).toEqual({
-      kind: "HUMAN_CONTEXT",
-    });
+  it("keeps the other_purpose catch-all outside engine facts", () => {
     expect(QUESTIONS.other_purpose.decisionMapping.kind).toBe("HUMAN_CONTEXT");
     expect(QUESTIONS.other_purpose.notSure).toEqual({
       mode: "human-review",
     });
+  });
+
+  // PR-D4c-2 (imperator's ruling): the currency question's "not sure" must
+  // cost ZERO holds. `mapDisclosedReviewFlags` (fact-mapper.ts) raises
+  // NOT_CERTAIN on the exact-equality literal "unsure" — a `notSure: {
+  // mode: "human-review" }` on this question would let the applicant answer
+  // that literal and trip the flag on every walk that uses it, silently
+  // turning the cost from zero into one hold per walk. This guard goes red
+  // the moment someone re-attaches it.
+  it("omits notSure entirely on investment_currency — the mechanism that keeps its 'I can't say yet' answer at zero review cost", () => {
+    expect(QUESTIONS.investment_currency.notSure).toBeUndefined();
+    expect(QUESTIONS.investment_currency.options.map(({ key }) => key)).toEqual(
+      ["idr", "usd", "still_unsure"],
+    );
+  });
+
+  // D4a (owner ruling SHWEB-20260911): promoted from HUMAN_CONTEXT/free-text
+  // to a closed FACT question — see `mapFamilySponsorStatus` (fact-mapper.ts)
+  // for the closed-catalogue trust argument this promotion had to clear.
+  it("promotes family_sponsor_status_code to a closed FACT question over the signed catalogue (D4a)", () => {
+    expect(QUESTIONS.family_sponsor_status_code.kind).toBe("choice");
+    expect(QUESTIONS.family_sponsor_status_code.decisionMapping).toEqual({
+      kind: "FACT",
+      factPaths: ["family.sponsor_status_code"],
+    });
+    expect(
+      QUESTIONS.family_sponsor_status_code.options.map(({ key }) => key),
+    ).toEqual([...STAY_PERMIT_CODES]);
+    // Same closed catalogue as `stay_permit_code`, not a second hand-typed
+    // copy of it.
+    expect(QUESTIONS.family_sponsor_status_code.options).toEqual(
+      QUESTIONS.stay_permit_code.options,
+    );
   });
 
   // 2026-08-23: `family_sponsor_permit_basis` shipped as FACT in PR #4650,
@@ -90,6 +122,61 @@ describe("tree.ts — interview decision boundary", () => {
     expect(QUESTIONS.family_sponsor_permit_basis.decisionMapping).toEqual({
       kind: "HUMAN_CONTEXT",
     });
+  });
+
+  // 2026-09-06 decisiveness wave (PR-3).
+  it("offers STEPCHILD, the relation flow.ts has branched on since 2026-08-23", () => {
+    // Guilt: the wire vocabulary, both i18n labels and the
+    // `getCategoryQuestionIds` branch all landed in the 2026-08-23 ruling
+    // — this option row did not, so E31D was unreachable from any
+    // interview. Innocence: the rest of the closed vocabulary is intact
+    // and in its `FAMILY_RELATIONS` (fact-mapper.ts) order.
+    expect(QUESTIONS.family_relation.options.map(({ key }) => key)).toEqual([
+      "SPOUSE",
+      "CHILD",
+      "PARENT",
+      "SIBLING",
+      "DEPENDENT",
+      "STEPCHILD",
+      "OTHER",
+    ]);
+  });
+
+  it("no longer carries work_role (owner ruling 6, 2026-09-06)", () => {
+    // It was HUMAN_CONTEXT — no FactPath, so no signed rule could read it
+    // — and its only live effect was the presence-triggered
+    // ACTIVITY_BOUNDARY flag that suppressed E23 for every employment
+    // interview. Guilt: re-adding the id must fail here.
+    expect(Object.prototype.hasOwnProperty.call(QUESTIONS, "work_role")).toBe(
+      false,
+    );
+  });
+
+  it("routes Second Home as its own tile, not a retirement sub-branch (owner ruling 3)", () => {
+    expect(CATEGORY_KEYS).toContain("second_home");
+    // The router itself is HUMAN_CONTEXT: it selects which evidence
+    // questions follow, and the evidence questions carry the signed
+    // `secondhome.*` facts the E33 rules actually read.
+    expect(QUESTIONS.secondhome_basis.decisionMapping).toEqual({
+      kind: "HUMAN_CONTEXT",
+    });
+    expect(QUESTIONS.secondhome_basis.options.map(({ key }) => key)).toEqual([
+      "bank_deposit",
+      "property",
+    ]);
+  });
+
+  it("no longer serializes any category option as UNKNOWN (owner ruling 4)", () => {
+    // `unknownValues: ["diaspora"]` is gone: every tile now maps to a real
+    // VisaPurpose (`CATEGORY_TO_PURPOSE`, fact-mapper.ts), so no answer to
+    // this question is a deliberate UNKNOWN any more.
+    expect(QUESTIONS.category.decisionMapping).toEqual({
+      kind: "FACT",
+      factPaths: ["intent.purposes"],
+    });
+    expect(QUESTIONS.category.options.map(({ key }) => key)).toEqual([
+      ...CATEGORY_KEYS,
+    ]);
   });
 
   it("does not carry the 2 dead legacy nodes (E4 slice — question-registry-audit.md §2)", () => {

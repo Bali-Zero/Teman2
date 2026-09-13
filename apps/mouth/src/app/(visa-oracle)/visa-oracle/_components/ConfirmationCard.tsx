@@ -9,6 +9,7 @@ import {
 import {
   QUESTIONS,
   formatIsoDateForDisplay,
+  questionPromptI18nKey,
   type OracleFacts,
 } from "../_lib/tree";
 import type { Language } from "../_lib/flow";
@@ -97,7 +98,14 @@ export function formatFactDisplay(
   return option ? translate(language, option.labelI18nKey as I18nKey) : value;
 }
 
-function assumptionDisplay(language: Language, questionId: string): string {
+/** The human sentence for an assumption: the question's own dedicated copy
+ * when one exists, else the generic sentence NAMING the question. Exported
+ * because the OutcomeSheet's receipt renders the same assumptions and must
+ * not fall through to the raw `assumption.<id>` key (PR-O4). */
+export function assumptionDisplay(
+  language: Language,
+  questionId: string,
+): string {
   const key = `assumption.${questionId}` as I18nKey;
   const specific = translate(language, key);
   if (specific !== key) return specific;
@@ -141,7 +149,10 @@ export function ConfirmationCard({
     return {
       id,
       group: question.group,
-      label: translate(language, question.i18nKey as I18nKey),
+      label: translate(
+        language,
+        questionPromptI18nKey(question, facts) as I18nKey,
+      ),
       value: formatFactDisplay(language, id, value),
     };
   });

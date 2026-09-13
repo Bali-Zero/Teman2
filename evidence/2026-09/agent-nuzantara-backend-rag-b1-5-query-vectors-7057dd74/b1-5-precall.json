@@ -1,0 +1,23 @@
+{
+  "authorization_reference": "research/operations/2026-09-11-bot-staff-room/README.md queue item 7 \u2014 RULED 2026-09-11 ~15:00 WITA: YES (\"ok procediamo\")",
+  "base_sha": "70b23c196e3475f5254ea50b6a82dd6e670932b9",
+  "ceiling": 40,
+  "completion": {
+    "artifact_sha256": "0021c3275b7bd9f812f0ce52fc06da1330e89a9d1c40a4c105ca932720083012",
+    "attempts": 23,
+    "end_timestamp_utc": "2026-09-12T05:33:53.535310+00:00",
+    "failure_details": [],
+    "failures": 0
+  },
+  "dux_annotation_added_after_the_run": {
+    "added_at_utc": "2026-09-12T06:09:30.404179+00:00",
+    "authorized_by": "README queue item 7 (Zero, 2026-09-11) for the batch; fleet envelope 20260912T052244Z-5035 (ruling I24a, option A) for this single rerun after the aborted attempt",
+    "ceiling": 40,
+    "supersedes": "b1-5-precall-aborted.json (provider_attempts 0)",
+    "total_provider_attempts_across_both_receipts": 23,
+    "why": "Council finding (Codex, B1.5 round 1): the successful receipt cited only the original queue-item approval and carried no explicit relationship to the aborted attempt. This block is an ANNOTATION written by the Dux after the run, never a value produced by the harness - labelled as such so no reader mistakes it for a machine receipt."
+  },
+  "host": "Nuzantara",
+  "list_sha256": "6b1beb37e45384ae0a3254da45ba700a29b6301a99799d59f9fc5b666ee13e02",
+  "timestamp_utc": "2026-09-12T05:33:37.864644+00:00"
+}

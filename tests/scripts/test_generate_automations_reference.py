@@ -321,6 +321,51 @@ class TestFindPendingLiveSnapshot(unittest.TestCase):
         finally:
             gen.REPO_LAUNCHAGENTS_DIR = original
 
+    def test_label_stem_mismatch_renders_both_for_docs_sync(self):
+        """docs_sync.py::automation_coverage() matches the plist FILE STEM, not the
+        Label, against this doc's text — com.matagaruda.kita-feed.daily.plist's
+        Label is com.matagaruda.kita-feed, so without both strings present the
+        consumer counts a gap even though the row exists (2026-09-11 follow-up)."""
+        installed = self._all_repo_labels() - {"com.matagaruda.kita-feed"}
+        rows = {r["label"]: r for r in gen._find_pending_live_snapshot(installed)}
+        row = rows["com.matagaruda.kita-feed"]
+        self.assertEqual(
+            row["label_cell"],
+            "`com.matagaruda.kita-feed` (`com.matagaruda.kita-feed.daily.plist`)",
+        )
+
+
+class TestFormatPendingLabelCell(unittest.TestCase):
+    def test_matching_stem_renders_plain_label(self):
+        cell = gen._format_pending_label_cell("com.example.foo", Path("com.example.foo.plist"))
+        self.assertEqual(cell, "`com.example.foo`")
+
+    def test_differing_stem_renders_both(self):
+        cell = gen._format_pending_label_cell(
+            "com.matagaruda.kita-feed", Path("com.matagaruda.kita-feed.daily.plist")
+        )
+        self.assertEqual(cell, "`com.matagaruda.kita-feed` (`com.matagaruda.kita-feed.daily.plist`)")
+
+
+class TestRecursivePendingSnapshot(unittest.TestCase):
+    """2026-09-11 follow-up: infra/launchagents/mini/*.plist plists (e.g.
+    com.nuzantara.fw-guard.plist) were invisible to _find_pending_live_snapshot's
+    non-recursive glob, even though docs_sync.py's `_git_ls_files` walks the
+    whole infra/launchagents/ tree including subdirectories."""
+
+    def test_mini_subdirectory_plist_is_found_and_hosted_mini(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            mini_dir = root / "mini"
+            mini_dir.mkdir()
+            plist_path = mini_dir / "com.nuzantara.subdir-test.plist"
+            with plist_path.open("wb") as f:
+                plistlib.dump({"Label": "com.nuzantara.subdir-test", "ProgramArguments": ["/bin/true"]}, f)
+            with unittest.mock.patch.object(gen, "REPO_LAUNCHAGENTS_DIR", root):
+                rows = {r["label"]: r for r in gen._find_pending_live_snapshot(set())}
+            self.assertIn("com.nuzantara.subdir-test", rows)
+            self.assertEqual(rows["com.nuzantara.subdir-test"]["host"], "Mini")
+
 
 class TestRenderPendingSnapshotSection(unittest.TestCase):
     def test_empty_rows_render_nothing(self):
@@ -333,6 +378,25 @@ class TestRenderPendingSnapshotSection(unittest.TestCase):
         self.assertIn("## Repo-canon additions pending live snapshot", joined)
         self.assertIn("`com.example.foo`", joined)
         self.assertIn("does foo", joined)
+
+    def test_label_cell_used_when_present(self):
+        rows = [{
+            "label": "com.example.bar",
+            "label_cell": "`com.example.bar` (`com.example.bar.legacy.plist`)",
+            "host": "Pro", "schedule": "daily 08:00 WITA", "purpose": "does bar",
+        }]
+        lines = gen._render_pending_snapshot_section(rows)
+        joined = "\n".join(lines)
+        self.assertIn("`com.example.bar` (`com.example.bar.legacy.plist`)", joined)
+
+    def test_pipe_in_purpose_is_escaped(self):
+        rows = [{
+            "label": "com.example.pipe", "host": "Pro", "schedule": "daily 08:00 WITA",
+            "purpose": "daemon|cron classification",
+        }]
+        joined = "\n".join(gen._render_pending_snapshot_section(rows))
+        self.assertIn("daemon\\|cron classification", joined)
+        self.assertNotIn("daemon|cron classification", joined)
 
 
 class TestGenerateSurvivesRegen(unittest.TestCase):
@@ -358,6 +422,235 @@ class TestGenerateSurvivesRegen(unittest.TestCase):
         self.assertIn("## Repo-canon additions pending live snapshot", content)
         self.assertIn("com.balizero.magazine.morning", content)
         self.assertIn("com.balizero.magazine.breaking", content)
+
+
+class TestMatagarudaPrefix(unittest.TestCase):
+    """2026-09-11 coverage gap: 23 repo-canon com.matagaruda.* plists were
+    invisible to both the live tables and the pending table."""
+
+    def test_matagaruda_label_is_eligible(self):
+        self.assertTrue(any("com.matagaruda.x".startswith(p) for p in gen.OUR_LAUNCHAGENT_PREFIXES))
+
+
+def _plist_bytes(label: str, program_arguments: list, comment: str | None = None) -> bytes:
+    """Build a minimal plist XML document, optionally with a leading `<!-- -->`
+    header comment, for tests that need both the raw text AND a plistlib-parsed
+    dict (mirroring what _find_pending_live_snapshot reads off disk)."""
+    parsed = {"Label": label, "ProgramArguments": program_arguments}
+    body = plistlib.dumps(parsed).decode()
+    if comment:
+        body = body.replace("<plist version=\"1.0\">", f"<!-- {comment} -->\n<plist version=\"1.0\">", 1)
+    return body.encode()
+
+
+class TestResolvePlistPurpose(unittest.TestCase):
+    def test_plist_comment_wins(self):
+        raw = _plist_bytes("com.example.a", ["/bin/bash", "/Users/nuzantara/scripts/anything.sh"], comment="Does the thing.").decode()
+        parsed = plistlib.loads(raw.encode())
+        purpose = gen._resolve_plist_purpose(Path("com.example.a.plist"), raw, parsed)
+        self.assertEqual(purpose, "Does the thing.")
+
+    def test_falls_back_to_nuzantara_root_script_header(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "scripts").mkdir()
+            (root / "scripts" / "foo.sh").write_text("#!/usr/bin/env bash\n# foo.sh — does X.\necho hi\n")
+            raw = _plist_bytes("com.example.b", ["/Users/nuzantara/nuzantara/scripts/foo.sh"]).decode()
+            parsed = plistlib.loads(raw.encode())
+            with unittest.mock.patch.object(gen, "NUZANTARA_ROOT", root):
+                purpose = gen._resolve_plist_purpose(Path("com.example.b.plist"), raw, parsed)
+            self.assertEqual(purpose, "foo.sh — does X.")
+
+    def test_falls_back_to_declared_pairs_home_script_header(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "scripts").mkdir()
+            (root / "scripts" / "bar.sh").write_text("#!/usr/bin/env bash\n# Does the bar thing.\necho hi\n")
+            pairs_path = root / "declared-pairs.json"
+            pairs_path.write_text(json.dumps({"pairs": [{"live": "~/scripts/bar.sh", "repo": "scripts/bar.sh"}]}))
+            raw = _plist_bytes("com.example.c", ["/Users/nuzantara/scripts/bar.sh"]).decode()
+            parsed = plistlib.loads(raw.encode())
+            with unittest.mock.patch.object(gen, "NUZANTARA_ROOT", root), \
+                 unittest.mock.patch.object(gen, "DECLARED_PAIRS_PATH", pairs_path):
+                purpose = gen._resolve_plist_purpose(Path("com.example.c.plist"), raw, parsed)
+            self.assertEqual(purpose, "Does the bar thing.")
+
+    def test_nothing_resolvable_falls_back_to_runs_basename(self):
+        raw = _plist_bytes("com.example.d", ["/usr/local/bin/bar.sh"]).decode()
+        parsed = plistlib.loads(raw.encode())
+        purpose = gen._resolve_plist_purpose(Path("com.example.d.plist"), raw, parsed)
+        self.assertEqual(purpose, "runs `bar.sh`")
+
+    def test_interpreter_with_shell_lc_script_uses_the_script_basename(self):
+        """2026-09-11 gate finding: a bare `/bin/bash -lc "... foo.py"` payload
+        used to fall back to the useless `runs \\`bash\\``."""
+        raw = _plist_bytes("com.example.e", ["/bin/bash", "-lc", "cd /tmp && python3 foo.py"]).decode()
+        parsed = plistlib.loads(raw.encode())
+        purpose = gen._resolve_plist_purpose(Path("com.example.e.plist"), raw, parsed)
+        self.assertEqual(purpose, "runs `foo.py`")
+
+    def test_interpreter_with_module_flag_uses_the_module(self):
+        raw = _plist_bytes("com.example.f", ["/usr/bin/python3", "-m", "pkg.mod"]).decode()
+        parsed = plistlib.loads(raw.encode())
+        purpose = gen._resolve_plist_purpose(Path("com.example.f.plist"), raw, parsed)
+        self.assertEqual(purpose, "runs `pkg.mod`")
+
+    def test_bare_interpreter_with_nothing_else_falls_back_to_label(self):
+        raw = _plist_bytes("com.example.g", ["/bin/bash"]).decode()
+        parsed = plistlib.loads(raw.encode())
+        purpose = gen._resolve_plist_purpose(Path("com.example.g.plist"), raw, parsed)
+        self.assertEqual(purpose, "runs `com.example.g`")
+
+
+class TestInferPlistHost(unittest.TestCase):
+    def test_balizero_program_argument_is_m5(self):
+        parsed = {"ProgramArguments": ["/Users/balizero/scripts/x.sh"]}
+        self.assertEqual(gen._infer_plist_host("", "com.example.x", parsed), "M5")
+
+    def test_mini_only_text_is_mini(self):
+        self.assertEqual(gen._infer_plist_host("this is mini-only.", "com.example.y", {}), "Mini")
+
+    def test_default_is_pro(self):
+        self.assertEqual(gen._infer_plist_host("", "com.nuzantara.z", {}), "Pro")
+
+    def test_mini_subdirectory_path_is_mini(self):
+        path = Path("infra/launchagents/mini/com.example.z.plist")
+        self.assertEqual(gen._infer_plist_host("", "com.example.z", {}, path), "Mini")
+
+    def test_gemini_relay_label_is_not_mini(self):
+        """2026-09-11 gate finding: a plain substring check on 'mini-' false-
+        positived on 'gemini-relay' (the label contains 'mini' embedded inside
+        'gemini', not as a .-/- -delimited segment)."""
+        self.assertEqual(gen._infer_plist_host("", "com.balizero.gemini-relay", {}), "Pro")
+
+    def test_mini_pro2_header_spelling_is_mini(self):
+        self.assertEqual(gen._infer_plist_host("Runs on Mini-Pro2 only.", "com.example.h", {}), "Mini")
+
+    def test_real_fleet_watch_plist_embedded_mini_script_path_is_mini(self):
+        """com.nuzantara.fleet-watch.plist's own ProgramArguments names
+        mini-fleet-watch.sh — a 'mini-' segment embedded in the plist's OWN
+        text, no comment needed."""
+        plist_path = gen.REPO_LAUNCHAGENTS_DIR / "com.nuzantara.fleet-watch.plist"
+        raw = plist_path.read_text()
+        with plist_path.open("rb") as f:
+            parsed = plistlib.load(f)
+        self.assertEqual(gen._infer_plist_host(raw, parsed["Label"], parsed), "Mini")
+
+    def test_real_healer_4h_plist_has_no_mini_marker_of_its_own(self):
+        """Known limitation, reported rather than silently papered over: this
+        plist's OWN text carries no 'mini' marker at all — the 'Mini-Pro2'
+        spelling lives only in the resolved target script's header
+        (infra/healer/healer-run.sh), which _infer_plist_host does not read
+        (it only sees the plist itself). Stays Pro until that's plumbed in."""
+        plist_path = gen.REPO_LAUNCHAGENTS_DIR / "com.nuzantara.healer.4h.plist"
+        raw = plist_path.read_text()
+        with plist_path.open("rb") as f:
+            parsed = plistlib.load(f)
+        self.assertEqual(gen._infer_plist_host(raw, parsed["Label"], parsed), "Pro")
+
+
+class TestFindScheduledWorkflows(unittest.TestCase):
+    def _write(self, path: Path, content: str) -> None:
+        path.write_text(content)
+
+    def setUp(self):
+        self.tmpdir = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmpdir.cleanup)
+        self.workflows_dir = Path(self.tmpdir.name)
+        self._write(self.workflows_dir / "a-two-crons.yml", (
+            "name: Two Cron Workflow\n"
+            "on:\n"
+            "  schedule:\n"
+            "    - cron: \"0 19 * * *\"\n"
+            "    - cron: \"0 7 * * *\"\n"
+            "  workflow_dispatch: {}\n"
+            "jobs:\n"
+            "  run:\n"
+            "    runs-on: ubuntu-latest\n"
+        ))
+        self._write(self.workflows_dir / "b-no-schedule.yml", (
+            "name: No Schedule Workflow\n"
+            "on:\n"
+            "  push:\n"
+            "    branches: [main]\n"
+            "jobs:\n"
+            "  run:\n"
+            "    runs-on: ubuntu-latest\n"
+        ))
+        self._write(self.workflows_dir / "c-commented.yml", (
+            "name: Commented Workflow\n"
+            "# This workflow does something useful for testing. Extra sentence here.\n"
+            "on:\n"
+            "  schedule:\n"
+            "    - cron: \"*/5 * * * *\"\n"
+            "jobs:\n"
+            "  run:\n"
+            "    runs-on: ubuntu-latest\n"
+        ))
+
+    def test_only_scheduled_workflows_are_returned(self):
+        rows = gen._find_scheduled_workflows(self.workflows_dir)
+        found = {r["workflow"] for r in rows}
+        self.assertIn("a-two-crons.yml", found)
+        self.assertIn("c-commented.yml", found)
+        self.assertNotIn("b-no-schedule.yml", found)
+
+    def test_crons_joined_with_semicolon(self):
+        rows = {r["workflow"]: r for r in gen._find_scheduled_workflows(self.workflows_dir)}
+        self.assertEqual(rows["a-two-crons.yml"]["cron"], "0 19 * * *;0 7 * * *")
+
+    def test_purpose_from_comment_vs_fallback_to_name(self):
+        rows = {r["workflow"]: r for r in gen._find_scheduled_workflows(self.workflows_dir)}
+        self.assertEqual(rows["c-commented.yml"]["purpose"], "This workflow does something useful for testing.")
+        self.assertEqual(rows["a-two-crons.yml"]["purpose"], "Two Cron Workflow")
+
+    def test_names_parsed(self):
+        rows = {r["workflow"]: r for r in gen._find_scheduled_workflows(self.workflows_dir)}
+        self.assertEqual(rows["a-two-crons.yml"]["name"], "Two Cron Workflow")
+        self.assertEqual(rows["c-commented.yml"]["name"], "Commented Workflow")
+
+    def test_filename_echo_line_is_skipped(self):
+        self._write(self.workflows_dir / "d-echo.yml", (
+            "name: Echo Workflow\n"
+            "# d-echo.yml — describes the echo case.\n"
+            "on:\n"
+            "  schedule:\n"
+            "    - cron: \"0 0 * * *\"\n"
+            "jobs:\n"
+            "  run:\n"
+            "    runs-on: ubuntu-latest\n"
+        ))
+        rows = {r["workflow"]: r for r in gen._find_scheduled_workflows(self.workflows_dir)}
+        self.assertEqual(rows["d-echo.yml"]["purpose"], "describes the echo case.")
+
+
+class TestRenderScheduledWorkflowsSection(unittest.TestCase):
+    def test_empty_rows_render_nothing(self):
+        self.assertEqual(gen._render_scheduled_workflows_section([]), [])
+
+    def test_header_and_one_row_per_workflow(self):
+        rows = [
+            {"workflow": "a.yml", "name": "A", "cron": "0 0 * * *", "purpose": "does a"},
+            {"workflow": "b.yml", "name": "B", "cron": "0 1 * * *", "purpose": "does b"},
+        ]
+        lines = gen._render_scheduled_workflows_section(rows)
+        joined = "\n".join(lines)
+        self.assertIn("### GitHub Actions scheduled workflows (repo-canon)", joined)
+        self.assertIn("| Workflow | Name | Cron (UTC) | Purpose |", joined)
+        self.assertIn("| `a.yml` | A | 0 0 * * * | does a |", joined)
+        self.assertIn("| `b.yml` | B | 0 1 * * * | does b |", joined)
+
+    def test_pipe_in_name_and_purpose_is_escaped(self):
+        """Repro (2026-09-11 gate finding): .github/workflows/catB-daemon-cron-xor.yml:1
+        has a leading comment reading '# lint — daemon|cron classification', which
+        _extract_workflow_purpose passes through verbatim — the render step must
+        escape it so the table row stays well-formed."""
+        purpose = gen._extract_workflow_purpose("# lint — daemon|cron classification\njobs:\n", "x.yml")
+        self.assertIn("|", purpose)  # extraction itself does not escape
+        rows = [{"workflow": "x.yml", "name": "lint | xor", "cron": "0 0 * * *", "purpose": purpose}]
+        joined = "\n".join(gen._render_scheduled_workflows_section(rows))
+        self.assertIn("lint \\| xor", joined)
+        self.assertIn("daemon\\|cron classification", joined)
 
 
 if __name__ == "__main__":

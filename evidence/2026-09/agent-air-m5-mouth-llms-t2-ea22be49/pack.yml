@@ -1,0 +1,149 @@
+gear: 1
+brief_ref: evidence/2026-09/agent-air-m5-mouth-llms-t2-ea22be49/brief.yml
+ruling: RULED 2026-09-12 SAETTA
+lanes:
+  - lane: T2
+    role: build
+    seat: Claude Fable 5.1 (Dux, implements directly)
+  - lane: T2-spalla
+    role: review
+    seat: codex gpt-6-astra (OpenAI, via codex exec --sandbox read-only, one round)
+pii_scan: clean
+price_source:
+  tool: nuzantara-knowledge MCP search_service_pricing
+  queries:
+    - "E33 remote worker KITAS"
+    - "E33 retirement KITAS"
+    - "Second Home Visa E33"
+  ts: "2026-09-12T13:25:30Z"
+  entries_relied_on:
+    - "E33G Remote Worker (Offshore): 13.000.000 IDR — 'Digital nomad KITAS for remote workers employed by foreign companies. Processed from outside Indonesia, valid 1 year.'"
+    - "E33G Remote Worker (Altus/Onshore): 14.000.000 IDR — 'Onshore process via Altus, valid 1 year.'"
+    - "E33G Remote Worker (Extend): 10.000.000 IDR — 'Onshore extension of an existing E33G Remote Worker KITAS.'"
+    - "E33 Second Home (5 Years): 35.000.000 IDR — validity 5 years, notes 'All-inclusive price. Requires the client's own qualifying USD 130,000 deposit at a state-owned Indonesian bank (or USD 1,000,000 qualifying property); Bali Zero never holds client funds.'"
+    - "E33E Second Home Senior (5 Years): 45.000.000 IDR — validity 5 years, notes 'All-inclusive price. Senior 55+ route: USD 50,000 deposit ... plus USD 3,000/month passive income.'"
+    - "E33E Second Home Senior (Extend): 10.000.000 IDR — 'All-inclusive price. Onshore annual extension of an existing E33E senior permit.'"
+    - "E33F Second Home Senior (1 Year, Offshore): 14.000.000 IDR — validity 1 year, all-inclusive."
+    - "E33F Second Home Senior (1 Year, Altus/Onshore): 16.000.000 IDR — validity 1 year, all-inclusive."
+    - "E33F Second Home Senior (Extend): 10.000.000 IDR — all-inclusive."
+  agreement_with_imperator: >-
+    Every figure the imperator observed at 21:22 WITA was returned identically by this
+    window's own tool run at 21:25 WITA. No disagreement, so no needs-input stop.
+decisions:
+  - id: D1
+    decision: >-
+      Offshore/onshore are carried in ONE line per product with the onshore figure in
+      parentheses, not as two sibling lines. The window contract's A1 requires
+      grep -c "E33G - Remote Worker" = 1 and grep -c "E33 - Second Home" = 1, which two
+      sibling lines would break; the parenthetical form also matches the neighbouring
+      convention for extensions (E31B/F lines).
+  - id: D2
+    decision: >-
+      Alerts bullets use the RELATIVE / path form that the Recommended Reading entries
+      use, not the absolute https form of the Freshness Signal block, per the window
+      contract's instruction to mirror Recommended Reading and per A3's wording
+      ("links a / path that returns HTTP 200").
+  - id: D3
+    decision: >-
+      The one clause per bullet is the article's frontmatter `excerpt` (these articles
+      carry `excerpt` and `seoDescription`, not `description`). `excerpt` is the field
+      the site itself renders, so it is the faithful choice.
+receipts:
+  - claim: No sibling PR owns apps/mouth/public/llms.txt. The only open PR matching 'llms' is #6269, on apps/mouth/public/llms-kbli.txt.
+    cmd: gh pr list --state open --json number,files --jq '.[] | select(any(.files[]; .path | test("llms"))) | .number' ; gh pr view 6269 --json files
+    result: "6269 only; its llms file is apps/mouth/public/llms-kbli.txt (title: data(kbli) L2 re-ingestion ... spec PR-B)"
+    exit: 0
+    ts: "2026-09-12T13:23:54Z"
+    seat: Claude Fable 5.1
+  - claim: This window is the only mouth-lane worktree; it was created by the broker.
+    cmd: python3 /Users/balizero/nuzantara/scripts/agent_start.py --list
+    result: "one mouth row - llms-t2 / agent/air-m5/mouth/llms-t2, age 0.7 min, ttl 240. 11 orphan worktrees warned, none on mouth."
+    exit: 0
+    ts: "2026-09-12T13:23:54Z"
+    seat: Claude Fable 5.1
+  - claim: A2 — every IDR figure written equals the PricingTool value; no other price line in the file changed.
+    cmd: git -C <wt> diff origin/main -- apps/mouth/public/llms.txt | grep "^+" | grep IDR
+    result: "six added price lines - E33G Offshore 13.000.000 (onshore 14.000.000, extension 10.000.000); E33 Second Home 5 Years 35.000.000; E33E Senior 5 Years 45.000.000; E33E Senior Extension 10.000.000; E33F Senior 1 Year Offshore 14.000.000; E33F Senior 1 Year Onshore 16.000.000 (extension 10.000.000). Each equals the search_service_pricing entry quoted above. One deleted price line, the blended E33 13.000.000-16.000.000."
+    exit: 0
+    ts: "2026-09-12T13:27:00Z"
+    seat: Claude Fable 5.1
+  - claim: The five alerts bullets are the site's own September 2026 articles from PRs #6215-#6219; each canonical URL answers 200 on balizero.com, and the /tax-legal/ form 308s to the /taxes/ form actually served.
+    cmd: gh pr view <n> --json files for 6215..6219 ; awk frontmatter title/excerpt/slug/category on each .mdx ; curl -s -o /dev/null -w "%{http_code}" https://balizero.com<path>
+    result: "/business/kbli-2025-oss-licence-update 200 ; /taxes/indonesia-spp-tdln-vat-foreign-digital-payments 200 (/tax-legal/ form 308) ; /business/indonesia-spklu-foreign-investment-idr-10-billion-threshold 200 ; /taxes/indonesia-carf-2027-crypto-reporting-self-certification 200 (/tax-legal/ 308) ; /taxes/pp-20-2026-indonesia-0-5-percent-msme-final-tax 200 (/tax-legal/ 308). All five publishedAt 2026-09-11."
+    exit: 0
+    ts: "2026-09-12T13:25:10Z"
+    seat: Claude Fable 5.1
+  - claim: A1 and A3 on the repo file after the edit.
+    cmd: grep -cF on apps/mouth/public/llms.txt for each pattern
+    result: '''E33G - Remote Worker'' 1 ; ''E33 - Second Home'' 1 ; ''E33E'' 4 ; ''E33F'' 4 ; ''Retirement/Remote Worker KITAS'' 0 ; ''Regulatory Alerts (September 2026)'' 1 ; ''Regulatory Alerts (March 2026)'' 0 ; ''September 2026 regulatory updates'' 1 ; the "KITAS Bali" line contains ''Second Home'' 1'
+    exit: 0
+    ts: "2026-09-12T13:33:53Z"
+    seat: Claude Fable 5.1
+  - claim: A5 before — md5 and pattern counts of the LIVE llms.txt prior to merge.
+    cmd: curl -s https://balizero.com/llms.txt | md5 ; grep -cF each pattern
+    result: "md5 dabd3b0ab0d26741c59e22c862272778 ; 'E33G - Remote Worker' 0 ; 'E33 - Second Home' 0 ; 'E33E' 2 ; 'E33F' 2 ; 'Retirement/Remote Worker KITAS' 1 ; 'Regulatory Alerts (March 2026)' 1 ; 'Regulatory Alerts (September 2026)' 0 ; 'September 2026 regulatory updates' 0"
+    exit: 0
+    ts: "2026-09-12T13:33:53Z"
+    seat: Claude Fable 5.1
+  - claim: A4 non-regression — the diff touches one existing file plus one new test, and only the five intended regions of llms.txt.
+    cmd: git -C <wt> diff --stat ; git -C <wt> diff -U2 -- apps/mouth/public/llms.txt
+    result: 'apps/mouth/public/llms.txt 15 insertions / 8 deletions. Hunks - (1) AI-CITATION comment March -> September 2026; (2) the "KITAS Bali" bullet Retirement (E33F/E33E) -> Second Home (E33; senior routes E33E/E33F); (3) the alerts header and its three March bullets -> the September header and five article bullets; (4) the blended E33 price line -> six per-product lines; (5) footer Version 4.1 -> 4.2. No .mdx, no llms-full/id/kbli, no generator, no workflow, no PENDING-ARMS.md.'
+    exit: 0
+    ts: "2026-09-12T13:27:20Z"
+    seat: Claude Fable 5.1
+  - claim: A5 — the guard is green on the final llms.txt, with one innocence case on the real file, ten guilt cases (one per forbidden pattern) and five boundary-innocence cases added after the spalla.
+    cmd: cd apps/mouth && npx vitest --run src/lib/llms-public-file-guard.test.ts
+    result: "Test Files 1 passed (1) ; Tests 16 passed (16) ; duration 5.21s. First run before the spalla cure - 11 passed (11)."
+    exit: 0
+    ts: "2026-09-12T13:33:29Z"
+    seat: Claude Fable 5.1
+  - claim: prettier accepts the new test; it cannot parse .txt, so llms.txt is not a prettier target.
+    cmd: cd apps/mouth && npx prettier --check public/llms.txt src/lib/llms-public-file-guard.test.ts ; then npx prettier --write on the test
+    result: "llms.txt - 'No parser could be inferred' (not formatted by prettier) ; the test file was reformatted by --write and re-run green."
+    exit: 1
+    ts: "2026-09-12T13:27:40Z"
+    seat: Claude Fable 5.1
+dissent:
+  - seat: codex gpt-6-astra (spalla, read-only, one round, verdict MEDIUM)
+    objection: >-
+      OVER-match. The dotted/comma fine patterns had no right-hand numeric boundary, so
+      "Second Home applicant assets: IDR 5.000.000.000" convicted second-home-fine-5-000-000-dot.
+    status: CONFIRMED
+    cure: >-
+      Added (?!\.?\d) / (?!,?\d) to both 5.000.000 patterns and to both 2.000.000.000 patterns,
+      plus five boundary-innocence cases (45.000.000, 35.000.000, 5.000.000.000, 5,000,000,000,
+      180.000.000.000) that failed before the cure and pass after it.
+  - seat: codex gpt-6-astra (spalla)
+    objection: >-
+      OVER-match. /(?<!\d)180(?!\d)/ convicted "IDR 180.000.000.000" — 180 inside a larger
+      figure is not a 180-day claim.
+    status: CONFIRMED
+    cure: "Tightened to /(?<![\\d.,])180(?![\\d.,])/ and added the 180.000.000.000 innocence case."
+  - seat: codex gpt-6-astra (spalla)
+    objection: >-
+      UNDER-match. The guard is line-scoped, so a forbidden figure on a line that does not
+      itself repeat the product name (a bullet under a "## Second Home Visa" heading) escapes.
+    status: PLAUSIBLE
+    cure: >-
+      Not cured. Line scoping is exactly what the window contract prescribes, and block-scoping
+      re-opens the OVER-match side of cicatrix family #3. The cheap half was taken - the
+      product regex is now case-insensitive, so "second home visa" in lowercase is caught.
+      Recorded as a leftover.
+  - seat: codex gpt-6-astra (spalla)
+    objection: >-
+      UNDER-match. Unenumerated notations ("IDR 2000000000", "IDR 5 million") are not caught.
+    status: PLAUSIBLE
+    cure: >-
+      Not cured. The forbidden spellings are the enumerated list the window contract fixes;
+      normalising every figure would widen the guard well past its mandate. Recorded as a leftover.
+  - seat: codex gpt-6-astra (spalla)
+    objection: "Vitest reported FAIL under the codex sandbox (EPERM mkdir in /var/folders/.../ssr)."
+    status: RETRACTED
+    cure: >-
+      Sandbox artefact, not a defect - the same command run outside the read-only sandbox in this
+      window is green (16/16). Codex itself labelled it a sandbox error, not a test failure.
+leftovers:
+  - The guard is line-scoped - a forbidden figure on a continuation line under a Second Home heading is not caught (codex PLAUSIBLE, not cured by design).
+  - The guard matches only the enumerated spellings of each figure; unpunctuated or worded variants ("2000000000", "5 million") escape (codex PLAUSIBLE, not cured by design).
+  - The forbidden-pattern list is hand-written in the test, not read from secondhome-article-claims.baseline.json as the T1 close row suggested; wiring the two together is a later window.
+  - The "Recently Published & Updated (Freshness Signal)" block still shows July 2026 articles and repeats two of them; it is generator-owned (generate-llms-full.ts) and out of this window's perimeter.

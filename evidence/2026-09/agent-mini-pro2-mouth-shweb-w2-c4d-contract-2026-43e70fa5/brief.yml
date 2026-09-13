@@ -1,0 +1,280 @@
+# Brief — SHWEB-20260911 / W2-C4d: make the exception contract real, and give the scope boundary a floor
+gear: 2 # floor measured WITH --numstat-file over the COMPLETE changed set, after the last commit
+gear_floor_note: >-
+  Measured the way the two previous packs learned to measure it: with --numstat-file, over the code
+  AND the pack/brief, which is the set CI sees. C4b declared 1 against a floor of 3 by omitting the
+  numstat; C4c declared 1 against a floor of 2 by measuring only the code files. The size here is
+  two new modules, three test files and a review round that produced six confirmed findings.
+task_id: shweb-w2-c4d-contract-20260913
+mandate_id: SHWEB-20260911/W2-C4d
+colour: BLUE
+l_level: L2
+host: Mini-Pro2 (nuzantara)
+worktree: .worktrees/mouth-shweb-w2-c4d-contract-20260913
+branch: agent/mini-pro2/mouth/shweb-w2-c4d-contract-20260913
+base_sha: 3765737668 # pragma: allowlist secret - public Git commit ID; this IS the C4c merge, fresh origin/main
+opened_at: "2026-09-13T00:05Z"
+state: CANDIDATO
+
+predecessor: >-
+  #6391 (merged 3765737668) moved the chunk-exception contract out of a source-parsing test and
+  into the guard's runtime, fixed the flatness invariant against functions and symbol keys, and
+  replaced a wrong claim in the scope comment with a measurement. Its gate and its own pack left
+  three things open, and this PR is exactly those three.
+
+objective: >-
+  Close the last substring check in the exception contract, make that contract testable instead of
+  merely present, and turn the scope boundary from a comment into a floor that a new regression
+  would trip.
+
+brief_ref: evidence/brief.yml
+pii_scan: clean
+pii_scan_note: >-
+  No personal data is added, moved or quoted. One regex, one module extraction, one manifest check.
+
+items:
+  - id: C4d-C1
+    raised_by: the fresh gate on #6391 (probe P8)
+    what: >-
+      `CLOSER_SHAPE = /(#\d+|\bC\d+[a-z]?\b)/` is UNANCHORED, so it asks whether a PR-shaped token
+      appears SOMEWHERE in the closer, not whether the closer IS one.
+    measured: >-
+      Run against the regex as it stands on main: "TODO maybe C4b someday" ACCEPTED,
+      "see C4b for history" ACCEPTED, "fix it in C9 probably" ACCEPTED. Only "later", "TBD" and ""
+      are rejected. So an exception can still be declared with a shrug as long as the shrug mentions
+      a lane.
+    why_it_matters: >-
+      It is the SAME substring-instead-of-entity mistake C4c was opened to fix, one level down. C4c
+      stopped the rule judging the whole FILE and made it judge the entry; the entry's VALUE is
+      still judged by substring. That is this repo's #3 scar family and it deserves to be closed at
+      the last level rather than left as the one place it still lives.
+    cure: >-
+      Anchor the whole value: `/^(#\d+|C\d+[a-z]?)$/` against the trimmed string. Measured against
+      that candidate: the three prose cases above are rejected and "#6391", "C4d", "C4b" accepted.
+      Decide and WRITE DOWN two small things rather than leaving them to taste — whether the match
+      is case-sensitive (measured: "c4b" is rejected by the anchored form) and whether surrounding
+      whitespace is trimmed before testing (measured: "#6391 " is rejected untrimmed). Trim, and
+      keep it case-sensitive so lane ids stay written the way the repo writes them.
+    acceptance:
+      - text: WHEN a closer is prose that merely mentions a lane, THEN the guard SHALL exit 1.
+        probe: "closer 'TODO maybe C4b someday' and 'fix it in C9 probably' -> exit 1 each; '#6391' and 'C4d' -> exit 0"
+  - id: C4d-C2
+    raised_by: kimi-code/k3 on #6391, and carried in that pack as a declared residual
+    what: >-
+      The exception contract runs inside the guard, and no permanent test executes it. The suite
+      asserts only that the text `Object.hasOwn(ALLOWED_CHUNK_PREFIX_CLOSERS, prefix)` still appears
+      in the guard — so a rewrite that kept the string and broke the logic, or that moved the check
+      to a different object, could stay green.
+    why_it_matters: >-
+      Every probe that proves this contract works today is a manual one recorded in a pack. That is
+      evidence, not a regression test: it protects the reader, not the next commit. The contract is
+      now the only thing standing between a future exception and a silently permanent allowlist.
+    cure: >-
+      Extract the contract into a small pure module — input the two structures, output a list of
+      violations, no process.exit and no console — imported by BOTH the guard (which formats and
+      exits) and a new test (which asserts behaviour). Then the four probes become permanent cases:
+      empty/blank prefix, missing OWN key, prototype-inherited key, non-PR closer, stale closer, and
+      the innocence case of a properly declared exception. Keep the guard's exit path and its
+      message wording; only the decision moves.
+    acceptance:
+      - text: WHEN the contract's logic is broken while its call site still reads the same, THEN a test SHALL fail.
+        probe: "mutant: make the module return [] unconditionally — the new behavioural test goes red while the old text assertion would have stayed green"
+      - text: WHEN a properly declared exception exists, THEN the contract SHALL allow it.
+        probe: "one valid prefix + closer -> no violations, guard exit 0"
+  - id: C4d-C3
+    raised_by: gemini-3.1-pro on #6391 (declined there with a measurement), seconded by kimi-code/k3
+    what: >-
+      The guard's scope boundary is documented and unenforced. Five `(workspace)` routes are already
+      statically prerendered — /clients, /dashboard, /lkpm, /partners, /settings — and /lkpm's
+      payload carries 4 marker hits. Nothing fails if a SIXTH joins them.
+    why_it_matters: >-
+      C4c declined to assert on the prerender manifest because asserting it outright fails the build
+      on those five today, and forcing an owner-held exposure to red every build is not how it gets
+      decided. That reasoning holds for the five. It does not hold for the NEXT one: a new workspace
+      route becoming a static payload is a fresh regression, nobody has accepted it, and today it
+      lands in silence.
+    cure: >-
+      A BASELINE, not a blanket assertion: read `.next/prerender-manifest.json`, list the
+      `(workspace)` routes in it, and fail only on routes NOT in a declared accepted set — the same
+      shape `ACCEPTED_PUBLIC_FILES` already uses for the two portraits. The five go in the set with
+      the measurement and a pointer to the escalated workspace-auth item; a sixth fails the build.
+      The accepted set must SHRINK when that item is decided, so state that in the comment.
+    acceptance:
+      - text: WHEN a new (workspace) route is prerendered, THEN the build SHALL fail naming it.
+        probe: "add a trivial static (workspace) route, build, expect exit 1 naming it; remove it, build green"
+      - text: WHEN the five known routes are prerendered, THEN the build SHALL pass.
+        probe: "npm run build on an unmodified tree -> exit 0, and the OK line names the accepted count"
+
+constraints:
+  - The chunk scan's behaviour does not change. The build must still print "0 skipped by the declared time-boxed exception (none)".
+  - apps/mouth/src/data/team-roster.ts stays FROZEN with no hunk; package.json and package-lock.json untouched.
+  - >-
+    R-A is NOT resolved here. C4d only stops the exposure GROWING silently; the five measured routes
+    stay accepted with their reason written down, and the decision about them stays with Zero.
+  - Every other path #6277 forbade stays forbidden.
+
+lanes:
+  - lane: build
+    role: build
+    seat: claude-opus-5
+    what: the anchored shape, the extracted contract module and its behavioural test, the prerender baseline
+  - lane: review-refuter
+    role: review
+    seat: gemini-3.1-pro
+    what: the diff, out of the contribution chain
+  - lane: review-second-reader
+    role: review
+    seat: kimi-code/k3
+    what: the same, independently
+
+dissent: []
+
+lessons_carried_from_c4c:
+  - >-
+    Measure the floor with `--numstat-file` over the COMPLETE changed set, after the last commit.
+    Twice now the declared gear was below the CI floor because the measurement was narrower than
+    the PR.
+  - >-
+    Run the suite as the project does: `cd apps/mouth && npx vitest run`. `--root` makes vitest load
+    its DEFAULT config, `setupFiles` never runs, and 155 unrelated tests fail — which reads exactly
+    like "main is broken" and is not.
+  - >-
+    When a probe has to be rigged to fail, the rule it is testing is probably vacuous. The C4c guilt
+    probe deleted the very markers the rule matched; a refuter noticed, and the rule was indeed
+    passing on a realistic regression.
+  - >-
+    A result far more dramatic than the change can explain is the tell. Three files of comments and
+    tests do not break main, and a sweep of 19 routes does not return zero URLs.
+
+council_run: journal.jsonl
+
+dissent:
+  - seat: gemini-3.1-pro
+    objection: >-
+      HIGH — the prerender baseline is blind to every NESTED (workspace) route: the walk read one
+      directory level and only where a directory had its own page.tsx, so a route like
+      hr/payroll or admin/roles is never in the set the check compares against the manifest.
+    status: CONFIRMED
+    disposition: >-
+      Real, and larger than it sounded: measured, TWENTY-FIVE nested routes were ALREADY prerendered
+      and invisible to the check. A shallow enumeration is not a smaller version of this guard, it is
+      a different guard that happens to pass. Fixed with a recursive walk. Probe: a nested
+      (workspace)/admin/test-static/page.tsx now fails the BUILD naming it, and removing it builds
+      green. The accepted baseline went from the 17 I had measured to the 42 that are really static.
+  - seat: gemini-3.1-pro
+    objection: >-
+      MEDIUM — a missing .next/prerender-manifest.json makes the whole baseline check silently
+      green, because it is wrapped in an existsSync condition with no else.
+    status: CONFIRMED
+    disposition: >-
+      Taken. Both the workspace directory and the manifest are now hard preconditions: either
+      missing exits 1 saying it refuses to report success on a check that did not run — the same
+      posture this guard already had for an empty chunk scan. Probed by moving the manifest aside.
+  - seat: gemini-3.1-pro
+    objection: >-
+      HIGH — src/lib/chunk-exception-contract.test.ts is missing from the PR, so C2 is unfulfilled:
+      the contract still has no behavioural test and the tripwire only checks for a source string.
+    status: RETRACTED
+    disposition: >-
+      The file is in the change and executes the module at nine call sites. It was missing from the
+      PACKET, not from the PR: I sent the two new modules and two diffs of CHANGED files, and never
+      showed the NEW test files. That is the third false finding this mandate has produced from a
+      packet that omitted material, and the pattern is now specific enough to name — I show diffs of
+      what changed and forget what was added. The second seat's packet showed every file in full.
+  - seat: tp1-qwen3.8-max
+    objection: >-
+      MEDIUM (condition for merge) — a nested ROUTE GROUP is invisible. The walk would report
+      "(admin)/settings" while the manifest key is "/settings", because a parenthesised directory
+      organises files and does not appear in the URL. Latent today, but this guard exists to catch
+      the next change.
+    status: CONFIRMED
+    disposition: >-
+      Correct and taken. Route strings are normalised to their URL form at BOTH ends — the walked
+      route and the accepted entry — so a grouped route matches the manifest and matches its own
+      baseline entry. Probed: "(admin)/billing" prerendered at /billing is caught when unaccepted
+      and passes when accepted; urlRoute("hr/(internal)/payroll") is "hr/payroll".
+  - seat: tp1-qwen3.8-max
+    objection: >-
+      LOW — the walk probes only page.tsx, but Next also resolves page.ts/.jsx/.js/.mdx.
+      LOW — a page.tsx directly inside (workspace) is the "/" route under that layout and is never
+      considered.
+    status: CONFIRMED
+    disposition: >-
+      Both taken rather than documented away, because both are one line each: the walk now accepts
+      any of the five page extensions Next resolves, and the (workspace) root is included when it
+      carries a page. Neither exists in the tree today; the guard's job is the next change.
+  - seat: tp1-qwen3.8-max
+    objection: >-
+      INFO — the prerender baseline has no reverse check: an accepted entry that is no longer
+      prerendered is ignored, an asymmetry with the exception contract, which does detect a stale
+      closer. Also INFO — the packet said the first seat's findings were "listed at the end" and no
+      such list appeared.
+    status: CONFIRMED
+    disposition: >-
+      The asymmetry is accepted deliberately and NOT fixed: a stale accepted entry creates no blind
+      spot — it can only fail to flag a route that is no longer static — whereas a stale closer in
+      the exception contract could be reused by a new exception. Different risk, different rule; a
+      warning could be added if that list ever grows, and it is named here rather than left implicit.
+      The packet omission is mine and the seat was right to flag it: the header promised a list the
+      body did not carry. Fourth packet defect of this mandate, same family as the retraction above.
+
+receipts:
+  - claim: "C1 — a closer must BE a reference, not merely contain one"
+    cmd: "the anchored CLOSER_SHAPE against the strings the gate's P8 probe used, plus the shape cases in the new test"
+    result: >-
+      "TODO maybe C4b someday", "see C4b for history" and "fix it in C9 probably" are now REJECTED
+      (all three were accepted before); "#6391", "C4d", "C4b", "#1", "C10" accepted; "c4b",
+      "C4b and more", "PR 6391" rejected; a trimmed "  #6391 " accepted.
+    exit: 0
+    ts: "2026-09-13T01:00:00Z"
+    seat: claude-opus-5
+  - claim: "C2 — the contract is executed by tests, not asserted as a string"
+    cmd: "src/lib/chunk-exception-contract.test.ts imports the same module the guard imports; 9 cases"
+    result: >-
+      blank prefix, inherited prototype key, six prose closers, a stale closer and two malformed
+      declarations all produce violations; the empty declaration and a properly declared exception
+      produce none. The tripwire now pins only that the guard still CALLS the contract — the one
+      thing a module test cannot see.
+    exit: 0
+    ts: "2026-09-13T01:10:00Z"
+    seat: claude-opus-5
+  - claim: "C3 — the scope boundary is a floor, and it catches what it is for"
+    cmd: "build with a NEW top-level static workspace route; again with a NESTED one; again with the manifest moved aside; then clean"
+    result: >-
+      top-level probe-c4d -> build FAILS naming it; nested admin/test-static -> build FAILS naming
+      it; manifest missing -> exit 1 refusing to report success; clean tree -> ROSTER_CHUNK_ASSERT
+      OK, 506 chunks, 0 skipped.
+    exit: 0
+    ts: "2026-09-13T01:45:00Z"
+    seat: claude-opus-5
+  - claim: "the count this PR corrects, and the two wrong numbers behind it"
+    cmd: "enumerate (workspace)/**/page.tsx and intersect with .next/prerender-manifest.json routes"
+    result: >-
+      42 of 42 non-dynamic workspace routes are prerendered — nested ones included. C4c published
+      FIVE (its probe matched a hardcoded tuple of five names) and this PR's first draft said
+      SEVENTEEN (it walked one level). Of the 42 payloads exactly ONE carries staff markers: /lkpm,
+      4 hits. clients/[id] emits 0 prerender artifacts.
+    exit: 0
+    ts: "2026-09-13T01:30:00Z"
+    seat: claude-opus-5
+  - claim: "nothing regressed"
+    cmd: "npm run build; cd apps/mouth && npx vitest run; npx tsc --noEmit; npx eslint; npx prettier --check"
+    result: "guard OK 506 chunks / 0 skipped; 478 files / 5146 tests passed; typecheck 0; eslint 0 errors; prettier clean"
+    exit: 0
+    ts: "2026-09-13T01:50:00Z"
+    seat: claude-opus-5
+
+lesson:
+  what: >-
+    Three different enumerations of the same set produced three different answers — five, seventeen,
+    forty-two — and each one looked like a measurement. Five came from matching manifest entries
+    against a hardcoded tuple of five names. Seventeen came from walking the filesystem one level
+    deep. Forty-two came from walking the whole tree, and only after a refuter asked what happened
+    to nested routes.
+  why_it_matters: >-
+    Every wrong answer here was produced by an enumeration NARROWER than the thing being counted, and
+    none of them announced that narrowness — a hardcoded list returns its own length, and a shallow
+    walk returns a shallow answer, both with the confident shape of a measurement. The discipline is
+    to derive the set from the thing itself and then ask what the derivation cannot see. It is the
+    same failure family as the packets that omitted files: what the frame leaves out never appears
+    in the result, so it has to be looked for on purpose.

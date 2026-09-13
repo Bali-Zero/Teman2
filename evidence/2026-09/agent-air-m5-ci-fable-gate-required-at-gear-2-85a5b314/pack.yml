@@ -1,0 +1,252 @@
+task_id: ci-fable-gate-required-at-gear-2
+gear: 3
+gate_class: opus
+brief_ref: evidence/brief.yml
+council_run: council-journal.jsonl
+date: 2026-09-10
+machine: M5
+lanes:
+  - lane: >-
+      the Gear-2 gate threshold — two `if:` conditions in harness-floor.yml,
+      the dated ruling, the modus gate-rule bullet, six static pins
+    role: build
+    seat: claude-opus-5 (subagent Dux, this worktree session on M5, appointed by the team-lead window)
+    note: >-
+      Step 7a narrowed from `gear != '3'` to `gear == '1'`; Step 7c widened
+      from `gear == '3'` to `gear != '1'`. Deliberately did NOT widen Step
+      7b — the Evidence Pack stays a Gear-3-only demand (harness-v2 6) —
+      and did not touch scripts/ci/harness_gate_read.py, the kill switch,
+      the three bootstrap sentinels, the fail-closed missing-script
+      branches, the event triggers or the `statuses: read` permission. Only
+      Step 5c's ERROR TEXT changed, never its condition. Proved the new
+      pins bite before dispatching either reviewer: mutated Step 7c back to
+      `gear == '3'`, re-ran the corpus (2 failed, 43 passed), restored from
+      a `cp` backup rather than `git checkout --`, re-ran (45 passed).
+  - lane: cross-family adversarial review of the diff
+    role: review
+    seat: >-
+      codex-gpt-5.6-sol (`codex exec -m gpt-5.6-sol -c
+      model_reasoning_effort=medium --sandbox read-only`, non-Anthropic,
+      fresh context, stdin closed)
+    note: >-
+      OK on the first pass, and it grounded the answer instead of trusting
+      the diff: it ran a yaml.safe_load over the live harness-floor.yml and
+      printed all four decisive `if:` expressions (7a, 7c, 5a, 7b) off disk
+      before answering. Confirmed gear 2 and 3 both execute the verdict
+      reader and only a literal `success` on the resolved real head sha
+      passes; gear 1 exclusively takes the exemption; floor-1/no-brief
+      still passes automatically through Step 5a with 5b/5c unchanged; the
+      required artifact is still the workflow check-run while the script
+      reads the commit status from the PR's live headRefOid; the Evidence
+      Pack remains Gear-3-only. Declared honestly that it could not run
+      pytest — its read-only sandbox had no writable temporary directory —
+      rather than claiming a run it did not make.
+    verdict: OK
+  - lane: cross-family adversarial review of the diff
+    role: review
+    seat: >-
+      kimi-code/k3 (`kimi -m kimi-code/k3 -p`, non-Anthropic, agentic file
+      access, fresh context, dispatched in parallel with no sight of the
+      codex answer)
+    note: >-
+      OK, and it verified the guilt side EMPIRICALLY where codex could not:
+      it sed-reverted BOTH conditions to the pre-ruling form, ran the
+      corpus (exactly the three gear-threshold pins failed), and restored
+      the file. It also traced the under-declaration escape one step
+      further upstream than the build lane had — a gear-1 brief on a
+      floor-2 diff never reaches Step 7a at all, because Step 6 exits 1 on
+      `GEAR < FLOOR` and a failed step skips everything below under default
+      `success()` semantics. Checked that Step 7c carries no
+      `continue-on-error` and that harness_gate_read.py returns 1 on any
+      non-success. Chased both new cross-references to SKILL.md:298 and
+      confirmed neither is dangling.
+    verdict: OK
+seat_diversity: satisfied
+seat_diversity_note: >-
+  One build lane (Claude) and two review lanes, both non-Anthropic and
+  cross-family from each other, dispatched in parallel on the identical
+  prompt with no shared answer. The two seats grounded DIFFERENTLY, which is
+  the point of running both: codex parsed the workflow YAML off disk to
+  check the conditions it was being told about; kimi executed the guilt
+  mutation and the restore. Neither found a defect, and kimi's Step-6
+  observation is a genuine strengthening of the partition argument the
+  build lane made from Step 7a/7c alone.
+outcome: >-
+  A brief declaring gear 2 or gear 3 now blocks on a `harness/fable-gate`
+  success posted on the PR's REAL head sha; a gear-1 brief, and a floor-1
+  diff with no brief at all, still resolve to success with nothing to wait
+  for. The Evidence Pack stays Gear-3-only, so a Gear-2 PR reaches the
+  verdict read without passing through pack validation. Queue semantics are
+  untouched: branch protection still requires this JOB's own check-run,
+  never the commit status (which would deadlock the queue), and this
+  workflow still never writes a status — `permissions.statuses` is still
+  `read`.
+diff:
+  files: 7
+  net_lines: >-
+    7 files, +540/-21 — the canonical sentence printed by
+    `scripts/evidence_pack_lint.py --print-measured`, merge-base anchored
+    (never the two-dot diff against the moving base tip, the W102 lie).
+    Most of that total is this evidence directory itself (brief.yml,
+    pack.yml, council-journal.jsonl, all new). The code and doc half is
+    small: the workflow, the appended test section, the ruling block and
+    one line of the modus skill. Floor is `path` (hot-zone
+    `.github/workflows/*`), never size — the code half sits far under the
+    Gear-2 size threshold, not near it.
+  shape: >-
+    Two `if:` expressions changed, one step renamed on each side, three
+    comment blocks rewritten (the file header's opening paragraph plus a
+    dated WIDENED note, Step 7a's block, Step 7c's block), one error-message
+    string in Step 5c, one appended test section of six static pins, one
+    dated ruling block, one bullet in the modus gate-rule list. No step
+    added or removed, no script touched, no permission changed.
+behaviour_change: >-
+  YES, CI-visible and deliberate: every PR whose brief declares gear 2 now
+  fails the required `Harness floor recompute` check until a fresh gate
+  session posts `harness/fable-gate` success on its head sha. Gear 1 and
+  floor-1/no-brief PRs are unaffected. THIS PR is itself floor 3, so it is
+  the first PR gated by the rule it ships.
+pii_scan: clean
+bites:
+  consumer: >-
+    The `Harness floor recompute` required check on THIS PR — floor 3 by
+    its own new standard, so this PR cannot merge without a verdict on its
+    own head sha.
+  where: ci
+  observe: >-
+    gh pr checks <N> --json name,state,link
+  expect: >-
+    RED with "PENDING — no harness/fable-gate verdict has been posted yet on
+    this commit" until a fresh gate session posts success on this head sha,
+    GREEN after
+bites_note: >-
+  Pre-merge observation available now: the six new pins pass, the guilt
+  mutation fails exactly three of them, actionlint is clean, and both
+  cross-family seats returned OK. The live observation that closes the loop
+  is this PR's own required check going red on the PENDING verdict and
+  green after the gate posts — it is NOT claimed here, because the gate has
+  not been commissioned yet. A subagent Dux cannot commission its own gate
+  (SKILL.md, "Gate commission depth"); the team-lead window does.
+receipts:
+  - claim: the deterministic floor for this diff is 3, sourced from the hot-zone path term
+    cmd: >-
+      python3 scripts/evidence_pack_lint.py --print-floor --changed-files-file
+      /tmp/my-changed.txt --numstat-file /tmp/my-numstat.txt;
+      python3 scripts/evidence_pack_lint.py --print-floor-source --changed-files-file
+      /tmp/my-changed.txt --numstat-file /tmp/my-numstat.txt
+    result: "3 / path"
+    ts: "2026-09-10T06:30:00Z"
+    seat: claude-opus-5 (this session)
+    exit: 0
+  - claim: the six new pins pass on the real file (innocence)
+    cmd: python3 -m pytest scripts/tests/test_harness_gate_read.py -q
+    result: "45 passed in 0.21s (39 pre-existing + 6 new)"
+    ts: "2026-09-10T06:25:00Z"
+    seat: claude-opus-5 (this session)
+    exit: 0
+  - claim: >-
+      reverting Step 7c to `gear == '3'` makes the pins fail — the
+      regression is caught, not merely described (guilt)
+    cmd: >-
+      cp harness-floor.yml /tmp/hf-backup.yml; python3 replace Step 7c's
+      condition with `gear == '3'`; python3 -m pytest
+      scripts/tests/test_harness_gate_read.py -q; cp /tmp/hf-backup.yml back;
+      python3 -m pytest scripts/tests/test_harness_gate_read.py -q
+    result: >-
+      mutated "2 failed, 43 passed"
+      (test_verdict_read_step_fires_from_gear_2_not_only_gear_3,
+      test_the_two_gear_steps_partition_every_gear_with_no_gap_and_no_overlap);
+      restored "45 passed". kimi independently reverted BOTH conditions and
+      got "3 failed, 3 passed, 39 deselected".
+    ts: "2026-09-10T06:26:00Z"
+    seat: claude-opus-5 (this session)
+    exit: 1
+  - claim: the evidence-pack linter's own corpus is unaffected by this diff
+    cmd: python3 -m pytest scripts/tests/test_evidence_pack_lint.py -q
+    result: "570 passed in 4.65s"
+    ts: "2026-09-10T06:15:00Z"
+    seat: claude-opus-5 (this session)
+    exit: 0
+  - claim: the sibling brief-diff-membership corpus still passes
+    cmd: bash scripts/tests/test_harness_floor_brief_diff_membership.sh
+    result: "PASS (all guilt and innocence cases, including the tree-presence-only mutant pin)"
+    ts: "2026-09-10T06:16:00Z"
+    seat: claude-opus-5 (this session)
+    exit: 0
+  - claim: actionlint is clean on the changed workflow
+    cmd: actionlint .github/workflows/harness-floor.yml
+    result: "no output, exit 0"
+    ts: "2026-09-10T06:40:00Z"
+    seat: claude-opus-5 (this session)
+    exit: 0
+  - claim: >-
+      test_harness_floor_bootstrap_sentinel.sh's last scar-pin is ALREADY
+      red on origin/main — a pre-existing failure this PR neither causes
+      nor fixes
+    cmd: >-
+      git show origin/main:.github/workflows/harness-floor.yml | grep -c
+      'pr-(\[0-9\]+)-'; bash scripts/tests/test_harness_floor_bootstrap_sentinel.sh
+    result: >-
+      4 occurrences on origin/main while the test expects 3 — "scar-pin ...
+      appears 4 time(s), expected 3". Reproduced identically from the main
+      checkout, before any edit in this worktree. Report-only sweep, not a
+      required check; a different concern, left for its own PR.
+    ts: "2026-09-10T06:18:00Z"
+    seat: claude-opus-5 (this session)
+    exit: 1
+  - claim: no open sibling PR overlaps the lines this diff changes
+    cmd: >-
+      gh pr list --state open --limit 200 --json number,title,files --jq
+      '.[] | select(.files[]?.path | test("harness-floor|harness_gate_read|evidence_pack_lint|RULINGS.md|modus/SKILL.md"))'
+    result: >-
+      #5734 touches harness-floor.yml but APPENDS a new Step 8 (Bites lint)
+      after Step 7c, no line overlap with 7a/7c/5c or the header, last
+      updated 2026-09-05; #4815 touches SKILL.md on a different row; #5569
+      and #5819 touch evidence_pack_lint.py and a fixture copy of its test,
+      neither of which this diff edits.
+    ts: "2026-09-10T07:00:00Z"
+    seat: claude-opus-5 (this session)
+    exit: 0
+dissent:
+  - seat: kimi-code/k3 (cross-family)
+    status: CONFIRMED
+    objection: >-
+      OK, no BLOCK. It raised and then resolved one candidate defect — that
+      the "Gate commission depth" reference added by the 7c comment and by
+      the RULINGS block might be dangling — and found the section at
+      SKILL.md:298, so it is not. Its one standing observation is an
+      accepted consequence rather than a defect: posting a commit status
+      does not retrigger a workflow, so a Gear-2 PR that ran red at PR-open
+      needs a rerun of its own `pull_request` run before the rollup clears.
+      The merge_group run re-reads the verdict fresh at queue time, so the
+      queue path self-heals, and both SKILL.md and RULINGS.md document that
+      operating order explicitly. CONFIRMED because the check it ran (the
+      guilt mutation) produced a real, independently reproduced result, and
+      because its Step-6 finding strengthened the partition argument.
+  - seat: codex-gpt-5.6-sol (cross-family)
+    status: CONFIRMED
+    objection: >-
+      OK, no BLOCK, no residual finding. Recorded as CONFIRMED for what it
+      DECLINED to claim: it could not run the test corpus (read-only
+      sandbox, no writable tmpdir) and said so instead of asserting a run it
+      never made — the anti-hallucination boundary working in a reviewer
+      rather than in a builder. Its independent yaml.safe_load of the live
+      workflow is the reason its OK is worth more than a reading of the
+      diff text would have been.
+  - seat: claude-opus-5 (this worktree session — the builder's own standing objection)
+    status: PLAUSIBLE
+    objection: >-
+      The way this change could be wrong, stated plainly: it raises the
+      severity of a gap the file header already discloses. Nothing verifies
+      WHO posted a `harness/fable-gate` verdict — any credential with
+      `statuses: write` can post success on any sha — and this PR grows the
+      set of merges that depend on that unauthenticated status from the
+      Gear-3 tail to every mid-size diff in the fleet. It is tracked as
+      design gap (b) of the 2026-08-10 PENDING-ARMS entry and is explicitly
+      out of this PR's scope; the header note is updated to say the severity
+      went up again rather than leaving the old wording to understate it.
+      The second, smaller risk is throughput: every Gear-2 PR now needs a
+      fresh gate session, which is a real cost the ruling accepted
+      knowingly.
+spend:
+  wall_clock_hours: 1.5

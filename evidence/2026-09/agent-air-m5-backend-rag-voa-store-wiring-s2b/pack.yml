@@ -1,0 +1,193 @@
+task_id: voa-store-wiring-s2b-fail-closed
+gear: 2
+gate_class: opus
+brief_ref: evidence/brief.yml # the canonical staged layout CI lints against; the real file lives beside this pack
+date: 2026-09-12
+machine: air-m5 (M5)
+successor_of: >-
+  #6334 (S2a, the store; live since 2026-09-12 15:44Z) and #6342 (its
+  receipt). Gate-6334 left two conditions: C1 (a test on the
+  digest-mismatch LOG RECORD, mutation (d) survived) ships here; C2 shipped
+  in #6342. Decision #43 (require_verified=False at wiring) and #44 (probe
+  as a separate step after the await-free wiring, guard on both entry
+  points, S3 constraint, never-raise mutation) shaped this diff.
+lanes:
+  - lane: voa-store-wiring-build
+    role: build
+    seat: claude-opus-5 (GARUDA VOA W3A Dux, session 876f6aee -> 5d1e7c54)
+    note: >-
+      GROUND: block 5.5-5.8 of initialize_garuda_services and the Xendit
+      block's fail-closed shape; the readiness guard test; S2a's constructor
+      contract. BUILD: the block, the probe, the tests, every cure below.
+      The first draft awaited the probe inside the wiring; the readiness
+      guard went red (measured, "awaits at lines [1555]") and the two-step
+      shape came from that, not from taste. Authored this pack.
+  - lane: voa-store-wiring-refute
+    role: review
+    seat: codex-gpt-5.6-sol (read-only, outside the contribution chain)
+    note: >-
+      Three rounds, header `model: gpt-5.6-sol` verified on each log: O1
+      BLOCK (3 MAJOR) -> O2 BLOCK (1 MAJOR + 1 MINOR, O1 cured) -> O3 PASS
+      on the content of 45fa962d8e.
+      Static; the executed evidence is the build seat's runs below.
+seat_diversity: exempt
+seat_diversity_note: One build lane; the review seat is a different family (Sol). K3 not required at gear 2 (decision #44).
+council_run: journal.jsonl
+outcome: >-
+  `initialize_garuda_services` constructs the S2a store and parks it;
+  `probe_garuda_artifact_bucket`, awaited by both entry points right after,
+  is the only writer of `app.state.garuda_artifact_store` -- after
+  `assert_private(require_verified=False)`, never before. Absent env ->
+  nothing published, INFO naming the variables. Proven public, or any probe
+  failure -> nothing published, ERROR. Unknown verdict -> published with the
+  verdict logged by name and stored in `garuda_artifact_privacy`. Re-entry
+  starts from nothing. Never raises. In production today (#G pending) both
+  processes log the skip line; no consumer reads the store until S3, which
+  must require store AND privacy.
+diff:
+  files: 6
+  net_lines: 700 # gate-6346 condition 2: the first draft said 364, the three code files alone; the six files this key counts add 700 (measured: `git diff origin/main...HEAD --stat` at fc0cecbe64)
+pii_scan: clean
+pii_scan_note: >-
+  Wiring and tests; fixture credentials are literal sentinels the tests
+  assert never reach a log; no bucket, no network, no client data.
+receipts:
+  - probe: A1-A7
+    claim: >-
+      The new wiring suite, the readiness guard + api/rag parity suite and
+      the garuda_artifacts suite (with C1) pass together, no network.
+    cmd: >-
+      cd apps/backend-rag && PYTHONPATH=. .venv/bin/python -m pytest
+      backend/tests/setup/test_service_initializer_garuda_artifacts.py
+      backend/tests/setup/test_api_process_wires_the_state_its_routers_read.py
+      backend/tests/services/garuda_artifacts/ -p no:cacheprovider
+      -- covering the brief's probes: TestArtifactStoreWiring::test_env_absent_leaves_the_attribute_absent_and_names_the_variables,
+      ::test_a_present_value_is_never_logged_when_another_is_missing;
+      ::test_a_proven_public_bucket_refuses_and_stays_absent, ::test_a_probe_that_fails_for_any_other_reason_also_unwires,
+      ::test_an_unknown_verdict_wires_and_is_logged_by_name, ::test_a_verified_private_bucket_wires_and_says_so;
+      ::test_the_store_is_never_visible_before_the_probe_answers;
+      TestBothEntryPointsProbe::test_both_entry_points_await_the_probe_right_after_the_wiring, ::test_the_probe_never_raises, ::test_rewiring_starts_from_nothing;
+      ::test_sdk_exception_messages_are_never_logged;
+      TestKeyRedaction::test_digest_mismatch_log_record_carries_key_ref_not_the_key;
+      backend/tests/setup/test_api_process_wires_the_state_its_routers_read.py
+    result: "99 passed, 125 skipped in 1.43s (13 wiring cases incl. the parametrized guard on both entry points; 76 garuda_artifacts; readiness guard green)"
+    exit: 0
+    ts: "2026-09-12T16:14:30Z"
+    seat: claude-opus-5 (build)
+  - probe: A7
+    claim: The whole setup suite passes with the block in place (first measure, before the O1/O2 cures; the cures touch only 5.9 and its tests).
+    cmd: cd apps/backend-rag && PYTHONPATH=. .venv/bin/python -m pytest backend/tests/setup/test_service_initializer_garuda_artifacts.py backend/tests/services/garuda_artifacts/ backend/tests/setup/test_api_process_wires_the_state_its_routers_read.py backend/tests/unit/app/setup/ -p no:cacheprovider
+    result: "281 passed, 125 skipped in 94.50s"
+    exit: 0
+    ts: "2026-09-12T16:01:30Z"
+    seat: claude-opus-5 (build)
+  - probe: floor
+    claim: The deterministic floor recomputed from this PR's changed-file set is 1; gear 2 declared above it (security-bearing).
+    cmd: python3 scripts/evidence_pack_lint.py --print-floor --changed-files-file cf.txt --numstat-file ns.txt
+    result: "1 (--print-floor-source: none)"
+    exit: 0
+    ts: "2026-09-12T16:03:40Z"
+    seat: claude-opus-5 (build)
+  - probe: bites
+    claim: >-
+      Bites, observed on the promoted commit and not inferred from "PR
+      merged": on BOTH processes the wiring block refuses fail-closed naming
+      the three variables and publishes nothing. Method deviation, declared:
+      `fly logs --no-tail` (also per `--machine`) returns the last 100 lines
+      only, and at 18:04Z the startup lines (api 18:03:38Z, rag 18:00:55Z)
+      were already out of the buffer -- grep returned 0 on both. No machine
+      was restarted to regenerate them (a production action, not this
+      seat's to take). The equivalent measure: the same code of the promoted
+      image executed inside each container with the container's real env --
+      `initialize_garuda_services(FastAPI(), None)` then
+      `probe_garuda_artifact_bucket(app)`, logging captured in memory,
+      script passed base64 and removed. Same code, same environment, same
+      image; not a replay of the boot log.
+    cmd: >-
+      fly ssh console -a nuzantara-rag --machine <7817d92c4117d8 | 1781e5eda03438> -C
+      "sh -c 'cd /app && echo <base64> | base64 -d > /tmp/prove_s2b.py &&
+      python3 /tmp/prove_s2b.py; rm -f /tmp/prove_s2b.py'"
+    result: >-
+      Identical on api (18:06:05Z) and rag (18:06:12Z): "INFO zantara.backend
+      ℹ️ GARUDA VOA artifact store wiring skipped (fail closed, no consumer
+      yet): garuda artifacts store: missing env var(s) GARUDA_ARTIFACTS_BUCKET,
+      GARUDA_ARTIFACTS_ACCESS_KEY_ID, GARUDA_ARTIFACTS_SECRET_ACCESS_KEY --
+      refusing to fall back to the public bucket's credentials" then
+      "store_published False pending False privacy False". No "wired", no
+      "constructed", no value. PR #6346 merged d2bc21ee34 at 17:51:32Z;
+      /health build_sha 479c6fb45c (contains d2bc21ee34 by `git merge-base
+      --is-ancestor`) served from 18:04Z; machines at v4439; deploy run
+      34709475126.
+    exit: 0
+    ts: "2026-09-12T18:06:05Z"
+    seat: claude-opus-5 (build)
+guilt_mutations:
+  - target: tigris_store.py:482 — the digest-mismatch log (gate-6334 mutation (d), C1)
+    mutation: "`_key_ref(key)` -> `key` in the `extra` of the digest-mismatch log."
+    observed: "RED: 1 failed, 75 passed — test_digest_mismatch_log_record_carries_key_ref_not_the_key (the sentinel key compared against its digest). Restored, md5 be3a5f10250bda4b9d6ffec3b39d7a37."
+    ts: "2026-09-12T16:02:51Z"
+  - target: service_initializer.py — require_verified
+    mutation: "`assert_private(require_verified=False)` -> `True`."
+    observed: "RED: 1 failed, 6 passed — the probe must pass require_verified=False, once. Restored, md5 identical."
+    ts: "2026-09-12T16:02:56Z"
+  - target: service_initializer.py — the probe re-raises instead of returning
+    mutation: "`return` after the ERROR log -> `raise`."
+    observed: "RED: 4 failed, 18 passed — proven-public, other-failure, sdk-messages and test_the_probe_never_raises all red; startup would not boot. Restored, md5 identical."
+    ts: "2026-09-12T16:09:27Z"
+  - target: service_initializer.py — the light entry point forgets the probe
+    mutation: "`await probe_garuda_artifact_bucket(app)` -> `pass` in initialize_services_light."
+    observed: "RED: 2 failed, 20 passed — the AST guard for initialize_services_light AND the pre-existing api/rag state-key parity test. Restored, md5 identical."
+    ts: "2026-09-12T16:09:13Z"
+  - target: service_initializer.py — publish before the probe
+    mutation: "Assign `garuda_artifact_store` right after construction, before the probe."
+    observed: "RED: 4 failed, 18 passed — never-visible-before-probe, proven-public, sdk-messages, other-failure. Restored, md5 identical."
+    ts: "2026-09-12T16:09:28Z"
+  - target: service_initializer.py — SDK message logged verbatim
+    mutation: "`reason = str(e) if isinstance(e, GarudaArtifactsStoreUnavailable) else type(e).__name__` -> `reason = str(e)`."
+    observed: "RED: 1 failed, 21 passed — the sentinel reached caplog.text. Restored, md5 identical."
+    ts: "2026-09-12T16:09:15Z"
+  - target: service_initializer.py — re-entry keeps the old store
+    mutation: "The three `delattr` at the top of 5.9 -> `pass`."
+    observed: "RED: 1 failed, 12 passed — test_rewiring_starts_from_nothing. Restored, md5 identical."
+    ts: "2026-09-12T16:14:42Z"
+  - target: service_initializer.py — probe(FastAPI()) in the light entry point
+    mutation: "`probe_garuda_artifact_bucket(app)` -> `probe_garuda_artifact_bucket(FastAPI())`."
+    observed: "RED: 1 failed, 12 passed — the guard requires the entry point's own `app` as first argument. Restored, md5 identical."
+    ts: "2026-09-12T16:14:43Z"
+dissent:
+  - seat: codex-gpt-5.6-sol
+    objection: "(O1) Unprobed store published; SDK messages logged verbatim; except-name unbound on import failure. (O2) Re-entry not fail-closed; AST guard matched names only."
+    status: CONFIRMED
+    disposition: >-
+      All five accepted and cured in the same branch (2128dae829, then
+      45fa962d8e), each with a test and a measured mutation; O3 closed each
+      with file:line. None dispositioned away.
+  - seat: claude-opus-5
+    objection: >-
+      (gate-6346, PASS-WITH-CONDITIONS on 5c7936ef58, re-posted on fc0cecbe64)
+      Condition 1: Backend Shard 2 red, inherited from main (compliance
+      test_obligations_register.py after #6333 + af41675695), not this PR's.
+      Condition 2: `diff.net_lines: 364` while the six files measure +700.
+      Condition 3: the Bites line in `fly logs` after the deploy, as a
+      receipt.
+    status: CONFIRMED
+    disposition: >-
+      1: no action by this lane; main was cured by #6351 (41be9f3b58) and
+      this PR was refreshed onto it with a merge commit (fc0cecbe64, six
+      files at zero bytes of delta), re-armed, PWC re-posted. 2: corrected
+      above, with the measurement. 3: the `bites` receipt above -- with the
+      method deviation (100-line log buffer) declared rather than a restart
+      taken.
+  - seat: claude-opus-5
+    objection: "(design, own) The first design awaited the probe inside initialize_garuda_services."
+    status: CONFIRMED
+    disposition: >-
+      The readiness guard went red; the probe moved out to its own function
+      awaited right after the wiring in both entry points, and decision #44
+      turned that into a pinned guard on both. Declared limit: the probe runs
+      after readiness may be declared — it delays publication, not boot, and
+      no reader exists before S3.
+spend:
+  wall_clock_hours: 1
+  adversarial_rounds: 3
+appetite_exceeded: ""

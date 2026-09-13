@@ -1,0 +1,18 @@
+--- a/apps/backend-rag/backend/db/migrations_v2/304_garuda_documents.sql
++++ b/apps/backend-rag/backend/db/migrations_v2/304_garuda_documents.sql
+@@ -263,6 +263,7 @@
+ -- than deferred to a follow-up migration the way 285/301 were split).
+ -- ----------------------------------------------------------------------------
+ 
++RESET ROLE;
+ DO $garuda_304_owner_transfer$
+ DECLARE
+     ledger_owner constant text := 'visa_ledger_owner';
+@@ -302,6 +303,7 @@
+     END IF;
+ END;
+ $garuda_304_owner_transfer$;
++SET ROLE backend_rag_v2;
+ 
+ -- Rows are immutable once inserted (no mutable field like magic-link's
+ -- `used_at`); deletion is only permitted once retention has actually

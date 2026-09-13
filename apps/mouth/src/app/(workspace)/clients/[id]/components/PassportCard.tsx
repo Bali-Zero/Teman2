@@ -14,6 +14,7 @@ import { toast } from "sonner";
 import { logger } from "@/lib/logger";
 import { api } from "@/lib/api";
 import { fileToBase64 } from "@/lib/utils";
+import { useOcrPolling } from "@/hooks/useOcrPolling";
 import type { ClientProfile, ClientDocument } from "@/lib/api/crm/crm.types";
 import {
   extractDriveFileId,
@@ -38,52 +39,14 @@ export function PassportCard({
   const [isExtracting, setIsExtracting] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
-  const [ocrPolling, setOcrPolling] = useState(false);
   const [ocrError, setOcrError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const ocrTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const ocrAbortedRef = useRef(false);
-
-  // Cleanup OCR polling timers when component unmounts
-  useEffect(() => {
-    ocrAbortedRef.current = false;
-    return () => {
-      ocrAbortedRef.current = true;
-      if (ocrTimerRef.current) clearTimeout(ocrTimerRef.current);
-    };
-  }, []);
 
   // Poll OCR status after upload/extract
-  const pollOcrStatus = useCallback(async () => {
-    setOcrPolling(true);
-    let attempts = 0;
-    const maxAttempts = 10; // 3s * 10 = 30s max
-    const poll = async () => {
-      if (ocrAbortedRef.current) return;
-      try {
-        const status = (await api.request(
-          `/api/crm/clients/${clientId}/ocr-status`,
-        )) as {
-          pending_ocr: number;
-        };
-        if (status.pending_ocr === 0 || attempts >= maxAttempts) {
-          if (!ocrAbortedRef.current) {
-            setOcrPolling(false);
-            await onRefresh();
-          }
-          return;
-        }
-        attempts++;
-        ocrTimerRef.current = setTimeout(poll, 3000);
-      } catch {
-        if (!ocrAbortedRef.current) {
-          setOcrPolling(false);
-          await onRefresh();
-        }
-      }
-    };
-    ocrTimerRef.current = setTimeout(poll, 2000); // Initial delay for OCR to start
-  }, [clientId, onRefresh]);
+  const { ocrPolling, pollOcrStatus } = useOcrPolling({
+    clientId,
+    onDone: onRefresh,
+  });
 
   // Find passport document from documents — only the client's own passport (no family members)
   const passportDoc = documents.find(

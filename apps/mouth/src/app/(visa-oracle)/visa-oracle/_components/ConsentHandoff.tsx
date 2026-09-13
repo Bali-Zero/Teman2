@@ -61,8 +61,9 @@ const COPY = {
       "This consent receipt stays in this browser session for up to 2 hours. No CRM record is created by this screen.",
     open: "Open WhatsApp",
     unavailable:
-      "WhatsApp handoff is not configured. You can still print or save this result.",
-    consultationUnavailable: "WhatsApp contact is not configured.",
+      "WhatsApp is not available from this page right now. You can print or save this result and bring it to a Bali Zero consultant.",
+    consultationUnavailable:
+      "WhatsApp is not available from this page right now. You can finish the interview and print or save your result at the end.",
     qr: "QR code for the consented WhatsApp handoff",
     message: "Hello Bali Zero. I consent to discuss my Visa Oracle result.",
     consultationMessage:
@@ -85,8 +86,9 @@ const COPY = {
       "Tanda terima persetujuan ini tersimpan di sesi browser ini hingga 2 jam. Layar ini tidak membuat catatan CRM.",
     open: "Buka WhatsApp",
     unavailable:
-      "Pengalihan WhatsApp belum dikonfigurasi. Anda tetap dapat mencetak atau menyimpan hasil ini.",
-    consultationUnavailable: "Kontak WhatsApp belum dikonfigurasi.",
+      "WhatsApp belum tersedia dari halaman ini saat ini. Anda dapat mencetak atau menyimpan hasil ini dan membawanya ke konsultan Bali Zero.",
+    consultationUnavailable:
+      "WhatsApp belum tersedia dari halaman ini saat ini. Anda dapat menyelesaikan wawancara lalu mencetak atau menyimpan hasil Anda di akhir.",
     qr: "Kode QR untuk pengalihan WhatsApp yang telah disetujui",
     message: "Halo Bali Zero. Saya setuju membahas hasil Visa Oracle saya.",
     consultationMessage:
@@ -252,6 +254,23 @@ export function ConsentHandoff({
       if (timer !== null) clearTimeout(timer);
     };
   }, [activeReceipt, now, scope, storage]);
+
+  /**
+   * PR-O4 / Δ2: the visitor now reads a neutral sentence instead of
+   * "WhatsApp handoff is not configured", so the only remaining witness that
+   * `NEXT_PUBLIC_VISA_ORACLE_WHATSAPP_NUMBER` never reached this component is
+   * this internal event. Hiding the defect from the reader without reporting
+   * it to us would turn a visible misconfiguration into a silent one (scar
+   * family #2, Esiste≠Armato). Carries the terminal state only — the same
+   * closed, PII-free boundary as every other event here.
+   */
+  useEffect(() => {
+    if (number !== null) return;
+    emitVisaOracleTelemetry({
+      event: "visa_oracle_v2_handoff_unconfigured",
+      ...(scope.context === "ASSESSMENT" ? { state: scope.state } : {}),
+    });
+  }, [number, scope]);
 
   const message = useMemo(
     () => buildMinimalMessage(language, scope),

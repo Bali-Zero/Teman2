@@ -1,11 +1,18 @@
 #!/usr/bin/env bash
-# runtime-reconcile.sh — anti-W81 reconciliation watchdog (SPEC runtime/dev split, P0).
+# runtime-reconcile.sh — anti-W81 reconciliation watchdog (ONE TREE, 2026-09-10).
 #
-# THE SCAR IT KILLS: ~/nuzantara-deploy (the stable runtime checkout the launchd
-# organs are meant to run from) VANISHED once and nobody noticed for weeks (W81). The
-# deploy-puller kept exiting 1 in silence; 20 organs ran at nothing. This watchdog makes
-# the absence LOUD — the reconciliation-report pattern of superscar #2 (built-but-vanished
-# is suspended, not alive).
+# THE SCAR IT KILLS: the checkout the launchd organs run from VANISHED once and nobody
+# noticed for weeks (W81). The puller kept exiting 1 in silence; 20 organs ran at nothing.
+# This watchdog makes the absence LOUD — the reconciliation-report pattern of superscar #2
+# (built-but-vanished is suspended, not alive).
+#
+# ONE TREE (Zero's ruling, 2026-09-10): the split between a frozen runtime checkout
+# (~/nuzantara-deploy) and the dev checkout (~/nuzantara) is OVER. The 18 LaunchAgents that
+# ran from the deploy tree were repointed at ~/nuzantara — which the 15-min puller
+# com.nuzantara.git-pull-main.15min keeps at origin/main — and the deploy tree was renamed
+# to ~/nuzantara-deploy.retired-20260910. So the invariants moved with it: this asserts the
+# MAIN checkout is present, sane and freshly pulled, and that the retired tree has NOT come
+# back (a resurrected second tree is the regression, not the cure).
 #
 # It is a SIGNALLER, not an actuator: it never restarts/moves/heals anything. It asserts
 # invariants and pages the operator. Lives OUTSIDE both checkouts by intent (so a vanished
@@ -18,12 +25,13 @@
 # Exit: 0 = all invariants hold (or disabled). 1 = a P0/invariant breach was found+alerted.
 set -uo pipefail
 
-DEPLOY_DIR="${WR2_DEPLOY_DIR:-${HOME}/nuzantara-deploy}"
-SOURCE_REPO="${WR2_SOURCE_REPO:-${HOME}/nuzantara}"
-DEPLOY_BRANCH="${WR2_DEPLOY_BRANCH:-deploy/main}"
-MAX_PULL_AGE_SEC="${RUNTIME_RECONCILE_MAX_PULL_AGE_SEC:-7200}"   # deploy must have pulled within 2h
+RUNTIME_DIR="${RUNTIME_RECONCILE_DIR:-${HOME}/nuzantara}"        # the ONE tree the organs run from
+RETIRED_DEPLOY_DIR="${RUNTIME_RECONCILE_RETIRED_DIR:-${HOME}/nuzantara-deploy}"
+RUNTIME_BRANCH="${RUNTIME_RECONCILE_BRANCH:-main}"
+MAX_PULL_AGE_SEC="${RUNTIME_RECONCILE_MAX_PULL_AGE_SEC:-7200}"   # main must have pulled within 2h
 STRICT="${RUNTIME_RECONCILE_STRICT:-0}"                          # P0 default 0 = warn, don't page
-PULL_STATE="${HOME}/.agent/decisions/state/wr2_deploy_pull.state"
+PULL_HEARTBEAT="${RUNTIME_RECONCILE_PULL_HEARTBEAT:-${HOME}/.organism/last_seen/pro.git_pull_main.json}"
+LAUNCHAGENTS_DIR="${RUNTIME_RECONCILE_LAUNCHAGENTS_DIR:-${HOME}/Library/LaunchAgents}"
 LOG="${HOME}/logs/runtime-reconcile.log"
 STATE="${HOME}/.organism/last_seen/pro.runtime_reconcile.json"
 ALERT_COOLDOWN_SEC="${RUNTIME_RECONCILE_ALERT_COOLDOWN_SEC:-21600}"
@@ -100,51 +108,115 @@ save_lesson() {
 breaches=0
 note() { breaches=$((breaches+1)); log "INVARIANT BREACH: $*"; }
 
-# --- Invariant 1: the deploy runtime checkout must exist (the W81 check) ---
-deploy_exists=true
-if [[ ! -e "$DEPLOY_DIR/.git" ]]; then
-  deploy_exists=false
-  note "deploy runtime checkout missing: $DEPLOY_DIR (W81 vector)"
+# --- Invariant 1: the ONE runtime checkout must exist (the W81 check) ---
+runtime_exists=true
+if [[ ! -e "$RUNTIME_DIR/.git" ]]; then
+  runtime_exists=false
+  note "runtime checkout missing: $RUNTIME_DIR (W81 vector)"
 fi
 
-# --- Invariant 2: deploy is a CLONE, not a worktree sharing the dirty main's .git ---
-# (council decision Q1: full clone, never worktree — isolates the runtime from the main's
-#  sibling-race / .git churn, scar W63/#5). A clone has .git as a DIR; a worktree as a FILE.
-# 2026-06-27: the clone IS feasible (HEAD tree is only ~0.9GB; the 45G repo was venv +
-#  node_modules + .worktrees which a clone does NOT materialize). Done — so a worktree here
-#  is now a real regression, not the disk-bound compromise it briefly was.
-if $deploy_exists; then
-  if [[ -f "$DEPLOY_DIR/.git" ]]; then
-    note "deploy checkout is a git WORKTREE (.git is a file) — must be a full clone (scar W63/#5)"
+# --- Invariant 2: it is a CLONE, not a worktree borrowing another tree's .git ---
+# A clone has .git as a DIR; a linked worktree as a FILE. The organs must not run from a
+# worktree: it inherits the owning repo's .git churn and the sibling-race of superscar #5.
+if $runtime_exists && [[ -f "$RUNTIME_DIR/.git" ]]; then
+  note "runtime checkout is a git WORKTREE (.git is a file) — must be a full checkout (scar W63/#5)"
+fi
+
+# --- Invariant 3: on the expected branch ---
+if $runtime_exists; then
+  cur_branch="$(git -C "$RUNTIME_DIR" rev-parse --abbrev-ref HEAD 2>/dev/null || echo '?')"
+  if [[ "$cur_branch" != "$RUNTIME_BRANCH" ]]; then
+    note "runtime on unexpected branch '$cur_branch' (want '$RUNTIME_BRANCH')"
   fi
 fi
 
-# --- Invariant 3: deploy on the expected branch ---
-if $deploy_exists; then
-  cur_branch="$(git -C "$DEPLOY_DIR" rev-parse --abbrev-ref HEAD 2>/dev/null || echo '?')"
-  if [[ "$cur_branch" != "$DEPLOY_BRANCH" && "$cur_branch" != "main" ]]; then
-    note "deploy on unexpected branch '$cur_branch' (want '$DEPLOY_BRANCH' or 'main')"
+# --- Invariant 4: pulled recently (puller not silently dead, the other half of W81) ---
+# The AUTHORITATIVE signal is the checkout's own .git/FETCH_HEAD mtime, not the puller's
+# heartbeat. Cross-family review (codex-gpt-5.6-sol, 2026-09-10) killed the heartbeat-only
+# version: the wrapper writes status=ok with note "skipped: previous run alive" whenever its
+# pidfile is held, so a puller hung forever on one invocation goes on emitting FRESH ok
+# heartbeats while nothing is ever fetched — the exact silent-death shape of W81, rebuilt.
+# FETCH_HEAD is harder to forge that way: git rewrites it only on a fetch that actually
+# happened. Not IMPOSSIBLE to forge — cross-family review (kimi-code/k3) noted that a human
+# running `git fetch` by hand in this checkout also refreshes it and would mask a dead puller
+# for as long as they kept doing it. That is a narrower hole than a wrapper that refreshes it
+# on its own skip path every 15 minutes unattended, which is what this replaced.
+# The heartbeat is still read, for the one thing it is authoritative about — its own errors.
+if $runtime_exists; then
+  fetch_head="$RUNTIME_DIR/.git/FETCH_HEAD"
+  if [[ ! -f "$fetch_head" ]]; then
+    # `git clone` writes no FETCH_HEAD (kimi-code/k3): a disaster-recovery re-clone is
+    # CLONED-NOT-YET-PULLED, not "never fetched", and must not page for the first tick.
+    # Fall back to the clone's own age — .git/HEAD is written at clone time.
+    clone_mtime="$(stat -f %m "$RUNTIME_DIR/.git/HEAD" 2>/dev/null || echo 0)"
+    clone_age=$(( $(date +%s) - clone_mtime ))
+    if (( clone_age > MAX_PULL_AGE_SEC )); then
+      note "no FETCH_HEAD and the checkout is ${clone_age}s old (> ${MAX_PULL_AGE_SEC}s) — cloned but never pulled since"
+    else
+      log "no FETCH_HEAD yet but the checkout is only ${clone_age}s old — cloned, not yet pulled; not a breach"
+    fi
+  else
+    fetch_mtime="$(stat -f %m "$fetch_head" 2>/dev/null || echo 0)"
+    age=$(( $(date +%s) - fetch_mtime ))
+    if (( age > MAX_PULL_AGE_SEC )); then
+      note "runtime pull is stale: ${age}s since the last real fetch (> ${MAX_PULL_AGE_SEC}s) — puller may be dead or hung"
+    fi
+  fi
+  if [[ -f "$PULL_HEARTBEAT" ]] && grep -q '"status": *"error"' "$PULL_HEARTBEAT" 2>/dev/null; then
+    note "puller heartbeat reports status=error — see ~/logs/pro-git_pull_main/run.log"
   fi
 fi
 
-# --- Invariant 4: deploy pulled recently (puller not silently dead, the other half of W81) ---
-if $deploy_exists && [[ -f "$PULL_STATE" ]]; then
-  pull_mtime="$(stat -f %m "$PULL_STATE" 2>/dev/null || echo 0)"
-  age=$(( $(date +%s) - pull_mtime ))
-  if (( age > MAX_PULL_AGE_SEC )); then
-    note "deploy pull is stale: ${age}s since last pull-state (> ${MAX_PULL_AGE_SEC}s) — puller may be dead"
+# --- Invariant 5 (ONE TREE regression guard): the retired deploy tree must stay retired ---
+# Two trees is the condition this ruling removed. If one reappears, or a LaunchAgent starts
+# naming it again, the fleet has silently forked back into runtime-vs-dev — which is exactly
+# the state where "merged" stopped meaning "live" for nine days.
+if [[ -e "$RETIRED_DEPLOY_DIR" ]]; then
+  note "retired deploy checkout is BACK at $RETIRED_DEPLOY_DIR — one-tree ruling 2026-09-10 breached"
+fi
+if [[ -d "$LAUNCHAGENTS_DIR" ]]; then
+  # Judge the ENTITY, not the substring (superscar #3). A line-based grep for
+  # `<string>...nuzantara-deploy` fails in BOTH directions, and cross-family review
+  # (kimi-code/k3, 2026-09-10) demonstrated both on this fleet: it MISSES a value split
+  # across lines — com.nuzantara.verify-the-verifiers.plist already ships a multi-line
+  # <string> — and it FIRES on a StandardOutPath or an XML comment, which would page the
+  # operator every six hours forever for something that is not an execution at all.
+  # So: parse each plist and read only the keys that say what launchd EXECUTES.
+  offenders="$(/usr/bin/python3 - "$LAUNCHAGENTS_DIR" "$RETIRED_DEPLOY_DIR" <<'PYEOF' 2>/dev/null || echo 0
+import pathlib, plistlib, sys
+d, retired = pathlib.Path(sys.argv[1]), sys.argv[2]
+EXEC_KEYS = ("Program", "ProgramArguments", "WorkingDirectory", "EnvironmentVariables")
+def values(v):
+    if isinstance(v, str): yield v
+    elif isinstance(v, list):
+        for x in v: yield from values(x)
+    elif isinstance(v, dict):
+        for x in v.values(): yield from values(x)
+bad = 0
+for f in sorted(d.glob("*.plist")):
+    try:
+        pl = plistlib.loads(f.read_bytes())
+    except Exception:
+        continue
+    if any(retired in s for k in EXEC_KEYS for s in values(pl.get(k, ""))):
+        bad += 1
+print(bad)
+PYEOF
+)"
+  if [[ "${offenders:-0}" != "0" ]]; then
+    note "$offenders LaunchAgent plist(s) still EXECUTE from $RETIRED_DEPLOY_DIR — run the launchagent installers"
   fi
 fi
 
 # --- write heartbeat (organism A2-observable) ---
 ts="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 status="ok"; [[ $breaches -gt 0 ]] && status="degraded"
-printf '{"ts":"%s","status":"%s","note":"breaches=%d deploy_exists=%s strict=%s"}\n' \
-  "$ts" "$status" "$breaches" "$deploy_exists" "$STRICT" > "$STATE" 2>/dev/null || true
+printf '{"ts":"%s","status":"%s","note":"breaches=%d runtime_exists=%s strict=%s"}\n' \
+  "$ts" "$status" "$breaches" "$runtime_exists" "$STRICT" > "$STATE" 2>/dev/null || true
 
 if (( breaches > 0 )); then
   # A3: a confirmed breach is a verified organism failure → learn it (cooldown-deduped).
-  save_lesson "runtime-root breach detected (deploy_exists=${deploy_exists}, breaches=${breaches}). W81 vector recurred — check ~/nuzantara-deploy + the deploy-puller before trusting any merge reached the live organs."
+  save_lesson "runtime-root breach detected (runtime_exists=${runtime_exists}, breaches=${breaches}). W81 vector recurred — check ~/nuzantara + the 15-min puller before trusting any merge reached the live organs."
   if [[ "$STRICT" == "1" ]]; then
     alert "$breaches invariant breach(es) — see $LOG"
     exit 1
@@ -154,5 +226,5 @@ if (( breaches > 0 )); then
   fi
 fi
 
-log "all runtime invariants hold (deploy_exists=$deploy_exists)"
+log "all runtime invariants hold (runtime_exists=$runtime_exists, one tree)"
 exit 0

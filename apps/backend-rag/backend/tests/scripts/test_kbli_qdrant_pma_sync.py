@@ -689,6 +689,48 @@ def test_a_truncated_legacy_gap_with_unsafe_editorial_is_refused():
     assert rewrite_pma_prose(rec, truncated) is None
 
 
+def test_a_cap_that_falls_after_the_whole_reviewed_block_is_accepted():
+    """The generator cap used to be accepted only INSIDE the reviewed block. A
+    record whose per_skala rows grow (21022 on the 2026-09-11 L2 re-ingestion:
+    16,606 -> 20,013 chars) pushes the cap past the block, leaving the exact
+    reviewed lines plus the blank separator before the marker — a complete,
+    unaltered certified section that the repair refused as unshaped."""
+    from backend.scripts.kbli_qdrant_pma_sync import (
+        _INTEL_HEADING,
+        _TRUNCATION_MARKER,
+        _truncated_section_matches_reviewed_prefix,
+    )
+
+    reviewed = [_INTEL_HEADING, "- reviewed line one", "- reviewed line two"]
+    whole_block_then_blank = "\n".join(
+        ["# head", *reviewed, "", _TRUNCATION_MARKER]
+    )
+    assert _truncated_section_matches_reviewed_prefix(
+        whole_block_then_blank, _INTEL_HEADING, reviewed
+    )
+    # the pre-existing shape — the cap inside the block — still passes
+    inside = "\n".join(["# head", *reviewed[:2], _TRUNCATION_MARKER])
+    assert _truncated_section_matches_reviewed_prefix(inside, _INTEL_HEADING, reviewed)
+
+
+def test_unreviewed_content_after_the_whole_block_is_still_refused():
+    """Innocence for the rule above: a non-blank line after the reviewed block
+    is content nobody certified, and a diverging prefix is still a divergence."""
+    from backend.scripts.kbli_qdrant_pma_sync import (
+        _INTEL_HEADING,
+        _TRUNCATION_MARKER,
+        _truncated_section_matches_reviewed_prefix,
+    )
+
+    reviewed = [_INTEL_HEADING, "- reviewed line one", "- reviewed line two"]
+    extra = "\n".join(["# head", *reviewed, "- a line nobody reviewed", _TRUNCATION_MARKER])
+    assert not _truncated_section_matches_reviewed_prefix(extra, _INTEL_HEADING, reviewed)
+    diverging = "\n".join(
+        ["# head", _INTEL_HEADING, "- reviewed line one", "- CHANGED", "", _TRUNCATION_MARKER]
+    )
+    assert not _truncated_section_matches_reviewed_prefix(diverging, _INTEL_HEADING, reviewed)
+
+
 def test_a_point_whose_blob_already_tells_the_truth_is_not_rewritten():
     """Innocence: the repair must be a no-op on a truthful blob, or every run
     would rewrite the whole collection and the diff would stop meaning anything."""

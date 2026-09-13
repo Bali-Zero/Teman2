@@ -1,0 +1,110 @@
+task_id: visa-seq20-sign
+gear: 3
+l_level: L2
+gate_class: opus
+# Floor computed this run: `python3 scripts/evidence_pack_lint.py --print-floor
+# --print-floor-source --numstat-file <numstat> --changed-files-file <changed>`
+# returns `3` / `size`. The size is one file: rulepack-prod-020.signed.json is
+# 9,293 lines of GENERATED, signed artifact. That alone floors the PR at Gear 3
+# regardless of the authored footprint, which is 411 lines of new test, a
+# 112/89 re-pin of an existing census, and 41/2 across the secrets-triage pair.
+objective: >-
+  Land the SIGNED seq-20 production RulePack bundle
+  (`rulepack-prod-020.signed.json`) produced by the owner's offline Ed25519
+  ceremony on M5, and land the three gates that make it observable: a
+  signed-bundle test module that verifies the bytes with the repo's own
+  `verify_rule_pack` against the pinned production trust store, the
+  content-keyed secrets-triage rule that keeps that module's public-key and
+  digest literals out of the unaudited residue, and the re-pin of
+  `test_interview_walk_census.py` — which reads the HIGHEST SIGNED pack on
+  disk and therefore MOVES the moment this bundle lands. Signing seq-20 is
+  what turns the fold (PR #5854, merged) from a file into the pack the
+  funnel actually evaluates against.
+constraints:
+  - >-
+    NO ACTIVATION IN THIS PR. The bundle is a validly signed PRODUCTION
+    CANDIDATE; promoting it into the active sequence is `activate_pack.py`,
+    a separate Zero-only ceremony that needs a live Postgres DSN. This seat
+    ran neither `activate_pack.py` nor `validate_activation`, and passed
+    `--yes` to nothing.
+  - >-
+    NO SIGNING IN THIS SESSION EITHER. The signed artifact arrived in the
+    worktree already produced by the offline ceremony; this seat read no key
+    material, holds no private key, and only VERIFIES — against the pinned
+    PUBLIC key, with the repo's own code.
+  - >-
+    The census must be RE-PINNED to what seq-20 measures, never LOOSENED to
+    make a red test green. The 21 surviving dead ends are real and are PR-3's
+    mandate; every surviving allowlist row keeps an honest reason naming its
+    blocking fact and whether a source question exists, and the module's own
+    `test_guilt_*` suite must stay non-vacuous.
+  - >-
+    Every census number is MEASURED by running the evaluator against the
+    signed pack in this session, never carried over from the fold PR's
+    prediction and never guessed.
+acceptance:
+  - text: >-
+      A1: WHEN the committed `rulepack-prod-020.signed.json` is verified with
+      `bundle.verify_rule_pack` against the PINNED production trust store
+      (kid `prod-2026-07-1`), it SHALL verify with `unsigned_dev=False`, and
+      SHALL declare sequence 20, environment PRODUCTION, 109 rules, the
+      seq-19 chain anchor `bac5da8e…e6ea` and payload digest
+      `df02287b…1a4d` — read out of `verify_rule_pack`'s own return value,
+      never out of the signer's self-report.
+    probe: >-
+      backend/tests/services/visa_engine/test_seq20_signed_bundle.py
+  - text: >-
+      A2: WHERE the digest is recomputed INDEPENDENTLY of `verify_rule_pack`
+      — `hashlib.sha256(canonicalize_json(...))` straight off disk — the
+      signed payload and `rulepack-prod-020.source.json` SHALL both hash to
+      `df02287b…1a4d`, and their JCS-canonical bytes SHALL be equal. This is
+      what proves the artifact in version control is the artifact that was
+      signed.
+    probe: >-
+      backend/tests/services/visa_engine/test_seq20_signed_bundle.py
+  - text: >-
+      A3: FOR EACH tampering shape — a flipped base64url character of the
+      signature, a mutated payload field, a mutated rule, one seq-20 edit
+      reverted to its seq-19 value, and a WRONG but validly-shaped Ed25519
+      trust-store key — verification SHALL raise
+      `RulePackVerificationError`. Every mutation SHALL be applied to an
+      in-memory `copy.deepcopy`, and a final test SHALL re-read the committed
+      file from disk and re-verify it, proving the guilt tests mutated
+      nothing.
+    probe: >-
+      backend/tests/services/visa_engine/test_seq20_signed_bundle.py
+  - text: >-
+      A4: WHERE this fold's five edits are asserted against the SIGNED bytes,
+      the rule ids SHALL be IMPORTED from
+      `backend.scripts.visa_engine.fold_pack_seq20`, never retyped: a retyped
+      list drifts the moment the fold's own constants move. Specifically
+      `review.e33g.income-evidence` SHALL be ABSENT,
+      `hf.d2.indonesia-source-compensation` SHALL be present with
+      `effect.type == EXCLUDE` and reason code
+      `BUSINESS_LOCAL_COMPENSATION_NOT_ALLOWED`, the eight
+      `family.sponsor_status_code` SUPPORT rules SHALL carry
+      `on_unknown == NO_EFFECT`, and each of the four BRIDGING rules SHALL
+      carry exactly one `intent.requested_product_code` `known` premise.
+    probe: >-
+      backend/tests/services/visa_engine/test_seq20_signed_bundle.py
+  - text: >-
+      A5: WHEN the 43 real interview walks are replayed against the HIGHEST
+      SIGNED pack — which this PR moves from seq-19 to seq-20 — the census
+      SHALL be re-pinned to the MEASURED 21 NEEDS_INPUT / 22
+      SUPPORTED_CANDIDATES / 0 NO_SUPPORTED_PATH, with every stale allowlist
+      row DELETED and every moved blocking fact CORRECTED, and the module's
+      guilt tests SHALL stay non-vacuous — re-anchored onto walks that still
+      dead-end where the seq-19 anchors were cured by this very pack.
+    probe: >-
+      backend/tests/services/visa_engine/test_interview_walk_census.py
+  - text: >-
+      A6: WHEN `detect-secrets` scans the new test module, its two findings
+      (the pinned PUBLIC verification key and the seq-20 payload digest)
+      SHALL be auto-approved by a CONTENT-KEYED, end-anchored rule pinned to
+      the exact assignment AND the exact value, leaving ZERO unaudited
+      residue — and a credential typed onto any other line of that file SHALL
+      still reach human review.
+    probe: >-
+      scripts/tests/test_detect_secrets_auto_triage.py
+appetite:
+  wall_clock_hours: 3

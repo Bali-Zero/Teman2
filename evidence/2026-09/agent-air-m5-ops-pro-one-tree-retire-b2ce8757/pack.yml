@@ -1,0 +1,251 @@
+task_id: ops-pro-one-tree-retire
+gear: 3
+l_level: L1
+brief_ref: evidence/brief.yml
+plan_ref: >-
+  PR #6101 (agent/air-m5/ops/pro-one-tree-retire) — PARABELLUM lane 9, Pro one-tree retire.
+  Governing ruling: Zero, 2026-09-10, "seconda" — one tree on Pro.
+grader: claude-opus-5 (final on-disk gate, commissioned by the lane's Dux — NOT this session)
+lanes:
+  - lane: pro-one-tree-repoint
+    role: build
+    seat: >-
+      claude-opus-5 (conducting session on M5 — inventoried the 18 agents on Pro, repointed
+      and proved them group by group, authored the repo canon and this pack)
+  - lane: pro-one-tree-refute
+    role: review
+    seat: >-
+      claude-opus-5 (same session, round 1 self-review — delegation depth was exhausted and
+      the Agent tool refused a subagent, so round 1 was run in-session against a written
+      attack list rather than skipped. Declared as the weaker form it is.)
+  - lane: pro-one-tree-council
+    role: review
+    seat: >-
+      codex-gpt-5.6-sol (round 2, cross-family, handed the diff and the same attack list with
+      no brief — it found two BLOCKERS the Anthropic-seat round 1 had missed, both fixed here)
+  - lane: pro-one-tree-council-2
+    role: review
+    seat: kimi-code/k3 (round 2, cross-family, second independent read of the corrected diff)
+seat_diversity: satisfied
+seat_diversity_note: >-
+  One build lane (claude-opus-5) and three review lanes, two of them non-Anthropic:
+  codex-gpt-5.6-sol and kimi-code/k3. The diversity was not ceremony — it is what caught the
+  two blockers. Round 1, run by the same family as the build lane, checked the surfaces its
+  author thought to list and reported them clean; the cross-family round read the CALLEES
+  instead and found that the snapshot broke `dirname "$0"` resolution inside the payload and
+  that three runtime scripts still defaulted to the retired path internally.
+adversarial_rounds: 2
+council_run: council-journal.jsonl
+diff:
+  net_lines: >-
+    35 files, +602/-191 measured by `git diff --numstat $(git merge-base origin/main HEAD)..HEAD`.
+    16 plists, 4 installers, 2 wrappers, 4 runtime scripts, 1 declared-pairs note, 1 plist
+    deleted, 2 ledger rows, and the evidence directory (brief, pack, council journal and the
+    two council seats' verdicts).
+  behaviour_change: >-
+    Eighteen LaunchAgents change the directory they execute from. No agent gains or loses a
+    schedule, a KeepAlive, an environment variable other than a path, or a privilege. One
+    deleted plist (the deploy tree's own puller) was already disabled. runtime-reconcile
+    changes WHICH tree it asserts on and gains a regression guard; it can still only exit
+    non-zero under STRICT=1.
+receipts:
+  - claim: The deterministic gear floor for this diff is 3, path-sourced (infra/launchagents/** is hot zone)
+    cmd: git diff --name-only origin/main...HEAD > /tmp/ot.txt && python3 scripts/evidence_pack_lint.py --print-floor --changed-files-file /tmp/ot.txt
+    result: "3 (source: path)"
+    exit: 0
+    ts: 2026-09-10T12:45Z
+    seat: session (M5)
+  - claim: The frozen tree holds ZERO modifications to tracked files, so nothing needs merging back before it is retired
+    cmd: git -C /Users/nuzantara/nuzantara-deploy status --porcelain | grep -vc '^??'
+    result: 0 — all 18 dirty entries are untracked artifacts
+    exit: 0
+    ts: 2026-09-10T12:35Z
+    seat: session (M5 over ssh pro)
+  - claim: THE CENTRAL RECEIPT — the rewritten runtime-reconcile, run on Pro against the state at commit time, reports exactly the two breaches still open and passes every main-checkout invariant
+    cmd: scp scripts/runtime-reconcile.sh pro:/tmp/ && ssh pro 'RUNTIME_RECONCILE_STRICT=0 bash /tmp/runtime-reconcile-new.sh'
+    result: "rc=0; log: 'retired deploy checkout is BACK at /Users/nuzantara/nuzantara-deploy' + '1 LaunchAgent plist(s) still execute from nuzantara-deploy' — the invariants on ~/nuzantara (exists, clone, branch main, puller heartbeat fresh) all silent"
+    exit: 0
+    ts: 2026-09-10T20:38:48 WITA
+    seat: session (M5 over ssh pro)
+  - claim: The four KeepAlive daemons came back with a NEW pid AND fresh output of their own, not just a zero exit
+    cmd: launchctl print gui/$(id -u)/<label> plus a tail of each agent's own log
+    result: "intake-worker pid 50386 'intake worker Nuzantara:50386 started'; organism.supervisor pid 82308 with live PYTHONPATH=/Users/nuzantara/nuzantara/apps/organism and a cell_pulse_observed at 20:33; wa-meta-inbox pid 17263 'listening on http://127.0.0.1:7791'; merge-train tick 2026-09-10T12:30:31Z queue=11 exit=0"
+    exit: 0
+    ts: 2026-09-10T20:31-20:34 WITA
+    seat: session (M5 over ssh pro)
+  - claim: The repo canon really is what arms this — a live-only edit does not survive
+    cmd: tail of ~/logs/pro-healer/run.log plus launchctl print gui/$(id -u)/com.nuzantara.web-lead-funnel
+    result: "healer session 20:25:43-20:30:24 logged '1 home-fork refresh (web-lead-funnel.plist, cmp-clean)'; the in-memory job went back to /Users/nuzantara/nuzantara-deploy/scripts/web_lead_funnel_report_run.sh six minutes after the main-checkout path had been proven"
+    exit: 0
+    ts: 2026-09-10T20:30 WITA
+    seat: session (M5 over ssh pro)
+  - claim: THE HAZARD THE SNAPSHOT DEFENDED AGAINST DOES NOT EXIST — git replaces a worktree file by unlink+create, so a bash process already executing it keeps its fd on the old inode and runs the original to completion
+    cmd: "scratch git repo: commit v1 (echo A; sleep 3; echo B), commit v2 with entirely different and longer content, run `bash s.sh &`, then `git checkout HEAD -- s.sh` one second in, then wait"
+    result: "disk showed v2 mid-run; the running process still printed v1's last line; rc=0. So running the payload IN PLACE is safe and the snapshot was solving nothing while breaking $0 resolution."
+    exit: 0
+    ts: 2026-09-10T12:50Z
+    seat: session (M5)
+  - claim: The rewritten invariant 4 reads the checkout's own FETCH_HEAD and passes on a live Pro
+    cmd: ssh pro 'ls -l ~/nuzantara/.git/FETCH_HEAD; RUNTIME_RECONCILE_STRICT=0 bash /tmp/runtime-reconcile-new.sh'
+    result: "FETCH_HEAD mtime 20:52 (3 min old); rc=0; only the two expected one-tree breaches logged, invariants 1-4 silent"
+    exit: 0
+    ts: 2026-09-10T20:55:21 WITA
+    seat: session (M5 over ssh pro)
+  - claim: Every changed plist is still a valid plist and every changed shell file still parses
+    cmd: plutil -lint on each changed .plist; bash -n on each changed .sh
+    result: 16/16 plists OK, 9/9 shell files OK
+    exit: 0
+    ts: 2026-09-10T12:44Z
+    seat: session (M5)
+pii_scan: clean
+pii_scan_note: >-
+  This PR adds no client data. The one place client PII was in scope is the frozen tree's
+  untracked Nuzantara-PII-Quarantine (769 MB) and key/ (76 KB): they are NOT copied into the
+  backup directory and are NOT enumerated by filename anywhere. The retire is a rename, which
+  moves them intact with the tree; a second copy would be superscar #4, and a filename listing
+  would be an output-boundary breach on its own.
+dissent:
+  - seat: codex-gpt-5.6-sol (cross-family council, round 2, no brief)
+    objection: >-
+      BLOCKER. "Executing the temporary copy changes $0, so scripts/pro/pro-git-pull.sh:67
+      resolves SELF_DIR under /tmp; consequently the allowlist and Telegram gateway paths at
+      lines 83 and 103 disappear, disabling protected-file handling and alerts." The snapshot
+      added by round 1's own fix would have silently switched OFF the runtime-state allowlist
+      that stops the puller clobbering daemon-written files — the single protection the main
+      checkout has and the frozen one did not need.
+    status: CONFIRMED
+    resolution: >-
+      Snapshot removed entirely; the payload runs in place again. The removal is not a
+      retreat to the old risk: a scratch-repo measurement (receipt above) shows git replaces
+      a worktree file by unlink+create, so the running bash keeps its fd on the old inode and
+      cannot be handed a spliced file. The two-tree design was defending against a hazard
+      that git's own write strategy already prevents, which is why the cure could be deleted
+      rather than patched.
+  - seat: codex-gpt-5.6-sol (cross-family council, round 2, no brief)
+    objection: >-
+      BLOCKER. "scripts/cost_breaker_run.sh:24 and scripts/cost_ledger_export_run.sh:20 still
+      default internally to the retired checkout, so the repointed LaunchAgents immediately
+      fail." The plists were repointed and the scripts they call then pointed themselves back.
+    status: CONFIRMED
+    resolution: >-
+      Both fixed, plus a third the council's grep implied and this lane then found:
+      scripts/verify_connectome_run.sh:26. This is the finding that justifies the whole
+      cross-family round — cost-breaker had been PROVEN live from the main checkout at
+      20:27:49 with real output, and it only worked because the frozen tree still existed.
+      The proof was true and would have expired at the rename.
+  - seat: codex-gpt-5.6-sol (cross-family council, round 2, no brief)
+    objection: >-
+      "runtime-reconcile.sh:140 treats heartbeat freshness as pull freshness; a permanently
+      hung payload causes later ticks to emit fresh status=ok 'previous run alive' heartbeats,
+      hiding the dead puller." The new invariant 4 reproduced W81's silent-death shape.
+    status: CONFIRMED
+    resolution: >-
+      Invariant 4 now reads $RUNTIME_DIR/.git/FETCH_HEAD, which git rewrites only on a fetch
+      that actually happened and which a hung wrapper cannot forge. The heartbeat is still
+      read for the one thing it is authoritative about, its own status=error.
+  - seat: session (self-review, attack list item 5 — the surface most likely to be missed)
+    objection: >-
+      "You fixed the LaunchAgent surface and left a script surface broken." A repo-wide grep
+      outside infra/launchagents found infra/openclaw/wr2/wr2-script-wrapper.sh:132 setting
+      REPO_ROOT="${WR2_REPO_ROOT:-${HOME}/nuzantara-deploy}" — a HARD default with no fallback,
+      driving every WR2 cron script through that wrapper. The rename would have resolved all of
+      them to a path that does not exist.
+    status: CONFIRMED
+    resolution: >-
+      Fixed in this PR: the default is ~/nuzantara and the comment now says why the 2026-05-06
+      reason (branch-toggling sessions on the main checkout) no longer holds — agents run in
+      dedicated worktrees. The stale ~/nuzantara-deploy candidate in _wr2_gateway's loop was
+      dropped too; after the rename it could never match.
+  - seat: session (self-review, attack list item 1 — my own new code)
+    objection: >-
+      The mktemp snapshot leaks. rm -f "$SNAPSHOT" only runs after bash returns; if the wrapper
+      is killed between mktemp and that line, the temp file survives, and this runs every 15
+      minutes forever.
+    status: CONFIRMED
+    resolution: >-
+      The EXIT trap already owns cleanup, so it was given the file: SNAPSHOT="" is declared
+      BEFORE the trap (under set -u a trap that reads an unset variable fails) and the trap is
+      rm -f "$PIDFILE" ${SNAPSHOT:+"$SNAPSHOT"}. Verified the empty case does not break the trap.
+  - seat: kimi-code/k3 (cross-family council, round 2, no brief)
+    objection: >-
+      "Evasion and false positive both exist" in invariant 5. The line-based grep cannot cross
+      a newline, and this fleet ALREADY ships a multi-line <string> —
+      com.nuzantara.verify-the-verifiers.plist:18-21 — so the evasion is demonstrated, not
+      hypothetical. In the other direction the pattern matches any <string> carrying the
+      substring, so a StandardOutPath or a booted-out plist still sitting in the directory
+      pages every six hours forever under STRICT=1, and the remediation hint fixes none of
+      those shapes.
+    status: CONFIRMED
+    resolution: >-
+      The guard now judges the ENTITY, which is what superscar #3 asks for and what the
+      previous version only claimed to do: it parses each plist with plistlib and reads only
+      Program, ProgramArguments, WorkingDirectory and EnvironmentVariables — the keys that say
+      what launchd EXECUTES. Multi-line values and XML entities are decoded by the parser, and
+      a log path is no longer mistaken for an execution. Re-proved on Pro at 21:11:30 WITA: it
+      reports exactly 1 offender, the healer-reverted web-lead-funnel, and does not count the
+      four plists whose only mention is a historical comment.
+  - seat: kimi-code/k3 (cross-family council, round 2, no brief)
+    objection: >-
+      Two further defects in the same file. `git clone` writes no FETCH_HEAD, so a
+      disaster-recovery re-clone of ~/nuzantara breaches invariant 4 and pages until the first
+      puller tick — "never fetched" mislabels "cloned, not yet pulled". And the comment's claim
+      that FETCH_HEAD "cannot lie" is overclaimed: a human running `git fetch` by hand
+      refreshes it and masks a dead puller for as long as they keep doing it.
+    status: CONFIRMED
+    resolution: >-
+      A missing FETCH_HEAD now falls back to the clone's own age via .git/HEAD and logs
+      "cloned, not yet pulled" without a breach while it is younger than the staleness window.
+      The overclaim is corrected in place to say what is actually true — harder to forge, not
+      impossible — and names the manual-fetch hole as the narrower one it traded for.
+  - seat: kimi-code/k3 (cross-family council, round 2, no brief)
+    objection: >-
+      Contradictory canon shipped. The wrapper now declares the self-mod hazard void and
+      MEASURED, while the payload it execs still mandates "run from ~/nuzantara-deploy … a
+      puller must not live in the tree it rewrites (self-mod)" and still describes its
+      allowlist as read from the deploy checkout "rather than the TARGET being pulled" — under
+      one tree $SELF_DIR/../.. IS the target. Also: install_wr3_reflexion.sh and
+      cost_breaker_run.sh still tell the operator to wait for a deploy-puller sync that this
+      same diff deletes.
+    status: CONFIRMED
+    resolution: >-
+      Both headers in scripts/pro/pro-git-pull.sh rewritten (comment-only, to stay clear of
+      open PR #6098's logic change in the same file), and the stale puller instructions
+      corrected. The allowlist rollout-lag hole is now NAMED rather than silently inherited:
+      under one tree the pull that ships an allowlist change reads the pre-change allowlist for
+      exactly one tick, and self-heals on the next. That is the price of one tree and it
+      belongs in the header, not in a reviewer's memory.
+  - seat: session (self-review, attack list item 5 — findings deliberately NOT fixed)
+    objection: >-
+      Three more references to the frozen tree survive this PR and it should say so rather than
+      claim a clean sweep.
+    status: CONFIRMED
+    resolution: >-
+      Named, not fixed, with the reason for each. (a) tests/lint/test_wr2_deploy_pull.sh:57 sets
+      DEPLOY_DIR="$HOME/nuzantara-deploy" but exports a sandbox HOME first, so it is a fabricated
+      fixture path and the rename cannot touch it — checked rather than assumed. (b)
+      infra/claude-hooks/worktree_file_write_check.py:115 and worktree_isolation.py:976 carry a
+      regex protecting <base>/nuzantara-deploy as a repo root; after the rename it stops matching,
+      which is correct — a retired tree is not a live checkout to protect. (c)
+      docs/wr2/manual-assets/2026-06-13-june-deadlines/slides.json holds absolute hero_image_path
+      values into the tree; that is June asset data, already stale, and rewriting it is a
+      different concern.
+  - seat: session (self-review — the limit of this pack, stated rather than hidden)
+    objection: >-
+      The adversarial lane and the build lane are the same seat. Generator is grader here, which
+      is exactly what the doctrine forbids, and a self-review finds what its author thought to
+      look for.
+    status: CONFIRMED
+    resolution: >-
+      Not resolved, declared. The Agent tool refused a subagent with "Child delegation depth
+      reached", so the choice was a written attack list run in-session or no adversarial pass at
+      all. Two of the five surfaces on that list produced CONFIRMED findings that changed the
+      diff, so it was not ceremonial — but the FINAL gate is commissioned by this lane's Dux
+      from a seat outside the contribution chain, and that is where generator-is-not-grader is
+      actually enforced for this PR. A known blind spot it could not test: invariant 5's guard
+      matches nuzantara-deploy inside a <string> only when both sit on ONE line. Every plist on
+      Pro is written that way and plutil always emits it that way, but a hand-written plist with
+      a newline after the opening tag would evade the guard. Accepted, and recorded here so the
+      gate can weigh it.
+tokens: >-
+  Not separately metered — a single interactive session, no council convened, no grader
+  dispatched (the subagent was refused). The Dux's gate is billed to the Dux.

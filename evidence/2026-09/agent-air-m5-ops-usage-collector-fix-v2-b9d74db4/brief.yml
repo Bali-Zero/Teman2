@@ -1,0 +1,35 @@
+task_id: usage-collector-fix-v2
+gear: 2
+objective: >-
+  Land the seat usage collector repair (scripts/usage/seat_usage_collector.py) that was
+  built and accepted at fixture level on agent/air-m5/ops/sol-usage-collector but never
+  shipped as a PR. Real bug measured 2026-09-07: streaming Claude responses re-write the
+  same message with growing cumulative token snapshots, and the collector was either
+  summing every snapshot (double-counting) or taking the first (undercounting) —
+  852 reported output tokens vs 14,931 actual on a completed Sonnet builder transcript.
+  This PR carries the code as-is from the source branch, squashing five commits.
+
+  Gear 2 by SIZE, deterministically: net churn is 635 lines (196 net in the collector,
+  439 in the test file), over the 400-line non-hot-zone threshold.
+constraints:
+  - >-
+    This is a landing PR, not new design: the collector's fix logic is unchanged from
+    what was reviewed and accepted at fixture level on the source branch.
+  - >-
+    The collector is not yet armed as a live cron: scripts/usage/com.nuzantara.seat-usage.plist.template
+    is still marked "non armare finché seat_usage_collector.py non è testato sui log reali" —
+    this PR does not flip that switch, it only lands the tested code.
+  - >-
+    Guilt AND innocence fixtures both ship: the streaming-dedup regression test pins the
+    exact defect shape measured live, not a hypothetical.
+acceptance:
+  - text: >-
+      The collector reports the FINAL cumulative snapshot per (message_id, request_id)
+      group, summed across distinct groups — not the sum of all snapshots and not the
+      first snapshot.
+    probe: pytest scripts/usage/test_seat_usage_collector.py -k streaming_last_snapshot_wins -q
+  - text: >-
+      The full collector test suite passes, including the incomplete-identity dedup
+      policy and provenance-label tests.
+    probe: pytest scripts/usage/test_seat_usage_collector.py -q
+pii_scan: clean

@@ -28,6 +28,7 @@ import json
 import os
 import subprocess
 import sys
+import time
 from pathlib import Path
 
 import pytest
@@ -82,6 +83,29 @@ class TestNetPending:
         ctx = out["hookSpecificOutput"]["additionalContext"]
         assert "1 HIGH-priority open" in ctx
         assert "fly_backup" in ctx
+
+    def test_string_ts_line_neither_silences_the_board_nor_breaks_net_pending(self, tmp_path, tasks_dir):
+        """One writer emitting a string ts (W54 ISO-8601, #6012 str(now)) must
+        not TypeError the net-pending comparisons and silence the WHOLE board
+        at SessionStart: the open HIGH item still surfaces, and an ISO-stamped
+        resolution still nets out the float-stamped pending it follows."""
+        esc = tmp_path / "escalations_pro.jsonl"
+        _write_jsonl(esc, [
+            {"job": "healed_job", "status": "pending", "priority": "HIGH",
+             "error_summary": "exit 1", "ts": 100},
+            {"job": "healed_job", "status": "resolved",
+             "resolved_at": "1970-01-01T00:03:20Z", "ts": "1970-01-01T00:03:20Z"},
+            {"job": "still_open", "status": "pending", "priority": "HIGH",
+             "error_summary": "boom", "ts": "150.0"},
+            {"job": "junk_ts", "status": "pending", "priority": "HIGH",
+             "error_summary": "no clock", "ts": "yesterday"},
+        ])
+        out = _run_hook(esc, tasks_dir)
+        assert out is not None, "a string ts must not silence the board"
+        ctx = out["hookSpecificOutput"]["additionalContext"]
+        assert "2 HIGH-priority open" in ctx, ctx
+        assert "still_open" in ctx and "junk_ts" in ctx
+        assert "healed_job" not in ctx, "ISO-stamped resolution must still net out the pending"
 
     def test_innocence_resolved_pending_vanishes(self, tmp_path, tasks_dir):
         esc = tmp_path / "escalations_pro.jsonl"
@@ -139,6 +163,93 @@ class TestNetPending:
         assert out is not None
         ctx = out["hookSpecificOutput"]["additionalContext"]
         assert "1 NORMAL pending" in ctx
+
+
+class TestCauseGrouping:
+    """Dedupe/grouping by (source, normalized cause) — 2026-09-09 session-start
+    injection diet. Measured live: healer_pro_tick escalating the SAME "N dead
+    organs ... none curable" condition once per tick produced 14 distinct HIGH
+    items (exact-tuple dedupe never collapsed them, because the count/timestamp
+    baked into error_summary differed on every tick). Normalization strips
+    digits/ISO-timestamps/shas before grouping so the same underlying cause
+    collapses into one line, "(×N, latest <date>)"."""
+
+    def test_guilt_same_job_same_cause_different_count_and_ts_collapses(self, tmp_path, tasks_dir):
+        esc = tmp_path / "escalations_pro.jsonl"
+        _write_jsonl(esc, [
+            {"job": "healer_pro_tick", "status": "pending", "priority": "HIGH",
+             "error_summary": "3 dead organs none curable", "ts": 100},
+            {"job": "healer_pro_tick", "status": "pending", "priority": "HIGH",
+             "error_summary": "5 dead organs none curable", "ts": 400},
+            {"job": "healer_pro_tick", "status": "pending", "priority": "HIGH",
+             "error_summary": "7 dead organs none curable", "ts": 700},
+        ])
+        out = _run_hook(esc, tasks_dir)
+        assert out is not None
+        ctx = out["hookSpecificOutput"]["additionalContext"]
+        assert "3 HIGH-priority open across 1 group(s)" in ctx, ctx
+        assert "×3" in ctx, "the repeat count must be visible"
+        assert ctx.count("healer_pro_tick") == 1, (
+            f"same cause repeated must render ONCE with a count, not N times:\n{ctx}"
+        )
+
+    def test_innocence_different_cause_same_job_stays_separate_groups(self, tmp_path, tasks_dir):
+        esc = tmp_path / "escalations_pro.jsonl"
+        _write_jsonl(esc, [
+            {"job": "nightly_autofix_ci", "status": "pending", "priority": "HIGH",
+             "error_summary": "pytest failure in test_a", "ts": 100},
+            {"job": "nightly_autofix_ci", "status": "pending", "priority": "HIGH",
+             "error_summary": "lint failure in module_b", "ts": 200},
+        ])
+        out = _run_hook(esc, tasks_dir)
+        ctx = out["hookSpecificOutput"]["additionalContext"]
+        assert "2 HIGH-priority open across 2 group(s)" in ctx, ctx
+        assert "pytest failure in test_a" in ctx
+        assert "lint failure in module_b" in ctx
+
+    def test_innocence_different_job_same_cause_stays_separate_groups(self, tmp_path, tasks_dir):
+        esc = tmp_path / "escalations_pro.jsonl"
+        _write_jsonl(esc, [
+            {"job": "job_a", "status": "pending", "priority": "HIGH",
+             "error_summary": "connection refused", "ts": 100},
+            {"job": "job_b", "status": "pending", "priority": "HIGH",
+             "error_summary": "connection refused", "ts": 200},
+        ])
+        out = _run_hook(esc, tasks_dir)
+        ctx = out["hookSpecificOutput"]["additionalContext"]
+        assert "2 HIGH-priority open across 2 group(s)" in ctx, ctx
+
+    def test_guilt_group_cap_at_six(self, tmp_path, tasks_dir):
+        esc = tmp_path / "escalations_pro.jsonl"
+        records = [
+            {"job": f"distinct_job_{i}", "status": "pending", "priority": "HIGH",
+             "error_summary": f"unique cause {i}", "ts": 100 + i}
+            for i in range(10)
+        ]
+        _write_jsonl(esc, records)
+        out = _run_hook(esc, tasks_dir)
+        ctx = out["hookSpecificOutput"]["additionalContext"]
+        assert "across 10 group(s)" in ctx, ctx
+        shown = sum(1 for i in range(10) if f"distinct_job_{i}" in ctx)
+        assert shown <= 6, f"expected at most 6 groups rendered, got {shown}:\n{ctx}"
+        assert "more HIGH group" in ctx
+
+    def test_guilt_latest_date_reflects_most_recent_ts(self, tmp_path, tasks_dir):
+        esc = tmp_path / "escalations_pro.jsonl"
+        recent_ts = 1_800_000_000  # 2027-01-15ish, far newer than the old one below
+        old_ts = 100
+        _write_jsonl(esc, [
+            {"job": "flaky_job", "status": "pending", "priority": "HIGH",
+             "error_summary": "same cause", "ts": old_ts},
+            {"job": "flaky_job", "status": "pending", "priority": "HIGH",
+             "error_summary": "same cause", "ts": recent_ts},
+        ])
+        out = _run_hook(esc, tasks_dir)
+        ctx = out["hookSpecificOutput"]["additionalContext"]
+        expected_date = time.strftime("%Y-%m-%d", time.gmtime(recent_ts))
+        assert expected_date in ctx, ctx
+        old_date = time.strftime("%Y-%m-%d", time.gmtime(old_ts))
+        assert old_date not in ctx, "only the LATEST date should be shown, not the oldest"
 
 
 class TestOutputCap:

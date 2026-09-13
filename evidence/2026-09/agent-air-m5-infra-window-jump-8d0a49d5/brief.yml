@@ -1,0 +1,71 @@
+task_id: window-jump
+gear: 2
+l_level: L1
+gate_class: opus
+objective: >-
+  Make the window jump automatic (Ruling Zero 2026-09-09: «arrivati al contesto,
+  scrivi l'handoff, incollalo in una finestra nuova e chiudi la tua» — with no human
+  in the loop). Research first (research/operations/2026-09-09-window-jump-automatic-
+  handoff-it.md): the CLI gives the brick (a fresh `claude "<prompt>"`) and the graft
+  (SessionStart additionalContext) but neither the gesture (open a window) nor the
+  closure (end the old session) — no hook can do either. Measured on M5/Ghostty 1.3.1:
+  `open -a Ghostty --args -e` does nothing on a running instance; AppleScript ⌘N +
+  typed command works; `/exit` typed into a window ends the session (throwaway Haiku
+  probe 2026-09-09 12:40, process gone, no signal). Decisions Zero 2026-09-09: close via
+  AppleScript `/exit`; all seats (interactive and headless); cap 3 hops per chain.
+
+  This PR is the interactive half plus the shared plumbing. context_window_guard.py,
+  on its first trip, writes ~/.organism/context-guard/pending-jump.json (from_session,
+  model, cwd, handoff_path, hops, seat) and, on a Ghostty seat, spawns
+  window_jump.sh detached; the handoff now carries `mandate` = the first user prompt
+  in full (precompact-mnemos keeps only prompts < 500 chars — measured: objective []).
+  window_jump.sh remembers the old window by title, ⌘N, types the one word `nz-jump`,
+  waits for the new session to stamp to_session, then raises the old window BY NAME,
+  verifies it is front, and types `/exit`. nz-jump starts a FRESH claude (never
+  --resume/--continue/--fork-session). context_jump_resume.py (SessionStart, startup)
+  injects the handoff as additionalContext and stamps to_session; mute otherwise.
+  Headless seats get pending-jump.json only; the cascade wrapper re-invocation is the
+  next PR. Gear 2 via the SIZE term (new hook + two scripts + 2 test suites).
+constraints:
+  - >-
+    The deny stays Rule 1: CONTEXT_JUMP_OFF=1 disarms the gesture, never the gate.
+    A jump is raised once per session (the file is the rate limit) and at most
+    JUMP_MAX_HOPS=3 per chain; past the cap the guard says so and falls back to the
+    manual instruction.
+  - >-
+    Keystrokes carry one fixed word plus the session id; the mandate travels through
+    files only (one pending-jump-<session>.json per session, mandate carried along the
+    chain). Nothing is typed unless the front window is verified (name changed after
+    ⌘N; remembered name front before `/exit`). Measured 2026-09-09: `/exit` typed into
+    an idle session left it alive three times — so closure is `/exit`, then ≤20 s for
+    the old claude PID (from_pid, the guard's parent) to die, then SIGINT×2.
+  - >-
+    Never --resume/--continue/--fork-session: they inherit the full old context.
+  - >-
+    No spawn in tests or on CI: TERM_PROGRAM=ghostty AND CONTEXT_JUMP_NO_SPAWN!=1 gate
+    it; every test runs headless or with the no-spawn flag.
+acceptance:
+  - >-
+    WHEN a session trips the threshold for the first time, THEN pending-jump.json is
+    written with hops=1 and the stderr says the jump was started; a second trip of the
+    same session rewrites nothing. probe: test_first_trip_writes_pending_jump_and_says_so,
+    test_second_trip_same_session_does_not_rewrite_the_jump.
+  - >-
+    WHEN the session is itself hop 3 of a chain, THEN no 4th jump is raised.
+    probe: test_hop_chain_is_counted_and_capped.
+  - >-
+    WHEN a new session starts in the same cwd with a fresh unclaimed jump, THEN the
+    handoff (mandate in full, commands, files, next action) is injected and to_session
+    is stamped; claimed, stale, foreign-cwd, kill-switch and the originating session
+    stay mute. probe: test_context_jump_resume.py (8 cases).
+  - >-
+    WHEN the first user prompt is > 500 chars in structured content, THEN the handoff's
+    `mandate` carries it in full. probe: test_handoff_carries_the_first_user_mandate_in_full.
+  - >-
+    LIVE (M5, probes 1/3/5 on 2026-09-09): a synthetic trip from a throwaway Ghostty
+    window opens a second window, `nz-jump <sid>` starts claude, the new session's
+    transcript carries the injected «SALTO DI FINESTRA» context and answers SALTO_OK,
+    pending-jump-<sid>.json gets to_session within 5 s, jump.log records `/exit typed
+    into old window` and the SIGINT fallback; probe 5 sampled the new session alive
+    every 3 s for 60 s. probe: research note §7, PR body.
+pii_scan: clean

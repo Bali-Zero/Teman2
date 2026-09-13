@@ -199,6 +199,31 @@ def test_stale_entry_does_not_flip_the_exit_code(mod, monkeypatch):
         assert mod.main() == 0, "a stale leftover must not be reported as a seat failure"
 
 
+def test_persistent_429_is_throttled_not_a_stale_leftover(mod, monkeypatch):
+    """The 429 that OUTLIVES api_get's retries. The retry test above covers a 429 that
+    clears; this covers the one that does not, which is what a saturated endpoint
+    actually returns. It leaves the account unnamed, and naming it `stale` is what made
+    ten logged-in seats read as ten old logins on 2026-09-11."""
+    monkeypatch.setattr(mod, "keychain_services",
+                        lambda: ["Claude Code-credentials", "Claude Code-credentials-dead"])
+    monkeypatch.setattr(mod, "access_token",
+                        lambda svc: None if svc.endswith("dead") else "tok")
+    monkeypatch.setattr(mod, "warm_profiles", lambda deep: None)
+    monkeypatch.setattr(mod.time, "sleep", lambda _s: None)
+    monkeypatch.setattr(mod, "api_get", lambda path, token, attempts=3: (
+        429, {"error": {"message": "Rate limited. Please try again later."}}
+    ))
+    rows = mod.collect(pace=0)
+
+    throttled = [r for r in rows if r.get("throttled")]
+    stale = [r for r in rows if r.get("stale")]
+    assert len(throttled) == 1, "the rate-limited entry must be reported as throttled"
+    assert throttled[0].get("stale") is False, \
+        "a live credential behind a 429 is not a stale leftover"
+    assert len(stale) == 1 and stale[0]["error"] == "no access token in keychain entry", \
+        "only the entry with no token at all is a genuine leftover"
+
+
 def test_named_seat_that_cannot_be_read_does_flip_the_exit_code(mod, monkeypatch):
     """Guilt side of the pair above: a seat we CAN name but cannot read is a real
     failure and must be loud."""

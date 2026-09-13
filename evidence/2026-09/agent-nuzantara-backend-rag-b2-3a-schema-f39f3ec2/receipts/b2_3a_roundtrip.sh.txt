@@ -1,0 +1,170 @@
+#!/usr/bin/env bash
+# B2.3a isolated up/down/up validation for migrations_v2/314_wa_outbox_evidence.sql.
+# Throwaway Postgres in docker, CI-identical test credentials, never a shared or prod DSN.
+#   setup <tag> <image>   bootstrap + apply-all on a tree WITHOUT 314, seed a synthetic cohort
+#   roundtrip <tag>       dry-run -> up -> probe -> down -> probe -> up -> probe
+#   teardown <tag>        stop the container (started with --rm)
+set -euo pipefail
+WT=/Users/nuzantara/nuzantara/.worktrees/backend-rag-b2-3a-schema
+APP=$WT/apps/backend-rag
+PY=$APP/.venv/bin/python
+SP=/private/tmp/claude-501/-Users-nuzantara-nuzantara--worktrees-backend-rag-b2-3a-schema/7566f29f-0961-4063-8df7-244c493b17d4/scratchpad
+CMD=$1; TAG=$2
+NAME=b2-3a-roundtrip-$TAG
+PORTFILE=$SP/port-$TAG
+
+env_for() {
+  local port; port=$(cat "$PORTFILE")
+  export DATABASE_URL="postgresql://test:test@127.0.0.1:${port}/nuzantara_test"
+  unset MIGRATION_DATABASE_URL  # CI parity: tests.yml sets only DATABASE_URL (option D refuses a superuser migrator DSN)
+  export JWT_SECRET_KEY=test_jwt_secret_key_for_testing_only_min_32_chars_long
+  export API_KEYS=test_api_key_1,test_api_key_2
+  export PYTHONPATH="$APP:$WT/apps/crm-cell"
+  export PGPASSWORD=test
+  PSQL=(psql -h 127.0.0.1 -p "$port" -U test -d nuzantara_test -v ON_ERROR_STOP=1 -At)
+  case "$DATABASE_URL" in postgresql://test:test@127.0.0.1:5[0-9]*/nuzantara_test) ;; *) echo "REFUSE: not an isolated DSN"; exit 9;; esac
+}
+
+probe() {
+  echo "## probe: $1"
+  "${PSQL[@]}" -F'|' -c "SELECT column_name, data_type, is_nullable, coalesce(column_default,'<none>') FROM information_schema.columns WHERE table_schema='public' AND table_name='wa_outbox' AND column_name IN ('abstained_at','evidence_score') ORDER BY column_name;"
+  echo "column_count=$("${PSQL[@]}" -c "SELECT count(*) FROM information_schema.columns WHERE table_schema='public' AND table_name='wa_outbox';")"
+  echo "sv_314=$("${PSQL[@]}" -c "SELECT count(*) FROM _schema_versions WHERE migration_number=314;") sm_314=$("${PSQL[@]}" -c "SELECT count(*) FROM schema_migrations WHERE migration_name LIKE '314_%';")"
+  echo "relfilenode=$("${PSQL[@]}" -c "SELECT pg_relation_filenode('public.wa_outbox');")"
+  echo "cohort_sha256=$("${PSQL[@]}" -F'|' -c "SELECT id, status, xmin::text FROM public.wa_outbox ORDER BY id;" | shasum -a 256 | cut -c1-64)"
+}
+
+case "$CMD" in
+  setup)
+    IMAGE=$3
+    PORT=$((55000 + RANDOM % 900)); echo "$PORT" > "$PORTFILE"
+    docker run -d --rm --name "$NAME" -e POSTGRES_USER=test -e POSTGRES_PASSWORD=test \
+      -e POSTGRES_DB=nuzantara_test -p "127.0.0.1:${PORT}:5432" "$IMAGE" >/dev/null
+    env_for
+    for _ in $(seq 1 60); do "${PSQL[@]}" -c "SELECT 1" >/dev/null 2>&1 && break; sleep 1; done
+    echo "server_version=$("${PSQL[@]}" -c "SHOW server_version;")"
+    cd "$SP"
+    test ! -e "$APP/backend/db/migrations_v2/314_wa_outbox_evidence.sql" || { echo "REFUSE: 314 already on disk, baseline would include it"; exit 8; }
+    "$PY" "$APP/scripts/ci_bootstrap_schema.py" >"$SP/setup-$TAG.log" 2>&1
+    timeout 300 "$PY" -m backend.db.migrate apply-all >>"$SP/setup-$TAG.log" 2>&1
+    echo "baseline_max=$("${PSQL[@]}" -c "SELECT max(migration_number) FROM _schema_versions;")"
+    "$0" seed "$TAG"
+    ;;
+  seed)
+    env_for
+    "${PSQL[@]}" -c "WITH th AS (INSERT INTO meta_inbox_threads (counterpart_phone) VALUES ('synthetic-b2-3a-cohort') RETURNING thread_id), ms AS (INSERT INTO meta_inbox_messages (thread_id, direction, sender_role) SELECT th.thread_id, 'inbound', 'customer' FROM th, generate_series(1, 7) RETURNING id, thread_id) INSERT INTO wa_outbox (thread_id, message_id, status, needs_generation) SELECT thread_id, id, (ARRAY['done','failed','pending','generating','claimed','done','failed'])[row_number() OVER (ORDER BY id)], true FROM ms;" >/dev/null
+    echo "baseline_max=$("${PSQL[@]}" -c "SELECT max(migration_number) FROM _schema_versions;") outbox_rows=$("${PSQL[@]}" -c "SELECT count(*) FROM wa_outbox;")"
+    probe "baseline (313, no 314 file)"
+    ;;
+  roundtrip)
+    env_for; cd "$SP"
+    echo "## dry-run"
+    timeout 300 "$PY" -m backend.db.migrate apply-all --dry-run 2>&1 | grep -E '314|pending|Pending|DRY|dry' | head -20
+    echo "## up #1"
+    timeout 300 "$PY" -m backend.db.migrate apply-all 2>&1 | grep -E '314|applied|error|Error|fail' | head -20
+    probe "after up #1"
+    echo "## down (runner's own rollback_migration)"
+    "$PY" -c "
+import asyncio
+from backend.db.migration_manager import MigrationManager
+async def main():
+    m = MigrationManager()
+    await m.connect()
+    try:
+        print('rollback_ok=', await m.rollback_migration('314_wa_outbox_evidence'))
+    finally:
+        await m.close()
+asyncio.run(main())
+" 2>&1 | grep -E 'rollback_ok|Error|error' | head -5
+    probe "after down"
+    echo "## up #2"
+    timeout 300 "$PY" -m backend.db.migrate apply-all 2>&1 | grep -E '314|applied|error|Error|fail' | head -20
+    probe "after up #2"
+    echo "## up #3 (idempotent rerun, expect nothing pending)"
+    timeout 300 "$PY" -m backend.db.migrate apply-all --dry-run 2>&1 | grep -E '314|pending|Pending|No |no ' | head -5
+    ;;
+  guilt-drift)
+    # After a roundtrip: down, plant a same-named column of the WRONG type, and require
+    # apply-all to FAIL with 314 unrecorded; then remove the plant and require success.
+    env_for; cd "$SP"
+    "$PY" -c "
+import asyncio
+from backend.db.migration_manager import MigrationManager
+async def main():
+    m = MigrationManager(); await m.connect()
+    try: print('rollback_ok=', await m.rollback_migration('314_wa_outbox_evidence'))
+    finally: await m.close()
+asyncio.run(main())
+" 2>&1 | grep -E 'rollback_ok' | head -2
+    "${PSQL[@]}" -c "ALTER TABLE wa_outbox ADD COLUMN abstained_at TEXT;" >/dev/null
+    echo "## apply-all over a planted TEXT abstained_at (expect failure)"
+    set +e
+    timeout 300 "$PY" -m backend.db.migrate apply-all > "$SP/guilt-drift-$TAG.log" 2>&1; echo "apply_rc=$?"
+    set -e
+    grep -oE 'column "[a-z_]+" of relation "wa_outbox" already exists|column shape drift[^"]*' "$SP/guilt-drift-$TAG.log" | head -1
+    probe "after failed apply over drift"
+    "${PSQL[@]}" -c "ALTER TABLE wa_outbox DROP COLUMN abstained_at;" >/dev/null
+    echo "## apply-all after removing the plant (expect success)"
+    timeout 300 "$PY" -m backend.db.migrate apply-all 2>&1 | grep -E 'applied successfully|rror' | head -3
+    probe "after clean apply"
+    ;;
+  guilt-shadow)
+    # After a roundtrip: down, create shadow.wa_outbox and put shadow first on the role's
+    # search_path; apply-all must still land both columns on public.wa_outbox and none on shadow.
+    env_for; cd "$SP"
+    "$PY" -c "
+import asyncio
+from backend.db.migration_manager import MigrationManager
+async def main():
+    m = MigrationManager(); await m.connect()
+    try: print('rollback_ok=', await m.rollback_migration('314_wa_outbox_evidence'))
+    finally: await m.close()
+asyncio.run(main())
+" 2>&1 | grep -E 'rollback_ok' | head -2
+    "${PSQL[@]}" -c "CREATE SCHEMA shadow; CREATE TABLE shadow.wa_outbox (id BIGINT); ALTER ROLE test SET search_path = shadow, public;" >/dev/null
+    echo "search_path_new_session=$("${PSQL[@]}" -c "SHOW search_path;")"
+    timeout 300 "$PY" -m backend.db.migrate apply-all 2>&1 | grep -E 'applied successfully|rror' | head -3
+    echo "shadow_new_columns=$("${PSQL[@]}" -c "SELECT count(*) FROM information_schema.columns WHERE table_schema='shadow' AND table_name='wa_outbox' AND column_name IN ('abstained_at','evidence_score');")"
+    probe "public after apply with shadow first on search_path"
+    "${PSQL[@]}" -c "ALTER ROLE test RESET search_path; DROP TABLE shadow.wa_outbox; DROP SCHEMA shadow;" >/dev/null
+    ;;
+  guilt-missing)
+    # After a roundtrip: down, plant evidence_score NUMERIC with a constant default then drop the
+    # default (atthasmissing stays true); apply-all must FAIL with 314 unrecorded.
+    env_for; cd "$SP"
+    "$PY" -c "
+import asyncio
+from backend.db.migration_manager import MigrationManager
+async def main():
+    m = MigrationManager(); await m.connect()
+    try: print('rollback_ok=', await m.rollback_migration('314_wa_outbox_evidence'))
+    finally: await m.close()
+asyncio.run(main())
+" 2>&1 | grep -E 'rollback_ok' | head -2
+    "${PSQL[@]}" -c "ALTER TABLE public.wa_outbox ADD COLUMN evidence_score NUMERIC DEFAULT 1; ALTER TABLE public.wa_outbox ALTER COLUMN evidence_score DROP DEFAULT;" >/dev/null
+    echo "planted_atthasmissing=$("${PSQL[@]}" -c "SELECT atthasmissing FROM pg_attribute WHERE attrelid='public.wa_outbox'::regclass AND attname='evidence_score';")"
+    set +e
+    timeout 300 "$PY" -m backend.db.migrate apply-all > "$SP/guilt-missing-$TAG.log" 2>&1; echo "apply_rc=$?"
+    set -e
+    grep -oE 'column "[a-z_]+" of relation "wa_outbox" already exists|column shape drift[^"]*' "$SP/guilt-missing-$TAG.log" | head -1
+    probe "after failed apply over a missing-value column"
+    "${PSQL[@]}" -c "ALTER TABLE public.wa_outbox DROP COLUMN evidence_score;" >/dev/null
+    timeout 300 "$PY" -m backend.db.migrate apply-all 2>&1 | grep -E 'applied successfully|rror' | head -3
+    probe "after clean apply"
+    ;;
+  guilt-resolution)
+    # Forward SQL of a given file run directly in psql inside BEGIN/ROLLBACK with a hostile, explicit
+    # search_path (shadow BEFORE pg_catalog) plus shadow.wa_outbox and a shadow.timestamptz domain.
+    # Usage: guilt-resolution <tag> <file>
+    env_for; FILE=$3
+    python3 -c "import sys; t=open(sys.argv[1]).read(); open(sys.argv[2],'w').write(t.split('-- === ROLLBACK ===')[0])" "$FILE" "$SP/fwd-resolution.sql"
+    "${PSQL[@]}" -c "CREATE SCHEMA IF NOT EXISTS shadow; CREATE TABLE IF NOT EXISTS shadow.wa_outbox (id BIGINT); DO \$\$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_catalog.pg_type t JOIN pg_catalog.pg_namespace n ON n.oid=t.typnamespace WHERE n.nspname='shadow' AND t.typname='timestamptz') THEN CREATE DOMAIN shadow.timestamptz AS text; END IF; END \$\$;" >/dev/null
+    { echo "BEGIN;"; echo "SET LOCAL search_path = shadow, pg_catalog, public;"; cat "$SP/fwd-resolution.sql";
+      echo "SELECT 'public_cols=' || pg_catalog.string_agg(a.attname || ':' || pg_catalog.format_type(a.atttypid, a.atttypmod), ',' ORDER BY a.attname) FROM pg_catalog.pg_attribute a WHERE a.attrelid = 'public.wa_outbox'::pg_catalog.regclass AND a.attname IN ('abstained_at','evidence_score') AND NOT a.attisdropped;";
+      echo "SELECT 'shadow_cols=' || pg_catalog.count(*) FROM pg_catalog.pg_attribute a WHERE a.attrelid = 'shadow.wa_outbox'::pg_catalog.regclass AND a.attname IN ('abstained_at','evidence_score') AND NOT a.attisdropped;";
+      echo "ROLLBACK;"; } | "${PSQL[@]}" 2>&1 | grep -E 'public_cols|shadow_cols|ERROR' | sed 's/^/  /'
+    ;;
+  teardown)
+    docker stop "$NAME" >/dev/null && echo "stopped $NAME"
+    ;;
+esac

@@ -1,0 +1,1913 @@
+{
+  "mandatory": {
+    "frozen_for": "B1.3",
+    "base_sha": "2a4681b0b88a291b4ed4d0c8885bc1a5990ec8ed",
+    "case_count": 58,
+    "by_cell": {
+      "ID>EN": {
+        "generation": {
+          "false_abstention": {
+            "count": 0,
+            "denominator": 6
+          },
+          "false_acceptance": {
+            "count": 7,
+            "denominator": 11
+          },
+          "by_stratum": {
+            "company_prefix_chunk": {
+              "false_abstention": {
+                "count": 0,
+                "denominator": 0
+              },
+              "false_acceptance": {
+                "count": 1,
+                "denominator": 1
+              }
+            },
+            "generic_overlap": {
+              "false_abstention": {
+                "count": 0,
+                "denominator": 0
+              },
+              "false_acceptance": {
+                "count": 0,
+                "denominator": 1
+              }
+            },
+            "irrelevant": {
+              "false_abstention": {
+                "count": 0,
+                "denominator": 0
+              },
+              "false_acceptance": {
+                "count": 0,
+                "denominator": 3
+              }
+            },
+            "relevant_insufficient": {
+              "false_abstention": {
+                "count": 0,
+                "denominator": 0
+              },
+              "false_acceptance": {
+                "count": 6,
+                "denominator": 6
+              }
+            },
+            "sufficient": {
+              "false_abstention": {
+                "count": 0,
+                "denominator": 6
+              },
+              "false_acceptance": {
+                "count": 0,
+                "denominator": 0
+              }
+            }
+          }
+        },
+        "label": {
+          "false_abstention": {
+            "count": 0,
+            "denominator": 6
+          },
+          "false_acceptance": {
+            "count": 7,
+            "denominator": 11
+          },
+          "by_stratum": {
+            "company_prefix_chunk": {
+              "false_abstention": {
+                "count": 0,
+                "denominator": 0
+              },
+              "false_acceptance": {
+                "count": 1,
+                "denominator": 1
+              }
+            },
+            "generic_overlap": {
+              "false_abstention": {
+                "count": 0,
+                "denominator": 0
+              },
+              "false_acceptance": {
+                "count": 0,
+                "denominator": 1
+              }
+            },
+            "irrelevant": {
+              "false_abstention": {
+                "count": 0,
+                "denominator": 0
+              },
+              "false_acceptance": {
+                "count": 0,
+                "denominator": 3
+              }
+            },
+            "relevant_insufficient": {
+              "false_abstention": {
+                "count": 0,
+                "denominator": 0
+              },
+              "false_acceptance": {
+                "count": 6,
+                "denominator": 6
+              }
+            },
+            "sufficient": {
+              "false_abstention": {
+                "count": 0,
+                "denominator": 6
+              },
+              "false_acceptance": {
+                "count": 0,
+                "denominator": 0
+              }
+            }
+          }
+        }
+      },
+      "EN>ID": {
+        "generation": {
+          "false_abstention": {
+            "count": 1,
+            "denominator": 6
+          },
+          "false_acceptance": {
+            "count": 8,
+            "denominator": 10
+          },
+          "by_stratum": {
+            "company_prefix_chunk": {
+              "false_abstention": {
+                "count": 0,
+                "denominator": 0
+              },
+              "false_acceptance": {
+                "count": 1,
+                "denominator": 1
+              }
+            },
+            "generic_overlap": {
+              "false_abstention": {
+                "count": 0,
+                "denominator": 0
+              },
+              "false_acceptance": {
+                "count": 0,
+                "denominator": 1
+              }
+            },
+            "irrelevant": {
+              "false_abstention": {
+                "count": 0,
+                "denominator": 0
+              },
+              "false_acceptance": {
+                "count": 0,
+                "denominator": 1
+              }
+            },
+            "relevant_insufficient": {
+              "false_abstention": {
+                "count": 0,
+                "denominator": 0
+              },
+              "false_acceptance": {
+                "count": 7,
+                "denominator": 7
+              }
+            },
+            "sufficient": {
+              "false_abstention": {
+                "count": 1,
+                "denominator": 6
+              },
+              "false_acceptance": {
+                "count": 0,
+                "denominator": 0
+              }
+            }
+          }
+        },
+        "label": {
+          "false_abstention": {
+            "count": 1,
+            "denominator": 6
+          },
+          "false_acceptance": {
+            "count": 8,
+            "denominator": 10
+          },
+          "by_stratum": {
+            "company_prefix_chunk": {
+              "false_abstention": {
+                "count": 0,
+                "denominator": 0
+              },
+              "false_acceptance": {
+                "count": 1,
+                "denominator": 1
+              }
+            },
+            "generic_overlap": {
+              "false_abstention": {
+                "count": 0,
+                "denominator": 0
+              },
+              "false_acceptance": {
+                "count": 0,
+                "denominator": 1
+              }
+            },
+            "irrelevant": {
+              "false_abstention": {
+                "count": 0,
+                "denominator": 0
+              },
+              "false_acceptance": {
+                "count": 0,
+                "denominator": 1
+              }
+            },
+            "relevant_insufficient": {
+              "false_abstention": {
+                "count": 0,
+                "denominator": 0
+              },
+              "false_acceptance": {
+                "count": 7,
+                "denominator": 7
+              }
+            },
+            "sufficient": {
+              "false_abstention": {
+                "count": 1,
+                "denominator": 6
+              },
+              "false_acceptance": {
+                "count": 0,
+                "denominator": 0
+              }
+            }
+          }
+        }
+      },
+      "EN>EN": {
+        "generation": {
+          "false_abstention": {
+            "count": 0,
+            "denominator": 4
+          },
+          "false_acceptance": {
+            "count": 5,
+            "denominator": 9
+          },
+          "by_stratum": {
+            "company_prefix_chunk": {
+              "false_abstention": {
+                "count": 0,
+                "denominator": 0
+              },
+              "false_acceptance": {
+                "count": 1,
+                "denominator": 1
+              }
+            },
+            "generic_overlap": {
+              "false_abstention": {
+                "count": 0,
+                "denominator": 0
+              },
+              "false_acceptance": {
+                "count": 0,
+                "denominator": 1
+              }
+            },
+            "irrelevant": {
+              "false_abstention": {
+                "count": 0,
+                "denominator": 0
+              },
+              "false_acceptance": {
+                "count": 0,
+                "denominator": 3
+              }
+            },
+            "relevant_insufficient": {
+              "false_abstention": {
+                "count": 0,
+                "denominator": 0
+              },
+              "false_acceptance": {
+                "count": 4,
+                "denominator": 4
+              }
+            },
+            "sufficient": {
+              "false_abstention": {
+                "count": 0,
+                "denominator": 4
+              },
+              "false_acceptance": {
+                "count": 0,
+                "denominator": 0
+              }
+            }
+          }
+        },
+        "label": {
+          "false_abstention": {
+            "count": 0,
+            "denominator": 4
+          },
+          "false_acceptance": {
+            "count": 5,
+            "denominator": 9
+          },
+          "by_stratum": {
+            "company_prefix_chunk": {
+              "false_abstention": {
+                "count": 0,
+                "denominator": 0
+              },
+              "false_acceptance": {
+                "count": 1,
+                "denominator": 1
+              }
+            },
+            "generic_overlap": {
+              "false_abstention": {
+                "count": 0,
+                "denominator": 0
+              },
+              "false_acceptance": {
+                "count": 0,
+                "denominator": 1
+              }
+            },
+            "irrelevant": {
+              "false_abstention": {
+                "count": 0,
+                "denominator": 0
+              },
+              "false_acceptance": {
+                "count": 0,
+                "denominator": 3
+              }
+            },
+            "relevant_insufficient": {
+              "false_abstention": {
+                "count": 0,
+                "denominator": 0
+              },
+              "false_acceptance": {
+                "count": 4,
+                "denominator": 4
+              }
+            },
+            "sufficient": {
+              "false_abstention": {
+                "count": 0,
+                "denominator": 4
+              },
+              "false_acceptance": {
+                "count": 0,
+                "denominator": 0
+              }
+            }
+          }
+        }
+      },
+      "ID>ID": {
+        "generation": {
+          "false_abstention": {
+            "count": 0,
+            "denominator": 4
+          },
+          "false_acceptance": {
+            "count": 6,
+            "denominator": 8
+          },
+          "by_stratum": {
+            "company_prefix_chunk": {
+              "false_abstention": {
+                "count": 0,
+                "denominator": 0
+              },
+              "false_acceptance": {
+                "count": 1,
+                "denominator": 1
+              }
+            },
+            "generic_overlap": {
+              "false_abstention": {
+                "count": 0,
+                "denominator": 0
+              },
+              "false_acceptance": {
+                "count": 1,
+                "denominator": 2
+              }
+            },
+            "irrelevant": {
+              "false_abstention": {
+                "count": 0,
+                "denominator": 0
+              },
+              "false_acceptance": {
+                "count": 0,
+                "denominator": 1
+              }
+            },
+            "relevant_insufficient": {
+              "false_abstention": {
+                "count": 0,
+                "denominator": 0
+              },
+              "false_acceptance": {
+                "count": 4,
+                "denominator": 4
+              }
+            },
+            "sufficient": {
+              "false_abstention": {
+                "count": 0,
+                "denominator": 4
+              },
+              "false_acceptance": {
+                "count": 0,
+                "denominator": 0
+              }
+            }
+          }
+        },
+        "label": {
+          "false_abstention": {
+            "count": 0,
+            "denominator": 4
+          },
+          "false_acceptance": {
+            "count": 6,
+            "denominator": 8
+          },
+          "by_stratum": {
+            "company_prefix_chunk": {
+              "false_abstention": {
+                "count": 0,
+                "denominator": 0
+              },
+              "false_acceptance": {
+                "count": 1,
+                "denominator": 1
+              }
+            },
+            "generic_overlap": {
+              "false_abstention": {
+                "count": 0,
+                "denominator": 0
+              },
+              "false_acceptance": {
+                "count": 1,
+                "denominator": 2
+              }
+            },
+            "irrelevant": {
+              "false_abstention": {
+                "count": 0,
+                "denominator": 0
+              },
+              "false_acceptance": {
+                "count": 0,
+                "denominator": 1
+              }
+            },
+            "relevant_insufficient": {
+              "false_abstention": {
+                "count": 0,
+                "denominator": 0
+              },
+              "false_acceptance": {
+                "count": 4,
+                "denominator": 4
+              }
+            },
+            "sufficient": {
+              "false_abstention": {
+                "count": 0,
+                "denominator": 4
+              },
+              "false_acceptance": {
+                "count": 0,
+                "denominator": 0
+              }
+            }
+          }
+        }
+      }
+    },
+    "by_fee_policy": {
+      "true": {
+        "generation": {
+          "false_abstention": {
+            "count": 0,
+            "denominator": 4
+          },
+          "false_acceptance": {
+            "count": 0,
+            "denominator": 4
+          },
+          "by_stratum": {
+            "company_prefix_chunk": {
+              "false_abstention": {
+                "count": 0,
+                "denominator": 0
+              },
+              "false_acceptance": {
+                "count": 0,
+                "denominator": 0
+              }
+            },
+            "generic_overlap": {
+              "false_abstention": {
+                "count": 0,
+                "denominator": 0
+              },
+              "false_acceptance": {
+                "count": 0,
+                "denominator": 0
+              }
+            },
+            "irrelevant": {
+              "false_abstention": {
+                "count": 0,
+                "denominator": 0
+              },
+              "false_acceptance": {
+                "count": 0,
+                "denominator": 4
+              }
+            },
+            "relevant_insufficient": {
+              "false_abstention": {
+                "count": 0,
+                "denominator": 0
+              },
+              "false_acceptance": {
+                "count": 0,
+                "denominator": 0
+              }
+            },
+            "sufficient": {
+              "false_abstention": {
+                "count": 0,
+                "denominator": 4
+              },
+              "false_acceptance": {
+                "count": 0,
+                "denominator": 0
+              }
+            }
+          }
+        },
+        "label": {
+          "false_abstention": {
+            "count": 0,
+            "denominator": 4
+          },
+          "false_acceptance": {
+            "count": 0,
+            "denominator": 4
+          },
+          "by_stratum": {
+            "company_prefix_chunk": {
+              "false_abstention": {
+                "count": 0,
+                "denominator": 0
+              },
+              "false_acceptance": {
+                "count": 0,
+                "denominator": 0
+              }
+            },
+            "generic_overlap": {
+              "false_abstention": {
+                "count": 0,
+                "denominator": 0
+              },
+              "false_acceptance": {
+                "count": 0,
+                "denominator": 0
+              }
+            },
+            "irrelevant": {
+              "false_abstention": {
+                "count": 0,
+                "denominator": 0
+              },
+              "false_acceptance": {
+                "count": 0,
+                "denominator": 4
+              }
+            },
+            "relevant_insufficient": {
+              "false_abstention": {
+                "count": 0,
+                "denominator": 0
+              },
+              "false_acceptance": {
+                "count": 0,
+                "denominator": 0
+              }
+            },
+            "sufficient": {
+              "false_abstention": {
+                "count": 0,
+                "denominator": 4
+              },
+              "false_acceptance": {
+                "count": 0,
+                "denominator": 0
+              }
+            }
+          }
+        }
+      },
+      "false": {
+        "generation": {
+          "false_abstention": {
+            "count": 1,
+            "denominator": 16
+          },
+          "false_acceptance": {
+            "count": 26,
+            "denominator": 34
+          },
+          "by_stratum": {
+            "company_prefix_chunk": {
+              "false_abstention": {
+                "count": 0,
+                "denominator": 0
+              },
+              "false_acceptance": {
+                "count": 4,
+                "denominator": 4
+              }
+            },
+            "generic_overlap": {
+              "false_abstention": {
+                "count": 0,
+                "denominator": 0
+              },
+              "false_acceptance": {
+                "count": 1,
+                "denominator": 5
+              }
+            },
+            "irrelevant": {
+              "false_abstention": {
+                "count": 0,
+                "denominator": 0
+              },
+              "false_acceptance": {
+                "count": 0,
+                "denominator": 4
+              }
+            },
+            "relevant_insufficient": {
+              "false_abstention": {
+                "count": 0,
+                "denominator": 0
+              },
+              "false_acceptance": {
+                "count": 21,
+                "denominator": 21
+              }
+            },
+            "sufficient": {
+              "false_abstention": {
+                "count": 1,
+                "denominator": 16
+              },
+              "false_acceptance": {
+                "count": 0,
+                "denominator": 0
+              }
+            }
+          }
+        },
+        "label": {
+          "false_abstention": {
+            "count": 1,
+            "denominator": 16
+          },
+          "false_acceptance": {
+            "count": 26,
+            "denominator": 34
+          },
+          "by_stratum": {
+            "company_prefix_chunk": {
+              "false_abstention": {
+                "count": 0,
+                "denominator": 0
+              },
+              "false_acceptance": {
+                "count": 4,
+                "denominator": 4
+              }
+            },
+            "generic_overlap": {
+              "false_abstention": {
+                "count": 0,
+                "denominator": 0
+              },
+              "false_acceptance": {
+                "count": 1,
+                "denominator": 5
+              }
+            },
+            "irrelevant": {
+              "false_abstention": {
+                "count": 0,
+                "denominator": 0
+              },
+              "false_acceptance": {
+                "count": 0,
+                "denominator": 4
+              }
+            },
+            "relevant_insufficient": {
+              "false_abstention": {
+                "count": 0,
+                "denominator": 0
+              },
+              "false_acceptance": {
+                "count": 21,
+                "denominator": 21
+              }
+            },
+            "sufficient": {
+              "false_abstention": {
+                "count": 1,
+                "denominator": 16
+              },
+              "false_acceptance": {
+                "count": 0,
+                "denominator": 0
+              }
+            }
+          }
+        }
+      }
+    },
+    "spec_pairs": {
+      "bp-6ddd19e0": {
+        "topic": "all_in_price",
+        "cell": "EN>EN",
+        "sufficient_case_id": "bs-01bf2a65",
+        "relevant_insufficient_case_id": "bs-86c7963f",
+        "sufficient_decision": {
+          "case_id": "bs-01bf2a65",
+          "score": 0.8,
+          "query_domain": "default",
+          "generation": "pass",
+          "label": "pass"
+        },
+        "relevant_insufficient_decision": {
+          "case_id": "bs-86c7963f",
+          "score": 0.8,
+          "query_domain": "default",
+          "generation": "pass",
+          "label": "pass"
+        },
+        "distinguished_generation": false,
+        "distinguished_label": false,
+        "distinguished": false
+      },
+      "bp-5467a417": {
+        "topic": "all_in_price",
+        "cell": "EN>ID",
+        "sufficient_case_id": "bs-ebef4f3e",
+        "relevant_insufficient_case_id": "bs-71ce8130",
+        "sufficient_decision": {
+          "case_id": "bs-ebef4f3e",
+          "score": 0.6,
+          "query_domain": "default",
+          "generation": "pass",
+          "label": "pass"
+        },
+        "relevant_insufficient_decision": {
+          "case_id": "bs-71ce8130",
+          "score": 0.6,
+          "query_domain": "default",
+          "generation": "pass",
+          "label": "pass"
+        },
+        "distinguished_generation": false,
+        "distinguished_label": false,
+        "distinguished": false
+      },
+      "bp-5ce9beb2": {
+        "topic": "all_in_price",
+        "cell": "ID>EN",
+        "sufficient_case_id": "bs-0912abc7",
+        "relevant_insufficient_case_id": "bs-25e7c342",
+        "sufficient_decision": {
+          "case_id": "bs-0912abc7",
+          "score": 0.6,
+          "query_domain": "pricing",
+          "generation": "pass",
+          "label": "pass"
+        },
+        "relevant_insufficient_decision": {
+          "case_id": "bs-25e7c342",
+          "score": 0.6,
+          "query_domain": "pricing",
+          "generation": "pass",
+          "label": "pass"
+        },
+        "distinguished_generation": false,
+        "distinguished_label": false,
+        "distinguished": false
+      },
+      "bp-51e63737": {
+        "topic": "all_in_price",
+        "cell": "ID>ID",
+        "sufficient_case_id": "bs-6309899f",
+        "relevant_insufficient_case_id": "bs-8e5a0135",
+        "sufficient_decision": {
+          "case_id": "bs-6309899f",
+          "score": 0.6,
+          "query_domain": "pricing",
+          "generation": "pass",
+          "label": "pass"
+        },
+        "relevant_insufficient_decision": {
+          "case_id": "bs-8e5a0135",
+          "score": 0.6,
+          "query_domain": "pricing",
+          "generation": "pass",
+          "label": "pass"
+        },
+        "distinguished_generation": false,
+        "distinguished_label": false,
+        "distinguished": false
+      },
+      "bp-df57e569": {
+        "topic": "nib_oss_requirements",
+        "cell": "EN>EN",
+        "sufficient_case_id": "bs-37a4d621",
+        "relevant_insufficient_case_id": "bs-f8fb6909",
+        "sufficient_decision": {
+          "case_id": "bs-37a4d621",
+          "score": 0.8,
+          "query_domain": "default",
+          "generation": "pass",
+          "label": "pass"
+        },
+        "relevant_insufficient_decision": {
+          "case_id": "bs-f8fb6909",
+          "score": 0.8,
+          "query_domain": "default",
+          "generation": "pass",
+          "label": "pass"
+        },
+        "distinguished_generation": false,
+        "distinguished_label": false,
+        "distinguished": false
+      },
+      "bp-d1f1a58b": {
+        "topic": "nib_oss_requirements",
+        "cell": "EN>ID",
+        "sufficient_case_id": "bs-7cd45469",
+        "relevant_insufficient_case_id": "bs-5d3e92ff",
+        "sufficient_decision": {
+          "case_id": "bs-7cd45469",
+          "score": 0.8,
+          "query_domain": "default",
+          "generation": "pass",
+          "label": "pass"
+        },
+        "relevant_insufficient_decision": {
+          "case_id": "bs-5d3e92ff",
+          "score": 0.8,
+          "query_domain": "default",
+          "generation": "pass",
+          "label": "pass"
+        },
+        "distinguished_generation": false,
+        "distinguished_label": false,
+        "distinguished": false
+      },
+      "bp-3eed944f": {
+        "topic": "nib_oss_requirements",
+        "cell": "ID>EN",
+        "sufficient_case_id": "bs-cfd6fca4",
+        "relevant_insufficient_case_id": "bs-e896eab7",
+        "sufficient_decision": {
+          "case_id": "bs-cfd6fca4",
+          "score": 0.8,
+          "query_domain": "default",
+          "generation": "pass",
+          "label": "pass"
+        },
+        "relevant_insufficient_decision": {
+          "case_id": "bs-e896eab7",
+          "score": 0.8,
+          "query_domain": "default",
+          "generation": "pass",
+          "label": "pass"
+        },
+        "distinguished_generation": false,
+        "distinguished_label": false,
+        "distinguished": false
+      },
+      "bp-553489d2": {
+        "topic": "nib_oss_requirements",
+        "cell": "ID>ID",
+        "sufficient_case_id": "bs-cc8e039c",
+        "relevant_insufficient_case_id": "bs-5b935617",
+        "sufficient_decision": {
+          "case_id": "bs-cc8e039c",
+          "score": 0.8,
+          "query_domain": "default",
+          "generation": "pass",
+          "label": "pass"
+        },
+        "relevant_insufficient_decision": {
+          "case_id": "bs-5b935617",
+          "score": 0.8,
+          "query_domain": "default",
+          "generation": "pass",
+          "label": "pass"
+        },
+        "distinguished_generation": false,
+        "distinguished_label": false,
+        "distinguished": false
+      },
+      "bp-1c2152db": {
+        "topic": "minimum_paid_up_capital",
+        "cell": "EN>EN",
+        "sufficient_case_id": "bs-713c5c75",
+        "relevant_insufficient_case_id": "bs-3d9ad45b",
+        "sufficient_decision": {
+          "case_id": "bs-713c5c75",
+          "score": 0.8,
+          "query_domain": "default",
+          "generation": "pass",
+          "label": "pass"
+        },
+        "relevant_insufficient_decision": {
+          "case_id": "bs-3d9ad45b",
+          "score": 0.8,
+          "query_domain": "default",
+          "generation": "pass",
+          "label": "pass"
+        },
+        "distinguished_generation": false,
+        "distinguished_label": false,
+        "distinguished": false
+      },
+      "bp-8799ae47": {
+        "topic": "minimum_paid_up_capital",
+        "cell": "EN>ID",
+        "sufficient_case_id": "bs-3edd5ce2",
+        "relevant_insufficient_case_id": "bs-7734b413",
+        "sufficient_decision": {
+          "case_id": "bs-3edd5ce2",
+          "score": 0.8,
+          "query_domain": "default",
+          "generation": "pass",
+          "label": "pass"
+        },
+        "relevant_insufficient_decision": {
+          "case_id": "bs-7734b413",
+          "score": 0.8,
+          "query_domain": "default",
+          "generation": "pass",
+          "label": "pass"
+        },
+        "distinguished_generation": false,
+        "distinguished_label": false,
+        "distinguished": false
+      },
+      "bp-fccf0b5b": {
+        "topic": "minimum_paid_up_capital",
+        "cell": "ID>EN",
+        "sufficient_case_id": "bs-b96e2f5d",
+        "relevant_insufficient_case_id": "bs-86211518",
+        "sufficient_decision": {
+          "case_id": "bs-b96e2f5d",
+          "score": 0.6,
+          "query_domain": "default",
+          "generation": "pass",
+          "label": "pass"
+        },
+        "relevant_insufficient_decision": {
+          "case_id": "bs-86211518",
+          "score": 0.6,
+          "query_domain": "default",
+          "generation": "pass",
+          "label": "pass"
+        },
+        "distinguished_generation": false,
+        "distinguished_label": false,
+        "distinguished": false
+      },
+      "bp-bf963846": {
+        "topic": "minimum_paid_up_capital",
+        "cell": "ID>ID",
+        "sufficient_case_id": "bs-47392f91",
+        "relevant_insufficient_case_id": "bs-bcbd34e0",
+        "sufficient_decision": {
+          "case_id": "bs-47392f91",
+          "score": 0.8,
+          "query_domain": "default",
+          "generation": "pass",
+          "label": "pass"
+        },
+        "relevant_insufficient_decision": {
+          "case_id": "bs-bcbd34e0",
+          "score": 0.8,
+          "query_domain": "default",
+          "generation": "pass",
+          "label": "pass"
+        },
+        "distinguished_generation": false,
+        "distinguished_label": false,
+        "distinguished": false
+      },
+      "bp-1427ddfb": {
+        "topic": "registration_duration",
+        "cell": "EN>EN",
+        "sufficient_case_id": "bs-b762b369",
+        "relevant_insufficient_case_id": "bs-5d6af55b",
+        "sufficient_decision": {
+          "case_id": "bs-b762b369",
+          "score": 0.8,
+          "query_domain": "default",
+          "generation": "pass",
+          "label": "pass"
+        },
+        "relevant_insufficient_decision": {
+          "case_id": "bs-5d6af55b",
+          "score": 0.8,
+          "query_domain": "default",
+          "generation": "pass",
+          "label": "pass"
+        },
+        "distinguished_generation": false,
+        "distinguished_label": false,
+        "distinguished": false
+      },
+      "bp-bd26f941": {
+        "topic": "registration_duration",
+        "cell": "EN>ID",
+        "sufficient_case_id": "bs-b980e91b",
+        "relevant_insufficient_case_id": "bs-eaeff9b4",
+        "sufficient_decision": {
+          "case_id": "bs-b980e91b",
+          "score": 0.3,
+          "query_domain": "default",
+          "generation": "pass",
+          "label": "pass"
+        },
+        "relevant_insufficient_decision": {
+          "case_id": "bs-eaeff9b4",
+          "score": 0.3,
+          "query_domain": "default",
+          "generation": "pass",
+          "label": "pass"
+        },
+        "distinguished_generation": false,
+        "distinguished_label": false,
+        "distinguished": false
+      },
+      "bp-09230f67": {
+        "topic": "registration_duration",
+        "cell": "ID>EN",
+        "sufficient_case_id": "bs-65886be1",
+        "relevant_insufficient_case_id": "bs-6b1f7df4",
+        "sufficient_decision": {
+          "case_id": "bs-65886be1",
+          "score": 0.3,
+          "query_domain": "default",
+          "generation": "pass",
+          "label": "pass"
+        },
+        "relevant_insufficient_decision": {
+          "case_id": "bs-6b1f7df4",
+          "score": 0.3,
+          "query_domain": "default",
+          "generation": "pass",
+          "label": "pass"
+        },
+        "distinguished_generation": false,
+        "distinguished_label": false,
+        "distinguished": false
+      },
+      "bp-49bc82b7": {
+        "topic": "registration_duration",
+        "cell": "ID>ID",
+        "sufficient_case_id": "bs-11f72d22",
+        "relevant_insufficient_case_id": "bs-4eb281c7",
+        "sufficient_decision": {
+          "case_id": "bs-11f72d22",
+          "score": 0.8,
+          "query_domain": "default",
+          "generation": "pass",
+          "label": "pass"
+        },
+        "relevant_insufficient_decision": {
+          "case_id": "bs-4eb281c7",
+          "score": 0.8,
+          "query_domain": "default",
+          "generation": "pass",
+          "label": "pass"
+        },
+        "distinguished_generation": false,
+        "distinguished_label": false,
+        "distinguished": false
+      }
+    },
+    "spec_pairs_summary": {
+      "total": 16,
+      "distinguished_generation_count": 0,
+      "distinguished_label_count": 0
+    }
+  },
+  "validation": {
+    "frozen_for": null,
+    "base_sha": null,
+    "case_count": 12,
+    "by_cell": {
+      "EN>EN": {
+        "generation": {
+          "false_abstention": {
+            "count": 0,
+            "denominator": 1
+          },
+          "false_acceptance": {
+            "count": 1,
+            "denominator": 2
+          },
+          "by_stratum": {
+            "company_prefix_chunk": {
+              "false_abstention": {
+                "count": 0,
+                "denominator": 0
+              },
+              "false_acceptance": {
+                "count": 0,
+                "denominator": 0
+              }
+            },
+            "generic_overlap": {
+              "false_abstention": {
+                "count": 0,
+                "denominator": 0
+              },
+              "false_acceptance": {
+                "count": 0,
+                "denominator": 0
+              }
+            },
+            "irrelevant": {
+              "false_abstention": {
+                "count": 0,
+                "denominator": 0
+              },
+              "false_acceptance": {
+                "count": 0,
+                "denominator": 1
+              }
+            },
+            "relevant_insufficient": {
+              "false_abstention": {
+                "count": 0,
+                "denominator": 0
+              },
+              "false_acceptance": {
+                "count": 1,
+                "denominator": 1
+              }
+            },
+            "sufficient": {
+              "false_abstention": {
+                "count": 0,
+                "denominator": 1
+              },
+              "false_acceptance": {
+                "count": 0,
+                "denominator": 0
+              }
+            }
+          }
+        },
+        "label": {
+          "false_abstention": {
+            "count": 0,
+            "denominator": 1
+          },
+          "false_acceptance": {
+            "count": 1,
+            "denominator": 2
+          },
+          "by_stratum": {
+            "company_prefix_chunk": {
+              "false_abstention": {
+                "count": 0,
+                "denominator": 0
+              },
+              "false_acceptance": {
+                "count": 0,
+                "denominator": 0
+              }
+            },
+            "generic_overlap": {
+              "false_abstention": {
+                "count": 0,
+                "denominator": 0
+              },
+              "false_acceptance": {
+                "count": 0,
+                "denominator": 0
+              }
+            },
+            "irrelevant": {
+              "false_abstention": {
+                "count": 0,
+                "denominator": 0
+              },
+              "false_acceptance": {
+                "count": 0,
+                "denominator": 1
+              }
+            },
+            "relevant_insufficient": {
+              "false_abstention": {
+                "count": 0,
+                "denominator": 0
+              },
+              "false_acceptance": {
+                "count": 1,
+                "denominator": 1
+              }
+            },
+            "sufficient": {
+              "false_abstention": {
+                "count": 0,
+                "denominator": 1
+              },
+              "false_acceptance": {
+                "count": 0,
+                "denominator": 0
+              }
+            }
+          }
+        }
+      },
+      "EN>ID": {
+        "generation": {
+          "false_abstention": {
+            "count": 0,
+            "denominator": 1
+          },
+          "false_acceptance": {
+            "count": 2,
+            "denominator": 2
+          },
+          "by_stratum": {
+            "company_prefix_chunk": {
+              "false_abstention": {
+                "count": 0,
+                "denominator": 0
+              },
+              "false_acceptance": {
+                "count": 0,
+                "denominator": 0
+              }
+            },
+            "generic_overlap": {
+              "false_abstention": {
+                "count": 0,
+                "denominator": 0
+              },
+              "false_acceptance": {
+                "count": 1,
+                "denominator": 1
+              }
+            },
+            "irrelevant": {
+              "false_abstention": {
+                "count": 0,
+                "denominator": 0
+              },
+              "false_acceptance": {
+                "count": 0,
+                "denominator": 0
+              }
+            },
+            "relevant_insufficient": {
+              "false_abstention": {
+                "count": 0,
+                "denominator": 0
+              },
+              "false_acceptance": {
+                "count": 1,
+                "denominator": 1
+              }
+            },
+            "sufficient": {
+              "false_abstention": {
+                "count": 0,
+                "denominator": 1
+              },
+              "false_acceptance": {
+                "count": 0,
+                "denominator": 0
+              }
+            }
+          }
+        },
+        "label": {
+          "false_abstention": {
+            "count": 0,
+            "denominator": 1
+          },
+          "false_acceptance": {
+            "count": 2,
+            "denominator": 2
+          },
+          "by_stratum": {
+            "company_prefix_chunk": {
+              "false_abstention": {
+                "count": 0,
+                "denominator": 0
+              },
+              "false_acceptance": {
+                "count": 0,
+                "denominator": 0
+              }
+            },
+            "generic_overlap": {
+              "false_abstention": {
+                "count": 0,
+                "denominator": 0
+              },
+              "false_acceptance": {
+                "count": 1,
+                "denominator": 1
+              }
+            },
+            "irrelevant": {
+              "false_abstention": {
+                "count": 0,
+                "denominator": 0
+              },
+              "false_acceptance": {
+                "count": 0,
+                "denominator": 0
+              }
+            },
+            "relevant_insufficient": {
+              "false_abstention": {
+                "count": 0,
+                "denominator": 0
+              },
+              "false_acceptance": {
+                "count": 1,
+                "denominator": 1
+              }
+            },
+            "sufficient": {
+              "false_abstention": {
+                "count": 0,
+                "denominator": 1
+              },
+              "false_acceptance": {
+                "count": 0,
+                "denominator": 0
+              }
+            }
+          }
+        }
+      },
+      "ID>EN": {
+        "generation": {
+          "false_abstention": {
+            "count": 1,
+            "denominator": 1
+          },
+          "false_acceptance": {
+            "count": 1,
+            "denominator": 2
+          },
+          "by_stratum": {
+            "company_prefix_chunk": {
+              "false_abstention": {
+                "count": 0,
+                "denominator": 0
+              },
+              "false_acceptance": {
+                "count": 0,
+                "denominator": 1
+              }
+            },
+            "generic_overlap": {
+              "false_abstention": {
+                "count": 0,
+                "denominator": 0
+              },
+              "false_acceptance": {
+                "count": 0,
+                "denominator": 0
+              }
+            },
+            "irrelevant": {
+              "false_abstention": {
+                "count": 0,
+                "denominator": 0
+              },
+              "false_acceptance": {
+                "count": 0,
+                "denominator": 0
+              }
+            },
+            "relevant_insufficient": {
+              "false_abstention": {
+                "count": 0,
+                "denominator": 0
+              },
+              "false_acceptance": {
+                "count": 1,
+                "denominator": 1
+              }
+            },
+            "sufficient": {
+              "false_abstention": {
+                "count": 1,
+                "denominator": 1
+              },
+              "false_acceptance": {
+                "count": 0,
+                "denominator": 0
+              }
+            }
+          }
+        },
+        "label": {
+          "false_abstention": {
+            "count": 1,
+            "denominator": 1
+          },
+          "false_acceptance": {
+            "count": 1,
+            "denominator": 2
+          },
+          "by_stratum": {
+            "company_prefix_chunk": {
+              "false_abstention": {
+                "count": 0,
+                "denominator": 0
+              },
+              "false_acceptance": {
+                "count": 0,
+                "denominator": 1
+              }
+            },
+            "generic_overlap": {
+              "false_abstention": {
+                "count": 0,
+                "denominator": 0
+              },
+              "false_acceptance": {
+                "count": 0,
+                "denominator": 0
+              }
+            },
+            "irrelevant": {
+              "false_abstention": {
+                "count": 0,
+                "denominator": 0
+              },
+              "false_acceptance": {
+                "count": 0,
+                "denominator": 0
+              }
+            },
+            "relevant_insufficient": {
+              "false_abstention": {
+                "count": 0,
+                "denominator": 0
+              },
+              "false_acceptance": {
+                "count": 1,
+                "denominator": 1
+              }
+            },
+            "sufficient": {
+              "false_abstention": {
+                "count": 1,
+                "denominator": 1
+              },
+              "false_acceptance": {
+                "count": 0,
+                "denominator": 0
+              }
+            }
+          }
+        }
+      },
+      "ID>ID": {
+        "generation": {
+          "false_abstention": {
+            "count": 0,
+            "denominator": 1
+          },
+          "false_acceptance": {
+            "count": 1,
+            "denominator": 2
+          },
+          "by_stratum": {
+            "company_prefix_chunk": {
+              "false_abstention": {
+                "count": 0,
+                "denominator": 0
+              },
+              "false_acceptance": {
+                "count": 0,
+                "denominator": 0
+              }
+            },
+            "generic_overlap": {
+              "false_abstention": {
+                "count": 0,
+                "denominator": 0
+              },
+              "false_acceptance": {
+                "count": 0,
+                "denominator": 0
+              }
+            },
+            "irrelevant": {
+              "false_abstention": {
+                "count": 0,
+                "denominator": 0
+              },
+              "false_acceptance": {
+                "count": 0,
+                "denominator": 1
+              }
+            },
+            "relevant_insufficient": {
+              "false_abstention": {
+                "count": 0,
+                "denominator": 0
+              },
+              "false_acceptance": {
+                "count": 1,
+                "denominator": 1
+              }
+            },
+            "sufficient": {
+              "false_abstention": {
+                "count": 0,
+                "denominator": 1
+              },
+              "false_acceptance": {
+                "count": 0,
+                "denominator": 0
+              }
+            }
+          }
+        },
+        "label": {
+          "false_abstention": {
+            "count": 0,
+            "denominator": 1
+          },
+          "false_acceptance": {
+            "count": 1,
+            "denominator": 2
+          },
+          "by_stratum": {
+            "company_prefix_chunk": {
+              "false_abstention": {
+                "count": 0,
+                "denominator": 0
+              },
+              "false_acceptance": {
+                "count": 0,
+                "denominator": 0
+              }
+            },
+            "generic_overlap": {
+              "false_abstention": {
+                "count": 0,
+                "denominator": 0
+              },
+              "false_acceptance": {
+                "count": 0,
+                "denominator": 0
+              }
+            },
+            "irrelevant": {
+              "false_abstention": {
+                "count": 0,
+                "denominator": 0
+              },
+              "false_acceptance": {
+                "count": 0,
+                "denominator": 1
+              }
+            },
+            "relevant_insufficient": {
+              "false_abstention": {
+                "count": 0,
+                "denominator": 0
+              },
+              "false_acceptance": {
+                "count": 1,
+                "denominator": 1
+              }
+            },
+            "sufficient": {
+              "false_abstention": {
+                "count": 0,
+                "denominator": 1
+              },
+              "false_acceptance": {
+                "count": 0,
+                "denominator": 0
+              }
+            }
+          }
+        }
+      }
+    },
+    "by_fee_policy": {
+      "true": {
+        "generation": {
+          "false_abstention": {
+            "count": 0,
+            "denominator": 0
+          },
+          "false_acceptance": {
+            "count": 0,
+            "denominator": 1
+          },
+          "by_stratum": {
+            "company_prefix_chunk": {
+              "false_abstention": {
+                "count": 0,
+                "denominator": 0
+              },
+              "false_acceptance": {
+                "count": 0,
+                "denominator": 0
+              }
+            },
+            "generic_overlap": {
+              "false_abstention": {
+                "count": 0,
+                "denominator": 0
+              },
+              "false_acceptance": {
+                "count": 0,
+                "denominator": 0
+              }
+            },
+            "irrelevant": {
+              "false_abstention": {
+                "count": 0,
+                "denominator": 0
+              },
+              "false_acceptance": {
+                "count": 0,
+                "denominator": 1
+              }
+            },
+            "relevant_insufficient": {
+              "false_abstention": {
+                "count": 0,
+                "denominator": 0
+              },
+              "false_acceptance": {
+                "count": 0,
+                "denominator": 0
+              }
+            },
+            "sufficient": {
+              "false_abstention": {
+                "count": 0,
+                "denominator": 0
+              },
+              "false_acceptance": {
+                "count": 0,
+                "denominator": 0
+              }
+            }
+          }
+        },
+        "label": {
+          "false_abstention": {
+            "count": 0,
+            "denominator": 0
+          },
+          "false_acceptance": {
+            "count": 0,
+            "denominator": 1
+          },
+          "by_stratum": {
+            "company_prefix_chunk": {
+              "false_abstention": {
+                "count": 0,
+                "denominator": 0
+              },
+              "false_acceptance": {
+                "count": 0,
+                "denominator": 0
+              }
+            },
+            "generic_overlap": {
+              "false_abstention": {
+                "count": 0,
+                "denominator": 0
+              },
+              "false_acceptance": {
+                "count": 0,
+                "denominator": 0
+              }
+            },
+            "irrelevant": {
+              "false_abstention": {
+                "count": 0,
+                "denominator": 0
+              },
+              "false_acceptance": {
+                "count": 0,
+                "denominator": 1
+              }
+            },
+            "relevant_insufficient": {
+              "false_abstention": {
+                "count": 0,
+                "denominator": 0
+              },
+              "false_acceptance": {
+                "count": 0,
+                "denominator": 0
+              }
+            },
+            "sufficient": {
+              "false_abstention": {
+                "count": 0,
+                "denominator": 0
+              },
+              "false_acceptance": {
+                "count": 0,
+                "denominator": 0
+              }
+            }
+          }
+        }
+      },
+      "false": {
+        "generation": {
+          "false_abstention": {
+            "count": 1,
+            "denominator": 4
+          },
+          "false_acceptance": {
+            "count": 5,
+            "denominator": 7
+          },
+          "by_stratum": {
+            "company_prefix_chunk": {
+              "false_abstention": {
+                "count": 0,
+                "denominator": 0
+              },
+              "false_acceptance": {
+                "count": 0,
+                "denominator": 1
+              }
+            },
+            "generic_overlap": {
+              "false_abstention": {
+                "count": 0,
+                "denominator": 0
+              },
+              "false_acceptance": {
+                "count": 1,
+                "denominator": 1
+              }
+            },
+            "irrelevant": {
+              "false_abstention": {
+                "count": 0,
+                "denominator": 0
+              },
+              "false_acceptance": {
+                "count": 0,
+                "denominator": 1
+              }
+            },
+            "relevant_insufficient": {
+              "false_abstention": {
+                "count": 0,
+                "denominator": 0
+              },
+              "false_acceptance": {
+                "count": 4,
+                "denominator": 4
+              }
+            },
+            "sufficient": {
+              "false_abstention": {
+                "count": 1,
+                "denominator": 4
+              },
+              "false_acceptance": {
+                "count": 0,
+                "denominator": 0
+              }
+            }
+          }
+        },
+        "label": {
+          "false_abstention": {
+            "count": 1,
+            "denominator": 4
+          },
+          "false_acceptance": {
+            "count": 5,
+            "denominator": 7
+          },
+          "by_stratum": {
+            "company_prefix_chunk": {
+              "false_abstention": {
+                "count": 0,
+                "denominator": 0
+              },
+              "false_acceptance": {
+                "count": 0,
+                "denominator": 1
+              }
+            },
+            "generic_overlap": {
+              "false_abstention": {
+                "count": 0,
+                "denominator": 0
+              },
+              "false_acceptance": {
+                "count": 1,
+                "denominator": 1
+              }
+            },
+            "irrelevant": {
+              "false_abstention": {
+                "count": 0,
+                "denominator": 0
+              },
+              "false_acceptance": {
+                "count": 0,
+                "denominator": 1
+              }
+            },
+            "relevant_insufficient": {
+              "false_abstention": {
+                "count": 0,
+                "denominator": 0
+              },
+              "false_acceptance": {
+                "count": 4,
+                "denominator": 4
+              }
+            },
+            "sufficient": {
+              "false_abstention": {
+                "count": 1,
+                "denominator": 4
+              },
+              "false_acceptance": {
+                "count": 0,
+                "denominator": 0
+              }
+            }
+          }
+        }
+      }
+    },
+    "spec_pairs": {},
+    "spec_pairs_summary": {
+      "total": 0,
+      "distinguished_generation_count": 0,
+      "distinguished_label_count": 0
+    }
+  }
+}

@@ -1,0 +1,66 @@
+task_id: clients-phone-core-expression-indexes
+gear: 3
+l_level: L2
+gate_class: opus
+# Floor computed for THIS PR's actual changed-file set: `git diff --name-only
+# origin/main...HEAD > /tmp/c.txt && git diff --numstat origin/main...HEAD >
+# /tmp/n.txt && python3 scripts/evidence_pack_lint.py --print-floor
+# --changed-files-file /tmp/c.txt --numstat-file /tmp/n.txt` returns 3 —
+# the diff touches apps/backend-rag/backend/db/migrations_v2/, a declared
+# hot-zone path. Gear 3 declared to match the floor exactly.
+objective: >-
+  Stop the sequential regex scan behind upsert-by-phone that keeps the
+  Postgres primary CPU-throttled, by adding three expression indexes on
+  public.clients whose indexed expressions are copied verbatim from
+  UPSERT_MATCH_SQL's own CASE/regexp_replace predicate — owner mandate
+  2026-09-10 item 3, owner go ("go 308") at 2026-09-09 ~17:05Z.
+constraints:
+  - >-
+    No query text change; additive only (three new expression indexes, no
+    column/trigger/table change). A plain CREATE INDEX (not CONCURRENTLY)
+    inside the migration transaction takes a lock for a sub-second build on
+    a ~50 MB / ~12k-row table — stated up front, not hidden.
+  - >-
+    Merging this PR is the deploy (fly-deploy.yml runs the migration on
+    merge to main) — no separate deploy step exists or is expected.
+  - >-
+    No PII: the migration touches index definitions over phone-shaped
+    columns, never a row value; the parity test compares SQL text, not
+    client data.
+acceptance:
+  - text: >-
+      A1: WHEN
+      backend/tests/migrations/test_migration_308_phone_core_index_parity.py
+      is run SHALL pass all four cases (expression-parity, per-column
+      coverage, rollback symmetry, one-character-drift guilt).
+    probe: >-
+      cd apps/backend-rag && PYTHONPATH=.:../crm-cell .venv/bin/python -m
+      pytest backend/tests/migrations/test_migration_308_phone_core_index_parity.py
+      -p no:cacheprovider
+  - text: >-
+      A2: WHEN scripts/lint_migration_rollback.py and
+      scripts/lint_migration_numbers.py run against the migration tree, and
+      ruff check/format run against the new test file, SHALL all report zero
+      violations.
+    probe: >-
+      python3 scripts/lint_migration_rollback.py && python3
+      scripts/lint_migration_numbers.py && ruff check
+      apps/backend-rag/backend/tests/migrations/test_migration_308_phone_core_index_parity.py
+      && ruff format --check
+      apps/backend-rag/backend/tests/migrations/test_migration_308_phone_core_index_parity.py
+  - text: >-
+      A3: WHEN the deterministic gear floor is recomputed from this PR's own
+      changed-file set SHALL equal 3, matching the declared gear exactly —
+      no downgrade below the migrations_v2 hot-zone floor.
+    probe: >-
+      python3 scripts/evidence_pack_lint.py --print-floor
+      --changed-files-file <changed> --numstat-file <numstat>
+  - text: >-
+      A4: WHERE the three expression indexes are live on the production
+      primary, WHEN one wa-mirror auto-promote cycle (~12-13 min) completes
+      SHALL show idx_scan > 0 on every idx_clients_phone_core_% index.
+    probe: >-
+      SELECT idx_scan FROM pg_stat_user_indexes WHERE indexrelname LIKE
+      'idx_clients_phone_core_%'
+appetite:
+  wall_clock_hours: 2

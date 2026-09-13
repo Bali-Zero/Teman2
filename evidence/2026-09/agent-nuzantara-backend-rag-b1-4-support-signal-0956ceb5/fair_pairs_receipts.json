@@ -1,0 +1,2089 @@
+{
+  "meta": {
+    "manifest_path": "fair_pairs_probe.json",
+    "manifest_sha256": "9d41ef142374408fe644001382882e40b05e73df08a3ee92c8a3fd0fb02401d0",
+    "base_sha": null,
+    "backend_root": "/Users/nuzantara/nuzantara/apps/backend-rag",
+    "backend_root_git_sha": "9972b16c9c1c5f2918c07e35d23a4d63c979568f",
+    "host": "mini-pro2",
+    "utc_start": "2026-09-12T06:03:13.165522+00:00",
+    "utc_end": "2026-09-12T06:04:46.615074+00:00",
+    "candidates_run": [
+      "i",
+      "iv",
+      "ii",
+      "iii"
+    ],
+    "reps": 3,
+    "limit_pairs": null,
+    "pairs_measured": [
+      "fp-capital",
+      "fp-duration",
+      "fp-price",
+      "fp-req"
+    ],
+    "model_ids": {
+      "ii": "qwen3.8:27b-mlx",
+      "iii": "gpt-5.6-terra"
+    },
+    "adapter_file_sha256": "a24ee0c951db0dec23cb649cd75d75aba4f2fe8b2a122f9bb9017ca3eb3cff5e",
+    "codex_version": "codex-cli 0.154.0",
+    "codex_home_basename": ".codex-acct2",
+    "ollama_url": "http://127.0.0.1:11434",
+    "ollama_model_digest": {
+      "model": "qwen3.8:27b-mlx",
+      "digest": "5642e97495e1a088883805981563dcdc4a040c2f53388b7a41d1f24d3622cf7e",
+      "error": null
+    }
+  },
+  "calls": [
+    {
+      "candidate": "i",
+      "pair_id": "fp-capital",
+      "case_id": "fp-capital-ins",
+      "rep": 0,
+      "decision": "SUPPORTED",
+      "outcome": "ok",
+      "latency_s": 8.417002391070127e-06,
+      "raw_first_token": null,
+      "cost": "none",
+      "detail": {
+        "slot": "capital"
+      }
+    },
+    {
+      "candidate": "i",
+      "pair_id": "fp-capital",
+      "case_id": "fp-capital-ins",
+      "rep": 1,
+      "decision": "SUPPORTED",
+      "outcome": "ok",
+      "latency_s": 3.374996595084667e-06,
+      "raw_first_token": null,
+      "cost": "none",
+      "detail": {
+        "slot": "capital"
+      }
+    },
+    {
+      "candidate": "i",
+      "pair_id": "fp-capital",
+      "case_id": "fp-capital-ins",
+      "rep": 2,
+      "decision": "SUPPORTED",
+      "outcome": "ok",
+      "latency_s": 2.749962732195854e-06,
+      "raw_first_token": null,
+      "cost": "none",
+      "detail": {
+        "slot": "capital"
+      }
+    },
+    {
+      "candidate": "i",
+      "pair_id": "fp-capital",
+      "case_id": "fp-capital-suf",
+      "rep": 0,
+      "decision": "SUPPORTED",
+      "outcome": "ok",
+      "latency_s": 3.2079988159239292e-06,
+      "raw_first_token": null,
+      "cost": "none",
+      "detail": {
+        "slot": "capital"
+      }
+    },
+    {
+      "candidate": "i",
+      "pair_id": "fp-capital",
+      "case_id": "fp-capital-suf",
+      "rep": 1,
+      "decision": "SUPPORTED",
+      "outcome": "ok",
+      "latency_s": 2.6249908842146397e-06,
+      "raw_first_token": null,
+      "cost": "none",
+      "detail": {
+        "slot": "capital"
+      }
+    },
+    {
+      "candidate": "i",
+      "pair_id": "fp-capital",
+      "case_id": "fp-capital-suf",
+      "rep": 2,
+      "decision": "SUPPORTED",
+      "outcome": "ok",
+      "latency_s": 2.541986759752035e-06,
+      "raw_first_token": null,
+      "cost": "none",
+      "detail": {
+        "slot": "capital"
+      }
+    },
+    {
+      "candidate": "i",
+      "pair_id": "fp-duration",
+      "case_id": "fp-duration-ins",
+      "rep": 0,
+      "decision": "SUPPORTED",
+      "outcome": "ok",
+      "latency_s": 4.999979864805937e-06,
+      "raw_first_token": null,
+      "cost": "none",
+      "detail": {
+        "slot": "duration"
+      }
+    },
+    {
+      "candidate": "i",
+      "pair_id": "fp-duration",
+      "case_id": "fp-duration-ins",
+      "rep": 1,
+      "decision": "SUPPORTED",
+      "outcome": "ok",
+      "latency_s": 3.374996595084667e-06,
+      "raw_first_token": null,
+      "cost": "none",
+      "detail": {
+        "slot": "duration"
+      }
+    },
+    {
+      "candidate": "i",
+      "pair_id": "fp-duration",
+      "case_id": "fp-duration-ins",
+      "rep": 2,
+      "decision": "SUPPORTED",
+      "outcome": "ok",
+      "latency_s": 2.1249870769679546e-06,
+      "raw_first_token": null,
+      "cost": "none",
+      "detail": {
+        "slot": "duration"
+      }
+    },
+    {
+      "candidate": "i",
+      "pair_id": "fp-duration",
+      "case_id": "fp-duration-suf",
+      "rep": 0,
+      "decision": "SUPPORTED",
+      "outcome": "ok",
+      "latency_s": 2.04198295250535e-06,
+      "raw_first_token": null,
+      "cost": "none",
+      "detail": {
+        "slot": "duration"
+      }
+    },
+    {
+      "candidate": "i",
+      "pair_id": "fp-duration",
+      "case_id": "fp-duration-suf",
+      "rep": 1,
+      "decision": "SUPPORTED",
+      "outcome": "ok",
+      "latency_s": 1.7080456018447876e-06,
+      "raw_first_token": null,
+      "cost": "none",
+      "detail": {
+        "slot": "duration"
+      }
+    },
+    {
+      "candidate": "i",
+      "pair_id": "fp-duration",
+      "case_id": "fp-duration-suf",
+      "rep": 2,
+      "decision": "SUPPORTED",
+      "outcome": "ok",
+      "latency_s": 1.7500133253633976e-06,
+      "raw_first_token": null,
+      "cost": "none",
+      "detail": {
+        "slot": "duration"
+      }
+    },
+    {
+      "candidate": "i",
+      "pair_id": "fp-price",
+      "case_id": "fp-price-ins",
+      "rep": 0,
+      "decision": "SUPPORTED",
+      "outcome": "ok",
+      "latency_s": 2.7500209398567677e-06,
+      "raw_first_token": null,
+      "cost": "none",
+      "detail": {
+        "slot": "price"
+      }
+    },
+    {
+      "candidate": "i",
+      "pair_id": "fp-price",
+      "case_id": "fp-price-ins",
+      "rep": 1,
+      "decision": "SUPPORTED",
+      "outcome": "ok",
+      "latency_s": 2.3750471882522106e-06,
+      "raw_first_token": null,
+      "cost": "none",
+      "detail": {
+        "slot": "price"
+      }
+    },
+    {
+      "candidate": "i",
+      "pair_id": "fp-price",
+      "case_id": "fp-price-ins",
+      "rep": 2,
+      "decision": "SUPPORTED",
+      "outcome": "ok",
+      "latency_s": 2.1249870769679546e-06,
+      "raw_first_token": null,
+      "cost": "none",
+      "detail": {
+        "slot": "price"
+      }
+    },
+    {
+      "candidate": "i",
+      "pair_id": "fp-price",
+      "case_id": "fp-price-suf",
+      "rep": 0,
+      "decision": "SUPPORTED",
+      "outcome": "ok",
+      "latency_s": 1.7909915186464787e-06,
+      "raw_first_token": null,
+      "cost": "none",
+      "detail": {
+        "slot": "price"
+      }
+    },
+    {
+      "candidate": "i",
+      "pair_id": "fp-price",
+      "case_id": "fp-price-suf",
+      "rep": 1,
+      "decision": "SUPPORTED",
+      "outcome": "ok",
+      "latency_s": 1.7500133253633976e-06,
+      "raw_first_token": null,
+      "cost": "none",
+      "detail": {
+        "slot": "price"
+      }
+    },
+    {
+      "candidate": "i",
+      "pair_id": "fp-price",
+      "case_id": "fp-price-suf",
+      "rep": 2,
+      "decision": "SUPPORTED",
+      "outcome": "ok",
+      "latency_s": 1.6669509932398796e-06,
+      "raw_first_token": null,
+      "cost": "none",
+      "detail": {
+        "slot": "price"
+      }
+    },
+    {
+      "candidate": "i",
+      "pair_id": "fp-req",
+      "case_id": "fp-req-ins",
+      "rep": 0,
+      "decision": "SUPPORTED",
+      "outcome": "ok",
+      "latency_s": 8.791976142674685e-06,
+      "raw_first_token": null,
+      "cost": "none",
+      "detail": {
+        "slot": "requirements"
+      }
+    },
+    {
+      "candidate": "i",
+      "pair_id": "fp-req",
+      "case_id": "fp-req-ins",
+      "rep": 1,
+      "decision": "SUPPORTED",
+      "outcome": "ok",
+      "latency_s": 6.9160014390945435e-06,
+      "raw_first_token": null,
+      "cost": "none",
+      "detail": {
+        "slot": "requirements"
+      }
+    },
+    {
+      "candidate": "i",
+      "pair_id": "fp-req",
+      "case_id": "fp-req-ins",
+      "rep": 2,
+      "decision": "SUPPORTED",
+      "outcome": "ok",
+      "latency_s": 6.249989382922649e-06,
+      "raw_first_token": null,
+      "cost": "none",
+      "detail": {
+        "slot": "requirements"
+      }
+    },
+    {
+      "candidate": "i",
+      "pair_id": "fp-req",
+      "case_id": "fp-req-suf",
+      "rep": 0,
+      "decision": "SUPPORTED",
+      "outcome": "ok",
+      "latency_s": 5.542009603232145e-06,
+      "raw_first_token": null,
+      "cost": "none",
+      "detail": {
+        "slot": "requirements"
+      }
+    },
+    {
+      "candidate": "i",
+      "pair_id": "fp-req",
+      "case_id": "fp-req-suf",
+      "rep": 1,
+      "decision": "SUPPORTED",
+      "outcome": "ok",
+      "latency_s": 4.916975740343332e-06,
+      "raw_first_token": null,
+      "cost": "none",
+      "detail": {
+        "slot": "requirements"
+      }
+    },
+    {
+      "candidate": "i",
+      "pair_id": "fp-req",
+      "case_id": "fp-req-suf",
+      "rep": 2,
+      "decision": "SUPPORTED",
+      "outcome": "ok",
+      "latency_s": 4.916975740343332e-06,
+      "raw_first_token": null,
+      "cost": "none",
+      "detail": {
+        "slot": "requirements"
+      }
+    },
+    {
+      "candidate": "iv",
+      "pair_id": "fp-capital",
+      "case_id": "fp-capital-ins",
+      "rep": 0,
+      "decision": "SUPPORTED",
+      "outcome": "ok",
+      "latency_s": 3.573236458003521,
+      "raw_first_token": null,
+      "cost": "none",
+      "detail": {
+        "evidence_score": 0.8,
+        "label_abstains": false
+      }
+    },
+    {
+      "candidate": "iv",
+      "pair_id": "fp-capital",
+      "case_id": "fp-capital-ins",
+      "rep": 1,
+      "decision": "SUPPORTED",
+      "outcome": "ok",
+      "latency_s": 2.5500019546598196e-05,
+      "raw_first_token": null,
+      "cost": "none",
+      "detail": {
+        "evidence_score": 0.8,
+        "label_abstains": false
+      }
+    },
+    {
+      "candidate": "iv",
+      "pair_id": "fp-capital",
+      "case_id": "fp-capital-ins",
+      "rep": 2,
+      "decision": "SUPPORTED",
+      "outcome": "ok",
+      "latency_s": 1.9000028260052204e-05,
+      "raw_first_token": null,
+      "cost": "none",
+      "detail": {
+        "evidence_score": 0.8,
+        "label_abstains": false
+      }
+    },
+    {
+      "candidate": "iv",
+      "pair_id": "fp-capital",
+      "case_id": "fp-capital-suf",
+      "rep": 0,
+      "decision": "SUPPORTED",
+      "outcome": "ok",
+      "latency_s": 1.8832972273230553e-05,
+      "raw_first_token": null,
+      "cost": "none",
+      "detail": {
+        "evidence_score": 0.8,
+        "label_abstains": false
+      }
+    },
+    {
+      "candidate": "iv",
+      "pair_id": "fp-capital",
+      "case_id": "fp-capital-suf",
+      "rep": 1,
+      "decision": "SUPPORTED",
+      "outcome": "ok",
+      "latency_s": 1.5166995581239462e-05,
+      "raw_first_token": null,
+      "cost": "none",
+      "detail": {
+        "evidence_score": 0.8,
+        "label_abstains": false
+      }
+    },
+    {
+      "candidate": "iv",
+      "pair_id": "fp-capital",
+      "case_id": "fp-capital-suf",
+      "rep": 2,
+      "decision": "SUPPORTED",
+      "outcome": "ok",
+      "latency_s": 1.4082994312047958e-05,
+      "raw_first_token": null,
+      "cost": "none",
+      "detail": {
+        "evidence_score": 0.8,
+        "label_abstains": false
+      }
+    },
+    {
+      "candidate": "iv",
+      "pair_id": "fp-duration",
+      "case_id": "fp-duration-ins",
+      "rep": 0,
+      "decision": "SUPPORTED",
+      "outcome": "ok",
+      "latency_s": 1.979200169444084e-05,
+      "raw_first_token": null,
+      "cost": "none",
+      "detail": {
+        "evidence_score": 0.8,
+        "label_abstains": false
+      }
+    },
+    {
+      "candidate": "iv",
+      "pair_id": "fp-duration",
+      "case_id": "fp-duration-ins",
+      "rep": 1,
+      "decision": "SUPPORTED",
+      "outcome": "ok",
+      "latency_s": 1.699995482340455e-05,
+      "raw_first_token": null,
+      "cost": "none",
+      "detail": {
+        "evidence_score": 0.8,
+        "label_abstains": false
+      }
+    },
+    {
+      "candidate": "iv",
+      "pair_id": "fp-duration",
+      "case_id": "fp-duration-ins",
+      "rep": 2,
+      "decision": "SUPPORTED",
+      "outcome": "ok",
+      "latency_s": 1.47090177051723e-05,
+      "raw_first_token": null,
+      "cost": "none",
+      "detail": {
+        "evidence_score": 0.8,
+        "label_abstains": false
+      }
+    },
+    {
+      "candidate": "iv",
+      "pair_id": "fp-duration",
+      "case_id": "fp-duration-suf",
+      "rep": 0,
+      "decision": "SUPPORTED",
+      "outcome": "ok",
+      "latency_s": 1.4666991773992777e-05,
+      "raw_first_token": null,
+      "cost": "none",
+      "detail": {
+        "evidence_score": 0.6,
+        "label_abstains": false
+      }
+    },
+    {
+      "candidate": "iv",
+      "pair_id": "fp-duration",
+      "case_id": "fp-duration-suf",
+      "rep": 1,
+      "decision": "SUPPORTED",
+      "outcome": "ok",
+      "latency_s": 1.2417032849043608e-05,
+      "raw_first_token": null,
+      "cost": "none",
+      "detail": {
+        "evidence_score": 0.6,
+        "label_abstains": false
+      }
+    },
+    {
+      "candidate": "iv",
+      "pair_id": "fp-duration",
+      "case_id": "fp-duration-suf",
+      "rep": 2,
+      "decision": "SUPPORTED",
+      "outcome": "ok",
+      "latency_s": 1.2499978765845299e-05,
+      "raw_first_token": null,
+      "cost": "none",
+      "detail": {
+        "evidence_score": 0.6,
+        "label_abstains": false
+      }
+    },
+    {
+      "candidate": "iv",
+      "pair_id": "fp-price",
+      "case_id": "fp-price-ins",
+      "rep": 0,
+      "decision": "SUPPORTED",
+      "outcome": "ok",
+      "latency_s": 2.01669754460454e-05,
+      "raw_first_token": null,
+      "cost": "none",
+      "detail": {
+        "evidence_score": 0.8,
+        "label_abstains": false
+      }
+    },
+    {
+      "candidate": "iv",
+      "pair_id": "fp-price",
+      "case_id": "fp-price-ins",
+      "rep": 1,
+      "decision": "SUPPORTED",
+      "outcome": "ok",
+      "latency_s": 1.5042023733258247e-05,
+      "raw_first_token": null,
+      "cost": "none",
+      "detail": {
+        "evidence_score": 0.8,
+        "label_abstains": false
+      }
+    },
+    {
+      "candidate": "iv",
+      "pair_id": "fp-price",
+      "case_id": "fp-price-ins",
+      "rep": 2,
+      "decision": "SUPPORTED",
+      "outcome": "ok",
+      "latency_s": 1.5083001926541328e-05,
+      "raw_first_token": null,
+      "cost": "none",
+      "detail": {
+        "evidence_score": 0.8,
+        "label_abstains": false
+      }
+    },
+    {
+      "candidate": "iv",
+      "pair_id": "fp-price",
+      "case_id": "fp-price-suf",
+      "rep": 0,
+      "decision": "SUPPORTED",
+      "outcome": "ok",
+      "latency_s": 1.570803578943014e-05,
+      "raw_first_token": null,
+      "cost": "none",
+      "detail": {
+        "evidence_score": 0.8,
+        "label_abstains": false
+      }
+    },
+    {
+      "candidate": "iv",
+      "pair_id": "fp-price",
+      "case_id": "fp-price-suf",
+      "rep": 1,
+      "decision": "SUPPORTED",
+      "outcome": "ok",
+      "latency_s": 1.329201040789485e-05,
+      "raw_first_token": null,
+      "cost": "none",
+      "detail": {
+        "evidence_score": 0.8,
+        "label_abstains": false
+      }
+    },
+    {
+      "candidate": "iv",
+      "pair_id": "fp-price",
+      "case_id": "fp-price-suf",
+      "rep": 2,
+      "decision": "SUPPORTED",
+      "outcome": "ok",
+      "latency_s": 1.3249984476715326e-05,
+      "raw_first_token": null,
+      "cost": "none",
+      "detail": {
+        "evidence_score": 0.8,
+        "label_abstains": false
+      }
+    },
+    {
+      "candidate": "iv",
+      "pair_id": "fp-req",
+      "case_id": "fp-req-ins",
+      "rep": 0,
+      "decision": "SUPPORTED",
+      "outcome": "ok",
+      "latency_s": 1.8291990272700787e-05,
+      "raw_first_token": null,
+      "cost": "none",
+      "detail": {
+        "evidence_score": 0.6,
+        "label_abstains": false
+      }
+    },
+    {
+      "candidate": "iv",
+      "pair_id": "fp-req",
+      "case_id": "fp-req-ins",
+      "rep": 1,
+      "decision": "SUPPORTED",
+      "outcome": "ok",
+      "latency_s": 1.3833981938660145e-05,
+      "raw_first_token": null,
+      "cost": "none",
+      "detail": {
+        "evidence_score": 0.6,
+        "label_abstains": false
+      }
+    },
+    {
+      "candidate": "iv",
+      "pair_id": "fp-req",
+      "case_id": "fp-req-ins",
+      "rep": 2,
+      "decision": "SUPPORTED",
+      "outcome": "ok",
+      "latency_s": 1.3207958545535803e-05,
+      "raw_first_token": null,
+      "cost": "none",
+      "detail": {
+        "evidence_score": 0.6,
+        "label_abstains": false
+      }
+    },
+    {
+      "candidate": "iv",
+      "pair_id": "fp-req",
+      "case_id": "fp-req-suf",
+      "rep": 0,
+      "decision": "SUPPORTED",
+      "outcome": "ok",
+      "latency_s": 1.5666999388486147e-05,
+      "raw_first_token": null,
+      "cost": "none",
+      "detail": {
+        "evidence_score": 0.8,
+        "label_abstains": false
+      }
+    },
+    {
+      "candidate": "iv",
+      "pair_id": "fp-req",
+      "case_id": "fp-req-suf",
+      "rep": 1,
+      "decision": "SUPPORTED",
+      "outcome": "ok",
+      "latency_s": 1.333298860117793e-05,
+      "raw_first_token": null,
+      "cost": "none",
+      "detail": {
+        "evidence_score": 0.8,
+        "label_abstains": false
+      }
+    },
+    {
+      "candidate": "iv",
+      "pair_id": "fp-req",
+      "case_id": "fp-req-suf",
+      "rep": 2,
+      "decision": "SUPPORTED",
+      "outcome": "ok",
+      "latency_s": 1.3124954421073198e-05,
+      "raw_first_token": null,
+      "cost": "none",
+      "detail": {
+        "evidence_score": 0.8,
+        "label_abstains": false
+      }
+    },
+    {
+      "candidate": "ii",
+      "pair_id": "fp-capital",
+      "case_id": "fp-capital-ins",
+      "rep": 0,
+      "decision": "NOT_SUPPORTED",
+      "outcome": "ok",
+      "latency_s": 15.002959082950838,
+      "raw_first_token": "NOT_SUPPORTED",
+      "cost": "$0 local",
+      "detail": {
+        "model": "qwen3.8:27b-mlx",
+        "sent_think": true,
+        "accepted_think": true,
+        "request_options": {
+          "options": {
+            "temperature": 0,
+            "seed": 42
+          },
+          "stream": false,
+          "think_sent": true
+        }
+      }
+    },
+    {
+      "candidate": "ii",
+      "pair_id": "fp-capital",
+      "case_id": "fp-capital-ins",
+      "rep": 1,
+      "decision": "NOT_SUPPORTED",
+      "outcome": "ok",
+      "latency_s": 0.2849447089829482,
+      "raw_first_token": "NOT_SUPPORTED",
+      "cost": "$0 local",
+      "detail": {
+        "model": "qwen3.8:27b-mlx",
+        "sent_think": true,
+        "accepted_think": true,
+        "request_options": {
+          "options": {
+            "temperature": 0,
+            "seed": 42
+          },
+          "stream": false,
+          "think_sent": true
+        }
+      }
+    },
+    {
+      "candidate": "ii",
+      "pair_id": "fp-capital",
+      "case_id": "fp-capital-ins",
+      "rep": 2,
+      "decision": "NOT_SUPPORTED",
+      "outcome": "ok",
+      "latency_s": 0.263464416959323,
+      "raw_first_token": "NOT_SUPPORTED",
+      "cost": "$0 local",
+      "detail": {
+        "model": "qwen3.8:27b-mlx",
+        "sent_think": true,
+        "accepted_think": true,
+        "request_options": {
+          "options": {
+            "temperature": 0,
+            "seed": 42
+          },
+          "stream": false,
+          "think_sent": true
+        }
+      }
+    },
+    {
+      "candidate": "ii",
+      "pair_id": "fp-capital",
+      "case_id": "fp-capital-suf",
+      "rep": 0,
+      "decision": "SUPPORTED",
+      "outcome": "ok",
+      "latency_s": 1.417937082995195,
+      "raw_first_token": "SUPPORTED",
+      "cost": "$0 local",
+      "detail": {
+        "model": "qwen3.8:27b-mlx",
+        "sent_think": true,
+        "accepted_think": true,
+        "request_options": {
+          "options": {
+            "temperature": 0,
+            "seed": 42
+          },
+          "stream": false,
+          "think_sent": true
+        }
+      }
+    },
+    {
+      "candidate": "ii",
+      "pair_id": "fp-capital",
+      "case_id": "fp-capital-suf",
+      "rep": 1,
+      "decision": "SUPPORTED",
+      "outcome": "ok",
+      "latency_s": 0.2696865000179969,
+      "raw_first_token": "SUPPORTED",
+      "cost": "$0 local",
+      "detail": {
+        "model": "qwen3.8:27b-mlx",
+        "sent_think": true,
+        "accepted_think": true,
+        "request_options": {
+          "options": {
+            "temperature": 0,
+            "seed": 42
+          },
+          "stream": false,
+          "think_sent": true
+        }
+      }
+    },
+    {
+      "candidate": "ii",
+      "pair_id": "fp-capital",
+      "case_id": "fp-capital-suf",
+      "rep": 2,
+      "decision": "SUPPORTED",
+      "outcome": "ok",
+      "latency_s": 0.2559555839980021,
+      "raw_first_token": "SUPPORTED",
+      "cost": "$0 local",
+      "detail": {
+        "model": "qwen3.8:27b-mlx",
+        "sent_think": true,
+        "accepted_think": true,
+        "request_options": {
+          "options": {
+            "temperature": 0,
+            "seed": 42
+          },
+          "stream": false,
+          "think_sent": true
+        }
+      }
+    },
+    {
+      "candidate": "ii",
+      "pair_id": "fp-duration",
+      "case_id": "fp-duration-ins",
+      "rep": 0,
+      "decision": "NOT_SUPPORTED",
+      "outcome": "ok",
+      "latency_s": 1.1385917090228759,
+      "raw_first_token": "NOT_SUPPORTED",
+      "cost": "$0 local",
+      "detail": {
+        "model": "qwen3.8:27b-mlx",
+        "sent_think": true,
+        "accepted_think": true,
+        "request_options": {
+          "options": {
+            "temperature": 0,
+            "seed": 42
+          },
+          "stream": false,
+          "think_sent": true
+        }
+      }
+    },
+    {
+      "candidate": "ii",
+      "pair_id": "fp-duration",
+      "case_id": "fp-duration-ins",
+      "rep": 1,
+      "decision": "NOT_SUPPORTED",
+      "outcome": "ok",
+      "latency_s": 0.25539504102198407,
+      "raw_first_token": "NOT_SUPPORTED",
+      "cost": "$0 local",
+      "detail": {
+        "model": "qwen3.8:27b-mlx",
+        "sent_think": true,
+        "accepted_think": true,
+        "request_options": {
+          "options": {
+            "temperature": 0,
+            "seed": 42
+          },
+          "stream": false,
+          "think_sent": true
+        }
+      }
+    },
+    {
+      "candidate": "ii",
+      "pair_id": "fp-duration",
+      "case_id": "fp-duration-ins",
+      "rep": 2,
+      "decision": "NOT_SUPPORTED",
+      "outcome": "ok",
+      "latency_s": 0.25339962501311675,
+      "raw_first_token": "NOT_SUPPORTED",
+      "cost": "$0 local",
+      "detail": {
+        "model": "qwen3.8:27b-mlx",
+        "sent_think": true,
+        "accepted_think": true,
+        "request_options": {
+          "options": {
+            "temperature": 0,
+            "seed": 42
+          },
+          "stream": false,
+          "think_sent": true
+        }
+      }
+    },
+    {
+      "candidate": "ii",
+      "pair_id": "fp-duration",
+      "case_id": "fp-duration-suf",
+      "rep": 0,
+      "decision": "SUPPORTED",
+      "outcome": "ok",
+      "latency_s": 1.111957999994047,
+      "raw_first_token": "SUPPORTED",
+      "cost": "$0 local",
+      "detail": {
+        "model": "qwen3.8:27b-mlx",
+        "sent_think": true,
+        "accepted_think": true,
+        "request_options": {
+          "options": {
+            "temperature": 0,
+            "seed": 42
+          },
+          "stream": false,
+          "think_sent": true
+        }
+      }
+    },
+    {
+      "candidate": "ii",
+      "pair_id": "fp-duration",
+      "case_id": "fp-duration-suf",
+      "rep": 1,
+      "decision": "SUPPORTED",
+      "outcome": "ok",
+      "latency_s": 0.4015430830186233,
+      "raw_first_token": "SUPPORTED",
+      "cost": "$0 local",
+      "detail": {
+        "model": "qwen3.8:27b-mlx",
+        "sent_think": true,
+        "accepted_think": true,
+        "request_options": {
+          "options": {
+            "temperature": 0,
+            "seed": 42
+          },
+          "stream": false,
+          "think_sent": true
+        }
+      }
+    },
+    {
+      "candidate": "ii",
+      "pair_id": "fp-duration",
+      "case_id": "fp-duration-suf",
+      "rep": 2,
+      "decision": "SUPPORTED",
+      "outcome": "ok",
+      "latency_s": 0.25153737497748807,
+      "raw_first_token": "SUPPORTED",
+      "cost": "$0 local",
+      "detail": {
+        "model": "qwen3.8:27b-mlx",
+        "sent_think": true,
+        "accepted_think": true,
+        "request_options": {
+          "options": {
+            "temperature": 0,
+            "seed": 42
+          },
+          "stream": false,
+          "think_sent": true
+        }
+      }
+    },
+    {
+      "candidate": "ii",
+      "pair_id": "fp-price",
+      "case_id": "fp-price-ins",
+      "rep": 0,
+      "decision": "NOT_SUPPORTED",
+      "outcome": "ok",
+      "latency_s": 1.1447847920353524,
+      "raw_first_token": "NOT_SUPPORTED",
+      "cost": "$0 local",
+      "detail": {
+        "model": "qwen3.8:27b-mlx",
+        "sent_think": true,
+        "accepted_think": true,
+        "request_options": {
+          "options": {
+            "temperature": 0,
+            "seed": 42
+          },
+          "stream": false,
+          "think_sent": true
+        }
+      }
+    },
+    {
+      "candidate": "ii",
+      "pair_id": "fp-price",
+      "case_id": "fp-price-ins",
+      "rep": 1,
+      "decision": "NOT_SUPPORTED",
+      "outcome": "ok",
+      "latency_s": 0.4373504579998553,
+      "raw_first_token": "NOT_SUPPORTED",
+      "cost": "$0 local",
+      "detail": {
+        "model": "qwen3.8:27b-mlx",
+        "sent_think": true,
+        "accepted_think": true,
+        "request_options": {
+          "options": {
+            "temperature": 0,
+            "seed": 42
+          },
+          "stream": false,
+          "think_sent": true
+        }
+      }
+    },
+    {
+      "candidate": "ii",
+      "pair_id": "fp-price",
+      "case_id": "fp-price-ins",
+      "rep": 2,
+      "decision": "NOT_SUPPORTED",
+      "outcome": "ok",
+      "latency_s": 0.28872662503272295,
+      "raw_first_token": "NOT_SUPPORTED",
+      "cost": "$0 local",
+      "detail": {
+        "model": "qwen3.8:27b-mlx",
+        "sent_think": true,
+        "accepted_think": true,
+        "request_options": {
+          "options": {
+            "temperature": 0,
+            "seed": 42
+          },
+          "stream": false,
+          "think_sent": true
+        }
+      }
+    },
+    {
+      "candidate": "ii",
+      "pair_id": "fp-price",
+      "case_id": "fp-price-suf",
+      "rep": 0,
+      "decision": "SUPPORTED",
+      "outcome": "ok",
+      "latency_s": 1.1658041250193492,
+      "raw_first_token": "SUPPORTED",
+      "cost": "$0 local",
+      "detail": {
+        "model": "qwen3.8:27b-mlx",
+        "sent_think": true,
+        "accepted_think": true,
+        "request_options": {
+          "options": {
+            "temperature": 0,
+            "seed": 42
+          },
+          "stream": false,
+          "think_sent": true
+        }
+      }
+    },
+    {
+      "candidate": "ii",
+      "pair_id": "fp-price",
+      "case_id": "fp-price-suf",
+      "rep": 1,
+      "decision": "SUPPORTED",
+      "outcome": "ok",
+      "latency_s": 0.48981762502808124,
+      "raw_first_token": "SUPPORTED",
+      "cost": "$0 local",
+      "detail": {
+        "model": "qwen3.8:27b-mlx",
+        "sent_think": true,
+        "accepted_think": true,
+        "request_options": {
+          "options": {
+            "temperature": 0,
+            "seed": 42
+          },
+          "stream": false,
+          "think_sent": true
+        }
+      }
+    },
+    {
+      "candidate": "ii",
+      "pair_id": "fp-price",
+      "case_id": "fp-price-suf",
+      "rep": 2,
+      "decision": "SUPPORTED",
+      "outcome": "ok",
+      "latency_s": 0.3125878340215422,
+      "raw_first_token": "SUPPORTED",
+      "cost": "$0 local",
+      "detail": {
+        "model": "qwen3.8:27b-mlx",
+        "sent_think": true,
+        "accepted_think": true,
+        "request_options": {
+          "options": {
+            "temperature": 0,
+            "seed": 42
+          },
+          "stream": false,
+          "think_sent": true
+        }
+      }
+    },
+    {
+      "candidate": "ii",
+      "pair_id": "fp-req",
+      "case_id": "fp-req-ins",
+      "rep": 0,
+      "decision": "NOT_SUPPORTED",
+      "outcome": "ok",
+      "latency_s": 1.1378147500217892,
+      "raw_first_token": "NOT_SUPPORTED",
+      "cost": "$0 local",
+      "detail": {
+        "model": "qwen3.8:27b-mlx",
+        "sent_think": true,
+        "accepted_think": true,
+        "request_options": {
+          "options": {
+            "temperature": 0,
+            "seed": 42
+          },
+          "stream": false,
+          "think_sent": true
+        }
+      }
+    },
+    {
+      "candidate": "ii",
+      "pair_id": "fp-req",
+      "case_id": "fp-req-ins",
+      "rep": 1,
+      "decision": "NOT_SUPPORTED",
+      "outcome": "ok",
+      "latency_s": 0.43913762498414144,
+      "raw_first_token": "NOT_SUPPORTED",
+      "cost": "$0 local",
+      "detail": {
+        "model": "qwen3.8:27b-mlx",
+        "sent_think": true,
+        "accepted_think": true,
+        "request_options": {
+          "options": {
+            "temperature": 0,
+            "seed": 42
+          },
+          "stream": false,
+          "think_sent": true
+        }
+      }
+    },
+    {
+      "candidate": "ii",
+      "pair_id": "fp-req",
+      "case_id": "fp-req-ins",
+      "rep": 2,
+      "decision": "NOT_SUPPORTED",
+      "outcome": "ok",
+      "latency_s": 0.5291259590303525,
+      "raw_first_token": "NOT_SUPPORTED",
+      "cost": "$0 local",
+      "detail": {
+        "model": "qwen3.8:27b-mlx",
+        "sent_think": true,
+        "accepted_think": true,
+        "request_options": {
+          "options": {
+            "temperature": 0,
+            "seed": 42
+          },
+          "stream": false,
+          "think_sent": true
+        }
+      }
+    },
+    {
+      "candidate": "ii",
+      "pair_id": "fp-req",
+      "case_id": "fp-req-suf",
+      "rep": 0,
+      "decision": "SUPPORTED",
+      "outcome": "ok",
+      "latency_s": 1.24413591704797,
+      "raw_first_token": "SUPPORTED",
+      "cost": "$0 local",
+      "detail": {
+        "model": "qwen3.8:27b-mlx",
+        "sent_think": true,
+        "accepted_think": true,
+        "request_options": {
+          "options": {
+            "temperature": 0,
+            "seed": 42
+          },
+          "stream": false,
+          "think_sent": true
+        }
+      }
+    },
+    {
+      "candidate": "ii",
+      "pair_id": "fp-req",
+      "case_id": "fp-req-suf",
+      "rep": 1,
+      "decision": "SUPPORTED",
+      "outcome": "ok",
+      "latency_s": 0.6232970830169506,
+      "raw_first_token": "SUPPORTED",
+      "cost": "$0 local",
+      "detail": {
+        "model": "qwen3.8:27b-mlx",
+        "sent_think": true,
+        "accepted_think": true,
+        "request_options": {
+          "options": {
+            "temperature": 0,
+            "seed": 42
+          },
+          "stream": false,
+          "think_sent": true
+        }
+      }
+    },
+    {
+      "candidate": "ii",
+      "pair_id": "fp-req",
+      "case_id": "fp-req-suf",
+      "rep": 2,
+      "decision": "SUPPORTED",
+      "outcome": "ok",
+      "latency_s": 0.4146684170118533,
+      "raw_first_token": "SUPPORTED",
+      "cost": "$0 local",
+      "detail": {
+        "model": "qwen3.8:27b-mlx",
+        "sent_think": true,
+        "accepted_think": true,
+        "request_options": {
+          "options": {
+            "temperature": 0,
+            "seed": 42
+          },
+          "stream": false,
+          "think_sent": true
+        }
+      }
+    },
+    {
+      "candidate": "iii",
+      "pair_id": "fp-capital",
+      "case_id": "fp-capital-ins",
+      "rep": 0,
+      "decision": "NOT_SUPPORTED",
+      "outcome": "ok",
+      "latency_s": 9.638398542010691,
+      "raw_first_token": "NOT_SUPPORTED",
+      "cost": "flat subscription",
+      "detail": {
+        "model": "gpt-5.6-terra",
+        "adapter_latency_ms": 9637.087166018318
+      }
+    },
+    {
+      "candidate": "iii",
+      "pair_id": "fp-capital",
+      "case_id": "fp-capital-ins",
+      "rep": 1,
+      "decision": "NOT_SUPPORTED",
+      "outcome": "ok",
+      "latency_s": 9.10062837501755,
+      "raw_first_token": "NOT_SUPPORTED",
+      "cost": "flat subscription",
+      "detail": {
+        "model": "gpt-5.6-terra",
+        "adapter_latency_ms": 9097.171499975957
+      }
+    },
+    {
+      "candidate": "iii",
+      "pair_id": "fp-capital",
+      "case_id": "fp-capital-ins",
+      "rep": 2,
+      "decision": "NOT_SUPPORTED",
+      "outcome": "ok",
+      "latency_s": 9.107621333037969,
+      "raw_first_token": "NOT_SUPPORTED",
+      "cost": "flat subscription",
+      "detail": {
+        "model": "gpt-5.6-terra",
+        "adapter_latency_ms": 9107.252333022188
+      }
+    },
+    {
+      "candidate": "iii",
+      "pair_id": "fp-capital",
+      "case_id": "fp-capital-suf",
+      "rep": 0,
+      "decision": "SUPPORTED",
+      "outcome": "ok",
+      "latency_s": 12.512449999980163,
+      "raw_first_token": "SUPPORTED",
+      "cost": "flat subscription",
+      "detail": {
+        "model": "gpt-5.6-terra",
+        "adapter_latency_ms": 12512.10304198321
+      }
+    },
+    {
+      "candidate": "iii",
+      "pair_id": "fp-capital",
+      "case_id": "fp-capital-suf",
+      "rep": 1,
+      "decision": "SUPPORTED",
+      "outcome": "ok",
+      "latency_s": 8.749655499996152,
+      "raw_first_token": "SUPPORTED",
+      "cost": "flat subscription",
+      "detail": {
+        "model": "gpt-5.6-terra",
+        "adapter_latency_ms": 8749.121750006452
+      }
+    },
+    {
+      "candidate": "iii",
+      "pair_id": "fp-capital",
+      "case_id": "fp-capital-suf",
+      "rep": 2,
+      "decision": "SUPPORTED",
+      "outcome": "ok",
+      "latency_s": 8.56136308296118,
+      "raw_first_token": "SUPPORTED",
+      "cost": "flat subscription",
+      "detail": {
+        "model": "gpt-5.6-terra",
+        "adapter_latency_ms": 8560.508916969411
+      }
+    },
+    {
+      "candidate": "iii",
+      "pair_id": "fp-duration",
+      "case_id": "fp-duration-ins",
+      "rep": 0,
+      "decision": "NOT_SUPPORTED",
+      "outcome": "ok",
+      "latency_s": 9.390600791026372,
+      "raw_first_token": "NOT_SUPPORTED",
+      "cost": "flat subscription",
+      "detail": {
+        "model": "gpt-5.6-terra",
+        "adapter_latency_ms": 9389.628833043389
+      }
+    },
+    {
+      "candidate": "iii",
+      "pair_id": "fp-duration",
+      "case_id": "fp-duration-ins",
+      "rep": 1,
+      "decision": "NOT_SUPPORTED",
+      "outcome": "ok",
+      "latency_s": 9.49381033302052,
+      "raw_first_token": "NOT_SUPPORTED",
+      "cost": "flat subscription",
+      "detail": {
+        "model": "gpt-5.6-terra",
+        "adapter_latency_ms": 9493.476708012167
+      }
+    },
+    {
+      "candidate": "iii",
+      "pair_id": "fp-duration",
+      "case_id": "fp-duration-ins",
+      "rep": 2,
+      "decision": "NOT_SUPPORTED",
+      "outcome": "ok",
+      "latency_s": 9.243741457990836,
+      "raw_first_token": "NOT_SUPPORTED",
+      "cost": "flat subscription",
+      "detail": {
+        "model": "gpt-5.6-terra",
+        "adapter_latency_ms": 9241.851333994418
+      }
+    },
+    {
+      "candidate": "iii",
+      "pair_id": "fp-duration",
+      "case_id": "fp-duration-suf",
+      "rep": 0,
+      "decision": "SUPPORTED",
+      "outcome": "ok",
+      "latency_s": 10.238223666034173,
+      "raw_first_token": "SUPPORTED",
+      "cost": "flat subscription",
+      "detail": {
+        "model": "gpt-5.6-terra",
+        "adapter_latency_ms": 10237.217125017196
+      }
+    },
+    {
+      "candidate": "iii",
+      "pair_id": "fp-duration",
+      "case_id": "fp-duration-suf",
+      "rep": 1,
+      "decision": "SUPPORTED",
+      "outcome": "ok",
+      "latency_s": 7.3355880419840105,
+      "raw_first_token": "SUPPORTED",
+      "cost": "flat subscription",
+      "detail": {
+        "model": "gpt-5.6-terra",
+        "adapter_latency_ms": 7334.439833008219
+      }
+    },
+    {
+      "candidate": "iii",
+      "pair_id": "fp-duration",
+      "case_id": "fp-duration-suf",
+      "rep": 2,
+      "decision": "SUPPORTED",
+      "outcome": "ok",
+      "latency_s": 12.433013000001665,
+      "raw_first_token": "SUPPORTED",
+      "cost": "flat subscription",
+      "detail": {
+        "model": "gpt-5.6-terra",
+        "adapter_latency_ms": 12431.928332953248
+      }
+    },
+    {
+      "candidate": "iii",
+      "pair_id": "fp-price",
+      "case_id": "fp-price-ins",
+      "rep": 0,
+      "decision": "NOT_SUPPORTED",
+      "outcome": "ok",
+      "latency_s": 9.405871124996338,
+      "raw_first_token": "NOT_SUPPORTED",
+      "cost": "flat subscription",
+      "detail": {
+        "model": "gpt-5.6-terra",
+        "adapter_latency_ms": 9405.244291003328
+      }
+    },
+    {
+      "candidate": "iii",
+      "pair_id": "fp-price",
+      "case_id": "fp-price-ins",
+      "rep": 1,
+      "decision": "NOT_SUPPORTED",
+      "outcome": "ok",
+      "latency_s": 8.062222292006481,
+      "raw_first_token": "NOT_SUPPORTED",
+      "cost": "flat subscription",
+      "detail": {
+        "model": "gpt-5.6-terra",
+        "adapter_latency_ms": 8060.361707990523
+      }
+    },
+    {
+      "candidate": "iii",
+      "pair_id": "fp-price",
+      "case_id": "fp-price-ins",
+      "rep": 2,
+      "decision": "NOT_SUPPORTED",
+      "outcome": "ok",
+      "latency_s": 7.660344750038348,
+      "raw_first_token": "NOT_SUPPORTED",
+      "cost": "flat subscription",
+      "detail": {
+        "model": "gpt-5.6-terra",
+        "adapter_latency_ms": 7659.715874993708
+      }
+    },
+    {
+      "candidate": "iii",
+      "pair_id": "fp-price",
+      "case_id": "fp-price-suf",
+      "rep": 0,
+      "decision": "SUPPORTED",
+      "outcome": "ok",
+      "latency_s": 10.64055820798967,
+      "raw_first_token": "SUPPORTED",
+      "cost": "flat subscription",
+      "detail": {
+        "model": "gpt-5.6-terra",
+        "adapter_latency_ms": 10639.536625007167
+      }
+    },
+    {
+      "candidate": "iii",
+      "pair_id": "fp-price",
+      "case_id": "fp-price-suf",
+      "rep": 1,
+      "decision": "SUPPORTED",
+      "outcome": "ok",
+      "latency_s": 9.312852874980308,
+      "raw_first_token": "SUPPORTED",
+      "cost": "flat subscription",
+      "detail": {
+        "model": "gpt-5.6-terra",
+        "adapter_latency_ms": 9311.93795899162
+      }
+    },
+    {
+      "candidate": "iii",
+      "pair_id": "fp-price",
+      "case_id": "fp-price-suf",
+      "rep": 2,
+      "decision": "SUPPORTED",
+      "outcome": "ok",
+      "latency_s": 9.733177457994316,
+      "raw_first_token": "SUPPORTED",
+      "cost": "flat subscription",
+      "detail": {
+        "model": "gpt-5.6-terra",
+        "adapter_latency_ms": 9732.862791977823
+      }
+    },
+    {
+      "candidate": "iii",
+      "pair_id": "fp-req",
+      "case_id": "fp-req-ins",
+      "rep": 0,
+      "decision": "NOT_SUPPORTED",
+      "outcome": "ok",
+      "latency_s": 9.329339791031089,
+      "raw_first_token": "NOT_SUPPORTED",
+      "cost": "flat subscription",
+      "detail": {
+        "model": "gpt-5.6-terra",
+        "adapter_latency_ms": 9328.915582969785
+      }
+    },
+    {
+      "candidate": "iii",
+      "pair_id": "fp-req",
+      "case_id": "fp-req-ins",
+      "rep": 1,
+      "decision": "NOT_SUPPORTED",
+      "outcome": "ok",
+      "latency_s": 8.96956441696966,
+      "raw_first_token": "NOT_SUPPORTED",
+      "cost": "flat subscription",
+      "detail": {
+        "model": "gpt-5.6-terra",
+        "adapter_latency_ms": 8968.904291978106
+      }
+    },
+    {
+      "candidate": "iii",
+      "pair_id": "fp-req",
+      "case_id": "fp-req-ins",
+      "rep": 2,
+      "decision": "NOT_SUPPORTED",
+      "outcome": "ok",
+      "latency_s": 8.460772374994121,
+      "raw_first_token": "NOT_SUPPORTED",
+      "cost": "flat subscription",
+      "detail": {
+        "model": "gpt-5.6-terra",
+        "adapter_latency_ms": 8460.149499995168
+      }
+    },
+    {
+      "candidate": "iii",
+      "pair_id": "fp-req",
+      "case_id": "fp-req-suf",
+      "rep": 0,
+      "decision": "SUPPORTED",
+      "outcome": "ok",
+      "latency_s": 9.30608570802724,
+      "raw_first_token": "SUPPORTED",
+      "cost": "flat subscription",
+      "detail": {
+        "model": "gpt-5.6-terra",
+        "adapter_latency_ms": 9305.260749999434
+      }
+    },
+    {
+      "candidate": "iii",
+      "pair_id": "fp-req",
+      "case_id": "fp-req-suf",
+      "rep": 1,
+      "decision": "SUPPORTED",
+      "outcome": "ok",
+      "latency_s": 8.96359516697703,
+      "raw_first_token": "SUPPORTED",
+      "cost": "flat subscription",
+      "detail": {
+        "model": "gpt-5.6-terra",
+        "adapter_latency_ms": 8963.027665973641
+      }
+    },
+    {
+      "candidate": "iii",
+      "pair_id": "fp-req",
+      "case_id": "fp-req-suf",
+      "rep": 2,
+      "decision": "SUPPORTED",
+      "outcome": "ok",
+      "latency_s": 7.128896249982063,
+      "raw_first_token": "SUPPORTED",
+      "cost": "flat subscription",
+      "detail": {
+        "model": "gpt-5.6-terra",
+        "adapter_latency_ms": 7127.9462079983205
+      }
+    }
+  ],
+  "pairs": [
+    {
+      "candidate": "i",
+      "pair_id": "fp-capital",
+      "unstable": false,
+      "distinguished": false,
+      "decisions": {
+        "fp-capital-ins": {
+          "stratum": "relevant_insufficient",
+          "decisions": [
+            "SUPPORTED",
+            "SUPPORTED",
+            "SUPPORTED"
+          ]
+        },
+        "fp-capital-suf": {
+          "stratum": "sufficient",
+          "decisions": [
+            "SUPPORTED",
+            "SUPPORTED",
+            "SUPPORTED"
+          ]
+        }
+      }
+    },
+    {
+      "candidate": "i",
+      "pair_id": "fp-duration",
+      "unstable": false,
+      "distinguished": false,
+      "decisions": {
+        "fp-duration-ins": {
+          "stratum": "relevant_insufficient",
+          "decisions": [
+            "SUPPORTED",
+            "SUPPORTED",
+            "SUPPORTED"
+          ]
+        },
+        "fp-duration-suf": {
+          "stratum": "sufficient",
+          "decisions": [
+            "SUPPORTED",
+            "SUPPORTED",
+            "SUPPORTED"
+          ]
+        }
+      }
+    },
+    {
+      "candidate": "i",
+      "pair_id": "fp-price",
+      "unstable": false,
+      "distinguished": false,
+      "decisions": {
+        "fp-price-ins": {
+          "stratum": "relevant_insufficient",
+          "decisions": [
+            "SUPPORTED",
+            "SUPPORTED",
+            "SUPPORTED"
+          ]
+        },
+        "fp-price-suf": {
+          "stratum": "sufficient",
+          "decisions": [
+            "SUPPORTED",
+            "SUPPORTED",
+            "SUPPORTED"
+          ]
+        }
+      }
+    },
+    {
+      "candidate": "i",
+      "pair_id": "fp-req",
+      "unstable": false,
+      "distinguished": false,
+      "decisions": {
+        "fp-req-ins": {
+          "stratum": "relevant_insufficient",
+          "decisions": [
+            "SUPPORTED",
+            "SUPPORTED",
+            "SUPPORTED"
+          ]
+        },
+        "fp-req-suf": {
+          "stratum": "sufficient",
+          "decisions": [
+            "SUPPORTED",
+            "SUPPORTED",
+            "SUPPORTED"
+          ]
+        }
+      }
+    },
+    {
+      "candidate": "iv",
+      "pair_id": "fp-capital",
+      "unstable": false,
+      "distinguished": false,
+      "decisions": {
+        "fp-capital-ins": {
+          "stratum": "relevant_insufficient",
+          "decisions": [
+            "SUPPORTED",
+            "SUPPORTED",
+            "SUPPORTED"
+          ]
+        },
+        "fp-capital-suf": {
+          "stratum": "sufficient",
+          "decisions": [
+            "SUPPORTED",
+            "SUPPORTED",
+            "SUPPORTED"
+          ]
+        }
+      }
+    },
+    {
+      "candidate": "iv",
+      "pair_id": "fp-duration",
+      "unstable": false,
+      "distinguished": false,
+      "decisions": {
+        "fp-duration-ins": {
+          "stratum": "relevant_insufficient",
+          "decisions": [
+            "SUPPORTED",
+            "SUPPORTED",
+            "SUPPORTED"
+          ]
+        },
+        "fp-duration-suf": {
+          "stratum": "sufficient",
+          "decisions": [
+            "SUPPORTED",
+            "SUPPORTED",
+            "SUPPORTED"
+          ]
+        }
+      }
+    },
+    {
+      "candidate": "iv",
+      "pair_id": "fp-price",
+      "unstable": false,
+      "distinguished": false,
+      "decisions": {
+        "fp-price-ins": {
+          "stratum": "relevant_insufficient",
+          "decisions": [
+            "SUPPORTED",
+            "SUPPORTED",
+            "SUPPORTED"
+          ]
+        },
+        "fp-price-suf": {
+          "stratum": "sufficient",
+          "decisions": [
+            "SUPPORTED",
+            "SUPPORTED",
+            "SUPPORTED"
+          ]
+        }
+      }
+    },
+    {
+      "candidate": "iv",
+      "pair_id": "fp-req",
+      "unstable": false,
+      "distinguished": false,
+      "decisions": {
+        "fp-req-ins": {
+          "stratum": "relevant_insufficient",
+          "decisions": [
+            "SUPPORTED",
+            "SUPPORTED",
+            "SUPPORTED"
+          ]
+        },
+        "fp-req-suf": {
+          "stratum": "sufficient",
+          "decisions": [
+            "SUPPORTED",
+            "SUPPORTED",
+            "SUPPORTED"
+          ]
+        }
+      }
+    },
+    {
+      "candidate": "ii",
+      "pair_id": "fp-capital",
+      "unstable": false,
+      "distinguished": true,
+      "decisions": {
+        "fp-capital-ins": {
+          "stratum": "relevant_insufficient",
+          "decisions": [
+            "NOT_SUPPORTED",
+            "NOT_SUPPORTED",
+            "NOT_SUPPORTED"
+          ]
+        },
+        "fp-capital-suf": {
+          "stratum": "sufficient",
+          "decisions": [
+            "SUPPORTED",
+            "SUPPORTED",
+            "SUPPORTED"
+          ]
+        }
+      }
+    },
+    {
+      "candidate": "ii",
+      "pair_id": "fp-duration",
+      "unstable": false,
+      "distinguished": true,
+      "decisions": {
+        "fp-duration-ins": {
+          "stratum": "relevant_insufficient",
+          "decisions": [
+            "NOT_SUPPORTED",
+            "NOT_SUPPORTED",
+            "NOT_SUPPORTED"
+          ]
+        },
+        "fp-duration-suf": {
+          "stratum": "sufficient",
+          "decisions": [
+            "SUPPORTED",
+            "SUPPORTED",
+            "SUPPORTED"
+          ]
+        }
+      }
+    },
+    {
+      "candidate": "ii",
+      "pair_id": "fp-price",
+      "unstable": false,
+      "distinguished": true,
+      "decisions": {
+        "fp-price-ins": {
+          "stratum": "relevant_insufficient",
+          "decisions": [
+            "NOT_SUPPORTED",
+            "NOT_SUPPORTED",
+            "NOT_SUPPORTED"
+          ]
+        },
+        "fp-price-suf": {
+          "stratum": "sufficient",
+          "decisions": [
+            "SUPPORTED",
+            "SUPPORTED",
+            "SUPPORTED"
+          ]
+        }
+      }
+    },
+    {
+      "candidate": "ii",
+      "pair_id": "fp-req",
+      "unstable": false,
+      "distinguished": true,
+      "decisions": {
+        "fp-req-ins": {
+          "stratum": "relevant_insufficient",
+          "decisions": [
+            "NOT_SUPPORTED",
+            "NOT_SUPPORTED",
+            "NOT_SUPPORTED"
+          ]
+        },
+        "fp-req-suf": {
+          "stratum": "sufficient",
+          "decisions": [
+            "SUPPORTED",
+            "SUPPORTED",
+            "SUPPORTED"
+          ]
+        }
+      }
+    },
+    {
+      "candidate": "iii",
+      "pair_id": "fp-capital",
+      "unstable": false,
+      "distinguished": true,
+      "decisions": {
+        "fp-capital-ins": {
+          "stratum": "relevant_insufficient",
+          "decisions": [
+            "NOT_SUPPORTED",
+            "NOT_SUPPORTED",
+            "NOT_SUPPORTED"
+          ]
+        },
+        "fp-capital-suf": {
+          "stratum": "sufficient",
+          "decisions": [
+            "SUPPORTED",
+            "SUPPORTED",
+            "SUPPORTED"
+          ]
+        }
+      }
+    },
+    {
+      "candidate": "iii",
+      "pair_id": "fp-duration",
+      "unstable": false,
+      "distinguished": true,
+      "decisions": {
+        "fp-duration-ins": {
+          "stratum": "relevant_insufficient",
+          "decisions": [
+            "NOT_SUPPORTED",
+            "NOT_SUPPORTED",
+            "NOT_SUPPORTED"
+          ]
+        },
+        "fp-duration-suf": {
+          "stratum": "sufficient",
+          "decisions": [
+            "SUPPORTED",
+            "SUPPORTED",
+            "SUPPORTED"
+          ]
+        }
+      }
+    },
+    {
+      "candidate": "iii",
+      "pair_id": "fp-price",
+      "unstable": false,
+      "distinguished": true,
+      "decisions": {
+        "fp-price-ins": {
+          "stratum": "relevant_insufficient",
+          "decisions": [
+            "NOT_SUPPORTED",
+            "NOT_SUPPORTED",
+            "NOT_SUPPORTED"
+          ]
+        },
+        "fp-price-suf": {
+          "stratum": "sufficient",
+          "decisions": [
+            "SUPPORTED",
+            "SUPPORTED",
+            "SUPPORTED"
+          ]
+        }
+      }
+    },
+    {
+      "candidate": "iii",
+      "pair_id": "fp-req",
+      "unstable": false,
+      "distinguished": true,
+      "decisions": {
+        "fp-req-ins": {
+          "stratum": "relevant_insufficient",
+          "decisions": [
+            "NOT_SUPPORTED",
+            "NOT_SUPPORTED",
+            "NOT_SUPPORTED"
+          ]
+        },
+        "fp-req-suf": {
+          "stratum": "sufficient",
+          "decisions": [
+            "SUPPORTED",
+            "SUPPORTED",
+            "SUPPORTED"
+          ]
+        }
+      }
+    }
+  ],
+  "summary": [
+    {
+      "candidate": "i",
+      "total_pairs": 4,
+      "distinguished_pairs": 0,
+      "unstable_pairs": 0,
+      "qualifies": false
+    },
+    {
+      "candidate": "iv",
+      "total_pairs": 4,
+      "distinguished_pairs": 0,
+      "unstable_pairs": 0,
+      "qualifies": false
+    },
+    {
+      "candidate": "ii",
+      "total_pairs": 4,
+      "distinguished_pairs": 4,
+      "unstable_pairs": 0,
+      "qualifies": true
+    },
+    {
+      "candidate": "iii",
+      "total_pairs": 4,
+      "distinguished_pairs": 4,
+      "unstable_pairs": 0,
+      "qualifies": true
+    }
+  ]
+}

@@ -34,9 +34,11 @@ import json
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
+from unittest.mock import patch
 
 import pytest
 
+from backend.scripts.visa_engine import gold_replay_driver as driver
 from backend.scripts.visa_engine.compile_pack import (
     compile_rule_pack,
     load_rule_pack_payload,
@@ -65,6 +67,7 @@ from backend.services.visa_engine.bundle import (
 )
 from backend.services.visa_engine.compiler import DEFAULT_FACT_REGISTRY
 from backend.services.visa_engine.models import DecisionState, RulePackPayload
+from backend.tests.services.visa_engine.gold_replay import _persona_expected
 from backend.tests.services.visa_engine.test_evaluator_gold import Persona
 
 _PACKS_DIR = (
@@ -855,9 +858,21 @@ class TestInnocence:
 # ---------------------------------------------------------------------------
 
 
+#: PR-5 adds E33G and D2__121D to the shared ``gold_coverage/personas/``
+#: corpus (grown 18 -> 20; ``test_gold_coverage_floor.py`` measures all 20
+#: against the CURRENT highest signed pack). Both are supported only from
+#: seq-20 onward: E33G needed ``review.e33g.income-evidence`` retired and
+#: D2__121D needed the 60->180 stay-day cap, neither of which exists in
+#: seq-19 or earlier. This seq-19-scoped gate excludes them by name — not
+#: by loosening the assertion that the remaining 18 must all pass.
+_SEQ19_UNSUPPORTED_COVERAGE_PERSONAS = frozenset({"E33G.json", "D2__121D.json"})
+
+
 def _coverage_persona_specs() -> list[tuple[str, dict[str, Any]]]:
     specs = []
     for path in sorted(_GOLD_COVERAGE_CORPUS.glob("*.json")):
+        if path.name in _SEQ19_UNSUPPORTED_COVERAGE_PERSONAS:
+            continue
         specs.append((path.name, json.loads(path.read_text(encoding="utf-8"))))
     return specs
 
@@ -909,16 +924,45 @@ def _offline_decisions_against(
     return tuple(decisions)
 
 
+def _synthetic_expected(persona: Persona) -> dict[str, Any]:
+    """The pre-PR-5 synthetic fixture-pack contract (``gold_replay._persona_
+    expected``), independent of ``PRODUCTION_REPLAY_EXPECTATIONS``.
+
+    PR-5 re-derives ``gold_replay_driver._normalized_expected`` from each
+    persona's own legal citations to grade the SIGNED PRODUCTION pack replay
+    (seq-20 onward) — see ``test_evaluator_gold.PRODUCTION_REPLAY_
+    EXPECTATIONS``. This module's own historical measurements ("Ground
+    truth ... measured seq-18 at matches=5/20", revised 6/20 by the
+    decisiveness reorder) were pinned against the OLDER synthetic corpus
+    contract on seq-18/seq-19, packs that predate the legal re-derivation
+    entirely and are never signed or activated. Grading them against the
+    new legal table would silently swap what "divergence" means out from
+    under an already-landed, still-true historical finding — so this
+    fold-verification class keeps grading against the synthetic contract it
+    was always measured with, the same isolation PR-5 applies in
+    ``test_gold_replay_driver.py``."""
+    expected = _persona_expected(persona)
+    return {
+        "state": expected["state"],
+        "candidate_products": expected["candidates"],
+        "missing_facts": expected["missing_facts"],
+        "review_reason_codes": expected["review_reason_codes"],
+        "no_path_reason_codes": expected["no_path_reason_codes"],
+        "notice_codes": expected["notice_codes"],
+    }
+
+
 def _offline_report_for(
     compiled: compiler.CompiledRulePack, *, label: str
 ) -> dict[str, Any]:
     decisions = _offline_decisions_against(compiled, evaluated_at=AS_OF)
-    return build_report(
-        mode="offline",
-        generated_at=AS_OF,
-        decisions=decisions,
-        pack_source={"kind": "test-derived", "selection": label, "file": label},
-    )
+    with patch.object(driver, "_normalized_expected", _synthetic_expected):
+        return build_report(
+            mode="offline",
+            generated_at=AS_OF,
+            decisions=decisions,
+            pack_source={"kind": "test-derived", "selection": label, "file": label},
+        )
 
 
 @pytest.fixture(scope="module")
@@ -956,6 +1000,21 @@ class TestGoldReplayDriverOffline:
     other 15. Re-running that measurement here (``report_18``) is this
     test's own sanity check on its re-derivation, not an assumed constant.
 
+    **Revised 2026-09-06 to 6/20, on BOTH sides, by the decisiveness
+    reorder** (``evaluator.evaluate_product`` now tests purpose-feasibility
+    before blocking on an input-tagged gate unknown — see
+    ``test_evaluator_purpose_feasibility_precedence.py``). The one persona
+    that joined is **#13**, and it joined for its OWN stated reason, not
+    because a threshold moved: its label is "remote worker, local-clients
+    fact unprovided -> needs input" and its fixture declares
+    ``expected_missing=("work.serves_indonesian_clients",)``. It was already
+    NEEDS_INPUT; what it was ASKING for was ``sponsor.type``, contributed by
+    E33A/E33B/E33C — three products with zero eligibility rules that can
+    never cover REMOTE_WORK. It now asks for the fact the persona says it
+    should ask for. Measured across all 20 personas on both packs: ZERO
+    ``DecisionState`` changes and ZERO candidate-set changes; persona #13's
+    ``missing_facts`` is the only field that moved.
+
     What this fold actually changes, verified: persona #7's manufactured
     ``E31B``/``E31D`` candidates (the fail-open consequence Q3's diff
     explains) are GONE on seq-19 — but persona #7 still shows as
@@ -976,9 +1035,28 @@ class TestGoldReplayDriverOffline:
         self, report_18: dict[str, Any]
     ) -> None:
         summary = report_18["summary"]
-        assert (summary["personas_match"], summary["personas_total"]) == (5, 20)
+        assert (summary["personas_match"], summary["personas_total"]) == (6, 20)
         matching = {row["persona_id"] for row in report_18["personas"] if not row["divergence"]}
-        assert matching == {3, 4, 12, 15, 18}
+        assert matching == {3, 4, 12, 13, 15, 18}
+
+    def test_persona_13_matches_because_it_finally_asks_its_own_fact(
+        self, report_18: dict[str, Any], report_19: dict[str, Any]
+    ) -> None:
+        """The justification for the 5/20 → 6/20 move above, stated as a
+        persona rather than as a number (generator is never grader): #13's
+        fixture asks for ``work.serves_indonesian_clients`` and #13's own
+        state is unchanged — still ``NEEDS_INPUT``. Nothing was loosened;
+        the engine stopped substituting a zero-support product's
+        ``sponsor.type`` for the persona's own question."""
+        by_id_18 = {row["persona_id"]: row for row in report_18["personas"]}
+        by_id_19 = {row["persona_id"]: row for row in report_19["personas"]}
+        persona_13 = next(p for p in PERSONAS if p.id == 13)
+        assert persona_13.expected_missing == ("work.serves_indonesian_clients",)
+        for report in (by_id_18, by_id_19):
+            row = report[13]
+            assert row["actual"]["state"] == DecisionState.NEEDS_INPUT.value
+            assert row["actual"]["missing_facts"] == ["work.serves_indonesian_clients"]
+            assert not row["divergence"]
 
     def test_persona_7_manufactured_e31_candidates_are_gone_on_seq19(
         self, report_18: dict[str, Any], report_19: dict[str, Any]

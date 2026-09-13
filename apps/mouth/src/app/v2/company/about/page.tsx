@@ -5,6 +5,7 @@ import { BZLogo } from "@balizero/core/components/BZLogo";
 import { MapPin, Users, BadgeCheck, Calendar } from "lucide-react";
 import { Footer } from "../../_components/Footer";
 import { rosterBySlug } from "@/data/team-roster";
+import { publicEntries } from "@/lib/team-public-listing";
 
 export const metadata: Metadata = {
   title: { absolute: "About Bali Zero" },
@@ -19,13 +20,16 @@ const STATS = [
 ];
 
 // Curated subset for the About page; name/role/photo from the roster SSOT.
-const TEAM_MEMBERS = [
+// WHO IS SHOWN goes through publicEntries() (src/lib/team-public-listing.ts):
+// the roster keeps every record, this page publishes only the people the owner
+// lists publicly, so adding a slug below is never enough to publish them.
+const TEAM_MEMBERS = publicEntries([
   { slug: "zainal", roleOverride: "CEO · Founder", accent: "#ff2d4c" },
   { slug: "heru", roleOverride: "Komisaris · Founder", accent: "#a78bfa" },
   { slug: "ruslana", accent: "#f59e0b" },
   { slug: "krisna", roleOverride: "Setup Lead", accent: "#22c55e" },
   { slug: "asya", roleOverride: "Accountant", accent: "#06b6d4" },
-].map((e) => {
+]).map((e) => {
   const r = rosterBySlug(e.slug);
   return {
     name: r?.name ?? e.slug,

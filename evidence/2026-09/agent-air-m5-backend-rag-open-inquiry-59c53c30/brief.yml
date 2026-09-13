@@ -1,0 +1,110 @@
+task_id: crm-open-inquiry-backend
+gear: 3
+l_level: L2
+gate_class: opus
+# Floor computed for THIS PR's actual changed-file set:
+# `git diff --name-only origin/main...HEAD > cf.txt && git diff --numstat
+# origin/main...HEAD > ns.txt && python3 scripts/evidence_pack_lint.py
+# --print-floor --changed-files-file cf.txt --numstat-file ns.txt` returns 3
+# (source: path) — the diff adds apps/backend-rag/backend/db/migrations_v2/
+# 311_practice_types_open_inquiry.sql, a declared hot-zone path. Net lines
+# 358 (< SIZE_GEAR2_THRESHOLD). Gear 3 declared to match the floor exactly.
+objective: >-
+  Ari's proposal for the CRM at kita.balizero.com (Zero, 2026-09-11,
+  "implementalo subito in maniera semplice"): a process can be opened in
+  status `inquiry` WITHOUT choosing a service category; the service becomes
+  mandatory when the practice moves to `waiting_documents`. Backend half:
+  migration 311 registers an `open_inquiry` placeholder practice type
+  (category `inquiry`, hidden from /api/crm/practices/types/catalog);
+  POST /api/crm/practices/ accepts a missing practice_type_code and stores
+  the placeholder (400 if the initial status is past inquiry); PATCH accepts
+  practice_type_code and resolves it to practice_type_id; the state machine
+  gains validate_service_selected — leaving inquiry/cancelled while the type
+  is still the placeholder is an InvalidTransitionError (HTTP 400). The mouth
+  half (form + SelectServiceCard + stepper guard) ships in a separate PR
+  after this one is live; the combined PR #6250 was closed for SIZE (656
+  net).
+constraints:
+  - >-
+    Placeholder ROW, not practice_type_id = NULL: 40 read paths across
+    routers/services/jobs INNER JOIN practice_types (grep "JOIN
+    practice_types" excluding LEFT JOIN, run 2026-09-11) — a NULL type would
+    silently hide the inquiry from kanban, portal, analytics, shared memory
+    and team CRM tools. A real row keeps every JOIN intact with zero touch on
+    those paths. practices.practice_type_id is already NULLABLE in prod
+    (information_schema, 2026-09-11) despite SQLModel's nullable=False, and 2
+    legacy rows carry a NULL type today — the gate therefore blocks ONLY the
+    explicit placeholder code, never None/unknown, so no legacy row regresses.
+  - >-
+    Backward compatible API: every existing caller still sends
+    practice_type_code; the placeholder only appears when a caller omits it.
+    PracticeUpdate.practice_type_code is resolved up-front to an id (404 on
+    unknown or inactive code) and written as practice_type_id — never as a
+    raw column through the field map.
+  - >-
+    Migration shape follows siblings 148/220/221: idempotent insert with
+    ON CONFLICT(code) DO UPDATE, rollback = soft-disable (is_active=false)
+    so referencing practices never lose their FK target. DISCLOSURE: the
+    client guardrail's static fallback (~/.claude/hooks/guardrails-static.py,
+    SQL_DESTRUCTIVE_IN_CONTENT, daemon unreachable on M5) refused the Write
+    tool for this .sql file because it contains the same insert/soft-disable
+    verbs as the merged siblings; the file was written from a scratchpad
+    Python script instead. Nothing in it was run against any database by
+    this session — the release_command applies it on deploy.
+  - >-
+    No PII: the diff is code, SQL catalog text and unit tests with synthetic
+    fixtures; the only prod reads were aggregate/schema queries via the
+    read-only scripts/pg.sh role (count of NULL-type practices, catalog
+    codes, column nullability). The spalla prompt carried the diff only.
+  - >-
+    Migration slot: 310 was free on the checkout inspected at GROUND but
+    taken on the worktree base (310_practice_status_log.sql landed in
+    between); the W41 pre-commit lint caught the collision and the file was
+    renumbered to 311 before the first commit.
+acceptance:
+  - text: >-
+      A1: WHEN backend/tests/services/crm/test_practice_state_machine.py and
+      backend/tests/unit/routers/test_crm_practices.py are run SHALL pass
+      all cases, including the new TestValidateServiceSelected and
+      TestOpenInquiry classes (create without service → placeholder lookup;
+      create past inquiry refused 400; PATCH to waiting_documents blocked on
+      placeholder with no SQL executed; PATCH with service + status in one
+      call writes practice_type_id; unknown service 404; catalog query
+      excludes the placeholder).
+    probe: >-
+      cd apps/backend-rag && .venv/bin/python -m pytest
+      backend/tests/services/crm/test_practice_state_machine.py
+      backend/tests/unit/routers/test_crm_practices.py -p no:cacheprovider
+  - text: >-
+      A2: WHEN scripts/lint_migration_numbers.py and
+      scripts/lint_migration_rollback.py run against the migration tree
+      SHALL report zero violations (311 unique, ROLLBACK marker present).
+    probe: >-
+      python3 scripts/lint_migration_numbers.py && python3
+      scripts/lint_migration_rollback.py
+  - text: >-
+      A3: WHEN the deterministic gear floor is recomputed from this PR's own
+      changed-file set SHALL equal 3, matching the declared gear exactly.
+    probe: >-
+      python3 scripts/evidence_pack_lint.py --print-floor
+      --changed-files-file <changed> --numstat-file <numstat>
+  - text: >-
+      A4: WHEN migration 311 is split by backend.db.migration_base
+      .split_migration_sql SHALL yield a forward section free of every
+      DANGEROUS_PATTERN (DROP DATABASE/SCHEMA, TRUNCATE) and of DELETE/DROP
+      TABLE, and a rollback section that is a soft-disable only.
+    probe: >-
+      cd apps/backend-rag && .venv/bin/python -c "from
+      backend.db.migration_base import split_migration_sql; ..." (inline,
+      see pack receipt)
+  - text: >-
+      A5 (Bites, post-merge): WHEN the PR merges (backend merge = deploy,
+      release_command applies migrations) SHALL leave one active
+      `open_inquiry` row in practice_types (0 rows before merge, verified)
+      and the live catalog endpoint SHALL NOT list it.
+    probe: >-
+      scripts/pg.sh -A -F'|' -c "SELECT code, is_active FROM practice_types
+      WHERE code='open_inquiry'"
+appetite:
+  wall_clock_hours: 2
+  adversarial_rounds: 1

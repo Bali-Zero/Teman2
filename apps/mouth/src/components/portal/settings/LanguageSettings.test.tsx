@@ -17,8 +17,6 @@ describe("LanguageSettings", () => {
     usePortalPreferencesMock.mockReset();
     usePortalPreferencesMock.mockReturnValue({
       data: {
-        emailNotifications: true,
-        whatsappNotifications: true,
         language: "en",
         timezone: "Asia/Jakarta",
       },
@@ -45,8 +43,6 @@ describe("LanguageSettings", () => {
   it("reads the persisted portal preference rather than the auth profile", () => {
     usePortalPreferencesMock.mockReturnValue({
       data: {
-        emailNotifications: true,
-        whatsappNotifications: true,
         language: "it",
         timezone: "Asia/Jakarta",
       },

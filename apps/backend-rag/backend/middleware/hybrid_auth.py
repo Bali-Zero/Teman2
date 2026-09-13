@@ -20,7 +20,11 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.status import HTTP_503_SERVICE_UNAVAILABLE
 
-from backend.app.auth.public_endpoints import PUBLIC_ENDPOINTS, find_entry
+from backend.app.auth.public_endpoints import (
+    PUBLIC_ENDPOINTS,
+    find_entry,
+    path_matches_template,
+)
 from backend.app.core.config import settings
 from backend.app.services.api_key_auth import APIKeyAuth
 from backend.app.utils.cookie_auth import get_jwt_from_cookie, is_csrf_exempt, validate_csrf
@@ -34,6 +38,90 @@ from backend.services.security.token_revocation import (
 logger = logging.getLogger(__name__)
 
 _PII_RESTRICTED_PUBLIC_ENDPOINTS = frozenset({"/api/visa-oracle/evaluate"})
+
+#: OPERATIONS whose 401 RESPONSE — body AND headers — is fixed by a frozen
+#: product contract, so this middleware's generic `{"detail": "Authentication
+#: required"}` is a contract violation even though the REFUSAL itself is
+#: correct.
+#:
+#: This changes what a refusal LOOKS like and NOTHING else: the status stays
+#: 401, `WWW-Authenticate: Bearer` stays on the response, the handler still
+#: never runs, and no path listed here becomes public — public-ness is decided
+#: one step earlier in `dispatch`, exclusively by `PUBLIC_ENDPOINTS`.
+#:
+#: GARUDA VOA: the five staff operations (`listStaffPractices`,
+#: `getStaffPractice`, `assignPractice`, `transitionPractice`,
+#: `resolveLateOrder`) declare `401 -> {"code": "SESSION_REQUIRED", ...}` in
+#: `products/garuda-voa/contracts/openapi.yaml`, under that file's
+#: `x-public-privacy-response-headers` anchor. The kita client reads `code`
+#: for its error boundary and saw `undefined` on this path because this
+#: middleware refuses before `garuda_staff_router` runs.
+#:
+#: The HEADERS are part of the contract, not decoration: serving the
+#: contract's body without its `Cache-Control: no-store, private` would make
+#: a shared cache eligible to store a refusal for an authenticated surface.
+#: `garuda_staff_router._privacy_headers` puts the identical three on every
+#: response it builds; this is the same statement for the refusals that never
+#: reach it (refuter Codex `gpt-5.6-sol`, round-1 finding #2).
+#:
+#: Matched against the frozen OPERATION TEMPLATES, never against a bare path
+#: prefix (cicatrix #3, guard-over-match — refuter rounds 1 #3 and 2 #3). A
+#: prefix claims things the contract does not declare: the bare
+#: `/api/visa/voa/staff`, which `garuda_voa.py`'s owner-archive route
+#: `/api/visa/voa/{hash}` pattern-matches; the trailing-slash-only
+#: `/api/visa/voa/staff/`; the malformed `/api/visa/voa/staff//practices`;
+#: and any arbitrary descendant. Template matching is segment-COUNT-based, so
+#: all four fail by construction rather than by vigilance. The templates are
+#: a verbatim copy of the contract's own paths — never read from the YAML at
+#: runtime (a middleware must not depend on a product file), pinned equal to
+#: it by `test_hybrid_auth_contract_401_envelope.py`, the same discipline
+#: `garuda_staff_router._ERROR_CATALOG` already follows for `errors.yaml`.
+_CONTRACT_401_PRIVACY_HEADERS: dict[str, str] = {
+    "Cache-Control": "no-store, private",
+    "Referrer-Policy": "no-referrer",
+    "X-Robots-Tag": "noindex, nofollow, noarchive",
+}
+
+_GARUDA_VOA_STAFF_OPERATIONS: tuple[str, ...] = (
+    "/api/visa/voa/staff/practices",
+    "/api/visa/voa/staff/practices/{practice_id}",
+    "/api/visa/voa/staff/practices/{practice_id}/assignment",
+    "/api/visa/voa/staff/practices/{practice_id}/transitions",
+    "/api/visa/voa/staff/orders/{order_id}/late-resolution",
+)
+
+_CONTRACT_401_ENVELOPES: tuple[tuple[tuple[str, ...], dict[str, Any], dict[str, str]], ...] = (
+    (
+        _GARUDA_VOA_STAFF_OPERATIONS,
+        {
+            "code": "SESSION_REQUIRED",
+            "retryable": False,
+            "message_key": "garuda_voa.error.session_required",
+        },
+        _CONTRACT_401_PRIVACY_HEADERS,
+    ),
+)
+
+
+def contract_401_envelope(path: str) -> tuple[dict[str, Any], dict[str, str]] | None:
+    """The frozen-contract 401 `(body, headers)` for `path`, or None for the
+    generic body.
+
+    `path` is `request.url.path`, which carries any ASGI mount prefix. That is
+    deliberate and not a gap this function may close on its own:
+    `is_public_endpoint` reads the SAME attribute, so the entire public
+    registry already resolves against the externally-visible path. A
+    mount-aware reading here and a mount-blind one there would be strictly
+    worse than both being consistent. `main_api:app` is served at the root by
+    uvicorn in production (no `--root-path` in `apps/backend-rag/fly.toml`);
+    if that ever changes, BOTH readers move together.
+
+    Returns fresh dicts each call so a caller can never mutate the registry.
+    """
+    for templates, envelope, headers in _CONTRACT_401_ENVELOPES:
+        if any(path_matches_template(path, template) for template in templates):
+            return dict(envelope), dict(headers)
+    return None
 
 
 def _get_correlation_id(request: Request) -> str:
@@ -307,10 +395,19 @@ class HybridAuthMiddleware(BaseHTTPMiddleware):
                 from fastapi.responses import JSONResponse
 
                 cors_headers = self._cors_headers_for_request(request)
+                contract_401 = contract_401_envelope(request.url.path)
+                content: dict[str, Any] = {"detail": "Authentication required"}
+                contract_headers: dict[str, str] = {}
+                if contract_401 is not None:
+                    content, contract_headers = contract_401
                 return JSONResponse(
                     status_code=status.HTTP_401_UNAUTHORIZED,
-                    content={"detail": "Authentication required"},
-                    headers={"WWW-Authenticate": "Bearer", **cors_headers},
+                    content=content,
+                    headers={
+                        "WWW-Authenticate": "Bearer",
+                        **cors_headers,
+                        **contract_headers,
+                    },
                 )
 
             request.state.user = auth_result

@@ -20,8 +20,11 @@ abstain-SSOT mandate asked for and #1414 did not cover:
      abstain flag + ``abstain_reason`` bucketing (the previous test file for
      that module was an auto-generated skeleton with 4 skips).
   3. ENV-OVERRIDE RANGE GUARD — ``DOMAIN_ABSTAIN_THRESHOLDS`` entries outside
-     [0.0, 1.0] (including nan/inf) are skipped with a warning instead of
-     silently disabling (negative) or forcing (>1) abstain for a whole domain.
+     [0.0, 1.0] (including nan/inf) reject the WHOLE spec (RULING I41,
+     fail-closed on configuration) rather than being skipped in isolation;
+     the caller falls back to the STRICT thresholds, never the permissive
+     defaults, so a hostile/typo'd spec cannot silently disable (negative)
+     or relieve a domain's abstain gate.
   4. FIFTH GATE NAMING — reasoning.py's context-quality minimum reads the
      named ``CONTEXT_QUALITY_MIN`` from the policy module instead of a bare
      ``EvidenceScoreConstants.ABSTAIN_THRESHOLD`` (same value, named source).
@@ -198,46 +201,65 @@ class TestLabelGateEndToEnd:
 #    bounds, pinned by test_reasoning_utils.py.)
 # ---------------------------------------------------------------------------
 class TestEnvOverrideRangeGuard:
-    def test_negative_value_is_skipped(self, caplog: pytest.LogCaptureFixture) -> None:
-        with caplog.at_level("WARNING"):
-            assert _parse_domain_threshold_overrides("tax:-0.5") == {}
+    # RULING I41 (kimi-code/k3, R9 refuted round 1): an out-of-range/nan/inf
+    # entry no longer gets silently skipped with the rest of the spec kept —
+    # it rejects the WHOLE spec (fail-closed on configuration, ValueError),
+    # and the caller (`_build_domain_thresholds`) falls back to the STRICT
+    # thresholds, never the permissive defaults. See
+    # `_strict_fallback_thresholds` — every relief lifted to `default`
+    # (0.15), anything already stricter (kbli 0.20) kept as-is.
+    def test_negative_value_rejects_whole_spec(self) -> None:
+        with pytest.raises(ValueError, match="out-of-range"):
+            _parse_domain_threshold_overrides("tax:-0.5")
+
+    def test_value_above_one_rejects_whole_spec(self) -> None:
+        with pytest.raises(ValueError, match="out-of-range"):
+            _parse_domain_threshold_overrides("kbli:7")
+
+    def test_nan_rejects_whole_spec(self) -> None:
+        with pytest.raises(ValueError, match="out-of-range"):
+            _parse_domain_threshold_overrides("tax:nan")
+
+    def test_inf_rejects_whole_spec(self) -> None:
+        with pytest.raises(ValueError, match="out-of-range"):
+            _parse_domain_threshold_overrides("visa:inf")
+
+    def test_mixed_spec_one_bad_entry_rejects_the_valid_siblings_too(self) -> None:
+        # A single out-of-range entry among otherwise-valid siblings is not
+        # a partial override — the whole spec is untrusted.
+        with pytest.raises(ValueError, match="out-of-range"):
+            _parse_domain_threshold_overrides("tax:0.08,kbli:9,visa:0.5")
+
+    def test_out_of_range_override_triggers_strict_fallback(
+        self, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        # A hostile/typo'd env value must NOT silently relieve the tax gate
+        # (the old defaults-fallback behaviour) — it must tighten to the
+        # strict fallback instead.
+        monkeypatch.setenv("DOMAIN_ABSTAIN_THRESHOLDS", "tax:-1")
+        with caplog.at_level("ERROR"):
+            monkeypatch.setattr(
+                reasoning_utils_mod,
+                "_DOMAIN_THRESHOLDS",
+                reasoning_utils_mod._build_domain_thresholds(),
+            )
         assert "out-of-range" in caplog.text
+        assert get_abstain_threshold(QUERIES["tax"]) == pytest.approx(0.15)
 
-    def test_value_above_one_is_skipped(self) -> None:
-        assert _parse_domain_threshold_overrides("kbli:7") == {}
-
-    def test_nan_is_skipped(self) -> None:
-        assert _parse_domain_threshold_overrides("tax:nan") == {}
-
-    def test_inf_is_skipped(self) -> None:
-        assert _parse_domain_threshold_overrides("visa:inf") == {}
-
-    def test_mixed_spec_keeps_only_in_range_entries(self) -> None:
-        parsed = _parse_domain_threshold_overrides("tax:0.08,kbli:9,visa:0.5")
-        assert parsed == {"tax": pytest.approx(0.08), "visa": pytest.approx(0.5)}
-
-    def test_out_of_range_override_leaves_default_live(
+    def test_unknown_domain_key_rejects_whole_spec_and_falls_back_strict(
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        # A hostile/typo'd env value must NOT disable the tax abstain gate.
-        monkeypatch.setenv("DOMAIN_ABSTAIN_THRESHOLDS", "tax:-1")
-        monkeypatch.setattr(
-            reasoning_utils_mod,
-            "_DOMAIN_THRESHOLDS",
-            reasoning_utils_mod._build_domain_thresholds(),
-        )
-        assert get_abstain_threshold(QUERIES["tax"]) == pytest.approx(0.10)
-
-    def test_unknown_domain_key_is_harmless(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        # Keys the classifier never emits are merged but unreachable — they
-        # must not perturb lookups for real domains.
+        # A key the classifier never emits is not "harmless" any more — an
+        # unknown domain rejects the whole spec, same as any other malformed
+        # entry, and every real domain's relief is lifted by the strict
+        # fallback.
         monkeypatch.setenv("DOMAIN_ABSTAIN_THRESHOLDS", "legal:0.5")
         monkeypatch.setattr(
             reasoning_utils_mod,
             "_DOMAIN_THRESHOLDS",
             reasoning_utils_mod._build_domain_thresholds(),
         )
-        assert get_abstain_threshold(QUERIES["tax"]) == pytest.approx(0.10)
+        assert get_abstain_threshold(QUERIES["tax"]) == pytest.approx(0.15)
         assert get_abstain_threshold(QUERIES["default"]) == pytest.approx(0.15)
 
     def test_defaults_themselves_are_in_range(self) -> None:

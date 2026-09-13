@@ -45,6 +45,29 @@ class TestEvidenceScoringFixed:
         assert score < 0.15, f"Expected score < 0.15 for mismatched topic, got {score}"
         print(f"✅ KITAS query with KBLI results: score = {score} (correctly < 0.15)")
 
+    def test_kitas_query_with_kbli_results_low_score_pipeline_variant(self):
+        """Pipeline variant: same inputs and assertions, dense_formatted provenance."""
+        from backend.tests.fixtures.pipeline_score_fixtures import pipeline_sources
+
+        # B1.1 inventory row 2 (dense_formatted): PIPELINE_TRIPWIRE_FIXTURES["services/rag/test_evidence_scoring_abstain.py::TestEvidenceScoringFixed::test_kitas_query_with_kbli_results_low_score"]
+        # KITAS query
+        query = "Come posso richiedere il KITAS in Indonesia?"
+
+        # But results are about KBLI (business classification) - completely wrong topic
+        sources = pipeline_sources(
+            "services/rag/test_evidence_scoring_abstain.py::TestEvidenceScoringFixed::test_kitas_query_with_kbli_results_low_score"
+        )
+        context = [
+            "KBLI (Klasifikasi Baku Lapangan Usaha Indonesia) è il sistema di classificazione...",
+            "I codici KBLI sono necessari per registrare un'azienda in Indonesia...",
+        ]
+
+        score = calculate_evidence_score(sources, context, query)
+
+        # Should be very low (< 0.15) due to topic mismatch
+        assert score < 0.15, f"Expected score < 0.15 for mismatched topic, got {score}"
+        print(f"✅ KITAS query with KBLI results: score = {score} (correctly < 0.15)")
+
     def test_nonsense_query_zero_score(self):
         """
         Problem 2: Nonsense query "xyzabc123" should score ~0.0
@@ -56,6 +79,25 @@ class TestEvidenceScoringFixed:
         sources = [
             {"id": 1, "title": "Random Doc", "score": 0.8},
         ]
+        context = [
+            "This is some generic document content about various topics and subjects...",
+        ]
+
+        score = calculate_evidence_score(sources, context, query)
+
+        # Should be very low (< 0.15 triggers ABSTAIN)
+        assert score < 0.15, f"Expected score < 0.15 for nonsense query, got {score}"
+        print(f"✅ Nonsense query: score = {score} (correctly < 0.15)")
+
+    def test_nonsense_query_zero_score_pipeline_variant(self):
+        """Pipeline variant: same inputs and assertions, dense_formatted provenance."""
+        from backend.tests.fixtures.pipeline_score_fixtures import pipeline_sources
+
+        # B1.1 inventory row 2 (dense_formatted): PIPELINE_TRIPWIRE_FIXTURES["services/rag/test_evidence_scoring_abstain.py::TestEvidenceScoringFixed::test_nonsense_query_zero_score"]
+        query = "xyzabc123 blorptastic fnord"
+        sources = pipeline_sources(
+            "services/rag/test_evidence_scoring_abstain.py::TestEvidenceScoringFixed::test_nonsense_query_zero_score"
+        )
         context = [
             "This is some generic document content about various topics and subjects...",
         ]
@@ -146,6 +188,28 @@ class TestEvidenceScoringFixed:
 
         # Context about KBLI (wrong entity type)
         sources = [{"id": 1, "score": 0.9}]
+        context = [
+            "Il codice KBLI 46610 si riferisce al commercio all'ingrosso...",
+            "Per registrare un'azienda serve il KBLI corretto...",
+        ]
+
+        score = calculate_evidence_score(sources, context, query)
+
+        # Should be capped due to entity mismatch
+        assert score < 0.2, f"Entity mismatch should cap score low, got {score}"
+
+    def test_entity_type_mismatch_detection_pipeline_variant(self):
+        """Pipeline variant: same inputs and assertions, dense_formatted provenance."""
+        from backend.tests.fixtures.pipeline_score_fixtures import pipeline_sources
+
+        # B1.1 inventory row 2 (dense_formatted): PIPELINE_TRIPWIRE_FIXTURES["services/rag/test_evidence_scoring_abstain.py::TestEvidenceScoringFixed::test_entity_type_mismatch_detection"]
+        # Query about visa
+        query = "Come richiedere il KITAS?"
+
+        # Context about KBLI (wrong entity type)
+        sources = pipeline_sources(
+            "services/rag/test_evidence_scoring_abstain.py::TestEvidenceScoringFixed::test_entity_type_mismatch_detection"
+        )
         context = [
             "Il codice KBLI 46610 si riferisce al commercio all'ingrosso...",
             "Per registrare un'azienda serve il KBLI corretto...",
@@ -417,20 +481,32 @@ class TestDomainAbstainThresholds:
         # Unmodified domains keep defaults
         assert get_abstain_threshold("KITAS cost") == 0.12
 
-    def test_malformed_env_override_logged_and_skipped(self, monkeypatch, caplog):
+    def test_malformed_env_override_rejects_whole_spec_and_falls_back_strict(
+        self, monkeypatch, caplog
+    ):
+        # RULING I41: a malformed entry anywhere in the spec no longer lets
+        # its valid siblings land — the WHOLE spec is untrusted, so
+        # `_build_domain_thresholds` logs at ERROR and returns the STRICT
+        # fallback (every relief lifted to `default` 0.15, anything already
+        # stricter — kbli 0.20 — kept), never a partial merge and never the
+        # permissive defaults.
         monkeypatch.setenv(
             "DOMAIN_ABSTAIN_THRESHOLDS",
             "tax:0.05,broken_no_value,kbli:notanumber,pricing:0.18",
         )
         import backend.services.rag.agentic.reasoning_utils as mod
 
-        with caplog.at_level("WARNING"):
+        with caplog.at_level("ERROR"):
             thresholds = mod._build_domain_thresholds()
 
-        # Valid entries land
-        assert thresholds["tax"] == 0.05
-        assert thresholds["pricing"] == 0.18
-        # Malformed entries skipped, defaults preserved
-        assert thresholds["kbli"] == 0.20
-        # And we logged a warning about the bad entry
-        assert any("notanumber" in msg or "skipping" in msg.lower() for msg in caplog.messages)
+        assert thresholds == {
+            "tax": 0.15,
+            "visa": 0.15,
+            "pricing": 0.15,
+            "kbli": 0.20,
+            "default": 0.15,
+        }
+        # And we logged the failure at ERROR, naming the bad entry
+        assert any(
+            "broken_no_value" in msg or "malformed entry" in msg for msg in caplog.messages
+        )

@@ -1,0 +1,180 @@
+task_id: backend-rag-b1-3-benchmark
+gear: 3
+l_level: L2
+gate_class: opus
+base_sha: 2a4681b0b88a291b4ed4d0c8885bc1a5990ec8ed # pragma: allowlist secret
+mandate: B1
+colour: BLUE
+pr: B1.3
+objective: >-
+  B1.3 of mandate B1 (BLUE). Freeze a hand-labelled evidence-sufficiency
+  benchmark whose labels never select inputs (README D2): 58 synthetic cases,
+  each storing query, actual context, provenance fixture, requested fact,
+  supporting span or missing-fact explanation, stratum with precedence,
+  nuisance booleans and expected gate outcomes; four constructed spec pairs
+  per topic across both query and context languages; the golden rows whose
+  contexts lack the fact recorded as relevant_insufficient with their
+  correction deferred to B2.1 (D5, extended 3->5 by ruling I13). A reporting
+  harness prints false abstention and false acceptance per cell, gate and
+  stratum, the mandatory set and the independently drawn validation set
+  reported separately. Nothing new is asserted about the scorer; its numbers
+  on this base are the baseline.
+appetite:
+  wall_clock_hours: 5
+  adversarial_rounds: 2
+  tokens: 1500000
+generation: 4
+deadline_utc: "2026-09-12T14:00:00Z"
+deadline_authority: >-
+  Root mandate deadline of B1 generation 4, set by imperator ruling I16 and
+  carried by fleet envelope 20260912T013527Z-13d6. The generation-3 deadline
+  (2026-09-11T21:59:55Z) expired with one renewal already spent and suspended
+  the previous window; this window is a NEW generation with a NEW root
+  deadline, never a self-renewal of the old one. One renewal available on
+  request, with a checkpoint. Hops ceiling 3. Ship reserve zero.
+window:
+  session: 5009fde7 # Dux, Pro, B1 generation 4 second window
+  scope: "B1.3 -> B1.5 -> B1.4 only; B1.2 and its successors PR-A #6268 / PR-B #6270 are NOT this window's"
+  open_checkpoint_envelope: 20260912T024109Z-14e5
+  open_checkpoint_ack: "B1-ack 20260912T024308Z-7120 (Fable imperator M5, 8933d19d), 02:48Z"
+  superseded_envelope: 20260912T015826Z-0cc5
+constraints:
+  - >-
+    Tests and docs only: tests/benchmarks/evidence_sufficiency/** (new), the
+    structural test module (new), README §0 D5 one-line amendment (ruling I13
+    condition 3). test_evidence_cross_language.py stays byte-identical. No
+    backend/services/**, backend/core/**, no corner, no zantara_core.py, no
+    migration, no network, no embedding or generation call.
+  - >-
+    Every case synthetic: no real person, client, phone, email or document
+    number; decide() reads only query, context and provenance sources.
+  - >-
+    Labels reviewed case by case BEFORE the freeze by two families: Gemini 3.1
+    Pro (second reader) and Codex (adversarial seat, which also drew the
+    validation set); every disagreement dispositioned in pack.yml.
+acceptance:
+  - status: verified
+    text: >-
+      A1: WHEN the structural module runs on this head THEN validate() returns
+      no error, every EN/ID cell holds at least three sufficient cases and one
+      case of each negative stratum, every cell x gate x metric denominator is
+      positive, and the manifest bytes match the pinned sha256.
+    probe: >-
+      pytest backend/tests/unit/services/rag/test_evidence_sufficiency_benchmark.py
+      -> 59 passed
+  - status: verified
+    text: >-
+      A2: WHEN every label field of every case is flipped in a deep copy THEN
+      every decide() output is identical (labels never select inputs).
+    probe: >-
+      test_decide_output_is_identical_under_label_mutation in the same module
+  - status: verified
+    text: >-
+      A3: WHEN the harness CLI runs THEN it prints the mandatory and the
+      validation report separately, with the baseline recorded in pack.yml.
+    probe: >-
+      python -m backend.tests.benchmarks.evidence_sufficiency.harness --json
+gear_floor_note: >-
+  Declared 3 because the deterministic floor IS 3. Measured 2026-09-12T02:46Z
+  by the Dux with the repo's own function, on this PR's three-dot diff against
+  its merge-base 2a4681b0b8 (never the two-dot diff, which also picks up what
+  main landed after the base):
+  `evidence_pack_lint.compute_floor(files, numstat)` = 3 and
+  `compute_floor_source(...)` = "size", size term 6297 net lines against
+  SIZE_GEAR3_THRESHOLD 1828 — almost all of it the 58-case manifest JSON, which
+  lives under tests/ but NOT under tests/fixtures/ and therefore counts. Staying
+  under 1828 was not reachable for this PR: the manifest alone is ~2,100 lines
+  and splitting it would unfreeze the thing the PR exists to freeze. Gear 3's
+  demands are met rather than avoided — non-empty `dissent` (3 entries, 2
+  CONFIRMED + 1 OPEN), the council records on disk (Codex two rounds, Gemini
+  3.1 Pro, Kimi K3) and the receipts in pack.yml. The work itself is tests,
+  evidence and one README line; no service, core or production file is touched.
+assumptions:
+  - status: verified
+    text: >-
+      The band values in the manifest header are read from the code on this
+      base (generation 0.15; label default/pricing 0.15, tax 0.10, visa 0.12,
+      kbli 0.20; confidence 0.15/0.60; source-quality bands 0.7/0.5/0.3/0.15).
+team:
+  dux:
+    {
+      model: claude-opus-5,
+      effort: xhigh,
+      role: "Dux + release owner + label adjudicator",
+      host: Pro,
+    }
+  implementer:
+    {
+      model: claude-sonnet-5,
+      role: "manifest, harness, tests; round-1 cure",
+      commits: [6e50a41535, 2e830b0245],
+    }
+  second_reader:
+    {
+      seat: gemini,
+      model: gemini-3.1-pro,
+      effort: high,
+      via: agy,
+      outcome: "54 agree / 4 disagree",
+    }
+  adversarial_reviewer:
+    {
+      seat: codex,
+      model: gpt-5.6-sol,
+      effort: high,
+      sandbox: read-only,
+      round_1: "account 1 Pro, BLOCK 51/7 + 12 validation cases",
+      round_2: "account 2 Mini (account 1 out of credits), diffs inlined",
+    }
+  staff_room:
+    {
+      window: "Fable imperator M5, session 8933d19d (the 7c40d5cf window that issued I13 is RETIRED and is never addressed again)",
+      rulings: "I13 — D5 exception extended 3->5 · I16 — the two open B1.3 items decided (bv-b82d6f13 cure, C4 supersession), generation-4 deadline",
+    }
+  final_gate: "fresh Opus 5 session commissioned by the staff room, outside this contribution chain; it signs and never arms"
+seat_probe:
+  at: "2026-09-12T02:47:40Z..02:48:30Z, Pro, 75 s ceiling per seat, prompt 'Reply with exactly one word: PONG'"
+  why: "the organism board showed codex/agy/kimi TIMEOUT or UNKNOWN_ERR in the last 24 h; a seat that did not run is not a seat that agreed"
+  results:
+    - seat: "codex, default CODEX_HOME (account 1)"
+      verdict: DEAD
+      detail: >-
+        HTTP 400 invalid_request_error, twice: "The 'gpt-6-astra' model requires
+        a newer version of Codex. Please upgrade to the latest app or CLI." This
+        is the account's PINNED DEFAULT MODEL outrunning the installed CLI, not
+        a quota or network outage — which is what the board reports as
+        UNKNOWN_ERR. Cascade applied before declaring anything suspended.
+    - seat: "codex, CODEX_HOME=~/.codex-acct2 (account 2)"
+      verdict: LIVE
+      detail: "PONG in ~16 s. This is the working Codex door on Pro today; B1.4's candidate (iii) and any adversarial round use it."
+    - seat: "agy gemini-3.1-pro, effort high"
+      verdict: LIVE
+      detail: "PONG in ~10 s"
+    - seat: "kimi kimi-code/k3"
+      verdict: LIVE
+      detail: "PONG in ~7 s"
+  suspended: "none — the only failing door (codex account 1) has a live sibling, so no seat is suspended"
+  b1_3_impact: >-
+    None. B1.3's label review already happened under the previous window
+    (Gemini 3.1 Pro + Codex, two rounds, records on disk) and the staff room
+    ruled at 02:48Z that it is not re-run; no seat outage could stall this
+    freeze. The probe is recorded because B1.4 depends on these doors.
+final_gate_note: >-
+  Expect `Harness floor recompute` RED on its "Gear >= 2 — read the real gate
+  verdict" step until the imperator posts harness/fable-gate on this head sha
+  and re-triggers THAT run (`gh run rerun <id>`, never a fresh workflow run).
+  Told by the staff room 02:48Z; it is the PENDING state, not a defect, and it
+  is not to be diagnosed or cured.
+sibling_outputs:
+  at: "2026-09-12T02:47:20Z (re-run by the generation-4 window; the 2026-09-11T17:31:33Z set belongs to the closed window)"
+  open_prs_touching_paths: >-
+    52 open PRs listed; none touches tests/benchmarks, evidence_sufficiency or
+    research/operations/2026-09-11-bot-staff-room. The two B1 siblings in
+    flight, #6268 (b12a-variants) and #6270 (b12b-guard), are B1.2's successors
+    and are disjoint from this PR by the B1-design §3 sibling contract.
+  agent_start_list: >-
+    b1-3-benchmark (this window), b1-4-support-signal and b1-5-query-vectors
+    (this window's later PRs), b1-design-2 + b12a-variants + b12b-guard (B1.2,
+    NOT this window's and not touched)
+  fleet_mailbox: "read at open; envelope 20260912T015826Z-0cc5 SUPERSEDED and ignored per the staff room"
+  ListAgents: "no sibling agent on this lane; this window dispatched no child for B1.3"

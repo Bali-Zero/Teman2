@@ -1,0 +1,23 @@
+You are the independent PRE-review seat (Codex Sol, read-only) for mission SHWEB-20260911 / window W1-SH-TECH, colour BLUE. You are OUTSIDE the contribution chain: you did not write the patch (author: Astra) nor the brief (author: the Claude Dux). Default to defective; find the flaw. Do NOT edit anything.
+
+Repository checkout (base origin/main ea50eb262f, patch NOT applied): the current working directory.
+Artifacts to judge (copies in /private/tmp/claude-501/-Users-balizero-nuzantara/49aaaada-dcb1-4b4b-92d2-33af01e2f4f8/scratchpad/pre, path given below):
+- /private/tmp/claude-501/-Users-balizero-nuzantara/49aaaada-dcb1-4b4b-92d2-33af01e2f4f8/scratchpad/pre/brief.yml — the Dux's brief (scope, constraints, acceptance, negatives).
+- /private/tmp/claude-501/-Users-balizero-nuzantara/49aaaada-dcb1-4b4b-92d2-33af01e2f4f8/scratchpad/pre/contract-lock.json — frozen hashes, invariants, sibling contract.
+- /private/tmp/claude-501/-Users-balizero-nuzantara/49aaaada-dcb1-4b4b-92d2-33af01e2f4f8/scratchpad/pre/secondhome-prepared.patch — the ONE patch W1 will apply in BUILD (git apply --check already rc=0 on this base).
+- /private/tmp/claude-501/-Users-balizero-nuzantara/49aaaada-dcb1-4b4b-92d2-33af01e2f4f8/scratchpad/pre/FINAL-motore-design-2026-09-11.md (§2 binding addendum), /private/tmp/claude-501/-Users-balizero-nuzantara/49aaaada-dcb1-4b4b-92d2-33af01e2f4f8/scratchpad/pre/W1-studio-tech.md, /private/tmp/claude-501/-Users-balizero-nuzantara/49aaaada-dcb1-4b4b-92d2-33af01e2f4f8/scratchpad/pre/README.md — the spec.
+
+Answer, each with evidence you gathered by reading files/running read-only commands in this checkout (cite file:line or command+output):
+1. PERIMETER: does every hunk of the patch sit inside the W1 perimeter of the spec? Any forbidden path (lockfile, MDX, price list, fact registry, DB, WEB/R19, apps/website, Visa Oracle paths, global tokens/fonts)? Any hunk that is more than the spec allows (e.g. package.json beyond the build line; StudioApp/ScenarioToggle beyond the one numeric style property)?
+2. WAIVERS: verify in package-lock.json the installed versions behind the four retired advisories (GHSA-frvp-7c67-39w9 and GHSA-9mqv-5hh9-4cgg @hono/node-server; GHSA-c96f-x56v-gq3h find-my-way; GHSA-5p4m-2wfm-xmqj js-yaml under node_modules/gray-matter/node_modules/js-yaml AND at root). Is retiring each one correct, or would one of them still fire in `npm audit` and turn into a NEW blocking finding that the brief does not declare? (Network may be unavailable; say what you could and could not verify.)
+3. GATE TEST: in scripts/ci/test_npm_audit_gate.py after the patch, does `test_retired_advisories_block_if_reintroduced` exercise the SHIPPED WAIVE (not a fixture waiver)? Would restoring one entry to WAIVE make it fail? Does any OTHER existing test in that file still depend on a non-empty WAIVE and break?
+4. GENERATOR: apps/mouth/scripts/generate-llms-full.ts — with LLMS_GENERATE_ARTICLES_ONLY=1, trace the control flow: EN, ID, KBLI skipped, freshness. Is `isCanonical: file === `${publicSlug(file)}.mdx`` correct for every file-name shape in apps/mouth/src/content/articles (including names containing dots, uppercase locale tags, or locales not in LOCALE_SET)? Could the freshness block now list fewer than 5 items or change ordering in a way that is a regression? Any behaviour change for LLMS_GENERATE_FULL_ONLY callers?
+5. EXPORT TEST: apps/mouth/src/lib/llms-article-exports.test.ts — is it hermetic (temp cwd, no write to the real public/)? Does it really fail if the build line goes back to LLMS_GENERATE_FULL_ONLY=1? Will tsx resolution (`require.resolve("tsx/cli")`, gray-matter import from the script path) work under the repo's vitest config and CI? Is it excluded from any vitest include glob so it never runs?
+6. BUILD: apps/mouth/vercel.json runs `npm run build`. After the patch the build rewrites public/llms-id.txt and public/llms.txt at build time. Any risk for the Vercel build (read-only FS, missing data dir, timing) or for committed-artifact pins (e.g. a test that pins public/llms.txt or llms-id.txt byte-for-byte)? Search for such pins.
+7. CONTRACT-LOCK / BRIEF: missing invariant, missing negative, unfalsifiable acceptance, wrong hash (spot-check 3 hashes with shasum), or an acceptance the Dux cannot actually observe?
+
+Output format (plain text):
+VERDICT: GO | GO-WITH-CONDITIONS | NO-GO
+FINDINGS: numbered, each `[BLOCKER|MAJOR|MINOR] <claim> — evidence: <file:line / command + output> — required action`
+CONDITIONS FOR BUILD: bullet list (empty if GO)
+UNVERIFIED: what you could not check and why

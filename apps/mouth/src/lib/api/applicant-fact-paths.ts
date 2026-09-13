@@ -25,6 +25,7 @@ const applicantFactPaths = {
   "intent.purposes": true,
   "intent.requested_product_code": true,
   "intent.stay_days": true,
+  "investment.investment_amount_usd": true,
   "investment.investment_capital_idr": true,
   "investment.paid_up_capital_idr": true,
   "investment.proposed_role": true,

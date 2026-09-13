@@ -1,0 +1,242 @@
+# Brief — SHWEB-20260911 / W2-C4f: the walk and the baseline tell the truth once
+gear: 2 # measured --print-floor=2, --print-floor-source=size, over the complete changed set after the last commit
+gear_reason: >-
+  TO BE FILLED FROM THE COMMAND, not from judgement. Run, after the LAST commit and over the
+  COMPLETE changed set (code AND pack/brief — the set CI sees):
+    git diff --cached --name-only HEAD > /tmp/f.txt
+    git diff --cached --numstat  HEAD > /tmp/n.txt
+    python3 scripts/evidence_pack_lint.py --print-floor        --changed-files-file /tmp/f.txt --numstat-file /tmp/n.txt
+    python3 scripts/evidence_pack_lint.py --print-floor-source --changed-files-file /tmp/f.txt --numstat-file /tmp/n.txt
+  This key exists because the gear was declared below the CI floor twice: C4b ran --print-floor
+  WITHOUT --numstat-file (the SIZE term was silently absent) and C4c ran it over the code files
+  only. Both were caught by CI, both were avoidable, and neither was a disagreement about risk —
+  they were a command run with the wrong arguments.
+task_id: shweb-w2-c4f-walk-20260913
+mandate_id: SHWEB-20260911/W2-C4f
+colour: BLUE
+l_level: L2
+host: Mini-Pro2 (nuzantara)
+worktree: .worktrees/mouth-shweb-w2-c4f-walk-20260913
+branch: agent/mini-pro2/mouth/shweb-w2-c4f-walk-20260913
+base_sha: 97f69c7f38 # pragma: allowlist secret - public Git commit ID, fresh origin/main containing the C4e merge
+opened_at: "2026-09-13T04:00Z"
+state: CANDIDATO
+
+predecessor: >-
+  C4e (merged 86ec37e4d0, SERVED — the eight now answer 301 to kita, /team and /about still 200)
+  added a route-coverage test whose walk repeated both mistakes C4d had corrected in the chunk guard
+  an hour earlier. Two independent gates reached the same conclusion: the repeat is structural, not
+  careless, because every consumer re-derives the App Router's directory grammar from memory.
+
+objective: >-
+  One definition of the route grammar, imported by all three consumers, and a guard whose output
+  says what its baseline did instead of passing in silence.
+
+brief_ref: evidence/brief.yml
+pii_scan: clean
+pii_scan_note: No personal data. A walk, a baseline, and their tests.
+
+scope:
+  - apps/mouth/scripts/lib/app-routes.mjs # new: the grammar, in one place, with injectable fs for its tests
+  - apps/mouth/src/lib/app-routes.test.ts # new: the grammar's own tests, on shapes this repo does not have yet
+  - apps/mouth/scripts/assert-roster-not-in-public-chunks.mjs # imports the walk; OK line reports the baseline; unaccepted routes printed with a leading slash; header stops repeating a count
+  - apps/mouth/scripts/lib/prerendered-workspace-baseline.mjs # imports urlRoute instead of redefining it; gains the reverse check
+  - apps/mouth/src/lib/prerendered-workspace-baseline.test.ts # the 'cannot rot' test made real; reverse-check cases
+  - apps/mouth/src/__tests__/internal-routes-cover-workspace.test.ts # imports the walk
+  - apps/mouth/src/lib/client-roster-boundary.test.ts # asserts the guard still imports the shared walk
+
+the_conditions:
+  - id: rescope-1
+    what: extract walkAppRoutes with C4e's rules into scripts/lib/
+    done: >-
+      apps/mouth/scripts/lib/app-routes.mjs. Recursive; descends INTO route groups; refuses @slot and
+      (..)/(...) intercepting markers with an error naming the convention; follows symlinked
+      directories; knows all seven page extensions; returns URL paths with groups already stripped.
+      MEASURED before extracting, rather than taken from the addendum: the guard's inline walk was
+      recursive but missing FOUR of those rules — groups, @slot/(..), symlinks, page.mjs/.cjs. The
+      addendum said three.
+  - id: rescope-2
+    what: guard, baseline and test all import it — no third copy
+    done: >-
+      The guard imports walkAppRoutes; the baseline imports urlRoute (it had its own copy); the
+      coverage test imports walkAppRoutes. A DESIGN CONSTRAINT had to be respected or the shared
+      module would have been a third copy with extra steps: the two consumers need different
+      granularity — the guard compares 42 FULL PATHS against prerender-manifest keys, the coverage
+      test compares 18 FIRST SEGMENTS against INTERNAL_ROUTES prefixes. So the module returns full
+      URL paths and the test takes the first segment; had it returned segments, the guard would have
+      lost the resolution it needs.
+  - id: rescope-3
+    what: the guard's OK line reports the accepted baseline count
+    done: >-
+      "Prerender baseline: 42 (workspace) route(s) accepted as already static, 0 unaccepted."
+      This exists because the baseline passed in SILENCE: the imperator went looking for that line
+      in a deployment build log and it did not exist. A check nobody can see in the log is
+      indistinguishable from a check nobody ran.
+  - id: 6397-cond-1
+    what: the guard header stops carrying a count
+    done: >-
+      NOT DONE on the first attempt, and the gate was right to say so. I removed the count from one
+      paragraph of the header and LEFT IT in another paragraph of the SAME comment, sixteen lines
+      below the sentence promising not to repeat it — the fourth generation of one defect, inside
+      the change whose whole subject is that a number in prose goes stale in silence. The narrative
+      "five, then seventeen" was also still there, which would have kept the gate's own proof grep
+      dirty. Now: every count is gone from the file, the header points at the module that holds the
+      list and at the OK line that prints its size, and `grep -nE 'seventeen|forty-two|\b17\b|\b42\b'`
+      over the guard returns nothing. What the header keeps is the only claim that does not change
+      with the count — exactly one accepted payload carries staff markers, /lkpm.
+  - id: 6397-cond-4
+    what: the GUARD adopts walkAppRoutes, so the walks do not become three
+    done: >-
+      Listed here because its absence from this pack was itself a finding: the conditions ran
+      1/2/3/5 and a reader could not tell whether 4 was forgotten or judged out of scope. It is
+      done — the guard imports walkAppRoutes and its private recursive copy is gone, which is what
+      keeps the count at one walk rather than three. The tripwire asserts the import so a private
+      copy reappearing is red.
+  - id: 6397-cond-2
+    what: the baseline gains a reverse check
+    done: >-
+      staleAcceptedRoutes() reports accepted entries that are no longer prerendered. REPORTING, not
+      fatal, and the asymmetry with the exception contract is deliberate: a stale closer there could
+      be reused by a new exception, whereas a stale accepted route here can only fail to flag a
+      route that stopped being static. Failing the build over the good direction of travel would be
+      the wrong lesson. What it prevents is rot — a list nobody prunes stops being a measurement.
+  - id: 6397-cond-3
+    what: the 'cannot rot' test made real
+    done: >-
+      It called the function with an EMPTY route list, got an empty answer, and asserted that — it
+      proved the shape of a call and nothing about the list. It now walks the real tree and requires
+      every accepted entry to name a route that still exists.
+  - id: 6397-cond-5
+    what: the import asserted in the tripwire
+    done: >-
+      The tripwire asserts the guard still contains `from "./lib/app-routes.mjs"`. Every other test
+      in that suite asks what the walk RETURNS today, so a private copy coming back would pass all
+      of them; this is the one assertion that can see the shape of the dependency rather than its
+      output.
+  - id: cosmetics
+    what: the unaccepted-route message and the PR body's file count
+    done: >-
+      Unaccepted routes now print with a leading slash (/zz-probe, not zz-probe) — probed.
+      CORRECTION: this entry previously claimed "the body says 7 files". The body says no such
+      thing — I wrote the claim rather than the body. The diff is 7 code files and 12 with the
+      pack; the PR body states neither, and saying it did was the same species of error as the
+      counts this PR spent its length removing.
+
+constraints:
+  - The chunk scan's behaviour does not change. Same 506 chunks, 0 skipped, same accepted public files.
+  - R-A untouched. This PR makes the baseline audible and single-sourced; it does not decide the workspace's session gate.
+  - team-roster.ts FROZEN with no hunk; package.json and package-lock.json untouched.
+
+lanes:
+  - lane: build
+    role: build
+    seat: claude-opus-5
+    what: the extraction, the three call sites, the reverse check, the OK line
+  - lane: review-refuter
+    role: review
+    seat: gemini-3.1-pro
+    what: the diff, out of the contribution chain
+  - lane: council
+    role: review
+    seat: tp1-qwen3.8-max
+    what: the same, plus the first seat's resolutions
+
+council_run: journal.jsonl
+
+dissent:
+  - seat: gemini-3.1-pro
+    objection: >-
+      MEDIUM — walkAppRoutes cannot discover root-level routes: a page directly inside the walked
+      directory, or inside a route group directly under it, is dropped because `next.length > 0`
+      treats the root as an absence.
+    status: CONFIRMED
+    disposition: >-
+      True, and it was a REGRESSION I introduced in this very PR: the guard that previously owned
+      this walk carried the root case as a special line, and the extraction dropped it. That is the
+      precise failure mode this PR exists to prevent — a rule living in one caller instead of in the
+      walk — committed while moving the walk out of that caller. Fixed in the module: the root route
+      is reported as "", both shapes tested. The consumers handle it explicitly: the guard compares
+      "/" against the manifest (verified by measurement, not by reading), and the coverage test
+      EXCLUDES it with the reason written down — "" cannot be an INTERNAL_ROUTES prefix, since that
+      would be "/", the public home.
+  - seat: gemini-3.1-pro
+    objection: >-
+      MEDIUM — a missing or unparseable prerender manifest makes staleAcceptedRoutes report all 42
+      accepted routes as stale and tell the developer to prune them; the catch block says "report
+      nothing rather than crash".
+    status: RETRACTED
+    disposition: >-
+      That catch does not exist in this code — the quoted comment is not in the file. Both paths
+      call process.exit(1) BEFORE the baseline block runs, so staleAcceptedRoutes is unreachable
+      with an empty list. Probed rather than argued: manifest moved aside -> "FAILED: ... is
+      missing"; manifest corrupted -> "FAILED: could not read ... (Expected property name ...)".
+      The seat was reasoning about a plausible shape rather than the one in front of it.
+  - seat: tp1-qwen3.8-max
+    objection: >-
+      GO. LOW — the retraction's probe only covered INVALID JSON; a manifest that parses but carries
+      no `routes` key still falls through with an empty list. LOW — confirm "" is normalised to "/"
+      before the manifest comparison. LOW — a symlink resolving to an ancestor recurses until the
+      stack goes, because ELOOP never fires. INFO — .mjs/.cjs may not be resolved by the App Router.
+    status: CONFIRMED
+    disposition: >-
+      The seat was right that my probe was narrower than my claim, which is the same shape as three
+      other findings in this mandate. All taken: a manifest that parses without a `routes` object is
+      now a failure with that wording, probed; the walk keeps a Set of resolved realpaths so an
+      ancestor symlink cannot recurse forever; and the .mjs/.cjs choice is written down where it is
+      read — over-inclusion can only name a route the manifest does not contain, which is silent,
+      whereas under-inclusion hides a route from every consumer.
+      The "/" read-through it could not do, I measured: root prerendered and accepted -> no
+      violation; prerendered and NOT accepted -> reported; not prerendered -> nothing. The
+      normalisation is real.
+
+receipts:
+  - claim: "one walk, three consumers, and a private copy coming back is red"
+    cmd: "remove the guard's import of ./lib/app-routes.mjs and run the tripwire; then restore"
+    result: >-
+      RED — "the guard no longer imports the shared route walk — a private copy has come back".
+      Every other test in that suite asks what the walk RETURNS today and would have stayed green.
+    exit: 0
+    ts: "2026-09-13T04:20:00Z"
+    seat: claude-opus-5
+  - claim: "the shared walk is load-bearing in BOTH consumers, on a shape neither used to see"
+    cmd: "create (workspace)/(grp-probe)/zz-probe/page.tsx — a route inside a route GROUP — then build, then run the coverage test"
+    result: >-
+      build FAILS naming "/zz-probe" (with the leading slash the gate asked for); the coverage test
+      goes RED naming "zz-probe". Removing the probe returns both to green, 0 stray files.
+    exit: 0
+    ts: "2026-09-13T04:25:00Z"
+    seat: claude-opus-5
+  - claim: "the baseline is audible now, which is why the imperator could not find it before"
+    cmd: "npm run build and read the OK line"
+    result: >-
+      "Prerender baseline: 42 (workspace) route(s) accepted as already static, 0 unaccepted." The
+      previous OK line said nothing about the baseline at all, which is why a search for it in a
+      deployment build log came up empty — the check ran and left no trace.
+    exit: 0
+    ts: "2026-09-13T04:15:00Z"
+    seat: claude-opus-5
+  - claim: "the guard refuses a baseline it could not actually check — three shapes"
+    cmd: "manifest moved aside; manifest corrupted; manifest valid JSON with no routes key"
+    result: "exit 1 in all three, each naming which shape it hit. Restored, guard green."
+    exit: 0
+    ts: "2026-09-13T04:50:00Z"
+    seat: claude-opus-5
+  - claim: "nothing regressed"
+    cmd: "cd apps/mouth && npm run build; npx vitest run; npx tsc --noEmit; npx eslint; npx prettier --check"
+    result: "guard OK 506 chunks / 0 skipped; 482 files / 5189 tests passed; typecheck 0; eslint 0 errors; prettier clean"
+    exit: 0
+    ts: "2026-09-13T04:55:00Z"
+    seat: claude-opus-5
+
+lesson:
+  what: >-
+    The PR that exists to stop a rule living in one caller instead of in the walk dropped exactly
+    such a rule while moving the walk: the guard's root-route special case did not survive the
+    extraction, and a refuter found it.
+  why_it_matters: >-
+    An extraction is not a move, it is a re-derivation — and re-derivation is the thing that has
+    been failing all through this mandate. The cure that worked was not more care: it was the
+    refuter asking what the new function could not see, and then probing the shape rather than
+    reading the code. Every finding in this round that survived contact with a measurement was of
+    that kind, and every one that did not — the "report nothing rather than crash" comment that was
+    never in the file — came from reasoning about a plausible shape instead of the one present.

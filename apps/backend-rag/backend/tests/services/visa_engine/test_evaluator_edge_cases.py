@@ -139,7 +139,35 @@ class TestAllExcluded:
             source_id=source_id,
             required_facts=["immigration.currently_in_indonesia"],
         )
-        payload = B.rule_pack_payload(rules=[hard_filter], products=products, source_records=[src])
+        # Each product also carries an ELIGIBILITY rule that CLAIMS the
+        # applicant's declared purpose. Added 2026-09-06 with the
+        # `purpose_feasible` scoping of `no_path_reasons`: without it this
+        # pack is degenerate — two products that no ELIGIBILITY rule can ever
+        # support, i.e. products this applicant was never shopping for — and
+        # the engine now (correctly) withholds their exclusion reason and
+        # emits the OPERATIONAL fallback instead. What this test actually
+        # pins is the DEDUPE of one GLOBAL rule across two products, so the
+        # pack is made non-degenerate rather than the assertion weakened.
+        eligibility = [
+            B.rule(
+                rule_id=f"el.tourism.{i}",
+                stage="ELIGIBILITY",
+                scope="PRODUCTS",
+                product_version_ids=[pid],
+                when={"op": "intersects", "fact": "intent.purposes", "values": ["TOURISM"]},
+                effect={
+                    "type": "SUPPORT",
+                    "reason_code": "TOURISM",
+                    "covered_purposes": ["TOURISM"],
+                },
+                source_id=source_id,
+                required_facts=["intent.purposes"],
+            )
+            for i, pid in enumerate(product_ids)
+        ]
+        payload = B.rule_pack_payload(
+            rules=[hard_filter, *eligibility], products=products, source_records=[src]
+        )
         pack = M.RulePack.model_validate(B.rule_pack_envelope(payload))
         compiled = build_compiled_pack(pack)
 

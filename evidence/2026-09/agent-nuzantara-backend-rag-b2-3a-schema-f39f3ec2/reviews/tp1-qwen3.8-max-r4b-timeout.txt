@@ -1,0 +1,5 @@
+tp1-qwen3.8-max r4b on SHIPPED bytes 6b5d3d8b (prompt reviews/prompt-r4.txt; --effort high, default 900 s budget)
+tp1 r4b start 2026-09-13T12:03:37Z
+tp1 r4b exit=4 end 2026-09-13T12:18:37Z
+OUTCOME: NO VERDICT (budget exhausted while still reasoning). stdout empty; stderr verbatim:
+tp1_call: seat ALIVE but still generating when the 900s budget ran out (11075 chunks received, 162375 chars of reasoning, 0 chars of answer so far). This is NOT a dead seat: raise --timeout, or pass --effort medium (measured 4.2x faster than unset on qwen3.8-max).

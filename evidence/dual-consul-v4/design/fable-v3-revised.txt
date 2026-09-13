@@ -1,0 +1,37 @@
+Revised Claude spec, round 3. No tools, no evidence inspected.
+
+**Corrections**
+
+1. **Accept.** The PreToolUse hook is same-UID and bypassable by direct shell or network. It becomes defense-in-depth plus UX. The authoritative boundary is the trusted executor under a distinct UID, which rechecks authorization, current fence, and resource immediately before each effect. The model process holds no broad service credentials. Worktree is convention only.
+2. **Accept.** Pre-action receipts record intent or started, never success. The journal is pending, started, confirmed, or reconcile_required, keyed by action plus idempotency key. Remote status queries resolve ambiguity where available. Git state alone is not reconciliation.
+3. **Accept, with one factual note.** My system context in this session contains an attribution instruction for commit trailers, but I observed no actual commit, and a trailer authenticates nothing. Identity assurance uses the native model and session identifiers captured by the trusted launcher, compared to the requested binding, and marked runtime_observed. Links are optional metadata.
+4. **Accept.** The Codex named sandbox has narrow but real filesystem and network confinement evidence. The inherited env.set is a separate unresolved credential-isolation defect. Both are tracked as distinct items.
+5. **Accept.** My three-state enum contradicted itself. Replace it with observed identity, schema compatibility, smoke evidence, tested capability set, and expiry. Eligibility is derived per required capability, host, and auth context. The headless credit guard is a verifiable entitlement check that fails closed on ambiguity. No extra human gate when product or account evidence suffices. Only a call that would require new spending pauses.
+6. **Accept.** Interactive mode is not a per-action human prompt. Preauthorized work proceeds under runtime and broker policy. No new mandatory reapproval or CI.
+7. **Accept.** Same-mission native resume is allowed after fresh authorization, fence, config, and input checks. No reuse across unrelated missions.
+8. **Accept.** Only duplicate unchanged reads count as waste. Test deletion needs concrete coverage or redundancy reasoning, not impact-map output alone, and no large audit suite.
+
+**Revised Claude-native spec**
+
+- **Entry.** Version-pinned CLI launched by the trusted launcher, which records the native model identifier, session identifier, CLI version, host, and auth class. Interactive is the current eligible surface. Headless print mode becomes eligible only after the entitlement check passes and is cached by CLI version, account, and host digest. Ambiguity fails closed. The exact flag set is verified from the installed CLI help output and docs, never from my assertion.
+- **Binding.** The execution extension under the Claude namespace records requested and resolved model, effort actual, session identifier, config digest, admission budget, and artifact input hash. Assurance level is runtime_observed. Model changes inherit no authorization or prior review.
+- **Enforcement.** The distinct-UID executor is authoritative for effects, fencing, and revocation. The hook denies obvious violations early and writes started journal entries. Tools that cannot meet the boundary are disabled for effects and may emit ActionIntents. Review missions get read-only tools. Design missions get none. No claim of OS confinement for the Claude surface until allowed and denied probes exist, which they do not today.
+- **Effort, context, cache.** Effort comes from a policy table keyed by mission class. Top levels require a stated reason. Stable contract text precedes variable packet text for cache benefit. Fast mode runs a different model and is excluded from consul verdicts. Capability lookups are cached, not probed per mission.
+- **Sessions.** Ephemeral when no resume is needed. Same-mission resume permitted after fresh checks. Native compaction is convenience. Company authority remains PG and provenance records.
+- **Cancellation.** Revoke in PG, interrupt the native turn, terminate the supervised process group, mark ambiguous effects reconcile_required, and keep any provider response evidence.
+- **Economy.** Observed counters for input, cached, reasoning, and output, with unknown fields explicit. Provider max-output is not a total cap.
+- **Tests.** CLI flag capture. Executor deny on stale fence with hook bypass attempted. Journal transitions including timeout after remote commit. Entitlement check with fail-closed ambiguity. Env allowlist. Process-group kill with reconciliation. Receipt invalidation on artifact change. Native usage fields matched to the ledger. Resume with revoked authorization must fail.
+
+**Cross-review of the Astra spec**
+
+The spec is compatible with the shared contract. Three notes, all proposals:
+
+- **Unobservable delegation.** Disabling automatic worker expansion when native delegation is unobservable is correct. The card should record which delegation modes are observable per binary version, since this changes across releases.
+- **On-request approvals.** The broker deciding native approval requests is the right boundary. Record each decision as an ApprovalReceipt with the grant reference, so later review can distinguish policy grants from human grants.
+- **Provider evidence retention.** Keeping stream evidence when the client transport breaks needs a storage budget and redaction rule, otherwise it conflicts with the no-raw-client-data policy.
+
+**Other-family routes.** Accepted as stated. Each adapter records its route type, wrapper or native CLI or gateway, and the slug actually resolved. MIR slug mismatches and the gateway effort translation stay per-route facts. Any native CLI flag is verified by tooling or docs before it enters an adapter.
+
+**Shared v3.** Accepted. Still unvalidated: Astra on Pro and Mini, Claude headless entitlement, the distinct-UID executor, env isolation for both launchers, the installed CLI flag set, and all five external consultations.
+
+END_FABLE_DC_V3

@@ -223,8 +223,14 @@ describe("ConsentHandoff", () => {
   });
 
   it.each([
-    ["en", "WhatsApp contact is not configured."],
-    ["id", "Kontak WhatsApp belum dikonfigurasi."],
+    [
+      "en",
+      "WhatsApp is not available from this page right now. You can finish the interview and print or save your result at the end.",
+    ],
+    [
+      "id",
+      "WhatsApp belum tersedia dari halaman ini saat ini. Anda dapat menyelesaikan wawancara lalu mencetak atau menyimpan hasil Anda di akhir.",
+    ],
   ] as const)(
     "does not promise a nonexistent result when %s consultation is unavailable",
     (language, message) => {
@@ -396,7 +402,7 @@ describe("ConsentHandoff", () => {
       />,
     );
     expect(screen.getByRole("status")).toHaveTextContent(
-      "WhatsApp handoff is not configured",
+      "WhatsApp is not available from this page right now. You can print or save this result and bring it to a Bali Zero consultant.",
     );
     expect(screen.queryByRole("checkbox")).toBeNull();
 
@@ -408,7 +414,44 @@ describe("ConsentHandoff", () => {
       />,
     );
     expect(screen.getByRole("status")).toHaveTextContent(
-      "Pengalihan WhatsApp belum dikonfigurasi",
+      "WhatsApp belum tersedia dari halaman ini saat ini. Anda dapat mencetak atau menyimpan hasil ini dan membawanya ke konsultan Bali Zero.",
+    );
+  });
+
+  // PR-O4 / Δ2: the visitor no longer reads the configuration string, so the
+  // misconfiguration must still reach US. A hidden defect with no witness is
+  // the worse of the two failures.
+  it.each([["not-a-phone"], [""], ["+62"]])(
+    "reports the unconfigured handoff internally while the visitor reads no configuration string (%j)",
+    (whatsappNumber) => {
+      const { container } = render(
+        <ConsentHandoff
+          language="en"
+          state="HUMAN_REVIEW_REQUIRED"
+          whatsappNumber={whatsappNumber}
+        />,
+      );
+
+      expect(container.textContent).not.toContain("is not configured");
+      expect(emitVisaOracleTelemetry).toHaveBeenCalledWith({
+        event: "visa_oracle_v2_handoff_unconfigured",
+        state: "HUMAN_REVIEW_REQUIRED",
+      });
+    },
+  );
+
+  it("reports nothing internally once a valid number is configured", () => {
+    render(
+      <ConsentHandoff
+        language="en"
+        state="HUMAN_REVIEW_REQUIRED"
+        whatsappNumber="628123456789"
+      />,
+    );
+    expect(emitVisaOracleTelemetry).not.toHaveBeenCalledWith(
+      expect.objectContaining({
+        event: "visa_oracle_v2_handoff_unconfigured",
+      }),
     );
   });
 });

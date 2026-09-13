@@ -84,6 +84,7 @@ logger = logging.getLogger(__name__)
 
 __all__ = [
     "can_manage_garuda_practices",
+    "garuda_practice_admin_emails",
     "is_valid_garuda_assignment_target",
     "require_garuda_staff",
     "verify_staff_session",
@@ -119,6 +120,27 @@ def _garuda_practice_admin_emails() -> frozenset[str]:
     else:
         base = frozenset()
     return base | _GARUDA_PRACTICE_ADMIN_EXTRA_EMAILS
+
+
+def garuda_practice_admin_emails() -> frozenset[str]:
+    """PUBLIC accessor for the GARUDA practice-admin set: the set
+    `is_valid_garuda_assignment_target` accepts BEFORE it ever reads a role or a
+    `team_members` row.
+
+    `assignment_targets.list_garuda_assignment_targets` needs the set to widen
+    its candidate query, because a role-only prefilter is unsafe on its own:
+    the admin shortcut below precedes the role query, so an ACTIVE row whose
+    email is in this set is an accepted target even when its role is one a
+    denylist excludes (``client``, ``monitoring``) or NULL — where SQL's
+    three-valued `role <> ALL(...)` is UNKNOWN and `WHERE` drops the row.
+
+    Exposing the set is not a second copy of any policy. The DECISION stays with
+    `is_valid_garuda_assignment_target`, which every candidate row is still put
+    through; this only stops an enumeration from discarding a row before that
+    decision has been asked. (Codex Gear-2 grade of 0ead993f3b1b, finding 1
+    MEDIUM: the first candidate query dropped exactly these rows.)
+    """
+    return _garuda_practice_admin_emails()
 
 
 def _is_staff_role(role: str | None) -> bool:

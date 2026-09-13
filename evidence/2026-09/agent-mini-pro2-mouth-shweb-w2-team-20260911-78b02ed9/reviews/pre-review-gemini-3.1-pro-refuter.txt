@@ -1,0 +1,49 @@
+# PRE-review / refuter record — Gemini 3.1 Pro (agy), seat outside the contribution chain
+
+seat: gemini-3.1-pro (agy --model gemini-3.1-pro --effort high)
+host: Mini-Pro2
+role: PRE-review refuter (cross-family vs the Dux, a Claude Opus 5 session)
+ok: true
+subject: the BUILT candidate diff (5 modified consumers + 9 new files), delivered INLINE
+prompt_bytes: 90839
+response_bytes: 3100
+verdict: NO-GO (2 BLOCKER, 1 MAJOR, 1 MINOR)
+
+## Why this record exists twice
+
+The first attempt (reviews/pre-review-gemini-3.1-pro.txt, 307 B) is NOT a review: it is the
+headless CLI refusing its own read_file permission. It was re-run here with the whole review
+subject INLINE in the prompt, so the seat needed no filesystem tool and no --dangerously-* flag.
+
+## Verbatim response
+
+1. **LEAK**
+SEVERITY: BLOCKER
+File: `apps/mouth/src/app/v2/_components/SocialProof.tsx`
+Line: `"use client";` and `import { publicEntries } from "@/lib/team-public-listing";`
+Scenario: `SocialProof` is a Client Component. It imports `team-public-listing.ts`, which in turn imports the frozen SSOT `team-roster.ts`. This causes the Next.js bundler to include the ENTIRE `TEAM_ROSTER` dataset—including the excluded "faisha" and "sahira" records, and any other internal CRM fields—into the public client-side JavaScript payload sent to the browser. Anyone inspecting the JS bundle will see the excluded people.
+Fix: Run the `publicEntries` filter in the Server Component where it is safe, and pass only the filtered `FOUNDERS` and `TEAM` arrays down to the `SocialProof` client component as props.
+
+2. **NEGATIVE TESTS**
+SEVERITY: BLOCKER
+File: `apps/mouth/src/app/v2/_components/SocialProof.test.tsx` (also `about.test.tsx`)
+Line: `expect(document.body.innerHTML).not.toMatch(/faisha|faysha|sahira/i);`
+Scenario: The test asserts that the excluded people are absent from the DOM. However, "faisha" and "sahira" are NOT in the `FOUNDERS_SPEC` or `TEAM_SPEC` arrays (or `TEAM_MEMBERS` for the about page) to begin with! The test will trivially pass even if the `publicEntries` filter is completely bypassed or broken. It provides a false guarantee and zero actual coverage.
+Fix: The test must inject an excluded person (e.g. `extraExcluded.add("adit")` or by mocking a spec array) to prove the component actually drops an excluded person it *was* instructed to render.
+
+3. **FILTER SHAPE**
+SEVERITY: MAJOR
+File: `apps/mouth/src/lib/team-public-listing.ts`
+Line: `return entries.filter((e) => (e.slug ? isPublicSlug(e.slug) : true));`
+Scenario: The filter only acts on entries that provide a `slug`. If a future editor defines an excluded person manually in an editorial array (e.g., in `team/page.tsx`) by accidentally omitting `slug` and using `nameOverride: "Faisha"`, the filter will see `e.slug` as undefined and return `true`, silently bypassing the exclusion and rendering them.
+Fix: Strictly type the editorial entries so known roster members must be referenced by their slug, or have the filter check `nameOverride` against a list of excluded names.
+
+4. **DEFAULT PRESERVATION**
+SEVERITY: MINOR
+File: `apps/mouth/src/app/v2/_components/SocialProof.tsx`
+Line: `<ArrowUpRight size={13} strokeWidth={2} aria-hidden="true" />`
+Scenario: The addition of `aria-hidden="true"` to the default render's link icon makes the `/v2` default render NOT byte-identically unchanged from before. The React Testing Library tests ignore `aria-hidden` by default when querying by text/role, so this mutation goes unnoticed by the test suite.
+Fix: Remove `aria-hidden="true"` from the default branch to keep it strictly unchanged.
+
+VERDICT: NO-GO
+The client-side bundling of the SSOT roster completely defeats the exclusion mandate by leaking the excluded people directly into the browser's JavaScript payload, and the tests meant to prove the exclusions in the marketing components are trivial false positives.

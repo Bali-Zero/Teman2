@@ -1,0 +1,46 @@
+task_id: jump-resume-explicit-only
+gear: 1
+l_level: L1
+gate_class: opus
+objective: >-
+  A window opened by hand is never a continuation. Zero, Pro 2026-09-09 23:50:
+  "quando apro comincia a fare quello che vuole e non aspetta il mio prompt" —
+  and, in the same breath, "il context jump è un'altra cosa, non intaccare il
+  salto legittimo". context_jump_resume.py (SessionStart, every session) had a
+  fallback: with no NZ_JUMP_FROM in the env it claimed the freshest unclaimed
+  same-cwd pending-jump. So for MAX_AGE_S (15 min) after every guard trip, any
+  plain `claude` Zero opened in ~/nuzantara was handed the stale mandate plus
+  "continua senza chiedere" and stamped as that jump's destination. The
+  launcher knows the id (nz-jump.sh and claude-cascade.sh both export
+  NZ_JUMP_FROM); nobody else is a continuation. The fallback is removed, the
+  explicit path is untouched, and the legitimate jump keeps working.
+constraints:
+  - >-
+    The legitimate jump is not touched: window_jump.sh types `nz-jump <sid>`,
+    nz-jump.sh exports NZ_JUMP_FROM, claude-cascade.sh sets it on the hop
+    (line 535). Those paths are exercised by the existing corpora, all green.
+  - >-
+    The innocence filters (claimed, stale, own session, kill switch) are now
+    asserted ON the explicit path, so they cannot pass for the wrong reason.
+  - >-
+    Merged is not armed (cicatrix #1): the live copy under ~/.claude/hooks on
+    Pro, M5 and Mini is refreshed from origin/main after the merge, never from
+    a local branch, and lint_home_fork compares against origin/main.
+  - >-
+    No PII: the jump file carries a session id, a cwd, a model name and the
+    owner's own mandate text.
+acceptance:
+  - >-
+    WHEN a fresh, unclaimed pending-jump from THIS cwd exists and the session
+    starts with no NZ_JUMP_FROM, THEN the hook prints nothing, exits 0 and the
+    file's to_session stays null (test_hand_opened_window_never_claims_a_jump,
+    test_two_fresh_jumps_and_no_launcher_id_stamp_nothing).
+  - >-
+    WHEN NZ_JUMP_FROM names a fresh unclaimed jump, THEN it is injected and
+    stamped exactly as before, whatever the cwd
+    (test_fresh_unclaimed_jump_is_injected_and_stamped,
+    test_explicit_from_session_is_honoured_whatever_the_cwd).
+  - >-
+    WHEN the named jump is claimed, stale, our own, or CONTEXT_JUMP_OFF=1, THEN
+    mute and unstamped, on the explicit path.
+pii_scan: clean

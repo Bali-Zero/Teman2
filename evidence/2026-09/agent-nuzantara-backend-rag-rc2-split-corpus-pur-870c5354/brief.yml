@@ -1,0 +1,59 @@
+task_id: bot-rc2-training-data-government-fee-gate
+gear: 2
+l_level: L2
+gate_class: client-facing
+objective: >-
+  Stop the local training-data files from writing the PNBP-versus-service-fee
+  split back into training_conversations_hybrid (RULED Zero 2026-09-11, root
+  cause 2 of cycle 359). PR #5615's detector already refuses such a row at
+  curated_qa ingest; the same detector now gates every chunk of the three
+  scripts that write local training-data markdown into that collection, before
+  the chunk is embedded. Deleting the offending points fixes today and nothing
+  else — reingest_training_data.py can write them straight back.
+grader: opus-5-fresh-gate
+pii: none
+notes: >-
+  One detector, one owner: the scripts import text_is_refused(), the no-marker
+  form of row_is_refused() — chunked markdown has no field for a reviewer's
+  note, so this gate has no escape hatch and its reason offers none. The
+  ruling sentence is now one constant, and row_is_refused's output is
+  byte-identical to origin/main across the gate test's 18 rows.
+  Mutation-verified: replacing the gate call in reingest_files() with
+  `reason = None` turns test_reingest_never_embeds_or_upserts_a_refused_chunk
+  red (1 failed, 10 passed); restored, 11 passed. Touched test files 21 -> 32
+  passed.
+  Cost measured on the real input, not asserted: `--dry-run` over the script's
+  own 30-file list refuses 37 of 761 chunks (43 of 768 over all 31 files under
+  training-data/). The refusals are concentrated in legal_058 (14, itemised
+  "PNBP + professional fee"), visa_010/visa_011/visa_016 and realestate_046;
+  about 5 are compliant text a 1500-char chunk brings into contact with an
+  unrelated figure ("Cost includes ... Immigration fees" beside our all-in
+  price), and refusing them is the refuse-by-default direction, named here
+  rather than hidden.
+  Hand-cured, outside the diff because training-data/ is gitignored:
+  visa_011_notebooklm_session2.md lines 315, 547, 711 and 743 (the census that
+  named three had missed 743) now give one all-in price the way line 123 was
+  cured on 2026-09-03; 797 lines before and after, `grep -rc PNBP
+  training-data/` 36 lines in 5 files -> 32 in 4, the file's own dry run 6/19
+  refused -> 3/19. The 3 residuals carry no PNBP: they are "biaya visa" and
+  "biaya resmi" chunks, left to the detector as the mandate directs.
+  ingest_license_procedures.py's per-chunk time.sleep became await
+  asyncio.sleep — ASYNC251, pre-existing on origin/main, which the pre-commit
+  lint enforces on a touched file; the pause is unchanged.
+gate:
+  class: fresh Opus 5 on-disk gate, outside the contribution chain (staff room docs-bot-staff-room-v6-fa commissioned it; the implementer was a child of an earlier Fable window)
+  sha: fff7cd26e8
+  verdict: PASS-WITH-CONDITIONS
+  record: gate-verdict-2026-09-11.md (this directory)
+  reproduced: mutation 1 failed/10 passed -> 11 passed; touched tests 21 -> 32 passed; --dry-run 37/761 refused; row_is_refused byte-identical to origin/main across the 18 gate rows; ruff clean on the 5 files; worktree restored byte-exact
+  condition: record the chunk-boundary residual below (no code change required)
+residuals:
+  - >-
+    CHUNK-BOUNDARY EVASION (MAJOR, open, not cured here — one PR one concern). The gate is
+    per-chunk: TextChunker(1500, overlap 200, prepend-only) can put a government-fee token and
+    its figure into two different chunks once they are >= 225 characters apart (measured by
+    the gate with a synthetic markdown probe), and then neither chunk is refused. This is the
+    detector's pre-existing single-window semantics that #5615 already accepted on curated_qa
+    rows; the surface is new here because the unit is a mechanically cut chunk, not an
+    answer, and --dry-run is per-chunk too, so the audit does not see the whole file.
+    Recorded for the /bot corner; a document-level pre-scan is the candidate cure.

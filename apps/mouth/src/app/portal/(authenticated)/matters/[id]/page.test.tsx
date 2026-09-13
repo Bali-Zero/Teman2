@@ -62,7 +62,9 @@ describe("PortalMatterDetailPage", () => {
     render(<PortalMatterDetailPage />);
 
     expect(screen.getByText("Company Setup")).toBeInTheDocument();
-    expect(screen.getByText("Approved Intelligence")).toBeInTheDocument();
+    expect(
+      screen.getByText("The file · what we know for certain"),
+    ).toBeInTheDocument();
     expect(screen.getByText("PT Safe Client Story")).toBeInTheDocument();
     expect(
       screen.getAllByText("The company profile is approved for client review."),

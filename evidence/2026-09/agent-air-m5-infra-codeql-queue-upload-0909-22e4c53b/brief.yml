@@ -1,0 +1,129 @@
+task_id: infra-codeql-queue-upload
+gear: 3
+l_level: L2
+gate_class: opus
+# Floor computed this run:
+#   python3 scripts/evidence_pack_lint.py --print-floor --print-floor-source \
+#     --changed-files-file <changed> --numstat-file <numstat>
+# returns `3`, source `path`: .github/workflows/security.yml is a hot-zone
+# file (.github/workflows/**).
+objective: >-
+  Stop the `Security Scanning` / CodeQL python analysis job from going red
+  under the merge queue for a cause that has nothing to do with the code it
+  analyzes. `github/codeql-action/analyze` runs the ~12-15 min python
+  analysis and then, as its LAST step, uploads the SARIF to code scanning.
+  Under a `merge_group` event the ref GitHub hands the run
+  (`refs/heads/gh-readonly-queue/main/pr-N-<sha>`) is a temporary queue ref
+  that is deleted the moment the group is rebuilt or merged — which, on a
+  12-15 min job, has usually already happened by the time the upload call
+  fires. Measured live on 2026-09-09 (all `merge_group` `Security Scanning`
+  runs created that day, `gh run list --workflow=security.yml
+  --event=merge_group --created 2026-09-09`): 54 runs, 10 failures, all 10
+  confirmed via `gh run view <id> --log-failed` to fail on the identical
+  `##[error]ref 'refs/heads/gh-readonly-queue/main/pr-N-<sha>' not found in
+  this repository` line inside the analyze step — 0 of the 10 failures had
+  any other cause. (The earlier verbal estimate of "4 of 14" undercounted;
+  the full-day count is 10 of 54 and is what this brief is built on.) The
+  `pull_request` lane analyzes and uploads the same commit's findings first
+  — confirmed on PR #6017: PR-lane run 34342139034 succeeded at
+  2026-09-09T10:47:52Z, over an hour before its own merge_group run
+  (34346980655) failed on the upload at 11:56:42Z with the same ref. A daily
+  cron (`17 19 * * *`, 03:17 WITA) independently re-scans `main` and is not
+  gated by the merge queue at all. So the merge-group lane's own upload adds
+  no code-scanning coverage that isn't already there from the PR lane or the
+  schedule — it only adds a required-check failure mode. The cure: on the
+  analyze step, `upload: ${{ github.event_name == 'merge_group' && 'never'
+  || 'always' }}` — the merge-group lane still runs the full analysis (so a
+  real analysis failure, e.g. a build break in the CodeQL extraction, still
+  reds the job and blocks the queue) but never attempts the SARIF upload, so
+  the queue-ref-deleted race can no longer turn a healthy analysis into a
+  required-check failure. Every other event (`pull_request`, `push`,
+  `schedule`, `workflow_dispatch`) keeps `upload: always`.
+constraints:
+  - >-
+    The analyze step itself (matrix language extraction/analysis) is
+    UNCHANGED — only the `with.upload` input is added. A real analysis
+    failure under merge_group must still fail the job and block the queue.
+  - >-
+    Guard is an entity match on the live workflow's `with.upload` expression
+    (guilt+innocence, superscar #3) — not a substring grep of the file text.
+    `scripts/tests/test_codeql_queue_upload_never.py` parses the YAML,
+    finds the `github/codeql-action/analyze@` step(s), and asserts
+    `with.upload == "${{ github.event_name == 'merge_group' && 'never' ||
+    'always' }}"` verbatim; guilt fixtures (upload line removed, upload
+    forced to `always`) must fail the same assertion.
+  - >-
+    Guard wired into the `antidotes` required-check battery in
+    `immune-enforcement.yml` so a future edit to `security.yml` that drops
+    or weakens the upload gate is caught before merge, not after the next
+    incident.
+  - No `--no-verify`, no `--amend`, no force-push; worktree infra-codeql-queue-upload-0909.
+  - >-
+    HEAD moved once during this PR: commit 0418396463 (team lead, on top of
+    907b5705f2) adds the new guard's own test file to the sentinel `case`
+    list at immune-enforcement.yml:362 — the "relevant paths" list that
+    decides whether the `antidotes` job runs at all. Cause: the first CI run
+    on #6029 (34352201312) went red on
+    test_immune_enforcement_trigger_symmetry.py::test_every_looped_test_is_also_a_trigger_path,
+    which pins that every test RUN by the antidotes battery is also a
+    TRIGGER path — otherwise a PR touching only the guard file would skip
+    the job that runs it. This evidence pack is committed on top of
+    0418396463, not squashed into it.
+acceptance:
+  - text: >-
+      A1 (innocence): the live `security.yml` analyze step's `with.upload`
+      equals the expected expression exactly.
+    probe: pytest -q scripts/tests/test_codeql_queue_upload_never.py -k innocence_live_security_yml_never_uploads_under_merge_group
+  - text: >-
+      A2 (guilt, missing): removing the `upload:` line is flagged.
+    probe: pytest -q scripts/tests/test_codeql_queue_upload_never.py -k guilt_analyze_without_upload_is_flagged
+  - text: >-
+      A3 (guilt, wrong value): forcing `upload: always` unconditionally is
+      flagged.
+    probe: pytest -q scripts/tests/test_codeql_queue_upload_never.py -k guilt_analyze_uploading_always_is_flagged
+  - text: >-
+      A4 (guilt, missing step): a workflow with no codeql-action/analyze
+      step is flagged, so the pin fails closed rather than vacuously.
+    probe: pytest -q scripts/tests/test_codeql_queue_upload_never.py -k guilt_missing_analyze_step_is_flagged
+  - text: A5 — actionlint reports no error on the changed workflow.
+    probe: actionlint .github/workflows/security.yml
+  - text: >-
+      A6 (Bites): the next merge_group `Security Scanning` run on this
+      branch/queue SHALL complete the python analyze step with conclusion
+      success and no SARIF-upload error, even though the queue ref it ran
+      against no longer exists once the group advances.
+    probe: >-
+      gh run list --workflow=security.yml --event=merge_group --branch main
+      --limit 5 --json databaseId,conclusion,createdAt
+  - text: >-
+      A7 — the guard is reachable from the required-check battery, not just
+      present on disk.
+    probe: grep -n test_codeql_queue_upload_never.py .github/workflows/immune-enforcement.yml
+assumptions:
+  - text: >-
+      All 10 merge_group failures on 2026-09-09 share the identical
+      "ref ... not found" cause (no other CodeQL job — javascript, etc. —
+      contributed a different failure mode that day).
+    status: verified
+    probe: >-
+      `gh run view <id> --log-failed | grep -i "ref.*not found"` on all 10
+      failed run ids returned by `gh run list --workflow=security.yml
+      --event=merge_group --created 2026-09-09 --json databaseId,conclusion
+      --jq '.[] | select(.conclusion=="failure") | .databaseId'` — all 10
+      matched (34350109008, 34349213583, 34346981848, 34346980655,
+      34346976803, 34339406942, 34338537858, 34336546751, 34316957908,
+      34316307031); none of the ten had a second, different failure line.
+  - text: >-
+      The merge_group required check gates on the analyze JOB's conclusion,
+      not on the presence of a code-scanning alert/SARIF artifact, so
+      `upload: never` does not silently remove the queue's ability to block
+      a real vulnerability from merging (the PR lane and schedule still
+      upload and alert on it independently).
+    status: verified
+    probe: >-
+      `.github/branch-protection`/required-checks config names the job
+      `CodeQL Analysis (<language>)`, not a code-scanning-alerts check;
+      cross-family review (codex, kimi) asked explicitly to confirm this
+      reading — see pack.yml lanes.
+appetite:
+  wall_clock_hours: 2
