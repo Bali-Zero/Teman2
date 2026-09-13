@@ -60,9 +60,7 @@ acceptance:
       `scripts/ci/shard_tests.py:82` is `("backend/tests/e2e",)`;
       `tests.yml:875` opens `backend-shard` whose `if:` at `:907` reads
       `needs.changes.outputs.run_backend_tests != 'false'`; `tests.yml:1197-1198`
-      is the job `backend-tests` named `Backend Tests (Python)`; and the GitHub
-      branch-protection API reports exactly one required context on `main`,
-      `"Backend Tests (Python)"`.
+      is the job `backend-tests` named `Backend Tests (Python)`; and the GitHub branch-protection API lists `Backend Tests (Python)` AMONG `main`'s required contexts (13 contexts when the full set was re-read on 2026-09-13; the claim is membership, not exclusivity).
   - text: >-
       IF this change altered any executable behaviour, THEN it would be out of
       scope and the gate SHALL reject it.

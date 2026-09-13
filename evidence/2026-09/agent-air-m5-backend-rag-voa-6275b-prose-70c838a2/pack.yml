@@ -49,7 +49,7 @@ outcome:
   behaviour_change: none
 diff:
   files: 1
-  added: 32
+  added: 36
   removed: 7
   note: >-
     Docstring text only. The docstring-stripped AST is identical to origin/main,
@@ -158,7 +158,40 @@ receipts:
     ts: "2026-09-13T10:13:53Z"
     seat: claude-opus-5 (M5, build lane)
     exit: 0
+  - claim: >-
+      Third-party gate condition on 0b5c34ab (PASS-WITH-CONDITIONS): the cured
+      sentence claimed EXCLUSIVITY and was false. Cured, and the method error is
+      recorded with it.
+    cmd: >-
+      gh api repos/Bali-Zero/Teman2/branches/main/protection/required_status_checks
+      --jq '.contexts | length' and the unfiltered '.contexts[]' listing
+    result: >-
+      main carries 13 required contexts, not one; `Backend Tests (Python)` is
+      among them (membership confirmed, exclusivity false). The false form came
+      from the FIRST measurement being piped through `grep -i backend|parity`
+      and the single surviving line being read as the whole set — a filtered
+      view mistaken for a total, which is this PR's own defect class arriving by
+      a third route. Both copies are cured: the docstring and the brief's second
+      acceptance probe, which repeated the same sentence. After the cure:
+      docstring-stripped AST still identical to origin/main, ruff clean, 233
+      passed.
+    ts: "2026-09-13T10:25:49Z"
+    seat: claude-opus-5 (M5, build lane)
+    exit: 0
 dissent:
+  - seat: codex-gpt-5.6-sol
+    status: CONFIRMED
+    objection: >-
+      (Recorded from the fresh out-of-chain gate on head 0b5c34ab, not from this
+      seat's own round, and kept here because the pack is where a condition that
+      changed the diff belongs.) `public_endpoints.py:95-97` asserted that
+      main's required contexts "were exactly [Backend Tests (Python)]".
+    resolution: >-
+      ACCEPTED and cured at depth 1: 13 contexts measured, membership asserted
+      instead of exclusivity, in the docstring AND in the brief probe that
+      repeated it. Three seats have now each caught one instance of the same
+      failure in a PR whose deliverable IS prose accuracy — which is the honest
+      summary of this lane.
   - seat: tp1-qwen3.8-max
     status: CONFIRMED
     objection: >-

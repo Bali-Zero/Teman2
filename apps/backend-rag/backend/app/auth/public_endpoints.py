@@ -92,10 +92,14 @@ def path_matches_template(path: str, template: str) -> bool:
         `Backend Tests (Python)` (`tests.yml:1197-1198`). Whether that job is
         REQUIRED on `main` is branch-protection CONFIGURATION: no test in this
         repo pins it, and it can change without a line of code changing, so this
-        docstring cannot assert it as a property. Measured once, 2026-09-12, via
-        the branch-protection API: `main`'s required contexts were exactly
-        `["Backend Tests (Python)"]` — a dated observation, not a guarantee this
-        file can keep. Either way "on every PR" would overstate a job the
+        docstring cannot assert it as a property. What was measured, via the
+        branch-protection API: `Backend Tests (Python)` is AMONG `main`'s
+        required contexts — one of 13 when the full set was re-read on
+        2026-09-13, first observed 2026-09-12. A dated observation about
+        membership, not a guarantee this file can keep. The first version of
+        this sentence said the set was EXACTLY that one context, which was
+        false: it came from reading a `grep`-filtered view of the API output as
+        if the surviving line were the whole set. Either way "on every PR" would overstate a job the
         change-map can skip. Named here as the anchor, not re-proved here.
 
         NOT `.github/workflows/garuda-contract-parity.yml`, whose NAME invites
