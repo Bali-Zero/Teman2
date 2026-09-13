@@ -1,0 +1,307 @@
+# Gear-3 Evidence Pack — B2.3a, the abstain record's schema (migrations_v2/314_wa_outbox_evidence.sql).
+# Written by the Dux (claude-opus-5, successor-3 session 7566f29f, Pro). Every receipt below was
+# executed in this session; instants are pasted from `date -u` or the tool's own log line, and a
+# ts_note says so where a run printed no instant of its own.
+task_id: backend-rag-b2-3a-schema
+brief_ref: evidence/brief.yml
+base_sha: 461a4a93ac095cd723515eda06a8955d82bcefda # pragma: allowlist secret — fresh origin/main at open (fast-forwarded from 2669f61e31)
+mandate: B2
+colour: BLUE
+pr: B2.3a
+gear: 3
+envelope: 20260912T091907Z-435d
+checkpoint_refs:
+  - 20260913T111331Z-3f22 # OPENED-SUCCESSOR-3; ack 20260913T111357Z-3b03 approved 314
+  - 20260913T114452Z-0517 # B3 draft PR #6436 armed; B2.3a status at council r3
+deadline: "2026-09-13T18:00:00Z"
+
+candidate:
+  file: apps/backend-rag/backend/db/migrations_v2/314_wa_outbox_evidence.sql
+  sha256: 6b5d3d8bb99d8d37d8ccbd97414264df6fb888a4731bb015ac9458c93ee8db9f # pragma: allowlist secret
+  superseded_bytes:
+    - "8064d528 — r1 candidate (bare table name, no timeouts, no postcondition)"
+    - "705e9165 — r2 candidate (timeouts + postcondition; bare table name; no atthasmissing)"
+    - "df347c3b — r3 candidate (public.wa_outbox + atthasmissing; postcondition catalog refs still resolve through search_path)"
+  forward: >-
+    SET LOCAL lock_timeout '5s'; SET LOCAL statement_timeout '30s'; ALTER TABLE public.wa_outbox ADD
+    COLUMN abstained_at TIMESTAMP WITH TIME ZONE NULL; ALTER TABLE public.wa_outbox ADD COLUMN
+    evidence_score NUMERIC NULL. No IF NOT EXISTS (a pre-existing same-named column of any shape fails
+    inside the transaction), no catalog read, no search_path-resolved name (table qualified; types are
+    grammar keywords bound to pg_catalog).
+  rollback: >-
+    SET LOCAL lock_timeout '5s'; DROP COLUMN IF EXISTS evidence_score, then abstained_at, on
+    public.wa_outbox. For isolated validation; not a routine production rollback (B2 §3).
+
+numbering:
+  chosen: 314
+  last_on_main: "313_garuda_practice_artifacts.sql (git ls-tree origin/main 461a4a93ac)"
+  open_prs_swept: "42 open PRs; migrations_v2 SQL only in #5037 (293/294/295), #5526 (304), #5337 (304, a CHECK constraint on wa_outbox, no column of this file)"
+  approved_by: "imperator ack 20260913T111357Z-3b03"
+
+acceptance:
+  - id: A1
+    status: MET
+    evidence: "diff = the one SQL file + this evidence directory; both columns read back from information_schema with exact type, nullable, no default (receipts/roundtrip-up-down-up.txt)"
+  - id: A2
+    status: MET
+    evidence: "receipts R1-R5 on bytes 6b5d3d8b"
+  - id: A3
+    status: MET
+    evidence: "receipts R6-R8; guilt R9 (xmin fingerprint) and R12-R14 (pre-existing column fail-fast + name resolution)"
+  - id: A4
+    status: SEE_COUNCIL
+    evidence: "journal.jsonl + reviews/ + dissent below"
+  - id: A5
+    status: PRE_RECORDED
+    evidence: >-
+      receipts/prod-cohort-pre-ids-status.txt (420 rows, 179 done / 241 failed, recorded
+      2026-09-13T11:15:57Z) sha256 4d3e18e7711c7dfca935dac3bda574c0c3559b77d93284a78d4b3e9cab97721c. # pragma: allowlist secret
+      The post-deploy re-read of the same ids is the Bites observation, made after merge and reported
+      by checkpoint "B2.3a APPLIED AND PROBED", never inferred from this file.
+
+production_pre_state:
+  measured_at: "2026-09-13T11:15:34Z"
+  server_version: "17.9"
+  wa_outbox_columns: 16
+  abstained_at_present: false
+  evidence_score_present: false
+  schema_versions_max: 313
+  rows: "420 (ids 1..420; done 179, failed 241; no non-terminal row); last created_at 2026-09-01T09:27:53Z, last claimed_at 2026-09-01T09:27:54Z (R11)"
+  schemas: "wa_outbox only in public; non-system schemas public + mata_garuda; backend_rag_v2 and backend_rag_migrator carry no rolconfig (R10b)"
+  supplementary_not_bites: >-
+    Also recorded, read-only, 2026-09-13T11:17:16Z: sha256 of (id, xmin) over ids 1..420 =
+    9844b108b4123d138bc8737571815996331b40877452541e68a53723fab07394 and pg_relation_filenode('wa_outbox') = 645671. # pragma: allowlist secret
+    Stronger than id+status (an in-place row touch moves xmin; a table rewrite moves the filenode).
+    Supplementary: a change there after deploy is explained before it is called a §6 event, because
+    the application may legitimately touch terminal rows for reasons unrelated to this migration.
+
+deploy_impact:
+  merging_deploys: true
+  path: "apps/backend-rag/** -> fly-deploy.yml (nuzantara-rag)"
+  order: >-
+    Pre-deploy `run-migrations` runs apply-all on the PREVIOUS image (314 not in that image: no-op);
+    `run-sql-v2-migrations-post-deploy` applies 314 on the fresh image. No code reads or writes either
+    column (rg: no reader of abstained_at outside a test docstring; no SELECT * / INSERT ... VALUES /
+    RETURNING * row-shape consumer of wa_outbox outside tests and migrations), so both images are safe.
+  lock: >-
+    ADD COLUMN takes a brief ACCESS EXCLUSIVE lock (catalog-only, no rewrite). SET LOCAL lock_timeout
+    5s bounds the queue a waiting DDL creates to at most 5 s; past that the migration aborts atomically,
+    314 stays unrecorded and the post-deploy job goes red — a rerun on the fresh image applies it (the
+    PR is schema-only, so nothing depends on it in between). Table traffic: no write since 2026-09-01.
+  rollback: >-
+    Routine rollback of the abstain record = revert B2.3b, keep the columns and history (B2 §3). A
+    production DROP COLUMN is a separately authorized destructive operation, never routine. No workflow
+    or deploy script calls MigrationManager.rollback_migration, and migrate.py has no rollback command.
+
+what_this_pr_changes:
+  - "adds migrations_v2/314_wa_outbox_evidence.sql"
+  - "adds this evidence directory"
+what_this_pr_does_not_change:
+  - "no Python, no test, no workflow, no other migration"
+  - "no row in any environment (B2 §6); no send, generation, embedding, cache write or paid call"
+
+pii_scan: clean
+pii_scan_note: >-
+  The evidence directory carries opaque outbox ids with a status enum, sha256 digests, SQL, runner log
+  lines, seat reviews of the SQL and a synthetic docker cohort (thread counterpart
+  'synthetic-b2-3a-cohort'). No phone, name, email, message text or identity document. The production
+  reads selected only id, status, xmin, timestamps maxima and catalog rows.
+
+secrets_note: >-
+  No credential read or printed. The isolated DSN uses the CI test credentials published in tests.yml
+  (test/test on throwaway localhost containers). Detect Secrets (advisory, record-only per I60) may flag
+  the machine-written cohort_sha256 lines in receipts/ and digests quoted inside reviews/; they are
+  content digests and cannot carry a pragma without altering pasted output.
+
+bites:
+  consumer: "the migration runner on the next deploy (fly-deploy.yml run-sql-v2-migrations-post-deploy)"
+  observation: >-
+    After MERGED: the fresh-image migration job green; `scripts/pg.sh -Atc "\d wa_outbox"` showing
+    abstained_at timestamp with time zone nullable no default and evidence_score numeric nullable no
+    default; _schema_versions carrying 314_wa_outbox_evidence; the cohort of ids 1..420 re-read with
+    sha256 equal to 4d3e18e7711c7dfca935dac3bda574c0c3559b77d93284a78d4b3e9cab97721c. # pragma: allowlist secret
+
+lanes:
+  - lane: b2-3a-schema-build
+    role: build
+    seat: claude-opus-5
+  - lane: b2-3a-council-red-team
+    role: review
+    seat: codex-gpt-5.6-sol
+  - lane: b2-3a-council-quorum
+    role: review
+    seat: tp1-qwen3.8-max
+  - lane: b2-3a-prod-pre-state
+    role: ground_truth
+    seat: claude-opus-5
+
+council_run: journal.jsonl
+
+compute_floor: 3
+compute_floor_source: path
+compute_floor_note: "evidence_pack_lint.compute_floor(files, numstat) on the staged diff (migration hot zone); gear 3 declared"
+
+dissent:
+  - seat: codex-gpt-5.6-sol
+    objection: "r1 (8064d528): no verdict — context rollover at 168K tokens; interim notes: unbounded ACCESS EXCLUSIVE wait without lock_timeout; comment 'an abstain decision left no row' literally imprecise"
+    status: CONFIRMED
+    disposition: "SET LOCAL lock_timeout/statement_timeout added (306 precedent); comment reworded. The run counts for nothing (journal ok false)."
+  - seat: tp1-qwen3.8-max
+    objection: "r1 M1 (8064d528): IF NOT EXISTS silently accepts a pre-existing column of another shape"
+    status: CONFIRMED
+    disposition: "DO-block postcondition on type / nullability / default; guilt R12 (planted TEXT column -> apply exit 1, 314 unrecorded)"
+  - seat: tp1-qwen3.8-max
+    objection: "r1 M3 / r2 M2: the stored rollback is destructive against B2 §3's keep-the-columns rule"
+    status: PLAUSIBLE
+    disposition: "kept: the runner requires a rollback section for post-cutoff migrations (migration_base.py) and the spec requires up/down/up; no deploy path invokes it; policy stated in the file"
+  - seat: tp1-qwen3.8-max
+    objection: "r1 N4: previous/fresh image could break on a row-shape consumer (SELECT *, INSERT VALUES)"
+    status: RETRACTED
+    disposition: "measured absent by rg over apps/packages/scripts outside tests and migrations"
+  - seat: codex-gpt-5.6-sol
+    objection: "r2 MAJOR (705e9165): bare wa_outbox resolves through search_path; a shadow wa_outbox receives the ALTERs, the check and the rollback while 314 is recorded"
+    status: CONFIRMED
+    disposition: "every reference qualified public.wa_outbox (production: only public holds it); guilt R14 — r2 forward bytes under search_path shadow,public: public 0 / shadow 2 new columns; df347c3b: public 2 / shadow 0"
+  - seat: codex-gpt-5.6-sol
+    objection: "r2 MINOR (705e9165): postcondition blind to atthasmissing left by a dropped constant default"
+    status: CONFIRMED
+    disposition: "OR a.atthasmissing added; guilt R13 (planted default-then-dropped column, atthasmissing=t -> apply exit 1, 314 unrecorded)"
+  - seat: tp1-qwen3.8-max
+    objection: "r2 M3 (705e9165): postcondition does not see a pre-existing CHECK (col IS NOT NULL)"
+    status: CONFIRMED
+    disposition: >-
+      resolved by the r4 redesign rather than a further patch: without IF NOT EXISTS any pre-existing
+      same-named column (CHECK included) makes ADD COLUMN fail inside the transaction (R12/R13).
+  - seat: tp1-qwen3.8-max
+    objection: "r2 N1/N3 (705e9165): manual autocommit run makes SET LOCAL a no-op; lock_timeout bounds the stall, does not remove it"
+    status: PLAUSIBLE
+    disposition: "the runner is the only sanctioned executor (one transaction, migration_base.py:879); the 5 s bound is recorded in deploy_impact.lock"
+  - seat: codex-gpt-5.6-sol
+    objection: "r3 MAJOR (df347c3b): the postcondition's pg_attribute / pg_attrdef / format_type / regclass references resolve through search_path; forged shadow catalogs can hide drift — second red of the search_path family"
+    status: CONFIRMED
+    disposition: >-
+      cause removed, not patched (a third patch would be fix-of-a-fix depth 3): no DO block, no IF NOT
+      EXISTS, types spelled as grammar keywords; guilt R14 — under search_path shadow, pg_catalog, public
+      with a shadow.timestamptz domain the r3 bytes' TIMESTAMPTZ resolved to the domain (their own
+      postcondition raised), these bytes create timestamp with time zone / numeric on public and nothing
+      on shadow. A third red of this cause suspends the PR.
+  - seat: tp1-qwen3.8-max
+    objection: "r3 (df347c3b), r4 and r4b (6b5d3d8b): no verdict — two stream stalls at 12:03Z (0 chars of answer) and one 900 s budget exhausted while reasoning"
+    status: RETRACTED
+    disposition: "seat failures, not judgements (journal ok false); retried as r4c with --effort medium --timeout 1800, which returned the verdict below"
+  - seat: codex-gpt-5.6-sol
+    objection: "r4 NOTE (6b5d3d8b, ACCEPT 0/0/0): the destructive rollback is mechanically invocable; the 5 s lock_timeout fails the deploy job"
+    status: PLAUSIBLE
+    disposition: "kept: the rollback section is runner- and spec-required and no deploy path calls it (deploy_impact.rollback); the timeout aborts atomically and a rerun applies 314 (deploy_impact.lock)"
+  - seat: tp1-qwen3.8-max
+    objection: "r4c NOTE-1 (6b5d3d8b, ACCEPT 0/0/0): TIMESTAMPTZ is a grammar keyword bound to pg_catalog, so the claim that it resolves through search_path is imprecise"
+    status: RETRACTED
+    disposition: "measured false, receipt R15: under search_path shadow, pg_catalog, public a column typed TIMESTAMPTZ lands on shadow.timestamptz while TIMESTAMP WITH TIME ZONE lands on pg_catalog; the claim lives only in reviews/prompt-r4.txt and this pack, not in the file"
+  - seat: tp1-qwen3.8-max
+    objection: "r4c NOTE-2/NOTE-3 (6b5d3d8b): the rollback sets no statement_timeout; forward has no IF NOT EXISTS while the rollback has IF EXISTS"
+    status: PLAUSIBLE
+    disposition: "kept: DROP COLUMN is catalog-only and bounded by lock_timeout; the asymmetry is the fail-fast design (forward) plus idempotent validation (rollback), as the seat itself records"
+
+receipts:
+  - claim: "R1 migration-number lint, CI shell of lint-migration-numbers.yml, on 6b5d3d8b"
+    cmd: "ls migrations_v2 | grep -E '^[0-9]+_.*\\.sql$' | awk -F_ '{print $1}' | sort | uniq -d"
+    result: "All migration numbers are unique."
+    exit: 0
+    ts: "2026-09-13T11:53:13Z"
+    seat: claude-opus-5
+  - claim: "R2 scripts/lint_migration_numbers.py on 6b5d3d8b"
+    cmd: "python3 scripts/lint_migration_numbers.py"
+    result: "migration-numbers lint: 192 files, all unique prefixes"
+    exit: 0
+    ts: "2026-09-13T11:53:13Z"
+    seat: claude-opus-5
+  - claim: "R3 scripts/lint_migration_rollback.py on 6b5d3d8b"
+    cmd: "python3 scripts/lint_migration_rollback.py"
+    result: "migration-rollback lint: 187 post-cutoff migrations, all have ROLLBACK marker"
+    exit: 0
+    ts: "2026-09-13T11:53:13Z"
+    seat: claude-opus-5
+  - claim: "R4 Squawk at the CI version (squawk-cli@latest = 2.65.0) and local 2.60.0 with migration-lint.yml's exclude list, on 6b5d3d8b"
+    cmd: "npx --yes squawk-cli@2.65.0 --pg-version=15.0 <the 13 --exclude flags of migration-lint.yml> 314_wa_outbox_evidence.sql (from the scratchpad, not the repo); squawk (2.60.0) same flags"
+    result: "Found 0 issues in 1 file (both versions). On 705e9165 without any exclude: only ban-drop-column x2 (rollback section), excluded in CI."
+    exit: 0
+    ts: "2026-09-13T11:53:19Z"
+    seat: claude-opus-5
+  - claim: "R5 apply-all --dry-run names exactly 314 as pending on a 313 baseline (pg15d, pg17d)"
+    cmd: "python -m backend.db.migrate apply-all --dry-run (isolated DSN; receipts/b2_3a_roundtrip.sh.txt roundtrip)"
+    result: "DRY RUN - Would apply: 314: 314_wa_outbox_evidence.sql"
+    exit: 0
+    ts: "2026-09-13T11:52:38Z"
+    seat: claude-opus-5
+  - claim: "R6 isolated baselines: docker postgres 15.19 and 17.11, ci_bootstrap_schema.py + apply-all with the 314 file moved aside, 7 synthetic outbox rows"
+    cmd: "receipts/b2_3a_roundtrip.sh.txt setup pg15d|pg17d (the script refuses to build a baseline while 314 is on disk)"
+    result: "baseline_max=313, 16 wa_outbox columns (production also 16), sv_314=0 sm_314=0 (receipts/roundtrip-baseline.txt)"
+    exit: 0
+    ts: "2026-09-13T11:52:38Z"
+    ts_note: "setup printed no instant; it completed before the roundtrip start pasted here"
+    seat: claude-opus-5
+  - claim: "R7 up / down / up on both servers, bytes 6b5d3d8b"
+    cmd: "receipts/b2_3a_roundtrip.sh.txt roundtrip pg15d|pg17d (down = MigrationManager.rollback_migration, the runner's own path)"
+    result: >-
+      up: abstained_at|timestamp with time zone|YES|<none>, evidence_score|numeric|YES|<none>, 18 columns,
+      314 in _schema_versions and schema_migrations; down: rollback_ok= True, 16 columns, 314 in neither
+      ledger; up #2 identical; rerun 'No pending migrations' (receipts/roundtrip-up-down-up.txt)
+    exit: 0
+    ts: "2026-09-13T11:52:46Z"
+    ts_note: "roundtrip and guilt block together ran 11:52:38Z-11:52:46Z"
+    seat: claude-opus-5
+  - claim: "R8 no row touched and no table rewrite on any step"
+    cmd: "sha256 of SELECT id, status, xmin::text FROM public.wa_outbox ORDER BY id; pg_relation_filenode('public.wa_outbox') — baseline, after up, after down, after up #2, and after every guilt step"
+    result: "pg15d fingerprint constant across every read, pg17d constant across every read; relfilenode 18525 constant on both"
+    exit: 0
+    ts: "2026-09-13T11:52:46Z"
+    seat: claude-opus-5
+  - claim: "R9 the fingerprint moves when a row IS touched (instrument guilt)"
+    cmd: "BEGIN; UPDATE wa_outbox SET evidence_score = 0.5; <fingerprint>; ROLLBACK; <fingerprint> (pg15, bytes 8064d528 — the instrument, not the candidate, is under test)"
+    result: "inside the transaction the fingerprint differed from the innocent value; after ROLLBACK it equalled it again"
+    exit: 0
+    ts: "2026-09-13T11:19:38Z"
+    ts_note: "run printed no instant; executed after the pasted 11:19:38Z roundtrip end and before the 11:20:06Z lint instant"
+    seat: claude-opus-5
+  - claim: "R10 production pre-state and cohort, read-only"
+    cmd: 'scripts/pg.sh -At -F''|'' -c "SELECT id, status FROM wa_outbox WHERE id BETWEEN 1 AND 420 ORDER BY id;"'
+    result: "420 rows; sha256 under acceptance A5; information_schema: 16 columns, neither new column; _schema_versions max 313"
+    exit: 0
+    ts: "2026-09-13T11:15:57Z"
+    seat: claude-opus-5
+  - claim: "R10b production schema placement, read-only"
+    cmd: 'scripts/pg.sh -Atc "SELECT n.nspname, c.relname FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE c.relname=''wa_outbox'';" (+ rolconfig of backend_rag_v2/backend_rag_migrator, + non-system schemas)'
+    result: "public|wa_outbox only; both roles <none>; schemas mata_garuda, public"
+    exit: 0
+    ts: "2026-09-13T11:39:22Z"
+    seat: claude-opus-5
+  - claim: "R11 last production write on wa_outbox, read-only"
+    cmd: 'scripts/pg.sh -Atc "SELECT max(created_at), max(claimed_at), max(generation_fall_off_at) FROM wa_outbox;"'
+    result: "2026-09-01 09:27:53.327524+00 | 2026-09-01 09:27:54.641071+00 | 2026-09-01 08:38:50.156215+00"
+    exit: 0
+    ts: "2026-09-13T11:26:33Z"
+    seat: claude-opus-5
+  - claim: "R12 fail-fast guilt: a planted abstained_at TEXT column fails the migration"
+    cmd: "receipts/b2_3a_roundtrip.sh.txt guilt-drift pg17d"
+    result: 'apply_rc=1, ''column "abstained_at" of relation "wa_outbox" already exists'', sv_314=0 sm_314=0, evidence_score not added (transaction rolled back); plant removed -> applied successfully (receipts/guilt-cases.txt)'
+    exit: 0
+    ts: "2026-09-13T11:52:46Z"
+    seat: claude-opus-5
+  - claim: "R13 fail-fast guilt: a same-named column left with atthasmissing=t fails the migration"
+    cmd: "receipts/b2_3a_roundtrip.sh.txt guilt-missing pg15d"
+    result: 'planted_atthasmissing=t, apply_rc=1, ''column "evidence_score" of relation "wa_outbox" already exists'', sv_314=0 sm_314=0; plant removed -> applied successfully'
+    exit: 0
+    ts: "2026-09-13T11:52:46Z"
+    seat: claude-opus-5
+  - claim: "R14 name-resolution guilt on the forward SQL itself (psql BEGIN/ROLLBACK; the runner-level variant does not measure the file: under a role search_path of shadow,public the runner fails first)"
+    cmd: "receipts/b2_3a_roundtrip.sh.txt guilt-resolution pg15d <r3 bytes | these bytes>: SET LOCAL search_path = shadow, pg_catalog, public with shadow.wa_outbox and a shadow.timestamptz domain over text"
+    result: "r3 bytes df347c3b: ERROR column shape drift (abstained_at) — TIMESTAMPTZ resolved to the shadow domain; these bytes: public_cols=abstained_at:timestamp with time zone,evidence_score:numeric, shadow_cols=0. Earlier (11:42:15Z) r2 bytes under shadow,public: public 0 / shadow 2."
+    exit: 0
+    ts: "2026-09-13T11:52:46Z"
+    seat: claude-opus-5
+  - claim: "R15 TIMESTAMPTZ is a type NAME resolved through search_path, TIMESTAMP WITH TIME ZONE is not (disposes tp1 r4c NOTE-1)"
+    cmd: "throwaway docker postgres 15.19: CREATE SCHEMA shadow; CREATE DOMAIN shadow.timestamptz AS text; BEGIN; SET LOCAL search_path = shadow, pg_catalog, public; CREATE TABLE public.t_name (x TIMESTAMPTZ, y TIMESTAMP WITH TIME ZONE); type namespace of x and y from pg_catalog.pg_attribute/pg_type/pg_namespace; ROLLBACK"
+    result: "x=timestamptz ns=shadow; y=timestamp with time zone ns=pg_catalog"
+    exit: 0
+    ts: "2026-09-13T12:23:42Z"
+    seat: claude-opus-5
