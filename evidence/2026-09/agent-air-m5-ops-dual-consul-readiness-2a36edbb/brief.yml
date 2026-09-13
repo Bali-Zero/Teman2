@@ -1,0 +1,39 @@
+task_id: dual-consul-readiness
+gear: 2
+l_level: L2
+gate_class: opus
+objective: >-
+  Prepare canonical, offline packets for the existing native text canary and
+  document the dual-consul multi-window workflow without claiming activation.
+constraints:
+  - No model invocation, DB access, receipt issuance, or privileged installation in the CLI.
+  - Reuse NativeGrant and Research OS contracts; no parallel ledger or scheduler.
+  - Fixed marker, Astra/medium, opaque UUID mission, exact runtime and binding hashes.
+  - New mode-0600 artifacts only; no symlink path traversal or overwritten outputs.
+  - Existing mechanical gates and owner-only boundaries remain unchanged.
+acceptance:
+  - text: >-
+      Both producer/reviewer directions validate; changed bindings, self-review,
+      expired receipts and noncanonical identifiers are refused.
+    probe: >-
+      PYTHONPATH=.:apps/backend-rag:packages/research-os-core python -m pytest
+      scripts/tests/test_consul_packet.py -q
+  - text: >-
+      Existing native transport, broker client, gateway and provisioning
+      regression suites remain green without installing the service.
+    probe: >-
+      PYTHONPATH=.:apps/backend-rag:packages/research-os-core python -m pytest
+      scripts/tests/test_consul_broker_client.py scripts/tests/test_consul_broker_gateway.py
+      scripts/tests/test_provision_consul_broker.py scripts/tests/test_codex_shadow.py
+      scripts/tests/test_codex_shadow_launch.py scripts/tests/test_conductor_app_server_rpc.py -q
+  - text: >-
+      The runbook distinguishes offline validation from issuer provenance,
+      authoritative ownership, broker activation and full multi-turn qualification.
+    probe: Independent frozen-diff Opus review, recorded in PR body.
+assumptions:
+  - assumption: Referenced ActionItem and RequestedActionSpec already exist in Research OS.
+    verification: Protected issuer verifies existence and provenance before installation.
+  - assumption: Packet inputs contain only redacted metadata and canonical receipts.
+    verification: No free-form operator field; generic CLI failure output and privacy tests.
+appetite:
+  wall_clock_hours: 1
