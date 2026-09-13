@@ -1,0 +1,159 @@
+task_id: mouth-shweb-risync-schema-20260913
+mandate_id: SHWEB-20260911
+colour: BLUE
+gear: 3
+gate_class: opus
+l_level: L2
+gear_note: >-
+  Declared 3 to match the floor computed by
+  `scripts/evidence_pack_lint.py --print-floor --changed-files-file
+  <changed> --numstat-file <numstat>` (source: size), re-run after the LAST
+  commit (150c8d36e4). Total churn 3,185 across 5 files
+  (schema.d.ts 2,894; sitemap.test.ts 185; test_generate_openapi_schema_pin.py
+  60; generate_openapi.py 45; the pin file 1), above SIZE_GEAR3_THRESHOLD
+  (1828).
+base_sha: 88ef221d632a3e463b80cc439fbe39f473f37a12
+objective: >-
+  PR-RISYNC of the Visa Oracle rebuild (mandate SHWEB-20260911).
+  `apps/mouth/src/lib/api/schema.d.ts` was 20 days behind the backend;
+  regenerate it and close the drift permanently with a real CI guard, not a
+  debt row. This brief covers the FULL arc: build 1 (regen, stopped and
+  reported on a broken frontend test), the orchestrator's ruling on that
+  stop (spec section, decisions i-iii), a first council round that found a
+  real structural defect in the ruling's commit order (decision iii as
+  originally given), and the cures this pack's commit implements.
+spec: |
+  PART A — the first ruling (three decisions after the first attempt's
+  stop-and-report on `sitemap.test.ts` going RED under a faithful
+  regeneration), independently re-verified in this session before being
+  built on:
+
+  (i) THE GUARD BECOMES ENTITY-BASED. `sitemap.test.ts` forbade eight
+  markers; six are real RETIRED wire-surface identifiers from #4344
+  (2026-08-21) — verified at zero occurrences in the regenerated schema. The
+  other two were TYPE names (`CaseType`, `backend__services__
+  garuda_flow__intake__Purpose`) that legitimately reappear because the
+  live `/api/visa/voa/eligibility-checks` endpoint
+  (`garuda_voa_public.py:54`, wired since 2026-08-25 per that router's own
+  docstring) reuses those intake types. RULING: keep the six, drop the two,
+  add guilt+innocence.
+
+  (ii) `garuda_voa` REAPPEARING IN `PublicLeadSource` IS NOT A NEW EXPOSURE
+  DECISION. Traced via `git log -S`/`git show` on
+  `apps/backend-rag/backend/services/lead_capture/source.py`: #4344
+  excluded it correctly at the time; #4960 (2026-08-25, "train 4/4 — the
+  public funnel UI, dark by flag") relaunched the funnel under owner
+  decision 5 (`product.yaml` id 5, `ratified: Concept A — "The Stamp"`),
+  capturing leads under exactly this source; #5173 (2026-08-28) re-admitted
+  it on the backend. `schema.d.ts` is a COPY of that contract, not an
+  independent source of truth. CORRECTION FOUND IN THIS SESSION: the
+  coordinator's first-round citation of "#4959 (2026-08-26)" for the
+  source.py change is off — the actual commit is #5173 (2026-08-28); #4959
+  ("train 2/4 — the whole backend, dark by flag") is real and adjacent but
+  does not touch that file. Recorded, not silently corrected. RULING:
+  invert the assertion.
+
+  (iii) ONE PR, TWO COMMITS, IN ORDER — this half of the first ruling was
+  WRONG, per the first council round (Part B below), and is superseded.
+
+  PART B — first council round (this pack's own journal:
+  `council-journal.jsonl`, both entries `ok: false`, `verdict: REWORK`).
+  Two independent seats, `tp1-qwen3.8-max` and `gemini-3.1-pro`, converged
+  on the SAME MAJOR without either being primed with the other's finding:
+  the two-commit split (guard commit, then regeneration commit) leaves the
+  GUARD commit red when checked out alone — at that commit `schema.d.ts` is
+  still pre-regeneration, so the corrected `PublicLeadSource` assertion
+  fails against it. The orchestrator verified this empirically before
+  accepting the finding: checked out the guard-only commit alone and ran
+  `sitemap.test.ts` -> 1 failed | 16 passed (17); at HEAD, 17/17. Both seats
+  also flagged the same two MINORs (brittle `PublicLeadSource` regex,
+  tautological guilt fixture).
+
+  Two things the council explicitly CONFIRMED and this pack does NOT
+  re-litigate: dropping the two type-name markers loses no real protection
+  (the six path/operationId markers are the structural guard), and
+  inverting the `PublicLeadSource` assertion is correct ("dark" means
+  hidden behind a UI flag, not erased from the network contract; a
+  generated schema is a mechanical reflection of the live spec).
+
+  PART C — five cures, ruled, all implemented in this pack's single code
+  commit (`150c8d36e4`):
+
+  1. MAJOR — squashed the guard rewrite and the regeneration into ONE
+     commit (this pack's commit `150c8d36e4`). The evidence pack stays a
+     separate, second commit — it is green on its own.
+
+  2. The drift guard replaces the named PENDING-ARMS debt from the previous
+     round, built inside a 30-minute time-box:
+     `apps/backend-rag/backend/tests/unit/scripts/
+     test_generate_openapi_schema_pin.py` regenerates the OpenAPI schema via
+     `scripts.generate_openapi` (the SAME code path `npm run
+     contract:visa-oracle`'s `generate:openapi` step uses), hashes it with
+     that module's own new `compute_schema_sha256`, and compares against
+     `apps/mouth/src/lib/api/schema.d.ts.openapi-sha256`, written by
+     `generate_openapi.py`'s `main()` as a side effect of every
+     regeneration. Determinism proved BEFORE committing: two separate
+     fresh-process `python -m scripts.generate_openapi` runs produced
+     byte-identical `openapi.json` and identical pin hash both times
+     (see receipts). Guilt proved too: a corrupted pin turned the test RED
+     with the exact intended message, restoring it turned it GREEN. This PR
+     touches `backend-rag` for a TEST only — zero runtime code changed — so
+     the merge is still a Fly deploy of identical runtime code.
+
+  3. MINOR (brittle regex) cured: `extractPublicLeadSourceBlock()` now
+     matches `/PublicLeadSource:[\s\S]*?;/` — no member of a TS union type
+     can contain a semicolon, so the first one IS the terminator,
+     independent of whatever follows — and throws
+     `"PublicLeadSource block not found in schema.d.ts"` instead of
+     returning `undefined` on a miss.
+
+  4. MINOR (tautological guilt) cured: the guilt fixture is now a REALISTIC
+     schema fragment (a `paths` entry referencing `operations[...]` by the
+     retired operationIds, an `operations` block, two component schema
+     names) shaped like the generator's real output, not a bare string
+     concatenation — plus per-marker redaction proving precision. The
+     near-miss question is answered plainly in both the code comment and
+     the commit body: these markers are EXACT substrings, not prefixes —
+     `/api/visa/voa-v2` would NOT be caught (no closing quote lands right
+     after "voa", and FastAPI would derive a fresh operationId for a new
+     route) — this guard catches literal resurrection only, never an
+     analogous new name.
+
+  5. This evidence pack: carries the round-1 journal (`council-journal.jsonl`)
+     and leaves `dissent: []` — the second council round is the
+     orchestrator's to run and close, not this session's.
+constraints:
+  - >-
+    Zero hand-written lines in `schema.d.ts` — unchanged content from the
+    prior round (regeneration logic itself was not touched by any cure).
+  - >-
+    Does NOT add `investment.investment_amount_usd` (PR #6396's branch, not
+    this fork point).
+  - >-
+    Touch nothing beyond the regeneration, the guard, and this evidence
+    pack: no rule pack, no `models.py` business logic, no question, no
+    corpus. The one exception, ruled: `generate_openapi.py` (the
+    regeneration script itself) gains the pin-writing side effect, and a new
+    backend pytest is added — both ARE the guard, per the ruling.
+  - No push, no PR, no arming, no merge — commit locally; the orchestrator ships.
+  - 30-minute time-box on the drift-guard build (cure 2) — met; not exceeded.
+acceptance:
+  - text: >-
+      A1: `npx tsc --noEmit` in `apps/mouth` SHALL exit 0.
+    probe: cd apps/mouth && npx tsc --noEmit
+  - text: >-
+      A2: the full `apps/mouth` vitest suite SHALL pass, with
+      `fact-mapper.test.ts` and `sitemap.test.ts` named explicitly.
+    probe: cd apps/mouth && npx vitest run --reporter=verbose
+  - text: >-
+      A3: the new backend pytest SHALL pass, and SHALL be proven capable of
+      failing (guilt) as well as passing (innocence).
+    probe: >-
+      cd apps/backend-rag && pytest
+      backend/tests/unit/scripts/test_generate_openapi_schema_pin.py
+  - text: >-
+      A4: two independent fresh-process regenerations SHALL produce an
+      identical pin hash (determinism).
+    probe: >-
+      python -m scripts.generate_openapi (x2, separate invocations) then
+      compare apps/mouth/src/lib/api/schema.d.ts.openapi-sha256
