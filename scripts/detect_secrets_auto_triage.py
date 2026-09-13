@@ -718,6 +718,52 @@ CONTENT_KEYED_RULES: list[tuple[re.Pattern[str], re.Pattern[str], str]] = [
         "Evidence Pack diff.measured_at: a git commit SHA (merge-base "
         "the diff was measured against), not a credential",
     ),
+    # Evidence Pack pytest receipt `cmd:` lines that inline dummy Settings
+    # env vars to satisfy a validator's presence check before the test
+    # process even imports (found 2026-09-13, PR #6383's own pack tripped
+    # it as 3 "Secret Keyword" findings on lines 265/270/275). The value is
+    # `JWT_SECRET_KEY=x32` — 3 characters, i.e. exactly the shape the
+    # Settings validator REJECTS (`must be at least 32 characters`) — and
+    # `API_KEYS=x`, a single character. A string a validator itself refuses
+    # to accept as a credential cannot be a real one; recording the receipt
+    # command verbatim (rather than silently substituting a real-looking
+    # value) is the more honest choice, not a leak.
+    #
+    # Content-keyed, not path-keyed to the whole `evidence/` tree: scoped to
+    # the exact `cmd:` line shape carrying BOTH dummy assignments together,
+    # so an unrelated real secret added to a receipt's `cmd:` on a different
+    # line, or a `cmd:` that pairs a dummy JWT_SECRET_KEY with something
+    # else, is still left unaudited.
+    (
+        re.compile(r"(^|/)evidence/[^/]+/[^/]+/pack\.yml$"),
+        re.compile(
+            r'^\s*cmd:\s*".*\bJWT_SECRET_KEY=x32\s+API_KEYS=x\b.*"\s*$'
+        ),
+        "Evidence Pack pytest receipt cmd: dummy Settings env vars "
+        "(JWT_SECRET_KEY=x32 is 3 chars, below the validator's own "
+        "32-char minimum; API_KEYS=x is 1 char) used only to satisfy "
+        "Settings validation at import time, never real credentials",
+    ),
+    # Evidence Pack `pii_scan` receipt `claim:` line that QUOTES the grep
+    # pattern it ran (`_API_KEY=`, alongside `sk-`/`Bearer `/`Authorization:`)
+    # to describe what it searched for — the pattern text itself, not a
+    # found value (found 2026-09-13, PR #6383's own pack, line 284). Same
+    # reasoning as the `pii_scan` grep command one line below it (line 285,
+    # not itself flagged): a search pattern naming a secret shape is not the
+    # secret.
+    #
+    # Content-keyed to this exact claim wording so an unrelated real secret
+    # recorded in a DIFFERENT claim on another line of the same pack.yml is
+    # still left unaudited.
+    (
+        re.compile(r"(^|/)evidence/[^/]+/[^/]+/pack\.yml$"),
+        re.compile(
+            r'^\s*(?:-\s*)?claim:\s*"pii_scan clean — no sk-/Bearer/Authorization:/_API_KEY= literal.*"\s*$'
+        ),
+        "Evidence Pack pii_scan receipt claim: quotes the grep PATTERN it "
+        "searched for (_API_KEY=, sk-, Bearer , Authorization:) to describe "
+        "the scan's scope — the pattern text itself, never a found secret",
+    ),
 ]
 
 # Each rule is (pattern, reason). The pattern matches the file path

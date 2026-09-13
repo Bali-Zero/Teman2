@@ -135,7 +135,7 @@ export function ZantaraChat({
         </div>
         {codeContext && (
           <div className="ml-auto flex flex-col items-end">
-            <span className="text-[10px] text-zinc-500 uppercase tracking-wider">
+            <span className="text-[10px] text-zinc-400 uppercase tracking-wider">
               Context
             </span>
             <span className="text-xs font-semibold text-zinc-300 bg-white/5 px-2 py-0.5 rounded-md border border-white/10">

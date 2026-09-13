@@ -1,0 +1,51 @@
+SECOND READER — kimi-code/k3, 2026-09-12, council seat for PR #6271
+Scope given: content vs the fact registry, the freshness comparator and its suite, the census and
+the disposition. Explicitly OUT of scope: the probe guard, whose weaknesses are measured and split
+into PR-1b. Read-only.
+
+VERDICT: CONCERNS. 11 findings. Every one was acted on; the dispositions are below.
+
+ 1. HeaderWhatsAppCTA used without its import in .it and .id.
+    ATTRIBUTION CORRECTED BY THIS SESSION: the seat called it a regression of this PR. It is not —
+    `git show 70b43c5459:...` has no import in either file either, so it predates the mandate.
+    113 of the 115 article files that use the component import it; these two were the outliers.
+    CURED anyway: the import is in the family this PR owns, and the real build compiles.
+ 2. `indice/indeks` bilingual artifact in the IT and ID comparison-table headers. An editing
+    leftover of this session. CURED: "indice ufficiale" / "indeks resmi".
+ 3. The retirement-account exclusion is narrower in IT and RU than in EN/FR/ID — the category
+    collapsed into "pension funds". CURED in both.
+ 4. The SKTT paragraph asserted "must be updated if you change address", which the fetched
+    Dukcapil procedure does not say. CURED: clause removed in all five locales. What the source
+    does support stays: validity follows the ITAS, and 14 days from ITAS issue to report.
+ 5. FAQ 2 named its counterparties (Ditjen Imigrasi and the bank) only in EN and ID. CURED in
+    IT, RU and FR.
+ 6. The census said the registry settles 33 facts; `jq '.facts | length'` says 34. CURED.
+ 7. THE SERIOUS ONE. The census and the disposition both claimed the three
+    bali-digital-nomad-complete-guide lines state USD 130,000 and carry `IDR 2 billion` only as a
+    parenthetical conversion. The seat read the file: those lines carry no "130,000" at all. The
+    superseded figure stands alone as the savings requirement, so the ORIGINAL classification was
+    right and this session's "correction" of it — written in the previous round in response to a
+    refuter finding — was the error. CURED in both documents, with the error recorded rather than
+    quietly overwritten.
+ 8. The "registered, deliberately not swept" table listed two Indonesian items that had already
+    been swept by the mirror commit. CURED.
+ 9. Untranslated-"Indonesia" counts: "~14" RU and "8" FR against a measured 17 and 13. CURED.
+10. The `stay_option_5_or_10_years` registry proposal quoted the English page verbatim; the seat's
+    fetch of the Indonesian version of the same canonical URL says max 5 years extendable to 10 in
+    TOTAL. CURED by recording the discrepancy itself — both readings, both attributed. Nothing was
+    written into the article and the registry is untouched.
+11. `ratchet-delta.json` was cited as evidence but lives in the session scratchpad, not the tree.
+    CURED: the census now cites the suite, which is in the tree and fails on any added or stale key.
+
+WHAT THE SEAT VERIFIED CLEAN, in its own words: no superseded figure in any of the five files; no
+PNBP amount, no BSI/sharia, no split-deposit acceptance, no Hak Pakai, no 60-month passport, no
+90-day entry window, no working-day processing time, no BPN validation method, no price; every
+pending or unknown registry fact hedged without resolving it; every confirmed fact carrying its
+BERSYARAT condition; both cited external sources represented faithfully; the disposition's
+selection arithmetic (498 files, 128 families, 19 noindex files) reproduced independently.
+
+ON THE COMPARATOR (scope 2): correct, and the suite genuinely constrains it — the seat replicated
+the fixtures in a standalone simulation and confirmed each documented mutant is killed. It names
+one remaining gap: no same-DATE pair on the ID side, so a tie-break mutation confined to
+`idArticles` would survive. Nothing slices that array, so the impact is ordering stability inside
+llms-id.txt. Recorded as a known gap, not cured here.

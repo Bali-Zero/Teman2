@@ -3,16 +3,143 @@ ReAct Reasoning Utilities
 
 Helper functions extracted from reasoning.py to reduce file complexity.
 Contains: domain detection, evidence scoring, tool validation, team query detection.
+
+RULE OF THE ENGINE (RULED I30, 2026-09-12 — staff room, on B2.1's measurement):
+**the support signal is FAIL-CLOSED ONLY. It may ZERO relevance and never
+CREATE it — in every band and in both directions.** A verdict good enough to
+veto an answer is not good enough to grant one, and that is not a preference:
+Set D holds a hard negative (`sup-d-dd0c1a97`) that the elected judge calls
+SUPPORTED and that only the zero lexical band abstains today, so a rule
+letting SUPPORTED raise a band would buy the one residual false abstention
+(`bs-17806bb4`) and pay for it with a false acceptance of unsupported
+fee/duration advice in the same cell. If a future judge's error direction
+inverts, that is a NEW measurement and a new ruling — never a quiet edit here.
 """
 
 import logging
 import os
 import re
-from typing import Any
+from typing import Any, Final
 
 from backend.app.core.config import settings
+from backend.core import score_provenance
+from backend.services.rag.agentic._support_signal import SupportVerdict
 
 logger = logging.getLogger(__name__)
+
+# ============================================================================
+# B2.1 — provenance-primary relevance bands (build spec §2).
+#
+# Four ordered bands, reusing the EXACT four values the legacy keyword-ratio
+# path has always produced (0.0/0.2/0.4/0.6) so the final_score combination
+# formula below — untouched — sees the same magnitudes it was tuned against
+# regardless of which path fed it.
+# ============================================================================
+
+_BAND_NONE: Final = 0
+_BAND_WEAK: Final = 1
+_BAND_MODERATE: Final = 2
+_BAND_STRONG: Final = 3
+_BAND_VALUES: Final[tuple[float, float, float, float]] = (0.0, 0.2, 0.4, 0.6)
+
+
+def _band_index_from_ratio(ratio: float) -> int:
+    """Band a [0,1]-ish ratio using the SAME cut points the legacy semantic-
+    relevance bucketing has always used (0.5/0.3/0.15) — one definition, used
+    for the legacy path, the hybrid-normalised band and the lexical
+    corroboration step, so the three never drift apart by accident."""
+    if ratio >= 0.5:
+        return _BAND_STRONG
+    if ratio >= 0.3:
+        return _BAND_MODERATE
+    if ratio >= 0.15:
+        return _BAND_WEAK
+    return _BAND_NONE
+
+
+def _hybrid_band_index(score: float) -> int:
+    """`hybrid_rrf_formatted` measured range is [0.508, 1.000] (score_provenance.py):
+    0.5 means "last of a long list", not "half similar". Normalising
+    `(score-0.5)/0.5` maps that measured range onto [0.016, 1.0] and the SAME
+    ratio cut points used everywhere else in this module band it — no new
+    magic numbers for a number that is, once normalised, the same shape as
+    `keyword_match_ratio`."""
+    return _band_index_from_ratio((score - 0.5) / 0.5)
+
+
+def _dense_band_index(score: float, score_raw: float | None) -> int:
+    """`dense_formatted`'s `score_raw` is the cosine (score_provenance.py); prefer
+    it, and recover it exactly (`raw = 2 - 1/score`, the formatter's own inverse)
+    only when a writer omitted `score_raw`.
+
+    WEAK is deliberately COLLAPSED into NONE here — the two negative anchors
+    already measured on this tree (docstring of
+    `test_evidence_cross_language.py`: an unrelated pair at cosine 0.038, a
+    wrong-domain-shares-vocabulary pair at 0.155) must read as no relevance,
+    and so must a THIRD, freshly measured one: the standing nonsense-query
+    tripwire `test_nonsense_query_zero_score_pipeline_variant` declares a
+    dense_formatted source at cosine 0.22 and must still score < 0.15. A
+    0.20-0.32 WEAK band would clear that gate (0.22 lands in it) and turn a
+    green tripwire red. MODERATE starts at 0.32 — the exact boundary the same
+    docstring already names ("comfortably above a 0.32 band") for the one
+    measured POSITIVE anchor, 0.373. STRONG (>=0.55) is reserved for a
+    confident cosine well above that midpoint; unmeasured beyond these three
+    anchors, so kept conservative rather than tuned."""
+    if score_raw is not None:
+        cosine = score_raw
+    elif score:
+        cosine = 2.0 - (1.0 / score)
+    else:
+        return _BAND_NONE
+    if cosine >= 0.55:
+        return _BAND_STRONG
+    if cosine >= 0.32:
+        return _BAND_MODERATE
+    return _BAND_NONE
+
+
+def _reranked_band_index(score: float) -> int:
+    """`reranked`'s scale is NOT measured anywhere in this repo (build spec §2).
+    A flat, conservative WEAK band — never NONE for a POSITIVE score (a
+    declared retrieved kind IS a retrieval signal) and never MODERATE/STRONG
+    (that would claim confidence this repo has not measured) — is the declared
+    residual: named here, and in the PR's `pack.yml`, for the Dux to size with
+    a real reranker-score measurement in a follow-up.
+
+    A score of 0.0 or below is the ONE case that must read NONE, and it was a
+    real defect until the adversarial seat (codex-gpt-5.6-sol, round 1) named
+    the category and the Dux reproduced it: a source declaring `reranked` with
+    `score: 0.0` scored 0.2 relevance against a NONSENSE query and unrelated
+    context — relevance CREATED where the reranker itself measured none, which
+    is exactly what this module promises never to do. An unmeasured scale is
+    not a licence to read its floor as evidence."""
+    if score <= 0.0:
+        return _BAND_NONE
+    return _BAND_WEAK
+
+
+def _declared_band_index(declared: list[dict]) -> int:
+    """The best band across every declared retrieved-kind source — same
+    "best evidence wins" shape as the legacy `top_score = max(...)` line."""
+    best = _BAND_NONE
+    for source in declared:
+        if not isinstance(source, dict):
+            continue
+        kind = score_provenance.kind_of(source)
+        score = source.get("score", 0.0)
+        if not isinstance(score, (int, float)):
+            score = 0.0
+        if kind == score_provenance.HYBRID_RRF_FORMATTED:
+            idx = _hybrid_band_index(score)
+        elif kind == score_provenance.DENSE_FORMATTED:
+            idx = _dense_band_index(score, score_provenance.raw_of(source))
+        elif kind == score_provenance.RERANKED:
+            idx = _reranked_band_index(score)
+        else:  # pragma: no cover - RETRIEVED_KINDS has exactly the three above
+            idx = _BAND_NONE
+        if idx > best:
+            best = idx
+    return best
 
 
 def get_critical_domain_type(query: str) -> str:
@@ -215,6 +342,8 @@ def calculate_evidence_score(
     sources: list[dict] | None,
     context_gathered: list[str],
     query: str,
+    *,
+    support: SupportVerdict | None = None,
 ) -> float:
     """
     Calculate evidence score based on source quality and context relevance.
@@ -224,16 +353,33 @@ def calculate_evidence_score(
     - Nonsense queries ("xyzabc123") will score ~0.0
     - Relevant results with good sources score 0.6+
 
+    B2.1 — the inversion (build spec §2). When any source DECLARES a retrieved
+    kind (`score_provenance.RETRIEVED_KINDS`), relevance comes PRIMARILY from a
+    per-kind provenance band, and the lexical ratio below only CORROBORATES it
+    (raises the band by at most one step, never lowers it, never gates alone).
+    When no source declares a kind, this function is UNCHANGED: an `unknown`
+    kind is a fact about our knowledge, not a low grade, and every standing
+    tripwire's fixture declares none — that is what keeps them byte-identical.
+
     Scoring Formula:
         - Base score: 0.0
         - Source quality component (0.0-0.4): Based on top source score
-        - Context relevance (0.0-0.6): Based on keyword/semantic overlap
+        - Context relevance (0.0-0.6): Based on keyword/semantic overlap,
+          or on the provenance band when a source declares a retrieved kind
         - Maximum score: 1.0
 
     Args:
         sources: List of source dictionaries with 'score' field
         context_gathered: List of context strings from tool results
         query: Original user query string
+        support: The support signal's verdict for this (query, context), or
+            `None` when it was not consulted. Fail-closed (build spec §2.5):
+            `None` changes nothing; `SUPPORTED` keeps the relevance computed
+            below; anything else (`NOT_SUPPORTED`/`UNKNOWN`/`UNAVAILABLE`)
+            zeroes it, landing the package in the no-relevance branch so it
+            abstains at both gates. Applied identically regardless of which
+            relevance path fed it — this function stays synchronous and pure,
+            the verdict is only ever an INPUT.
 
     Returns:
         Evidence score between 0.0 and 1.0
@@ -586,20 +732,63 @@ def calculate_evidence_score(
         if entity_type_mismatch:
             keyword_match_ratio = min(keyword_match_ratio, 0.1)
 
-    # Semantic relevance score (0.0 - 0.6)
-    # Relevance is the PRIMARY factor - source quality only helps if relevance is good
-    # - Full match: keyword_match_ratio >= 0.5 → 0.6 points
-    # - Good match: keyword_match_ratio >= 0.3 → 0.4 points
-    # - Partial match: keyword_match_ratio >= 0.15 → 0.2 points
-    # - Poor match: keyword_match_ratio < 0.15 → 0.0 points (ABSTAIN territory)
-    if keyword_match_ratio >= 0.5:
-        semantic_relevance = 0.6  # Strong relevance
-    elif keyword_match_ratio >= 0.3:
-        semantic_relevance = 0.4  # Moderate relevance
-    elif keyword_match_ratio >= 0.15:
-        semantic_relevance = 0.2  # Weak relevance
+    # ========== RELEVANCE: PROVENANCE-PRIMARY WHEN A KIND IS DECLARED =======
+    # B2.1 inversion (build spec §2). `declared` is the subset of `sources`
+    # that named a real retrieved kind — `curated_synthetic`/`trusted_tool_bypass`/
+    # `kg_entity` are labels, not measurements, and are excluded by
+    # `RETRIEVED_KINDS` itself (score_provenance.py), so they never enter this
+    # branch and (per §2.6) keep boosting `source_quality_score` below exactly
+    # as they always have.
+    declared = [
+        s for s in (sources or []) if score_provenance.kind_of(s) in score_provenance.RETRIEVED_KINDS
+    ]
+
+    if declared:
+        band_index = _declared_band_index(declared)
+        # Lexical CORROBORATES: it may raise the band by at most one step,
+        # never lower it, and (since we are inside `if declared`) `sources`
+        # is provably non-empty, so it never creates relevance out of nothing.
+        lexical_band_index = _band_index_from_ratio(keyword_match_ratio)
+        # CORROBORATION REQUIRES SOMETHING TO CORROBORATE. A provenance band of
+        # NONE is not a weak signal to be helped along — it is the retrieval
+        # saying "not relevant", and letting the lexical ratio lift it would be
+        # lexical GATING ALONE wearing corroboration's clothes. Round-1
+        # adversarial lead (codex-gpt-5.6-sol), reproduced before curing: a
+        # `dense_formatted` source at cosine 0.02 (band NONE) with a high
+        # keyword ratio scored 0.28 against a 0.15 gate — the exact
+        # false-acceptance shape this whole inversion exists to remove, leaking
+        # back in through the one source that had DECLARED its irrelevance.
+        if band_index >= _BAND_WEAK and lexical_band_index > band_index:
+            band_index = min(band_index + 1, _BAND_STRONG)
+        # The entity/topic-mismatch guard above is orthogonal to provenance:
+        # a chunk can be a strong dense/hybrid hit and still be about the
+        # WRONG topic (the measured KITAS-query/KBLI-docs failure mode this
+        # guard exists for). Legacy behaviour already forces this case to the
+        # zero band (the ratio clamp above always lands under the 0.15 cut),
+        # so the override here is not a new rule — it is the same one,
+        # carried into the branch provenance now also drives. Without it, a
+        # declared dense source's own cosine could outvote a detected topic
+        # mismatch, which would regress the dense-declared pipeline-variant
+        # tripwires (test_evidence_scoring_abstain.py) that exist precisely
+        # to check a provenance-aware scorer against this failure mode.
+        if entity_type_mismatch:
+            band_index = _BAND_NONE
+        semantic_relevance = _BAND_VALUES[band_index]
     else:
-        semantic_relevance = 0.0  # No relevant keywords found
+        # UNCHANGED legacy path: no declared retrieved kind means no
+        # provenance to be primary about — an `unknown` kind is a fact about
+        # our knowledge, not a low grade (score_provenance.py). Same four
+        # values, same cut points, as before this PR.
+        semantic_relevance = _BAND_VALUES[_band_index_from_ratio(keyword_match_ratio)]
+
+    # ========== SUPPORT GATE, FAIL-CLOSED (build spec §2.5) =================
+    # Applied identically regardless of which relevance path fed it. `None`
+    # means "not consulted" and changes nothing; anything but SUPPORTED zeroes
+    # relevance, which routes final_score into the capped no-relevance branch
+    # below (never above ~0.08), abstaining at every gate this repo has,
+    # including the strictest per-domain LABEL gate (tax, 0.10).
+    if support is not None and support is not SupportVerdict.SUPPORTED:
+        semantic_relevance = 0.0
 
     # ========== SOURCE QUALITY SCORING ==========
     # Source quality is SECONDARY - it can only boost score if relevance exists
@@ -657,7 +846,16 @@ def calculate_evidence_score(
     #
     # Source `score` is set by Qdrant (cosine similarity for our hybrid
     # collections). Skip when sources are absent or top_score is missing.
-    if sources:
+    #
+    # B2.1 (build spec §2.7): retired ONLY when a source declares a retrieved
+    # kind. `score_provenance` measured hybrid_rrf_formatted in [0.508, 1] and
+    # dense_formatted in [0.5, 1], so `0 < top < 0.5` cannot be entered from
+    # any live DECLARED path — the predicate below is structurally unreachable
+    # whenever `declared` is non-empty, and skipping it here just says so
+    # instead of relying on that being self-evident. Kept, unchanged, for
+    # sources that declare NO kind: the legacy `POOR_RETRIEVAL` fixtures sit
+    # at a raw 0.18 and their tripwires depend on this branch firing for them.
+    if sources and not declared:
         top_source_cosine = max(
             (s.get("score", 0.0) for s in sources if isinstance(s, dict)),
             default=0.0,
@@ -697,41 +895,120 @@ DOMAIN_ABSTAIN_THRESHOLDS_DEFAULT: dict[str, float] = {
 
 
 def _parse_domain_threshold_overrides(spec: str) -> dict[str, float]:
-    """Parse `DOMAIN_ABSTAIN_THRESHOLDS=tax:0.10,kbli:0.20` env var format."""
+    """Parse `DOMAIN_ABSTAIN_THRESHOLDS=tax:0.10,kbli:0.20` env var format.
+
+    RULING I40(d) — fail-closed applies to configuration too. This raises
+    `ValueError` on the FIRST malformed entry, out-of-range value, or
+    unknown domain key it finds, rather than skipping the bad entry and
+    silently keeping the rest. The old behaviour let a spec like
+    `{"tax":0.15,"visa":0.15}` (a JSON typo, not the `key:value,...` format)
+    split into a garbage key (`'{"tax"'` -> 0.15) that silently entered the
+    live threshold dict while the caller only ever logged a warning — a
+    partially-applied, silently-wrong override. The caller
+    (`_build_domain_thresholds`) treats any raise here as "reject the WHOLE
+    spec, use the STRICT fallback (`_strict_fallback_thresholds`) — every
+    relief lifted to `default`, anything already stricter kept as-is" —
+    never a partial override, and never the permissive defaults.
+
+    An empty/blank spec (the default — `DOMAIN_ABSTAIN_THRESHOLDS` unset) is
+    NOT an error: it means "no override" and returns `{}`.
+    """
+    spec = (spec or "").strip()
+    if not spec:
+        return {}
+
+    known_domains = set(DOMAIN_ABSTAIN_THRESHOLDS_DEFAULT)
     out: dict[str, float] = {}
-    for raw in (spec or "").split(","):
+    for raw in spec.split(","):
         raw = raw.strip()
-        if not raw or ":" not in raw:
+        if not raw:
+            # a stray trailing/doubled comma is formatting noise, not an
+            # entry — nothing to validate or apply
             continue
+        if ":" not in raw:
+            raise ValueError(
+                f"DOMAIN_ABSTAIN_THRESHOLDS: malformed entry {raw!r} (expected key:value)",
+            )
         key, _, val = raw.partition(":")
+        key = key.strip().lower()
         try:
             value = float(val)
-        except ValueError:
-            logger.warning(
-                "DOMAIN_ABSTAIN_THRESHOLDS: skipping malformed entry %r",
-                raw,
+        except ValueError as exc:
+            raise ValueError(
+                f"DOMAIN_ABSTAIN_THRESHOLDS: non-numeric value in entry {raw!r}",
+            ) from exc
+        if key not in known_domains:
+            raise ValueError(
+                f"DOMAIN_ABSTAIN_THRESHOLDS: unknown domain {key!r} in entry {raw!r} "
+                f"(known domains: {sorted(known_domains)})",
             )
-            continue
         # Evidence scores live in [0.0, 1.0]; an override outside that range
         # (including nan/inf, which fail this comparison) would silently
-        # disable or force the abstain gate for a whole domain — skip it.
+        # disable or force the abstain gate for a whole domain.
         if not (0.0 <= value <= 1.0):
-            logger.warning(
-                "DOMAIN_ABSTAIN_THRESHOLDS: skipping out-of-range entry %r",
-                raw,
+            raise ValueError(
+                f"DOMAIN_ABSTAIN_THRESHOLDS: out-of-range value in entry {raw!r} "
+                "(must be within [0.0, 1.0])",
             )
-            continue
-        out[key.strip().lower()] = value
+        # Refuted in council round 1 (kimi-code/k3, R10): `tax:0.10,tax:0.20`
+        # used to apply silently with last-wins. An ambiguous spec is not a
+        # spec — reject it whole rather than pick a winner.
+        if key in out:
+            raise ValueError(
+                f"DOMAIN_ABSTAIN_THRESHOLDS: duplicate domain {key!r} in entry {raw!r}",
+            )
+        out[key] = value
     return out
 
 
+def _strict_fallback_thresholds() -> dict[str, float]:
+    """The thresholds to use when the override spec cannot be trusted.
+
+    Refuted and corrected in council round 1 (kimi-code/k3, R9): falling back
+    to the DEFAULTS is not fail-closed for THIS gate. The defaults carry the
+    domain RELIEFS (`tax` 0.10, `visa` 0.12), which are the most PERMISSIVE
+    values in the dict — so an operator tightening a threshold during an
+    incident who mistypes the spec would silently get the relieved gate back.
+    For an abstain gate, closed means STRICT: no domain may sit below the
+    `default` threshold when the configuration is untrusted, so every relief
+    is lifted to `default` and any value already stricter is kept as it is.
+    """
+    baseline = DOMAIN_ABSTAIN_THRESHOLDS_DEFAULT["default"]
+    return {
+        domain: max(value, baseline)
+        for domain, value in DOMAIN_ABSTAIN_THRESHOLDS_DEFAULT.items()
+    }
+
+
 def _build_domain_thresholds() -> dict[str, float]:
+    """Merge `DOMAIN_ABSTAIN_THRESHOLDS_DEFAULT` with the env override.
+
+    RULING I40(d): the override is all-or-nothing. If
+    `_parse_domain_threshold_overrides` raises, this logs the reason at
+    ERROR and falls back to the STRICT fallback (`_strict_fallback_thresholds`)
+    — every relief lifted to `default`, anything already stricter kept —
+    never a partial merge and never the permissive defaults.
+    This function itself must never raise: it runs at import time
+    (`_DOMAIN_THRESHOLDS = _build_domain_thresholds()` immediately below),
+    and an uncaught exception here would stop the whole app from booting
+    over a bad env var.
+    """
+    raw_spec = os.environ.get("DOMAIN_ABSTAIN_THRESHOLDS", "")
+    try:
+        overrides = _parse_domain_threshold_overrides(raw_spec)
+    except ValueError as exc:
+        logger.error(
+            "DOMAIN_ABSTAIN_THRESHOLDS=%r is invalid (%s) — rejecting the whole "
+            "spec and falling back to the STRICT thresholds (every relief "
+            "lifted to 'default', anything stricter kept), not the permissive "
+            "defaults",
+            raw_spec,
+            exc,
+        )
+        return _strict_fallback_thresholds()
+
     merged = dict(DOMAIN_ABSTAIN_THRESHOLDS_DEFAULT)
-    merged.update(
-        _parse_domain_threshold_overrides(
-            os.environ.get("DOMAIN_ABSTAIN_THRESHOLDS", ""),
-        ),
-    )
+    merged.update(overrides)
     return merged
 
 

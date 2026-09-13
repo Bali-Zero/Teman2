@@ -67,7 +67,7 @@ export function HeroBlueprint() {
                 className="text-[10px] font-semibold uppercase tracking-[0.28em] mb-2"
                 style={{ color: "rgba(255,255,255,0.5)" }}
               >
-                Bali Zero · Dispatch · April 2026 · Kerobokan
+                Bali Zero · Kerobokan · Indonesia
               </div>
               {/* Tagline */}
               <div
@@ -140,7 +140,7 @@ export function HeroBlueprint() {
               >
                 Filed this month: 47 KITAS, 9 PT PMAs · Office in Kerobokan
                 <br />
-                Licensed konsultan pajak · Registered PPJK · Since 2019
+                Licensed konsultan pajak · Registered PPJK · Since 2020
               </div>
             </div>
           </div>

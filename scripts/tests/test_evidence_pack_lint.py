@@ -899,6 +899,33 @@ def test_size_term_net_lines_pip_compile_lockfile_excluded_2026_09_02():
     assert _size_term_net_lines(numstat) == 102
 
 
+def test_size_term_net_lines_generated_automations_reference_excluded_2026_09_11():
+    """GUILT->INNOCENCE (2026-09-11): the nightly-regenerated
+    `docs/AUTOMATIONS_REFERENCE.md` is a machine artifact of live
+    launchd/cron state (scripts/generate_automations_reference.py). This
+    is the ACTUAL numstat of PR #6184, the first PR the promote job ever
+    opened: 483 churned lines in one file, net -3, no brief by
+    construction — BLOCKED at floor==2 via the SIZE term alone. The
+    generated doc is excluded; a change to the generator itself, in the
+    same PR, still counts in full."""
+    numstat = (
+        "240\t243\tdocs/AUTOMATIONS_REFERENCE.md\n"
+        "12\t3\tscripts/generate_automations_reference.py\n"
+    )
+    assert _size_term_net_lines(numstat) == 15
+
+
+def test_size_term_net_lines_guilt_automations_reference_basename_elsewhere_counts_2026_09_11():
+    """GUILT (guard-over-match, superscar #3): the exemption is the exact
+    repo-relative path the generator writes, not the basename — a
+    same-named hand-written file in another directory counts in full."""
+    numstat = (
+        "240\t243\tresearch/AUTOMATIONS_REFERENCE.md\n"
+        "240\t243\tdocs/archive/AUTOMATIONS_REFERENCE.md\n"
+    )
+    assert _size_term_net_lines(numstat) == 966
+
+
 def test_size_term_net_lines_innocence_similarly_named_file_not_matched():
     """INNOCENCE (guard-over-match, superscar #3): the exemption is two
     EXACT literals, not a `requirements*` prefix or `.lock.txt` suffix
@@ -2763,10 +2790,37 @@ def test_brief_root_end_to_end_notice_pre_flip_does_not_fail(tmp_repo):
             tmp_path,
             None,
             brief_source_path="evidence/brief.yml",
+            today=_BRIEF_ROOT_PRE_FLIP,
         )
     assert rc == 0
     assert not any("evidence_root_brief_deprecated" in v for v in viol)
     assert "evidence_root_brief_deprecated" in err.getvalue()
+
+
+def test_brief_root_end_to_end_violation_post_flip_fails(tmp_repo):
+    """The post-flip twin, end-to-end through lint(): on/after the flip date the
+    same root brief is a VIOLATION and the run exits 1, with nothing on stderr.
+
+    It exists because its pre-flip sibling asserts only the notice side, and a
+    rule wired to notice forever would keep that sibling green. Both pin their
+    date explicitly: a test whose verdict depends on the day it runs is not a
+    test, and this pair used to flip the whole repo's merge queue red at
+    2026-09-12T00:00Z on its own."""
+    tmp_path, write_brief, write_pack = tmp_repo
+    write_brief(gear=1)
+    write_pack()
+    err = io.StringIO()
+    with contextlib.redirect_stderr(err):
+        rc, viol = lint(
+            tmp_path / "evidence" / "pack.yml",
+            tmp_path,
+            None,
+            brief_source_path="evidence/brief.yml",
+            today=_BRIEF_ROOT_POST_FLIP,
+        )
+    assert rc == 1
+    assert any("evidence_root_brief_deprecated" in v for v in viol)
+    assert "evidence_root_brief_deprecated" not in err.getvalue()
 
 
 def test_brief_root_resolver_seam_produces_diff_relative_paths_not_the_staged_name():

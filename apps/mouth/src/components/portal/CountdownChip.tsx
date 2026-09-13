@@ -1,4 +1,7 @@
+"use client";
+
 import React from "react";
+import { usePortalDateFormat } from "@/lib/format/usePortalDateFormat";
 
 /**
  * CountdownChip — shared portal deadline / age pill.
@@ -31,6 +34,7 @@ export function CountdownChip({
   mode = "countdown",
   className,
 }: CountdownChipProps) {
+  const { formatDate } = usePortalDateFormat();
   const now = Date.now();
   const target = new Date(date).getTime();
   const diffDays = Math.round((target - now) / 86400000);
@@ -87,7 +91,7 @@ export function CountdownChip({
       suppressHydrationWarning
       className={`text-[10px] px-1.5 py-0.5 rounded-full font-semibold ${className ?? ""}`}
       style={chipStyle}
-      title={new Date(date).toLocaleDateString("en-US", {
+      title={formatDate(date, {
         month: "long",
         day: "numeric",
         year: "numeric",

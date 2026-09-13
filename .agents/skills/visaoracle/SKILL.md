@@ -137,13 +137,26 @@ interesting points spawn round N+1 research. No round limit. Opus 5 orchestrates
 hook-enforced — RULED 2026-08-20: Fable is out of the workflow, CLAUDE.md §5); Sonnet implements; research outputs persisted under `research/visa/` in the worktree
 as `2026-07-17-visa-oracle-v2-round<N>-<lane>.md`.
 
-## LIVE STATE — CURRENT POSITION (derived from the 2026-09-06 entries; update on every state change)
+## LIVE STATE — CURRENT POSITION (updated 2026-09-11; update on every state change)
 
 - **Active production pack: seq-20**, version `2026.9.6`, `rule_pack_id ac0a792d-a38d-512e-9ead-54a5d008fb68`,
   109 rules, signed on M5 (`sign_pack.py`, kid `prod-2026-07-1`, `signed_at 2026-09-06T14:59:27Z`)
   and activated (`activation_id e08ebea9-d50f-48a6-989e-b7e4698f96ad`). Prod answers
-  `sequence=20 version=2026.9.6`. Walk census on the signed pack: **21 dead ends / 22 answers**
-  (was 36/7 on seq-19).
+  `sequence=20 version=2026.9.6`, re-proven by synthetic API + public-browser probes on
+  2026-09-11 (Mini). The **21 dead ends / 22 answers over 43 walks is historical**.
+- **Fresh walk census (2026-09-11, 67 scenarios, current repo + signed seq-20, offline):**
+  without disclosure flags, **55 SUPPORTED / 10 NO_SUPPORTED_PATH / 2 NEEDS_INPUT**;
+  with the actual frontend flags, **31 SUPPORTED / 7 NO_SUPPORTED_PATH / 29 HUMAN_REVIEW**.
+  Same results at the pack's signing instant and the current clock. This is a synthetic
+  sample, not organic traffic or exhaustive answer-combination coverage.
+- **Review explanations reach the public UI, but coverage is incomplete:** 13/29 sampled
+  reviews have a `REVIEW_REASON_COPY` entry; 16/29 use the generic fallback (ambiguous sponsor).
+  `DISCLOSED_UNCERTAINTY_REVIEW` also uses that fallback, proven on the public site.
+  The existing test admits 25 unmapped codes and misses three additional, reproduced
+  `BRIDGING_*` review codes from `on_unknown=HUMAN_REVIEW` hard filters. A fourth omitted
+  code (`VOA_NATIONALITY_ONLY`) is structurally eligible but not witnessed by this probe.
+  Full audit, evidence, reproducible scripts and proposed success bar:
+  `research/visa/2026-09-11-review-reason-audit/README.md`. Audit only; no runtime/copy changes.
 - **Evaluate mode: ENGINE, under ENFORCE since 2026-09-06T01:1xZ** — OWNER OVERRIDE by Zero
   ("accendi tutto"), not a session-inferred authorization. Visitors of `/visa-oracle` now see
   real verdicts (SHADOW previously withheld every decision).
@@ -156,6 +169,13 @@ as `2026-07-17-visa-oracle-v2-round<N>-<lane>.md`.
   blockers): DPIA v2 two High rows (analytics destination, cross-border processor register)
   still unclosed; gold-persona replay not re-measured on seq-20; Bali Zero team manual sign-off
   still outstanding.
+- **TRACK C claimed by mini-pro2/2026-09-11 — W-ORACLE window (SHWEB-20260911).** Binding spec:
+  `research/visa/2026-09-11-oracle-final-window-spec.md` (v6.2). Chain, one PR each from fresh
+  main: PR-O0 docs (this capture) → PR-O1 census with real disclosure flags + AST-derived
+  review-code inventory → PR-O2 dedicated EN/ID copy for every known review code → PR-O3
+  interview Δ1 (`family_sponsor_confirmed` on retirement/property + undecided) → PR-O4
+  review-cause explanation Δ2 + neutral contact fallback. Owner decisions D1/D5/D6 recorded on
+  the Mini desk 2026-09-11. Released in PR-O4.
 
 Full chronology: `references/live-state-log.md` (read the newest entries before claiming a track).
 

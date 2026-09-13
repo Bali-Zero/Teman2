@@ -9,6 +9,7 @@ import {
   DynamicJsonLd,
 } from "@/components/seo";
 import { RouteChangeTracker } from "@/components/analytics/RouteChangeTracker";
+import { analyticsUrlRedactScript } from "@/lib/analytics-url";
 import { QueryProvider } from "@/components/providers/QueryProvider";
 import { ErrorBoundary } from "@/components/optimization";
 import { WebVitalsMonitor } from "@/components/providers/WebVitalsMonitor";
@@ -211,6 +212,17 @@ export default function RootLayout({
             __html:
               "window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('consent','default',{'analytics_storage':'denied','ad_storage':'denied','ad_user_data':'denied','ad_personalization':'denied','wait_for_update':500});gtag('consent','update',{'analytics_storage':'granted'});",
           }}
+        />
+
+        {/* Redact credential-bearing query params from page_location BEFORE
+            gtag.js loads. Measured 2026-09-11: /portal/register?token=… and
+            /portal/magic?token=… shipped the raw single-use token to
+            google-analytics.com/g/collect as `dl=` (HTTP 204 — accepted).
+            GA's automatic page_view reads document.location.href, so this has
+            to be queued in dataLayer ahead of gtag('config'); see
+            src/lib/analytics-url.ts. */}
+        <script
+          dangerouslySetInnerHTML={{ __html: analyticsUrlRedactScript }}
         />
 
         {/* ⚡ Performance: Preconnect to critical domains */}

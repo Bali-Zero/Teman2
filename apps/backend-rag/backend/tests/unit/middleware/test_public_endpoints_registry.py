@@ -400,3 +400,31 @@ class TestGarudaVoaAuthAllowlistIsExactNotPrefix:
                     f"entry under this root can leak any future route mounted "
                     f"under it, exactly the finding-E defect this test guards."
                 )
+
+
+@pytest.mark.parametrize(
+    ("path", "template", "expected"),
+    [
+        # Exact, trailing-slash and leading+trailing-slash paths: match.
+        ("/a/b", "/a/b", True),
+        ("/a/b/", "/a/b", True),
+        ("//a/b//", "/a/b", True),
+        # Inner double slash: no match.
+        ("/a//b", "/a/b", False),
+        # One segment too many or too few: no match.
+        ("/a/b/c", "/a/b", False),
+        ("/a", "/a/b", False),
+        # `{param}`: a non-empty segment matches, an empty one does not.
+        ("/a/x", "/a/{p}", True),
+        ("/a//", "/a/{p}", False),
+        ("/a/x/y", "/a/{p}/y", True),
+        ("/a//y", "/a/{p}/y", False),
+    ],
+)
+def test_path_matches_template_trailing_and_inner_slashes(
+    path: str, template: str, expected: bool
+) -> None:
+    """Asserts path_matches_template(path, template) is expected, for each case."""
+    from backend.app.auth.public_endpoints import path_matches_template
+
+    assert path_matches_template(path, template) is expected

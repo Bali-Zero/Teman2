@@ -450,6 +450,50 @@ def _ready_deployment_for(sha: str) -> tuple[str, str] | None:
     return None
 
 
+# How many recent production deployments to scan for a build that INCLUDES the target. Merge
+# queue batches land 2-3 PRs per push; 20 covers a whole busy night (~7 builds/hour).
+DESCENDANT_SCAN_LIMIT = 20
+
+
+def _ready_deployment_including(sha: str) -> tuple[str, str, str] | None:
+    """A READY production build of a main commit that INCLUDES the target — the merge-queue case.
+
+    Measured 2026-09-11 (03:13-03:45 WITA): the GitHub merge queue BATCHES PRs, so one push moved
+    main by three commits (#6136, #6134, #6139) and Vercel built only the batch HEAD — a docs
+    commit. The newest bundle-relevant commit (8a2c49cfb) never got a build of its own, so
+    `_ready_deployment_for` found nothing, the --promote-only fallback (which walks OLDER
+    bundle-relevant commits) found nothing either, and Mini's autopromote organ exited 3 every
+    120s for half an hour while four READY builds that all contained the cure sat STAGED.
+
+    The rule is the sentinel's rule: production must INCLUDE the target, not EQUAL it. So any
+    READY production build whose commit is on main and descends from the target is promotable.
+    Guilt: finds the newest such build. Innocence: never a build of a commit that is not on
+    origin/main (a preview, a fork, a rebased branch), never one that does not contain the
+    target, never a non-READY one. Returns (deployment_id, substate, build_sha) or None; any
+    failure returns None so the rebuild path still runs.
+    """
+    status, body = _api(
+        "GET", f"/v6/deployments?projectId={PROJECT_ID}&target=production&limit={DESCENDANT_SCAN_LIMIT}"
+    )
+    if status != 200:
+        return None
+    for dep in body.get("deployments", []):  # newest first
+        if dep.get("state") != "READY":
+            continue
+        build_sha = (dep.get("meta") or {}).get("githubCommitSha")
+        uid = dep.get("uid")
+        if not build_sha or not uid or build_sha == sha:
+            continue
+        # `_git` is None on rc!=0: `merge-base --is-ancestor` answers with the exit code alone,
+        # so "" (rc 0, empty stdout) is YES and None is NO-or-could-not-look. Both must be yes.
+        if _git("merge-base", "--is-ancestor", build_sha, "origin/main") is None:
+            continue
+        if _git("merge-base", "--is-ancestor", sha, build_sha) is None:
+            continue
+        return str(uid), str(dep.get("readySubstate")), str(build_sha)
+    return None
+
+
 def _promote(deployment_id: str, sha: str) -> bool:
     status, body = _api("POST", f"/v10/projects/{PROJECT_ID}/promote/{deployment_id}", {})
     print(f"promote HTTP {status}: {json.dumps(body)[:300]}")
@@ -520,10 +564,27 @@ def main() -> int:
         print("production already includes this commit — nothing to do")
         return 0
     # Prefer promoting an existing READY build for this exact commit over rebuilding it.
+    # The sha the probe must see AFTER a promote: the target itself, or — when the build that
+    # carries it is a descendant — that build's commit (production serves the descendant, which
+    # includes the target; `_probe_until` compares by equality, so it must be told which).
+    probe_sha = sha
     existing = _ready_deployment_for(sha)
     if existing:
         dpl, substate = existing
         print(f"already built     : {dpl} (readySubstate={substate}) — promote, do not rebuild")
+    # No build of this exact commit: the merge queue may have batched it, so the build that
+    # carries it is a DESCENDANT on main. Promoting that one serves the target too (the verdict
+    # is inclusion, never equality) and costs ~3s where a rebuild costs ~6 minutes.
+    if not existing:
+        descendant = _ready_deployment_including(sha)
+        if descendant:
+            dpl, substate, build_sha = descendant
+            print(
+                f"no build of {sha[:9]} itself (merge-queue batch?) — a READY build of "
+                f"{build_sha[:9]}, which includes it, is unpromoted: {dpl} (readySubstate={substate})"
+            )
+            existing = (dpl, substate)
+            probe_sha = build_sha
     # No READY build for the newest bundle-relevant commit yet — before giving up (dry-run's
     # verdict and --promote-only's real behaviour must agree), look for an older bundle-relevant
     # commit that IS already built. Only relevant to the two restricted paths below; the
@@ -572,15 +633,15 @@ def main() -> int:
             # was nothing to promote" and report a healthy-ish heartbeat forever. Measured,
             # not imagined: running --promote-only against the pre-merge copy on Mini exits 2.
             return 3
-        if _promote(existing[0], sha):
-            print(f"OK — kita.balizero.com serves {sha[:9]} (promoted {existing[0]}, no rebuild)")
+        if _promote(existing[0], probe_sha):
+            print(f"OK — kita.balizero.com serves {probe_sha[:9]} (promoted {existing[0]}, no rebuild)")
             return 0
-        print(f"::error::promote of {existing[0]} did not prove kita.balizero.com serves {sha[:9]}")
+        print(f"::error::promote of {existing[0]} did not prove kita.balizero.com serves {probe_sha[:9]}")
         return 1
 
     if existing:
-        if _promote(existing[0], sha):
-            print(f"OK — kita.balizero.com serves {sha[:9]} (promoted {existing[0]}, no rebuild)")
+        if _promote(existing[0], probe_sha):
+            print(f"OK — kita.balizero.com serves {probe_sha[:9]} (promoted {existing[0]}, no rebuild)")
             return 0
         # Fall through rather than fail: the build may be genuinely unusable (an alias
         # conflict, a deployment deleted mid-flight). A rebuild is slower, never wrong.

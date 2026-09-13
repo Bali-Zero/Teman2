@@ -1,0 +1,52 @@
+## VERDICT: **GO-WITH-CONDITIONS**
+
+One condition must be resolved before merge; the rest are tracked follow-ups.
+
+---
+
+### FINDINGS
+
+**SEVERITY: MEDIUM (condition for merge)**
+**Claim:** The recursive walk produces route strings that include nested route-group directory names (e.g. `(admin)/settings`), but the prerender manifest keys strip all parenthesised segments (e.g. `/settings`). Any route living under a nested route group inside `(workspace)` will never match `prerendered.has(\`/${r}\`)` and will be silently invisible to the baseline check.
+**Why:** This is the same failure class C3 exists to close — a prerendered payload under `.next/server/app` that the guard cannot see. Today there are apparently no nested route groups, so the bug is latent, but the guard's job is to catch the *next* change. A developer who adds `(workspace)/(admin)/settings/page.tsx` gets a silently-prerendered, unscanned file and a green build.
+**What to check / fix:** After the walk produces a route string, strip route-group segments before comparing against the manifest. Something like `route.replace(/\([^)]*\)\//g, "")` applied to `r` before the `prerendered.has` call (and before the accepted-set lookup, so the 42-entry baseline uses the same normalised form). Add a test case: a route under a nested `(group)` directory that IS in the manifest must be detected.
+
+---
+
+**SEVERITY: LOW (follow-up, not blocking)**
+**Claim:** The walk probes only `page.tsx`. Next.js also resolves `page.jsx`, `page.js`, `page.ts`, and (with MDX config) `page.mdx`.
+**Why:** A workspace route added with any of those extensions is invisible to the walk, so it never enters `workspaceRoutes` and can never be flagged as newly prerendered. Same blind-spot class as the C3 fix, just through a different door.
+**What to check:** Confirm the codebase convention is `.tsx`-only (likely yes given the typecheck setup). If so, add a one-line comment stating the assumption. If not, check the other extensions. A cheap guard: also look for `page.jsx`/`page.js`/`page.ts` in the `existsSync` chain, or glob `page.*`.
+
+---
+
+**SEVERITY: LOW (follow-up, not blocking)**
+**Claim:** The walk iterates *children* of `(workspace)` but never checks for a `page.tsx` sitting directly inside `(workspace)/` itself, which would be the `/` route scoped to that layout.
+**Why:** If someone adds `(workspace)/page.tsx`, it maps to `/`, is potentially prerendered, and would not appear in `workspaceRoutes`. Very unlikely in practice (the root page usually lives outside the workspace group), but the omission is structural.
+**What to check:** Confirm no `page.tsx` exists at the `(workspace)` root today. If one ever appears, the walk needs a pre-check for the directory itself.
+
+---
+
+**SEVERITY: INFO (hygiene, no action required now)**
+**Claim:** The prerender baseline has no reverse check: a route that is in `<REDACTED>` but is *no longer* prerendered is silently ignored. The chunk-exception contract correctly checks both directions (stale closer detection); the prerender baseline does not.
+**Why:** A stale entry in the accepted list is harmless (it doesn't create a blind spot), but it is an asymmetry with the contract's own philosophy of "a stale promise the next exception could quietly reuse."
+**What to check:** Nothing now. If the accepted list grows, consider a warning (not a hard fail) for entries with no matching prerendered route.
+
+---
+
+**SEVERITY: INFO (process note)**
+**Claim:** The prompt states the first seat's findings are "listed at the end," but no such list appears in the packet.
+**Why:** Given the explicit warning that three prior false findings came from packets that omitted material, a missing findings-list is worth flagging even though every *file* is present. I cannot verify the first-seat items were actually addressed; I can only confirm the C1/C2/C3 fixes look structurally sound on their own merits.
+**What to check:** Confirm out-of-band that the first-seat findings exist and are resolved. If the list was accidentally dropped from the packet, re-attach it for the record.
+
+---
+
+### What I verified and found clean
+
+- **C1 (regex anchoring):** `CLOSER_SHAPE` is `^(…)$`-anchored. All nine prose/shape test cases check out against the regex. `trim()` before `.test()` is correct and tested. The alternation is inside the anchors so both branches are anchored. No unanchored path remains.
+- **C2 (contract extracted, tests execute the module):** The guard calls `<REDACTED>()` and exits on violations. Tests import the module and call the function with real objects, not `toContain` on source text. The `Object.hasOwn` guard against prototype keys is present and tested. Blank/empty prefix detection is correct. Bidirectional prefix↔closer check is present.
+- **C3 (prerender enforcement in the guard):** Both `WS_DIR` and `MANIFEST` existence are hard-checked before proceeding; missing either is a non-zero exit. The manifest read is wrapped in try/catch. The "refuse to pass a check that did not run" posture is consistent with the existing chunk-scan rule. The 42-route measurement replaces the hardcoded five-name tuple and the one-level-deep walk.
+- **Empty allowlist invariant:** With `prefixes = []` and `closers = {}`, both loops are no-ops, violations are empty, guard passes. No entry can sneak in without a closer, and no closer can linger without a prefix.
+- **Test coverage:** 9 contract cases and 6 baseline cases are described; they execute the modules, not source text. The suite-wide numbers (478 files / 5145 tests green, typecheck 0, eslint 0) are consistent with no regressions.
+
+The one condition (route-group stripping) is small and localised. Fix it, add the test, and this is a solid close-out of C1–C3.

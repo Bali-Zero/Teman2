@@ -310,6 +310,258 @@ export function enumerateScenarios(): Scenario[] {
     },
   });
 
+  // D3-3/D3-4 (PR-D3, owner ruling SHWEB-20260911): a walk per new branch
+  // (spec §3), covering the gate conditions half-1 (D3-1/D3-2) owed and the
+  // two new questions this PR adds.
+  const base = { in_indonesia: "no", holds_stay_permit: "no" } as const;
+
+  // C1: half-1's `invest` re-route, below the E33 threshold (walks 2/4,
+  // 23-PR-D3-SPEC §walk-list). Above-threshold is already the corpus's
+  // existing default for `offshore/invest/property`/`bank_deposit`.
+  // `birth_date` overridden past 55 on BOTH (owner escalation, 2026-09-13
+  // gate finding): at the corpus-wide default age 25, `hf.e33e.age-below-55`
+  // fires independently of the threshold this walk exists to prove, masking
+  // it behind an unrelated AGE_BELOW_55 reason — these two walks are the
+  // ONLY thing that tests the threshold path itself, so they must not be
+  // confounded by it. `RETIREMENT_AGE_64_BIRTH_DATE` is a spine question no
+  // branch reads, same reasoning as the retirement age-64 walks below.
+  scenarios.push({
+    label: "offshore/invest/property/below_threshold",
+    overrides: {
+      ...base,
+      category: "invest",
+      investment_vehicle: "property",
+      secondhome_property_value_usd: "500000",
+      birth_date: RETIREMENT_AGE_64_BIRTH_DATE,
+    },
+  });
+  scenarios.push({
+    label: "offshore/invest/bank_deposit/below_threshold",
+    overrides: {
+      ...base,
+      category: "invest",
+      investment_vehicle: "bank_deposit",
+      secondhome_deposit_usd: "50000",
+      birth_date: RETIREMENT_AGE_64_BIRTH_DATE,
+    },
+  });
+
+  // C1: half-1's declared-paid-activity route (D3-2), the two negative facts
+  // and the negative branch C2 says should deliver C6.
+  scenarios.push({
+    label: "offshore/other/paid/employer_no",
+    overrides: {
+      ...base,
+      category: "other",
+      other_paid_activity: "yes",
+      work_payer: "no",
+    },
+  });
+  scenarios.push({
+    label: "offshore/other/paid/sponsor_unsure",
+    overrides: {
+      ...base,
+      category: "other",
+      other_paid_activity: "yes",
+      work_payer: "yes",
+      work_sponsor_confirmed: "unsure",
+    },
+  });
+  // C2: the `paid = no` walk that must actually yield C6 (13 → 14 distinct
+  // products) — `offshore/other`'s own default now answers `yes` (D3-2), so
+  // this is a NEW walk, not a rewording of the existing one.
+  scenarios.push({
+    label: "offshore/other/no_paid_activity",
+    overrides: { ...base, category: "other", other_paid_activity: "no" },
+  });
+
+  // D3-3: retirement branches that used to dead-end. `property`'s negative
+  // sponsor answer (the age64/sponsor=yes walk is already the corpus's
+  // regenerated default for `offshore/retirement/property/age64`).
+  scenarios.push({
+    label: "offshore/retirement/property/age64/sponsor_no",
+    overrides: {
+      ...base,
+      category: "retirement",
+      retirement_basis: "property",
+      birth_date: RETIREMENT_AGE_64_BIRTH_DATE,
+      family_sponsor_confirmed: "no",
+    },
+  });
+  // `bank_deposit` was the funnel census's LARGEST dead end (30 production
+  // walks) — below both the deposit and passive-income thresholds, cured
+  // only by the family-sponsor fallback this PR adds.
+  scenarios.push({
+    label: "offshore/retirement/bank_deposit/age64/below_threshold",
+    overrides: {
+      ...base,
+      category: "retirement",
+      retirement_basis: "bank_deposit",
+      birth_date: RETIREMENT_AGE_64_BIRTH_DATE,
+      secondhome_deposit_usd: "1000",
+      // Above el.e33f.retirement's own USD 3,000 floor (fact-mapper.ts
+      // comment on ACTIVITY_BOUNDARY_DECIDABLE_ANSWERS.retirement_basis) —
+      // deliberately NOT below it, so this walk proves the E33F fallback
+      // cures the deposit-below-threshold dead end rather than merely
+      // failing both products.
+      secondhome_passive_income_usd: "5000",
+      family_sponsor_confirmed: "yes",
+    },
+  });
+  // `undecided` becomes a real question. `deposit_or_income` is already the
+  // corpus's regenerated default for `offshore/retirement/undecided/age64`
+  // (first option); these are its other two answers.
+  scenarios.push({
+    label: "offshore/retirement/undecided/age64/family_sponsor",
+    overrides: {
+      ...base,
+      category: "retirement",
+      retirement_basis: "undecided",
+      birth_date: RETIREMENT_AGE_64_BIRTH_DATE,
+      retirement_undecided_basis: "family_sponsor",
+    },
+  });
+  scenarios.push({
+    label: "offshore/retirement/undecided/age64/still_unsure",
+    overrides: {
+      ...base,
+      category: "retirement",
+      retirement_basis: "undecided",
+      birth_date: RETIREMENT_AGE_64_BIRTH_DATE,
+      retirement_undecided_basis: "still_unsure",
+    },
+  });
+
+  // D3-4's two STEPCHILD sponsor-permit walks (`sponsor_permit_no`/
+  // `sponsor_permit_unsure`) were REMOVED (owner ruling SHWEB-20260911,
+  // 2026-09-13, fresh grader review) along with the hold and the question
+  // they exercised (`family_stepchild_sponsor_permit_confirmed` — no pack
+  // requirement for the sponsor's own permit exists for E31D). They would
+  // now be byte-identical to the base STEPCHILD walk below.
+
+  // PR-D4d: seq-21 (unsigned — see the PR body's activation caveat) gives
+  // E33A/E33B/E33C/E23U/E23V their first SUPPORT/HARD_FILTER rules on
+  // `sponsor.type`, and every one of them was previously exercised by no
+  // walk at all: the corpus's only reaching-tile walks answer this fact's
+  // FIRST option, `NONE` (`offshore/work` unchanged above). One walk per
+  // product with the value that product's rule requires (evidence brief
+  // table): `el.e33a`/`el.e33b`/`el.e23v` share an IDENTICAL condition
+  // (`intersects EMPLOYMENT AND sponsor.type eq GOVERNMENT`), so a single
+  // `work` walk answering GOVERNMENT exercises all three; `el.e23u` needs
+  // INDIVIDUAL instead (E23U is the diplomat's household assistant, not a
+  // `DIPLOMATIC` sponsor value — no such value exists); `el.e33c` needs
+  // INVESTMENT purpose, not EMPLOYMENT, so it is reached via `invest` with
+  // a non-Second-Home vehicle (`pt_pma`, the corpus's own first vehicle)
+  // instead of `work`.
+  scenarios.push({
+    label: "offshore/work/sponsor_government",
+    overrides: { ...base, category: "work", sponsor_category: "GOVERNMENT" },
+  });
+  scenarios.push({
+    label: "offshore/work/sponsor_individual",
+    overrides: { ...base, category: "work", sponsor_category: "INDIVIDUAL" },
+  });
+  scenarios.push({
+    label: "offshore/invest/pt_pma/sponsor_government",
+    overrides: {
+      ...base,
+      category: "invest",
+      investment_vehicle: "pt_pma",
+      sponsor_category: "GOVERNMENT",
+    },
+  });
+
+  // Work item 1 end to end: before this PR, `other_paid_activity === "yes"`
+  // never asked `sponsor_category` at all — `offshore/other/paid/
+  // employer_no` (added PR-D3) is the walk the PR-D4b pre-sign review named
+  // as the one that dead-ended on this exact gap (cured there by widening
+  // `on_unknown` to `NO_EFFECT`, not by adding a question). This walk
+  // answers GOVERNMENT down the branch work item 1 adds — the SECOND
+  // reachable path (besides `work`) into E33A/E33B/E23V — proving the new
+  // question is not just present but actually answerable end to end.
+  scenarios.push({
+    label: "offshore/other/paid/sponsor_government",
+    overrides: {
+      ...base,
+      category: "other",
+      other_paid_activity: "yes",
+      sponsor_category: "GOVERNMENT",
+    },
+  });
+
+  // Work item 2, third/fourth bullets. The honest-negative half (`NONE`
+  // giving a decisive non-hold result) is already proven by `offshore/work`
+  // above — the corpus's own unmodified default walk, sponsor_category's
+  // first option — so it is measured, not duplicated, in the PR body. This
+  // walk proves the other half: leaving the fact genuinely UNRESOLVED
+  // (`unsure` -> UNVERIFIED) on a reaching tile must be silence under
+  // seq-21's `on_unknown: NO_EFFECT` (the D4b cure), never a NEEDS_INPUT
+  // hold.
+  scenarios.push({
+    label: "offshore/work/sponsor_unsure",
+    overrides: { ...base, category: "work", sponsor_category: "unsure" },
+  });
+
+  // C6 regression walk (coordinator-authorised scope addition, 2026-09-13).
+  // PR-D4a changed `other_purpose = "transit"` to map to the TRANSIT
+  // purpose instead of OTHER. The corpus's only `other_purpose` walk,
+  // `offshore/other/no_paid_activity`, answers `transit` by default (first
+  // option) — `test_d4a_transit_purpose_positively_reaches_d1` now pins
+  // exactly that route to D1, so it must not be repurposed here — which
+  // means no walk any longer exercises `el.c6.social` (unchanged, still
+  // SUPPORTED on `intent.purposes ∩ OTHER`). `medical` is the next
+  // `other_purpose` option: no special-case mapping anywhere in
+  // fact-mapper.ts reads it (only `transit` does), so it falls through to
+  // the plain OTHER purpose, and it is a natural, honest interview answer
+  // ("here for medical treatment, not employed"). `other_paid_activity:
+  // "no"` is required too — the branch this PR's work item 1 changed does
+  // NOT touch this one (verified: `other_paid_activity === "yes"` is a
+  // disjoint arm from this walk's "no") — keeping the purpose OTHER (D3-2),
+  // which is what makes `el.c6.social` reachable at all.
+  scenarios.push({
+    label: "offshore/other/no_paid_activity/medical",
+    overrides: {
+      ...base,
+      category: "other",
+      other_paid_activity: "no",
+      other_purpose: "medical",
+    },
+  });
+
+  // PR-D4c-2 (owner ruling SHWEB-20260911): the currency-bound
+  // `investment.investment_amount_usd` fact, asked only on the
+  // `merit`/`family`/`undecided` investment-vehicle branches — `pt_pma` is
+  // deliberately untouched (E28A's IDR-bound rules, see tree.ts's
+  // `investment_currency` doc comment). The three unmodified vehicle walks
+  // above (`offshore/invest/merit`/`family`/`undecided`) now also exercise
+  // the IDR side for free: `investment_currency` is the branch's new first
+  // question, its first OPTION is `idr` (tree.ts), so `answerFor`'s
+  // untouched default takes it, then answers the now-reachable
+  // `investment_capital_idr` with the generic number default. These two new
+  // walks cover the other two cells this PR must prove: an explicit USD
+  // answer, and the explicit "I can't say yet" — the one measured (PR body)
+  // to cost zero review holds, since its value is the literal
+  // `still_unsure`, never the `"unsure"` string
+  // `mapDisclosedReviewFlags`'s NOT_CERTAIN scan matches.
+  scenarios.push({
+    label: "offshore/invest/merit/currency_usd",
+    overrides: {
+      ...base,
+      category: "invest",
+      investment_vehicle: "merit",
+      investment_currency: "usd",
+    },
+  });
+  scenarios.push({
+    label: "offshore/invest/undecided/currency_still_unsure",
+    overrides: {
+      ...base,
+      category: "invest",
+      investment_vehicle: "undecided",
+      investment_currency: "still_unsure",
+    },
+  });
+
   return scenarios;
 }
 

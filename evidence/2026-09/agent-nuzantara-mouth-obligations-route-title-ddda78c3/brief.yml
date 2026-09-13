@@ -1,0 +1,45 @@
+task_id: obligations-route-title
+gear: 1
+gear_reason: >-
+  Computed, not chosen. scripts/evidence_pack_lint.py --print-floor over this branch's diff
+  vs origin/main (git diff --numstat/--name-only origin/main...) returns 1: no HOTZONE_PATTERNS
+  hit (apps/mouth/src/types/navigation.ts and its new test are not hot-zone paths) and 30 net
+  lines over 2 files stay far under the size thresholds.
+l_level: L1
+gate_class: opus
+objective: >-
+  Residual R1 of PR #6209 (obligations reviewer UI, kita workspace /obligations page): that PR
+  added the nav item and the page but left routeTitles without an "/obligations" entry, so
+  (workspace)/layout.tsx's getRouteTitle() and the workspace/portal Header components fell
+  through to the generic "Workspace" fallback instead of naming the page in the header. Add
+  "/obligations": "Obligations" to apps/mouth/src/types/navigation.ts's routeTitles map, right
+  after the existing "/review" entry (matching style: PR #6209 itself placed the nav item
+  immediately after "Review" in the "Work" section for the same reason).
+constraints:
+  - >-
+    One map entry only — no change to navigation.ts's navigation/portalNavigation arrays, no
+    change to any component. Value "Obligations" matches the existing nav item's `title` field
+    exactly (src/types/navigation.ts:52), same convention every other routeTitles value follows
+    (e.g. "/review": "Document Review" mirrors the "Review" nav item's own title-ish wording).
+  - >-
+    No prior test enumerated routeTitles against nav items (grepped `routeTitles` across
+    *.test.*/*.spec.* — zero hits before this change), so a new file
+    src/types/navigation.test.ts was added rather than extending an existing suite. It asserts
+    every non-external href in the "Work" nav group has a routeTitles key, so the next new
+    "Work" route can't ship the same gap silently — not just re-pinning "/obligations" alone.
+acceptance:
+  - text: >-
+      WHEN the "Work" nav group is checked against routeTitles THEN every internal
+      (non-external) href SHALL have a routeTitles entry, including "/obligations".
+    probe: >-
+      cd apps/mouth && npx vitest run src/types/navigation.test.ts — 3 passed (807ms rerun:
+      637ms). Bite proven by mutation: temporarily removed the "/obligations" line from
+      routeTitles -> RED, 2 failed / 1 passed — `expect(missing).toEqual([])` got
+      `["/obligations"]`, and `expect(routeTitles["/obligations"]).toBe("Obligations")` got
+      `undefined`; restored the line -> GREEN, 3 passed / 0 failed. Tails quoted in the PR body.
+  - text: Typecheck and formatting SHALL be clean on the changed files.
+    probe: >-
+      npx tsc --noEmit (exit 0, no output); npx prettier --check
+      src/types/navigation.ts src/types/navigation.test.ts -> "All matched files use Prettier
+      code style!".
+pii_scan: clean

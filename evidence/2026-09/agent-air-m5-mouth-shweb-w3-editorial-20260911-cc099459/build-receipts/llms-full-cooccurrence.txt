@@ -1,0 +1,53 @@
+  24  apps/mouth/public/llms-full.txt
+        9336: Pour nos clients, le message est sans ambiguïté : si vous gagnez de l'argent pendant votre séjour à Bali, le visa que vous détenez doit auto
+        9413: se guadagni denaro mentre sei a Bali, il visto che detieni deve autorizzare quell'attività. Il B211A non lo fa. La categoria di visto E33G "
+        9490: mbiguous: if you earn money while in Bali, the visa you hold must authorize that activity. The B211A does not. The E33G 'remote worker' visa
+        9563: Для наших клиентов послание неоднозначно: если вы зарабатываете деньги, находясь на Бали, виза, которую вы держите, должна авторизовать эту 
+        25132: Le Second Home Visa de l'Indonésie, introduit sous le Règlement présidentiel n° 37 de 2022, a été conçu pour attirer les personnes fortunées
+        25217: Il Second Home Visa dell'Indonesia, introdotto con il Regolamento Presidenziale n. 37 del 2022, è stato progettato per attrarre individui ad
+        25302: Indonesia's Second Home Visa, introduced under Presidential Regulation No. 37 of 2022, was designed to attract high-net-worth individuals by
+        29608: Il punto di attrito, tuttavia, è il processo. Mentre Thailandia e Malaysia hanno costruito canali di accoglienza specificamente progettati p
+        29695: The friction point, however, is process. While Thailand and Malaysia have built intake pipelines specifically designed for nomads — with cle
+        38037: L'Indonesia ha compiuto passi misurabili negli ultimi anni per modernizzare il proprio quadro di residenza per gli stranieri. Il Second Home
+        38122: Indonesia has made measurable strides in recent years to modernise its residency framework for foreigners. The Second Home Visa, launched in
+        56648: Il Second Home Visa, introdotto alla fine del 2022 ai sensi del Regolamento Presidenziale n. 37/2022, rimane uno dei prodotti migratori più 
+        56733: The Second Home Visa, first launched in late 2022, remains one of the most significant immigration products available to high-net-worth indi
+        63534: Il Second Home Visa, introdotto nel 2022, si rivolge a individui con un alto patrimonio netto e consente soggiorni di cinque o dieci anni. R
+        63619: The Second Home Visa, introduced in 2022, targets high-net-worth individuals and allows stays of five or ten years. It requires proof of fun
+        63706: La Legge sulla Creazione di Lavoro del 2022 ha introdotto il Digital Nomad Visa (Second Home Visa), che è tecnicamente un visto multi-ingres
+        63742: "Verificare immediatamente lo stato del proprio permesso — confermare la categoria, la data di scadenza e se l'attività attuale è coerente c
+        63789: The 2022 Job Creation Law introduced the Digital Nomad Visa (Second Home Visa), which is technically a multi-entry visa but functionally ope
+        63825: "Audit your current permit status immediately \u2014 confirm the category, expiry date, and whether your current activity aligns with what y
+        238633: | Genitore ha risparmi           | Second Home Visa                       | Deposito IDR 2 miliardi richiesto    |
+        238866: | Parent has savings        | Second Home Visa          | IDR 2B deposit required        |
+        239099: | Родитель имеет сбережения     | Second Home Visa                   | Требуется депозит IDR 2 млрд        |
+        254402: 2. **Second Home Visa:** Richiede un deposito bancario di 2 miliardi di IDR (circa 120.000€) in una banca indonesiana.
+        254570: | Second Home Visa           | IDR 2B bank deposit               | If financially capable |
+TOTAL second-home lines carrying the superseded threshold: 24
+records for the canonical family in the built llms-full.txt: 4
+superseded-threshold lines inside those records: 0
+
+=== RE-MEASURED AFTER THE SUCCESSOR ROUND OF CURES (2026-09-12) ===
+
+Real generation, not a simulation:
+  cd apps/mouth && npx tsx scripts/generate-llms-full.ts    # "All AI Master Data files generated successfully."
+  python3 research/secondhome/probe-superseded-threshold.py apps/mouth/public/llms-full.txt
+
+  TOTAL second-home lines carrying the superseded threshold: 24
+  regenerated file: 450,485 lines; 14 lines belong to the canonical family's article blocks
+
+Attributed hit by hit to the article block each one sits in (`URL:` header above the line):
+
+  canonical-family hits: 0
+  other-family hits:    24      <- the 14 `queued-pr2` families, out of scope for PR-1 by the
+                                   imperator's own scope ruling (shweb-imp-w3-bozza-ack (b))
+
+That zero IS the mandate's acceptance criterion for this PR: "llms-full.txt regenerated with 0
+Second Home lines carrying IDR 2B FOR THIS FAMILY, the others remain until PR-2 is served".
+
+The freshness block regenerated from the same run also shows the C5 tie-break working on live
+content: five DISTINCT canonical URLs, all 2026-09-11. The version tracked in the repo still
+carries a July block with each entry DUPLICATED — that is the pre-existing build-output debt W1
+took the same disposition on, and this PR does not commit generated exports. The tracked files
+were restored byte-for-byte from a copy taken before the run; `git status apps/mouth/public/` is
+clean.

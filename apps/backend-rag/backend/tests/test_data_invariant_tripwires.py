@@ -1219,3 +1219,365 @@ def test_the_voa_prices_are_the_ones_the_owner_ruled():
             f"ruled {expected}. The database half of the price has drifted "
             "from the sheet half — exactly the divergence migration 302 closed."
         )
+
+
+# ---------------------------------------------------------------------------
+# Invariant 6 — the portal-profile READ and UPDATE paths project the same
+# `team_members` columns
+# ---------------------------------------------------------------------------
+#
+# Born 2026-09-10 from a live 500. `_get_profile_data` in
+# services/portal/_mixins/billing.py selected `tm.avatar_url` — a column
+# that has never existed on `team_members` (verified live via
+# `information_schema.columns`: `team_members` carries `avatar`, and
+# `avatar_url` exists only on `clients`). The read path in
+# app/routers/portal.py has always selected `tm.avatar`, correctly.
+# `_get_profile_data` is also what `update_profile` returns, so every
+# `PATCH /api/portal/profile` committed its UPDATE and only THEN raised
+# `UndefinedColumnError` re-fetching the row to hand back — a 500 on a write
+# that had already landed.
+#
+# The defect was never a misspelling to allowlist: the same projection lives
+# in TWO files and nothing kept them in agreement. A column allowlist would
+# rot the moment `team_members` legitimately grows a column, exactly like
+# the query it would be guarding.
+#
+# A raw "the two `tm.*` column SETS must be equal" is not quite the right
+# invariant, though — measured directly: billing.py's query also selects
+# `tm.email as assigned_to_email` (it uses that value both to build
+# `assigned_to.email` and as the truthy gate deciding whether `assigned_to`
+# is `None`), while portal.py's read path gets the same conceptual value
+# from `c.assigned_to` — the join's FK column — and never aliases `tm.email`
+# at all. That is a legitimate structural difference, not drift: both
+# queries produce the same `assigned_to.email` value, they just source it
+# from different sides of the join. A set-equality assertion would flag it
+# and defeat the "prove the tripwire bites, then prove it's quiet on good
+# code" check every tripwire here has to pass.
+#
+# What actually broke was narrower and is what this pins: for an ALIAS both
+# queries share (`assigned_to_name`, `assigned_to_avatar`), the `tm.<column>`
+# feeding it must be the SAME column in both files. That is exactly the shape
+# of the `avatar` / `avatar_url` drift, and it does not false-positive on the
+# `assigned_to_email` asymmetry above, since that alias isn't shared.
+
+_SQL_LINE_COMMENT = re.compile(r"--[^\n]*")
+_TM_ALIASED_COLUMN = re.compile(r"\btm\.(\w+)\s+as\s+(\w+)", re.I)
+_CLIENTS_TM_SELECT = re.compile(
+    r"SELECT\s.*?FROM\s+clients\s+c\s+LEFT\s+JOIN\s+team_members\s+tm",
+    re.DOTALL,
+)
+
+
+def _tm_alias_to_column(path: Path) -> dict[str, str]:
+    """`{alias: source_column}` for every `tm.<column> as <alias>` in the
+    `SELECT ... FROM clients c LEFT JOIN team_members tm` block of `path`.
+
+    Comments are stripped first so a column named in prose (this file's own
+    "not `avatar_url`" explanation) is never counted. The match is cut off at
+    the literal `team_members tm` alias declaration — before the JOIN's `ON
+    ...` clause — so a filter-only column there (billing.py's `tm.active`,
+    used to exclude inactive team members) never enters the map: that is a
+    filter, not a projection.
+    """
+    src = path.read_text(encoding="utf-8")
+    match = _CLIENTS_TM_SELECT.search(src)
+    assert match, (
+        f"No `SELECT ... FROM clients c LEFT JOIN team_members tm` found in "
+        f"{path} — the query moved or was rewritten. Point this test at its "
+        "new location rather than deleting the check."
+    )
+    block = _SQL_LINE_COMMENT.sub("", match.group(0))
+    return {alias: column for column, alias in _TM_ALIASED_COLUMN.findall(block)}
+
+
+def test_portal_profile_read_and_update_paths_agree_on_team_members_columns() -> None:
+    """See the "Invariant 6" block comment above for the incident this pins."""
+    router_path = _repo_root() / "apps/backend-rag/backend/app/routers/portal.py"
+    billing_path = (
+        _repo_root()
+        / "apps/backend-rag/backend/services/portal/_mixins/billing.py"
+    )
+    assert router_path.exists(), f"portal.py router missing at {router_path}"
+    assert billing_path.exists(), f"billing.py mixin missing at {billing_path}"
+
+    read_aliases = _tm_alias_to_column(router_path)
+    update_aliases = _tm_alias_to_column(billing_path)
+
+    shared = read_aliases.keys() & update_aliases.keys()
+    assert shared, (
+        "portal.py and billing.py's profile queries share no `tm.<col> as "
+        f"<alias>` aliases at all (read: {sorted(read_aliases)}, update: "
+        f"{sorted(update_aliases)}) — either one query stopped aliasing its "
+        "tm columns, or this test's regex no longer matches its style."
+    )
+
+    mismatches = {
+        alias: (read_aliases[alias], update_aliases[alias])
+        for alias in shared
+        if read_aliases[alias] != update_aliases[alias]
+    }
+    assert not mismatches, (
+        "portal.py's profile-read query and billing.py's _get_profile_data "
+        f"both alias {sorted(mismatches)} but source it from a DIFFERENT "
+        f"`team_members` column in each file: {mismatches} (alias -> "
+        "(read_column, update_column)). This is exactly how `tm.avatar_url` "
+        "shipped: one copy of the query fixed to `tm.avatar`, the other left "
+        "aliasing a column that doesn't exist — and the drifted copy only "
+        "fails at request time, after its UPDATE has already committed. If "
+        "an alias's source column legitimately moved, update BOTH files in "
+        "the same commit — not just one."
+    )
+
+
+# ---------------------------------------------------------------------------
+# Invariant 7 — the documents upload INSERT projects only columns that
+# actually exist on the live `documents` table
+# ---------------------------------------------------------------------------
+#
+# Born 2026-09-11. `POST /api/portal/documents/upload` was 500ing for every
+# file, every client, since 2026-05-10 — a stack of defects that had never
+# executed until a real upload finally reached each one in turn. The last of
+# the stack: the primary `INSERT INTO documents (...)` in
+# `_mixins/documents.py` named `storage_path` (Postgres's own
+# `UndefinedColumnError`) AND `extracted_text` — a SECOND column that has
+# never existed on this table, which would only have surfaced as its own 500
+# one deploy later, after `storage_path` was fixed in isolation. Both were
+# removed rather than added as migrations: the Drive folder path is
+# derivable from `file_id` via the Drive API, and `documents` already has a
+# `notes`/`ocr_extracted_data` (jsonb) home if OCR text genuinely needs
+# persisting — that is a follow-up, not smuggled into this fix.
+#
+# `documents`'s real columns, verified live 2026-09-11 via
+# `information_schema.columns` against the production `nuzantara_rag` DB
+# (`scripts/pg.sh`). This does not pin call-sites to a subset — new columns
+# added by a migration are fine — it only pins that nothing selected here is
+# fictional.
+_DOCUMENTS_LIVE_COLUMNS = {
+    "id", "client_id", "practice_id", "document_type", "file_name",
+    "storage_type", "file_id", "file_url", "file_size_kb", "mime_type",
+    "status", "uploaded_by", "verified_by", "verified_at", "expiry_date",
+    "notes", "rejection_reason", "created_at", "updated_at", "user_profile_id",
+    "client_visible", "document_category", "family_member_id",
+    "google_drive_file_url", "is_archived", "uploaded_source", "ocr_status",
+    "ocr_completed_at", "ocr_extracted_data", "issue_date", "drive_verified_at",
+    "subfolder", "content_hash", "intake_idempotency_key", "intake_proposal_id",
+    "document_purpose", "deleted_at", "deleted_by",
+}
+
+_INSERT_DOCUMENTS_COLUMNS = re.compile(
+    r"INSERT INTO documents\s*\(\s*(.*?)\)\s*VALUES", re.DOTALL | re.IGNORECASE,
+)
+
+
+def _documents_insert_column_lists(path: Path) -> list[list[str]]:
+    """Every column list out of an `INSERT INTO documents (...) VALUES` in
+    `path`, one list per statement found (this mixin has two: the primary
+    insert and its "backward compatibility" fallback)."""
+    src = path.read_text(encoding="utf-8")
+    return [
+        [c.strip() for c in block.split(",") if c.strip()]
+        for block in _INSERT_DOCUMENTS_COLUMNS.findall(src)
+    ]
+
+
+def test_documents_upload_insert_only_projects_columns_that_exist() -> None:
+    """See the "Invariant 7" block comment above for the incident this pins."""
+    documents_path = (
+        _repo_root() / "apps/backend-rag/backend/services/portal/_mixins/documents.py"
+    )
+    assert documents_path.exists(), f"documents.py mixin missing at {documents_path}"
+
+    column_lists = _documents_insert_column_lists(documents_path)
+    assert column_lists, (
+        "No `INSERT INTO documents (...) VALUES` found in documents.py — the "
+        "upload path stopped writing to this table, or the statement's shape "
+        "changed. Update this test's regex if the query moved rather than "
+        "deleting the check."
+    )
+
+    for columns in column_lists:
+        bad = set(columns) - _DOCUMENTS_LIVE_COLUMNS
+        assert not bad, (
+            f"An `INSERT INTO documents` in documents.py names column(s) "
+            f"{sorted(bad)} that do not exist on the live `documents` table "
+            "(verified via information_schema.columns, 2026-09-11). This is "
+            "exactly how `storage_path` and `extracted_text` shipped: the "
+            "INSERT was never exercised end to end until a real portal "
+            "upload hit it in production. If a column here is genuinely new, "
+            "add the migration AND update `_DOCUMENTS_LIVE_COLUMNS` in the "
+            "same commit; otherwise drop it from the INSERT."
+        )
+
+
+# ---------------------------------------------------------------------------
+# Invariant 7 (extended) — no `documents` query anywhere in the portal
+# service layer names a column that does not exist, not just its INSERTs
+# ---------------------------------------------------------------------------
+#
+# Born 2026-09-11, same incident as the INSERT check above. `get_upload_metrics`
+# in `portal_service.py` ran `COUNT(*) FILTER (WHERE extracted_text IS NOT
+# NULL AND extracted_text != '') as with_ocr` — the SAME phantom column as
+# the INSERT bug, in a SELECT/FILTER instead of an INSERT, with no test at
+# all covering it (the INSERT check above only parses `INSERT INTO
+# documents`). It stayed silent because Postgres never ran it: the method
+# is not wired to any router yet.
+#
+# The `documents` writers set `ocr_status` ('pending'/'processing'/
+# 'completed') and `ocr_extracted_data` (jsonb) — see
+# `crm_drive_backfill_service.py`'s `d.ocr_status = 'completed' AND
+# d.ocr_extracted_data IS NOT NULL`, the existing "has real OCR data" check
+# elsewhere in this codebase — so `get_upload_metrics` was fixed to the same
+# predicate rather than inventing a new one.
+#
+# Scope, deliberately: this checks `FROM`/`JOIN`/`UPDATE documents` blocks in
+# TRIPLE-QUOTED sql strings only, across the three files in
+# `backend/services/portal/` that actually query this table
+# (`portal_service.py`, `_mixins/documents.py`, `_mixins/dashboard.py`).
+# `INSERT INTO documents` statements are skipped here — the check above
+# already owns those. Two things are intentionally OUT of reach, because
+# resolving them needs a real SQL parser and a regex faking it is a
+# liability, not a safety net:
+#   1. A single-line (non-triple-quoted) SQL string, e.g. this file's own
+#      `"DELETE FROM documents WHERE id = $1"` — trivial (`id` only), and
+#      out of scope for the same reason a Python-side full parser is.
+#   2. Bare, UNQUALIFIED identifiers inside a JOINed/aliased query. When
+#      `documents` is aliased (`FROM documents d`), only `d.<col>`-qualified
+#      references are checked, and only against `documents`'s own columns —
+#      e.g. `dashboard.py`'s `WHERE p.client_id = $1 AND pt.category =
+#      'company'` (practices/practice_types columns, reached through a JOIN)
+#      is correctly never checked against `documents` here. A version of
+#      this test that resolved bare identifiers in a JOIN by guessing which
+#      table they belonged to would have flagged `pt.category` as a phantom
+#      `documents.category` — a false positive, and exactly the kind of
+#      wrong-guardian failure (superscar #3) this narrower scope avoids.
+
+
+def _top_level_split(text: str, sep: str = ",") -> list[str]:
+    """Split `text` on `sep`, but only at paren/bracket depth 0 — so
+    `COUNT(*) FILTER (WHERE a = 1, b = 2)` (hypothetical) is not sliced
+    inside the FILTER's own parens."""
+    parts: list[str] = []
+    depth = 0
+    current: list[str] = []
+    for ch in text:
+        if ch in "([":
+            depth += 1
+        elif ch in ")]":
+            depth -= 1
+        if ch == sep and depth == 0:
+            parts.append("".join(current))
+            current = []
+        else:
+            current.append(ch)
+    parts.append("".join(current))
+    return parts
+
+
+_PORTAL_DOCUMENTS_SQL_FILES = (
+    "apps/backend-rag/backend/services/portal/portal_service.py",
+    "apps/backend-rag/backend/services/portal/_mixins/documents.py",
+    "apps/backend-rag/backend/services/portal/_mixins/dashboard.py",
+)
+
+_TRIPLE_QUOTED_SQL = re.compile(r'(?:f)?"""(.*?)"""', re.DOTALL)
+_SQL_CLAUSE_KEYWORDS = {
+    "where", "on", "set", "order", "group", "limit", "having", "union",
+    "join", "left", "right", "inner", "full", "cross", "returning", "as",
+}
+_TABLE_ALIAS = re.compile(
+    r"\b(?:FROM|JOIN|UPDATE)\s+([a-zA-Z_]\w*)(?:\s+(?:AS\s+)?([a-zA-Z_]\w*))?",
+    re.I,
+)
+_COMPARISON = re.compile(r"\b([a-zA-Z_][\w.]*)\s*(?:=|!=|<>|<=|>=|<|>|\bIS\b)", re.I)
+
+
+def _documents_reference_mode(blob: str) -> tuple[bool, set[str]]:
+    """`(references_documents, aliases_bound_to_documents)` for one SQL
+    blob. Empty `aliases` with `references_documents` True means `documents`
+    appears with no alias at all (a bare single-table statement) — every
+    unqualified identifier in the blob may be safely checked. A non-empty
+    alias set means `documents` was aliased/joined; only identifiers
+    qualified with one of THOSE aliases are ever checked (see the "Scope"
+    note above for why an other-table alias is never resolved to
+    `documents`)."""
+    references = False
+    aliases: set[str] = set()
+    for table, alias in _TABLE_ALIAS.findall(blob):
+        if table.lower() != "documents":
+            continue
+        references = True
+        if alias and alias.lower() not in _SQL_CLAUSE_KEYWORDS:
+            aliases.add(alias.lower())
+    return references, aliases
+
+
+def _documents_column_refs(blob: str, aliases: set[str]) -> set[str]:
+    """Bare (if `aliases` is empty) or alias-qualified (for `aliases`)
+    column-shaped identifiers referenced in `blob`'s SELECT list and
+    comparison/`IS` predicates."""
+    candidates: set[str] = set()
+
+    def _take(token: str) -> None:
+        token = token.strip()
+        if not token:
+            return
+        if "." in token:
+            qualifier, _, col = token.rpartition(".")
+            if aliases and qualifier.lower() in aliases:
+                candidates.add(col)
+        elif not aliases:
+            candidates.add(token)
+
+    select_match = re.search(r"\bSELECT\b(.*?)\bFROM\b", blob, re.I | re.DOTALL)
+    if select_match:
+        for item in _top_level_split(select_match.group(1)):
+            item = re.split(r"\s+AS\s+", item.strip(), maxsplit=1, flags=re.I)[0].strip()
+            if re.fullmatch(r"[a-zA-Z_][\w.]*", item):
+                _take(item)
+
+    for token in _COMPARISON.findall(blob):
+        _take(token)
+
+    return candidates
+
+
+def test_portal_documents_queries_only_reference_columns_that_exist() -> None:
+    """See the "Invariant 7 (extended)" block comment above."""
+    checked_any = False
+    for rel in _PORTAL_DOCUMENTS_SQL_FILES:
+        path = _repo_root() / rel
+        assert path.exists(), f"{rel} missing — update this test's file list"
+        src = path.read_text(encoding="utf-8")
+
+        for blob in _TRIPLE_QUOTED_SQL.findall(src):
+            if "documents" not in blob.lower():
+                continue
+            if re.search(r"INSERT\s+INTO\s+documents\b", blob, re.I):
+                continue  # owned by test_documents_upload_insert_only_projects_columns_that_exist
+
+            references, aliases = _documents_reference_mode(blob)
+            if not references:
+                continue
+            checked_any = True
+
+            refs = _documents_column_refs(blob, aliases)
+            bad = refs - _DOCUMENTS_LIVE_COLUMNS
+            assert not bad, (
+                f"{rel} references `documents` column(s) {sorted(bad)} that "
+                "do not exist on the live table (verified via "
+                "information_schema.columns, 2026-09-11). Same class as "
+                "`storage_path`/`extracted_text` in the upload INSERT, just "
+                "reached through a SELECT/WHERE/FILTER/UPDATE instead — "
+                "exactly how `get_upload_metrics`'s `extracted_text IS NOT "
+                "NULL` FILTER shipped with no test at all. If the column is "
+                "genuinely new, add the migration AND update "
+                "`_DOCUMENTS_LIVE_COLUMNS` in the same commit; otherwise fix "
+                "the query."
+            )
+
+    assert checked_any, (
+        "No non-INSERT `documents` query matched across "
+        f"{_PORTAL_DOCUMENTS_SQL_FILES} — either every query moved/changed "
+        "shape, or this test's regex stopped matching. Update the file list "
+        "or the regex rather than deleting the check."
+    )

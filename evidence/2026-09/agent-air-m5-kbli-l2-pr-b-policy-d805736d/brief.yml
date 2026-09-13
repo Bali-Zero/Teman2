@@ -1,0 +1,59 @@
+task_id: kbli-l2-pr-b-reingest-20260911
+gear: 3
+l_level: L2
+gate_class: opus
+# Floor for this diff: 3, source `size` (the 36 MB canonical rewritten in three tracked copies).
+# Gear 3 declared; evidence/pack.yml is mandatory and present.
+objective: >-
+  PR-B of docs/specs/2026-09-11-kbli-l2-oss-resnapshot-reingest-spec.md: re-ingest the KBLI L2
+  risk layer (per_skala tiers, perizinan/persyaratan/kewajiban/kewenangan, _l2_*) from the frozen
+  2026-09-11 OSS vault for the 1559 codes, through a MERGE policy that leaves every later layer
+  (jangka_waktu enrichment, fiktif_positif, the l4 cure labels, the per_skala quarantine) as its
+  owner left it; bump metadata to v11.0-L2-oss-risk-20260911 with the snapshot provenance and the
+  PP28_2025 source fix; re-emit the artifacts pinned to the canonical.
+constraints:
+  - >-
+    Cure-owned data is never re-derived: per_skala_disputed_* codes (119) are skipped, a NO_BESAR
+    verdict never rewrites l4_bali (the no-Besar-row inference is withdrawn), l4_bali is rewritten
+    only where the recomputed verdict moved, _l4_needs_review is never written.
+  - >-
+    Absences are not applied: the 13 codes with scope in July and 404 today keep their rows and
+    are marked absent_pending_corroboration with absent_probes (methodology P3).
+  - >-
+    No network, no credentials: both vaults are frozen on disk; the September one is chmod a-w
+    with a sha256 manifest. apps/backend-rag/scripts/build_kbli_l2_oss_risk.py untouched.
+acceptance:
+  - text: >-
+      A1 (rule 4): WHEN the adapter runs over the frozen July vault and the transform dry-runs
+      against the v10.0 canonical (origin/main) SHALL print a SUMMARY line with changed_codes=0.
+    probe: git show origin/main:data/source_documents/KBLI_2025_FINAL_CLEAN.json > /tmp/l2b/root/data/source_documents/KBLI_2025_FINAL_CLEAN.json && python3 scripts/build_kbli_l2_oss_risk.py --root /tmp/l2b/root --raw /tmp/l2b/july.jsonl | grep '^SUMMARY'
+  - text: >-
+      A2 Bites (rule 5): WHEN the committed canonical is diffed against origin/main SHALL show
+      tier-set changes on exactly the pinned 181 codes minus 20111 plus {93111, 93112, 93119},
+      absent_probes on exactly the 13 old-only codes, and no top-level field differing on any
+      code outside pinned ∪ new-only ∪ old-only.
+    probe: python3 /tmp/l2b/field_diff_b.py /tmp/l2b/main_canonical.json data/source_documents/KBLI_2025_FINAL_CLEAN.json /tmp/l2b/changed_pinned.txt /tmp/l2b/field_diff_sept3.md | grep -E 'tier-set changed|absent_pending codes == old_only'
+  - text: >-
+      A3: WHEN the merge-policy, reproduction and adapter tests run SHALL pass, and WHEN the
+      whole scripts/kbli_filiera suite runs SHALL pass with the re-emitted artifacts and the
+      re-measured count pins.
+    probe: python3 -m pytest scripts/kbli_filiera/tests -q -p no:cacheprovider | tail -1
+  - text: >-
+      A4: WHEN the sidecar test and the dataset-sync check run SHALL pass (sha == committed
+      canonical, five copies identical).
+    probe: (cd apps/mouth && npx vitest run src/lib/kbli-dataset-version.test.ts | grep Tests) && scripts/sync_kbli_dataset.sh --check | tail -1
+assumptions:
+  - text: >-
+      The v10.0 canonical is exactly what the transform reproduces from the July vault under the
+      merge policy, so every September difference is OSS data, not transform drift.
+    status: verified
+    probe: "A1 measured 2026-09-11: SUMMARY changed_codes=0 quarantined_skipped=119 rows_fresh=0"
+  - text: >-
+      derive_fiktif_positif.py is idempotent on unchanged rows, so running it after --apply touches
+      only the fresh rows.
+    status: verified
+    probe: "dry-run on the v10.0 canonical: codes touched 0; after --apply: 329 rows changed, all fresh, 0 non-fiktif changes"
+  - text: >-
+      The kewenangan drift on ~1290 codes is OSS de-duplicating authority lists, not a parser change.
+    status: verified
+    probe: "row classification: 4928 same-set (order/dup), 1355 subset, 29 superset, 19 different; parse_per_skala unchanged since PR-A"

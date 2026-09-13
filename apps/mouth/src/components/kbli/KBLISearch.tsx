@@ -45,6 +45,11 @@ export function KBLISearch({
   const router = useRouter();
   const containerRef = React.useRef<HTMLDivElement>(null);
   const inputRef = React.useRef<HTMLInputElement>(null);
+  // useId, not a literal: this component is rendered more than once per page
+  // (hero + inline), and two listboxes sharing an id would make every
+  // aria-controls / aria-activedescendant reference point at the first one.
+  const listboxId = React.useId();
+  const optionId = (index: number) => `${listboxId}-option-${index}`;
 
   // Sync initialQuery on mount only (URL ?q= pre-fill).
   // Not in dep array — intentional: user can freely edit after mount.
@@ -164,6 +169,11 @@ export function KBLISearch({
     }
   };
 
+  // The dropdown shows for results OR for the error banner, and the listbox
+  // node lives inside it in both cases — so aria-controls resolves whenever
+  // aria-expanded is true.
+  const isDropdownOpen = isOpen && (results.length > 0 || Boolean(searchError));
+
   return (
     <div ref={containerRef} className={cn("relative w-full", className)}>
       <div className="relative group">
@@ -183,6 +193,13 @@ export function KBLISearch({
           onFocus={() => query.length >= 2 && setIsOpen(true)}
           placeholder={placeholder}
           aria-label={placeholder || "Search KBLI"}
+          role="combobox"
+          aria-expanded={isDropdownOpen}
+          aria-controls={listboxId}
+          aria-autocomplete="list"
+          aria-activedescendant={
+            activeIndex >= 0 ? optionId(activeIndex) : undefined
+          }
           className={cn(
             "w-full pl-12 pr-10 py-4 bg-white/[0.04] backdrop-blur-xl border border-white/[0.08] rounded-2xl text-white placeholder-zinc-400",
             "shadow-[0_4px_20px_rgba(0,0,0,0.3),inset_0_1px_0_rgba(255,255,255,0.04)]",
@@ -202,9 +219,15 @@ export function KBLISearch({
         )}
       </div>
 
+      <div className="sr-only" role="status" aria-live="polite">
+        {isDropdownOpen && results.length > 0
+          ? `${results.length} KBLI codes found`
+          : ""}
+      </div>
+
       {quickFilters && quickFilters.length > 0 && (
         <div className="mt-4 flex flex-wrap items-center gap-2 justify-center lg:justify-start">
-          <span className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mr-2">
+          <span className="text-xs font-semibold text-zinc-400 uppercase tracking-wider mr-2">
             Quick:
           </span>
           {quickFilters.map((filter) => (
@@ -228,7 +251,7 @@ export function KBLISearch({
       )}
 
       {/* Results dropdown — also shown when there is a search error */}
-      {isOpen && (results.length > 0 || searchError) && (
+      {isDropdownOpen && (
         <div className="absolute z-50 w-full mt-2 bg-[#1c1c1f]/95 backdrop-blur-2xl border border-white/[0.08] rounded-xl shadow-[0_16px_48px_rgba(0,0,0,0.5)] overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
           {/* Error banner — shown above results when search fails */}
           {searchError && (
@@ -237,10 +260,18 @@ export function KBLISearch({
               <span className="text-amber-300">{searchError}</span>
             </div>
           )}
-          <div className="max-h-[400px] overflow-y-auto">
+          <div
+            id={listboxId}
+            role="listbox"
+            aria-label="KBLI search results"
+            className="max-h-[400px] overflow-y-auto"
+          >
             {results.map((result, index) => (
               <button
                 key={result.code}
+                id={optionId(index)}
+                role="option"
+                aria-selected={index === activeIndex}
                 onClick={() => handleSelect(result.code)}
                 onMouseEnter={() => setActiveIndex(index)}
                 className={cn(

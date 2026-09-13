@@ -1,0 +1,488 @@
+kimi version 0.35.0
+• Let me read the required files. This is a read-only adversarial pre-review. I should read the brief, contract-lock, the target files, and run searches. Let me start reading in parallel.
+
+• I'll start by reading the brief, contract-lock, and the roster data in parallel.
+
+• Note: the roster has 20 members per claims. Let me count: zainal, heru, ruslana, adit, ari, krisna, dea, surya, candra, damar, vino, veronika, angel, kadek, dewaayu, faisha, asya, rina, sahira, subhi = 20. Wait — the brief's acceptance lists "Zero entry" in marketing. Roster has no "zero" slug! The brief says team page marketing group: ["Zero", "Surya", "Damar", "Subhi"]. But roster has damar in setup, not marketing, and no "zero" entry. So the /team page must have its own grouping/labels that differ from the roster (dept groups). Need to read team/page.tsx.
+
+  Also note brief says publicListBefore team.setup includes Sahira and dept marketing includes Zero... but roster dept for sahira is "support" and there's no marketing dept in TeamDept type. So the team page uses its own arrays with custom groupings — inline lists. That's important: the /team page likely has hardcoded names/groups that reference rosterBySlug per slug. The "Zero" entry may be a hardcoded person NOT in the roster. Interesting for census question.
+
+  Also notable: rosterBySlug ignores publicListed — brief says deliberate.
+
+  Now read the consumers.
+
+• Now reading the four consumer files and the book data/TeamGrid.
+
+• Now read book-data.ts, TeamGrid.tsx, and (marketing)/page.tsx. Also run the census greps myself.
+
+• Now the book files, the marketing page, and re-running the census search myself.
+
+• Now broader census: search for names (Sahira, Faisha, Faysha) across the repo — sitemaps, llms.txt, JSON-LD, API routes, OG routes, static files, backend. Also check (marketing)/page.tsx and whether SocialProof is used on /v2 and home. Also check for other places rendering team names (e.g. "Zainal", "Heru" hardcoded).The wide name grep hit mostly internal/research files. Key checks remaining:
+
+  1. Check llms*.txt and sitemap-ai.xml for team names.
+  2. Check for other places rendering roster names: grep for "Zainal" / "Kadek" etc. in apps/mouth.
+  3. Check whether /team page has JSON-LD.
+  4. Check the (marketing)/page.tsx.
+  5. Check the research map §4.1/§4.2/§7.
+  6. Check the R19 ref via git show (D-B containment — the plan claims measures only; can't fully verify until diff exists, but check whether the current Rumah vars overlap with R19 palette — e.g., rumahVars might already contain a color close to R19 palette. Also "radius 48px 48px 3px 3px" and "22px serif" — serif! D2 says "name 22px serif". SocialProof h2 uses var(--font-serif) already in current code, so serif is current mouth identity. Fine.)
+
+  Also important finding candidates so far:
+
+  A. **Acceptance #1 name list mismatch**: The acceptance says /team must show "every other person live today (Kadek, Rina, the Zero entry, Ruslana, Surya, Ari, Damar, Subhi, Asya, Angel, Dewa Ayu, Veronika, Adit, Krisna, Dea, Candra, Vino, Zainal, Heru)" — 19 names. But the book test says "keep the other 18 entries". The book currently has 20 (PUBLIC_ROSTER all 20), after exclusion 18. /team shows 20 editorial entries (including Zero not in roster; 19 roster slugs + Zero = 20 cards; removing 2 → 18 cards). Consistent-ish.
+
+  B. **Census gap — `PUBLIC_ROSTER` consumed only by book?** book-data uses PUBLIC_ROSTER. Any other consumers of PUBLIC_ROSTER? grep showed only book-data. rosterByDept — no consumers? Not found outside roster itself. OK.
+
+  C. **Census: names appearing elsewhere** — need to check llms.txt and sitemap-ai.xml, and any hardcoded team member names in other public pages (e.g., /visa/second-home/studio page may mention Ari; that's fine — not roster-driven). The mandate is about "roster person published" — the exclusions apply to Faisha/Sahira. Search apps/mouth for "Sahira|Faisha" specifically. From the big grep, apps/mouth didn't appear in the truncated output except... I saw none in apps/mouth besides roster/team page. Let me verify with a scoped grep in apps/mouth.
+
+  D. **SocialProof default-preservation hole**: The plan adds exclusion filter to SocialProof itself (D3: applied in /team, SocialProof, about, book-data). But the exclusion filter in SocialProof changes... currently SocialProof lists zainal, heru, ruslana, veronika, adit, angel — none excluded. So filter is a no-op today. Default invariance test would pass. But the failure mode: the mutant test for SocialProof — removing the filter from SocialProof — would NOT make its consumer test go red, because SocialProof's current spec lists contain neither sahira nor faisha! The acceptance says "WHEN the presentation filter is removed from any one consumer, THEN that consumer's test SHALL fail". For SocialProof, removing the filter changes nothing since FOUNDERS_SPEC/TEAM_SPEC don't include the excluded slugs. So the mutant cannot be detected unless the test asserts the filter is applied structurally (e.g., mock rosterBySlug... or assert that the component calls the filter). Same for /v2/company/about (its list has zainal, heru, ruslana, krisna, asya — no excluded slugs). So 2 of the 4 mutants are undetectable by behavioral tests. This is a genuine BLOCKER against acceptance #3 as written: "four mutants, one per consumer, each run and restored byte-identical" — a mutant that removes the filter from SocialProof leaves all tests green. The plan needs structural assertions (e.g., spy on the filter function, or source-level assertion importing the module) — which is weak — or the acceptance is unfalsifiable for those two consumers.
+
+  E. **Filter design / where the owner's instruction lives**: The two excluded slugs live in `team-public-listing.ts`. The roster is the SSOT and `publicListed` is its flag, but roster is read-only this window. The chosen place = new module. Failure mode: drift — if the roster later sets publicListed: false for someone else, filter honors it; but the two slugs are hardcoded in the filter. That's the second source of truth the question asks about. Alternative: since roster can't be edited, the filter module is the only place possible — acceptable, but the failure mode is: roster owner later flips publicListed and forgets the hardcoded slugs, or renames slug. Also `resolve()` in team page falls back: for excluded members, `rosterBySlug('sahira')` still resolves (roster unchanged), so if a consumer forgets the filter, the person leaks with full name/photo. The filter must be applied where the spec lists are built. Note also that team page MARKETING_TEAM contains "Zero" with nameOverride and no slug — filter keyed on slug must also handle entries without slug; a slug-less entry can't be excluded by slug filter — fine, Zero stays.
+
+  Important subtlety: the filter "honouring publicListed !== false AND the two owner-ordered slugs" — PUBLIC_ROSTER already filters publicListed !== false. So new filter adds slug exclusion. Where should the owner instruction live so it cannot drift? Options: the filter module with a test asserting exactly the two slugs; plus the invariant "EXCLUSION IS PRESENTATION-ONLY: the two excluded slugs appear in the diff only inside team-public-listing.ts (and its test)". Good. Failure mode: a future consumer that reads PUBLIC_ROSTER or rosterBySlug directly bypasses it — the census mitigates today but nothing prevents future surfaces; the filter name/shape should be the natural import (e.g., re-export PUBLIC_ROSTER-like API). Also the book consumes PUBLIC_ROSTER directly; if filter module exports `PUBLIC_LISTED_ROSTER`, drift possible.
+
+  F. **Question 3: leak with all four tests green.** Construct: on /team page, filtering after `.map(resolve)` — if the filter is applied to TeamMember (resolved objects keyed by name), then "Faisha" name match... Actually simpler: the filter is applied at entry level by slug. A leak path: `nameOverride`/`photoOverride` bypass. E.g., an editorial entry for Faisha without `slug` but with nameOverride "Faisha" would not be caught by a slug-based filter. Not present today though. Another: the acceptance test checks rendered names "Faisha"/"Sahira" as strings. A consumer could leak the person under a different display string (e.g., nameOverride "Faysha" — note the roster email is faysha.tax@; the owner order says "Faysha/Faisha" both spellings). Tests asserting absence of "Faisha" and "Sahira" would stay green while the person leaks as "Faysha" or via photo `/static/team/faisha.jpg` or initials "FA". Also alt text. Also: the /team page editorial gradients — if the implementer filters entries but the test only checks names. Also JSON-LD or metadata could leak. Also the team page's `roleOverride: "Executive Consultant"` for sahira — after filtering the entry, fine.
+
+  Also another leak: SocialProof photo of excluded people — not present. Book: TEAM_MEMBERS from PUBLIC_ROSTER includes all 20; the filter at book-data. But TeamModal might have per-person content? TeamModal renders member details; data from TEAM_MEMBERS only. OK.
+
+  G. **Perimeter check**: scope lists 14 files. `apps/mouth/e2e/shweb-team.spec.ts` — new e2e. Wait, `frozenFiles` includes `apps/mouth/e2e/persona-doors.spec.ts` — fine. SocialProof.module.css is "new" — but does SocialProof already have a module css? There's a `socialproof-grid` class used in SocialProof.tsx line 179 — where is it defined? Maybe in globals.css! Check: `socialproof-grid` — if it's defined in globals.css, then adding SocialProof.module.css is fine, but D2's "drops the four-row list" only in variant. Also check (marketing)/page.tsx current usage and whether "founder graft" is one prop.
+
+  H. **D-B containment**: R19 ref files — check for the banned tokens. The invariant says diff contains none of the banned hexes (case?). Hex codes could be smuggled in lowercase (#f7f4ee) — grep is case-sensitive? The invariant should be checked case-insensitively. Also Fraunces/Manrope could arrive via `font-family: var(...)` no; via copying Team.module.css wholesale which references Fraunces var names. The D2 spec mentions "name 22px serif" — mouth already has --font-serif, fine. Also "radius 48px 48px 3px 3px" — from R19, fine (radius isn't identity colour). Also object-position center 32%. OK.
+
+  I. **Acceptance falsifiability**: 
+  - Acceptance 7 (viewport walk) — "no horizontal overflow beyond 1px... measured contrast ≥4.5:1" on pages that include pre-existing content; contrast failures in pre-existing elements (e.g., text-tertiary on surface) would fail the probe for reasons unrelated to the change; conversely it can pass while the new R19 rhythm is wrong. Also "every interactive target ≥44px" — pre-existing elements might fail.
+  - Acceptance on prod curl: "0 occurrences of Faisha and Sahira" — but /api/health... fine. But note the team page metadata description and hero text "18+ specialists" remains — not acceptance-relevant.
+  - The "same other names" on production curl is fragile: names like "Rina" appear as substrings ("Krisna"? no. "Rina" in "Karina"? not present). Curl counting "Ari" would match "Ari" inside many words ("Bali" no; "Safari"? in UA maybe). Counting occurrences of short names via curl is a weak probe — "Ari" matches "Imigrasi"? no. "Dea" matches? Hmm "Adit" matches... Actually "curl shows 0 occurrences of Faisha" is fine for the excluded; "same other names" is vague/unfalsifiable as written (how many? where? substring collisions).
+  - Acceptance 1 probe is vitest + before/after table — but /team role labels: "with the role label they carry today" — roleOverrides preserved; checkable.
+
+  J. **Census — other surfaces publishing roster people**: need to check:
+  - llms.txt files (public) — check for team names.
+  - sitemap.ts — just routes.
+  - /visa/second-home/studio and /visa/voa pages may name Ari/Surya (that's desired, not excluded).
+  - Check apps/mouth for "Kadek" etc. broadly.
+  - The GoogleReviewsBlock — reviews authors, not team.
+  - opengraph-image routes? Glob found none besides static og-image.jpg.
+  - Backend: email_branding.py — server-side, registered.
+  - Check `apps/mouth/src/app/(blog)/team/` for opengraph or JSON-LD — the page read has no JSON-LD.
+
+  Let me run: grep names in apps/mouth; grep socialproof-grid; read (marketing)/page.tsx; read research map §4/§7; git show R19 files (check banned tokens + measures); check llms.txt for names.
+
+• The wide grep mostly hit internal files. Now scoping the census to public surfaces and reading the remaining references.
+
+• Key facts gathered:
+
+  1. `socialproof-grid` is defined in `globals.css:1007` — a FROZEN file. The plan adds a new `SocialProof.module.css` for band rhythm. If the R19 band rhythm requires changing the 2-column grid behavior of `.socialproof-grid`, that lives in globals.css — frozen. The variant CSS must not rely on editing globals. Also the founder band is inside that grid. OK — the plan says variant via module CSS; fine, but a risk: `socialproof-grid` media query in globals.css constrains layout; new module CSS can override per-variant.
+
+  2. The workspace surfaces (team-management, lkpm, TaxTab) mention Faisha/Sahira — internal, fine (registered only process/[id], but team-management also lists photos; internal workspace surface, not public — should be registered too; census registered only process/[id] and backend. team-management/page.tsx maps slugs to photos directly, NOT via roster import, so the census grep (roster symbols) missed it. It's internal, so exclusion doesn't apply, but census completeness claim "no other surface" — it's internal; the mandate is public surfaces. Minor: census should register it as a non-public, non-roster-symbol surface for completeness.)
+
+  3. llms-full.txt mentions "Team Surya" — that's about solar panels? "Note per il Team Surya" — hmm, that's "Tim Surya" probably a person team note in article exports. Surya is kept anyway, not excluded. Not relevant to exclusions. llms.txt files don't include Faisha/Sahira apparently (the apps/mouth grep for Sahira/Faisha found no llms hits). Good.
+
+  4. No OG image routes, no JSON-LD on team page. sitemap.ts is routes only.
+
+  Now read the research map §4.1/§4.2/§7 and the R19 reference files via git show. Also verify served production state? Can't easily curl production? Could, but maybe quick curl to check /team, /book/team for occurrences — the brief already measured. As adversarial reviewer I could verify quickly, but it's optional. Let me try a quick curl to validate baseline claims (this informs acceptance #2 "today the book does contain them — measured"). Also check git worktree status: is the diff empty (state BOZZA)?
+
+  Also check rumahVars.ts for current colors (to know whether #F7F4EE etc. might already exist in mouth palette — D-B containment: home page canvas is "#f7f6f2" — very close to R19 #F7F4EE! A reviewer should note the smuggle risk: "#f7f6f2" vs "#F7F4EE" are visually near-identical; a diff could claim "current canvas" while actually nudging to R19 paper. Conversely the R19 grep invariant must be case-insensitive and also watch rgb()/hsl forms).
+
+  Let me read the research map and R19 files.
+
+• Now the R19 reuse map and the R19 reference files via `git show`..band { width: min(1320px, 90%); margin: 48px auto; padding: 28px 0; border-block: 1px solid var(--line); display: grid; grid-template-columns: minmax(180px, .9fr) minmax(420px, 1.7fr) auto; gap: 30px; align-items: center; }
+.eyebrow { display: block; color: var(--copper); font: 600 10px/1.6 var(--sans); letter-spacing: .18em; text-transform: uppercase; }
+.bandIntro h2 { max-width: 270px; margin-top: 9px; font: 28px/1.12 var(--serif); letter-spacing: -.03em; }
+.founders { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; }
+.founder { margin: 0; display: flex; align-items: center; gap: 14px; min-width: 0; }
+.founder img { width: 78px; height: 94px; flex: 0 0 78px; object-fit: cover; object-position: center 32%; border-radius: 48px 48px 3px 3px; }
+.founder strong { display: block; font: 22px/1.12 var(--serif); }
+.founder figcaption span { display: block; max-width: 180px; margin-top: 7px; color: var(--muted); font: 12px/1.5 var(--sans); }
+.teamLink { display: inline-flex; align-items: center; justify-content: space-between; gap: 22px; min-height: 48px; padding: 14px 0; border-bottom: 1px solid var(--forest); color: var(--forest); font: 600 14px/1.4 var(--sans); }
+.bandLinks { display: grid; gap: 4px; }
+.storyLink { display: inline-flex; align-items: center; justify-content: space-between; gap: 22px; min-height: 44px; color: var(--muted); font: 500 13px/1.4 var(--sans); }
+@media (max-width: 1100px) { .bandLinks { grid-column: 1/-1; justify-self: end; min-width: 160px; } }
+@media (max-width: 700px) { .bandLinks { width: 100%; } }
+.page, .header, .footer { width: min(1200px, 90%); margin-inline: auto; }
+.header { display: flex; align-items: center; justify-content: space-between; gap: 24px; padding-block: 24px; border-bottom: 1px solid var(--line); }
+.header img { width: 62px; height: 62px; }
+.header nav { display: flex; gap: 24px; }
+.header nav { flex-wrap: wrap; justify-content: flex-end; }
+.header nav a { display: inline-flex; align-items: center; min-height: 44px; }
+.pageIntro { padding-block: 64px 54px; max-width: 750px; }
+.pageIntro h1 { margin: 18px 0 22px; font-size: clamp(42px, 6vw, 76px); letter-spacing: -.045em; }
+.pageIntro p { max-width: 640px; font-size: 18px; line-height: 1.65; }
+.section { padding-block: 36px 54px; border-top: 1px solid var(--line); }
+.section h2 { font-size: clamp(30px, 4vw, 44px); margin-bottom: 30px; }
+.section .eyebrow { margin-bottom: 12px; }
+.leadershipGrid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 32px; }
+.leader img { height: auto; aspect-ratio: 6/7; object-fit: cover; object-position: center 30%; border-radius: 3px; }
+.leader h3, .person h3 { font-size: 28px; margin: 18px 0 7px; }
+.leader p, .person p { font-size: 14px; }
+.directory { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); column-gap: 28px; row-gap: 44px; }
+.portrait { position: relative; aspect-ratio: 3/4; overflow: hidden; background: var(--paper); mix-blend-mode: darken; border-bottom: 1px solid var(--line); clip-path: inset(2% 0 0); }
+.portrait img { position: absolute; width: 400%; height: 400%; max-width: none; object-fit: fill; }
+.projectLink { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; color: var(--copper); font-size: 12px; margin-top: 10px; }
+.invitation { display: flex; align-items: center; justify-content: space-between; gap: 32px; border-top: 1px solid var(--line); padding-block: 38px 50px; }
+.invitation h2 { font-size: 32px; margin-bottom: 10px; }
+.footer { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 16px; padding-block: 24px; border-top: 1px solid var(--line); font-size: 14px; }
+.skip { position: absolute; top: 8px; left: 12px; padding: 12px; background: var(--paper); z-index: 100; transform: translateY(-180%); }
+.skip:focus { transform: translateY(0); }
+@media (max-width: 1100px) { .band { grid-template-columns: 1fr 2fr; gap: 22px; } .band .teamLink { grid-column: 1/-1; justify-self: end; } .directory { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 700px) { .band { grid-template-columns: 1fr; gap: 22px; padding-block: 26px; margin-block: 32px; } .bandIntro h2 { max-width: none; font-size: 27px; } .founders { gap: 16px; } .founder { gap: 10px; align-items: flex-start; } .founder img { width: 60px; height: 76px; flex-basis: 60px; } .founder strong { font-size: 20px; } .founder figcaption span { font-size: 11px; } .band .teamLink { justify-self: start; } .pageIntro { padding-block: 40px; } .directory { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 30px 20px; } .leadershipGrid { gap: 20px; grid-template-columns: repeat(2, minmax(0, 1fr)); } .leader h3, .person h3 { font-size: 24px; } .header nav { gap: 16px; font-size: 13px; } .invitation { align-items: flex-start; flex-direction: column; gap: 16px; } }
+@media (max-width: 400px) { .founder { flex-direction: column; } .leader p, .person p { font-size: 12px; } }
+
+/* Dedicated Team page: the approved homepage founder band stays unchanged. */
+.pageTheme {
+  --paper: #f7f4ee;
+  --ink: #1d2c3b;
+  --forest: #233d52;
+  --copper: #a44b36;
+  --muted: #58626b;
+  --line: #dad8d1;
+  --wash: #eae3d8;
+  --surface: #fffcf7;
+  --serif: "Fraunces", Georgia, serif;
+  --sans: "Manrope", Arial, sans-serif;
+  min-height: 100svh;
+  background: var(--paper);
+  color: var(--ink);
+  font: 400 1rem/1.6 var(--sans);
+}
+.pageTheme :is(h1, h2, h3) {
+  font-family: var(--serif);
+  font-weight: 450;
+  text-wrap: balance;
+}
+.pageTheme :focus-visible { outline-color: var(--copper); }
+.groupNav { display: flex; flex-wrap: wrap; gap: 8px 22px; margin-top: 26px; }
+.groupNav a { display: inline-flex; align-items: center; min-height: 44px; font: 600 13px/1.4 var(--sans); border-bottom: 1px solid var(--line); color: var(--forest); }
+.groupNav a:hover { color: var(--copper); border-color: var(--copper); }
+.leadershipIntro { display: flex; align-items: baseline; flex-wrap: wrap; gap: 0 36px; margin-bottom: 30px; }
+.leadershipIntro > .eyebrow { flex-basis: 100%; }
+.leadershipIntro h2 { margin-bottom: 0; }
+.leadershipIntro > .teamLink { margin-left: auto; }
+.responsibilityGroup { display: grid; grid-template-columns: minmax(0, .8fr) minmax(0, 2fr); gap: 60px; border-top: 1px solid var(--line); padding-block: 56px 64px; }
+.groupIntro { max-width: 285px; }
+.groupIntro h2 { font-size: clamp(30px, 3.2vw, 40px); line-height: 1.12; margin-block: 14px 20px; }
+.groupIntro p { font-size: 15px; line-height: 1.75; color: var(--muted); margin-bottom: 18px; }
+.groupIntro .teamLink { font-size: 13px; gap: 14px; }
+.groupDirectory { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 38px 24px; align-items: start; }
+.groupDirectory > :only-child { max-width: 260px; }
+.groupDirectory .person { min-width: 0; }
+.groupDirectory .person p { color: var(--muted); }
+.groupDirectory .portrait { aspect-ratio: 3/4; }
+@media (max-width: 1000px) { .responsibilityGroup { gap: 30px; } .groupDirectory { gap: 28px 18px; } }
+@media (max-width: 700px) { .leadershipIntro { display: block; } .leadershipIntro > .teamLink { margin-top: 12px; } .responsibilityGroup { grid-template-columns: 1fr; gap: 26px; padding-block: 34px 42px; } .groupIntro { max-width: none; } .groupDirectory { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 30px 20px; } .groupNav { gap: 5px 18px; } .groupNav a { font-size: 12px; } }
+.pageTheme .header { min-height: 88px; padding-block: 12px; }
+.pageTheme .header nav { font-size: 13px; }
+.pageTheme .pageIntro { max-width: 920px; padding-block: clamp(48px, 6vw, 88px) 56px; }
+.pageTheme .pageIntro h1 { max-width: 19ch; font-size: clamp(40px, 5.5vw, 72px); line-height: 1.06; letter-spacing: -.035em; }
+.pageTheme .pageIntro p { font-size: clamp(16px, 1.4vw, 18px); line-height: 1.7; }
+.pageTheme .section { padding-block: 36px 48px; }
+.pageTheme .section h2 { font-size: clamp(28px, 3.2vw, 38px); line-height: 1.14; }
+.pageTheme :is(.leader h3, .person h3) { font-size: clamp(23px, 2.1vw, 28px); line-height: 1.15; letter-spacing: -.025em; }
+.pageTheme .leader { min-width: 0; }
+.pageTheme .leader img { display: block; width: 100%; border-radius: 0; }
+.pageTheme .person h3 { margin-top: 16px; }
+.pageTheme .groupIntro h2 { letter-spacing: -.03em; }
+.pageTheme :is(.leader p, .person p) { font-size: 14px; line-height: 1.6; }
+.pageTheme .projectLink { font-size: 13px; }
+.pageTheme .invitation { margin-block: 16px 64px; padding: 32px; border: 1px solid var(--line); background: var(--wash); }
+.pageTheme .invitation h2 { font-size: clamp(28px, 3vw, 36px); line-height: 1.15; }
+.pageTheme .invitation .teamLink { padding: 12px 22px; border: 1px solid var(--forest); background: var(--forest); color: #fff; white-space: nowrap; }
+.pageTheme .invitation .teamLink:hover { background: var(--ink); border-color: var(--ink); text-decoration: none; }
+.pageTheme .footer { align-items: center; padding-block: 16px; }
+.pageTheme .footer a { display: inline-flex; align-items: center; min-height: 44px; }
+@media (max-width: 700px) {
+  .pageTheme .header { gap: 12px; }
+  .pageTheme .header nav { gap: 14px; font-size: 12px; }
+  .pageTheme .pageIntro { padding-bottom: 36px; }
+  .pageTheme .section { padding-block: 28px 36px; }
+  .pageTheme .section h2 { margin-bottom: 24px; }
+  .pageTheme .invitation { margin-block: 4px 40px; padding: 24px; }
+  .pageTheme .invitation .teamLink { width: 100%; justify-content: center; white-space: normal; }
+  .pageTheme .footer { gap: 0 16px; }
+}
+===
+import Link from "next/link";
+import { founders } from "../content/team";
+import styles from "./Team.module.css";
+
+export function Team() {
+  return (
+    <section className={styles.band} id="team" aria-labelledby="team-heading">
+      <div className={styles.bandIntro}>
+        <span className={styles.eyebrow}>The people behind Bali Zero</span>
+        <h2 id="team-heading">Local roots. Personal commitment.</h2>
+      </div>
+      <div className={styles.founders}>
+        {founders.map((founder) => (
+          <figure className={styles.founder} key={founder.name}>
+            <img alt={founder.name} src={founder.image} width="88" height="104" loading="lazy" />
+            <figcaption><strong>{founder.name}</strong><span>{founder.role}</span></figcaption>
+          </figure>
+        ))}
+      </div>
+      <div className={styles.bandLinks}>
+        <Link className={styles.teamLink} href="/team" prefetch={false}>
+          Meet our team <span aria-hidden="true">→</span>
+        </Link>
+        <Link className={styles.storyLink} href="/about" prefetch={false}>
+          Our story <span aria-hidden="true">→</span>
+        </Link>
+      </div>
+    </section>
+  );
+}
+
+
+• Key observations for D-B containment: the R19 Team.module.css uses var(--paper/--forest/--copper/--serif/--sans) — if the implementer copies the R19 CSS and "re-maps" the variables to mouth values, the variable NAMES (--copper, --forest) carry R19 semantics but not identity — acceptable. But the risk: copying `.pageTheme` block verbatim (contains all 8 banned hexes + Fraunces/Manrope). The invariant catches hexes only if grep is case-insensitive — the banned list is uppercase; R19 files use lowercase #f7f4ee. A grep for "#F7F4EE" case-sensitive would MISS lowercase occurrences! The contract-lock invariant lists uppercase hexes. If the check is `grep -F '#F7F4EE'` it's case-sensitive and the R19 source is lowercase — trivially smuggled through the check. That's a concrete attack on acceptance/invariant. Correction: case-insensitive grep + rgb() equivalents.
+
+  Also: `git show 6603d2913e:apps/website/src/content/team.ts` — let me check the project links (Ari → Studio, Surya → E-VOA) to verify planned URLs match. And check what URLs: brief says /visa/second-home/studio and /visa/voa. R19 content/team.ts may point to different paths (R19's own routes). Verify.
+
+  Also check whether /visa/voa exists in apps/mouth — brief claims verified 200 on production at 03:03Z. Quick check: Glob apps/mouth/src/app/visa/**/page.tsx for voa and second-home/studio.
+
+  Also the team page hero text "18+ specialists" and metadata "since 2006" — fine.
+
+  Another important check on acceptance 1: "every other person live today ... SHALL still appear with the role label they carry today" on /team, home, /v2, /v2/company/about. But home/SocialProof lists only 6 people today; the acceptance lists 19 names for all four surfaces collectively — reads as union, OK.
+
+  Question 3 attack — a concrete leak with all 4 tests green:
+  - The tests assert absence of "Faisha"/"Sahira" strings per consumer and presence of others. A consumer could leak via:
+    (a) photo URL /static/team/faisha.jpg or /static/team/sahira.jpg without the name — tests grep names only. E.g., /team page filters by slug at resolve() but the editorial arrays still contain the entries; if filter is applied on resolved TeamMember by name and name is overridden, leak. More concrete: SocialProof "founder band" variant — new code; if the variant re-implements the roster lookup with its own spec list and the implementer mistakenly includes someone... tests cover it.
+    (b) Better: the exclusion test for the book asserts TEAM_MEMBERS lacks the two. But TeamModal? Book pages also render CHAPTERS heroImage etc. no.
+    (c) The strongest: tests are per-consumer vitest on the component/module. The /team page also renders `GoogleReviewsBlock` — irrelevant. Also `alt` text contains names — tests checking "page source contains 'Faisha'" would catch alt. But if tests only query text nodes via testing-library `queryByText`, a leak in alt/aria/photo URL stays green. Contract probe says "vitest team.test.tsx" without specifying rendered-source assertions. So: leak via alt text, photo src, initials fallback ("FA"/"SA" if name empty) — e.g., an entry whose roster lookup is filtered to undefined renders `name: ""` but photo survives via photoOverride... Actually the cleanest constructed leak: on /team, filter applied to roster lookup (`rosterBySlug` returns undefined for excluded) but the editorial entry still renders with `nameOverride`/`roleOverride`/gradient — e.g. Sahira entry has roleOverride "Executive Consultant" and a gradient; if resolve falls back to name "" but the card still renders with photo from... photo comes from roster (undefined). Hmm — but a TeamCard with empty name would render empty. If instead the filter excludes by returning undefined and the page renders entries anyway, you'd get a card with empty name + initials "" — broken but not leaking. The realistic constructed leak: MARKETING_TEAM-style entry without slug (nameOverride "Faysha") — slug-based filter never sees it; all tests checking roster-slug filtering pass. That directly exploits the "Zero" pattern: a future (or careless) re-add of an excluded person as a slug-less editorial entry bypasses the filter and the negative mutants. Also the dual spelling "Faysha" — a test asserting absence of "Faisha" misses "Faysha". Correction: tests assert on rendered HTML source for both spellings + photo paths /static/team/{faisha,sahira}.jpg; and the e2e curl probe should grep case-insensitively for faysha|faisha|sahira including static asset paths.
+
+  Also question 4 — default preservation falsity unnoticed: SocialProof is "use client" with module-level FOUNDERS/TEAM computed at import. The planned change adds opt-in prop + new SocialProof.module.css. What could break default unnoticed:
+  - Adding `import styles from "./SocialProof.module.css"` — a CSS module is scoped, fine. But if the implementer moves existing inline styles into the module and misses one, default DOM comparison on /v2 catches it (probe includes served/candidate DOM comparison on /v2). Good.
+  - Sneaky: the founder-band variant "drops the four-row list" — if implemented by changing TEAM_SPEC/FOUNDERS_SPEC computation or CSS that also affects default (e.g., a shared class renamed). DOM comparison catches.
+  - Unnoticed path: `onError` handlers or `sizes` — no.
+  - Real one: the planned probe is "snapshot-free assertions on the default variant + served/candidate DOM comparison on /v2". If the variant prop is threaded with a default value that is truthy under some condition (e.g., `variant = "band"` default, and /v2 renders `<SocialProof />` while home passes nothing...). Actually home must opt-in. If the implementer instead opts-out on /v2 (inverse logic), /v2 stays same but any FUTURE consumer gets the band by default — the probes on /v2 would stay green while the component's default changed. That makes the "default unchanged" claim false-but-unnoticed for every consumer except /v2. Contract says "SocialProof rendered without the new prop produces the same..." — so the invariant requires rendering without prop = old. Test must render without prop, not compare /v2 alone. Minor.
+  - Also: home page uses `<SocialProof />` today — after graft, home passes the prop. But `/v2` uses the same; DOM comparison between served /v2 and candidate /v2 catches changes only on /v2. The default-invariance vitest must mount the component without the prop.
+
+  Question 5 perimeter: scope files listed. Check: does `apps/mouth/e2e/shweb-team.spec.ts` conflict with frozen `persona-doors.spec.ts`? No, new file. The TOTALITY invariant says diff == 14 scope paths + evidence dir. Count scope list: 13 product paths + evidence = 14? brief scope has 14 entries including evidence/**. OK.
+
+  Potential perimeter issue: SocialProof founder band rhythm might require grid changes on `.socialproof-grid` which lives in frozen globals.css:1007. If the band needs different grid behavior at some viewport and the module CSS can't override (specificity ok, CSS module class + variant class can override). Possible but constrained; note as risk: any need to touch globals.css = STOP. Also the home page change is "one opt-in line" — fine.
+
+  Another perimeter subtlety: team page hero/metadata contains "18+ specialists" and SocialProof "All 18+" link text. After removing 2 people from /team (20 editorial cards - 2 = 18 + Zero... let me count /team editorial entries: leadership 4, setup 7, tax 4, accounting 2, marketing 4 = 21 entries, of which one is Zero (non-roster), so 20 roster + Zero = 21 cards. Wait: 4+7+4+2+4 = 21 cards. Remove sahira + faisha → 19 cards. "All 18+" text in SocialProof and "18+ specialists" on /team hero remain true-ish. Fine, not in scope to change; but acceptance #1 says every other person "SHALL still appear" — fine.
+
+  Wait — publicListBefore in contract-lock says team.leadership includes "Veronika" but not... LEADERSHIP = heru, zainal, ruslana, veronika ✓. setup: adit, ari, krisna, dea, candra, vino, sahira ✓ (7). tax: angel, kadek, dewaayu, faisha ✓. accounting: asya, rina ✓. marketing: Zero, surya, damar, subhi ✓. Total 21.
+
+  Now question 2 — where should the owner's instruction live. Options: (a) roster publicListed flag — forbidden this window; (b) new shared module team-public-listing.ts (chosen). Is it a second source of truth next to publicListed? Yes, structurally: two mechanisms (flag + hardcoded slug list) that can drift. But given the roster freeze, it's the only available place; the design mitigates by making the filter ALSO honor publicListed. Failure mode: after the window, roster owner sets publicListed:false on faisha/sahira AND the hardcoded list remains — harmless duplication; the dangerous drift is the reverse: someone renames slug or adds a third excluded person in the roster flag — filter honors flag, fine; or someone edits the roster slug "faisha" → "faysha" — hardcoded slug silently stops matching, person reappears everywhere, and all four consumer tests go RED (good — tests catch it). Actually tests assert absence of "Faisha" the NAME — name would still match if slug renamed but name unchanged. OK the real failure mode: exclusion list keyed by slug, but tests keyed by display name. If roster name changes ("Faisha" → "Faysha"), filter still excludes (slug unchanged) — fine. If slug changes, exclusion silently lapses and name-based tests catch it. Reasonable. But the filter should be tested against the ROSTER (integration): assert that the two slugs exist in TEAM_ROSTER (so a slug rename breaks the filter's own test). That's the smallest correction: team-public-listing.test.ts must assert EXCLUDED_SLUGS ⊆ TEAM_ROSTER slugs.
+
+  Question 7 — acceptance falsifiability:
+  - A1: lists names "Kadek, Rina, ... Heru" — "every other person live today" on /team, home, /v2, /v2/company/about. Home/v2/about don't show Kadek/Rina/Surya etc. today. Reading as union across surfaces it passes. But it can pass while the user-visible outcome is wrong: it says nothing about the R19 composition (the actual objective!) — all tests could pass with zero visual change; the rhythm objective is only covered by A7 (overflow/focus/contrast) which is geometry-agnostic — the old layout could pass those too. So the R19-composition objective is essentially UNFALSIFIABLE as written — no acceptance item pins any R19 measure (container min(1320px,90%), portrait 78×94, radius 48px 48px 3px 3px, 44/48px targets). A7 pins ≥44px targets but current design... SocialProof team rows are 44px (w-11 h-11 avatars), links? The "All 18+" link padding — currently text-[12px] link without min-height — might already violate 44px on /v2 default... but A7 walks "the candidate" at viewports on which pages? Probably /team and home. If it includes /v2 unchanged surfaces, pre-existing violations fail the probe — noise. Which one is unfalsifiable: A3's SocialProof/about mutants (undetectable, as analyzed). And the last prod-curl "same other names" — unfalsifiable/ill-defined (substring counts).
+  - A2: "SHALL keep the other 18 entries" — book TEAM_MEMBERS after filter: 20-2=18 ✓ falsifiable.
+  - A5: links — good, but /visa/voa — verify route exists.
+
+  Let me verify: apps/mouth visa routes for /visa/voa and /visa/second-home/studio, and R19 content/team.ts links. Also verify git status of worktree (BOZZA: no files touched) and check llms*.txt don't include team names of excluded (already confirmed no Sahira/Faisha in apps/mouth outside the found ones).
+
+  Also check apps/mouth/src/app/sitemap.ts includes /team? irrelevant.
+
+  One more census item: `apps/mouth/src/lib/api/schema.d.ts:16032` mentions "Veronika/Kadek/Dewa Ayu/Angel/Faisha" — that's a generated API schema (comment/description from backend OpenAPI). Is it publicly served? schema.d.ts is a TS type file — not served to public, but the backend OpenAPI description may be served at kita.balizero.com/docs. It mentions Faisha. Is that "a public surface that publishes a roster person"? The mandate is about the public site roster consumers; the backend swagger description is a stretch but worth flagging as MINOR — the census claims "no other public surface"; the backend API schema (generated from backend-rag OpenAPI) contains Faisha's name in a description. Whether served publicly: backend docs. Flag as MINOR for completeness of the census, with correction: register it as out-of-scope non-site surface.
+
+  Also apps/mouth/src/app/(workspace)/team-management/page.tsx:37,43 maps sahira/faisha photos directly — internal surface, not via roster symbols; census missed it because it doesn't import roster. It's internal (workspace), so exclusion doesn't apply, but the census's claim of completeness is about roster consumers — team-management doesn't consume the roster. Register as MINOR.
+
+  Now check visa routes + R19 team content + worktree git status.
+
+• Checking the R19 team content (project links), the target routes in apps/mouth, and worktree state./** People and roles carried forward from the reviewed R19 Team component.
+ * Project responsibilities for Ari and Surya were supplied by the owner.
+ * Do not expand these records into biographies without verified source material.
+ */
+export const founders = [
+  { name: "Zainal Abidin", role: "Chief Executive Officer · Founder", image: "/assets/zainal-ceo.jpg" },
+  { name: "Pak Heru", role: "Komisaris · Founder", image: "/assets/heru-komisaris.jpg" },
+] as const;
+
+export const boardMember = { name: "Ruslana", role: "Board Member", image: "/assets/ruslana.jpg" } as const;
+
+export interface TeamMember {
+  name: string;
+  role: string;
+  column: number;
+  row: number;
+  project?: { label: string; href: string };
+}
+
+// Coordinates select the existing portrait from the reviewed 4 × 4 image atlas.
+export const teamMembers: readonly TeamMember[] = [
+  { name: "Veronika", role: "Tax Manager", column: 1, row: 0 },
+  { name: "Dewa Ayu", role: "Tax Consultant", column: 2, row: 0 },
+  { name: "Krisna", role: "Setup Team", column: 3, row: 0 },
+  { name: "Ari", role: "Second Home Studio", column: 0, row: 1, project: { label: "Explore Second Home Studio", href: "/#second-home-studio" } },
+  { name: "Subhi", role: "Zantara · AI", column: 3, row: 1 },
+  { name: "Adit", role: "Supervisor · Lead Setup", column: 0, row: 2 },
+  { name: "Angel", role: "Tax Lead", column: 1, row: 2 },
+  { name: "Candra", role: "Advisor · Ulu Team", column: 2, row: 2 },
+  { name: "Vino", role: "Setup Team", column: 3, row: 2 },
+  { name: "Asya", role: "Accounting", column: 0, row: 3 },
+  { name: "Surya", role: "E-VOA", column: 1, row: 3, project: { label: "Explore E-VOA", href: "/#evoa" } },
+  { name: "Damar", role: "Setup Team", column: 2, row: 3 },
+  { name: "Dea", role: "Advisor · Ulu Team", column: 3, row: 3 },
+];
+
+/** Grouped from approved roles above, not the older page's wider roster. */
+export const responsibilityGroups = [
+  { id: "setup-advisory", title: "Setup & advisory", description: "Company setup, visa intake and the questions around getting established in Indonesia. Start here to discuss the scope of your next application or business project.", people: ["Adit", "Krisna", "Candra", "Vino", "Damar", "Dea"], link: { label: "Explore setup services", href: "/services/company-setup" } },
+  { id: "tax", title: "Tax", description: "Personal and company tax questions, registration and reporting. Explore the service details to prepare for a conversation about your obligations.", people: ["Veronika", "Dewa Ayu", "Angel"], link: { label: "Explore tax services", href: "/services/tax" } },
+  { id: "accounting", title: "Accounting", description: "Accounting support connects the records behind a business with its reporting needs. Contact the team to discuss the records and support your business requires.", people: ["Asya"], link: { label: "Discuss accounting support", href: "/contact?from=team&topic=tax" } },
+  { id: "projects", title: "Projects & digital tools", description: "Ari is responsible for Second Home Studio, Surya for E-VOA, and Subhi works on Zantara. Explore each project's purpose before choosing your next step.", people: ["Ari", "Surya", "Subhi"], link: { label: "Explore our tools", href: "/#tools" } },
+] as const;
+===
+import type { Metadata } from "next";
+import Link from "next/link";
+import { SiteHeader } from "../../components/Entry";
+import { Footer } from "../../components/Footer";
+import { boardMember, founders, responsibilityGroups, teamMembers } from "../../content/team";
+import styles from "../../components/Team.module.css";
+import "../../styles/brand-fonts.css";
+
+export const metadata: Metadata = {
+  title: "Our team — Bali Zero",
+  description: "Meet the founders and team behind Bali Zero, with responsibilities across setup, tax, accounting and digital projects.",
+};
+
+export default function TeamPage() {
+  return (
+    <div className={styles.pageTheme}>
+      <a className="skip" href="#main">Skip to content</a>
+      <SiteHeader />
+      <main id="main" className={styles.page} tabIndex={-1}>
+        <div className={styles.pageIntro}>
+          <span className={styles.eyebrow}>The people · Kerobokan, Bali</span>
+          <h1>Good advice starts with people.</h1>
+          <p>Find the people behind the work, from company setup and advisory to tax, accounting and the tools that help you prepare.</p>
+          <nav aria-label="Team responsibilities" className={styles.groupNav}>
+            <a href="#leadership-heading">Leadership</a>
+            {responsibilityGroups.map((group) => <a href={`#${group.id}`} key={group.id}>{group.title}</a>)}
+          </nav>
+        </div>
+        <section aria-labelledby="leadership-heading" className={styles.section}>
+          <div className={styles.leadershipIntro}><span className={styles.eyebrow}>The people behind Bali Zero</span><h2 id="leadership-heading">Our founders &amp; leadership</h2><Link className={styles.teamLink} href="/about">Our company story <span aria-hidden="true">→</span></Link></div>
+          <div className={styles.leadershipGrid}>
+            {[...founders, boardMember].map((person) => (
+              <article className={styles.leader} key={person.name}>
+                <img src={person.image} alt={person.name} width="360" height="420" loading="lazy" />
+                <h3>{person.name}</h3><p>{person.role}</p>
+              </article>
+            ))}
+          </div>
+        </section>
+        {responsibilityGroups.map((group) => (
+          <section aria-labelledby={group.id} className={styles.responsibilityGroup} key={group.id}>
+            <div className={styles.groupIntro}><span className={styles.eyebrow}>The people you can turn to</span><h2 id={group.id}>{group.title}</h2><p>{group.description}</p><Link className={styles.teamLink} href={group.link.href}>{group.link.label} <span aria-hidden="true">→</span></Link></div>
+            <div className={styles.groupDirectory}>
+              {group.people.map((name) => teamMembers.find((person) => person.name === name)!).map((person) => (
+                <article className={styles.person} key={person.name}>
+                  <div className={styles.portrait}>
+                    <img src="/assets/team-ivory-atlas.png" alt={person.name} width="1086" height="1448" loading="lazy" style={{ left: `${person.column * -100}%`, top: `${person.row * -100}%` }} />
+                  </div>
+                  <h3>{person.name}</h3><p>{person.role}</p>
+                  {person.project && <Link className={styles.projectLink} href={person.project.href}>{person.project.label} <span aria-hidden="true">→</span></Link>}
+                </article>
+              ))}
+            </div>
+          </section>
+        ))}
+        <aside className={styles.invitation}>
+          <div><h2>Not sure who to speak to?</h2><p>Tell us what you’re planning. We’ll start the conversation.</p></div>
+          <Link href="/contact?from=team" className={styles.teamLink}>Talk to our team <span aria-hidden="true">→</span></Link>
+        </aside>
+      </main>
+?? evidence/2026-09/agent-mini-pro2-mouth-shweb-w2-team-20260911-78b02ed9/
+---
+70b43c5459 fix(kb): the bare-`Permen` freeze guard could silently skip the file that broke it (#5746)
+2150e4a00d fix(mouth): align homepage founding year with 2020 (#5838)
+---
+947b181afddf462a71c8a9c3968154d021e47cf2c909f68b9e233f9f180e550e  apps/mouth/src/data/team-roster.ts
+
+
+• Good. Both target routes exist (`/visa/voa`, `/visa/second-home/studio`). Roster sha matches. Worktree clean except evidence dir (BOZZA confirmed).
+
+  Note: R19's own project links are `/#second-home-studio` and `/#evoa` (anchors on R19's home) — the plan correctly substitutes real mouth URLs instead of copying R19 hrefs. Good, but worth noting the correction is right and also that R19's Ari role "Second Home Studio" and Surya "E-VOA" are project labels, while mouth keeps role labels today ("Supervisor"/"Marketing Specialist") plus links. Acceptance #1 says role labels preserved — plan D1 says people stay with role labels today. Consistent.
+
+  One more check for question 1 (census): any API routes in apps/mouth serving team data; also check `app/(blog)/team` for opengraph-image or json-ld; also check `GoogleReviewsBlock`; also confirm no other consumers of `rosterByDept` (none found). Also the e2e dir frozen persona-doors. Also check `apps/mouth/src/app/(blog)/team/` directory contents. Quick check.
+
+  Also — acceptance #1's name list: "Kadek, Rina, the Zero entry, Ruslana, Surya, Ari, Damar, Subhi, Asya, Angel, Dewa Ayu, Veronika, Adit, Krisna, Dea, Candra, Vino, Zainal, Heru" = 19 names. Note "Pak Heru" is the display name; tests must match exactly ("Heru" substring would also match nothing else, fine). "Ari" substring matches "Mario"? No. Fine.
+
+  One subtle bug in acceptance #1 probe: matching "Rina" — substring "Rina" appears in... nothing. "Dea" appears inside "Andreas"? Not in these pages maybe ("Andreas M." review author in SocialProof contains "Andreas" — no "Dea" capital-D. OK.
+
+  Important: SocialProof review authors include "Marco R." etc. — preserved.
+
+  Now the census check for api routes/og: quick grep for "team" in apps/mouth/src/app/api. And check (blog)/team dir. Also verify that llms.txt generation (lib/llms-article-exports) doesn't include team page. Probably not needed — no excluded names found in apps/mouth outside known spots; schema.d.ts is generated from backend. That's enough.
+
+  Let me do one final quick check on team dir and api routes, then write the review. Actually one more relevant check for question 4: SocialProof's `socialproof-grid` in globals.css — frozen. Fine, already noted.
+
+  Also verify the census claim "no W4/W7 surface consumes roster": grep showed NewsHero/LatestNews/Footer/etc. don't import roster (only SocialProof, persona-doors comment mention). PersonaDoors.tsx:32 mention is a comment. OK.
+
+  Now think about which findings to report:
+
+  F1 (BLOCKER) — Negative-mutant acceptance is undetectable for 2 of 4 consumers. SocialProof's FOUNDERS_SPEC/TEAM_SPEC (zainal, heru, ruslana, veronika, adit, angel) and about's TEAM_MEMBERS (zainal, heru, ruslana, krisna, asya) contain neither excluded slug (SocialProof.tsx:47-89, about/page.tsx:22-36). Removing the filter from either consumer changes no rendered output → its consumer test cannot go red → acceptance item 3 ("one guilt mutant per consumer … SHALL fail") is unfalsifiable as planned, unless tests are structural (e.g., vi.mock the filter module and assert it's called, or assert spec lists pass through the filter). Correction: make the consumer tests spy on team-public-listing (vi.mock + expect called / assert its output feeds render), or reword acceptance 3 to "the two consumers whose spec lists contain no excluded slug are covered by the filter module's own contract test + a source-import assertion".
+
+  F2 (MAJOR) — Slug-less editorial entries bypass the filter; the "Zero" pattern proves the mechanism exists (page.tsx:148-154). A re-added excluded person as nameOverride-only entry (or the "Faysha" spelling) leaks while all four name-based tests stay green. Also photo-path leaks (/static/team/faisha.jpg) and alt text are not asserted. Correction: tests assert rendered HTML (container.innerHTML / page source) contains neither "faisha|faysha|sahira" (case-insensitive) nor the two photo paths; e2e/curl probe same.
+
+  F3 (MAJOR) — NO D-A invariant check is case-fragile: banned hexes listed uppercase (#F7F4EE…) but R19 source is lowercase (#f7f4ee, Team.module.css .pageTheme block). A verbatim copy of the R19 CSS passes a case-sensitive grep. Correction: case-insensitive grep + rgb()/hsl() forms + "Fraunces|Manrope" any case, including var references like `var(--serif)` mapped to Fraunces.
+
+  F4 (MAJOR) — Acceptance has no probe for the actual design objective: nothing pins any R19 measure (container min(1320px,90%), band grid, 78×94 portraits, radius 48px 48px 3px 3px, type scale). All 9 acceptance items can pass with zero visual change (exclusion + links only), or the visual change can be anything. Unfalsifiable objective. Correction: add 2-3 pinned geometry assertions in e2e (computed width of band ≈ min(1320,90vw), founder img boundingBox 78×94 at desktop, link min-height ≥44/48).
+
+  F5 (MAJOR) — Where the instruction lives: the filter keys on slugs, roster keyed and frozen; if the roster slug is ever renamed, exclusion silently lapses. Filter's own test must assert the two excluded slugs still exist in TEAM_ROSTER (drift tripwire) — brief acceptance 4 asserts rosterBySlug('sahira')/('faisha') resolve, which covers it. Actually brief acceptance 4 probe does assert that. Good — but note it's the roster invariant not the filter's. Still, the drift failure mode is caught by name-based consumer tests. So F5 could be folded: the second-source-of-truth concern — the chosen place (one module, invariant "slugs appear only in team-public-listing.ts") is the right shape given the freeze; residual failure mode: future consumers bypassing it (nothing enforces import discipline beyond the census one-shot). MINOR: add an eslint no-restricted-imports rule or a census test that greps consumers? That may exceed appetite. Report as MINOR with optional correction.
+
+  F6 (MINOR) — Census gaps (completeness): (a) `apps/mouth/src/lib/api/schema.d.ts:16032` — generated OpenAPI schema text names "Faisha" ("Veronika/Kadek/Dewa Ayu/Angel/Faisha"); backend-derived, potentially served via API docs; not in census. (b) `(workspace)/team-management/page.tsx:37,43` hardcodes sahira/faisha photo paths without importing the roster — missed by the symbol grep; internal, but the census's nonPublicConsumers list should register it. (c) llms*.txt — checked, no excluded names ("Team Surya" notes exist in llms-full.txt but Surya stays). No public surface missed that publishes the two excluded people, except the book which is in scope. So census conclusion holds for public surfaces; register (a)/(b) for completeness. MINOR.
+
+  F7 (MINOR) — Default-preservation probe hole: the /v2 DOM comparison proves /v2 unchanged, but the claim "default render unchanged" is only guaranteed if the invariant test renders SocialProof WITHOUT the prop; if implemented as opt-out (prop defaulting to band, /v2 passing the old variant explicitly), /v2 probe stays green while every future/default consumer gets the new band. Correction: SocialProof.test.tsx must mount `<SocialProof />` bare and assert founders + four rows + reviews + trust strip (contract already says this — hold them to it). MINOR because contract-lock invariant DEFAULT PRESERVED already says "rendered without the new prop". Keep as minor verification note.
+
+  F8 (MINOR) — Founder band geometry depends on `.socialproof-grid` in frozen globals.css:1007-1011; if the R19 band rhythm needs that 2-col grid to behave differently at any viewport, the implementer will be tempted to touch globals.css (STOP) — plan should state explicitly that all band rhythm lives in the new module CSS scoped to the variant class. Also `aspectRatio 3/4` founder tiles vs R19 78×94 fixed — fine.
+
+  F9 (MINOR) — Production curl acceptance ("0 occurrences of Faisha and Sahira … and the same other names") is substring-fragile: short names ("Ari", "Dea", "Rina") substring-collide with unrelated words; "the same other names" has no counts. Unfalsifiable as written for the positive half. Correction: fix per-name occurrence counts before/after (the pack already has servedOccurrences — make the after-table numeric per name, expecting delta exactly −4/−4 on /team, −2/−2 on /book routes).
+
+  Also check acceptance #1 detail: "the book team grid … SHALL keep the other 18 entries" — book has 20 roster entries; after exclusion 18 ✓ consistent.
+
+  One more: brief acceptance 4 probe says "vitest team-public-listing.test.ts asserting rosterBySlug('sahira') and ('faisha') still resolve" — note roster slug is "faisha" while owner order says "Faysha/Faisha". Filter must exclude slug "faisha"; ensure the filter's slug list uses the roster spelling, not "faysha" — a filter written with slug "faysha" (the owner's spelling, also the email prefix) would match NOTHING and exclude nobody, and name-based tests WOULD catch it ("Faisha" still rendered). OK caught. But if tests were slug-based they'd miss. Reinforces F2.
+
+  Also D-B containment another vector: D2 spec says "name 22px serif" — SocialProof already uses var(--font-serif) (Cormorant) — fine, current. But "role 12px muted", "1px bottom border" on team link with color... R19 teamLink uses var(--forest) — implementer must map to mouth accent. If they map `--forest`→ keep name but... names aren't identity. Fine.
+
+  Also note: R19 pageIntro h1 letter-spacing −0.045em, Fraunces weight 450 — porting "type scale" must not import `font-weight: 450`+Fraunces-specific metrics? weight 450 is not identity per se. Minor, skip.
+
+  Also verify the claim in brief host_note about package — can't verify M5/Desktop paths? Actually the path /Users/nuzantara/Desktop/SHWEB-20260911-mouth-final/pacchetto — we're on Mini? whoami says nuzantara; working dir /Users/nuzantara/nuzantara — that's Mini per AGENTS (Mini repo at ~/nuzantara). Could check the package exists. Not essential to findings. Skip — actually quick check is cheap but not needed for the seven questions.
+
+  Wait — one more question-1 item: OG image route — none (static og-image.jpg). JSON-LD — team page has none. API routes — let me quickly check apps/mouth/src/app/api for team. Do a fast glob.
+
+• One last census sweep — API routes and the team route folder.
+
+• Census confirmed: no API route or OG/JSON-LD publishes roster people. The public census (3 rosterBySlug consumers + book) holds for apps/mouth public surfaces.
+
+  Now write the review. Format: numbered findings `Fn SEVERITY — claim, proof, smallest correction`, then VERDICT.
+
+  Should I write it to the reviews file? The contract-lock mentions reviews/second-reader-kimi-k3.txt — but I'm told "Do not write code and do not modify any file." Output in the reply only.
+
+  Findings list (ordered by severity):
+
+  F1 BLOCKER — mutant undetectability for SocialProof & about.
+  F2 MAJOR — slug-less/override/photo-path/alt/spelling leak channel; tests name-only.
+  F3 MAJOR — NO D-A check case-sensitivity; lowercase R19 hexes pass.
+  F4 MAJOR — no acceptance probe pins any R19 measure; the design objective is unfalsifiable.
+  F5 MAJOR — production curl positive half unfalsifiable ("same other names", substring collisions).
+  F6 MINOR — census registration gaps: schema.d.ts:16032 (generated, names Faisha), team-management page hardcoded photos; conclusion for public surfaces holds.
+  F7 MINOR — default-preservation only真实 if bare-mount test; opt-out implementation escapes the /v2 probe.
+  F8 MINOR — globals.css `.socialproof-grid` constraint; band rhythm must live entirely in the new module CSS; make that explicit.
+  F9 MINOR — shared filter module is the right shape given the freeze; residual drift mode + tripwire (filter test must assert excluded slugs ⊆ TEAM_ROSTER; owner spelling "faysha" vs slug "faisha").
+
+  Verdict: GO-WITH-CONDITIONS (F1 must be fixed before BUILD since it makes an acceptance item unfalsifiable — arguably REWORK? F1 is a blocker against acceptance #3 as written; the fix is small (test-shape change). GO-WITH-CONDITIONS with F1 as a mandatory condition seems right.)
+
+• PRE-review complete — I re-ran the census, read all six target files, the R19 ref via `git show 6603d2913e`, and the reuse map. Worktree is clean (BOZZA confirmed: only the evidence dir untracked, roster sha256 matches `947b181a…`). Findings:
+
+  **F1 BLOCKER** — The guilt-mutant acceptance is undetectable for 2 of the 4 consumers. SocialProof's spec lists (`SocialProof.tsx:47-89`: zainal, heru, ruslana, veronika, adit, angel) and about's (`about/page.tsx:22-36`: zainal, heru, ruslana, krisna, asya) contain *neither* excluded slug, so deleting the filter from either consumer changes zero rendered output — no behavioral test can go red, and `brief.yml` acceptance 3 ("WHEN the filter is removed from any one consumer, THEN that consumer's test SHALL fail") fails its own proof. Correction: for those two consumers the test must be structural — `vi.mock("@/lib/team-public-listing")` and assert the filter is invoked and its result is what renders — or acceptance 3 must be reworded to name the two contract shapes (behavioral for /team + book, structural for SocialProof + about).
+
+  **F2 MAJOR** — A consumer can leak an excluded person with all four tests green. (a) The /team page's own `MARKETING_TEAM` proves a slug-less entry mechanism exists (`(blog)/team/page.tsx:148-154`, "Zero" via `nameOverride`/`photoOverride`): anyone re-adding an excluded person that way bypasses a slug-keyed filter entirely. (b) The owner's order says "Faysha/Faisha" but the roster slug/name is `faisha`/`Faisha` with email `faysha.tax@` (`team-roster.ts:189-194`) — tests asserting only "Faisha" miss a "Faysha" rendering, and a filter written with the slug "faysha" matches nothing. (c) Name-only assertions miss leaks via photo path `/static/team/faisha.jpg`, `alt` text, or initials fallback. Correction: consumer tests and the e2e/curl probes assert on rendered HTML source for the case-insensitive set `faisha|faysha|sahira` plus both photo paths; the filter's own test asserts its slug list ⊆ `TEAM_ROSTER` slugs (tripwire for a future slug rename).
+
+  **F3 MAJOR** — The NO D-A invariant is case-fragile. `contract-lock.json.invariantsAtHead` lists the banned hexes uppercase, but the R19 source carries them lowercase (`.pageTheme` block in `Team.module.css` at 6603d2913e: `#f7f4ee`, `#1d2c3b`, `#233d52`, `#a44b36`, …, plus `"Fraunces"`/`"Manrope"`). A verbatim copy of the R19 team CSS — the single most likely smuggle vector — passes a case-sensitive grep. Correction: the gate check must be `grep -iE` over both hex cases, `rgb()`/`hsl()` equivalents, and `fraunces|manrope` in any case, including font-family declarations and `@font-face`/`next/font` references.
+
+  **F4 MAJOR** — The actual design objective has no falsifiable probe. Every acceptance item (exclusion, roster hash, links, default invariance, overflow/focus/44px/contrast, build, prod curl) can pass with *zero* R19 composition shipped — nothing pins `min(1320px,90%)`, the band grid, 78×94 portraits, `border-radius: 48px 48px 3px 3px`, `object-position: center 32%`, or the type scale, all of which sit ready in the ref (`Team.module.css` at 6603d2913e). The candidate could ship a filter-only diff and pass its own gate. Correction: add 2-3 computed-geometry assertions to `e2e/shweb-team.spec.ts` (band container width vs viewport, founder portrait boundingBox 78×94 at 1280/1440, team-link min-height ≥48px).
+
+  **F5 MAJOR** — The production-curl acceptance is half-unfalsifiable: "0 occurrences of Faisha and Sahira **and the same other names**" has no counts, and short names substring-collide ("Ari" inside "Safari"/"Imigrasi"-adjacent copy, "Dea", "Rina"). As written any page that drops *more* people than the two also passes "0 occurrences". Correction: the pack already has per-name `servedOccurrences` — make the after-table numeric per name per route, expected delta exactly −4/−4 on /team and −2/−2 on each /book route, zero delta elsewhere.
+
+  **F6 MINOR** — Census conclusion holds for public surfaces (I re-ran it: the only roster consumers are the three `rosterBySlug` call sites + `PUBLIC_ROSTER` in `book-data.ts:128`; no sitemap/OG/JSON-LD/API route/`llms*.txt` publishes the two excluded names), but two registration gaps: `apps/mouth/src/lib/api/schema.d.ts:16032` (generated OpenAPI text naming "…Angel/Faisha" — backend-derived, potentially served via API docs) and `(workspace)/team-management/page.tsx:37,43` (hardcoded sahira/faisha photo paths, invisible to the symbol grep because it never imports the roster). Correction: register both in `nonPublicConsumers` as not-touched; note the schema file is generated, so the string originates in backend-rag.
+
+  **F7 MINOR** — Default preservation is only proven if the test mounts `<SocialProof />` *bare*. The /v2 DOM comparison stays green under an opt-out implementation (prop defaulting to the band, /v2 passing the legacy variant explicitly), which would silently change the default for every future consumer. `contract-lock.json` already words the invariant correctly ("rendered **without** the new prop") — hold the BUILD to that, not to the /v2 comparison alone.
+
+  **F8 MINOR** — The founder band sits inside `.socialproof-grid`, defined in frozen `globals.css:1007-1011`. If the R19 band rhythm needs that two-column grid to behave differently at any viewport, the implementer hits a frozen file. Correction: state in the plan that 100% of band rhythm lives in the new `SocialProof.module.css` scoped under the variant class, with the variant wrapper carrying an explicit class so module specificity overrides the global grid — and that touching `globals.css` is STOP.
+
+  **F9 MINOR** — On the design question: given the roster freeze, the shared module is the right shape and *not* a second source of truth in the dangerous direction — it is the only writable place, it honors `publicListed:false` as a superset, and the invariant "excluded slugs appear only in `team-public-listing.ts`" prevents inline copies. The residual failure mode is import discipline: nothing stops a *future* public surface from importing `rosterBySlug`/`PUBLIC_ROSTER` directly and re-publishing the two people. Correction (cheap, optional): the filter module should re-export the listing primitives under the natural names (e.g. `publicRoster()`, `publicMember(slug)`) so consumers have no reason to import the raw helpers, and the e2e spec doubles as the standing census on the served site.
+
+  VERDICT: GO-WITH-CONDITIONS — F1 must be resolved before BUILD (an acceptance item is unfalsifiable as written); F2–F5 are acceptance/probe corrections that cost little now and are expensive at the gate; F6–F9 are registration and wording fixes.
+
+To resume this session: kimi -r session_1c96069e-3a90-4620-aa1f-40ab91be7dfb

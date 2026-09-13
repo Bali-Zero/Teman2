@@ -873,9 +873,23 @@ SIZE_TERM_EXCLUDE_FILENAMES: tuple[str, ...] = (
 #: means exempting by FULL PATH, not name. Only these two exact,
 #: currently-real paths are exempted; a genuine future sibling (e.g. a
 #: split requirements-dev.lock.txt) needs its own literal added here.
+#:
+#: `docs/AUTOMATIONS_REFERENCE.md` (2026-09-11, measured on PR #6184, the FIRST
+#: PR the nightly promote job — `scripts/automations-reference-cron-wrapper.sh`
+#: → `scripts/generate_automations_reference.py` — ever opened): a full
+#: machine regeneration from live launchd/cron state churned 483 lines
+#: (240+/243-) in that ONE file, net -3, floor==2 via the SIZE term alone,
+#: and the job by construction carries no evidence/brief.yml — so the very
+#: first promote PR was BLOCKED on "Harness floor recompute" and every
+#: nightly after it would be too. Same class as the translations below: a
+#: GENERATED artifact of the system state (the generator is the reviewable
+#: object, and it lives under scripts/ where it counts in full). Exact
+#: path, never a basename: a hand-written `AUTOMATIONS_REFERENCE.md`
+#: anywhere else in the tree still counts.
 SIZE_TERM_EXCLUDE_EXACT_PATHS: tuple[str, ...] = (
     "apps/backend-rag/requirements.lock.txt",
     "apps/backend-rag/requirements-prod.lock.txt",
+    "docs/AUTOMATIONS_REFERENCE.md",
 )
 SIZE_TERM_EXCLUDE_SUFFIXES: tuple[str, ...] = (
     ".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg", ".ico", ".bmp",
@@ -3047,6 +3061,7 @@ def lint(
     source_path: str | None = None,
     measured_commits: int | None = None,
     brief_source_path: str | None = None,
+    today: datetime.date | None = None,
 ) -> tuple[int, list[str]]:
     """Returns (exit_code, violations). exit_code: 0 clean, 1 guilty, 2 blind.
 
@@ -3058,7 +3073,12 @@ def lint(
     corrected 2026-08-27, was a cancelable per-file Σ|added−deleted| before
     the round-2 refuter fix), not the ceiling's pre-summed global net, so
     the two parameters are independent and neither substitutes for the
-    other."""
+    other.
+
+    `today` is the SAME seam `check_brief_not_at_deprecated_root` already
+    exposes, threaded one level up so an end-to-end test can pin which side of
+    a flip date it is asserting. Default None means the real UTC date, which is
+    what every CLI and CI caller gets."""
     if not pack_path.exists():
         return 2, [f"BLIND: evidence pack not found at {pack_path}"]
     try:
@@ -3139,7 +3159,7 @@ def lint(
     # judge a brief against the pack's constant, which is precisely the
     # blind spot this rule exists to close.
     brief_root_violations, brief_root_notice = check_brief_not_at_deprecated_root(
-        brief_source_path, repo_root
+        brief_source_path, repo_root, today=today
     )
     violations += brief_root_violations
     if brief_root_notice:

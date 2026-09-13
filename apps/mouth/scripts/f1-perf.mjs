@@ -29,13 +29,11 @@ const ROUTES = [
   "/clients",
   "/dashboard",
   "/hr",
-  "/inbox",
   "/intelligence",
   "/lkpm",
   "/notifications",
   "/omnichannel",
   "/process",
-  "/revenue/analytics",
   "/settings",
 ];
 

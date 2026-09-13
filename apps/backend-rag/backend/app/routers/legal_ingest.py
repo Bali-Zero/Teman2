@@ -634,6 +634,41 @@ async def ingest_legal_full(
                 message="Legge gia ingestita. Usa job_id per i dettagli.",
             )
 
+        if existing and existing["status"] in ("failed", "error"):
+            # A failed job is excluded from the worker's claim query (see
+            # idx_legal_ingest_jobs_queue's WHERE status NOT IN ('complete', 'failed')),
+            # so without this reset it can never be retried short of a manual DB edit.
+            # Guard the WHERE clause with the same status check: if a worker claims the
+            # row between our SELECT and this UPDATE (moving status off failed/error),
+            # the UPDATE matches zero rows instead of clobbering in-flight progress.
+            await conn.execute(
+                """
+                UPDATE legal_ingest_jobs
+                SET status = 'pending',
+                    error = NULL,
+                    source_url = $2,
+                    titolo = COALESCE($3, titolo),
+                    nb_target = $4,
+                    visibility_at = NOW(),
+                    updated_at = NOW()
+                WHERE id = $1 AND status IN ('failed', 'error')
+                """,
+                existing["id"],
+                str(request.url),
+                request.titolo,
+                nb_target,
+            )
+            await conn.close()
+            logger.info(
+                f"🔁 Legal ingest job reset for retry: {existing['id']} "
+                f"({request.tipo} {request.nomor}/{request.anno})"
+            )
+            return LegalIngestJobResponse(
+                job_id=str(existing["id"]),
+                status="pending",
+                message="Job precedente fallito: riavviato.",
+            )
+
         if existing:
             await conn.close()
             return LegalIngestJobResponse(

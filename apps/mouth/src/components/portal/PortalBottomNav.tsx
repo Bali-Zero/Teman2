@@ -92,7 +92,7 @@ export function PortalBottomNav({ variant = "client" }: PortalBottomNavProps) {
   return (
     <nav
       aria-label="Main navigation"
-      className="fixed bottom-0 left-0 right-0 border-t border-[var(--bz-bottom-nav-border)] bg-[var(--bz-bottom-nav-bg)] shadow-[var(--bz-bottom-nav-shadow)] backdrop-blur-[20px] md:hidden z-50 safe-area-bottom"
+      className="fixed bottom-0 left-0 right-0 border-t border-[var(--bz-border)] bg-[var(--bz-bottom-nav-bg)] backdrop-blur-[20px] md:hidden z-50 safe-area-bottom"
     >
       <div className="flex items-center justify-around h-16">
         {tabs.map((tab) => {
@@ -111,21 +111,28 @@ export function PortalBottomNav({ variant = "client" }: PortalBottomNavProps) {
               aria-current={isActive ? "page" : undefined}
               aria-label={tab.name}
               className={cn(
-                "flex flex-col items-center justify-center gap-1 w-full h-full min-h-11 transition-colors relative rounded-xl",
+                "flex flex-col items-center justify-center gap-[5px] w-full h-full min-h-11 transition-colors relative",
                 isActive
-                  ? "text-[var(--bz-copper-text)] bg-[var(--bz-bottom-nav-active,transparent)] font-semibold"
-                  : "text-[var(--bz-text-2)] hover:text-[var(--bz-text-1)]",
+                  ? "text-[var(--tx-pure)]"
+                  : "text-[var(--tx-secondary)] hover:text-[var(--tx-pure)]",
               )}
             >
               <div className="relative">
-                <Icon className="w-5 h-5" />
+                <Icon
+                  className={cn(
+                    "w-5 h-5",
+                    isActive && "text-[var(--bz-copper)]",
+                  )}
+                />
                 {showBadge && (
-                  <span className="absolute -top-1.5 -right-1.5 min-w-[16px] h-4 px-1 flex items-center justify-center rounded-full bg-[var(--state-danger)] text-white text-[10px] font-bold">
+                  <span className="absolute -top-1.5 -right-1.5 min-w-[16px] h-4 px-1 flex items-center justify-center rounded-full bg-[var(--bz-copper)] text-white text-[9px] font-[650] tabular-nums">
                     {tab.badge > 99 ? "99+" : tab.badge}
                   </span>
                 )}
               </div>
-              <span className="text-[10px]">{tab.name}</span>
+              <span className="text-[9px] font-[650] uppercase tracking-[.1em]">
+                {tab.name}
+              </span>
             </Link>
           );
         })}

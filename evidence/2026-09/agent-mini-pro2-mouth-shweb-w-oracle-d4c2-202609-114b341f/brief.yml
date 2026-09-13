@@ -1,0 +1,134 @@
+task_id: visa-oracle-d4c2-investment-amount-usd
+gear: 2
+l_level: L2
+gate_class: opus
+# Floor for this diff: 2, source `size`. Re-run after every commit in this PR, including the one
+# that moved this brief off the shared root path (87b5a33b66), with:
+#   git diff --name-only origin/main...HEAD > <changed-files-file>
+#   git diff --numstat origin/main...HEAD > <numstat-file>
+#   python3 scripts/evidence_pack_lint.py --print-floor \
+#     --changed-files-file <changed-files-file> --numstat-file <numstat-file>
+# → 2, every time (17 files at the last measurement). No pack edit, no engine-adapter.ts, no
+# hot-zone path touched. Gear 2 declared to match the floor.
+objective: >-
+  PR-D4c-2 of the Visa Oracle rebuild (mandate SHWEB-20260911): replace fact-mapper.ts's
+  investment.investment_amount_usd unconditional unknownFact(NOT_ASKED) placeholder (PR-D4c-1,
+  contract-only) with a real answer, on the merit/family/undecided investment-vehicle branches
+  only — never on pt_pma, whose IDR-bound E28A rules would dead-end if a currency choice made
+  investment.investment_capital_idr UNKNOWN there. A new investment_currency choice (idr / usd /
+  an explicit "I can't say yet", notSure deliberately omitted) routes to the reused
+  investment_capital_idr question for idr or a new investment_amount_usd question for usd; the
+  "can't say" answer costs zero review holds because its value is the literal "still_unsure",
+  never "unsure" (the exact string mapDisclosedReviewFlags's NOT_CERTAIN scan matches). No
+  currency conversion anywhere, no threshold figure in copy (no rule reads this fact until
+  seq-22 is signed and active).
+constraints:
+  - >-
+    No rule-pack edit of any kind; sign_pack.py / activate_pack.py never run;
+    VISA_ENGINE_EVALUATE_MODE never touched. engine-adapter.ts untouched. Frontend + corpus only:
+    tree.ts, flow.ts, fact-mapper.ts, generate-walk-corpus.ts and its fixtures, and tests.
+  - >-
+    pt_pma is byte-identical: offshore_invest_pt_pma.json (E28A's own walk) is unchanged by
+    `git diff`, and its pinned (state, candidates) in EXPECTED_OUTCOME is untouched —
+    SUPPORTED_CANDIDATES [C2], the same as on main.
+  - >-
+    No conversion anywhere — not in fact-mapper.ts, not in copy, not in a fixture. No FX rate.
+    investment.investment_capital_idr and investment.investment_amount_usd are never both KNOWN
+    from the same answer, and neither is ever derived from the other.
+  - >-
+    No pre-existing walk's verdict moves. Three walks (offshore/invest/merit/family/undecided)
+    change wire bytes only (investment.investment_capital_idr NOT_ASKED -> KNOWN(1000000000),
+    since investment_currency's first option is idr) — verified key by key against
+    EXPECTED_OUTCOME, not by comparing totals.
+acceptance:
+  - text: >-
+      A1: WHEN `PYTHONPATH=. python -m pytest backend/tests/services/visa_engine/test_interview_walk_census.py`
+      runs from apps/backend-rag (venv activated) SHALL pass all 17 tests, including the E28A
+      innocence walk (offshore/invest/pt_pma, unchanged) and the corpus/state-census literals at
+      84 walks / 2 NEEDS_INPUT / 15 NO_SUPPORTED_PATH / 67 SUPPORTED_CANDIDATES.
+    probe: >-
+      cd apps/backend-rag && source .venv/bin/activate && PYTHONPATH=. python -m pytest
+      backend/tests/services/visa_engine/test_interview_walk_census.py
+  - text: >-
+      A2 (widened acceptance, discharging the #6416 ledger row): WHEN
+      `PYTHONPATH=. python -m pytest backend/tests/scripts/visa_engine/` runs from
+      apps/backend-rag (venv activated) SHALL pass all 176 tests — this is the directory whose
+      stale `test_not_asked_facts_are_exactly_the_six_hardcoded_in_the_mapper` literal an earlier
+      probe scoped to backend/tests/services/ never ran; fixed here (six -> five,
+      investment.investment_amount_usd drops out the same way immigration.renewal_paid did).
+    probe: >-
+      cd apps/backend-rag && source .venv/bin/activate && PYTHONPATH=. python -m pytest
+      backend/tests/scripts/visa_engine/
+  - text: >-
+      A3: WHEN `npx vitest run` runs in apps/mouth (the FULL suite) SHALL pass every test — this
+      includes fact-mapper.test.ts, which reads models.py off disk, so a fact change can turn a
+      frontend test red.
+    probe: cd apps/mouth && npx vitest run
+  - text: >-
+      A4: WHEN `npx tsc --noEmit` runs in apps/mouth SHALL exit 0.
+    probe: cd apps/mouth && npx tsc --noEmit
+  - text: >-
+      A5: WHEN `npx eslint "src/app/(visa-oracle)/visa-oracle/**"` runs in apps/mouth SHALL exit
+      0 (6 pre-existing warnings, 0 errors, none in a file this PR touches).
+    probe: cd apps/mouth && npx eslint "src/app/(visa-oracle)/visa-oracle/**"
+  - text: >-
+      A6 (the zero-review-cost claim, measured directly): WHEN
+      `mapDisclosedReviewFlags({ category: "invest", investment_vehicle: "undecided",
+      investment_currency: "still_unsure" })` runs SHALL NOT include "NOT_CERTAIN" in its
+      returned array — proven by fact-mapper.test.ts's
+      "the 'I can't say yet' answer costs zero review holds" test, part of the A3 full-suite run.
+      The committed corpus fixture for this exact walk
+      (offshore_invest_undecided_currency_still_unsure.json) carries neither
+      investment.investment_capital_idr nor investment.investment_amount_usd as KNOWN — the
+      honest silence — and its pinned outcome in EXPECTED_OUTCOME is SUPPORTED_CANDIDATES [C2],
+      unaffected (that census does not carry disclosed_review_flags at all — bound 1 of its own
+      module docstring — so the NOT_CERTAIN proof is the frontend unit test, not the census).
+    probe: >-
+      cd apps/mouth && npx vitest run "src/app/(visa-oracle)/visa-oracle/_lib/fact-mapper.test.ts"
+      -t "costs zero review holds"
+  - text: >-
+      A6b (the "left unanswered" case, considered and discharged, not an unexplained gap): the
+      generator always replays a walk to its terminal node, so "the question was reached but
+      never answered" cannot be represented as committed corpus data. The untouched
+      offshore_invest_pt_pma / offshore_invest_property / offshore_invest_bank_deposit fixtures
+      already discharge this: on those branches investment_currency is never reached at all, and
+      investment.investment_amount_usd is UNKNOWN(NOT_ASKED) in every one of them, unchanged by
+      `git diff` — the honest silence this PR's "unanswered" requirement asks for.
+    probe: "git diff --stat origin/main...HEAD -- apps/backend-rag/backend/tests/services/visa_engine/gold_coverage/fixtures/walks/offshore_invest_pt_pma.json apps/backend-rag/backend/tests/services/visa_engine/gold_coverage/fixtures/walks/offshore_invest_property.json apps/backend-rag/backend/tests/services/visa_engine/gold_coverage/fixtures/walks/offshore_invest_bank_deposit.json — empty output"
+  - text: >-
+      A7 Bites: the consumer is the live Vercel site, pinned. Once merged and deployed, a session
+      SHALL observe that on https://balizero.com/visa-oracle, the merit/family/undecided
+      investment branches serve the new investment_currency question, and the deployed
+      JS chunk for the (visa-oracle) route carries the string "investment_currency" (grep the
+      built chunk, or DOM-inspect the rendered option keys) — an observation to be made after
+      merge, not a promise about a future job.
+    probe: "post-merge: curl/grep the deployed apps/mouth (visa-oracle) route's chunk for investment_currency, or DOM-inspect the rendered question"
+assumptions:
+  - text: >-
+      Branches ask what flow.ts's getCategoryQuestionIds actually asks — pt_pma/property/
+      bank_deposit ask something today, merit/family/undecided ask nothing — verified by reading
+      flow.ts directly before building on it (not assumed from the brief's own table).
+    status: verified
+    probe: "Read apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/flow.ts:691-756 in this worktree"
+  - text: >-
+      The NOT_CERTAIN mechanism is exact-equality over the literal string "unsure", not a
+      substring or prefix match, so "still_unsure" cannot trip it.
+    status: verified
+    probe: 'Read fact-mapper.ts:566 — `if (Object.values(facts).includes("unsure")) flags.add("NOT_CERTAIN")`'
+  - text: >-
+      E28A's three rules (el.e28a.investment, hf.e28a.total-investment-below-min,
+      hf.e28a.paid-capital-below-min) are all on_unknown NEEDS_INPUT and read
+      investment.investment_capital_idr / paid_up_capital_idr / proposed_role /
+      pt_pma_committed — reachable ONLY via the pt_pma branch's own dedicated questions, which
+      this PR never touches.
+    status: verified
+    probe: "grep the signed rulepack-prod-020 source for el.e28a.* and hf.e28a.* rule bodies; the pt_pma branch (flow.ts:701-708) is untouched by this diff"
+  - text: >-
+      Adding investment_currency/investment_amount_usd to merit/family/undecided cannot move any
+      pre-existing walk's verdict, because those three branches' overall outcome is decided by
+      C2's own el.c2.business rule (family.sponsor_confirmed == true), independent of any
+      investment.* fact — measured directly on the regenerated corpus, not inferred.
+    status: verified
+    probe: >-
+      cd apps/backend-rag && source .venv/bin/activate && PYTHONPATH=. python -m pytest
+      backend/tests/services/visa_engine/test_interview_walk_census.py::test_every_walk_ends_in_its_pinned_outcome

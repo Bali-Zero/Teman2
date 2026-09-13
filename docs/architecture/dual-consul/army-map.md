@@ -48,8 +48,11 @@ supersession detail: `docs/rules/RULINGS.md`, RULED 2026-09-10.
 | Release owner                           | the Dux Opus 5                                   | the Dux Sol; the gate Sol only signs                                           |
 | Transport                               | Claude-native work, Codex review                 | Codex-native work, Claude OAuth review                                         |
 
-**No automatic colour fallback.** A dead seat SUSPENDS the mission. A colour is never changed
-mid-mission and no session declares its own. An undeclared mission is BLUE.
+**No automatic colour fallback.** A colour is never changed mid-mission and no session declares
+its own. An undeclared mission is BLUE. A dead seat does NOT suspend the mission by itself (RULED
+2026-09-11, `docs/rules/RULINGS.md`): retry → check the invocation → fall back to another ACCOUNT or
+roster model of the SAME role (Claude six OAuth seats, Codex two accounts, TP1 several models) → SUSPEND
+only when that role's whole cascade is exhausted, recorded in the ledger with time and error.
 
 **One window = one mandate = one organ = one worktree**, never two windows on the same path, two or
 three at a time at most. Each window opens against the seven-section spec

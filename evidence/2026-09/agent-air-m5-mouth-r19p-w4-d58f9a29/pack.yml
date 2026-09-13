@@ -1,0 +1,142 @@
+gear: 2
+brief_ref: evidence/2026-09/agent-air-m5-mouth-r19p-w4-d58f9a29/brief.yml
+ruling: RULED 2026-09-12 SAETTA
+lanes:
+  - lane: R19P-W4
+    role: build
+    seat: Claude Opus 5 (Dux of window W4, implements directly)
+pii_scan: clean
+decisions:
+  - id: D1
+    decision: >-
+      The head eyebrow reads "Matter {id}" with no open date. PortalMatterDetail (and the
+      PortalMatter it extends) carries id, title, status, type, progress, pending_docs,
+      next_deadline, next_step, status_label, description, approved_intelligence — no
+      opened/created field. The window brief makes the date conditional on the page already
+      having one, so the detail is dropped rather than requested.
+  - id: D2
+    decision: >-
+      The forest button in "We need from you" is "Open the Vault" (/portal/vault), not the
+      mock's "Upload document": the page links no upload route today, and the brief makes the
+      upload button conditional on one already existing.
+  - id: D3
+    decision: >-
+      Progress shows the percent alone, without "x of y steps done": the payload has no steps
+      array, and assembling a count from next_steps would be a silent data request.
+  - id: D4
+    decision: >-
+      The day count beside the deadline is computed client-side from next_deadline
+      (concept F §5 sanctions client-side day counts) instead of importing DeadlineBadge from
+      @balizero/core — that primitive is shared with kita/prime and this window may not restyle
+      it, and a day count needs no component.
+  - id: D5
+    decision: >-
+      Forest reads --state-success and slate reads --state-info, the two semantic tokens W1
+      re-aliases at the [data-theme="operative-light"][data-product="my"] seam
+      (--state-success #253E33, --state-info #233D52). Writing var(--bz-forest) instead would be
+      a dangling reference today — no such token exists in globals.css — and an invalid
+      colour renders as inherited, not as forest.
+  - id: D6
+    decision: >-
+      fact.confidence is no longer displayed: the brief specifies the facts as a two-column
+      definition list of dt eyebrow + dd 600, and the mock has no confidence chip. Recorded as
+      a leftover, not a data change — the field is still in the payload.
+  - id: D7
+    decision: >-
+      The error/invalid-id branches keep Alert variant="destructive" (same shape, same copy,
+      same Retry) but pass a className that overrides the component's text-red-500 /
+      border-red-500 with --state-danger, which the my seam aliases to copper. No red survives
+      in what this window writes, and the shared Alert is untouched.
+  - id: D8
+    decision: >-
+      "Message the team" links plain /portal/messages: the page never built a practiceId query,
+      and the brief makes that query conditional on it already existing.
+receipts:
+  - claim: The window works in its own broker worktree on branch agent/air-m5/mouth/r19p-w4; the main checkout stayed clean.
+    cmd: python3 scripts/agent_start.py --lane mouth --task-id r19p-w4 ; git -C /Users/balizero/nuzantara status --short
+    result: "WORKTREE_READY /Users/balizero/nuzantara/.worktrees/mouth-r19p-w4 ; main checkout shows only the pre-existing untracked shared/hotfix_audit.jsonl"
+    exit: 0
+    ts: "2026-09-12T18:38:00Z"
+    seat: Claude Opus 5
+  - claim: A2 — the sibling suite is green on all four cases, including the pending-intelligence branch and the error branch with its Retry.
+    cmd: cd apps/mouth && npx vitest --run "src/app/portal/(authenticated)/matters/[id]/page.test.tsx"
+    result: "Test Files 1 passed (1) ; Tests 4 passed (4) ; duration 4.07s. One selector adjusted: the panel heading 'Approved Intelligence' became the eyebrow 'The file · what we know for certain'. The WS3 token test passed unchanged — --bz-card panel background, >=2 elements carrying --state-success, and the no-hardcoded-hex guard."
+    exit: 0
+    ts: "2026-09-12T18:45:34Z"
+    seat: Claude Opus 5
+  - claim: A4 — typecheck clean.
+    cmd: PNPM_CONFIG_VERIFY_DEPS_BEFORE_RUN=false pnpm -F mouth typecheck
+    result: "$ tsc --noEmit — exited with code 0"
+    exit: 0
+    ts: "2026-09-12T19:20:00Z"
+    seat: Claude Opus 5
+  - claim: A4 — eslint clean on the page; the sibling test file is outside the eslint ignore-free set, which is pre-existing config, not a defect of this diff.
+    cmd: cd apps/mouth && npx eslint "src/app/portal/(authenticated)/matters/[id]/page.tsx" "src/app/portal/(authenticated)/matters/[id]/page.test.tsx"
+    result: "1 problem (0 errors, 1 warning) — the warning is 'File ignored because of a matching ignore pattern' on page.test.tsx"
+    exit: 0
+    ts: "2026-09-12T18:52:00Z"
+    seat: Claude Opus 5
+  - claim: A1 — the diff is two files, and the page's hook/fetch surface is byte-for-byte as many calls as origin/main's.
+    cmd: git -C <wt> diff origin/main --stat ; grep -oE 'use[A-Z][A-Za-z]*\(' on the working file and on git show origin/main:<file> ; grep -c 'api\.'
+    result: "2 files changed, 289 insertions(+), 137 deletions(-) — page.tsx and page.test.tsx. use[A-Z]( calls 3 vs 3 on origin/main (useParams, usePortalMatter, usePortalDateFormat); api. calls 0 vs 0."
+    exit: 0
+    ts: "2026-09-12T18:55:00Z"
+    seat: Claude Opus 5
+  - claim: A3 — no hardcoded hex, no red, no color-mix tint fill anywhere in the page.
+    cmd: grep -cE '#[0-9a-fA-F]{3,8}' ; grep -c 'color-mix' ; grep -c 'state-success' ; grep -c 'state-danger' ; grep -ciE 'red-[0-9]|rose-|crimson' ; grep -c 'shadow'
+    result: "hex 0 ; color-mix 0 ; state-success 5 ; state-danger 1 ; red/rose/crimson 0 ; shadow 0"
+    exit: 0
+    ts: "2026-09-12T19:28:57Z"
+    seat: Claude Opus 5
+  - claim: A failed pnpm dependency check (pnpm's own pre-run install) had appended an allowBuilds line to pnpm-workspace.yaml inside the worktree; it was reverted before commit, so the diff carries only the two owned files.
+    cmd: git -C <wt> diff origin/main -- pnpm-workspace.yaml ; git -C <wt> checkout -- pnpm-workspace.yaml ; git -C <wt> diff origin/main --stat
+    result: 'the stray line was "''@parcel/watcher'': set this to true or false" ; after the revert the stat lists only the two matters/[id] files'
+    exit: 0
+    ts: "2026-09-12T18:58:00Z"
+    seat: Claude Opus 5
+  - claim: A5 — the local render did NOT complete inside its 15-minute box, so nothing is claimed about pixels. Turbopack refuses the worktree (node_modules symlink points out of the project root) and the webpack fallback never finished compiling /portal/matters/[id].
+    cmd: npx next dev -p 3477 (turbopack) ; npx next dev --webpack -p 3477 ; node <scratchpad>/w4-shot.mjs (Playwright, chrome channel, route interception of /api/portal/matters/142)
+    result: "turbopack — 'Symlink [project]/apps/mouth/node_modules is invalid, it points out of the filesystem root', exit 1. webpack — 'Ready in 6.2s', then the route compiled only after ~15 minutes; with the route mocks, the auth cookie, the seeded localStorage session and bypassCSP the page still answered body text 'Loading...' with h1 count 0 and aside count 0, i.e. it never left the portal gate's loading branch, so no matter markup was ever painted. The two PNGs of that loading screen were deleted rather than filed as a render."
+    exit: 1
+    ts: "2026-09-12T19:26:00Z"
+    seat: Claude Opus 5
+dissent:
+  - seat: window contract A3, read literally
+    objection: >-
+      A3 asks for grep -c "state-success" = 0 in fills; the file has 5 occurrences.
+    status: CONFIRMED
+    cure: >-
+      The fills clause is satisfied and measured: 0 color-mix tint fills (the two the old page
+      had are gone). The 5 remaining occurrences are the outlined Reviewed stamp (border +
+      text), its 6px dot, the "ok" entry of the pill tone map, and the ONE forest primary-button
+      fill that COMMON §1 mandates as the only permitted button fill. W1 aliases
+      --state-success to forest #253E33 at the my seam, so the token IS forest there; inventing
+      an undefined --bz-forest to dodge the grep would ship a dangling colour.
+  - seat: self-review (adversarial pass by the same seat — generator is not grader, so this is recorded, not adjudicated)
+    objection: >-
+      order-first is CSS only. On mobile the "Where it stands" column is painted above the file
+      panel while the DOM and tab order still put the panel first, so a screen-reader or
+      keyboard user meets them in the opposite order from a sighted one.
+    status: PLAUSIBLE
+    cure: >-
+      Not cured. The window brief prescribes exactly "order-first md:order-none on the aside;
+      nothing else changes", and moving the aside in the DOM would change the desktop reading
+      order too. The aside carries aria-label="Where it stands" so it is at least announced as
+      a named region. Recorded as a leftover for the mission's a11y pass.
+  - seat: self-review (adversarial pass by the same seat)
+    objection: >-
+      The status pill tone is derived from a regex over status + status_label, so an unforeseen
+      label falls through to the muted "wait" tone.
+    status: PLAUSIBLE
+    cure: >-
+      Not cured, by design — muted/waiting is the safe default of the concept's four meanings
+      (it never claims "done" for something that is not), and a status→tone map living in the
+      API types would be a data change this window may not make.
+leftovers:
+  - fact.confidence is no longer rendered (the facts are a dt/dd definition list per the brief); the field is untouched in the payload.
+  - 'The "x of y steps done" line is not rendered — no steps array exists in PortalMatterDetail.'
+  - "The eyebrow has no opened-date segment — no opened/created field exists in PortalMatterDetail."
+  - 'The deadline box has no sub-label (the mock reads "Interview slot must be booked") — no deadline label field exists.'
+  - The palette and the type land with W1 — on this head sha --state-success is still #147a3a, --state-info #1d4ed8 and --font-serif is Cormorant, so the page ships R19 structure, spacing and hierarchy, and inherits R19 colour and Fraunces the moment the token window merges.
+  - "No local screenshot — turbopack rejects the broker worktree's node_modules symlink, and under the webpack fallback the dev portal never left its loading gate (h1 count 0), so the matter markup was never painted locally. The mission's visual truth for this window stays the concept-F mock 03-matter.html until a deploy preview renders it."
+  - Mobile visual order vs DOM order on the aside (see dissent 2) is left for the mission's a11y pass.

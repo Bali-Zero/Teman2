@@ -1,0 +1,75 @@
+task_id: kita-pruning-lots-1-2
+gear: 3
+l_level: L2
+gate_class: opus
+base_sha: 4ad7761552adbde94450b663ed23a1ed78d3337f # pragma: allowlist secret
+# Floor for this diff: 3, source `size`. Churn 23,991 lines over 139 files (295 added, 23,696
+# deleted), far above SIZE_GEAR3_THRESHOLD=1828. No hot-zone path, no PII path, no ground-truth
+# path (all three probed with scripts/evidence_pack_lint.py's own predicates, receipt in
+# pack.yml). Gear 3 declared to match the floor; the demands of Gear 3 are met where this
+# sandbox can meet them and named where it cannot (see pack.yml seat_override and
+# gate_pending).
+objective: >-
+  Lots 1 and 2 of the kita.balizero.com surface pruning (audit shared with the owner on
+  2026-09-12): delete the operator-workspace pages that call backend routes which do not exist
+  (/analytics, /dashboard/analytics, /partners/finance, /partners/orphaned), the orphan prototype
+  and scaffold routes nothing links to (/dream, /edge, /verification, /exclusive,
+  /lab/voice-concierge), every component, hook and API client with zero importers, the Next API
+  routes nothing calls, and the seven settings sub-pages that persisted nothing; reduce the three
+  surviving settings pages to the controls that actually reach a backend. Net -23,401 lines, no
+  behaviour added except one: DriveApi.disconnect() now calls the real backend route instead of
+  returning a literal.
+constraints:
+  - >-
+    Deletions and reductions only, one concern per commit (8 commits). No new feature, no
+    redesign, no backend change. Public-site and portal surfaces are out of scope and untouched
+    except the shared barrels this PR trims.
+  - >-
+    Every deleted component/hook/client was grep-verified to have zero importers in
+    apps/mouth/src (tests and its own barrel excluded) before deletion; the one component the
+    audit had flagged that DID have an importer (chat/thinking, used by
+    ChatMessageListVirtualized) was kept.
+  - >-
+    Kept on purpose, not forgotten: /api/kbli/gold*, /api/indexnow, /portal/dashboard, /codex —
+    public or by-design direct-URL surfaces, not kita.
+  - >-
+    No client PII in this pack, in the PR body or in any log: the live-API verification of the
+    audit used the owner's own session and its cookie, token and response bodies were deleted
+    from the sandbox before this PR was written.
+appetite:
+  wall_clock_hours: 3
+  adversarial_rounds: 1
+  tokens: 1500000
+acceptance:
+  - text: >-
+      A1: WHEN `tsc --noEmit` runs in apps/mouth on this head SHALL exit 0.
+    probe: cd apps/mouth && npx tsc --noEmit
+  - text: >-
+      A2: WHEN the mouth unit suite runs with its own config on this head SHALL pass every file,
+      including the drain-guard tests that read the surviving settings and analytics pages by
+      path.
+    probe: cd apps/mouth && npx vitest --run --root apps/mouth --config apps/mouth/vitest.config.ts
+  - text: >-
+      A3: WHEN `npm run build` runs in apps/mouth on this head SHALL complete `next build` and
+      SHALL print PUBLIC_LOGIN_BUNDLE_OK.
+    probe: cd apps/mouth && npm run build
+  - text: >-
+      A4 Bites: WHEN the merge is deployed THEN `curl -fsS https://kita.balizero.com/api/health`
+      SHALL report a commit descending from the merge SHA, `https://kita.balizero.com/settings/api`
+      SHALL answer 404 and `/settings` SHALL show exactly three cards (Profile, Appearance,
+      Integrations).
+    probe: curl -fsS https://kita.balizero.com/api/health
+assumptions:
+  - text: >-
+      The consumer-map pre-push gate's 715 remaining LIVE rows are common-basename collisions
+      (README.md, index.ts, error.tsx, loading.tsx, page.test.tsx, types.ts, client.ts,
+      route.test.ts), other files named video.mp4, one print() string, the admin-dashboard
+      Sidebar.tsx and a historical evidence pack — not consumers of the deleted files.
+    status: verified
+    probe: "python3 scripts/prepush_classify.py --check-consumers --base origin/main — table read row by row; the one real consumer (scripts/journey_sentinel.sh REQUIRED_SPECS) was fixed in commit 3"
+  - text: >-
+      /dream was reachable only by direct URL (no in-app link) and its production e2e spec
+      existed solely to guard that page, so retiring both together leaves the journey sentinel's
+      remaining floor (selftest, magic-link, prime-maps, visa-clock) intact.
+    status: verified
+    probe: 'grep -rn ''"/dream'' apps/mouth/src (0 hits outside the deleted page); scripts/journey_sentinel.sh REQUIRED_SPECS edited in the same commit'

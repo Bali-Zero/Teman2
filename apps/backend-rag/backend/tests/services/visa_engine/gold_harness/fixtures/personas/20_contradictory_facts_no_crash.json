@@ -99,6 +99,10 @@
       "status": "UNKNOWN",
       "reason": "NOT_PROVIDED"
     },
+    "investment.investment_amount_usd": {
+      "status": "UNKNOWN",
+      "reason": "NOT_ASKED"
+    },
     "family.relation_to_sponsor": {
       "status": "UNKNOWN",
       "reason": "NOT_ASKED"

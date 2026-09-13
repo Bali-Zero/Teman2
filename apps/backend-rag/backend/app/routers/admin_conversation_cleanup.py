@@ -11,7 +11,11 @@ Both windows are floored at RETENTION_MIN_DAYS and the write path is refused by
 default — see the policy block below. Callers get a counting dry run unless they
 ask otherwise.
 
-Access: Requires ADMIN_API_KEY (via verify_debug_access)
+Access: Requires ADMIN_API_KEY, through this module's own `verify_admin_key`
+(X-Debug-Key header only) — NOT `verify_debug_access`, which this router has
+never used. The old wording said otherwise and would mislead anyone scoping
+what a change to that gate reaches (adversarial review, kimi-code/k3,
+2026-09-10).
 """
 
 from datetime import datetime, timedelta, timezone

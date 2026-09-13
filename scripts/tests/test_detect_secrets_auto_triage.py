@@ -322,8 +322,8 @@ def test_kbli_gold_rule_registered_and_scoped_to_exactly_one_file() -> None:
     # trail are derived from the live registry post-merge, not summed by
     # hand (team-lead's call: a rule appears once in the trail regardless of
     # how many PRs tried to add it).
-    assert len(CONTENT_KEYED_RULES) == 26, (
-        f"CONTENT_KEYED_RULES now has {len(CONTENT_KEYED_RULES)} entries, not 26. "
+    assert len(CONTENT_KEYED_RULES) == 28, (
+        f"CONTENT_KEYED_RULES now has {len(CONTENT_KEYED_RULES)} entries, not 28. "
         "If you just ADDED a rule: bump this number AND append a `# +1: <what> "
         "(<date>, PR #NNNN)` line below, matching the existing trail's format — "
         "that comment IS the audit record this assert exists to force. "
@@ -351,6 +351,8 @@ def test_kbli_gold_rule_registered_and_scoped_to_exactly_one_file() -> None:
     # +1: test_seq19_signed_bundle.py signed-bundle trust anchors (public key, seq-18 chain anchor, seq-19 payload_sha256) (2026-09-06)
     # +1: fold_pack_seq20.py seq-19 chain anchor exact-value pin (2026-09-06)
     # +1: test_seq20_signed_bundle.py signed-bundle trust anchors (public key, seq-20 payload_sha256; seq-19 chain anchor is imported, not a literal) (2026-09-06)
+    # +1: evidence/<month>/<slug>/pack.yml pytest receipt cmd: dummy Settings env vars JWT_SECRET_KEY=x32/API_KEYS=x (2026-09-13, #6383 ledger PR)
+    # +1: evidence/<month>/<slug>/pack.yml pii_scan receipt claim: quoted grep-pattern text, not a found secret (2026-09-13, #6383 ledger PR)
     #
     # Note (2026-08-23): "appended last" is no longer a constraint. It was
     # true only because this test and the two Google-OAuth tests below

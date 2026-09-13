@@ -14,6 +14,7 @@ from backend.app.routers.portal_invite import (
     send_invitation,
     send_portal_invite_email,
 )
+from backend.services.portal.invite_service import INVITE_PATH_TEMPLATE
 
 
 class FakeInviteService:
@@ -38,7 +39,7 @@ class FakeInviteService:
             "client_id": client_id,
             "client_name": "Test Client",
             "email": email,
-            "invite_url": "/portal/invite?token=tok-123",
+            "invite_url": INVITE_PATH_TEMPLATE.format(token="tok-123"),
             "token": "tok-123",
         }
 
@@ -54,7 +55,7 @@ async def test_send_portal_invite_email_uses_internal_brevo_adapter() -> None:
         await send_portal_invite_email(
             to="client@example.com",
             client_name='Test Client & "Demo"',
-            invite_url="https://my.balizero.com/portal/invite?token=abc&x=1",
+            invite_url="https://my.balizero.com/portal/register?token=abc&x=1",
             db_pool=db_pool,
             client_id=11898,
         )
@@ -69,6 +70,35 @@ async def test_send_portal_invite_email_uses_internal_brevo_adapter() -> None:
     assert kwargs["client_id"] == 11898
     assert "Test Client &amp; &quot;Demo&quot;" in kwargs["body"]
     assert "token=abc&amp;x=1" in kwargs["body"]
+
+
+@pytest.mark.asyncio
+async def test_invite_email_body_is_brand_compliant() -> None:
+    """The brand-compliant rewrite (spec-portal-launch-kit.md §11): CTA text,
+    the 72-hour line, the public logo URL, no `<style>` block (Gmail strips
+    it — the email-template surface mandates inline CSS only) and no
+    character above U+FFFF (the brand voice bans emoji everywhere, Article
+    6.7)."""
+    db_pool = MagicMock()
+
+    with patch(
+        "backend.app.routers.portal_invite.send_internal_email",
+        new=AsyncMock(),
+    ) as mock_sender:
+        await send_portal_invite_email(
+            to="client@example.com",
+            client_name="Sample Client",
+            invite_url="https://my.balizero.com/portal/register?token=SAMPLE",
+            db_pool=db_pool,
+            client_id=1,
+        )
+
+    body = mock_sender.await_args.kwargs["body"]
+    assert "Activate My Portal" in body
+    assert "72 hours" in body
+    assert "https://balizero.com/assets/logo/balizero-logo-circle.png" in body
+    assert "<style" not in body
+    assert all(ord(ch) <= 0xFFFF for ch in body)
 
 
 @pytest.mark.asyncio
@@ -117,7 +147,7 @@ async def test_send_invitation_sends_email_through_internal_adapter(
     mock_sender.assert_awaited_once_with(
         to="client@example.com",
         client_name="Test Client",
-        invite_url="https://my.balizero.com/portal/invite?token=tok-123",
+        invite_url="https://my.balizero.com/portal/register?token=tok-123",
         db_pool=db_pool,
         client_id=11898,
     )
@@ -285,3 +315,44 @@ async def test_resend_invitation_allows_a_realistic_free_text_role(
     )
 
     assert response["success"] is True
+
+
+@pytest.mark.asyncio
+async def test_mailed_link_uses_the_live_portal_default_and_the_real_path(
+    mock_db_pool: MagicMock,
+) -> None:
+    """The link the client clicks, composed by the two halves that really build it.
+
+    Deliberately does NOT monkeypatch `frontend_portal_url`: the production
+    machine has FRONTEND_PORTAL_URL unset (measured 2026-09-10), so the FIELD
+    DEFAULT is what ships in the mail, and a test that patches the value can
+    stay green while the default rots. The path half comes from the service's
+    own `INVITE_PATH_TEMPLATE`, not from a hand-written string. The shared
+    fixture above used to mint `/portal/invite?token=`, a path
+    `InviteService.create_invitation` has not produced for a long time — it now
+    reads the same template, so no case in this file can assert a link shape
+    the service cannot produce (cross-family review + independent Gear-3 gate,
+    2026-09-10).
+    """
+    db_pool = mock_db_pool
+    db_pool._mock_conn.fetchrow.return_value = {
+        "id": 11898,
+        "assigned_to": None,
+        "created_by": None,
+    }
+
+    with patch(
+        "backend.app.routers.portal_invite.send_portal_invite_email",
+        new=AsyncMock(),
+    ) as mock_sender:
+        await send_invitation(
+            SendInviteRequest(client_id=11898, email="client@example.com"),
+            current_user={"email": "zero@balizero.com", "role": "Founder"},
+            invite_service=FakeInviteService(),  # type: ignore[arg-type]
+            db_pool=db_pool,
+        )
+
+    assert (
+        mock_sender.await_args.kwargs["invite_url"]
+        == "https://my.balizero.com/portal/register?token=tok-123"
+    )

@@ -5,7 +5,7 @@ import { join } from "node:path";
 /**
  * WS2 kita slice 6 (final sweep) — analytics suite drain guard.
  *
- * Pins the token drain of the WORKSPACE analytics surfaces (hub + funnel):
+ * Pins the token drain of the WORKSPACE analytics surface (funnel):
  * no raw hex colors, no raw status-rgba tuples, no Tailwind status/neutral
  * palette utilities (incl. zinc/gray/slate and border-t/l/r variants).
  * Categorical stat accents read the --bz-chart-* series (cyan -> neon twin),
@@ -14,7 +14,6 @@ import { join } from "node:path";
  */
 
 const PAGES = {
-  hub: join(__dirname, "..", "page.tsx"),
   funnel: join(__dirname, "..", "funnel", "page.tsx"),
 };
 
@@ -72,40 +71,6 @@ describe("analytics suite drain guard (WS2 slice 6)", () => {
       }
     });
   }
-
-  it("hub: categorical stat accents read the --bz-chart-* series", () => {
-    const src = readFileSync(PAGES.hub, "utf8");
-    expect(src).toContain("var(--bz-chart-1)");
-    expect(src).toContain("var(--bz-chart-6)");
-    expect(src).toContain("var(--bz-neon-cyan)");
-  });
-
-  it("hub: statuses read --state-* and legacy aliases are gone", () => {
-    const src = readFileSync(PAGES.hub, "utf8");
-    expect(src).toContain("var(--state-success)");
-    expect(src).toContain("var(--state-warning)");
-    expect(src).toContain("var(--state-danger)");
-    expect(src).not.toContain("var(--success)");
-    expect(src).not.toContain("var(--warning)");
-    expect(src).not.toContain("var(--error)");
-  });
-
-  it("hub: panels read the dashboard recipe + --bz-border", () => {
-    const src = readFileSync(PAGES.hub, "utf8");
-    expect(src).toContain("var(--bz-card)");
-    expect(src).toContain("var(--bz-border)");
-    expect(src).not.toContain("rgba(35,35,40,0.6)"); // token-lint-ok: regression guard string, not a color use
-    expect(src).not.toContain("rgba(25,25,30,0.3)"); // token-lint-ok: regression guard string, not a color use
-    expect(src).not.toContain("rgba(255, 255, 255, 0.05)"); // token-lint-ok: drain-guard assertion string, not a color use
-    expect(src).not.toContain("rgba(32,32,36"); // token-lint-ok: drain-guard assertion string, not a color use
-  });
-
-  it("hub: IDR amounts read the Money component", () => {
-    const src = readFileSync(PAGES.hub, "utf8");
-    expect(src).toContain('import { Money } from "@balizero/core"');
-    expect(src).toContain("<Money value={data.crm.revenue_paid} />");
-    expect(src).not.toContain("formatIDR(");
-  });
 
   it("funnel: statuses/text read tokens, panels read the recipe", () => {
     const src = readFileSync(PAGES.funnel, "utf8");

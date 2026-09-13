@@ -10,6 +10,7 @@ from typing import Any
 import httpx
 
 from backend.app.core.config import settings
+from backend.core import score_provenance
 
 # Tracing utilities (with fallback for standalone usage)
 try:
@@ -173,11 +174,17 @@ class ReRanker:
                         doc["rerank_score"] = float(score)
 
                         # Preserve original score if needed
+                        prior_score = doc.get("score")
                         if "score" in doc and "vector_score" not in doc:
                             doc["vector_score"] = doc["score"]
 
                         # Update main score
                         doc["score"] = float(score)
+                        score_provenance.stamp(
+                            doc,
+                            score_provenance.RERANKED,
+                            prior_score if isinstance(prior_score, (int, float)) else None,
+                        )
                         reranked_docs.append(doc)
 
                 # Sort explicitly just in case API didn't
