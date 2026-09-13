@@ -1,0 +1,196 @@
+gear: 2
+brief_ref: evidence/2026-09/sancho-kbli-sector-offcanvas-d19eba8f/brief.yml
+ruling: RULED 2026-09-12 SAETTA
+lanes:
+  - lane: mouth/k2-web-unblock
+    role: build
+    seat: Claude Opus 5 (Dux of window k2-web-unblock, mission SAETTA-K2; cures on the PR's own branch)
+    task_id: k2-web-unblock
+    worktree: .worktrees/mouth-k2-web-unblock
+    branch: agent/air-m5/mouth/k2-web-unblock -> sancho/kbli-sector-offcanvas (PR #5608)
+  - lane: kbli-panel-ground-truth
+    role: ground_truth
+    seat: session (M5) - the panel asserts no new regulatory fact; every figure it shows is projected by code and data already on origin/main, untouched by this diff
+    nb: >-
+      origin/main @ 8664b1ba30ce6eeba5d75e5347f75c86ee86f03e, three files read by
+      `git show`, none of them in this diff: apps/mouth/src/lib/kbli-provenance.ts
+      (isPmaVerdictVerified / isLicensingVerificationPending - the PMA verdict and the
+      licensing disclosure the panel projects), apps/mouth/src/lib/kbli-data.ts (the
+      server-only reader), apps/mouth/data/KBLI_2025_FINAL_CLEAN.json (the corpus).
+    query_hash: "eeed0a3683808b848e3f15b8af33718eb1480fa2c24d5855eee7e7a50243492c" # pragma: allowlist secret - sha256 of three public repo files, not a credential
+    note: >-
+      query_hash = sha256 of the three files concatenated in that order:
+      `for f in <the three>; do git show origin/main:"$f"; done | shasum -a 256`.
+      Per-file: kbli-provenance.ts 69ec7664..., kbli-data.ts b3a33488...,
+      KBLI_2025_FINAL_CLEAN.json c69a260d.... The panel's own projection
+      (kbli-panel-detail.ts) is new in this PR and pinned by its 5 unit tests.
+pii_scan: clean
+
+decisions:
+  - id: D1
+    what: >-
+      Cure the finding the final gate posted on 93f2ad3 ("Close after a section-strip hop
+      lands on the previous sector URL with the panel open, not on /kbli") on the PR's own
+      branch, at depth 1, rather than re-opening the feature as a successor PR. The branch
+      is not armed, so it is not frozen; the diff stays one concern.
+    why: >-
+      The red is a real defect, named verbatim by the gate and reproduced here. A successor
+      PR would have re-landed ~1200 unchanged lines to carry a 63-line correction.
+  - id: D2
+    what: >-
+      The pop depth travels with the history entries (a marker per entry carrying
+      {depth, href}), plus a module-scope hand-off written by the click that starts a hop.
+    why: >-
+      Two facts were measured in a browser before choosing, and each kills a shorter fix.
+      (a) The panel REMOUNTS on a section hop — a module-scope mount counter read 2 before
+      the hop and 4 after — so the instance ref the gate suggested cannot carry the count.
+      (b) The entry a <Link> pushes arrives with NO custom history state, so the count
+      cannot be inherited from the entry we came from either. Measurement transcript:
+      the PROBE lines quoted in receipts R2.
+  - id: D3
+    what: >-
+      The marker is read back on Back/Forward instead of only being incremented.
+    why: >-
+      A counter that only grows over-pops after a browser Back and drops the visitor out of
+      /kbli entirely — the failure the existing guard in close() was written against. The
+      third new e2e assertion is exactly that case.
+  - id: D4
+    what: >-
+      A click on the strip letter of the section already open (aria-current="page") is taken
+      over: on the grid it does nothing, from a drill-down it is one history step back to that
+      section's grid (the same step as the in-panel back control).
+    why: >-
+      Found by this session before pushing the D1-D3 cure, by probing the one strip link D2's
+      marker did not account for. Measured on 8f7f0e6, both red: hop B, click B, hop C, Back,
+      Escape landed on /kbli/sectors/A with the panel open (the router replaces a same-URL
+      entry and drops custom history state — preserveCustomHistoryState is false for a
+      navigate in next's segment-cache/navigation.js); drill, click the active letter, Escape
+      landed on /kbli/sectors/A with no panel (an uncounted push). Same defect class the gate
+      blocked, so it is cured in the same depth-1 correction, not left for a second round.
+  - id: D5
+    what: >-
+      "Open full page for <code>" in the drill-down becomes a plain <a>, like "open as full
+      page" in the panel header already was.
+    why: >-
+      Measured on 8f7f0e6: the <Link> landed on /kbli/01111 with the panel still visible,
+      because a client navigation keeps the @panel slot's last state. A hard anchor is the
+      pattern the same PR already chose, deliberately, for the header link.
+receipts:
+  - claim: The blocking finding is the gate's, and the "Harness floor recompute" red is that verdict being read, not a second cause.
+    cmd: gh run view 34760963066 --log-failed | tail -60
+    result: >-
+      "harness_gate_read: harness/fable-gate verdict = 'failure' - this PR does not pass the
+      gate" / "posted description = 'BLOCK | Close after a section-strip hop lands on the
+      previous sector URL with the panel open, not on /kbli. Measured.'"
+    exit: 0
+    ts: "2026-09-14T01:05:00+08:00"
+    seat: Claude Opus 5
+  - claim: D2 - the panel remounts on a hop and the pushed entry carries no custom state.
+    cmd: instrumented build driven with Playwright against next dev --webpack on this branch (instrumentation removed before commit 8f7f0e6)
+    result: >-
+      PROBE {"here":"/kbli/sectors/A","mark":null,"ref":0,"mounts":2} then PROBE
+      {"here":"/kbli/sectors/B","mark":null,"ref":0,"mounts":4}. Measured by the previous
+      instance of this window before a session-limit crash; NOT re-run by this instance.
+    exit: 0
+    ts: "2026-09-14T00:30:00+08:00"
+    seat: Claude Opus 5 (previous instance of this window)
+  - claim: D4 and D5 are guilty on 8f7f0e6 and innocent on the cure, in a browser; the D1-D3 cases stay green.
+    cmd: node k2web-probe.mjs (Playwright, next dev --webpack on this worktree, port 3117), run on 8f7f0e6, with the D4 condition mutated off, and on the cure
+    result: >-
+      On 8f7f0e6: control, case1-case4, case6 "url=/kbli panelVisible=false OK"; "case5
+      url=/kbli/sectors/A panelVisible=true FAIL" (hop B, click B, hop C, Back, Escape);
+      "case7 url=/kbli/sectors/A panelVisible=false FAIL" (drill, click active letter,
+      Escape); "case9 url=/kbli/01111 panelVisible=true" (open full page from a drill-down).
+      D4 condition disabled by a temporary mutation: case5 and case7 FAIL with the same URLs.
+      Cure restored from a cp backup: control and case1-case8 OK, "case9 url=/kbli/01111
+      panelVisible=false". case8 (header "open as full page") stays a real page load to
+      /kbli/sectors/A with no panel.
+    exit: 0
+    ts: "2026-09-14T01:20:00+08:00"
+    seat: Claude Opus 5
+  - claim: The three new e2e assertions fail on the parent code and the whole offcanvas file passes on the cure.
+    cmd: PLAYWRIGHT_EXTERNAL_SERVER=1 PLAYWRIGHT_BASE_URL=http://127.0.0.1:3117 playwright test e2e/kbli-sector-offcanvas.spec.ts --project=chromium --workers=1
+    result: >-
+      With KBLISectorOffcanvas.tsx and KBLIPanelCodeDetail.tsx put back to 8f7f0e6 and -g
+      "active section letter|open full page from a drill-down": "3 failed" (toBeHidden;
+      toBeVisible / element(s) not found; toBeHidden). Cure restored, whole file,
+      --timeout=120000: "21 passed (1.9m)". The describe title carries "page Page", the grep
+      the CI E2E job runs.
+    exit: 0
+    ts: "2026-09-14T01:26:00+08:00"
+    seat: Claude Opus 5
+  - claim: Static gates on the final tree.
+    cmd: tsc --noEmit -p apps/mouth/tsconfig.json ; prettier --check ; eslint ; vitest run src/lib/kbli-panel-detail.test.ts
+    result: >-
+      tsc exit 0 (and again by the pre-commit hook on a5d4b1c); prettier "All matched files
+      use Prettier code style!" on the three touched files; eslint 0 errors (1 ignored-file
+      warning for the e2e spec); vitest "Tests 5 passed (5)".
+    exit: 0
+    ts: "2026-09-14T01:28:00+08:00"
+    seat: Claude Opus 5
+  - claim: The branch still merges into today's main and the merged tree typechecks.
+    cmd: git merge-tree --write-tree origin/main HEAD ; git archive <tree> apps/mouth data/kbli-filiera | tar -x ; tsc --noEmit -p tsconfig.json ; vitest run src/lib/kbli-panel-detail.test.ts
+    result: >-
+      merge-tree exit 0, tree e5798957a5d3 against origin/main 8664b1ba30ce (main is 686
+      commits past the PR's merge base and changed kbli-data.ts, kbli-types.ts, the corpus and
+      kbli/page.tsx meanwhile); tsc on the merged tree exit 0; vitest "Tests 5 passed (5)".
+      NOT measured: the e2e file against the merged tree - a dev server from the exported
+      tree 500s on /kbli because the pnpm store's relative symlinks (@sentry/nextjs) resolve
+      into a pruned worktree path. CI's E2E job runs the suite on the merge ref.
+    exit: 0
+    ts: "2026-09-14T01:27:00+08:00"
+    seat: Claude Opus 5
+  - claim: Declared gear matches the measured floor.
+    cmd: python3 scripts/evidence_pack_lint.py --print-floor (then --print-floor-source) --changed-files-file <merge-base names + this pack> --numstat-file <merge-base numstat + this pack>
+    result: >-
+      12 files, 1685 added, 3 deleted, churn 1688; --print-floor prints "2",
+      --print-floor-source prints "size". Below the 1828 gear-3 threshold, no hot-zone path.
+    exit: 0
+    ts: "2026-09-14T01:30:00+08:00"
+    seat: Claude Opus 5
+
+  - claim: The 'Detect Secrets' red on 5e3302e was this pack's own query_hash, not a credential; the allowlist pragma clears it.
+    cmd: gh api repos/Bali-Zero/Teman2/actions/jobs/103778913979/logs (residue lines only) ; python3 scripts/detect_secrets_check_file.py <pack> on the 5e3302e version and on this one
+    result: >-
+      CI: "Residue (unaudited): 1", by file "evidence/2026-09/sancho-kbli-sector-offcanvas-d19eba8f/pack.yml",
+      by type "Hex High Entropy String". Local, 5e3302e version: "1 unaudited finding(s): line 20:
+      Hex High Entropy String" (the query_hash line). This version: "clean (0 findings -
+      canary-verified this scan actually examined it)". Auto-merge was disarmed before this commit
+      and re-armed after it, so no armed branch was written to.
+    exit: 0
+    ts: "2026-09-14T03:32:00+08:00"
+    seat: Claude Opus 5
+dissent:
+  - seat: Claude Opus 5 (self-refutation, on the mechanism)
+    objection: >-
+      The depth count now depends on how the router treats custom history state, which is
+      framework-internal (a same-URL navigate drops it, a traverse keeps it). A future
+      next upgrade, or a new in-panel <Link> added without reading this, can re-open the
+      same class silently.
+    status: CONFIRMED
+    cure: >-
+      Partly cured: every exit measured this round is pinned by an e2e assertion that was
+      red on the parent (six assertions across D1-D5), so a regression of a known path goes
+      red in CI. An unknown new link is not covered by construction; the component comment
+      names the rule (a click to where the visitor already stands is not a hop).
+  - seat: Claude Opus 5 (self-refutation, on scope)
+    objection: >-
+      D5 ("open full page" becomes a plain <a>) was not the gate's finding; it widens the
+      correction beyond the one defect the gate named.
+    status: CONFIRMED
+    cure: >-
+      Kept, because it is the same concern (an exit from the panel that leaves the visitor
+      under a panel) in the same PR's own new code, it is a 3-line change mirroring the
+      header link's deliberate choice, and shipping it known-broken would cost a second gate
+      round. Recorded here so the gate can reject it separately.
+
+leftovers:
+  - >-
+    next.config.ts sets experimental.optimizeCss while `critters` is not installed in this
+    checkout, so every SSR render through `postProcessHTML` throws "Cannot find module
+    'critters'" and returns 500. Driving a dev server here needed a pass-through stand-in on
+    NODE_PATH, outside the repo. Not this window's perimeter; worth a look by whoever owns
+    the mouth build.
+  - >-
+    pro.kbli_surface_conformance is still not installed on Pro (grounding report §F.8) — the
+    only `critical` organ there, and nothing else watches the canonical/chat_kbli drift.

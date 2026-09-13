@@ -67,11 +67,13 @@
 
   /* Shadows */
   --kbli-shadow-card:
-    0 1px 2px rgba(0, 0, 0, 0.2), 0 4px 16px rgba(0, 0, 0, 0.12), 0 0 0 1px var(--kbli-border);
+    0 1px 2px rgba(0, 0, 0, 0.2), 0 4px 16px rgba(0, 0, 0, 0.12),
+    0 0 0 1px var(--kbli-border);
   --kbli-shadow-card-hover:
     0 4px 12px rgba(0, 0, 0, 0.2), 0 16px 40px rgba(0, 0, 0, 0.15),
     0 0 0 1px var(--kbli-border-hover), 0 0 30px rgba(212, 132, 90, 0.04);
-  --kbli-shadow-glow: 0 0 20px rgba(212, 132, 90, 0.15), 0 0 60px rgba(212, 132, 90, 0.05);
+  --kbli-shadow-glow:
+    0 0 20px rgba(212, 132, 90, 0.15), 0 0 60px rgba(212, 132, 90, 0.05);
 
   /* Radii */
   --kbli-radius-sm: 6px;
@@ -105,7 +107,7 @@
 }
 
 .kbli-prose ul li::before {
-  content: '';
+  content: "";
   position: absolute;
   left: 12px;
   top: 18px;
@@ -171,5 +173,93 @@
   }
   100% {
     background-position: 100% 0;
+  }
+}
+
+/* =============================================================
+   KBLI sector off-canvas (intercepted route @panel)
+   Radix suspends unmount while these run, so the exit animation
+   plays before router.back() pops the intercepted URL.
+   ============================================================= */
+
+.kbli-panel-overlay[data-state="open"] {
+  animation: kbli-panel-fade-in 200ms ease-out;
+}
+.kbli-panel-overlay[data-state="closed"] {
+  animation: kbli-panel-fade-out 200ms ease-in;
+}
+
+/* Mobile: bottom sheet. Desktop (>=640px): right side panel. */
+.kbli-panel-content[data-state="open"] {
+  animation: kbli-panel-slide-up-in 280ms cubic-bezier(0.32, 0.72, 0, 1);
+}
+.kbli-panel-content[data-state="closed"] {
+  animation: kbli-panel-slide-down-out 200ms cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+@media (min-width: 640px) {
+  .kbli-panel-content[data-state="open"] {
+    animation: kbli-panel-slide-in 280ms cubic-bezier(0.32, 0.72, 0, 1);
+  }
+  .kbli-panel-content[data-state="closed"] {
+    animation: kbli-panel-slide-out 200ms cubic-bezier(0.32, 0.72, 0, 1);
+  }
+}
+
+@keyframes kbli-panel-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes kbli-panel-fade-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+@keyframes kbli-panel-slide-in {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+@keyframes kbli-panel-slide-out {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(100%);
+  }
+}
+@keyframes kbli-panel-slide-up-in {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+@keyframes kbli-panel-slide-down-out {
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(100%);
+  }
+}
+
+/* The shell's close handler reads the same query and skips its exit delay,
+   so the two stay in agreement about whether motion is playing. */
+@media (prefers-reduced-motion: reduce) {
+  .kbli-panel-overlay[data-state],
+  .kbli-panel-content[data-state] {
+    animation: none !important;
   }
 }
