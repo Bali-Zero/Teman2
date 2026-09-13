@@ -80,6 +80,10 @@ ALTER TABLE wa_outbox
     ));
 
 -- === ROLLBACK ===
+-- NOT VALID on purpose: rows already stamped 'support_judge_absent' are the
+-- I96-5 durable counter and wa_outbox is retained, never rewritten, so the
+-- narrower CHECK binds only rows written after the rollback instead of
+-- failing on history (Codex PR-2 round 1).
 
 ALTER TABLE wa_outbox
     DROP CONSTRAINT IF EXISTS wa_outbox_generation_fall_off_reason_check;
@@ -120,4 +124,4 @@ ALTER TABLE wa_outbox
         'finalize_blank_send_text',
         'internal_error',
         'unknown'
-    ));
+    )) NOT VALID;
