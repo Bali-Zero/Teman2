@@ -1,0 +1,182 @@
+gear: 2
+brief_ref: evidence/2026-09/agent-air-m5-mouth-r19k-k1d-v4-3b60ee0b/brief.yml
+lanes:
+  - lane: r19k-k1d-v4
+    role: build
+    seat: claude-opus-5 (Dux, SAETTA-R19K window K1, xhigh)
+  - lane: r19k-k1d
+    role: review
+    seat: codex gpt-5.6 (CODEX_HOME=acct2, read-only sandbox, reasoning=high) — on the #6502 diff
+  - lane: r19k-k1d
+    role: review
+    seat: harness gate (fresh Opus, read-only) — BLOCK on #6502, the defect this PR is written to
+pii_scan: clean
+seat_override: >-
+  R8 applicability: a sign-in page's markup, two CSS custom properties and two pure functions. No
+  immigration rule, eligibility, claim or price is authored; no NotebookLM query is claimed. The
+  seeded address in the tests is a placeholder, not a person.
+receipts:
+  - claim: >-
+      The open redirect is closed by RESOLUTION, per the spec, and the three whitespace vectors that
+      defeated my previous attempts are the guilt cases.
+    cmd: >-
+      npx vitest --run src/app/login ; node -e "for each vector: new URLSearchParams('redirect='+v).get('redirect') then new URL(decoded, origin)"
+      Probe: npx vitest --run src/app/login
+    result: >-
+      Measured before writing the guard. `?redirect=/%09/evil.test` is percent-decoded by
+      URLSearchParams into `/`,TAB,`/`,`evil.test`, and `new URL()` resolves that to origin
+      https://evil.test — likewise /%0A/ and /%0D/, //evil.test, the backslash forms, the userinfo
+      trick and the look-alike host. safeRedirect compares u.origin to location.origin, requires
+      http/https, refuses /login and returns pathname+search+hash. 45 tests: the spec's full vector
+      table, an assertion that the decode the vectors depend on is real, and one test proving the
+      REPLACED prefix guard (startsWith "/" and not "//" and not "/\\") returns true for all three
+      whitespace forms while safeRedirect refuses them.
+    exit: 0
+    ts: "2026-09-14T15:41:00Z"
+    seat: claude-opus-5
+  - claim: The guard is shown to be looking — the replaced implementation is planted and caught.
+    cmd: >-
+      Plant the old prefix branch at the top of safeRedirect, run the suite, restore, run again.
+      Probe: npx vitest --run src/app/login
+    result: >-
+      Planted: 7 tests red — the three whitespace vectors, the /login loop, the prefix-guard
+      comparison, the resolved-path property, and the page-level test that drives the whole chain
+      from the query string. Restored: 45 passed.
+    exit: 0
+    ts: "2026-09-14T15:42:00Z"
+    seat: claude-opus-5
+  - claim: The gate renders on concept-K at both widths and in both themes, with nothing thrown.
+    cmd: >-
+      Chromium via playwright against one `next dev --webpack` on 3114 (started for the capture and
+      killed after), /login, dataset.product="kita", getComputedStyle + screenshot at 1440x900 and
+      390x844 in operative-light and operative-dark.
+      Probe: chromium getComputedStyle + screenshot on the dev server at 1440 and 390, both themes
+    result: >-
+      panel rgb(37,62,51) with paper type in all four runs, 576px at 1440 (40%) and a full-width
+      120px band at 390; rule 56x3 rgb(164,75,54); both fields 52px on rgb(88,98,107) light and
+      rgba(247,244,238,.42) dark; the Enter button is forest, never copper; PIN inputmode="numeric"
+      AND pattern="[0-9]*"; h1 Fraunces, body Manrope; a sweep of every element's colour, background
+      and border finds no red. Zero page errors in all four runs.
+    exit: 0
+    ts: "2026-09-14T15:52:00Z"
+    seat: claude-opus-5
+  - claim: The offline auth journey is re-pinned and green at browser level, twice in a row.
+    cmd: >-
+      PLAYWRIGHT_EXTERNAL_SERVER=1 PLAYWRIGHT_BASE_URL=http://127.0.0.1:3114 npx playwright test
+      --config=playwright.config.ts --project=chromium --ignore-snapshots --reporter=list
+      e2e/offline/auth-critical-flow.spec.ts
+      Probe: npx vitest --run src/app/login
+    result: >-
+      3 passed, twice consecutively (the one earlier failure was the first request against a cold
+      dev server). The spec had pinned the copy this PR removes; the session read now fulfils the
+      destination as a same-origin stub and waits for the stub's body, after three techniques were
+      measured one at a time — holding deadlocks, aborting denies localStorage on an error
+      document's opaque origin, and reading at navigation-commit lands on about:blank's separate
+      EMPTY store, which returns null rather than throwing. The third test is the allowlist's
+      browser-level guilt case.
+    exit: 0
+    ts: "2026-09-14T15:50:00Z"
+    seat: claude-opus-5
+  - claim: The perimeter the 15:40 ruling drew is respected, and the portal file is byte-identical.
+    cmd: >-
+      git diff --stat origin/main...HEAD -- apps/mouth/src/app/portal/ ; git diff --name-only origin/main...HEAD
+      Probe: npx vitest --run "src/app/(workspace)/__tests__"
+    result: >-
+      Empty for portal/ — r19-fonts.css is untouched and the note it needed lives in the login
+      file's docstring instead. components/workspace/r19/**, AppSidebar.tsx and navigation.ts are
+      absent from the diff (k1-prims owns them). globals.css carries only the two --bz-panel tokens
+      the login needs; it is the one file this PR shares with that seat, and it is flagged in the
+      checkpoint rather than assumed.
+    exit: 0
+    ts: "2026-09-14T15:55:00Z"
+    seat: claude-opus-5
+  - claim: Static gates green, with the same two pre-existing failures and nothing else.
+    cmd: >-
+      npx tsc --noEmit --incremental false; npx eslint on the four login sources; npx prettier
+      --check; npx vitest --run src/app/login "src/app/(workspace)/__tests__";
+      python3 scripts/token_lint.py --base origin/main after committing.
+    result: >-
+      tsc 0 — and with --incremental false, which is the flag that catches the page-module export
+      rule a plain run misses. eslint: one warning, the <img> LCP note the previous page carried
+      twice and this one carries once; no errors. prettier clean. 111 passed. token-lint clean.
+    exit: 0
+    ts: "2026-09-14T15:45:00Z"
+    seat: claude-opus-5
+dissent:
+  - seat: harness gate (fresh Opus, read-only)
+    objection: >-
+      BLOCK on #6502 — contract.ts returns a path-branch target verbatim after excluding only // and
+      /\; browsers strip TAB/LF/CR before parsing and URLSearchParams.get() percent-decodes, so
+      ?redirect=/%09/evil.test reaches location.replace as https://evil.test/.
+    status: CONFIRMED
+    disposition: >-
+      True, and it survived two further attempts of mine (#6503, #6505) because both only added
+      new URL() to the ABSOLUTE branch. The imperator wrote the contract
+      (windows/K1d-REDIRECT-SPEC.md) under the depth-1 rule and it is applied verbatim here, vector
+      table included. I had reasoned about the parser and still shipped a prefix test three times;
+      what closed it was judging the resolved URL instead of the string.
+  - seat: harness gate (fresh Opus, read-only)
+    objection: BLOCK notice — the PIN lacks pattern="[0-9]*" and portal/r19-fonts.css is edited.
+    status: CONFIRMED
+    disposition: >-
+      Both taken. The pattern is beside inputMode (iOS Safari reads the pattern for the numeric
+      keypad); the portal file is byte-identical and its stale-comment correction moved into the
+      login file's own docstring, since that file belongs to another window.
+  - seat: codex gpt-5.6
+    objection: >-
+      BLOCK (on the #6502 diff) — a Next page module may export nothing but the framework's own
+      symbols; tsc --noEmit --incremental false fails TS2344 on the exported helpers.
+    status: CONFIRMED
+    disposition: >-
+      Cured before #6502 opened and carried here: LoginStage, safeRedirect and stageForError live in
+      ./contract. The strict flag is now an acceptance probe, because the plain run was green on the
+      same tree.
+  - seat: codex gpt-5.6
+    objection: >-
+      BLOCK — every non-401/403 becomes "service unreachable", but the endpoint returns 400/422 for
+      invalid input.
+    status: CONFIRMED
+    disposition: >-
+      Measured in identity/router.py:78-92. 4xx is now "what you sent" except 408 and 429; 5xx and
+      network throws are the service; the denied copy says "were not accepted" so it is true of a
+      format error too.
+  - seat: codex gpt-5.6
+    objection: >-
+      BLOCK — findReds misses #f00, rgb(...) and bg-red-500; findCopperFill misses inline
+      backgrounds, which is exactly how this page fills its button; the theatre guard checks a class
+      the overlay never used; the panel guard has no planted case.
+    status: CONFIRMED
+    disposition: >-
+      All four widened and carried here. findReds judges the colour in any spelling with four
+      unlisted reds as guilt and the whole alphabet as innocence; findCopperFill reads inline styles;
+      findTheatre is source-level with the replaced implementation as guilt; panelTracksSuccess is
+      planted three ways.
+  - seat: claude-opus-5
+    objection: >-
+      The spec accepts the SAME origin only, which narrows an existing flow: an SSO subdomain that
+      bounces a visitor here with its own absolute URL no longer returns them there.
+    status: CONFIRMED
+    disposition: >-
+      Applied as ruled, and recorded rather than quietly widened. The workspace layout's own bounce
+      (?redirect=${window.location.href} from kita) is same-origin and still works; a cross-subdomain
+      return lands on the role destination instead. If those subdomains must return their visitors,
+      that is a contract question for the imperator, not a widening for me to take on a surface that
+      has already been reopened three times.
+notes:
+  - >-
+    Three PRs were closed to get here: #6502 (gate BLOCK, the redirect), #6503 and #6505 (the same
+    defect, my corrections having touched only the absolute branch). Each was disarmed before being
+    closed and none was pushed to after arming.
+  - >-
+    Also cured along the way, and still true here: the success plate is gone because it was measured
+    never to paint (location.replace takes the window before React commits); the 1500ms and 2000ms
+    delays are gone; the error boundary lost the shadcn destructive red; the skeleton draws this
+    page's silhouette.
+  - >-
+    A production build cannot be reproduced in a worktree (`next build` dies on the shared
+    node_modules symlink), so every browser claim here is measured under `next dev --webpack`. The
+    E2E of #6505 passed CI's production build with this same spec file, which is the evidence that
+    the technique holds in both.
+  - >-
+    globals.css is the one file this PR shares with the k1-prims seat (K1c-bis). It carries only the
+    two --bz-panel tokens; K1d-bis turns that one value to ink for the frozen fusion.

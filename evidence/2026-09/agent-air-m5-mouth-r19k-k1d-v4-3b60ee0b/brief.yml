@@ -1,0 +1,55 @@
+gear: 2
+objective: >-
+  Put the staff gate at kita.balizero.com/login onto concept-K "SIAP", and close its ?redirect=
+  parameter to the written contract in windows/K1d-REDIRECT-SPEC.md — which exists because three
+  earlier attempts of mine closed it by inspecting the string and all three left /%09/evil.test
+  open. The boundary and the skeleton come with it.
+constraints:
+  - safeRedirect is applied VERBATIM from the spec. It judges the resolved URL, accepts only the
+    same origin over http/https, refuses /login, and returns pathname+search+hash — never the raw.
+  - Presentation only otherwise. No route, endpoint, field name, hook signature, API type, i18n key
+    or data request changes; api.login, the /api/health warm-up, the ?redirect= contract and the
+    role fallback are untouched.
+  - apps/mouth/src/app/portal/r19-fonts.css stays BYTE-IDENTICAL to origin/main; the note it needed
+    lives in the login file instead.
+  - No red anywhere on kita; copper is never a fill behind a label.
+  - >-
+    Out of scope by the 15:40 ruling and untouched here — components/workspace/r19/**,
+    AppSidebar.tsx, navigation.ts. globals.css carries only the two panel tokens K1d needs.
+  - Every guard carries a planted violation AND an innocent case.
+  - No client PII in code, tests or evidence.
+acceptance:
+  - text: >-
+      WHEN ?redirect= resolves to another origin, to a non-http(s) scheme, or to /login — including
+      the percent-encoded whitespace forms /%09/, /%0A/ and /%0D/ that a prefix test passes — the
+      page SHALL fall back to the role destination and log the refusal; WHEN it resolves to this
+      origin the RESOLVED path SHALL be used.
+    probe: npx vitest --run src/app/login
+  - text: >-
+      WHEN the replaced prefix guard is planted back into safeRedirect, the suite SHALL go red on
+      the whitespace vectors — the guard must be shown to be looking.
+    probe: npx vitest --run src/app/login
+  - text: >-
+      WHEN /login renders on kita, the panel SHALL be the forest --bz-panel with paper type, the
+      rule 56x3 copper, both fields 52px on --line-control, and the PIN SHALL carry inputmode
+      numeric AND pattern [0-9]*, at 1440 and 390 in both themes, with zero page errors.
+    probe: chromium getComputedStyle + screenshot on the dev server at 1440 and 390, both themes
+  - text: >-
+      WHEN login fails with any 4xx except 408 and 429 the page SHALL say the request was not
+      accepted; WHEN it fails with 408, 429, a 5xx or a network throw it SHALL say the service could
+      not be reached.
+    probe: npx vitest --run src/app/login
+  - text: >-
+      WHEN the page, the error boundary or the skeleton renders, NO red and NO copper fill behind a
+      label SHALL appear, and the detectors SHALL name a red they were never given.
+    probe: npx vitest --run src/app/login
+  - text: >-
+      WHEN --bz-panel resolves in either kita theme it SHALL be the R19 forest with paper on it and
+      SHALL NOT track the lifted --state-success step.
+    probe: npx vitest --run "src/app/(workspace)/__tests__"
+consumer_map:
+  - Every Bali Zero staff member meets this page before any other, and the redirect is the one
+    thing on it that can send them somewhere they did not ask to go.
+  - page.test.tsx goes red if any vector in the spec's table reopens, if a 500 is reported as a
+    wrong PIN, or if a red returns; auth-critical-flow.spec.ts goes red at browser level if an
+    off-origin target is followed.
