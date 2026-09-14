@@ -1,0 +1,28 @@
+[seat] agy-gemini-3.1-pro  model: gemini-3.1-pro-high  effort: high  round: 6  started: 2026-09-14T07:49:00+08:00
+[prompt] prompt-r1.txt (157102 bytes, sha256 4bd5e96f809df924064bd4bc95f0306dd424e0758cab982415e3c6fb68a56b48) — the same prompt round 5 timed out on,
+  re-run with --print-timeout 25m.
+[raw stdout follows]
+
+SEVERITY: BLOCK — apps/backend-rag/backend/tests/services/visa_engine/test_interview_walk_census.py:159 — Rule 7 violation. The comment mentions `tp1-qwen3.8-max`, which is a vendor/model name. This breaks the hard rule against naming models in code.
+Cure: Remove `tp1-qwen3.8-max` from the comment.
+
+SEVERITY: BLOCK — apps/mouth/scripts/visa-oracle/generate-walk-corpus.ts:810 — The `offshore/work/no_government_collaboration` scenario specifies `sponsor_government_collaboration: "no"` but omits `sponsor_category: "NONE"`. Because `sponsor_category` defaults to its first option (`EMPLOYER`), the walk generator will never ask the government collaboration question. This breaks the fixture generation and causes `test_guilt_a_walk_that_loses_its_answer_is_caught` to crash or fail its anchor assertion.
+Cure: Add `sponsor_category: "NONE"` to the `overrides` for this scenario.
+
+SEVERITY: BLOCK — apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/flow.ts:882 — Rule 2 violation. To avoid a `NEEDS_INPUT` on E28A capital figures, the `capital_market` vehicle (which means "Capital-market investments only, without establishing a company") was made to ask `ptPmaCommitmentQuestionIds` ("Are you establishing a PT PMA?"). Asking an applicant if they are establishing a company immediately after they chose a branch explicitly for *not* establishing a company violates logical flow and the rule that a question's premises must hold.
+Cure: Remove `ptPmaCommitmentQuestionIds(facts)` from the `capital_market` ternary in `flow.ts`. Instead, in `fact-mapper.ts`, map `investment.pt_pma` to `known(false)` when `facts.investment_vehicle === "capital_market"`.
+
+SEVERITY: MAJOR — apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/i18n.ts:232 — Rule 1 violation. The English copy for `q.sponsor_diplomatic_household` ("Is your employer a foreign diplomat posted in Indonesia, and is the role in that diplomat's household?") bundles two distinct factual conditions into a single question using "and".
+Cure: Simplify the question to evaluate the role itself (e.g., "Is this a role in the household of a foreign diplomat posted in Indonesia?").
+
+SEVERITY: MINOR — apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter.ts:536 — The ID copy for `D12_NOT_CONVERTIBLE` omits the "— Multiple Entry" ("— Beberapa Kali Perjalanan") clarification that exists in the EN copy, creating a slight mismatch in the promised specificity.
+Cure: Add the localized "Multiple Entry" string to the ID copy.
+
+SURVIVES:
+- **The D12 stay-day threshold hardcoded where the pack could move it**: Withstood because the hardcoded value is strictly pinned and tested against the highest-sequence pack on disk in `flow.test.ts`.
+- **A branch where the new questions make a previously-decided walk go NEEDS_INPUT**: Withstood. E.g., an offshore applicant answering "no" to onshore conversion correctly skips the investor route questions; the resulting `NEEDS_INPUT` for E28B is successfully masked by `C2` and `D12` remaining supported. 
+- **A per-sequence pin table that hides a regression on the sequence it is not pinning**: Withstood because the tests dynamically pull the corresponding expectations from `EXPECTED_OUTCOME_BY_SEQUENCE` based on the evaluated pack (`candidate_pack` vs `signed_pack`), ensuring neither sequence's regressions can hide.
+
+VERDICT: BLOCK
+
+EXIT 0  ended: 2026-09-14T07:59:00+08:00

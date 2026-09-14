@@ -1,0 +1,26 @@
+[seat] codex-gpt-5.6-sol  model: gpt-5.6-sol (reasoning effort high)  round: 7  started: 2026-09-14T07:56:00+08:00
+[prompt] prompt-r3.txt (4279 bytes, sha256 3f3b8e98faf0f9964f471912de338331f7e50e77795ae9bd645944beca8f0c7d) — the window brief's
+  hard rules plus the merge-base three-dot diff with the generated walk
+  fixtures excluded. The echo of that prompt is stripped from this file;
+  the raw stdout from the seat's first word onward follows verbatim.
+[raw stdout follows]
+
+codex
+[M5]
+
+FINDING 4 — ACCEPTED. Both highest signed and source packs are independently resolved, non-vacuous, and pinned to `D12_MAX_STAY_DAYS`.
+
+FINDING 3 — Disposition accepted. The proposed third answer would erase an already-proven C2 candidate through decision-wide human review. The durable fix is per-candidate holding, correctly deferred as an engine change.
+
+VERDICT: PASS
+hook: Stop
+hook: Stop Completed
+tokens used
+31.474
+[M5]
+
+FINDING 4 — ACCEPTED. Both highest signed and source packs are independently resolved, non-vacuous, and pinned to `D12_MAX_STAY_DAYS`.
+
+FINDING 3 — Disposition accepted. The proposed third answer would erase an already-proven C2 candidate through decision-wide human review. The durable fix is per-candidate holding, correctly deferred as an engine change.
+
+VERDICT: PASS

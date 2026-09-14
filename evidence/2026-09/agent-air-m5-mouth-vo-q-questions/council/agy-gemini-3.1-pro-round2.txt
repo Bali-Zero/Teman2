@@ -1,0 +1,8 @@
+[seat] agy-gemini-3.1-pro  model: gemini-3.1-pro-high  effort: high  mode: text-only, material inlined (.probe-voq/council-prompt-r2-inline.txt, 237375 bytes)  started: 2026-09-13T20:30:05Z
+1. `fact-mapper.ts:1024` — `investment.capital_market_only` is strictly mapped to `booleanFact(facts.investment_capital_market_only)`. However, `flow.ts` skips asking this question if `investment_establishes_company === "yes"`, meaning the fact arrives at the engine as `UNKNOWN(NOT_ASKED)`. While this doesn't cause a `NEEDS_INPUT` dead end (because `E28B` becomes `TRUE` and resolves the walk to `SUPPORTED_CANDIDATES`), it leaves a false `missing_facts` entry for an applicant who already confirmed they ARE establishing a company (and thus cannot be "capital-market only, without establishing a company"). Fix: Add a ternary to map it to `known(false)` if `establishes_company` is `"yes"`, exactly like `ikn_subsidiary` does.
+
+2. `test_interview_walk_census.py:928` — The prose comments state `ACTIVITY_BOUNDARY on 7 walks`, which contradicts the module introduction ("none of its thirteen walks raises a disclosure flag, so the per-flag table below is unchanged"). The `capital_market` vehicle is now listed in `ACTIVITY_BOUNDARY_DECIDABLE_ANSWERS` so it no longer raises a flag, meaning the count should still be `6 walks`. Fix: Revert the comment edit from `7` back to `6`.
+
+VERDICT: DEFECT
+EXIT 0
+ended: 2026-09-13T20:36:23Z

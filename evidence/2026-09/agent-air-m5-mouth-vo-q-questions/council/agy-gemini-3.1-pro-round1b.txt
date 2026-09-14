@@ -1,0 +1,4 @@
+[seat] agy-gemini-3.1-pro  model: gemini-3.1-pro-high  effort: high  mode: text-only, material inlined (.probe-voq/council-prompt-r1-inline.txt, 225446 bytes)  started: 2026-09-13T20:06:26Z
+[agy] print timeout after 5m0s with turn in progress; returning partial output
+EXIT 0
+ended: 2026-09-13T20:11:30Z

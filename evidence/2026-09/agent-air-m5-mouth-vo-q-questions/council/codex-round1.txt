@@ -1,0 +1,42 @@
+[elision] Pre-rebase round, kept for provenance. Full stdout of this round: 718099 bytes, sha256
+  20269924d8331a8a6f01e9488858676a7c82ce633aaa92c6fd3444ef2ddeabc6. What follows is every word the seat itself wrote, in order,
+  separated by ----; the shell transcript of its own read-only probes is
+  removed. Nothing the seat asserted is edited.
+
+----
+
+GEAR 3: audit del decision tree e dei guard di reachability — superficie normativa/deterministica ad alto impatto, con falsificazione combinatoria richiesta. Nessuna scrittura: controllerò routing, mapping/pruning/resume, regole seq‑21 e test, poi eseguirò probe mirati se l’ambiente lo consente.
+
+----
+
+Il punto più sospetto è il ramo dinamico d’investimento e il caso `sponsor_category = unsure`: il guard candidato verifica soprattutto che ogni prodotto venga nominato almeno una volta, ma non ancora che ogni walk resti decisivo contro seq‑21. Sto misurando direttamente quei walk contro il pack candidato, inclusi i `missing_facts`, invece di dedurlo dai soli test verdi.
+
+----
+
+Rollover operativo: salvo un checkpoint conciso e continuo nella sessione successiva senza cambiare perimetro né rieseguire l’audit da zero.
+
+----
+
+Checkpoint rollover blocked by the read-only permission profile (`PermissionError`); review not yet complete.
+
+----
+
+La continuazione è attiva; riprendo dal probe candidato già preparato. Il messaggio di stop segnala stato del worktree, ma io resto read-only e ignoro gli untracked preesistenti.
+
+----
+
+1. `apps/backend-rag/backend/tests/services/visa_engine/test_interview_walk_census.py:1468` — The candidate reachability guard uses raw engine candidates, so it falsely treats E28C as applicant-reachable. The only E28C witness is `offshore/invest/undecided/capital_market_only` (`test_seq21_pack.py:166`), while the census itself records that this walk raises `ACTIVITY_BOUNDARY` and becomes `HUMAN_REVIEW_REQUIRED` publicly (`test_interview_walk_census.py:190`). This violates the owner doctrine and lets the guard pass while the public adapter erases the sole witnessed E28C result. Minimal fix: run candidate reachability through the public-policy adapters with each fixture’s disclosure flags, then either suppress `ACTIVITY_BOUNDARY` once the capital-market answer resolves the route or provide an honest, unflagged E28C walk.
+
+2. `apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/flow.ts:669` — `investment_ikn_subsidiary` is always asked, including after `investment_establishes_company = no` (`:674`), but its copy asks whether “the company you are establishing” is an IKN subsidiary. The interview therefore contradicts the applicant’s preceding answer. Minimal fix: gate the IKN question on company establishment and map it to known false when that route was decisively rejected, or rewrite/disambiguate the company-establishment fact and both questions so the answers can consistently coexist.
+
+3. `apps/backend-rag/backend/tests/services/visa_engine/test_interview_walk_census.py:5` — The module introduction still claims 94 walks and calls the 76-supported W-VO-E census current (`:9`), while this change raises the corpus to 106 and the current engine count to 88 supported walks. Minimal fix: update the opening summary to 106 and the current 88/15/2/1 census, leaving older numbers explicitly historical.
+
+VERDICT: DEFECT
+
+----
+
+Il review è completo; provo a chiudere il rollover con un checkpoint finale, senza modificare il worktree.
+
+----
+
+Checkpoint finale non salvabile: il profilo read-only restituisce ancora `PermissionError`. Il review è già completo.
