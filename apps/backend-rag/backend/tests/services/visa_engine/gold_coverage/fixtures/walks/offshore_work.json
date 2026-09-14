@@ -9,6 +9,7 @@
     "category",
     "trip_scope",
     "sponsor_category",
+    "sponsor_government_collaboration",
     "work_payer",
     "work_indonesia_compensation",
     "work_sponsor_confirmed",
@@ -111,10 +112,7 @@
       "status": "UNKNOWN",
       "reason": "NOT_ASKED"
     },
-    "sponsor.government_collaboration": {
-      "status": "UNKNOWN",
-      "reason": "NOT_ASKED"
-    },
+    "sponsor.government_collaboration": { "status": "KNOWN", "value": true },
     "sponsor.world_figure_invitation": {
       "status": "UNKNOWN",
       "reason": "NOT_ASKED"

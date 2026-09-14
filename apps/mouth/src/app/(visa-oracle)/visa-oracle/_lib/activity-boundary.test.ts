@@ -172,6 +172,27 @@ const WALKS: readonly WalkCase[] = [
     flags: [],
   },
   {
+    // W-VO-Q: `el.e28c.capital-market` (seq-21) decides a capital-market-only
+    // investment off two facts this branch asks. Before this option existed
+    // such an applicant could only answer `undecided`, which holds.
+    name: "invest · capital_market — decidable (W-VO-Q): the pack decides the route off its own facts",
+    category: "invest",
+    tripScope: "single",
+    branch: [
+      ["sponsor_category", "INVESTMENT"],
+      ["investment_vehicle", "capital_market"],
+      ["investment_pt_pma", "no"],
+      ["investment_establishes_company", "no"],
+      ["investment_foreign_branch", "no"],
+      ["investment_capital_market_only", "yes"],
+      ["investment_meets_threshold", "yes"],
+      ["family_sponsor_confirmed", "no"],
+      ["wants_onshore_conversion", "no"],
+      ["stay_days", "730"],
+    ],
+    flags: [],
+  },
+  {
     name: "retirement · property — FREED (PR-D3, D3-3): family_sponsor_confirmed is now asked as a fallback, curing the §6 R3 defect this HELD",
     category: "retirement",
     tripScope: "single",
@@ -361,6 +382,9 @@ const WALKS: readonly WalkCase[] = [
       ["other_purpose", "medical"],
       ["other_paid_activity", "yes"],
       ["sponsor_category", "NONE"],
+      // W-VO-Q: a NONE sponsor on an EMPLOYMENT branch asks the seq-21
+      // government-collaboration question; the answer is incidental here.
+      ["sponsor_government_collaboration", "no"],
       ["work_payer", "yes"],
       ["work_sponsor_confirmed", "yes"],
       ["stay_days", "30"],

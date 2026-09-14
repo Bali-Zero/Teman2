@@ -1,0 +1,2 @@
+[seat] agy-gemini-3.1-pro  model: gemini-3.1-pro-high  effort: high  mode: text-only, material inlined (.probe-voq/council-prompt-r4-agy.txt)  started: 2026-09-13T20:57:22Z
+error: interrupted

@@ -210,16 +210,54 @@ const en = {
   "why.sponsor_category":
     "The sponsor category is recorded as its own exact fact. No rule in the current pack reads it yet — this only prepares the ground for rules that will.",
 
+  "q.sponsor_government_invitation":
+    "Do you hold a written invitation from an Indonesian central-government body, issued to you for your special expertise?",
+  "q.sponsor_government_invitation.hint":
+    "Answer no if the invitation is not in writing yet, or does not come from an Indonesian central-government body.",
+  "why.sponsor_government_invitation":
+    "The engine receives only your yes or no answer about a government invitation.",
+  "q.sponsor_government_collaboration":
+    "Do you have a confirmed collaboration commitment with an Indonesian government body or institution, based on your special expertise?",
+  "q.sponsor_government_collaboration.hint":
+    "A discussion or a proposal that is not confirmed yet counts as no.",
+  "why.sponsor_government_collaboration":
+    "The engine receives only your yes or no answer about a confirmed government collaboration.",
+  "q.sponsor_world_figure_invitation":
+    "Has an Indonesian government body invited you as a world figure — a person of international standing?",
+  "q.sponsor_world_figure_invitation.hint":
+    "Answer yes only if a government body has invited you in that capacity.",
+  "why.sponsor_world_figure_invitation":
+    "The engine receives only your yes or no answer about a world-figure invitation.",
+  // One clause, not two: the wire fact `sponsor.diplomatic_household` is a
+  // single boolean, and the earlier wording ("Is your employer a foreign
+  // diplomat posted in Indonesia, AND is the role in that diplomat's
+  // household?") asked the visitor to answer two things at once — a person who
+  // works for a diplomat's embassy rather than the household could read either
+  // half as the question (council round 6, council/journal.jsonl).
+  "q.sponsor_diplomatic_household":
+    "Is this a role in the household of a foreign diplomat posted in Indonesia?",
+  "q.sponsor_diplomatic_household.hint":
+    "Answer no if you would work for anyone other than the diplomat's own household.",
+  "why.sponsor_diplomatic_household":
+    "The engine receives only your yes or no answer about a diplomatic household role.",
+  "q.sponsor_trade_office":
+    "Is your sponsor a foreign trade or economic representative office in Indonesia?",
+  "q.sponsor_trade_office.hint":
+    "Answer no if your sponsor is any other kind of organisation.",
+  "why.sponsor_trade_office":
+    "The engine receives only your yes or no answer about the sponsor being a trade office.",
   "q.business_activity": "What will you mainly do on the business trip?",
   "q.business_activity.hint":
-    "Describe the activity, not a visa name. Meetings, negotiation and conferences are decided here; training or another activity is sent to a human reviewer.",
+    "Describe the activity, not a visa name. Meetings, negotiation, conferences and looking into investing are decided here; training or another activity is sent to a human reviewer.",
   "q.business_activity.opt.meetings": "Meetings or site visits",
   "q.business_activity.opt.negotiation": "Negotiation or signing",
   "q.business_activity.opt.conference": "Conference or trade event",
+  "q.business_activity.opt.exploring":
+    "Exploring whether to invest or open a business here",
   "q.business_activity.opt.training": "Giving or receiving training",
   "q.business_activity.opt.other": "Another business activity",
   "why.business_activity":
-    "The engine has no matching fact for this activity detail, so it is never used to manufacture a recommendation. It only decides whether a human reviewer has to look at your trip — training and “another business activity” do, the other three answers do not.",
+    "Only one answer changes what the engine receives: exploring whether to invest or open a business is sent as an investment purpose, and we then ask the few questions that decide it. Otherwise this detail only decides whether a human reviewer has to look at your trip — training and “another business activity” do, the other answers do not.",
 
   "q.work_payer":
     "Will an Indonesian-registered company employ and pay you here?",
@@ -281,6 +319,8 @@ const en = {
   "q.investment_vehicle.opt.bank_deposit": "A bank deposit in my own name",
   "q.investment_vehicle.opt.merit": "Merit, talent, or public contribution",
   "q.investment_vehicle.opt.family": "A family-linked route",
+  "q.investment_vehicle.opt.capital_market":
+    "Capital-market investments only, such as listed shares or bonds",
   "q.investment_vehicle.opt.undecided": "I have not chosen a basis yet",
   "why.investment_vehicle":
     "This label only chooses which exact facts to ask next. It never chooses a visa path.",
@@ -327,6 +367,36 @@ const en = {
   "q.investment_role.opt.OTHER": "Another role",
   "why.investment_role":
     "The selected closed-enum value is sent unchanged to investment.proposed_role.",
+  "q.investment_establishes_company":
+    "Will you establish a company in Indonesia as part of this investment?",
+  "q.investment_establishes_company.hint":
+    "A subsidiary set up in Indonesia, including one of a company abroad, counts as a company. Answer no if the investment does not involve setting up a company in Indonesia.",
+  "why.investment_establishes_company":
+    "The engine receives only your yes or no answer about establishing a company.",
+  "q.investment_foreign_branch":
+    "Are you establishing a branch or a subsidiary of a company that already exists outside Indonesia?",
+  "q.investment_foreign_branch.hint":
+    "Answer no if the company does not already exist outside Indonesia.",
+  "why.investment_foreign_branch":
+    "The engine receives only your yes or no answer about a branch or subsidiary of a foreign company.",
+  "q.investment_ikn_subsidiary":
+    "Will the company you are establishing be a subsidiary located in the new capital, IKN (Ibu Kota Nusantara)?",
+  "q.investment_ikn_subsidiary.hint":
+    "Answer no for a company located anywhere else in Indonesia.",
+  "why.investment_ikn_subsidiary":
+    "The engine receives only your yes or no answer about a subsidiary in IKN.",
+  "q.investment_capital_market_only":
+    "Is your investment held only in capital-market instruments, without establishing a company?",
+  "q.investment_capital_market_only.hint":
+    "Answer no if any part of the investment is outside the capital market.",
+  "why.investment_capital_market_only":
+    "The engine receives only your yes or no answer about a capital-market-only investment.",
+  "q.investment_meets_threshold":
+    "Does your investment meet every published financial minimum for the route you chose — the capital amount, and the annual turnover where that route publishes one?",
+  "q.investment_meets_threshold.hint":
+    "If you do not know the published minimum for your route, answer no: the Oracle never assumes it is met.",
+  "why.investment_meets_threshold":
+    "The engine receives only your yes or no answer. No amount is shown or inferred here.",
   "q.unit.idr": "IDR",
   "q.unit.usd": "USD",
   "q.unit.usd_month": "USD per month",
@@ -630,6 +700,11 @@ const en = {
   "tree.work_payer": "Who pays you",
   "tree.work_indonesia_compensation": "Payment source",
   "tree.work_sponsor_confirmed": "Work sponsor",
+  "tree.sponsor_government_invitation": "Government invitation",
+  "tree.sponsor_government_collaboration": "Government collaboration",
+  "tree.sponsor_world_figure_invitation": "World-figure invitation",
+  "tree.sponsor_diplomatic_household": "Diplomatic household",
+  "tree.sponsor_trade_office": "Trade office sponsor",
   "tree.remote_clients": "Where clients sit",
   "tree.remote_compensation": "Payment source",
   "tree.remote_employer_country": "Employer country",
@@ -640,6 +715,11 @@ const en = {
   "tree.investment_capital_idr": "Investment capital",
   "tree.investment_paid_up_capital_idr": "Paid-up capital",
   "tree.investment_role": "Company role",
+  "tree.investment_establishes_company": "Company in Indonesia",
+  "tree.investment_foreign_branch": "Foreign branch or subsidiary",
+  "tree.investment_ikn_subsidiary": "Subsidiary in IKN",
+  "tree.investment_capital_market_only": "Capital market only",
+  "tree.investment_meets_threshold": "Published minimum",
   "tree.family_relation": "Family relationship",
   "tree.marital_status": "Marital status",
   "tree.family_sponsor_nationalities": "Sponsor passports",
@@ -1118,16 +1198,48 @@ const id: Record<Keys, string> = {
   "why.sponsor_category":
     "Kategori sponsor dicatat sebagai fakta tersendiri. Belum ada aturan dalam rule pack saat ini yang membacanya — ini hanya menyiapkan data untuk aturan yang akan datang.",
 
+  "q.sponsor_government_invitation":
+    "Apakah Anda memiliki undangan tertulis dari instansi pemerintah pusat Indonesia yang diberikan kepada Anda sebagai tenaga ahli?",
+  "q.sponsor_government_invitation.hint":
+    "Jawab tidak jika undangan belum tertulis, atau tidak berasal dari instansi pemerintah pusat Indonesia.",
+  "why.sponsor_government_invitation":
+    "Mesin hanya menerima jawaban ya atau tidak tentang undangan pemerintah.",
+  "q.sponsor_government_collaboration":
+    "Apakah Anda memiliki komitmen kolaborasi yang terkonfirmasi dengan instansi atau lembaga pemerintah Indonesia, berdasarkan keahlian khusus Anda?",
+  "q.sponsor_government_collaboration.hint":
+    "Diskusi atau usulan yang belum dikonfirmasi dihitung sebagai tidak.",
+  "why.sponsor_government_collaboration":
+    "Mesin hanya menerima jawaban ya atau tidak tentang kolaborasi pemerintah yang terkonfirmasi.",
+  "q.sponsor_world_figure_invitation":
+    "Apakah instansi pemerintah Indonesia mengundang Anda sebagai tokoh dunia — seseorang dengan reputasi internasional?",
+  "q.sponsor_world_figure_invitation.hint":
+    "Jawab ya hanya jika instansi pemerintah telah mengundang Anda dalam kapasitas tersebut.",
+  "why.sponsor_world_figure_invitation":
+    "Mesin hanya menerima jawaban ya atau tidak tentang undangan sebagai tokoh dunia.",
+  "q.sponsor_diplomatic_household":
+    "Apakah posisi ini berada di rumah tangga diplomat asing yang bertugas di Indonesia?",
+  "q.sponsor_diplomatic_household.hint":
+    "Jawab tidak jika Anda akan bekerja untuk pihak selain rumah tangga diplomat tersebut.",
+  "why.sponsor_diplomatic_household":
+    "Mesin hanya menerima jawaban ya atau tidak tentang posisi di rumah tangga diplomat.",
+  "q.sponsor_trade_office":
+    "Apakah penjamin Anda adalah kantor perwakilan dagang atau ekonomi asing di Indonesia?",
+  "q.sponsor_trade_office.hint":
+    "Jawab tidak jika penjamin Anda adalah jenis organisasi lain.",
+  "why.sponsor_trade_office":
+    "Mesin hanya menerima jawaban ya atau tidak tentang penjamin berupa kantor perwakilan dagang.",
   "q.business_activity": "Apa kegiatan utama Anda dalam perjalanan bisnis?",
   "q.business_activity.hint":
-    "Jelaskan kegiatannya, bukan nama visa. Rapat, negosiasi, dan konferensi diputuskan di sini; pelatihan atau kegiatan lain dikirim ke peninjau manusia.",
+    "Jelaskan kegiatannya, bukan nama visa. Rapat, negosiasi, konferensi, dan penjajakan investasi diputuskan di sini; pelatihan atau kegiatan lain dikirim ke peninjau manusia.",
   "q.business_activity.opt.meetings": "Rapat atau kunjungan lokasi",
   "q.business_activity.opt.negotiation": "Negosiasi atau penandatanganan",
   "q.business_activity.opt.conference": "Konferensi atau pameran dagang",
+  "q.business_activity.opt.exploring":
+    "Menjajaki peluang berinvestasi atau membuka usaha di sini",
   "q.business_activity.opt.training": "Memberi atau menerima pelatihan",
   "q.business_activity.opt.other": "Kegiatan bisnis lainnya",
   "why.business_activity":
-    "Mesin tidak memiliki fakta yang tepat untuk rincian kegiatan ini, sehingga tidak pernah dipakai untuk membuat rekomendasi. Rincian ini hanya menentukan apakah peninjau manusia perlu melihat perjalanan Anda — pelatihan dan “kegiatan bisnis lainnya” perlu, tiga jawaban lainnya tidak.",
+    "Hanya satu jawaban yang mengubah apa yang diterima mesin: menjajaki peluang berinvestasi atau membuka usaha dikirim sebagai tujuan investasi, lalu kami menanyakan beberapa pertanyaan yang memutuskannya. Selain itu, rincian ini hanya menentukan apakah peninjau manusia perlu melihat perjalanan Anda — pelatihan dan “kegiatan bisnis lainnya” perlu, jawaban lainnya tidak.",
 
   "q.work_payer":
     "Apakah perusahaan berbadan hukum Indonesia yang mempekerjakan dan menggaji Anda di sini?",
@@ -1190,6 +1302,8 @@ const id: Record<Keys, string> = {
   "q.investment_vehicle.opt.bank_deposit": "Deposito bank atas nama saya",
   "q.investment_vehicle.opt.merit": "Prestasi, talenta, atau kontribusi publik",
   "q.investment_vehicle.opt.family": "Jalur terkait keluarga",
+  "q.investment_vehicle.opt.capital_market":
+    "Hanya investasi pasar modal, seperti saham tercatat atau obligasi",
   "q.investment_vehicle.opt.undecided": "Saya belum memilih dasar",
   "why.investment_vehicle":
     "Label ini hanya menentukan fakta persis yang ditanyakan berikutnya. Label ini tidak pernah memilih jalur visa.",
@@ -1238,6 +1352,36 @@ const id: Record<Keys, string> = {
   "q.investment_role.opt.OTHER": "Peran lain",
   "why.investment_role":
     "Nilai enum tertutup yang dipilih dikirim tanpa perubahan ke investment.proposed_role.",
+  "q.investment_establishes_company":
+    "Apakah Anda akan mendirikan perusahaan di Indonesia sebagai bagian dari investasi ini?",
+  "q.investment_establishes_company.hint":
+    "Anak perusahaan yang didirikan di Indonesia, termasuk anak perusahaan dari perusahaan di luar negeri, dihitung sebagai perusahaan. Jawab tidak jika investasi ini tidak melibatkan pendirian perusahaan di Indonesia.",
+  "why.investment_establishes_company":
+    "Mesin hanya menerima jawaban ya atau tidak tentang pendirian perusahaan.",
+  "q.investment_foreign_branch":
+    "Apakah Anda mendirikan kantor cabang atau anak perusahaan dari perusahaan yang sudah ada di luar Indonesia?",
+  "q.investment_foreign_branch.hint":
+    "Jawab tidak jika perusahaan tersebut belum ada di luar Indonesia.",
+  "why.investment_foreign_branch":
+    "Mesin hanya menerima jawaban ya atau tidak tentang kantor cabang atau anak perusahaan dari perusahaan asing.",
+  "q.investment_ikn_subsidiary":
+    "Apakah perusahaan yang Anda dirikan merupakan anak perusahaan yang berlokasi di Ibu Kota Nusantara (IKN)?",
+  "q.investment_ikn_subsidiary.hint":
+    "Jawab tidak untuk perusahaan yang berlokasi di tempat lain di Indonesia.",
+  "why.investment_ikn_subsidiary":
+    "Mesin hanya menerima jawaban ya atau tidak tentang anak perusahaan di IKN.",
+  "q.investment_capital_market_only":
+    "Apakah investasi Anda hanya ditempatkan pada instrumen pasar modal, tanpa mendirikan perusahaan?",
+  "q.investment_capital_market_only.hint":
+    "Jawab tidak jika ada bagian investasi di luar pasar modal.",
+  "why.investment_capital_market_only":
+    "Mesin hanya menerima jawaban ya atau tidak tentang investasi yang hanya di pasar modal.",
+  "q.investment_meets_threshold":
+    "Apakah investasi Anda memenuhi seluruh batas minimum keuangan yang dipublikasikan untuk jalur yang Anda pilih — jumlah modal, dan omzet tahunan jika jalur tersebut mensyaratkannya?",
+  "q.investment_meets_threshold.hint":
+    "Jika Anda tidak mengetahui batas minimum yang dipublikasikan untuk jalur Anda, jawab tidak: Oracle tidak pernah menganggapnya terpenuhi.",
+  "why.investment_meets_threshold":
+    "Mesin hanya menerima jawaban ya atau tidak. Tidak ada jumlah yang ditampilkan atau disimpulkan di sini.",
   "q.unit.idr": "IDR",
   "q.unit.usd": "USD",
   "q.unit.usd_month": "USD per bulan",
@@ -1537,6 +1681,11 @@ const id: Record<Keys, string> = {
   "tree.work_payer": "Siapa yang menggaji",
   "tree.work_indonesia_compensation": "Sumber pembayaran",
   "tree.work_sponsor_confirmed": "Sponsor kerja",
+  "tree.sponsor_government_invitation": "Undangan pemerintah",
+  "tree.sponsor_government_collaboration": "Kolaborasi pemerintah",
+  "tree.sponsor_world_figure_invitation": "Undangan tokoh dunia",
+  "tree.sponsor_diplomatic_household": "Rumah tangga diplomat",
+  "tree.sponsor_trade_office": "Penjamin kantor dagang",
   "tree.remote_clients": "Lokasi klien",
   "tree.remote_compensation": "Sumber pembayaran",
   "tree.remote_employer_country": "Negara pemberi kerja",
@@ -1547,6 +1696,11 @@ const id: Record<Keys, string> = {
   "tree.investment_capital_idr": "Modal investasi",
   "tree.investment_paid_up_capital_idr": "Modal disetor",
   "tree.investment_role": "Peran perusahaan",
+  "tree.investment_establishes_company": "Perusahaan di Indonesia",
+  "tree.investment_foreign_branch": "Cabang atau anak perusahaan asing",
+  "tree.investment_ikn_subsidiary": "Anak perusahaan di IKN",
+  "tree.investment_capital_market_only": "Hanya pasar modal",
+  "tree.investment_meets_threshold": "Batas minimum terpublikasi",
   "tree.family_relation": "Hubungan keluarga",
   "tree.marital_status": "Status perkawinan",
   "tree.family_sponsor_nationalities": "Paspor sponsor",

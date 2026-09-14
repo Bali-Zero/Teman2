@@ -1,0 +1,380 @@
+gear: 3
+brief_ref: evidence/brief.yml
+ruling: RULED 2026-09-12 SAETTA
+council_run: journal.jsonl
+seat_fallback_reason: >-
+  agy-gemini-3.1-pro (reserve) stands in for BOTH absent titolari, and the
+  absence was probed in the same session that used it, not assumed.
+  kimi-code/k3: `kimi -p` returns "provider.auth_error: 403 You've reached your
+  monthly usage limit for this billing cycle" — a hard quota stop with no
+  reset date offered. tp1-qwen3.8-max: `qwen -p` returns "insufficient_quota:
+  429 Your token-plan 1-week quota has been exhausted. The quota will reset at
+  09-18 08:39:00 UTC" — four days beyond this window. The remaining titolare,
+  codex-gpt-5.6-sol, answered PONG on the same probe and carried four of the
+  seven rounds, so the council is titolare + reserve, never reserve alone.
+lanes:
+  - lane: SAETTA-VO3-W-VO-Q
+    role: build
+    seat: Claude Opus 5 (Dux of window vo-q-questions, host M5, implements directly)
+  - lane: vo-q-review-adversarial
+    role: review
+    seat: codex-gpt-5.6-sol (titolare) + agy-gemini-3.1-pro (reserve) — see seat_fallback_reason
+    nb: >-
+      Seven rounds, five of them productive, on the merge-base three-dot diff
+      with the generated walk fixtures excluded (they are regenerated data, and
+      the generator is itself pinned byte-for-byte by
+      walk-corpus-determinism.test.ts). Raw transcripts under council/, one
+      line per round in journal.jsonl. Final verdict PASS (round 7) after two
+      upheld findings, one cured and one dispositioned with a measurement.
+  - lane: vo-q-ground-truth
+    role: ground_truth
+    seat: session (M5) — every claim about what a rule requires is read from the pack on disk, never from a summary
+    query_hash: "54b8b010d66e28c8a955df18102d28485e4652593ca6142879958334f1fb698e"
+    nb: >-
+      The premises quoted in this pack for `el.e28f.ikn-subsidiary`,
+      `el.e28b.company-establishment`, `el.e28c.capital-market`,
+      `el.e23u.diplomatic-household` and `el.d12-multi-entry-support`, and the
+      D12 product names, were read out of
+      apps/backend-rag/backend/services/visa_engine/contracts/packs/
+      rulepack-prod-021.source.json in this session. The seq-21 SIGNED bundle
+      used for the second census is /Users/balizero/Desktop/
+      R3-RENDERS-20260913/vo-s21/rulepack-prod-021.signed.json, copied into the
+      worktree's pack dir for the duration of a run and removed on exit by a
+      trap — it is NOT in this PR and must not be: landing it is the bundle
+      PR's mandate.
+      query_hash = sha256 of rulepack-prod-021.source.json concatenated with
+      rulepack-prod-020.signed.json, in that order, as they sit on this branch
+      (`cat <the two> | shasum -a 256`). Per-file digests so a drift is
+      locatable and not merely detectable: 021.source
+      9f8851aa23490a60a5319cd441d2560d67967c04759ee31f4cffb496a49349d3,
+      020.signed
+      9cdf2c3151003c6b9ebfd0f403bea37dd92f1af32eb6f37c585980f73e769cbb. The
+      uncommitted seq-21 signed bundle the second census ran against is
+      8276dd64f59256b46c514784d74e49fbd25584fa50f9fdea63834f9d823be679.
+      This PR introduces no new legal or regulatory claim: every product name
+      it renders is copied from the pack's own `names.en` / `names.id`, and
+      every question states a fact the pack already asks for.
+pii_scan: clean
+decisions:
+  - id: D-gear
+    decision: >-
+      Gear 3. The deterministic floor from evidence_pack_lint.py --print-floor
+      on the merge-base diff is 3 (50 files, +5528/-270 — the churn term is
+      dominated by the regenerated walk corpus). The window brief declares 3.
+      gear = max(3, 3) = 3, so a council is owed and was convened.
+  - id: D-ask-do-not-widen
+    decision: >-
+      The nine unreachable products are cured by ASKING, never by loosening the
+      guard. `getCategoryQuestionIds` (flow.ts) gained the ten questions on the
+      branches where their rule's premises can hold — the employment sponsor
+      questions keyed to `sponsor_category` (GOVERNMENT -> invitation + trade
+      office, INDIVIDUAL -> diplomatic household, NONE -> collaboration), and
+      the investment route questions on the INVESTMENT vehicles. Not one
+      assertion in the reachability guard was relaxed: the candidate-pack guard
+      still demands that EVERY support-bearing code of the catalogue be named
+      by some walk, and its guilt twin still goes red when a product loses its
+      walks.
+  - id: D-known-false-not-unknown
+    decision: >-
+      A "no" answer is KNOWN(false) on the wire, never UNKNOWN. These ten rules
+      carry `on_unknown: NEEDS_INPUT`, so an UNKNOWN would make the engine ask
+      the question the applicant had just answered — the dead end the mandate
+      forbids. A branch that never asks a question leaves it
+      UNKNOWN(NOT_ASKED), and every such rule is already DEFINITELY FALSE on
+      its purpose or sponsor premise for that walk, so the unknown can never be
+      the fact that blocks.
+  - id: D-ikn-entailment
+    decision: >-
+      `investment.ikn_subsidiary` is sent KNOWN(false) when
+      `investment_establishes_company = "no"`, and the question is not shown.
+      This is an entailment, not a second fact smuggled into one question: the
+      IKN question asks "will THE COMPANY YOU ARE ESTABLISHING be a subsidiary
+      located in IKN", and the company question's own hint says "a subsidiary
+      set up in Indonesia, including one of a company abroad, counts as a
+      company". No company established therefore means no IKN subsidiary, and
+      `el.e28f.ikn-subsidiary` cannot be hidden from anyone it could have
+      served. Attacked as a BLOCK in council round 5 and WITHDRAWN in round 6
+      on exactly this ground.
+  - id: D-explorer-investment-alone
+    decision: >-
+      The business explorer (brief item 7, owner ruling 2026-09-14) declares
+      purpose INVESTMENT ALONE, not INVESTMENT + BUSINESS_MEETINGS. The pack's
+      `hit_policy.eligibility` is COVER_ALL_DECLARED_PURPOSES and D12's
+      catalogue coverage is INVESTMENT/TOURISM/FAMILY, so the pair would name
+      no D12 at all — measured on seq-20 and seq-21, it names C2 or nothing.
+      `exploring` is also added to ACTIVITY_BOUNDARY_DECIDABLE_ANSWERS, because
+      the pack decides the explorer's facts on its own and holding him would
+      delete an answer it had already proven.
+  - id: D-d12-stay-bound
+    decision: >-
+      The explorer sequence asks the investor facts only when the walk can no
+      longer be answered by D12 — a declared onshore conversion, or a stay
+      beyond D12's own bound. That bound is a number the PACK owns, so
+      `D12_MAX_STAY_DAYS` is a declared copy pinned by a test, and after
+      council round 6 the test pins it against the highest SIGNED pack and the
+      highest SOURCE pack SEPARATELY, with both lanes asserted present so an
+      empty one cannot pass vacuously.
+  - id: D-one-copy-row
+    decision: >-
+      ONE row is added to SUPPORT_REASON_COPY in _lib/engine-adapter.ts
+      (`D12_NOT_CONVERTIBLE`, EN + ID, no figure). Declared rather than taken
+      silently: the window's forbidden list names OutcomeSheet.tsx copy maps,
+      and this map is one layer below in the same output path. It is not
+      optional — the guard already on the base branch,
+      test_seq21_pack.py::TestCensusReplay::
+      test_every_no_path_code_seq21_emits_on_the_corpus_has_visitor_copy, fails
+      with `assert ['D12_NOT_CONVERTIBLE'] == []` when the row is removed, and
+      the visitor on the explorer dead-end walk would be shown a raw engine
+      code. Council round 6 WITHDREW its own BLOCK on this and asked for
+      exactly this declaration. W-VO-D (#6472, still OPEN) edits the same map:
+      the collision is named in the PR body, and the two additions are to
+      different keys.
+  - id: D-per-sequence-pins
+    decision: >-
+      The census pins its expectations PER SIGNED SEQUENCE
+      (EXPECTED_OUTCOME_BY_SEQUENCE, WALK_DEAD_END_ALLOWLIST_BY_SEQUENCE,
+      EXPECTED_DEAD_END_FACT_CENSUS_BY_SEQUENCE), selected by the sequence of
+      the highest signed pack actually on disk, and a new test pins which
+      sequence that is. This is what lets ONE file be green both on today's
+      main (seq-20 signed) and the moment the seq-21 bundle lands, without a
+      branch of the test ever going unmeasured: whichever sequence is absent is
+      not silently skipped, it is simply not the one in force, and the tests
+      that only make sense against an unsigned candidate above the signed pack
+      skip with a stated reason.
+  - id: D-guilt-reanchors
+    decision: >-
+      Two guilt tests were re-anchored, both because the tree change made their
+      old premise FALSE, and both re-anchored to a walk where the premise is
+      true again — never by weakening the assertion.
+      test_guilt_a_stale_allowlist_row_is_caught moved from
+      `offshore/invest/pt_pma` to `offshore/invest/pt_pma/no_route`: the first
+      walk no longer pins bare C2 once the route questions are asked, so the
+      old anchor could no longer express the stale row it exists to catch.
+      test_seq21_pack.py's `unasked_walks` fixture excludes the four
+      `offshore/business/exploring*` walks: that branch did not exist before
+      this PR, so "what this walk decided BEFORE the answers" has no meaning
+      for it.
+  - id: D-no-figures
+    decision: >-
+      No figure appears in any new visitor-facing string. The threshold
+      question names the threshold and never a number ("every published
+      financial minimum for the route you chose"), because no source record in
+      the seq-21 pack states those minimums (FACTS-FOR-THE-TREE.md, fact 10)
+      and this repo forbids a figure in copy without a source_record_id. The
+      D12 dead-end copy names the product exactly as the pack's `names.en` /
+      `names.id` do.
+  - id: D-council-citation
+    decision: >-
+      No vendor or model name is written into code or comments. Findings are
+      cited as `council round N (council/journal.jsonl)`. Five PRE-EXISTING
+      seat names in the census docstrings (inherited from #6442 and later PRs
+      on that file) were rewritten to the same form rather than left as a
+      mixed convention in a file this PR rewrites heavily; the change is
+      comment-only.
+receipts:
+  - claim: The floor for this diff is 3, computed on the merge-base three-dot diff of the head being pushed.
+    cmd: git diff --name-only/--numstat $(git merge-base HEAD origin/main)...HEAD ; python3 scripts/evidence_pack_lint.py --print-floor --print-floor-source --changed-files-file <cf> --numstat-file <ns>
+    result: "base 9f6d7b8008aec8b350576e48c04e8128ed8ff585 ; 50 files ; +5528/-270 ; floor 3"
+    exit: 0
+    ts: "2026-09-14T08:12:00+08:00"
+    seat: Claude Opus 5
+  - claim: THE BAR — the four named census tests pass with the SIGNED seq-21 bundle as the highest pack, and none of them is skipped.
+    cmd: "VOQ_SEQ=21 <copies the signed bundle into the pack dir, trap removes it> pytest backend/tests/services/visa_engine/test_interview_walk_census.py -k 'test_every_support_bearing_product_is_named_by_some_walk or test_guilt_a_support_bearing_product_no_walk_names_is_caught or test_guilt_a_walk_that_loses_its_answer_is_caught or test_guilt_withdrawing_the_newly_asked_fact_restores_the_dead_end'"
+    result: "4 passed, 46 deselected in 8.28s"
+    exit: 0
+    ts: "2026-09-14T08:05:00+08:00"
+    seat: Claude Opus 5
+  - claim: The same four tests also pass with the signed seq-20 as highest pack — the state of origin/main today.
+    cmd: VOQ_SEQ=20 pytest <the same -k expression>
+    result: "4 passed, 46 deselected in 7.55s"
+    exit: 0
+    ts: "2026-09-14T08:05:30+08:00"
+    seat: Claude Opus 5
+  - claim: The whole census + seq-21 suite is green on BOTH sequences, which is what makes this PR safe to land before the bundle and safe to keep after it.
+    cmd: "pytest backend/tests/services/visa_engine/test_interview_walk_census.py backend/tests/services/visa_engine/test_seq21_pack.py -n 2, run twice (VOQ_SEQ=20, VOQ_SEQ=21)"
+    result: "seq-20: 102 passed in 63.84s. seq-21: 88 passed, 14 skipped in 74.01s — the 14 are the candidate-pack tests, which skip with the reason 'no unsigned production source pack sits above the highest signed one' once seq-21 IS the signed one."
+    exit: 0
+    ts: "2026-09-14T08:04:00+08:00"
+    seat: Claude Opus 5
+  - claim: A2 — the per-product walk delta, measured by replaying the merge-base corpus and this branch's corpus through the same census helpers on the seq-21 bundle.
+    cmd: python3 <delta.py> <merge-base walks exported with git show> (uses test_interview_walk_census._engine_named_products / _funnel_named_products)
+    result: "94 -> 111 walks. Engine-named products 28 -> 37 of 38 support-bearing. NEW (engine, funnel): E23U 0->1 (0->1), E23V 0->3 (0->3), E28B 0->15 (0->10), E28C 0->1 (0->1), E28D 0->14 (0->9), E28F 0->14 (0->9), E33A 0->3 (0->3), E33B 0->5 (0->4), E33C 0->1 (0->1). Also grown, without a tree change to their own branch: C2 10->20, E23 8->13, D12 2->4. Still engine-unnamed: BRIDGING alone, excused by UNREACHABLE_BY_RULING."
+    exit: 0
+    ts: "2026-09-14T07:45:00+08:00"
+    seat: Claude Opus 5
+  - claim: Nothing moves on the pack production evaluates today — the same delta on the SIGNED seq-20 names no new product and loses none.
+    cmd: VOQ_SEQ=20 python3 <delta.py>
+    result: "engine-named products 28 -> 28 of 29 support-bearing; before engine-unnamed ['BRIDGING'], after ['BRIDGING']. Engine census 76 -> 92 SUPPORTED_CANDIDATES (the 17 new walks), NEEDS_INPUT stays 2, HUMAN_REVIEW_REQUIRED stays 1. The ten facts reach a seq-20 engine that reads none of them."
+    exit: 0
+    ts: "2026-09-14T07:57:00+08:00"
+    seat: Claude Opus 5
+  - claim: No branch the interview can walk ends in an UNFLAGGED NEEDS_INPUT, on either pack — the mandate's "a visitor gets a final answer" clause, measured rather than argued.
+    cmd: 5676 exhaustive edge walks generated through the REAL flow+mapper (probe, not fixtures) and evaluated twice, once per pack
+    result: "seq-20: NEEDS_INPUT flagged=True 360, flagged=False 0. seq-21: NEEDS_INPUT flagged=True 128, flagged=False 0. Every remaining NEEDS_INPUT class is an applicant who answered 'unsure' on the family sponsor question, which already raises NOT_CERTAIN and is therefore a HUMAN_REVIEW_REQUIRED the visitor can read, not a question nobody will answer. Distinct products named across the edge walks: 3 on seq-20 (C2, D12, E28A), 8 on seq-21 (+E28B, E28C, E28D, E28F, E33C)."
+    exit: 0
+    ts: "2026-09-14T07:22:00+08:00"
+    seat: Claude Opus 5
+  - claim: D-one-copy-row — the SUPPORT_REASON_COPY row is REQUIRED by a guard already on the base branch, not a convenience.
+    cmd: removed the D12_NOT_CONVERTIBLE row from engine-adapter.ts, ran the guard, restored the file with git checkout --
+    result: "FAILED test_every_no_path_code_seq21_emits_on_the_corpus_has_visitor_copy - AssertionError: assert ['D12_NOT_CONVERTIBLE'] == []. Restored; git status shows only the intended files."
+    exit: 1
+    ts: "2026-09-14T07:41:00+08:00"
+    seat: Claude Opus 5
+  - claim: The council's UPHELD finding 3 was answered with a measurement, not an opinion — its own cure costs the visitor a product the signed pack had already proven.
+    cmd: the corpus walk offshore/invest/pt_pma evaluated three ways through the census's own _evaluate path on the seq-21 bundle (threshold yes / no / "not sure" with the NOT_CERTAIN flag the mapper raises for any unsure answer)
+    result: "yes -> funnel SUPPORTED_CANDIDATES ['C2','E28B','E28D','E28F'] ; no -> funnel SUPPORTED_CANDIDATES ['C2'] ; 'not sure' -> funnel HUMAN_REVIEW_REQUIRED []. The third answer deletes C2 as well, because _apply_disclosed_review_flags is monotone over the WHOLE decision. Round 7 accepted the disposition."
+    exit: 0
+    ts: "2026-09-14T07:55:00+08:00"
+    seat: Claude Opus 5
+  - claim: A5 — ten walks, each reaching a product no walk could name before, driven through a REAL browser against a local dev build, EN and ID, two viewports, axe-clean.
+    cmd: playwright chromium against next dev on 127.0.0.1:3217, scenarios e33a e23u e23v e33b e28b e33c e28d e28c e28f d12
+    result: "40 rows (10 scenarios x {1440,390} x {en,id}); named=true on every row; questionAxe and outcomeAxe empty on every row; 80 PNGs under /Users/balizero/Desktop/R3-RENDERS-20260913/vo-q/. Each row also carries the ten qualification facts AS THEY LEFT THE BROWSER, so the wire payload is evidence and not an assumption."
+    exit: 0
+    ts: "2026-09-14T07:16:00+08:00"
+    seat: Claude Opus 5
+  - claim: The council's diplomatic-household copy fix is live in the browser, not only in the source — the E23U walk was re-captured after the rewrite.
+    cmd: the same playwright probe, scenario e23u only, after the i18n change
+    result: "4 rows, named=true, axe-clean; the 1440 EN capture shows 'Is this a role in the household of a foreign diplomat posted in Indonesia?' with the rail's 'WHAT THIS QUESTION DECIDES: sponsor.diplomatic_household' and the two answers Yes/No — no Not-sure affordance."
+    exit: 0
+    ts: "2026-09-14T08:10:00+08:00"
+    seat: Claude Opus 5
+  - claim: A4 — the corpus is byte-reproducible from the generator, and the Oracle suites are green.
+    cmd: cd apps/mouth && ./node_modules/.bin/vitest run "src/app/(visa-oracle)"
+    result: "Test Files 41 passed (41); Tests 967 passed (967). walk-corpus-determinism.test.ts runs the REAL generator into a temp dir and compares all 111 fixtures byte for byte, so the committed corpus is proven regenerable even though `npm run visa-oracle:walk-corpus` cannot run from a worktree (the shared tsx shim points into a sibling worktree — cicatrix #5, recorded in leftovers)."
+    exit: 0
+    ts: "2026-09-14T08:00:43+08:00"
+    seat: Claude Opus 5
+  - claim: Typecheck, lint and formatting are clean on every file this window touched.
+    cmd: ./node_modules/.bin/tsc --noEmit -p tsconfig.json ; prettier --check <touched> ; eslint <touched>
+    result: "tsc exit 0 ; prettier 'All matched files use Prettier code style!' ; eslint 0 errors (flow.test.ts is matched by an ignore pattern and reported as a warning). The pre-commit hook re-ran the same typecheck and passed."
+    exit: 0
+    ts: "2026-09-14T08:03:00+08:00"
+    seat: Claude Opus 5
+  - claim: The council seats were probed in the same session that used them, so the reserve's presence is a measured substitution.
+    cmd: 'kimi -p "Reply with exactly: PONG" ; qwen -p "..." ; codex exec -m gpt-5.6-sol ... ; agy --model gemini-3.1-pro-high -p "..."'
+    result: "kimi: provider.auth_error 403, monthly usage limit for this billing cycle. qwen: insufficient_quota 429, token-plan 1-week quota exhausted, resets 09-18 08:39:00 UTC. codex: PONG. agy: PONG."
+    exit: 0
+    ts: "2026-09-14T07:20:00+08:00"
+    seat: Claude Opus 5
+  - claim: The reserve seat's silence in two rounds was a tool limit, not a judgement, and was cured rather than papered over.
+    cmd: agy --model gemini-3.1-pro-high --effort high --print-timeout 25m -p <the same prompt>
+    result: "Round 5 returned '[agy] print timeout after 5m0s with turn in progress' and no output (recorded ok:false in the journal). Re-run with a 25-minute print timeout returned the full round-6 review: VERDICT BLOCK, 5 findings, two of them real and cured."
+    exit: 0
+    ts: "2026-09-14T07:59:00+08:00"
+    seat: Claude Opus 5
+  - claim: This pack lints clean at gear 3 against THIS window's brief, with the diff supplied so the gear-floor and ground-truth rules are actually armed.
+    cmd: python3 scripts/evidence_pack_lint.py <this pack> --brief-source-path <this window's brief> --changed-files-file <cf> --numstat-file <ns>
+    result: "clean. Two NOTICEs remain and are not violations: the brief's seven acceptance bullets carry no `probe:` field and are not EARS-shaped — they are quoted verbatim from the window mandate. NOTE for a local reader: the gear-floor rule resolves `brief_ref` against the REPO ROOT, where a stale KBLI-L2 brief (gear 2) still sits; this run staged THIS window's brief at that canonical path exactly as CI does, then restored the root file byte-identically (verified with diff)."
+    exit: 0
+    ts: "2026-09-14T08:20:00+08:00"
+    seat: Claude Opus 5
+  - claim: The one Detect Secrets finding this PR introduces is THIS pack's own ground-truth query_hash, named before CI named it and audited in place.
+    cmd: detect-secrets scan <this pack.yml, journal.jsonl> ; surgical insert into .secrets.baseline ; python3 scripts/detect_secrets_check_unaudited.py
+    result: "Exactly one finding: pack.yml line 32, type Hex High Entropy String — the ground_truth lane's sha256 of the two rule packs. Marked is_secret false with a +10-line insert that re-parses as JSON and reserializes none of the other 581 file entries. check_unaudited: All findings audited (8316 total). The journal carries no finding."
+    exit: 0
+    ts: "2026-09-14T08:35:00+08:00"
+    seat: Claude Opus 5
+dissent:
+  - seat: codex-gpt-5.6-sol (council round 6, UPHELD MEDIUM; round 7 accepted the disposition)
+    objection: >-
+      "Unknown is not does-not-meet." q.investment_meets_threshold tells a
+      visitor who does not know the published minimum for their route to answer
+      NO, which reaches the engine as KNOWN(false) — a false-negative
+      eligibility fact that withholds every threshold-dependent route
+      (E28B/E28C/E28D/E28F). The cure it asked for was a third "I don't know"
+      answer terminating in human review.
+    status: CONFIRMED
+    cure: >-
+      NOT cured in this PR, and the reason is a measurement rather than a
+      preference. An "unsure" answer raises NOT_CERTAIN
+      (mapDisclosedReviewFlags), and _apply_disclosed_review_flags is monotone
+      over the WHOLE decision — models.py forbids a non-empty candidate list in
+      any state but SUPPORTED_CANDIDATES — so the hold cannot be per-candidate.
+      Measured on offshore/invest/pt_pma with the seq-21 bundle: "no" leaves
+      the visitor SUPPORTED_CANDIDATES ['C2']; "not sure" leaves him
+      HUMAN_REVIEW_REQUIRED with NO candidates. The third answer would delete a
+      product the signed pack had already proven for that same person, which is
+      the exact defect ACTIVITY_BOUNDARY_DECIDABLE_ANSWERS and the NARROW-2
+      ruling ("a hold is the exception, a deterministic pack answer is not")
+      exist to prevent. What ships instead is disclosure: the hint states the
+      rule in both languages, the visitor can edit the answer, and the durable
+      cure — a per-candidate hold — is an engine change recorded in leftovers.
+      Round 7 accepted this.
+  - seat: agy-gemini-3.1-pro (council round 6, BLOCK)
+    objection: >-
+      The capital_market vehicle asks "Is the PT PMA commitment already
+      concrete?", which contradicts a branch the applicant chose precisely
+      because it involves no company; infer `investment.pt_pma = false` from
+      the vehicle instead.
+    status: PLAUSIBLE
+    cure: >-
+      Not applied, and the AUTHOR REJECTS this finding — not RETRACTED, because
+      the seat itself never withdrew it: re-probed in round 8
+      (council/agy-gemini-3.1-pro-round8.txt) with this exact rebuttal put to
+      it directly, and that run produced no output (a tool-permission
+      auto-denial in headless mode, the same failure class as round 1's first
+      attempt). Round 9 (council/agy-gemini-3.1-pro-round9.txt), run with no
+      tools and the same rebuttal pasted in, calls finding (d) "a
+      well-argued rejection" and ends VERDICT: PASS. The seat accepts the
+      author's rejection without formally withdrawing the finding, so the
+      status stays PLAUSIBLE, not RETRACTED. The refutation is in the copy the seat did not
+      read. The vehicle option says "Capital-market investments only, such as
+      listed shares or bonds" — it describes the BASIS of the investment. The
+      seq-21 fact that means "without establishing a company" is a DIFFERENT
+      question, q.investment_capital_market_only, asked separately on the same
+      branch. Inferring pt_pma=false from the vehicle would deny E28A to an
+      applicant who holds listed shares AND has a concrete PT PMA commitment —
+      the same false-negative class the seat itself flags elsewhere. Asking
+      costs one question and a "no" closes E28A with no figure requested,
+      which is why the question is there at all.
+  - seat: Claude Opus 5 (self-refutation, on the perimeter)
+    objection: >-
+      One row is added to a copy map (_lib/engine-adapter.ts's
+      SUPPORT_REASON_COPY) in a window whose forbidden list names the outcome
+      layer, while W-VO-D (#6472) is open on the same file. Someone could call
+      that a silent widening.
+    status: CONFIRMED
+    cure: >-
+      Declared, never silent: D-one-copy-row above, the PR body, and a
+      measurement that the guard on the base branch fails without it. The two
+      PRs add DIFFERENT keys to the same map, so the collision is textual and
+      not semantic; #6472 rebases onto this, and its own review reads the map
+      it is editing.
+  - seat: Claude Opus 5 (self-refutation, on size)
+    objection: >-
+      50 files and +5528/-270 is far past the "~400 net lines" of the PR
+      contract.
+    status: PLAUSIBLE
+    cure: >-
+      Not split. 3 245 of the 5 528 added lines are the REGENERATED walk corpus
+      — data, not prose, and a tree change that does not regenerate the corpus
+      in the same PR leaves the census measuring a funnel that no longer exists
+      (that rule is written into walk-corpus-determinism.test.ts). Of the
+      remaining +2 283/-158, the two largest files are the census test (+708)
+      and flow.test.ts (+535), i.e. the tests that pin the change. The
+      customer-visible concern is single: the interview asks what the catalogue
+      needs.
+  - seat: Claude Opus 5 (self-refutation, on the seq-21 skips)
+    objection: >-
+      With the signed seq-21 bundle present, 14 tests SKIP. A skipped test
+      proves nothing, and a reader could mistake "88 passed, 14 skipped" for
+      full coverage.
+    status: CONFIRMED
+    cure: >-
+      Partly, and deliberately. Those 14 are the CANDIDATE-pack tests: their
+      subject is "an unsigned source pack sitting above the highest signed
+      one", which ceases to exist the moment seq-21 IS the signed one, and the
+      skip states exactly that. Their content is not lost — on that run the
+      SIGNED-pack tests carry the same assertions against seq-21, which is why
+      the four bar tests pass unskipped there. The honest residue is that no
+      single run exercises both modes; the two runs together do, and both are
+      receipted above.
+leftovers:
+  - "The seq-21 SIGNED bundle is still not on origin/main. Until it lands, the ten facts reach a seq-20 engine that reads none of them: the interview asks more questions and no visitor's answer changes. The census proves that (the seq-20 delta names no new product), and it is the point — this PR must land BEFORE the bundle, or the bundle lands on a tree that cannot feed it."
+  - "BRIDGING is the one support-bearing product still named by no walk, excused by UNREACHABLE_BY_RULING because its rule depends on a fact the interview is forbidden to collect. Pinned by test_unreachable_by_ruling_holds_only_the_bridging_row, so a second excuse cannot be added quietly."
+  - "The durable cure for the council's finding 3 is a PER-CANDIDATE hold: today _apply_disclosed_review_flags (evaluate_path.py) rewrites the whole decision, so 'I am not sure about one threshold' costs the visitor every product he had already earned. That is an engine change, outside this window, and it is the one improvement that would let these ten questions offer an honest 'I don't know'."
+  - "W-VO-D (#6472) is OPEN and dirty on four files this PR also touches — test_interview_walk_census.py, _lib/i18n.ts, _lib/fact-mapper.ts and _lib/engine-adapter.ts. Whichever lands second rebases. The two edits to SUPPORT_REASON_COPY are different keys (D12_NOT_CONVERTIBLE here, E33A_SPONSOR_NOT_GOVERNMENT there)."
+  - "`npm run visa-oracle:walk-corpus` cannot run from any mouth worktree: the shared apps/mouth/node_modules/.bin/tsx shim resolves into .worktrees/mouth-vo-c-doors' pnpm store (cicatrix family #5, sibling race on the shared checkout). The corpus was regenerated through the generator's own exported entry point, which is what walk-corpus-determinism.test.ts does, and the node binary under the repo root works when invoked by full path. Imperator-level, not curable from inside this window."
+  - "One pre-existing seat name survives in _lib/flow.ts (a 2026-07-18 review credit, in a region this PR does not touch). The five in the census docstrings were rewritten because that file is rewritten here anyway and a mixed convention inside one file is worse than either convention."
+  - "Every Gear-3 pack with a ground_truth lane trips Detect Secrets on its own `query_hash`, because the lint REQUIRES that field and detect-secrets reads a 64-char sha256 as a Hex High Entropy String. scripts/detect_secrets_auto_triage.py already carries a content-keyed rule for a pack's `report_sha256:`/`sha256:` lines but none for `query_hash:`, so every such pack pays a hand-audit in .secrets.baseline — this one included. The durable cure is that missing rule, plus the count in scripts/tests/test_detect_secrets_auto_triage.py (which pins CONTENT_KEYED_RULES at 38 and would go red on the addition). It is a guard change with its own test to update, and it is a separate mandate; the same leftover was recorded by PR #6404 and is still open."
+  - "The NEEDS_INPUT classes that remain on the edge walks are all FLAGGED, and all of them are the same shape: an applicant who answered 'unsure' on family_sponsor_confirmed. They were flagged before this PR too. What this PR guarantees is that no NEW unflagged class was opened — 0 on both packs, over 5 676 exhaustive edge walks."

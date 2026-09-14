@@ -1,0 +1,15 @@
+[seat] agy-gemini-3.1-pro  model: gemini-3.1-pro-high  effort: high  mode: text-only, material inlined (.probe-voq/council-prompt-r3-inline.txt)  started: 2026-09-13T20:51:23Z
+1. apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/fact-mapper.ts:1027
+what: R2-F disposition misses a stale answer leak for `investment_capital_market_only`.
+why: While the R2-F disposition correctly notes that an unasked `capital_market_only` fact does not leak a `NEEDS_INPUT` when `establishes_company=yes` (because E28B satisfies the `INVESTMENT` purpose), it fails to account for a stale "yes" left by an edit. If an applicant answers `establishes_company=no` and `capital_market_only=yes`, and then edits to `establishes_company=yes`, `capital_market_only` becomes off-path but retains its stale "yes" in the facts map. Since the rule `el.e28c.capital-market` has no `establishes_indonesian_company == false` conjunct to protect itself, this stale "yes" is blindly mapped to `KNOWN(true)` by `booleanFact()`, falsely granting the "capital market ONLY" product (E28C) to an applicant establishing a company.
+minimal fix: Add the same stale-answer masking for `investment.capital_market_only` as was done for `ikn_subsidiary`:
+```typescript
+    "investment.capital_market_only":
+      facts.investment_establishes_company === "yes"
+        ? known(false)
+        : booleanFact(facts.investment_capital_market_only),
+```
+
+VERDICT: DEFECT
+EXIT 0
+ended: 2026-09-13T20:54:17Z

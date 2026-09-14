@@ -350,6 +350,15 @@ export function mapPurposes(facts: OracleFacts): FactValue<Purpose[]> {
   if (category === "other" && facts.other_purpose === "transit") {
     return known(["TRANSIT"]);
   }
+  // W-VO-Q item 7 (owner ruling 2026-09-14): a business visitor exploring
+  // whether to invest or open a business declares INVESTMENT, ALONE. Joined
+  // with BUSINESS_MEETINGS it would reach no D12 at all: `hit_policy.
+  // eligibility = COVER_ALL_DECLARED_PURPOSES`, and D12's catalogue
+  // coverage (INVESTMENT/TOURISM/FAMILY) does not include BUSINESS_MEETINGS
+  // — measured on seq-20 and seq-21, the pair names only C2 or nothing.
+  if (category === "business" && facts.business_activity === "exploring") {
+    return known(["INVESTMENT"]);
+  }
   const purpose = CATEGORY_TO_PURPOSE[category];
   return purpose === undefined ? unknownFact(NOT_APPLICABLE) : known([purpose]);
 }
@@ -476,13 +485,23 @@ const REVIEW_FLAG_MAP: Readonly<
  * Guilt, innocence and the per-walk census: `activity-boundary.test.ts`.
  */
 export const ACTIVITY_BOUNDARY_DECIDABLE_ANSWERS = {
-  business_activity: ["meetings", "negotiation", "conference"],
+  // `exploring` added (W-VO-Q item 7): it maps to INVESTMENT (`mapPurposes`),
+  // which `el.d12-*` and `el.c2.business` decide off facts the explorer
+  // sequence asks (`businessExplorerQuestionIds`, flow.ts).
+  business_activity: ["meetings", "negotiation", "conference", "exploring"],
   // `property`/`bank_deposit` added (PR-D3, D3-1): `mapPurposes` now routes
   // both to SECOND_HOME alone, and `el.e33.property-basis`/`el.e33.
   // deposit-basis` decide E33 off the Second Home facts the interview
   // already collects for these two vehicles — holding them discarded a
   // deterministic answer the same way `family_sponsor` did above.
-  investment_vehicle: ["pt_pma", "property", "bank_deposit"],
+  // `capital_market` added (W-VO-Q): `el.e28c.capital-market` (seq-21)
+  // decides it off `investment.capital_market_only` and
+  // `investment.meets_published_threshold`, both asked on this branch.
+  // Measured at engine level: `offshore/invest/capital_market/capital_
+  // market_only` is SUPPORTED [C2] on signed seq-20 (as `offshore/invest/
+  // pt_pma` is) and [C2, E28C] on the seq-21 candidate. Holding it would
+  // delete both.
+  investment_vehicle: ["pt_pma", "property", "bank_deposit", "capital_market"],
   // `family_sponsor` added 2026-09-12 (NARROW-2, owner ruling SHWEB-20260911:
   // hold is the exception, a deterministic pack answer is not). `el.e33f.
   // retirement` (rulepack-prod-020) decides SUPPORT for E33F off
@@ -979,35 +998,54 @@ export function mapOracleFactsToApplicantFacts(
     "study.admission_confirmed": booleanFact(facts.study_admission_confirmed),
     "study.sponsor_confirmed": booleanFact(facts.study_sponsor_confirmed),
     "sponsor.type": mapSponsorType(facts),
-    // W-VO-S21, 2026-09-13 — the TEN seq-21 qualification facts, emitted as
-    // the contract requires and DELIBERATELY unwired to a question here.
-    //
-    // `ApplicantFactsData` is `additionalProperties: false` with every key
-    // present, and `fact-mapper.test.ts` compares this object's key set
-    // against the paths it parses out of `models.py`: a wire key the backend
-    // declares and this mapper omits is a red test, not a silently smaller
-    // payload. So the keys ship now, with the same `unknownFact(NOT_ASKED)`
-    // placeholder `investment.investment_amount_usd` carried between
-    // PR-D4c-1 (contract) and PR-D4c-2 (question) — the explicit "nobody
-    // asked", never a guessed `false`, which on these facts would read as a
-    // declaration that the applicant has NO government invitation.
-    //
-    // The questions belong to W-VO-Q, which reads the fact -> question map in
-    // `evidence/2026-09/agent-air-m5-backend-rag-vo-s21-freeze/
-    // FACTS-FOR-THE-TREE.md`. Until they ship, the nine seq-21 eligibility
-    // rules stay UNKNOWN for every browser walk, which their
-    // `on_unknown: NEEDS_INPUT` turns into a question rather than a denial —
-    // and that is exactly what the census measures today.
-    "sponsor.government_invitation": unknownFact(NOT_ASKED),
-    "sponsor.government_collaboration": unknownFact(NOT_ASKED),
-    "sponsor.world_figure_invitation": unknownFact(NOT_ASKED),
-    "sponsor.diplomatic_household": unknownFact(NOT_ASKED),
-    "sponsor.trade_office": unknownFact(NOT_ASKED),
-    "investment.establishes_indonesian_company": unknownFact(NOT_ASKED),
-    "investment.capital_market_only": unknownFact(NOT_ASKED),
-    "investment.foreign_branch_or_subsidiary": unknownFact(NOT_ASKED),
-    "investment.ikn_subsidiary": unknownFact(NOT_ASKED),
-    "investment.meets_published_threshold": unknownFact(NOT_ASKED),
+    // The TEN seq-21 qualification facts. W-VO-S21 registered them on the
+    // wire as `unknownFact(NOT_ASKED)`; W-VO-Q (mission SAETTA-VO3) asks
+    // them (tree.ts, each on the one branch its rule's premises can match —
+    // see `getCategoryQuestionIds` in flow.ts). Plain `booleanFact`: "yes"
+    // is KNOWN(true), and "no" is KNOWN(false) — NEVER `unknownFact`. On
+    // these `on_unknown: NEEDS_INPUT` rules a false answer makes the rule
+    // DEFINITELY FALSE and the product is simply not offered, while an
+    // UNKNOWN would make the engine ask the question the applicant just
+    // answered (FACTS-FOR-THE-TREE.md, "the trap to avoid"). A question the
+    // branch never asked stays UNKNOWN(NOT_ASKED), and every such rule is
+    // already false on its purpose or sponsor premise for that walk.
+    // `intent.requested_product_code` stays NOT_ASKED: no seq-21 rule for
+    // these nine products reads it.
+    "sponsor.government_invitation": booleanFact(
+      facts.sponsor_government_invitation,
+    ),
+    "sponsor.government_collaboration": booleanFact(
+      facts.sponsor_government_collaboration,
+    ),
+    "sponsor.world_figure_invitation": booleanFact(
+      facts.sponsor_world_figure_invitation,
+    ),
+    "sponsor.diplomatic_household": booleanFact(
+      facts.sponsor_diplomatic_household,
+    ),
+    "sponsor.trade_office": booleanFact(facts.sponsor_trade_office),
+    "investment.establishes_indonesian_company": booleanFact(
+      facts.investment_establishes_company,
+    ),
+    "investment.capital_market_only": booleanFact(
+      facts.investment_capital_market_only,
+    ),
+    "investment.foreign_branch_or_subsidiary": booleanFact(
+      facts.investment_foreign_branch,
+    ),
+    // Asked only after `investment_establishes_company = yes` (flow.ts). A
+    // "no" there already answers this fact: the question is about "the
+    // company you are establishing", so none established means no IKN
+    // subsidiary — KNOWN(false), which keeps `el.e28f.ikn-subsidiary`
+    // decided on a walk that never shows the question. A stale "yes" left
+    // by an edit is never read over that answer.
+    "investment.ikn_subsidiary":
+      facts.investment_establishes_company === "no"
+        ? known(false)
+        : booleanFact(facts.investment_ikn_subsidiary),
+    "investment.meets_published_threshold": booleanFact(
+      facts.investment_meets_threshold,
+    ),
     "secondhome.bank_deposit_usd":
       facts.secondhome_deposit_usd === undefined &&
       depositBasisDecisivelyNotChosen(facts)

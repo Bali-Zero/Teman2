@@ -18,6 +18,10 @@
     "investment_capital_idr",
     "investment_paid_up_capital_idr",
     "investment_role",
+    "investment_establishes_company",
+    "investment_foreign_branch",
+    "investment_ikn_subsidiary",
+    "investment_meets_threshold",
     "family_sponsor_confirmed",
     "stay_days",
     "review_gate"
@@ -135,21 +139,21 @@
     },
     "sponsor.trade_office": { "status": "UNKNOWN", "reason": "NOT_ASKED" },
     "investment.establishes_indonesian_company": {
-      "status": "UNKNOWN",
-      "reason": "NOT_ASKED"
+      "status": "KNOWN",
+      "value": true
     },
     "investment.capital_market_only": {
       "status": "UNKNOWN",
       "reason": "NOT_ASKED"
     },
     "investment.foreign_branch_or_subsidiary": {
-      "status": "UNKNOWN",
-      "reason": "NOT_ASKED"
+      "status": "KNOWN",
+      "value": true
     },
-    "investment.ikn_subsidiary": { "status": "UNKNOWN", "reason": "NOT_ASKED" },
+    "investment.ikn_subsidiary": { "status": "KNOWN", "value": true },
     "investment.meets_published_threshold": {
-      "status": "UNKNOWN",
-      "reason": "NOT_ASKED"
+      "status": "KNOWN",
+      "value": true
     },
     "secondhome.bank_deposit_usd": {
       "status": "UNKNOWN",

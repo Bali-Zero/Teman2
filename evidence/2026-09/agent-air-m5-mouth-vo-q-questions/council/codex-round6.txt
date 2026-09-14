@@ -1,0 +1,34 @@
+[seat] codex-gpt-5.6-sol  model: gpt-5.6-sol (reasoning effort high)  round: 6  started: 2026-09-14T07:47:00+08:00
+[prompt] prompt-r2.txt (158425 bytes, sha256 d3e9abe53f2d1ce36d896be2e1555104e5e3f53d2c4e6ff5339144512cd4a484) — the window brief's
+  hard rules plus the merge-base three-dot diff with the generated walk
+  fixtures excluded. The echo of that prompt is stripped from this file;
+  the raw stdout from the seat's first word onward follows verbatim.
+[raw stdout follows]
+
+codex
+ATTACK 1 — WITHDRAWN — The adapter map is the correct output boundary for translating an emitted reason code. Removing the row demonstrably exposes `D12_NOT_CONVERTIBLE` to visitors, and relocating identical copy would only disguise the widening. Declare this single-row exception in the PR body and Evidence Pack.
+
+ATTACK 2 — WITHDRAWN — The entailment is valid: if no company is being established in Indonesia, the investment cannot involve establishing an IKN-located subsidiary. Setting `investment.ikn_subsidiary = false` therefore cannot suppress a genuine E28F case and avoids an unanswerable `NEEDS_INPUT`.
+
+ATTACK 3 — UPHELD(MEDIUM) — “Unknown” is not “does not meet.” The hint knowingly converts uncertainty into `KNOWN(false)`, producing a false-negative eligibility fact and potentially withholding every threshold-dependent route. The smallest cure is a third “I don’t know” answer that terminates in human review rather than reaching the evaluator as `UNKNOWN` and looping.
+
+ATTACK 4 — UPHELD(MEDIUM) — Today’s agreement proves the constant is currently correct, but the test does not enforce signed-versus-candidate agreement: a developer could change both the unsigned source and `D12_MAX_STAY_DAYS` while the active signed pack remains at 360, leaving the test green and production sequencing wrong. The smallest cure is to resolve the highest signed and highest candidate-source packs separately and assert that both bounds equal each other and the constant.
+
+SURVIVES: Attacks 1 and 2.
+
+VERDICT: BLOCK
+hook: Stop
+hook: Stop Completed
+tokens used
+75.053
+ATTACK 1 — WITHDRAWN — The adapter map is the correct output boundary for translating an emitted reason code. Removing the row demonstrably exposes `D12_NOT_CONVERTIBLE` to visitors, and relocating identical copy would only disguise the widening. Declare this single-row exception in the PR body and Evidence Pack.
+
+ATTACK 2 — WITHDRAWN — The entailment is valid: if no company is being established in Indonesia, the investment cannot involve establishing an IKN-located subsidiary. Setting `investment.ikn_subsidiary = false` therefore cannot suppress a genuine E28F case and avoids an unanswerable `NEEDS_INPUT`.
+
+ATTACK 3 — UPHELD(MEDIUM) — “Unknown” is not “does not meet.” The hint knowingly converts uncertainty into `KNOWN(false)`, producing a false-negative eligibility fact and potentially withholding every threshold-dependent route. The smallest cure is a third “I don’t know” answer that terminates in human review rather than reaching the evaluator as `UNKNOWN` and looping.
+
+ATTACK 4 — UPHELD(MEDIUM) — Today’s agreement proves the constant is currently correct, but the test does not enforce signed-versus-candidate agreement: a developer could change both the unsigned source and `D12_MAX_STAY_DAYS` while the active signed pack remains at 360, leaving the test green and production sequencing wrong. The smallest cure is to resolve the highest signed and highest candidate-source packs separately and assert that both bounds equal each other and the constant.
+
+SURVIVES: Attacks 1 and 2.
+
+VERDICT: BLOCK

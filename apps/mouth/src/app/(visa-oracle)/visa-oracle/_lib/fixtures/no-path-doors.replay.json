@@ -7,7 +7,7 @@
   },
   "as_of": "2026-09-06 14:59:27.320080+00:00",
   "age_55_birth_date": "1971-09-01",
-  "walk_corpus_fingerprint": "0d4e2cc60d41ef12242ff4198fa58e6082531cdf1823841f95f69d818b395551",
+  "walk_corpus_fingerprint": "5569aeb3b26cd0c0dabc468c94f9678789c6456236a3fabc6457b2aa49c00115",
   "walks": [
     {
       "label": "offshore/business",
@@ -19,6 +19,14 @@
       ],
       "missing_facts": [],
       "doors": { "TOURISM": ["C1"], "SECOND_HOME": [], "AGE_55": [] }
+    },
+    {
+      "label": "offshore/family/PARENT/spNat=IT/minor",
+      "walk_fixture": "offshore_family_PARENT_spNat_IT_minor.json",
+      "state": "HUMAN_REVIEW_REQUIRED",
+      "no_path_reason_codes": [],
+      "missing_facts": [],
+      "doors": { "TOURISM": [], "SECOND_HOME": [], "AGE_55": ["C1"] }
     },
     {
       "label": "offshore/invest/bank_deposit/below_threshold",

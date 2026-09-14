@@ -1,0 +1,52 @@
+[elision] Pre-rebase round, kept for provenance. Full stdout of this round: 876751 bytes, sha256
+  fb5d6974136808076ef3602bb1df8549e89b267d98f0bdf434e2ce0670a65549. What follows is every word the seat itself wrote, in order,
+  separated by ----; the shell transcript of its own read-only probes is
+  removed. Nothing the seat asserted is edited.
+
+----
+
+GEAR 2: review avversariale di una modifica multi-file nel percorso decisionale Visa Oracle. Il worktree è già isolato e la sessione resta interamente read-only; nessun artefatto, commit o pubblicazione.
+
+----
+
+Le tre cure Round 1 risultano presenti nel codice. Sto ora cercando i casi limite che i test nominali possono non coprire: combinazioni semanticamente incoerenti ma accettate dal reducer, edit/pruning, resume di snapshot pre-cura e mutazioni che dovrebbero rendere rosso il nuovo guard.
+
+----
+
+Ho raggiunto il rollover controllato della sessione. Salvo ora il checkpoint operativo e continuo nello stesso mandato read-only, mantenendo aperti i due filoni di falsificazione già individuati: derivazione IKN e robustezza reale del candidate guard.
+
+----
+
+Checkpoint attempted but blocked by the read-only permission policy; continuing the review in the rollover session.
+
+----
+
+Il checkpoint è stato rifiutato dal profilo filesystem read-only, non dal contenuto. Riprovo una volta con l’invocazione minima richiesta; se il bridge resta non scrivibile, il blocco è strutturale della sessione.
+
+----
+
+Checkpoint blocked again by the enforced read-only policy; the review handoff is preserved in the conversation for continuation.
+
+----
+
+Il bridge continua a restituire solo `PermissionError`. Verifico il punto esatto del bridge senza modificare nulla, includendo comunque l’invocazione di checkpoint richiesta, così da distinguere un lock del bridge da un divieto filesystem.
+
+----
+
+1. `apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/flow.ts:669` and `_lib/fact-mapper.ts:1030` — R1-2 is incomplete. A complete walk can answer `investment_establishes_company=no` and `investment_foreign_branch=yes`; the latter explicitly means “branch or subsidiary” (`i18n.ts:368`). The flow then suppresses the IKN question and the mapper forces `investment.ikn_subsidiary=false`. An applicant establishing a foreign company’s subsidiary in IKN therefore cannot express the fact, although E28F’s rule can match it. Minimal fix: ask IKN when either company establishment or foreign branch/subsidiary is yes, and derive false only when both are no; ideally split “branch” from “subsidiary” to remove the ambiguity.
+
+2. `apps/backend-rag/backend/tests/services/visa_engine/test_interview_walk_census.py:2554` — the candidate guard’s guilt test does not simulate the tree stopping a question. It deletes the product key from the already-derived `candidate_engine_named` dictionary and merely verifies set subtraction. It therefore stays green when the backend guard consumes stale generated fixtures still containing a removed question’s fact. Minimal fix: mutate every real witness walk for each product by changing its unique qualification fact to `UNKNOWN/NOT_ASKED`, rerun `_engine_named_products`, and assert that the actual candidate guard reports that product unreachable.
+
+3. `apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/i18n.ts:215` and `:1139` — the EN/ID hints broaden “Indonesian central-government body” to any “government body.” A local-government invitation could consequently be answered yes despite failing the question’s stated central-government condition. Minimal fix: repeat “Indonesian central-government body / instansi pemerintah pusat Indonesia” in both hints.
+
+4. `apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/tree.ts:950` — the E28F comment still says the IKN question is asked on every investment walk and “presupposes no company.” After R1-2 it is asked only following `investment_establishes_company=yes`, and its wording presupposes a company. Minimal fix: update the comment to describe the new gate and false derivation accurately.
+
+VERDICT: DEFECT
+
+----
+
+Il review è concluso con verdetto DEFECT. Tento il checkpoint finale richiesto dal supervisor; non eseguo altre operazioni sul worktree.
+
+----
+
+Checkpoint final attempted; blocked by the enforced read-only filesystem policy (`PermissionError`).

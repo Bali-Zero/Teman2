@@ -172,6 +172,37 @@ export const STAY_PERMIT_CODES = [
   "E33G",
 ] as const;
 
+/**
+ * W-VO-Q (mission SAETTA-VO3): one yes/no question carrying exactly ONE of
+ * the ten seq-21 qualification facts (`rulepack-prod-021.source.json`; the
+ * fact -> question map is `evidence/2026-09/agent-air-m5-backend-rag-vo-s21-
+ * freeze/FACTS-FOR-THE-TREE.md`). Where each one is asked is decided in
+ * `getCategoryQuestionIds` (flow.ts), never here.
+ *
+ * `notSure` is DELIBERATELY OMITTED (same idiom as `investment_currency`):
+ * each question asks about a document, a relationship or a route the
+ * applicant either has or does not, so "no" is the honest answer to "I do
+ * not have it", and `booleanFact` maps it to KNOWN(false) — the rule is then
+ * DEFINITELY FALSE and the product is simply not offered. A "not sure" would
+ * map to UNKNOWN, and on these `on_unknown: NEEDS_INPUT` rules the engine
+ * would ask the same question again: a loop, not an answer.
+ */
+function qualificationQuestion(id: string, factPath: string): OracleQuestion {
+  return {
+    id,
+    i18nKey: `q.${id}`,
+    kind: "branch",
+    group: "details",
+    decisionMapping: { kind: "FACT", factPaths: [factPath] },
+    sensitive: false,
+    options: [
+      { key: "yes", labelI18nKey: "q.boolean.yes" },
+      { key: "no", labelI18nKey: "q.boolean.no" },
+    ],
+    whyWeAsk: { i18nKey: `why.${id}` },
+  };
+}
+
 export const QUESTIONS: Record<string, OracleQuestion> = {
   in_indonesia: {
     id: "in_indonesia",
@@ -504,6 +535,42 @@ export const QUESTIONS: Record<string, OracleQuestion> = {
     whyWeAsk: { i18nKey: "why.sponsor_category" },
     notSure: { mode: "human-review" },
   },
+  // W-VO-Q (mission SAETTA-VO3): the five seq-21 SPONSOR qualification
+  // facts, one fact per question, each the ONE conjunct that makes its
+  // product's SUPPORT rule fire (`rulepack-prod-021.source.json`; the map is
+  // `evidence/2026-09/agent-air-m5-backend-rag-vo-s21-freeze/
+  // FACTS-FOR-THE-TREE.md`). Each is asked only on the `sponsor_category`
+  // answer its rule's own `sponsor.type` premise names, and only on a branch
+  // whose purpose the rule covers (`getCategoryQuestionIds`, flow.ts) — a
+  // tourist is never asked about a diplomatic household.
+  //
+  // `el.e33a.government-invitation` — EMPLOYMENT, `sponsor.type =
+  // GOVERNMENT`.
+  sponsor_government_invitation: qualificationQuestion(
+    "sponsor_government_invitation",
+    "sponsor.government_invitation",
+  ),
+  // `el.e33b.government-collaboration` — EMPLOYMENT, `sponsor.type = NONE`.
+  sponsor_government_collaboration: qualificationQuestion(
+    "sponsor_government_collaboration",
+    "sponsor.government_collaboration",
+  ),
+  // `el.e33c.world-figure-invitation` — INVESTMENT, `sponsor.type =
+  // GOVERNMENT`.
+  sponsor_world_figure_invitation: qualificationQuestion(
+    "sponsor_world_figure_invitation",
+    "sponsor.world_figure_invitation",
+  ),
+  // `el.e23u.diplomatic-household` — EMPLOYMENT, `sponsor.type = INDIVIDUAL`.
+  sponsor_diplomatic_household: qualificationQuestion(
+    "sponsor_diplomatic_household",
+    "sponsor.diplomatic_household",
+  ),
+  // `el.e23v.trade-office` — EMPLOYMENT, `sponsor.type = GOVERNMENT`.
+  sponsor_trade_office: qualificationQuestion(
+    "sponsor_trade_office",
+    "sponsor.trade_office",
+  ),
   business_activity: {
     id: "business_activity",
     i18nKey: "q.business_activity",
@@ -520,6 +587,16 @@ export const QUESTIONS: Record<string, OracleQuestion> = {
       {
         key: "conference",
         labelI18nKey: "q.business_activity.opt.conference",
+      },
+      // W-VO-Q item 7 (owner ruling 2026-09-14: "not only an investor, also
+      // a person who wants to look around for business"): the explorer is
+      // an INVESTMENT-purpose visitor (`mapPurposes`, fact-mapper.ts), the
+      // purpose `el.d12-*` covers, and asks its own short sequence
+      // (`businessExplorerQuestionIds`, flow.ts). Never the first option,
+      // so the corpus's default business walks are unchanged.
+      {
+        key: "exploring",
+        labelI18nKey: "q.business_activity.opt.exploring",
       },
       { key: "training", labelI18nKey: "q.business_activity.opt.training" },
       { key: "other", labelI18nKey: "q.business_activity.opt.other" },
@@ -679,6 +756,14 @@ export const QUESTIONS: Record<string, OracleQuestion> = {
       },
       { key: "merit", labelI18nKey: "q.investment_vehicle.opt.merit" },
       { key: "family", labelI18nKey: "q.investment_vehicle.opt.family" },
+      // W-VO-Q: `el.e28c.capital-market` (seq-21) decides an investment held
+      // only in capital-market instruments. Without this option such an
+      // applicant could only answer `undecided`, which raises
+      // ACTIVITY_BOUNDARY and deletes the E28C the pack had proven.
+      {
+        key: "capital_market",
+        labelI18nKey: "q.investment_vehicle.opt.capital_market",
+      },
       {
         key: "undecided",
         labelI18nKey: "q.investment_vehicle.opt.undecided",
@@ -846,6 +931,48 @@ export const QUESTIONS: Record<string, OracleQuestion> = {
     whyWeAsk: { i18nKey: "why.investment_role" },
     notSure: { mode: "human-review" },
   },
+  // W-VO-Q: the five seq-21 INVESTMENT route facts (`el.e28b/c/d/f.*`). Every
+  // one of the four rules reads `intent.purposes ∩ INVESTMENT`, its own
+  // route fact, and `investment.meets_published_threshold`; none reads
+  // `sponsor.type`. Asked on the INVESTMENT-purpose `invest` vehicles only
+  // (`getCategoryQuestionIds`, flow.ts). No figure appears in any of this
+  // copy: no source record in the seq-21 pack states the published minimums
+  // (FACTS-FOR-THE-TREE.md, fact 10), so the question names the threshold
+  // and never a number.
+  // `el.e28b.company-establishment`.
+  investment_establishes_company: qualificationQuestion(
+    "investment_establishes_company",
+    "investment.establishes_indonesian_company",
+  ),
+  // `el.e28c.capital-market` — asked only when the applicant is NOT
+  // establishing a company: its own wording ("without establishing a
+  // company") is the negation of the question above, so asking it after a
+  // "yes" there would ask the applicant to contradict themselves.
+  investment_capital_market_only: qualificationQuestion(
+    "investment_capital_market_only",
+    "investment.capital_market_only",
+  ),
+  // `el.e28d.branch-or-subsidiary`.
+  investment_foreign_branch: qualificationQuestion(
+    "investment_foreign_branch",
+    "investment.foreign_branch_or_subsidiary",
+  ),
+  // `el.e28f.ikn-subsidiary` — asked only after `investment_establishes_
+  // company = yes`, because its wording is about "the company you are
+  // establishing"; after a "no", fact-mapper.ts sends it KNOWN(false) (see
+  // `investmentRouteQuestionIds`, flow.ts, for the dead end that avoids).
+  investment_ikn_subsidiary: qualificationQuestion(
+    "investment_ikn_subsidiary",
+    "investment.ikn_subsidiary",
+  ),
+  // The conjunct all four `el.e28*` rules share. Asked ONCE, and only when
+  // at least one route above was answered "yes" — with every route "no",
+  // all four rules are already DEFINITELY FALSE on their route conjunct, and
+  // a threshold question would collect an answer no rule can use.
+  investment_meets_threshold: qualificationQuestion(
+    "investment_meets_threshold",
+    "investment.meets_published_threshold",
+  ),
   family_relation: {
     id: "family_relation",
     i18nKey: "q.family_relation",

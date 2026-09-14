@@ -1,0 +1,24 @@
+[seat] codex-gpt-5.6-sol  model: gpt-5.6-sol (reasoning effort high)  round: 5  started: 2026-09-14T07:24:00+08:00
+[prompt] prompt-r1.txt (157102 bytes, sha256 4bd5e96f809df924064bd4bc95f0306dd424e0758cab982415e3c6fb68a56b48) — the window brief's
+[elision] Post-rebase round. Full stdout of this round: 414958 bytes, sha256
+  8e2ab8d0eb71cfab57a3c28d17e0225b3e6ad8e7df41b6636674a9bc7e8616da. What follows is every word the seat itself wrote, in order,
+  separated by ----; the shell transcript of its own read-only probes is
+  removed. Nothing the seat asserted is edited.
+
+[Air-M5] Missione BLUE, ruolo Gear-3 reviewer indipendente (non Dux), mandato W-VO-Q / SAETTA-VO3, worktree `/Users/balizero/nuzantara/.worktrees/mouth-vo-q-questions`. Applico `stadio-zero` e `differential-review`: prima verifico door/modus, merge-base e file reali; poi attacco flusso, mapper, copy bilingue e guard senza modificare nulla.
+
+----
+
+GEAR 3: modifica di logica decisionale pubblica + guard Python cross-sequence. STADIO-0: i file dichiarati esistono; rischio PII nullo (solo fixture/regole, nessun dato cliente); accettazione falsificabile = ogni finding deve riprodursi sul diff reale o con un test mirato, e verifico esplicitamente i quattro hard gate: completezza del percorso, branch scoping, copy EN/ID, guard non-vacuous.
+
+----
+
+Il primo attacco concreto ha già trovato una violazione di perimetro: la patch modifica una mappa di copy usata dall’OutcomeSheet, esplicitamente vietata dal mandato. Sto ora cercando un difetto funzionale indipendente, soprattutto il percorso `business/exploring` onshore e le combinazioni “no company / foreign subsidiary”, perché il corpus aggiunto copre soltanto explorer offshore.
+
+----
+
+Ho raggiunto il rollover tecnico. Salvo ora il checkpoint operativo della review; la continuazione riprenderà dall’attacco già confermato senza perdere il mandato.
+
+----
+
+Review checkpoint saved; continuing in the rollover session.

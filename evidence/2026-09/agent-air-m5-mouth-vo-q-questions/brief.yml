@@ -1,0 +1,45 @@
+gear: 3
+ruling: RULED 2026-09-12 SAETTA
+mission: SAETTA-VO3 FRECCIA window W-VO-Q (BLUE, host M5) — the tree asks every fact seq-21 needs, so the catalogue is on a walk
+objective: >-
+  Every fact a seq-21 SUPPORT rule depends on is asked by the interview, in
+  plain EN and ID, one fact per question, only on the branch where it can
+  matter (a visitor who declared tourism is never asked about a government
+  invitation). After this window every one of the 38 product codes of the
+  catalogue is named on at least one corpus walk when the census runs against
+  the seq-21 candidate pack (rulepack-prod-021.source.json, unsigned, landed
+  by W-VO-S21 #6466 with FACTS-FOR-THE-TREE.md listing the ten facts), and the
+  business visitor who is only looking around (brief item 7, owner ruling
+  2026-09-14) has a door of his own instead of an answer meant for someone who
+  has already decided to invest.
+scope:
+  - apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/tree.ts
+  - apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/flow.ts
+  - apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/fact-mapper.ts
+  - apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/i18n.ts
+  - apps/mouth/scripts/visa-oracle/generate-walk-corpus.ts
+  - apps/backend-rag/backend/tests/services/visa_engine/gold_coverage/fixtures/walks/ (regenerated)
+  - apps/backend-rag/backend/tests/services/visa_engine/test_interview_walk_census.py
+  - apps/backend-rag/backend/tests/services/visa_engine/test_seq21_pack.py (census replay adapted to the asked corpus)
+  - the Oracle vitest files that script a walk through the changed branches
+constraints:
+  - Forbidden — packs, engine Python beyond the census/corpus tests, oracle.css, OutcomeSheet.tsx copy maps (W-VO-D owns the outcome layer), pricing.
+  - Base on origin/main AFTER W-VO-E merged; if still open, wait (poll 5 min, up to 2 h), never edit W-VO-E's branch.
+  - Cite the rule id per question. No figure in the copy unless it carries a source_record_id from the pack.
+  - A tree change regenerates the corpus in the same PR.
+  - No client PII; no vendor names in code comments; never sign or activate a pack; push once, complete.
+acceptance:
+  - A1 the ten facts of FACTS-FOR-THE-TREE.md are each asked by exactly one question, EN+ID, only on a branch where its rule's premises can hold.
+  - A2 the reachability guard gains a CANDIDATE-pack mode (the signed-pack default stays) asserting every SUPPORT-bearing code of the 38-product catalogue is named on at least one walk; per-product walk delta in the PR body.
+  - A3 §B2 rows 16–17 end on a named product or a named cause, or the census proves why not.
+  - A4 corpus byte-reproducible; census, seq-21 and Oracle suites green.
+  - A5 Playwright on a local build — at least 5 walks to newly reachable products, EN+ID, axe-clean, screenshots 1440/390 under /Users/balizero/Desktop/R3-RENDERS-20260913/vo-q/.
+  - A6 (item 7) the business_activity question offers an "exploring whether to invest or open a business" option, EN+ID; it maps to purpose INVESTMENT; a corpus walk exists for it and the census proves D12 is named on that walk with no new MULTI_PURPOSE hold. No pack change.
+  - A7 the census file passes BOTH with the signed seq-20 as highest pack (main today) and with the signed seq-21 bundle present, and no branch the interview can walk ends in an UNFLAGGED NEEDS_INPUT on either pack.
+consumer_map:
+  - The live /visa-oracle interview — an employment or investment applicant is now asked the ten qualification facts on the branch where they matter; observable on the deployed Mouth build as the new question on the government-sponsored work walk.
+  - The required GitHub check running backend/tests/services/visa_engine/ — test_every_support_bearing_product_of_the_candidate_pack_is_named_by_some_walk fails any PR that makes a candidate-pack product unreachable by the interview.
+  - The seq-21 activation, when Zero signs it — from that moment the nine products are named to real applicants; until then the facts reach the signed seq-20 engine, which reads none of them (census proves no signed-pack decision moves).
+appetite:
+  budget: 6h active, 1 PR
+  stop_loss: three reds on the same cause suspends; a fix-of-a-fix stops at depth 1

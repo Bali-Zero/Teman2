@@ -248,6 +248,12 @@ describe("OracleShell authoritative evaluate integration", () => {
         ["investment_capital_idr", "10000000000"],
         ["investment_paid_up_capital_idr", "10000000000"],
         ["investment_role", "SHAREHOLDER_DIRECTOR"],
+        // W-VO-Q: the seq-21 route questions every INVESTMENT-purpose walk
+        // now answers before the sponsor fallback.
+        ["investment_establishes_company", "yes"],
+        ["investment_foreign_branch", "no"],
+        ["investment_ikn_subsidiary", "no"],
+        ["investment_meets_threshold", "yes"],
         ["family_sponsor_confirmed", "no"],
         ["wants_onshore_conversion", "no"],
       ],

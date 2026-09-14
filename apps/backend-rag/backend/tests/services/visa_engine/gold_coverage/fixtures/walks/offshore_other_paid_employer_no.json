@@ -11,6 +11,7 @@
     "other_purpose",
     "other_paid_activity",
     "sponsor_category",
+    "sponsor_government_collaboration",
     "work_payer",
     "work_sponsor_confirmed",
     "stay_days",
@@ -116,10 +117,7 @@
       "status": "UNKNOWN",
       "reason": "NOT_ASKED"
     },
-    "sponsor.government_collaboration": {
-      "status": "UNKNOWN",
-      "reason": "NOT_ASKED"
-    },
+    "sponsor.government_collaboration": { "status": "KNOWN", "value": true },
     "sponsor.world_figure_invitation": {
       "status": "UNKNOWN",
       "reason": "NOT_ASKED"
