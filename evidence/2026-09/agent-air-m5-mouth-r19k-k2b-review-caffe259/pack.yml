@@ -1,0 +1,183 @@
+gear: 2
+# The STAGING path, not the real one. harness-floor.yml Step 7b copies this
+# pack and its brief into /tmp/evidence-check/evidence/{pack,brief}.yml and
+# lints with --repo-root there, so brief_ref must name the staging layout.
+# Writing the real per-PR path here is the documented trap (cured on #6510).
+brief_ref: evidence/brief.yml
+lanes:
+  - lane: r19k-k2b-review
+    role: build
+    seat: claude-opus-5 (Dux, SAETTA-R19K window K2, xhigh)
+  - lane: r19k-k2b-review
+    role: review
+    seat: codex gpt-5.6 (acct2, read-only sandbox, model_reasoning_effort=high)
+pii_scan: clean
+seat_override: >-
+  R8 applicability: presentation of the intake review queue plus one client-side ownership
+  predicate. No immigration rule, eligibility, claim or price is authored; no NotebookLM query is
+  claimed. Every fixture identity added by this window is synthetic (member@example.test,
+  other@example.test, Client 0412). The pre-existing fixtures in page.test.tsx that this window did
+  not author (a staff address and a fictional holder name) are left as found rather than widened
+  into scope; they are named here so they are not mistaken for something this diff introduced.
+receipts:
+  - claim: >-
+      Copper on /review is now derived from the VIEWER and the RECORD together, and the page proves
+      it in the browser, not only in jsdom.
+    cmd: >-
+      Read apps/backend-rag/backend/app/routers/intake_review.py GET /queue, then render /review on
+      `next dev --webpack -p 3191` with the queue fixture carrying one row received by the signed-in
+      viewer and one received by a different operator.
+    result: >-
+      The endpoint's own docstring reads "Admins see the entire queue. A non-admin sees ONLY rows
+      from their own chats (intake_queue.received_by == caller) ... NULL-received_by docs are
+      admin-only." So the queue an admin loads is GLOBAL and a NO_MATCH row belonging to someone
+      else was being painted copper from its status alone. After the cure the render shows the
+      viewer's own NO_MATCH row copper "NEEDS YOU" and the identical AMBIGUOUS row received by
+      other@example.test muted "ANOTHER OPERATOR", side by side in the same ledger.
+    exit: 0
+    ts: "2026-09-14T10:25:00Z"
+    seat: claude-opus-5
+  - claim: The masthead sentence obeys the same law one typographic level up.
+    cmd: Render /review with 3 rows of which 2 are the viewer's; read the subtitle.
+    result: >-
+      It reads "2 of 3 documents are waiting for your decision." Before the cure it read "3
+      documents are waiting for your decision." directly above a row the page itself marked
+      "Another operator" — a masthead contradicting its own ledger. Pinned by an exact-string
+      assertion inside the ownership test, so the sentence cannot drift back.
+    exit: 0
+    ts: "2026-09-14T10:25:00Z"
+    seat: claude-opus-5
+  - claim: >-
+      The browser found six defects the green suite did not, and all six are cured; the final render
+      is clean at both widths in both themes.
+    cmd: >-
+      Chromium via playwright against `next dev --webpack -p 3191` on this branch. /review with
+      every /api/** route fulfilled from synthetic fixtures, full-page capture plus a
+      scrollWidth/clientWidth probe at 1440x900 and 390x844 in operative-light and operative-dark,
+      plus a per-element bounding-box probe when a width did not resolve.
+      Probe: chromium via playwright against next dev --webpack, full-page capture plus a
+      scrollWidth probe
+    result: >-
+      (1) scrollWidth 742 vs clientWidth 390 — five fixed columns summed past the viewport; cured by
+      moving Operator and Received onto the row's secondary line below md. (2) Every operator address
+      truncated to "member@exam..." at 1440 while the document column sat half empty; cured by
+      reallocating the tracks and dropping the redundant "Operator:" prefix from the desktop cell,
+      whose column header already carries the word. (3) The Status column at 130px could not hold the
+      widest WORD the page's own law produces, "Another operator", and the pill lapped over the
+      operator beside it; Status is now 176px. (4) Two of three filters were CLIPPED and unreachable
+      at 390 — DeskStrip hides its filter overflow and lets `right` keep its width; cured with a
+      page-local scroller inside the slot the primitive hands us, since the primitive is not this
+      window's to edit. (5) The reserved actions cell claimed 176px of a 390px row and pushed
+      scrollWidth to 396; the control now moves onto the row's own line below md, always visible and
+      independent of hover. (6) The row reason truncated to "No client matched — needs a d..."; the
+      call to act moved to the pill, which is where the colour law wants the WORD anyway.
+      Final: CONSOLE_ERRORS=0, scrollWidth == clientWidth at 1440/1440 and 390/390 in both themes.
+    exit: 0
+    ts: "2026-09-14T10:25:01Z"
+    seat: claude-opus-5
+  - claim: The no-red guard now catches the class of defect that slipped past it, judged as an entity.
+    cmd: npx vitest --run "src/app/(workspace)/__tests__"
+    result: >-
+      The adversarial seat found a copper FILL surviving on the create-client button
+      (`background: var(--bz-accent)`, and --bz-accent is copper on kita) while the guard reported
+      /review conformant. The guard gains a copper-fill rule that requires the token to sit INSIDE
+      the fill declaration itself — inside that same `bg-[...]` bracket pair, or before the next
+      `;`/`,`/`}` after a background property — so `ring-[var(--bz-copper)]` later on a line that
+      began with an unrelated `bg-[var(--bz-card)]` stays innocent. Guilt and innocence are both in
+      the table: two guilty shapes, two innocent ones.
+    exit: 0
+    ts: "2026-09-14T10:24:10Z"
+    seat: claude-opus-5
+  - claim: An independent adversarial seat reviewed the diff and its findings are disposed.
+    cmd: >-
+      CODEX_HOME=/Users/balizero/.codex-acct2 codex exec --skip-git-repo-check --sandbox read-only
+      -c model_reasoning_effort=high, on `git diff origin/main -- apps/mouth`, against the colour
+      law, identity/RBAC isolation, 390px reachability, test strength and React correctness.
+    result: >-
+      Nine findings, four HIGH and five MED. FIVE CURED before arming: copper derived from the record
+      alone; a terminal or foreign-claimed record showing "view only" and copper at once; a generic
+      error banner painted copper from an error string; the copper FILL above; and a failed reload
+      leaving the previous viewer's rows on screen under a heading claiming they are his. TWO
+      partially cured: the re-pinned assertions were indeed weaker, and are now pinned by CONTENT as
+      well as count, with the missing "Needs you" assertion added. TWO DISPOSED with reasons below.
+    exit: 0
+    ts: "2026-09-14T10:05:00Z"
+    seat: codex-gpt-5.6
+  - claim: Static gates green and every existing test of this page still passes.
+    cmd: >-
+      npx vitest --run "src/app/(workspace)/review" "src/app/(workspace)/__tests__";
+      npx tsc --noEmit --incremental false; npx eslint "src/app/(workspace)/review";
+      npx prettier --write on every touched file.
+    result: >-
+      96 passed across 8 files, after the rebase onto 7d9756dabd, which is the commit that landed the
+      v2 primitives (#6520). tsc exit 0. eslint 0 errors on the review directory. prettier clean.
+    exit: 0
+    ts: "2026-09-14T10:26:07Z"
+    seat: claude-opus-5
+dissent:
+  - seat: codex-gpt-5.6
+    objection: >-
+      The modal is not semantically a modal — no role="dialog", no aria-modal, no focus trap, no
+      Escape handling — and several inputs in the create-client form have a sibling span rather than
+      an associated label.
+    status: CONFIRMED
+    disposition: >-
+      Both are real and both are PRE-EXISTING: the modal and the create-client form are not what this
+      window restyles, and nothing in this diff made either worse. Curing them is a behaviour change
+      to a claim-and-approve flow with a server-side lease, which is a different concern from putting
+      the queue on the ledger and does not belong in the same PR. Recorded here as the next thing
+      /review needs rather than folded in silently.
+  - seat: codex-gpt-5.6
+    objection: >-
+      The new grid loses the old list's semantics — HairlineGrid emits plain divs, only the header
+      carries role="row", and there is no table/grid, columnheader or cell relationship.
+    status: CONFIRMED
+    disposition: >-
+      True, and it belongs to the primitive, not to this page: HairlineGrid lives under
+      components/workspace/r19, which this window is forbidden to edit while the K1 seat owns it.
+      Carried to that seat as the first thing the grid still owes. What this window could do inside
+      its own perimeter it did: every row control now has an accessible name that includes the
+      document it opens, so two rows are distinguishable.
+  - seat: claude-opus-5
+    objection: >-
+      The desk strip still clips its own filters, and the page works around it.
+    status: CONFIRMED
+    disposition: >-
+      Re-checked AFTER the rebase onto the v2 primitives: DeskStrip.tsx still gives its filter group
+      `overflow-hidden` and its `right` slot `shrink-0`, so at 390 the third filter is still outside
+      the box. The page-local scroller is therefore still load-bearing, not a leftover from v1. The
+      strip should wrap or scroll its own filters; until it does, this page swipes.
+notes:
+  - >-
+    CORRECTION to the K2a pack, required by the gate on #6512. That pack names the lane
+    `r19k-k2a-desk` and says of the superseded work "no gate had been commissioned". The PR that
+    actually shipped the dashboard is #6512, lane `r19k-k2a-ledger`, and a gate WAS commissioned and
+    signed on it: verdict PASS at issuecomment-5661571042, `harness/fable-gate=success` on
+    5c618c30. #6509 is the closed predecessor; the sentence about no gate belongs to #6509 alone.
+  - >-
+    Evidence captures for this PR live in their OWN subfolder, per the same gate's second notice:
+    ~/Desktop/R19-KITA-20260914/K2-evidence/K2b/, never the shared root. Each PNG with its sha256
+    (from MANIFEST.sha256 beside them, all four re-generated AFTER the rebase onto the v2
+    primitives, so they show the shipped render and not the v1 one):
+    07e10c0f92ba6b3bd3e830bf3a2d166af3358c348dcbab22a88d7920a4fdbcee  review.desktop.dark.png  1502195 bytes
+    7e9a46da89dbe07746c9486a83e166ea3335a6e5ac64ca0d43b4ca79c685fb80  review.desktop.light.png  1620726 bytes
+    c9df876fa6fde5083de0690b1da92be6adc7e5efc13ef83a08ae2ab5e91add88  review.mobile.dark.png  772567 bytes
+    aea8e3c6a95fce00e3970a5e5309782dad239b8c1a33cfd343b6146e25613a3a  review.mobile.light.png  812019 bytes
+  - >-
+    Dev-server pids started and killed by this seat, per the M5 resource rule (at most one `next dev`
+    per seat, started for the capture and killed right after): 12785, 54183, 694, 35070 — all on port
+    3191, each killed and verified dead before the next was started. No other next dev was left
+    running by this window.
+  - >-
+    A copper FILL survives on the DASHBOARD and this window did not cure it, because it is outside
+    K2b's perimeter and K2a's branch was already armed when it was found:
+    dashboard/PortalChallengeWidget.tsx:274 fills a PROGRESS BAR with --bz-copper. Two other copper
+    fills in that same file are NOT defects and must not be "cured": :578 is the pill's 1.5px pip and
+    :756 is a 3px rule, both marks the concept grants copper by name. The guard's copper-fill rule
+    cannot tell a 3px rule from a progress bar, so `dashboard` is deliberately exempt from it and the
+    file says in as many words what whoever flips it must do first. Adding it as-is would be
+    guard-over-match, cicatrix family #3, in the OVER direction.
+  - >-
+    This branch was rebased mid-flight onto 7d9756dabd (#6520, the v2 primitives). Everything above
+    was re-measured after that rebase, not before: the 96 tests, the typecheck, and the DeskStrip
+    overflow finding in the dissent block.

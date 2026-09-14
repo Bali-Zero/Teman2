@@ -5,12 +5,14 @@ import ReviewPage from "./page";
 
 const createClientMock = vi.hoisted(() => vi.fn());
 const getProfileMock = vi.hoisted(() => vi.fn());
+const getUserProfileMock = vi.hoisted(() => vi.fn());
 
 const apiMock = vi.hoisted(() => ({
   get: vi.fn(),
   post: vi.fn(),
   getToken: vi.fn(() => null),
   getProfile: getProfileMock,
+  getUserProfile: getUserProfileMock,
   crm: { createClient: createClientMock },
 }));
 
@@ -46,6 +48,13 @@ const NO_MATCH_PROPOSAL = {
 describe("ReviewPage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // Default signed-in viewer for every test below: an admin, so the
+    // NULL-received_by NO_MATCH fixture (admin-only by the backend
+    // contract) still paints copper unless a test overrides the identity.
+    getUserProfileMock.mockReturnValue({
+      email: "adit@balizero.com",
+      role: "admin",
+    });
     apiMock.get.mockImplementation(async (endpoint: string) => {
       if (endpoint.startsWith("/api/intake/review/queue")) {
         return {
@@ -101,13 +110,105 @@ describe("ReviewPage", () => {
     });
   });
 
-  it("shows the receiving operator on each review card", async () => {
+  it("shows the receiving operator on each review row, at both widths", async () => {
+    // RE-PINNED with the 390px column collapse (SAETTA-R19K K2b), not
+    // weakened. Below 768px the Operator and Received columns leave the grid
+    // and their values are re-rendered on the row's secondary line, so each
+    // operator string is emitted TWICE — once in the desktop grid cell and
+    // once on the phone line, with a media query hiding whichever does not
+    // apply. jsdom evaluates no media query, so both are in the DOM here.
+    //
+    // The two copies are pinned SEPARATELY, by the text each one carries.
+    // The desktop grid cell is the BARE address: its column header already
+    // says OPERATOR, and repeating the word there cost ~70px and truncated
+    // every address to "member@example.t..." at 1440. The phone line KEEPS
+    // the "Operator:" prefix, because there the values run together with no
+    // header to name them.
+    //
+    // Pinning them by content, not only by count, is what makes this strong:
+    // if the collapse ever dropped one breakpoint's copy and duplicated the
+    // other, or if the desktop cell silently regained the prefix and the
+    // truncation with it, one of these two assertions fails.
     render(<ReviewPage />);
 
+    const phoneCopies = await screen.findAllByText(
+      "Operator: adit@balizero.com",
+    );
+    expect(phoneCopies).toHaveLength(1);
+    expect(screen.getAllByText("Operator: unassigned")).toHaveLength(1);
+
+    const deskCopies = screen.getAllByText("adit@balizero.com");
+    expect(deskCopies).toHaveLength(1);
+    expect(screen.getAllByText("unassigned")).toHaveLength(1);
+
+    // And each sits behind the media query that belongs to it.
+    const sig = (el: HTMLElement) =>
+      `${el.className} ${el.parentElement?.className ?? ""}`;
+    expect(sig(deskCopies[0])).toContain("max-md:hidden");
+    expect(/(?:^|\s)md:hidden(?:\s|$)/.test(sig(phoneCopies[0]))).toBe(true);
+    expect(sig(phoneCopies[0])).not.toContain("max-md:hidden");
+  });
+
+  it("paints copper only when the viewer received the document, because an admin's queue is global", async () => {
+    // Synthetic identities only (no real names / PII, per CLAUDE.md §4).
+    // The viewer is an ADMIN — the backend's GET /queue docstring says an
+    // admin's queue is GLOBAL, so the response below legitimately includes
+    // a row this admin did NOT receive. The law under test: seeing it is
+    // not the same as owning it, so it must NEVER paint copper.
+    const VIEWER_EMAIL = "member@example.test";
+    const baseRow = {
+      doc_type: "kitas",
+      decision: "NO_MATCH",
+      source: "whatsapp",
+      status: "review_pending",
+      entity_candidates: [],
+      extracted_fields: {},
+      created_at: "2026-06-15T09:00:00Z",
+    };
+    // Guilt and innocence on the IDENTICAL record shape — only received_by
+    // differs.
+    const ownRow = { ...baseRow, proposal_id: 901, received_by: VIEWER_EMAIL };
+    const otherRow = {
+      ...baseRow,
+      proposal_id: 902,
+      received_by: "other@example.test",
+    };
+
+    getUserProfileMock.mockReturnValue({ email: VIEWER_EMAIL, role: "admin" });
+    apiMock.get.mockImplementation(async (endpoint: string) => {
+      if (endpoint.startsWith("/api/intake/review/queue")) {
+        return { items: [ownRow, otherRow] };
+      }
+      if (endpoint === "/api/intake/review/document-categories") {
+        return { items: [] };
+      }
+      throw new Error(`Unexpected GET ${endpoint}`);
+    });
+
+    render(<ReviewPage />);
+
+    // Innocence: the viewer's OWN record paints copper, "Needs you" —
+    // exactly the row-pill count for the ONE owned row (desktop + phone
+    // copy), excluding the "Needs you" FILTER chip (a <button>).
+    const needsYou = (await screen.findAllByText("Needs you")).filter(
+      (el) => el.tagName !== "BUTTON",
+    );
+    expect(needsYou).toHaveLength(2);
+
+    // Guilt: the identical record received by someone else is muted,
+    // "Another operator" — never copper, even though this admin's global
+    // queue legitimately shows it.
+    expect(screen.getAllByText("Another operator")).toHaveLength(2);
+
+    // The SAME law one typographic level up. The masthead sentence is a
+    // claim of ownership, so it counts what the viewer owns, not what
+    // loaded. Two rows arrived and exactly one is this admin's, so the
+    // sentence must say so. Before this pin it read "2 documents are
+    // waiting for your decision" directly above a row the page itself
+    // marked "Another operator" — a masthead contradicting its own ledger.
     expect(
-      await screen.findByText("Operator: adit@balizero.com"),
+      screen.getByText("1 of 2 documents is waiting for your decision."),
     ).toBeVisible();
-    expect(screen.getByText("Operator: unassigned")).toBeVisible();
   });
 
   it("leads a NO_MATCH proposal with a 'Create new client' CTA prefilled from the extracted fields", async () => {
@@ -117,10 +218,19 @@ describe("ReviewPage", () => {
     const reviewButtons = await screen.findAllByRole("button", {
       name: "Review",
     });
-    // The NO_MATCH card is the one labelled "No client matched — needs a decision".
+    // The NO_MATCH row is the one whose reason line reads "No client matched".
+    // Re-pinned with the 390px copy cut (SAETTA-R19K K2b): CellStack truncates
+    // its secondary, so the longer sentence rendered on a phone as
+    // "No client matched — needs a d…". The call to act moved to the copper pill, which
+    // is asserted separately, so this still pins the REASON and the pill test
+    // still pins the WORD — neither half can vanish unnoticed.
+    expect(screen.getByText("No client matched")).toBeVisible();
+    // The WORD the pill carries — excluding the "Needs you" FILTER chip
+    // (a <button>), which is a different element than the row's own <span>
+    // pill and always renders regardless of this row's state.
     expect(
-      screen.getByText("No client matched — needs a decision"),
-    ).toBeVisible();
+      screen.getAllByText("Needs you").filter((el) => el.tagName !== "BUTTON"),
+    ).toHaveLength(2);
     fireEvent.click(reviewButtons[1]);
 
     // The primary, helpful CTA — NOT an error.
@@ -218,8 +328,14 @@ describe("ReviewPage", () => {
       (await screen.findAllByRole("button", { name: "Review" }))[0],
     );
 
-    // Read-only notice is shown…
-    expect(await screen.findByText(/already filed — view only/i)).toBeVisible();
+    // Read-only notice is shown — AND, per CURE 2, the modal's own title
+    // pill now reuses the same reason word, so the text is legitimately in
+    // the DOM twice (the Notice banner and the pill).
+    const readOnlyNodes = await screen.findAllByText(
+      /already filed — view only/i,
+    );
+    expect(readOnlyNodes).toHaveLength(2);
+    for (const node of readOnlyNodes) expect(node).toBeVisible();
     // …the generic failure toast is NOT shown…
     expect(
       screen.queryByText("Could not open the document."),
@@ -263,9 +379,13 @@ describe("ReviewPage", () => {
       (await screen.findAllByRole("button", { name: "Review" }))[0],
     );
 
-    expect(
-      await screen.findByText(/claimed by another reviewer — view only/i),
-    ).toBeVisible();
+    // Per CURE 2, the modal's title pill reuses the same reason word as the
+    // Notice banner, so this legitimately matches twice.
+    const readOnlyNodes = await screen.findAllByText(
+      /claimed by another reviewer — view only/i,
+    );
+    expect(readOnlyNodes).toHaveLength(2);
+    for (const node of readOnlyNodes) expect(node).toBeVisible();
     expect(
       screen.queryByText("Could not open the document."),
     ).not.toBeInTheDocument();

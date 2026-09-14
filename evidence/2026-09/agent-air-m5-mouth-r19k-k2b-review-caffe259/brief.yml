@@ -1,0 +1,50 @@
+gear: 2
+objective: >-
+  Put /review — the intake document queue — on the concept-K v2 "TEPAT FORTE" desk: a masthead with
+  a computed subtitle, a desk strip carrying the Fraunces count and an aria-pressed filter group,
+  hairline ledger rows on the shared primitives, and a word-first empty state. Drain the page's three
+  --state-danger reads and enrol /review in the desk no-red guard in the same change.
+constraints:
+  - >-
+    Presentation only. Every request, handler, claim token, read-only reason and approve/reject path
+    is untouched; the desk strip's filter and search narrow the items array the page already holds,
+    so no new request is made and the default state reproduces the previous unfiltered list exactly.
+  - >-
+    Copper means the viewer is the NEXT ACTOR. On this queue that is the rows the system could not
+    resolve on its own, in a queue the backend already scopes to this reviewer; a date never grants
+    it. Copper is never a fill — Reject loses its solid --state-danger and becomes an outlined
+    secondary action rather than being given an invented hue.
+  - >-
+    Terminal and unknown decisions stay muted and carry their own word.
+  - >-
+    No hex literal, no red Tailwind family, and after this change no --state-danger read anywhere
+    under /review.
+  - >-
+    components/workspace/r19, AppSidebar, navigation.ts and globals.css are forbidden to this window;
+    a missing shape becomes a page-local wrapper that imports the primitive or its exported constants.
+acceptance:
+  - text: >-
+      WHEN /review renders after this change, NO file under it SHALL read --state-danger, and the
+      desk no-red guard SHALL bind it strictly from this commit on — planting a danger read, a red
+      hex or a red Tailwind utility SHALL turn that guard red.
+    probe: npx vitest --run "src/app/(workspace)/__tests__"
+  - text: >-
+      WHEN the queue renders, every testid, label and string the existing page, destination and
+      decide-error tests select SHALL still resolve, and the approve and reject flows SHALL behave
+      identically.
+    probe: npx vitest --run "src/app/(workspace)/review"
+  - text: >-
+      WHEN a row's secondary action is reached on a pointer that cannot hover, it SHALL still be
+      available through an always-on 44px control with its own accessible name.
+    probe: npx vitest --run "src/app/(workspace)/review"
+  - text: >-
+      WHEN /review renders on a dev server with the API stubbed, at 1440x900 and 390x844 in both
+      operative-light and operative-dark, there SHALL be no horizontal overflow.
+    probe: chromium via playwright against next dev --webpack, full-page capture plus a scrollWidth probe
+consumer_map:
+  - >-
+    Every staff member who opens kita.balizero.com/review. The page was rendered on a dev server on
+    this branch before the work was reported done.
+  - >-
+    desk-no-red.guard.test.ts goes red if /review reads the danger token, a red hex or a red
+    Tailwind family again.
