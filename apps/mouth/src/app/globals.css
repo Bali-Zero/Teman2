@@ -464,39 +464,142 @@
   --bz-header-height: 64px;
 }
 
-/* Kita: warm ivory daylight, compact and operational. */
+/* Kita: R19 paper, concept-K "SIAP". Same alphabet as the my seam below —
+   paper ground, ink type, copper for "needs you", forest for "done", slate
+   for "ours/moving", muted for "waiting" — on a denser grammar: the unit is
+   a 44px hairline row, not a card.
+
+   The --bz-kita-* indirection is kept because
+   (workspace)/__tests__/kita-theme.contract.test.ts pins six alias
+   declarations through it; only the VALUES behind the names change.
+
+   Contrast measured (WCAG 2.1 relative luminance), text on paper #f7f4ee:
+   ink #1d2c3b 12.96:1 · muted #58626b 5.67:1 · copper #a44b36 5.26:1 ·
+   warning #8a5a2b 5.35:1 · forest #253e33 10.54:1 · slate #233d52 10.28:1;
+   paper #fffcf7 on a forest button 11.30:1, on a slate fill 11.03:1.
+   --line-control #767c82 is the interactive-boundary line: 3.84:1 on paper
+   and 4.12:1 on a card, so it clears SC 1.4.11's 3:1 for a control boundary.
+   R19's --line-strong #a8aca9 measures 2.09:1 and fails that floor, so a
+   control gets its own line token rather than the hairline.
+
+   No red on kita: --state-danger and --bz-red resolve to copper and every
+   dangerous state carries a WORD. --bz-neon-purple is re-aliased to slate so
+   the pages that still READ that name (token-drain.residuals.guard.test.ts
+   pins the read on /admin/team-activity and /intelligence/analytics) paint
+   R19 without their guard going red.
+
+   Deliberately NOT redeclared here, each for a stated reason:
+   --bz-chart-1..8 (a categorical series is not part of the R19 alphabet;
+   the intel/ops window owns that decision) and --bz-sidebar-active-fill (the
+   workspace rail still paints a filled active item until the shell window
+   replaces it with the copper left rule; its #9d5230 fill carries white at
+   5.69:1, so leaving it is safe and re-aliasing it first would put
+   white-on-paper text on production for one deploy). */
 [data-theme="operative-light"][data-product="kita"] {
-  --bz-kita-canvas: #f8f6f2;
-  --bz-kita-card: #ffffff;
-  --bz-kita-card-hover: #fbf8f3;
-  --bz-kita-overlay: rgba(255, 253, 249, 0.86);
-  --bz-kita-nav: rgba(255, 253, 249, 0.92);
+  --bz-kita-canvas: #f7f4ee;
+  --bz-kita-card: #fffcf7;
+  --bz-kita-card-hover: #f7f4ee;
+  --bz-kita-wash: #eae3d8;
+  --bz-kita-overlay: rgba(255, 252, 247, 0.86);
+  --bz-kita-nav: #f7f4ee;
 
   --surface-base: var(--bz-kita-canvas);
   --surface-matter: var(--bz-kita-card);
   --surface-overlay: var(--bz-kita-overlay);
+  --surface-raised: var(--bz-kita-card);
+  --surface-deep: var(--bz-kita-canvas);
+  --surface-sunken: var(--bz-kita-wash);
+  --surface-selected: var(--bz-kita-wash);
   --nav-bg: var(--bz-kita-nav);
 
   --bz-base: var(--bz-kita-canvas);
+  --bz-bg: var(--bz-kita-canvas);
   --bz-elevated: var(--bz-kita-card);
   --bz-surface: var(--bz-kita-card);
+  --bz-surface-2: var(--bz-kita-wash);
+  --bz-wash: var(--bz-kita-wash);
   --bz-card: var(--bz-kita-card);
   --bz-card-hover: var(--bz-kita-card-hover);
-  --bz-text-1: #172033;
-  --bz-text-2: #4d5870;
-  --bz-text-3: #596275;
-  --bz-border: rgba(55, 44, 32, 0.1);
-  --bz-border-hover: rgba(55, 44, 32, 0.17);
+
+  /* Type colour — ink and muted only */
+  --tx-pure: #1d2c3b;
+  --tx-primary: #1d2c3b;
+  --tx-secondary: #58626b;
+  --tx-tertiary: #58626b;
+  --bz-text-1: #1d2c3b;
+  --bz-text-2: #58626b;
+  --bz-text-3: #58626b;
+  /* --bz-text-pure is deliberately NOT redeclared, and the my seam does not
+     redeclare it either. It resolves through packages/core to #000000 light /
+     #ffffff dark, and clients/page.tsx:806 paints it as the label ON the
+     copper fill of the active "assigned to me" filter. Ink there would read
+     2.47:1 where black reads 3.64:1 — both under SC 1.4.3, but redeclaring it
+     would LOWER a live ratio, and K3 is the window that removes that fill.
+     "Pure" is the extreme of the ramp, so black is also the honest value for
+     the name; --tx-pure carries the R19 ink for the type scale. */
+  --bz-text-primary: #1d2c3b;
+  --bz-text-secondary: #58626b;
+  --bz-text-muted: #58626b;
 
   --background: var(--bz-kita-canvas);
   --background-secondary: var(--bz-kita-card);
   --background-elevated: var(--bz-kita-card);
   --background-hover: var(--bz-kita-card-hover);
-  --foreground: #172033;
-  --foreground-secondary: #4d5870;
-  --foreground-muted: #596275;
-  --border: rgba(55, 44, 32, 0.1);
-  --border-hover: rgba(55, 44, 32, 0.17);
+  --foreground: #1d2c3b;
+  --foreground-secondary: #58626b;
+  --foreground-muted: #58626b;
+
+  /* Lines — hairline everywhere, a darker line only under a control */
+  --bz-line: #dad8d1;
+  --bz-line-strong: #a8aca9;
+  --line-control: #767c82;
+  --bz-border: #dad8d1;
+  --bz-border-hover: #a8aca9;
+  --bz-border-accent: rgba(164, 75, 54, 0.28);
+  --border: #dad8d1;
+  --border-hover: #a8aca9;
+  --bz-glass-rim: #dad8d1;
+  --bz-glass-highlight: var(--bz-kita-wash);
+  --glass-rim: #dad8d1;
+  --glass-highlight: var(--bz-kita-wash);
+
+  /* Copper = needs you. Never a button fill. */
+  --bz-copper: #a44b36;
+  --bz-copper-text: #a44b36;
+  --bz-copper-deep: #a44b36;
+  --bz-accent: #a44b36;
+  --bz-accent-hover: #8f4130;
+  --bz-accent-warm: #8a5a2b;
+  --bz-accent-glow: rgba(164, 75, 54, 0.16);
+  --bz-accent-subtle: rgba(164, 75, 54, 0.08);
+  --bz-accent-muted: rgba(164, 75, 54, 0.12);
+  --bz-on-warm: #fffcf7;
+  /* Legacy name, single consumer (hr/employees/page.tsx:469) where it is the
+     ink ON the copper fill, never a navy. Left at #060d14 it measures 3.36:1
+     on R19 copper and fails SC 1.4.3; aliased to the on-accent ink it reads
+     5.70:1. K4 removes the copper fill and the alias goes with it. */
+  --bz-navy-900: var(--bz-on-warm);
+  --bz-focus-ring: #a44b36;
+  --border-focus: #a44b36;
+  --accent: #a44b36;
+  --accent-hover: #8f4130;
+  --accent-foreground: #fffcf7;
+
+  /* Forest = done, slate = ours/moving, muted = waiting */
+  --bz-green: #253e33;
+  --bz-gold: #8a5a2b;
+  --bz-amber: #8a5a2b;
+  --bz-red: #a44b36;
+  --bz-neon-purple: #233d52;
+
+  /* States — four meanings, no red: danger speaks copper */
+  --state-success: #253e33;
+  --state-warning: #8a5a2b;
+  --state-danger: #a44b36;
+  --state-info: #233d52;
+  --success: #253e33;
+  --warning: #8a5a2b;
+  --error: #a44b36;
 
   --kbli-bg-base: var(--bz-kita-canvas);
   --kbli-bg-primary: var(--bz-kita-canvas);
@@ -507,14 +610,161 @@
   --kbli-bg-card: var(--bz-kita-card);
   --kbli-bg-card-hover: var(--bz-kita-card-hover);
   --kbli-bg-input: var(--bz-kita-card);
-  --kbli-text-primary: #172033;
-  --kbli-text-secondary: #4d5870;
-  --kbli-text-muted: #596275;
-  --kbli-border: rgba(55, 44, 32, 0.1);
-  --kbli-border-hover: rgba(55, 44, 32, 0.17);
+  --kbli-text-primary: #1d2c3b;
+  --kbli-text-secondary: #58626b;
+  --kbli-text-muted: #58626b;
+  --kbli-border: #dad8d1;
+  --kbli-border-hover: #a8aca9;
+  --kbli-accent: #a44b36;
 
-  --portal-header-bg: rgba(248, 246, 242, 0.86);
-  --bz-shell-header-shadow: 0 8px 30px rgba(64, 46, 30, 0.05);
+  /* Shell — a hairline instead of a drop shadow */
+  --portal-header-bg: rgba(255, 252, 247, 0.86);
+  --bz-shell-header-shadow: none;
+  --bz-shadow-card: 0 10px 30px rgba(29, 44, 59, 0.045);
+
+  /* Type — Fraunces mastheads, Manrope body. The faces are declared in
+     app/portal/r19-fonts.css, imported by (workspace)/layout.tsx and
+     app/login/page.tsx. */
+  --font-serif: "Fraunces", ui-serif, Georgia, serif;
+  --font-sans: "Manrope", ui-sans-serif, system-ui, sans-serif;
+
+  /* The base body rule pins "Inter" literally, so the sans token alone
+     cannot reach it. This descendant rule is the only non-custom-property
+     declaration in the block and stays behind the kita qualifier. */
+  & body {
+    font-family: var(--font-sans);
+  }
+}
+
+/* Kita, after dark. Same four meanings on an ink ground, derived with the
+   same rules as the my dark block: copper lifts to #c46a52 for TEXT
+   (4.98:1 on #121016, 4.57:1 on the card) while the raw #a44b36 stays for
+   fills and rules, and forest/slate/warning lift through a paper mix so
+   "done", "ours" and the warning step stay legible. Danger is still copper,
+   neon-purple is still slate. */
+[data-theme="operative-dark"][data-product="kita"] {
+  --bz-kita-canvas: #121016;
+  --bz-kita-card: #1a1a1f;
+  --bz-kita-card-hover: rgba(247, 244, 238, 0.07);
+  --bz-kita-wash: #222025;
+  --bz-kita-overlay: rgba(26, 26, 31, 0.86);
+  --bz-kita-nav: #121016;
+
+  --surface-base: var(--bz-kita-canvas);
+  --surface-matter: var(--bz-kita-card);
+  --surface-overlay: var(--bz-kita-overlay);
+  --surface-raised: var(--bz-kita-card);
+  --surface-deep: var(--bz-kita-canvas);
+  --surface-sunken: var(--bz-kita-wash);
+  --surface-selected: var(--bz-kita-wash);
+  --nav-bg: var(--bz-kita-nav);
+
+  --bz-base: var(--bz-kita-canvas);
+  --bz-bg: var(--bz-kita-canvas);
+  --bz-elevated: var(--bz-kita-card);
+  --bz-surface: var(--bz-kita-card);
+  --bz-surface-2: var(--bz-kita-wash);
+  --bz-wash: var(--bz-kita-wash);
+  --bz-card: var(--bz-kita-card);
+  --bz-card-hover: var(--bz-kita-card-hover);
+
+  /* Type colour — paper on ink (17.21:1) */
+  --tx-pure: #f7f4ee;
+  --tx-primary: #f7f4ee;
+  --tx-secondary: rgba(247, 244, 238, 0.62);
+  --tx-tertiary: rgba(247, 244, 238, 0.45);
+  --bz-text-1: #f7f4ee;
+  --bz-text-2: rgba(247, 244, 238, 0.62);
+  --bz-text-3: rgba(247, 244, 238, 0.45);
+  /* --bz-text-pure: see the light block — left to resolve through
+     packages/core so the /clients copper pairing is not made worse. */
+  --bz-text-primary: #f7f4ee;
+  --bz-text-secondary: rgba(247, 244, 238, 0.62);
+  --bz-text-muted: rgba(247, 244, 238, 0.45);
+
+  --background: var(--bz-kita-canvas);
+  --background-secondary: var(--bz-kita-card);
+  --background-elevated: var(--bz-kita-card);
+  --background-hover: var(--bz-kita-card-hover);
+  --foreground: #f7f4ee;
+  --foreground-secondary: rgba(247, 244, 238, 0.62);
+  --foreground-muted: rgba(247, 244, 238, 0.62);
+
+  /* Lines */
+  --bz-line: rgba(247, 244, 238, 0.12);
+  --bz-line-strong: rgba(247, 244, 238, 0.2);
+  --line-control: rgba(247, 244, 238, 0.42);
+  --bz-border: rgba(247, 244, 238, 0.12);
+  --bz-border-hover: rgba(247, 244, 238, 0.2);
+  --bz-border-accent: rgba(196, 106, 82, 0.35);
+  --border: rgba(247, 244, 238, 0.12);
+  --border-hover: rgba(247, 244, 238, 0.2);
+  --bz-glass-rim: rgba(247, 244, 238, 0.12);
+  --bz-glass-highlight: var(--bz-kita-wash);
+  --glass-rim: rgba(247, 244, 238, 0.12);
+  --glass-highlight: var(--bz-kita-wash);
+
+  /* Copper = needs you; the fill stays raw, the text lifts */
+  --bz-copper: #a44b36;
+  --bz-copper-text: #c46a52;
+  --bz-copper-deep: #a44b36;
+  --bz-accent: #c46a52;
+  --bz-accent-hover: #d07e68;
+  --bz-accent-warm: #c6af96;
+  --bz-accent-glow: rgba(196, 106, 82, 0.2);
+  --bz-accent-subtle: rgba(196, 106, 82, 0.1);
+  --bz-accent-muted: rgba(196, 106, 82, 0.16);
+  --bz-on-warm: #121016;
+  --bz-navy-900: var(--bz-on-warm);
+  --bz-focus-ring: #c46a52;
+  --border-focus: #c46a52;
+  --accent: #c46a52;
+  --accent-hover: #d07e68;
+  --accent-foreground: #121016;
+
+  --bz-green: color-mix(in srgb, #253e33 40%, #f7f4ee);
+  --bz-gold: color-mix(in srgb, #8a5a2b 45%, #f7f4ee);
+  --bz-amber: color-mix(in srgb, #8a5a2b 45%, #f7f4ee);
+  --bz-red: #c46a52;
+  --bz-neon-purple: color-mix(in srgb, #233d52 40%, #f7f4ee);
+
+  /* States */
+  --state-success: color-mix(in srgb, #253e33 40%, #f7f4ee);
+  --state-warning: color-mix(in srgb, #8a5a2b 45%, #f7f4ee);
+  --state-danger: #c46a52;
+  --state-info: color-mix(in srgb, #233d52 40%, #f7f4ee);
+  --success: color-mix(in srgb, #253e33 40%, #f7f4ee);
+  --warning: color-mix(in srgb, #8a5a2b 45%, #f7f4ee);
+  --error: #c46a52;
+
+  --kbli-bg-base: var(--bz-kita-canvas);
+  --kbli-bg-primary: var(--bz-kita-canvas);
+  --kbli-bg-secondary: var(--bz-kita-card);
+  --kbli-bg-elevated: var(--bz-kita-card);
+  --kbli-bg-surface: var(--bz-kita-card);
+  --kbli-bg-surface-hover: var(--bz-kita-card-hover);
+  --kbli-bg-card: var(--bz-kita-card);
+  --kbli-bg-card-hover: var(--bz-kita-card-hover);
+  --kbli-bg-input: var(--bz-kita-card);
+  --kbli-text-primary: #f7f4ee;
+  --kbli-text-secondary: rgba(247, 244, 238, 0.62);
+  --kbli-text-muted: rgba(247, 244, 238, 0.62);
+  --kbli-border: rgba(247, 244, 238, 0.12);
+  --kbli-border-hover: rgba(247, 244, 238, 0.2);
+  --kbli-accent: #c46a52;
+
+  /* Shell */
+  --portal-header-bg: rgba(18, 16, 22, 0.86);
+  --bz-shell-header-shadow: none;
+  --bz-shadow-card: 0 10px 30px rgba(0, 0, 0, 0.32);
+
+  /* Type */
+  --font-serif: "Fraunces", ui-serif, Georgia, serif;
+  --font-sans: "Manrope", ui-sans-serif, system-ui, sans-serif;
+
+  & body {
+    font-family: var(--font-sans);
+  }
 }
 
 /* My: R19 paper. Warm paper ground, ink type, copper for "needs you" and
