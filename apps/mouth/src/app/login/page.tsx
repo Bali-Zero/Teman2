@@ -2,8 +2,9 @@
 
 import { useState, useEffect } from "react";
 import { api } from "@/lib/api";
-import { ApiError } from "@/lib/api/error-handler";
 import { logger } from "@/lib/logger";
+import { firstPartyRedirect, stageForError } from "./contract";
+import type { LoginStage } from "./contract";
 
 /**
  * R19 typefaces — declared in app/portal/r19-fonts.css, selected by the
@@ -22,56 +23,31 @@ import "../portal/r19-fonts.css";
  * None of it told a staff member anything the words do not, and 3500ms of it
  * was spent making them wait to be told.
  *
- * What arrived. Five honest plates instead of four:
+ * What arrived. Five states —
  *
  *   idle · authenticating · success · denied · unreachable
  *
- * The fifth is the one that was missing. A timeout, a 429 or a 5xx is NOT a
- * wrong PIN, and telling someone their credentials are wrong when the service
- * is down sends them to reset a password that was never the problem. The
- * branch reads `ApiError.statusCode`, not a substring of the message.
+ * — and four plates, because `success` has none. It was drafted with one
+ * ("Welcome back, <name>. One moment.") and measured in Chromium: the
+ * destination document takes the window before React commits, so the plate
+ * never painted. A plate nobody sees is the theatre this PR is deleting, so it
+ * went; the stage stays, because it is what keeps the form locked while the
+ * browser navigates.
+ *
+ * `unreachable` is the state that was MISSING. A timeout, a 429 or a 5xx is
+ * not a wrong PIN, and telling someone their credentials are wrong when the
+ * service is down sends them to reset a password that was never the problem.
  *
  * And the redirect is now closed. `?redirect=` used to reach
  * `location.replace()` unvalidated, so `/login?redirect=https://evil.test`
- * sent a freshly authenticated staff member off-origin. `sameOriginPath()`
- * below is the allowlist; it is exported and tested with guilt and innocence.
+ * sent a freshly authenticated staff member off-origin.
+ *
+ * Both decisions live in ./contract, where they can be tested directly — and
+ * because a page module may export nothing but the framework's own symbols.
  *
  * Unchanged on purpose: the `api.login` call, the `/api/health` warm-up, the
  * `?redirect=` contract itself, and the role-based fallback.
  */
-
-/** The five states this page can honestly be in. */
-export type LoginStage =
-  "idle" | "authenticating" | "success" | "denied" | "unreachable";
-
-/**
- * Accept a redirect target only when it is a path on THIS origin.
- *
- * Rejected, each for a reason a reviewer can check: an absolute URL (any
- * scheme, including `javascript:`), a protocol-relative `//evil.test` (which a
- * browser resolves as an absolute URL), a backslash form `/\evil.test` (which
- * some browsers normalise to the protocol-relative one), and anything that
- * does not start with a single `/`. Everything accepted is a same-origin path,
- * so the caller can hand it straight to `location.replace`.
- */
-export function sameOriginPath(raw: string | null): string | null {
-  if (!raw) return null;
-  if (!raw.startsWith("/")) return null;
-  if (raw.startsWith("//")) return null;
-  if (raw.startsWith("/\\")) return null;
-  return raw;
-}
-
-/** 401 and 403 mean the credentials; everything else means the service. */
-export function stageForError(error: unknown): "denied" | "unreachable" {
-  if (error instanceof ApiError) {
-    return error.statusCode === 401 || error.statusCode === 403
-      ? "denied"
-      : "unreachable";
-  }
-  // A thrown TypeError from fetch is a network failure, not a bad PIN.
-  return "unreachable";
-}
 
 const FIELD =
   "w-full h-[52px] bg-transparent border-0 border-b border-[var(--line-control)] " +
@@ -86,7 +62,6 @@ export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [pin, setPin] = useState("");
   const [loginStage, setLoginStage] = useState<LoginStage>("idle");
-  const [greeting, setGreeting] = useState<string | null>(null);
 
   // Warmup: ping backend on mount so Fly.io is awake before user submits.
   useEffect(() => {
@@ -104,15 +79,14 @@ export default function LoginPage() {
     try {
       const loginResponse = await api.login(email, pin);
 
-      setGreeting(loginResponse.user?.name ?? null);
       setLoginStage("success");
 
       // Honour ?redirect= ONLY when it is a path on this origin.
       const urlParams = new URLSearchParams(globalThis.location.search);
       const requested = urlParams.get("redirect");
-      const allowed = sameOriginPath(requested);
+      const allowed = firstPartyRedirect(requested);
       if (requested && !allowed) {
-        logger.warn("Rejected an off-origin redirect target", {
+        logger.warn("Rejected a third-party redirect target", {
           component: "LoginPage",
           action: "handleLogin",
         });
@@ -136,7 +110,7 @@ export default function LoginPage() {
 
   const notice =
     loginStage === "denied"
-      ? "That email and PIN do not match. Check both and try again."
+      ? "That email and PIN were not accepted. Check both and try again."
       : loginStage === "unreachable"
         ? "We could not reach the service. Nothing is wrong with your details — try again in a moment."
         : null;
@@ -196,98 +170,82 @@ export default function LoginPage() {
               fontVariationSettings: '"opsz" 144',
             }}
           >
-            {loginStage === "success"
-              ? greeting
-                ? `Welcome back, ${greeting}.`
-                : "Welcome back."
-              : "Welcome back."}
+            Welcome back.
           </h1>
 
-          {loginStage === "success" ? (
-            // Claims no destination: the redirect decides, not this sentence.
+          <p className="mt-3 text-[13px] text-[var(--tx-secondary)]">
+            Sign in with your Bali Zero email and PIN.
+          </p>
+
+          {notice && (
             <p
-              role="status"
-              className="mt-3 text-[13px] text-[var(--tx-secondary)]"
+              role="alert"
+              className="mt-5 border border-[var(--bz-copper)] px-3 py-2.5 text-[13px] text-[var(--bz-copper-text)]"
             >
-              One moment.
+              {notice}
             </p>
-          ) : (
-            <>
-              <p className="mt-3 text-[13px] text-[var(--tx-secondary)]">
-                Sign in with your Bali Zero email and PIN.
-              </p>
-
-              {notice && (
-                <p
-                  role="alert"
-                  className="mt-5 border border-[var(--bz-copper)] px-3 py-2.5 text-[13px] text-[var(--bz-copper-text)]"
-                >
-                  {notice}
-                </p>
-              )}
-
-              <form onSubmit={handleLogin} className="mt-7 flex flex-col gap-6">
-                <div className="flex flex-col gap-1">
-                  <label htmlFor="email" className={LABEL}>
-                    Email
-                  </label>
-                  <input
-                    id="email"
-                    name="email"
-                    type="email"
-                    autoComplete="username"
-                    placeholder="you@balizero.com"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    disabled={busy}
-                    className={FIELD}
-                  />
-                </div>
-
-                <div className="flex flex-col gap-1">
-                  <label htmlFor="pin" className={LABEL}>
-                    PIN
-                  </label>
-                  <input
-                    id="pin"
-                    name="pin"
-                    type="password"
-                    // The backend's PIN is digits (identity/router.py:39,78),
-                    // so a phone should offer the number pad.
-                    inputMode="numeric"
-                    autoComplete="current-password"
-                    placeholder="••••••"
-                    value={pin}
-                    onChange={(e) => setPin(e.target.value)}
-                    disabled={busy}
-                    className={FIELD}
-                  />
-                </div>
-
-                <button
-                  type="submit"
-                  disabled={busy}
-                  className="mt-1 h-12 w-full text-[13px] font-[650] tracking-[0.02em] transition-opacity disabled:opacity-55"
-                  style={{
-                    background: "var(--bz-panel)",
-                    color: "var(--bz-on-panel)",
-                  }}
-                >
-                  {loginStage === "authenticating" ? "Signing in…" : "Enter"}
-                </button>
-              </form>
-
-              <p className="mt-9 text-[12px] text-[var(--tx-secondary)]">
-                Looking for the client portal?{" "}
-                <a
-                  href="https://my.balizero.com"
-                  className="font-[650] text-[var(--bz-copper-text)] underline underline-offset-[3px]"
-                >
-                  my.balizero.com
-                </a>
-              </p>
-            </>
           )}
+
+          <form onSubmit={handleLogin} className="mt-7 flex flex-col gap-6">
+            <div className="flex flex-col gap-1">
+              <label htmlFor="email" className={LABEL}>
+                Email
+              </label>
+              <input
+                id="email"
+                name="email"
+                type="email"
+                autoComplete="username"
+                placeholder="you@balizero.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                disabled={busy}
+                className={FIELD}
+              />
+            </div>
+
+            <div className="flex flex-col gap-1">
+              <label htmlFor="pin" className={LABEL}>
+                PIN
+              </label>
+              <input
+                id="pin"
+                name="pin"
+                type="password"
+                // The backend's PIN is digits (identity/router.py:39,78),
+                // so a phone should offer the number pad.
+                inputMode="numeric"
+                autoComplete="current-password"
+                placeholder="••••••"
+                value={pin}
+                onChange={(e) => setPin(e.target.value)}
+                disabled={busy}
+                className={FIELD}
+              />
+            </div>
+
+            <button
+              type="submit"
+              disabled={busy}
+              className="mt-1 h-12 w-full text-[13px] font-[650] tracking-[0.02em] transition-opacity disabled:opacity-55"
+              style={{
+                background: "var(--bz-panel)",
+                color: "var(--bz-on-panel)",
+              }}
+            >
+              {loginStage === "authenticating" ? "Signing in…" : "Enter"}
+            </button>
+          </form>
+
+          <p className="mt-9 text-[12px] text-[var(--tx-secondary)]">
+            Looking for the client portal?{" "}
+            <a
+              href="https://my.balizero.com"
+              className="font-[650] text-[var(--bz-copper-text)] underline underline-offset-[3px]"
+            >
+              my.balizero.com
+            </a>
+          </p>
         </div>
       </main>
     </div>
