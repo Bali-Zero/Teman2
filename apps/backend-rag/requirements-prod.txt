@@ -78,7 +78,7 @@ passlib[bcrypt]>=1.7.4
 
 # Database
 asyncpg>=0.31.0  # Performance and security improvements
-psycopg2-binary>=2.9.9
+psycopg2-binary>=2.9.13
 redis>=8.1.0  # Security updates and new features
 sqlmodel>=0.0.39  # Bug fixes and compatibility updates
 
