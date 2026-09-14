@@ -1,0 +1,54 @@
+gear: 2
+objective: >-
+  Put the staff gate at kita.balizero.com/login onto concept-K "SIAP": a forest panel with the
+  wordmark beside paper with the copper rule, the theatre deleted, five honest states where there
+  was one failure state (a 5xx is not a wrong PIN), and the ?redirect= parameter narrowed from
+  "anything" to "inside Bali Zero". The boundary and the skeleton come with it.
+constraints:
+  - Presentation only, plus the one safety fix the surface forces. No route, endpoint, field name,
+    hook signature, API type, i18n key or data request changes; api.login, the /api/health warm-up,
+    the ?redirect= contract and the role fallback are untouched.
+  - No red anywhere on kita. The boundary's shadcn `destructive` disc is the violation this PR
+    removes; copper carries it and the WORDS say what is wrong.
+  - Copper is never a fill behind a label. The 3px masthead rule is the one copper shape.
+  - Only the two kita theme blocks may move in globals.css; [data-product="my"] and :root stay
+    byte-identical.
+  - Every guard carries a planted violation AND an innocent case, and judges the ENTITY (a colour,
+    a fill, a source) rather than a list of spellings.
+  - No client PII in code, tests or evidence.
+acceptance:
+  - text: >-
+      WHEN /login renders on kita, the left panel SHALL be the forest --bz-panel with paper type,
+      the masthead rule SHALL be 56x3 copper, and BOTH fields SHALL be 52px on the --line-control
+      boundary, at 1440 and at 390, in both themes, with zero page errors.
+    probe: chromium getComputedStyle + screenshot on the dev server at 1440 and 390, both themes
+  - text: >-
+      WHEN login fails with any 4xx except 408 and 429 the page SHALL say the request was not
+      accepted; WHEN it fails with 408, 429, a 5xx or a network throw it SHALL say the service could
+      not be reached.
+    probe: npx vitest --run src/app/login
+  - text: >-
+      WHEN ?redirect= names a path or an https URL on balizero.com or a subdomain it SHALL be
+      honoured; WHEN it names any other host, any other scheme, a protocol-relative //host or a
+      backslash form, it SHALL be refused, the role fallback SHALL take over and the refusal SHALL
+      be logged.
+    probe: npx vitest --run src/app/login
+  - text: >-
+      WHEN the page, the error boundary or the skeleton renders, NO red and NO copper fill behind a
+      label SHALL appear — and the detectors SHALL name a red they were never given, in any
+      spelling, and an inline copper fill.
+    probe: npx vitest --run src/app/login
+  - text: >-
+      WHEN --bz-panel resolves in either kita theme it SHALL be the R19 forest with paper on it and
+      SHALL NOT track the lifted --state-success step, with the drift detector planted three ways.
+    probe: npx vitest --run "src/app/(workspace)/__tests__/kita-r19.contract.test.ts"
+  - text: >-
+      WHEN the page module is typechecked against the generated route types it SHALL export nothing
+      but the framework's own symbols.
+    probe: npx tsc --noEmit --incremental false
+consumer_map:
+  - Every Bali Zero staff member meets this page before any other — measured in Chromium against
+    `next dev --webpack` at 1440 and 390, light and dark, with zero page errors from the app.
+  - page.test.tsx goes red if the redirect widens, if a 500 is reported as a wrong PIN, if a 400 is
+    reported as an outage, or if a red returns to any of the three files; kita-r19.contract.test.ts
+    goes red if the panel pair drifts.

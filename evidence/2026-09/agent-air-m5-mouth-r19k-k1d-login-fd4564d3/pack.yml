@@ -1,0 +1,200 @@
+gear: 2
+brief_ref: evidence/2026-09/agent-air-m5-mouth-r19k-k1d-login-fd4564d3/brief.yml
+lanes:
+  - lane: r19k-k1d-login
+    role: build
+    seat: claude-opus-5 (Dux, SAETTA-R19K window K1, xhigh)
+  - lane: r19k-k1d-login
+    role: review
+    seat: codex gpt-5.6 (CODEX_HOME=acct2, read-only sandbox, reasoning=high)
+pii_scan: clean
+seat_override: >-
+  R8 applicability: a sign-in page's markup, two CSS custom properties and two pure functions. No
+  immigration rule, eligibility, claim or price is authored; no NotebookLM query is claimed. The
+  seeded email in the tests is a placeholder, not a person.
+receipts:
+  - claim: The gate renders on concept-K at both widths and in both themes, with nothing thrown.
+    cmd: >-
+      Chromium via playwright against `next dev --webpack`, /login, dataset.product="kita",
+      getComputedStyle + screenshot at 1440x900 and 390x844 in operative-light and operative-dark.
+      Probe: chromium getComputedStyle + screenshot on the dev server at 1440 and 390, both themes
+    result: >-
+      panel rgb(37,62,51) with paper type in all four runs, 576px at 1440 (40%) and a full-width
+      120px band at 390; masthead rule 56x3 rgb(164,75,54); both fields 52px on rgb(88,98,107)
+      light and rgba(247,244,238,.42) dark; the Enter button is forest with paper on it, never
+      copper; PIN inputmode="numeric"; h1 Fraunces, body Manrope; no red found by a sweep of every
+      element's colour, background and border. Zero page errors in all four runs.
+    exit: 0
+    ts: "2026-09-14T14:26:00Z"
+    seat: claude-opus-5
+  - claim: >-
+      The success plate was a plate nobody could see, and the measurement — not taste — is what
+      removed it.
+    cmd: >-
+      Chromium, /api/auth/login fulfilled 200 with the real BackendLoginResponse shape and the
+      destination held for 4s, then poll for the success plate every 150ms.
+    result: >-
+      The plate never appears; the next document's loading state is on screen by t+300ms.
+      location.replace takes the window before React commits. The markup is removed and the stage
+      kept: it is what disables the form, and a second submit during navigation now fires no second
+      login (asserted).
+    exit: 0
+    ts: "2026-09-14T14:19:00Z"
+    seat: claude-opus-5
+  - claim: The redirect is narrowed WITHOUT breaking the flow that actually sends people here.
+    cmd: >-
+      grep every producer of ?redirect= in apps/mouth; read (workspace)/layout.tsx:231 and
+      proxy.ts:95; npx vitest --run src/app/login
+      Probe: npx vitest --run src/app/login
+    result: >-
+      Three producers. ModeSwitcher.tsx:37 sends a PATH ("/login?redirect=/prime").
+      (workspace)/layout.tsx:231 sends encodeURIComponent(window.location.href) — an ABSOLUTE URL —
+      and proxy.ts:95 records that mail/calendar/drive/knowledge.balizero.com bounce their
+      unauthenticated visitors here the same way. A path-only allowlist would have refused the last
+      two and dropped a staff member on /dashboard. firstPartyRedirect takes paths and https URLs on
+      balizero.com or a subdomain; the host is parsed with new URL(), so the userinfo form
+      https://balizero.com@evil.test reads as evil.test and the suffix form balizero.com.evil.test
+      fails the label boundary. Both are asserted.
+    exit: 0
+    ts: "2026-09-14T14:20:00Z"
+    seat: claude-opus-5
+  - claim: The five states are pinned against the backend's real status codes.
+    cmd: >-
+      read apps/backend-rag/backend/app/modules/identity/router.py:78-92 and lib/api/client.ts:506;
+      npx vitest --run src/app/login
+      Probe: npx vitest --run src/app/login
+    result: >-
+      The endpoint answers 400 when the PIN is not 4-8 digits and 401 on bad credentials; pydantic's
+      EmailStr answers 422 on the address; client.ts throws ApiError carrying statusCode. So 4xx is
+      "what you sent" — except 408 and 429, which are the service — and 5xx plus any non-ApiError
+      throw is the service. 27 tests green.
+    exit: 0
+    ts: "2026-09-14T14:20:00Z"
+    seat: claude-opus-5
+  - claim: Every guard names a violation it was never given, and clears the innocent case.
+    cmd: >-
+      npx vitest --run src/app/login ; npx vitest --run "src/app/(workspace)/__tests__/kita-r19.contract.test.ts" ;
+      planted mutations run one at a time against the real sources.
+      Probe: npx vitest --run src/app/login
+    result: >-
+      Planted and observed red: text-destructive in error.tsx failed the boundary test; deleting the
+      "//" line from the allowlist failed the protocol-relative case; --bz-panel changed to copper in
+      the light block failed the seam pin. Detector guilt beyond the lists: #ff0000, #f00,
+      rgb(220,38,38) and bg-red-500 are all named though none is enumerated; an inline
+      style="background: var(--bz-copper)" is named where the Tailwind-only guard saw nothing;
+      findTheatre names the replaced implementation and ignores the comment that records it;
+      panelTracksSuccess is planted with the token alias, a color-mix and an absent declaration.
+      Innocence: both copper steps, forest, slate, paper and ink pass; a copper BORDER passes; the
+      56x3 rule passes.
+    exit: 0
+    ts: "2026-09-14T14:21:00Z"
+    seat: claude-opus-5
+  - claim: Static gates green, with the same two pre-existing failures and nothing else.
+    cmd: >-
+      npx tsc --noEmit --incremental false; npx eslint on the four login sources; npx prettier
+      --check; npx vitest --run src/app/login "src/app/(workspace)" src/components/workspace;
+      python3 scripts/token_lint.py --base origin/main after committing.
+      Probe: npx tsc --noEmit --incremental false
+    result: >-
+      tsc 0. eslint: one warning, the <img> LCP note the previous page carried twice and this one
+      carries once; no errors. prettier clean. 533 passed, 46 failed in exactly two untouched files
+      — settings/appearance/page.test.tsx and process/__tests__/page.test.tsx — which fail
+      identically on clean origin/main. token-lint clean, 2 scoped files scanned.
+    exit: 0
+    ts: "2026-09-14T14:30:00Z"
+    seat: claude-opus-5
+dissent:
+  - seat: codex gpt-5.6
+    objection: >-
+      BLOCK — page.tsx exports sameOriginPath and stageForError; a Next.js page module may not, and
+      `tsc --noEmit --incremental false` fails TS2344 against the generated route types.
+    status: CONFIRMED
+    disposition: >-
+      True, and it would have gone red in CI rather than here: the plain `tsc --noEmit` I ran was
+      green only because its build info predated the route types my own dev run regenerated. Both
+      helpers and LoginStage moved to ./contract; the strict typecheck is now green and is an
+      acceptance probe.
+  - seat: codex gpt-5.6
+    objection: >-
+      BLOCK — refusing absolute return URLs breaks the workspace login flow, which produces them.
+    status: CONFIRMED
+    disposition: >-
+      The defect is real; the suggested cure ("restore the original contract, harden separately") is
+      not taken, because the original contract IS the open redirect. Cured with a first-party
+      allowlist instead, which keeps the flow and closes the hole. Receipt above names the three
+      producers.
+  - seat: codex gpt-5.6
+    objection: >-
+      BLOCK — every non-401/403 becomes "service unreachable", but the endpoint returns 400/422 for
+      invalid input.
+    status: CONFIRMED
+    disposition: >-
+      True, and measured in identity/router.py:78-92. The split is now 4xx (except 408/429) versus
+      5xx and network, and the denied copy says "were not accepted" so it is true of a format error.
+  - seat: codex gpt-5.6
+    objection: >-
+      WARN — location.replace unloads before the success plate can paint; the test passes only
+      because navigation is mocked. Restore the delay or remove the plate.
+    status: CONFIRMED
+    disposition: >-
+      Measured rather than argued: against a destination held for 4s, the plate never appears. The
+      plate is removed. The 1500ms delay is NOT restored — paying a staff member 1.5s to read a
+      sentence is the theatre this PR exists to delete.
+  - seat: codex gpt-5.6
+    objection: >-
+      BLOCK — findReds misses #f00, rgb(...) and bg-red-500, and falsely bans var(--state-danger),
+      which resolves to copper here.
+    status: CONFIRMED
+    disposition: >-
+      The first half is accepted in full: the detector now judges the colour in every spelling, with
+      four unlisted reds as guilt and the whole alphabet as innocence. The second half is declined
+      with a reason, in the source: this surface never NAMES danger — it names the person, in
+      copper, with a word — and on any product but kita that token IS red.
+  - seat: codex gpt-5.6
+    objection: >-
+      BLOCK — findCopperFill knows one Tailwind spelling and misses inline backgrounds, which is
+      exactly how this page fills its button.
+    status: CONFIRMED
+    disposition: >-
+      Accepted. It reads inline styles now, with an inline copper button planted and a copper border
+      kept innocent. This was the sharpest of the eight: the guard was watching an empty room.
+  - seat: codex gpt-5.6
+    objection: >-
+      BLOCK — the "no sound, no motion" guard checks neither, targets a class the removed overlay
+      never used, and has no planted violation.
+    status: CONFIRMED
+    disposition: >-
+      Accepted. Replaced by a source-level detector over page.tsx with the replaced implementation
+      as guilt; it strips block comments so the note recording the removal does not accuse itself.
+  - seat: codex gpt-5.6
+    objection: >-
+      BLOCK — the panel-decoupling guard tests only the live innocent block.
+    status: CONFIRMED
+    disposition: >-
+      Accepted. panelTracksSuccess is extracted and planted three ways, including an absent
+      declaration — a panel that is not declared is not pinned either.
+notes:
+  - >-
+    The one forest surface. --bz-panel/--bz-on-panel are added to BOTH kita blocks with the SAME
+    values on purpose: --state-success lifts through a paper mix in the dark so "done" stays legible
+    as text, and a lifted forest is a pale green wall rather than a panel. Paper on forest is
+    11.30:1 in either theme.
+  - >-
+    Not fixed here, and named rather than hidden. lib/api/client.ts:487 sends an expired staff
+    session to `/login?expired=true&reason=token_expired`; neither the old page nor this one says
+    anything about it, so the visitor is told to sign in with no explanation of why they were
+    thrown out. It is a copy-and-state question for a window that owns the session contract.
+  - >-
+    auth.api.ts:78 reads `(error as {status}).status` to decide how to log a denial, but client.ts
+    throws ApiError with `statusCode`, so that branch is dead and every denial logs as an error.
+    Out of this window's perimeter (it is the API layer, not the page) and it changes no behaviour
+    the user can see.
+  - >-
+    A non-ApiError throw — client.ts's `Request timeout`, or auth.api.ts's `Login failed` on a 200
+    with success:false — classifies as the service. Right for the timeout, arguable for the second;
+    the old page called both a wrong PIN, so this is strictly better and the edge is recorded.
+  - >-
+    An independent seat DID run this time. Codex was unreachable from this host during K1a-K1c (the
+    previous Dux died on that network error); it answered today with eight findings, every one of
+    which was confirmed and disposed above. The finding that mattered most — the page-module export
+    — was invisible to the command I had been running.
