@@ -37,11 +37,15 @@ interface Props {
   isLoading: boolean;
 }
 
+// Per-row decorative accents, assigned by POSITION. Copper is deliberately not
+// among them: on kita copper means "the signed-in viewer is the next actor",
+// and a colour handed out by row index cannot mean that — a colleague's row
+// would have claimed the viewer's own signal every fourth line.
 const ROW_ACCENTS = [
   "var(--state-info)",
   "var(--state-success)",
   "var(--state-warning)",
-  "var(--bz-copper-text)",
+  "var(--tx-secondary)",
 ];
 
 function getInitials(name: string): string {
@@ -165,13 +169,11 @@ export function TeamActivityPanel({ members, overview, isLoading }: Props) {
   );
 
   return (
-    <div
-      className="rounded-xl overflow-hidden"
-      style={{
-        background: "var(--bz-card)",
-        border: "1px solid var(--bz-border)",
-      }}
-    >
+    // No card: this panel now sits INSIDE the dashboard's numbered ledger
+    // section, and a bordered box within a hairline section reads as a second
+    // frame around content that already has one. The concept's recurring unit
+    // is the row, not the card.
+    <div className="overflow-hidden">
       {/* ── Panel header ───────────────────────────────────── */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--bz-border)]">
         <div className="flex items-center gap-2">
