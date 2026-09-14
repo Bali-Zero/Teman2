@@ -11,6 +11,8 @@
  */
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 
 const { mockLogin, mockLoggerError, mockLoggerWarn } = vi.hoisted(() => ({
   mockLogin: vi.fn(),
@@ -30,42 +32,133 @@ vi.mock("@/lib/logger", () => ({
 }));
 
 import { ApiError } from "@/lib/api/error-handler";
-import LoginPage, { sameOriginPath, stageForError } from "./page";
+import LoginPage from "./page";
+import { firstPartyRedirect, stageForError } from "./contract";
 import LoginError from "./error";
 import LoginLoading from "./loading";
 
 /**
- * Every red this surface must never show, as VALUES. The kita theme resolves
- * --state-danger to copper, so a literal red can only arrive by being typed
- * into a class or a style — which is exactly what this list catches.
+ * Reds this surface must never show, as SHAPES and not as a list of four
+ * literals. A red can arrive as a hex (long or short), as an rgb() triple, as
+ * a Tailwind palette class, or as a shadcn `destructive` token, and a guard
+ * that only knows the four values someone happened to type is a guard that has
+ * not been shown to look (cicatrix #3).
+ *
+ * `var(--state-danger)` is banned too, even though the kita theme resolves it
+ * to copper. The alphabet's rule is that this surface never NAMES danger: it
+ * names the person who has to act, in copper, with a word. A component that
+ * reaches for the danger token is writing in the wrong language even when the
+ * pixels come out right — and on any other product those pixels are red.
  */
-const REDS = [
-  "#e45c5c",
-  "#b91c1c",
-  "#dc2626",
-  "#ef4444",
+const RED_TOKENS = [
   "text-destructive",
   "bg-destructive",
+  "border-destructive",
   "var(--state-danger)",
   "var(--bz-red",
 ];
+const RED_CLASS = /\b(?:bg|text|border|ring|from|to|via)-red-\d{2,3}\b/g;
+const RED_HEX =
+  /#(?:[0-9a-f]{2})(?:[0-9a-f]{2})(?:[0-9a-f]{2})\b|#[0-9a-f]{3}\b/gi;
+const RED_RGB = /rgba?\(\s*\d+\s*,\s*\d+\s*,\s*\d+(?:\s*,\s*[\d.]+)?\s*\)/g;
 
-/** Pure detector: which forbidden reds appear in this markup. */
+/** Is this colour a red — dominant red channel, clearly not the copper steps? */
+export function isRed(value: string): boolean {
+  let r: number, g: number, b: number;
+  const hex = value.trim().toLowerCase();
+  if (hex.startsWith("#")) {
+    const h =
+      hex.length === 4
+        ? hex
+            .slice(1)
+            .split("")
+            .map((c) => c + c)
+            .join("")
+        : hex.slice(1, 7);
+    if (h.length !== 6) return false;
+    [r, g, b] = [0, 2, 4].map((i) => parseInt(h.slice(i, i + 2), 16));
+  } else {
+    const m = value.match(/\d+/g);
+    if (!m || m.length < 3) return false;
+    [r, g, b] = m.slice(0, 3).map(Number);
+  }
+  // The two copper steps and the forest/slate/ink of the alphabet are not red.
+  const COPPER = [
+    [164, 75, 54],
+    [196, 106, 82],
+  ];
+  if (COPPER.some(([cr, cg, cb]) => r === cr && g === cg && b === cb)) {
+    return false;
+  }
+  return r > 120 && r - g > 70 && r - b > 70;
+}
+
+/** Pure detector: every forbidden red this markup carries. */
 export function findReds(markup: string): string[] {
-  return REDS.filter((red) => markup.includes(red));
+  const hits = RED_TOKENS.filter((token) => markup.includes(token));
+  hits.push(...(markup.match(RED_CLASS) ?? []));
+  for (const raw of [
+    ...(markup.match(RED_HEX) ?? []),
+    ...(markup.match(RED_RGB) ?? []),
+  ]) {
+    if (isRed(raw)) hits.push(raw);
+  }
+  return [...new Set(hits)];
 }
 
 /**
  * Pure detector: a copper FILL behind a label. Copper is a person, not a
- * status, and it is never the ground a word sits on. A copper BORDER, a
- * copper RULE (the 3px masthead mark) and copper TEXT are all legal, so the
- * rule's own shape is subtracted and anything else that fills is returned.
+ * status, and it is never the ground a word sits on. A copper BORDER, a copper
+ * RULE (the 3px masthead mark) and copper TEXT are all legal.
+ *
+ * It reads INLINE STYLES as well as classes, because this page fills its
+ * button through `style={{ background: ... }}`: a guard that only knew the
+ * Tailwind spelling would have watched the one place a copper fill could
+ * actually appear and seen nothing.
  */
 const COPPER_RULE = /h-\[3px\] w-14 rounded-sm bg-\[var\(--bz-copper\)\]/g;
+const COPPER_VALUE = /var\(--bz-copper[a-z-]*\)|#a44b36|#c46a52/i;
 
 export function findCopperFill(markup: string): string[] {
   const withoutRule = markup.replace(COPPER_RULE, "");
-  return withoutRule.match(/bg-\[var\(--bz-copper[a-z-]*\)\]/g) ?? [];
+  const hits: string[] = [
+    ...(withoutRule.match(/bg-\[var\(--bz-copper[a-z-]*\)\]/g) ?? []),
+  ];
+  for (const style of withoutRule.match(/style="[^"]*"/g) ?? []) {
+    for (const decl of style.slice(7, -1).split(";")) {
+      const [prop, value] = decl.split(":");
+      if (!value) continue;
+      if (
+        /^\s*(background|background-color)\s*$/.test(prop) &&
+        COPPER_VALUE.test(value)
+      ) {
+        hits.push(decl.trim());
+      }
+    }
+  }
+  return hits;
+}
+
+/**
+ * Pure detector: the theatre, read off the SOURCE. The overlays, the sound and
+ * the motion are gone from the file, not merely absent from one render — a DOM
+ * assertion could pass simply because the plate that carried them was not on
+ * screen. Guilt is the implementation this PR replaces.
+ */
+const THEATRE = [
+  "useSystemSound",
+  "framer-motion",
+  "ACCESS GRANTED",
+  "ACCESS DENIED",
+  "REDIRECT_DELAY_MS",
+  "ERROR_RESET_DELAY_MS",
+];
+
+export function findTheatre(source: string): string[] {
+  // The doc comment says what was removed, so only CODE is judged: block
+  // comments are dropped before the search.
+  const code = source.replace(/\/\*[\s\S]*?\*\//g, "");
+  return THEATRE.filter((sign) => code.includes(sign));
 }
 
 const redirectReplace = vi.fn();
@@ -104,44 +197,74 @@ beforeEach(() => {
   vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response("{}"));
 });
 
-describe("sameOriginPath — the redirect allowlist", () => {
+describe("firstPartyRedirect — where a signed-in staff member may be sent", () => {
   it("accepts a same-origin path, with or without a query (innocence)", () => {
-    expect(sameOriginPath("/dashboard")).toBe("/dashboard");
-    expect(sameOriginPath("/clients?filter=mine")).toBe("/clients?filter=mine");
-    expect(sameOriginPath("/")).toBe("/");
+    expect(firstPartyRedirect("/dashboard")).toBe("/dashboard");
+    expect(firstPartyRedirect("/clients?filter=mine")).toBe(
+      "/clients?filter=mine",
+    );
+    expect(firstPartyRedirect("/")).toBe("/");
   });
 
-  it("rejects an absolute URL, any scheme (guilt)", () => {
-    expect(sameOriginPath("https://evil.test/steal")).toBeNull();
-    expect(sameOriginPath("http://evil.test")).toBeNull();
-    expect(sameOriginPath("javascript:alert(1)")).toBeNull();
+  it("accepts the absolute first-party URLs that really arrive (innocence)", () => {
+    // (workspace)/layout.tsx sends encodeURIComponent(window.location.href),
+    // and the SSO subdomains bounce their visitors here the same way. A
+    // path-only allowlist would drop both on /dashboard.
+    expect(firstPartyRedirect("https://kita.balizero.com/clients")).toBe(
+      "https://kita.balizero.com/clients",
+    );
+    expect(firstPartyRedirect("https://mail.balizero.com/")).toBe(
+      "https://mail.balizero.com/",
+    );
+    expect(firstPartyRedirect("https://balizero.com/x")).toBe(
+      "https://balizero.com/x",
+    );
+  });
+
+  it("rejects a third-party host, however it is dressed (guilt)", () => {
+    expect(firstPartyRedirect("https://evil.test/steal")).toBeNull();
+    // The suffix must be a LABEL boundary, not a substring.
+    expect(firstPartyRedirect("https://balizero.com.evil.test/")).toBeNull();
+    expect(firstPartyRedirect("https://notbalizero.com/")).toBeNull();
+    // Userinfo: the host is evil.test, which is why this is parsed, not matched.
+    expect(firstPartyRedirect("https://balizero.com@evil.test/")).toBeNull();
+  });
+
+  it("rejects every scheme that is not https (guilt)", () => {
+    expect(firstPartyRedirect("javascript:alert(1)")).toBeNull();
+    expect(firstPartyRedirect("data:text/html,<script>")).toBeNull();
+    expect(firstPartyRedirect("http://kita.balizero.com/")).toBeNull();
   });
 
   it("rejects the protocol-relative and backslash forms (guilt)", () => {
     // A browser resolves //evil.test as an absolute URL, and normalises
-    // /\evil.test into it. Both leave the origin; neither starts with a scheme.
-    expect(sameOriginPath("//evil.test")).toBeNull();
-    expect(sameOriginPath("/\\evil.test")).toBeNull();
+    // /\evil.test into it. Neither carries a scheme for URL() to judge.
+    expect(firstPartyRedirect("//evil.test")).toBeNull();
+    expect(firstPartyRedirect("/\\evil.test")).toBeNull();
   });
 
   it("rejects nothing at all", () => {
-    expect(sameOriginPath(null)).toBeNull();
-    expect(sameOriginPath("")).toBeNull();
-    expect(sameOriginPath("dashboard")).toBeNull();
+    expect(firstPartyRedirect(null)).toBeNull();
+    expect(firstPartyRedirect("")).toBeNull();
+    expect(firstPartyRedirect("dashboard")).toBeNull();
   });
 });
 
 describe("stageForError — a broken service is not a wrong PIN", () => {
-  it("401 and 403 are the credentials (guilt: these two only)", () => {
+  it("every 4xx is about what was sent (guilt for the old one-state page)", () => {
     expect(stageForError(new ApiError("no", 401))).toBe("denied");
     expect(stageForError(new ApiError("no", 403))).toBe("denied");
+    // identity/router.py answers 400 when the PIN is not 4-8 digits, and
+    // pydantic answers 422 on the address. Both are "look at what you typed".
+    expect(stageForError(new ApiError("bad pin", 400))).toBe("denied");
+    expect(stageForError(new ApiError("bad email", 422))).toBe("denied");
   });
 
-  it("every other status is the service (innocence)", () => {
+  it("5xx, 408 and 429 are the service (innocence)", () => {
     expect(stageForError(new ApiError("boom", 500))).toBe("unreachable");
     expect(stageForError(new ApiError("slow", 504))).toBe("unreachable");
+    expect(stageForError(new ApiError("timeout", 408))).toBe("unreachable");
     expect(stageForError(new ApiError("busy", 429))).toBe("unreachable");
-    expect(stageForError(new ApiError("teapot", 418))).toBe("unreachable");
   });
 
   it("a network throw is the service, not the credentials", () => {
@@ -151,14 +274,32 @@ describe("stageForError — a broken service is not a wrong PIN", () => {
 });
 
 describe("the detectors themselves", () => {
-  it("findReds names a planted red and clears innocent markup", () => {
+  it("findReds names a token red and clears innocent markup", () => {
     expect(findReds('<p class="text-destructive">x</p>')).toEqual([
       "text-destructive",
     ]);
-    expect(findReds('<p style="color:#e45c5c">x</p>')).toEqual(["#e45c5c"]);
     expect(findReds('<p class="text-[var(--bz-copper-text)]">x</p>')).toEqual(
       [],
     );
+  });
+
+  it("findReds catches a red it was never given, in every spelling", () => {
+    // None of these four is in the token list: the detector judges the COLOUR.
+    expect(findReds('<p style="color:#ff0000">x</p>')).toEqual(["#ff0000"]);
+    expect(findReds('<p style="color:#f00">x</p>')).toEqual(["#f00"]);
+    expect(findReds('<p style="color:rgb(220, 38, 38)">x</p>')).toEqual([
+      "rgb(220, 38, 38)",
+    ]);
+    expect(findReds('<p class="bg-red-500">x</p>')).toEqual(["bg-red-500"]);
+  });
+
+  it("findReds does not accuse the alphabet's own colours (innocence)", () => {
+    // Copper light, copper dark, forest, slate, paper and ink all pass.
+    const alphabet =
+      '<i style="color:#a44b36"></i><i style="color:#c46a52"></i>' +
+      '<i style="color:#253e33"></i><i style="color:#233d52"></i>' +
+      '<i style="color:rgb(247, 244, 238)"></i><i style="color:#1d2c3b"></i>';
+    expect(findReds(alphabet)).toEqual([]);
   });
 
   it("findCopperFill names a planted fill and clears the legal rule", () => {
@@ -170,6 +311,46 @@ describe("the detectors themselves", () => {
         rule + '<span class="bg-[var(--bz-copper)]">Blocked</span>',
       ),
     ).toEqual(["bg-[var(--bz-copper)]"]);
+  });
+
+  it("findCopperFill reads inline styles, which is where a fill would hide", () => {
+    // This page fills its button through style={{ background }}, so the
+    // Tailwind spelling alone would have guarded an empty room.
+    expect(
+      findCopperFill(
+        '<button style="background: var(--bz-copper)">Enter</button>',
+      ),
+    ).toEqual(["background: var(--bz-copper)"]);
+    expect(
+      findCopperFill(
+        '<button style="background: var(--bz-panel)">Enter</button>',
+      ),
+    ).toEqual([]);
+    // A copper BORDER is the legal way to mark "needs you".
+    expect(
+      findCopperFill('<p style="border-color: var(--bz-copper)">x</p>'),
+    ).toEqual([]);
+  });
+
+  it("findTheatre names the implementation this PR replaces (guilt)", () => {
+    const before = `
+      const sound = useSystemSound();
+      import { motion } from "framer-motion";
+      const REDIRECT_DELAY_MS = 1500;
+      return <div>ACCESS GRANTED</div>;
+    `;
+    expect(findTheatre(before).sort()).toEqual([
+      "ACCESS GRANTED",
+      "REDIRECT_DELAY_MS",
+      "framer-motion",
+      "useSystemSound",
+    ]);
+  });
+
+  it("findTheatre does not fire on the comment that records the removal", () => {
+    expect(
+      findTheatre("/* it used to play ACCESS GRANTED with useSystemSound */"),
+    ).toEqual([]);
   });
 });
 
@@ -191,13 +372,10 @@ describe("LoginPage — the five plates", () => {
     ).not.toBeNull();
   });
 
-  it("none of the theatre survives: no overlay, no sound, no motion", () => {
-    const { container } = render(<LoginPage />);
-    const markup = container.innerHTML;
+  it("none of the theatre survives, in the source (innocence)", () => {
+    const source = readFileSync(join(__dirname, "page.tsx"), "utf8");
 
-    expect(markup).not.toContain("ACCESS GRANTED");
-    expect(markup).not.toContain("ACCESS DENIED");
-    expect(container.querySelector(".fixed.inset-0")).toBeNull();
+    expect(findTheatre(source)).toEqual([]);
   });
 
   it("carries no red and no copper fill", () => {
@@ -213,7 +391,9 @@ describe("LoginPage — the five plates", () => {
 
     fireEvent.submit(first.container.querySelector("form")!);
     await waitFor(() => {
-      expect(screen.getByRole("alert").textContent).toContain("do not match");
+      expect(screen.getByRole("alert").textContent).toContain(
+        "were not accepted",
+      );
     });
     // The denial is copper and a sentence, never a red.
     expect(findReds(first.container.innerHTML)).toEqual([]);
@@ -229,7 +409,7 @@ describe("LoginPage — the five plates", () => {
     });
   });
 
-  it("honours a same-origin ?redirect= (innocence)", async () => {
+  it("honours a first-party ?redirect= (innocence)", async () => {
     atUrl("?redirect=/clients");
     mockLogin.mockResolvedValueOnce({ user: { name: "Ada", role: "staff" } });
     const { container } = render(<LoginPage />);
@@ -241,9 +421,9 @@ describe("LoginPage — the five plates", () => {
     expect(mockLoggerWarn).not.toHaveBeenCalled();
   });
 
-  it("refuses an off-origin ?redirect= and says so in the log (guilt)", async () => {
-    // The same parameter, pointing off-origin: the role destination wins and
-    // the refusal is recorded. This is the open redirect, closed.
+  it("refuses a third-party ?redirect= and says so in the log (guilt)", async () => {
+    // The same parameter, pointing off Bali Zero: the role destination wins
+    // and the refusal is recorded. This is the open redirect, closed.
     atUrl("?redirect=https://evil.test");
     mockLogin.mockResolvedValueOnce({ user: { name: "Ada", role: "staff" } });
     const { container } = render(<LoginPage />);
@@ -265,19 +445,23 @@ describe("LoginPage — the five plates", () => {
     );
   });
 
-  it("the success plate greets by name and claims no destination", async () => {
-    mockLogin.mockResolvedValueOnce({ user: { name: "Ada", role: "staff" } });
+  it("success has no plate, and the form stays locked while the browser goes", async () => {
+    // Measured in Chromium: location.replace takes the window before React
+    // commits, so a success plate would never paint. What must survive is the
+    // lock — a second submit during navigation must not fire a second login.
+    mockLogin.mockResolvedValue({ user: { name: "Ada", role: "staff" } });
     const { container } = render(<LoginPage />);
 
     fireEvent.submit(container.querySelector("form")!);
     await waitFor(() =>
-      expect(
-        screen.getByRole("heading", { name: "Welcome back, Ada." }),
-      ).toBeTruthy(),
+      expect(redirectReplace).toHaveBeenCalledWith("/dashboard"),
     );
-    expect(screen.getByRole("status").textContent).toBe("One moment.");
-    // It does not name a page it has not reached.
-    expect(container.innerHTML).not.toContain("Redirecting");
+    expect(screen.getByRole("heading", { name: "Welcome back." })).toBeTruthy();
+    expect(screen.queryByRole("status")).toBeNull();
+    expect(screen.getByLabelText("Email").hasAttribute("disabled")).toBe(true);
+
+    fireEvent.submit(container.querySelector("form")!);
+    expect(mockLogin).toHaveBeenCalledTimes(1);
   });
 });
 
