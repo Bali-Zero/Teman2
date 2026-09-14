@@ -1,0 +1,125 @@
+gear: 2
+brief_ref: evidence/2026-09/agent-air-m5-mouth-r19k-k1c-frame-23466943/brief.yml
+lanes:
+  - lane: r19k-k1c-frame
+    role: build
+    seat: claude-opus-5 (Dux, SAETTA-R19K window K1, xhigh)
+pii_scan: clean
+seat_override: >-
+  R8 applicability: shell classNames and two CSS custom properties. No immigration rule, eligibility,
+  claim or price is authored; no NotebookLM query is claimed.
+receipts:
+  - claim: The frame renders on R19 paper in both themes, measured in a real browser.
+    cmd: >-
+      Chromium via playwright against `next dev --webpack`, /dashboard with the API stubbed (the
+      layout's own dev bypass still bounced to /login, so the profile and session calls are fulfilled
+      instead), dataset.product="kita", getComputedStyle at 1440 and 390 in both themes.
+      Probe: chromium getComputedStyle + screenshot on the dev server ; chromium getComputedStyle
+    result: >-
+      rail 216px on #f7f4ee light / #121016 dark; header 48px on the same ground with backdropFilter
+      NONE; the active item carries border-left 2px solid rgb(164,75,54) — raw copper, which is what
+      the renders specify for a rule in dark — over the card ground, with ink text; the ⌘K field is
+      36px on a rgb(88,98,107) boundary light and rgba(247,244,238,.42) dark; body font Manrope.
+      Zero page errors in all four runs.
+    exit: 0
+    ts: "2026-09-14T05:24:06Z"
+    seat: claude-opus-5
+  - claim: The copper rule really is applied, and the first measurement that said otherwise was mine.
+    cmd: Query the active link's className, inline style and computed border in the live DOM.
+    result: >-
+      A first probe read border-left-width 0px and no background. Cause: the selector
+      `aside a[href="/dashboard"]` matched the LOGO link, which also points at /dashboard, not the
+      nav item. Re-run against `aside nav a[href="/dashboard"]`: class carries border-l-2,
+      bg-[var(--bz-card)] and border-[var(--bz-copper)], computed border-left 2px solid rgb(164,75,54),
+      background rgb(255,252,247). tailwind-merge correctly drops font-medium in favour of font-semibold.
+    exit: 0
+    ts: "2026-09-14T05:24:06Z"
+    seat: claude-opus-5
+  - claim: The shell throws nothing; the page error I first recorded was my own probe.
+    cmd: Capture pageerror with and without the init script that forces dataset.product.
+    result: >-
+      With the injection: one TypeError, "Cannot read properties of null (reading 'dataset')", stack
+      at <anonymous>:2 — my init script ran before document.documentElement existed. Without it: zero
+      errors. The probe is now null-safe and the four proof runs are clean.
+    exit: 0
+    ts: "2026-09-14T05:24:06Z"
+    seat: claude-opus-5
+  - claim: The re-pinned guards distinguish rather than merely match, and none was deleted.
+    cmd: >-
+      npx vitest --run src/components/workspace/AppSidebar.test.tsx ; chromium getComputedStyle on the dev server
+    result: >-
+      The old assertion pinned background var(--bz-sidebar-active-fill) with color "#fff" — white
+      text on a copper fill, illegible on R19 paper and against the copper law. It is REPLACED, not
+      removed: the active item must carry the copper border and the card ground and must NOT carry
+      the old fill or "#fff"; a second test proves an INACTIVE item carries border-transparent and no
+      copper. 5 passed.
+    exit: 0
+    ts: "2026-09-14T05:24:06Z"
+    seat: claude-opus-5
+  - claim: Two seam values were wrong against the frozen renders; both are corrected with their consumer.
+    cmd: >-
+      grep --line-control across all six renders and against DISPOSITION.md / MEASURE.md; grep the
+      consumers of --bz-product-page-gap; recompute the contrast.
+      Probe: grep SEVERITY_DOT in Header.tsx ; npx vitest --run "src/app/(workspace)/__tests__" ;
+      npx vitest --run "src/app/(workspace)/__tests__" ; chromium getComputedStyle
+    result: >-
+      (a) All six renders declare --line-control #58626b citing an imperator ruling on Codex 13;
+      DISPOSITION.md and MEASURE.md say #767c82, and MEASURE.md is generated from the probe and was
+      not regenerated after that ruling. K1a shipped #767c82 (3.84:1 on paper); this ships the
+      renders' #58626b (5.67:1). Dark is untouched and already exact: rgba(247,244,238,.42) over the
+      ink ground composites to the renders' #727071 to the byte. (b) --bz-product-page-gap was 20px
+      where the concept measures a 24px gutter; its one kita consumer is the workspace layout's main
+      padding, and the portal reads its own block. Both land in the PR that ships the frame they
+      describe, not in a lone token PR.
+    exit: 0
+    ts: "2026-09-14T05:24:06Z"
+    seat: claude-opus-5
+  - claim: Static gates green, with the same two pre-existing failures and nothing else.
+    cmd: >-
+      npx tsc --noEmit; npx eslint on both shell files; npx prettier --check;
+      npx vitest --run "src/app/(workspace)" src/components/workspace src/app/login;
+      python3 scripts/token_lint.py --base origin/main after committing.
+    result: >-
+      tsc 0. eslint no output. prettier clean. 500 passed, 46 failed in exactly two files —
+      settings/appearance/page.test.tsx and process/__tests__/page.test.tsx — which are untouched by
+      this diff and were measured failing identically on clean origin/main during K1a.
+    exit: 0
+    ts: "2026-09-14T05:24:06Z"
+    seat: claude-opus-5
+dissent:
+  - seat: claude-opus-5
+    objection: >-
+      The visible ⌘K field dispatches a synthetic KeyboardEvent instead of taking an onOpen prop,
+      which is the cleaner wiring.
+    status: CONFIRMED
+    disposition: >-
+      Accepted deliberately. The window's constraint is presentation only, with no new prop and no
+      changed handler; KitaCommandPalette already listens for Cmd/Ctrl+K on `window`, so the field
+      opens the door that exists rather than cutting a new one. The alternative is one prop through
+      the layout, which a later window can take without changing this markup. Stated in the source.
+  - seat: claude-opus-5
+    objection: >-
+      The field's copy is hardcoded English, so it is not translated.
+    status: CONFIRMED
+    disposition: >-
+      Adding an i18n key is outside this window's perimeter, and the header already carries
+      untranslated strings ("ayo!", the Notifications aria-label). The copy is the renders' own. It
+      is a real gap and it is named here and in the source rather than hidden.
+  - seat: claude-opus-5
+    objection: >-
+      --bz-product-row-height is still 52px on kita where the concept's row is 44px.
+    status: CONFIRMED
+    disposition: >-
+      Left alone on purpose. Its single consumer is clients/page.tsx, which window K3 owns and
+      restyles; changing it here would resize a table K3 has not yet rebuilt. Handed to K3.
+notes:
+  - >-
+    KitaCommandPalette is NOT restyled: it carries no colour of its own — every visual lives in
+    @balizero/core's CommandPalette, which is outside this window's perimeter. Ingesting routeTitles
+    and keeping recents is behaviour, which this window is forbidden from changing.
+  - >-
+    The R19 module's README said the kita product block declares a 64px header. It declares 48px;
+    64px is the my block's value. Corrected here rather than left to mislead K2-K5.
+  - >-
+    No adversarial seat ran. Codex is unreachable from this host and the Gemini seat timed out on the
+    previous diff. The independent read is the commissioned final gate.

@@ -1,0 +1,39 @@
+gear: 2
+objective: >-
+  Put the kita shell FRAME on concept-K "SIAP": the rail's active item becomes a copper left rule
+  instead of a fill, the header loses its glass and gains the visible ⌘K front door, notification
+  severity stops carrying a red, and two seam values are corrected to what the frozen renders
+  actually declare.
+constraints:
+  - Presentation only. No route, endpoint, field, hook signature, API type, i18n key or data request
+    changes; no new prop on any component; aria, refs, handlers and auth/gate logic unchanged.
+  - The AppSidebar `isPortal` branch stays byte-identical — only the workspace alternates move.
+  - Copper is never a fill behind a label. No red anywhere on kita.
+  - Only the two kita theme blocks and the [data-product="kita"] product block in globals.css may move;
+    [data-product="my"] and :root stay byte-identical.
+  - Every guard this re-pins keeps guilt AND innocence; none is deleted.
+acceptance:
+  - text: >-
+      WHEN the active workspace rail item renders, it SHALL carry a 2px copper left border and the
+      card ground, and SHALL NOT carry the --bz-sidebar-active-fill background or "#fff" text.
+    probe: npx vitest --run src/components/workspace/AppSidebar.test.tsx ; chromium getComputedStyle on the dev server
+  - text: >-
+      WHEN an INACTIVE rail item renders, it SHALL NOT carry the copper border — the guard must
+      distinguish, not merely match.
+    probe: npx vitest --run src/components/workspace/AppSidebar.test.tsx
+  - text: >-
+      WHEN the header renders at md and above, a 36px command-palette field SHALL be visible on a
+      --line-control boundary, and clicking it SHALL open the palette through the hotkey the palette
+      already binds, with no new prop.
+    probe: chromium getComputedStyle + screenshot on the dev server
+  - text: >-
+      WHEN notification severity resolves, NO entry SHALL carry a red literal or a red fallback.
+    probe: grep SEVERITY_DOT in Header.tsx ; npx vitest --run "src/app/(workspace)/__tests__"
+  - text: >-
+      WHEN --line-control resolves on kita light it SHALL be the renders' #58626b, which clears 4.5:1
+      on paper where the superseded #767c82 cleared only 3:1.
+    probe: npx vitest --run "src/app/(workspace)/__tests__" ; chromium getComputedStyle
+consumer_map:
+  - Every staff member on kita.balizero.com sees this frame on every route — measured in Chromium
+    against `next dev --webpack` at 1440 and 390, light and dark, with the data stubbed.
+  - AppSidebar.test.tsx and kita-r19.contract.test.ts go red if the rule or the token drifts back.

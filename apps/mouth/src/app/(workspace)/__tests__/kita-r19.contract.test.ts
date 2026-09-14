@@ -28,7 +28,7 @@ const R19 = {
   ink: "#1d2c3b", // token-lint-ok: the expected value this contract pins, not a style
   muted: "#58626b", // token-lint-ok: the expected value this contract pins, not a style
   line: "#dad8d1", // token-lint-ok: the expected value this contract pins, not a style
-  lineControl: "#767c82", // token-lint-ok: the expected value this contract pins, not a style
+  lineControl: "#58626b", // token-lint-ok: the expected value this contract pins, not a style
   copper: "#a44b36", // token-lint-ok: the expected value this contract pins, not a style
   copperHover: "#8f4130", // token-lint-ok: the expected value this contract pins, not a style
   forest: "#253e33", // token-lint-ok: the expected value this contract pins, not a style
@@ -38,6 +38,14 @@ const R19 = {
   cardDark: "#1a1a1f", // token-lint-ok: the expected value this contract pins, not a style
   copperText: "#c46a52", // token-lint-ok: the expected value this contract pins, not a style
   copperHoverDark: "#d07e68", // token-lint-ok: the expected value this contract pins, not a style
+} as const;
+
+/**
+ * Values an earlier revision shipped and the frozen renders overruled. Kept so
+ * the test can assert the correction is an improvement, never re-introduced.
+ */
+const SUPERSEDED = {
+  lineControl: "#767c82", // token-lint-ok: the superseded value, asserted to be weaker
 } as const;
 
 /** Reds the alphabet forbids, used only to prove the detector is awake. */
@@ -278,9 +286,18 @@ describe("kita R19 seam — on-accent ink clears SC 1.4.3", () => {
     expect(contrast(R19.muted, R19.canvas)).toBeGreaterThanOrEqual(4.5);
   });
 
-  it("the control boundary clears SC 1.4.11's 3:1 on paper and on a card", () => {
+  it("the control boundary clears SC 1.4.11's 3:1 on paper, on a card and on the wash", () => {
     expect(contrast(R19.lineControl, R19.canvas)).toBeGreaterThanOrEqual(3);
     expect(contrast(R19.lineControl, R19.card)).toBeGreaterThanOrEqual(3);
+    expect(contrast(R19.lineControl, R19.wash)).toBeGreaterThanOrEqual(3);
+  });
+
+  it("the ruled control boundary also clears text contrast, where the superseded one did not", () => {
+    // The renders' value is the muted ink and reads 5.67:1 on paper; the one
+    // DISPOSITION.md carried read 3.84:1 and cleared only the 3:1 floor.
+    expect(contrast(R19.lineControl, R19.canvas)).toBeGreaterThanOrEqual(4.5);
+    expect(contrast(SUPERSEDED.lineControl, R19.canvas)).toBeLessThan(4.5);
+    expect(R19.lineControl).not.toBe(SUPERSEDED.lineControl);
   });
 });
 

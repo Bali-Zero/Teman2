@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { Bell, Menu, X, MessageCircle, CheckCheck } from "lucide-react";
+import { Bell, Menu, X, MessageCircle, CheckCheck, Search } from "lucide-react";
 import { routeTitles } from "@/types/navigation";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
 
@@ -16,11 +16,19 @@ interface HeaderProps {
   mobileMenuToggleRef?: React.RefObject<HTMLButtonElement | null>;
 }
 
+/**
+ * Severity as the four meanings, never as a red. `critical` used to read
+ * `var(--bz-red, #e45c5c)`: on kita the token itself already re-aliases to
+ * copper, but the literal FALLBACK would still paint #e45c5c on any surface
+ * that had not declared the token — a red hiding behind a comma. Critical and
+ * high both mean "you are the next actor", so both take copper and the rank
+ * is carried by the word and the ordinal, not by a second hue.
+ */
 const SEVERITY_DOT: Record<string, string> = {
-  critical: "var(--bz-red, #e45c5c)",
+  critical: "var(--bz-copper-text)",
   high: "var(--bz-copper-text)",
   medium: "var(--state-warning)",
-  low: "var(--state-info)",
+  low: "var(--tx-secondary)",
 };
 
 export function Header({
@@ -85,12 +93,10 @@ export function Header({
 
   return (
     <header
-      className="sticky top-0 z-30 w-full border-b transition-all duration-300"
+      className="sticky top-0 z-30 w-full border-b transition-colors"
       style={{
         height: "var(--bz-header-height, 48px)",
         background: "var(--nav-bg)",
-        backdropFilter: "blur(16px)",
-        WebkitBackdropFilter: "blur(16px)",
         borderColor: "var(--bz-border)",
       }}
     >
@@ -118,7 +124,34 @@ export function Header({
           </span>
         </div>
 
-        <div className="flex-1" />
+        {/*
+          The visible front door. KitaCommandPalette already binds Cmd/Ctrl+K
+          on `window`; this is the same door made VISIBLE, so a staff member
+          who does not know the shortcut can still find it. It dispatches that
+          existing event rather than taking a new prop, so no handler, no
+          signature and no wiring changes here.
+
+          The copy is the render's, in English, because adding an i18n key is
+          outside this window's perimeter. Recorded as a gap.
+        */}
+        <button
+          type="button"
+          onClick={() =>
+            window.dispatchEvent(
+              new KeyboardEvent("keydown", { key: "k", metaKey: true }),
+            )
+          }
+          aria-label="Search clients, practices, pages"
+          className="hidden md:flex flex-1 min-w-0 max-w-[420px] mx-2 h-9 items-center gap-2 rounded px-2.5 text-[12px] text-[var(--tx-secondary)] border border-[var(--line-control)] transition-colors hover:bg-[var(--bz-card)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--bz-copper)]"
+        >
+          <Search size={14} className="flex-shrink-0" />
+          <span className="truncate">Search clients, practices, pages…</span>
+          <span className="ml-auto flex-none rounded-[3px] border border-[var(--bz-border)] px-1.5 py-0.5 text-[10px] font-[650] tracking-[0.06em]">
+            ⌘K
+          </span>
+        </button>
+
+        <div className="flex-1 md:hidden" />
 
         {/* Date chip */}
         <span
@@ -139,10 +172,7 @@ export function Header({
             aria-label={`${whatsappUnread} unread WhatsApp`}
           >
             <MessageCircle size={15} />
-            <span
-              className="absolute -top-0.5 -right-0.5 min-w-[14px] h-[14px] text-[8px] font-bold rounded-full flex items-center justify-center text-white"
-              style={{ background: "var(--bz-accent)" }}
-            >
+            <span className="absolute -top-1 -right-1 min-w-[16px] h-[16px] px-1 text-[9px] font-[650] tabular-nums rounded-full flex items-center justify-center border border-[var(--bz-copper-text)] bg-[var(--bz-base)] text-[var(--bz-copper-text)]">
               {whatsappUnread > 99 ? "99+" : whatsappUnread}
             </span>
           </button>
@@ -158,10 +188,7 @@ export function Header({
           >
             <Bell size={15} />
             {unreadCount > 0 && (
-              <span
-                className="absolute -top-0.5 -right-0.5 min-w-[14px] h-[14px] text-[8px] font-bold rounded-full flex items-center justify-center text-white"
-                style={{ background: "var(--bz-accent)" }}
-              >
+              <span className="absolute -top-1 -right-1 min-w-[16px] h-[16px] px-1 text-[9px] font-[650] tabular-nums rounded-full flex items-center justify-center border border-[var(--bz-copper-text)] bg-[var(--bz-base)] text-[var(--bz-copper-text)]">
                 {unreadCount > 99 ? "99+" : unreadCount}
               </span>
             )}

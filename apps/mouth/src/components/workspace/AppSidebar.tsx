@@ -114,12 +114,15 @@ export function AppSidebar({
     const active = isActive(item.href);
     const badge = item.href === "/review" ? reviewCount : item.badge;
 
-    // GARUDA active: AA-safe copper fill + white text, rounded-[12px]
+    // R19 kita rail: a copper LEFT RULE marks the active item. The fill it
+    // replaces carried white text, which is illegible on R19 paper — and
+    // copper is never a fill. Same 216px, same navigation.ts, denser type
+    // than the portal because this is the desk, not the reception.
     const workspaceClassName = cn(
-      "flex items-center gap-2.5 px-2.5 py-[7px] rounded-[12px] mb-[2px] text-[11.5px] font-medium uppercase tracking-[0.5px] transition-all group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--bz-base)]",
+      "flex items-center gap-2.5 px-2.5 py-[7px] mb-[2px] border-l-2 text-[11.5px] font-medium uppercase tracking-[0.5px] transition-colors group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--bz-copper)]",
       active
-        ? "font-semibold"
-        : "hover:bg-[var(--surface-raised)] hover:text-[var(--bz-text-1)]",
+        ? "font-semibold bg-[var(--bz-card)] border-[var(--bz-copper)]"
+        : "border-transparent hover:bg-[var(--bz-card)] hover:text-[var(--tx-pure)]",
     );
     // R19 portal rail: hairline paper, 40px rows, copper left rule on active.
     const portalClassName = cn(
@@ -130,8 +133,8 @@ export function AppSidebar({
     );
     const sharedClassName = isPortal ? portalClassName : workspaceClassName;
     const workspaceStyle = active
-      ? { background: "var(--bz-sidebar-active-fill)", color: "#fff" }
-      : { color: "var(--bz-text-2)" };
+      ? { color: "var(--tx-pure)" }
+      : { color: "var(--tx-secondary)" };
     const sharedStyle = isPortal ? undefined : workspaceStyle;
 
     const sharedContent = (
@@ -148,7 +151,7 @@ export function AppSidebar({
             style={{
               color:
                 active && !isPortal
-                  ? "rgba(255,255,255,0.5)"
+                  ? "var(--tx-secondary)"
                   : "var(--bz-text-3)",
               opacity: 0.5,
             }}
@@ -163,10 +166,9 @@ export function AppSidebar({
           <span
             className="text-[8px] font-bold px-1.5 py-0.5 rounded-full"
             style={{
-              background: active
-                ? "color-mix(in srgb, white 18%, transparent)"
-                : "color-mix(in srgb, var(--bz-copper-text) 14%, transparent)",
-              color: active ? "#fff" : "var(--bz-copper-text)",
+              background:
+                "color-mix(in srgb, var(--bz-copper-text) 14%, transparent)",
+              color: "var(--bz-copper-text)",
             }}
           >
             {badge > 99 ? "99+" : badge}
@@ -238,7 +240,7 @@ export function AppSidebar({
       aria-label={ariaLabel}
       className={cn(
         "fixed left-0 top-0 z-40 h-screen flex flex-col border-r transition-all duration-300",
-        isPortal ? "bg-[var(--bz-base)]" : "glass-panel-deep",
+        isPortal ? "bg-[var(--bz-base)]" : "bg-[var(--nav-bg)]",
       )}
       style={{
         width: "var(--bz-sidebar-width, 216px)",
@@ -303,12 +305,14 @@ export function AppSidebar({
         {onZantaraToggle && (
           <button
             onClick={onZantaraToggle}
-            className="flex items-center gap-2.5 w-full px-2.5 py-[7px] rounded-[12px] mb-1.5 text-[11.5px] font-medium uppercase tracking-[0.5px] transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--bz-base)]"
+            className={cn(
+              "flex items-center gap-2.5 w-full px-2.5 py-[7px] mb-1.5 border-l-2 text-[11.5px] font-medium uppercase tracking-[0.5px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--bz-copper)]",
+              isZantaraOpen
+                ? "bg-[var(--bz-card)] border-[var(--bz-copper)]"
+                : "border-transparent hover:bg-[var(--bz-card)]",
+            )}
             style={{
-              color: isZantaraOpen ? "#fff" : "var(--bz-text-2)",
-              background: isZantaraOpen
-                ? "var(--bz-sidebar-active-fill)"
-                : "transparent",
+              color: isZantaraOpen ? "var(--tx-pure)" : "var(--tx-secondary)",
             }}
             aria-label="Toggle Zantara AI"
           >
@@ -321,7 +325,7 @@ export function AppSidebar({
             <span
               className="text-[8px] font-medium"
               style={{
-                color: isZantaraOpen ? "#fff" : "var(--bz-text-3)",
+                color: "var(--tx-secondary)",
               }}
             >
               ⌘J
@@ -344,15 +348,12 @@ export function AppSidebar({
                 className={
                   isPortal
                     ? "w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-[650] text-[var(--tx-pure)]"
-                    : "w-[28px] h-[28px] rounded-[8px] flex items-center justify-center text-[10px] font-bold text-white"
+                    : "w-[28px] h-[28px] rounded-[8px] flex items-center justify-center text-[10px] font-bold text-[var(--tx-pure)]"
                 }
                 style={
                   isPortal
                     ? { background: "var(--bz-wash, var(--bz-elevated))" }
-                    : {
-                        background:
-                          "linear-gradient(135deg, var(--bz-accent-warm) 0%, var(--bz-sidebar-active-fill) 100%)",
-                      }
+                    : { background: "var(--bz-wash, var(--bz-elevated))" }
                 }
               >
                 {user.name?.[0]?.toUpperCase() || "U"}
