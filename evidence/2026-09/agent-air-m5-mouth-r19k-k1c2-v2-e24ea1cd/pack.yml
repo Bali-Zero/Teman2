@@ -1,5 +1,5 @@
 gear: 2
-brief_ref: evidence/2026-09/agent-air-m5-mouth-r19k-k1c2-a26becd0/brief.yml
+brief_ref: evidence/2026-09/agent-air-m5-mouth-r19k-k1c2-v2-e24ea1cd/brief.yml
 lanes:
   - lane: r19k-k1c2
     role: build
@@ -153,6 +153,22 @@ receipts:
       token-lint clean — 2 scoped files with added lines scanned.
     exit: 0
     ts: "2026-09-14T09:15:00Z"
+    seat: claude-opus-5
+  - claim: >-
+      A generated catalogue went stale the moment the primitives gained a prop, and CI is what said
+      so.
+    cmd: python3 scripts/brand_api_gen.py ; git diff --stat
+    result: >-
+      brand-api-gate failed on #6516 naming packages/design-system/brand-api/components.json and
+      docs/design/components-catalog.md as STALE. Cause named before any rerun: the gate re-derives
+      the catalogue from the .tsx sources, and ListPageHeader, FilterBar, StatChips and SearchBox
+      each gained `variant?: "default" | "desk"`. Regenerated deterministically (stdlib only, no
+      network): 32 components, and the entire diff is those four prop lines plus the count. #6516 was
+      already ARMED, so it was disarmed and closed rather than pushed to; this branch carries the
+      same four commits cherry-picked onto a fresh origin/main that now also holds K1d (#6508) and
+      K2a (#6512).
+    exit: 0
+    ts: "2026-09-14T09:40:00Z"
     seat: claude-opus-5
 dissent:
   - seat: claude-opus-5
