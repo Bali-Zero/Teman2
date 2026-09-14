@@ -19,6 +19,17 @@ import { routeTitles } from "@/types/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { removeDashboardQueries } from "@/hooks/useDashboardData";
 
+/**
+ * R19 typefaces for the whole kita workspace. The faces are declared once in
+ * app/portal/r19-fonts.css (self-hosted variable TTFs under public/fonts/);
+ * importing the file does not select them — the
+ * [data-theme][data-product="kita"] blocks in globals.css point --font-serif
+ * and --font-sans at those families, which is what puts Fraunces on the
+ * mastheads and Manrope on the body. Same import as
+ * (workspace)/garuda-voa/layout.tsx, which already did this page-locally.
+ */
+import "../portal/r19-fonts.css";
+
 interface WorkspaceLayoutProps {
   children: React.ReactNode;
 }

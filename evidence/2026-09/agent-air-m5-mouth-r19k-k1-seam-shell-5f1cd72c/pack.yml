@@ -1,0 +1,164 @@
+gear: 2
+brief_ref: evidence/2026-09/agent-air-m5-mouth-r19k-k1-seam-shell-5f1cd72c/brief.yml
+lanes:
+  - lane: r19k-k1a-seam
+    role: build
+    seat: claude-opus-5 (Dux, SAETTA-R19K window K1, xhigh)
+  - lane: adversarial-review
+    role: review
+    seat: gemini-3.1-pro (agy OAuth, read-only, no tools — frozen diff supplied inline)
+pii_scan: clean
+seat_override: >-
+  R8 applicability: CSS custom properties and a contract test. No immigration rule, eligibility, claim or
+  price is authored; no NotebookLM query is claimed.
+receipts:
+  - claim: The kita seam paints the R19 alphabet in both themes on a real document, and no red survives.
+    cmd: >-
+      Chromium via playwright against `next dev --webpack` on the worktree, document.documentElement.dataset
+      .product set to "kita"; getComputedStyle on the root for 14 tokens in operative-light and operative-dark.
+      Probe: playwright getComputedStyle on a kita document ; npx vitest --run "src/app/(workspace)/__tests__"
+    result: >-
+      light --bz-base #f7f4ee, --bz-card #fffcf7, --tx-primary #1d2c3b, --state-danger #a44b36,
+      --state-success #253e33, --state-info #233d52, --state-warning #8a5a2b, --bz-red #a44b36,
+      --bz-neon-purple #233d52, --line-control #767c82, body font-family Manrope. dark --bz-base #121016,
+      --bz-card #1a1a1f, --state-danger #c46a52, --bz-copper-text #c46a52, --bz-neon-purple = the same
+      color-mix as --state-info. No red in either block.
+    exit: 0
+    ts: "2026-09-14T03:53:02Z"
+    seat: claude-opus-5
+  - claim: The kita block does not leak onto the portal — product "my" keeps every pre-existing value.
+    cmd: >-
+      Same browser run on /portal/login-upgraded, where dataset.product stays "my".
+      Probe: playwright getComputedStyle on a kita document ; diff the [data-product="my"] region against origin/main
+    result: >-
+      --bz-red #c2453f light and #d95f5a dark, --bz-neon-purple #8b5cf6 in both, --line-control empty —
+      all unchanged. globals.css lines 1-458 and the entire [data-product="my"] region diff byte-identical
+      against origin/main.
+    exit: 0
+    ts: "2026-09-14T03:53:02Z"
+    seat: claude-opus-5
+  - claim: The two kita blocks are symmetric, so no page can break in one theme only.
+    cmd: >-
+      Regex extraction of both blocks, set comparison of the custom-property key sets.
+      Probe: python3 key-set comparison of the two kita blocks
+    result: 100 shared keys, 0 light-only, 0 dark-only.
+    exit: 0
+    ts: "2026-09-14T03:53:02Z"
+    seat: claude-opus-5
+  - claim: Every colour in the seam traces to the frozen concept, and every contrast claim in the comment is arithmetic.
+    cmd: >-
+      grep each hex against the six frozen renders in R19-KITA-20260914/concept/; recompute all 13 claimed
+      WCAG 2.1 ratios in python.
+    result: >-
+      15 of 16 hexes appear in the renders; --line-control #767c82 traces to DISPOSITION.md C13 and MEASURE.md
+      §3. 12 of 13 ratios matched; the 13th was wrong (claimed 4.06:1, actual 3.84:1 on paper, 4.12:1 on a card)
+      and the comment was corrected — the token still clears SC 1.4.11's 3:1 floor for a control boundary.
+    exit: 0
+    ts: "2026-09-14T03:53:02Z"
+    seat: claude-opus-5
+  - claim: Two consumers would have regressed on the darker R19 copper; one is cured here, one is handed to K3.
+    cmd: >-
+      grep every `bg-[var(--bz-accent)]` / `background: "var(--bz-accent)"` site in apps/mouth/src and
+      packages/core (~60), pair each with its foreground token, compute the ratio.
+    result: >-
+      Most pair with --accent-foreground (#fffcf7 light 5.70:1, #121016 dark 4.99:1) or with copper text at
+      10-20% alpha — all pass. hr/employees/page.tsx:469 used --bz-navy-900 #060d14 = 3.36:1: cured by aliasing
+      --bz-navy-900 to --bz-on-warm inside the kita blocks only (one consumer repo-wide), now 5.70:1.
+      clients/page.tsx:802 paints --bz-text-pure on a copper fill = 2.41:1 and CANNOT be cured from a theme
+      block, because --bz-text-pure must stay ink; it is handed to K3, which replaces that filled filter button
+      with the slate selected pill concept.md §3 specifies.
+    exit: 0
+    ts: "2026-09-14T03:53:02Z"
+    seat: claude-opus-5
+  - claim: Four tokens that consumers paint with were being erased, and are now the R19 line and wash.
+    cmd: >-
+      grep --bz-glass-highlight / --glass-highlight consumers (a 1px border in intelligence/news-room, a ring in
+      process/[id], a pill fill in ClientKanban, a hover fill in StepDetailDrawer).
+    result: >-
+      They were set to `transparent`, which deletes the border, the ring and the hover. Remapped to
+      var(--bz-kita-wash) (#eae3d8 light, #222025 dark) while --bz-glass-rim keeps the hairline, giving the two
+      roles a coherent two-step mapping. A findErasedPaintTokens guard with guilt and innocence pins it.
+    exit: 0
+    ts: "2026-09-14T03:53:02Z"
+    seat: claude-opus-5
+  - claim: Static gates green; the only failing suites fail identically without this diff.
+    cmd: >-
+      npx tsc --noEmit; npx eslint on the touched files; npx vitest --run "src/app/(workspace)/__tests__";
+      npx vitest --run "src/app/(workspace)" src/components/workspace src/app/login; python3 scripts/token_lint.py --base origin/main.
+    result: >-
+      tsc 0 errors. eslint 0 errors (1 pre-existing react-hooks warning at layout.tsx:388, untouched).
+      vitest 472 passed / 46 failed in 2 files; those same 2 files fail with all 46 on a clean origin/main
+      checkout of the same worktree, measured by reverting and re-running. (workspace)/__tests__ 53/53 green,
+      up from 43 — the 10 new assertions are this PR's. token_lint clean.
+    exit: 0
+    ts: "2026-09-14T03:53:02Z"
+    seat: claude-opus-5
+  - claim: Independent adversarial review of the frozen diff.
+    cmd: >-
+      agy --model gemini-3.1-pro --effort low, frozen diff supplied inline (no tools). Codex was the intended
+      seat and was unreachable: https://chatgpt.com returned 000 from this host while GitHub returned 200.
+    result: 6 categories, 3 clean, 3 findings — disposed below.
+    exit: 0
+    ts: "2026-09-14T03:53:02Z"
+    seat: gemini-3.1-pro
+dissent:
+  - seat: gemini-3.1-pro
+    objection: The comment's --line-control contrast of 4.06:1 on paper is arithmetically wrong.
+    status: CONFIRMED
+    disposition: >-
+      Recomputed independently: 3.84:1 on paper, 4.12:1 on a card. Gemini's own 3.86 was also off. The comment
+      now carries both numbers and names the 3:1 SC 1.4.11 floor the token exists to clear.
+  - seat: gemini-3.1-pro
+    objection: >-
+      The nested `body { font-family }` rule may throw in a strict parser, or may resolve to
+      [data-product="kita"] body and never apply if the attributes sit on <body>.
+    status: RETRACTED
+    disposition: >-
+      Both halves are empirically false here. The attributes are on <html> — the same browser run read
+      document.documentElement.dataset.product — and the measured body font-family is Manrope in both themes.
+      The already-shipped [data-product="my"] seam carries the identical bare-`body` form in production. The
+      rule was still rewritten to the canonical `& body` inside the two kita blocks only, removing the
+      dependency on relaxed nesting; the my blocks keep their bare form byte-identical.
+  - seat: gemini-3.1-pro
+    objection: >-
+      The greys #dad8d1, #a8aca9 and #767c82 are invented and absent from the stated alphabet.
+    status: RETRACTED
+    disposition: >-
+      #dad8d1 and #a8aca9 are already declared in the shipped [data-product="my"] R19 seam and appear in all six
+      frozen renders. #767c82 is the round-2 control-boundary token ruled in DISPOSITION.md C13 and measured in
+      MEASURE.md §3 (136 control boundaries, 0 below 3:1). Nothing was invented.
+  - seat: claude-opus-5
+    objection: >-
+      --bz-card-hover equals --bz-base on light, so a row hovering directly on the canvas has an invisible hover.
+    status: CONFIRMED
+    disposition: >-
+      This is the alphabet, not a defect of this PR: the shipped my seam declares exactly --bz-card-hover
+      #f7f4ee. Hover stays visible on a card (#fffcf7). FROZEN.md requires a reason for a deviation, so the
+      value is kept and the canvas-row case is handed to K2 with the dashboard rows.
+  - seat: claude-opus-5
+    objection: >-
+      /login will render Fraunces and Manrope as fallbacks between this PR and K1d, because the font import
+      belongs to the login PR.
+    status: CONFIRMED
+    disposition: >-
+      The theme blocks name the faces; app/portal/r19-fonts.css declares them and is imported here only by
+      (workspace)/layout.tsx. /login therefore falls back to Georgia and system-ui until K1d lands the same
+      import, which is hours. Keeping K1a to tokens + fonts + contract tests was the imperator's instruction and
+      the split is worth one interim.
+notes:
+  - >-
+    Screenshots at 1440 and 390, light and dark, were taken of /login, /dashboard and /portal/login-upgraded on
+    the dev server. /dashboard redirects to /login for an unauthenticated session, and today's /login is the
+    pre-K1d page with its own hardcoded dark styling, so no unauthenticated kita route consumes these tokens
+    visually yet. The visual first-paint proof is therefore K1c's and K1d's; K1a's observable is the computed
+    token set above, measured on a kita document.
+  - >-
+    --bz-sidebar-active-fill is deliberately NOT redeclared. It resolves to #9d5230 carrying white at 5.69:1, so
+    leaving it is safe; re-aliasing it before the shell window replaces the filled active item with the copper
+    left rule would put white-on-paper text into production for one deploy.
+  - >-
+    --bz-chart-1..8 are deliberately not redeclared: a categorical series is not part of the R19 alphabet and
+    the intel/ops window owns that decision.
+  - >-
+    Net 496 lines, above the ~400 guide. 243 of them are the new contract test and 140 are the dark block's
+    token list; the PR carries one concern.
