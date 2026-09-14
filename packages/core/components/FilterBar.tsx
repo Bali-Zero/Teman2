@@ -1,4 +1,5 @@
 import React from "react";
+import { DESK_FIELD, DESK_SERIF } from "./deskStrip";
 
 export interface FilterBarProps {
   activeCount: number;
@@ -8,6 +9,12 @@ export interface FilterBarProps {
   gridClassName?: string;
   clearLabel?: React.ReactNode;
   children: React.ReactNode;
+  /**
+   * `"desk"` frames the panel with the strip's hairlines instead of a card,
+   * sets the heading in Fraunces and makes Clear-all a copper text link.
+   * Opt-in — the default branch is byte-identical to what shipped.
+   */
+  variant?: "default" | "desk";
 }
 
 /**
@@ -23,7 +30,40 @@ export function FilterBar({
   gridClassName = "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4",
   clearLabel = "Clear all",
   children,
+  variant = "default",
 }: FilterBarProps) {
+  if (variant === "desk") {
+    return (
+      <div
+        className={
+          className
+            ? `border-b border-[var(--bz-border)] py-4 space-y-4 ${className}`
+            : "border-b border-[var(--bz-border)] py-4 space-y-4"
+        }
+        style={style}
+      >
+        <div className="flex items-center justify-between">
+          <h3
+            className="text-[18px] leading-none"
+            style={{ ...DESK_SERIF, color: "var(--tx-pure)" }}
+          >
+            Filters
+          </h3>
+          {activeCount > 0 && (
+            <button
+              type="button"
+              onClick={onClearAll}
+              className="flex min-h-11 items-center gap-1 text-[12px] font-[700] text-[var(--bz-copper-text)] hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--bz-copper)]"
+            >
+              {clearLabel}
+            </button>
+          )}
+        </div>
+        <div className={gridClassName}>{children}</div>
+      </div>
+    );
+  }
+
   return (
     <div
       className={className ? `p-4 space-y-4 ${className}` : "p-4 space-y-4"}
@@ -58,6 +98,8 @@ export interface FilterSelectProps {
   selectClassName?: string;
   selectStyle?: React.CSSProperties;
   children: React.ReactNode;
+  /** `"desk"` puts the select on the 44px control boundary, square. */
+  variant?: "default" | "desk";
 }
 
 const SELECT_BASE = "w-full px-3 py-2 rounded-lg focus:outline-none";
@@ -72,16 +114,20 @@ export function FilterSelect({
   selectClassName,
   selectStyle,
   children,
+  variant = "default",
 }: FilterSelectProps) {
+  const desk = variant === "desk";
   const labelEl = (
     <label
       htmlFor={id}
       className={
-        labelExtra
-          ? "block text-sm font-medium"
-          : "block text-sm font-medium mb-1.5"
+        desk
+          ? `block text-[10px] font-[700] uppercase tracking-[0.12em] text-[var(--tx-secondary)]${labelExtra ? "" : " mb-1.5"}`
+          : labelExtra
+            ? "block text-sm font-medium"
+            : "block text-sm font-medium mb-1.5"
       }
-      style={{ color: "var(--bz-text-2)" }}
+      style={desk ? undefined : { color: "var(--bz-text-2)" }}
     >
       {label}
     </label>
@@ -100,10 +146,11 @@ export function FilterSelect({
         id={id}
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className={
-          selectClassName ? `${SELECT_BASE} ${selectClassName}` : SELECT_BASE
-        }
-        style={selectStyle}
+        className={(() => {
+          const base = desk ? DESK_FIELD : SELECT_BASE;
+          return selectClassName ? `${base} ${selectClassName}` : base;
+        })()}
+        style={desk ? undefined : selectStyle}
       >
         {children}
       </select>

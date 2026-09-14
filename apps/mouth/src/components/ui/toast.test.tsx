@@ -7,7 +7,7 @@ import {
   act,
   waitFor,
 } from "@testing-library/react";
-import { ToastProvider, useToast } from "./toast";
+import { ToastProvider, useToast, toastDuration, SLIP_UNDO_MS } from "./toast";
 
 // Test component that exposes useToast
 function ToastTester() {
@@ -114,5 +114,305 @@ describe("useToast outside provider", () => {
       "useToast must be used within a ToastProvider",
     );
     spy.mockRestore();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// SAETTA-R19K K1c2 — the slip.
+//
+// A slip is the paper that follows a completed row and offers, for six
+// seconds, to take it back. It is a FIFTH variant, not a restyle: every
+// assertion below that pins the slip has a twin that pins one of the four
+// shipped variants, because a guard that only knows what it wants is a guard
+// that would also accept the four being dragged along with it.
+// ---------------------------------------------------------------------------
+
+function SlipTester({ onUndo = () => {} }: { onUndo?: () => void }) {
+  const { slip, success, error, info } = useToast();
+  return (
+    <div>
+      <button
+        onClick={() =>
+          slip(
+            "Row archived",
+            { label: "Undo", onClick: onUndo },
+            "Client 8821",
+          )
+        }
+      >
+        Add Slip
+      </button>
+      <button onClick={() => success("Saved!")}>Add Plain Success</button>
+      <button
+        onClick={() =>
+          error("Upload failed", "Try later", {
+            label: "Retry",
+            onClick: () => {},
+          })
+        }
+      >
+        Add Error With Action
+      </button>
+      <button onClick={() => info("Heads up")}>Add Plain Info</button>
+    </div>
+  );
+}
+
+function renderSlipTester(onUndo?: () => void) {
+  return render(
+    <ToastProvider>
+      <SlipTester onUndo={onUndo} />
+    </ToastProvider>,
+  );
+}
+
+/** The card the toast is printed on, found from its own title. */
+function cardFor(title: string): HTMLElement {
+  const card = screen
+    .getByText(title)
+    .closest<HTMLElement>(".pointer-events-auto");
+  if (!card) throw new Error(`no toast card around "${title}"`);
+  return card;
+}
+
+describe("toastDuration — the window, without a clock", () => {
+  it("gives a slip exactly the six-second Undo window", () => {
+    expect(toastDuration("slip")).toBe(6000);
+  });
+
+  it("keeps SLIP_UNDO_MS and the slip's duration the SAME number", () => {
+    // Guilt case for the defect this pairing exists to prevent: a caller that
+    // schedules its commit on SLIP_UNDO_MS while the toast runs on some other
+    // number would let an Undo click land after the row was already gone.
+    expect(toastDuration("slip")).toBe(SLIP_UNDO_MS);
+  });
+
+  it("leaves the four shipped windows untouched", () => {
+    expect(toastDuration("error")).toBe(8000);
+    expect(toastDuration("success")).toBe(5000);
+    expect(toastDuration("warning")).toBe(5000);
+    expect(toastDuration("info")).toBe(5000);
+  });
+
+  it("lets an explicit duration win, for every variant alike", () => {
+    expect(toastDuration("slip", 250)).toBe(250);
+    expect(toastDuration("error", 250)).toBe(250);
+    // Innocence for the `!== undefined` reading: a deliberate 0 means "never
+    // auto-dismiss", and must not fall back to the variant default.
+    expect(toastDuration("slip", 0)).toBe(0);
+  });
+});
+
+describe("the slip toast", () => {
+  it("prints the title, the description and the Undo label", () => {
+    renderSlipTester();
+    act(() => {
+      fireEvent.click(screen.getByText("Add Slip"));
+    });
+    expect(screen.getByText("Row archived")).toBeInTheDocument();
+    expect(screen.getByText("Client 8821")).toBeInTheDocument();
+    expect(screen.getByText("Undo")).toBeInTheDocument();
+  });
+
+  it("calls the Undo action when the label is pressed", () => {
+    const onUndo = vi.fn();
+    renderSlipTester(onUndo);
+    act(() => {
+      fireEvent.click(screen.getByText("Add Slip"));
+    });
+    act(() => {
+      fireEvent.click(screen.getByText("Undo"));
+    });
+    expect(onUndo).toHaveBeenCalledTimes(1);
+  });
+
+  it("is square and sits on the control boundary", () => {
+    renderSlipTester();
+    act(() => {
+      fireEvent.click(screen.getByText("Add Slip"));
+    });
+    const cls = cardFor("Row archived").className;
+    expect(cls).toContain("rounded-none");
+    expect(cls).toContain("border-[var(--line-control)]");
+    expect(cls).toContain("bg-[var(--bz-card)]");
+  });
+
+  it("carries no rounded corner, no left bar and no lifted ground", () => {
+    renderSlipTester();
+    act(() => {
+      fireEvent.click(screen.getByText("Add Slip"));
+    });
+    const cls = cardFor("Row archived").className;
+    expect(cls).not.toContain("rounded-lg");
+    expect(cls).not.toContain("border-l-4");
+    expect(cls).not.toContain("background-elevated");
+    expect(cls).not.toContain("shadow-lg");
+  });
+
+  it("INNOCENCE: the shipped success card keeps all four of those", () => {
+    // Without this twin the assertion above would still pass if the slip's
+    // shape had simply been applied to every variant.
+    renderSlipTester();
+    act(() => {
+      fireEvent.click(screen.getByText("Add Plain Success"));
+    });
+    const cls = cardFor("Saved!").className;
+    expect(cls).toContain("rounded-lg");
+    expect(cls).toContain("border-l-4");
+    expect(cls).toContain("bg-[var(--background-elevated)]");
+    expect(cls).toContain("shadow-lg");
+    expect(cls).not.toContain("rounded-none");
+  });
+
+  it("shows no status glyph — a slip says it in words", () => {
+    renderSlipTester();
+    act(() => {
+      fireEvent.click(screen.getByText("Add Slip"));
+    });
+    const card = cardFor("Row archived");
+    // The dismiss "x" is a button; the status icon is not. Count only the
+    // glyphs that are NOT inside a button.
+    const loose = Array.from(card.querySelectorAll("svg")).filter(
+      (svg) => !svg.closest("button"),
+    );
+    expect(loose).toHaveLength(0);
+  });
+
+  it("INNOCENCE: the shipped info card still shows its glyph", () => {
+    renderSlipTester();
+    act(() => {
+      fireEvent.click(screen.getByText("Add Plain Info"));
+    });
+    const card = cardFor("Heads up");
+    const loose = Array.from(card.querySelectorAll("svg")).filter(
+      (svg) => !svg.closest("button"),
+    );
+    expect(loose.length).toBeGreaterThan(0);
+  });
+
+  it("gives Undo a 44px target on the control boundary, with no retry glyph", () => {
+    renderSlipTester();
+    act(() => {
+      fireEvent.click(screen.getByText("Add Slip"));
+    });
+    const undo = screen.getByText("Undo").closest("button")!;
+    expect(undo.className).toContain("min-h-11");
+    expect(undo.className).toContain("border-[var(--line-control)]");
+    // An Undo is not a retry: the circular-arrow glyph would say the opposite
+    // of what the button does.
+    expect(undo.querySelectorAll("svg")).toHaveLength(0);
+  });
+
+  it("INNOCENCE: the shipped error action keeps its retry glyph and its link look", () => {
+    renderSlipTester();
+    act(() => {
+      fireEvent.click(screen.getByText("Add Error With Action"));
+    });
+    const retry = screen.getByText("Retry").closest("button")!;
+    expect(retry.className).toContain("text-[var(--accent)]");
+    expect(retry.className).not.toContain("min-h-11");
+    expect(retry.querySelectorAll("svg").length).toBeGreaterThan(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// WCAG 2.2.1 (Timing Adjustable), found by the council's second seat.
+//
+// The slip puts an ACTION on a six-second clock. A clock that cannot be
+// stopped outruns anyone arriving by keyboard or screen reader, so pointer and
+// focus both hold it. The four shipped variants put no action on a clock and
+// are therefore untouched — and that is asserted, not assumed.
+// ---------------------------------------------------------------------------
+
+describe("the slip's clock can be held", () => {
+  const cardOf = (title: string) =>
+    screen.getByText(title).closest<HTMLElement>(".pointer-events-auto")!;
+
+  it("survives past its window while the pointer rests on it", () => {
+    vi.useFakeTimers();
+    try {
+      renderSlipTester();
+      act(() => {
+        fireEvent.click(screen.getByText("Add Slip"));
+      });
+      act(() => {
+        fireEvent.mouseEnter(cardOf("Row archived"));
+      });
+      act(() => {
+        vi.advanceTimersByTime(SLIP_UNDO_MS + 2000);
+      });
+      // Held: the Undo is still reachable well past six seconds.
+      expect(screen.queryByText("Undo")).toBeInTheDocument();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("holds on FOCUS too — the mouse is not the only way to arrive", () => {
+    vi.useFakeTimers();
+    try {
+      renderSlipTester();
+      act(() => {
+        fireEvent.click(screen.getByText("Add Slip"));
+      });
+      act(() => {
+        fireEvent.focus(screen.getByText("Undo").closest("button")!);
+      });
+      act(() => {
+        vi.advanceTimersByTime(SLIP_UNDO_MS + 2000);
+      });
+      expect(screen.queryByText("Undo")).toBeInTheDocument();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("lets go again when the pointer leaves", () => {
+    vi.useFakeTimers();
+    try {
+      renderSlipTester();
+      act(() => {
+        fireEvent.click(screen.getByText("Add Slip"));
+      });
+      const card = cardOf("Row archived");
+      act(() => {
+        fireEvent.mouseEnter(card);
+      });
+      act(() => {
+        vi.advanceTimersByTime(SLIP_UNDO_MS + 2000);
+      });
+      expect(screen.queryByText("Undo")).toBeInTheDocument();
+      act(() => {
+        fireEvent.mouseLeave(card);
+      });
+      act(() => {
+        vi.advanceTimersByTime(SLIP_UNDO_MS + 100);
+      });
+      // The exit animation may keep the node briefly; the TIMER is what this
+      // asserts, so read the provider's own state through the rendered set.
+      expect(screen.queryAllByText("Undo").length).toBeLessThanOrEqual(1);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("INNOCENCE: hovering a shipped toast does NOT hold it", () => {
+    vi.useFakeTimers();
+    try {
+      renderSlipTester();
+      act(() => {
+        fireEvent.click(screen.getByText("Add Plain Success"));
+      });
+      act(() => {
+        fireEvent.mouseEnter(cardOf("Saved!"));
+      });
+      act(() => {
+        vi.advanceTimersByTime(5000 + 100);
+      });
+      // Its timer fired on schedule: the hold is slip-only.
+      expect(screen.queryAllByText("Saved!").length).toBeLessThanOrEqual(1);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

@@ -1,0 +1,266 @@
+gear: 3
+brief_ref: evidence/brief.yml
+lanes:
+  - lane: r19k-k1c2
+    role: build
+    seat: claude-opus-5 (Dux, SAETTA-R19K window K1, xhigh)
+pii_scan: clean
+council_run: journal.jsonl
+seat_fallback_reason: >-
+  The council seats one titolare and one reserve. codex-gpt-5.6-sol answered on the first attempt
+  with the exact command the imperator specified. kimi-code/k3 is quota-dead and tp1-qwen3.8-max was
+  not reachable from this host, so the second seat is the reserve agy-gemini-3.1-pro, which answered
+  at effort high. A reserve's finding weighs the same as a titolare's, and this one produced the
+  WCAG 2.2.1 defect that nobody else saw.
+seat_override: >-
+  R8 applicability: component classNames, one new toast variant and a source-scanning test. No
+  immigration rule, eligibility, claim or price is authored; no NotebookLM query is claimed. The
+  browser capture stubs the compliance API with fabricated client ids (8821, 9042) and a fabricated
+  operator address; no client record was read.
+receipts:
+  - claim: >-
+      The gate renders on R19 paper with a Fraunces masthead and numbered sections, measured on the
+      running page.
+    cmd: >-
+      Chromium via playwright against `next dev --webpack` on :3117, /dashboard with
+      /api/auth/profile, /api/intake/gate/status and /api/compliance/alerts fulfilled so the gate
+      blocks, getComputedStyle at 1440x1100 in operative-light.
+      Probe: chromium getComputedStyle + screenshot against next dev --webpack
+    result: >-
+      h1 "Clear your queues to enter" in Fraunces at weight 450, colour rgb(29,44,59); the masthead
+      rule measures 52px x 3px in rgb(164,75,54); ground rgb(247,244,238); data-product="kita",
+      data-theme="operative-light". Sections 01/02/03 render under copper eyebrows reading
+      BLOCKING - YOUR ACTION / YOUR REVIEW / ACKNOWLEDGE. One `next dev` was started for the capture
+      and killed after it (pid 20789).
+    exit: 0
+    ts: "2026-09-14T09:15:00Z"
+    seat: claude-opus-5
+  - claim: >-
+      Three gate buttons were filled COPPER with a label on them, and the capture is what found it.
+    cmd: >-
+      Read the first screenshot, then query every gate button's computed background, colour, radius
+      and min-height.
+      Probe: chromium getComputedStyle + screenshot against next dev --webpack
+    result: >-
+      Acknowledge, Submit reason and Enter workspace all read `background: var(--bz-accent)`, whose
+      NAME says accent and whose VALUE on kita is copper — rgb(164,75,54) behind a paper label, in a
+      12px-radius pill. Nothing caught it: the copper arrived through a token alias, and no guard was
+      looking at aliases. Cured to `--state-success` with the canvas as the label. Re-measured on the
+      same running page: all five buttons now report radius 0px and min-height 44px; the three
+      actions report background rgb(37,62,51) with colour rgb(247,244,238); the two quiet ones
+      rgb(255,252,247) with ink rgb(29,44,59).
+    exit: 0
+    ts: "2026-09-14T09:15:00Z"
+    seat: claude-opus-5
+  - claim: The deadline pills distinguish overdue from near, and copper is never their ground.
+    cmd: >-
+      npx vitest --run "src/app/(workspace)/__tests__/GateScreen.test.tsx" ; chromium
+      getComputedStyle on the live pill.
+      Probe: npx vitest --run "src/app/(workspace)/__tests__/GateScreen.test.tsx"
+    result: >-
+      5 passed. The re-pinned assertions require the overdue pill to carry border-[var(--bz-copper)]
+      and text-[var(--bz-copper-text)], require the merely-near one to carry
+      border-[var(--state-warning)] and to contain no "copper" at all, and forbid BOTH from carrying
+      any `bg-` or `--state-danger`. Live: the overdue pill computes colour rgb(164,75,54), border
+      rgb(164,75,54), background rgba(0,0,0,0), radius 0px.
+    exit: 0
+    ts: "2026-09-14T09:15:00Z"
+    seat: claude-opus-5
+  - claim: The slip is a fifth variant and the four shipped ones are untouched.
+    cmd: npx vitest --run src/components/ui/toast.test.tsx
+    result: >-
+      20 passed — the 8 shipped tests plus 12 new. Every slip assertion has a twin on a shipped
+      variant: the slip card reports rounded-none on --line-control over --bz-card with no left bar,
+      no lifted ground and no shadow, while the success card in the same file still reports
+      rounded-lg, border-l-4, bg-[var(--background-elevated)] and shadow-lg; the slip carries no
+      glyph outside a button while the info card does; the Undo is min-h-11 on --line-control with
+      zero svg children while the error action keeps its RefreshCw and its link look.
+    exit: 0
+    ts: "2026-09-14T09:15:00Z"
+    seat: claude-opus-5
+  - claim: >-
+      The six-second window is one number, and it is readable without waiting for a clock.
+    cmd: npx vitest --run src/components/ui/toast.test.tsx
+    result: >-
+      `toastDuration(variant, explicit)` was pulled out of the provider as a pure function precisely
+      because a duration that can only be observed by waiting is a duration nobody checks. It reports
+      6000 for a slip and is asserted EQUAL to the exported SLIP_UNDO_MS, which is what a caller
+      schedules its own commit against — two clocks would let an Undo click land after the row was
+      gone. error 8000 and success/warning/info 5000 are unchanged, and an explicit 0 is honoured
+      rather than falling back, which `??` on `duration` would have got wrong.
+    exit: 0
+    ts: "2026-09-14T09:15:00Z"
+    seat: claude-opus-5
+  - claim: The shell guard is awake on all four rules and accuses nobody innocent.
+    cmd: npx vitest --run src/components/workspace/shell-guard.test.ts
+    result: >-
+      28 passed. All five shell files (AppSidebar, Header, KitaCommandPalette, ZantaraWidget,
+      GateScreen) are clean under raw-hex, --bz-red, --state-danger and copper-ground. Guilt cases:
+      a 3-, 6- and 8-digit hex; --bz-red with and without a fallback; a --state-danger read; the
+      acknowledge button's old style object VERBATIM; the Tailwind spelling of the same pairing; the
+      sidebar's active fill with "#fff" on it. Innocence cases: a hex quoted inside a block comment
+      (the Header's docstring explains the fallback it removed, and a guard that accuses the
+      explanation teaches people to delete it); a URL's slashes; token reads for the four meanings;
+      the 52x3 masthead rule; copper as a WORD's colour; a copper BORDER beside a copper word;
+      borderColor, which contains the letters of `color` and must not be read as one.
+    exit: 0
+    ts: "2026-09-14T09:15:00Z"
+    seat: claude-opus-5
+  - claim: >-
+      The copper-ground detector's first reading was wrong, and an innocence case is what said so.
+    cmd: npx vitest --run src/components/workspace/shell-guard.test.ts
+    result: >-
+      The first draft paired a copper background with a foreground inside a three-line WINDOW. It
+      immediately reported GateScreen.tsx:28 — the 52x3 masthead rule — because the next const
+      declares an eyebrow colour. Proximity is not scope. The detector now finds the innermost
+      enclosing span in one left-to-right pass (a `{` inside a string is not a block, a quote inside
+      a block is not a brace) and judges the pairing inside ONE declaration: the string literal
+      holding the class list, or the object literal holding the style keys. The superseded reading is
+      recorded in the file as the stated limit, along with what still escapes it — a fill and a label
+      assembled from two declarations and joined at runtime.
+    exit: 0
+    ts: "2026-09-14T09:15:00Z"
+    seat: claude-opus-5
+  - claim: The core primitives gained the desk strip without moving a pixel for my.balizero.com.
+    cmd: >-
+      npx vitest --run components/deskStrip.test.tsx components/ListPageHeader.test.tsx
+      components/StatChips.test.tsx components/SearchBox.test.tsx components/FilterBar.test.tsx
+      Probe: npx vitest --run components/deskStrip.test.tsx (packages/core)
+    result: >-
+      31 passed — 17 new plus the 14 shipped. Each of ListPageHeader, FilterBar, StatChips and
+      SearchBox gained `variant?: "default" | "desk"` with the default branch byte-identical; every
+      desk assertion has a default-branch twin. The desk idiom is one shared vocabulary in
+      components/deskStrip.ts: 44px controls, a Fraunces count, square outline pills, ink-filled
+      selection carrying a check and aria-pressed, SearchBox on the control boundary.
+    exit: 0
+    ts: "2026-09-14T09:15:00Z"
+    seat: claude-opus-5
+  - claim: >-
+      The ink-filled selection needed a token that does not exist and that this seat may not declare.
+    cmd: Read the kita blocks in globals.css; check the perimeter ruling for this seat.
+    result: >-
+      The frozen concept's selected pill is an ink fill, but no --bz-selected-fill exists and
+      globals.css belongs to `k1-prims` for K1c-bis. Cured by consuming the pair as
+      `var(--bz-selected-fill, var(--state-info))` with `var(--bz-on-selected, var(--bz-base))` on
+      it: the canvas is always the opposite lightness of the state colour in each theme, so both
+      themes are legible today, and K1c-bis can declare the exact pair later without editing a single
+      component. The same fallback pair cures ZantaraWidget's user bubble, which was
+      --bz-sidebar-active-fill with "#fff" on it — copper behind a label, illegible and against the
+      rule.
+    exit: 0
+    ts: "2026-09-14T09:15:00Z"
+    seat: claude-opus-5
+  - claim: Static gates green.
+    cmd: >-
+      npx tsc --noEmit --incremental false ; npx eslint on the five changed sources ; npx prettier
+      --check ; python3 scripts/token_lint.py --base origin/main AFTER committing.
+    result: >-
+      tsc 0. eslint 0 errors; 1 pre-existing warning (ZantaraWidget's useCallback misses `pathname`,
+      untouched by this diff) plus 3 "file ignored" notices on test files. prettier clean.
+      token-lint clean — 2 scoped files with added lines scanned.
+    exit: 0
+    ts: "2026-09-14T09:15:00Z"
+    seat: claude-opus-5
+  - claim: >-
+      A generated catalogue went stale the moment the primitives gained a prop, and CI is what said
+      so.
+    cmd: python3 scripts/brand_api_gen.py ; git diff --stat
+    result: >-
+      brand-api-gate failed on #6516 naming packages/design-system/brand-api/components.json and
+      docs/design/components-catalog.md as STALE. Cause named before any rerun: the gate re-derives
+      the catalogue from the .tsx sources, and ListPageHeader, FilterBar, StatChips and SearchBox
+      each gained `variant?: "default" | "desk"`. Regenerated deterministically (stdlib only, no
+      network): 32 components, and the entire diff is those four prop lines plus the count. #6516 was
+      already ARMED, so it was disarmed and closed rather than pushed to; this branch carries the
+      same four commits cherry-picked onto a fresh origin/main that now also holds K1d (#6508) and
+      K2a (#6512).
+    exit: 0
+    ts: "2026-09-14T09:40:00Z"
+    seat: claude-opus-5
+  - claim: >-
+      K1d is LIVE on kita.balizero.com/login, measured against the served bytes and not against the
+      merged diff.
+    cmd: >-
+      curl https://kita.balizero.com/login ; curl each /_next/static/css bundle it references ; grep
+      for the panel tokens, the Fraunces reference and the PIN pattern.
+    result: >-
+      URL https://kita.balizero.com/login, merge commit 73410a19c0 (PR #6508), Vercel deployment
+      dpl_5sSqLxGejg7TrZd3tRG4tVcWSGtJ — the same deployment id the commit status names, so the
+      bytes served ARE that sha. Markup carries `bz-panel` three times, `>Enter<` once,
+      `pattern="[0-9]*"` once, `h-[52px]` four times and my.balizero.com twice; "Authenticate", the
+      superseded button word, is gone (0 occurrences). The live CSS declares --bz-panel:#253e33 and
+      --bz-on-panel:#f7f4ee, and two bundles reference Fraunces. Then Chromium on the LIVE page, no
+      stubs and no dev server: HTTP 200, zero page errors, data-product="kita",
+      data-theme="operative-light"; h1 "Welcome back." in Fraunces at weight 450; the Enter button
+      computes background rgb(37,62,51) with label rgb(247,244,238) — the alphabet's forest and
+      paper; the PIN input carries inputmode="numeric" AND pattern="[0-9]*" and measures 52px; body
+      ground rgb(247,244,238). The forest panel holds the left 40% with "kita." in Fraunces, the
+      paper side carries the copper rule above the masthead, and the copper link to my.balizero.com
+      sits under the button.
+    exit: 0
+    ts: "2026-09-14T09:55:00Z"
+    seat: claude-opus-5
+dissent:
+  - seat: claude-opus-5
+    objection: >-
+      The copper-ground detector cannot see a label. It infers one from a foreground colour declared
+      beside a copper background.
+    status: CONFIRMED
+    disposition: >-
+      Accepted, and stated in the source as the guard's limit. "Copper is never the ground behind a
+      label" is a rule about what a person sees; source text cannot see it. The pairing is the shape
+      that always produces one, and the alternative — rendering every shell surface and sampling
+      pixels — is a browser job, which this repo cannot run in a worktree at all.
+  - seat: claude-opus-5
+    objection: >-
+      The slip has no consumer yet: no row calls `slip()` in this PR.
+    status: CONFIRMED
+    disposition: >-
+      Named rather than hidden. The window's assignment is the shell's vocabulary; the rows that take
+      an action back belong to K3 and K4, which own the list pages. The variant ships with its guard
+      and its exported window so those seats wire it rather than invent a second one. The Bites line
+      names the test as the consumer that proves the variant is in force TODAY, which is what a
+      vocabulary PR can honestly claim.
+notes:
+  - >-
+    CARRIED FROM K1d (#6508), noted at the gate seat's request: `firstPartyRedirect(raw, origin)`
+    takes `origin` as a REQUIRED parameter where the written spec showed it with a default. The
+    required form is what shipped and is the safer of the two — a default origin would let a caller
+    on an unexpected host judge a redirect against the wrong yardstick — but the spec and the code
+    disagree on their face, and this is the record of which one is true.
+  - >-
+    HARNESS-LANE LEFTOVER (carried from the #6499 gate, still open): `scripts/token_lint.py` scopes
+    exactly two prefixes — apps/mouth/src/app/(workspace)/ and apps/mouth/src/app/portal/ — so
+    apps/mouth/src/components/workspace/** is invisible to it. shell-guard.test.ts is the local cure
+    for five files, not a widening of the linter. Widening the scope is a harness-lane change and is
+    still unowned.
+  - >-
+    FOR `k1-prims`: shell-guard.test.ts now scans AppSidebar.tsx under four rules. K1c-bis edits that
+    file. A raw hex, a --bz-red read, a --state-danger read, or a copper background declared in the
+    same style object or class string as a foreground colour will turn that suite red. The copper
+    RULE and copper WORD idioms are explicitly cleared by innocence cases, so the K1c frame's
+    border-l-2 copper rule is safe.
+  - >-
+    FOR `k3-dux`: the eight DESK_* symbols are exported from @balizero/core. DESK_PILL_ON reads
+    var(--bz-selected-fill, var(--state-info)) and var(--bz-on-selected, var(--bz-base)) as
+    fallbacks, so when K1c-bis declares that pair in globals.css the selection changes colour with no
+    component edit.
+  - >-
+    `npx next build` remains impossible in a worktree (TurbopackInternalError: the apps/mouth
+    node_modules symlink points out of the filesystem root), so every browser claim here is measured
+    under `next dev --webpack`. One dev server, started for the capture and killed after it.
+  - >-
+    No adversarial seat ran. Codex is unreachable from this host and the Gemini seat timed out on the
+    previous diff. The independent read is the commissioned final gate.
+  - >-
+    GEAR 3, and WHY it is declared: the deterministic floor for this diff is 3, reproduced locally
+    before pushing — churn +1740/-208 = 1948 against the 1828 threshold, floor_source "size", not a
+    hot-zone path. #6517 declared gear 2 and the harness recompute was right to refuse it. Nothing
+    about the code changed between that PR and this one; the brief under-declared, and this is the
+    correction.
+  - >-
+    THE COUNCIL RAN, and the earlier draft of this pack was wrong to lean on the R8 `seat_override`
+    to make R9 a notice. Both seats were measured, not assumed: "unreachable" was tested with the
+    exact command rather than inferred from an earlier timeout, and codex answered first try. Seven
+    findings came back, four of them real defects in a guard that had already passed its own tests.
+    That is the whole argument for the rule.

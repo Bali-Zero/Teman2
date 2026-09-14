@@ -260,8 +260,16 @@ export function ZantaraWidget({ open, onClose }: ZantaraWidgetProps) {
                 style={
                   msg.role === "user"
                     ? {
-                        background: "var(--bz-sidebar-active-fill)",
-                        color: "#fff",
+                        // Was --bz-sidebar-active-fill with "#fff" on it: on
+                        // kita that fill is COPPER, and copper is a person,
+                        // not a status — it is never the ground a word sits
+                        // on, and white on it fails contrast besides. Your own
+                        // message is "ours/moving", which is slate. The label
+                        // takes the canvas, so it is paper on a dark fill in
+                        // daylight and ink on the lifted one after dark.
+                        background:
+                          "var(--bz-selected-fill, var(--state-info))",
+                        color: "var(--bz-on-selected, var(--bz-base))",
                       }
                     : {
                         background: "var(--surface-raised)",
@@ -344,8 +352,12 @@ export function ZantaraWidget({ open, onClose }: ZantaraWidgetProps) {
               disabled={!input.trim() || isStreaming}
               className="p-2.5 rounded-xl transition-all disabled:opacity-30"
               style={{
-                background: "var(--bz-sidebar-active-fill)",
-                color: "#fff",
+                // Same cure, different meaning: sending is an ACTION, and the
+                // alphabet's action ground is forest. The canvas carries the
+                // glyph, which is paper on the daylight forest and ink on the
+                // lifted one.
+                background: "var(--state-success)",
+                color: "var(--bz-base)",
               }}
               aria-label="Send message"
             >

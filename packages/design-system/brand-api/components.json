@@ -320,7 +320,8 @@
         "style": "React.CSSProperties | undefined",
         "gridClassName": "string | undefined",
         "clearLabel": "React.ReactNode | undefined",
-        "children": "React.ReactNode"
+        "children": "React.ReactNode",
+        "variant": "\"default\" | \"desk\" | undefined"
       },
       "useWhen": [],
       "example": "<FilterBar activeCount={/* number */} onClearAll={/* () => void */} children={/* React.ReactNode */} />"
@@ -352,7 +353,8 @@
       "props": {
         "title": "React.ReactNode",
         "subtitle": "React.ReactNode | undefined",
-        "actions": "React.ReactNode | undefined"
+        "actions": "React.ReactNode | undefined",
+        "variant": "\"default\" | \"desk\" | undefined"
       },
       "useWhen": [],
       "example": "<ListPageHeader title={/* React.ReactNode */} />"
@@ -443,7 +445,8 @@
         "style": "React.CSSProperties | undefined",
         "clearable": "boolean | undefined",
         "onDebouncedChange": "(value: string) => void | undefined",
-        "debounceMs": "number | undefined"
+        "debounceMs": "number | undefined",
+        "variant": "\"default\" | \"desk\" | undefined"
       },
       "useWhen": [],
       "example": "<SearchBox value={/* string */} onValueChange={/* (value: string) => void */} />"
@@ -455,7 +458,8 @@
       "props": {
         "items": "Array<StatChip | false | null | undefined>",
         "className": "string | undefined",
-        "chipClassName": "string | undefined"
+        "chipClassName": "string | undefined",
+        "variant": "\"default\" | \"desk\" | undefined"
       },
       "useWhen": [],
       "example": "<StatChips />"
