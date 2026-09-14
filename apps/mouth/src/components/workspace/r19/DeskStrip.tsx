@@ -1,6 +1,6 @@
 import React from "react";
 import { cn } from "@/lib/utils";
-import { SERIF, TABULAR } from "./tokens";
+import { NUMERAL_COUNT, SERIF, TABULAR } from "./tokens";
 
 /**
  * The 44px bar over every kita list: a Fraunces count, a FILTER group of
@@ -9,7 +9,9 @@ import { SERIF, TABULAR } from "./tokens";
  *
  * It is sticky under the header. The filters are a `role="group"` so the label
  * "FILTER" names them for a screen reader as well as for the eye — the
- * selected pill's slate fill is a choice, and a choice needs a name.
+ * selected pill's ink fill with paper text (that pairing lives in
+ * `StatePill`; this strip only groups the pills) is a choice, and a choice
+ * needs a name.
  */
 export function DeskStrip({
   count,
@@ -37,7 +39,7 @@ export function DeskStrip({
     >
       {count !== undefined ? (
         <span
-          className="whitespace-nowrap text-[18px] leading-none tracking-[-0.02em]"
+          className={cn("whitespace-nowrap", NUMERAL_COUNT)}
           style={{ ...SERIF, ...TABULAR }}
           aria-label={countLabel}
         >

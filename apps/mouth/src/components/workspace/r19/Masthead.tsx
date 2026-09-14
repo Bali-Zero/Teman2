@@ -1,6 +1,12 @@
 import React from "react";
 import { cn } from "@/lib/utils";
-import { COPPER_RULE, EYEBROW, SERIF } from "./tokens";
+import {
+  COPPER_RULE,
+  EYEBROW,
+  MASTHEAD_H1,
+  MASTHEAD_SUB,
+  SERIF,
+} from "./tokens";
 
 /** 10px/650/.14em uppercase label. Above a masthead, a strip or a section. */
 export function Eyebrow({
@@ -14,47 +20,55 @@ export function Eyebrow({
 }
 
 /**
- * The 56x3 copper rule, the eyebrow, the Fraunces headline, the subtitle.
- * This is where the copper rule lives on every kita page, which is why the
- * masthead is never removed.
+ * The 96×4 copper rule, the copper eyebrow, the 40/42 Fraunces headline, the
+ * sentence, and the `actions` the page supplies. This is where the copper
+ * rule lives on every kita page, which is why the masthead is never removed.
+ *
+ * v2 renamed the props (`subtitle` → `sub`, `right` → `actions`) — the
+ * module had zero importers on origin/main when this shipped, so the rename
+ * is free. `actions` holds the page's own buttons: the PRIMARY action is a
+ * forest button, the SECONDARY an ink outline — the masthead supplies no
+ * button styling of its own.
  */
 export function Masthead({
   eyebrow,
   title,
-  subtitle,
-  right,
+  sub,
+  actions,
   className,
   headingClassName,
 }: {
   eyebrow?: React.ReactNode;
   title: React.ReactNode;
-  subtitle?: React.ReactNode;
-  right?: React.ReactNode;
+  sub?: React.ReactNode;
+  actions?: React.ReactNode;
   className?: string;
   headingClassName?: string;
 }) {
   return (
-    <section className={cn("flex items-start gap-4", className)}>
+    <section
+      className={cn(
+        "flex flex-col items-start gap-3 mb-3.5",
+        "md:mb-5 md:flex-row md:items-end md:gap-[18px]",
+        className,
+      )}
+    >
       <div className="min-w-0 flex-1">
-        <div aria-hidden="true" className={cn("mb-4", COPPER_RULE)} />
-        {eyebrow ? <Eyebrow className="mb-2">{eyebrow}</Eyebrow> : null}
-        <h1
-          className={cn(
-            "text-[26px] leading-[1.06] tracking-[-0.03em] text-[var(--tx-pure)] md:text-[30px]",
-            headingClassName,
-          )}
-          style={SERIF}
-        >
+        <div aria-hidden="true" className={cn("mb-[11px]", COPPER_RULE)} />
+        {eyebrow ? (
+          <Eyebrow className="mb-2 text-[var(--bz-copper-text)]">
+            {eyebrow}
+          </Eyebrow>
+        ) : null}
+        <h1 className={cn(MASTHEAD_H1, headingClassName)} style={SERIF}>
           {title}
         </h1>
-        {subtitle ? (
-          <p className="mt-2 text-[13px] text-[var(--tx-secondary)]">
-            {subtitle}
-          </p>
-        ) : null}
+        {sub ? <p className={MASTHEAD_SUB}>{sub}</p> : null}
       </div>
-      {right ? (
-        <div className="flex shrink-0 items-center gap-2">{right}</div>
+      {actions ? (
+        <div className="flex shrink-0 flex-wrap items-center gap-2">
+          {actions}
+        </div>
       ) : null}
     </section>
   );
