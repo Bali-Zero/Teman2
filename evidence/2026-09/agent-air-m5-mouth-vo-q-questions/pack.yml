@@ -268,6 +268,12 @@ receipts:
     exit: 0
     ts: "2026-09-14T08:20:00+08:00"
     seat: Claude Opus 5
+  - claim: The one Detect Secrets finding this PR introduces is THIS pack's own ground-truth query_hash, named before CI named it and audited in place.
+    cmd: detect-secrets scan <this pack.yml, journal.jsonl> ; surgical insert into .secrets.baseline ; python3 scripts/detect_secrets_check_unaudited.py
+    result: "Exactly one finding: pack.yml line 32, type Hex High Entropy String — the ground_truth lane's sha256 of the two rule packs. Marked is_secret false with a +10-line insert that re-parses as JSON and reserializes none of the other 581 file entries. check_unaudited: All findings audited (8316 total). The journal carries no finding."
+    exit: 0
+    ts: "2026-09-14T08:35:00+08:00"
+    seat: Claude Opus 5
 dissent:
   - seat: codex-gpt-5.6-sol (council round 6, UPHELD MEDIUM; round 7 accepted the disposition)
     objection: >-
@@ -361,4 +367,5 @@ leftovers:
   - "W-VO-D (#6472) is OPEN and dirty on four files this PR also touches — test_interview_walk_census.py, _lib/i18n.ts, _lib/fact-mapper.ts and _lib/engine-adapter.ts. Whichever lands second rebases. The two edits to SUPPORT_REASON_COPY are different keys (D12_NOT_CONVERTIBLE here, E33A_SPONSOR_NOT_GOVERNMENT there)."
   - "`npm run visa-oracle:walk-corpus` cannot run from any mouth worktree: the shared apps/mouth/node_modules/.bin/tsx shim resolves into .worktrees/mouth-vo-c-doors' pnpm store (cicatrix family #5, sibling race on the shared checkout). The corpus was regenerated through the generator's own exported entry point, which is what walk-corpus-determinism.test.ts does, and the node binary under the repo root works when invoked by full path. Imperator-level, not curable from inside this window."
   - "One pre-existing seat name survives in _lib/flow.ts (a 2026-07-18 review credit, in a region this PR does not touch). The five in the census docstrings were rewritten because that file is rewritten here anyway and a mixed convention inside one file is worse than either convention."
+  - "Every Gear-3 pack with a ground_truth lane trips Detect Secrets on its own `query_hash`, because the lint REQUIRES that field and detect-secrets reads a 64-char sha256 as a Hex High Entropy String. scripts/detect_secrets_auto_triage.py already carries a content-keyed rule for a pack's `report_sha256:`/`sha256:` lines but none for `query_hash:`, so every such pack pays a hand-audit in .secrets.baseline — this one included. The durable cure is that missing rule, plus the count in scripts/tests/test_detect_secrets_auto_triage.py (which pins CONTENT_KEYED_RULES at 38 and would go red on the addition). It is a guard change with its own test to update, and it is a separate mandate; the same leftover was recorded by PR #6404 and is still open."
   - "The NEEDS_INPUT classes that remain on the edge walks are all FLAGGED, and all of them are the same shape: an applicant who answered 'unsure' on family_sponsor_confirmed. They were flagged before this PR too. What this PR guarantees is that no NEW unflagged class was opened — 0 on both packs, over 5 676 exhaustive edge walks."
