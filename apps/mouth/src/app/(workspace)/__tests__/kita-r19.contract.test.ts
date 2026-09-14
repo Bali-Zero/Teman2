@@ -48,6 +48,10 @@ const SUPERSEDED = {
   lineControl: "#767c82", // token-lint-ok: the superseded value, asserted to be weaker
 } as const;
 
+/** A panel that follows the lifted success step, planted for the guilt case. */
+const PLANTED_PANEL_MIX =
+  "  --bz-panel: color-mix(in srgb, #253e33 40%, #f7f4ee);"; // token-lint-ok: planted violation for the guilt case, never rendered
+
 /** Reds the alphabet forbids, used only to prove the detector is awake. */
 const PLANTED_REDS = {
   tailwindDanger: "#b91c1c", // token-lint-ok: planted violation for the guilt case, never rendered
@@ -128,6 +132,20 @@ export function contrast(a: string, b: string): number {
   };
   const [hi, lo] = [lum(a), lum(b)].sort((x, y) => y - x);
   return (hi + 0.05) / (lo + 0.05);
+}
+
+/**
+ * Pure detector: does this block's --bz-panel follow the theme's lifted
+ * --state-success instead of holding the one forest value? An absent
+ * declaration counts as drift — a panel that is not declared is not pinned.
+ */
+export function panelTracksSuccess(block: string): boolean {
+  const match = block.match(/--bz-panel:\s*([^;]+);/);
+  if (!match) return true;
+  const value = match[1].trim();
+  return (
+    value.includes("var(--state-success)") || value.startsWith("color-mix(")
+  );
 }
 
 describe("kita R19 seam — light", () => {
@@ -316,6 +334,50 @@ export function findRedeclared(block: string, names: string[]): string[] {
     new RegExp(`^\\s*${name}\\s*:`, "m").test(block),
   );
 }
+
+describe("kita R19 seam — the one forest surface", () => {
+  // K1d gives /login its forest panel. It is the only filled forest in kita:
+  // everywhere else forest is a WORD or a hairline, because "done" is a
+  // meaning and not a wall.
+  for (const theme of ["operative-light", "operative-dark"]) {
+    it(`${theme}: --bz-panel is the forest and --bz-on-panel the paper`, () => {
+      const block = themeBlock(theme);
+      expect(block).toContain(`--bz-panel: ${R19.forest};`);
+      expect(block).toContain(`--bz-on-panel: ${R19.canvas};`);
+    });
+  }
+
+  it("does not follow --state-success into the dark (innocence)", () => {
+    // The dark block lifts success through a paper mix so "done" stays legible
+    // as TEXT. A lifted forest is a pale green wall, not a panel, so the panel
+    // keeps the ONE value in both themes.
+    expect(themeBlock("operative-dark")).toContain(
+      "--state-success: color-mix(",
+    );
+    expect(panelTracksSuccess(themeBlock("operative-light"))).toBe(false);
+    expect(panelTracksSuccess(themeBlock("operative-dark"))).toBe(false);
+  });
+
+  it("the panel-drift detector is awake (guilt)", () => {
+    // Each of these is a way the panel could come to track the lifted step.
+    expect(panelTracksSuccess("  --bz-panel: var(--state-success);")).toBe(
+      true,
+    );
+    expect(panelTracksSuccess(PLANTED_PANEL_MIX)).toBe(true);
+    // And a block that declares no panel at all is drift, not innocence.
+    expect(panelTracksSuccess("  --bz-base: var(--bz-kita-canvas);")).toBe(
+      true,
+    );
+  });
+
+  it("paper on forest clears SC 1.4.3 with room (innocence)", () => {
+    expect(contrast(R19.canvas, R19.forest)).toBeGreaterThanOrEqual(4.5);
+  });
+
+  it("ink on forest would have failed, which is why the panel carries paper (guilt)", () => {
+    expect(contrast(R19.ink, R19.forest)).toBeLessThan(4.5);
+  });
+});
 
 describe("kita R19 seam — what the block refuses to redeclare", () => {
   for (const theme of ["operative-light", "operative-dark"]) {
