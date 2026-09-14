@@ -51,7 +51,10 @@ export function stripComments(source: string): string {
 
 const RAW_HEX = /#[0-9a-fA-F]{3,8}\b/;
 const BZ_RED = /var\(\s*--bz-red\b/;
-const STATE_DANGER = /var\(\s*--state-danger\s*\)/;
+// A fallback does not make the read innocent: `var(--state-danger, X)` still
+// asks for the danger token first. The closing paren was load-bearing here and
+// should not have been — same shape as BZ_RED above, which never had it.
+const STATE_DANGER = /var\(\s*--state-danger\b/;
 
 export interface Finding {
   line: number;
@@ -188,12 +191,27 @@ describe("the detector does not accuse the innocent", () => {
 const COPPER_TOKEN =
   /var\(\s*--(bz-accent|bz-copper|bz-copper-text|bz-sidebar-active-fill)\b/;
 const COPPER_GROUND = new RegExp(
-  // `background: var(--bz-accent)` / `backgroundColor:` / `bg-[var(--bz-copper)]`
-  `(background(-?[Cc]olor)?\\s*:[^;\\n]*|bg-\\[)${COPPER_TOKEN.source}`,
+  // `background: var(--bz-accent)` / `backgroundColor:` / `bg-[var(--bz-copper)]`.
+  //
+  // The value may continue onto the NEXT line, because that is what prettier
+  // does to a long declaration and it is the commonest real spelling — this
+  // very tree carries `background:\n  "var(…)"` in ZantaraWidget. The first
+  // draft ended the value at the newline and was therefore blind to it.
+  // LIMIT: one wrap, not many; a value prettier split across three lines
+  // escapes, and no shape in this tree does that today.
+  `(background(-?[Cc]olor)?\\s*:[^;\\n]*(?:\\n[^;\\n]*)?|bg-\\[)${COPPER_TOKEN.source}`,
 );
-/** A foreground colour: `color:` as its own key (never `borderColor`), or a
- * Tailwind text colour. */
-const FOREGROUND = /(^|[^A-Za-z-])color\s*:|text-\[/;
+/**
+ * A foreground colour: `color:` as its own key (never `borderColor`, which
+ * contains the same letters), or a Tailwind text COLOUR.
+ *
+ * `text-[…]` alone is not enough — `text-[13px]` is a font size, and reading
+ * it as a label would falsely accuse a copper bar that happens to set its own
+ * type scale. So the arbitrary form must open with `var(` or `#`, and the
+ * named forms are spelled out.
+ */
+const FOREGROUND =
+  /(^|[^A-Za-z-])color\s*:|text-\[\s*(?:var\(|#)|text-(?:white|black|primary|secondary|tertiary|accent|muted|inherit|current)\b|text-[a-z]+-\d{2,3}\b/;
 
 /**
  * Every string literal and every brace block in a source, with its range.
@@ -246,6 +264,100 @@ function innermost(
 }
 
 /**
+ * A copper token mixed BELOW half is a wash, not a ground.
+ *
+ * AppSidebar's notification badge is the real case: `color-mix(in srgb,
+ * var(--bz-copper-text) 14%, transparent)` with a copper numeral on it. The
+ * ground there is essentially the paper it sits on, the numeral is legible,
+ * and the frozen concept asks for exactly that badge. A detector that read
+ * "the copper token appears inside a background value" would accuse it — which
+ * is guard-over-match: judging a substring instead of the entity.
+ *
+ * The line is drawn at 50% and the reason is statable rather than eyeballed:
+ * above half, the copper IS the majority of the ground and a label on it is
+ * the thing the rule forbids. Below half it is a tint of whatever it is mixed
+ * into. A mix with no percentage at all is NOT cleared — an unmeasured mix
+ * gets judged, because silence is not evidence of a wash.
+ */
+const COPPER_TOKEN_G =
+  /var\(\s*--(?:bz-accent|bz-copper|bz-copper-text|bz-sidebar-active-fill)\b/;
+export const COPPER_WASH_CEILING = 50;
+
+/**
+ * Copper's share of a `color-mix`, as a percentage, or null when it cannot be
+ * read.
+ *
+ * The second review seat found the first draft read only ONE of the three
+ * spellings CSS allows. All three are valid and all three are a 14% wash:
+ *
+ *   color-mix(in srgb, var(--bz-copper-text) 14%, transparent)
+ *   color-mix(in srgb, 14% var(--bz-copper-text), transparent)
+ *   color-mix(in srgb, transparent 86%, var(--bz-copper-text))
+ *
+ * The draft matched only the first, so the other two were falsely accused.
+ * This reads components rather than a fixed order: copper's own percentage if
+ * it carries one, otherwise the remainder of the other component's.
+ *
+ * Returns null when NEITHER component states a share — silence is not
+ * evidence of a wash, so an unmeasured mix is judged as a ground.
+ */
+export function copperMixShare(declaration: string): number | null {
+  const at = declaration.indexOf("color-mix(");
+  if (at === -1) return null;
+  // Read to the matching paren so a trailing `)` from an outer var() cannot
+  // truncate the component list.
+  let depth = 0;
+  let end = -1;
+  for (let i = at + "color-mix".length; i < declaration.length; i++) {
+    if (declaration[i] === "(") depth++;
+    else if (declaration[i] === ")") {
+      depth--;
+      if (depth === 0) {
+        end = i;
+        break;
+      }
+    }
+  }
+  if (end === -1) return null;
+  const inner = declaration.slice(at + "color-mix(".length, end);
+
+  // Split on TOP-LEVEL commas only: `var(--x, fallback)` carries its own.
+  const parts: string[] = [];
+  let buf = "";
+  let d = 0;
+  for (const ch of inner) {
+    if (ch === "(") d++;
+    else if (ch === ")") d--;
+    if (ch === "," && d === 0) {
+      parts.push(buf);
+      buf = "";
+    } else buf += ch;
+  }
+  parts.push(buf);
+
+  // parts[0] is the interpolation method ("in srgb"); the components follow.
+  const components = parts.slice(1);
+  if (components.length !== 2) return null;
+  const pctOf = (c: string) => {
+    const m = /(\d+)\s*%/.exec(c);
+    return m ? Number(m[1]) : null;
+  };
+  const copperIdx = components.findIndex((c) => COPPER_TOKEN_G.test(c));
+  if (copperIdx === -1) return null;
+  const own = pctOf(components[copperIdx]);
+  if (own !== null) return own;
+  const other = pctOf(components[1 - copperIdx]);
+  if (other !== null) return 100 - other;
+  return null;
+}
+
+/** True when this background is a copper WASH rather than a copper ground. */
+export function isCopperWash(declaration: string): boolean {
+  const share = copperMixShare(declaration);
+  return share !== null && share < COPPER_WASH_CEILING;
+}
+
+/**
  * Pure detector: every copper ground that has a label in the SAME declaration.
  *
  * "The same declaration" is the string literal the class list lives in, or the
@@ -268,6 +380,7 @@ export function findCopperGround(source: string): Finding[] {
     if (/token-lint-ok:/.test(line)) continue;
     const scope = innermost(strings, at) ?? innermost(blocks, at);
     const text = scope ? src.slice(scope[0], scope[1] + 1) : line;
+    if (isCopperWash(text)) continue;
     if (FOREGROUND.test(text)) {
       seen.add(lineNo);
       out.push({ line: lineNo, text: line.trim(), rule: "copper-ground" });
@@ -366,5 +479,261 @@ describe("copper is never the ground behind a label", () => {
         ].join("\n"),
       ),
     ).toEqual([]);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// The three defects the SECOND review seat found (codex-gpt-5.6-sol, acct2,
+// read-only, on the K1c2 diff). Each was confirmed by measurement before being
+// accepted — a finding is a claim until the detector is run against it — and
+// each is now a guilt case, so the cure cannot silently regress.
+//
+// The first is the one that matters: it was not hypothetical. Prettier wraps a
+// long declaration onto the next line, and this very tree carries that shape
+// in ZantaraWidget. The guard was blind to the commonest real spelling of the
+// thing it exists to catch.
+// ---------------------------------------------------------------------------
+
+describe("the second seat's findings stay fixed", () => {
+  it("GUILT: a prettier-wrapped copper background is caught", () => {
+    const found = findCopperGround(
+      [
+        "              style={{",
+        "                background:",
+        '                  "var(--bz-accent)",',
+        '                color: "var(--bz-base)",',
+        "              }}",
+      ].join("\n"),
+    );
+    expect(found).toHaveLength(1);
+    expect(found[0].rule).toBe("copper-ground");
+  });
+
+  it("INNOCENCE: a wrapped NON-copper background is still clean", () => {
+    // The real line from ZantaraWidget: same wrapping, a token that is not
+    // copper. The cure must widen the reach, not the accusation.
+    expect(
+      findCopperGround(
+        [
+          "                    {",
+          "                      background:",
+          '                        "var(--bz-selected-fill, var(--state-info))",',
+          '                      color: "var(--bz-on-selected, var(--bz-base))",',
+          "                    }",
+        ].join("\n"),
+      ),
+    ).toEqual([]);
+  });
+
+  it("INNOCENCE: a type scale is not a label", () => {
+    // `text-[13px]` is a font size. Reading it as a foreground would accuse a
+    // copper bar that happens to set its own type scale.
+    expect(
+      findCopperGround('className="bg-[var(--bz-copper)] text-[13px]"'),
+    ).toEqual([]);
+  });
+
+  it("GUILT: an arbitrary text COLOUR beside a copper fill still is one", () => {
+    // The innocence above must not have bought itself by going blind.
+    expect(
+      findCopperGround(
+        'className="bg-[var(--bz-copper)] text-[var(--bz-base)]"',
+      ),
+    ).toHaveLength(1);
+    expect(
+      findCopperGround('className="bg-[var(--bz-copper)] text-[#ffffff]"'),
+    ).toHaveLength(1);
+    expect(
+      findCopperGround('className="bg-[var(--bz-copper)] text-white"'),
+    ).toHaveLength(1);
+  });
+
+  it("GUILT: --state-danger with a fallback is still a --state-danger read", () => {
+    const found = findForbiddenPaint(
+      'color: "var(--state-danger, var(--bz-copper-text))"',
+    );
+    expect(found.map((f) => f.rule)).toContain("state-danger");
+  });
+
+  it("INNOCENCE: --state-warning and --state-success are untouched by that widening", () => {
+    expect(
+      findForbiddenPaint(
+        'color: "var(--state-warning)"; background: "var(--state-success)"',
+      ),
+    ).toEqual([]);
+  });
+});
+
+describe("a copper wash is not a copper ground", () => {
+  const BADGE = [
+    "            style={{",
+    "              background:",
+    '                "color-mix(in srgb, var(--bz-copper-text) 14%, transparent)",',
+    '              color: "var(--bz-copper-text)",',
+    "            }}",
+  ].join("\n");
+
+  it("INNOCENCE: AppSidebar's 14% badge, verbatim, is clean", () => {
+    // Found by running the widened detector against the real file — the guard
+    // accused the rail's own notification badge, which the frozen concept asks
+    // for. The accusation was the defect, not the badge.
+    expect(findCopperGround(BADGE)).toEqual([]);
+    expect(isCopperWash(BADGE)).toBe(true);
+  });
+
+  it("GUILT: a mix that is MOSTLY copper is still a ground", () => {
+    const mostly = BADGE.replace("14%", "96%");
+    expect(isCopperWash(mostly)).toBe(false);
+    expect(findCopperGround(mostly)).toHaveLength(1);
+  });
+
+  it("holds the line exactly at half, and states which side it falls on", () => {
+    expect(isCopperWash(BADGE.replace("14%", "49%"))).toBe(true);
+    expect(isCopperWash(BADGE.replace("14%", "50%"))).toBe(false);
+  });
+
+  it("GUILT: a mix with NO percentage is judged, not excused", () => {
+    // Silence is not evidence of a wash.
+    const noPct = BADGE.replace(
+      "var(--bz-copper-text) 14%",
+      "var(--bz-copper-text)",
+    );
+    expect(isCopperWash(noPct)).toBe(false);
+    expect(findCopperGround(noPct)).toHaveLength(1);
+  });
+
+  it("GUILT: a SOLID copper ground is untouched by this exemption", () => {
+    expect(
+      findCopperGround(
+        [
+          "  {",
+          '    background: "var(--bz-accent)",',
+          '    color: "var(--bz-base)",',
+          "  }",
+        ].join("\n"),
+      ),
+    ).toHaveLength(1);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// The SECOND seat of the council (agy-gemini-3.1-pro, fallback). Its findings,
+// each measured before being accepted.
+// ---------------------------------------------------------------------------
+
+describe("copper's share is read in every spelling CSS allows", () => {
+  const S = (mix: string) =>
+    [
+      "  {",
+      `    background: "${mix}",`,
+      '    color: "var(--bz-copper-text)",',
+      "  }",
+    ].join("\n");
+
+  it("reads the share when the percentage FOLLOWS the colour", () => {
+    const mix = "color-mix(in srgb, var(--bz-copper-text) 14%, transparent)";
+    expect(copperMixShare(mix)).toBe(14);
+    expect(findCopperGround(S(mix))).toEqual([]);
+  });
+
+  it("reads it when the percentage PRECEDES the colour", () => {
+    // Valid CSS, and the first draft was blind to it.
+    const mix = "color-mix(in srgb, 14% var(--bz-copper-text), transparent)";
+    expect(copperMixShare(mix)).toBe(14);
+    expect(findCopperGround(S(mix))).toEqual([]);
+  });
+
+  it("reads it as the REMAINDER when only the other component states one", () => {
+    const mix = "color-mix(in srgb, transparent 86%, var(--bz-copper-text))";
+    expect(copperMixShare(mix)).toBe(14);
+    expect(findCopperGround(S(mix))).toEqual([]);
+  });
+
+  it("GUILT: a mostly-copper mix is a ground in every spelling too", () => {
+    for (const mix of [
+      "color-mix(in srgb, var(--bz-copper-text) 96%, transparent)",
+      "color-mix(in srgb, 96% var(--bz-copper-text), transparent)",
+      "color-mix(in srgb, transparent 4%, var(--bz-copper-text))",
+    ]) {
+      expect(copperMixShare(mix)).toBe(96);
+      expect(findCopperGround(S(mix))).toHaveLength(1);
+    }
+  });
+
+  it("GUILT: no percentage anywhere is judged, not excused", () => {
+    const mix = "color-mix(in srgb, var(--bz-copper-text), transparent)";
+    expect(copperMixShare(mix)).toBeNull();
+    expect(findCopperGround(S(mix))).toHaveLength(1);
+  });
+
+  it("is not fooled by a var() fallback's own comma", () => {
+    // `var(--a, b)` carries a comma that a naive split would read as a
+    // component boundary, which would make the component count wrong and
+    // silently return null — a fail-OPEN on a real wash.
+    const mix =
+      "color-mix(in srgb, var(--bz-copper-text, var(--state-warning)) 14%, transparent)";
+    expect(copperMixShare(mix)).toBe(14);
+  });
+
+  it("GUILT: a semantic text utility is a foreground too", () => {
+    // `text-primary` has no numeric shade, so the shade-based branch missed it.
+    expect(
+      findCopperGround('className="bg-[var(--bz-copper)] text-primary"'),
+    ).toHaveLength(1);
+    // And the type scale is still not one.
+    expect(
+      findCopperGround('className="bg-[var(--bz-copper)] text-[13px]"'),
+    ).toEqual([]);
+  });
+});
+
+describe("the scanner's reach, stated and then measured", () => {
+  // The second seat named two shapes `spans()` cannot parse: a REGEX LITERAL
+  // (its braces and quotes would push/pop the wrong stacks) and a NESTED
+  // template literal (the inner backtick closes the outer span early). Both
+  // are true. Rather than write a JS tokeniser inside a guard, the limit is
+  // stated AND bounded by measurement.
+  //
+  // But "contains a regex literal" is the WRONG entity, and running the first
+  // draft of this probe is what showed it: GateScreen carries
+  // `.replace(/_/g, " ")`, which is inert — it holds no quote and no brace, so
+  // it toggles nothing and pushes nothing. What breaks the scanner is a regex
+  // CARRYING one of those characters. That is what this measures, and it fails
+  // the day one appears: the moment to widen the scanner, rather than the
+  // moment to discover it had gone blind.
+  const DANGEROUS_REGEX_LITERAL =
+    /(?:^|[=(,:]\s*)\/(?![/*])(?:\\.|\[[^\]]*\]|[^/\n\\])*["'`{}](?:\\.|\[[^\]]*\]|[^/\n\\])*\//;
+
+  for (const file of [...SHELL_FILES]) {
+    it(`${file} carries no scanner-breaking regex literal`, () => {
+      const source = stripComments(readFileSync(join(SRC, file), "utf8"));
+      expect(DANGEROUS_REGEX_LITERAL.test(source)).toBe(false);
+    });
+  }
+  it("a template literal's interpolation is scoped to the WHOLE template", () => {
+    // Not a defect, but worth pinning: the scanner treats a template as one
+    // string span, so a copper fill inside an interpolation is judged against
+    // the whole template rather than the nearest brace. That is WIDER than
+    // ideal and therefore conservative — it can over-accuse, never under.
+    const tpl =
+      'const c = `${cond ? "bg-[var(--bz-copper)]" : ""} text-[var(--bz-base)]`;';
+    expect(findCopperGround(tpl)).toHaveLength(1);
+  });
+});
+
+describe("the scanner-breaking probe knows which regex literals matter", () => {
+  const DANGEROUS =
+    /(?:^|[=(,:]\s*)\/(?![/*])(?:\\.|\[[^\]]*\]|[^/\n\\])*["'`{}](?:\\.|\[[^\]]*\]|[^/\n\\])*\//;
+
+  it("INNOCENCE: GateScreen's own `.replace(/_/g, ' ')` is inert", () => {
+    expect(DANGEROUS.test('alert.category.replace(/_/g, " ")')).toBe(false);
+  });
+
+  it("GUILT: a regex carrying a quote would flip the scanner's string state", () => {
+    expect(DANGEROUS.test("const q = /[\"']/;")).toBe(true);
+  });
+
+  it("GUILT: a regex carrying a brace would push a phantom block", () => {
+    expect(DANGEROUS.test("const n = /\\d{2,3}/;")).toBe(true);
   });
 });

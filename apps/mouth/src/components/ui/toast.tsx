@@ -7,6 +7,7 @@ import {
   useContext,
   useCallback,
   useId,
+  useRef,
 } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -46,6 +47,8 @@ interface ToastContextType {
   addToast: (toast: Omit<Toast, "id">) => string;
   removeToast: (id: string) => void;
   clearToasts: () => void;
+  /** Hold a toast's auto-dismiss open (true) or let it go again (false). */
+  holdToast: (id: string, held: boolean) => void;
 }
 
 const ToastContext = createContext<ToastContextType | null>(null);
@@ -80,6 +83,9 @@ export function toastDuration(
 
 export function ToastProvider({ children }: { children: React.ReactNode }) {
   const [toasts, setToasts] = useState<Toast[]>([]);
+  const timers = useRef<
+    Map<string, { handle: ReturnType<typeof setTimeout>; remaining: number }>
+  >(new Map());
 
   const addToast = useCallback((toast: Omit<Toast, "id">) => {
     const id = `toast-${Date.now()}-${Math.random().toString(36).slice(2)}`;
@@ -92,14 +98,46 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
 
     setToasts((prev) => [...prev, newToast]);
 
-    // Auto-dismiss
+    // Auto-dismiss. The handle is kept so a SLIP can be held open while the
+    // person is reaching for its Undo — see holdToast below. The four shipped
+    // variants never call that, so their timer behaves exactly as before.
     if (newToast.duration && newToast.duration > 0) {
-      setTimeout(() => {
+      const handle = setTimeout(() => {
+        timers.current.delete(id);
         setToasts((prev) => prev.filter((t) => t.id !== id));
       }, newToast.duration);
+      timers.current.set(id, { handle, remaining: newToast.duration });
     }
 
     return id;
+  }, []);
+
+  /**
+   * Hold a toast open, or let it go again.
+   *
+   * WCAG 2.2.1 (Timing Adjustable): the slip offers an ACTION on a six-second
+   * clock, and a clock that cannot be stopped is a clock that outruns anyone
+   * navigating by keyboard or screen reader. Found by the council's second
+   * seat. Pointer and focus both hold it, because the mouse is not the only
+   * way to arrive.
+   *
+   * Deliberately NOT a full remaining-time accounting: on release the window
+   * restarts at its full length. That is more generous than the spec asks and
+   * far simpler than tracking elapsed time across renders — and being generous
+   * with an Undo window is the safe direction to err.
+   */
+  const holdToast = useCallback((id: string, held: boolean) => {
+    const entry = timers.current.get(id);
+    if (!entry) return;
+    if (held) {
+      clearTimeout(entry.handle);
+      return;
+    }
+    const handle = setTimeout(() => {
+      timers.current.delete(id);
+      setToasts((prev) => prev.filter((t) => t.id !== id));
+    }, entry.remaining);
+    timers.current.set(id, { handle, remaining: entry.remaining });
   }, []);
 
   const removeToast = useCallback((id: string) => {
@@ -112,7 +150,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <ToastContext.Provider
-      value={{ toasts, addToast, removeToast, clearToasts }}
+      value={{ toasts, addToast, removeToast, clearToasts, holdToast }}
     >
       {children}
       <ToastContainer />
@@ -183,7 +221,7 @@ function ToastContainer() {
   const context = useContext(ToastContext);
   if (!context) return null;
 
-  const { toasts, removeToast } = context;
+  const { toasts, removeToast, holdToast } = context;
 
   return (
     <div
@@ -198,6 +236,7 @@ function ToastContainer() {
             key={toast.id}
             toast={toast}
             onDismiss={() => removeToast(toast.id)}
+            onHold={(held) => holdToast(toast.id, held)}
           />
         ))}
       </AnimatePresence>
@@ -211,9 +250,11 @@ function ToastContainer() {
 function ToastItem({
   toast,
   onDismiss,
+  onHold,
 }: {
   toast: Toast;
   onDismiss: () => void;
+  onHold?: (held: boolean) => void;
 }) {
   const id = useId();
 
@@ -259,6 +300,14 @@ function ToastItem({
   return (
     <motion.div
       layout
+      // WCAG 2.2.1 — only the slip holds, because only the slip puts an ACTION
+      // on a clock. Pointer AND focus, since the mouse is not the only way to
+      // reach a button. The other four never call this, so their timing is
+      // byte-identical to what shipped.
+      onMouseEnter={isSlip && onHold ? () => onHold(true) : undefined}
+      onMouseLeave={isSlip && onHold ? () => onHold(false) : undefined}
+      onFocusCapture={isSlip && onHold ? () => onHold(true) : undefined}
+      onBlurCapture={isSlip && onHold ? () => onHold(false) : undefined}
       initial={{ opacity: 0, x: 50, scale: 0.9 }}
       animate={{ opacity: 1, x: 0, scale: 1 }}
       exit={{ opacity: 0, x: 50, scale: 0.9 }}

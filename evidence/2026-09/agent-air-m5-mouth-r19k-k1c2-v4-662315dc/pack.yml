@@ -5,6 +5,13 @@ lanes:
     role: build
     seat: claude-opus-5 (Dux, SAETTA-R19K window K1, xhigh)
 pii_scan: clean
+council_run: journal.jsonl
+seat_fallback_reason: >-
+  The council seats one titolare and one reserve. codex-gpt-5.6-sol answered on the first attempt
+  with the exact command the imperator specified. kimi-code/k3 is quota-dead and tp1-qwen3.8-max was
+  not reachable from this host, so the second seat is the reserve agy-gemini-3.1-pro, which answered
+  at effort high. A reserve's finding weighs the same as a titolare's, and this one produced the
+  WCAG 2.2.1 defect that nobody else saw.
 seat_override: >-
   R8 applicability: component classNames, one new toast variant and a source-scanning test. No
   immigration rule, eligibility, claim or price is authored; no NotebookLM query is claimed. The
@@ -252,8 +259,8 @@ notes:
     about the code changed between that PR and this one; the brief under-declared, and this is the
     correction.
   - >-
-    SAID PLAINLY RATHER THAN LEFT TO THE LINTER: R9 asks a Gear-3 pack for a council journal with two
-    distinct review seats. There is none. The rule resolves to a NOTICE here only because this pack
-    carries a `seat_override`, which it carried for an unrelated reason (R8 applicability) before
-    gear 3 was ever in play. A reviewer should read that as "the council requirement is unmet and
-    absorbed by an override", not as "the council ran".
+    THE COUNCIL RAN, and the earlier draft of this pack was wrong to lean on the R8 `seat_override`
+    to make R9 a notice. Both seats were measured, not assumed: "unreachable" was tested with the
+    exact command rather than inferred from an earlier timeout, and codex answered first try. Seven
+    findings came back, four of them real defects in a guard that had already passed its own tests.
+    That is the whole argument for the rule.
