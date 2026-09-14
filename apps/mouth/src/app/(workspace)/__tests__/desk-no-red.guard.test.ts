@@ -73,6 +73,7 @@ const DESK_PAGES: Array<{ name: string; dir: string; dangerToken: boolean }> = [
   { name: "dashboard", dir: "dashboard", dangerToken: false },
   // See the doc block: pinned by the WS2 residuals drain guard.
   { name: "notifications", dir: "notifications", dangerToken: true },
+  { name: "review", dir: "review", dangerToken: false },
 ];
 
 /** Rendered sources only — a test file's fixtures are not the page's paint. */
@@ -118,15 +119,64 @@ const HEX_RE = /#[0-9a-fA-F]{3,8}\b/;
 const RED_UTIL_RE =
   /\b(?:bg|text|border|ring|divide|fill|stroke|from|to|via)-(?:red|rose|pink|orange|crimson)-\d/;
 
+const COPPER_TOKEN = "(?:--bz-copper-text|--bz-copper|--bz-accent)";
+/**
+ * Copper is NEVER a fill (globals.css: "Copper = needs you. Never a button
+ * fill."). This judges the ENTITY — a copper token used AS a fill — not a
+ * bare substring, so each shape requires the token to sit INSIDE the fill
+ * declaration itself, not merely somewhere later on a long `className`:
+ *   1. the Tailwind arbitrary-value shape, `bg-[...]`, with the token
+ *      inside THAT SAME bracket pair (a later `ring-[var(--bz-copper)]` on
+ *      the same line, after an unrelated `bg-[var(--bz-card)]`, must not
+ *      trip this — that would be guard-over-match, cicatrix family #3);
+ *   2. the CSS/JS property shape, `background`/`background-color`/
+ *      `backgroundColor`, with the token before the next `;`, `,`, `}` or
+ *      end of line — never allowed to bleed into an unrelated later prop.
+ * The same token behind `border`/`text`/`ring`/anything else stays
+ * innocent either way.
+ */
+const COPPER_FILL_RE = new RegExp(
+  `\\bbg-\\[[^\\]]*${COPPER_TOKEN}[^\\]]*\\]` +
+    `|\\b(?:background(?:-color)?|backgroundColor)\\s*:\\s*[^;,\\n}]*?${COPPER_TOKEN}`,
+);
+
+/**
+ * Per-page ratchet for the copper-fill rule, same shape and reason as
+ * `dangerToken` above: a page earns the tightened check in the PR that
+ * cures its last copper fill, never before. `review` earns it in K2b
+ * (CURE 4). `notifications` has none today but has not been swept either.
+ *
+ * `dashboard` is exempt for a reason worth reading before flipping it,
+ * because the three copper fills it carries are NOT the same thing and
+ * only one is a defect (all in `dashboard/PortalChallengeWidget.tsx`):
+ *   :274  a PROGRESS BAR filled copper — a real violation. A metric's
+ *         magnitude is not "the viewer is the next actor", and this is a
+ *         fill in the plain sense the token's own comment forbids.
+ *   :578  a 1.5px copper DOT — the pill's pip. concept-K gives the state
+ *         pill a copper pip by name; legitimate.
+ *   :756  a 3px copper RULE — the masthead's own mark, the same family as
+ *         the 96x4 rule the concept opens every page with; legitimate.
+ * So this regex, which cannot tell a 3px rule from a progress bar, WILL
+ * over-match two innocent marks the day `dashboard` is added. Whoever
+ * flips it must either narrow the entity (a copper fill on a box with
+ * height, not on a hairline or a pip) or exempt those two lines
+ * explicitly. Flipping it as-is would be cicatrix family #3 in the OVER
+ * direction, which is the failure this file's own comments warn about.
+ */
+const COPPER_FILL_PAGES = new Set(["review"]);
+
 /** The scanner. Exported so its own guilt and innocence are provable below. */
 export function redViolation(
   line: string,
-  opts: { dangerToken: boolean },
+  opts: { dangerToken: boolean; copperFillGuard?: boolean },
 ): string | null {
   if (HEX_RE.test(line)) return "hardcoded hex";
   if (RED_UTIL_RE.test(line)) return "red Tailwind utility";
   if (!opts.dangerToken && line.includes("--state-danger")) {
     return "reads --state-danger";
+  }
+  if ((opts.copperFillGuard ?? true) && COPPER_FILL_RE.test(line)) {
+    return "copper used as a fill";
   }
   return null;
 }
@@ -148,6 +198,7 @@ describe("the desk no-red scanner", () => {
   it("is INNOCENT on the kita idiom the concept actually uses", () => {
     for (const line of [
       '  className="text-[var(--bz-copper-text)]"',
+      '  className="border-[var(--bz-copper)]"',
       '  className="border-[var(--state-success)]"',
       '  className="text-[var(--state-warning)]"',
       '  className="text-[var(--state-info)]"',
@@ -155,6 +206,26 @@ describe("the desk no-red scanner", () => {
     ]) {
       expect(redViolation(line, strict), line).toBeNull();
     }
+  });
+
+  it("is GUILTY on a copper FILL — copper is never a background", () => {
+    // A `style={{ background: ... }}` fill on --bz-accent (kita: === copper).
+    expect(
+      redViolation('  style={{ background: "var(--bz-accent)" }}', strict),
+    ).toBe("copper used as a fill");
+    // The Tailwind arbitrary-value shape of the same violation.
+    expect(redViolation('  className="bg-[var(--bz-copper)]"', strict)).toBe(
+      "copper used as a fill",
+    );
+    // The ENTITY, not the substring: the same tokens as border/text colours
+    // (not a fill) must stay innocent — pinned again here alongside guilt so
+    // the two are read together.
+    expect(
+      redViolation('  className="border-[var(--bz-copper)]"', strict),
+    ).toBeNull();
+    expect(
+      redViolation('  className="text-[var(--bz-copper-text)]"', strict),
+    ).toBeNull();
   });
 
   it("exempts the danger NAME only where a page is pinned to it", () => {
@@ -181,7 +252,10 @@ describe("no red on the kita desk", () => {
       const offences: string[] = [];
       for (const file of sourcesOf(page.dir)) {
         for (const { n, text } of codeLines(file)) {
-          const why = redViolation(text, { dangerToken: page.dangerToken });
+          const why = redViolation(text, {
+            dangerToken: page.dangerToken,
+            copperFillGuard: COPPER_FILL_PAGES.has(page.name),
+          });
           if (why) {
             offences.push(`${file.slice(DESK_DIR.length + 1)}:${n} — ${why}`);
           }

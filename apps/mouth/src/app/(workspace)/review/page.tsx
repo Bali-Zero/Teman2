@@ -24,12 +24,35 @@
  * The <img>/<iframe> preview rides the same-origin SSO cookie.
  */
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import { useRouter } from "next/navigation";
 
+import { cn } from "@/lib/utils";
 import { api } from "@/lib/api";
 import { logger } from "@/lib/logger";
 import type { CreateClientParams } from "@/lib/api/crm/crm.types";
+import {
+  CellStack,
+  DeskStrip,
+  EmptyState,
+  FOCUS,
+  HairlineBody,
+  HairlineGrid,
+  HairlineHead,
+  HairlineRow,
+  Masthead,
+  Notice,
+  StatePill,
+  TABULAR,
+  type PillTone,
+} from "@/components/workspace/r19";
 
 import { classifyResolvedDecideError } from "./decide-error";
 import {
@@ -130,21 +153,27 @@ const CARD = {
   background: "var(--bz-card, var(--bz-surface))",
 } as const;
 
-function DecisionBadge({ decision }: { decision: string }) {
-  const color =
-    decision === "AUTO_ATTACH"
-      ? "var(--state-success)"
-      : decision === "NO_MATCH" || decision === "AMBIGUOUS"
-        ? "var(--state-danger)"
-        : "var(--state-warning)";
-  return (
-    <span
-      className="rounded px-2 py-0.5 text-xs font-medium"
-      style={{ border: `1px solid ${color}`, color }}
-    >
-      {decision}
-    </span>
-  );
+/**
+ * Copper means "the signed-in viewer is the next actor" — derived from the
+ * VIEWER and the RECORD together, NEVER from the decision/status alone. The
+ * backend's GET /queue docstring (apps/backend-rag/backend/app/routers/
+ * intake_review.py) says: "Admins see the entire queue. A non-admin sees
+ * ONLY rows from their own chats (intake_queue.received_by == caller) ...
+ * NULL-received_by docs (shared business line + Drive) are admin-only." So
+ * for an admin the queue is GLOBAL, and an unresolved row received by a
+ * DIFFERENT operator is not theirs to act on — painting it copper from the
+ * decision alone would be copper-from-status, the exact violation this
+ * window exists to remove. `ownedByViewer` carries that fact in.
+ */
+function decisionMeta(
+  decision: string,
+  ownedByViewer: boolean,
+): { tone: PillTone; label: string } {
+  if (!ownedByViewer) return { tone: "wait", label: "Another operator" };
+  if (decision === "AUTO_ATTACH") return { tone: "ours", label: "Matched" };
+  if (decision === "NO_MATCH" || decision === "AMBIGUOUS")
+    return { tone: "you", label: "Needs you" };
+  return { tone: "wait", label: decision || "Pending" };
 }
 
 /** Render the extracted-field value as an editable string. */
@@ -239,8 +268,63 @@ function statusFromClaimError(e: unknown): string | null {
   return m ? m[1] : null;
 }
 
+/**
+ * Page-local wrapper over the shared `Notice` (never editing it directly).
+ * `tone="warn"` borrows Notice's muted "wait" shape but recolours it to
+ * `--state-warning` — a failed load or a validation problem reports a
+ * FAILURE, which is urgency, not ownership, so it must never read as
+ * copper ("the viewer is the next actor on a record"). Every other tone
+ * passes straight through to `Notice` unchanged.
+ */
+function DeskNotice({
+  tone,
+  role,
+  className,
+  children,
+}: {
+  tone: "you" | "ok" | "wait" | "warn";
+  role?: "alert" | "status";
+  className?: string;
+  children: ReactNode;
+}) {
+  if (tone === "warn") {
+    return (
+      <Notice
+        tone="wait"
+        role={role}
+        className={cn(
+          "border-[var(--state-warning)] text-[var(--state-warning)]",
+          className,
+        )}
+      >
+        {children}
+      </Notice>
+    );
+  }
+  return (
+    <Notice tone={tone} role={role} className={className}>
+      {children}
+    </Notice>
+  );
+}
+
 export default function ReviewPage() {
   const router = useRouter();
+
+  // ── Ownership: viewer AND record, never the record alone (see the
+  // decisionMeta docstring above for the backend contract this derives
+  // from). Read fresh every render — the same idiom `api.getUserProfile()`
+  // already uses elsewhere on this desk (dashboard/page.tsx:333).
+  const profile = api.getUserProfile();
+  const viewerEmail = profile?.email?.trim().toLowerCase() ?? "";
+  const viewerRole = profile?.role?.trim().toLowerCase() ?? "";
+  const viewerIsAdmin = viewerRole === "admin" || viewerRole === "owner";
+  function ownsRow(receivedBy: string | null | undefined): boolean {
+    const rb = receivedBy?.trim().toLowerCase() ?? "";
+    if (!viewerEmail) return false; // unknown viewer never earns copper
+    if (rb) return rb === viewerEmail;
+    return viewerIsAdmin; // NULL received_by rows are admin-only by contract
+  }
   const [items, setItems] = useState<ProposalSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -277,6 +361,15 @@ export default function ReviewPage() {
   });
   const [createBusy, setCreateBusy] = useState(false);
 
+  // ── Desk strip: presentation-only filter + search over the fetched queue.
+  // No new request — both narrow the SAME `items` array the queue already
+  // holds. Default "all" + empty search show every row, unchanged from
+  // before this restyle.
+  const [queueFilter, setQueueFilter] = useState<"all" | "you" | "matched">(
+    "all",
+  );
+  const [queueSearch, setQueueSearch] = useState("");
+
   const loadQueue = useCallback(async () => {
     setLoading(true);
     setError(null);
@@ -291,6 +384,11 @@ export default function ReviewPage() {
         { component: "ReviewPage", action: "loadQueue" },
         e instanceof Error ? e : new Error(String(e)),
       );
+      // Identity boundary, not a cosmetic choice: a failed reload (401/403,
+      // or an account switch) must never leave a PREVIOUS viewer's rows
+      // on screen under a fresh "N documents are waiting for your
+      // decision" heading with copper pills painted for someone else.
+      setItems([]);
       setError("Could not load the review queue.");
     } finally {
       setLoading(false);
@@ -781,118 +879,297 @@ export default function ReviewPage() {
   const fields = detail?.extracted_fields ?? {};
   const fieldKeys = Object.keys(fields);
 
+  // ── Desk strip derived state ──────────────────────────────────────────
+  const queueItems = useMemo(() => {
+    const byFilter = items.filter((it) => {
+      if (queueFilter === "all") return true;
+      // Filter on the SAME computed tone the row itself paints, so a filter
+      // can never select a row the row does not also paint copper.
+      const { tone } = decisionMeta(it.decision, ownsRow(it.received_by));
+      return queueFilter === "you" ? tone === "you" : tone === "ours";
+    });
+    const q = queueSearch.trim().toLowerCase();
+    if (!q) return byFilter;
+    return byFilter.filter((it) =>
+      (it.doc_type || "document").toLowerCase().includes(q),
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [items, queueFilter, queueSearch, viewerEmail, viewerIsAdmin]);
+
+  // How many of the loaded rows are actually THIS viewer's to decide. On an
+  // admin, whose queue is global, this is smaller than items.length.
+  const yoursCount = useMemo(
+    () => items.filter((it) => ownsRow(it.received_by)).length,
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [items, viewerEmail, viewerIsAdmin],
+  );
+
+  // A computed sentence, and it disappears rather than claim something the
+  // data cannot prove (fusion §6) — nothing is rendered while still loading.
+  //
+  // It counts what the VIEWER owns, not what loaded. The render found the
+  // reason: with one row received by a different operator, the old sentence
+  // said "3 documents are waiting for your decision" directly above a row
+  // the page itself marked "Another operator". A masthead that claims
+  // ownership the rows deny is the same defect as copper-from-status, one
+  // typographic level up.
+  const queueSubtitle = loading
+    ? undefined
+    : items.length === 0
+      ? "Nothing is waiting for you."
+      : yoursCount === 0
+        ? `Nothing here is yours to decide — ${items.length} in the queue.`
+        : yoursCount === items.length
+          ? `${yoursCount} document${yoursCount === 1 ? "" : "s"} ${yoursCount === 1 ? "is" : "are"} waiting for your decision.`
+          : `${yoursCount} of ${items.length} documents ${yoursCount === 1 ? "is" : "are"} waiting for your decision.`;
+
   return (
     <div className="mx-auto max-w-5xl px-4 py-8">
-      <div className="mb-6 flex items-center justify-between">
-        <h1
-          className="text-2xl font-semibold"
-          style={{ color: "var(--bz-text-1)" }}
-        >
-          Document review
-        </h1>
-        <button
-          type="button"
-          onClick={() => router.push("/dashboard")}
-          className="rounded-md border px-3 py-1.5 text-sm"
-          style={{ borderColor: "var(--bz-border)", color: "var(--bz-text-2)" }}
-        >
-          ← Back
-        </button>
-      </div>
+      <Masthead
+        eyebrow="Intake"
+        title="Document review"
+        subtitle={queueSubtitle}
+        right={
+          <button
+            type="button"
+            onClick={() => router.push("/dashboard")}
+            className={cn(
+              "rounded-md border border-[var(--bz-border)] px-3 py-1.5 text-[13px] text-[var(--tx-pure)]",
+              "hover:bg-[var(--bz-card-hover)]",
+              FOCUS,
+            )}
+          >
+            ← Back
+          </button>
+        }
+        className="mb-6"
+      />
 
       {error && (
-        <div
-          className="mb-4 rounded-md border px-4 py-2 text-sm"
-          style={{
-            borderColor: "var(--state-danger)",
-            color: "var(--bz-text-1)",
-          }}
-        >
+        // A load failure has no record to own — colour here reports a
+        // FAILURE (urgency), never ownership, so this borrows
+        // --state-warning via DeskNotice rather than copper.
+        <DeskNotice tone="warn" role="alert" className="mb-4">
           {error}
-        </div>
+        </DeskNotice>
       )}
       {notice && (
-        <div
-          className="mb-4 rounded-md border px-4 py-2 text-sm"
-          style={{
-            borderColor: "var(--state-success)",
-            color: "var(--bz-text-1)",
-          }}
-        >
+        <Notice tone="ok" role="status" className="mb-4">
           {notice}
-        </div>
+        </Notice>
       )}
 
       {loading ? (
-        <p style={{ color: "var(--bz-text-3)" }}>Loading…</p>
+        <p className="text-[13px] text-[var(--tx-secondary)]">Loading…</p>
       ) : !error && items.length === 0 ? (
-        <p style={{ color: "var(--state-success)" }}>
-          ✓ No documents to review.
-        </p>
+        <EmptyState>Nothing is waiting for you.</EmptyState>
       ) : (
-        <ul className="space-y-3">
-          {items.map((it) => {
-            const candidate = it.entity_candidates?.[0];
-            return (
-              <li
-                key={it.proposal_id}
-                className="rounded-xl border p-4"
-                style={CARD}
-              >
-                <div className="flex items-center justify-between gap-3">
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <span
-                        className="font-medium"
-                        style={{ color: "var(--bz-text-1)" }}
+        <>
+          <DeskStrip
+            count={queueItems.length}
+            countLabel={`${queueItems.length} in the queue`}
+            filters={
+              // DeskStrip clips its filter group with overflow-hidden and lets
+              // `right` keep its width, so at 390 the render showed ONLY "All"
+              // — "Needs you" and "Matched" were cut off and unreachable, with
+              // no way to scroll to them. The primitive is not this window's to
+              // edit, so the scroller is page-local, inside the slot the
+              // primitive hands us. Every filter stays reachable on a phone.
+              <div className="flex min-w-0 items-center gap-1.5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                <StatePill
+                  tone="ink"
+                  label="All"
+                  pressed={queueFilter === "all"}
+                  onClick={() => setQueueFilter("all")}
+                />
+                <StatePill
+                  tone="you"
+                  label="Needs you"
+                  pressed={queueFilter === "you"}
+                  onClick={() => setQueueFilter("you")}
+                />
+                <StatePill
+                  tone="ours"
+                  label="Matched"
+                  pressed={queueFilter === "matched"}
+                  onClick={() => setQueueFilter("matched")}
+                />
+              </div>
+            }
+            right={
+              <input
+                type="search"
+                value={queueSearch}
+                onChange={(e) => setQueueSearch(e.target.value)}
+                placeholder="Search document type…"
+                aria-label="Search review queue"
+                className={cn(
+                  // Narrower on a phone so the three filters keep their room;
+                  // the placeholder still names what it searches.
+                  "h-8 w-28 rounded border border-[var(--bz-border)] bg-transparent px-2 text-[12px] md:w-44",
+                  "text-[var(--tx-pure)] placeholder:text-[var(--tx-secondary)]",
+                  "focus:outline-none focus:border-[var(--bz-copper)]",
+                  FOCUS,
+                )}
+              />
+            }
+          />
+          {/* Below 768px the Operator and Received columns LEAVE the grid and
+              their values move onto the row's secondary line — moved, not
+              hidden, which is the concept's own 1360 collapse one breakpoint
+              down. Measured before this cure: the five fixed columns summed
+              past the viewport and /review scrolled sideways at 390
+              (scrollWidth 742, clientWidth 390) on a dev server.
+
+              Operator is 200px and Received 145px because at 170/130 the
+              render truncated EVERY operator to "member@exam…" and the
+              longest source+date to "whatsapp · 9/13/2…", while the 1.8fr
+              document column sat half empty. The slack comes out of that
+              column, which shrinks without losing a word.
+
+              Status is 176px, not 130px, because the widest pill this page
+              can paint is the WORD "Another operator" — the muted state a
+              row takes when the viewer did not receive it. At 130px the
+              render showed that pill lapping over the operator beside it.
+              A column has to fit the longest word its own law can produce. */}
+          <HairlineGrid
+            cols="minmax(180px,1.4fr) 176px 200px 145px 92px"
+            className="max-md:[--cols:minmax(0,1fr)_auto]"
+          >
+            <HairlineHead>
+              <span>Document</span>
+              <span className="max-md:hidden">Status</span>
+              <span className="max-md:hidden">Operator</span>
+              <span className="max-md:hidden">Received</span>
+              <span className="sr-only">Actions</span>
+            </HairlineHead>
+            <HairlineBody>
+              {queueItems.map((it) => {
+                const candidate = it.entity_candidates?.[0];
+                const { tone, label } = decisionMeta(
+                  it.decision,
+                  ownsRow(it.received_by),
+                );
+                const received = it.created_at
+                  ? new Date(it.created_at).toLocaleDateString()
+                  : "";
+                const reviewLabel = busy === it.proposal_id ? "…" : "Review";
+                return (
+                  <HairlineRow
+                    key={it.proposal_id}
+                    // Below 768px BOTH of the grid's action slots stand down
+                    // and the control moves onto the row's own secondary
+                    // line. The reason is measured, not aesthetic: the
+                    // reserved actions cell claimed 176px of a 390px row and
+                    // pushed the grid to scrollWidth 396. One control is live
+                    // at any width — hover button from md up, touch arrow
+                    // from md up on a pointer that cannot hover, and the
+                    // always-visible line button below md, which depends on
+                    // no hover at all.
+                    actions={
+                      <button
+                        type="button"
+                        disabled={busy === it.proposal_id}
+                        onClick={() => void openDetail(it.proposal_id)}
+                        className={cn(
+                          "min-h-8 rounded-md border border-[var(--bz-border)] px-3 text-[12px] font-[650] text-[var(--tx-pure)]",
+                          "hover:bg-[var(--bz-card-hover)] disabled:opacity-60 max-md:hidden",
+                          FOCUS,
+                        )}
                       >
-                        {it.doc_type || "document"}
-                      </span>
-                      <DecisionBadge decision={it.decision} />
-                      <span
-                        className="text-xs"
-                        style={{ color: "var(--bz-text-3)" }}
+                        {reviewLabel}
+                      </button>
+                    }
+                    touchAction={
+                      <button
+                        type="button"
+                        disabled={busy === it.proposal_id}
+                        onClick={() => void openDetail(it.proposal_id)}
+                        aria-label={`Review ${it.doc_type || "document"}`}
+                        className="grid h-11 w-11 place-items-center text-[var(--tx-secondary)] max-md:hidden"
                       >
-                        {it.source}
-                        {it.created_at
-                          ? ` · ${new Date(it.created_at).toLocaleDateString()}`
-                          : ""}
+                        →
+                      </button>
+                    }
+                  >
+                    <div className="min-w-0">
+                      <CellStack
+                        primary={it.doc_type || "document"}
+                        secondary={
+                          candidate
+                            ? `Proposed client: ${candidate.full_name}`
+                            : // "— needs a decision" was cut to "No client
+                              // matched" because CellStack truncates its
+                              // secondary and at 390 the render showed
+                              // "No client matched — needs a d…". The dropped
+                              // half is not lost: the copper pill beside it
+                              // already says "Needs you", which is the WORD
+                              // the colour law requires. This line carries the
+                              // REASON, the pill carries the call.
+                              "No client matched"
+                        }
+                      />
+                      {/* The dropped columns, relocated for a phone. Exactly
+                          one copy of each value is in the accessibility tree
+                          at any width. */}
+                      <span className="mt-1 flex flex-wrap items-center gap-2 md:hidden">
+                        <StatePill tone={tone} label={label} />
+                        <span className="text-[11px] text-[var(--tx-secondary)]">
+                          Operator: {formatOperator(it.received_by)}
+                        </span>
+                        <span
+                          className="text-[11px] text-[var(--tx-secondary)]"
+                          style={TABULAR}
+                        >
+                          {it.source}
+                          {received ? ` · ${received}` : ""}
+                        </span>
+                        {/* The phone's control. Always visible, 44px, named
+                            by the document it opens so a screen reader can
+                            tell two rows apart. */}
+                        <button
+                          type="button"
+                          disabled={busy === it.proposal_id}
+                          onClick={() => void openDetail(it.proposal_id)}
+                          aria-label={`Review ${it.doc_type || "document"}`}
+                          className={cn(
+                            "min-h-11 rounded-md border border-[var(--bz-border)] px-3 text-[12px] font-[650] text-[var(--tx-pure)]",
+                            "disabled:opacity-60",
+                            FOCUS,
+                          )}
+                        >
+                          {reviewLabel}
+                        </button>
                       </span>
                     </div>
-                    <p
-                      className="mt-1 text-sm"
-                      style={{ color: "var(--bz-text-2)" }}
+                    <span className="max-md:hidden">
+                      <StatePill tone={tone} label={label} />
+                    </span>
+                    {/* No "Operator:" prefix here — the column header two
+                        rows up already says OPERATOR, and carrying the word
+                        as well cost ~70px and truncated every address to
+                        "member@example.t…" at 1440. The phone copy KEEPS the
+                        prefix, because on the secondary line the values run
+                        together with no header to name them. */}
+                    <span className="truncate text-[12px] text-[var(--tx-secondary)] max-md:hidden">
+                      {formatOperator(it.received_by)}
+                    </span>
+                    <span
+                      className="truncate text-[12px] text-[var(--tx-secondary)] max-md:hidden"
+                      style={TABULAR}
                     >
-                      {candidate
-                        ? `Proposed client: ${candidate.full_name}`
-                        : "No client matched — needs a decision"}
-                    </p>
-                    <p
-                      className="mt-1 text-xs"
-                      style={{ color: "var(--bz-text-3)" }}
-                    >
-                      Operator: {formatOperator(it.received_by)}
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                    disabled={busy === it.proposal_id}
-                    onClick={() => void openDetail(it.proposal_id)}
-                    className="shrink-0 rounded-md border px-4 py-2 text-sm font-medium"
-                    style={{
-                      borderColor: "var(--bz-border)",
-                      background: "var(--bz-surface)",
-                      color: "var(--bz-text-1)",
-                      opacity: busy === it.proposal_id ? 0.6 : 1,
-                    }}
-                  >
-                    {busy === it.proposal_id ? "…" : "Review"}
-                  </button>
-                </div>
-              </li>
-            );
-          })}
-        </ul>
+                      {it.source}
+                      {received ? ` · ${received}` : ""}
+                    </span>
+                  </HairlineRow>
+                );
+              })}
+            </HairlineBody>
+          </HairlineGrid>
+          {queueItems.length === 0 && (
+            <EmptyState>No document matches this filter.</EmptyState>
+          )}
+        </>
       )}
 
       {detail && (
@@ -912,7 +1189,23 @@ export default function ReviewPage() {
                 style={{ color: "var(--bz-text-1)" }}
               >
                 {detail.doc_type || "document"}{" "}
-                <DecisionBadge decision={detail.decision} />
+                {/* Ownership AND actionability: a terminal status or a 409
+                    claim conflict makes the detail read-only for ANY
+                    reason, and copper must never coexist with "view only" —
+                    so a read-only detail always renders muted with the
+                    reason word, and only a claimable, viewer-owned detail
+                    can render copper. */}
+                <StatePill
+                  {...(!claimToken
+                    ? {
+                        tone: "wait" as PillTone,
+                        label: readOnlyReason ?? "View only",
+                      }
+                    : decisionMeta(
+                        detail.decision,
+                        ownsRow(detail.received_by),
+                      ))}
+                />
               </h2>
               <button
                 type="button"
@@ -924,16 +1217,9 @@ export default function ReviewPage() {
             </div>
 
             {readOnlyReason && (
-              <div
-                className="mb-3 rounded-md border px-3 py-2 text-sm"
-                role="status"
-                style={{
-                  borderColor: "var(--state-warning)",
-                  color: "var(--bz-text-1)",
-                }}
-              >
+              <Notice tone="wait" role="status" className="mb-3">
                 {readOnlyReason}
-              </div>
+              </Notice>
             )}
 
             <div className="grid gap-5 md:grid-cols-2">
@@ -1126,17 +1412,15 @@ export default function ReviewPage() {
                         (createForm.full_name ?? "").trim().length < 2
                       }
                       onClick={() => void createAndApprove()}
-                      className="mt-3 w-full rounded-md px-4 py-2 text-sm font-medium text-white"
-                      style={{
-                        background: "var(--bz-accent)",
-                        opacity:
-                          createBusy ||
-                          busy === detail.proposal_id ||
-                          !claimToken ||
-                          (createForm.full_name ?? "").trim().length < 2
-                            ? 0.5
-                            : 1,
-                      }}
+                      // Copper is NEVER a fill (globals.css's own comment on
+                      // --bz-accent says so) — the outlined treatment already
+                      // used on this page's Reject/Back buttons, recoloured
+                      // to copper instead of a solid background.
+                      className={cn(
+                        "mt-3 w-full rounded-md border border-[var(--bz-copper)] px-4 py-2 text-sm font-medium text-[var(--bz-copper-text)]",
+                        "hover:bg-[var(--bz-card-hover)] disabled:opacity-60",
+                        FOCUS,
+                      )}
                     >
                       {createBusy
                         ? "Creating…"
@@ -1445,12 +1729,11 @@ export default function ReviewPage() {
                     type="button"
                     disabled={busy === detail.proposal_id || !claimToken}
                     onClick={() => void decide("reject")}
-                    className="flex-1 rounded-md px-4 py-2 text-sm font-medium text-white"
-                    style={{
-                      background: "var(--state-danger)",
-                      opacity:
-                        busy === detail.proposal_id || !claimToken ? 0.6 : 1,
-                    }}
+                    className={cn(
+                      "flex-1 rounded-md border border-[var(--bz-border)] px-4 py-2 text-sm font-medium text-[var(--tx-pure)]",
+                      "hover:bg-[var(--bz-card-hover)] disabled:opacity-60",
+                      FOCUS,
+                    )}
                   >
                     Reject
                   </button>
