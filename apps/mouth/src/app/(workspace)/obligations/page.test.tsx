@@ -347,7 +347,32 @@ describe("ObligationsPage", () => {
       screen.queryByText("PMK 81/2024 art. 94 (pajak.go.id)"),
     ).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByLabelText("Rule detail for obligation 101"));
+    // RE-PINNED by SAETTA-R19K K2c, and STRONGER than what it replaced.
+    // The trigger now exists TWICE: the desktop grid cell (hidden below md)
+    // and the phone line (hidden from md up), because the desktop-only
+    // version meant a reader at 390px could see which rule applied and never
+    // open it — the control was LOST, not moved. jsdom evaluates no media
+    // query, so both are in the DOM here and `getByLabelText` would throw on
+    // finding two. Asserting the count is what pins the fix: if either
+    // breakpoint's copy disappears again this fails, where a `getAllBy...[0]`
+    // would have gone on passing with one copy gone.
+    const triggers = screen.getAllByLabelText("Rule detail for obligation 101");
+    expect(triggers).toHaveLength(2);
+    const sig = (el: HTMLElement) =>
+      `${el.className} ${el.parentElement?.className ?? ""} ${el.parentElement?.parentElement?.className ?? ""}`;
+    expect(
+      triggers.filter((t) => sig(t).includes("max-md:hidden")),
+    ).toHaveLength(1);
+    expect(
+      triggers.filter(
+        (t) =>
+          /(?:^|\s)md:hidden(?:\s|$)/.test(sig(t)) &&
+          !sig(t).includes("max-md:hidden"),
+      ),
+    ).toHaveLength(1);
+
+    // Either one opens the same detail.
+    fireEvent.click(triggers[0]);
 
     expect(
       await screen.findByText("PMK 81/2024 art. 94 (pajak.go.id)"),

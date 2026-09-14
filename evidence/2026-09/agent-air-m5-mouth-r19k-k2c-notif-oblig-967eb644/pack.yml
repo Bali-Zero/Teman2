@@ -1,0 +1,213 @@
+gear: 3
+# The STAGING path, not the real one. harness-floor.yml Step 7b copies this
+# pack and its brief into /tmp/evidence-check/evidence/{pack,brief}.yml and
+# lints with --repo-root there, so brief_ref must name the staging layout.
+# Writing the real per-PR path here is the documented trap (cured on #6510).
+brief_ref: evidence/brief.yml
+lanes:
+  - lane: r19k-k2c-notif-oblig
+    role: build
+    seat: claude-opus-5 (Dux, SAETTA-R19K window K2, xhigh)
+  - lane: r19k-k2c-notif-oblig
+    role: review
+    seat: claude-sonnet-5 (implementer, diff reviewed by the Dux before commit)
+pii_scan: clean
+seat_override: >-
+  R8 applicability: presentation of two operations desks plus one defensive coercion on a response
+  field. No immigration rule, eligibility, claim or price is authored; no NotebookLM query is
+  claimed. Every fixture identity is synthetic (Client 0412/0418/0421, PT Contoh Abadi,
+  member@example.test, other@example.test). The obligation rows name public authorities (BKPM, DJP)
+  and public rule names, never a client.
+receipts:
+  - claim: >-
+      /notifications was one response field away from losing its whole desk, and the render found it
+      where the green suite could not.
+    cmd: >-
+      Render /notifications on `next dev --webpack -p 3192` with the dashboard endpoint stubbed, then
+      read the console transcript rather than the passing tests.
+    result: >-
+      28 console errors, all "TypeError: systemStatus.charAt is not a function", and the page fell
+      through to its error boundary. Every read of that field calls string methods on it. The
+      backend contract (app/modules/notifications/admin_router.py, DashboardData.system_status) is
+      `str`, so this is a defensive cure, not a contract change: the value is coerced and an
+      unusable one reads "unknown", which the page's own copy already has a sentence for. After the
+      cure the desk renders with 0 console errors.
+    exit: 0
+    ts: "2026-09-14T11:00:00Z"
+    seat: claude-opus-5
+  - claim: >-
+      The danger token is drained from BOTH pages, and the guard that pinned it to one of them was
+      narrowed rather than the page left lying.
+    cmd: >-
+      npx vitest --run "src/app/(workspace)/__tests__"; grep for --state-danger under both page
+      directories.
+    result: >-
+      /notifications was the last desk page still EXEMPT from the no-red rule, because
+      token-drain.residuals.guard.test.ts pinned it to "var(--state-danger)" as proof of the WS2
+      drain. On kita that token resolves to COPPER, so a failed delivery was claiming the signed-in
+      viewer is the next actor on a record nobody owns. The token is gone from both pages, urgency
+      reads --state-warning, the WORD "Error" carries the meaning, and the residuals guard keeps all
+      three of its hex/rgba/palette assertions plus two token pins. All four desk pages are now in
+      DESK_PAGES with no exemption left.
+    exit: 0
+    ts: "2026-09-14T11:09:14Z"
+    seat: claude-opus-5
+  - claim: The no-red guard was convicting COMMENTS, and both directions are now pinned.
+    cmd: npx vitest --run "src/app/(workspace)/__tests__/desk-no-red.guard.test.ts"
+    result: >-
+      Its comment filter tested each line for a leading "//", "*", "/*" or "{/*", so the wrapped JSX
+      block comment explaining WHY --state-danger was removed was itself convicted of reading it
+      (notifications/page.tsx:752). That is cicatrix family #3 in the OVER direction, and a guard
+      that punishes a page for documenting the rule teaches people to stop documenting. It now
+      tracks block-comment state across lines. A new case proves it INNOCENT on the token named
+      inside a wrapped comment and GUILTY on the same token one line later in a className. The known
+      limit — a "/*" inside a string literal would open a phantom comment — is written into the file
+      and can only make the guard miss, never convict innocent code.
+    exit: 0
+    ts: "2026-09-14T11:09:14Z"
+    seat: claude-opus-5
+  - claim: >-
+      Both desks render clean at both widths in both themes, and the browser found six more defects
+      the suite did not.
+    cmd: >-
+      Chromium via playwright against `next dev --webpack -p 3192` on this branch. /notifications and
+      /obligations with every /api/** route fulfilled from synthetic fixtures matching the real
+      response schemas, full-page capture plus a scrollWidth/clientWidth probe at 1440x900 and
+      390x844 in operative-light and operative-dark.
+      Probe: chromium via playwright against next dev --webpack, full-page capture plus a
+      scrollWidth probe
+    result: >-
+      (1) /notifications scrollWidth 728 vs clientWidth 390 — six fixed tracks past the viewport;
+      cured by moving four columns onto the row's secondary line below md. (2) Its desk strip pushed
+      64px past the viewport and ALL FOUR status filters were clipped to nothing and unreachable;
+      cured with a page-local scroller and a narrower search and select. (3) /obligations overflowed
+      at 1440 as well, scrollWidth 1484: ten track MINIMA summed to 1216 against a ~1176 content
+      column, and a grid cannot shrink below its minimums. (4) Its mobile row squeezed the client
+      column to about 60px so every word wrapped one per line and even the "Client" header broke in
+      two. (5) "verified" and "unverified" rendered in the SAME warning colour, so a rule and its
+      opposite looked identical; verified is muted now and unverified keeps the warning. (6) Approve
+      was a solid fill beside an outlined Reject, and Reject carried the only copper on the row,
+      which read as "copper means the negative choice"; both are outlined now and the STATUS pill
+      carries the copper. Final: CONSOLE_ERRORS=0 on both pages, scrollWidth == clientWidth at
+      1440/1440 and 390/390 in both themes.
+    exit: 0
+    ts: "2026-09-14T11:06:27Z"
+    seat: claude-opus-5
+  - claim: /obligations left the boxed UI and is actually on the ledger now.
+    cmd: Read the 1440 render before and after, not the diff.
+    result: >-
+      Before, only the masthead and the filter strip were R19: the generate panel sat in a rounded
+      card with a solid filled button, the four status counters were rounded cards, the table was a
+      bordered box, and pagination was rounded pills. After, the generate panel is a hairline
+      section, the counters are a hairline KPI band with tabular numerals, the table is a
+      HairlineGrid, and every control is a square outline. No request, handler, claim/approve/reject
+      path or query param changed.
+    exit: 0
+    ts: "2026-09-14T11:06:27Z"
+    seat: claude-opus-5
+  - claim: Static gates green and every existing test of both pages still passes.
+    cmd: >-
+      npx vitest --run "src/app/(workspace)/notifications" "src/app/(workspace)/obligations"
+      "src/app/(workspace)/__tests__"; npx tsc --noEmit --incremental false; prettier on every
+      touched file; python3 scripts/token_lint.py --base origin/main after committing.
+      Probes: npx vitest --run "src/app/(workspace)/obligations" ;
+      npx vitest --run "src/app/(workspace)/__tests__"
+    result: >-
+      124 passed across 7 files, after the rebase onto the merged K2b. tsc exit 0 (also run by the
+      pre-commit hook on both commits). prettier clean.
+    exit: 0
+    ts: "2026-09-14T11:09:14Z"
+    seat: claude-opus-5
+dissent:
+  - seat: claude-opus-5
+    objection: >-
+      The v2 HairlineGrid's own responsive-collapse API does not work, and this page had to work
+      around it.
+    status: CONFIRMED
+    disposition: >-
+      Measured, not inferred, and BOTH shapes were tried on a dev server before the workaround was
+      written. HairlineGrid sets `--cols` as an INLINE style and then, for `colsCollapsed`, emits a
+      stylesheet rule setting the same custom property on the same element. An inline declaration
+      beats a non-important stylesheet rule, so `colsCollapsed` + `collapseAt` + `id` is inert, and
+      so is any page-side `max-md:[--cols:...]` class. With the template unchanged at 390 the empty
+      tracks still claimed their minimums and the row collapsed. This page overrides
+      `grid-template-columns` on the rows themselves instead, scoped to its own descendants. The
+      defect belongs to the primitive (#6520) and is reported to the seat that owns it; this window
+      is forbidden to edit components/workspace/r19.
+  - seat: claude-opus-5
+    objection: >-
+      The `alerted` status is copper by a RULING whose stated derivation does not hold on the page.
+    status: CONFIRMED
+    disposition: >-
+      The ruling was accepted on the ground that copper on `alerted` is "derived from the row
+      carrying the viewer's own Approve/Reject". The render shows it is not: only `proposed` rows
+      render those controls, and an `alerted` row's action cell carries an alert id and nothing to
+      act on. The code is honest about this — ObligationsTable's header says in as many words that
+      `alerted` is copper "as a RULING and not as a derivation this row can prove" — and this window
+      obeys the ruling rather than quietly overriding it. Flagged for the ruling to be re-examined:
+      as it stands, the one copper pill a viewer cannot act on is the one the law would forbid.
+  - seat: claude-opus-5
+    objection: >-
+      /review's own mobile collapse comment, shipped in #6524, describes a mechanism that does not
+      work.
+    status: CONFIRMED
+    disposition: >-
+      Same root cause as the first dissent, discovered one PR too late. /review carries
+      `className="max-md:[--cols:minmax(0,1fr)_auto]"` and a comment saying that is what relocates
+      its dropped columns. On the v2 primitive that class is inert. The PAGE is still correct at 390
+      — its `max-md:hidden` cells leave only two visible children, which land in the first two
+      tracks, and those two happen to fit — so nothing is broken for a reader today. But it is
+      correct by accident, not by the stated mechanism, and the comment is wrong. #6524 was armed and
+      then merged before this was known; recorded here rather than silently corrected, and it is
+      cured together with the primitive.
+notes:
+  - >-
+    Gear 3 is DECLARED AT OPEN, not discovered at a red. Churn against origin/main is 2146, over the
+    1828 threshold. Splitting the two pages would have shipped a page apart from the guard that
+    judges it — the content-ratchet failure this mission already paid for once on #6509.
+  - >-
+    Evidence captures live in their own subfolder, per the #6512 gate's notice:
+    ~/Desktop/R19-KITA-20260914/K2-evidence/K2c/. Each PNG with its sha256, from MANIFEST.sha256
+    beside them, all eight generated after the final cure and after the rebase onto merged K2b:
+    f1b62df600879c52e80b0bb05ab334c3513f155dbb7936f30b0d3ba0ea9d21a4  notifications.desktop.dark.png  1500656 bytes
+    360ede9f398096a2a811d1e3588d2c4a764ff01e3dd367d55767d07a1f4bcba2  notifications.desktop.light.png  1584851 bytes
+    711b46854b8e1b05e584e88981c193a5c851348b54c2a9c77e3c15c338877d11  notifications.mobile.dark.png  767349 bytes
+    853eb9965b1cf548a0502d836d429ad429b564060251386f29f8ef61e15df4d2  notifications.mobile.light.png  802480 bytes
+    cb2e114bfc9d9c36da3b1b650fb784a32292a077bfd60845f1b281b65f335c52  obligations.desktop.dark.png  1647641 bytes
+    2571bb9a14c4402718e9c67d23b8d31201f9299517b974d14ca340d6b21f089e  obligations.desktop.light.png  1727347 bytes
+    44d0bb49d1c6394ea614ee0c2fbecba606ed124077367801065ed7302a84625d  obligations.mobile.dark.png  845728 bytes
+    2b2dfddddcda9c7de474b294b4aa2281d8b37edb70b5a8140570c7a7996e21d4  obligations.mobile.light.png  884496 bytes
+  - >-
+    Dev-server pids started and killed by this seat for these captures, per the M5 resource rule:
+    53121 and 59808, both on port 3192, each killed and verified dead before the next started. The K2b pids (12785, 54183, 694, 35070 on 3191)
+    are recorded in that window's pack and were all killed before this one started. At no point were
+    two `next dev` processes alive on this seat.
+  - >-
+    ROUTE BOUNDARIES, per the standing ruling that a page and its boundaries never ship apart again.
+    State of every error.tsx / loading.tsx under the four desk pages as of this PR:
+    dashboard/error.tsx UN-RESTYLED; dashboard/loading.tsx UN-RESTYLED;
+    notifications/error.tsx RESTYLED (K2c, it was painting bg-destructive/10 and a filled Button,
+    which on kita is a copper FILL); notifications/loading.tsx UN-RESTYLED;
+    review/ and obligations/ have neither file. The three un-restyled files are K2d "desk route
+    boundaries", which also carries the guard line making the no-red scan cover error.tsx and
+    loading.tsx with a planted bg-destructive/10 as its guilt case. K2c did not absorb them because
+    it is already Gear 3 by size.
+  - >-
+    ADVERSARIAL REVIEW. Codex (acct2, read-only, reasoning=high) reviewed the frozen diff and hit its
+    own context ceiling before writing a verdict, so it checkpointed instead. Recorded as a partial
+    review, not a pass. What it HAD found before stopping is cured here: (1) the rule-detail trigger
+    on /obligations was desktop-only, so at 390 a reader could see which rule applied and never open
+    it — the control was LOST, not moved; there is now a phone copy and the test pins BOTH, with an
+    exact count, which is stronger than the single `getByLabelText` it replaces. (2) /obligations put
+    its six filter pills straight into DeskStrip's overflow-hidden slot, so the ones past the fold
+    were neither visible nor scrollable; same page-local scroller as the other two desks. (3) Both
+    pages were outside the copper-fill rule; they are inside it now. Its two remaining observations
+    are the grid's lost table semantics, which belongs to the primitive and is already carried to
+    that seat, and the `bg-current` indirect fill, which is declared in the guard itself.
+  - >-
+    A copper FILL survives on the DASHBOARD, outside this window's perimeter:
+    dashboard/PortalChallengeWidget.tsx:274 fills a progress bar with --bz-copper. Two other copper
+    fills in that file are NOT defects and must not be "cured": :578 is the pill's pip and :756 is a
+    3px rule, both marks the concept grants copper by name. The copper-fill guard rule shipped in
+    K2b deliberately exempts `dashboard` for exactly that reason, and says what whoever flips it
+    must narrow first.

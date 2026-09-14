@@ -214,7 +214,18 @@ const COPPER_FILL_RE = new RegExp(
  * explicitly. Flipping it as-is would be cicatrix family #3 in the OVER
  * direction, which is the failure this file's own comments warn about.
  */
-const COPPER_FILL_PAGES = new Set(["review"]);
+// K2c adds /notifications and /obligations. Both were checked against this
+// rule before being added, and both are clean of the SHAPES it can see.
+//
+// What it CANNOT see, written down so its green is never read as more than it
+// measures: an INDIRECT fill. Both pages paint their state pips with
+// `bg-current` inside an element whose text colour is copper, which is a
+// copper background that no regex over the same line will ever catch. Those
+// two pips are legitimate — the concept grants the state pill a copper pip by
+// name — but the same trick would hide a real fill just as well. A rule that
+// followed `currentColor` would have to resolve a cascade this test does not
+// run, so the limit stands and is declared rather than papered over.
+const COPPER_FILL_PAGES = new Set(["review", "notifications", "obligations"]);
 
 /** The scanner. Exported so its own guilt and innocence are provable below. */
 export function redViolation(

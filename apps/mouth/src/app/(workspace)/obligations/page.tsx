@@ -422,15 +422,26 @@ export default function ObligationsPage() {
       {/* ── Filters ──────────────────────────────────────────────────── */}
       <DeskStrip
         className="mb-4"
-        filters={STATUS_FILTER_OPTIONS.map((s) => (
-          <StatePill
-            key={s}
-            tone="wait"
-            label={s}
-            pressed={filterStatus === s}
-            onClick={() => setFilterStatus(s)}
-          />
-        ))}
+        filters={
+          // DeskStrip clips its filter group with overflow-hidden and lets
+          // `right` keep its width, so at 390 the pills past the fold were
+          // neither visible NOR scrollable — six filters, and a phone reader
+          // could reach the first one or two. The primitive is not this
+          // window's to edit, so the scroller is page-local, inside the slot
+          // it hands us. Same finding and same cure as /review and
+          // /notifications; the strip itself still owes this.
+          <div className="flex min-w-0 items-center gap-1.5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            {STATUS_FILTER_OPTIONS.map((s) => (
+              <StatePill
+                key={s}
+                tone="wait"
+                label={s}
+                pressed={filterStatus === s}
+                onClick={() => setFilterStatus(s)}
+              />
+            ))}
+          </div>
+        }
         right={
           <>
             <label className="flex items-center gap-2 text-[10px] font-[650] uppercase tracking-[0.12em] text-[var(--tx-secondary)]">

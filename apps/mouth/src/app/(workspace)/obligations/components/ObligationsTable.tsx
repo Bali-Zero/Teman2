@@ -210,9 +210,25 @@ export function ObligationsTable({
                 text nodes. */}
             <span className="mt-1 flex flex-col gap-0.5 text-[11px] text-[var(--tx-secondary)] md:hidden">
               <span>#{row.id}</span>
+              {/* The rule DETAIL trigger, not just the rule's name. The
+                  desktop cell that carries it is max-md:hidden, so without
+                  this the control was LOST on a phone rather than moved —
+                  a reader at 390 could see which rule applied but never
+                  open it. It shares the desktop control's accessible name
+                  on purpose: only one of the two is ever visible, so the
+                  name identifies one control at any width. */}
               <span>
-                {ruleLabel} ({row.rule_id}) — {rule?.authority ?? "—"} ·{" "}
-                {verifiedLabel}
+                <button
+                  type="button"
+                  onClick={() => setOpenDetail(isOpen ? null : row.id)}
+                  aria-expanded={isOpen}
+                  aria-label={`Rule detail for obligation ${row.id}`}
+                  className="min-h-11 text-left underline underline-offset-2"
+                  style={{ color: "var(--tx-pure)" }}
+                >
+                  {ruleLabel} ({row.rule_id})
+                </button>{" "}
+                — {rule?.authority ?? "—"} · {verifiedLabel}
               </span>
               <span style={TABULAR}>
                 {row.period_key} · due {row.due_date}
