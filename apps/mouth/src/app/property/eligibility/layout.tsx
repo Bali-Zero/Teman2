@@ -25,7 +25,7 @@ export default function PropertyLayout({
       <NavShell
         logo={<BZLogo variant="full" />}
         items={navItems}
-        slotAfter={<MobileNav items={navItems} />}
+        slotAfter={<MobileNav items={navItems} funnel="property" />}
         actions={<HeaderWhatsAppCTA funnel="property" />}
       />
       <SessionInit funnel="property" />

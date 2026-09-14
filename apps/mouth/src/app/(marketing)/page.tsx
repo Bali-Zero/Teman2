@@ -84,7 +84,7 @@ export default async function HomePage() {
       <NavShell
         logo={<BZLogo variant="full" size={36} priority />}
         items={NAV_ITEMS}
-        slotAfter={<MobileNav items={NAV_ITEMS} />}
+        slotAfter={<MobileNav items={NAV_ITEMS} funnel="home" />}
         actions={
           <>
             <a
