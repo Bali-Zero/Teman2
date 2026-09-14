@@ -1,6 +1,12 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
+  // Self-canonical, not the root layout's `canonical: appUrl`. Inherited,
+  // this page told Google it WAS the homepage (#5887's class of defect;
+  // /terms carries 2 internal hrefs, so it is crawled).
+  alternates: {
+    canonical: "https://balizero.com/terms",
+  },
   title: "Terms of Service",
   description:
     "The terms governing Bali Zero's visa, company setup, tax, and property services in Indonesia — engagement, fees, refunds, AI disclaimer, and governing law.",
