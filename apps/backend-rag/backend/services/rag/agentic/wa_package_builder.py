@@ -17,10 +17,20 @@ in its own new code) or call any LLM client. Verified at runtime by
 AND statically (an AST/source scan for a `backend.llm` import in this
 file's own source).
 
-Unclassifiable intent (GREETING domain, or a domain plan whose collection
-list is empty) raises `PackageUnbuildable` — the caller (the wa_package
-router) routes that row to the Gemini leg rather than borrowing an LLM
-planner into the codex path (spec §2.2, "unclassifiable -> Gemini leg").
+Unclassifiable intent (a domain plan whose collection list is empty)
+raises `PackageUnbuildable` — the caller (the wa_package router) routes
+that row to the Gemini leg rather than borrowing an LLM planner into the
+codex path (spec §2.2, "unclassifiable -> Gemini leg").
+
+GREETING is no longer, by itself, an authority for that decision (B2.5
+PR-3, ruling d). `QueryPlanner`'s domain classifier is a cheap heuristic
+(keyword scoring) that can call a message GREETING when it is not one
+this module would script a reply for (e.g. it is too long, or a leading
+list ordinal like "11.  " is present) — `wa_greeting.match_greeting` is
+the precise, pure matcher and the ONE authority both this builder and the
+WA leg (`wa_codex_leg.py`) now defer to for "is this a scripted greeting".
+A plan classified GREETING whose text `match_greeting` rejects continues
+building with GENERAL's collections instead of raising.
 
 Allowlist schema (spec §2.2, Codex M22/CR1): `ContextPackage.to_payload()`
 serializes EXACTLY 7 fields — `history`, `chunks`, `pricing_block`,
@@ -44,12 +54,13 @@ from backend.prompts.zantara_core import (
     GREETING_RULES,
     LANGUAGE_PROTOCOL,
 )
+from backend.services.integrations.wa_greeting import match_greeting
 from backend.services.misc.pricing_intent import has_pricing_intent
 from backend.services.pricing.pricing_service import get_pricing_service
 from backend.services.rag.agentic._abstain_policy import build_abstain_policy
 from backend.services.rag.agentic._support_signal import SupportVerdict
 from backend.services.rag.agentic.query_plan import QueryDomain
-from backend.services.rag.agentic.query_planner import QueryPlanner
+from backend.services.rag.agentic.query_planner import _DOMAIN_COLLECTIONS, QueryPlanner
 from backend.services.rag.agentic.reasoning_utils import calculate_evidence_score
 from backend.services.rag.agentic.wa_dlp import redact_package_fields
 
@@ -506,11 +517,14 @@ async def build_context_package(
             dlp=True (default False preserves existing callers unchanged).
 
     Raises:
-        PackageUnbuildable: the deterministic domain gate could not classify
-            this query into a non-empty collection set (GREETING domain, or
-            any domain plan whose `collections` list is empty). The caller
-            routes the row to the Gemini leg instead of borrowing an LLM
-            planner into this path.
+        PackageUnbuildable("greeting_domain"): `wa_greeting.match_greeting`
+            recognizes this query as a scripted greeting turn (B2.5 PR-3,
+            ruling d — the ONE authority for this decision, not the
+            planner's `QueryDomain.GREETING`). The caller routes the row to
+            the Gemini leg instead of borrowing an LLM planner into this
+            path.
+        PackageUnbuildable("no_collections"): the deterministic domain gate
+            could not classify this query into a non-empty collection set.
         PackageUnbuildable("dlp_error"): the DLP redaction step raised
             (detector exception, or the fail-closed overflow guard when a
             single package would need more than `wa_dlp.MAX_PLACEHOLDERS`
@@ -519,8 +533,23 @@ async def build_context_package(
     """
     plan = QueryPlanner().plan(query)
 
-    if plan.domain == QueryDomain.GREETING:
+    if match_greeting(query) is not None:
         raise PackageUnbuildable(reason="greeting_domain")
+    if plan.domain == QueryDomain.GREETING:
+        # The planner called this GREETING (empty collections by design —
+        # _DOMAIN_COLLECTIONS[QueryDomain.GREETING] == []) but the precise
+        # matcher above disagreed: this is not a scripted greeting, it is a
+        # real message the planner's cheap keyword heuristic mis-scored
+        # (too long, or content the greeting matcher does not recognize).
+        # GREETING is no longer an authority on its own past this point
+        # (B2.5 PR-3, ruling d) — build with GENERAL's collections instead
+        # of raising. `plan` is a plain (non-frozen) dataclass local to this
+        # call, so mutating it in place is safe and keeps every downstream
+        # read of `plan.domain`/`plan.collections` in this function
+        # (the collection loop below, `evidence_inputs["domain"]`)
+        # consistent with the corrected classification.
+        plan.domain = QueryDomain.GENERAL
+        plan.collections = list(_DOMAIN_COLLECTIONS[QueryDomain.GENERAL])
     if not plan.collections:
         raise PackageUnbuildable(reason="no_collections")
 

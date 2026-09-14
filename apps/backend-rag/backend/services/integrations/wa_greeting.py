@@ -173,6 +173,25 @@ _MAX_GREETING_CHARS = 48
 _PUNCT_RE = re.compile(r"[^\w\s]", flags=re.UNICODE)
 _WS_RE = re.compile(r"\s+", flags=re.UNICODE)
 
+# One leading WhatsApp list-ordinal ("11.  ", "1) ", "3. "), stripped BEFORE
+# anything else runs (B2.5 PR-3, ruling d). Measured defect: a client
+# replying to a numbered menu sends "11.  Halo" — the ordinal is not a
+# greeting token, not a vocative, so the pre-fix pipeline read it as
+# unknown content and aborted the match at the first token, sending a bare
+# greeting down the full retry ladder. Anchored at `^` so it can only ever
+# consume the very start of the string once, never a mid-sentence numbered
+# reference ("Pasal 6. Halo") or a bare number with no separator ("2026
+# halo") — the trailing `\s+` requires the ordinal to actually separate
+# from what follows, so "11." and "11. " alone (nothing after) are left
+# untouched and still fall through as content-less/unknown, exactly as
+# before this change.
+_LEADING_ORDINAL_RE = re.compile(r"^\s*\d{1,3}\s*[.)]\s+")
+
+
+def _strip_leading_ordinal(text: str) -> str:
+    """Strip exactly one leading list-ordinal prefix, else return unchanged."""
+    return _LEADING_ORDINAL_RE.sub("", text, count=1)
+
 # Scripted greeting + capability turn, one per supported language. Deliberately
 # names service FAMILIES and never a price: what the client may ask about, so
 # the next turn lands on the answering path with a topic. English is the
@@ -262,6 +281,9 @@ def match_greeting(text: str | None) -> GreetingTurn | None:
     """
     if not text:
         return None
+
+    text = _strip_leading_ordinal(text)
+
     if len(text) > _MAX_GREETING_CHARS:
         return None
 

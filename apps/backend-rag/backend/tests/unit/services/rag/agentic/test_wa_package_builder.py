@@ -409,6 +409,126 @@ class TestUnbuildableGate:
 
 
 # ============================================================================
+# 3bis. GREETING authority (B2.5 PR-3, ruling d, measured defect D4)
+# ============================================================================
+
+
+class TestGreetingAuthority:
+    """`wa_greeting.match_greeting` is the ONE authority for "is this a
+    scripted greeting" — not `QueryPlanner`'s cheap keyword classifier. A
+    plan the planner calls GREETING but the precise matcher rejects is not
+    unbuildable any more: it builds with GENERAL's collections.
+    """
+
+    async def test_true_greeting_still_raises_greeting_domain(self) -> None:
+        with pytest.raises(PackageUnbuildable) as exc_info:
+            await build_context_package(
+                query="Halo",
+                history=[],
+                thread_epoch=0,
+                retriever=FakeRetriever(),
+            )
+        assert exc_info.value.reason == "greeting_domain"
+
+    async def test_ordinal_prefixed_greeting_still_raises_greeting_domain(self) -> None:
+        """The measured defect (D4): "11.  Halo" must be treated exactly
+        like "Halo" by the SAME authority the WA leg already defers to."""
+        with pytest.raises(PackageUnbuildable) as exc_info:
+            await build_context_package(
+                query="11.  Halo",
+                history=[],
+                thread_epoch=0,
+                retriever=FakeRetriever(),
+            )
+        assert exc_info.value.reason == "greeting_domain"
+
+    async def test_planner_greeting_disagreement_builds_with_general_collections(
+        self,
+    ) -> None:
+        """The disagreeing shape: the planner's greeting-keyword pattern
+        fires on "halo" inside this sentence and, with no other domain
+        keyword scoring, GREETING wins — but the message is 8 tokens, well
+        past `wa_greeting`'s 5-token/48-char greeting cap, so
+        `match_greeting` refuses it. VERIFIED here with the real planner and
+        the real matcher, not assumed."""
+        query = "Halo, apa kabar semuanya di kantor hari ini?"
+        from backend.services.integrations.wa_greeting import match_greeting
+        from backend.services.rag.agentic.query_plan import QueryDomain
+        from backend.services.rag.agentic.query_planner import (
+            _DOMAIN_COLLECTIONS,
+            QueryPlanner,
+        )
+
+        plan = QueryPlanner().plan(query)
+        assert plan.domain == QueryDomain.GREETING, "fixture no longer disagrees — replace it"
+        assert match_greeting(query) is None, "fixture no longer disagrees — replace it"
+
+        retriever = FakeRetriever()
+        package = await build_context_package(
+            query=query,
+            history=[],
+            thread_epoch=0,
+            retriever=retriever,
+        )
+        assert isinstance(package, ContextPackage)
+        assert package.evidence_inputs["domain"] == "general"
+        # No hits were configured on the fake, so `package.chunks` is empty —
+        # the collections actually QUERIED (recorded on every call
+        # regardless of hit count) are the proof GENERAL's map was used,
+        # not the planner's original (empty) GREETING map.
+        assert set(retriever.calls) == set(_DOMAIN_COLLECTIONS[QueryDomain.GENERAL])
+
+    async def test_cross_authority_invariant_over_a_synthetic_corpus(self) -> None:
+        """For every text below: `builder raises greeting_domain` IFF
+        `match_greeting(text) is not None`. ~20 synthetic strings spanning
+        true greetings, the disagreeing shape, ordinal-prefixed variants,
+        real content, and the innocence set from `test_wa_greeting.py`."""
+        from backend.services.integrations.wa_greeting import match_greeting
+
+        corpus = [
+            "Halo",
+            "Hi",
+            "Ciao!",
+            "11.  Halo",
+            "1) Hi",
+            "3. Selamat pagi",
+            "Halo, apa kabar semuanya di kantor hari ini?",
+            "thank you",
+            "hii",
+            "makasih",
+            "What documents do I need for a KITAS work permit?",
+            "Berapa biaya pendirian PT PMA?",
+            "11. Halo, berapa harga PT PMA?",
+            "2026 halo",
+            "Pasal 6. Halo",
+            "1. KITAS",
+            "bali zero",
+            "Halo admin?",
+            "xyzabc123",
+            "good morning zantara",
+        ]
+        assert len(corpus) >= 20
+
+        for text in corpus:
+            expects_greeting_domain = match_greeting(text) is not None
+            try:
+                await build_context_package(
+                    query=text,
+                    history=[],
+                    thread_epoch=0,
+                    retriever=FakeRetriever(),
+                )
+                raised_greeting_domain = False
+            except PackageUnbuildable as exc:
+                raised_greeting_domain = exc.reason == "greeting_domain"
+
+            assert raised_greeting_domain == expects_greeting_domain, (
+                f"{text!r}: builder raised greeting_domain={raised_greeting_domain} "
+                f"but match_greeting is not None={expects_greeting_domain}"
+            )
+
+
+# ============================================================================
 # 4. Pricing-intent gate (independent of QueryPlanner's domain)
 # ============================================================================
 
@@ -579,16 +699,32 @@ class TestGreetingWordBoundary:
         assert plan.domain is not QueryDomain.GREETING
 
     async def test_actual_greetings_still_gate(self) -> None:
-        # Includes the colloquial elongations WhatsApp greetings actually
-        # arrive in (Codex round 3: a strict trailing \b regressed these)
-        # and the Indonesian colloquial thanks the old substring matcher
-        # never covered either.
+        # These are recognized by `wa_greeting.match_greeting` — the ONE
+        # greeting authority as of B2.5 PR-3 (ruling d) — so the builder
+        # still refuses them.
+        for query in ("hi", "hey", "ciao!", "hi there"):
+            with pytest.raises(PackageUnbuildable):
+                await build_context_package(
+                    query=query,
+                    history=[],
+                    thread_epoch=0,
+                    retriever=FakeRetriever(),
+                )
+
+    async def test_planner_only_greetings_now_build_with_general(self) -> None:
+        """B2.5 PR-3 (ruling d): the planner's cheap keyword heuristic still
+        scores the colloquial elongations ("hii", "heyy", "ciaooo", ...) and
+        the thanks-phrases ("thank you", "makasih", "terimakasih") as
+        GREETING — `wa_greeting.match_greeting` does not recognize any of
+        them (it has no elongation logic and is not a thanks-detector). Under
+        the OLD single-source-of-truth (planner domain alone), each of these
+        was declared unbuildable — the same failure shape D4 measured for
+        "11.  Halo", just for a different prefix. GREETING is no longer an
+        authority on its own: these now build with GENERAL's collections
+        instead of falling off the retry ladder.
+        """
         for query in (
-            "hi",
-            "hey",
-            "ciao!",
             "thank you",
-            "hi there",
             "hii",
             "heyy",
             "hellooo",
@@ -597,13 +733,14 @@ class TestGreetingWordBoundary:
             "makasih",
             "terimakasih",
         ):
-            with pytest.raises(PackageUnbuildable):
-                await build_context_package(
-                    query=query,
-                    history=[],
-                    thread_epoch=0,
-                    retriever=FakeRetriever(),
-                )
+            package = await build_context_package(
+                query=query,
+                history=[],
+                thread_epoch=0,
+                retriever=FakeRetriever(),
+            )
+            assert isinstance(package, ContextPackage), f"{query!r} was declared unbuildable"
+            assert package.evidence_inputs["domain"] == "general"
 
 
 # ============================================================================
@@ -909,6 +1046,97 @@ class TestChunkCap:
 
         assert len(package.chunks) == 8
         assert "dropping" in caplog.text and "chunk" in caplog.text
+
+
+# ============================================================================
+# 8. GENERAL fallback never reroutes a real question (RULING I110 C1)
+# ============================================================================
+
+
+class TestGeneralFallbackNeverReroutesRealQuestions:
+    """Binding condition added post-review (ruling I110 C1): the GENERAL
+    override for a planner/matcher disagreement (`TestGreetingAuthority`
+    above) must never fire for a real, on-topic question — only for the
+    narrow class the planner's cheap keyword heuristic mis-scores as
+    GREETING. Proven over the B1.5 evidence-sufficiency corpus (23
+    synthetic, real business/nonsense queries — loaded from disk, never
+    copied) plus 8 synthetic probe texts, each as-is and prefixed with one
+    leading list ordinal ("11.  "), 39 texts total, no network (the
+    planner and `match_greeting` are both pure).
+    """
+
+    _PROBES: tuple[str, ...] = (
+        "Halo",
+        "11.  Halo",
+        "I want to talk to a human, please",
+        "Saya mau bicara dengan orang, bukan bot",
+        "Berapa biaya pendirian PT PMA?",
+        "What documents do I need for an E33G visa?",
+        "How long does PT PMA registration take?",
+        "Can I pay in two instalments?",
+    )
+
+    @staticmethod
+    def _b15_texts() -> list[str]:
+        import json
+
+        fixture = (
+            Path(__file__).resolve().parents[4]
+            / "benchmarks"
+            / "evidence_sufficiency"
+            / "query_vectors_b1_5.json"
+        )
+        data = json.loads(fixture.read_text())
+        return [item["query"] for item in data["query_list"]]
+
+    async def _effective_domain(self, query: str) -> str:
+        try:
+            package = await build_context_package(
+                query=query, history=[], thread_epoch=0, retriever=FakeRetriever()
+            )
+        except PackageUnbuildable as exc:
+            return f"unbuildable:{exc.reason}"
+        return str(package.evidence_inputs["domain"])
+
+    async def test_effective_domain_diverges_from_planner_only_on_greeting(self) -> None:
+        from backend.services.integrations.wa_greeting import match_greeting
+        from backend.services.rag.agentic.query_planner import QueryPlanner
+
+        planner = QueryPlanner()
+        texts: list[str] = list(self._b15_texts())
+        assert len(texts) == 23, "the B1.5 fixture's query_list count changed — re-check scope"
+        for probe in self._PROBES:
+            texts.append(probe)
+            texts.append("11.  " + probe)
+
+        divergences = 0
+        for text in texts:
+            planner_domain = planner.plan(text).domain.value
+            effective = await self._effective_domain(text)
+            mg = match_greeting(text)
+
+            if effective == planner_domain:
+                continue
+            # Any divergence — either the override to GENERAL, or a raised
+            # greeting_domain that the planner's raw domain doesn't spell —
+            # is only legitimate when the planner itself called GREETING.
+            divergences += 1
+            assert planner_domain == "greeting", (
+                f"{text!r}: effective domain {effective!r} diverged from a "
+                f"NON-greeting planner domain {planner_domain!r} — the "
+                "GENERAL fallback rerouted a real question"
+            )
+            if effective == "unbuildable:greeting_domain":
+                assert mg is not None, (
+                    f"{text!r}: raised greeting_domain but match_greeting is None"
+                )
+            else:
+                assert effective == "general" and mg is None, (
+                    f"{text!r}: expected the GENERAL override with no scripted "
+                    f"greeting match, got effective={effective!r} match_greeting={mg!r}"
+                )
+
+        assert divergences > 0, "fixture never exercises the disagreement path — dead test"
 
 
 def test_wire_text_is_exactly_the_bytes_package_hash_covers() -> None:
