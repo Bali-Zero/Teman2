@@ -1,0 +1,43 @@
+gear: 2
+objective: >-
+  Repaint the kita product theme seam onto the R19 alphabet of frozen concept-K "SIAP" — paper, ink,
+  copper, forest, slate, muted — add the dark kita block that never existed, and select Fraunces and
+  Manrope for the workspace, so windows K2-K5 can restyle pages against stable token names.
+constraints:
+  - Presentation only. No route, endpoint, field, hook signature, API type, i18n key or data request changes.
+  - Only the two [data-product="kita"] theme blocks in globals.css may change; [data-product="my"] and :root
+    stay byte-identical.
+  - The six alias declarations pinned by kita-theme.contract.test.ts survive through the --bz-kita-* indirection.
+  - No red on kita — --state-danger and --bz-red resolve to copper; --bz-neon-purple resolves to slate so the
+    guard tests that READ those names stay green.
+  - No client PII. No paid per-token Anthropic endpoint.
+acceptance:
+  - text: >-
+      WHEN a kita document is painted in either theme, the computed --bz-base, --state-danger,
+      --bz-neon-purple, --line-control and body font-family SHALL be the R19 values, and
+      --state-danger SHALL never be a red.
+    probe: playwright getComputedStyle on a kita document ; npx vitest --run "src/app/(workspace)/__tests__"
+  - text: >-
+      WHEN the same page is painted under [data-product="my"], every token SHALL keep its
+      pre-existing value, proving the kita block does not leak.
+    probe: playwright getComputedStyle on a kita document ; diff the [data-product="my"] region against origin/main
+  - text: >-
+      WHEN the two kita blocks are parsed, their custom-property key sets SHALL be identical, so no
+      page can break in one theme only.
+    probe: python3 key-set comparison of the two kita blocks
+  - text: >-
+      WHEN a token that a consumer paints with is inspected, it SHALL NOT resolve to `transparent`.
+    probe: npx vitest --run "src/app/(workspace)/__tests__"
+  - text: >-
+      WHEN on-accent ink is measured against the copper fill it sits on via --accent-foreground or
+      --bz-on-warm, it SHALL clear SC 1.4.3 at 4.5:1; and the seam SHALL NOT redeclare --bz-text-pure,
+      whose one copper pairing reads better on its inherited black.
+    probe: npx vitest --run "src/app/(workspace)/__tests__"
+consumer_map:
+  - Every staff member on kita.balizero.com — the (workspace) layout and every kita route read these tokens at
+    first paint; measured in a real Chromium against `next dev --webpack`.
+  - (workspace)/__tests__/kita-theme.contract.test.ts and the new kita-r19.contract.test.ts read globals.css
+    directly and go red if a value or an alias drifts.
+  - hr/employees/page.tsx:469 paints --bz-navy-900 as the ink on a copper fill; the kita alias keeps it at 5.64:1.
+  - clients/page.tsx:806 paints --bz-text-pure on a copper fill; the seam refuses to redeclare that name so the
+    control keeps its inherited black and the seam does not make the pairing worse than the alphabet already does.
