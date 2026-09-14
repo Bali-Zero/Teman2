@@ -282,7 +282,7 @@ export function ZantaraWidget() {
                     max-w-[85%] rounded-2xl px-3.5 py-2.5 text-[13px] leading-relaxed
                     ${
                       msg.role === "user"
-                        ? "bg-accent-blue-editorial text-white"
+                        ? "bg-accent-zantara text-white"
                         : "bg-white/[0.06] text-white/85"
                     }
                     ${msg.isStreaming && !msg.content ? "animate-pulse" : ""}
@@ -357,7 +357,7 @@ export function ZantaraWidget() {
               <button
                 type="submit"
                 disabled={!input.trim() || isStreaming}
-                className="p-2.5 rounded-xl bg-accent-blue-editorial text-white disabled:opacity-30 hover:bg-[#1a41cc] transition-all"
+                className="p-2.5 rounded-xl bg-accent-zantara text-white disabled:opacity-30 hover:bg-[var(--color-purple-700)] transition-all"
               >
                 {isStreaming ? (
                   <Loader2 className="w-4 h-4 animate-spin" />
@@ -377,8 +377,8 @@ export function ZantaraWidget() {
           className="
             fixed bottom-6 right-6 z-50
             flex items-center gap-2.5 pl-4 pr-5 py-3.5
-            rounded-full bg-accent-blue-editorial hover:bg-[#1a41cc]
-            shadow-xl shadow-blue-500/25 hover:shadow-blue-500/40
+            rounded-full bg-accent-zantara hover:bg-[var(--color-purple-700)]
+            shadow-xl shadow-purple-500/25 hover:shadow-purple-500/40
             hover:scale-105 active:scale-100
             transition-all duration-200
             animate-[fadeInUp_0.5s_ease-out_2s_both]
