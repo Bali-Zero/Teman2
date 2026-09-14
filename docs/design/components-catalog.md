@@ -235,6 +235,7 @@
   - `gridClassName`: `string | undefined`
   - `clearLabel`: `React.ReactNode | undefined`
   - `children`: `React.ReactNode`
+  - `variant`: `"default" | "desk" | undefined`
 - **example**: `<FilterBar activeCount={/* number */} onClearAll={/* () => void */} children={/* React.ReactNode */} />`
 
 ## `FunnelFrame`
@@ -258,6 +259,7 @@
   - `title`: `React.ReactNode`
   - `subtitle`: `React.ReactNode | undefined`
   - `actions`: `React.ReactNode | undefined`
+  - `variant`: `"default" | "desk" | undefined`
 - **example**: `<ListPageHeader title={/* React.ReactNode */} />`
 
 ## `MatterCard`
@@ -329,6 +331,7 @@
   - `clearable`: `boolean | undefined`
   - `onDebouncedChange`: `(value: string) => void | undefined`
   - `debounceMs`: `number | undefined`
+  - `variant`: `"default" | "desk" | undefined`
 - **example**: `<SearchBox value={/* string */} onValueChange={/* (value: string) => void */} />`
 
 ## `StatChips`
@@ -339,6 +342,7 @@
   - `items`: `Array<StatChip | false | null | undefined>`
   - `className`: `string | undefined`
   - `chipClassName`: `string | undefined`
+  - `variant`: `"default" | "desk" | undefined`
 - **example**: `<StatChips />`
 
 ## `SubNav`
