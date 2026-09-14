@@ -16,10 +16,15 @@ sections P2-P6/D2):
    (P3) — this is what stops two workers from concurrently processing two
    *different* pending rows of the *same* thread (SKIP LOCKED alone only
    dedupes the same row).
-3. Coalescing (P2): once a bot-reply row is claimed, every OTHER pending
-   bot-reply row for the same thread is superseded (marked failed,
-   ``error='superseded_by_coalescing'``) — the generator always answers the
-   *latest* thread message, so one send covers a whole burst.
+3. FIFO per thread (P2, B2.5 — replaces the coalescing this worker used to
+   do): a burst of same-thread rows is served ONE AT A TIME, oldest first —
+   the candidate scan skips a ``needs_generation`` row while an OLDER
+   ``needs_generation`` row of the same thread is still pending/claimed/
+   generating. Each row is bound to its OWN inbound message
+   (``wa_inbox_bot._load_bound_thread_context``, migration 316), never the
+   thread's latest — see D1/D2 in evidence/2026-09/.../B2-5-design.md for
+   why "one send covers a whole burst" silently dropped and misanswered
+   real customer messages.
 4. If the row needs bot generation, re-check ``human_handling`` (the operator
    may have taken over since the webhook enqueued it) → if true, ABORT and
    drop the outbox row (bot must stay silent on a human-handled thread). A
@@ -416,8 +421,8 @@ async def _maybe_send_apology(
     Idempotent via the durable ``apology_sent_at`` column (migration 260):
     'failed' is a terminal wa_outbox status no other code path resets back
     to 'pending' (the stale-claim reclaimer only touches 'claimed'/
-    'generating'; coalescing only touches 'pending'), so in practice this
-    can only be entered once per row. As of 2026-08-27 (Kimi K3 adversarial
+    'generating'), so in practice this can only be entered once per row.
+    As of 2026-08-27 (Kimi K3 adversarial
     finding, minore) the durable claim is taken AFTER a successful
     client-facing send, not before — a read-only
     ``SELECT apology_sent_at`` guards against re-sending, and the post-send
@@ -574,71 +579,6 @@ async def _apply_pending_status(conn: asyncpg.Connection, wamid: str) -> None:
     logger.info("wa_outbox: applied staged status %s for wamid=%s", pending["status"], wamid)
 
 
-async def _coalesce_thread_bursts(
-    conn: asyncpg.Connection, thread_id: int, outbox_id: int
-) -> int:
-    """Supersede other NOT-YET-STARTED pending bot-reply rows of the same thread (P2).
-
-    The generator always answers the *latest* thread message (see
-    ``wa_inbox_bot._load_thread_context``), so whichever row of a same-thread
-    burst gets claimed first, its generated reply already covers the whole
-    burst — the other pending bot-reply rows would just be redundant sends.
-    Only ``needs_generation`` rows are touched: a pending HUMAN send must
-    never be silently dropped.
-
-    ``attempts = 0`` is what makes "redundant" TRUE, and it is not decorative
-    (2026-08-28, measured in production, thread 394 / row 363). Without it
-    this sweep also killed rows that had already generated real text. That
-    row's answer was produced by ChatGPT three times — every broker job
-    ``consumed_ok``, 9711/10137/8521 ms — and rejected three times by the
-    finalize safety pipeline; it sat at attempts 3 of MAX_ATTEMPTS waiting
-    for its 4th try when a follow-up message arrived 3m27s later and this
-    UPDATE marked it ``failed``. Silently: the sweep writes only ``status``,
-    never a fall-off reason, and never reaches ``_maybe_send_apology`` (which
-    is called ONLY from the two ladder-exhaustion branches). The client got
-    no answer and no apology, and nothing alerted.
-
-    A row with ``attempts > 0`` is not a burst duplicate — it is a question
-    somebody is still owed an answer to. Left alone, its ladder ends one of
-    only two ways: the answer is delivered, or the apology is sent. Never
-    silence. It may then reply after the newer row does; a second, later
-    message is a far smaller harm than a question answered by nothing, and
-    its own context load already includes the follow-up.
-    """
-    async with conn.transaction():
-        superseded = await conn.fetch(
-            """
-            UPDATE wa_outbox
-            SET status = 'failed'
-            WHERE thread_id = $1
-              AND status = 'pending'
-              AND needs_generation = true
-              AND attempts = 0
-              AND id <> $2
-            RETURNING id, message_id
-            """,
-            thread_id,
-            outbox_id,
-        )
-        for row in superseded:
-            await conn.execute(
-                """
-                UPDATE meta_inbox_messages
-                SET status = 'failed', error = 'superseded_by_coalescing'
-                WHERE id = $1
-                """,
-                row["message_id"],
-            )
-    if superseded:
-        logger.info(
-            "wa_outbox: coalesced %d pending bot reply(ies) for thread %s into outbox %s",
-            len(superseded),
-            thread_id,
-            outbox_id,
-        )
-    return len(superseded)
-
-
 async def _lease_heartbeat_loop(
     conn: asyncpg.Connection, outbox_id: int, claim_token: uuid.UUID
 ) -> None:
@@ -718,8 +658,24 @@ async def process_outbox_once(
             candidates = await conn.fetch(
                 """
                 SELECT id, thread_id, message_id, needs_generation, attempts
-                FROM wa_outbox
+                FROM wa_outbox AS w
                 WHERE status = 'pending' AND next_retry_at <= NOW()
+                  -- B2.5 FIFO per thread (migration 316's partial index
+                  -- serves this predicate): a bot-reply row waits behind
+                  -- any OLDER bot-reply row of the SAME thread that has
+                  -- not yet reached a terminal status. A human send
+                  -- (needs_generation = false) is neither blocked by this
+                  -- nor does it block a bot-reply row.
+                  AND (
+                    NOT needs_generation
+                    OR NOT EXISTS (
+                        SELECT 1 FROM wa_outbox AS older
+                        WHERE older.thread_id = w.thread_id
+                          AND older.needs_generation = true
+                          AND older.id < w.id
+                          AND older.status IN ('pending', 'claimed', 'generating')
+                    )
+                  )
                 ORDER BY next_retry_at, id
                 FOR UPDATE SKIP LOCKED
                 LIMIT $1
@@ -822,12 +778,10 @@ async def _process_claimed_row(
     # confirms (via RETURNING) that it actually matched.
     expected_status = "claimed"
 
-    # 3. Coalescing (P2) — before doing anything else, drop redundant pending
-    #    bot-reply rows of this thread. Safe from races: we hold the
-    #    per-thread advisory lock, so no other worker can claim a same-thread
-    #    row out from under this sweep.
-    if needs_generation:
-        await _coalesce_thread_bursts(conn, thread_id, outbox_id)
+    # 3. B2.5: no coalescing sweep — the claim SELECT's FIFO predicate
+    #    already guaranteed this row is the OLDEST needs_generation row of
+    #    its thread still in flight before we even got here (or a human
+    #    send, never gated by the predicate). Nothing to supersede.
 
     # Load the thread (human_handling gate + 24h window source;
     # handling_version = the epoch the codex leg fences its offer against).
@@ -844,7 +798,10 @@ async def _process_claimed_row(
         # Should not happen (FK), but never park the row.
         fenced = await conn.fetchrow(
             """
-            UPDATE wa_outbox SET status = 'failed'
+            UPDATE wa_outbox
+            SET status = 'failed',
+                generation_fall_off_reason = 'thread_missing',
+                generation_fall_off_at = NOW()
             WHERE id = $1 AND claim_token = $2 AND status = $3
             RETURNING id
             """,
@@ -882,7 +839,10 @@ async def _process_claimed_row(
         if thread["human_handling"]:
             fenced = await conn.fetchrow(
                 """
-                UPDATE wa_outbox SET status = 'failed'
+                UPDATE wa_outbox
+                SET status = 'failed',
+                    generation_fall_off_reason = 'aborted_human_takeover',
+                    generation_fall_off_at = NOW()
                 WHERE id = $1 AND claim_token = $2 AND status = $3
                 RETURNING id
                 """,
@@ -1093,9 +1053,20 @@ async def _process_claimed_row(
             standing = isinstance(gen_exc, BotStandingCondition)
             attempts += 1
             if attempts >= MAX_ATTEMPTS:
+                # COALESCE: the codex leg's own last attempt already wrote
+                # its OWN reason (best-effort, `wa_codex_leg.record_fall_
+                # off_reason`) in almost every case — this only fills the
+                # column when that write never happened (e.g. the leg
+                # itself never ran, or its best-effort write failed), so a
+                # terminal row is NEVER left with no reason (ruling a).
                 fenced = await conn.fetchrow(
                     """
-                    UPDATE wa_outbox SET status = 'failed', attempts = $2
+                    UPDATE wa_outbox
+                    SET status = 'failed', attempts = $2,
+                        generation_fall_off_reason = COALESCE(
+                            generation_fall_off_reason, 'generation_exhausted'
+                        ),
+                        generation_fall_off_at = COALESCE(generation_fall_off_at, NOW())
                     WHERE id = $1 AND claim_token = $3 AND status = $4
                     RETURNING id
                     """,
@@ -1251,7 +1222,10 @@ async def _process_claimed_row(
         # produced must NEVER be sent.
         await conn.execute(
             """
-            UPDATE wa_outbox SET status = 'failed'
+            UPDATE wa_outbox
+            SET status = 'failed',
+                generation_fall_off_reason = 'aborted_human_takeover_pre_send',
+                generation_fall_off_at = NOW()
             WHERE id = $1 AND claim_token = $2 AND status = $3
             """,
             outbox_id,
@@ -1286,7 +1260,10 @@ async def _process_claimed_row(
     if not window_open:
         fenced = await conn.fetchrow(
             """
-            UPDATE wa_outbox SET status = 'failed'
+            UPDATE wa_outbox
+            SET status = 'failed',
+                generation_fall_off_reason = 'window_closed_24h',
+                generation_fall_off_at = NOW()
             WHERE id = $1 AND claim_token = $2 AND status = $3
             RETURNING id
             """,
@@ -1322,9 +1299,17 @@ async def _process_claimed_row(
     except Exception as exc:
         attempts += 1
         if attempts >= MAX_ATTEMPTS:
+            # Overwrite unconditionally (not COALESCE): a Graph-send
+            # exhaustion is its OWN terminal event, distinct from whatever
+            # (if anything) generation itself recorded earlier on this row
+            # — generation already succeeded here, so any prior reason on
+            # this column describes a different, now-irrelevant attempt.
             fenced = await conn.fetchrow(
                 """
-                UPDATE wa_outbox SET status = 'failed', attempts = $2
+                UPDATE wa_outbox
+                SET status = 'failed', attempts = $2,
+                    generation_fall_off_reason = 'send_exhausted',
+                    generation_fall_off_at = NOW()
                 WHERE id = $1 AND claim_token = $3 AND status = $4
                 RETURNING id
                 """,
