@@ -257,7 +257,15 @@ async def test_bot_reply_aborts_on_human_takeover_before_generation() -> None:
     assert result == "aborted_human"
     svc.send_message.assert_not_awaited()
     assert any("aborted_human_takeover" in s for s, _ in conn.executed)
-    assert conn.sql_contains("UPDATE wa_outbox SET status = 'failed'")
+    # B2.5 (migration 316): the reason is now written in the SAME
+    # statement, so "UPDATE wa_outbox" and "SET status = 'failed'" are no
+    # longer on one line — pin the surviving clause and the new reason
+    # separately.
+    assert conn.sql_contains("SET status = 'failed'")
+    assert any(
+        "generation_fall_off_reason = 'aborted_human_takeover'" in s
+        for s, _ in conn.executed
+    )
 
 
 @pytest.mark.asyncio
@@ -382,7 +390,10 @@ async def test_bot_generate_failure_terminal_after_max_attempts(
 
     assert result == "failed"
     svc.send_message.assert_not_awaited()
-    assert conn.sql_contains("UPDATE wa_outbox SET status = 'failed', attempts")
+    assert conn.sql_contains("SET status = 'failed', attempts")
+    assert any(
+        "generation_exhausted" in s for s, _ in conn.executed
+    ), "terminal gen-failure must COALESCE in a reason when the leg left none"
     assert any("bot_generate_failed_after_" in str(a) for _, a in conn.executed)
 
 
@@ -527,88 +538,62 @@ async def test_send_failure_terminal_after_max_attempts() -> None:
     result = await process_outbox_once(pool, svc, _bot_gen)
 
     assert result == "failed"
-    assert conn.sql_contains("UPDATE wa_outbox SET status = 'failed', attempts")
+    assert conn.sql_contains("SET status = 'failed', attempts")
+    assert any(
+        "generation_fall_off_reason = 'send_exhausted'" in s for s, _ in conn.executed
+    )
     assert any("send_failed_after_" in str(a) for _, a in conn.executed)
 
 
-# ── P2: per-thread coalescing at claim ─────────────────────────────────────
+# ── B2.5: bursts served in order, coalescing removed ───────────────────────
+
+
+def test_coalescing_is_gone() -> None:
+    """Guilt: the function this whole section used to test no longer
+    exists — B2.5 folds nothing (design ruling b); a burst is served each
+    row in order instead. If this ever comes back it must come back
+    DELIBERATELY, not as an accidental reintroduction."""
+    assert not hasattr(wa_outbox_worker, "_coalesce_thread_bursts")
 
 
 @pytest.mark.asyncio
-async def test_coalescing_supersedes_other_pending_bot_replies_same_thread(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    """2 pending bot-reply rows for the same thread → claim one, supersede the
-    other, send exactly one reply."""
-    _arm_codex(monkeypatch)
-    winner = _candidate(10, thread_id=7, message_id=1000, needs_generation=True)
-    conn = ScriptedConn(
-        fetchrow_results=[
-            _thread_row(human_handling=False),
-            {"id": 10},  # generating-transition fenced RETURNING
-            {"id": 10},  # pre-send fence RETURNING
-            {"id": 10},  # final commit RETURNING
-            None,  # no staged status receipt
-        ],
-        fetchval_results=[
-            True,  # advisory lock
-            False,  # human_handling re-read at pre-send (no takeover)
-            True,  # window_open
-        ],
-        fetch_results=[
-            [winner],  # candidate scan claims outbox id=10
-            [{"id": 11, "message_id": 1001}],  # coalesce sweep supersedes id=11
-        ],
-    )
+async def test_claim_query_defers_a_bot_reply_row_behind_an_older_one_same_thread() -> None:
+    """Guilt: the candidate SELECT must carry the FIFO-per-thread predicate
+    (migration 316's partial index serves exactly this shape) — a
+    ``needs_generation`` row is skipped while an OLDER ``needs_generation``
+    row of the SAME thread is still pending/claimed/generating. This is a
+    SQL-text pin (the mock conn cannot evaluate the predicate itself); the
+    real ordering is proven against Postgres in
+    ``backend/tests/db/test_wa_outbox_bound_fifo.py``."""
+    conn = ScriptedConn(fetch_results=[[]])
     pool = _make_pool(conn)
-    svc = _wa_service(send_result={"messages": [{"id": "wamid.BURST.1"}]})
+    svc = _wa_service()
 
     result = await process_outbox_once(pool, svc, _bot_gen)
 
-    assert result == "sent"
-    svc.send_message.assert_awaited_once()  # exactly ONE reply for the burst
-    # the superseded row (id=11 / message 1001) was marked failed with the
-    # coalescing marker, never touched by a send
-    assert any(
-        "needs_generation = true" in s and (7, 10) == a for s, a in conn.executed
-    )
-    assert any(
-        "superseded_by_coalescing" in s and 1001 in a for s, a in conn.executed
-    )
+    assert result == "idle"
+    candidate_calls = conn.sql_with_args("FOR UPDATE SKIP LOCKED")
+    assert candidate_calls, "expected the candidate scan to run"
+    select_sql = candidate_calls[0][0]
+    assert "needs_generation = true" in select_sql
+    assert "older.id < w.id" in select_sql
+    assert "'pending', 'claimed', 'generating'" in select_sql
 
 
 @pytest.mark.asyncio
-async def test_coalescing_does_not_touch_pending_human_sends(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    """Coalescing must only ever supersede needs_generation=true rows — a
-    pending HUMAN send for the same thread must survive untouched (the SQL
-    filter itself enforces this; assert the coalesce query carries the
-    needs_generation=true predicate)."""
-    _arm_codex(monkeypatch)
-    winner = _candidate(12, thread_id=7, message_id=1200, needs_generation=True)
-    conn = ScriptedConn(
-        fetchrow_results=[
-            _thread_row(human_handling=False),
-            {"id": 12},
-            {"id": 12},
-            {"id": 12},
-            None,
-        ],
-        fetchval_results=[True, False, True],
-        fetch_results=[
-            [winner],
-            [],  # nothing superseded (the only other pending row is human-send, filtered out)
-        ],
-    )
+async def test_claim_query_never_defers_or_is_deferred_by_a_human_send() -> None:
+    """Innocence: the SAME predicate must let a human send (needs_generation
+    = false) through regardless of any older bot-reply row, via the
+    ``NOT needs_generation`` escape clause — a human operator's message must
+    never wait behind bot-generation traffic."""
+    conn = ScriptedConn(fetch_results=[[]])
     pool = _make_pool(conn)
-    svc = _wa_service(send_result={"messages": [{"id": "wamid.X"}]})
+    svc = _wa_service()
 
-    result = await process_outbox_once(pool, svc, _bot_gen)
+    await process_outbox_once(pool, svc, _bot_gen)
 
-    assert result == "sent"
-    coalesce_calls = conn.sql_with_args("needs_generation = true")
-    assert coalesce_calls, "coalesce query must filter on needs_generation = true"
+    select_sql = conn.sql_with_args("FOR UPDATE SKIP LOCKED")[0][0]
+    assert "NOT needs_generation" in select_sql
 
 
 # ── P3: per-thread advisory lock excludes concurrent claim of a locked thread ──
@@ -778,7 +763,11 @@ async def test_fencing_aborts_send_when_takeover_happens_during_generation(
     # 'done'" alone still matches the terminal write's shape, negated here.
     assert not conn.sql_contains("SET status = 'done'")
     assert conn.sql_contains("aborted_human_takeover_pre_send")
-    assert conn.sql_contains("UPDATE wa_outbox SET status = 'failed'")
+    assert conn.sql_contains("SET status = 'failed'")
+    assert any(
+        "generation_fall_off_reason = 'aborted_human_takeover_pre_send'" in s
+        for s, _ in conn.executed
+    )
 
 
 @pytest.mark.asyncio

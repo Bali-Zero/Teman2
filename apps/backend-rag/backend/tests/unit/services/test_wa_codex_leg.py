@@ -42,6 +42,7 @@ from backend.services.integrations.wa_finalize import (
     FinalizeOutcome,
     FinalizeResult,
 )
+from backend.services.integrations.wa_inbox_bot import BoundThreadContext
 from backend.services.rag.agentic._support_signal import SupportVerdict
 
 # B2.4 PR-2: every consumed completion is now a MAC-authenticated envelope
@@ -202,8 +203,18 @@ def _wire_stubs(
     # the attribute here is what a real deploy's Fly secret would do.
     monkeypatch.setattr(wa_codex_leg.settings, "wa_broker_key", _TEST_BROKER_KEY, raising=False)
 
-    load = AsyncMock(return_value=(query, [{"role": "user", "content": "hi"}]))
-    monkeypatch.setattr(wa_codex_leg, "_load_thread_context", load)
+    # B2.5 (migration 316): the leg now loads a context BOUND to its own
+    # inbound message, never the thread's latest — `inbound_message_id=830`
+    # is an arbitrary fixed id (the pre-existing suite below never asserts
+    # on it; the binding-specific behaviour has its own tests further down).
+    load = AsyncMock(
+        return_value=BoundThreadContext(
+            inbound_message_id=830,
+            query=query,
+            history=[{"role": "user", "content": "hi"}],
+        )
+    )
+    monkeypatch.setattr(wa_codex_leg, "_load_bound_thread_context", load)
 
     client = MagicMock()
     if build_exc is not None:
@@ -636,7 +647,12 @@ async def test_completed_with_takeover_drift_discards_and_stands_down(
     stubs.discard_completion.assert_awaited_once()
     assert stubs.discard_completion.await_args.kwargs["reason"] == "takeover"
     stubs.consume_result.assert_not_awaited()
-    assert conn.sql_contains("UPDATE wa_outbox SET status = 'failed'")
+    # B2.5 (migration 316): the atomic abort now sets the fall-off reason
+    # in the SAME statement — "UPDATE wa_outbox" and "SET status = 'failed'"
+    # are no longer on one line, so pin the clauses that survive separately
+    # (same pattern the B2.3b carrier comment above already established).
+    assert conn.sql_contains("SET status = 'failed'")
+    assert conn.sql_contains("generation_fall_off_reason = 'stand_down_drift'")
     assert conn.sql_contains("aborted_human_takeover_codex_drift")
 
 
@@ -1765,7 +1781,11 @@ def test_every_stored_fall_off_value_is_allowed_by_the_live_check_constraint() -
     # The UP block only — the file's ROLLBACK section restores the older,
     # narrower vocabulary on purpose.
     up = newest.read_text(encoding="utf-8").split("=== ROLLBACK ===")[0]
-    allowed = set(re.findall(r"'([a-z_]+)'", up))
+    # B2.5 (migration 316) introduced the first fall-off reason with a
+    # digit in it (`window_closed_24h`) — widen from [a-z_]+ so extraction
+    # does not silently drop a real, present value and report a false
+    # "rejected by the CHECK constraint".
+    allowed = set(re.findall(r"'([a-z0-9_]+)'", up))
 
     produced = (
         set(wa_codex_leg._FALL_OFF_REASON_PREFIX_MAP.values())
