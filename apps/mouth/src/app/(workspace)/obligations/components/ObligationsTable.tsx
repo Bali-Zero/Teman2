@@ -2,12 +2,60 @@
 
 import { Fragment, useState } from "react";
 
+import { cn } from "@/lib/utils";
+import { FOCUS, TABULAR } from "@/components/workspace/r19";
+
 import {
   CARD,
   INPUT_STYLE,
   type CatalogRuleOut,
   type ObligationOut,
 } from "./types";
+
+/**
+ * Register status → outlined SQUARE pill, word first. Kept page-local
+ * (rather than the shared `StatePill`, which is `rounded-full`) so the
+ * concept's `.state{border-radius:2px}` square survives on a dense table row.
+ *
+ * - `proposed` is copper because the row renders the viewer's own Approve and
+ *   Reject controls, so the viewer is demonstrably the next actor;
+ * - `alerted` is copper by the standing ruling in `concept/DISPOSITION.md`
+ *   C11 ("obligations `alerted` -> copper, `rejected` -> waiting"), recorded
+ *   as a RULING and not as a derivation this row can prove.
+ *
+ * `approved`/`done` are forest. `rejected` is a TERMINAL failure, so law #3
+ * binds it — muted, never danger, plus its own word. A due DATE is never a
+ * tone here: urgency lives on the date cell in warning, and it neither grants
+ * nor removes ownership.
+ */
+const STATUS_TONE: Record<string, string> = {
+  proposed: "text-[var(--bz-copper-text)] border-[var(--bz-copper-text)]",
+  approved: "text-[var(--state-success)] border-[var(--state-success)]",
+  done: "text-[var(--state-success)] border-[var(--state-success)]",
+  rejected: "text-[var(--tx-secondary)] border-[var(--line-control)]",
+  alerted: "text-[var(--bz-copper-text)] border-[var(--bz-copper-text)]",
+};
+
+function StatusPill({ status }: { status: string }) {
+  const tone =
+    STATUS_TONE[status] ??
+    "text-[var(--tx-secondary)] border-[var(--line-control)]";
+  return (
+    <span
+      className={cn(
+        "inline-flex h-6 items-center gap-1.5 whitespace-nowrap rounded-[2px] border bg-transparent px-2.5",
+        "text-[10px] font-[650] uppercase tracking-[0.12em]",
+        tone,
+      )}
+    >
+      <span
+        aria-hidden="true"
+        className="h-1.5 w-1.5 shrink-0 rounded-full bg-current"
+      />
+      {status}
+    </span>
+  );
+}
 
 const COLUMNS = [
   "ID",
@@ -48,6 +96,37 @@ export function dueMonthLabel(dueDate: string): string {
   if (!match) return "Unscheduled";
   const month = MONTH_NAMES[Number(match[2]) - 1];
   return month ? `${month} ${match[1]}` : "Unscheduled";
+}
+
+/**
+ * True when `dueDate` (YYYY-MM-DD) is already past or due within 7 days,
+ * measured against "today" in the business timezone Asia/Makassar — never
+ * the runtime's, so a reviewer in another timezone sees the same urgency
+ * window the Bali desk does. Urgency ONLY: this never touches a pill's tone
+ * and never makes a row copper.
+ */
+export function isDueSoon(dueDate: string): boolean {
+  const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(dueDate ?? "");
+  if (!match) return false;
+  const due = Date.UTC(
+    Number(match[1]),
+    Number(match[2]) - 1,
+    Number(match[3]),
+  );
+
+  const todayParts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Makassar",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(new Date());
+  const year = Number(todayParts.find((p) => p.type === "year")?.value);
+  const month = Number(todayParts.find((p) => p.type === "month")?.value);
+  const day = Number(todayParts.find((p) => p.type === "day")?.value);
+  const today = Date.UTC(year, month - 1, day);
+
+  const diffDays = Math.round((due - today) / 86400000);
+  return diffDays <= 7;
 }
 
 interface Props {
@@ -102,10 +181,14 @@ export function ObligationsTable({
     return (
       <>
         <tr
+          data-testid={`obligation-row-${row.id}`}
           className="border-b last:border-b-0"
           style={{ borderColor: "var(--bz-border)" }}
         >
-          <td className="px-3 py-2" style={{ color: "var(--bz-text-1)" }}>
+          <td
+            className="px-3 py-2"
+            style={{ color: "var(--bz-text-1)", ...TABULAR }}
+          >
             {row.id}
           </td>
           <td className="px-3 py-2" style={{ color: "var(--bz-text-1)" }}>
@@ -162,10 +245,21 @@ export function ObligationsTable({
           >
             {rule?.authority ?? "—"}
           </td>
-          <td className="px-3 py-2" style={{ color: "var(--bz-text-1)" }}>
+          <td
+            className="px-3 py-2"
+            style={{ color: "var(--bz-text-1)", ...TABULAR }}
+          >
             {row.period_key}
           </td>
-          <td className="px-3 py-2" style={{ color: "var(--bz-text-1)" }}>
+          <td
+            className="px-3 py-2"
+            style={{
+              color: isDueSoon(row.due_date)
+                ? "var(--state-warning)"
+                : "var(--bz-text-1)",
+              ...TABULAR,
+            }}
+          >
             {row.due_date}
           </td>
           <td
@@ -174,8 +268,8 @@ export function ObligationsTable({
           >
             {row.needs_review_reason ?? "—"}
           </td>
-          <td className="px-3 py-2" style={{ color: "var(--bz-text-1)" }}>
-            {row.status}
+          <td className="px-3 py-2">
+            <StatusPill status={row.status} />
           </td>
           <td
             className="px-3 py-2 text-xs"
@@ -208,32 +302,36 @@ export function ObligationsTable({
                     type="button"
                     disabled={busyId === row.id}
                     onClick={() => onApprove(row)}
-                    className="rounded-md px-3 py-1 text-xs font-medium text-white"
-                    style={{
-                      background: "var(--state-success)",
-                      opacity: busyId === row.id ? 0.6 : 1,
-                    }}
+                    className={cn(
+                      "min-h-8 bg-[var(--state-success)] px-3 text-xs font-[650] text-[var(--bz-on-warm)]",
+                      FOCUS,
+                    )}
+                    style={{ opacity: busyId === row.id ? 0.6 : 1 }}
                   >
                     {busyId === row.id ? "…" : "Approve"}
                   </button>
+                  {/* Copper is never a fill: Reject is an outline "attn"
+                      action, not a red/danger button. */}
                   <button
                     type="button"
                     disabled={busyId === row.id}
                     onClick={() => onReject(row)}
-                    className="rounded-md px-3 py-1 text-xs font-medium text-white"
-                    style={{
-                      background: "var(--state-danger)",
-                      opacity: busyId === row.id ? 0.6 : 1,
-                    }}
+                    className={cn(
+                      "min-h-8 border border-[var(--bz-copper)] bg-transparent px-3 text-xs font-[650] text-[var(--bz-copper-text)]",
+                      FOCUS,
+                    )}
+                    style={{ opacity: busyId === row.id ? 0.6 : 1 }}
                   >
                     {busyId === row.id ? "…" : "Reject"}
                   </button>
                 </div>
                 {rowError[row.id] && (
+                  // Copper: the viewer just tried to decide this row and the
+                  // decision failed — they are the next actor to retry it.
                   <p
                     role="alert"
                     className="text-xs"
-                    style={{ color: "var(--state-danger)" }}
+                    style={{ color: "var(--bz-copper-text)" }}
                   >
                     {rowError[row.id]}
                   </p>

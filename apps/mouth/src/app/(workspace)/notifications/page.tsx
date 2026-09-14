@@ -1,24 +1,55 @@
 "use client";
 
+/**
+ * Notifications desk — concept-K v2 "TEPAT FORTE"
+ * (R19-KITA-20260914/fusion/concept.md), SAETTA-R19K window K2c.
+ *
+ * A hairline ledger of automated email alerts: a Masthead, a DeskStrip
+ * carrying the count/filters/search, and rows with a delivery STATUS (word +
+ * outlined square pill) and a derived SEVERITY (word + pip). Neither is
+ * ownership — copper never appears here, because no row's next actor is
+ * derivable from an automated alert. `--state-danger` and `--state-warning`
+ * stay on this page on purpose: `token-drain.residuals.guard.test.ts` pins
+ * this file to `--state-success` / `--state-warning` / `--state-danger` as
+ * the proof of the WS2 token drain, and `desk-no-red.guard.test.ts` exempts
+ * this page BY NAME for exactly that reason. On kita `--state-danger`
+ * resolves to copper, so it is not red.
+ *
+ * STATUS uses a page-local square pill (not the shared `StatePill`, which is
+ * `rounded-full` and only carries the four ownership tones — it has no
+ * `--state-warning`/`--state-danger` tone to give). SEVERITY is a second,
+ * independent word-plus-pip mark derived client-side from `alert_type`: the
+ * only shape the backend sends is the type string, so the four severities
+ * (critical/high/medium/low) are read out of it here rather than adding a
+ * field the backend does not have.
+ */
+
 import React, { useState, useEffect } from "react";
-import {
-  Loader2,
-  Mail,
-  CheckCircle,
-  XCircle,
-  Clock,
-  RefreshCw,
-  Pause,
-  Search,
-  Bell,
-} from "lucide-react";
+import { Loader2, Pause, RefreshCw, Search } from "lucide-react";
 import { api } from "@/lib/api";
 import { logger } from "@/lib/logger";
 import { useToast } from "@/components/ui/toast";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import {
+  CellStack,
+  DeskStrip,
+  EmptyState,
+  EYEBROW,
+  FOCUS,
+  HairlineBody,
+  HairlineGrid,
+  HairlineHead,
+  HairlineRow,
+  Masthead,
+  Notice,
+  NumberedList,
+  SERIF,
+  SERIF_SECTION,
+  StatePill,
+  TABULAR,
+  type NumberedItem,
+} from "@/components/workspace/r19";
 
 interface NotificationStats {
   total_alerts_24h: number;
@@ -48,6 +79,215 @@ interface Alert {
   created_at: string;
   sent_at: string | null;
   error_message: string | null;
+}
+
+// ── severity: word + pip, derived from `alert_type` ────────────────────────
+// critical = FILLED copper pip, high = HOLLOW copper pip, medium = warning,
+// low = muted. The word is always present; the pip alone never carries it.
+// Copper is never a fill except this sanctioned critical pip.
+type Severity = "critical" | "high" | "medium" | "low";
+
+function severityOf(alertType: string): Severity {
+  if (alertType.includes("critical")) return "critical";
+  if (alertType.includes("warning")) return "high";
+  if (alertType === "birthday") return "low";
+  return "medium";
+}
+
+const SEVERITY_LABEL: Record<Severity, string> = {
+  critical: "Critical",
+  high: "High",
+  medium: "Medium",
+  low: "Low",
+};
+
+const SEVERITY_TONE: Record<Severity, string> = {
+  critical: "text-[var(--bz-copper-text)]",
+  high: "text-[var(--bz-copper-text)]",
+  medium: "text-[var(--state-warning)]",
+  low: "text-[var(--tx-secondary)]",
+};
+
+function SeverityMark({ severity }: { severity: Severity }) {
+  return (
+    <span
+      className={cn(
+        "inline-flex items-center gap-1.5 text-[10px] font-[650] uppercase tracking-[0.1em]",
+        SEVERITY_TONE[severity],
+      )}
+    >
+      <span
+        aria-hidden="true"
+        className={cn(
+          "h-1.5 w-1.5 shrink-0 rounded-full border border-current",
+          severity === "critical" && "bg-current",
+        )}
+      />
+      {SEVERITY_LABEL[severity]}
+    </span>
+  );
+}
+
+// ── delivery status: outlined SQUARE pill ───────────────────────────────────
+// The concept's `.state{border-radius:2px}` square, not the shared
+// `StatePill`'s `rounded-full` — and the one place this file is allowed (and
+// required, by the sibling guard) to read the danger token by name.
+const STATUS_LABEL: Record<string, string> = {
+  sent: "Sent",
+  pending: "Pending",
+  failed: "Failed",
+};
+
+const STATUS_TONE: Record<string, string> = {
+  sent: "text-[var(--state-success)] border-[var(--state-success)]",
+  pending: "text-[var(--state-warning)] border-[var(--state-warning)]",
+  // `failed` is a TERMINAL failure, not an active alarm: law #3 binds it —
+  // muted, never danger, plus the word "Failed" the pill already carries.
+  failed: "text-[var(--tx-secondary)] border-[var(--line-control)]",
+};
+
+function StatusPill({ status }: { status: string }) {
+  const label = STATUS_LABEL[status] ?? status;
+  const tone =
+    STATUS_TONE[status] ??
+    "text-[var(--tx-secondary)] border-[var(--line-control)]";
+  return (
+    <span
+      className={cn(
+        "inline-flex h-6 items-center gap-1.5 whitespace-nowrap rounded-[2px] border bg-transparent px-2.5",
+        "text-[10px] font-[650] uppercase tracking-[0.12em]",
+        tone,
+      )}
+    >
+      <span
+        aria-hidden="true"
+        className="h-1.5 w-1.5 shrink-0 rounded-full bg-current"
+      />
+      {label}
+    </span>
+  );
+}
+
+function humanizeType(type: string): string {
+  return type.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+const STATUS_FILTERS: Array<{ value: string; label: string }> = [
+  { value: "", label: "All" },
+  { value: "pending", label: "Pending" },
+  { value: "sent", label: "Sent" },
+  { value: "failed", label: "Failed" },
+];
+
+const TYPE_FILTERS: Array<{ value: string; label: string }> = [
+  { value: "", label: "All types" },
+  { value: "passport_warning", label: "Passport warning" },
+  { value: "passport_critical", label: "Passport critical" },
+  { value: "visa_critical", label: "Visa critical" },
+  { value: "birthday", label: "Birthday" },
+];
+
+// ── system status notice ────────────────────────────────────────────────────
+const SYSTEM_STATUS_COPY: Record<
+  string,
+  { tone: "ok" | "you" | "wait" | "warn"; sentence: string }
+> = {
+  healthy: { tone: "ok", sentence: "All systems operational." },
+  // A fleet-wide health status is not derived from viewer + record, so it is
+  // never copper — "you" would claim the signed-in viewer is the next actor,
+  // which a system-wide condition can't demonstrate. Warning: urgency, not
+  // ownership.
+  degraded: {
+    tone: "warn",
+    sentence: "Multiple failures detected — attention required.",
+  },
+  pending: { tone: "wait", sentence: "Pending alerts backlog — processing." },
+};
+
+/**
+ * The shared `Notice` has three tones — you / ok / wait — and no warning.
+ * `components/workspace/r19/**` is another window's perimeter while it is being
+ * upgraded to v2, so this page does NOT add a tone there. It wraps the
+ * primitive and overrides its boundary and text through `className`, which
+ * tailwind-merge resolves in favour of the later class. No class string is
+ * copied out of the module; when v2 ships a warning tone this wrapper becomes a
+ * one-line adapter and is deleted, not kept beside it.
+ */
+function DeskNotice({
+  tone,
+  role,
+  className,
+  children,
+}: {
+  tone: "you" | "ok" | "wait" | "warn";
+  role?: "alert" | "status";
+  className?: string;
+  children: React.ReactNode;
+}) {
+  if (tone === "warn") {
+    return (
+      <Notice
+        tone="wait"
+        role={role}
+        className={cn(
+          "border-[var(--state-warning)] text-[var(--state-warning)]",
+          className,
+        )}
+      >
+        {children}
+      </Notice>
+    );
+  }
+  return (
+    <Notice tone={tone} role={role} className={className}>
+      {children}
+    </Notice>
+  );
+}
+
+function systemStatusCopy(status: string) {
+  return (
+    SYSTEM_STATUS_COPY[status] ?? {
+      tone: "wait" as const,
+      sentence: "Status unknown.",
+    }
+  );
+}
+
+// ── stat band ────────────────────────────────────────────────────────────
+function StatCell({
+  label,
+  value,
+  tone = "ink",
+}: {
+  label: string;
+  value: number;
+  tone?: "ink" | "warn" | "you" | "ok" | "muted";
+}) {
+  const toneClass =
+    tone === "warn"
+      ? "text-[var(--state-warning)]"
+      : tone === "you"
+        ? "text-[var(--bz-copper-text)]"
+        : tone === "ok"
+          ? "text-[var(--state-success)]"
+          : tone === "muted"
+            ? "text-[var(--tx-secondary)]"
+            : "text-[var(--tx-pure)]";
+  return (
+    <div className="min-h-[72px] min-w-0 border-[var(--bz-border)] px-4 py-3 [&:not(:last-child)]:border-r">
+      <span className={EYEBROW}>{label}</span>
+      <span
+        className={cn(
+          "my-1 block text-[22px] leading-none tracking-[-0.02em]",
+          toneClass,
+        )}
+        style={{ ...SERIF, ...TABULAR }}
+      >
+        {value}
+      </span>
+    </div>
+  );
 }
 
 export default function NotificationsDashboardPage() {
@@ -139,428 +379,358 @@ export default function NotificationsDashboardPage() {
   if (isLoading) {
     return (
       <div className="flex h-[50vh] items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        <Loader2
+          className="h-8 w-8 animate-spin text-[var(--tx-secondary)]"
+          aria-hidden="true"
+        />
       </div>
     );
   }
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "sent":
-        return "text-[var(--state-success)] bg-[color-mix(in_srgb,var(--state-success)_12%,transparent)]";
-      case "pending":
-        return "text-[var(--state-warning)] bg-[color-mix(in_srgb,var(--state-warning)_12%,transparent)]";
-      case "failed":
-        return "text-[var(--state-danger)] bg-[color-mix(in_srgb,var(--state-danger)_12%,transparent)]";
-      default:
-        return "text-[var(--bz-text-secondary)] bg-[var(--surface-raised)]";
-    }
+  const filtersActive = Boolean(searchQuery || filterStatus || filterType);
+  const clearFilters = () => {
+    setSearchQuery("");
+    setFilterStatus("");
+    setFilterType("");
   };
 
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case "sent":
-        return <CheckCircle className="w-4 h-4" />;
-      case "pending":
-        return <Clock className="w-4 h-4" />;
-      case "failed":
-        return <XCircle className="w-4 h-4" />;
-      default:
-        return null;
-    }
-  };
+  const statusCopy = systemStatusCopy(systemStatus);
+
+  const topClientItems: NumberedItem[] = (stats?.top_clients ?? [])
+    .slice(0, 5)
+    .map((client) => ({
+      id: String(client.id),
+      title: client.name,
+      detail: client.email,
+      tone: "wait",
+      right: (
+        <div className="flex items-center gap-3">
+          <span
+            className="text-[11px] text-[var(--tx-secondary)]"
+            style={TABULAR}
+          >
+            {client.alert_count} alerts
+          </span>
+          <button
+            type="button"
+            aria-label={`Pause notifications for ${client.name}`}
+            onClick={() => handlePauseClient(client.id)}
+            className={cn(
+              "grid h-8 w-8 place-items-center border border-[var(--line-control)] text-[var(--tx-secondary)] hover:text-[var(--tx-pure)]",
+              FOCUS,
+            )}
+          >
+            <Pause className="h-3.5 w-3.5" aria-hidden="true" />
+          </button>
+        </div>
+      ),
+    }));
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-500">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">
-            Notifications Dashboard
-          </h1>
-          <p className="text-muted-foreground">
-            Monitor automated email alerts
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={loadDashboard}
-            className="gap-2"
-          >
-            <RefreshCw className="w-4 h-4" />
-            Refresh
-          </Button>
-          {stats?.failed_count_24h ? (
-            <Button
-              variant="destructive"
-              size="sm"
-              onClick={handleRetryFailed}
-              className="gap-2"
+    <div className="p-4 md:p-6">
+      <Masthead
+        eyebrow="Ops"
+        title="Notifications"
+        subtitle="Monitor automated email alerts and delivery health."
+        className="mb-5"
+        right={
+          <>
+            <button
+              type="button"
+              onClick={loadDashboard}
+              className={cn(
+                "inline-flex min-h-11 items-center gap-2 border border-[var(--line-control)] bg-transparent px-3.5 text-[12px] font-[650] text-[var(--tx-pure)] hover:bg-[var(--bz-card-hover)]",
+                FOCUS,
+              )}
             >
-              <RefreshCw className="w-4 h-4" />
-              Retry Failed ({stats.failed_count_24h})
-            </Button>
-          ) : null}
-        </div>
-      </div>
+              <RefreshCw className="h-4 w-4" aria-hidden="true" />
+              Refresh
+            </button>
+            {stats?.failed_count_24h ? (
+              <button
+                type="button"
+                onClick={handleRetryFailed}
+                className={cn(
+                  "inline-flex min-h-11 items-center gap-2 border border-[var(--bz-copper)] bg-transparent px-3.5 text-[12px] font-[650] text-[var(--bz-copper-text)] hover:bg-[var(--bz-card-hover)]",
+                  FOCUS,
+                )}
+              >
+                <RefreshCw className="h-4 w-4" aria-hidden="true" />
+                Retry failed ({stats.failed_count_24h})
+              </button>
+            ) : null}
+          </>
+        }
+      />
 
-      {/* System Status */}
-      <div
-        className={cn(
-          "rounded-lg border p-4 flex items-center gap-3",
-          systemStatus === "healthy"
-            ? "border-[color-mix(in_srgb,var(--state-success)_30%,transparent)] bg-[color-mix(in_srgb,var(--state-success)_10%,transparent)]"
-            : systemStatus === "degraded"
-              ? "border-[color-mix(in_srgb,var(--state-danger)_30%,transparent)] bg-[color-mix(in_srgb,var(--state-danger)_10%,transparent)]"
-              : "border-[color-mix(in_srgb,var(--state-warning)_30%,transparent)] bg-[color-mix(in_srgb,var(--state-warning)_10%,transparent)]",
-        )}
+      <DeskNotice
+        tone={statusCopy.tone}
+        role={
+          statusCopy.tone === "you" || statusCopy.tone === "warn"
+            ? "alert"
+            : "status"
+        }
+        className="mb-4"
       >
-        <div
-          className={cn(
-            "w-3 h-3 rounded-full",
-            systemStatus === "healthy"
-              ? "bg-[var(--state-success)]"
-              : systemStatus === "degraded"
-                ? "bg-[var(--state-danger)]"
-                : "bg-[var(--state-warning)]",
-          )}
-        />
-        <div>
-          <p className="font-medium">
-            System Status:{" "}
-            {systemStatus.charAt(0).toUpperCase() + systemStatus.slice(1)}
-          </p>
-          <p className="text-sm text-muted-foreground">
-            {systemStatus === "healthy"
-              ? "All systems operational"
-              : systemStatus === "degraded"
-                ? "Multiple failures detected - attention required"
-                : "Pending alerts backlog - processing"}
-          </p>
-        </div>
-      </div>
+        <strong className="font-[650]">
+          System status:{" "}
+          {systemStatus.charAt(0).toUpperCase() + systemStatus.slice(1)}.
+        </strong>{" "}
+        {statusCopy.sentence}
+      </DeskNotice>
 
-      {/* Stats Grid */}
       {stats && (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <StatCard
-            title="24h Alerts"
-            aria-label="24h Alerts"
-            value={stats.total_alerts_24h}
-            icon={Mail}
-            color="blue"
-          />
-          <StatCard
-            title="Pending"
-            aria-label="Pending"
-            value={stats.pending_count}
-            icon={Clock}
-            color="amber"
-          />
-          <StatCard
-            title="Sent (24h)"
-            aria-label="Sent (24h)"
-            value={stats.sent_count_24h}
-            icon={CheckCircle}
-            color="green"
-          />
-          <StatCard
-            title="Failed (24h)"
-            aria-label="Failed (24h)"
+        <div className="mb-4 grid grid-cols-2 border-y border-[var(--bz-border)] md:grid-cols-4">
+          <StatCell label="24h alerts" value={stats.total_alerts_24h} />
+          <StatCell label="Pending" value={stats.pending_count} tone="warn" />
+          <StatCell label="Sent · 24h" value={stats.sent_count_24h} tone="ok" />
+          <StatCell
+            label="Failed · 24h"
             value={stats.failed_count_24h}
-            icon={XCircle}
-            color={stats.failed_count_24h > 0 ? "red" : "gray"}
+            // A raw fleet-wide failure count is not viewer+record derived,
+            // so it is never copper — warning: urgency, not ownership.
+            tone={stats.failed_count_24h > 0 ? "warn" : "muted"}
           />
         </div>
       )}
 
-      {/* Filters */}
-      <div className="flex flex-wrap gap-4">
-        <div className="flex items-center gap-2">
-          <Search className="w-4 h-4 text-muted-foreground" />
-          <Input
-            placeholder="Search clients..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-64"
+      <DeskStrip
+        count={filteredAlerts.length}
+        countLabel={`${filteredAlerts.length} alerts`}
+        filters={STATUS_FILTERS.map((f) => (
+          <StatePill
+            key={f.value || "all"}
+            tone="wait"
+            label={f.label}
+            pressed={filterStatus === f.value}
+            onClick={() => setFilterStatus(f.value)}
           />
-        </div>
-        <select
-          value={filterStatus}
-          onChange={(e) => setFilterStatus(e.target.value)}
-          className="px-3 py-2 rounded-md border bg-background"
-        >
-          <option value="">All Statuses</option>
-          <option value="pending">Pending</option>
-          <option value="sent">Sent</option>
-          <option value="failed">Failed</option>
-        </select>
-        <select
-          value={filterType}
-          onChange={(e) => setFilterType(e.target.value)}
-          className="px-3 py-2 rounded-md border bg-background"
-        >
-          <option value="">All Types</option>
-          <option value="passport_warning">Passport Warning</option>
-          <option value="passport_critical">Passport Critical</option>
-          <option value="visa_critical">Visa Critical</option>
-          <option value="birthday">Birthday</option>
-        </select>
-      </div>
-
-      {/* Alerts Table */}
-      <div className="rounded-xl border">
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-muted/50">
-              <tr>
-                <th className="px-4 py-3 text-left text-sm font-medium">
-                  Client
-                </th>
-                <th className="px-4 py-3 text-left text-sm font-medium">
-                  Type
-                </th>
-                <th className="px-4 py-3 text-left text-sm font-medium">
-                  Status
-                </th>
-                <th className="px-4 py-3 text-left text-sm font-medium">
-                  Subject
-                </th>
-                <th className="px-4 py-3 text-left text-sm font-medium">
-                  Time
-                </th>
-                <th className="px-4 py-3 text-left text-sm font-medium">
-                  Actions
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredAlerts.length === 0 && (
-                <tr>
-                  <td
-                    colSpan={6}
-                    className="px-4 py-12 text-center text-sm text-muted-foreground"
-                  >
-                    <Bell className="w-8 h-8 mx-auto mb-2 opacity-40" />
-                    {searchQuery || filterStatus || filterType
-                      ? "No notifications match your filters."
-                      : "No notifications yet."}
-                  </td>
-                </tr>
+        ))}
+        right={
+          <>
+            <div className="relative">
+              <Search
+                className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[var(--tx-secondary)]"
+                aria-hidden="true"
+              />
+              <input
+                type="search"
+                aria-label="Search notifications"
+                placeholder="Search clients…"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className={cn(
+                  "h-9 w-48 border border-[var(--line-control)] bg-transparent pl-8 pr-2 text-[12px] text-[var(--tx-pure)] placeholder:text-[var(--tx-secondary)]",
+                  "focus:border-[var(--bz-copper)] focus:outline-none",
+                )}
+              />
+            </div>
+            <select
+              aria-label="Filter by type"
+              value={filterType}
+              onChange={(e) => setFilterType(e.target.value)}
+              className={cn(
+                "h-9 border border-[var(--line-control)] bg-transparent px-2 text-[12px] text-[var(--tx-pure)]",
+                "focus:border-[var(--bz-copper)] focus:outline-none",
               )}
-              {filteredAlerts.map((alert) => (
-                <React.Fragment key={alert.id}>
-                  <tr
-                    className="border-t hover:bg-muted/50 cursor-pointer"
-                    onClick={() =>
-                      setExpandedAlert(
-                        expandedAlert === alert.id ? null : alert.id,
-                      )
-                    }
+            >
+              {TYPE_FILTERS.map((t) => (
+                <option key={t.value || "all"} value={t.value}>
+                  {t.label}
+                </option>
+              ))}
+            </select>
+          </>
+        }
+      />
+
+      <HairlineGrid cols="minmax(170px,1.8fr) minmax(130px,1fr) 96px minmax(160px,1.3fr) 88px 44px">
+        <HairlineHead>
+          <span>Client</span>
+          <span>Type</span>
+          <span>Status</span>
+          <span>Subject</span>
+          <span>Time</span>
+          <span className="sr-only">Actions</span>
+        </HairlineHead>
+        <HairlineBody>
+          {filteredAlerts.length === 0 ? (
+            <EmptyState
+              action={
+                filtersActive ? (
+                  <button
+                    type="button"
+                    onClick={clearFilters}
+                    className="text-[12px] font-[650] text-[var(--bz-copper-text)] underline underline-offset-2"
                   >
-                    <td className="px-4 py-3">
-                      <div>
-                        <p className="font-medium">{alert.client_name}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {alert.client_email}
-                        </p>
-                      </div>
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className="text-sm capitalize">
-                        {alert.alert_type.replace("_", " ")}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3">
-                      <span
-                        className={cn(
-                          "inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium",
-                          getStatusColor(alert.status),
-                        )}
-                      >
-                        {getStatusIcon(alert.status)}
-                        {alert.status}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3">
-                      <p className="text-sm truncate max-w-xs">
-                        {alert.email_subject}
-                      </p>
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex flex-col gap-0.5">
-                        <p className="text-sm text-muted-foreground">
-                          {new Date(alert.created_at).toLocaleDateString(
-                            "en-US",
-                            {
-                              month: "short",
-                              day: "numeric",
-                              year: "numeric",
-                            },
-                          )}
-                        </p>
-                        {(() => {
-                          const ageDays = Math.floor(
-                            (Date.now() -
-                              new Date(alert.created_at).getTime()) /
-                              86400000,
-                          );
-                          if (ageDays < 1) return null;
-                          const label =
-                            ageDays >= 365
-                              ? `${Math.floor(ageDays / 365)}y ago`
-                              : ageDays >= 30
-                                ? `${Math.floor(ageDays / 30)}mo ago`
-                                : ageDays >= 7
-                                  ? `${Math.floor(ageDays / 7)}w ago`
-                                  : `${ageDays}d ago`;
-                          return (
-                            <span
-                              className="text-[10px] px-1.5 py-0.5 rounded tabular-nums self-start"
-                              style={{
-                                background: "var(--surface-raised)",
-                                color: "var(--muted-foreground)",
-                              }}
-                            >
-                              {label}
-                            </span>
-                          );
-                        })()}
-                      </div>
-                    </td>
-                    <td className="px-4 py-3">
-                      <Button
-                        variant="ghost"
-                        size="sm"
+                    Clear filters
+                  </button>
+                ) : undefined
+              }
+            >
+              {filtersActive
+                ? "No notifications match your filters."
+                : "No notifications yet."}
+            </EmptyState>
+          ) : (
+            filteredAlerts.map((alert) => {
+              const isOpen = expandedAlert === alert.id;
+              const ageDays = Math.floor(
+                (Date.now() - new Date(alert.created_at).getTime()) / 86400000,
+              );
+              const ageTag =
+                ageDays < 1
+                  ? ""
+                  : ageDays >= 365
+                    ? ` · ${Math.floor(ageDays / 365)}y ago`
+                    : ageDays >= 30
+                      ? ` · ${Math.floor(ageDays / 30)}mo ago`
+                      : ageDays >= 7
+                        ? ` · ${Math.floor(ageDays / 7)}w ago`
+                        : ` · ${ageDays}d ago`;
+              const dateLabel = new Date(alert.created_at).toLocaleDateString(
+                "en-US",
+                { month: "short", day: "numeric", year: "numeric" },
+              );
+
+              return (
+                <React.Fragment key={alert.id}>
+                  <HairlineRow
+                    role="button"
+                    tabIndex={0}
+                    aria-expanded={isOpen}
+                    aria-label={`Notification for ${alert.client_name}`}
+                    onClick={() => setExpandedAlert(isOpen ? null : alert.id)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        setExpandedAlert(isOpen ? null : alert.id);
+                      }
+                    }}
+                    className={cn("cursor-pointer", FOCUS)}
+                    touchAction={
+                      <button
+                        type="button"
+                        aria-label={`Pause notifications for ${alert.client_name}`}
                         onClick={(e) => {
                           e.stopPropagation();
                           handlePauseClient(alert.client_id);
                         }}
+                        // The row is keyboard-activatable and its own
+                        // onKeyDown calls preventDefault() on Enter/Space —
+                        // without stopping propagation here that bubbles up
+                        // and toggles the row instead of activating Pause.
+                        onKeyDown={(e) => e.stopPropagation()}
+                        className={cn(
+                          "grid h-11 w-11 place-items-center",
+                          FOCUS,
+                        )}
                       >
-                        <Pause className="w-4 h-4" />
-                      </Button>
-                    </td>
-                  </tr>
-                  {expandedAlert === alert.id && (
-                    <tr className="border-t bg-muted/30">
-                      <td colSpan={6} className="px-4 py-4">
-                        <div className="space-y-2">
-                          <p className="text-sm font-medium">Email Subject:</p>
-                          <p className="text-sm">{alert.email_subject}</p>
-                          {alert.error_message && (
-                            <>
-                              <p className="text-sm font-medium text-[var(--state-danger)] mt-2">
-                                Error:
-                              </p>
-                              <p className="text-sm text-[var(--state-danger)]">
-                                {alert.error_message}
-                              </p>
-                            </>
-                          )}
-                          {alert.sent_at && (
-                            <p className="text-sm text-muted-foreground mt-2">
-                              Sent:{" "}
-                              {new Date(alert.sent_at).toLocaleDateString(
-                                "en-US",
-                                {
-                                  month: "short",
-                                  day: "numeric",
-                                  year: "numeric",
-                                },
-                              )}{" "}
-                              {new Date(alert.sent_at).toLocaleTimeString(
-                                "en-US",
-                                {
-                                  hour: "2-digit",
-                                  minute: "2-digit",
-                                },
-                              )}
-                            </p>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
+                        <Pause className="h-4 w-4" aria-hidden="true" />
+                      </button>
+                    }
+                    actions={
+                      <button
+                        type="button"
+                        aria-label={`Pause notifications for ${alert.client_name}`}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handlePauseClient(alert.client_id);
+                        }}
+                        // Same cure as the touchAction Pause button above.
+                        onKeyDown={(e) => e.stopPropagation()}
+                        className={cn(
+                          "grid h-8 w-8 place-items-center border border-[var(--line-control)] text-[var(--tx-secondary)] hover:text-[var(--tx-pure)]",
+                          FOCUS,
+                        )}
+                      >
+                        <Pause className="h-3.5 w-3.5" aria-hidden="true" />
+                      </button>
+                    }
+                  >
+                    <CellStack
+                      primary={alert.client_name}
+                      secondary={alert.client_email}
+                    />
+                    <CellStack
+                      primary={humanizeType(alert.alert_type)}
+                      secondary={
+                        <SeverityMark severity={severityOf(alert.alert_type)} />
+                      }
+                    />
+                    <StatusPill status={alert.status} />
+                    <span
+                      className="truncate text-[12px] text-[var(--tx-pure)]"
+                      title={alert.email_subject}
+                    >
+                      {alert.email_subject}
+                    </span>
+                    <span
+                      className="truncate text-[11px] text-[var(--tx-secondary)]"
+                      style={TABULAR}
+                    >
+                      {dateLabel}
+                      {ageTag}
+                    </span>
+                  </HairlineRow>
+                  {isOpen && (
+                    <div className="border-b border-[var(--bz-border)] bg-[var(--bz-card)] px-2.5 py-3">
+                      <p className="text-[11px] font-[650] uppercase tracking-[0.1em] text-[var(--tx-secondary)]">
+                        Email subject
+                      </p>
+                      <p className="mt-1 text-[13px] text-[var(--tx-pure)]">
+                        {alert.email_subject}
+                      </p>
+                      {alert.error_message && (
+                        <>
+                          <p className="mt-2 text-[11px] font-[650] uppercase tracking-[0.1em] text-[var(--state-danger)]">
+                            Error
+                          </p>
+                          <p className="mt-1 text-[13px] text-[var(--state-danger)]">
+                            {alert.error_message}
+                          </p>
+                        </>
+                      )}
+                      {alert.sent_at && (
+                        <p
+                          className="mt-2 text-[11px] text-[var(--tx-secondary)]"
+                          style={TABULAR}
+                        >
+                          Sent{" "}
+                          {new Date(alert.sent_at).toLocaleDateString("en-US", {
+                            month: "short",
+                            day: "numeric",
+                            year: "numeric",
+                          })}{" "}
+                          {new Date(alert.sent_at).toLocaleTimeString("en-US", {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}
+                        </p>
+                      )}
+                    </div>
                   )}
                 </React.Fragment>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
+              );
+            })
+          )}
+        </HairlineBody>
+      </HairlineGrid>
 
-      {/* Top Clients */}
-      {stats?.top_clients && stats.top_clients.length > 0 && (
-        <div className="rounded-xl border p-6">
-          <h3 className="font-semibold mb-4">
-            Top Clients by Alert Volume (30 days)
-          </h3>
-          <div className="space-y-3">
-            {stats.top_clients.slice(0, 5).map((client) => (
-              <div
-                key={client.id}
-                className="flex items-center justify-between py-2 border-b last:border-0"
-              >
-                <div>
-                  <p className="font-medium">{client.name}</p>
-                  <p className="text-sm text-muted-foreground">
-                    {client.email}
-                  </p>
-                </div>
-                <div className="flex items-center gap-4">
-                  <span className="text-sm font-medium">
-                    {client.alert_count} alerts
-                  </span>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => handlePauseClient(client.id)}
-                  >
-                    <Pause className="w-4 h-4" />
-                  </Button>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
+      {topClientItems.length > 0 && (
+        <section className="mt-6">
+          <h2
+            className="mb-2 text-[19px] leading-[1.2] tracking-[-0.02em] text-[var(--tx-pure)]"
+            style={SERIF_SECTION}
+          >
+            Top clients
+          </h2>
+          <p className="mb-2 text-[11px] text-[var(--tx-secondary)]">
+            By alert volume, last 30 days.
+          </p>
+          <NumberedList items={topClientItems} />
+        </section>
       )}
-    </div>
-  );
-}
-
-function StatCard({
-  title,
-  value,
-  icon: Icon,
-  color,
-}: {
-  title: string;
-  value: number;
-  icon: React.ElementType;
-  color: string;
-}) {
-  const colorClasses: Record<string, string> = {
-    blue: "bg-[color-mix(in_srgb,var(--bz-chart-1)_10%,transparent)] text-[var(--bz-chart-1)]",
-    green:
-      "bg-[color-mix(in_srgb,var(--state-success)_10%,transparent)] text-[var(--state-success)]",
-    amber:
-      "bg-[color-mix(in_srgb,var(--state-warning)_10%,transparent)] text-[var(--state-warning)]",
-    red: "bg-[color-mix(in_srgb,var(--state-danger)_10%,transparent)] text-[var(--state-danger)]",
-    gray: "bg-[var(--surface-raised)] text-[var(--bz-text-secondary)]",
-  };
-
-  return (
-    <div className={cn("rounded-xl border p-4", colorClasses[color])}>
-      <div className="flex items-center gap-3">
-        <div className="p-2 rounded-lg bg-[var(--surface-raised)]">
-          <Icon className="w-5 h-5" />
-        </div>
-        <div>
-          <p className="text-2xl font-bold">{value}</p>
-          <p className="text-sm opacity-80">{title}</p>
-        </div>
-      </div>
     </div>
   );
 }

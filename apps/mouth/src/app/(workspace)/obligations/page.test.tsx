@@ -1,4 +1,10 @@
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import {
+  render,
+  screen,
+  fireEvent,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import { StrictMode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -247,9 +253,12 @@ describe("ObligationsPage", () => {
     expect(screen.getByText("2026-09")).toBeVisible();
     expect(screen.getByText("2026-10-10")).toBeVisible();
     expect(screen.getByText("New rule matched")).toBeVisible();
-    // "proposed" also appears as the status-filter default option and as a
-    // counter label, so assert presence (>=1) rather than uniqueness.
-    expect(screen.getAllByText("proposed").length).toBeGreaterThan(0);
+    // Scoped to the row's own status cell: "proposed" also appears as the
+    // status-filter default option and as a counter label elsewhere on the
+    // page, so an unscoped query would still pass even if this row lost its
+    // status entirely.
+    const row = screen.getByTestId("obligation-row-101");
+    expect(within(row).getByText("proposed")).toBeVisible();
     expect(screen.getByText("101")).toBeVisible();
     // The rule id stays visible under the name: the reviewer still needs it to
     // talk to the engine.
@@ -260,6 +269,45 @@ describe("ObligationsPage", () => {
     );
     expect(apiMock.get).toHaveBeenCalledWith(
       expect.stringContaining("status=proposed"),
+    );
+  });
+
+  it("proposed is copper because the row carries the viewer's Approve/Reject; alerted is copper by DISPOSITION C11", async () => {
+    const ALERTED_ROW = {
+      ...PROPOSED_ROW,
+      id: 104,
+      status: "alerted",
+      alert_id: "alert_obligation_42_pinned",
+    };
+    installApiGet({
+      list: {
+        total: 2,
+        limit: 50,
+        offset: 0,
+        items: [PROPOSED_ROW, ALERTED_ROW],
+      },
+    });
+    render(<ObligationsPage />);
+    await screen.findByTestId("obligation-row-101");
+
+    // `proposed`: copper because the row renders the viewer's own
+    // Approve/Reject controls in this same row.
+    const proposedRow = screen.getByTestId("obligation-row-101");
+    expect(
+      within(proposedRow).getByRole("button", { name: "Approve" }),
+    ).toBeVisible();
+    expect(within(proposedRow).getByText("proposed").className).toContain(
+      "bz-copper-text",
+    );
+
+    // `alerted`: copper by the standing ruling (DISPOSITION.md C11), not by
+    // any control this row renders — it renders none.
+    const alertedRow = screen.getByTestId("obligation-row-104");
+    expect(
+      within(alertedRow).queryByRole("button", { name: "Approve" }),
+    ).not.toBeInTheDocument();
+    expect(within(alertedRow).getByText("alerted").className).toContain(
+      "bz-copper-text",
     );
   });
 

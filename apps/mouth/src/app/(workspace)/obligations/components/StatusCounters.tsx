@@ -3,11 +3,22 @@
 import { CARD, COUNTER_STATUSES, type StatusFilter } from "./types";
 import type { StatusCounts } from "./useStatusCounters";
 
+/**
+ * - `proposed` is copper because the row renders the viewer's own Approve and
+ *   Reject controls, so the viewer is demonstrably the next actor;
+ * - `alerted` is copper by the standing ruling in `concept/DISPOSITION.md`
+ *   C11 ("obligations `alerted` -> copper, `rejected` -> waiting"), recorded
+ *   as a RULING and not as a derivation this row can prove.
+ *
+ * `approved` is forest (done). `rejected` is a TERMINAL state, so it is muted
+ * — never danger — and carries its own word (the tile's label). No tile takes
+ * a tone from a date; urgency lives on the due date, in warning.
+ */
 const SWATCH: Record<string, string> = {
-  proposed: "var(--bz-accent)",
+  proposed: "var(--bz-copper-text)",
   approved: "var(--state-success)",
-  rejected: "var(--state-danger)",
-  alerted: "var(--state-warning)",
+  rejected: "var(--tx-secondary)",
+  alerted: "var(--bz-copper-text)",
 };
 
 interface Props {
