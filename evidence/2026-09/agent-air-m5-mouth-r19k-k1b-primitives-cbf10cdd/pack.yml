@@ -1,0 +1,90 @@
+gear: 2
+brief_ref: evidence/2026-09/agent-air-m5-mouth-r19k-k1b-primitives-cbf10cdd/brief.yml
+lanes:
+  - lane: r19k-k1b-primitives
+    role: build
+    seat: claude-opus-5 (Dux, SAETTA-R19K window K1, xhigh)
+pii_scan: clean
+seat_override: >-
+  R8 applicability: presentational React components and constants. No immigration rule, eligibility,
+  claim or price is authored; no NotebookLM query is claimed.
+receipts:
+  - claim: The module holds the kita laws, proved by detectors that judge code rather than prose.
+    cmd: npx vitest --run src/components/workspace/r19
+    result: >-
+      20 passed. findForbiddenPaint, findCopperFill and stripComments each carry a guilt case and an
+      innocence case. Three of them went RED on the first run for the same reason token-lint documents
+      as its exemption 1 — they were reading DOC COMMENTS: "--state-danger" in the sentence explaining
+      the re-alias, "#6483" read as a hex, and "garuda-voa" in the note saying this module does NOT
+      import it. The cure was stripComments, itself tested for keeping code, dropping prose, and not
+      eating the double slash in a URL.
+    exit: 0
+    ts: "2026-09-14T04:49:59Z"
+    seat: claude-opus-5
+  - claim: Copper is never a fill, and the one exception is exempt BY NAME rather than by shape.
+    cmd: npx vitest --run src/components/workspace/r19
+    result: >-
+      The 56x3 masthead rule is the only copper background in R19 and is legal because it carries no
+      label. It is now the named constant COPPER_RULE, and findCopperFill skips a line only when that
+      identifier is on it — so a second copper fill copying the same class string under another name
+      is still caught, which is the innocence/guilt pair the test asserts.
+    exit: 0
+    ts: "2026-09-14T04:49:59Z"
+    seat: claude-opus-5
+  - claim: Static gates green, and nothing outside the new directory is touched.
+    cmd: >-
+      npx tsc --noEmit; npx eslint src/components/workspace/r19; npx prettier --check on the module;
+      npx vitest --run src/components/workspace "src/app/(workspace)/__tests__"; git diff --name-only.
+    result: >-
+      tsc 0 errors. eslint no output. prettier clean. 83 tests passed across 6 files, which includes
+      K1a's 59 contract assertions still green on the merged seam. Every changed path is under
+      apps/mouth/src/components/workspace/r19/ plus the evidence pack.
+    exit: 0
+    ts: "2026-09-14T04:49:59Z"
+    seat: claude-opus-5
+  - claim: The module reads only tokens the merged kita seam declares.
+    cmd: >-
+      grep every var(--...) read in the module and check each name against the two
+      [data-product="kita"] blocks on origin/main (23546cfa3d).
+    result: >-
+      All reads resolve: --bz-base, --bz-card, --bz-card-hover, --tx-pure, --tx-secondary,
+      --font-serif, --font-sans, --bz-border, --line-control, --state-success, --state-info,
+      --state-warning, --bz-copper, --bz-copper-text, --bz-on-warm, --bz-shadow-card,
+      --bz-header-height. README.md publishes that list as the contract for K2-K5.
+    exit: 0
+    ts: "2026-09-14T04:49:59Z"
+    seat: claude-opus-5
+dissent:
+  - seat: claude-opus-5
+    objection: >-
+      The frozen renders declare --line-control #58626B (= muted, 5.67:1 on paper) in all six files,
+      while DISPOSITION.md C13 and MEASURE.md §3 say #767C82 (3.84:1). K1a shipped #767C82.
+    status: CONFIRMED
+    disposition: >-
+      Measured: all six renders carry #58626B with an inline comment citing an imperator ruling on
+      Codex 13; MEASURE.md is generated from tools/probe.json and appears not to have been
+      regenerated after that ruling. The renders are what FROZEN.md tells the windows to copy, and
+      #58626B is also the stronger value. This module does not hardcode either number — it reads
+      var(--line-control) — so it is correct under both. The seam correction belongs to K1c, which is
+      the PR that actually ships fields, buttons and the search box, i.e. the content that earns it.
+      Raised to the imperator at K1b checkpoint.
+  - seat: claude-opus-5
+    objection: >-
+      DeskStrip and HairlineHead stick to var(--bz-header-height), which the kita product block
+      declares as 64px while the concept measures the header at 48px.
+    status: CONFIRMED
+    disposition: >-
+      Deliberate. They follow the shell rather than pinning their own offset, so when K1c brings the
+      header to 48px they move with it without an edit. Recorded in README.md §Sticky offsets.
+notes:
+  - >-
+    (workspace)/garuda-voa/r19.tsx is untouched and keeps its page-local Notice, Masthead and
+    StatePill until K5 migrates that console. PracticeStatePill and PRACTICE_TONE were NOT promoted:
+    they import a VOA-specific PracticeState type and belong to that console.
+  - >-
+    No adversarial seat ran on this PR. Codex is unreachable from this host (https://chatgpt.com
+    returns 000 while GitHub returns 200) and the Gemini seat timed out at 5 minutes on the previous
+    diff at high effort. The independent read is the commissioned final gate.
+  - >-
+    Slip ships the SHAPE only. The toast system that mounts it and the six-second undo window are
+    K1c's, because a primitive does not own a timer.
