@@ -37,42 +37,38 @@ export interface BreadcrumbItem {
   href?: string;
 }
 
-// Navigation configuration — Military-Grade 4-Block Layout
+// Navigation configuration — six titled sections (R19K rail, SAETTA-R19K
+// K1c-bis). The rail numbers visible non-ownerOnly items 01..13 running
+// across these six sections in this exact order; regrouping an item moves
+// its ordinal, so keep the section order and the item order inside each
+// section stable unless the rail spec changes too.
 export const navigation: NavSection[] = [
   {
-    // Block 1: Core
+    title: "DESK",
     items: [
       { title: "Dashboard", href: "/dashboard", icon: "Home" },
       { title: "Intelligence Center", href: "/intelligence", icon: "Activity" },
     ],
   },
   {
-    title: "Work",
-    // Block 2: Operations
+    title: "CLIENT WORK",
     items: [
       { title: "Clients", href: "/clients", icon: "Users" },
       { title: "Process", href: "/process", icon: "FolderKanban" },
       { title: "Second Home", href: "/second-home", icon: "Home" },
-      { title: "Review", href: "/review", icon: "ClipboardCheck" },
-      { title: "Obligations", href: "/obligations", icon: "Receipt" },
-      { title: "HR / Payroll", href: "/hr", icon: "Banknote" },
     ],
   },
   {
-    title: "Kita-Space",
-    // Block 3: Collaborative
+    title: "OPERATIONS",
     items: [
+      { title: "Review", href: "/review", icon: "ClipboardCheck" },
+      { title: "Obligations", href: "/obligations", icon: "Receipt" },
       { title: "LKPM", href: "/lkpm", icon: "ClipboardCheck" },
-      { title: "Partners", href: "/partners", icon: "Handshake" },
-      {
-        title: "Email",
-        // The Zoho mailbox itself. An existing Zoho session lands straight in
-        // the inbox; without one, Zoho bounces through its login and returns
-        // here via ?serviceurl=%2Fzm%2F.
-        href: "https://mail.zoho.com/zm/",
-        icon: "Mail",
-        external: true,
-      },
+    ],
+  },
+  {
+    title: "INTELLIGENCE",
+    items: [
       {
         title: "Knowledge",
         href: "https://knowledge.balizero.com",
@@ -82,9 +78,26 @@ export const navigation: NavSection[] = [
     ],
   },
   {
-    title: "System",
-    // Block 4: Admin
-    items: [{ title: "Settings", href: "/settings", icon: "Settings" }],
+    title: "PEOPLE",
+    items: [
+      { title: "HR / Payroll", href: "/hr", icon: "Banknote" },
+      { title: "Partners", href: "/partners", icon: "Handshake" },
+    ],
+  },
+  {
+    title: "SYSTEM",
+    items: [
+      {
+        title: "Email",
+        // The Zoho mailbox itself. An existing Zoho session lands straight in
+        // the inbox; without one, Zoho bounces through its login and returns
+        // here via ?serviceurl=%2Fzm%2F.
+        href: "https://mail.zoho.com/zm/",
+        icon: "Mail",
+        external: true,
+      },
+      { title: "Settings", href: "/settings", icon: "Settings" },
+    ],
   },
   {
     title: "Da fare",

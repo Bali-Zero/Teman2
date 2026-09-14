@@ -1,0 +1,183 @@
+task: >-
+  Window K1c-bis PR-2 of mission SAETTA-R19K (BLUE). Put the invariant INK RAIL on the
+  kita workspace sidebar and regroup the navigation into the six titled sections the
+  fusion concept names — DESK, CLIENT WORK, OPERATIONS, INTELLIGENCE, PEOPLE, SYSTEM —
+  with the visible items numbered 01 to 13 by a Fraunces ordinal rendered from an
+  index, never stored. Six rail tokens are added inside the two `[data-product="kita"]`
+  theme blocks; the WORKSPACE branch of `AppSidebar.tsx` reads them; the PORTAL branch
+  is behaviourally unchanged. Every value is read out of the frozen render
+  `R19-KITA-20260914/fusion/02-dashboard.html` ("TEPAT FORTE fusion layer") and
+  cross-checked against `fusion/MEASURE.md`, which was generated from a Chromium probe.
+  No route, no page, no data, no migration.
+lane: mouth/r19k-k1c-bis
+machine: air-m5
+date: 2026-09-14
+
+gear: 2
+gear_reason: >-
+  Deterministic floor 2, source `size`, measured on this branch and not asserted:
+  `git diff --no-renames --numstat` against origin/main sums to churn 813 (728 added,
+  85 deleted across 6 files), above SIZE_GEAR2_THRESHOLD (400) and below
+  SIZE_GEAR3_THRESHOLD. No hot-zone path is touched: five files sit under
+  `apps/mouth/src/` and the sixth is `apps/mouth/src/app/globals.css`, none of which is
+  a HOTZONE_PATTERNS match, so the SIZE term is the only term that fires. 238 of the
+  added lines are `AppSidebar.test.tsx` and 86 are the contract test — two thirds of
+  the churn is the guard, not the rail.
+
+appetite:
+  wall_clock_hours: 5
+  adversarial_rounds: 1
+
+acceptance:
+  A1: >-
+    The FULL apps/mouth suite is green, not just the files this diff touches. That
+    distinction is not pedantry: PR-1 of this same window shipped a break precisely
+    because it was verified against three touched files rather than the suite covering
+    its consumer. 495 test files, 5621 tests, 0 failures, and
+    `npx tsc --noEmit` exits 0.
+    probe: >-
+      cd apps/mouth && npx tsc --noEmit && npx vitest --run
+  A2: >-
+    The rail is proven in a REAL browser against the real component, at 1440 and 390,
+    light and dark, with 0 console errors and `scrollWidth == clientWidth` at both
+    widths. Measured from the DOM, not from the diff: rail 216px wide painted
+    `rgb(29, 44, 59)` in BOTH themes; right edge `rgba(247,244,238,0.14)` in dark and
+    the rail's own ink in light; six group labels in order at 9px/700 in
+    `rgb(206,133,113)`; thirteen ordinals 01..13 in Fraunces 18px, 24px wide, running
+    across groups without restarting; the active row paper-100% with a 3px
+    `rgb(206,133,113)` left rule and a `rgba(247,244,238,0.06)` wash; an inactive row
+    paper-78% with a transparent rule and no wash; the `/review` badge Fraunces 17px
+    copper; external items carrying BOTH a visible arrow and hidden "opens in a new
+    tab" text. The workspace header stayed paper in light, which is the observation
+    that proves `--nav-bg` was correctly left alone.
+    probe: >-
+      Start `npx next dev --webpack -p 3199` from apps/mouth, mount the real
+      AppSidebar with the real navigation on a THROWAWAY route, and read the computed
+      styles with Playwright. See the `assumptions` entry on why the proof is not
+      /dashboard itself.
+  A3: >-
+    Two contrast defects an adversarial review found are now GUARDED by computed
+    assertions, not by a comment. `contrast(#a44b36, #1d2c3b)` is under 3.0 — that is
+    why the workspace focus ring overrides `--border-focus` with `--nav-rule` — and
+    `contrast(#ce8571, <paper 6% over ink>)` is under 4.5, which is why the row badge
+    lifts to paper on hover instead of staying copper on a ground that moved. A new
+    `composite()` helper flattens the translucent state and is itself proven awake at
+    alpha 0 and alpha 1.
+    probe: >-
+      cd apps/mouth && npx vitest --run "src/app/(workspace)/__tests__/kita-r19.contract.test.ts"
+  A4: >-
+    The PORTAL branch is not dragged along. `git diff --stat origin/main --
+    apps/mouth/src/app/portal apps/mouth/src/app/login` is EMPTY, and a portal
+    contract test asserts the portal row keeps its lucide icon, takes no ordinal,
+    keeps its own `--bz-copper` badge rather than `--nav-rule`, keeps its own group
+    label type, and still paints `var(--bz-base)` rather than `var(--nav-rail-bg)`.
+    probe: >-
+      git diff --stat origin/main -- apps/mouth/src/app/portal apps/mouth/src/app/login
+      && cd apps/mouth && npx vitest --run src/components/workspace/AppSidebar.test.tsx
+  A5: >-
+    The ordinal map is pinned exactly, not loosely. An earlier draft asserted only
+    that "01".."13" appeared somewhere, which would also pass with the ordinals out of
+    order, duplicated, or attached to the wrong rows. The test now reads the rail in
+    DOM order and pins the whole link-to-ordinal map, asserts all thirteen are
+    distinct, asserts no workspace row carries a lucide SVG (the ordinal REPLACES the
+    icon, it does not join it), and asserts the owner-only "Da fare" items carry none.
+    probe: >-
+      cd apps/mouth && npx vitest --run src/components/workspace/AppSidebar.test.tsx
+      src/types/navigation.test.ts
+  A6: >-
+    `python3 scripts/token_lint.py --base origin/main` is clean on the COMMITTED tree,
+    which is all that linter sees. Every hex added to a test file carries its own
+    per-line `token-lint-ok` marker with a reason.
+    probe: >-
+      python3 scripts/token_lint.py --base origin/main
+
+out_of_scope: >-
+  The r19 primitives module — PR-1 of this same window, on its own branch. Anything
+  under `pages`, `login/**`, `portal/**`, `Header.tsx`, `GateScreen`, `ZantaraWidget`,
+  toasts or `packages/core`: window k1-dux owns those in K1c2/K1d, disjoint by design.
+  `(workspace)/layout.tsx` was verified and deliberately NOT changed — the shell is
+  already a fixed 216px rail plus `md:ml-[216px]` with no overflow ancestor, so the
+  viewport still owns scrolling, and the window brief says to change nothing that
+  works. Migrating the mobile rail behind the menu toggle, which already works.
+
+assumptions:
+  - text: >-
+      `--nav-bg` is NOT turned ink, against the window brief's literal wording, and
+      the rail reads a new `--nav-rail-bg` instead. `Header.tsx:99` paints the
+      workspace header with `var(--nav-bg)` and sits outside this window's perimeter;
+      turning that token ink would put ink text on an ink header on a file this window
+      may not fix. Two contract tests also pin `--nav-bg: var(--bz-kita-nav);`. The
+      other five token names are exactly as the brief wrote them, and globals.css
+      carries a comment so a later window does not "tidy" the pair into one variable.
+    status: verified
+    probe: >-
+      grep -n "nav-bg" apps/mouth/src/components/workspace/Header.tsx and the
+      headerBg readings in the browser proof — paper in light, ink-ground in dark,
+      unchanged either way.
+  - text: >-
+      Where the window brief's stated value and the render's measured CSS disagreed,
+      the render won, per the brief's own instruction. Two cases land here: the active
+      left rule is 3px, not the brief's 2px (`.nav-item.active{border-left-width:3px}`
+      via `.nav-item{border-left-width:3px}`), and the rail row is 31px tall, not the
+      brief's 36-40px (`.nav-item{height:31px}`), rising to 44px under
+      `(hover:none)` so the touch target still clears the floor.
+    status: verified
+    probe: >-
+      grep -n "nav-item{height" R19-KITA-20260914/fusion/02-dashboard.html, and the
+      browser proof's measured row height of 31.
+  - text: >-
+      The ordinal REPLACES the lucide icon in the workspace rail. The render's row is
+      `<span class="nav-glyph">01</span><span>Dashboard</span>` with no icon at all,
+      and an 11px row 216px wide has no space for both. Every `icon` string in
+      navigation.ts is untouched and `iconMap` stays, because the PORTAL branch still
+      renders them. This is a reading of "styling only" that a reviewer could disagree
+      with, so it is stated rather than buried.
+    status: verified
+    probe: >-
+      grep -o 'nav-glyph[^<]*' R19-KITA-20260914/fusion/02-dashboard.html | head, and
+      the AppSidebar test asserting no workspace row carries an SVG while a portal row
+      does.
+  - text: >-
+      The browser proof is NOT /dashboard. That route needs a real session and
+      credentials belong to the owner, so no session was faked. Instead the REAL
+      AppSidebar was mounted with the REAL navigation config and the real shell
+      geometry on a throwaway `/railproof` route that is NOT part of this diff, under
+      the same data-product and data-theme the kita blocks are scoped to. One
+      substitution was needed to light the active row: DESK's first href points at the
+      harness route so AppSidebar's own `isActive` marks it through the real code path
+      rather than through a class injected into the DOM. Everything else — grouping,
+      order, ordinals, icons, badges, external items — is the shipped config.
+    status: verified
+    probe: >-
+      The harness file is absent from `git diff --name-only origin/main...HEAD`; the
+      PNGs and the computed-style readings are in the window's evidence pack.
+  - text: >-
+      `--nav-edge` in the light block equals the rail's own ink rather than a visible
+      line. The render has `border-right:0` on the light rail; an ink border on an ink
+      rail is invisible under `box-sizing: border-box` and costs no width, and one
+      token that both themes declare keeps AppSidebar to a single code path instead of
+      a light/dark branch for a border that never shows in light.
+    status: verified
+    probe: >-
+      The browser proof's `asideBorderRight` reading: `rgb(29, 44, 59)` in light,
+      `rgba(247, 244, 238, 0.14)` in dark.
+  - text: >-
+      `findBannedReds` in kita-r19.contract.test.ts had its ALLOWED set widened to
+      include the rail copper. That hex is red-dominant enough to trip the same
+      heuristic that catches the Tailwind and legacy danger family, and it is a
+      legitimate fifth copper step in the same family as the four already allowed —
+      not an exemption carved for one value. The detector's guilt cases are unchanged
+      and still fire.
+    status: verified
+    probe: >-
+      cd apps/mouth && npx vitest --run "src/app/(workspace)/__tests__/kita-r19.contract.test.ts"
+      — the planted-red guilt assertions still pass.
+  - text: >-
+      No client PII anywhere. The browser proof uses "Member A" and
+      "staff@balizero.com"; no fixture in the diff carries a real name.
+    status: verified
+    probe: >-
+      git diff origin/main -- apps/mouth/src | grep -iE "@gmail|@balizero" — only the
+      pre-existing owner-check fixtures in AppSidebar.test.tsx, unchanged.
+
+pii: none

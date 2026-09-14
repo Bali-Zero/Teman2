@@ -509,6 +509,9 @@
   --bz-kita-wash: #eae3d8;
   --bz-kita-overlay: rgba(255, 252, 247, 0.86);
   --bz-kita-nav: #f7f4ee;
+  /* The rail is ink in both light and dark — the K1c-bis workspace sidebar
+     carries no theme swap, only the content around it does. */
+  --bz-kita-rail: #1d2c3b;
 
   --surface-base: var(--bz-kita-canvas);
   --surface-matter: var(--bz-kita-card);
@@ -517,7 +520,24 @@
   --surface-deep: var(--bz-kita-canvas);
   --surface-sunken: var(--bz-kita-wash);
   --surface-selected: var(--bz-kita-wash);
+  /* --nav-bg / --bz-kita-nav stay the paper header background: Header.tsx:99
+     paints the workspace header with var(--nav-bg), and it sits outside the
+     K1c-bis rail's perimeter — turning it ink would put ink text on an ink
+     header. kita-theme.contract.test.ts and kita-r19.contract.test.ts both
+     pin `--nav-bg: var(--bz-kita-nav);`, so do not fold it into the rail
+     tokens below; a later window should not "tidy" this into one variable. */
   --nav-bg: var(--bz-kita-nav);
+  --nav-rail-bg: var(--bz-kita-rail);
+  --nav-fg: #f7f4ee;
+  --nav-fg-muted: rgba(247, 244, 238, 0.78);
+  --nav-active-wash: rgba(247, 244, 238, 0.06);
+  /* Light's render has border-right:0 on the rail, so --nav-edge repeats the
+     rail's own ink here rather than a visible line: an ink border on an ink
+     rail is invisible under box-sizing: border-box anyway, and giving both
+     themes the same --nav-edge property keeps AppSidebar to one code path
+     instead of a light/dark branch for a border that never shows in light. */
+  --nav-edge: var(--bz-kita-rail);
+  --nav-rule: #ce8571;
 
   --bz-base: var(--bz-kita-canvas);
   --bz-bg: var(--bz-kita-canvas);
@@ -663,6 +683,8 @@
   --bz-kita-wash: #222025;
   --bz-kita-overlay: rgba(26, 26, 31, 0.86);
   --bz-kita-nav: #121016;
+  /* Same ink as light — the rail is invariant across themes. */
+  --bz-kita-rail: #1d2c3b;
 
   --surface-base: var(--bz-kita-canvas);
   --surface-matter: var(--bz-kita-card);
@@ -671,7 +693,17 @@
   --surface-deep: var(--bz-kita-canvas);
   --surface-sunken: var(--bz-kita-wash);
   --surface-selected: var(--bz-kita-wash);
+  /* Left exactly as light declares it — see the comment on --nav-bg there.
+     Header.tsx paints on it regardless of theme. */
   --nav-bg: var(--bz-kita-nav);
+  --nav-rail-bg: var(--bz-kita-rail);
+  --nav-fg: #f7f4ee;
+  --nav-fg-muted: rgba(247, 244, 238, 0.78);
+  --nav-active-wash: rgba(247, 244, 238, 0.06);
+  /* The one deviation from light: dark's render draws a real right edge on
+     the rail, a paper hairline rather than the rail's own ink. */
+  --nav-edge: rgba(247, 244, 238, 0.14);
+  --nav-rule: #ce8571;
 
   --bz-base: var(--bz-kita-canvas);
   --bz-bg: var(--bz-kita-canvas);

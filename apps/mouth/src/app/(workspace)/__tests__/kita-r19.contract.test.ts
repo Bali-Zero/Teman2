@@ -61,6 +61,13 @@ const PLANTED_REDS = {
   legacyNavy: "#060d14", // token-lint-ok: planted violation for the guilt case, never rendered
 } as const;
 
+/**
+ * The K1c-bis rail's active-marker/group-label copper — a fifth copper step
+ * alongside the four above, allowed here rather than duplicated with its
+ * own detector so `findBannedReds` stays the single "is this a red" answer.
+ */
+const RAIL_RULE = "#ce8571"; // token-lint-ok: the expected value this contract pins, not a style
+
 const globalsCss = readFileSync(
   join(__dirname, "..", "..", "globals.css"),
   "utf8",
@@ -88,6 +95,7 @@ export function findBannedReds(block: string): string[] {
     R19.copperText,
     R19.copperHover,
     R19.copperHoverDark,
+    RAIL_RULE,
   ]);
   const found: string[] = [];
   for (const hex of block.match(/#[0-9a-fA-F]{6}\b/g) ?? []) {
@@ -244,6 +252,7 @@ describe("the no-red detector is awake (guilt)", () => {
       R19.warning,
       R19.forest,
       R19.slate,
+      RAIL_RULE,
     ];
     expect(findBannedReds(innocent.join(" "))).toEqual([]);
   });
@@ -409,5 +418,136 @@ describe("kita R19 seam — what the block refuses to redeclare", () => {
         ["--bz-text-pure"],
       ),
     ).toEqual([]);
+  });
+});
+
+/**
+ * K1c-bis rail tokens (SAETTA-R19K, unit C, "The rail (unit C only)"). The
+ * workspace sidebar rail is now a fixed ink surface in BOTH themes — an
+ * "invariant rail" — so this block pins the six alias-run declarations
+ * verbatim plus the --bz-kita-rail source they read from, and the one
+ * deliberate asymmetry between themes: --nav-edge, which repeats the
+ * rail's own ink in light (the render has border-right:0 there, so an ink
+ * line on an ink rail is invisible anyway) and becomes a paper hairline in
+ * dark (the render draws a real edge). --nav-bg / --bz-kita-nav are
+ * re-pinned unchanged here too — that pair is the Header.tsx paper
+ * background, outside this window's perimeter, and this is the guard a
+ * later window should trip if it ever folds it into the rail tokens.
+ */
+const RAIL_PAPER_ON_INK_COMPOSITE = "#c7c8c7"; // token-lint-ok: fusion/MEASURE.md's composite of paper-78% over the rail ink, not a style
+
+describe("kita R19 rail (K1c-bis) — the seven rail declarations", () => {
+  for (const theme of ["operative-light", "operative-dark"]) {
+    const block = themeBlock(theme);
+
+    it(`${theme}: pins --bz-kita-rail and --nav-rail-bg`, () => {
+      expect(block).toContain(`--bz-kita-rail: ${R19.ink};`);
+      expect(block).toContain("--nav-rail-bg: var(--bz-kita-rail);");
+    });
+
+    it(`${theme}: pins the rail foreground trio`, () => {
+      expect(block).toContain("--nav-fg: #f7f4ee;");
+      expect(block).toContain("--nav-fg-muted: rgba(247, 244, 238, 0.78);");
+      expect(block).toContain("--nav-active-wash: rgba(247, 244, 238, 0.06);");
+    });
+
+    it(`${theme}: pins --nav-rule`, () => {
+      expect(block).toContain(`--nav-rule: ${RAIL_RULE};`);
+    });
+
+    it(`${theme}: leaves --nav-bg on --bz-kita-nav, unchanged (the Header.tsx guard)`, () => {
+      expect(block).toContain("--nav-bg: var(--bz-kita-nav);");
+    });
+  }
+
+  it("the rail background is the same ink in both themes (the invariant rail)", () => {
+    expect(themeBlock("operative-light")).toContain(
+      `--bz-kita-rail: ${R19.ink};`,
+    );
+    expect(themeBlock("operative-dark")).toContain(
+      `--bz-kita-rail: ${R19.ink};`,
+    );
+  });
+
+  it("--nav-edge differs between themes, and only the dark one is a paper alpha", () => {
+    expect(themeBlock("operative-light")).toContain(
+      "--nav-edge: var(--bz-kita-rail);",
+    );
+    expect(themeBlock("operative-dark")).toContain(
+      "--nav-edge: rgba(247, 244, 238, 0.14);",
+    );
+    // Innocence: light's --nav-edge is the rail's own ink, not a paper
+    // alpha — the asymmetry is real, not a copy-paste of the dark value.
+    expect(themeBlock("operative-light")).not.toContain(
+      "--nav-edge: rgba(247, 244, 238",
+    );
+  });
+
+  it("paper-78% composited over the rail ink clears 4.5:1, at the measured composite", () => {
+    // fusion/MEASURE.md measured this composite at 8.48:1.
+    expect(contrast(RAIL_PAPER_ON_INK_COMPOSITE, R19.ink)).toBeCloseTo(8.48, 1);
+    expect(
+      contrast(RAIL_PAPER_ON_INK_COMPOSITE, R19.ink),
+    ).toBeGreaterThanOrEqual(4.5);
+  });
+
+  it("the copper rule on the rail ink clears 4.5:1", () => {
+    // fusion/MEASURE.md measured this pair at 4.89:1.
+    expect(contrast(RAIL_RULE, R19.ink)).toBeCloseTo(4.89, 1);
+    expect(contrast(RAIL_RULE, R19.ink)).toBeGreaterThanOrEqual(4.5);
+  });
+});
+
+/** Flatten a translucent paint over an opaque ground, so a STATE can be measured. */
+export function composite(fg: string, alpha: number, ground: string): string {
+  const mix = (i: number) =>
+    Math.round(
+      alpha * parseInt(fg.slice(i, i + 2), 16) +
+        (1 - alpha) * parseInt(ground.slice(i, i + 2), 16),
+    )
+      .toString(16)
+      .padStart(2, "0");
+  return "#" + mix(1) + mix(3) + mix(5);
+}
+
+/**
+ * The rail's STATES, not just its resting surface. An adversarial review of
+ * K1c-bis found both defects below on a rail whose resting contrast was
+ * already green — a contrast suite that only measures the ground a token
+ * sits on when nothing is happening cannot see either of them.
+ */
+describe("kita R19 rail (K1c-bis) — hover and focus states", () => {
+  const ACTIVE_WASH = composite(R19.canvas, 0.06, R19.ink);
+
+  it("the composite helper is awake (guilt and innocence)", () => {
+    // Fully opaque returns the paint; fully transparent returns the ground.
+    expect(composite(R19.canvas, 1, R19.ink)).toBe(R19.canvas);
+    expect(composite(R19.canvas, 0, R19.ink)).toBe(R19.ink);
+    // And a 6% paper wash moves the ink measurably without becoming paper.
+    expect(ACTIVE_WASH).not.toBe(R19.ink);
+    expect(contrast(ACTIVE_WASH, R19.ink)).toBeLessThan(1.2);
+  });
+
+  it("the focus ring reads --nav-rule, because --border-focus fails on the rail", () => {
+    // --border-focus is the paper-ground copper. SC 1.4.11 asks 3:1 of a
+    // focus indicator, and on the ink rail this one does not clear it — that
+    // failure is the whole reason AppSidebar's workspace branch overrides the
+    // ring colour rather than only its offset.
+    expect(contrast(R19.copper, R19.ink)).toBeLessThan(3);
+    // The cure, measured: the rail's own copper.
+    expect(contrast(RAIL_RULE, R19.ink)).toBeGreaterThanOrEqual(3);
+  });
+
+  it("the rail copper does NOT clear 4.5:1 once the hover wash is under it", () => {
+    // Which is why the row badge lifts to paper on hover instead of staying
+    // copper on a ground that moved. Guilt for that rule, stated as a number.
+    expect(contrast(RAIL_RULE, ACTIVE_WASH)).toBeLessThan(4.5);
+  });
+
+  it("paper at 100% and at 78% both clear 4.5:1 on the hover wash (the cure)", () => {
+    expect(contrast(R19.canvas, ACTIVE_WASH)).toBeGreaterThanOrEqual(4.5);
+    expect(
+      contrast(RAIL_PAPER_ON_INK_COMPOSITE, ACTIVE_WASH),
+    ).toBeGreaterThanOrEqual(4.5);
   });
 });
