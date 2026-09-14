@@ -1,0 +1,25 @@
+[seat] agy-gemini-3.1-pro  model: gemini-3.1-pro-high  round: 9  started: 2026-09-14T12:05:00+08:00
+[prompt] agy-round9-prompt.txt (176431 bytes, sha256 3b9500eb0b1191bcf0b8c9842bf207a22e356bd06bd8fdc72777d5f05956c56c) —
+  built tool-free: the instruction line, the brief objective + item 7, the
+  seat's own round-6 findings verbatim, the author's disposition of each
+  finding (plus codex-gpt-5.6-sol's independent round-6/7 attacks and
+  dispositions), the measured census results, and the merge-base three-dot
+  diff (code+tests only, evidence/ and generated walk-corpus fixtures
+  excluded) inlined in full — nothing left for the seat to fetch with a tool.
+  Invoked via `agy -p "$(cat <file>)" --model gemini-3.1-pro-high
+  --print-timeout 10m` (no stdin pipe). No tool-permission denial this round;
+  first attempt succeeded, no retry needed.
+[raw stdout follows]
+
+The author has comprehensively addressed the Round-6 findings:
+- Finding (a) regarding the model name `tp1-qwen3.8-max` has been successfully fixed, with all 5 instances replaced by the prescribed `(council/journal.jsonl)` format.
+- Finding (b) regarding `q.sponsor_diplomatic_household` has been rewritten into a single, unambiguous clause in both English and Indonesian.
+- Finding (c) is accurately refuted by the fixture generation rules: the default fallback for `sponsor_category` in the generator is the first option, `NONE`.
+- Finding (d) is a well-argued rejection. The vehicle tile merely selects the basis of the investment, not the exhaustive list of activities. Preventing the applicant from declaring a PT PMA commitment simply because they selected the capital-market tile would cause a false-negative denial of E28A. The sequence flows correctly.
+- Finding (e) is accurately refuted, as the translation precisely matches the pack's localized name for the D12 product.
+
+The implementation of the ten new seq-21 questions properly routes the facts to the engine, accurately handles stale answers (e.g., forcing `investment.ikn_subsidiary` to `false` when no company is established), and maintains invariant state and funnel masking exactly as measured in the censuses.
+
+VERDICT: PASS
+
+EXIT 0  ended: 2026-09-14T12:08:22+08:00
