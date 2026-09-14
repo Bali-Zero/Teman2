@@ -155,8 +155,8 @@ two different questions:
   ``quotes=()`` — so a flag DELETES a verdict the signed pack had already
   proven. ("For any decision the engine actually produces" is the exact
   qualifier: the adapter returns early when ``decision_id`` or ``public_id``
-  is ``None``, which no evaluated decision is — council round 1,
-  tp1-qwen3.8-max, on the word "unconditional".)
+  is ``None``, which no evaluated decision is — council round 1
+  (council/journal.jsonl), on the word "unconditional".)
 
 MEASURED 2026-09-13 on ``rulepack-prod-020.signed.json`` over all 94 walks
 (re-measured 2026-09-14 over W-VO-Q's 111 — see below the table),
@@ -242,7 +242,7 @@ Two walks DO answer ``unsure`` to a sponsor question —
 ``offshore/other/paid/sponsor_unsure`` on ``work_sponsor_confirmed`` and
 ``offshore/work/sponsor_unsure`` on ``sponsor_category`` — but neither is a
 FAMILY sponsor fact, so what they raise is the generic ``NOT_CERTAIN``, the
-two rows already counted above (council round 1, codex-gpt-5.6-sol: this
+two rows already counted above (council round 1, council/journal.jsonl: this
 sentence used to say "a sponsor question" flatly and contradicted the
 table 470 lines below it).
 That zero is a property of THIS enumeration, never of production: every
@@ -264,8 +264,8 @@ WHAT THIS CENSUS STILL DOES NOT SEE:
    TWO of the 94 walks ever answer the literal ``unsure`` (the two
    ``NOT_CERTAIN`` rows of ``EXPECTED_DISCLOSED_REVIEW_FLAGS`` below — this
    sentence used to say "no walk ever answers ``unsure``", which stopped
-   being true when PR-D3/PR-D4d added them and was caught by council round 2,
-   codex-gpt-5.6-sol), and
+   being true when PR-D3/PR-D4d added them and was caught by council round 2
+   (council/journal.jsonl)), and
    the onshore arm is ONE neutral walk per category — its sub-branches
    (``onshore/second_home/property``, ``onshore/diaspora/STEPCHILD/...``)
    are deliberately not enumerated, as they never were for invest,
@@ -1039,7 +1039,7 @@ EXPECTED_DEAD_END_FACT_CENSUS: dict[str, int] = EXPECTED_DEAD_END_FACT_CENSUS_BY
 #: request, carried by the corpus since 2026-09-13 (W-VO-H schema half) and
 #: pinned here so the layer cannot move without a red.
 #:
-#: Read the reach of that claim exactly (council round 2, tp1-qwen3.8-max):
+#: Read the reach of that claim exactly (council round 2, council/journal.jsonl):
 #: this table is compared against the COMMITTED FIXTURES, never re-derived from
 #: `mapDisclosedReviewFlags`. A mapper regression that stops raising a flag
 #: therefore goes red in the FRONTEND lane — `walk-corpus-determinism.test.ts`,
@@ -2670,7 +2670,7 @@ def test_the_flagged_rebuild_names_every_field_of_the_wire_model() -> None:
     """The FUNNEL census's one new code path rebuilds ``VisaOracleEvaluateRequest``
     BY HAND, and nothing in the rebuild itself ties it to the model.
 
-    Council round 5, tp1-qwen3.8-max: a sixth field added to the request model
+    Council round 5 (council/journal.jsonl): a sixth field added to the request model
     would be dropped from every flagged evaluation, and would stay invisible —
     ``test_innocence_an_unflagged_walk_keeps_its_whole_engine_outcome`` cannot
     see it (unflagged walks never enter the rebuild) and the flagged

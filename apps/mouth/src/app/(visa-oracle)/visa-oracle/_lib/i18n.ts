@@ -228,8 +228,14 @@ const en = {
     "Answer yes only if a government body has invited you in that capacity.",
   "why.sponsor_world_figure_invitation":
     "The engine receives only your yes or no answer about a world-figure invitation.",
+  // One clause, not two: the wire fact `sponsor.diplomatic_household` is a
+  // single boolean, and the earlier wording ("Is your employer a foreign
+  // diplomat posted in Indonesia, AND is the role in that diplomat's
+  // household?") asked the visitor to answer two things at once — a person who
+  // works for a diplomat's embassy rather than the household could read either
+  // half as the question (council round 6, council/journal.jsonl).
   "q.sponsor_diplomatic_household":
-    "Is your employer a foreign diplomat posted in Indonesia, and is the role in that diplomat's household?",
+    "Is this a role in the household of a foreign diplomat posted in Indonesia?",
   "q.sponsor_diplomatic_household.hint":
     "Answer no if you would work for anyone other than the diplomat's own household.",
   "why.sponsor_diplomatic_household":
@@ -1211,7 +1217,7 @@ const id: Record<Keys, string> = {
   "why.sponsor_world_figure_invitation":
     "Mesin hanya menerima jawaban ya atau tidak tentang undangan sebagai tokoh dunia.",
   "q.sponsor_diplomatic_household":
-    "Apakah pemberi kerja Anda adalah diplomat asing yang bertugas di Indonesia, dan posisinya berada di rumah tangga diplomat tersebut?",
+    "Apakah posisi ini berada di rumah tangga diplomat asing yang bertugas di Indonesia?",
   "q.sponsor_diplomatic_household.hint":
     "Jawab tidak jika Anda akan bekerja untuk pihak selain rumah tangga diplomat tersebut.",
   "why.sponsor_diplomatic_household":

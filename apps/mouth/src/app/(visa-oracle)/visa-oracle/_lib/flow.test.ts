@@ -4,6 +4,9 @@ import { fileURLToPath } from "url";
 import { describe, expect, it } from "vitest";
 import { CATEGORY_KEYS, getLane, QUESTIONS, type OracleFacts } from "./tree";
 import { translate, type I18nKey } from "./i18n";
+// The walk corpus' own default-answer convention, reused so a test that drives
+// the interview forward answers exactly what the committed fixtures answer.
+import { answerFor } from "../../../../../scripts/visa-oracle/generate-walk-corpus";
 import {
   D12_MAX_STAY_DAYS,
   INTERVIEW_SNAPSHOT_SCHEMA_VERSION,
@@ -1799,6 +1802,82 @@ describe("seq-21 qualification questions — asked only where their rule can mat
     ]);
   });
 
+  /**
+   * Council round 3 (council/journal.jsonl), on `el.e28c.capital-market`
+   * (seq-21): its premises are `INVESTMENT` + `investment.capital_market_only`
+   * + `investment.meets_published_threshold` — there is NO
+   * "and no company is being established" conjunct. So if a stale
+   * `investment_capital_market_only = "yes"` survived an edit back to "yes, I
+   * am establishing a company", `fact-mapper.ts` would send it KNOWN(true) and
+   * the engine would hand the same applicant E28B ("establishing a company")
+   * and E28C ("capital market ONLY, without establishing a company") at once —
+   * two answers that contradict each other.
+   *
+   * It cannot survive, and this is the measurement rather than the argument:
+   * `EDIT` truncates history AT its target and `pruneFacts` then drops every
+   * fact whose question is no longer in that history. The mapper reads
+   * `state.facts`, so the fact it cannot see is the fact it cannot send.
+   * The mirror case — a stale `investment_ikn_subsidiary` — is covered above
+   * by the route table AND by an explicit KNOWN(false) in the mapper; this one
+   * needs no mapper rule because the answer itself is gone.
+   */
+  it("innocence: an edit back to 'I am establishing a company' erases the stale capital-market answer", () => {
+    const answers: Record<string, string> = {
+      in_indonesia: "no",
+      holds_stay_permit: "no",
+      trip_scope: "single",
+      category: "invest",
+      sponsor_category: "NONE",
+      investment_vehicle: "merit",
+      investment_establishes_company: "no",
+      investment_capital_market_only: "yes",
+      investment_foreign_branch: "no",
+      investment_meets_threshold: "yes",
+    };
+    /** Answer whatever question is on screen until `stopAt` is reached, using
+     * the corpus generator's own default (first option / fixed synthetic
+     * value) for every question this test has no opinion about. Bounded, so a
+     * routing bug is a red here and never a hung suite. */
+    const driveTo = (start: FlowState, stopAt: string): FlowState => {
+      let state = start;
+      for (let step = 0; step < 40; step += 1) {
+        const head = state.history[state.history.length - 1];
+        if (head.kind !== "question") break;
+        if (head.questionId === stopAt) return state;
+        state = answer(
+          state,
+          head.questionId,
+          answerFor(head.questionId, answers),
+        );
+      }
+      throw new Error(
+        `never reached ${stopAt}; asked ${state.history
+          .filter((n) => n.kind === "question")
+          .map((n) => (n as { questionId: string }).questionId)
+          .join(", ")}`,
+      );
+    };
+
+    let state = initialFlowState("en");
+    state = reduce(state, { type: "ADVANCE" });
+    state = driveTo(state, "investment_meets_threshold");
+    expect(state.facts.investment_capital_market_only).toBe("yes");
+    expect(state.facts.investment_establishes_company).toBe("no");
+
+    state = reduce(state, {
+      type: "EDIT",
+      questionId: "investment_establishes_company",
+    });
+    state = answer(state, "investment_establishes_company", "yes");
+
+    expect(state.facts.investment_capital_market_only).toBeUndefined();
+    expect(
+      getCategoryQuestionIds(state.facts).includes(
+        "investment_capital_market_only",
+      ),
+    ).toBe(false);
+  });
+
   it("walks a government-invited employee through both sponsor questions to the verdict", () => {
     let state = startOffshore("work");
     state = answer(state, "trip_scope", "single");
@@ -1952,35 +2031,59 @@ describe("business explorer — the D12 sequence", () => {
     ]);
   });
 
-  it("D12_MAX_STAY_DAYS is the stay bound of el.d12-multi-entry-support in the highest-sequence pack on disk", () => {
+  /** The SIGNED pack and the CANDIDATE source pack are resolved SEPARATELY,
+   * and the constant must equal BOTH bounds.
+   *
+   * Reading only "the highest sequence on disk" was an under-match (council
+   * round 6, council/journal.jsonl): a future window could move the bound in
+   * an unsigned source pack AND in this constant together, leave the signed
+   * pack — the one production actually evaluates — at the old bound, and this
+   * test would still be green while the live interview asked the investor
+   * questions at the wrong day count. Measured when the finding was taken:
+   * sequences 1-19 carry `lte 180`, sequence 20 (signed, in force) and
+   * sequence 21 (source, candidate) both carry `lte 360`, so the two agree
+   * today and this assertion is a pin, not a widening. If they ever disagree,
+   * the constant cannot satisfy both and the red names which side moved. */
+  it("D12_MAX_STAY_DAYS is the stay bound of el.d12-multi-entry-support in BOTH the highest signed pack and the highest source pack", () => {
     const packs = path.resolve(
       path.dirname(fileURLToPath(import.meta.url)),
       "../../../../../../backend-rag/backend/services/visa_engine/contracts/packs",
     );
-    let best: {
-      sequence: number;
-      rules: Array<Record<string, unknown>>;
-    } | null = null;
+    type Pack = { sequence: number; rules: Array<Record<string, unknown>> };
+    const highest: Record<"signed" | "source", Pack | null> = {
+      signed: null,
+      source: null,
+    };
     for (const name of fs.readdirSync(packs)) {
-      if (!/^rulepack-prod-\d+\.(signed|source)\.json$/.test(name)) continue;
+      const match = /^rulepack-prod-\d+\.(signed|source)\.json$/.exec(name);
+      if (!match) continue;
+      const kind = match[1] as "signed" | "source";
       const raw = JSON.parse(fs.readFileSync(path.join(packs, name), "utf-8"));
       const payload = (raw.payload ?? raw) as {
         sequence?: number;
         rules?: Array<Record<string, unknown>>;
       };
       if (typeof payload.sequence !== "number" || !payload.rules) continue;
+      const best = highest[kind];
       if (best === null || payload.sequence > best.sequence) {
-        best = { sequence: payload.sequence, rules: payload.rules };
+        highest[kind] = { sequence: payload.sequence, rules: payload.rules };
       }
     }
-    expect(best?.sequence ?? 0).toBeGreaterThanOrEqual(20);
-    const rule = best?.rules.find(
-      (r) => r.rule_id === "el.d12-multi-entry-support",
-    ) as { when: { args: Array<Record<string, unknown>> } } | undefined;
-    const bound = rule?.when.args.find(
-      (arg) => arg.op === "lte" && arg.fact === "intent.stay_days",
-    );
-    expect(bound?.value).toBe(D12_MAX_STAY_DAYS);
+    const stayBound = (pack: Pack | null): unknown => {
+      const rule = pack?.rules.find(
+        (r) => r.rule_id === "el.d12-multi-entry-support",
+      ) as { when: { args: Array<Record<string, unknown>> } } | undefined;
+      return rule?.when.args.find(
+        (arg) => arg.op === "lte" && arg.fact === "intent.stay_days",
+      )?.value;
+    };
+    // Both lanes must be present: an empty one would make its assertion
+    // vacuously true against `undefined`, which is the failure shape this
+    // test exists to refuse.
+    expect(highest.signed?.sequence ?? 0).toBeGreaterThanOrEqual(20);
+    expect(highest.source?.sequence ?? 0).toBeGreaterThanOrEqual(20);
+    expect(stayBound(highest.signed)).toBe(D12_MAX_STAY_DAYS);
+    expect(stayBound(highest.source)).toBe(D12_MAX_STAY_DAYS);
   });
 
   it("the capital-market vehicle asks the PT PMA commitment, and the capital questions only after a yes", () => {
