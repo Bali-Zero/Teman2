@@ -48,6 +48,10 @@ const SUPERSEDED = {
   lineControl: "#767c82", // token-lint-ok: the superseded value, asserted to be weaker
 } as const;
 
+/** A panel that follows the lifted success step, planted for the guilt case. */
+const PLANTED_PANEL_MIX =
+  "  --bz-panel: color-mix(in srgb, #253e33 40%, #f7f4ee);"; // token-lint-ok: planted violation for the guilt case, never rendered
+
 /** Reds the alphabet forbids, used only to prove the detector is awake. */
 const PLANTED_REDS = {
   tailwindDanger: "#b91c1c", // token-lint-ok: planted violation for the guilt case, never rendered
@@ -359,11 +363,7 @@ describe("kita R19 seam — the one forest surface", () => {
     expect(panelTracksSuccess("  --bz-panel: var(--state-success);")).toBe(
       true,
     );
-    expect(
-      panelTracksSuccess(
-        "  --bz-panel: color-mix(in srgb, #253e33 40%, #f7f4ee);",
-      ), // token-lint-ok: planted violation for the guilt case, never rendered
-    ).toBe(true);
+    expect(panelTracksSuccess(PLANTED_PANEL_MIX)).toBe(true);
     // And a block that declares no panel at all is drift, not innocence.
     expect(panelTracksSuccess("  --bz-base: var(--bz-kita-canvas);")).toBe(
       true,
