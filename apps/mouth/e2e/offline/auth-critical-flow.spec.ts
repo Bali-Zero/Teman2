@@ -99,14 +99,36 @@ test.describe("@offline critical authentication journey", () => {
       });
     });
 
+    // The destination is SERVED AS A STUB — same origin, no application code.
+    // Two reasons, both measured. The page no longer pauses 1500ms before
+    // redirecting, and this test read the session inside that pause; without
+    // it, reading on the login document races the navigation. And reading it at
+    // the REAL /news measured nothing in CI: that route is public, a session
+    // probe from it 401s with no backend behind it, and the client's 401
+    // handler clears the session. A same-origin stub keeps localStorage intact
+    // and runs nothing that could empty it, so what is asserted is what the
+    // login flow wrote. Matched on the PATHNAME: the glob "**/news" would also
+    // match /login?redirect=/news and intercept the login navigation itself.
+    await page.route(
+      (url) => url.pathname === "/news",
+      async (route) => {
+        await route.fulfill({
+          status: 200,
+          contentType: "text/html",
+          body: "<!doctype html><title>news</title><p>offline stub</p>",
+        });
+      },
+    );
+
     await openLogin(page, "/login?redirect=/news");
     await submitCredentials(page);
 
-    // The destination is reached FIRST and the session read there. The page no
-    // longer waits 1500ms before redirecting, so reading storage on the login
-    // document races the navigation — and "the session survives the trip" is
-    // the stronger claim anyway.
     await expect(page).toHaveURL(/\/news$/, { timeout: 10_000 });
+    // And wait for the stub's own body. The URL changes when the navigation
+    // commits, and reading localStorage in that window can land on the
+    // transient about:blank document, whose opaque origin has a SEPARATE,
+    // empty store — which reports null for both keys instead of throwing.
+    await expect(page.getByText("offline stub")).toBeVisible();
 
     const storedSession = await page.evaluate(() => ({
       token: localStorage.getItem("auth_token"),
