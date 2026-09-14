@@ -120,12 +120,27 @@ describe("GateScreen — Deadlines section", () => {
     expect(await screen.findByText("Alert a-overdue")).toBeInTheDocument();
     expect(screen.getByText("Alert a-soon")).toBeInTheDocument();
     expect(screen.getByText("Alert a-sent")).toBeInTheDocument();
-    expect(screen.getByText("overdue 2d")).toHaveStyle({
-      background: "var(--state-danger)",
-    });
-    expect(screen.getByText("3d left")).toHaveStyle({
-      background: "var(--state-warning)",
-    });
+    // Re-pinned for R19 (SAETTA-R19K K1c2). These two used to be FILLED
+    // badges — danger behind the overdue label, warning behind the other —
+    // with the canvas colour as their text. On kita danger re-aliases to
+    // copper, so the overdue badge became a label sitting ON copper, and
+    // copper is a person rather than a status: it is never the ground a word
+    // sits on. Both are outlines now, and the two meanings stay DISTINCT,
+    // which is what the assertion has to prove.
+    const overdue = screen.getByText("overdue 2d");
+    const soon = screen.getByText("3d left");
+
+    // Guilt: neither may carry a fill, and neither may name danger.
+    expect(overdue.className).not.toContain("bg-");
+    expect(soon.className).not.toContain("bg-");
+    expect(overdue.className).not.toContain("--state-danger");
+    expect(soon.className).not.toContain("--state-danger");
+
+    // Innocence: the overdue one is copper, the merely-near one is not.
+    expect(overdue.className).toContain("border-[var(--bz-copper)]");
+    expect(overdue.className).toContain("text-[var(--bz-copper-text)]");
+    expect(soon.className).toContain("border-[var(--state-warning)]");
+    expect(soon.className).not.toContain("copper");
     // The old dead-end deep-link is gone.
     expect(
       screen.queryByRole("button", { name: /review deadlines/i }),
