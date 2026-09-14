@@ -450,7 +450,8 @@
    without pretending they serve the same job. */
 [data-product="kita"] {
   --bz-product-radius: 12px;
-  --bz-product-page-gap: 20px;
+  /* concept-K geometry: the SIAP gutter is 24, the portal's is 28. */
+  --bz-product-page-gap: 24px;
   --bz-product-row-height: 52px;
   --bz-product-heading-font: "Inter", system-ui, sans-serif;
   --bz-header-height: 48px;
@@ -477,10 +478,16 @@
    ink #1d2c3b 12.96:1 · muted #58626b 5.67:1 · copper #a44b36 5.26:1 ·
    warning #8a5a2b 5.35:1 · forest #253e33 10.54:1 · slate #233d52 10.28:1;
    paper #fffcf7 on a forest button 11.30:1, on a slate fill 11.03:1.
-   --line-control #767c82 is the interactive-boundary line: 3.84:1 on paper
-   and 4.12:1 on a card, so it clears SC 1.4.11's 3:1 for a control boundary.
-   R19's --line-strong #a8aca9 measures 2.09:1 and fails that floor, so a
-   control gets its own line token rather than the hairline.
+   --line-control #58626b is the interactive-boundary line, and it is the
+   muted ink: 5.67:1 on paper, 4.88:1 on the wash. K1a shipped #767c82 from
+   DISPOSITION.md C13; all six frozen renders carry #58626b instead, citing an
+   imperator ruling ON that finding, and MEASURE.md — which is generated from
+   the probe — was simply not regenerated after it. The renders are what
+   FROZEN.md tells a window to copy, and the ruling's value is also the
+   stronger one. R19's --line-strong #a8aca9 measures 2.09:1 and fails SC
+   1.4.11's 3:1 under a control, which is why a control has its own token at
+   all. Dark is unchanged: rgba(247,244,238,.42) over the ink ground composites
+   to exactly the renders' #727071.
 
    No red on kita: --state-danger and --bz-red resolve to copper and every
    dangerous state carries a WORD. --bz-neon-purple is re-aliased to slate so
@@ -552,7 +559,7 @@
   /* Lines — hairline everywhere, a darker line only under a control */
   --bz-line: #dad8d1;
   --bz-line-strong: #a8aca9;
-  --line-control: #767c82;
+  --line-control: #58626b;
   --bz-border: #dad8d1;
   --bz-border-hover: #a8aca9;
   --bz-border-accent: rgba(164, 75, 54, 0.28);

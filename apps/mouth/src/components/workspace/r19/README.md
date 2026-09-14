@@ -87,8 +87,9 @@ string somewhere else is still caught.
 
 `DeskStrip` and `HairlineHead` stick to `var(--bz-header-height, 48px)`, so
 they follow whatever height the shell ships rather than pinning their own. The
-kita product block currently declares 64px; **K1c** brings it to the concept's
-48px, and these primitives move with it without an edit.
+kita product block already declares 48px, which is the concept's value — an
+earlier revision of this note said 64px, which is the `my` block's value, not
+kita's.
 
 ---
 

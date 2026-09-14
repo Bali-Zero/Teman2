@@ -28,23 +28,55 @@ vi.mock("next/navigation", () => ({
 }));
 
 describe("AppSidebar", () => {
-  it("uses the accessible active-fill token for the current navigation item", () => {
+  it("marks the active workspace item with the R19 copper left rule, not a fill", () => {
+    // Was: a --bz-sidebar-active-fill background with color "#fff". On R19
+    // paper that is white text on a copper fill, and copper is never a fill
+    // (concept-K §3). The rule moved to the left border; the assertion moved
+    // with it rather than being deleted.
     render(
       <AppSidebar
         user={{ name: "Zero", email: "zero@balizero.com" }}
         onLogout={() => undefined}
         navigationConfig={[
           {
-            items: [{ title: "Dashboard", href: "/dashboard", icon: "Home" }],
+            items: [
+              { title: "Dashboard", href: "/dashboard", icon: "Home" },
+              { title: "Clients", href: "/clients", icon: "Home" },
+            ],
           },
         ]}
       />,
     );
 
-    expect(screen.getByRole("link", { name: "Dashboard" })).toHaveStyle({
-      background: "var(--bz-sidebar-active-fill)",
-      color: "#fff",
-    });
+    const active = screen.getByRole("link", { name: "Dashboard" });
+    expect(active.className).toContain("border-[var(--bz-copper)]");
+    expect(active.className).toContain("bg-[var(--bz-card)]");
+    expect(active).toHaveStyle({ color: "var(--tx-pure)" });
+    // The fill it replaces must not come back.
+    expect(active.className).not.toContain("--bz-sidebar-active-fill");
+    expect(active.getAttribute("style") ?? "").not.toContain("#fff");
+  });
+
+  it("does not give an inactive workspace item the copper rule (innocence)", () => {
+    render(
+      <AppSidebar
+        user={{ name: "Zero", email: "zero@balizero.com" }}
+        onLogout={() => undefined}
+        navigationConfig={[
+          {
+            items: [
+              { title: "Dashboard", href: "/dashboard", icon: "Home" },
+              { title: "Clients", href: "/clients", icon: "Home" },
+            ],
+          },
+        ]}
+      />,
+    );
+
+    const inactive = screen.getByRole("link", { name: "Clients" });
+    expect(inactive.className).toContain("border-transparent");
+    expect(inactive.className).not.toContain("border-[var(--bz-copper)]");
+    expect(inactive).toHaveStyle({ color: "var(--tx-secondary)" });
   });
 
   it("disables speculative prefetch for protected portal navigation", () => {
