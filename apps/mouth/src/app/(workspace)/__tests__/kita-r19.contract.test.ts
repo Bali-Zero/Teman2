@@ -446,7 +446,10 @@ describe("kita R19 rail (K1c-bis) — the seven rail declarations", () => {
     });
 
     it(`${theme}: pins the rail foreground trio`, () => {
-      expect(block).toContain("--nav-fg: #f7f4ee;");
+      // --nav-fg IS R19 paper, so say that rather than repeating the literal:
+      // a second copy of the hex could drift from the alphabet's own value
+      // without either assertion noticing.
+      expect(block).toContain(`--nav-fg: ${R19.canvas};`);
       expect(block).toContain("--nav-fg-muted: rgba(247, 244, 238, 0.78);");
       expect(block).toContain("--nav-active-wash: rgba(247, 244, 238, 0.06);");
     });
