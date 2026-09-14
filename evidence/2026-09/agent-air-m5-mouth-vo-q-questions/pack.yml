@@ -306,18 +306,25 @@ dissent:
       concrete?", which contradicts a branch the applicant chose precisely
       because it involves no company; infer `investment.pt_pma = false` from
       the vehicle instead.
-    status: RETRACTED
+    status: PLAUSIBLE
     cure: >-
-      Not applied, and the refutation is in the copy the seat did not read. The
-      vehicle option says "Capital-market investments only, such as listed
-      shares or bonds" — it describes the BASIS of the investment. The seq-21
-      fact that means "without establishing a company" is a DIFFERENT question,
-      q.investment_capital_market_only, asked separately on the same branch.
-      Inferring pt_pma=false from the vehicle would deny E28A to an applicant
-      who holds listed shares AND has a concrete PT PMA commitment — the same
-      false-negative class the seat itself flags elsewhere. Asking costs one
-      question and a "no" closes E28A with no figure requested, which is why
-      the question is there at all.
+      Not applied, and the AUTHOR REJECTS this finding — not RETRACTED, because
+      the seat itself never withdrew it: re-probed in round 8
+      (council/agy-gemini-3.1-pro-round8.txt) with this exact rebuttal put to
+      it directly, and that run produced no output (a tool-permission
+      auto-denial in headless mode, the same failure class as round 1's first
+      attempt) — the seat's own words neither reaffirm nor withdraw the
+      finding, so the record here is the author's rejection alone, not a
+      seat-side retraction. The refutation is in the copy the seat did not
+      read. The vehicle option says "Capital-market investments only, such as
+      listed shares or bonds" — it describes the BASIS of the investment. The
+      seq-21 fact that means "without establishing a company" is a DIFFERENT
+      question, q.investment_capital_market_only, asked separately on the same
+      branch. Inferring pt_pma=false from the vehicle would deny E28A to an
+      applicant who holds listed shares AND has a concrete PT PMA commitment —
+      the same false-negative class the seat itself flags elsewhere. Asking
+      costs one question and a "no" closes E28A with no figure requested,
+      which is why the question is there at all.
   - seat: Claude Opus 5 (self-refutation, on the perimeter)
     objection: >-
       One row is added to a copy map (_lib/engine-adapter.ts's
