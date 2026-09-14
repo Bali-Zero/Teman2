@@ -1,0 +1,193 @@
+gear: 2
+brief_ref: evidence/2026-09/agent-air-m5-mouth-r19k-k1d-v5-76e96f63/brief.yml
+lanes:
+  - lane: r19k-k1d-v5
+    role: build
+    seat: claude-opus-5 (Dux, SAETTA-R19K window K1, xhigh)
+  - lane: r19k-k1d
+    role: review
+    seat: codex gpt-5.6 (CODEX_HOME=acct2, read-only sandbox, reasoning=high) — on the #6502 diff
+  - lane: r19k-k1d
+    role: review
+    seat: harness gate (fresh Opus, read-only) — BLOCK on #6502, the defect the spec was written for
+pii_scan: clean
+seat_override: >-
+  R8 applicability: a sign-in page's markup, two CSS custom properties and two pure functions. No
+  immigration rule, eligibility, claim or price is authored; no NotebookLM query is claimed. The
+  seeded address in the tests is a placeholder, not a person.
+receipts:
+  - claim: >-
+      The amended contract was measured against every vector in the spec table BEFORE it was
+      written into the file, and each answer matches the table.
+    cmd: >-
+      node -e "for each vector: new URLSearchParams('redirect='+v).get('redirect') then the amended
+      firstPartyRedirect" ; npx vitest --run src/app/login
+      Probe: npx vitest --run src/app/login
+    result: >-
+      21 vectors, all as specified. /dashboard?tab=1#x → itself; https://kita.balizero.com/clients/42
+      → /clients/42 (path, not href, so no reload through our own hostname);
+      https://admin.balizero.com/clients/42 and https://mail.balizero.com/inbox → their href;
+      http://admin.balizero.com/x → refused (a sibling must be https); http://localhost:3000/x with
+      origin http://localhost:3000 → /x (a dev server is literally our origin);
+      http://kita.balizero.com/x with an https origin → refused; /%09/, /%0A/, /%0D/, //evil.test,
+      /\evil.test, \\evil.test, javascript:, data:, https://evil.test/x,
+      https://balizero.com.evil.test/, https://balizero.com@evil.test/,
+      https://evil.test\@balizero.com/, /login?expired=true and the empty string → refused.
+    exit: 0
+    ts: "2026-09-14T16:05:00Z"
+    seat: claude-opus-5
+  - claim: The guard is shown to be looking — the replaced path branch is planted and caught.
+    cmd: >-
+      Plant `if (raw.startsWith("/") && !raw.startsWith("//") && !raw.startsWith("/\\")) return raw;`
+      at the top of firstPartyRedirect, run the suite, restore, run again.
+      Probe: npx vitest --run src/app/login
+    result: >-
+      Planted: 7 tests red — the three whitespace vectors, the /login loop, the prefix-guard
+      comparison, the resolved-path property, and the page-level test that drives the whole chain
+      from the query string. Restored: 51 passed.
+    exit: 0
+    ts: "2026-09-14T16:10:00Z"
+    seat: claude-opus-5
+  - claim: >-
+      The sibling branch is pinned at page level too, because that is the flow the amendment
+      restores.
+    cmd: npx vitest --run src/app/login
+    result: >-
+      With ?redirect=https://admin.balizero.com/clients/42 the page calls location.replace with that
+      exact href and logs no refusal; with ?redirect=/%09/evil.test it calls /dashboard and logs
+      one. Both are page-level, not just unit.
+    exit: 0
+    ts: "2026-09-14T16:12:00Z"
+    seat: claude-opus-5
+  - claim: The gate renders on concept-K at both widths and in both themes, with nothing thrown.
+    cmd: >-
+      Chromium via playwright against one `next dev --webpack` on 3115 (started for the capture and
+      killed after), /login, dataset.product="kita", getComputedStyle + screenshot at 1440x900 and
+      390x844 in operative-light and operative-dark.
+      Probe: chromium getComputedStyle + screenshot on the dev server at 1440 and 390, both themes
+    result: >-
+      panel rgb(37,62,51) with paper type in all four runs, 576px at 1440 (40%) and a full-width
+      120px band at 390; rule 56x3 rgb(164,75,54); both fields 52px on rgb(88,98,107) light and
+      rgba(247,244,238,.42) dark; the Enter button is forest, never copper; PIN inputmode="numeric"
+      AND pattern="[0-9]*"; h1 Fraunces, body Manrope; a sweep of every element's colour, background
+      and border finds no red. Zero page errors in all four runs.
+    exit: 0
+    ts: "2026-09-14T16:20:00Z"
+    seat: claude-opus-5
+  - claim: The offline auth journey is green at browser level, twice consecutively.
+    cmd: >-
+      PLAYWRIGHT_EXTERNAL_SERVER=1 PLAYWRIGHT_BASE_URL=http://127.0.0.1:3115 npx playwright test
+      --config=playwright.config.ts --project=chromium --ignore-snapshots --reporter=list
+      e2e/offline/auth-critical-flow.spec.ts
+      Probe: npx vitest --run src/app/login
+    result: >-
+      3 passed, twice. The first run against the COLD dev server failed the third test on a timeout
+      while /dashboard compiled — named rather than rerun blindly, and it does not recur once the
+      route is built. The same spec passed CI's production build on #6505 and #6507.
+    exit: 0
+    ts: "2026-09-14T16:22:00Z"
+    seat: claude-opus-5
+  - claim: The perimeter holds and the portal file is byte-identical.
+    cmd: >-
+      diff origin/main:portal/r19-fonts.css against the worktree copy; git diff --name-only
+      origin/main...HEAD
+      Probe: npx vitest --run "src/app/(workspace)/__tests__"
+    result: >-
+      r19-fonts.css identical to the byte; the note it needed lives in the login file's docstring.
+      components/workspace/r19/**, AppSidebar.tsx and navigation.ts are absent from the diff.
+      globals.css carries only the two --bz-panel tokens, which the imperator ruled stay as the K1
+      seam for k1-prims to rebase over.
+    exit: 0
+    ts: "2026-09-14T16:25:00Z"
+    seat: claude-opus-5
+  - claim: Static gates green.
+    cmd: >-
+      npx tsc --noEmit --incremental false; npx eslint on the four login sources; npx prettier
+      --check; npx vitest --run src/app/login "src/app/(workspace)/__tests__";
+      python3 scripts/token_lint.py --base origin/main after committing.
+    result: >-
+      tsc 0 — with --incremental false, the flag that catches the page-module export rule a plain
+      run misses. eslint: one warning, the <img> LCP note the previous page carried twice and this
+      one carries once; no errors. prettier clean. 117 passed. token-lint clean.
+    exit: 0
+    ts: "2026-09-14T16:15:00Z"
+    seat: claude-opus-5
+dissent:
+  - seat: harness gate (fresh Opus, read-only)
+    objection: >-
+      BLOCK on #6502 — the path branch returns the candidate verbatim after excluding only // and
+      /\; browsers strip TAB/LF/CR before parsing and URLSearchParams.get() percent-decodes, so
+      ?redirect=/%09/evil.test reaches location.replace as https://evil.test/.
+    status: CONFIRMED
+    disposition: >-
+      True, and it survived two further attempts of mine (#6503, #6505) because both only added
+      new URL() to the ABSOLUTE branch. The depth-1 rule fired and the imperator wrote the contract.
+      Every candidate is now resolved before it is judged. I had reasoned about the parser and still
+      shipped a prefix test three times; what closed it was asking the parser instead of the string.
+  - seat: claude-opus-5
+    objection: >-
+      The first spec accepted the SAME origin only, which would drop the staff that
+      apps/admin-dashboard and the SSO subdomains bounce here with their own absolute URL.
+    status: CONFIRMED
+    disposition: >-
+      Raised at #6507 and UPHELD by the imperator with the evidence
+      (apps/admin-dashboard/middleware.ts:66-74 builds returnTo from request.nextUrl.origin;
+      proxy.ts:93-100 documents mail/calendar/drive/knowledge). The spec was amended and #6507
+      closed; the sibling branch is restored here and pinned at both unit and page level. Recorded
+      because it is the one place where saying so instead of shipping it was the right call.
+  - seat: harness gate (fresh Opus, read-only)
+    objection: BLOCK notice — the PIN lacks pattern="[0-9]*" and portal/r19-fonts.css is edited.
+    status: CONFIRMED
+    disposition: >-
+      Both taken. The pattern sits beside inputMode (iOS Safari reads the pattern for the numeric
+      keypad); the portal file is byte-identical and its stale-comment correction moved into the
+      login file's own docstring.
+  - seat: codex gpt-5.6
+    objection: >-
+      BLOCK — a Next page module may export nothing but the framework's own symbols; tsc
+      --noEmit --incremental false fails TS2344 on the exported helpers.
+    status: CONFIRMED
+    disposition: >-
+      Cured before #6502 opened and carried here: LoginStage, firstPartyRedirect and stageForError
+      live in ./contract. The strict flag is an acceptance probe now, because the plain run was
+      green on the same tree.
+  - seat: codex gpt-5.6
+    objection: >-
+      BLOCK — every non-401/403 becomes "service unreachable", but the endpoint returns 400/422 for
+      invalid input.
+    status: CONFIRMED
+    disposition: >-
+      Measured in identity/router.py:78-92. 4xx is now "what you sent" except 408 and 429; 5xx and
+      network throws are the service; the denied copy says "were not accepted" so it is true of a
+      format error too.
+  - seat: codex gpt-5.6
+    objection: >-
+      BLOCK — findReds misses #f00, rgb(...) and bg-red-500; findCopperFill misses inline
+      backgrounds, which is exactly how this page fills its button; the theatre guard checks a class
+      the overlay never used; the panel guard has no planted case.
+    status: CONFIRMED
+    disposition: >-
+      All four widened and carried here. findReds judges the colour in any spelling with four
+      unlisted reds as guilt and the whole alphabet as innocence; findCopperFill reads inline
+      styles; findTheatre is source-level with the replaced implementation as guilt;
+      panelTracksSuccess is planted three ways.
+notes:
+  - >-
+    Four PRs were closed to reach this one: #6502 (gate BLOCK on the redirect), #6503 and #6505 (my
+    corrections touched only the absolute branch), #6507 (same-origin-only, which my own dissent and
+    the imperator's evidence showed would break the sibling bounce). Each was disarmed before being
+    closed and none was pushed to after arming.
+  - >-
+    Also cured along the way and still true: the success plate is gone because it was measured never
+    to paint; the 1500ms and 2000ms delays are gone; the error boundary lost the shadcn destructive
+    red; the skeleton draws this page's silhouette.
+  - >-
+    A production build cannot be reproduced in a worktree (`next build` dies on the shared
+    node_modules symlink), so every browser claim here is measured under `next dev --webpack`. The
+    same e2e passed CI's production build on #6505 and #6507, which is the evidence the technique
+    holds in both.
+  - >-
+    Leftovers for other windows, unchanged by this PR: lib/api/client.ts:487 sends an expired staff
+    session to /login?expired=true and nothing on the page explains why they were thrown out;
+    auth.api.ts:78 reads `.status` where client.ts throws `.statusCode`, so every denial logs as an
+    error.
