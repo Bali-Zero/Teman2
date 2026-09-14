@@ -1,0 +1,167 @@
+gear: 3
+brief_ref: evidence/2026-09/agent-air-m5-mouth-r19k-k2a-desk-e5175f3d/brief.yml
+lanes:
+  - lane: r19k-k2a-desk
+    role: build
+    seat: claude-opus-5 (Dux, SAETTA-R19K window K2, xhigh)
+  - lane: r19k-k2a-desk
+    role: review
+    seat: codex gpt-5.6 (acct2, read-only sandbox, model_reasoning_effort=high)
+pii_scan: clean
+seat_override: >-
+  R8 applicability: dashboard presentation and one client-side ownership predicate. No immigration
+  rule, eligibility, claim or price is authored; no NotebookLM query is claimed. Every fixture name
+  is synthetic (Client 04xx, PT Contoh Abadi, Member A, example.test).
+receipts:
+  - claim: The dashboard renders on R19 paper in both themes, at both widths, with a clean console.
+    cmd: >-
+      Chromium via playwright against `next dev --webpack -p 3187` on this branch. /dashboard with
+      every /api/** route fulfilled from synthetic fixtures, dataset.product="kita", full-page
+      capture and a scrollWidth/clientWidth probe at 1440x900 and 390x844 in operative-light and
+      operative-dark.
+      Probe: chromium via playwright against next dev --webpack, full-page capture plus a scrollWidth probe
+    result: >-
+      Four captures. CONSOLE_ERRORS=0. scrollWidth == clientWidth at both widths (1440/1440 and
+      390/390). The masthead carries the copper rule, the copper eyebrow and 40px Fraunces "Today";
+      the action margin carries its 4px copper rule with two owned rows; the KPI band paints 44px
+      numerals with "Expiring" in warning; sections number 00, 01, 02 then 03-06 with System Pulse
+      correctly absent for a non-admin. PNGs at ~/Desktop/R19-KITA-20260914/K2-evidence/ with the
+      capture rig beside them.
+    exit: 0
+    ts: "2026-09-14T16:28:00Z"
+    seat: claude-opus-5
+  - claim: The browser found three defects the green suite did not, and all three are cured.
+    cmd: Read the four captures and the console transcript rather than trusting the passing tests.
+    result: >-
+      (1) Twelve React errors, "<p> cannot contain a nested <p>": the intelligence row passes an
+      Eyebrow — itself a p — into what LedgerRow rendered as a p. Cured to a block span. (2) An
+      uneven xl:grid-cols-[1.5fr_1fr_1fr] starved the third column and truncated "My role" at 1440;
+      cured to equal thirds, which is what the fusion's .three-col has. (3) A KPI cell rule hung off
+      the 390px right edge; cured with nth-child rules matching the fusion's own .metric borders.
+      After cure: 0 console errors.
+    exit: 0
+    ts: "2026-09-14T16:28:00Z"
+    seat: claude-opus-5
+  - claim: The ownership law is enforced by guards that prove guilt AND innocence.
+    cmd: >-
+      npx vitest --run "src/app/(workspace)/dashboard" "src/app/(workspace)/__tests__"
+      src/components/dashboard
+      Probes: npx vitest --run "src/app/(workspace)/dashboard/_lib/actionMargin.test.ts" ;
+      npx vitest --run "src/app/(workspace)/dashboard" ;
+      npx vitest --run "src/app/(workspace)/__tests__/desk-no-red.guard.test.ts" ;
+      npx vitest --run "src/app/(workspace)/__tests__"
+    result: >-
+      147 passed. actionMargin.test.ts pairs every clause: a blocked practice in the viewer's own
+      list ENTERS, the identical record under an unscoped admin array does NOT, a status that is not
+      blocked on the assignee does NOT, and a zero-day deadline on an in_progress record does NOT
+      pull it in. The page tests prove the same three outcomes through the rendered DOM. The no-red
+      guard is guilty on a red hex, a red Tailwind utility and a --state-danger read, and innocent on
+      copper, forest, warning, slate and muted.
+    exit: 0
+    ts: "2026-09-14T16:27:36Z"
+    seat: claude-opus-5
+  - claim: Copper was being painted by a status and by a category, and both are cured.
+    cmd: >-
+      Resolve --bz-chart-5 to its declaration; grep the kita theme block for the chart ramp; read
+      TeamActivityPanel's ROW_ACCENTS.
+      Probe: npx vitest --run "src/app/(workspace)/dashboard"
+    result: >-
+      packages/core/tokens/operative.css:66 declares `--bz-chart-5: var(--bz-copper)`, and
+      globals.css states in as many words that the kita block deliberately does NOT redeclare
+      --bz-chart-1..8. So the intel feed's `living` category was painting the reserved colour off a
+      raw category string. The whole category-colour map is deleted — the fusion's own intelligence
+      feed carries the category as a WORD and no colour. Separately, TeamActivityPanel handed
+      --bz-copper-text to every fourth row BY INDEX; a colleague's row was claiming the viewer's
+      signal. Replaced with muted.
+    exit: 0
+    ts: "2026-09-14T16:25:42Z"
+    seat: claude-opus-5
+  - claim: An independent adversarial seat reviewed the frozen diff and its findings are disposed.
+    cmd: >-
+      CODEX_HOME=/Users/balizero/.codex-acct2 codex exec --skip-git-repo-check --sandbox read-only
+      -c model_reasoning_effort=high, on `git diff origin/main`, against the concept's colour law,
+      the RBAC/identity isolation of the page, accessibility, test strength and React correctness.
+    result: >-
+      13 findings. NINE CONFIRMED and cured before arming: the margin passed practicesAreMine without
+      identityIsCurrent, so a stale cached response could have rendered a previous user's practices
+      under "Assigned to you"; --bz-chart-5 aliasing copper; an empty margin still painting its owned
+      rule; state and deadline HIDDEN rather than moved below md; repeated links named only "Open";
+      a date formatted without an explicit timezone (now Asia/Makassar, since this component still
+      pre-renders on the server); DeskLink painting every link copper; a test asserting length > 0
+      where it claimed 2. FOUR DISPOSED with reasons, in the PR body and the source.
+    exit: 0
+    ts: "2026-09-14T16:10:00Z"
+    seat: codex-gpt-5.6
+  - claim: Static gates green, with the same two pre-existing failures and nothing else.
+    cmd: >-
+      npx tsc --noEmit --incremental false; npx eslint "src/app/(workspace)/dashboard";
+      npx prettier --write on every touched file; python3 scripts/token_lint.py --base origin/main
+      after committing.
+    result: >-
+      tsc 0 output. eslint 0 errors, 1 warning (react-hooks/exhaustive-deps on the realtime effect,
+      present before this diff and untouched). prettier clean. token-lint clean across 7 scoped
+      files. The wider sweep shows 46 failures in exactly two files — settings/appearance/page.test.tsx
+      and process/__tests__/page.test.tsx — which this diff does not touch and which were measured
+      failing identically on clean origin/main in this same session.
+    exit: 0
+    ts: "2026-09-14T16:27:36Z"
+    seat: claude-opus-5
+dissent:
+  - seat: codex-gpt-5.6
+    objection: >-
+      desk.tsx creates a second primitives module; the shared README requires a missing shape to be
+      added under components/workspace/r19, not beside the page.
+    status: RETRACTED
+    disposition: >-
+      The K2 window brief forbids this seat from editing components/workspace/r19/** while another
+      seat upgrades it to v2, and instructs exactly this fallback: a page-local wrapper that imports
+      the primitive, never a copy of its class strings. desk.tsx imports SERIF, SERIF_SECTION,
+      TABULAR and EYEBROW from the shared module and copies nothing. When v2 lands these become
+      one-line adapters over Numeral size="kpi|ordinal", OrdinalMargin and LedgerSection.
+  - seat: codex-gpt-5.6
+    objection: >-
+      The no-red guard is falsely green: it does not follow imports, and SystemPulse and
+      ComplianceRadar read --state-danger.
+    status: CONFIRMED
+    disposition: >-
+      Both reads are real (packages/core/components/SystemPulse.tsx:28, ComplianceRadar.tsx:61).
+      Neither paints red on kita, where --state-danger resolves to copper, and neither is in this
+      window's writable perimeter. Widening the scan to the whole render tree would judge code these
+      pages never touched — the guard-over-match failure this file is written to avoid. The
+      limitation and the two file:line reads are now written INTO the guard, so its green is never
+      read as more than it measures.
+  - seat: codex-gpt-5.6
+    objection: >-
+      The masthead eyebrow paints a DATE copper, and Fraunces touches the A-J row marks.
+    status: RETRACTED
+    disposition: >-
+      The frozen render declares `.masthead .eyebrow { color: var(--copper) }` and renders "DESK ·
+      MONDAY 14 SEPTEMBER" in it; the eyebrow is the masthead's structural mark, in the same family
+      as the copper rule, not a claim about a record. DISPOSITION-fusion F3 and F10 concern copper on
+      DATA dates — a passport cell, a countdown pill — and this diff obeys both. The A-J marks are
+      ledger ordinals, which concept §4 grants Fraunces by name.
+  - seat: claude-opus-5
+    objection: >-
+      The practice half of the action margin is inert in production.
+    status: CONFIRMED
+    disposition: >-
+      /api/dashboard/summary calls list_practices(status="in_progress", ...), an exact `p.status = $n`
+      match, so its array cannot contain a waiting_documents row. The predicate is written against the
+      real status vocabulary — both the CRM spelling and the summary's own short code — so the margin
+      fills the day that filter widens, with no change here. Substituting in_progress instead would
+      have flooded the margin with everything moving and made copper mean "in progress", which is the
+      law this window exists to enforce. Named in the source, the PR body and the checkpoint rather
+      than hidden; widening the endpoint is outside K2's perimeter.
+notes:
+  - >-
+    This PR supersedes #6509, which carried identical code and was closed unmerged: the armed branch
+    was frozen and its red was "Harness floor recompute — floor 3 by size, no evidence/brief.yml",
+    which no change on a frozen branch may cure. Head was 2c472036266d5597e7d44e54fde521bf73fbe79e;
+    no gate had been commissioned on it.
+  - >-
+    Primitives v1 limits carried forward, both already announced for v2 by the K1 seat: StatePill is
+    rounded-full with a round dot where the fusion wants square with a diamond pip, and the KPI
+    numeral is a page-local wrapper because Numeral v1 takes n: number and renders pad2(n) at 16px.
+    Nothing new was asked of that module.
+  - >-
+    /portal is untouched: `git diff --stat origin/main -- apps/mouth/src/app/portal` is empty.
