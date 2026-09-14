@@ -130,6 +130,20 @@ export function contrast(a: string, b: string): number {
   return (hi + 0.05) / (lo + 0.05);
 }
 
+/**
+ * Pure detector: does this block's --bz-panel follow the theme's lifted
+ * --state-success instead of holding the one forest value? An absent
+ * declaration counts as drift — a panel that is not declared is not pinned.
+ */
+export function panelTracksSuccess(block: string): boolean {
+  const match = block.match(/--bz-panel:\s*([^;]+);/);
+  if (!match) return true;
+  const value = match[1].trim();
+  return (
+    value.includes("var(--state-success)") || value.startsWith("color-mix(")
+  );
+}
+
 describe("kita R19 seam — light", () => {
   const block = themeBlock("operative-light");
 
@@ -329,14 +343,31 @@ describe("kita R19 seam — the one forest surface", () => {
     });
   }
 
-  it("does not follow --state-success into the dark", () => {
+  it("does not follow --state-success into the dark (innocence)", () => {
     // The dark block lifts success through a paper mix so "done" stays legible
     // as TEXT. A lifted forest is a pale green wall, not a panel, so the panel
-    // keeps the ONE value in both themes and is asserted not to track it.
-    const dark = themeBlock("operative-dark");
-    expect(dark).toContain(`--state-success: color-mix(`);
-    expect(dark).not.toContain(`--bz-panel: color-mix(`);
-    expect(dark).not.toContain(`--bz-panel: var(--state-success)`);
+    // keeps the ONE value in both themes.
+    expect(themeBlock("operative-dark")).toContain(
+      "--state-success: color-mix(",
+    );
+    expect(panelTracksSuccess(themeBlock("operative-light"))).toBe(false);
+    expect(panelTracksSuccess(themeBlock("operative-dark"))).toBe(false);
+  });
+
+  it("the panel-drift detector is awake (guilt)", () => {
+    // Each of these is a way the panel could come to track the lifted step.
+    expect(panelTracksSuccess("  --bz-panel: var(--state-success);")).toBe(
+      true,
+    );
+    expect(
+      panelTracksSuccess(
+        "  --bz-panel: color-mix(in srgb, #253e33 40%, #f7f4ee);",
+      ), // token-lint-ok: planted violation for the guilt case, never rendered
+    ).toBe(true);
+    // And a block that declares no panel at all is drift, not innocence.
+    expect(panelTracksSuccess("  --bz-base: var(--bz-kita-canvas);")).toBe(
+      true,
+    );
   });
 
   it("paper on forest clears SC 1.4.3 with room (innocence)", () => {
