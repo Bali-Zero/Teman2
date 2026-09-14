@@ -1,5 +1,5 @@
 gear: 2
-brief_ref: evidence/2026-09/agent-air-m5-mouth-r19k-k1d-login-v2-f0e8bb34/brief.yml
+brief_ref: evidence/2026-09/agent-air-m5-mouth-r19k-k1d-login-v3-0a1072cc/brief.yml
 lanes:
   - lane: r19k-k1d-login
     role: build
@@ -122,14 +122,47 @@ receipts:
     ts: "2026-09-14T15:05:00Z"
     seat: claude-opus-5
   - claim: The armed branch was never pushed to; the correction is a successor PR from fresh main.
-    cmd: gh pr merge 6502 --disable-auto; gh pr close 6502; git checkout -b ...-v2; git rebase origin/main
+    cmd: gh pr merge <n> --disable-auto; gh pr close <n>; git checkout -b ...-v3; git rebase origin/main
     result: >-
-      #6502 was armed at PR-open and then CI named a real defect. Builder contract §1 makes arming a
-      freeze, so the fix does not go onto that branch: auto-merge was disabled, #6502 closed with the
-      reason, and this branch rebased onto origin/main 6eb13d09 (which had moved) carries all seven
-      commits. Same cure as K1a's #6494 to #6495.
+      Twice. #6502 was armed at PR-open and CI named the copy defect; #6503 was armed and CI named
+      the storage read. Builder contract §1 makes arming a freeze, so neither was pushed to:
+      auto-merge disabled, the PR closed with its reason, and a successor opened from fresh
+      origin/main. Same cure as K1a's #6494 to #6495. This is the second red on the same SPEC but
+      the second distinct CAUSE; a third red on it suspends the PR instead of taking a fourth round.
     exit: 0
     ts: "2026-09-14T15:10:00Z"
+    seat: claude-opus-5
+  - claim: >-
+      The E2E session read was cured by measurement, not by a third guess — and the reason it
+      needed three attempts is recorded.
+    cmd: >-
+      PLAYWRIGHT_EXTERNAL_SERVER=1 PLAYWRIGHT_BASE_URL=http://127.0.0.1:3111 npx playwright test
+      --config=playwright.config.ts --project=chromium --ignore-snapshots --reporter=list
+      --grep "page Page|@offline"
+      Probe: npx vitest --run src/app/login
+    result: >-
+      Three techniques were measured one at a time. HOLDING the destination response deadlocks:
+      page.evaluate does not settle while a top-level navigation is pending. ABORTING it leaves
+      Chromium on an error document whose opaque origin denies localStorage with a SecurityError.
+      FULFILLING it as a same-origin stub works — but only once the stub's own body is on screen,
+      because toHaveURL passes at navigation commit and a read in that window can land on the
+      transient about:blank, whose opaque origin has a separate EMPTY store and returns null instead
+      of throwing. Those two nulls are exactly what CI printed. Final: the 3 auth tests pass, and the
+      full CI selection is 59 passed / 1 skipped / 0 failed against `next dev --webpack`.
+    exit: 0
+    ts: "2026-09-14T16:05:00Z"
+    seat: claude-opus-5
+  - claim: The production build cannot be reproduced in this worktree, so the limit is stated.
+    cmd: npx next build
+    result: >-
+      TurbopackInternalError — "Symlink [project]/apps/mouth/node_modules is invalid, it points out
+      of the filesystem root". The shared node_modules symlink that makes worktrees cheap also makes
+      a production build impossible here (recorded scar). Every E2E claim above is therefore measured
+      against `next dev --webpack`, and the difference between the two environments is precisely what
+      the first re-pin got wrong. Named rather than hidden: if CI reds a third time on this spec, the
+      PR suspends per builder contract §1.
+    exit: 1
+    ts: "2026-09-14T15:40:00Z"
     seat: claude-opus-5
 dissent:
   - seat: codex gpt-5.6
