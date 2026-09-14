@@ -1,0 +1,54 @@
+gear: 2
+objective: >-
+  Finish the kita shell on concept-K v2 "SIAP": the INTAKE gate becomes a numbered order of business
+  on R19 paper, Zantara's two hard copper pairings are cured, the toast set gains a fifth "slip"
+  variant carrying a six-second Undo, the shared list primitives in packages/core gain an opt-in
+  desk-strip variant, and the shell's own sources gain the guard that token_lint's scope leaves out.
+constraints:
+  - Presentation only. No route, endpoint, field, hook signature, API type, i18n key or data request
+    changes; aria, refs, handlers and the gate's own clearing logic unchanged.
+  - The four shipped toast variants and the default branch of every core primitive stay
+    byte-identical — a shared component gains a key, it does not get restyled under the products
+    already using it.
+  - Copper is never a button fill and never the ground behind a label. No red anywhere on kita.
+  - >-
+    Out of perimeter for this seat, owned by `k1-prims` for K1c-bis — components/workspace/r19/**,
+    AppSidebar.tsx, navigation.ts, globals.css. No token is declared here; the selection pair is
+    consumed through a fallback so K1c-bis can declare it later without editing a component.
+  - Every detector carries a planted violation AND an innocent case.
+acceptance:
+  - text: >-
+      WHEN the gate renders while blocking, it SHALL carry a 52x3 copper rule, a Fraunces 450 title
+      and three ordinal-numbered sections on R19 paper, and NO button SHALL be filled copper.
+    probe: chromium getComputedStyle + screenshot against next dev --webpack
+  - text: >-
+      WHEN a deadline is overdue its pill SHALL be copper OUTLINED with a copper word and a
+      transparent ground, and WHEN it is merely near the pill SHALL be warning and SHALL NOT be
+      copper — the guard must distinguish, not merely match.
+    probe: npx vitest --run "src/app/(workspace)/__tests__/GateScreen.test.tsx"
+  - text: >-
+      WHEN a slip toast renders it SHALL be square on the control boundary with no status glyph and
+      no left bar, its Undo SHALL be a 44px target with no retry glyph, and its window SHALL be the
+      same number the caller schedules its commit against.
+    probe: npx vitest --run src/components/ui/toast.test.tsx
+  - text: >-
+      WHEN a success, error, warning or info toast renders it SHALL keep rounded-lg, border-l-4 and
+      the lifted ground it shipped with.
+    probe: npx vitest --run src/components/ui/toast.test.tsx
+  - text: >-
+      WHEN any of the five shell sources carries a raw hex, a --bz-red read, a --state-danger read,
+      or a copper background paired with a foreground in the SAME declaration, the suite SHALL go
+      red; and WHEN it carries the 52x3 copper rule, a copper WORD or a copper BORDER it SHALL NOT.
+    probe: npx vitest --run src/components/workspace/shell-guard.test.ts
+  - text: >-
+      WHEN a core list primitive is rendered without variant="desk" its markup SHALL be
+      byte-identical to what my.balizero.com already ships.
+    probe: npx vitest --run components/deskStrip.test.tsx (packages/core)
+consumer_map:
+  - Every staff member blocked by the INTAKE gate sees this screen before any workspace route —
+    measured in Chromium against `next dev --webpack` with the profile, gate status and compliance
+    alerts stubbed (fabricated client ids, no client data).
+  - K3 (`k3-dux`) imports the eight DESK_* symbols and the four primitives' desk variant from
+    @balizero/core.
+  - shell-guard.test.ts runs on every CI test job and covers AppSidebar.tsx, which `k1-prims` is
+    editing for K1c-bis.
