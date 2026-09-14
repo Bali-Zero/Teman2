@@ -1,4 +1,13 @@
-import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
+import {
+  existsSync,
+  mkdtempSync,
+  readFileSync,
+  readdirSync,
+  rmSync,
+  statSync,
+  writeFileSync,
+} from "node:fs";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, it, expect } from "vitest";
 
@@ -108,22 +117,53 @@ function sourcesOf(dir: string): string[] {
   return out;
 }
 
+/**
+ * Code lines only — a comment is PROSE, and judging prose is the over-match
+ * half of cicatrix family #3.
+ *
+ * The leading-marker test alone was not enough and this file's own history
+ * proves it: a wrapped JSX block comment explaining WHY --state-danger was
+ * removed was convicted of reading it, because its continuation lines start
+ * with neither `//` nor `*`. A guard that punishes a page for documenting the
+ * rule is a guard that teaches people to stop documenting. So this tracks
+ * block-comment state across lines instead of guessing per line.
+ *
+ * Deliberately NOT a parser: a `/*` inside a string literal would open a
+ * phantom comment here. That is a known and accepted limit — it can only ever
+ * make the guard MISS, never convict innocent code, and no desk page has such
+ * a literal. The innocence and guilt cases below pin both directions.
+ */
 function codeLines(file: string): Array<{ n: number; text: string }> {
-  return readFileSync(file, "utf8")
+  const out: Array<{ n: number; text: string }> = [];
+  let inBlock = false;
+  readFileSync(file, "utf8")
     .split("\n")
-    .map((text, i) => ({ n: i + 1, text }))
-    .filter(({ text }) => {
+    .forEach((text, i) => {
       const t = text.trimStart();
+      const opensBlock = /\/\*/.test(text);
+      const closesBlock = /\*\//.test(text);
+      if (inBlock) {
+        // Still inside a block comment. It ends on this line only if the
+        // closer appears; either way this line is prose, not paint.
+        if (closesBlock) inBlock = false;
+        return;
+      }
+      if (opensBlock && !closesBlock) {
+        inBlock = true;
+        return;
+      }
       if (
         t.startsWith("//") ||
         t.startsWith("*") ||
         t.startsWith("/*") ||
         t.startsWith("{/*")
       ) {
-        return false;
+        return;
       }
-      return !text.includes("token-lint-ok:");
+      if (text.includes("token-lint-ok:")) return;
+      out.push({ n: i + 1, text });
     });
+  return out;
 }
 
 const HEX_RE = /#[0-9a-fA-F]{3,8}\b/;
@@ -194,6 +234,44 @@ export function redViolation(
 
 describe("the desk no-red scanner", () => {
   const strict = { dangerToken: false };
+
+  // The comment filter itself, both directions. It is a real scanner input:
+  // this guard once convicted a page for EXPLAINING why it dropped the danger
+  // token, because the explanation wrapped onto lines starting with neither
+  // "//" nor "*".
+  it("reads PROSE as prose and PAINT as paint, across a wrapped block comment", () => {
+    const dir = mkdtempSync(join(tmpdir(), "desk-no-red-"));
+    const file = join(dir, "sample.tsx");
+    writeFileSync(
+      file,
+      [
+        "export function Sample() {",
+        "  return (",
+        "    <>",
+        "      {/* Warning, not --state-danger. On kita",
+        "          --state-danger resolves to copper, which would",
+        "          claim the viewer is the next actor. */}",
+        '      <p className="text-[var(--state-warning)]">Error</p>',
+        '      <p className="text-[var(--state-danger)]">Real</p>',
+        "    </>",
+        "  );",
+        "}",
+      ].join("\n"),
+      "utf8",
+    );
+
+    const offences = codeLines(file)
+      .filter(({ text }) => redViolation(text, strict))
+      .map(({ n }) => n);
+
+    // INNOCENT: lines 4-6 are the wrapped comment. Line 5 names the token in
+    // prose and must NOT be convicted — that is the over-match this pins.
+    expect(offences).not.toContain(5);
+    // GUILTY: line 8 actually paints with it.
+    expect(offences).toEqual([8]);
+
+    rmSync(dir, { recursive: true, force: true });
+  });
 
   it("is GUILTY on the three shapes that put red back", () => {
     const redHexLine = '  style={{ color: "#b91c1c" }}'; // token-lint-ok: scanner fixture, not a colour use
