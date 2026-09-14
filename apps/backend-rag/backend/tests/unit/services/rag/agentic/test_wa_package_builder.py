@@ -1060,9 +1060,10 @@ class TestGeneralFallbackNeverReroutesRealQuestions:
     narrow class the planner's cheap keyword heuristic mis-scores as
     GREETING. Proven over the B1.5 evidence-sufficiency corpus (23
     synthetic, real business/nonsense queries — loaded from disk, never
-    copied) plus 8 synthetic probe texts, each as-is and prefixed with one
-    leading list ordinal ("11.  "), 39 texts total, no network (the
-    planner and `match_greeting` are both pure).
+    copied) plus 8 synthetic probe texts, EVERY one of the 31 texts used
+    both as-is and prefixed with one leading list ordinal ("11.  "),
+    62 texts total, no network (the planner and `match_greeting` are
+    both pure).
     """
 
     _PROBES: tuple[str, ...] = (
@@ -1103,11 +1104,18 @@ class TestGeneralFallbackNeverReroutesRealQuestions:
         from backend.services.rag.agentic.query_planner import QueryPlanner
 
         planner = QueryPlanner()
-        texts: list[str] = list(self._b15_texts())
-        assert len(texts) == 23, "the B1.5 fixture's query_list count changed — re-check scope"
-        for probe in self._PROBES:
-            texts.append(probe)
-            texts.append("11.  " + probe)
+        b15_texts = self._b15_texts()
+        assert len(b15_texts) == 23, "the B1.5 fixture's query_list count changed — re-check scope"
+
+        # Ruling I110 C1: EVERY text — the 23 B1.5 texts AND the 8 probes —
+        # is exercised both as-is and with one leading list ordinal, so an
+        # ordinal-prefixed real question from the B1.5 corpus is covered
+        # too, not just the hand-picked probes.
+        texts: list[str] = []
+        for text in [*b15_texts, *self._PROBES]:
+            texts.append(text)
+            texts.append("11.  " + text)
+        assert len(texts) == 62, "expected 23+8 texts, each as-is and ordinal-prefixed"
 
         divergences = 0
         for text in texts:
