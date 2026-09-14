@@ -48,6 +48,22 @@ export {
   type FilterBarProps,
   type FilterSelectProps,
 } from "./components/FilterBar";
+/**
+ * The R19 desk strip vocabulary — the class strings the four list primitives
+ * share under `variant="desk"`. Exported so a page can dress a control the
+ * primitives do not own (a table head, a row action) in the same idiom
+ * instead of inventing a second one.
+ */
+export {
+  DESK_RADIUS,
+  DESK_CONTROL_H,
+  DESK_SERIF,
+  DESK_STRIP,
+  DESK_FIELD,
+  DESK_PILL,
+  DESK_PILL_ON,
+  DESK_RULE,
+} from "./components/deskStrip";
 export {
   StatChips,
   type StatChip,
