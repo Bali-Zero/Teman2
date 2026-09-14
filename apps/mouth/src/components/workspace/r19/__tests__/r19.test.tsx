@@ -590,6 +590,39 @@ describe("the remaining primitives render their contract", () => {
     expect(screen.getByRole("button", { name: "New task" })).toBeTruthy();
   });
 
+  it("Masthead still answers to v1's `subtitle` and `right` (the K2a dashboard)", () => {
+    // PR #6512 put the kita dashboard on this module between this window's
+    // base sha and the branch it shipped from, so the v2 rename was a
+    // breaking change for a page this window is forbidden to edit. CI caught
+    // it; this pins the compatibility so a later tidy-up cannot drop it
+    // silently while (workspace)/dashboard/page.tsx still writes v1.
+    render(
+      <Masthead
+        title="PT Contoh Abadi"
+        subtitle="The v1 spelling of sub."
+        right={<button>Legacy slot</button>}
+      />,
+    );
+    expect(screen.getByText("The v1 spelling of sub.")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Legacy slot" })).toBeTruthy();
+  });
+
+  it("Masthead prefers the v2 spelling when both are given (guilt)", () => {
+    render(
+      <Masthead
+        title="PT Contoh Abadi"
+        sub="v2 wins"
+        subtitle="v1 loses"
+        actions={<button>v2 slot</button>}
+        right={<button>v1 slot</button>}
+      />,
+    );
+    expect(screen.getByText("v2 wins")).toBeTruthy();
+    expect(screen.queryByText("v1 loses")).toBeNull();
+    expect(screen.getByRole("button", { name: "v2 slot" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "v1 slot" })).toBeNull();
+  });
+
   it("OrdinalMargin renders its ordinal and a hairline column", () => {
     const { container } = render(<OrdinalMargin n={4} tone="you" />);
     expect(screen.getByText("04").className).toContain("--bz-copper-text");

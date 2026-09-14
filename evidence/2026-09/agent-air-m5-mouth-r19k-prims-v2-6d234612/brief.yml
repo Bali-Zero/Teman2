@@ -75,6 +75,15 @@ acceptance:
     origin/main` reports clean.
     probe: >-
       python3 scripts/token_lint.py --base origin/main
+  A5: >-
+    The ONE real consumer this module already has still compiles and its tests still
+    pass. `(workspace)/dashboard/page.tsx` (landed by #6512, K2a) renders two
+    Mastheads with v1's `subtitle`/`right`; the whole apps/mouth suite is green with
+    this diff in place — 495 files, 5645 tests, 0 failures — and `tsc` exits 0 where
+    it reported two TS2322 errors before the compatibility fix. The dashboard page
+    itself is NOT edited: it belongs to window K2.
+    probe: >-
+      cd apps/mouth && npx tsc --noEmit --incremental false && npx vitest --run
 
 out_of_scope: >-
   The ink rail and the six navigation groups — those are PR-2 of this same window, on
@@ -103,13 +112,26 @@ assumptions:
       grep -n 'max-width:700px' R19-KITA-20260914/fusion/02-dashboard.html and compare
       with the `md:` variants in apps/mouth/src/components/workspace/r19/tokens.ts.
   - text: >-
-      The prop renames (`subtitle` to `sub`, `right` to `actions` on Masthead) are
-      free because the module had ZERO importers on origin/main when this shipped. If
-      that had been false the renames would have been breaking changes and would have
-      needed a deprecation path instead.
+      REFUTED, and the correction is in this diff. An earlier revision of this brief
+      claimed the Masthead prop renames (`subtitle` to `sub`, `right` to `actions`)
+      were free because the module had ZERO importers. That was measured against this
+      window's ORIGINAL base sha 48294018, and it was true there. It stopped being
+      true before this branch existed: PR #6512 (SAETTA-R19K K2a, "put the kita
+      dashboard on the R19 ledger") landed `(workspace)/dashboard/page.tsx` on this
+      module in between, writing `subtitle` and `right` at lines 413 and 545. The
+      rename was therefore a breaking change to a page THIS window is forbidden to
+      edit (K2 owns the desk). CI's `apps/mouth compiles` caught it on #6518 — a
+      stale grep did not. `Masthead` now accepts BOTH spellings, preferring the v2
+      pair, and `r19.test.tsx` pins the compatibility plus the precedence so a later
+      tidy-up cannot drop it while the dashboard still writes v1. The lesson, stated
+      plainly: an importer count is only true for the sha it was measured on, and a
+      branch cut from a newer origin/main has a newer answer.
     status: verified
     probe: >-
-      grep -rln "workspace/r19" apps/mouth/src — returns nothing at this base.
+      grep -rn "Masthead" "apps/mouth/src/app/(workspace)/dashboard/page.tsx" and
+      `git log --oneline -1 -- "apps/mouth/src/app/(workspace)/dashboard/page.tsx"`
+      (returns #6512); then `cd apps/mouth && npx tsc --noEmit --incremental false`,
+      which now exits 0 where it reported two TS2322 errors before the fix.
   - text: >-
       `HairlineGrid.tsx` becomes `"use client"` file-wide. `HairlineRow` needs real
       event handlers, which cannot cross the server/client boundary; `HairlineGrid`,

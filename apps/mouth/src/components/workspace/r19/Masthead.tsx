@@ -24,27 +24,41 @@ export function Eyebrow({
  * sentence, and the `actions` the page supplies. This is where the copper
  * rule lives on every kita page, which is why the masthead is never removed.
  *
- * v2 renamed the props (`subtitle` → `sub`, `right` → `actions`) — the
- * module had zero importers on origin/main when this shipped, so the rename
- * is free. `actions` holds the page's own buttons: the PRIMARY action is a
- * forest button, the SECONDARY an ink outline — the masthead supplies no
- * button styling of its own.
+ * v2 names the sentence `sub` and the slot `actions`. It ALSO still accepts
+ * v1's `subtitle` and `right`, and that is not politeness: PR #6512 (K2a) put
+ * the kita dashboard on this module between this window's base sha and the
+ * branch it actually shipped from, so a rename here is a breaking change for
+ * a page window K1c-bis is forbidden to edit. The v1 spellings stay until the
+ * K2 desk window migrates its own page; a new caller should write `sub` and
+ * `actions`, and `r19.test.tsx` pins both spellings so neither can rot.
+ *
+ * `actions` holds the page's own buttons: the PRIMARY action is a forest
+ * button, the SECONDARY an ink outline — the masthead supplies no button
+ * styling of its own.
  */
 export function Masthead({
   eyebrow,
   title,
   sub,
+  subtitle,
   actions,
+  right,
   className,
   headingClassName,
 }: {
   eyebrow?: React.ReactNode;
   title: React.ReactNode;
   sub?: React.ReactNode;
+  /** v1 spelling of `sub`. Accepted for the K2a dashboard; prefer `sub`. */
+  subtitle?: React.ReactNode;
   actions?: React.ReactNode;
+  /** v1 spelling of `actions`. Accepted for the K2a dashboard; prefer `actions`. */
+  right?: React.ReactNode;
   className?: string;
   headingClassName?: string;
 }) {
+  const sentence = sub ?? subtitle;
+  const slot = actions ?? right;
   return (
     <section
       className={cn(
@@ -63,12 +77,10 @@ export function Masthead({
         <h1 className={cn(MASTHEAD_H1, headingClassName)} style={SERIF}>
           {title}
         </h1>
-        {sub ? <p className={MASTHEAD_SUB}>{sub}</p> : null}
+        {sentence ? <p className={MASTHEAD_SUB}>{sentence}</p> : null}
       </div>
-      {actions ? (
-        <div className="flex shrink-0 flex-wrap items-center gap-2">
-          {actions}
-        </div>
+      {slot ? (
+        <div className="flex shrink-0 flex-wrap items-center gap-2">{slot}</div>
       ) : null}
     </section>
   );
