@@ -1,5 +1,5 @@
-gear: 2
-brief_ref: evidence/2026-09/agent-air-m5-mouth-r19k-k1c2-v2-e24ea1cd/brief.yml
+gear: 3
+brief_ref: evidence/brief.yml
 lanes:
   - lane: r19k-k1c2
     role: build
@@ -170,6 +170,29 @@ receipts:
     exit: 0
     ts: "2026-09-14T09:40:00Z"
     seat: claude-opus-5
+  - claim: >-
+      K1d is LIVE on kita.balizero.com/login, measured against the served bytes and not against the
+      merged diff.
+    cmd: >-
+      curl https://kita.balizero.com/login ; curl each /_next/static/css bundle it references ; grep
+      for the panel tokens, the Fraunces reference and the PIN pattern.
+    result: >-
+      URL https://kita.balizero.com/login, merge commit 73410a19c0 (PR #6508), Vercel deployment
+      dpl_5sSqLxGejg7TrZd3tRG4tVcWSGtJ — the same deployment id the commit status names, so the
+      bytes served ARE that sha. Markup carries `bz-panel` three times, `>Enter<` once,
+      `pattern="[0-9]*"` once, `h-[52px]` four times and my.balizero.com twice; "Authenticate", the
+      superseded button word, is gone (0 occurrences). The live CSS declares --bz-panel:#253e33 and
+      --bz-on-panel:#f7f4ee, and two bundles reference Fraunces. Then Chromium on the LIVE page, no
+      stubs and no dev server: HTTP 200, zero page errors, data-product="kita",
+      data-theme="operative-light"; h1 "Welcome back." in Fraunces at weight 450; the Enter button
+      computes background rgb(37,62,51) with label rgb(247,244,238) — the alphabet's forest and
+      paper; the PIN input carries inputmode="numeric" AND pattern="[0-9]*" and measures 52px; body
+      ground rgb(247,244,238). The forest panel holds the left 40% with "kita." in Fraunces, the
+      paper side carries the copper rule above the masthead, and the copper link to my.balizero.com
+      sits under the button.
+    exit: 0
+    ts: "2026-09-14T09:55:00Z"
+    seat: claude-opus-5
 dissent:
   - seat: claude-opus-5
     objection: >-
@@ -192,6 +215,12 @@ dissent:
       names the test as the consumer that proves the variant is in force TODAY, which is what a
       vocabulary PR can honestly claim.
 notes:
+  - >-
+    CARRIED FROM K1d (#6508), noted at the gate seat's request: `firstPartyRedirect(raw, origin)`
+    takes `origin` as a REQUIRED parameter where the written spec showed it with a default. The
+    required form is what shipped and is the safer of the two — a default origin would let a caller
+    on an unexpected host judge a redirect against the wrong yardstick — but the spec and the code
+    disagree on their face, and this is the record of which one is true.
   - >-
     HARNESS-LANE LEFTOVER (carried from the #6499 gate, still open): `scripts/token_lint.py` scopes
     exactly two prefixes — apps/mouth/src/app/(workspace)/ and apps/mouth/src/app/portal/ — so
@@ -216,3 +245,15 @@ notes:
   - >-
     No adversarial seat ran. Codex is unreachable from this host and the Gemini seat timed out on the
     previous diff. The independent read is the commissioned final gate.
+  - >-
+    GEAR 3, and WHY it is declared: the deterministic floor for this diff is 3, reproduced locally
+    before pushing — churn +1740/-208 = 1948 against the 1828 threshold, floor_source "size", not a
+    hot-zone path. #6517 declared gear 2 and the harness recompute was right to refuse it. Nothing
+    about the code changed between that PR and this one; the brief under-declared, and this is the
+    correction.
+  - >-
+    SAID PLAINLY RATHER THAN LEFT TO THE LINTER: R9 asks a Gear-3 pack for a council journal with two
+    distinct review seats. There is none. The rule resolves to a NOTICE here only because this pack
+    carries a `seat_override`, which it carried for an unrelated reason (R8 applicability) before
+    gear 3 was ever in play. A reviewer should read that as "the council requirement is unmet and
+    absorbed by an override", not as "the council ran".
