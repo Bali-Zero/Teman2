@@ -56,7 +56,7 @@ const STATE_DANGER = /var\(\s*--state-danger\s*\)/;
 export interface Finding {
   line: number;
   text: string;
-  rule: "raw-hex" | "bz-red" | "state-danger";
+  rule: "raw-hex" | "bz-red" | "state-danger" | "copper-ground";
 }
 
 /** Pure detector: every forbidden paint in this source, with its line. */
@@ -161,5 +161,210 @@ describe("the detector does not accuse the innocent", () => {
     expect(
       findForbiddenPaint('// token-lint-ok: planted\nconst RED = "#e45c5c";'),
     ).toHaveLength(1);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// The fourth detector, added after the browser capture showed three gate
+// buttons filled COPPER with a label on them.
+//
+// The rule is "copper is a person, never the ground behind a label", and no
+// source text can see a label. What it CAN see is the pairing that always
+// produces one: a copper background declared next to a foreground colour.
+// The copper masthead rule is the innocent twin — it is a 52x3 bar with
+// nothing written on it, so it declares a background and no colour at all.
+//
+// STATED LIMIT: the pairing is judged inside ONE declaration — the string
+// literal holding the class list, or the object literal holding the style
+// keys. A fill and a label assembled from two different declarations and
+// joined at runtime escape it. The first draft used a three-line window
+// instead and immediately accused the masthead rule for sitting above an
+// unrelated eyebrow colour: proximity is not scope, and the innocence case
+// is what said so.
+// ---------------------------------------------------------------------------
+
+/** The tokens that resolve to copper on kita. `--bz-accent` is the trap: its
+ * name says "accent" and its value says copper. */
+const COPPER_TOKEN =
+  /var\(\s*--(bz-accent|bz-copper|bz-copper-text|bz-sidebar-active-fill)\b/;
+const COPPER_GROUND = new RegExp(
+  // `background: var(--bz-accent)` / `backgroundColor:` / `bg-[var(--bz-copper)]`
+  `(background(-?[Cc]olor)?\\s*:[^;\\n]*|bg-\\[)${COPPER_TOKEN.source}`,
+);
+/** A foreground colour: `color:` as its own key (never `borderColor`), or a
+ * Tailwind text colour. */
+const FOREGROUND = /(^|[^A-Za-z-])color\s*:|text-\[/;
+
+/**
+ * Every string literal and every brace block in a source, with its range.
+ * One left-to-right pass: a `{` inside a string is not a block, and a quote
+ * inside a block is not a brace.
+ */
+function spans(src: string): {
+  strings: [number, number][];
+  blocks: [number, number][];
+} {
+  const strings: [number, number][] = [];
+  const blocks: [number, number][] = [];
+  const open: number[] = [];
+  let quote: string | null = null;
+  let qStart = 0;
+  for (let i = 0; i < src.length; i++) {
+    const c = src[i];
+    if (quote) {
+      if (c === "\\") i++;
+      else if (c === quote) {
+        strings.push([qStart, i]);
+        quote = null;
+      }
+      continue;
+    }
+    if (c === '"' || c === "'" || c === "`") {
+      quote = c;
+      qStart = i;
+    } else if (c === "{") open.push(i);
+    else if (c === "}") {
+      const from = open.pop();
+      if (from !== undefined) blocks.push([from, i]);
+    }
+  }
+  return { strings, blocks };
+}
+
+/** The smallest span containing `at`, or null. */
+function innermost(
+  ranges: [number, number][],
+  at: number,
+): [number, number] | null {
+  let best: [number, number] | null = null;
+  for (const r of ranges) {
+    if (r[0] <= at && at <= r[1]) {
+      if (!best || r[1] - r[0] < best[1] - best[0]) best = r;
+    }
+  }
+  return best;
+}
+
+/**
+ * Pure detector: every copper ground that has a label in the SAME declaration.
+ *
+ * "The same declaration" is the string literal the class list lives in, or the
+ * object literal the style keys live in — never mere proximity. Two adjacent
+ * `const` lines are two declarations, which is why the masthead rule sitting
+ * above an eyebrow colour is not a finding.
+ */
+export function findCopperGround(source: string): Finding[] {
+  const src = stripComments(source);
+  const { strings, blocks } = spans(src);
+  const out: Finding[] = [];
+  const seen = new Set<number>();
+  const re = new RegExp(COPPER_GROUND.source, "g");
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(src)) !== null) {
+    const at = m.index;
+    const lineNo = src.slice(0, at).split("\n").length;
+    if (seen.has(lineNo)) continue;
+    const line = src.split("\n")[lineNo - 1];
+    if (/token-lint-ok:/.test(line)) continue;
+    const scope = innermost(strings, at) ?? innermost(blocks, at);
+    const text = scope ? src.slice(scope[0], scope[1] + 1) : line;
+    if (FOREGROUND.test(text)) {
+      seen.add(lineNo);
+      out.push({ line: lineNo, text: line.trim(), rule: "copper-ground" });
+    }
+  }
+  return out;
+}
+
+describe("copper is never the ground behind a label", () => {
+  for (const file of SHELL_FILES) {
+    it(`${file} is clean (innocence)`, () => {
+      const source = readFileSync(join(SRC, file), "utf8");
+      expect(findCopperGround(source)).toEqual([]);
+    });
+  }
+
+  it("GUILT: names the gate's acknowledge button as it was written", () => {
+    // Verbatim from GateScreen before this window, and visible in the capture:
+    // a copper pill with white-ish text on it.
+    const found = findCopperGround(
+      [
+        "              style={{",
+        '                background: "var(--bz-accent)",',
+        '                color: "var(--bz-base)",',
+        "              }}",
+      ].join("\n"),
+    );
+    expect(found).toHaveLength(1);
+    expect(found[0].rule).toBe("copper-ground");
+    expect(found[0].line).toBe(2);
+  });
+
+  it("GUILT: names the Tailwind spelling of the same pairing", () => {
+    expect(
+      findCopperGround(
+        'className="bg-[var(--bz-copper)] text-[var(--bz-base)]"',
+      ),
+    ).toHaveLength(1);
+  });
+
+  it("GUILT: names the sidebar's active fill, which is copper on kita", () => {
+    expect(
+      findCopperGround(
+        [
+          "                    {",
+          '                      background: "var(--bz-sidebar-active-fill)",',
+          '                      color: "#fff",',
+          "                    }",
+        ].join("\n"),
+      ),
+    ).toHaveLength(1);
+  });
+
+  it("INNOCENCE: the 52x3 masthead rule carries no label", () => {
+    expect(
+      findCopperGround(
+        'const GATE_RULE = "h-[3px] w-[52px] bg-[var(--bz-copper)]";',
+      ),
+    ).toEqual([]);
+  });
+
+  it("INNOCENCE: copper as a WORD's colour is the alphabet working", () => {
+    expect(
+      findCopperGround('className="text-[var(--bz-copper-text)]"'),
+    ).toEqual([]);
+    expect(
+      findCopperGround('  style={{ color: "var(--bz-copper-text)" }}'),
+    ).toEqual([]);
+  });
+
+  it("INNOCENCE: a copper BORDER next to a copper word is the outlined pill", () => {
+    expect(
+      findCopperGround(
+        [
+          '  className="border-[var(--bz-copper)]"',
+          '  style={{ color: "var(--bz-copper-text)" }}',
+        ].join("\n"),
+      ),
+    ).toEqual([]);
+  });
+
+  it("INNOCENCE: borderColor is not a foreground", () => {
+    // `borderColor` contains the letters of `color` — an entity guard must not
+    // read it as one, or the outlined pill becomes a violation.
+    expect(FOREGROUND.test('borderColor: "var(--bz-copper)"')).toBe(false);
+  });
+
+  it("INNOCENCE: the forest action ground is not copper", () => {
+    expect(
+      findCopperGround(
+        [
+          "const GATE_ACTION_STYLE = {",
+          '  background: "var(--state-success)",',
+          '  color: "var(--bz-base)",',
+          "};",
+        ].join("\n"),
+      ),
+    ).toEqual([]);
   });
 });
