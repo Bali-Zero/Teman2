@@ -313,9 +313,11 @@ dissent:
       (council/agy-gemini-3.1-pro-round8.txt) with this exact rebuttal put to
       it directly, and that run produced no output (a tool-permission
       auto-denial in headless mode, the same failure class as round 1's first
-      attempt) — the seat's own words neither reaffirm nor withdraw the
-      finding, so the record here is the author's rejection alone, not a
-      seat-side retraction. The refutation is in the copy the seat did not
+      attempt). Round 9 (council/agy-gemini-3.1-pro-round9.txt), run with no
+      tools and the same rebuttal pasted in, calls finding (d) "a
+      well-argued rejection" and ends VERDICT: PASS. The seat accepts the
+      author's rejection without formally withdrawing the finding, so the
+      status stays PLAUSIBLE, not RETRACTED. The refutation is in the copy the seat did not
       read. The vehicle option says "Capital-market investments only, such as
       listed shares or bonds" — it describes the BASIS of the investment. The
       seq-21 fact that means "without establishing a company" is a DIFFERENT
