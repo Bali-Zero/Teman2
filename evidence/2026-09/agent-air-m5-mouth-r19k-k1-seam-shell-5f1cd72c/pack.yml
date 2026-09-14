@@ -89,7 +89,7 @@ receipts:
       tsc 0 errors. eslint 0 errors (1 pre-existing react-hooks warning at layout.tsx:388, untouched).
       vitest 472 passed / 46 failed in 2 files; those same 2 files fail with all 46 on a clean origin/main
       checkout of the same worktree, measured by reverting and re-running. (workspace)/__tests__ 53/53 green,
-      up from 43 — the 10 new assertions are this PR's. token_lint clean.
+      up from 43 — the new assertions are this PR's.
     exit: 0
     ts: "2026-09-14T03:53:02Z"
     seat: claude-opus-5
@@ -101,6 +101,35 @@ receipts:
     exit: 0
     ts: "2026-09-14T03:53:02Z"
     seat: gemini-3.1-pro
+  - claim: >-
+      token-lint went RED in CI on the first push, and the local run that said "clean" was lying for a
+      nameable reason.
+    cmd: >-
+      gh run view --job 103852799502 --log-failed; python3 scripts/token_lint.py --base origin/main
+      re-run after committing the file.
+    result: >-
+      50 violations, all in the new contract test, none in globals.css. CAUSE: token_lint scopes
+      apps/mouth/src/app/(workspace)/ as a redesigned surface and blocks new hardcoded hex on ADDED lines,
+      including in a test; the local pre-commit run reported "0 scoped file(s)" only because the test file
+      was still UNTRACKED and therefore absent from `git diff origin/main`. CURE: every literal was hoisted
+      into one reviewed R19 / PLANTED_REDS block and each line carries the sanctioned
+      `token-lint-ok: <reason>` marker (exemption 3), which is per-LINE — a marker on the preceding line
+      exempts nothing, and the first attempt made exactly that mistake. The assertions now build their
+      strings from those constants, so the values have one source. 54 tests pass, prettier clean.
+    exit: 0
+    ts: "2026-09-14T03:59:02Z"
+    seat: claude-opus-5
+  - claim: >-
+      The "Harness floor recompute" red is not a defect of this PR.
+    cmd: gh run view --job 103852799502 --log-failed
+    result: >-
+      "harness_gate_read: PENDING — no harness/fable-gate verdict has been posted yet on this commit. This
+      is NOT a defect: the gate session has not run scripts/harness_fable_gate.py yet." It clears when the
+      imperator's commissioned gate posts its verdict and THIS run is re-run with `gh run rerun`, never with
+      `gh workflow run --ref`.
+    exit: 0
+    ts: "2026-09-14T03:59:02Z"
+    seat: claude-opus-5
 dissent:
   - seat: gemini-3.1-pro
     objection: The comment's --line-control contrast of 4.06:1 on paper is arithmetically wrong.

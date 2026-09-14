@@ -7,14 +7,47 @@ import { describe, expect, it } from "vitest";
  *
  * kita-theme.contract.test.ts pins the --bz-kita-* INDIRECTION (the six alias
  * declarations). This file pins the VALUES behind it: the R19 alphabet —
- * paper, ink, copper, forest, slate, muted — in both themes, and the two
- * rules the concept calls laws: no red anywhere on kita, and Fraunces as the
- * serif face.
+ * paper, ink, copper, forest, slate, muted — in both themes, and the rules
+ * the concept calls laws: no red anywhere on kita, Fraunces as the serif
+ * face, nothing a consumer paints with erased to `transparent`, and on-accent
+ * ink that clears SC 1.4.3.
  *
- * Guilt and innocence (cicatrix-superscar #3): `findBannedReds` is a pure
- * function tested against a planted #b91c1c as well as against the real
+ * Guilt and innocence (cicatrix-superscar #3): every detector below is a pure
+ * function exercised against a planted violation as well as against the real
  * blocks, so a green result means the detector works, not that it is asleep.
+ *
+ * Why the literals live in R19 rather than in the assertions: this file is
+ * under a token-lint scoped surface, and a contract test that pins VALUES
+ * cannot express them as token references without asserting nothing. Hoisting
+ * them into one reviewed block keeps the exemption to a single place.
  */
+const R19 = {
+  canvas: "#f7f4ee", // token-lint-ok: the expected value this contract pins, not a style
+  card: "#fffcf7", // token-lint-ok: the expected value this contract pins, not a style
+  wash: "#eae3d8", // token-lint-ok: the expected value this contract pins, not a style
+  ink: "#1d2c3b", // token-lint-ok: the expected value this contract pins, not a style
+  muted: "#58626b", // token-lint-ok: the expected value this contract pins, not a style
+  line: "#dad8d1", // token-lint-ok: the expected value this contract pins, not a style
+  lineControl: "#767c82", // token-lint-ok: the expected value this contract pins, not a style
+  copper: "#a44b36", // token-lint-ok: the expected value this contract pins, not a style
+  copperHover: "#8f4130", // token-lint-ok: the expected value this contract pins, not a style
+  forest: "#253e33", // token-lint-ok: the expected value this contract pins, not a style
+  slate: "#233d52", // token-lint-ok: the expected value this contract pins, not a style
+  warning: "#8a5a2b", // token-lint-ok: the expected value this contract pins, not a style
+  inkGround: "#121016", // token-lint-ok: the expected value this contract pins, not a style
+  cardDark: "#1a1a1f", // token-lint-ok: the expected value this contract pins, not a style
+  copperText: "#c46a52", // token-lint-ok: the expected value this contract pins, not a style
+  copperHoverDark: "#d07e68", // token-lint-ok: the expected value this contract pins, not a style
+} as const;
+
+/** Reds the alphabet forbids, used only to prove the detector is awake. */
+const PLANTED_REDS = {
+  tailwindDanger: "#b91c1c", // token-lint-ok: planted violation for the guilt case, never rendered
+  legacyBzRed: "#d95f5a", // token-lint-ok: planted violation for the guilt case, never rendered
+  neonRose: "#f43f5e", // token-lint-ok: planted violation for the guilt case, never rendered
+  headerFallback: "#e45c5c", // token-lint-ok: planted violation for the guilt case, never rendered
+  legacyNavy: "#060d14", // token-lint-ok: planted violation for the guilt case, never rendered
+} as const;
 
 const globalsCss = readFileSync(
   join(__dirname, "..", "..", "globals.css"),
@@ -33,17 +66,16 @@ function themeBlock(theme: string): string {
 
 /**
  * A hex is "red" when its red channel dominates both others by a wide margin
- * AND it is not one of the two copper steps the R19 alphabet allows. Copper
- * #a44b36 and #c46a52 are warm but carry substantial green and blue; the
- * reds this catches are the Tailwind/legacy danger family (#b91c1c, #dc2626,
- * #d95f5a, #f43f5e, #e45c5c).
+ * AND it is not one of the copper steps the R19 alphabet allows. Copper is
+ * warm but carries substantial green and blue; the reds this catches are the
+ * Tailwind and legacy danger family.
  */
 export function findBannedReds(block: string): string[] {
-  const ALLOWED = new Set([
-    "#a44b36", // copper, light
-    "#c46a52", // copper text, dark
-    "#8f4130", // copper hover, light
-    "#d07e68", // copper hover, dark
+  const ALLOWED = new Set<string>([
+    R19.copper,
+    R19.copperText,
+    R19.copperHover,
+    R19.copperHoverDark,
   ]);
   const found: string[] = [];
   for (const hex of block.match(/#[0-9a-fA-F]{6}\b/g) ?? []) {
@@ -57,33 +89,66 @@ export function findBannedReds(block: string): string[] {
   return found;
 }
 
+/**
+ * A token a consumer paints WITH — a border, a ring, a hover fill — must not
+ * resolve to `transparent`, or the consumer draws nothing. The glass pair is
+ * read as `1px solid`, `ring-1` and `hover:bg-` in five files under
+ * apps/mouth/src, so on kita they map onto the R19 line and wash.
+ */
+export function findErasedPaintTokens(block: string): string[] {
+  const PAINTED = [
+    "--bz-glass-rim",
+    "--bz-glass-highlight",
+    "--glass-rim",
+    "--glass-highlight",
+    "--bz-border",
+    "--bz-line",
+  ];
+  return PAINTED.filter((name) =>
+    new RegExp(`${name}:\\s*transparent\\s*;`).test(block),
+  );
+}
+
+/** WCAG 2.1 relative-luminance contrast, so the ratios are computed. */
+export function contrast(a: string, b: string): number {
+  const lum = (hex: string) => {
+    const ch = [1, 3, 5].map((i) => {
+      const v = parseInt(hex.slice(i, i + 2), 16) / 255;
+      return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4;
+    });
+    return 0.2126 * ch[0] + 0.7152 * ch[1] + 0.0722 * ch[2];
+  };
+  const [hi, lo] = [lum(a), lum(b)].sort((x, y) => y - x);
+  return (hi + 0.05) / (lo + 0.05);
+}
+
 describe("kita R19 seam — light", () => {
   const block = themeBlock("operative-light");
 
   it("paints R19 paper and ink", () => {
-    expect(block).toContain("--bz-kita-canvas: #f7f4ee;");
-    expect(block).toContain("--bz-kita-card: #fffcf7;");
-    expect(block).toContain("--bz-kita-wash: #eae3d8;");
-    expect(block).toContain("--tx-primary: #1d2c3b;");
-    expect(block).toContain("--tx-secondary: #58626b;");
-    expect(block).toContain("--bz-border: #dad8d1;");
+    expect(block).toContain(`--bz-kita-canvas: ${R19.canvas};`);
+    expect(block).toContain(`--bz-kita-card: ${R19.card};`);
+    expect(block).toContain(`--bz-kita-wash: ${R19.wash};`);
+    expect(block).toContain(`--tx-primary: ${R19.ink};`);
+    expect(block).toContain(`--tx-secondary: ${R19.muted};`);
+    expect(block).toContain(`--bz-border: ${R19.line};`);
   });
 
   it("carries the four meanings: copper, forest, slate, warning", () => {
-    expect(block).toContain("--bz-copper: #a44b36;");
-    expect(block).toContain("--state-success: #253e33;");
-    expect(block).toContain("--state-info: #233d52;");
-    expect(block).toContain("--state-warning: #8a5a2b;");
+    expect(block).toContain(`--bz-copper: ${R19.copper};`);
+    expect(block).toContain(`--state-success: ${R19.forest};`);
+    expect(block).toContain(`--state-info: ${R19.slate};`);
+    expect(block).toContain(`--state-warning: ${R19.warning};`);
   });
 
   it("re-aliases danger to copper and neon-purple to slate", () => {
-    expect(block).toContain("--state-danger: #a44b36;");
-    expect(block).toContain("--bz-red: #a44b36;");
-    expect(block).toContain("--bz-neon-purple: #233d52;");
+    expect(block).toContain(`--state-danger: ${R19.copper};`);
+    expect(block).toContain(`--bz-red: ${R19.copper};`);
+    expect(block).toContain(`--bz-neon-purple: ${R19.slate};`);
   });
 
   it("gives a control boundary its own line token", () => {
-    expect(block).toContain("--line-control: #767c82;");
+    expect(block).toContain(`--line-control: ${R19.lineControl};`);
   });
 
   it("selects Fraunces and Manrope", () => {
@@ -104,14 +169,14 @@ describe("kita R19 seam — dark", () => {
   const block = themeBlock("operative-dark");
 
   it("exists and paints the ink ground", () => {
-    expect(block).toContain("--bz-kita-canvas: #121016;");
-    expect(block).toContain("--bz-kita-card: #1a1a1f;");
-    expect(block).toContain("--tx-primary: #f7f4ee;");
+    expect(block).toContain(`--bz-kita-canvas: ${R19.inkGround};`);
+    expect(block).toContain(`--bz-kita-card: ${R19.cardDark};`);
+    expect(block).toContain(`--tx-primary: ${R19.canvas};`);
   });
 
   it("lifts copper for text and keeps danger copper", () => {
-    expect(block).toContain("--bz-copper-text: #c46a52;");
-    expect(block).toContain("--state-danger: #c46a52;");
+    expect(block).toContain(`--bz-copper-text: ${R19.copperText};`);
+    expect(block).toContain(`--state-danger: ${R19.copperText};`);
   });
 
   it("keeps the same six kita aliases as the light block", () => {
@@ -130,61 +195,33 @@ describe("kita R19 seam — dark", () => {
 
 describe("the no-red detector is awake (guilt)", () => {
   it("catches a planted danger red", () => {
-    expect(findBannedReds("  --state-danger: #b91c1c;\n")).toEqual(["#b91c1c"]);
+    expect(
+      findBannedReds(`  --state-danger: ${PLANTED_REDS.tailwindDanger};\n`),
+    ).toEqual([PLANTED_REDS.tailwindDanger]);
   });
 
-  it("catches the legacy --bz-red and the neon rose", () => {
-    expect(findBannedReds("#d95f5a #f43f5e #e45c5c")).toEqual([
-      "#d95f5a",
-      "#f43f5e",
-      "#e45c5c",
-    ]);
+  it("catches the legacy --bz-red, the neon rose and the header fallback", () => {
+    const planted = [
+      PLANTED_REDS.legacyBzRed,
+      PLANTED_REDS.neonRose,
+      PLANTED_REDS.headerFallback,
+    ];
+    expect(findBannedReds(planted.join(" "))).toEqual(planted);
   });
 
   it("does not accuse the copper steps (innocence)", () => {
-    expect(
-      findBannedReds("#a44b36 #c46a52 #8f4130 #d07e68 #8a5a2b #253e33 #233d52"),
-    ).toEqual([]);
+    const innocent = [
+      R19.copper,
+      R19.copperText,
+      R19.copperHover,
+      R19.copperHoverDark,
+      R19.warning,
+      R19.forest,
+      R19.slate,
+    ];
+    expect(findBannedReds(innocent.join(" "))).toEqual([]);
   });
 });
-
-/**
- * WCAG 2.1 relative luminance, so the contrast claims in the globals.css
- * comment are computed rather than asserted. Pure, and exercised below on a
- * pair that is KNOWN to fail, so a green run means the maths is awake.
- */
-export function contrast(a: string, b: string): number {
-  const lum = (hex: string) => {
-    const ch = [1, 3, 5].map((i) => {
-      const v = parseInt(hex.slice(i, i + 2), 16) / 255;
-      return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4;
-    });
-    return 0.2126 * ch[0] + 0.7152 * ch[1] + 0.0722 * ch[2];
-  };
-  const [hi, lo] = [lum(a), lum(b)].sort((x, y) => y - x);
-  return (hi + 0.05) / (lo + 0.05);
-}
-
-/**
- * A token a consumer paints WITH — a border, a ring, a hover fill — must not
- * resolve to `transparent`, or the consumer draws nothing. `--bz-glass-rim`
- * and `--bz-glass-highlight` are read as `1px solid`, `ring-1` and
- * `hover:bg-` in five places under apps/mouth/src, so on kita they map onto
- * the R19 line and the R19 wash instead of being erased.
- */
-export function findErasedPaintTokens(block: string): string[] {
-  const PAINTED = [
-    "--bz-glass-rim",
-    "--bz-glass-highlight",
-    "--glass-rim",
-    "--glass-highlight",
-    "--bz-border",
-    "--bz-line",
-  ];
-  return PAINTED.filter((name) =>
-    new RegExp(`${name}:\\s*transparent\\s*;`).test(block),
-  );
-}
 
 describe("kita R19 seam — tokens a consumer paints with", () => {
   for (const theme of ["operative-light", "operative-dark"]) {
@@ -217,7 +254,7 @@ describe("kita R19 seam — tokens a consumer paints with", () => {
   it("does not accuse a token that actually paints (innocence)", () => {
     expect(
       findErasedPaintTokens(
-        "  --bz-glass-rim: #dad8d1;\n  --bz-glass-highlight: var(--bz-kita-wash);\n",
+        `  --bz-glass-rim: ${R19.line};\n  --bz-glass-highlight: var(--bz-kita-wash);\n`,
       ),
     ).toEqual([]);
   });
@@ -225,23 +262,24 @@ describe("kita R19 seam — tokens a consumer paints with", () => {
 
 describe("kita R19 seam — on-accent ink clears SC 1.4.3", () => {
   it("light: paper on copper", () => {
-    // --bz-on-warm #fffcf7 on --bz-accent #a44b36
-    expect(contrast("#fffcf7", "#a44b36")).toBeGreaterThanOrEqual(4.5);
+    expect(contrast(R19.card, R19.copper)).toBeGreaterThanOrEqual(4.5);
   });
 
   it("dark: ink on lifted copper", () => {
-    // --bz-on-warm #121016 on --bz-accent #c46a52
-    expect(contrast("#121016", "#c46a52")).toBeGreaterThanOrEqual(4.5);
+    expect(contrast(R19.inkGround, R19.copperText)).toBeGreaterThanOrEqual(4.5);
   });
 
-  it("the ratio the alias cures would have failed (guilt)", () => {
-    // packages/core --bz-navy-900 #060d14 on R19 copper: the regression that
-    // --bz-navy-900: var(--bz-on-warm) exists to prevent.
-    expect(contrast("#060d14", "#a44b36")).toBeLessThan(4.5);
+  it("the ratio the --bz-navy-900 alias cures would have failed (guilt)", () => {
+    expect(contrast(PLANTED_REDS.legacyNavy, R19.copper)).toBeLessThan(4.5);
   });
 
   it("body ink on paper clears SC 1.4.3 with room (innocence)", () => {
-    expect(contrast("#1d2c3b", "#f7f4ee")).toBeGreaterThan(12);
-    expect(contrast("#58626b", "#f7f4ee")).toBeGreaterThanOrEqual(4.5);
+    expect(contrast(R19.ink, R19.canvas)).toBeGreaterThan(12);
+    expect(contrast(R19.muted, R19.canvas)).toBeGreaterThanOrEqual(4.5);
+  });
+
+  it("the control boundary clears SC 1.4.11's 3:1 on paper and on a card", () => {
+    expect(contrast(R19.lineControl, R19.canvas)).toBeGreaterThanOrEqual(3);
+    expect(contrast(R19.lineControl, R19.card)).toBeGreaterThanOrEqual(3);
   });
 });
