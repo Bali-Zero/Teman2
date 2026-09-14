@@ -263,3 +263,17 @@
     animation: none !important;
   }
 }
+
+/* ── Sector code list: verified-status filter ─────────────────────────────────
+ *
+ * The cards view is server-rendered (KBLICard is a Server Component reading the
+ * full KBLICode), so KBLICodeViews cannot filter it by re-rendering without
+ * owning a second, drifting copy of the card. Instead the server wraps each
+ * card in a [data-kbli-verified] element, the client sets the filter on the
+ * container, and the hiding happens here — a style recalculation, no React work
+ * and no second data path. See src/components/kbli/KBLICodeViews.tsx.
+ */
+[data-kbli-verified-filter="verified"] [data-kbli-verified="false"],
+[data-kbli-verified-filter="unverified"] [data-kbli-verified="true"] {
+  display: none;
+}

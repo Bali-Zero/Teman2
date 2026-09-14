@@ -4,6 +4,7 @@ import type {
   KBLIPmaInfo,
   KBLIRiskCategory,
   KBLITransition,
+  KBLIVerificationState,
 } from "./kbli-types";
 import {
   isLicensingVerificationPending,
@@ -59,6 +60,17 @@ export interface KBLIPanelDetail {
   > & { verdictVerified: boolean };
   bali: Pick<KBLIBaliL4, "status"> & { blocked: boolean };
   transition: KBLITransition;
+  /**
+   * Code-level verification state, carried so the client can FILTER on it and
+   * draw the same badge the card draws. It is the server's derived verdict
+   * (`deriveProvenance`), copied — never re-derived here from `_l2_source`,
+   * which would put a second, drifting reading of provenance on the wire.
+   *
+   * A record with no provenance block degrades to `pending`: the honest
+   * reading, and the one that keeps it OUT of the "Verified" filter rather
+   * than promoting an unknown to verified by default.
+   */
+  provenanceState: KBLIVerificationState;
 }
 
 export function toPanelDetail(code: KBLICode): KBLIPanelDetail {
@@ -83,5 +95,6 @@ export function toPanelDetail(code: KBLICode): KBLIPanelDetail {
       blocked: code.baliL4?.blocked === true,
     },
     transition: code.transition,
+    provenanceState: code.provenance?.state ?? "pending",
   };
 }

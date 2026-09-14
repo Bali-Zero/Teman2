@@ -7,6 +7,7 @@ import {
 } from "@/lib/kbli-provenance";
 import { TransitionBadge } from "./TransitionBadge";
 import { BaliStatusBadge } from "./BaliStatusBadge";
+import { ProvenanceBadge } from "./ProvenanceBadge";
 import type { KBLICode } from "@/lib/kbli-types";
 
 interface KBLICardProps {
@@ -115,6 +116,16 @@ export function KBLICard({ code, showTransition = false }: KBLICardProps) {
           />
         )}
         {showTransition && <TransitionBadge transition={code.transition} />}
+        {/* Only a VERIFIED code gets a badge here. The other two provenance
+            states each need a sentence of framing that a card has no room for
+            (ProvenanceBadge carries it in a title attribute the detail page can
+            afford to surface), and a card that labelled them would be making
+            the claim without the framing. The badge's wording is the
+            component's own and is deliberately scoped: it speaks for the
+            OSS-RBA risk/licensing axis, not for the PMA verdict beside it. */}
+        {code.provenance?.state === "verified" && (
+          <ProvenanceBadge state="verified" size="sm" />
+        )}
       </div>
     </Link>
   );
