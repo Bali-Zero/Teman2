@@ -1,0 +1,39 @@
+gear: 2
+objective: >-
+  Ship apps/mouth/src/components/workspace/r19/ — the shared R19 "SIAP" primitives, their token
+  contract and their tests — so windows K2-K5 import one visual system instead of each growing a
+  page-local copy of it.
+constraints:
+  - New module only. No existing component, page, route or style is edited, and nothing imports from
+    (workspace)/garuda-voa/r19.tsx, which stays page-local until K5 migrates it.
+  - Presentation only. No state, no fetch, no timer, no routing; sorting, selection, row activation
+    and the undo window stay with the page that owns the data.
+  - Copper is never a fill behind a label; the only sanctioned copper background is the named
+    COPPER_RULE constant, the 56x3 masthead graphic, which carries no text.
+  - No red, no raw hex, no --state-danger / --bz-red / --bz-neon-purple read.
+  - Every value copied from the frozen concept-K renders; a deviation needs a reason here.
+acceptance:
+  - text: >-
+      WHEN every source file in the module is scanned, NONE shall read a danger token, a re-aliased
+      legacy name, or a hardcoded hex.
+    probe: npx vitest --run src/components/workspace/r19
+  - text: >-
+      WHEN copper appears as a background anywhere except the named COPPER_RULE constant, the guard
+      SHALL fail — and a copy of COPPER_RULE's class string under another name SHALL still fail.
+    probe: npx vitest --run src/components/workspace/r19
+  - text: >-
+      WHEN a StatePill reports a state it SHALL be an inert span with a dot, and WHEN it is a filter
+      it SHALL be a focusable button with aria-pressed, a slate fill and a leading tick.
+    probe: npx vitest --run src/components/workspace/r19
+  - text: >-
+      WHEN a HairlineGrid renders, its header row SHALL be a SIBLING of the body on one shared --cols
+      template, so a virtualized scroller can take the body later.
+    probe: npx vitest --run src/components/workspace/r19
+  - text: >-
+      WHEN a row carries actions, they SHALL appear on hover or focus AND a 44px fallback SHALL exist
+      for a pointer that cannot hover.
+    probe: npx vitest --run src/components/workspace/r19
+consumer_map:
+  - Windows K2-K5 of SAETTA-R19K import this module; README.md is the published token list and API
+    they build against.
+  - r19.test.tsx reads every source file in the module and fails on a law-breaking paint.
