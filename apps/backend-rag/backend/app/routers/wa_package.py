@@ -31,6 +31,7 @@ from backend.services.rag.agentic.query_planner import QueryPlanner
 from backend.services.rag.agentic.wa_package_builder import (
     PackageUnbuildable,
     build_context_package,
+    effective_domain,
 )
 
 logger = logging.getLogger(__name__)
@@ -139,11 +140,21 @@ async def build_wa_package(
     # so skipping their curated-QA prefetch here would silently starve a
     # query the builder is about to answer for real. Same pure function,
     # same query, so this can never disagree with the builder's verdict.
+    #
+    # Round-1 review cure (Codex + Gemini, converged): the domain passed to
+    # `curated_qa_grounding_block` must be `effective_domain` — the SAME
+    # single authority `build_context_package` uses to decide what it
+    # actually builds with — not the planner's raw (possibly stale)
+    # `plan.domain`. For a planner/matcher disagreement, `plan.domain` is
+    # still `"greeting"`, which does NOT short-circuit
+    # `_inject_curated_qa_grounding` (only `"general"`/falsy do) — passing
+    # it spent an embedding + Qdrant search whose hits were then always
+    # discarded downstream by that same gate.
     curated_qa_block = ""
     if match_greeting(request.query) is None:
         curated_qa_block = await orchestrator.core.curated_qa_grounding_block(
             request.query,
-            {"domain": plan.domain.value},
+            {"domain": effective_domain(request.query, plan).value},
         )
 
     try:

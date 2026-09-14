@@ -59,7 +59,7 @@ from backend.services.misc.pricing_intent import has_pricing_intent
 from backend.services.pricing.pricing_service import get_pricing_service
 from backend.services.rag.agentic._abstain_policy import build_abstain_policy
 from backend.services.rag.agentic._support_signal import SupportVerdict
-from backend.services.rag.agentic.query_plan import QueryDomain
+from backend.services.rag.agentic.query_plan import QueryDomain, QueryPlan
 from backend.services.rag.agentic.query_planner import _DOMAIN_COLLECTIONS, QueryPlanner
 from backend.services.rag.agentic.reasoning_utils import calculate_evidence_score
 from backend.services.rag.agentic.wa_dlp import redact_package_fields
@@ -472,6 +472,37 @@ def _package_hash(
     return hashlib.sha256(_canonical_wire(payload).encode("utf-8")).hexdigest()
 
 
+def effective_domain(query: str, plan: QueryPlan) -> QueryDomain:
+    """The domain this pipeline actually treats `query` as.
+
+    ONE authority (B2.5 PR-3, ruling d; round-1 review cure) for the single
+    correction this pipeline ever applies to the planner's raw verdict: a
+    plan classified `QueryDomain.GREETING` whose text `wa_greeting
+    .match_greeting` does NOT recognize as a scripted greeting is not
+    unbuildable — it is a real message the planner's cheap keyword
+    heuristic mis-scored — and is treated as `QueryDomain.GENERAL` instead.
+    Every other domain (including a TRUE greeting, which `build_context_package`
+    already raises `PackageUnbuildable` for before this is ever consulted)
+    passes through unchanged.
+
+    Pure — no I/O, no mutation of `plan` — so both `build_context_package`
+    and the `wa_package` router can call it and never disagree about which
+    domain is "the" domain for a query: the router needs it to decide
+    whether prefetching curated-QA evidence is worth the embedding+Qdrant
+    cost (a GREETING that is about to build for real needs that evidence;
+    one that is about to raise `PackageUnbuildable("greeting_domain")` does
+    not), and duplicating the planner-domain check there previously passed
+    the STALE `"greeting"` label into `curated_qa_grounding_block` for a
+    disagreement query — which does not short-circuit on `"greeting"`
+    (only on `"general"`/falsy) and so spent the exact embedding+Qdrant
+    search the cost guard exists to avoid, on hits the domain gate then
+    discarded anyway.
+    """
+    if plan.domain == QueryDomain.GREETING and match_greeting(query) is None:
+        return QueryDomain.GENERAL
+    return plan.domain
+
+
 async def build_context_package(
     *,
     query: str,
@@ -535,21 +566,24 @@ async def build_context_package(
 
     if match_greeting(query) is not None:
         raise PackageUnbuildable(reason="greeting_domain")
-    if plan.domain == QueryDomain.GREETING:
+    corrected_domain = effective_domain(query, plan)
+    if corrected_domain != plan.domain:
         # The planner called this GREETING (empty collections by design —
-        # _DOMAIN_COLLECTIONS[QueryDomain.GREETING] == []) but the precise
-        # matcher above disagreed: this is not a scripted greeting, it is a
-        # real message the planner's cheap keyword heuristic mis-scored
-        # (too long, or content the greeting matcher does not recognize).
-        # GREETING is no longer an authority on its own past this point
-        # (B2.5 PR-3, ruling d) — build with GENERAL's collections instead
-        # of raising. `plan` is a plain (non-frozen) dataclass local to this
-        # call, so mutating it in place is safe and keeps every downstream
-        # read of `plan.domain`/`plan.collections` in this function
-        # (the collection loop below, `evidence_inputs["domain"]`)
-        # consistent with the corrected classification.
-        plan.domain = QueryDomain.GENERAL
-        plan.collections = list(_DOMAIN_COLLECTIONS[QueryDomain.GENERAL])
+        # _DOMAIN_COLLECTIONS[QueryDomain.GREETING] == []) but `effective_domain`
+        # (the ONE authority both this function and the wa_package router
+        # defer to, B2.5 PR-3 ruling d / round-1 review cure) disagreed:
+        # this is not a scripted greeting, it is a real message the
+        # planner's cheap keyword heuristic mis-scored (too long, or
+        # content the greeting matcher does not recognize). GREETING is no
+        # longer an authority on its own past this point — build with
+        # GENERAL's collections instead of raising. `plan` is a plain
+        # (non-frozen) dataclass local to this call, so mutating it in
+        # place is safe and keeps every downstream read of
+        # `plan.domain`/`plan.collections` in this function (the
+        # collection loop below, `evidence_inputs["domain"]`) consistent
+        # with the corrected classification.
+        plan.domain = corrected_domain
+        plan.collections = list(_DOMAIN_COLLECTIONS[corrected_domain])
     if not plan.collections:
         raise PackageUnbuildable(reason="no_collections")
 
