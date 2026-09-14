@@ -1,19 +1,24 @@
 "use client";
 
+/**
+ * The kita dashboard — concept-K v2 "TEPAT FORTE"
+ * (R19-KITA-20260914/fusion/concept.md §2 "02 Dashboard").
+ *
+ * A live operations ledger, not a set of cards: the page opens on a 40px
+ * Fraunces masthead, then numbered hairline sections in the order the fusion
+ * freezes and §7 forbids reordering — Portal Champion (where PR #6483 shipped
+ * it), Zantara, the action margin, the KPI band, team activity, ops, and the
+ * pipeline / intelligence / role triple.
+ *
+ * Copper appears ONLY where the signed-in viewer is the next actor, derived in
+ * `_lib/actionMargin.ts` from the viewer and the record together. Expiries and
+ * countdowns take `--state-warning`; terminal states take muted plus their
+ * word. There is no red on this page.
+ */
+
 import React from "react";
 import Link from "next/link";
-import {
-  ExternalLink,
-  ArrowUpRight,
-  Clock,
-  AlertTriangle,
-  CheckCircle2,
-  FileText,
-  TrendingUp,
-  Activity,
-  ShieldCheck,
-  Sparkles,
-} from "lucide-react";
+import { Sparkles } from "lucide-react";
 import { RoleWidget } from "@/components/dashboard";
 import { DashboardErrorBoundary } from "@/components/ErrorBoundary";
 import { TeamActivityPanel } from "@/components/dashboard/TeamActivityPanel";
@@ -35,22 +40,38 @@ import {
   type ComplianceAlert,
   type SystemPulseService,
 } from "@balizero/core";
+import {
+  EmptyState,
+  Eyebrow,
+  Masthead,
+  StatePill,
+} from "@/components/workspace/r19";
 import { getComplianceAlerts, getSystemPulse } from "./_lib/opsAdapters";
+import {
+  buildActionMargin,
+  mastheadSentence,
+  type ActionMarginItem,
+} from "./_lib/actionMargin";
+import {
+  DeskLink,
+  Kpi,
+  KpiBand,
+  LedgerRow,
+  LedgerSection,
+  type KpiTone,
+} from "./desk";
 import { PortalChallengeWidget } from "./PortalChallengeWidget";
 import { RefreshCw } from "lucide-react";
 
-// ── Category colors ────────────────────────────────────────
-const CATEGORY_COLOR: Record<string, string> = {
-  visas: "var(--state-info)",
-  business: "var(--state-success)",
-  taxes: "var(--state-warning)",
-  property: "var(--bz-copper-text)",
-  living: "var(--state-danger)",
-  emerging_trends: "var(--bz-text-2)",
-};
-function getCategoryColor(cat: string): string {
-  return CATEGORY_COLOR[cat] ?? "var(--bz-text-2)";
-}
+// ── Intel categories ───────────────────────────────────────
+// There is no category COLOUR here any more. The old map read the
+// --bz-chart-* ramp, which the kita theme block deliberately does not
+// redeclare (globals.css says so in as many words), so on this page it paints
+// the pre-R19 palette — and `--bz-chart-5` is literally `var(--bz-copper)`.
+// An article's subject would then have painted the one colour that means "you
+// are the next actor", keyed off a raw `article.category` string. The fusion's
+// own intelligence feed carries the category as a WORD in the eyebrow and no
+// colour at all, which is what the rows below do.
 
 interface IntelArticle {
   slug: string;
@@ -75,17 +96,22 @@ function useIntelFeed(identity: string) {
 
 // ── Intake review queue hook ───────────────────────────────
 // Backend RBAC scopes the queue: team members get docs they received
-// (own-chat), admins get everything. Failure = silently hide the banner
-// (the reader runs on the Pro; if the tunnel is down the dashboard must
-// not degrade).
-function useIntakeReviewCount(identity: string) {
-  return useQuery<number>({
+// (own-chat), admins get everything. Failure = silently hide the family (the
+// reader runs on the Pro; if the tunnel is down the dashboard must not
+// degrade).
+//
+// Same URL, same request, same query key as before — it returns the ITEMS
+// rather than discarding them on `.length`, which is the one code change
+// concept-K DISPOSITION C3 sanctions so the action margin can be built from
+// data the page already fetches.
+function useIntakeReviewQueue(identity: string) {
+  return useQuery<unknown[]>({
     queryKey: ["intake-review-count", identity],
     queryFn: async () => {
       const res = await api.get<{ items: unknown[] }>(
         "/api/intake/review/queue?status=review_pending&limit=50",
       );
-      return (res.items ?? []).length;
+      return res.items ?? [];
     },
     staleTime: 60_000,
     refetchInterval: 5 * 60_000,
@@ -119,41 +145,6 @@ function useComplianceAlerts(identity: string) {
     retry: false,
     enabled: Boolean(identity),
   });
-}
-
-// ── Intake review banner ───────────────────────────────────
-function IntakeReviewBanner({ identity }: { identity: string }) {
-  const { data: count } = useIntakeReviewCount(identity);
-  if (!count) return null;
-  return (
-    <Link
-      href="/review"
-      className="bz-product-panel bz-product-panel--interactive flex items-center gap-3 px-4 py-3"
-      style={{
-        borderColor: "color-mix(in srgb, var(--bz-chart-5) 35%, transparent)",
-      }}
-    >
-      <FileText size={14} style={{ color: "var(--bz-chart-5)" }} />
-      <div className="flex-1 min-w-0">
-        <p className="text-[11px] font-semibold text-[var(--bz-text-1)]">
-          {count} document{count === 1 ? "" : "s"} waiting for your review
-        </p>
-        <p className="text-[9px] text-[var(--bz-text-2)]">
-          Confirm where each document goes — client, practice or archive
-        </p>
-      </div>
-      <span
-        className="text-[10px] font-bold tabular-nums px-2 py-0.5 rounded-full"
-        style={{
-          background: "rgba(212,132,90,0.18)",
-          color: "var(--bz-chart-5)",
-        }}
-      >
-        {count}
-      </span>
-      <ArrowUpRight size={11} className="text-[var(--bz-text-3)]" />
-    </Link>
-  );
 }
 
 // ── Team stats hook ────────────────────────────────────────
@@ -224,55 +215,17 @@ function useTeamStats(identity: string, enabled: boolean) {
   });
 }
 
-// ── Status config for practices ───────────────────────────
+// ── Practice status → the four meanings ────────────────────
+// A status says what PHASE a record is in. It never says who moves next, so
+// nothing here returns the `you` tone — ownership is decided in
+// `_lib/actionMargin.ts` from the viewer and the record together.
 const STATUS_CONFIG = {
-  inquiry: { label: "Inquiry", dot: "var(--bz-text-2)" },
-  quotation: { label: "Quotation", dot: "var(--state-warning)" },
-  in_progress: { label: "In Progress", dot: "var(--state-info)" },
-  documents: { label: "Documents", dot: "var(--state-warning)" },
-  completed: { label: "Completed", dot: "var(--state-success)" },
+  inquiry: { label: "Inquiry", tone: "wait" },
+  quotation: { label: "Quotation", tone: "wait" },
+  in_progress: { label: "On process", tone: "ours" },
+  documents: { label: "Documents", tone: "wait" },
+  completed: { label: "Completed", tone: "ok" },
 } as const;
-
-// ── Metric Bar item ────────────────────────────────────────
-function MetricItem({
-  label,
-  value,
-  sub,
-  accent,
-  href,
-}: {
-  label: string;
-  value: string | number;
-  sub?: string;
-  accent: string;
-  href?: string;
-}) {
-  const inner = (
-    <div className="flex flex-col gap-0.5 min-w-0">
-      <span className="text-[9px] font-semibold text-[var(--bz-text-3)] tracking-[.10em] uppercase">
-        {label}
-      </span>
-      <span
-        className="text-[22px] font-black leading-none tracking-tight"
-        style={{ color: accent }}
-      >
-        {value}
-      </span>
-      {sub && (
-        <span className="text-[9px] text-[var(--bz-text-2)] font-medium">
-          {sub}
-        </span>
-      )}
-    </div>
-  );
-  if (href)
-    return (
-      <Link href={href} className="hover:opacity-80 transition-opacity">
-        {inner}
-      </Link>
-    );
-  return inner;
-}
 
 // ── Pipeline row ───────────────────────────────────────────
 interface CasePreview {
@@ -281,80 +234,53 @@ interface CasePreview {
   client: string;
   status: "inquiry" | "quotation" | "in_progress" | "documents" | "completed";
   daysRemaining?: number;
-  completedAt?: string;
 }
 
-function PipelineRow({ p }: { p: CasePreview }) {
+/**
+ * A due date is URGENCY, never ownership: it takes the warning word and never
+ * copper (fusion DISPOSITION F3, F10). A terminal record carries muted plus
+ * its own word, which the state pill already supplies.
+ */
+function dueWord(p: CasePreview): { text: string; tone: KpiTone } | null {
+  if (p.status === "completed" || p.daysRemaining === undefined) return null;
+  if (p.daysRemaining <= 0) return { text: "Overdue", tone: "warn" };
+  if (p.daysRemaining <= 3)
+    return { text: `${p.daysRemaining}d left`, tone: "warn" };
+  return { text: `${p.daysRemaining}d`, tone: "ink" };
+}
+
+function PipelineRow({ p, mark }: { p: CasePreview; mark: string }) {
   const cfg = STATUS_CONFIG[p.status];
-  const isUrgent =
-    p.daysRemaining !== undefined &&
-    p.daysRemaining <= 3 &&
-    p.status !== "completed";
-  const isExpired =
-    p.daysRemaining !== undefined &&
-    p.daysRemaining <= 0 &&
-    p.status !== "completed";
-
+  const due = dueWord(p);
   return (
-    <Link
-      href={`/process/${p.id}`}
-      className="group grid items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-[var(--bz-card-hover)] transition-colors"
-      style={{ gridTemplateColumns: "1fr auto auto" }}
-    >
-      {/* Left: client + title */}
-      <div className="min-w-0">
-        <p className="text-[11px] font-semibold text-[var(--bz-text-1)] truncate transition-colors">
-          {p.client}
-        </p>
-        <p className="text-[10px] text-[var(--bz-text-2)] truncate">
-          {p.title}
-        </p>
-      </div>
-
-      {/* Status badge */}
-      <span
-        className="flex items-center gap-1.5 text-[9px] font-semibold tracking-wide whitespace-nowrap"
-        style={{ color: cfg.dot }}
-      >
-        <span
-          className="w-1.5 h-1.5 rounded-full flex-shrink-0"
-          style={{ backgroundColor: cfg.dot }}
-        />
-        {cfg.label}
-      </span>
-
-      {/* Deadline */}
-      <span
-        className="text-[9px] font-semibold tabular-nums whitespace-nowrap flex items-center gap-1"
-        style={{
-          color: isExpired
-            ? "var(--bz-chart-7)"
-            : isUrgent
-              ? "var(--bz-chart-3)"
-              : "var(--bz-text-3)",
-        }}
-      >
-        {p.status === "completed" ? (
-          <CheckCircle2 size={10} className="opacity-60" />
-        ) : isExpired ? (
-          <>
-            <AlertTriangle size={9} />
-            Expired
-          </>
-        ) : p.daysRemaining !== undefined ? (
-          <>
-            <Clock size={9} />
-            {p.daysRemaining}d
-          </>
-        ) : null}
-      </span>
-    </Link>
+    <LedgerRow
+      mark={mark}
+      primary={p.client}
+      secondary={p.title}
+      state={<StatePill tone={cfg.tone} label={cfg.label} />}
+      trailing={
+        due ? (
+          <span
+            className={due.tone === "warn" ? "text-[var(--state-warning)]" : ""}
+          >
+            {due.text}
+          </span>
+        ) : null
+      }
+      action={
+        <DeskLink
+          href={`/process/${p.id}`}
+          label={`Open ${p.client} · ${p.title}`}
+        >
+          Open
+        </DeskLink>
+      }
+    />
   );
 }
 
 // ── Intel article row ──────────────────────────────────────
-function IntelRow({ article }: { article: IntelArticle }) {
-  const color = getCategoryColor(article.category);
+function IntelRow({ article, mark }: { article: IntelArticle; mark: string }) {
   const catLabel = article.category.replace(/[-_]/g, " ").toUpperCase();
   const href = `https://balizero.com/${article.category}/${article.slug}`;
   const date = new Date(article.publishedAt).toLocaleDateString("en-GB", {
@@ -363,72 +289,43 @@ function IntelRow({ article }: { article: IntelArticle }) {
   });
 
   return (
-    <a
-      href={href}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="group flex items-start gap-2.5 px-3 py-2 rounded-lg hover:bg-[var(--bz-card-hover)] transition-colors"
-    >
-      {/* Color stripe */}
-      <span
-        className="flex-shrink-0 w-0.5 self-stretch rounded-full mt-0.5"
-        style={{ backgroundColor: color, opacity: 0.6 }}
-      />
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2 mb-0.5">
-          <span
-            className="text-[8px] font-bold tracking-[.08em]"
-            style={{ color, opacity: 0.9 }}
-          >
-            {catLabel}
-          </span>
-          <span className="ml-auto text-[8px] text-[var(--bz-text-3)] flex-shrink-0">
-            {date}
-          </span>
-        </div>
-        <p className="text-[10px] text-[var(--bz-text-2)] leading-snug line-clamp-2 group-hover:text-[var(--bz-text-1)] transition-colors">
-          {article.title}
-        </p>
-      </div>
-    </a>
+    <LedgerRow
+      mark={mark}
+      primary={<Eyebrow className="truncate">{catLabel}</Eyebrow>}
+      secondary={article.title}
+      trailing={date}
+      action={
+        <DeskLink href={href} external label={`Read: ${article.title}`}>
+          Read
+        </DeskLink>
+      }
+    />
   );
 }
 
-// ── Section header ─────────────────────────────────────────
-function SectionHeader({
-  label,
-  href,
-  count,
-}: {
-  label: string;
-  href?: string;
-  count?: number;
-}) {
+// ── The action margin ──────────────────────────────────────
+function MarginRow({ item, mark }: { item: ActionMarginItem; mark: string }) {
   return (
-    <div className="flex items-center justify-between px-3 pb-1">
-      <span className="text-[9px] font-bold text-[var(--bz-text-3)] tracking-[.12em] uppercase">
-        {label}
-      </span>
-      <div className="flex items-center gap-2">
-        {count !== undefined && (
-          <span className="text-[9px] text-[var(--bz-text-3)]">{count}</span>
-        )}
-        {href && (
-          <Link
-            href={href}
-            className="flex items-center gap-0.5 text-[9px] text-[var(--bz-text-3)] hover:text-[var(--bz-text-1)] transition-colors"
-          >
-            All <ArrowUpRight size={9} />
-          </Link>
-        )}
-      </div>
-    </div>
+    <LedgerRow
+      mark={mark}
+      markTone="you"
+      primary={item.title}
+      secondary={item.detail}
+      state={<StatePill tone="you" label={item.state} />}
+      trailing={
+        item.when ? (
+          <span className={item.urgent ? "text-[var(--state-warning)]" : ""}>
+            {item.when}
+          </span>
+        ) : null
+      }
+      action={
+        <DeskLink href={item.href} tone="you" label={`Open ${item.title}`}>
+          Open
+        </DeskLink>
+      }
+    />
   );
-}
-
-// ── Divider ────────────────────────────────────────────────
-function Divider() {
-  return <div className="h-px mx-3 bg-[var(--bz-border)]" />;
 }
 
 // ── Main page ──────────────────────────────────────────────
@@ -459,6 +356,7 @@ export default function DashboardPage() {
   );
   const { data: complianceAlerts, isLoading: complianceLoading } =
     useComplianceAlerts(opsIdentity);
+  const { data: reviewItems } = useIntakeReviewQueue(authIdentity);
 
   // Team stats
   const { data: teamData, isLoading: teamLoading } = useTeamStats(
@@ -492,17 +390,15 @@ export default function DashboardPage() {
     }
   }, [user?.email, isLoading]);
 
-  // Loading skeleton
+  // Loading skeleton — the derived shape of the page below, so the first paint
+  // does not move (fusion §10: "derived skeleton").
   if (isLoading) {
     return (
-      <div className="p-2.5 space-y-2">
-        <div className="h-12 rounded-xl bg-[var(--bz-surface)] animate-pulse" />
-        <div className="grid grid-cols-4 gap-2">
-          <div className="col-span-3 h-[220px] rounded-xl bg-[var(--bz-surface)] animate-pulse" />
-          <div className="h-[220px] rounded-xl bg-[var(--bz-surface)] animate-pulse" />
-        </div>
-        <div className="h-[320px] rounded-xl bg-[var(--bz-surface)] animate-pulse" />
-        <div className="h-[240px] rounded-xl bg-[var(--bz-surface)] animate-pulse" />
+      <div className="space-y-3 p-4 md:p-6">
+        <div className="h-[104px] w-full animate-pulse bg-[var(--bz-card)]" />
+        <div className="h-24 w-full animate-pulse bg-[var(--bz-card)]" />
+        <div className="h-24 w-full animate-pulse bg-[var(--bz-card)]" />
+        <div className="h-[280px] w-full animate-pulse bg-[var(--bz-card)]" />
       </div>
     );
   }
@@ -510,26 +406,63 @@ export default function DashboardPage() {
   // Error state
   if (isError) {
     return (
-      <div className="p-4 rounded-xl border border-accent-pink-editorial/25 bg-[rgba(196,92,120,0.06)]">
-        <h3 className="font-semibold text-accent-pink-editorial">
-          Dashboard Error
-        </h3>
-        <p className="text-sm text-accent-pink-editorial/70 mt-1">
-          Failed to load dashboard data.
-        </p>
-        <button
-          onClick={() => refetch()}
-          className="mt-3 px-4 py-2 bg-accent-pink-editorial text-white rounded-lg hover:opacity-90 transition-opacity inline-flex items-center gap-2 text-sm"
-        >
-          <RefreshCw className="w-4 h-4" />
-          Retry
-        </button>
+      <div className="p-4 md:p-6">
+        <Masthead
+          eyebrow="Desk"
+          title="Dashboard Error"
+          subtitle="We could not load the desk. Nothing was changed."
+          right={
+            <button
+              onClick={() => refetch()}
+              className="inline-flex min-h-11 items-center gap-2 border border-[var(--line-control)] bg-[var(--bz-card)] px-3 text-[12px] font-[650] text-[var(--tx-pure)] hover:bg-[var(--bz-card-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--bz-copper)]"
+            >
+              <RefreshCw className="h-4 w-4" />
+              Retry
+            </button>
+          }
+        />
       </div>
     );
   }
 
+  // ── Derived: the margin, the sentence, the section numbering ──
+  const margin = buildActionMargin({
+    reviewItems,
+    practices,
+    // Two conditions, both required. The summary scopes its practice list to
+    // `assigned_to = user_id` for every non-admin, so for an admin it is the
+    // whole book and assignment is not derivable from it. And the array must
+    // belong to the CURRENT identity: after an account switch the previous
+    // user's dashboard response can still be in cache, and `identityIsCurrent`
+    // is the same guard the ops panels already use to refuse it. Without it the
+    // margin would say "Assigned to you" over somebody else's work.
+    practicesAreMine: identityIsCurrent && !isZero,
+  });
+  const movingCount = practices.filter((p) => p.status !== "completed").length;
+  const sentence = mastheadSentence(movingCount, margin.count);
+  // Asia/Makassar, not the runtime's zone: this component still pre-renders on
+  // the server, and a UTC server against a WITA browser disagrees about the
+  // calendar day for the first eight hours of every Bali day.
+  const today = new Date().toLocaleDateString("en-GB", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    timeZone: "Asia/Makassar",
+  });
+  const marks = "ABCDEFGHIJ";
+  // The ordinals are RENDERED, not stored: they restart at 02 after the margin
+  // and skip System pulse when RBAC hides it.
+  let n = 1;
+  const nextOrdinal = () => String(++n).padStart(2, "0");
+
   // Stat values
-  const statItems = isZero
+  const statItems: Array<{
+    label: string;
+    value: string | number;
+    sub?: string;
+    tone?: KpiTone;
+    href?: string;
+  }> = isZero
     ? [
         {
           label: "Revenue · MTD",
@@ -541,7 +474,6 @@ export default function DashboardPage() {
                 formatIDRCompact(revenue.paid_revenue),
               )
             : "—",
-          accent: "var(--bz-chart-4)",
         },
         {
           label: "Outstanding",
@@ -549,14 +481,12 @@ export default function DashboardPage() {
             ? formatIDRCompact(revenue.outstanding_revenue)
             : "—",
           sub: STRINGS.dashboard.outstandingSub,
-          accent: "var(--bz-chart-5)",
         },
         {
           label: STRINGS.dashboard.clientsLabel,
           value:
             totalClients != null ? totalClients.toLocaleString("en-US") : "—",
           sub: STRINGS.dashboard.clientsSub,
-          accent: "var(--bz-chart-1)",
           href: "/clients",
         },
         {
@@ -566,7 +496,6 @@ export default function DashboardPage() {
             stats.activeCases,
             stats.criticalDeadlines,
           ),
-          accent: "var(--bz-chart-2)",
           href: "/process",
         },
         {
@@ -576,77 +505,112 @@ export default function DashboardPage() {
             stats.pendingInvoices > 0
               ? STRINGS.dashboard.invoicesPendingSub
               : STRINGS.dashboard.invoicesPaidSub,
-          accent: "var(--bz-chart-3)",
+          tone: stats.pendingInvoices > 0 ? "ink" : "done",
         },
       ]
     : [
         {
-          label: "My Cases",
+          label: "My processes",
           value: stats.activeCases,
           sub: "assigned",
-          accent: "var(--bz-chart-2)",
           href: "/process",
         },
         {
           label: "Expiring",
           value: stats.criticalDeadlines,
-          sub: "≤ 7 days",
-          accent: "var(--bz-chart-7)",
+          sub: "within 7 days",
+          // Urgency, never ownership.
+          tone: stats.criticalDeadlines > 0 ? "warn" : "ink",
         },
         {
           label: "Invoices",
           value: stats.pendingInvoices > 0 ? stats.pendingInvoices : "—",
           sub: "pending",
-          accent: "var(--bz-chart-3)",
         },
         {
           label: "Messages",
           value: stats.whatsappUnread + stats.emailUnread,
-          sub: "whatsapp + unread email",
-          accent: "var(--bz-chart-1)",
+          sub: "WhatsApp + email",
         },
       ];
 
   return (
     <DashboardErrorBoundary>
-      <div className="relative">
-        <div className="p-2.5 space-y-2">
-          {/* ROW 0: Portal Champion challenge — predominant, above everything else */}
+      <div className="p-4 md:p-6">
+        <Masthead
+          eyebrow={
+            <span className="text-[var(--bz-copper-text)]">Desk · {today}</span>
+          }
+          title="Today"
+          subtitle={sentence}
+          headingClassName="text-[32px] md:text-[40px]"
+          className="mb-5"
+          right={
+            <Link
+              href="/process/new"
+              className="inline-flex min-h-11 items-center bg-[var(--state-success)] px-3.5 text-[12px] font-[650] text-[var(--bz-on-warm)] hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--bz-copper)]"
+            >
+              New process
+            </Link>
+          }
+        />
+
+        {/* Portal Champion challenge — where PR #6483 shipped it. concept §7
+            forbids reordering the dashboard's sections. */}
+        <div className="mb-4">
           <PortalChallengeWidget identity={authIdentity} />
+        </div>
 
-          {/* ROW 1: Zantara AI link */}
-          <a
-            href="https://zantara.balizero.com/chat"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="bz-product-panel flex items-center gap-2 px-4 py-2 text-[11px] font-semibold text-[var(--bz-text-1)] hover:text-[var(--bz-accent)] transition-colors"
-          >
-            <Sparkles size={12} className="text-[var(--bz-accent)]" />
-            Zantara AI
-            <ExternalLink size={11} className="ml-auto opacity-50" />
-          </a>
+        {/* 00 · Zantara AI */}
+        <LedgerSection
+          ordinal="00"
+          title="Zantara AI"
+          right={
+            <DeskLink href="https://zantara.balizero.com/chat" external>
+              <span className="flex items-center gap-1.5">
+                <Sparkles size={12} aria-hidden="true" />
+                Zantara AI
+              </span>
+            </DeskLink>
+          }
+        />
 
-          {/* ROW 1.5: Intake review banner — only when docs are waiting */}
-          <IntakeReviewBanner identity={authIdentity} />
+        {/* 01 · Your action margin — the owned queue */}
+        <LedgerSection
+          ordinal="01"
+          title="Your action margin"
+          titleId="action-margin-title"
+          meta="Only work this viewer can move"
+          // The copper rule is the claim "something here is yours". It goes
+          // when the claim does, rather than framing "Nothing is waiting".
+          owned={margin.items.length > 0}
+          className="mt-4"
+        >
+          {margin.items.length === 0 ? (
+            <EmptyState className="border-t-0">
+              Nothing is waiting on you right now.
+            </EmptyState>
+          ) : (
+            margin.items.map((item, i) => (
+              <MarginRow key={item.id} item={item} mark={marks[i] ?? "·"} />
+            ))
+          )}
+        </LedgerSection>
 
-          {/* ROW 2: Metric bar */}
-          <div className="bz-product-panel flex items-stretch overflow-x-auto px-6 py-4">
-            {statItems.map((s, i) => (
-              <React.Fragment key={s.label}>
-                <div className="flex-1 min-w-0">
-                  <MetricItem {...s} />
-                </div>
-                {i < statItems.length - 1 && (
-                  <div
-                    className="w-px flex-shrink-0 mx-6 self-stretch"
-                    style={{ background: "var(--bz-border)" }}
-                  />
-                )}
-              </React.Fragment>
-            ))}
-          </div>
+        {/* KPI band — the viewport peak */}
+        <KpiBand label="Workspace metrics">
+          {statItems.map((s) => (
+            <Kpi key={s.label} {...s} />
+          ))}
+        </KpiBand>
 
-          {/* ROW 3: Team Activity — admin sees all, team member sees own row only */}
+        {/* 02 · Team activity — admin sees all, a team member sees own row */}
+        <LedgerSection
+          ordinal={nextOrdinal()}
+          title="Team activity"
+          meta="Recent movement"
+          className="mt-4"
+        >
           <TeamActivityPanel
             members={
               isZero
@@ -658,197 +622,124 @@ export default function DashboardPage() {
             overview={isZero ? (teamData?.overview ?? null) : null}
             isLoading={teamLoading}
           />
+        </LedgerSection>
 
-          {/* ROW 3.5: System Pulse + Compliance Radar (WS2 slice 2 — live ops probes) */}
-          <div
-            data-testid="dashboard-ops-panels"
-            className={`grid grid-cols-1 gap-2 ${
-              canViewSystemPulse ? "xl:grid-cols-2" : ""
-            }`}
-          >
-            {/* System Pulse panel */}
-            {canViewSystemPulse && (
-              <div className="bz-product-panel bz-product-panel--interactive overflow-hidden flex flex-col">
-                <div className="bz-product-divider flex items-center justify-between px-4 py-3 border-b">
-                  <div className="flex items-center gap-2">
-                    <Activity size={12} className="text-[var(--bz-text-3)]" />
-                    <span className="text-[11px] font-semibold text-[var(--bz-text-1)]">
-                      System Pulse
-                    </span>
-                  </div>
-                  <span className="text-[9px] text-[var(--bz-text-3)]">
-                    live stack
-                  </span>
-                </div>
-                {pulseLoading ? (
-                  <div className="flex flex-col gap-1 p-3">
-                    {[1, 2, 3].map((i) => (
-                      <div
-                        key={i}
-                        className="h-8 rounded-lg bg-[var(--bz-surface)] animate-pulse"
-                      />
-                    ))}
-                  </div>
-                ) : (
-                  <SystemPulse services={pulseServices ?? []} />
-                )}
-              </div>
-            )}
-
-            {/* Compliance Radar panel */}
-            <div className="bz-product-panel bz-product-panel--interactive overflow-hidden flex flex-col">
-              <div className="bz-product-divider flex items-center justify-between px-4 py-3 border-b">
-                <div className="flex items-center gap-2">
-                  <ShieldCheck size={12} className="text-[var(--bz-text-3)]" />
-                  <span className="text-[11px] font-semibold text-[var(--bz-text-1)]">
-                    Compliance Radar
-                  </span>
-                </div>
-                <span className="text-[9px] text-[var(--bz-text-3)]">
-                  auto-tracked
-                </span>
-              </div>
-              {complianceLoading ? (
-                <div className="flex flex-col gap-1 p-3">
+        {/* Ops — System Pulse (admin only) + Compliance Radar */}
+        <div
+          data-testid="dashboard-ops-panels"
+          className={`mt-4 grid grid-cols-1 gap-6 ${
+            canViewSystemPulse ? "xl:grid-cols-2" : ""
+          }`}
+        >
+          {canViewSystemPulse && (
+            <LedgerSection
+              ordinal={nextOrdinal()}
+              title="System Pulse"
+              meta="live stack"
+            >
+              {pulseLoading ? (
+                <div className="flex flex-col gap-1 py-3">
                   {[1, 2, 3].map((i) => (
                     <div
                       key={i}
-                      className="h-8 rounded-lg bg-[var(--bz-surface)] animate-pulse"
+                      className="h-8 animate-pulse bg-[var(--bz-card)]"
                     />
                   ))}
                 </div>
               ) : (
-                <ComplianceRadar alerts={complianceAlerts ?? []} />
+                <SystemPulse services={pulseServices ?? []} />
               )}
-            </div>
-          </div>
+            </LedgerSection>
+          )}
 
-          {/* ROW 4: Pipeline + Intel + LiveActivity/RoleWidget */}
-          <div className="grid grid-cols-1 gap-2 xl:grid-cols-[1.5fr_1fr_1fr]">
-            {/* Pipeline panel */}
-            <div
-              className="bz-product-panel bz-product-panel--interactive overflow-hidden flex flex-col"
-              style={{
-                minHeight: 320,
-              }}
-            >
-              {/* Panel header */}
-              <div className="bz-product-divider flex items-center justify-between px-4 py-3 border-b">
-                <div className="flex items-center gap-2">
-                  <FileText size={12} className="text-[var(--bz-text-3)]" />
-                  <span className="text-[11px] font-semibold text-[var(--bz-text-1)]">
-                    Process Pipeline
-                  </span>
-                </div>
-                <Link
-                  href="/process"
-                  className="flex items-center gap-1 text-[9px] text-[var(--bz-text-3)] hover:text-[var(--bz-text-1)] transition-colors"
-                >
-                  View all <ArrowUpRight size={9} />
-                </Link>
+          <LedgerSection
+            ordinal={nextOrdinal()}
+            title="Compliance Radar"
+            meta="auto-tracked"
+          >
+            {complianceLoading ? (
+              <div className="flex flex-col gap-1 py-3">
+                {[1, 2, 3].map((i) => (
+                  <div
+                    key={i}
+                    className="h-8 animate-pulse bg-[var(--bz-card)]"
+                  />
+                ))}
               </div>
+            ) : (
+              <ComplianceRadar alerts={complianceAlerts ?? []} />
+            )}
+          </LedgerSection>
+        </div>
 
-              {/* Column headers */}
-              <div
-                className="bz-product-divider grid px-3 py-1.5 border-b"
-                style={{ gridTemplateColumns: "1fr auto auto" }}
-              >
-                <span className="text-[8px] font-semibold text-[var(--bz-text-3)] uppercase tracking-widest">
-                  Client
-                </span>
-                <span className="text-[8px] font-semibold text-[var(--bz-text-3)] uppercase tracking-widest">
-                  Status
-                </span>
-                <span className="text-[8px] font-semibold text-[var(--bz-text-3)] uppercase tracking-widest ml-3">
-                  Due
-                </span>
+        {/* Process pipeline · Intelligence feed · My role */}
+        {/* Equal thirds, as the fusion's `.three-col` has them. An uneven
+            template starved the third column and truncated "My role" at
+            1440 — measured in the dev-server render. */}
+        <div className="mt-4 grid grid-cols-1 gap-6 xl:grid-cols-3">
+          <LedgerSection
+            ordinal={nextOrdinal()}
+            title="Process pipeline"
+            right={<DeskLink href="/process">View all</DeskLink>}
+          >
+            {practices.length === 0 ? (
+              <EmptyState className="border-t-0">
+                No processes assigned.
+              </EmptyState>
+            ) : (
+              practices.map((p, i) => (
+                <PipelineRow
+                  key={p.id}
+                  mark={marks[i] ?? "·"}
+                  p={{
+                    id: p.id,
+                    title: p.title || "Unknown",
+                    client: p.client || "Unknown Client",
+                    status: p.status,
+                    daysRemaining: p.daysRemaining,
+                  }}
+                />
+              ))
+            )}
+          </LedgerSection>
+
+          <LedgerSection
+            ordinal={nextOrdinal()}
+            title="Intelligence feed"
+            right={<DeskLink href="/intelligence">All</DeskLink>}
+          >
+            {intelLoading && (
+              <div className="flex flex-col gap-1 py-3">
+                {[1, 2, 3, 4, 5].map((i) => (
+                  <div
+                    key={i}
+                    className="h-10 animate-pulse bg-[var(--bz-card)]"
+                  />
+                ))}
               </div>
+            )}
+            {!intelLoading &&
+              (!intelArticles || intelArticles.length === 0) && (
+                <EmptyState className="border-t-0">
+                  No recent articles.
+                </EmptyState>
+              )}
+            {!intelLoading &&
+              intelArticles &&
+              intelArticles.map((article, i) => (
+                <IntelRow
+                  key={article.slug}
+                  article={article}
+                  mark={String(i + 1).padStart(2, "0")}
+                />
+              ))}
+          </LedgerSection>
 
-              {/* Rows */}
-              <div className="flex flex-col py-1 flex-1">
-                {practices.length === 0 ? (
-                  <div className="flex items-center justify-center py-10 text-[11px] text-[var(--bz-text-3)]">
-                    No processes assigned
-                  </div>
-                ) : (
-                  practices.map((p) => (
-                    <PipelineRow
-                      key={p.id}
-                      p={{
-                        id: p.id,
-                        title: p.title || "Unknown",
-                        client: p.client || "Unknown Client",
-                        status: p.status,
-                        daysRemaining: p.daysRemaining,
-                        completedAt:
-                          p.status === "completed"
-                            ? new Date().toLocaleDateString("en-US")
-                            : undefined,
-                      }}
-                    />
-                  ))
-                )}
-              </div>
-            </div>
-
-            {/* Intel panel */}
-            <div
-              className="bz-product-panel bz-product-panel--interactive overflow-hidden flex flex-col"
-              style={{
-                minHeight: 320,
-              }}
-            >
-              {/* Panel header */}
-              <div className="bz-product-divider flex items-center justify-between px-4 py-3 border-b">
-                <div className="flex items-center gap-2">
-                  <TrendingUp size={12} className="text-[var(--bz-text-3)]" />
-                  <span className="text-[11px] font-semibold text-[var(--bz-text-1)]">
-                    Intelligence Feed
-                  </span>
-                </div>
-                <Link
-                  href="/intelligence"
-                  className="flex items-center gap-1 text-[9px] text-[var(--bz-text-3)] hover:text-[var(--bz-text-1)] transition-colors"
-                >
-                  All <ExternalLink size={9} />
-                </Link>
-              </div>
-
-              {/* Articles */}
-              <div className="flex flex-col py-1 flex-1">
-                {intelLoading && (
-                  <div className="flex flex-col gap-1 p-3">
-                    {[1, 2, 3, 4, 5].map((i) => (
-                      <div
-                        key={i}
-                        className="h-10 rounded-lg bg-[var(--bz-surface)] animate-pulse"
-                      />
-                    ))}
-                  </div>
-                )}
-                {!intelLoading &&
-                  (!intelArticles || intelArticles.length === 0) && (
-                    <div className="flex items-center justify-center py-10 text-[11px] text-[var(--bz-text-3)]">
-                      No recent articles
-                    </div>
-                  )}
-                {!intelLoading &&
-                  intelArticles &&
-                  intelArticles.length > 0 &&
-                  intelArticles.map((article, i) => (
-                    <React.Fragment key={article.slug}>
-                      <IntelRow article={article} />
-                      {i < intelArticles.length - 1 && <Divider />}
-                    </React.Fragment>
-                  ))}
-              </div>
-            </div>
-
-            {/* Right column: RoleWidget */}
-            <div className="flex flex-col gap-2">
+          <LedgerSection ordinal={nextOrdinal()} title="My role">
+            <div className="pt-3">
               <RoleWidget role={role} userId={user?.email ?? ""} />
             </div>
-          </div>
+          </LedgerSection>
         </div>
       </div>
     </DashboardErrorBoundary>

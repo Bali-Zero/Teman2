@@ -1,88 +1,37 @@
 "use client";
 
 /**
- * R19 presentation primitives for the kita dashboard's Portal Champion widget.
+ * The Portal Champion widget's R19 seam — now a RE-EXPORT, not a copy.
  *
- * Copied idiom, not a second visual system — same primitives, class strings
- * and token reads as apps/mouth/src/app/portal/(authenticated)/page.tsx
- * (concept-F) and apps/mouth/src/app/(workspace)/garuda-voa/r19.tsx (PR
- * #6411), page-local so nothing shared is restyled. See garuda-voa/r19.tsx
- * for the fuller doc block this one intentionally does not repeat. Only the
- * primitives this widget actually uses are kept here (no Masthead/
- * ProgressBar/SECTION_H2 — the hero band and the position scale need
- * custom markup PortalChallengeWidget.tsx owns directly).
+ * When PR #6483 shipped this widget (2026-09-14) the shared kita primitives
+ * did not exist yet, so `r19.tsx` held a page-local copy of the idiom and said
+ * so in its own doc block. SAETTA-R19K window K1b then shipped
+ * `@/components/workspace/r19` as the one module every kita window imports,
+ * and the K2 brief makes this the moment the copy goes: the widget keeps every
+ * import it already had, and gets them from the shared module instead.
  *
- * COLOUR MEANINGS actually used on THIS widget, read from the theme layer:
- *   needs you / mine -> --bz-copper / --bz-copper-text
- *   waiting          -> --tx-secondary
- *   solid ink chip   -> --tx-pure (fill) / --bz-surface (text) — for the
- *                       "Tax" badge, which the shared idiom would otherwise
- *                       give --state-info, which resolves to a BLUE on
- *                       kita's daylight theme — forbidden by brand. `ok`/
- *                       `ours` stay declared for idiom parity with
- *                       garuda-voa/r19.tsx but are never applied here:
- *                       --state-success resolves to a GREEN and --state-info
- *                       to a BLUE on kita (verified against globals.css's
- *                       kita daylight theme block; run token_lint.py or grep
- *                       the two token names there for the exact values —
- *                       never restate them as a literal here).
+ * That is the whole change. `PortalChallengeWidget.tsx` is untouched, and
+ * `r19.test.tsx` — which scans THIS file and the widget for a `--state-danger`
+ * read or a literal hex, and asserts `PILL_TONE` never touches danger — still
+ * binds, because the shared tokens satisfy it: on kita `--state-danger`
+ * resolves to copper and the module declares no red at all.
  *
- * NO RED ON THIS WIDGET. --state-danger is never read here. r19.test.tsx
- * fails if a danger read or a hardcoded hex comes back in this widget's own
- * files.
+ * The shared `PILL_TONE.you` reads `--bz-copper-text` where this copy read
+ * `--bz-copper`; both are the copper seam and the `ink` tone the widget needs
+ * for its "Tax" chip is declared there too, promoted from here by K1b.
+ *
+ * Anything this file once defined and the widget does not import is gone
+ * rather than re-exported: a symbol with no caller is how a second visual
+ * system starts again.
  */
 
-import React from "react";
-import { cn } from "@/lib/utils";
-
-/** Fraunces, scoped to this widget only (see r19-fonts import in the widget). */
-export const SERIF: React.CSSProperties = {
-  fontFamily: "var(--font-serif)",
-  fontWeight: 450,
-};
-
-export const EYEBROW =
-  "text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--tx-secondary)]";
-export const HAIRLINE = "border border-[var(--bz-border)]";
-export const CARD = `rounded-lg bg-[var(--bz-surface)] ${HAIRLINE}`;
-export const FOCUS =
-  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--bz-copper)]";
-
-export type PillTone = "ok" | "ours" | "you" | "wait" | "ink";
-
-export const PILL_TONE: Record<PillTone, string> = {
-  ok: "text-[var(--state-success)] border-[var(--state-success)]",
-  ours: "text-[var(--state-info)] border-[var(--state-info)]",
-  you: "text-[var(--bz-copper-text)] border-[var(--bz-copper)]",
-  wait: "text-[var(--tx-secondary)] border-[var(--bz-border-hover)]",
-  // Solid ink chip (dark fill, paper text) — the brand-safe stand-in for a
-  // second pill colour on kita, see the doc block above.
-  ink: "text-[var(--bz-surface)] bg-[var(--tx-pure)] border-[var(--tx-pure)]",
-};
-
-/** Outlined status pill — one vocabulary, never a filled state except `ink`. */
-export function StatePill({
-  tone,
-  label,
-  className,
-}: {
-  tone: PillTone;
-  label: string;
-  className?: string;
-}) {
-  return (
-    <span
-      className={cn(
-        "inline-flex h-6 items-center gap-[7px] whitespace-nowrap rounded-full border px-[10px] text-[10px] font-semibold uppercase tracking-[0.12em]",
-        PILL_TONE[tone],
-        className,
-      )}
-    >
-      <span
-        aria-hidden="true"
-        className="h-1.5 w-1.5 rounded-full bg-current"
-      />
-      {label}
-    </span>
-  );
-}
+export {
+  CARD,
+  EYEBROW,
+  FOCUS,
+  HAIRLINE,
+  PILL_TONE,
+  SERIF,
+  StatePill,
+  type PillTone,
+} from "@/components/workspace/r19";

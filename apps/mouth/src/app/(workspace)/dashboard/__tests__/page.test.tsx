@@ -435,4 +435,104 @@ describe("DashboardPage - Unit Tests", () => {
     expect(getComplianceAlerts).not.toHaveBeenCalled();
     expect(useDashboardData).toHaveBeenCalledWith("member@example.test");
   });
+
+  /**
+   * "Your action margin" — the ownership queue (concept-K v2 "TEPAT FORTE" §2).
+   *
+   * The unit law lives in `_lib/actionMargin.test.ts`; this block proves the
+   * PAGE actually paints it from the two families it already fetches, and that
+   * the family exposing only a count shows the count line rather than a row per
+   * document.
+   */
+  describe("DashboardPage - Your action margin", () => {
+    const withReviewQueue = (items: unknown[]) =>
+      vi.spyOn(api, "get").mockResolvedValue({ items } as never);
+
+    it("renders the review count line and the viewer's blocked practice", async () => {
+      withReviewQueue([{ id: "d1" }, { id: "d2" }, { id: "d3" }]);
+      vi.mocked(useDashboardData).mockReturnValue(
+        mockUseDashboardData({
+          practices: [
+            {
+              id: 4187,
+              title: "Work Permit Extension",
+              client: "Client 0412",
+              status: "documents",
+              daysRemaining: 2,
+            },
+          ],
+        }),
+      );
+
+      render(<DashboardPage />, { wrapper: createWrapper() });
+
+      expect(await screen.findByText("Your action margin")).toBeInTheDocument();
+      // The review family exposes only a count, so it is ONE row carrying it.
+      expect(
+        await screen.findByText("3 documents await review"),
+      ).toBeInTheDocument();
+      expect(screen.getByText("Review queue")).toBeInTheDocument();
+      // The practice family names the record and says why the viewer is next.
+      expect(
+        screen.getByText("Client 0412 · Work Permit Extension"),
+      ).toBeInTheDocument();
+      expect(screen.getByText("Assigned to you")).toBeInTheDocument();
+      // Colour never travels alone: every tone is rendered beside a WORD.
+      // The pills are uppercased in CSS, so the DOM carries the sentence case.
+      // Each ledger row emits its state pill twice — once in the desktop grid
+      // column and once on the phone's secondary line, one of the two hidden
+      // by a media query — so the review row's word appears exactly twice.
+      expect(screen.getAllByText("Your review")).toHaveLength(2);
+      // "Documents" appears four times: the margin row and the same record's
+      // Process pipeline row, each in both copies. An exact count is the point
+      // — `toBeGreaterThan(0)` would still pass if one of the two words
+      // disappeared entirely.
+      expect(screen.getAllByText("Documents")).toHaveLength(4);
+    });
+
+    it("claims nothing when neither family has anything for the viewer", async () => {
+      withReviewQueue([]);
+      vi.mocked(useDashboardData).mockReturnValue(
+        mockUseDashboardData({ practices: [] }),
+      );
+
+      render(<DashboardPage />, { wrapper: createWrapper() });
+
+      expect(
+        await screen.findByText("Nothing is waiting on you right now."),
+      ).toBeInTheDocument();
+    });
+
+    it("keeps a blocked practice out of the margin when ownership is not derivable", async () => {
+      // An admin's practice list is the whole book, not an assignment.
+      withReviewQueue([]);
+      vi.mocked(api.getUserProfile).mockReturnValue({
+        id: "admin-user",
+        email: "admin@example.test",
+        name: "Admin User",
+        role: "admin",
+      });
+      vi.mocked(useDashboardData).mockReturnValue(
+        mockUseDashboardData({
+          user: { email: "admin@example.test", role: "admin", is_admin: true },
+          isZero: true,
+          practices: [
+            {
+              id: 4187,
+              title: "Work Permit Extension",
+              client: "Client 0412",
+              status: "documents",
+            },
+          ],
+        }),
+      );
+
+      render(<DashboardPage />, { wrapper: createWrapper() });
+
+      expect(
+        await screen.findByText("Nothing is waiting on you right now."),
+      ).toBeInTheDocument();
+      expect(screen.queryByText("Assigned to you")).not.toBeInTheDocument();
+    });
+  });
 });

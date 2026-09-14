@@ -1,0 +1,61 @@
+gear: 3
+objective: >-
+  Put the kita dashboard on the concept-K v2 "TEPAT FORTE" ledger: a 40px Fraunces masthead over
+  numbered hairline sections, 44px KPI numerals, and "Your action margin" — an ownership queue built
+  from data the page already fetches — in place of the intake banner. Copper appears only where the
+  signed-in viewer is the next actor.
+constraints:
+  - >-
+    No new endpoint, request, schema field or hook signature. The review hook keeps its URL, its
+    query key and its request; it returns its items instead of discarding them on `.length`, which
+    is the one code change concept-K DISPOSITION C3 sanctions.
+  - >-
+    Section order is unchanged (concept §7). The Portal Champion widget stays where PR #6483 shipped
+    it and RoleWidget stays in "My role".
+  - >-
+    Copper means the viewer is the NEXT ACTOR, derived from viewer and record together — never from
+    a raw status, never from a date. An expiry or countdown takes --state-warning. Copper is never a
+    fill. Every tone carries a WORD.
+  - >-
+    No red: no hex literal, no red Tailwind family, no --state-danger read on this page.
+  - >-
+    components/workspace/r19, AppSidebar, navigation.ts and globals.css are forbidden to this
+    window; a shape the shared module lacks becomes a page-local wrapper that IMPORTS the primitive
+    or its exported constants and copies no class string.
+  - >-
+    The /portal surface is untouched.
+acceptance:
+  - text: >-
+      WHEN the review queue returns N items, the action margin SHALL render ONE row carrying the
+      count, not one row per document, and it SHALL disappear entirely at N=0.
+    probe: npx vitest --run "src/app/(workspace)/dashboard/_lib/actionMargin.test.ts"
+  - text: >-
+      WHEN a practice is blocked on its assignee AND the array it came from is scoped to the current
+      viewer, it SHALL enter the margin in copper; WHEN the identical record arrives in an admin's
+      unscoped array, or under a status that is not blocked on the assignee, it SHALL NOT — the
+      guard must distinguish, not merely match.
+    probe: npx vitest --run "src/app/(workspace)/dashboard"
+  - text: >-
+      WHEN a record carries a near deadline, it SHALL take the warning tone and SHALL NOT be pulled
+      into the margin by that date alone.
+    probe: npx vitest --run "src/app/(workspace)/dashboard/_lib/actionMargin.test.ts"
+  - text: >-
+      WHEN any desk page this guard binds reads a red hex, a red Tailwind utility, or (where not
+      pinned by the WS2 residuals drain) --state-danger, the no-red guard SHALL go red; WHEN it
+      reads the kita idiom instead, the guard SHALL stay green.
+    probe: npx vitest --run "src/app/(workspace)/__tests__/desk-no-red.guard.test.ts"
+  - text: >-
+      WHEN /dashboard renders on a dev server with the API stubbed, at 1440x900 and 390x844 in both
+      operative-light and operative-dark, it SHALL produce zero console errors and no horizontal
+      overflow.
+    probe: chromium via playwright against next dev --webpack, full-page capture plus a scrollWidth probe
+  - text: >-
+      WHEN /notifications is measured after this diff, its WS2 residuals drain pins SHALL still hold.
+    probe: npx vitest --run "src/app/(workspace)/__tests__"
+consumer_map:
+  - >-
+    Every staff member who opens kita.balizero.com/dashboard — the desk itself is the consumer, and
+    it was observed rendering on this branch before the work was reported done.
+  - >-
+    actionMargin.test.ts and desk-no-red.guard.test.ts go red if the ownership law or the no-red law
+    drifts back.
