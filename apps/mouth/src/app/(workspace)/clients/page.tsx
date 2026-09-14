@@ -8,13 +8,25 @@
  * - Virtualized list per grandi dataset
  * - Debounced search
  * - Error Boundary per resilienza
+ *
+ * K3a (SAETTA-R19K window K3): the masthead/KPI-band/desk-strip/table
+ * grammar of `R19-KITA-20260914/fusion/03-clients-list.html`. Colour and
+ * ownership rules live in `./client-row-model.ts`; the table's own CSS
+ * (sticky head, 1360 collapse, mobile card stack) lives in
+ * `./clients-desk.module.css`. The card (list), kanban and map views below
+ * are unchanged in behaviour.
  */
 
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import React, {
+  useState,
+  useEffect,
+  useMemo,
+  useRef,
+  useCallback,
+} from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import dynamic from "next/dynamic";
 import {
-  Users,
   Filter,
   UserPlus,
   LayoutGrid,
@@ -26,6 +38,10 @@ import {
   SortDesc,
   AlertCircle,
   BarChart3,
+  ExternalLink,
+  Copy,
+  Check,
+  MoreVertical,
 } from "lucide-react";
 
 const PrimeNexusLayout = dynamic(
@@ -41,13 +57,8 @@ import { useAutoAnimate } from "@formkit/auto-animate/react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { Button } from "@/components/ui/button";
 import { formatIDRCompact } from "@balizero/core/utils";
-import {
-  FilterBar,
-  FilterSelect,
-  ListPageHeader,
-  SearchBox,
-  StatChips,
-} from "@balizero/core";
+import { FilterBar, FilterSelect, SearchBox } from "@balizero/core";
+import { cn } from "@/lib/utils";
 import { api } from "@/lib/api";
 import type { Client } from "@/lib/api/crm/crm.types";
 import { CLIENT_STATUSES, COMMON_NATIONALITIES } from "@/lib/api/crm/crm.types";
@@ -65,33 +76,29 @@ import {
 } from "@/lib/utils/view-mode-storage";
 import { STRINGS } from "@/lib/strings";
 import UnnamedLeadsBanner from "./UnnamedLeadsBanner";
-
-// Status badge styling — WS2 (GARUDA OS): state semantics read --state-*
-// tokens; "completed" keeps its purple identity via --bz-neon-purple (same
-// hue family, tokenized); "inactive" is neutral. Shared shape with the
-// clients/[id] header badge — keep the two maps aligned.
-const STATUS_STYLES: Record<string, { bg: string; text: string }> = {
-  lead: {
-    bg: "bg-[color-mix(in_srgb,var(--state-info)_20%,transparent)]",
-    text: "text-[var(--state-info)]",
-  },
-  active: {
-    bg: "bg-[color-mix(in_srgb,var(--state-success)_20%,transparent)]",
-    text: "text-[var(--state-success)]",
-  },
-  completed: {
-    bg: "bg-[color-mix(in_srgb,var(--bz-neon-purple)_20%,transparent)]",
-    text: "text-[var(--bz-neon-purple)]",
-  },
-  lost: {
-    bg: "bg-[color-mix(in_srgb,var(--state-danger)_20%,transparent)]",
-    text: "text-[var(--state-danger)]",
-  },
-  inactive: {
-    bg: "bg-[color-mix(in_srgb,var(--bz-text-2)_20%,transparent)]",
-    text: "text-[var(--bz-text-2)]",
-  },
-};
+import {
+  Masthead,
+  DeskStrip,
+  StatePill,
+  Slip,
+  EmptyState,
+  Numeral,
+  SERIF,
+  TABULAR,
+  EYEBROW,
+} from "@/components/workspace/r19";
+import styles from "./clients-desk.module.css";
+import {
+  clientStatusTone,
+  deskCounts,
+  lastContactAgeDays,
+  lastContactLabel,
+  lastContactTone,
+  passportDaysLeft,
+  passportLabel,
+  passportTone,
+  viewerIsNext,
+} from "./client-row-model";
 
 type SortField =
   | "full_name"
@@ -119,6 +126,25 @@ const FILTER_SELECT_STYLE: React.CSSProperties = {
   border: "1px solid var(--bz-border)",
   background: "var(--bz-base)",
   color: "var(--bz-text-1)",
+};
+
+const VIEW_MODES = [
+  { mode: "list" as const, icon: List, aria: "Switch to list view" },
+  {
+    mode: "kanban" as const,
+    icon: LayoutGrid,
+    aria: "Switch to kanban board view",
+  },
+  { mode: "table" as const, icon: Table2, aria: "Switch to table view" },
+  { mode: "map" as const, icon: MapIcon, aria: "Switch to map view" },
+];
+
+const KPI_TONE_COLOR: Record<string, string> = {
+  ink: "var(--tx-pure)",
+  copper: "var(--bz-copper-text)",
+  warning: "var(--state-warning)",
+  success: "var(--state-success)",
+  muted: "var(--tx-secondary)",
 };
 
 /**
@@ -291,6 +317,7 @@ function ClientsListContent() {
     nationality: "",
     assigned_to: "",
   });
+  const [needsOnly, setNeedsOnly] = useState(false);
   const [sortField, setSortField] = useState<SortField>("created_at");
   const [sortOrder, setSortOrder] = useState<SortOrder>("desc");
   const [currentUserEmail, setCurrentUserEmail] = useState<string>("");
@@ -309,6 +336,83 @@ function ClientsListContent() {
   }, [viewMode]);
   const [silentFilter, setSilentFilter] = useState<number | null>(null);
   const loadMoreRef = useRef<HTMLDivElement>(null);
+
+  // Optimistic "mark completed" overrides + the row-menu-open state and the
+  // one Slip on screen. See §4.5 of the K3a spec.
+  const [optimisticStatus, setOptimisticStatus] = useState<
+    Record<number, string>
+  >({});
+  const [openMenuId, setOpenMenuId] = useState<number | null>(null);
+  const [slip, setSlip] = useState<{
+    tone: "ok" | "you";
+    title: string;
+    detail?: string;
+    onUndo?: () => void;
+  } | null>(null);
+  const slipTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const menuTriggerRefs = useRef<Map<number, HTMLButtonElement>>(new Map());
+  const menuFirstItemRefs = useRef<Map<number, HTMLButtonElement>>(new Map());
+
+  const showSlip = useCallback(
+    (next: {
+      tone: "ok" | "you";
+      title: string;
+      detail?: string;
+      onUndo?: () => void;
+    }) => {
+      if (slipTimerRef.current) clearTimeout(slipTimerRef.current);
+      setSlip(next);
+      slipTimerRef.current = setTimeout(() => {
+        setSlip(null);
+        slipTimerRef.current = null;
+      }, 6000);
+    },
+    [],
+  );
+
+  const dismissSlip = useCallback(() => {
+    if (slipTimerRef.current) clearTimeout(slipTimerRef.current);
+    slipTimerRef.current = null;
+    setSlip(null);
+  }, []);
+
+  useEffect(
+    () => () => {
+      if (slipTimerRef.current) clearTimeout(slipTimerRef.current);
+    },
+    [],
+  );
+
+  // Row menu: Escape closes + refocuses the trigger; a click outside
+  // .menuCell closes it; opening moves focus to the first item.
+  useEffect(() => {
+    if (openMenuId === null) return;
+    const onDocClick = (event: MouseEvent) => {
+      const target = event.target as HTMLElement | null;
+      if (!target?.closest(`.${styles.menuCell}`)) {
+        setOpenMenuId(null);
+      }
+    };
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        const trigger = menuTriggerRefs.current.get(openMenuId);
+        setOpenMenuId(null);
+        trigger?.focus();
+      }
+    };
+    document.addEventListener("click", onDocClick);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("click", onDocClick);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [openMenuId]);
+
+  useEffect(() => {
+    if (openMenuId !== null) {
+      menuFirstItemRefs.current.get(openMenuId)?.focus();
+    }
+  }, [openMenuId]);
 
   // Load current user profile
   useEffect(() => {
@@ -389,8 +493,16 @@ function ClientsListContent() {
     };
   }, []);
 
-  // Handle status change
-  const handleStatusChange = useCallback(
+  // The status write, in two shapes on purpose.
+  //
+  // `updateClientStatus` REJECTS on failure, because the table's optimistic
+  // "mark completed" has to roll its cache back when the write does not land.
+  // `handleStatusChange` swallows after logging, because that is the contract
+  // ClientKanban's drop handler has always had: it does a bare
+  // `await onStatusChange(...)` with no catch, so a rejection there would
+  // both raise an unhandled rejection AND skip its `setDraggedClient(null)`,
+  // leaving the board stuck mid-drag. One write, two callers, no regression.
+  const updateClientStatus = useCallback(
     async (clientId: number, newStatus: string) => {
       try {
         const currentUser = api.getUserProfile();
@@ -401,9 +513,74 @@ function ClientsListContent() {
         );
       } catch (error) {
         logger.error("Failed to update status:", {}, error as Error);
+        throw error;
       }
     },
     [],
+  );
+
+  const handleStatusChange = useCallback(
+    async (clientId: number, newStatus: string) => {
+      try {
+        await updateClientStatus(clientId, newStatus);
+      } catch {
+        // already logged by updateClientStatus
+      }
+    },
+    [updateClientStatus],
+  );
+
+  const statusOf = useCallback(
+    (c: Client): string => optimisticStatus[c.id] ?? c.status,
+    [optimisticStatus],
+  );
+
+  const handleCopyReference = useCallback(
+    (client: Client) => {
+      const text = `Client ${client.id}`;
+      navigator.clipboard
+        ?.writeText(text)
+        .then(() => {
+          showSlip({ tone: "ok", title: "Reference copied", detail: text });
+        })
+        .catch(() => {});
+    },
+    [showSlip],
+  );
+
+  const handleCompleteClient = useCallback(
+    async (client: Client) => {
+      const previousStatus = statusOf(client);
+      setOptimisticStatus((prev) => ({ ...prev, [client.id]: "completed" }));
+      try {
+        await updateClientStatus(client.id, "completed");
+        showSlip({
+          tone: "ok",
+          title: "Status updated",
+          detail: `Client ${client.id} is completed.`,
+          onUndo: () => {
+            setOptimisticStatus((prev) => {
+              const next = { ...prev };
+              delete next[client.id];
+              return next;
+            });
+            void handleStatusChange(client.id, previousStatus);
+            dismissSlip();
+          },
+        });
+      } catch {
+        setOptimisticStatus((prev) => {
+          const next = { ...prev };
+          delete next[client.id];
+          return next;
+        });
+        showSlip({
+          tone: "you",
+          title: "Could not update — the row is unchanged.",
+        });
+      }
+    },
+    [dismissSlip, handleStatusChange, showSlip, statusOf, updateClientStatus],
   );
 
   // Filtering
@@ -450,6 +627,20 @@ function ClientsListContent() {
           : Infinity;
         if (lastContact < silentFilter) return false;
       }
+      // Needs-me filter: only records where this viewer is the next actor.
+      // It reads the OPTIMISTIC status, so a row marked completed leaves this
+      // filter in the same paint that clears its copper (DISPOSITION F6).
+      if (
+        needsOnly &&
+        !viewerIsNext(
+          {
+            assigned_to: client.assigned_to,
+            status: statusOf(client) as Client["status"],
+          },
+          currentUserEmail,
+        )
+      )
+        return false;
       return true;
     })
     .sort((a, b) => {
@@ -491,6 +682,21 @@ function ClientsListContent() {
       return sortOrder === "asc" ? comparison : -comparison;
     });
 
+  // Desk counts follow the optimistic status, so the copper ordinal and the
+  // "Needs action" KPI clear the instant a row is marked completed, and
+  // return the instant its Undo fires (DISPOSITION F6).
+  const effectiveClients = useMemo(
+    () =>
+      filteredClients.map((c) =>
+        c.id in optimisticStatus
+          ? { ...c, status: optimisticStatus[c.id] as Client["status"] }
+          : c,
+      ),
+    [filteredClients, optimisticStatus],
+  );
+  const counts = deskCounts(effectiveClients, currentUserEmail);
+  const nowMs = Date.now();
+
   const handleNewClient = () => {
     router.push("/clients/new");
   };
@@ -503,11 +709,13 @@ function ClientsListContent() {
       passport_expiring_days: undefined,
     });
     setSilentFilter(null);
+    setNeedsOnly(false);
   };
 
   const activeFiltersCount =
     Object.values(filters).filter((v) => v !== "" && v !== undefined).length +
-    (silentFilter !== null ? 1 : 0);
+    (silentFilter !== null ? 1 : 0) +
+    (needsOnly ? 1 : 0);
 
   const toggleSort = (field: SortField) => {
     if (sortField === field) {
@@ -521,20 +729,15 @@ function ClientsListContent() {
   // Error state
   if (isError) {
     return (
-      <div
-        className="rounded-xl p-8 text-center"
-        style={{
-          border:
-            "1px solid color-mix(in srgb, var(--state-danger) 30%, transparent)",
-          background:
-            "color-mix(in srgb, var(--state-danger) 10%, transparent)",
-        }}
-      >
-        <AlertCircle className="w-12 h-12 mx-auto text-[var(--state-danger)] mb-4" />
-        <h2 className="text-lg font-semibold text-[var(--state-danger)] mb-2">
+      <div className="rounded-xl border border-[var(--state-warning)] p-8 text-center">
+        <AlertCircle
+          className="mx-auto mb-4 h-12 w-12 text-[var(--state-warning)]"
+          aria-hidden="true"
+        />
+        <h2 className="mb-2 text-lg font-semibold text-[var(--tx-pure)]">
           Error loading clients
         </h2>
-        <p className="text-sm text-[var(--state-danger)] opacity-80 mb-4">
+        <p className="mb-4 text-sm text-[var(--tx-secondary)]">
           {error instanceof Error
             ? error.message
             : "An unexpected error occurred"}
@@ -546,418 +749,362 @@ function ClientsListContent() {
     );
   }
 
-  return (
-    <div className="space-y-6 h-full flex flex-col">
-      <UnnamedLeadsBanner />
-      <ListPageHeader
-        title="Clients"
-        subtitle={
-          <>
-            {isMounted
-              ? filteredClients.length.toLocaleString("en-US")
-              : filteredClients.length}{" "}
-            client
-            {filteredClients.length !== 1 ? "s" : ""}
-            {hasMore && " (scroll for more)"}
-            {activeFiltersCount > 0 &&
-              ` • filtered from ${isMounted ? visibleClients.length.toLocaleString("en-US") : visibleClients.length}`}
-            {statsError && (
-              <span
-                className="ml-2 text-xs"
-                style={{ color: "var(--state-danger)" }}
-              >
-                • stats unavailable
-              </span>
-            )}
-          </>
-        }
-        actions={
-          <>
-            {/* View Toggle */}
-            <div
-              className="p-1 rounded-lg flex shadow-md backdrop-blur-md"
-              style={{
-                background: "var(--bz-card)",
-                border: "1px solid var(--bz-border)",
-              }}
-            >
-              {(
-                [
-                  {
-                    mode: "list",
-                    icon: List,
-                    title: "List View",
-                    aria: "Switch to list view",
-                  },
-                  {
-                    mode: "kanban",
-                    icon: LayoutGrid,
-                    title: "Kanban Board",
-                    aria: "Switch to kanban board view",
-                  },
-                  {
-                    mode: "table",
-                    icon: Table2,
-                    title: "Table View",
-                    aria: "Switch to table view",
-                  },
-                  {
-                    mode: "map",
-                    icon: MapIcon,
-                    title: "Map View (Prime 3D)",
-                    aria: "Switch to map view",
-                  },
-                ] as const
-              ).map(({ mode, icon: Icon, title, aria }) => (
-                <button
-                  key={mode}
-                  onClick={() => setViewMode(mode)}
-                  className="p-2 rounded-md transition-all"
-                  style={
-                    viewMode === mode
-                      ? {
-                          background: "var(--surface-selected)",
-                          color: "var(--bz-accent)",
-                          boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
-                        }
-                      : { color: "var(--bz-text-2)" }
-                  }
-                  title={title}
-                  aria-label={aria}
-                >
-                  <Icon className="w-4 h-4" />
-                </button>
-              ))}
-            </div>
+  const kpis: Array<{
+    key: string;
+    label: string;
+    value: string;
+    tone: "ink" | "copper" | "warning" | "success" | "muted";
+    copy: string;
+  }> = [
+    {
+      key: "total",
+      label: "Total clients",
+      value: stats
+        ? stats.totalClients.toLocaleString("en-US")
+        : String(counts.total),
+      tone: "ink",
+      copy: "all clients",
+    },
+    {
+      key: "active",
+      label: "Active practices",
+      value: stats ? stats.activePractices.toLocaleString("en-US") : "—",
+      tone: "ink",
+      copy: "moving",
+    },
+    {
+      key: "needs",
+      label: "Needs action",
+      value: String(counts.needsYou).padStart(2, "0"),
+      tone: "copper",
+      copy: "owned by you",
+    },
+    {
+      key: "outstanding",
+      label: "Outstanding",
+      value: stats ? formatIDRCompact(stats.revenue.outstanding) : "—",
+      tone: stats && stats.revenue.outstanding > 0 ? "warning" : "muted",
+      copy: "unpaid",
+    },
+    {
+      key: "paid",
+      label: "Paid revenue",
+      value: stats ? formatIDRCompact(stats.revenue.paid) : "—",
+      tone: stats ? "success" : "muted",
+      copy: "settled",
+    },
+  ];
 
+  return (
+    <div className="space-y-6">
+      <UnnamedLeadsBanner />
+
+      <Masthead
+        eyebrow={`CRM · ${filteredClients.length} in view`}
+        title="Clients"
+        subtitle="The action margin marks records where you move next."
+        right={
+          <>
             <Button
               variant="outline"
               className="gap-2"
               onClick={() => router.push("/clients/analytics")}
             >
-              <BarChart3 className="w-4 h-4" />
+              <BarChart3 className="w-4 h-4" aria-hidden="true" />
               Analytics
             </Button>
-
             <Button className="gap-2" onClick={handleNewClient}>
-              <UserPlus className="w-4 h-4" />
-              New Client
+              <UserPlus className="w-4 h-4" aria-hidden="true" />
+              New client
             </Button>
           </>
         }
       />
-
-      {/* Revenue Stats Ribbon */}
       {statsError && isMounted && (
-        <p className="text-xs" style={{ color: "var(--state-danger)" }}>
+        <p className="text-xs text-[var(--tx-secondary)]">
           Stats unavailable — retry to reload counts.
         </p>
       )}
-      {stats && isMounted && (
-        <StatChips
-          className="flex flex-wrap gap-3 text-xs"
-          chipClassName="flex items-center gap-2 px-3 py-1.5 rounded-lg"
-          items={[
-            {
-              label: "Total Clients",
-              value: stats.totalClients.toLocaleString("en-US"),
-              color: "var(--bz-text-2)",
-              bg: "var(--surface-raised)",
-              border: "var(--bz-border)",
-            },
-            {
-              label: "Active Practices",
-              value: stats.activePractices.toLocaleString("en-US"),
-              color: "var(--state-info)",
-              bg: "color-mix(in srgb, var(--state-info) 8%, transparent)",
-              border: "color-mix(in srgb, var(--state-info) 15%, transparent)",
-            },
-            {
-              label: "Outstanding",
-              value: formatIDRCompact(stats.revenue.outstanding),
-              color:
-                stats.revenue.outstanding > 0
-                  ? "var(--state-warning)"
-                  : "var(--state-success)",
-              bg:
-                stats.revenue.outstanding > 0
-                  ? "color-mix(in srgb, var(--state-warning) 8%, transparent)"
-                  : "color-mix(in srgb, var(--state-success) 8%, transparent)",
-              border:
-                stats.revenue.outstanding > 0
-                  ? "color-mix(in srgb, var(--state-warning) 15%, transparent)"
-                  : "color-mix(in srgb, var(--state-success) 15%, transparent)",
-            },
-            {
-              label: "Paid Revenue",
-              value: formatIDRCompact(stats.revenue.paid),
-              color: "var(--state-success)",
-              bg: "color-mix(in srgb, var(--state-success) 8%, transparent)",
-              border:
-                "color-mix(in srgb, var(--state-success) 15%, transparent)",
-            },
-          ].map((s) => ({
-            key: s.label,
-            style: { background: s.bg, border: `1px solid ${s.border}` },
-            content: (
-              <>
-                <span style={{ color: "var(--bz-text-2)" }}>{s.label}</span>
-                <span
-                  className="font-semibold tabular-nums"
-                  style={{ color: s.color }}
-                >
-                  {s.value}
-                </span>
-              </>
-            ),
-          }))}
-        />
-      )}
 
-      {/* Health Awareness Bar — global counts from backend stats */}
+      {/* KPI band — desk counts, 22px Fraunces (not the 44px dashboard numeral) */}
+      <section aria-label="Client metrics" className={styles.kpiBand}>
+        {kpis.map((kpi) => (
+          <div key={kpi.key}>
+            <p className={EYEBROW}>{kpi.label}</p>
+            <p
+              className="my-1.5 text-[22px] leading-none"
+              style={{ ...SERIF, ...TABULAR, color: KPI_TONE_COLOR[kpi.tone] }}
+            >
+              {kpi.value}
+            </p>
+            <p className="text-[10px] text-[var(--tx-secondary)]">{kpi.copy}</p>
+          </div>
+        ))}
+      </section>
+
+      {/* Passport health line — urgency (a date), never ownership: warning, never danger. */}
       {isMounted &&
         stats &&
         (stats.passportExpired > 0 || stats.passportExpiringSoon > 0) && (
           <div className="flex flex-wrap gap-2 text-xs">
             {stats.passportExpired > 0 && (
               <button
+                type="button"
                 onClick={() =>
                   setFilters((f) => ({ ...f, passport_expiring_days: 0 }))
                 }
-                className="flex items-center gap-1 px-2.5 py-1 rounded-full transition-colors"
-                style={{
-                  background:
-                    "color-mix(in srgb, var(--state-danger) 15%, transparent)",
-                  color: "var(--state-danger)",
-                  border:
-                    "1px solid color-mix(in srgb, var(--state-danger) 25%, transparent)",
-                }}
+                className="flex items-center gap-1 rounded-full border border-[var(--state-warning)] bg-transparent px-2.5 py-1 text-[var(--state-warning)] transition-colors"
               >
-                <AlertCircle className="w-3 h-3" />
+                <AlertCircle className="w-3 h-3" aria-hidden="true" />
                 {stats.passportExpired} passport
                 {stats.passportExpired > 1 ? "s" : ""} expired
               </button>
             )}
             {stats.passportExpiringSoon > 0 && (
               <button
+                type="button"
                 onClick={() =>
                   setFilters((f) => ({ ...f, passport_expiring_days: 90 }))
                 }
-                className="flex items-center gap-1 px-2.5 py-1 rounded-full transition-colors"
-                style={{
-                  background:
-                    "color-mix(in srgb, var(--state-warning) 15%, transparent)",
-                  color: "var(--state-warning)",
-                  border:
-                    "1px solid color-mix(in srgb, var(--state-warning) 25%, transparent)",
-                }}
+                className="flex items-center gap-1 rounded-full border border-[var(--state-warning)] bg-transparent px-2.5 py-1 text-[var(--state-warning)] transition-colors"
               >
-                <AlertCircle className="w-3 h-3" />
+                <AlertCircle className="w-3 h-3" aria-hidden="true" />
                 {stats.passportExpiringSoon} expiring in 90d
               </button>
             )}
           </div>
         )}
 
-      {/* Controls Row */}
-      <div className="flex flex-col gap-3">
-        <div className="flex flex-col sm:flex-row gap-3">
-          <SearchBox
-            value={searchQuery}
-            onValueChange={setSearchQuery}
-            onDebouncedChange={setDebouncedSearch}
-            debounceMs={SEARCH_DEBOUNCE_MS}
-            placeholder="Search clients… (press / to focus)"
-            ariaLabel="Search clients"
-            title="Press / to focus, Escape to clear"
-            clearable
-            className="focus:ring-2 transition-all duration-300 shadow-sm hover:shadow-md"
-            style={
-              {
-                border: "1px solid var(--bz-border)",
-                background: "var(--bz-card)",
-                backdropFilter: "blur(12px)",
-                WebkitBackdropFilter: "blur(12px)",
-                color: "var(--bz-text-1)",
-                "--tw-ring-color":
-                  "color-mix(in srgb, var(--bz-accent) 50%, transparent)",
-              } as React.CSSProperties
-            }
-          />
-          {currentUserEmail && (
-            <button
-              onClick={() =>
-                setFilters((prev) => ({
-                  ...prev,
-                  assigned_to:
-                    prev.assigned_to === currentUserEmail
-                      ? ""
-                      : currentUserEmail,
-                }))
+      <DeskStrip
+        count={
+          <>
+            {filteredClients.length}
+            <span className="ml-1.5 text-[10px] text-[var(--tx-secondary)]">
+              clients
+            </span>
+          </>
+        }
+        countLabel={`${filteredClients.length} clients in view`}
+        filters={
+          <>
+            <StatePill
+              tone="wait"
+              label="All"
+              pressed={
+                !filters.status &&
+                !filters.assigned_to &&
+                !needsOnly &&
+                silentFilter === null
               }
-              className="px-3 py-2 rounded-lg text-sm font-medium transition-colors"
-              style={{
-                background:
-                  filters.assigned_to === currentUserEmail
-                    ? "var(--bz-accent)"
-                    : "var(--bz-card)",
-                color:
-                  filters.assigned_to === currentUserEmail
-                    ? "var(--bz-text-pure)"
-                    : "var(--bz-text-2)",
-                border: "1px solid var(--bz-border)",
+              onClick={() => {
+                setFilters((f) => ({ ...f, status: "", assigned_to: "" }));
+                setNeedsOnly(false);
+                setSilentFilter(null);
               }}
-            >
-              My Clients
-            </button>
-          )}
-          {/* Silent filters */}
-          {[7, 30].map((days) => (
-            <button
-              key={days}
-              onClick={() =>
-                setSilentFilter(silentFilter === days ? null : days)
-              }
-              className="px-3 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap"
-              style={{
-                background:
-                  silentFilter === days
-                    ? "color-mix(in srgb, var(--state-danger) 20%, transparent)"
-                    : "var(--bz-card)",
-                color:
-                  silentFilter === days
-                    ? "var(--state-danger)"
-                    : "var(--bz-text-2)",
-                border: `1px solid ${silentFilter === days ? "color-mix(in srgb, var(--state-danger) 30%, transparent)" : "var(--bz-border)"}`,
-              }}
-              title={`Clients not contacted in ${days}+ days`}
-            >
-              Silent {days}d
-            </button>
-          ))}
-
-          <Button
-            variant={showFilters ? "default" : "outline"}
-            className="gap-2"
-            onClick={() => setShowFilters(!showFilters)}
-          >
-            <Filter className="w-4 h-4" />
-            Filters
-            {activeFiltersCount > 0 && (
-              <span
-                className="ml-1 px-1.5 py-0.5 text-xs rounded-full text-white"
-                style={{ background: "var(--bz-accent)" }}
-              >
-                {activeFiltersCount}
-              </span>
+            />
+            {currentUserEmail && (
+              <StatePill
+                tone="wait"
+                label="Mine"
+                pressed={filters.assigned_to === currentUserEmail}
+                onClick={() =>
+                  setFilters((f) => ({
+                    ...f,
+                    assigned_to:
+                      f.assigned_to === currentUserEmail
+                        ? ""
+                        : currentUserEmail,
+                  }))
+                }
+              />
             )}
-          </Button>
-        </div>
+            <StatePill
+              tone="wait"
+              label="Needs me"
+              pressed={needsOnly}
+              onClick={() => setNeedsOnly((v) => !v)}
+            />
+            {(["lead", "active", "completed"] as const).map((status) => (
+              <StatePill
+                key={status}
+                tone="wait"
+                label={status.charAt(0).toUpperCase() + status.slice(1)}
+                pressed={filters.status === status}
+                onClick={() =>
+                  setFilters((f) => ({
+                    ...f,
+                    status: f.status === status ? "" : status,
+                  }))
+                }
+              />
+            ))}
+          </>
+        }
+        right={
+          <>
+            <SearchBox
+              value={searchQuery}
+              onValueChange={setSearchQuery}
+              onDebouncedChange={setDebouncedSearch}
+              debounceMs={SEARCH_DEBOUNCE_MS}
+              placeholder="Search clients… (press / to focus)"
+              ariaLabel="Search clients"
+              title="Press / to focus, Escape to clear"
+              clearable
+            />
+            <div role="group" aria-label="Client views" className="flex gap-1">
+              {VIEW_MODES.map(({ mode, icon: Icon, aria }) => (
+                <button
+                  key={mode}
+                  type="button"
+                  aria-pressed={viewMode === mode}
+                  aria-label={aria}
+                  onClick={() => setViewMode(mode)}
+                  className={cn(
+                    "flex h-11 w-11 items-center justify-center border border-[var(--line-control)]",
+                    viewMode === mode
+                      ? "text-[var(--tx-pure)] shadow-[inset_0_-3px_0_var(--tx-pure)]"
+                      : "text-[var(--tx-secondary)]",
+                  )}
+                >
+                  <Icon className="w-4 h-4" aria-hidden="true" />
+                </button>
+              ))}
+            </div>
+            <Button
+              variant={showFilters ? "default" : "outline"}
+              className="gap-2"
+              onClick={() => setShowFilters(!showFilters)}
+            >
+              <Filter className="w-4 h-4" aria-hidden="true" />
+              Filters
+              {activeFiltersCount > 0 && (
+                <span
+                  className="ml-1 px-1.5 py-0.5 text-xs rounded-full text-[var(--bz-on-warm)]"
+                  style={{ background: "var(--bz-accent)" }}
+                >
+                  {activeFiltersCount}
+                </span>
+              )}
+            </Button>
+          </>
+        }
+      />
 
-        {showFilters && (
-          <FilterBar
-            activeCount={activeFiltersCount}
-            onClearAll={clearFilters}
-            className="rounded-xl shadow-xl backdrop-blur-xl transition-all duration-300"
-            style={{
-              border: "1px solid var(--bz-border)",
-              background: "var(--bz-card)",
-            }}
-            clearLabel={
-              <>
-                <X className="w-3 h-3" />
-                Clear all
-              </>
-            }
+      {showFilters && (
+        <FilterBar
+          activeCount={activeFiltersCount}
+          onClearAll={clearFilters}
+          className="rounded-xl shadow-xl backdrop-blur-xl transition-all duration-300"
+          style={{
+            border: "1px solid var(--bz-border)",
+            background: "var(--bz-card)",
+          }}
+          clearLabel={
+            <>
+              <X className="w-3 h-3" aria-hidden="true" />
+              Clear all
+            </>
+          }
+        >
+          <FilterSelect
+            label="Status"
+            value={filters.status}
+            onChange={(v) => setFilters({ ...filters, status: v })}
+            selectClassName="transition-all duration-300"
+            selectStyle={FILTER_SELECT_STYLE}
           >
-            <FilterSelect
-              label="Status"
-              value={filters.status}
-              onChange={(v) => setFilters({ ...filters, status: v })}
-              selectClassName="transition-all duration-300"
-              selectStyle={FILTER_SELECT_STYLE}
-            >
-              <option value="">All statuses</option>
-              {CLIENT_STATUSES.map(({ value, label }) => (
-                <option key={value} value={value}>
-                  {label}
+            <option value="">All statuses</option>
+            {CLIENT_STATUSES.map(({ value, label }) => (
+              <option key={value} value={value}>
+                {label}
+              </option>
+            ))}
+          </FilterSelect>
+          <FilterSelect
+            label="Nationality"
+            value={filters.nationality}
+            onChange={(v) => setFilters({ ...filters, nationality: v })}
+            selectClassName="transition-all duration-300"
+            selectStyle={FILTER_SELECT_STYLE}
+          >
+            <option value="">All nationalities</option>
+            {COMMON_NATIONALITIES.map((nat) => (
+              <option key={nat} value={nat}>
+                {nat}
+              </option>
+            ))}
+          </FilterSelect>
+          <FilterSelect
+            label="Assigned To"
+            value={filters.assigned_to}
+            onChange={(v) => setFilters({ ...filters, assigned_to: v })}
+            selectClassName="transition-all duration-300"
+            selectStyle={FILTER_SELECT_STYLE}
+          >
+            <option value="">All team members</option>
+            {currentUserEmail &&
+              !uniqueAssignees.includes(currentUserEmail) && (
+                <option value={currentUserEmail}>
+                  {teamMemberOptions.find((m) => m.value === currentUserEmail)
+                    ?.label || currentUserEmail.split("@")[0]}{" "}
+                  (me)
                 </option>
-              ))}
-            </FilterSelect>
-            <FilterSelect
-              label="Nationality"
-              value={filters.nationality}
-              onChange={(v) => setFilters({ ...filters, nationality: v })}
-              selectClassName="transition-all duration-300"
-              selectStyle={FILTER_SELECT_STYLE}
-            >
-              <option value="">All nationalities</option>
-              {COMMON_NATIONALITIES.map((nat) => (
-                <option key={nat} value={nat}>
-                  {nat}
+              )}
+            {uniqueAssignees.map((assignee) => {
+              const member = teamMemberOptions.find(
+                (m) => m.value === assignee,
+              );
+              const displayName = member?.label || assignee?.split("@")[0];
+              return (
+                <option key={assignee} value={assignee}>
+                  {displayName}
+                  {assignee === currentUserEmail ? " (me)" : ""}
                 </option>
-              ))}
-            </FilterSelect>
-            <FilterSelect
-              label="Assigned To"
-              value={filters.assigned_to}
-              onChange={(v) => setFilters({ ...filters, assigned_to: v })}
-              selectClassName="transition-all duration-300"
-              selectStyle={FILTER_SELECT_STYLE}
-            >
-              <option value="">All team members</option>
-              {currentUserEmail &&
-                !uniqueAssignees.includes(currentUserEmail) && (
-                  <option value={currentUserEmail}>
-                    {teamMemberOptions.find((m) => m.value === currentUserEmail)
-                      ?.label || currentUserEmail.split("@")[0]}{" "}
-                    (me)
-                  </option>
-                )}
-              {uniqueAssignees.map((assignee) => {
-                const member = teamMemberOptions.find(
-                  (m) => m.value === assignee,
-                );
-                const displayName = member?.label || assignee?.split("@")[0];
-                return (
-                  <option key={assignee} value={assignee}>
-                    {displayName}
-                    {assignee === currentUserEmail ? " (me)" : ""}
-                  </option>
-                );
-              })}
-            </FilterSelect>
-            <FilterSelect
-              label="Passport Expiry"
-              value={
-                filters.passport_expiring_days === undefined
-                  ? ""
-                  : String(filters.passport_expiring_days)
-              }
-              onChange={(v) =>
-                setFilters({
-                  ...filters,
-                  passport_expiring_days: v === "" ? undefined : Number(v),
-                })
-              }
-              selectClassName="transition-all duration-300"
-              selectStyle={FILTER_SELECT_STYLE}
-            >
-              <option value="">Any</option>
-              <option value="0">Already expired</option>
-              <option value="30">Expiring in 30 days</option>
-              <option value="90">Expiring in 90 days</option>
-              <option value="180">Expiring in 180 days</option>
-              <option value="365">Expiring in 1 year</option>
-            </FilterSelect>
-          </FilterBar>
-        )}
-      </div>
+              );
+            })}
+          </FilterSelect>
+          <FilterSelect
+            label="Passport Expiry"
+            value={
+              filters.passport_expiring_days === undefined
+                ? ""
+                : String(filters.passport_expiring_days)
+            }
+            onChange={(v) =>
+              setFilters({
+                ...filters,
+                passport_expiring_days: v === "" ? undefined : Number(v),
+              })
+            }
+            selectClassName="transition-all duration-300"
+            selectStyle={FILTER_SELECT_STYLE}
+          >
+            <option value="">Any</option>
+            <option value="0">Already expired</option>
+            <option value="30">Expiring in 30 days</option>
+            <option value="90">Expiring in 90 days</option>
+            <option value="180">Expiring in 180 days</option>
+            <option value="365">Expiring in 1 year</option>
+          </FilterSelect>
+          <FilterSelect
+            label="Last contact"
+            value={silentFilter === null ? "" : String(silentFilter)}
+            onChange={(v) => setSilentFilter(v === "" ? null : Number(v))}
+            selectClassName="transition-all duration-300"
+            selectStyle={FILTER_SELECT_STYLE}
+          >
+            <option value="">Any</option>
+            <option value="7">Silent 7+ days</option>
+            <option value="30">Silent 30+ days</option>
+          </FilterSelect>
+        </FilterBar>
+      )}
 
       {/* Sorting (List View Only) */}
       {viewMode === "list" && (
         <div className="flex items-center gap-2 text-sm">
-          <span style={{ color: "var(--bz-text-2)" }}>Sort by:</span>
+          <span className="text-[var(--tx-secondary)]">Sort by:</span>
           <div className="flex gap-1">
             {[
               { field: "created_at" as SortField, label: "Created" },
@@ -972,28 +1119,21 @@ function ClientsListContent() {
             ].map(({ field, label }) => (
               <button
                 key={field}
+                type="button"
                 onClick={() => toggleSort(field)}
-                className="px-3 py-1 rounded-full flex items-center gap-1 transition-colors"
-                style={
+                className={cn(
+                  "flex items-center gap-1 rounded-sm border px-3 py-1",
                   sortField === field
-                    ? {
-                        background:
-                          "color-mix(in srgb, var(--bz-accent) 20%, transparent)",
-                        color: "var(--bz-accent)",
-                      }
-                    : {
-                        background: "var(--bz-card)",
-                        backdropFilter: "blur(12px)",
-                        color: "var(--bz-text-2)",
-                      }
-                }
+                    ? "border-[var(--tx-pure)] text-[var(--tx-pure)]"
+                    : "border-[var(--line-control)] text-[var(--tx-secondary)]",
+                )}
               >
                 {label}
                 {sortField === field &&
                   (sortOrder === "asc" ? (
-                    <SortAsc className="w-3 h-3" />
+                    <SortAsc className="w-3 h-3" aria-hidden="true" />
                   ) : (
-                    <SortDesc className="w-3 h-3" />
+                    <SortDesc className="w-3 h-3" aria-hidden="true" />
                   ))}
               </button>
             ))}
@@ -1025,319 +1165,372 @@ function ClientsListContent() {
           <CRMSkeleton count={6} />
         </div>
       ) : filteredClients.length > 0 ? (
-        <div className="flex-1 overflow-auto">
-          {viewMode === "list" ? (
-            <VirtualizedClientGrid
-              clients={filteredClients}
-              loadMoreRef={loadMoreRef}
-              isLoadingMore={isLoadingMore}
-              hasMore={hasMore}
-              totalClients={clients.length}
-              isMounted={isMounted}
-              onNearBottom={() => {
-                if (hasMore && !isLoading && !isLoadingMore) loadMore();
-              }}
-            />
-          ) : viewMode === "table" ? (
-            <div className="bz-product-panel overflow-hidden">
-              <table className="w-full text-sm border-collapse">
-                <thead>
-                  <tr
-                    style={{
-                      background: "var(--bz-surface)",
-                      borderBottom: "1px solid var(--bz-border)",
-                    }}
-                  >
-                    {[
-                      { key: "full_name", label: "Name" },
-                      { key: "status", label: "Status" },
-                      { key: "nationality", label: "Nationality" },
-                      { key: "assigned_to", label: "Assigned" },
-                      { key: "last_interaction_date", label: "Last Contact" },
-                      { key: "passport_expiry", label: "Passport Exp." },
-                      { key: "active_practices", label: "Processes" },
-                    ].map((col) => (
-                      <th
-                        key={col.key}
-                        className="text-left px-3 py-2 font-medium text-xs uppercase tracking-wide cursor-pointer select-none"
-                        style={{ color: "var(--bz-text-2)" }}
-                        onClick={() => {
-                          if (sortField === col.key) {
-                            setSortOrder((o) => (o === "asc" ? "desc" : "asc"));
-                          } else {
-                            setSortField(col.key as SortField);
-                            setSortOrder("asc");
-                          }
-                        }}
-                      >
-                        <span className="flex items-center gap-1">
-                          {col.label}
-                          {sortField === col.key &&
-                            (sortOrder === "asc" ? (
-                              <SortAsc className="w-3 h-3" />
-                            ) : (
-                              <SortDesc className="w-3 h-3" />
-                            ))}
+        viewMode === "table" ? (
+          <>
+            <table className={styles.deskTable}>
+              <colgroup>
+                <col />
+                <col />
+                <col />
+                <col />
+                <col />
+                <col />
+                <col />
+                <col />
+              </colgroup>
+              <thead>
+                <tr>
+                  <th>Move</th>
+                  <th>
+                    <button
+                      type="button"
+                      className="inline-flex items-center gap-1"
+                      onClick={() => toggleSort("full_name")}
+                    >
+                      Client
+                      {sortField === "full_name" &&
+                        (sortOrder === "asc" ? (
+                          <SortAsc className="h-3 w-3" aria-hidden="true" />
+                        ) : (
+                          <SortDesc className="h-3 w-3" aria-hidden="true" />
+                        ))}
+                    </button>
+                  </th>
+                  <th>
+                    <button
+                      type="button"
+                      className="inline-flex items-center gap-1"
+                      onClick={() => toggleSort("status")}
+                    >
+                      Status
+                      {sortField === "status" &&
+                        (sortOrder === "asc" ? (
+                          <SortAsc className="h-3 w-3" aria-hidden="true" />
+                        ) : (
+                          <SortDesc className="h-3 w-3" aria-hidden="true" />
+                        ))}
+                    </button>
+                  </th>
+                  <th>Nation.</th>
+                  <th>Assigned</th>
+                  <th>
+                    <button
+                      type="button"
+                      className="inline-flex items-center gap-1"
+                      onClick={() => toggleSort("last_interaction_date")}
+                    >
+                      Contact
+                      {sortField === "last_interaction_date" &&
+                        (sortOrder === "asc" ? (
+                          <SortAsc className="h-3 w-3" aria-hidden="true" />
+                        ) : (
+                          <SortDesc className="h-3 w-3" aria-hidden="true" />
+                        ))}
+                    </button>
+                  </th>
+                  <th>Passport exp.</th>
+                  <th style={{ textAlign: "right" }}>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredClients.map((client, idx) => {
+                  const effectiveStatus = statusOf(client);
+                  const isNext = viewerIsNext(
+                    {
+                      assigned_to: client.assigned_to,
+                      status: effectiveStatus as Client["status"],
+                    },
+                    currentUserEmail,
+                  );
+                  const tone = clientStatusTone(effectiveStatus);
+                  const daysLeft = passportDaysLeft(
+                    client.passport_expiry,
+                    nowMs,
+                  );
+                  const pTone = passportTone(daysLeft);
+                  const pLabel = passportLabel(daysLeft);
+                  const ageDays = lastContactAgeDays(
+                    client.last_interaction_date,
+                    nowMs,
+                  );
+                  const cTone = lastContactTone(ageDays);
+                  const cLabel = lastContactLabel(ageDays);
+                  const displayName =
+                    client.full_name || client.email || `Client ${client.id}`;
+                  const assignedLabel = client.assigned_to
+                    ? teamMemberOptions.find(
+                        (m) => m.value === client.assigned_to,
+                      )?.label || client.assigned_to.split("@")[0]
+                    : "—";
+
+                  return (
+                    <tr
+                      key={client.id}
+                      role="link"
+                      tabIndex={0}
+                      aria-label={`Open client ${client.full_name || client.email}`}
+                      onClick={() => router.push(`/clients/${client.id}`)}
+                      onKeyDown={(event) => {
+                        // Only the ROW itself opens on Enter/Space. Without
+                        // this guard the keystroke that activates a secondary
+                        // action inside the row bubbles up and navigates
+                        // instead of copying or completing.
+                        if (event.target !== event.currentTarget) return;
+                        if (event.key === "Enter" || event.key === " ") {
+                          event.preventDefault();
+                          router.push(`/clients/${client.id}`);
+                        }
+                      }}
+                      className={cn(isNext && styles.needsYou)}
+                    >
+                      <td>
+                        {isNext ? (
+                          <>
+                            <span
+                              className="text-[18px] text-[var(--bz-copper-text)]"
+                              style={{ ...SERIF }}
+                              aria-hidden="true"
+                            >
+                              A
+                            </span>
+                            <span className="sr-only">Needs you</span>
+                          </>
+                        ) : (
+                          <Numeral n={idx + 1} tone="wait" />
+                        )}
+                      </td>
+                      <td>
+                        <span className="block font-semibold text-[var(--tx-pure)]">
+                          {client.full_name}
                         </span>
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredClients.map((client, idx) => {
-                    const passportExpiry = client.passport_expiry
-                      ? new Date(client.passport_expiry)
-                      : null;
-                    const passportDaysLeft = passportExpiry
-                      ? Math.ceil(
-                          (passportExpiry.getTime() - Date.now()) / 86400000,
-                        )
-                      : null;
-                    const statusStyle = STATUS_STYLES[client.status] ?? {
-                      bg: "bg-[color-mix(in_srgb,var(--bz-text-2)_20%,transparent)]",
-                      text: "text-[var(--bz-text-2)]",
-                    };
-                    return (
-                      <tr
-                        key={client.id}
-                        onClick={() => router.push(`/clients/${client.id}`)}
-                        onKeyDown={(event) => {
-                          if (event.key === "Enter" || event.key === " ") {
-                            event.preventDefault();
-                            router.push(`/clients/${client.id}`);
-                          }
-                        }}
-                        role="link"
-                        tabIndex={0}
-                        aria-label={`Open client ${client.full_name || client.email}`}
-                        className="cursor-pointer transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--bz-focus-ring)]"
-                        style={{
-                          height: "var(--bz-product-row-height)",
-                          background:
-                            idx % 2 === 0 ? "transparent" : "var(--bz-surface)",
-                          borderBottom: "1px solid var(--bz-border)",
-                        }}
-                        onMouseEnter={(e) => {
-                          (
-                            e.currentTarget as HTMLTableRowElement
-                          ).style.background = "var(--bz-card-hover)";
-                        }}
-                        onMouseLeave={(e) => {
-                          (
-                            e.currentTarget as HTMLTableRowElement
-                          ).style.background =
-                            idx % 2 === 0 ? "transparent" : "var(--bz-surface)";
-                        }}
+                        <span className="block text-[11px] text-[var(--tx-secondary)]">
+                          {client.email}
+                          <span className={styles.collapsedMeta}>
+                            {" "}
+                            · {client.nationality ?? "—"} · Passport {pLabel}
+                          </span>
+                        </span>
+                      </td>
+                      <td>
+                        <StatePill tone={tone} label={effectiveStatus} />
+                      </td>
+                      <td data-label="Nationality">
+                        {client.nationality ?? "—"}
+                      </td>
+                      <td
+                        data-label="Assigned"
+                        className="truncate"
+                        title={client.assigned_to ?? "Unassigned"}
                       >
-                        <td
-                          className="px-3 py-2 font-medium"
-                          style={{
-                            color: "var(--bz-text-1)",
-                            maxWidth: "200px",
+                        {assignedLabel}
+                      </td>
+                      <td
+                        data-label="Last contact"
+                        className={cn(
+                          "tabular-nums",
+                          cTone === "warning"
+                            ? "text-[var(--state-warning)]"
+                            : "text-[var(--tx-secondary)]",
+                        )}
+                        style={TABULAR}
+                      >
+                        {cLabel}
+                      </td>
+                      <td
+                        data-label="Passport"
+                        className={cn(
+                          "tabular-nums",
+                          pTone === "warning"
+                            ? "text-[var(--state-warning)]"
+                            : "text-[var(--tx-secondary)]",
+                        )}
+                        style={TABULAR}
+                      >
+                        {pLabel}
+                      </td>
+                      <td className={styles.menuCell}>
+                        <div className={styles.rowActions}>
+                          <button
+                            type="button"
+                            className={styles.rowAction}
+                            aria-label={`Open ${displayName}`}
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              router.push(`/clients/${client.id}`);
+                            }}
+                          >
+                            <ExternalLink
+                              className="h-4 w-4"
+                              aria-hidden="true"
+                            />
+                          </button>
+                          <button
+                            type="button"
+                            className={styles.rowAction}
+                            aria-label={`Copy ${displayName} reference`}
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              handleCopyReference(client);
+                            }}
+                          >
+                            <Copy className="h-4 w-4" aria-hidden="true" />
+                          </button>
+                          <button
+                            type="button"
+                            className={styles.rowAction}
+                            aria-label={`Mark ${displayName} completed`}
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              void handleCompleteClient(client);
+                            }}
+                          >
+                            <Check className="h-4 w-4" aria-hidden="true" />
+                          </button>
+                        </div>
+                        <button
+                          type="button"
+                          className={styles.rowMenuTrigger}
+                          aria-haspopup="menu"
+                          aria-expanded={openMenuId === client.id}
+                          aria-label={`Actions for ${displayName}`}
+                          ref={(el) => {
+                            if (el) menuTriggerRefs.current.set(client.id, el);
+                            else menuTriggerRefs.current.delete(client.id);
+                          }}
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            setOpenMenuId((cur) =>
+                              cur === client.id ? null : client.id,
+                            );
                           }}
                         >
-                          <span className="truncate block">
-                            {client.full_name}
-                          </span>
-                        </td>
-                        <td className="px-3 py-2">
-                          <span
-                            className={`px-1.5 py-0.5 rounded text-[10px] font-semibold uppercase ${statusStyle.bg} ${statusStyle.text}`}
-                          >
-                            {client.status}
-                          </span>
-                        </td>
-                        <td
-                          className="px-3 py-2 text-xs"
-                          style={{ color: "var(--bz-text-2)" }}
+                          <MoreVertical
+                            className="h-4 w-4"
+                            aria-hidden="true"
+                          />
+                        </button>
+                        <div
+                          role="menu"
+                          className={cn(
+                            styles.rowMenu,
+                            openMenuId === client.id && styles.rowMenuOpen,
+                          )}
                         >
-                          <span
-                            title={client.nationality ?? "Nationality not set"}
+                          <button
+                            type="button"
+                            role="menuitem"
+                            ref={(el) => {
+                              if (openMenuId === client.id && el) {
+                                menuFirstItemRefs.current.set(client.id, el);
+                              }
+                            }}
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              router.push(`/clients/${client.id}`);
+                              setOpenMenuId(null);
+                            }}
                           >
-                            {client.nationality ?? "—"}
-                          </span>
-                        </td>
-                        <td
-                          className="px-3 py-2 text-xs"
-                          style={{
-                            color: "var(--bz-text-2)",
-                            maxWidth: "120px",
-                          }}
-                        >
-                          <span
-                            className="truncate block"
-                            title={client.assigned_to ?? "Unassigned"}
+                            Open
+                          </button>
+                          <button
+                            type="button"
+                            role="menuitem"
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              handleCopyReference(client);
+                              setOpenMenuId(null);
+                            }}
                           >
-                            {client.assigned_to
-                              ? teamMemberOptions.find(
-                                  (m) => m.value === client.assigned_to,
-                                )?.label || client.assigned_to.split("@")[0]
-                              : "—"}
-                          </span>
-                        </td>
-                        <td className="px-3 py-2 text-xs">
-                          {client.last_interaction_date ? (
-                            (() => {
-                              const ageDays = Math.floor(
-                                (Date.now() -
-                                  new Date(
-                                    client.last_interaction_date,
-                                  ).getTime()) /
-                                  86400000,
-                              );
-                              const label =
-                                ageDays === 0
-                                  ? "today"
-                                  : ageDays === 1
-                                    ? "1d ago"
-                                    : ageDays >= 30
-                                      ? `${Math.floor(ageDays / 30)}mo ago`
-                                      : ageDays >= 7
-                                        ? `${Math.floor(ageDays / 7)}w ago`
-                                        : `${ageDays}d ago`;
-                              return (
-                                <span
-                                  className="tabular-nums px-1.5 py-0.5 rounded"
-                                  style={{
-                                    background:
-                                      ageDays === 0
-                                        ? "color-mix(in srgb, var(--state-success) 12%, transparent)"
-                                        : ageDays > 30
-                                          ? "color-mix(in srgb, var(--state-danger) 10%, transparent)"
-                                          : "transparent",
-                                    color:
-                                      ageDays === 0
-                                        ? "var(--state-success)"
-                                        : ageDays > 30
-                                          ? "var(--state-danger)"
-                                          : "var(--bz-text-2)",
-                                  }}
-                                  title={new Date(
-                                    client.last_interaction_date,
-                                  ).toLocaleDateString("en-GB", {
-                                    day: "2-digit",
-                                    month: "short",
-                                    year: "numeric",
-                                  })}
-                                >
-                                  {label}
-                                </span>
-                              );
-                            })()
-                          ) : (
-                            <span style={{ color: "var(--bz-text-2)" }}>—</span>
-                          )}
-                        </td>
-                        <td className="px-3 py-2 text-xs">
-                          {passportExpiry && passportDaysLeft !== null ? (
-                            <span
-                              className={`inline-flex items-center px-1.5 py-0.5 rounded-full tabular-nums ${
-                                passportDaysLeft < 0
-                                  ? "bg-[color-mix(in_srgb,var(--state-danger)_20%,transparent)] text-[var(--state-danger)]"
-                                  : passportDaysLeft <= 90
-                                    ? "bg-[color-mix(in_srgb,var(--state-warning)_15%,transparent)] text-[var(--state-warning)]"
-                                    : "bg-[var(--bz-base)] text-[var(--bz-text-2)]"
-                              }`}
-                              title={passportExpiry.toLocaleDateString(
-                                "en-GB",
-                                {
-                                  day: "2-digit",
-                                  month: "short",
-                                  year: "numeric",
-                                },
-                              )}
-                            >
-                              {passportDaysLeft < 0
-                                ? `exp ${Math.abs(passportDaysLeft)}d ago`
-                                : passportDaysLeft === 0
-                                  ? "expires today"
-                                  : passportDaysLeft <= 365
-                                    ? `⏰ ${passportDaysLeft}d`
-                                    : `${Math.floor(passportDaysLeft / 30)}mo`}
-                            </span>
-                          ) : (
-                            <span style={{ color: "var(--bz-text-2)" }}>—</span>
-                          )}
-                        </td>
-                        <td className="px-3 py-2 text-xs text-center">
-                          {client.active_practices &&
-                          client.active_practices > 0 ? (
-                            <span
-                              className="inline-flex items-center justify-center w-5 h-5 rounded-full text-[10px] font-semibold"
-                              style={{
-                                background:
-                                  "color-mix(in srgb, var(--bz-accent) 20%, transparent)",
-                                color: "var(--bz-accent)",
-                              }}
-                            >
-                              {client.active_practices}
-                            </span>
-                          ) : (
-                            <span style={{ color: "var(--bz-text-3)" }}>—</span>
-                          )}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-              {hasMore && (
-                <div
-                  ref={loadMoreRef}
-                  className="p-4 text-center text-xs"
-                  style={{ color: "var(--bz-text-2)" }}
-                >
-                  {isLoadingMore && "Loading more..."}
-                </div>
-              )}
-            </div>
-          ) : (
-            <ClientKanban
-              clients={filteredClients}
-              onStatusChange={handleStatusChange}
-            />
-          )}
-        </div>
+                            Copy reference
+                          </button>
+                          <button
+                            type="button"
+                            role="menuitem"
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              void handleCompleteClient(client);
+                              setOpenMenuId(null);
+                            }}
+                          >
+                            Mark completed
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+            {hasMore && (
+              <div
+                ref={loadMoreRef}
+                className="flex justify-center py-4 text-xs text-[var(--tx-secondary)]"
+              >
+                {isLoadingMore && "Loading more…"}
+              </div>
+            )}
+          </>
+        ) : (
+          <div className="flex-1 overflow-auto">
+            {viewMode === "list" ? (
+              <VirtualizedClientGrid
+                clients={filteredClients}
+                loadMoreRef={loadMoreRef}
+                isLoadingMore={isLoadingMore}
+                hasMore={hasMore}
+                totalClients={clients.length}
+                isMounted={isMounted}
+                onNearBottom={() => {
+                  if (hasMore && !isLoading && !isLoadingMore) loadMore();
+                }}
+              />
+            ) : (
+              <ClientKanban
+                clients={filteredClients}
+                onStatusChange={handleStatusChange}
+              />
+            )}
+          </div>
+        )
       ) : (
-        <div
-          className="rounded-xl border border-dashed p-12 text-center"
-          style={{
-            borderColor: "var(--bz-border)",
-            background: "var(--bz-card)",
-          }}
+        <EmptyState
+          action={
+            activeFiltersCount > 0 || searchQuery ? (
+              <Button
+                variant="outline"
+                onClick={clearFilters}
+                className="gap-2"
+              >
+                <X className="w-4 h-4" aria-hidden="true" />
+                Clear filters
+              </Button>
+            ) : (
+              <Button onClick={handleNewClient} className="gap-2">
+                <UserPlus className="w-4 h-4" aria-hidden="true" />
+                Add first client
+              </Button>
+            )
+          }
         >
-          <Users
-            className="w-16 h-16 mx-auto mb-4 opacity-50"
-            style={{ color: "var(--bz-text-2)" }}
-          />
-          <h2
-            className="text-lg font-semibold mb-2"
-            style={{ color: "var(--bz-text-1)" }}
-          >
-            No clients found
-          </h2>
-          <p
-            className="text-sm max-w-md mx-auto mb-6"
-            style={{ color: "var(--bz-text-2)" }}
-          >
-            {searchQuery
-              ? "No clients match your search. Try different keywords."
-              : activeFiltersCount > 0
-                ? "No clients match the selected filters."
-                : "Get started by adding your first client."}
-          </p>
-          {activeFiltersCount > 0 ? (
-            <Button variant="outline" onClick={clearFilters} className="gap-2">
-              <X className="w-4 h-4" />
-              Clear Filters
-            </Button>
-          ) : (
-            <Button onClick={handleNewClient} className="gap-2">
-              <UserPlus className="w-4 h-4" />
-              Add First Client
-            </Button>
+          {activeFiltersCount > 0 || searchQuery
+            ? "No clients match this desk."
+            : "No clients yet."}
+        </EmptyState>
+      )}
+
+      {slip && (
+        <Slip
+          tone={slip.tone}
+          onUndo={slip.onUndo}
+          className="fixed bottom-6 right-6 z-50"
+        >
+          <strong className="block text-[var(--tx-pure)]">{slip.title}</strong>
+          {slip.detail && (
+            <span className="mt-0.5 block text-[var(--tx-secondary)]">
+              {slip.detail}
+            </span>
           )}
-        </div>
+        </Slip>
       )}
     </div>
   );
