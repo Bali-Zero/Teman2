@@ -8,12 +8,16 @@
  * carrying the count/filters/search, and rows with a delivery STATUS (word +
  * outlined square pill) and a derived SEVERITY (word + pip). Neither is
  * ownership — copper never appears here, because no row's next actor is
- * derivable from an automated alert. `--state-danger` and `--state-warning`
- * stay on this page on purpose: `token-drain.residuals.guard.test.ts` pins
- * this file to `--state-success` / `--state-warning` / `--state-danger` as
- * the proof of the WS2 token drain, and `desk-no-red.guard.test.ts` exempts
- * this page BY NAME for exactly that reason. On kita `--state-danger`
- * resolves to copper, so it is not red.
+ * derivable from an automated alert. That is also why `--state-danger` is
+ * GONE from this file: on kita it resolves to copper, so using it for a
+ * failed delivery made the page claim a viewer was the next actor on a
+ * record nobody owns. Urgency now reads `--state-warning`, and every
+ * coloured state still carries its WORD.
+ *
+ * `token-drain.residuals.guard.test.ts` was re-pinned in the same change:
+ * it still pins this file to `--state-success` / `--state-warning` as proof
+ * of the WS2 token drain, and its hex / rgba / palette assertions — the
+ * drain's real teeth — are untouched. Only the colour changed.
  *
  * STATUS uses a page-local square pill (not the shared `StatePill`, which is
  * `rounded-full` and only carries the four ownership tones — it has no
@@ -130,8 +134,9 @@ function SeverityMark({ severity }: { severity: Severity }) {
 
 // ── delivery status: outlined SQUARE pill ───────────────────────────────────
 // The concept's `.state{border-radius:2px}` square, not the shared
-// `StatePill`'s `rounded-full` — and the one place this file is allowed (and
-// required, by the sibling guard) to read the danger token by name.
+// `StatePill`'s `rounded-full`, which carries only the four ownership tones.
+// None of the three tones below is the danger token: it is gone from this
+// file, for the reason in the header.
 const STATUS_LABEL: Record<string, string> = {
   sent: "Sent",
   pending: "Pending",
@@ -311,7 +316,16 @@ export default function NotificationsDashboardPage() {
       }>("/api/admin/notifications/dashboard");
       setStats(data.stats);
       setAlerts(data.recent_alerts);
-      setSystemStatus(data.system_status);
+      // dashboard_summary.py returns a STRING here ("healthy" / "degraded"),
+      // and every read below calls string methods on it. Anything else took
+      // the whole page down to its error boundary — `systemStatus.charAt is
+      // not a function` — which is how a shape change in one field would
+      // cost the reader the entire notifications desk. Coerced, never
+      // guessed: an unusable value reads "unknown", which the copy below
+      // already has a sentence for.
+      setSystemStatus(
+        typeof data.system_status === "string" ? data.system_status : "unknown",
+      );
     } catch (err) {
       error("Failed to load dashboard", "Please try again");
       logger.error("Failed to load notifications dashboard", {}, err as Error);
@@ -497,15 +511,25 @@ export default function NotificationsDashboardPage() {
       <DeskStrip
         count={filteredAlerts.length}
         countLabel={`${filteredAlerts.length} alerts`}
-        filters={STATUS_FILTERS.map((f) => (
-          <StatePill
-            key={f.value || "all"}
-            tone="wait"
-            label={f.label}
-            pressed={filterStatus === f.value}
-            onClick={() => setFilterStatus(f.value)}
-          />
-        ))}
+        filters={
+          // DeskStrip clips its filter group with overflow-hidden and lets
+          // `right` keep its width, so at 390 the render showed NONE of these
+          // four — the group collapsed to zero and they were unreachable,
+          // with no way to scroll to them. The primitive is not this window's
+          // to edit, so the scroller is page-local, inside the slot the
+          // primitive hands us. Same finding and same cure as /review.
+          <div className="flex min-w-0 items-center gap-1.5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            {STATUS_FILTERS.map((f) => (
+              <StatePill
+                key={f.value || "all"}
+                tone="wait"
+                label={f.label}
+                pressed={filterStatus === f.value}
+                onClick={() => setFilterStatus(f.value)}
+              />
+            ))}
+          </div>
+        }
         right={
           <>
             <div className="relative">
@@ -520,7 +544,10 @@ export default function NotificationsDashboardPage() {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className={cn(
-                  "h-9 w-48 border border-[var(--line-control)] bg-transparent pl-8 pr-2 text-[12px] text-[var(--tx-pure)] placeholder:text-[var(--tx-secondary)]",
+                  // Narrower on a phone: at w-48 the search plus the type
+                  // select pushed the strip 64px past a 390 viewport, because
+                  // DeskStrip gives its `right` slot shrink-0.
+                  "h-9 w-32 border border-[var(--line-control)] bg-transparent pl-8 pr-2 text-[12px] text-[var(--tx-pure)] placeholder:text-[var(--tx-secondary)] md:w-48",
                   "focus:border-[var(--bz-copper)] focus:outline-none",
                 )}
               />
@@ -530,7 +557,7 @@ export default function NotificationsDashboardPage() {
               value={filterType}
               onChange={(e) => setFilterType(e.target.value)}
               className={cn(
-                "h-9 border border-[var(--line-control)] bg-transparent px-2 text-[12px] text-[var(--tx-pure)]",
+                "h-9 max-w-[110px] border border-[var(--line-control)] bg-transparent px-2 text-[12px] text-[var(--tx-pure)] md:max-w-none",
                 "focus:border-[var(--bz-copper)] focus:outline-none",
               )}
             >
@@ -544,13 +571,22 @@ export default function NotificationsDashboardPage() {
         }
       />
 
-      <HairlineGrid cols="minmax(170px,1.8fr) minmax(130px,1fr) 96px minmax(160px,1.3fr) 88px 44px">
+      {/* Below 768px the Type, Status, Subject and Time columns LEAVE the
+          grid and their values move onto the row's secondary line — moved,
+          not hidden. Measured before this cure: the six tracks summed past
+          the viewport and /notifications scrolled sideways at 390
+          (scrollWidth 728, clientWidth 390) on a dev server. Same idiom and
+          same reason as /review. */}
+      <HairlineGrid
+        cols="minmax(170px,1.8fr) minmax(130px,1fr) 96px minmax(160px,1.3fr) 88px 44px"
+        className="max-md:[--cols:minmax(0,1fr)_44px]"
+      >
         <HairlineHead>
           <span>Client</span>
-          <span>Type</span>
-          <span>Status</span>
-          <span>Subject</span>
-          <span>Time</span>
+          <span className="max-md:hidden">Type</span>
+          <span className="max-md:hidden">Status</span>
+          <span className="max-md:hidden">Subject</span>
+          <span className="max-md:hidden">Time</span>
           <span className="sr-only">Actions</span>
         </HairlineHead>
         <HairlineBody>
@@ -648,25 +684,53 @@ export default function NotificationsDashboardPage() {
                       </button>
                     }
                   >
-                    <CellStack
-                      primary={alert.client_name}
-                      secondary={alert.client_email}
-                    />
-                    <CellStack
-                      primary={humanizeType(alert.alert_type)}
-                      secondary={
+                    <div className="min-w-0">
+                      <CellStack
+                        primary={alert.client_name}
+                        secondary={alert.client_email}
+                      />
+                      {/* The dropped columns, relocated for a phone. Exactly
+                          one copy of each value is in the accessibility tree
+                          at any width. */}
+                      <span className="mt-1 flex flex-wrap items-center gap-2 md:hidden">
+                        <StatusPill status={alert.status} />
+                        <span className="text-[11px] text-[var(--tx-secondary)]">
+                          {humanizeType(alert.alert_type)}
+                        </span>
                         <SeverityMark severity={severityOf(alert.alert_type)} />
-                      }
-                    />
-                    <StatusPill status={alert.status} />
+                        <span
+                          className="text-[11px] text-[var(--tx-secondary)]"
+                          style={TABULAR}
+                        >
+                          {dateLabel}
+                          {ageTag}
+                        </span>
+                        <span className="w-full truncate text-[11px] text-[var(--tx-pure)]">
+                          {alert.email_subject}
+                        </span>
+                      </span>
+                    </div>
+                    <span className="max-md:hidden">
+                      <CellStack
+                        primary={humanizeType(alert.alert_type)}
+                        secondary={
+                          <SeverityMark
+                            severity={severityOf(alert.alert_type)}
+                          />
+                        }
+                      />
+                    </span>
+                    <span className="max-md:hidden">
+                      <StatusPill status={alert.status} />
+                    </span>
                     <span
-                      className="truncate text-[12px] text-[var(--tx-pure)]"
+                      className="truncate text-[12px] text-[var(--tx-pure)] max-md:hidden"
                       title={alert.email_subject}
                     >
                       {alert.email_subject}
                     </span>
                     <span
-                      className="truncate text-[11px] text-[var(--tx-secondary)]"
+                      className="truncate text-[11px] text-[var(--tx-secondary)] max-md:hidden"
                       style={TABULAR}
                     >
                       {dateLabel}
@@ -683,10 +747,16 @@ export default function NotificationsDashboardPage() {
                       </p>
                       {alert.error_message && (
                         <>
-                          <p className="mt-2 text-[11px] font-[650] uppercase tracking-[0.1em] text-[var(--state-danger)]">
+                          {/* Warning, not --state-danger. A delivery failure
+                              on a fleet-wide alert is URGENCY, and on kita
+                              --state-danger resolves to copper, which would
+                              claim the viewer is the next actor on a record
+                              that is not theirs. The WORD "Error" carries the
+                              meaning; the colour only raises the voice. */}
+                          <p className="mt-2 text-[11px] font-[650] uppercase tracking-[0.1em] text-[var(--state-warning)]">
                             Error
                           </p>
-                          <p className="mt-1 text-[13px] text-[var(--state-danger)]">
+                          <p className="mt-1 text-[13px] text-[var(--state-warning)]">
                             {alert.error_message}
                           </p>
                         </>

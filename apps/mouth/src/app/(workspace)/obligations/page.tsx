@@ -50,6 +50,7 @@ import {
   FOCUS,
   Masthead,
   Notice,
+  SERIF_SECTION,
   StatePill,
 } from "@/components/workspace/r19";
 
@@ -58,8 +59,6 @@ import { ObligationsTable } from "./components/ObligationsTable";
 import { StatusCounters } from "./components/StatusCounters";
 import { describeError } from "./components/describe-error";
 import {
-  CARD,
-  INPUT_STYLE,
   STATUS_FILTER_OPTIONS,
   type ApproveOut,
   type GenerateOut,
@@ -317,34 +316,32 @@ export default function ObligationsPage() {
       )}
 
       {/* ── Generate proposals ───────────────────────────────────────── */}
-      <section className="mb-6 rounded-xl border p-4" style={CARD}>
+      <section className="mb-6 border-t border-[var(--bz-border)] pt-4">
         <h2
-          className="mb-2 text-lg font-medium"
-          style={{ color: "var(--bz-text-1)" }}
+          className="mb-3 text-[19px] leading-[1.2] tracking-[-0.02em] text-[var(--tx-pure)]"
+          style={SERIF_SECTION}
         >
           Generate proposals
         </h2>
         <div className="flex flex-wrap items-end gap-3">
-          <label className="text-xs" style={{ color: "var(--bz-text-3)" }}>
+          <label className="text-[10px] font-[650] uppercase tracking-[0.12em] text-[var(--tx-secondary)]">
             Client id
             <input
               type="number"
               min={1}
-              className="mt-1 block w-32 rounded border px-2 py-1.5 text-sm"
-              style={INPUT_STYLE}
+              className="mt-1 block h-9 w-32 border border-[var(--line-control)] bg-transparent px-2 text-[12px] normal-case tracking-normal text-[var(--tx-pure)] focus:border-[var(--bz-copper)] focus:outline-none"
               value={genClientId}
               onChange={(e) => setGenClientId(e.target.value)}
               placeholder="e.g. 42"
             />
           </label>
-          <label className="text-xs" style={{ color: "var(--bz-text-3)" }}>
+          <label className="text-[10px] font-[650] uppercase tracking-[0.12em] text-[var(--tx-secondary)]">
             Horizon days
             <input
               type="number"
               min={1}
               max={730}
-              className="mt-1 block w-32 rounded border px-2 py-1.5 text-sm"
-              style={INPUT_STYLE}
+              className="mt-1 block h-9 w-32 border border-[var(--line-control)] bg-transparent px-2 text-[12px] normal-case tracking-normal text-[var(--tx-pure)] focus:border-[var(--bz-copper)] focus:outline-none"
               value={genHorizonDays}
               onChange={(e) => setGenHorizonDays(e.target.value)}
             />
@@ -354,7 +351,7 @@ export default function ObligationsPage() {
             disabled={generating}
             onClick={() => void handleGenerate()}
             className={cn(
-              "inline-flex min-h-11 items-center bg-[var(--state-success)] px-4 text-[12px] font-[650] text-[var(--bz-on-warm)] hover:opacity-90",
+              "inline-flex min-h-11 items-center border border-[var(--line-control)] bg-transparent px-3.5 text-[12px] font-[650] text-[var(--tx-pure)] hover:bg-[var(--bz-card-hover)]",
               FOCUS,
             )}
             style={{ opacity: generating ? 0.6 : 1 }}
@@ -515,11 +512,10 @@ export default function ObligationsPage() {
               type="button"
               disabled={offset === 0 || loading}
               onClick={() => setOffset((o) => Math.max(0, o - LIMIT))}
-              className="rounded-md border px-3 py-1"
-              style={{
-                borderColor: "var(--bz-border)",
-                color: "var(--bz-text-2)",
-              }}
+              className={cn(
+                "inline-flex min-h-11 items-center border border-[var(--line-control)] bg-transparent px-3.5 text-[12px] font-[650] text-[var(--tx-pure)] hover:bg-[var(--bz-card-hover)] disabled:opacity-40",
+                FOCUS,
+              )}
             >
               Previous
             </button>
@@ -527,11 +523,10 @@ export default function ObligationsPage() {
               type="button"
               disabled={offset + LIMIT >= total || loading}
               onClick={() => setOffset((o) => o + LIMIT)}
-              className="rounded-md border px-3 py-1"
-              style={{
-                borderColor: "var(--bz-border)",
-                color: "var(--bz-text-2)",
-              }}
+              className={cn(
+                "inline-flex min-h-11 items-center border border-[var(--line-control)] bg-transparent px-3.5 text-[12px] font-[650] text-[var(--tx-pure)] hover:bg-[var(--bz-card-hover)] disabled:opacity-40",
+                FOCUS,
+              )}
             >
               Next
             </button>

@@ -64,16 +64,27 @@ const DESK_DIR = (() => {
  *
  * A page joins this list in the PR that restyles it, never before: a baseline
  * that lists a page it cannot hold is a guard that reports green on uncured
- * code. `/review` joins in K2b and `/obligations` in K2c, each flipping to
- * `dangerToken: false` in the same commit that removes its last danger read —
- * so the ratchet only ever tightens, and it tightens with the content that
- * earns it.
+ * code. `/review` joined in K2b, and `/obligations` and `/notifications` in
+ * K2c, each flipping to `dangerToken: false` in the same commit that removes
+ * its last danger read — so the ratchet only ever tightens, and it tightens
+ * with the content that earns it. All four desk pages are now bound, with no
+ * exemption left.
  */
 const DESK_PAGES: Array<{ name: string; dir: string; dangerToken: boolean }> = [
   { name: "dashboard", dir: "dashboard", dangerToken: false },
-  // See the doc block: pinned by the WS2 residuals drain guard.
-  { name: "notifications", dir: "notifications", dangerToken: true },
   { name: "review", dir: "review", dangerToken: false },
+  // K2c: the body (generate panel, status counters, table) moved onto the
+  // hairline ledger and its last --state-danger read left with it.
+  { name: "obligations", dir: "obligations", dangerToken: false },
+  // K2c: /notifications was the one page still EXEMPT here, because the WS2
+  // residuals drain guard pinned it to the danger token. That exemption is
+  // gone, and the pin with it. On kita --state-danger resolves to COPPER, so
+  // painting a failed delivery with it claimed the signed-in viewer is the
+  // next actor on a record nobody owns. Urgency reads --state-warning now,
+  // and token-drain.residuals.guard.test.ts was NARROWED in the same commit:
+  // it still pins this page's token reads and keeps all three of its
+  // hex/rgba/palette assertions, so the drain is still proved.
+  { name: "notifications", dir: "notifications", dangerToken: false },
 ];
 
 /** Rendered sources only — a test file's fixtures are not the page's paint. */
