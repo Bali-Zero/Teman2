@@ -10,6 +10,10 @@ import { cn } from "@/lib/utils";
  *
  * This is the SHAPE only. The toast system that mounts it, and the six-second
  * window, belong to the shell window — a primitive does not own a timer.
+ *
+ * The shell must not let it cover mobile controls: give it a bottom offset of
+ * at least 64px under 768, so it never sits on top of a thumb-reachable
+ * control at the foot of a small viewport.
  */
 export function Slip({
   children,

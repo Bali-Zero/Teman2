@@ -1,7 +1,7 @@
 /**
- * R19 "SIAP" primitives for the kita workspace — the shared module windows
- * K2-K5 import instead of re-inventing. See README.md for the token contract
- * and the API of each primitive.
+ * R19 "TEPAT FORTE" primitives for the kita workspace — the shared module
+ * windows K2-K5 import instead of re-inventing. See README.md for the token
+ * contract and the API of each primitive.
  */
 export * from "./tokens";
 export { StatePill } from "./StatePill";
@@ -14,7 +14,15 @@ export {
   HairlineRow,
   CellStack,
 } from "./HairlineGrid";
-export { NumberedList, Numeral, type NumberedItem } from "./NumberedList";
+export {
+  NumberedList,
+  Numeral,
+  type NumberedItem,
+  type NumeralTone,
+  type NumeralSize,
+} from "./NumberedList";
+export { OrdinalMargin } from "./OrdinalMargin";
+export { LedgerSection } from "./LedgerSection";
 export { Stamp } from "./Stamp";
 export { EmptyState } from "./EmptyState";
 export { Slip } from "./Slip";

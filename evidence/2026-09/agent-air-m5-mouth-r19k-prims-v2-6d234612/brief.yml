@@ -1,0 +1,162 @@
+task: >-
+  Window K1c-bis PR-1 of mission SAETTA-R19K (BLUE). Raise
+  `apps/mouth/src/components/workspace/r19/` from v1 "SIAP" (shipped by K1b, PR #6497)
+  to v2 "TEPAT FORTE", the fusion concept frozen 2026-09-14 in
+  `R19-KITA-20260914/fusion/` (FROZEN-v2.md, concept.md, DISPOSITION-fusion.md).
+  Windows K2-K5 import this module rather than re-inventing it, so its alphabet has to
+  be v2 before they start. Every value is read out of the frozen render's stylesheet
+  (`fusion/02-dashboard.html`, the "TEPAT FORTE fusion layer" block) and cross-checked
+  against `fusion/MEASURE.md`, which was generated from a Chromium probe rather than
+  typed by hand. Confined to one directory under `apps/mouth` — no shared token, no
+  data, no migration, no route, no page.
+lane: mouth/r19k-k1c-bis
+machine: air-m5
+date: 2026-09-14
+
+gear: 2
+gear_reason: >-
+  Deterministic floor 2, source `size`, measured on this branch and not asserted:
+  `git diff --no-renames --numstat origin/main...HEAD` sums to churn 994 (843 added,
+  151 deleted across 13 files), above SIZE_GEAR2_THRESHOLD (400) and below
+  SIZE_GEAR3_THRESHOLD. Confirmed locally with
+  `python3 scripts/evidence_pack_lint.py --print-floor --print-floor-source
+  --changed-files-file ... --numstat-file ...` which returns `2` and `size`. No
+  hot-zone path is touched: all 13 files sit under
+  `apps/mouth/src/components/workspace/r19/`, which is not a HOTZONE_PATTERNS match,
+  so the SIZE term is the only term that fires. 306 of the added lines are the test
+  file and 155 the README; the module itself is smaller than the churn suggests.
+  This brief is written because the first attempt at this PR (#6514) went red on
+  `Harness floor recompute` for exactly this reason — floor 2 via SIZE alone with no
+  brief. That branch was already armed and therefore frozen, so it was closed and the
+  same commit re-opened from a fresh origin/main with this brief, rather than pushed on
+  a frozen branch.
+
+appetite:
+  wall_clock_hours: 5
+  adversarial_rounds: 1
+
+acceptance:
+  A1: >-
+    The module type-checks clean from a worktree, where the plain `tsc` form lies on
+    stale build info: `npx tsc --noEmit --incremental false` from `apps/mouth` exits 0
+    with no output.
+    probe: >-
+      cd apps/mouth && npx tsc --noEmit --incremental false
+  A2: >-
+    Every v2 prop carries a guilt case AND an innocence case, and the whole workspace
+    test surface is green: 136 tests passed across `src/components/workspace`,
+    `src/types/navigation.test.ts` and `src/app/(workspace)/__tests__`. The pairs
+    added: Stamp forest/copper null-vs-render, NumberedList owned/not-owned rule,
+    the ownership-margin precedence (an item's own `tone="you"` wins in an unowned
+    list; an `owned` list without an item tone still goes copper; neither defaults to
+    copper), Numeral size-to-token mapping, HairlineHead sticky default and override,
+    HairlineGrid scoped-collapse emit vs no-emit, HairlineRow click/Enter/Space with
+    preventDefault proven and stopPropagation on the action cells, plus the
+    href-absent innocence case.
+    probe: >-
+      cd apps/mouth && npx vitest --run src/components/workspace
+      src/types/navigation.test.ts "src/app/(workspace)/__tests__"
+  A3: >-
+    The law this module exists to hold is proven by a PLANTED violation, not asserted:
+    `findCopperFill` in `__tests__/r19.test.tsx` turns RED on
+    `bg-[var(--bz-copper)]` placed on a pill-shaped source, and a copy of
+    COPPER_RULE's own class string under a different name is still caught — the
+    exemption is the NAME, never the shape. v2 also removed the `// prettier-ignore`
+    the first draft needed: COPPER_RULE drops v1's `rounded-sm` (the render's rule is
+    square), which keeps the declaration inside prettier's 80 columns and therefore on
+    the one physical line the by-name exemption depends on.
+    probe: >-
+      cd apps/mouth && npx prettier --write "src/components/workspace/r19/**/*.{ts,tsx,md}"
+      && grep -n 'COPPER_RULE = ' src/components/workspace/r19/tokens.ts
+      && npx vitest --run src/components/workspace/r19
+  A4: >-
+    No new hardcoded hex reaches a token-lint scoped surface, checked on the COMMITTED
+    tree because that is all the linter sees: `python3 scripts/token_lint.py --base
+    origin/main` reports clean.
+    probe: >-
+      python3 scripts/token_lint.py --base origin/main
+  A5: >-
+    The ONE real consumer this module already has still compiles and its tests still
+    pass. `(workspace)/dashboard/page.tsx` (landed by #6512, K2a) renders two
+    Mastheads with v1's `subtitle`/`right`; the whole apps/mouth suite is green with
+    this diff in place — 495 files, 5645 tests, 0 failures — and `tsc` exits 0 where
+    it reported two TS2322 errors before the compatibility fix. The dashboard page
+    itself is NOT edited: it belongs to window K2.
+    probe: >-
+      cd apps/mouth && npx tsc --noEmit --incremental false && npx vitest --run
+
+out_of_scope: >-
+  The ink rail and the six navigation groups — those are PR-2 of this same window, on
+  their own branch from a fresh origin/main, because they are a different concern and
+  touch a disjoint file set (AppSidebar, navigation.ts, globals.css). Anything under
+  `pages`, `login/**`, `portal/**`, `Header.tsx`, `GateScreen`, `ZantaraWidget`,
+  toasts or `packages/core` — window k1-dux owns those in K1c2/K1d, disjoint by
+  design. `(workspace)/layout.tsx` was verified and deliberately NOT changed: the
+  shell is already a fixed 216px rail plus `md:ml-[216px]` with no overflow ancestor,
+  so the viewport still owns scrolling, which is what the sticky head needs; the
+  window brief says to change nothing that works. Migrating
+  `(workspace)/garuda-voa/r19.tsx`, the page-local ancestor of three of these
+  primitives, which stays where it is until K5.
+
+assumptions:
+  - text: >-
+      Where the window brief's stated value and the frozen render's measured CSS
+      disagreed, the render won, per the brief's own instruction. Two such cases land
+      in PR-2 rather than here (the rail's active rule is 3px not 2px; the rail row is
+      31px not 36-40px). The one case in THIS diff runs the other way: the brief names
+      768 as the mobile breakpoint while the renders break at 700. Tailwind `md:` is
+      768 and is the app's existing breakpoint system, so `md:` is used and the 68px
+      difference is recorded here rather than buried.
+    status: verified
+    probe: >-
+      grep -n 'max-width:700px' R19-KITA-20260914/fusion/02-dashboard.html and compare
+      with the `md:` variants in apps/mouth/src/components/workspace/r19/tokens.ts.
+  - text: >-
+      REFUTED, and the correction is in this diff. An earlier revision of this brief
+      claimed the Masthead prop renames (`subtitle` to `sub`, `right` to `actions`)
+      were free because the module had ZERO importers. That was measured against this
+      window's ORIGINAL base sha 48294018, and it was true there. It stopped being
+      true before this branch existed: PR #6512 (SAETTA-R19K K2a, "put the kita
+      dashboard on the R19 ledger") landed `(workspace)/dashboard/page.tsx` on this
+      module in between, writing `subtitle` and `right` at lines 413 and 545. The
+      rename was therefore a breaking change to a page THIS window is forbidden to
+      edit (K2 owns the desk). CI's `apps/mouth compiles` caught it on #6518 — a
+      stale grep did not. `Masthead` now accepts BOTH spellings, preferring the v2
+      pair, and `r19.test.tsx` pins the compatibility plus the precedence so a later
+      tidy-up cannot drop it while the dashboard still writes v1. The lesson, stated
+      plainly: an importer count is only true for the sha it was measured on, and a
+      branch cut from a newer origin/main has a newer answer.
+    status: verified
+    probe: >-
+      grep -rn "Masthead" "apps/mouth/src/app/(workspace)/dashboard/page.tsx" and
+      `git log --oneline -1 -- "apps/mouth/src/app/(workspace)/dashboard/page.tsx"`
+      (returns #6512); then `cd apps/mouth && npx tsc --noEmit --incremental false`,
+      which now exits 0 where it reported two TS2322 errors before the fix.
+  - text: >-
+      `HairlineGrid.tsx` becomes `"use client"` file-wide. `HairlineRow` needs real
+      event handlers, which cannot cross the server/client boundary; `HairlineGrid`,
+      `HairlineHead`, `HairlineBody` and `CellStack` have no state, hooks or handlers
+      of their own and are client components only by co-location. The file says so and
+      a later window may split the row out if a page's bundle ever makes that matter.
+    status: verified
+    probe: >-
+      head -15 apps/mouth/src/components/workspace/r19/HairlineGrid.tsx
+  - text: >-
+      `HairlineHead`'s sticky default changes from header+44px to the header alone.
+      This is a behaviour change for any future caller that also renders a DeskStrip
+      above the head, and it is deliberate: fusion/MEASURE.md section 6 measured the
+      head pinned at 52/97 with the shell header bottom at 52 and the desk strip
+      scrolled away above it, so the strip is not a sticky ancestor of the head. No
+      caller exists yet to be broken by it.
+    status: verified
+    probe: >-
+      Read fusion/MEASURE.md section 6 ("The sticky head, proven against a real
+      scroll") and the stickyTop default in HairlineGrid.tsx.
+  - text: >-
+      No client PII anywhere in the diff. Every fixture name is synthetic.
+    status: verified
+    probe: >-
+      grep -rn "@balizero.com\|@gmail" apps/mouth/src/components/workspace/r19 —
+      returns nothing.
+
+pii: none
