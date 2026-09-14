@@ -5,11 +5,12 @@
  * branch (apps/website/public/fonts/{fraunces,manrope}/*-variable.ttf) into
  * apps/mouth/public/fonts/. Licences ship next to them (OFL 1.1).
  *
- * Declaring the faces is NOT the same as using them: only the
- * [data-product="my"] theme blocks in globals.css point --font-serif /
- * --font-sans at these families, so kita/prime/editorial surfaces are
- * unaffected by this import. font-display: swap keeps first paint on the
- * fallback stack instead of blocking it.
+ * Declaring the faces is NOT the same as using them: only theme blocks that
+ * point --font-serif / --font-sans at these families actually use them. That
+ * was [data-product="my"] alone until SAETTA-R19K K1a gave [data-product="kita"]
+ * the same pair, so this file now serves both products and neither prime nor
+ * editorial is affected by the import. font-display: swap keeps first paint on
+ * the fallback stack instead of blocking it.
  */
 
 @font-face {

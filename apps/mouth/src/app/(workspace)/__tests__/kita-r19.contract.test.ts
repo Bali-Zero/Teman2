@@ -317,6 +317,37 @@ export function findRedeclared(block: string, names: string[]): string[] {
   );
 }
 
+describe("kita R19 seam — the one forest surface", () => {
+  // K1d gives /login its forest panel. It is the only filled forest in kita:
+  // everywhere else forest is a WORD or a hairline, because "done" is a
+  // meaning and not a wall.
+  for (const theme of ["operative-light", "operative-dark"]) {
+    it(`${theme}: --bz-panel is the forest and --bz-on-panel the paper`, () => {
+      const block = themeBlock(theme);
+      expect(block).toContain(`--bz-panel: ${R19.forest};`);
+      expect(block).toContain(`--bz-on-panel: ${R19.canvas};`);
+    });
+  }
+
+  it("does not follow --state-success into the dark", () => {
+    // The dark block lifts success through a paper mix so "done" stays legible
+    // as TEXT. A lifted forest is a pale green wall, not a panel, so the panel
+    // keeps the ONE value in both themes and is asserted not to track it.
+    const dark = themeBlock("operative-dark");
+    expect(dark).toContain(`--state-success: color-mix(`);
+    expect(dark).not.toContain(`--bz-panel: color-mix(`);
+    expect(dark).not.toContain(`--bz-panel: var(--state-success)`);
+  });
+
+  it("paper on forest clears SC 1.4.3 with room (innocence)", () => {
+    expect(contrast(R19.canvas, R19.forest)).toBeGreaterThanOrEqual(4.5);
+  });
+
+  it("ink on forest would have failed, which is why the panel carries paper (guilt)", () => {
+    expect(contrast(R19.ink, R19.forest)).toBeLessThan(4.5);
+  });
+});
+
 describe("kita R19 seam — what the block refuses to redeclare", () => {
   for (const theme of ["operative-light", "operative-dark"]) {
     it(`${theme}: leaves --bz-text-pure resolving through packages/core`, () => {
