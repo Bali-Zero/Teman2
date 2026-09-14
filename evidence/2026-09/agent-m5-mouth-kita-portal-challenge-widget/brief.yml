@@ -28,19 +28,18 @@ round_2: >-
   with vi.setSystemTime to pin the wall clock against the fixture), tsc clean. 4 screenshots
   (1440/390 x data/zero) retaken via the same temporary non-committed preview-harness pattern.
 
-gear: 3
+gear: 2
 gear_reason: >-
-  Deterministic floor from `git diff --cached --numstat` against this worktree's branch point
-  (HEAD b8162521, before any origin/main drift from unrelated concurrent PRs): 1185 net lines
-  across 8 files (547 PortalChallengeWidget.tsx, 277 PortalChallengeWidget.test.tsx, 150
-  r19.tsx, 101 r19.test.tsx, 67 dashboard.api.ts additions, 38 usePortalChallenge.ts, 4
-  page.tsx, 1 useDashboardData.ts) — above the ~400 net line PR-contract guideline. The
-  mandate's own UI requirement list (countdown, 3-tier podium, is_me card with progress bar,
-  tax strip with two branches, collapsible full ranking, live feed, rules drawer, loading/
-  error/empty states) does not fit in Gear 2 without cutting a required surface, so this brief
-  declares Gear 3 rather than under-scoping the widget to hit a smaller number. No hot-zone
-  path — everything is under apps/mouth/, confined to the dashboard folder plus two shared
-  files each touched by one line/one export.
+  Corrected 2026-09-14 (orchestrator caught the error): this brief originally declared Gear 3
+  from "over ~400 net lines" without checking the ACTUAL Gear-3 threshold. Deterministic floor
+  via `git diff --no-renames --numstat` anchored at the real merge-base with origin/main
+  (b8162521): 1673 net lines over 9 files (817 PortalChallengeWidget.tsx, 437
+  PortalChallengeWidget.test.tsx, 120 this brief, 101 r19.test.tsx, 88 r19.tsx, 67
+  dashboard.api.ts, 38 usePortalChallenge.ts, 4 page.tsx, 1 useDashboardData.ts) — above
+  SIZE_GEAR2_THRESHOLD (400) and BELOW SIZE_GEAR3_THRESHOLD (1828), so the floor is 2, not 3.
+  No hot-zone path — everything is under apps/mouth/, confined to the dashboard folder plus
+  two shared files each touched by one line/one export. No evidence/pack.yml accompanies this
+  brief (Gear 2 does not require one; only Gear 3 does, per harness-floor.yml Step 7b).
 
 appetite:
   wall_clock_hours: 3
