@@ -55,6 +55,24 @@ const GATE_PILL =
 /** The ordinal that numbers a blocking section. Copper: it is yours. */
 const GATE_ORDINAL =
   "text-[20px] leading-none tabular-nums text-[var(--bz-copper-text)]";
+/**
+ * The one ground an action button may take. It was `--bz-accent`, which on
+ * kita resolves to COPPER — and copper is a person, never the ground behind a
+ * label. Doing a thing is the alphabet's forest; the canvas carries the word,
+ * so it is paper on the daylight forest and ink on the lifted one.
+ */
+const GATE_ACTION_STYLE: React.CSSProperties = {
+  background: "var(--state-success)",
+  color: "var(--bz-base)",
+};
+/** Square, and tall enough to hit: the desk strip's control height. */
+const GATE_ACTION =
+  "inline-flex min-h-11 items-center justify-center rounded-none px-4 " +
+  "text-sm font-[650] transition-opacity disabled:opacity-50";
+/** The secondary of the pair: same square 44px control, drawn not filled. */
+const GATE_ACTION_QUIET =
+  "inline-flex min-h-11 items-center justify-center rounded-none border px-4 " +
+  "text-sm font-[650] disabled:opacity-50";
 
 const HIGH_VOLUME_THRESHOLD = 15;
 
@@ -191,7 +209,7 @@ function GateDeadlinesList({
         return (
           <li
             key={alert.alert_id}
-            className="flex flex-col gap-2 rounded-md border p-3 sm:flex-row sm:items-center sm:justify-between"
+            className="flex flex-col gap-2 rounded-none border p-3 sm:flex-row sm:items-center sm:justify-between"
             style={{
               borderColor: "var(--bz-border)",
               background: "var(--bz-surface)",
@@ -238,11 +256,8 @@ function GateDeadlinesList({
               type="button"
               onClick={() => handleAck(alert.alert_id)}
               disabled={ackInFlight !== null}
-              className="self-start rounded-md px-3 py-1.5 text-sm font-medium transition-opacity disabled:opacity-50 sm:self-center"
-              style={{
-                background: "var(--bz-accent)",
-                color: "var(--bz-base)",
-              }}
+              className={`self-start sm:self-center ${GATE_ACTION}`}
+              style={GATE_ACTION_STYLE}
             >
               {ackInFlight === alert.alert_id
                 ? "Acknowledging…"
@@ -361,7 +376,7 @@ export default function GateScreen({
         {totalBlocking > HIGH_VOLUME_THRESHOLD && (
           <div
             role="alert"
-            className="rounded-lg border px-4 py-3 text-sm"
+            className="rounded-none border px-4 py-3 text-sm"
             style={{
               borderColor: "var(--bz-border)",
               background: "var(--bz-surface)",
@@ -413,7 +428,7 @@ export default function GateScreen({
                   rows={3}
                   disabled={submittingLate}
                   placeholder="e.g. Traffic on the bypass, arrived 09:20."
-                  className="w-full resize-y rounded-md border px-3 py-2 text-sm outline-none focus:ring-2"
+                  className="w-full resize-y rounded-none border px-3 py-2 text-sm outline-none focus:ring-2"
                   style={{
                     borderColor: "var(--bz-border)",
                     background: "var(--bz-surface)",
@@ -424,11 +439,8 @@ export default function GateScreen({
                   type="button"
                   onClick={handleSubmitLate}
                   disabled={submittingLate || !lateReason.trim()}
-                  className="self-start rounded-md px-4 py-2 text-sm font-medium transition-opacity disabled:opacity-50"
-                  style={{
-                    background: "var(--bz-accent)",
-                    color: "var(--bz-base)",
-                  }}
+                  className={`self-start ${GATE_ACTION}`}
+                  style={GATE_ACTION_STYLE}
                 >
                   {submittingLate ? "Submitting…" : "Submit reason"}
                 </button>
@@ -472,11 +484,11 @@ export default function GateScreen({
                 <button
                   type="button"
                   onClick={() => router.push("/review")}
-                  className="self-start rounded-md border px-4 py-2 text-sm font-medium"
+                  className={`self-start ${GATE_ACTION_QUIET}`}
                   style={{
-                    borderColor: "var(--bz-border)",
-                    background: "var(--bz-surface)",
-                    color: "var(--bz-text-1)",
+                    borderColor: "var(--line-control)",
+                    background: "var(--bz-card)",
+                    color: "var(--tx-pure)",
                   }}
                 >
                   Review documents →
@@ -545,11 +557,8 @@ export default function GateScreen({
             <button
               type="button"
               onClick={onEnter}
-              className="rounded-md px-5 py-2.5 text-sm font-semibold"
-              style={{
-                background: "var(--bz-accent)",
-                color: "var(--bz-base)",
-              }}
+              className={`px-5 ${GATE_ACTION}`}
+              style={GATE_ACTION_STYLE}
             >
               Enter workspace →
             </button>
@@ -558,11 +567,11 @@ export default function GateScreen({
               type="button"
               onClick={handleRefresh}
               disabled={refreshing}
-              className="rounded-md border px-4 py-2 text-sm font-medium disabled:opacity-50"
+              className={GATE_ACTION_QUIET}
               style={{
-                borderColor: "var(--bz-border)",
-                background: "var(--bz-surface)",
-                color: "var(--bz-text-2)",
+                borderColor: "var(--line-control)",
+                background: "var(--bz-card)",
+                color: "var(--tx-pure)",
               }}
             >
               {refreshing ? "Refreshing…" : "Refresh status"}
@@ -574,11 +583,11 @@ export default function GateScreen({
             <button
               type="button"
               onClick={onEnter}
-              className="rounded-md border px-4 py-2 text-sm font-medium"
+              className={GATE_ACTION_QUIET}
               style={{
-                borderColor: "var(--bz-border)",
+                borderColor: "var(--bz-hairline)",
                 background: "transparent",
-                color: "var(--bz-text-3)",
+                color: "var(--tx-secondary)",
               }}
               title="Admins can bypass the gate into the workspace."
             >
