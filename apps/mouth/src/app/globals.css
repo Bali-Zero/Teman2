@@ -570,6 +570,13 @@
   --glass-rim: #dad8d1;
   --glass-highlight: var(--bz-kita-wash);
 
+  /* The ONE forest surface in kita: the login panel. It is the same colour in
+     both themes on purpose — --state-success lifts in the dark so "done" stays
+     legible as TEXT, and a lifted forest is not a surface. Paper sits on it at
+     11.30:1 either way. */
+  --bz-panel: #253e33;
+  --bz-on-panel: #f7f4ee;
+
   /* Copper = needs you. Never a button fill. */
   --bz-copper: #a44b36;
   --bz-copper-text: #a44b36;
@@ -710,6 +717,10 @@
   --bz-glass-highlight: var(--bz-kita-wash);
   --glass-rim: rgba(247, 244, 238, 0.12);
   --glass-highlight: var(--bz-kita-wash);
+
+  /* The one forest surface, unchanged after dark — see the light block. */
+  --bz-panel: #253e33;
+  --bz-on-panel: #f7f4ee;
 
   /* Copper = needs you; the fill stays raw, the text lifts */
   --bz-copper: #a44b36;
