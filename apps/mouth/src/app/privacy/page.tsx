@@ -1,6 +1,12 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
+  // Self-canonical, not the root layout's `canonical: appUrl`. Inherited,
+  // this page told Google it WAS the homepage (#5887's class of defect;
+  // /privacy carries 3 internal hrefs, so it is crawled).
+  alternates: {
+    canonical: "https://balizero.com/privacy",
+  },
   title: "Privacy Policy",
   description:
     "How Bali Zero collects, processes, and protects your personal data under Indonesian law (UU PDP No. 27/2022).",
