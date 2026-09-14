@@ -1,10 +1,13 @@
 /**
- * R19 "SIAP" shared constants for the kita workspace (SAETTA-R19K / K1b).
+ * R19 "TEPAT FORTE" shared constants for the kita workspace (SAETTA-R19K /
+ * K1c-bis, v2 of the K1b "SIAP" module).
  *
- * Every value here is copied from the frozen concept-K renders in
- * R19-KITA-20260914/concept/ — geometry from their `html{}` block, class
- * strings from their stylesheet. Nothing is invented; a deviation needs a
- * reason in the window's pack.
+ * v1's values were copied from the frozen concept-K renders. v2's new/changed
+ * values below are copied from the frozen fusion render
+ * `R19-KITA-20260914/fusion/02-dashboard.html` and `03-clients-list.html`
+ * (search the `<style>` block for "TEPAT FORTE fusion layer") — geometry from
+ * their `html{}` block, class strings from their stylesheet. Nothing is
+ * invented; a deviation needs a reason in the window's pack.
  *
  * These are STRINGS and numbers only, so this file stays importable from a
  * server component. The components live beside it.
@@ -68,9 +71,27 @@ export const FIELD =
 export const ROW_H = 44;
 export const HEADER_H = 48;
 export const SIDEBAR_W = 216;
+/** v2 name for `SIDEBAR_W` — the invariant rail width. Same value, own doc line. */
+export const RAIL_W = SIDEBAR_W;
 export const GUTTER = 24;
 /** Below this width the two lowest-priority columns leave the grid. */
 export const COLLAPSE_PX = 1360;
+
+/** Masthead h1: Fraunces opsz144 450 — 40/42 desktop, 32/34 under 768. */
+export const MASTHEAD_H1 =
+  "text-[32px] leading-[1.05] tracking-[-0.035em] text-[var(--tx-pure)] md:text-[40px]";
+
+/** The masthead sentence: Manrope 15/1.55 on a 62ch measure. */
+export const MASTHEAD_SUB =
+  "mt-[3px] max-w-[62ch] text-[15px] leading-[1.55] text-[var(--tx-secondary)]";
+
+/** KPI numeral — 44/44, 38 under 768. The viewport peak. */
+export const NUMERAL_KPI =
+  "text-[38px] leading-none tracking-[-0.03em] md:text-[44px]";
+/** Desk count — 22/22. */
+export const NUMERAL_COUNT = "text-[22px] leading-none tracking-[-0.02em]";
+/** Ledger ordinal — 18/18. */
+export const NUMERAL_ORDINAL = "text-[18px] leading-none tracking-[-0.02em]";
 
 /**
  * Five tones. The first four are the four meanings; `ink` is the filled tone
@@ -88,17 +109,34 @@ export const PILL_TONE: Record<PillTone, string> = {
   ink: "text-[var(--bz-card)] bg-[var(--tx-pure)] border-[var(--tx-pure)]",
 };
 
-/** The selected FILTER: filled slate, because it is a choice, not a state. */
+/**
+ * The selected FILTER: v2 fills it INK with paper text (v1 filled it slate,
+ * `bg-[var(--state-info)] border-[var(--state-info)] text-[var(--bz-on-warm)]`
+ * — the fusion render's selected pill is the same ink fill as `PILL_TONE.ink`,
+ * so a filter reads as "chosen" the same way a filled status reads as
+ * "resolved").
+ */
 export const PILL_SELECTED =
-  "bg-[var(--state-info)] border-[var(--state-info)] text-[var(--bz-on-warm)]";
+  "bg-[var(--tx-pure)] border-[var(--tx-pure)] text-[var(--bz-base)]";
+
+/** The square pill: 2px radius. A kita pill is never a circle. */
+export const PILL_SQUARE = "rounded-[2px]";
+
+/** The ink 1px table-head rule. */
+export const INK_HEAD_RULE = "border-b border-[var(--tx-pure)]";
 
 /**
- * The 56x3 masthead rule — the ONE place copper is allowed to fill anything,
- * because it fills a decorative graphic that carries no label. It is a named
- * constant so `r19.test.tsx` can allow exactly this use and flag every other
- * copper background as the law-breaking fill it would be.
+ * The 96x4 masthead rule (72 under 768) — the ONE place copper is allowed to
+ * fill anything, because it fills a decorative graphic that carries no
+ * label. It is a named constant so `r19.test.tsx` can allow exactly this use
+ * and flag every other copper background as the law-breaking fill it would
+ * be. `bg-[var(--bz-copper)]` MUST stay on this physical line for that
+ * exemption to apply — see `findCopperFill` in the test file, which skips a
+ * LINE carrying the identifier. The render draws a square rule, so v1's
+ * `rounded-sm` is gone; dropping it is also what keeps the declaration inside
+ * prettier's 80 columns, and therefore on one line, without a pragma.
  */
-export const COPPER_RULE = "h-[3px] w-14 rounded-sm bg-[var(--bz-copper)]";
+export const COPPER_RULE = "h-[4px] w-[72px] bg-[var(--bz-copper)] md:w-24";
 
 /** Two-digit index for the copper numerals of the R19 list idiom. */
 export const pad2 = (n: number) => String(n).padStart(2, "0");

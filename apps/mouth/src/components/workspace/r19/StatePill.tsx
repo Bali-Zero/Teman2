@@ -1,20 +1,24 @@
 import React from "react";
 import { cn } from "@/lib/utils";
-import { PILL_SELECTED, PILL_TONE, type PillTone } from "./tokens";
+import { PILL_SELECTED, PILL_SQUARE, PILL_TONE, type PillTone } from "./tokens";
 
-const BASE =
-  "inline-flex h-6 items-center gap-1.5 whitespace-nowrap rounded-full border px-2.5 " +
-  "text-[10px] font-[650] uppercase tracking-[0.12em] bg-transparent";
+const BASE = cn(
+  "inline-flex h-6 items-center gap-1.5 whitespace-nowrap border px-2.5",
+  PILL_SQUARE,
+  "text-[10px] font-[650] uppercase tracking-[0.12em] bg-transparent",
+);
 
 /**
  * The one status vocabulary: four meanings plus the `ink` tone, always with a
  * WORD, never a colour alone.
  *
- * A row pill is an inert `<span>` with a dot. Pass `pressed` and it becomes a
- * focusable `<button aria-pressed>` — that is the desk strip's FILTER, the one
- * place a pill is a choice rather than a report, and the only place it is
- * filled. The fill is slate and it also shows a leading tick, because fill
- * alone cannot carry the difference.
+ * A row pill is an inert `<span>` — square (2px radius, never a circle) with
+ * a diamond pip. Pass `pressed` and it becomes a focusable
+ * `<button aria-pressed>` — that is the desk strip's FILTER, the one place a
+ * pill is a choice rather than a report, and the only place it is filled.
+ * v2 fills it INK with paper text (was slate) and it also shows a leading
+ * tick, because fill alone cannot carry the difference. Copper is never a
+ * background here.
  */
 export function StatePill({
   tone,
@@ -38,7 +42,7 @@ export function StatePill({
       <span
         aria-hidden="true"
         className={cn(
-          "h-1.5 w-1.5 shrink-0 rounded-full bg-current",
+          "h-[6px] w-[6px] shrink-0 rotate-45 bg-current",
           tone === "ink" && "hidden",
         )}
       />
