@@ -35,6 +35,27 @@ interface GateScreenProps {
 }
 
 /** Threshold above which the gate surfaces a "request help" affordance (F8). */
+/**
+ * The gate's own R19 vocabulary. The shell disappears here — this page is the
+ * blocking wall and nothing else — so it carries its masthead rule, its
+ * ordinals and its outlined state pills itself rather than importing a shell.
+ */
+const GATE_SERIF: React.CSSProperties = {
+  fontFamily: "var(--font-serif)",
+  fontWeight: 450,
+};
+const GATE_RULE = "h-[3px] w-[52px] bg-[var(--bz-copper)]";
+const GATE_EYEBROW =
+  "text-[10px] font-[700] uppercase tracking-[0.14em] text-[var(--tx-secondary)]";
+const GATE_BLOCKING =
+  "text-[10px] font-[700] uppercase tracking-[0.14em] text-[var(--bz-copper-text)]";
+/** Outlined, square, and never a fill behind its own label. */
+const GATE_PILL =
+  "inline-flex min-h-6 items-center gap-1.5 border px-2 py-0.5 text-[10px] font-[700] uppercase tracking-[0.08em] whitespace-nowrap";
+/** The ordinal that numbers a blocking section. Copper: it is yours. */
+const GATE_ORDINAL =
+  "text-[20px] leading-none tabular-nums text-[var(--bz-copper-text)]";
+
 const HIGH_VOLUME_THRESHOLD = 15;
 
 /**
@@ -181,15 +202,22 @@ function GateDeadlinesList({
                 className="text-sm font-medium"
                 style={{ color: "var(--bz-text-1)" }}
               >
+                {/*
+                  It used to be a FILLED badge: --state-danger when overdue,
+                  --state-warning otherwise, with the canvas colour as its
+                  label. On kita danger re-aliases to copper, so the filled
+                  version put a label on a copper ground — and copper is a
+                  person, not a status, so it is never the ground a word sits
+                  on. The pill is now an outline in the alphabet's own two
+                  meanings: copper says this one is yours to act on, the
+                  warning step says it is merely near.
+                */}
                 <span
-                  className="mr-2 inline-block rounded px-1.5 py-0.5 text-xs font-semibold uppercase"
-                  style={{
-                    background:
-                      alert.severity === "critical" || overdue
-                        ? "var(--state-danger)"
-                        : "var(--state-warning)",
-                    color: "var(--bz-base)",
-                  }}
+                  className={
+                    alert.severity === "critical" || overdue
+                      ? `${GATE_PILL} mr-2 border-[var(--bz-copper)] text-[var(--bz-copper-text)]`
+                      : `${GATE_PILL} mr-2 border-[var(--state-warning)] text-[var(--state-warning)]`
+                  }
                 >
                   {overdue
                     ? `overdue ${Math.abs(alert.days_until)}d`
@@ -294,19 +322,28 @@ export default function GateScreen({
       id="main-content"
       aria-labelledby="gate-title"
       className="min-h-screen w-full overflow-y-auto px-4 py-10 md:px-6"
-      style={{ background: "var(--bz-base, #0f1419)" }}
+      // The hex fallback is gone. --bz-base is declared by every product block
+      // in globals.css, so `var(--bz-base, #0f1419)` could only ever paint that
+      // near-black on a surface that had NO theme — and on kita it would be a
+      // dark plate under paper type.
+      style={{ background: "var(--bz-base)" }}
     >
-      <div className="mx-auto flex w-full max-w-2xl flex-col gap-6">
+      <div className="mx-auto flex w-full max-w-[760px] flex-col gap-6">
         {/* Header */}
-        <header className="flex flex-col gap-1">
+        <header className="flex flex-col">
+          <div aria-hidden="true" className={GATE_RULE} />
+          <p className={GATE_EYEBROW}>Intake · pre-workspace gate</p>
           <h1
             id="gate-title"
-            className="text-2xl font-semibold"
-            style={{ color: "var(--bz-text-1)" }}
+            className="mt-2 text-[32px] leading-[1.05] tracking-[-0.035em] sm:text-[36px]"
+            style={{ ...GATE_SERIF, color: "var(--tx-pure)" }}
           >
             Clear your queues to enter
           </h1>
-          <p className="text-sm" style={{ color: "var(--bz-text-3)" }}>
+          <p
+            className="mt-2 text-[13px]"
+            style={{ color: "var(--tx-secondary)" }}
+          >
             Signed in as {userEmail || "you"} · as of {asOfLabel}
           </p>
           {status.degraded && (
@@ -340,154 +377,166 @@ export default function GateScreen({
         {/* ⏰ Late note */}
         <section
           aria-labelledby="gate-late-heading"
-          className="rounded-xl border p-4"
-          style={{
-            borderColor: "var(--bz-border)",
-            background: "var(--bz-card)",
-          }}
+          className="grid grid-cols-[38px_1fr] gap-x-3 border-t border-[var(--bz-border)] py-4 sm:grid-cols-[54px_1fr]"
         >
-          <h2
-            id="gate-late-heading"
-            className="mb-2 text-lg font-medium"
-            style={{ color: "var(--bz-text-1)" }}
-          >
-            <span aria-hidden="true">⏰ </span>Late note
-          </h2>
-          {lateNote.count > 0 ? (
-            <div className="flex flex-col gap-3">
-              <p className="text-sm" style={{ color: "var(--bz-text-2)" }}>
-                You clocked in late today and haven&apos;t explained it yet.
-                Submit a short reason to continue.
-              </p>
-              <label
-                htmlFor="gate-late-reason"
-                className="text-xs"
-                style={{ color: "var(--bz-text-3)" }}
-              >
-                Reason
-              </label>
-              <textarea
-                id="gate-late-reason"
-                value={lateReason}
-                onChange={(e) => setLateReason(e.target.value)}
-                rows={3}
-                disabled={submittingLate}
-                placeholder="e.g. Traffic on the bypass, arrived 09:20."
-                className="w-full resize-y rounded-md border px-3 py-2 text-sm outline-none focus:ring-2"
-                style={{
-                  borderColor: "var(--bz-border)",
-                  background: "var(--bz-surface)",
-                  color: "var(--bz-text-1)",
-                }}
-              />
-              <button
-                type="button"
-                onClick={handleSubmitLate}
-                disabled={submittingLate || !lateReason.trim()}
-                className="self-start rounded-md px-4 py-2 text-sm font-medium transition-opacity disabled:opacity-50"
-                style={{
-                  background: "var(--bz-accent)",
-                  color: "var(--bz-base)",
-                }}
-              >
-                {submittingLate ? "Submitting…" : "Submit reason"}
-              </button>
-            </div>
-          ) : (
-            <p
-              className="text-sm font-medium"
-              style={{ color: "var(--bz-green, #2e9e6b)" }}
+          {/* The ordinal is the order the work must be cleared in, and it is
+              copper because every one of these is the viewer's to act on. */}
+          <div aria-hidden="true" className={GATE_ORDINAL} style={GATE_SERIF}>
+            01
+          </div>
+          <div className="min-w-0">
+            <p className={GATE_BLOCKING}>Blocking · your action</p>
+            <h2
+              id="gate-late-heading"
+              className="mt-1.5 mb-2 text-[21px] leading-[1.15] tracking-[-0.02em]"
+              style={{ ...GATE_SERIF, color: "var(--tx-pure)" }}
             >
-              <span aria-hidden="true">✓ </span>No late note
-            </p>
-          )}
+              Late note
+            </h2>
+            {lateNote.count > 0 ? (
+              <div className="flex flex-col gap-3">
+                <p className="text-sm" style={{ color: "var(--bz-text-2)" }}>
+                  You clocked in late today and haven&apos;t explained it yet.
+                  Submit a short reason to continue.
+                </p>
+                <label
+                  htmlFor="gate-late-reason"
+                  className="text-xs"
+                  style={{ color: "var(--bz-text-3)" }}
+                >
+                  Reason
+                </label>
+                <textarea
+                  id="gate-late-reason"
+                  value={lateReason}
+                  onChange={(e) => setLateReason(e.target.value)}
+                  rows={3}
+                  disabled={submittingLate}
+                  placeholder="e.g. Traffic on the bypass, arrived 09:20."
+                  className="w-full resize-y rounded-md border px-3 py-2 text-sm outline-none focus:ring-2"
+                  style={{
+                    borderColor: "var(--bz-border)",
+                    background: "var(--bz-surface)",
+                    color: "var(--bz-text-1)",
+                  }}
+                />
+                <button
+                  type="button"
+                  onClick={handleSubmitLate}
+                  disabled={submittingLate || !lateReason.trim()}
+                  className="self-start rounded-md px-4 py-2 text-sm font-medium transition-opacity disabled:opacity-50"
+                  style={{
+                    background: "var(--bz-accent)",
+                    color: "var(--bz-base)",
+                  }}
+                >
+                  {submittingLate ? "Submitting…" : "Submit reason"}
+                </button>
+              </div>
+            ) : (
+              <p
+                className="text-sm font-medium"
+                style={{ color: "var(--state-success)" }}
+              >
+                <span aria-hidden="true">✓ </span>No late note
+              </p>
+            )}
+          </div>
         </section>
 
         {/* 📄 Documents */}
         <section
           aria-labelledby="gate-docs-heading"
-          className="rounded-xl border p-4"
-          style={{
-            borderColor: "var(--bz-border)",
-            background: "var(--bz-card)",
-          }}
+          className="grid grid-cols-[38px_1fr] gap-x-3 border-t border-[var(--bz-border)] py-4 sm:grid-cols-[54px_1fr]"
         >
-          <h2
-            id="gate-docs-heading"
-            className="mb-2 text-lg font-medium"
-            style={{ color: "var(--bz-text-1)" }}
-          >
-            <span aria-hidden="true">📄 </span>Documents
-          </h2>
-          {documents.count > 0 ? (
-            <div className="flex flex-col gap-3">
-              <p className="text-sm" style={{ color: "var(--bz-text-2)" }}>
-                {documents.count} document{documents.count === 1 ? "" : "s"}{" "}
-                need your review (approve / reject).
-              </p>
-              <button
-                type="button"
-                onClick={() => router.push("/review")}
-                className="self-start rounded-md border px-4 py-2 text-sm font-medium"
-                style={{
-                  borderColor: "var(--bz-border)",
-                  background: "var(--bz-surface)",
-                  color: "var(--bz-text-1)",
-                }}
-              >
-                Review documents →
-              </button>
-            </div>
-          ) : (
-            <p
-              className="text-sm font-medium"
-              style={{ color: "var(--bz-green, #2e9e6b)" }}
+          {/* The ordinal is the order the work must be cleared in, and it is
+              copper because every one of these is the viewer's to act on. */}
+          <div aria-hidden="true" className={GATE_ORDINAL} style={GATE_SERIF}>
+            02
+          </div>
+          <div className="min-w-0">
+            <p className={GATE_BLOCKING}>Blocking · your review</p>
+            <h2
+              id="gate-docs-heading"
+              className="mt-1.5 mb-2 text-[21px] leading-[1.15] tracking-[-0.02em]"
+              style={{ ...GATE_SERIF, color: "var(--tx-pure)" }}
             >
-              <span aria-hidden="true">✓ </span>No documents to review
-            </p>
-          )}
+              Documents
+            </h2>
+            {documents.count > 0 ? (
+              <div className="flex flex-col gap-3">
+                <p className="text-sm" style={{ color: "var(--bz-text-2)" }}>
+                  {documents.count} document{documents.count === 1 ? "" : "s"}{" "}
+                  need your review (approve / reject).
+                </p>
+                <button
+                  type="button"
+                  onClick={() => router.push("/review")}
+                  className="self-start rounded-md border px-4 py-2 text-sm font-medium"
+                  style={{
+                    borderColor: "var(--bz-border)",
+                    background: "var(--bz-surface)",
+                    color: "var(--bz-text-1)",
+                  }}
+                >
+                  Review documents →
+                </button>
+              </div>
+            ) : (
+              <p
+                className="text-sm font-medium"
+                style={{ color: "var(--state-success)" }}
+              >
+                <span aria-hidden="true">✓ </span>No documents to review
+              </p>
+            )}
+          </div>
         </section>
 
         {/* 🚨 Deadlines */}
         <section
           aria-labelledby="gate-deadlines-heading"
-          className="rounded-xl border p-4"
-          style={{
-            borderColor: "var(--bz-border)",
-            background: "var(--bz-card)",
-          }}
+          className="grid grid-cols-[38px_1fr] gap-x-3 border-y border-[var(--bz-border)] py-4 sm:grid-cols-[54px_1fr]"
         >
-          <h2
-            id="gate-deadlines-heading"
-            className="mb-2 text-lg font-medium"
-            style={{ color: "var(--bz-text-1)" }}
-          >
-            <span aria-hidden="true">🚨 </span>Deadlines
-          </h2>
-          {deadlines.count > 0 ? (
-            <div className="flex flex-col gap-3">
-              <p className="text-sm" style={{ color: "var(--bz-text-2)" }}>
-                {deadlines.count} client deadline
-                {deadlines.count === 1 ? "" : "s"} within 7 days need
-                acknowledging.
-              </p>
-              {/* Cleared inline: per-alert Acknowledge buttons (the /clients
+          {/* The ordinal is the order the work must be cleared in, and it is
+              copper because every one of these is the viewer's to act on. */}
+          <div aria-hidden="true" className={GATE_ORDINAL} style={GATE_SERIF}>
+            03
+          </div>
+          <div className="min-w-0">
+            <p className={GATE_BLOCKING}>Blocking · acknowledge</p>
+            <h2
+              id="gate-deadlines-heading"
+              className="mt-1.5 mb-2 text-[21px] leading-[1.15] tracking-[-0.02em]"
+              style={{ ...GATE_SERIF, color: "var(--tx-pure)" }}
+            >
+              Deadlines
+            </h2>
+            {deadlines.count > 0 ? (
+              <div className="flex flex-col gap-3">
+                <p className="text-sm" style={{ color: "var(--bz-text-2)" }}>
+                  {deadlines.count} client deadline
+                  {deadlines.count === 1 ? "" : "s"} within 7 days need
+                  acknowledging.
+                </p>
+                {/* Cleared inline: per-alert Acknowledge buttons (the /clients
                   deep-link looped back into this wall — the layout intercepts
                   every route except /review while blocked). */}
-              <GateDeadlinesList
-                count={deadlines.count}
-                asOf={status.as_of}
-                onAcknowledged={onRefresh}
-              />
-            </div>
-          ) : (
-            <p
-              className="text-sm font-medium"
-              style={{ color: "var(--bz-green, #2e9e6b)" }}
-            >
-              <span aria-hidden="true">✓ </span>No deadlines to acknowledge
-            </p>
-          )}
+                <GateDeadlinesList
+                  count={deadlines.count}
+                  asOf={status.as_of}
+                  onAcknowledged={onRefresh}
+                />
+              </div>
+            ) : (
+              <p
+                className="text-sm font-medium"
+                style={{ color: "var(--state-success)" }}
+              >
+                <span aria-hidden="true">✓ </span>No deadlines to acknowledge
+              </p>
+            )}
+          </div>
         </section>
 
         {/* Footer actions */}

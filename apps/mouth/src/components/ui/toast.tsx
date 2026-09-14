@@ -20,7 +20,13 @@ import {
 import { cn } from "@/lib/utils";
 
 // Toast Types
-export type ToastVariant = "success" | "error" | "warning" | "info";
+/**
+ * `slip` is the R19 addition (SAETTA-R19K K1c2): the paper slip that follows a
+ * completed row and offers to take it back. The four existing variants are
+ * untouched — a shared component gains a key, it does not get restyled under
+ * the products already using it.
+ */
+export type ToastVariant = "success" | "error" | "warning" | "info" | "slip";
 
 export interface Toast {
   id: string;
@@ -47,6 +53,31 @@ const ToastContext = createContext<ToastContextType | null>(null);
 /**
  * Toast Provider - Wrap your app with this to enable toasts
  */
+/**
+ * How long an optimistic action can be taken back. Six seconds is the frozen
+ * concept's window, and it is exported because the row that starts the action
+ * has to schedule its commit against the SAME number — two clocks would let a
+ * click land after the row was already gone.
+ */
+export const SLIP_UNDO_MS = 6000;
+
+/**
+ * How long a toast stays, as a pure function of what it is. Pulled out of the
+ * provider so the window can be read and asserted without a clock: a duration
+ * that can only be observed by waiting is a duration nobody checks.
+ */
+export function toastDuration(
+  variant: ToastVariant,
+  explicit?: number,
+): number {
+  if (explicit !== undefined) return explicit;
+  if (variant === "error") return 8000;
+  // The slip's six seconds ARE the Undo window: when the slip goes, the chance
+  // goes, so the two can never be set to different numbers.
+  if (variant === "slip") return SLIP_UNDO_MS;
+  return 5000;
+}
+
 export function ToastProvider({ children }: { children: React.ReactNode }) {
   const [toasts, setToasts] = useState<Toast[]>([]);
 
@@ -55,7 +86,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
     const newToast: Toast = {
       ...toast,
       id,
-      duration: toast.duration ?? (toast.variant === "error" ? 8000 : 5000),
+      duration: toastDuration(toast.variant, toast.duration),
       dismissible: toast.dismissible ?? true,
     };
 
@@ -114,6 +145,19 @@ export function useToast() {
       addToast({ title, description, variant: "warning" }),
     [addToast],
   );
+  /**
+   * The slip: a completed row, and six seconds to take it back. The action is
+   * required — a slip with nothing to undo is just an info toast wearing
+   * different paper.
+   */
+  const slip = useCallback(
+    (
+      title: string,
+      action: NonNullable<Toast["action"]>,
+      description?: string,
+    ) => addToast({ title, description, variant: "slip", action }),
+    [addToast],
+  );
   const info = useCallback(
     (title: string, description?: string) =>
       addToast({ title, description, variant: "info" }),
@@ -128,6 +172,7 @@ export function useToast() {
     error,
     warning,
     info,
+    slip,
   };
 }
 
@@ -197,10 +242,19 @@ function ToastItem({
       borderClass: "border-l-[var(--info)]",
       bgClass: "bg-[var(--info-muted)]",
     },
+    slip: {
+      // No icon and no coloured bar: a slip is paper, and what it says is in
+      // the words. The four above keep theirs exactly as they were.
+      icon: null,
+      iconClass: "",
+      borderClass: "",
+      bgClass: "",
+    },
   };
 
   const config = variantConfig[toast.variant];
   const Icon = config.icon;
+  const isSlip = toast.variant === "slip";
 
   return (
     <motion.div
@@ -212,8 +266,11 @@ function ToastItem({
       className={cn(
         "pointer-events-auto flex items-start gap-3 p-4 pr-10",
         "min-w-[300px] max-w-[420px]",
-        "rounded-lg border border-[var(--border)] border-l-4",
-        "bg-[var(--background-elevated)] shadow-lg",
+        isSlip
+          ? // Square, on the control boundary, on the card ground: the R19
+            // slip is printed, not floated.
+            "rounded-none border border-[var(--line-control)] bg-[var(--bz-card)]"
+          : "rounded-lg border border-[var(--border)] border-l-4 bg-[var(--background-elevated)] shadow-lg",
         config.borderClass,
       )}
       role="alert"
@@ -221,9 +278,11 @@ function ToastItem({
       aria-describedby={toast.description ? `${id}-desc` : undefined}
     >
       {/* Icon */}
-      <div className={cn("flex-shrink-0 mt-0.5", config.iconClass)}>
-        <Icon size={20} aria-hidden="true" />
-      </div>
+      {Icon && (
+        <div className={cn("flex-shrink-0 mt-0.5", config.iconClass)}>
+          <Icon size={20} aria-hidden="true" />
+        </div>
+      )}
 
       {/* Content */}
       <div className="flex-1 min-w-0">
@@ -246,11 +305,13 @@ function ToastItem({
             onClick={toast.action.onClick}
             className={cn(
               "mt-2 inline-flex items-center gap-1.5 text-xs font-medium",
-              "text-[var(--accent)] hover:text-[var(--accent-hover)]",
-              "transition-colors focus-ring rounded",
+              isSlip
+                ? "min-h-11 rounded-none border border-[var(--line-control)] px-3 font-[700] text-[var(--tx-pure)] transition-colors focus-ring"
+                : "text-[var(--accent)] hover:text-[var(--accent-hover)] transition-colors focus-ring rounded",
             )}
           >
-            <RefreshCw size={12} />
+            {/* The refresh glyph means "try again"; an Undo is not a retry. */}
+            {!isSlip && <RefreshCw size={12} />}
             {toast.action.label}
           </button>
         )}
