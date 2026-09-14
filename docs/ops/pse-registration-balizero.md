@@ -1,6 +1,7 @@
 # PSE self-registration data sheet: Bali Zero systems
 
-Status: draft for the staff member filing on OSS-RBA. Prepared 2026-09-11.
+Status: filing in progress. Prepared 2026-09-11. System 3.1 registered 2026-09-14 (TD-PSE
+issued); systems 3.2 and 3.3 are next; 3.4 to 3.7 deferred by the owner on 2026-09-14.
 Scope: every Bali Zero electronic system with Indonesian users, recorded as a domestic
 private-scope PSE (Penyelenggara Sistem Elektronik Lingkup Privat).
 
@@ -8,7 +9,26 @@ This sheet records categories of data only. It holds no personal data values. Ev
 names the repo file or live probe it comes from. Items marked "to confirm" need the owner
 or accounting before submission.
 
-## 1. Registry status: not located in the registry on 2026-09-11
+## 1. Registry status
+
+### Registered systems
+
+| System (section)        | TD-PSE number              | Issued     | Source                                                       |
+| ----------------------- | -------------------------- | ---------- | ------------------------------------------------------------ |
+| Bali Zero Website (3.1) | 029817.01/DJAI.PSE/09/2026 | 2026-09-14 | PB-UMKU certificate and TD-PSE lampiran, signed by BSrE-BSSN |
+
+The certificate is a PB-UMKU "Pendaftaran Penyelenggara Sistem Elektronik Lingkup Privat"
+issued through OSS under KBLI 79121, sector recorded as Pariwisata. The PB-UMKU number
+embeds the NIB and is not reproduced here (public repository); the signed PDF is with the
+owner and in the OSS profile.
+
+Each subdomain in section 3 is filed as its own system, not as a URL of 3.1. The TD-PSE for
+3.1 records one function (public information website) and the data categories declared for
+it (name, email, phone), which set its BSSN risk category. kita and my process identity
+documents, passport data and financial data that 3.1 never declared, so folding them into
+3.1 would make its registered description inaccurate.
+
+### Before filing: not located in the registry on 2026-09-11
 
 No TD-PSE registration was found for Bali Zero, balizero.com, Nuzantara or Zantara.
 
@@ -216,7 +236,10 @@ render for a fetch. Check the live OSS-RBA form before relying on the list.
 1. Name the responsible officer.
 2. Legal name, NIB, KBLI and NPWP confirmed from the NIB detail on 2026-09-13; the section 1
    search re-run the same day with "PT Bayu Bali Nol", "Bayu Bali Nol", "Bali Zero" and
-   "balizero.com": 0 rows each (not located). Remaining: file the UMKU on OSS-RBA.
+   "balizero.com": 0 rows each (not located). UMKU filed; TD-PSE for 3.1 issued 2026-09-14
+   (section 1). Remaining: 3.2 kita and 3.3 my, then the Tools Asesmen PDP and Pakta
+   Integritas. The earlier OSS draft from 2026-09-13 10:31 can be deleted now that the
+   TD-PSE exists.
 3. Confirm in Vercel which project owns zantara.balizero.com (section 3.4).
 4. Confirm the storage locations in the privacy policy still hold (Qdrant Cloud region
    stated as US).
