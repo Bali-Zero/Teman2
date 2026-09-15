@@ -405,15 +405,17 @@ describe("deriveProvenance — PMA traceability on the real dataset", () => {
     fs.readFileSync(DATA_PATH, "utf-8"),
   ) as KBLIRawDataFile;
 
-  it("pins the canonical honesty partition: 54 located, 1,505 gaps", () => {
+  // 54 -> 62 located / 1505 -> 1497 gaps: W-H PR-3b moves 8 codes (47241
+  // 47242 47244 47245 47246 47249 47712 47722) from declared_gap to located.
+  it("pins the canonical honesty partition: 62 located, 1,497 gaps", () => {
     const located = parsed.data.filter(
       (r) => deriveProvenance(r).pma.status === "located",
     );
     const gaps = parsed.data.filter(
       (r) => deriveProvenance(r).pma.status === "declared_gap",
     );
-    expect(located).toHaveLength(54);
-    expect(gaps).toHaveLength(1505);
+    expect(located).toHaveLength(62);
+    expect(gaps).toHaveLength(1497);
     for (const r of located) {
       const prov = deriveProvenance(r).pma;
       expect(prov.locator, `code ${r.kode_kbli_2025}`).toBeTruthy();

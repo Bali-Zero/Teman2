@@ -50,11 +50,13 @@ describe("kbli-data.server — section derivation (Mandate 12 fix)", () => {
       sourceVintage: "2021-05-25",
     });
     expect(getAllCodes()).toHaveLength(1559);
+    // 1505 -> 1497: W-H PR-3b moves 8 codes (47241 47242 47244 47245 47246
+    // 47249 47712 47722) from declared_gap to located (Lampiran II entry 46).
     expect(
       getAllCodes().filter(
         (code) => code.pma.verificationStatus === "declared_gap",
       ),
-    ).toHaveLength(1505);
+    ).toHaveLength(1497);
     for (const code of getAllCodes().filter(
       (item) => item.pma.verificationStatus === "declared_gap",
     )) {

@@ -422,10 +422,19 @@ describe("the PMA verdict banner — the SECOND render site", () => {
     // 448 → 449 and 445 → 446 on 2026-09-11: the L2 re-ingestion from the
     // September OSS vault (spec 2026-09-11 §7) moved l4_bali on 27 codes — 7
     // block flips, net +1 blocked; msme unchanged at 3.
-    expect(notice.length).toBe(449);
+    //
+    // 449 → 441 and 446 → 438 on 2026-09-15 (W-H PR-3b): the Lampiran II
+    // entry-46 specialised-retail cure reserved eight codes (47241 47242
+    // 47244 47245 47246 47249 47712 47722) at 0% foreign; all eight are also
+    // Bali-blocked, so by the same rule that removed 10214/95220/95291/95299
+    // they leave a notice whose job is to explain a BALI-specific cause —
+    // theirs is national too. None carried CHIUSO_PMA_NO_BESAR (they were
+    // plain TERBUKA/100 before, not an inferred-from-missing-Besar-row
+    // status), so msme is unchanged at 3.
+    expect(notice.length).toBe(441);
     expect(msme.length).toBe(3);
-    // 446 pages carry the notice for a cause other than an MSME reservation.
-    expect(notice.length - msme.length).toBe(446);
+    // 438 pages carry the notice for a cause other than an MSME reservation.
+    expect(notice.length - msme.length).toBe(438);
   });
 
   it("the count above is a SUBTRACTION, and names what it subtracted", () => {
@@ -453,8 +462,16 @@ describe("the PMA verdict banner — the SECOND render site", () => {
     for (const code of ["96210", "96220", "96100"]) {
       expect(excluded.map((r) => r.kode_kbli_2025)).toContain(code);
     }
+    // …and the eight the W-H PR-3b Lampiran II entry-46 retail cure sent the
+    // same way on 2026-09-15, for the same reason.
+    for (const code of [
+      "47241", "47242", "47244", "47245", "47246", "47249", "47712", "47722",
+    ]) {
+      expect(excluded.map((r) => r.kode_kbli_2025)).toContain(code);
+    }
     // 448 → 449 on 2026-09-11 (September L2 re-ingestion, net +1 blocked).
-    expect(blocked.length - excluded.length).toBe(449);
+    // 449 → 441 on 2026-09-15 (W-H PR-3b, eight codes above).
+    expect(blocked.length - excluded.length).toBe(441);
     // and it left by CAP, not by status — the status is TERBATAS, which the
     // banner's guard does not look at
     const woodBuilding = RECORDS.find((r) => r.kode_kbli_2025 === "16221");
@@ -550,12 +567,18 @@ describe("the FAQ + FAQPage JSON-LD — the THIRD render site in this file, FIFT
     // three left both sets together.
     // 447 → 448 and 444 → 445 on 2026-09-11: same event as the banner site
     // above (September L2 re-ingestion, net +1 blocked); msme unchanged at 3.
-    expect(answers.length).toBe(448);
+    //
+    // 448 → 440 and 445 → 437 on 2026-09-15 (W-H PR-3b): the SAME eight codes
+    // as the banner site above (47241 47242 47244 47245 47246 47249 47712
+    // 47722), reached here by the other predicate — there they left because
+    // their cap became 0, here because their status became TERBATAS. None
+    // carried CHIUSO_PMA_NO_BESAR, so msme is unchanged at 3.
+    expect(answers.length).toBe(440);
     expect(msme.length).toBe(3);
-    // 445 answers carry the block for a cause other than an MSME reservation —
+    // 437 answers carry the block for a cause other than an MSME reservation —
     // in the visible Q&A and in the FAQPage JSON-LD, the copy that leaves the
     // site.
-    expect(answers.length - msme.length).toBe(445);
+    expect(answers.length - msme.length).toBe(437);
   });
 
   it("this site is a SUBSET of the banner's — a cure for one is not a cure for the other", () => {

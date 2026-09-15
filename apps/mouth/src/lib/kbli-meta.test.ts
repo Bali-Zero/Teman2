@@ -400,9 +400,11 @@ describe("real dataset: the gate binds, and v3 actually differentiates", () => {
       (s) => s === "PMA Eligibility Requires Verification",
     ).length;
 
-    // Compiler-owned partition: 54 whole-code verdicts have a per-code locator
-    // and vintage; all other 1,505 records must reach the neutral metadata arm.
-    expect(pmaGaps).toBe(1505);
+    // Compiler-owned partition: 62 whole-code verdicts have a per-code locator
+    // and vintage; all other 1,497 records must reach the neutral metadata arm.
+    // 54 -> 62 / 1505 -> 1497: W-H PR-3b moves 8 codes (47241 47242 47244
+    // 47245 47246 47249 47712 47722) from declared_gap to located.
+    expect(pmaGaps).toBe(1497);
     expect(suffixes).toHaveLength(1559);
   });
 
