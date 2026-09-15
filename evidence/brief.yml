@@ -1,76 +1,69 @@
-task_id: secondo-livello-second-army-script
+task_id: secondo-livello-second-army-runner
 gear: 2
 l_level: L2
 gate_class: opus
-# Floor for this diff, measured WITH this brief in the diff (the mistake that sank the first cut
-# of this work, PR #6602: the floor was measured on the code-only commit and the brief's own churn
-# then crossed the 1828 threshold by one line). No hot-zone path. Gear 2 declared to match the
-# floor exactly; no pack below Gear 3. The standalone runner and the CI wiring are deliberately
-# NOT here: the runner is its own concern, and .github/workflows/ is a hot-zone path that would
-# force this diff to floor 3.
+# Floor for this diff, measured WITH this brief already staged — the mistake that sank PR #6602
+# was measuring on the code-only commit and letting the brief's own churn cross the threshold
+# afterwards. No hot-zone path here; the CI wiring that would add one ships separately.
 objective: >-
-  D3+D4 of mission SECONDO-LIVELLO-20260915: make army-map.md §1ter runnable.
-  infra/workflows/second-army.js executes a Gear <= 2 mission under the direction Zero RULED on
-  2026-09-15 — the INFERIOR seats BUILD, the Dux SPAWNS them and VERIFIES on disk, a weaker seat
-  never grades a stronger one. infra/workflows/tests/test-second-army-contract.mjs is its
-  contract and ships with it, asserting the ruled direction rather than the syntax.
+  The standalone runner for infra/workflows/ scripts, split out of PR #6602 so each piece lands at
+  its own honest size. run-second-army.mjs compiles and executes a workflow script OUTSIDE the
+  Workflow tool — shell, cron or CI — by injecting the same args/agent/log/phase/parallel/pipeline
+  bindings the harness supplies. It is also the enforcement point for the Builder Contract's
+  "every agent() call pins model:" rule, and this PR makes that enforcement MEASURABLE: a --script
+  flag lets the behavioural suite point the runner at two fixtures that differ only in the pin.
 constraints:
   - >-
-    No Anthropic per-token door in any form. Lanes are native agent() calls; every external seat
-    is reached FROM a lane via Bash (the .claude/skills/workflow/SKILL.md §2 pattern). No key, no
-    token, no env value read or printed anywhere in the diff.
+    No Anthropic per-token door in any form. The single door the runner opens is the `claude` CLI,
+    which carries its own OAuth. No credential is placed on argv, read from the environment, or
+    printed; the only env var read is a numeric per-lane timeout.
   - >-
-    Nothing outside infra/workflows/ is touched. No existing workflow script, test or README
-    section is modified — the two new files are additive and the README change is a pure append.
+    No new dependency: node: builtins only, Node >= 18. The behavioural tests spawn the runner as
+    a child process and run everything through --dry-run, so no claude/codex/agy binary is ever
+    reached and there is no network call.
   - >-
-    No PII in scope: the script carries mission/task text supplied by its caller and routes any
-    PII-bearing lane to local Ollama by doctrine; no client data appears in this diff.
+    Nothing outside infra/workflows/ is touched. second-army.js, shipped in #6603, is NOT modified
+    by this PR — the runner reaches it through a default path, and --script overrides that default
+    without changing it.
 acceptance:
   - text: >-
-      A1: WHEN the contract suite runs SHALL pass 12/12, including the assertions that encode the
-      ruled direction — no builder shares the Dux's family except the grunt seat and that seat is
-      last in the roster; the Dux never appears in its own builder roster; verify lanes are
-      model:"sonnet" and build lanes model:"haiku"; a simulated dead builder lands in deadTiers
-      and the next live builder is used; every cross-family door dead falls back to the grunt
-      seat; the verify prompt never contains the builder's claim sentinel; the refuter lane runs
-      at floor 2 only and exactly once; floor 3 launches no build, verify or refute lane.
-    probe: node infra/workflows/tests/test-second-army-contract.mjs
+      A1: WHEN the behavioural suite runs SHALL pass 5/5 — a fixture lane that pins model: runs and
+      its return value reaches stdout; a fixture lane that omits it is refused with a non-zero exit
+      and a reason on stderr; an unsupported model alias is refused and named; a missing
+      --args-file is a usage error; stdout carries the JSON return value alone.
+    probe: node infra/workflows/tests/test-run-second-army.mjs
   - text: >-
-      A2: WHEN the suite is mutation-tested in a scratch copy SHALL be falsifiable, not
-      tautological — reverting the direction (builder sonnet, verifiers luna/spark/flash) fails
-      5 tests, swapping the verify lane's model fails 1, putting the Dux in its own builder roster
-      fails 3, leaking the builder's claim into the verify prompt fails 1, and running the refuter
-      at every floor fails 1. Measured by the independent gate on the first cut of this suite
-      (receipt GATE-6602.md, 2026-09-15T16:21:19Z), whose 12 surviving tests are unchanged here.
-    probe: node infra/workflows/tests/test-second-army-contract.mjs
+      A2 THE POINT OF THIS PR: WHEN both call sites of assertModelPinned() are removed in a scratch
+      copy SHALL go RED — 4/5, failing test_unpinned_fixture_is_refused. The test this replaces was
+      a regex over the runner's source, and an independent gate proved it passed with the guard
+      commented out. A guard is a behaviour and has to be measured as one.
+    probe: "copy the runner+suite to a scratch dir, replace both `assertModelPinned(opts);` call sites with a comment, rerun the suite"
   - text: >-
-      A3: WHEN the script's source is read SHALL contain no trace of the reversed direction the
-      first draft carried — no const VERIFIER_TABLE, and no builder roster naming the Dux's own
-      seat. grep must return 0 for both.
-    probe: grep -c "VERIFIER_TABLE" infra/workflows/second-army.js || true
+      A3 THE MIRROR OF A2: WHEN the guard is rewritten as `if (!opts?.model)` in a scratch copy —
+      identical behaviour, different spelling — the suite SHALL stay 5/5. The replaced regex test
+      went red on exactly this rewrite. The two mutations together show the new test tracks
+      behaviour and not spelling.
+    probe: "copy the runner+suite to a scratch dir, rewrite the guard condition as optional chaining, rerun the suite"
+  - text: >-
+      A4: WHEN the pre-existing contract suite for second-army.js runs SHALL still pass 12/12 —
+      this PR must not disturb what #6603 shipped.
+    probe: node infra/workflows/tests/test-second-army-contract.mjs
 assumptions:
   - text: >-
-      Codex on M5 cannot authenticate today ("refresh token was already used"), so luna, spark and
-      terra are dead doors on this machine right now. The script must therefore DECLARE them in
-      deadTiers and fall through, never skip silently — which is what the dead-builder test proves
-      with a SIMULATED probe failure, so the suite does not depend on today's quota weather.
+      --script is load-bearing, not decoration. Without it the runner can only ever execute
+      second-army.js, and a guard that refuses a malformed lane cannot be measured, because
+      second-army.js never presents one. The fixtures are the malformed lane.
     status: verified
-    probe: "codex exec on M5 2026-09-15 returns the refresh-token error; `codex login` is a human credential action pending with Zero"
+    probe: "test_unpinned_fixture_is_refused passes only because --script can reach fixtures/fixture-model-missing.js"
   - text: >-
-      The live Gemini Flash slug is gemini-3.8-flash-low, not the gemini-3.5-flash spelling the
-      rest of the repo carries in 22 places; the flash door pins the live one.
+      Importing the runner in-process is not a viable test form: it is a CLI entrypoint that
+      executes main() at import and exports nothing selectively. The suite therefore spawns it as a
+      child process and asserts on exit code and stderr.
     status: verified
-    probe: "`agy models` on M5 2026-09-15 listed gemini-3.8-flash-{high,medium,low} and the 3.7/3.6 families; gemini-3.5-flash was absent"
+    probe: "run-second-army.mjs ends with a bare main() call and has no export statement"
   - text: >-
-      Date.now()/new Date()/Math.random() throw inside a Workflow script and the script has no
-      filesystem access, so every timestamp arrives through args.stamp and the run report is
-      written by a Write-capable agent() lane rather than by the script.
-    status: verified
-    probe: 'the report path is built from args.stamp and written only via the model:"haiku" report lane; the contract suite drives the script with a stub agent and records every lane'
-  - text: >-
-      Nothing in .github/workflows/ runs infra/workflows/tests/ today — not this suite, not the
-      pre-existing test-kbli-certification-contract.mjs. The suite is run by hand until the CI
-      wiring ships as its own PR, and the README says exactly that rather than claiming a
-      consumer that does not exist (cicatrix #2, exists != armed).
+      Nothing in .github/workflows/ runs infra/workflows/tests/ today, so this suite — like the
+      contract suite beside it — is run by hand until the CI wiring ships as its own PR. The README
+      says so rather than implying a consumer that does not exist.
     status: verified
     probe: "grep -rl 'infra/workflows' .github/workflows/ returns nothing"
