@@ -107,6 +107,14 @@ ALTER TABLE wa_outbox
 ALTER TABLE wa_outbox
     VALIDATE CONSTRAINT wa_outbox_inbound_message_id_fkey;
 
+-- Postgres does NOT auto-create an index on the REFERENCING side of a FK
+-- (only the referenced side's PK/unique is indexed for free): unindexed FK
+-- -> seq scan on the child (wa_outbox) at every parent (meta_inbox_messages)
+-- DELETE (retention sweeps, a PDP/GDPR erasure request). Harmless at
+-- today's ~450 rows, quadratic as wa_outbox grows.
+CREATE INDEX IF NOT EXISTS wa_outbox_inbound_message_id_idx
+    ON wa_outbox (inbound_message_id);
+
 ALTER TABLE wa_outbox
     DROP CONSTRAINT IF EXISTS wa_outbox_generation_fall_off_reason_check;
 ALTER TABLE wa_outbox
@@ -222,6 +230,8 @@ ALTER TABLE wa_outbox
         'support_judge_absent',
         'unknown'
     )) NOT VALID;
+
+DROP INDEX IF EXISTS wa_outbox_inbound_message_id_idx;
 
 ALTER TABLE wa_outbox DROP CONSTRAINT IF EXISTS wa_outbox_inbound_message_id_fkey;
 ALTER TABLE wa_outbox DROP COLUMN IF EXISTS inbound_message_id;

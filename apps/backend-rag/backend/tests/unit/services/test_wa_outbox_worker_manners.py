@@ -245,7 +245,7 @@ async def test_apology_sent_on_terminal_failure() -> None:
     thread = _open_window_thread()
     conn = ScriptedConn(
         # human_handling_now, apology_sent_at read (None = not yet), latest inbound
-        fetchval_results=[False, None, _NON_TRIVIAL_TEXT],
+        fetchval_results=[False, False, None, _NON_TRIVIAL_TEXT],
     )
     svc = _wa_service()
 
@@ -261,7 +261,7 @@ async def test_apology_sent_on_terminal_failure() -> None:
 @pytest.mark.asyncio
 async def test_apology_localized_to_detected_language() -> None:
     thread = _open_window_thread()
-    conn = ScriptedConn(fetchval_results=[False, None, _BAHASA_TEXT])
+    conn = ScriptedConn(fetchval_results=[False, False, None, _BAHASA_TEXT])
     svc = _wa_service()
 
     await wa_outbox_worker._maybe_send_apology(conn, 1, thread, svc)
@@ -275,7 +275,7 @@ async def test_apology_never_leaks_internal_error_text() -> None:
     exception content (the caller passes gen_exc/exc only to the internal
     ledger error column, never anywhere near this function)."""
     thread = _open_window_thread()
-    conn = ScriptedConn(fetchval_results=[False, None, _NON_TRIVIAL_TEXT])
+    conn = ScriptedConn(fetchval_results=[False, False, None, _NON_TRIVIAL_TEXT])
     svc = _wa_service()
 
     await wa_outbox_worker._maybe_send_apology(conn, 1, thread, svc)
@@ -334,7 +334,7 @@ async def test_apology_still_sent_when_manners_flag_off(monkeypatch) -> None:
     opposite under the OLD single-flag contract."""
     monkeypatch.delenv("WA_OUTBOX_MANNERS_ENABLED", raising=False)
     thread = _open_window_thread()
-    conn = ScriptedConn(fetchval_results=[False, None, _NON_TRIVIAL_TEXT])
+    conn = ScriptedConn(fetchval_results=[False, False, None, _NON_TRIVIAL_TEXT])
     svc = _wa_service()
 
     await wa_outbox_worker._maybe_send_apology(conn, 1, thread, svc)
@@ -352,7 +352,7 @@ async def test_apology_disabled_when_terminal_apology_flag_off(monkeypatch) -> N
     thread = _open_window_thread()
     # fetchval_results is never consumed: the flag check is the function's
     # FIRST statement, before any conn call.
-    conn = ScriptedConn(fetchval_results=[False, None, _NON_TRIVIAL_TEXT])
+    conn = ScriptedConn(fetchval_results=[False, False, None, _NON_TRIVIAL_TEXT])
     svc = _wa_service()
 
     await wa_outbox_worker._maybe_send_apology(conn, 1, thread, svc)
@@ -370,7 +370,7 @@ async def test_apology_tells_a_human_on_the_way_out(monkeypatch) -> None:
     notify_spy = AsyncMock(return_value=True)
     monkeypatch.setattr(_wa_inbox_bot_module, "notify_human_telegram", notify_spy)
     thread = _open_window_thread()
-    conn = ScriptedConn(fetchval_results=[False, None, _NON_TRIVIAL_TEXT])
+    conn = ScriptedConn(fetchval_results=[False, False, None, _NON_TRIVIAL_TEXT])
     svc = _wa_service()
 
     await wa_outbox_worker._maybe_send_apology(
@@ -426,7 +426,7 @@ async def test_apology_not_resent_when_already_claimed() -> None:
     thread = _open_window_thread()
     conn = ScriptedConn(
         # human_handling_now, apology_sent_at (non-None = already sent)
-        fetchval_results=[False, "2026-08-20T10:00:00+00:00"],
+        fetchval_results=[False, False, "2026-08-20T10:00:00+00:00"],
     )
     svc = _wa_service()
 
@@ -442,7 +442,7 @@ async def test_apology_send_failure_never_raises_and_never_masks_original() -> N
     must leave the row eligible for a future apology attempt, not
     permanently suppressed by a flag that was set before the send even ran."""
     thread = _open_window_thread()
-    conn = ScriptedConn(fetchval_results=[False, None, _NON_TRIVIAL_TEXT])
+    conn = ScriptedConn(fetchval_results=[False, False, None, _NON_TRIVIAL_TEXT])
     svc = _wa_service(raise_exc=RuntimeError("graph down"))
 
     # Must not raise — the caller has already recorded the real failure by
@@ -452,6 +452,93 @@ async def test_apology_send_failure_never_raises_and_never_masks_original() -> N
     svc.send_message.assert_awaited_once()
     # The durable claim must NEVER have been written on a failed send.
     assert not conn.sql_contains("apology_sent_at = NOW()")
+
+
+# ── B2.5 successor (2026-09-15): a fully-failed burst apologises ONCE ──────
+#
+# `_coalesce_thread_bursts` used to collapse a burst of client messages into
+# ONE outbox row, so a total generation failure produced ONE apology.
+# Migration 318 (bound-inbox binding) gives each burst message its OWN row
+# instead, served strictly FIFO per thread — so without this guard a burst
+# of N rows that all exhaust retries would send N apologies, and an EARLIER
+# row's apology could fire while a LATER row of the same burst is still on
+# its way to a real answer (client gets "we gave up" then a working reply
+# seconds later). `_has_live_successor` suppresses the CLIENT apology only
+# when a newer row of the same thread has not yet reached a terminal
+# outcome; the human alert (`_tell_a_human`) is unconditional either way.
+
+
+@pytest.mark.asyncio
+async def test_apology_still_fires_when_no_successor_exists_innocence() -> None:
+    """INNOCENCE: a single row on a thread with no successor apologises
+    exactly as it did before this fix — the successor guard must never
+    become a general "the bot stopped apologising" regression."""
+    thread = _open_window_thread()
+    conn = ScriptedConn(
+        # human_handling_now, has_live_successor (none), apology_sent_at, latest inbound
+        fetchval_results=[False, False, None, _NON_TRIVIAL_TEXT],
+    )
+    svc = _wa_service()
+
+    await wa_outbox_worker._maybe_send_apology(conn, 1, thread, svc)
+
+    svc.send_message.assert_awaited_once()
+    assert svc.send_message.await_args.kwargs["text"] == wa_outbox_worker._apology_text("en")
+    assert conn.sql_contains("apology_sent_at = NOW()")
+
+
+@pytest.mark.asyncio
+async def test_apology_suppressed_when_a_newer_row_of_the_same_thread_is_still_pending(
+    monkeypatch,
+) -> None:
+    """GUILT (Gemini 3.1 Pro constructive review, B2.5 successor): row 1 of
+    a burst exhausts retries while row 2 (same thread, higher id) is still
+    on its way to an answer — the client must not be told "we gave up"
+    seconds before row 2's real reply arrives. The human alert still fires:
+    it is deliberately decoupled from the client-facing suppression (see
+    the call-site comment in `_maybe_send_apology`)."""
+    notify_spy = AsyncMock(return_value=True)
+    monkeypatch.setattr(_wa_inbox_bot_module, "notify_human_telegram", notify_spy)
+    thread = _open_window_thread()
+    conn = ScriptedConn(fetchval_results=[False, True])  # human_handling_now, has_live_successor
+    svc = _wa_service()
+
+    await wa_outbox_worker._maybe_send_apology(conn, 1, thread, svc)
+
+    svc.send_message.assert_not_awaited()
+    assert not conn.sql_contains("apology_sent_at")
+    notify_spy.assert_awaited_once()  # human still told, unconditionally
+
+
+@pytest.mark.asyncio
+async def test_apology_fires_exactly_once_for_a_fully_failed_burst_and_it_is_the_last_row(
+    monkeypatch,
+) -> None:
+    """GUILT: three rows of one thread all exhaust retries — B2.5's FIFO
+    ordering means row 2 is still 'pending' while row 1 terminates, and row
+    3 is still 'pending' while row 2 terminates, so only row 3 (the LAST
+    row) ever finds no live successor. Result: exactly ONE apology for the
+    whole burst, and it is the last row's — not three, which is what
+    removing `_coalesce_thread_bursts` would otherwise produce."""
+    notify_spy = AsyncMock(return_value=True)
+    monkeypatch.setattr(_wa_inbox_bot_module, "notify_human_telegram", notify_spy)
+    thread = _open_window_thread(thread_id=7)
+    conn = ScriptedConn(
+        fetchval_results=[
+            False, True,  # row 1: human_handling_now, has_live_successor (row 2 still pending)
+            False, True,  # row 2: human_handling_now, has_live_successor (row 3 still pending)
+            False, False, None, _NON_TRIVIAL_TEXT,  # row 3: no successor left -> sends
+        ]
+    )
+    svc = _wa_service()
+
+    await wa_outbox_worker._maybe_send_apology(conn, 1, thread, svc, reason="bot_generation_exhausted")
+    await wa_outbox_worker._maybe_send_apology(conn, 2, thread, svc, reason="bot_generation_exhausted")
+    await wa_outbox_worker._maybe_send_apology(conn, 3, thread, svc, reason="bot_generation_exhausted")
+
+    svc.send_message.assert_awaited_once()
+    assert svc.send_message.await_args.kwargs["text"] == wa_outbox_worker._apology_text("en")
+    assert notify_spy.await_count == 3  # every terminal row still tells a human
 
 
 # ── Wiring: prove process_outbox_once reaches these hooks at the right time ─
@@ -538,6 +625,7 @@ async def test_apology_fires_after_bot_generation_exhausts_retries() -> None:
             True,  # advisory lock
             "hi",  # _latest_inbound_text for the ack → trivial, ack skipped
             False,  # human_handling_now (apology takeover check)
+            False,  # has_live_successor (no other row in this thread)
             None,  # apology_sent_at read (not yet sent)
             _NON_TRIVIAL_TEXT,  # _latest_inbound_text for the apology
         ],
@@ -585,9 +673,10 @@ def _terminal_conn_open_window(outbox_id: int) -> ScriptedConn:
         fetchval_results=[
             True,  # advisory lock
             "hi",  # _latest_inbound_text for the ack → trivial, ack skipped
-            # The next 3 are consumed ONLY if the silence guard is broken
+            # The next 4 are consumed ONLY if the silence guard is broken
             # and _maybe_send_apology runs to completion:
             False,  # human_handling_now (apology takeover check)
+            False,  # has_live_successor (no other row in this thread)
             None,  # apology_sent_at read (not yet sent)
             _NON_TRIVIAL_TEXT,  # _latest_inbound_text for the apology
         ],

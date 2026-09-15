@@ -291,6 +291,34 @@ def _window_open_locally(thread: asyncpg.Record) -> bool:
     )
 
 
+async def _has_live_successor(
+    conn: asyncpg.Connection, thread_id: int, outbox_id: int
+) -> bool:
+    """True when a NEWER bot-reply row of the SAME thread has not yet
+    reached a terminal outcome (B2.5 FIFO per-thread bursts, migration 318
+    removed ``_coalesce_thread_bursts`` — a burst of client messages is now
+    one outbox row EACH, not one coalesced row). Used to suppress the
+    terminal apology for a row that is not the LAST one in a failing burst:
+    see ``_maybe_send_apology``'s call site for why this must not also
+    suppress the human alert.
+    """
+    return bool(
+        await conn.fetchval(
+            """
+            SELECT EXISTS (
+                SELECT 1 FROM wa_outbox
+                WHERE thread_id = $1
+                  AND id > $2
+                  AND needs_generation = true
+                  AND status IN ('pending', 'claimed', 'generating')
+            )
+            """,
+            thread_id,
+            outbox_id,
+        )
+    )
+
+
 async def _latest_inbound_text(conn: asyncpg.Connection, thread_id: int) -> str:
     """The most recent CUSTOMER message body for this thread — used only to
     drive should_send_ack's triviality filter and detect_language. Filters
@@ -446,6 +474,20 @@ async def _maybe_send_apology(
     client, not the internal Telegram alert — see the call-site comment on
     `_tell_a_human` below for why that call now happens BEFORE this check.
 
+    Successor-aware for the CLIENT SEND ONLY (2026-09-15, B2.5 successor —
+    Gemini 3.1 Pro constructive review): `_coalesce_thread_bursts` used to
+    collapse a burst of client messages into ONE outbox row, so a total
+    generation failure produced ONE apology. Migration 318 gives each
+    message its own row instead (FIFO per thread), so a burst of N rows
+    that all exhaust retries would otherwise send N apologies — and worse,
+    if an EARLIER row's apology fires while a LATER row of the same burst
+    is still on its way to a real answer, the client gets "we gave up"
+    followed seconds later by a working reply. `_has_live_successor` skips
+    the CLIENT apology (not the human alert, see below) whenever a newer
+    row of the same thread has not yet reached a terminal outcome — only
+    the LAST row of a failing burst has no such successor, so a fully
+    failed burst still yields exactly ONE apology.
+
     Armed by ``_terminal_apology_enabled()`` (``WA_OUTBOX_TERMINAL_APOLOGY_ENABLED``,
     default **ON**, 2026-08-27) — a DEDICATED flag, deliberately NOT
     ``_manners_enabled()`` (which stays the ack's flag, default OFF,
@@ -485,6 +527,19 @@ async def _maybe_send_apology(
             reason=f"terminal_apology:{reason}",
             thread_id=thread["thread_id"],
         )
+
+        # Successor suppression (2026-09-15, B2.5 successor): a newer row of
+        # this SAME thread is still live (pending/claimed/generating) —
+        # i.e. this is not the last row of the burst. Protects against a
+        # client receiving this apology followed, seconds later, by a
+        # working answer from that successor row. Deliberately AFTER
+        # `_tell_a_human` above: the human alert and the client apology are
+        # decoupled by design (see this function's docstring on the window
+        # check for the same pattern) — a colleague must be told about
+        # EVERY terminal row in the burst, even the ones whose client-facing
+        # apology is suppressed here.
+        if await _has_live_successor(conn, thread["thread_id"], outbox_id):
+            return
 
         if not _window_open_locally(thread):
             return
@@ -1219,19 +1274,42 @@ async def _process_claimed_row(
 
     if needs_generation and human_handling_now:
         # Operator took over WHILE we were generating — the reply we just
-        # produced must NEVER be sent.
-        await conn.execute(
+        # produced must NEVER be sent. Fenced like every other
+        # state-changing UPDATE after the claim (RETURNING id + a matched-
+        # row check) — this branch used to fire-and-forget a plain
+        # conn.execute() here, so a lease stolen mid-generation (fenced_abort
+        # is None below) silently recorded nothing: the row still reaches a
+        # terminal state via whichever worker actually owns it now, but the
+        # 'aborted_human_takeover_pre_send' reason — the one fact that would
+        # explain why nothing was sent — was lost. Execution still never
+        # falls through to the send below either way: the `return
+        # "aborted_human"` a few lines down is unconditional regardless of
+        # whether this UPDATE actually matched.
+        fenced_abort = await conn.fetchrow(
             """
             UPDATE wa_outbox
             SET status = 'failed',
                 generation_fall_off_reason = 'aborted_human_takeover_pre_send',
                 generation_fall_off_at = NOW()
             WHERE id = $1 AND claim_token = $2 AND status = $3
+            RETURNING id
             """,
             outbox_id,
             claim_token,
             expected_status,
         )
+        if fenced_abort is None:
+            # Loud and greppable on purpose: this is exactly the "a row
+            # reached a terminal state and nothing recorded why" hole this
+            # PR exists to close — a stolen lease must not look identical
+            # to a clean recording in the logs.
+            logger.warning(
+                "wa_outbox: lease lost before aborted_human_takeover_pre_send "
+                "could be recorded (outbox=%s thread=%s) — the abort reason "
+                "was NOT written to wa_outbox",
+                outbox_id,
+                thread_id,
+            )
         await conn.execute(
             """
             UPDATE meta_inbox_messages

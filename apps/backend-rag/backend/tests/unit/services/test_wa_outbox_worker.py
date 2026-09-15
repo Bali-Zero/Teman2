@@ -771,6 +771,60 @@ async def test_fencing_aborts_send_when_takeover_happens_during_generation(
 
 
 @pytest.mark.asyncio
+async def test_fencing_lost_before_aborted_human_takeover_pre_send_is_recorded_loudly(
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """GUILT (Gemini 3.1 Pro constructive review): the abort-recording
+    UPDATE in this branch used to be a plain conn.execute() with no fenced
+    check — if this worker's OWN lease was stolen between the pre-send
+    fence (a few lines above) and this UPDATE, the UPDATE matches zero rows
+    (claim_token/status no longer match) and the
+    'aborted_human_takeover_pre_send' reason was silently NEVER written —
+    exactly the "a row reached a terminal state and nothing recorded why"
+    hole this PR exists to close. The bot must still never send (the
+    unconditional `return "aborted_human"` a few lines below is unchanged)
+    — but the loss must now be OBSERVABLE via a loud warning, not silent."""
+    _arm_codex(monkeypatch)
+    candidate = _candidate(20, thread_id=7, message_id=2000, needs_generation=True)
+    conn = ScriptedConn(
+        fetchrow_results=[
+            _thread_row(human_handling=False),  # NOT taken over yet at claim time
+            {"id": 20},  # generating-transition fenced RETURNING
+            {"id": 20},  # pre-send fence RETURNING (lease still ours)
+            None,  # aborted_human_takeover_pre_send UPDATE RETURNING -> 0 rows (lease stolen)
+        ],
+        fetchval_results=[
+            True,  # advisory lock
+            True,  # human_handling re-read at pre-send → TRUE (takeover mid-gen)
+        ],
+        fetch_results=[[candidate], []],
+    )
+    pool = _make_pool(conn)
+    svc = _wa_service()
+
+    with caplog.at_level("WARNING", logger="backend.services.integrations.wa_outbox_worker"):
+        result = await process_outbox_once(pool, svc, _bot_gen)
+
+    assert result == "aborted_human"  # still never sends, unconditionally
+    svc.send_message.assert_not_awaited()
+    # The UPDATE was still attempted (its SQL is recorded regardless of
+    # whether it actually matched a row) ...
+    assert conn.sql_contains("aborted_human_takeover_pre_send")
+    # ... but a stolen lease here must be OBSERVABLE, not swallowed.
+    assert any(
+        "aborted_human_takeover_pre_send" in r.getMessage() and "NOT written" in r.getMessage()
+        for r in caplog.records
+    ), [r.getMessage() for r in caplog.records]
+    # The message-ledger write is unconditional either way (it has no
+    # claim_token fence of its own — it's keyed on message_id, not on this
+    # worker's lease).
+    assert conn.sql_contains(
+        "SET status = 'failed', error = 'aborted_human_takeover_pre_send'"
+    )
+
+
+@pytest.mark.asyncio
 async def test_fencing_returns_fenced_when_lease_lost_before_generating_transition() -> None:
     """The generating-transition UPDATE is fenced by claim_token+status; if it
     matches zero rows (lease already reclaimed) the worker aborts silently
