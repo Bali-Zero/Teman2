@@ -1057,9 +1057,9 @@
 55104 | Aktivitas Hotel Bintang Dua | NOT_VERIFIED | Not verified | Menengah Rendah / Menengah Tinggi
 55105 | Aktivitas Hotel Bintang Satu | TERBATAS | 0% | Menengah Rendah / Menengah Tinggi
 55106 | Aktivitas Hotel Nonbintang | NOT_VERIFIED | Not verified | Menengah Tinggi / Menengah Rendah
-55201 | Aktivitas Rumah Tinggal Sewa (Homestay) | NOT_VERIFIED | Not verified | Menengah Rendah
+55201 | Aktivitas Rumah Tinggal Sewa (Homestay) | TERBATAS | 0% | Menengah Rendah
 55202 | Aktivitas Hostel Remaja (Youth Hostel) | NOT_VERIFIED | Not verified | Menengah Rendah
-55203 | Aktivitas Vila | NOT_VERIFIED | Not verified | Menengah Rendah
+55203 | Aktivitas Vila | TERBATAS | 0% | Menengah Rendah
 55204 | Aktivitas Apartemen Hotel | NOT_VERIFIED | Not verified | Menengah Tinggi
 55209 | Aktivitas Penyediaan Akomodasi Jangka Pendek Lainnya | NOT_VERIFIED | Not verified | Menengah Rendah
 55300 | Aktivitas Penyediaan Bumi Perkemahan, Persinggahan Karavan, dan Taman Karavan | NOT_VERIFIED | Not verified | Menengah Rendah
@@ -1338,7 +1338,7 @@
 79129 | Aktivitas Biro Perjalanan Lainnya | NOT_VERIFIED | Not verified | Menengah Tinggi
 79901 | Jasa Informasi Pariwisata | NOT_VERIFIED | Not verified | Rendah
 79902 | Jasa Informasi Daya Tarik Wisata | NOT_VERIFIED | Not verified | Rendah
-79903 | Jasa Pramuwisata | NOT_VERIFIED | Not verified | Rendah
+79903 | Jasa Pramuwisata | TERBATAS | 0% | Rendah
 79909 | Aktivitas Terkait Perjalanan Lainnya YTDL | NOT_VERIFIED | Not verified | Not classified
 80110 | Aktivitas Investigasi dan Keamanan Swasta | NOT_VERIFIED | Not verified | Tinggi
 80190 | Aktivitas Keamanan YTDL | NOT_VERIFIED | Not verified | Not classified
