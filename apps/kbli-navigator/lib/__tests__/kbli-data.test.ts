@@ -159,7 +159,11 @@ function pmaDisclosureContract() {
     assert.equal(getCode(code)?.intel_2026, undefined, `${code}: unsafe intel`);
   }
 
-  assert.equal(getCode("47111")?.tier, "gold");
+  // 47111 was de-certified from standaloneGold by W-H PR-3c (its gold prose
+  // named 47191/47192 as "fully open to 100% PMA" while both are
+  // declared_gap) — it is still a "located" code with published canonical
+  // intel, just no longer gold-tier.
+  assert.notEqual(getCode("47111")?.tier, "gold");
   assert.equal(getCode("65121")?.tier, "gold");
   assert.notEqual(getCode("47221")?.tier, "gold");
   assert.notEqual(getCode("16291")?.tier, "gold");
@@ -206,20 +210,34 @@ function editorialCertificationContract() {
     "PMA fingerprint drift must fail closed",
   );
 
-  const safeGold = getRawGoldContentForCertification("47111");
+  // 65121 (not 47111 — de-certified from standaloneGold by W-H PR-3c) is the
+  // positive standalone-gold example; 47111's raw gold source is still
+  // parsed (untouched) but the registry no longer certifies it, so it must
+  // behave exactly like 47221's uncorrected/withheld case.
+  const gold65121 = getCode("65121");
+  assert.ok(gold65121, "65121 transformed record");
+  const safeGold = getRawGoldContentForCertification("65121");
+  const decertifiedGold = getRawGoldContentForCertification("47111");
   const unsafeGold = getRawGoldContentForCertification("47221");
-  assert.ok(safeGold, "47111 raw standalone gold");
+  assert.ok(safeGold, "65121 raw standalone gold");
+  assert.ok(decertifiedGold, "47111 raw standalone gold (still parsed, no longer certified)");
   assert.ok(unsafeGold, "47221 raw standalone gold");
-  assert.equal(hasCertifiedStandaloneGold("47111", safe!.pma, safeGold), true);
+  assert.equal(hasCertifiedStandaloneGold("65121", gold65121!.pma, safeGold), true);
+  assert.equal(
+    hasCertifiedStandaloneGold("47111", safe!.pma, decertifiedGold),
+    false,
+    "de-certified standalone gold must remain withheld",
+  );
   assert.equal(
     hasCertifiedStandaloneGold("47221", getCode("47221")!.pma, unsafeGold),
     false,
     "uncorrected standalone gold must remain withheld",
   );
   assert.equal(getGoldContent("47221", getCode("47221")!.pma), null);
+  assert.equal(getGoldContent("47111", safe!.pma), null);
   assert.equal(
-    getGoldContent("47111", safe!.pma)?.zantaraOpener,
-    neutralKbliChatOpenerText("47111"),
+    getGoldContent("65121", gold65121!.pma)?.zantaraOpener,
+    neutralKbliChatOpenerText("65121"),
     "published standalone gold must use the compiler-owned neutral opener",
   );
   assert.equal(
@@ -229,7 +247,7 @@ function editorialCertificationContract() {
   );
 
   const goldCodes = getGoldCodes((code) => getCode(code)?.pma);
-  assert.deepEqual(goldCodes, ["47111", "65121"]);
+  assert.deepEqual(goldCodes, ["65121"]);
   assert.deepEqual(
     getAllCodes()
       .filter((code) => code.tier === "gold")

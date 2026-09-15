@@ -75,7 +75,12 @@ describe("kbli-data.server — section derivation (Mandate 12 fix)", () => {
     expect(hasGoldContent("47221")).toBe(true);
     expect(getGoldCodes()).toContain("47221");
     expect(getGoldCodes()).not.toContain("16291");
-    expect(getGoldCodes()).toHaveLength(15);
+    // 15 -> 14: 47111 was de-certified from mouthGold by W-H PR-3c (its gold
+    // prose named 47191/47192 as "fully open to 100% PMA" while both are
+    // declared_gap; withdrawn rather than hand-edited, no compiler exists
+    // for non-whatYouNeed gold fields).
+    expect(getGoldCodes()).not.toContain("47111");
+    expect(getGoldCodes()).toHaveLength(14);
     for (const code of getGoldCodes()) {
       expect(getCode(code)?.pma.verificationStatus, code).toBe("located");
       expect(hasPublishablePmaCap(getCode(code)!.pma), code).toBe(true);
