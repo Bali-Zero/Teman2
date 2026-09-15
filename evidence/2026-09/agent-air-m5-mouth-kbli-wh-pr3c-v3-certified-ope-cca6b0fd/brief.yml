@@ -4,21 +4,25 @@ task: >-
   detector cannot see, and a stale test pinned 47111 as certified gold. A
   semantic read of 59 certified capped entries (16 FALSE + 41 AMBIGUOUS)
   drove this PR: de-certify 19 entries whose prose could not be trivially
-  cured (canonicalIntel 49->37, mouthGold 14->8, standaloneGold 1->0 — page
-  withholds them, fail closed) + whole-field cure of 12 fields on 12 codes.
+  cured (canonicalIntel 49->37, mouthGold 15->9, standaloneGold 2->1 against
+  main's PR-2b v3 baseline — page withholds them, fail closed) + whole-field
+  cure of 10 of 12 target fields (21021/21022's whoThisIsFor held back: the
+  Dux-approved wording states "100%" domestic capital on a 0%-cap record and
+  the compiler's percentage gate cannot distinguish that from a foreign-cap
+  claim; escalated, not forced).
 lane: mouth/kbli-wh-pr3c-v3-certified-openness
 machine: M5
 date: 2026-09-15
 gear: 2
 gear_reason: >-
   Deterministic floor 2 (size, no hot-zone path). Client-facing KBLI prose +
-  registry re-pin + 6 consumer-test updates; reuses
-  cure_prose_national_openness.py and backfill_new_sha256.py unmodified, no
-  new compiler, no migration.
+  registry re-pin + 8 consumer-test updates, replayed on main's PR-2b v3
+  canonical; reuses cure_prose_national_openness.py and
+  backfill_new_sha256.py unmodified, no new compiler, no migration.
 acceptance:
-  - "python3 -m pytest scripts/kbli_filiera/ -q -> 0 failed (1393 passed, 1 skipped)"
+  - "python3 -m pytest scripts/kbli_filiera/ -q -> 0 failed (1418 passed, 1 skipped)"
   - "cd apps/backend-rag && pytest $(find backend/tests -iname 'test_*kbli*.py') -> 0 failed (775 passed)"
-  - "cd apps/mouth && npx vitest run <56 KBLI test files> && npx tsc --noEmit -> 761 passed, tsc clean"
-  - "cd apps/kbli-navigator && ../../node_modules/.bin/tsx --test lib/__tests__/kbli-data.test.ts -> 1 passed (37/57 located certified)"
+  - "cd apps/mouth && npx vitest run <47 KBLI test files> && npx tsc --noEmit -> 699 passed, tsc clean"
+  - "cd apps/kbli-navigator && npx tsx lib/__tests__/kbli-data.test.ts -> 1 passed (37/57 located certified)"
   - "bash scripts/sync_kbli_dataset.sh --check -> all 5 consumers in sync"
   - "bash scripts/kbli_filiera/vault-checks.sh (scoreboard/perpres_body_default/slice/foreign_cap) -> 4x rc=0"
