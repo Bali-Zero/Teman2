@@ -20,7 +20,7 @@
       "open_supporting_tier_absent:APERTO_BALI_RISCHIO_ALTO": 10,
       "open_supporting_tier_absent:OK_or_HIGHER_RISK": 87,
       "status:APERTO_BALI_RISCHIO_ALTO": 10,
-      "status:ATTENZIONE_FASCIA_BALI": 387,
+      "status:ATTENZIONE_FASCIA_BALI": 383,
       "status:BLOCCATO_DIPENDE_SCOPE": 61,
       "status:CHIUSO_BALI": 40,
       "status:CHIUSO_BALI_PROPOSTO": 1,
@@ -30,10 +30,10 @@
       "status:NON_CLASSIFICABILE": 24,
       "status:OK_or_HIGHER_RISK": 942,
       "status:TERBATAS": 5,
-      "status:TERTUTUP": 68,
-      "verdict_state:blocked": 102,
+      "status:TERTUTUP": 72,
+      "verdict_state:blocked": 106,
       "verdict_state:open": 3,
-      "verdict_state:provisional": 1430,
+      "verdict_state:provisional": 1426,
       "verdict_state:unknown": 24
     }
   },
@@ -2720,15 +2720,15 @@
     },
     "10214": {
       "facts_basis": {
-        "status": "ATTENZIONE_FASCIA_BALI",
-        "blocked": false,
-        "confidence": "MEDIUM",
-        "needs_review": true,
+        "status": "TERTUTUP",
+        "blocked": true,
+        "confidence": "HIGH",
+        "needs_review": false,
         "supporting_tier_absent": false,
         "supporting_besar_tiers": ["Menengah Rendah"]
       },
       "patch": {
-        "verdict_state": "provisional"
+        "verdict_state": "blocked"
       }
     },
     "10215": {
@@ -4797,15 +4797,15 @@
     },
     "16221": {
       "facts_basis": {
-        "status": "ATTENZIONE_FASCIA_BALI",
-        "blocked": false,
-        "confidence": "MEDIUM",
-        "needs_review": true,
+        "status": "TERTUTUP",
+        "blocked": true,
+        "confidence": "HIGH",
+        "needs_review": false,
         "supporting_tier_absent": false,
         "supporting_besar_tiers": ["Menengah Rendah"]
       },
       "patch": {
-        "verdict_state": "provisional"
+        "verdict_state": "blocked"
       }
     },
     "16222": {
@@ -20902,15 +20902,15 @@
     },
     "95220": {
       "facts_basis": {
-        "status": "ATTENZIONE_FASCIA_BALI",
-        "blocked": false,
-        "confidence": "MEDIUM",
-        "needs_review": true,
+        "status": "TERTUTUP",
+        "blocked": true,
+        "confidence": "HIGH",
+        "needs_review": false,
         "supporting_tier_absent": false,
         "supporting_besar_tiers": ["Menengah Rendah"]
       },
       "patch": {
-        "verdict_state": "provisional"
+        "verdict_state": "blocked"
       }
     },
     "95230": {
@@ -20954,15 +20954,15 @@
     },
     "95299": {
       "facts_basis": {
-        "status": "ATTENZIONE_FASCIA_BALI",
-        "blocked": false,
-        "confidence": "MEDIUM",
-        "needs_review": true,
+        "status": "TERTUTUP",
+        "blocked": true,
+        "confidence": "HIGH",
+        "needs_review": false,
         "supporting_tier_absent": false,
         "supporting_besar_tiers": ["Rendah"]
       },
       "patch": {
-        "verdict_state": "provisional"
+        "verdict_state": "blocked"
       }
     },
     "95311": {
