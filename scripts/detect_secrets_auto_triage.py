@@ -967,6 +967,42 @@ CONTENT_KEYED_RULES: list[tuple[re.Pattern[str], re.Pattern[str], str]] = [
         "the reviewer to confirm which version it verdicted, not a "
         "credential (PR #6440, I73 C3)",
     ),
+    # infra/claude-plugins/local-marketplace/vendor.lock.json (PR #6554): the
+    # lock file records, for each vendored (upstream-derived, not authored)
+    # plugin under infra/claude-plugins/local-marketplace/plugins/*, an
+    # `upstream_commit` (the pinned commit of the public upstream repo) and a
+    # per-file sha256 under `files` — the digest each vendored file's purpose
+    # is to let `install_local_marketplace.py --check` detect drift between
+    # the checked-out plugin tree and the upstream commit it claims to be
+    # vendored from (scar family #1, HOME-fork drift). Both value classes are
+    # recomputable by anyone from the public upstream repo/commit named in the
+    # same JSON object — never credentials.
+    #
+    # Content-keyed, not a path-only blanket on the whole file: the file is a
+    # flat `path -> sha256` map plus two `upstream_commit` fields, so a rule
+    # that approved the WHOLE file on path alone would also approve a real
+    # secret pasted onto any line of it (superscar #3, guard-over-match).
+    # Narrowed to two exact line shapes, end-anchored (optional trailing
+    # comma): a file-hash entry `"<relative path>": "<64 lowercase hex>"`, or
+    # the top-level `"upstream_commit": "<40 lowercase hex>"`. A 64-char value
+    # that is not all-lowercase-hex, a 63/65-char value, a differently-shaped
+    # key/value pair (e.g. a real token under an unrelated key), or this same
+    # shape in a different file, all stay unaudited for human review.
+    (
+        re.compile(
+            r"^infra/claude-plugins/local-marketplace/vendor\.lock\.json$"
+        ),
+        re.compile(
+            r'^\s*"[^"]+"\s*:\s*"[0-9a-f]{64}"\s*,?\s*$'
+            r'|^\s*"upstream_commit"\s*:\s*"[0-9a-f]{40}"\s*,?\s*$'
+        ),
+        "local-marketplace vendor.lock.json: per-file sha256 pins and "
+        "upstream_commit for vendored (upstream-derived) plugin files, "
+        "recomputable from the public upstream repo/commit and meant to be "
+        "verified by install_local_marketplace.py --check — public "
+        "integrity anchors for detecting HOME-fork drift, never "
+        "credentials (PR #6554)",
+    ),
 ]
 
 # Each rule is (pattern, reason). The pattern matches the file path
