@@ -529,8 +529,12 @@ describe("Middleware - Multi-domain Routing", () => {
       expect(response.headers.get("x-pathname")).toBe("/chat/conversation/123");
     });
 
+    // The probe path is deliberately NOT a session-gated route: the app block
+    // stamps noindex on EVERY path, so a non-gated path isolates host
+    // classification from the session gate, which since SAETTA W-C R-A also
+    // fires (and stamps noindex) on unclassified hosts.
     it.each([
-      ["notkita.balizero.com", "/dashboard"],
+      ["notkita.balizero.com", "/pricing"],
       ["mail.evil.test", "/inbox"],
     ])("does not classify lookalike app host %s", (host, path) => {
       const response = proxy(createRequest(`https://${host}${path}`));
@@ -538,6 +542,17 @@ describe("Middleware - Multi-domain Routing", () => {
       expect(response.headers.get("X-Robots-Tag")).not.toBe(
         "noindex, nofollow",
       );
+    });
+
+    it("still gates a workspace path on a lookalike app host, on that same host", () => {
+      const response = proxy(
+        createRequest("https://notkita.balizero.com/dashboard"),
+      );
+
+      expect(response.status).toBe(302);
+      const location = new URL(response.headers.get("location") ?? "");
+      expect(location.host).toBe("notkita.balizero.com");
+      expect(location.pathname).toBe("/login");
     });
 
     it("does not classify a lookalike visa hostname", () => {
