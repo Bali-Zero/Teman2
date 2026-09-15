@@ -96,7 +96,94 @@ decisions:
       Whole-file text sweep (simpler, but measured to false-positive on
       `l4_withdrawn_umkm_prose.json` and `l4bali_gap_disclosure_2026_07_25.json`, both of
       which quote the withdrawn wording as history, not as a live basis).
+  - id: D5
+    what: >-
+      Finding 1 (UNDER-match): gate the TERTUTUP bare-citation bypass on an ADDITIONAL
+      condition — no mention of "scale"/"skala" anywhere in `pma_kondisi`+`pma_nota`.
+    why: >-
+      Codex review reproduced a record with `pma_status=TERTUTUP`, empty
+      `pma_official_basis`, bare `pma_source="Perpres 10/2021, 49/2021"`, and a `pma_nota`
+      arguing OSS licenses only Mikro/Kecil scale — the old bypass accepted it
+      unconditionally. Measured before curing: none of the 60 real TERTUTUP records on
+      origin/main mention scale/skala, so the tightened bypass costs nothing today.
+  - id: D6
+    what: >-
+      Finding 2 (UNDER-match): widen `SCALE_ABSENCE_BASIS` with the trilingual row/slot-
+      absence pattern already proven in
+      `apps/mouth/src/lib/kbli-withdrawn-umkm-inference.test.ts`, plus an "only Mikro/
+      Kecil scale" alternative (EN/ID).
+    why: >-
+      The original regex matched only the exact #6488 wording ("no Usaha Besar scale");
+      "no large-scale row", "skala Besar tidak tersedia" and "only at Mikro/Kecil scale"
+      argued the identical claim and slipped through, including when an unrelated
+      Lampiran token sat in the same text. Reused the sibling antidote's regex rather
+      than re-deriving one, since it is already battle-tested against the real historical
+      wordings. Measured: no false positive on the 79 current 0% records or the 13 (now
+      19) live spec entries.
+  - id: D7
+    what: >-
+      Finding 3 (inconsistency): accept an explicit "Pasal 2 ... tertutup" / "daftar
+      bidang usaha tertutup" citation directly in `ANNEX_LOCATOR`, instead of only via the
+      narrower bare-citation bypass.
+    why: >-
+      A record with a POPULATED `pma_official_basis` naming Pasal 2 explicitly was being
+      rejected (the bypass requires an EMPTY `pma_official_basis`), while a vaguer record
+      with no `pma_official_basis` at all was accepted — a more specific, better-evidenced
+      locator was scoring worse than a vaguer one. The new alternative is gated by the
+      unconditional `SCALE_ABSENCE_BASIS` check running first, so a stray Pasal 2 mention
+      next to a real scale-absence argument still fails (test:
+      `test_finding3_guilt_a_stray_pasal2_mention_does_not_launder_scale_absence`).
+  - id: D8
+    what: >-
+      Finding 4 (OVER-match): drop the bare "PMA is Besar by law" trigger from
+      `SCALE_ABSENCE_BASIS`.
+    why: >-
+      That sentence states the TRUE premise P1 of the withdrawn #6488 argument (a PMA
+      must be Usaha Besar under BKPM 5/2025 Pasal 26(1)) and is legitimate anywhere,
+      including beside a real Lampiran II locator. Only the FALSE step P2 — the ABSENCE
+      of a scale row, or an "only Mikro/Kecil" OSS offering, used AS the reason for 0% —
+      is guilt, and D6's row/only-small-scale alternatives already catch that
+      independently. Verified the actual #6488 guilt fixture (`test_guilt_the_6488_patch_
+      is_refused`) is still refused without this trigger (it matches "no Usaha Besar
+      scale" regardless).
+  - id: D9
+    what: >-
+      Finding 5: rewrote the cure_specs sweep as a generic tree-walker over every dict
+      carrying `pma_max_asing` or `locator` directly, skipping any subtree rooted at a
+      precondition/snapshot key (`expect`, `was`, `old`, `excluded`, `withdrawn_items`,
+      `withdrawn`) — replacing the narrower `items[].locator`-only sweep.
+    why: >-
+      The original sweep would silently miss a resurrected `to_patch`-shaped spec (#6488's
+      own schema: `{code: {pma_status, pma_max_asing, ...}}`), since that shape carries no
+      `locator` field. The generic walker recognises `to_patch`/`set`/`patch` (dict-of-
+      code) and `items`/`patches` (list-of-{code,...}) without hardcoding those names,
+      correctly finds 19 live write entries on origin/main today (up from the 13 the
+      narrower sweep saw — the extra 6 are an 80%-cap sector-law spec, correctly judged
+      trivially innocent since it never claims 0%), and a dedicated guilt test proves a
+      synthetic to_patch entry is caught.
+alternatives_rejected: >-
+  D5 alternative (a committed allow-list of the 60 known-good TERTUTUP codes, entity by
+  code): rejected in favour of the scale-mention gate — an allow-list would need updating
+  by every future PR that adds a genuine new TERTUTUP closure, while the scale-mention
+  gate self-maintains and is measured to cost nothing against the current 60.
 receipts:
+  - claim: >-
+      All 5 review findings are reproduced against the pre-fix predicate (red for the
+      expected reason) and pass against the cured predicate (green), on a temporary
+      reverted copy of the file, then restored.
+    cmd: >-
+      cp test_pma_zero_cap_basis.py /tmp/fixed.bak; [revert ANNEX_LOCATOR/
+      SCALE_ABSENCE_BASIS/_tertutup_bare_citation_ok to pre-fix versions inline]; python3
+      -m pytest scripts/kbli_filiera/tests/test_pma_zero_cap_basis.py -k "finding1 or
+      finding2 or finding3 or finding4" -v; cp /tmp/fixed.bak test_pma_zero_cap_basis.py
+    result: >-
+      Pre-fix: "4 failed, 3 passed" (finding1_guilt, finding2_guilt,
+      finding3_innocence, finding4_innocence all FAILED for the exact reason each fix
+      addresses — pasted in the PR-1 report to the Dux). Post-restore: "16 passed" for
+      this file alone, "32 passed" combined with the sibling antidote.
+    exit: 0
+    ts: "2026-09-15T09:00:00+00:00"
+    seat: Claude Sonnet 5 (implementer, lane PR-1)
   - claim: >-
       The new Python guard + the existing withdrawn-inference antidote are both green,
       and the guilt fixture is load-bearing (proved by inverting its assertion and seeing

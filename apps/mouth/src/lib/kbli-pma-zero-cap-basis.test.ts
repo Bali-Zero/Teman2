@@ -21,10 +21,18 @@ const DATA_PATH = path.join(
   "KBLI_2025_FINAL_CLEAN.json",
 );
 
-const ANNEX_LOCATOR = /lampiran\s*ii\b|lampiran\s*iii\b|dialokasikan/i;
+// Mirrors scripts/kbli_filiera/tests/test_pma_zero_cap_basis.py exactly — see that file
+// for the full "why" behind every alternative, including the 2026-09-15 review findings
+// 1-4 (finding 5, the cure_specs/ sweep, is Python-only: TS has no spec files to sweep).
+const ANNEX_LOCATOR =
+  /lampiran\s*ii\b|lampiran\s*iii\b|dialokasikan|pasal\s*2\b[^.\n]{0,80}?tertutup|tertutup[^.\n]{0,80}?pasal\s*2\b|daftar\s+bidang\s+usaha\s+(?:yang\s+)?tertutup/i;
 
 const SCALE_ABSENCE_BASIS =
-  /PMA_CLOSED_NO_BESAR_SCALE|no\s+Usaha\s+Besar\s+scale|(?:tidak\s+ada|tanpa)\s+skala(?:\s+Usaha)?\s+Besar|no-Besar|PMA\s+is\s+Besar\s+by\s+law/i;
+  /PMA_CLOSED_NO_BESAR_SCALE|no\s+Usaha\s+Besar\s+scale|(?:tidak\s+ada|tanpa)\s+skala(?:\s+Usaha)?\s+Besar|skala(?:\s+Usaha)?\s+Besar\s+tidak\s+tersedia|no-Besar|no\s+(?:\*\*)?(?:Usaha Besar|large-scale)(?:\*\*)?[^.\n]{0,40}?\b(?:row|slot)\b|(?:non\s+offre\s+alcun[ao]|non\s+ha\s+un[ao]|nessun[ao]?)\s+(?:riga|fila|voce|slot)[^.\n]{0,60}?(?:larga scala|Usaha Besar)|tidak\s+(?:ada|memiliki|menawarkan|menyediakan)\s+(?:baris|slot)[^.\n]{0,60}?(?:skala besar|Usaha Besar)|only\s+(?:at\s+)?(?:Mikro|Micro)(?:\s*(?:\/|,|and|dan)\s*)?(?:Kecil|Small)?\s*(?:-\s*)?scale|hanya\s+(?:tersedia\s+)?(?:pada\s+)?skala\s+Mikro(?:\s*(?:\/|,|dan)\s*Kecil)?/i;
+
+// Gates the TERTUTUP bare-citation bypass only (finding 1) — never a guilt trigger on
+// its own, that would over-match the legitimate Pasal 26 language finding 4 protects.
+const SCALE_MENTION = /\bscale\b|\bskala\b/i;
 
 type Record = {
   kode_kbli_2025: string;
@@ -42,6 +50,13 @@ function basisText(rec: Record): string {
     .join(" || ");
 }
 
+function tertutupBareCitationOk(rec: Record): boolean {
+  if (rec.pma_status !== "TERTUTUP" || rec.pma_official_basis) return false;
+  if (!/perpres\s*10\/2021/i.test(rec.pma_source || "")) return false;
+  const rationale = `${rec.pma_kondisi || ""} ${rec.pma_nota || ""}`;
+  return !SCALE_MENTION.test(rationale);
+}
+
 function judge(rec: Record): { ok: boolean; reason: string } {
   if (rec.pma_max_asing !== 0) return { ok: true, reason: "not a 0% verdict" };
   const text = basisText(rec);
@@ -53,11 +68,7 @@ function judge(rec: Record): { ok: boolean; reason: string } {
   }
   if (ANNEX_LOCATOR.test(text))
     return { ok: true, reason: "annex locator present" };
-  if (
-    rec.pma_status === "TERTUTUP" &&
-    !rec.pma_official_basis &&
-    /perpres\s*10\/2021/i.test(rec.pma_source || "")
-  ) {
+  if (tertutupBareCitationOk(rec)) {
     return {
       ok: true,
       reason: "TERTUTUP bare Perpres 10/2021 citation (Pasal 2 closed-list)",
@@ -162,5 +173,136 @@ describe("no 0% PMA verdict in the mouth dataset copy cites a missing scale row"
       "to invest as Usaha Besar, above Rp10 miliar per KBLI — a condition on the investor, " +
       "not a closure of the activity.";
     expect(SCALE_ABSENCE_BASIS.test(sentence)).toBe(false);
+  });
+
+  // --- Review findings, 2026-09-15 (Codex GPT-5.6 sol xhigh) ---
+
+  it("finding 1 GUILT — a TERTUTUP bare citation with a scale rationale is refused", () => {
+    const rec: Record = {
+      kode_kbli_2025: "99001",
+      pma_status: "TERTUTUP",
+      pma_max_asing: 0,
+      pma_source: "Perpres 10/2021, 49/2021",
+      pma_nota: "Hanya cocok untuk skala kecil menurut catatan OSS internal",
+    };
+    expect(tertutupBareCitationOk(rec)).toBe(false);
+    const { ok, reason } = judge(rec);
+    expect(
+      ok,
+      `scale-bearing TERTUTUP rationale wrongly accepted (${reason})`,
+    ).toBe(false);
+  });
+
+  it("finding 1 INNOCENCE — a TERTUTUP bare citation without scale mention passes", () => {
+    const rec: Record = {
+      kode_kbli_2025: "99002",
+      pma_status: "TERTUTUP",
+      pma_max_asing: 0,
+      pma_source: "Perpres 10/2021, 49/2021",
+      pma_nota: "Perjudian dan pertaruhan",
+    };
+    expect(tertutupBareCitationOk(rec)).toBe(true);
+    const { ok, reason } = judge(rec);
+    expect(
+      ok,
+      `genuine Pasal 2 bare-citation wrongly refused (${reason})`,
+    ).toBe(true);
+  });
+
+  it("finding 2 GUILT — widened wordings convict even beside an unrelated annex token", () => {
+    const guiltyKondisi = [
+      "Lampiran II lists this KBLI for an unrelated activity; here, the OSS system has " +
+        "no large-scale row for this code, so it is closed to a PT PMA.",
+      "Skala Usaha Besar tidak tersedia di OSS untuk kode ini (lihat juga Lampiran II " +
+        "untuk kode lain) — tertutup bagi PMA.",
+      "Only at Mikro/Kecil scale is this code registrable in OSS (cf. Lampiran III for a " +
+        "sibling code); a PT PMA cannot enter.",
+      "il sistema OSS non ha una voce per registrazioni su larga scala per questo codice " +
+        "(si veda anche Lampiran II per un altro settore)",
+    ];
+    for (const kondisi of guiltyKondisi) {
+      const rec: Record = {
+        kode_kbli_2025: "x",
+        pma_status: "TERBATAS",
+        pma_max_asing: 0,
+        pma_kondisi: kondisi,
+        pma_source: "Perpres 10/2021, 49/2021",
+      };
+      const { ok, reason } = judge(rec);
+      expect(
+        ok,
+        `scale-absence wording wrongly accepted: ${kondisi} (${reason})`,
+      ).toBe(false);
+    }
+  });
+
+  it("finding 2 INNOCENCE — a real Lampiran II row citation still passes", () => {
+    const rec: Record = {
+      kode_kbli_2025: "x",
+      pma_status: "TERBATAS",
+      pma_max_asing: 0,
+      pma_official_basis:
+        "Perpres 49/2021 Lampiran II (DIALOKASIKAN untuk Koperasi dan UMKM), p2, row " +
+        '"Industri pemindangan ikan" — allocated to Koperasi/UMKM.',
+      pma_source: "Perpres 10/2021, 49/2021",
+    };
+    const { ok, reason } = judge(rec);
+    expect(
+      ok,
+      `real Lampiran II row citation wrongly refused (${reason})`,
+    ).toBe(true);
+  });
+
+  it("finding 3 INNOCENCE — an explicit Pasal 2 closed-list locator passes", () => {
+    const rec: Record = {
+      kode_kbli_2025: "x",
+      pma_status: "TERTUTUP",
+      pma_max_asing: 0,
+      pma_official_basis:
+        "Perpres 10/2021 Pasal 2(2), daftar bidang usaha tertutup — closed to all " +
+        "foreign and domestic private investment.",
+      pma_source: "Perpres 10/2021, 49/2021",
+    };
+    const { ok, reason } = judge(rec);
+    expect(
+      ok,
+      `explicit Pasal 2 closed-list locator wrongly refused (${reason})`,
+    ).toBe(true);
+  });
+
+  it("finding 3 GUILT — a stray Pasal 2 mention does not launder scale absence", () => {
+    const rec: Record = {
+      kode_kbli_2025: "x",
+      pma_status: "TERBATAS",
+      pma_max_asing: 0,
+      pma_official_basis:
+        "Perpres 10/2021 Pasal 2 states the closed list in general terms; however this " +
+        "code is closed here because OSS lists no Usaha Besar scale for it.",
+      pma_source: "Perpres 10/2021, 49/2021",
+    };
+    const { ok, reason } = judge(rec);
+    expect(
+      ok,
+      `stray Pasal 2 mention wrongly laundered scale absence (${reason})`,
+    ).toBe(false);
+  });
+
+  it("finding 4 INNOCENCE — a Pasal 26 legal-fact note beside a real locator passes", () => {
+    const rec: Record = {
+      kode_kbli_2025: "x",
+      pma_status: "TERBATAS",
+      pma_max_asing: 0,
+      pma_kondisi:
+        "Bidang usaha dialokasikan untuk Koperasi dan UMKM (Perpres 49/2021 Lampiran II) " +
+        "— foreign ownership 0%. Note: a PT PMA is Besar by law (BKPM 5/2025 Pasal " +
+        "26(1)), a separate investor-eligibility condition, not the reason for this " +
+        "reservation.",
+      pma_source: "Perpres 10/2021, 49/2021",
+    };
+    const { ok, reason } = judge(rec);
+    expect(
+      ok,
+      `legitimate Pasal 26 note beside a real locator wrongly refused (${reason})`,
+    ).toBe(true);
   });
 });

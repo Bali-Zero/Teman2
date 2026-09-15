@@ -41,30 +41,75 @@ CURE_SPECS_DIR = REPO / "scripts/kbli_filiera/cure_specs"
 # The locator this gate accepts. Measured against the 19 TERBATAS/located records on
 # origin/main: every one names Lampiran II ("... DIALOKASIKAN untuk Koperasi dan UMKM
 # ...") or Lampiran III ("Lampiran III (Daftar Bidang Usaha dengan Persyaratan
-# Tertentu) entry #N") in `pma_official_basis` and/or `pma_kondisi`.
-ANNEX_LOCATOR = re.compile(r"lampiran\s*ii\b|lampiran\s*iii\b|dialokasikan", re.IGNORECASE)
+# Tertentu) entry #N") in `pma_official_basis` and/or `pma_kondisi`. Also accepts an
+# EXPLICIT Pasal 2 closed-list citation (review finding 3, 2026-09-15): a record that
+# names "Pasal 2 ... tertutup" or "daftar bidang usaha tertutup" directly is a MORE
+# specific locator than the bare-citation bypass below and must not be rejected for
+# lacking a Lampiran number it does not need.
+ANNEX_LOCATOR = re.compile(
+    r"lampiran\s*ii\b|lampiran\s*iii\b|dialokasikan"
+    r"|pasal\s*2\b[^.\n]{0,80}?tertutup|tertutup[^.\n]{0,80}?pasal\s*2\b"
+    r"|daftar\s+bidang\s+usaha\s+(?:yang\s+)?tertutup",
+    re.IGNORECASE,
+)
 
-# The argument this gate refuses, taken verbatim from the #6488 fields actually written
-# to `73300`/`38110`/`43110` on branch `5535726236` (pma_kondisi/pma_nota/pma_official_basis).
-# Deliberately does NOT include a bare "per_skala" trigger: measured against the 52 files
-# in cure_specs/, that field name is also used to describe/discuss OSS scale rows in
-# passing (`l4_withdrawn_umkm_prose.json`, `editorial_body_national_scope.json`,
-# `gold_86101_government_hospital_2026_08_07.json`) with no scale-absence verdict nearby
-# — a bare match there is family #3 over-match, not guilt.
+# The argument this gate refuses. The first four alternatives are verbatim from the
+# #6488 fields actually written to `73300`/`38110`/`43110` on branch `5535726236`
+# (pma_kondisi/pma_nota/pma_official_basis). Deliberately excludes a bare "per_skala"
+# trigger: measured against the 52 files in cure_specs/, that field name is also used to
+# describe/discuss OSS scale rows in passing (`l4_withdrawn_umkm_prose.json`,
+# `editorial_body_national_scope.json`, `gold_86101_government_hospital_2026_08_07.json`)
+# with no scale-absence verdict nearby — a bare match there is family #3 over-match, not
+# guilt. Also deliberately excludes a bare "PMA is Besar by law" trigger (review finding
+# 4, 2026-09-15): that sentence states the TRUE premise P1 of the withdrawn argument (a
+# PMA must be Usaha Besar, BKPM 5/2025 Pasal 26(1)) and is legitimate anywhere, including
+# beside a real Lampiran II locator; only the FALSE step P2 — that the ABSENCE of a scale
+# row/slot, or an "only Mikro/Kecil" OSS offering, closes the activity — is guilt. The
+# row/slot-absence alternatives are the trilingual pattern already proven in the sibling
+# antidote `apps/mouth/src/lib/kbli-withdrawn-umkm-inference.test.ts`, reused here rather
+# than re-derived.
 SCALE_ABSENCE_BASIS = re.compile(
     r"PMA_CLOSED_NO_BESAR_SCALE"
     r"|no\s+Usaha\s+Besar\s+scale"
     r"|(?:tidak\s+ada|tanpa)\s+skala(?:\s+Usaha)?\s+Besar"
+    r"|skala(?:\s+Usaha)?\s+Besar\s+tidak\s+tersedia"
     r"|no-Besar"
-    r"|PMA\s+is\s+Besar\s+by\s+law",
+    r"|no\s+(?:\*\*)?(?:Usaha Besar|large-scale)(?:\*\*)?[^.\n]{0,40}?\b(?:row|slot)\b"
+    r"|(?:non\s+offre\s+alcun[ao]|non\s+ha\s+un[ao]|nessun[ao]?)\s+(?:riga|fila|voce|slot)"
+    r"[^.\n]{0,60}?(?:larga scala|Usaha Besar)"
+    r"|tidak\s+(?:ada|memiliki|menawarkan|menyediakan)\s+(?:baris|slot)"
+    r"[^.\n]{0,60}?(?:skala besar|Usaha Besar)"
+    r"|only\s+(?:at\s+)?(?:Mikro|Micro)(?:\s*(?:/|,|and|dan)\s*)?(?:Kecil|Small)?\s*(?:-\s*)?scale"
+    r"|hanya\s+(?:tersedia\s+)?(?:pada\s+)?skala\s+Mikro(?:\s*(?:/|,|dan)\s*Kecil)?",
     re.IGNORECASE,
 )
+
+# A bare mention of scale/skala anywhere in the rationale — used only to gate the
+# TERTUTUP bare-citation bypass below (finding 1), never as a guilt trigger on its own
+# (that would over-match the legitimate Pasal 26 investment-scale language finding 4
+# protects).
+_SCALE_MENTION = re.compile(r"\bscale\b|\bskala\b", re.IGNORECASE)
 
 
 def _basis_text(rec: dict[str, Any]) -> str:
     return " || ".join(
         str(rec.get(k) or "") for k in ("pma_kondisi", "pma_nota", "pma_source", "pma_official_basis")
     )
+
+
+def _tertutup_bare_citation_ok(rec: dict[str, Any]) -> bool:
+    """Pasal 2 closed-list basis, as the corpus already expresses it for its 60
+    TERTUTUP/declared_gap records: no per-code Lampiran citation, no populated
+    `pma_official_basis`, and — review finding 1, 2026-09-15 — no mention of scale/skala
+    ANYWHERE in the rationale. A record that invokes scale is arguing from OSS licensing
+    availability, not from the Pasal 2 activity-type list, and needs a real locator: a
+    bare "Perpres 10/2021" citation is not enough for that argument, only for this one."""
+    if rec.get("pma_status") != "TERTUTUP" or rec.get("pma_official_basis"):
+        return False
+    if not re.search(r"perpres\s*10/2021", rec.get("pma_source") or "", re.IGNORECASE):
+        return False
+    rationale = f"{rec.get('pma_kondisi') or ''} {rec.get('pma_nota') or ''}"
+    return not _SCALE_MENTION.search(rationale)
 
 
 def judge(rec: dict[str, Any]) -> tuple[bool, str]:
@@ -77,17 +122,7 @@ def judge(rec: dict[str, Any]) -> tuple[bool, str]:
         return False, f"basis argues from scale absence: {text[:200]!r}"
     if ANNEX_LOCATOR.search(text):
         return True, "annex locator present"
-    # Pasal 2 closed-list basis, as the corpus already expresses it: the 60 TERTUTUP
-    # records on origin/main carry no per-code Lampiran citation (they are the absolute
-    # closures — narcotics cultivation, gambling, government monopolies, ...) and instead
-    # cite the base instrument bare. Bypass requires status TERTUTUP AND no
-    # `pma_official_basis` (a populated one means a MORE specific claim is being made and
-    # must clear the locator check on its own merits).
-    if (
-        rec.get("pma_status") == "TERTUTUP"
-        and not rec.get("pma_official_basis")
-        and re.search(r"perpres\s*10/2021", rec.get("pma_source") or "", re.IGNORECASE)
-    ):
+    if _tertutup_bare_citation_ok(rec):
         return True, "TERTUTUP bare Perpres 10/2021 citation (Pasal 2 closed-list, corpus convention)"
     return False, f"no annex/closed-list locator named: {text[:200]!r}"
 
@@ -186,33 +221,230 @@ def test_innocence_a_legitimate_usaha_besar_mention_is_not_scale_absence():
     assert SCALE_ABSENCE_BASIS.search(sentence) is None
 
 
-def _live_locator_entries() -> list[tuple[str, str, str]]:
-    """Every (file, code, locator) the `apply_umkm_reservations.py`-style compilers actually
-    read to WRITE a fresh 0% cap — the `items[].locator` schema shared by
-    `umkm_lampiran_ii_readjudicated_2026_08_06.json` and `umkm_lampiran_ii_split_heirs_
-    2026_08_06.json`. Deliberately narrower than "every file mentioning pma_max_asing":
-    measured, that broader set is dominated by editorial-prose specs whose `old` field
-    quotes the withdrawn sentence as the thing being REMOVED (evidence of the cure, not the
-    claim) and `expect` blocks that assert a precondition rather than setting anything — a
-    whole-file sweep over those produces false guilt, not real coverage.
-    """
-    entries: list[tuple[str, str, str]] = []
+# --- Review findings, 2026-09-15 (Codex GPT-5.6 sol xhigh, checkpoint before rollover) ---
+
+
+def test_finding1_guilt_tertutup_bare_citation_with_scale_rationale_is_refused():
+    """UNDER-match. A TERTUTUP record with an empty `pma_official_basis` and a bare
+    "Perpres 10/2021" `pma_source` used to pass unconditionally — even when the actual
+    rationale argued OSS licensing scale, not a Pasal 2 activity-type closure."""
+    rec = {
+        "kode_kbli_2025": "99001",
+        "pma_status": "TERTUTUP",
+        "pma_max_asing": 0,
+        "pma_source": "Perpres 10/2021, 49/2021",
+        "pma_nota": "Hanya cocok untuk skala kecil menurut catatan OSS internal",
+    }
+    assert not _tertutup_bare_citation_ok(rec), "bypass wrongly allowed a scale-bearing rationale"
+    ok, reason = judge(rec)
+    assert not ok, f"99001: scale-bearing TERTUTUP rationale wrongly accepted ({reason})"
+
+
+def test_finding1_innocence_tertutup_bare_citation_without_scale_mention_passes():
+    rec = {
+        "kode_kbli_2025": "99002",
+        "pma_status": "TERTUTUP",
+        "pma_max_asing": 0,
+        "pma_source": "Perpres 10/2021, 49/2021",
+        "pma_nota": "Perjudian dan pertaruhan",
+    }
+    assert _tertutup_bare_citation_ok(rec)
+    ok, reason = judge(rec)
+    assert ok, f"99002: genuine Pasal 2 bare-citation wrongly refused ({reason})"
+
+
+def test_finding2_guilt_widened_row_and_only_small_scale_wordings_are_caught():
+    """UNDER-match, "even when an annex token is also present" (review's own wording): a
+    scale-absence argument must convict even when an unrelated Lampiran mention sits next
+    to it — otherwise pasting any Lampiran citation beside the old wording would launder
+    it, which is precisely the family #3 risk finding 3 also probes from the other side."""
+    guilty_kondisi = [
+        "Lampiran II lists this KBLI for an unrelated activity; here, the OSS system has "
+        "no large-scale row for this code, so it is closed to a PT PMA.",
+        "Skala Usaha Besar tidak tersedia di OSS untuk kode ini (lihat juga Lampiran II "
+        "untuk kode lain) — tertutup bagi PMA.",
+        "Only at Mikro/Kecil scale is this code registrable in OSS (cf. Lampiran III for a "
+        "sibling code); a PT PMA cannot enter.",
+        "il sistema OSS non ha una voce per registrazioni su larga scala per questo codice "
+        "(si veda anche Lampiran II per un altro settore)",
+    ]
+    for kondisi in guilty_kondisi:
+        rec = {
+            "pma_status": "TERBATAS",
+            "pma_max_asing": 0,
+            "pma_kondisi": kondisi,
+            "pma_source": "Perpres 10/2021, 49/2021",
+        }
+        ok, reason = judge(rec)
+        assert not ok, f"scale-absence wording wrongly accepted: {kondisi!r} ({reason})"
+
+
+def test_finding2_innocence_a_real_row_citation_still_passes():
+    """A locator that happens to contain the word "row" (Lampiran II annex rows are named
+    literally "row" in `pma_official_basis`) must not trip the widened row-absence match —
+    the trigger requires "no"/negation immediately before it, not the bare word."""
+    rec = {
+        "pma_status": "TERBATAS",
+        "pma_max_asing": 0,
+        "pma_official_basis": (
+            'Perpres 49/2021 Lampiran II (DIALOKASIKAN untuk Koperasi dan UMKM), p2, row '
+            '"Industri pemindangan ikan" — allocated to Koperasi/UMKM.'
+        ),
+        "pma_source": "Perpres 10/2021, 49/2021",
+    }
+    ok, reason = judge(rec)
+    assert ok, f"real Lampiran II row citation wrongly refused ({reason})"
+
+
+def test_finding3_innocence_an_explicit_pasal2_closed_list_locator_passes():
+    rec = {
+        "pma_status": "TERTUTUP",
+        "pma_max_asing": 0,
+        "pma_official_basis": (
+            "Perpres 10/2021 Pasal 2(2), daftar bidang usaha tertutup — closed to all "
+            "foreign and domestic private investment."
+        ),
+        "pma_source": "Perpres 10/2021, 49/2021",
+    }
+    ok, reason = judge(rec)
+    assert ok, f"explicit Pasal 2 closed-list locator wrongly refused ({reason})"
+
+
+def test_finding3_guilt_a_stray_pasal2_mention_does_not_launder_scale_absence():
+    """A record cannot cite Pasal 2 in passing while its REAL argument is scale absence —
+    entity, not spelling (superscar #3): the locator check is necessary, not sufficient."""
+    rec = {
+        "pma_status": "TERBATAS",
+        "pma_max_asing": 0,
+        "pma_official_basis": (
+            "Perpres 10/2021 Pasal 2 states the closed list in general terms; however this "
+            "code is closed here because OSS lists no Usaha Besar scale for it."
+        ),
+        "pma_source": "Perpres 10/2021, 49/2021",
+    }
+    ok, reason = judge(rec)
+    assert not ok, f"stray Pasal 2 mention wrongly laundered a scale-absence argument ({reason})"
+
+
+def test_finding4_innocence_a_pasal26_legal_fact_note_beside_a_real_locator_passes():
+    """OVER-match. Stating the TRUE premise, in the OLD trigger's own exact word order —
+    "a PT PMA is Besar by law" — beside a real Lampiran II locator used to be refused by
+    the bare "PMA is Besar by law" trigger — convicting the true half of the withdrawn
+    argument (P1), not the false half (P2, the absence argument) that is the real guilt."""
+    rec = {
+        "pma_status": "TERBATAS",
+        "pma_max_asing": 0,
+        "pma_kondisi": (
+            "Bidang usaha dialokasikan untuk Koperasi dan UMKM (Perpres 49/2021 Lampiran II) "
+            "— foreign ownership 0%. Note: a PT PMA is Besar by law (BKPM 5/2025 Pasal "
+            "26(1)), a separate investor-eligibility condition, not the reason for this "
+            "reservation."
+        ),
+        "pma_source": "Perpres 10/2021, 49/2021",
+    }
+    ok, reason = judge(rec)
+    assert ok, f"legitimate Pasal 26 note beside a real locator wrongly refused ({reason})"
+
+
+# Review finding 5, 2026-09-15: the original sweep only recognised the `items[].locator`
+# schema and would silently miss a resurrected `to_patch`-shaped spec (#6488's own shape).
+# These keys hold a PRECONDITION or a SNAPSHOT, never a value the spec itself WRITES — a
+# subtree rooted at one of them is skipped entirely, wherever it is nested. Measured: every
+# `pma_max_asing: 0` occurrence in the 9 files that had one sits under `expect`; the
+# withdrawn wording quoted verbatim in `l4_withdrawn_umkm_prose.json` and
+# `l4bali_gap_disclosure_2026_07_25.json` sits under `old`/`expected_reason`-as-diagnostic —
+# evidence of what was CURED, not a live basis.
+_PRECONDITION_KEYS = {"expect", "was", "old", "excluded", "withdrawn_items", "withdrawn"}
+_CODE_KEY = re.compile(r"^\d{4,6}$")
+
+
+def _iter_write_entries(node: Any, code_hint: str | None = None):
+    """Yield (code, entry) for every dict ANYWHERE in a spec's tree that carries
+    `pma_max_asing` or `locator` directly — the two fields every write shape observed on
+    disk uses (`to_patch`/`set`/`patch`: a flat pma_* dict keyed by code; `items`/
+    `patches`: a list of `{code, locator, ...}` dicts) — outside any precondition subtree.
+    A dict keyed by KBLI-code-shaped strings (`to_patch`'s own keys) propagates its key as
+    the code hint to children that don't carry a `code` field themselves."""
+    if isinstance(node, dict):
+        if "pma_max_asing" in node or "locator" in node:
+            yield node.get("code") or code_hint, node
+        for k, v in node.items():
+            if k in _PRECONDITION_KEYS:
+                continue
+            hint = k if _CODE_KEY.match(str(k)) else code_hint
+            yield from _iter_write_entries(v, code_hint=hint)
+    elif isinstance(node, list):
+        for item in node:
+            yield from _iter_write_entries(item, code_hint=code_hint)
+
+
+def _judge_write_entry(entry: dict[str, Any]) -> tuple[bool, str]:
+    rec = {
+        "pma_max_asing": entry.get("pma_max_asing", 0 if "locator" in entry else None),
+        "pma_status": entry.get("pma_status"),
+        "pma_kondisi": entry.get("pma_kondisi"),
+        "pma_nota": entry.get("pma_nota"),
+        "pma_source": entry.get("pma_source"),
+        "pma_official_basis": entry.get("pma_official_basis") or entry.get("locator"),
+    }
+    return judge(rec)
+
+
+def _all_write_entries() -> list[tuple[str, str, dict]]:
+    entries: list[tuple[str, str, dict]] = []
     for path in sorted(glob.glob(str(CURE_SPECS_DIR / "*.json"))):
         spec = json.loads(Path(path).read_text(encoding="utf-8"))
-        items = spec.get("items")
-        if not isinstance(items, list):
-            continue
-        for item in items:
-            if isinstance(item, dict) and "code" in item and "locator" in item:
-                entries.append((path, str(item["code"]), str(item["locator"])))
+        for code, entry in _iter_write_entries(spec):
+            entries.append((path, str(code), entry))
     return entries
 
 
-def test_spec_sweep_every_live_locator_entry_passes():
-    entries = _live_locator_entries()
-    assert len(entries) > 0, "the sweep read no live locator entries (W84)"
+def test_spec_sweep_every_write_shape_entry_passes():
+    entries = _all_write_entries()
+    # 13 measured on origin/main via the `items[].locator` schema alone (finding 5's own
+    # reproduction); the broader walker must see at least that many, never fewer (W84).
+    assert len(entries) >= 13, f"the sweep saw only {len(entries)} write entries, expected >= 13"
     offenders = []
-    for path, code, locator in entries:
-        if SCALE_ABSENCE_BASIS.search(locator) or not ANNEX_LOCATOR.search(locator):
-            offenders.append((Path(path).name, code, locator[:160]))
-    assert offenders == [], f"cure_spec locator entries with no valid basis: {offenders}"
+    for path, code, entry in entries:
+        ok, reason = _judge_write_entry(entry)
+        if not ok:
+            offenders.append((Path(path).name, code, reason[:160]))
+    assert offenders == [], f"cure_spec write entries with no valid basis: {offenders}"
+
+
+def test_finding5_guilt_a_to_patch_shaped_spec_entry_is_refused():
+    """The exact #6488 schema: `to_patch: {code: {pma_status, pma_max_asing, ...}}`. If
+    such a spec file ever returns to `cure_specs/`, the sweep must catch it — the original
+    sweep, scoped to `items[].locator`, would have silently ignored it."""
+    guilty_spec = {
+        "rule": "PMA_CLOSED_NO_BESAR_SCALE",
+        "to_patch": {
+            "38110": {
+                "pma_status": "TERBATAS",
+                "pma_max_asing": 0,
+                "pma_kondisi": "No Usaha Besar scale in OSS for this code — foreign ownership 0%",
+                "pma_source": "Perpres 10/2021 Pasal 7(1); Permeninves/BKPM 5/2025 Pasal 26(1)",
+            }
+        },
+    }
+    found = list(_iter_write_entries(guilty_spec))
+    assert found, "the walker did not see the to_patch entry at all"
+    code, entry = found[0]
+    assert code == "38110"
+    ok, reason = _judge_write_entry(entry)
+    assert not ok, f"to_patch-shaped guilty entry wrongly accepted ({reason})"
+
+
+def test_finding5_innocence_precondition_keys_are_not_swept():
+    """An `expect` block asserts a PRE-existing state; it must not be walked as a write,
+    or every editorial spec that merely checks `pma_max_asing == 0` before touching an
+    unrelated prose field would be swept as if it set the cap itself."""
+    editorial_spec = {
+        "codes": {
+            "10214": {
+                "expect": {"pma_max_asing": 0, "pma_status": "TERBATAS"},
+                "fields": {"whoThisIsFor": {"old": "...", "new": "..."}},
+            }
+        }
+    }
+    assert list(_iter_write_entries(editorial_spec)) == []
