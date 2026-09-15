@@ -1,0 +1,30 @@
+task: >-
+  SAETTA-20260915 W-H PR-3c v3: successor of #6593/#6594, BLOCKED by a fresh
+  gate — certified text still claimed openness in paraphrase a lexical
+  detector cannot see, and a stale test pinned 47111 as certified gold. A
+  semantic read of 59 certified capped entries (16 FALSE + 41 AMBIGUOUS)
+  drove this PR: de-certify 19 entries whose prose could not be trivially
+  cured (canonicalIntel 49->37, mouthGold 14->8, standaloneGold 1->0 — page
+  withholds them, fail closed) + whole-field cure of 12 fields on 12 codes.
+lane: mouth/kbli-wh-pr3c-v3-certified-openness
+machine: M5
+date: 2026-09-15
+gear: 2
+gear_reason: >-
+  Deterministic floor 2 (size, no hot-zone path). Client-facing KBLI prose +
+  registry re-pin + 6 consumer-test updates; reuses
+  cure_prose_national_openness.py and backfill_new_sha256.py unmodified, no
+  new compiler, no migration.
+acceptance:
+  - probe: python3 -m pytest scripts/kbli_filiera/ -q
+    expect: 0 failed (1393 passed, 1 skipped)
+  - probe: cd apps/backend-rag && pytest $(find backend/tests -iname "test_*kbli*.py")
+    expect: 0 failed
+  - probe: >-
+      cd apps/mouth && npx vitest run $(git ls-files 'src/**/*kbli*.test.ts'
+      'src/**/*KBLI*.test.tsx' | sed 's#^#./#') && npx tsc --noEmit
+    expect: 56 files/761 tests passed, tsc clean
+  - probe: cd apps/kbli-navigator && ../../node_modules/.bin/tsx --test lib/__tests__/kbli-data.test.ts
+    expect: 1 passed (37/57 located certified)
+  - probe: bash scripts/sync_kbli_dataset.sh --check
+    expect: all consumers in sync
