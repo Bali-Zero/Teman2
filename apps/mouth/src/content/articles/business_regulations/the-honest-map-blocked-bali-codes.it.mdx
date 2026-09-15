@@ -19,53 +19,53 @@ seoDescription: "This whole series has shown you locked doors one at a time — 
 aiGenerated: true
 aiConfidenceScore: 0.9
 locale: "it"
-source_sha256: "c5dfa584d12961cf5148f8f55c32412e35361c315f86d0b6034d6232a4d04f39"
+source_sha256: "4e2de005ffd8edfb729ae3eab51ecae109e78ea9472a1a72c3680625c3f0b6a4"
 ---
 
-Questa serie ti ha mostrato porte chiuse una alla volta — la villa, il caffè, il minimarket, lo studio di consulenza. Questo ultimo articolo fa un passo indietro e le conta. Quanta parte della mappa degli investimenti a Bali è effettivamente chiusa agli investitori esteri? Non come slogan, ma come numero verificabile.
+Questa serie ha mostrato a voi porte chiuse una alla volta — la villa, il café, il minimarket, l'azienda di consulenza. Questo ultimo articolo fa un passo indietro e le conta. Quanta parte della mappa degli investimenti a Bali è effettivamente murata contro gli investimenti esteri? Non come slogan, ma come numero che si può verificare.
 
-Quindi abbiamo contato. E poiché l'onesto da fare è mostrare il nostro lavoro, ecco esattamente cosa abbiamo misurato — e dove la nostra prima stima si è rivelata troppo alta.
+Quindi abbiamo contato. E poiché la cosa onesta da fare è mostrare il nostro lavoro, ecco esattamente ciò che abbiamo misurato — e dove la nostra prima stima si è rivelata troppo alta.
 
 ## Il metodo
 
-Abbiamo preso il dataset classificato del 2025 pulito — lo stesso file ground-truth contro cui ogni articolo di questa serie ha incrociato i codici — e abbiamo contato, meccanicamente, ogni codice con un verdetto Bali-status. Il dataset contiene **1.559 codici classificati**, ciascuno contrassegnato per indicare se una PT PMA di proprietà estera può registrarla a Bali (un semplice flag `blocked: true / false` derivato dallo status nazionale del codice e dalla sua classe di rischio OSS sotto il moratorium del 13 maggio 2026).
+Abbiamo preso l'insieme di dati classificati del 2025 pulito — lo stesso file ground-truth contro cui ogni articolo di questa serie ha incrociato i codici — e abbiamo contato, meccanicamente, ogni codice che portava un verdetto Bali-status. L'insieme dei dati contiene **1.559 codici classificati**, ciascuno contrassegnato con l'indicazione se una PT PMA di proprietà straniera può registrarla a Bali (un semplice flag `blocked: true / false` derivato dallo status nazionale del codice e dalla sua classe di rischio OSS sotto il moratorium del 13 maggio 2026).
 
 Il conteggio non è un'impressione. È un filtro applicato a un file.
 
 ## Il numero
 
-**Su 1.559 codici KBLI classificati, 519 sono bloccati per una PT PMA estera a Bali. Questo rappresenta il 33,3% — quasi esattamente uno su tre.**
+**Su 1.559 codici KBLI classificati, 519 sono bloccati per una PT PMA straniera a Bali. Questo corrisponde al 33,3% — quasi esattamente uno su tre.**
 
-Questo è l'intestazione onesta. Non "metà dell'economia", non un numero da allarmismo — ma non è piccolo nemmeno. **Quasi un terzo** delle attività commerciali che un estero potrebbe ragionevolmente considerare sono, nel Bali del 2026, vietate alla proprietà estera.
+Questo è il titolo onesto. Non "metà dell'economia", non un numero allarmistico — ma nemmeno piccolo. **Quasi un terzo** delle attività commerciali che un estraneo potrebbe ragionevolmente considerare sono, nel Bali del 2026, vietate alla proprietà straniera.
 
-E qui sta la parte che i conteggi aggregati nascondono: quei 519 si suddividono in distinte _tipi_ di "no" —
+Ecco la parte che i conteggi aggregati nascondono: quei 519 si suddividono in distinte _tipi_ di "no" —
 
-- **373 — bloccato per classe di rischio** (`BLOCCATO_CLASSE_RISCHIO`): tutti tranne quattro sono aperti a livello nazionale, ma con basso/basso-medio rischio, quindi il moratorium li intercetta. Questa è la categoria dominante — il caffè, il grossista di gioielli, il rivenditore generico.
-- **48 — bloccato dal moratorium per altri motivi** (`CHIUSO_MORATORIA_BALI`): la stessa richiesta del Governatore, raggiunta tramite un percorso diverso.
-- **68 — chiuso sull'attività stessa** (`TERTUTUP`): 62 di essi portano al catalogo una quota estera pari allo 0%, quindi non sorge alcuna questione Bali. Gli altri 6 sono la trappola: il catalogo indica il 100%, ma la professione o una riserva li chiudono comunque: consulenza legale (69102), notai (69104), pratica medica e specialistica in solitaria (86201, 86202), minimarket (47112), agricoltura di colture base (01111).
-- **17 — non è possibile indicare una posizione Bali** (`NON_CLASSIFICABILE`): non disponiamo di righe di licenza verificate per il codice, quindi non possiamo affermarne una. Trattare come bloccato fino a verifica live.
+- **373 — bloccato per classe di rischio** (`BLOCCATO_CLASSE_RISCHIO`): aperti a livello nazionale tranne quattro, ma a basso/basso-medio rischio, quindi il moratorium li intercetta. Questa è la categoria dominante — il café, il grossista di gioielli, il rivenditore generico.
+- **48 — bloccato dal moratorium per altre ragioni** (`CHIUSO_MORATORIA_BALI`): la stessa richiesta del Governatore, raggiunta tramite un percorso diverso.
+- **68 — chiuso sull'attività stessa** (`TERTUTUP`): 62 di questi portano una percentuale di proprietà straniera pari allo 0% nel catalogo, quindi non sorge alcuna questione Bali. Gli altri 6 sono la trappola: il catalogo dice il 100%, ma la professione o una riserva li chiudono comunque: consulenza legale (69102), notai (69104), pratica medica e specialistica in solitaria (86201, 86202), il minimarket (47112), agricoltura di colture base (01111).
+- **17 — non può essere indicata una posizione Bali** (`NON_CLASSIFICABILE`): non disponiamo di righe di licenza verificate per il codice, quindi non possiamo affermarne una. Considerare come bloccato fino a verifica live.
 - **7 — riservati a cooperative e MSME** (`CHIUSO_PMA_NO_BESAR`): allocati nell'Allegato II del Perpres 10/2021 come modificato dal 49/2021, quindi una PT PMA non può assumere il _bidang usaha_. Questa è la trappola esatta della villa.
-- **6 — il resto**: 2 chiusi dal proprio regolatore settoriale, 2 dipendenti dallo scope, 2 sotto le chiuse annunciate da Bali (70209 e una proposta).
+- **6 — il resto**: 2 chiusi dal proprio regolatore settoriale, 2 dipendenti dallo scope, 2 sotto le chiusure annunciate da Bali (70209 e una proposta).
 
-I muri non sono un unico muro. Sono sei muri diversi, e un estero può urtarne qualsiasi uno.
+I muri non sono un unico muro. Sono sei muri diversi, e un estraneo può urtare contro uno di essi.
 
 ## Dove la nostra stima era troppo alta
 
-All'inizio della pianificazione di questa serie avevamo portato una cifra operativa di "circa 945 codici, circa il 39% bloccato". Stiamo correggendo pubblicamente, perché una serie costruita sul principio _verify-don't-presume_ non può tacitamente mantenere un numero che non può più difendere.
+All'inizio della pianificazione di questa serie avevamo un numero di lavoro di "circa 945 codici, circa il 39% bloccato". Lo correggiamo pubblicamente, perché una serie costruita sul principio _verify-don't-presume_ non può tacitamente mantenere un numero che non può più difendere.
 
-La cifra 945/39% proveniva da un **conteggio più ampio e meno rigoroso** — l'export OSS completo di 2.422 righe, che include multiple righe scope e sub-scale per attività, quindi un singolo codice commerciale può apparire diverse volte. Contare a quella granularità gonfia sia il numeratore che il denominatore e mescola le righe scope con i codici attività. Quando contiamo al livello che conta realmente per un fondatore — **un verdetto per codice commerciale**, su 1.559 codici puliti — il tasso si stabilizza al **33,3%**.
+Il dato 945/39% proveniva da un **conteggio più ampio e meno rigoroso** — l'esportazione OSS completa di 2.422 righe, che include multiple righe di scope e sotto-scala per attività, quindi un singolo codice aziendale può apparire diverse volte. Contare a quella granularità gonfia sia il numeratore che il denominatore e mescola le righe di scope con i codici di attività. Quando contiamo al livello che realmente interessa a un fondatore — **un verdetto per codice aziendale**, attraverso i 1.559 codici puliti — il tasso si stabilizza al **33,3%**.
 
-Entrambe le affermazioni descrivono la stessa realtà (un blocco strutturale ampio sugli investimenti esteri a basso rischio). Ma la cifra su cui puoi basarti, codice per codice, è **519 su 1.559 — 33,3%**, non il 39%. Questa cifra si è già mossa una volta dall'inizio della serie: è un filtro applicato a un dataset, e il dataset viene corretto. È ancora ben sotto il 39%, e comunque abbastanza grande da rimodellare quasi ogni piano di un estero.
+Entrambe le affermazioni descrivono la stessa realtà (un blocco strutturale ampio sugli investimenti esteri a basso rischio). Ma il numero su cui puoi fondarti, codice per codice, è **519 su 1.559 — 33,3%**, non il 39%. Questo dato è già cambiato una volta dall'inizio della serie: è un filtro applicato a un insieme di dati, e l'insieme dei dati viene corretto. È ancora ben al di sotto del 39%, e rimane abbastanza grande da rimodellare quasi ogni piano di un estraneo.
 
 ## Cosa dice realmente la mappa
 
 Dai conteggi derivano due letture, e puntano nella stessa direzione:
 
-- **Quasi un terzo chiuso** significa non assumere che la tua idea sia registrabile. Il tasso base di "bloccato" è abbastanza alto da rendere la speranza non una strategia.
-- **Più dei due terzi non bloccati** (1.040 codici non portano il flag bloccato — anche se 65 di essi sono scope-dipendenti e alcuni non classificati) significa che la porta che desideri è _probabilmente_ trovabile — solitamente come fratello a rischio più alto del codice per cui ti sei rivolto inizialmente. Il pivot esiste più spesso che no.
+- **Quasi un terzo chiuso** significa non assumere che la tua idea sia registrabile. Il tasso base di "bloccato" è abbastanza alto perché la speranza non sia una strategia.
+- **Più di due terzi non bloccati** (1.040 codici non portano il flag bloccato — anche se 65 di essi sono dipendenti dallo scope e alcuni non classificati) significa che la porta che desideri è _probabilmente_ trovabile — solitamente come fratello a rischio più alto del codice a cui hai prima rivolto l'attenzione. Il pivot esiste più spesso che no.
 
-La mappa non dice "Bali è chiuso". Dice "Bali è chiuso alla versione _facile, a basso rischio_ della maggior parte delle cose, ed aperto alla versione _seria, a rischio più alto_ di molte di esse." Questa singola frase, supportata da 519 codici contati, è l'intero moratorium in una riga.
+La mappa non dice "Bali è chiuso". Dice "Bali è chiuso alla versione _facile, a basso rischio_ della maggior parte delle cose, ed è aperto alla versione _seria, a rischio più alto_ di molte di esse". Quella singola frase, supportata da 519 codici contati, è l'intero moratorium in una riga.
 
-Manteneremo questo conteggio aggiornato mentre evolvono i dati OSS e il moratorium — e continueremo a mostrare l'aritmetica, perché nel momento in cui un numero non può essere riprodotto dal file, smette di essere giornalismo e diventa una voce di corridoio.
+Manteneremo questo conteggio aggiornato man mano che evolvono i dati OSS e il moratorium — e continueremo a mostrare l'aritmetica, perché nel momento in cui un numero non può essere riprodotto dal file, smette di essere giornalismo e diventa un pettegolezzo.
 
-_Non accettare l'aggregato per fede — controlla il tuo codice esatto contro il conteggio live sul Bali Zero KBLI Navigator su balizero.com, dove lo status nazionale di ogni codice e il verdetto Bali sono affiancati, tratti dagli stessi dati contati in questo articolo._
+_Non accettare l'aggregato sulla fede — controlla il tuo codice esatto contro il conteggio live sul Bali Zero KBLI Navigator su balizero.com, dove lo status nazionale di ogni codice e il verdetto Bali sono affiancati, tratti dagli stessi dati che questo articolo ha contato._
