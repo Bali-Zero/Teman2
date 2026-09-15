@@ -33,9 +33,14 @@ ADMIN_EMAIL: str = "zero@balizero.com"
 TELEGRAM_OWNER_CHAT_ID: int = 8847435604
 # Source of truth: backend.app.core.constants.TaxConsultantConstants (mirrors
 # team_members and migration 319). Veronika is the manager (CC'd, not
-# assigned reports); the other four are the assignee pool.
-TAX_CONSULTANT_MANAGER: str = TaxConsultantConstants.CANONICAL[0]
-TAX_CONSULTANTS_NON_MANAGER: tuple[str, ...] = TaxConsultantConstants.CANONICAL[1:]
+# assigned reports); the other four are the assignee pool. MANAGER is an
+# explicit named identity, not CANONICAL[0] -- NON_MANAGER is derived by
+# filtering that identity out, not by slicing, so a reorder of CANONICAL
+# can't silently swap who gets escalation CC.
+TAX_CONSULTANT_MANAGER: str = TaxConsultantConstants.MANAGER
+TAX_CONSULTANTS_NON_MANAGER: tuple[str, ...] = tuple(
+    email for email in TaxConsultantConstants.CANONICAL if email != TaxConsultantConstants.MANAGER
+)
 TELEGRAM_URGENCY_DAYS: int = 3
 LKPM_DASHBOARD_URL: str = "https://kita.balizero.com/lkpm"
 KILLSWITCH_KEY: str = "lkpm_deadline_notifier_enabled"

@@ -24,7 +24,8 @@ GHOST_STRINGS: tuple[str, ...] = ("veronika.tax@", "faisha.tax@")
 
 BACKEND_ROOT = Path(__file__).resolve().parents[1]
 
-# Relative to BACKEND_ROOT. Each is historical, not live code:
+# Relative to BACKEND_ROOT. Each is historical, not live code, EXCEPT
+# constants.py, which is live and legitimately holds the ghost strings:
 #   - 319_...sql: this fix's own migration. Its header prose names the
 #     retired ghosts, and its rollback section restores the pre-319
 #     constraint, which allowed them — both legitimate.
@@ -36,11 +37,17 @@ BACKEND_ROOT = Path(__file__).resolve().parents[1]
 #     months before this fix. Same "settled history" reasoning as 093 —
 #     not named in the original mandate's exclusion list, added here after
 #     the sweep found it (see REPORT-RC.md item 6).
+#   - app/core/constants.py: `TaxConsultantConstants.LEGACY_ALIASES` is the
+#     write-path alias-normalization map — it must hold both ghost strings
+#     as dict KEYS so a legacy submission can still be recognized and
+#     rewritten to the real address; that is the cure, not a recurrence of
+#     the defect this guard exists to catch.
 _EXCLUDED_RELATIVE_PATHS: frozenset[str] = frozenset(
     {
         "db/migrations_v2/319_align_tax_consultant_allowlist_to_team_members.sql",
         "migrations/migration_093_lkpm_assigns_and_oss_creds.py",
         "db/migrations_v2/110_lkpm_allowlist_krisna.sql",
+        "app/core/constants.py",
     }
 )
 
@@ -63,6 +70,10 @@ def find_ghost_violations(
 ) -> list[tuple[Path, str]]:
     """Return (file, ghost_string) for every hard-coded ghost occurrence
     under `root`, skipping paths (relative to `root`) listed in `excluded`.
+
+    Comparison is casefolded — a mixed-case ghost (e.g. copy-pasted from an
+    email client that title-cased it) must still be caught, not smuggled in
+    by a spelling the case-sensitive sweep didn't anticipate.
     """
     violations: list[tuple[Path, str]] = []
     for path in _iter_source_files(root):
@@ -73,8 +84,9 @@ def find_ghost_violations(
             text = path.read_text(encoding="utf-8", errors="ignore")
         except OSError:
             continue
+        folded = text.casefold()
         for ghost in GHOST_STRINGS:
-            if ghost in text:
+            if ghost.casefold() in folded:
                 violations.append((path, ghost))
     return violations
 
@@ -103,6 +115,15 @@ def test_guilt_control_synthetic_ghost_is_caught(tmp_path: Path) -> None:
     """A fabricated file carrying the ghost string MUST be caught."""
     guilty = tmp_path / "guilty.py"
     guilty.write_text("ASSIGNEE = 'veronika.tax@balizero.com'\n", encoding="utf-8")
+    violations = find_ghost_violations(tmp_path)
+    assert violations == [(guilty, "veronika.tax@")]
+
+
+def test_guilt_control_mixed_case_ghost_is_caught(tmp_path: Path) -> None:
+    """A mixed-case ghost MUST still be caught — the sweep casefolds, so a
+    differently-cased copy of the same address can't slip past it."""
+    guilty = tmp_path / "guilty_mixed_case.py"
+    guilty.write_text("ASSIGNEE = 'Veronika.Tax@BaliZero.com'\n", encoding="utf-8")
     violations = find_ghost_violations(tmp_path)
     assert violations == [(guilty, "veronika.tax@")]
 

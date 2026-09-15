@@ -89,10 +89,19 @@
 ALTER TABLE clients
   DROP CONSTRAINT IF EXISTS clients_tax_consultant_check;
 
--- 2. clients.tax_consultant: ghost -> real (Veronika). No-op on re-run.
+-- 2. clients.tax_consultant: BOTH ghosts -> BOTH reals, not just the one
+--    the live census found here. GHOST_2 (Faisha's ghost) has 0 known
+--    rows in THIS table today, but the ADD CONSTRAINT below admits only
+--    the five real addresses -- if a row somehow carries the other
+--    table's ghost, this catches it too instead of aborting the migration
+--    at step 3. No-op on re-run either way.
 UPDATE clients
 SET tax_consultant = 'tax@balizero.com'
 WHERE tax_consultant = 'veronika.tax@balizero.com';
+
+UPDATE clients
+SET tax_consultant = 'faysha.tax@balizero.com'
+WHERE tax_consultant = 'faisha.tax@balizero.com';
 
 -- 3. Re-validate over the five REAL addresses -- every current row,
 --    including the ones just rewritten, must satisfy this or the
@@ -114,11 +123,16 @@ ALTER TABLE clients
 ALTER TABLE lkpm_reports
   DROP CONSTRAINT IF EXISTS lkpm_reports_assigned_to_check;
 
--- 5. lkpm_reports.lkpm_assigned_to: ghost -> real (Faisha, correct Y
---    spelling). No-op on re-run.
+-- 5. lkpm_reports.lkpm_assigned_to: BOTH ghosts -> BOTH reals, same
+--    symmetry as step 2 (GHOST_1, Veronika's ghost, has 0 known rows in
+--    THIS table today). No-op on re-run.
 UPDATE lkpm_reports
 SET lkpm_assigned_to = 'faysha.tax@balizero.com'
 WHERE lkpm_assigned_to = 'faisha.tax@balizero.com';
+
+UPDATE lkpm_reports
+SET lkpm_assigned_to = 'tax@balizero.com'
+WHERE lkpm_assigned_to = 'veronika.tax@balizero.com';
 
 -- 6. Re-validate over the five REAL addresses plus krisna@balizero.com
 --    (110_lkpm_allowlist_krisna.sql -- he has no .tax@ sub-alias and keeps
@@ -152,15 +166,16 @@ WHERE (email, avatar) IN (
 -- in the opposite order.
 --
 -- HONESTY ABOUT WHAT THIS CANNOT RESTORE:
--- * Row reversion is VALUE-based (it matches on the current real address),
---   not row-identity-based. Any row that legitimately started using
---   'tax@balizero.com' or 'faysha.tax@balizero.com' AFTER this migration
---   deployed (the intended, correct, ongoing use of those addresses) is
---   indistinguishable from a pre-migration row still on that value, and
---   this rollback will revert it to the ghost address too. The forward
---   migration has the same limit in reverse. There is no column recording
---   "was this row touched by migration 319", so this is a real, stated
---   loss of precision, not an oversight.
+-- * Row reversion is VALUE-based (it matches on the current real address, in
+--   BOTH tables and for BOTH addresses), not row-identity-based: any row in
+--   either table that legitimately started using 'tax@balizero.com' or
+--   'faysha.tax@balizero.com' AFTER this migration deployed -- the intended,
+--   correct, ongoing use of those addresses -- is indistinguishable from a
+--   pre-migration row still on that value, and this rollback reverts it to
+--   the matching ghost address too, the same way the forward migration would
+--   mis-map a row in reverse; there is no column recording "was this row
+--   touched by migration 319", so this is a real, stated loss of precision,
+--   not an oversight.
 -- * team_members.avatar is NOT restored to '/static/team/faisha.jpg' /
 --   '/static/team/sahira.jpg'. The sibling PR (D6) deletes those files from
 --   apps/mouth/public/ independently of this migration's lifecycle;
@@ -174,6 +189,10 @@ ALTER TABLE lkpm_reports
 UPDATE lkpm_reports
 SET lkpm_assigned_to = 'faisha.tax@balizero.com'
 WHERE lkpm_assigned_to = 'faysha.tax@balizero.com';
+
+UPDATE lkpm_reports
+SET lkpm_assigned_to = 'veronika.tax@balizero.com'
+WHERE lkpm_assigned_to = 'tax@balizero.com';
 
 ALTER TABLE lkpm_reports
   ADD CONSTRAINT lkpm_reports_assigned_to_check
@@ -195,6 +214,10 @@ ALTER TABLE clients
 UPDATE clients
 SET tax_consultant = 'veronika.tax@balizero.com'
 WHERE tax_consultant = 'tax@balizero.com';
+
+UPDATE clients
+SET tax_consultant = 'faisha.tax@balizero.com'
+WHERE tax_consultant = 'faysha.tax@balizero.com';
 
 ALTER TABLE clients
   ADD CONSTRAINT clients_tax_consultant_check

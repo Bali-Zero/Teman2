@@ -70,3 +70,54 @@ def test_migration_file_itself_carries_no_stray_check_constraint() -> None:
     forward = _forward_sql()
     assert forward.count("ADD CONSTRAINT clients_tax_consultant_check") == 1
     assert forward.count("ADD CONSTRAINT lkpm_reports_assigned_to_check") == 1
+
+
+# Round 2 (SAETTA-20260915 / W-C, slice R-C): the UPGRADE section must map
+# BOTH retired ghosts to their real replacement in BOTH tables (not just the
+# ghost the live census happened to find in each), and the ROLLBACK section
+# must map BOTH reals back to their ghost in BOTH tables before re-adding
+# the old, narrower CHECK constraints -- otherwise a row that legitimately
+# started using the OTHER real address after deploy aborts the DOWN
+# migration. Both address pairs are read from the shared
+# `TaxConsultantConstants.LEGACY_ALIASES` map rather than restated here, for
+# the same reason the constraint lists above are parsed instead of copied.
+_TABLES: tuple[tuple[str, str], ...] = (
+    ("clients", "tax_consultant"),
+    ("lkpm_reports", "lkpm_assigned_to"),
+)
+
+
+def _rollback_sql() -> str:
+    text = MIGRATION.read_text(encoding="utf-8")
+    _, rollback = text.split("-- === ROLLBACK ===", 1)
+    return rollback
+
+
+def test_upgrade_maps_both_ghosts_in_both_tables() -> None:
+    forward = _forward_sql()
+    for table, column in _TABLES:
+        for ghost, real in TaxConsultantConstants.LEGACY_ALIASES.items():
+            pattern = re.compile(
+                rf"UPDATE {re.escape(table)}\s*\n"
+                rf"SET {re.escape(column)} = '{re.escape(real)}'\s*\n"
+                rf"WHERE {re.escape(column)} = '{re.escape(ghost)}';"
+            )
+            assert pattern.search(forward), (
+                f"UPGRADE: {table}.{column} is missing the ghost->real UPDATE "
+                f"for '{ghost}' -> '{real}'"
+            )
+
+
+def test_rollback_maps_both_reals_in_both_tables() -> None:
+    rollback = _rollback_sql()
+    for table, column in _TABLES:
+        for ghost, real in TaxConsultantConstants.LEGACY_ALIASES.items():
+            pattern = re.compile(
+                rf"UPDATE {re.escape(table)}\s*\n"
+                rf"SET {re.escape(column)} = '{re.escape(ghost)}'\s*\n"
+                rf"WHERE {re.escape(column)} = '{re.escape(real)}';"
+            )
+            assert pattern.search(rollback), (
+                f"ROLLBACK: {table}.{column} is missing the real->ghost UPDATE "
+                f"for '{real}' -> '{ghost}'"
+            )

@@ -65,6 +65,10 @@ class LKPMAssignBody(BaseModel):
     def _validate_assignee(cls, v: str | None) -> str | None:
         if v is None or v == "":
             return None
+        # Normalize a legacy alias to its real replacement BEFORE the
+        # allowlist check, so the kita dropdown's still-live ghost
+        # submissions are accepted and stored under the real address.
+        v = TaxConsultantConstants.normalize(v)
         if v not in LKPM_ASSIGNEES:
             raise ValueError(
                 f"lkpm_assigned_to must be one of {sorted(LKPM_ASSIGNEES)} or null, got '{v}'",

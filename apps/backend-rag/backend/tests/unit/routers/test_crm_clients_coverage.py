@@ -201,6 +201,28 @@ def test_client_update_tax_consultant_empty_string_becomes_none():
     assert u.tax_consultant is None
 
 
+def test_client_update_tax_consultant_legacy_alias_normalizes_to_real():
+    """The kita dropdown still SENDS the retired address (migration 319) —
+    a create/update carrying it must be ACCEPTED and the value actually
+    stored (what `update_client` reads via `.dict(exclude_unset=True)`)
+    must be the real replacement, not the ghost."""
+    from backend.app.core.constants import TaxConsultantConstants
+    from backend.app.routers.crm_clients import ClientUpdate
+
+    ghost, real = next(iter(TaxConsultantConstants.LEGACY_ALIASES.items()))
+    u = ClientUpdate(tax_consultant=ghost)
+    assert u.tax_consultant == real
+
+
+def test_client_update_tax_consultant_unknown_address_still_rejected():
+    """An address outside both the real allowlist and the legacy-alias map
+    must still be rejected exactly as before normalize() existed."""
+    from backend.app.routers.crm_clients import ClientUpdate
+
+    with pytest.raises(ValueError, match="tax_consultant must be one of"):
+        ClientUpdate(tax_consultant="unknown.consultant@balizero.com")
+
+
 def test_client_update_full_name_empty_rejected():
     from backend.app.routers.crm_clients import ClientUpdate
 

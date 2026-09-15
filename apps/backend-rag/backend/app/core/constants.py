@@ -223,6 +223,44 @@ class TaxConsultantConstants:
     # .tax@ sub-alias -- 110_lkpm_allowlist_krisna.sql).
     LKPM_ASSIGNEES: tuple[str, ...] = (*CANONICAL, "krisna@balizero.com")
 
+    # Veronika is the tax team's point of contact for LKPM deadline
+    # escalations (CC'd, not assigned reports herself). An explicit named
+    # member, not CANONICAL[0] -- a reorder of the tuple above must not
+    # silently change who gets escalation CC.
+    MANAGER: str = "tax@balizero.com"
+
+    # The two retired addresses migration 319 moved production rows off of,
+    # mapped to their real replacement. The kita frontend dropdown
+    # (apps/mouth/src/lib/workspace/roster-directory.ts) still SENDS these
+    # as of 2026-09-15 and will until a later mouth PR retires them there
+    # too -- `normalize()` below is the write-path cure that keeps those
+    # submissions landing on the real address instead of bouncing. This is
+    # the ONE place besides the migration itself allowed to hold these
+    # literal strings: `test_tax_consultant_ghost_address_guard.py`
+    # excludes this file by name for exactly that reason.
+    LEGACY_ALIASES: dict[str, str] = {
+        "veronika.tax@balizero.com": "tax@balizero.com",
+        "faisha.tax@balizero.com": "faysha.tax@balizero.com",
+    }
+
+    @classmethod
+    def normalize(cls, email: str | None) -> str | None:
+        """Map a legacy alias to its real replacement; pass anything else through.
+
+        Matching is casefolded and whitespace-stripped (a mixed-case or
+        padded legacy submission must still resolve), but an unmatched
+        input is returned EXACTLY as received -- normalize() only ever
+        rewrites a known legacy alias, never reshapes an address the
+        allowlist check downstream still needs to judge on its own terms.
+        """
+        if email is None:
+            return None
+        candidate = email.strip().casefold()
+        for legacy, real in cls.LEGACY_ALIASES.items():
+            if candidate == legacy.casefold():
+                return real
+        return email
+
 
 # ============================================================================
 # HTTP Client Constants

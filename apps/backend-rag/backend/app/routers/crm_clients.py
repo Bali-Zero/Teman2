@@ -389,6 +389,10 @@ class ClientUpdate(BaseModel):
         """Validate tax_consultant is one of the 5 Bali Zero tax team emails, or None."""
         if v is None or v == "":
             return None
+        # Normalize a legacy alias to its real replacement BEFORE the
+        # allowlist check, so the kita dropdown's still-live ghost
+        # submissions are accepted and stored under the real address.
+        v = TaxConsultantConstants.normalize(v)
         if v not in TAX_CONSULTANT_VALUES:
             raise ValueError(
                 f"tax_consultant must be one of {sorted(TAX_CONSULTANT_VALUES)} or null, got '{v}'",
