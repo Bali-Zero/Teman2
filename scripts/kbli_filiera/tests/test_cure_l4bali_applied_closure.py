@@ -199,7 +199,13 @@ def test_two_matching_ancestors_are_both_named(tmp_path: Path) -> None:
 
 
 def test_off_list_bloccato_classe_rischio_becomes_attenzione_open(tmp_path: Path) -> None:
+    # INNOCENCE for the 2b national-cap guard (2026-09-15, Codex sol finding
+    # on #6597): a genuine TIER-only block, national cap TERBATAS/49% (not
+    # 0%), still converts to ATTENZIONE — the guard must not over-fire on
+    # every non-TERBUKA status, only on an actual 0% cap.
     off_list = _record("88006", status="BLOCCATO_CLASSE_RISCHIO", blocked=True)
+    off_list["pma_status"] = "TERBATAS"
+    off_list["pma_max_asing"] = 49
     canonical, spec = _fixture_files(tmp_path, [off_list], expected=[], excluded=[])
 
     assert _run(canonical, spec, apply=True) == 0
@@ -213,12 +219,75 @@ def test_off_list_bloccato_classe_rischio_becomes_attenzione_open(tmp_path: Path
 
 def test_off_list_chiuso_moratoria_bali_becomes_attenzione_open(tmp_path: Path) -> None:
     off_list = _record("88009", status="CHIUSO_MORATORIA_BALI", blocked=True)
+    off_list["pma_status"] = "TERBUKA"
+    off_list["pma_max_asing"] = 100
     canonical, spec = _fixture_files(tmp_path, [off_list], expected=[], excluded=[])
 
     assert _run(canonical, spec, apply=True) == 0
     l4 = _by_code(canonical)["88009"]["l4_bali"]
     assert l4["status"] == "ATTENZIONE_FASCIA_BALI"
     assert l4["blocked"] is False
+
+
+# --------------------------------------------------------------- guilt/innocence: national 0% cap outranks the tier (2b)
+
+
+def test_tier_sourced_record_with_zero_national_cap_stays_blocked_tertutup(tmp_path: Path) -> None:
+    # GUILT (2026-09-15, Codex sol adversarial finding on #6597): a record
+    # whose Bali status is tier-sourced (BLOCCATO_CLASSE_RISCHIO /
+    # CHIUSO_MORATORIA_BALI) but whose NATIONAL fields already close it at
+    # 0% foreign ownership must NOT be read as "cleared by the tier test" —
+    # the tier alone never closed OSS, but the national cap did. Same shape
+    # as the real 10214/16221/95220/95299: TERBATAS/0%, Perpres 49/2021.
+    guilty = _record("88020", status="CHIUSO_MORATORIA_BALI", blocked=True, confidence="MEDIUM")
+    guilty["pma_status"] = "TERBATAS"
+    guilty["pma_max_asing"] = 0
+    guilty["pma_source"] = "Perpres 10/2021, 49/2021"
+    canonical, spec = _fixture_files(tmp_path, [guilty], expected=[], excluded=[])
+
+    assert _run(canonical, spec, apply=True) == 0
+    l4 = _by_code(canonical)["88020"]["l4_bali"]
+    assert l4["status"] == "TERTUTUP"
+    assert l4["blocked"] is True
+    assert l4["confidence"] == "HIGH"
+    assert l4["needs_review"] is False
+    assert "TERBATAS" in l4["reason"]
+    assert "Perpres 10/2021, 49/2021" in l4["reason"]
+    assert "moratorium" not in l4["reason"].lower()
+    assert "2026 Bali" not in l4["reason"]
+    assert "13 May" not in l4["reason"]
+    assert l4["verdict_state"] == "blocked"
+
+
+def test_tier_sourced_record_with_a_special_cased_zero_cap_still_converts(tmp_path: Path) -> None:
+    # INNOCENCE: `pma_cap_special` is the same escape hatch
+    # kbli-bali-block.test.ts's `nationallyClosed` predicate uses — a 0% cap
+    # that is itself flagged special-cased must NOT be read as a genuine
+    # national closure, so the tier-only conversion still applies.
+    special = _record("88021", status="BLOCCATO_CLASSE_RISCHIO", blocked=True)
+    special["pma_status"] = "TERBATAS"
+    special["pma_max_asing"] = 0
+    special["pma_cap_special"] = True
+    canonical, spec = _fixture_files(tmp_path, [special], expected=[], excluded=[])
+
+    assert _run(canonical, spec, apply=True) == 0
+    l4 = _by_code(canonical)["88021"]["l4_bali"]
+    assert l4["status"] == "ATTENZIONE_FASCIA_BALI"
+    assert l4["blocked"] is False
+
+
+def test_tier_sourced_record_with_national_tertutup_status_stays_blocked(tmp_path: Path) -> None:
+    # GUILT, the OTHER trigger: pma_status literally TERTUTUP (not just a 0%
+    # TERBATAS cap) must also outrank the tier reading.
+    guilty = _record("88022", status="BLOCCATO_CLASSE_RISCHIO", blocked=True)
+    guilty["pma_status"] = "TERTUTUP"
+    guilty["pma_max_asing"] = 0
+    canonical, spec = _fixture_files(tmp_path, [guilty], expected=[], excluded=[])
+
+    assert _run(canonical, spec, apply=True) == 0
+    l4 = _by_code(canonical)["88022"]["l4_bali"]
+    assert l4["status"] == "TERTUTUP"
+    assert l4["blocked"] is True
 
 
 # --------------------------------------------------------------- guilt: NON_CLASSIFICABILE
@@ -427,11 +496,16 @@ def test_real_canonical_applies_to_the_expected_census(tmp_path: Path) -> None:
     # SAETTA-20260915 W-H #6596 (merged into this branch's base) lifted
     # 43110's own Bali block, dropping the pre-cure raw population 519->518
     # and this compiler's own output 132->131 (BLOCCATO_DIPENDE_SCOPE
-    # blocked=true: 2->1; every other group unchanged).
-    assert total_blocked == 131
+    # blocked=true: 2->1; every other group unchanged). 131->135 on
+    # 2026-09-15 (SAETTA-20260915, Codex sol adversarial finding on #6597):
+    # 10214/16221/95220/95299 carry a genuine national 0% cap (Perpres
+    # 49/2021 Lampiran II/III) and must stay blocked, not clear on the tier
+    # test alone — they move ATTENZIONE_FASCIA_BALI->TERTUTUP, so TERTUTUP
+    # 68->72 and ATTENZIONE_FASCIA_BALI 387->383.
+    assert total_blocked == 135
     assert counter[("CHIUSO_BALI", True)] == 40
-    assert counter[("ATTENZIONE_FASCIA_BALI", False)] == 387
-    assert counter[("TERTUTUP", True)] == 68
+    assert counter[("ATTENZIONE_FASCIA_BALI", False)] == 383
+    assert counter[("TERTUTUP", True)] == 72
 
     # guilt
     assert by_code["68111"]["l4_bali"]["status"] == "CHIUSO_BALI"
@@ -441,6 +515,19 @@ def test_real_canonical_applies_to_the_expected_census(tmp_path: Path) -> None:
     assert "6,000 m" in by_code["55101"]["l4_bali"]["reason"]
     assert by_code["56400"]["l4_bali"]["status"] == "CHIUSO_BALI"
     assert "merges KBLI 2020 activities" in by_code["56400"]["l4_bali"]["reason"]
+
+    # guilt: the 4 national-0%-cap codes stay blocked, TERTUTUP, HIGH
+    # confidence, a field-derived (never Bali-tier-worded) reason
+    for code in ("10214", "16221", "95220", "95299"):
+        l4 = by_code[code]["l4_bali"]
+        assert l4["status"] == "TERTUTUP", code
+        assert l4["blocked"] is True, code
+        assert l4["confidence"] == "HIGH", code
+        assert l4["needs_review"] is False, code
+        assert "moratorium" not in l4["reason"].lower(), code
+        assert "2026 Bali" not in l4["reason"], code
+        assert "13 May" not in l4["reason"], code
+        assert l4["verdict_state"] == "blocked", code
 
     # innocence
     for code in closure_spec["excluded_codes"]["codes"]:

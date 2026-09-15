@@ -36,7 +36,15 @@ For every code NOT owned by W-H's separate Perpres-49/2021 adjudication
   2. Elsewhere, a record currently blocked purely by risk tier
      (``BLOCCATO_CLASSE_RISCHIO`` / ``CHIUSO_MORATORIA_BALI``) ->
      ``ATTENZIONE_FASCIA_BALI``, ``blocked=false`` — the tier alone never
-     closed OSS; a real check on OSS is still owed.
+     closed OSS; a real check on OSS is still owed. UNLESS (2b, added
+     2026-09-15 SAETTA-20260915, Codex sol adversarial finding on #6597) the
+     record ALSO carries a genuine national 0% cap (``pma_cap_special`` is
+     not ``true`` and ``pma_status`` is ``TERTUTUP`` or ``pma_max_asing`` is
+     ``0``) — a national cap is a non-tier reason to stay blocked, so that
+     record instead follows the 47222 pattern (5, below): ``TERTUTUP``,
+     ``blocked=true``, ``confidence=HIGH``, a field-derived
+     ``tertutup_reason_fallback`` reason, never the tier/moratorium framing.
+     Measured 2026-09-15: exactly 10214, 16221, 95220, 95299.
   3. A ``NON_CLASSIFICABILE`` record (blocked purely because the catalogue
      holds no licensing rows) -> stays ``NON_CLASSIFICABILE`` but
      ``blocked=false``, with a short appended note.
@@ -143,6 +151,30 @@ TERTUTUP_STALE_REASON = (
 # adjudicate). Writing this exact sentence onto a TERBATAS/0%-via-Lampiran-II
 # record would overclaim a blanket national closure it does not have.
 TERTUTUP_NATIONAL_REASON = "Closed to foreign ownership at the national level (TERTUTUP/0%)."
+
+
+def is_nationally_capped(record: dict[str, Any]) -> bool:
+    """True when the record's own NATIONAL fields (not the Bali layer) already
+    close it at 0% foreign ownership — a fact the tier->ATTENZIONE conversion
+    (rule 2) must never override. ``pma_cap_special`` is the same escape hatch
+    ``kbli-bali-block.test.ts``'s ``nationallyClosed`` predicate uses: a
+    handful of records carry a 0% cap that is itself SPECIAL-CASED (e.g. a
+    sector with its own regime), so it is excluded here on purpose, not an
+    oversight. Added 2026-09-15 (SAETTA-20260915, Codex sol adversarial
+    finding on #6597): the compiler used to un-block 10214/16221/95220/95299
+    into ATTENZIONE_FASCIA_BALI purely because their `l4_bali.status` was tier-
+    sourced, ignoring that all four are ALSO closed nationally (three by
+    Perpres 49/2021 Lampiran II Koperasi/UMKM allocation, one by Lampiran III
+    domestic-capital-only) — a national 0% cap is a non-tier, non-Bali reason
+    to stay blocked, and reading it as "cleared by the tier test" was wrong
+    regardless of what the tier test itself found."""
+    if record.get("pma_cap_special") is True:
+        return False
+    status = (record.get("pma_status") or "").upper()
+    max_asing = record.get("pma_max_asing")
+    if max_asing is None:
+        max_asing = 0
+    return status == "TERTUTUP" or max_asing == 0
 
 
 def tertutup_reason_fallback(record: dict[str, Any]) -> str:
@@ -288,6 +320,15 @@ def touched_paths_for(group: str) -> frozenset[str]:
             "l4_bali.needs_review",
             "l4_bali.verdict_state",
         }
+    elif group == "tertutup_national_cap":
+        extra = {
+            "l4_bali.status",
+            "l4_bali.blocked",
+            "l4_bali.reason",
+            "l4_bali.needs_review",
+            "l4_bali.confidence",
+            "l4_bali.verdict_state",
+        }
     elif group == "non_classificabile":
         extra = {"l4_bali.blocked", "l4_bali.reason", "l4_bali.verdict_state"}
     elif group == "tertutup_reason":
@@ -355,6 +396,25 @@ def plan(records: list[dict[str, Any]], closure_spec: dict[str, Any]) -> dict[st
         elif code in excluded:
             group = "excluded"
             target = {"moratorium": new_moratorium}
+        elif (
+            current_blocked is True
+            and current_status in ATTENZIONE_SOURCE_STATUSES
+            and is_nationally_capped(record)
+        ):
+            # 2b (2026-09-15, Codex sol finding on #6597): the tier alone
+            # never closed OSS, but a national 0% cap did — this record
+            # follows the 47222 pattern instead of the plain ATTENZIONE one
+            # below, so it stays blocked for the fact that actually blocks
+            # it.
+            group = "tertutup_national_cap"
+            target = {
+                "status": "TERTUTUP",
+                "blocked": True,
+                "needs_review": False,
+                "confidence": "HIGH",
+                "reason": tertutup_reason_fallback(record),
+                "moratorium": new_moratorium,
+            }
         elif current_blocked is True and current_status in ATTENZIONE_SOURCE_STATUSES:
             group = "attenzione"
             target = {
@@ -386,7 +446,7 @@ def plan(records: list[dict[str, Any]], closure_spec: dict[str, Any]) -> dict[st
             group = "passthrough"
             target = {"moratorium": new_moratorium}
 
-        if group in ("chiuso_bali", "attenzione", "non_classificabile"):
+        if group in ("chiuso_bali", "attenzione", "tertutup_national_cap", "non_classificabile"):
             working = copy.deepcopy(record)
             working_l4 = working["l4_bali"]
             working_l4.update({key: value for key, value in target.items() if key != "moratorium"})
@@ -476,7 +536,15 @@ def main(argv: list[str] | None = None) -> int:
     to_patch = {code: item for code, item in plans.items() if item["changed"]}
     changed_groups = Counter(item["group"] for item in to_patch.values())
     print(f"plan: {len(to_patch)} record(s) to patch of {len(plans)}")
-    for group in ("chiuso_bali", "attenzione", "non_classificabile", "tertutup_reason", "excluded", "passthrough"):
+    for group in (
+        "chiuso_bali",
+        "attenzione",
+        "tertutup_national_cap",
+        "non_classificabile",
+        "tertutup_reason",
+        "excluded",
+        "passthrough",
+    ):
         print(f"  {group:20} total={groups[group]:5} to_patch={changed_groups[group]:5}")
     _print_counter("after", _census_after(records, plans))
 
