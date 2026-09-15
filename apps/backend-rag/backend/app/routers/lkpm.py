@@ -15,6 +15,7 @@ from fastapi import APIRouter, Body, Depends, HTTPException, Request
 from fastapi.responses import Response
 from pydantic import BaseModel, field_validator
 
+from backend.app.core.constants import TaxConsultantConstants
 from backend.app.dependencies import get_current_user, get_database_pool
 from backend.app.models.lkpm import (
     LKPMClientConfig,
@@ -47,20 +48,11 @@ def _safe_lkpm_failure(
 
 
 # Allowed tax team emails that can be assigned to an LKPM report.
-# Kept in sync with crm_clients.TAX_CONSULTANT_VALUES and the DB CHECK
-# constraint from migration 093. Adding a new consultant requires updating
-# all three (Python model + CRM router + DB migration).
-LKPM_ASSIGNEES: set[str] = {
-    "veronika.tax@balizero.com",
-    "kadek.tax@balizero.com",
-    "dewaayu.tax@balizero.com",
-    "angel.tax@balizero.com",
-    "faisha.tax@balizero.com",
-    # Krisna is the Executive Consultant who owns 4 PTs in the PDF Q1 2026
-    # handover ("Handle BY: Krisna"). He doesn't have a .tax@ sub-alias,
-    # so we whitelist his main inbox.
-    "krisna@balizero.com",
-}
+# Source of truth: backend.app.core.constants.TaxConsultantConstants (mirrors
+# team_members and the DB CHECK constraint from migration 319, kept in sync
+# by a parsing test). Adding a new consultant requires updating the shared
+# constant, the DB migration, and team_members itself.
+LKPM_ASSIGNEES: set[str] = set(TaxConsultantConstants.LKPM_ASSIGNEES)
 
 
 class LKPMAssignBody(BaseModel):

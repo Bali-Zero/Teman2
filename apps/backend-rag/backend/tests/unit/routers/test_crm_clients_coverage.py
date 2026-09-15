@@ -183,8 +183,8 @@ def test_client_update_normalize_gender():
 def test_client_update_tax_consultant_valid():
     from backend.app.routers.crm_clients import ClientUpdate
 
-    u = ClientUpdate(tax_consultant="veronika.tax@balizero.com")
-    assert u.tax_consultant == "veronika.tax@balizero.com"
+    u = ClientUpdate(tax_consultant="tax@balizero.com")
+    assert u.tax_consultant == "tax@balizero.com"
 
 
 def test_client_update_tax_consultant_invalid():

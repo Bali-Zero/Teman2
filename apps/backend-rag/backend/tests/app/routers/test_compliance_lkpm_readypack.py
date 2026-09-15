@@ -300,7 +300,14 @@ async def test_team_user_not_assigned_gets_403(pool: asyncpg.Pool) -> None:
         client_id,
         "Q1",
         2026,
-        assigned_to="veronika.tax@balizero.com",
+        # Any consultant other than the requesting team_user (kadek) proves
+        # the 403; 'dewaayu.tax@' was never a ghost address and needs no
+        # migration 319 on this integration test's real local Postgres
+        # instance to remain valid (unlike Veronika's real address,
+        # 'tax@balizero.com', which this shared nuzantara_test DB's
+        # lkpm_reports_assigned_to_check has not been migrated to accept —
+        # see REPORT-RC.md).
+        assigned_to="dewaayu.tax@balizero.com",
         complete=True,
     )
 

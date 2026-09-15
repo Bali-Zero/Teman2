@@ -15,6 +15,7 @@ from typing import Any
 
 import httpx
 
+from backend.app.core.constants import TaxConsultantConstants
 from backend.app.utils.logging_utils import get_logger
 from backend.services.compliance.lkpm_service import QUARTER_DEADLINES
 
@@ -30,13 +31,11 @@ _EMAIL_API_KEY: str = os.getenv("NUZANTARA_API_KEY", "")
 
 ADMIN_EMAIL: str = "zero@balizero.com"
 TELEGRAM_OWNER_CHAT_ID: int = 8847435604
-TAX_CONSULTANT_MANAGER: str = "veronika.tax@balizero.com"
-TAX_CONSULTANTS_NON_MANAGER: tuple[str, ...] = (
-    "kadek.tax@balizero.com",
-    "dewaayu.tax@balizero.com",
-    "angel.tax@balizero.com",
-    "faisha.tax@balizero.com",
-)
+# Source of truth: backend.app.core.constants.TaxConsultantConstants (mirrors
+# team_members and migration 319). Veronika is the manager (CC'd, not
+# assigned reports); the other four are the assignee pool.
+TAX_CONSULTANT_MANAGER: str = TaxConsultantConstants.CANONICAL[0]
+TAX_CONSULTANTS_NON_MANAGER: tuple[str, ...] = TaxConsultantConstants.CANONICAL[1:]
 TELEGRAM_URGENCY_DAYS: int = 3
 LKPM_DASHBOARD_URL: str = "https://kita.balizero.com/lkpm"
 KILLSWITCH_KEY: str = "lkpm_deadline_notifier_enabled"
@@ -114,11 +113,21 @@ def _format_deadline(quarter: str, year: int) -> str:
 def _first_name_from_email(email: str) -> str:
     """Extract a friendly first name from an email address.
 
-    Special case: 'dewaayu' -> 'Dewa Ayu'.
+    Assumes a `firstname.dept@` local part, which breaks for two of the five
+    real tax-team addresses (migration 319): Veronika's real address has no
+    name prefix at all (`tax@balizero.com`), and Faisha's has a Y where her
+    name has an I (`faysha.tax@balizero.com`) -- both drifted from the
+    now-retired ghost addresses (see migration 319's header for the exact
+    spelling) that used to parse correctly by accident. Special-cased
+    explicitly, same as 'dewaayu' -> 'Dewa Ayu'.
     """
     local = email.split("@")[0].split(".")[0].lower()
     if local == "dewaayu":
         return "Dewa Ayu"
+    if local == "tax":
+        return "Veronika"
+    if local == "faysha":
+        return "Faisha"
     return local.capitalize()
 
 

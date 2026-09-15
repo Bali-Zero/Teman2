@@ -174,6 +174,57 @@ class IntelConstants:
 
 
 # ============================================================================
+# Tax Consultant Roster (CRM / LKPM)
+# ============================================================================
+
+
+class TaxConsultantConstants:
+    """The tax team's @balizero.com addresses.
+
+    Source of truth is `team_members` (Postgres) -- these tuples exist
+    because the two DB CHECK constraints that gate `clients.tax_consultant`
+    and `lkpm_reports.lkpm_assigned_to` cannot be queried from Python at
+    validation time, so the allowed set is mirrored here. The mirror MUST
+    agree with migration `319_align_tax_consultant_allowlist_to_team_members.sql`
+    (`backend/tests/migrations/test_migration_319_tax_consultant_allowlist_parity.py`
+    parses that file's CHECK clauses and asserts equality against
+    `CANONICAL` / `LKPM_ASSIGNEES` below -- it does not restate the list by
+    hand, so drift between the SQL and this module fails a test instead of
+    silently reintroducing a ghost address, which is exactly the defect
+    migration 319 cured).
+
+    Two of the addresses this replaces were never real -- a historical
+    typo/staff-turnover drift (see migration 319's header for the exact
+    spelling) that the old CHECK constraints and four independent Python
+    copies of this list (crm_clients.py, lkpm.py, lkpm_deadline_notifier.py,
+    and the legacy migration_093 module) all carried, none of them noticing
+    the other three had it wrong the same way. This module is the ONE place
+    the list lives now; the next staff change is one edit here. (The exact
+    ghost strings are deliberately not repeated here --
+    `test_tax_consultant_ghost_address_guard.py` sweeps backend/ for them
+    and this file is not on its exclusion list.)
+
+    Adding or removing a consultant requires, in the same PR:
+      1. this tuple (and LKPM_ASSIGNEES if the person handles LKPM),
+      2. a new migration ALTERing both CHECK constraints,
+      3. `team_members` itself.
+    """
+
+    # The five real tax-team addresses, live in team_members as of 2026-09-15.
+    CANONICAL: tuple[str, ...] = (
+        "tax@balizero.com",  # Veronika
+        "angel.tax@balizero.com",  # Angel
+        "kadek.tax@balizero.com",  # Kadek
+        "dewaayu.tax@balizero.com",  # Dewa Ayu
+        "faysha.tax@balizero.com",  # Faisha -- note the Y
+    )
+
+    # LKPM assignment additionally allows Krisna (Executive Consultant, no
+    # .tax@ sub-alias -- 110_lkpm_allowlist_krisna.sql).
+    LKPM_ASSIGNEES: tuple[str, ...] = (*CANONICAL, "krisna@balizero.com")
+
+
+# ============================================================================
 # HTTP Client Constants
 # ============================================================================
 

@@ -186,7 +186,8 @@ class TestFirstNameFromEmail:
     """5 tests for _first_name_from_email."""
 
     def test_veronika(self) -> None:
-        assert _first_name_from_email("veronika.tax@balizero.com") == "Veronika"
+        """Veronika's real address has no name prefix at all (migration 319)."""
+        assert _first_name_from_email("tax@balizero.com") == "Veronika"
 
     def test_kadek(self) -> None:
         assert _first_name_from_email("kadek.tax@balizero.com") == "Kadek"
@@ -198,7 +199,8 @@ class TestFirstNameFromEmail:
         assert _first_name_from_email("angel.tax@balizero.com") == "Angel"
 
     def test_faisha(self) -> None:
-        assert _first_name_from_email("faisha.tax@balizero.com") == "Faisha"
+        """Faisha's real address has a Y where her name has an I (migration 319)."""
+        assert _first_name_from_email("faysha.tax@balizero.com") == "Faisha"
 
 
 # =====================================================================

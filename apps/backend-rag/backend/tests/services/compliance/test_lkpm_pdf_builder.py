@@ -39,7 +39,7 @@ def base_data() -> LkpmPackData:
                 "oss_status": "active",
             },
         ],
-        assignee="veronika.tax@balizero.com",
+        assignee="tax@balizero.com",
         realization_idr=500_000_000,
     )
 

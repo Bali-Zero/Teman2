@@ -16,6 +16,7 @@ from backend.app.core.constants import (
     MemoryConstants,
     RoutingConstants,
     SearchConstants,
+    TaxConsultantConstants,
 )
 
 
@@ -99,3 +100,25 @@ class TestDatabaseConstants:
         assert DatabaseConstants.POOL_MIN_SIZE == 2
         assert DatabaseConstants.POOL_MAX_SIZE == 10
         assert DatabaseConstants.COMMAND_TIMEOUT == 60
+
+
+class TestTaxConsultantConstants:
+    """Tests for TaxConsultantConstants — the team_members-derived roster
+    (migration 319 keeps the DB CHECK constraints in sync with this)."""
+
+    def test_canonical_is_the_five_real_addresses(self):
+        assert TaxConsultantConstants.CANONICAL == (
+            "tax@balizero.com",
+            "angel.tax@balizero.com",
+            "kadek.tax@balizero.com",
+            "dewaayu.tax@balizero.com",
+            "faysha.tax@balizero.com",
+        )
+        assert len(TaxConsultantConstants.CANONICAL) == 5
+
+    def test_lkpm_assignees_is_canonical_plus_krisna(self):
+        assert TaxConsultantConstants.LKPM_ASSIGNEES == (
+            *TaxConsultantConstants.CANONICAL,
+            "krisna@balizero.com",
+        )
+        assert len(TaxConsultantConstants.LKPM_ASSIGNEES) == 6
