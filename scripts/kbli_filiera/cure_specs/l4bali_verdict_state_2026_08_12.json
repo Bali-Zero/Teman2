@@ -3,7 +3,7 @@
     "purpose": "Add l4_bali.verdict_state without changing the meaning or type of l4_bali.blocked. Selection and targets are derived from live record state.",
     "created": "2026-09-15",
     "emitted_by": "scripts/kbli_filiera/emit_l4bali_verdict_state_spec.py",
-    "canonical_source": "/Users/balizero/nuzantara/.worktrees/mouth-kbli-wh-pr5-twelve-hold/data/source_documents/KBLI_2025_FINAL_CLEAN.json",
+    "canonical_source": "/Users/balizero/nuzantara/.worktrees/mouth-kbli-wh-pr2b-source-rows/data/source_documents/KBLI_2025_FINAL_CLEAN.json",
     "selection": "every live canonical record carrying a valid l4_bali Boolean verdict",
     "derivation_order": [
       "NON_CLASSIFICABILE -> unknown",
@@ -16,12 +16,12 @@
     "hard_rule": "The only permitted patch key is verdict_state. blocked is never written; blocked=true on unknown records is deliberately preserved.",
     "open_tier_statuses": ["APERTO_BALI_RISCHIO_ALTO", "OK_or_HIGHER_RISK"],
     "measured_counts": {
-      "open_supporting_tier_absent": 101,
-      "open_supporting_tier_absent:APERTO_BALI_RISCHIO_ALTO": 11,
+      "open_supporting_tier_absent": 100,
+      "open_supporting_tier_absent:APERTO_BALI_RISCHIO_ALTO": 10,
       "open_supporting_tier_absent:OK_or_HIGHER_RISK": 90,
-      "status:APERTO_BALI_RISCHIO_ALTO": 11,
+      "status:APERTO_BALI_RISCHIO_ALTO": 10,
       "status:BLOCCATO_CLASSE_RISCHIO": 373,
-      "status:BLOCCATO_DIPENDE_SCOPE": 67,
+      "status:BLOCCATO_DIPENDE_SCOPE": 68,
       "status:CHIUSO_BALI": 1,
       "status:CHIUSO_BALI_PROPOSTO": 5,
       "status:CHIUSO_MORATORIA_BALI": 48,
@@ -32,9 +32,9 @@
       "status:TERBATAS": 5,
       "status:TERTUTUP": 68,
       "unknown_blocked_true_preserved": 17,
-      "verdict_state:blocked": 83,
+      "verdict_state:blocked": 82,
       "verdict_state:open": 3,
-      "verdict_state:provisional": 1448,
+      "verdict_state:provisional": 1449,
       "verdict_state:unknown": 25
     }
   },
@@ -9778,14 +9778,14 @@
     "43110": {
       "facts_basis": {
         "status": "BLOCCATO_DIPENDE_SCOPE",
-        "blocked": true,
-        "confidence": "HIGH",
-        "needs_review": false,
+        "blocked": false,
+        "confidence": "MEDIUM",
+        "needs_review": true,
         "supporting_tier_absent": false,
-        "supporting_besar_tiers": []
+        "supporting_besar_tiers": ["Menengah Tinggi"]
       },
       "patch": {
-        "verdict_state": "blocked"
+        "verdict_state": "provisional"
       }
     },
     "43120": {
@@ -20373,12 +20373,12 @@
     },
     "93114": {
       "facts_basis": {
-        "status": "APERTO_BALI_RISCHIO_ALTO",
+        "status": "BLOCCATO_DIPENDE_SCOPE",
         "blocked": false,
-        "confidence": "LOW",
+        "confidence": "MEDIUM",
         "needs_review": true,
-        "supporting_tier_absent": true,
-        "supporting_besar_tiers": []
+        "supporting_tier_absent": false,
+        "supporting_besar_tiers": ["Tinggi"]
       },
       "patch": {
         "verdict_state": "provisional"

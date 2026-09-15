@@ -1,0 +1,37 @@
+{
+  "93114": {
+    "disputed_key": "per_skala_disputed_pp28_collision",
+    "drop_keys": ["per_skala_disputed_pp28_collision", "_data_note"],
+    "l4_patch": {
+      "status": "BLOCCATO_DIPENDE_SCOPE",
+      "blocked": false,
+      "confidence": "MEDIUM",
+      "needs_review": true,
+      "reason": "Scope-dependent. Golf courses are licensed at Menengah and Besar scale as Tinggi risk (PP 28/2025 Lampiran I.L.61), outside the Rendah / Menengah Rendah tiers of the Bali moratorium request, and no Perpres reservation was located. All other sports fields (driving range, mini-soccer, badminton, volleyball, basketball, tennis and similar) are licensed only at Mikro/Kecil/Menengah scale as Menengah Rendah risk: in Bali we flag that scope as blocked as a precaution, and whether OSS licenses it for a PT PMA must be confirmed (Permen Investasi/BKPM 5/2025 Pasal 8(6))."
+    },
+    "l4_drop": ["review_basis"]
+  },
+  "43110": {
+    "legacy_key": "per_skala_legacy",
+    "expected_legacy_count": 3,
+    "row_fixes": [
+      {
+        "index": 2,
+        "field": "perizinan",
+        "value": "NIB dan Sertifikat Standar",
+        "why": "per_skala_legacy[2]'s live value 'NIB dan Sertifikat Standar 1' is a column-merge extraction artifact — the trailing '1' belongs to the adjacent Kewajiban column's numbered list ('1. Menyampaikan Laporan...'), confirmed by rasterized page-image inspection, not real source text for Perizinan."
+      }
+    ],
+    "_meta": {
+      "source_locator": "PP 28/2025 Lampiran I.H entry 39, pages I.H.224-228 (rasterized-image verified for row 3, I.H.227-228) — corrects the dossier's I.H.224-225 span"
+    },
+    "l4_patch": {
+      "status": "BLOCCATO_DIPENDE_SCOPE",
+      "blocked": false,
+      "confidence": "MEDIUM",
+      "needs_review": true,
+      "reason": "Demolition using simple and intermediate technology is allocated to cooperatives and MSMEs (Koperasi/UMKM) in the dialokasikan column of Perpres 10/2021 as amended by Perpres 49/2021 Lampiran II (p.10, entry 37); a new PT PMA cannot enter that activity, in Bali or elsewhere. Under Pasal 5(5) the reservation does not cover the rest of this code: PP 28/2025 Lampiran I.H entry 39 (pages I.H.224-228) licenses building demolition at every scale as Menengah Tinggi risk, including a Besar-scale route with requirements specific to a foreign-invested construction company (BUJK PMA), and a third row for individual operators (Usaha Orang Perseorangan) at Mikro scale as Menengah Rendah risk, source-verified on I.H.227-228. Whether a PT PMA can use the Besar route depends on the technology and scope declared — confirm it in OSS."
+    },
+    "l4_drop": ["verdict", "rule", "review_basis", "verdict_state"]
+  }
+}

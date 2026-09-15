@@ -76,19 +76,26 @@ def test_emitter_population_pins_measured_live_canonical_counts() -> None:
     assert len(records) == len(spec["codes"]) == 1559
     assert stats["status:NON_CLASSIFICABILE"] == 25
     assert stats["unknown_blocked_true_preserved"] == 17
-    assert stats["open_supporting_tier_absent:APERTO_BALI_RISCHIO_ALTO"] == 11
+    # 11 -> 10 on 2026-09-15 (SAETTA-20260915 W-H PR-2b): 93114 leaves this
+    # bucket -- its golf-course Besar/Tinggi row (PP 28/2025 Lampiran I.L.61)
+    # is restored, its status moves off APERTO_BALI_RISCHIO_ALTO, and it no
+    # longer has a supporting-tier-absent open verdict.
+    assert stats["open_supporting_tier_absent:APERTO_BALI_RISCHIO_ALTO"] == 10
     assert stats["open_supporting_tier_absent:OK_or_HIGHER_RISK"] == 90
-    assert stats["open_supporting_tier_absent"] == 101
+    assert stats["open_supporting_tier_absent"] == 100
     # SAETTA-20260915/W-H PR-5 moved 38110 55202 55300 56102 56304 56306
     # 70201 73300 74199 79901 79902 86995 to confidence=MEDIUM/needs_review=
     # true (dossier: no Perpres annex reservation, no national 0% finding —
     # honestly less certain than the prior HIGH/false), which correctly
     # flips their derived verdict_state blocked->provisional (95->83,
     # 1436->1448); open/unknown are untouched by that PR.
+    # blocked 83 -> 82 on 2026-09-15 (PR-2b): 43110 flips l4_bali.blocked
+    # true -> false (D5f) and needs_review true (confidence MEDIUM), so its
+    # verdict_state moves blocked -> provisional; provisional 1448 -> 1449.
     assert {
         state: stats[f"verdict_state:{state}"]
         for state in ("blocked", "open", "unknown", "provisional")
-    } == {"blocked": 83, "open": 3, "unknown": 25, "provisional": 1448}
+    } == {"blocked": 82, "open": 3, "unknown": 25, "provisional": 1449}
 
 
 def test_checked_in_spec_matches_fresh_live_state_emission() -> None:
@@ -100,12 +107,30 @@ def test_checked_in_spec_matches_fresh_live_state_emission() -> None:
     assert checked_in["_meta"]["measured_counts"] == fresh["_meta"]["measured_counts"]
 
 
-def test_93114_is_guilty_by_live_rows_not_a_code_list() -> None:
+def test_93124_is_guilty_by_live_rows_not_a_code_list() -> None:
+    # Was 93114 until SAETTA-20260915 W-H PR-2b restored its golf-course
+    # Besar row (PP 28/2025 Lampiran I.L.61) -- 93114 is no longer guilty by
+    # this predicate (see the innocence test right below). 93124 is a live,
+    # still-guilty sibling from the same 93xxx sports family, picked fresh
+    # from the census rather than hand-substituted.
     records = emitter.load_records(emitter.DEFAULT_CANONICAL)
-    record = next(r for r in records if r[basis.CODE_FIELD] == "93114")
+    record = next(r for r in records if r[basis.CODE_FIELD] == "93124")
 
     assert basis.besar_risks(record) == ()
     assert basis.open_supporting_tier_absent(record) is True
+    assert basis.derive_verdict_state(record) == "provisional"
+
+
+def test_93114_was_cured_and_is_now_innocent() -> None:
+    # SAETTA-20260915 W-H PR-2b: the golf-course Besar/Tinggi row (PP
+    # 28/2025 Lampiran I.L.61) is restored into per_skala, so this code now
+    # carries a real supporting Besar tier -- it left the guilty population.
+    records = emitter.load_records(emitter.DEFAULT_CANONICAL)
+    record = next(r for r in records if r[basis.CODE_FIELD] == "93114")
+
+    assert basis.besar_risks(record) == ("Tinggi",)
+    assert basis.open_supporting_tier_absent(record) is False
+    assert (record.get("l4_bali") or {}).get("status") == "BLOCCATO_DIPENDE_SCOPE"
     assert basis.derive_verdict_state(record) == "provisional"
 
 

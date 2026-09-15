@@ -422,10 +422,14 @@ describe("the PMA verdict banner — the SECOND render site", () => {
     // 448 → 449 and 445 → 446 on 2026-09-11: the L2 re-ingestion from the
     // September OSS vault (spec 2026-09-11 §7) moved l4_bali on 27 codes — 7
     // block flips, net +1 blocked; msme unchanged at 3.
-    expect(notice.length).toBe(449);
+    // 449 -> 448 on 2026-09-15 (SAETTA-20260915 W-H PR-2b): 43110 flips
+    // l4_bali.blocked true -> false (D5f, PP 28/2025 Lampiran I.H entry 39
+    // publishes a Besar row for BUJK PMA) and is not nationally closed, so it
+    // leaves `notice`; msme unchanged (43110 never carried CHIUSO_PMA_NO_BESAR).
+    expect(notice.length).toBe(448);
     expect(msme.length).toBe(3);
-    // 446 pages carry the notice for a cause other than an MSME reservation.
-    expect(notice.length - msme.length).toBe(446);
+    // 445 pages carry the notice for a cause other than an MSME reservation.
+    expect(notice.length - msme.length).toBe(445);
   });
 
   it("the count above is a SUBTRACTION, and names what it subtracted", () => {
@@ -454,7 +458,9 @@ describe("the PMA verdict banner — the SECOND render site", () => {
       expect(excluded.map((r) => r.kode_kbli_2025)).toContain(code);
     }
     // 448 → 449 on 2026-09-11 (September L2 re-ingestion, net +1 blocked).
-    expect(blocked.length - excluded.length).toBe(449);
+    // 449 -> 448 on 2026-09-15 (SAETTA-20260915 W-H PR-2b): 43110's blocked
+    // flip, same event as the notice-population pin above.
+    expect(blocked.length - excluded.length).toBe(448);
     // and it left by CAP, not by status — the status is TERBATAS, which the
     // banner's guard does not look at
     const woodBuilding = RECORDS.find((r) => r.kode_kbli_2025 === "16221");
@@ -550,12 +556,14 @@ describe("the FAQ + FAQPage JSON-LD — the THIRD render site in this file, FIFT
     // three left both sets together.
     // 447 → 448 and 444 → 445 on 2026-09-11: same event as the banner site
     // above (September L2 re-ingestion, net +1 blocked); msme unchanged at 3.
-    expect(answers.length).toBe(448);
+    // 448 -> 447 and 445 -> 444 on 2026-09-15 (SAETTA-20260915 W-H PR-2b):
+    // 43110's blocked flip, same event as the notice-population pin above.
+    expect(answers.length).toBe(447);
     expect(msme.length).toBe(3);
-    // 445 answers carry the block for a cause other than an MSME reservation —
+    // 444 answers carry the block for a cause other than an MSME reservation —
     // in the visible Q&A and in the FAQPage JSON-LD, the copy that leaves the
     // site.
-    expect(answers.length - msme.length).toBe(445);
+    expect(answers.length - msme.length).toBe(444);
   });
 
   it("this site is a SUBSET of the banner's — a cure for one is not a cure for the other", () => {
@@ -716,12 +724,15 @@ describe("baliBlockedHint — the index card must not blame the moratorium for e
     // 518 → 519 and 420 → 421 on 2026-09-11: the September L2 re-ingestion
     // (spec 2026-09-11 §7) flipped l4_bali.blocked on 7 codes, net +1, all
     // under the moratorium reading; the other-cause 98 is unchanged.
-    expect(hint).toContain("519 of 1559");
-    // Both halves of the split, each with the words around it: a bare "98"
+    // 519 → 518 and 98 → 97 on 2026-09-15 (SAETTA-20260915 W-H PR-2b): 43110
+    // flips l4_bali.blocked true → false (D5f) — an other-cause code, not a
+    // moratorium one, so 421 (moratorium-attributed) is unchanged.
+    expect(hint).toContain("518 of 1559");
+    // Both halves of the split, each with the words around it: a bare "97"
     // would also be satisfied by the digits of some unrelated figure the
     // sentence might gain later, which is how a pin stops pinning.
     expect(hint).toContain("421 of them");
-    expect(hint).toContain("the other 98");
+    expect(hint).toContain("the other 97");
   });
 });
 
