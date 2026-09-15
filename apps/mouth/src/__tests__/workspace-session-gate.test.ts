@@ -37,10 +37,15 @@ import {
 // @ts-expect-error — see comment above; no public type for this internal export
 import { getMiddlewareMatchers } from "next/dist/build/analysis/get-page-static-info";
 import { getMiddlewareRouteMatcher } from "next/dist/shared/lib/router/utils/middleware-route-matcher";
+// Next strips a trailing .rsc before middleware matching (this is why
+// balizero.com/lkpm.rsc was already 301 before any matcher change); the ROUND 6
+// block applies the same function so the test models production, not a guess.
+import { normalizeRscURL } from "next/dist/shared/lib/router/utils/app-paths";
 import {
   proxy,
   config,
   isInternalPath,
+  canonicalPathname,
   INTERNAL_ROUTES,
   SESSION_GATED_ROUTES,
   SESSION_EXEMPT_INTERNAL_ROUTES,
@@ -804,5 +809,177 @@ describe("ROUND 4: no real file under public/ collides with an INTERNAL_ROUTES p
         `an authenticated OR anonymous request for it would hit the session gate ` +
         `instead of being served: ${collisions.join(", ")}`,
     ).toEqual([]);
+  });
+});
+
+// =======================================================================
+// ROUND 5 (W-C R-A2) — every classifier in this file (isInternalPath,
+// isSessionGatedPath, the dotted early-return, the /login exemption)
+// compared the RAW, still percent-encoded pathname, while Next itself
+// decodes the path before choosing which page to render. Measured live
+// 2026-09-15, production, anonymous, no cookie: balizero.com/l%6bpm -> 200,
+// 49,023 B (byte-identical to kita's /lkpm); balizero.com/%64ashboard ->
+// 200, 52,652 B (== /dashboard); balizero.com/lkpm%2F -> 200, same payload;
+// kita.balizero.com/l%6Bpm.rsc -> 200, the RSC payload of /lkpm — while
+// balizero.com/lkpm (undotted, unencoded) correctly 301s to kita. Fixed by
+// canonicalPathname() in proxy.ts: every classification call-site now
+// compares the decoded routePath instead of the raw pathname.
+// =======================================================================
+describe("ROUND 5: canonicalPathname unit", () => {
+  it("decodes a single ASCII percent-escape", () => {
+    expect(canonicalPathname("/l%6bpm")).toBe("/lkpm");
+  });
+
+  it("decodes exactly ONE pass — a double-encoded escape only unwraps once", () => {
+    expect(canonicalPathname("/%256b")).toBe("/%6b");
+  });
+
+  it("returns a malformed escape unchanged instead of throwing", () => {
+    expect(canonicalPathname("/%E0%A4%A")).toBe("/%E0%A4%A");
+  });
+});
+
+/** Same-origin login redirect for an arbitrary host, mirroring
+ * expectedLoginRedirect above but parameterized on host for ROUND 5's
+ * multi-host table (kita/zantara/an unclassified host all build the
+ * redirect the same way, via `new URL("/login", request.url)`). */
+function expectedLoginRedirectForHost(
+  host: string,
+  pathAndSearch: string,
+): string {
+  const url = new URL(`https://${host}/login`);
+  url.searchParams.set("redirect", pathAndSearch);
+  return url.toString();
+}
+
+const ENCODED_GATED_CASES: Array<[encoded: string, decoded: string]> = [
+  ["/l%6bpm", "/lkpm"],
+  ["/%6Ckpm", "/lkpm"],
+  ["/%64ashboard", "/dashboard"],
+  ["/lkpm%2F", "/lkpm/"],
+  ["/clients%2F1", "/clients/1"],
+];
+const ENCODED_GATE_HOSTS = [
+  "kita.balizero.com",
+  "zantara.balizero.com",
+  "preview.unclassified-host.example",
+];
+
+describe("ROUND 5: GUILT — an encoded spelling of a gated path is closed exactly like the plain one", () => {
+  for (const host of ENCODED_GATE_HOSTS) {
+    for (const [encoded, decoded] of ENCODED_GATED_CASES) {
+      it(`${host}${encoded} anonymous -> 302 to /login?redirect=${decoded}`, () => {
+        const response = proxy(createRequest(`https://${host}${encoded}`));
+        expect(response.status).toBe(302);
+        expect(response.headers.get("location")).toBe(
+          expectedLoginRedirectForHost(host, decoded),
+        );
+      });
+
+      it(`${host}${encoded} with the session cookie is not a redirect`, () => {
+        const response = proxy(
+          createRequest(`https://${host}${encoded}`, SESSION_COOKIE_HEADER),
+        );
+        expect(response.status).not.toBe(301);
+        expect(response.status).not.toBe(302);
+        expect(response.status).not.toBe(307);
+      });
+    }
+  }
+
+  for (const [encoded, decoded] of ENCODED_GATED_CASES) {
+    it(`balizero.com${encoded} anonymous -> 301 to kita's decoded ${decoded} (public-domain redirect, not the login gate)`, () => {
+      const response = proxy(createRequest(`https://balizero.com${encoded}`));
+      expect(response.status).toBe(301);
+      const location = new URL(response.headers.get("location") as string);
+      expect(location.hostname).toBe("kita.balizero.com");
+      expect(canonicalPathname(location.pathname)).toBe(decoded);
+    });
+  }
+});
+
+describe("ROUND 5: INNOCENCE — canonicalization does not create a new false positive", () => {
+  it("balizero.com/news/%E0%A4%A (malformed escape) does not throw and is not redirected", () => {
+    expect(() =>
+      proxy(createRequest("https://balizero.com/news/%E0%A4%A")),
+    ).not.toThrow();
+    const response = proxy(createRequest("https://balizero.com/news/%E0%A4%A"));
+    expect(response.status).not.toBe(301);
+    expect(response.status).not.toBe(302);
+    expect(response.status).not.toBe(307);
+  });
+
+  it("kita.balizero.com/%6Cogin (encoded /login) anonymous is NOT redirected (no login loop)", () => {
+    const response = proxy(createRequest("https://kita.balizero.com/%6Cogin"));
+    expect(response.status).not.toBe(301);
+    expect(response.status).not.toBe(302);
+    expect(response.status).not.toBe(307);
+  });
+
+  it("balizero.com/n%65ws (encoded /news, a public path) anonymous is not redirected", () => {
+    const response = proxy(createRequest("https://balizero.com/n%65ws"));
+    expect(response.status).not.toBe(301);
+    expect(response.status).not.toBe(302);
+    expect(response.status).not.toBe(307);
+  });
+});
+
+// ROUND 6 (Dux, live after #6569 deployed): the RSC transport spellings.
+// kita.balizero.com/lkpm.segments/(workspace)/lkpm/__PAGE__.segment.rsc
+// answered 200 with /lkpm's flight payload, anonymously, because the suffixed
+// path is not under "/lkpm/". canonicalPathname strips the suffix before any
+// classifier sees the path.
+describe("ROUND 6: RSC transport suffixes are classified as the page they carry", () => {
+  it.each([
+    ["/lkpm.rsc", "/lkpm"],
+    ["/clients/1.2.rsc", "/clients/1.2"],
+    ["/lkpm.segments/(workspace)/lkpm/__PAGE__.segment.rsc", "/lkpm"],
+    ["/lkpm.segments/_index.segment.rsc", "/lkpm"],
+    ["/l%6bpm.rsc", "/lkpm"],
+  ])("canonicalPathname(%s) === %s", (raw, expected) => {
+    expect(canonicalPathname(raw)).toBe(expected);
+  });
+
+  it.each([
+    "/lkpm.segments/(workspace)/lkpm/__PAGE__.segment.rsc",
+    "/clients/1.segments/(workspace)/clients/$d$id/__PAGE__.segment.rsc",
+    "/l%6Bpm.rsc",
+  ])(
+    "%s: the real matcher invokes proxy() and an anonymous request is sent to /login on kita and zantara",
+    (raw) => {
+      expect(
+        // A segment prefetch is matched RAW, through the
+        // (\.segments\/.+\.segment\.rsc)? group Next's matcher compiler appends
+        // to every entry; a plain flight request is normalized first.
+        wouldInvoke(
+          raw.endsWith(".segment.rsc") ? raw : normalizeRscURL(raw),
+          noopRequest,
+          {},
+        ),
+        `Next's real matcher must invoke proxy() for ${raw} (after Next's own .rsc normalization)`,
+      ).toBe(true);
+      for (const host of ["kita.balizero.com", "zantara.balizero.com"]) {
+        const response = proxy(createRequest(`https://${host}${raw}`));
+        expect(response.status, `${host}${raw}`).toBe(302);
+        const location = new URL(response.headers.get("location") ?? "");
+        expect(location.host).toBe(host);
+        expect(location.pathname).toBe("/login");
+      }
+    },
+  );
+
+  it("the same segment path WITH the session cookie is not redirected", () => {
+    const response = proxy(
+      createRequest(
+        "https://kita.balizero.com/lkpm.segments/(workspace)/lkpm/__PAGE__.segment.rsc",
+        { cookie: "nz_access_token=synthetic-session-token" },
+      ),
+    );
+    expect([301, 302, 307]).not.toContain(response.status);
+  });
+
+  it("a public page's RSC payload is untouched (balizero.com/news.rsc is not redirected)", () => {
+    const response = proxy(createRequest("https://balizero.com/news.rsc"));
+    expect([301, 302, 307]).not.toContain(response.status);
   });
 });
