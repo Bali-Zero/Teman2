@@ -151,22 +151,35 @@ describe("team public listing filter", () => {
     expect(publicEntries([{ slug: "someone-new" }])).toHaveLength(1);
   });
 
-  it("drops an allowed slug that carries an excluded person's PHOTO or EMAIL", () => {
-    // Codex finding #3: a name is not the only way to publish somebody. These two
-    // entries carry a perfectly allowed slug, so a name-only guard keeps them —
-    // and then the consumer renders the excluded person's face, or their address.
-    const photoOfExcluded = rosterBySlug("faisha")?.photo;
+  it("drops an allowed slug that carries an excluded person's EMAIL", () => {
+    // Codex finding #3: a name is not the only way to publish somebody. This
+    // entry carries a perfectly allowed slug, so a name-only guard would keep
+    // it — and then the consumer renders the excluded person's address.
     const emailOfExcluded = rosterBySlug("sahira")?.email;
-    expect(photoOfExcluded).toBeTruthy();
     expect(emailOfExcluded).toBeTruthy();
 
-    expect(
-      publicEntries([{ slug: "kadek", photoOverride: photoOfExcluded }]),
-    ).toEqual([]);
     expect(publicEntries([{ slug: "kadek", email: emailOfExcluded }])).toEqual(
       [],
     );
     // the same shape pointing at somebody who IS public stays
+    expect(
+      publicEntries([{ slug: "kadek", email: rosterBySlug("adit")?.email }]),
+    ).toHaveLength(1);
+  });
+
+  it("the PHOTO marker path is dormant since D6 — the file is gone, not just unlisted", () => {
+    // HONEST LIMIT, stated rather than dressed up: before D6 (2026-09-15) this
+    // test exercised the photo half of Codex finding #3 by pointing a
+    // photoOverride at an excluded person's real photo path and proving it got
+    // filtered. D6 deleted both excluded members' `photo` field along with the
+    // files themselves (owner ruling: default privacy — see team-roster.ts),
+    // so there is no longer a truthy photo to build that fixture from, and no
+    // mutant on EXCLUDED_MARKERS' photo branch can turn this suite red today.
+    // What stays checkable: the two excluded members carry no photo at all
+    // (the escape hatch this test used to probe has no live data left to
+    // escape through), and a still-public member's photo is unaffected.
+    expect(rosterBySlug("faisha")?.photo).toBeUndefined();
+    expect(rosterBySlug("sahira")?.photo).toBeUndefined();
     expect(
       publicEntries([
         { slug: "kadek", photoOverride: rosterBySlug("adit")?.photo },

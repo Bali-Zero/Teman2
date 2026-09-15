@@ -22,24 +22,47 @@ const KEYS_THE_HANDWRITTEN_MAP_HAD = [
   "ari",
   "ari.firda",
   "dea",
-  "sahira",
   "surya",
   "damar",
   "asya",
   "angel",
   "veronika",
-  "faisha",
   "dewaayu",
   "dewa.ayu",
   "candra",
   "subhi",
 ] as const;
 
+/**
+ * Two keys the hand-written map ALSO had, and that the derived map must now NOT
+ * answer for. Their portraits were withdrawn from `public/` under the owner's
+ * decision D6 (2026-09-15): the files were fetchable by anyone who guessed the URL,
+ * and the URL was the person's name. The roster entries keep no `photo`, so these
+ * members render the initials fallback on internal surfaces.
+ *
+ * Kept as a SEPARATE list rather than silently dropped from the one above: the
+ * test above exists to catch a derivation that quietly loses a key, and removing
+ * these two from it without saying why would be exactly that loss, committed by
+ * hand. Here the absence is pinned as the decision it is — so restoring either
+ * portrait turns this red and has to be done on purpose.
+ */
+const KEYS_WITHDRAWN_UNDER_D6 = ["faisha", "sahira"] as const;
+
 describe("workspace roster directory", () => {
   it("still answers for every key the hand-written photo map had", () => {
     const map = teamPhotoMap();
     const missing = KEYS_THE_HANDWRITTEN_MAP_HAD.filter((k) => !map[k]);
     expect(missing).toEqual([]);
+  });
+
+  it("no longer answers for the two portraits withdrawn from public/ under D6", () => {
+    const map = teamPhotoMap();
+    const stillAnswering = KEYS_WITHDRAWN_UNDER_D6.filter((k) => map[k]);
+    expect(
+      stillAnswering,
+      "a portrait withdrawn from public/ under D6 is back in the photo map — " +
+        "restoring one is an owner decision, not a tidy-up",
+    ).toEqual([]);
   });
 
   it("keeps the two email aliases the roster cannot express", () => {
