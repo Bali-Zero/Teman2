@@ -391,20 +391,67 @@ describe("real dataset: the gate binds, and v3 actually differentiates", () => {
     const blockedOpen = codes.filter(
       (c) => c.pma.status === "open" && c.baliL4?.blocked,
     );
-    const stated = blockedOpen.filter((c) =>
+
+    // SAETTA-20260915 W-J B1 v2 redo (applied onto post-#6596 main): the
+    // applied-closure migration narrowed l4_bali.blocked from 518 to 131
+    // raw-canonical codes, and separately the public disclosure gate
+    // (disclosePmaInfo/discloseBaliL4) exposes `pma.status`/`baliL4` at all
+    // for only ~57 "located" PMA records in the whole 1,559-code catalogue.
+    // Those two narrow sets do not currently intersect: none of the located+
+    // nationally-open codes is also Bali-blocked today. That is a fact about
+    // today's PROVENANCE coverage (which codes happen to have a located PMA
+    // basis), not a defect in the suffix gate — the gate's own composition
+    // logic is already exercised unconditionally by the GUILT/INNOCENCE
+    // fixture tests above ("drops `blocked in Bali`..." / "states `blocked
+    // in Bali`...: HIGH confidence"), which prove the suffix is correct
+    // whether or not any real code currently occupies this intersection. So
+    // this block guards on the real population instead of asserting a false
+    // floor: if it is ever non-empty again the loop below re-activates and
+    // re-enforces the invariant on live data; today it is empty and there is
+    // nothing to protect here that the fixtures above do not already cover.
+    // Asserted explicitly (adversarial review finding, agy-gemini-3.1-pro,
+    // 2026-09-15) rather than a bare early return, so a change that makes
+    // this population non-zero WITHOUT anyone reading this comment still
+    // fails loudly here, instead of the block silently going from "empty on
+    // purpose" to "empty by accident, no one's looking." Re-measured
+    // 2026-09-15 (W-J B1 cure round) against the national-cap-guard fix: the
+    // 4 codes that fix un-blocked-then-re-blocked (10214/16221/95220/95299)
+    // are TERTUTUP/TERBATAS-0%, never `pma.status === "open"`, so they were
+    // never in this intersection and the population is still empty.
+    expect(blockedOpen).toHaveLength(0);
+
+    // MINOR (cure round 2026-09-15): the branch above used to `return` on an
+    // empty population, which made the loops below dead code on every real
+    // run — `stated` and the per-code assertions never executed, so this
+    // "gate binds on the real dataset" test could pass forever without ever
+    // calling kbliMetaTitleSuffix/isBaliL4BlockVerifiedForBareClaim on
+    // anything. The population assertion above is a fact about TODAY's
+    // catalogue; it is not a proof the gate itself still works. So run the
+    // exact same guilt/innocence check unconditionally: on the real
+    // population when it is non-empty, or — since it is empty today — on
+    // synthetic codes built from this file's own makeCode/blockedBali
+    // fixtures (the population-shape contract from GUILT/INNOCENCE above),
+    // so the mechanism fires at least once every single run.
+    const proofPopulation =
+      blockedOpen.length > 0
+        ? blockedOpen
+        : [
+            makeCode({ baliL4: blockedBali("HIGH", false) }), // verified: must state
+            makeCode({ baliL4: blockedBali("MEDIUM", false) }), // low confidence: must not
+            makeCode({ baliL4: blockedBali("HIGH", true) }), // needs review: must not
+          ];
+    const stated = proofPopulation.filter((c) =>
       kbliMetaTitleSuffix(c).includes("Bali"),
     );
-
-    // The public compiler now withholds declared-gap PMA rows altogether, so
-    // the old raw-dataset cardinalities no longer belong at this boundary.
-    // Keep the invariant: every surviving indexed Bali claim passed the exact
-    // confidence/review gate, and every failed gate remains silent.
-    expect(blockedOpen.length).toBeGreaterThan(0);
+    // The gate must actually FIRE at least once — a proof population that
+    // never produces a "Bali" suffix would let the loops below pass emptily
+    // too, the same tautology one level down.
+    expect(stated.length).toBeGreaterThan(0);
     for (const c of stated) {
       expect(c.baliL4?.confidence).toBe("HIGH");
       expect(c.baliL4?.needsReview).not.toBe(true);
     }
-    for (const c of blockedOpen.filter(
+    for (const c of proofPopulation.filter(
       (code) => !isBaliL4BlockVerifiedForBareClaim(code),
     )) {
       expect(kbliMetaTitleSuffix(c)).not.toContain("Bali");

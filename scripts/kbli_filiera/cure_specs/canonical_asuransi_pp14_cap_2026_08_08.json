@@ -23,7 +23,7 @@
         "pma_nota": "Sector-law regime — Perpres 10/2021 Pasal 11(2) carves financial/banking bidang usaha out to sector law; the Perpres annexes and its residual-open default never applied here.",
         "pma_source": "PP 14/2018, PP 3/2020 (sector law — Perpres 10/2021 Pasal 11(2) carve-out, not the Perpres 10/2021/49/2021 annexes)"
       },
-      "new_sha256": "2b191e3cbf14db5cfafdfa380276c8ddc428a82031241dd925b54f2c3628ebbd"
+      "new_sha256": "9ea97673828029be7ff047176b9f286dbefc6f3578a7eedf2bf6346f816aa669"
     },
     "65112": {
       "old_sha256": "b63f3d614ea74aa602bb98bb4f3981868613df2c8324ee70e352fcf8b4f6a8b8",
@@ -40,7 +40,7 @@
         "pma_nota": "Sector-law regime — Perpres 10/2021 Pasal 11(2) carves financial/banking bidang usaha out to sector law; the Perpres annexes and its residual-open default never applied here.",
         "pma_source": "PP 14/2018, PP 3/2020 (sector law — Perpres 10/2021 Pasal 11(2) carve-out, not the Perpres 10/2021/49/2021 annexes)"
       },
-      "new_sha256": "bad7e3e2ee5cee9d8c003f2ad5748e6c9fcf2c3e44a31825ece926763c5ca63f"
+      "new_sha256": "a69adc74d724348e0f4a1cde8f955812eefabb9bfc0ed7872ed95201de4e474e"
     },
     "65121": {
       "old_sha256": "4ae72a346ce4ac753db173888d73fb7785bdcc00ad72c26d6efcfd6f50b7d722",
@@ -57,7 +57,7 @@
         "pma_nota": "Sector-law regime — Perpres 10/2021 Pasal 11(2) carves financial/banking bidang usaha out to sector law; the Perpres annexes and its residual-open default never applied here.",
         "pma_source": "PP 14/2018, PP 3/2020 (sector law — Perpres 10/2021 Pasal 11(2) carve-out, not the Perpres 10/2021/49/2021 annexes)"
       },
-      "new_sha256": "360cdd8e8b9f871461e31192bc319f7c346763e2f3f70f617f6f1a62d4b8b6a4"
+      "new_sha256": "ad646942898ab113a4432682875d16c9e1ac2950bdf5c13b66ce8d9c014f7d75"
     },
     "65122": {
       "old_sha256": "78f7bb5605387f110b5896cb61a146d7e8e4543437982b44b77cdd03e5bb90c6",
@@ -74,7 +74,7 @@
         "pma_nota": "Sector-law regime — Perpres 10/2021 Pasal 11(2) carves financial/banking bidang usaha out to sector law; the Perpres annexes and its residual-open default never applied here.",
         "pma_source": "PP 14/2018, PP 3/2020 (sector law — Perpres 10/2021 Pasal 11(2) carve-out, not the Perpres 10/2021/49/2021 annexes)"
       },
-      "new_sha256": "5d5a6f81d7235c34608a63b9ab844abe157b0218a2d05ff7fcc4fc8ba3b28149"
+      "new_sha256": "75f9c9bef1b8abdf9be9d9d0f4ab9dee46e79c0ed68526bc2c19a8069d2c4b2d"
     },
     "65201": {
       "old_sha256": "5763006100596f97f06efe90fe2224dda485d4dc09bde2627bce5065c142768e",
@@ -91,7 +91,7 @@
         "pma_nota": "Sector-law regime — Perpres 10/2021 Pasal 11(2) carves financial/banking bidang usaha out to sector law; the Perpres annexes and its residual-open default never applied here.",
         "pma_source": "PP 14/2018, PP 3/2020 (sector law — Perpres 10/2021 Pasal 11(2) carve-out, not the Perpres 10/2021/49/2021 annexes)"
       },
-      "new_sha256": "1af3d8251a59c8e326e081410a0e1d478b256bdca533bbb47965843b1d875de4"
+      "new_sha256": "37dce7d17a43f432d78159755229dc3869ad08fa1c0135e576f32b455be7d32a"
     },
     "65202": {
       "old_sha256": "f9adee742956beea6cced6244e82e2d887b0dadd353f64ef7057716ccdb2f859",
@@ -108,7 +108,7 @@
         "pma_nota": "Sector-law regime — Perpres 10/2021 Pasal 11(2) carves financial/banking bidang usaha out to sector law; the Perpres annexes and its residual-open default never applied here.",
         "pma_source": "PP 14/2018, PP 3/2020 (sector law — Perpres 10/2021 Pasal 11(2) carve-out, not the Perpres 10/2021/49/2021 annexes)"
       },
-      "new_sha256": "6a68b6d9f501c5abdd62d3c3f507f09c38dbd7020ade7c0158d872e04c127527"
+      "new_sha256": "43b266099b4173ce5f852b4cb1eee51089aef483ca4ca5e00493c54630249b8b"
     }
   },
   "excluded": {
