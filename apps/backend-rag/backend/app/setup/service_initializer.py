@@ -1500,10 +1500,11 @@ async def initialize_garuda_services(app: FastAPI, db_pool) -> None:
                 garuda_payment_provider.mode,
             )
         except ValueError as e:
-            # A mode/key mismatch (production key without the live flag, or
-            # vice versa) is a deliberate refusal, not an incidental failure
-            # -- name it distinctly so it never reads as "wiring is flaky".
-            logger.error("⛔ GARUDA VOA order lane NOT wired: payment mode mismatch — %s", e)
+            # A deliberate refusal, not an incidental failure: most often a
+            # payment mode mismatch (production key without the live flag, or
+            # vice versa), but a malformed GARUDA_XENDIT_FEE_* integer lands
+            # here too. Both messages carry variable names, never a key.
+            logger.error("⛔ GARUDA VOA order lane NOT wired: configuration refused — %s", e)
         except Exception as e:
             logger.warning(
                 "⚠️ GARUDA VOA order/payment wiring failed (non-critical, L3 fail closed): %s", e
