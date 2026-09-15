@@ -212,7 +212,7 @@ function EmptyBusinessStory({ companyNames }: { companyNames: string[] }) {
   return (
     <section className="bz-product-panel p-4">
       <div className="flex items-start gap-3">
-        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-amber-500/10 text-amber-300">
+        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[var(--state-warning)]/10 text-[var(--state-warning)]">
           <AlertTriangle className="h-4 w-4" />
         </div>
         <div className="min-w-0">

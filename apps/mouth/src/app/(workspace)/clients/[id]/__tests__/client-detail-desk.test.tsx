@@ -345,18 +345,22 @@ describe("status tone", () => {
 // hidden inside a `//` comment does not silently pass it either).
 // ---------------------------------------------------------------------------
 
-const NON_TEST_SOURCE_EXT = new Set([".ts", ".tsx"]);
+// JSX-specific guards (Button variant, icon-only aria-label) only make sense
+// on ts/tsx; the colour/token guards (round-4 Q4) also walk .css so the CSS
+// module cannot smuggle a literal or a banned alias past the scan.
+const JSX_SOURCE_EXT = new Set([".ts", ".tsx"]);
+const ALL_SOURCE_EXT = new Set([".ts", ".tsx", ".css"]);
 
-function walkSourceFiles(dir: string): string[] {
+function walkSourceFiles(dir: string, extSet: Set<string>): string[] {
   const out: string[] = [];
   for (const entry of readdirSync(dir, { withFileTypes: true })) {
     const full = join(dir, entry.name);
     if (entry.isDirectory()) {
-      out.push(...walkSourceFiles(full));
+      out.push(...walkSourceFiles(full, extSet));
       continue;
     }
     if (!entry.isFile()) continue;
-    if (!NON_TEST_SOURCE_EXT.has(extname(entry.name))) continue;
+    if (!extSet.has(extname(entry.name))) continue;
     if (entry.name.includes(".test.")) continue;
     if (full.includes(`${sep}__tests__${sep}`)) continue;
     out.push(full);
@@ -364,14 +368,17 @@ function walkSourceFiles(dir: string): string[] {
   return out;
 }
 
-/** Strips `/* … *\/` block comments and `//` line comments — but NOT `://`
- * (so `https://wa.me/...` inside a template literal is left intact). Good
- * enough for TSX source; this file has no `//` inside a string that isn't
- * part of a URL. */
+/** Strips `/* … *\/` block comments, and a `//` line comment ONLY when it
+ * starts the line (optional leading whitespace, then `//`) — never a `//`
+ * that appears mid-line. Round-4 Q5: the previous version stripped from ANY
+ * `//` onward (guarded only against `://`), so a string literal that simply
+ * CONTAINED `//` — e.g. `className="x // bg-[var(--bz-accent)]"` — had its
+ * tail silently erased before the scan ever saw it, a bypass with no plant
+ * required. Only stripping a line-leading `//` means a real trailing
+ * comment is (safely) left in and scanned as if it were code — over-scan,
+ * never under-scan, is the direction that cannot hide a real violation. */
 function stripComments(src: string): string {
-  return src
-    .replace(/\/\*[\s\S]*?\*\//g, "")
-    .replace(/(^|[^:])\/\/.*$/gm, "$1");
+  return src.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^[ \t]*\/\/.*$/gm, "");
 }
 
 /** Extracts one JSX opening tag starting at `startIdx` (which must point at
@@ -416,54 +423,8 @@ function extractOpeningTag(src: string, startIdx: number): string {
   return src.slice(startIdx, Math.min(src.length, startIdx + 500));
 }
 
-function parseColor(token: string): { r: number; g: number; b: number } | null {
-  let m = token.match(/rgba?\(\s*([\d.]+)\s*,\s*([\d.]+)\s*,\s*([\d.]+)/);
-  if (m) return { r: +m[1], g: +m[2], b: +m[3] };
-  m = token.match(/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})\b/);
-  if (m) {
-    let hex = m[1];
-    if (hex.length === 3)
-      hex = hex
-        .split("")
-        .map((c) => c + c)
-        .join("");
-    const num = parseInt(hex, 16);
-    return { r: (num >> 16) & 255, g: (num >> 8) & 255, b: num & 255 };
-  }
-  return null;
-}
-
-/** Red AND copper both live in the same warm hue band (copper measures
- * H≈11°, memory 2026-09-14 / this window's own browser capture) — a single
- * hue check catches a raw literal standing in for either, which is the
- * whole point: a guard reading only `--bz-copper` text misses a hex that
- * resolves to the identical colour. */
-function isRedOrCopperHue(c: { r: number; g: number; b: number }): boolean {
-  const r = c.r / 255,
-    g = c.g / 255,
-    b = c.b / 255;
-  const max = Math.max(r, g, b),
-    min = Math.min(r, g, b);
-  const l = (max + min) / 2;
-  if (max === min) return false;
-  const d = max - min;
-  const s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
-  let h: number;
-  switch (max) {
-    case r:
-      h = ((g - b) / d + (g < b ? 6 : 0)) * 60;
-      break;
-    case g:
-      h = ((b - r) / d + 2) * 60;
-      break;
-    default:
-      h = ((r - g) / d + 4) * 60;
-  }
-  const hueDist = Math.min(Math.abs(h - 0), 360 - Math.abs(h - 0));
-  return hueDist <= 20 && s * 100 > 35;
-}
-
-const SOURCE_FILES = walkSourceFiles(DETAIL_DIR);
+const SOURCE_FILES = walkSourceFiles(DETAIL_DIR, JSX_SOURCE_EXT);
+const ALL_SOURCE_FILES = walkSourceFiles(DETAIL_DIR, ALL_SOURCE_EXT);
 
 describe("GLOB: active tab is ink, not ownership (K3b C1)", () => {
   it("the .tabActive rule carries no copper/accent var and paints ink", () => {
@@ -481,8 +442,27 @@ describe("GLOB: active tab is ink, not ownership (K3b C1)", () => {
   });
 });
 
-describe("GLOB: no default-variant Button (R3a)", () => {
-  it("every <Button ...> under [id]/** declares an explicit, non-default variant", () => {
+// Round-4 Q7: the old check only asked "is there A variant prop, and is it
+// not the literal string default" — which let `variant={someExpr}` through
+// (an expression is not the literal "default", so `isDefaultLiteral` was
+// false, and `hasVariant` was true) and let `variant="destructive"` through
+// (present, non-default, but still a copper-adjacent shadcn fill this desk
+// never wants). The allow-list below is closed: a Button's variant must be
+// a STATIC string literal and must be one of exactly these four.
+const VALID_STATIC_VARIANTS = new Set([
+  "outline",
+  "ghost",
+  "secondary",
+  "link",
+]);
+
+function staticVariantOf(tag: string): string | null {
+  const m = tag.match(/variant\s*=\s*(["'`])([^"'`]*)\1/);
+  return m ? m[2] : null;
+}
+
+describe("GLOB: no default-variant Button, static-literal variant only (R3a, tightened by round-4 Q7)", () => {
+  it("every <Button ...> under [id]/** declares a static-literal variant from {outline, ghost, secondary, link}", () => {
     const offenders: string[] = [];
     for (const file of SOURCE_FILES) {
       const source = stripComments(readFileSync(file, "utf8"));
@@ -493,9 +473,8 @@ describe("GLOB: no default-variant Button (R3a)", () => {
         const after = source[idx + 7];
         if (after === undefined || /[\s/>]/.test(after)) {
           const tag = extractOpeningTag(source, idx);
-          const hasVariant = /variant\s*=/.test(tag);
-          const isDefaultLiteral = /["'`]default["'`]/.test(tag);
-          if (!hasVariant || isDefaultLiteral) {
+          const variant = staticVariantOf(tag);
+          if (!variant || !VALID_STATIC_VARIANTS.has(variant)) {
             offenders.push(
               `${file.replace(DETAIL_DIR, "")}: ${tag.slice(0, 120).replace(/\s+/g, " ")}`,
             );
@@ -510,55 +489,131 @@ describe("GLOB: no default-variant Button (R3a)", () => {
   it("GUILT: a <Button> with no variant prop at all is what the pattern is built to catch", () => {
     const fixture = '<Button\n  size="sm"\n  onClick={handleSend}\n>';
     const tag = extractOpeningTag(fixture, 0);
-    expect(/variant\s*=/.test(tag)).toBe(false);
+    expect(staticVariantOf(tag)).toBeNull();
   });
 
-  it('GUILT: variant={cond ? "default" : "outline"} is caught by the literal-default check even though variant= IS present', () => {
+  it('GUILT: variant={cond ? "default" : "outline"} fails — a dynamic expression is not a static literal', () => {
     const fixture = '<Button variant={open ? "default" : "outline"}>';
     const tag = extractOpeningTag(fixture, 0);
-    expect(/variant\s*=/.test(tag)).toBe(true);
-    expect(/["'`]default["'`]/.test(tag)).toBe(true);
+    expect(staticVariantOf(tag)).toBeNull();
+  });
+
+  it('GUILT: variant="destructive" and variant="default" are both static literals, but neither is on the allow-list', () => {
+    expect(
+      VALID_STATIC_VARIANTS.has(
+        staticVariantOf('<Button variant="destructive">')!,
+      ),
+    ).toBe(false);
+    expect(
+      VALID_STATIC_VARIANTS.has(staticVariantOf('<Button variant="default">')!),
+    ).toBe(false);
+  });
+
+  it('INNOCENCE: variant="outline"/"ghost"/"secondary"/"link" are each accepted', () => {
+    for (const v of ["outline", "ghost", "secondary", "link"]) {
+      const tag = extractOpeningTag(`<Button variant="${v}" size="sm">`, 0);
+      const variant = staticVariantOf(tag);
+      expect(variant && VALID_STATIC_VARIANTS.has(variant)).toBe(true);
+    }
   });
 });
 
-describe("GLOB: no red / no state-danger / no raw red-or-copper literal (R3b)", () => {
-  it("no file under [id]/** carries --state-danger, --bz-neon-purple, a red-N utility, or a raw red/copper rgba()/hex", () => {
+// Round-4 Q3: hue-parsing a literal to decide whether it "reads red" missed
+// two whole classes of violation the review seats found on disk — an amber
+// Tailwind utility (no literal at all to parse) and a template-built CSS
+// var name (no colour token at all, just a string the guard couldn't see
+// through). The blanket rule below is both stronger AND simpler: no raw
+// colour literal of ANY hue is allowed under [id]/** — every colour must
+// come from a named token — and no red/rose/orange/amber palette utility is
+// allowed on any Tailwind colour-bearing prefix, regardless of what it is
+// attached to. Round-4 Q4: this walk now includes `.css` (`ALL_SOURCE_FILES`).
+const RAW_COLOR_LITERAL =
+  /#[0-9a-fA-F]{3,4}\b|#[0-9a-fA-F]{6}\b|#[0-9a-fA-F]{8}\b|\b(?:rgba?|hsla?)\(/g;
+const PALETTE_HUE_UTILITY =
+  /\b(?:bg|text|border|from|via|to|ring|fill|stroke|outline|decoration|shadow|caret|divide|placeholder|accent)-(?:red|rose|orange|amber)-\d{2,3}\b/g;
+const TEMPLATE_BUILT_VAR_NAME = /var\(--\$\{/g;
+
+describe("GLOB: no red / no state-danger / no raw colour literal / no template-built var name (R3b, strengthened by round-4 Q3/Q4)", () => {
+  it("no non-test file under [id]/** (ts/tsx/css) carries --state-danger, --bz-neon-purple, a raw colour literal, a red/rose/orange/amber palette utility, or a template-built CSS var name", () => {
     const offenders: string[] = [];
-    for (const file of SOURCE_FILES) {
+    for (const file of ALL_SOURCE_FILES) {
       const source = stripComments(readFileSync(file, "utf8"));
       const rel = file.replace(DETAIL_DIR, "");
       if (source.includes("--state-danger"))
         offenders.push(`${rel}: --state-danger`);
       if (source.includes("--bz-neon-purple"))
         offenders.push(`${rel}: --bz-neon-purple`);
-      const redUtil = source.match(/\b(?:bg|text|border)-red-\d/);
-      if (redUtil) offenders.push(`${rel}: ${redUtil[0]}`);
-      const colorTokens =
-        source.match(/(?:rgba?\([^)]*\)|#[0-9a-fA-F]{3,6}\b)/g) || [];
-      for (const tok of colorTokens) {
-        const c = parseColor(tok);
-        if (c && isRedOrCopperHue(c)) offenders.push(`${rel}: raw ${tok}`);
-      }
+      for (const m of source.matchAll(PALETTE_HUE_UTILITY))
+        offenders.push(`${rel}: ${m[0]}`);
+      for (const m of source.matchAll(RAW_COLOR_LITERAL))
+        offenders.push(`${rel}: raw literal ${m[0]}`);
+      for (const m of source.matchAll(TEMPLATE_BUILT_VAR_NAME))
+        offenders.push(`${rel}: template-built var name (${m[0]}...)`);
     }
     expect(offenders, offenders.join("\n")).toEqual([]);
   });
 
-  it("GUILT: a raw copper hex literal is caught by the hue check even with no token name at all", () => {
-    const c = parseColor("#a44b36");
-    expect(c).toBeTruthy();
-    expect(isRedOrCopperHue(c!)).toBe(true);
+  // These use String.prototype.match (never RegExp.prototype.test /
+  // .toMatch on the shared module-level GLOBAL regex objects): a global
+  // regex's `test()` advances `lastIndex` and leaves it advanced after a
+  // MATCH, so calling `.toMatch(SAME_GLOBAL_REGEX)` across several
+  // differently-sized fixture strings in sequence silently skips or
+  // misses matches depending on call order. `String.prototype.match`
+  // resets `lastIndex` to 0 both before and after running, so it is safe
+  // to reuse the same exported pattern object here AND in the offender
+  // scan above without cross-contamination.
+  it("GUILT: a hex literal of ANY hue is caught, not just a red/copper one", () => {
+    expect("color: #3b82f6;".match(RAW_COLOR_LITERAL)).not.toBeNull();
   });
 
-  it("GUILT: a raw danger-red rgba() is caught the same way", () => {
-    const c = parseColor("rgba(239,68,68,0.10)");
-    expect(c).toBeTruthy();
-    expect(isRedOrCopperHue(c!)).toBe(true);
+  it("GUILT: an rgba()/hsla() literal of ANY hue is caught", () => {
+    expect(
+      'style={{ background: "rgba(59,130,246,0.12)" }}'.match(
+        RAW_COLOR_LITERAL,
+      ),
+    ).not.toBeNull();
+    expect(
+      'style={{ background: "hsla(210,80%,50%,0.2)" }}'.match(
+        RAW_COLOR_LITERAL,
+      ),
+    ).not.toBeNull();
   });
 
-  it("INNOCENCE: an unrelated blue does not trip the hue check", () => {
-    const c = parseColor("rgba(59,130,246,0.12)");
-    expect(c).toBeTruthy();
-    expect(isRedOrCopperHue(c!)).toBe(false);
+  it("GUILT: an amber/orange/rose/red Tailwind palette utility is caught on ANY listed prefix", () => {
+    expect("text-amber-400".match(PALETTE_HUE_UTILITY)).not.toBeNull();
+    expect("shadow-orange-500".match(PALETTE_HUE_UTILITY)).not.toBeNull();
+    expect("from-rose-300".match(PALETTE_HUE_UTILITY)).not.toBeNull();
+    expect("ring-red-600".match(PALETTE_HUE_UTILITY)).not.toBeNull();
+  });
+
+  it("GUILT: a template-built CSS var name is caught even with no colour literal in sight", () => {
+    expect(
+      "var(--${color}-500, #3b82f6)".match(TEMPLATE_BUILT_VAR_NAME),
+    ).not.toBeNull();
+  });
+
+  it("INNOCENCE: emerald/blue/purple/indigo palette utilities are untouched — only red/rose/orange/amber are banned", () => {
+    expect("text-emerald-400".match(PALETTE_HUE_UTILITY)).toBeNull();
+    expect("text-blue-300".match(PALETTE_HUE_UTILITY)).toBeNull();
+    expect("bg-purple-500/20".match(PALETTE_HUE_UTILITY)).toBeNull();
+    expect("border-indigo-400/30".match(PALETTE_HUE_UTILITY)).toBeNull();
+  });
+
+  it("INNOCENCE: a named token (no literal, no template) trips neither check", () => {
+    const line = 'style={{ color: "var(--state-warning)" }}';
+    expect(line.match(RAW_COLOR_LITERAL)).toBeNull();
+    expect(line.match(TEMPLATE_BUILT_VAR_NAME)).toBeNull();
+  });
+
+  it("GUILT: a // that does not start the line is left in by stripComments, so a bypass string still trips the scanner", () => {
+    const fixture = 'className="x // bg-[var(--bz-accent)]"';
+    expect(stripComments(fixture)).toContain("--bz-accent");
+  });
+
+  it("INNOCENCE: a real // comment that DOES start the line is stripped", () => {
+    const fixture =
+      "  // this prose mentions --bz-accent but is not code\nconst x = 1;";
+    expect(stripComments(fixture)).not.toContain("--bz-accent");
   });
 });
 
@@ -595,7 +650,7 @@ describe("GLOB: copper only by an explicit, verified allow-list (R3c)", () => {
     const tokenPattern =
       /--bz-accent\b|--bz-copper(?:-text)?\b|--accent(?!-)\b/g;
     const offenders: string[] = [];
-    for (const file of SOURCE_FILES) {
+    for (const file of ALL_SOURCE_FILES) {
       const rel = file.replace(DETAIL_DIR, "").replace(/^[\\/]/, "");
       const allowed = ALLOW_LIST.filter((e) => e.file === rel);
       const source = stripComments(readFileSync(file, "utf8"));
@@ -633,6 +688,93 @@ describe("GLOB: copper only by an explicit, verified allow-list (R3c)", () => {
     );
     expect(source).not.toMatch(/--bz-copper\b/);
     expect(source).not.toMatch(/--bz-accent\b/);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 3d. Destructive/icon-only controls announce themselves (round-4 Q6). The
+// dedicated render proof lives in components/FamilyTab.test.tsx (the real,
+// non-mocked component); this is the source-scan half — every <Button ...>
+// or native <button ...> under [id]/** whose body renders a Trash2 or X
+// icon must carry aria-label= on its OWN opening tag. Deliberately
+// over-inclusive: a button with BOTH an icon and visible text (which
+// already has an accessible name from the text) is still required to carry
+// one — cheaper than teaching a source-text scan to tell "icon-only" apart
+// from "icon-plus-text" apart, and never wrong to have both.
+// ---------------------------------------------------------------------------
+
+const ICON_OPENERS = ["<Button", "<button"];
+const DESTRUCTIVE_ICONS = ["Trash2", "X"];
+
+function findMatchingCloseTag(
+  source: string,
+  fromIdx: number,
+  closeTagName: string,
+): number {
+  const idx = source.indexOf(closeTagName, fromIdx);
+  return idx === -1 ? Math.min(source.length, fromIdx + 600) : idx;
+}
+
+describe("GLOB: destructive/icon-only controls carry an aria-label (Q6)", () => {
+  it("every <Button>/<button> under [id]/** whose body renders a Trash2 or X icon has aria-label= on its own opening tag", () => {
+    const offenders: string[] = [];
+    for (const file of SOURCE_FILES) {
+      const source = stripComments(readFileSync(file, "utf8"));
+      const rel = file.replace(DETAIL_DIR, "");
+      for (const opener of ICON_OPENERS) {
+        const closeTagName = opener === "<Button" ? "</Button>" : "</button>";
+        let idx = source.indexOf(opener);
+        while (idx !== -1) {
+          const after = source[idx + opener.length];
+          if (after === undefined || /[\s/>]/.test(after)) {
+            const tag = extractOpeningTag(source, idx);
+            const bodyStart = idx + tag.length;
+            const bodyEnd = findMatchingCloseTag(
+              source,
+              bodyStart,
+              closeTagName,
+            );
+            const body = source.slice(bodyStart, bodyEnd);
+            const hasDestructiveIcon = DESTRUCTIVE_ICONS.some((icon) =>
+              new RegExp(`<${icon}[\\s/>]`).test(body),
+            );
+            if (hasDestructiveIcon && !/aria-label\s*=/.test(tag)) {
+              offenders.push(
+                `${rel}: ${tag.slice(0, 100).replace(/\s+/g, " ")}`,
+              );
+            }
+          }
+          idx = source.indexOf(opener, idx + opener.length);
+        }
+      }
+    }
+    expect(offenders, offenders.join("\n")).toEqual([]);
+  });
+
+  it("GUILT: an icon-only Trash2 button with no aria-label is what the pattern is built to catch", () => {
+    const source =
+      '<Button variant="ghost" size="icon" onClick={onDelete}>\n  <Trash2 className="w-4 h-4" />\n</Button>';
+    const tag = extractOpeningTag(source, 0);
+    const body = source.slice(tag.length, source.indexOf("</Button>"));
+    expect(/<Trash2[\s/>]/.test(body)).toBe(true);
+    expect(/aria-label\s*=/.test(tag)).toBe(false);
+  });
+
+  it("INNOCENCE: the same button WITH aria-label passes", () => {
+    const source =
+      '<Button variant="ghost" size="icon" onClick={onDelete} aria-label="Remove item">\n  <Trash2 className="w-4 h-4" />\n</Button>';
+    const tag = extractOpeningTag(source, 0);
+    expect(/aria-label\s*=/.test(tag)).toBe(true);
+  });
+
+  it("INNOCENCE: a button with neither icon carries no obligation", () => {
+    const source =
+      '<Button variant="outline" onClick={onSave}>\n  Save\n</Button>';
+    const tag = extractOpeningTag(source, 0);
+    const body = source.slice(tag.length, source.indexOf("</Button>"));
+    expect(
+      DESTRUCTIVE_ICONS.some((i) => new RegExp(`<${i}[\\s/>]`).test(body)),
+    ).toBe(false);
   });
 });
 

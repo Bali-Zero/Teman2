@@ -535,8 +535,10 @@ export function AddCompanyModal({
                         type="button"
                         variant="ghost"
                         size="sm"
-                        className="h-8 w-8 p-0 text-[var(--state-warning)]"
+                        className="h-8 w-8 p-0 text-[var(--tx-secondary)] hover:text-[var(--tx-pure)]"
                         onClick={() => updateDocument("nib", undefined)}
+                        aria-label="Remove NIB upload"
+                        title="Remove NIB upload"
                       >
                         <X className="w-4 h-4" />
                       </Button>
@@ -608,8 +610,10 @@ export function AddCompanyModal({
                         type="button"
                         variant="ghost"
                         size="sm"
-                        className="h-8 w-8 p-0 text-[var(--state-warning)]"
+                        className="h-8 w-8 p-0 text-[var(--tx-secondary)] hover:text-[var(--tx-pure)]"
                         onClick={() => updateDocument("npwp", undefined)}
+                        aria-label="Remove NPWP upload"
+                        title="Remove NPWP upload"
                       >
                         <X className="w-4 h-4" />
                       </Button>
@@ -662,8 +666,10 @@ export function AddCompanyModal({
                             type="button"
                             variant="ghost"
                             size="sm"
-                            className="h-8 w-8 p-0 text-[var(--state-warning)]"
+                            className="h-8 w-8 p-0 text-[var(--tx-secondary)] hover:text-[var(--tx-pure)]"
                             onClick={() => updateDocument(docType, undefined)}
+                            aria-label={`Remove ${labels[docType]} upload`}
+                            title={`Remove ${labels[docType]} upload`}
                           >
                             <X className="w-4 h-4" />
                           </Button>

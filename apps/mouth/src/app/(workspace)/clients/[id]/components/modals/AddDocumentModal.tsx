@@ -200,6 +200,8 @@ export function AddDocumentModal({
                 setSelectedFile(null);
               }}
               className="p-1 rounded hover:bg-[var(--bz-surface-2)]"
+              aria-label="Remove selected file"
+              title="Remove selected file"
             >
               <X className="w-4 h-4 text-[var(--bz-text-3)]" />
             </button>

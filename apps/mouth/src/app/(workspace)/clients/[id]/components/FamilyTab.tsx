@@ -247,8 +247,10 @@ export function FamilyTab({
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="h-8 w-8 text-[var(--state-warning)] hover:text-[var(--state-warning)] hover:bg-[var(--state-warning)]/10"
+                      className="h-8 w-8 text-[var(--tx-secondary)] hover:text-[var(--tx-pure)] hover:bg-[var(--bz-card)]"
                       onClick={() => handleDelete(member.id, member.full_name)}
+                      aria-label="Remove family member"
+                      title="Remove family member"
                     >
                       <Trash2 className="w-4 h-4" />
                     </Button>

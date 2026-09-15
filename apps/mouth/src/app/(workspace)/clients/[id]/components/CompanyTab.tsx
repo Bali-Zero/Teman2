@@ -357,7 +357,7 @@ export function CompanyTab({
             className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors"
             style={{
               background: "var(--state-success)",
-              color: "#fff",
+              color: "var(--bz-on-warm)",
             }}
           >
             <Plus className="w-4 h-4" />

@@ -415,7 +415,7 @@ export function PassportCard({
                 <div
                   className={`flex items-center justify-between text-xs p-2 rounded-lg transition-all duration-500 ${
                     isBirthday
-                      ? "bg-gradient-to-r from-yellow-300/40 via-amber-300/40 to-yellow-300/40 animate-pulse shadow-[0_0_15px_rgba(255,215,0,0.5)]"
+                      ? "bg-gradient-to-r from-[var(--state-warning)]/35 via-[var(--state-warning)]/20 to-[var(--state-warning)]/35 animate-pulse shadow-[0_0_15px_color-mix(in_srgb,var(--state-warning)_55%,transparent)]"
                       : ""
                   }`}
                 >
@@ -462,6 +462,8 @@ export function PassportCard({
                 onClick={handleDelete}
                 disabled={isDeleting}
                 className="text-[var(--state-warning)] hover:opacity-80"
+                aria-label="Delete passport"
+                title="Delete passport"
               >
                 {isDeleting ? (
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
@@ -572,7 +574,7 @@ export function PassportCard({
                     <div
                       className={`flex items-center justify-between text-xs p-2 rounded-lg transition-all duration-500 ${
                         isBirthday
-                          ? "bg-gradient-to-r from-yellow-300/40 via-amber-300/40 to-yellow-300/40 animate-pulse shadow-[0_0_15px_rgba(255,215,0,0.5)]"
+                          ? "bg-gradient-to-r from-[var(--state-warning)]/35 via-[var(--state-warning)]/20 to-[var(--state-warning)]/35 animate-pulse shadow-[0_0_15px_color-mix(in_srgb,var(--state-warning)_55%,transparent)]"
                           : ""
                       }`}
                     >

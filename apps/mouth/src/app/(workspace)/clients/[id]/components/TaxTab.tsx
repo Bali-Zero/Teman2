@@ -178,17 +178,17 @@ function TaxIdBadge({
 }) {
   if (!value && fallbackValue) {
     return (
-      <div className="flex items-center gap-2 px-3 py-2 rounded-lg border border-amber-500/30 bg-amber-500/10">
-        <Building2 className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+      <div className="flex items-center gap-2 px-3 py-2 rounded-lg border border-[var(--state-warning)]/30 bg-[var(--state-warning)]/10">
+        <Building2 className="w-3.5 h-3.5 text-[var(--state-warning)] shrink-0" />
         <div className="min-w-0">
-          <p className="text-[10px] text-amber-400/70 font-medium uppercase tracking-wide">
+          <p className="text-[10px] text-[var(--state-warning)]/70 font-medium uppercase tracking-wide">
             {label} <span className="normal-case font-normal">via company</span>
           </p>
-          <p className="text-xs font-mono text-amber-300 truncate">
+          <p className="text-xs font-mono text-[var(--state-warning)] truncate">
             {fallbackValue}
           </p>
           {fallbackLabel && (
-            <p className="text-[10px] text-amber-400/50 truncate">
+            <p className="text-[10px] text-[var(--state-warning)]/50 truncate">
               {fallbackLabel}
             </p>
           )}
@@ -264,7 +264,7 @@ function LkpmQuarterCard({
       ? "text-blue-400"
       : report.status === "validated"
         ? "text-blue-300"
-        : "text-amber-400";
+        : "text-[var(--state-warning)]";
   const statusIcon = report.oss_submitted ? " \u2705" : "";
 
   // 2. Days to deadline — hide if submitted
@@ -272,7 +272,7 @@ function LkpmQuarterCard({
     report.days_to_deadline != null && report.days_to_deadline <= 3
       ? "text-[var(--state-warning)]"
       : report.days_to_deadline != null && report.days_to_deadline <= 7
-        ? "text-amber-400"
+        ? "text-[var(--state-warning)]"
         : "text-emerald-400";
 
   // 3. Assigned consultant — extract first name from email
@@ -434,7 +434,9 @@ function LkpmReceiptsPanel({
                       <td className="px-2 py-1.5">
                         <span
                           className={
-                            approved ? "text-emerald-400" : "text-amber-400"
+                            approved
+                              ? "text-emerald-400"
+                              : "text-[var(--state-warning)]"
                           }
                         >
                           {r.oss_status ?? "—"}
@@ -609,8 +611,8 @@ export function TaxTab({
       {/* LKPM with live quarter cards */}
       <div className="rounded-xl border border-[var(--bz-border)] bg-[var(--bz-surface)] p-5">
         <div className="flex items-center gap-3 mb-4">
-          <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-orange-500 to-red-600 flex items-center justify-center">
-            <FileText className="w-6 h-6 text-white" />
+          <div className="w-12 h-12 rounded-xl bg-[var(--bz-card)] border border-[var(--bz-border)] flex items-center justify-center">
+            <FileText className="w-6 h-6 text-[var(--tx-secondary)]" />
           </div>
           <div>
             <h4 className="font-semibold text-[var(--bz-text-1)]">LKPM</h4>

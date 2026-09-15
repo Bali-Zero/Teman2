@@ -348,7 +348,7 @@ export function ProcessTab({
                         );
                       }}
                       disabled={deletingIds.has(practice.id)}
-                      className="p-1 rounded hover:bg-[var(--state-warning)]/20 text-[var(--bz-text-2)] hover:text-[var(--state-warning)] disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="p-1 rounded hover:bg-[var(--bz-card)] text-[var(--tx-secondary)] hover:text-[var(--tx-pure)] disabled:opacity-50 disabled:cursor-not-allowed"
                       title="Delete process"
                       aria-label="Delete process"
                     >

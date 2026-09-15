@@ -455,6 +455,8 @@ export function VisaCard({
                 onClick={handleDelete}
                 disabled={isDeleting}
                 className="text-[var(--state-warning)] hover:opacity-80"
+                aria-label="Delete visa"
+                title="Delete visa"
               >
                 {isDeleting ? (
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />

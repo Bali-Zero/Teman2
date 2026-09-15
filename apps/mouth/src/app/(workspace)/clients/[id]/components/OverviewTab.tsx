@@ -301,9 +301,11 @@ export function OverviewTab({
                       href={`tel:${client.phone}`}
                       className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all"
                       style={{
-                        background: "rgba(59,130,246,0.12)",
+                        background:
+                          "color-mix(in srgb, var(--state-info) 12%, transparent)",
                         color: "var(--state-info)",
-                        border: "1px solid rgba(59,130,246,0.25)",
+                        border:
+                          "1px solid color-mix(in srgb, var(--state-info) 25%, transparent)",
                       }}
                       title={`Call ${client.phone}`}
                     >

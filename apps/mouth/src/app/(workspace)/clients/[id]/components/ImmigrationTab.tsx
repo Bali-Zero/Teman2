@@ -199,10 +199,12 @@ export function ImmigrationTab({
             <Button
               variant="ghost"
               size="icon"
-              className="h-7 w-7 text-[var(--state-warning)] hover:text-[var(--state-warning)] hover:bg-[var(--state-warning)]/10 opacity-0 group-hover:opacity-100 transition-opacity"
+              className="h-7 w-7 text-[var(--tx-secondary)] hover:text-[var(--tx-pure)] hover:bg-[var(--bz-card)] opacity-0 group-hover:opacity-100 transition-opacity"
               onClick={() =>
                 handleDelete(doc.id, doc.file_name || doc.document_type)
               }
+              aria-label="Remove document"
+              title="Remove document"
             >
               <Trash2 className="w-3 h-3" />
             </Button>
@@ -295,7 +297,7 @@ export function ImmigrationTab({
     {
       title: "Other",
       docs: otherDocs,
-      color: "bg-orange-500/20 text-orange-400",
+      color: "bg-[var(--state-warning)]/20 text-[var(--state-warning)]",
     },
   ];
 

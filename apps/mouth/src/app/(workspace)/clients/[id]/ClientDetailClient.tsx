@@ -532,7 +532,7 @@ export function ClientDetailClient({
                 <Button
                   variant="outline"
                   size="sm"
-                  className="gap-2 text-amber-400 border-amber-400/30 hover:bg-amber-400/10"
+                  className="gap-2 text-[var(--tx-secondary)] border-[var(--bz-border)] hover:bg-[var(--bz-surface)] hover:text-[var(--tx-pure)]"
                   onClick={() =>
                     window.open(
                       `https://drive.google.com/drive/folders/${client.google_drive_folder_id}`,
@@ -769,11 +769,14 @@ export function ClientDetailClient({
                   Log interaction
                 </p>
                 <button
+                  type="button"
                   onClick={() => {
                     setShowLogPanel(false);
                     setLogSummary("");
                   }}
                   className="p-1 rounded hover:bg-[var(--bz-card)] text-[var(--bz-text-2)]"
+                  aria-label="Close log panel"
+                  title="Close log panel"
                 >
                   <X className="w-4 h-4" />
                 </button>
