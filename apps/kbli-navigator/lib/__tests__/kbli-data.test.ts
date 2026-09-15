@@ -35,6 +35,8 @@ import {
   hasCertifiedCanonicalIntel,
   hasCertifiedStandaloneGold,
   neutralKbliChatOpenerText,
+  pmaEditorialFingerprint,
+  stableEditorialSha256,
 } from "../kbli-editorial-certification";
 import {
   getGoldCodes,
@@ -178,13 +180,12 @@ function pmaDisclosureContract() {
     assert.equal(getCode(code)?.intel_2026, undefined, `${code}: unsafe intel`);
   }
 
-  // standaloneGold lost its OTHER entry, 65121, to W-H PR-3c v3 (its
-  // baliContext/zantaraOpener steered a foreign investor to 66221, a
-  // declared_gap code, as a "more practical"/"more accessible" route).
-  // 47111 lost canonicalIntel in the same PR but its standaloneGold entry
-  // is untouched (different content, never flagged) — it is the only code
-  // still carrying tier "gold" on this registry.
-  assert.equal(getCode("47111")?.tier, "gold");
+  // standaloneGold is EMPTY after W-H PR-3c v3 de-certified its last entry,
+  // 65121 (its baliContext/zantaraOpener steered a foreign investor to
+  // 66221, a declared_gap code, as a "more practical"/"more accessible"
+  // route) — 47111 was already de-certified by the predecessor PR-3c. No
+  // code may carry tier "gold" any more.
+  assert.notEqual(getCode("47111")?.tier, "gold");
   assert.notEqual(getCode("65121")?.tier, "gold");
   assert.notEqual(getCode("47221")?.tier, "gold");
   assert.notEqual(getCode("16291")?.tier, "gold");
@@ -204,12 +205,10 @@ function editorialCertificationContract() {
     return record;
   };
 
-  // 47111 lost canonicalIntel certification in W-H PR-3c v3 (its prose
-  // named 47191/47192 as "fully open to 100% PMA" while both are
-  // declared_gap) — its standaloneGold entry is untouched and stays
-  // certified (exercised as the positive-path standaloneGold example
-  // below). 41016 is a still-certified canonicalIntel example for the
-  // positive-path + drift-fails-closed checks here.
+  // 47111 lost BOTH canonicalIntel and standaloneGold certification in W-H
+  // PR-3c v3 (its prose named 47191/47192 as "fully open to 100% PMA" while
+  // both are declared_gap) — 41016 is a still-certified canonicalIntel
+  // example for the positive-path + drift-fails-closed checks.
   const safe = getCode("41016");
   assert.ok(safe, "41016 transformed record");
   const safeIntel = raw("41016").intel_2026;
@@ -237,21 +236,23 @@ function editorialCertificationContract() {
     "PMA fingerprint drift must fail closed",
   );
 
-  // standaloneGold lost 65121 to W-H PR-3c v3 (baliContext/zantaraOpener
-  // steered a foreign investor to 66221, a declared_gap code, as a "more
-  // practical"/"more accessible" route). 47111's standaloneGold entry is
-  // untouched by this PR (only its canonicalIntel was de-certified) and is
-  // the sole remaining positive example — exercised directly below instead
-  // of a hand-built synthetic registry entry.
+  // standaloneGold is EMPTY: W-H PR-3c v3 de-certified its last entry, 65121
+  // (baliContext/zantaraOpener steered a foreign investor to 66221, a
+  // declared_gap code, as a "more practical"/"more accessible" route). No
+  // real code can stand in for a positive standaloneGold example any more —
+  // per the Dux's instruction, the certification MECHANISM (not a real
+  // registry entry) is exercised inline instead of weakening this into a
+  // negative-only check.
   const gold65121 = getCode("65121");
-  const gold47111 = getCode("47111");
   assert.ok(gold65121, "65121 transformed record");
-  assert.ok(gold47111, "47111 transformed record");
   const decertifiedGold65121 = getRawGoldContentForCertification("65121");
-  const certifiedGold47111 = getRawGoldContentForCertification("47111");
+  const decertifiedGold47111 = getRawGoldContentForCertification("47111");
   const unsafeGold = getRawGoldContentForCertification("47221");
   assert.ok(decertifiedGold65121, "65121 raw standalone gold");
-  assert.ok(certifiedGold47111, "47111 raw standalone gold");
+  assert.ok(
+    decertifiedGold47111,
+    "47111 raw standalone gold (still parsed, no longer certified)",
+  );
   assert.ok(unsafeGold, "47221 raw standalone gold");
   assert.equal(
     hasCertifiedStandaloneGold("65121", gold65121!.pma, decertifiedGold65121),
@@ -259,9 +260,9 @@ function editorialCertificationContract() {
     "de-certified standalone gold must remain withheld",
   );
   assert.equal(
-    hasCertifiedStandaloneGold("47111", gold47111!.pma, certifiedGold47111),
-    true,
-    "47111's untouched standaloneGold entry must still certify",
+    hasCertifiedStandaloneGold("47111", safe!.pma, decertifiedGold47111),
+    false,
+    "de-certified standalone gold must remain withheld",
   );
   assert.equal(
     hasCertifiedStandaloneGold("47221", getCode("47221")!.pma, unsafeGold),
@@ -269,36 +270,45 @@ function editorialCertificationContract() {
     "uncorrected standalone gold must remain withheld",
   );
   assert.equal(getGoldContent("47221", getCode("47221")!.pma), null);
-  assert.notEqual(
-    getGoldContent("47111", gold47111!.pma),
-    null,
-    "47111's standalone gold must still be served",
-  );
+  assert.equal(getGoldContent("47111", safe!.pma), null);
   assert.equal(
     getGoldContent("65121", gold65121!.pma),
     null,
     "de-certified standalone gold must be withheld, not served",
   );
 
-  // Binding drift checks against 47111's REAL certified content/PMA tuple
-  // (the exact two primitives matchesCertification() /
-  // hasCertifiedStandaloneGold() compare: pmaEditorialFingerprint,
-  // stableEditorialSha256) — a real registry entry now exists to exercise
-  // this against, so no hand-built synthetic entry is needed.
+  // Positive-path check for the binding mechanism itself, built from a
+  // hand-authored PMA tuple + content block rather than a real registry
+  // entry — the exact two primitives matchesCertification() /
+  // hasCertifiedStandaloneGold() compare (pmaEditorialFingerprint,
+  // stableEditorialSha256). If a code is ever re-certified, this is the
+  // contract its registry entry must satisfy.
+  const syntheticPma = { ...gold65121!.pma };
+  const syntheticContent = {
+    ...decertifiedGold65121,
+    zantaraOpener: "synthetic reviewed opener text for the binding test",
+  };
+  const syntheticCertification = {
+    pmaFingerprint: pmaEditorialFingerprint(syntheticPma),
+    contentSha256: stableEditorialSha256(syntheticContent),
+  };
   assert.equal(
-    hasCertifiedStandaloneGold("47111", gold47111!.pma, {
-      ...certifiedGold47111,
-      whatItMeans: `${certifiedGold47111.whatItMeans}x`,
-    }),
+    syntheticCertification.pmaFingerprint ===
+      pmaEditorialFingerprint(syntheticPma) &&
+      syntheticCertification.contentSha256 ===
+        stableEditorialSha256(syntheticContent),
+    true,
+    "a certification built from a reviewed PMA tuple + content block must bind exactly",
+  );
+  assert.equal(
+    syntheticCertification.contentSha256 ===
+      stableEditorialSha256({ ...syntheticContent, whatItMeans: "drifted" }),
     false,
     "one-character content drift must break the binding",
   );
   assert.equal(
-    hasCertifiedStandaloneGold(
-      "47111",
-      { ...gold47111!.pma, maxForeign: 1 },
-      certifiedGold47111,
-    ),
+    syntheticCertification.pmaFingerprint ===
+      pmaEditorialFingerprint({ ...syntheticPma, maxForeign: 1 }),
     false,
     "PMA fingerprint drift must break the binding",
   );
@@ -312,8 +322,8 @@ function editorialCertificationContract() {
   const goldCodes = getGoldCodes((code) => getCode(code)?.pma);
   assert.deepEqual(
     goldCodes,
-    ["47111"],
-    "standaloneGold registry retains only 47111 after W-H PR-3c v3 de-certified 65121",
+    [],
+    "standaloneGold registry is empty after W-H PR-3c v3 de-certified its last entry (65121)",
   );
   assert.deepEqual(
     getAllCodes()

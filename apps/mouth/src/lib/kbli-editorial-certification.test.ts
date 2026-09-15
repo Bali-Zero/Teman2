@@ -81,18 +81,14 @@ describe("PMA editorial certification", () => {
 
     // SAETTA-20260915 W-H PR-3c v3 de-certified 12 canonicalIntel entries and
     // 6 mouthGold entries whose prose still claimed openness a record's own
-    // tuple denies (49 -> 37 canonicalIntel; 15 -> 9 mouthGold against
-    // main's post-#6596-merge registry baseline). 47111 is one of the 12
-    // canonicalIntel de-certifications but NOT one of the 6 mouthGold ones —
-    // its mouthGold/standaloneGold entries carry different, untouched
-    // content and stay certified. A fresh gate on the predecessor
-    // (#6593/#6594) BLOCKED partly because this file still pinned the
-    // pre-decertification counts and 47111 as certified canonicalIntel —
+    // tuple denies (49 -> 37 canonicalIntel; 14 -> 8 mouthGold). A fresh gate
+    // on the predecessor (#6593/#6594) BLOCKED partly because this file still
+    // pinned the pre-decertification counts and 47111 as certified gold —
     // do not let these numbers drift from the registry again without a test
     // failure naming the exact mismatch.
     expect(all.filter((code) => code.intel_2026)).toHaveLength(37);
-    expect(all.filter((code) => code.tier === "gold")).toHaveLength(9);
-    expect(goldCodes).toHaveLength(9);
+    expect(all.filter((code) => code.tier === "gold")).toHaveLength(8);
+    expect(goldCodes).toHaveLength(8);
     expect(goldCodes).toEqual(
       expect.arrayContaining(["47221", "50113", "51101", "53200"]),
     );
@@ -140,20 +136,16 @@ describe("PMA editorial certification", () => {
     }
 
     // Explicit withheld assertions (GATE-6593's second reason): 47111 lost
-    // ONLY canonicalIntel certification in this PR — its mouthGold entry is
-    // untouched and stays certified, disclosed below alongside the withheld
-    // check — and 95220 is a representative canonical-only de-certification
-    // (its pullQuote claimed "National openness remains real" on a 0%
-    // Koperasi/UMKM-allocated record) — the page must fail closed on
-    // canonicalIntel rather than serve stale certified prose.
+    // BOTH canonicalIntel and mouthGold certification in this same PR, and
+    // 95220 is a representative canonical-only de-certification (its
+    // pullQuote claimed "National openness remains real" on a 0%
+    // Koperasi/UMKM-allocated record) — the page must fail closed on both
+    // rather than serve stale certified prose.
     expect(
       getCode("47111")?.intel_2026,
       "47111 canonical intel withheld",
     ).toBeUndefined();
-    expect(
-      getGoldContent("47111"),
-      "47111 Mouth gold still certified (untouched by this PR)",
-    ).not.toBeNull();
+    expect(getGoldContent("47111"), "47111 Mouth gold withheld").toBeNull();
     expect(
       getCode("95220")?.intel_2026,
       "95220 canonical intel withheld",
