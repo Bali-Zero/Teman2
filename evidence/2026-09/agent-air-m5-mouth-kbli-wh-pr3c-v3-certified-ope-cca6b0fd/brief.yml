@@ -16,15 +16,9 @@ gear_reason: >-
   cure_prose_national_openness.py and backfill_new_sha256.py unmodified, no
   new compiler, no migration.
 acceptance:
-  - probe: python3 -m pytest scripts/kbli_filiera/ -q
-    expect: 0 failed (1393 passed, 1 skipped)
-  - probe: cd apps/backend-rag && pytest $(find backend/tests -iname "test_*kbli*.py")
-    expect: 0 failed
-  - probe: >-
-      cd apps/mouth && npx vitest run $(git ls-files 'src/**/*kbli*.test.ts'
-      'src/**/*KBLI*.test.tsx' | sed 's#^#./#') && npx tsc --noEmit
-    expect: 56 files/761 tests passed, tsc clean
-  - probe: cd apps/kbli-navigator && ../../node_modules/.bin/tsx --test lib/__tests__/kbli-data.test.ts
-    expect: 1 passed (37/57 located certified)
-  - probe: bash scripts/sync_kbli_dataset.sh --check
-    expect: all consumers in sync
+  - "python3 -m pytest scripts/kbli_filiera/ -q -> 0 failed (1393 passed, 1 skipped)"
+  - "cd apps/backend-rag && pytest $(find backend/tests -iname 'test_*kbli*.py') -> 0 failed (775 passed)"
+  - "cd apps/mouth && npx vitest run <56 KBLI test files> && npx tsc --noEmit -> 761 passed, tsc clean"
+  - "cd apps/kbli-navigator && ../../node_modules/.bin/tsx --test lib/__tests__/kbli-data.test.ts -> 1 passed (37/57 located certified)"
+  - "bash scripts/sync_kbli_dataset.sh --check -> all 5 consumers in sync"
+  - "bash scripts/kbli_filiera/vault-checks.sh (scoreboard/perpres_body_default/slice/foreign_cap) -> 4x rc=0"
