@@ -12,15 +12,15 @@ constraints:
   - >-
     No new editorial-certification registry entries: recert.py bumps
     sourceDatasetSha256/reviewedAt only (differing=0 on the 66 existing
-    entries). Gold whatYouNeed/opener text on 3 of the 8 codes still needs
-    cure_gold_pma_line.py's AUTHORED_SENTENCES (a code change) — deferred
-    to PR-8, listed with exact strings in the PR body, not fixed here.
-appetite: {wall_clock_hours: 3}
+    entries). 47712/47722's gold PMA sentence got AUTHORED_SENTENCES entries
+    (from the reference lane); 47242's gold opener/baliContext is deferred
+    to PR-8 (no test fires — uncertified). The openness guard test was
+    split out to its own PR (PR-3d) to keep this PR's floor at 2.
+appetite: { wall_clock_hours: 3 }
 acceptance:
   - text: >-
       Filiera + full backend kbli (30 files) + navigator + mouth vitest
-      suites pass; only accepted reds are the 3-codes gold blocker ratchet
-      and the pre-PR-3c guard baseline (see PR body for exact counts).
+      suites pass with ZERO failures (see PR body for exact counts).
     probe: see PR body for the full command list and counts.
 assumptions:
   - text: >-

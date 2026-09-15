@@ -465,7 +465,14 @@ describe("the PMA verdict banner — the SECOND render site", () => {
     // …and the eight the W-H PR-3b Lampiran II entry-46 retail cure sent the
     // same way on 2026-09-15, for the same reason.
     for (const code of [
-      "47241", "47242", "47244", "47245", "47246", "47249", "47712", "47722",
+      "47241",
+      "47242",
+      "47244",
+      "47245",
+      "47246",
+      "47249",
+      "47712",
+      "47722",
     ]) {
       expect(excluded.map((r) => r.kode_kbli_2025)).toContain(code);
     }
