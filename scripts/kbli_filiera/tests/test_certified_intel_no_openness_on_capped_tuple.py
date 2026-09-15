@@ -21,6 +21,24 @@ Population: only codes the registry actually certifies, restricted to
 `pma_verification_status == "located"` AND `pma_max_asing < 100` on the
 CURRENT canonical record — a genuinely open (TERBUKA/100) or still-
 `declared_gap` code is out of scope by design (innocence fixture below).
+
+RATCHET, not a plain red/green gate (Dux decision, SAETTA-20260915 W-H
+PR-3b): `BASELINE` names every pre-existing `(section, code, field)` debt
+tuple this guard tolerates; the live test asserts STRICT equality against
+it both ways — no offender outside `BASELINE` (no new debt) and no
+`BASELINE` entry that has stopped offending (no un-shrunk baseline; a cure
+must delete the tuple here, not just fix the text). `REVIEWED_TRUE_TEXT`
+is a separate allowlist for text that is TRUE and was reviewed, not debt —
+keyed on `(section, code, field, exact_substring, reason)` so a future
+wording change on that same field still fires (containment of the exact
+string, not identity of the field).
+
+`BASELINE` targets the state AFTER PR-3c (curing 29 certified fields and
+de-certifying the 47111 gold entries) lands on `main`, which merges BEFORE
+this PR — so `BASELINE` is empty here by design. This guard will NOT run
+green on this branch's own un-merged base (PR-3c hasn't cured those fields
+here yet); that is expected and accepted per the Dux, who reconciles it
+when she merges `main` post-PR-3c.
 """
 
 from __future__ import annotations
@@ -89,6 +107,54 @@ def qualifies(record: dict[str, Any]) -> bool:
 
 
 # ---------------------------------------------------------------------------
+# Ratchet baseline + reviewed-true allowlist (Dux decision, SAETTA-20260915
+# W-H PR-3b). See module docstring for the two-way equality this enforces.
+# ---------------------------------------------------------------------------
+
+# (section, code, field) — pre-existing debt this guard tolerates. Empty:
+# targets the state AFTER PR-3c cures the corpus; see module docstring.
+BASELINE: frozenset[tuple[str, str, str]] = frozenset()
+
+# (section, code, field, exact_substring, reason) — TRUE text, reviewed by
+# PR-3c, never debt. Matched on (section, code, field) AND containment of
+# the exact substring, so different wording on the same field still fires.
+REVIEWED_TRUE_TEXT: tuple[tuple[str, str, str, str, str], ...] = (
+    (
+        "canonicalIntel",
+        "50126",
+        "editorial.body",
+        "capped at 49%, rather than being fully open",
+        "negation: the sentence states the national cap IS 49%, not full openness — "
+        "the regex's 'fully open' hit is inside a clause denying it.",
+    ),
+    (
+        "canonicalIntel",
+        "51101",
+        "editorial.headline",
+        "Open to PMA in Bali",
+        "Bali-axis: 51101 is nationally TERBATAS/49%, but Bali carries no moratorium "
+        "block for it (Besar-scale risk is medium-high/high) — the headline's claim "
+        "is scoped to Bali, not the national cap, and is true as written.",
+    ),
+)
+
+
+def _reviewed_reason(section: str, code: str, path: str, text: str) -> str | None:
+    """The allowlist reason if this exact offender is reviewed-true text,
+    else None. Containment of `exact_substring`, not just field identity —
+    so a wording change on the same field is NOT silently excused."""
+    for r_section, r_code, r_field, exact_substring, reason in REVIEWED_TRUE_TEXT:
+        if (
+            section == r_section
+            and code == r_code
+            and path == r_field
+            and exact_substring in text
+        ):
+            return reason
+    return None
+
+
+# ---------------------------------------------------------------------------
 # Fixture-based guilt + innocence (no I/O) — the guard's own TDD anchor.
 # ---------------------------------------------------------------------------
 
@@ -140,6 +206,45 @@ def test_innocence_genuinely_open_record_is_out_of_population():
     assert qualifies(capped_record)
 
 
+def test_innocence_reviewed_true_text_is_excused_on_exact_substring():
+    """The 2 PR-3c-reviewed TRUE offenders are excused ONLY when the exact
+    reviewed substring is present — proving the allowlist is substring-
+    keyed, not field-keyed."""
+    assert _reviewed_reason(
+        "canonicalIntel",
+        "50126",
+        "editorial.body",
+        "Nationally, the activity is TERBATAS: foreign ownership is "
+        "capped at 49%, rather than being fully open. In Bali...",
+    )
+    assert _reviewed_reason(
+        "canonicalIntel",
+        "51101",
+        "editorial.headline",
+        "Scheduled Commercial Air Transport Is Open to PMA in Bali",
+    )
+
+
+def test_innocence_reviewed_true_text_does_not_excuse_other_wording():
+    """A DIFFERENT sentence on the same (section, code, field) must still
+    fire — the allowlist is keyed on the exact reviewed substring, not on
+    field identity, so a future regression on 50126/51101 is not silently
+    swallowed by their own past review."""
+    assert _reviewed_reason(
+        "canonicalIntel", "50126", "editorial.body", "This activity is fully open to PMA."
+    ) is None
+    assert _reviewed_reason(
+        "canonicalIntel", "51101", "editorial.headline", "Fully open to foreign investment."
+    ) is None
+    # Same exact substring, wrong field or wrong code: also not excused.
+    assert _reviewed_reason(
+        "canonicalIntel", "51101", "zantaraOpener", "Open to PMA in Bali"
+    ) is None
+    assert _reviewed_reason(
+        "canonicalIntel", "50135", "editorial.headline", "Open to PMA in Bali"
+    ) is None
+
+
 # ---------------------------------------------------------------------------
 # Live-data guard: every code the registry currently certifies.
 # ---------------------------------------------------------------------------
@@ -173,9 +278,11 @@ def _load_standalone_gold() -> dict[str, dict]:
 def test_no_current_certified_entry_asserts_openness_on_a_capped_tuple():
     """Walks every code the registry actually certifies today. Skips a code
     the registry names but the live source no longer carries (a stale
-    registry entry is `recert.py`'s job to catch, not this guard's). Reports
-    every offender by section/code/path before failing — per instruction,
-    this guard NEVER edits certified text; it only names offenders."""
+    registry entry is `recert.py`'s job to catch, not this guard's). Ratchet
+    (see module docstring): every hit is either (a) `REVIEWED_TRUE_TEXT`
+    (excused, true), (b) in `BASELINE` (pre-existing, tolerated, must still
+    offend), or (c) new — and (c) fails the build. This guard NEVER edits
+    certified text; it only names offenders."""
     if not REGISTRY.exists():
         pytest.skip("no editorial certification registry on this checkout")
     registry = json.loads(REGISTRY.read_text(encoding="utf-8"))
@@ -189,7 +296,7 @@ def test_no_current_certified_entry_asserts_openness_on_a_capped_tuple():
         "standaloneGold": lambda code: standalone.get(code),
     }
 
-    offenders: list[str] = []
+    found: dict[tuple[str, str, str], str] = {}
     for section, getter in sources.items():
         for code in registry.get(section) or {}:
             record = by_code.get(code)
@@ -199,10 +306,22 @@ def test_no_current_certified_entry_asserts_openness_on_a_capped_tuple():
             if content is None:
                 continue
             for path, match, text in offending_strings(content):
-                offenders.append(f"{section}.{code}.{path}: {match!r} in {text[:120]!r}")
+                if _reviewed_reason(section, code, path, text) is not None:
+                    continue  # TRUE text, reviewed — not debt.
+                found[(section, code, path)] = f"{match!r} in {text[:120]!r}"
 
-    assert not offenders, (
-        "certified text asserts national openness on a capped/located record — "
-        "do NOT edit certified text to silence this; report the offenders:\n  "
-        + "\n  ".join(offenders)
+    found_keys = frozenset(found)
+    new_debt = found_keys - BASELINE
+    shrunk = BASELINE - found_keys  # a baseline entry that stopped offending
+
+    assert not new_debt, (
+        "certified text asserts national openness on a capped/located record and "
+        "is NOT in BASELINE or REVIEWED_TRUE_TEXT — do NOT edit certified text to "
+        "silence this; report the offenders:\n  "
+        + "\n  ".join(f"{s}.{c}.{p}: {found[(s, c, p)]}" for s, c, p in sorted(new_debt))
+    )
+    assert not shrunk, (
+        "BASELINE names a (section, code, field) that no longer offends — delete "
+        "it from BASELINE instead of leaving a stale entry:\n  "
+        + "\n  ".join(f"{s}.{c}.{p}" for s, c, p in sorted(shrunk))
     )

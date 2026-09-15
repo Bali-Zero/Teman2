@@ -120,11 +120,14 @@ function pmaDisclosureContract() {
   const locatedCodes = all.filter(
     (code) => code.pma.verificationStatus === "located",
   );
-  assert.equal(gaps.length, 1505, "dataset must contain 1,505 PMA gaps");
+  // 1505 -> 1497 / 54 -> 62: W-H PR-3b moves 8 codes (47241 47242 47244
+  // 47245 47246 47249 47712 47722) from declared_gap to located under
+  // Perpres 49/2021 Lampiran II entry 46 (Koperasi/UMKM reservation).
+  assert.equal(gaps.length, 1497, "dataset must contain 1,497 PMA gaps");
   assert.equal(
     locatedCodes.length,
-    54,
-    "dataset must contain 54 located PMA verdicts",
+    62,
+    "dataset must contain 62 located PMA verdicts",
   );
   for (const code of gaps) {
     assert.equal(code.pma.status, "unknown", `${code.code}: PMA status`);

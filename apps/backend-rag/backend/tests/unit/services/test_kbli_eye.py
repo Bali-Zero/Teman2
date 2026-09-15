@@ -229,9 +229,12 @@ def test_cap_is_always_a_percentage_or_a_declared_gap(records: list[dict]) -> No
 
 
 def test_every_unlocated_record_withholds_cap_and_condition(records: list[dict]) -> None:
-    """All 1,505 declared gaps fail closed, not just a hand-picked sample."""
+    """All 1,497 declared gaps fail closed, not just a hand-picked sample."""
+    # 1505 -> 1497: W-H PR-3b moves 8 codes (47241 47242 47244 47245 47246
+    # 47249 47712 47722) from declared_gap to located under Perpres 49/2021
+    # Lampiran II entry 46 (Koperasi/UMKM reservation).
     unlocated = [r for r in records if not _located(r)]
-    assert len(unlocated) == 1505
+    assert len(unlocated) == 1497
     for record in unlocated:
         cap, basis, verified = KBLIEye._foreign_cap(record)
         assert (cap, basis, verified) == (None, None, False)
@@ -239,11 +242,13 @@ def test_every_unlocated_record_withholds_cap_and_condition(records: list[dict])
 
 
 def test_umkm_reserved_is_tri_state_and_provenance_gated(records: list[dict]) -> None:
-    """Only the 54 located tuples may emit either a positive or negative claim."""
+    """Only the 62 located tuples may emit either a positive or negative claim."""
+    # 15 -> 23 True / 1541 -> 1533 None: W-H PR-3b's 8 codes are all located
+    # and UMKM-reserved (Perpres 49/2021 Lampiran II entry 46).
     verdicts = [KBLIEye._umkm_reserved(r) for r in records]
-    assert verdicts.count(True) == 15
+    assert verdicts.count(True) == 23
     assert verdicts.count(False) == 3
-    assert verdicts.count(None) == 1541
+    assert verdicts.count(None) == 1533
     named = {r["kode_kbli_2025"] for r in records if KBLIEye._umkm_reserved(r) is True}
     terbuka = {
         r["kode_kbli_2025"] for r in records if _located(r) and r.get("pma_status") == "TERBUKA"
@@ -262,10 +267,12 @@ def test_every_umkm_true_is_named_by_the_data(records: list[dict]) -> None:
 
 def test_only_located_zero_caps_enter_the_rejected_bucket(records: list[dict]) -> None:
     """A raw 0% working value is not rejection evidence without provenance."""
+    # 54 -> 62 located / 19 -> 27 rejected: W-H PR-3b's 8 codes are located
+    # with a cap of 0 (Perpres 49/2021 Lampiran II entry 46).
     located = {r["kode_kbli_2025"] for r in records if _located(r)}
     new_rejected = {r["kode_kbli_2025"] for r in records if KBLIEye._foreign_cap(r)[0] == 0}
-    assert len(located) == 54
-    assert len(new_rejected) == 19
+    assert len(located) == 62
+    assert len(new_rejected) == 27
     assert new_rejected <= located
 
 
