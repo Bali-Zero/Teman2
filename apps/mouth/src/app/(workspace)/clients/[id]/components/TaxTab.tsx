@@ -51,9 +51,9 @@ const YearSelector = memo(function YearSelector({
   const years = Array.from({ length: 5 }, (_, i) => currentYear - i);
 
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex items-center gap-2 flex-wrap">
       <span className="text-sm text-[var(--bz-text-2)]">Year:</span>
-      <div className="flex gap-1">
+      <div className="flex flex-wrap gap-1">
         {years.map((year) => (
           <Button
             key={year}
@@ -557,8 +557,8 @@ export function TaxTab({
       {/* AI Summary (CRM-Guardian L1 cross-folder, tax slice) */}
       <AiSummaryCard clientId={clientId} section="tax" />
       {/* Header with year selector */}
-      <div className="flex items-center justify-between">
-        <div>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="min-w-0">
           <h3 className="text-lg font-semibold text-[var(--bz-text-1)]">
             Tax Overview
           </h3>

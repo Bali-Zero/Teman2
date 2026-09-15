@@ -1048,3 +1048,56 @@ describe("status trigger button — disclosure semantics (R6)", () => {
     expect(trigger).toHaveAttribute("aria-expanded", "false");
   });
 });
+
+// ---------------------------------------------------------------------------
+// 9. Tax tab year selector — no page-level overflow at 390 (round-6)
+// ---------------------------------------------------------------------------
+//
+// Round 6: with the Log panel open and the Tax tab active, YearSelector's row
+// of 5 unwrapped year buttons pushed document.documentElement.scrollWidth
+// past the 390px mandate (measured 443-448 vs clientWidth 390) — the flex
+// row had no wrap allowance, so flexbox's default content-based min-width
+// kept every button on one unbroken line and the header row's `justify-
+// between` had nowhere to give. The cure is layout-only (flex-wrap on both
+// the YearSelector wrapper and its button row, plus a flex-col -> sm:flex-
+// row stack on the "Tax Overview" header row) — no colour, copy or handler
+// changed. This pin reads TaxTab.tsx's raw source (same idiom as the
+// `.tabActive`/`.tabBar` CSS-block checks above, applied to a .tsx source
+// block instead of a .css rule) so a future edit that drops the wrap
+// allowance goes red here before it ever reaches a browser capture.
+describe("GLOB: YearSelector row wraps instead of overflowing at 390 (round-6)", () => {
+  const taxTabSource = readFileSync(
+    join(DETAIL_DIR, "components", "TaxTab.tsx"),
+    "utf8",
+  );
+
+  it("the year-button row allows wrapping, not a forced single line", () => {
+    const rowMatch = taxTabSource.match(
+      /<div className="flex flex-wrap gap-1">\s*{years\.map/,
+    );
+    expect(
+      rowMatch,
+      "YearSelector's button row lost flex-wrap — it will force all 5 years onto one unbroken line and overflow at 390",
+    ).toBeTruthy();
+  });
+
+  it("the YearSelector's own wrapper allows wrapping ahead of the Year: label", () => {
+    const wrapMatch = taxTabSource.match(
+      /<div className="flex items-center gap-2 flex-wrap">\s*<span className="text-sm text-\[var\(--bz-text-2\)\]">Year:/,
+    );
+    expect(
+      wrapMatch,
+      "YearSelector's outer wrapper lost flex-wrap ahead of the 'Year:' label",
+    ).toBeTruthy();
+  });
+
+  it("the Tax Overview header row stacks below sm instead of forcing one row", () => {
+    const headerMatch = taxTabSource.match(
+      /<div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">/,
+    );
+    expect(
+      headerMatch,
+      "Tax Overview header row lost its flex-col -> sm:flex-row stacking allowance",
+    ).toBeTruthy();
+  });
+});
