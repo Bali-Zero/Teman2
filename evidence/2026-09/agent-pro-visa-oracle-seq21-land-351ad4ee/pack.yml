@@ -1,0 +1,380 @@
+task_id: visa-oracle-seq21-land
+gear: 3
+l_level: L2
+gate_class: opus
+brief_ref: evidence/brief.yml
+date: 2026-09-15
+machine: Pro
+council_run: journal.jsonl
+lanes:
+  - lane: seq-21 signed bundle + signed-bundle gate + observe wrapper
+    role: build
+    seat: claude-opus-5 (builder seat in worktree .worktrees/backend-rag-seq21-land, branch agent/pro/visa-oracle/seq21-land)
+    note: >-
+      Landed the SIGNED seq-21 bundle produced by the owner's offline Ed25519
+      ceremony (authorised by Zero 2026-09-15 16:25 WITA) and the gate that
+      makes it observable: test_seq21_signed_bundle.py (468 lines, 25
+      passed — verify_rule_pack against the pinned production trust store,
+      independent digest recomputation off disk, JCS equality against
+      rulepack-prod-021.source.json, tampering rejected on in-memory
+      copies, a final re-read-from-disk proving the guilt probe mutated
+      nothing) and scripts/ci/observe_visa_seq21_signed.py (82 lines,
+      bites-observable). NOTHING WAS SIGNED OR ACTIVATED IN THIS SESSION:
+      this seat holds no private key, read no key material, and passed
+      `--yes` to nothing. This evidence pack itself was authored in a
+      separate session (claude-sonnet-5, same worktree/branch) from the
+      builder's own measurements, made after commit 0e1d08ab61 was already
+      on the branch.
+
+seat_diversity: exempt
+seat_diversity_note: >-
+  One build lane, so D3's seat-diversity requirement does not attach (it
+  binds packs with >= 2 build lanes).
+
+seat_override: >-
+  R8 ground_truth: this diff hits GROUND_TRUTH_PATH_PATTERNS (`*/visa_engine/*`)
+  via the signed bundle and its test module, but it introduces NO regulatory
+  claim of its own — the eleven new rules were authored, ruled and merged
+  BEFORE this PR in #6466 (freeze) and #6479 (validity-date fix), both
+  already reviewed as the UNSIGNED rulepack-prod-021.source.json. This PR
+  only adds the operator's Ed25519 signature over bytes proven byte-identical
+  (JCS) to that already-reviewed source — the same shape the seq-20 signing
+  PR used for its own R8 override. A fresh NB/ground-truth lane here would
+  re-litigate #6466/#6479's own reviewed content, not measure this diff.
+  .
+  R9 council_run: quorum IS met — two DISTINCT seats completed with
+  `ok:true`, and this override is kept only because ONE of them is a reserve.
+  codex-gpt-5.6-sol (TITOLARE) rolled over on its first pass without a formal
+  verdict; it was re-dispatched with a narrowed scope and completed normally
+  (114480 tokens, no rollover), answering all three questions put to it. That
+  second pass is the one that found the SECOND defect (E33B) recorded in the
+  dissent above, so it is a real review with a real result, not a quorum
+  formality. Its first pass stays in the journal as `ok:false` because that
+  is what happened; the passing line is the second pass, separately
+  timestamped. agy-gemini-3.1-pro is a RESERVE seat and is counted under the
+  `seat_fallback_reason` below.
+  .
+  Recorded plainly because it is the lesson of this pack: the reserve seat
+  reviewed the same eleven rules and returned "no blocking finding", having
+  checked that the exclusion fires only on an explicit false — without asking
+  whether, for these two products, that false is the NORMAL answer rather
+  than the exception. The titolare saw it. Had its rollover been treated as a
+  failed seat and dropped, this pack would have carried a clean council and a
+  latent defect.
+
+outcome: >-
+  The signed seq-21 bundle is on the branch as a verified PRODUCTION
+  CANDIDATE, and it is verified by the repo's own code, not by the signer's
+  self-report: sequence 21, environment PRODUCTION, kid prod-2026-07-1, 111
+  rules, 38 products, payload_sha256
+  fda8c3121bdddb6a8e023cf246c241a34f754acaef44919bb8968b50ee8c98c7,
+  previous_payload_sha256 df02287b7fc8f572a9e6674fdf3445a2131c428e8a1492ab8a388dee5bf01a4d
+  (seq-20's own digest — chain unbroken). canonicalize_json(payload) equals
+  canonicalize_json(source) for the already-merged
+  rulepack-prod-021.source.json, so the artifact in version control is the
+  artifact that was signed. The FIRST signing attempt was rejected: its
+  output signed the source from #6362's closed, pre-#6479 branch
+  (rule_pack_id 57a26fae, payload 1fb58cc2), caught by recomputing with the
+  repo's own canonicalizer (method validated in the negative on seq-20)
+  before M5 re-signed from origin/main (cicatrix #9). NO ACTIVATION: the
+  engine loads its ACTIVE pack from the visa_ruleset_activations DB table
+  (repository.py:185-228, load_active_rule_pack), never from the
+  filesystem, so merging this bundle changes nothing a production visitor
+  sees today. CONFIRMED DEFECT, not cured here (see dissent): el.e23v.trade-office
+  (the new SUPPORT rule enabling E23V) and hf.employment-without-indonesian-sponsor
+  (the new EXCLUDE hard filter on EMPLOYMENT + employer_is_indonesian_entity
+  == false) sit in the same pack and collide on E23V itself, whose own visa
+  category is by definition a foreign employer. seq-21's activation stays
+  withheld until seq-22 cures it.
+diff:
+  files: 3
+  net_lines: >-
+    9488/0 apps/backend-rag/backend/services/visa_engine/contracts/packs/rulepack-prod-021.signed.json
+    (the SIGNED artifact — generated by the offline ceremony, not review
+    surface, and the entire Gear-3 size floor by itself), 468/0
+    apps/backend-rag/backend/tests/services/visa_engine/test_seq21_signed_bundle.py
+    (new), 82/0 scripts/ci/observe_visa_seq21_signed.py (new,
+    bites-observable) — churn 10,038 lines total. Plus this evidence pack,
+    not counted above (metadata, not code).
+  measured_at: >-
+    `git diff --numstat 0e1d08ab61^ 0e1d08ab61` (merge-base
+    e303659f08c59ecaf211c517c2b8c6629549167e is 0e1d08ab61's own parent, so
+    the two-dot and merge-base-anchored diffs coincide here).
+  shape: >-
+    One signed pack artifact, one new gate suite for it, one
+    bites-observable CI wrapper. No visa_engine CODE file is touched: the
+    engine, the evaluator, the interview tree and the fold script are all
+    untouched by design — the eleven new rules were authored and merged in
+    #6466/#6479, this PR only signs them.
+pii_scan: clean
+bites:
+  consumer: >-
+    scripts/ci/observe_visa_seq21_signed.py, which drives
+    test_seq21_signed_bundle.py directly and exits non-zero if it fails.
+    Ships in this PR, not a future job.
+  where: ci
+  observe: python3 scripts/ci/observe_visa_seq21_signed.py
+  expect: exit0
+bites_note: >-
+  Takes no arguments — every path and command in it is a literal. Run in
+  this worktree at the head this pack describes: exit 0, prints
+  "observe_visa_seq21_signed: both consumers green".
+receipts:
+  - claim: >-
+      the gear floor for this PR's changed-file list is Gear 3, sourced
+      from size — the signed bundle's own 9,488 added lines already clear
+      SIZE_GEAR3_THRESHOLD (1,828) by itself; none of the three changed
+      files is in HOTZONE_PATTERNS
+    cmd: >-
+      python3 scripts/evidence_pack_lint.py --print-floor
+      --print-floor-source --numstat-file <numstat of the 3 changed files>
+      --changed-files-file <their paths>
+    result: "3 / size"
+    ts: "2026-09-15T09:05:00Z"
+    seat: claude-sonnet-5 (this worktree session)
+    exit: 0
+  - claim: >-
+      the committed rulepack-prod-021.signed.json verifies against the
+      PINNED production Ed25519 key with the repo's own verify_rule_pack,
+      declaring sequence 21, environment PRODUCTION, kid prod-2026-07-1,
+      111 rules, 38 products, and previous_payload_sha256 equal to seq-20's
+      own digest — chain unbroken
+    cmd: >-
+      PYTHONPATH=. .venv/bin/python3 -m pytest
+      backend/tests/services/visa_engine/test_seq21_signed_bundle.py
+    result: >-
+      25 passed — sequence 21, kid prod-2026-07-1, 111 rules, 38 products,
+      previous_payload_sha256 df02287b…1a4d, payload_sha256 fda8c312…98c7
+    ts: "2026-09-15T08:40:00Z"
+    seat: claude-opus-5 (builder, this worktree)
+    exit: 0
+  - claim: >-
+      the signed payload and the already-merged rulepack-prod-021.source.json
+      are the SAME document under JCS — the artifact in version control is
+      the artifact that was signed
+    cmd: >-
+      hashlib.sha256(canonicalize_json(...)) computed straight off disk for
+      the signed envelope's payload and for rulepack-prod-021.source.json,
+      plus a JCS byte-equality assertion between them, inside
+      test_seq21_signed_bundle.py
+    result: >-
+      both hash to fda8c3121bdddb6a8e023cf246c241a34f754acaef44919bb8968b50ee8c98c7;
+      canonicalize_json(payload) == canonicalize_json(source) -> True
+    ts: "2026-09-15T08:41:00Z"
+    seat: claude-opus-5 (builder, this worktree)
+    exit: 0
+  - claim: >-
+      the FIRST signing attempt signed the WRONG source (rule_pack_id
+      57a26fae, payload 1fb58cc2, from #6362's closed pre-#6479 branch),
+      not the source on origin/main; the mismatch was detected by
+      recomputing with the repo's own canonicalizer, a method validated in
+      the negative on seq-20, and M5 discarded that artifact and re-signed
+      from origin/main
+    cmd: >-
+      recomputed canonicalize_json digest of the first delivered signed
+      artifact against rulepack-prod-021.source.json on origin/main
+    result: >-
+      digest mismatch confirmed (1fb58cc2… != fda8c312…98c7); the artifact
+      ultimately committed carries payload_sha256 fda8c312…98c7, matching
+      the source on main
+    ts: "2026-09-15T16:40:00Z"
+    seat: M5 offline ceremony operator + claude-opus-5 (builder, detection)
+    exit: 0
+  - claim: >-
+      test_interview_walk_census.py: 36 passed, 14 skipped — the skips are
+      the EXPECTED transition ("no unsigned production source pack sits
+      above the highest signed one"): seq-21 WAS that unsigned source
+      before this PR signed it. Measured engine census 1/1/16/93.
+    cmd: >-
+      PYTHONPATH=. .venv/bin/python3 -m pytest
+      backend/tests/services/visa_engine/test_interview_walk_census.py
+    result: "36 passed, 14 skipped; engine census 1/1/16/93 (as measured)"
+    ts: "2026-09-15T08:45:00Z"
+    seat: claude-opus-5 (builder, this worktree)
+    exit: 0
+  - claim: test_seq21_pack.py is green against the signed bundle — 77 passed
+    cmd: python3 -m pytest backend/tests/services/visa_engine/test_seq21_pack.py
+    result: "77 passed"
+    ts: "2026-09-15T08:50:00Z"
+    seat: agy-gemini-3.1-pro
+    exit: 0
+  - claim: >-
+      the whole backend/tests/services/visa_engine/ tree's one failure and
+      31 errors are PRE-EXISTING, not caused by this change — they
+      reproduce IDENTICALLY with the signed bundle moved out of the tree
+      (dirty local test DB on Pro: TooManyColumnsError, migration 281)
+    cmd: >-
+      PYTHONPATH=. .venv/bin/python3 -m pytest
+      backend/tests/services/visa_engine/ ; repeated with
+      rulepack-prod-021.signed.json moved outside the tree
+    result: >-
+      2397 passed, 1 failed, 31 errors in both runs, identical failure/error
+      set (TooManyColumnsError, migration 281)
+    ts: "2026-09-15T08:55:00Z"
+    seat: claude-opus-5 (builder, this worktree)
+    exit: 1
+  - claim: the whole backend/tests/scripts/visa_engine/ tree is fully green
+    cmd: python3 -m pytest backend/tests/scripts/visa_engine/
+    result: "176 passed"
+    ts: "2026-09-15T09:00:00Z"
+    seat: claude-opus-5 (builder, this worktree)
+    exit: 0
+  - claim: >-
+      guilt proof — mutating one rule's priority on a copy of the signed
+      bundle breaks verification, digest and JCS equality
+    cmd: >-
+      mutated one rule priority on an in-memory/on-disk copy of
+      rulepack-prod-021.signed.json, reran test_seq21_signed_bundle.py
+    result: "3 failed, 13 errors — digest, JCS equality and signature all drop"
+    ts: "2026-09-15T08:42:00Z"
+    seat: claude-opus-5 (builder, this worktree)
+    exit: 1
+  - claim: >-
+      restoring the mutated bundle returns it to green at the ORIGINAL
+      pinned digest — the guilt probe mutated nothing durable
+    cmd: >-
+      restored the pre-mutation bytes, reran test_seq21_signed_bundle.py
+    result: "25 passed; payload_sha256 fda8c312…98c7 confirmed unchanged on disk"
+    ts: "2026-09-15T08:43:00Z"
+    seat: claude-opus-5 (builder, this worktree)
+    exit: 0
+  - claim: >-
+      prettier reformatting the bundle changes file bytes but not its JCS
+      digest or signature — the signature is over the CANONICAL payload,
+      not the file's raw byte layout
+    cmd: >-
+      npx prettier --write rulepack-prod-021.signed.json ; reran
+      test_seq21_signed_bundle.py ; diffed the reformatted file against the
+      pinned digest
+    result: >-
+      byte diff present (whitespace/formatting only); payload_sha256 and
+      signature unchanged; verify_rule_pack still returns a verified pack
+    ts: "2026-09-15T08:47:00Z"
+    seat: claude-opus-5 (builder, this worktree)
+    exit: 0
+  - claim: >-
+      the E23V defect is CONFIRMED and measured directly against the
+      signed pack: employer UNKNOWN -> SUPPORTED_CANDIDATES [E23V];
+      employer FALSE -> E23V EXCLUDED under
+      hf.employment-without-indonesian-sponsor, reason
+      PAID_ACTIVITY_WITHOUT_INDONESIAN_SPONSOR; employer TRUE ->
+      SUPPORTED_CANDIDATES [E23V]. The branch is REACHABLE (flow.ts:1070-1073
+      and 634-647 put work_payer, tree.ts:607-623, on the work branch after
+      sponsor_category=GOVERNMENT -> sponsor_trade_office); the walk corpus
+      covers that path (offshore/work/sponsor_government/trade_office_only.json)
+      but pins employer=true, so no existing test sees the defect
+    cmd: >-
+      engine evaluation against the signed pack for
+      work.employer_is_indonesian_entity in {unknown, true, false}, via
+      gold_replay_driver._repository_trust_store, AS_OF=now (read-only),
+      plus a grep of flow.ts/tree.ts for the branch's reachability
+    result: >-
+      confirmed as stated in the claim; no existing walk fixture exercises
+      employer=false or employer=unknown on this path
+    ts: "2026-09-15T09:40:59Z"
+    seat: cross-session measurement, this worktree lineage (fleet-watch key saetta-w-k-e23v-verdict)
+    exit: 0
+  - claim: >-
+      nothing was signed and nothing was activated by the builder session —
+      the bundle arrived already produced by the owner's offline ceremony
+    cmd: >-
+      grep of the builder session's own command history for
+      sign_pack.py / activate_pack.py / --yes; inspection of the artifact's
+      protected.signed_at against session start
+    result: >-
+      zero invocations of either script; protected.signed_at precedes the
+      builder session. No private key was read, held or written; the only
+      key material anywhere in this diff is the PUBLIC verification key
+      already pinned in this repo's trust store.
+    ts: "2026-09-15T09:02:00Z"
+    seat: claude-opus-5 (builder, this worktree)
+    exit: 0
+  - claim: >-
+      the bites observe target drives the signed-bundle gate and exits 0
+      only when it is green
+    cmd: python3 scripts/ci/observe_visa_seq21_signed.py
+    result: '"observe_visa_seq21_signed: both consumers green"'
+    ts: "2026-09-15T09:03:00Z"
+    seat: claude-opus-5 (builder, this worktree)
+    exit: 0
+dissent:
+  - seat: codex-gpt-5.6-sol (titolare, second narrowed pass)
+    status: CONFIRMED
+    objection: >-
+      A SECOND product carries the same defect as E23V, and it was found only
+      because the titolare seat was re-dispatched after its first pass rolled
+      over. hf.employment-without-indonesian-sponsor names three products —
+      E23, E23V and E33B. E33B is the government-collaboration product whose
+      catalogue sponsor_types is ["NONE"]: a genuine applicant has no
+      Indonesian employer sponsoring them, which is precisely the condition
+      the filter excludes on. Verbatim verdict: "E33B — YES; genuine
+      sponsor.type=NONE collaboration with employer=false is excluded by
+      hf.employment-without-indonesian-sponsor." So of the nine products this
+      pack newly supports, TWO are cancelled by its own new hard filter on the
+      answer their real applicant would give, and seven are clean. This is
+      recorded as CONFIRMED on the reviewer's reasoning; unlike E23V it has
+      NOT yet been reproduced by a direct engine measurement in this session,
+      and the seq-22 cure treats it as requiring that measurement before the
+      product is dropped from the filter — the same standard E23V was held to,
+      not a weaker one. It does not change the merge decision (the bundle is
+      inert until activation) and it does reinforce the withheld activation.
+  - seat: cross-session measurement, this worktree lineage (origin lead from codex-gpt-5.6-sol's first-pass checkpoint)
+    status: CONFIRMED
+    objection: >-
+      seq-21 adds el.e23v.trade-office (SUPPORT: EMPLOYMENT +
+      sponsor.type==GOVERNMENT + sponsor.trade_office==true) to make E23V
+      answerable, and in the SAME pack adds
+      hf.employment-without-indonesian-sponsor (EXCLUDE on E23/E23V/E33B:
+      EMPLOYMENT + work.employer_is_indonesian_entity==false). E23V is the
+      visa for someone employed by a FOREIGN trade office, whose employer
+      is BY DEFINITION not an Indonesian entity — so the honest answer on
+      that branch excludes the applicant from the very product the new
+      rule was added to enable. Measured against the signed pack: employer
+      UNKNOWN -> SUPPORTED_CANDIDATES [E23V]; employer FALSE -> E23V
+      EXCLUDED (reason PAID_ACTIVITY_WITHOUT_INDONESIAN_SPONSOR, rule
+      hf.employment-without-indonesian-sponsor); employer TRUE ->
+      SUPPORTED_CANDIDATES [E23V]. REACHABLE: flow.ts:1070-1073 and 634-647
+      put work_payer (tree.ts:607-623, mapped to
+      work.employer_is_indonesian_entity) on the work branch after
+      sponsor_category=GOVERNMENT -> sponsor_trade_office. The walk corpus
+      covers that path (offshore/work/sponsor_government/trade_office_only.json)
+      but pins employer=true, so no existing test sees the defect.
+      WHY MERGING IS STILL CORRECT: the engine loads its ACTIVE pack from
+      the visa_ruleset_activations DB table (repository.py:185-228,
+      load_active_rule_pack), NOT from the filesystem — merging this
+      bundle does NOT change what any production visitor sees. Activation
+      is a separate ceremony and is deliberately NOT performed here.
+      seq-21's activation stays withheld until E23V is cured in seq-22
+      (planned fix: fold_pack_seq21.py:337
+      EMPLOYMENT_SPONSOR_PRODUCT_CODES drops 'E23V', the same deliberate
+      exclusion already documented for E23U in
+      test_e23u_is_deliberately_outside_the_employment_exclusion, plus the
+      missing corpus walk that answers "no").
+  - seat: codex-gpt-5.6-sol
+    status: CONFIRMED
+    objection: >-
+      This pack's council_run quorum rests on ONE seat completing with
+      ok:true — agy-gemini-3.1-pro, a RESERVE — because codex-gpt-5.6-sol
+      (the TITOLARE seat convened for this review) hit a context rollover
+      before delivering a formal report on its first pass, recorded here
+      honestly as ok:false. That seat's own pre-rollover checkpoint is what
+      first named the E23V risk the direct measurement above then
+      CONFIRMED, so the finding is real even though the formal review that
+      produced the lead is incomplete. A second, narrower codex pass was
+      reported in flight; its result is not reproduced in this pack because
+      it was not available when this pack was written, and recording a
+      verdict for a run this session never saw would be exactly the
+      hallucination this repo's own anti-hallucination discipline forbids.
+      The quorum shortfall is stated for both the linter (seat_override
+      above) and a human reader (here) rather than papered over.
+  - seat: claude-sonnet-5 (this worktree session), self-caught
+    status: PLAUSIBLE
+    objection: >-
+      This pack declares one build lane and no independent `role: review`
+      lane in `lanes:` (the council's two review attempts live in
+      journal.jsonl instead, per R9's own contract). The diff this pack
+      describes has therefore been read by its builder (claude-opus-5),
+      one reserve council seat that completed (agy-gemini-3.1-pro), and one
+      titolare council seat whose review did not complete
+      (codex-gpt-5.6-sol) — a real, stated limit on independent coverage,
+      not a claim of a fuller review than actually happened.

@@ -1,0 +1,111 @@
+task_id: visa-oracle-seq21-land
+gear: 3
+l_level: L2
+gate_class: opus
+# Floor computed this run: `python3 scripts/evidence_pack_lint.py --print-floor
+# --print-floor-source --numstat-file <numstat of the 3 changed files>
+# --changed-files-file <their paths>` returns `3` / `size`. Churn is 10,038
+# lines (9,488/0 + 468/0 + 82/0) against SIZE_GEAR3_THRESHOLD=1,828 — the
+# signed bundle alone floors this PR at Gear 3 regardless of path; none of
+# the three files is in HOTZONE_PATTERNS (visa_engine is a GROUND_TRUTH path,
+# not a hot-zone path — R8, not rule 6).
+objective: >-
+  Land the SIGNED seq-21 production RulePack bundle
+  (`rulepack-prod-021.signed.json`, sequence 21, kid `prod-2026-07-1`, 111
+  rules, 38 products) produced by the owner's offline Ed25519 ceremony on M5,
+  and the gate that makes it observable (`test_seq21_signed_bundle.py`,
+  `scripts/ci/observe_visa_seq21_signed.py`). Under signed seq-20 — what
+  production actually serves — nine of the thirty-eight products (all three
+  Second Home products, all four Investor products, plus E23U) carry ZERO
+  support rules: a visitor choosing one of them reaches no deterministic
+  verdict. seq-21's eleven new rules (nine SUPPORT, one per uncovered
+  product, plus two named-cause EXCLUDE hard filters) take the engine to
+  38/38 answerable.
+constraints:
+  - >-
+    NO ACTIVATION IN THIS PR. The bundle is a validly signed PRODUCTION
+    CANDIDATE; promoting it into the active sequence is a separate,
+    Zero-only ceremony. The engine loads its ACTIVE pack from the
+    `visa_ruleset_activations` DB table (`repository.py:185-228`,
+    `load_active_rule_pack`), never from the filesystem — merging this
+    bundle does not change what any production visitor sees today.
+  - >-
+    NO SIGNING IN THIS SESSION EITHER. The signed artifact arrived already
+    produced by the offline ceremony; this seat read no key material, holds
+    no private key, and only VERIFIES against the pinned PUBLIC key with the
+    repo's own code.
+  - >-
+    The first signing attempt was REJECTED before landing here: its output
+    signed the source from #6362's closed, pre-#6479 branch
+    (rule_pack_id `57a26fae`, payload `1fb58cc2`), not the source on
+    `origin/main`. Caught by recomputing the digest with the repo's own
+    canonicalizer — the same method validated in the negative on seq-20 —
+    before M5 re-signed from `origin/main` (cicatrix #9: source from a
+    branch, never the checkout).
+  - >-
+    seq-21's activation stays withheld until the E23V defect surfaced by
+    this pack's own council review (see dissent) is cured in seq-22.
+acceptance:
+  - text: >-
+      A1: WHEN the committed `rulepack-prod-021.signed.json` is verified
+      with `bundle.verify_rule_pack` against the PINNED production trust
+      store (kid `prod-2026-07-1`), it SHALL verify with sequence 21,
+      environment PRODUCTION, 111 rules, 38 products, and a
+      `previous_payload_sha256` equal to seq-20's own payload digest
+      (chain unbroken) — read out of `verify_rule_pack`'s own return value.
+    probe: >-
+      backend/tests/services/visa_engine/test_seq21_signed_bundle.py
+  - text: >-
+      A2: WHERE the digest is recomputed INDEPENDENTLY of
+      `verify_rule_pack` — off disk, straight `canonicalize_json` +
+      sha256 — the signed payload and the already-merged
+      `rulepack-prod-021.source.json` SHALL hash identically and SHALL be
+      JCS-byte-equal, proving the artifact in version control is the
+      artifact that was signed.
+    probe: >-
+      backend/tests/services/visa_engine/test_seq21_signed_bundle.py
+  - text: >-
+      A3: WHEN one rule's priority is mutated on an in-memory/on-disk copy
+      of the signed bundle (guilt proof), verification and the digest/JCS
+      equality SHALL fail; WHEN the mutation is reverted, the pack SHALL
+      re-verify green at the ORIGINAL pinned digest — proving the guilt
+      probe mutated nothing durable.
+    probe: >-
+      backend/tests/services/visa_engine/test_seq21_signed_bundle.py
+  - text: >-
+      A4: WHILE the nine new SUPPORT rules are read from the signed bytes,
+      every one SHALL carry `on_unknown == NEEDS_INPUT` (fail-closed — the
+      engine SHALL NOT recommend a product on a missing fact), and all 111
+      rules SHALL carry zero dangling `source_refs`.
+    probe: >-
+      backend/tests/services/visa_engine/test_seq21_signed_bundle.py
+  - text: >-
+      A5: IF the engine is asked about E23V (foreign trade-office employee)
+      with `work.employer_is_indonesian_entity` UNKNOWN or TRUE, it SHALL
+      return E23V in `SUPPORTED_CANDIDATES`; IF that fact is FALSE, it
+      SHALL instead EXCLUDE E23V under
+      `hf.employment-without-indonesian-sponsor`
+      (reason `PAID_ACTIVITY_WITHOUT_INDONESIAN_SPONSOR`) — CONFIRMED
+      dissent: E23V's own visa category is BY DEFINITION a foreign
+      employer, so the honest answer on that third branch excludes the
+      applicant from the product the new SUPPORT rule was added to enable.
+      Not cured in this PR (see dissent for why merging is still correct).
+    probe: >-
+      a direct engine evaluation against the signed pack for
+      work.employer_is_indonesian_entity in {unknown, true, false}, plus
+      flow.ts:1070-1073/634-647 and tree.ts:607-623 for reachability
+  - text: >-
+      A6: WHEN the full `backend/tests/services/visa_engine/` tree and the
+      full `backend/tests/scripts/visa_engine/` tree are run against this
+      branch, every failure/error SHALL reproduce IDENTICALLY with the
+      bundle moved out of the tree (i.e. SHALL be pre-existing local-DB
+      breakage, never caused by this change).
+    probe: >-
+      backend/tests/services/visa_engine/, backend/tests/scripts/visa_engine/
+  - text: >-
+      A7: WHEN `scripts/ci/observe_visa_seq21_signed.py` is run with no
+      arguments, it SHALL exit 0 and print
+      "observe_visa_seq21_signed: both consumers green".
+    probe: scripts/ci/observe_visa_seq21_signed.py
+appetite:
+  wall_clock_hours: 2
