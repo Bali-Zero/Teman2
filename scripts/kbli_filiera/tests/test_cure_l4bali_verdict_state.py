@@ -79,10 +79,16 @@ def test_emitter_population_pins_measured_live_canonical_counts() -> None:
     assert stats["open_supporting_tier_absent:APERTO_BALI_RISCHIO_ALTO"] == 11
     assert stats["open_supporting_tier_absent:OK_or_HIGHER_RISK"] == 90
     assert stats["open_supporting_tier_absent"] == 101
+    # SAETTA-20260915/W-H PR-5 moved 38110 55202 55300 56102 56304 56306
+    # 70201 73300 74199 79901 79902 86995 to confidence=MEDIUM/needs_review=
+    # true (dossier: no Perpres annex reservation, no national 0% finding —
+    # honestly less certain than the prior HIGH/false), which correctly
+    # flips their derived verdict_state blocked->provisional (95->83,
+    # 1436->1448); open/unknown are untouched by that PR.
     assert {
         state: stats[f"verdict_state:{state}"]
         for state in ("blocked", "open", "unknown", "provisional")
-    } == {"blocked": 95, "open": 3, "unknown": 25, "provisional": 1436}
+    } == {"blocked": 83, "open": 3, "unknown": 25, "provisional": 1448}
 
 
 def test_checked_in_spec_matches_fresh_live_state_emission() -> None:
