@@ -17,7 +17,7 @@
       },
       "l4_bali": {
         "old_sha256": "bbfa8c2e7156d0402ee0ac721692b3d0199fe69700579fa8670544d42d6112a0",
-        "new_sha256": "f3d28ced2cb9142c6c417dda02881692940382c12abaa0bc7ddef5c4b37eb6a7"
+        "new_sha256": "0cf113889116d1cdc53272d37f0d574a1cefef4bed1e1dcb73a8e479c2629676"
       }
     },
     "l4_patch": {
@@ -43,7 +43,7 @@
       },
       "l4_bali": {
         "old_sha256": "ba8daa50ab72738faabd5f6da1373263623514d1dc3f0d9ca27411a46de01d84",
-        "new_sha256": "f00f7f098b1ab7e000b13e52ee338eec016454fd52b8884913264d624e507797"
+        "new_sha256": "55294e23e39d9687478132237230811e38895b03b8b0afdb29928dbe76e5030a"
       }
     },
     "row_fixes": [

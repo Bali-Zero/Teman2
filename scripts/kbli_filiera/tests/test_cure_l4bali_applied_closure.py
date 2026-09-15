@@ -424,7 +424,11 @@ def test_real_canonical_applies_to_the_expected_census(tmp_path: Path) -> None:
     counter = cure._status_blocked_counter(records)
     total_blocked = sum(c for (_status, blocked), c in counter.items() if blocked is True)
 
-    assert total_blocked == 132
+    # SAETTA-20260915 W-H #6596 (merged into this branch's base) lifted
+    # 43110's own Bali block, dropping the pre-cure raw population 519->518
+    # and this compiler's own output 132->131 (BLOCCATO_DIPENDE_SCOPE
+    # blocked=true: 2->1; every other group unchanged).
+    assert total_blocked == 131
     assert counter[("CHIUSO_BALI", True)] == 40
     assert counter[("ATTENZIONE_FASCIA_BALI", False)] == 387
     assert counter[("TERTUTUP", True)] == 68
