@@ -75,6 +75,7 @@ export function KBLIPanelCodeDetail({
           capSpecial={detail.pma.capSpecial}
           capVerified={detail.pma.capVerified}
           baliBlocked={detail.bali.blocked}
+          baliAttentionFascia={detail.bali.status === "ATTENZIONE_FASCIA_BALI"}
           size="sm"
         />
         {detail.riskCategory && (

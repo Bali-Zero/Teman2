@@ -398,6 +398,9 @@ export default async function KBLICodePage({
                   capSpecial={kbli.pma.capSpecial}
                   capVerified={kbli.pma.capVerified}
                   baliBlocked={kbli.baliL4?.blocked === true}
+                  baliAttentionFascia={
+                    kbli.baliL4?.status === "ATTENZIONE_FASCIA_BALI"
+                  }
                 />
                 {kbli.licensing[0] && (
                   <RiskBadge

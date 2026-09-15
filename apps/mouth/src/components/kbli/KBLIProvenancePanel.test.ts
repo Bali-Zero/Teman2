@@ -204,6 +204,34 @@ describe("the Bali provenance row — ATTENZIONE_FASCIA_BALI (added 2026-09-15, 
     )!;
     expect(row.detail).toContain(RISK_TIER_BASIS);
   });
+
+  it("GUILT: the `source` field never repeats the old blanket moratorium.rule either (Codex sol MAJOR finding 1, PR #6578)", () => {
+    // `isMoratoriumBasis` returns true for ANY non-blocked code by design
+    // (see its own docstring), so before this fix the `source` field fell
+    // through to `m?.rule` regardless of `isAttentionFascia` — even though
+    // `detail` two lines below was already correct. A record that still
+    // carries the OLD blanket moratorium object (today's data shape, before
+    // the data PR rewrites l4_bali.moratorium on every record) must not
+    // print "blocks ALL ... permanent (effective 2026-05-13)" as the SOURCE
+    // of a status whose own detail says "does not by itself close this code".
+    const { code, provenance } = syntheticLocatedCode({
+      status: "ATTENZIONE_FASCIA_BALI",
+      reason: "not on the closure list",
+      confidence: "MEDIUM",
+      needsReview: true,
+      blocked: false,
+      moratorium: {
+        rule: "Bali province blocks ALL Low + Medium-Low risk KBLI for PMA",
+        effective: "2026-05-13",
+      },
+    });
+    const row = buildRows(code, provenance).find(
+      (r) => r.layer === "Bali status",
+    )!;
+    expect(row.source).not.toContain("blocks ALL");
+    expect(row.source).not.toContain("2026-05-13");
+    expect(row.source).toContain("18 business fields");
+  });
 });
 
 describe("the Bali provenance row — CHIUSO_BALI closure citation (added 2026-09-15, W-J B1)", () => {

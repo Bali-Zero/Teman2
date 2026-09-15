@@ -203,13 +203,22 @@ export function buildRows(kbli: KBLICode, prov: KBLIProvenance): SourceRow[] {
     );
     rows.push({
       layer: "Bali status",
-      source: closure
-        ? closureSourceNode(closure)
-        : moratoriumBasis
-          ? m?.rule
-            ? `${m.rule}${m.effective ? ` (effective ${m.effective})` : ""}`
-            : "Bali moratorium overlay (Gubernur letter B.27.000/642)"
-          : "Activity-level restriction — not the risk-tier moratorium overlay",
+      // ATTENZIONE_FASCIA_BALI is checked FIRST and unconditionally: a record
+      // that still carries the old blanket `moratorium.rule` ("blocks ALL Low
+      // + Medium-Low ... permanent (effective 2026-05-13)") must never print
+      // it here — `isMoratoriumBasis` returns true for any non-blocked code
+      // by design, so falling through to that branch would self-contradict
+      // the `detail` text two lines below on the very same row (Codex sol
+      // MAJOR finding 1 on PR #6578).
+      source: isAttentionFascia
+        ? "Bali Provincial Government press release (24 Jul 2026): OSS closed to new PMA licensing for 18 business fields"
+        : closure
+          ? closureSourceNode(closure)
+          : moratoriumBasis
+            ? m?.rule
+              ? `${m.rule}${m.effective ? ` (effective ${m.effective})` : ""}`
+              : "Bali moratorium overlay (Gubernur letter B.27.000/642)"
+            : "Activity-level restriction — not the risk-tier moratorium overlay",
       vintage: "2026 overlay",
       verdict: isNonClassifiable ? "gap" : "pending",
       detail: isNonClassifiable
