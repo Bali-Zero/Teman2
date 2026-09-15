@@ -26,6 +26,7 @@ appetite_exceeded: >-
   the final head.
 spend:
   adversarial_rounds: 6
+  wall_clock_hours: 3
 
 lanes:
   - lane: mouth/r19k-k3b-v2
@@ -240,7 +241,7 @@ dissent:
       Guard-only: the spread rejection is stricter than needed for
       `{...props} variant="outline"`; `var( --state-${tone})` with inner
       whitespace and string-concatenated var names are not detected.
-    status: DISPOSED
+    status: PLAUSIBLE
     cure: >-
       Notices under SAETTA rule 1, zero occurrences in the route; the runtime
       computed-style scan is the proof that what paints is clean. Recorded as
@@ -256,7 +257,7 @@ dissent:
   - seat: Claude Opus 5 (self-refutation, size)
     objection: >-
       Churn 3062 is seven times the ~400-line guidance.
-    status: DISPOSED
+    status: CONFIRMED
     cure: >-
       Not splittable without shipping a route in two meanings of copper: the
       mandate is a property of every file the page renders. A third of the
