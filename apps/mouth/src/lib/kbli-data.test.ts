@@ -79,8 +79,11 @@ describe("kbli-data", () => {
     const locatedCodes = codes.filter(
       (code) => code.pma.verificationStatus === "located",
     );
-    expect(gaps).toHaveLength(1505);
-    expect(locatedCodes).toHaveLength(54);
+    // 1505 -> 1497 / 54 -> 62: W-H PR-3b moves 8 codes (47241 47242 47244
+    // 47245 47246 47249 47712 47722) from declared_gap to located under
+    // Perpres 49/2021 Lampiran II entry 46.
+    expect(gaps).toHaveLength(1497);
+    expect(locatedCodes).toHaveLength(62);
     for (const code of gaps) {
       expect(code.pma, code.code).toMatchObject({
         status: "unknown",

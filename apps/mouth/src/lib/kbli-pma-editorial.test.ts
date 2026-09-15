@@ -91,8 +91,11 @@ describe("PMA editorial disclosure boundary", () => {
     const gaps = codes.filter((record) => !isPmaVerdictVerified(record));
 
     expect(codes).toHaveLength(1559);
-    expect(located).toHaveLength(54);
-    expect(gaps).toHaveLength(1505);
+    // 54 -> 62 located / 1505 -> 1497 gaps: W-H PR-3b moves 8 codes (47241
+    // 47242 47244 47245 47246 47249 47712 47722) from declared_gap to
+    // located under Perpres 49/2021 Lampiran II entry 46.
+    expect(located).toHaveLength(62);
+    expect(gaps).toHaveLength(1497);
     expect(located.filter((record) => record.intel_2026)).toHaveLength(49);
 
     for (const record of gaps) {
