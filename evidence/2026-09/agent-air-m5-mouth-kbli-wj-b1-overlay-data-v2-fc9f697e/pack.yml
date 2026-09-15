@@ -7,8 +7,8 @@ lanes:
     task_id: kbli-wj-b1-overlay-data-v2
     worktree: .worktrees/mouth-kbli-wj-b1-overlay-data-v2
     branch: agent/air-m5/mouth/kbli-wj-b1-overlay-data-v2
-    head: 3bfb5b6e7e25838353b3259030053a73e9fd223b
-    base: 7c977eaf73 (origin/main, post-#6596 merge)
+    head: f1f81a2eb061749f8f6b9aa1801bee7701706ef5 # pragma: allowlist secret
+    base: 1c8725d263 (origin/main, post-#6598 merge, merged into the branch as c32adeac37)
   - lane: mouth/kbli-wj-b1-overlay-data-v2
     role: ground_truth
     seat: >-
@@ -21,7 +21,7 @@ lanes:
       name, "sejak minggu ketiga Mei 2026", "hingga terdapat kebijakan lebih
       lanjut") + ANTARA Bali 23 Jul 2026 (the same 18 with KBLI 2020 codes,
       18/18 names match)
-    query_hash: "24fc61b037c65f0cdd97bd3d990559fddaa83d2fc8e0acb2dabf7d99ae11664a"
+    query_hash: "24fc61b037c65f0cdd97bd3d990559fddaa83d2fc8e0acb2dabf7d99ae11664a" # pragma: allowlist secret
     note: >-
       sha256 of "<press-release path>|<antara path>|<the 18 codes
       comma-joined>" — unchanged from the first v2 pass, reused not refetched.
@@ -38,10 +38,12 @@ seat_fallback_reason: >-
   session — re-checked directly via `codex exec "reply with exactly:
   PONG"`, same "Your access token could not be refreshed because your
   refresh token was already used" error as the first v2 attempt, no change
-  in auth state. Dux is running codex-gpt-5.6-sol on Mini (where it
-  answers) against the pushed branch separately — that seat's own
-  journal.jsonl line is not in THIS local pack because this pack only
-  covers work done in this worktree, unpushed.
+  in auth state. The titolare seat codex-gpt-5.6-sol then ran on Mini
+  (where it answers), xhigh, read-only, against the pushed head bd3233371a:
+  verdict FIX-FIRST (4 MAJOR + 2 MINOR), journal line + dissent below, all
+  six cured on this branch. council_run therefore carries 2 seats:
+  codex-gpt-5.6-sol (titolare) + agy-gemini-3.1-pro (reserve, for the two
+  QUOTA_DEAD titolari).
 
 dissent:
   - seat: agy-gemini-3.1-pro (independent adversarial review, council-2)
@@ -71,6 +73,63 @@ dissent:
     cure: >-
       03028f701c: now names and asserts all 7 live CHIUSO_PMA_NO_BESAR codes
       in `excluded` (95291, 96210, 96220, 96100, 55201, 55203, 79903).
+  - seat: codex-gpt-5.6-sol (adversarial review, council-1, Mini, head bd3233371a)
+    objection: >-
+      MAJOR: the compiler un-blocked 10214, 16221, 95220, 95299 (TERBATAS,
+      pma_max_asing 0) because their previous Bali status was tier-based; a 0%
+      national cap is a non-tier reason to stay blocked, and the four
+      protective assertions in kbli-bali-block.test.ts had been retired.
+    status: CONFIRMED
+    cure: >-
+      a42c992763 (tertutup_national_cap group before the tier conversion:
+      blocked, TERTUTUP, field-derived TERBATAS-0% reason; census 131 -> 135)
+      + 295d4d5308 (assertions restored) + 7957bc81f1 / 17e5d86136 (sibling
+      population pins).
+  - seat: codex-gpt-5.6-sol (adversarial review, council-1)
+    objection: >-
+      MAJOR: honest-map said every TERTUTUP code carries 0% foreign ownership;
+      6 read 100% (01111 47112 69102 69104 86201 86202). The zero/non-zero pins
+      had been removed from kbli-prose-pins.test.ts.
+    status: CONFIRMED
+    cure: >-
+      a4dc71416f: 72 = 66 at 0% + 6 closed by a rule on the activity, each with
+      the instrument the dataset records (01111/47112 flagged as recorded
+      without a named instrument); tertutupZero/tertutupNonZero pinned again,
+      EN/IT/ID.
+  - seat: codex-gpt-5.6-sol (adversarial review, council-1)
+    objection: >-
+      MAJOR: honest-map "131 closed, full stop" / "fully cleared the rest"
+      while 29 blocked verdicts are provisional and the not-blocked side holds
+      60 scope-dependent + 24 unclassified; hotel size limit not stated.
+    status: CONFIRMED
+    cure: >-
+      a4dc71416f: 135 = 106 HIGH + 29 conservative (16 merged CHIUSO_BALI codes,
+      12 held, 1 TERTUTUP), each share pinned from the dataset; absolutes
+      removed; 55101-55106 under 6,000 m² stated.
+  - seat: codex-gpt-5.6-sol (adversarial review, council-1)
+    objection: >-
+      MAJOR: villa-dream stated 55400 as categorically closed; its ancestors are
+      55900/63122/79990 and only 55900 is on the list, verdict provisional.
+    status: CONFIRMED
+    cure: >-
+      a4dc71416f: the correction names the three ancestors, says only 55900 is
+      listed, and calls the whole-code block a provisional conservative reading
+      (EN/IT/ID).
+  - seat: codex-gpt-5.6-sol (adversarial review, council-1)
+    objection: >-
+      MINOR: kbli-meta.test.ts real-dataset gate test was tautological on an
+      empty population (zero gate calls).
+    status: CONFIRMED
+    cure: >-
+      295d4d5308: population assertion split from a mandatory non-empty gate
+      proof on a synthetic population that runs every time.
+  - seat: codex-gpt-5.6-sol (adversarial review, council-1)
+    objection: >-
+      MINOR (pre-existing): villa-dream ID "setengah tahun" contradicts EN
+      "a year-and-a-half".
+    status: CONFIRMED
+    cure: >-
+      a4dc71416f: "satu setengah tahun"; IT/ID source_sha256 restamped.
 
 pii_scan: clean
 pii_scan_note: >-
@@ -284,7 +343,12 @@ leftovers:
     so served RAG answers will lag this dataset write until that sync runs
     separately.
   - >-
-    codex-gpt-5.6-sol remains unreachable this whole session (refresh-token
+    test_kbli_metadata_fixes_registry.py::test_per_skala_row_count_invariant[46100-*]
+    fails on origin/main itself (pin 15 rows, main's canonical carries 12);
+    untouched by this branch.
+  - >-
+    codex-gpt-5.6-sol remains unreachable ON M5 (it ran on Mini instead, see
+    seat_fallback_reason); M5 re-login is Zero's: `! codex login`. Original note: (refresh-token
     dead — "Your access token could not be refreshed because your refresh
     token was already used. Please log out and sign in again.", re-checked at
     the start of this pack's review round, same error verbatim as the first
