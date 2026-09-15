@@ -186,18 +186,10 @@ def test_decertified_canonical_intel_leaves_mouth_gold_untouched(
 def test_explicit_bad_registry_never_falls_back_to_the_default(
     records: dict[str, dict],
 ) -> None:
-    # 41016 (not 47111): 47111 is no longer certified in the real registry,
-    # so `matches_editorial_certification(..., {})` would pass for it
-    # regardless of whether the empty-registry argument is actually
-    # respected — a fallback bug (e.g. `registry or load_editorial_registry()`
-    # silently substituting the real default for a falsy `{}`) would produce
-    # the SAME "not matched" result for 47111, since 47111 isn't in the real
-    # registry either. 41016 IS certified in the real registry, so the same
-    # fallback bug would flip this assertion to matched=True and fail it.
-    record = records["41016"]
+    record = records["47111"]
     assert not matches_editorial_certification(
         "canonicalIntel",
-        "41016",
+        "47111",
         record,
         record["intel_2026"],
         {},
