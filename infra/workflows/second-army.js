@@ -457,6 +457,11 @@ const verifyStage = async (built, t) => {
     `${shellClause}Independently determine, ON DISK, whether this proof criterion holds. Derive your own ` +
       "answer THIS turn: run the proof command with Bash, read the files, read the diff. You have NOT " +
       "been told what anyone claims to have done, and you must not assume anything was built correctly.\n\n" +
+      "DERIVE, NEVER REPAIR. You are the grader, not a second builder. Run only commands that OBSERVE — " +
+      "reading, listing, hashing, diffing, running a read-only check. Never run a command that writes, " +
+      "stamps, formats, installs, stages or reverts anything, even when the fix is obvious and even when " +
+      "the proof command itself would write. If the criterion does not hold, return holds:false and say " +
+      "what you saw — a grader that repairs the artefact has destroyed the measurement it was asked for.\n\n" +
       `TASK: ${t.prompt}\nOWNED FILES: ${JSON.stringify(t.files)}\nPROOF CRITERION: ${t.proof}\n\n` +
       "Return holds:true only if you OBSERVED the criterion holding, with the command you ran and what it printed.",
     {
