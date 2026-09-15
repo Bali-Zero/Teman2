@@ -131,6 +131,18 @@ function blockedBali(
   };
 }
 
+/** ATTENZIONE_FASCIA_BALI fixture (added 2026-09-15, W-J B1): nationally
+ * open, off Bali's 2026 applied-closure list, `blocked` is false. */
+function attentionFasciaBali(): KBLIBaliL4 {
+  return {
+    status: "ATTENZIONE_FASCIA_BALI",
+    reason: "not on the closure list",
+    confidence: "MEDIUM",
+    needsReview: true,
+    blocked: false,
+  };
+}
+
 // -----------------------------------------------------------------------------
 // GUILT — an unverified fact never reaches an indexed surface
 // -----------------------------------------------------------------------------
@@ -303,6 +315,28 @@ describe("INNOCENCE: verified facts still reach title/description", () => {
     expect(kbliMetaTitleSuffix(kbli)).toBe("Blocked for PT PMA in Bali (2026)");
     expect(kbliMetaDescription(kbli, "Restaurant")).toMatch(
       /blocked for a PT PMA in Bali \(2026\)/,
+    );
+  });
+
+  it("qualifies title/description for ATTENZIONE_FASCIA_BALI instead of an unqualified open claim (Codex sol MAJOR finding 3, PR #6578)", () => {
+    const kbli = makeCode({ baliL4: attentionFasciaBali() });
+
+    expect(isBaliL4BlockVerifiedForBareClaim(kbli)).toBe(false);
+    expect(kbliMetaTitleSuffix(kbli)).toBe(
+      "Verify Bali PMA Closure List (2026)",
+    );
+    // Not the plain risk-tier suffix a genuinely-cleared open code would get.
+    expect(kbliMetaTitleSuffix(kbli)).not.toBe(
+      "100% Foreign Ownership, High Risk",
+    );
+
+    const description = kbliMetaDescription(kbli, "Restaurant");
+    expect(description).toContain(
+      "verify Bali's 2026 PMA closure list before filing",
+    );
+    // The qualifier is APPENDED, not a silent drop back to the bare sentence.
+    expect(description).not.toContain(
+      "Restaurant (KBLI 56101): 100% Foreign Ownership.",
     );
   });
 

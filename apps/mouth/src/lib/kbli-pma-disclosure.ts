@@ -10,6 +10,7 @@ import { humanizeInternalEnums } from "./kbli-status-labels";
 
 const ALLOWED_BALI_STATUSES = new Set([
   "APERTO_BALI_RISCHIO_ALTO",
+  "ATTENZIONE_FASCIA_BALI",
   "BLOCCATO_CLASSE_RISCHIO",
   "BLOCCATO_DIPENDE_SCOPE",
   "CHIUSO_BALI",
@@ -25,6 +26,12 @@ const ALLOWED_BALI_STATUSES = new Set([
 
 function publicText(value: unknown): string | null {
   return typeof value === "string" && value.trim() ? value.trim() : null;
+}
+
+/** Same as `publicText`, but only for a value that is actually an http(s) URL. */
+function publicUrl(value: unknown): string | null {
+  const text = publicText(value);
+  return text && /^https?:\/\//i.test(text) ? text : null;
 }
 
 function publicPmaCap(raw: KBLIRawCode): number | "special" | null {
@@ -218,6 +225,31 @@ export function discloseBaliL4(
       }
     : undefined;
 
+  // The applied-closure citation (CHIUSO_BALI only). Every URL is re-verified
+  // http(s)-only here, at the ONE place that turns raw data into something a
+  // component may render as a link — a component must never re-check a URL
+  // it is handed, or the check exists in name only.
+  const rawClosure = l4.closure;
+  const closure =
+    rawClosure && typeof rawClosure === "object"
+      ? {
+          instrument: publicText(rawClosure.instrument) ?? undefined,
+          published: publicText(rawClosure.published) ?? undefined,
+          url: publicUrl(rawClosure.url),
+          listSource: publicText(rawClosure.list_source) ?? undefined,
+          listUrl: publicUrl(rawClosure.list_url),
+          effective: publicText(rawClosure.effective) ?? undefined,
+          until: publicText(rawClosure.until) ?? undefined,
+          approval: publicText(rawClosure.approval) ?? undefined,
+          ancestors2020: Array.isArray(rawClosure.ancestors_2020)
+            ? rawClosure.ancestors_2020.filter(
+                (x): x is string => typeof x === "string" && x.trim() !== "",
+              )
+            : undefined,
+          scopeQualifier: publicText(rawClosure.scope_qualifier),
+        }
+      : undefined;
+
   return {
     status: l4.status,
     reason: humanizeInternalEnums(publicText(l4.reason) ?? ""),
@@ -226,5 +258,6 @@ export function discloseBaliL4(
     blocked: l4.blocked,
     from2020: publicText(l4.from_2020),
     moratorium,
+    closure,
   };
 }

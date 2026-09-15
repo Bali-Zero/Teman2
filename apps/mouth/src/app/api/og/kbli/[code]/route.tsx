@@ -46,7 +46,14 @@ function statusChip(kbli: NonNullable<ReturnType<typeof getCode>>): {
   // was carried over from a different activity (code-number collision) is
   // neither blocked nor confirmed open — a neutral verify chip, not the
   // green "OPEN" the pma.status fallthrough below would otherwise render.
-  if (kbli.baliL4?.status === "NON_CLASSIFICABILE") {
+  // Added 2026-09-15 (W-J B1): off Bali's applied PMA closure list, but the
+  // risk tier that used to blanket-block it was only ever named in the
+  // Governor's own request letter — a "verify" chip, never the green "OPEN"
+  // the pma.status fallthrough below would otherwise render.
+  if (
+    kbli.baliL4?.status === "NON_CLASSIFICABILE" ||
+    kbli.baliL4?.status === "ATTENZIONE_FASCIA_BALI"
+  ) {
     return { label: "BALI: VERIFY", color: "#c9a227" };
   }
   switch (kbli.pma.status) {

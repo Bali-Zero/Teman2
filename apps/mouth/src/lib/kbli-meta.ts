@@ -105,6 +105,17 @@ export function kbliMetaTitleSuffix(kbli: KBLICode): string {
     if (isBaliL4BlockVerifiedForBareClaim(kbli)) {
       return "Blocked for PT PMA in Bali (2026)";
     }
+    // Added 2026-09-15 (W-J B1, Codex sol MAJOR finding 3 on PR #6578): off
+    // Bali's applied closure list, but not a bare "clear" either — the
+    // low/medium-low risk tier the OLD blanket reading relied on was only
+    // ever named in the Governor's own request letter, never enacted for
+    // this code. An unqualified "100% Foreign Ownership, Low Risk" title on
+    // this status is exactly the unqualified-open claim the gate above
+    // exists to prevent — it wins over the plain risk variant for the same
+    // reason a verified Bali block does.
+    if (kbli.baliL4?.status === "ATTENZIONE_FASCIA_BALI") {
+      return "Verify Bali PMA Closure List (2026)";
+    }
     const risk = verifiedRiskLabel(kbli);
     return risk ? `${ownership}, ${risk} Risk` : ownership;
   }
@@ -148,12 +159,23 @@ export function kbliMetaDescription(
 ): string {
   const baliBlocked =
     kbli.pma.status === "open" && isBaliL4BlockVerifiedForBareClaim(kbli);
+  // Added 2026-09-15 (W-J B1, Codex sol MAJOR finding 3 on PR #6578) — see
+  // `kbliMetaTitleSuffix` for the same reasoning: off the closure list is
+  // not the same as cleared, so the description must not go silent about it.
+  const baliAttentionFascia =
+    kbli.pma.status === "open" &&
+    !baliBlocked &&
+    kbli.baliL4?.status === "ATTENZIONE_FASCIA_BALI";
   const risk = verifiedRiskLabel(kbli);
   const license = verifiedLicenseType(kbli);
 
   return [
     `${metaTitleEn} (KBLI ${kbli.code}): ${kbliPmaLabel(kbli)}${
-      baliBlocked ? " nationally — blocked for a PT PMA in Bali (2026)" : ""
+      baliBlocked
+        ? " nationally — blocked for a PT PMA in Bali (2026)"
+        : baliAttentionFascia
+          ? " nationally — verify Bali's 2026 PMA closure list before filing"
+          : ""
     }.`,
     // Degrade one fact at a time. `risk && license ? … : null` dropped BOTH
     // when only the licence was ungated, so the 337 inherited-content codes
