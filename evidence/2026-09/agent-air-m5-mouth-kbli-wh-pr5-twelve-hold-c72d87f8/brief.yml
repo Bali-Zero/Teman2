@@ -1,133 +1,19 @@
 task: >-
-  SAETTA-20260915 / W-H, lane PR-5. On the 12 KBLI 2025 codes (38110 55202
-  55300 56102 56304 56306 70201 73300 74199 79901 79902 86995) the superseded
-  #6488 would have published a national 0% PMA closure on the sole basis that
-  OSS carries no Usaha Besar scale row for them. The dossier
-  (`~/BATTAGLIA-20260911/4-KBLI-APP/DOSSIER-no-besar-normativo-2026-09-15.md`,
-  verdict §0/§1.3, D5a/D5g §7) found no such rule in any primary source and
-  no Perpres 10/2021 (as amended by 49/2021) annex reservation for any of the
-  12 — the honest verdict is "PT PMA eligibility unverified in OSS, not a
-  national closure". This PR: (1) a spec-driven compiler
-  (`scripts/kbli_filiera/cure_l4bali_hold_review.py`) rewrites `l4_bali.reason`
-  on the 12 to dossier §2.1 Template H (r2), with `{scales}`/`{tier}` MEASURED
-  from each record's own `per_skala` and the per-code `{sector}` segment from
-  the spec; `confidence`->MEDIUM, `needs_review`->true; `status`/`blocked`
-  UNCHANGED (Zero's D5g). (2) the national PMA tuple stays `declared_gap` (no
-  0, no 100 published); a new per-code review-notice mechanism
-  (`kbli-pma-review.ts` + `kbli-pma-review-notices.json`, idea from the
-  unmerged `kbli-pma-resolution-astra` worktree, rewritten) discloses the
-  specific reason in the FAQ answer instead of the generic "not yet verified"
-  sentence, gated on the raw record's guarded fields still matching what the
-  notice was authored against. (3) dataset copies resynced,
-  `kbli-dataset-version.json` sidecar sha256 updated.
+  SAETTA-20260915 / W-H PR-5 — the twelve KBLI codes OSS lists without a large-scale row
+  (38110 55202 55300 56102 56304 56306 70201 73300 74199 79901 79902 86995) are never published
+  as a 0% PMA verdict: l4_bali.reason carries dossier Template H r2 (confidence MEDIUM,
+  needs_review), and the FAQ PMA answer shows a "not a national 0% finding — confirm in OSS"
+  notice derived from the record's own scales. status/blocked unchanged (owner decision D5g).
 lane: mouth/kbli-wh-pr5-twelve-hold
 machine: M5
 date: 2026-09-15
-
 gear: 2
 gear_reason: >-
-  Net churn excluding the three synced dataset copies: 987 insertions / 3
-  deletions across 9 new/changed source+test files plus one new data file
-  (`kbli-pma-review-notices.json`) and one new spec (`l4bali_hold_review_
-  2026_09_15.json`) — measured with `git diff --stat --cached` against
-  origin/main, dataset copies (`data/source_documents/KBLI_2025_FINAL_CLEAN.
-  json`, `apps/mouth/data/KBLI_2025_FINAL_CLEAN.json`, `apps/kbli-navigator/
-  data/kbli-2025.json`) excluded per the lane brief. This is OVER the ~400
-  net-line contract target; flagged for the Dux rather than silently shipped
-  (see brief's own note below). No hot-zone path (kbli data/lib only); the
-  mission's own plan (W-H mail) assigns this lane as a single self-contained
-  PR (data cure + notice mechanism + wiring), and the two halves (Python
-  compiler+spec+pytest, TS notice+wiring+vitest) cannot be split without
-  leaving either the data or the UI half undemonstrated by its own tests.
-
-appetite:
-  wall_clock_hours: 3
-  adversarial_rounds: 1
-
+  Deterministic floor 2 (size, no hot-zone path). Client-facing KBLI data + one mouth lib.
 acceptance:
-  A1: >-
-    The 12 codes' `l4_bali.reason` is Template H (r2) verbatim with
-    `{scales}`/`{tier}` measured from `per_skala` and the spec's per-code
-    `{sector}`; `confidence`=MEDIUM, `needs_review`=true; `status`/`blocked`
-    byte-identical to origin/main for all 12; no other record changed.
-    probe: >-
-      `python3 -m pytest scripts/kbli_filiera/tests/test_cure_l4bali_hold_review.py
-      scripts/kbli_filiera/tests/test_withdrawn_umkm_inference_absent.py -q`
-      (30 passed); `git diff` on the three dataset copies touches exactly the
-      12 codes (verified by loading old vs new JSON and diffing by
-      `kode_kbli_2025`, not by line-scanning the diff).
-  A2: >-
-    The FAQ PMA answer for each of the 12 carries the specific review notice
-    (not the generic "not yet verified" sentence) and never contains "Open",
-    "100%", "0%", or "valid for a foreign-owned company outside Bali"; the
-    other two surfaces named in the lane (PMABadge, LicensingSection's
-    outside-Bali frame) are structurally gated on `isPmaVerdictVerified`,
-    which stays false because the PMA tuple stays `declared_gap`.
-    probe: >-
-      `cd apps/mouth && npx vitest run src/lib/kbli-pma-review.test.ts
-      src/lib/kbli-faq-hold-review.test.ts` (22 passed, incl. the 73300/38110
-      before/after render-proof strings and the `isPmaVerdictVerified===false`
-      structural assertion for all 12).
-  A3: >-
-    96220 (TERBATAS/0/located, Lampiran II Koperasi/UMKM certified template)
-    and a TERBUKA/located code (02102) render byte-identically — no notice
-    attaches, no FAQ text changes, the dataset diff never touches 96220.
-    probe: >-
-      Same vitest file, "innocence" describe block; dataset-diff-by-code
-      script (receipts).
-  A4: >-
-    Every dataset-reading test the lane named stays green, incl.
-    `kbli-prose-pins.test.ts` (blocked/open counts unchanged, since `blocked`
-    is untouched).
-    probe: >-
-      `cd apps/mouth && npx vitest run` on the 29-file dependency set listed
-      in the report to the Dux (425 passed); `npx tsc --noEmit` clean.
-
-out_of_scope: >-
-  55209, 79110 (Zero: IN REVIEW, never touched). 43110 (PR-2). The 3 Lampiran
-  II allocations + 8 retail codes (PR-3/PR-4, D5b). The honest-map breakdown
-  drift (PR-6). The Bali overlay itself — `l4_bali.blocked`/`.moratorium`'s
-  "ALL/permanent/2026-05-13" overstatement (F-12) — is EXPLICITLY left as a
-  stated precaution per D5g; the real correction is window B1 (separate
-  mandate), not this PR. PMABadge/LicensingSection source edits: NOT made —
-  both surfaces are already correctly gated by `isPmaVerdictVerified` (false
-  for all 12), so no code change was needed to satisfy "no Open/100%/0%/
-  outside-Bali text"; only the FAQ generic-text branch needed the swap.
-
-assumptions:
-  - text: >-
-      The canonical dataset a `kbli_filiera` compiler mutates is `data/
-      source_documents/KBLI_2025_FINAL_CLEAN.json` (matching every existing
-      compiler's `DEFAULT_CANONICAL`), NOT `source_documents/KBLI_2025_
-      FINAL_CLEAN.json` at the repo root — the latter is a symlink TO the
-      former (`readlink source_documents` -> `data/source_documents`), so
-      `sync_kbli_dataset.sh`'s own "$CANONICAL" variable resolves to the same
-      physical file; there is no drift risk between the two paths.
-    status: verified
-    probe: >-
-      `readlink source_documents` in the worktree root; `md5` on both paths
-      before this PR's changes (identical); `git ls-tree HEAD --
-      source_documents/KBLI_2025_FINAL_CLEAN.json` (empty — not a tracked
-      blob at that literal path, confirming it is reached only through the
-      symlinked directory).
-  - text: >-
-      `{scales}` is rendered in canonical business-size order (Mikro, Kecil,
-      Menengah, Besar), never alphabetical — alphabetical would print "Kecil,
-      Menengah and Mikro", which reads backwards to a reader who knows the
-      scale ladder. None of the 12 records carry a Besar row (verified live).
-    status: verified
-    probe: >-
-      `scripts/kbli_filiera/cure_l4bali_hold_review.py::format_scales`
-      + `test_format_scales_orders_by_business_size_not_alphabet`.
-  - text: >-
-      Two independent transform functions build `KBLICode`
-      (`kbli-data.ts` — the one `/kbli/[code]` actually consumes via
-      `getCode()`/`getAllCodes()` — and `kbli-data.server.ts`) and must both
-      set `pmaReviewNotice` or the two readers disagree (same "one fact, two
-      readers" discipline already documented in-repo for `riskDispute`/
-      `perpresSlice`, W88/#9). Both were edited identically.
-    status: verified
-    probe: >-
-      `grep -n "pmaReviewNotice" apps/mouth/src/lib/kbli-data.ts apps/mouth/
-      src/lib/kbli-data.server.ts` — one import + one field assignment each,
-      identical comment citing the discipline.
+  - probe: python3 -m pytest scripts/kbli_filiera/tests/ -q
+    expect: 0 failed
+  - probe: cd apps/mouth && npx vitest run src/lib/kbli-pma-review.test.ts src/lib/kbli-faq-hold-review.test.ts src/lib/kbli-prose-pins.test.ts
+    expect: all passed
+  - probe: curl -sL https://balizero.com/kbli/73300 after deploy
+    expect: FAQ says "Not a national 0% finding"; no "Open", "100%" or "0%" PMA verdict on the page
