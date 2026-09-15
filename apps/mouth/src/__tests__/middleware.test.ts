@@ -420,7 +420,13 @@ describe("Middleware - Multi-domain Routing", () => {
     });
 
     it("should allow /lkpm on the app domain", () => {
-      const request = createRequest("https://kita.balizero.com/lkpm");
+      // W-C workspace session gate: a workspace route now needs the session
+      // cookie to be served at all — added here rather than dropping the
+      // assertion, since the assertion is still true for an authenticated
+      // request.
+      const request = createRequest("https://kita.balizero.com/lkpm", {
+        cookie: "nz_access_token=synthetic-session-token",
+      });
       const response = proxy(request);
 
       expect(response.status).not.toBe(301);
@@ -428,7 +434,10 @@ describe("Middleware - Multi-domain Routing", () => {
     });
 
     it("should allow internal app routes", () => {
-      const request = createRequest("https://kita.balizero.com/dashboard");
+      // W-C workspace session gate: same as /lkpm above.
+      const request = createRequest("https://kita.balizero.com/dashboard", {
+        cookie: "nz_access_token=synthetic-session-token",
+      });
       const response = proxy(request);
 
       expect(response.status).not.toBe(301);
@@ -437,7 +446,10 @@ describe("Middleware - Multi-domain Routing", () => {
     });
 
     it("should allow /clients route", () => {
-      const request = createRequest("https://kita.balizero.com/clients");
+      // W-C workspace session gate: same as /lkpm above.
+      const request = createRequest("https://kita.balizero.com/clients", {
+        cookie: "nz_access_token=synthetic-session-token",
+      });
       const response = proxy(request);
 
       expect(response.status).not.toBe(307);
@@ -646,7 +658,13 @@ describe("Middleware - Multi-domain Routing", () => {
     });
 
     it("does not redirect unrelated app-domain routes (e.g. /dashboard)", () => {
-      const request = createRequest("https://kita.balizero.com/dashboard");
+      // W-C workspace session gate: /dashboard is a SESSION_GATED_ROUTE now,
+      // so this needs the session cookie to keep testing what it says it
+      // tests — that /dashboard itself isn't caught by the ghost/retired
+      // route redirects above it, not that it's reachable with no session.
+      const request = createRequest("https://kita.balizero.com/dashboard", {
+        cookie: "nz_access_token=synthetic-session-token",
+      });
       const response = proxy(request);
 
       expect(response.status).not.toBe(302);
