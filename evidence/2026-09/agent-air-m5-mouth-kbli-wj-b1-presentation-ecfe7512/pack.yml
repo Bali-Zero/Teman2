@@ -1,0 +1,50 @@
+gear: 2
+brief_ref: evidence/brief.yml
+lanes:
+  - lane: mouth/kbli-wj-b1-presentation
+    role: build
+    seat: Claude Sonnet 5 (implementer, W-J PR-P, Dux Opus 5 xhigh on M5)
+    task_id: kbli-wj-b1-presentation
+    worktree: .worktrees/mouth-kbli-wj-b1-presentation
+    branch: agent/air-m5/mouth/kbli-wj-b1-presentation
+
+pii_scan: clean
+pii_scan_note: >-
+  Only KBLI status labels, public government source names/URLs and render logic under
+  apps/mouth/src; no client name, contact or case data.
+
+decisions:
+  - id: D1
+    what: >-
+      New status ATTENZIONE_FASCIA_BALI instead of reusing an existing one.
+    why: >-
+      OK_or_HIGHER_RISK renders "Registrable in Bali" (would over-claim), BLOCCATO_DIPENDE_SCOPE
+      means scope-dependent risk, NON_CLASSIFICABILE means no verdict possible; none states "not
+      on the applied closure list, verify".
+  - id: D2
+    what: >-
+      Provenance-panel wording changed only for ATTENZIONE_FASCIA_BALI; the generic non-blocked
+      wording stays.
+    why: >-
+      An innocence pin in KBLIProvenancePanel.test.ts locks the generic wording on today's data;
+      the data PR revisits it together with the rewritten moratorium object.
+
+receipts:
+  - claim: changed tests + prose pins green after rebase on origin/main
+    cmd: cd apps/mouth && npx vitest run <6 changed test files> src/lib/kbli-prose-pins.test.ts
+    result: "Test Files 7 passed (7) / Tests 223 passed (223)"
+    exit: 0
+    ts: "2026-09-15T17:44:19+08:00"
+    seat: Claude Opus 5 (Dux, independent re-run)
+  - claim: implementer sweep over every kbli/bali test file and tsc
+    cmd: cd apps/mouth && npx vitest run (46 kbli/bali test files) && npx tsc --noEmit -p .
+    result: "577 passed; tsc exit 0"
+    exit: 0
+    ts: "2026-09-15T17:35:00+08:00"
+    seat: Claude Sonnet 5
+
+leftovers:
+  - >-
+    Backend BALI_ALLOWED_STATUSES (apps/backend-rag/backend/services/kbli_pma_disclosure.py) does
+    not yet know ATTENZIONE_FASCIA_BALI; it matters only when the Qdrant Bali layer is re-synced,
+    a follow-up after the data PR.

@@ -1,0 +1,24 @@
+task: >-
+  SAETTA-20260915 / W-J (B1 Bali overlay), PR-P presentation. apps/mouth learns the status the
+  data PR will write: ATTENZIONE_FASCIA_BALI (warn, never "open": the code is not among the 18
+  business fields Bali closed to new PMA licensing in 2026; the low/medium-low tier was named only
+  in the Governor's January 2026 request letter — verify tier and zoning on OSS), and the
+  CHIUSO_BALI verdict cites the applied closure (Pemprov Bali press release 24 Jul 2026, OSS closed
+  since the third week of May 2026; code list ANTARA Bali 23 Jul 2026) through a new optional
+  l4_bali.closure object with http(s)-only links in the provenance panel. The unverified
+  "13 May 2026" date leaves every generated client string. No dataset change in this PR; safe on
+  today's data (the new status and object are absent until the data PR lands).
+lane: mouth/kbli-wj-b1-presentation
+machine: M5
+date: 2026-09-15
+gear: 2
+gear_reason: >-
+  Deterministic floor 2 (size: 17 files, ~250 lines of code + tests under apps/mouth/src, no
+  hot-zone path).
+acceptance:
+  - probe: cd apps/mouth && npx vitest run src/lib/kbli-bali-block.test.ts src/lib/kbli-pma-disclosure.test.ts src/lib/kbli-status-labels.test.ts src/lib/kbli-faq.test.ts src/components/kbli/KBLIProvenancePanel.test.ts src/components/kbli/BaliStatusBadge.test.tsx src/lib/kbli-prose-pins.test.ts
+    expect: all passed
+  - probe: cd apps/mouth && npx tsc --noEmit -p .
+    expect: exit 0
+  - probe: curl -sL https://balizero.com/kbli after deploy
+    expect: the Blocked-in-Bali hint no longer says "13 May 2026"
