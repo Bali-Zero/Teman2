@@ -87,8 +87,11 @@ New seat capabilities every workflow should know:
   `codex@openai-codex` plugin (M5 today — probe `claude plugin list`), the ORCHESTRATOR runs
   its runtime with Bash `run_in_background: true` — the `/codex:*` slash commands carry
   `disable-model-invocation`, so the model cannot call them, only Zero can:
-  `node ~/.claude/plugins/cache/openai-codex/codex/*/scripts/codex-companion.mjs adversarial-review --base <ref> "<focus>"`
-  (`status` / `result` subcommands read it back). Detached, so the 590s Bash cap noted above
+  `CX=$(python3 -c "import json,os;print(json.load(open(os.path.expanduser('~/.claude/plugins/installed_plugins.json')))['plugins']['codex@openai-codex'][0]['installPath'])")`
+  then `node "$CX/scripts/codex-companion.mjs" adversarial-review --base <ref> "<focus>"`
+  (`status` / `result` subcommands read it back). Resolve the ACTIVE install path from the
+  registry, never a `cache/.../*` glob: two cached versions expand to two paths and the second
+  one is parsed as the subcommand (`Unknown subcommand`, exit 1 — reproduced by Codex itself). Detached, so the 590s Bash cap noted above
   does not kill it. It returns prose, not a verdict line: a pre-commit GATE still goes through
   `codex-second-opinion` (verdict contract, exit-6 no-verdict guard, telemetry). Handing Codex
   a whole task: the plugin's `codex:codex-rescue` agent. Lanes still use the Bash command.
