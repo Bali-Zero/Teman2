@@ -203,7 +203,7 @@ def _wire_stubs(
     # the attribute here is what a real deploy's Fly secret would do.
     monkeypatch.setattr(wa_codex_leg.settings, "wa_broker_key", _TEST_BROKER_KEY, raising=False)
 
-    # B2.5 (migration 316): the leg now loads a context BOUND to its own
+    # B2.5 (migration 318): the leg now loads a context BOUND to its own
     # inbound message, never the thread's latest — `inbound_message_id=830`
     # is an arbitrary fixed id (the pre-existing suite below never asserts
     # on it; the binding-specific behaviour has its own tests further down).
@@ -647,7 +647,7 @@ async def test_completed_with_takeover_drift_discards_and_stands_down(
     stubs.discard_completion.assert_awaited_once()
     assert stubs.discard_completion.await_args.kwargs["reason"] == "takeover"
     stubs.consume_result.assert_not_awaited()
-    # B2.5 (migration 316): the atomic abort now sets the fall-off reason
+    # B2.5 (migration 318): the atomic abort now sets the fall-off reason
     # in the SAME statement — "UPDATE wa_outbox" and "SET status = 'failed'"
     # are no longer on one line, so pin the clauses that survive separately
     # (same pattern the B2.3b carrier comment above already established).
@@ -1781,7 +1781,7 @@ def test_every_stored_fall_off_value_is_allowed_by_the_live_check_constraint() -
     # The UP block only — the file's ROLLBACK section restores the older,
     # narrower vocabulary on purpose.
     up = newest.read_text(encoding="utf-8").split("=== ROLLBACK ===")[0]
-    # B2.5 (migration 316) introduced the first fall-off reason with a
+    # B2.5 (migration 318) introduced the first fall-off reason with a
     # digit in it (`window_closed_24h`) — widen from [a-z_]+ so extraction
     # does not silently drop a real, present value and report a false
     # "rejected by the CHECK constraint".

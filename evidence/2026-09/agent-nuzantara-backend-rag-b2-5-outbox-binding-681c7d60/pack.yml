@@ -1,0 +1,58 @@
+task_id: b2-5-outbox-binding-v2
+mandate: SAETTA-20260915/W-B
+colour: BLUE
+pr: "PR-1 — one message, one answer (wa_outbox inbound binding + FIFO per thread)"
+head_sha: b249c36a07 # pragma: allowlist secret — freeze candidate: the review-cure commit. The commit carrying THIS pack is its child; a sha written here cannot name the commit that writes it
+base_sha: a5f2b1243b515f0fd9906c8fdf16fbd00eeda807 # pragma: allowlist secret
+brief_ref: evidence/brief.yml # MUST be the STAGING literal, never this mission's per-PR path: harness-floor.yml copies pack and brief into a synthetic tree under canonical names and lints there
+gear: 3
+gear_floor_measured: 3
+gear_floor_source: path # hot zone (a migrations_v2 file + the outbox worker), NOT churn — verified with --print-floor-source
+
+spend:
+  wall_clock_hours: 2
+  adversarial_rounds: 1 # one Codex round, split into two lanes (migration+worker, loader+leg)
+  children: 2
+  child_depth: 1
+  tokens: not measured
+
+result: >-
+  The commit recovered from 8c4d310b16 (built in a previous window, never pushed) cherry-picks
+  cleanly onto a fresh origin/main and is green. Migration 318 adds wa_outbox.inbound_message_id
+  plus the partial index the FIFO claim predicate reads, and the webhook writes the binding at
+  enqueue time inside the transaction that creates the inbound and the stub. Coalescing is gone:
+  a thread's rows are served one at a time, oldest first. One adversarial round produced two real
+  defects, both cured here with tests (a whitespace-only body consumed the history budget; a
+  whitespace-only anchor reached the generator as the query), plus one undeclared dependency now
+  named in a comment and pinned by a mutation-proven guard test.
+
+measured:
+  - "named tests (bound_context + outbox_worker + codex_leg): 127 passed before the cures, 138 passed after (3 new tests), 0 failed"
+  - "whole wa_* surface incl. tests/db: 1038 passed, 0 failed, 6 pre-existing xfail each carrying its own accepted-gap reason"
+  - "migration 318 applied DOWN then UP on a clone that did NOT already carry the column: rc=0 in both directions. This mattered — the local test DB already had the column applied by hand, so the green test run alone did not prove the migration works from a clean state"
+  - "squawk --pg-version=15.0 with the CI's exact exclusion list: 0 issues in 1 file"
+  - "lint_migration_rollback.py: 189 post-cutoff migrations all carry the marker; lint_migration_numbers.py: 194 files, all unique prefixes"
+  - "RENUMBERED 316 -> 318 after the pre-push sibling re-check, which is the only probe that caught it: open PR #6474 (draft, BLOCKED since 13/09) already carries a 316_ and #6478 (armed, BLOCKED) carries a 317_. lint_migration_numbers.py reads ONLY the local tree, so it reported 'all unique prefixes' on a number another open PR already owned — the W40 collision shape, invisible to the lint that exists to prevent it. 318 clears main's 315, #6474's 316 and #6478's 317, so this PR does not depend on merge order. All 16 in-code references were moved with it and the full suite re-run after the rename"
+  - "docs_sync.py: DOCSYNC OK (no changes) — run BEFORE arming, per W86"
+  - "MUTATION-PROVEN: replacing whatsapp_chat.py's thread-upsert DO UPDATE with DO NOTHING turns test_legacy_anchor_derive_depends_on_the_thread_upsert_serializing_webhooks RED (1 failed, 7 passed); restored, back to 8 passed. The guard is not vacuous"
+  - "PRODUCTION, read-only via scripts/pg.sh: wa_outbox holds 446 rows, 245 failed, 233 of those with a NULL generation_fall_off_reason, 0 pending, 0 pending-and-needs-generation"
+
+adversarial_review:
+  seat: "codex gpt-5.6-sol xhigh, two lanes, read-only sandbox"
+  cured:
+    - "whitespace-only history entries consumed the _HISTORY_TURNS budget and displaced real context: the filter rejected only the empty string, not a body of spaces"
+    - "a whitespace-only anchor reached the generator as the query, because a string of spaces is truthy and wa_codex_leg's empty-query guard never fired"
+  refuted_with_evidence:
+    - "'Nothing writes inbound_message_id, so every row falls back to the legacy heuristic' — FALSE: whatsapp_chat.py:1321-1330 passes it explicitly in the enqueue INSERT. The reviewer's lane did not carry that file. The false positive is an artifact of how I SPLIT THE DIFF for review — a defect in my instrument, not in the change: I separated the producer from the consumer and then asked whether the consumer had a producer"
+    - "'The legacy derive can pick a NEWER inbound via interleaved ids' — not for the same thread: the thread upsert's ON CONFLICT DO UPDATE holds a row lock until COMMIT, so concurrent webhooks for one phone serialize and ids come out inbound1 < stub1 < inbound2 < stub2; the derive filters on thread_id. Blast radius measured at 0 pending rows in prod. The guarantee was implicit and undeclared — it is now commented and mutation-proven"
+    - "'One transaction holding ACCESS EXCLUSIVE turns this into an outage' — wa_outbox is 446 rows, measured in prod. VALIDATE plus a non-concurrent index build on 446 rows is milliseconds, and single-transaction is this runner's convention for every migrations_v2 file, not a choice made here"
+  measured_not_cured:
+    - "CHECK (status <> 'failed' OR reason IS NOT NULL) would make the ledger invariant structural rather than conventional. NOT shippable here: production holds 233 failed rows with a NULL reason, so the constraint would fail the migration outright. It needs a deliberate backfill — its own concern, its own PR. PENDING-ARMS row at mission close"
+    - "the FK proves the target exists, not that it is an inbound of the same thread; the single producer writes the correct id inside one transaction"
+    - "the rollback drops the column and loses the linkage — by design, and already documented at the rollback section: the Python half reverts in the same window"
+    - "N messages now cost N generations with no per-thread ceiling. That is the mandate, not a regression: the client asked three questions and is owed three answers. Head-of-line blocking is the accepted cost of ordering (MAX_ATTEMPTS 5, backoff 30/60/120/240/480 ~= 15.5 min); curing it would mean serving out of order, which is the property this PR exists to guarantee"
+
+pending_live_proof: >-
+  Merging apps/backend-rag IS the deploy. The Bites observation — a burst of 3 messages to the
+  sandbox number producing 3 wa_outbox rows carrying 3 DISTINCT inbound_message_id — is taken
+  POST-MERGE with scripts/pg.sh, and this slice is not called done until it is.
