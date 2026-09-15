@@ -693,17 +693,26 @@ describe("KBLI prose pins — published aggregates agree with the canonical", ()
       });
 
       it(`[${lang}] a wrong-paragraph mutation (headline/correction/closing) is caught at its OWN occurrence even though an untouched correct mention survives elsewhere`, () => {
-        // Reproduces the review's second demonstration: headline blocked
-        // 519→518, correction-paragraph percentage 33,3→33,2, and closing
-        // count 519→518, all at once — while the breakdown-intro "519"
-        // (occurrence 9) and the closing-ratio "519" (occurrence 41) are
-        // DELIBERATELY left untouched, the "untouched correct mention
-        // survives elsewhere" half of the reproduction.
+        // Reproduces the review's second demonstration: headline blocked,
+        // correction-paragraph percentage, and closing count all wrong at
+        // once — while the breakdown-intro (occurrence 9) and the
+        // closing-ratio (occurrence 41) mentions are DELIBERATELY left
+        // untouched, the "untouched correct mention survives elsewhere" half
+        // of the reproduction.
+        //
+        // 2026-09-15 SAETTA-20260915 W-H PR-2b (93114/43110 restore, D5f):
+        // the census moved 519->518 / 33.3%->33.2%, so the review's original
+        // injected "wrong" values (518 / 33,2) are now the CORRECT ones —
+        // reusing them here would make this guilt test assert '518' !== '518'
+        // regardless of any real mutation. Injected values below are wrong
+        // under the current AND the pre-2026-09-15 census on purpose, so a
+        // future correction to this same figure cannot silently reopen this
+        // gap again.
         const live = fs.readFileSync(path.join(ARTICLE_DIR, file), "utf-8");
         let mutated = live;
-        mutated = spliceNumberAt(mutated, 48, "518"); // closing count
-        mutated = spliceNumberAt(mutated, 40, "33,2"); // narrative percentage
-        mutated = spliceNumberAt(mutated, 6, "518"); // headline blocked
+        mutated = spliceNumberAt(mutated, 48, "509"); // closing count
+        mutated = spliceNumberAt(mutated, 40, "33,9"); // narrative percentage
+        mutated = spliceNumberAt(mutated, 6, "509"); // headline blocked
 
         const c = countFromCanonical();
         // The untouched siblings genuinely still read correctly:
