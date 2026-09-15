@@ -391,8 +391,11 @@ def test_the_barred_but_open_list_reads_across_every_bucket(rep):
     rows = pasal7_review_flags(rep)
     # 2026-09-11 OSS re-snapshot (v11.0-L2-oss-risk-20260911): was 19, now 18 — same code membership shape (all prior guilt/innocence assertions below still hold), one fewer barred-but-open row in the re-ingested catalogue.
     # 18 -> 16 on 2026-09-15 (PR-2b): 93114 and 43110 both gained a real
-    # Besar row, so neither is "TERBUKA with no Besar row" any more.
-    assert len(rows) == 16
+    # Besar row, so neither is "TERBUKA with no Besar row" any more. Merged
+    # with SAETTA-20260915 W-H PR-3 (same day): 55201/55203/79903 also
+    # depart — see the note below the `55201`/`55203` assertion. Combined:
+    # 18 - 2 (PR-2b) - 3 (PR-3) = 13.
+    assert len(rows) == 13
     codes = {r["code"] for r in rows}
     # 2026-08-06, THIRD movement — and the one that empties the "annex-named AND
     # Besar-less" example slot this line used to hold. `96210` (barber),
@@ -436,7 +439,22 @@ def test_the_barred_but_open_list_reads_across_every_bucket(rep):
     # This assertion existing is why the movement had to be argued rather than
     # absorbed: the tripwire fired on the apply and sent the reader back to the
     # withdrawal, which is exactly the job it was written for.
-    assert {"55201", "55203"} <= codes
+    #
+    # SAETTA-20260915 W-H PR-3, FOURTH movement — `55201` (homestay) and `55203`
+    # (villa) are OUT, and `79903` (pramuwisata) left with them. The check this
+    # docstring said "has not been done" is now done: `apply_umkm_reservations.
+    # check()`'s own `judged_as` gate re-derives, from `bps_2020_ancestors` and
+    # its reverse index, that each 2020 ancestor (55130, 55193, 79921) has
+    # EXACTLY ONE 2025 heir and that heir absorbs no other ancestor — the same
+    # proof that moved `96210`/`96220`/`96100` out in the THIRD movement above,
+    # now run on these three. They left as RESERVED (Lampiran II p.15 entry 48
+    # for the first two, p.16 entry 56 for the third — W-F dossier
+    # `DOSSIER-no-besar-normativo-2026-09-15.md` §2, §6.1), not as "still
+    # unexplained". `79903` was never named in this docstring's history because
+    # no prior lot had touched it; its lineage-vs-identity gap was the same one
+    # `55201`/`55203` carried, closed by the same spec
+    # (`cure_specs/lampiran2_allocation_wh_pr3_2026_09_15.json`).
+    assert not ({"55201", "55203", "79903"} & codes)
     assert "95291" not in codes
     assert "79110" not in codes
     assert all(r["besar"] == "absent" for r in rows)
