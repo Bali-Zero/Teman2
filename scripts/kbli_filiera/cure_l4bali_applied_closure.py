@@ -171,10 +171,9 @@ def is_nationally_capped(record: dict[str, Any]) -> bool:
     if record.get("pma_cap_special") is True:
         return False
     status = (record.get("pma_status") or "").upper()
-    max_asing = record.get("pma_max_asing")
-    if max_asing is None:
-        max_asing = 0
-    return status == "TERTUTUP" or max_asing == 0
+    # An ABSENT cap is not a 0% cap (Codex sol cure verification, 2026-09-15:
+    # 01122 carries pma_max_asing=None) — only a recorded 0 is a national bar.
+    return status == "TERTUTUP" or record.get("pma_max_asing") == 0
 
 
 def tertutup_reason_fallback(record: dict[str, Any]) -> str:

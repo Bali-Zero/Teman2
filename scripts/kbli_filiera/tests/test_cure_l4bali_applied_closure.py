@@ -558,3 +558,16 @@ def test_real_canonical_applies_to_the_expected_census(tmp_path: Path) -> None:
     after_first = canonical.read_bytes()
     assert cure.main(["--canonical", str(canonical), "--spec", str(cure.DEFAULT_SPEC), "--apply"]) == 0
     assert canonical.read_bytes() == after_first
+
+
+def test_absent_cap_is_not_a_national_zero_cap() -> None:
+    """Guilt: a recorded 0% cap (or TERTUTUP) is a national bar. Innocence: a
+    record with NO recorded cap must not be read as 0% (01122 carries None)."""
+    assert cure.is_nationally_capped({"pma_status": "TERBATAS", "pma_max_asing": 0})
+    assert cure.is_nationally_capped({"pma_status": "TERTUTUP", "pma_max_asing": None})
+    assert not cure.is_nationally_capped({"pma_status": "TERBUKA", "pma_max_asing": None})
+    assert not cure.is_nationally_capped({"pma_status": None, "pma_max_asing": None})
+    assert not cure.is_nationally_capped({"pma_status": "TERBATAS", "pma_max_asing": 49})
+    assert not cure.is_nationally_capped(
+        {"pma_status": "TERBATAS", "pma_max_asing": 0, "pma_cap_special": True}
+    )

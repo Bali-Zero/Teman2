@@ -123,11 +123,13 @@ function countBreakdown() {
   // pma_status/pma_max_asing on those records still reads TERBUKA/100. Split
   // so the prose can say which is which instead of a blanket "0% foreign
   // ownership" that is false for the second group.
-  const nationallyZeroCap = (r: Row) =>
-    (r.pma_status ?? "").toUpperCase() === "TERTUTUP" ||
-    (r.pma_max_asing ?? 0) === 0;
-  const tertutupZero = tertutupRows.filter(nationallyZeroCap).length;
-  const tertutupNonZero = tertutup - tertutupZero;
+  // Exact values, not "zero vs non-zero" (Codex sol cure verification): the
+  // prose says "66 at 0%" and "6 show 100%", so a record drifting 100 -> 49
+  // must move a pin, and an absent cap must count as neither.
+  const tertutupZero = tertutupRows.filter((r) => r.pma_max_asing === 0).length;
+  const tertutupNonZero = tertutupRows.filter(
+    (r) => r.pma_max_asing === 100,
+  ).length;
   const chiusoBali = byStatus("CHIUSO_BALI").length;
   // "14 — held pending verification": every blocked status this compiler does
   // not yet stand fully behind at the individual-code level.
@@ -456,22 +458,22 @@ function positionalPins(
       expected: group(b.conservativeBlocked, sep),
     },
     {
-      index: 82,
+      index: 83,
       what: "closing reading: ATTENZIONE_FASCIA_BALI count",
       expected: group(b.attenzione, sep),
     },
     {
-      index: 83,
+      index: 84,
       what: "closing reading: no-flag count",
       expected: group(b.openNoFlag, sep),
     },
     {
-      index: 84,
+      index: 85,
       what: "closing reading: scope-dependent sub-count",
       expected: group(b.scopeDependentNotBlocked, sep),
     },
     {
-      index: 85,
+      index: 86,
       what: "closing reading: unclassified sub-count",
       expected: group(b.nonClassificabileNotBlocked, sep),
     },
@@ -608,7 +610,7 @@ describe("KBLI prose pins — published aggregates agree with the canonical", ()
       },
       {
         what: "closing reading: blocked count + percentage + confidence split (reworded 2026-09-15, finding 3 — dropped the absolute 'full stop' claim)",
-        re: /\*\*(\d+) codes \(([\d.]+)%\) are closed\*\* — (\d+) of them confirmed at HIGH confidence, no PMA structure gets you in; the other (\d+) rest on a conservative reading pending individual confirmation/,
+        re: /\*\*(\d+) codes \(([\d.]+)%\) are blocked\*\* in our data — (\d+) at HIGH confidence, (\d+) on a conservative reading/,
         expect: [
           String(c.blocked),
           c.pct.toFixed(1),
@@ -673,7 +675,7 @@ describe("KBLI prose pins — published aggregates agree with the canonical", ()
         expect(
           n,
           `${file} body has ${n} number tokens — every positional pin below index ${n} is now reading a shifted occurrence; re-measure the map`,
-        ).toBeGreaterThanOrEqual(85);
+        ).toBeGreaterThanOrEqual(86);
       });
 
       for (const pin of positionalPins(c, b, ".")) {
