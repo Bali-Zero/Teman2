@@ -148,3 +148,43 @@ Returns `{ mission, colour, floor, promoted, built, verified, refuted, refuter, 
 assert the ruled DIRECTION, not merely the syntax. They are run by hand today; nothing in
 `.github/workflows/` executes `infra/workflows/tests/` yet, for this suite or any other, and
 wiring that up is its own PR because `.github/workflows/` is a hot-zone path.
+
+## run-second-army.mjs — running a workflow script without the Workflow tool
+
+A standalone Node ESM runner (Node >=18, no dependencies beyond `node:*`) that compiles and
+executes a workflow script OUTSIDE the Workflow tool — from a shell, a cron, or CI — by injecting
+the same `args`/`agent`/`log`/`phase`/`parallel`/`pipeline`/`budget` bindings the harness would
+otherwise supply, using the same `AsyncFunction` compile trick as
+`infra/workflows/tests/test-second-army-contract.mjs`.
+
+```
+node infra/workflows/run-second-army.mjs --args-file <path-to-json> [--script <path>] [--dry-run]
+```
+
+- `--script` defaults to `infra/workflows/second-army.js`. It is a real flag, not decoration: the
+  behavioural tests point the runner at fixture scripts, which is the only way to measure what the
+  runner does with a lane it should refuse.
+- Prints ONLY the script's JSON return value to stdout; `log()`/`phase()` and every diagnostic go
+  to stderr, prefixed `[second-army]`. A caller piping stdout into `jq` never gets a log line.
+- `--dry-run` swaps in a canned `agent()` that spawns nothing (deterministic per-label-prefix
+  responses) — no `claude`/`codex`/`agy` binary required.
+- **Model-pin enforcement**: `agent()` throws when `opts.model` is missing, and again when the
+  alias is not one the `claude` CLI accepts here (`sonnet`/`haiku`/`opus`). The runner is itself an
+  enforcement point for the Builder Contract's "every `agent()` call pins `model:`" rule, and
+  `infra/workflows/tests/test-run-second-army.mjs` measures that as a BEHAVIOUR — it spawns the
+  runner against two fixtures differing only in the pin and asserts on the exit code. An earlier
+  version of that test scanned the runner's source instead, and an independent gate proved the
+  scan passed with the guard commented out. A guard is a behaviour; it has to be tested as one.
+- **The fleet-mail hook cure**: measured on M5 2026-09-15, `claude -p` inherits a SessionStart hook
+  that injects fleet mail, and a small model then answers the mail instead of the prompt. The
+  runner always passes `--output-format json` and, when a lane requests one, `--json-schema
+  '<schema>'` — this makes the prompt dominant. It never uses `--bare` (that skips hooks but also
+  breaks OAuth).
+- **Per-lane timeout**: default 900s, override with env `SECOND_ARMY_LANE_TIMEOUT_S` — enforced
+  with `setTimeout` + `child.kill('SIGTERM')`, never the `timeout` binary (macOS lacks it).
+- The only door it opens is the `claude` CLI, which carries its own OAuth. No credential is ever
+  placed on argv, read from the environment, or printed.
+
+**Testing**: `node infra/workflows/tests/test-run-second-army.mjs` — 5 behavioural tests. Like the
+rest of `infra/workflows/tests/`, they are run by hand today; nothing in `.github/workflows/`
+executes this directory yet.
