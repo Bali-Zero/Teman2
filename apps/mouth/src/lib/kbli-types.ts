@@ -143,6 +143,19 @@ export interface KBLIRawCode {
       source?: string;
       virtual_office?: string;
     };
+    /** Applied-closure citation, present only on CHIUSO_BALI (the 2026 Bali PMA closure — 18 business fields). */
+    closure?: {
+      instrument?: string;
+      published?: string;
+      url?: string | null;
+      list_source?: string;
+      list_url?: string | null;
+      effective?: string;
+      until?: string;
+      approval?: string;
+      ancestors_2020?: string[];
+      scope_qualifier?: string | null;
+    };
   };
 }
 
@@ -443,6 +456,20 @@ export interface KBLIBaliL4 {
     effective?: string;
     source?: string;
     virtualOffice?: string;
+  };
+  /** Applied-closure citation, present only on CHIUSO_BALI. Every URL field is
+   * pre-validated http(s)-only by `discloseBaliL4` — never render an unchecked one. */
+  closure?: {
+    instrument?: string;
+    published?: string;
+    url?: string | null;
+    listSource?: string;
+    listUrl?: string | null;
+    effective?: string;
+    until?: string;
+    approval?: string;
+    ancestors2020?: string[];
+    scopeQualifier?: string | null;
   };
 }
 

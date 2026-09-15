@@ -60,12 +60,18 @@ export function KBLICodeJsonLd({
   // neither blocked nor confirmed open — don't let Google/AI answers read
   // it as an unqualified "100% foreign ownership allowed" green light.
   const baliNonClassifiable = code.baliL4?.status === "NON_CLASSIFICABILE";
+  // Added 2026-09-15 (W-J B1): not on Bali's applied PMA closure list, so
+  // `baliBlocked` is false — must never let Google/AI answers read this as an
+  // unqualified "100% foreign ownership allowed" green light for Bali.
+  const baliAttentionFascia = code.baliL4?.status === "ATTENZIONE_FASCIA_BALI";
   const pmaVerdictVerified = isPmaVerdictVerified(code);
   const baliNat = baliBlocked
     ? " nationally — but blocked for a PT PMA in Bali"
     : baliNonClassifiable
       ? " nationally — Bali PMA applicability not yet classifiable, verify with the team"
-      : "";
+      : baliAttentionFascia
+        ? " nationally — not on Bali's PMA closure list, but verify the risk tier and zoning on OSS before filing in Bali"
+        : "";
   // PMA source attribution with vintage (FATAL-2 axis): cite the in-force
   // annexes and their pending KBLI-2025 crosswalk instead of bare fact.
   //

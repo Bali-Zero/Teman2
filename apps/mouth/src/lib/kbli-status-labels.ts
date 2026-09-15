@@ -98,6 +98,17 @@ export const BALI_STATUS_CONFIG: Record<string, BaliStatusConfig> = {
     tone: "warn",
   },
   CHIUSO_BALI: { label: "Closed for PMA in Bali", icon: "🚫", tone: "block" },
+  // Added 2026-09-15 (W-J B1 overlay): the ~500-code "blocked by risk tier"
+  // reading was never the applied closure — only 18 business fields (40 KBLI
+  // 2025 codes) are actually closed on OSS. A code off that list is NOT
+  // registrable-by-default either: the low/medium-low tier was named only in
+  // the Governor's own request letter, never enacted for it. tone "warn" on
+  // purpose — this must never render as "ok" anywhere (badge, FAQ, OG chip).
+  ATTENZIONE_FASCIA_BALI: {
+    label: "Not on Bali's PMA closure list — verify on OSS",
+    icon: "⚠️",
+    tone: "warn",
+  },
   CHIUSO_BALI_PROPOSTO: {
     label: "Closure proposed (Bali)",
     icon: "⚠️",
