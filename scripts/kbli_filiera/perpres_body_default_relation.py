@@ -582,8 +582,31 @@ _LINE = {
 }
 
 
+# RULED 2026-09-14 (owner): «100% non PMA i codici che non hanno skala besar».
+# The Pasal 7(1) reading this module refused on 2026-08-02 is now the owner's
+# ruling, grounded additionally on Permeninves/BKPM 5/2025 Pasal 26(1), and
+# `cure_pma_closed_no_besar_scale.py` writes 0% on every OBSERVED absence of a
+# Besar scale. A page stating that 0% must cite the rule that produced it, so an
+# `absent` row now carries it; `observed`/`unobserved` rows never do.
+NO_BESAR_CITE = (
+    "Perpres 10/2021 Pasal 7(1) + Permeninves/BKPM 5/2025 Pasal 26(1) — "
+    "OSS publishes no Usaha Besar scale, and a PT PMA must be an Usaha Besar"
+)
+
+
 def locator_line(bucket: str, evidence: dict) -> str:
     """The citation as a page renders it. Total over the buckets by construction."""
+    line = _base_locator_line(bucket, evidence)
+    if evidence.get("besar") != "absent":
+        return line
+    if bucket.startswith("residual"):
+        # "no annex names this activity" under Pasal 3(1)(d) is the OPEN default;
+        # beside a 0% verdict it would cite the opposite of the answer.
+        return NO_BESAR_CITE
+    return f"{line} + {NO_BESAR_CITE}"
+
+
+def _base_locator_line(bucket: str, evidence: dict) -> str:
     if bucket in _LINE:
         return _LINE[bucket]
     if bucket == "named-in-annex":

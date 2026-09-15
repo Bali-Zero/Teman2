@@ -105,12 +105,30 @@ PROSE_OPEN_RE = re.compile(
 
 # Gold passages that assert 100% openness on a capped code and are RIGHT,
 # because the figure belongs to a DIFFERENT, NAMED code. Never "corrected".
+
 PROSE_ACQUITTED = {
     "47111": (
         "the '100% PMA' is 47191's, named in the same paragraph as the PMA "
         "alternative; the passage itself says 'foreigners cannot own 47111' and "
         "calls the segment UMKM-reserved. The number belongs to another entity."
     ),
+}
+
+# RULED 2026-09-14 (owner): «100% non PMA i codici che non hanno skala besar».
+# `cure_pma_closed_no_besar_scale.py` closed these to TERBATAS / 0%, and their
+# gold `baliContext` prose still says "100% foreign-owned" in words. They are NOT
+# acquitted — the prose is wrong — and this compiler does not write client-facing
+# prose, so they wait for an author. Kept apart from PROSE_ACQUITTED on purpose:
+# that dict means "the sentence is right", and mixing a pending-author entry into
+# it would let the next reader take a stale sentence for an adjudicated one.
+# VERIFIED 2026-09-14: none is a key in either section of
+# `data/kbli-filiera/pma-editorial-certifications.json`, so the certification
+# gate (`hasCertifiedMouthGold` / `hasCertifiedCanonicalIntel`) withholds this
+# prose from every rendered surface.
+PROSE_PENDING_AUTHOR = {
+    "73300": "owner ruling 2026-09-14 (PMA_CLOSED_NO_BESAR_SCALE); baliContext says 100% foreign-owned",
+    "74199": "owner ruling 2026-09-14 (PMA_CLOSED_NO_BESAR_SCALE); baliContext says 100% foreign-owned",
+    "79902": "owner ruling 2026-09-14 (PMA_CLOSED_NO_BESAR_SCALE); baliContext says 100% foreign ownership",
 }
 
 # Sentence-level replacements that had to be WRITTEN, not derived — each pinned
@@ -465,7 +483,8 @@ def main() -> int:
 
     prose = prose_scan(gold, by_code)
     unacquitted = {c: v for c, v in prose.items()
-                   if c not in PROSE_ACQUITTED and c not in AUTHORED_SENTENCES
+                   if c not in PROSE_ACQUITTED and c not in PROSE_PENDING_AUTHOR
+                   and c not in AUTHORED_SENTENCES
                    and c not in refused}
     log.info("prose openness on capped codes: %d found | %d acquitted | %d to author",
              len(prose), len(PROSE_ACQUITTED), len(unacquitted))
