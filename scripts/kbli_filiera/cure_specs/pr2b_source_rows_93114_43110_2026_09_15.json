@@ -2,6 +2,24 @@
   "93114": {
     "disputed_key": "per_skala_disputed_pp28_collision",
     "drop_keys": ["per_skala_disputed_pp28_collision", "_data_note"],
+    "premises": {
+      "per_skala": {
+        "old_sha256": "5b456929a131bef7a19482f284f5199a9d23ba82bee900d53cd2f8e287b08a35",
+        "new_sha256": "37e54673dc5e772d8a17d72b4c3e89997ab5989035c49d4f2629959858a322b6"
+      },
+      "per_skala_disputed_pp28_collision": {
+        "old_sha256": "bb40c70b996d2483ccd16fec7bd3272c89e7cf72cd70459b17d7fee25695f7af",
+        "new_sha256": "74234e98afe7498fb5daf1f36ac2d78acc339464f950703b8c019892f982b90b"
+      },
+      "_data_note": {
+        "old_sha256": "a86d0925eaf31c2951155228b7485c18c4a025d78aee1e1fe54e1840df31662d",
+        "new_sha256": "74234e98afe7498fb5daf1f36ac2d78acc339464f950703b8c019892f982b90b"
+      },
+      "l4_bali": {
+        "old_sha256": "bbfa8c2e7156d0402ee0ac721692b3d0199fe69700579fa8670544d42d6112a0",
+        "new_sha256": "f3d28ced2cb9142c6c417dda02881692940382c12abaa0bc7ddef5c4b37eb6a7"
+      }
+    },
     "l4_patch": {
       "status": "BLOCCATO_DIPENDE_SCOPE",
       "blocked": false,
@@ -14,6 +32,20 @@
   "43110": {
     "legacy_key": "per_skala_legacy",
     "expected_legacy_count": 3,
+    "premises": {
+      "per_skala": {
+        "old_sha256": "87cfb026a12b94a95624d318e12141543f88aeda7855c977e61fa8922b4c283d",
+        "new_sha256": "0dfefe3a1465f15f47bc219f9cc8d4bb670ce91ffc783dcff0a1930f3b3967f7"
+      },
+      "per_skala_legacy": {
+        "old_sha256": "2d550c60cfb2eb684a8612dd56112c8e590e6f8ccb2d732853a6a06548321af1",
+        "new_sha256": "2d550c60cfb2eb684a8612dd56112c8e590e6f8ccb2d732853a6a06548321af1"
+      },
+      "l4_bali": {
+        "old_sha256": "ba8daa50ab72738faabd5f6da1373263623514d1dc3f0d9ca27411a46de01d84",
+        "new_sha256": "f00f7f098b1ab7e000b13e52ee338eec016454fd52b8884913264d624e507797"
+      }
+    },
     "row_fixes": [
       {
         "index": 2,
