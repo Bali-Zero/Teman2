@@ -94,7 +94,7 @@ const EXCLUDED_NAMES: ReadonlySet<string> = new Set([
  *
  * A name is not the only way to publish somebody. An editorial entry carrying a
  * PERFECTLY ALLOWED slug can still point at an excluded person through another
- * field: `{ slug: "kadek", photoOverride: "/static/team/faisha.jpg" }` publishes
+ * field: `{ slug: "kadek", photoOverride: "<an excluded member's portrait path>" }` publishes
  * the face, and an email-shaped field publishes the address. So the filter judges
  * every string an entry carries, not only the fields it knows by name.
  */
@@ -163,7 +163,7 @@ export function publicEntries<
   return entries.filter((e) => {
     // Checked BEFORE the slug, and whatever the slug says: an entry like
     // `{ slug: "kadek", nameOverride: "Faisha" }` or
-    // `{ slug: "kadek", photoOverride: "/static/team/faisha.jpg" }` carries a
+    // `{ slug: "kadek", photoOverride: "<an excluded member's portrait path>" }` carries a
     // perfectly allowed slug, so a slug-first short-circuit would publish the
     // excluded person's name or face under a clean one.
     if (carriesExcludedMarker(e)) return false;
