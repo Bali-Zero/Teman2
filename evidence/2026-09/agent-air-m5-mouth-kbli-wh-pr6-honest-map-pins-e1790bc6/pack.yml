@@ -15,13 +15,51 @@ pii_scan_note: >-
   files and one test file, all under apps/mouth/src).
 
 council_run: journal.jsonl
-# Left for the Dux: this lane ran no adversarial council round (Gear 2, appetite
-# adversarial_rounds: 1, budgeted but not consumed — the drift was a direct data-vs-prose
-# measurement with no ambiguity to adjudicate). The Dux may run one before shipping.
+# codex-gpt-5.6-sol xhigh reviewed the first version of this diff (see journal.jsonl and the
+# dissent entry below) — VERDICT: FIX-FIRST, 3 findings, all 3 cured in this same session.
 
-dissent: []
-# Empty is a valid Gear-2 shape (harness-v2 §5 "consenso sospetto" guilt only fires at
-# Gear 3). No adversarial round was run against this diff (see council_run note above).
+dissent:
+  - seat: codex-gpt-5.6-sol (xhigh, adversarial review)
+    objection: >-
+      BLOCKER — the it/id number-window prober (`numbersInOrderWithinWindow`, raw
+      `text.indexOf`) let an expected number match INSIDE a larger mutated one (373 inside a
+      mutated 1373; all six category counts prefixed with "1" stayed green), and its
+      "retry every occurrence of the first number" search let a probe validate against the
+      WRONG sentence (mutating headline 519→518, the correction paragraph's 33,3→33,2 and the
+      closing count's 519→518 simultaneously stayed green, because an untouched, genuinely
+      correct "519"/"33,3" survived at a different, unrelated occurrence and the retry logic
+      happily matched that one instead). MAJOR — several dataset-derived sub-figures were
+      computed but never pinned: "all but four nationally open" (369+4 split within the
+      risk-class category), the TERTUTUP 62+6 split (0%-foreign-ownership vs. the 100%-catalogue
+      "trap" codes), and the remainder's 2+2+2 composition. MAJOR — repeated EN figures were
+      unpinned at their OWN occurrence: the methodology-paragraph total, the headline's own
+      percentage sentence, and the breakdown-intro count.
+    status: CONFIRMED
+    cure: >-
+      Replaced the whole it/id character-window mechanism with POSITION: every number token in
+      the article body (frontmatter stripped) is extracted once, in reading order, as a maximal
+      digit run — `numberTokens`/`nthNumberToken` — so "373" can never match inside "1373" (a
+      whole-token equality, not a substring test), and every pin reads its OWN fixed occurrence
+      index rather than searching the whole document, so a wrong-paragraph mutation can no
+      longer hide behind a correct sibling elsewhere. The it/id token order was measured once
+      against the live files (2026-09-15) and is IDENTICAL in both languages (the translator
+      reorders nothing, only rewords), giving 23 positional pins per locale — covering every
+      figure the review named, in both it and id, not just where it demonstrated the bug.
+      `countBreakdown()` gained `riskClassNationallyOpen`/`riskClassNotNationallyOpen`
+      (predicate: `pma_status === "TERBUKA"` among risk-class-blocked rows — measured 369/4,
+      matching "all but four" exactly) and `tertutupZero`/`tertutupNonZero` (predicate:
+      `pma_max_asing === 0` among TERTUTUP rows — measured 62/6, and the 6 nonzero codes are
+      EXACTLY the six examples the article names). 9 new EN sentence-regex anchors added
+      (methodology total, headline percentage, breakdown-intro count, the "four" spelled-out
+      sub-count via a derived word-lookup table so nothing is hard-coded, the TERTUTUP 62/6
+      split, and the remainder's three sub-counts). Both of the reviewer's demonstrated
+      mutations were reproduced VERBATIM against the live it.mdx (not a synthetic string) and
+      confirmed red before restoring the file — see receipts below — plus 4 permanent
+      mutation-guilt tests (2 mutations × it/id) and 1 EN guilt test now living in the suite.
+      IT/ID no longer pin "not the wrong-figure occurrence, some other occurrence of the same
+      digits" — each of the 23 positional pins is anchored to a fixed index, not a value search,
+      and a body-length sanity check fails loudly first if the article's numeral count ever
+      drops below the map's expectation.
 
 decisions:
   - id: D1
@@ -47,13 +85,42 @@ decisions:
       the printed headline).
   - id: D3
     what: >-
-      IT/ID category-breakdown probe uses a wider match window (500 vs. the file's default
-      400) via a new optional `probe.window` field.
+      SUPERSEDED by the Codex review cure (see dissent below). The original cure for the
+      TERTUTUP example-list gap was a wider character-window (500 vs. 400); the whole
+      character-window mechanism it patched was itself replaced by exact positional-token
+      matching, which has no window to size at all for these six pins.
     why: >-
-      The TERTUTUP bullet in it/id carries a six-example parenthetical (legal consultancy,
-      notaries, medical practice, minimarket, agriculture) that pushes the 68→17 character gap
-      to 421-424 chars in both locales — over the file's existing NUMBER_WINDOW=400. Measured
-      directly (see receipts) rather than guessed; 500 clears both locales with margin.
+      Kept here rather than deleted so the pack's own history shows the superseded approach
+      was tried, measured (421-424 chars, over the 400 default) and then subsumed by a
+      strictly stronger fix once the review found the window mechanism's deeper flaw.
+  - id: D5
+    what: >-
+      it/id positional pins are keyed by a fixed OCCURRENCE INDEX into the article body's
+      number-token sequence (measured once, 2026-09-15), not by searching for a value.
+    why: >-
+      The review's second demonstrated mutation (finding 1) exploited exactly the "search
+      anywhere, retry every start" design: a probe can validate against ANY matching occurrence
+      in the whole document, so a mutated sentence can hide behind an untouched, genuinely
+      correct sibling elsewhere. Position is immune by construction — index 40 (the narrative
+      percentage) is blind to whatever index 7 (the headline percentage) says, so mutating one
+      while leaving the other correct still fails the mutated one specifically. This is safe
+      under the file's own stated threat model (hourly WORDING drift, never paragraph
+      reordering) and was verified, not assumed: dumping every number token's index across
+      EN/IT/ID confirmed identical structural order in all three (48 tokens each).
+  - id: D6
+    what: >-
+      The "all but four nationally open" sub-count is pinned in EN only, via a word derived
+      from a small lookup table (`SMALL_NUMBER_WORDS[computedValue]`), not pinned at all in
+      it/id.
+    why: >-
+      The figure is spelled out as a WORD in the prose ("four"/"quattro"/"empat"), not a digit,
+      so the digit-token positional mechanism cannot see it, and it/id wording is rewritten
+      hourly, so a word-anchored regex there would be exactly the wording-treadmill the file's
+      design already rejects for it/id. The underlying predicate (`pma_status === "TERBUKA"`
+      among risk-class-blocked rows) was independently discovered and verified to produce
+      exactly 4, matching the live prose — not invented — and is asserted as a standalone
+      sanity bound (`SMALL_NUMBER_WORDS.length`) so a future value that no longer fits a small
+      English word fails loudly instead of reading `undefined`.
   - id: D4
     what: >-
       The invariant test recomputes both sides from the dataset (six category counts vs.
@@ -95,8 +162,8 @@ receipts:
     ts: "2026-09-15T16:24:00+08:00"
     seat: Claude Sonnet 5
   - claim: >-
-      After the three-figure fix in all three locales and the window widen (D3), the full
-      target suite is green.
+      After the three-figure fix in all three locales (D3's now-superseded window widen), the
+      full target suite is green — first version of this diff, before the Codex review.
     cmd: cd apps/mouth && npx vitest run src/lib/kbli-prose-pins.test.ts src/lib/kbli-withdrawn-umkm-inference.test.ts src/lib/blog/categories.test.ts
     result: "Test Files 3 passed (3) / Tests 57 passed (57)"
     exit: 0
@@ -110,11 +177,64 @@ receipts:
     exit: 0
     ts: "2026-09-15T16:15:30+08:00"
     seat: Claude Sonnet 5
-  - claim: Static gate on the changed test file.
-    cmd: cd apps/mouth && npx tsc --noEmit -p .
-    result: "no output, exit 0"
+  - claim: >-
+      The predicates for the two new sub-splits (D6, and the TERTUTUP 62/6 split) are real,
+      not invented: measured directly against the canonical before writing any test code.
+    cmd: >-
+      python3 -c census over KBLI_2025_FINAL_CLEAN.json — among BLOCCATO_CLASSE_RISCHIO-blocked
+      rows, split by pma_status; among TERTUTUP-blocked rows, split by pma_max_asing
+    result: >-
+      risk-class: 369 pma_status=="TERBUKA", 4 pma_status=="TERBATAS" (codes 10214 16221 95220
+      95299) — matches "all but four" exactly. TERTUTUP: 62 pma_max_asing==0, 6
+      pma_max_asing==100 — the 6 nonzero codes are 01111 47112 69102 69104 86201 86202, EXACTLY
+      the six codes the article's prose already names as the "trap".
     exit: 0
-    ts: "2026-09-15T16:27:00+08:00"
+    ts: "2026-09-15T16:42:00+08:00"
+    seat: Claude Sonnet 5
+  - claim: >-
+      The review's first demonstrated mutation (BLOCKER, superstring: 373/48/68/17/7/6 ->
+      1373/148/168/117/17/16) is reproduced verbatim against the LIVE it.mdx (not a synthetic
+      string) and turns exactly the six category-count pins red, under the NEW positional
+      mechanism, before being reverted.
+    cmd: >-
+      cp it.mdx /tmp/it-backup.mdx; python3 splice each of the six category counts by
+      occurrence index (29,24,23,12,11,10, in that order so earlier indices stay valid);
+      npx vitest run src/lib/kbli-prose-pins.test.ts -t "reproduces from the dataset";
+      cp /tmp/it-backup.mdx it.mdx (restore)
+    result: >-
+      "Tests 6 failed | 63 passed | 12 skipped (81)" — failing: risk-class, moratorium,
+      closed-activity (TERTUTUP), non-classifiable, reserved-for-cooperatives and remainder
+      category counts, each for exactly the mutated occurrence. File restored; `git diff
+      --stat` on it.mdx empty afterward.
+    exit: 1
+    ts: "2026-09-15T16:53:00+08:00"
+    seat: Claude Sonnet 5
+  - claim: >-
+      The review's second demonstrated mutation (BLOCKER, wrong-paragraph: headline blocked
+      519->518, narrative percentage 33,3->33,2, closing count 519->518, occurrence indices
+      6/40/48) is reproduced verbatim against the LIVE it.mdx, turns EXACTLY those three pins
+      red while the untouched breakdown-intro (index 9) and closing-ratio (index 41) occurrences
+      of the same "519" correctly stay green, before being reverted.
+    cmd: >-
+      cp it.mdx /tmp/it-backup.mdx; python3 splice occurrences 48, 40, 6 (in that order);
+      npx vitest run src/lib/kbli-prose-pins.test.ts -t "reproduces from the dataset";
+      cp /tmp/it-backup.mdx it.mdx (restore)
+    result: >-
+      "Tests 3 failed | 66 passed | 12 skipped (81)" — failing: headline blocked count,
+      narrative percentage, closing count. Everything else, including the two untouched "519"
+      occurrences, passed. File restored; `git diff --stat` on it.mdx empty afterward.
+    exit: 1
+    ts: "2026-09-15T16:55:00+08:00"
+    seat: Claude Sonnet 5
+  - claim: >-
+      After the cure, the full target suite is green and tsc is clean.
+    cmd: >-
+      cd apps/mouth && npx vitest run src/lib/kbli-prose-pins.test.ts
+      src/lib/kbli-withdrawn-umkm-inference.test.ts src/lib/blog/categories.test.ts && npx tsc
+      --noEmit -p .
+    result: "Test Files 3 passed (3) / Tests 110 passed (110); tsc: no output, exit 0"
+    exit: 0
+    ts: "2026-09-15T16:55:46+08:00"
     seat: Claude Sonnet 5
 
 leftovers:
@@ -128,3 +248,14 @@ leftovers:
     Sibling articles with the same kind of exposure (`pondok-wisata-vs-villa`,
     `the-villa-dream-has-a-new-wall`, `open-nationally-blocked-in-bali`,
     `kbli-2025-green-economy-waste`) are dossier §4's PR-7, not this lane.
+  - >-
+    The "100%" literal in "the catalogue says 100%" (TERTUTUP trap sentence, occurrence index
+    16) is not pinned: it is always descriptively 100 whenever `pma_max_asing===100`, a constant
+    of the predicate rather than a count, so there is nothing dataset-derived to drift.
+  - >-
+    The six example KBLI codes in the TERTUTUP trap sentence (01111, 47112, 69102, 69104,
+    86201, 86202) are verified in the receipts above to be EXACTLY the `pma_max_asing===100`
+    set, but are not pinned as a live per-code list in the test — a future addition/removal from
+    that set would change the "6" sub-count pin (caught) without the specific codes being
+    re-verified against prose (not caught). Flagging as a gap, not fixing: out of the three
+    findings' scope and the article does not claim the list is exhaustive.
