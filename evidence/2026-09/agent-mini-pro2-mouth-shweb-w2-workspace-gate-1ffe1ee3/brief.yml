@@ -1,0 +1,28 @@
+task_id: shweb-w2-workspace-gate
+mandate_id: SAETTA-20260915/W-C/R-A
+colour: BLUE
+l_level: L2
+gate_class: opus
+gear: 2
+gear_reason: >-
+  Measured, not chosen: `evidence_pack_lint.py --print-floor --changed-files-file <f>
+  --numstat-file <n>` returns 2 and `--print-floor-source` returns `size` (3 files,
+  +1026/-17, of which 808 are one new test file). No hot-zone path.
+objective: >-
+  No anonymous visitor can read a workspace page. Today every workspace route
+  (/lkpm, /clients/<id>, /dashboard, ...) answers an anonymous GET with HTTP 200
+  and the rendered payload on kita.balizero.com and zantara.balizero.com, the
+  .rsc / RSC-header variants do the same, and a dotted id (/clients/1.2) does it
+  on balizero.com too. proxy.ts gains one session gate helper called before every
+  return that hands a gated path to rendering (app domain, zantara, *.fly.dev,
+  unclassified hosts), the dotted-path early return no longer skips internal
+  paths, and config.matcher gains a literal internal-prefix entry pinned to
+  INTERNAL_ROUTES by a test.
+acceptance:
+  - "npx vitest run src/__tests__ (apps/mouth) green; tsc --noEmit exit 0"
+  - "mutation per call-site: removing the zantara, fall-through, fly.dev, app-domain call or the dotted early-return narrowing turns its own host-matrix rows red"
+  - "PROVE-LIVE anonymous: kita|zantara /lkpm, /clients/1, /clients/1.2, /dashboard, /lkpm.rsc answer != 200 (302 to /login); balizero.com/clients/1.2 answers 301"
+  - "PROVE-LIVE innocence: the 12 public baseline URLs keep their pre-deploy status; a request carrying the session cookie is not redirected"
+appetite:
+  wall_clock_hours: 6
+  adversarial_rounds: 2
