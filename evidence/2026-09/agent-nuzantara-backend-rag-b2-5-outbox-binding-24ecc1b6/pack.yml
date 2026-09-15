@@ -1,56 +1,248 @@
-task_id: b2-5-outbox-binding-v2
+task_id: b2-5-outbox-binding-v3
 mandate: SAETTA-20260915/W-B
 colour: BLUE
-pr: "PR-1 — one message, one answer (wa_outbox inbound binding + FIFO per thread)"
-head_sha: b249c36a07 # pragma: allowlist secret — freeze candidate: the review-cure commit. The commit carrying THIS pack is its child; a sha written here cannot name the commit that writes it
-base_sha: a5f2b1243b515f0fd9906c8fdf16fbd00eeda807 # pragma: allowlist secret
-brief_ref: evidence/brief.yml # MUST be the STAGING literal, never this mission's per-PR path: harness-floor.yml copies pack and brief into a synthetic tree under canonical names and lints there
+pr: "PR-1 successor — one message, one answer (wa_outbox inbound binding + FIFO per thread)"
+head_sha: c4db844a8b # pragma: allowlist secret — freeze candidate: the council-cure commit. The commit carrying THIS pack is its child; a sha written here cannot name the commit that writes it
+base_sha: 8e7acd7db1 # pragma: allowlist secret
+brief_ref: evidence/brief.yml # MUST be the STAGING literal, never this mission's per-PR path: harness-floor.yml copies pack and brief into a synthetic tree under canonical names and lints there with --repo-root
 gear: 3
 gear_floor_measured: 3
 gear_floor_source: path # hot zone (a migrations_v2 file + the outbox worker), NOT churn — verified with --print-floor-source
+council_run: journal.jsonl
+pii_scan: clean
+
+# R10 escape, and it is a statement of fact rather than a paperwork field. The diff touches a
+# PII PATH (the WhatsApp channel), so the rule asks how a non-`ollama-` seat was allowed to see
+# it. Answer: what crossed the boundary was the DIFF ONLY — source code plus tests whose
+# fixtures are synthetic throughout. No client message body, phone number or name was in it.
+# The three production figures quoted in this pack were read by the Dux alone via scripts/pg.sh
+# as aggregate COUNT(*) values; no row content was read, and none left this machine. Verified,
+# not asserted: `git diff 8e7acd7db1 HEAD | grep -nE "(api[_-]?key|token|password|@gmail|\+62[0-9])"`
+# returns 15 hits, of which 14 are the column/parameter name `claim_token` and the fifteenth is
+# a diff hunk header (`@@ -538,6 +625,7 @@` — the `+625` matches `\+62[0-9]`). Zero real
+# secrets, zero client identifiers. This is the SYMBIOSIS Law 2 output boundary being met, and
+# it is the same boundary every vendor here is held to.
+cloud_ok: >-
+  DIFF-ONLY EGRESS, SYNTHETIC FIXTURES, GREP-VERIFIED CLEAN (see the comment above and the
+  pii_scan receipt). No client PII crossed to any external seat; production data was touched
+  only as aggregate counts, locally, by the Dux.
+
+# The council quorum counts agy-gemini-3.1-pro, a RESERVE seat. The linter is right to ask why a
+# reserve played while titolari exist, so here is the observation rather than an assurance —
+# both probed live in THIS session, not quoted from a session-start banner:
+#   kimi-code/k3   -> `kimi -p ... -m kimi-code/k3` answered
+#                     "provider.auth_error: 403 You've reached your monthly usage limit for this
+#                      billing cycle" (kimi version 0.42.0)
+#   tp1-qwen3.8-max -> `python3 scripts/arsenal_probe.py --seats tp1-qwen3.8-max` returned
+#                      QUOTA_DEAD, HTTP 429, "1-week quota has been exhausted. The quota will
+#                      reset at 09-18 08:39:00 UTC"
+# codex-gpt-5.6-sol, the remaining titolare, DID play — it is round 1 and holds two of the three
+# journal rows. agy replaced the two dead titolari as the second FAMILY, which is the property
+# the quorum actually exists to buy: a seat whose training prior is not the author's.
+seat_fallback_reason: >-
+  agy-gemini-3.1-pro replaced kimi-code/k3 (403, monthly quota exhausted) and tp1-qwen3.8-max
+  (429, weekly quota exhausted until 2026-09-18 08:39 UTC), both probed live in this session.
+  The titolare codex-gpt-5.6-sol did play, in round 1, across two lanes.
 
 spend:
-  wall_clock_hours: 2
-  adversarial_rounds: 1 # one Codex round, split into two lanes (migration+worker, loader+leg)
-  children: 2
+  wall_clock_hours: 3
+  adversarial_rounds: 2 # round 1 codex-gpt-5.6-sol (two lanes), round 2 agy-gemini-3.1-pro constructive
+  children: 4
   child_depth: 1
   tokens: not measured
 
+lanes:
+  - lane: b2-5-outbox-binding-build
+    role: build
+    seat: >-
+      claude-opus-5 xhigh (Dux, this session, on Pro) plus two claude-sonnet-5 implementer
+      subagents, all LOCAL seats on the owner's own machine. Worktree
+      .worktrees/backend-rag-b2-5-outbox-binding-v3, branch
+      agent/nuzantara/backend-rag/b2-5-outbox-binding-v3, base origin/main 8e7acd7db1. Recovers
+      commit 8c4d310b16, built in an earlier window and never pushed.
+  - lane: b2-5-review-codex
+    role: review
+    seat: >-
+      codex gpt-5.6-sol xhigh (`codex exec --sandbox read-only`), OUT of the contribution chain,
+      two lanes — (a) migration + outbox worker, (b) bound-context loader + codex leg. What left
+      this machine was the DIFF ONLY: source code and tests carrying synthetic fixtures. No
+      client message body, phone number or name was in it, and no production row was sent
+      anywhere. Production counts quoted in this pack were read by the Dux via scripts/pg.sh as
+      aggregate COUNT(*) values — no row content left the machine.
+  - lane: b2-5-review-gemini
+    role: review
+    seat: >-
+      agy-gemini-3.1-pro (`agy -p`), OUT of the contribution chain, constructive role, round 2,
+      briefed with round 1's dispositions so it could not re-raise them. Same PII boundary as the
+      codex lane: the diff only, synthetic fixtures only.
+  - lane: b2-5-gate
+    role: review
+    seat: >-
+      claude-opus-5 xhigh, FRESH read-only session outside the contribution chain, commissioned
+      on the predecessor PR #6558 at sha c424d5fdae. Signed PASS on the code and correctly
+      refused to rerun the red floor check, identifying the cause as this pack's own content
+      rather than a stale run. A second fresh gate is commissioned on THIS sha.
+
+receipts:
+  - claim: the deterministic gear floor for this changed-file set is 3, and it comes from the hot zone rather than churn
+    cmd: python3 scripts/evidence_pack_lint.py --print-floor --changed-files-file <f> --numstat-file <n>; and --print-floor-source
+    result: "3; source: path"
+    ts: "2026-09-15T13:22:00+08:00"
+    seat: claude-opus-5 (Dux, this session)
+    exit: 0
+  - claim: the recovered commit cherry-picks onto a fresh origin/main with no conflict and the whole wa_* surface is green
+    cmd: git cherry-pick 7d54226975 b249c36a07 c424d5fdae; then .venv/bin/python -m pytest backend/tests/unit/services/ -k "wa_ or whatsapp" backend/tests/db/
+    result: "cherry-pick clean; 1045 passed, 0 failed, 6 pre-existing xfail, 0 unexplained skips"
+    ts: "2026-09-15T13:55:00+08:00"
+    seat: claude-opus-5 (Dux, this session)
+    exit: 0
+  - claim: migration 318 applies AND rolls back on a database that does not already carry the column — the green test run alone did NOT prove this, because the local test DB had the column applied by hand
+    cmd: split the file at the ROLLBACK marker; psql -v ON_ERROR_STOP=1 -f 318_down.sql then -f 318_up.sql against a scratch clone (nuzantara_mig316), then query pg_indexes
+    result: "DOWN rc=0, UP rc=0, both wa_outbox_inbound_message_id_idx and wa_outbox_thread_needs_generation_active_idx present after UP"
+    ts: "2026-09-15T13:59:00+08:00"
+    seat: claude-opus-5 (Dux, this session)
+    exit: 0
+  - claim: the migration passes the CI's own Squawk invocation and both migration lints
+    cmd: squawk --pg-version=15.0 with the CI's exact exclusion list; python3 scripts/lint_migration_rollback.py; python3 scripts/lint_migration_numbers.py
+    result: "Found 0 issues in 1 file; 189 post-cutoff migrations all carry the marker; 194 files, all unique prefixes"
+    ts: "2026-09-15T13:32:00+08:00"
+    seat: claude-opus-5 (Dux, this session)
+    exit: 0
+  - claim: the guard test for the legacy-derive's serialization dependency is NOT vacuous
+    cmd: "mutation: replace whatsapp_chat.py's `ON CONFLICT (counterpart_phone) DO UPDATE` with `DO NOTHING`, run test_wa_inbox_bot_bound_context.py, then restore"
+    result: "mutated -> 1 failed (test_legacy_anchor_derive_depends_on_the_thread_upsert_serializing_webhooks), 7 passed; restored -> 8 passed"
+    ts: "2026-09-15T13:29:00+08:00"
+    seat: claude-opus-5 (Dux, this session)
+    exit: 0
+  - claim: three production numbers decided three review disputes, read-only and without any row content leaving the machine
+    cmd: scripts/pg.sh -c "select count(*) ... from wa_outbox" (aggregate counts only)
+    result: "446 total rows; 245 failed; 233 failed carrying a NULL generation_fall_off_reason; 0 pending; 0 pending-and-needs-generation"
+    ts: "2026-09-15T13:25:00+08:00"
+    seat: claude-opus-5 (Dux, this session)
+    exit: 0
+  - claim: codex round 1, two lanes, on the recovered diff
+    cmd: codex exec -m gpt-5.6-sol -c model_reasoning_effort=xhigh --sandbox read-only
+    result: "20 findings across the two lanes; 2 real defects cured; 3 refuted on disk with evidence; 4 declared measured-not-cured with reasons. See journal.jsonl and council/"
+    ts: "2026-09-15T13:27:00+08:00"
+    seat: codex-gpt-5.6-sol
+    exit: 0
+  - claim: gemini round 2, constructive, briefed with round 1's dispositions
+    cmd: agy -p (probed live first with a PONG before trusting the seat)
+    result: "6 findings; 3 cured here including a REGRESSION this PR introduces (N apologies per failing burst); 2 refuted on disk with the mechanism corrected; 1 declared"
+    ts: "2026-09-15T13:50:00+08:00"
+    seat: agy-gemini-3.1-pro
+    exit: 0
+  - claim: the predecessor PR #6558 passed a fresh independent gate on the code
+    cmd: harness_fable_gate.py --verdict PASS --sha c424d5fdae (fresh read-only Opus 5 session, 20-minute budget)
+    result: "PASS on code, perimeter clean, 0 real PII hits, both sampled refutations verified true. It refused to rerun the red floor check, correctly naming this pack's content as the cause"
+    ts: "2026-09-15T13:40:00+08:00"
+    seat: claude-opus-5 (fresh gate, outside the contribution chain)
+    exit: 0
+
 result: >-
-  The commit recovered from 8c4d310b16 (built in a previous window, never pushed) cherry-picks
-  cleanly onto a fresh origin/main and is green. Migration 318 adds wa_outbox.inbound_message_id
-  plus the partial index the FIFO claim predicate reads, and the webhook writes the binding at
-  enqueue time inside the transaction that creates the inbound and the stub. Coalescing is gone:
-  a thread's rows are served one at a time, oldest first. One adversarial round produced two real
-  defects, both cured here with tests (a whitespace-only body consumed the history budget; a
-  whitespace-only anchor reached the generator as the query), plus one undeclared dependency now
-  named in a comment and pinned by a mutation-proven guard test.
+  Every wa_outbox row is bound to the one inbound message it answers (migration 318), the
+  webhook writes that binding at enqueue time inside the transaction that creates the inbound
+  and the stub, coalescing is removed, and a thread's rows are served one at a time oldest
+  first via a partial index the claim SELECT reads. Two council rounds on two families produced
+  five real cures; the most important came from the constructive seat and is a regression this
+  change itself introduces — with bursts no longer coalesced, a fully failed burst would have
+  sent the client one apology per row.
 
 measured:
-  - "named tests (bound_context + outbox_worker + codex_leg): 127 passed before the cures, 138 passed after (3 new tests), 0 failed"
-  - "whole wa_* surface incl. tests/db: 1038 passed, 0 failed, 6 pre-existing xfail each carrying its own accepted-gap reason"
-  - "migration 318 applied DOWN then UP on a clone that did NOT already carry the column: rc=0 in both directions. This mattered — the local test DB already had the column applied by hand, so the green test run alone did not prove the migration works from a clean state"
-  - "squawk --pg-version=15.0 with the CI's exact exclusion list: 0 issues in 1 file"
-  - "lint_migration_rollback.py: 189 post-cutoff migrations all carry the marker; lint_migration_numbers.py: 194 files, all unique prefixes"
-  - "RENUMBERED 316 -> 318 after the pre-push sibling re-check, which is the only probe that caught it: open PR #6474 (draft, BLOCKED since 13/09) already carries a 316_ and #6478 (armed, BLOCKED) carries a 317_. lint_migration_numbers.py reads ONLY the local tree, so it reported 'all unique prefixes' on a number another open PR already owned — the W40 collision shape, invisible to the lint that exists to prevent it. 318 clears main's 315, #6474's 316 and #6478's 317, so this PR does not depend on merge order. All 16 in-code references were moved with it and the full suite re-run after the rename"
-  - "docs_sync.py: DOCSYNC OK (no changes) — run BEFORE arming, per W86"
-  - "MUTATION-PROVEN: replacing whatsapp_chat.py's thread-upsert DO UPDATE with DO NOTHING turns test_legacy_anchor_derive_depends_on_the_thread_upsert_serializing_webhooks RED (1 failed, 7 passed); restored, back to 8 passed. The guard is not vacuous"
-  - "PRODUCTION, read-only via scripts/pg.sh: wa_outbox holds 446 rows, 245 failed, 233 of those with a NULL generation_fall_off_reason, 0 pending, 0 pending-and-needs-generation"
+  - "named tests (bound_context + outbox_worker + codex_leg + tests/db): 127 passed on the recovered commit, 138 after the round-1 cures, and the whole wa_* surface 1045 passed / 0 failed after the round-2 cures"
+  - "6 xfail, all pre-existing in test_wa_dlp.py, each carrying its own accepted-gap reason; 0 unexplained skips anywhere on this surface"
+  - "migration 318 DOWN then UP on a clone that did NOT carry the column: rc=0 both directions, both indexes present afterwards"
+  - "squawk --pg-version=15.0 with the CI's exact exclusion list: 0 issues"
+  - "MUTATION-PROVEN guard: removing the thread-upsert's DO UPDATE turns the derive's guard test RED (1 failed / 7 passed); restored, 8 passed"
+  - "PRODUCTION (aggregate counts only, read-only): wa_outbox 446 rows, 245 failed, 233 of those with a NULL reason, 0 pending"
+  - "renumbered 316 -> 318 after the sibling re-check found open PRs #6474 (316_) and #6478 (317_); lint_migration_numbers.py could not see this because it reads only the local tree"
 
-adversarial_review:
-  seat: "codex gpt-5.6-sol xhigh, two lanes, read-only sandbox"
-  cured:
-    - "whitespace-only history entries consumed the _HISTORY_TURNS budget and displaced real context: the filter rejected only the empty string, not a body of spaces"
-    - "a whitespace-only anchor reached the generator as the query, because a string of spaces is truthy and wa_codex_leg's empty-query guard never fired"
-  refuted_with_evidence:
-    - "'Nothing writes inbound_message_id, so every row falls back to the legacy heuristic' — FALSE: whatsapp_chat.py:1321-1330 passes it explicitly in the enqueue INSERT. The reviewer's lane did not carry that file. The false positive is an artifact of how I SPLIT THE DIFF for review — a defect in my instrument, not in the change: I separated the producer from the consumer and then asked whether the consumer had a producer"
-    - "'The legacy derive can pick a NEWER inbound via interleaved ids' — not for the same thread: the thread upsert's ON CONFLICT DO UPDATE holds a row lock until COMMIT, so concurrent webhooks for one phone serialize and ids come out inbound1 < stub1 < inbound2 < stub2; the derive filters on thread_id. Blast radius measured at 0 pending rows in prod. The guarantee was implicit and undeclared — it is now commented and mutation-proven"
-    - "'One transaction holding ACCESS EXCLUSIVE turns this into an outage' — wa_outbox is 446 rows, measured in prod. VALIDATE plus a non-concurrent index build on 446 rows is milliseconds, and single-transaction is this runner's convention for every migrations_v2 file, not a choice made here"
-  measured_not_cured:
-    - "CHECK (status <> 'failed' OR reason IS NOT NULL) would make the ledger invariant structural rather than conventional. NOT shippable here: production holds 233 failed rows with a NULL reason, so the constraint would fail the migration outright. It needs a deliberate backfill — its own concern, its own PR. PENDING-ARMS row at mission close"
-    - "the FK proves the target exists, not that it is an inbound of the same thread; the single producer writes the correct id inside one transaction"
-    - "the rollback drops the column and loses the linkage — by design, and already documented at the rollback section: the Python half reverts in the same window"
-    - "N messages now cost N generations with no per-thread ceiling. That is the mandate, not a regression: the client asked three questions and is owed three answers. Head-of-line blocking is the accepted cost of ordering (MAX_ATTEMPTS 5, backoff 30/60/120/240/480 ~= 15.5 min); curing it would mean serving out of order, which is the property this PR exists to guarantee"
+dissent:
+  - seat: codex-gpt-5.6-sol
+    status: RETRACTED
+    objection: "BLOCKER: nothing in the diff writes inbound_message_id, so every row falls back to the legacy heuristic and the retry-to-latest-message defect stays alive."
+    resolution: >-
+      False. whatsapp_chat.py:1321-1330 passes it explicitly in the enqueue INSERT. The lane that
+      raised it did not carry that file — the false positive is an artifact of how I SPLIT THE
+      DIFF for review, a defect in my instrument rather than in the change: I separated the
+      producer from the consumer and then asked whether the consumer had a producer. Recorded so
+      the next reviewer is not handed the same broken frame.
+  - seat: codex-gpt-5.6-sol
+    status: RETRACTED
+    objection: "BLOCKER: the legacy-row derive can pick a NEWER inbound than the row's real cause, because concurrent webhooks can interleave their ids."
+    resolution: >-
+      Not for the same thread. whatsapp_chat.py's `INSERT INTO meta_inbox_threads ... ON CONFLICT
+      (counterpart_phone) DO UPDATE ... RETURNING` takes a row-level lock held until COMMIT, so
+      concurrent webhooks for one phone serialize and ids come out inbound1 < stub1 < inbound2 <
+      stub2; the derive filters on thread_id. Measured blast radius: 0 pending rows in prod. The
+      guarantee was real but UNDECLARED, which is the part worth keeping — it is now named in a
+      comment at the derive and pinned by a test that AST-reads whatsapp_chat.py's real source,
+      proven non-vacuous by mutation.
+  - seat: codex-gpt-5.6-sol
+    status: RETRACTED
+    objection: "MAJOR: one transaction holding ACCESS EXCLUSIVE through VALIDATE and a non-concurrent index build can turn this into an application outage."
+    resolution: >-
+      wa_outbox is 446 rows in production, measured. VALIDATE plus a non-concurrent index build
+      on 446 rows is milliseconds, and single-transaction is this runner's convention for every
+      file in migrations_v2 — not a choice made here.
+  - seat: codex-gpt-5.6-sol
+    status: CONFIRMED
+    objection: "BLOCKER: the CHECK permits a failed row to carry a NULL reason; add CHECK (status <> 'failed' OR reason IS NOT NULL)."
+    resolution: >-
+      A genuine improvement that would make the ledger invariant structural rather than
+      conventional, and it is NOT shippable here: production holds 233 failed rows with a NULL
+      reason, so the constraint would fail the migration outright. It needs a deliberate backfill
+      — its own concern, its own PR. PENDING-ARMS row at mission close.
+  - seat: agy-gemini-3.1-pro
+    status: CONFIRMED
+    objection: "MAJOR: with coalescing removed, a burst whose rows all exhaust their retries sends the client one apology PER ROW, and an earlier apology can precede a later row's working answer."
+    resolution: >-
+      Correct, and it is a regression this PR introduces rather than a pre-existing one — the
+      apology is live by default (WA_OUTBOX_TERMINAL_APOLOGY_ENABLED defaults ON). CURED:
+      _maybe_send_apology now suppresses the CLIENT send when a newer row of the same thread is
+      still live, so only the last row of a failing burst apologises. The human Telegram alert is
+      deliberately left unsuppressed and fires first — a colleague must hear about every terminal
+      row. Three tests including an innocence case, so this cannot silently become "the bot
+      stopped apologising".
+  - seat: agy-gemini-3.1-pro
+    status: CONFIRMED
+    objection: "MAJOR: the new FK has no index on the referencing side, so every DELETE on meta_inbox_messages seq-scans wa_outbox."
+    resolution: "CURED: wa_outbox_inbound_message_id_idx added to the UPGRADE and dropped in the ROLLBACK; migration re-verified down/up."
+  - seat: agy-gemini-3.1-pro
+    status: CONFIRMED
+    objection: "MINOR: the aborted_human_takeover_pre_send branch ignores whether its UPDATE matched, so execution falls through to the 24h window check and the row may still be sent."
+    resolution: >-
+      The asymmetry is real and is CURED (RETURNING plus a loud log on zero matches), but the
+      stated mechanism is wrong and is corrected here so nobody rebuilds on it: there IS a
+      `return "aborted_human"` immediately after, so nothing is mis-sent. The real cost was
+      narrower and squarely inside this PR's concern — a stolen lease meant the row reached a
+      terminal state with nothing recording why.
+  - seat: agy-gemini-3.1-pro
+    status: RETRACTED
+    objection: "MAJOR: generate_bot_reply still calls the legacy unbound _load_thread_context, so any worker or fallback using it keeps the original defect."
+    resolution: >-
+      generate_bot_reply is reachable only as `bot_generate_fn`, which the worker's own docstring
+      declares twice is "accepted for signature/back-compat only — NEVER invoked" since the
+      2026-08-27 Gemini cut; generation runs exclusively through the codex leg. The seat read a
+      dead parameter as a live path. Worth recording rather than dismissing: dead code shaped
+      like a live path is exactly the trap the same seat was asked to hunt for, and it fell into
+      it — the next reader can too.
+  - seat: agy-gemini-3.1-pro
+    status: CONFIRMED
+    objection: "MINOR: `FOR UPDATE SKIP LOCKED` without `OF w` on an aliased table with a correlated subquery may cause planner locking ambiguity."
+    resolution: >-
+      Not changed. The subquery is a plain EXISTS over the same table and Postgres locks only the
+      outer scan's rows here; changing the lock clause on the claim SELECT is a concurrency edit
+      that would need its own proof, and this PR's concurrency surface is already the thing under
+      review. Declared rather than absorbed.
+  - seat: dux-claude-opus-5
+    status: CONFIRMED
+    objection: "Head-of-line blocking: if the first message of a burst keeps failing, the next ones wait behind its retry ladder (MAX_ATTEMPTS 5, backoff 30/60/120/240/480 ~= 15.5 min)."
+    resolution: >-
+      Found independently by the Dux and by the Gemini seat. Accepted, not cured: curing it means
+      serving out of order, which is the exact property this PR exists to guarantee. The apology
+      cure above removes its worst client-visible symptom. Stated in the PR body rather than left
+      for someone to discover in production.
 
 pending_live_proof: >-
   Merging apps/backend-rag IS the deploy. The Bites observation — a burst of 3 messages to the
