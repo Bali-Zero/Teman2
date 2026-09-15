@@ -14,15 +14,14 @@ gear_reason: churn=1169 post-merge (floor recipe), under the 1828 Gear-3 thresho
 acceptance:
   A1: >-
     Full filiera + sync-check + backend-rag kbli suite green; compiler is
-    exactly 150 lines; second --apply is a byte-identical no-op.
-    probe: >-
-      `python3 -m pytest scripts/kbli_filiera/tests/` -- 1408 passed, 1
-      skipped. `bash scripts/sync_kbli_dataset.sh --check` -- clean. backend
-      31-file kbli suite -- 773 passed. navigator tsx -- 1 passed.
-  A2: mouth prose-pins/bali-block/provenance pass and typecheck is clean.
-    probe: >-
-      `npx vitest run` on the 6 kbli-* mouth test files -- 213 passed.
-      `npx tsc --noEmit -p .` -- clean.
+    exactly 150 lines; second --apply is a byte-identical no-op. probe:
+    `python3 -m pytest scripts/kbli_filiera/tests/` -- 1418 passed, 1
+    skipped. `bash scripts/sync_kbli_dataset.sh --check` -- clean. backend
+    31-file kbli suite -- 773 passed. navigator tsx -- 1 passed.
+  A2: >-
+    mouth prose-pins/bali-block/provenance pass and typecheck is clean.
+    probe: `npx vitest run` on the 6 kbli-* mouth test files -- 213 passed.
+    `npx tsc --noEmit -p .` -- clean.
 
 pii_scan: clean
 pii_scan_note: KBLI codes and Indonesian regulation citations only.
