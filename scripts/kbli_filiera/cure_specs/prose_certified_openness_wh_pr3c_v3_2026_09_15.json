@@ -12,7 +12,7 @@
         "whoThisIsFor": {
           "old_sha256": "8f43e0a5eab9350ef6064064db4d115a0b3dae411d856b12909ed4c6b40a45d7",
           "old_excerpt": "Foreign entrepreneurs in the herbal or natural pharmaceutical supply chain who want to produce raw ingredients like extracts or galenic prep",
-          "new": "This page is for anyone researching Industri Bahan Baku Obat Bahan Alam untuk Manusia (21021) — raw ingredients like extracts or galenic preparations, produced in Indonesia for local use or export. Nationally the bidang usaha is capped at 0% foreign ownership; only domestic capital may hold it, so it is not a route into PT PMA ownership for a foreign entrepreneur."
+          "new": "This page is for anyone researching Industri Bahan Baku Obat Bahan Alam untuk Manusia (21021) — raw ingredients like extracts or galenic preparations, produced in Indonesia for local use or export. Nationally this business line is reserved for 100% domestic capital (0% foreign ownership), so it is not a route into PT PMA ownership for a foreign entrepreneur."
         }
       }
     },
@@ -26,7 +26,7 @@
         "whoThisIsFor": {
           "old_sha256": "8a98a94d01b5f5f833b0192812de228cc72ba5eb0c7a8127e7e06135fea84b39",
           "old_excerpt": "Foreign entrepreneurs who want to produce herbal remedies, traditional jamu, or natural health supplements in Bali.",
-          "new": "This page is for anyone researching Industri Produk Obat Bahan Alam untuk Manusia (21022) — herbal remedies, traditional jamu, or natural health supplements produced in Indonesia. Nationally the bidang usaha is capped at 0% foreign ownership; only domestic capital may hold it, so it is not a route into PT PMA ownership for a foreign entrepreneur."
+          "new": "This page is for anyone researching Industri Produk Obat Bahan Alam untuk Manusia (21022) — herbal remedies, traditional jamu, or natural health supplements produced in Indonesia. Nationally this business line is reserved for 100% domestic capital (0% foreign ownership), so it is not a route into PT PMA ownership for a foreign entrepreneur."
         }
       }
     },
@@ -82,7 +82,7 @@
         "editorial.pullQuote": {
           "old_sha256": "1b297f5723fa4e291a9f3c1f2feca8c66d968f0df9b9a2100683b8e6f2aff67c",
           "old_excerpt": "This activity remains available for PMA registration in Bali because it is not marked as blocked by the province’s moratorium.",
-          "new": "This activity remains available for PMA registration in Bali, capped nationally at 49% foreign ownership, because it is not marked as blocked by the province’s moratorium."
+          "new": "This activity remains available for PMA registration in Bali, up to the national 49% foreign-ownership cap, because it is not marked as blocked by the province’s moratorium."
         }
       }
     },
@@ -96,7 +96,7 @@
         "editorial.pullQuote": {
           "old_sha256": "0e54efb688df66cbd1f7c83d41151ba660ded1493d4b7d776f31a92b04d4fe82",
           "old_excerpt": "For PMA registration, this activity remains open in Bali rather than being shut out by the provincial moratorium.",
-          "new": "For PMA registration, capped nationally at 49% foreign ownership, this activity remains open in Bali rather than being shut out by the provincial moratorium."
+          "new": "For PMA registration, this activity remains open in Bali up to the national 49% foreign-ownership cap, rather than being shut out by the provincial moratorium."
         }
       }
     },
@@ -124,7 +124,7 @@
         "whatYouNeed": {
           "old_sha256": "1f6c780df18d06d4d0411f67bdfce59073f7f9a0711b65608c363bac85cd8f8a",
           "old_excerpt": "In Bali, this activity is not blocked by the local foreign investment moratorium, but it is classified as medium-high/high risk. That means ",
-          "new": "In Bali, this activity is not blocked by the local foreign investment moratorium, but it is classified as medium-high/high risk. That means registration is possible only within the record's 80% foreign-ownership ceiling: the authorities will scrutinize your application more closely—especially your registered commercial address, which must be genuine and verifiable. Expect extra compliance steps."
+          "new": "In Bali, this activity is not blocked by the local foreign investment moratorium, but it is classified as medium-high/high risk. That means registration is possible within the national 80% foreign-ownership ceiling, but the authorities will scrutinize your application more closely—especially your registered commercial address, which must be genuine and verifiable. Expect extra compliance steps."
         }
       }
     },
@@ -138,7 +138,7 @@
         "editorial.pullQuote": {
           "old_sha256": "feab1f63feb859589084e1df83a005dfd9b1e45c44840832b1e1de37bb2b01d4",
           "old_excerpt": "The decisive Bali fact is straightforward: a foreign investor can register this activity in Bali today.",
-          "new": "The decisive Bali fact is straightforward: a foreign investor can register this activity in Bali today, up to the same 80% national ceiling that applies everywhere else in Indonesia."
+          "new": "The decisive Bali fact is straightforward: a foreign investor can register this activity in Bali today, within the national 80% foreign-ownership ceiling."
         }
       }
     },
