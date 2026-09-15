@@ -6,8 +6,11 @@ task: >-
   CHIUSO_BALI verdict cites the applied closure (Pemprov Bali press release 24 Jul 2026, OSS closed
   since the third week of May 2026; code list ANTARA Bali 23 Jul 2026) through a new optional
   l4_bali.closure object with http(s)-only links in the provenance panel. The unverified
-  "13 May 2026" date leaves every generated client string. No dataset change in this PR; safe on
-  today's data (the new status and object are absent until the data PR lands).
+  "13 May 2026" date leaves every generated client string. PMABadge and page metadata qualify the
+  national "open" for the new status; the backend BALI_ALLOWED_STATUSES
+  (apps/backend-rag/backend/services/kbli_pma_disclosure.py) learns it, pinned by a TS/Python
+  parity test. No dataset change in this PR; safe on today's data (the new status and object are
+  absent until the data PR lands).
 lane: mouth/kbli-wj-b1-presentation
 machine: M5
 date: 2026-09-15

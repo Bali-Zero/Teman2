@@ -19,7 +19,27 @@ lanes:
     query_hash: "24fc61b037c65f0cdd97bd3d990559fddaa83d2fc8e0acb2dabf7d99ae11664a"
     note: sha256 of "<press-release path>|<antara path>|<the 18 codes comma-joined>".
 
-dissent: []
+council_run: journal.jsonl
+
+dissent:
+  - seat: codex-gpt-5.6-sol (xhigh, adversarial review of 70c6235898)
+    objection: >-
+      FIX-FIRST, 4 MAJOR. (1) KBLIProvenancePanel still cited moratorium.rule ("blocks ALL Low +
+      Medium-Low … permanent, effective 2026-05-13") as the source of an ATTENZIONE_FASCIA_BALI row
+      when the record keeps the old moratorium object. (2) PMABadge (hero, KBLICard, panel detail)
+      rendered a green "✅ Open · 100% Foreign" for an ATTENZIONE_FASCIA_BALI code. (3) kbli-meta
+      title/SEO description gave an unqualified open claim for the status. (4) backend
+      BALI_ALLOWED_STATUSES rejected the status, so disclose_bali() would drop the warning once the
+      Qdrant layer is synced.
+    status: CONFIRMED
+    cure: >-
+      22ef7816f1: (1) the status is checked first and cites the press release, never
+      moratorium.rule, with a test on a record keeping the old object; (2) PMABadge gets a
+      baliAttentionFascia prop → warn tone, no ✅, "· N% nat'l · verify in Bali", threaded into all
+      3 call sites; (3) title suffix "Verify Bali PMA Closure List (2026)" + description qualifier;
+      (4) status added to the backend frozenset plus a TS↔Python parity test. LicensingSection
+      KeyFacts "Foreign Ownership 100% Open" left as is on purpose: it is the national cap,
+      labelled as such, next to the Bali badge.
 
 pii_scan: clean
 pii_scan_note: >-
