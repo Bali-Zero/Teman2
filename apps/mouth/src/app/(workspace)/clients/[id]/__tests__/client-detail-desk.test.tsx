@@ -443,6 +443,11 @@ function getStaticVariant(
   node: ts.JsxOpeningElement | ts.JsxSelfClosingElement,
   sf: ts.SourceFile,
 ): string | null {
+  // A spread can supply `variant` at runtime whatever the literal says, so a
+  // Button carrying one has no provable static variant (Codex R5).
+  if (node.attributes.properties.some((p) => ts.isJsxSpreadAttribute(p))) {
+    return null;
+  }
   const variantAttr = node.attributes.properties.find(
     (p): p is ts.JsxAttribute =>
       ts.isJsxAttribute(p) && p.name.getText(sf) === "variant",
@@ -595,7 +600,9 @@ function templateBuiltVarNameHits(sf: ts.SourceFile): TextHit[] {
       const parts = [node.head, ...node.templateSpans.map((s) => s.literal)];
       parts.forEach((lit, idx) => {
         if (idx === parts.length - 1) return; // the Tail precedes no `${`
-        if (/var\(--$/.test(lit.text)) {
+        // `var(--state-${tone})` builds the name as surely as `var(--${x})`
+        // does, and can land on --state-danger (Codex R5).
+        if (/var\(--[\w-]*$/.test(lit.text)) {
           hits.push({ line: lineOf(sf, lit), text: lit.text });
         }
       });
@@ -786,6 +793,13 @@ describe("GLOB: no default-variant Button, static-literal variant only (R3a, tig
     ).toBeNull();
   });
 
+  it('GUILT (Codex R5): a spread after variant="outline" can override it at runtime, so the Button fails', () => {
+    const sf = parseFixture(
+      `<Button variant="outline" {...buttonProps}>Go</Button>`,
+    );
+    expect(findButtonVariantOffenses(sf, "fixture").length).toBe(1);
+  });
+
   it('INNOCENCE (round-7 Codex R4): a real variant="outline" still passes even sitting next to that title', () => {
     const sf = parseFixture(
       `<Button title='variant="outline"' variant="outline">Go</Button>`,
@@ -882,6 +896,18 @@ describe("GLOB: no red / no state-danger / no raw colour literal / no template-b
   it("GUILT: a template-built CSS var name is caught even with no colour literal in sight (now a structural AST check on the TemplateExpression head, round-7)", () => {
     const sf = parseFixture("const style = `var(--${color}-500)`;");
     expect(templateBuiltVarNameHits(sf)).not.toEqual([]);
+  });
+
+  it("GUILT (Codex R5): a PARTIALLY template-built var name like var(--state-${tone}) is caught too", () => {
+    const sf = parseFixture("const style = `var(--state-${tone})`;");
+    expect(templateBuiltVarNameHits(sf)).not.toEqual([]);
+  });
+
+  it("INNOCENCE (Codex R5): interpolating a VALUE inside a complete var name is not a built name", () => {
+    const sf = parseFixture(
+      "const style = `color-mix(in srgb, var(--tx-pure) ${pct}%, transparent)`;",
+    );
+    expect(templateBuiltVarNameHits(sf)).toEqual([]);
   });
 
   it("GUILT (round-7): the raw literal riding along in the SAME template's tail is still caught by the general text collector", () => {
