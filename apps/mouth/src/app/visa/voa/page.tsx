@@ -497,6 +497,27 @@ export default function VoaEligibilityPage() {
         />
       }
     >
+      <p
+        style={{
+          margin: 0,
+          fontSize: "var(--text-sm, 0.88rem)",
+          color: "var(--color-text-muted)",
+        }}
+      >
+        Prefer to talk to a person?{" "}
+        <a
+          href={buildWhatsAppLink(
+            "visa",
+            "Hi Bali Zero, I'd like help with a Visa on Arrival.",
+          )}
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{ color: "var(--accent-funnel)", textDecoration: "underline" }}
+          onClick={() => tracker.ctaClicked("whatsapp_hero", "wa.me")}
+        >
+          WhatsApp us →
+        </a>
+      </p>
       <AppWizard
         steps={steps}
         persistKey="bz.garuda_voa.wizard"

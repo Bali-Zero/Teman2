@@ -1,0 +1,47 @@
+/**
+ * GARUDA VOA — R19 skin, scoped to this funnel only.
+ *
+ * Reuses the [data-theme="operative-light"][data-product="my"] tokens
+ * declared in app/globals.css — no new colour is introduced here. That
+ * block never declares the funnel-shell vocabulary AppFrame/AppWizard read
+ * (--surface-base, --text-primary, --color-text-muted,
+ * --color-border-subtle, --accent-funnel), so this file bridges those
+ * names onto the my-block's --bz-* and --tx-* tokens. Primary CTA = ink
+ * fill + paper text, never a copper fill (R19 law: copper is a person,
+ * not an action).
+ *
+ * Selector bumped to [data-theme="operative-light"][data-garuda-voa="r19"]
+ * (0-2-0) to unambiguously beat packages/core/tokens/themes/operative-light.css's
+ * plain [data-theme="operative-light"] (0-1-0), which redeclares
+ * --surface-base and --text-primary on the SAME element and would
+ * otherwise tie on stylesheet import order.
+ */
+[data-theme="operative-light"][data-garuda-voa="r19"] {
+  min-height: 100vh;
+  background: var(--bz-base);
+  color: var(--tx-pure);
+  font-family: var(--font-sans);
+
+  --surface-base: var(--bz-base);
+  --text-primary: var(--tx-pure);
+  --color-text-muted: var(--tx-secondary);
+  --color-border-subtle: var(--bz-border);
+  --accent-funnel: var(--tx-pure);
+  --text-on-accent: var(--bz-on-warm);
+}
+
+/*
+ * AppFrame stamps data-funnel="visa" on its own inner section element.
+ * That element also matches packages/core/tokens/semantic.css's rule for
+ * [data-funnel="visa"] (0-1-0) and themes/editorial.css's rule for
+ * [data-theme="editorial"] [data-funnel="visa"] (0-2-0, matching via the
+ * html data-theme="editorial" ancestor the pre-paint script always sets).
+ * Both redeclare --accent-funnel back to red directly on that element,
+ * which an ancestor's inherited value can never out-cascade. Redeclared
+ * here at 0-3-0 so the ink fill actually reaches it.
+ */
+[data-theme="operative-light"][data-garuda-voa="r19"] [data-funnel] {
+  --accent-funnel: var(--tx-pure);
+  --accent-funnel-text: var(--tx-pure);
+  --text-on-accent: var(--bz-on-warm);
+}
