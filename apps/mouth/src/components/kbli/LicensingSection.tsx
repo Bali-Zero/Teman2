@@ -972,6 +972,12 @@ export function LicensingSection({ kbli, gold }: LicensingSectionProps) {
   // neither blocked nor confirmed open — an analogous frame, warn tone
   // rather than block tone, since this is an unresolved gap, not a verdict.
   const baliNonClassifiable = kbli.baliL4?.status === "NON_CLASSIFICABILE";
+  // Added 2026-09-15 (W-J B1): this code is NOT on Bali's applied PMA closure
+  // list (18 business fields, OSS closed since the third week of May 2026),
+  // so `blocked` is false — but the low/medium-low risk tier the OLD blanket
+  // reading relied on was only ever named in the Governor's own request
+  // letter, never enacted for it. Must read as "verify", never as "cleared".
+  const baliAttentionFascia = kbli.baliL4?.status === "ATTENZIONE_FASCIA_BALI";
 
   return (
     <div className="space-y-8">
@@ -1056,6 +1062,35 @@ export function LicensingSection({ kbli, gold }: LicensingSectionProps) {
             cannot be determined until the correct risk tier is established.
             {kbli.baliL4?.reason ? ` ${kbli.baliL4.reason}` : ""} Verify with
             the Bali Zero team before planning a Bali setup.
+          </p>
+        </div>
+      )}
+
+      {/* ── NATIONAL-vs-BALI FRAME (not on Bali's applied PMA closure list) ── */}
+      {pmaVerified && !baliBlocked && baliAttentionFascia && (
+        <div
+          className="rounded-xl border px-5 py-4"
+          style={{
+            background: "rgba(232, 168, 73, 0.06)",
+            borderColor: "rgba(232, 168, 73, 0.25)",
+          }}
+        >
+          <div className="mb-1.5 flex items-center gap-2">
+            <span aria-hidden="true">🏝️</span>
+            <span
+              className="text-xs font-bold uppercase tracking-[0.12em]"
+              style={{ color: "var(--kbli-pma-restricted)" }}
+            >
+              Not on Bali's PMA closure list — verify before filing
+            </span>
+          </div>
+          <p className="text-sm leading-relaxed text-[var(--foreground-secondary)]">
+            The licensing path below is the <strong>national</strong> procedure.
+            This activity is not among the 18 business fields Bali closed to new
+            PMA licensing in 2026; the low/medium-low risk tier was named only
+            in the Governor's January 2026 request letter to BKPM, never enacted
+            for this code specifically. Verify the applicable risk tier and
+            zoning on OSS before filing in <strong>Bali</strong>.
           </p>
         </div>
       )}
