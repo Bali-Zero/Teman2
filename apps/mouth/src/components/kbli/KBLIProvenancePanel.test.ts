@@ -14,11 +14,49 @@
 // both served "Bali province blocks ALL Low + Medium-Low risk KBLI for PMA" as
 // their source and "derived from the risk tier" as their basis.
 // =============================================================================
+import type { ReactElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { buildRows } from "./KBLIProvenancePanel";
 import { getAllCodes, getCode } from "@/lib/kbli-data";
 import { isMoratoriumBasis } from "@/lib/kbli-bali-block";
 import type { KBLICode, KBLIProvenance } from "@/lib/kbli-types";
+
+/** Minimal synthetic located-PMA code, for statuses not yet in the live dataset
+ * (ATTENZIONE_FASCIA_BALI / l4_bali.closure land with a separate data PR — see
+ * W-J B1 spec). Only the fields `buildRows` reads are load-bearing. */
+function syntheticLocatedCode(baliL4: KBLICode["baliL4"]): {
+  code: KBLICode;
+  provenance: KBLIProvenance;
+} {
+  const provenance: KBLIProvenance = {
+    state: "verified",
+    definition: { locator: "fixture", assembly: "BPS_7_2025_ONLY" },
+    licensing: {
+      status: "oss_native",
+      locator: "fixture",
+      vintage: "2025",
+      noOssScope: false,
+      contentInheritedFrom: null,
+    },
+    pma: {
+      source: "fixture",
+      status: "located",
+      locator: "fixture locator",
+      vintage: "2026-01-01",
+    },
+    dataNote: null,
+    disputed: null,
+  };
+  const code = {
+    code: "99999",
+    titleId: "(fixture)",
+    titleEn: "(fixture)",
+    baliL4,
+    provenance,
+  } as unknown as KBLICode;
+  return { code, provenance };
+}
 
 const baliRow = (code: string) => {
   const kbli = getCode(code);
@@ -129,6 +167,143 @@ describe("the Bali provenance row attributes the verdict to what produced it", (
       expect(row.detail, `code ${c.code}`).not.toContain(RISK_TIER_BASIS);
       expect(row.source, `code ${c.code}`).not.toContain(MORATORIUM_RULE);
     }
+  });
+});
+
+describe("the Bali provenance row — ATTENZIONE_FASCIA_BALI (added 2026-09-15, W-J B1)", () => {
+  it("GUILT: never repeats the 'derived from the risk tier' wording for this status", () => {
+    const { code, provenance } = syntheticLocatedCode({
+      status: "ATTENZIONE_FASCIA_BALI",
+      reason: "not on the closure list",
+      confidence: "MEDIUM",
+      needsReview: true,
+      blocked: false,
+    });
+    const row = buildRows(code, provenance).find(
+      (r) => r.layer === "Bali status",
+    )!;
+    expect(row.detail).not.toContain(RISK_TIER_BASIS);
+    expect(row.detail).toContain("18 business fields");
+    expect(row.detail).toContain("verify");
+  });
+
+  it("INNOCENCE: a genuinely-cleared non-blocked code (today's data shape) keeps its wording", () => {
+    // Guards against a regression that would widen the new branch to every
+    // non-blocked status — the pinned INNOCENCE test above (line ~92) already
+    // locks this in for TODAY's dataset; this one locks it in for the
+    // fixture shape too, so both paths are covered.
+    const { code, provenance } = syntheticLocatedCode({
+      status: "OK_or_HIGHER_RISK",
+      reason: "OK_or_HIGHER_RISK",
+      confidence: "HIGH",
+      needsReview: false,
+      blocked: false,
+    });
+    const row = buildRows(code, provenance).find(
+      (r) => r.layer === "Bali status",
+    )!;
+    expect(row.detail).toContain(RISK_TIER_BASIS);
+  });
+
+  it("GUILT: the `source` field never repeats the old blanket moratorium.rule either (Codex sol MAJOR finding 1, PR #6578)", () => {
+    // `isMoratoriumBasis` returns true for ANY non-blocked code by design
+    // (see its own docstring), so before this fix the `source` field fell
+    // through to `m?.rule` regardless of `isAttentionFascia` — even though
+    // `detail` two lines below was already correct. A record that still
+    // carries the OLD blanket moratorium object (today's data shape, before
+    // the data PR rewrites l4_bali.moratorium on every record) must not
+    // print "blocks ALL ... permanent (effective 2026-05-13)" as the SOURCE
+    // of a status whose own detail says "does not by itself close this code".
+    const { code, provenance } = syntheticLocatedCode({
+      status: "ATTENZIONE_FASCIA_BALI",
+      reason: "not on the closure list",
+      confidence: "MEDIUM",
+      needsReview: true,
+      blocked: false,
+      moratorium: {
+        rule: "Bali province blocks ALL Low + Medium-Low risk KBLI for PMA",
+        effective: "2026-05-13",
+      },
+    });
+    const row = buildRows(code, provenance).find(
+      (r) => r.layer === "Bali status",
+    )!;
+    expect(row.source).not.toContain("blocks ALL");
+    expect(row.source).not.toContain("2026-05-13");
+    expect(row.source).toContain("18 business fields");
+  });
+});
+
+describe("the Bali provenance row — CHIUSO_BALI closure citation (added 2026-09-15, W-J B1)", () => {
+  it("INNOCENCE: instrument + code list render as links, ancestors are named", () => {
+    const { code, provenance } = syntheticLocatedCode({
+      status: "CHIUSO_BALI",
+      reason: "closed to new PMA licensing",
+      confidence: "HIGH",
+      needsReview: false,
+      blocked: true,
+      closure: {
+        instrument: "Pemprov Bali press release",
+        url: "https://www.baliprov.go.id/web/gubernur-koster-batasi-akses-oss",
+        listSource: "ANTARA Bali",
+        listUrl: "https://bali.antaranews.com/berita/410161",
+        ancestors2020: ["55110", "55120"],
+      },
+    });
+    const row = buildRows(code, provenance).find(
+      (r) => r.layer === "Bali status",
+    )!;
+    const html = renderToStaticMarkup(row.source as ReactElement);
+    expect(html).toContain(
+      'href="https://www.baliprov.go.id/web/gubernur-koster-batasi-akses-oss"',
+    );
+    expect(html).toContain('href="https://bali.antaranews.com/berita/410161"');
+    expect(html).toContain("Pemprov Bali press release");
+    expect(html).toContain("ANTARA Bali");
+    expect(html).toContain("KBLI 2020 55110, 55120, BPS conversion table");
+  });
+
+  it("GUILT: a rejected (non-http) url never reaches the panel as a link", () => {
+    // discloseBaliL4 is the ONLY gate — a closure object handed to the panel
+    // pre-validated (as it always is in production) with a null url must not
+    // render an <a> tag; the instrument text still renders.
+    const { code, provenance } = syntheticLocatedCode({
+      status: "CHIUSO_BALI",
+      reason: "closed to new PMA licensing",
+      confidence: "HIGH",
+      needsReview: false,
+      blocked: true,
+      closure: {
+        instrument: "Pemprov Bali press release",
+        url: null,
+        listSource: "ANTARA Bali",
+        listUrl: null,
+      },
+    });
+    const row = buildRows(code, provenance).find(
+      (r) => r.layer === "Bali status",
+    )!;
+    const html = renderToStaticMarkup(row.source as ReactElement);
+    expect(html).not.toContain("<a ");
+    expect(html).toContain("Pemprov Bali press release");
+    expect(html).toContain("ANTARA Bali");
+  });
+
+  it("INNOCENCE: CHIUSO_BALI without a closure object keeps current behaviour", () => {
+    const { code, provenance } = syntheticLocatedCode({
+      status: "CHIUSO_BALI",
+      reason: "closed to new PMA licensing",
+      confidence: "HIGH",
+      needsReview: false,
+      blocked: true,
+    });
+    const row = buildRows(code, provenance).find(
+      (r) => r.layer === "Bali status",
+    )!;
+    // Falls through to the existing non-moratorium-basis wording, unchanged.
+    expect(row.source).toBe(
+      "Activity-level restriction — not the risk-tier moratorium overlay",
+    );
   });
 });
 

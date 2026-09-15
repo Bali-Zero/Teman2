@@ -8,6 +8,8 @@ import {
   humanizeStatValue,
 } from "./kbli-status-labels";
 
+const FORBIDDEN_OPEN_WORDING = /\b(registrable|open in bali|can register)\b/i;
+
 /**
  * GUILT + INNOCENCE, per cicatrix superscar #3: a guard that only proves it
  * fires is half a guard. Every "it resolves X" here has a sibling proving it
@@ -252,6 +254,24 @@ describe("humanizeIntelBlock — the loader choke point", () => {
     });
     expect(out.editorial.body).toBe("Bali Registrable in Bali.");
     expect(out.editorial.byTheNumbers).toBeUndefined();
+  });
+});
+
+describe("ATTENZIONE_FASCIA_BALI (added 2026-09-15, W-J B1 overlay)", () => {
+  it("INNOCENCE: tone is warn, never ok — must not read as cleared/open", () => {
+    expect(BALI_STATUS_CONFIG.ATTENZIONE_FASCIA_BALI.tone).toBe("warn");
+  });
+
+  it("GUILT: the label never uses open/registrable/can-register wording", () => {
+    expect(BALI_STATUS_CONFIG.ATTENZIONE_FASCIA_BALI.label).not.toMatch(
+      FORBIDDEN_OPEN_WORDING,
+    );
+  });
+
+  it("humanizeStatValue resolves it like every other Bali status", () => {
+    expect(humanizeStatValue("ATTENZIONE_FASCIA_BALI")).toBe(
+      "Not on Bali's PMA closure list — verify on OSS",
+    );
   });
 });
 

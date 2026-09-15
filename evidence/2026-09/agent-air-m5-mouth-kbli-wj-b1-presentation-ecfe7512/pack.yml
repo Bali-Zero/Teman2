@@ -1,0 +1,83 @@
+gear: 2
+brief_ref: evidence/brief.yml
+lanes:
+  - lane: mouth/kbli-wj-b1-presentation
+    role: build
+    seat: Claude Sonnet 5 (implementer, W-J PR-P, Dux Opus 5 xhigh on M5)
+    task_id: kbli-wj-b1-presentation
+    worktree: .worktrees/mouth-kbli-wj-b1-presentation
+    branch: agent/air-m5/mouth/kbli-wj-b1-presentation
+  - lane: mouth/kbli-wj-b1-presentation
+    role: ground_truth
+    seat: >-
+      session (M5, Dux Opus 5) — pages fetched 2026-09-15 by a web-fetch reader and quoted
+      verbatim; this PR renders only the source names, dates and URLs, no per-code fact
+    nb: >-
+      Pemprov Bali press release (published 24 Jul 2026, 18 business fields by name, "sejak
+      minggu ketiga Mei 2026", "hingga terdapat kebijakan lebih lanjut") + ANTARA Bali 23 Jul 2026
+      (the same 18 with KBLI 2020 codes, 18/18 names match)
+    query_hash: "24fc61b037c65f0cdd97bd3d990559fddaa83d2fc8e0acb2dabf7d99ae11664a"
+    note: sha256 of "<press-release path>|<antara path>|<the 18 codes comma-joined>".
+
+council_run: journal.jsonl
+
+dissent:
+  - seat: codex-gpt-5.6-sol (xhigh, adversarial review of 70c6235898)
+    objection: >-
+      FIX-FIRST, 4 MAJOR. (1) KBLIProvenancePanel still cited moratorium.rule ("blocks ALL Low +
+      Medium-Low … permanent, effective 2026-05-13") as the source of an ATTENZIONE_FASCIA_BALI row
+      when the record keeps the old moratorium object. (2) PMABadge (hero, KBLICard, panel detail)
+      rendered a green "✅ Open · 100% Foreign" for an ATTENZIONE_FASCIA_BALI code. (3) kbli-meta
+      title/SEO description gave an unqualified open claim for the status. (4) backend
+      BALI_ALLOWED_STATUSES rejected the status, so disclose_bali() would drop the warning once the
+      Qdrant layer is synced.
+    status: CONFIRMED
+    cure: >-
+      22ef7816f1: (1) the status is checked first and cites the press release, never
+      moratorium.rule, with a test on a record keeping the old object; (2) PMABadge gets a
+      baliAttentionFascia prop → warn tone, no ✅, "· N% nat'l · verify in Bali", threaded into all
+      3 call sites; (3) title suffix "Verify Bali PMA Closure List (2026)" + description qualifier;
+      (4) status added to the backend frozenset plus a TS↔Python parity test. LicensingSection
+      KeyFacts "Foreign Ownership 100% Open" left as is on purpose: it is the national cap,
+      labelled as such, next to the Bali badge.
+
+pii_scan: clean
+pii_scan_note: >-
+  Only KBLI status labels, public government source names/URLs and render logic under
+  apps/mouth/src; no client name, contact or case data.
+
+decisions:
+  - id: D1
+    what: >-
+      New status ATTENZIONE_FASCIA_BALI instead of reusing an existing one.
+    why: >-
+      OK_or_HIGHER_RISK renders "Registrable in Bali" (would over-claim), BLOCCATO_DIPENDE_SCOPE
+      means scope-dependent risk, NON_CLASSIFICABILE means no verdict possible; none states "not
+      on the applied closure list, verify".
+  - id: D2
+    what: >-
+      Provenance-panel wording changed only for ATTENZIONE_FASCIA_BALI; the generic non-blocked
+      wording stays.
+    why: >-
+      An innocence pin in KBLIProvenancePanel.test.ts locks the generic wording on today's data;
+      the data PR revisits it together with the rewritten moratorium object.
+
+receipts:
+  - claim: changed tests + prose pins green after rebase on origin/main
+    cmd: cd apps/mouth && npx vitest run <6 changed test files> src/lib/kbli-prose-pins.test.ts
+    result: "Test Files 7 passed (7) / Tests 223 passed (223)"
+    exit: 0
+    ts: "2026-09-15T17:44:19+08:00"
+    seat: Claude Opus 5 (Dux, independent re-run)
+  - claim: implementer sweep over every kbli/bali test file and tsc
+    cmd: cd apps/mouth && npx vitest run (46 kbli/bali test files) && npx tsc --noEmit -p .
+    result: "577 passed; tsc exit 0"
+    exit: 0
+    ts: "2026-09-15T17:35:00+08:00"
+    seat: Claude Sonnet 5
+
+leftovers:
+  - >-
+    Backend BALI_ALLOWED_STATUSES (apps/backend-rag/backend/services/kbli_pma_disclosure.py) does
+    not yet know ATTENZIONE_FASCIA_BALI; it matters only when the Qdrant Bali layer is re-synced,
+    a follow-up after the data PR.

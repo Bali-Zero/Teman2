@@ -38,7 +38,12 @@ const RECORDS = (rawData as { data: RawRecord[] }).data;
 const BLOCKED = RECORDS.filter((r) => r.l4_bali?.blocked === true);
 const GOLD = goldData as unknown as Record<string, { whatYouNeed?: string }>;
 
-const MORATORIUM_SENTENCE = "under the 13 May 2026 moratorium";
+// Wording updated 2026-09-15 (W-J B1): the dated "13 May 2026 moratorium"
+// phrase is gone (never a verified applied closure) — the substring pinned
+// here is the CURRENT clause's own distinguishing phrase, still exclusive to
+// the two real risk-tier statuses (see the INNOCENCE/GUILT pair below).
+const MORATORIUM_SENTENCE =
+  "under the 2026 Bali request to close low/medium-low-risk PMA";
 
 // The FAQ reads a transformed `KBLICode`, and `transformCode` is module-private
 // in the loader. Rather than export internals for a test, this builds the exact
@@ -145,6 +150,66 @@ describe("baliBlockClause — the cause is derived, never defaulted", () => {
     expect(clause).toContain("not yet in force");
     expect(isProposalOnly("CHIUSO_BALI_PROPOSTO")).toBe(true);
     expect(isProposalOnly("CHIUSO_BALI")).toBe(false);
+  });
+
+  it("CHIUSO_BALI names the applied closure (added 2026-09-15, W-J B1)", () => {
+    // The one date this repo can actually verify (Pemprov Bali press release,
+    // 24 Jul 2026): OSS closed 18 named business fields since the third week
+    // of May 2026 — distinct from the unverified "13 May 2026" blanket date.
+    const clause = baliBlockClause("CHIUSO_BALI");
+    expect(clause).toContain("18 business fields");
+    expect(clause).toContain("third week of May 2026");
+    expect(clause).not.toContain("13 May 2026");
+  });
+});
+
+describe("no client-facing output states the unverified '13 May 2026' date (W-J B1, 2026-09-15)", () => {
+  // The blanket "13 May 2026 moratorium" date was never verified for the
+  // ~500-code risk-tier reading — only the applied closure (CHIUSO_BALI, 18
+  // business fields, third week of May 2026) has a source. Functional check
+  // rather than a source grep: it survives however the wording is phrased,
+  // and does not false-positive on a historical comment documenting the bug
+  // this file already fixed once.
+  const ALL_STATUSES = [
+    "APERTO_BALI_RISCHIO_ALTO",
+    "BLOCCATO_CLASSE_RISCHIO",
+    "BLOCCATO_DIPENDE_SCOPE",
+    "CHIUSO_PMA_NO_BESAR",
+    "CHIUSO_MORATORIA_BALI",
+    "CHIUSO_REGOLATORE_SETTORIALE",
+    "CHIUSO_BALI",
+    "CHIUSO_BALI_PROPOSTO",
+    "TERTUTUP",
+    "ATTENZIONE_FASCIA_BALI",
+    "NON_CLASSIFICABILE",
+    "SOME_FUTURE_STATUS",
+  ];
+
+  it("baliBlockClause never emits the date for any known or unknown status", () => {
+    for (const status of ALL_STATUSES) {
+      expect(baliBlockClause(status)).not.toContain("13 May 2026");
+    }
+  });
+
+  it("baliBlockedHint never emits the date, whatever the population shape", () => {
+    const moratorium = (n: number) =>
+      Array.from({ length: n }, () => ({
+        baliL4: { status: "BLOCCATO_CLASSE_RISCHIO", blocked: true },
+      }));
+    const other = (n: number) =>
+      Array.from({ length: n }, () => ({
+        baliL4: { status: "TERTUTUP", blocked: true },
+      }));
+    const open = (n: number) =>
+      Array.from({ length: n }, () => ({
+        baliL4: { status: "OK_or_HIGHER_RISK", blocked: false },
+      }));
+    expect(
+      baliBlockedHint([...moratorium(10), ...other(5), ...open(20)]),
+    ).not.toContain("13 May 2026");
+    expect(baliBlockedHint([...moratorium(10), ...open(20)])).not.toContain(
+      "13 May 2026",
+    );
   });
 });
 
