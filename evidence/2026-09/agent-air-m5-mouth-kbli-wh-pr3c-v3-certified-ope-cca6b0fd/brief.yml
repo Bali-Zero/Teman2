@@ -3,7 +3,7 @@ task: >-
   gate — certified text still claimed openness in paraphrase a lexical
   detector cannot see, and a stale test pinned 47111 as certified gold. A
   semantic read of 59 certified capped entries (16 FALSE + 41 AMBIGUOUS)
-  drove this PR: de-certify 20 entries whose prose could not be trivially
+  drove this PR: de-certify 21 entries whose prose could not be trivially
   cured (canonicalIntel 49->37, mouthGold 15->8, standaloneGold 2->0 against
   main's PR-2b v3 baseline — 47111 loses all 3 sections, its live gold
   prose names 47191/47192 "fully open to 100% PMA" while both are
@@ -24,7 +24,7 @@ gear_reason: >-
 acceptance:
   - "python3 -m pytest scripts/kbli_filiera/ -q -> 0 failed (1418 passed, 1 skipped)"
   - "cd apps/backend-rag && pytest $(find backend/tests -iname 'test_*kbli*.py') -> 0 failed (775 passed)"
-  - "cd apps/mouth && npx vitest run <47 KBLI test files> && npx tsc --noEmit -> 699 passed, tsc clean"
+  - "cd apps/mouth && npx vitest run <whole kbli glob, 56 files> && npx tsc --noEmit -> 761 passed, tsc clean"
   - "cd apps/kbli-navigator && npx tsx lib/__tests__/kbli-data.test.ts -> 1 passed (37/57 located certified)"
   - "bash scripts/sync_kbli_dataset.sh --check -> all 5 consumers in sync"
-  - "bash scripts/kbli_filiera/vault-checks.sh (scoreboard/perpres_body_default/slice/foreign_cap) -> 4x rc=0"
+  - "the 4 kbli-filiera-vault-compilers checks (scoreboard/perpres_body_default/slice/foreign_cap) -> 4x rc=0"
