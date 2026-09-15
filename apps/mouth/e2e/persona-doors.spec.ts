@@ -83,6 +83,10 @@ test.describe("persona doors homepage page Page", () => {
       (el) => getComputedStyle(el).backgroundColor,
     );
     expect(bg).toBe("rgb(164, 75, 54)");
+    const minHeight = await primary.evaluate(
+      (el) => getComputedStyle(el).minHeight,
+    );
+    expect(minHeight).toBe("48px");
   });
 
   test("R19 fold keeps its supporting text and nav CTA readable", async ({
