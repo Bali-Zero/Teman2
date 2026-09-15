@@ -105,7 +105,7 @@ export function PortalMessages({
         <div className="flex items-center gap-2">
           <MessageSquare
             className="w-4 h-4"
-            style={{ color: "var(--bz-accent)" }}
+            style={{ color: "var(--tx-secondary)" }}
           />
           <h3 className="font-semibold text-sm text-[var(--bz-text-1)]">
             Portal Messages
@@ -125,7 +125,7 @@ export function PortalMessages({
       <div className="flex-1 max-h-[300px] overflow-y-auto px-4 py-3 space-y-3">
         {isLoading ? (
           <div className="flex items-center justify-center py-8">
-            <div className="w-5 h-5 border-2 border-[var(--bz-accent)] border-t-transparent rounded-full animate-spin" />
+            <div className="w-5 h-5 border-2 border-[var(--line-control)] border-t-transparent rounded-full animate-spin" />
           </div>
         ) : messages.length === 0 ? (
           <div className="text-center py-8 text-[var(--bz-text-2)] text-sm">
@@ -151,7 +151,7 @@ export function PortalMessages({
                 <div
                   className={`max-w-[80%] rounded-lg px-3 py-2 text-sm ${
                     isTeam
-                      ? "bg-[var(--bz-accent)]/15 text-[var(--bz-text-1)]"
+                      ? "bg-[var(--bz-card)] text-[var(--bz-text-1)]"
                       : "bg-blue-500/10 text-[var(--bz-text-1)]"
                   }`}
                 >
@@ -179,8 +179,8 @@ export function PortalMessages({
                   </div>
                 </div>
                 {isTeam && (
-                  <div className="w-6 h-6 rounded-full bg-[var(--bz-accent)]/20 flex items-center justify-center shrink-0 mt-1">
-                    <Bot className="w-3 h-3 text-[var(--bz-accent)]" />
+                  <div className="w-6 h-6 rounded-full bg-[var(--bz-card)] flex items-center justify-center shrink-0 mt-1">
+                    <Bot className="w-3 h-3 text-[var(--tx-secondary)]" />
                   </div>
                 )}
               </div>
@@ -198,10 +198,14 @@ export function PortalMessages({
           onChange={(e) => setNewMessage(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && handleSend()}
           placeholder={`Message ${clientName}...`}
-          className="flex-1 bg-[var(--bz-surface)] border border-[var(--bz-border)] rounded-lg px-3 py-2 text-sm text-[var(--bz-text-1)] placeholder:text-[var(--bz-text-2)] focus:outline-none focus:border-[var(--bz-accent)]/50"
+          className="flex-1 bg-[var(--bz-surface)] border border-[var(--bz-border)] rounded-lg px-3 py-2 text-sm text-[var(--bz-text-1)] placeholder:text-[var(--bz-text-2)] focus:outline-none focus:border-[var(--line-control)]"
         />
+        {/* Secondary/utility action (repeatable, no alternative alongside
+            it) — ghost per Masthead.tsx's law, not the shadcn default's
+            copper fill. */}
         <Button
           size="sm"
+          variant="ghost"
           onClick={handleSend}
           disabled={isSending || !newMessage.trim()}
           className="gap-1"

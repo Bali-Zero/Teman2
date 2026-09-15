@@ -351,6 +351,12 @@ describe("no red", () => {
       join("components", "DocumentsTab.tsx"),
       join("components", "constants.ts"),
       join("components", "utils.ts"),
+      // K3b C6b: WaCaseIntelligencePanel renders unconditionally on the
+      // Overview tab (OverviewTab.tsx:63) and its error state carried
+      // --state-danger (copper) plus raw red-700/red-950 utilities — an
+      // urgency/failure message, which FROZEN-v2 ruling 4 says reads
+      // `warning`, never copper or red.
+      join("components", "WaCaseIntelligencePanel.tsx"),
     ]) {
       const source = readFileSync(join(DETAIL_DIR, file), "utf8");
       expect(source, `${file} carries --state-danger`).not.toContain(
@@ -403,6 +409,15 @@ describe("copper only by ownership", () => {
     join("components", "VisaCard.tsx"),
     join("components", "constants.ts"),
     join("components", "utils.ts"),
+    // K3b C6d: the Dux's own measure.json showed these three render
+    // unconditionally on the Overview tab (PortalAccess, PortalMessages
+    // via ClientDetailClient.tsx; BusinessStoryPanel likewise) carrying
+    // ungated --bz-accent. They are under [id]/components/** — in
+    // perimeter — even though the K3a/K3b WIP never touched them.
+    join("components", "PortalAccess.tsx"),
+    join("components", "PortalMessages.tsx"),
+    join("components", "BusinessStoryPanel.tsx"),
+    join("components", "WaCaseIntelligencePanel.tsx"),
   ];
 
   it("carries no --bz-accent/--bz-copper token outside the ownership-gated Stamp — copper is a person, not a decoration", () => {
@@ -438,6 +453,52 @@ describe("copper only by ownership", () => {
     );
     expect(source).not.toMatch(/--bz-copper\b/);
     expect(source).not.toMatch(/--bz-accent\b/);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 3c-bis. No default-variant Button copper fill (K3b C6a). shadcn's
+// `Button` default variant fills `bg-[var(--accent)]`, which resolves to
+// copper on kita — concept.md §3 "copper is never a fill". Masthead.tsx's
+// own docstring already states the law for this page: "the PRIMARY action
+// is a forest button, the SECONDARY an ink outline". `components/ui/button`
+// itself is out of perimeter (never edited); each CALL SITE picks its
+// variant instead.
+// ---------------------------------------------------------------------------
+
+describe("no default-variant Button copper fill", () => {
+  it("PortalAccess's primary invite button declares an explicit variant, not the implicit copper default", () => {
+    const source = readFileSync(
+      join(DETAIL_DIR, "components", "PortalAccess.tsx"),
+      "utf8",
+    );
+    const block = source.match(/<Button[\s\S]{0,600}?Invite to portal/);
+    expect(
+      block,
+      "the 'Invite to portal' button block was not found",
+    ).toBeTruthy();
+    expect(
+      block![0],
+      "the invite button has no explicit variant (falls through to copper-fill default)",
+    ).toMatch(/variant=/);
+  });
+
+  it("PortalMessages' send button declares an explicit variant, not the implicit copper default", () => {
+    const source = readFileSync(
+      join(DETAIL_DIR, "components", "PortalMessages.tsx"),
+      "utf8",
+    );
+    const block = source.match(/<Button[\s\S]{0,200}?onClick=\{handleSend\}/);
+    expect(block, "the send button block was not found").toBeTruthy();
+    expect(
+      block![0],
+      "the send button has no explicit variant (falls through to copper-fill default)",
+    ).toMatch(/variant=/);
+  });
+
+  it("GUILT: a <Button> with no variant prop at all is what the pattern is built to catch", () => {
+    const fixture = '<Button\n  size="sm"\n  onClick={handleSend}\n>';
+    expect(fixture).not.toMatch(/variant=/);
   });
 });
 

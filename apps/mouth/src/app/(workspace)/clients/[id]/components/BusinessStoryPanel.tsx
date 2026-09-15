@@ -241,7 +241,7 @@ export function BusinessStoryPanel({
     return (
       <section className="bz-product-panel p-4">
         <div className="flex items-center gap-3 text-sm text-[var(--bz-text-2)]">
-          <Loader2 className="h-4 w-4 animate-spin text-[var(--bz-accent)]" />
+          <Loader2 className="h-4 w-4 animate-spin text-[var(--tx-secondary)]" />
           Loading business story
         </div>
       </section>
@@ -286,7 +286,7 @@ export function BusinessStoryPanel({
       <header className="flex flex-col gap-2 border-b border-[var(--bz-border)] px-4 py-3 md:flex-row md:items-center md:justify-between">
         <div>
           <h3 className="flex items-center gap-2 text-sm font-semibold text-[var(--bz-text-1)]">
-            <Sparkles className="h-4 w-4 text-[var(--bz-accent)]" />
+            <Sparkles className="h-4 w-4 text-[var(--tx-secondary)]" />
             Client Story
           </h3>
           <p className="mt-1 text-xs text-[var(--bz-text-2)]">
@@ -381,7 +381,7 @@ export function BusinessStoryPanel({
                     )}
                   </div>
                   <div className="flex items-center gap-2 text-sm font-medium text-[var(--bz-text-1)]">
-                    <Building2 className="h-4 w-4 text-[var(--bz-accent)]" />
+                    <Building2 className="h-4 w-4 text-[var(--tx-secondary)]" />
                     {personName}
                   </div>
                   <p className="text-xs text-[var(--bz-text-2)]">
@@ -432,7 +432,7 @@ export function BusinessStoryPanel({
                         aria-label={`Open ${item.source_label} evidence`}
                         className="inline-flex items-center gap-1.5 rounded-md border border-[var(--bz-border)] bg-[var(--bz-surface)] px-2.5 py-1.5 text-xs font-medium text-[var(--bz-text-1)] hover:bg-[var(--bz-card-hover)]"
                       >
-                        <FolderOpen className="h-3.5 w-3.5 text-[var(--bz-accent)]" />
+                        <FolderOpen className="h-3.5 w-3.5 text-[var(--tx-secondary)]" />
                         {item.source_label}
                         <ExternalLink className="h-3.5 w-3.5 text-[var(--bz-text-2)]" />
                       </a>
