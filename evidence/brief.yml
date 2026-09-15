@@ -1,59 +1,76 @@
-task_id: kbli-l2-pr-a-vault-adapter
+task_id: secondo-livello-second-army-script
 gear: 2
 l_level: L2
 gate_class: opus
-# Floor for this diff: 2, source `size` (440 added lines: adapter, flags, tests, six one-line
-# fixtures, spec §6). No hot-zone path. Gear 2 declared to match the floor; no pack below Gear 3.
+# Floor for this diff, measured WITH this brief in the diff (the mistake that sank the first cut
+# of this work, PR #6602: the floor was measured on the code-only commit and the brief's own churn
+# then crossed the 1828 threshold by one line). No hot-zone path. Gear 2 declared to match the
+# floor exactly; no pack below Gear 3. The standalone runner and the CI wiring are deliberately
+# NOT here: the runner is its own concern, and .github/workflows/ is a hot-zone path that would
+# force this diff to floor 3.
 objective: >-
-  PR-A of docs/specs/2026-09-11-kbli-l2-oss-resnapshot-reingest-spec.md: make the KBLI L2
-  risk transform reproducible from a frozen vault snapshot. Adds the pure adapter
-  scripts/kbli_filiera/vault_to_risk_jsonl.py (vault -> the jsonl the transform already reads),
-  --root/--raw flags on scripts/build_kbli_l2_oss_risk.py with defaults equal to today's
-  literals, a machine-readable SUMMARY line, adapter tests, a six-code reproduction test on
-  real July-vault fixtures, and the spec's §6 recording the full-scale rule-4/rule-5 outcome.
+  D3+D4 of mission SECONDO-LIVELLO-20260915: make army-map.md §1ter runnable.
+  infra/workflows/second-army.js executes a Gear <= 2 mission under the direction Zero RULED on
+  2026-09-15 — the INFERIOR seats BUILD, the Dux SPAWNS them and VERIFIES on disk, a weaker seat
+  never grades a stronger one. infra/workflows/tests/test-second-army-contract.mjs is its
+  contract and ships with it, asserting the ruled direction rather than the syntax.
 constraints:
   - >-
-    No logic change in the transform: flags, derived paths and one SUMMARY print only.
-    apps/backend-rag/scripts/build_kbli_l2_oss_risk.py untouched (its merge is a deploy).
+    No Anthropic per-token door in any form. Lanes are native agent() calls; every external seat
+    is reached FROM a lane via Bash (the .claude/skills/workflow/SKILL.md §2 pattern). No key, no
+    token, no env value read or printed anywhere in the diff.
   - >-
-    No data file changes: the canonical corpus, its five copies and the sidecar are
-    byte-identical to origin/main. --apply was run only on /tmp copies.
+    Nothing outside infra/workflows/ is touched. No existing workflow script, test or README
+    section is modified — the two new files are additive and the README change is a pure append.
   - >-
-    No network, no credentials: the adapter reads a vault on disk; vaults were never modified
-    (the September vault is chmod a-w with a sha256 manifest).
+    No PII in scope: the script carries mission/task text supplied by its caller and routes any
+    PII-bearing lane to local Ollama by doctrine; no client data appears in this diff.
 acceptance:
   - text: >-
-      A1: WHEN `python3 -m pytest scripts/kbli_filiera/tests -q` runs SHALL pass, including the
-      adapter determinism/ordering/404/exit-2 tests and the six-code reproduction test that
-      asserts the L2-owned field set equal to the canonical slice.
-    probe: python3 -m pytest scripts/kbli_filiera/tests -q
+      A1: WHEN the contract suite runs SHALL pass 12/12, including the assertions that encode the
+      ruled direction — no builder shares the Dux's family except the grunt seat and that seat is
+      last in the roster; the Dux never appears in its own builder roster; verify lanes are
+      model:"sonnet" and build lanes model:"haiku"; a simulated dead builder lands in deadTiers
+      and the next live builder is used; every cross-family door dead falls back to the grunt
+      seat; the verify prompt never contains the builder's claim sentinel; the refuter lane runs
+      at floor 2 only and exactly once; floor 3 launches no build, verify or refute lane.
+    probe: node infra/workflows/tests/test-second-army-contract.mjs
   - text: >-
-      A2 Bites: WHEN the adapter runs over the frozen July vault and the transform dry-runs with
-      --root /tmp/l2/root --raw /tmp/l2/july.jsonl SHALL print one line starting with SUMMARY
-      carrying no_oss_risk=221 and l4_changed=21 (this scripts/ copy; the backend copy gives 0),
-      and the field-level table of an --apply on that /tmp copy (spec §6, measured before this
-      PR was opened) SHALL show 0 codes differing on skala_usaha/kategori_risiko/scope_index
-      and exactly 1 (49213) on the other L2-owned fields, counted on rows common to both sides
-      (20111's 12 new rows are reported on the row-count line).
-    probe: set -o pipefail; python3 scripts/kbli_filiera/vault_to_risk_jsonl.py --vault-root ~/nuzantara-vault --out /tmp/l2/july.jsonl && python3 scripts/build_kbli_l2_oss_risk.py --root /tmp/l2/root --raw /tmp/l2/july.jsonl | grep '^SUMMARY'
+      A2: WHEN the suite is mutation-tested in a scratch copy SHALL be falsifiable, not
+      tautological — reverting the direction (builder sonnet, verifiers luna/spark/flash) fails
+      5 tests, swapping the verify lane's model fails 1, putting the Dux in its own builder roster
+      fails 3, leaking the builder's claim into the verify prompt fails 1, and running the refuter
+      at every floor fails 1. Measured by the independent gate on the first cut of this suite
+      (receipt GATE-6602.md, 2026-09-15T16:21:19Z), whose 12 surviving tests are unchanged here.
+    probe: node infra/workflows/tests/test-second-army-contract.mjs
   - text: >-
-      A3: WHEN the transform's source is read SHALL still define ROOT as /tmp/kbli-l2-risk and
-      RAW as /tmp/oss_risk_raw.jsonl and use them as the --root/--raw defaults (grep count 2),
-      so the June run is still reproducible.
-    probe: grep -c 'Path("/tmp/kbli-l2-risk")\|Path("/tmp/oss_risk_raw.jsonl")' scripts/build_kbli_l2_oss_risk.py
+      A3: WHEN the script's source is read SHALL contain no trace of the reversed direction the
+      first draft carried — no const VERIFIER_TABLE, and no builder roster naming the Dux's own
+      seat. grep must return 0 for both.
+    probe: grep -c "VERIFIER_TABLE" infra/workflows/second-army.js || true
 assumptions:
   - text: >-
-      The vault ruang_lingkup.json has the same response shape the June fetcher stored under
-      "data" ({success,data,meta,code}), so the adapter's records are the transform's native
-      input; shape compatibility is what is proven, not byte identity with the lost June file.
+      Codex on M5 cannot authenticate today ("refresh token was already used"), so luna, spark and
+      terra are dead doors on this machine right now. The script must therefore DECLARE them in
+      deadTiers and fall through, never skip silently — which is what the dead-builder test proves
+      with a SIMULATED probe failure, so the suite does not depend on today's quota weather.
     status: verified
-    probe: "rule-5 recheck — adapter-driven change set equals the raw-vault change set under the same triple definition (181/181 with the pinned triple of spec §6)"
+    probe: "codex exec on M5 2026-09-15 returns the refresh-token error; `codex login` is a human credential action pending with Zero"
   - text: >-
-      jangka_waktu, fiktif_positif and jangka_waktu_source are owned by layers after L2, so
-      their divergence is not a transform defect.
+      The live Gemini Flash slug is gemini-3.8-flash-low, not the gemini-3.5-flash spelling the
+      rest of the repo carries in 22 places; the flash door pins the live one.
     status: verified
-    probe: "scripts/enrich_kbli_jangka_waktu.py (2026-06-28) writes jangka_waktu_source; canonical carries it on 4,200 rows of 941 codes"
+    probe: "`agy models` on M5 2026-09-15 listed gemini-3.8-flash-{high,medium,low} and the 3.7/3.6 families; gemini-3.5-flash was absent"
   - text: >-
-      The apps/backend-rag copy of the transform is the one whose L4 logic the canonical reflects.
+      Date.now()/new Date()/Math.random() throw inside a Workflow script and the script has no
+      filesystem access, so every timestamp arrives through args.stamp and the run report is
+      written by a Write-capable agent() lane rather than by the script.
     status: verified
-    probe: "full-scale run of both copies on the July jsonl — l4_bali.blocked flips: scripts/ 21, backend 0"
+    probe: 'the report path is built from args.stamp and written only via the model:"haiku" report lane; the contract suite drives the script with a stub agent and records every lane'
+  - text: >-
+      Nothing in .github/workflows/ runs infra/workflows/tests/ today — not this suite, not the
+      pre-existing test-kbli-certification-contract.mjs. The suite is run by hand until the CI
+      wiring ships as its own PR, and the README says exactly that rather than claiming a
+      consumer that does not exist (cicatrix #2, exists != armed).
+    status: verified
+    probe: "grep -rl 'infra/workflows' .github/workflows/ returns nothing"
