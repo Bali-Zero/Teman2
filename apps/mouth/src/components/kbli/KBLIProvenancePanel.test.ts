@@ -178,7 +178,7 @@ describe("the Bali provenance row attributes the verdict to what produced it", (
     expect(row.detail).toContain("Not classifiable until the true risk tier");
   });
 
-  it("pins the verified population: 10 located codes are blocked by something other than the moratorium", () => {
+  it("pins the verified population: 14 located codes are blocked by something other than the moratorium", () => {
     const misattributed = getAllCodes().filter(
       (c) =>
         c.baliL4?.blocked === true &&
@@ -195,7 +195,13 @@ describe("the Bali provenance row attributes the verdict to what produced it", (
     // fields) — it moved to CHIUSO_BALI, a non-moratorium status, adding a
     // 10th member that was always "located" but previously WAS
     // moratorium-attributed.
-    expect(misattributed).toHaveLength(10);
+    // SAETTA-20260915 W-J B1 national-cap cure (10 -> 14): the tier->
+    // ATTENZIONE conversion had been overriding a record's own NATIONAL
+    // pma_* 0%-cap closure; 10214/16221/95220/95299 (pma_status TERBATAS,
+    // pma_max_asing 0, located) are kept TERTUTUP/blocked with a
+    // field-derived reason instead of being wrongly un-blocked, adding 4
+    // more non-moratorium members.
+    expect(misattributed).toHaveLength(14);
     // Every one of them must now name its own cause, never the risk tier.
     for (const c of misattributed) {
       const row = baliRow(c.code);
