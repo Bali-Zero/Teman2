@@ -64,17 +64,17 @@ export function DocumentsTab({
     if (daysLeft < 0)
       return {
         label: `Expired ${Math.abs(daysLeft)}d ago`,
-        cls: "bg-[var(--state-danger)]/10 text-[var(--state-danger)]",
+        cls: "bg-[var(--state-warning)]/10 text-[var(--state-warning)]",
       };
     if (daysLeft === 0)
       return {
         label: "Expires today",
-        cls: "bg-[var(--state-danger)]/10 text-[var(--state-danger)]",
+        cls: "bg-[var(--state-warning)]/10 text-[var(--state-warning)]",
       };
     if (daysLeft <= 30)
       return {
         label: `⏰ ${daysLeft}d left`,
-        cls: "bg-[var(--state-danger)]/10 text-[var(--state-danger)]",
+        cls: "bg-[var(--state-warning)]/10 text-[var(--state-warning)]",
       };
     if (daysLeft <= 90)
       return {
@@ -221,13 +221,13 @@ export function DocumentsTab({
                       key={doc.id}
                       className={`flex items-center justify-between rounded-lg border bg-[var(--bz-surface)] p-3 hover:bg-[var(--bz-surface)]/80 transition-colors ${
                         isUrgent
-                          ? "border-red-500/30"
+                          ? "border-[var(--state-warning)]/30"
                           : "border-[var(--bz-border)]"
                       }`}
                     >
                       <div className="flex items-center gap-3 min-w-0">
                         <FileText
-                          className={`w-4 h-4 shrink-0 ${isUrgent ? "text-[var(--state-danger)]" : "text-[var(--bz-text-2)]"}`}
+                          className={`w-4 h-4 shrink-0 ${isUrgent ? "text-[var(--state-warning)]" : "text-[var(--bz-text-2)]"}`}
                         />
                         <div className="min-w-0">
                           <p className="text-sm font-medium text-[var(--bz-text-1)] truncate">
@@ -261,7 +261,7 @@ export function DocumentsTab({
                                  so the team removing it from view would lose
                                  information they may need. */
                               <span
-                                className="text-xs px-1.5 py-0.5 rounded bg-[var(--state-danger)]/10 text-[var(--state-danger)]"
+                                className="text-xs px-1.5 py-0.5 rounded bg-[var(--state-warning)]/10 text-[var(--state-warning)]"
                                 title={`Removed by the client on ${formatDate(doc.deleted_at)} — restorable by them for 30 days`}
                               >
                                 Removed by client

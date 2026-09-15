@@ -44,6 +44,15 @@ import {
   useSetClientCache,
 } from "@/hooks/useClientDetail";
 import { useClickOutside } from "@/hooks/useClickOutside";
+import {
+  Masthead,
+  StatePill,
+  Stamp,
+  PILL_TONE,
+  PILL_SQUARE,
+} from "@/components/workspace/r19";
+import { clientStatusTone, viewerIsNext } from "../client-row-model";
+import styles from "./client-detail-desk.module.css";
 
 // Local component imports
 import type { TabType, ModalType } from "./components/types";
@@ -68,27 +77,22 @@ import { EditFamilyMemberModal } from "./components/modals/EditFamilyMemberModal
 import { AddDocumentModal } from "./components/modals/AddDocumentModal";
 import { EditDocumentModal } from "./components/modals/EditDocumentModal";
 
-// Client status styling — WS2 (GARUDA OS): mirrors STATUS_STYLES on the
-// clients list page (keep the two aligned): state semantics read --state-*
-// tokens, "completed" keeps its purple identity via --bz-neon-purple,
-// "inactive" is neutral.
-const CLIENT_STATUS_BADGE: Record<string, string> = {
-  lead: "bg-[color-mix(in_srgb,var(--state-info)_20%,transparent)] text-[var(--state-info)]",
-  active:
-    "bg-[color-mix(in_srgb,var(--state-success)_20%,transparent)] text-[var(--state-success)]",
-  completed:
-    "bg-[color-mix(in_srgb,var(--bz-neon-purple)_20%,transparent)] text-[var(--bz-neon-purple)]",
-  lost: "bg-[color-mix(in_srgb,var(--state-danger)_20%,transparent)] text-[var(--state-danger)]",
-  inactive:
-    "bg-[color-mix(in_srgb,var(--bz-text-2)_20%,transparent)] text-[var(--bz-text-2)]",
-};
-const CLIENT_STATUS_TEXT: Record<string, string> = {
-  lead: "text-[var(--state-info)]",
-  active: "text-[var(--state-success)]",
-  completed: "text-[var(--bz-neon-purple)]",
-  lost: "text-[var(--state-danger)]",
-  inactive: "text-[var(--bz-text-2)]",
-};
+/**
+ * The client-status trigger (below) is a menu TRIGGER, not a report — it
+ * needs an `aria-label` and a click handler `StatePill` has no slot for
+ * (K3a's own `StatePill` is either an inert `<span>` or an
+ * `aria-pressed` filter button, neither of which carries a caller
+ * `aria-label`). Rather than fork the primitive or copy its class strings,
+ * this reuses its own exported tone table (`PILL_TONE` + `PILL_SQUARE`) on a
+ * native button, so the trigger's colour still goes through
+ * `clientStatusTone` — the r19 tone vocabulary, just not the literal
+ * component. Every OTHER status word on this page (the menu's own options,
+ * below) IS the real `StatePill`.
+ */
+const STATUS_TRIGGER_BASE =
+  "inline-flex h-6 items-center gap-1.5 whitespace-nowrap border px-2.5 " +
+  PILL_SQUARE +
+  " text-[10px] font-[650] uppercase tracking-[0.12em] bg-transparent cursor-pointer hover:opacity-80 transition-opacity disabled:cursor-wait";
 
 export interface ClientDetailClientProps {
   /**
@@ -156,6 +160,15 @@ export function ClientDetailClient({
   const [editingFamilyMember, setEditingFamilyMember] =
     useState<FamilyMember | null>(null);
   const [isMounted, setIsMounted] = useState(false);
+  // The signed-in viewer, for the ownership predicate only (copper stamp,
+  // masthead subtitle) — read once, same as `api.getUserProfile()` in K3a's
+  // /clients desk. `null`/no-email means "viewer unknown": no copper, no
+  // subtitle, per concept.md §6.
+  const [currentUserEmail, setCurrentUserEmail] = useState<string>("");
+  useEffect(() => {
+    const viewerProfile = api.getUserProfile?.();
+    if (viewerProfile?.email) setCurrentUserEmail(viewerProfile.email);
+  }, []);
   const [showStatusMenu, setShowStatusMenu] = useState(false);
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
   const [showLogPanel, setShowLogPanel] = useState(false);
@@ -296,7 +309,7 @@ export function ClientDetailClient({
   if (error || !profile) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[400px] gap-4">
-        <AlertTriangle className="w-12 h-12 text-[var(--state-danger)]" />
+        <AlertTriangle className="w-12 h-12 text-[var(--state-warning)]" />
         <p className="text-[var(--bz-text-2)]">{error || "Client not found"}</p>
         <Button variant="outline" onClick={() => router.push("/clients")}>
           Back to Clients
@@ -364,193 +377,222 @@ export function ClientDetailClient({
   // Get country flag for fallback
   const countryFlag = getCountryFlag(client.nationality);
 
+  // Masthead subtitle — DISAPPEARS when its data cannot prove it
+  // (concept.md §6): no sentence with zero active practices, none while the
+  // viewer is unknown either (the ownership half would silently read false).
+  const needsViewerAction = Boolean(
+    currentUserEmail && viewerIsNext(client, currentUserEmail),
+  );
+  const clientMastheadSubtitle =
+    activePractices.length > 0
+      ? `${activePractices.length} ${activePractices.length === 1 ? "process is" : "processes are"} moving${
+          needsViewerAction ? "; this record needs your action." : "."
+        }`
+      : undefined;
+
+  const clientRefEyebrow =
+    `CLIENT · #${String(client.id).padStart(4, "0")}` +
+    (client.company_name ? ` · ${client.company_name}` : "");
+
+  const clientTone = clientStatusTone(client.status);
+
   return (
     <div className="space-y-6">
-      {/* Expiry Alert Banner — shown when there are urgent docs */}
-      {expiry_alerts.filter(
-        (a) => a.alert_color === "expired" || a.alert_color === "red",
-      ).length > 0 && (
-        <div
-          className="flex items-start gap-3 rounded-xl px-4 py-3 border"
-          style={{
-            background:
-              "color-mix(in srgb, var(--state-danger) 8%, transparent)",
-            borderColor:
-              "color-mix(in srgb, var(--state-danger) 30%, transparent)",
-          }}
-        >
-          <AlertTriangle className="w-4 h-4 text-[var(--state-danger)] shrink-0 mt-0.5" />
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-[var(--state-danger)]">
-              {expiry_alerts.filter((a) => a.alert_color === "expired").length >
-                0 && (
-                <span>
-                  {
-                    expiry_alerts.filter((a) => a.alert_color === "expired")
-                      .length
-                  }{" "}
-                  expired
-                  {expiry_alerts.filter((a) => a.alert_color === "red").length >
-                  0
-                    ? " · "
-                    : ""}
-                </span>
-              )}
-              {expiry_alerts.filter((a) => a.alert_color === "red").length >
-                0 && (
-                <span>
-                  {expiry_alerts.filter((a) => a.alert_color === "red").length}{" "}
-                  expiring soon
-                </span>
-              )}
-            </p>
-            <div className="flex flex-wrap gap-1.5 mt-1">
-              {expiry_alerts
-                .filter(
-                  (a) => a.alert_color === "expired" || a.alert_color === "red",
-                )
-                .slice(0, 4)
-                .map((alert, i) => (
-                  <span
-                    key={i}
-                    className={`text-xs px-2 py-0.5 rounded-full ${
-                      alert.alert_color === "expired"
-                        ? "bg-[color-mix(in_srgb,var(--state-danger)_20%,transparent)] text-[var(--state-danger)]"
-                        : "bg-[color-mix(in_srgb,var(--state-warning)_20%,transparent)] text-[var(--state-warning)]"
-                    }`}
-                  >
-                    {alert.document_type?.replace(/_/g, " ")}
-                    {alert.entity_type === "family_member"
-                      ? ` (${alert.entity_name})`
-                      : ""}
-                    {alert.alert_color === "expired"
-                      ? " — expired"
-                      : ` — ${alert.days_until_expiry}d`}
-                  </span>
-                ))}
-              {expiry_alerts.filter(
-                (a) => a.alert_color === "expired" || a.alert_color === "red",
-              ).length > 4 && (
-                <span className="text-xs text-[var(--state-danger)] opacity-70">
-                  +
-                  {expiry_alerts.filter(
-                    (a) =>
-                      a.alert_color === "expired" || a.alert_color === "red",
-                  ).length - 4}{" "}
-                  more
-                </span>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Back */}
+      <Button
+        variant="ghost"
+        size="icon"
+        onClick={() => router.back()}
+        aria-label="Go back"
+      >
+        <ArrowLeft className="w-5 h-5" />
+      </Button>
 
-      {/* Header */}
-      <div className="flex items-center gap-4">
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={() => router.back()}
-          aria-label="Go back"
-        >
-          <ArrowLeft className="w-5 h-5" />
-        </Button>
-        <div className="flex items-center gap-4 flex-1">
-          {/* Avatar */}
-          <div className="w-16 h-16 rounded-full bg-[var(--bz-accent)]/20 flex items-center justify-center overflow-hidden">
-            {client.avatar_url ? (
-              <img
-                src={client.avatar_url}
-                alt={client.full_name}
-                className="w-full h-full object-cover"
-              />
-            ) : countryFlag ? (
-              <div className="w-full h-full rounded-full bg-[var(--bz-base)] flex items-center justify-center text-4xl">
-                {countryFlag}
+      {/* Masthead — reference eyebrow, name, a computed sentence that
+          disappears when its data cannot prove it (concept.md §6). The
+          avatar has no r19 slot, so it wraps the primitive page-locally
+          rather than forking it (per spec §"Hard rules"). */}
+      <div className="flex items-start gap-4">
+        <div className="w-16 h-16 shrink-0 rounded-full bg-[var(--bz-accent)]/20 flex items-center justify-center overflow-hidden">
+          {client.avatar_url ? (
+            <img
+              src={client.avatar_url}
+              alt={client.full_name}
+              className="w-full h-full object-cover"
+            />
+          ) : countryFlag ? (
+            <div className="w-full h-full rounded-full bg-[var(--bz-base)] flex items-center justify-center text-4xl">
+              {countryFlag}
+            </div>
+          ) : (
+            <div
+              className="w-full h-full rounded-full"
+              style={{ background: "var(--bz-card)" }}
+            />
+          )}
+        </div>
+        <Masthead
+          className="flex-1"
+          eyebrow={clientRefEyebrow}
+          title={client.full_name}
+          subtitle={clientMastheadSubtitle}
+          right={
+            <>
+              {/* Copper "NEEDS YOU" stamp — derived ownership only, detail-only. */}
+              <Stamp tone="copper" owned={needsViewerAction} />
+              {client.phone && (
+                <>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="gap-2 text-[var(--accent-whatsapp)] border-[color-mix(in_srgb,var(--accent-whatsapp)_30%,transparent)] hover:bg-[color-mix(in_srgb,var(--accent-whatsapp)_10%,transparent)]"
+                    onClick={() => {
+                      const phone = client.phone?.replace(/\D/g, "");
+                      if (phone)
+                        window.open(
+                          `https://wa.me/${phone.startsWith("0") ? "62" + phone.slice(1) : phone}`,
+                          "_blank",
+                        );
+                    }}
+                  >
+                    <MessageCircle className="w-4 h-4" />
+                    WhatsApp
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="gap-2 text-sky-500 border-sky-500/30 hover:bg-sky-500/10"
+                    onClick={() => {
+                      const phone = client.phone?.replace(/\D/g, "");
+                      if (phone)
+                        window.open(
+                          `https://t.me/+${phone.startsWith("0") ? "62" + phone.slice(1) : phone}`,
+                          "_blank",
+                        );
+                    }}
+                  >
+                    <Send className="w-4 h-4" />
+                    Telegram
+                  </Button>
+                </>
+              )}
+              {client.email && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-2 text-indigo-400 border-indigo-400/30 hover:bg-indigo-400/10"
+                  onClick={() =>
+                    window.open(`mailto:${client.email}`, "_blank")
+                  }
+                >
+                  <Mail className="w-4 h-4" />
+                  Email
+                </Button>
+              )}
+              <Button
+                variant={showLogPanel ? "default" : "outline"}
+                size="sm"
+                className="gap-2"
+                onClick={() => {
+                  setShowLogPanel((v) => !v);
+                  if (!showLogPanel)
+                    setTimeout(() => logTextareaRef.current?.focus(), 80);
+                }}
+              >
+                <PenLine className="w-4 h-4" />
+                Log
+              </Button>
+              {client.google_drive_folder_id && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-2 text-amber-400 border-amber-400/30 hover:bg-amber-400/10"
+                  onClick={() =>
+                    window.open(
+                      `https://drive.google.com/drive/folders/${client.google_drive_folder_id}`,
+                      "_blank",
+                    )
+                  }
+                  title="Open client's Google Drive folder"
+                  aria-label="Open client's Google Drive folder"
+                >
+                  <FolderOpen className="w-4 h-4" />
+                  Drive
+                </Button>
+              )}
+            </>
+          }
+        />
+      </div>
+
+      {/*
+       * "Where it stands" — status pill, assignment, key dates, the alert
+       * strip — FIRST in the DOM at every width (concept.md C14b / K3b spec
+       * §3.2), moved to the right column above 1100px by
+       * `styles.statusColumn`'s own `order`, never by giving the main
+       * column `order: -1` (see the CSS module's own note).
+       */}
+      <div className={styles.detailLayout}>
+        <div className={styles.statusColumn} data-testid="status-column">
+          {/* Status pill — a menu TRIGGER; see the STATUS_TRIGGER_BASE note
+              above for why it stays a native button styled from PILL_TONE
+              instead of the StatePill component. Its options ARE StatePill. */}
+          <div ref={statusMenuRef} className="relative inline-block">
+            <button
+              onClick={() => setShowStatusMenu((v) => !v)}
+              disabled={isUpdatingStatus}
+              className={`${STATUS_TRIGGER_BASE} ${PILL_TONE[clientTone]}`}
+              title="Click to change status"
+              aria-label="Change client status"
+            >
+              {isUpdatingStatus ? "..." : client.status}
+            </button>
+            {showStatusMenu && (
+              <div className="absolute top-full left-0 mt-1 z-50 flex flex-col gap-1 rounded-lg border border-[var(--bz-border)] bg-[var(--bz-surface)] shadow-xl p-1 min-w-[140px]">
+                {(
+                  ["lead", "active", "completed", "lost", "inactive"] as const
+                ).map((s) => (
+                  <StatePill
+                    key={s}
+                    tone={clientStatusTone(s)}
+                    label={s}
+                    pressed={s === client.status}
+                    onClick={() => updateStatus(s)}
+                  />
+                ))}
               </div>
-            ) : (
-              <div
-                className="w-full h-full rounded-full"
-                style={{ background: "var(--bz-card)" }}
-              />
             )}
           </div>
-          <div className="flex-1">
-            <div className="flex items-center gap-2 flex-wrap">
-              <h1 className="text-2xl font-bold text-[var(--bz-text-1)]">
-                {client.full_name}
-              </h1>
-              {/* Status badge — click to change */}
-              <div ref={statusMenuRef} className="relative">
-                <button
-                  onClick={() => setShowStatusMenu((v) => !v)}
-                  disabled={isUpdatingStatus}
-                  className={`text-xs px-2 py-0.5 rounded-full font-medium cursor-pointer hover:opacity-80 transition-opacity disabled:cursor-wait ${
-                    CLIENT_STATUS_BADGE[client.status] ??
-                    CLIENT_STATUS_BADGE.inactive
-                  }`}
-                  title="Click to change status"
-                  aria-label="Change client status"
-                >
-                  {isUpdatingStatus ? "..." : client.status}
-                </button>
-                {showStatusMenu && (
-                  <div className="absolute top-full left-0 mt-1 z-50 rounded-lg border border-[var(--bz-border)] bg-[var(--bz-surface)] shadow-xl py-1 min-w-[120px]">
-                    {(
-                      [
-                        "lead",
-                        "active",
-                        "completed",
-                        "lost",
-                        "inactive",
-                      ] as const
-                    ).map((s) => (
-                      <button
-                        key={s}
-                        onClick={() => updateStatus(s)}
-                        className={`w-full text-left px-3 py-1.5 text-xs hover:bg-[var(--bz-card)] transition-colors ${
-                          s === client.status ? "font-bold" : ""
-                        } ${CLIENT_STATUS_TEXT[s]}`}
-                      >
-                        {s === client.status ? "✓ " : ""}
-                        {s}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-            <p className="text-sm text-[var(--bz-text-2)]">
-              Client #{client.id} • {client.client_type || "Individual"}
-              {client.company_name && ` • ${client.company_name}`}
-              {isMounted &&
-                client.last_interaction_date &&
-                (() => {
-                  const days = Math.floor(
-                    (Date.now() -
-                      new Date(client.last_interaction_date).getTime()) /
-                      86400000,
-                  );
-                  if (days > 30)
-                    return (
-                      <span className="text-[var(--state-danger)]">
-                        {" "}
-                        • Silent {days}d
-                      </span>
-                    );
-                  if (days > 14)
-                    return (
-                      <span className="text-[var(--state-warning)]">
-                        {" "}
-                        • {days}d ago
-                      </span>
-                    );
-                  return null;
-                })()}
-            </p>
-          </div>
 
-          {/* Leader Avatar - Next to client name */}
+          <p className="text-sm text-[var(--bz-text-2)]">
+            {client.client_type || "Individual"}
+            {isMounted &&
+              client.last_interaction_date &&
+              (() => {
+                const days = Math.floor(
+                  (Date.now() -
+                    new Date(client.last_interaction_date).getTime()) /
+                    86400000,
+                );
+                if (days > 30)
+                  return (
+                    <span className="text-[var(--state-warning)]">
+                      {" "}
+                      • Silent {days}d
+                    </span>
+                  );
+                if (days > 14)
+                  return (
+                    <span className="text-[var(--state-warning)]">
+                      {" "}
+                      • {days}d ago
+                    </span>
+                  );
+                return null;
+              })()}
+          </p>
+
+          {/* Assignment */}
           {client.assigned_to && (
             <div
               className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[var(--bz-surface)] border border-[var(--bz-border)]"
@@ -579,430 +621,436 @@ export function ClientDetailClient({
               </div>
             </div>
           )}
-        </div>
 
-        {/* Alert badges */}
-        {(stats.expired_count > 0 ||
-          stats.red_alerts > 0 ||
-          stats.yellow_alerts > 0) && (
-          <div className="flex gap-2">
-            {stats.expired_count > 0 && (
-              <span className="px-2 py-1 text-xs rounded-full bg-[color-mix(in_srgb,var(--state-danger)_30%,transparent)] text-[var(--state-danger)] flex items-center gap-1">
-                <AlertCircle className="w-3 h-3" />
-                {stats.expired_count} expired
-              </span>
-            )}
-            {stats.red_alerts > 0 && (
-              <span className="px-2 py-1 text-xs rounded-full bg-[color-mix(in_srgb,var(--state-danger)_20%,transparent)] text-[var(--state-danger)] flex items-center gap-1">
-                <Bell className="w-3 h-3" />
-                {stats.red_alerts} urgent
-              </span>
-            )}
-            {stats.yellow_alerts > 0 && (
-              <span className="px-2 py-1 text-xs rounded-full bg-[color-mix(in_srgb,var(--state-warning)_20%,transparent)] text-[var(--state-warning)] flex items-center gap-1">
-                <Bell className="w-3 h-3" />
-                {stats.yellow_alerts} soon
-              </span>
-            )}
-          </div>
-        )}
+          {/* Alert badges — urgency (a date), never ownership: warning, never danger */}
+          {(stats.expired_count > 0 ||
+            stats.red_alerts > 0 ||
+            stats.yellow_alerts > 0) && (
+            <div className="flex flex-wrap gap-2">
+              {stats.expired_count > 0 && (
+                <span className="px-2 py-1 text-xs rounded-full bg-[color-mix(in_srgb,var(--state-warning)_30%,transparent)] text-[var(--state-warning)] flex items-center gap-1">
+                  <AlertCircle className="w-3 h-3" />
+                  {stats.expired_count} expired
+                </span>
+              )}
+              {stats.red_alerts > 0 && (
+                <span className="px-2 py-1 text-xs rounded-full bg-[color-mix(in_srgb,var(--state-warning)_20%,transparent)] text-[var(--state-warning)] flex items-center gap-1">
+                  <Bell className="w-3 h-3" />
+                  {stats.red_alerts} urgent
+                </span>
+              )}
+              {stats.yellow_alerts > 0 && (
+                <span className="px-2 py-1 text-xs rounded-full bg-[color-mix(in_srgb,var(--state-warning)_20%,transparent)] text-[var(--state-warning)] flex items-center gap-1">
+                  <Bell className="w-3 h-3" />
+                  {stats.yellow_alerts} soon
+                </span>
+              )}
+            </div>
+          )}
 
-        {/* Quick Actions */}
-        <div className="flex gap-2">
-          {client.phone && (
-            <>
-              <Button
-                variant="outline"
-                size="sm"
-                className="gap-2 text-[var(--accent-whatsapp)] border-[color-mix(in_srgb,var(--accent-whatsapp)_30%,transparent)] hover:bg-[color-mix(in_srgb,var(--accent-whatsapp)_10%,transparent)]"
-                onClick={() => {
-                  const phone = client.phone?.replace(/\D/g, "");
-                  if (phone)
-                    window.open(
-                      `https://wa.me/${phone.startsWith("0") ? "62" + phone.slice(1) : phone}`,
-                      "_blank",
-                    );
-                }}
-              >
-                <MessageCircle className="w-4 h-4" />
-                WhatsApp
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                className="gap-2 text-sky-500 border-sky-500/30 hover:bg-sky-500/10"
-                onClick={() => {
-                  const phone = client.phone?.replace(/\D/g, "");
-                  if (phone)
-                    window.open(
-                      `https://t.me/+${phone.startsWith("0") ? "62" + phone.slice(1) : phone}`,
-                      "_blank",
-                    );
-                }}
-              >
-                <Send className="w-4 h-4" />
-                Telegram
-              </Button>
-            </>
-          )}
-          {client.email && (
-            <Button
-              variant="outline"
-              size="sm"
-              className="gap-2 text-indigo-400 border-indigo-400/30 hover:bg-indigo-400/10"
-              onClick={() => window.open(`mailto:${client.email}`, "_blank")}
-            >
-              <Mail className="w-4 h-4" />
-              Email
-            </Button>
-          )}
-          <Button
-            variant={showLogPanel ? "default" : "outline"}
-            size="sm"
-            className="gap-2"
-            onClick={() => {
-              setShowLogPanel((v) => !v);
-              if (!showLogPanel)
-                setTimeout(() => logTextareaRef.current?.focus(), 80);
-            }}
-          >
-            <PenLine className="w-4 h-4" />
-            Log
-          </Button>
-          {client.google_drive_folder_id && (
-            <Button
-              variant="outline"
-              size="sm"
-              className="gap-2 text-amber-400 border-amber-400/30 hover:bg-amber-400/10"
-              onClick={() =>
-                window.open(
-                  `https://drive.google.com/drive/folders/${client.google_drive_folder_id}`,
-                  "_blank",
-                )
-              }
-              title="Open client's Google Drive folder"
-              aria-label="Open client's Google Drive folder"
-            >
-              <FolderOpen className="w-4 h-4" />
-              Drive
-            </Button>
-          )}
-        </div>
-      </div>
-
-      {/* Inline Log Interaction Panel */}
-      {showLogPanel && (
-        <div className="rounded-xl border border-[var(--bz-border)] bg-[var(--bz-surface)] p-4 space-y-3 animate-in slide-in-from-top-2 duration-150">
-          <div className="flex items-center justify-between">
-            <p className="text-sm font-medium text-[var(--bz-text-1)]">
-              Log interaction
-            </p>
-            <button
-              onClick={() => {
-                setShowLogPanel(false);
-                setLogSummary("");
+          {/* Expiry Alert strip — shown when there are urgent docs. A date
+              is urgency, never ownership, never danger: warning throughout. */}
+          {expiry_alerts.filter(
+            (a) => a.alert_color === "expired" || a.alert_color === "red",
+          ).length > 0 && (
+            <div
+              className="flex items-start gap-3 rounded-xl px-4 py-3 border"
+              style={{
+                background:
+                  "color-mix(in srgb, var(--state-warning) 8%, transparent)",
+                borderColor:
+                  "color-mix(in srgb, var(--state-warning) 30%, transparent)",
               }}
-              className="p-1 rounded hover:bg-[var(--bz-card)] text-[var(--bz-text-2)]"
             >
-              <X className="w-4 h-4" />
-            </button>
-          </div>
-          {/* Quick presets — one click to prefill + submit */}
-          <div className="flex flex-wrap gap-1.5">
-            <span className="text-[10px] text-[var(--bz-text-2)] self-center mr-1 uppercase tracking-wide font-medium">
-              Quick:
-            </span>
-            {[
-              {
-                type: "call" as const,
-                label: "📞 Called",
-                summary: "Called client",
-              },
-              {
-                type: "call" as const,
-                label: "📵 No answer",
-                summary: "Called — no answer",
-              },
-              {
-                type: "whatsapp" as const,
-                label: "💬 WA sent",
-                summary: "WhatsApp message sent",
-              },
-              {
-                type: "note" as const,
-                label: "✅ Updated",
-                summary: "Process updated",
-              },
-            ].map(({ type, label, summary }) => (
-              <button
-                key={label}
-                onClick={async () => {
-                  setLogType(type);
-                  setLogSummary(summary);
-                  setIsLogging(true);
-                  try {
-                    const user = await api.getProfile();
-                    const newInteraction = await api.crm.createInteraction({
-                      client_id: clientId,
-                      interaction_type: type,
-                      summary,
-                      team_member: user.email,
-                      direction: "outbound",
-                    });
-                    setInteractions((prev) => [newInteraction, ...prev]);
-                    toast.success("Logged: " + summary);
-                    setLogSaved(true);
-                    setTimeout(() => setLogSaved(false), 1500);
-                    setLogSummary("");
+              <AlertTriangle className="w-4 h-4 text-[var(--state-warning)] shrink-0 mt-0.5" />
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-[var(--state-warning)]">
+                  {expiry_alerts.filter((a) => a.alert_color === "expired")
+                    .length > 0 && (
+                    <span>
+                      {
+                        expiry_alerts.filter((a) => a.alert_color === "expired")
+                          .length
+                      }{" "}
+                      expired
+                      {expiry_alerts.filter((a) => a.alert_color === "red")
+                        .length > 0
+                        ? " · "
+                        : ""}
+                    </span>
+                  )}
+                  {expiry_alerts.filter((a) => a.alert_color === "red").length >
+                    0 && (
+                    <span>
+                      {
+                        expiry_alerts.filter((a) => a.alert_color === "red")
+                          .length
+                      }{" "}
+                      expiring soon
+                    </span>
+                  )}
+                </p>
+                <div className="flex flex-wrap gap-1.5 mt-1">
+                  {expiry_alerts
+                    .filter(
+                      (a) =>
+                        a.alert_color === "expired" || a.alert_color === "red",
+                    )
+                    .slice(0, 4)
+                    .map((alert, i) => (
+                      <span
+                        key={i}
+                        className="text-xs px-2 py-0.5 rounded-full bg-[color-mix(in_srgb,var(--state-warning)_20%,transparent)] text-[var(--state-warning)]"
+                      >
+                        {alert.document_type?.replace(/_/g, " ")}
+                        {alert.entity_type === "family_member"
+                          ? ` (${alert.entity_name})`
+                          : ""}
+                        {alert.alert_color === "expired"
+                          ? " — expired"
+                          : ` — ${alert.days_until_expiry}d`}
+                      </span>
+                    ))}
+                  {expiry_alerts.filter(
+                    (a) =>
+                      a.alert_color === "expired" || a.alert_color === "red",
+                  ).length > 4 && (
+                    <span className="text-xs text-[var(--state-warning)] opacity-70">
+                      +
+                      {expiry_alerts.filter(
+                        (a) =>
+                          a.alert_color === "expired" ||
+                          a.alert_color === "red",
+                      ).length - 4}{" "}
+                      more
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
+        <div className={styles.mainColumn}>
+          {/* Inline Log Interaction Panel */}
+          {showLogPanel && (
+            <div className="rounded-xl border border-[var(--bz-border)] bg-[var(--bz-surface)] p-4 space-y-3 animate-in slide-in-from-top-2 duration-150">
+              <div className="flex items-center justify-between">
+                <p className="text-sm font-medium text-[var(--bz-text-1)]">
+                  Log interaction
+                </p>
+                <button
+                  onClick={() => {
                     setShowLogPanel(false);
-                    invalidateClient();
-                  } catch (err) {
-                    toast.error("Failed to log", {
-                      description: (err as Error).message,
-                    });
-                  } finally {
-                    setIsLogging(false);
-                  }
+                    setLogSummary("");
+                  }}
+                  className="p-1 rounded hover:bg-[var(--bz-card)] text-[var(--bz-text-2)]"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+              {/* Quick presets — one click to prefill + submit */}
+              <div className="flex flex-wrap gap-1.5">
+                <span className="text-[10px] text-[var(--bz-text-2)] self-center mr-1 uppercase tracking-wide font-medium">
+                  Quick:
+                </span>
+                {[
+                  {
+                    type: "call" as const,
+                    label: "📞 Called",
+                    summary: "Called client",
+                  },
+                  {
+                    type: "call" as const,
+                    label: "📵 No answer",
+                    summary: "Called — no answer",
+                  },
+                  {
+                    type: "whatsapp" as const,
+                    label: "💬 WA sent",
+                    summary: "WhatsApp message sent",
+                  },
+                  {
+                    type: "note" as const,
+                    label: "✅ Updated",
+                    summary: "Process updated",
+                  },
+                ].map(({ type, label, summary }) => (
+                  <button
+                    key={label}
+                    onClick={async () => {
+                      setLogType(type);
+                      setLogSummary(summary);
+                      setIsLogging(true);
+                      try {
+                        const user = await api.getProfile();
+                        const newInteraction = await api.crm.createInteraction({
+                          client_id: clientId,
+                          interaction_type: type,
+                          summary,
+                          team_member: user.email,
+                          direction: "outbound",
+                        });
+                        setInteractions((prev) => [newInteraction, ...prev]);
+                        toast.success("Logged: " + summary);
+                        setLogSaved(true);
+                        setTimeout(() => setLogSaved(false), 1500);
+                        setLogSummary("");
+                        setShowLogPanel(false);
+                        invalidateClient();
+                      } catch (err) {
+                        toast.error("Failed to log", {
+                          description: (err as Error).message,
+                        });
+                      } finally {
+                        setIsLogging(false);
+                      }
+                    }}
+                    disabled={isLogging}
+                    className="text-xs px-2.5 py-1 rounded-full border border-[var(--bz-border)] bg-[var(--bz-base)] text-[var(--bz-text-2)] hover:border-[var(--bz-accent)]/50 hover:text-[var(--bz-text-1)] transition-colors disabled:opacity-50"
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+              {/* Type chips */}
+              <div className="flex flex-wrap gap-2">
+                {(
+                  [
+                    { key: "note", label: "Note", Icon: FileText },
+                    { key: "call", label: "Call", Icon: Phone },
+                    { key: "whatsapp", label: "WhatsApp", Icon: MessageCircle },
+                    { key: "email", label: "Email", Icon: Mail },
+                    { key: "meeting", label: "Meeting", Icon: Calendar },
+                    { key: "chat", label: "Chat", Icon: MessageCircle },
+                  ] as const
+                ).map(({ key, label, Icon }) => (
+                  <button
+                    key={key}
+                    onClick={() => setLogType(key)}
+                    className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full border transition-colors ${
+                      logType === key
+                        ? "bg-[var(--bz-sidebar-active-fill)] text-white border-[var(--bz-sidebar-active-fill)]"
+                        : "bg-[var(--bz-base)] text-[var(--bz-text-2)] border-[var(--bz-border)] hover:border-[var(--bz-accent)]/50"
+                    }`}
+                  >
+                    <Icon className="w-3 h-3" />
+                    {label}
+                  </button>
+                ))}
+              </div>
+              {/* Summary textarea */}
+              <textarea
+                ref={logTextareaRef}
+                value={logSummary}
+                onChange={(e) => setLogSummary(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && (e.metaKey || e.ctrlKey))
+                    submitLog();
                 }}
-                disabled={isLogging}
-                className="text-xs px-2.5 py-1 rounded-full border border-[var(--bz-border)] bg-[var(--bz-base)] text-[var(--bz-text-2)] hover:border-[var(--bz-accent)]/50 hover:text-[var(--bz-text-1)] transition-colors disabled:opacity-50"
-              >
-                {label}
-              </button>
-            ))}
-          </div>
-          {/* Type chips */}
-          <div className="flex flex-wrap gap-2">
-            {(
-              [
-                { key: "note", label: "Note", Icon: FileText },
-                { key: "call", label: "Call", Icon: Phone },
-                { key: "whatsapp", label: "WhatsApp", Icon: MessageCircle },
-                { key: "email", label: "Email", Icon: Mail },
-                { key: "meeting", label: "Meeting", Icon: Calendar },
-                { key: "chat", label: "Chat", Icon: MessageCircle },
-              ] as const
-            ).map(({ key, label, Icon }) => (
+                placeholder={`Add a ${logType} note… (⌘↵ to save)`}
+                rows={3}
+                className="w-full rounded-lg bg-[var(--bz-base)] border border-[var(--bz-border)] text-sm text-[var(--bz-text-1)] placeholder:text-[var(--bz-text-2)] px-3 py-2 resize-none focus:outline-none focus:border-[var(--bz-accent)] transition-colors"
+              />
+              <div className="flex items-center justify-between">
+                <span
+                  className={`text-[10px] tabular-nums transition-colors ${
+                    logSummary.length > 400
+                      ? "text-[var(--state-warning)]"
+                      : logSummary.length > 200
+                        ? "text-[var(--state-warning)]"
+                        : "text-[var(--bz-text-2)]"
+                  }`}
+                >
+                  {logSummary.length > 0 ? `${logSummary.length} chars` : ""}
+                </span>
+                <Button
+                  size="sm"
+                  disabled={!logSummary.trim() || isLogging}
+                  onClick={submitLog}
+                  className={`gap-2 transition-colors ${logSaved ? "bg-[var(--state-success)] hover:opacity-90" : ""}`}
+                >
+                  {isLogging ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <PenLine className="w-4 h-4" />
+                  )}
+                  {logSaved ? "Saved!" : "Save"}
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {/* Tabs — hairline idiom: 44px row, --line-control underline, an ink
+          underline on the active tab. No role="tab"/aria-selected here: K3a
+          dropped role="menu" for the same reason (decision D6) — this bar
+          does not implement the arrow-key pattern a tab role promises, so it
+          keeps native buttons with the browser's own Tab/Enter/Space. */}
+          <div ref={tabsRef} className={styles.tabBar} data-testid="tab-bar">
+            {[
+              { key: "overview", label: "Overview", icon: User },
+              {
+                key: "documents",
+                label: `Documents (${generalDocuments.length})`,
+                icon: FileText,
+              },
+              {
+                key: "process",
+                label: `Process (${activePractices.length + completedPractices.length})`,
+                icon: FolderOpen,
+              },
+              {
+                key: "family",
+                label: `Family (${stats.family_count})`,
+                icon: Users,
+              },
+              { key: "visas", label: "Immigration", icon: Globe },
+              { key: "company", label: "Company", icon: Building2 },
+              { key: "tax", label: "Tax", icon: DollarSign },
+              {
+                key: "timeline",
+                label: `Timeline (${interactions.length})`,
+                icon: Activity,
+              },
+              {
+                key: "whatsapp",
+                label: "WhatsApp",
+                icon: MessageCircle,
+              },
+            ].map(({ key, label, icon: Icon }) => (
               <button
                 key={key}
-                onClick={() => setLogType(key)}
-                className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full border transition-colors ${
-                  logType === key
-                    ? "bg-[var(--bz-sidebar-active-fill)] text-white border-[var(--bz-sidebar-active-fill)]"
-                    : "bg-[var(--bz-base)] text-[var(--bz-text-2)] border-[var(--bz-border)] hover:border-[var(--bz-accent)]/50"
-                }`}
+                type="button"
+                onClick={() => handleTabChange(key as TabType)}
+                className={`${styles.tab} ${activeTab === key ? styles.tabActive : ""}`}
               >
-                <Icon className="w-3 h-3" />
+                <Icon className="w-4 h-4" />
                 {label}
               </button>
             ))}
           </div>
-          {/* Summary textarea */}
-          <textarea
-            ref={logTextareaRef}
-            value={logSummary}
-            onChange={(e) => setLogSummary(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) submitLog();
-            }}
-            placeholder={`Add a ${logType} note… (⌘↵ to save)`}
-            rows={3}
-            className="w-full rounded-lg bg-[var(--bz-base)] border border-[var(--bz-border)] text-sm text-[var(--bz-text-1)] placeholder:text-[var(--bz-text-2)] px-3 py-2 resize-none focus:outline-none focus:border-[var(--bz-accent)] transition-colors"
-          />
-          <div className="flex items-center justify-between">
-            <span
-              className={`text-[10px] tabular-nums transition-colors ${
-                logSummary.length > 400
-                  ? "text-[var(--state-danger)]"
-                  : logSummary.length > 200
-                    ? "text-[var(--state-warning)]"
-                    : "text-[var(--bz-text-2)]"
-              }`}
-            >
-              {logSummary.length > 0 ? `${logSummary.length} chars` : ""}
-            </span>
-            <Button
-              size="sm"
-              disabled={!logSummary.trim() || isLogging}
-              onClick={submitLog}
-              className={`gap-2 transition-colors ${logSaved ? "bg-[var(--state-success)] hover:opacity-90" : ""}`}
-            >
-              {isLogging ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <PenLine className="w-4 h-4" />
-              )}
-              {logSaved ? "Saved!" : "Save"}
-            </Button>
-          </div>
+
+          {/* Tab Content */}
+          {activeTab === "overview" && (
+            <>
+              <OverviewTab
+                client={client}
+                stats={stats}
+                documents={documents}
+                activePractices={activePractices}
+                completedPractices={completedPractices}
+                formatDate={formatDate}
+                formatCurrency={formatCurrency}
+                onEditClick={() => setActiveModal("edit_client")}
+                onRefresh={invalidateClient}
+                clientId={clientId}
+              />
+              <BusinessStoryPanel
+                clientName={client.full_name}
+                companyNames={businessStoryCompanyNames}
+                maps={businessStoryQuery.data ?? []}
+                isLoading={businessStoryQuery.isLoading}
+                error={businessStoryError}
+              />
+              <PortalAccess
+                clientId={clientId}
+                clientName={client.full_name}
+                clientEmail={client.email}
+              />
+              <PortalMessages
+                clientId={clientId}
+                clientName={client.full_name}
+              />
+            </>
+          )}
+
+          {activeTab === "documents" && (
+            <DocumentsTab
+              clientId={clientId}
+              documents={generalDocuments}
+              documentsByCategory={documentsByCategory}
+              formatDate={formatDate}
+              onAddClick={() => setActiveModal("add_document")}
+              onEditClick={(doc) => {
+                setEditingDocument(doc);
+                setActiveModal("edit_document");
+              }}
+            />
+          )}
+
+          {activeTab === "process" && (
+            <ProcessTab
+              clientId={clientId}
+              practices={[...activePractices, ...completedPractices]}
+              formatDate={formatDate}
+              onRefresh={invalidateClient}
+            />
+          )}
+
+          {activeTab === "family" && (
+            <FamilyTab
+              clientId={clientId}
+              familyMembers={family_members}
+              documents={documents}
+              formatDate={formatDate}
+              onAddClick={() => setActiveModal("add_family")}
+              onEditClick={(member) => {
+                setEditingFamilyMember(member);
+                setActiveModal("edit_family");
+              }}
+              onRefresh={invalidateClient}
+            />
+          )}
+
+          {activeTab === "visas" && (
+            <ImmigrationTab
+              clientId={clientId}
+              documents={documents}
+              formatDate={formatDate}
+              onAddClick={() => setActiveModal("add_document")}
+              onEditClick={(doc) => {
+                setEditingDocument(doc);
+                setActiveModal("edit_document");
+              }}
+              onRefresh={invalidateClient}
+            />
+          )}
+
+          {activeTab === "company" && (
+            <CompanyTab
+              clientId={clientId}
+              client={client}
+              documents={documents}
+              formatDate={formatDate}
+              onRefresh={invalidateClient}
+            />
+          )}
+
+          {activeTab === "tax" && (
+            <TaxTab
+              clientId={clientId}
+              formatDate={formatDate}
+              client={profile?.client ?? null}
+              companyLinks={company_links}
+              onRefresh={invalidateClient}
+              taxConsultants={taxConsultants}
+            />
+          )}
+
+          {activeTab === "timeline" && (
+            <TimelineTab
+              interactions={interactions}
+              formatDate={formatDate}
+              formatTime={formatTime}
+              clientCreatedAt={client.created_at}
+              clientFirstContact={client.first_contact_date}
+              clientId={clientId}
+            />
+          )}
+
+          {activeTab === "whatsapp" && <WaTimelineTab clientId={clientId} />}
         </div>
-      )}
-
-      {/* Tabs */}
-      <div
-        ref={tabsRef}
-        className="flex gap-2 border-b border-[var(--bz-border)] pb-2 overflow-x-auto"
-      >
-        {[
-          { key: "overview", label: "Overview", icon: User },
-          {
-            key: "documents",
-            label: `Documents (${generalDocuments.length})`,
-            icon: FileText,
-          },
-          {
-            key: "process",
-            label: `Process (${activePractices.length + completedPractices.length})`,
-            icon: FolderOpen,
-          },
-          {
-            key: "family",
-            label: `Family (${stats.family_count})`,
-            icon: Users,
-          },
-          { key: "visas", label: "Immigration", icon: Globe },
-          { key: "company", label: "Company", icon: Building2 },
-          { key: "tax", label: "Tax", icon: DollarSign },
-          {
-            key: "timeline",
-            label: `Timeline (${interactions.length})`,
-            icon: Activity,
-          },
-          {
-            key: "whatsapp",
-            label: "WhatsApp",
-            icon: MessageCircle,
-          },
-        ].map(({ key, label, icon: Icon }) => (
-          <Button
-            key={key}
-            variant={activeTab === key ? "default" : "ghost"}
-            size="sm"
-            className="gap-2 whitespace-nowrap"
-            onClick={() => handleTabChange(key as TabType)}
-          >
-            <Icon className="w-4 h-4" />
-            {label}
-          </Button>
-        ))}
       </div>
-
-      {/* Tab Content */}
-      {activeTab === "overview" && (
-        <>
-          <OverviewTab
-            client={client}
-            stats={stats}
-            documents={documents}
-            activePractices={activePractices}
-            completedPractices={completedPractices}
-            formatDate={formatDate}
-            formatCurrency={formatCurrency}
-            onEditClick={() => setActiveModal("edit_client")}
-            onRefresh={invalidateClient}
-            clientId={clientId}
-          />
-          <BusinessStoryPanel
-            clientName={client.full_name}
-            companyNames={businessStoryCompanyNames}
-            maps={businessStoryQuery.data ?? []}
-            isLoading={businessStoryQuery.isLoading}
-            error={businessStoryError}
-          />
-          <PortalAccess
-            clientId={clientId}
-            clientName={client.full_name}
-            clientEmail={client.email}
-          />
-          <PortalMessages clientId={clientId} clientName={client.full_name} />
-        </>
-      )}
-
-      {activeTab === "documents" && (
-        <DocumentsTab
-          clientId={clientId}
-          documents={generalDocuments}
-          documentsByCategory={documentsByCategory}
-          formatDate={formatDate}
-          onAddClick={() => setActiveModal("add_document")}
-          onEditClick={(doc) => {
-            setEditingDocument(doc);
-            setActiveModal("edit_document");
-          }}
-        />
-      )}
-
-      {activeTab === "process" && (
-        <ProcessTab
-          clientId={clientId}
-          practices={[...activePractices, ...completedPractices]}
-          formatDate={formatDate}
-          onRefresh={invalidateClient}
-        />
-      )}
-
-      {activeTab === "family" && (
-        <FamilyTab
-          clientId={clientId}
-          familyMembers={family_members}
-          documents={documents}
-          formatDate={formatDate}
-          onAddClick={() => setActiveModal("add_family")}
-          onEditClick={(member) => {
-            setEditingFamilyMember(member);
-            setActiveModal("edit_family");
-          }}
-          onRefresh={invalidateClient}
-        />
-      )}
-
-      {activeTab === "visas" && (
-        <ImmigrationTab
-          clientId={clientId}
-          documents={documents}
-          formatDate={formatDate}
-          onAddClick={() => setActiveModal("add_document")}
-          onEditClick={(doc) => {
-            setEditingDocument(doc);
-            setActiveModal("edit_document");
-          }}
-          onRefresh={invalidateClient}
-        />
-      )}
-
-      {activeTab === "company" && (
-        <CompanyTab
-          clientId={clientId}
-          client={client}
-          documents={documents}
-          formatDate={formatDate}
-          onRefresh={invalidateClient}
-        />
-      )}
-
-      {activeTab === "tax" && (
-        <TaxTab
-          clientId={clientId}
-          formatDate={formatDate}
-          client={profile?.client ?? null}
-          companyLinks={company_links}
-          onRefresh={invalidateClient}
-          taxConsultants={taxConsultants}
-        />
-      )}
-
-      {activeTab === "timeline" && (
-        <TimelineTab
-          interactions={interactions}
-          formatDate={formatDate}
-          formatTime={formatTime}
-          clientCreatedAt={client.created_at}
-          clientFirstContact={client.first_contact_date}
-          clientId={clientId}
-        />
-      )}
-
-      {activeTab === "whatsapp" && <WaTimelineTab clientId={clientId} />}
 
       {/* Modals */}
       {activeModal === "edit_client" && profile && (

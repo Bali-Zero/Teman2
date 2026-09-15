@@ -364,16 +364,16 @@ export function OverviewTab({
                     className="bz-product-panel bz-product-panel--interactive p-3 transition-all duration-300 hover:-translate-y-1"
                     style={{
                       borderColor:
-                        "color-mix(in srgb, var(--state-danger) 22%, transparent)",
+                        "color-mix(in srgb, var(--state-warning) 22%, transparent)",
                     }}
                   >
                     <div className="flex items-center gap-1.5 mb-1">
-                      <Clock className="w-3.5 h-3.5 text-red-500" />
+                      <Clock className="w-3.5 h-3.5 text-[var(--state-warning)]" />
                       <span className="text-[10px] text-[var(--bz-text-2)]">
                         Unpaid
                       </span>
                     </div>
-                    <p className="text-sm font-bold text-[var(--state-danger)] truncate">
+                    <p className="text-sm font-bold text-[var(--state-warning)] truncate">
                       {formatCurrency(unpaidValue)}
                     </p>
                   </div>

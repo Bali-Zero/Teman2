@@ -342,7 +342,7 @@ export function PassportCard({
                 <div
                   className={`rounded-lg p-2 ${passportValidity.bgClass} border ${
                     passportValidity.alertLevel === "critical"
-                      ? "border-red-500/50 animate-pulse"
+                      ? "border-[var(--state-warning)]/50 animate-pulse"
                       : passportValidity.alertLevel === "warning"
                         ? "border-yellow-500/50"
                         : "border-transparent"
@@ -376,9 +376,9 @@ export function PassportCard({
                           <span
                             className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full ${
                               days < 0
-                                ? "bg-red-500/20 text-red-400"
+                                ? "bg-[var(--state-warning)]/20 text-[var(--state-warning)]"
                                 : days < 30
-                                  ? "bg-red-500/15 text-red-400"
+                                  ? "bg-[var(--state-warning)]/15 text-[var(--state-warning)]"
                                   : days < 180
                                     ? "bg-yellow-500/20 text-yellow-400"
                                     : "bg-green-500/10 text-green-400"
@@ -398,12 +398,12 @@ export function PassportCard({
                     </div>
                   )}
                   {passportValidity.alertLevel === "critical" && (
-                    <div className="mt-1 text-[10px] text-red-600 dark:text-red-300 font-bold">
+                    <div className="mt-1 text-[10px] text-[var(--state-warning)] font-bold">
                       🚨 URGENT: Contact embassy immediately!
                     </div>
                   )}
                   {passportValidity.alertLevel === "expired" && (
-                    <div className="mt-1 text-[10px] text-red-600 dark:text-red-300 font-bold">
+                    <div className="mt-1 text-[10px] text-[var(--state-warning)] font-bold">
                       ⛔ PASSPORT EXPIRED!
                     </div>
                   )}
@@ -436,7 +436,9 @@ export function PassportCard({
 
             {/* OCR Error Message */}
             {ocrError && (
-              <p className="text-xs text-red-400 text-center">{ocrError}</p>
+              <p className="text-xs text-[var(--state-warning)] text-center">
+                {ocrError}
+              </p>
             )}
 
             {/* Action Buttons */}
@@ -459,7 +461,7 @@ export function PassportCard({
                 size="sm"
                 onClick={handleDelete}
                 disabled={isDeleting}
-                className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                className="text-[var(--state-warning)] hover:opacity-80"
               >
                 {isDeleting ? (
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
@@ -501,7 +503,7 @@ export function PassportCard({
                     <div
                       className={`rounded-lg p-2 ${passportValidity.bgClass} border ${
                         passportValidity.alertLevel === "critical"
-                          ? "border-red-500/50 animate-pulse"
+                          ? "border-[var(--state-warning)]/50 animate-pulse"
                           : passportValidity.alertLevel === "warning"
                             ? "border-yellow-500/50"
                             : "border-transparent"
@@ -535,9 +537,9 @@ export function PassportCard({
                               <span
                                 className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full ${
                                   days < 0
-                                    ? "bg-red-500/20 text-red-400"
+                                    ? "bg-[var(--state-warning)]/20 text-[var(--state-warning)]"
                                     : days < 30
-                                      ? "bg-red-500/15 text-red-400"
+                                      ? "bg-[var(--state-warning)]/15 text-[var(--state-warning)]"
                                       : days < 180
                                         ? "bg-yellow-500/20 text-yellow-400"
                                         : "bg-green-500/10 text-green-400"
@@ -550,12 +552,12 @@ export function PassportCard({
                         </div>
                       </div>
                       {passportValidity.alertLevel === "expired" && (
-                        <div className="mt-1 text-[10px] text-red-600 dark:text-red-300 font-bold">
+                        <div className="mt-1 text-[10px] text-[var(--state-warning)] font-bold">
                           ⛔ PASSPORT EXPIRED!
                         </div>
                       )}
                       {passportValidity.alertLevel === "critical" && (
-                        <div className="mt-1 text-[10px] text-red-600 dark:text-red-300 font-bold">
+                        <div className="mt-1 text-[10px] text-[var(--state-warning)] font-bold">
                           🚨 URGENT: Contact embassy immediately!
                         </div>
                       )}

@@ -23,7 +23,7 @@ import { AiSummaryCard } from "./AiSummaryCard";
 const PRIORITY_BADGES: Record<string, { label: string; className: string }> = {
   urgent: {
     label: "🔥 urgent",
-    className: "bg-[var(--state-danger)]/10 text-[var(--state-danger)]",
+    className: "bg-[var(--state-warning)]/10 text-[var(--state-warning)]",
   },
   high: {
     label: "↑ high",
@@ -34,7 +34,7 @@ const PRIORITY_BADGES: Record<string, { label: string; className: string }> = {
 const PAYMENT_STYLES: Record<string, string> = {
   paid: "bg-[var(--state-success)]/10 text-[var(--state-success)]",
   partial: "bg-[var(--state-warning)]/10 text-[var(--state-warning)]",
-  unpaid: "bg-[var(--state-danger)]/10 text-[var(--state-danger)]",
+  unpaid: "bg-[var(--state-warning)]/10 text-[var(--state-warning)]",
   pending: "bg-[var(--state-warning)]/10 text-[var(--state-warning)]",
 };
 
@@ -346,7 +346,7 @@ export function ProcessTab({
                         );
                       }}
                       disabled={deletingIds.has(practice.id)}
-                      className="p-1 rounded hover:bg-red-500/20 text-[var(--bz-text-2)] hover:text-red-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="p-1 rounded hover:bg-[var(--state-warning)]/20 text-[var(--bz-text-2)] hover:text-[var(--state-warning)] disabled:opacity-50 disabled:cursor-not-allowed"
                       title="Delete process"
                       aria-label="Delete process"
                     >
@@ -366,9 +366,9 @@ export function ProcessTab({
                     const isCritical = daysLeft >= 0 && daysLeft <= 14;
                     const isWarning = daysLeft > 14 && daysLeft <= 30;
                     const chipClass = isExpired
-                      ? "bg-[var(--state-danger)]/10 text-[var(--state-danger)]"
+                      ? "bg-[var(--state-warning)]/10 text-[var(--state-warning)]"
                       : isCritical
-                        ? "bg-[var(--state-danger)]/10 text-[var(--state-danger)]"
+                        ? "bg-[var(--state-warning)]/10 text-[var(--state-warning)]"
                         : isWarning
                           ? "bg-[var(--state-warning)]/10 text-[var(--state-warning)]"
                           : ALERT_COLORS[practice.alert_color || "green"];
