@@ -226,7 +226,7 @@ def verify_untouched(
 
 
 def judge_patch(
-    rec: dict, old_sha256: str, new_sha256: str | None, code: str = ""
+    rec: object, old_sha256: str, new_sha256: str | None, code: str = ""
 ) -> str:
     """Classify one code's plan: "patch" or "noop" — never a value-by-value
     guess (2026-08-08 sector-law fix-pack, item J).

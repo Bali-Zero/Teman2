@@ -724,7 +724,7 @@
 42997 | Konstruksi Bangunan Sipil Fasilitas Sumber Radiasi Pengion | NOT_VERIFIED | Not verified | Menengah Tinggi
 42998 | Konstruksi Bangunan Sipil Reaktor Nuklir | NOT_VERIFIED | Not verified | Tinggi
 42999 | Konstruksi Bangunan Sipil Lainnya YTDL | NOT_VERIFIED | Not verified | Not classified
-43110 | Pembongkaran | NOT_VERIFIED | Not verified | Menengah Rendah
+43110 | Pembongkaran | NOT_VERIFIED | Not verified | Menengah Tinggi / Menengah Rendah
 43120 | Penyiapan Lahan | NOT_VERIFIED | Not verified | Menengah Tinggi
 43211 | Pemasangan Jaringan Listrik | NOT_VERIFIED | Not verified | Tinggi
 43212 | Pemasangan Jaringan Telekomunikasi | NOT_VERIFIED | Not verified | Menengah Tinggi
@@ -1521,7 +1521,7 @@
 93111 | Fasilitas Stadion | NOT_VERIFIED | Not verified | Menengah Rendah
 93112 | Fasilitas Sirkuit | NOT_VERIFIED | Not verified | Menengah Tinggi
 93113 | Fasilitas Gelanggang/Arena | NOT_VERIFIED | Not verified | Not classified
-93114 | Fasilitas Lapangan | NOT_VERIFIED | Not verified | Menengah Rendah
+93114 | Fasilitas Lapangan | NOT_VERIFIED | Not verified | Menengah Rendah / Tinggi
 93115 | Fasilitas Olahraga Beladiri | NOT_VERIFIED | Not verified | Not classified
 93116 | Fasilitas Pusat Kebugaran/Fitness Center | NOT_VERIFIED | Not verified | Menengah Rendah
 93119 | Pengelolaan Fasilitas Olahraga Lainnya | NOT_VERIFIED | Not verified | Rendah
