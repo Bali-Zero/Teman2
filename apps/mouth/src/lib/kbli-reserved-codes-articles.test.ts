@@ -90,9 +90,20 @@ const BANNED_OWNERSHIP = new RegExp(
 
 const BANNED_LOOPHOLE = /jakarta[^.\n]{0,80}lombok|lombok[^.\n]{0,80}jakarta/i;
 
+// A confident "this pivot code is THE way in" claim about 55204/55400 is a
+// claim this lane cannot source: 55204 is "PMA unverified" on our own page,
+// and 55400 sits on the Bali provincial closure list W-J is publishing (18
+// KBLI closed to PMA on OSS since May 2026). Checked WITHOUT the
+// OPEN_SIBLING_CODES exemption above — that exemption protects a plain
+// "National: open. Bali: REGISTRABLE." bullet, not a confident claim riding
+// on the same code numbers.
+const BANNED_CONFIDENT_PIVOT =
+  /(?:55204|55400)[^.\n]{0,60}(?:is the way|è il modo|adalah cara)/i;
+
 const isOffendingLine = (line: string) =>
-  !OPEN_SIBLING_CODES.test(line) &&
-  (BANNED_OWNERSHIP.test(line) || BANNED_LOOPHOLE.test(line));
+  (!OPEN_SIBLING_CODES.test(line) &&
+    (BANNED_OWNERSHIP.test(line) || BANNED_LOOPHOLE.test(line))) ||
+  BANNED_CONFIDENT_PIVOT.test(line);
 
 function scanReserved(files: string[]): string[] {
   const offenders: string[] = [];
@@ -174,6 +185,12 @@ describe("KBLI sibling articles do not reassert an open/100% claim on a reserved
     "**KBLI 55203 (Aktivitas Vila)** is `TERBUKA` — 100% open — on the national list.",
     "**KBLI 55203 (Aktivitas Vila)** è `TERBUKA` — al 100% aperto — nell'elenco nazionale.",
     "**KBLI 55203 (Aktivitas Vila)** adalah `TERBUKA` — 100% terbuka — dalam daftar nasional.",
+    // Removed on Dux review (2026-09-15): an unsourceable confident pivot
+    // claim — 55204 is "PMA unverified" on our own page, 55400 sits on the
+    // Bali provincial closure list.
+    "Be honest with yourself: 55204 or 55400 is the way a foreigner actually gets into accommodation, not a change of address.",
+    "Sii onesto con te stesso: il 55204 o il 55400 è il modo in cui uno straniero entra davvero nel settore degli alloggi, non un cambio di provincia.",
+    "Jujurlah pada diri sendiri: 55204 atau 55400 adalah cara nyata bagi orang asing untuk masuk ke bisnis akomodasi, bukan sekadar pindah provinsi.",
   ])("catches the historical wording (reserved-codes rule): %s", (sentence) => {
     expect(isOffendingLine(sentence)).toBe(true);
   });
@@ -195,6 +212,8 @@ describe("KBLI sibling articles do not reassert an open/100% claim on a reserved
     "There is no route around this one: because the closure is a national annex reservation, not a provincial moratorium, registering the 55203 PMA in a different province does not open a path.",
     "The KBLI Navigator's crosswalk found a 100% match between the 2020 and 2025 villa codes, confirming the same activity.",
     "**55204 — Aktivitas Apartemen Hotel (Apart-Hotel).** National: open. Bali: **REGISTRABLE.**",
+    "**KBLI 55203 — Aktivitas Vila** — is not on the list of business fields closed to investment.",
+    "Be honest with yourself about which structure you actually need — a change of address does not change the annex.",
   ])("does not fire on legitimate prose: %s", (sentence) => {
     expect(isOffendingLine(sentence)).toBe(false);
   });
