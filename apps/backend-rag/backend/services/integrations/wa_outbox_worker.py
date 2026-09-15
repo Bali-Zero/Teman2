@@ -337,6 +337,29 @@ async def _latest_inbound_text(conn: asyncpg.Connection, thread_id: int) -> str:
     return body or ""
 
 
+async def _recent_inbound_texts(
+    conn: asyncpg.Connection, thread_id: int, *, limit: int = 5
+) -> list[str]:
+    """Up to `limit` prior non-empty CUSTOMER message bodies for this thread,
+    newest first, EXCLUDING the latest one — the history-fallback candidates
+    for the apology's language (B2.5-1b) when the latest message alone does
+    not classify. Only queried by `_maybe_send_apology` when
+    `detect_language(latest_inbound) == "auto"` — the common case never pays
+    this extra round trip."""
+    rows = await conn.fetch(
+        """
+        SELECT body FROM meta_inbox_messages
+        WHERE thread_id = $1 AND direction = 'inbound'
+          AND body IS NOT NULL AND body != ''
+        ORDER BY created_at DESC
+        OFFSET 1 LIMIT $2
+        """,
+        thread_id,
+        limit,
+    )
+    return [row["body"] for row in rows]
+
+
 async def _maybe_send_ack(
     conn: asyncpg.Connection,
     outbox_id: int,
@@ -552,6 +575,19 @@ async def _maybe_send_apology(
 
         latest_inbound = await _latest_inbound_text(conn, thread["thread_id"])
         detected_language = detect_language(latest_inbound)
+        if detected_language == "auto":
+            # B2.5-1b: 'auto' is UNKNOWN, never a language — measured on
+            # ordinary openers ("Buongiorno, quanto costa aprire una PT PMA
+            # a Bali?" -> 'auto', no marker word matched). The SAME thread's
+            # earlier client messages often already established a real
+            # language; only when NONE of them classify either does this
+            # fall through to `_apology_text`'s own English default (the
+            # true last resort).
+            for candidate in await _recent_inbound_texts(conn, thread["thread_id"]):
+                candidate_language = detect_language(candidate)
+                if candidate_language != "auto":
+                    detected_language = candidate_language
+                    break
         await whatsapp_service.send_message(
             phone=thread["counterpart_phone"],
             text=_apology_text(detected_language),

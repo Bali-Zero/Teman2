@@ -269,6 +269,60 @@ async def test_apology_localized_to_detected_language() -> None:
     assert svc.send_message.await_args.kwargs["text"] == wa_outbox_worker._apology_text("id")
 
 
+# B2.5-1b: `detect_language` returns "auto" — UNKNOWN, never a language — for
+# many ordinary WA openers with no marker word (measured: "Buongiorno,
+# quanto costa aprire una PT PMA a Bali?" scores zero on every language row
+# in `backend.services.communication.language_detector`).
+_UNCLASSIFIABLE_TEXT = "Buongiorno, quanto costa aprire una PT PMA a Bali?"
+
+
+@pytest.mark.asyncio
+async def test_apology_falls_back_to_thread_history_when_latest_is_unclassifiable() -> None:
+    """GUILT: the latest message alone scores 'auto' on every language row,
+    but the SAME thread's immediately prior client message is unmistakably
+    Italian — the apology must use THAT, not silently default to English."""
+    thread = _open_window_thread()
+    conn = ScriptedConn(
+        fetchval_results=[False, False, None, _UNCLASSIFIABLE_TEXT],
+        fetch_results=[[{"body": "Ciao, come va? Volevo un'informazione"}]],
+    )
+    svc = _wa_service()
+
+    await wa_outbox_worker._maybe_send_apology(conn, 1, thread, svc)
+
+    assert svc.send_message.await_args.kwargs["text"] == wa_outbox_worker._apology_text("it")
+
+
+@pytest.mark.asyncio
+async def test_apology_never_queries_history_when_the_latest_message_already_classifies() -> None:
+    """The common case must not pay the extra round trip: history is only
+    consulted when the latest message's OWN detection is 'auto'."""
+    thread = _open_window_thread()
+    conn = ScriptedConn(fetchval_results=[False, False, None, _NON_TRIVIAL_TEXT])
+    svc = _wa_service()
+
+    await wa_outbox_worker._maybe_send_apology(conn, 1, thread, svc)
+
+    assert not conn.sql_contains("ORDER BY created_at DESC\n          OFFSET")
+    assert svc.send_message.await_args.kwargs["text"] == wa_outbox_worker._apology_text("en")
+
+
+@pytest.mark.asyncio
+async def test_apology_defaults_to_english_only_when_every_candidate_is_unclassifiable() -> None:
+    """English is the LAST resort, reached only when the latest message AND
+    every history candidate all fail to classify — not the first choice."""
+    thread = _open_window_thread()
+    conn = ScriptedConn(
+        fetchval_results=[False, False, None, _UNCLASSIFIABLE_TEXT],
+        fetch_results=[[{"body": _UNCLASSIFIABLE_TEXT}]],
+    )
+    svc = _wa_service()
+
+    await wa_outbox_worker._maybe_send_apology(conn, 1, thread, svc)
+
+    assert svc.send_message.await_args.kwargs["text"] == wa_outbox_worker._apology_text("en")
+
+
 @pytest.mark.asyncio
 async def test_apology_never_leaks_internal_error_text() -> None:
     """The apology text is a fixed neutral string — assert it never echoes

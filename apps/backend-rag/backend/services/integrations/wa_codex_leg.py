@@ -123,6 +123,7 @@ from backend.services.integrations.wa_finalize import (
     finalize_wa_answer,
 )
 from backend.services.integrations.wa_greeting import match_greeting
+from backend.services.integrations.wa_identity import match_identity_question
 
 # Same-package deliberate reuse of the bot leg's lazy-singleton RAG client,
 # notifier and kill switch: ONE persistent HTTP client per process (Golden
@@ -702,6 +703,24 @@ async def _attempt(
             greeting.language,
         )
         return CodexLegResult(text=greeting.text, served_by="scripted_greeting")
+
+    # Deterministic identity turn (B2.5-1b), second authority, same order,
+    # same reasoning, checked right after the greeting: measured on real
+    # delivery 2026-09-15 15:47-15:49 WITA, "ciao tu sei Zantara?" and "ti ho
+    # chiesto chi sei tu?" both reached the package build, found no chunk in
+    # any collection that says who Zantara is, and terminalized as the
+    # ABSTAIN stub — the second one in English, to a client writing Italian.
+    # An identity question is not an unbuildable package, same as a
+    # greeting: it is a turn with a scripted answer, so it never reaches
+    # retrieval at all.
+    identity = match_identity_question(query)
+    if identity is not None:
+        logger.info(
+            "wa_codex_leg: scripted identity served outbox=%s lang=%s",
+            outbox_id,
+            identity.language,
+        )
+        return CodexLegResult(text=identity.text, served_by="scripted_identity")
 
     epoch = int(thread["handling_version"])
 

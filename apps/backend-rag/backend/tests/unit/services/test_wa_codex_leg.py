@@ -388,6 +388,62 @@ async def test_a_question_that_merely_opens_with_a_greeting_takes_the_normal_rou
     stubs.rag_client.post.assert_awaited()
 
 
+# ── gate 2c: the scripted identity turn (B2.5-1b) ───────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_an_identity_question_is_served_from_the_script_before_any_io(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Measured on real delivery, 2026-09-15 15:47-15:49 WITA: "ciao tu sei
+    Zantara?" and "ti ho chiesto chi sei tu?" both reached the package build,
+    found no chunk that says who Zantara is, and terminalized as the ABSTAIN
+    stub — the second reply in English, to a client writing Italian.
+
+    The assertions that matter are the NEGATIVE ones, same shape as the
+    greeting test right above: no build request, no broker offer. If the
+    identity short-circuit is removed, `rag_client.post` is awaited and this
+    test fails."""
+    stubs = _wire_stubs(monkeypatch, query="ciao tu sei Zantara?")
+    result = await _run()
+
+    assert result.text is not None
+    assert "Zantara" in result.text
+    assert result.reason == "" and not result.stand_down and not result.fail
+    stubs.rag_client.post.assert_not_awaited()
+    stubs.offer_job.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_the_second_real_production_message_also_short_circuits(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The exact second message of the same production thread, "ti ho
+    chiesto chi sei tu?" — it must resolve to the SAME Italian presentation,
+    not the English fallback the production incident actually sent."""
+    stubs = _wire_stubs(monkeypatch, query="ti ho chiesto chi sei tu?")
+    result = await _run()
+
+    assert result.text is not None
+    assert result.text == wa_codex_leg.match_identity_question(
+        "ti ho chiesto chi sei tu?"
+    ).text
+    stubs.rag_client.post.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_a_case_question_that_carries_an_identity_phrase_takes_the_normal_route(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Innocence, and the expensive half: "cosa puoi fare per la mia PT PMA?"
+    contains the identity phrase "cosa puoi fare" but is really about a case
+    — the domain veto must win and the package build must still run."""
+    stubs = _wire_stubs(monkeypatch, query="cosa puoi fare per la mia PT PMA?")
+    await _run()
+
+    stubs.rag_client.post.assert_awaited()
+
+
 # ── gate 3: the package build ───────────────────────────────────────────────
 
 
