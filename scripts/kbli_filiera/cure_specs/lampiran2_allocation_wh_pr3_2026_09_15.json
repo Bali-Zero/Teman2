@@ -1,0 +1,57 @@
+{
+  "instrument": "Perpres 10/2021 as amended by 49/2021, Lampiran II",
+  "population": "SAETTA-20260915 W-H PR-3: the three tourism/hospitality codes named 55201/55203/79903 in the W-F dossier (DOSSIER-no-besar-normativo-2026-09-15.md §2, §6.1). Each 2020 ancestor has exactly one 2025 heir (verified via `apply_umkm_reservations.check()`'s own ancestor gate — no split, no merge), so this spec is applied through the EXISTING `judged_as` path, unmodified.",
+  "adjudicated": "2026-09-15, W-F dossier r2 (refuter Codex GPT-5.6 sol xhigh, 16 findings, all verified on disk). Read by two independent lanes on the annex image: lane C primary reading (`~/BATTAGLIA-20260911/4-KBLI-APP/W-F-work/lane-C-primary-texts.md` §3) and Astra's adjudication (`.worktrees/kbli-pma-resolution-astra/research/kbli/2026-09-14-pma-resolution/adjudication-source.json`, AUTO-SAFE, source_reread=true). D5b/D5f/D5g confirmed by Zero 2026-09-15 16:05 WITA.",
+  "supersedes": null,
+  "items": [
+    {
+      "code": "55201",
+      "judged_as": "55130",
+      "locator": "Perpres 49/2021 Lampiran II (DIALOKASIKAN untuk Koperasi dan UMKM), p.15, entry 48, row \"Pondok Wisata\" (ex-KBLI 2020 55130) — allocated to Koperasi/UMKM per Pasal 3(1)(b) + Pasal 5; the whole 2025 code is the reserved bidang usaha (Pasal 5(5)); max foreign 0%.",
+      "was": {
+        "pma_status": "TERBUKA",
+        "pma_max_asing": 100
+      },
+      "agreed_by": [
+        "claude-sonnet-5 (lane-C primary reading)",
+        "astra (adjudication-source.json, AUTO-SAFE)"
+      ]
+    },
+    {
+      "code": "55203",
+      "judged_as": "55193",
+      "locator": "Perpres 49/2021 Lampiran II (DIALOKASIKAN untuk Koperasi dan UMKM), p.15, entry 48, row \"Vila\" (ex-KBLI 2020 55193) — allocated to Koperasi/UMKM per Pasal 3(1)(b) + Pasal 5; the whole 2025 code is the reserved bidang usaha (Pasal 5(5)); max foreign 0%.",
+      "was": {
+        "pma_status": "TERBUKA",
+        "pma_max_asing": 100
+      },
+      "agreed_by": [
+        "claude-sonnet-5 (lane-C primary reading)",
+        "astra (adjudication-source.json, AUTO-SAFE)"
+      ]
+    },
+    {
+      "code": "79903",
+      "judged_as": "79921",
+      "locator": "Perpres 49/2021 Lampiran II (DIALOKASIKAN untuk Koperasi dan UMKM), p.16, entry 56, row \"Jasa pramuwisata\" (ex-KBLI 2020 79921) — allocated to Koperasi/UMKM per Pasal 3(1)(b) + Pasal 5; the whole 2025 code is the reserved bidang usaha (Pasal 5(5)); max foreign 0%.",
+      "was": {
+        "pma_status": "TERBUKA",
+        "pma_max_asing": 100
+      },
+      "agreed_by": [
+        "claude-sonnet-5 (lane-C primary reading)",
+        "astra (adjudication-source.json, AUTO-SAFE)"
+      ]
+    }
+  ],
+  "excluded": {
+    "same_dossier_out_of_scope": {
+      "codes": ["55209", "79110"],
+      "why": "IN REVISIONE (dossier §2/§6.1) — the adjudicated 2025 successor / pma_kondisi conflict is not resolved. Never touch."
+    },
+    "other_wh_lanes": {
+      "codes": ["43110", "93114"],
+      "why": "RISERVA PARZIALE / DIPENDE DALLO SCOPE — owned by W-H PR-2, not PR-3 (a source-row fix, not a whole-code allocation)."
+    }
+  }
+}
