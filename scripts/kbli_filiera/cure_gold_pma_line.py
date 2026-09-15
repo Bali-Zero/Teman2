@@ -262,6 +262,58 @@ AUTHORED_SENTENCES = {
         ),
         "why": "canonical now cures 65121 to TERBATAS/80 under PP 14/2018 Pasal 5(1) jo. PP 3/2020 (Perpres 10/2021 Pasal 11(2) carves insurance out to sector law) — the old sentence guessed at an acquisition-only, uncertain regime instead of citing the actual instrument",
     },
+    # SAETTA-20260915 W-H PR-3b (Lampiran II entry 46 specialised retail). Both
+    # sentences carry a condition/note beyond the bare percentage (a risk-tier
+    # label and an authority clause), so the mechanical `DEFAULT_OPEN_RE` path
+    # refuses them by design (see `plan()`). D5b (Zero, 2026-09-15): the
+    # client text must name activity AND product. Only the `**PMA:**`
+    # sentence is replaced — the rest of the field's PT PMA setup steps are a
+    # pre-existing inconsistency this lane's spec did not adjudicate; flagged
+    # in the PR report for a follow-up author pass, matching the same
+    # narrow-swap precedent as `41020`/`47222` above.
+    "47712": {
+        "field": "whatYouNeed",
+        "old": "**PMA:** Fully open (TERBUKA), 100% foreign ownership allowed.",
+        "new": (
+            "**PMA:** Closed to foreign investment — domestic entities only. "
+            "Retail of footwear (alas kaki) as a specialised store is "
+            "allocated to Koperasi/UMKM (Perpres 49/2021 Lampiran II entry "
+            "46); a new PT PMA cannot open it. Selling the same goods inside "
+            "a supermarket or general store uses a different KBLI."
+        ),
+        "why": "canonical cap 0 (W-H PR-3, Lampiran II p.13-14 entry 46 sub-row \"Alas kaki\", ex-KBLI 2020 47712); the old sentence asserted the exact opposite",
+        "also": [
+            {
+                "field": "zantaraOpener",
+                "old": (
+                    "Opening a shoe store or footwear boutique in Bali? 47712 "
+                    "is fully open to PMA with low-risk licensing — let me "
+                    "walk you through the setup and the import compliance "
+                    "rules."
+                ),
+                "new": (
+                    "Thinking about a shoe store or footwear boutique in "
+                    "Bali as a PT PMA? 47712 is reserved to Koperasi/UMKM "
+                    "(Perpres 49/2021 Lampiran II) — a new PT PMA cannot "
+                    "open it. Let me walk you through the reservation and "
+                    "the routes that are actually open to you."
+                ),
+            }
+        ],
+    },
+    "47722": {
+        "field": "whatYouNeed",
+        "old": "**PMA:** Terbuka — 100% foreign ownership allowed.",
+        "new": (
+            "**PMA:** Closed to foreign investment — domestic entities only. "
+            "Retail of non-prescription pharmaceutical goods outside a "
+            "pharmacy (Toko Obat) as a specialised store is allocated to "
+            "Koperasi/UMKM (Perpres 49/2021 Lampiran II entry 46); a new PT "
+            "PMA cannot open it. An Apotek (47721) is a different, "
+            "PMA-open code."
+        ),
+        "why": "canonical cap 0 (W-H PR-3, Lampiran II p.13-14 entry 46 sub-row \"Barang dan obat farmasi untuk manusia bukan di apotik\", ex-KBLI 2020 47722); the old sentence asserted the exact opposite",
+    },
 }
 
 
@@ -447,21 +499,30 @@ def main() -> int:
     findings = scan(gold, by_code, incomparable)
     patch, refused = plan(findings, gold)
 
-    # Authored sentences — pinned, never pattern-matched into place.
-    authored: dict[str, dict] = {}
+    # Authored sentences — pinned, never pattern-matched into place. Most
+    # codes touch one field; a code whose prose scan hits a SECOND field
+    # (e.g. `47712`'s `zantaraOpener` also asserts openness in words) carries
+    # an `also` list of the same {field, old, new} shape, applied the same
+    # way and refused the same way.
+    authored: dict[str, list[dict]] = {}
     for code, a in sorted(AUTHORED_SENTENCES.items()):
-        live = gold.get(code, {}).get(a["field"])
-        if live is None:
-            raise CureError(f"{code}.{a['field']}: field is gone — the pin is stale")
-        if a["old"] not in live:
-            if a["new"] in live:
-                continue  # already applied; idempotent, not a failure
-            raise CureError(
-                f"{code}.{a['field']}: the pinned sentence is not in the live text. "
-                "It was authored against a paragraph that has since moved; re-read "
-                "it before re-pinning."
-            )
-        authored[code] = {"field": a["field"], "new": live.replace(a["old"], a["new"], 1)}
+        patches = [a, *(a.get("also") or [])]
+        applied: list[dict] = []
+        for p in patches:
+            live = gold.get(code, {}).get(p["field"])
+            if live is None:
+                raise CureError(f"{code}.{p['field']}: field is gone — the pin is stale")
+            if p["old"] not in live:
+                if p["new"] in live:
+                    continue  # already applied; idempotent, not a failure
+                raise CureError(
+                    f"{code}.{p['field']}: the pinned sentence is not in the live text. "
+                    "It was authored against a paragraph that has since moved; re-read "
+                    "it before re-pinning."
+                )
+            applied.append({"field": p["field"], "new": live.replace(p["old"], p["new"], 1)})
+        if applied:
+            authored[code] = applied
 
     prose = prose_scan(gold, by_code)
     unacquitted = {c: v for c, v in prose.items()
@@ -501,8 +562,9 @@ def main() -> int:
         if got != p["old_sha256"]:
             raise CureError(f"{code}.{p['field']}: live text moved under the plan")
         staged[code][p["field"]] = p["new"]
-    for code, a in authored.items():
-        staged[code][a["field"]] = a["new"]
+    for code, patches in authored.items():
+        for p in patches:
+            staged[code][p["field"]] = p["new"]
 
     # The authored sentences must silence the prose scan on their own codes,
     # and must not wake it anywhere else.
