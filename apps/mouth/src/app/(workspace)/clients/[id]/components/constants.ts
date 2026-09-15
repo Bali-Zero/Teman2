@@ -5,7 +5,7 @@
 export const STATUS_COLORS: Record<string, string> = {
   inquiry: "bg-[var(--state-info)]/10 text-[var(--state-info)]",
   waiting_documents: "bg-[var(--state-warning)]/10 text-[var(--state-warning)]",
-  sending_invoice: "bg-[var(--bz-copper-text)]/10 text-[var(--bz-copper-text)]",
+  sending_invoice: "bg-[var(--state-info)]/10 text-[var(--state-info)]",
   on_process: "bg-[var(--state-info)]/10 text-[var(--state-info)]",
   completed: "bg-[var(--state-success)]/10 text-[var(--state-success)]",
   // Terminal, like a client's "lost"/"inactive" — muted plus the word, never danger.

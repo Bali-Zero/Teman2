@@ -108,8 +108,8 @@ export function OverviewTab({
             <div className="p-4 space-y-4 flex-1">
               {/* Full Name */}
               <div className="flex items-start gap-3">
-                <div className="w-8 h-8 rounded-full bg-[var(--bz-accent)]/10 flex items-center justify-center">
-                  <User className="w-4 h-4 text-[var(--bz-accent)]" />
+                <div className="w-8 h-8 rounded-full bg-[var(--bz-card)] flex items-center justify-center">
+                  <User className="w-4 h-4 text-[var(--tx-secondary)]" />
                 </div>
                 <div className="flex-1">
                   <p className="text-xs text-[var(--bz-text-2)]">Full Name</p>
@@ -247,13 +247,12 @@ export function OverviewTab({
                   <div
                     className="rounded-lg p-4 -mx-1"
                     style={{
-                      background:
-                        "linear-gradient(135deg, rgba(212,132,90,0.12), rgba(212,132,90,0.03))",
-                      border: "1px solid rgba(212,132,90,0.28)",
+                      background: "var(--bz-card)",
+                      border: "1px solid var(--bz-border)",
                     }}
                   >
                     <div className="flex items-center justify-between mb-2">
-                      <p className="text-[11px] uppercase tracking-[0.15em] font-semibold text-[var(--bz-accent)] flex items-center gap-1.5">
+                      <p className="text-[11px] uppercase tracking-[0.15em] font-semibold text-[var(--tx-secondary)] flex items-center gap-1.5">
                         <span>◆</span>
                         Strategic recap
                       </p>

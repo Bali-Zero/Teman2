@@ -197,7 +197,7 @@ export function ProcessTab({
                 onClick={() => setSortBy(s)}
                 className={`text-xs px-2 py-1 rounded transition-colors ${
                   sortBy === s
-                    ? "bg-[var(--bz-accent)]/20 text-[var(--bz-accent)]"
+                    ? "bg-[var(--tx-pure)] text-[var(--bz-base)]"
                     : "text-[var(--bz-text-2)] hover:text-[var(--bz-text-1)]"
                 }`}
               >
@@ -238,7 +238,7 @@ export function ProcessTab({
           </p>
           <button
             onClick={() => setFilterStatus("all")}
-            className="text-xs text-[var(--bz-accent)] mt-2 hover:underline"
+            className="text-xs text-[var(--tx-pure)] mt-2 hover:underline"
           >
             Clear filter
           </button>
@@ -248,7 +248,7 @@ export function ProcessTab({
           {sortedPractices.map((practice) => (
             <div
               key={practice.id}
-              className="rounded-lg border border-[var(--bz-border)] bg-[var(--bz-surface)] p-4 hover:border-[var(--bz-accent)]/50 transition-colors group"
+              className="rounded-lg border border-[var(--bz-border)] bg-[var(--bz-surface)] p-4 hover:border-[var(--line-control)] transition-colors group"
             >
               <div className="flex items-center justify-between mb-2">
                 <div
@@ -272,7 +272,7 @@ export function ProcessTab({
                     </span>
                   </div>
                   {practice.family_member_name && (
-                    <div className="mt-1 flex items-center gap-1 text-xs text-[var(--bz-accent)]">
+                    <div className="mt-1 flex items-center gap-1 text-xs text-[var(--tx-secondary)]">
                       <User className="w-3 h-3" />
                       <span className="truncate">
                         for {practice.family_member_name}

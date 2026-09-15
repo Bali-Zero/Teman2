@@ -301,7 +301,7 @@ export function ClientDetailClient({
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
-        <Loader2 className="w-8 h-8 animate-spin text-[var(--bz-accent)]" />
+        <Loader2 className="w-8 h-8 animate-spin text-[var(--tx-secondary)]" />
       </div>
     );
   }
@@ -413,7 +413,7 @@ export function ClientDetailClient({
           avatar has no r19 slot, so it wraps the primitive page-locally
           rather than forking it (per spec §"Hard rules"). */}
       <div className="flex items-start gap-4">
-        <div className="w-16 h-16 shrink-0 rounded-full bg-[var(--bz-accent)]/20 flex items-center justify-center overflow-hidden">
+        <div className="w-16 h-16 shrink-0 rounded-full bg-[var(--bz-card)] flex items-center justify-center overflow-hidden">
           {client.avatar_url ? (
             <img
               src={client.avatar_url}
@@ -807,7 +807,7 @@ export function ClientDetailClient({
                       }
                     }}
                     disabled={isLogging}
-                    className="text-xs px-2.5 py-1 rounded-full border border-[var(--bz-border)] bg-[var(--bz-base)] text-[var(--bz-text-2)] hover:border-[var(--bz-accent)]/50 hover:text-[var(--bz-text-1)] transition-colors disabled:opacity-50"
+                    className="text-xs px-2.5 py-1 rounded-full border border-[var(--bz-border)] bg-[var(--bz-base)] text-[var(--bz-text-2)] hover:border-[var(--line-control)] hover:text-[var(--bz-text-1)] transition-colors disabled:opacity-50"
                   >
                     {label}
                   </button>
@@ -831,7 +831,7 @@ export function ClientDetailClient({
                     className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full border transition-colors ${
                       logType === key
                         ? "bg-[var(--bz-sidebar-active-fill)] text-white border-[var(--bz-sidebar-active-fill)]"
-                        : "bg-[var(--bz-base)] text-[var(--bz-text-2)] border-[var(--bz-border)] hover:border-[var(--bz-accent)]/50"
+                        : "bg-[var(--bz-base)] text-[var(--bz-text-2)] border-[var(--bz-border)] hover:border-[var(--line-control)]"
                     }`}
                   >
                     <Icon className="w-3 h-3" />
@@ -850,7 +850,7 @@ export function ClientDetailClient({
                 }}
                 placeholder={`Add a ${logType} note… (⌘↵ to save)`}
                 rows={3}
-                className="w-full rounded-lg bg-[var(--bz-base)] border border-[var(--bz-border)] text-sm text-[var(--bz-text-1)] placeholder:text-[var(--bz-text-2)] px-3 py-2 resize-none focus:outline-none focus:border-[var(--bz-accent)] transition-colors"
+                className="w-full rounded-lg bg-[var(--bz-base)] border border-[var(--bz-border)] text-sm text-[var(--bz-text-1)] placeholder:text-[var(--bz-text-2)] px-3 py-2 resize-none focus:outline-none focus:border-[var(--line-control)] transition-colors"
               />
               <div className="flex items-center justify-between">
                 <span

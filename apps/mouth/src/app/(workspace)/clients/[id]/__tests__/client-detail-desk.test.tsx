@@ -367,6 +367,119 @@ describe("no red", () => {
 });
 
 // ---------------------------------------------------------------------------
+// 3b. Active tab is ink — selection is NOT ownership (K3b C1)
+// ---------------------------------------------------------------------------
+
+describe("active tab is ink, not ownership", () => {
+  it("the .tabActive rule carries no copper/accent var and paints ink", () => {
+    const css = readFileSync(
+      join(DETAIL_DIR, "client-detail-desk.module.css"),
+      "utf8",
+    );
+    const match = css.match(/\.tabActive\s*{([^}]*)}/);
+    expect(match, ".tabActive block not found").toBeTruthy();
+    const block = match![1];
+    expect(block, ".tabActive still references copper/accent").not.toMatch(
+      /--bz-copper|--bz-accent/,
+    );
+    expect(block, ".tabActive does not use the ink token").toMatch(/--tx-pure/);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 3c. Copper only by ownership — the --bz-accent alias is closed everywhere
+// this window touched (K3b C2). `--bz-accent` RESOLVES TO copper on kita
+// (memory 2026-09-14), so a guard reading only literal `--bz-copper` would
+// miss it — this checks both names, on every file this window's WIP touched.
+// ---------------------------------------------------------------------------
+
+describe("copper only by ownership", () => {
+  const SWEPT_FILES = [
+    "ClientDetailClient.tsx",
+    join("components", "DocumentsTab.tsx"),
+    join("components", "OverviewTab.tsx"),
+    join("components", "PassportCard.tsx"),
+    join("components", "ProcessTab.tsx"),
+    join("components", "VisaCard.tsx"),
+    join("components", "constants.ts"),
+    join("components", "utils.ts"),
+  ];
+
+  it("carries no --bz-accent/--bz-copper token outside the ownership-gated Stamp — copper is a person, not a decoration", () => {
+    // No file this window touches spells the token literally: the one
+    // legitimate copper mark is `<Stamp tone="copper" owned={needsViewerAction} />`,
+    // which names the r19 primitive and the predicate, never the CSS var
+    // itself (the var lives inside Stamp.tsx, an r19 primitive this window
+    // does not edit). So the allow-list here is empty by construction — any
+    // occurrence in these files is an un-gated leak.
+    for (const file of SWEPT_FILES) {
+      const source = readFileSync(join(DETAIL_DIR, file), "utf8");
+      expect(source, `${file} carries --bz-accent`).not.toMatch(
+        /--bz-accent\b/,
+      );
+      expect(source, `${file} carries --bz-copper`).not.toMatch(
+        /--bz-copper\b/,
+      );
+    }
+  });
+
+  it("GUILT: an --bz-accent hover border planted in a fixture string is caught by the same pattern", () => {
+    const fixture = 'hover:border-[var(--bz-accent)]/50"';
+    expect(fixture).toMatch(/--bz-accent\b/);
+  });
+
+  it("INNOCENCE: the owned Stamp call site carries the ownership predicate, never the literal copper token", () => {
+    const source = readFileSync(
+      join(DETAIL_DIR, "ClientDetailClient.tsx"),
+      "utf8",
+    );
+    expect(source).toMatch(
+      /<Stamp tone="copper" owned={needsViewerAction} \/>/,
+    );
+    expect(source).not.toMatch(/--bz-copper\b/);
+    expect(source).not.toMatch(/--bz-accent\b/);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 3d. Sticky tab bar (K3b C4) — stays reachable while a long tab scrolls
+// ---------------------------------------------------------------------------
+
+describe("sticky tab bar", () => {
+  it("the tab bar is sticky under the header, on an opaque page background", () => {
+    const css = readFileSync(
+      join(DETAIL_DIR, "client-detail-desk.module.css"),
+      "utf8",
+    );
+    const match = css.match(/\.tabBar\s*{([^}]*)}/);
+    expect(match, ".tabBar block not found").toBeTruthy();
+    const block = match![1];
+    expect(block, "tabBar is not position: sticky").toMatch(
+      /position:\s*sticky/,
+    );
+    expect(block, "tabBar top is not pinned to the header height").toMatch(
+      /top:\s*var\(--bz-header-height/,
+    );
+    expect(block, "tabBar has no opaque background").toMatch(
+      /background:\s*var\(--bz-base\)/,
+    );
+  });
+
+  it("no ancestor inside this module sets overflow — only the tab bar's own horizontal scroll may (sticky needs the viewport as scroll container, concept.md §6)", () => {
+    const css = readFileSync(
+      join(DETAIL_DIR, "client-detail-desk.module.css"),
+      "utf8",
+    );
+    // Strip comments first — the module's own docstring narrates the
+    // overflow law in prose ("Sticky heads fail if any ancestor gains
+    // overflow…"), which would otherwise false-positive this check.
+    const withoutComments = css.replace(/\/\*[\s\S]*?\*\//g, "");
+    const withoutTabBarRule = withoutComments.replace(/\.tabBar\s*{[^}]*}/, "");
+    expect(withoutTabBarRule).not.toMatch(/overflow/);
+  });
+});
+
+// ---------------------------------------------------------------------------
 // 4. "Where it stands" is first in the DOM
 // ---------------------------------------------------------------------------
 

@@ -40,12 +40,24 @@
   min-width: 0;
 }
 
-/* The hairline tab bar: 44px row, ink underline on the active tab. */
+/* The hairline tab bar: 44px row, ink underline on the active tab. Sticky
+   under the shell header (K3b C4) so a long tab stays reachable while it
+   scrolls — the header AND this bar are the only sticky elements on this
+   page (no DeskStrip above it, unlike K3a's /clients desk), so this pins at
+   the bare header height rather than adding a strip's height to it. An
+   opaque background is required or content scrolling underneath would show
+   through. `overflow-x: auto` is this rule's OWN scroll only — no ancestor
+   in this module may set overflow, or the sticky breaks silently (same law
+   as `../clients-desk.module.css`'s sticky head). */
 .tabBar {
   display: flex;
   gap: 4px;
   overflow-x: auto;
   border-bottom: 1px solid var(--line-control);
+  position: sticky;
+  top: var(--bz-header-height, 48px);
+  z-index: 10;
+  background: var(--bz-base);
 }
 
 .tab {
@@ -64,8 +76,12 @@
   cursor: pointer;
 }
 
+/* Ink selection, not copper: a selected tab is a state the viewer chose, not
+   ownership. Copper on this page is reserved for "you are the next actor"
+   (the Stamp, gated by `needsViewerAction`) — a tab bar has no ownership
+   meaning, so it paints the same ink as the label text (K3b C1). */
 .tabActive {
-  border-bottom-color: var(--bz-copper);
+  border-bottom-color: var(--tx-pure);
   color: var(--tx-pure);
 }
 

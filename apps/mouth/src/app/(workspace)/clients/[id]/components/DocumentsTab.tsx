@@ -185,14 +185,14 @@ export function DocumentsTab({
           <div key={cat} className="space-y-1">
             <button
               onClick={() => toggleCollapse(cat)}
-              className="w-full flex items-center gap-2 pb-1.5 border-b border-[var(--bz-border)] hover:border-[var(--bz-accent)]/40 transition-colors group"
+              className="w-full flex items-center gap-2 pb-1.5 border-b border-[var(--bz-border)] hover:border-[var(--line-control)] transition-colors group"
             >
               {isCollapsed ? (
                 <ChevronRight className="w-3.5 h-3.5 text-[var(--bz-text-2)] group-hover:text-[var(--bz-text-1)]" />
               ) : (
                 <ChevronDown className="w-3.5 h-3.5 text-[var(--bz-text-2)] group-hover:text-[var(--bz-text-1)]" />
               )}
-              <Icon className="w-4 h-4 text-[var(--bz-accent)]" />
+              <Icon className="w-4 h-4 text-[var(--tx-secondary)]" />
               <h4 className="text-sm font-semibold text-[var(--bz-text-1)] capitalize">
                 {categoryLabels[cat] || cat}
               </h4>
@@ -282,7 +282,7 @@ export function DocumentsTab({
                             href={doc.google_drive_file_url}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="text-xs text-[var(--bz-accent)] hover:underline px-2 py-1 rounded border border-[var(--bz-border)] hover:bg-[var(--bz-base)]"
+                            className="text-xs text-[var(--tx-pure)] hover:underline px-2 py-1 rounded border border-[var(--bz-border)] hover:bg-[var(--bz-base)]"
                           >
                             View
                           </a>
