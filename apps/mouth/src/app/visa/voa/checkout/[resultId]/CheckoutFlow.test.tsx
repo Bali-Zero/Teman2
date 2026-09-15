@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { formatIDR } from "@balizero/core/utils";
@@ -31,6 +31,8 @@ vi.mock("@balizero/core", async (importOriginal) => {
       viewed: vi.fn(),
       formSubmitted: trackerMocks.formSubmitted,
       formSubmitFailed: trackerMocks.formSubmitFailed,
+      ctaClicked: vi.fn(),
+      whatsappHandoff: vi.fn(),
     }),
   };
 });
@@ -354,25 +356,58 @@ describe("CheckoutFlow — paymentsLive=false (payment activating panel)", () =>
     ).toBe(true);
   });
 
-  it("WhatsApp CTA carries a truncated ref and no PII, even with a handoff on file", async () => {
+  it("WhatsApp CTA captures a garuda_voa lead with a truncated ref and no PII, even with a handoff on file", async () => {
     writeCheckoutHandoff("result-12345678", {
       full_name: "Jane Doe",
       passport_number: "X1234567",
     });
-    fetchMock.mockResolvedValueOnce(
-      jsonResponse(200, { verdict: "ACCEPT", price_idr: 850000 }),
-    );
+    fetchMock
+      .mockResolvedValueOnce(
+        jsonResponse(200, { verdict: "ACCEPT", price_idr: 850000 }),
+      )
+      .mockResolvedValueOnce(
+        jsonResponse(200, {
+          lead_intent_id: "lead-1",
+          whatsapp_url: "https://wa.me/628213454721?text=x",
+        }),
+      );
     render(<CheckoutFlow resultId="result-12345678" paymentsLive={false} />);
 
-    const link = await screen.findByRole("link", {
-      name: /continue on whatsapp/i,
-    });
-    expect(link).toHaveAttribute("target", "_blank");
-    expect(link).toHaveAttribute("rel", "noopener noreferrer");
+    // Wait for the price so the capture carries it, then hand off.
+    await waitFor(() =>
+      expect(document.body.textContent ?? "").toMatch(/all-inclusive\./i),
+    );
+    fireEvent.click(
+      screen.getByRole("button", { name: /continue on whatsapp/i }),
+    );
 
-    const text = whatsappTextParam(link.getAttribute("href") ?? "");
-    expect(text).toContain("ref result-1"); // first 8 chars of "result-12345678"
-    expect(text).not.toMatch(/Jane|Doe|X1234567|customer@example\.com|\+62/i);
+    await waitFor(() =>
+      expect(
+        fetchMock.mock.calls.some(([url]) =>
+          String(url).includes("/api/lead/capture"),
+        ),
+      ).toBe(true),
+    );
+    const [, init] = fetchMock.mock.calls.find(([url]) =>
+      String(url).includes("/api/lead/capture"),
+    )!;
+    const raw = String((init as RequestInit).body);
+    const body = JSON.parse(raw) as {
+      source: string;
+      whatsapp_context: { label: string; value: string }[];
+    };
+    expect(body.source).toBe("garuda_voa");
+    expect(body.whatsapp_context).toContainEqual({
+      label: "Ref",
+      value: "result-1",
+    }); // first 8 chars of "result-12345678"
+    expect(raw).not.toMatch(/Jane|Doe|X1234567|customer@example\.com|\+62/i);
+    // The order endpoint is never touched on the activating path.
+    expect(
+      fetchMock.mock.calls.every(
+        ([url]) => !String(url).includes("/visa/voa/orders"),
+      ),
+    ).toBe(true);
   });
 
   it("shows the held all-inclusive price when the eligibility check comes back ACCEPT", async () => {

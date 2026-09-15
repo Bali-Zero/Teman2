@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { AppFrame, useFunnelApp } from "@balizero/core";
+import { AppFrame, AppWhatsAppCTA, useFunnelApp } from "@balizero/core";
 import { formatIDR } from "@balizero/core/utils";
 import { buildWhatsAppLink } from "@/lib/whatsapp-utm";
 import { readCheckoutHandoff } from "../../checkoutHandoff";
@@ -304,26 +304,31 @@ function PaymentActivatingPanel({
           Online card payment opens here very soon. Finish now with our team on
           WhatsApp — same price, same steps, nothing extra to pay.
         </p>
-        <a
-          href={whatsappHref}
-          target="_blank"
-          rel="noopener noreferrer"
-          onClick={() =>
-            tracker.ctaClicked("voa_payment_activating_whatsapp", "wa.me")
-          }
-          style={{
-            display: "inline-block",
-            textAlign: "center",
-            padding: "0.9rem 1.4rem",
-            borderRadius: 8,
-            background: "#25D366",
-            color: "#0a0a0a",
-            textDecoration: "none",
-            fontWeight: 600,
+        {/* AppWhatsAppCTA, not a bare wa.me link: it records a lead_intents row under
+            `garuda_voa` before opening WhatsApp, so a tourist who reached payment while
+            card collection is off is a lead the team can find, not a lost click. If the
+            capture call fails the component still opens WhatsApp. */}
+        <AppWhatsAppCTA
+          source="garuda_voa"
+          headline="Finish with our team"
+          description="Same practice, same price — a consultant completes the payment step with you."
+          context={{ step: "payment_activating" }}
+          whatsappContext={[
+            { label: "Step", value: "Payment" },
+            { label: "Ref", value: resultId.slice(0, 8) },
+            ...(priceIdr !== null
+              ? [{ label: "Price", value: formatIDR(priceIdr) }]
+              : []),
+          ]}
+          defaultLabel="Continue on WhatsApp →"
+          onCaptured={({ leadIntentId }: { leadIntentId: string }) => {
+            tracker.ctaClicked("voa_payment_activating_whatsapp", "wa.me");
+            tracker.whatsappHandoff(leadIntentId);
           }}
-        >
-          Continue on WhatsApp →
-        </a>
+        />
+        <noscript>
+          <a href={whatsappHref}>Continue on WhatsApp →</a>
+        </noscript>
       </div>
     </AppFrame>
   );
