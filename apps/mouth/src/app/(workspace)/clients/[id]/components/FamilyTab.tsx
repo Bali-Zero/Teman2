@@ -183,7 +183,12 @@ export function FamilyTab({
         <h3 className="text-lg font-semibold text-[var(--bz-text-1)]">
           Family Members
         </h3>
-        <Button size="sm" className="gap-2" onClick={onAddClick}>
+        <Button
+          size="sm"
+          variant="outline"
+          className="gap-2 border-[var(--state-success)] bg-[var(--state-success)] text-white hover:bg-[var(--state-success)] hover:opacity-90"
+          onClick={onAddClick}
+        >
           <Plus className="w-4 h-4" />
           Add Member
         </Button>
@@ -218,8 +223,8 @@ export function FamilyTab({
                 {/* Header with relationship badge */}
                 <div className="flex items-center justify-between px-5 py-3 border-b border-[var(--bz-border)] bg-[var(--bz-surface)]">
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-[var(--bz-accent)]/20 flex items-center justify-center">
-                      <User className="w-5 h-5 text-[var(--bz-accent)]" />
+                    <div className="w-10 h-10 rounded-full bg-[var(--bz-card)] flex items-center justify-center">
+                      <User className="w-5 h-5 text-[var(--tx-secondary)]" />
                     </div>
                     <div>
                       <h4 className="font-semibold text-[var(--bz-text-1)]">
@@ -234,7 +239,7 @@ export function FamilyTab({
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="h-8 w-8 text-[var(--bz-text-2)] hover:text-[var(--bz-accent)] hover:bg-[var(--bz-accent)]/10"
+                      className="h-8 w-8 text-[var(--bz-text-2)] hover:text-[var(--tx-pure)] hover:bg-[var(--bz-card)]"
                       onClick={() => onEditClick(member)}
                     >
                       <Edit2 className="w-4 h-4" />
@@ -242,8 +247,10 @@ export function FamilyTab({
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="h-8 w-8 text-[var(--state-danger)] hover:text-[var(--state-danger)] hover:bg-[var(--state-danger)]/10"
+                      className="h-8 w-8 text-[var(--tx-secondary)] hover:text-[var(--tx-pure)] hover:bg-[var(--bz-card)]"
                       onClick={() => handleDelete(member.id, member.full_name)}
+                      aria-label="Remove family member"
+                      title="Remove family member"
                     >
                       <Trash2 className="w-4 h-4" />
                     </Button>
@@ -349,7 +356,7 @@ export function FamilyTab({
                                   );
                                   const color =
                                     daysLeft < 0
-                                      ? "text-red-500"
+                                      ? "text-[var(--state-warning)]"
                                       : daysLeft <= 180
                                         ? "text-yellow-500"
                                         : "text-green-500";
@@ -506,7 +513,7 @@ export function FamilyTab({
                                   );
                                   const color =
                                     daysLeft < 0
-                                      ? "text-red-500"
+                                      ? "text-[var(--state-warning)]"
                                       : daysLeft <= 90
                                         ? "text-yellow-500"
                                         : "text-green-500";
