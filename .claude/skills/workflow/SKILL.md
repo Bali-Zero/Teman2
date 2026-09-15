@@ -82,8 +82,16 @@ New seat capabilities every workflow should know:
   SAME rendered artifact for image-grounded verify (W100 D5 pattern; sits next to GLM-vision).
 - **Seat health probes**: `codex doctor --json` (auth-aware, replaces --version greps) ·
   `claude agents --json` (fan-out liveness) — probe-then-trust on real signals, not proxies.
-- **Red-team as native tool**: from the ORCHESTRATOR, prefer `mcp__codex-redteam__codex`
-  (typed MCP call) over Bash shell-out — lanes still use the Bash command.
+- **Red-team as native tool** (2026-09-15): the `mcp__codex-redteam__codex` server this line
+  used to name is GONE (absent from `claude mcp list` on M5 and Mini). On a machine with the
+  `codex@openai-codex` plugin (M5 today — probe `claude plugin list`), the ORCHESTRATOR runs
+  its runtime with Bash `run_in_background: true` — the `/codex:*` slash commands carry
+  `disable-model-invocation`, so the model cannot call them, only Zero can:
+  `node ~/.claude/plugins/cache/openai-codex/codex/*/scripts/codex-companion.mjs adversarial-review --base <ref> "<focus>"`
+  (`status` / `result` subcommands read it back). Detached, so the 590s Bash cap noted above
+  does not kill it. It returns prose, not a verdict line: a pre-commit GATE still goes through
+  `codex-second-opinion` (verdict contract, exit-6 no-verdict guard, telemetry). Handing Codex
+  a whole task: the plugin's `codex:codex-rescue` agent. Lanes still use the Bash command.
 - **Claude-via-agy overflow** (ruled by Zero 2026-07-19): `agy --model "Claude Opus 4.6 (Thinking)" -p`
   (PONG-proven) — extra Claude-family pool on Ultra flat quota when MAX windows saturate.
   Overflow lanes ONLY; NEVER the final gate (modus invariant untouched).
