@@ -14,10 +14,16 @@ import { HeroCTA } from "./HeroCTA";
  *
  * Server Component. Zero JS. Image via next/image with priority.
  */
-export function HeroBlueprint() {
+export function HeroBlueprint({
+  variant = "default",
+}: {
+  variant?: "default" | "r19";
+}) {
+  const isR19 = variant === "r19";
+
   return (
     <section
-      id="top"
+      id={isR19 ? undefined : "top"}
       className="relative overflow-hidden"
       style={{ background: "var(--surface-base)" }}
     >
@@ -97,51 +103,57 @@ export function HeroBlueprint() {
                   textShadow: "0 2px 24px rgba(0,0,0,0.5)",
                 }}
               >
-                Most people moving to Bali pick the wrong visa in the first
-                month.
-                <span
-                  style={{
-                    display: "block",
-                    marginTop: 12,
-                    color: "rgba(255,255,255,0.75)",
-                    fontFamily: "var(--font-sans)",
-                    fontWeight: 500,
-                    fontSize: "clamp(14px, 1.3vw, 18px)",
-                    lineHeight: 1.5,
-                    letterSpacing: 0,
-                  }}
-                >
-                  Sign a lease that does not hold up under PP 18/2021. Find out
-                  only at tax time.
-                </span>
+                {isR19
+                  ? "What's your next step in Indonesia?"
+                  : "Most people moving to Bali pick the wrong visa in the first month."}
+                {!isR19 && (
+                  <span
+                    style={{
+                      display: "block",
+                      marginTop: 12,
+                      color: "rgba(255,255,255,0.75)",
+                      fontFamily: "var(--font-sans)",
+                      fontWeight: 500,
+                      fontSize: "clamp(14px, 1.3vw, 18px)",
+                      lineHeight: 1.5,
+                      letterSpacing: 0,
+                    }}
+                  >
+                    Sign a lease that does not hold up under PP 18/2021. Find
+                    out only at tax time.
+                  </span>
+                )}
               </h1>
 
-              <p
-                className="mb-6 md:mb-10 hidden sm:block"
-                style={{
-                  color: "rgba(255,255,255,0.82)",
-                  fontSize: "clamp(14px, 1.2vw, 17px)",
-                  lineHeight: 1.55,
-                  textShadow: "0 1px 12px rgba(0,0,0,0.5)",
-                }}
-              >
-                We spend our days fixing that.
-                <br />
-                We also write about why it keeps happening.
-              </p>
+              {!isR19 && (
+                <p
+                  className="mb-6 md:mb-10 hidden sm:block"
+                  style={{
+                    color: "rgba(255,255,255,0.82)",
+                    fontSize: "clamp(14px, 1.2vw, 17px)",
+                    lineHeight: 1.55,
+                    textShadow: "0 1px 12px rgba(0,0,0,0.5)",
+                  }}
+                >
+                  We spend our days fixing that.
+                  <br />
+                  We also write about why it keeps happening.
+                </p>
+              )}
 
               {/* CTAs — delegated to client island for onClick analytics */}
-              <HeroCTA />
+              <HeroCTA variant={variant} />
 
-              {/* Trust line — concrete, not generic. Hidden on small mobile. */}
-              <div
-                className="text-[11px] md:text-[12px] leading-[1.6] hidden sm:block"
-                style={{ color: "rgba(255,255,255,0.55)" }}
-              >
-                Filed this month: 47 KITAS, 9 PT PMAs · Office in Kerobokan
-                <br />
-                Licensed konsultan pajak · Registered PPJK · Since 2020
-              </div>
+              {!isR19 && (
+                <div
+                  className="text-[11px] md:text-[12px] leading-[1.6] hidden sm:block"
+                  style={{ color: "rgba(255,255,255,0.55)" }}
+                >
+                  Filed this month: 47 KITAS, 9 PT PMAs · Office in Kerobokan
+                  <br />
+                  Licensed konsultan pajak · Registered PPJK · Since 2020
+                </div>
+              )}
             </div>
           </div>
         </div>

@@ -48,10 +48,11 @@ export function NavWhatsAppCTA({
       style={{
         background: isWhatsApp
           ? hovered
-            ? "#E0AE28"
-            : "#D4A017"
+            ? "#EAE3D8"
+            : "transparent"
           : "var(--accent-funnel)",
-        color: isWhatsApp ? "#1E3863" : "var(--text-on-accent)",
+        color: isWhatsApp ? "#F7F4EE" : "var(--text-on-accent)",
+        border: isWhatsApp ? "1px solid #A44B36" : undefined,
         textDecoration: "none",
       }}
     >
@@ -61,7 +62,7 @@ export function NavWhatsAppCTA({
           width: 7,
           height: 7,
           borderRadius: "50%",
-          background: isWhatsApp ? "#1E3863" : "#25D366",
+          background: isWhatsApp ? "#A44B36" : "#25D366",
           boxShadow: isWhatsApp ? "none" : "0 0 6px #25D366",
           flexShrink: 0,
         }}

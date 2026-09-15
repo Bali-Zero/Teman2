@@ -45,7 +45,39 @@ import { TrustBar } from "@/components/trust/TrustBar";
  *   - lead_whatsapp_cta (existing, shared across all 6 consumers)
  *   - hero_cta_read_dispatch
  */
-export function HeroCTA() {
+export function HeroCTA({
+  variant = "default",
+}: {
+  variant?: "default" | "r19";
+}) {
+  if (variant === "r19") {
+    return (
+      <>
+        <p className="mb-5 max-w-[34rem] text-[13px] leading-[1.45] text-white/85 md:mb-6">
+          Start with visa and residence, company setup, tax, or property.
+        </p>
+        <div className="flex items-center mb-6 md:mb-8">
+          <WhatsAppLeadButton
+            source="homepage_hero"
+            context={{ section: "hero", page: "home" }}
+            whatsappContext={[{ label: "Source", value: "Homepage Hero" }]}
+            utm={{ page: "/" }}
+            fallbackHref={buildWhatsAppLink("home")}
+            className="cta-primary inline-flex items-center gap-2 px-6 py-3 rounded-md text-[15px] font-semibold transition-transform hover:-translate-y-0.5"
+            style={{
+              background: "#A44B36",
+              color: "#FFFFFF",
+              boxShadow: "0 6px 18px rgba(164,75,54,0.28)",
+            }}
+          >
+            Start on WhatsApp
+            <ArrowRight size={15} strokeWidth={2.2} />
+          </WhatsAppLeadButton>
+        </div>
+      </>
+    );
+  }
+
   return (
     <>
       <div className="flex items-center gap-4 md:gap-6 mb-6 md:mb-10 flex-wrap">
