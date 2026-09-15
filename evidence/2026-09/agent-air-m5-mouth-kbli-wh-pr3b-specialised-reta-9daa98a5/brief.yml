@@ -2,29 +2,13 @@ task_id: kbli-wh-pr3b-specialised-retail
 gear: 2
 base_sha: 34a64579b0
 # Floor 2, source `size` (scripts/evidence_pack_lint.py --print-floor).
-objective: >-
-  W-H PR-3b2: allocate 8 specialised-retail codes (47241 47242 47244 47245
-  47246 47249 47712 47722, Lampiran II entry 46) TERBUKA/100 -> TERBATAS/0/
-  located via the PR-3b1 compiler; cure the canonical prose the mechanical
-  detector missed; move every census pin the shift causes (filiera, backend
-  kbli, navigator, mouth vitest); recert the editorial registry.
+objective: "W-H PR-3b2: allocate 8 specialised-retail codes (47241 47242 47244 47245 47246 47249 47712 47722, Lampiran II entry 46) TERBUKA/100 -> TERBATAS/0/located via the PR-3b1 compiler; cure the canonical prose the mechanical detector missed; move every census pin the shift causes; recert the editorial registry."
 constraints:
-  - >-
-    No new editorial-certification registry entries: recert.py bumps
-    sourceDatasetSha256/reviewedAt only (differing=0 on the 66 existing
-    entries). 47712/47722's gold PMA sentence got AUTHORED_SENTENCES entries
-    (from the reference lane); 47242's gold opener/baliContext is deferred
-    to PR-8 (no test fires — uncertified). The openness guard test was
-    split out to its own PR (PR-3d) to keep this PR's floor at 2.
+  - "No new editorial-certification registry entries: recert.py bumps sourceDatasetSha256/reviewedAt only (differing=0 on the 66 existing entries). 47712/47722's gold PMA sentence got AUTHORED_SENTENCES entries (from the reference lane, corrected per Dux review). 47242's gold opener/baliContext is deferred to PR-8 (no test fires — uncertified). The openness guard test was split out to its own PR (PR-3d) to keep this PR's floor at 2."
 appetite: { wall_clock_hours: 3 }
 acceptance:
-  - text: >-
-      Filiera + full backend kbli (30 files) + navigator + mouth vitest
-      suites pass with ZERO failures (see PR body for exact counts).
-    probe: see PR body for the full command list and counts.
+  - text: "Filiera + full backend kbli + navigator + full mouth kbli glob (56 files) pass with ZERO failures (see PR body for exact counts)."
+    probe: "see PR body for the full command list and counts"
 assumptions:
-  - text: >-
-      The allocation/prose cure specs are the reference lane's own
-      adjudicated text (agent/.../kbli-wh-pr3-lampiran2-allocation), reused
-      verbatim restricted to this 8-code subset.
+  - text: "The allocation/prose cure specs are the reference lane's own adjudicated text (agent/.../kbli-wh-pr3-lampiran2-allocation), reused verbatim restricted to this 8-code subset."
     status: verified
