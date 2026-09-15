@@ -315,12 +315,23 @@ function sessionGateRedirect(
 // all of them. Measured live 2026-09-15, production, anonymous:
 // balizero.com/l%6bpm -> 200, byte-identical to kita's /lkpm. One decode
 // pass only, matching Next — %256b must become %6b, not k.
+//
+// The RSC transport suffixes are stripped too: Next serves a page's flight
+// payload at <page>.rsc and its segment prefetches at
+// <page>.segments/<segment>.segment.rsc. Measured live after the gate
+// shipped: kita.balizero.com/lkpm.segments/(workspace)/lkpm/__PAGE__.segment.rsc
+// -> 200 with /lkpm's RSC payload, anonymous — the suffixed spelling is not
+// under "/lkpm/", so isSessionGatedPath never matched it.
+const RSC_TRANSPORT_SUFFIX = /(?:\.segments\/.+\.segment\.rsc|\.rsc)$/;
+
 export function canonicalPathname(pathname: string): string {
+  let decoded: string;
   try {
-    return decodeURIComponent(pathname);
+    decoded = decodeURIComponent(pathname);
   } catch {
-    return pathname;
+    decoded = pathname;
   }
+  return decoded.replace(RSC_TRANSPORT_SUFFIX, "") || "/";
 }
 
 export function proxy(request: NextRequest) {

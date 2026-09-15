@@ -37,6 +37,10 @@ import {
 // @ts-expect-error — see comment above; no public type for this internal export
 import { getMiddlewareMatchers } from "next/dist/build/analysis/get-page-static-info";
 import { getMiddlewareRouteMatcher } from "next/dist/shared/lib/router/utils/middleware-route-matcher";
+// Next strips a trailing .rsc before middleware matching (this is why
+// balizero.com/lkpm.rsc was already 301 before any matcher change); the ROUND 6
+// block applies the same function so the test models production, not a guess.
+import { normalizeRscURL } from "next/dist/shared/lib/router/utils/app-paths";
 import {
   proxy,
   config,
@@ -917,5 +921,65 @@ describe("ROUND 5: INNOCENCE — canonicalization does not create a new false po
     expect(response.status).not.toBe(301);
     expect(response.status).not.toBe(302);
     expect(response.status).not.toBe(307);
+  });
+});
+
+// ROUND 6 (Dux, live after #6569 deployed): the RSC transport spellings.
+// kita.balizero.com/lkpm.segments/(workspace)/lkpm/__PAGE__.segment.rsc
+// answered 200 with /lkpm's flight payload, anonymously, because the suffixed
+// path is not under "/lkpm/". canonicalPathname strips the suffix before any
+// classifier sees the path.
+describe("ROUND 6: RSC transport suffixes are classified as the page they carry", () => {
+  it.each([
+    ["/lkpm.rsc", "/lkpm"],
+    ["/clients/1.2.rsc", "/clients/1.2"],
+    ["/lkpm.segments/(workspace)/lkpm/__PAGE__.segment.rsc", "/lkpm"],
+    ["/lkpm.segments/_index.segment.rsc", "/lkpm"],
+    ["/l%6bpm.rsc", "/lkpm"],
+  ])("canonicalPathname(%s) === %s", (raw, expected) => {
+    expect(canonicalPathname(raw)).toBe(expected);
+  });
+
+  it.each([
+    "/lkpm.segments/(workspace)/lkpm/__PAGE__.segment.rsc",
+    "/clients/1.segments/(workspace)/clients/$d$id/__PAGE__.segment.rsc",
+    "/l%6Bpm.rsc",
+  ])(
+    "%s: the real matcher invokes proxy() and an anonymous request is sent to /login on kita and zantara",
+    (raw) => {
+      expect(
+        // A segment prefetch is matched RAW, through the
+        // (\.segments\/.+\.segment\.rsc)? group Next's matcher compiler appends
+        // to every entry; a plain flight request is normalized first.
+        wouldInvoke(
+          raw.endsWith(".segment.rsc") ? raw : normalizeRscURL(raw),
+          noopRequest,
+          {},
+        ),
+        `Next's real matcher must invoke proxy() for ${raw} (after Next's own .rsc normalization)`,
+      ).toBe(true);
+      for (const host of ["kita.balizero.com", "zantara.balizero.com"]) {
+        const response = proxy(createRequest(`https://${host}${raw}`));
+        expect(response.status, `${host}${raw}`).toBe(302);
+        const location = new URL(response.headers.get("location") ?? "");
+        expect(location.host).toBe(host);
+        expect(location.pathname).toBe("/login");
+      }
+    },
+  );
+
+  it("the same segment path WITH the session cookie is not redirected", () => {
+    const response = proxy(
+      createRequest(
+        "https://kita.balizero.com/lkpm.segments/(workspace)/lkpm/__PAGE__.segment.rsc",
+        { cookie: "nz_access_token=synthetic-session-token" },
+      ),
+    );
+    expect([301, 302, 307]).not.toContain(response.status);
+  });
+
+  it("a public page's RSC payload is untouched (balizero.com/news.rsc is not redirected)", () => {
+    const response = proxy(createRequest("https://balizero.com/news.rsc"));
+    expect([301, 302, 307]).not.toContain(response.status);
   });
 });
