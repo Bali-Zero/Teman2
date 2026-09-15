@@ -1,130 +1,30 @@
-task: >-
-  SAETTA-20260915 W-H PR-3b (2 of 2, PR-3b2): allocate the 8 specialised-retail
-  codes of Perpres 49/2021 Lampiran II entry 46 (47241 47242 47244 47245 47246
-  47249 47712 47722) to Koperasi/UMKM, moving each from TERBUKA/100 to
-  TERBATAS/0/located via the PR-3b1 compiler (cure_pma_lampiran2_specialised_retail.py,
-  spec copied verbatim from the reference lane 2866550d2a). Cures the canonical
-  prose (headline/standfirst/body/pullQuote/whatYouNeed + a manual regex sweep
-  of zantaraOpener/baliContext the detector is blind to) and the gold whatYouNeed
-  line on the 4 of 8 codes the mechanical detector could patch without a code
-  change. Re-emits batch-A membership/calibration and moves the mouth vitest
-  pins the population shift causes.
-lane: mouth/kbli-wh-pr3b-specialised-retail
-machine: M5
-date: 2026-09-15
-
+task_id: kbli-wh-pr3b-specialised-retail
 gear: 2
-gear_reason: >-
-  Deterministic floor 2, source `size`. `git diff origin/main...HEAD --numstat`
-  (base 34a64579b0) measures 1472 added / 288 deleted, net 1184 lines across 23
-  files — canonical + 4 tracked dataset copies, 3 new cure specs, 2 new test
-  files, 4 mouth vitest pin files, batch-A membership/calibration artifacts.
-  No hot-zone path. Measured with
-  `python3 scripts/evidence_pack_lint.py --print-floor --print-floor-source`.
-
-appetite:
-  wall_clock_hours: 2
-  adversarial_rounds: 0
-
+base_sha: 34a64579b0
+# Floor 2, source `size` (scripts/evidence_pack_lint.py --print-floor).
+objective: >-
+  W-H PR-3b2: allocate 8 specialised-retail codes (47241 47242 47244 47245
+  47246 47249 47712 47722, Lampiran II entry 46) TERBUKA/100 -> TERBATAS/0/
+  located via the PR-3b1 compiler; cure the canonical prose the mechanical
+  detector missed; move every census pin the shift causes (filiera, backend
+  kbli, navigator, mouth vitest); recert the editorial registry.
+constraints:
+  - >-
+    No new editorial-certification registry entries: recert.py bumps
+    sourceDatasetSha256/reviewedAt only (differing=0 on the 66 existing
+    entries). Gold whatYouNeed/opener text on 3 of the 8 codes still needs
+    cure_gold_pma_line.py's AUTHORED_SENTENCES (a code change) — deferred
+    to PR-8, listed with exact strings in the PR body, not fixed here.
+appetite: {wall_clock_hours: 3}
 acceptance:
-  A1: >-
-    All 8 codes carry the certified template tuple (TERBATAS/0/located) with a
-    `pma_official_basis` naming Lampiran II entry 46 and the code's own
-    sub-row product, never per_skala/Usaha Besar.
-    probe: >-
-      python3 -m pytest scripts/kbli_filiera/tests/test_lampiran2_allocation_wh_pr3b.py -q
-      — 20 passed.
-  A2: >-
-    Canonical's intel_2026 on all 8 codes has zero remaining matches on the
-    given national-openness regex (the mechanical detector is blind to the
-    "PMA status: Open" template and to zantaraOpener/baliContext).
-    probe: >-
-      Manual regex sweep of every intel_2026 string field on the 8 codes,
-      re-run after the two prose cure specs applied — 0 hits (was 5, before
-      that headline/standfirst/body/pullQuote/whatYouNeed cured a further 8
-      per-code openness assertions the field-level scan already covered).
-  A3: >-
-    Full filiera pytest suite has no NEW failure this PR introduced; the mouth
-    vitest suite named in WH-COMMON + kbli-bali-block is green after moving
-    the pins the allocation causes; sync --check and tsc are clean.
-    probe: >-
-      python3 -m pytest scripts/kbli_filiera/tests/ -q — 1412 passed, 1
-      skipped, 5 failed (all 5 are the reported blockers below, not new
-      defects: 1 is this PR's own new guard test finding 39 PRE-EXISTING
-      corpus-wide offenders unrelated to these 8 codes; 4 are
-      test_gold_pma_line.py's existing ADJUDICATION_BACKLOG ratchet catching
-      47712's still-uncured gold sentence). bash scripts/sync_kbli_dataset.sh
-      --check — all 5 consumers in sync. mouth vitest 6 files green (45+ tests
-      each run). npx tsc --noEmit -p . — clean, exit 0.
-
-out_of_scope: >-
-  55201/55203/79903 (PR-3a, separate lane). 55209/79110 (IN REVIEW, dossier
-  §2, never touched). cure_gold_pma_line.py / cure_prose_national_openness.py
-  / any other .py or .ts production file — not modified in this PR by design
-  (Dux instruction: gold's whatYouNeed AUTHORED_SENTENCES need for 47712/47722,
-  and gold's zantaraOpener/baliContext residual on 47242, are reported as
-  blockers rather than fixed, to stay inside this lane's code budget). The
-  editorial certification registry (data/kbli-filiera/pma-editorial-certifications.json)
-  is NOT re-certified for these 8 codes in this PR — recert.py's own dry-run
-  confirms it would safely bump sourceDatasetSha256 (differing=0 on the 66
-  existing entries), but a stricter backend invariant
-  (test_canonical_certification_partition_is_exact) requires every capped
-  code to be a REGISTRY MEMBER, which is a manual editorial sign-off this
-  lane does not perform while 3 of the 8 codes' gold text is still wrong.
-
+  - text: >-
+      Filiera + full backend kbli (30 files) + navigator + mouth vitest
+      suites pass; only accepted reds are the 3-codes gold blocker ratchet
+      and the pre-PR-3c guard baseline (see PR body for exact counts).
+    probe: see PR body for the full command list and counts.
 assumptions:
   - text: >-
-      The retail allocation spec (lampiran2_specialised_retail_wh_pr3_2026_09_15.json)
-      and the 11-code prose lot-5 spec are safe to reuse verbatim from the
-      reference lane (agent/air-m5/mouth/kbli-wh-pr3-lampiran2-allocation@2866550d2a
-      / 71c76c50b3): both were adjudicated against the same W-F dossier and the
-      8 codes here are a strict subset restricted via --only / a trimmed spec
-      file, never applied to 55201/55203/79903.
+      The allocation/prose cure specs are the reference lane's own
+      adjudicated text (agent/.../kbli-wh-pr3-lampiran2-allocation), reused
+      verbatim restricted to this 8-code subset.
     status: verified
-    probe: >-
-      git -C .../mouth-kbli-wh-pr3-lampiran2-allocation show <sha>:<path> for
-      both specs, diffed against the copies committed here — byte-identical on
-      the 8 shared items.
-  - text: >-
-      canonical's intel_2026.editorial.byTheNumbers "National foreign-ownership
-      ceiling" (label wording varies per code) is a structured display field no
-      compiler updates (verified: neither patch_for() nor
-      cure_prose_national_openness.py touches it), and was hand-corrected from
-      "100%" to "0%" on all 8 records — matching the reference lane's own
-      post-fix disk state field-for-field, which was itself a hand-edit in the
-      same commit as its canonical write, not a checked-in compiler.
-    status: verified
-    probe: >-
-      python3 -c one-liner diffing each of the 8 codes' byTheNumbers array
-      against the reference worktree's post-2866550d2a state — identical.
-
-leftovers:
-  - >-
-    Gold whatYouNeed AUTHORED_SENTENCES needed in cure_gold_pma_line.py for
-    47712 and 47722 (mechanical DEFAULT_OPEN_RE path REFUSES both: "the PMA
-    sentence carries text beyond the figure"). ~50-line addition, same shape
-    as the reference lane's own diff for these 2 codes. Reported to the Dux,
-    not added here (code budget).
-  - >-
-    Gold zantaraOpener + baliContext on 47242 still assert openness in words
-    ("100% open to foreigners", "the typical PMA use case... foreign-owned
-    bakery"). No existing compiler touches gold's non-whatYouNeed fields.
-    Reported to the Dux; needs either new code or a decision to hand-edit.
-  - >-
-    New guard test (test_certified_intel_no_openness_on_capped_tuple.py,
-    written to the Dux's spec) is RED on 39 pre-existing offenders across ~25
-    already-certified codes unrelated to this PR (21021/21022/25200/30400/
-    41016/41018/41020/47111/50122-51102/53200/79122/95220/95291/95299). None
-    of this PR's 8 codes are registry members yet, so none of the 39 are
-    caused by this PR. Whether the guard ships red-on-preexisting-debt or gets
-    scoped down is the Dux's call, asked and not yet answered at commit time.
-  - >-
-    Editorial certification registry has zero entries for these 8 codes.
-    recert.py's dry-run confirms the 66 existing entries are unaffected
-    (differing=0) and it would safely bump sourceDatasetSha256, but adding
-    these 8 as NEW registry members is a manual editorial sign-off this lane
-    does not perform while 3 of them still have wrong gold text — 3 backend
-    tests currently fail on the un-bumped hash + missing membership
-    (test_dataset_bytes_are_bound_to_the_registry_before_any_target_is_built,
-    test_registry_is_bound_to_the_exact_canonical_dataset,
-    test_canonical_certification_partition_is_exact) — all one root cause.
