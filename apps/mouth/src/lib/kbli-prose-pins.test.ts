@@ -76,7 +76,7 @@ const ARTICLE_FILES = [
 ];
 
 type Row = {
-  l4_bali?: { blocked?: boolean; status?: string };
+  l4_bali?: { blocked?: boolean; status?: string; confidence?: string };
   pma_status?: string;
   pma_max_asing?: number;
 };
@@ -115,7 +115,19 @@ function countBreakdown() {
   const byStatus = (status: string) =>
     blockedRows.filter((r) => r.l4_bali?.status === status);
 
-  const tertutup = byStatus("TERTUTUP").length;
+  const tertutupRows = byStatus("TERTUTUP");
+  const tertutup = tertutupRows.length;
+  // Restored 2026-09-15 (cure round finding 2): "closed nationally" is not a
+  // uniform 0%-cap population. A TERTUPUP l4_bali status can also come from a
+  // separate national law reserving the ACTIVITY (not the ownership share) —
+  // pma_status/pma_max_asing on those records still reads TERBUKA/100. Split
+  // so the prose can say which is which instead of a blanket "0% foreign
+  // ownership" that is false for the second group.
+  const nationallyZeroCap = (r: Row) =>
+    (r.pma_status ?? "").toUpperCase() === "TERTUTUP" ||
+    (r.pma_max_asing ?? 0) === 0;
+  const tertutupZero = tertutupRows.filter(nationallyZeroCap).length;
+  const tertutupNonZero = tertutup - tertutupZero;
   const chiusoBali = byStatus("CHIUSO_BALI").length;
   // "14 — held pending verification": every blocked status this compiler does
   // not yet stand fully behind at the individual-code level.
@@ -146,8 +158,27 @@ function countBreakdown() {
       r.l4_bali?.blocked === false,
   ).length;
 
+  // Added 2026-09-15 (cure round finding 3): "135 closed, full stop" hid that
+  // 29 of them rest on a conservative reading Bali Zero applied itself
+  // (verdict_state=provisional at the record level), not a citation naming
+  // the exact code. Recomputed from `l4_bali.confidence` — HIGH is the
+  // confirmed half — so this pin drifts the instant the compiler changes any
+  // record's confidence, exactly like every other figure in this file.
+  const highConfidenceBlocked = blockedRows.filter(
+    (r) => r.l4_bali?.confidence === "HIGH",
+  ).length;
+  const conservativeBlocked = blockedRows.length - highConfidenceBlocked;
+  const conservativeOf = (rows: Row[]) =>
+    rows.filter((r) => r.l4_bali?.confidence !== "HIGH").length;
+  const chiusoBaliConservative = conservativeOf(byStatus("CHIUSO_BALI"));
+  const tertutupConservative = conservativeOf(tertutupRows);
+  const heldPendingConservative =
+    conservativeBlocked - chiusoBaliConservative - tertutupConservative;
+
   return {
     tertutup,
+    tertutupZero,
+    tertutupNonZero,
     chiusoBali,
     heldPending,
     pmaNoBesar,
@@ -156,6 +187,11 @@ function countBreakdown() {
     openNoFlag,
     scopeDependentNotBlocked,
     nonClassificabileNotBlocked,
+    highConfidenceBlocked,
+    conservativeBlocked,
+    chiusoBaliConservative,
+    tertutupConservative,
+    heldPendingConservative,
   };
 }
 
@@ -243,13 +279,15 @@ function spliceNumberAt(
 
 /**
  * Every dataset-derived figure's occurrence INDEX in the article body,
- * measured 2026-09-15 (W-J B1 v2 redo, post-#6596) against the live it/id
- * files — identical in both languages, because the translator reorders
- * nothing, only rewords. Indices NOT listed here (dates, the "18 business
- * fields" citation, the frozen 518/33.2%/945/39% history) are deliberately
- * unpinned — see file header. `numberTokenCount` is checked first in each
- * locale's describe block so a future structural change shows up as a clear
- * count mismatch.
+ * re-measured 2026-09-15 (cure round, findings 2+3: the TERTUTUP zero/
+ * non-zero split and the confirmed/conservative confidence split added two
+ * new sentences, shifting every later index) against the live it/id files —
+ * identical in both languages, because the translator reorders nothing, only
+ * rewords. Indices NOT listed here (dates, code citations like 55101-55106
+ * or 01111/47112/69102/69104/86201/86202, the "18 business fields" citation,
+ * the frozen 518/33.2%/945/39% history) are deliberately unpinned — see file
+ * header. `numberTokenCount` is checked first in each locale's describe
+ * block so a future structural change shows up as a clear count mismatch.
  */
 function positionalPins(
   c: ReturnType<typeof countFromCanonical>,
@@ -277,98 +315,163 @@ function positionalPins(
       expected: group(b.tertutup, sep),
     },
     {
-      index: 10,
+      index: 9,
+      what: "TERTUTUP zero-cap sub-count",
+      expected: group(b.tertutupZero, sep),
+    },
+    {
+      index: 11,
+      what: "TERTUTUP non-zero-cap sub-count",
+      expected: group(b.tertutupNonZero, sep),
+    },
+    {
+      index: 25,
       what: "CHIUSO_BALI category count",
       expected: group(b.chiusoBali, sep),
     },
     {
-      index: 18,
+      index: 33,
       what: 'CHIUSO_BALI restated ("land on N codes")',
       expected: group(b.chiusoBali, sep),
     },
     {
-      index: 22,
+      index: 39,
       what: "held-pending-verification category count",
       expected: group(b.heldPending, sep),
     },
     {
-      index: 23,
+      index: 40,
       what: "reserved-for-cooperatives category count",
       expected: group(b.pmaNoBesar, sep),
     },
     {
-      index: 28,
+      index: 45,
       what: "sector-regulator category count",
       expected: group(b.regolatoreSettoriale, sep),
     },
     {
-      index: 29,
+      index: 46,
       what: "arithmetic sentence: blocked total",
       expected: group(c.blocked, sep),
     },
     {
-      index: 30,
+      index: 47,
       what: "arithmetic sentence: TERTUTUP",
       expected: group(b.tertutup, sep),
     },
     {
-      index: 31,
+      index: 48,
       what: "arithmetic sentence: CHIUSO_BALI",
       expected: group(b.chiusoBali, sep),
     },
     {
-      index: 32,
+      index: 49,
       what: "arithmetic sentence: held-pending",
       expected: group(b.heldPending, sep),
     },
     {
-      index: 33,
+      index: 50,
       what: "arithmetic sentence: reserved-for-cooperatives",
       expected: group(b.pmaNoBesar, sep),
     },
     {
-      index: 34,
+      index: 51,
       what: "arithmetic sentence: sector-regulator",
       expected: group(b.regolatoreSettoriale, sep),
     },
     {
-      index: 35,
+      index: 52,
+      what: "confidence split intro total",
+      expected: group(c.blocked, sep),
+    },
+    {
+      index: 53,
+      what: "confidence split: HIGH-confidence sub-count",
+      expected: group(b.highConfidenceBlocked, sep),
+    },
+    {
+      index: 54,
+      what: "confidence split: conservative-reading sub-count",
+      expected: group(b.conservativeBlocked, sep),
+    },
+    {
+      index: 55,
+      what: "conservative split: CHIUSO_BALI share",
+      expected: group(b.chiusoBaliConservative, sep),
+    },
+    {
+      index: 56,
+      what: "conservative split: CHIUSO_BALI total restated",
+      expected: group(b.chiusoBali, sep),
+    },
+    {
+      index: 60,
+      what: "conservative split: held-pending share",
+      expected: group(b.heldPendingConservative, sep),
+    },
+    {
+      index: 61,
+      what: "conservative split: held-pending total restated",
+      expected: group(b.heldPending, sep),
+    },
+    {
+      index: 62,
+      what: "conservative split: TERTUTUP share",
+      expected: group(b.tertutupConservative, sep),
+    },
+    {
+      index: 63,
+      what: "conservative-reading sub-count restated",
+      expected: group(b.conservativeBlocked, sep),
+    },
+    {
+      index: 64,
       what: "ATTENZIONE_FASCIA_BALI count",
       expected: group(b.attenzione, sep),
     },
     {
-      index: 38,
+      index: 67,
       what: "ATTENZIONE_FASCIA_BALI restated",
       expected: group(b.attenzione, sep),
     },
     {
-      index: 45,
+      index: 74,
       what: "correction paragraph: new count",
       expected: group(c.blocked, sep),
     },
     {
-      index: 49,
+      index: 78,
       what: "closing reading: blocked count",
       expected: group(c.blocked, sep),
     },
-    { index: 50, what: "closing reading: percentage", expected: pct },
+    { index: 79, what: "closing reading: percentage", expected: pct },
     {
-      index: 51,
+      index: 80,
+      what: "closing reading: HIGH-confidence sub-count",
+      expected: group(b.highConfidenceBlocked, sep),
+    },
+    {
+      index: 81,
+      what: "closing reading: conservative-reading sub-count",
+      expected: group(b.conservativeBlocked, sep),
+    },
+    {
+      index: 82,
       what: "closing reading: ATTENZIONE_FASCIA_BALI count",
       expected: group(b.attenzione, sep),
     },
     {
-      index: 52,
+      index: 83,
       what: "closing reading: no-flag count",
       expected: group(b.openNoFlag, sep),
     },
     {
-      index: 53,
+      index: 84,
       what: "closing reading: scope-dependent sub-count",
       expected: group(b.scopeDependentNotBlocked, sep),
     },
     {
-      index: 54,
+      index: 85,
       what: "closing reading: unclassified sub-count",
       expected: group(b.nonClassificabileNotBlocked, sep),
     },
@@ -421,8 +524,18 @@ describe("KBLI prose pins — published aggregates agree with the canonical", ()
       },
       {
         what: "TERTUTUP category count",
-        re: /\*\*(\d+) — closed nationally\*\*/,
+        re: /\*\*(\d+) — closed by an ownership restriction on the activity itself\*\*/,
         expect: [String(b.tertutup)],
+      },
+      {
+        what: "TERTUTUP zero-cap sub-count (restored 2026-09-15, finding 2)",
+        re: /(\d+) of them carry 0% foreign ownership in the national catalogue outright/,
+        expect: [String(b.tertutupZero)],
+      },
+      {
+        what: "TERTUTUP non-zero-cap sub-count (restored 2026-09-15, finding 2)",
+        re: /The other (\d+) show 100% in that same ownership field/,
+        expect: [String(b.tertutupNonZero)],
       },
       {
         what: "CHIUSO_BALI category count",
@@ -462,6 +575,23 @@ describe("KBLI prose pins — published aggregates agree with the canonical", ()
         ],
       },
       {
+        what: "confidence split: HIGH-confidence sub-count (added 2026-09-15, finding 3)",
+        re: /Not all \d+ rest on the same footing: (\d+) carry HIGH confidence in our data/,
+        expect: [String(b.highConfidenceBlocked)],
+      },
+      {
+        what: "confidence split: conservative-reading sub-count (added 2026-09-15, finding 3)",
+        re: /The other (\d+) are a conservative reading we applied ourselves — (\d+) of the (\d+) "closed by Bali itself" codes,.*?; (\d+) of the (\d+) "held pending verification"; and (\d+) nationally closed code/,
+        expect: [
+          String(b.conservativeBlocked),
+          String(b.chiusoBaliConservative),
+          String(b.chiusoBali),
+          String(b.heldPendingConservative),
+          String(b.heldPending),
+          String(b.tertutupConservative),
+        ],
+      },
+      {
         what: "ATTENZIONE_FASCIA_BALI count",
         re: /A much larger group — \*\*(\d+) codes\*\* — carries a warning/,
         expect: [String(b.attenzione)],
@@ -477,9 +607,14 @@ describe("KBLI prose pins — published aggregates agree with the canonical", ()
         expect: [String(c.blocked)],
       },
       {
-        what: "closing reading: blocked count + percentage",
-        re: /\*\*(\d+) codes \(([\d.]+)%\) are closed\*\*, full stop/,
-        expect: [String(c.blocked), c.pct.toFixed(1)],
+        what: "closing reading: blocked count + percentage + confidence split (reworded 2026-09-15, finding 3 — dropped the absolute 'full stop' claim)",
+        re: /\*\*(\d+) codes \(([\d.]+)%\) are closed\*\* — (\d+) of them confirmed at HIGH confidence, no PMA structure gets you in; the other (\d+) rest on a conservative reading pending individual confirmation/,
+        expect: [
+          String(c.blocked),
+          c.pct.toFixed(1),
+          String(b.highConfidenceBlocked),
+          String(b.conservativeBlocked),
+        ],
       },
       {
         what: "closing reading: ATTENZIONE_FASCIA_BALI count",
@@ -538,7 +673,7 @@ describe("KBLI prose pins — published aggregates agree with the canonical", ()
         expect(
           n,
           `${file} body has ${n} number tokens — every positional pin below index ${n} is now reading a shifted occurrence; re-measure the map`,
-        ).toBeGreaterThanOrEqual(55);
+        ).toBeGreaterThanOrEqual(85);
       });
 
       for (const pin of positionalPins(c, b, ".")) {
@@ -630,9 +765,14 @@ describe("KBLI prose pins — published aggregates agree with the canonical", ()
     it("[en] a superstring mutation is rejected — \\d+ captures the WHOLE run, not a substring", () => {
       const mutated = fs
         .readFileSync(path.join(ARTICLE_DIR, `${ARTICLE_BASE}.mdx`), "utf-8")
-        .replace("**68 — closed nationally**", "**168 — closed nationally**");
-      const match = mutated.match(/\*\*(\d+) — closed nationally\*\*/);
-      expect(match?.[1]).toBe("168");
+        .replace(
+          "**72 — closed by an ownership restriction",
+          "**172 — closed by an ownership restriction",
+        );
+      const match = mutated.match(
+        /\*\*(\d+) — closed by an ownership restriction on the activity itself\*\*/,
+      );
+      expect(match?.[1]).toBe("172");
       expect(match?.[1]).not.toBe(String(countBreakdown().tertutup));
     });
 
@@ -642,43 +782,52 @@ describe("KBLI prose pins — published aggregates agree with the canonical", ()
       it(`[${lang}] a superstring mutation on every category count is rejected at each occurrence`, () => {
         const live = fs.readFileSync(path.join(ARTICLE_DIR, file), "utf-8");
         let mutated = live;
-        // Splice from the LAST index to the first so earlier indices stay valid.
-        mutated = spliceNumberAt(mutated, 28, "12"); // regolatoreSettoriale 2 -> 12
-        mutated = spliceNumberAt(mutated, 23, "17"); // pmaNoBesar 7 -> 17
-        mutated = spliceNumberAt(mutated, 22, "114"); // heldPending 14 -> 114
-        mutated = spliceNumberAt(mutated, 10, "140"); // chiusoBali 40 -> 140
-        mutated = spliceNumberAt(mutated, 8, "168"); // tertutup 68 -> 168
+        // Splice from the LAST index to the first so earlier indices stay
+        // valid. Indices re-measured 2026-09-15 (cure round, findings 2+3):
+        // the TERTUTUP zero/non-zero split and confidence split each added a
+        // sentence, shifting every category count's occurrence later.
+        mutated = spliceNumberAt(mutated, 45, "12"); // regolatoreSettoriale 2 -> 12
+        mutated = spliceNumberAt(mutated, 40, "17"); // pmaNoBesar 7 -> 17
+        mutated = spliceNumberAt(mutated, 39, "114"); // heldPending 14 -> 114
+        mutated = spliceNumberAt(mutated, 25, "140"); // chiusoBali 40 -> 140
+        mutated = spliceNumberAt(mutated, 8, "172"); // tertutup 72 -> 172
 
         const b = countBreakdown();
-        expect(nthNumberToken(mutated, 8)).toBe("168");
+        expect(nthNumberToken(mutated, 8)).toBe("172");
         expect(nthNumberToken(mutated, 8)).not.toBe(String(b.tertutup));
-        expect(nthNumberToken(mutated, 10)).not.toBe(String(b.chiusoBali));
-        expect(nthNumberToken(mutated, 22)).not.toBe(String(b.heldPending));
-        expect(nthNumberToken(mutated, 23)).not.toBe(String(b.pmaNoBesar));
-        expect(nthNumberToken(mutated, 28)).not.toBe(
+        expect(nthNumberToken(mutated, 25)).toBe("140");
+        expect(nthNumberToken(mutated, 25)).not.toBe(String(b.chiusoBali));
+        expect(nthNumberToken(mutated, 39)).toBe("114");
+        expect(nthNumberToken(mutated, 39)).not.toBe(String(b.heldPending));
+        expect(nthNumberToken(mutated, 40)).toBe("17");
+        expect(nthNumberToken(mutated, 40)).not.toBe(String(b.pmaNoBesar));
+        expect(nthNumberToken(mutated, 45)).toBe("12");
+        expect(nthNumberToken(mutated, 45)).not.toBe(
           String(b.regolatoreSettoriale),
         );
       });
 
       it(`[${lang}] a wrong-paragraph mutation (headline vs. closing reading) is caught at its OWN occurrence even though an untouched correct mention survives elsewhere`, () => {
         // Mutate ONLY the headline blocked count (index 5) and the closing
-        // percentage (index 50) — deliberately leaving the arithmetic
-        // sentence's blocked count (index 29) and the correction paragraph's
-        // (index 45) untouched, so a "search anywhere, accept any match"
+        // percentage (index 79) — deliberately leaving the arithmetic
+        // sentence's blocked count (index 46) and the correction paragraph's
+        // (index 74) untouched, so a "search anywhere, accept any match"
         // design would hide the mutation behind those correct siblings.
+        // Indices re-measured 2026-09-15 (cure round, findings 2+3).
         const live = fs.readFileSync(path.join(ARTICLE_DIR, file), "utf-8");
         let mutated = live;
-        mutated = spliceNumberAt(mutated, 50, "9,1"); // closing percentage
+        mutated = spliceNumberAt(mutated, 79, "9,1"); // closing percentage
         mutated = spliceNumberAt(mutated, 5, "999"); // headline blocked count
 
         const c = countFromCanonical();
         const pct = pctComma(c.pct);
         // The untouched siblings genuinely still read correctly:
-        expect(nthNumberToken(mutated, 29)).toBe(String(c.blocked));
-        expect(nthNumberToken(mutated, 45)).toBe(String(c.blocked));
+        expect(nthNumberToken(mutated, 46)).toBe(String(c.blocked));
+        expect(nthNumberToken(mutated, 74)).toBe(String(c.blocked));
         // But each MUTATED occurrence is caught at its OWN index:
         expect(nthNumberToken(mutated, 5)).not.toBe(group(c.blocked, "."));
-        expect(nthNumberToken(mutated, 50)).not.toBe(pct);
+        expect(nthNumberToken(mutated, 79)).toBe("9,1");
+        expect(nthNumberToken(mutated, 79)).not.toBe(pct);
       });
     }
   });
