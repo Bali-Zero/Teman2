@@ -12,6 +12,7 @@ from backend.scripts.index_kbli_gold_content import (
     GOLD_CONTENT_FILE,
     KBLI_DATA_FILE,
     build_point,
+    certification_content,
     delete_existing_gold_points,
     deterministic_uuid,
     disclosed_standalone_gold,
@@ -19,7 +20,30 @@ from backend.scripts.index_kbli_gold_content import (
     parse_gold_content_ts,
     upsert_to_qdrant,
 )
-from backend.services.kbli_editorial_certification import load_editorial_registry
+from backend.services.kbli_editorial_certification import (
+    load_editorial_registry,
+    pma_editorial_fingerprint,
+    stable_editorial_sha256,
+)
+
+
+def _synthetic_registry_certifying(code: str, gold: dict, base: dict) -> dict:
+    """Build a registry INLINE rather than pin a real code (standaloneGold is
+    empty after W-H PR-3c v3 de-certified its last entry, 65121 — its
+    baliContext/zantaraOpener steered a foreign investor to 66221, a
+    declared_gap code, as a "more practical"/"more accessible" route). The
+    two primitives here are exactly what matches_editorial_certification()
+    compares a registry entry against — the same mechanism a real
+    standaloneGold entry would satisfy, computed fresh from the code's own
+    current (untouched) data rather than a stale historical pin."""
+    return {
+        "standaloneGold": {
+            code: {
+                "pmaFingerprint": pma_editorial_fingerprint(base),
+                "contentSha256": stable_editorial_sha256(certification_content(gold)),
+            }
+        }
+    }
 
 
 def test_exact_parser_and_registry_publish_only_the_reviewed_partition() -> None:
@@ -38,13 +62,20 @@ def test_exact_parser_and_registry_publish_only_the_reviewed_partition() -> None
     # named 47191/47192 as "fully open to 100% PMA" while those codes' own
     # records are declared_gap, and no compiler exists for non-whatYouNeed
     # gold fields, so the cure is withdrawal — the page withholds it instead.
-    assert certified == {"65121"}
+    # standaloneGold is now EMPTY: 65121 was its last remaining entry, and
+    # W-H PR-3c v3 de-certified it for the same reason as 47111 above — its
+    # prose steered a foreign investor to a declared_gap code (66221) as a
+    # "more practical"/"more accessible" alternative.
+    assert certified == set()
 
 
 def test_certified_point_uses_neutral_opener_and_exact_public_pma() -> None:
     gold = parse_gold_content_ts(GOLD_CONTENT_FILE)
     base = load_kbli_base_data(KBLI_DATA_FILE)
-    registry = load_editorial_registry()
+    # standaloneGold is empty (65121 was its last entry, de-certified by W-H
+    # PR-3c v3) — exercise the positive-certification path against a registry
+    # built inline from 65121's own real, current gold/base data.
+    registry = _synthetic_registry_certifying("65121", gold["65121"], base["65121"])
 
     partial = build_point("65121", gold["65121"], base["65121"], "test", registry)
 
@@ -60,7 +91,12 @@ def test_certified_point_uses_neutral_opener_and_exact_public_pma() -> None:
 def test_content_or_pma_mutation_prevents_point_construction() -> None:
     gold = parse_gold_content_ts(GOLD_CONTENT_FILE)
     base = load_kbli_base_data(KBLI_DATA_FILE)
-    registry = load_editorial_registry()
+    # standaloneGold is empty, so load_editorial_registry() would never
+    # certify 65121 and both assertions below would pass for the wrong
+    # reason (build_point already None before any mutation). Build the
+    # registry inline from the UNMUTATED gold/base so it genuinely certifies
+    # 65121 first, then prove each mutation breaks that certification.
+    registry = _synthetic_registry_certifying("65121", gold["65121"], base["65121"])
 
     changed_content = copy.deepcopy(gold["65121"])
     changed_content["_certification_content"]["whatItMeans"] += "!"
@@ -168,13 +204,24 @@ async def test_missing_embedding_credentials_happens_after_selected_retraction(
     # test needs a code that still reaches point-construction so retraction
     # happens BEFORE the missing-credentials exit; an uncertified code takes
     # the delete-only early return instead (see the test right below this
-    # one) and never reaches the OPENAI_API_KEY check at all.
+    # one) and never reaches the OPENAI_API_KEY check at all. standaloneGold
+    # is now empty (65121 was de-certified too, by W-H PR-3c v3), so the
+    # real load_editorial_registry() would also take the delete-only path —
+    # monkeypatch gold_indexer.load_editorial_registry to return a synthetic
+    # registry certifying 65121 inline, built from its own real, current data.
+    gold = parse_gold_content_ts(GOLD_CONTENT_FILE)
+    base = load_kbli_base_data(KBLI_DATA_FILE)
     events: list[tuple[str, object]] = []
 
     async def fake_delete(point_ids, qdrant_url, api_key, *, sweep_owned=False):
         events.append(("delete", (point_ids, qdrant_url, api_key, sweep_owned)))
 
     monkeypatch.setattr(gold_indexer, "delete_existing_gold_points", fake_delete)
+    monkeypatch.setattr(
+        gold_indexer,
+        "load_editorial_registry",
+        lambda: _synthetic_registry_certifying("65121", gold["65121"], base["65121"]),
+    )
     monkeypatch.setattr(
         sys,
         "argv",
