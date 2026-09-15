@@ -422,9 +422,15 @@ describe("the PMA verdict banner — the SECOND render site", () => {
     // 448 → 449 and 445 → 446 on 2026-09-11: the L2 re-ingestion from the
     // September OSS vault (spec 2026-09-11 §7) moved l4_bali on 27 codes — 7
     // block flips, net +1 blocked; msme unchanged at 3.
-    expect(notice.length).toBe(449);
-    expect(msme.length).toBe(3);
-    // 446 pages carry the notice for a cause other than an MSME reservation.
+    // SAETTA-20260915 W-H PR-3a: 55201/55203/79903 moved declared_gap→located
+    // (Perpres 49/2021 Lampiran II allocation), 449→446. They were the entire
+    // remaining msme population here too, so msme moves 3→0 in the same step
+    // — both leave `notice` together (0% cap now makes them nationallyClosed),
+    // which is why the subtraction below still lands on 446.
+    expect(notice.length).toBe(446);
+    expect(msme.length).toBe(0);
+    // 446 pages carry the notice for a cause other than an MSME reservation —
+    // which as of this cure is all of them (msme is now empty).
     expect(notice.length - msme.length).toBe(446);
   });
 
@@ -454,7 +460,10 @@ describe("the PMA verdict banner — the SECOND render site", () => {
       expect(excluded.map((r) => r.kode_kbli_2025)).toContain(code);
     }
     // 448 → 449 on 2026-09-11 (September L2 re-ingestion, net +1 blocked).
-    expect(blocked.length - excluded.length).toBe(449);
+    // SAETTA-20260915 W-H PR-3a: 55201/55203/79903 moved declared_gap→located
+    // (Perpres 49/2021 Lampiran II allocation) and their cap is now 0%, so
+    // they move from `notice` to `excluded`, 449→446.
+    expect(blocked.length - excluded.length).toBe(446);
     // and it left by CAP, not by status — the status is TERBATAS, which the
     // banner's guard does not look at
     const woodBuilding = RECORDS.find((r) => r.kode_kbli_2025 === "16221");
@@ -550,11 +559,15 @@ describe("the FAQ + FAQPage JSON-LD — the THIRD render site in this file, FIFT
     // three left both sets together.
     // 447 → 448 and 444 → 445 on 2026-09-11: same event as the banner site
     // above (September L2 re-ingestion, net +1 blocked); msme unchanged at 3.
-    expect(answers.length).toBe(448);
-    expect(msme.length).toBe(3);
+    // SAETTA-20260915 W-H PR-3a: 55201/55203/79903 moved declared_gap→located
+    // (Perpres 49/2021 Lampiran II allocation): pma_status leaves TERBUKA, so
+    // openNationally no longer matches, 448→445; they were the entire msme
+    // population here too, so msme moves 3→0 and the subtraction stays 445.
+    expect(answers.length).toBe(445);
+    expect(msme.length).toBe(0);
     // 445 answers carry the block for a cause other than an MSME reservation —
     // in the visible Q&A and in the FAQPage JSON-LD, the copy that leaves the
-    // site.
+    // site — which as of this cure is all of them (msme is now empty).
     expect(answers.length - msme.length).toBe(445);
   });
 
@@ -769,9 +782,16 @@ describe("isNationalClosure — the banner and the FAQ must not send a client to
     // (96210, 96220, 96100), each of which had carried CHIUSO_PMA_NO_BESAR
     // while publishing 100%.
     //
-    // The five that remain are NAMED below and not merely counted, because a
+    // SAETTA-20260915 W-H PR-3a: 5→2. 55201 (homestay), 55203 (villa) and
+    // 79903 (tour guide) — the vintage carries this comment used to describe
+    // as staying open on purpose — are now allocated to Koperasi/UMKM by
+    // Perpres 49/2021 Lampiran II (dialokasikan column) and moved
+    // declared_gap→located, TERBUKA/100%→TERBATAS/0%. They leave this
+    // population for the same reason the earlier cures did.
+    //
+    // The two that remain are NAMED below and not merely counted, because a
     // population with only a size cannot be closed by the pass that comes for
-    // it — and these five are not one population at all:
+    // it — and these two are not one population at all:
     //
     //   64110 (Bank Indonesia) and 38122 (radioactive-waste collection) are
     //     CHIUSO_REGOLATORE_SETTORIALE — shut by their own sector's regulator,
@@ -779,25 +799,13 @@ describe("isNationalClosure — the banner and the FAQ must not send a client to
     //     have never had one. Writing them down here is the point: they have
     //     been sitting inside an aggregate labelled "the remaining
     //     contradiction" and would have left it only by accident.
-    //
-    //   55201 (homestay), 55203 (villa) and 79903 (tour guide) are the vintage
-    //     carries, adjudicated 2026-08-06 across two model families. 55203 is
-    //     due to be cured (three seats, two families, all SAME); 55201 and
-    //     79903 stay open on purpose — a cross-family seat withheld on 55201
-    //     because settling it needs the KBLI-2020 text for "Pondok Wisata",
-    //     which we do not hold, and 79903's own 2025 description adds
-    //     coordinating freelance guides for travel agencies, which the annex
-    //     row "Jasa pramuwisata" does not name.
     const stillContradictory = national.filter(
       (r) => r.pma_status === "TERBUKA" && r.pma_max_asing === 100,
     );
-    expect(stillContradictory.length).toBe(5);
+    expect(stillContradictory.length).toBe(2);
     expect(stillContradictory.map((r) => r.kode_kbli_2025).sort()).toEqual([
       "38122",
-      "55201",
-      "55203",
       "64110",
-      "79903",
     ]);
     expect(national.map((r) => r.kode_kbli_2025)).toContain("95291");
     expect(stillContradictory.map((r) => r.kode_kbli_2025)).not.toContain(

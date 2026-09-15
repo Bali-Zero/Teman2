@@ -402,7 +402,9 @@ describe("real dataset: the gate binds, and v3 actually differentiates", () => {
 
     // Compiler-owned partition: 54 whole-code verdicts have a per-code locator
     // and vintage; all other 1,505 records must reach the neutral metadata arm.
-    expect(pmaGaps).toBe(1505);
+    // SAETTA-20260915 W-H PR-3a: 55201/55203/79903 moved declared_gap→located
+    // (Perpres 49/2021 Lampiran II allocation), 1505→1502.
+    expect(pmaGaps).toBe(1502);
     expect(suffixes).toHaveLength(1559);
   });
 
