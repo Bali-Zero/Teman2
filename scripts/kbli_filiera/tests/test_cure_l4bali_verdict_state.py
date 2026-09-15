@@ -104,10 +104,18 @@ def test_emitter_population_pins_measured_live_canonical_counts() -> None:
     # blocked 82 -> 102, unknown 25 -> 24 (NON_CLASSIFICABILE, see above),
     # provisional 1449 -> 1430 (net of all three events); open is untouched
     # (the applied closure never rewrites an open-tier-derived status).
+    # Then the tier->ATTENZIONE conversion bug fix (national-cap cure:
+    # cure_l4bali_applied_closure.py's rule 2 was overriding a record's own
+    # NATIONAL pma_* 0%-cap closure) put 4 codes back to TERTUTUP/blocked
+    # that the buggy first pass had wrongly opened: 10214, 16221, 95220,
+    # 95299. 131 raw-blocked -> 135, which moves blocked 102 -> 106 and
+    # provisional 1430 -> 1426 (those 4 codes leave provisional for
+    # blocked); open/unknown are untouched (none of the 4 carried an
+    # open-tier-derived or NON_CLASSIFICABILE status).
     assert {
         state: stats[f"verdict_state:{state}"]
         for state in ("blocked", "open", "unknown", "provisional")
-    } == {"blocked": 102, "open": 3, "unknown": 24, "provisional": 1430}
+    } == {"blocked": 106, "open": 3, "unknown": 24, "provisional": 1426}
 
 
 def test_checked_in_spec_matches_fresh_live_state_emission() -> None:

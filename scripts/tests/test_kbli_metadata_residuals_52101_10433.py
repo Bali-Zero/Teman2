@@ -112,7 +112,9 @@ def _without_global_pma_verification_fields(record: dict[str, Any]) -> dict[str,
 # top of that, the six l4_bali verdict fields (status/blocked/needs_review/
 # confidence/reason/closure/verdict_state) ONLY on the codes its own plan()
 # classifies as "chiuso_bali" (the 40), "attenzione" (former risk-tier-only
-# blocks) or "non_classificabile" (former blocked=true NON_CLASSIFICABILE).
+# blocks), "tertutup_national_cap" (re-pinned 2026-09-15: the national-cap
+# cure's new group, 4 codes the tier->ATTENZIONE conversion had wrongly
+# un-blocked) or "non_classificabile" (former blocked=true NON_CLASSIFICABILE).
 # Membership is derived by running the compiler's OWN plan() against
 # origin/main's pre-cure records — never a hand-maintained code list this
 # test would have to keep in sync with the compiler by hand — so a real scope
@@ -138,7 +140,7 @@ def _bali_closure_touched_codes() -> set[str]:
     return {
         code
         for code, item in plans.items()
-        if item["group"] in ("chiuso_bali", "attenzione", "non_classificabile")
+        if item["group"] in ("chiuso_bali", "attenzione", "tertutup_national_cap", "non_classificabile")
     }
 
 
