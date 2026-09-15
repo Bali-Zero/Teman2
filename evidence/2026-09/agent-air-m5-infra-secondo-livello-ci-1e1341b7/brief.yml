@@ -1,0 +1,72 @@
+task_id: secondo-livello-workflows-tests-ci
+gear: 3
+l_level: L2
+gate_class: opus
+# Floor 3, source `path`: .github/workflows/* is a hot-zone pattern in
+# scripts/evidence_pack_lint.py HOTZONE_PATTERNS, and the first-party-action-pin exemption applies
+# only to version-pin-only diffs, not to a new workflow file. Gear 3 is declared because the floor
+# says 3 — not because the change is large. It is 90 lines of YAML, and that mismatch is the point:
+# GEAR = FLOOR, in both directions, and this mission's whole subject is not paying more ceremony
+# than the floor demands.
+objective: >-
+  Arm infra/workflows/tests/ in CI. Before this workflow NOTHING in .github/workflows/ ran that
+  directory — measured, not assumed. It held test-kbli-certification-contract.mjs, a suite
+  asserting the KBLI filiera workflow's contract, which has therefore never once executed in CI
+  since it was written, and now also the two suites this mission shipped (#6603, #6604). That is
+  cicatrix #2 (exists != armed) in its plainest form: suites that prove a doctrine, that no machine
+  has ever run. The job runs every *-contract*.mjs under infra/workflows/tests/ plus the
+  behavioural runner suite, then boots the standalone runner in --dry-run to prove it compiles and
+  executes.
+constraints:
+  - >-
+    The job gates only what it can honestly gate: no network, no claude/codex/agy binary, no
+    credential, no secret. The suites are pure Node with no dependency beyond node: builtins, and
+    the runner's --dry-run door spawns no process at all.
+  - >-
+    No existing workflow file is modified and nothing outside .github/workflows/ and this evidence
+    directory is touched. The workflow is deliberately NOT added to branch-protection
+    required_status_checks in this PR: arming a new required check is a separate decision with its
+    own blast radius, and it should follow a history on main rather than a first green run.
+  - >-
+    Actions are pinned the way the neighbouring workflows in this repo already pin them
+    (actions/checkout@v7, actions/setup-node@v4), rather than introducing a new pinning style in a
+    hot-zone file.
+acceptance:
+  - text: >-
+      A1: WHEN the workflow file is parsed SHALL be valid YAML declaring exactly one job with five
+      steps, and a paths filter naming infra/workflows/** and the workflow itself, so a PR touching
+      neither does not pay for it.
+    probe: python3 -c "import yaml;d=yaml.safe_load(open('.github/workflows/workflows-tests.yml'));print(sorted(d['jobs'].keys()), len(d['jobs']['workflows-contract-tests']['steps']))"
+  - text: >-
+      A2 Bites: WHEN the job's own glob step is run locally SHALL pass for every suite it will run
+      — test-kbli-certification-contract.mjs and test-second-army-contract.mjs both exit 0. This is
+      the observation that the job does something, made before the job has ever run.
+    probe: for t in infra/workflows/tests/*-contract*.mjs; do node "$t" || exit 1; done
+  - text: >-
+      A3 THE RISK THIS PR CARRIES: WHEN the PRE-EXISTING test-kbli-certification-contract.mjs is
+      run SHALL pass. Arming a suite that was already red would block every future
+      infra/workflows/ PR from the moment this lands, so it is checked before and not after.
+    probe: node infra/workflows/tests/test-kbli-certification-contract.mjs
+  - text: >-
+      A4: WHEN the behavioural runner suite and the runner boot step are run locally SHALL pass
+      5/5 and exit 0 respectively, the boot returning promoted:false with a builder from the
+      inferior roster and the Dux as verifier.
+    probe: node infra/workflows/tests/test-run-second-army.mjs && node infra/workflows/run-second-army.mjs --args-file /tmp/ci-smoke-args.json --dry-run
+assumptions:
+  - text: >-
+      Nothing in .github/workflows/ referenced infra/workflows/ before this file. The entire
+      justification rests on it, so it is measured rather than asserted.
+    status: verified
+    probe: "grep -rl 'infra/workflows' .github/workflows/ on origin/main returns nothing"
+  - text: >-
+      The floor is 3 by PATH on a 90-line YAML diff, not by size. The Gear-3 ceremony is paid
+      because the hot-zone rule says so, not because the change is risky in proportion — and the
+      honest response to that is to pay it, not to argue it away.
+    status: verified
+    probe: "scripts/evidence_pack_lint.py --print-floor-source returns 'path' and --print-floor returns 3"
+  - text: >-
+      The glob *-contract*.mjs deliberately does NOT match test-run-second-army.mjs, which is why
+      that suite has its own step. A future contract suite dropped into the directory is armed the
+      day it lands; a future behavioural suite is not, and would need a line here.
+    status: verified
+    probe: "ls infra/workflows/tests/*-contract*.mjs lists two files, not three"
