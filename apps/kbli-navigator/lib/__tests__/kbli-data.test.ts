@@ -221,9 +221,15 @@ function editorialCertificationContract() {
   const decertifiedGold = getRawGoldContentForCertification("47111");
   const unsafeGold = getRawGoldContentForCertification("47221");
   assert.ok(safeGold, "65121 raw standalone gold");
-  assert.ok(decertifiedGold, "47111 raw standalone gold (still parsed, no longer certified)");
+  assert.ok(
+    decertifiedGold,
+    "47111 raw standalone gold (still parsed, no longer certified)",
+  );
   assert.ok(unsafeGold, "47221 raw standalone gold");
-  assert.equal(hasCertifiedStandaloneGold("65121", gold65121!.pma, safeGold), true);
+  assert.equal(
+    hasCertifiedStandaloneGold("65121", gold65121!.pma, safeGold),
+    true,
+  );
   assert.equal(
     hasCertifiedStandaloneGold("47111", safe!.pma, decertifiedGold),
     false,
