@@ -17,6 +17,16 @@ import { normalizeHostname } from "@/lib/hostname";
 // until it didn't: it matched only double quotes, it would have swallowed any quoted
 // token inside a comment, and a type annotation on this line would have broken it
 // outright — a test whose weaker half was a hand-maintained coupling to source text.
+//
+// WARNING: config.matcher at the bottom of this file carries a LITERAL COPY of
+// these route prefixes, hand-alternated — Next requires config.matcher to be
+// statically analysable, so it cannot be computed from this array at build
+// time. Add a route here without also adding it to that matcher literal and
+// any dotted path under it (e.g. /new-route/1.2, a dynamic segment value that
+// happens to contain a dot) is left ungated: Next never invokes proxy() for
+// it at all, so the session gate below never even runs. The parity test in
+// src/__tests__/workspace-session-gate.test.ts ("config.matcher's second
+// entry tracks INTERNAL_ROUTES exactly") is what turns that omission red.
 export const INTERNAL_ROUTES = [
   "/login",
   "/dashboard",
@@ -48,6 +58,64 @@ export const INTERNAL_ROUTES = [
   "/review",
   "/terminal",
 ];
+
+// Exact-segment match over the FULL route list (unlike SESSION_GATED_ROUTES,
+// this one still includes /login and /portal). Used in TWO places below: the
+// early-return's dotted-path exclusion, and the public-domain 301.
+//
+// Measured live 2026-09-15T05:44Z against production: balizero.com/clients/1
+// 301s to kita as expected, but balizero.com/clients/1.2 answered anonymous
+// HTTP 200 at 62,817 bytes — the workspace payload, on the PUBLIC domain, for
+// a dynamic route segment ([id]) that happens to contain a dot. Two causes
+// stack: (1) config.matcher below excludes every path containing a dot, so
+// Next never even invokes this function for it; (2) the early-return a few
+// lines down independently skips any dotted path too. A dotted id walks past
+// both the session gate AND the public-domain redirect the five PRs before
+// this one (#6327 #6361 #6391 #6397 #6400) built — because both mechanisms
+// treated "has a dot" as synonymous with "is a static asset", which is false
+// for `/clients/[id]` and every other dynamic segment under INTERNAL_ROUTES.
+export function isInternalPath(pathname: string): boolean {
+  return INTERNAL_ROUTES.some(
+    (route) => pathname === route || pathname.startsWith(`${route}/`),
+  );
+}
+
+// APP DOMAIN had NO server-side session check at all. The workspace auth gate
+// lived entirely in app/(workspace)/layout.tsx, a "use client" component — so
+// the SSR HTML payload was sent to ANYONE, and only THEN did browser JS decide
+// whether to redirect to /login. A client component can style the wait for a
+// redirect; it cannot BE the gate, because by the time it runs the bytes it
+// would have hidden already left the server.
+//
+// Measured live 2026-09-15T05:17Z against production, anonymously, all HTTP
+// 200 at 46-77 KB each: /lkpm /dashboard /clients /accounting /garuda-voa /hr
+// /intelligence /notifications /obligations /omnichannel /partners /process
+// /review /second-home /settings /terminal /admin /analytics /agents. /lkpm's
+// anonymous payload carried 2 excluded-roster markers.
+//
+// SESSION_EXEMPT_INTERNAL_ROUTES carves the two INTERNAL_ROUTES entries that
+// must stay reachable with NO session: /login is the login page itself
+// (gating it is an infinite redirect loop back to itself), and /portal is
+// already redirected off to my.balizero.com earlier in this file and gated
+// there via SESSION_COOKIE / hasSession() — gating it again here would be a
+// second, redundant mechanism guarding a route this file never actually
+// serves.
+export const SESSION_EXEMPT_INTERNAL_ROUTES = new Set<string>([
+  "/login",
+  "/portal",
+]);
+
+// EXPORTED for the same reason INTERNAL_ROUTES is: a test can import the real
+// derived array instead of recomputing the filter against source text.
+export const SESSION_GATED_ROUTES = INTERNAL_ROUTES.filter(
+  (route) => !SESSION_EXEMPT_INTERNAL_ROUTES.has(route),
+);
+
+function isSessionGatedPath(pathname: string): boolean {
+  return SESSION_GATED_ROUTES.some(
+    (route) => pathname === route || pathname.startsWith(`${route}/`),
+  );
+}
 
 // /knowledge is NOT a route on kita — it maps 1:1 to a standalone app on its
 // own subdomain. See APP_SUBDOMAIN_ROUTE_MAP in the APP DOMAIN block.
@@ -97,7 +165,13 @@ const ASSESSMENT_DOMAIN = "subhi.balizero.com";
 // that somehow reaches this middleware for one of them doesn't get treated as
 // public marketing content.
 const SSO_SUBDOMAINS = ["mail", "calendar", "drive", "knowledge"];
-const PORTAL_SESSION_COOKIE = "nz_access_token";
+// Deliberately shared across *.balizero.com (Domain=.balizero.com in
+// production), set by app/api/auth/login/route.ts so every subdomain sees
+// the same session. This file checks PRESENCE only (see hasSession below) —
+// role and token validity are enforced downstream by the backend on every
+// data request, so a forged or stale cookie value gets at most an empty
+// workspace shell here, never actual client data.
+const SESSION_COOKIE = "nz_access_token";
 const PORTAL_PUBLIC_PATHS = new Set([
   "/portal/login",
   "/portal/login-upgraded",
@@ -176,8 +250,57 @@ function isPortalPath(pathname: string): boolean {
   return pathname === "/portal" || pathname.startsWith("/portal/");
 }
 
-function hasPortalSession(request: NextRequest): boolean {
-  return Boolean(request.cookies.get(PORTAL_SESSION_COOKIE)?.value);
+function hasSession(request: NextRequest): boolean {
+  return Boolean(request.cookies.get(SESSION_COOKIE)?.value);
+}
+
+// The gate is a property of the PATH, not of the host: a SESSION_GATED_ROUTES
+// path must never reach page rendering for an anonymous caller, at EVERY
+// point in this file that hands a request to rendering — not only the one
+// branch (APP DOMAIN) round 1 gated. Live measurement, 2026-09-15T06:40Z,
+// production, anonymous, red-team-found and Dux-confirmed:
+//   zantara.balizero.com/lkpm       -> 200, 49,024 B, 2 excluded-roster markers (== kita's /lkpm)
+//   zantara.balizero.com/clients/1  -> 200, 62,811 B
+//   zantara.balizero.com/dashboard  -> 200
+// Root cause: the ZANTARA DOMAIN block's non-root branch does `return
+// response` before control ever reaches the APP DOMAIN block's gate — same
+// app, same pages, different host. Two more `return response;`s share the
+// exact shape and now also call this helper first: the isFlyDev bypass (any
+// public *.fly.dev host, not a development machine) and the final
+// fall-through for any hostname no branch above classifies.
+//
+// NOT gated here, and why each is safe:
+// - PUBLIC domain (balizero.com): isInternalPath() already 301s every
+//   SESSION_GATED_ROUTES path to kita before that block's own `return
+//   response`, so that fall-through never carries a gated path.
+// - PORTAL domain (my.balizero.com): has its own session check
+//   (hasSession()/PORTAL_PUBLIC_PATHS) and redirects every non-/portal path
+//   off-host — it never itself renders a workspace page.
+// - MOBILE/www/VISA/TAX/NUZANTARA/ASSESSMENT blocks (mo., www., visa., tax.,
+//   nuzantara.co.id, subhi.): each unconditionally redirects or rewrites
+//   EVERY path into its own namespace (/visa, /tax-calendar/*, /nuzantara/*,
+//   /assessment/*) or off-host; none of those namespaces overlaps
+//   SESSION_GATED_ROUTES, so none of them can land on a workspace page.
+function sessionGateRedirect(
+  request: NextRequest,
+  pathname: string,
+): NextResponse | null {
+  if (!isSessionGatedPath(pathname) || hasSession(request)) {
+    return null;
+  }
+  const loginUrl = new URL("/login", request.url);
+  loginUrl.searchParams.set("redirect", `${pathname}${request.nextUrl.search}`);
+  // Same-origin (relative to request.url): no CORS reason to route this
+  // through crossOriginRedirect, and doing so would be actively wrong — it
+  // returns 204 for RSC/prefetch, which would answer an RSC fetch of a gated
+  // workspace route with an empty 204 instead of sending it to /login.
+  const gateResponse = NextResponse.redirect(loginUrl, 302);
+  gateResponse.headers.set("x-pathname", pathname);
+  // A fresh NextResponse does not inherit X-Robots-Tag from the caller's
+  // `response` — set it explicitly, same reason every other redirect in this
+  // file that replaces `response` re-sets it.
+  gateResponse.headers.set("X-Robots-Tag", "noindex, nofollow");
+  return gateResponse;
 }
 
 export function proxy(request: NextRequest) {
@@ -189,7 +312,11 @@ export function proxy(request: NextRequest) {
     pathname.startsWith("/_next") ||
     pathname.startsWith("/api") ||
     pathname.startsWith("/static") ||
-    pathname.includes(".") // files with extensions
+    // Files with extensions — EXCEPT an internal path, because a dynamic
+    // segment value can legitimately contain a dot (/clients/1.2 is the
+    // [id] route with id="1.2", not a static asset). See isInternalPath
+    // above for the live measurement this carve-out closes.
+    (pathname.includes(".") && !isInternalPath(pathname))
   ) {
     // Still add pathname header for consistency
     const response = NextResponse.next();
@@ -274,7 +401,16 @@ export function proxy(request: NextRequest) {
     isDevelopment &&
     isPortalPath(pathname);
 
-  if ((isDevelopment && !enforceProdlikePortal) || isFlyDev) {
+  if (isDevelopment && !enforceProdlikePortal) {
+    return response;
+  }
+
+  // isFlyDev is any public *.fly.dev hostname (a raw Vercel/Fly preview URL
+  // reachable by anyone), not a development machine — unlike isDevelopment
+  // above, it must still pass through the session gate.
+  if (isFlyDev) {
+    const gated = sessionGateRedirect(request, pathname);
+    if (gated) return gated;
     return response;
   }
 
@@ -282,7 +418,7 @@ export function proxy(request: NextRequest) {
   if (isPortalDomain || enforceProdlikePortal) {
     // Portal domain: only allow /portal/* routes
     if (isPortalPath(pathname)) {
-      if (PORTAL_PUBLIC_PATHS.has(pathname) || hasPortalSession(request)) {
+      if (PORTAL_PUBLIC_PATHS.has(pathname) || hasSession(request)) {
         return response;
       }
 
@@ -409,7 +545,14 @@ export function proxy(request: NextRequest) {
       rewriteResponse.headers.set("X-Robots-Tag", "noindex, nofollow");
       return rewriteResponse;
     }
-    // All other routes (/login, /api, etc.) pass through as-is
+    // All other routes (/login, /api, etc.) pass through as-is — but only
+    // after the same workspace session gate the APP DOMAIN block enforces.
+    // This is the live leak the red-team found 2026-09-15T06:40Z: this
+    // branch used to `return response` unconditionally, so
+    // zantara.balizero.com/lkpm served the same anonymous 200 kita's /lkpm
+    // used to, before round 1.
+    const gated = sessionGateRedirect(request, pathname);
+    if (gated) return gated;
     response.headers.set("X-Robots-Tag", "noindex, nofollow");
     return response;
   }
@@ -426,11 +569,7 @@ export function proxy(request: NextRequest) {
     }
 
     // Check if trying to access internal routes
-    const isInternalRoute = INTERNAL_ROUTES.some(
-      (route) => pathname === route || pathname.startsWith(`${route}/`),
-    );
-
-    if (isInternalRoute) {
+    if (isInternalPath(pathname)) {
       // Redirect to app domain
       const appUrl = new URL(pathname, `https://${APP_DOMAIN}`);
       appUrl.search = request.nextUrl.search;
@@ -590,9 +729,28 @@ export function proxy(request: NextRequest) {
       return crossOriginRedirect(request, publicUrl);
     }
 
+    // The gate that was missing entirely — see the comment above
+    // sessionGateRedirect for the defect and the measurement. It sits LAST,
+    // after every redirect already in this block (portal, root, /email,
+    // RETIRED_APP_ROUTES, the /knowledge ghost-route map, PUBLIC_CATEGORIES,
+    // /services, /contact /team /news), on purpose: each of those keeps its
+    // exact current behaviour unchanged, and only the blanket allow below is
+    // narrowed. That is what makes "no public route changes status" true by
+    // construction, not by hope.
+    const gated = sessionGateRedirect(request, pathname);
+    if (gated) return gated;
+
     // Allow all other routes on app domain
     return response;
   }
+
+  // Fall-through for any hostname no branch above classifies (e.g. a raw
+  // Vercel deployment alias). Same reason as the isFlyDev and ZANTARA DOMAIN
+  // call-sites above: this used to `return response` unconditionally, which
+  // is the same "hand a gated path to rendering" action, just on a host
+  // nobody named.
+  const gatedFallthrough = sessionGateRedirect(request, pathname);
+  if (gatedFallthrough) return gatedFallthrough;
 
   return response;
 }
@@ -607,5 +765,15 @@ export const config = {
      * - public files (images, etc)
      */
     "/((?!_next/static|_next/image|favicon.ico|.*\\..*|api).*)",
+    // The pattern above excludes EVERY dotted path, including a dynamic
+    // segment value like /clients/1.2 — so Next never invoked this
+    // middleware for it at all, no matter what isInternalPath said. Next
+    // requires config.matcher to be statically analysable (literal strings,
+    // not something built from INTERNAL_ROUTES at runtime), so this is a
+    // second, hand-written copy of that array's prefixes, alternated over a
+    // single path segment. workspace-session-gate.test.ts parses this string
+    // back out and asserts it against INTERNAL_ROUTES in both directions —
+    // add a route to one without the other and that test goes red.
+    "/(accounting|admin|agents|analytics|clients|dashboard|garuda-voa|hr|intelligence|lkpm|login|notifications|obligations|omnichannel|partners|portal|process|review|second-home|settings|terminal)/:path*",
   ],
 };

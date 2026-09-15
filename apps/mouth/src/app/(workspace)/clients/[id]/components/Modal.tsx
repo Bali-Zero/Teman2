@@ -41,6 +41,7 @@ export function Modal({
             size="icon"
             onClick={onClose}
             aria-label="Close modal"
+            title="Close"
           >
             <X className="w-5 h-5" />
           </Button>
@@ -56,7 +57,12 @@ export function Modal({
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={isSaving} className="gap-2">
+            <Button
+              type="submit"
+              variant="outline"
+              disabled={isSaving}
+              className="gap-2 border-[var(--state-success)] bg-[var(--state-success)] text-white hover:bg-[var(--state-success)] hover:opacity-90"
+            >
               {isSaving ? (
                 <Loader2 className="w-4 h-4 animate-spin" />
               ) : (

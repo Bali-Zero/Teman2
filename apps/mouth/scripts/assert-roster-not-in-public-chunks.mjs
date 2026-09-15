@@ -138,25 +138,28 @@ const ALLOWED_CHUNK_PREFIX_CLOSERS = {};
 const PUBLIC_DIR = "public";
 
 /**
- * Portraits under `public/` whose FILENAME is an excluded person's name.
+ * EMPTY, and being empty is the point.
  *
- * These are a real, currently-accepted public exposure, listed here so that it is a
- * DECISION and not an omission: `curl https://balizero.com/static/team/sahira.jpg`
- * returns 200 today, and the URL itself is the name. No page links them any more —
- * that was the earlier work — but the bytes stay fetchable by anyone who guesses
- * the path.
+ * Until D6 (2026-09-15) this list carried `static/team/faisha.jpg` and
+ * `static/team/sahira.jpg` as a real, owner-acknowledged exposure: no page linked
+ * them any more, but `curl https://balizero.com/static/team/sahira.jpg` returned
+ * 200 — the bytes stayed fetchable by anyone who guessed the URL, because the
+ * filename IS the name.
  *
- * They are not deleted here because internal surfaces still use them, so removing
- * them or moving them behind an authenticated route handler is the owner's call,
- * not a presentation change's. It is already with the owner.
+ * D6 closed it by REMOVAL, not a gated route handler: a file under `public/`
+ * never passes through `src/proxy.ts` at all (its matcher excludes any path
+ * containing a dot), so "behind the session gate" would have needed a new
+ * authenticated route handler plus Next `outputFileTracingIncludes` wiring —
+ * machinery whose authenticated success path was not provable end-to-end in the
+ * window that made the call. Removal is provable with one anonymous curl
+ * returning 404, and it has no failure mode.
  *
- * The point of the list: a THIRD excluded person's portrait added to `public/` will
- * fail this build instead of quietly joining them.
+ * An entry here is how a leak becomes legal, so the list is pinned at empty by
+ * `src/lib/client-roster-boundary.test.ts` (EXPECTED_ACCEPTED_PUBLIC_FILES).
+ * Adding one back means editing that test in the same commit — a visible
+ * decision, never a quiet one.
  */
-const ACCEPTED_PUBLIC_FILES = [
-  "static/team/faisha.jpg",
-  "static/team/sahira.jpg",
-];
+const ACCEPTED_PUBLIC_FILES = [];
 
 function walk(dir, out = []) {
   if (!fs.existsSync(dir)) return out;

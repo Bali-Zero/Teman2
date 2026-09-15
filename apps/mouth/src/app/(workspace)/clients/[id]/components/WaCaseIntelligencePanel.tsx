@@ -38,7 +38,7 @@ function formatRelativeTime(iso?: string | null): string {
 function statusClass(status: string): string {
   switch (status) {
     case "blocked":
-      return "border-[var(--state-danger)]/40 bg-[var(--state-danger)]/10 text-[var(--state-danger)]";
+      return "border-[var(--state-warning)]/40 bg-[var(--state-warning)]/10 text-[var(--state-warning)]";
     case "waiting":
       return "border-[var(--state-warning)]/40 bg-[var(--state-warning)]/10 text-[var(--state-warning)]";
     case "done":
@@ -190,14 +190,14 @@ export function WaCaseIntelligencePanel({
 
   if (error) {
     return (
-      <div className="rounded-lg border border-red-700/40 bg-red-950/20 p-4">
-        <div className="flex items-start gap-2 text-sm text-[var(--state-danger)]">
+      <div className="rounded-lg border border-[var(--state-warning)]/40 bg-[var(--state-warning)]/10 p-4">
+        <div className="flex items-start gap-2 text-sm text-[var(--state-warning)]">
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
           <div>
             <div className="font-medium">
               Failed to load WhatsApp intelligence
             </div>
-            <div className="mt-1 text-xs text-[var(--state-danger)]/70">
+            <div className="mt-1 text-xs text-[var(--state-warning)]/70">
               {error}
             </div>
           </div>

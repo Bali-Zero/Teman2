@@ -1,0 +1,67 @@
+task: >-
+  SAETTA-20260915 W-H, PR-1: refuse a 0% PMA verdict that cites no annex row. Guard, tests
+  only. Extends the family of antidotes to the 2026-08-03-withdrawn "OSS publishes no
+  Usaha Besar scale row, therefore reserved for UMKM" inference — this time against the
+  path `test_withdrawn_umkm_inference_absent.py` does not cover: the NATIONAL `pma_*`
+  verdict tuple (`pma_max_asing`, `pma_kondisi`, `pma_nota`, `pma_source`,
+  `pma_official_basis`) that PR #6488 (`cure_pma_closed_no_besar_scale.py`, spec
+  `pma_closed_no_besar_scale_2026_09_14.json`, OPEN/draft, never merged) tried to set to 0
+  on 19 codes on the sole basis that OSS lists no Usaha Besar scale row. DOSSIER
+  `~/BATTAGLIA-20260911/4-KBLI-APP/DOSSIER-no-besar-normativo-2026-09-15.md` (SAETTA W-F)
+  found the rule not proven and BKPM 5/2025 Pasal 8(6) saying the opposite; a 0%
+  foreign-ownership verdict may rest only on a Perpres 10/2021 (as amended by 49/2021)
+  annex/closed-list locator (Lampiran II `dialokasikan`, Lampiran III, or the Pasal 2
+  closed list). Two new files: `scripts/kbli_filiera/tests/test_pma_zero_cap_basis.py`
+  (canonical + cure_specs sweep) and its mouth-copy twin
+  `apps/mouth/src/lib/kbli-pma-zero-cap-basis.test.ts`. No existing file touched, no data
+  changed.
+lane: mouth/kbli-wh-pr1-annex-guard
+machine: M5
+date: 2026-09-15
+
+gear: 2
+gear_reason: >-
+  `git diff --cached --numstat` against origin/main 449def3cb3 measures 360 added / 0
+  deleted (two new test files, no existing file touched), churn 360, under
+  SIZE_GEAR3_THRESHOLD (1828). No hot-zone path: both files are test-only
+  (`scripts/kbli_filiera/tests/` and `apps/mouth/src/lib/`), no canonical data file, no
+  cure_spec, no production code path is modified by this PR.
+
+appetite:
+  wall_clock_hours: 2
+  adversarial_rounds: 1
+
+acceptance:
+  A1: >-
+    The guard refuses the exact fields PR #6488 would have written to `73300` and `38110`
+    (`pma_status: TERBATAS`, `pma_max_asing: 0`, `pma_kondisi`/`pma_nota`/`pma_source`/
+    `pma_official_basis` verbatim from `git show 5535726236:data/source_documents/
+    KBLI_2025_FINAL_CLEAN.json`), and passes on origin/main today for all 79 records with
+    `pma_max_asing == 0` (60 TERTUTUP/declared_gap, 19 TERBATAS/located), including the
+    four already-certified Lampiran II allocations (95291, 96100, 96210, 96220).
+    probe: >-
+      `python3 -m pytest scripts/kbli_filiera/tests/test_pma_zero_cap_basis.py
+      scripts/kbli_filiera/tests/test_withdrawn_umkm_inference_absent.py -q` — 23 passed;
+      the guilt test inverted-and-restored to prove it is load-bearing (paste in report).
+  A2: >-
+    The mouth-copy twin enforces the identical predicate over
+    `apps/mouth/data/KBLI_2025_FINAL_CLEAN.json` (byte-identical to canonical, verified via
+    `cmp`), so a client-facing page cannot ship a scale-absence-based 0% verdict even if
+    the canonical guard were bypassed.
+    probe: >-
+      `npx vitest run src/lib/kbli-pma-zero-cap-basis.test.ts
+      src/lib/kbli-withdrawn-umkm-inference.test.ts` (from `apps/mouth`) — 28 passed.
+  A3: >-
+    A spec sweep over `scripts/kbli_filiera/cure_specs/` proves the sweep is not vacuous
+    (W84: reads >0 live entries) and that every entry the `apply_umkm_reservations.py`-
+    style compilers currently use to write a fresh 0% cap (`items[].locator` schema, 13
+    live entries across 2 files) passes the same two-part rule.
+    probe: >-
+      Included in the same pytest run as A1
+      (`test_spec_sweep_every_live_locator_entry_passes`).
+
+pii_scan: clean
+pii_scan_note: >-
+  KBLI codes, Indonesian regulation citations (Perpres 10/2021, 49/2021, BKPM 5/2025) and
+  repo file paths only. No client name, phone, email, passport or company identifier
+  appears anywhere in either file.

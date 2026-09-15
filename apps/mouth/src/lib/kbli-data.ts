@@ -38,6 +38,7 @@ import { riskDispute } from "./kbli-risk-dispute";
 import { perpresSlice } from "./kbli-perpres-slice";
 import { perpresCitation } from "./kbli-perpres-locator";
 import { getSectionFromCode } from "./kbli-section";
+import { pmaReviewNotice } from "./kbli-pma-review";
 
 // =============================================================================
 // Constants: Section metadata
@@ -411,6 +412,10 @@ function transformRecord(
     // Same dual-reader discipline as riskDispute above — set in BOTH
     // transforms or the two readers disagree on the 14 slice-disclosure codes.
     perpresSlice: perpresSlice(code) ?? undefined,
+    // Same dual-reader discipline — set in BOTH transforms (kbli-data.ts is
+    // the one the page actually consumes) or the two readers disagree on the
+    // 12 no-Besar-row hold codes (SAETTA-20260915/W-H PR-5).
+    pmaReviewNotice: pmaReviewNotice(raw) ?? undefined,
   };
 }
 

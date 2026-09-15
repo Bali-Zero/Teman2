@@ -1,4 +1,4 @@
-import { isGarudaVoaPublicEnabled } from "./flag";
+import { isGarudaPaymentsLive, isGarudaVoaPublicEnabled } from "./flag";
 
 /**
  * The team-lead flag (2026-08-25): measured on this branch, GARUDA_PUBLIC_ENABLED
@@ -35,5 +35,29 @@ describe("isGarudaVoaPublicEnabled — fail-closed parsing", () => {
     if (value === undefined) delete process.env.GARUDA_PUBLIC_ENABLED;
     else process.env.GARUDA_PUBLIC_ENABLED = value;
     expect(isGarudaVoaPublicEnabled()).toBe(expected);
+  });
+});
+
+describe("isGarudaPaymentsLive — fail-closed parsing", () => {
+  const original = process.env.GARUDA_PAYMENTS_LIVE;
+  afterEach(() => {
+    if (original === undefined) delete process.env.GARUDA_PAYMENTS_LIVE;
+    else process.env.GARUDA_PAYMENTS_LIVE = original;
+  });
+
+  it.each([
+    [undefined, false],
+    ["", false],
+    ["false", false],
+    ["False", false],
+    ["0", false],
+    ["typo", false],
+    ["true", true],
+    ["TRUE", true],
+    ["  true  ", true],
+  ])("GARUDA_PAYMENTS_LIVE=%p -> %p", (value, expected) => {
+    if (value === undefined) delete process.env.GARUDA_PAYMENTS_LIVE;
+    else process.env.GARUDA_PAYMENTS_LIVE = value;
+    expect(isGarudaPaymentsLive()).toBe(expected);
   });
 });

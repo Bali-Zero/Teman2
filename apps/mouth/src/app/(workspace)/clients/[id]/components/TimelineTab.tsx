@@ -29,8 +29,8 @@ const CHANNEL_STYLES: Record<
   },
   call: {
     icon: Phone,
-    bg: "bg-[var(--bz-neon-purple)]/10",
-    text: "text-[var(--bz-neon-purple)]",
+    bg: "bg-[var(--state-info)]/10",
+    text: "text-[var(--state-info)]",
   },
   telegram: {
     icon: Send,
@@ -52,7 +52,7 @@ const CHANNEL_STYLES: Record<
 const SENTIMENT_STYLES: Record<string, string> = {
   positive: "bg-[var(--state-success)]/10 text-[var(--state-success)]",
   neutral: "bg-[var(--bz-surface)] text-[var(--bz-text-2)]",
-  negative: "bg-[var(--state-danger)]/10 text-[var(--state-danger)]",
+  negative: "bg-[var(--state-warning)]/10 text-[var(--state-warning)]",
   mixed: "bg-[var(--state-warning)]/10 text-[var(--state-warning)]",
 };
 
@@ -168,7 +168,7 @@ export function TimelineTab({
             </span>
           )}
           {sentimentCount.negative > 0 && (
-            <span className="text-xs bg-[var(--state-danger)]/10 text-[var(--state-danger)] px-2 py-1 rounded-full">
+            <span className="text-xs bg-[var(--state-warning)]/10 text-[var(--state-warning)] px-2 py-1 rounded-full">
               {sentimentCount.negative} negative
             </span>
           )}
@@ -221,7 +221,7 @@ export function TimelineTab({
 
               {/* Card */}
               <div className="flex-1 pb-3 min-w-0">
-                <div className="rounded-lg border border-[var(--bz-border)] bg-[var(--bz-surface)] p-3 hover:border-[var(--bz-accent)]/30 transition-colors">
+                <div className="rounded-lg border border-[var(--bz-border)] bg-[var(--bz-surface)] p-3 hover:border-[var(--line-control)] transition-colors">
                   {/* Row 1: type + direction + date */}
                   <div className="flex items-center justify-between gap-2 mb-1.5">
                     <div className="flex items-center gap-2 min-w-0">
@@ -313,7 +313,7 @@ export function TimelineTab({
                       {hasLongSummary && (
                         <button
                           onClick={() => toggleExpand(interaction.id)}
-                          className="text-[10px] text-[var(--bz-accent)] hover:underline mt-0.5"
+                          className="text-[10px] text-[var(--tx-pure)] hover:underline mt-0.5"
                         >
                           {isExpanded ? "Show less" : "Show more"}
                         </button>

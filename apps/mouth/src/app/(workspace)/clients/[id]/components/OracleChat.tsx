@@ -170,11 +170,11 @@ export function OracleChat({ clientId }: OracleChatProps) {
 
           {/* Error state */}
           {error && (
-            <div className="rounded-lg border border-[var(--state-danger)]/40 bg-[var(--state-danger)]/10 p-3">
-              <div className="text-sm font-medium text-[var(--state-danger)]">
+            <div className="rounded-lg border border-[var(--state-warning)]/40 bg-[var(--state-warning)]/10 p-3">
+              <div className="text-sm font-medium text-[var(--state-warning)]">
                 {STRINGS.oracle.requestError}
               </div>
-              <div className="mt-1 text-xs text-[var(--state-danger)]/70">
+              <div className="mt-1 text-xs text-[var(--state-warning)]/70">
                 {error}
               </div>
             </div>
