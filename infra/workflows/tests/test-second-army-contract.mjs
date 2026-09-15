@@ -601,7 +601,50 @@ async function test_verifier_never_sees_builder_answer() {
   );
 }
 
-// Test 12 — every seat the doctrine names has a door, and every bash door has a probe.
+// Test 12 — the DUX verify lane is told to DERIVE, NEVER REPAIR.
+// WHY THIS TEST EXISTS, and it is not hypothetical: on the first live pilot of this chain
+// (mission D5-restamp-6579, 2026-09-15) the builder produced a wrong result and CLAIMED it was
+// right. The Dux caught it — the direction worked — but the verify lane then ran the task's
+// sanctioned tool, which WRITES, and so repaired the artefact instead of only grading it. The
+// run came back holds:true describing a state the grader had itself created. A grader that can
+// repair has destroyed the measurement it was asked for, and the read-only property was doctrine
+// with nothing enforcing it. The prompt now says so explicitly, and this test holds it there.
+async function test_verify_lane_is_told_to_derive_not_repair() {
+  const { calls } = await runSecondArmy(baseArgs(), defaultResponder);
+  const verifyCall = calls.find((c) =>
+    (c.opts.label || "").startsWith("verify:"),
+  );
+  assert.ok(verifyCall, "expected a verify: lane");
+  assert.match(
+    verifyCall.prompt,
+    /DERIVE, NEVER REPAIR/,
+    "the verify lane must be told to derive and not repair",
+  );
+  assert.match(
+    verifyCall.prompt,
+    /never run a command that writes/i,
+    "the verify lane must be told which commands are forbidden, not merely that it is a grader",
+  );
+  assert.match(
+    verifyCall.prompt,
+    /even when the proof command itself would write/i,
+    "the instruction must cover the case the pilot actually hit — a proof command that writes",
+  );
+  const buildCall = calls.find((c) =>
+    (c.opts.label || "").startsWith("build:"),
+  );
+  assert.ok(buildCall, "expected a build: lane");
+  assert.doesNotMatch(
+    buildCall.prompt,
+    /DERIVE, NEVER REPAIR/,
+    "the BUILDER is not told to derive — it is the one that writes",
+  );
+  console.log(
+    "PASS: the dux verify lane is told to derive and never repair; the builder is not",
+  );
+}
+
+// Test 13 — every seat the doctrine names has a door, and every bash door has a probe.
 function test_every_named_seat_has_a_door_and_a_probe() {
   const { SEAT_DOOR, CHAIN, REFUTER_SEATS } = doctrine();
   const named = new Set(REFUTER_SEATS);
@@ -644,6 +687,7 @@ const tests = [
   test_refuter_lane_only_at_floor_2,
   test_declared_dead_tiers_never_probed,
   test_verifier_never_sees_builder_answer,
+  test_verify_lane_is_told_to_derive_not_repair,
   test_every_named_seat_has_a_door_and_a_probe,
 ];
 
