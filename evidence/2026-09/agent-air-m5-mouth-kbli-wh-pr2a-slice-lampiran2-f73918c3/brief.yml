@@ -1,0 +1,30 @@
+task: >-
+  SAETTA-20260915 W-H, PR-2a: extend the Perpres slice-disclosure mechanism
+  (previously Lampiran-III-only) to Lampiran II. Adds a 43110 entry: the
+  demolition code's simple/intermediate-technology segment is dialokasikan to
+  Koperasi/UMKM under Perpres 10/2021 as amended by 49/2021, Lampiran II entry
+  37 — Pasal 5(5) scopes the reservation to that named segment only, the rest
+  of the code is not reserved. No canonical dataset write.
+lane: mouth/kbli-wh-pr2a-slice-lampiran2
+machine: M5
+date: 2026-09-15
+
+gear: 1
+gear_reason: >-
+  53 net lines in scripts/kbli_filiera/perpres_slice_disclosure_relation.py
+  (a manual data dict + one function + one wiring line), no canonical write,
+  no hot-zone path.
+
+acceptance:
+  A1: >-
+    The mechanism emits exactly one new disclosure for 43110 citing Lampiran
+    II entry 37 and Pasal 5(5), and the full filiera suite plus the mouth
+    consumer test stay green.
+    probe: >-
+      `python3 -m pytest scripts/kbli_filiera/tests/ -q` -- 1384 passed, 1
+      skipped, 0 failed. `bash scripts/sync_kbli_dataset.sh --check` -- clean.
+      `npx vitest run src/lib/kbli-perpres-slice.test.ts` (apps/mouth) -- 42
+      passed. `npx tsc --noEmit -p .` -- clean.
+
+pii_scan: clean
+pii_scan_note: KBLI codes and Indonesian regulation citations only.
