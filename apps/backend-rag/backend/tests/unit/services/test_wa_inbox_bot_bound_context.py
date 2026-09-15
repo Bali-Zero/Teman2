@@ -292,3 +292,152 @@ async def test_history_caps_at_history_turns_and_skips_blank_bodies(
     assert bound.query == ""  # blank anchor body -> "" per contract, never excluded
     assert len(bound.history) <= _HISTORY_TURNS
     assert all(h["content"] for h in bound.history)  # never a blank entry
+
+
+@pytest.mark.asyncio
+async def test_a_whitespace_only_message_does_not_displace_a_real_older_message(
+    db_pool: asyncpg.Pool,
+) -> None:
+    """A body of pure whitespace ("   ") carries no content, so it must not
+    occupy one of the ``_HISTORY_TURNS + 1`` LIMIT slots. Before the fix, the
+    history-window filter rejected only ``body <> ''`` — a whitespace-only
+    body passed straight through, consumed a slot, and silently displaced
+    the oldest real message out of the window."""
+    thread_id = await _seed_thread(db_pool)
+    oldest_body = "synthetic oldest real message — must survive the window"
+    await _insert_message(
+        db_pool, thread_id=thread_id, direction="inbound", sender_role="customer",
+        body=oldest_body,
+    )
+    for i in range(_HISTORY_TURNS - 1):
+        await _insert_message(
+            db_pool, thread_id=thread_id, direction="inbound", sender_role="customer",
+            body=f"synthetic filler {i}",
+        )
+    # Whitespace-only — must not consume a history slot.
+    await _insert_message(
+        db_pool, thread_id=thread_id, direction="outbound", sender_role="bot",
+        body="   ",
+    )
+    anchor_id = await _insert_message(
+        db_pool, thread_id=thread_id, direction="inbound", sender_role="customer",
+        body="the anchor question",
+    )
+    stub_id = await _insert_message(
+        db_pool, thread_id=thread_id, direction="outbound", sender_role="bot", body=None,
+    )
+    outbox_id = await _insert_outbox(
+        db_pool, thread_id=thread_id, stub_message_id=stub_id, inbound_message_id=anchor_id,
+    )
+
+    bound = await _load_bound_thread_context(db_pool, thread_id=thread_id, outbox_id=outbox_id)
+
+    contents = [h["content"] for h in bound.history]
+    assert oldest_body in contents, (
+        "the whitespace-only row displaced the oldest real message from the "
+        f"history window: {contents!r}"
+    )
+    assert all(c.strip() for c in contents), "a whitespace-only body leaked into history"
+
+
+@pytest.mark.asyncio
+async def test_a_whitespace_only_anchor_yields_an_empty_query(
+    db_pool: asyncpg.Pool,
+) -> None:
+    """A body of pure whitespace must reach the caller as ``query == ""`` —
+    the SAME empty-string outcome the docstring already promises for
+    NULL/empty — never as literal spaces, which would slip past the
+    downstream ``if not query:`` guard in ``wa_codex_leg.py`` and hand the
+    generator a query of spaces."""
+    thread_id = await _seed_thread(db_pool)
+    anchor_id = await _insert_message(
+        db_pool, thread_id=thread_id, direction="inbound", sender_role="customer",
+        body="   ",
+    )
+    stub_id = await _insert_message(
+        db_pool, thread_id=thread_id, direction="outbound", sender_role="bot", body=None,
+    )
+    outbox_id = await _insert_outbox(
+        db_pool, thread_id=thread_id, stub_message_id=stub_id, inbound_message_id=anchor_id,
+    )
+
+    bound = await _load_bound_thread_context(db_pool, thread_id=thread_id, outbox_id=outbox_id)
+
+    assert bound.query == ""
+
+
+def test_legacy_anchor_derive_depends_on_the_thread_upsert_serializing_webhooks() -> None:
+    """Guard the derive's SOURCE — a wrong anchor means the client gets an
+    answer to a DIFFERENT message.
+
+    The COALESCE subquery above (latest customer inbound with
+    ``m.id < wo.message_id``) is only correct because two webhooks for the
+    SAME thread can never interleave their ids. That holds ONLY because
+    ``whatsapp_chat.py``'s ``_handle_meta_inbox_message`` opens its
+    transaction with ``INSERT INTO meta_inbox_threads ... ON CONFLICT
+    (counterpart_phone) DO UPDATE ... RETURNING``, whose ``DO UPDATE`` takes
+    a row-level lock on the thread row held until COMMIT — so a concurrent
+    webhook for the same phone serializes behind it, and ids always come out
+    inbound1 < stub1 < inbound2 < stub2. Nothing else states this anywhere.
+    The day someone changes that upsert to ``DO NOTHING`` (no row lock on a
+    no-op), or moves the inbound insert out of that transaction, this
+    guarantee disappears silently and the legacy derive starts picking a
+    NEWER inbound than the row's real cause.
+
+    Reads the real source (AST, in the spirit of
+    ``test_the_persona_builder_accepts_every_keyword_the_router_passes``) —
+    a mock connection could only echo back what the test itself asserts.
+    """
+    import ast
+    from pathlib import Path
+
+    import backend.app.routers.whatsapp_chat as mod
+
+    assert mod.__file__ is not None
+    source = Path(mod.__file__).read_text(encoding="utf-8")
+    tree = ast.parse(source)
+
+    def _string_literals(node: ast.AST) -> list[str]:
+        return [
+            n.value
+            for n in ast.walk(node)
+            if isinstance(n, ast.Constant) and isinstance(n.value, str)
+        ]
+
+    tx_blocks = [
+        n
+        for n in ast.walk(tree)
+        if isinstance(n, ast.AsyncWith)
+        and any(
+            isinstance(item.context_expr, ast.Call)
+            and isinstance(item.context_expr.func, ast.Attribute)
+            and item.context_expr.func.attr == "transaction"
+            for item in n.items
+        )
+    ]
+    assert tx_blocks, "no `async with conn.transaction():` block found — retarget this guard"
+
+    found = False
+    for block in tx_blocks:
+        literals = _string_literals(block)
+        has_thread_upsert = any(
+            "INSERT INTO meta_inbox_threads" in s
+            and "ON CONFLICT (counterpart_phone) DO UPDATE" in s
+            for s in literals
+        )
+        has_inbound_insert = any(
+            "INSERT INTO meta_inbox_messages" in s and "'inbound'" in s for s in literals
+        )
+        has_outbox_insert = any("INSERT INTO wa_outbox" in s for s in literals)
+        if has_thread_upsert and has_inbound_insert and has_outbox_insert:
+            found = True
+            break
+
+    assert found, (
+        "the thread upsert (ON CONFLICT (counterpart_phone) DO UPDATE), the "
+        "customer inbound insert and the wa_outbox insert are no longer all "
+        "inside the SAME `async with conn.transaction():` block in "
+        "whatsapp_chat.py — the serialization the legacy anchor derive in "
+        "wa_inbox_bot.py depends on is gone, and a wrong anchor means the "
+        "client gets an answer to a different message."
+    )

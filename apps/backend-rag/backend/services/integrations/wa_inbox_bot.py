@@ -357,6 +357,18 @@ async def _load_bound_thread_context(
             SELECT COALESCE(
                 wo.inbound_message_id,
                 (
+                    -- Legacy-row derive: correct ONLY because two webhooks for the
+                    -- SAME thread can never interleave their ids. That serialization
+                    -- comes from whatsapp_chat.py's _handle_meta_inbox_message: its
+                    -- `INSERT INTO meta_inbox_threads ... ON CONFLICT
+                    -- (counterpart_phone) DO UPDATE ... RETURNING` takes a row-level
+                    -- lock on the thread row held until COMMIT, so a concurrent
+                    -- webhook for this phone serializes behind it and ids always come
+                    -- out inbound1 < stub1 < inbound2 < stub2. If that upsert ever
+                    -- becomes DO NOTHING, or the inbound insert moves out of that
+                    -- transaction, this derive can silently pick a NEWER inbound than
+                    -- this row's real cause. Guarded by
+                    -- test_legacy_anchor_derive_depends_on_the_thread_upsert_serializing_webhooks.
                     SELECT m.id FROM meta_inbox_messages m
                     WHERE m.thread_id = wo.thread_id
                       AND m.direction = 'inbound'
@@ -380,7 +392,7 @@ async def _load_bound_thread_context(
             SELECT id, sender_role, body
             FROM meta_inbox_messages
             WHERE thread_id = $1
-              AND (id = $2 OR (id < $2 AND body IS NOT NULL AND body <> ''))
+              AND (id = $2 OR (id < $2 AND body IS NOT NULL AND BTRIM(body) <> ''))
             ORDER BY id DESC
             LIMIT $3
             """,
@@ -395,7 +407,12 @@ async def _load_bound_thread_context(
     if not rows or rows[0]["id"] != anchor_id:
         return BoundThreadContext(inbound_message_id=anchor_id, query="", history=[])
 
-    query = rows[0]["body"] or ""
+    # A whitespace-only anchor body must reach the caller as "" (same outcome
+    # as NULL/empty, per the docstring) — never as literal spaces, which
+    # would slip past the `if not query:` guard in wa_codex_leg.py. A body
+    # that DOES carry content is preserved verbatim, whitespace and all.
+    raw_query = rows[0]["body"] or ""
+    query = raw_query if raw_query.strip() else ""
     history: list[dict[str, str]] = []
     for r in reversed(rows[1:]):
         role = "user" if r["sender_role"] == "customer" else "assistant"
