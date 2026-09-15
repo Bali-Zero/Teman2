@@ -59,6 +59,7 @@ from __future__ import annotations
 import hashlib
 import json
 import subprocess
+import sys
 from pathlib import Path
 from typing import Any
 
@@ -235,12 +236,23 @@ def test_metadata_56101_compiler_dry_run_reports_already_cured():
 # (post-cure — the cure never touches per_skala, so this IS the pre-cure
 # value too): the substance must stay byte-identical going forward.
 _56101_PER_SKALA_ROW_COUNT = 6
-_56101_PER_SKALA_SHA256 = (
-    "6c62b4a635afc19bae19a759a3241ea81884e0493576e95df5c830d199c1e42f"
-)
+
+# Re-pinned SAETTA-20260915 W-J B1: the FROZEN LITERAL above went stale the
+# same way test_56102_record_untouched's own docstring already documents for
+# its sibling code — some OTHER, independently-adjudicated lane legitimately
+# touched 56101's per_skala rows on origin/main after 2026-07-19 (verified:
+# origin/main's own per_skala for 56101 already carries the "new" hash below,
+# with the row COUNT unchanged at 6 — this branch simply inherited that via
+# rebase, cure_l4bali_applied_closure.py never reads or writes per_skala).
+# Same disease, same cure as W88: compare against the CONTENT of
+# origin/main, which self-heals as main moves, instead of a constant that
+# can only rot.
 
 
 def test_56101_per_skala_completely_untouched_innocence_on_substance():
+    main_by_code = _origin_main_canonical_by_code()
+    if main_by_code is None:
+        pytest.skip("origin/main not resolvable in this checkout — env-coupled check")
     canonical = REPO_ROOT / "data/source_documents/KBLI_2025_FINAL_CLEAN.json"
     rec = _load_record(canonical, "56101")
     assert DISPUTED_KEY not in rec, (
@@ -253,9 +265,9 @@ def test_56101_per_skala_completely_untouched_innocence_on_substance():
         f"{_56101_PER_SKALA_ROW_COUNT}, got "
         f"{len(per_skala) if isinstance(per_skala, list) else per_skala!r}"
     )
-    assert _sha256(per_skala) == _56101_PER_SKALA_SHA256, (
-        "56101: per_skala content hash drifted from the pinned pre/post-cure "
-        "baseline — the metadata-only cure must never touch the substance."
+    assert _sha256(per_skala) == _sha256(main_by_code["56101"].get("per_skala")), (
+        "56101: per_skala content hash drifted from origin/main's own value — "
+        "the metadata-only cure must never touch the substance."
     )
 
 
@@ -305,14 +317,24 @@ def test_56102_record_untouched():
     above, which was generalized off a hardcoded literal on 2026-07-19: compare against
     the CONTENT of origin/main, which self-heals as main moves, instead of a constant
     that can only rot (W88 — verify by content, never by a proxy for content).
+
+    Re-pinned SAETTA-20260915 W-J B1: 56102 is one of the excluded 19 of #6488
+    (W-H's separate Perpres-49/2021 adjudication) — cure_l4bali_applied_closure.py
+    rewrites `l4_bali.moratorium` on it (the ONLY field it touches on an excluded
+    code), so the comparison strips that expected noise the same way
+    `_without_global_pma_verification_fields` already strips the orthogonal
+    pma_verification sweep, never weakening the check for any other field.
     """
     main_by_code = _origin_main_canonical_by_code()
     if main_by_code is None:
         pytest.skip("origin/main not resolvable in this checkout — env-coupled check")
     canonical = REPO_ROOT / "data/source_documents/KBLI_2025_FINAL_CLEAN.json"
     rec = _load_record(canonical, "56102")
-    assert _sha256(_without_global_pma_verification_fields(rec)) == _sha256(
-        _without_global_pma_verification_fields(main_by_code["56102"])
+    touched = _bali_closure_touched_codes()
+    assert _sha256(
+        _without_bali_applied_closure_noise(rec, "56102", touched)
+    ) == _sha256(
+        _without_bali_applied_closure_noise(main_by_code["56102"], "56102", touched)
     ), (
         "56102: record content differs from origin/main — the 56101 provenance "
         "correction must never mutate the record it re-credits, only 56101's own "
@@ -359,6 +381,55 @@ def _origin_main_canonical_by_code() -> dict[str, dict[str, Any]] | None:
         return None
     data = json.loads(result.stdout)
     return {r["kode_kbli_2025"]: r for r in data["data"] if "kode_kbli_2025" in r}
+
+
+# Re-pinned SAETTA-20260915 W-J B1: cure_l4bali_applied_closure.py is a
+# second catalogue-wide sweep on this branch, same class as
+# GLOBAL_PMA_VERIFICATION_FIELDS above — an independently-adjudicated
+# sibling cure that must not be blamed for a scope leak it did not commit.
+# It rewrites `l4_bali.moratorium` on ALL 1,559 records and, on top of that,
+# the six l4_bali verdict fields (status/blocked/needs_review/confidence/
+# reason/closure/verdict_state) ONLY on the codes its own plan() classifies
+# as "chiuso_bali" (the 40), "attenzione" (former risk-tier-only blocks) or
+# "non_classificabile" (former blocked=true NON_CLASSIFICABILE). Membership
+# is derived by running the compiler's OWN plan() against origin/main's
+# pre-cure records — never a hand-maintained code list this test would have
+# to keep in sync with the compiler — so a real scope leak on any OTHER
+# field of any OTHER record still fails this check untouched.
+_BALI_L4_STATUS_FIELDS = (
+    "status", "blocked", "needs_review", "confidence", "reason", "closure", "verdict_state",
+)
+
+
+def _bali_closure_touched_codes() -> set[str]:
+    filiera_dir = str(REPO_ROOT / "scripts" / "kbli_filiera")
+    if filiera_dir not in sys.path:
+        sys.path.insert(0, filiera_dir)
+    import cure_l4bali_applied_closure as bali_cure  # noqa: E402
+
+    closure_spec = bali_cure.load_closure_spec(bali_cure.DEFAULT_SPEC)
+    main_by_code = _origin_main_canonical_by_code() or {}
+    plans = bali_cure.plan(list(main_by_code.values()), closure_spec)
+    return {
+        code
+        for code, item in plans.items()
+        if item["group"] in ("chiuso_bali", "attenzione", "non_classificabile")
+    }
+
+
+def _without_bali_applied_closure_noise(
+    record: dict[str, Any], code: str, touched_codes: set[str]
+) -> dict[str, Any]:
+    out = _without_global_pma_verification_fields(record)
+    l4 = out.get("l4_bali")
+    if not isinstance(l4, dict):
+        return out
+    l4 = dict(l4)
+    l4.pop("moratorium", None)  # rewritten on ALL 1,559 records — W-J B1
+    if code in touched_codes:
+        for key in _BALI_L4_STATUS_FIELDS:
+            l4.pop(key, None)
+    return {**out, "l4_bali": l4}
 
 
 def _all_cure_spec_codes() -> set[str]:
@@ -420,11 +491,12 @@ def test_canonical_diff_vs_origin_main_is_exactly_56101():
         "the KBLI-2025 record SET differs from origin/main (codes added or "
         "removed) — the 56101 metadata cure must never add/remove records."
     )
+    touched = _bali_closure_touched_codes()
     changed = sorted(
         code
         for code, rec in cur_by_code.items()
-        if _without_global_pma_verification_fields(rec)
-        != _without_global_pma_verification_fields(main_by_code[code])
+        if _without_bali_applied_closure_noise(rec, code, touched)
+        != _without_bali_applied_closure_noise(main_by_code[code], code, touched)
     )
     known_codes = _all_cure_spec_codes()
     unaccounted = sorted(code for code in changed if code not in known_codes)
