@@ -284,12 +284,18 @@ function hasSession(request: NextRequest): boolean {
 function sessionGateRedirect(
   request: NextRequest,
   pathname: string,
+  routePath: string,
 ): NextResponse | null {
-  if (!isSessionGatedPath(pathname) || hasSession(request)) {
+  if (!isSessionGatedPath(routePath) || hasSession(request)) {
     return null;
   }
   const loginUrl = new URL("/login", request.url);
-  loginUrl.searchParams.set("redirect", `${pathname}${request.nextUrl.search}`);
+  // routePath (decoded), not pathname: a decoded same-origin path is what
+  // the login page will actually navigate back to after a successful login.
+  loginUrl.searchParams.set(
+    "redirect",
+    `${routePath}${request.nextUrl.search}`,
+  );
   // Same-origin (relative to request.url): no CORS reason to route this
   // through crossOriginRedirect, and doing so would be actively wrong — it
   // returns 204 for RSC/prefetch, which would answer an RSC fetch of a gated
@@ -303,9 +309,24 @@ function sessionGateRedirect(
   return gateResponse;
 }
 
+// Next decodes request.nextUrl.pathname before choosing which page to
+// render, but every classifier here used to compare the RAW, still
+// percent-encoded pathname — an encoded spelling of a gated path walked past
+// all of them. Measured live 2026-09-15, production, anonymous:
+// balizero.com/l%6bpm -> 200, byte-identical to kita's /lkpm. One decode
+// pass only, matching Next — %256b must become %6b, not k.
+export function canonicalPathname(pathname: string): string {
+  try {
+    return decodeURIComponent(pathname);
+  } catch {
+    return pathname;
+  }
+}
+
 export function proxy(request: NextRequest) {
   const hostname = normalizeHostname(request.headers.get("host") || "");
   const pathname = request.nextUrl.pathname;
+  const routePath = canonicalPathname(pathname);
 
   // Skip static files and API routes
   if (
@@ -316,7 +337,7 @@ export function proxy(request: NextRequest) {
     // segment value can legitimately contain a dot (/clients/1.2 is the
     // [id] route with id="1.2", not a static asset). See isInternalPath
     // above for the live measurement this carve-out closes.
-    (pathname.includes(".") && !isInternalPath(pathname))
+    (pathname.includes(".") && !isInternalPath(routePath))
   ) {
     // Still add pathname header for consistency
     const response = NextResponse.next();
@@ -409,7 +430,7 @@ export function proxy(request: NextRequest) {
   // reachable by anyone), not a development machine — unlike isDevelopment
   // above, it must still pass through the session gate.
   if (isFlyDev) {
-    const gated = sessionGateRedirect(request, pathname);
+    const gated = sessionGateRedirect(request, pathname, routePath);
     if (gated) return gated;
     return response;
   }
@@ -551,7 +572,7 @@ export function proxy(request: NextRequest) {
     // branch used to `return response` unconditionally, so
     // zantara.balizero.com/lkpm served the same anonymous 200 kita's /lkpm
     // used to, before round 1.
-    const gated = sessionGateRedirect(request, pathname);
+    const gated = sessionGateRedirect(request, pathname, routePath);
     if (gated) return gated;
     response.headers.set("X-Robots-Tag", "noindex, nofollow");
     return response;
@@ -569,7 +590,7 @@ export function proxy(request: NextRequest) {
     }
 
     // Check if trying to access internal routes
-    if (isInternalPath(pathname)) {
+    if (isInternalPath(routePath)) {
       // Redirect to app domain
       const appUrl = new URL(pathname, `https://${APP_DOMAIN}`);
       appUrl.search = request.nextUrl.search;
@@ -737,7 +758,7 @@ export function proxy(request: NextRequest) {
     // exact current behaviour unchanged, and only the blanket allow below is
     // narrowed. That is what makes "no public route changes status" true by
     // construction, not by hope.
-    const gated = sessionGateRedirect(request, pathname);
+    const gated = sessionGateRedirect(request, pathname, routePath);
     if (gated) return gated;
 
     // Allow all other routes on app domain
@@ -749,7 +770,7 @@ export function proxy(request: NextRequest) {
   // call-sites above: this used to `return response` unconditionally, which
   // is the same "hand a gated path to rendering" action, just on a host
   // nobody named.
-  const gatedFallthrough = sessionGateRedirect(request, pathname);
+  const gatedFallthrough = sessionGateRedirect(request, pathname, routePath);
   if (gatedFallthrough) return gatedFallthrough;
 
   return response;
