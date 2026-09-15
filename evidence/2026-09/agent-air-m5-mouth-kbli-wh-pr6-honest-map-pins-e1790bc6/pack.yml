@@ -1,0 +1,130 @@
+gear: 2
+brief_ref: evidence/brief.yml
+lanes:
+  - lane: mouth/kbli-wh-pr6-honest-map-pins
+    role: build
+    seat: Claude Sonnet 5 (implementer, W-H PR-6, Dux Opus 5 xhigh on M5)
+    task_id: kbli-wh-pr6-honest-map-pins
+    worktree: .worktrees/mouth-kbli-wh-pr6-honest-map-pins
+    branch: agent/air-m5/mouth/kbli-wh-pr6-honest-map-pins
+
+pii_scan: clean
+pii_scan_note: >-
+  Only KBLI classification codes, category labels and the dataset's own aggregate counts are
+  touched — no client name, contact, or case data anywhere in the diff (three article .mdx
+  files and one test file, all under apps/mouth/src).
+
+council_run: journal.jsonl
+# Left for the Dux: this lane ran no adversarial council round (Gear 2, appetite
+# adversarial_rounds: 1, budgeted but not consumed — the drift was a direct data-vs-prose
+# measurement with no ambiguity to adjudicate). The Dux may run one before shipping.
+
+dissent: []
+# Empty is a valid Gear-2 shape (harness-v2 §5 "consenso sospetto" guilt only fires at
+# Gear 3). No adversarial round was run against this diff (see council_run note above).
+
+decisions:
+  - id: D1
+    what: >-
+      Fix ONLY the three drifted figures (372→373, 33.2%→33.3%, 70→65) in each locale; leave
+      the "519 blocked" framing, the "6 — the remainder" grouping and every other sentence
+      untouched.
+    why: >-
+      Lane brief (WH-LANE-PR6.md step 3) is explicit: "correct the articles (only the wrong
+      figures; do not rewrite framing — the '519 blocked' framing stays until a separate
+      Bali-overlay window reworks it)". The "6" grouping was independently re-measured and
+      found truthful (2+2+1+1), so it needed a pin, not a correction.
+  - id: D2
+    what: >-
+      Pin all six category counts (not just the two that drifted) plus the narrative
+      percentage and the scope-dependent count, and add an invariant that the six counts sum
+      to the blocked total.
+    why: >-
+      Lane brief step 3 asks for "each category count in the list" — pinning only the
+      previously-wrong ones would leave the still-correct 48/68/17/7/6 exposed to a future
+      drift with no test to catch it, and would not implement the requested invariant (a
+      future cure could change one status's count without the six figures still summing to
+      the printed headline).
+  - id: D3
+    what: >-
+      IT/ID category-breakdown probe uses a wider match window (500 vs. the file's default
+      400) via a new optional `probe.window` field.
+    why: >-
+      The TERTUTUP bullet in it/id carries a six-example parenthetical (legal consultancy,
+      notaries, medical practice, minimarket, agriculture) that pushes the 68→17 character gap
+      to 421-424 chars in both locales — over the file's existing NUMBER_WINDOW=400. Measured
+      directly (see receipts) rather than guessed; 500 clears both locales with margin.
+  - id: D4
+    what: >-
+      The invariant test recomputes both sides from the dataset (six category counts vs.
+      `countFromCanonical().blocked`) rather than parsing the prose's own printed numbers.
+    why: >-
+      Every category count and the headline blocked count are ALREADY pinned individually
+      against the same dataset elsewhere in this file, so this test transitively guards "the
+      printed list sums to the printed title" while staying a pure data-partition check — it
+      also fails if a future dataset cure introduces a NEW blocked `l4_bali.status` that none
+      of the five named categories or the "remainder" group covers.
+
+receipts:
+  - claim: >-
+      Independent re-measurement of the dataset (per WH-COMMON: "do not trust the numbers
+      above, re-derive them") matches the dossier's "Expected on main" census exactly.
+    cmd: >-
+      python3 -c census script over apps/mouth/data/KBLI_2025_FINAL_CLEAN.json (grouping by
+      l4_bali.status among blocked rows, and BLOCCATO_DIPENDE_SCOPE with blocked=false)
+    result: >-
+      total 1559, blocked 519, open 1040, pct 33.3; BLOCCATO_CLASSE_RISCHIO 373, TERTUTUP 68,
+      CHIUSO_MORATORIA_BALI 48, NON_CLASSIFICABILE 17, CHIUSO_PMA_NO_BESAR 7,
+      CHIUSO_REGOLATORE_SETTORIALE 2, BLOCCATO_DIPENDE_SCOPE(blocked=true) 2, CHIUSO_BALI 1,
+      CHIUSO_BALI_PROPOSTO 1; BLOCCATO_DIPENDE_SCOPE blocked=false 65; NON_CLASSIFICABILE
+      blocked=false 8.
+    exit: 0
+    ts: "2026-09-15T16:20:00+08:00"
+    seat: Claude Sonnet 5
+  - claim: >-
+      The new pins fail on the unmodified (pre-fix) articles, for the stated reason, before
+      any article edit landed.
+    cmd: cd apps/mouth && npx vitest run src/lib/kbli-prose-pins.test.ts (articles reverted to 372/33.2%/70 for this run)
+    result: >-
+      "Test Files 1 failed (1) / Tests 7 failed | 21 passed (28)" — failures: en risk-class
+      category count (372≠373), en narrative percentage (33.2≠33.3), en scope-dependent count
+      (70≠65), it category-breakdown-list, it scope-dependent count, id category-breakdown-list,
+      id scope-dependent count (each: expected recomputed figure not found because the article
+      still carried the drifted one).
+    exit: 1
+    ts: "2026-09-15T16:24:00+08:00"
+    seat: Claude Sonnet 5
+  - claim: >-
+      After the three-figure fix in all three locales and the window widen (D3), the full
+      target suite is green.
+    cmd: cd apps/mouth && npx vitest run src/lib/kbli-prose-pins.test.ts src/lib/kbli-withdrawn-umkm-inference.test.ts src/lib/blog/categories.test.ts
+    result: "Test Files 3 passed (3) / Tests 57 passed (57)"
+    exit: 0
+    ts: "2026-09-15T16:16:00+08:00"
+    seat: Claude Sonnet 5
+  - claim: >-
+      No other file under apps/mouth/src consumes this article slug besides the two test
+      files already run.
+    cmd: cd apps/mouth && grep -rln "the-honest-map-blocked-bali-codes" src/ --include="*.ts" --include="*.tsx"
+    result: "src/lib/kbli-prose-pins.test.ts, src/lib/blog/categories.test.ts (a generic slug-format check, not figure-specific — included in the receipt above)"
+    exit: 0
+    ts: "2026-09-15T16:15:30+08:00"
+    seat: Claude Sonnet 5
+  - claim: Static gate on the changed test file.
+    cmd: cd apps/mouth && npx tsc --noEmit -p .
+    result: "no output, exit 0"
+    exit: 0
+    ts: "2026-09-15T16:27:00+08:00"
+    seat: Claude Sonnet 5
+
+leftovers:
+  - >-
+    The historical code comment in `kbli-prose-pins.test.ts` (SUPERSEDED-figures section)
+    still narrates "70 of them are scope-dependent" as 2026-08-12 context for why "codes
+    survive" is banned — that is a description of the dataset AT THAT TIME (1,041/70), not a
+    live assertion, so it was left as-is rather than rewritten to the current 1,040/65 to keep
+    this diff to the three drifted figures plus the new pins.
+  - >-
+    Sibling articles with the same kind of exposure (`pondok-wisata-vs-villa`,
+    `the-villa-dream-has-a-new-wall`, `open-nationally-blocked-in-bali`,
+    `kbli-2025-green-economy-waste`) are dossier §4's PR-7, not this lane.

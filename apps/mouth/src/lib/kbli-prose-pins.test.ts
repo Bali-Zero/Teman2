@@ -64,7 +64,7 @@ const ARTICLE_DIR = path.join(
 );
 const ARTICLE_BASE = "the-honest-map-blocked-bali-codes";
 
-type Row = { l4_bali?: { blocked?: boolean } };
+type Row = { l4_bali?: { blocked?: boolean; status?: string } };
 
 /** The one place any expected number in this file comes from. */
 function countFromCanonical() {
@@ -82,9 +82,55 @@ function countFromCanonical() {
   };
 }
 
+/**
+ * The published "the-honest-map" article breaks its 519-blocked headline down
+ * into six category counts. This recomputes each one — and the "6 — the
+ * remainder" grouping the article uses for the four smallest statuses — so
+ * the prose can be pinned to the ACTUAL per-status breakdown, not a copy that
+ * drifts the moment a cure changes one status.
+ */
+function countBreakdown() {
+  const raw = JSON.parse(fs.readFileSync(CANONICAL, "utf-8")) as {
+    data: Row[];
+  };
+  const rows = raw.data;
+  const blockedRows = rows.filter((r) => r.l4_bali?.blocked === true);
+  const byStatus = (status: string) =>
+    blockedRows.filter((r) => r.l4_bali?.status === status).length;
+  const riskClass = byStatus("BLOCCATO_CLASSE_RISCHIO");
+  const moratorium = byStatus("CHIUSO_MORATORIA_BALI");
+  const tertutup = byStatus("TERTUTUP");
+  const nonClassificabile = byStatus("NON_CLASSIFICABILE");
+  const pmaNoBesar = byStatus("CHIUSO_PMA_NO_BESAR");
+  // The article's "6 — the remainder" line groups every other blocked status.
+  const smallRemainder =
+    byStatus("CHIUSO_REGOLATORE_SETTORIALE") +
+    byStatus("BLOCCATO_DIPENDE_SCOPE") +
+    byStatus("CHIUSO_BALI") +
+    byStatus("CHIUSO_BALI_PROPOSTO");
+  const scopeDependentNotBlocked = rows.filter(
+    (r) =>
+      r.l4_bali?.status === "BLOCCATO_DIPENDE_SCOPE" &&
+      r.l4_bali?.blocked === false,
+  ).length;
+  return {
+    riskClass,
+    moratorium,
+    tertutup,
+    nonClassificabile,
+    pmaNoBesar,
+    smallRemainder,
+    scopeDependentNotBlocked,
+  };
+}
+
 /** `1041` → `1,041` (en) / `1.041` (it, id). */
 const group = (n: number, sep: string) =>
   n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, sep);
+
+/** `33.3` → `33,3` — the IT/ID decimal-comma reading of a percentage that is
+ * always computed as a plain `X.Y` number (see `countFromCanonical().pct`). */
+const pctComma = (pct: number) => pct.toFixed(1).replace(".", ",");
 
 /** How many characters after one expected number the next one must land
  * within, for the it/id number-window probes to count them as "the same
@@ -156,70 +202,163 @@ describe("KBLI prose pins — published aggregates agree with the canonical", ()
       lang: "en",
       file: `${ARTICLE_BASE}.mdx`,
       sep: ",",
-      anchors: (c: ReturnType<typeof countFromCanonical>) => [
-        {
-          what: "headline blocked count",
-          re: /Of ([\d,]+) classified KBLI codes, ([\d,]+) are blocked/,
-          expect: [group(c.total, ","), group(c.blocked, ",")],
-        },
-        {
-          what: "not-blocked count",
-          re: /\(([\d,]+) codes carry no blocked flag/,
-          expect: [group(c.open, ",")],
-        },
-        {
-          what: "closing count",
-          re: /backed by ([\d,]+) counted codes/,
-          expect: [group(c.blocked, ",")],
-        },
-        {
-          what: "ratio",
-          re: /\*\*([\d,]+) of ([\d,]+) — ([\d.]+)%\*\*/,
-          expect: [
-            group(c.blocked, ","),
-            group(c.total, ","),
-            c.pct.toFixed(1),
-          ],
-        },
-      ],
+      anchors: (c: ReturnType<typeof countFromCanonical>) => {
+        const b = countBreakdown();
+        return [
+          {
+            what: "headline blocked count",
+            re: /Of ([\d,]+) classified KBLI codes, ([\d,]+) are blocked/,
+            expect: [group(c.total, ","), group(c.blocked, ",")],
+          },
+          {
+            what: "not-blocked count",
+            re: /\(([\d,]+) codes carry no blocked flag/,
+            expect: [group(c.open, ",")],
+          },
+          {
+            what: "closing count",
+            re: /backed by ([\d,]+) counted codes/,
+            expect: [group(c.blocked, ",")],
+          },
+          {
+            what: "ratio",
+            re: /\*\*([\d,]+) of ([\d,]+) — ([\d.]+)%\*\*/,
+            expect: [
+              group(c.blocked, ","),
+              group(c.total, ","),
+              c.pct.toFixed(1),
+            ],
+          },
+          {
+            what: "risk-class category count",
+            re: /\*\*(\d+) — blocked by risk class\*\*/,
+            expect: [String(b.riskClass)],
+          },
+          {
+            what: "moratorium category count",
+            re: /\*\*(\d+) — blocked by the moratorium on other grounds\*\*/,
+            expect: [String(b.moratorium)],
+          },
+          {
+            what: "closed-activity category count",
+            re: /\*\*(\d+) — closed on the activity itself\*\*/,
+            expect: [String(b.tertutup)],
+          },
+          {
+            what: "non-classifiable category count",
+            re: /\*\*(\d+) — no Bali position can be stated\*\*/,
+            expect: [String(b.nonClassificabile)],
+          },
+          {
+            what: "reserved-for-cooperatives category count",
+            re: /\*\*(\d+) — reserved for cooperatives and MSMEs\*\*/,
+            expect: [String(b.pmaNoBesar)],
+          },
+          {
+            what: "remainder category count",
+            re: /\*\*(\d+) — the remainder\*\*/,
+            expect: [String(b.smallRemainder)],
+          },
+          {
+            what: "narrative percentage (945/39% correction paragraph)",
+            re: /the rate settles at \*\*([\d.]+)%\.\*\*/,
+            expect: [c.pct.toFixed(1)],
+          },
+          {
+            what: "scope-dependent count among not-blocked codes",
+            re: /though (\d+) of them are scope-dependent/,
+            expect: [String(b.scopeDependentNotBlocked)],
+          },
+        ];
+      },
     },
     {
       lang: "it",
       file: `${ARTICLE_BASE}.it.mdx`,
       sep: ".",
-      anchors: (c: ReturnType<typeof countFromCanonical>) => [
-        {
-          what: "headline blocked count",
-          numbers: [group(c.total, "."), group(c.blocked, ".")],
-        },
-        {
-          what: "not-blocked count",
-          numbers: [group(c.open, ".")],
-        },
-        {
-          what: "closing count",
-          numbers: [group(c.blocked, ".")],
-        },
-      ],
+      anchors: (c: ReturnType<typeof countFromCanonical>) => {
+        const b = countBreakdown();
+        return [
+          {
+            what: "headline blocked count",
+            numbers: [group(c.total, "."), group(c.blocked, ".")],
+          },
+          {
+            what: "not-blocked count",
+            numbers: [group(c.open, ".")],
+          },
+          {
+            what: "closing count",
+            numbers: [group(c.blocked, ".")],
+          },
+          {
+            what: "category breakdown list (six counts, in order)",
+            // Wider window: the TERTUTUP bullet carries a parenthetical list
+            // of six example codes, pushing the 68→17 gap past the default.
+            window: 500,
+            numbers: [
+              group(b.riskClass, "."),
+              group(b.moratorium, "."),
+              group(b.tertutup, "."),
+              group(b.nonClassificabile, "."),
+              group(b.pmaNoBesar, "."),
+              group(b.smallRemainder, "."),
+            ],
+          },
+          {
+            what: "narrative percentage (945/39% correction paragraph)",
+            numbers: [group(c.total, "."), pctComma(c.pct)],
+          },
+          {
+            what: "scope-dependent count among not-blocked codes",
+            numbers: [group(c.open, "."), String(b.scopeDependentNotBlocked)],
+          },
+        ];
+      },
     },
     {
       lang: "id",
       file: `${ARTICLE_BASE}.id.mdx`,
       sep: ".",
-      anchors: (c: ReturnType<typeof countFromCanonical>) => [
-        {
-          what: "headline blocked count",
-          numbers: [group(c.total, "."), group(c.blocked, ".")],
-        },
-        {
-          what: "not-blocked count",
-          numbers: [group(c.open, ".")],
-        },
-        {
-          what: "closing count",
-          numbers: [group(c.blocked, ".")],
-        },
-      ],
+      anchors: (c: ReturnType<typeof countFromCanonical>) => {
+        const b = countBreakdown();
+        return [
+          {
+            what: "headline blocked count",
+            numbers: [group(c.total, "."), group(c.blocked, ".")],
+          },
+          {
+            what: "not-blocked count",
+            numbers: [group(c.open, ".")],
+          },
+          {
+            what: "closing count",
+            numbers: [group(c.blocked, ".")],
+          },
+          {
+            what: "category breakdown list (six counts, in order)",
+            // Wider window: the TERTUTUP bullet carries a parenthetical list
+            // of six example codes, pushing the 68→17 gap past the default.
+            window: 500,
+            numbers: [
+              group(b.riskClass, "."),
+              group(b.moratorium, "."),
+              group(b.tertutup, "."),
+              group(b.nonClassificabile, "."),
+              group(b.pmaNoBesar, "."),
+              group(b.smallRemainder, "."),
+            ],
+          },
+          {
+            what: "narrative percentage (945/39% correction paragraph)",
+            numbers: [group(c.total, "."), pctComma(c.pct)],
+          },
+          {
+            what: "scope-dependent count among not-blocked codes",
+            numbers: [group(c.open, "."), String(b.scopeDependentNotBlocked)],
+          },
+        ];
+      },
     },
   ];
 
@@ -244,12 +383,17 @@ describe("KBLI prose pins — published aggregates agree with the canonical", ()
           } else {
             // it/id: number-window. Survives a translator reword; still
             // fails if the expected figure(s) are missing or out of order.
-            const ok = numbersInOrderWithinWindow(text, probe.numbers);
+            // `probe.window` lets a probe widen the default — the category
+            // breakdown spans six bullet points, one of which (TERTUTUP)
+            // carries a parenthetical list of six example codes, so its
+            // consecutive-number gap runs past the default 400 in both it/id.
+            const window = probe.window ?? NUMBER_WINDOW;
+            const ok = numbersInOrderWithinWindow(text, probe.numbers, window);
             expect(
               ok,
               `expected count${probe.numbers.length > 1 ? "s" : ""} ${probe.numbers.join(" → ")} not found ${
                 probe.numbers.length > 1
-                  ? `in that order within ${NUMBER_WINDOW} chars of each other `
+                  ? `in that order within ${window} chars of each other `
                   : ""
               }in ${claim.file}`,
             ).toBe(true);
@@ -292,5 +436,27 @@ describe("KBLI prose pins — published aggregates agree with the canonical", ()
         ).toBe(false);
       }
     }
+  });
+
+  it("the six published category counts sum to the blocked total the headline states", () => {
+    // On 2026-06-23 the article's category list (372+48+68+17+7+6 = 518) fell
+    // one short of its own 519 headline — a reader who adds up the "kinds of
+    // no" gets a different number than the "how many are blocked" sentence.
+    // Both sides here are recomputed from the canonical, never hard-coded: if
+    // a future cure adds/removes a status this breaks until the article's
+    // breakdown is updated to cover it (or the "remainder" category widens).
+    const { blocked } = countFromCanonical();
+    const b = countBreakdown();
+    const sum =
+      b.riskClass +
+      b.moratorium +
+      b.tertutup +
+      b.nonClassificabile +
+      b.pmaNoBesar +
+      b.smallRemainder;
+    expect(
+      sum,
+      `category breakdown (${sum}) must sum to the blocked total (${blocked}) — a new l4_bali.status among blocked rows would go unreported`,
+    ).toBe(blocked);
   });
 });
