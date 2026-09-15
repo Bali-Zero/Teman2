@@ -286,25 +286,25 @@ AUTHORED_SENTENCES = {
             {
                 "field": "zantaraOpener",
                 "old": (
-                    "Opening a shoe store or footwear boutique in Bali? 47712 "
-                    "is fully open to PMA with low-risk licensing — let me "
-                    "walk you through the setup and the import compliance "
-                    "rules."
-                ),
-                "new": (
                     "Thinking about a shoe store or footwear boutique in "
                     "Bali as a PT PMA? 47712 is reserved to Koperasi/UMKM "
                     "(Perpres 49/2021 Lampiran II) — a new PT PMA cannot "
                     "open it. Let me walk you through the reservation and "
                     "the routes that are actually open to you."
                 ),
+                "new": (
+                    "Thinking about a shoe store or footwear boutique in "
+                    "Bali as a PT PMA? 47712 is reserved to Koperasi/UMKM "
+                    "(Perpres 49/2021 Lampiran II) — a new PT PMA cannot "
+                    "open it. Let me walk you through what the reservation "
+                    "means."
+                ),
             }
         ],
     },
     "47722": {
         "field": "whatYouNeed",
-        "old": "**PMA:** Terbuka — 100% foreign ownership allowed.",
-        "new": (
+        "old": (
             "**PMA:** Closed to foreign investment — domestic entities only. "
             "Retail of non-prescription pharmaceutical goods outside a "
             "pharmacy (Toko Obat) as a specialised store is allocated to "
@@ -312,7 +312,16 @@ AUTHORED_SENTENCES = {
             "PMA cannot open it. An Apotek (47721) is a different, "
             "PMA-open code."
         ),
-        "why": "canonical cap 0 (W-H PR-3, Lampiran II p.13-14 entry 46 sub-row \"Barang dan obat farmasi untuk manusia bukan di apotik\", ex-KBLI 2020 47722); the old sentence asserted the exact opposite",
+        "new": (
+            "**PMA:** Closed to foreign investment — domestic entities only. "
+            "Retail of non-prescription pharmaceutical goods outside a "
+            "pharmacy (Toko Obat) as a specialised store is allocated to "
+            "Koperasi/UMKM (Perpres 49/2021 Lampiran II entry 46); a new PT "
+            "PMA cannot open it. A pharmacy (Apotek) uses a different code, "
+            "47721, whose foreign-ownership position must be confirmed "
+            "separately."
+        ),
+        "why": "canonical cap 0 (W-H PR-3, Lampiran II p.13-14 entry 46 sub-row \"Barang dan obat farmasi untuk manusia bukan di apotik\", ex-KBLI 2020 47722); the old sentence asserted the exact opposite; 47721's own PMA figure is declared_gap/unverified, so it must not be asserted as \"PMA-open\"",
     },
 }
 
