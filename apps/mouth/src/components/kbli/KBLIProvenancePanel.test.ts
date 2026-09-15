@@ -81,7 +81,13 @@ const pmaRow = (code: string) => {
   )!;
 };
 
-const MORATORIUM_RULE = "Bali province blocks ALL";
+// SAETTA-20260915 W-J B1 v2 redo (applied onto post-#6596 main):
+// cure_l4bali_applied_closure.py rewrote l4_bali.moratorium.rule on all
+// 1,559 records, retiring the old blanket string this constant used to
+// match ("Bali province blocks ALL Low + Medium-Low risk KBLI for PMA
+// (permanent, effective 2026-05-13)") for one that names the actual applied
+// closure instead of an unverified date.
+const MORATORIUM_RULE = "Bali closed OSS to new PMA licensing";
 const RISK_TIER_BASIS = "derived from the risk tier";
 
 describe("the Bali provenance row attributes the verdict to what produced it", () => {
@@ -118,11 +124,32 @@ describe("the Bali provenance row attributes the verdict to what produced it", (
   });
 
   it("INNOCENCE: a genuine risk-class block keeps the moratorium attribution", () => {
-    const riskClass = getAllCodes().find(
-      (c) => c.baliL4?.status === "BLOCCATO_CLASSE_RISCHIO",
-    );
-    expect(riskClass).toBeDefined();
-    const row = baliRow(riskClass!.code);
+    // SAETTA-20260915 W-J B1 v2 redo: the applied-closure migration
+    // reclassified every BLOCCATO_CLASSE_RISCHIO record (mostly into
+    // ATTENZIONE_FASCIA_BALI or one of the applied-closure statuses), so it
+    // no longer exists in the canonical at all — not a data-coverage gap
+    // like NON_CLASSIFICABILE below, a full retirement. CHIUSO_MORATORIA_BALI
+    // survives (12 live records) but none currently has a "located" PMA
+    // basis, so getAllCodes() cannot surface one either — that IS a coverage
+    // gap. Both statuses stay in kbli-bali-block.ts's MORATORIUM_STATUSES/
+    // isMoratoriumBasis, so the attribution logic itself is still live and
+    // load-bearing; exercised here via the same syntheticLocatedCode()
+    // fixture the ATTENZIONE_FASCIA_BALI/CHIUSO_BALI blocks below use, so
+    // this stays a real assertion instead of a skip.
+    const { code, provenance } = syntheticLocatedCode({
+      status: "CHIUSO_MORATORIA_BALI",
+      reason: "OSS risk at scale Besar is Rendah/Menengah-Rendah",
+      confidence: "HIGH",
+      needsReview: false,
+      blocked: true,
+      moratorium: {
+        rule: "Bali closed OSS to new PMA licensing for 18 business fields (KBLI 2020 numbering), not for every low/medium-low risk activity",
+        effective: "third week of May 2026",
+      },
+    });
+    const row = buildRows(code, provenance).find(
+      (r) => r.layer === "Bali status",
+    )!;
     expect(row.source).toContain(MORATORIUM_RULE);
     expect(row.detail).toContain(RISK_TIER_BASIS);
   });
@@ -151,7 +178,7 @@ describe("the Bali provenance row attributes the verdict to what produced it", (
     expect(row.detail).toContain("Not classifiable until the true risk tier");
   });
 
-  it("pins the verified population: 9 located codes are blocked by something other than the moratorium", () => {
+  it("pins the verified population: 10 located codes are blocked by something other than the moratorium", () => {
     const misattributed = getAllCodes().filter(
       (c) =>
         c.baliL4?.blocked === true &&
@@ -159,10 +186,16 @@ describe("the Bali provenance row attributes the verdict to what produced it", (
     );
     // The public loader exposes Bali only for the exact located+basis+vintage
     // PMA atom. The former 98-record population included unverified Bali
-    // verdicts; nine independently adjudicated non-moratorium blocks remain.
+    // verdicts; ten independently adjudicated non-moratorium blocks remain.
     // SAETTA-20260915 W-H PR-3a: 55201/55203/79903 moved declared_gap→located
     // (Perpres 49/2021 Lampiran II allocation), 6→9.
-    expect(misattributed).toHaveLength(9);
+    // SAETTA-20260915 W-J B1 v2 redo: the applied-closure migration also
+    // retired BLOCCATO_CLASSE_RISCHIO/CHIUSO_MORATORIA_BALI as the basis for
+    // 55105 (one-star hotel, <6,000 m², one of the 18 applied-closure
+    // fields) — it moved to CHIUSO_BALI, a non-moratorium status, adding a
+    // 10th member that was always "located" but previously WAS
+    // moratorium-attributed.
+    expect(misattributed).toHaveLength(10);
     // Every one of them must now name its own cause, never the risk tier.
     for (const c of misattributed) {
       const row = baliRow(c.code);
