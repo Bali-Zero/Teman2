@@ -409,7 +409,15 @@ describe("real dataset: the gate binds, and v3 actually differentiates", () => {
     // floor: if it is ever non-empty again the loop below re-activates and
     // re-enforces the invariant on live data; today it is empty and there is
     // nothing to protect here that the fixtures above do not already cover.
-    if (blockedOpen.length === 0) return;
+    // Asserted explicitly (adversarial review finding, agy-gemini-3.1-pro,
+    // 2026-09-15) rather than a bare early return, so a change that makes
+    // this population non-zero WITHOUT anyone reading this comment still
+    // fails loudly here, instead of the block silently going from "empty on
+    // purpose" to "empty by accident, no one's looking."
+    if (blockedOpen.length === 0) {
+      expect(blockedOpen).toHaveLength(0);
+      return;
+    }
     const stated = blockedOpen.filter((c) =>
       kbliMetaTitleSuffix(c).includes("Bali"),
     );

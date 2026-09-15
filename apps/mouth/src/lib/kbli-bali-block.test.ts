@@ -545,16 +545,27 @@ describe("the PMA verdict banner — the SECOND render site", () => {
     // `blocked`, so the assertions on them are retired here, not weakened —
     // the population they used to illustrate no longer exists.
     //
-    // …the four CHIUSO_PMA_NO_BESAR codes the Lampiran II cure sent the same
-    // way survive this migration untouched — that status is a Perpres
-    // 10/2021+49/2021 Annex II allocation, not a moratorium reading, so the
-    // applied-closure compiler does not touch it:
-    expect(excluded.map((r) => r.kode_kbli_2025)).toContain("95291");
-    // …and the three the SPLIT-HEIR cure sent the same way on 2026-08-06,
-    // same reason. Named rather than counted, for the same reason as above: a
-    // population that only has a size cannot be checked by the pass that
-    // closes it.
-    for (const code of ["96210", "96220", "96100"]) {
+    // …all SEVEN live CHIUSO_PMA_NO_BESAR codes survive this migration
+    // untouched — that status is a Perpres 10/2021+49/2021 Annex II
+    // allocation, not a moratorium reading, so the applied-closure compiler
+    // does not touch it. Named rather than counted, for the same reason as
+    // everywhere else in this test: a population that only has a size cannot
+    // be checked by the pass that closes it (adversarial review finding,
+    // agy-gemini-3.1-pro, 2026-09-15 — the prior revision named only 95291
+    // as "representative" and left the other six implicit).
+    // 95291: Lampiran II re-adjudication, 2026-08-06.
+    // 96210/96220/96100: the SPLIT-HEIR cure, same day.
+    // 55201/55203/79903: SAETTA-20260915 W-H PR-3a (merged into this
+    // branch's base), moved declared_gap→located the same way.
+    for (const code of [
+      "95291",
+      "96210",
+      "96220",
+      "96100",
+      "55201",
+      "55203",
+      "79903",
+    ]) {
       expect(excluded.map((r) => r.kode_kbli_2025)).toContain(code);
     }
     // …and 55105 (one-star hotel <6,000 m²) newly joins `excluded` on
