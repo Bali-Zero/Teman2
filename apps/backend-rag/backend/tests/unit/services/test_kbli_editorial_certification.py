@@ -91,9 +91,11 @@ def test_content_pma_and_code_drift_fail_closed(
     registry: dict,
     records: dict[str, dict],
 ) -> None:
-    # 47111 was de-certified in PR-3c v3 (canonicalIntel AND mouthGold) — a
-    # still-certified code exercises the drift checks; 47111's withheld state
-    # is asserted separately below.
+    # 47111 was de-certified in PR-3c v3 from canonicalIntel only (its
+    # mouthGold/standaloneGold entries carry different content and were not
+    # touched) — a still-certified canonicalIntel code exercises the drift
+    # checks; 47111's canonicalIntel withheld state is asserted separately
+    # below.
     original = records["41016"]
     content = original["intel_2026"]
     assert matches_editorial_certification(
@@ -140,12 +142,15 @@ def test_decertified_code_is_withheld_not_reauthored(
     records: dict[str, dict],
 ) -> None:
     """GATE-6593 (predecessor #6593/#6594) BLOCKED partly on a stale test that
-    still pinned a de-certified code as certified. 47111 lost both
-    canonicalIntel and mouthGold certification in this PR (PR-3c v3) — assert
-    the withdrawal fails closed rather than silently re-matching."""
+    still pinned a de-certified code as certified. 47111 lost ONLY
+    canonicalIntel certification in this PR (PR-3c v3) — its mouthGold and
+    standaloneGold entries are untouched and stay certified — assert the
+    canonicalIntel withdrawal fails closed rather than silently re-matching,
+    and that the other two sections were not swept up with it."""
     record = records["47111"]
     assert "47111" not in registry["canonicalIntel"]
-    assert "47111" not in registry["mouthGold"]
+    assert "47111" in registry["mouthGold"]
+    assert "47111" in registry["standaloneGold"]
     assert not matches_editorial_certification(
         "canonicalIntel",
         "47111",
