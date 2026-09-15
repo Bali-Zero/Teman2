@@ -97,6 +97,12 @@ them deliberately, from the signed rate card, before a real reconciliation depen
 
 ## Phase 2 — the code change that live keys require
 
+> **Done 2026-09-15 (mission W-L):** `XenditPaymentProvider(live_enabled=...)`, wired from
+> `GARUDA_PAYMENTS_LIVE`, with the four-cell guilt/innocence matrix in
+> `backend/tests/services/payments/test_xendit_mode_matrix.py`. The switch, its three variable
+> names and the card-fee margin table live in `products/garuda-voa/ops/xendit-live-switch.md`.
+> The text below is the record of what was asked.
+
 Not a secrets task. It needs its own PR, and at minimum:
 
 1. Replace the `xnd_development_` prefix guard with an explicit two-mode provider — sandbox stays
