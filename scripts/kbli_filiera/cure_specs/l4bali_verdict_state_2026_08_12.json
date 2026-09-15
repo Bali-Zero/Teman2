@@ -1,9 +1,9 @@
 {
   "_meta": {
     "purpose": "Add l4_bali.verdict_state without changing the meaning or type of l4_bali.blocked. Selection and targets are derived from live record state.",
-    "created": "2026-09-12",
+    "created": "2026-09-15",
     "emitted_by": "scripts/kbli_filiera/emit_l4bali_verdict_state_spec.py",
-    "canonical_source": "/Users/balizero/nuzantara/.worktrees/kbli-l2-pr-b-policy/data/source_documents/KBLI_2025_FINAL_CLEAN.json",
+    "canonical_source": "/Users/balizero/nuzantara/.worktrees/mouth-kbli-wh-pr5-twelve-hold/data/source_documents/KBLI_2025_FINAL_CLEAN.json",
     "selection": "every live canonical record carrying a valid l4_bali Boolean verdict",
     "derivation_order": [
       "NON_CLASSIFICABILE -> unknown",
@@ -32,9 +32,9 @@
       "status:TERBATAS": 5,
       "status:TERTUTUP": 68,
       "unknown_blocked_true_preserved": 17,
-      "verdict_state:blocked": 95,
+      "verdict_state:blocked": 83,
       "verdict_state:open": 3,
-      "verdict_state:provisional": 1436,
+      "verdict_state:provisional": 1448,
       "verdict_state:unknown": 25
     }
   },
@@ -9100,13 +9100,13 @@
       "facts_basis": {
         "status": "CHIUSO_MORATORIA_BALI",
         "blocked": true,
-        "confidence": "HIGH",
-        "needs_review": false,
+        "confidence": "MEDIUM",
+        "needs_review": true,
         "supporting_tier_absent": false,
         "supporting_besar_tiers": []
       },
       "patch": {
-        "verdict_state": "blocked"
+        "verdict_state": "provisional"
       }
     },
     "38121": {
@@ -14205,13 +14205,13 @@
       "facts_basis": {
         "status": "CHIUSO_MORATORIA_BALI",
         "blocked": true,
-        "confidence": "HIGH",
-        "needs_review": false,
+        "confidence": "MEDIUM",
+        "needs_review": true,
         "supporting_tier_absent": false,
         "supporting_besar_tiers": []
       },
       "patch": {
-        "verdict_state": "blocked"
+        "verdict_state": "provisional"
       }
     },
     "55203": {
@@ -14257,13 +14257,13 @@
       "facts_basis": {
         "status": "CHIUSO_MORATORIA_BALI",
         "blocked": true,
-        "confidence": "HIGH",
-        "needs_review": false,
+        "confidence": "MEDIUM",
+        "needs_review": true,
         "supporting_tier_absent": false,
         "supporting_besar_tiers": []
       },
       "patch": {
-        "verdict_state": "blocked"
+        "verdict_state": "provisional"
       }
     },
     "55400": {
@@ -14322,13 +14322,13 @@
       "facts_basis": {
         "status": "CHIUSO_MORATORIA_BALI",
         "blocked": true,
-        "confidence": "HIGH",
-        "needs_review": false,
+        "confidence": "MEDIUM",
+        "needs_review": true,
         "supporting_tier_absent": false,
         "supporting_besar_tiers": []
       },
       "patch": {
-        "verdict_state": "blocked"
+        "verdict_state": "provisional"
       }
     },
     "56210": {
@@ -14400,13 +14400,13 @@
       "facts_basis": {
         "status": "CHIUSO_MORATORIA_BALI",
         "blocked": true,
-        "confidence": "HIGH",
-        "needs_review": false,
+        "confidence": "MEDIUM",
+        "needs_review": true,
         "supporting_tier_absent": false,
         "supporting_besar_tiers": []
       },
       "patch": {
-        "verdict_state": "blocked"
+        "verdict_state": "provisional"
       }
     },
     "56305": {
@@ -14426,13 +14426,13 @@
       "facts_basis": {
         "status": "CHIUSO_MORATORIA_BALI",
         "blocked": true,
-        "confidence": "HIGH",
-        "needs_review": false,
+        "confidence": "MEDIUM",
+        "needs_review": true,
         "supporting_tier_absent": false,
         "supporting_besar_tiers": []
       },
       "patch": {
-        "verdict_state": "blocked"
+        "verdict_state": "provisional"
       }
     },
     "56400": {
@@ -16811,13 +16811,13 @@
       "facts_basis": {
         "status": "CHIUSO_MORATORIA_BALI",
         "blocked": true,
-        "confidence": "HIGH",
-        "needs_review": false,
+        "confidence": "MEDIUM",
+        "needs_review": true,
         "supporting_tier_absent": false,
         "supporting_besar_tiers": []
       },
       "patch": {
-        "verdict_state": "blocked"
+        "verdict_state": "provisional"
       }
     },
     "70202": {
@@ -17189,13 +17189,13 @@
       "facts_basis": {
         "status": "CHIUSO_MORATORIA_BALI",
         "blocked": true,
-        "confidence": "HIGH",
-        "needs_review": false,
+        "confidence": "MEDIUM",
+        "needs_review": true,
         "supporting_tier_absent": false,
         "supporting_besar_tiers": []
       },
       "patch": {
-        "verdict_state": "blocked"
+        "verdict_state": "provisional"
       }
     },
     "74111": {
@@ -17371,13 +17371,13 @@
       "facts_basis": {
         "status": "CHIUSO_MORATORIA_BALI",
         "blocked": true,
-        "confidence": "HIGH",
-        "needs_review": false,
+        "confidence": "MEDIUM",
+        "needs_review": true,
         "supporting_tier_absent": false,
         "supporting_besar_tiers": []
       },
       "patch": {
-        "verdict_state": "blocked"
+        "verdict_state": "provisional"
       }
     },
     "74201": {
@@ -17926,26 +17926,26 @@
       "facts_basis": {
         "status": "CHIUSO_MORATORIA_BALI",
         "blocked": true,
-        "confidence": "HIGH",
-        "needs_review": false,
+        "confidence": "MEDIUM",
+        "needs_review": true,
         "supporting_tier_absent": false,
         "supporting_besar_tiers": []
       },
       "patch": {
-        "verdict_state": "blocked"
+        "verdict_state": "provisional"
       }
     },
     "79902": {
       "facts_basis": {
         "status": "CHIUSO_MORATORIA_BALI",
         "blocked": true,
-        "confidence": "HIGH",
-        "needs_review": false,
+        "confidence": "MEDIUM",
+        "needs_review": true,
         "supporting_tier_absent": false,
         "supporting_besar_tiers": []
       },
       "patch": {
-        "verdict_state": "blocked"
+        "verdict_state": "provisional"
       }
     },
     "79903": {
@@ -19712,13 +19712,13 @@
       "facts_basis": {
         "status": "CHIUSO_MORATORIA_BALI",
         "blocked": true,
-        "confidence": "HIGH",
-        "needs_review": false,
+        "confidence": "MEDIUM",
+        "needs_review": true,
         "supporting_tier_absent": false,
         "supporting_besar_tiers": []
       },
       "patch": {
-        "verdict_state": "blocked"
+        "verdict_state": "provisional"
       }
     },
     "87101": {
