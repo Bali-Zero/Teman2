@@ -51,11 +51,14 @@ def test_canonical_certification_partition_is_exact(
     }
 
     assert certified == set(registry["canonicalIntel"])
-    assert len(certified) == 49
+    assert len(certified) == 37
     # SAETTA-20260915 W-H PR-3a moved 55201/55203/79903 from declared_gap to
     # located (Perpres 49/2021 Lampiran II allocation); none of the three is
     # a certified canonicalIntel entry, so they join the pre-existing
-    # located-but-uncertified set.
+    # located-but-uncertified set. PR-3c v3 de-certified 12 further codes
+    # (10214/16221/22121/47111/50111/50112/51102/55105/65111/79122/95220/
+    # 96100) whose prose still claimed an openness their own tuple denies —
+    # they join the same set (fail closed: withheld, not re-authored blind).
     assert {
         code
         for code, record in records.items()
@@ -69,6 +72,18 @@ def test_canonical_certification_partition_is_exact(
         "73100",
         "79903",
         "96220",
+        "10214",
+        "16221",
+        "22121",
+        "47111",
+        "50111",
+        "50112",
+        "51102",
+        "55105",
+        "65111",
+        "79122",
+        "95220",
+        "96100",
     }
 
 
@@ -76,11 +91,14 @@ def test_content_pma_and_code_drift_fail_closed(
     registry: dict,
     records: dict[str, dict],
 ) -> None:
-    original = records["47111"]
+    # 47111 was de-certified in PR-3c v3 (canonicalIntel AND mouthGold) — a
+    # still-certified code exercises the drift checks; 47111's withheld state
+    # is asserted separately below.
+    original = records["41016"]
     content = original["intel_2026"]
     assert matches_editorial_certification(
         "canonicalIntel",
-        "47111",
+        "41016",
         original,
         content,
         registry,
@@ -90,7 +108,7 @@ def test_content_pma_and_code_drift_fail_closed(
     changed_content["whatItMeans"] += "!"
     assert not matches_editorial_certification(
         "canonicalIntel",
-        "47111",
+        "41016",
         original,
         changed_content,
         registry,
@@ -100,7 +118,7 @@ def test_content_pma_and_code_drift_fail_closed(
     changed_pma["pma_max_asing"] = 1
     assert not matches_editorial_certification(
         "canonicalIntel",
-        "47111",
+        "41016",
         changed_pma,
         content,
         registry,
@@ -110,9 +128,29 @@ def test_content_pma_and_code_drift_fail_closed(
     wrong_code["kode_kbli_2025"] = "65121"
     assert not matches_editorial_certification(
         "canonicalIntel",
-        "47111",
+        "41016",
         wrong_code,
         content,
+        registry,
+    )
+
+
+def test_decertified_code_is_withheld_not_reauthored(
+    registry: dict,
+    records: dict[str, dict],
+) -> None:
+    """GATE-6593 (predecessor #6593/#6594) BLOCKED partly on a stale test that
+    still pinned a de-certified code as certified. 47111 lost both
+    canonicalIntel and mouthGold certification in this PR (PR-3c v3) — assert
+    the withdrawal fails closed rather than silently re-matching."""
+    record = records["47111"]
+    assert "47111" not in registry["canonicalIntel"]
+    assert "47111" not in registry["mouthGold"]
+    assert not matches_editorial_certification(
+        "canonicalIntel",
+        "47111",
+        record,
+        record["intel_2026"],
         registry,
     )
 
@@ -135,7 +173,7 @@ def test_explicit_bad_registry_never_falls_back_to_the_default(
 def test_registry_validation_and_neutral_opener(registry: dict) -> None:
     assert validate_editorial_registry(copy.deepcopy(registry)) == registry
     malformed = copy.deepcopy(registry)
-    malformed["canonicalIntel"]["47111"]["contentSha256"] = "not-a-digest"
+    malformed["canonicalIntel"]["41016"]["contentSha256"] = "not-a-digest"
     with pytest.raises(ValueError, match="contentSha256"):
         validate_editorial_registry(malformed)
 
