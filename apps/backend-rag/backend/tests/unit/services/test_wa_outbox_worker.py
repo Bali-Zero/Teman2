@@ -257,7 +257,7 @@ async def test_bot_reply_aborts_on_human_takeover_before_generation() -> None:
     assert result == "aborted_human"
     svc.send_message.assert_not_awaited()
     assert any("aborted_human_takeover" in s for s, _ in conn.executed)
-    # B2.5 (migration 316): the reason is now written in the SAME
+    # B2.5 (migration 318): the reason is now written in the SAME
     # statement, so "UPDATE wa_outbox" and "SET status = 'failed'" are no
     # longer on one line — pin the surviving clause and the new reason
     # separately.
@@ -559,7 +559,7 @@ def test_coalescing_is_gone() -> None:
 @pytest.mark.asyncio
 async def test_claim_query_defers_a_bot_reply_row_behind_an_older_one_same_thread() -> None:
     """Guilt: the candidate SELECT must carry the FIFO-per-thread predicate
-    (migration 316's partial index serves exactly this shape) — a
+    (migration 318's partial index serves exactly this shape) — a
     ``needs_generation`` row is skipped while an OLDER ``needs_generation``
     row of the SAME thread is still pending/claimed/generating. This is a
     SQL-text pin (the mock conn cannot evaluate the predicate itself); the

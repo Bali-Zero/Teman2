@@ -1,4 +1,4 @@
--- 316_wa_outbox_inbound_binding_and_terminal_reasons.sql
+-- 318_wa_outbox_inbound_binding_and_terminal_reasons.sql
 --
 -- B2.5 PR-1 "one outbox row, one message" (design
 -- evidence/2026-09/agent-nuzantara-backend-rag-b2-5-one-message-one-406b5577/

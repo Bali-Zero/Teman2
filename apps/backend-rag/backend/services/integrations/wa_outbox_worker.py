@@ -21,7 +21,7 @@ sections P2-P6/D2):
    the candidate scan skips a ``needs_generation`` row while an OLDER
    ``needs_generation`` row of the same thread is still pending/claimed/
    generating. Each row is bound to its OWN inbound message
-   (``wa_inbox_bot._load_bound_thread_context``, migration 316), never the
+   (``wa_inbox_bot._load_bound_thread_context``, migration 318), never the
    thread's latest — see D1/D2 in evidence/2026-09/.../B2-5-design.md for
    why "one send covers a whole burst" silently dropped and misanswered
    real customer messages.
@@ -660,7 +660,7 @@ async def process_outbox_once(
                 SELECT id, thread_id, message_id, needs_generation, attempts
                 FROM wa_outbox AS w
                 WHERE status = 'pending' AND next_retry_at <= NOW()
-                  -- B2.5 FIFO per thread (migration 316's partial index
+                  -- B2.5 FIFO per thread (migration 318's partial index
                   -- serves this predicate): a bot-reply row waits behind
                   -- any OLDER bot-reply row of the SAME thread that has
                   -- not yet reached a terminal status. A human send

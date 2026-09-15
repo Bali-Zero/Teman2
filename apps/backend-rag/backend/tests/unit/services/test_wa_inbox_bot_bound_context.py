@@ -1,5 +1,5 @@
 """Real-Postgres tests for ``_load_bound_thread_context`` (B2.5 PR-1,
-migration 316).
+migration 318).
 
 Deliberately real DB, not a mock: the function's whole job is a SQL
 predicate (COALESCE the column anchor with a legacy derive that must never
@@ -8,7 +8,7 @@ echo back whatever the test hands it, which would prove nothing about the
 predicate itself. Fixture pattern copied from
 ``test_wa_outbox_worker_carrier.py`` (``db_pool``): ``TEST_DATABASE_URL``
 env var, default ``postgresql://nuzantara@localhost:5432/nuzantara_test``.
-Skips cleanly (does not fail) when the DB is unreachable or migration 316
+Skips cleanly (does not fail) when the DB is unreachable or migration 318
 has not been applied to the test DB.
 
 All phone numbers and message bodies are synthetic.
@@ -69,7 +69,7 @@ async def db_pool() -> asyncpg.Pool:
                     if not exists:
                         skip_reason = (
                             f"bound-context tests: {table}.{column} missing "
-                            "(migration 316 not applied to the test DB)"
+                            "(migration 318 not applied to the test DB)"
                         )
                         break
         if skip_reason is None:

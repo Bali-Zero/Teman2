@@ -128,7 +128,7 @@ from backend.services.integrations.wa_greeting import match_greeting
 # notifier and kill switch: ONE persistent HTTP client per process (Golden
 # Rule #10), the human-notification wiring stays in the one module whose
 # tests patch it, and the autoreply switch keeps ONE owner.
-# `_load_bound_thread_context` (B2.5 PR-1, migration 316) replaces
+# `_load_bound_thread_context` (B2.5 PR-1, migration 318) replaces
 # `_load_thread_context` on THIS leg only — anchored to the outbox row's
 # own inbound message, never the thread's latest (D1: a retry answered a
 # NEWER message than the one its row was created for). The bare
@@ -192,7 +192,7 @@ _KNOWN_FALL_OFF_REASONS: frozenset[str] = frozenset(
         # own judge could not rule) into ONE bounded column value; the
         # detail lives only in the ERROR log next to each raise site.
         "support_judge_absent",
-        # B2.5 PR-1 (migration 316, ruling a): the six terminal reasons
+        # B2.5 PR-1 (migration 318, ruling a): the six terminal reasons
         # wa_outbox_worker.py itself now writes in the SAME statement as
         # every status='failed' UPDATE it makes on this table — these are
         # already-normalized category values, never raw strings passed

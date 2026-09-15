@@ -329,7 +329,7 @@ async def _load_bound_thread_context(
     pool: asyncpg.Pool, *, thread_id: int, outbox_id: int
 ) -> BoundThreadContext:
     """Return the context bound to the ONE inbound message this outbox row
-    was created to answer (B2.5 PR-1, migration 316) — never the thread's
+    was created to answer (B2.5 PR-1, migration 318) — never the thread's
     latest, which is what let a retry answer a newer message than the one
     its own row was for (D1).
 

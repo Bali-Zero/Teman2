@@ -8,7 +8,7 @@ proven against a real Postgres — "a burst sibling is never superseded" — is
 proven here instead, plus the two properties a mocked connection cannot
 demonstrate:
 
-  1. the claim SELECT's FIFO-per-thread predicate (migration 316's partial
+  1. the claim SELECT's FIFO-per-thread predicate (migration 318's partial
      index) actually orders a real scan: an OLDER ``needs_generation`` row
      still pending/claimed/generating blocks a newer same-thread row from
      being claimed at all — a human send is neither blocked by it nor
@@ -78,7 +78,7 @@ async def db_pool() -> asyncpg.Pool:
                     if not exists:
                         skip_reason = (
                             f"wa_outbox bound-FIFO tests: {table}.{column} missing "
-                            "(migration 316 not applied to the test DB)"
+                            "(migration 318 not applied to the test DB)"
                         )
                         break
         if skip_reason is None:
@@ -174,7 +174,7 @@ async def _seed_bound_row(
     pool: asyncpg.Pool, *, thread_id: int, body: str, due: bool = True
 ) -> dict[str, int]:
     """Mirror whatsapp_chat.py's real insert order: inbound, then the
-    outbound stub, then the outbox row bound to the inbound (migration 316)."""
+    outbound stub, then the outbox row bound to the inbound (migration 318)."""
     async with pool.acquire() as conn:
         inbound_id = await conn.fetchval(
             """
