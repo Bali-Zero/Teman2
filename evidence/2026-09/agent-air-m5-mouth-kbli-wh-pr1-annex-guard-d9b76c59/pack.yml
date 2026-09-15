@@ -1,0 +1,132 @@
+gear: 2
+brief_ref: evidence/brief.yml
+ruling: RULED 2026-09-12 SAETTA
+council_run: journal.jsonl
+lanes:
+  - lane: mouth/kbli-wh-pr1-annex-guard
+    role: build
+    seat: Claude Sonnet 5 (implementer, lane PR-1, mission SAETTA-20260915 / W-H, Dux Opus 5 on M5)
+    task_id: kbli-wh-pr1-annex-guard
+    worktree: .worktrees/mouth-kbli-wh-pr1-annex-guard
+    branch: agent/air-m5/mouth/kbli-wh-pr1-annex-guard
+  - lane: kbli-pma-basis-ground-truth
+    role: ground_truth
+    seat:
+      session (M5) — this PR asserts no NEW regulatory fact; it reuses the dossier's
+      finding (SAETTA-20260915 W-F, DOSSIER-no-besar-normativo-2026-09-15.md, §1.3, §1.5)
+      and the fields PR #6488 actually wrote to canonical.
+    nb: >-
+      origin/main @ 449def3cb3: `data/source_documents/KBLI_2025_FINAL_CLEAN.json` (79
+      records with `pma_max_asing == 0`, measured with `python3 -c "import json; ..."`,
+      distribution 60 TERTUTUP/declared_gap + 19 TERBATAS/located, matches the dossier's
+      count exactly); `scripts/kbli_filiera/cure_specs/umkm_lampiran_ii_readjudicated_
+      2026_08_06.json` and `umkm_lampiran_ii_split_heirs_2026_08_06.json` (13 live
+      `items[].locator` entries, the write-schema `apply_umkm_reservations.py` reads).
+      Branch `5535726236` (PR #6488 head, OPEN/draft per the dossier, 2026-09-15):
+      `scripts/kbli_filiera/cure_pma_closed_no_besar_scale.py` (the `KONDISI`/`NOTA`/
+      `BASIS`/`SOURCE` constants) and `data/source_documents/KBLI_2025_FINAL_CLEAN.json`
+      at that sha (records `73300`/`38110`/`43110`, confirming the constants were actually
+      written, not just defined) — both read with `git show`, quoted verbatim in the two
+      new test files' guilt fixtures.
+    query_hash: not-applicable-no-hash-stored
+    note: >-
+      No hash literal stored (Detect Secrets precedent, per the K3a pack's note); the claim
+      is re-verifiable by re-running the same `git show` commands against the same shas.
+pii_scan: clean
+pii_scan_note: >-
+  KBLI codes and Indonesian regulation citations only, in both new test files and in this
+  pack. No client PII, no OSINT.
+decisions:
+  - id: D1
+    what: >-
+      Read the entity's "basis" from a record's `pma_kondisi` + `pma_nota` + `pma_source`
+      + `pma_official_basis` fields only — never `l4_bali`.
+    why: >-
+      Measured: the four already-certified Lampiran II codes (95291, 96100, 96210, 96220)
+      carry a legacy `l4_bali.rule` of literally "per-scala-Besar (OSS risk at scale
+      Besar; PMA is Besar by law)" and `l4_bali.verdict: NO_BESAR" — stale internal labels
+      predating the 2026-08-03 withdrawal that the client-facing `l4_bali.reason` (guarded
+      separately by `test_withdrawn_umkm_inference_absent.py`) already overrides. Scanning
+      `l4_bali` here would convict the codes this gate exists to protect.
+    alternatives_rejected: >-
+      Scanning `l4_bali.reason` too (belt-and-suspenders): rejected because it is already
+      the exact scope of the existing antidote, and merging scopes would duplicate a
+      passing gate rather than close a gap.
+  - id: D2
+    what: >-
+      Accept a bare `pma_source` citation of "Perpres 10/2021" (no per-code Lampiran
+      locator) as sufficient basis ONLY when `pma_status == TERTUTUP` and
+      `pma_official_basis` is empty.
+    why: >-
+      Measured: all 60 TERTUTUP/declared_gap records on origin/main express their basis
+      this way (absolute Pasal 2 closures — narcotics cultivation, gambling, government
+      monopolies — cite the base instrument bare, never a numbered annex row). Requiring a
+      Lampiran citation uniformly would fail all 60 today.
+    alternatives_rejected: >-
+      A broader "any Perpres 10/2021 mention" bypass regardless of status: rejected
+      because the #6488 guilty fixture's `pma_source` ALSO mentions "Perpres 10/2021" (as
+      part of "Perpres 10/2021 Pasal 7(1)") — gating the bypass on `pma_status ==
+      TERTUTUP` keeps it from accidentally covering the guilty TERBATAS fixture.
+  - id: D3
+    what: >-
+      Exclude a bare `per_skala` substring from the scale-absence trigger regex.
+    why: >-
+      Measured: 3 of 52 cure_spec files mention `per_skala` in passing (describing OSS
+      scale rows or a sibling code's data quality) with no 0%-verdict reasoning nearby
+      (`l4_withdrawn_umkm_prose.json`, `editorial_body_national_scope.json`,
+      `gold_86101_government_hospital_2026_08_07.json`); a bare match would have been
+      family #3 over-match. The actual #6488 fixture text never uses the field name
+      `per_skala` — it argues in natural language ("no Usaha Besar scale") — so dropping
+      the bare trigger loses no real guilt-catching power.
+  - id: D4
+    what: >-
+      Scope the cure_specs sweep to the `items[].locator` schema (13 live entries across
+      2 files) rather than every file mentioning `pma_max_asing` (21 files) or every file
+      containing the literal `pma_max_asing: 0` (9 files).
+    why: >-
+      Measured: every `pma_max_asing: 0` occurrence in the 9-file set sits under an
+      `expect` key — a precondition the spec asserts before editing an unrelated prose
+      field (`whoThisIsFor`, `whatChanged`), never a value the spec itself writes. The
+      `items[].locator` schema is the one `apply_umkm_reservations.py` (named in
+      WH-COMMON.md's reuse-first list) actually reads to WRITE a fresh 0% cap. A
+      whole-file-text sweep over the 21/9-file sets produces false guilt: several
+      editorial specs quote the withdrawn sentence verbatim in an `old` field as the text
+      being REMOVED (evidence of the cure, not the claim).
+    alternatives_rejected: >-
+      Whole-file text sweep (simpler, but measured to false-positive on
+      `l4_withdrawn_umkm_prose.json` and `l4bali_gap_disclosure_2026_07_25.json`, both of
+      which quote the withdrawn wording as history, not as a live basis).
+receipts:
+  - claim: >-
+      The new Python guard + the existing withdrawn-inference antidote are both green,
+      and the guilt fixture is load-bearing (proved by inverting its assertion and seeing
+      it fail, then restoring it).
+    cmd: >-
+      python3 -m pytest scripts/kbli_filiera/tests/test_pma_zero_cap_basis.py
+      scripts/kbli_filiera/tests/test_withdrawn_umkm_inference_absent.py -q
+    result: "23 passed in 6.88s"
+    exit: 0
+    ts: "2026-09-15T08:27:00+00:00"
+    seat: Claude Sonnet 5 (implementer, lane PR-1)
+  - claim: >-
+      The mouth-copy TS twin + the existing withdrawn-inference TS antidote are both
+      green.
+    cmd: >-
+      cd apps/mouth && npx vitest run src/lib/kbli-pma-zero-cap-basis.test.ts
+      src/lib/kbli-withdrawn-umkm-inference.test.ts
+    result: "Test Files 2 passed (2) / Tests 28 passed (28)"
+    exit: 0
+    ts: "2026-09-15T08:27:19+00:00"
+    seat: Claude Sonnet 5 (implementer, lane PR-1)
+  - claim: >-
+      The whole `kbli_filiera` pytest suite still passes — this PR adds guard tests only
+      and touches no existing file, so no regression is expected, and none was measured.
+    cmd: python3 -m pytest scripts/kbli_filiera/tests/ -q
+    result: "1360 passed in 106.74s"
+    exit: 0
+    ts: "2026-09-15T08:25:00+00:00"
+    seat: Claude Sonnet 5 (implementer, lane PR-1)
+dissent: []
+dissent_note: >-
+  No adversarial round run in this Gear-2 solo lane; the Dux fills a cross-seat round if
+  one is commissioned before merge.
