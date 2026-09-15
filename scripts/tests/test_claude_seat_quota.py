@@ -312,3 +312,28 @@ def test_publish_refuses_to_republish_a_report(mod, monkeypatch, tmp_path):
     assert rc == 2, "publishing a report built from another report must fail loudly"
     assert not wrote["called"], "write_report must never run when the source isn't live"
     assert "publish" in err.getvalue().lower()
+
+
+def test_unreadable_hint_names_the_real_cause(mod, monkeypatch, capsys):
+    """A 429 is a live credential: the hint must not send the reader to re-login, and a
+    run that already had --deep must not be told to add it."""
+    ok = {"account": "a@x.com", "session_pct": 1.0, "weekly_pct": 2.0}
+    throttled = {"account": "b@x.com", "error": "Rate limited.", "throttled": True, "stale": False}
+    expired = {"account": "c@x.com", "error": "OAuth access token has expired.", "stale": False}
+    monkeypatch.setattr(mod, "warm_profiles", lambda deep: None)
+    monkeypatch.setattr(sys, "platform", "darwin")
+
+    monkeypatch.setattr(mod, "collect", lambda pace=1.2: [dict(ok), dict(throttled)])
+    monkeypatch.setattr(sys, "argv", ["claude_seat_quota.py", "--deep"])
+    assert mod.main() == 1
+    err = capsys.readouterr().err
+    assert "rate-limited by the endpoint" in err and "re-login" not in err
+
+    monkeypatch.setattr(mod, "collect", lambda pace=1.2: [dict(ok), dict(expired)])
+    assert mod.main() == 1
+    err = capsys.readouterr().err
+    assert "re-login" in err and "--deep" not in err
+
+    monkeypatch.setattr(sys, "argv", ["claude_seat_quota.py"])
+    assert mod.main() == 1
+    assert "re-login or run with --deep" in capsys.readouterr().err

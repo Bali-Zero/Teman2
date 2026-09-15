@@ -499,8 +499,13 @@ def main() -> int:
         return 2
     if broken:
         names = ", ".join(r.get("account") or "?" for r in broken)
+        # A 429 is a live credential: telling the reader to re-login (or to add a --deep
+        # the run already had) sends them after the wrong cause.
+        hint = ("rate-limited by the endpoint, retry later"
+                if all(r.get("throttled") for r in broken)
+                else "re-login" + ("" if args.deep else " or run with --deep"))
         print(f"claude_seat_quota: {len(broken)} named seat(s) unreadable ({names}) "
-              f"— re-login or run with --deep", file=sys.stderr)
+              f"— {hint}", file=sys.stderr)
         return 1
     if args.warn_at is not None:
         hot = [r for r in readable if (r.get("weekly_pct") or 0) >= args.warn_at]
