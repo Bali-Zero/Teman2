@@ -413,6 +413,14 @@ export interface KBLICode {
   baliL4?: KBLIBaliL4;
   /** Per-fact provenance + verification state (TRACK-P). Derived from structured markers only. */
   provenance?: KBLIProvenance;
+  /**
+   * Per-code PMA review notice (kbli-pma-review.ts) — set only for a code
+   * whose national PMA tuple stays `declared_gap` AND carries a registered,
+   * still-matching notice (SAETTA-20260915/W-H PR-5, the 12 no-Besar-row
+   * hold codes). Read by the FAQ answer in place of the generic "not yet
+   * verified" sentence.
+   */
+  pmaReviewNotice?: string;
 }
 
 /**
