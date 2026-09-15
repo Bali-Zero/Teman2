@@ -34,20 +34,6 @@ DESCRIPTION = (
     "lkpm_client_config OSS credentials (plaintext)"
 )
 
-# LEGACY, HISTORICAL: this is the manual-tier migration tracker (grandfathered
-# into LEGACY_NO_ROLLBACK_WHITELIST in migration_base.py), not the automated
-# migrations_v2/*.sql tier, and it already ran against production under this
-# exact literal list. Left as-is, not rewritten, so this file keeps recording
-# what actually shipped. Two of these five addresses ('veronika.tax@' and
-# 'faisha.tax@', with an I) were later found to be ghosts that don't exist in
-# team_members -- see migration 319 (migrations_v2/319_align_tax_consultant_
-# allowlist_to_team_members.sql), which ALTERs both CHECK constraints to the
-# real addresses, and backend.app.core.constants.TaxConsultantConstants,
-# which is now the single shared source every live call site imports. A
-# replay of this file's `apply()` would only re-affirm columns/indexes that
-# already exist (idempotent IF NOT EXISTS / DROP-then-ADD) and 319 runs after
-# it in migration order, so the ghost list here cannot silently resurface in
-# a live constraint -- but do not copy this tuple into new code.
 TAX_CONSULTANT_EMAILS = (
     "veronika.tax@balizero.com",
     "kadek.tax@balizero.com",
