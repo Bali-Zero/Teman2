@@ -17,6 +17,7 @@ import { extname, join, sep } from "node:path";
 import React from "react";
 import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import * as ts from "typescript";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { api } from "@/lib/api";
 import type { ClientProfile } from "@/lib/api/crm/crm.types";
@@ -368,105 +369,318 @@ function walkSourceFiles(dir: string, extSet: Set<string>): string[] {
   return out;
 }
 
-/** Strips `/* … *\/` block comments, and a `//` line comment ONLY when it
- * starts the line (optional leading whitespace, then `//`) — never a `//`
- * that appears mid-line, and never anything inside a string. Round-4 Q5
- * closed the mid-line-`//` bypass; round-5 M2 closes its sibling: a REGEX
- * strip has no notion of string state, so `className="x /* bg-red-500 *\/"`
- * — a block-comment-shaped SUBSTRING sitting inside an ordinary string
- * literal, not a real comment at all — was erased right along with a genuine
- * comment, hiding the violation text ("bg-red-500") from the scanner with no
- * plant required. This is a small char-by-char scanner instead of a regex:
- * it tracks whether it is inside a `"`/`'`/`` ` `` string (honouring `\`
- * escapes) and only treats `/* … *\/` or a line-leading `//` as a comment
- * OUTSIDE that state — inside a string, every character is copied through
- * untouched, comment-shaped or not. */
-function stripComments(src: string): string {
-  let out = "";
-  let i = 0;
-  let inString: string | null = null;
-  while (i < src.length) {
-    const c = src[i];
-    if (inString) {
-      out += c;
-      if (c === "\\" && i + 1 < src.length) {
-        out += src[i + 1];
-        i += 2;
-        continue;
-      }
-      if (c === inString) inString = null;
-      i++;
-      continue;
-    }
-    if (c === '"' || c === "'" || c === "`") {
-      inString = c;
-      out += c;
-      i++;
-      continue;
-    }
-    if (c === "/" && src[i + 1] === "*") {
-      const end = src.indexOf("*/", i + 2);
-      i = end === -1 ? src.length : end + 2;
-      continue;
-    }
-    if (c === "/" && src[i + 1] === "/") {
-      const lastNewline = out.lastIndexOf("\n");
-      const linePrefix = out.slice(lastNewline + 1);
-      if (/^[ \t]*$/.test(linePrefix)) {
-        const end = src.indexOf("\n", i);
-        i = end === -1 ? src.length : end;
-        continue;
-      }
-      out += c;
-      i++;
-      continue;
-    }
-    out += c;
-    i++;
-  }
-  return out;
+// ---------------------------------------------------------------------------
+// Round-7 — Codex R4 blocked the hand-written scanners a SECOND time:
+//   (a) a regex literal like `/"/` earlier in a file has no notion of
+//       "this quote is inside a regex, not a string" in a char-by-char
+//       scanner that just toggles `inString` on every `"`/`'`/`` ` `` it
+//       sees — so `/"/`'s quote desynchronises the parity, and a LATER
+//       genuine string's `/* bg-red-500 *\/`-shaped substring gets stripped
+//       as if it were a real comment.
+//   (b) `variant\s*=` (even with the round-5 lookbehind) matches the TEXT
+//       of a DIFFERENT attribute's string value — `title='variant="outline"'`
+//       counts as "has a variant" to a scanner that cannot tell "this quote
+//       character is inside an unrelated attribute's value" from "this is
+//       the real `variant=` prop".
+// Patching the regex a third time is a fix of a fix (CLAUDE.md builder
+// contract §1: a fix-of-a-fix stops at depth 1). Both bugs are the SAME
+// root cause — a hand-rolled scanner re-deriving what a real parser already
+// knows for free — so the surface changes instead: every non-test .ts/.tsx
+// under [id]/** is parsed with the TypeScript compiler API
+// (`ts.createSourceFile`) and walked as a real AST. A RegularExpressionLiteral
+// is its own token kind, never a string boundary — bug (a) is structurally
+// impossible. A JSX attribute's NAME and its STRING VALUE are distinct AST
+// nodes — bug (b) is structurally impossible: `title`'s string value is
+// never mistaken for a `variant` attribute because the scan only ever reads
+// the `.name` of an actual `JsxAttribute`, never greps attribute values for
+// the substring "variant=". `.css` files have no regex literals (CSS syntax
+// has none), so they keep a plain regex comment-strip for `/* … */` — that
+// half of the old approach was never the bug and needs no AST.
+// ---------------------------------------------------------------------------
+
+/** Parses a REAL file's contents with the compiler API, using TSX mode for
+ * `.tsx` (JSX-bearing) files and plain TS mode for `.ts` (constants/types/
+ * utils, no JSX) files — the same distinction `JSX_SOURCE_EXT` already
+ * draws for which files even get scanned for JSX. */
+function parseSourceFile(filePath: string, source: string): ts.SourceFile {
+  const scriptKind = filePath.endsWith(".tsx")
+    ? ts.ScriptKind.TSX
+    : ts.ScriptKind.TS;
+  return ts.createSourceFile(
+    filePath,
+    source,
+    ts.ScriptTarget.Latest,
+    /* setParentNodes */ true,
+    scriptKind,
+  );
 }
 
-/** Extracts one JSX opening tag starting at `startIdx` (which must point at
- * `<`), tracking `{}` depth and string state so a `>` inside an attribute
- * expression (e.g. `onClick={() => a > b}`) or a string is never mistaken
- * for the tag's own close. */
-function extractOpeningTag(src: string, startIdx: number): string {
-  let i = startIdx;
-  let depth = 0;
-  let inString: string | null = null;
-  while (i < src.length) {
-    const c = src[i];
-    if (inString) {
-      if (c === "\\") {
-        i += 2;
-        continue;
-      }
-      if (c === inString) inString = null;
-      i++;
-      continue;
-    }
-    if (c === '"' || c === "'" || c === "`") {
-      inString = c;
-      i++;
-      continue;
-    }
-    if (c === "{") {
-      depth++;
-      i++;
-      continue;
-    }
-    if (c === "}") {
-      depth--;
-      i++;
-      continue;
-    }
-    if (depth === 0 && c === ">") {
-      return src.slice(startIdx, i + 1);
-    }
-    i++;
+/** Parses a small in-test fixture STRING (guilt/innocence cases, never a
+ * real file) — always TSX mode, since every fixture in this suite is a JSX
+ * snippet. TypeScript's parser recovers gracefully from an intentionally
+ * incomplete fragment (e.g. an opening tag with no matching close), so the
+ * exact fixture strings this suite already had keep working unchanged. */
+function parseFixture(source: string): ts.SourceFile {
+  return ts.createSourceFile(
+    "fixture.tsx",
+    source,
+    ts.ScriptTarget.Latest,
+    true,
+    ts.ScriptKind.TSX,
+  );
+}
+
+function lineOf(sf: ts.SourceFile, node: ts.Node): number {
+  return ts.getLineAndCharacterOfPosition(sf, node.getStart(sf)).line + 1;
+}
+
+/** The static, literal `variant="…"` value of a Button-shaped opening tag —
+ * `null` for anything else (missing, a dynamic expression, or a DIFFERENT
+ * attribute like `data-variant`/`title` that merely contains the text
+ * "variant="). Reads the JsxAttribute node named exactly `variant`, never a
+ * text scan over the tag's source. */
+function getStaticVariant(
+  node: ts.JsxOpeningElement | ts.JsxSelfClosingElement,
+  sf: ts.SourceFile,
+): string | null {
+  const variantAttr = node.attributes.properties.find(
+    (p): p is ts.JsxAttribute =>
+      ts.isJsxAttribute(p) && p.name.getText(sf) === "variant",
+  );
+  if (
+    !variantAttr ||
+    !variantAttr.initializer ||
+    !ts.isStringLiteral(variantAttr.initializer)
+  ) {
+    return null;
   }
-  return src.slice(startIdx, Math.min(src.length, startIdx + 500));
+  return variantAttr.initializer.text;
+}
+
+/** Fixture-only convenience: parses a JSX snippet and returns the static
+ * variant of its first opening/self-closing element (mirrors the old
+ * `staticVariantOf(extractOpeningTag(fixture, 0))` two-step for every
+ * existing guilt/innocence test, now as one AST call). */
+function variantOfFixture(source: string): string | null {
+  const sf = parseFixture(source);
+  let found: ts.JsxOpeningElement | ts.JsxSelfClosingElement | null = null;
+  function visit(node: ts.Node) {
+    if (found) return;
+    if (ts.isJsxOpeningElement(node) || ts.isJsxSelfClosingElement(node)) {
+      found = node;
+      return;
+    }
+    ts.forEachChild(node, visit);
+  }
+  visit(sf);
+  return found ? getStaticVariant(found, sf) : null;
+}
+
+/** Every `<Button ...>` in `sf` that lacks a static-literal variant from the
+ * allow-list. `label` is the offender-report prefix (a relative file path
+ * for a real file, or `"fixture"` for a guilt/innocence test). */
+function findButtonVariantOffenses(sf: ts.SourceFile, label: string): string[] {
+  const offenders: string[] = [];
+  function visit(node: ts.Node) {
+    if (
+      (ts.isJsxOpeningElement(node) || ts.isJsxSelfClosingElement(node)) &&
+      node.tagName.getText(sf) === "Button"
+    ) {
+      const variant = getStaticVariant(node, sf);
+      if (!variant || !VALID_STATIC_VARIANTS.has(variant)) {
+        offenders.push(
+          `${label}:${lineOf(sf, node)}: ${node.getText(sf).slice(0, 120).replace(/\s+/g, " ")}`,
+        );
+      }
+    }
+    ts.forEachChild(node, visit);
+  }
+  visit(sf);
+  return offenders;
+}
+
+/** True when `node` (or anything nested under it, JSX-expression-wrapped or
+ * not) renders a `<Trash2 .../>`/`<X .../>`-shaped element. */
+function hasDestructiveIconDescendant(
+  node: ts.Node,
+  sf: ts.SourceFile,
+): boolean {
+  if (ts.isJsxSelfClosingElement(node) || ts.isJsxOpeningElement(node)) {
+    const name = node.tagName.getText(sf);
+    if (name === "Trash2" || name === "X") return true;
+  }
+  let found = false;
+  ts.forEachChild(node, (c) => {
+    if (!found && hasDestructiveIconDescendant(c, sf)) found = true;
+  });
+  return found;
+}
+
+/** Every `<Button>`/`<button>` in `sf` whose children render a destructive
+ * icon but whose OWN opening tag carries no `aria-label`. Self-closing
+ * Buttons can never fail this (no children, so no icon can be inside). */
+function findIconOnlyAriaLabelOffenses(
+  sf: ts.SourceFile,
+  label: string,
+): string[] {
+  const offenders: string[] = [];
+  function visit(node: ts.Node) {
+    if (ts.isJsxElement(node)) {
+      const tagName = node.openingElement.tagName.getText(sf);
+      if (tagName === "Button" || tagName === "button") {
+        const hasIcon = node.children.some((c) =>
+          hasDestructiveIconDescendant(c, sf),
+        );
+        if (hasIcon) {
+          const hasAriaLabel = node.openingElement.attributes.properties.some(
+            (p) => ts.isJsxAttribute(p) && p.name.getText(sf) === "aria-label",
+          );
+          if (!hasAriaLabel) {
+            offenders.push(
+              `${label}:${lineOf(sf, node.openingElement)}: ${node.openingElement
+                .getText(sf)
+                .slice(0, 100)
+                .replace(/\s+/g, " ")}`,
+            );
+          }
+        }
+      }
+    }
+    ts.forEachChild(node, visit);
+  }
+  visit(sf);
+  return offenders;
+}
+
+type TextHit = { line: number; text: string };
+
+/** Collects the COOKED text of every node kind that can carry a colour
+ * literal, a Tailwind utility name or a CSS var alias as DATA rather than
+ * syntax: StringLiteral, NoSubstitutionTemplateLiteral, the head/middle/tail
+ * literal chunks of a TemplateExpression, and JsxText. A comment is not a
+ * node at all (excluded for free — there is no stripping step to fool), and
+ * a RegularExpressionLiteral is its own token kind the walk never descends
+ * into as if it were string content. */
+function collectColorText(sf: ts.SourceFile): TextHit[] {
+  const hits: TextHit[] = [];
+  function push(node: ts.Node, text: string) {
+    hits.push({ line: lineOf(sf, node), text });
+  }
+  function visit(node: ts.Node) {
+    if (ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node)) {
+      push(node, node.text);
+    } else if (node.kind === ts.SyntaxKind.JsxText) {
+      push(node, node.getText(sf));
+    } else if (ts.isTemplateExpression(node)) {
+      push(node.head, node.head.text);
+      for (const span of node.templateSpans)
+        push(span.literal, span.literal.text);
+    }
+    ts.forEachChild(node, visit);
+  }
+  visit(sf);
+  return hits;
+}
+
+/** Structural replacement for the old `TEMPLATE_BUILT_VAR_NAME` regex
+ * (`/var\(--\$\{/g`, matched against raw source text): true for any
+ * TemplateExpression literal chunk that immediately precedes an
+ * interpolation (its head, or a TemplateMiddle — never the final Tail,
+ * which precedes no further `${…}`) and ends in `var(--` — i.e. the CSS
+ * var's NAME itself, not just a value inside it, is template-built. */
+function templateBuiltVarNameHits(sf: ts.SourceFile): TextHit[] {
+  const hits: TextHit[] = [];
+  function visit(node: ts.Node) {
+    if (ts.isTemplateExpression(node)) {
+      const parts = [node.head, ...node.templateSpans.map((s) => s.literal)];
+      parts.forEach((lit, idx) => {
+        if (idx === parts.length - 1) return; // the Tail precedes no `${`
+        if (/var\(--$/.test(lit.text)) {
+          hits.push({ line: lineOf(sf, lit), text: lit.text });
+        }
+      });
+    }
+    ts.forEachChild(node, visit);
+  }
+  visit(sf);
+  return hits;
+}
+
+/** Colour/token offenders for one REAL or FIXTURE .ts/.tsx source, via the
+ * AST text collectors above — the same RAW_COLOR_LITERAL/PALETTE_HUE_UTILITY
+ * patterns as before, now run against cooked node text instead of a
+ * comment-stripped raw-text scan. */
+function colorOffensesForTsSource(sf: ts.SourceFile, label: string): string[] {
+  const offenders: string[] = [];
+  for (const { line, text } of collectColorText(sf)) {
+    if (text.includes("--state-danger"))
+      offenders.push(`${label}:${line}: --state-danger`);
+    if (text.includes("--bz-neon-purple"))
+      offenders.push(`${label}:${line}: --bz-neon-purple`);
+    for (const m of text.matchAll(PALETTE_HUE_UTILITY))
+      offenders.push(`${label}:${line}: ${m[0]}`);
+    for (const m of text.matchAll(RAW_COLOR_LITERAL))
+      offenders.push(`${label}:${line}: raw literal ${m[0]}`);
+  }
+  for (const { line, text } of templateBuiltVarNameHits(sf)) {
+    offenders.push(`${label}:${line}: template-built var name (${text}...)`);
+  }
+  return offenders;
+}
+
+/** Colour/token offenders for a `.css` source — CSS has no regex literals,
+ * so a plain `/* … *\/` regex strip is safe (unlike the JS/TSX case, there
+ * is no string-vs-regex ambiguity to get wrong), then the same text
+ * assertions run on the whole remaining text (CSS has no AST here — a bare
+ * `color: var(--state-danger)` is not inside any string node to collect). */
+function colorOffensesForCssSource(source: string, label: string): string[] {
+  const offenders: string[] = [];
+  const stripped = source.replace(/\/\*[\s\S]*?\*\//g, "");
+  if (stripped.includes("--state-danger"))
+    offenders.push(`${label}: --state-danger`);
+  if (stripped.includes("--bz-neon-purple"))
+    offenders.push(`${label}: --bz-neon-purple`);
+  for (const m of stripped.matchAll(PALETTE_HUE_UTILITY))
+    offenders.push(`${label}: ${m[0]}`);
+  for (const m of stripped.matchAll(RAW_COLOR_LITERAL))
+    offenders.push(`${label}: raw literal ${m[0]}`);
+  return offenders;
+}
+
+const COPPER_TOKEN_PATTERN =
+  /--bz-accent\b|--bz-copper(?:-text)?\b|--accent(?!-)\b/g;
+
+/** Copper-alias offenders for one REAL .ts/.tsx source, via the same
+ * AST text collector — checked against the (file-scoped) allow-list. */
+function copperOffensesForTsSource(
+  sf: ts.SourceFile,
+  label: string,
+  allowed: { snippet: string }[],
+): string[] {
+  const offenders: string[] = [];
+  for (const { line, text } of collectColorText(sf)) {
+    if (!text.match(COPPER_TOKEN_PATTERN)) continue;
+    if (allowed.some((e) => text.includes(e.snippet))) continue;
+    offenders.push(`${label}:${line}: ${text.slice(0, 120)}`);
+  }
+  return offenders;
+}
+
+/** Copper-alias offenders for a `.css` source — line-based, same allow-list
+ * contract, comments stripped with the plain (CSS-safe) block-comment regex. */
+function copperOffensesForCssSource(
+  source: string,
+  label: string,
+  allowed: { snippet: string }[],
+): string[] {
+  const offenders: string[] = [];
+  const stripped = source.replace(/\/\*[\s\S]*?\*\//g, "");
+  stripped.split("\n").forEach((line, i) => {
+    if (!line.match(COPPER_TOKEN_PATTERN)) return;
+    if (allowed.some((e) => line.includes(e.snippet))) return;
+    offenders.push(`${label}:${i + 1}: ${line.trim().slice(0, 120)}`);
+  });
+  return offenders;
 }
 
 const SOURCE_FILES = walkSourceFiles(DETAIL_DIR, JSX_SOURCE_EXT);
@@ -502,83 +716,81 @@ const VALID_STATIC_VARIANTS = new Set([
   "link",
 ]);
 
-// Round-5 M3: `variant\s*=` alone matches the TAIL of `data-variant=` too —
-// scar family #3 again, guard-over-match on a substring instead of the
-// entity. `(?<![\w-])` refuses a match immediately preceded by a word
-// character or a hyphen, so `data-variant=`/`aria-variant=`-shaped props
-// can never masquerade as the real `variant=`.
-function staticVariantOf(tag: string): string | null {
-  const m = tag.match(/(?<![\w-])variant\s*=\s*(["'`])([^"'`]*)\1/);
-  return m ? m[2] : null;
-}
-
-describe("GLOB: no default-variant Button, static-literal variant only (R3a, tightened by round-4 Q7)", () => {
+describe("GLOB: no default-variant Button, static-literal variant only (R3a, tightened by round-4 Q7, AST-based round-7)", () => {
   it("every <Button ...> under [id]/** declares a static-literal variant from {outline, ghost, secondary, link}", () => {
     const offenders: string[] = [];
     for (const file of SOURCE_FILES) {
-      const source = stripComments(readFileSync(file, "utf8"));
-      let idx = source.indexOf("<Button");
-      while (idx !== -1) {
-        // Only a JSX tag boundary (`<Button` followed by whitespace, `>` or
-        // `/`), not e.g. `<ButtonGroup`.
-        const after = source[idx + 7];
-        if (after === undefined || /[\s/>]/.test(after)) {
-          const tag = extractOpeningTag(source, idx);
-          const variant = staticVariantOf(tag);
-          if (!variant || !VALID_STATIC_VARIANTS.has(variant)) {
-            offenders.push(
-              `${file.replace(DETAIL_DIR, "")}: ${tag.slice(0, 120).replace(/\s+/g, " ")}`,
-            );
-          }
-        }
-        idx = source.indexOf("<Button", idx + 7);
-      }
+      const rel = file.replace(DETAIL_DIR, "");
+      const sf = parseSourceFile(file, readFileSync(file, "utf8"));
+      offenders.push(...findButtonVariantOffenses(sf, rel));
     }
     expect(offenders, offenders.join("\n")).toEqual([]);
   });
 
   it("GUILT: a <Button> with no variant prop at all is what the pattern is built to catch", () => {
-    const fixture = '<Button\n  size="sm"\n  onClick={handleSend}\n>';
-    const tag = extractOpeningTag(fixture, 0);
-    expect(staticVariantOf(tag)).toBeNull();
+    expect(
+      variantOfFixture('<Button size="sm" onClick={handleSend}>Send</Button>'),
+    ).toBeNull();
   });
 
   it('GUILT: variant={cond ? "default" : "outline"} fails — a dynamic expression is not a static literal', () => {
-    const fixture = '<Button variant={open ? "default" : "outline"}>';
-    const tag = extractOpeningTag(fixture, 0);
-    expect(staticVariantOf(tag)).toBeNull();
+    expect(
+      variantOfFixture(
+        '<Button variant={open ? "default" : "outline"}>Go</Button>',
+      ),
+    ).toBeNull();
   });
 
   it('GUILT: variant="destructive" and variant="default" are both static literals, but neither is on the allow-list', () => {
     expect(
       VALID_STATIC_VARIANTS.has(
-        staticVariantOf('<Button variant="destructive">')!,
+        variantOfFixture('<Button variant="destructive">Go</Button>')!,
       ),
     ).toBe(false);
     expect(
-      VALID_STATIC_VARIANTS.has(staticVariantOf('<Button variant="default">')!),
+      VALID_STATIC_VARIANTS.has(
+        variantOfFixture('<Button variant="default">Go</Button>')!,
+      ),
     ).toBe(false);
   });
 
   it('INNOCENCE: variant="outline"/"ghost"/"secondary"/"link" are each accepted', () => {
     for (const v of ["outline", "ghost", "secondary", "link"]) {
-      const tag = extractOpeningTag(`<Button variant="${v}" size="sm">`, 0);
-      const variant = staticVariantOf(tag);
+      const variant = variantOfFixture(
+        `<Button variant="${v}" size="sm">Go</Button>`,
+      );
       expect(variant && VALID_STATIC_VARIANTS.has(variant)).toBe(true);
     }
   });
 
   it('GUILT (round-5 M3): data-variant="outline" is a DIFFERENT prop and must not be read as a real variant', () => {
-    const tag = extractOpeningTag('<Button data-variant="outline">', 0);
-    expect(staticVariantOf(tag)).toBeNull();
+    expect(
+      variantOfFixture('<Button data-variant="outline">Go</Button>'),
+    ).toBeNull();
   });
 
   it('INNOCENCE (round-5 M3): a real variant="outline" still matches even with a data-variant on the same tag', () => {
-    const tag = extractOpeningTag(
-      '<Button data-variant="outline" variant="ghost">',
-      0,
+    expect(
+      variantOfFixture(
+        '<Button data-variant="outline" variant="ghost">Go</Button>',
+      ),
+    ).toBe("ghost");
+  });
+
+  it("GUILT (round-7 Codex R4): title='variant=\"outline\"' is a DIFFERENT attribute's STRING VALUE, not a real variant prop — a text scan over the tag's source cannot tell those apart, an AST walk over actual JsxAttribute nodes can", () => {
+    const sf = parseFixture(`<Button title='variant="outline"'>Go</Button>`);
+    const offenders = findButtonVariantOffenses(sf, "fixture");
+    expect(offenders.length).toBe(1);
+    expect(
+      variantOfFixture(`<Button title='variant="outline"'>Go</Button>`),
+    ).toBeNull();
+  });
+
+  it('INNOCENCE (round-7 Codex R4): a real variant="outline" still passes even sitting next to that title', () => {
+    const sf = parseFixture(
+      `<Button title='variant="outline"' variant="outline">Go</Button>`,
     );
-    expect(staticVariantOf(tag)).toBe("ghost");
+    expect(findButtonVariantOffenses(sf, "fixture")).toEqual([]);
   });
 });
 
@@ -599,24 +811,20 @@ const RAW_COLOR_LITERAL =
   /#[0-9a-fA-F]{3,4}\b|#[0-9a-fA-F]{6}\b|#[0-9a-fA-F]{8}\b|\b(?:rgba?|hsla?|hwb|lab|lch|oklab|oklch|color)\(/gi;
 const PALETTE_HUE_UTILITY =
   /\b(?:bg|text|border|from|via|to|ring|fill|stroke|outline|decoration|shadow|caret|divide|placeholder|accent)-(?:red|rose|orange|amber)-\d{2,3}\b/g;
-const TEMPLATE_BUILT_VAR_NAME = /var\(--\$\{/g;
 
-describe("GLOB: no red / no state-danger / no raw colour literal / no template-built var name (R3b, strengthened by round-4 Q3/Q4)", () => {
+describe("GLOB: no red / no state-danger / no raw colour literal / no template-built var name (R3b, strengthened by round-4 Q3/Q4, AST-based round-7)", () => {
   it("no non-test file under [id]/** (ts/tsx/css) carries --state-danger, --bz-neon-purple, a raw colour literal, a red/rose/orange/amber palette utility, or a template-built CSS var name", () => {
     const offenders: string[] = [];
     for (const file of ALL_SOURCE_FILES) {
-      const source = stripComments(readFileSync(file, "utf8"));
       const rel = file.replace(DETAIL_DIR, "");
-      if (source.includes("--state-danger"))
-        offenders.push(`${rel}: --state-danger`);
-      if (source.includes("--bz-neon-purple"))
-        offenders.push(`${rel}: --bz-neon-purple`);
-      for (const m of source.matchAll(PALETTE_HUE_UTILITY))
-        offenders.push(`${rel}: ${m[0]}`);
-      for (const m of source.matchAll(RAW_COLOR_LITERAL))
-        offenders.push(`${rel}: raw literal ${m[0]}`);
-      for (const m of source.matchAll(TEMPLATE_BUILT_VAR_NAME))
-        offenders.push(`${rel}: template-built var name (${m[0]}...)`);
+      const raw = readFileSync(file, "utf8");
+      if (file.endsWith(".css")) {
+        offenders.push(...colorOffensesForCssSource(raw, rel));
+      } else {
+        offenders.push(
+          ...colorOffensesForTsSource(parseSourceFile(file, raw), rel),
+        );
+      }
     }
     expect(offenders, offenders.join("\n")).toEqual([]);
   });
@@ -671,10 +879,18 @@ describe("GLOB: no red / no state-danger / no raw colour literal / no template-b
     expect("ring-red-600".match(PALETTE_HUE_UTILITY)).not.toBeNull();
   });
 
-  it("GUILT: a template-built CSS var name is caught even with no colour literal in sight", () => {
+  it("GUILT: a template-built CSS var name is caught even with no colour literal in sight (now a structural AST check on the TemplateExpression head, round-7)", () => {
+    const sf = parseFixture("const style = `var(--${color}-500)`;");
+    expect(templateBuiltVarNameHits(sf)).not.toEqual([]);
+  });
+
+  it("GUILT (round-7): the raw literal riding along in the SAME template's tail is still caught by the general text collector", () => {
+    const sf = parseFixture("const style = `var(--${color}-500, #3b82f6)`;");
     expect(
-      "var(--${color}-500, #3b82f6)".match(TEMPLATE_BUILT_VAR_NAME),
-    ).not.toBeNull();
+      colorOffensesForTsSource(sf, "fixture").some((o) =>
+        o.includes("#3b82f6"),
+      ),
+    ).toBe(true);
   });
 
   it("INNOCENCE: emerald/blue/purple/indigo palette utilities are untouched — only red/rose/orange/amber are banned", () => {
@@ -687,29 +903,38 @@ describe("GLOB: no red / no state-danger / no raw colour literal / no template-b
   it("INNOCENCE: a named token (no literal, no template) trips neither check", () => {
     const line = 'style={{ color: "var(--state-warning)" }}';
     expect(line.match(RAW_COLOR_LITERAL)).toBeNull();
-    expect(line.match(TEMPLATE_BUILT_VAR_NAME)).toBeNull();
+    const sf = parseFixture('const style = "var(--state-warning)";');
+    expect(templateBuiltVarNameHits(sf)).toEqual([]);
   });
 
-  it("GUILT: a // that does not start the line is left in by stripComments, so a bypass string still trips the scanner", () => {
-    const fixture = 'className="x // bg-[var(--bz-accent)]"';
-    expect(stripComments(fixture)).toContain("--bz-accent");
+  it("GUILT (round-7): a regex literal like /\"/ earlier in the same file must not desynchronise string tracking — the old char-scanner treated its quote as a string delimiter and stripped a LATER genuine string's comment-shaped content; an AST has no such state to desync (Codex R4, replaces the round-5 M2 stripComments-specific fixture)", () => {
+    const fixtureSrc =
+      'const q = /"/;\nfunction Comp() {\n  return <div className="x /* bg-red-500 */">hi</div>;\n}';
+    const sf = parseFixture(fixtureSrc);
+    const offenders = colorOffensesForTsSource(sf, "fixture");
+    expect(offenders.some((o) => o.includes("bg-red-500"))).toBe(true);
   });
 
-  it("INNOCENCE: a real // comment that DOES start the line is stripped", () => {
-    const fixture =
-      "  // this prose mentions --bz-accent but is not code\nconst x = 1;";
-    expect(stripComments(fixture)).not.toContain("--bz-accent");
+  it("GUILT: a bypass string containing a `//`-shaped or `/* */`-shaped substring is STILL a plain string literal to the parser, never a comment — its content is collected and scanned like any other string", () => {
+    const sf = parseFixture('<div className="x // bg-[var(--bz-accent)]" />');
+    const hits = collectColorText(sf);
+    expect(hits.some((h) => h.text.includes("--bz-accent"))).toBe(true);
   });
 
-  it("GUILT (round-5 M2): a block-comment-shaped substring INSIDE a string literal is not a real comment and must survive stripComments", () => {
-    const fixture = 'className="x /* bg-red-500 */"';
-    expect(stripComments(fixture)).toContain("bg-red-500");
+  it("INNOCENCE: a real // comment mentioning --bz-accent produces NO node at all — comments are not nodes, so there is nothing to collect or to fool", () => {
+    const sf = parseFixture(
+      "  // this prose mentions --bz-accent but is not code\nconst x = 1;",
+    );
+    const hits = collectColorText(sf);
+    expect(hits.some((h) => h.text.includes("--bz-accent"))).toBe(false);
   });
 
-  it("INNOCENCE (round-5 M2): a real block comment OUTSIDE any string is still stripped", () => {
-    const fixture =
-      "/* this prose mentions bg-red-500 but is not code */\nconst x = 1;";
-    expect(stripComments(fixture)).not.toContain("bg-red-500");
+  it("INNOCENCE: a real block comment mentioning bg-red-500 produces NO node at all either", () => {
+    const sf = parseFixture(
+      "/* this prose mentions bg-red-500 but is not code */\nconst x = 1;",
+    );
+    const hits = collectColorText(sf);
+    expect(hits.some((h) => h.text.includes("bg-red-500"))).toBe(false);
   });
 });
 
@@ -739,24 +964,27 @@ describe("GLOB: copper only by an explicit, verified allow-list (R3c)", () => {
   });
 
   it("--bz-accent/--bz-copper/--bz-copper-text/--accent occur ONLY at allow-listed lines", () => {
-    // `(?!-)` on the bare --accent branch is load-bearing: without it this
+    // `COPPER_TOKEN_PATTERN` (module scope, round-7) carries the same
+    // `(?!-)` on the bare --accent branch — load-bearing: without it this
     // over-matches the PREFIX of a distinct, legitimate token like
     // `--accent-whatsapp` (WhatsApp brand green) or `--accent-foreground`
     // (scar family #3 — guard on the entity, never a substring).
-    const tokenPattern =
-      /--bz-accent\b|--bz-copper(?:-text)?\b|--accent(?!-)\b/g;
     const offenders: string[] = [];
     for (const file of ALL_SOURCE_FILES) {
       const rel = file.replace(DETAIL_DIR, "").replace(/^[\\/]/, "");
       const allowed = ALLOW_LIST.filter((e) => e.file === rel);
-      const source = stripComments(readFileSync(file, "utf8"));
-      const lines = source.split("\n");
-      lines.forEach((line, i) => {
-        if (!tokenPattern.test(line)) return;
-        tokenPattern.lastIndex = 0;
-        if (allowed.some((e) => line.includes(e.snippet))) return;
-        offenders.push(`${rel}:${i + 1}: ${line.trim().slice(0, 120)}`);
-      });
+      const raw = readFileSync(file, "utf8");
+      if (file.endsWith(".css")) {
+        offenders.push(...copperOffensesForCssSource(raw, rel, allowed));
+      } else {
+        offenders.push(
+          ...copperOffensesForTsSource(
+            parseSourceFile(file, raw),
+            rel,
+            allowed,
+          ),
+        );
+      }
     }
     expect(offenders, offenders.join("\n")).toEqual([]);
   });
@@ -799,78 +1027,36 @@ describe("GLOB: copper only by an explicit, verified allow-list (R3c)", () => {
 // from "icon-plus-text" apart, and never wrong to have both.
 // ---------------------------------------------------------------------------
 
-const ICON_OPENERS = ["<Button", "<button"];
-const DESTRUCTIVE_ICONS = ["Trash2", "X"];
-
-function findMatchingCloseTag(
-  source: string,
-  fromIdx: number,
-  closeTagName: string,
-): number {
-  const idx = source.indexOf(closeTagName, fromIdx);
-  return idx === -1 ? Math.min(source.length, fromIdx + 600) : idx;
-}
-
-describe("GLOB: destructive/icon-only controls carry an aria-label (Q6)", () => {
+describe("GLOB: destructive/icon-only controls carry an aria-label (Q6, AST-based round-7)", () => {
   it("every <Button>/<button> under [id]/** whose body renders a Trash2 or X icon has aria-label= on its own opening tag", () => {
     const offenders: string[] = [];
     for (const file of SOURCE_FILES) {
-      const source = stripComments(readFileSync(file, "utf8"));
       const rel = file.replace(DETAIL_DIR, "");
-      for (const opener of ICON_OPENERS) {
-        const closeTagName = opener === "<Button" ? "</Button>" : "</button>";
-        let idx = source.indexOf(opener);
-        while (idx !== -1) {
-          const after = source[idx + opener.length];
-          if (after === undefined || /[\s/>]/.test(after)) {
-            const tag = extractOpeningTag(source, idx);
-            const bodyStart = idx + tag.length;
-            const bodyEnd = findMatchingCloseTag(
-              source,
-              bodyStart,
-              closeTagName,
-            );
-            const body = source.slice(bodyStart, bodyEnd);
-            const hasDestructiveIcon = DESTRUCTIVE_ICONS.some((icon) =>
-              new RegExp(`<${icon}[\\s/>]`).test(body),
-            );
-            if (hasDestructiveIcon && !/aria-label\s*=/.test(tag)) {
-              offenders.push(
-                `${rel}: ${tag.slice(0, 100).replace(/\s+/g, " ")}`,
-              );
-            }
-          }
-          idx = source.indexOf(opener, idx + opener.length);
-        }
-      }
+      const sf = parseSourceFile(file, readFileSync(file, "utf8"));
+      offenders.push(...findIconOnlyAriaLabelOffenses(sf, rel));
     }
     expect(offenders, offenders.join("\n")).toEqual([]);
   });
 
   it("GUILT: an icon-only Trash2 button with no aria-label is what the pattern is built to catch", () => {
-    const source =
-      '<Button variant="ghost" size="icon" onClick={onDelete}>\n  <Trash2 className="w-4 h-4" />\n</Button>';
-    const tag = extractOpeningTag(source, 0);
-    const body = source.slice(tag.length, source.indexOf("</Button>"));
-    expect(/<Trash2[\s/>]/.test(body)).toBe(true);
-    expect(/aria-label\s*=/.test(tag)).toBe(false);
+    const sf = parseFixture(
+      '<Button variant="ghost" size="icon" onClick={onDelete}>\n  <Trash2 className="w-4 h-4" />\n</Button>',
+    );
+    expect(findIconOnlyAriaLabelOffenses(sf, "fixture")).not.toEqual([]);
   });
 
   it("INNOCENCE: the same button WITH aria-label passes", () => {
-    const source =
-      '<Button variant="ghost" size="icon" onClick={onDelete} aria-label="Remove item">\n  <Trash2 className="w-4 h-4" />\n</Button>';
-    const tag = extractOpeningTag(source, 0);
-    expect(/aria-label\s*=/.test(tag)).toBe(true);
+    const sf = parseFixture(
+      '<Button variant="ghost" size="icon" onClick={onDelete} aria-label="Remove item">\n  <Trash2 className="w-4 h-4" />\n</Button>',
+    );
+    expect(findIconOnlyAriaLabelOffenses(sf, "fixture")).toEqual([]);
   });
 
   it("INNOCENCE: a button with neither icon carries no obligation", () => {
-    const source =
-      '<Button variant="outline" onClick={onSave}>\n  Save\n</Button>';
-    const tag = extractOpeningTag(source, 0);
-    const body = source.slice(tag.length, source.indexOf("</Button>"));
-    expect(
-      DESTRUCTIVE_ICONS.some((i) => new RegExp(`<${i}[\\s/>]`).test(body)),
-    ).toBe(false);
+    const sf = parseFixture(
+      '<Button variant="outline" onClick={onSave}>\n  Save\n</Button>',
+    );
+    expect(findIconOnlyAriaLabelOffenses(sf, "fixture")).toEqual([]);
   });
 });
 
