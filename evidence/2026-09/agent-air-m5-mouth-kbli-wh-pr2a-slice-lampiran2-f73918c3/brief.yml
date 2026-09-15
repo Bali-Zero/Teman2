@@ -1,30 +1,30 @@
 task: >-
-  SAETTA-20260915 W-H, PR-2a: extend the Perpres slice-disclosure mechanism
-  (previously Lampiran-III-only) to Lampiran II. Adds a 43110 entry: the
-  demolition code's simple/intermediate-technology segment is dialokasikan to
-  Koperasi/UMKM under Perpres 10/2021 as amended by 49/2021, Lampiran II entry
-  37 — Pasal 5(5) scopes the reservation to that named segment only, the rest
-  of the code is not reserved. No canonical dataset write.
+  SAETTA-20260915 W-H PR-2a: extend the Perpres slice-disclosure mechanism
+  (perpres_slice_disclosure_relation.py) from Lampiran-III-only to also cover
+  a Lampiran II partial reservation for 43110 (entry #37, dialokasikan to
+  Koperasi/UMKM, Pasal 5(5) scopes it to that segment only). No canonical
+  dataset write — pure disclosure/citation layer.
 lane: mouth/kbli-wh-pr2a-slice-lampiran2
 machine: M5
 date: 2026-09-15
 
 gear: 1
 gear_reason: >-
-  53 net lines in scripts/kbli_filiera/perpres_slice_disclosure_relation.py
-  (a manual data dict + one function + one wiring line), no canonical write,
-  no hot-zone path.
+  Dux's exact floor recipe measures added=102 deleted=15, churn=117 -- floor
+  prints 1. 4 files, no canonical/production data path touched.
 
 acceptance:
   A1: >-
-    The mechanism emits exactly one new disclosure for 43110 citing Lampiran
-    II entry 37 and Pasal 5(5), and the full filiera suite plus the mouth
-    consumer test stay green.
+    Full filiera suite is green and the 43110 disclosure entry matches the
+    dossier verbatim.
     probe: >-
       `python3 -m pytest scripts/kbli_filiera/tests/ -q` -- 1384 passed, 1
       skipped, 0 failed. `bash scripts/sync_kbli_dataset.sh --check` -- clean.
-      `npx vitest run src/lib/kbli-perpres-slice.test.ts` (apps/mouth) -- 42
-      passed. `npx tsc --noEmit -p .` -- clean.
+  A2: >-
+    The mouth-side consumer renders the new disclosure and typechecks clean.
+    probe: >-
+      `npx vitest run src/lib/kbli-perpres-slice.test.ts` -- 42 passed.
+      `npx tsc --noEmit -p .` -- clean, exit 0.
 
 pii_scan: clean
-pii_scan_note: KBLI codes and Indonesian regulation citations only.
+pii_scan_note: KBLI codes and Perpres citations only, no client data.
