@@ -1,6 +1,7 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { formatIDR } from "@balizero/core/utils";
 import { CheckoutFlow } from "./CheckoutFlow";
 import { writeCheckoutHandoff } from "../../checkoutHandoff";
 
@@ -68,11 +69,58 @@ describe("CheckoutFlow", () => {
     window.location = { href: "" };
   });
 
-  it("blocks checkout and points back to upload when the handoff is missing", () => {
-    render(<CheckoutFlow resultId="result-1" />);
+  it("with a missing handoff, renders full_name/passport_number as editable inputs instead of bouncing to upload", () => {
+    render(<CheckoutFlow resultId="result-1" paymentsLive={true} />);
     expect(
-      screen.getByRole("link", { name: /go back to upload/i }),
-    ).toHaveAttribute("href", "/visa/voa/upload/result-1");
+      screen.queryByRole("link", { name: /go back to upload/i }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByLabelText(/full name \(as in passport\)/i),
+    ).toBeInTheDocument();
+    expect(screen.getByLabelText(/^passport number$/i)).toBeInTheDocument();
+  });
+
+  it("with a missing handoff, submits createOrder with the typed full_name/passport_number", async () => {
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse(201, {
+        order_id: "order-1",
+        order_state: "awaiting_payment",
+        price_idr: 850000,
+        checkout_url: "https://pay.example.com/session/abc",
+      }),
+    );
+
+    const user = userEvent.setup();
+    render(<CheckoutFlow resultId="result-1" paymentsLive={true} />);
+    await user.type(
+      screen.getByLabelText(/full name \(as in passport\)/i),
+      "Jane Doe",
+    );
+    await user.type(screen.getByLabelText(/^passport number$/i), "X1234567");
+    await fillAndSubmit(user);
+
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+    const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    const body = JSON.parse(init.body as string);
+    expect(body.applicant).toEqual({
+      full_name: "Jane Doe",
+      email: "customer@example.com",
+      phone: "+6281234567890",
+      passport_number: "X1234567",
+    });
+  });
+
+  it("with the handoff present, keeps full_name/passport_number read-only", async () => {
+    writeCheckoutHandoff("result-1", {
+      full_name: "Jane Doe",
+      passport_number: "X1234567",
+    });
+    render(<CheckoutFlow resultId="result-1" paymentsLive={true} />);
+
+    await screen.findByText("Jane Doe");
+    expect(
+      screen.queryByLabelText(/full name \(as in passport\)/i),
+    ).not.toBeInTheDocument();
   });
 
   it("never renders a price breakdown — only the single all-inclusive footer line", async () => {
@@ -80,7 +128,7 @@ describe("CheckoutFlow", () => {
       full_name: "Jane Doe",
       passport_number: "X1234567",
     });
-    render(<CheckoutFlow resultId="result-1" />);
+    render(<CheckoutFlow resultId="result-1" paymentsLive={true} />);
 
     await screen.findByText(/Jane Doe/i);
 
@@ -106,7 +154,7 @@ describe("CheckoutFlow", () => {
     );
 
     const user = userEvent.setup();
-    render(<CheckoutFlow resultId="result-1" />);
+    render(<CheckoutFlow resultId="result-1" paymentsLive={true} />);
     await screen.findByText(/Jane Doe/i);
     await fillAndSubmit(user);
 
@@ -158,7 +206,7 @@ describe("CheckoutFlow", () => {
     );
 
     const user = userEvent.setup();
-    render(<CheckoutFlow resultId="result-1" />);
+    render(<CheckoutFlow resultId="result-1" paymentsLive={true} />);
     await screen.findByText(/Jane Doe/i);
     await fillAndSubmit(user);
 
@@ -189,7 +237,7 @@ describe("CheckoutFlow", () => {
     );
 
     const user = userEvent.setup();
-    render(<CheckoutFlow resultId="result-1" />);
+    render(<CheckoutFlow resultId="result-1" paymentsLive={true} />);
     await screen.findByText(/Jane Doe/i);
     await fillAndSubmit(user);
 
@@ -219,7 +267,7 @@ describe("CheckoutFlow", () => {
     );
 
     const user = userEvent.setup();
-    render(<CheckoutFlow resultId="result-1" />);
+    render(<CheckoutFlow resultId="result-1" paymentsLive={true} />);
     await screen.findByText(/Jane Doe/i);
     await fillAndSubmit(user);
 
@@ -243,7 +291,7 @@ describe("CheckoutFlow", () => {
     );
 
     const user = userEvent.setup();
-    render(<CheckoutFlow resultId="result-1" />);
+    render(<CheckoutFlow resultId="result-1" paymentsLive={true} />);
     await screen.findByText(/Jane Doe/i);
     await fillAndSubmit(user);
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
@@ -268,13 +316,89 @@ describe("CheckoutFlow", () => {
     );
 
     const user = userEvent.setup();
-    render(<CheckoutFlow resultId="result-1" />);
+    render(<CheckoutFlow resultId="result-1" paymentsLive={true} />);
     await screen.findByText(/Jane Doe/i);
     await fillAndSubmit(user);
 
     await screen.findByRole("alert");
     expect(screen.getByRole("alert").textContent).toMatch(
       /payment provider is temporarily unavailable/i,
+    );
+  });
+});
+
+function whatsappTextParam(href: string): string {
+  return new URL(href).searchParams.get("text") ?? "";
+}
+
+describe("CheckoutFlow — paymentsLive=false (payment activating panel)", () => {
+  beforeEach(() => {
+    fetchMock.mockReset();
+    window.sessionStorage.clear();
+  });
+
+  it("renders no order form and never calls createOrder", () => {
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse(200, { verdict: "ACCEPT", price_idr: 850000 }),
+    );
+    render(<CheckoutFlow resultId="result-12345678" paymentsLive={false} />);
+
+    expect(
+      screen.queryByRole("button", { name: /continue to payment/i }),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(/email/i)).not.toBeInTheDocument();
+    expect(
+      fetchMock.mock.calls.every(
+        ([url]) => !String(url).includes("/visa/voa/orders"),
+      ),
+    ).toBe(true);
+  });
+
+  it("WhatsApp CTA carries a truncated ref and no PII, even with a handoff on file", async () => {
+    writeCheckoutHandoff("result-12345678", {
+      full_name: "Jane Doe",
+      passport_number: "X1234567",
+    });
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse(200, { verdict: "ACCEPT", price_idr: 850000 }),
+    );
+    render(<CheckoutFlow resultId="result-12345678" paymentsLive={false} />);
+
+    const link = await screen.findByRole("link", {
+      name: /continue on whatsapp/i,
+    });
+    expect(link).toHaveAttribute("target", "_blank");
+    expect(link).toHaveAttribute("rel", "noopener noreferrer");
+
+    const text = whatsappTextParam(link.getAttribute("href") ?? "");
+    expect(text).toContain("ref result-1"); // first 8 chars of "result-12345678"
+    expect(text).not.toMatch(/Jane|Doe|X1234567|customer@example\.com|\+62/i);
+  });
+
+  it("shows the held all-inclusive price when the eligibility check comes back ACCEPT", async () => {
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse(200, { verdict: "ACCEPT", price_idr: 850000 }),
+    );
+    render(<CheckoutFlow resultId="result-12345678" paymentsLive={false} />);
+
+    // formatIDR's id-ID currency formatting inserts a NON-BREAKING space (U+00A0)
+    // between "Rp" and the amount — normalize both sides before comparing so this
+    // doesn't depend on which whitespace character the ICU data happens to use.
+    const priceText = formatIDR(850000).replace(/\s/g, " ");
+    await waitFor(() => {
+      const bodyText = (document.body.textContent ?? "").replace(/\s/g, " ");
+      expect(bodyText).toContain(priceText);
+    });
+  });
+
+  it("omits the price line — never invents a number — when the eligibility fetch fails", async () => {
+    fetchMock.mockResolvedValueOnce(jsonResponse(404, {}));
+    render(<CheckoutFlow resultId="result-12345678" paymentsLive={false} />);
+
+    await screen.findByRole("status");
+    expect(screen.queryByText(/all-inclusive\./i)).not.toBeInTheDocument();
+    expect(screen.getByRole("status").textContent).toMatch(
+      /opens here very soon/i,
     );
   });
 });
