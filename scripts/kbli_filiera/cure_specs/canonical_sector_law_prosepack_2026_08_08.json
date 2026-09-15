@@ -34,12 +34,7 @@
     "90200": {
       "old_sha256": "16bf941d47f6b200e8582667efb6347b02d1bf4ad5ba582bcb06a1f5cc13e7a1",
       "expect": {
-        "bps_2020_ancestors.codes": [
-          "90011",
-          "90021",
-          "90022",
-          "90024"
-        ]
+        "bps_2020_ancestors.codes": ["90011", "90021", "90022", "90024"]
       },
       "patch": {
         "intel_2026.zantaraOpener": "Launching a performing arts company in Bali? 90200 merges four KBLI 2020 codes (90011, 90021, 90022, 90024) into this 2025 code — no PP28 data yet. Here's what we know for dance, theater, and music performances."
