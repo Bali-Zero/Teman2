@@ -90,9 +90,15 @@ describe("PMA editorial disclosure boundary", () => {
     const located = codes.filter(isPmaVerdictVerified);
     const gaps = codes.filter((record) => !isPmaVerdictVerified(record));
 
+    // SAETTA-20260915 W-H PR-3a moved 3 codes (55201/55203/79903) from
+    // declared_gap to located (Lampiran II allocation): 1505 -> 1502, 54 -> 57.
+    // The intel-bearing subset does NOT move with it: none of the 3 are
+    // registered in pma-editorial-certifications.json's `canonicalIntel`
+    // section, so `intel_2026` on the public KBLICode stays `undefined` for
+    // all 3 regardless of this PR — 49 is unchanged.
     expect(codes).toHaveLength(1559);
-    expect(located).toHaveLength(54);
-    expect(gaps).toHaveLength(1505);
+    expect(located).toHaveLength(57);
+    expect(gaps).toHaveLength(1502);
     expect(located.filter((record) => record.intel_2026)).toHaveLength(49);
 
     for (const record of gaps) {
