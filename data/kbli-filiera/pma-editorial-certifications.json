@@ -154,10 +154,6 @@
     }
   },
   "mouthGold": {
-    "47111": {
-      "pmaFingerprint": "78373083449e5d0c40bdece82704a9aedb6fdd88e12a9cb201643cff0f237085",
-      "contentSha256": "7c7995eb3de63815ccbb926b92e863662576d13333a6eac9b6f968a68a29c89f"
-    },
     "47221": {
       "pmaFingerprint": "d945185f9c671e54ae9489fd4a093d8ec2412e16b4fd2ce026ed1c9882fbf706",
       "contentSha256": "76bfd76105eb102e7fb4a1aec2228caaa496ff408226abcd9d07147d2991ac86"
@@ -191,10 +187,5 @@
       "contentSha256": "00730759b4ac0aae5667a5beb906961ad8c3526db09f1dcd7d395c24f063f6ca"
     }
   },
-  "standaloneGold": {
-    "47111": {
-      "pmaFingerprint": "78373083449e5d0c40bdece82704a9aedb6fdd88e12a9cb201643cff0f237085",
-      "contentSha256": "93f5e7455bf7d03480a60a37a73ac3d5d9b7cab7894d8f2db2578d0866d1213e"
-    }
-  }
+  "standaloneGold": {}
 }
