@@ -28,6 +28,21 @@ lanes:
 
 council_run: journal.jsonl
 
+seat_fallback_reason: >-
+  agy-gemini-3.1-pro (reserve bench) stands in for the titolare roster
+  (Zero 2026-09-02: codex-gpt-5.6-sol / kimi-code/k3 / tp1-qwen3.8-max).
+  kimi-code/k3 and tp1-qwen3.8-max are QUOTA_DEAD per arsenal_probe
+  2026-09-15T13:17:33Z on M5 (Dux's own fleet-watch reading, matches this
+  session's SessionStart probe: "tp1-qwen3.8-max quota_dead ... kimi
+  quota_dead"). codex-gpt-5.6-sol is separately auth-dead on M5 this
+  session — re-checked directly via `codex exec "reply with exactly:
+  PONG"`, same "Your access token could not be refreshed because your
+  refresh token was already used" error as the first v2 attempt, no change
+  in auth state. Dux is running codex-gpt-5.6-sol on Mini (where it
+  answers) against the pushed branch separately — that seat's own
+  journal.jsonl line is not in THIS local pack because this pack only
+  covers work done in this worktree, unpushed.
+
 dissent:
   - seat: agy-gemini-3.1-pro (independent adversarial review, council-2)
     objection: >-
