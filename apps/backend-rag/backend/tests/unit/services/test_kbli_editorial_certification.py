@@ -52,12 +52,8 @@ def test_canonical_certification_partition_is_exact(
 
     assert certified == set(registry["canonicalIntel"])
     assert len(certified) == 49
-    # W-H PR-3b adds 47241 47242 47244 47245 47246 47249 47712 47722: located
-    # under Perpres 49/2021 Lampiran II entry 46, intentionally uncertified
-    # (3 of the 8 still carry wrong gold text, deferred to PR-8; the other 5
-    # are simply not yet reviewed). This set is not a TODO list to shrink by
-    # hand-writing a registry entry — it shrinks only when a real editorial
-    # review certifies the code.
+    # W-H PR-3b: 8 specialised-retail codes located under the Lampiran II
+    # allocation, prose not certified.
     assert {
         code
         for code, record in records.items()
