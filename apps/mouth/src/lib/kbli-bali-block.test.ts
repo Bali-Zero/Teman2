@@ -534,16 +534,19 @@ describe("the PMA verdict banner — the SECOND render site", () => {
     const excluded = blocked.filter(nationallyClosed);
     // 16221/10214/95220/95299 were named here through 2026-09-15 (W-H
     // PR-2b/PR-3a): each left `notice` for `excluded` because its national
-    // cap went to 0%, while it stayed `blocked`. SAETTA-20260915 W-J B1 v2
-    // redo's applied-closure overlay (`cure_l4bali_applied_closure.py`, run
-    // onto post-#6596 main) then un-blocks all four OUTRIGHT: none of the
-    // four is TERTUTUP, none is among Bali's 18 named applied-closure fields,
-    // so none has a blocked reading left to attribute at all — they leave
-    // `blocked` itself (all four now read `l4_bali.status:
-    // ATTENZIONE_FASCIA_BALI`, `blocked: false`), not merely `excluded`. A
-    // record cannot be named a member of `excluded` once it has left
-    // `blocked`, so the assertions on them are retired here, not weakened —
-    // the population they used to illustrate no longer exists.
+    // cap went to 0%, while it stayed `blocked`. The SAETTA-20260915 W-J B1
+    // v2 redo's FIRST pass at the applied-closure overlay then un-blocked all
+    // four OUTRIGHT — a bug, not a finding: the tier→ATTENZIONE conversion
+    // was overriding a genuine national 0% foreign-ownership cap, a non-tier
+    // reason to stay blocked. Cured the same day (national-cap guard,
+    // `is_nationally_capped` in `cure_l4bali_applied_closure.py`): all four
+    // are back in `blocked` — TERTUTUP now, not the pre-migration status —
+    // and, because none of them is `pma_cap_special`, they are back in
+    // `excluded` too. Named again here rather than left to the arithmetic
+    // alone, because the arithmetic on its own cannot tell "these four
+    // rejoined `excluded`" apart from "some other four did" — the same
+    // reason every other member of this population is named individually
+    // below.
     //
     // …all SEVEN live CHIUSO_PMA_NO_BESAR codes survive this migration
     // untouched — that status is a Perpres 10/2021+49/2021 Annex II
@@ -575,15 +578,45 @@ describe("the PMA verdict banner — the SECOND render site", () => {
     // proof the migration adds members to this population, not only removes
     // them.
     expect(excluded.map((r) => r.kode_kbli_2025)).toContain("55105");
+    // …and 10214/16221/95220/95299 rejoin `excluded` the same day, cured by
+    // the national-cap guard (see the comment above `excluded` itself): each
+    // carries a genuine 0% national cap (16221 TERBATAS/0; the other three
+    // TERTUTUP), none is `pma_cap_special`, so `nationallyClosed` catches all
+    // four again. GUILT would be losing this population silently a second
+    // time; INNOCENCE is that a genuinely tier-only 49% code (e.g. any other
+    // ATTENZIONE_FASCIA_BALI member) never appears here.
+    for (const code of ["10214", "16221", "95220", "95299"]) {
+      expect(excluded.map((r) => r.kode_kbli_2025)).toContain(code);
+    }
+    const tierOnlyAttenzione = RECORDS.find(
+      (r) => r.l4_bali?.status === "ATTENZIONE_FASCIA_BALI",
+    );
+    expect(tierOnlyAttenzione).toBeDefined();
+    expect(excluded.map((r) => r.kode_kbli_2025)).not.toContain(
+      tierOnlyAttenzione?.kode_kbli_2025,
+    );
     // 448 → 449 on 2026-09-11 (September L2 re-ingestion, net +1 blocked).
     // 449 -> 448 on 2026-09-15 (SAETTA-20260915 W-H PR-2b): 43110's blocked
     // flip, same event as the notice-population pin above. Merged with
     // SAETTA-20260915 W-H PR-3a (same day): 55201/55203/79903 move from
     // `notice` to `excluded` (cap now 0%). Combined: 449 - 1 - 3 = 445.
-    // 445 -> 61 on 2026-09-15 (SAETTA-20260915 W-J B1 v2 redo): same event as
-    // the notice-population pin above — blocked 518 -> 131, excluded (by
-    // status) 62 TERTUTUP + 7 CHIUSO_PMA_NO_BESAR + 1 CHIUSO_BALI (55105) =
-    // 70, so blocked - excluded = 131 - 70 = 61.
+    // 445 -> 61 on 2026-09-15 (SAETTA-20260915 W-J B1 v2 redo, first pass):
+    // blocked 518 -> 131, excluded (by status) 62 TERTUTUP + 7
+    // CHIUSO_PMA_NO_BESAR + 1 CHIUSO_BALI (55105) = 70, blocked - excluded =
+    // 131 - 70 = 61.
+    // 61 stays 61 on 2026-09-15 (cure round, national-cap guard): blocked
+    // 131 -> 135 (+4) and excluded 70 -> 74 (+4, the same four codes) move
+    // together, so the DIFFERENCE is unchanged — the signature of a
+    // population re-entering both sets at once, same as the 2026-08-06 note
+    // above about `notice`/`msme`. `excluded` is cap-based (this file's own
+    // `nationallyClosed`, which reads the record's NATIONAL pma_status/
+    // pma_max_asing, not l4_bali.status), so its new 74 splits as 66
+    // l4_bali.status TERTUTUP with a genuine 0% national cap + 7
+    // CHIUSO_PMA_NO_BESAR + 1 CHIUSO_BALI (55105) — the other 6
+    // l4_bali.status TERTUTUP records are the TERBUKA/100% anomaly
+    // (kbli-prose-pins.test.ts's tertutupZero/tertutupNonZero split): their
+    // OWN national fields read wide open, so this cap-based predicate does
+    // not catch them and they stay in `notice`, not `excluded`.
     expect(blocked.length - excluded.length).toBe(61);
     // and it left by CAP, not by status — the status is TERBATAS, which the
     // banner's guard does not look at
@@ -874,12 +907,19 @@ describe("baliBlockedHint — the index card must not blame the moratorium for e
     // is untouched by this migration, so the moratorium-attributed count is
     // now exactly its own population: 12. `blocked` collapses 518 -> 131, so
     // other-cause is 131 - 12 = 119.
-    expect(hint).toContain("131 of 1559");
-    // Both halves of the split, each with the words around it: a bare "119"
+    //
+    // 131 → 135 and 119 → 123 on 2026-09-15 (cure round, national-cap guard):
+    // the compiler's tier→ATTENZIONE conversion was un-blocking 4 codes
+    // (10214/16221/95220/95299) that carry a genuine national 0% foreign-
+    // ownership cap — a non-tier reason to stay blocked. All 4 now read
+    // TERTUTUP, not CHIUSO_MORATORIA_BALI, so the moratorium-attributed
+    // count (12) is unchanged; other-cause is 135 - 12 = 123.
+    expect(hint).toContain("135 of 1559");
+    // Both halves of the split, each with the words around it: a bare "123"
     // would also be satisfied by the digits of some unrelated figure the
     // sentence might gain later, which is how a pin stops pinning.
     expect(hint).toContain("12 of them");
-    expect(hint).toContain("the other 119");
+    expect(hint).toContain("the other 123");
   });
 });
 

@@ -413,19 +413,45 @@ describe("real dataset: the gate binds, and v3 actually differentiates", () => {
     // 2026-09-15) rather than a bare early return, so a change that makes
     // this population non-zero WITHOUT anyone reading this comment still
     // fails loudly here, instead of the block silently going from "empty on
-    // purpose" to "empty by accident, no one's looking."
-    if (blockedOpen.length === 0) {
-      expect(blockedOpen).toHaveLength(0);
-      return;
-    }
-    const stated = blockedOpen.filter((c) =>
+    // purpose" to "empty by accident, no one's looking." Re-measured
+    // 2026-09-15 (W-J B1 cure round) against the national-cap-guard fix: the
+    // 4 codes that fix un-blocked-then-re-blocked (10214/16221/95220/95299)
+    // are TERTUTUP/TERBATAS-0%, never `pma.status === "open"`, so they were
+    // never in this intersection and the population is still empty.
+    expect(blockedOpen).toHaveLength(0);
+
+    // MINOR (cure round 2026-09-15): the branch above used to `return` on an
+    // empty population, which made the loops below dead code on every real
+    // run — `stated` and the per-code assertions never executed, so this
+    // "gate binds on the real dataset" test could pass forever without ever
+    // calling kbliMetaTitleSuffix/isBaliL4BlockVerifiedForBareClaim on
+    // anything. The population assertion above is a fact about TODAY's
+    // catalogue; it is not a proof the gate itself still works. So run the
+    // exact same guilt/innocence check unconditionally: on the real
+    // population when it is non-empty, or — since it is empty today — on
+    // synthetic codes built from this file's own makeCode/blockedBali
+    // fixtures (the population-shape contract from GUILT/INNOCENCE above),
+    // so the mechanism fires at least once every single run.
+    const proofPopulation =
+      blockedOpen.length > 0
+        ? blockedOpen
+        : [
+            makeCode({ baliL4: blockedBali("HIGH", false) }), // verified: must state
+            makeCode({ baliL4: blockedBali("MEDIUM", false) }), // low confidence: must not
+            makeCode({ baliL4: blockedBali("HIGH", true) }), // needs review: must not
+          ];
+    const stated = proofPopulation.filter((c) =>
       kbliMetaTitleSuffix(c).includes("Bali"),
     );
+    // The gate must actually FIRE at least once — a proof population that
+    // never produces a "Bali" suffix would let the loops below pass emptily
+    // too, the same tautology one level down.
+    expect(stated.length).toBeGreaterThan(0);
     for (const c of stated) {
       expect(c.baliL4?.confidence).toBe("HIGH");
       expect(c.baliL4?.needsReview).not.toBe(true);
     }
-    for (const c of blockedOpen.filter(
+    for (const c of proofPopulation.filter(
       (code) => !isBaliL4BlockVerifiedForBareClaim(code),
     )) {
       expect(kbliMetaTitleSuffix(c)).not.toContain("Bali");
