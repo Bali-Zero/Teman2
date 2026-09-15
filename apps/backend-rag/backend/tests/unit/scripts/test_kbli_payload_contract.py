@@ -52,14 +52,17 @@ def test_reindex_kbli_payload_is_flat() -> None:
 
 
 def test_gold_kbli_payload_is_flat() -> None:
-    code = "47111"
+    # 65121 (not 47111 — de-certified from standaloneGold by W-H PR-3c, its
+    # own gold prose named 47191/47192 as "fully open to 100% PMA" while
+    # those codes are declared_gap) is the certified standalone-gold example.
+    code = "65121"
     gold = parse_gold_content_ts(GOLD_CONTENT_FILE)[code]
     base = load_kbli_base_data(KBLI_DATA_FILE)[code]
     payload = build_gold_payload(
         code,
         gold,
         base,
-        embedding_text="KBLI 47111 Perdagangan Eceran",
+        embedding_text="KBLI 65121 Asuransi Umum Konvensional",
     )
 
     assert "metadata" not in payload

@@ -34,7 +34,11 @@ def test_exact_parser_and_registry_publish_only_the_reviewed_partition() -> None
     }
 
     assert len(gold) == 322
-    assert certified == {"47111", "65121"}
+    # 47111 was de-certified from standaloneGold by W-H PR-3c: its gold prose
+    # named 47191/47192 as "fully open to 100% PMA" while those codes' own
+    # records are declared_gap, and no compiler exists for non-whatYouNeed
+    # gold fields, so the cure is withdrawal — the page withholds it instead.
+    assert certified == {"65121"}
 
 
 def test_certified_point_uses_neutral_opener_and_exact_public_pma() -> None:
@@ -42,19 +46,15 @@ def test_certified_point_uses_neutral_opener_and_exact_public_pma() -> None:
     base = load_kbli_base_data(KBLI_DATA_FILE)
     registry = load_editorial_registry()
 
-    zero = build_point("47111", gold["47111"], base["47111"], "test", registry)
     partial = build_point("65121", gold["65121"], base["65121"], "test", registry)
 
-    assert zero is not None
     assert partial is not None
-    assert zero["payload"]["pma_max_asing"] == 0
     assert partial["payload"]["pma_max_asing"] == 80
-    for code, point in (("47111", zero), ("65121", partial)):
-        assert point["payload"]["editorial_disclosed"] is True
-        assert (
-            f"Ask me about KBLI {code}: its official scope, licensing, risk, "
-            "or foreign-ownership verification."
-        ) in point["_text_to_embed"]
+    assert partial["payload"]["editorial_disclosed"] is True
+    assert (
+        "Ask me about KBLI 65121: its official scope, licensing, risk, "
+        "or foreign-ownership verification."
+    ) in partial["_text_to_embed"]
 
 
 def test_content_or_pma_mutation_prevents_point_construction() -> None:
@@ -62,13 +62,13 @@ def test_content_or_pma_mutation_prevents_point_construction() -> None:
     base = load_kbli_base_data(KBLI_DATA_FILE)
     registry = load_editorial_registry()
 
-    changed_content = copy.deepcopy(gold["47111"])
+    changed_content = copy.deepcopy(gold["65121"])
     changed_content["_certification_content"]["whatItMeans"] += "!"
-    assert build_point("47111", changed_content, base["47111"], "test", registry) is None
+    assert build_point("65121", changed_content, base["65121"], "test", registry) is None
 
-    changed_pma = copy.deepcopy(base["47111"])
+    changed_pma = copy.deepcopy(base["65121"])
     changed_pma["pma_cap_verified"] = False
-    assert build_point("47111", gold["47111"], changed_pma, "test", registry) is None
+    assert build_point("65121", gold["65121"], changed_pma, "test", registry) is None
 
 
 def test_located_but_uncertified_gold_is_not_a_point() -> None:
@@ -78,6 +78,19 @@ def test_located_but_uncertified_gold_is_not_a_point() -> None:
 
     assert base["47222"]["pma_verification_status"] == "located"
     assert build_point("47222", gold["47222"], base["47222"], "test", registry) is None
+
+
+def test_decertified_gold_is_not_a_point() -> None:
+    """47111's gold entry is still parsed (raw source untouched) but no
+    longer in the registry's standaloneGold section (W-H PR-3c withdrawal:
+    its prose named 47191/47192 as open/100% while both are declared_gap) —
+    `build_point` must therefore refuse it exactly like an unreviewed code."""
+    gold = parse_gold_content_ts(GOLD_CONTENT_FILE)
+    base = load_kbli_base_data(KBLI_DATA_FILE)
+    registry = load_editorial_registry()
+
+    assert "47111" not in registry["standaloneGold"]
+    assert build_point("47111", gold["47111"], base["47111"], "test", registry) is None
 
 
 @pytest.mark.asyncio
@@ -151,6 +164,11 @@ async def test_full_retraction_targets_every_owned_legacy_gold_id(monkeypatch) -
 async def test_missing_embedding_credentials_happens_after_selected_retraction(
     monkeypatch,
 ) -> None:
+    # 65121 (not 47111 — de-certified from standaloneGold by W-H PR-3c): this
+    # test needs a code that still reaches point-construction so retraction
+    # happens BEFORE the missing-credentials exit; an uncertified code takes
+    # the delete-only early return instead (see the test right below this
+    # one) and never reaches the OPENAI_API_KEY check at all.
     events: list[tuple[str, object]] = []
 
     async def fake_delete(point_ids, qdrant_url, api_key, *, sweep_owned=False):
@@ -160,7 +178,7 @@ async def test_missing_embedding_credentials_happens_after_selected_retraction(
     monkeypatch.setattr(
         sys,
         "argv",
-        ["index_kbli_gold_content.py", "--only", "47111", "--qdrant-url", "https://q.test"],
+        ["index_kbli_gold_content.py", "--only", "65121", "--qdrant-url", "https://q.test"],
     )
     monkeypatch.delenv("OPENAI_API_KEY", raising=False)
     monkeypatch.delenv("QDRANT_API_KEY", raising=False)
@@ -172,7 +190,7 @@ async def test_missing_embedding_credentials_happens_after_selected_retraction(
     assert events == [
         (
             "delete",
-            ([deterministic_uuid("47111")], "https://q.test", "", False),
+            ([deterministic_uuid("65121")], "https://q.test", "", False),
         )
     ]
 
