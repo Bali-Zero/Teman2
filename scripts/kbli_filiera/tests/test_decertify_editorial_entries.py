@@ -1,24 +1,50 @@
 """Unit tests for scripts/kbli_filiera/decertify_editorial_entries.py — guilt
 (drifted hash refused, wrong section refused), innocence (removal exact,
-every other entry byte-identical) and idempotency, all on temp copies of the
-real registry — never the tracked file itself."""
+every other entry byte-identical) and idempotency, all on a SYNTHETIC,
+self-contained registry fixture written fresh per test — never the tracked
+data/kbli-filiera/pma-editorial-certifications.json file, whose real
+`canonicalIntel["47221"]` this same PR's other commit removes. A fixture
+built from the live file would break the moment that removal lands (as
+happened here first: the earlier version of this test read the real
+registry for its "known-good" premise hash and KeyError'd once 47221 was
+actually de-certified by the sibling commit)."""
 from __future__ import annotations
 
 import json
 import os
-import shutil
 import sys
 from pathlib import Path
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
 from kbli_filiera import decertify_editorial_entries as decert  # noqa: E402
 
-REAL_REGISTRY = Path(__file__).resolve().parents[3] / decert.REGISTRY
+_GOOD_SHA = "b" * 64
 
 
 def _registry_copy(tmp_path: Path) -> Path:
     dest = tmp_path / "registry.json"
-    shutil.copy(REAL_REGISTRY, dest)
+    dest.write_text(
+        json.dumps(
+            {
+                "schemaVersion": 1,
+                "hashAlgorithm": "sha256-stable-json-v1",
+                "reviewedAt": "2026-09-15",
+                "sourceDatasetSha256": "a" * 64,
+                "canonicalIntel": {
+                    "47221": {"pmaFingerprint": "c" * 64, "contentSha256": _GOOD_SHA},
+                    "99999": {"pmaFingerprint": "d" * 64, "contentSha256": "e" * 64},
+                },
+                "mouthGold": {
+                    "47221": {"pmaFingerprint": "c" * 64, "contentSha256": "f" * 64},
+                },
+                "standaloneGold": {},
+            },
+            indent=2,
+            ensure_ascii=False,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
     return dest
 
 
@@ -56,17 +82,14 @@ def test_wrong_section_is_refused(tmp_path: Path) -> None:
     assert registry.read_bytes() == before
 
 
-def _real_47221_sha() -> str:
-    return json.loads(REAL_REGISTRY.read_text())["canonicalIntel"]["47221"]["contentSha256"]
-
-
 def test_removal_is_exact_and_others_byte_identical(tmp_path: Path) -> None:
     registry = _registry_copy(tmp_path)
     before = json.loads(registry.read_text())
-    spec = _spec(tmp_path, [_entry(_real_47221_sha())])
+    spec = _spec(tmp_path, [_entry(_GOOD_SHA)])
     assert decert.run(spec, apply=True, registry_path=registry) == 0
     after = json.loads(registry.read_text())
     assert "47221" not in after["canonicalIntel"]
+    assert after["canonicalIntel"]["99999"] == before["canonicalIntel"]["99999"]
     del before["canonicalIntel"]["47221"]
     assert after == before
     assert after["sourceDatasetSha256"] == before["sourceDatasetSha256"]
@@ -76,7 +99,7 @@ def test_removal_is_exact_and_others_byte_identical(tmp_path: Path) -> None:
 
 def test_second_apply_is_a_byte_identical_noop(tmp_path: Path) -> None:
     registry = _registry_copy(tmp_path)
-    spec = _spec(tmp_path, [_entry(_real_47221_sha())])
+    spec = _spec(tmp_path, [_entry(_GOOD_SHA)])
     assert decert.run(spec, apply=True, registry_path=registry) == 0
     once = registry.read_bytes()
     assert decert.run(spec, apply=True, registry_path=registry) == 0
@@ -86,6 +109,6 @@ def test_second_apply_is_a_byte_identical_noop(tmp_path: Path) -> None:
 def test_check_mode_never_writes(tmp_path: Path) -> None:
     registry = _registry_copy(tmp_path)
     before = registry.read_bytes()
-    spec = _spec(tmp_path, [_entry(_real_47221_sha())])
+    spec = _spec(tmp_path, [_entry(_GOOD_SHA)])
     assert decert.run(spec, apply=False, registry_path=registry) == 0
     assert registry.read_bytes() == before
