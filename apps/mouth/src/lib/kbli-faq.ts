@@ -192,7 +192,12 @@ export function buildKbliFaq(code: KBLICode): KbliFaqEntry[] {
       : "one carve-out";
 
   const pmaAnswer = !pmaVerdictVerified
-    ? `Not yet verified. The canonical record carries a current PMA label for KBLI ${code.code} (${code.titleId}), but no adjudicated per-code official basis and source vintage verify that whole-code verdict. Confirm the current treatment at oss.go.id before planning a PT PMA.`
+    ? // A registered, still-matching review notice (kbli-pma-review.ts) names
+      // the SPECIFIC reason for the 12 no-Besar-row hold codes
+      // (SAETTA-20260915/W-H PR-5) instead of this generic sentence every
+      // other unverified code falls back to.
+      (code.pmaReviewNotice ??
+      `Not yet verified. The canonical record carries a current PMA label for KBLI ${code.code} (${code.titleId}), but no adjudicated per-code official basis and source vintage verify that whole-code verdict. Confirm the current treatment at oss.go.id before planning a PT PMA.`)
     : code.pma.status === "open"
       ? nationallyClosed
         ? `No — and not only in Bali. KBLI ${code.code} (${code.titleId}) is ${baliBlockClause(code.baliL4?.status)}, and that closure applies everywhere in Indonesia, so registering the activity in another province does not change the answer.${

@@ -1,0 +1,77 @@
+{
+  "generated_by": "scripts/kbli_filiera/cure_l4bali_hold_review.py spec + WH-LANE-PR5 notice text (SAETTA-20260915/W-H)",
+  "notices": {
+    "38110": {
+      "pma_status": "TERBUKA",
+      "pma_max_asing": 100,
+      "pma_verification_status": "declared_gap",
+      "note": "Not a national 0% finding: no foreign-ownership reservation for this activity was located in Perpres 10/2021 as amended by 49/2021. OSS lists licensing rows for this code only at Mikro, Kecil and Menengah scale, while a PT PMA is by law an Usaha Besar (Perpres 10/2021 Pasal 7(1); BKPM 5/2025 Pasal 26) — confirm in OSS whether it will license this code for a PT PMA."
+    },
+    "55202": {
+      "pma_status": "TERBUKA",
+      "pma_max_asing": 100,
+      "pma_verification_status": "declared_gap",
+      "note": "Not a national 0% finding: no foreign-ownership reservation for this activity was located in Perpres 10/2021 as amended by 49/2021. OSS lists licensing rows for this code only at Mikro, Kecil and Menengah scale, while a PT PMA is by law an Usaha Besar (Perpres 10/2021 Pasal 7(1); BKPM 5/2025 Pasal 26) — confirm in OSS whether it will license this code for a PT PMA."
+    },
+    "55300": {
+      "pma_status": "TERBUKA",
+      "pma_max_asing": 100,
+      "pma_verification_status": "declared_gap",
+      "note": "Not a national 0% finding: no foreign-ownership reservation for this activity was located in Perpres 10/2021 as amended by 49/2021. OSS lists licensing rows for this code only at Mikro, Kecil and Menengah scale, while a PT PMA is by law an Usaha Besar (Perpres 10/2021 Pasal 7(1); BKPM 5/2025 Pasal 26) — confirm in OSS whether it will license this code for a PT PMA."
+    },
+    "56102": {
+      "pma_status": "TERBUKA",
+      "pma_max_asing": 100,
+      "pma_verification_status": "declared_gap",
+      "note": "Not a national 0% finding: no foreign-ownership reservation for this activity was located in Perpres 10/2021 as amended by 49/2021. OSS lists licensing rows for this code only at Mikro and Kecil scale, while a PT PMA is by law an Usaha Besar (Perpres 10/2021 Pasal 7(1); BKPM 5/2025 Pasal 26) — confirm in OSS whether it will license this code for a PT PMA."
+    },
+    "56304": {
+      "pma_status": "TERBUKA",
+      "pma_max_asing": 100,
+      "pma_verification_status": "declared_gap",
+      "note": "Not a national 0% finding: no foreign-ownership reservation for this activity was located in Perpres 10/2021 as amended by 49/2021. OSS lists licensing rows for this code only at Mikro and Kecil scale, while a PT PMA is by law an Usaha Besar (Perpres 10/2021 Pasal 7(1); BKPM 5/2025 Pasal 26) — confirm in OSS whether it will license this code for a PT PMA."
+    },
+    "56306": {
+      "pma_status": "TERBUKA",
+      "pma_max_asing": 100,
+      "pma_verification_status": "declared_gap",
+      "note": "Not a national 0% finding: no foreign-ownership reservation for this activity was located in Perpres 10/2021 as amended by 49/2021. OSS lists licensing rows for this code only at Mikro and Kecil scale, while a PT PMA is by law an Usaha Besar (Perpres 10/2021 Pasal 7(1); BKPM 5/2025 Pasal 26) — confirm in OSS whether it will license this code for a PT PMA."
+    },
+    "70201": {
+      "pma_status": "TERBUKA",
+      "pma_max_asing": 100,
+      "pma_verification_status": "declared_gap",
+      "note": "Not a national 0% finding: no foreign-ownership reservation for this activity was located in Perpres 10/2021 as amended by 49/2021. OSS lists licensing rows for this code only at Mikro, Kecil and Menengah scale, while a PT PMA is by law an Usaha Besar (Perpres 10/2021 Pasal 7(1); BKPM 5/2025 Pasal 26) — confirm in OSS whether it will license this code for a PT PMA."
+    },
+    "73300": {
+      "pma_status": "TERBUKA",
+      "pma_max_asing": 100,
+      "pma_verification_status": "declared_gap",
+      "note": "Not a national 0% finding: no foreign-ownership reservation for this activity was located in Perpres 10/2021 as amended by 49/2021. OSS lists licensing rows for this code only at Mikro, Kecil and Menengah scale, while a PT PMA is by law an Usaha Besar (Perpres 10/2021 Pasal 7(1); BKPM 5/2025 Pasal 26) — confirm in OSS whether it will license this code for a PT PMA."
+    },
+    "74199": {
+      "pma_status": "TERBUKA",
+      "pma_max_asing": 100,
+      "pma_verification_status": "declared_gap",
+      "note": "Not a national 0% finding: no foreign-ownership reservation for this activity was located in Perpres 10/2021 as amended by 49/2021. OSS lists licensing rows for this code only at Mikro and Kecil scale, while a PT PMA is by law an Usaha Besar (Perpres 10/2021 Pasal 7(1); BKPM 5/2025 Pasal 26) — confirm in OSS whether it will license this code for a PT PMA."
+    },
+    "79901": {
+      "pma_status": "TERBUKA",
+      "pma_max_asing": 100,
+      "pma_verification_status": "declared_gap",
+      "note": "Not a national 0% finding: no foreign-ownership reservation for this activity was located in Perpres 10/2021 as amended by 49/2021. OSS lists licensing rows for this code only at Mikro, Kecil and Menengah scale, while a PT PMA is by law an Usaha Besar (Perpres 10/2021 Pasal 7(1); BKPM 5/2025 Pasal 26) — confirm in OSS whether it will license this code for a PT PMA."
+    },
+    "79902": {
+      "pma_status": "TERBUKA",
+      "pma_max_asing": 100,
+      "pma_verification_status": "declared_gap",
+      "note": "Not a national 0% finding: no foreign-ownership reservation for this activity was located in Perpres 10/2021 as amended by 49/2021. OSS lists licensing rows for this code only at Mikro, Kecil and Menengah scale, while a PT PMA is by law an Usaha Besar (Perpres 10/2021 Pasal 7(1); BKPM 5/2025 Pasal 26) — confirm in OSS whether it will license this code for a PT PMA."
+    },
+    "86995": {
+      "pma_status": "TERBUKA",
+      "pma_max_asing": 100,
+      "pma_verification_status": "declared_gap",
+      "note": "Not a national 0% finding: no foreign-ownership reservation for this activity was located in Perpres 10/2021 as amended by 49/2021. OSS lists licensing rows for this code only at Mikro and Kecil scale, while a PT PMA is by law an Usaha Besar (Perpres 10/2021 Pasal 7(1); BKPM 5/2025 Pasal 26) — confirm in OSS whether it will license this code for a PT PMA."
+    }
+  }
+}
