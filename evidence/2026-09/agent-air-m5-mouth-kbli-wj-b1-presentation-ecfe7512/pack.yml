@@ -7,6 +7,19 @@ lanes:
     task_id: kbli-wj-b1-presentation
     worktree: .worktrees/mouth-kbli-wj-b1-presentation
     branch: agent/air-m5/mouth/kbli-wj-b1-presentation
+  - lane: mouth/kbli-wj-b1-presentation
+    role: ground_truth
+    seat: >-
+      session (M5, Dux Opus 5) — pages fetched 2026-09-15 by a web-fetch reader and quoted
+      verbatim; this PR renders only the source names, dates and URLs, no per-code fact
+    nb: >-
+      Pemprov Bali press release (published 24 Jul 2026, 18 business fields by name, "sejak
+      minggu ketiga Mei 2026", "hingga terdapat kebijakan lebih lanjut") + ANTARA Bali 23 Jul 2026
+      (the same 18 with KBLI 2020 codes, 18/18 names match)
+    query_hash: "24fc61b037c65f0cdd97bd3d990559fddaa83d2fc8e0acb2dabf7d99ae11664a"
+    note: sha256 of "<press-release path>|<antara path>|<the 18 codes comma-joined>".
+
+dissent: []
 
 pii_scan: clean
 pii_scan_note: >-
