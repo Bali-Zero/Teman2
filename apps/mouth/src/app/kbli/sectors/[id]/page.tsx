@@ -7,6 +7,8 @@ import {
 } from "@/lib/kbli-data";
 import { KBLIBreadcrumb } from "@/components/kbli/KBLIBreadcrumb";
 import { KBLICard } from "@/components/kbli/KBLICard";
+import { KBLICodeViews } from "@/components/kbli/KBLICodeViews";
+import { toPanelDetail } from "@/lib/kbli-panel-detail";
 import { KBLIBreadcrumbJsonLd } from "@/components/kbli/KBLIStructuredData";
 
 export async function generateStaticParams() {
@@ -88,11 +90,30 @@ export default async function SectorDetailPage({
         </p>
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        {codes.map((code) => (
-          <KBLICard key={code.code} code={code} />
-        ))}
-      </div>
+      {/* The same controls the off-canvas panel carries, on the same
+          projection — so `?verified=`/`?view=` mean one thing whether the URL
+          was opened cold (this page) or reached by a click inside /kbli (the
+          panel). Without this the shared link would silently drop the filter
+          it names, because a hard load is never intercepted.
+
+          This route is prerendered, so the query string cannot be read here on
+          the server: KBLICodeViews applies it on the client, which is what
+          keeps generateStaticParams and the 21 SSG pages intact. */}
+      <KBLICodeViews
+        items={codes.map(toPanelDetail)}
+        cards={
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {codes.map((code) => (
+              <div
+                key={code.code}
+                data-kbli-verified={code.provenance?.state === "verified"}
+              >
+                <KBLICard code={code} />
+              </div>
+            ))}
+          </div>
+        }
+      />
     </div>
   );
 }

@@ -3,8 +3,10 @@
 import * as Dialog from "@radix-ui/react-dialog";
 import { X } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { KBLIPanelDetail } from "@/lib/kbli-panel-detail";
+import { PANEL_MARK_KEY } from "@/lib/kbli-view-params";
+import { KBLICodeViews } from "./KBLICodeViews";
 import { KBLIPanelCodeDetail } from "./KBLIPanelCodeDetail";
 
 /**
@@ -95,9 +97,12 @@ function codeFromLocation(): string | null {
  * depth over in `pendingHop`, tagged with the href it is for, and the marker
  * on each entry is what makes Back and Forward restore the right number
  * instead of drifting.
+ *
+ * The key itself lives in `lib/kbli-view-params` because the view controls
+ * rewrite this entry's URL when a filter changes, and a marker matched by href
+ * has to be re-stamped when that href moves — otherwise the pop count is
+ * stranded and the panel loses its one-gesture exit.
  */
-const PANEL_MARK_KEY = "kbliPanel";
-
 type PanelMark = { depth: number; href: string };
 
 /**
@@ -136,14 +141,18 @@ export function KBLISectorOffcanvas({
   title: string;
   /** Section currently shown — the card to hand focus back to on close. */
   sectionId: string;
-  /** Drill-down projections for every code in this section, keyed by code. */
-  details: Record<string, KBLIPanelDetail>;
+  /** Drill-down projections for every code in this section, in section order. */
+  details: KBLIPanelDetail[];
   /** Server-rendered card grid, shown when no drill-down is open. */
   grid: React.ReactNode;
   /** Server-rendered header + section strip. */
   children: React.ReactNode;
 }) {
   const router = useRouter();
+  const byCode = useMemo(
+    () => Object.fromEntries(details.map((d) => [d.code, d])),
+    [details],
+  );
   const [open, setOpen] = useState(true);
   const [activeCode, setActiveCode] = useState<string | null>(null);
   const closing = useRef(false);
@@ -245,10 +254,16 @@ export function KBLISectorOffcanvas({
       const anchor = (event.target as HTMLElement).closest("a");
       const href = anchor?.getAttribute("href");
       const code = href?.match(/^\/kbli\/(\d{5})$/)?.[1];
-      if (!code || !details[code]) return;
+      if (!code || !byCode[code]) return;
 
       event.preventDefault();
-      const codeHref = `${window.location.pathname}?code=${code}`;
+      // The view controls live in the query string too, so the drill-down is
+      // appended to what is already there instead of replacing it: opening a
+      // code from inside a filtered list must not silently clear the filter
+      // the visitor would come back to.
+      const url = new URL(window.location.href);
+      url.searchParams.set("code", code);
+      const codeHref = url.pathname + url.search;
       depth.current += 1;
       window.history.pushState(
         { [PANEL_MARK_KEY]: { depth: depth.current, href: codeHref } },
@@ -257,7 +272,7 @@ export function KBLISectorOffcanvas({
       );
       setActiveCode(code);
     },
-    [details],
+    [byCode],
   );
 
   /**
@@ -306,7 +321,7 @@ export function KBLISectorOffcanvas({
 
   const backToGrid = useCallback(() => window.history.back(), []);
 
-  const detail = activeCode ? details[activeCode] : undefined;
+  const detail = activeCode ? byCode[activeCode] : undefined;
 
   return (
     <Dialog.Root open={open} onOpenChange={(next) => !next && close()}>
@@ -359,7 +374,7 @@ export function KBLISectorOffcanvas({
               className="@container min-h-0 flex-1 overflow-y-auto px-5 py-5"
               data-testid="kbli-panel-code-grid"
             >
-              {grid}
+              <KBLICodeViews items={details} cards={grid} />
             </div>
           )}
         </Dialog.Content>

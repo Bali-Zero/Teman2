@@ -71,6 +71,36 @@ function code(overrides: Partial<KBLICode> = {}): KBLICode {
 }
 
 describe("toPanelDetail", () => {
+  // The base fixture's provenance carries no `state` (deriveProvenance always
+  // emits one; this fixture predates the field), so each case states its own.
+  const withState = (state: string) =>
+    ({
+      pma: {
+        status: "located",
+        locator: "Perpres 10/2021 Lampiran III",
+        vintage: "2021-03-02",
+      },
+      licensing: { status: "oss_native" },
+      state,
+    }) as unknown as KBLICode["provenance"];
+
+  it("copies the server's provenance verdict rather than re-deriving it", () => {
+    expect(
+      toPanelDetail(code({ provenance: withState("verified") })),
+    ).toMatchObject({ provenanceState: "verified" });
+    expect(
+      toPanelDetail(code({ provenance: withState("not_classifiable") })),
+    ).toMatchObject({ provenanceState: "not_classifiable" });
+  });
+
+  it("treats a record with no provenance block as pending, never verified", () => {
+    // The filter's default must not promote an unknown to "Verified": a code
+    // whose provenance we cannot read has made no claim we can stand behind.
+    expect(toPanelDetail(code({ provenance: undefined }))).toMatchObject({
+      provenanceState: "pending",
+    });
+  });
+
   it("carries the identity and badge inputs the drill-down renders", () => {
     const d = toPanelDetail(code());
 

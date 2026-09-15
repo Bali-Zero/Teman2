@@ -40,8 +40,11 @@ export default async function SectorPanelPage({
   if (codes.length === 0) return null;
 
   const sections = getSections().filter((s) => s.codeCount > 0);
-  const details: Record<string, KBLIPanelDetail> = {};
-  for (const c of codes) details[c.code] = toPanelDetail(c);
+  // An ORDERED array, not a keyed map: a 5-digit KBLI code like "10111" is an
+  // integer-like object key, which JS enumerates numerically ahead of
+  // leading-zero keys such as "01111" — a map would have silently reordered the
+  // section. The panel builds its own lookup from this list.
+  const details: KBLIPanelDetail[] = codes.map(toPanelDetail);
 
   return (
     <KBLISectorOffcanvas
@@ -51,7 +54,14 @@ export default async function SectorPanelPage({
       grid={
         <div className="grid grid-cols-1 gap-3 @[440px]:grid-cols-2">
           {codes.map((c) => (
-            <KBLICard key={c.code} code={c} />
+            // The wrapper is what the verified-status filter hides (a CSS rule
+            // in styles/kbli-theme.css); the card itself is untouched.
+            <div
+              key={c.code}
+              data-kbli-verified={c.provenance?.state === "verified"}
+            >
+              <KBLICard code={c} />
+            </div>
           ))}
         </div>
       }
