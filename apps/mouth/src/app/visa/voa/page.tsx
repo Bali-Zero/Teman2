@@ -499,7 +499,7 @@ export default function VoaEligibilityPage() {
     >
       <p
         style={{
-          margin: 0,
+          margin: "0 0 var(--space-3, 0.9rem)",
           fontSize: "var(--text-sm, 0.88rem)",
           color: "var(--color-text-muted)",
         }}
