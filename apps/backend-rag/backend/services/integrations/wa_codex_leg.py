@@ -125,16 +125,18 @@ from backend.services.integrations.wa_finalize import (
 from backend.services.integrations.wa_greeting import match_greeting
 
 # Same-package deliberate reuse of the bot leg's lazy-singleton RAG client,
-# thread-context loader, notifier and kill switch: ONE persistent HTTP
-# client per process (Golden Rule #10), the thread-context loader stays the
-# SINGLE owner of what "the query/history" means for a claimed row (two
-# loaders would drift — W114; retained even though the Gemini leg it once
-# shared this contract with was cut 2026-08-27), the human-notification
-# wiring stays in the one module whose tests patch it, and the autoreply
-# switch keeps ONE owner.
+# notifier and kill switch: ONE persistent HTTP client per process (Golden
+# Rule #10), the human-notification wiring stays in the one module whose
+# tests patch it, and the autoreply switch keeps ONE owner.
+# `_load_bound_thread_context` (B2.5 PR-1, migration 318) replaces
+# `_load_thread_context` on THIS leg only — anchored to the outbox row's
+# own inbound message, never the thread's latest (D1: a retry answered a
+# NEWER message than the one its row was created for). The bare
+# `_load_thread_context` stays wa_inbox_bot's own thread-latest loader,
+# still owned there for its one remaining caller.
 from backend.services.integrations.wa_inbox_bot import (
     _get_rag_client,
-    _load_thread_context,
+    _load_bound_thread_context,
     _tell_a_human,
     is_bot_autoreply_enabled,
 )
@@ -190,6 +192,18 @@ _KNOWN_FALL_OFF_REASONS: frozenset[str] = frozenset(
         # own judge could not rule) into ONE bounded column value; the
         # detail lives only in the ERROR log next to each raise site.
         "support_judge_absent",
+        # B2.5 PR-1 (migration 318, ruling a): the six terminal reasons
+        # wa_outbox_worker.py itself now writes in the SAME statement as
+        # every status='failed' UPDATE it makes on this table — these are
+        # already-normalized category values, never raw strings passed
+        # through `_normalize_fall_off_reason`, hence the identity entries
+        # in the prefix map below.
+        "thread_missing",
+        "aborted_human_takeover",
+        "aborted_human_takeover_pre_send",
+        "window_closed_24h",
+        "send_exhausted",
+        "generation_exhausted",
     }
 )
 
@@ -221,6 +235,17 @@ _FALL_OFF_REASON_PREFIX_MAP: dict[str, str] = {
     "finalize": "finalize_defect",
     "internal_error": "internal_error",
     "support_judge_absent": "support_judge_absent",
+    # B2.5 PR-1: identity entries — these six are written directly as
+    # already-bounded category values by wa_outbox_worker.py (never
+    # normalized through this function), listed here only so the coverage
+    # test (test_wa_codex_leg.py) and the CHECK-constraint-superset test
+    # both stay true.
+    "thread_missing": "thread_missing",
+    "aborted_human_takeover": "aborted_human_takeover",
+    "aborted_human_takeover_pre_send": "aborted_human_takeover_pre_send",
+    "window_closed_24h": "window_closed_24h",
+    "send_exhausted": "send_exhausted",
+    "generation_exhausted": "generation_exhausted",
 }
 
 # Migration 291: the package-builder leg's "unbuildable" head carries a
@@ -626,7 +651,16 @@ async def _attempt(
     if not _window_margin_ok(thread, margin_s=margin_s):
         return CodexLegResult(reason="window_margin")
 
-    query, history = await _load_thread_context(pool, thread_id)
+    bound = await _load_bound_thread_context(pool, thread_id=thread_id, outbox_id=outbox_id)
+    query, history = bound.query, bound.history
+    # B2.5 (ruling a/b): log WHICH inbound this attempt is bound to — an
+    # integer id only, never the body — so a retry's context can be told
+    # apart from a fresh generation's without ever printing customer text.
+    logger.info(
+        "wa_codex_leg: bound to inbound=%s (outbox=%s)",
+        bound.inbound_message_id,
+        outbox_id,
+    )
     if not query:
         # generate_bot_reply raises BotStandingCondition for this too; the
         # ROUTE decision just steps aside and lets the same reason surface
@@ -996,7 +1030,10 @@ async def _attempt(
                 async with abort_conn.transaction():
                     fenced = await abort_conn.fetchrow(
                         """
-                        UPDATE wa_outbox SET status = 'failed'
+                        UPDATE wa_outbox
+                        SET status = 'failed',
+                            generation_fall_off_reason = 'stand_down_drift',
+                            generation_fall_off_at = NOW()
                         WHERE id = $1 AND claim_token = $2 AND status = $3
                         RETURNING id
                         """,
