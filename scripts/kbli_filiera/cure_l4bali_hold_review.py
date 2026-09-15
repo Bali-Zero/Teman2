@@ -264,8 +264,16 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--canonical", type=Path, default=DEFAULT_CANONICAL)
     parser.add_argument("--only", nargs="+", default=None, help="restrict to these KBLI codes")
     parser.add_argument("--apply", action="store_true", help="mutate the canonical (default: dry-run, writes nothing)")
+    parser.add_argument(
+        "--check",
+        action="store_true",
+        help="explicit alias for the default dry-run — writes nothing either way; "
+        "kept so a caller does not have to remember that omitting --apply already means this",
+    )
     parser.add_argument("-v", "--verbose", action="store_true")
     args = parser.parse_args(argv)
+    if args.check and args.apply:
+        raise CureError("--check and --apply are mutually exclusive")
 
     logging.basicConfig(
         level=logging.DEBUG if args.verbose else logging.INFO,

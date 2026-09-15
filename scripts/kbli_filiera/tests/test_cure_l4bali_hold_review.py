@@ -221,3 +221,17 @@ def test_apply_is_all_or_nothing_on_a_tmp_copy(tmp_path):
     by = {r["kode_kbli_2025"]: r for r in reread["data"]}
     assert by["73300"]["l4_bali"]["confidence"] == spec["codes"]["73300"]["expected_confidence"]
     assert by["73300"]["l4_bali"]["needs_review"] == spec["codes"]["73300"]["expected_needs_review"]
+
+
+def test_check_flag_is_a_write_nothing_alias_for_dry_run(tmp_path):
+    tmp_canonical = tmp_path / "KBLI_2025_FINAL_CLEAN.json"
+    tmp_canonical.write_bytes(CANONICAL.read_bytes())
+    before = tmp_canonical.read_bytes()
+    exit_code = cure.main(["--canonical", str(tmp_canonical), "--check"])
+    assert exit_code == 0
+    assert tmp_canonical.read_bytes() == before
+
+
+def test_check_and_apply_together_is_rejected():
+    with pytest.raises(cure.CureError):
+        cure.main(["--check", "--apply"])
