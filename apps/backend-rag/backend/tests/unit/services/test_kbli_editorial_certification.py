@@ -52,11 +52,24 @@ def test_canonical_certification_partition_is_exact(
 
     assert certified == set(registry["canonicalIntel"])
     assert len(certified) == 49
+    # SAETTA-20260915 W-H PR-3a moved 55201/55203/79903 from declared_gap to
+    # located (Perpres 49/2021 Lampiran II allocation); none of the three is
+    # a certified canonicalIntel entry, so they join the pre-existing
+    # located-but-uncertified set.
     assert {
         code
         for code, record in records.items()
         if record.get("pma_verification_status") == "located"
-    } - certified == {"10722", "47222", "50134", "73100", "96220"}
+    } - certified == {
+        "10722",
+        "47222",
+        "50134",
+        "55201",
+        "55203",
+        "73100",
+        "79903",
+        "96220",
+    }
 
 
 def test_content_pma_and_code_drift_fail_closed(

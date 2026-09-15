@@ -66,7 +66,7 @@ export function HeroCTA({
             whatsappContext={[{ label: "Source", value: "Homepage Hero" }]}
             utm={{ page: "/" }}
             fallbackHref={buildWhatsAppLink("home")}
-            className="cta-primary inline-flex items-center gap-2 px-6 py-3 rounded-md text-[15px] font-semibold transition-transform hover:-translate-y-0.5"
+            className="cta-primary inline-flex min-h-[48px] items-center gap-2 px-6 py-3 rounded-md text-[15px] font-semibold transition-transform hover:-translate-y-0.5"
             style={{
               background: "#A44B36",
               color: "#FFFFFF",

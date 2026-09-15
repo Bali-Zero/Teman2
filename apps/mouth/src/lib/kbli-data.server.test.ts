@@ -50,11 +50,13 @@ describe("kbli-data.server — section derivation (Mandate 12 fix)", () => {
       sourceVintage: "2021-05-25",
     });
     expect(getAllCodes()).toHaveLength(1559);
+    // SAETTA-20260915 W-H PR-3a moved 3 codes (55201/55203/79903) from
+    // declared_gap to located (Lampiran II allocation): 1505 -> 1502.
     expect(
       getAllCodes().filter(
         (code) => code.pma.verificationStatus === "declared_gap",
       ),
-    ).toHaveLength(1505);
+    ).toHaveLength(1502);
     for (const code of getAllCodes().filter(
       (item) => item.pma.verificationStatus === "declared_gap",
     )) {

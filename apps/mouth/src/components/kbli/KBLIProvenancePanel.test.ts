@@ -151,7 +151,7 @@ describe("the Bali provenance row attributes the verdict to what produced it", (
     expect(row.detail).toContain("Not classifiable until the true risk tier");
   });
 
-  it("pins the verified population: 6 located codes are blocked by something other than the moratorium", () => {
+  it("pins the verified population: 9 located codes are blocked by something other than the moratorium", () => {
     const misattributed = getAllCodes().filter(
       (c) =>
         c.baliL4?.blocked === true &&
@@ -159,8 +159,10 @@ describe("the Bali provenance row attributes the verdict to what produced it", (
     );
     // The public loader exposes Bali only for the exact located+basis+vintage
     // PMA atom. The former 98-record population included unverified Bali
-    // verdicts; six independently adjudicated non-moratorium blocks remain.
-    expect(misattributed).toHaveLength(6);
+    // verdicts; nine independently adjudicated non-moratorium blocks remain.
+    // SAETTA-20260915 W-H PR-3a: 55201/55203/79903 moved declared_gap→located
+    // (Perpres 49/2021 Lampiran II allocation), 6→9.
+    expect(misattributed).toHaveLength(9);
     // Every one of them must now name its own cause, never the risk tier.
     for (const c of misattributed) {
       const row = baliRow(c.code);
