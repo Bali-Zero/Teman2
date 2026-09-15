@@ -128,7 +128,8 @@ export function ProcessTab({
         </h3>
         <Button
           size="sm"
-          className="gap-2"
+          variant="outline"
+          className="gap-2 border-[var(--state-success)] bg-[var(--state-success)] text-white hover:bg-[var(--state-success)] hover:opacity-90"
           onClick={() => router.push(`/process/new?client_id=${clientId}`)}
         >
           <Plus className="w-4 h-4" />
@@ -223,7 +224,8 @@ export function ProcessTab({
           <div className="pt-2">
             <Button
               size="sm"
-              className="gap-2"
+              variant="outline"
+              className="gap-2 border-[var(--state-success)] bg-[var(--state-success)] text-white hover:bg-[var(--state-success)] hover:opacity-90"
               onClick={() => router.push(`/process/new?client_id=${clientId}`)}
             >
               <Plus className="w-3.5 h-3.5" />
@@ -424,9 +426,12 @@ export function ProcessTab({
                         style={{
                           background:
                             ageDays > 14
-                              ? "rgba(239,68,68,0.10)"
+                              ? "color-mix(in srgb, var(--state-warning) 15%, transparent)"
                               : "var(--surface-raised)",
-                          color: ageDays > 14 ? "#f87171" : "var(--bz-text-2)",
+                          color:
+                            ageDays > 14
+                              ? "var(--state-warning)"
+                              : "var(--bz-text-2)",
                         }}
                         title={`Last updated ${ageDays} days ago`}
                       >

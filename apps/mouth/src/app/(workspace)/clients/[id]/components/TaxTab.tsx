@@ -57,9 +57,13 @@ const YearSelector = memo(function YearSelector({
         {years.map((year) => (
           <Button
             key={year}
-            variant={selectedYear === year ? "default" : "outline"}
+            variant="outline"
             size="sm"
-            className="h-8 px-3 text-xs"
+            className={
+              selectedYear === year
+                ? "h-8 px-3 text-xs border-[var(--tx-pure)] text-[var(--tx-pure)]"
+                : "h-8 px-3 text-xs"
+            }
             onClick={() => onYearChange(year)}
           >
             {year}
@@ -130,7 +134,7 @@ const TaxConsultantSelector = memo(function TaxConsultantSelector({
 
   return (
     <div className="flex items-center gap-3 px-4 py-3 rounded-xl border border-[var(--bz-border)] bg-[var(--bz-surface)]">
-      <UserCheck className="w-4 h-4 text-[var(--bz-accent)] shrink-0" />
+      <UserCheck className="w-4 h-4 text-[var(--tx-secondary)] shrink-0" />
       <label
         htmlFor={`tax-consultant-${clientId}`}
         className="text-sm font-medium text-[var(--bz-text-1)]"
@@ -142,7 +146,7 @@ const TaxConsultantSelector = memo(function TaxConsultantSelector({
         value={value}
         onChange={handleChange}
         disabled={isSaving}
-        className="flex-1 max-w-[220px] px-3 py-1.5 rounded-lg border border-[var(--bz-border)] bg-[var(--bz-base)] text-sm text-[var(--bz-text-1)] focus:outline-none focus:border-[var(--bz-accent)] transition-colors disabled:opacity-60"
+        className="flex-1 max-w-[220px] px-3 py-1.5 rounded-lg border border-[var(--bz-border)] bg-[var(--bz-base)] text-sm text-[var(--bz-text-1)] focus:outline-none focus:border-[var(--line-control)] transition-colors disabled:opacity-60"
       >
         <option value="">— not assigned —</option>
         {consultants.map((c) => (
@@ -266,7 +270,7 @@ function LkpmQuarterCard({
   // 2. Days to deadline — hide if submitted
   const daysColor =
     report.days_to_deadline != null && report.days_to_deadline <= 3
-      ? "text-red-400"
+      ? "text-[var(--state-warning)]"
       : report.days_to_deadline != null && report.days_to_deadline <= 7
         ? "text-amber-400"
         : "text-emerald-400";
@@ -311,7 +315,7 @@ function LkpmQuarterCard({
       {assignedName ? (
         <p className="text-[10px] text-[var(--bz-text-2)]">{assignedName}</p>
       ) : (
-        <p className="text-[10px] text-red-400">Unassigned</p>
+        <p className="text-[10px] text-[var(--state-warning)]">Unassigned</p>
       )}
 
       {/* 4. Client approved */}
@@ -319,14 +323,16 @@ function LkpmQuarterCard({
         {report.client_approved ? (
           <span className="text-emerald-400">{"\u2713"} Approved</span>
         ) : (
-          <span className="text-red-400">{"\u2717"} Not approved</span>
+          <span className="text-[var(--state-warning)]">
+            {"\u2717"} Not approved
+          </span>
         )}
       </p>
 
       {/* Open link */}
       <a
         href={`/lkpm/${report.id}`}
-        className="text-[10px] text-[var(--bz-accent)] hover:underline block mt-1"
+        className="text-[10px] text-[var(--tx-pure)] hover:underline block mt-1"
       >
         Open
       </a>
@@ -444,7 +450,7 @@ function LkpmReceiptsPanel({
                             href={r.file_drive_url}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="text-[var(--bz-accent)] hover:underline"
+                            className="text-[var(--tx-pure)] hover:underline"
                           >
                             Open
                           </a>

@@ -111,7 +111,7 @@ export function PortalMessages({
             Portal Messages
           </h3>
           {unreadCount > 0 && (
-            <span className="bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">
+            <span className="bg-[var(--state-warning)] text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">
               {unreadCount}
             </span>
           )}
@@ -172,7 +172,7 @@ export function PortalMessages({
                       />
                     )}
                     {!isTeam && !msg.read_at && (
-                      <span className="text-red-400 font-semibold ml-1">
+                      <span className="text-[var(--state-warning)] font-semibold ml-1">
                         NEW
                       </span>
                     )}

@@ -12,12 +12,13 @@
  * `staff@example.test`, `member-a@example.test` — never a real name, phone,
  * passport number or email (K3b spec §1).
  */
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
+import { readdirSync, readFileSync } from "node:fs";
+import { extname, join, sep } from "node:path";
 import React from "react";
 import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { api } from "@/lib/api";
 import type { ClientProfile } from "@/lib/api/crm/crm.types";
 import { clientStatusTone, viewerIsNext } from "../../client-row-model";
 
@@ -336,47 +337,135 @@ describe("status tone", () => {
 });
 
 // ---------------------------------------------------------------------------
-// 3. No red, in every file this window touched
+// 3. GLOB guards (K3b C6-round-3 / R3). Round 2's list-based guards let R1/R2
+// (ClientDetailClient.tsx L492/L867) slip through because they were not on
+// the list. These walk the WHOLE [id]/** tree (readdirSync recursive) so a
+// future file is covered automatically, and strip comments first (so a
+// docstring mentioning a token does not trip the guard, and so a token
+// hidden inside a `//` comment does not silently pass it either).
 // ---------------------------------------------------------------------------
 
-describe("no red", () => {
-  it("carries no --state-danger, no --bz-neon-purple, no red utility, in any file this PR touched", () => {
-    for (const file of [
-      "ClientDetailClient.tsx",
-      "client-detail-desk.module.css",
-      join("components", "OverviewTab.tsx"),
-      join("components", "PassportCard.tsx"),
-      join("components", "VisaCard.tsx"),
-      join("components", "ProcessTab.tsx"),
-      join("components", "DocumentsTab.tsx"),
-      join("components", "constants.ts"),
-      join("components", "utils.ts"),
-      // K3b C6b: WaCaseIntelligencePanel renders unconditionally on the
-      // Overview tab (OverviewTab.tsx:63) and its error state carried
-      // --state-danger (copper) plus raw red-700/red-950 utilities — an
-      // urgency/failure message, which FROZEN-v2 ruling 4 says reads
-      // `warning`, never copper or red.
-      join("components", "WaCaseIntelligencePanel.tsx"),
-    ]) {
-      const source = readFileSync(join(DETAIL_DIR, file), "utf8");
-      expect(source, `${file} carries --state-danger`).not.toContain(
-        "--state-danger",
-      );
-      expect(source, `${file} carries --bz-neon-purple`).not.toContain(
-        "--bz-neon-purple",
-      );
-      expect(source, `${file} carries a red utility`).not.toMatch(
-        /\b(?:bg|text|border)-red-\d/,
-      );
+const NON_TEST_SOURCE_EXT = new Set([".ts", ".tsx"]);
+
+function walkSourceFiles(dir: string): string[] {
+  const out: string[] = [];
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    const full = join(dir, entry.name);
+    if (entry.isDirectory()) {
+      out.push(...walkSourceFiles(full));
+      continue;
     }
-  });
-});
+    if (!entry.isFile()) continue;
+    if (!NON_TEST_SOURCE_EXT.has(extname(entry.name))) continue;
+    if (entry.name.includes(".test.")) continue;
+    if (full.includes(`${sep}__tests__${sep}`)) continue;
+    out.push(full);
+  }
+  return out;
+}
 
-// ---------------------------------------------------------------------------
-// 3b. Active tab is ink — selection is NOT ownership (K3b C1)
-// ---------------------------------------------------------------------------
+/** Strips `/* … *\/` block comments and `//` line comments — but NOT `://`
+ * (so `https://wa.me/...` inside a template literal is left intact). Good
+ * enough for TSX source; this file has no `//` inside a string that isn't
+ * part of a URL. */
+function stripComments(src: string): string {
+  return src
+    .replace(/\/\*[\s\S]*?\*\//g, "")
+    .replace(/(^|[^:])\/\/.*$/gm, "$1");
+}
 
-describe("active tab is ink, not ownership", () => {
+/** Extracts one JSX opening tag starting at `startIdx` (which must point at
+ * `<`), tracking `{}` depth and string state so a `>` inside an attribute
+ * expression (e.g. `onClick={() => a > b}`) or a string is never mistaken
+ * for the tag's own close. */
+function extractOpeningTag(src: string, startIdx: number): string {
+  let i = startIdx;
+  let depth = 0;
+  let inString: string | null = null;
+  while (i < src.length) {
+    const c = src[i];
+    if (inString) {
+      if (c === "\\") {
+        i += 2;
+        continue;
+      }
+      if (c === inString) inString = null;
+      i++;
+      continue;
+    }
+    if (c === '"' || c === "'" || c === "`") {
+      inString = c;
+      i++;
+      continue;
+    }
+    if (c === "{") {
+      depth++;
+      i++;
+      continue;
+    }
+    if (c === "}") {
+      depth--;
+      i++;
+      continue;
+    }
+    if (depth === 0 && c === ">") {
+      return src.slice(startIdx, i + 1);
+    }
+    i++;
+  }
+  return src.slice(startIdx, Math.min(src.length, startIdx + 500));
+}
+
+function parseColor(token: string): { r: number; g: number; b: number } | null {
+  let m = token.match(/rgba?\(\s*([\d.]+)\s*,\s*([\d.]+)\s*,\s*([\d.]+)/);
+  if (m) return { r: +m[1], g: +m[2], b: +m[3] };
+  m = token.match(/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})\b/);
+  if (m) {
+    let hex = m[1];
+    if (hex.length === 3)
+      hex = hex
+        .split("")
+        .map((c) => c + c)
+        .join("");
+    const num = parseInt(hex, 16);
+    return { r: (num >> 16) & 255, g: (num >> 8) & 255, b: num & 255 };
+  }
+  return null;
+}
+
+/** Red AND copper both live in the same warm hue band (copper measures
+ * H≈11°, memory 2026-09-14 / this window's own browser capture) — a single
+ * hue check catches a raw literal standing in for either, which is the
+ * whole point: a guard reading only `--bz-copper` text misses a hex that
+ * resolves to the identical colour. */
+function isRedOrCopperHue(c: { r: number; g: number; b: number }): boolean {
+  const r = c.r / 255,
+    g = c.g / 255,
+    b = c.b / 255;
+  const max = Math.max(r, g, b),
+    min = Math.min(r, g, b);
+  const l = (max + min) / 2;
+  if (max === min) return false;
+  const d = max - min;
+  const s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+  let h: number;
+  switch (max) {
+    case r:
+      h = ((g - b) / d + (g < b ? 6 : 0)) * 60;
+      break;
+    case g:
+      h = ((b - r) / d + 2) * 60;
+      break;
+    default:
+      h = ((r - g) / d + 4) * 60;
+  }
+  const hueDist = Math.min(Math.abs(h - 0), 360 - Math.abs(h - 0));
+  return hueDist <= 20 && s * 100 > 35;
+}
+
+const SOURCE_FILES = walkSourceFiles(DETAIL_DIR);
+
+describe("GLOB: active tab is ink, not ownership (K3b C1)", () => {
   it("the .tabActive rule carries no copper/accent var and paints ink", () => {
     const css = readFileSync(
       join(DETAIL_DIR, "client-detail-desk.module.css"),
@@ -392,55 +481,146 @@ describe("active tab is ink, not ownership", () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// 3c. Copper only by ownership — the --bz-accent alias is closed everywhere
-// this window touched (K3b C2). `--bz-accent` RESOLVES TO copper on kita
-// (memory 2026-09-14), so a guard reading only literal `--bz-copper` would
-// miss it — this checks both names, on every file this window's WIP touched.
-// ---------------------------------------------------------------------------
-
-describe("copper only by ownership", () => {
-  const SWEPT_FILES = [
-    "ClientDetailClient.tsx",
-    join("components", "DocumentsTab.tsx"),
-    join("components", "OverviewTab.tsx"),
-    join("components", "PassportCard.tsx"),
-    join("components", "ProcessTab.tsx"),
-    join("components", "VisaCard.tsx"),
-    join("components", "constants.ts"),
-    join("components", "utils.ts"),
-    // K3b C6d: the Dux's own measure.json showed these three render
-    // unconditionally on the Overview tab (PortalAccess, PortalMessages
-    // via ClientDetailClient.tsx; BusinessStoryPanel likewise) carrying
-    // ungated --bz-accent. They are under [id]/components/** — in
-    // perimeter — even though the K3a/K3b WIP never touched them.
-    join("components", "PortalAccess.tsx"),
-    join("components", "PortalMessages.tsx"),
-    join("components", "BusinessStoryPanel.tsx"),
-    join("components", "WaCaseIntelligencePanel.tsx"),
-  ];
-
-  it("carries no --bz-accent/--bz-copper token outside the ownership-gated Stamp — copper is a person, not a decoration", () => {
-    // No file this window touches spells the token literally: the one
-    // legitimate copper mark is `<Stamp tone="copper" owned={needsViewerAction} />`,
-    // which names the r19 primitive and the predicate, never the CSS var
-    // itself (the var lives inside Stamp.tsx, an r19 primitive this window
-    // does not edit). So the allow-list here is empty by construction — any
-    // occurrence in these files is an un-gated leak.
-    for (const file of SWEPT_FILES) {
-      const source = readFileSync(join(DETAIL_DIR, file), "utf8");
-      expect(source, `${file} carries --bz-accent`).not.toMatch(
-        /--bz-accent\b/,
-      );
-      expect(source, `${file} carries --bz-copper`).not.toMatch(
-        /--bz-copper\b/,
-      );
+describe("GLOB: no default-variant Button (R3a)", () => {
+  it("every <Button ...> under [id]/** declares an explicit, non-default variant", () => {
+    const offenders: string[] = [];
+    for (const file of SOURCE_FILES) {
+      const source = stripComments(readFileSync(file, "utf8"));
+      let idx = source.indexOf("<Button");
+      while (idx !== -1) {
+        // Only a JSX tag boundary (`<Button` followed by whitespace, `>` or
+        // `/`), not e.g. `<ButtonGroup`.
+        const after = source[idx + 7];
+        if (after === undefined || /[\s/>]/.test(after)) {
+          const tag = extractOpeningTag(source, idx);
+          const hasVariant = /variant\s*=/.test(tag);
+          const isDefaultLiteral = /["'`]default["'`]/.test(tag);
+          if (!hasVariant || isDefaultLiteral) {
+            offenders.push(
+              `${file.replace(DETAIL_DIR, "")}: ${tag.slice(0, 120).replace(/\s+/g, " ")}`,
+            );
+          }
+        }
+        idx = source.indexOf("<Button", idx + 7);
+      }
     }
+    expect(offenders, offenders.join("\n")).toEqual([]);
+  });
+
+  it("GUILT: a <Button> with no variant prop at all is what the pattern is built to catch", () => {
+    const fixture = '<Button\n  size="sm"\n  onClick={handleSend}\n>';
+    const tag = extractOpeningTag(fixture, 0);
+    expect(/variant\s*=/.test(tag)).toBe(false);
+  });
+
+  it('GUILT: variant={cond ? "default" : "outline"} is caught by the literal-default check even though variant= IS present', () => {
+    const fixture = '<Button variant={open ? "default" : "outline"}>';
+    const tag = extractOpeningTag(fixture, 0);
+    expect(/variant\s*=/.test(tag)).toBe(true);
+    expect(/["'`]default["'`]/.test(tag)).toBe(true);
+  });
+});
+
+describe("GLOB: no red / no state-danger / no raw red-or-copper literal (R3b)", () => {
+  it("no file under [id]/** carries --state-danger, --bz-neon-purple, a red-N utility, or a raw red/copper rgba()/hex", () => {
+    const offenders: string[] = [];
+    for (const file of SOURCE_FILES) {
+      const source = stripComments(readFileSync(file, "utf8"));
+      const rel = file.replace(DETAIL_DIR, "");
+      if (source.includes("--state-danger"))
+        offenders.push(`${rel}: --state-danger`);
+      if (source.includes("--bz-neon-purple"))
+        offenders.push(`${rel}: --bz-neon-purple`);
+      const redUtil = source.match(/\b(?:bg|text|border)-red-\d/);
+      if (redUtil) offenders.push(`${rel}: ${redUtil[0]}`);
+      const colorTokens =
+        source.match(/(?:rgba?\([^)]*\)|#[0-9a-fA-F]{3,6}\b)/g) || [];
+      for (const tok of colorTokens) {
+        const c = parseColor(tok);
+        if (c && isRedOrCopperHue(c)) offenders.push(`${rel}: raw ${tok}`);
+      }
+    }
+    expect(offenders, offenders.join("\n")).toEqual([]);
+  });
+
+  it("GUILT: a raw copper hex literal is caught by the hue check even with no token name at all", () => {
+    const c = parseColor("#a44b36");
+    expect(c).toBeTruthy();
+    expect(isRedOrCopperHue(c!)).toBe(true);
+  });
+
+  it("GUILT: a raw danger-red rgba() is caught the same way", () => {
+    const c = parseColor("rgba(239,68,68,0.10)");
+    expect(c).toBeTruthy();
+    expect(isRedOrCopperHue(c!)).toBe(true);
+  });
+
+  it("INNOCENCE: an unrelated blue does not trip the hue check", () => {
+    const c = parseColor("rgba(59,130,246,0.12)");
+    expect(c).toBeTruthy();
+    expect(isRedOrCopperHue(c!)).toBe(false);
+  });
+});
+
+describe("GLOB: copper only by an explicit, verified allow-list (R3c)", () => {
+  // Each entry names the file (relative to DETAIL_DIR) and a UNIQUE
+  // substring of the actual gated line. If the substring stops matching
+  // (the line moved or was rewritten) the entry is stale and the test
+  // fails loudly instead of silently exempting whatever replaced it.
+  //
+  // This list is EMPTY: within [id]/** there is no line that spells
+  // --bz-accent/--bz-copper/--bz-copper-text/--accent literally and is
+  // ownership-gated. The one real gated mark is
+  // `<Stamp tone="copper" owned={needsViewerAction} />` — it names the r19
+  // primitive and the predicate, never the CSS var (the var lives inside
+  // `components/workspace/r19/Stamp.tsx`, which this window does not
+  // touch and this walk does not scan).
+  const ALLOW_LIST: { file: string; snippet: string }[] = [];
+
+  it("every allow-list entry still matches its file verbatim (stale entries must not silently exempt)", () => {
+    for (const { file, snippet } of ALLOW_LIST) {
+      const source = readFileSync(join(DETAIL_DIR, file), "utf8");
+      expect(
+        source,
+        `allow-list entry for ${file} no longer matches: "${snippet}"`,
+      ).toContain(snippet);
+    }
+  });
+
+  it("--bz-accent/--bz-copper/--bz-copper-text/--accent occur ONLY at allow-listed lines", () => {
+    // `(?!-)` on the bare --accent branch is load-bearing: without it this
+    // over-matches the PREFIX of a distinct, legitimate token like
+    // `--accent-whatsapp` (WhatsApp brand green) or `--accent-foreground`
+    // (scar family #3 — guard on the entity, never a substring).
+    const tokenPattern =
+      /--bz-accent\b|--bz-copper(?:-text)?\b|--accent(?!-)\b/g;
+    const offenders: string[] = [];
+    for (const file of SOURCE_FILES) {
+      const rel = file.replace(DETAIL_DIR, "").replace(/^[\\/]/, "");
+      const allowed = ALLOW_LIST.filter((e) => e.file === rel);
+      const source = stripComments(readFileSync(file, "utf8"));
+      const lines = source.split("\n");
+      lines.forEach((line, i) => {
+        if (!tokenPattern.test(line)) return;
+        tokenPattern.lastIndex = 0;
+        if (allowed.some((e) => line.includes(e.snippet))) return;
+        offenders.push(`${rel}:${i + 1}: ${line.trim().slice(0, 120)}`);
+      });
+    }
+    expect(offenders, offenders.join("\n")).toEqual([]);
   });
 
   it("GUILT: an --bz-accent hover border planted in a fixture string is caught by the same pattern", () => {
     const fixture = 'hover:border-[var(--bz-accent)]/50"';
     expect(fixture).toMatch(/--bz-accent\b/);
+  });
+
+  it("INNOCENCE: --accent-whatsapp/--accent-foreground are distinct tokens and do not trip the bare --accent check", () => {
+    const tokenPattern =
+      /--bz-accent\b|--bz-copper(?:-text)?\b|--accent(?!-)\b/;
+    expect("text-[var(--accent-whatsapp)]").not.toMatch(tokenPattern);
+    expect("var(--accent-foreground)").not.toMatch(tokenPattern);
+    expect("var(--accent)").toMatch(tokenPattern);
   });
 
   it("INNOCENCE: the owned Stamp call site carries the ownership predicate, never the literal copper token", () => {
@@ -453,52 +633,6 @@ describe("copper only by ownership", () => {
     );
     expect(source).not.toMatch(/--bz-copper\b/);
     expect(source).not.toMatch(/--bz-accent\b/);
-  });
-});
-
-// ---------------------------------------------------------------------------
-// 3c-bis. No default-variant Button copper fill (K3b C6a). shadcn's
-// `Button` default variant fills `bg-[var(--accent)]`, which resolves to
-// copper on kita — concept.md §3 "copper is never a fill". Masthead.tsx's
-// own docstring already states the law for this page: "the PRIMARY action
-// is a forest button, the SECONDARY an ink outline". `components/ui/button`
-// itself is out of perimeter (never edited); each CALL SITE picks its
-// variant instead.
-// ---------------------------------------------------------------------------
-
-describe("no default-variant Button copper fill", () => {
-  it("PortalAccess's primary invite button declares an explicit variant, not the implicit copper default", () => {
-    const source = readFileSync(
-      join(DETAIL_DIR, "components", "PortalAccess.tsx"),
-      "utf8",
-    );
-    const block = source.match(/<Button[\s\S]{0,600}?Invite to portal/);
-    expect(
-      block,
-      "the 'Invite to portal' button block was not found",
-    ).toBeTruthy();
-    expect(
-      block![0],
-      "the invite button has no explicit variant (falls through to copper-fill default)",
-    ).toMatch(/variant=/);
-  });
-
-  it("PortalMessages' send button declares an explicit variant, not the implicit copper default", () => {
-    const source = readFileSync(
-      join(DETAIL_DIR, "components", "PortalMessages.tsx"),
-      "utf8",
-    );
-    const block = source.match(/<Button[\s\S]{0,200}?onClick=\{handleSend\}/);
-    expect(block, "the send button block was not found").toBeTruthy();
-    expect(
-      block![0],
-      "the send button has no explicit variant (falls through to copper-fill default)",
-    ).toMatch(/variant=/);
-  });
-
-  it("GUILT: a <Button> with no variant prop at all is what the pattern is built to catch", () => {
-    const fixture = '<Button\n  size="sm"\n  onClick={handleSend}\n>';
-    expect(fixture).not.toMatch(/variant=/);
   });
 });
 
@@ -610,5 +744,69 @@ describe("copper ownership", () => {
       expect(mockGetUserProfile).toHaveBeenCalled();
     });
     expect(screen.queryByText("Needs you")).not.toBeInTheDocument();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 7. Viewer email — sync cache first, one async fallback, silent failure
+//    (round-3 R5: the cache-only read used to leave the viewer permanently
+//    "unknown" whenever `getUserProfile()` missed, even though a fresh
+//    `getProfile()` call would have found it.)
+// ---------------------------------------------------------------------------
+
+describe("viewer email — async fallback on a cache miss (R5)", () => {
+  it("cache miss + getProfile resolves: the copper mark renders from the async email", async () => {
+    mockGetUserProfile.mockReturnValue(null);
+    vi.mocked(api.getProfile).mockResolvedValueOnce({
+      email: VIEWER_EMAIL,
+    } as Awaited<ReturnType<typeof api.getProfile>>);
+
+    await renderClient(
+      makeProfile({ status: "active", assignedTo: VIEWER_EMAIL }),
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText("Needs you")).toBeInTheDocument();
+    });
+  });
+
+  it("cache miss + getProfile rejects: no throw, viewer stays unknown, no copper mark", async () => {
+    mockGetUserProfile.mockReturnValue(null);
+    vi.mocked(api.getProfile).mockRejectedValueOnce(new Error("network down"));
+
+    await renderClient(
+      makeProfile({ status: "active", assignedTo: VIEWER_EMAIL }),
+    );
+
+    await waitFor(() => {
+      expect(api.getProfile).toHaveBeenCalled();
+    });
+    expect(screen.queryByText("Needs you")).not.toBeInTheDocument();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 8. Status trigger — a real disclosure control (round-3 R6)
+// ---------------------------------------------------------------------------
+
+describe("status trigger button — disclosure semantics (R6)", () => {
+  it("is type=button, announces menu popup, and aria-expanded flips with the menu", async () => {
+    const user = userEvent.setup();
+    await renderClient(
+      makeProfile({ status: "active", assignedTo: VIEWER_EMAIL }),
+    );
+
+    const trigger = screen.getByRole("button", {
+      name: "Change client status",
+    });
+    expect(trigger).toHaveAttribute("type", "button");
+    expect(trigger).toHaveAttribute("aria-haspopup", "menu");
+    expect(trigger).toHaveAttribute("aria-expanded", "false");
+
+    await user.click(trigger);
+    expect(trigger).toHaveAttribute("aria-expanded", "true");
+
+    await user.click(trigger);
+    expect(trigger).toHaveAttribute("aria-expanded", "false");
   });
 });

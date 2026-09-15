@@ -126,7 +126,12 @@ export function DocumentsTab({
           <p className="text-sm text-[var(--bz-text-2)] mt-1 mb-4">
             Upload passport, visa, or company documents
           </p>
-          <Button size="sm" onClick={onAddClick} className="gap-2">
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={onAddClick}
+            className="gap-2 border-[var(--state-success)] bg-[var(--state-success)] text-white hover:bg-[var(--state-success)] hover:opacity-90"
+          >
             <Plus className="w-4 h-4" />
             Add Document
           </Button>
@@ -154,7 +159,12 @@ export function DocumentsTab({
             )}
           </p>
         </div>
-        <Button size="sm" onClick={onAddClick} className="gap-2">
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={onAddClick}
+          className="gap-2 border-[var(--state-success)] bg-[var(--state-success)] text-white hover:bg-[var(--state-success)] hover:opacity-90"
+        >
           <Plus className="w-4 h-4" />
           Add Document
         </Button>

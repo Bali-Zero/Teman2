@@ -168,7 +168,7 @@ export function EditClientModal({
   };
 
   const inputClass =
-    "w-full px-4 py-2.5 rounded-lg border border-[var(--bz-border)] bg-[var(--bz-surface)] text-[var(--bz-text-1)] focus:outline-none focus:ring-2 focus:ring-[var(--bz-accent)]/50 focus:border-[var(--accent)]";
+    "w-full px-4 py-2.5 rounded-lg border border-[var(--bz-border)] bg-[var(--bz-surface)] text-[var(--bz-text-1)] focus:outline-none focus:ring-2 focus:ring-[var(--line-control)] focus:border-[var(--line-control)]";
 
   return (
     <Modal
@@ -209,7 +209,7 @@ export function EditClientModal({
               type="button"
               onClick={removeAvatar}
               aria-label="Remove avatar"
-              className="absolute -top-1 -right-1 w-6 h-6 rounded-full bg-red-500 text-white flex items-center justify-center hover:bg-red-600 transition-colors"
+              className="absolute -top-1 -right-1 w-6 h-6 rounded-full bg-[var(--state-warning)] text-white flex items-center justify-center hover:bg-[var(--state-warning)] transition-colors"
             >
               <X className="w-4 h-4" />
             </button>
@@ -224,7 +224,7 @@ export function EditClientModal({
             className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-[var(--bz-sidebar-active-fill)] text-white transition-colors ${
               isUploadingAvatar
                 ? "opacity-60 cursor-not-allowed"
-                : "hover:bg-[var(--bz-accent)]/90 cursor-pointer"
+                : "hover:bg-[var(--line-control)] cursor-pointer"
             }`}
           >
             <Upload className="w-4 h-4" />

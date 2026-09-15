@@ -254,11 +254,11 @@ export function BusinessStoryPanel({
         className="bz-product-panel p-4"
         style={{
           borderColor:
-            "color-mix(in srgb, var(--state-danger) 25%, transparent)",
+            "color-mix(in srgb, var(--state-warning) 25%, transparent)",
         }}
       >
         <div className="flex items-start gap-3">
-          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-red-400" />
+          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-[var(--state-warning)]" />
           <div>
             <h3 className="text-sm font-semibold text-[var(--bz-text-1)]">
               Business story unavailable

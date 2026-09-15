@@ -128,7 +128,7 @@ export function ImmigrationTab({
           <div
             className={`aspect-[3/2] overflow-hidden border-b bg-[var(--bz-base)] ${
               doc.alert_color === "expired" || doc.alert_color === "red"
-                ? "border-red-500/50"
+                ? "border-[var(--state-warning)]/50"
                 : doc.alert_color === "yellow"
                   ? "border-yellow-500/50"
                   : "border-[var(--bz-border)]"
@@ -199,7 +199,7 @@ export function ImmigrationTab({
             <Button
               variant="ghost"
               size="icon"
-              className="h-7 w-7 text-red-400 hover:text-red-500 hover:bg-red-500/10 opacity-0 group-hover:opacity-100 transition-opacity"
+              className="h-7 w-7 text-[var(--state-warning)] hover:text-[var(--state-warning)] hover:bg-[var(--state-warning)]/10 opacity-0 group-hover:opacity-100 transition-opacity"
               onClick={() =>
                 handleDelete(doc.id, doc.file_name || doc.document_type)
               }
@@ -225,9 +225,9 @@ export function ImmigrationTab({
             const isCritical = !isExpired && daysLeft <= 30;
             const isWarning = !isExpired && daysLeft > 30 && daysLeft <= 90;
             const chipClass = isExpired
-              ? "bg-red-500/20 text-red-400"
+              ? "bg-[var(--state-warning)]/20 text-[var(--state-warning)]"
               : isCritical
-                ? "bg-red-500/15 text-red-400"
+                ? "bg-[var(--state-warning)]/15 text-[var(--state-warning)]"
                 : isWarning
                   ? "bg-yellow-500/15 text-yellow-400"
                   : ALERT_COLORS[doc.alert_color || "green"];
@@ -307,7 +307,12 @@ export function ImmigrationTab({
         <h3 className="text-lg font-semibold text-[var(--bz-text-1)]">
           Immigration
         </h3>
-        <Button size="sm" className="gap-2" onClick={onAddClick}>
+        <Button
+          size="sm"
+          variant="outline"
+          className="gap-2 border-[var(--state-success)] bg-[var(--state-success)] text-white hover:bg-[var(--state-success)] hover:opacity-90"
+          onClick={onAddClick}
+        >
           <Plus className="w-4 h-4" />
           Add Document
         </Button>

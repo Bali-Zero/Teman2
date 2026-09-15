@@ -166,8 +166,27 @@ export function ClientDetailClient({
   // subtitle, per concept.md §6.
   const [currentUserEmail, setCurrentUserEmail] = useState<string>("");
   useEffect(() => {
+    let mounted = true;
     const viewerProfile = api.getUserProfile?.();
-    if (viewerProfile?.email) setCurrentUserEmail(viewerProfile.email);
+    if (viewerProfile?.email) {
+      setCurrentUserEmail(viewerProfile.email);
+      return;
+    }
+    // Cache miss — fall back to one network read. Silent failure means the
+    // viewer stays unknown (no copper, no subtitle), never a thrown error;
+    // the unmount guard stops a late resolve from touching an unmounted
+    // desk (round-3 R5).
+    api
+      .getProfile()
+      .then((user) => {
+        if (mounted && user?.email) setCurrentUserEmail(user.email);
+      })
+      .catch(() => {
+        // stays unknown — see docstring above
+      });
+    return () => {
+      mounted = false;
+    };
   }, []);
   const [showStatusMenu, setShowStatusMenu] = useState(false);
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
@@ -489,10 +508,17 @@ export function ClientDetailClient({
                   Email
                 </Button>
               )}
+              {/* Open/closed toggle, not ownership — ink-selected idiom
+                  (same law as the tab bar's .tabActive, K3b C1/round-3 R1),
+                  never the shadcn default's copper fill. */}
               <Button
-                variant={showLogPanel ? "default" : "outline"}
+                variant="outline"
                 size="sm"
-                className="gap-2"
+                className={
+                  showLogPanel
+                    ? "gap-2 border-[var(--tx-pure)] text-[var(--tx-pure)]"
+                    : "gap-2"
+                }
                 onClick={() => {
                   setShowLogPanel((v) => !v);
                   if (!showLogPanel)
@@ -539,11 +565,14 @@ export function ClientDetailClient({
               instead of the StatePill component. Its options ARE StatePill. */}
           <div ref={statusMenuRef} className="relative inline-block">
             <button
+              type="button"
               onClick={() => setShowStatusMenu((v) => !v)}
               disabled={isUpdatingStatus}
               className={`${STATUS_TRIGGER_BASE} ${PILL_TONE[clientTone]}`}
               title="Click to change status"
               aria-label="Change client status"
+              aria-haspopup="menu"
+              aria-expanded={showStatusMenu}
             >
               {isUpdatingStatus ? "..." : client.status}
             </button>
@@ -864,11 +893,14 @@ export function ClientDetailClient({
                 >
                   {logSummary.length > 0 ? `${logSummary.length} chars` : ""}
                 </span>
+                {/* Primary submit of this panel — forest idiom (same law
+                    as PortalAccess's "Invite to portal", round-3 R2). */}
                 <Button
                   size="sm"
+                  variant="outline"
                   disabled={!logSummary.trim() || isLogging}
                   onClick={submitLog}
-                  className={`gap-2 transition-colors ${logSaved ? "bg-[var(--state-success)] hover:opacity-90" : ""}`}
+                  className="gap-2 transition-colors border-[var(--state-success)] bg-[var(--state-success)] text-white hover:bg-[var(--state-success)] hover:opacity-90"
                 >
                   {isLogging ? (
                     <Loader2 className="w-4 h-4 animate-spin" />

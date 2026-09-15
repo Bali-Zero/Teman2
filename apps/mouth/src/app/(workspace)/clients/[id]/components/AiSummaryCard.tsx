@@ -98,7 +98,7 @@ function freshnessColor(iso: string | null): string {
   const diffH = (Date.now() - ts) / (1000 * 60 * 60);
   if (diffH < 24) return "text-[var(--state-success)]";
   if (diffH < 24 * 7) return "text-[var(--state-warning)]";
-  return "text-[var(--state-danger)]";
+  return "text-[var(--state-warning)]";
 }
 
 export function AiSummaryCard({
@@ -156,12 +156,12 @@ export function AiSummaryCard({
   // Error state
   if (error) {
     return (
-      <div className="rounded-lg border border-[var(--state-danger)]/40 bg-[var(--state-danger)]/10 p-4">
-        <div className="flex items-start gap-2 text-sm text-[var(--state-danger)]">
+      <div className="rounded-lg border border-[var(--state-warning)]/40 bg-[var(--state-warning)]/10 p-4">
+        <div className="flex items-start gap-2 text-sm text-[var(--state-warning)]">
           <AlertTriangle className="h-4 w-4 mt-0.5 flex-shrink-0" />
           <div>
             <div className="font-medium">Failed to load {title}</div>
-            <div className="text-xs text-[var(--state-danger)]/70 mt-1">
+            <div className="text-xs text-[var(--state-warning)]/70 mt-1">
               {error}
             </div>
           </div>
@@ -355,11 +355,11 @@ function OverviewBody({ summary }: { summary: L1ClientSummary }) {
       )}
       {summary.compliance?.red_flags &&
         summary.compliance.red_flags.length > 0 && (
-          <div className="rounded border border-[var(--state-danger)]/40 bg-[var(--state-danger)]/10 p-2">
-            <div className="flex items-center gap-1 text-xs font-medium text-[var(--state-danger)] mb-1">
+          <div className="rounded border border-[var(--state-warning)]/40 bg-[var(--state-warning)]/10 p-2">
+            <div className="flex items-center gap-1 text-xs font-medium text-[var(--state-warning)] mb-1">
               <AlertTriangle className="h-3 w-3" /> Red flags
             </div>
-            <ul className="text-xs text-[var(--state-danger)]/80 space-y-0.5 list-disc list-inside">
+            <ul className="text-xs text-[var(--state-warning)]/80 space-y-0.5 list-disc list-inside">
               {summary.compliance.red_flags.map((f, i) => (
                 <li key={i}>{f}</li>
               ))}
@@ -452,7 +452,7 @@ function TaxBody({ summary }: { summary: L1ClientSummary }) {
                   r.status === "filed"
                     ? "text-[var(--state-success)]"
                     : r.status === "overdue"
-                      ? "text-[var(--state-danger)]"
+                      ? "text-[var(--state-warning)]"
                       : "text-[var(--bz-text-3)]"
                 }`}
               >
@@ -598,11 +598,11 @@ function ProcessBody({ summary }: { summary: L1ClientSummary }) {
   return (
     <div className="space-y-2 text-sm">
       {flags.length > 0 && (
-        <div className="rounded border border-[var(--state-danger)]/40 bg-[var(--state-danger)]/10 p-2">
-          <div className="text-xs font-medium text-[var(--state-danger)] mb-1 flex items-center gap-1">
+        <div className="rounded border border-[var(--state-warning)]/40 bg-[var(--state-warning)]/10 p-2">
+          <div className="text-xs font-medium text-[var(--state-warning)] mb-1 flex items-center gap-1">
             <AlertTriangle className="h-3 w-3" /> Red flags ({flags.length})
           </div>
-          <ul className="text-xs text-[var(--state-danger)]/80 list-disc list-inside space-y-0.5">
+          <ul className="text-xs text-[var(--state-warning)]/80 list-disc list-inside space-y-0.5">
             {flags.map((f, i) => (
               <li key={i}>{f}</li>
             ))}
