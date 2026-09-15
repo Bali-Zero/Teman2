@@ -180,3 +180,44 @@ def test_evaluate_code_is_idempotent_after_apply():
     fake_by_code = {"73300": cured_record}
     plan2 = cure.evaluate_code("73300", entry, spec["template"], fake_by_code)
     assert plan2.status == "already_cured"
+
+
+def test_apply_is_all_or_nothing_on_a_tmp_copy(tmp_path):
+    """A run where ONE code has a problem must write NOTHING for the other 11
+    — not a partial apply that then reports failure. Codex review finding:
+    the first cut of this script wrote the valid subset, ran sync, updated
+    the sidecar, and only THEN returned exit 1 — leaving a canonical whose
+    content says success next to an exit code that says failure."""
+    tmp_canonical = tmp_path / "KBLI_2025_FINAL_CLEAN.json"
+    tmp_canonical.write_bytes(CANONICAL.read_bytes())
+    spec = _spec()
+
+    # This canonical may already be cured (the lane applies --apply for
+    # real). Force a KNOWN state instead of assuming one: 73300 reset to the
+    # spec's own pristine expectation (genuinely to_apply-eligible), 38110
+    # sabotaged with an unrecognised reason (a CureError, not a no-op).
+    dataset = json.loads(tmp_canonical.read_bytes())
+    for record in dataset["data"]:
+        code = record.get("kode_kbli_2025")
+        if code == "73300":
+            entry = spec["codes"]["73300"]
+            record["l4_bali"]["reason"] = entry["expected_reason"]
+            record["l4_bali"]["confidence"] = entry["expected_confidence"]
+            record["l4_bali"]["needs_review"] = entry["expected_needs_review"]
+        elif code == "38110":
+            record["l4_bali"]["reason"] = "drifted — not the spec's pristine text"
+    tmp_canonical.write_text(json.dumps(dataset, ensure_ascii=False, indent=2))
+    sabotaged_bytes = tmp_canonical.read_bytes()
+
+    exit_code = cure.main(
+        ["--canonical", str(tmp_canonical), "--apply", "--only"] + CODES
+    )
+    assert exit_code == 1
+    # The file on disk must be BYTE-IDENTICAL to the sabotaged input — the
+    # run wrote nothing at all, for any of the 12 codes, even though 73300
+    # was genuinely eligible to be cured on its own.
+    assert tmp_canonical.read_bytes() == sabotaged_bytes
+    reread = json.loads(tmp_canonical.read_text())
+    by = {r["kode_kbli_2025"]: r for r in reread["data"]}
+    assert by["73300"]["l4_bali"]["confidence"] == spec["codes"]["73300"]["expected_confidence"]
+    assert by["73300"]["l4_bali"]["needs_review"] == spec["codes"]["73300"]["expected_needs_review"]

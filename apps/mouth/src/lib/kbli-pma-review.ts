@@ -24,6 +24,15 @@ interface ReviewNoticeEntry {
   pma_status?: unknown;
   pma_max_asing?: unknown;
   pma_verification_status?: unknown;
+  /**
+   * The exact set of `per_skala[].skala_usaha` scale names the note's prose
+   * names (e.g. "Mikro, Kecil and Menengah scale"). Checked SEPARATELY from
+   * the guard fields above, because a re-ingestion can add a scale row
+   * (most importantly Besar — the whole reason this code has a notice
+   * instead of a national verdict) without touching `pma_status`/
+   * `pma_max_asing`/`pma_verification_status` at all.
+   */
+  scales: string[];
   note: string;
 }
 
@@ -31,15 +40,33 @@ const NOTICES: Record<string, ReviewNoticeEntry> = (
   notices as { notices: Record<string, ReviewNoticeEntry> }
 ).notices;
 
+function currentScales(raw: KBLIRawCode): Set<string> {
+  const scales = new Set<string>();
+  for (const row of raw.per_skala ?? []) {
+    for (const s of row.skala_usaha ?? []) scales.add(s);
+  }
+  return scales;
+}
+
+function sameScaleSet(recorded: string[], current: Set<string>): boolean {
+  return (
+    recorded.length === current.size && recorded.every((s) => current.has(s))
+  );
+}
+
 /** The notice text for `raw`, or null when no notice is registered for this
- * code, or the guarded fields have drifted since the notice was authored. */
+ * code, or the guarded fields (incl. the live `per_skala` scale set — a new
+ * Besar row is exactly the change that would make the notice's premise
+ * false) have drifted since the notice was authored. */
 export function pmaReviewNotice(raw: KBLIRawCode): string | null {
   const entry = NOTICES[raw.kode_kbli_2025];
   if (!entry) return null;
-  const { note, ...guard } = entry;
+  const { note, scales, ...guard } = entry;
   const rawRecord = raw as unknown as Record<string, unknown>;
-  const drifted = Object.entries(guard).some(
+  const guardDrifted = Object.entries(guard).some(
     ([key, expected]) => rawRecord[key] !== expected,
   );
-  return drifted ? null : note;
+  if (guardDrifted) return null;
+  if (!sameScaleSet(scales, currentScales(raw))) return null;
+  return note;
 }
