@@ -1,6 +1,6 @@
 {
   "_version": "1.4+hierarchy-20260908",
-  "_updated": "2026-09-08 (RULED 2026-09-06→08: two-imperator hierarchy — see _invariants[0]; previous: 2026-08-20 (Zero ruling, Legge 5, verbatim: 'Togliere Fable 5 dal workflow, lo u…)",
+  "_updated": "2026-09-15 (RULED 2026-09-06→08: two-imperator hierarchy — see _invariants[0]; previous: 2026-08-20 (Zero ruling, Legge 5, verbatim: 'Togliere Fable 5 dal workflow, lo u…)",
   "_doc": "SSOT for the CLOUD fleet: orchestrators, accounts, role fallback chains. Local Ollama assignments stay in MODEL_TOPOLOGY.json (unchanged). Rationale: research/operations/2026-08-09-quattro-gruppi-e-continuita.md. Law: AGENTS.md §17 + CLAUDE.md.",
   "_invariants": [
     "Final on-disk gate, ALL gears (RULED 2026-09-06→08, supersedes the 2026-08-20 permanent-Opus rule below): an ASSIGNMENT to a qualified independent verifier outside the contribution chain — a Claude session on the Opus 5 xhigh seat, rotating across ALL Anthropic accounts (AZ->A2->A3->A1), never cascading to a weaker model; all accounts dead => task SUSPENDS/QUEUES. Two imperators, equal (Fable 5.1 owner-opened window, Astra) appoint a temporary Dux between two equal generals (Opus 5, Sol); imperators never fan out or implement. Fable 5.1 is never auto-routed and never a gate seat. Parity widens no permission. Map: docs/architecture/dual-consul/army-map.md",
@@ -476,6 +476,52 @@
       "seats": ["claude-opus-5", "codex gpt-5.6-sol"],
       "dux": "temporary, per mission, appointed by the imperators",
       "note": "equal peers; no permanent reviewer title (Zero 2026-09-06: 'Opus e Sol sono uguali'). RULED 2026-09-10 (PARABELLUM): the mission COLOUR fixes which general is eligible as Dux — Opus 5 on BLUE, Sol on ORANGE — and the Dux is also the release owner of its own mission. No automatic colour fallback; an undeclared mission is BLUE."
+    },
+    "second_army": {
+      "_added": "mission SECONDO-LIVELLO-20260915, 2026-09-15: second-army chain doctrine, docs/architecture/dual-consul/army-map.md §1ter",
+      "_ruling_2026_09_15": "RULED by Zero: the INFERIOR seats BUILD, the Dux SPAWNS them and VERIFIES on disk — a weaker seat never grades a stronger one. Builder != verifier always (generator != grader).",
+      "dux": {
+        "blue_light": "claude-sonnet-5",
+        "orange_light": "codex gpt-5.6-terra"
+      },
+      "eligibility": "second-army only when the Gear floor computed by scripts/evidence_pack_lint.py / the harness-floor.yml required check is <= 2; a floor of 3 promotes the mission to role_chains.generals (army-map.md §1), no Dux discretion",
+      "builders_under_sonnet_dux": [
+        "codex gpt-5.6-luna",
+        "codex gpt-5.3-codex-spark",
+        "gemini-3.8-flash-low (agy)",
+        "deepseek-v4-flash-0731 (TP1)",
+        "qwen3.7-plus (TP1)"
+      ],
+      "builders_under_terra_dux": [
+        "claude-haiku-4-5",
+        "gemini-3.8-flash-low (agy)",
+        "deepseek-v4-flash-0731 (TP1)",
+        "qwen3.7-plus (TP1)"
+      ],
+      "haiku_grunt_rule": "claude-haiku-4-5 is a legal builder under a Sonnet Dux for Anthropic-native grunt ONLY — the last seat reached for, never the first, and only when every cross-family door has probed dead",
+      "verifier": "the Dux lane, on disk — it runs the task's proof command itself and reads the diff itself, and is never shown the builder's claim before deriving its own answer",
+      "refuter_floor2": [
+        "codex gpt-5.3-codex-spark",
+        "gemini-3.8-flash-low (agy)"
+      ],
+      "_refuter_note": "ONE seat, whichever probes live first, reading the FROZEN diff AFTER push — never a council (Zero's FLUIDITÀ addendum 2026-09-15)",
+      "supports": [
+        "claude-haiku-4-5",
+        "qwen3.6-flash (TP1)",
+        "ollama local (PII lanes only)"
+      ],
+      "_gemini_slug_probe": "agy models on M5 2026-09-15 returned gemini-3.8-flash-{high,medium,low} / gemini-3.7-flash-* / gemini-3.6-flash-*; the repo-wide gemini-3.5-flash spelling is stale and was NOT in the live list",
+      "async_queue_front": "Jules: dispatch 09:00 WITA, harvest every 3h, cap 3/day, queue infra/army/jules-queue/; never a synchronous lane",
+      "final_gate": "UNCHANGED: role_chains.gear3_final_gate (BLUE) / role_chains.gear3_final_gate_orange (ORANGE); never cascaded, never cheapened",
+      "dead_tiers_2026_09_15": [
+        "kimi",
+        "qwen-cloud-code",
+        "tp1-glm-5.2",
+        "tp1-deepseek-v4-pro"
+      ],
+      "_dead_tier_note": "a dead tier is DECLARED in the run output, never silently skipped; the builder roster falls through to the next live seat",
+      "pii": "ollama local only; output boundary per CLAUDE.md Builder Contract 4",
+      "on_exhaustion": "queue"
     }
   },
   "pending_arms": [
