@@ -1,0 +1,44 @@
+task_id: seat-widget-resize-v2
+gear: 2
+objective: >-
+  Make the Claude Seats desk widget do what the owner asked on 2026-09-15: Claude colours,
+  on Pro and M5, refreshing itself with the real numbers, movable and resizable. Measured
+  that day, it did none of it: not running on either Mac since their reboots (no autostart),
+  zero seats on Pro (the script ran without --deep, so every Keychain token read cold as
+  expired), M5 probing the same profiles in parallel, a fixed-size borderless panel, and a
+  relaunch that parked it at x=2012 on a 1728pt screen.
+
+  Gear 2 by SIZE, deterministically: 346 insertions / 84 deletions, over the 400-line
+  threshold; no hot zone. Successor of #6555, which was armed (hence frozen) before this
+  brief existed — the five code files are blob-identical to its head 29881d05a5.
+constraints:
+  - >-
+    The widget never reads a token and never calls the endpoint: it shells out to
+    scripts/claude_seat_quota.py, which uses the claude CLI OAuth credential only.
+  - >-
+    Two desks must not double the probes that trip the endpoint's 429: only the machine
+    holding the logged-in profiles measures; a --remote widget reads the published report
+    and probes only when it is missing or stale.
+  - >-
+    Must compile with M5's Command Line Tools (Swift 6.2, no SwiftUIMacros plugin), not
+    just Pro's Xcode.
+  - >-
+    Autostart must not fight the owner: a clean quit (exit 0) stays closed until the next
+    login; only a crash or kill relaunches.
+acceptance:
+  - text: >-
+      The script's unreadable-seat hint names the real cause: a 429 says retry later, and a
+      run that already had --deep is not told to add it.
+    probe: pytest scripts/tests/test_claude_seat_quota.py -k unreadable_hint_names_the_real_cause -q
+  - text: >-
+      The full seat quota test file passes.
+    probe: pytest scripts/tests/test_claude_seat_quota.py -q
+  - text: >-
+      After build.sh on Pro the LaunchAgent is running and the widget logs a measurement with
+      six named seats, measured locally.
+    probe: launchctl print gui/$(id -u)/com.nuzantara.claude-seats | grep 'state = running' && tail -1 ~/Library/Logs/SeatWidget.log | grep -E 'ok .* local seats=6'
+  - text: >-
+      After build.sh --remote pro on M5 the widget is served from Pro's report, not a second
+      probe.
+    probe: ssh m5 "tail -1 ~/Library/Logs/SeatWidget.log" | grep -E 'ok [0-9]s via pro seats=6'
+pii_scan: clean

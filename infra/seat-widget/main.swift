@@ -7,10 +7,13 @@
 //
 // The script and FLEET_TOPOLOGY.json are bundled into the .app at build time, so the
 // widget does not depend on the state of any checkout. Quota is Keychain-backed and only
-// readable on the machine that holds the logged-in profiles (Pro); on any other machine
-// build.sh --remote pro writes a one-line config and the widget measures over ssh.
+// readable on the machine that holds the logged-in profiles (Pro): there the widget
+// measures with --deep (a cold Keychain read returns expired tokens, i.e. zero seats) and
+// publishes the report. On any other machine build.sh --remote pro makes it read that
+// report over ssh, and measure only when the report is missing or stale — two widgets
+// probing the same profiles is how the endpoint's rate limiter gets tripped.
 //
-// Build: infra/seat-widget/build.sh [--remote HOST] [--no-launch]
+// Build: infra/seat-widget/build.sh [--remote HOST] [--no-launch] [--no-autostart]
 
 import AppKit
 import SwiftUI
@@ -37,6 +40,22 @@ enum Palette {
     }
 }
 
+/// The whole card is drawn at `k` times its design size, so resizing keeps text crisp.
+enum Zoom {
+    static let min: CGFloat = 0.6
+    static let max: CGFloat = 2.5
+    static let step: CGFloat = 0.15
+}
+
+private struct ScaleKey: EnvironmentKey { static let defaultValue: CGFloat = 1 }
+
+extension EnvironmentValues {
+    var k: CGFloat {
+        get { self[ScaleKey.self] }
+        set { self[ScaleKey.self] = newValue }
+    }
+}
+
 // MARK: - Data
 
 struct Seat: Decodable, Identifiable {
@@ -48,11 +67,14 @@ struct Seat: Decodable, Identifiable {
     let weeklyResetsAt: String?
     let error: String?
     let stale: Bool?
+    let throttled: Bool?
+    /// Set when a rate-limited read kept this seat's previous numbers: when they were taken.
+    var carriedSince: Date? = nil
 
     var id: String { (seat ?? "?") + "|" + (account ?? "?") }
 
     enum CodingKeys: String, CodingKey {
-        case account, seat, error, stale
+        case account, seat, error, stale, throttled
         case sessionPct = "session_pct"
         case weeklyPct = "weekly_pct"
         case sessionResetsAt = "session_resets_at"
@@ -127,9 +149,11 @@ enum Labels {
 
 /// What a measurement is given before it counts as lost. A healthy refresh takes ~30s.
 enum Budget {
-    static let measure: TimeInterval = 120
-    static let stuck: TimeInterval = 180
+    static let measure: TimeInterval = 240
+    static let stuck: TimeInterval = 300
     static let retry: TimeInterval = 180
+    /// A published report younger than this is served as-is by a --remote widget.
+    static let reportMaxAgeMin = 40
 }
 
 enum Quota {
@@ -152,15 +176,21 @@ enum Quota {
         }
         proc.environment = env
         var source = "local"
+        // --publish with no peers writes ~/.claude/seat-quota.json on the measuring machine,
+        // which is what a --remote widget reads first. Exit 2 from --from-report means "no
+        // fresh report" (and prints nothing on stdout), so only then does the peer measure.
+        let measureArgs = "--json --deep --publish --peers \"\""
         if let host = Paths.remoteHost {
             source = "via \(host)"
             let remote = "export PATH=/opt/homebrew/bin:$HOME/.local/bin:$PATH; "
                 + "for r in $HOME/nuzantara $HOME/Desktop/nuzantara; do "
-                + "[ -f $r/scripts/claude_seat_quota.py ] && exec python3 $r/scripts/claude_seat_quota.py --json; "
-                + "done; echo 'claude_seat_quota.py non trovato sul peer' >&2; exit 2"
+                + "S=$r/scripts/claude_seat_quota.py; [ -f $S ] || continue; "
+                + "python3 $S --json --from-report --max-age \(Budget.reportMaxAgeMin); rc=$?; "
+                + "[ $rc -ne 2 ] && exit $rc; exec python3 $S \(measureArgs); "
+                + "done; echo claude_seat_quota.py non trovato sul peer >&2; exit 2"
             proc.arguments = ["-lc", "exec ssh -o BatchMode=yes -o ConnectTimeout=10 '\(host)' '\(remote)'"]
         } else if let script = Paths.script {
-            proc.arguments = ["-lc", "exec python3 '\(script)' --json"]
+            proc.arguments = ["-lc", "exec python3 '\(script)' \(measureArgs)"]
         } else {
             return Outcome(failure: "claude_seat_quota.py non trovato (imposta NUZANTARA_REPO)")
         }
@@ -234,10 +264,32 @@ final class Model: ObservableObject {
             onChange?()
         }
     }
+    @Published var scale: CGFloat = {
+        let v = UserDefaults.standard.double(forKey: "scale")
+        return v > 0 ? CGFloat(v) : 1
+    }() {
+        didSet {
+            UserDefaults.standard.set(Double(scale), forKey: "scale")
+            onChange?()
+        }
+    }
+    /// Ticks every minute so the reset countdowns move between measurements.
+    @Published var clock = Date()
+    /// While the grip is dragged the panel grows from its top-left corner, under the cursor.
+    var resizing = false
+    // Gesture anchors live on the model, not in view state: the Command Line Tools on M5
+    // ship no SwiftUIMacros plugin, so the State property wrapper does not compile there.
+    var gripStart: (mouse: NSPoint, size: NSSize, scale: CGFloat)?
+    var pinchStart: CGFloat?
     var onChange: (() -> Void)?
     private var timer: Timer?
     private var supervisor: Timer?
-    private(set) var interval: TimeInterval = 30 * 60
+    private(set) var interval: TimeInterval = 15 * 60
+
+    func zoom(to s: CGFloat) {
+        let v = (min(Zoom.max, max(Zoom.min, s)) * 100).rounded() / 100
+        if v != scale { scale = v }
+    }
     private var inflight: UUID?
     private var inflightSince: Date?
     private var attempt = 0
@@ -274,6 +326,7 @@ final class Model: ObservableObject {
     }
 
     private func tick() {
+        clock = Date()
         if let since = inflightSince, Date().timeIntervalSince(since) > Budget.stuck {
             log("stuck \(Int(Date().timeIntervalSince(since)))s: refresh abandoned")
             inflight = nil
@@ -334,12 +387,25 @@ final class Model: ObservableObject {
             log("empty \(secs)s \(o.source) hidden=\(o.hidden) [keeping \(age ?? "?"), attempt \(attempt)]")
             return
         }
+        // A 429 on one seat says nothing about its usage: keep that seat's last numbers,
+        // marked with when they were taken, instead of blanking the row.
+        let previous = Dictionary(seats.compactMap { s in s.account.map { ($0.lowercased(), s) } },
+                                  uniquingKeysWith: { a, _ in a })
+        var carried = 0
+        let merged: [Seat] = o.seats.map { row in
+            guard row.error != nil, row.throttled == true,
+                  let acc = row.account?.lowercased(), var old = previous[acc], old.error == nil
+            else { return row }
+            old.carriedSince = old.carriedSince ?? updatedAt
+            carried += 1
+            return old
+        }
         attempt = 0
-        seats = o.seats
+        seats = merged
         hidden = o.hidden
         note = o.note
         updatedAt = Date()
-        log("ok \(secs)s \(o.source) seats=\(o.seats.count) hidden=\(o.hidden)"
+        log("ok \(secs)s \(o.source) seats=\(o.seats.count) hidden=\(o.hidden) carried=\(carried)"
             + (o.note.map { " note=\($0)" } ?? ""))
     }
 
@@ -388,27 +454,33 @@ enum Fmt {
         return "\((weekly ? dayHm : hm).string(from: d)) · \(rel)"
     }
 
-    static func pct(_ v: Double?) -> String { v.map { "\(Int($0.rounded()))%" } ?? "–" }
+    /// The endpoint's own figure: whole when it is whole, one decimal when it is not.
+    static func pct(_ v: Double?) -> String {
+        guard let v else { return "–" }
+        if v == v.rounded() { return "\(Int(v))%" }
+        return String(format: "%.1f%%", v).replacingOccurrences(of: ".", with: ",")
+    }
 }
 
 // MARK: - Views
 
 struct QuotaBar: View {
+    @Environment(\.k) private var k
     let label: String
     let pct: Double?
     let reset: String?
     let weekly: Bool
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            HStack(spacing: 5) {
-                Text(label).font(.system(size: 10, weight: .bold)).foregroundStyle(Palette.muted)
+        VStack(alignment: .leading, spacing: 4 * k) {
+            HStack(spacing: 5 * k) {
+                Text(label).font(.system(size: 10 * k, weight: .bold)).foregroundStyle(Palette.muted)
                 Text(Fmt.pct(pct))
-                    .font(.system(size: 12, weight: .semibold, design: .rounded))
+                    .font(.system(size: 12 * k, weight: .semibold, design: .rounded))
                     .foregroundStyle(pct == nil ? Palette.muted : Palette.usage(pct))
-                Spacer(minLength: 2)
+                Spacer(minLength: 2 * k)
                 Text("↻ " + Fmt.reset(reset, weekly: weekly))
-                    .font(.system(size: 10)).foregroundStyle(Palette.muted).lineLimit(1)
+                    .font(.system(size: 10 * k)).foregroundStyle(Palette.muted).lineLimit(1)
             }
             GeometryReader { g in
                 ZStack(alignment: .leading) {
@@ -417,49 +489,56 @@ struct QuotaBar: View {
                         .frame(width: g.size.width * CGFloat(min(max(pct ?? 0, 0), 100)) / 100)
                 }
             }
-            .frame(height: 6)
+            .frame(height: 6 * k)
         }
-        .frame(width: 190)
+        .frame(width: 190 * k)
     }
 }
 
 struct SeatRow: View {
+    @Environment(\.k) private var k
     let seat: Seat
 
     var body: some View {
-        HStack(spacing: 12) {
-            VStack(alignment: .leading, spacing: 1) {
+        HStack(spacing: 12 * k) {
+            VStack(alignment: .leading, spacing: 1 * k) {
                 Text(seat.seat ?? "?")
-                    .font(.system(size: 13, weight: .semibold, design: .monospaced))
+                    .font(.system(size: 13 * k, weight: .semibold, design: .monospaced))
                     .foregroundStyle(Palette.text)
-                Text(seat.shortAccount)
-                    .font(.system(size: 10)).foregroundStyle(Palette.muted).lineLimit(1)
+                Text(seat.carriedSince.map { seat.shortAccount + " · misura " + Fmt.hm.string(from: $0) }
+                     ?? seat.shortAccount)
+                    .font(.system(size: 10 * k)).foregroundStyle(Palette.muted).lineLimit(1)
             }
-            .frame(width: 118, alignment: .leading)
+            .frame(width: 118 * k, alignment: .leading)
             if let e = seat.error {
-                Text(e).font(.system(size: 11)).foregroundStyle(Palette.text).lineLimit(2)
+                Text(e).font(.system(size: 11 * k)).foregroundStyle(Palette.text).lineLimit(2)
                 Spacer()
             } else {
-                QuotaBar(label: "5h", pct: seat.sessionPct, reset: seat.sessionResetsAt, weekly: false)
-                QuotaBar(label: "7g", pct: seat.weeklyPct, reset: seat.weeklyResetsAt, weekly: true)
+                Group {
+                    QuotaBar(label: "5h", pct: seat.sessionPct, reset: seat.sessionResetsAt, weekly: false)
+                    QuotaBar(label: "7g", pct: seat.weeklyPct, reset: seat.weeklyResetsAt, weekly: true)
+                }
+                .opacity(seat.carriedSince == nil ? 1 : 0.6)
+                .help(seat.carriedSince == nil ? "" : "429 dall'endpoint: ultima misura buona")
             }
         }
-        .padding(.vertical, 4)
+        .padding(.vertical, 4 * k)
     }
 }
 
 struct SeatChip: View {
+    @Environment(\.k) private var k
     let seat: Seat
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 2) {
-            HStack(spacing: 4) {
+        VStack(alignment: .leading, spacing: 2 * k) {
+            HStack(spacing: 4 * k) {
                 Text((seat.seat ?? "?").split(separator: "/").first.map(String.init) ?? "?")
-                    .font(.system(size: 10, weight: .bold, design: .monospaced))
+                    .font(.system(size: 10 * k, weight: .bold, design: .monospaced))
                     .foregroundStyle(Palette.muted)
                 Spacer(minLength: 0)
                 Text(seat.error == nil ? Fmt.pct(seat.sessionPct) : "!")
-                    .font(.system(size: 12, weight: .semibold, design: .rounded))
+                    .font(.system(size: 12 * k, weight: .semibold, design: .rounded))
                     .foregroundStyle(Palette.usage(seat.sessionPct))
             }
             GeometryReader { g in
@@ -469,9 +548,10 @@ struct SeatChip: View {
                         .frame(width: g.size.width * CGFloat(min(max(seat.sessionPct ?? 0, 0), 100)) / 100)
                 }
             }
-            .frame(height: 3)
+            .frame(height: 3 * k)
         }
-        .frame(width: 62)
+        .frame(width: 62 * k)
+        .opacity(seat.carriedSince == nil ? 1 : 0.6)
         .help("\(seat.seat ?? "?") \(seat.shortAccount) — 5h \(Fmt.pct(seat.sessionPct)) ↻ \(Fmt.reset(seat.sessionResetsAt, weekly: false)) · 7g \(Fmt.pct(seat.weeklyPct))")
     }
 }
@@ -487,29 +567,95 @@ struct DragAnywhere: ViewModifier {
     }
 }
 
+/// The grip's event surface. A SwiftUI DragGesture loses to the panel's own background
+/// drag (measured: the widget moved instead of growing), so the grip is a real NSView that
+/// refuses to move the window and takes the mouse itself.
+final class GripNSView: NSView {
+    var onDrag: ((_ ended: Bool) -> Void)?
+    override var mouseDownCanMoveWindow: Bool { false }
+    override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
+    override func mouseDown(with event: NSEvent) { onDrag?(false) }
+    override func mouseDragged(with event: NSEvent) { onDrag?(false) }
+    override func mouseUp(with event: NSEvent) { onDrag?(true) }
+}
+
+struct GripHandle: NSViewRepresentable {
+    let onDrag: (_ ended: Bool) -> Void
+    func makeNSView(context: Context) -> GripNSView {
+        let v = GripNSView()
+        v.onDrag = onDrag
+        return v
+    }
+    func updateNSView(_ v: GripNSView, context: Context) { v.onDrag = onDrag }
+}
+
+/// Bottom-right grip: dragging it zooms the whole card. The pointer is read in screen
+/// coordinates because the card itself changes size under the gesture.
+struct ResizeGrip: View {
+    @ObservedObject var model: Model
+    @Environment(\.k) private var k
+
+    var body: some View {
+        Canvas { ctx, size in
+            for i in 1...3 {
+                let o = CGFloat(i) * size.width / 3.2
+                var p = Path()
+                p.move(to: CGPoint(x: size.width - o, y: size.height))
+                p.addLine(to: CGPoint(x: size.width, y: size.height - o))
+                ctx.stroke(p, with: .color(Palette.muted), lineWidth: 1.3)
+            }
+        }
+        .frame(width: 12 * k, height: 12 * k)
+        .padding(4 * k)
+        .overlay(GripHandle(onDrag: drag))
+        .help("Trascina per ridimensionare")
+    }
+
+    private func drag(ended: Bool) {
+        if ended {
+            model.gripStart = nil
+            model.resizing = false
+            return
+        }
+        let m = NSEvent.mouseLocation
+        guard let s = model.gripStart else {
+            let size = NSApp.windows.first { $0 is WidgetPanel }?.frame.size ?? .zero
+            guard size.width > 0, size.height > 0 else { return }
+            model.gripStart = (m, size, model.scale)
+            model.resizing = true
+            return
+        }
+        let rx = (s.size.width + m.x - s.mouse.x) / s.size.width
+        let ry = (s.size.height + s.mouse.y - m.y) / s.size.height
+        model.zoom(to: s.scale * (abs(rx - 1) >= abs(ry - 1) ? rx : ry))
+    }
+}
+
 struct RootView: View {
     @ObservedObject var model: Model
 
+    private var k: CGFloat { model.scale }
+
     var header: some View {
-        HStack(spacing: 6) {
-            Circle().fill(model.isStale ? Palette.ink : Palette.text).frame(width: 8, height: 8)
+        HStack(spacing: 6 * k) {
+            Circle().fill(model.isStale ? Palette.ink : Palette.text).frame(width: 8 * k, height: 8 * k)
             Text(model.expanded ? "Claude seats" : "Claude")
-                .font(.system(size: model.expanded ? 15 : 13, weight: .medium, design: .serif))
+                .font(.system(size: (model.expanded ? 15 : 13) * k, weight: .medium, design: .serif))
                 .foregroundStyle(Palette.text)
                 .onTapGesture { model.expanded.toggle() }
-            Spacer(minLength: 4)
+            Spacer(minLength: 4 * k)
             if model.expanded, let t = model.updatedAt {
                 Text((model.isStale ? "fermo da " + (model.age ?? "?") + " · " : "agg. ")
                      + Fmt.hm.string(from: t) + (model.source == "local" ? "" : " · " + model.source))
-                    .font(.system(size: 10))
+                    .font(.system(size: 10 * k))
                     .foregroundStyle(model.isStale ? Palette.ink : Palette.muted)
             }
             if model.loading {
-                ProgressView().controlSize(.mini).tint(.white)
+                ProgressView().controlSize(k >= 1.4 ? .small : .mini).tint(.white)
             } else {
                 Button { model.refresh(force: true) } label: {
                     Image(systemName: "arrow.clockwise")
-                        .font(.system(size: 12, weight: .semibold))
+                        .font(.system(size: 12 * k, weight: .semibold))
                         .foregroundStyle(Palette.text)
                 }
                 .buttonStyle(.borderless)
@@ -517,59 +663,76 @@ struct RootView: View {
             }
             Button { model.expanded.toggle() } label: {
                 Image(systemName: model.expanded ? "arrow.down.right.and.arrow.up.left" : "arrow.up.left.and.arrow.down.right")
-                    .font(.system(size: 11, weight: .bold))
+                    .font(.system(size: 11 * k, weight: .bold))
                     .foregroundStyle(Palette.text)
             }
             .buttonStyle(.borderless)
             .help(model.expanded ? "Riduci" : "Espandi")
         }
-        .frame(minHeight: 22)
+        .frame(minHeight: 22 * k)
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
+        VStack(alignment: .leading, spacing: 6 * k) {
             header
             if model.expanded {
-                Rectangle().fill(Palette.line).frame(height: 1)
+                Rectangle().fill(Palette.line).frame(height: max(1, k))
                 if model.seats.isEmpty {
                     Text(model.loading ? "misuro i sei seat…" : (model.note ?? "nessun dato"))
-                        .font(.system(size: 12)).foregroundStyle(Palette.muted)
+                        .font(.system(size: 12 * k)).foregroundStyle(Palette.muted)
                         .frame(maxWidth: .infinity, alignment: .center)
-                        .padding(.vertical, 40)
+                        .padding(.vertical, 40 * k)
                 } else {
-                    ForEach(model.seats) { SeatRow(seat: $0) }
+                    Group { ForEach(model.seats) { SeatRow(seat: $0) } }.id(model.clock)
                 }
                 if !model.seats.isEmpty, let n = model.note {
-                    Text(n).font(.system(size: 10)).foregroundStyle(Palette.text).lineLimit(2)
+                    Text(n).font(.system(size: 10 * k)).foregroundStyle(Palette.text).lineLimit(2)
                 }
                 if model.hidden > 0 {
                     Text("\(model.hidden) vecchi login ignorati")
-                        .font(.system(size: 10)).foregroundStyle(Palette.muted.opacity(0.8))
+                        .font(.system(size: 10 * k)).foregroundStyle(Palette.muted.opacity(0.8))
                 }
             } else if model.seats.isEmpty {
                 Text(model.loading ? "misuro…" : "nessun dato")
-                    .font(.system(size: 11)).foregroundStyle(Palette.muted)
+                    .font(.system(size: 11 * k)).foregroundStyle(Palette.muted)
                     .frame(maxWidth: .infinity, alignment: .center)
-                    .padding(.vertical, 24)
+                    .padding(.vertical, 24 * k)
             } else {
-                LazyVGrid(columns: [GridItem(.fixed(62), spacing: 10), GridItem(.fixed(62), spacing: 0)],
-                          alignment: .leading, spacing: 9) {
+                LazyVGrid(columns: [GridItem(.fixed(62 * k), spacing: 10 * k), GridItem(.fixed(62 * k), spacing: 0)],
+                          alignment: .leading, spacing: 9 * k) {
                     ForEach(model.seats) { SeatChip(seat: $0) }
                 }
-                .padding(.top, 2)
+                .id(model.clock)
+                .padding(.top, 2 * k)
             }
         }
-        .padding(.horizontal, 12)
-        .padding(.top, 9)
-        .padding(.bottom, model.expanded ? 12 : 11)
-        .frame(width: model.expanded ? 560 : 158, alignment: .top)
+        .padding(.horizontal, 12 * k)
+        .padding(.top, 9 * k)
+        .padding(.bottom, (model.expanded ? 12 : 11) * k)
+        .frame(width: (model.expanded ? 560 : 158) * k, alignment: .top)
         .background(Palette.card)
-        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-        .environment(\.colorScheme, .dark)
         .modifier(DragAnywhere())
+        // After DragAnywhere, not inside it: WindowDragGesture claims every descendant's
+        // mouse-down, NSView or not (measured: the grip moved the widget).
+        .overlay(alignment: .bottomTrailing) { ResizeGrip(model: model) }
+        .clipShape(RoundedRectangle(cornerRadius: 14 * k, style: .continuous))
+        .environment(\.k, k)
+        .environment(\.colorScheme, .dark)
+        .simultaneousGesture(
+            MagnificationGesture()
+                .onChanged { v in
+                    if model.pinchStart == nil { model.pinchStart = model.scale }
+                    model.zoom(to: (model.pinchStart ?? model.scale) * v)
+                }
+                .onEnded { _ in model.pinchStart = nil }
+        )
         .contextMenu {
             Button("Aggiorna adesso") { model.refresh(force: true) }
             Button(model.expanded ? "Riduci" : "Espandi") { model.expanded.toggle() }
+            Divider()
+            Button("Più grande") { model.zoom(to: model.scale + Zoom.step) }
+            Button("Più piccolo") { model.zoom(to: model.scale - Zoom.step) }
+            Button("Dimensione normale") { model.zoom(to: 1) }
             Divider()
             Button("Esci") { NSApp.terminate(nil) }
         }
@@ -597,11 +760,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         var f = panel.frame
         if abs(f.width - size.width) < 1, abs(f.height - size.height) < 1 { return }
         let screen = panel.screen ?? NSScreen.main
-        let anchorRight = screen.map { f.midX > $0.frame.midX } ?? false
+        let anchorRight = !model.resizing && (screen.map { f.midX > $0.frame.midX } ?? false)
         let maxX = f.maxX, maxY = f.maxY
         f.size = size
         f.origin.y = maxY - size.height
         if anchorRight { f.origin.x = maxX - size.width }
+        // Never let a size change push the card off every screen (measured: x=2012 on a
+        // 1728pt display after a relaunch), where a desktop-level panel can't be recovered.
+        if let v = screen?.visibleFrame {
+            f.origin.x = max(v.minX, min(f.origin.x, v.maxX - f.width))
+            f.origin.y = max(v.minY, min(f.origin.y, v.maxY - f.height))
+        }
         panel.setFrame(f, display: true, animate: false)
     }
 
@@ -627,14 +796,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         panel.hasShadow = true
         panel.delegate = self
         panel.contentView = host
+        // A non-resizable panel restores only the saved ORIGIN, so fit()'s right-edge anchor
+        // would start from the 560pt placeholder width: restore the saved size explicitly.
+        let saved = UserDefaults.standard.string(forKey: "NSWindow Frame ClaudeSeatsPanel")
+            .map { $0.split(separator: " ").prefix(4).compactMap { Double($0) } }
+            .flatMap { v in v.count == 4 ? NSRect(x: v[0], y: v[1], width: v[2], height: v[3]) : nil }
         panel.setFrameAutosaveName("ClaudeSeatsPanel")
-        if !panel.setFrameUsingName("ClaudeSeatsPanel"), let screen = NSScreen.main {
+        if let r = saved, r.width > 0, r.height > 0 {
+            panel.setFrame(r, display: false)
+        } else if let screen = NSScreen.main {
             let v = screen.visibleFrame
             panel.setFrameOrigin(NSPoint(x: v.maxX - 560 - 24, y: v.maxY - 320 - 24))
         }
         panel.orderFrontRegardless()
         fit()
-        model.start(every: 30 * 60)
+        model.start(every: 15 * 60)
     }
 
     func windowWillClose(_ notification: Notification) { NSApp.terminate(nil) }
