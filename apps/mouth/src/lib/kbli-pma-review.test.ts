@@ -3,12 +3,27 @@ import { describe, expect, it } from "vitest";
 import { pmaReviewNotice } from "./kbli-pma-review";
 import type { KBLIRawCode } from "./kbli-types";
 
+function skalaRow(scales: string[]) {
+  return { skala_usaha: scales, kategori_risiko: "Menengah Rendah" };
+}
+
+// The three registered codes this file exercises, with their REAL scale set
+// (matches apps/mouth/data/kbli-pma-review-notices.json) — a fixture whose
+// per_skala doesn't match the notice's own `scales` field would trip the
+// drift guard by accident, not by the test's intent.
+const REGISTERED_SCALES: Record<string, string[]> = {
+  "38110": ["Mikro", "Kecil", "Menengah"],
+  "73300": ["Mikro", "Kecil", "Menengah"],
+  "56102": ["Mikro", "Kecil"],
+};
+
 function raw(overrides: Record<string, unknown> = {}): KBLIRawCode {
+  const code = (overrides.kode_kbli_2025 as string) ?? "38110";
   return {
     kode_kbli_2025: "38110",
     judul: "fixture",
     uraian: "fixture",
-    per_skala: [],
+    per_skala: [skalaRow(REGISTERED_SCALES[code] ?? [])],
     sektor_id: null,
     status_mapping: "",
     pp28_sources: [],
@@ -64,5 +79,21 @@ describe("pmaReviewNotice", () => {
   it("withdraws the notice when pma_max_asing has drifted", () => {
     const drifted = raw({ kode_kbli_2025: "73300", pma_max_asing: 0 });
     expect(pmaReviewNotice(drifted)).toBeNull();
+  });
+
+  it("withdraws the notice when OSS adds a Besar row — the whole reason the notice exists", () => {
+    const gainedBesar = raw({
+      kode_kbli_2025: "73300",
+      per_skala: [skalaRow(["Mikro", "Kecil", "Menengah", "Besar"])],
+    });
+    expect(pmaReviewNotice(gainedBesar)).toBeNull();
+  });
+
+  it("withdraws the notice when a scale row is REMOVED — the note's own scale list would overstate it", () => {
+    const lostAScale = raw({
+      kode_kbli_2025: "73300",
+      per_skala: [skalaRow(["Mikro"])],
+    });
+    expect(pmaReviewNotice(lostAScale)).toBeNull();
   });
 });

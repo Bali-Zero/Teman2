@@ -176,7 +176,7 @@ def evaluate_code(code: str, entry: dict[str, Any], template: str, by_code: dict
     if not isinstance(l4, dict):
         raise CureError(f"{code}: l4_bali missing or not a dict — cannot cure")
 
-    current_reason = l4.get("reason")
+    current_reason = str(l4.get("reason") or "")
     current_confidence = l4.get("confidence")
     current_needs_review = l4.get("needs_review")
     current_blocked = l4.get("blocked")
@@ -327,11 +327,18 @@ def main(argv: list[str] | None = None) -> int:
     print(f"summary: {len(to_apply)} to cure, {already_cured_count} already cured, "
           f"{missing_count} missing, {len(problems)} problem(s)")
 
+    if problems:
+        # All-or-nothing: a run that found ANY problem writes NOTHING, in
+        # dry-run OR --apply. Writing the valid subset while reporting
+        # failure on the rest would leave the canonical, the sync, and the
+        # sidecar sha256 all successfully updated on a run whose exit code
+        # says it failed — the next reader trusts the exit code, not the
+        # partial state it silently left behind.
+        for p in problems:
+            logger.error(p)
+        return 1
+
     if not args.apply:
-        if problems:
-            for p in problems:
-                logger.error(p)
-            return 1
         print("DRY RUN — no files written. Re-run with --apply to mutate the canonical.")
         return 0
 
@@ -354,10 +361,6 @@ def main(argv: list[str] | None = None) -> int:
     else:
         logger.info("no canonical changes — skipping sync + sidecar update")
 
-    if problems:
-        for p in problems:
-            logger.error(p)
-        return 1
     return 0
 
 
