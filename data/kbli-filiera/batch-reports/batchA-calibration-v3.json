@@ -145,9 +145,9 @@
         "00a9680947e8ebe3cc4b1ce828dc07dbfd60e515a04f91da8736b09306bcd0d6"
       ],
       "eligibility_predicate": "canonical record has kode_kbli_2025 set AND _l2_source is non-null AND per_skala is non-empty (the OSS-native Batch-C class)",
-      "eligible_population_after_exclusion": 1321,
-      "eligible_population_after_lot1_exclusion": 1329,
-      "eligible_population_before_exclusion": 1337,
+      "eligible_population_after_exclusion": 1324,
+      "eligible_population_after_lot1_exclusion": 1332,
+      "eligible_population_before_exclusion": 1340,
       "excluded_lot1_revealed_positive_controls": 8,
       "excluded_lot2_revealed_positive_controls": 8,
       "lot2_burn_note": "8 codes revealed at the Lot 2 cross-family Appendix A (2026-07-18) — the committed v2-lot2 digests, derivation independently replicated, matched byte-for-byte. 10433 is ADDITIONALLY a disqualified control (a TRUE finding, see m5_gold_set_hit_rate.pos_disqualified_ruling and the standalone metadata-fix cure metadata_fixes_2026_07_19.json) — it is excluded here for the SAME reveal-burn reason as the other 7, not specially; all 8 are permanently ineligible as v3+ gold controls.",
@@ -213,12 +213,12 @@
     "max_tokens_per_code": 357453
   },
   "pinned_revisions": {
-    "canonical_git_revision": "6d1367d9c8b480838e966cd389c99cae882a6466",
+    "canonical_git_revision": "4087cfba425afe99e819186c68671c4bed7f3c87",
     "canonical_path": "data/source_documents/KBLI_2025_FINAL_CLEAN.json",
     "manifest_path": "data/kbli-filiera/manifest/vault-manifest-batch0-2026-07-18.json",
     "manifest_sha256": "e7d25a377b717ed76efd1c7c806fe74b45067321629c5ed77655aeea9375db9d",
     "membership_path": "data/kbli-filiera/membership/batch-a-members.json",
-    "membership_sha256": "7e6d0cd819ea32da6e85c2656ff138d422c561b2cc981d4e77fb3633fb5ca559"
+    "membership_sha256": "0ba415ace25f8ee4854eccc33ef0a0b77d2fad3f6d451b9b2f64577bbcf1ea4a"
   },
   "plan": "research/operations/2026-07-18-kbli-batch-a-plan.md",
   "precondition": "Lot 3 conductor gate report sign-off condition (3) (research/operations/2026-07-19-kbli-batch-a-lot3-conductor-gate.md): 'Lot 4 is authorized ONLY after: (1) cross-family m1/m5 adjudicated in an appendix to this report, (2) the Lot 3 cure shipped, (3) the v3 registry re-salt shipped.' This re-emission ships condition (3).",
