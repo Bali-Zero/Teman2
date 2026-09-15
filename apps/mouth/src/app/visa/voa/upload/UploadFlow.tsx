@@ -16,6 +16,15 @@ import type { ReviewField, UncertainReviewField } from "./types";
  * is scoped to `upload/` and to the UX/functional correctness of the upload step, not
  * final branding. L6 restyles this page without needing to touch its logic.
  */
+/** Error codes naming the document store itself as unavailable (not a bad photo, not a
+ * bad session) — the customer can't fix this by retaking or retrying, so the manual-entry
+ * escape hatch is surfaced prominently instead of just left as the always-visible link. */
+const DOCUMENT_STORE_DOWN_CODES = new Set([
+  "PERSISTENCE_POLICY_UNAVAILABLE",
+  "DOCUMENT_PROCESSING_UNAVAILABLE",
+  "SERVICE_UNAVAILABLE",
+]);
+
 export interface UploadFlowProps {
   resultId: string;
   /** Fires when the customer confirms a resolved set of fields (from either the
@@ -98,12 +107,40 @@ export function UploadFlow({ resultId, onConfirmed }: UploadFlowProps) {
 
       <StateView
         state={state}
+        resultId={resultId}
         onPickFile={() => fileInputRef.current?.click()}
         onRetake={handleRetake}
         onRetry={retryUpload}
         onConfirmed={onConfirmed}
       />
+
+      <ManualEntryLink resultId={resultId} />
     </main>
+  );
+}
+
+/** Escape hatch to checkout without a photo — always available (upload can be skipped
+ * outright), and rendered a second time, prominently, when the error state names the
+ * document store itself as unavailable (a bad photo isn't the customer's problem to
+ * retry their way out of; see the DOCUMENT_STORE_DOWN_CODES check in StateView below). */
+function ManualEntryLink({
+  resultId,
+  prominent = false,
+}: {
+  resultId: string;
+  prominent?: boolean;
+}) {
+  return (
+    <a
+      href={`/visa/voa/checkout/${resultId}`}
+      className={
+        prominent
+          ? "rounded-md bg-gray-900 px-4 py-3 text-center text-sm font-medium text-white"
+          : "text-sm font-medium text-gray-700 underline"
+      }
+    >
+      Can&apos;t upload a photo now? Type your passport details instead →
+    </a>
   );
 }
 
@@ -122,12 +159,14 @@ function Checklist() {
 
 function StateView({
   state,
+  resultId,
   onPickFile,
   onRetake,
   onRetry,
   onConfirmed,
 }: {
   state: ReturnType<typeof useDocumentUpload>["state"];
+  resultId: string;
   onPickFile: () => void;
   onRetake: () => void;
   onRetry: () => void;
@@ -182,6 +221,9 @@ function StateView({
       return (
         <div className="flex flex-col gap-3" aria-live="polite">
           <p className="text-sm text-red-600">{state.message}</p>
+          {state.code && DOCUMENT_STORE_DOWN_CODES.has(state.code) ? (
+            <ManualEntryLink resultId={resultId} prominent />
+          ) : null}
           {state.retryable && (
             <button
               type="button"
