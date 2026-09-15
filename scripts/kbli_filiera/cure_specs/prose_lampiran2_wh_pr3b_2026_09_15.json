@@ -1,0 +1,271 @@
+{
+  "compiler": "cure_prose_national_openness",
+  "_meta": {
+    "spec": "prose_lampiran2_wh_pr3b_2026_09_15",
+    "population": "W-H PR-3b: the 8 specialised-retail codes of Lampiran II entry 46 moved to TERBATAS/0 (47241 47242 47244 47245 47246 47249 47712 47722). Restricted subset of lot 5 (prose_lampiran2_wh_pr3_2026_09_15) covering only these 8; the other 3 (55201/55203/79903) belong to PR-3a.",
+    "replacement_is_whole_field_not_sentence": "editorial.body keeps every paragraph that does not itself assert a PMA/national-openness or Bali-moratorium claim (the true product/scope and scale-range descriptions), and appends ONE corrected closing paragraph. No other field carries a true fact beyond the (now superseded) national-openness claim, so headline/standfirst/pullQuote/whatYouNeed are replaced whole.",
+    "no_new_claims_beyond_the_allocation": "Every replacement states only: the 0% ceiling, the Lampiran II locator already carried on the record's own pma_official_basis, and that the PT PMA route is unavailable nationwide. Retail codes name activity AND product (D5b). No Bali-specific claim is asserted (the pre-existing Bali moratorium text is DROPPED as moot, not re-asserted or newly characterised) — W113."
+  },
+  "codes": {
+    "47241": {
+      "judul": null,
+      "expect": {
+        "pma_max_asing": 0,
+        "pma_status": "TERBATAS",
+        "pma_kondisi_contains": "dialokasikan untuk Koperasi dan UMKM"
+      },
+      "fields": {
+        "whatYouNeed": {
+          "old_sha256": "e68d8f5f9c460127e40ea706239098a1f8d7d861eff9884d4c3ef92a9fe7bf1c",
+          "old_excerpt": "Nationally, this KBLI is fully open to 100% foreign ownership. However, Bali currently app",
+          "new": "The national foreign-ownership ceiling for this activity is 0%. Perpres 10/2021, as amended by 49/2021, allocates retail of rice (beras) as a specialised store to Koperasi and UMKM (Perpres 49/2021 Lampiran II p.13-14, entry 46, sub-row \"Beras\" (ex-KBLI 2020 47241)), so the PT PMA route is unavailable nationwide — not only in Bali."
+        },
+        "editorial.headline": {
+          "old_sha256": "11768d7c3b06edcced67e7d8f1c21d1a370750e32f935476ff9daa257719d6bd",
+          "old_excerpt": "Rice Retail Is Nationally Open—but Closed to PMA Registration in Bali",
+          "new": "Rice Retail Is Reserved for Koperasi and UMKM — Closed to PT PMA Nationwide"
+        },
+        "editorial.standfirst": {
+          "old_sha256": "597a84067f516a9b57087ecfe94a86deb3d1cde1287d90e6352648296820e56a",
+          "old_excerpt": "This specialised rice-retail activity is open nationally to full foreign ownership, yet Ba",
+          "new": "This activity — retail of rice (beras) as a specialised store — is allocated to Koperasi and UMKM under Perpres 49/2021's Lampiran II, which sets foreign ownership at 0% and puts it out of reach of a PT PMA anywhere in Indonesia."
+        },
+        "editorial.body": {
+          "old_sha256": "0f2e5b1847eab2c6c939b1af372a8921f4161ace7833f30967ab7485c69f55aa",
+          "old_excerpt": "Retail rice is a more precise activity than its plain title suggests. It covers the specia",
+          "new": "Retail rice is a more precise activity than its plain title suggests. It covers the specialised retail sale of a range of rice varieties, including Cianjur, Cisadane, Saigon and glutinous rice. The focus is not merely rice as a commodity, but its sale through a retail activity dedicated to the category and its distinct varieties. That specificity gives the activity a clear commercial identity: a business built around retailing rice in its many recognised forms.\n\nNationally, the foreign-ownership ceiling for this activity is 0%. Perpres 49/2021 Lampiran II p.13-14, entry 46, sub-row \"Beras\" (ex-KBLI 2020 47241) allocates retail of rice (beras) as a specialised store to Koperasi and UMKM (the *dialokasikan* column), so a PT PMA cannot register it anywhere in Indonesia — not only in Bali."
+        },
+        "editorial.pullQuote": {
+          "old_sha256": "f43b3094f009935e21ba89bbe7e27fb714646f12cf8e18218f98b02f94ff3f0c",
+          "old_excerpt": "This activity is fully foreign-open nationally, but unavailable for PMA registration in Ba",
+          "new": "The Perpres 49/2021 annex allocates retail of rice (beras) as a specialised store to Koperasi and UMKM, so the national ceiling is 0% — not a local Bali restriction on an otherwise-open activity."
+        }
+      }
+    },
+    "47242": {
+      "judul": null,
+      "expect": {
+        "pma_max_asing": 0,
+        "pma_status": "TERBATAS",
+        "pma_kondisi_contains": "dialokasikan untuk Koperasi dan UMKM"
+      },
+      "fields": {
+        "whatYouNeed": {
+          "old_sha256": "3a52079b5c73ab081993b1ee4b71decd44e45d11ffb2d3f2406176cb3c28bd0c",
+          "old_excerpt": "Nationally, this KBLI is 100% open to foreign ownership. However, under Bali’s current mor",
+          "new": "The national foreign-ownership ceiling for this activity is 0%. Perpres 10/2021, as amended by 49/2021, allocates retail of bread, dry cakes and wet cakes (roti, kue kering, serta kue basah) as a specialised store to Koperasi and UMKM (Perpres 49/2021 Lampiran II p.13-14, entry 46, sub-row \"Roti, kue kering, serta kue basah dan sejenisnya\" (ex-KBLI 2020 47242)), so the PT PMA route is unavailable nationwide — not only in Bali."
+        },
+        "editorial.headline": {
+          "old_sha256": "eb617e7874150299ad20325802725b976c2a20aa3917d72b863eb0af193b23d5",
+          "old_excerpt": "Bread, Biscuits and Cakes: Open Nationally, Closed to PMA in Bali",
+          "new": "Bread, Biscuit and Cake Retail Is Reserved for Koperasi and UMKM — Closed to PT PMA Nationwide"
+        },
+        "editorial.standfirst": {
+          "old_sha256": "e862f8e91b7cf4f90346fce205eb5a47ba1a2468471d4349ce9be67ff9c5e248",
+          "old_excerpt": "This specialist retail activity is nationally open to full foreign ownership, yet PMA regi",
+          "new": "This activity — retail of bread, dry cakes and wet cakes (roti, kue kering, serta kue basah) as a specialised store — is allocated to Koperasi and UMKM under Perpres 49/2021's Lampiran II, which sets foreign ownership at 0% and puts it out of reach of a PT PMA anywhere in Indonesia."
+        },
+        "editorial.body": {
+          "old_sha256": "e4dd8663d9e51346910cd8b9f78144b82ada00127152d06b9db2e0ff0e161c54",
+          "old_excerpt": "This activity covers specialist retail sales of breads, dry cakes and wet cakes: sweet bre",
+          "new": "This activity covers specialist retail sales of breads, dry cakes and wet cakes: sweet breads, loaf bread, sponge cakes, cakes, tarts, biscuits, wafers, semprong, cookies and related products. Its centre of gravity is the retail counter and the customer-facing sale of these bakery and confectionery items, rather than a broad statement about food commerce. For a founder, that distinction matters because the registered activity is defined by this particular retail assortment.\n\nNationally, the foreign-ownership ceiling for this activity is 0%. Perpres 49/2021 Lampiran II p.13-14, entry 46, sub-row \"Roti, kue kering, serta kue basah dan sejenisnya\" (ex-KBLI 2020 47242) allocates retail of bread, dry cakes and wet cakes (roti, kue kering, serta kue basah) as a specialised store to Koperasi and UMKM (the *dialokasikan* column), so a PT PMA cannot register it anywhere in Indonesia — not only in Bali."
+        },
+        "editorial.pullQuote": {
+          "old_sha256": "89831736cd9c52ac8350cf3ebece1a8c3bb2a0afaf641de8faf06da612011a43",
+          "old_excerpt": "Nationally this specialist retail activity is open to 100% foreign ownership, but Bali blo",
+          "new": "The Perpres 49/2021 annex allocates retail of bread, dry cakes and wet cakes (roti, kue kering, serta kue basah) as a specialised store to Koperasi and UMKM, so the national ceiling is 0% — not a local Bali restriction on an otherwise-open activity."
+        }
+      }
+    },
+    "47244": {
+      "judul": null,
+      "expect": {
+        "pma_max_asing": 0,
+        "pma_status": "TERBATAS",
+        "pma_kondisi_contains": "dialokasikan untuk Koperasi dan UMKM"
+      },
+      "fields": {
+        "whatYouNeed": {
+          "old_sha256": "84d8402a77dbf05569dee63f4e0979aab776ead5f72d783e50328f1d5721e424",
+          "old_excerpt": "Nationally, this KBLI is fully open to 100% foreign ownership (PMA). However, in Bali, it ",
+          "new": "The national foreign-ownership ceiling for this activity is 0%. Perpres 10/2021, as amended by 49/2021, allocates retail of tofu, tempe, tauco and oncom as a specialised store to Koperasi and UMKM (Perpres 49/2021 Lampiran II p.13-14, entry 46, sub-row \"Tahu, tempe, tauco dan oncom\" (ex-KBLI 2020 47244)), so the PT PMA route is unavailable nationwide — not only in Bali."
+        },
+        "editorial.headline": {
+          "old_sha256": "e440e431ffaa3436b1bf52fbae29a3a6acb465672527caa926da9b79eb89504a",
+          "old_excerpt": "Tofu, Tempe and Oncom Retail: Nationally Open, Blocked in Bali",
+          "new": "Tofu, Tempe and Oncom Retail Is Reserved for Koperasi and UMKM — Closed to PT PMA Nationwide"
+        },
+        "editorial.standfirst": {
+          "old_sha256": "092cc8fa7663ddfe27850e365d7c7de94e9cbf5d2d8f405d9cf91d5156a2b3d3",
+          "old_excerpt": "This specialised food retail activity is open to full foreign ownership nationally, yet Ba",
+          "new": "This activity — retail of tofu, tempe, tauco and oncom as a specialised store — is allocated to Koperasi and UMKM under Perpres 49/2021's Lampiran II, which sets foreign ownership at 0% and puts it out of reach of a PT PMA anywhere in Indonesia."
+        },
+        "editorial.body": {
+          "old_sha256": "116b3bd925ac0f2187feafcaca26c649af629b10a4004f5a40bdf9b1bc61f852",
+          "old_excerpt": "Foreign investors cannot register this activity in Bali today. That is the practical start",
+          "new": "At its core, the activity is specialised retail trade in tofu, tempe, tauco and oncom. The named products are not decorative examples; they are the stated focus of the retail scope. It is available at Micro, Small, Medium and Large scales. That range gives it a formal place across every named business scale, while keeping the activity anchored in a specific retail offering rather than a broad trading label. The scope makes no claim beyond that specialised retail function. The activity therefore sets the business identity before the ownership and location questions arise. A Micro-scale or Large-scale enterprise can sit within the stated scale range, provided its declared business is this specialised retail trade.\n\nNationally, the foreign-ownership ceiling for this activity is 0%. Perpres 49/2021 Lampiran II p.13-14, entry 46, sub-row \"Tahu, tempe, tauco dan oncom\" (ex-KBLI 2020 47244) allocates retail of tofu, tempe, tauco and oncom as a specialised store to Koperasi and UMKM (the *dialokasikan* column), so a PT PMA cannot register it anywhere in Indonesia — not only in Bali."
+        }
+      }
+    },
+    "47245": {
+      "judul": null,
+      "expect": {
+        "pma_max_asing": 0,
+        "pma_status": "TERBATAS",
+        "pma_kondisi_contains": "dialokasikan untuk Koperasi dan UMKM"
+      },
+      "fields": {
+        "whatYouNeed": {
+          "old_sha256": "af8cdbe69b6ce3fa413be2f1d47cbd96c7900e5cc1e926e225a779822061fbd5",
+          "old_excerpt": "Nationally, this activity is 100% open for foreign-owned PMA companies. However, in Bali, ",
+          "new": "The national foreign-ownership ceiling for this activity is 0%. Perpres 10/2021, as amended by 49/2021, allocates retail of processed meat (daging olahan) as a specialised store to Koperasi and UMKM (Perpres 49/2021 Lampiran II p.13-14, entry 46, sub-row \"Daging dan ikan olahan\" (ex-KBLI 2020 47245 — split heir, together with 47246, of the one row naming both meat and fish)), so the PT PMA route is unavailable nationwide — not only in Bali."
+        },
+        "editorial.headline": {
+          "old_sha256": "95f57666faf525e54da09bdc15ca00e15ba8783b5f3f046edf5ce47c7048a4c2",
+          "old_excerpt": "Processed-Meat Retail: Nationally Open, Blocked for PMA in Bali",
+          "new": "Processed-Meat Retail Is Reserved for Koperasi and UMKM — Closed to PT PMA Nationwide"
+        },
+        "editorial.standfirst": {
+          "old_sha256": "9b46544138a3b405a0c0c44f361a07e47b0a5a73eb4a4d85fbfb52803e8711c3",
+          "old_excerpt": "This specialised processed-meat retail activity permits 100% foreign ownership nationally,",
+          "new": "This activity — retail of processed meat (daging olahan) as a specialised store — is allocated to Koperasi and UMKM under Perpres 49/2021's Lampiran II, which sets foreign ownership at 0% and puts it out of reach of a PT PMA anywhere in Indonesia."
+        },
+        "editorial.body": {
+          "old_sha256": "72b67de3004a12b3b27b81c3a86b6810ee2c4c6eabb6d32be4f0ee11338f399e",
+          "old_excerpt": "**This is a retail activity defined by processed meat.** The scope is specialised retail s",
+          "new": "**This is a retail activity defined by processed meat.** The scope is specialised retail sale of varied processed-meat products, not a broad food-trade label. Its examples—sausages, bakso meatballs, and abon, a shredded-meat preparation—make the commercial centre of gravity clear: the sale of meat that has already been prepared or processed. The scope spans products made from beef, pork, poultry, lamb, rabbit, goat and camel, as well as other fresh meats named in the record. The record presents a retail activity whose identity comes from the processed nature of its merchandise. That specificity keeps the registration anchored to a particular retail offer rather than to meat in general.\n\n**The scale range is broad.** The activity is open at Mikro, Kecil, Menengah and Besar scale. That is the whole stated scale spectrum, so it is not presented as a narrow category available only to one business size. The scope remains specialised retail of processed-meat products of the kinds described in the record. For operators, this produces a clear description: a specialty retail business centred on processed-meat goods. The four scale labels set out the stated business-size range; they do not broaden the activity into meat commerce generally. Its boundaries remain merchandise-led and retail-specific.\n\nNationally, the foreign-ownership ceiling for this activity is 0%. Perpres 49/2021 Lampiran II p.13-14, entry 46, sub-row \"Daging dan ikan olahan\" (ex-KBLI 2020 47245 — split heir, together with 47246, of the one row naming both meat and fish) allocates retail of processed meat (daging olahan) as a specialised store to Koperasi and UMKM (the *dialokasikan* column), so a PT PMA cannot register it anywhere in Indonesia — not only in Bali."
+        },
+        "editorial.pullQuote": {
+          "old_sha256": "f1e2e4705f240b93822ae83ad0711fea6cc9c9cfb3177a7ccc54fad4bf939af8",
+          "old_excerpt": "National permission to hold up to 100% does not override the Bali block.",
+          "new": "The Perpres 49/2021 annex allocates retail of processed meat (daging olahan) as a specialised store to Koperasi and UMKM, so the national ceiling is 0% — not a local Bali restriction on an otherwise-open activity."
+        }
+      }
+    },
+    "47246": {
+      "judul": null,
+      "expect": {
+        "pma_max_asing": 0,
+        "pma_status": "TERBATAS",
+        "pma_kondisi_contains": "dialokasikan untuk Koperasi dan UMKM"
+      },
+      "fields": {
+        "whatYouNeed": {
+          "old_sha256": "45dd6e8e6c63df43f6d1229f757ec7af6d68eefb65e5a8f3ae5241c6b6df8959",
+          "old_excerpt": "Nationally, this KBLI is fully open to 100% foreign ownership (PMA). In Bali, however, the",
+          "new": "The national foreign-ownership ceiling for this activity is 0%. Perpres 10/2021, as amended by 49/2021, allocates retail of processed fish (ikan olahan) as a specialised store to Koperasi and UMKM (Perpres 49/2021 Lampiran II p.13-14, entry 46, sub-row \"Daging dan ikan olahan\" (ex-KBLI 2020 47245 — split heir, together with 47245, of the one row naming both meat and fish)), so the PT PMA route is unavailable nationwide — not only in Bali."
+        },
+        "editorial.headline": {
+          "old_sha256": "b8bcf99873e92c92413d3f07abce48e2a6ec15174551b52fa4e2c3fb28f741b1",
+          "old_excerpt": "Processed Fish Retail: Nationally Open, Blocked for PMA in Bali",
+          "new": "Processed Fish Retail Is Reserved for Koperasi and UMKM — Closed to PT PMA Nationwide"
+        },
+        "editorial.body": {
+          "old_sha256": "d3895faace34da750c20fcf71897441ea8a4138632713112d7aadbf2224a1ef9",
+          "old_excerpt": "This activity is the retail sale of processed fish, shrimp and shellfish products. Its sco",
+          "new": "This activity is the retail sale of processed fish, shrimp and shellfish products. Its scope includes salted or dried seafood, alongside products such as fish sausage, fish balls and shredded fish. The examples range across anchovy, shark, scad, grouper and other fish, as well as shrimp, tiny shrimp, squid, clams, mussels and shellfish. The classification is deliberately broad in its retail setting: it covers sales conducted inside a building as well as relevant trade from roadside stalls, shop-front verandas, and movable or pushable market stalls.\n\nThat breadth matters because the activity describes the point of sale, not a single product format or a single retail environment. A business may register it for the retail trade of varied processed seafood products, whether the offering is anchored in dried and salted goods or in processed forms such as sausage, fish balls and shredded fish. It is open across the full listed scale range: Mikro, Kecil, Menengah and Besar. The record therefore gives the activity room to serve small retail operations and larger businesses within the same classification.\n\nNationally, the foreign-ownership ceiling for this activity is 0%. Perpres 49/2021 Lampiran II p.13-14, entry 46, sub-row \"Daging dan ikan olahan\" (ex-KBLI 2020 47245 — split heir, together with 47245, of the one row naming both meat and fish) allocates retail of processed fish (ikan olahan) as a specialised store to Koperasi and UMKM (the *dialokasikan* column), so a PT PMA cannot register it anywhere in Indonesia — not only in Bali."
+        },
+        "editorial.pullQuote": {
+          "old_sha256": "156d0d64fd0f2ea80c6aaba8ad0f7ba2aab9ae16e3561d223a35377bfd29a173",
+          "old_excerpt": "The national 100% ceiling remains the national position, but it does not overcome Bali’s r",
+          "new": "The Perpres 49/2021 annex allocates retail of processed fish (ikan olahan) as a specialised store to Koperasi and UMKM, so the national ceiling is 0% — not a local Bali restriction on an otherwise-open activity."
+        }
+      }
+    },
+    "47249": {
+      "judul": null,
+      "expect": {
+        "pma_max_asing": 0,
+        "pma_status": "TERBATAS",
+        "pma_kondisi_contains": "dialokasikan untuk Koperasi dan UMKM"
+      },
+      "fields": {
+        "whatYouNeed": {
+          "old_sha256": "350b8b28b2a07e68475f04d4c2d821dbb00a275a29b1445616f5444817c4ed73",
+          "old_excerpt": "Nationally, this KBLI is 100% open to foreign ownership. However, in Bali, a PMA cannot re",
+          "new": "The national foreign-ownership ceiling for this activity is 0%. Perpres 10/2021, as amended by 49/2021, allocates retail of other processed foods (makanan lainnya) as a specialised store to Koperasi and UMKM (Perpres 49/2021 Lampiran II p.13-14, entry 46, sub-row \"Makanan lainnya\" (ex-KBLI 2020 47249)), so the PT PMA route is unavailable nationwide — not only in Bali."
+        },
+        "editorial.headline": {
+          "old_sha256": "59a2962d69a6dca944dbf11006308b66bfff13dae81461139374857a94ed6574",
+          "old_excerpt": "Processed-Food Retail Has a Clear National Opening—and a Bali Stop",
+          "new": "Processed-Food Retail Is Reserved for Koperasi and UMKM — Closed to PT PMA Nationwide"
+        },
+        "editorial.standfirst": {
+          "old_sha256": "7d3dad86664cdf5832a72dc07ff479558a8b8bb85a2d55d02e49cae55be67fcd",
+          "old_excerpt": "This specialist food-retail activity is nationally open to full foreign ownership, yet PMA",
+          "new": "This activity — retail of other processed foods (makanan lainnya) as a specialised store — is allocated to Koperasi and UMKM under Perpres 49/2021's Lampiran II, which sets foreign ownership at 0% and puts it out of reach of a PT PMA anywhere in Indonesia."
+        },
+        "editorial.body": {
+          "old_sha256": "b2afb876c195be859273004200ac8bb14b094ec36cb8c586ba4a9b6cf0376cf7",
+          "old_excerpt": "**A foreign investor cannot register this activity in Bali today.** That blunt conclusion ",
+          "new": "The natural registrant is therefore a retail operator whose offering centres on these specified food commodities. The record makes the activity available across the full stated range of business scales: Mikro, Kecil, Menengah, and Besar. That breadth is useful context, but it does not dilute the underlying character of the activity. Its commercial identity remains specialised retailing of the listed types of processed food products, with the examples serving as the practical guide to what belongs within the scope.\n\nNationally, the foreign-ownership ceiling for this activity is 0%. Perpres 49/2021 Lampiran II p.13-14, entry 46, sub-row \"Makanan lainnya\" (ex-KBLI 2020 47249) allocates retail of other processed foods (makanan lainnya) as a specialised store to Koperasi and UMKM (the *dialokasikan* column), so a PT PMA cannot register it anywhere in Indonesia — not only in Bali."
+        },
+        "editorial.pullQuote": {
+          "old_sha256": "b6f6ca6b813577be32fced05173ea6b90622bc099b4eec212a6fcecfd8437a32",
+          "old_excerpt": "A 100% national foreign-ownership ceiling does not change the fact that this activity is b",
+          "new": "The Perpres 49/2021 annex allocates retail of other processed foods (makanan lainnya) as a specialised store to Koperasi and UMKM, so the national ceiling is 0% — not a local Bali restriction on an otherwise-open activity."
+        }
+      }
+    },
+    "47712": {
+      "judul": null,
+      "expect": {
+        "pma_max_asing": 0,
+        "pma_status": "TERBATAS",
+        "pma_kondisi_contains": "dialokasikan untuk Koperasi dan UMKM"
+      },
+      "fields": {
+        "whatYouNeed": {
+          "old_sha256": "c049f47a97218afeb633281fb06c2b63f2a56722c8d51c8898ff46a7b9171b8d",
+          "old_excerpt": "Nationally, this business line is 100% open to foreign ownership. In Bali, however, it is ",
+          "new": "The national foreign-ownership ceiling for this activity is 0%. Perpres 10/2021, as amended by 49/2021, allocates retail of footwear (alas kaki) as a specialised store to Koperasi and UMKM (Perpres 49/2021 Lampiran II p.13-14, entry 46, sub-row \"Alas kaki\" (ex-KBLI 2020 47712)), so the PT PMA route is unavailable nationwide — not only in Bali."
+        },
+        "editorial.headline": {
+          "old_sha256": "f0d0acbd92330720b266ae22231f0f72ee34a5e3445e352fc10ae7b9979dbf52",
+          "old_excerpt": "A Nationally Open Footwear Trade, Closed to PMA in Bali",
+          "new": "Footwear Retail Is Reserved for Koperasi and UMKM — Closed to PT PMA Nationwide"
+        },
+        "editorial.standfirst": {
+          "old_sha256": "034a98ef92621b7ff222d97ce17a90a739a4bd050dbefe3ee4102ea746b7846e",
+          "old_excerpt": "This specialised retail activity spans footwear in many materials and markets, open nation",
+          "new": "This activity — retail of footwear (alas kaki) as a specialised store — is allocated to Koperasi and UMKM under Perpres 49/2021's Lampiran II, which sets foreign ownership at 0% and puts it out of reach of a PT PMA anywhere in Indonesia."
+        },
+        "editorial.body": {
+          "old_sha256": "d4a87bc9fe7a1ce46f3480bd8f240745bb923844b73eb7577630c9bd996eff4f",
+          "old_excerpt": "Footwear retail is the subject here: specialised sales of shoes, sandals and other footwea",
+          "new": "Footwear retail is the subject here: specialised sales of shoes, sandals and other footwear made from leather, artificial leather, plastic, rubber, fabric or wood. The scope is broad enough to include adult men’s and women’s shoes, children’s shoes, sports shoes, sandal shoes, sandals, slippers and health shoes. What joins them is the retail focus and the footwear category itself, rather than one particular material, customer age or use case.\n\nThe activity is open at every stated business scale: micro, small, medium and large. That matters because the classification gives a single retail frame for a business whose assortment may range across formal shoes, casual sandals, children’s footwear and specialist health footwear. The record therefore describes a defined commercial activity with room for operations at each of those scales, while keeping its centre of gravity in specialised retail.\n\nNationally, the foreign-ownership ceiling for this activity is 0%. Perpres 49/2021 Lampiran II p.13-14, entry 46, sub-row \"Alas kaki\" (ex-KBLI 2020 47712) allocates retail of footwear (alas kaki) as a specialised store to Koperasi and UMKM (the *dialokasikan* column), so a PT PMA cannot register it anywhere in Indonesia — not only in Bali."
+        },
+        "editorial.pullQuote": {
+          "old_sha256": "b7f568f72dad70df94f0e7a5fb99d1ef1acbf602def018719a4456acfe476ac3",
+          "old_excerpt": "National openness and Bali availability point in different directions: full foreign owners",
+          "new": "The Perpres 49/2021 annex allocates retail of footwear (alas kaki) as a specialised store to Koperasi and UMKM, so the national ceiling is 0% — not a local Bali restriction on an otherwise-open activity."
+        }
+      }
+    },
+    "47722": {
+      "judul": null,
+      "expect": {
+        "pma_max_asing": 0,
+        "pma_status": "TERBATAS",
+        "pma_kondisi_contains": "dialokasikan untuk Koperasi dan UMKM"
+      },
+      "fields": {
+        "whatYouNeed": {
+          "old_sha256": "b653d42752d7061893fbc3b46f9f05bcb488322f7aad54c544731bbf09b3578e",
+          "old_excerpt": "Nationally, this KBLI is open for 100% foreign ownership (PMA). However, in Bali it is cur",
+          "new": "The national foreign-ownership ceiling for this activity is 0%. Perpres 10/2021, as amended by 49/2021, allocates retail of non-prescription pharmaceutical goods outside a pharmacy (Toko Obat) as a specialised store to Koperasi and UMKM (Perpres 49/2021 Lampiran II p.13-14, entry 46, sub-row \"Barang dan obat farmasi untuk manusia bukan di apotik\" (ex-KBLI 2020 47722)), so the PT PMA route is unavailable nationwide — not only in Bali."
+        },
+        "editorial.headline": {
+          "old_sha256": "413485b3ecca2990f5fd78c84e5ff928e2d59fefb86e964b453284a051d91e6e",
+          "old_excerpt": "Human Pharmaceutical Retail: Open Nationally, Blocked in Bali",
+          "new": "Non-Pharmacy Pharmaceutical Retail Is Reserved for Koperasi and UMKM — Closed to PT PMA Nationwide"
+        },
+        "editorial.body": {
+          "old_sha256": "dae92ac698af259c20f2d539da9529567a0663014025eef33b8449a3ea7209e4",
+          "old_excerpt": "This activity is the retail trade of pharmaceutical preparations for human use outside a c",
+          "new": "This activity is the retail trade of pharmaceutical preparations for human use outside a conventional pharmacy setting. Its scope is broad in form rather than in medical purpose: tablets, capsules, ointments, solutions, parenteral solutions and suspensions all sit within it. The record specifically includes products associated with skin, eye, dental, ear, respiratory, digestive, blood-pressure and hormonal conditions, alongside vitamins and health supplements. In practice, it reaches drug stores, Type B village pharmacies and pharmaceutical market stalls, as well as mobile and internet-based medicine sales.\n\nThe activity is open across the full stated scale range: Mikro, Kecil, Menengah and Besar. That matters because the code is not framed as a niche format reserved for a single kind of outlet. It accommodates a fixed retail presence, market-based selling, circulation through mobile sales, and an online channel. The common thread is the retail sale of pharmaceutical preparations for people; the setting may change, but the activity remains defined by that retail function.\n\nNationally, the foreign-ownership ceiling for this activity is 0%. Perpres 49/2021 Lampiran II p.13-14, entry 46, sub-row \"Barang dan obat farmasi untuk manusia bukan di apotik\" (ex-KBLI 2020 47722) allocates retail of non-prescription pharmaceutical goods outside a pharmacy (Toko Obat) as a specialised store to Koperasi and UMKM (the *dialokasikan* column), so a PT PMA cannot register it anywhere in Indonesia — not only in Bali."
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,84 @@
+{
+  "instrument": "Perpres 10/2021 as amended by 49/2021, Lampiran II, entry 46 (+ entry 47 for the mail-order/internet channel of the same goods)",
+  "population": "SAETTA-20260915 W-H PR-3/PR-4 (folded): the 8 specialised-retail codes of the W-F dossier scope table (55201/55203/79903 scope line, §3.2, §6.1). Entry 46's heading is exactly \"Perdagangan eceran:\" with NO format/surface/place qualifier (lane-C §3A.2: 6 columns, no Persyaratan column) — the reservation is of the WHOLE 2025 code, per D5b (Zero, 2026-09-15 16:05 WITA, applied).",
+  "adjudicated": "2026-09-15, W-F dossier r2 §3.2 + §1.3(ii); refuter Codex GPT-5.6 sol xhigh F-09 concurs: 'the voce 46 nomina esattamente ciascun prodotto e il suo KBLI, quindi Pasal 5(5) non restringe nulla, perché il KBLI non copre più bidang usaha'. Astra independently read the same table (adjudication-source.json, AUTO-SAFE, source_reread=true, crosswalk 1:1 stesso numero).",
+  "why_not_the_existing_compiler": "apply_umkm_reservations.py's `judged_as` gate refuses whenever a 2025 code's `bps_2020_ancestors` names any 2020 code OTHER than the one judged (the 'broader than the reserved activity' check) — correct for a code that absorbed an UNRELATED activity, but every one of these 8 codes also absorbs one or two 2020 mail-order/other-retail buckets (e.g. 47911, 47992) that BPS split across DOZENS of unrelated 2025 codes (verified: `heirs_of('47911')` has 22 heirs spanning alcohol/fuel/pharma/food retail — measured empirically in this session's probe, dry-run REFUSE on 47241 reproduced before writing this compiler). Lampiran II's entry 47 allocates the SAME goods sold by mail order/internet (dossier §3.2: 'Più p14 no 47 per la vendita per posta/internet dei medesimi beni'), so the extra ancestor is a CHANNEL variant of the same reserved product, not a different bidang usaha — but that is a judgment this spec states and a human can audit (`benign_shared_ancestors`), not a mechanical deduction the existing gate can make. 47245/47246 additionally split ONE 2020 ancestor (2020 code 47245, 'Daging dan ikan olahan' = processed meat AND fish combined) into TWO 2025 heirs that TOGETHER exhaust the named row — no third sibling is left open, unlike the barber-shop/hotel-grade split pattern in `umkm_lampiran_ii_split_heirs_2026_08_06.json` where only ONE sibling closes and the rest stay open.",
+  "items": [
+    {
+      "code": "47241",
+      "self_ancestor": "47241",
+      "locator": "Perpres 49/2021 Lampiran II (DIALOKASIKAN untuk Koperasi dan UMKM), p.13-14, entry 46 \"Perdagangan eceran:\", sub-row \"Beras\" (KBLI 2020 47241) — allocated to Koperasi/UMKM per Pasal 3(1)(b) + Pasal 5; the whole 2025 code is the reserved bidang usaha, no format/surface/place qualifier (Pasal 5(5)); max foreign 0%.",
+      "annex_row_text": "Beras",
+      "benign_shared_ancestors": ["47821", "47911", "47992"],
+      "was": { "pma_status": "TERBUKA", "pma_max_asing": 100 }
+    },
+    {
+      "code": "47242",
+      "self_ancestor": "47242",
+      "locator": "Perpres 49/2021 Lampiran II (DIALOKASIKAN untuk Koperasi dan UMKM), p.13-14, entry 46 \"Perdagangan eceran:\", sub-row \"Roti, kue kering, serta kue basah dan sejenisnya\" (KBLI 2020 47242) — allocated to Koperasi/UMKM per Pasal 3(1)(b) + Pasal 5; the whole 2025 code is the reserved bidang usaha, no format/surface/place qualifier (Pasal 5(5)); max foreign 0%.",
+      "annex_row_text": "Roti, kue kering, serta kue basah dan sejenisnya",
+      "benign_shared_ancestors": ["47822", "47911", "47992"],
+      "was": { "pma_status": "TERBUKA", "pma_max_asing": 100 }
+    },
+    {
+      "code": "47244",
+      "self_ancestor": "47244",
+      "locator": "Perpres 49/2021 Lampiran II (DIALOKASIKAN untuk Koperasi dan UMKM), p.13-14, entry 46 \"Perdagangan eceran:\", sub-row \"Tahu, tempe, tauco dan oncom\" (KBLI 2020 47244) — allocated to Koperasi/UMKM per Pasal 3(1)(b) + Pasal 5; the whole 2025 code is the reserved bidang usaha, no format/surface/place qualifier (Pasal 5(5)); max foreign 0%.",
+      "annex_row_text": "Tahu, tempe, tauco dan oncom",
+      "benign_shared_ancestors": ["47824", "47911", "47992"],
+      "was": { "pma_status": "TERBUKA", "pma_max_asing": 100 }
+    },
+    {
+      "code": "47245",
+      "self_ancestor": "47245",
+      "split_siblings": ["47246"],
+      "locator": "Perpres 49/2021 Lampiran II (DIALOKASIKAN untuk Koperasi dan UMKM), p.13-14, entry 46 \"Perdagangan eceran:\", sub-row \"Daging dan ikan olahan\" (KBLI 2020 47245, split into 2025 47245 Daging + 47246 Ikan, both reserved — the row names BOTH halves, no sibling is left open) — allocated to Koperasi/UMKM per Pasal 3(1)(b) + Pasal 5; the whole 2025 code is the reserved bidang usaha, no format/surface/place qualifier (Pasal 5(5)); max foreign 0%.",
+      "annex_row_text": "Daging dan ikan olahan",
+      "benign_shared_ancestors": ["47825", "47911", "47992"],
+      "was": { "pma_status": "TERBUKA", "pma_max_asing": 100 }
+    },
+    {
+      "code": "47246",
+      "self_ancestor": "47245",
+      "split_siblings": ["47245"],
+      "locator": "Perpres 49/2021 Lampiran II (DIALOKASIKAN untuk Koperasi dan UMKM), p.13-14, entry 46 \"Perdagangan eceran:\", sub-row \"Daging dan ikan olahan\" (KBLI 2020 47245, split into 2025 47245 Daging + 47246 Ikan, both reserved — the row names BOTH halves, no sibling is left open) — allocated to Koperasi/UMKM per Pasal 3(1)(b) + Pasal 5; the whole 2025 code is the reserved bidang usaha, no format/surface/place qualifier (Pasal 5(5)); max foreign 0%.",
+      "annex_row_text": "Daging dan ikan olahan",
+      "benign_shared_ancestors": ["47825", "47911", "47992"],
+      "was": { "pma_status": "TERBUKA", "pma_max_asing": 100 }
+    },
+    {
+      "code": "47249",
+      "self_ancestor": "47249",
+      "locator": "Perpres 49/2021 Lampiran II (DIALOKASIKAN untuk Koperasi dan UMKM), p.13-14, entry 46 \"Perdagangan eceran:\", sub-row \"Makanan lainnya\" (KBLI 2020 47249) — allocated to Koperasi/UMKM per Pasal 3(1)(b) + Pasal 5; the whole 2025 code is the reserved bidang usaha, no format/surface/place qualifier (Pasal 5(5)); max foreign 0%.",
+      "annex_row_text": "Makanan lainnya",
+      "benign_shared_ancestors": ["47829", "47911", "47992"],
+      "was": { "pma_status": "TERBUKA", "pma_max_asing": 100 }
+    },
+    {
+      "code": "47712",
+      "self_ancestor": "47712",
+      "locator": "Perpres 49/2021 Lampiran II (DIALOKASIKAN untuk Koperasi dan UMKM), p.13-14, entry 46 \"Perdagangan eceran:\", sub-row \"Alas kaki\" (KBLI 2020 47712) — allocated to Koperasi/UMKM per Pasal 3(1)(b) + Pasal 5; the whole 2025 code is the reserved bidang usaha, no format/surface/place qualifier (Pasal 5(5)); max foreign 0%.",
+      "annex_row_text": "Alas kaki",
+      "benign_shared_ancestors": ["47833", "47912", "47994"],
+      "was": { "pma_status": "TERBUKA", "pma_max_asing": 100 }
+    },
+    {
+      "code": "47722",
+      "self_ancestor": "47722",
+      "locator": "Perpres 49/2021 Lampiran II (DIALOKASIKAN untuk Koperasi dan UMKM), p.13-14, entry 46 \"Perdagangan eceran:\", sub-row \"Barang dan obat farmasi untuk manusia bukan di apotik\" (KBLI 2020 47722) — allocated to Koperasi/UMKM per Pasal 3(1)(b) + Pasal 5; the whole 2025 code is the reserved bidang usaha, no format/surface/place qualifier (Pasal 5(5)); max foreign 0%.",
+      "annex_row_text": "Barang dan obat farmasi untuk manusia bukan di apotik",
+      "benign_shared_ancestors": ["47842", "47911", "47993"],
+      "was": { "pma_status": "TERBUKA", "pma_max_asing": 100 }
+    }
+  ],
+  "excluded": {
+    "generalist_retail_never_touched": {
+      "example_codes": ["47111", "47190"],
+      "why": "Selling the same goods inside a supermarket or general store uses a different KBLI (4711x) and is not named by entry 46 (dossier §3.2)."
+    },
+    "generic_ancestors_never_treated_as_identity": {
+      "codes": ["47911", "47912", "47992", "47993", "47994"],
+      "why": "Each fans into a dozen-plus unrelated 2025 codes (measured via heirs_of in this dataset) — a 2020 catch-all for mail-order/other retail across many product classes, split by BPS across many 2025 products. Present on every item as `benign_shared_ancestors`, never used as `self_ancestor`."
+    }
+  }
+}
