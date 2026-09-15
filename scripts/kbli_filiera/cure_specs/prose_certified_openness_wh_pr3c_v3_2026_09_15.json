@@ -1,0 +1,174 @@
+{
+  "compiler": "cure_prose_national_openness",
+  "_why": "PR-3c v3 (W-H, SAETTA-20260915): successor of #6593/#6594, BLOCKED because certified prose still claimed openness in paraphrase the lexical detector cannot see, and a semantic read of all 59 certified capped entries (scratchpad/semantic-sweep-A/B/C.json) found 16 FALSE + 41 AMBIGUOUS sentences. This spec cures the 10 fields the Dux kept (the rest are DE-CERTIFIED, not cured, in the same PR): 21021/21022 whoThisIsFor no longer invite a foreign entrepreneur onto a 0% domestic-capital-only code; 41020's headline drops 'Open' from a 0% Koperasi/UMKM allocation; 50211/50213/65201 keep their Bali-registration pullQuote but state the national cap in the same sentence; 50223 drops 'genuinely open' for the 49% cap; 65112 states the 80% ceiling where it says registration is possible; 95291 names the Lampiran II allocation instead of asserting 'national openness'; 95299 attributes the bar to the national Lampiran II reservation, not 'Bali's PMA rules'; 25200/30400 (review MINOR) restate the Menteri Pertahanan override in the record's own kondisi wording. Whole-field replacement; every other sentence of each field is byte-identical to the live text.",
+  "codes": {
+    "21021": {
+      "expect": {
+        "pma_max_asing": 0,
+        "pma_status": "TERBATAS",
+        "pma_kondisi_contains": "domestic capital only"
+      },
+      "fields": {
+        "whoThisIsFor": {
+          "old_sha256": "8f43e0a5eab9350ef6064064db4d115a0b3dae411d856b12909ed4c6b40a45d7",
+          "old_excerpt": "Foreign entrepreneurs in the herbal or natural pharmaceutical supply chain who want to produce raw ingredients like extracts or galenic prep",
+          "new": "This page is for anyone researching Industri Bahan Baku Obat Bahan Alam untuk Manusia (21021) — raw ingredients like extracts or galenic preparations, produced in Indonesia for local use or export. Nationally this business line is reserved for domestic capital only (0% foreign ownership), so it is not a route into PT PMA ownership for a foreign entrepreneur."
+        }
+      }
+    },
+    "21022": {
+      "expect": {
+        "pma_max_asing": 0,
+        "pma_status": "TERBATAS",
+        "pma_kondisi_contains": "domestic capital only"
+      },
+      "fields": {
+        "whoThisIsFor": {
+          "old_sha256": "8a98a94d01b5f5f833b0192812de228cc72ba5eb0c7a8127e7e06135fea84b39",
+          "old_excerpt": "Foreign entrepreneurs who want to produce herbal remedies, traditional jamu, or natural health supplements in Bali.",
+          "new": "This page is for anyone researching Industri Produk Obat Bahan Alam untuk Manusia (21022) — herbal remedies, traditional jamu, or natural health supplements produced in Indonesia. Nationally this business line is reserved for domestic capital only (0% foreign ownership), so it is not a route into PT PMA ownership for a foreign entrepreneur."
+        }
+      }
+    },
+    "25200": {
+      "expect": {
+        "pma_max_asing": 49,
+        "pma_status": "TERBATAS",
+        "pma_kondisi_contains": "Menteri Pertahanan"
+      },
+      "fields": {
+        "zantaraOpener": {
+          "old_sha256": "0de70f92e39f5be13a4adfa8f551be452fd63a552b58200a4875919dbb1f7072",
+          "old_excerpt": "Looking into Industri Senjata dan Amunisi (25200)? Nationally this carries PMA status: TERBATAS — capped at 49% foreign ownership, exceedabl",
+          "new": "Looking into Industri Senjata dan Amunisi (25200)? Nationally this carries PMA status: TERBATAS — capped at 49% foreign ownership, may exceed 49% with Menteri Pertahanan approval. Let me walk you through what it means for a foreign-owned setup."
+        }
+      }
+    },
+    "30400": {
+      "expect": {
+        "pma_max_asing": 49,
+        "pma_status": "TERBATAS",
+        "pma_kondisi_contains": "Menteri Pertahanan"
+      },
+      "fields": {
+        "zantaraOpener": {
+          "old_sha256": "a029bd2419f7758e0ef1e1ecae1c032f359e69ebe63a5b27bf7c277c652ba248",
+          "old_excerpt": "Looking into Industri Kendaraan Tempur Militer (30400)? Nationally this carries PMA status: TERBATAS — capped at 49% foreign ownership, exce",
+          "new": "Looking into Industri Kendaraan Tempur Militer (30400)? Nationally this carries PMA status: TERBATAS — capped at 49% foreign ownership, may exceed 49% with Menteri Pertahanan approval. Let me walk you through what it means for a foreign-owned setup."
+        }
+      }
+    },
+    "41020": {
+      "expect": {
+        "pma_max_asing": 0,
+        "pma_status": "TERBATAS",
+        "pma_kondisi_contains": "Koperasi dan UMKM"
+      },
+      "fields": {
+        "editorial.headline": {
+          "old_sha256": "d985c0d3cae27d8fa9180781055f39f8bb89267daaecdcff3a3e936cbfc86e9f",
+          "old_excerpt": "Prefabricated Building Construction, Clearly Open at Scale",
+          "new": "Prefabricated Building Construction, Licensed at Every Business Scale"
+        }
+      }
+    },
+    "50211": {
+      "expect": {
+        "pma_max_asing": 49,
+        "pma_status": "TERBATAS",
+        "pma_official_basis_contains": "entry #23"
+      },
+      "fields": {
+        "editorial.pullQuote": {
+          "old_sha256": "1b297f5723fa4e291a9f3c1f2feca8c66d968f0df9b9a2100683b8e6f2aff67c",
+          "old_excerpt": "This activity remains available for PMA registration in Bali because it is not marked as blocked by the province’s moratorium.",
+          "new": "This activity remains available for PMA registration in Bali, up to the national 49% foreign-ownership cap, because it is not marked as blocked by the province’s moratorium."
+        }
+      }
+    },
+    "50213": {
+      "expect": {
+        "pma_max_asing": 49,
+        "pma_status": "TERBATAS",
+        "pma_official_basis_contains": "entry #25"
+      },
+      "fields": {
+        "editorial.pullQuote": {
+          "old_sha256": "0e54efb688df66cbd1f7c83d41151ba660ded1493d4b7d776f31a92b04d4fe82",
+          "old_excerpt": "For PMA registration, this activity remains open in Bali rather than being shut out by the provincial moratorium.",
+          "new": "For PMA registration, this activity remains open in Bali up to the national 49% foreign-ownership cap, rather than being shut out by the provincial moratorium."
+        }
+      }
+    },
+    "50223": {
+      "expect": {
+        "pma_max_asing": 49,
+        "pma_status": "TERBATAS",
+        "pma_official_basis_contains": "entry #28"
+      },
+      "fields": {
+        "editorial.pullQuote": {
+          "old_sha256": "b824147fa78a477ef92c8e2159f76294167779f7597ebbdd849a50fc88eb12a4",
+          "old_excerpt": "This is a genuinely open foreign-investment activity, including in Bali, for the inland-water carriage of dangerous cargoes.",
+          "new": "This is a foreign-investment activity capped nationally at 49%, including in Bali, for the inland-water carriage of dangerous cargoes."
+        }
+      }
+    },
+    "65112": {
+      "expect": {
+        "pma_max_asing": 80,
+        "pma_status": "TERBATAS",
+        "pma_kondisi_contains": "80%"
+      },
+      "fields": {
+        "whatYouNeed": {
+          "old_sha256": "1f6c780df18d06d4d0411f67bdfce59073f7f9a0711b65608c363bac85cd8f8a",
+          "old_excerpt": "In Bali, this activity is not blocked by the local foreign investment moratorium, but it is classified as medium-high/high risk. That means ",
+          "new": "In Bali, this activity is not blocked by the local foreign investment moratorium, but it is classified as medium-high/high risk. That means registration is possible within the national 80% foreign-ownership ceiling, but the authorities will scrutinize your application more closely—especially your registered commercial address, which must be genuine and verifiable. Expect extra compliance steps."
+        }
+      }
+    },
+    "65201": {
+      "expect": {
+        "pma_max_asing": 80,
+        "pma_status": "TERBATAS",
+        "pma_kondisi_contains": "80%"
+      },
+      "fields": {
+        "editorial.pullQuote": {
+          "old_sha256": "feab1f63feb859589084e1df83a005dfd9b1e45c44840832b1e1de37bb2b01d4",
+          "old_excerpt": "The decisive Bali fact is straightforward: a foreign investor can register this activity in Bali today.",
+          "new": "The decisive Bali fact is straightforward: a foreign investor can register this activity in Bali today, within the national 80% foreign-ownership ceiling."
+        }
+      }
+    },
+    "95291": {
+      "expect": {
+        "pma_max_asing": 0,
+        "pma_status": "TERBATAS",
+        "pma_kondisi_contains": "Koperasi dan UMKM"
+      },
+      "fields": {
+        "editorial.pullQuote": {
+          "old_sha256": "9cb0355813fca649734893f980f6b593231cc609ee91d1eda5a769c57d6048b0",
+          "old_excerpt": "National foreign openness does not translate into PT PMA registration anywhere in Indonesia.",
+          "new": "The national position is a Lampiran II allocation to Koperasi and UMKM — 0% foreign ownership — and it does not translate into PT PMA registration anywhere in Indonesia."
+        }
+      }
+    },
+    "95299": {
+      "expect": {
+        "pma_max_asing": 0,
+        "pma_status": "TERBATAS",
+        "pma_kondisi_contains": "Koperasi dan UMKM"
+      },
+      "fields": {
+        "editorial.headline": {
+          "old_sha256": "ed2af488a776b8992da8b37631baaf43902e35bd21fe2eaf92acd93ba586ef9d",
+          "old_excerpt": "The Repair Trade That Bali’s PMA Rules Shut Out",
+          "new": "The Repair Trade Nationally Reserved for Koperasi and UMKM"
+        }
+      }
+    }
+  }
+}
