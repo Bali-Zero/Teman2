@@ -1,0 +1,53 @@
+{
+  "_doc": "Vendored (upstream-derived, not authored) files inside infra/claude-plugins/local-marketplace/plugins/*. Verified by install_local_marketplace.py --check against these hashes; NOT declared in infra/home-fork/declared-pairs.json (see that file's _note on each pair).",
+  "plugins": {
+    "superpowers": {
+      "upstream_url": "https://github.com/obra/superpowers.git",
+      "upstream_commit": "b36e0829c6d0140e93cfef2ca599b1b07d4a7797",
+      "files": {
+        "LICENSE": "a37e0e9697144819e1d965176ac4ae5bc3fa02d11e7812036bbcadf6dafe2400",
+        "skills/receiving-code-review/SKILL.md": "091df1629510af1b92fc4abd6f96732ebedb4cb2c0f3457e8f2740b0504a2438",
+        "skills/requesting-code-review/SKILL.md": "d71cc01ba56d2325cf8af5f7c11837819b63ecd57de0bfdb812f7f3ff7751df8",
+        "skills/requesting-code-review/code-reviewer.md": "5eca5fcfd48a50e0a526ce5ffd64bf625d6b81bb46d11795274dae451fe6ffd4",
+        "skills/systematic-debugging/CREATION-LOG.md": "c24733a5b1821bd6bed1fc950261f0b9f4e90097e0bbb96459d8179713730789",
+        "skills/systematic-debugging/SKILL.md": "808fc5717aa88ad65efff312b11c186294d3e6ee301afb584e2f86599b137787",
+        "skills/systematic-debugging/condition-based-waiting-example.ts": "40ae5ebe497fdf310200e43fe986552546d0a22837c0d39e855db1cfd33eb88e",
+        "skills/systematic-debugging/condition-based-waiting.md": "e89fec8400d6cd50f43407cec9fab50976ba4d55d0ec2eb51c0bd68036b54c26",
+        "skills/systematic-debugging/defense-in-depth.md": "1e175fb86fc357e58c6aebf5441e481e1b7868b4380c0456b63a17eefbd18ba7",
+        "skills/systematic-debugging/find-polluter.sh": "dd7b8f13c4cc2a24b33ff87b18da9248f3e1c80a085c3316224f69ff0fa5c43c",
+        "skills/systematic-debugging/root-cause-tracing.md": "6b0622269e098ca1399e123e553fd385f0b6412d88ef0e9c4f5a8ea9cf1cec7b",
+        "skills/systematic-debugging/test-academic.md": "fe2ba480d78ac0d686dc025f41c2a32a43d642bf533f91b0c6053a04d35d6486",
+        "skills/systematic-debugging/test-pressure-1.md": "0b6a915db0054577819834c79be9eb614e97bddba10d73768e1fbe91cfed048a",
+        "skills/systematic-debugging/test-pressure-2.md": "b2030aeffba07050e8ad573ddf87486457c4a016a786bb326235bebd856f2016",
+        "skills/systematic-debugging/test-pressure-3.md": "96b50a52e2c7989c9cf20fb752c47c1e9a3a70dc362f8f7989f8f5b64dac7708",
+        "skills/test-driven-development/SKILL.md": "bf1b8216e523851a411e91d429a7c1c2a173e79d88957bc78e348218d50edd54",
+        "skills/test-driven-development/writing-good-tests.md": "51471c853306ff92ca8bb41dcaea05f31c0e46b03651f8f3c99754b7172f4ae1",
+        "skills/verification-before-completion/SKILL.md": "2befe7fc55bcadaa3d97dd9e8efeb633d2561c0ebe74c5a8b17c4d9e7e4520b3"
+      }
+    },
+    "caveman": {
+      "upstream_url": "https://github.com/JuliusBrussee/caveman.git",
+      "upstream_commit": "15581d14007fd01fb3f132016741962f34936ca2",
+      "files": {
+        "LICENSE": "94fe75d355887f84ee7eefca68e06d8d082a23dad47a8e1f58a94d98900edf5b",
+        "skills/caveman/README.md": "e86f4b56765fc288859a8a1f3e3814c990ba920b326c40c55667b56d44c58c1e",
+        "skills/caveman/SKILL.md": "c4d7354b4b063d54601fcdd5097a5b1713d1a1a2e386ac39efa438aa1ffef8ce",
+        "src/hooks/README.md": "f7b7c57418a5633630f8bc62943c30e64fb524b9c6e0ebc4902f5d06bad7a08d",
+        "src/hooks/cavecrew-model-overrides.js": "faf9d5b3d792f86441ed4298f2017e0d56815b787cfcf61e511108dc5b459bdb",
+        "src/hooks/caveman-activate.js": "279a5d51202140cb4cf7ae8917931aed5930e33e15db446d99b2c6766a0ee649",
+        "src/hooks/caveman-config.js": "80adc5bd31034c295c81512281f4b883679883babe8e8dd1c7469c20edad6723",
+        "src/hooks/caveman-mode-tracker.js": "d3a872db10c6b29510ec6df3410363f6df5b6c9be0e4054f90eea63d1acb0c87",
+        "src/hooks/caveman-parse.js": "63442c0e2d13a05f1dd30446c5bf3ee0839241507d64b33731d23abb8506f621",
+        "src/hooks/caveman-stats.js": "8650f6362d0dce65ea1be752b47719b18af3c50464b5d8d5284c81d4989aa8a6",
+        "src/hooks/caveman-statusline.ps1": "ed3796bcc641f5c6aa23e046f4179045c63b859705536ea205323af3738030b8",
+        "src/hooks/caveman-statusline.sh": "0bc795757347453e84a6acfb0b2e9650066306859cfb7732f71377cf587b86f9",
+        "src/hooks/checksums.sha256": "3ecda8f2e981ee956f5ee9a995c346fe92033f3dcfda8bc59662a16ca977eec4",
+        "src/hooks/install.ps1": "0baff8d024acdb13c0a9091d2831f9020699200c2e71ccdf4872981b10433fcb",
+        "src/hooks/install.sh": "b4551c08e4fc56ecdbe6be8a05d88aef1622cb5af853b5a266ee39536f7b7e6a",
+        "src/hooks/package.json": "8005a3491db7d92f36ac66369861589f9c47123d3a7c71e643fc2c06168cd45a",
+        "src/hooks/uninstall.ps1": "94391441432e7a4e95c4bb4eddbb1d533b143fbcf71c2c427ff41745ff5dcd8c",
+        "src/hooks/uninstall.sh": "a7d64462264f8097eec926239372640323451b3390b76bb48f198f51fc4bf253"
+      }
+    }
+  }
+}
