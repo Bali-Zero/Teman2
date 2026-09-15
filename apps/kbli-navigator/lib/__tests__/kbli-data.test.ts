@@ -155,8 +155,8 @@ function pmaDisclosureContract() {
   const certifiedIntel = locatedCodes.filter((code) => code.intel_2026);
   assert.equal(
     certifiedIntel.length,
-    36,
-    "only the 36 manually reviewed canonical editorial blocks may publish (49 - 12 de-certified by W-H PR-3c v3, whose prose still claimed an openness its own tuple denies, then -1 for 47221 by W-H PR-3f)",
+    37,
+    "only the 37 manually reviewed canonical editorial blocks may publish (49 - 12 de-certified by W-H PR-3c v3, whose prose still claimed an openness its own tuple denies)",
   );
   for (const code of [
     "10722",
@@ -176,12 +176,6 @@ function pmaDisclosureContract() {
     "79122",
     "95220",
     "96100",
-    // W-H PR-3f: 47221's canonicalIntel.whatYouNeed claimed a UMKM/Koperasi
-    // partnership condition that the record's own pma_kondisi denies (a
-    // distribution-network/location requirement instead, Perpres 10/2021
-    // Lampiran III line 4202 #44). canonicalIntel ONLY — 47221 stays
-    // located and its mouthGold certification is untouched.
-    "47221",
   ]) {
     assert.equal(getCode(code)?.intel_2026, undefined, `${code}: unsafe intel`);
   }
