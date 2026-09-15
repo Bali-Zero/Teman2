@@ -9,7 +9,7 @@ machine: M5
 date: 2026-09-15
 
 gear: 2
-gear_reason: churn=1148 (floor recipe), under the 1828 Gear-3 threshold, 28 files.
+gear_reason: churn=1169 post-merge (floor recipe), under the 1828 Gear-3 threshold, 28 files.
 
 acceptance:
   A1: >-
