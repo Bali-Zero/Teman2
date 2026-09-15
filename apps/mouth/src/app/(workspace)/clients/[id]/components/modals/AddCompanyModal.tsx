@@ -410,6 +410,7 @@ export function AddCompanyModal({
             size="icon"
             onClick={onClose}
             aria-label="Close modal"
+            title="Close"
           >
             <X className="w-5 h-5" />
           </Button>

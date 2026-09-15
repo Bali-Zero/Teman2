@@ -370,15 +370,61 @@ function walkSourceFiles(dir: string, extSet: Set<string>): string[] {
 
 /** Strips `/* … *\/` block comments, and a `//` line comment ONLY when it
  * starts the line (optional leading whitespace, then `//`) — never a `//`
- * that appears mid-line. Round-4 Q5: the previous version stripped from ANY
- * `//` onward (guarded only against `://`), so a string literal that simply
- * CONTAINED `//` — e.g. `className="x // bg-[var(--bz-accent)]"` — had its
- * tail silently erased before the scan ever saw it, a bypass with no plant
- * required. Only stripping a line-leading `//` means a real trailing
- * comment is (safely) left in and scanned as if it were code — over-scan,
- * never under-scan, is the direction that cannot hide a real violation. */
+ * that appears mid-line, and never anything inside a string. Round-4 Q5
+ * closed the mid-line-`//` bypass; round-5 M2 closes its sibling: a REGEX
+ * strip has no notion of string state, so `className="x /* bg-red-500 *\/"`
+ * — a block-comment-shaped SUBSTRING sitting inside an ordinary string
+ * literal, not a real comment at all — was erased right along with a genuine
+ * comment, hiding the violation text ("bg-red-500") from the scanner with no
+ * plant required. This is a small char-by-char scanner instead of a regex:
+ * it tracks whether it is inside a `"`/`'`/`` ` `` string (honouring `\`
+ * escapes) and only treats `/* … *\/` or a line-leading `//` as a comment
+ * OUTSIDE that state — inside a string, every character is copied through
+ * untouched, comment-shaped or not. */
 function stripComments(src: string): string {
-  return src.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^[ \t]*\/\/.*$/gm, "");
+  let out = "";
+  let i = 0;
+  let inString: string | null = null;
+  while (i < src.length) {
+    const c = src[i];
+    if (inString) {
+      out += c;
+      if (c === "\\" && i + 1 < src.length) {
+        out += src[i + 1];
+        i += 2;
+        continue;
+      }
+      if (c === inString) inString = null;
+      i++;
+      continue;
+    }
+    if (c === '"' || c === "'" || c === "`") {
+      inString = c;
+      out += c;
+      i++;
+      continue;
+    }
+    if (c === "/" && src[i + 1] === "*") {
+      const end = src.indexOf("*/", i + 2);
+      i = end === -1 ? src.length : end + 2;
+      continue;
+    }
+    if (c === "/" && src[i + 1] === "/") {
+      const lastNewline = out.lastIndexOf("\n");
+      const linePrefix = out.slice(lastNewline + 1);
+      if (/^[ \t]*$/.test(linePrefix)) {
+        const end = src.indexOf("\n", i);
+        i = end === -1 ? src.length : end;
+        continue;
+      }
+      out += c;
+      i++;
+      continue;
+    }
+    out += c;
+    i++;
+  }
+  return out;
 }
 
 /** Extracts one JSX opening tag starting at `startIdx` (which must point at
@@ -456,8 +502,13 @@ const VALID_STATIC_VARIANTS = new Set([
   "link",
 ]);
 
+// Round-5 M3: `variant\s*=` alone matches the TAIL of `data-variant=` too —
+// scar family #3 again, guard-over-match on a substring instead of the
+// entity. `(?<![\w-])` refuses a match immediately preceded by a word
+// character or a hyphen, so `data-variant=`/`aria-variant=`-shaped props
+// can never masquerade as the real `variant=`.
 function staticVariantOf(tag: string): string | null {
-  const m = tag.match(/variant\s*=\s*(["'`])([^"'`]*)\1/);
+  const m = tag.match(/(?<![\w-])variant\s*=\s*(["'`])([^"'`]*)\1/);
   return m ? m[2] : null;
 }
 
@@ -516,6 +567,19 @@ describe("GLOB: no default-variant Button, static-literal variant only (R3a, tig
       expect(variant && VALID_STATIC_VARIANTS.has(variant)).toBe(true);
     }
   });
+
+  it('GUILT (round-5 M3): data-variant="outline" is a DIFFERENT prop and must not be read as a real variant', () => {
+    const tag = extractOpeningTag('<Button data-variant="outline">', 0);
+    expect(staticVariantOf(tag)).toBeNull();
+  });
+
+  it('INNOCENCE (round-5 M3): a real variant="outline" still matches even with a data-variant on the same tag', () => {
+    const tag = extractOpeningTag(
+      '<Button data-variant="outline" variant="ghost">',
+      0,
+    );
+    expect(staticVariantOf(tag)).toBe("ghost");
+  });
 });
 
 // Round-4 Q3: hue-parsing a literal to decide whether it "reads red" missed
@@ -527,8 +591,12 @@ describe("GLOB: no default-variant Button, static-literal variant only (R3a, tig
 // come from a named token — and no red/rose/orange/amber palette utility is
 // allowed on any Tailwind colour-bearing prefix, regardless of what it is
 // attached to. Round-4 Q4: this walk now includes `.css` (`ALL_SOURCE_FILES`).
+// Round-5 M4: case-insensitive (`RGB(1 2 3)` read the same as `rgb(...)`),
+// and covers the modern CSS colour functions too — `hwb()`/`lab()`/`lch()`/
+// `oklab()`/`oklch()`/`color()` are just as raw and un-token-able as
+// `rgba()`, and none of them were in the old alternation.
 const RAW_COLOR_LITERAL =
-  /#[0-9a-fA-F]{3,4}\b|#[0-9a-fA-F]{6}\b|#[0-9a-fA-F]{8}\b|\b(?:rgba?|hsla?)\(/g;
+  /#[0-9a-fA-F]{3,4}\b|#[0-9a-fA-F]{6}\b|#[0-9a-fA-F]{8}\b|\b(?:rgba?|hsla?|hwb|lab|lch|oklab|oklch|color)\(/gi;
 const PALETTE_HUE_UTILITY =
   /\b(?:bg|text|border|from|via|to|ring|fill|stroke|outline|decoration|shadow|caret|divide|placeholder|accent)-(?:red|rose|orange|amber)-\d{2,3}\b/g;
 const TEMPLATE_BUILT_VAR_NAME = /var\(--\$\{/g;
@@ -579,6 +647,23 @@ describe("GLOB: no red / no state-danger / no raw colour literal / no template-b
     ).not.toBeNull();
   });
 
+  it("GUILT (round-5 M4): an UPPERCASE colour function is caught the same as lowercase", () => {
+    expect("background: RGB(1 2 3);".match(RAW_COLOR_LITERAL)).not.toBeNull();
+  });
+
+  it("GUILT (round-5 M4): a modern CSS colour function (oklch/hwb/lab/lch/oklab/color) is caught", () => {
+    expect("color: oklch(0.6 0.2 30);".match(RAW_COLOR_LITERAL)).not.toBeNull();
+    expect("color: hwb(30 20% 10%);".match(RAW_COLOR_LITERAL)).not.toBeNull();
+    expect("color: lab(50% 40 20);".match(RAW_COLOR_LITERAL)).not.toBeNull();
+    expect("color: lch(50% 60 30);".match(RAW_COLOR_LITERAL)).not.toBeNull();
+    expect(
+      "color: oklab(0.5 0.1 0.05);".match(RAW_COLOR_LITERAL),
+    ).not.toBeNull();
+    expect(
+      "color: color(display-p3 1 0 0);".match(RAW_COLOR_LITERAL),
+    ).not.toBeNull();
+  });
+
   it("GUILT: an amber/orange/rose/red Tailwind palette utility is caught on ANY listed prefix", () => {
     expect("text-amber-400".match(PALETTE_HUE_UTILITY)).not.toBeNull();
     expect("shadow-orange-500".match(PALETTE_HUE_UTILITY)).not.toBeNull();
@@ -614,6 +699,17 @@ describe("GLOB: no red / no state-danger / no raw colour literal / no template-b
     const fixture =
       "  // this prose mentions --bz-accent but is not code\nconst x = 1;";
     expect(stripComments(fixture)).not.toContain("--bz-accent");
+  });
+
+  it("GUILT (round-5 M2): a block-comment-shaped substring INSIDE a string literal is not a real comment and must survive stripComments", () => {
+    const fixture = 'className="x /* bg-red-500 */"';
+    expect(stripComments(fixture)).toContain("bg-red-500");
+  });
+
+  it("INNOCENCE (round-5 M2): a real block comment OUTSIDE any string is still stripped", () => {
+    const fixture =
+      "/* this prose mentions bg-red-500 but is not code */\nconst x = 1;";
+    expect(stripComments(fixture)).not.toContain("bg-red-500");
   });
 });
 
