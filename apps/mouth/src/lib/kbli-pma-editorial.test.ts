@@ -95,11 +95,14 @@ describe("PMA editorial disclosure boundary", () => {
     // The intel-bearing subset does NOT move with it: none of the 3 are
     // registered in pma-editorial-certifications.json's `canonicalIntel`
     // section, so `intel_2026` on the public KBLICode stays `undefined` for
-    // all 3 regardless of this PR — 49 is unchanged.
+    // all 3 regardless of this PR. W-H PR-3c v3 then de-certified 12 of the
+    // 49 canonicalIntel entries (10214/16221/22121/47111/50111/50112/51102/
+    // 55105/65111/79122/95220/96100) whose prose still claimed an openness
+    // their own tuple denies: 49 -> 37.
     expect(codes).toHaveLength(1559);
     expect(located).toHaveLength(57);
     expect(gaps).toHaveLength(1502);
-    expect(located.filter((record) => record.intel_2026)).toHaveLength(49);
+    expect(located.filter((record) => record.intel_2026)).toHaveLength(37);
 
     for (const record of gaps) {
       const disclosed = discloseKbliEditorial(
