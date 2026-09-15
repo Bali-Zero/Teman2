@@ -993,8 +993,8 @@ CONTENT_KEYED_RULES: list[tuple[re.Pattern[str], re.Pattern[str], str]] = [
             r"^infra/claude-plugins/local-marketplace/vendor\.lock\.json$"
         ),
         re.compile(
-            r'^\s*"[^"]+"\s*:\s*"[0-9a-f]{64}"\s*,?\s*$'
-            r'|^\s*"upstream_commit"\s*:\s*"[0-9a-f]{40}"\s*,?\s*$'
+            r'^\s*(?:"[^"]+"\s*:\s*"[0-9a-f]{64}"'
+            r'|"upstream_commit"\s*:\s*"[0-9a-f]{40}")\s*,?\s*$'
         ),
         "local-marketplace vendor.lock.json: per-file sha256 pins and "
         "upstream_commit for vendored (upstream-derived) plugin files, "
