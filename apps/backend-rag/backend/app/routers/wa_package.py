@@ -27,6 +27,7 @@ from pydantic import BaseModel, Field
 
 from backend.app.dependencies import get_orchestrator
 from backend.services.integrations.wa_greeting import match_greeting
+from backend.services.integrations.wa_identity import match_identity_question
 from backend.services.rag.agentic.query_planner import QueryPlanner
 from backend.services.rag.agentic.wa_package_builder import (
     PackageUnbuildable,
@@ -150,8 +151,14 @@ async def build_wa_package(
     # `_inject_curated_qa_grounding` (only `"general"`/falsy do) — passing
     # it spent an embedding + Qdrant search whose hits were then always
     # discarded downstream by that same gate.
+    #
+    # `match_identity_question` (B2.5-1b) is the same cost guard, second
+    # authority, same order as everywhere else: an identity question is
+    # about to be declared unbuildable("identity_domain") below, so
+    # prefetching curated-QA evidence for it would spend an embedding +
+    # Qdrant search on hits the builder can never use.
     curated_qa_block = ""
-    if match_greeting(request.query) is None:
+    if match_greeting(request.query) is None and match_identity_question(request.query) is None:
         curated_qa_block = await orchestrator.core.curated_qa_grounding_block(
             request.query,
             {"domain": effective_domain(request.query, plan).value},

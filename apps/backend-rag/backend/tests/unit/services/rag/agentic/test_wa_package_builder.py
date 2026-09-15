@@ -409,6 +409,42 @@ class TestUnbuildableGate:
 
 
 # ============================================================================
+# 3ter. IDENTITY authority (B2.5-1b, second authority, same order as greeting)
+# ============================================================================
+
+
+class TestIdentityAuthority:
+    """`wa_identity.match_identity_question` is the second authority, checked
+    right after `match_greeting` and by the same reasoning: a question about
+    the assistant itself has no retrieval answer, so it is never an
+    unbuildable package — it is a scripted turn, short-circuited by
+    `wa_codex_leg` before this function is ever called on that query. This
+    class is the second line of defense for any other caller."""
+
+    async def test_identity_query_raises_unbuildable(self) -> None:
+        with pytest.raises(PackageUnbuildable) as exc_info:
+            await build_context_package(
+                query="ciao tu sei Zantara?",
+                history=[],
+                thread_epoch=0,
+                retriever=FakeRetriever(),
+            )
+        assert exc_info.value.reason == "identity_domain"
+
+    async def test_a_case_question_with_an_identity_phrase_still_builds(self) -> None:
+        """The domain-veto half: "cosa puoi fare per la mia PT PMA?" contains
+        the identity phrase "cosa puoi fare" but is a real case question —
+        it must build exactly like any other visa query, never raise."""
+        package = await build_context_package(
+            query="cosa puoi fare per la mia PT PMA?",
+            history=[],
+            thread_epoch=0,
+            retriever=_visa_retriever(),
+        )
+        assert isinstance(package, ContextPackage)
+
+
+# ============================================================================
 # 3bis. GREETING authority (B2.5 PR-3, ruling d, measured defect D4)
 # ============================================================================
 
