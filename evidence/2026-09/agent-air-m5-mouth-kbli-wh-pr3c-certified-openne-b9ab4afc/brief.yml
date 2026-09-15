@@ -1,0 +1,27 @@
+task: >-
+  SAETTA-20260915 W-H PR-3c: certified KBLI editorial text must not claim foreign openness
+  its own PMA tuple, or another code it names, does not support. 29 canonical codes carried a
+  stale zantaraOpener/editorial.standfirst template saying "PMA status: Open"/"open to PMA
+  nationally" while their record is TERBATAS with pma_max_asing<100. 47111 (0%, located) told
+  a reader that 47191/47192 are "100% PMA open" while both are declared_gap (unverified).
+  Whole-field replacement via cure_prose_national_openness.py (unmodified) + a new hash-pinned
+  spec; contentSha256 re-issued for those 29 in the registry. 47111 de-certified from
+  mouthGold/standaloneGold (no compiler for non-whatYouNeed gold fields, so withdrawal).
+lane: mouth/kbli-wh-pr3c-certified-openness
+machine: M5
+date: 2026-09-15
+gear: 2
+gear_reason: >-
+  Deterministic floor 2 (size, no hot-zone path). Client-facing KBLI prose + registry re-pin
+  only; no new compiler (reuses cure_prose_national_openness.py unmodified), no migration.
+acceptance:
+  - probe: python3 -m pytest scripts/kbli_filiera/ -q
+    expect: 0 failed
+  - probe: cd apps/backend-rag && pytest $(find backend/tests -iname "test_*kbli*.py")
+    expect: 0 failed
+  - probe: cd apps/mouth && npx vitest run src/lib/kbli-data.server.test.ts && npx tsc --noEmit
+    expect: passed, tsc clean
+  - probe: cd apps/kbli-navigator && ../../node_modules/.bin/tsx --test lib/__tests__/kbli-data.test.ts
+    expect: 1 passed
+  - probe: bash scripts/sync_kbli_dataset.sh --check
+    expect: all consumers in sync
