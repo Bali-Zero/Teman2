@@ -1,69 +1,95 @@
-task_id: secondo-livello-second-army-runner
+task_id: b2-5-2-wa-human-handoff
 gear: 2
 l_level: L2
 gate_class: opus
-# Floor for this diff, measured WITH this brief already staged — the mistake that sank PR #6602
-# was measuring on the code-only commit and letting the brief's own churn cross the threshold
-# afterwards. No hot-zone path here; the CI wiring that would add one ships separately.
+# Floor for this diff is 2, reached via the SIZE term alone (1018 added / 32 deleted across 10
+# files) — no hot-zone path, no migration, no new dependency. Measured WITH this brief staged:
+# the brief's own churn (~90 lines) leaves the total well under the floor-3 threshold, which is
+# the mistake that sank PR #6602.
 objective: >-
-  The standalone runner for infra/workflows/ scripts, split out of PR #6602 so each piece lands at
-  its own honest size. run-second-army.mjs compiles and executes a workflow script OUTSIDE the
-  Workflow tool — shell, cron or CI — by injecting the same args/agent/log/phase/parallel/pipeline
-  bindings the harness supplies. It is also the enforcement point for the Builder Contract's
-  "every agent() call pins model:" rule, and this PR makes that enforcement MEASURABLE: a --script
-  flag lets the behavioural suite point the runner at two fixtures that differ only in the pin.
+  A client who asks to speak to a person is the highest-intent message this bot ever receives —
+  it is a lead. Today nothing on the Meta Inbox channel detects it: the message falls through to
+  retrieval, abstains, and reaches no human being. Measured 2026-09: 32 of 40 conversations end
+  in an abstain, 4 were picked up by a person. This PR detects the ask in five languages, answers
+  the client in their own language, and notifies a human on two channels — the kita notification
+  bell for the assigned consultant, and email for everyone including a number no client row
+  matches yet.
 constraints:
   - >-
-    No Anthropic per-token door in any form. The single door the runner opens is the `claude` CLI,
-    which carries its own OAuth. No credential is placed on argv, read from the environment, or
-    printed; the only env var read is a numeric per-lane timeout.
+    No Anthropic per-token door in any form, no new dependency, no migration. The notification
+    table (notification_alerts, migration 071) and the email adapter
+    (/api/notifications/send-email, from=zantara@balizero.com) both already exist on main.
   - >-
-    No new dependency: node: builtins only, Node >= 18. The behavioural tests spawn the runner as
-    a child process and run everything through --dry-run, so no claude/codex/agy binary is ever
-    reached and there is no network call.
+    PII is an OUTPUT boundary. The phone number is used ONLY in-process to resolve the consultant.
+    It never appears in the email subject, the email body, the in-app row, or any log line; the
+    client's own words are never transcribed anywhere. The in-app message is a fixed English
+    sentence and the email body a fixed Bahasa Indonesia one, deliberately — a robust
+    "free of identifiers" classifier is out of scope for this size, so when in doubt this omits.
   - >-
-    Nothing outside infra/workflows/ is touched. second-army.js, shipped in #6603, is NOT modified
-    by this PR — the runner reaches it through a default path, and --script overrides that default
-    without changing it.
+    The client's confirmation must survive any notification failure. Both channels are best-effort
+    at their own layer, and the call site in wa_codex_leg.py wraps the whole call again, because
+    the outer attempt() turns an unhandled exception into a text=None fall-off — which would
+    silently swallow the very confirmation this leg exists to send.
+  - >-
+    meta_inbox_threads.human_handling is NOT set. A client who ASKS for a human is not a human who
+    HAS TAKEN the thread; setting it aborts every later generation (aborted_human_takeover,
+    wa_outbox_worker.py:930) and, if nobody arrives, leaves the client in total silence.
 acceptance:
   - text: >-
-      A1: WHEN the behavioural suite runs SHALL pass 5/5 — a fixture lane that pins model: runs and
-      its return value reaches stdout; a fixture lane that omits it is refused with a non-zero exit
-      and a reason on stderr; an unsupported model alias is refused and named; a missing
-      --args-file is a usage error; stdout carries the JSON return value alone.
-    probe: node infra/workflows/tests/test-run-second-army.mjs
+      A1 GUILT: WHEN a client writes any of 23 real phrasings across it/en/id/ru/uk — including
+      "I want to talk to a human", "voglio parlare con una persona riguardo alla mia PT PMA" and
+      "saya mau bicara dengan orang" — SHALL match and return a confirmation in that language.
+      The domain veto is INVERTED relative to wa_identity: naming your own case while asking for a
+      human is the most valuable lead there is, and must match rather than be vetoed.
+    probe: "cd apps/backend-rag && .venv/bin/python -m pytest backend/tests/unit/services/test_wa_human_handoff.py -k TestGuilt"
   - text: >-
-      A2 THE POINT OF THIS PR: WHEN both call sites of assertModelPinned() are removed in a scratch
-      copy SHALL go RED — 4/5, failing test_unpinned_fixture_is_refused. The test this replaces was
-      a regex over the runner's source, and an independent gate proved it passed with the guard
-      commented out. A guard is a behaviour and has to be measured as one.
-    probe: "copy the runner+suite to a scratch dir, replace both `assertModelPinned(opts);` call sites with a comment, rerun the suite"
+      A2 INNOCENCE: WHEN the message is "humanitarian visa", "how long does PT PMA take?",
+      "sei un umano?" or a third-person question about staff SHALL NOT match. The guard judges
+      whole TOKENS over a normalized window, never a substring — "humanitarian" cannot reach any
+      phrase in the table.
+    probe: "cd apps/backend-rag && .venv/bin/python -m pytest backend/tests/unit/services/test_wa_human_handoff.py -k TestInnocence"
   - text: >-
-      A3 THE MIRROR OF A2: WHEN the guard is rewritten as `if (!opts?.model)` in a scratch copy —
-      identical behaviour, different spelling — the suite SHALL stay 5/5. The replaced regex test
-      went red on exactly this rewrite. The two mutations together show the new test tracks
-      behaviour and not spelling.
-    probe: "copy the runner+suite to a scratch dir, rewrite the guard condition as optional chaining, rerun the suite"
+      A3 THE ROW IS ALSO RENDERED: WHEN the module writes a notification_alerts row SHALL be a
+      type the kita bell actually shows. /api/crm/notifications filters on a fixed allow-list, so a
+      new alert_type would otherwise be written and never seen — for a lead, the same outcome as
+      not writing it. The allow-list is now one constant read by both the list and the count query,
+      and the test binds the two constants by ENTITY, not by grepping a SQL literal.
+    probe: "cd apps/backend-rag && .venv/bin/python -m pytest backend/tests/unit/services/test_wa_human_handoff.py -k TestInAppAlert"
   - text: >-
-      A4: WHEN the pre-existing contract suite for second-army.js runs SHALL still pass 12/12 —
-      this PR must not disturb what #6603 shipped.
-    probe: node infra/workflows/tests/test-second-army-contract.mjs
+      A4 THE PROMISE IS KEPT: WHEN any of the five wa_identity presentations offers the client a
+      human SHALL use wording that match_human_request recognises. Before this PR that line was a
+      promise no code kept; the test walks every presentation and requires the detector to find a
+      request inside the exact sentence it suggests.
+    probe: "cd apps/backend-rag && .venv/bin/python -m pytest backend/tests/unit/services/test_wa_human_handoff.py -k TestPresentationKeepsItsPromise"
+  - text: >-
+      A5 NOTHING ELSE MOVED: WHEN the backend unit suite runs SHALL be 8534 passed with exactly one
+      pre-existing unrelated failure (autonomous_lab/test_consul_native_broker.py,
+      ModuleNotFoundError scripts.conductor), reproduced identically on a clean main checkout.
+    probe: "cd apps/backend-rag && .venv/bin/python -m pytest backend/tests/unit/services/autonomous_lab/test_consul_native_broker.py  # same red on main"
 assumptions:
   - text: >-
-      --script is load-bearing, not decoration. Without it the runner can only ever execute
-      second-army.js, and a guard that refuses a malformed lane cannot be measured, because
-      second-army.js never presents one. The fixtures are the malformed lane.
+      notification_alerts.client_id is NOT NULL with an FK to clients, and the bell's own query
+      JOINs clients to resolve the assignee — so an unrecognised number structurally CANNOT have an
+      in-app row. This is why the email is unconditional rather than a fallback: the newest lead is
+      exactly the one no client row matches.
     status: verified
-    probe: "test_unpinned_fixture_is_refused passes only because --script can reach fixtures/fixture-model-missing.js"
+    probe: "scripts/pg.sh -c '\\d notification_alerts' — client_id integer not null, FK to clients(id)"
   - text: >-
-      Importing the runner in-process is not a viable test form: it is a CLI entrypoint that
-      executes main() at import and exports nothing selectively. The suite therefore spawns it as a
-      child process and asserts on exit code and stderr.
+      The table carries UNIQUE (client_id, alert_type, created_date), so a client asking twice in
+      one day would raise without ON CONFLICT. DO UPDATE rather than DO NOTHING because a second
+      ask means the first went unanswered: the alert returns to unread and rises in the bell.
     status: verified
-    probe: "run-second-army.mjs ends with a bare main() call and has no export statement"
+    probe: "scripts/pg.sh -c '\\d notification_alerts' — uq_notification_alert_daily UNIQUE (client_id, alert_type, created_date)"
   - text: >-
-      Nothing in .github/workflows/ runs infra/workflows/tests/ today, so this suite — like the
-      contract suite beside it — is run by hand until the CI wiring ships as its own PR. The README
-      says so rather than implying a consumer that does not exist.
+      PackageUnbuildable("human_handoff_domain") cannot violate the wa_outbox CHECK constraint on
+      generation_fall_off_reason: unknown sub-reasons fall through to the generic
+      "package_unbuildable" bucket, which the constraint allows. wa_codex_leg short-circuits before
+      the builder is ever reached on this path anyway — the raise is a second line of defense.
     status: verified
-    probe: "grep -rl 'infra/workflows' .github/workflows/ returns nothing"
+    probe: "wa_codex_leg.py:268 _UNBUILDABLE_SUB_REASON_MAP has 3 keys; anything else falls to _FALL_OFF_REASON_PREFIX_MAP['unbuildable']"
+  - text: >-
+      The live proof must come from a real phone. /webhook/whatsapp is fail-closed on the
+      X-Hub-Signature-256 HMAC and WHATSAPP_APP_SECRET is a Fly secret, absent on Pro (presence
+      probe only, value never read) — so no test inbound can be injected from this machine.
+    status: verified
+    probe: "presence probe over ~/.nuzantara-secrets.env and apps/backend-rag/.env: absent_local for all four WhatsApp vars"

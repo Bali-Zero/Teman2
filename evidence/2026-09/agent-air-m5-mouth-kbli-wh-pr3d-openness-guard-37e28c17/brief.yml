@@ -1,0 +1,22 @@
+task_id: kbli-wh-pr3d-openness-guard
+gear: 2
+base_sha: f7564912ca
+# Floor 2, source `size` (scripts/evidence_pack_lint.py --print-floor): 453 net lines, tests only.
+objective: "W-H PR-3d (SAETTA-20260916 R1): a guard test that goes red when any CERTIFIED KBLI text served on balizero.com/kbli claims openness the code's own PMA tuple denies, plus the 0%-cap certified-point assertion GATE-6598 asked for in the backend gold indexer test."
+constraints:
+  - "Test-only PR: no data, registry, prose or runtime code changes."
+  - "The pattern list is a ratchet against known shapes (fully open, 100% foreign, open to PMA, national openness, ...), not a proof of absence; paraphrases still need a human read."
+  - "Every allowlisted (code, field) carries a one-line reason and must still match a pattern, or the test fails as a stale entry."
+appetite: { wall_clock_hours: 2 }
+acceptance:
+  - text: "Guard passes on main's certified corpus (36 canonicalIntel + 8 mouthGold, 848 string fields) with 4 reviewed-true allowlist entries."
+    probe: "cd apps/mouth && ../../node_modules/.bin/vitest run src/lib/kbli-certified-openness-guard.test.ts -> 11 passed"
+  - text: "Guilt on real data: removing the 51101 headline allowlist entry turns the guard red naming 51101:intel_2026.editorial.headline [open-to-pma]."
+    probe: "observed by the Dux on the working tree before commit 6f97dfa66e, then restored"
+  - text: "Guilt on synthetic input: injected 'fully open to 100% foreign ownership', 'No local partner required.', 'Clearly open at scale' and 'Open to PT PMA' on capped tuples each produce a finding."
+    probe: "same vitest file, GUILT describe block"
+  - text: "Backend: a 0%-cap gold point (41020, registry built in-test) keeps pma_max_asing == 0 in the payload, and mutating the base cap to 49 refuses the point."
+    probe: "cd apps/backend-rag && .venv/bin/python -m pytest -p no:cacheprovider backend/tests/unit/scripts/test_index_kbli_gold_certification.py -> 11 passed"
+assumptions:
+  - text: "The three corpus hits the first scan named (50113 body, 50122 body, 50126 whatYouNeed) are negations, not openness claims: two are now recognised by the widened negation window, 50126 whatYouNeed is allowlisted because its negation follows the phrase."
+    status: verified
