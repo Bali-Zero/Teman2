@@ -83,8 +83,11 @@ describe("kbli-data", () => {
     );
     // SAETTA-20260915 W-H PR-3a moved 3 codes (55201/55203/79903) from
     // declared_gap to located (Lampiran II allocation): 1505 -> 1502, 54 -> 57.
-    expect(gaps).toHaveLength(1502);
-    expect(locatedCodes).toHaveLength(57);
+    // W-H PR-3b moves 8 more codes (47241 47242 47244 47245 47246 47249
+    // 47712 47722) from declared_gap to located under Perpres 49/2021
+    // Lampiran II entry 46: 1502 -> 1494, 57 -> 65.
+    expect(gaps).toHaveLength(1494);
+    expect(locatedCodes).toHaveLength(65);
     for (const code of gaps) {
       expect(code.pma, code.code).toMatchObject({
         status: "unknown",
@@ -130,7 +133,13 @@ describe("kbli-data", () => {
       .map((code) => code.code)
       .sort();
     expect(disclosedOnAGap).toEqual(rawDeclaredGapChiusoBali);
-    expect(disclosedOnAGap).toHaveLength(39);
+    // 39 -> 38 (W-H PR-3b): 47249 was one of the 39 declared_gap/CHIUSO_BALI
+    // records the disclose change above surfaces. This cure moves it to
+    // `pma_verification_status: "located"`, so it now fails this filter's
+    // own `!== "located"` guard and leaves BOTH the raw-JSON-derived set and
+    // `gaps` (it is no longer declared_gap at all) — not a disclosure bug,
+    // the code is simply no longer a gap.
+    expect(disclosedOnAGap).toHaveLength(38);
     for (const code of gaps) {
       if (code.baliL4 !== undefined) {
         expect(code.baliL4.status, code.code).toBe("CHIUSO_BALI");

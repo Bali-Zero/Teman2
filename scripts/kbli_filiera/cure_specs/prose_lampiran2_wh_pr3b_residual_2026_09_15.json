@@ -1,0 +1,90 @@
+{
+  "compiler": "cure_prose_national_openness",
+  "_meta": {
+    "spec": "prose_lampiran2_wh_pr3b_residual_2026_09_15",
+    "population": "W-H PR-3b: the residual openness assertions the lot-1 spec (prose_lampiran2_wh_pr3b_2026_09_15, which cured editorial.headline/standfirst/body/pullQuote and whatYouNeed) did not cover, found by a manual sweep of every string field of intel_2026 for the 8 specialised-retail codes with the same regex used on PR-3a: `PMA status: (Open|Terbuka)|open to (foreign|PMA)|100 ?% (foreign|PMA|open)|fully open|PMA[- ]friendly|your PT PMA|Typical structure: PT PMA|PT PMA setup|foreign[- ]owned (shop|store|retail)`, case-insensitive. Five codes' zantaraOpener still opened with a national-openness claim (four with the template 'Nationally this carries PMA status: Open', one — 47242 — with '100% open to PMA'). 47242's baliContext separately framed the code as 'the typical PMA use case' and described a foreign-owned bakery business, which the allocation makes impossible.",
+    "no_new_claims": "Every replacement states only the record's own allocation (Perpres 49/2021 Lampiran II entry 46) and that a PT PMA cannot register the code — the same fact already carried on the record's own pma_official_basis and pma_kondisi. No price, date or percentage other than 0 is added. 47242's baliContext drops the now-false PMA business-tip content (BPOM cold-chain advice framed for a foreign-owned bakery, pairing with a manufacturing code) and keeps only the allocation fact plus the generalist-retail distinction already adjudicated in this lane's allocation spec (`excluded.generalist_retail_never_touched`)."
+  },
+  "codes": {
+    "47241": {
+      "judul": null,
+      "expect": {
+        "pma_max_asing": 0,
+        "pma_status": "TERBATAS",
+        "pma_kondisi_contains": "dialokasikan untuk Koperasi dan UMKM"
+      },
+      "fields": {
+        "zantaraOpener": {
+          "old_sha256": "618adedb245aa8919ff7e67b7df43f4d750e000821159955e678400e9c96fd16",
+          "old_excerpt": "Looking into Perdagangan Eceran Beras (47241)? Nationally this carries PMA sta",
+          "new": "Looking into Perdagangan Eceran Beras (47241)? Nationally this bidang usaha is allocated to Koperasi and UMKM by Perpres 49/2021 Lampiran II, so a PT PMA cannot take it. Let me walk you through what that means."
+        }
+      }
+    },
+    "47242": {
+      "judul": null,
+      "expect": {
+        "pma_max_asing": 0,
+        "pma_status": "TERBATAS",
+        "pma_kondisi_contains": "dialokasikan untuk Koperasi dan UMKM"
+      },
+      "fields": {
+        "zantaraOpener": {
+          "old_sha256": "3306b24ab2b85dcb70cfa8b70bb885cbaa089df24f2a8ce830c69dae84b0a9ef",
+          "old_excerpt": "Opening a bakery shop in Bali? KBLI 47242 covers bread and pastry retail — 10",
+          "new": "Opening a bakery shop in Bali? KBLI 47242 — retail of bread, dry cakes and wet cakes as a specialised store — is allocated to Koperasi and UMKM under Perpres 49/2021's Lampiran II, so a PT PMA cannot register it. Here's what that means for your business."
+        },
+        "baliContext": {
+          "old_sha256": "e1d04c0dea8d7a45a25b0b94df58055bc1cce7f98378645c9f14434ad7638a3f",
+          "old_excerpt": "Premium bakery chains targeting the expat and tourist market are the typical ",
+          "new": "This activity — retail of bread, dry cakes and wet cakes as a specialised store — is allocated to Koperasi and UMKM under Perpres 49/2021's Lampiran II entry 46. The reservation is nationwide, not a Bali-specific restriction: a PT PMA cannot register this code anywhere in Indonesia, including Bali. Selling the same goods inside a supermarket or general store uses a different KBLI, outside this allocation."
+        }
+      }
+    },
+    "47244": {
+      "judul": null,
+      "expect": {
+        "pma_max_asing": 0,
+        "pma_status": "TERBATAS",
+        "pma_kondisi_contains": "dialokasikan untuk Koperasi dan UMKM"
+      },
+      "fields": {
+        "zantaraOpener": {
+          "old_sha256": "92ba1413c274a3419e2b014e03abc5f0ea23913fec70ab08c7f58324c3e6aba6",
+          "old_excerpt": "Looking into Perdagangan Eceran Tahu, Tempe, Tauco, dan Oncom (47244)? Nation",
+          "new": "Looking into Perdagangan Eceran Tahu, Tempe, Tauco, dan Oncom (47244)? Nationally this bidang usaha is allocated to Koperasi and UMKM by Perpres 49/2021 Lampiran II, so a PT PMA cannot take it. Let me walk you through what that means."
+        }
+      }
+    },
+    "47245": {
+      "judul": null,
+      "expect": {
+        "pma_max_asing": 0,
+        "pma_status": "TERBATAS",
+        "pma_kondisi_contains": "dialokasikan untuk Koperasi dan UMKM"
+      },
+      "fields": {
+        "zantaraOpener": {
+          "old_sha256": "209b6bfca595a34fbcb26431cbca3e770d6f5c1cf7e5987b5cc6e9a8b9952e88",
+          "old_excerpt": "Looking into Perdagangan Eceran Daging Olahan (47245)? Nationally this carrie",
+          "new": "Looking into Perdagangan Eceran Daging Olahan (47245)? Nationally this bidang usaha is allocated to Koperasi and UMKM by Perpres 49/2021 Lampiran II, so a PT PMA cannot take it. Let me walk you through what that means."
+        }
+      }
+    },
+    "47249": {
+      "judul": null,
+      "expect": {
+        "pma_max_asing": 0,
+        "pma_status": "TERBATAS",
+        "pma_kondisi_contains": "dialokasikan untuk Koperasi dan UMKM"
+      },
+      "fields": {
+        "zantaraOpener": {
+          "old_sha256": "703ad9cdde8cfeda7916c8b6d0c5ef2ebb845aa8f5e74ff590860ea6ad3007bb",
+          "old_excerpt": "Looking into Perdagangan Eceran Makanan Lainnya (47249)? Nationally this car",
+          "new": "Looking into Perdagangan Eceran Makanan Lainnya (47249)? Nationally this bidang usaha is allocated to Koperasi and UMKM by Perpres 49/2021 Lampiran II, so a PT PMA cannot take it. Let me walk you through what that means."
+        }
+      }
+    }
+  }
+}

@@ -513,11 +513,24 @@ describe("the PMA verdict banner — the SECOND render site", () => {
     // 10/2021+49/2021 Annex II allocation, not a moratorium reading), and all
     // 7 of its blocked members already carry a 0% national cap, so every one
     // of them was already `excluded`, not `notice`, before this cure too.
-    expect(notice.length).toBe(61);
+    //
+    // 61 -> 60 on 2026-09-15 (W-H PR-3b): the Lampiran II entry-46
+    // specialised-retail cure reserves eight codes (47241 47242 47244 47245
+    // 47246 47249 47712 47722) at 0% foreign, but the W-J B1 v2 redo above
+    // already narrowed `l4_bali.blocked` to the 18 named applied-closure
+    // fields — of the eight, only 47249 (CHIUSO_BALI) is actually
+    // Bali-blocked; the other seven read ATTENZIONE_FASCIA_BALI
+    // (blocked: false) and were never in `blocked`, `notice` or `excluded`
+    // to begin with, so this cure cannot move them here. 47249 was plain
+    // TERBUKA/100 (nationally open, so in `notice`) before the cure; its cap
+    // now reads 0, so `nationallyClosed` catches it and it moves to
+    // `excluded` instead. It did not carry CHIUSO_PMA_NO_BESAR, so msme is
+    // unchanged at 0.
+    expect(notice.length).toBe(60);
     expect(msme.length).toBe(0);
-    // 61 pages carry the notice for a cause other than an MSME reservation —
-    // which as of this cure is all of them (msme is now empty).
-    expect(notice.length - msme.length).toBe(61);
+    // 60 pages carry the notice for a cause other than an MSME reservation —
+    // which as of this cure is all of them (msme is still empty).
+    expect(notice.length - msme.length).toBe(60);
   });
 
   it("the count above is a SUBTRACTION, and names what it subtracted", () => {
@@ -596,6 +609,15 @@ describe("the PMA verdict banner — the SECOND render site", () => {
     expect(excluded.map((r) => r.kode_kbli_2025)).not.toContain(
       tierOnlyAttenzione?.kode_kbli_2025,
     );
+    // …and 47249, the ONE of the W-H PR-3b Lampiran II entry-46 retail cure's
+    // eight codes that is actually Bali-blocked, sent the same way on
+    // 2026-09-15 for the same reason. The other seven (47241 47242 47244
+    // 47245 47246 47712 47722) read l4_bali.status ATTENZIONE_FASCIA_BALI
+    // (blocked: false) under the W-J B1 v2 applied-closure redo above — never
+    // in `blocked` to begin with, so this cure cannot move them into
+    // `excluded` and they are deliberately NOT named here (innocence: naming
+    // them would assert a membership they do not have).
+    expect(excluded.map((r) => r.kode_kbli_2025)).toContain("47249");
     // 448 → 449 on 2026-09-11 (September L2 re-ingestion, net +1 blocked).
     // 449 -> 448 on 2026-09-15 (SAETTA-20260915 W-H PR-2b): 43110's blocked
     // flip, same event as the notice-population pin above. Merged with
@@ -618,7 +640,14 @@ describe("the PMA verdict banner — the SECOND render site", () => {
     // (kbli-prose-pins.test.ts's tertutupZero/tertutupNonZero split): their
     // OWN national fields read wide open, so this cap-based predicate does
     // not catch them and they stay in `notice`, not `excluded`.
-    expect(blocked.length - excluded.length).toBe(61);
+    // 61 → 60 on 2026-09-15 (W-H PR-3b, 47249 above): `blocked` is unchanged
+    // at 135 (this cure never touches l4_bali; 47249 was already blocked),
+    // `excluded` grows by the one code whose cap the cure actually zeroes
+    // and that is ALSO Bali-blocked (74 → 75), so the difference moves
+    // 61 → 60. The other seven PR-3b codes are not in `blocked` (see the
+    // comment above `excluded`'s toContain check) and so cannot move this
+    // difference at all.
+    expect(blocked.length - excluded.length).toBe(60);
     // and it left by CAP, not by status — the status is TERBATAS, which the
     // banner's guard does not look at
     const woodBuilding = RECORDS.find((r) => r.kode_kbli_2025 === "16221");
@@ -729,12 +758,20 @@ describe("the FAQ + FAQPage JSON-LD — the THIRD render site in this file, FIFT
     // untouched by this migration and every one of its 7 blocked members
     // already reads TERBATAS nationally, not TERBUKA, so none was ever in
     // `answers` to begin with.
-    expect(answers.length).toBe(60);
+    //
+    // 60 -> 59 on 2026-09-15 (W-H PR-3b): the SAME 47249 as the banner site
+    // above, reached here by the other predicate — there it left because its
+    // cap became 0, here because its status became TERBATAS (so
+    // openNationally no longer matches). The other seven PR-3b codes are not
+    // in `BLOCKED` at all (l4_bali.status ATTENZIONE_FASCIA_BALI), so they
+    // were never in `answers` to move. 47249 did not carry CHIUSO_PMA_NO_BESAR,
+    // so msme is unchanged at 0.
+    expect(answers.length).toBe(59);
     expect(msme.length).toBe(0);
-    // 60 answers carry the block for a cause other than an MSME reservation —
+    // 59 answers carry the block for a cause other than an MSME reservation —
     // in the visible Q&A and in the FAQPage JSON-LD, the copy that leaves the
-    // site — which as of this cure is all of them (msme is now empty).
-    expect(answers.length - msme.length).toBe(60);
+    // site — which as of this cure is all of them (msme is still empty).
+    expect(answers.length - msme.length).toBe(59);
   });
 
   it("this site is a SUBSET of the banner's — a cure for one is not a cure for the other", () => {

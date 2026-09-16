@@ -104,8 +104,12 @@ describe("PMA editorial disclosure boundary", () => {
     // condition its own pma_kondisi denies): 37 -> 36. 47221 stays located
     // (its PMA tuple is unaffected) and keeps its mouthGold certification.
     expect(codes).toHaveLength(1559);
-    expect(located).toHaveLength(57);
-    expect(gaps).toHaveLength(1502);
+    // 57 -> 65 located / 1502 -> 1494 gaps: W-H PR-3b moves 8 more codes
+    // (47241 47242 47244 47245 47246 47249 47712 47722) from declared_gap to
+    // located under Perpres 49/2021 Lampiran II entry 46. None of the 8 is
+    // registered in canonicalIntel, so the certified-intel count stays 36.
+    expect(located).toHaveLength(65);
+    expect(gaps).toHaveLength(1494);
     expect(located.filter((record) => record.intel_2026)).toHaveLength(36);
 
     for (const record of gaps) {

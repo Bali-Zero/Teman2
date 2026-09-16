@@ -207,6 +207,13 @@ describe("the Bali provenance row attributes the verdict to what produced it", (
     // `declared_gap` CHIUSO_BALI records (all with a sourced closure.url)
     // that were previously withheld from `getAllCodes()` entirely now carry
     // a `baliL4`, and none of them is moratorium-attributed.
+    // W-H PR-3b (53 -> 53, no change): 47249 moves declared_gap -> located
+    // (Perpres 49/2021 Lampiran II entry 46). Before this cure it was ALREADY
+    // one of the 39 declared_gap/CHIUSO_BALI/closure.url records the disclose
+    // change above surfaces, so it was already counted in 53 — becoming
+    // "located" does not add it a second time. The other 7 PR-3b codes also
+    // move to located, but their l4_bali.status is ATTENZIONE_FASCIA_BALI
+    // (blocked: false) — they never qualified and still do not.
     expect(misattributed).toHaveLength(53);
     // Every one of them must now name its own cause, never the risk tier.
     // `baliRow` asserts a LOCATED national PMA tuple, which no longer holds

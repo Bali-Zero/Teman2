@@ -481,8 +481,8 @@ describe("real dataset: the gate binds, and v3 actually differentiates", () => {
       (s) => s === "PMA Eligibility Requires Verification",
     ).length;
 
-    // Compiler-owned partition: 54 whole-code verdicts have a per-code locator
-    // and vintage; all other 1,505 records must reach the neutral metadata arm.
+    // Compiler-owned partition: 65 whole-code verdicts have a per-code locator
+    // and vintage; all other 1,494 records must reach the neutral metadata arm.
     // SAETTA-20260915 W-H PR-3a: 55201/55203/79903 moved declared_gap→located
     // (Perpres 49/2021 Lampiran II allocation), 1505→1502.
     // 2026-09-16 (W-J B1 disclose, 1502 -> 1484): 23 of the 39 newly-disclosed
@@ -491,7 +491,16 @@ describe("real dataset: the gate binds, and v3 actually differentiates", () => {
     // whose closure carries a scope qualifier (building area under 6,000 m²),
     // which a <title> cannot state, so they stay neutral too. The other 18
     // reach "Closed to PT PMA in Bali (2026)"; the 16 MEDIUM codes stay neutral.
-    expect(pmaGaps).toBe(1484);
+    // W-H PR-3b (1484 -> 1476): 8 more codes (47241 47242 47244 47245 47246
+    // 47249 47712 47722) moved declared_gap→located. 47249 is MEDIUM
+    // confidence, so it was one of the 16 "stays neutral" codes above (not
+    // one of the 18 promoted to a bare claim) — it leaves the declared_gap
+    // pool entirely and stops counting as a neutral pmaGap. The other 7 were
+    // never in the disclosed-39 set (their l4_bali.status is
+    // ATTENZIONE_FASCIA_BALI, not CHIUSO_BALI) but were already counted as
+    // plain neutral declared_gap codes, so they also leave the count.
+    // 1484 - 8 = 1476.
+    expect(pmaGaps).toBe(1476);
     expect(suffixes).toHaveLength(1559);
   });
 

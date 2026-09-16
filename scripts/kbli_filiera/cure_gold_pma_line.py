@@ -262,6 +262,67 @@ AUTHORED_SENTENCES = {
         ),
         "why": "canonical now cures 65121 to TERBATAS/80 under PP 14/2018 Pasal 5(1) jo. PP 3/2020 (Perpres 10/2021 Pasal 11(2) carves insurance out to sector law) — the old sentence guessed at an acquisition-only, uncertain regime instead of citing the actual instrument",
     },
+    # SAETTA-20260915 W-H PR-3b (Lampiran II entry 46 specialised retail). Both
+    # sentences carry a condition/note beyond the bare percentage (a risk-tier
+    # label and an authority clause), so the mechanical `DEFAULT_OPEN_RE` path
+    # refuses them by design (see `plan()`). D5b (Zero, 2026-09-15): the
+    # client text must name activity AND product. Only the `**PMA:**`
+    # sentence is replaced — the rest of the field's PT PMA setup steps are a
+    # pre-existing inconsistency this lane's spec did not adjudicate; flagged
+    # in the PR report for a follow-up author pass, matching the same
+    # narrow-swap precedent as `41020`/`47222` above.
+    "47712": {
+        "field": "whatYouNeed",
+        "old": "**PMA:** Fully open (TERBUKA), 100% foreign ownership allowed.",
+        "new": (
+            "**PMA:** Closed to foreign investment — domestic entities only. "
+            "Retail of footwear (alas kaki) as a specialised store is "
+            "allocated to Koperasi/UMKM (Perpres 49/2021 Lampiran II entry "
+            "46); a new PT PMA cannot open it. Selling the same goods inside "
+            "a supermarket or general store uses a different KBLI."
+        ),
+        "why": 'canonical cap 0 (W-H PR-3, Lampiran II p.13-14 entry 46 sub-row "Alas kaki", ex-KBLI 2020 47712); the old sentence asserted the exact opposite',
+        "also": [
+            {
+                "field": "zantaraOpener",
+                "old": (
+                    "Thinking about a shoe store or footwear boutique in "
+                    "Bali as a PT PMA? 47712 is reserved to Koperasi/UMKM "
+                    "(Perpres 49/2021 Lampiran II) — a new PT PMA cannot "
+                    "open it. Let me walk you through the reservation and "
+                    "the routes that are actually open to you."
+                ),
+                "new": (
+                    "Thinking about a shoe store or footwear boutique in "
+                    "Bali as a PT PMA? 47712 is reserved to Koperasi/UMKM "
+                    "(Perpres 49/2021 Lampiran II) — a new PT PMA cannot "
+                    "open it. Let me walk you through what the reservation "
+                    "means."
+                ),
+            }
+        ],
+    },
+    "47722": {
+        "field": "whatYouNeed",
+        "old": (
+            "**PMA:** Closed to foreign investment — domestic entities only. "
+            "Retail of non-prescription pharmaceutical goods outside a "
+            "pharmacy (Toko Obat) as a specialised store is allocated to "
+            "Koperasi/UMKM (Perpres 49/2021 Lampiran II entry 46); a new PT "
+            "PMA cannot open it. An Apotek (47721) is a different, "
+            "PMA-open code."
+        ),
+        "new": (
+            "**PMA:** Closed to foreign investment — domestic entities only. "
+            "Retail of non-prescription pharmaceutical goods outside a "
+            "pharmacy (Toko Obat) as a specialised store is allocated to "
+            "Koperasi/UMKM (Perpres 49/2021 Lampiran II entry 46); a new PT "
+            "PMA cannot open it. A pharmacy (Apotek) uses a different code, "
+            "47721, whose foreign-ownership position must be confirmed "
+            "separately."
+        ),
+        "why": 'canonical cap 0 (W-H PR-3, Lampiran II p.13-14 entry 46 sub-row "Barang dan obat farmasi untuk manusia bukan di apotik", ex-KBLI 2020 47722); the old sentence asserted the exact opposite; 47721\'s own PMA figure is declared_gap/unverified, so it must not be asserted as "PMA-open"',
+    },
 }
 
 
@@ -312,7 +373,9 @@ def stated_figure(sentence: str) -> int | None:
     return int(m.group(1)) if m else None
 
 
-def scan(gold: dict, by_code: dict, incomparable: list | None = None) -> dict[str, dict]:
+def scan(
+    gold: dict, by_code: dict, incomparable: list | None = None
+) -> dict[str, dict]:
     """Every gold code whose PMA sentence states a figure ≠ the canonical cap.
 
     Returns {code: {field, sentence, stated, cap, more_open, is_default}}.
@@ -413,7 +476,9 @@ def plan(findings: dict[str, dict], gold: dict) -> tuple[dict, dict]:
             lambda _m: derived_sentence(f["cap"]), old_text, count=1
         )
         if new_text == old_text:
-            raise CureError(f"{code}: replacement was a no-op — refusing to claim a cure")
+            raise CureError(
+                f"{code}: replacement was a no-op — refusing to claim a cure"
+            )
         for got in PERCENT_RE.findall(derived_sentence(f["cap"])):
             if int(got) != f["cap"]:
                 raise CureError(
@@ -447,42 +512,70 @@ def main() -> int:
     findings = scan(gold, by_code, incomparable)
     patch, refused = plan(findings, gold)
 
-    # Authored sentences — pinned, never pattern-matched into place.
-    authored: dict[str, dict] = {}
+    # Authored sentences — pinned, never pattern-matched into place. Most
+    # codes touch one field; a code whose prose scan hits a SECOND field
+    # (e.g. `47712`'s `zantaraOpener` also asserts openness in words) carries
+    # an `also` list of the same {field, old, new} shape, applied the same
+    # way and refused the same way.
+    authored: dict[str, list[dict]] = {}
     for code, a in sorted(AUTHORED_SENTENCES.items()):
-        live = gold.get(code, {}).get(a["field"])
-        if live is None:
-            raise CureError(f"{code}.{a['field']}: field is gone — the pin is stale")
-        if a["old"] not in live:
-            if a["new"] in live:
-                continue  # already applied; idempotent, not a failure
-            raise CureError(
-                f"{code}.{a['field']}: the pinned sentence is not in the live text. "
-                "It was authored against a paragraph that has since moved; re-read "
-                "it before re-pinning."
+        patches = [a, *(a.get("also") or [])]
+        applied: list[dict] = []
+        for p in patches:
+            live = gold.get(code, {}).get(p["field"])
+            if live is None:
+                raise CureError(
+                    f"{code}.{p['field']}: field is gone — the pin is stale"
+                )
+            if p["old"] not in live:
+                if p["new"] in live:
+                    continue  # already applied; idempotent, not a failure
+                raise CureError(
+                    f"{code}.{p['field']}: the pinned sentence is not in the live text. "
+                    "It was authored against a paragraph that has since moved; re-read "
+                    "it before re-pinning."
+                )
+            applied.append(
+                {"field": p["field"], "new": live.replace(p["old"], p["new"], 1)}
             )
-        authored[code] = {"field": a["field"], "new": live.replace(a["old"], a["new"], 1)}
+        if applied:
+            authored[code] = applied
 
     prose = prose_scan(gold, by_code)
-    unacquitted = {c: v for c, v in prose.items()
-                   if c not in PROSE_ACQUITTED and c not in AUTHORED_SENTENCES
-                   and c not in refused}
-    log.info("prose openness on capped codes: %d found | %d acquitted | %d to author",
-             len(prose), len(PROSE_ACQUITTED), len(unacquitted))
+    unacquitted = {
+        c: v
+        for c, v in prose.items()
+        if c not in PROSE_ACQUITTED and c not in AUTHORED_SENTENCES and c not in refused
+    }
+    log.info(
+        "prose openness on capped codes: %d found | %d acquitted | %d to author",
+        len(prose),
+        len(PROSE_ACQUITTED),
+        len(unacquitted),
+    )
     for code, hits in sorted(unacquitted.items()):
         cap, field, frag = hits[0]
         log.info("    PROSE %s cap=%s [%s] …%s…", code, cap, field, frag.strip()[:110])
 
     log.info("gold codes: %d | divergences: %d", len(gold), len(findings))
     for code, stated, cap, _s in sorted(incomparable):
-        log.info("  NOT COMPARABLE %s  gold=%s%% canonical=%r — no figure to compare",
-                 code, stated, cap)
+        log.info(
+            "  NOT COMPARABLE %s  gold=%s%% canonical=%r — no figure to compare",
+            code,
+            stated,
+            cap,
+        )
     log.info("  patchable (default sentence, gold more open): %d", len(patch))
     log.info("  refused and named: %d", len(refused))
     for code, why in sorted(refused.items()):
         f = findings[code]
-        log.info("    REFUSE %s  gold=%s%% canonical=%s%% — %s",
-                 code, f["stated"], f["cap"], why)
+        log.info(
+            "    REFUSE %s  gold=%s%% canonical=%s%% — %s",
+            code,
+            f["stated"],
+            f["cap"],
+            why,
+        )
     if args.report or not args.apply:
         for code, p in sorted(patch.items()):
             log.info("    %s  «%s»  ->  «%s»", code, p["was"], p["now"])
@@ -501,8 +594,9 @@ def main() -> int:
         if got != p["old_sha256"]:
             raise CureError(f"{code}.{p['field']}: live text moved under the plan")
         staged[code][p["field"]] = p["new"]
-    for code, a in authored.items():
-        staged[code][a["field"]] = a["new"]
+    for code, patches in authored.items():
+        for p in patches:
+            staged[code][p["field"]] = p["new"]
 
     # The authored sentences must silence the prose scan on their own codes,
     # and must not wake it anywhere else.
@@ -520,7 +614,9 @@ def main() -> int:
             raise CureError(f"{code}: still divergent after the patch")
     for code, f in after.items():
         if code not in before or before[code] != f["stated"]:
-            raise CureError(f"{code}: verdict changed on a code this cure never touched")
+            raise CureError(
+                f"{code}: verdict changed on a code this cure never touched"
+            )
 
     if not args.apply:
         log.info("DRY-RUN — nothing written. Re-run with --apply.")
@@ -533,8 +629,12 @@ def main() -> int:
     GOLD_PATH.write_text(
         json.dumps(gold_raw, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
     )
-    log.info("WROTE %s — %d re-derived, %d authored", GOLD_PATH.name,
-             len(patch), len(authored))
+    log.info(
+        "WROTE %s — %d re-derived, %d authored",
+        GOLD_PATH.name,
+        len(patch),
+        len(authored),
+    )
     return 0
 
 

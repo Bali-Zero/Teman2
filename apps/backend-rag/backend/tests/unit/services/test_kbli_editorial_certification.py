@@ -64,6 +64,8 @@ def test_canonical_certification_partition_is_exact(
     # pma_kondisi denies (a distribution-network/location requirement
     # instead, Perpres 10/2021 Lampiran III line 4202 #44). 47221 stays
     # located and keeps its mouthGold certification untouched.
+    # W-H PR-3b: 8 specialised-retail codes located under the Lampiran II
+    # allocation, prose not certified.
     assert {
         code
         for code, record in records.items()
@@ -90,6 +92,14 @@ def test_canonical_certification_partition_is_exact(
         "95220",
         "96100",
         "47221",
+        "47241",
+        "47242",
+        "47244",
+        "47245",
+        "47246",
+        "47249",
+        "47712",
+        "47722",
     }
 
 
