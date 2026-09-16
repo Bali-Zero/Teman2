@@ -1,0 +1,580 @@
+# Gear-3 evidence pack — migration 317 lock-retry cure (nuzantara-8d GARUDA implementer
+# lane, 2026-09-17). The floor is 3 by HOT-ZONE (apps/backend-rag/backend/db/migrations_v2/*
+# is an unconditional hot-zone in scripts/evidence_pack_lint.py), not by size or by a
+# self-declared inflation — the diff itself is two files with no new table/endpoint. The
+# coordinating session (team-lead, nuzantara-8d) confirmed there is no ORANGE exception for
+# a hot-zone hit on 2026-09-17 and directed building this pack.
+#
+# UPDATED IN PLACE, same task_id, for a SECOND commit (70e6771122) on the same branch: a
+# Codex gpt-6-astra adversarial review (xhigh) of the round-1 commit (37134ce469) found two
+# BLOCKING and three SHOULD-FIX findings (F2/F5 blocking; F3/F4/F7 should-fix; F1/F6/F8/F9
+# OK), disposed FIX-FIRST by the coordinating session and cured this round. See `outcome`,
+# the F1-F9 `dissent` entries and the new `receipts` below. The full review transcript
+# (20260916T211746Z-15f31-blocker-mig317-lock-retry.md) is a machine-local audit artifact
+# under docs/codex-reviews/, which .gitignore excludes repo-wide (that directory's own
+# comment: transcripts break Docs Guardian's link parser) — it is NOT part of this commit
+# and lives only on the machine (Air-M5) that ran the review; the F1-F9 substance above is
+# the durable, committed record of its findings.
+task_id: mig317-lock-retry
+gear: 3
+gate_class: sonnet
+brief_ref: evidence/brief.yml
+date: 2026-09-17
+machine: M5
+lanes:
+  - lane: migration 317 lock-retry cure + extended static test
+    role: build
+    seat: claude-sonnet-5 (this worktree session, agent/air-m5/backend-rag/mig317-lock-retry)
+    note: >-
+      Round 1: wrapped the forward and rollback ALTER COLUMN ... SET DEFAULT statements in a
+      DO $$ ... $$ retry loop (short lock_timeout per attempt, capped backoff, RAISE naming
+      the blocker on exhaustion), reproduced the PROD incident against a throwaway
+      PostgreSQL 17.10 cluster on both the original and cured SQL, proved the rollback path
+      symmetric, extended the existing static test file, and ran the full CI-style
+      apply-all end to end. Round 2 (successor implementer lane, same worktree/branch, after
+      a Codex adversarial review disposed FIX-FIRST): narrowed the SQLSTATE catch to
+      lock_not_available only, guarded both CREATE INDEX statements behind a pg_indexes
+      existence check (proven empirically to remove a continuous ShareLock a bare CREATE
+      INDEX IF NOT EXISTS held for the whole retry loop), isolated the blocker diagnostic in
+      its own exception handler with granted/current-database filters, recomputed the retry
+      budget exactly (15 attempts / 500ms / 3s cap = 42.0s worst case), rewrote the test file
+      onto the canonical split_migration_sql with mutation-sensitive per-direction
+      assertions, added two live-Postgres concurrency tests, and re-ran squawk lint,
+      apply-all, and the rollback GUILT/INNOCENCE proof against the new budget.
+
+seat_diversity: exempt
+seat_diversity_note: >-
+  One build lane, so D3's seat-diversity requirement does not attach (it binds packs with
+  >= 2 build lanes). No dedicated review lane is declared inside this pack; see
+  seat_override below for R9 (Gear-3 council quorum) — the coordinating session dispatched
+  one adversarial Codex pass over this commit from outside this build lane, which is
+  recorded under dissent, not as a second build/review lane.
+
+seat_override: >-
+  R9 council_run: this pack declares no `council_run` journal with two distinct seats from
+  the COUNCIL_REVIEW_SEATS roster. The diff is a narrowly-scoped operational fix (lock-retry
+  mechanics on an already-reviewed migration default; see brief.yml's third assumption — it
+  matches no GROUND_TRUTH_PATH_PATTERNS entry, so R8 does not even attach) rather than a new
+  regulatory or pricing claim needing a multi-seat council. In place of a formal council,
+  the coordinating session (team-lead, nuzantara-8d) dispatched one adversarial review pass
+  (Codex, "Astra") directly against this commit from a seat outside this build lane, kept
+  independent of the builder per the generator-is-never-grader boundary. Its findings are
+  recorded as dissent entries below with a disposition for each; any BLOCKING/SHOULD-FIX
+  finding was cured before this pack was finalized. A second independent seat (kimi/qwen/
+  deepseek/glm/gemini) was not dispatched for this narrowly-scoped fix; this is a stated
+  human call, not silence on the requirement.
+
+outcome: >-
+  Migration 317's forward and rollback ALTER statements now retry under a short
+  lock_timeout with capped backoff instead of losing a single multi-second wait, and name
+  the blocking backend (pid/usename/application_name) when every attempt is exhausted
+  rather than skipping silently. Proven against a throwaway PostgreSQL cluster that mirrors
+  the CI apply-all path: full corpus apply succeeds end to end; the original (uncured) SQL
+  reproduces the exact PROD incident text under a long-held competing lock; the cured SQL
+  fails only after exhausting its retry budget and names the blocker; a lock released within
+  budget lets the cure through; the rollback path is symmetric. The static test file gained
+  assertions pinning the retry-loop shape, the caught SQLSTATEs, and the blocker-naming
+  RAISE. No change to migration 318, the migration runner, or any off-limits file.
+
+  SECOND ROUND (2026-09-17, same day, this pack updated in place, not superseded): a Codex
+  gpt-6-astra adversarial review (xhigh) of the commit above found two BLOCKING and three
+  SHOULD-FIX issues (F2-F5, F7 below; F1/F6/F8/F9 were OK, no change). Disposed FIX-FIRST by
+  the coordinating session. Cured in commit 70e6771122: (a) F2 — the loop caught
+  `query_canceled` (57014) alongside `lock_not_available` (55P03); 57014 is also what a
+  `statement_timeout` or an operator's `pg_cancel_backend` raise, so catching it here could
+  let the DDL proceed after an operator explicitly tried to cancel it — now catches only
+  `lock_not_available`, in both directions. (b) F5 — a bare `CREATE INDEX IF NOT EXISTS`
+  takes a ShareLock on the table for the WHOLE enclosing transaction even when the index
+  already exists, blocking every writer continuously for as long as the retry loop ran (not
+  just during the brief ACCESS EXCLUSIVE attempts); both indexes are now guarded behind a
+  `pg_indexes` existence check (ACCESS SHARE on the catalog only) instead of the bare form —
+  measured empirically this round: a concurrent INSERT took 0.025s while the migration's own
+  retry loop ran in the background for ~42s naming the blocker, versus the earlier round's
+  measurement that the SAME concurrent-write question was never actually tested against a
+  held lock (only reasoned about in the SQL's own comment). (c) F4 — the blocker-diagnostic
+  SELECT now runs inside its own `BEGIN ... EXCEPTION WHEN OTHERS` (a failing lookup can no
+  longer mask the real lock-exhaustion RAISE) and filters to `l.granted` locks in
+  `a.datname = current_database()` (a waiting backend, or one in another database, can no
+  longer be misnamed as a holder). (d) F3 — the nominal retry budget is recomputed exactly
+  (lock-wait 15 * 0.5s = 7.5s + backoff sum 34.5s = 42.0s) rather than approximated, and
+  distinguished explicitly from the external Fly deploy timeout (5 minutes, unrelated
+  ceiling) versus this file's own `statement_timeout = '60s'` (the ceiling that actually
+  binds a single `DO $$ ... $$` block). (e) F7 — tests now use the canonical
+  `split_migration_sql` (not a literal marker-string split, which round 1's OWN self-caught
+  dissent below shows is exactly the kind of drift Codex's finding predicted), assert both
+  directions separately with mutation-sensitive exact-value checks scoped to executable
+  (non-comment) SQL, and add two live-Postgres concurrency tests
+  (`test_live_concurrent_reader_beyond_budget_fails_naming_it` /
+  `..._released_within_budget_succeeds`) gated on `TEST_DATABASE_URL`, mirroring
+  `test_migration_310_practice_status_log_trigger.py`'s convention including its
+  forbidden-database-substring safety guard. (f) F9 — `ci_bootstrap_schema.py` then
+  `apply-all` re-run end to end against a fresh throwaway PostgreSQL 17.10 database after
+  the cure: both exit 0, 317 applies in 12ms, lands in `_schema_versions`, default reads 30
+  days. Full finding-by-finding detail in `dissent` below (the raw review transcript is a
+  machine-local artifact under the gitignored docs/codex-reviews/, not part of this
+  commit — see the header comment).
+diff:
+  shape: >-
+    Two files touched across two commits on this branch: 37134ce469 (round 1, the initial
+    retry-with-backoff cure) and 70e6771122 (round 2, this pack's Codex-review cures F2-F5 —
+    query_canceled removed, both indexes guarded behind a pg_indexes existence check instead
+    of a bare CREATE INDEX IF NOT EXISTS, the blocker diagnostic isolated in its own
+    exception handler and filtered to granted/current-database locks, and the retry budget
+    recomputed exactly at 15 attempts / 500ms / 3s cap). Same two files both rounds: the 317
+    migration SQL and its existing static test file (round 2 also rewrites the test file's
+    own splitter to the canonical `split_migration_sql` and adds two live-Postgres
+    concurrency tests — still no NEW test file, no other file in the repo touched by either
+    round).
+  measured_at: >-
+    git diff --stat / --numstat against origin/main in the worktree, this session, after
+    each cure commit landed and again after this pack's own commit — see the floor receipts
+    below for the exact invocations. Deliberately not narrated as a count here (the lint's
+    own countable-claims rule recomputes it from --numstat-file; stating it in prose here
+    would drift the moment this pack itself is committed).
+pii_scan: clean
+spend:
+  wall_clock_hours: 3
+bites: >-
+  CONSUMER: the Fly release_command of the next nuzantara-rag deploy that runs during (or
+  after) the nightly backup window — i.e. `python -m backend.db.migrate apply-all` as
+  invoked by fly.toml's deploy hook. OBSERVATION: on that release's log, migration 317
+  either (a) applies within its retry budget and `_schema_versions` gains a row for
+  `317_visa_oracle_sessions_retention_30d`, with `information_schema.columns` on
+  `visa_oracle_sessions.expires_at` reporting `column_default = now() + '30 days'`; or (b)
+  if every retry attempt is exhausted, the release log names the blocking backend's
+  application_name/usename/pid instead of the old bare "canceling statement due to lock
+  timeout" text. Prose, not an executable `observe:` block: the observable event is a
+  future PROD deploy under a specific lock condition, not something a script in this
+  checkout can run today the way the CI/Fly bites-observable convention expects (same
+  tradeoff the seq-22 signing pack's own third dissent entry documents for a different
+  reason — no observer script exists to point at yet).
+dissent:
+  - seat: claude-sonnet-5 (this build lane), self-caught
+    status: CONFIRMED
+    objection: >-
+      The first draft of the migration's own provenance comment quoted the literal marker
+      string `-- === ROLLBACK ===` inside prose explaining how migration_base.py splits the
+      file at that marker. The existing static test file's `_sections()` helper does
+      `sql.split("-- === ROLLBACK ===", maxsplit=1)` — a plain string split, not marker-line
+      matching — so it silently split on the FIRST occurrence, which was inside my own
+      comment, not the real marker further down. This moved the entire new forward-side DO
+      block into what the test treated as the "rollback" half, and the forward-side
+      assertions (test_forward_sets_the_default_to_30_days,
+      test_forward_alter_is_wrapped_in_a_retry_loop) failed with the ALTER text simply
+      absent from what the test now called "forward". Caught by running the extended pytest
+      suite (not by reading the diff), not by a reviewer. Cured by rewording the comment to
+      describe the marker without repeating it verbatim, then re-running the full pytest
+      suite and a fresh end-to-end apply-all to confirm the fix changed nothing behavioral.
+  - seat: claude-sonnet-5 (this build lane), self-caught
+    status: CONFIRMED
+    objection: >-
+      Cross-machine fleet-mailbox traffic during this task (Air-M5 staff-room/IMP,
+      2026-09-16 21:0x-21:1xZ WITA) reported the actual PROD root cause more precisely than
+      this pack's own brief: not an isolated slow query but a multi-hour, whole-database
+      pg_dump backup (broken since 2026-09-14, running ~3 hours/night instead of ~4 minutes,
+      holding AccessShareLock on ~687 tables) that will outlast this migration's ~38.5s
+      retry budget on nights the deploy lands squarely inside that window. That traffic also
+      reported a same-night manual deploy re-run inside a lock-free window, meaning PROD may
+      already carry 317 applied from the file's ORIGINAL (uncured) SQL before this PR ships.
+      This does not change the correctness of the cure as specified (short retries, name the
+      blocker, never skip) — it changes what the cure can promise operationally: it makes
+      317 apply reliably in a lock-free window and fail LOUDLY with a named cause in a
+      lock-held one, but it cannot itself force a lock-free window to exist. That is an
+      operator/backup-job problem outside this lane's file scope, and is called out
+      explicitly in the PR body under "Already-applied case" and as its own item below.
+  - seat: claude-sonnet-5 (this build lane), self-caught
+    status: CONFIRMED
+    objection: >-
+      Already-applied case: if PROD applied 317 from the ORIGINAL SQL (via the same-night
+      re-run reported over the fleet mailbox) before this PR merges, this PR's cured SQL
+      text differs byte-for-byte from what is recorded, which changes the migration file's
+      checksum. Read migration_base.py/migration_manager.py this session for what a
+      checksum mismatch does to an ALREADY-applied migration: `_is_applied()`
+      (migration_base.py) keys strictly on `migration_name` (a string derived from the
+      migration NUMBER and filename stem), never on checksum, so a re-run of `apply-all`
+      short-circuits at the "already applied" branch and never re-executes the SQL — the
+      checksum column is written once at first apply and is descriptive metadata, not a
+      gate `apply()`/`apply_all_pending()` reads back to decide anything. No code path in
+      either file compares a freshly-computed checksum against the stored one during a
+      normal `apply-all`; `schema_audit`-style drift detection (if any exists elsewhere in
+      the repo) was not located under `backend/db/` or `backend/services/` in the time
+      available and is not this lane's file scope to build. This matches the two
+      pre-existing non-fatal checksum WARNINGs the IMP reported on migrations 207 and 217 —
+      a stored-checksum mismatch on an already-applied migration is a silent, non-blocking
+      audit fact in this codebase today, not an error the runner surfaces or acts on.
+  - seat: codex (gpt-6-astra, xhigh), second-round adversarial review of commit 37134ce469
+    status: CONFIRMED — disposed FIX-FIRST by the coordinating session (nuzantara-8d)
+    objection: >-
+      F1 (OK, no change) — `migration_base.py::apply()` runs the whole forward SQL in one
+      `conn.execute()` inside one transaction; each `EXCEPTION` block only rolls back the
+      implicit sub-transaction Postgres opens around it, so a failed attempt does not poison
+      later attempts, and `SET LOCAL lock_timeout` reverts to the surrounding value (5s) on
+      failure but stays at the per-attempt value for the rest of the transaction on success.
+      Codex verified this against PostgreSQL's own SET LOCAL semantics and found no defect —
+      the subtransaction boundary this loop relies on is preserved by construction. Cure:
+      none for this structure.
+  - seat: codex (gpt-6-astra, xhigh), second-round adversarial review of commit 37134ce469
+    status: CONFIRMED — disposed FIX-FIRST, CURED
+    objection: >-
+      F2 (BLOCKING) — a lock_timeout expiry raises SQLSTATE 55P03 (`lock_not_available`)
+      specifically; 57014 (`query_canceled`) is the SAME code a `statement_timeout` OR an
+      operator's `pg_cancel_backend` raise. Catching 57014 alongside 55P03 here meant an
+      operator's explicit attempt to cancel this DDL mid-attempt would be silently absorbed
+      and retried instead of propagating — not a "fallback", a correctness bug. Cured: only
+      `lock_not_available` is caught now, in both directions; comments and tests corrected
+      to match (this pack's own dissent entry below shows the FIRST round's test file still
+      asserted 57014's presence, which the cure removed along with the code).
+  - seat: codex (gpt-6-astra, xhigh), second-round adversarial review of commit 37134ce469
+    status: CONFIRMED — disposed FIX-FIRST, CURED (refined — see note)
+    objection: >-
+      F3 (SHOULD-FIX) — the first round's budget comment stated "~38.5s worst case" without
+      showing the arithmetic, and conflated the file's own 60s `statement_timeout` with the
+      Fly deploy's unrelated 5-minute default release-command timeout (no override was found
+      in fly.toml). Cure: the budget is now computed exactly in the file's own comment (15
+      attempts * 0.5s lock wait = 7.5s, backoff sum across 14 sleeps = 34.5s, total 42.0s)
+      and the two ceilings are named separately so neither is mistaken for the other. Note:
+      Codex's own suggested cure text ("propagate 57014") is superseded by F2's disposition
+      above (removing 57014 entirely, not propagating it) — the coordinating session's FIX-
+      FIRST for F2 takes precedence where the two findings' suggested cures would otherwise
+      conflict; F3's core ask (show the exact math, separate the two timeouts) is honored.
+  - seat: codex (gpt-6-astra, xhigh), second-round adversarial review of commit 37134ce469
+    status: CONFIRMED — disposed FIX-FIRST, CURED
+    objection: >-
+      F4 (SHOULD-FIX) — pid/usename/application_name are readable by any role without
+      `pg_read_all_stats` and the diagnostic SELECT takes no lock on the application table,
+      but it lacked a `datname` filter (could misname a backend in a DIFFERENT database
+      sharing a recycled pid) and a `granted` filter (could name a WAITING backend as a
+      holder), and a failure inside the diagnostic itself would have replaced the real
+      lock-exhaustion error. Cured: added `AND l.granted` and
+      `AND a.datname = current_database()`, and wrapped the SELECT in its own
+      `BEGIN ... EXCEPTION WHEN OTHERS` so a diagnostic failure falls back to a "lookup
+      unavailable" message instead of masking the RAISE that reports the real cause.
+  - seat: codex (gpt-6-astra, xhigh), second-round adversarial review of commit 37134ce469
+    status: CONFIRMED — disposed FIX-FIRST, CURED
+    objection: >-
+      F5 (BLOCKING) — the two `CREATE INDEX IF NOT EXISTS` statements ahead of the retry
+      loop take a ShareLock on the table for the length of the WHOLE transaction even in the
+      no-op case (index already exists), and that lock is held OUTSIDE the loop's own
+      sub-transactions — so for as long as the ALTER's retry loop ran (then ~38s, now ~42s
+      worst case), every ordinary writer was queued continuously, not just during the brief
+      per-attempt ACCESS EXCLUSIVE waits. Codex's suggested cure was "avoid CREATE INDEX
+      when indexes exist, try 100-250ms timeouts"; the coordinating session's disposition
+      went further — guard each index behind a `pg_indexes` existence check so the no-op
+      case never issues CREATE INDEX at all (zero lock of consequence on the table, not
+      merely a shorter one), and separately shrink the ALTER's own `lock_timeout` to 500ms
+      per F3's budget recompute. Measured live this round: a concurrent INSERT completed in
+      0.025s while the cured migration's retry loop ran in the background for the full ~42s
+      window naming the blocker on exhaustion — the write-starvation Codex identified is
+      gone, not merely shortened.
+  - seat: codex (gpt-6-astra, xhigh), second-round adversarial review of commit 37134ce469
+    status: CONFIRMED — disposed FIX-FIRST, NO CHANGE (already correct)
+    objection: >-
+      F6 (OK, no change) — exactly one `-- === ROLLBACK ===` marker exists, matched
+      identically by a literal search and by the canonical `ROLLBACK_MARKER_RE`; the forward
+      and rollback DO blocks are symmetric apart from the 30/90-day value and the error
+      message text; `MigrationManager.rollback_migration` executes the stored rollback SQL
+      inside its own transaction. Codex asked only that the F2/F3/F4/F5 cures be applied
+      symmetrically to both directions, which they were (verified: both blocks show
+      identical `max_attempts`, `lock_timeout`, backoff cap, single `lock_not_available`
+      catch, and the same diagnostic guard shape).
+  - seat: codex (gpt-6-astra, xhigh), second-round adversarial review of commit 37134ce469
+    status: CONFIRMED — disposed FIX-FIRST, CURED
+    objection: >-
+      F7 (SHOULD-FIX) — the first round's 11 static tests passed but tolerated mutations
+      that should have failed them: removing a correct SQLSTATE catch, setting the forward
+      attempt count to a nonsense value, or breaking a direction outright could all leave
+      the relevant assertions green, because they checked broad substring presence rather
+      than exact, direction-scoped values. Separately, the test file's own `_sections()`
+      helper did a literal `str.split()` on the marker text rather than using the runner's
+      canonical `split_migration_sql` — the SAME class of bug this pack's first self-caught
+      dissent entry above already demonstrates concretely (the marker string appearing
+      inside a comment silently mis-split the file). Cured: `_sections()` now calls
+      `split_migration_sql` directly; every constant (`max_attempts`, `lock_timeout` value,
+      backoff cap) is asserted with an exact count scoped to executable (non-comment) lines
+      per direction; two live-Postgres concurrency tests were added
+      (`test_live_concurrent_reader_beyond_budget_fails_naming_it`,
+      `..._released_within_budget_succeeds`), gated on `TEST_DATABASE_URL` and guarded by
+      the same forbidden-database-substring check `test_migration_310_practice_status_log_
+      trigger.py` uses, since these two tests hold a real table lock and apply DDL outside
+      any test-controlled transaction.
+  - seat: codex (gpt-6-astra, xhigh), second-round adversarial review of commit 37134ce469
+    status: CONFIRMED — disposed FIX-FIRST, NO CHANGE (verified clean)
+    objection: >-
+      F8 (OK, no change) — no client PII or credential in the diff; the blocker diagnostic
+      reads only connection metadata (pid/usename/application_name), never a client row,
+      query text, or IP address.
+  - seat: codex (gpt-6-astra, xhigh), second-round adversarial review of commit 37134ce469
+    status: CONFIRMED — disposed FIX-FIRST, CURED (re-verified per the finding's own ask)
+    objection: >-
+      F9 (OK, with a forward ask) — W41/W42 passed (195 unique prefixes, 190 post-cutoff
+      migrations with a ROLLBACK marker) and `git diff --check` was clean; Codex asked that
+      bootstrap + `apply-all` be re-run on an isolated PostgreSQL after the F2-F5 cures
+      landed, which it had not been able to do inside its own review. Done this round: a
+      fresh throwaway PostgreSQL 17.10 database, `scripts/ci_bootstrap_schema.py` then full
+      `python -m backend.db.migrate apply-all` — both exit 0, 317 applies in 12ms, lands in
+      `_schema_versions`, `information_schema.columns` reports `column_default = now() +
+      '30 days'`. (A separate, bootstrap-free run on a different throwaway DB also applied
+      317 cleanly but exited 1 overall on ~47 pre-existing unrelated migrations that need
+      tables the bootstrap step creates — not a 317 defect, superseded by the clean
+      bootstrap+apply-all run above as the faithful CI mirror.)
+receipts:
+  - claim: >-
+      the gear floor for this diff is 3, sourced from HOT-ZONE (not size), because
+      apps/backend-rag/backend/db/migrations_v2/* is an unconditional hot-zone pattern
+    cmd: >-
+      python3 scripts/evidence_pack_lint.py --print-floor --print-floor-source
+      --numstat-file /tmp/numstat_317.txt --changed-files-file /tmp/changed_files_317.txt
+    result: "3 (source read from HOTZONE_PATTERNS match on migrations_v2/*, not the SIZE term)"
+    ts: "2026-09-17T05:14:30Z"
+    seat: claude-sonnet-5
+    exit: 0
+  - claim: >-
+      full CI-style migration corpus (bootstrap + apply-all, 300+ files including the cured
+      317) applies end to end against a fresh throwaway PostgreSQL 17.10 database, 317's
+      column_default reads 30 days, and 317 is recorded in _schema_versions
+    cmd: >-
+      PYTHONPATH=.:../crm-cell:<cell-core> python3 scripts/ci_bootstrap_schema.py; then
+      python3 -m backend.db.migrate apply-all (DATABASE_URL against 127.0.0.1:5433,
+      mirroring .github/workflows/tests.yml's own invocation)
+    result: >-
+      bootstrap exit 0 (17 tables registered + legacy tables ensured); migrate apply-all
+      exit 0, log line "Migration 317_visa_oracle_sessions_retention_30d applied
+      successfully"; information_schema.columns.column_default =
+      "(now() + '30 days'::interval)"
+    ts: "2026-09-17T05:13:47Z"
+    seat: claude-sonnet-5
+    exit: 0
+  - claim: >-
+      GUILT (original, byte-identical to origin/main): under a competing ACCESS SHARE lock
+      held longer than the original single wait, the ORIGINAL migration fails with the
+      exact PROD incident text and no blocker named, reproducing the incident
+    cmd: >-
+      git show origin/main:apps/backend-rag/backend/db/migrations_v2/317_visa_oracle_
+      sessions_retention_30d.sql > 99001_original.sql; a background psql session running
+      `BEGIN; LOCK TABLE public.visa_oracle_sessions IN ACCESS SHARE MODE; SELECT
+      pg_sleep(10); COMMIT;` with application_name=fake_pg_dump, started and awaited in the
+      SAME shell invocation as the competing apply, per BaseMigration.apply() with
+      migration_number=99001 against that lock
+    result: >-
+      RESULT: FAILED: MigrationError: SQL execution failed: annullamento dell'istruzione a
+      causa di timeout di lock (locale text for "canceling statement due to lock timeout");
+      column_default unchanged at 90 days afterward
+    ts: "2026-09-17T05:15:0xZ"
+    seat: claude-sonnet-5
+    exit: 1
+  - claim: >-
+      GUILT (cured): under the same lock held LONGER than the retry budget, the cured
+      migration fails only after exhausting its attempts and names the blocking backend's
+      pid/user/application_name
+    cmd: >-
+      same lock-holding shape as above, pg_sleep(45) with application_name=fake_pg_dump,
+      against BaseMigration.apply() with migration_number=99002 on the cured SQL text
+    result: >-
+      RESULT: FAILED: MigrationError: migration 317: ALTER on public.visa_oracle_sessions
+      did not acquire its lock after 8 attempts; blockers holding a lock on the table:
+      pid=44320 user=test app=fake_pg_dump; wall time ~38.156s; column_default unchanged at
+      90 days afterward
+    ts: "2026-09-17T05:1xZ"
+    seat: claude-sonnet-5
+    exit: 1
+  - claim: >-
+      INNOCENCE (cured): a lock released WITHIN the retry budget lets the cured migration
+      succeed and flip the default to 30 days
+    cmd: >-
+      same lock-holding shape, pg_sleep(4) with application_name=short_reader, against
+      BaseMigration.apply() with migration_number=99002 on the cured SQL text
+    result: >-
+      RESULT: applied=True; wall time ~3.04s; column_default = "(now() + '30
+      days'::interval)"; ledger row 99002_99002_cured present
+    ts: "2026-09-17T05:1xZ"
+    seat: claude-sonnet-5
+    exit: 0
+  - claim: >-
+      rollback path (MigrationManager.rollback_migration, not exposed via migrate.py's CLI)
+      is symmetric: GUILT names the blocker and leaves the 30-day default unchanged; a
+      separate INNOCENCE run restores 90 days and clears both ledgers
+    cmd: >-
+      MigrationManager(dsn, dedicated=False).rollback_migration("99002_99002_cured") — first
+      under a 45s held lock (application_name=fake_pg_dump), then (after resetting the lock
+      holder) under a 4s held lock (application_name=short_reader)
+    result: >-
+      GUILT: "RESULT: FAILED: RaiseError: migration 317 rollback: ALTER on public.
+      visa_oracle_sessions did not acquire its lock after 8 attempts; blockers holding a
+      lock on the table: pid=52528 user=test app=fake_pg_dump" (~38.34s), default stayed 30
+      days; INNOCENCE: "RESULT: rollback=True" (~3.05s), default back to "(now() + '90
+      days'::interval)", `_schema_versions` empty for the migration name (both ledgers
+      cleared)
+    ts: "2026-09-17T05:1xZ"
+    seat: claude-sonnet-5
+    exit: 0
+  - claim: >-
+      the extended static test file (11 assertions total, including the new retry-loop/
+      SQLSTATE/blocker-naming/budget assertions) passes in full, and a static-only comment
+      bug this same session introduced (the literal marker-string collision, see dissent
+      above) was caught by this exact run before being cured
+    cmd: >-
+      PYTHONPATH=.:../crm-cell:<cell-core> python3 -m pytest backend/tests/db/
+      test_migration_317_visa_oracle_sessions_retention.py -v --no-header
+    result: "11 passed (3 failed on the pre-fix draft, all 11 passing after the comment fix)"
+    ts: "2026-09-17T05:1xZ"
+    seat: claude-sonnet-5
+    exit: 0
+  - claim: >-
+      ruff check on the touched Python test file is clean
+    cmd: >-
+      python3 -m ruff check backend/tests/db/test_migration_317_visa_oracle_sessions_retention.py
+    result: "All checks passed!"
+    ts: "2026-09-17T05:1xZ"
+    seat: claude-sonnet-5
+    exit: 0
+  - claim: >-
+      pre-commit hooks on the cure commit (migration-number uniqueness W41, ROLLBACK marker
+      presence W42, secrets scan, import-chain smoke, off-limits-file guard) all passed
+    cmd: git commit (pre-commit hook chain, this worktree)
+    result: >-
+      "migration-numbers lint: all unique prefixes"; "migration-rollback lint: all
+      post-cutoff migrations have ROLLBACK marker"; "anti-reward-hacking: clean"; "import
+      chain OK"; "All pre-commit checks passed!"
+    ts: "2026-09-17T05:15:11Z"
+    seat: claude-sonnet-5
+    exit: 0
+  - claim: >-
+      a lock_timeout cancellation on PostgreSQL 17.10 raises SQLSTATE lock_not_available
+      (55P03), confirmed directly (not assumed) before writing the EXCEPTION WHEN clause
+    cmd: >-
+      psql: SET lock_timeout='3s'; ALTER TABLE public.visa_oracle_sessions ALTER COLUMN
+      expires_at SET DEFAULT (NOW() + INTERVAL '31 days'); against a table held under
+      ACCESS SHARE MODE by a concurrent session, both commands in one shell invocation
+    result: >-
+      "ERRORE: annullamento dell'istruzione a causa di timeout di lock" after ~3s (the
+      locale rendering of "canceling statement due to lock timeout", the surface text for
+      lock_not_available)
+    ts: "2026-09-17T05:12:2xZ"
+    seat: claude-sonnet-5
+    exit: 1
+  - claim: >-
+      SECOND ROUND (F5 empirical basis) — CREATE TABLE IF NOT EXISTS against an
+      already-existing table does NOT block under a concurrent ACCESS SHARE holder, but a
+      bare CREATE INDEX IF NOT EXISTS (no-op case, index pre-existing) DOES take a ShareLock
+      for the whole enclosing transaction, blocking a concurrent INSERT for that
+      transaction's full duration
+    cmd: >-
+      throwaway PG 17.10 (nuzantara_test_ct db): session A held ACCESS SHARE via `BEGIN;
+      LOCK TABLE ... IN ACCESS SHARE MODE; SELECT pg_sleep(20)` (background); session B ran
+      `CREATE TABLE IF NOT EXISTS` with \timing on (returned instantly); separately, session
+      X ran `BEGIN; CREATE INDEX IF NOT EXISTS idx_probe_v ...; SELECT pg_sleep(15)`
+      (background, no-op case since the index already existed), session Y attempted
+      `SET statement_timeout='3s'; INSERT INTO probe_tbl(v) VALUES (1)`
+    result: >-
+      CREATE TABLE IF NOT EXISTS: "Tempo: 0,837 ms" (sub-1ms, not blocked). INSERT during
+      the open CREATE INDEX IF NOT EXISTS transaction: "ERRORE: annullamento
+      dell'istruzione a causa di timeout" after exactly 3.002s (its own statement_timeout,
+      confirming the INSERT was queued for the FULL duration of X's open transaction, not
+      released early)
+    ts: "2026-09-17T07:14:xxZ"
+    seat: claude-sonnet-5
+    exit: 1
+  - claim: >-
+      SECOND ROUND — squawk lint (the exact CI invocation from
+      .github/workflows/migration-lint.yml, all 13 style-only excludes) on the cured 317 SQL
+      file is clean
+    cmd: >-
+      squawk --pg-version=15.0 --exclude=require-concurrent-index-creation
+      --exclude=require-timeout-settings --exclude=require-concurrent-index-deletion
+      --exclude=ban-drop-table --exclude=ban-drop-column --exclude=ban-char-field
+      --exclude=prefer-bigint-over-smallint --exclude=prefer-text-field
+      --exclude=prefer-robust-stmts --exclude=constraint-missing-not-valid
+      --exclude=prefer-bigint-over-int --exclude=prefer-identity
+      --exclude=disallowed-unique-constraint
+      apps/backend-rag/backend/db/migrations_v2/317_visa_oracle_sessions_retention_30d.sql
+    result: "Found 0 issues in 1 file 🎉"
+    ts: "2026-09-17T07:32:xxZ"
+    seat: claude-sonnet-5
+    exit: 0
+  - claim: >-
+      SECOND ROUND — the extended test file (14 tests: the original static assertions,
+      re-scoped to the canonical splitter and exact executable-line constants, plus the
+      index-guard structural check and two live-Postgres concurrency tests) passes in full
+      against a dedicated throwaway PostgreSQL 17.10 database, and is idempotently
+      re-runnable (a second consecutive run also passes, proving the tests' own teardown
+      correctly resets the migration ledger and table between runs)
+    cmd: >-
+      TEST_DATABASE_URL=postgresql://test:test@127.0.0.1:5433/nuzantara_test_317live
+      PYTHONPATH=. python -m pytest backend/tests/db/test_migration_317_visa_oracle_
+      sessions_retention.py (run twice consecutively)
+    result:
+      "14 passed (both runs); GUILT test measured ~50s wall time (holder outlives the
+      ~42s budget), INNOCENCE test ~1s"
+    ts: "2026-09-17T07:38:xxZ / 07:40:xxZ"
+    seat: claude-sonnet-5
+    exit: 0
+  - claim: >-
+      SECOND ROUND — `scripts/ci_bootstrap_schema.py` then full `python -m backend.db.migrate
+      apply-all` against a FRESH throwaway PostgreSQL 17.10 database, mirroring the exact CI
+      sequence (CLAUDE.md deploy checklist), exits 0 end to end with 317 applied and recorded
+    cmd: >-
+      DATABASE_URL=postgresql://test:test@127.0.0.1:5433/nuzantara_test_applyall3
+      python scripts/ci_bootstrap_schema.py; then python -m backend.db.migrate apply-all
+    result: >-
+      bootstrap exit 0 ("17 tables registered", legacy tables ensured); apply-all exit 0,
+      195 "applied successfully" lines, zero ERROR/Failed lines; "Migration 317_visa_
+      oracle_sessions_retention_30d applied successfully in 12ms"; `_schema_versions` has
+      migration_number=317; information_schema.columns.column_default = "(now() + '30
+      days'::interval)". (A prior same-round run without the bootstrap step, against a
+      separate throwaway DB, also applied 317 cleanly in 7ms but exited 1 overall on ~47
+      pre-existing unrelated migrations needing tables the bootstrap step creates — not a
+      317 defect, but this bootstrap+apply-all run is the one that actually matches A6's
+      "exit 0" wording and the real CI/deploy sequence.)
+    ts: "2026-09-17T07:39:xxZ"
+    seat: claude-sonnet-5
+    exit: 0
+  - claim: >-
+      SECOND ROUND — rollback path (MigrationManager.rollback_migration) proven symmetric
+      with the new 15-attempt/500ms/3s-cap budget: GUILT names the blocker after exactly 15
+      attempts and leaves the 30-day default unchanged; INNOCENCE restores 90 days and
+      clears both ledgers
+    cmd: >-
+      MigrationManager(dsn, dedicated=False).rollback_migration(
+      "317_visa_oracle_sessions_retention_30d") against nuzantara_test_317live — first under
+      a 50s-held ACCESS SHARE lock (application_name=fake_pg_dump_rollback_guilt), then
+      (after resetting via a fresh forward apply_all_pending) under a 1s-held lock
+      (application_name=fake_pg_dump_rollback_innocence)
+    result: >-
+      GUILT: "RaiseError - migration 317 rollback: ALTER on public.visa_oracle_sessions did
+      not acquire its lock after 15 attempts; blockers holding a lock on the table:
+      pid=21071 user=test app=fake_pg_dump_rollback_guilt"; column_default unchanged at 30
+      days. INNOCENCE: "rollback_migration returned: True"; column_default = "(now() + '90
+      days'::interval)"; _schema_versions has no row for migration_number=317 afterward
+    ts: "2026-09-17T07:4xZ"
+    seat: claude-sonnet-5
+    exit: 0
+  - claim: >-
+      SECOND ROUND (F5 direct proof, on the ACTUAL cured migration rather than the isolated
+      probe table above) — during the forward migration's own ~42s retry loop (GUILT run,
+      lock held 50s), a concurrent INSERT into visa_oracle_sessions is NOT queued for the
+      loop's duration — it completes in milliseconds, because the index-guard removed the
+      ShareLock the first cure's bare CREATE INDEX IF NOT EXISTS would have held throughout
+    cmd: >-
+      BaseMigration.apply() against nuzantara_test_317live under a 50s-held ACCESS SHARE
+      lock (application_name=fake_pg_dump_forward_guilt2); a second asyncio task slept 5s
+      then ran `INSERT INTO visa_oracle_sessions (session_id) VALUES (...)` and timed it
+    result: >-
+      "INSERT during migration retry loop took 0.025s (expect well under 1s, NOT ~42s)";
+      migration raised "did not acquire its lock after 15 attempts; ... app=fake_pg_dump_
+      forward_guilt2" as expected
+    ts: "2026-09-17T07:4xZ"
+    seat: claude-sonnet-5
+    exit: 0
+  - claim: >-
+      SECOND ROUND — pre-commit hooks on the cure commit (lease-check, W41, W42,
+      anti-reward-hacking P1-STRATO1, secrets scan, ruff, import-chain smoke, off-limits
+      guard) all passed, including the anti-reward-hacking gate this round's `pytest.raises`
+      specificity fix was required to clear (RH003: over-broad `pytest.raises(Exception)`)
+    cmd: git commit (pre-commit hook chain), commit 70e6771122
+    result: >-
+      "anti-reward-hacking: clean (1 test file(s) checked)"; "migration-numbers lint: 195
+      files, all unique prefixes"; "migration-rollback lint: 190 post-cutoff migrations, all
+      have ROLLBACK marker"; "import chain OK"; "All pre-commit checks passed!"
+    ts: "2026-09-17T07:34:59Z"
+    seat: claude-sonnet-5
+    exit: 0
