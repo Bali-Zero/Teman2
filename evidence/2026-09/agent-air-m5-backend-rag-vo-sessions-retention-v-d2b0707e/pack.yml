@@ -143,11 +143,17 @@ decisions:
       anywhere references this table); `grep -rln "visa_oracle_sessions"
       backend/**/*.py` (excluding tests/.venv) — only visa_oracle.py itself, the legacy
       migration_080a/migration_109 files (comments only, no join), and migration_base.py's
-      legacy-rollback whitelist entry. The ONLY app-level read of a row by session_id after
-      handoff is `_fetch_session_snapshot` (visa_oracle.py:745), used synchronously at handoff
-      time for consultant pricing — `handoff_triggered` (set by `_persist_session_handoff`,
-      visa_oracle.py:700-761, same file) is therefore the single durable signal that a row still
-      matters, and the purge excludes it unconditionally, regardless of age.
+      legacy-rollback whitelist entry. CORRECTED (council round 1, finding F7, Codex — PROVEN):
+      an earlier version of this decision said `_fetch_session_snapshot` was "keyed on"
+      `handoff_triggered`; that is false — `_fetch_session_snapshot`'s SELECT names only
+      `quiz_answers, recommended_visas` (visa_oracle.py:817), never `handoff_triggered`, and it is
+      called synchronously AT handoff time, on a session that is still live (not yet expired), to
+      build the handoff pricing response — not as a read gated by the marker. The REAL safety
+      argument: a handed-off session is excluded from the purge purely by its own marker
+      (`handoff_triggered`, set by `_persist_session_handoff`, visa_oracle.py:700-761); the purge
+      itself is the ONLY reader of that marker. `handoff_triggered` is the single durable signal
+      that a row still matters (no FK/table anywhere else references visa_oracle_sessions), and
+      the purge excludes it unconditionally, regardless of age.
   - id: D-scheduler
     decision: >-
       SUPERSEDED (this turn) by the Dux's review of the previous decision. Original reasoning,
@@ -415,8 +421,13 @@ receipts:
     ts: "2026-09-17T01:22:00Z"
     seat: this session (M5)
   - claim: >-
-      handoff_triggered is set by _persist_session_handoff via session_id, matching the read at
-      _fetch_session_snapshot — the one live app-level dependency the purge must not break.
+      CORRECTED (council round 1, finding F7, Codex — PROVEN; original claim below was false).
+      handoff_triggered is set by _persist_session_handoff (visa_oracle.py:759-798) and read ONLY
+      by the purge's own WHERE clause — _fetch_session_snapshot (visa_oracle.py:801-819) selects
+      only quiz_answers, recommended_visas and never touches handoff_triggered; it runs
+      synchronously at handoff time, on a still-live session, to build the pricing response, not
+      as a read gated by the marker. The real safety argument: a handed-off session is excluded
+      from the purge by the marker alone.
     cmd: grep -n "handoff_triggered" apps/backend-rag/backend/app/routers/visa_oracle.py
     result: >-
       4 hits: the UPDATE SQL constant (line ~742), _persist_session_handoff's docstring/body
@@ -714,6 +725,152 @@ receipts:
       matches
     exit: 0
     ts: "2026-09-17T02:35:00Z"
+    seat: this session (M5)
+  - claim: >-
+      Council round 1 (Codex Sol + Gemini 3.1 Pro) on HEAD 48c40e5078: CHANGES, both seats.
+      Claims 1-6 and 9 PROVEN by both; claims 7, 8, 10 BROKEN — 7 and 8 by Codex only (Gemini
+      read claim 7 as PROVEN, but the coordinator's relayed instruction named Codex's specific
+      wording defect, cured regardless of the split verdict), 10 by both seats.
+    cmd: >-
+      Read council/codex-gpt-5.6-sol-r1-changes.txt and
+      council/agy-gemini-3.1-pro-r1-changes.txt in full this turn (written by the Dux's council
+      run — not touched by this session).
+    result: >-
+      codex claim 10: "Removing the real production spawn at main_api.py:810-812 would leave
+      this test green." ; codex claim 8: "the purge's own failure log emits str(exc) at
+      visa_oracle.py:719" ; codex claim 7: "_fetch_session_snapshot does NOT read
+      handoff_triggered; it selects only quiz_answers, recommended_visas at 810-815" ; agy claim
+      10 (same defect, different words): "tests a local mock function... If the spawn is removed
+      ... this test will still pass."
+    exit: 0
+    ts: "2026-09-17T02:40:00Z"
+    seat: this session (M5)
+  - claim: >-
+      F10 cure — extracted `_spawn_visa_oracle_sessions_purge_task(app)` as the ONE real spawn
+      decision; `_background_light_init` now calls it in a single line. Four new/rewritten tests:
+      three call the extracted function directly, one drives the REAL `lifespan_light` context
+      manager end to end (`initialize_services_light` faked; WA/GARUDA sub-schedulers disabled
+      via env) and asserts the extraction was actually invoked.
+    cmd: >-
+      cd apps/backend-rag && PYTHONPATH=. .venv/bin/python -m pytest
+      backend/tests/unit/services/test_visa_oracle_sessions_purge_scheduler.py -p no:cacheprovider
+    result: "23 passed"
+    exit: 0
+    ts: "2026-09-17T02:45:00Z"
+    seat: this session (M5)
+  - claim: >-
+      F10 guilt proof: deleted the real spawn call in main_api.py (backed up via `cp` first,
+      never `git checkout --`) — the new real-lifespan test went red exactly as predicted.
+    cmd: >-
+      cp main_api.py <scratch>/main_api_backup_p4.py ; (edit: replace the extracted-function call
+      site with `app.state._visa_oracle_sessions_purge_task = None`) ; PYTHONPATH=. pytest
+      backend/tests/unit/services/test_visa_oracle_sessions_purge_scheduler.py::test_the_lifespan_actually_calls_the_real_spawn_function
+      -p no:cacheprovider
+    result: >-
+      "1 failed — Failed: _background_light_init never reached the purge spawn call" (captured
+      stdout shows the init/notification/WA/GARUDA log lines running normally, then the poll loop
+      exhausting its 200 zero-cost iterations without the patched spawn ever being called)
+    exit: 1
+    ts: "2026-09-17T02:47:00Z"
+    seat: this session (M5)
+  - claim: Restored main_api.py byte-identical to its committed state via `cp`; the same test is green again.
+    cmd: >-
+      cp <scratch>/main_api_backup_p4.py main_api.py ; diff <scratch>/main_api_backup_p4.py
+      main_api.py ; PYTHONPATH=. pytest
+      backend/tests/unit/services/test_visa_oracle_sessions_purge_scheduler.py -p no:cacheprovider
+    result: "diff empty — RESTORED-IDENTICAL ; 23 passed"
+    exit: 0
+    ts: "2026-09-17T02:48:00Z"
+    seat: this session (M5)
+  - claim: >-
+      F8 cure — `_purge_expired_sessions`'s failure-log line changed from `str(exc)` to
+      `type(exc).__name__`. New test plants a sentinel string in the exception's message and
+      asserts it never reaches any log record.
+    cmd: >-
+      cd apps/backend-rag && PYTHONPATH=. .venv/bin/python -m pytest
+      backend/tests/routers/test_visa_oracle_sessions_purge.py -p no:cacheprovider
+    result: "6 passed"
+    exit: 0
+    ts: "2026-09-17T02:50:00Z"
+    seat: this session (M5)
+  - claim: >-
+      F7 cure — corrected the false "keyed on handoff_triggered" / "matching the read at
+      _fetch_session_snapshot" wording in the router's own docstring, D-handoff-safety, and the
+      matching receipt — nowhere left claims `_fetch_session_snapshot` reads `handoff_triggered`.
+    cmd: >-
+      grep -n "keyed on\|matching the read" apps/backend-rag/backend/app/routers/visa_oracle.py
+      evidence/2026-09/agent-air-m5-backend-rag-vo-sessions-retention-v-d2b0707e/pack.yml
+      evidence/2026-09/agent-air-m5-backend-rag-vo-sessions-retention-v-d2b0707e/council/prompt-r1-codex.txt
+      evidence/2026-09/agent-air-m5-backend-rag-vo-sessions-retention-v-d2b0707e/council/prompt-r1-agy.txt
+    result: >-
+      zero hits of the false claim shape anywhere in these four files after the edit (the
+      surviving "keyed on `session_id`" phrasing describes `_persist_session_handoff` and
+      `_fetch_session_snapshot` correctly — both ARE keyed on session_id, neither is keyed on
+      handoff_triggered)
+    exit: 0
+    ts: "2026-09-17T02:52:00Z"
+    seat: this session (M5)
+  - claim: Full regression sweep green after all three cures.
+    cmd: >-
+      cd apps/backend-rag && PYTHONPATH=. .venv/bin/python -m pytest
+      backend/tests/unit/services/test_visa_oracle_sessions_purge_scheduler.py
+      backend/tests/unit/services/test_garuda_outbox_scheduler.py
+      backend/tests/unit/services/test_wa_outbox_scheduler.py
+      backend/tests/routers/test_visa_oracle_sessions_purge.py
+      backend/tests/routers/test_visa_oracle_handoff.py
+      backend/tests/unit/app/lifecycle/test_shutdown.py
+      backend/tests/db/test_migration_317_visa_oracle_sessions_retention.py
+      backend/tests/db/test_migration_uniqueness.py -p no:cacheprovider
+    result: "129 passed"
+    exit: 0
+    ts: "2026-09-17T02:54:00Z"
+    seat: this session (M5)
+  - claim: >-
+      Gear-3 floor and source re-measured on the fourth-turn merge-base diff — floor unchanged
+      (3), source now "both" (was "path"): net churn crossed SIZE_GEAR3_THRESHOLD for the first
+      time, in addition to the migration hot-zone path already present.
+    cmd: >-
+      apps/backend-rag/.venv/bin/python scripts/evidence_pack_lint.py --print-floor
+      --changed-files-file <f> --numstat-file <f> ; (separately) --print-floor-source
+      --changed-files-file <f> --numstat-file <f>
+    result: 'floor 3 ; source "both" (10 files changed, +2166/-0)'
+    exit: 0
+    ts: "2026-09-17T02:56:00Z"
+    seat: this session (M5)
+  - claim: PII scan of the FULL fourth-turn merge-base diff — no email, phone, passport-like or 16-digit NIK-like string.
+    cmd: >-
+      git diff c1db269aa9...HEAD > full4.diff; grep -cE
+      '[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}' full4.diff; grep -cE
+      '(\+?[0-9][0-9().-]{7,}[0-9])' full4.diff; grep -cE '\b[A-Z]{1,2}[0-9]{6,9}\b' full4.diff;
+      grep -cE '\b[0-9]{16}\b' full4.diff
+    result: >-
+      8 email-shaped hits, sampled — all `@pytest.mark.asyncio`/`@pytest.mark.parametrize`
+      decorators ; 86 phone-shaped hits, sampled at head and tail — all git index hashes, ISO
+      timestamps and commit/PR references ; 0 passport-like matches ; 0 16-digit NIK matches (the
+      F8 test's sentinel string "session_id=abc123-should-never-be-logged" is neither
+      email-shaped nor phone-shaped nor passport-like, confirmed by these same four greps
+      returning the counts above and not the sentinel line itself)
+    exit: 0
+    ts: "2026-09-17T02:58:00Z"
+    seat: this session (M5)
+  - claim: >-
+      CI-shaped lint (synthetic tree, --repo-root/--source-path/--brief-source-path) on the
+      fourth-turn pack — only remaining FAIL is the missing council/journal.jsonl, unchanged from
+      every prior turn (council has run per the files in council/, but this session does not
+      write journal.jsonl — the Dux's job).
+    cmd: >-
+      cp brief.yml pack.yml <scratch>/retention-lint/evidence/ ; apps/backend-rag/.venv/bin/python
+      scripts/evidence_pack_lint.py <scratch>/retention-lint/evidence/pack.yml --repo-root
+      <scratch>/retention-lint --source-path
+      evidence/2026-09/agent-air-m5-backend-rag-vo-sessions-retention-v-d2b0707e/pack.yml
+      --brief-source-path
+      evidence/2026-09/agent-air-m5-backend-rag-vo-sessions-retention-v-d2b0707e/brief.yml
+      --changed-files-file <f> --numstat-file <f>
+    result: >-
+      "evidence_pack_lint: FAIL — 1 violation(s): - council_run: gear:3 pack declares no
+      council_run journal with >=2 distinct review seats ... marked ok:true"
+    exit: 1
+    ts: "2026-09-17T03:00:00Z"
     seat: this session (M5)
 dissent:
   - seat: this session (M5, self-refutation)
