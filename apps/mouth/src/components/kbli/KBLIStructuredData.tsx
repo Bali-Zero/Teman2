@@ -12,6 +12,7 @@ import {
 import { riskLabelEn } from "@/lib/kbli-derive";
 import { pmaCapShape } from "@/lib/kbli-pma-shape";
 import { pmaSourceAttributionStructured } from "@/lib/kbli-pma-source";
+import { baliClosureQualifier } from "@/lib/kbli-bali-block";
 
 /**
  * JSON-LD keeps its search-oriented verified wording, but cap availability is
@@ -103,19 +104,19 @@ export function KBLICodeJsonLd({
   // Added 2026-09-16 (W-J B1 disclose): a Bali applied closure sourced to a
   // public press release is self-sufficient evidence — Google/AI answers
   // must not read a national "not yet verified" gap as silence about Bali.
-  const pmaLabel = `${
-    !pmaVerdictVerified
-      ? isSourcedBaliClosure(code.baliL4)
-        ? `Foreign-ownership status not yet verified for this KBLI 2025 code nationally — closed to new PT PMA licensing in Bali${
-            code.baliL4?.closure?.scopeQualifier
-              ? ` for ${code.baliL4.closure.scopeQualifier}`
-              : ""
-          } (Bali Provincial Government, 2026)`
-        : "Foreign-ownership status not yet verified for this KBLI 2025 code"
-      : `${ownershipLabel} (${statusToken})${
-          code.pma.status === "open" ? baliNat : ""
-        }`
-  }${pmaAttribution}`;
+  // Review F1(d)/F2: `pmaAttribution` moves INSIDE the national clause (right
+  // after "nationally") on this branch and is never appended a second time —
+  // trailing it after the Bali clause used to read as if it disclaimed the
+  // Bali closure itself, not the national gap. `baliClosureQualifier` names
+  // the closure's own scope (the hotel rows) or conservative-reading caveat
+  // (MEDIUM-confidence codes) — the same fact every surface must carry.
+  const pmaLabel = !pmaVerdictVerified
+    ? isSourcedBaliClosure(code.baliL4)
+      ? `Foreign-ownership status not yet verified for this KBLI 2025 code nationally${pmaAttribution}. In Bali: closed to new PT PMA licensing${baliClosureQualifier(code.baliL4)} (Bali Provincial Government, 2026)`
+      : `Foreign-ownership status not yet verified for this KBLI 2025 code${pmaAttribution}`
+    : `${ownershipLabel} (${statusToken})${
+        code.pma.status === "open" ? baliNat : ""
+      }${pmaAttribution}`;
 
   // The rendered page translates this tier (PR #4776); the JSON-LD did not, so a
   // block that declares `"inLanguage": "en"` was emitting `Risk: Menengah Rendah`

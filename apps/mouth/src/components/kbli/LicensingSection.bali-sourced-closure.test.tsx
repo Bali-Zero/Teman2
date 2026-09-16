@@ -5,7 +5,7 @@
 // Bali" sentence, which would assert an unverified national permission.
 //
 // A real render, using a REAL code from the live artifact via kbli-data.ts
-// (68111, real estate rental — the business-problem example the mandate
+// (68111, Residential Property Development — the business-problem example the mandate
 // names), the same discipline as LicensingSection.perpres-slice.test.tsx.
 
 import { render, screen } from "@testing-library/react";
@@ -75,5 +75,56 @@ describe("LicensingSection — unlocated sourced Bali closure frame", () => {
       ),
     ).toBeInTheDocument();
     expect(screen.queryByText("Bali — closed to new PMA licensing")).toBeNull();
+  });
+
+  // Review F1: a SCOPED closure (the hotel rows) or a MEDIUM-confidence one
+  // (a 2025 code that merges several KBLI-2020 activities, only some on
+  // Bali's list) must not read as a bare, whole-code, certain bar.
+  describe("review F1 — the closure's own scope/conservative-reading caveat", () => {
+    it("55101 (Five-Star Hotel, scoped: building area under 6,000 m²) names the scope in the header AND the sentence", () => {
+      const kbli = getCode("55101");
+      if (!kbli) throw new Error("55101 missing from kbli-data.ts");
+      expect(kbli.provenance?.pma.status).toBe("declared_gap");
+      expect(kbli.baliL4?.confidence).toBe("HIGH");
+      expect(kbli.baliL4?.closure?.scopeQualifier).toBe(
+        "building area under 6,000 m²",
+      );
+
+      const { container } = render(
+        <LicensingSection kbli={kbli} gold={null} />,
+      );
+
+      expect(
+        screen.getByText(
+          "Bali — closed to new PMA licensing for building area under 6,000 m²",
+        ),
+      ).toBeInTheDocument();
+      expect(container.textContent).toContain(
+        "for building area under 6,000 m²",
+      );
+      // Never the unqualified conservative-reading caveat — this record IS
+      // HIGH confidence, its qualifier is the scope, not the caveat.
+      expect(container.textContent).not.toContain("conservative reading:");
+    });
+
+    it("47211 (MEDIUM confidence, unscoped) carries the conservative-reading caveat, not a bare closure", () => {
+      const kbli = getCode("47211");
+      if (!kbli) throw new Error("47211 missing from kbli-data.ts");
+      expect(kbli.provenance?.pma.status).toBe("declared_gap");
+      expect(kbli.baliL4?.confidence).toBe("MEDIUM");
+      expect(kbli.baliL4?.closure?.scopeQualifier).toBeFalsy();
+
+      const { container } = render(
+        <LicensingSection kbli={kbli} gold={null} />,
+      );
+
+      // Header carries no scope text (there is none) — still the bare label.
+      expect(
+        screen.getByText("Bali — closed to new PMA licensing"),
+      ).toBeInTheDocument();
+      expect(container.textContent).toContain(
+        "conservative reading: this 2025 code also covers activities not on Bali's list",
+      );
+    });
   });
 });

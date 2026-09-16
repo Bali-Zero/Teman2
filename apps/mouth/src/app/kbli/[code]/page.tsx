@@ -340,11 +340,16 @@ export default async function KBLICodePage({
                 const unverifiedBaliClosure =
                   !pmaVerdictVerified && baliSourcedClosure;
                 const closure = kbli.baliL4?.closure;
+                // Review F1(c): a scoped closure (the hotel rows: "building
+                // area under 6,000 m²") must not read as a bar on the WHOLE
+                // code — `closureWholeCode` requires the absence of a scope
+                // in addition to HIGH confidence + no review flag, so a
+                // scoped-but-HIGH-confidence record is never miscategorized
+                // as a blanket closure anywhere this flag is read below.
                 const closureWholeCode =
                   kbli.baliL4?.confidence === "HIGH" &&
-                  !kbli.baliL4?.needsReview;
-                // A scoped closure (the hotel rows: "building area under
-                // 6,000 m²") must not read as a bar on the whole code.
+                  !kbli.baliL4?.needsReview &&
+                  !closure?.scopeQualifier;
                 const closedHeading = closure?.scopeQualifier
                   ? `Closed for PMA in Bali for ${closure.scopeQualifier} — confirm your project's scope on OSS`
                   : closureWholeCode
@@ -390,9 +395,11 @@ export default async function KBLICodePage({
                       </p>
                       {unverifiedBaliClosure && (
                         <p className="mt-1 text-sm text-[var(--kbli-text-muted)]">
-                          {closureWholeCode
-                            ? "Bali's applied closure of 18 business fields covers this code"
-                            : "Bali's applied closure of 18 business fields covers part of this code"}
+                          {closure?.scopeQualifier
+                            ? `Bali's applied closure of 18 business fields covers this code for ${closure.scopeQualifier}`
+                            : closureWholeCode
+                              ? "Bali's applied closure of 18 business fields covers this code"
+                              : "Bali's applied closure of 18 business fields covers part of this code"}
                           {closure?.instrument || closure?.published ? (
                             <>
                               {" ("}

@@ -7,10 +7,8 @@ import {
   hasGoldContent,
   mapPmaStatus,
 } from "./kbli-data.server";
-import {
-  hasPublishablePmaCap,
-  isSourcedBaliClosure,
-} from "./kbli-pma-disclosure";
+import { hasPublishablePmaCap } from "./kbli-pma-disclosure";
+import rawData from "../../data/KBLI_2025_FINAL_CLEAN.json";
 
 /**
  * Mandate 12 (2026-08-09, PENDING-ARMS.md "sektor_id is not a malformed
@@ -55,25 +53,52 @@ describe("kbli-data.server — section derivation (Mandate 12 fix)", () => {
     expect(getAllCodes()).toHaveLength(1559);
     // SAETTA-20260915 W-H PR-3a moved 3 codes (55201/55203/79903) from
     // declared_gap to located (Lampiran II allocation): 1505 -> 1502.
-    expect(
-      getAllCodes().filter(
-        (code) => code.pma.verificationStatus === "declared_gap",
-      ),
-    ).toHaveLength(1502);
-    for (const code of getAllCodes().filter(
-      (item) => item.pma.verificationStatus === "declared_gap",
-    )) {
+    const gaps = getAllCodes().filter(
+      (code) => code.pma.verificationStatus === "declared_gap",
+    );
+    expect(gaps).toHaveLength(1502);
+    for (const code of gaps) {
       expect(code.intel, `${code.code} intel`).toBeUndefined();
-      // Added 2026-09-16 (W-J B1 disclose): a Bali APPLIED closure sourced to
-      // a public press release is self-sufficient evidence and discloses
-      // even on a `declared_gap` national record — the ONE named exception
-      // to "no baliL4 on a gap", scoped exactly to `isSourcedBaliClosure`.
-      if (isSourcedBaliClosure(code.baliL4)) {
-        expect(code.baliL4?.status, `${code.code} Bali L4`).toBe("CHIUSO_BALI");
-      } else {
-        expect(code.baliL4, `${code.code} Bali L4`).toBeUndefined();
+    }
+
+    // Added 2026-09-16 (W-J B1 disclose, review F5): "no baliL4 on a gap" has
+    // exactly ONE named exception — a Bali APPLIED closure sourced to a
+    // public press release. Testing that exception through the very
+    // function that implements it (`isSourcedBaliClosure`, which by its own
+    // definition REQUIRES `status === "CHIUSO_BALI"`) would be tautological:
+    // it cannot catch a bug that widens the exception, only one that changes
+    // which field it inspects. Instead this derives the expected set
+    // independently from the raw JSON and asserts the served set matches it
+    // exactly — no more, no fewer members.
+    const rawDeclaredGapChiusoBali = (
+      rawData as {
+        data: Array<{
+          kode_kbli_2025: string;
+          pma_verification_status?: string;
+          l4_bali?: { status?: string };
+        }>;
+      }
+    ).data
+      .filter(
+        (r) =>
+          r.l4_bali?.status === "CHIUSO_BALI" &&
+          r.pma_verification_status !== "located",
+      )
+      .map((r) => r.kode_kbli_2025)
+      .sort();
+    const disclosedOnAGap = gaps
+      .filter((code) => code.baliL4 !== undefined)
+      .map((code) => code.code)
+      .sort();
+    expect(disclosedOnAGap).toEqual(rawDeclaredGapChiusoBali);
+    expect(disclosedOnAGap).toHaveLength(39);
+    for (const code of gaps) {
+      if (code.baliL4 !== undefined) {
+        expect(code.baliL4.status, code.code).toBe("CHIUSO_BALI");
+        expect(code.baliL4.closure?.url, code.code).toMatch(/^https:\/\//);
       }
     }
+
     expect(located?.intel).toBeDefined();
     expect(located?.baliL4).toBeDefined();
   });

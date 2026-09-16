@@ -206,10 +206,21 @@ export function buildKbliFaq(code: KBLICode): KbliFaqEntry[] {
   // national side is open (that would be "Outside Bali it is open…", which
   // this branch must never say).
   const baliSourcedClosure = isSourcedBaliClosure(code.baliL4);
+  // Review F1: the LEAD sentence must carry the closure's own qualifier —
+  // scope (the hotel rows, "building area under 6,000 m²") or the
+  // conservative-reading caveat (16 MEDIUM codes, e.g. 47211) — because a
+  // search snippet truncates to the first sentence; burying the caveat later
+  // in the answer is the same defect as never stating it.
+  const baliClosureScope = code.baliL4?.closure?.scopeQualifier;
+  const baliClosureConfident =
+    code.baliL4?.confidence === "HIGH" && code.baliL4?.needsReview !== true;
+  const baliClosureLead = baliClosureConfident
+    ? `Not in Bali${baliClosureScope ? ` for ${baliClosureScope}` : ""}.`
+    : "Treated as closed in Bali (conservative reading).";
 
   const pmaAnswer = !pmaVerdictVerified
     ? baliSourcedClosure
-      ? `Not in Bali. KBLI ${code.code} (${code.titleId}): ${
+      ? `${baliClosureLead} KBLI ${code.code} (${code.titleId}): ${
           shouldShowReason(code.baliL4?.status, code.baliL4?.reason)
             ? (code.baliL4?.reason ?? "").replace(/\.\s*$/, "")
             : `in Bali this activity is ${baliBlockClause(code.baliL4?.status)}`

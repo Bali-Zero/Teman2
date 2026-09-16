@@ -1,7 +1,10 @@
 import { ImageResponse } from "next/og";
 import type { NextRequest } from "next/server";
 import { getCode } from "@/lib/kbli-data";
-import { isPmaVerdictVerified } from "@/lib/kbli-provenance";
+import {
+  isBaliL4BlockVerifiedForBareClaim,
+  isPmaVerdictVerified,
+} from "@/lib/kbli-provenance";
 import { isSourcedBaliClosure } from "@/lib/kbli-pma-disclosure";
 import {
   getSectionVisual,
@@ -33,7 +36,10 @@ export const runtime = "nodejs";
 const WIDTH = 1200;
 const HEIGHT = 630;
 
-function statusChip(kbli: NonNullable<ReturnType<typeof getCode>>): {
+/** Exported for test: the route itself has no test harness (next/og's
+ * ImageResponse is not renderable under vitest), so this pure label/color
+ * function is the unit under test instead (review F1). */
+export function statusChip(kbli: NonNullable<ReturnType<typeof getCode>>): {
   label: string;
   color: string;
 } {
@@ -43,7 +49,17 @@ function statusChip(kbli: NonNullable<ReturnType<typeof getCode>>): {
   // too — checked before the neutral "verify" fallback below, which would
   // otherwise say nothing about a closure the code's own page now discloses.
   if (!verified && isSourcedBaliClosure(kbli.baliL4)) {
-    return { label: "BALI: CLOSED TO PMA", color: "#e0645a" };
+    // Review F1(f): a scoped closure (the hotel rows) or a below-bare-claim
+    // confidence/review flag must not chip the same unqualified "closed" a
+    // HIGH-confidence, unscoped, whole-code closure gets — the social
+    // preview has no room for the scope text itself, so it says "check
+    // scope" instead of asserting a bar the record does not make bare.
+    const wholeCodeConfident =
+      isBaliL4BlockVerifiedForBareClaim(kbli) &&
+      !kbli.baliL4?.closure?.scopeQualifier;
+    return wholeCodeConfident
+      ? { label: "BALI: CLOSED TO PMA", color: "#e0645a" }
+      : { label: "BALI: CLOSED — CHECK SCOPE", color: "#e0645a" };
   }
   if (!verified) {
     return { label: "PMA: VERIFY", color: "#8f96a3" };

@@ -499,4 +499,16 @@ describe("isSourcedBaliClosure", () => {
       }),
     ).toBe(false);
   });
+
+  // Review F6: the function re-validates http(s)-only ITSELF rather than
+  // trusting a caller that skipped `discloseBaliL4`'s own `publicUrl` gate.
+  it("false for a non-http(s) url, even with an otherwise-valid tuple", () => {
+    expect(
+      isSourcedBaliClosure({
+        status: "CHIUSO_BALI",
+        blocked: true,
+        closure: { url: "javascript:alert(1)" },
+      }),
+    ).toBe(false);
+  });
 });

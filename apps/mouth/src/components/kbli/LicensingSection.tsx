@@ -26,6 +26,7 @@ import {
 } from "@/lib/kbli-pma-disclosure";
 import {
   baliBlockClause,
+  baliClosureQualifier,
   shouldShowReason,
   narratesUnverifiedRoute,
 } from "@/lib/kbli-bali-block";
@@ -981,6 +982,14 @@ export function LicensingSection({ kbli, gold }: LicensingSectionProps) {
   // reading relied on was only ever named in the Governor's own request
   // letter, never enacted for it. Must read as "verify", never as "cleared".
   const baliAttentionFascia = kbli.baliL4?.status === "ATTENZIONE_FASCIA_BALI";
+  // Added 2026-09-16 (review F1): a CHIUSO_BALI closure can be SCOPED (the
+  // hotel rows: "building area under 6,000 m²" — bars only that slice, not
+  // the whole code) or MEDIUM-confidence/needs-review (Bali Zero's own
+  // conservative reading applied to a 2025 code that also merges KBLI-2020
+  // activities not on Bali's 18-field list). Either way a bare "closed to
+  // new PMA licensing" overstates the record.
+  const closureScope = kbli.baliL4?.closure?.scopeQualifier;
+  const closureQualifier = baliClosureQualifier(kbli.baliL4);
 
   return (
     <div className="space-y-8">
@@ -1023,13 +1032,15 @@ export function LicensingSection({ kbli, gold }: LicensingSectionProps) {
               style={{ color: "var(--kbli-pma-closed)" }}
             >
               Bali — closed to new PMA licensing
+              {closureScope ? ` for ${closureScope}` : ""}
             </span>
           </div>
           <p className="text-sm leading-relaxed text-[var(--foreground-secondary)]">
             In <strong>Bali</strong>, this activity is currently{" "}
-            {baliBlockClause(kbli.baliL4?.status)}. The licensing path below is
-            the national procedure; whether a PT PMA may use it outside Bali is
-            not yet verified — see the note above.
+            {baliBlockClause(kbli.baliL4?.status)}
+            {closureQualifier}. The licensing path below is the national
+            procedure; whether a PT PMA may use it outside Bali is not yet
+            verified — see the note above.
           </p>
         </div>
       )}

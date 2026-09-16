@@ -148,15 +148,66 @@ describe("structured data — whole-verdict PMA gate", () => {
 // silence about Bali (added 2026-09-16, W-J B1 disclose).
 // =============================================================================
 describe("structured data — a sourced Bali closure on an unverified national record", () => {
-  it("68111 names the Bali closure inside the still-unverified national label", () => {
+  // Review F2: `pmaAttribution` must sit right after "nationally" and must
+  // never be appended a second time after the Bali clause — the exact
+  // rendered `pmaLabel` is pinned here, not just a loose substring, so a
+  // regression that trails or duplicates the attribution fails this test.
+  it("68111 (unscoped, HIGH confidence): pmaAttribution sits right after 'nationally', once, and the Bali clause names no qualifier", () => {
     const code = getCode("68111") as KBLICode;
     expect(code.provenance?.pma.status).toBe("declared_gap");
     expect(code.baliL4).toMatchObject({ status: "CHIUSO_BALI", blocked: true });
+    expect(code.baliL4?.confidence).toBe("HIGH");
+    expect(code.baliL4?.closure?.scopeQualifier).toBeFalsy();
 
-    const article = JSON.stringify(jsonLdOf(code));
-    expect(article).toContain("not yet verified for this KBLI 2025 code");
-    expect(article).toContain(
-      "closed to new PT PMA licensing in Bali (Bali Provincial Government, 2026)",
+    const jsonLd = jsonLdOf(code);
+    const description = jsonLd.description as string;
+    const pmaLabel =
+      "Foreign-ownership status not yet verified for this KBLI 2025 code" +
+      " nationally — no adjudicated per-code official basis and vintage" +
+      " currently verify this verdict; confirm it at oss.go.id. In Bali:" +
+      " closed to new PT PMA licensing (Bali Provincial Government, 2026)";
+    expect(description).toContain(pmaLabel);
+    // The attribution clause appears exactly once — never trailed a second
+    // time after the Bali clause.
+    expect(
+      description.split("no adjudicated per-code official basis").length - 1,
+    ).toBe(1);
+  });
+
+  it("55101 (Five-Star Hotel, scoped: building area under 6,000 m²): the scope rides on the Bali clause, not the national one", () => {
+    const code = getCode("55101") as KBLICode;
+    expect(code.provenance?.pma.status).toBe("declared_gap");
+    expect(code.baliL4?.confidence).toBe("HIGH");
+    expect(code.baliL4?.closure?.scopeQualifier).toBe(
+      "building area under 6,000 m²",
+    );
+
+    const jsonLd = jsonLdOf(code);
+    const description = jsonLd.description as string;
+    const pmaLabel =
+      "Foreign-ownership status not yet verified for this KBLI 2025 code" +
+      " nationally — no adjudicated per-code official basis and vintage" +
+      " currently verify this verdict; confirm it at oss.go.id. In Bali:" +
+      " closed to new PT PMA licensing for building area under 6,000 m²" +
+      " (Bali Provincial Government, 2026)";
+    expect(description).toContain(pmaLabel);
+    expect(
+      description.split("no adjudicated per-code official basis").length - 1,
+    ).toBe(1);
+  });
+
+  it("47211 (MEDIUM confidence, unscoped): the conservative-reading caveat rides on the Bali clause", () => {
+    const code = getCode("47211") as KBLICode;
+    expect(code.provenance?.pma.status).toBe("declared_gap");
+    expect(code.baliL4?.confidence).toBe("MEDIUM");
+    expect(code.baliL4?.closure?.scopeQualifier).toBeFalsy();
+
+    const jsonLd = jsonLdOf(code);
+    const description = jsonLd.description as string;
+    expect(description).toContain(
+      "In Bali: closed to new PT PMA licensing (conservative reading: this" +
+        " 2025 code also covers activities not on Bali's list) (Bali" +
+        " Provincial Government, 2026)",
     );
   });
 

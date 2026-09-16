@@ -639,7 +639,7 @@ describe("inherited PP 28 content withdraws the licence claim, not the risk", ()
 // W-J B1 disclose.
 // =============================================================================
 describe("kbliMetaTitleSuffix — a sourced Bali closure on an unverified national record", () => {
-  it("68111 (HIGH confidence, real estate rental) ends the title with 'Closed to PT PMA in Bali (2026)'", () => {
+  it("68111 (HIGH confidence, Residential Property Development) ends the title with 'Closed to PT PMA in Bali (2026)'", () => {
     const code = getAllCodes().find((c) => c.code === "68111")!;
     expect(code.provenance?.pma.status).toBe("declared_gap");
     expect(code.baliL4?.confidence).toBe("HIGH");
@@ -665,6 +665,46 @@ describe("kbliMetaTitleSuffix — a sourced Bali closure on an unverified nation
     );
     expect(kbliMetaTitleSuffix(code)).toBe(
       "PMA Eligibility Requires Verification",
+    );
+  });
+});
+
+// =============================================================================
+// Review F3: `kbliMetaDescription` needs the SAME bare-claim branch as the
+// title suffix above — the title and description are two separate indexed
+// surfaces, and a fix to one gate must not silently leave the other unfixed.
+// =============================================================================
+describe("kbliMetaDescription — the same sourced-Bali-closure branch as the title suffix", () => {
+  it("68111 (HIGH confidence, unscoped, declared_gap nationally) states the closure in the description", () => {
+    const code = getAllCodes().find((c) => c.code === "68111")!;
+    expect(code.provenance?.pma.status).toBe("declared_gap");
+    expect(code.baliL4?.confidence).toBe("HIGH");
+    expect(code.baliL4?.closure?.scopeQualifier).toBeFalsy();
+
+    expect(kbliMetaDescription(code, code.titleEn)).toContain(
+      "nationally — closed to new PT PMA licensing in Bali (2026).",
+    );
+  });
+
+  it("55101 (scoped: building area under 6,000 m²) omits the whole-code closure clause — no room for the scope text", () => {
+    const code = getAllCodes().find((c) => c.code === "55101")!;
+    expect(code.provenance?.pma.status).toBe("declared_gap");
+    expect(code.baliL4?.closure?.scopeQualifier).toBe(
+      "building area under 6,000 m²",
+    );
+
+    expect(kbliMetaDescription(code, code.titleEn)).not.toContain(
+      "closed to new PT PMA licensing in Bali",
+    );
+  });
+
+  it("47211 (MEDIUM confidence, unscoped) omits the whole-code closure clause — below the bare-claim gate", () => {
+    const code = getAllCodes().find((c) => c.code === "47211")!;
+    expect(code.provenance?.pma.status).toBe("declared_gap");
+    expect(code.baliL4?.confidence).toBe("MEDIUM");
+
+    expect(kbliMetaDescription(code, code.titleEn)).not.toContain(
+      "closed to new PT PMA licensing in Bali",
     );
   });
 });

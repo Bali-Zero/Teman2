@@ -189,6 +189,40 @@ export function baliBlockClause(status?: string | null): string {
 }
 
 /**
+ * The caveat that follows `baliBlockClause` for a CHIUSO_BALI closure
+ * disclosed on its own sourced evidence (review F1, added 2026-09-16). A
+ * bare "closed to new PMA licensing" overstates the record in two
+ * independent ways this function guards against:
+ *
+ *  - A SCOPED closure (the hotel rows — `closure.scopeQualifier`, e.g.
+ *    "building area under 6,000 m²") bars only that slice of the code, not
+ *    the whole thing. Every surface stating the closure must name the
+ *    scope, never imply a blanket bar.
+ *  - A record whose confidence is not HIGH, or is flagged `needsReview` (16
+ *    MEDIUM codes, e.g. 47211 — a 2025 code that merges several KBLI-2020
+ *    activities, only some of which are on Bali's 18-field list), is Bali
+ *    Zero's own conservative reading applied to the WHOLE code. That is a
+ *    posture, not a certainty, and every surface stating the closure must
+ *    say so.
+ *
+ * Scope wins when both apply — it is the more specific, actionable fact.
+ */
+export function baliClosureQualifier(
+  l4?: {
+    confidence?: string | null;
+    needsReview?: boolean | null;
+    closure?: { scopeQualifier?: string | null } | null;
+  } | null,
+): string {
+  const scope = l4?.closure?.scopeQualifier;
+  if (scope) return ` for ${scope}`;
+  if (l4?.confidence !== "HIGH" || l4?.needsReview) {
+    return " (conservative reading: this 2025 code also covers activities not on Bali's list)";
+  }
+  return "";
+}
+
+/**
  * Is the risk-tier moratorium the ACTUAL basis of this code's Bali verdict?
  *
  * `l4_bali.moratorium.rule` is not per-code evidence: it is one constant string
@@ -399,7 +433,14 @@ export function baliBlockedHint(
       );
     }
     if (other > 0) {
-      clauses.push(`${other} for other reasons, such as a national closure`);
+      // Review F4: naming "a national closure" here asserted a specific
+      // cause for the whole `other` group — the same over-attribution the
+      // no-census path below (see NOTE at line ~430) already refuses to
+      // make. `baliBlockClause` states the real one per code, on the page
+      // that has the code in front of it.
+      clauses.push(
+        `${other} for other reasons stated individually on each code's page`,
+      );
     }
     const causeList =
       clauses.length <= 1

@@ -225,6 +225,14 @@ export function formatPmaOwnership(
  * `blocked` false, or no verifiable URL) still requires the national tuple,
  * same as before: this is an ADDITIONAL sufficient condition, never a looser
  * replacement for it.
+ *
+ * The URL is re-validated http(s)-only HERE too (review F6), not merely
+ * assumed safe because `discloseBaliL4` already ran it through `publicUrl`
+ * before this function ever sees it: `isSourcedBaliClosure` is exported and
+ * called from render surfaces on the ALREADY-disclosed `KBLIBaliL4`, but a
+ * defensive function that trusts its caller's caller is a check in name
+ * only — the same discipline `discloseBaliL4`'s own comment states for
+ * `closureSourceNode`.
  */
 export function isSourcedBaliClosure(
   l4:
@@ -236,11 +244,12 @@ export function isSourcedBaliClosure(
     | null
     | undefined,
 ): boolean {
+  const url = l4?.closure?.url;
   return (
     l4?.status === "CHIUSO_BALI" &&
     l4?.blocked === true &&
-    typeof l4?.closure?.url === "string" &&
-    l4.closure.url !== ""
+    typeof url === "string" &&
+    /^https?:\/\//i.test(url.trim())
   );
 }
 

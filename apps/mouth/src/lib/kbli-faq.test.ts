@@ -544,7 +544,7 @@ describe("restrictedPmaAnswer — the trailing absolute only holds when there is
 // the national side is open (added 2026-09-16, W-J B1 disclose).
 // =============================================================================
 describe("buildKbliFaq — a sourced Bali closure answers even when the national verdict is not located", () => {
-  it("68111 (real estate rental, declared_gap nationally) starts 'Not in Bali.' and never claims the national side is open", () => {
+  it("68111 (Residential Property Development, declared_gap nationally) starts 'Not in Bali.' and never claims the national side is open", () => {
     const code = getCode("68111") as KBLICode;
     expect(code.provenance?.pma.status).toBe("declared_gap");
     expect(code.baliL4).toMatchObject({ status: "CHIUSO_BALI", blocked: true });
@@ -561,6 +561,34 @@ describe("buildKbliFaq — a sourced Bali closure answers even when the national
     expect(code.baliL4).toBeUndefined();
 
     const answer = buildKbliFaq(code)[0].answer;
+    expect(answer).not.toMatch(/^Not in Bali\./);
+  });
+
+  // Review F1: the LEAD sentence — the part a search snippet actually shows —
+  // must carry the closure's own scope or conservative-reading caveat, not a
+  // bare "Not in Bali."
+  it("55101 (Five-Star Hotel, HIGH confidence, scoped: building area under 6,000 m²) leads with the scope", () => {
+    const code = getCode("55101") as KBLICode;
+    expect(code.provenance?.pma.status).toBe("declared_gap");
+    expect(code.baliL4?.confidence).toBe("HIGH");
+    expect(code.baliL4?.closure?.scopeQualifier).toBe(
+      "building area under 6,000 m²",
+    );
+
+    const answer = buildKbliFaq(code)[0].answer;
+    expect(answer).toMatch(/^Not in Bali for building area under 6,000 m²\./);
+  });
+
+  it("47211 (MEDIUM confidence, unscoped) leads with the conservative-reading caveat, not a bare 'Not in Bali.'", () => {
+    const code = getCode("47211") as KBLICode;
+    expect(code.provenance?.pma.status).toBe("declared_gap");
+    expect(code.baliL4?.confidence).toBe("MEDIUM");
+    expect(code.baliL4?.closure?.scopeQualifier).toBeFalsy();
+
+    const answer = buildKbliFaq(code)[0].answer;
+    expect(answer).toMatch(
+      /^Treated as closed in Bali \(conservative reading\)\./,
+    );
     expect(answer).not.toMatch(/^Not in Bali\./);
   });
 });

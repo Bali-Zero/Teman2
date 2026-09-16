@@ -182,6 +182,16 @@ export function kbliMetaDescription(
     kbli.pma.status === "open" &&
     !baliBlocked &&
     kbli.baliL4?.status === "ATTENZIONE_FASCIA_BALI";
+  // Added 2026-09-16 (review F3): the SAME bare-claim predicate
+  // `kbliMetaTitleSuffix` uses for its unverified "Closed to PT PMA in Bali
+  // (2026)" title suffix — HIGH confidence, not flagged for review, and
+  // unscoped (a scoped closure, the hotel rows, is not a whole-code bar and
+  // this description has no room for the scope text).
+  const baliClosureUnverified =
+    !isPmaVerdictVerified(kbli) &&
+    isSourcedBaliClosure(kbli.baliL4) &&
+    isBaliL4BlockVerifiedForBareClaim(kbli) &&
+    !kbli.baliL4?.closure?.scopeQualifier;
   const risk = verifiedRiskLabel(kbli);
   const license = verifiedLicenseType(kbli);
 
@@ -191,7 +201,9 @@ export function kbliMetaDescription(
         ? " nationally — blocked for a PT PMA in Bali (2026)"
         : baliAttentionFascia
           ? " nationally — verify Bali's 2026 PMA closure list before filing"
-          : ""
+          : baliClosureUnverified
+            ? " nationally — closed to new PT PMA licensing in Bali (2026)"
+            : ""
     }.`,
     // Degrade one fact at a time. `risk && license ? … : null` dropped BOTH
     // when only the licence was ungated, so the 337 inherited-content codes

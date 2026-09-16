@@ -1,6 +1,10 @@
 import type { ReactNode } from "react";
 import type { KBLIBaliL4, KBLICode, KBLIProvenance } from "@/lib/kbli-types";
-import { baliBlockClause, isMoratoriumBasis } from "@/lib/kbli-bali-block";
+import {
+  baliBlockClause,
+  baliClosureQualifier,
+  isMoratoriumBasis,
+} from "@/lib/kbli-bali-block";
 import { isSourcedBaliClosure } from "@/lib/kbli-pma-disclosure";
 
 // =============================================================================
@@ -236,7 +240,7 @@ export function buildRows(kbli: KBLICode, prov: KBLIProvenance): SourceRow[] {
           ? `Not among the 18 business fields Bali closed to new PMA licensing since the third week of May 2026; the low/medium-low risk tier named in the Governor's January 2026 request letter does not by itself close this code — verify the applicable tier and zoning on OSS · confidence ${kbli.baliL4.confidence}.`
           : moratoriumBasis
             ? `Conservative posture derived from the risk tier · confidence ${kbli.baliL4.confidence}.`
-            : `This activity is ${baliBlockClause(kbli.baliL4.status)} · confidence ${kbli.baliL4.confidence}.`,
+            : `This activity is ${baliBlockClause(kbli.baliL4.status)}${baliClosureQualifier(kbli.baliL4)} · confidence ${kbli.baliL4.confidence}.`,
     });
   }
 
