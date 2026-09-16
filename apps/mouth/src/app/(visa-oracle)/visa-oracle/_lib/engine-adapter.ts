@@ -106,6 +106,13 @@ function usd(value: number, locale: "en-US" | "id-ID"): string {
 export const SECOND_HOME_PROPERTY_THRESHOLD_USD = 1_000_000;
 export const SECOND_HOME_DEPOSIT_THRESHOLD_USD = 130_000;
 
+// D23 "OPTION B-STUDIO" (2026-09-16): the one review reason code that routes
+// to a self-serve page instead of a person — named here so OutcomeSheet.tsx
+// never types the code or the route a second time.
+export const SECOND_HOME_STUDIO_REVIEW_REASON_CODE =
+  "SECOND_HOME_BELOW_THRESHOLD_STUDIO";
+export const SECOND_HOME_STUDIO_URL = "/visa/second-home/studio";
+
 export const SUPPORT_REASON_COPY: Record<string, LocalizedText> = {
   A1_BVK_ELIGIBLE: text(
     "Your nationality is on the visa-free (BVK) list for tourism or transit, and your stay is 30 days or less.",
@@ -990,6 +997,19 @@ export const REVIEW_REASON_COPY: Record<string, LocalizedText> = {
   VOA_NATIONALITY_ONLY: text(
     "This case is held because your nationality has not been established, and the Visa on Arrival — Tourism (B1) is issued only for listed nationalities — confirming your nationality is what resolves it.",
     "Kasus ini ditahan karena kewarganegaraan Anda belum dapat dipastikan, sedangkan Visa Saat Kedatangan Wisata (B1) hanya diterbitkan untuk kewarganegaraan yang terdaftar — konfirmasi kewarganegaraan Anda adalah yang akan menyelesaikannya.",
+  ),
+  // `review.e33.below-threshold-studio` (seq-22 unsigned source,
+  // `fold_pack_seq22.py`'s DEFECT 3, owner decision D23 "OPTION B-STUDIO"
+  // 2026-09-16): the SAME two thresholds seq-21's deleted HARD_FILTER read,
+  // reinstated as a REQUIRE_REVIEW. D23 is explicit that this ONE code must
+  // NEVER say a consultant or person reviews anything — it names the
+  // guarantee figure the visitor DECLARED (never a figure they did not
+  // declare — the twin basis's synthesised zero is not "your deposit") and
+  // points to the Second Home Studio, which is where OutcomeSheet renders
+  // the actual link (`/visa/second-home/studio`) for this code specifically.
+  SECOND_HOME_BELOW_THRESHOLD_STUDIO: text(
+    `The Second Home Visa (E33) is granted against a guarantee: qualifying property worth at least ${usd(SECOND_HOME_PROPERTY_THRESHOLD_USD, "en-US")}, or a bank deposit of at least ${usd(SECOND_HOME_DEPOSIT_THRESHOLD_USD, "en-US")} held in your own name at a state bank. The figure you declared for the route you chose does not reach its threshold, so this route is not confirmed on your answers yet. The Second Home Studio shows the routes — property, deposit, or a combination — and the numbers for your case.`,
+    `Visa Rumah Kedua (E33) diberikan atas dasar jaminan: properti yang memenuhi syarat senilai minimal ${usd(SECOND_HOME_PROPERTY_THRESHOLD_USD, "id-ID")}, atau deposito bank minimal ${usd(SECOND_HOME_DEPOSIT_THRESHOLD_USD, "id-ID")} atas nama Anda sendiri di bank milik negara. Angka yang Anda nyatakan untuk jalur yang Anda pilih belum mencapai ambang batasnya, sehingga jalur ini belum dapat dikonfirmasi berdasarkan jawaban Anda. Second Home Studio menampilkan jalur-jalur — properti, deposito, atau kombinasi keduanya — beserta angka untuk kasus Anda.`,
   ),
 
   // 17 pack-independent codes emitted by evaluate_path.py directly.

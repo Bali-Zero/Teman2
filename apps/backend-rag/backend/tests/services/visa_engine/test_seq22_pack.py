@@ -2,8 +2,9 @@
 REAL signed seq-20 and carrying no HARD_FILTER that reads a synthesised fact.
 
 Ground: ``fold_pack_seq22.py``'s own docstring — what the three seq-21
-defects were, which two are cured here, which one is DELETED rather than
-reshaped, and the measurement behind each call.
+defects were, which two are cured here, and which one is REDESIGNED (owner
+decision D23 "OPTION B-STUDIO", 2026-09-16) rather than deleted, and the
+measurement behind each call.
 
 Unlike seq-21's own gates, nothing here is synthetic. The anchor is the
 production ``rulepack-prod-020.signed.json`` on disk, verified against the
@@ -41,6 +42,8 @@ from backend.scripts.visa_engine.compile_pack import wrap_as_unsigned_pack
 from backend.scripts.visa_engine.fold_pack_seq22 import (
     CURED_PRODUCT_CODE,
     DELETED_SEQ21_RULE_ID,
+    E33_STUDIO_REASON,
+    E33_STUDIO_RULE_ID,
     EMPLOYMENT_SPONSOR_PRODUCT_CODES,
     EMPLOYMENT_SPONSOR_RULE_ID,
     NEW_RULE_IDS,
@@ -76,6 +79,7 @@ _E23V_DEFECT_WALK_PATH = (
     _CORPUS_DIR / "offshore_work_sponsor_government_trade_office_only_employer_no.json"
 )
 _SECOND_HOME_PROPERTY_WALK_PATH = _CORPUS_DIR / "offshore_second_home_property.json"
+_SECOND_HOME_BANK_DEPOSIT_WALK_PATH = _CORPUS_DIR / "offshore_second_home_bank_deposit.json"
 
 #: The pinned production Ed25519 PUBLIC key — the same constant
 #: ``test_seq20_signed_bundle.py`` verifies seq-20 with. A public key is not a
@@ -229,7 +233,7 @@ class TestFoldIntegrity:
         assert seq22_source["rule_pack_id"] == str(_rule_pack_id(22))
         assert seq22_source["rollback_of_payload_sha256"] is None
 
-    def test_fold_retires_nine_and_inserts_ten(
+    def test_fold_retires_nine_and_inserts_eleven(
         self, seq20_source: dict[str, Any], seq22_source: dict[str, Any]
     ) -> None:
         before = set(_rules_by_id(seq20_source))
@@ -238,7 +242,9 @@ class TestFoldIntegrity:
         assert after - before == set(NEW_RULE_IDS)
         assert len(RETIRED_REVIEW_RULES) == 9
         assert len(SUPPORT_RULE_IDS) == 9
-        assert len(NEW_RULE_IDS) == 10
+        # 9 SUPPORT + 1 HARD_FILTER (hf.employment-without-indonesian-sponsor)
+        # + 1 REQUIRE_REVIEW (review.e33.below-threshold-studio, D23 B-STUDIO).
+        assert len(NEW_RULE_IDS) == 11
 
     def test_fold_edits_no_surviving_rule(
         self, seq20_source: dict[str, Any], seq22_source: dict[str, Any]
@@ -263,9 +269,7 @@ class TestFoldIntegrity:
             "rollback_of_payload_sha256",
             "rules",
         }:
-            assert canonicalize_json(seq22_source[key]) == canonicalize_json(
-                seq20_source[key]
-            ), key
+            assert canonicalize_json(seq22_source[key]) == canonicalize_json(seq20_source[key]), key
 
     def test_fold_is_deterministic(
         self,
@@ -352,25 +356,26 @@ class TestTheEditsContent:
 
 
 # ---------------------------------------------------------------------------
-# Defect 3 — no EXCLUDE may read a fact the interview never asked for.
+# Defect 3 — no HARD_FILTER/EXCLUDE may read a fact the interview never
+# asked for; its two thresholds come back as a REQUIRE_REVIEW instead
+# (owner decision D23 "OPTION B-STUDIO", 2026-09-16).
 # ---------------------------------------------------------------------------
 
 
 class TestNoExcludeReadsASynthesisedFact:
     def test_the_seq21_rule_is_absent(self, seq22_source: dict[str, Any]) -> None:
-        """INNOCENCE: ``hf.e33.guarantee-below-threshold`` is deliberately not
-        carried forward. Both of its thresholds already live inside seq-20's
-        SUPPORT rules, so it filtered nothing — measured, its only observable
-        effect was adding a no-path reason naming a deposit the visitor was
-        never asked for."""
+        """INNOCENCE: ``hf.e33.guarantee-below-threshold`` — seq-21's
+        HARD_FILTER/EXCLUDE shape — is deliberately not carried forward. Its
+        two thresholds come back as ``review.e33.below-threshold-studio``
+        (``TestE33BelowThresholdStudio`` below), never as an EXCLUDE."""
         assert DELETED_SEQ21_RULE_ID not in _rules_by_id(seq22_source)
 
     def test_the_thresholds_it_duplicated_are_still_enforced_by_support_rules(
         self, seq20_source: dict[str, Any], seq22_source: dict[str, Any]
     ) -> None:
-        """The reason deleting it costs nothing: the same two bounds are
-        already ``gte`` conditions inside SUPPORT rules that seq-22 carries
-        forward untouched."""
+        """The same two bounds the B-STUDIO review rule reads are ``gte``
+        conditions inside SUPPORT rules that seq-22 carries forward
+        untouched — the donor rules ``_e33_studio_bounds`` reads from."""
         for pack in (seq20_source, seq22_source):
             rules = _rules_by_id(pack)
             deposit = rules["el.e33.deposit-basis"]
@@ -420,9 +425,7 @@ class TestNoExcludeReadsASynthesisedFact:
         support["rule_id"] = "el.synthetic.eq-false-witness"
         support["when"] = {
             "op": "all",
-            "args": [
-                {"op": "eq", "fact": "secondhome.bank_deposit_at_state_bank", "value": False}
-            ],
+            "args": [{"op": "eq", "fact": "secondhome.bank_deposit_at_state_bank", "value": False}],
         }
         tampered["rules"].append(support)
         with pytest.raises(SystemExit) as excinfo:
@@ -445,6 +448,102 @@ class TestNoExcludeReadsASynthesisedFact:
         with pytest.raises(SystemExit) as excinfo:
             assert_no_hard_filter_reads_a_synthesised_twin_basis_fact(stripped)
         assert "not measuring what it claims" in str(excinfo.value)
+
+
+class TestE33BelowThresholdStudio:
+    """D23 "OPTION B-STUDIO": the REQUIRE_REVIEW rule that replaces seq-21's
+    deleted HARD_FILTER, on the SAME bounds and the SAME `when` shape, at a
+    stage the twin-basis guard never polices."""
+
+    def test_the_studio_rule_is_present_with_seq20s_own_bounds(
+        self, seq20_source: dict[str, Any], seq22_source: dict[str, Any]
+    ) -> None:
+        """INNOCENCE: the rule exists, is a REQUIRE_REVIEW (never a
+        HARD_FILTER/EXCLUDE), and its two ``lt`` bounds are byte-identical to
+        the ``gte`` bounds inside seq-20's own ``el.e33.deposit-basis`` /
+        ``el.e33.property-basis`` — read at fold time, never typed twice."""
+        seq20_rules = _rules_by_id(seq20_source)
+        deposit_min = next(
+            node["value"]
+            for node in seq20_rules["el.e33.deposit-basis"]["when"]["args"]
+            if node.get("op") == "gte" and node.get("fact") == "secondhome.bank_deposit_usd"
+        )
+        property_min = next(
+            node["value"]
+            for node in seq20_rules["el.e33.property-basis"]["when"]["args"]
+            if node.get("op") == "gte"
+            and node.get("fact") == "secondhome.qualifying_property_value_usd"
+        )
+
+        rule = _rules_by_id(seq22_source)[E33_STUDIO_RULE_ID]
+        assert rule["stage"] == "HUMAN_REVIEW"
+        assert rule["effect"] == {"type": "REQUIRE_REVIEW", "reason_code": E33_STUDIO_REASON}
+        assert rule["on_unknown"] == "NO_EFFECT"
+        assert {
+            "op": "intersects",
+            "fact": "intent.purposes",
+            "values": ["SECOND_HOME"],
+        } in rule["when"]["args"]
+        assert {
+            "op": "lt",
+            "fact": "secondhome.bank_deposit_usd",
+            "value": deposit_min,
+        } in rule["when"]["args"]
+        assert {
+            "op": "lt",
+            "fact": "secondhome.qualifying_property_value_usd",
+            "value": property_min,
+        } in rule["when"]["args"]
+        assert deposit_min == 130_000
+        assert property_min == 1_000_000
+
+    def test_innocence_the_real_pack_still_passes_the_twin_basis_guard(
+        self, seq22_source: dict[str, Any]
+    ) -> None:
+        """The B-STUDIO rule reads two of the four synthesised twin-basis
+        facts, but at ``stage: HUMAN_REVIEW`` with no ``eq false`` — neither
+        of the guard's two refusal conditions — so the real pack stays
+        green."""
+        assert_no_hard_filter_reads_a_synthesised_twin_basis_fact(seq22_source)
+
+    def test_guilt_turning_the_studio_rule_into_a_hard_filter_aborts_the_fold(
+        self, seq22_source: dict[str, Any]
+    ) -> None:
+        """GUILT: if the B-STUDIO redesign regressed back into an EXCLUDE,
+        the SAME fold-time antibody must catch it — it polices the SHAPE (a
+        HARD_FILTER/EXCLUDE reading a synthesised twin-basis fact), not only
+        seq-21's original rule_id."""
+        tampered = copy.deepcopy(seq22_source)
+        rules_by_id = _rules_by_id(tampered)
+        studio = rules_by_id[E33_STUDIO_RULE_ID]
+        studio["stage"] = "HARD_FILTER"
+        studio["effect"] = {"type": "EXCLUDE", "reason_code": E33_STUDIO_REASON}
+        with pytest.raises(SystemExit) as excinfo:
+            assert_no_hard_filter_reads_a_synthesised_twin_basis_fact(tampered)
+        assert E33_STUDIO_RULE_ID in str(excinfo.value)
+
+    def test_guilt_reintroducing_seq21s_hard_filter_aborts_the_fold(
+        self, seq22_source: dict[str, Any]
+    ) -> None:
+        """GUILT: put seq-21's original ``hf.e33.guarantee-below-threshold``
+        back in ALONGSIDE the B-STUDIO rule — a later fold that copies both
+        by accident — and the same antibody refuses."""
+        tampered = copy.deepcopy(seq22_source)
+        studio = _rules_by_id(seq22_source)[E33_STUDIO_RULE_ID]
+        tampered["rules"].append(
+            {
+                **copy.deepcopy(studio),
+                "rule_id": DELETED_SEQ21_RULE_ID,
+                "stage": "HARD_FILTER",
+                "effect": {
+                    "type": "EXCLUDE",
+                    "reason_code": "SECOND_HOME_GUARANTEE_BELOW_THRESHOLD",
+                },
+            }
+        )
+        with pytest.raises(SystemExit) as excinfo:
+            assert_no_hard_filter_reads_a_synthesised_twin_basis_fact(tampered)
+        assert DELETED_SEQ21_RULE_ID in str(excinfo.value)
 
 
 # ---------------------------------------------------------------------------
@@ -474,8 +573,7 @@ class TestTheCureIsReachable:
         their own qualification. The exclusion firing here is correct, and
         this fold must not touch it."""
         walks = {
-            str(_read_json(path)["label"]): _read_json(path)
-            for path in _CORPUS_DIR.glob("*.json")
+            str(_read_json(path)["label"]): _read_json(path) for path in _CORPUS_DIR.glob("*.json")
         }
         overrides = dict(walks["offshore/work"]["overrides"])
         overrides["work.employer_is_indonesian_entity"] = {"status": "KNOWN", "value": False}
@@ -488,8 +586,9 @@ class TestTheCureIsReachable:
     @pytest.mark.parametrize(
         ("property_value", "expected_state"),
         [
-            (400_000, "NO_SUPPORTED_PATH"),
-            (500_000, "NO_SUPPORTED_PATH"),
+            (400_000, "HUMAN_REVIEW_REQUIRED"),
+            (999_999, "HUMAN_REVIEW_REQUIRED"),
+            (1_000_000, "SUPPORTED_CANDIDATES"),
             (1_500_000, "SUPPORTED_CANDIDATES"),
         ],
     )
@@ -499,14 +598,18 @@ class TestTheCureIsReachable:
         property_value: int,
         expected_state: str,
     ) -> None:
-        """DEFECT 3, stated as behaviour rather than as pack structure.
+        """DEFECT 3, stated as behaviour rather than as pack structure — D23
+        "OPTION B-STUDIO".
 
         A visitor who chose the property basis is never asked about a bank
         deposit, and ``fact-mapper.ts`` maps the unasked deposit facts to
         ``known(0)``/``known(false)`` so the SUPPORT twins resolve. These
         overrides are that mapping, verbatim. On seq-22 the outcome follows
-        from the property figure alone, and no reason on the sheet names a
-        deposit threshold."""
+        from the DECLARED property figure alone — below its own threshold
+        routes to the Studio (``HUMAN_REVIEW_REQUIRED``, no candidates, the
+        one named reason ``SECOND_HOME_BELOW_THRESHOLD_STUDIO``), at or above
+        it answers ``SUPPORTED_CANDIDATES [E33]`` exactly as on seq-20, with
+        no review reason at all."""
         overrides = dict(_read_json(_SECOND_HOME_PROPERTY_WALK_PATH)["overrides"])
         overrides["secondhome.qualifying_property_value_usd"] = {
             "status": "KNOWN",
@@ -523,6 +626,70 @@ class TestTheCureIsReachable:
         assert "SECOND_HOME_GUARANTEE_BELOW_THRESHOLD" not in actual["no_path_reason_codes"]
         if expected_state == "SUPPORTED_CANDIDATES":
             assert "E33" in actual["candidates"]
+            assert actual["review_reason_codes"] == []
+        else:
+            assert actual["candidates"] == []
+            assert actual["review_reason_codes"] == [E33_STUDIO_REASON]
+
+    @pytest.mark.parametrize(
+        ("deposit_value", "expected_state"),
+        [
+            (50_000, "HUMAN_REVIEW_REQUIRED"),
+            (129_999, "HUMAN_REVIEW_REQUIRED"),
+            (130_000, "SUPPORTED_CANDIDATES"),
+            (200_000, "SUPPORTED_CANDIDATES"),
+        ],
+    )
+    def test_the_deposit_basis_visitor_is_never_judged_on_an_unasked_property(
+        self,
+        seq22_compiled: compiler.CompiledRulePack,
+        deposit_value: int,
+        expected_state: str,
+    ) -> None:
+        """The mirror of the property-basis test above, on the OTHER basis:
+        ``offshore/second_home/bank_deposit`` never asks about property, and
+        ``fact-mapper.ts`` synthesises ``secondhome.qualifying_property_value_usd
+        = known(0)`` for it — already present in the committed fixture."""
+        overrides = dict(_read_json(_SECOND_HOME_BANK_DEPOSIT_WALK_PATH)["overrides"])
+        overrides["secondhome.bank_deposit_usd"] = {"status": "KNOWN", "value": deposit_value}
+
+        actual = _decide(
+            seq22_compiled, overrides, f"second_home/bank_deposit/{deposit_value} (synthesised)"
+        )
+        assert actual["state"] == expected_state
+        assert "SECOND_HOME_GUARANTEE_BELOW_THRESHOLD" not in actual["no_path_reason_codes"]
+        if expected_state == "SUPPORTED_CANDIDATES":
+            assert "E33" in actual["candidates"]
+            assert actual["review_reason_codes"] == []
+        else:
+            assert actual["candidates"] == []
+            assert actual["review_reason_codes"] == [E33_STUDIO_REASON]
+
+    def test_an_unasked_deposit_never_routes_anyone_to_the_studio(
+        self, seq22_compiled: compiler.CompiledRulePack
+    ) -> None:
+        """INNOCENCE for ``on_unknown: NO_EFFECT``: when the deposit facts are
+        genuinely UNKNOWN — never asked, never synthesised — instead of the
+        ``known(0)``/``known(false)`` ``fact-mapper.ts`` normally supplies for
+        the unchosen basis, the Studio review must NOT fire. An unasked
+        figure may never route anyone anywhere."""
+        overrides = dict(_read_json(_SECOND_HOME_PROPERTY_WALK_PATH)["overrides"])
+        overrides["secondhome.qualifying_property_value_usd"] = {
+            "status": "KNOWN",
+            "value": 400_000,
+        }
+        for fact in (
+            "secondhome.bank_deposit_usd",
+            "secondhome.bank_deposit_at_state_bank",
+            "secondhome.bank_deposit_in_own_name",
+        ):
+            overrides[fact] = {"status": "UNKNOWN", "reason": "NOT_ASKED"}
+
+        actual = _decide(
+            seq22_compiled, overrides, "second_home/property/400000/deposit_unasked (synthetic)"
+        )
+        assert E33_STUDIO_REASON not in actual["review_reason_codes"]
+        assert E33_STUDIO_REASON not in actual["no_path_reason_codes"]
 
 
 # ---------------------------------------------------------------------------

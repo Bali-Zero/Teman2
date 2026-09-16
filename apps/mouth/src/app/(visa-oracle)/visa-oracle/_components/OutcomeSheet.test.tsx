@@ -6,7 +6,11 @@ import {
   SYSTEM_REVIEW_REASON_CODES,
   demonstratedReviewCauses,
 } from "./OutcomeSheet";
-import { REVIEW_REASON_COPY } from "../_lib/engine-adapter";
+import {
+  REVIEW_REASON_COPY,
+  SECOND_HOME_STUDIO_REVIEW_REASON_CODE,
+  SECOND_HOME_STUDIO_URL,
+} from "../_lib/engine-adapter";
 import { mapDisclosedReviewFlags } from "../_lib/fact-mapper";
 import type { Language } from "../_lib/flow";
 import type {
@@ -652,5 +656,119 @@ describe("OutcomeSheet — PR-O4 review causes", () => {
         not_a_question: "unsure",
       }),
     ).toEqual([]);
+  });
+});
+
+describe("OutcomeSheet — D23 Second Home Studio", () => {
+  const reviewReasonFor = (code: string): OutcomeReason => ({
+    code,
+    message: text(`Copy for ${code}`, `Salinan untuk ${code}`),
+    sourceIds: [],
+  });
+
+  const reviewOutcome = (
+    codes: readonly [string, ...string[]],
+  ): HumanReviewOutcome => ({
+    ...common(),
+    state: "HUMAN_REVIEW_REQUIRED",
+    candidates: [],
+    reviewReasons: [
+      reviewReasonFor(codes[0]),
+      ...codes.slice(1).map(reviewReasonFor),
+    ],
+  });
+
+  function renderReview(
+    codes: readonly [string, ...string[]],
+    language: Language = "en",
+  ) {
+    return render(
+      <OutcomeSheet
+        language={language}
+        outcome={reviewOutcome(codes)}
+        facts={FACTS}
+      />,
+    );
+  }
+
+  // GUILT: the only review reason is the Studio code — this hold must never
+  // read as "a person will check", and the self-serve link must be present.
+  it("links to the Second Home Studio and drops the consultant wording when it is the only hold", () => {
+    renderReview([SECOND_HOME_STUDIO_REVIEW_REASON_CODE]);
+
+    const link = screen.getByRole("link", {
+      name: "Open the Second Home Studio",
+    });
+    expect(link).toHaveAttribute("href", SECOND_HOME_STUDIO_URL);
+
+    expect(
+      screen.queryByText(
+        "Your case needs a person’s judgment — nothing here was guessed on your behalf.",
+      ),
+    ).toBeNull();
+    expect(
+      screen.queryByRole("heading", {
+        name: "What a person will check about your case",
+      }),
+    ).toBeNull();
+    expect(
+      screen.queryByRole("heading", {
+        name: "Checks on our side, not on your answers",
+      }),
+    ).toBeNull();
+    expect(
+      screen.getByText(`Copy for ${SECOND_HOME_STUDIO_REVIEW_REASON_CODE}`),
+    ).toBeInTheDocument();
+  });
+
+  it("shows the Studio link's ID label and drops the ID consultant wording", () => {
+    renderReview([SECOND_HOME_STUDIO_REVIEW_REASON_CODE], "id");
+
+    expect(
+      screen.getByRole("link", { name: "Buka Second Home Studio" }),
+    ).toHaveAttribute("href", SECOND_HOME_STUDIO_URL);
+    expect(
+      screen.queryByText(
+        "Kasus Anda butuh penilaian manusia — tidak ada yang ditebak atas nama Anda.",
+      ),
+    ).toBeNull();
+  });
+
+  // INNOCENCE: any other review code renders exactly as before — generic
+  // body, normal case-review heading, and no Studio link anywhere.
+  it("leaves an unrelated review reason unchanged, with no Studio link", () => {
+    renderReview(["DISCLOSED_UNCERTAINTY_REVIEW"]);
+
+    expect(
+      screen.getByText(
+        "Your case needs a person’s judgment — nothing here was guessed on your behalf.",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", {
+        name: "What a person will check about your case",
+      }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("link", { name: "Open the Second Home Studio" }),
+    ).toBeNull();
+  });
+
+  // A case that ALSO carries a different hold keeps the generic body and the
+  // normal groups — the override is scoped to "Studio is the ONLY reason".
+  it("keeps the generic body, and still links the Studio, when the Studio code shares the hold with another reason", () => {
+    renderReview([
+      SECOND_HOME_STUDIO_REVIEW_REASON_CODE,
+      "DISCLOSED_UNCERTAINTY_REVIEW",
+    ]);
+
+    expect(
+      screen.getByText(
+        "Your case needs a person’s judgment — nothing here was guessed on your behalf.",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: "Open the Second Home Studio" }),
+    ).toHaveAttribute("href", SECOND_HOME_STUDIO_URL);
   });
 });

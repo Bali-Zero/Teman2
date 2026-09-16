@@ -15,7 +15,8 @@ So this fold chains to seq-20, not to seq-21::
     previous_payload_sha256 = df02287b7fc8f572a9e6674fdf3445a2131c428e8a1492ab8a388dee5bf01a4d
 
 and carries seq-21's CONTENT with two of its three defects cured and the
-third one deleted.
+third one REDESIGNED, not deleted (owner decision D23 "OPTION B-STUDIO",
+2026-09-16 — see DEFECT 3 below).
 
 EDITS
 =====
@@ -24,6 +25,8 @@ EDITS
    products seq-21 unlocked: E23U E23V E28B E28C E28D E28F E33A E33B E33C.
 3. Insert ONE ``HARD_FILTER`` — ``hf.employment-without-indonesian-sponsor``,
    scoped to ``EMPLOYMENT_SPONSOR_PRODUCT_CODES = ("E23", "E33B")``.
+4. Insert ONE ``REQUIRE_REVIEW`` — ``review.e33.below-threshold-studio``,
+   the B-STUDIO redesign of DEFECT 3.
 
 DEFECT 1 — E23V, CURED HERE
 ============================
@@ -56,7 +59,9 @@ Indonesian one. An applicant who genuinely qualifies for E33B and answers
 ``work.employer_is_indonesian_entity == false`` is contradicting their own
 qualification, not being wrongly turned away.
 
-DEFECT 3 — hf.e33.guarantee-below-threshold, DELETED, NOT REDESIGNED
+DEFECT 3 — hf.e33.guarantee-below-threshold: HARD_FILTER STAYS OUT, its
+THRESHOLDS COME BACK as a REQUIRE_REVIEW (owner decision D23 "OPTION
+B-STUDIO", 2026-09-16)
 =====================================================================
 seq-21 added a ``HARD_FILTER``/``EXCLUDE`` firing on
 ``secondhome.bank_deposit_usd < 130000`` AND
@@ -71,36 +76,49 @@ exists precisely for this: it forbids ANY rule with stage
 ``HARD_FILTER``/``EXCLUDE`` (or effect ``EXCLUDE``) from naming one of the
 four synthesised Second-Home facts.
 
-The rule is DELETED rather than reshaped, because MEASUREMENT says reshaping
-buys nothing:
+The first fold's answer was to DELETE the rule outright; the owner's D23
+ruling REJECTS that outcome — a below-threshold visitor should not read a
+dead end (``NO_SUPPORTED_PATH``, the catalogue sentence), they should be
+routed to the **Second Home Studio**
+(``https://balizero.com/visa/second-home/studio``), where they see the
+routes and the numbers for their own case. Human review is explicitly NOT
+the redesign: the copy behind ``SECOND_HOME_BELOW_THRESHOLD_STUDIO`` never
+says a consultant reviews anything (``engine-adapter.ts``); the stage is
+``HUMAN_REVIEW``/``REQUIRE_REVIEW`` only because that is the state machine's
+one non-terminal, revisitable outcome — the SAME reason B-STUDIO's own
+brief calls it "not NO_PATH".
 
-* The guard is STRUCTURAL, not value-based. Replica of its traversal over
-  both candidates: keeping the rule -> 7 rules read the guarded facts,
-  ``offending_stage = ['hf.e33.guarantee-below-threshold']``; deleting it ->
-  6 rules read them, ``offending_stage = []``. No rewriting of the ``when``
-  tree saves a rule whose stage is ``HARD_FILTER``.
-* The rule FILTERS NOTHING. Both thresholds already live inside seq-20's
-  SUPPORT rules (``el.e33.deposit-basis`` ``gte 130000``,
-  ``el.e33.property-basis`` ``gte 1000000``, plus
-  ``el.e33.property-qualification`` and ``el.e33.guarantee-maintenance``).
-  Evaluated in-process on a property-basis visitor with the facts EXACTLY as
-  ``fact-mapper.ts`` maps them (deposit ``known(0)``, state-bank and own-name
-  ``known(false)``): property 400_000 -> ``NO_SUPPORTED_PATH`` with the rule
-  and without it; 500_000 -> ``NO_SUPPORTED_PATH`` both ways; 1_500_000 ->
-  ``SUPPORTED_CANDIDATES [E33]`` both ways; honest deposit basis ->
-  ``SUPPORTED [E33]`` both ways. State and candidates are IDENTICAL in every
-  scenario. The single observable difference is the no-path sheet: with the
-  rule it carries ``SECOND_HOME_GUARANTEE_BELOW_THRESHOLD``, a reason naming
-  a deposit the visitor was never asked for.
-* Nothing is lost applicant-side. The frontend already names the real figures
-  from the facts the visitor DID declare (``engine-adapter.test.ts``, "names
-  the property threshold ... D3-1 invest route"), through
-  ``OPERATIONAL_NO_PRODUCT_MATCHES_DECLARED_PURPOSES`` — the very reason the
-  HARD_FILTER would displace.
+``review.e33.below-threshold-studio`` (``build_e33_studio_review_rule``)
+reinstates the exact ``when`` seq-21's HARD_FILTER carried —
+``intent.purposes intersects [SECOND_HOME]`` AND both thresholds, READ from
+seq-20's own SUPPORT rules at fold time exactly as ``_e33_guarantee_bounds``
+did for seq-21 (never typed twice, so a moved bound aborts the fold instead
+of drifting silently) — but as ``stage: HUMAN_REVIEW`` /
+``effect: {type: REQUIRE_REVIEW, reason_code:
+SECOND_HOME_BELOW_THRESHOLD_STUDIO}`` instead of ``HARD_FILTER``/``EXCLUDE``.
+
+Why this is STILL "declared facts only", the same guarantee the deletion
+used to make: the conjunction fires only when NO basis clears its own
+threshold. For the basis the visitor did NOT choose, ``fact-mapper.ts``
+synthesises ``known(0)`` — so that conjunct (``< threshold``) is TRIVIALLY
+true regardless of what the visitor said, and the rule's truth value
+collapses onto the ONE conjunct that is never synthesised: the DECLARED
+basis's own figure against its own threshold. A property-basis visitor at
+400_000 fires it on their own declared 400_000 < 1_000_000; the untouched,
+synthesised deposit conjunct (``known(0) < 130000``) is along for the ride,
+not the cause. Because the stage is ``HUMAN_REVIEW`` — never
+``HARD_FILTER``/``EXCLUDE`` — and the rule contains no ``eq false`` on a
+synthesised fact, ``assert_no_hard_filter_reads_a_synthesised_twin_basis_fact``
+below and ``engine-adapter.test.ts``'s twin-basis guard both stay GREEN: the
+antibody was written against the SHAPE (an EXCLUDE reading a synthesised
+fact), not against the two numbers, and this redesign never reintroduces
+that shape.
 
 ``assert_no_hard_filter_reads_a_synthesised_twin_basis_fact`` below is the
-antibody: this fold now REFUSES to emit a pack that reintroduces the shape,
-so the defect cannot come back through a later fold that copies this one.
+antibody: this fold still REFUSES to emit a pack in which a ``HARD_FILTER``/
+``EXCLUDE`` reintroduces the shape, so the ORIGINAL defect cannot come back
+through a later fold that copies this one — it says nothing about the
+REQUIRE_REVIEW rule this fold adds, by design.
 
 ANCHOR: seq-20 (previous_payload_sha256 =
 df02287b7fc8f572a9e6674fdf3445a2131c428e8a1492ab8a388dee5bf01a4d)
@@ -122,7 +140,7 @@ import sys
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
+from typing import Any, NoReturn
 
 from backend.services.visa_engine.bundle import (
     RulePackVerificationError,
@@ -256,6 +274,18 @@ SUPPORT_RULE_IDS: tuple[str, ...] = tuple(row["rule_id"] for row in SUPPORT_RULE
 #: "DEFECT 3".
 DELETED_SEQ21_RULE_ID = "hf.e33.guarantee-below-threshold"
 
+#: D23 "OPTION B-STUDIO" (2026-09-16): the REQUIRE_REVIEW rule that carries
+#: seq-21's two E33 thresholds back in, on the SAME `when` shape, at
+#: `stage: HUMAN_REVIEW` instead of `HARD_FILTER`/`EXCLUDE`. See the module
+#: docstring, "DEFECT 3".
+E33_STUDIO_RULE_ID = "review.e33.below-threshold-studio"
+E33_STUDIO_REASON = "SECOND_HOME_BELOW_THRESHOLD_STUDIO"
+#: The two SUPPORT rules whose own `gte` bounds this fold reads rather than
+#: types — the same donor rules `fold_pack_seq21.py`'s
+#: `_e33_guarantee_bounds` read for the HARD_FILTER this rule replaces.
+E33_DEPOSIT_DONOR_RULE_ID = "el.e33.deposit-basis"
+E33_PROPERTY_DONOR_RULE_ID = "el.e33.property-basis"
+
 #: The four Second-Home facts ``fact-mapper.ts`` SYNTHESISES for whichever
 #: basis the visitor did not choose. Mirror of ``GUARDED_FACTS`` in
 #: ``engine-adapter.test.ts``'s twin-basis guard — kept here so the BACKEND
@@ -280,7 +310,9 @@ CURED_PRODUCT_CODE = "E23V"
 EMPLOYMENT_SPONSOR_PRODUCT_CODES: tuple[str, ...] = ("E23", "E33B")
 
 HARD_FILTER_RULE_IDS: tuple[str, ...] = (EMPLOYMENT_SPONSOR_RULE_ID,)
-NEW_RULE_IDS: tuple[str, ...] = SUPPORT_RULE_IDS + HARD_FILTER_RULE_IDS
+#: D23 "OPTION B-STUDIO": the one REQUIRE_REVIEW rule this fold adds.
+REVIEW_RULE_IDS: tuple[str, ...] = (E33_STUDIO_RULE_ID,)
+NEW_RULE_IDS: tuple[str, ...] = SUPPORT_RULE_IDS + HARD_FILTER_RULE_IDS + REVIEW_RULE_IDS
 
 TARGET_PRODUCT_CODES: tuple[str, ...] = tuple(row["product_code"] for row in SUPPORT_RULES)
 
@@ -301,7 +333,7 @@ def _rule_pack_id(sequence: int) -> uuid.UUID:
     return uuid.uuid5(uuid.NAMESPACE_URL, f"{_RULE_PACK_ID_URL_PREFIX}{sequence}")
 
 
-def _fail(message: str) -> None:
+def _fail(message: str) -> NoReturn:
     raise SystemExit(f"fold_pack_seq22: {message}")
 
 
@@ -402,9 +434,7 @@ def _assert_retired_review_rules_are_dormant(payload: dict[str, Any]) -> None:
         if rule is None:
             _fail(f"rule {rule_id!r} is not in the base pack — the edit set is stale")
         if rule["effect"]["type"] != "REQUIRE_REVIEW":
-            _fail(
-                f"{rule_id!r} is a {rule['effect']['type']} rule, not REQUIRE_REVIEW"
-            )
+            _fail(f"{rule_id!r} is a {rule['effect']['type']} rule, not REQUIRE_REVIEW")
         if REQUESTED_PRODUCT_FACT not in (rule.get("required_facts") or []):
             _fail(
                 f"{rule_id!r} no longer reads {REQUESTED_PRODUCT_FACT} — it can now "
@@ -424,6 +454,36 @@ def _bound_nodes(rule: dict[str, Any], fact: str, op: str) -> list[dict[str, Any
         for node in _nodes(rule.get("when"))
         if node.get("fact") == fact and node.get("op") == op
     ]
+
+
+def _e33_studio_bounds(payload: dict[str, Any]) -> tuple[int, int]:
+    """``(deposit_usd_minimum, property_usd_minimum)``, READ from the two E33
+    SUPPORT rules that already encode them — mirrors
+    ``fold_pack_seq21.py``'s ``_e33_guarantee_bounds`` exactly, for the same
+    reason: typing the bound here a second time could drift from the number
+    the SUPPORT rule uses, and the review rule would fire on a threshold the
+    product itself no longer enforces. See the module docstring, DEFECT 3.
+    """
+    rules_by_id = _rules_by_id(payload)
+    bounds: list[int] = []
+    for rule_id, fact in (
+        (E33_DEPOSIT_DONOR_RULE_ID, DEPOSIT_FACT),
+        (E33_PROPERTY_DONOR_RULE_ID, PROPERTY_FACT),
+    ):
+        rule = rules_by_id.get(rule_id)
+        if rule is None:
+            _fail(f"rule {rule_id!r} is missing — cannot derive the E33 studio bound")
+        nodes = _bound_nodes(rule, fact, "gte")
+        if len(nodes) != 1:
+            _fail(
+                f"rule {rule_id!r} carries {len(nodes)} '{fact} gte' bounds; exactly "
+                "one is required to mirror it unambiguously"
+            )
+        value = nodes[0]["value"]
+        if not isinstance(value, int) or isinstance(value, bool) or value <= 0:
+            _fail(f"rule {rule_id!r}'s '{fact} gte' bound is {value!r}, not a positive integer")
+        bounds.append(value)
+    return bounds[0], bounds[1]
 
 
 def _assert_e23v_stays_cured(codes: tuple[str, ...]) -> None:
@@ -457,9 +517,7 @@ def _assert_employment_sponsor_scope_is_coherent(payload: dict[str, Any]) -> Non
     if EMPLOYER_IS_INDONESIAN_FACT not in {
         node.get("fact") for rule in payload["rules"] for node in _nodes(rule.get("when"))
     }:
-        _fail(
-            f"no rule in the base pack reads {EMPLOYER_IS_INDONESIAN_FACT}"
-        )
+        _fail(f"no rule in the base pack reads {EMPLOYER_IS_INDONESIAN_FACT}")
 
 
 def _sponsor_premise_values(row: dict[str, Any]) -> set[str] | None:
@@ -565,10 +623,43 @@ def build_employment_sponsor_rule(payload: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def build_e33_studio_review_rule(payload: dict[str, Any]) -> dict[str, Any]:
+    """D23 "OPTION B-STUDIO": the REQUIRE_REVIEW rule that carries seq-21's
+    two E33 thresholds back in, at ``stage: HUMAN_REVIEW`` instead of
+    ``HARD_FILTER``/``EXCLUDE``. See the module docstring, DEFECT 3."""
+    deposit_min, property_min = _e33_studio_bounds(payload)
+    products = _products_by_code(payload)
+    product = products["E33"]
+    when = {
+        "op": "all",
+        "args": [
+            {"op": "intersects", "fact": "intent.purposes", "values": ["SECOND_HOME"]},
+            {"op": "lt", "fact": DEPOSIT_FACT, "value": deposit_min},
+            {"op": "lt", "fact": PROPERTY_FACT, "value": property_min},
+        ],
+    }
+    return {
+        "when": when,
+        "scope": "PRODUCTS",
+        "stage": "HUMAN_REVIEW",
+        "effect": {"type": "REQUIRE_REVIEW", "reason_code": E33_STUDIO_REASON},
+        "rule_id": E33_STUDIO_RULE_ID,
+        "priority": 100,
+        "on_unknown": "NO_EFFECT",
+        "source_refs": list(product["source_refs"]),
+        "valid_period": {"to": None, "from": NEW_RULE_VALID_FROM},
+        "required_facts": _required_facts(when),
+        "explanation_key": f"explain.{E33_STUDIO_RULE_ID}",
+        "safety_critical": False,
+        "product_version_ids": [product["product_version_id"]],
+    }
+
+
 def build_new_rules(payload: dict[str, Any]) -> list[dict[str, Any]]:
     return [
         *(build_support_rule(payload, row) for row in SUPPORT_RULES),
         build_employment_sponsor_rule(payload),
+        build_e33_studio_review_rule(payload),
     ]
 
 
@@ -717,7 +808,9 @@ def assert_changed_fields_hold_their_expected_values(
             _fail(f"no ELIGIBILITY rule for {product_code} found")
 
 
-def fold(seq20: dict[str, Any], seq20_signed: dict[str, Any], *, observed_at: datetime | None = None) -> dict[str, Any]:
+def fold(
+    seq20: dict[str, Any], seq20_signed: dict[str, Any], *, observed_at: datetime | None = None
+) -> dict[str, Any]:
     digest = hashlib.sha256(canonicalize_json(seq20)).hexdigest()
     if digest != SEQ20_PAYLOAD_SHA256:
         _fail(
@@ -772,7 +865,9 @@ def _assert_output_does_not_collide_with_inputs(output: Path, input_paths: dict[
         if resolved_output == path.resolve():
             _fail(f"--output {output} resolves to the same file as {flag} ({path})")
     if resolved_output.name.endswith(".signed.json"):
-        _fail(f"--output {output} ends in '.signed.json' — refusing to write unsigned bytes to a signed path")
+        _fail(
+            f"--output {output} ends in '.signed.json' — refusing to write unsigned bytes to a signed path"
+        )
 
 
 def main(argv: list[str] | None = None, *, observed_at: datetime | None = None) -> int:
@@ -813,8 +908,12 @@ def main(argv: list[str] | None = None, *, observed_at: datetime | None = None) 
     print(f"fold_pack_seq22: wrote {args.output}")
     print(f"fold_pack_seq22: seq-22 payload_sha256 = {digest}")
     print("fold_pack_seq22: retired 9 REQUIRE_REVIEW rules")
-    print("fold_pack_seq22: inserted 9 ELIGIBILITY/SUPPORT rules + 1 HARD_FILTER rule")
+    print(
+        "fold_pack_seq22: inserted 9 ELIGIBILITY/SUPPORT rules + 1 HARD_FILTER rule "
+        "+ 1 REQUIRE_REVIEW rule"
+    )
     print(f"fold_pack_seq22: removed E23V from {EMPLOYMENT_SPONSOR_RULE_ID!r}")
+    print(f"fold_pack_seq22: added {E33_STUDIO_RULE_ID!r} (D23 OPTION B-STUDIO)")
     print("fold_pack_seq22: NOT SIGNED, NOT ACTIVATED — see sign_pack.py / activate_pack.py")
     return 0
 

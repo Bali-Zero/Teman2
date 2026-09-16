@@ -1016,19 +1016,31 @@ _SEQ21_OUTCOME_CHANGES: dict[str, tuple[str, tuple[str, ...]]] = {
 }
 
 #: E23V-DEFECT (mission seq-22): seq-22's changes over seq-20, identical to
-#: `_SEQ21_OUTCOME_CHANGES` with one addition — the walk seq-21 added AFTER
-#: (mission seq-22, corpus 111 -> 112) and never itself moved on seq-21.
-#: `fold_pack_seq22.py` scopes `hf.employment-without-indonesian-sponsor` to
-#: `("E23", "E33B")` only (E23V removed, DEFECT 1 cured), so this trade-office
-#: applicant's honest `work.employer_is_indonesian_entity == false` no longer
-#: excludes E23V — the walk answers instead of dead-ending. Measured against
-#: `rulepack-prod-022.source.json`.
+#: `_SEQ21_OUTCOME_CHANGES` with three additions.
+#:
+#: 1. The walk seq-21 added AFTER it (mission seq-22, corpus 111 -> 112) and
+#:    never itself moved on seq-21. `fold_pack_seq22.py` scopes
+#:    `hf.employment-without-indonesian-sponsor` to `("E23", "E33B")` only
+#:    (E23V removed, DEFECT 1 cured), so this trade-office applicant's
+#:    honest `work.employer_is_indonesian_entity == false` no longer
+#:    excludes E23V — the walk answers instead of dead-ending.
+#: 2. and 3. D23 "OPTION B-STUDIO" (2026-09-16, DEFECT 3's redesign): the two
+#:    `offshore/invest/{property,bank_deposit}/below_threshold` walks move
+#:    from `NO_SUPPORTED_PATH` to `HUMAN_REVIEW_REQUIRED`, held by
+#:    `review.e33.below-threshold-studio` (`SECOND_HOME_BELOW_THRESHOLD_
+#:    STUDIO`) — each walk's own DECLARED figure (property 500_000 <
+#:    1_000_000; deposit 50_000 < 130_000) is below its own threshold, and
+#:    the twin basis's SYNTHESISED `known(0)` conjunct is along for the ride,
+#:    never the cause (see `fold_pack_seq22.py`'s DEFECT 3). Neither walk had
+#:    a candidate to lose. Measured against `rulepack-prod-022.source.json`.
 _SEQ22_OUTCOME_CHANGES: dict[str, tuple[str, tuple[str, ...]]] = {
     **_SEQ21_OUTCOME_CHANGES,
     "offshore/work/sponsor_government/trade_office_only/employer_no": (
         "SUPPORTED_CANDIDATES",
         ("E23V",),
     ),
+    "offshore/invest/property/below_threshold": ("HUMAN_REVIEW_REQUIRED", ()),
+    "offshore/invest/bank_deposit/below_threshold": ("HUMAN_REVIEW_REQUIRED", ()),
 }
 
 EXPECTED_OUTCOME_BY_SEQUENCE: dict[int, dict[str, tuple[str, tuple[str, ...]]]] = {
@@ -1961,15 +1973,26 @@ def test_walk_state_census_is_the_pinned_census_of_the_signed_sequence(
     move, so it needs no ``_SEQ21_OUTCOME_CHANGES`` row. No existing walk
     moves.
 
-    THE SEQ-22 FOLD (THIS PR) adds no walk — the corpus stays 112 — and
-    cures the defect the walk above is named for:
+    THE SEQ-22 FOLD (a previous PR) added no walk — the corpus stayed 112 —
+    and cured the defect the walk above is named for:
     ``fold_pack_seq22.py`` scopes ``hf.employment-without-indonesian-
     sponsor`` to ``("E23", "E33B")`` only, so the employer_no walk's pin
-    finally MOVES, against the seq-22 candidate (the highest unsigned
+    finally MOVED, against the seq-22 candidate (the highest unsigned
     source above signed seq-20 today — seq-21 stopped before its own
     signature and never will be signed): SUPPORTED_CANDIDATES [E23V],
     1/1/17/93 -> 1/1/16/94 over the same 112-walk corpus. No other walk
-    moves."""
+    moved then.
+
+    D23 "OPTION B-STUDIO" (THIS PR, 2026-09-16) redesigns DEFECT 3: the
+    HARD_FILTER/EXCLUDE seq-21 added and the first seq-22 fold deleted comes
+    back as ``review.e33.below-threshold-studio``, a REQUIRE_REVIEW on the
+    SAME two thresholds (see ``fold_pack_seq22.py``'s DEFECT 3 and
+    ``_SEQ22_OUTCOME_CHANGES``). The two walks that used to prove the
+    deletion cost nothing — ``offshore/invest/{property,bank_deposit}/
+    below_threshold`` — now hold on ``SECOND_HOME_BELOW_THRESHOLD_STUDIO``
+    instead of answering ``NO_SUPPORTED_PATH``: 1/1/16/94 -> 3/1/14/94 over
+    the same 112-walk corpus. No other walk moves; SUPPORTED_CANDIDATES is
+    unaffected because neither walk ever named a candidate."""
 
     census = dict(Counter(outcome["state"] for outcome in outcomes.values()))
     by_sequence = {
@@ -1986,9 +2009,9 @@ def test_walk_state_census_is_the_pinned_census_of_the_signed_sequence(
             "SUPPORTED_CANDIDATES": 93,
         },
         22: {
-            "HUMAN_REVIEW_REQUIRED": 1,
+            "HUMAN_REVIEW_REQUIRED": 3,
             "NEEDS_INPUT": 1,
-            "NO_SUPPORTED_PATH": 16,
+            "NO_SUPPORTED_PATH": 14,
             "SUPPORTED_CANDIDATES": 94,
         },
     }

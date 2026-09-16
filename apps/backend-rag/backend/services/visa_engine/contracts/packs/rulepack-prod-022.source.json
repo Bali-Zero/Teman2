@@ -6429,6 +6429,53 @@
         "e1d761e9-56c5-57c3-9c01-986d3c333157",
         "32b6fb5f-5a24-5763-95f9-0b77be18353c"
       ]
+    },
+    {
+      "when": {
+        "op": "all",
+        "args": [
+          {
+            "op": "intersects",
+            "fact": "intent.purposes",
+            "values": ["SECOND_HOME"]
+          },
+          {
+            "op": "lt",
+            "fact": "secondhome.bank_deposit_usd",
+            "value": 130000
+          },
+          {
+            "op": "lt",
+            "fact": "secondhome.qualifying_property_value_usd",
+            "value": 1000000
+          }
+        ]
+      },
+      "scope": "PRODUCTS",
+      "stage": "HUMAN_REVIEW",
+      "effect": {
+        "type": "REQUIRE_REVIEW",
+        "reason_code": "SECOND_HOME_BELOW_THRESHOLD_STUDIO"
+      },
+      "rule_id": "review.e33.below-threshold-studio",
+      "priority": 100,
+      "on_unknown": "NO_EFFECT",
+      "source_refs": [
+        "6f5135f2-1f77-571f-88ed-26d1d2b9efba",
+        "9248b1d7-9172-54d9-ad61-251e83a2285b"
+      ],
+      "valid_period": {
+        "to": null,
+        "from": "2026-09-16T00:00:00Z"
+      },
+      "required_facts": [
+        "intent.purposes",
+        "secondhome.bank_deposit_usd",
+        "secondhome.qualifying_property_value_usd"
+      ],
+      "explanation_key": "explain.review.e33.below-threshold-studio",
+      "safety_critical": false,
+      "product_version_ids": ["cf4d7f3d-1253-5036-8953-79ab3d3e7009"]
     }
   ],
   "version": "2026.9.16",

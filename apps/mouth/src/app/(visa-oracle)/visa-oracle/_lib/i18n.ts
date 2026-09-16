@@ -977,6 +977,10 @@ const en = {
   "outcome.review_cause_edit_aria": "Edit your answer to: {{question}}",
   "outcome.overstay_reassurance":
     "Overstay is fixable. It is not the end of your story here.",
+  // D23 "OPTION B-STUDIO" (2026-09-16): this ONE review code is never
+  // introduced with "needs a person's judgment" (`outcome.human_review_
+  // body`) — it routes to a self-serve calculator, not a person.
+  "outcome.second_home_studio_link": "Open the Second Home Studio",
 
   "prototype.badge": "Visa decision support",
   "prototype.badge.detail":
@@ -1962,6 +1966,7 @@ const id: Record<Keys, string> = {
   "outcome.review_cause_edit_aria": "Ubah jawaban Anda pada: {{question}}",
   "outcome.overstay_reassurance":
     "Overstay bisa diselesaikan. Ini bukan akhir cerita Anda di sini.",
+  "outcome.second_home_studio_link": "Buka Second Home Studio",
 
   "prototype.badge": "Dukungan keputusan visa",
   "prototype.badge.detail":

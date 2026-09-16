@@ -38,6 +38,10 @@ import {
 import { translate, type I18nKey } from "../_lib/i18n";
 import { ACTIVITY_BOUNDARY_DECIDABLE_ANSWERS } from "../_lib/fact-mapper";
 import {
+  SECOND_HOME_STUDIO_REVIEW_REASON_CODE,
+  SECOND_HOME_STUDIO_URL,
+} from "../_lib/engine-adapter";
+import {
   DISPLAY_ORDER,
   assumptionDisplay,
   formatFactDisplay,
@@ -659,6 +663,19 @@ export function OutcomeSheet({
   const caseReviewReasons = reviewReasons.filter(
     (reason) => !SYSTEM_REVIEW_REASON_CODES.has(reason.code),
   );
+  // D23 "OPTION B-STUDIO": this hold is never introduced as needing a
+  // person's judgment — it routes to a self-serve calculator. Scoped to the
+  // case where this is the ONLY review reason: a case that ALSO carries a
+  // different hold still needs the generic body and the normal groups for
+  // that other reason.
+  const isSecondHomeStudioOnly =
+    reviewReasons.length > 0 &&
+    reviewReasons.every(
+      (reason) => reason.code === SECOND_HOME_STUDIO_REVIEW_REASON_CODE,
+    );
+  const carriesSecondHomeStudio = reviewReasons.some(
+    (reason) => reason.code === SECOND_HOME_STUDIO_REVIEW_REASON_CODE,
+  );
   const [checkedDocs, setCheckedDocs] = useState<Set<string>>(new Set());
   const [shareState, setShareState] = useState<
     "idle" | "copied" | "shared" | "failed"
@@ -788,23 +805,61 @@ export function OutcomeSheet({
 
       {outcome.state === "HUMAN_REVIEW_REQUIRED" && (
         <section>
-          <p>{translate(language, "outcome.human_review_body")}</p>
-          <ReviewReasonGroup
-            language={language}
-            titleKey={"outcome.review_group_case.title" as I18nKey}
-            reasons={caseReviewReasons}
-            sources={sourceIndex}
-            facts={facts}
-            onEditMissingInput={onEditMissingInput}
-          />
-          <ReviewReasonGroup
-            language={language}
-            titleKey={"outcome.review_group_system.title" as I18nKey}
-            reasons={systemReviewReasons}
-            sources={sourceIndex}
-            facts={facts}
-            onEditMissingInput={onEditMissingInput}
-          />
+          {/* D23 "OPTION B-STUDIO": SECOND_HOME_BELOW_THRESHOLD_STUDIO is
+              never introduced as "a person will check" — it routes to a
+              self-serve calculator, not a person. The generic body and the
+              two ReviewReasonGroup headings ("What a person will check...")
+              are both about a HUMAN reviewing, so both are skipped when this
+              is the only review reason; the reason's own copy (from
+              REVIEW_REASON_COPY) still renders via ReasonList below, plus an
+              explicit link to the Studio. A case that ALSO carries a
+              different hold keeps the generic body and normal groups, and
+              still gets the Studio link. */}
+          {isSecondHomeStudioOnly ? (
+            <>
+              <ReasonList
+                language={language}
+                reasons={caseReviewReasons}
+                sources={sourceIndex}
+                causeFacts={facts}
+                onEditMissingInput={onEditMissingInput}
+              />
+              <p>
+                <a href={SECOND_HOME_STUDIO_URL}>
+                  {translate(language, "outcome.second_home_studio_link")}
+                  <ArrowRight aria-hidden="true" size={14} />
+                </a>
+              </p>
+            </>
+          ) : (
+            <>
+              <p>{translate(language, "outcome.human_review_body")}</p>
+              <ReviewReasonGroup
+                language={language}
+                titleKey={"outcome.review_group_case.title" as I18nKey}
+                reasons={caseReviewReasons}
+                sources={sourceIndex}
+                facts={facts}
+                onEditMissingInput={onEditMissingInput}
+              />
+              <ReviewReasonGroup
+                language={language}
+                titleKey={"outcome.review_group_system.title" as I18nKey}
+                reasons={systemReviewReasons}
+                sources={sourceIndex}
+                facts={facts}
+                onEditMissingInput={onEditMissingInput}
+              />
+              {carriesSecondHomeStudio && (
+                <p>
+                  <a href={SECOND_HOME_STUDIO_URL}>
+                    {translate(language, "outcome.second_home_studio_link")}
+                    <ArrowRight aria-hidden="true" size={14} />
+                  </a>
+                </p>
+              )}
+            </>
+          )}
         </section>
       )}
 
