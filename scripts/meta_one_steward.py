@@ -34,6 +34,7 @@ Contracts:
 from __future__ import annotations
 
 import argparse
+import fcntl
 import json
 import os
 import re
@@ -45,6 +46,7 @@ import urllib.request
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Callable
+from zoneinfo import ZoneInfo
 
 _REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(_REPO))
@@ -83,6 +85,11 @@ QUOTA_EXPIRING_DAYS = 5
 QUOTA_EXPIRING_FRACTION = 0.5
 HTTP_TIMEOUT_S = 15.0
 
+# All calendar-day semantics (month bucket, days-to-month-end, dead-since
+# date) are computed on the WITA business day, not UTC — a 00:00-08:00 UTC
+# tick is already the next WITA day. Timestamps (ts, updated_at) stay UTC.
+WITA = ZoneInfo("Asia/Makassar")
+
 _ACCESS_TOKEN_RE = re.compile(r"access_token=[^&\s]+")
 
 
@@ -118,8 +125,22 @@ def queue_path() -> Path:
 
 
 def _redact(text: str) -> str:
-    """Strip any `access_token=...` fragment before it reaches a log/message."""
-    return _ACCESS_TOKEN_RE.sub("access_token=REDACTED", text)
+    """Strip any `access_token=...` fragment AND any raw configured token
+    VALUE (read live from TOKEN_ENV_VARS) before it reaches a log/message.
+
+    The `access_token=` regex alone only catches the token when it is still
+    attached to that query-param spelling; an exception message that embeds
+    the bare token value (e.g. a urllib error echoing the full request URL
+    without that literal, or a downstream library reformatting it) would
+    pass through untouched. Every configured token's raw value is therefore
+    also scrubbed by literal substring replacement, on every call.
+    """
+    redacted = _ACCESS_TOKEN_RE.sub("access_token=REDACTED", text)
+    for name in TOKEN_ENV_VARS:
+        val = os.environ.get(name)
+        if val:
+            redacted = redacted.replace(val, "REDACTED")
+    return redacted
 
 
 # ---------------------------------------------------------------- atomic IO
@@ -186,10 +207,17 @@ def probe_token(
 ) -> tuple[str, dict[str, Any]]:
     """Classify the token: 'alive' | 'dead' | 'unknown'. Never raises.
 
-    'dead' requires positive evidence (HTTP 400/401 + OAuthException in the
-    body). Everything else — no token, network error, timeout, an
-    unexpected status, a 200 without a username — is 'unknown', which is
-    warning-worthy but NEVER treated as dead (guilt needs evidence).
+    'dead' requires positive evidence: HTTP 400/401 AND the parsed JSON
+    body's `error.type == "OAuthException"` (or `error.code == 190`) — never
+    a substring match against truncated text. Classification always parses
+    the FULL body first; truncation happens only afterwards, for the
+    diagnostic copy that gets stored/logged — a long body can never hide the
+    evidence, and an unrelated error.type whose free-text `message` merely
+    mentions "OAuthException" can never manufacture it either way.
+    Everything else — no token, network error, timeout, an unexpected
+    status (incl. 500/502/503 even if their body mentions OAuthException), a
+    200 without a username — is 'unknown', which is warning-worthy but
+    NEVER treated as dead (guilt needs evidence).
     """
     if not token:
         return "unknown", {"reason": "no-token"}
@@ -200,7 +228,6 @@ def probe_token(
     except Exception as exc:  # network/timeout/other — never dead
         return "unknown", {"reason": _redact(str(exc))}
 
-    redacted_body = _redact(body)[:500]
     if status == 200:
         try:
             data = json.loads(body)
@@ -209,8 +236,25 @@ def probe_token(
         if isinstance(data, dict) and data.get("username"):
             return "alive", {"username": data.get("username"), "id": data.get("id")}
         return "unknown", {"reason": "no-username-in-200", "http_status": status}
-    if status in (400, 401) and "OAuthException" in redacted_body:
-        return "dead", {"http_status": status, "body": redacted_body}
+
+    redacted_body = _redact(body)[:500]  # diagnostic copy ONLY — never used for classification
+
+    if status in (400, 401):
+        error_type = None
+        error_code = None
+        try:
+            data = json.loads(body)  # full, untruncated body
+            if isinstance(data, dict):
+                err = data.get("error")
+                if isinstance(err, dict):
+                    error_type = err.get("type")
+                    error_code = err.get("code")
+        except Exception:
+            pass
+        if error_type == "OAuthException" or error_code == 190:
+            return "dead", {"http_status": status, "error_type": error_type, "body": redacted_body}
+        return "unknown", {"http_status": status, "error_type": error_type, "body": redacted_body}
+
     return "unknown", {"http_status": status, "body": redacted_body}
 
 
@@ -249,17 +293,28 @@ def _fetch_metrics(token: str, now: datetime, *, timeout: float = HTTP_TIMEOUT_S
 # ---------------------------------------------------------------- quota math
 
 
+def _to_wita(now: datetime) -> datetime:
+    """Timestamps are stored/compared in UTC; every CALENDAR-DAY decision
+    (month bucket, days-to-month-end, dead-since date) is made on the WITA
+    business day — a tick at 2026-09-30T22:30:00Z is already 2026-10-01
+    06:30 in Asia/Makassar, so it must bucket into October, not September."""
+    if now.tzinfo is None:
+        now = now.replace(tzinfo=timezone.utc)
+    return now.astimezone(WITA)
+
+
 def _month_key(now: datetime) -> str:
-    return now.strftime("%Y-%m")
+    return _to_wita(now).strftime("%Y-%m")
 
 
 def days_to_month_end(now: datetime) -> int:
-    if now.month == 12:
+    local = _to_wita(now)
+    if local.month == 12:
         last_day = 31
     else:
-        first_of_next = now.replace(month=now.month + 1, day=1)
+        first_of_next = local.replace(month=local.month + 1, day=1)
         last_day = (first_of_next - timedelta(days=1)).day
-    return last_day - now.day
+    return last_day - local.day
 
 
 def build_benefits(usage_counts: dict[str, int]) -> dict[str, dict[str, int]]:
@@ -328,16 +383,26 @@ def cmd_use(benefit: str, ref: str, *, now: datetime | None = None) -> int:
     now = now or datetime.now(timezone.utc)
     month = _month_key(now)
     key = (month, benefit, ref)
-    if _usage_key_exists(key):
-        print(f"already recorded: {month} {benefit} {ref}")
-        return 0
     p = usage_path()
     p.parent.mkdir(parents=True, exist_ok=True)
-    rec = {"month": month, "benefit": benefit, "ref": ref, "ts": now.strftime("%Y-%m-%dT%H:%M:%SZ")}
-    with p.open("a", encoding="utf-8") as fh:
-        fh.write(json.dumps(rec, sort_keys=True) + "\n")
-    print(f"recorded: {month} {benefit} {ref}")
-    return 0
+    # Interprocess lock: check-then-append must be one atomic step, or two
+    # concurrent `use` calls for the same key can both pass the existence
+    # check and each append a line (harmless — the reader dedupes — but not
+    # actually idempotent). The lock file is a sidecar, never the data file.
+    lock_fh = open(p.with_suffix(p.suffix + ".lock"), "a")
+    try:
+        fcntl.flock(lock_fh, fcntl.LOCK_EX)
+        if _usage_key_exists(key):
+            print(f"already recorded: {month} {benefit} {ref}")
+            return 0
+        rec = {"month": month, "benefit": benefit, "ref": ref, "ts": now.strftime("%Y-%m-%dT%H:%M:%SZ")}
+        with p.open("a", encoding="utf-8") as fh:
+            fh.write(json.dumps(rec, sort_keys=True) + "\n")
+        print(f"recorded: {month} {benefit} {ref}")
+        return 0
+    finally:
+        fcntl.flock(lock_fh, fcntl.LOCK_UN)
+        lock_fh.close()
 
 
 # ---------------------------------------------------------------- queue + export
@@ -443,6 +508,7 @@ def _p0_quota_expiring_text(days_left: int, benefits: dict[str, dict[str, int]])
 
 def _tg_notify(tier: str, dedup_key: str, text: str) -> bool:
     """Route through the tg_notify gateway; never raises."""
+    text = _redact(text)  # defense-in-depth: last gate before the subprocess argv
     try:
         script = _REPO / "scripts" / "tg_notify.py"
         if not script.is_file():
@@ -482,10 +548,21 @@ def tick(
     token = _get_token()
     state, _details = probe_fn(token)
 
+    # token_dead_since lives OUTSIDE the month-keyed entries (ledger["_token"])
+    # so it survives both a month rollover and a dead->unknown->dead sequence:
+    # `unknown` is not evidence of anything (guilt needs evidence, per the
+    # classifier's own contract) so it must never erase a previously-observed
+    # dead date, and it must never manufacture a fresh one either. Only a
+    # CONFIRMED `alive` clears it.
+    token_meta = ledger.get("_token", {})
+    prev_dead_since = token_meta.get("dead_since") if isinstance(token_meta, dict) else None
     if state == "dead":
-        dead_since = prev_entry.get("token_dead_since") or now.strftime("%Y-%m-%d")
-    else:
+        dead_since = prev_dead_since or _to_wita(now).strftime("%Y-%m-%d")
+    elif state == "unknown":
+        dead_since = prev_dead_since
+    else:  # alive
         dead_since = None
+    ledger["_token"] = {"dead_since": dead_since}
 
     followers_count = prev_entry.get("followers_count")
     if state == "alive" and token:
@@ -530,15 +607,21 @@ def tick(
 
 def _run_tick_and_heartbeat(
     *,
+    now: datetime | None = None,
     probe_fn: Callable[..., tuple[str, dict[str, Any]]] | None = None,
     tg_notify_fn: Callable[[str, str, str], bool] | None = None,
 ) -> dict[str, Any]:
     """Run one tick and write the heartbeat with the run's REAL verdict —
     on every path, including an unhandled exception (superscar #2:
-    esiste!=armato — a crashed cron must still leave a true verdict)."""
+    esiste!=armato — a crashed cron must still leave a true verdict) AND a
+    heartbeat WRITE that itself fails (organism_heartbeat never raises — it
+    reports failure by returning False, which a caller can silently ignore
+    unless it checks)."""
     try:
-        result = tick(probe_fn=probe_fn, tg_notify_fn=tg_notify_fn)
-        organism_heartbeat(ORGAN_ID, result["verdict"], note=f"token={result['entry']['token_state']}")
+        result = tick(now=now, probe_fn=probe_fn, tg_notify_fn=tg_notify_fn)
+        hb_ok = organism_heartbeat(ORGAN_ID, result["verdict"], note=f"token={result['entry']['token_state']}")
+        if not hb_ok:
+            return {**result, "error": _redact("heartbeat write failed")}
         return {**result, "error": None}
     except Exception as exc:  # noqa: BLE001
         message = _redact(str(exc))
@@ -548,10 +631,11 @@ def _run_tick_and_heartbeat(
 
 def cmd_tick(
     *,
+    now: datetime | None = None,
     probe_fn: Callable[..., tuple[str, dict[str, Any]]] | None = None,
     tg_notify_fn: Callable[[str, str, str], bool] | None = None,
 ) -> int:
-    result = _run_tick_and_heartbeat(probe_fn=probe_fn, tg_notify_fn=tg_notify_fn)
+    result = _run_tick_and_heartbeat(now=now, probe_fn=probe_fn, tg_notify_fn=tg_notify_fn)
     if result["error"] is not None:
         print(f"meta_one_steward: tick failed: {result['error']}", file=sys.stderr)
         return 1
@@ -601,17 +685,33 @@ def selftest() -> int:
         def fake_notify(tier: str, dedup_key: str, text: str) -> bool:
             return True
 
+        # Fixed instant, mid-month in BOTH UTC and WITA, far from any
+        # month-end — the alive/empty-usage tick must be able to land on
+        # 'ok' deterministically, not flip to 'warning' just because the
+        # real wall clock happened to be within QUOTA_EXPIRING_DAYS of a
+        # month boundary when someone ran --selftest.
+        fixed_now = datetime(2026, 1, 15, 6, 20, tzinfo=timezone.utc)
+
         ok = True
         summaries = []
-        for _ in range(2):
-            result = _run_tick_and_heartbeat(probe_fn=fake_probe, tg_notify_fn=fake_notify)
+        expectations = [("dead", "warning"), ("alive", "ok")]
+        for expected_state, expected_verdict in expectations:
+            result = _run_tick_and_heartbeat(now=fixed_now, probe_fn=fake_probe, tg_notify_fn=fake_notify)
             token_state = result["entry"]["token_state"]
             verdict = result["verdict"]
             hb_path = last_seen_d / f"{ORGAN_ID}.json"
             hb = json.loads(hb_path.read_text(encoding="utf-8"))
-            if hb["status"] != verdict:
+            step_ok = (
+                token_state == expected_state
+                and verdict == expected_verdict
+                and hb["status"] == verdict
+            )
+            if not step_ok:
                 ok = False
-            summaries.append(f"token_state={token_state} verdict={verdict} heartbeat={hb['status']}")
+            summaries.append(
+                f"token_state={token_state} verdict={verdict} heartbeat={hb['status']} "
+                f"expected=({expected_state},{expected_verdict})"
+            )
 
         for line in summaries:
             print(f"selftest: {line}")
