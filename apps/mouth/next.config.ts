@@ -146,8 +146,20 @@ const nextConfig: NextConfig = {
         ],
       },
       {
-        // Cache public assets (fonts, etc) for 1 year
-        source: "/:path*.woff2",
+        // Cache public assets (fonts, etc) for 1 year.
+        //
+        // This rule used to read `/:path*.woff2` — it judged a SPELLING where
+        // the comment describes an ENTITY, and the two stopped agreeing the
+        // day the R19 faces landed. Fraunces and Manrope ship as variable
+        // .ttf under /fonts (360 KB + 165 KB, measured 2026-09-16), so they
+        // fell through to the default and production served them with
+        // `max-age=0, must-revalidate` — half a megabyte revalidated on every
+        // navigation of a funnel whose visitors are on Indonesian mobile.
+        //
+        // Caveat, unchanged from when this rule covered woff2 alone: these
+        // filenames carry no content hash, so `immutable` means REPLACING a
+        // face requires a new filename, not a new byte stream.
+        source: "/:path*.:ext(woff2|woff|ttf|otf)",
         headers: [
           {
             key: "Cache-Control",

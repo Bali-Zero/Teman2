@@ -225,12 +225,9 @@ test.describe("Visa Oracle — the decision tree is a visible process", () => {
       page.getByRole("heading", { name: translate("en", "q.category") }),
     ).toBeVisible();
     // Prerequisites — everything asked BEFORE the jump target — survive.
-    for (const questionId of [
-      "in_indonesia",
-      "overstay_days",
-      "nationalities",
-      "birth_date",
-    ]) {
+    // D19 (2026-09-16): `overstay_days` dropped from this list — this walk
+    // is offshore, and offshore never asks it any more.
+    for (const questionId of ["in_indonesia", "nationalities", "birth_date"]) {
       await expect(
         desktopTree.locator(`[data-process-jump="${questionId}"]`),
       ).toHaveCount(1);
@@ -247,12 +244,7 @@ test.describe("Visa Oracle — the decision tree is a visible process", () => {
     await expect(rail(page, "branches", false)).toContainText(
       "closed when you chose “Study”",
     );
-    for (const questionId of [
-      "in_indonesia",
-      "overstay_days",
-      "nationalities",
-      "birth_date",
-    ]) {
+    for (const questionId of ["in_indonesia", "nationalities", "birth_date"]) {
       await expect(
         desktopTree.locator(`[data-process-jump="${questionId}"]`),
       ).toHaveCount(1);
