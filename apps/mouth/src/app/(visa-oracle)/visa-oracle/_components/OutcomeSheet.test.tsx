@@ -382,7 +382,7 @@ describe("OutcomeSheet — honest five-state rendering", () => {
     expect(screen.queryByText(/IDR/)).not.toBeInTheDocument();
   });
 
-  it("does not fabricate document requirements or calendar dates when absent", () => {
+  it("hides empty document and availability cards", () => {
     const engineOutcome = outcomeFor("SUPPORTED_CANDIDATES");
     if (engineOutcome.state !== "SUPPORTED_CANDIDATES") {
       throw new Error("test fixture state mismatch");
@@ -393,6 +393,8 @@ describe("OutcomeSheet — honest five-state rendering", () => {
         status: "UNAVAILABLE",
         message: text("No verified operational calendar"),
       },
+      operational: { status: "UNKNOWN", reasons: [] },
+      service: { status: "UNKNOWN", reasons: [] },
       documents: [],
     };
     const unavailableOutcome: OutcomeViewModel = {
@@ -410,9 +412,22 @@ describe("OutcomeSheet — honest five-state rendering", () => {
       screen.getByText("No verified operational calendar"),
     ).toBeInTheDocument();
     expect(
-      screen.getByText("Document requirements unknown — not verified"),
-    ).toBeInTheDocument();
+      screen.queryByRole("heading", { name: "Documents you’ll want ready" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("Operational availability"),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByText("Bali Zero service")).not.toBeInTheDocument();
     expect(screen.queryByText(/26 July 2026/)).not.toBeInTheDocument();
+  });
+
+  it("renders the required documents card when the product has documents", () => {
+    renderSheet("SUPPORTED_CANDIDATES");
+
+    expect(
+      screen.getByRole("heading", { name: "Documents you’ll want ready" }),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Fixture document")).toBeInTheDocument();
   });
 
   it("keeps print/copy/share controls and print anatomy on abstention", () => {
