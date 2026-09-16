@@ -24,19 +24,23 @@ WhatsApp — already Zantara's channel). The corner's job is narrow: make sure n
 for expires unused, and give Zero one Monday read on whether the plan earns. Everything else —
 the seven plays, the rollout weeks, the scoreboard — is in the playbook, not duplicated here.
 
-## 1. LIVE STATE (2026-09-16 22:30 WITA — keep current)
+## 1. LIVE STATE (2026-09-17 03:40 WITA — keep current)
 
-- **IG Graph token: DEAD since 2026-08-31** (session invalidated on password change). Every
-  Graph reader in the repo is starving; re-issue is `operator[secret]`.
+- **IG Graph token: ALIVE since 2026-09-17 01:2x WITA** — re-issued by Zero, installed on Pro
+  (`~/.nuzantara-secrets.env` + `~/.openclaw/workspace/.env.master`, 0600) and as the Fly secret
+  `INSTAGRAM_ACCESS_TOKEN` on `nuzantara-rag`. Dead 2026-08-31 → 2026-09-17 (password change).
+  Long-lived tokens expire after ~60 days: the steward's daily probe is the alarm, re-issue stays
+  `operator[secret]`.
 - **Meta verification (badge): NOT yet done** on either FB or IG. Owner: Zero (ID documents).
 - **Instagram team seats: 0/4 used** (A5). Damar + one backup not yet added.
 - **Meta Business Agent (P7): UNDECIDED.** Recommendation on file (OFF on WhatsApp/Instagram,
   evaluate Messenger-only) — Zero has not ruled.
 - **Last analytics export: none.** `shared/meta_one/exports/` does not yet hold a CSV.
 - **Steward: ARMED on Pro since 2026-09-16 14:24Z** — launchd `com.nuzantara.meta-one-steward`
-  (daily 06:20 WITA, one-shot, no KeepAlive), wrapper `scripts/meta-one-steward.sh`. First real tick:
-  heartbeat `warning` (`token=dead`), ledger month `2026-09` with 0/24 link slots used, queue
-  49 drafted / 51 published (last 2026-08-13). PRs #6632 #6633 #6634 #6635 merged; PENDING-ARMS
+  (daily 06:20 WITA, one-shot, no KeepAlive), wrapper `scripts/meta-one-steward.sh`. First real tick
+  (14:24Z): heartbeat `warning` (`token=dead`). Tick after the token install (2026-09-16 17:36Z):
+  heartbeat `ok` (`token=alive`), 10,787 followers, ledger month `2026-09` with 0/24 link slots
+  used, queue 49 drafted / 51 published (last 2026-08-13). PRs #6632 #6633 #6634 #6635 #6641 merged; PENDING-ARMS
   row of 2026-09-16 tracks the operator steps (token, badge, seats, Page link, Business Agent).
 
 ## 2. What we bought — quotas the steward tracks

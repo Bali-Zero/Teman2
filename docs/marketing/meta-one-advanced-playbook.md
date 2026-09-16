@@ -11,14 +11,14 @@
 
 ## 0. TL;DR
 
-| Fact      | Value                                                                                                                           |
-| --------- | ------------------------------------------------------------------------------------------------------------------------------- |
-| Plan      | Meta One **Advanced** (business/creator bundle), $49.99/month, one subscription = FB + IG + WA                                  |
-| Instagram | `@balizero0` (~10.3K followers, April 2026 snapshot)                                                                            |
-| Facebook  | `facebook.com/balizero` — dormant; Advanced's growth features are FB-heavy, so FB comes back                                    |
-| Publisher | Damar (editorial delegation 2026-09-01). Law 5: a human publishes, never the pipeline                                           |
-| Telemetry | The Instagram Graph token is **DEAD since 2026-08-31** (session invalidated on password change). Re-issue is `operator[secret]` |
-| Steward   | `pro.meta_one_steward` — daily cron on Pro, quota ledger + token probe + Monday brief on Telegram                               |
+| Fact      | Value                                                                                                                                                                                     |
+| --------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Plan      | Meta One **Advanced** (business/creator bundle), $49.99/month, one subscription = FB + IG + WA                                                                                            |
+| Instagram | `@balizero0` (~10.3K followers, April 2026 snapshot)                                                                                                                                      |
+| Facebook  | `facebook.com/balizero` — dormant; Advanced's growth features are FB-heavy, so FB comes back                                                                                              |
+| Publisher | Damar (editorial delegation 2026-09-01). Law 5: a human publishes, never the pipeline                                                                                                     |
+| Telemetry | Instagram Graph token **re-issued 2026-09-17** (dead 2026-08-31 → 2026-09-17 after a password change); lives on Pro + Fly, probed daily by the steward. Re-issue stays `operator[secret]` |
+| Steward   | `pro.meta_one_steward` — daily cron on Pro, quota ledger + token probe + Monday brief on Telegram                                                                                         |
 
 ## 1. What we bought (Meta Help Centre + newsroom, 2026-09-15)
 
