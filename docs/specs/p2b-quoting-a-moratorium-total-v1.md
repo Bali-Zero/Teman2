@@ -85,6 +85,34 @@ the third member of the same family. The criterion is stated to the judge verbat
 `CLASS_RULE_EXPECTATIONS["bali_moratorium_scope"]`, so the deferral has a consumer rather than
 being a place where a criterion is quietly dropped.
 
+### 2.4 The undecidable net is deliberately WIDER than the entity
+
+Added 2026-09-14 after the gate on the PR that introduced this document measured a hole in it.
+
+The first implementation built the coexistence probe from the same `COUNTED_NOUN` as the entity, so
+the net inherited the entity's boundary. A noun form the entity does not recognise could not reach
+`undecidable`; it fell through to `clear`. Measured, all four of these are real quoted totals and
+all four were `clear`:
+
+| clause                                  | why the entity misses it                                   |
+| --------------------------------------- | ---------------------------------------------------------- |
+| `ada 48 kode2 terkena moratorium`       | `kode2` is standard Indonesian shorthand for `kode-kode`   |
+| `ada 518 kbli2 yang diblokir`           | same shorthand                                             |
+| `ada 48 kodepun terkena moratorium`     | the `-pun` clitic, joined spelling, outside the closed set |
+| `kodenyalah 48 yang terkena moratorium` | stacked `-nya` + `-lah`                                    |
+
+`clear` means a **missed total**, and §1 of this document says a false negative inflates the
+benchmark score. So the net's noun is `\b(?:kbli|kode|codes?)\w*` — stem plus any word-character
+tail — while the entity keeps its closed enclitic set. The asymmetry is the rule, not an oversight:
+
+- an unrecognised noun form is **handed to the judge**, never convicted by the scorer and never
+  silently cleared;
+- the entity is not widened, because widening what CONVICTS is a spec change by criterion 6 below;
+- one set used twice is not a set guarded by a wider one. That was the defect.
+
+The left boundary still binds both: `barcodes`, `mengkode`, `dikode` reach neither outcome, because
+the noun never starts there.
+
 ## 3. Fixtures, measured
 
 All seventeen run against both versions on 2026-09-14. `main` is `origin/main` at the merge of
@@ -109,6 +137,10 @@ All seventeen run against both versions on 2026-09-14. `main` is `origin/main` a
 | `Dikode 518 kali.`                                | clear         | clear           |
 | `Foreign ownership is allowed in 48% of sectors.` | clear         | clear           |
 | `See page 518 for affected activities.`           | clear         | clear           |
+| `Ada 48 kode2 terkena moratorium.`                | clear         | **undecidable** |
+| `Ada 518 kbli2 yang diblokir.`                    | clear         | **undecidable** |
+| `Ada 48 kodepun terkena moratorium.`              | clear         | **undecidable** |
+| `Kodenyalah 48 yang terkena moratorium.`          | clear         | **undecidable** |
 
 Five clauses change, twelve do not. One false negative closes, four false positives become
 undecidable, and nothing that was already right moves. The last two are the false positives round
@@ -138,5 +170,8 @@ Untouched, and this spec does not pretend otherwise:
 4. A test proves an undecidable clause does not lower `decidable_pass`, and another proves a real
    quoted total still does.
 5. A test proves the criterion reaches the judge, because a deferral with no consumer is a claim.
-6. No eighth alternation: widening the noun set or the enclitic set means editing this document
-   first.
+6. No eighth alternation: widening the noun set or the enclitic set of the ENTITY means editing this
+   document first.
+7. The undecidable net stays strictly wider than the entity. A test must go red if the net is made
+   to reuse `COUNTED_NOUN` again: reverting that one line is the mutation, and the four §2.4 clauses
+   are what it must break.

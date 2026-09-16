@@ -189,11 +189,30 @@ QUOTES_TOTAL = (
     rf"\b{MORATORIUM_TOTAL_NUM}\b[\s\-]*(?:{_COUNT_BEFORE_NOUN})?{COUNTED_NOUN}"
     rf"|{COUNTED_NOUN}[\s\-]*{_COUNT_AFTER_NOUN}\b{MORATORIUM_TOTAL_NUM}\b"
 )
-# Coexistence without adjacency. Deliberately the OLD shape, kept only to tell "undecidable"
-# apart from "clear": if the two never meet in a clause there is nothing for a judge to read.
+# Coexistence without adjacency: what tells "undecidable" apart from "clear". If the numeral and
+# the noun never meet in a clause there is nothing for a judge to read.
+#
+# THE NOUN HERE IS DELIBERATELY WIDER THAN THE ENTITY, and that asymmetry is the whole point. The
+# first version of this net reused COUNTED_NOUN, so it inherited the entity's boundary: a noun form
+# the entity does not recognise could not reach `undecidable`, it fell through to `clear`. The gate
+# on #6469 measured the hole and it is not lexical — it survives whichever enclitic you pick as the
+# example, because one set was being used twice:
+#     "ada 48 kode2 terkena moratorium"       kode2 is standard ID shorthand for kode-kode
+#     "ada 518 kbli2 yang diblokir"
+#     "ada 48 kodepun terkena moratorium"     the -pun clitic, joined spelling
+#     "kodenyalah 48 yang terkena moratorium" stacked -nya + -lah
+# All four are real quoted totals and all four were `clear`, i.e. a MISSED TOTAL — and §1 of the
+# spec says a false negative INFLATES the benchmark score, which is the direction that matters
+# more. With `\w*` they reach `undecidable` and a judge reads them.
+#
+# The entity is NOT widened: widening it means editing the spec first (acceptance criterion 6), and
+# an unrecognised form should be handed over rather than convicted. The net being wider is what
+# makes "out of set means a judge read, not a missed total" TRUE — the brief of #6469 claimed that
+# property before this line existed, and the gate was right that it was false as written.
+TOTAL_NUM_AND_NOUN_COEXIST_NOUN = r"\b(?:kbli|kode|codes?)\w*"
 TOTAL_NUM_AND_NOUN_COEXIST = (
-    rf"\b{MORATORIUM_TOTAL_NUM}\b[^.;]*{COUNTED_NOUN}"
-    rf"|{COUNTED_NOUN}[^.;]*\b{MORATORIUM_TOTAL_NUM}\b"
+    rf"\b{MORATORIUM_TOTAL_NUM}\b[^.;]*{TOTAL_NUM_AND_NOUN_COEXIST_NOUN}"
+    rf"|{TOTAL_NUM_AND_NOUN_COEXIST_NOUN}[^.;]*\b{MORATORIUM_TOTAL_NUM}\b"
 )
 BAN_WORDS = r"(dilarang|diblokir|terkena|ditutup|banned|blocked|moratorium|moratoria)"
 UNIVERSAL_WORDS = r"((semua|seluruh)\s+kbli|all\s+kbli|every\s+kbli|setiap\s+kbli)"

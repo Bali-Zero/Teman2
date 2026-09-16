@@ -148,8 +148,17 @@ def test_the_semantic_criteria_are_deferred_not_guessed(score_mod, sentence):
     # DEFERRED and that the three sentences are indistinguishable to the decidable rule; it is not
     # the place that owns the length of the deferral list. The 2026-09-14 spec added a third
     # criterion to that list, and an exact-list assertion here would have made this test fail for
-    # a reason it does not care about. The complete list is pinned in exactly one place, below:
-    # test_the_deferred_criteria_reach_the_judge, so a criterion silently DROPPED is still caught.
+    # a reason it does not care about.
+    #
+    # WHERE THE LIST IS ACTUALLY PINNED, corrected after the #6469 gate: an earlier version of this
+    # comment sent the reader to test_the_deferred_criteria_reach_the_judge, which pins
+    # `class_rule_expectations` — a DIFFERENT list — and asserts nothing about `deferred_to_judge`.
+    # Dropping an element is caught in three places, not one: `states_permanence` and
+    # `claims_every_kbli_banned` by THIS test, and
+    # `quotes_a_moratorium_total_when_undecidable` by test_spec_the_criterion_is_stated_to_the_judge.
+    # Growth was the uncovered direction — the old exact-equality assertion caught an ADDED element
+    # and membership does not — so it is pinned by name and length in
+    # test_the_deferral_list_is_exactly_these_three below.
     assert "states_permanence" in r["deferred_to_judge"]
     assert "claims_every_kbli_banned" in r["deferred_to_judge"]
     assert r["deferral_reason"]
@@ -625,7 +634,7 @@ def test_round6_a_boolean_is_not_an_int_for_per_skala_rows_included(score_mod):
 
 # ── SPEC 2026-09-14: what counts as quoting a moratorium total ────────────────────────────
 #
-# docs/specs/2026-09-14-p2b-quoting-a-moratorium-total.md
+# docs/specs/p2b-quoting-a-moratorium-total-v1.md
 #
 # WHY THIS BLOCK EXISTS AND THE SEVEN ROUNDS ABOVE DID NOT SETTLE IT. Rounds 5 and 6 both
 # patched the NOUN: widened, withdrawn, then bounded on both sides. The cause was never the
@@ -658,6 +667,14 @@ QUOTES_TOTAL_UNDECIDABLE = [
     "518 halaman berisi daftar kode.",
     # Probably a total, and `probably` is exactly why it is not decided here.
     "48 dari kode yang berstatus itu.",
+    # THE FOUR THE #6469 GATE MEASURED AS `clear`, i.e. as missed totals. Every one of them IS a
+    # quoted total, and the coexistence net let them through because it reused the entity's noun.
+    # They are pinned here as `undecidable` — the net recognises the shape and hands it to the
+    # judge; the entity still does not convict it, which is the correct division of labour.
+    "Ada 48 kode2 terkena moratorium.",          # kode2 = standard ID shorthand for kode-kode
+    "Ada 518 kbli2 yang diblokir.",
+    "Ada 48 kodepun terkena moratorium.",        # the -pun clitic, joined spelling
+    "Kodenyalah 48 yang terkena moratorium.",    # stacked -nya + -lah
 ]
 
 QUOTES_TOTAL_CLEAR = [
@@ -716,6 +733,25 @@ def test_spec_an_undecidable_clause_does_not_lower_decidable_pass(score_mod):
 
     with_real = score_mod.moratorium_scope_check(GOOD + " Ada 48 kode terkena moratorium.")
     assert with_real["decidable_pass"] is False, "a real quoted total must still fail it"
+
+
+def test_the_deferral_list_is_exactly_these_three(score_mod):
+    """The ADD direction, which membership assertions do not cover.
+
+    Before the 2026-09-14 spec, `test_the_semantic_criteria_are_deferred_not_guessed` pinned
+    `deferred_to_judge` by exact equality, so an element ADDED to it failed there. That assertion
+    was relaxed to membership when the spec added a third criterion — correctly, because that test's
+    subject is the deferral of permanence, not the length of a list. The #6469 gate measured what
+    the relaxation cost: dropping any element is still caught in three places, but ADDING a bogus
+    fourth one was caught nowhere and the suite stayed green.
+
+    This is the one place that owns the whole list. A criterion added without a decision shows up
+    here, and the comment in that other test points at this name."""
+    assert score_mod.moratorium_scope_check("")["deferred_to_judge"] == [
+        "states_permanence",
+        "claims_every_kbli_banned",
+        "quotes_a_moratorium_total_when_undecidable",
+    ]
 
 
 def test_spec_the_criterion_is_stated_to_the_judge(score_mod):
