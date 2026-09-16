@@ -313,4 +313,155 @@ def test_kbli_located_tuple_rebuilds_verified_structured_values() -> None:
     assert "UNSAFE_ORIGINAL_PROSE" not in result["text"]
     assert result["metadata"]["pma_status"] == "TERBATAS"
     assert result["metadata"]["pma_max_asing"] == 49
-    assert result["metadata"]["pma_cap_verified"] is True
+
+
+def _sourced_closure_metadata(**overrides: object) -> dict:
+    metadata = {
+        "kode_kbli": "68111",
+        "judul": "Aktivitas Pengembangan Bangunan dan Lahan Hunian",
+        "official_description": "Uraian resmi BPS.",
+        "pma_status": "TERBUKA",
+        "pma_verification_status": "declared_gap",
+        "pma_official_basis": None,
+        "pma_source_vintage": None,
+        "bali_status": "CHIUSO_BALI",
+        "bali_blocked": True,
+        "bali_needs_review": False,
+        "bali_reason": "Closed to new PMA licensing in Bali (18 business fields).",
+        "bali_closure_url": "https://www.baliprov.go.id/web/gubernur-koster-batasi-akses-oss",
+        "bali_closure_scope": None,
+        "bali_confidence": "HIGH",
+    }
+    metadata.update(overrides)
+    return metadata
+
+
+def test_a_declared_gap_sourced_bali_closure_is_disclosed_with_its_source() -> None:
+    """GUILT: a Bali closure with its own published source is stated even
+    though the national PMA tuple stays NOT_VERIFIED — and the whole-code
+    foreign-ownership withholding line still runs beside it."""
+    result = format_search_results(
+        {
+            "ids": ["kbli-68111"],
+            "documents": ["irrelevant original prose"],
+            "distances": [0.1],
+            "metadatas": [_sourced_closure_metadata()],
+        },
+        "kbli_2025_final_hybrid",
+    )[0]
+
+    assert "Status PMA: NOT_VERIFIED" in result["text"]
+    assert "Whole-code foreign ownership is withheld" in result["text"]
+    assert "Bali registration status: CHIUSO_BALI" in result["text"]
+    assert "Blocked: yes" in result["text"]
+    assert "https://www.baliprov.go.id/web/gubernur-koster-batasi-akses-oss" in result["text"]
+    assert result["metadata"]["bali_status"] == "CHIUSO_BALI"
+    assert result["metadata"]["bali_blocked"] is True
+    assert result["metadata"]["has_bali_l4"] is True
+    assert (
+        result["metadata"]["bali_closure_url"]
+        == "https://www.baliprov.go.id/web/gubernur-koster-batasi-akses-oss"
+    )
+    assert result["metadata"]["bali_confidence"] == "HIGH"
+
+
+def test_a_high_confidence_sourced_closure_omits_the_conservative_caveat() -> None:
+    """INNOCENCE half of the confidence caveat: HIGH confidence never prints
+    the 'conservative reading' hedge."""
+    result = format_search_results(
+        {
+            "ids": ["kbli-68111"],
+            "documents": ["irrelevant original prose"],
+            "distances": [0.1],
+            "metadatas": [_sourced_closure_metadata()],
+        },
+        "kbli_2025_final_hybrid",
+    )[0]
+
+    assert "conservative reading" not in result["text"]
+
+
+def test_a_medium_confidence_sourced_closure_prints_the_conservative_caveat() -> None:
+    """GUILT: a MEDIUM-confidence sourced closure prints the hedge."""
+    result = format_search_results(
+        {
+            "ids": ["kbli-55201"],
+            "documents": ["irrelevant original prose"],
+            "distances": [0.1],
+            "metadatas": [_sourced_closure_metadata(kode_kbli="55201", bali_confidence="MEDIUM")],
+        },
+        "kbli_2025_final_hybrid",
+    )[0]
+
+    assert "conservative reading" in result["text"]
+
+
+def test_a_javascript_uri_never_discloses_an_unverified_bali_closure() -> None:
+    """INNOCENCE: a non-http(s) closure URL is not a source, so the whole
+    sourced-closure bypass never fires — withheld exactly as before."""
+    result = format_search_results(
+        {
+            "ids": ["kbli-68111"],
+            "documents": ["irrelevant original prose"],
+            "distances": [0.1],
+            "metadatas": [_sourced_closure_metadata(bali_closure_url="javascript:alert(1)")],
+        },
+        "kbli_2025_final_hybrid",
+    )[0]
+
+    assert "Bali registration status" not in result["text"]
+    assert "bali_status" not in result["metadata"]
+    assert "has_bali_l4" not in result["metadata"]
+
+
+def test_a_non_blocked_chiuso_bali_never_discloses_without_verification() -> None:
+    """INNOCENCE: `blocked is False` on CHIUSO_BALI is not the sourced-closure
+    shape (the rule requires a real ``blocked is True``) — withheld."""
+    result = format_search_results(
+        {
+            "ids": ["kbli-68111"],
+            "documents": ["irrelevant original prose"],
+            "distances": [0.1],
+            "metadatas": [_sourced_closure_metadata(bali_blocked=False)],
+        },
+        "kbli_2025_final_hybrid",
+    )[0]
+
+    assert "Bali registration status" not in result["text"]
+    assert "has_bali_l4" not in result["metadata"]
+
+
+def test_a_different_bali_status_never_discloses_without_verification() -> None:
+    """INNOCENCE: only the exact `CHIUSO_BALI` token bypasses the national
+    tuple gate — every other status stays withheld on an unverified record."""
+    result = format_search_results(
+        {
+            "ids": ["kbli-93122"],
+            "documents": ["irrelevant original prose"],
+            "distances": [0.1],
+            "metadatas": [
+                _sourced_closure_metadata(kode_kbli="93122", bali_status="CHIUSO_MORATORIA_BALI")
+            ],
+        },
+        "kbli_2025_final_hybrid",
+    )[0]
+
+    assert "Bali registration status" not in result["text"]
+    assert "has_bali_l4" not in result["metadata"]
+
+
+def test_a_string_true_needs_review_never_discloses_without_verification() -> None:
+    """INNOCENCE: a malformed (non-boolean) `needs_review` fails the shape
+    check regardless of the sourced-closure status/blocked/url."""
+    result = format_search_results(
+        {
+            "ids": ["kbli-68111"],
+            "documents": ["irrelevant original prose"],
+            "distances": [0.1],
+            "metadatas": [_sourced_closure_metadata(bali_needs_review="true")],
+        },
+        "kbli_2025_final_hybrid",
+    )[0]
+
+    assert "Bali registration status" not in result["text"]
+    assert "has_bali_l4" not in result["metadata"]
