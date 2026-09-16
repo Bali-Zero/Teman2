@@ -274,6 +274,94 @@ def test_read_queue_counts_falls_back_to_legacy_published_at(tmp_path, monkeypat
     assert counts["last_published_at"] == "2026-09-11T10:00:00Z"
 
 
+# ── _tg_notify reads the gateway VERDICT, not the subprocess returncode ──
+
+
+class _FakeCompletedProcess:
+    def __init__(self, returncode: int, stderr: str):
+        self.returncode = returncode
+        self.stderr = stderr
+        self.stdout = ""
+
+
+def test_tg_notify_p0_spooled_is_not_delivered(monkeypatch):
+    """tg_notify.py's own contract is 'never fails the caller, exit 0' even
+    when a P0 could only be spooled (budget exhausted, token missing, relay
+    down). A caller that reads returncode==0 alone cannot tell that apart
+    from a real-time send — this is the exact 'blind caller' shape being
+    fixed: `_tg_notify` must read the verdict and report False here."""
+    monkeypatch.setattr(
+        mos.subprocess, "run",
+        lambda *a, **kw: _FakeCompletedProcess(0, "tg_notify: p0_unsent_spooled\n"),
+    )
+    assert mos._tg_notify("p0", "some-key", "text") is False
+
+
+def test_tg_notify_p0_sent_is_delivered(monkeypatch):
+    monkeypatch.setattr(
+        mos.subprocess, "run",
+        lambda *a, **kw: _FakeCompletedProcess(0, "tg_notify: sent\n"),
+    )
+    assert mos._tg_notify("p0", "some-key", "text") is True
+
+
+def test_tg_notify_digest_spooled_counts_as_delivered(monkeypatch):
+    """Spooled IS the digest tier's normal, expected outcome (it is flushed
+    later in a batch by tg_digest_flush.py) — unlike p0, this must count as
+    delivered, or every digest tick would misreport as undelivered."""
+    monkeypatch.setattr(
+        mos.subprocess, "run",
+        lambda *a, **kw: _FakeCompletedProcess(0, "tg_notify: spooled\n"),
+    )
+    assert mos._tg_notify("digest", "some-key", "text") is True
+
+
+def test_tg_notify_digest_deduped_counts_as_delivered(monkeypatch):
+    monkeypatch.setattr(
+        mos.subprocess, "run",
+        lambda *a, **kw: _FakeCompletedProcess(0, "tg_notify: deduped\n"),
+    )
+    assert mos._tg_notify("digest", "some-key", "text") is True
+
+
+def test_tg_notify_missing_verdict_line_is_not_delivered(monkeypatch):
+    """returncode==0 with no canonical verdict line at all (malformed/older
+    gateway) must be treated as unknown, never as a silent success."""
+    monkeypatch.setattr(
+        mos.subprocess, "run",
+        lambda *a, **kw: _FakeCompletedProcess(0, "some unrelated stderr noise\n"),
+    )
+    assert mos._tg_notify("p0", "some-key", "text") is False
+
+
+def test_tick_surfaces_an_undelivered_p0_as_warning_not_success(tmp_path, monkeypatch):
+    """End-to-end: a dead token fires a P0 that only spools (gateway down);
+    the tick must record that fact in the ledger entry (p0_undelivered) and
+    the run's own verdict must stay 'warning' — the blind old code silently
+    read the spool as a successful notification and moved on."""
+    _isolate(tmp_path, monkeypatch)
+
+    def dead_probe(token, **kw):
+        return "dead", {"http_status": 400}
+
+    def half_blind_notify(tier, dedup_key, text):
+        return tier != "p0"  # every p0 "spools" (False); digest still "delivers"
+
+    result = mos.tick(now=_FAR_FROM_MONTH_END, probe_fn=dead_probe, tg_notify_fn=half_blind_notify)
+    assert result["entry"]["p0_undelivered"] is True
+    assert result["verdict"] == "warning"
+
+
+def test_tick_records_p0_undelivered_false_when_notified_cleanly(tmp_path, monkeypatch):
+    _isolate(tmp_path, monkeypatch)
+
+    def dead_probe(token, **kw):
+        return "dead", {"http_status": 400}
+
+    result = mos.tick(now=_FAR_FROM_MONTH_END, probe_fn=dead_probe, tg_notify_fn=_noop_notify)
+    assert result["entry"]["p0_undelivered"] is False
+
+
 # ── digest hygiene: no secret, no stray @-handles ────────────────────────
 
 

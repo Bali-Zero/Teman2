@@ -52,6 +52,7 @@ _REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(_REPO))
 
 from scripts.lib.heartbeat import organism_heartbeat  # noqa: E402
+from scripts.tg_gateway_verdict import extract_gateway_verdict, gateway_delivered  # noqa: E402
 
 ORGAN_ID = "pro.meta_one_steward"
 
@@ -507,7 +508,20 @@ def _p0_quota_expiring_text(days_left: int, benefits: dict[str, dict[str, int]])
 
 
 def _tg_notify(tier: str, dedup_key: str, text: str) -> bool:
-    """Route through the tg_notify gateway; never raises."""
+    """Route through the tg_notify gateway and read its VERDICT — never its
+    subprocess return code alone. tg_notify.py's own contract is "never
+    fails the caller: any internal error -> spool best-effort, exit 0", so
+    `returncode == 0` is true on almost every call regardless of whether the
+    message actually reached Telegram — a caller that stops there cannot
+    tell a live "sent" P0 from one that was merely `spooled`/`p0_unsent_spooled`
+    because the daily budget was exhausted or the token was missing. This
+    parses the gateway's `tg_notify: <verdict>` stderr line the sanctioned
+    way (same pattern as drive_token_watchdog.py / price_review_sentinel.py
+    / wr2_daily_reconciler.py): a digest is "delivered" once it is
+    `spooled`/`deduped` (that IS the digest tier's normal, expected
+    outcome — it is flushed later in a batch); anything else (p0, log) must
+    see the real-time `sent` verdict to count as delivered.
+    """
     text = _redact(text)  # defense-in-depth: last gate before the subprocess argv
     try:
         script = _REPO / "scripts" / "tg_notify.py"
@@ -519,11 +533,14 @@ def _tg_notify(tier: str, dedup_key: str, text: str) -> bool:
                 "--tier", tier,
                 "--source", "meta-one-steward",
                 "--dedup-key", dedup_key,
-                text,
+                "--", text,
             ],
             capture_output=True, text=True, timeout=30,
         )
-        return res.returncode == 0
+        verdict = extract_gateway_verdict(res.stderr)
+        return res.returncode == 0 and (
+            verdict in {"spooled", "deduped"} if tier == "digest" else gateway_delivered(verdict)
+        )
     except Exception:
         return False
 
@@ -593,14 +610,29 @@ def tick(
         "queue": queue,
         "updated_at": now.strftime("%Y-%m-%dT%H:%M:%SZ"),
     }
+
+    # A P0 that only SPOOLED (budget exhausted, gateway down, token missing)
+    # is NOT the same as one that reached Telegram — surface that gap
+    # instead of reading tg_notify's "never fails the caller, exit 0" as
+    # success (the exact blind-caller shape this replaced). Any undelivered
+    # P0 forces `warning` even in the (currently unreachable, but not
+    # future-proof otherwise) case where the P0-triggering condition itself
+    # did not already force it.
+    p0_undelivered = False
+    if state == "dead":
+        if not notify("p0", "meta-one-token-dead", _p0_token_dead_text(dead_since)):
+            p0_undelivered = True
+    if quota_flag:
+        if not notify("p0", "meta-one-quota-expiring", _p0_quota_expiring_text(days_left, benefits)):
+            p0_undelivered = True
+    notify("digest", "meta-one-steward-digest", _digest_text(entry))
+
+    if p0_undelivered:
+        verdict = "warning"
+    entry["p0_undelivered"] = p0_undelivered
+
     ledger[month] = entry
     _atomic_write_json(ledger_path(), ledger)
-
-    if state == "dead":
-        notify("p0", "meta-one-token-dead", _p0_token_dead_text(dead_since))
-    if quota_flag:
-        notify("p0", "meta-one-quota-expiring", _p0_quota_expiring_text(days_left, benefits))
-    notify("digest", "meta-one-steward-digest", _digest_text(entry))
 
     return {"verdict": verdict, "entry": entry}
 
