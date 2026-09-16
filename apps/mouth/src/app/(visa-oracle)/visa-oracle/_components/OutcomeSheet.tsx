@@ -40,6 +40,7 @@ import { ACTIVITY_BOUNDARY_DECIDABLE_ANSWERS } from "../_lib/fact-mapper";
 import {
   SECOND_HOME_STUDIO_REVIEW_REASON_CODE,
   SECOND_HOME_STUDIO_URL,
+  isSecondHomeStudioOnly,
 } from "../_lib/engine-adapter";
 import {
   DISPLAY_ORDER,
@@ -121,9 +122,14 @@ function buildShareSummary(
   language: Language,
   outcome: OutcomeViewModel,
 ): string {
+  // D23 "OPTION B-STUDIO": the share text must never carry the generic
+  // "needs a human, not an algorithm" headline for a Studio-only hold.
+  const headlineKey: I18nKey = isSecondHomeStudioOnly(outcome)
+    ? ("verdict.headline.SECOND_HOME_STUDIO" as I18nKey)
+    : (`verdict.headline.${outcome.state}` as I18nKey);
   const lines = [
     translate(language, "outcome.share_title" as I18nKey),
-    translate(language, `verdict.headline.${outcome.state}` as I18nKey),
+    translate(language, headlineKey),
   ];
   if (outcome.assessment?.publicId) {
     lines.push(
@@ -667,12 +673,11 @@ export function OutcomeSheet({
   // person's judgment — it routes to a self-serve calculator. Scoped to the
   // case where this is the ONLY review reason: a case that ALSO carries a
   // different hold still needs the generic body and the normal groups for
-  // that other reason.
-  const isSecondHomeStudioOnly =
-    reviewReasons.length > 0 &&
-    reviewReasons.every(
-      (reason) => reason.code === SECOND_HOME_STUDIO_REVIEW_REASON_CODE,
-    );
+  // that other reason. Delegates to `engine-adapter.ts`'s
+  // `isSecondHomeStudioOnly` so this component and `VerdictReveal` (via
+  // `OracleShell`) agree on the SAME outcome rather than two computations
+  // drifting apart.
+  const studioOnly = isSecondHomeStudioOnly(outcome);
   const carriesSecondHomeStudio = reviewReasons.some(
     (reason) => reason.code === SECOND_HOME_STUDIO_REVIEW_REASON_CODE,
   );
@@ -815,7 +820,7 @@ export function OutcomeSheet({
               explicit link to the Studio. A case that ALSO carries a
               different hold keeps the generic body and normal groups, and
               still gets the Studio link. */}
-          {isSecondHomeStudioOnly ? (
+          {studioOnly ? (
             <>
               <ReasonList
                 language={language}
@@ -824,12 +829,21 @@ export function OutcomeSheet({
                 causeFacts={facts}
                 onEditMissingInput={onEditMissingInput}
               />
-              <p>
-                <a href={SECOND_HOME_STUDIO_URL}>
-                  {translate(language, "outcome.second_home_studio_link")}
-                  <ArrowRight aria-hidden="true" size={14} />
-                </a>
-              </p>
+              {/* `oracle.css` is READ-ONLY by ruling (see the comment on the
+                  NO_SUPPORTED_PATH door-tile alternatives below) — this
+                  reuses the SAME `.oracle-option-card` class those "door"
+                  tiles use rather than a bare link in a paragraph: it is a
+                  primary next-action tile (44px target, visible hover/focus
+                  via the global `:focus-visible` rule), and the Studio link
+                  is exactly that — a door onward, not a footnote. */}
+              <a
+                href={SECOND_HOME_STUDIO_URL}
+                className="oracle-option-card"
+                style={{ width: "fit-content", marginTop: "var(--space-4)" }}
+              >
+                {translate(language, "outcome.second_home_studio_link")}
+                <ArrowRight aria-hidden="true" size={18} />
+              </a>
             </>
           ) : (
             <>
@@ -851,12 +865,17 @@ export function OutcomeSheet({
                 onEditMissingInput={onEditMissingInput}
               />
               {carriesSecondHomeStudio && (
-                <p>
-                  <a href={SECOND_HOME_STUDIO_URL}>
-                    {translate(language, "outcome.second_home_studio_link")}
-                    <ArrowRight aria-hidden="true" size={14} />
-                  </a>
-                </p>
+                <a
+                  href={SECOND_HOME_STUDIO_URL}
+                  className="oracle-option-card"
+                  style={{
+                    width: "fit-content",
+                    marginTop: "var(--space-4)",
+                  }}
+                >
+                  {translate(language, "outcome.second_home_studio_link")}
+                  <ArrowRight aria-hidden="true" size={18} />
+                </a>
               )}
             </>
           )}
@@ -1120,7 +1139,18 @@ export function OutcomeSheet({
         <p>{translate(language, "outcome.disclaimer.not_government")}</p>
         <p>{translate(language, "outcome.disclaimer.based_on_facts")}</p>
         <p>{translate(language, "outcome.disclaimer.not_approval")}</p>
-        <p>{translate(language, "outcome.disclaimer.complex_to_human")}</p>
+        {/* D23 "OPTION B-STUDIO": the "always go to a human" line is false
+            for the one hold that routes to a self-serve calculator instead —
+            swapped for Studio-specific copy that names the same guarantee
+            hold without ever mentioning a person or consultant. */}
+        <p>
+          {translate(
+            language,
+            studioOnly
+              ? "outcome.disclaimer.second_home_studio"
+              : "outcome.disclaimer.complex_to_human",
+          )}
+        </p>
       </section>
     </div>
   );

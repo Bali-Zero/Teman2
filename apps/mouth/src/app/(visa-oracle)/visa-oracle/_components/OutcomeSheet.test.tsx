@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { vi } from "vitest";
 import type { ComponentProps } from "react";
 import {
@@ -770,5 +770,56 @@ describe("OutcomeSheet — D23 Second Home Studio", () => {
     expect(
       screen.getByRole("link", { name: "Open the Second Home Studio" }),
     ).toHaveAttribute("href", SECOND_HOME_STUDIO_URL);
+  });
+
+  // GUILT: the disclaimer's "always go to a human" line must not appear
+  // anywhere on the page when the Studio code is the only hold.
+  it("swaps the disclaimer's human line for Studio-specific copy when it is the only hold", () => {
+    const { container } = renderReview([SECOND_HOME_STUDIO_REVIEW_REASON_CODE]);
+    const disclaimer = container.querySelector(".oracle-disclaimer");
+    expect(disclaimer).toHaveTextContent(
+      "This hold is about a declared guarantee figure below the Second Home (E33) thresholds — the Second Home Studio shows the routes and the numbers for your case.",
+    );
+    expect(container.textContent).not.toMatch(/\ba human\b/i);
+    expect(container.textContent).not.toMatch(/consultant/i);
+  });
+
+  // INNOCENCE: a mixed hold (Studio + another reason) keeps the generic
+  // "always go to a human" disclaimer line unchanged.
+  it("keeps the generic disclaimer line when the Studio code shares the hold with another reason", () => {
+    const { container } = renderReview([
+      SECOND_HOME_STUDIO_REVIEW_REASON_CODE,
+      "DISCLOSED_UNCERTAINTY_REVIEW",
+    ]);
+    const disclaimer = container.querySelector(".oracle-disclaimer");
+    expect(disclaimer).toHaveTextContent(
+      "Complex or flagged cases always go to a human — Ditjen Imigrasi decides, not this tool.",
+    );
+  });
+
+  // GUILT: the share text (built from the same headline VerdictReveal
+  // shows, per `engine-adapter.ts`'s `isSecondHomeStudioOnly`) must not
+  // carry "needs a human, not an algorithm" for a Studio-only hold.
+  it("builds Studio-specific share text with no human/algorithm wording", async () => {
+    renderReview([SECOND_HOME_STUDIO_REVIEW_REASON_CODE]);
+    const writeText = navigator.clipboard.writeText as ReturnType<typeof vi.fn>;
+    writeText.mockClear();
+    fireEvent.click(screen.getByRole("button", { name: "Copy summary" }));
+    await waitFor(() => expect(writeText).toHaveBeenCalledTimes(1));
+    const summary = writeText.mock.calls[0]?.[0] as string;
+    expect(summary).toContain("Below the Second Home guarantee threshold");
+    expect(summary).not.toMatch(/\ba human\b/i);
+    expect(summary).not.toMatch(/algorithm/i);
+  });
+
+  // INNOCENCE: any other review code keeps the pre-existing share headline.
+  it("keeps the generic human-review headline in share text for an unrelated review code", async () => {
+    renderReview(["DISCLOSED_UNCERTAINTY_REVIEW"]);
+    const writeText = navigator.clipboard.writeText as ReturnType<typeof vi.fn>;
+    writeText.mockClear();
+    fireEvent.click(screen.getByRole("button", { name: "Copy summary" }));
+    await waitFor(() => expect(writeText).toHaveBeenCalledTimes(1));
+    const summary = writeText.mock.calls[0]?.[0] as string;
+    expect(summary).toContain("This needs a human, not an algorithm");
   });
 });

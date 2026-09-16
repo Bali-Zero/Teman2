@@ -512,6 +512,67 @@ describe("OracleShell authoritative evaluate integration", () => {
     expect(screen.queryByText("Client safety hold")).toBeNull();
   });
 
+  // D23 "OPTION B-STUDIO", end-to-end wiring: an ENGINE response whose only
+  // review reason is the Studio code must reach `VerdictReveal` with
+  // `isSecondHomeStudioOnly` true — proven here through the real fetch ->
+  // `buildEngineOutcome` -> `OracleShell` -> `VerdictReveal` path, not a
+  // component-level stub. GUILT: no "human"/"algorithm" wording anywhere.
+  it("D23: a Studio-only review reason renders the Studio headline, with no human/algorithm wording anywhere", async () => {
+    const response = makeVisaOracleResponse("HUMAN_REVIEW_REQUIRED");
+    response.decision.review_reasons[0].code =
+      "SECOND_HOME_BELOW_THRESHOLD_STUDIO";
+    global.fetch = vi.fn<typeof fetch>(
+      async () =>
+        new Response(JSON.stringify(response), {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        }),
+    );
+    render(<OracleShell />);
+
+    expect(
+      await screen.findByRole("heading", {
+        name: "Below the Second Home guarantee threshold",
+      }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("heading", {
+        name: translate("en", "verdict.headline.HUMAN_REVIEW_REQUIRED"),
+      }),
+    ).toBeNull();
+    expect(
+      screen.getByRole("link", { name: "Open the Second Home Studio" }),
+    ).toBeInTheDocument();
+    // Scoped to the verdict card + outcome body — NOT the whole page, which
+    // always carries an unrelated, state-independent "Talk to a consultant"
+    // WhatsApp-fallback CTA (ConsentHandoff) that has nothing to do with
+    // D23's review-reason framing.
+    const verdictAndOutcomeText =
+      (document.querySelector(".oracle-verdict-card")?.textContent ?? "") +
+      (document.querySelector(".oracle-outcome")?.textContent ?? "");
+    expect(verdictAndOutcomeText.length).toBeGreaterThan(0);
+    expect(verdictAndOutcomeText).not.toMatch(/\ba human\b/i);
+    expect(verdictAndOutcomeText).not.toMatch(/algorithm/i);
+    expect(verdictAndOutcomeText).not.toMatch(/consultant/i);
+  });
+
+  // INNOCENCE: an unrelated review reason keeps the pre-existing generic
+  // human-review headline (already covered by the it.each state matrix
+  // above; re-asserted here alongside the Studio-only case for contrast).
+  it("D23: a non-Studio review reason keeps the generic human-review headline", async () => {
+    global.fetch = engineFetch("HUMAN_REVIEW_REQUIRED");
+    render(<OracleShell />);
+
+    expect(
+      await screen.findByRole("heading", {
+        name: translate("en", "verdict.headline.HUMAN_REVIEW_REQUIRED"),
+      }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("link", { name: "Open the Second Home Studio" }),
+    ).toBeNull();
+  });
+
   it("keeps automatic network retry byte-identical and renders no fabricated result", async () => {
     const fetchMock = vi.fn<typeof fetch>(async () => {
       throw new TypeError("network down");

@@ -10,10 +10,11 @@ Current ENGINE census (E23V-DEFECT, mission seq-22, 2026-09-15), on signed
 seq-20: **1 HUMAN_REVIEW_REQUIRED / 2 NEEDS_INPUT / 17 NO_SUPPORTED_PATH /
 92 SUPPORTED_CANDIDATES** (W-VO-E's 94-walk figure was 76; W-VO-Q's 111-walk
 figure was 16 NO_SUPPORTED_PATH); on signed seq-21 **1 / 1 / 17 / 93**; on
-the seq-22 fold that actually CURES the E23V defect (``fold_pack_seq22.py``)
-— the highest unsigned source above signed seq-20 today, seq-21 having
-stopped before its own signature and never to be signed — **1 / 1 / 16 /
-94** — the pins are kept per candidate/signed sequence
+the seq-22 fold that actually CURES the E23V defect (``fold_pack_seq22.py``),
+now carrying D23 "OPTION B-STUDIO" (2026-09-16) — the highest candidate
+source above signed seq-20 today, seq-21 having been signed (2026-09-15) but
+stopped before ACTIVATION, its bundle never entering this repo — **3 / 1 /
+14 / 94** — the pins are kept per candidate/signed sequence
 (``EXPECTED_OUTCOME_BY_SEQUENCE``), so the census stays green on both sides
 of a signature. The FUNNEL
 census the applicant actually meets is the second column of the table under
@@ -348,8 +349,8 @@ _AS_OF = _parse_utc(_HIGHEST_SIGNED_PACK["protected"]["signed_at"])
 #: SAETTA-VO3): the pins are kept PER SIGNED SEQUENCE, because the census has
 #: to stay green on both sides of a signature — on main while seq-20 is the
 #: highest signed pack, and in the PR that lands the next fold's signed
-#: bundle (seq-22 today; seq-21 stopped before its own signature and will
-#: never be signed — see `fold_pack_seq22.py`), which changes no walk's
+#: bundle (seq-22 today; seq-21 was signed but stopped before activation and
+#: never entered this repo — see `fold_pack_seq22.py`), which changes no walk's
 #: facts but does change what the engine answers. A signed sequence with no
 #: pins fails `test_the_census_pins_the_signed_sequence` by name instead of
 #: quietly grading against the previous one.
@@ -1881,9 +1882,9 @@ def test_every_walk_ends_in_its_pinned_outcome_on_the_candidate_pack(
     it with that sequence's own table, so those pins are proven on main
     today and not first in the PR that lands the bundle. The candidate is
     the HIGHEST such source — seq-22 today (``_candidate_source_pack_path``);
-    when this test was written it was seq-21, which stopped before its own
-    signature and will never be signed (``fold_pack_seq22.py``), so seq-22
-    took its place with no code change here. Once the current candidate is
+    when this test was written it was seq-21, which was signed but stopped
+    before activation and never entered this repo (``fold_pack_seq22.py``),
+    so seq-22 took its place with no code change here. Once the current candidate is
     signed this skips and ``test_every_walk_ends_in_its_pinned_outcome``
     grades the same table against the verified bytes."""
 
@@ -1977,9 +1978,9 @@ def test_walk_state_census_is_the_pinned_census_of_the_signed_sequence(
     and cured the defect the walk above is named for:
     ``fold_pack_seq22.py`` scopes ``hf.employment-without-indonesian-
     sponsor`` to ``("E23", "E33B")`` only, so the employer_no walk's pin
-    finally MOVED, against the seq-22 candidate (the highest unsigned
-    source above signed seq-20 today — seq-21 stopped before its own
-    signature and never will be signed): SUPPORTED_CANDIDATES [E23V],
+    finally MOVED, against the seq-22 candidate (the highest candidate
+    source above signed seq-20 today — seq-21 was signed but stopped before
+    activation and never entered this repo): SUPPORTED_CANDIDATES [E23V],
     1/1/17/93 -> 1/1/16/94 over the same 112-walk corpus. No other walk
     moved then.
 
@@ -2858,9 +2859,10 @@ def test_every_support_bearing_product_is_named_by_some_walk(
 #: The candidate pack's catalogue: 38 product codes, unchanged since seq-20.
 #: Measured 2026-09-14 on rulepack-prod-021.source.json when seq-21 was the
 #: candidate; re-measured 2026-09-16 on rulepack-prod-022.source.json, the
-#: candidate today (seq-21 stopped before signature and never will be signed
-#: — see `fold_pack_seq22.py`) — same count, every code still carrying a
-#: SUPPORT rule once the nine seq-21/seq-22 products are in force.
+#: candidate today (seq-21 was signed but stopped before activation and
+#: never entered this repo — see `fold_pack_seq22.py`) — same count, every
+#: code still carrying a SUPPORT rule once the nine seq-21/seq-22 products
+#: are in force.
 CANDIDATE_CATALOGUE_SIZE = 38
 
 
@@ -2870,8 +2872,8 @@ def test_every_support_bearing_product_of_the_candidate_pack_is_named_by_some_wa
 ) -> None:
     """W-VO-Q's acceptance, measured rather than asserted: against the
     UNSIGNED candidate — the highest unsigned source above the highest
-    signed pack, seq-22 today (seq-21 when this test was written; seq-21
-    stopped before its own signature and will never be signed, see
+    signed pack, seq-22 today (seq-21 when this test was written; seq-21 was
+    signed but stopped before activation and never entered this repo, see
     `fold_pack_seq22.py`) — every product in the catalogue carries a SUPPORT
     rule, and every one of them is named by at least one interview walk —
     except the one product an owner ruling forbids the funnel to reach

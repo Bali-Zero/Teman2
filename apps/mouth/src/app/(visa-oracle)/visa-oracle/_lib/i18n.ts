@@ -836,6 +836,14 @@ const en = {
   "verdict.headline.TEMPORARILY_UNAVAILABLE":
     "The verified decision service cannot complete this assessment",
   "verdict.headline.NEEDS_INPUT": "A little more to go",
+  // D23 "OPTION B-STUDIO": not a real `OutcomeState` — an override VerdictReveal
+  // selects instead of `verdict.headline.HUMAN_REVIEW_REQUIRED` when the
+  // Studio code is the ONLY review reason. Must never say a person/consultant
+  // reviews or checks anything, and must never state a figure the visitor
+  // did not declare — the specific numbers already live in the reason's own
+  // copy (`SECOND_HOME_BELOW_THRESHOLD_STUDIO`), rendered lower on the page.
+  "verdict.headline.SECOND_HOME_STUDIO":
+    "Below the Second Home guarantee threshold",
   "verdict.evaluating": "Checking the verified rules…",
   "verdict.eligibility.eligible": "Eligible",
   "verdict.eligibility.likely": "Likely",
@@ -851,6 +859,10 @@ const en = {
     "We’d rather say so plainly than fake a result.",
   "verdict.state_description.NEEDS_INPUT":
     "Finish the interview to see your options.",
+  // Must not repeat the Studio sentence that closes the reason's own copy,
+  // which renders directly under this description.
+  "verdict.state_description.SECOND_HOME_STUDIO":
+    "The guarantee figure you declared doesn’t reach the Second Home (E33) thresholds yet. Why, and where to check the other routes, is right below.",
   "verdict.provenance_headline.CLIENT_GUARD":
     "One answer needs clarification first",
   "verdict.provenance_headline.NETWORK_FAILURE":
@@ -960,6 +972,10 @@ const en = {
     "It is not an approval, a guarantee, or a filing.",
   "outcome.disclaimer.complex_to_human":
     "Complex or flagged cases always go to a human — Ditjen Imigrasi decides, not this tool.",
+  // D23 "OPTION B-STUDIO": replaces `outcome.disclaimer.complex_to_human` on
+  // a Studio-only hold, which is never a human/consultant hold.
+  "outcome.disclaimer.second_home_studio":
+    "This hold is about a declared guarantee figure below the Second Home (E33) thresholds — the Second Home Studio shows the routes and the numbers for your case.",
   "outcome.alternatives_title": "The door that is open",
   "outcome.alternatives_intro":
     "Another route the verified rules can assess for you.",
@@ -1819,6 +1835,8 @@ const id: Record<Keys, string> = {
   "verdict.headline.TEMPORARILY_UNAVAILABLE":
     "Layanan keputusan terverifikasi belum dapat menyelesaikan penilaian ini",
   "verdict.headline.NEEDS_INPUT": "Sedikit lagi",
+  "verdict.headline.SECOND_HOME_STUDIO":
+    "Di bawah ambang batas jaminan Second Home",
   "verdict.evaluating": "Memeriksa aturan yang telah diverifikasi…",
   "verdict.eligibility.eligible": "Memenuhi syarat",
   "verdict.eligibility.likely": "Kemungkinan besar",
@@ -1834,6 +1852,8 @@ const id: Record<Keys, string> = {
     "Kami lebih memilih berterus terang daripada memalsukan hasil.",
   "verdict.state_description.NEEDS_INPUT":
     "Selesaikan wawancara untuk melihat opsi Anda.",
+  "verdict.state_description.SECOND_HOME_STUDIO":
+    "Angka jaminan yang Anda nyatakan belum mencapai ambang batas Rumah Kedua (E33). Alasannya, dan tempat memeriksa jalur lainnya, ada tepat di bawah.",
   "verdict.provenance_headline.CLIENT_GUARD":
     "Satu jawaban perlu diperjelas terlebih dahulu",
   "verdict.provenance_headline.NETWORK_FAILURE":
@@ -1946,6 +1966,8 @@ const id: Record<Keys, string> = {
     "Ini bukan persetujuan, jaminan, atau pengajuan resmi.",
   "outcome.disclaimer.complex_to_human":
     "Kasus kompleks atau ditandai selalu diteruskan ke manusia — Ditjen Imigrasi yang memutuskan, bukan alat ini.",
+  "outcome.disclaimer.second_home_studio":
+    "Penahanan ini soal angka jaminan yang dinyatakan di bawah ambang batas Rumah Kedua (E33) — Second Home Studio menampilkan jalur-jalur dan angka untuk kasus Anda.",
   "outcome.alternatives_title": "Pintu yang terbuka",
   "outcome.alternatives_intro":
     "Jalur lain yang dapat dinilai oleh aturan terverifikasi untuk Anda.",

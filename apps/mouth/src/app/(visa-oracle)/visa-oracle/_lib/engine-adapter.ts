@@ -113,6 +113,30 @@ export const SECOND_HOME_STUDIO_REVIEW_REASON_CODE =
   "SECOND_HOME_BELOW_THRESHOLD_STUDIO";
 export const SECOND_HOME_STUDIO_URL = "/visa/second-home/studio";
 
+/**
+ * True when the Studio code is the ONLY review reason on a
+ * `HUMAN_REVIEW_REQUIRED` outcome — the one case D23 "OPTION B-STUDIO"
+ * forbids from reading as a human/consultant hold anywhere on the page.
+ * Exported so `OutcomeSheet` (body copy + share text) and `OracleShell`'s
+ * `VerdictReveal` call (headline + description) derive the SAME boolean
+ * from the SAME outcome instead of two independent computations drifting
+ * apart. A case that also carries a different review reason is deliberately
+ * excluded — `reviewReasons.every(...)` on a mixed set is false, so that
+ * case keeps the generic human wording (Studio link still shown alongside).
+ * The length check is not redundant with the non-empty tuple type: that
+ * tuple is a cast over the server's `review_reasons`, and `every` on an
+ * empty list is true.
+ */
+export function isSecondHomeStudioOnly(outcome: OutcomeViewModel): boolean {
+  return (
+    outcome.state === "HUMAN_REVIEW_REQUIRED" &&
+    outcome.reviewReasons.length > 0 &&
+    outcome.reviewReasons.every(
+      (reason) => reason.code === SECOND_HOME_STUDIO_REVIEW_REASON_CODE,
+    )
+  );
+}
+
 export const SUPPORT_REASON_COPY: Record<string, LocalizedText> = {
   A1_BVK_ELIGIBLE: text(
     "Your nationality is on the visa-free (BVK) list for tourism or transit, and your stay is 30 days or less.",

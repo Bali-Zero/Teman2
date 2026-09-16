@@ -6,9 +6,11 @@ seq-21 was folded, signed under a throwaway ceremony and then STOPPED before
 activation: three defects were found in it, and a signed pack is never
 amended — the sequence halts and the next fold carries the cure. Its source
 (``rulepack-prod-021.source.json``) stays on disk as the record of what was
-proposed; its bundle never enters this repo. Precedent: ``rulepack-prod-014``
-and ``-015`` exist as sources and were never signed either. A folded sequence
-may stop.
+proposed; its SIGNED bundle never enters this repo, and it will never be
+activated. A folded sequence may stop even after signing — precedent for the
+weaker case, a source that stops before ever reaching a signature at all:
+``rulepack-prod-014`` and ``-015`` exist as sources and were never signed.
+A folded sequence may stop.
 
 So this fold chains to seq-20, not to seq-21::
 

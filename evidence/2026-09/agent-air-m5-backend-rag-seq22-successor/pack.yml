@@ -71,11 +71,14 @@ decisions:
       seq-22 folds DIRECTLY from the signed seq-20 anchor (previous_payload_sha256
       df02287b7fc8f572a9e6674fdf3445a2131c428e8a1492ab8a388dee5bf01a4d, verified this turn against
       the committed pack's own field), never from seq-21. seq-21
-      (rulepack-prod-021.source.json, confirmed on disk this turn, unsigned, untouched by this
-      diff) is a STOPPED sequence — three defects found before its own signature — and is never
-      rebased or superseded in place; it stays on disk as the record of what was tried and
-      rejected, the same shape as the two existing unsigned-source precedents rulepack-prod-014
-      and -015 (confirmed this turn: neither has a `.signed.json` sibling, same as -021).
+      (rulepack-prod-021.source.json, confirmed on disk this turn, untouched by this diff) WAS
+      signed under a throwaway ceremony but STOPPED before activation — three defects found
+      before it ever activated, not before it was signed — and its signed bundle never enters
+      this repo; the sequence is never rebased or superseded in place, it stays on disk as the
+      record of what was tried and rejected. That is a different shape from the two existing
+      never-signed-at-all precedents rulepack-prod-014 and -015 (confirmed this turn: neither
+      has a `.signed.json` sibling in this repo — the same repo-file absence as -021's, but
+      -021's absence is about activation, never about reaching a signature).
   - id: D-e23v
     decision: >-
       DEFECT 1 cure. `hf.employment-without-indonesian-sponsor`'s product scope narrows from

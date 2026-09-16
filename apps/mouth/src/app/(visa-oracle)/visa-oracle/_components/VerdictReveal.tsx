@@ -19,6 +19,15 @@ export interface VerdictRevealProps {
    * legal support status. Operational and Bali Zero service availability
    * remain separate in OutcomeSheet. */
   legalStatus?: LegalSupportStatus;
+  /**
+   * D23 "OPTION B-STUDIO": true when `engine-adapter.ts`'s
+   * `isSecondHomeStudioOnly(outcome)` is true — the Studio review code is the
+   * ONLY review reason. Only meaningful alongside `state ===
+   * "HUMAN_REVIEW_REQUIRED"`; selects the Studio-specific headline/
+   * description instead of the generic human-review copy, which must never
+   * appear anywhere on a Studio-only outcome.
+   */
+  isSecondHomeStudioOnly?: boolean;
 }
 
 const STATE_ICON: Record<OutcomeState, typeof CheckCircle2> = {
@@ -51,6 +60,7 @@ export function VerdictReveal({
   state,
   provenance,
   legalStatus,
+  isSecondHomeStudioOnly,
 }: VerdictRevealProps) {
   const reducedMotion = useReducedMotion();
   const headingRef = useRef<HTMLHeadingElement>(null);
@@ -71,12 +81,23 @@ export function VerdictReveal({
   // client-side hold that never reached a real state at all).
   const useProvenanceCopy =
     provenance !== "ENGINE" && state === "TEMPORARILY_UNAVAILABLE";
+  // D23 "OPTION B-STUDIO": takes priority over the generic HUMAN_REVIEW_
+  // REQUIRED copy — that copy says "needs a human, not an algorithm", which
+  // this ONE review reason must never say anywhere on the page.
+  const useSecondHomeStudioCopy =
+    !useProvenanceCopy &&
+    state === "HUMAN_REVIEW_REQUIRED" &&
+    isSecondHomeStudioOnly === true;
   const headlineKey = useProvenanceCopy
     ? (`verdict.provenance_headline.${provenance}` as I18nKey)
-    : (`verdict.headline.${state}` as I18nKey);
+    : useSecondHomeStudioCopy
+      ? ("verdict.headline.SECOND_HOME_STUDIO" as I18nKey)
+      : (`verdict.headline.${state}` as I18nKey);
   const descriptionKey = useProvenanceCopy
     ? (`verdict.provenance_description.${provenance}` as I18nKey)
-    : (`verdict.state_description.${state}` as I18nKey);
+    : useSecondHomeStudioCopy
+      ? ("verdict.state_description.SECOND_HOME_STUDIO" as I18nKey)
+      : (`verdict.state_description.${state}` as I18nKey);
 
   const heading = (
     <h1

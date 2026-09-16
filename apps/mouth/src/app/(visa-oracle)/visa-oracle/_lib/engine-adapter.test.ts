@@ -6,8 +6,10 @@ import {
   REVIEW_REASON_COPY,
   SECOND_HOME_DEPOSIT_THRESHOLD_USD,
   SECOND_HOME_PROPERTY_THRESHOLD_USD,
+  SECOND_HOME_STUDIO_REVIEW_REASON_CODE,
   SUPPORT_REASON_COPY,
   buildEngineOutcome,
+  isSecondHomeStudioOnly,
 } from "./engine-adapter";
 import { TEST_NOW, makeVisaOracleResponse } from "./visa-oracle-test-fixture";
 import { translate, type I18nKey } from "./i18n";
@@ -1320,5 +1322,46 @@ describe("review reasons cover every code the current pack can emit", () => {
       (code) => !allRealCodes.has(code),
     );
     expect(phantomEntries).toEqual([]);
+  });
+});
+
+describe("isSecondHomeStudioOnly (D23 B-STUDIO)", () => {
+  const studioHold = () => {
+    const response = makeVisaOracleResponse("HUMAN_REVIEW_REQUIRED");
+    response.decision.review_reasons[0].code =
+      SECOND_HOME_STUDIO_REVIEW_REASON_CODE;
+    return buildEngineOutcome(response);
+  };
+
+  it("is true when the Studio code is the only review reason", () => {
+    expect(isSecondHomeStudioOnly(studioHold())).toBe(true);
+  });
+
+  it("is false when the Studio code shares the hold with another reason", () => {
+    const response = makeVisaOracleResponse("HUMAN_REVIEW_REQUIRED");
+    const [first] = response.decision.review_reasons;
+    response.decision.review_reasons = [
+      { ...first, code: SECOND_HOME_STUDIO_REVIEW_REASON_CODE },
+      { ...first, code: "CALLING_VISA_REVIEW" },
+    ];
+    expect(isSecondHomeStudioOnly(buildEngineOutcome(response))).toBe(false);
+  });
+
+  it("is false for a review hold whose reason list arrived empty", () => {
+    // The non-empty tuple type is a cast over the server list: an empty
+    // list must read as the generic human hold, never as the Studio one.
+    const outcome = studioHold();
+    const emptied = { ...outcome, reviewReasons: [] } as unknown as Parameters<
+      typeof isSecondHomeStudioOnly
+    >[0];
+    expect(isSecondHomeStudioOnly(emptied)).toBe(false);
+  });
+
+  it("is false for every state that is not a review hold", () => {
+    expect(
+      isSecondHomeStudioOnly(
+        buildEngineOutcome(makeVisaOracleResponse("SUPPORTED_CANDIDATES")),
+      ),
+    ).toBe(false);
   });
 });
