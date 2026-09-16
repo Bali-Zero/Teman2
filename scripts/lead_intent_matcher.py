@@ -205,14 +205,17 @@ async def run(dsn: str, mirror_dsn: str | None = None) -> dict[str, int]:
                             msg["source_table"],
                         )
                         continue
-                    await _record_match(
+                    recorded = await _record_match(
                         conn,
                         intent=intent,
                         client={"id": client_id, "lead_metadata": None},
                         match_method="lead_id",
                     )
+                # Popped either way: claimed by us or by someone else, this
+                # intent is matched and must not be retried in this pass.
                 unmatched.pop(lead_id, None)
-                det_matched += 1
+                if recorded:
+                    det_matched += 1
 
         # ── Pass 2: probabilistic fallback (phone + 30-min window) ──
         # Re-fetched from DB, so intents matched in pass 1 are excluded.
@@ -228,8 +231,11 @@ async def run(dsn: str, mirror_dsn: str | None = None) -> dict[str, int]:
                 skipped += 1
                 continue
             async with pool.acquire() as conn:
-                await _record_match(conn, intent=intent, client=best)
-            matched += 1
+                recorded = await _record_match(conn, intent=intent, client=best)
+            # A counter that reports a write nobody made is the class of lie
+            # this organ's own metrics split exists to avoid.
+            if recorded:
+                matched += 1
 
         return {
             "ttl_intents_seen": len(ttl_intents),
@@ -529,9 +535,25 @@ async def _record_match(
     intent: dict[str, Any],
     client: dict[str, Any],
     match_method: str = "phone_window",
-) -> None:
-    """Two updates, same transaction. Idempotent: the WHERE clauses
-    guarantee we only write once even if a retry loops."""
+) -> bool:
+    """Two updates, same transaction. Returns True when THIS call is the one
+    that claimed the intent.
+
+    The return value is not decoration, and the old docstring's flat claim that
+    "the WHERE clauses guarantee we only write once" was true of a retry and
+    false of a race. `WHERE matched_client_id IS NULL` protects the first
+    UPDATE; the second one is keyed on `clients.id` and has no such guard, so a
+    second pass arriving after another has already claimed the intent used to
+    write its `lead_metadata` patch anyway — onto whichever client IT resolved.
+    Two passes that disagree about the client therefore attributed the same
+    lead to both, and the loser wrote last.
+
+    That was unreachable until 2026-09-16: the first UPDATE had never once
+    succeeded (#6615), so the second was never reached. This module takes no
+    lock, and launchd will not start a second copy of the same label, so the
+    overlap needs a manual run alongside the cron — narrow, but silent and
+    wrong when it happens, which is the combination worth closing.
+    """
     async with conn.transaction():
         # str() and ONLY here. `lead_intents.matched_client_id` is VARCHAR(20)
         # (migrations_v2/122_lead_intents.sql) while `clients.id` is INTEGER,
@@ -543,17 +565,32 @@ async def _record_match(
         # every pass since died with `expected str, got int` — 0 of 170 intents
         # were ever attributed. The UPDATE on `clients` below must keep the
         # NATIVE id: there $3 is bound to the integer PK.
-        await conn.execute(
+        #
+        # RETURNING, not the status string: `UPDATE 0` and `UPDATE 1` differ by
+        # one character and a parse that gets it wrong fails OPEN. A returned
+        # id is unambiguous.
+        claimed = await conn.fetchval(
             """
             UPDATE lead_intents
                SET matched_client_id = $1,
                    matched_at        = NOW()
              WHERE id = $2
                AND matched_client_id IS NULL
+         RETURNING id
             """,
             str(client["id"]),
             intent["id"],
         )
+        if claimed is None:
+            # Someone else claimed it between our SELECT and this UPDATE.
+            # Leaving `clients` alone is the whole point: the row we would
+            # patch may belong to a different client than the one now recorded
+            # on the intent.
+            logger.info(
+                "intent %s already matched by a concurrent pass — leaving clients untouched",
+                intent["id"],
+            )
+            return False
 
         patch = {
             "lead_intent_id": intent["id"],
@@ -591,6 +628,7 @@ async def _record_match(
         intent["source"],
         match_method,
     )
+    return True
 
 
 # ----------------------------------------------------------------------
