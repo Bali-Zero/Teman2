@@ -43,6 +43,34 @@ purchase (order → test card → webhook → practice on kita → tracker). (2)
 and Xendit approves: live key + callback token on Fly, `GARUDA_PAYMENTS_LIVE=true` on Fly and
 Vercel, redeploy both.
 
+**The step that is not a Fly secret, and the one that silently eats money.** A key on Fly opens
+the outbound half only. The inbound half — Xendit telling us the invoice was paid — is a
+**callback URL registered in the Xendit dashboard, per mode**, and nothing in this repo can set
+it. Measured on 2026-09-16 with test-mode keys correctly installed: the synthetic purchase
+reached a real TEST invoice, the invoice was paid (Xendit's own page: "has been paid for
+successfully — IDR 750.000"), and our side never moved — order stuck at `awaiting_payment`,
+`practice` null, and `select count(*) from garuda_payment_inbox` returning **0, ever**. No
+error was raised anywhere: an unregistered callback URL looks exactly like a customer who never
+paid.
+
+So before step (2), in the Xendit dashboard **for the mode you are about to use**:
+
+- register the Invoice callback URL `https://balizero.com/api/visa/voa/webhooks/payment`;
+- make the dashboard's callback token and Fly's `GARUDA_XENDIT_CALLBACK_TOKEN` agree — if they
+  do not, every callback answers `401 WEBHOOK_SIGNATURE_INVALID` and the order stalls the same
+  way, just with a 401 instead of silence.
+
+Proof it is armed, and the only one worth trusting here:
+
+```bash
+scripts/pg.sh -c "select provider, outcome, order_id from garuda_payment_inbox order by received_at desc limit 3;"
+```
+
+At least one row, and that `order_id`'s tracker leaving `awaiting_payment` with a non-null
+`practice`. Do **not** substitute a Fly log grep: a deliberate control call to the webhook
+answered `401` and produced no line in `fly logs` at all, so log silence is not evidence of
+anything on this route.
+
 ## 3. Card fees against the all-inclusive price
 
 Sources: the signed Services Agreement v2026.03 (accepted 2026-09-14; SCHEDA on M5
