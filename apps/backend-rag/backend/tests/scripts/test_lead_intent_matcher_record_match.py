@@ -54,13 +54,24 @@ class _FakeTransaction:
 
 
 class _RecordingConn:
-    """Records what `_record_match` would hand to asyncpg, in order."""
+    """Records what `_record_match` would hand to asyncpg, in order.
 
-    def __init__(self) -> None:
+    `claimed` is what the first UPDATE's `RETURNING id` yields: the intent's id
+    when this caller won the row, None when another pass had already claimed
+    it. That is the only difference between the two races, so it is the only
+    knob these tests need.
+    """
+
+    def __init__(self, claimed: str | None = _LEAD_ID) -> None:
         self.calls: list[tuple[str, tuple[Any, ...]]] = []
+        self._claimed = claimed
 
     def transaction(self) -> _FakeTransaction:
         return _FakeTransaction()
+
+    async def fetchval(self, query: str, *args: Any) -> str | None:
+        self.calls.append((query, args))
+        return self._claimed
 
     async def execute(self, query: str, *args: Any) -> None:
         self.calls.append((query, args))
@@ -77,21 +88,23 @@ def _intent() -> dict[str, Any]:
     }
 
 
-async def _record(match_method: str = "lead_id") -> _RecordingConn:
-    conn = _RecordingConn()
-    await lim._record_match(
+async def _record(
+    match_method: str = "lead_id", *, claimed: str | None = _LEAD_ID
+) -> tuple[_RecordingConn, bool]:
+    conn = _RecordingConn(claimed=claimed)
+    recorded = await lim._record_match(
         conn,
         intent=_intent(),
         client={"id": _CLIENT_ID, "lead_metadata": None},
         match_method=match_method,
     )
-    return conn
+    return conn, recorded
 
 
 @pytest.mark.asyncio
 async def test_lead_intents_update_binds_the_client_id_as_text() -> None:
     """GUILT: the binding that failed every scheduled pass for months."""
-    conn = await _record()
+    conn, _ = await _record()
 
     query, args = conn.calls[0]
     assert "UPDATE lead_intents" in query
@@ -105,7 +118,7 @@ async def test_lead_intents_update_binds_the_client_id_as_text() -> None:
 @pytest.mark.asyncio
 async def test_clients_update_keeps_the_native_integer_id() -> None:
     """INNOCENCE: converting both parameters just moves the DataError."""
-    conn = await _record()
+    conn, _ = await _record()
 
     query, args = conn.calls[1]
     assert "UPDATE clients" in query
@@ -117,8 +130,64 @@ async def test_clients_update_keeps_the_native_integer_id() -> None:
 @pytest.mark.asyncio
 async def test_both_updates_run_and_in_that_order() -> None:
     """The two bindings above describe the whole write, not a sample of it."""
-    conn = await _record()
+    conn, _ = await _record()
 
     assert len(conn.calls) == 2
     assert "UPDATE lead_intents" in conn.calls[0][0]
     assert "UPDATE clients" in conn.calls[1][0]
+
+
+# ----------------------------------------------------------------------
+# The race. Found by an adversarial review of the type fix above, which is
+# the change that made this code path reachable at all: before it, the first
+# UPDATE never succeeded, so the second never ran.
+# ----------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_a_lost_race_leaves_the_clients_row_untouched() -> None:
+    """GUILT: the write that used to land on the WRONG client.
+
+    `WHERE matched_client_id IS NULL` guards the first UPDATE. The second one
+    is keyed on `clients.id` and has no such guard, so a pass arriving after
+    another had already claimed the intent still wrote its `lead_metadata`
+    patch — onto whichever client IT resolved. Two passes that disagree about
+    the client attributed the same lead to both, last writer winning.
+
+    `claimed=None` is exactly what `RETURNING id` yields in that case.
+    """
+    conn, recorded = await _record(claimed=None)
+
+    assert recorded is False
+    assert len(conn.calls) == 1, "the clients UPDATE must not run on a lost race"
+    assert "UPDATE lead_intents" in conn.calls[0][0]
+    assert not any("UPDATE clients" in q for q, _ in conn.calls)
+
+
+@pytest.mark.asyncio
+async def test_claiming_the_intent_reports_true_and_writes_both_rows() -> None:
+    """INNOCENCE: the ordinary path is unchanged.
+
+    Without this, a `return False` at the top of the function would satisfy
+    the guilt test perfectly and stop the matcher writing anything at all.
+    """
+    conn, recorded = await _record()
+
+    assert recorded is True
+    assert len(conn.calls) == 2
+    assert "UPDATE clients" in conn.calls[1][0]
+
+
+@pytest.mark.asyncio
+async def test_the_claim_is_read_from_returning_not_from_a_status_string() -> None:
+    """The first statement must go through `fetchval` + `RETURNING id`.
+
+    `conn.execute` hands back `"UPDATE 0"` / `"UPDATE 1"` — two strings one
+    character apart, where a wrong parse fails OPEN and restores the bug. A
+    returned id is unambiguous. `_RecordingConn.execute` cannot report a
+    claim, so routing the first statement through it would break this.
+    """
+    conn, _ = await _record()
+
+    first_query, _args = conn.calls[0]
+    assert "RETURNING id" in first_query
