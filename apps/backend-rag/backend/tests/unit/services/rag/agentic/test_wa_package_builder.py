@@ -1030,9 +1030,26 @@ class TestContextLengthMeaningUnchanged:
         assert package.evidence_inputs["context_length"] == len(package.chunks)
         assert package.evidence_inputs["context_length"] == 2
 
-    async def test_pricing_only_package_excludes_pricing_block_from_context_length(
+    async def test_pricing_only_package_now_counts_the_price_list_as_context(
         self,
     ) -> None:
+        """CONTRACT CHANGED DELIBERATELY (B2.5-3), and this test is the record.
+
+        It used to assert `context_length == 0` and `chunks == []` for a
+        pricing-only package: the `pricing_block` field rode along as payload
+        and was excluded from the count. That exclusion was measured as the
+        cause of a real refusal — ID "Harga PT PMA berapa all in?" scored
+        0.08 and was told "I have no reliable source", while the identical
+        English question scored 0.60 and got the figure.
+
+        The price list is now a synthetic chunk, exactly as `curated_qa_block`
+        already was (see `test_curated_only_package_context_length_counts_
+        curated` directly above, which has always asserted 1, not 0). What
+        stays true, and is still asserted here, is the ORIGINAL meaning of
+        `context_length`: the number of sealed CHUNKS. The `pricing_block`
+        WIRE FIELD is still not counted — it is counted once, as the chunk it
+        now also produces, never twice.
+        """
         fake_pricing = FakePricingService(_real_pricing_result(PRICING_VISA_QUERY))
         with patch.object(wpb_module, "get_pricing_service", return_value=fake_pricing):
             package = await build_context_package(
@@ -1042,8 +1059,9 @@ class TestContextLengthMeaningUnchanged:
                 retriever=FakeRetriever({}),
             )
         assert package.pricing_block is not None
-        assert package.evidence_inputs["context_length"] == 0
-        assert package.chunks == []
+        assert package.evidence_inputs["context_length"] == len(package.chunks)
+        assert package.evidence_inputs["context_length"] == 1
+        assert [c["collection"] for c in package.chunks] == ["pricing"]
 
 
 class TestEvidenceFreeze:
@@ -1264,3 +1282,148 @@ def test_context_package_refuses_a_hash_that_does_not_cover_its_bytes() -> None:
             thread_epoch=1,
             package_hash="not-the-right-hash",
         )
+
+
+# ============================================================================
+# B2.5-3 — the price list counts as evidence
+# ============================================================================
+
+
+def _real_pricing_result_pma(query: str) -> dict[str, Any]:
+    """Same wire shape as `_real_pricing_result`, carrying the ONE entry the
+    production defect was measured on: `New Company (PT PMA)` at 20.000.000
+    IDR, the figure a bahasa client was refused and an English one received."""
+    return {
+        "official_notice": "🔒 PREZZI UFFICIALI BALI ZERO 2026",
+        "search_query": query,
+        "results": {
+            "company_services": {
+                "New Company (PT PMA)": {
+                    "name": "New Company (PT PMA)",
+                    "price": "20.000.000 IDR",
+                    "duration": "",
+                    "validity": "",
+                    "notes": "",
+                    "description_en": "Full incorporation of a new PT PMA.",
+                    "icon_id": "company-pma",
+                }
+            }
+        },
+        "contact_info": {"whatsapp": "+62 821 3454 721"},
+        "disclaimer": {"it": "prezzi soggetti a variazione"},
+    }
+
+
+def _english_corpus_retriever() -> FakeRetriever:
+    """What retrieval actually returns for a bahasa price question: English
+    regulatory text that is lexically far from the query. This is the whole
+    defect — the corpus answers about LAW, the price lives in the price list."""
+    return FakeRetriever(
+        {
+            "legal_unified_hybrid": [
+                _hit("Law 40/2007 governs limited liability companies in Indonesia.", 0.51),
+            ],
+        },
+    )
+
+
+class TestPriceListCountsAsEvidence:
+    """GUILT: the exact production turn that refused a paying question.
+
+    Measured 2026-09-16 on live threads: ID "Harga PT PMA berapa all in?"
+    scored 0.08 and answered "I have no reliable source", while EN "How much
+    is a PT PMA company, all in" scored 0.60 and answered 20.000.000. The
+    control in the same thread — ID questions about paid-up capital — scored
+    0.80, so bahasa was never the broken part: the price lives only in
+    `pricing_block`, and the scorer only ever saw `chunks`.
+    """
+
+    @pytest.mark.asyncio
+    async def test_a_bahasa_price_question_no_longer_abstains(self) -> None:
+        query = "berapa harga PT PMA"
+        fake_pricing = FakePricingService(_real_pricing_result_pma(query))
+        with patch.object(wpb_module, "get_pricing_service", return_value=fake_pricing):
+            package = await build_context_package(
+                query=query,
+                history=[],
+                thread_epoch=1,
+                retriever=_english_corpus_retriever(),
+            )
+
+        policy = build_abstain_policy(query)
+        score = package.evidence_inputs["evidence_score"]
+        assert not policy.generation_abstains(score), (
+            f"bahasa price question still abstains at {score} — the production defect"
+        )
+        assert package.evidence_inputs["abstain"] is False
+
+    @pytest.mark.asyncio
+    async def test_the_price_list_is_in_the_chunks_carrying_the_real_figure(self) -> None:
+        query = "berapa harga PT PMA"
+        fake_pricing = FakePricingService(_real_pricing_result_pma(query))
+        with patch.object(wpb_module, "get_pricing_service", return_value=fake_pricing):
+            package = await build_context_package(
+                query=query, history=[], thread_epoch=1, retriever=_english_corpus_retriever()
+            )
+
+        priced = [c for c in package.chunks if c.get("collection") == "pricing"]
+        assert len(priced) == 1
+        assert "20.000.000 IDR" in priced[0]["text"]
+        assert "New Company (PT PMA)" in priced[0]["text"]
+        # A label, never a measurement: outside RETRIEVED_KINDS by design, so
+        # it can never be numerically compared against a retrieved score.
+        assert score_provenance.kind_of(priced[0]) == score_provenance.CURATED_SYNTHETIC
+        assert score_provenance.kind_of(priced[0]) not in score_provenance.RETRIEVED_KINDS
+
+    @pytest.mark.asyncio
+    async def test_english_keeps_answering_and_does_not_regress(self) -> None:
+        query = "how much does a PT PMA cost"
+        fake_pricing = FakePricingService(_real_pricing_result_pma(query))
+        with patch.object(wpb_module, "get_pricing_service", return_value=fake_pricing):
+            package = await build_context_package(
+                query=query, history=[], thread_epoch=1, retriever=_english_corpus_retriever()
+            )
+
+        policy = build_abstain_policy(query)
+        assert not policy.generation_abstains(package.evidence_inputs["evidence_score"])
+
+
+class TestPriceListInnocence:
+    """INNOCENCE: nothing changes for a turn that is not about our prices."""
+
+    @pytest.mark.asyncio
+    async def test_a_question_with_no_pricing_intent_gets_no_price_chunk(self) -> None:
+        query = "what documents do I need for a KITAS"
+        fake_pricing = FakePricingService(_real_pricing_result_pma(query))
+        with patch.object(wpb_module, "get_pricing_service", return_value=fake_pricing):
+            package = await build_context_package(
+                query=query, history=[], thread_epoch=1, retriever=_visa_retriever()
+            )
+
+        assert package.pricing_block is None
+        assert [c for c in package.chunks if c.get("collection") == "pricing"] == []
+
+    @pytest.mark.asyncio
+    async def test_the_customers_own_words_never_reach_the_chunk(self) -> None:
+        """PII, and it is an OUTPUT boundary.
+
+        `pricing_block["search_query"]` is the customer's RAW message, kept
+        for the generator and redacted later by the DLP gate. A chunk is a
+        different surface with a different lifetime — it is scored, hashed
+        and shipped — so the raw words must never be copied into one. This
+        walks the chunk text, not the helper's source.
+        """
+        query = "berapa harga PT PMA untuk paspor saya yang lama"
+        fake_pricing = FakePricingService(_real_pricing_result_pma(query))
+        with patch.object(wpb_module, "get_pricing_service", return_value=fake_pricing):
+            package = await build_context_package(
+                query=query, history=[], thread_epoch=1, retriever=_english_corpus_retriever()
+            )
+
+        priced = [c for c in package.chunks if c.get("collection") == "pricing"]
+        assert len(priced) == 1
+        assert query not in priced[0]["text"]
+        assert "paspor saya" not in priced[0]["text"]
+        # The contact block the sanitizer drops must not sneak back in either.
+        assert "+62" not in priced[0]["text"]
+        assert "wa.me" not in priced[0]["text"]
