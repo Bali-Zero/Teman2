@@ -1,0 +1,23 @@
+Reviewed current HEAD `48c40e5`; application code is identical to declared `4be9b85`. Pytest execution was blocked by the read-only sandbox’s lack of a writable temp directory.
+
+1. **PROVEN — DEFAULT CHANGE.** Forward’s final declaration sets 30 days at `317_visa_oracle_sessions_retention_30d.sql:172-173`; the 90-day value at line 160 is only the fresh-table fallback.
+
+2. **PROVEN — NO DATA REWRITE.** Forward and rollback contain no executable UPDATE/DELETE; tests enforce this at `test_migration_317_visa_oracle_sessions_retention.py:49-56,77-82`.
+
+3. **PROVEN — IDEMPOTENCY.** Guarded table/index creation at migration lines `150,163,166`; repeated `ALTER ... SET DEFAULT` at `172-173` is idempotent.
+
+4. **PROVEN — ROUTER SUFFICIENCY.** `_persist_session_create` names exactly four columns/parameters; `expires_at` is absent at `visa_oracle.py:644-654`.
+
+5. **PROVEN — NUMBER SAFETY.** Duplicate detection is equality-only at `migration_manager.py:48-59`; pending selection uses set membership at `563-574`, then numeric sorting at `632`.
+
+6. **PROVEN — PURGE SQL SHAPE.** Bounded ctid subquery and exact expiry/handoff predicate appear at `visa_oracle.py:708-714`; no unbounded DELETE path exists.
+
+7. **BROKEN — HANDOFF SAFETY CLAIM AS WRITTEN.** FK/reference grep returned zero hits, and handoff sets the marker at `visa_oracle.py:741-745`. But `_fetch_session_snapshot` does **not** read `handoff_triggered`; it selects only `quiz_answers, recommended_visas` at `810-815`. The purge itself reads the marker at `712`.
+
+8. **BROKEN — NON-FATAL + PII-FREE.** Non-fatal behavior is correct at `visa_oracle.py:718-720`, and the scheduler logs only `type(exc).__name__` at `main_api.py:695-699`. However, the purge’s own failure log emits `str(exc)` at `visa_oracle.py:719`; the test at `test_visa_oracle_sessions_purge.py:84-98` does not check failure-log redaction.
+
+9. **PROVEN — PROCESS-GROUP CORRECTNESS.** `_API` registration is at `router_manifest.py:424`; spawn is jointly gated at `main_api.py:803-812`; cancellation/await occurs at `851-857`, before pool close at `859-861`.
+
+10. **BROKEN — TEST VALIDITY.** `test_the_lifespan_spawns...` calls a copied helper at `test_visa_oracle_sessions_purge_scheduler.py:84-98`, not `lifespan_light`. Removing the real production spawn at `main_api.py:810-812` would leave this test green. Forcing the predicate off would fail it, but that proves only the duplicated helper.
+
+VERDICT: CHANGES

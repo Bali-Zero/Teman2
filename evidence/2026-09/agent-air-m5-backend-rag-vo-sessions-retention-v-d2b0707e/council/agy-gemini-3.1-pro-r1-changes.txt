@@ -1,0 +1,11 @@
+1. DEFAULT CHANGE: PROVEN. `317_visa_oracle_sessions_retention_30d.sql` contains a fallback CREATE with 90 days, but concludes with `ALTER COLUMN expires_at SET DEFAULT (NOW() + INTERVAL '30 days')`.
+2. NO DATA REWRITE: PROVEN. The migration file contains no `UPDATE` or `DELETE` statements in either the forward or rollback sections.
+3. IDEMPOTENCY: PROVEN. The migration uses `CREATE TABLE IF NOT EXISTS` and `CREATE INDEX IF NOT EXISTS`. The `ALTER COLUMN ... SET DEFAULT` is catalog-only and intrinsically idempotent.
+4. ROUTER SUFFICIENCY: PROVEN. In `visa_oracle.py:646-648`, `_persist_session_create`'s `INSERT` names exactly `(session_id, quiz_answers, recommended_visas, ip_hash)` — `expires_at` is omitted.
+5. NUMBER SAFETY: PROVEN. `migration_manager.py:563-574` computes pending migrations via `m["number"] not in applied_numbers` (set exclusion, not max-value), allowing out-of-order execution. Duplicate checking ignores gaps.
+6. PURGE SQL SHAPE: PROVEN. `_purge_expired_sessions` executes a `DELETE` filtered precisely by `ctid IN (SELECT ctid ... WHERE expires_at < NOW() AND NOT COALESCE(handoff_triggered, false) LIMIT $1)`.
+7. HANDOFF SAFETY: PROVEN. Grepping `migrations_v2/*.sql` confirms no FKs reference `visa_oracle_sessions`. `handoff_triggered` is indeed the sole durable signal set during `_persist_session_handoff`.
+8. NON-FATAL + PII-FREE: PROVEN. `_purge_expired_sessions` catches `Exception`, returns 0, and logs bare counts only. The loop in `main_api.py` logs only the exception class (`type(exc).__name__`) and never stringifies it.
+9. PROCESS-GROUP CORRECTNESS: PROVEN. `router_manifest.py:424` registers `visa_oracle` to `_API`. The spawn in `main_api.py` checks both the kill switch and `db_pool`, and `lifespan_light` correctly cancels it before `db_pool.close()`.
+10. TEST VALIDITY: BROKEN. `test_the_lifespan_spawns_the_purge_when_enabled` tests a local mock function (`_spawn_via_lifespan()`) that manually reimplements the `if` logic. If the spawn is removed from `main_api.py`, this test will still pass.
+VERDICT: CHANGES
