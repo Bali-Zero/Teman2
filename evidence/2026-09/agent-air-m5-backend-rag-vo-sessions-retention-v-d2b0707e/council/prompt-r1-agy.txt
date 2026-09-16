@@ -1,0 +1,59 @@
+You are a REVIEW seat on a Gear-3 council (round 1), independent from the codex seat reviewing
+the same diff — do not assume its verdict, reach your own. Worktree:
+/Users/balizero/nuzantara/.worktrees/backend-rag-vo-sessions-retention-v2 (branch
+agent/air-m5/backend-rag/vo-sessions-retention-v2, merge-base
+c1db269aa9601914ec77250f7748f0ac2352cf55, HEAD a76050925ca29ec1bf3b4c4882be913986a03b5d).
+Read-only: no edits, no file creation, no git write commands. Do not quote secrets or PII.
+
+SCOPE. Review `git diff c1db269aa9601914ec77250f7748f0ac2352cf55...HEAD` in this worktree. Read,
+in this order:
+- apps/backend-rag/backend/db/migrations_v2/317_visa_oracle_sessions_retention_30d.sql (whole
+  file — 180 lines, mostly comment/provenance; this IS the change)
+- apps/backend-rag/backend/tests/db/test_migration_317_visa_oracle_sessions_retention.py (whole
+  file — the guilt/innocence proof for every claim below)
+- apps/backend-rag/backend/app/routers/visa_oracle.py lines 634-657 (`_persist_session_create` —
+  the sole consumer; confirm it never sets expires_at)
+- apps/backend-rag/backend/db/migration_manager.py lines 39-69 (`_assert_unique_migration_numbers`)
+  and lines 559-655 (`_apply_all_pending_locked`) — the numbering-safety claim below rests on
+  these two functions.
+Never open PENDING-ARMS.md, docs/, research/, or any file under this worktree's own
+evidence/2026-09/agent-air-m5-backend-rag-vo-sessions-retention-v-d2b0707e/council/.
+
+WHAT THE CHANGE CLAIMS. Migration 317 changes `visa_oracle_sessions.expires_at`'s DEFAULT from
+`NOW() + INTERVAL '90 days'` to `NOW() + INTERVAL '30 days'` (Owner ruling, Zero, 2026-08-25 —
+UU PDP data minimisation). It is a successor of PR #6478 (armed, frozen, no evidence pack, same
+filename, same SQL body) — reusing the SAME migration number 317, not renumbering. The forward
+section is idempotent (CREATE TABLE/INDEX IF NOT EXISTS, matching production's existing shape;
+the ALTER is the only statement with a real effect on production). No existing row is rewritten
+(no UPDATE/DELETE anywhere in the file). The rollback section restores 90 days. No router code
+changes — `_persist_session_create`'s INSERT never names `expires_at`, so the DEFAULT alone
+governs every new row.
+
+FALSIFY THESE SIX CLAIMS. For each: PROVEN or BROKEN, with file:line or command output that
+decides it.
+1. DEFAULT CHANGE: the LAST `ALTER COLUMN expires_at SET DEFAULT` in the forward section reads
+   '30 days', not '90 days' (the CREATE TABLE fallback still names '90 days' as production's
+   pre-existing value for a genuinely fresh database — that is NOT a defect, confirm it is not
+   confused with the real declaration).
+2. NO DATA REWRITE: neither the forward nor rollback section contains an UPDATE or DELETE
+   against visa_oracle_sessions — existing rows keep their currently-declared expires_at.
+3. IDEMPOTENCY: CREATE TABLE and both CREATE INDEX statements are IF NOT EXISTS-guarded, so a
+   run against production (where all three already exist) is a no-op; the ALTER SET DEFAULT is
+   itself idempotent (re-running it is harmless).
+4. ROUTER SUFFICIENCY: `_persist_session_create`'s INSERT statement (visa_oracle.py) names only
+   (session_id, quiz_answers, recommended_visas, ip_hash) — expires_at is absent from both the
+   column list and the bound params — so this migration alone is sufficient and no router change
+   is missing.
+5. NUMBER SAFETY: `_assert_unique_migration_numbers` only rejects two files sharing the SAME
+   numeric prefix; it does not require monotonic/contiguous numbering. `_apply_all_pending_locked`
+   computes `pending` as `migration["number"] not in applied_numbers` — never a comparison against
+   the highest applied number — so a database that has already applied migration 318 will still
+   pick up and correctly apply 317 on its next run, out of numeric order, with no special-casing
+   needed.
+6. TEST VALIDITY: the new test file's guilt case (flip the forward section's real default to
+   '90 days') is real coverage — i.e., if a future edit silently reverted the DEFAULT to 90 days,
+   `test_forward_sets_the_default_to_30_days` would fail, not pass vacuously.
+
+Be terse: at most 6 lines per claim. Your LAST line must be exactly one of:
+VERDICT: OK
+VERDICT: CHANGES

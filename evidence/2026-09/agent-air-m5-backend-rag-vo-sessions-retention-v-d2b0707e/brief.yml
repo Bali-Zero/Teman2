@@ -1,0 +1,91 @@
+gear: 3
+gear_reason: >-
+  Floor measured with scripts/evidence_pack_lint.py --print-floor / --print-floor-source on the
+  merge-base diff (git diff --name-only / --numstat, merge-base c1db269aa9601914ec77250f7748f0ac2352cf55 # pragma: allowlist secret
+  ...HEAD a76050925ca29ec1bf3b4c4882be913986a03b5d # pragma: allowlist secret
+  ): floor 3, source "path" — the changed set touches
+  apps/backend-rag/backend/db/migrations_v2/317_visa_oracle_sessions_retention_30d.sql, which
+  matches this repo's HOTZONE_PATTERNS for the migration hot-zone regardless of size (net churn
+  here is only +263, well under SIZE_GEAR3_THRESHOLD). Judgement agrees independently of the
+  floor: this migration changes a DEFAULT that PROD's own writer (_persist_session_create)
+  relies on implicitly, over apps/backend-rag/** where merging a PR is itself the deploy (memory
+  discovery_merging_a_backend_rag_pr_deploys_by_itself_2026_09_01).
+ruling: mandate SAETTA R2 (Dux = parent session, M5) — not a Zero-declared ORANGE/BLUE mission
+mission: >-
+  SAETTA R2, host M5 — successor of PR #6478 ("feat(visa-oracle): 30-day retention for
+  visa_oracle_sessions (migration 317)", branch agent/air-m5/db/vo-sessions-retention-317).
+  Implementer: this worktree/session (sole writer). Dux (parent session, M5) ships: review,
+  merge, arm, deploy, prove-live.
+objective: >-
+  #6478 is armed and frozen on GitHub — Builder Contract §1 makes an armed branch read-only, so
+  it can never grow the Gear-3 evidence pack it is missing, and its Harness floor (3, migration
+  hot-zone) means it can never pass as-is. This PR is the fresh-from-origin/main follow-up the
+  Contract requires: same SQL body (already reviewed clean at #6478's own split-gate), fresh
+  provenance/numbering re-check, a new DB-free guilt/innocence test, and this evidence pack.
+  Business: visitor sessions of Visa Oracle (UU PDP data minimisation) should keep `expires_at`
+  default 30 days instead of the 90 PROD carries today — Owner ruling (Zero, 2026-08-25,
+  docs/plans/2026-08-24-visa-oracle-live/OWNER-RULINGS-2026-08-25.md §3): "30 giorni (non i 90
+  dichiarati) — bastano per il visitatore che torna e per l'analisi funnel, minimizzano la
+  ritenzione dichiarata."
+scope:
+  - apps/backend-rag/backend/db/migrations_v2/317_visa_oracle_sessions_retention_30d.sql
+  - apps/backend-rag/backend/tests/db/test_migration_317_visa_oracle_sessions_retention.py
+  - evidence/2026-09/agent-air-m5-backend-rag-vo-sessions-retention-v-d2b0707e/**
+constraints:
+  - No router change — `_persist_session_create`'s INSERT (visa_oracle.py:634-656) never sets
+    expires_at explicitly, so the DEFAULT alone governs; verified this turn by reading the router,
+    not assumed.
+  - No UPDATE/DELETE on visa_oracle_sessions — existing rows keep their already-declared 90-day
+    expires_at; shortening a live row's expiry is a production-data mutation and a separate,
+    credentialed, operator act (SWITCHBOARD-2-RETENTION.md), not this migration's job.
+  - No purge job, no policy table, no enforcement of the declared date — only the DECLARED number
+    changes, per the ruling's own scope.
+  - No touch to the `messages` column (free-text funnel stop is an application-code change, not
+    schema, and shipped separately per #6478's own header).
+  - Migration must stay idempotent (CREATE TABLE/INDEX IF NOT EXISTS) and keep the `-- ===
+    ROLLBACK ===` marker; ALTER ... SET DEFAULT is metadata-only, no table rewrite.
+  - No client PII; no credential value anywhere; never renumber past a genuine on-main collision.
+  - No `.env*`/`fly.toml`/`zantara_core.py` edits; no `npm install/ci`; no PROD Postgres query or
+    write from this worktree (Dux's job).
+acceptance:
+  - text: >-
+      A1 the forward section's LAST expires_at DEFAULT SHALL be 30 days, not 90
+    probe: "PYTHONPATH=. pytest backend/tests/db/test_migration_317_visa_oracle_sessions_retention.py::test_forward_sets_the_default_to_30_days"
+  - text: >-
+      A2 the rollback section SHALL restore the 90-day default
+    probe: "PYTHONPATH=. pytest backend/tests/db/test_migration_317_visa_oracle_sessions_retention.py::test_rollback_restores_90_days"
+  - text: >-
+      A3 neither the forward nor the rollback section SHALL contain an UPDATE or DELETE statement
+      against visa_oracle_sessions — existing rows are never rewritten
+    probe: "PYTHONPATH=. pytest backend/tests/db/test_migration_317_visa_oracle_sessions_retention.py::test_forward_does_not_rewrite_existing_rows backend/tests/db/test_migration_317_visa_oracle_sessions_retention.py::test_rollback_does_not_rewrite_existing_rows"
+  - text: >-
+      A4 the CREATE TABLE and both CREATE INDEX statements SHALL be IF NOT EXISTS-guarded (a
+      re-run against PROD, where the table already exists, is a no-op)
+    probe: "PYTHONPATH=. pytest backend/tests/db/test_migration_317_visa_oracle_sessions_retention.py::test_forward_ddl_is_idempotent"
+  - text: >-
+      A5 `_persist_session_create`'s INSERT SHALL name no `expires_at` column, so the new DEFAULT
+      is what governs every new row with no router change
+    probe: "grep -A15 'INSERT INTO visa_oracle_sessions' apps/backend-rag/backend/app/routers/visa_oracle.py | grep -v expires_at"
+    consumer: >-
+      apps/backend-rag/backend/app/routers/visa_oracle.py::_persist_session_create — the sole
+      writer of new session rows
+  - text: >-
+      A6 the migration number 317 SHALL remain unique across migrations_v2/ (no duplicate
+      prefix), matching this repo's structural guardrail
+    probe: "PYTHONPATH=. pytest backend/tests/db/test_migration_uniqueness.py::test_real_migrations_v2_has_no_duplicates"
+consumer_map:
+  - >-
+    `_persist_session_create` (apps/backend-rag/backend/app/routers/visa_oracle.py:634-656) — the
+    sole INSERT path for new visa_oracle_sessions rows; consumes the new 30-day DEFAULT with zero
+    code change once this migration applies.
+  - >-
+    `backend/db/migrate.py apply-all` / Fly `release_command` — the runner that actually executes
+    this migration's DDL against PROD at deploy time (merging this PR onto apps/backend-rag/** is
+    itself the deploy).
+  - >-
+    A future PROD schema read of `information_schema.columns.column_default` for
+    `visa_oracle_sessions.expires_at` — the direct, disk-verifiable observation that the change is
+    live (see pack.yml `bites`).
+appetite:
+  budget: 2 hours, 1 PR
+  stop_loss: three reds on the same cause suspends; a fix-of-a-fix stops at depth 1

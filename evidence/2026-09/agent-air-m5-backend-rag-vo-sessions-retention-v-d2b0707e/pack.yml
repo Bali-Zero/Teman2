@@ -1,0 +1,325 @@
+# Gear-3 evidence pack — visa_oracle_sessions 30-day retention, successor of PR #6478
+# (mandate SAETTA R2, Dux = parent session, M5). Written by the same session that built the
+# migration and the test, in this worktree (sole writer, per the task's own worktree-discipline
+# constraint) — there is no separate evidence-pack-writer lane on this small a change. Every
+# receipt below is a command this session actually executed in this authoring turn
+# (anti-hallucination discipline); nothing is narrated from memory or from #6478's own history
+# without a fresh command backing it this turn.
+gear: 3
+brief_ref: evidence/brief.yml
+ruling: mandate SAETTA R2 (Dux = parent session, M5)
+mission: >-
+  SAETTA R2, M5 — visa_oracle_sessions 30-day retention, successor of PR #6478 (armed, frozen,
+  no evidence pack, can never pass).
+lanes:
+  - lane: vo-sessions-retention-v2
+    role: build
+    seat: >-
+      Claude (implementer session, M5, worktree
+      .worktrees/backend-rag-vo-sessions-retention-v2) — sole writer per this mandate's own
+      constraint; no separate evidence-writer session for a single-migration-file change. Commit
+      trailer uses "Claude Opus 5" per this repo's standing convention
+      (apps/backend-rag/CLAUDE.md §8 Golden Rule #12: "matches what the harness itself appends").
+  - lane: vo-sessions-retention-v2-council-codex
+    role: review
+    seat: codex (review seat, read-only) — NOT YET RUN, prompt prepared at council/prompt-r1-codex.txt
+  - lane: vo-sessions-retention-v2-council-agy
+    role: review
+    seat: agy-gemini (review seat, read-only) — NOT YET RUN, prompt prepared at council/prompt-r1-agy.txt
+  - lane: vo-sessions-retention-v2-ground-truth
+    role: ground_truth
+    seat: >-
+      this session (M5) — the change touches only a migration DDL default and a parsing-only
+      test; ground truth is the router's INSERT statement and the migration runner's own pending
+      logic, both read directly from disk this turn, not a notebook.
+    note: >-
+      No NotebookLM query exists for this lane and none was invented: the 30-day figure is not a
+      new regulatory number requiring an NB lookup — it is Zero's own already-recorded ruling
+      (docs/plans/2026-08-24-visa-oracle-live/OWNER-RULINGS-2026-08-25.md §3), quoted verbatim
+      in both this migration's header and brief.yml above.
+council_run: council/journal.jsonl
+pii_scan: clean
+bites:
+  consumer: >-
+    apps/backend-rag/backend/app/routers/visa_oracle.py::_persist_session_create — the sole
+    INSERT path for new visa_oracle_sessions rows. Its INSERT statement names only
+    (session_id, quiz_answers, recommended_visas, ip_hash); it never sets expires_at, so the
+    column's DEFAULT is what applies to every new row.
+  observation: >-
+    After this PR deploys (merging onto apps/backend-rag/** is the deploy), PROD's
+    information_schema.columns.column_default for visa_oracle_sessions.expires_at reads the
+    30-day expression, not 90 — owed by the Dux post-merge, e.g.
+    `SELECT column_default FROM information_schema.columns WHERE table_name =
+    'visa_oracle_sessions' AND column_name = 'expires_at';` against nuzantara-postgres.
+decisions:
+  - id: D-gear
+    decision: >-
+      Gear 3. Measured this turn with `apps/backend-rag/.venv/bin/python
+      scripts/evidence_pack_lint.py --print-floor --changed-files-file <changed> --numstat-file
+      <numstat>` on the merge-base diff (c1db269aa9601914ec77250f7748f0ac2352cf55 # pragma: allowlist secret
+      ...a76050925ca29ec1bf3b4c4882be913986a03b5d # pragma: allowlist secret
+      ): floor 3. `--print-floor-source` (run separately — the script returns early on
+      `--print-floor` before reaching the source branch, confirmed by reading main() this turn,
+      evidence_pack_lint.py:4612-4644) reports source "path": the migrations_v2/*.sql path alone
+      triggers HOTZONE_PATTERNS regardless of this PR's small size (net churn +263, well under
+      SIZE_GEAR3_THRESHOLD 1,828).
+  - id: D-numbering
+    decision: >-
+      317 is KEPT, not renumbered. Re-measured this turn: `git ls-tree -r --name-only origin/main
+      -- apps/backend-rag/backend/db/migrations_v2/` shows highest present is 318
+      (318_wa_outbox_inbound_binding_and_terminal_reasons.sql), with 315 present and 316/317 BOTH
+      free — no file on origin/main claims either number. `gh pr list --state open --limit 500
+      --json number,headRefName,files | grep migrations_v2` finds exactly two open-PR hits in
+      that gap: #6478 (agent/air-m5/db/vo-sessions-retention-317) claims 317 with the IDENTICAL
+      filename this PR uses — the fossil this PR supersedes, not a competing author, since #6478
+      is armed/frozen and expected to be closed by the Dux, never merged alongside this successor;
+      and #6474 (agent/air-m5/db/vo-consultant-split) claims 315 (DIFFERENT filename,
+      315_visa_oracle_consultant_requests.sql, colliding with origin/main's own 315 under a
+      different name) and 316 (316_visa_oracle_consultant_requests_retention_policy.sql,
+      colliding with nothing on main) — neither is 317 and neither is this PR's collision to fix.
+  - id: D-order-safety
+    decision: >-
+      Applying 317 on a database where 318 is already applied is safe and requires no
+      renumbering. Read `backend/db/migration_manager.py::_apply_all_pending_locked` this turn
+      (L559-655): `pending = [m for m in discovered if m["number"] not in applied_numbers]` —
+      pending status is set-membership in `_schema_versions`, never a comparison against the max
+      applied number, and `discover_migrations` only rejects DUPLICATE prefixes
+      (`_assert_unique_migration_numbers`), never out-of-order gaps. A DB that already ran 318
+      will pick up 317 on its next `apply-all` and run it after 318 chronologically; this
+      migration's SQL (idempotent CREATE TABLE/INDEX IF NOT EXISTS + idempotent ALTER ... SET
+      DEFAULT) has no dependency on 318's content, a disjoint table (wa_outbox).
+  - id: D-router
+    decision: >-
+      No router change needed. Read `_persist_session_create`
+      (apps/backend-rag/backend/app/routers/visa_oracle.py:634-656) this turn: its INSERT names
+      only (session_id, quiz_answers, recommended_visas, ip_hash) — expires_at is never set
+      explicitly, so the column DEFAULT this migration changes is the only source of the value on
+      every new row. This confirms the mandate's own framing (migration alone suffices) rather
+      than the alternative branch (router also needs a change).
+  - id: D-existing-rows
+    decision: >-
+      Existing rows keep their already-declared 90-day expires_at — the conservative choice, and
+      what the file already did before this successor touched it (#6478's own header states this
+      explicitly; verified this turn by reading the migration's forward section end-to-end: no
+      UPDATE or DELETE statement anywhere in it).
+  - id: D-review
+    decision: >-
+      Reviewed the migration against this directory's own conventions (315, 318 read as recent
+      examples this turn) — idempotent DDL (CREATE TABLE/INDEX IF NOT EXISTS, matches both
+      siblings), `-- === ROLLBACK ===` marker present and restores 90 days (matches convention),
+      lock footprint is metadata-only (ALTER ... SET DEFAULT takes no table-rewrite lock; the
+      CREATE statements are no-ops on PROD since the table/indexes already exist — added an
+      explicit LOCKS note to the file's header this turn, matching 318's own LOCKS section
+      convention, since the original file had none). No other defect found — the file's own
+      "Scope, stated so it cannot be over-read" section already matched every convention checked.
+receipts:
+  - claim: Merge-base and HEAD, this turn.
+    cmd: git fetch -q origin && git merge-base origin/main HEAD && git rev-parse HEAD
+    result: "merge-base c1db269aa9601914ec77250f7748f0ac2352cf55, HEAD a76050925ca29ec1bf3b4c4882be913986a03b5d" # pragma: allowlist secret
+    exit: 0
+    ts: "2026-09-17T01:11:00Z"
+    seat: this session (M5)
+  - claim: Changed-file set and numstat, merge-base anchored (never a two-dot diff).
+    cmd: git diff --name-only/--numstat c1db269aa9...HEAD
+    result: "2 files changed (1 migration, 1 test), +263/-0"
+    exit: 0
+    ts: "2026-09-17T01:12:00Z"
+    seat: this session (M5)
+  - claim: Gear-3 floor and its source, on the merge-base diff.
+    cmd: >-
+      apps/backend-rag/.venv/bin/python scripts/evidence_pack_lint.py --print-floor
+      --changed-files-file <f> --numstat-file <f> ; (separately) --print-floor-source
+      --changed-files-file <f> --numstat-file <f>
+    result: 'floor 3 ; source "path"'
+    exit: 0
+    ts: "2026-09-17T01:13:00Z"
+    seat: this session (M5)
+  - claim: >-
+      PII scan of the full merge-base diff — no email, phone, passport-like or 16-digit NIK-like
+      string. The 7 "phone-shaped" digit-run hits are git index hashes (0000000000, 3f38f30ac1,
+      14d1a5f0f0) and PR/date numbers (#6478, 2026-09-17, #5037, 2026-09-14, Zero 2026-08-25,
+      2026-08-25) in the migration's own header comments — none client-identifying.
+    cmd: >-
+      git diff c1db269aa9...HEAD > full.diff; grep -cE
+      '[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}' full.diff; grep -cE
+      '(\+?[0-9][0-9().-]{7,}[0-9])' full.diff; grep -cE '\b[A-Z]{1,2}[0-9]{6,9}\b' full.diff;
+      grep -cE '\b[0-9]{16}\b' full.diff
+    result: >-
+      0 email hits, 7 phone-shaped hits (all git hashes/PR-date numbers, sampled and confirmed
+      benign), 0 passport-like matches, 0 16-digit NIK matches
+    exit: 0
+    ts: "2026-09-17T01:14:00Z"
+    seat: this session (M5)
+  - claim: >-
+      317 remains free on origin/main; the only open-PR claim on it is #6478, the fossil this PR
+      supersedes.
+    cmd: >-
+      git ls-tree -r --name-only origin/main -- apps/backend-rag/backend/db/migrations_v2/ | sort
+      ; gh pr list --state open --limit 500 --json number,headRefName,files | python3 -c "...
+      filter files containing migrations_v2 ..."
+    result: >-
+      origin/main highest = 318 (315 present, 316/317 both absent) ; open-PR hits in
+      migrations_v2: #6478 headRefName agent/air-m5/db/vo-sessions-retention-317 file
+      317_visa_oracle_sessions_retention_30d.sql ; #6474 headRefName
+      agent/air-m5/db/vo-consultant-split files
+      315_visa_oracle_consultant_requests.sql + 316_visa_oracle_consultant_requests_retention_policy.sql
+    exit: 0
+    ts: "2026-09-17T01:00:00Z"
+    seat: this session (M5)
+  - claim: >-
+      migration_manager.py's pending-migration logic is set-membership, not max-number
+      comparison — out-of-order application of 317 after 318 is safe.
+    cmd: >-
+      Read apps/backend-rag/backend/db/migration_manager.py::_apply_all_pending_locked (L559-655)
+      and discover_migrations (L426-471) in full this turn.
+    result: >-
+      `pending = [m for m in discovered if m["number"] not in applied_numbers]` (L574);
+      `_assert_unique_migration_numbers` (L39-69) only rejects duplicate prefixes, never
+      out-of-order gaps; no comparison against max(applied_numbers) anywhere in the file.
+    exit: 0
+    ts: "2026-09-17T01:05:00Z"
+    seat: this session (M5)
+  - claim: >-
+      `_persist_session_create`'s INSERT never sets expires_at — the DEFAULT alone governs, no
+      router change needed.
+    cmd: grep -n "_persist_session_create" -A 40 apps/backend-rag/backend/app/routers/visa_oracle.py
+    result: >-
+      "INSERT INTO visa_oracle_sessions (session_id, quiz_answers, recommended_visas, ip_hash)
+      VALUES ($1, $2::text::jsonb, $3::text::jsonb, $4)" — expires_at absent from both the
+      column list and the bound params (visa_oracle.py:646-648)
+    exit: 0
+    ts: "2026-09-17T00:40:00Z"
+    seat: this session (M5)
+  - claim: Existing shipped tests pass, both the named tripwire and the keyword-filtered set.
+    cmd: >-
+      cd apps/backend-rag && PYTHONPATH=. .venv/bin/python -m pytest
+      backend/tests/test_retention_policy_scope_family_tripwire.py -p no:cacheprovider ; PYTHONPATH=.
+      .venv/bin/python -m pytest backend/tests -k "migration_uniqueness or checksum_verification
+      or rollback_extraction or post_d1_guard_ledger or data_invariant_tripwires" -p no:cacheprovider
+    result: "5 passed (tripwire) ; 72 passed, 31968 deselected (keyword-filtered set)"
+    exit: 0
+    ts: "2026-09-17T00:55:00Z"
+    seat: this session (M5)
+  - claim: >-
+      No shipped test previously named visa_oracle_sessions' expires_at default — confirmed
+      before writing the new test, to avoid duplicating coverage.
+    cmd: grep -rln "visa_oracle_sessions" apps/backend-rag/backend/tests/
+    result: >-
+      backend/tests/routers/test_visa_oracle_handoff.py (price-snapshot scope, unrelated) ;
+      backend/tests/db/test_migration_base_rollback.py (legacy-migration-080a whitelist, unrelated)
+    exit: 0
+    ts: "2026-09-17T01:06:00Z"
+    seat: this session (M5)
+  - claim: New guilt/innocence test passes green against the real migration file.
+    cmd: >-
+      cd apps/backend-rag && PYTHONPATH=. .venv/bin/python -m pytest
+      backend/tests/db/test_migration_317_visa_oracle_sessions_retention.py -p no:cacheprovider
+    result: "6 passed"
+    exit: 0
+    ts: "2026-09-17T01:09:00Z"
+    seat: this session (M5)
+  - claim: >-
+      Proven red: temporarily flipped the forward section's real ALTER's default from 30 to 90
+      days (simulating the regression this test exists to catch), backed up first via `cp` (never
+      `git checkout --`, per this repo's own guardrail on wiping an uncommitted cure).
+    cmd: >-
+      cp 317_....sql <scratch>/317_backup.sql ; python3 -c "mutate the LAST 'SET DEFAULT ... 30
+      days' occurrence in the forward section to 90 days, rewrite the file" ; cd
+      apps/backend-rag && PYTHONPATH=. .venv/bin/python -m pytest
+      backend/tests/db/test_migration_317_visa_oracle_sessions_retention.py -p no:cacheprovider
+    result: "1 failed (test_forward_sets_the_default_to_30_days), 5 passed"
+    exit: 1
+    ts: "2026-09-17T01:10:30Z"
+    seat: this session (M5)
+  - claim: Restored the migration file byte-identical to its committed state via `cp` from the backup.
+    cmd: >-
+      cp <scratch>/317_backup.sql 317_....sql ; diff <scratch>/317_backup.sql 317_....sql
+    result: "diff empty — RESTORED-IDENTICAL"
+    exit: 0
+    ts: "2026-09-17T01:11:05Z"
+    seat: this session (M5)
+  - claim: Full targeted suite green again post-restore, plus the two adjacent migration-manager suites.
+    cmd: >-
+      cd apps/backend-rag && PYTHONPATH=. .venv/bin/python -m pytest
+      backend/tests/db/test_migration_317_visa_oracle_sessions_retention.py
+      backend/tests/db/test_migration_uniqueness.py
+      backend/tests/db/test_migration_rollback_extraction.py -p no:cacheprovider
+    result: "16 passed"
+    exit: 0
+    ts: "2026-09-17T01:11:40Z"
+    seat: this session (M5)
+  - claim: Pre-commit hooks (W41 migration-number uniqueness, W42 rollback-marker presence, anti-reward-hacking, import chain) all pass on the real commit.
+    cmd: git commit (pre-commit hooks run automatically)
+    result: >-
+      "migration-numbers lint: 195 files, all unique prefixes" ; "migration-rollback lint: 190
+      post-cutoff migrations, all have ROLLBACK marker" ; "anti-reward-hacking: clean" ; "import
+      chain OK" ; "All pre-commit checks passed!"
+    exit: 0
+    ts: "2026-09-17T01:11:05Z"
+    seat: this session (M5)
+  - claim: "brief.yml acceptance A1 probe, run individually."
+    cmd: "PYTHONPATH=. pytest backend/tests/db/test_migration_317_visa_oracle_sessions_retention.py::test_forward_sets_the_default_to_30_days"
+    result: "1 passed"
+    exit: 0
+    ts: "2026-09-17T01:16:00Z"
+    seat: this session (M5)
+  - claim: "brief.yml acceptance A2 probe, run individually."
+    cmd: "PYTHONPATH=. pytest backend/tests/db/test_migration_317_visa_oracle_sessions_retention.py::test_rollback_restores_90_days"
+    result: "1 passed"
+    exit: 0
+    ts: "2026-09-17T01:16:10Z"
+    seat: this session (M5)
+  - claim: "brief.yml acceptance A3 probe, run individually."
+    cmd: "PYTHONPATH=. pytest backend/tests/db/test_migration_317_visa_oracle_sessions_retention.py::test_forward_does_not_rewrite_existing_rows backend/tests/db/test_migration_317_visa_oracle_sessions_retention.py::test_rollback_does_not_rewrite_existing_rows"
+    result: "2 passed"
+    exit: 0
+    ts: "2026-09-17T01:16:20Z"
+    seat: this session (M5)
+  - claim: "brief.yml acceptance A4 probe, run individually."
+    cmd: "PYTHONPATH=. pytest backend/tests/db/test_migration_317_visa_oracle_sessions_retention.py::test_forward_ddl_is_idempotent"
+    result: "1 passed"
+    exit: 0
+    ts: "2026-09-17T01:16:30Z"
+    seat: this session (M5)
+  - claim: "brief.yml acceptance A5 probe, run individually."
+    cmd: "grep -A15 'INSERT INTO visa_oracle_sessions' apps/backend-rag/backend/app/routers/visa_oracle.py | grep -v expires_at"
+    result: >-
+      INSERT column list + bound params both print with no `expires_at` line — confirms the
+      router never sets it explicitly.
+    exit: 0
+    ts: "2026-09-17T01:16:40Z"
+    seat: this session (M5)
+  - claim: "brief.yml acceptance A6 probe, run individually."
+    cmd: "PYTHONPATH=. pytest backend/tests/db/test_migration_uniqueness.py::test_real_migrations_v2_has_no_duplicates"
+    result: "1 passed"
+    exit: 0
+    ts: "2026-09-17T01:16:50Z"
+    seat: this session (M5)
+dissent:
+  - seat: this session (M5, self-refutation)
+    objection: >-
+      Keeping migration number 317 (rather than renumbering) risks a REAL on-disk collision if PR
+      #6478 is ever merged instead of closed: both branches add a file with the byte-identical
+      path apps/backend-rag/backend/db/migrations_v2/317_visa_oracle_sessions_retention_30d.sql,
+      and merging both would be a genuine duplicate the uniqueness guard could not have caught in
+      either PR alone (each is clean on its OWN branch).
+    status: CONFIRMED
+    cure: >-
+      Not fully curable by this session — recorded so it is not lost. #6478 is armed AND frozen
+      (Builder Contract §1: an armed branch is read-only) and carries no Gear-3 evidence pack, so
+      per the mandate's own framing it "can never pass" as-is — it is expected to be closed, not
+      merged, once this successor is ready. This session cannot close #6478 itself (PR
+      open/close/merge is reserved to the Dux by this task's own constraints); recorded here, and
+      again in leftovers below, so the Dux closes #6478 before or at the same time as arming this
+      PR rather than discovering the collision at merge time.
+leftovers:
+  - >-
+    Council (codex + agy) has NOT been run — prompts prepared at council/prompt-r1-codex.txt and
+    council/prompt-r1-agy.txt per this mandate's own instruction that the Dux runs the council and
+    writes council/journal.jsonl. This pack's only expected lint FAIL is the missing journal.
+  - >-
+    PR #6478 itself is still open on GitHub as of this pack — closing it is the Dux's job once
+    this successor is armed, not this session's (out of this worktree's write scope: PR
+    open/close/merge are explicitly reserved to the Dux by the task brief). See the dissent entry
+    above: closing #6478 (rather than letting it merge) is what keeps migration number 317 from
+    becoming a genuine on-disk duplicate.
