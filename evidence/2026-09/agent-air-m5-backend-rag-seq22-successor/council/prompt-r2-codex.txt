@@ -1,0 +1,47 @@
+You are a REVIEW seat on a Gear-3 council (round 2). Worktree:
+/Users/balizero/nuzantara/.worktrees/backend-rag-seq22-successor (branch
+agent/air-m5/backend-rag/seq22-successor). The branch was rebased onto origin/main
+228a029c41 (which carries D19: offshore applicants are no longer asked overstay_days).
+Read-only: no edits, no file creation, no git write commands. Do not quote secrets or PII.
+Never open PENDING-ARMS.md, docs/, research/, or evidence/**/council/.
+
+ROUND 1 (your seat) returned CHANGES with two BROKEN claims and two ancillary defects.
+Round 2 checks ONLY whether they are cured, and whether the cure introduced a defect.
+The cure is `git diff a540f3a6d4 HEAD` (two commits: 80145d358a frontend+docstrings,
+94299c4074 one regenerated walk fixture). Read that diff whole (it is ~600 lines).
+
+CLAIM 6 (was BROKEN) — NO CONSULTANT WORDING ON A STUDIO-ONLY HOLD. When the ONLY review
+reason is SECOND_HOME_BELOW_THRESHOLD_STUDIO, nothing on the page (VerdictReveal headline and
+description, OutcomeSheet body, disclaimer, share/copy summary text) may say a human, person,
+consultant or advisor reviews the case. Check: `isSecondHomeStudioOnly` in
+apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter.ts and every consumer
+(OracleShell.tsx, VerdictReveal.tsx, OutcomeSheet.tsx); the new i18n keys in _lib/i18n.ts (EN
+and ID); the tests VerdictReveal.test.tsx, OutcomeSheet.test.tsx, OracleShell.test.tsx,
+engine-adapter.test.ts. Also check: a MIXED hold (Studio + another reason) keeps the generic
+human wording; an EMPTY reason list never reads as Studio-only; the verdict description does
+not repeat the reason body's Studio sentence. Page-level chrome shared by every state (footer
+"Unknown or complex cases go to human review", the generic "Talk to a consultant" consent
+block, the generic 3-step list) is OUT of scope for this claim: report it only as a note.
+
+CLAIM 5 (restated — round 1 read it literally and was right that the literal wording was
+false). Restated claim: NO MONEY FIGURE REACHES THE PACK OR APPLICANT-FACING COPY other than
+the two thresholds extracted from seq-20 (USD 1,000,000 property, USD 130,000 deposit). The
+amounts in test_seq22_pack.py (400_000, 999_999, 1_500_000, 50_000, 129_999, 200_000) are
+synthetic boundary probes around those two thresholds and are not published. Verify the
+restated claim: grep rulepack-prod-022.source.json and the mouth diff for money figures.
+
+ANCILLARY (was defect) — docstrings: fold_pack_seq22.py and test_interview_walk_census.py must
+say seq-21 was SIGNED but never ACTIVATED (it never entered this repo as a signed bundle), and
+the census opening prose must report seq-22 as 3/1/14/94. Check both files.
+
+WALK FIXTURE: offshore_work_sponsor_government_trade_office_only_employer_no.json lost only
+`overstay_days` from its asked list after the rebase. Confirm nothing else changed in it.
+
+You MAY run, if your sandbox permits a writable temp dir:
+  cd apps/mouth && npx --no-install vitest run "src/app/(visa-oracle)/visa-oracle"
+If not, trust file evidence and say so.
+
+OUTPUT: for each of CLAIM 6, CLAIM 5 (restated), ANCILLARY, WALK FIXTURE: PROVEN or BROKEN
+with file:line evidence, then any NEW defect introduced by the cure. Last line exactly one of:
+VERDICT: OK
+VERDICT: CHANGES

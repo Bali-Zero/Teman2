@@ -1,10 +1,15 @@
 gear: 3
 gear_reason: >-
   Floor measured with scripts/evidence_pack_lint.py --print-floor --print-floor-source on the
-  merge-base diff (git diff --name-only / --numstat 8aea5480241bafce051d574ddc330c0e015534a2...HEAD,
-  79ad183cac): floor 3, source "size" (churn dominated by the folded pack
-  rulepack-prod-022.source.json at 9,424 added lines and fold_pack_seq22.py at 922 — total
-  non-fixture churn 11,572 lines, well past SIZE_GEAR3_THRESHOLD 1,828; no HOTZONE_PATTERNS path
+  merge-base diff (git diff --name-only / --numstat, merge-base 228a029c41 (full
+  228a029c41d196de3ff9219de9c9741757bfe288)...HEAD 90c18bfdc0 (full
+  90c18bfdc057309943a82af0edb0b306211beb6e) — re-measured this turn after the branch was
+  rebased onto origin/main post-D19 and two follow-up commits landed on top (80145d358a the
+  Codex r1 claim-6 frontend cure, 94299c4074 the D19 walk-fixture regeneration, 90c18bfdc0 the
+  Codex r2 ID-wording cure; the fold/pack file itself, rulepack-prod-022.source.json, is
+  untouched by all three): floor 3, source "size" (churn dominated by the folded pack
+  rulepack-prod-022.source.json at 9,424 added lines and fold_pack_seq22.py at 924 — total
+  non-fixture churn 13,775 lines, well past SIZE_GEAR3_THRESHOLD 1,828; no HOTZONE_PATTERNS path
   is touched, so the size term alone explains the floor). Judgement agrees independently of the
   floor: this PR folds a candidate production rule pack (unsigned, unactivated) that a future
   Zero signing ceremony will act on directly, over apps/backend-rag/** where merging a PR is

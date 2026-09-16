@@ -1,0 +1,19 @@
+You are a REVIEW seat on a Gear-3 council (round 3). Worktree:
+/Users/balizero/nuzantara/.worktrees/backend-rag-seq22-successor. Read-only: no edits, no file
+creation, no git write commands. Never open PENDING-ARMS.md, docs/, research/, evidence/**/council/.
+
+Round 2 (your seat) proved CLAIM 6, CLAIM 5 (restated), ANCILLARY and WALK FIXTURE, and found
+ONE new defect: the Indonesian Studio disclaimer began "Penahanan ini…" (reads as "this
+detention"). The cure is `git diff 94299c4074 90c18bfdc0` (two files: _lib/i18n.ts and
+_components/OutcomeSheet.test.tsx under apps/mouth/src/app/(visa-oracle)/visa-oracle/).
+
+Check ONLY: (1) the new ID sentence is correct, natural Indonesian, carries no detention,
+human, person, consultant or advisor wording, and says the same thing as the EN line
+(outcome.disclaimer.second_home_studio in the en block); (2) the new test asserts the ID line
+and would fail on the old wording; (3) the cure introduced nothing else. Pre-existing
+"Penahanan" wording elsewhere in i18n.ts (outcome.provenance.CLIENT_GUARD.*) is outside this PR:
+note it, do not count it.
+
+OUTPUT: PROVEN/BROKEN for (1)-(3) with file:line, then the last line exactly one of:
+VERDICT: OK
+VERDICT: CHANGES

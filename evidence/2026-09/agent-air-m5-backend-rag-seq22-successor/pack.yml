@@ -1,10 +1,14 @@
 # Gear-3 evidence pack — seq-22 successor (SAETTA-20260916 R2, BLUE, M5).
 # Written by the evidence-pack writer (Claude Sonnet 5, M5), a distinct session from the Dux
-# (Claude Opus 5) who built the three commits on this branch. Every receipt below marked
-# "seat: Claude Sonnet 5 (evidence-pack writer)" is a command this writer actually executed in
-# its own authoring turn (anti-hallucination discipline); receipts describing what the fold
-# script itself asserts are backed by the pytest run that exercises that assertion, not narrated
-# from memory.
+# (Claude Opus 5) who built the three original commits on this branch, then — after this
+# writer's own two commits and council round 1 — three more follow-up commits (80145d358a the
+# Codex r1 claim-6 frontend cure, 94299c4074 the D19 walk-fixture regeneration once the branch
+# was rebased onto a fresh origin/main, 90c18bfdc0 the Codex r2 ID-wording cure). Every receipt
+# below marked "seat: Claude Sonnet 5 (evidence-pack writer)" (or "..., successor turn" for the
+# re-measurement after the rebase) is a command this writer actually executed in its own
+# authoring turn (anti-hallucination discipline); receipts describing what the fold script
+# itself asserts are backed by the pytest run that exercises that assertion, not narrated from
+# memory.
 gear: 3
 brief_ref: evidence/brief.yml
 ruling: RULED 2026-09-16 SAETTA
@@ -18,7 +22,12 @@ lanes:
     seat: Claude Sonnet 5 (evidence-pack writer, distinct session, non-Anthropic-diverse council below)
   - lane: seq22-successor-council-codex
     role: review
-    seat: codex-gpt-5.6-sol (codex exec --sandbox read-only, round 1)
+    seat: >-
+      codex-gpt-5.6-sol (codex exec --sandbox read-only; round 1 VERDICT CHANGES on HEAD
+      68f2822f3d — claim 5 over-stated, claim 6 a real defect; round 2 VERDICT CHANGES on HEAD
+      94299c4074 — claim 5 restated PROVEN, claim 6 PROVEN cured, one NEW defect found (ID Studio
+      disclaimer "Penahanan ini" reads as detention); round 3 VERDICT OK on HEAD 90c18bfdc0 after
+      the ID-wording cure landed)
   - lane: seq22-successor-council-agy
     role: review
     seat: agy-gemini-3.1-pro (round 1)
@@ -29,24 +38,30 @@ lanes:
       ground truth is the signed seq-20 pack and the activation/signing code already on
       origin/main, not a notebook
     nb: >-
-      merge-base 8aea5480241bafce051d574ddc330c0e015534a2, five files read verbatim via
-      `git show <merge-base>:<path>` and all five UNTOUCHED by this diff (confirmed this turn with
-      `git diff --name-only <merge-base>...HEAD -- <path>`, empty for each):
-      contracts/packs/rulepack-prod-020.signed.json (chain anchor, kid, signature the fold
-      verifies), rulepack-prod-020.source.json (products, sponsor_types, source records, the E33
-      bounds the fold extracts for the Studio rule, the nine dormant review rules it retires),
-      db/migrations_v2/253_visa_activation_writer_hardening.sql (visa_activate_rule_pack step 4
-      legal-period overlap guard, sequence/chain triggers), scripts/visa_engine/activate_pack.py
-      (legal_period from valid_period, trust store before the dry-run return) and
-      scripts/visa_engine/sign_pack.py (typed payload canonicalization). This is the SAME set of
-      five files W-VO-S21's evidence pack hashed at its own merge-base 52ebe96b62 — the two
-      merge-bases carry byte-identical copies of all five, which is why the hash below is
-      identical to that pack's, independently re-derived here rather than copied.
+      merge-base 228a029c41 (full 228a029c41d196de3ff9219de9c9741757bfe288, the CURRENT
+      merge-base after the branch was rebased post-D19; re-measured this turn — the fold's own
+      merge-base was 8aea5480241bafce051d574ddc330c0e015534a2 before that rebase, superseded, not
+      re-hashed), five files read verbatim via `git show <merge-base>:<path>` and all five
+      UNTOUCHED by this diff (confirmed this turn with `git diff --name-only
+      <merge-base>...HEAD -- <path>`, empty for each): contracts/packs/rulepack-prod-020.signed.json
+      (chain anchor, kid, signature the fold verifies), rulepack-prod-020.source.json (products,
+      sponsor_types, source records, the E33 bounds the fold extracts for the Studio rule, the
+      nine dormant review rules it retires), db/migrations_v2/253_visa_activation_writer_hardening.sql
+      (visa_activate_rule_pack step 4 legal-period overlap guard, sequence/chain triggers),
+      scripts/visa_engine/activate_pack.py (legal_period from valid_period, trust store before
+      the dry-run return) and scripts/visa_engine/sign_pack.py (typed payload canonicalization).
+      This is the SAME set of five files W-VO-S21's evidence pack hashed at its own merge-base
+      52ebe96b62, and the same set this pack itself hashed at its FIRST merge-base 8aea548 before
+      the D19 rebase — three merge-bases now, all three carrying byte-identical copies of all
+      five, re-verified this turn at the CURRENT merge-base, which is why the hash below is
+      unchanged from both of the earlier two derivations.
     query_hash: "1950b20510ec0d3639654d442a05d1e19463f7a720e3d94d03bfaf7e4e1c4c84" # pragma: allowlist secret
     note: >-
       query_hash = sha256 of the five files concatenated in that order via `git show
-      8aea5480241bafce051d574ddc330c0e015534a2:<path>` piped together, computed this turn. No
-      NotebookLM query exists for this lane and none was invented: no USD minimum is stated
+      228a029c41d196de3ff9219de9c9741757bfe288:<path>` piped together, re-computed this turn
+      against the current merge-base (unchanged from the prior merge-base's derivation, since all
+      five files are byte-identical at both). No NotebookLM query exists for this lane and none
+      was invented: no USD minimum is stated
       anywhere in fold_pack_seq22.py — the Studio rule's 1,000,000 / 130,000 bounds are EXTRACTED
       from seq-20's own el.e33.property-basis / el.e33.deposit-basis rules at fold time, and this
       writer independently confirmed both bounds against the committed seq-22 pack's
@@ -54,18 +69,39 @@ lanes:
       lt 1000000` / `secondhome.bank_deposit_usd lt 130000`) and against the pre-existing mouth
       constants SECOND_HOME_PROPERTY_THRESHOLD_USD / SECOND_HOME_DEPOSIT_THRESHOLD_USD it reuses.
 council_run: council/journal.jsonl
+seat_fallback_reason: >-
+  agy-gemini-3.1-pro (COUNCIL_REVIEW_SEATS_FALLBACK) stands beside codex-gpt-5.6-sol
+  (COUNCIL_REVIEW_SEATS_TITOLARI) because the other two titolari, kimi-code/k3 and
+  tp1-qwen3.8-max, were both down on the immediately preceding mission of this exact lineage
+  (W-VO-S21, evidence/2026-09/agent-air-m5-backend-rag-vo-s21-freeze/pack.yml, probed
+  2026-09-13T17:22:07Z): kimi-code/k3 returned `403 monthly usage limit ... refreshed in the
+  next cycle` (no cycle-reset date given, council/probe-kimi-1.txt in that pack) and
+  tp1-qwen3.8-max returned `429 insufficient_quota ... quota will reset at 09-18 08:39:00 UTC`
+  (council/probe-qwen-1.txt in that pack) — a reset date this mission's own council (convened
+  2026-09-16) still precedes, so tp1-qwen3.8-max was almost certainly still exhausted when this
+  pack's council ran. This writer did NOT re-probe either titolare live this turn: doing so
+  would write to `~/.organism/arsenal/last.json`, outside this writer's authorized scope
+  (evidence/.../brief.yml and pack.yml only) — this reason is the disk-verifiable precedent
+  inherited from the prior mission, not a fresh probe of this one, and is disclosed as such
+  rather than asserted as independently re-confirmed.
 pii_scan: clean
 decisions:
   - id: D-gear
     decision: >-
-      Gear 3. Floor measured this turn with `python3 scripts/evidence_pack_lint.py --print-floor
-      --print-floor-source --changed-files-file <changed-files> --numstat-file <numstat>` on the
-      merge-base diff (8aea5480241bafce051d574ddc330c0e015534a2...79ad183cac): floor 3, source
-      "size" — non-fixture churn 11,572 lines (9,424 from the folded pack, 922 from
-      fold_pack_seq22.py, 711 from the new test_seq22_pack.py, plus smaller edits), all above
-      SIZE_GEAR3_THRESHOLD 1,828 and touching no HOTZONE_PATTERNS path. Judgement agrees: an
-      unsigned production rule-pack candidate over apps/backend-rag/** (merging a PR here is the
-      deploy) that a future signing ceremony acts on directly.
+      Gear 3. Re-measured this turn with `apps/backend-rag/.venv/bin/python
+      scripts/evidence_pack_lint.py --print-floor --print-floor-source --changed-files-file
+      <changed-files> --numstat-file <numstat>` on the CURRENT merge-base diff
+      (228a029c41d196de3ff9219de9c9741757bfe288...90c18bfdc057309943a82af0edb0b306211beb6e, the
+      HEAD after the D19 rebase and two follow-up commits): floor 3, source "size" — 24 files
+      changed (2 backend source, 1 fixture, 3 backend tests, 11 mouth files, 7 evidence files),
+      non-fixture churn 13,775 lines (up from the pre-rebase measurement's 11,572 — the walk
+      fixture's 176 lines are excluded as a `fixtures/` path component, and the evidence pack's
+      own growth plus the two follow-up commits' mouth edits account for the rest: 9,424 from the
+      folded pack, 924 from fold_pack_seq22.py, 711 from the new test_seq22_pack.py, plus the
+      evidence/council files and the mouth diff), all above SIZE_GEAR3_THRESHOLD 1,828 and
+      touching no HOTZONE_PATTERNS path. Judgement agrees: an unsigned production rule-pack
+      candidate over apps/backend-rag/** (merging a PR here is the deploy) that a future signing
+      ceremony acts on directly.
   - id: D-chain
     decision: >-
       seq-22 folds DIRECTLY from the signed seq-20 anchor (previous_payload_sha256
@@ -140,66 +176,111 @@ decisions:
       a case that ALSO carries a different hold keeps the generic body and still gets the Studio
       link appended. `outcome.second_home_studio_link` ("Open the Second Home Studio" / "Buka
       Second Home Studio") is the only new copy string mouth adds for this code.
+  - id: D-claim5-restated
+    decision: >-
+      Codex r1's claim 5 ("no other money figure anywhere in the diff") was over-stated on its
+      own literal wording: test_seq22_pack.py's boundary-probe fixtures (400_000, 999_999,
+      1_500_000, 50_000, 129_999, 200_000) ARE other numbers in the diff, but they are synthetic
+      test inputs bracketing the same two real thresholds, never a new business figure. Restated
+      and re-verified this turn (see receipt below): no money figure is NEW or CHANGED by this
+      fold beyond the two seq-20 thresholds (USD 1,000,000 property, USD 130,000 deposit) reused
+      in review.e33.below-threshold-studio, and apps/mouth's diff adds no numeric literal at all.
+      A raw grep over the WHOLE committed rulepack-prod-022.source.json (not just this fold's
+      diff, since the file is the full production pack) does hit other money-shaped values
+      (e.g. secondhome.bank_deposit_usd 50000 on a different, pre-existing E33 sub-basis rule,
+      secondhome.passive_monthly_income_usd 3000, investment.investment_capital_idr 2,500,000,000
+      / 10,000,000,000 on pre-existing E28 rules) — all confirmed pre-existing and unchanged,
+      inherited from seq-20 verbatim (a rule_id-keyed diff against seq-20 finds zero shared
+      rule_id with a changed value; only the eleven rule_ids new to seq-22 could carry a NEW
+      figure, and the sole money-bearing one among them is review.e33.below-threshold-studio with
+      exactly the two named thresholds). This matches council round 2's independent finding
+      (council/journal.jsonl, codex-gpt-5.6-sol, ts 2026-09-16T16:47:11Z): "CLAIM 5 restated
+      PROVEN (test amounts are synthetic boundary probes)".
+  - id: D-r2-r3-id-wording
+    decision: >-
+      Council round 2 (codex-gpt-5.6-sol, HEAD 94299c4074) found a NEW defect this pack's
+      author council rounds never asked about: the Indonesian Second Home Studio disclaimer used
+      "Penahanan ini" ("this detention"), a jarring word choice for a self-serve calculator hold
+      on an immigration page — directly against D23's own requirement that this one code never
+      read as anything but a self-serve result. Cured in commit 90c18bfdc0 (ID wording fixed to
+      say "result", a guilt-side i18n.ts assertion added that is red on the old "Penahanan"
+      wording, OutcomeSheet.test.tsx extended). Council round 3 (codex-gpt-5.6-sol, HEAD
+      90c18bfdc0, scope `git diff 94299c4074 90c18bfdc0`) confirmed VERDICT OK: the ID sentence
+      is correct and detention-free, the new test fails on the old wording, no other file
+      changed. A PRE-EXISTING "Penahanan" string in a different, unrelated CLIENT_GUARD context
+      was noted by round 3 as explicitly out of this PR's scope.
 receipts:
-  - claim: Merge-base computed against a freshly fetched origin/main.
+  - claim: >-
+      Merge-base re-computed against a freshly fetched origin/main, this turn, after the branch
+      was rebased post-D19.
     cmd: git fetch -q origin main && git merge-base origin/main HEAD
-    result: "8aea5480241bafce051d574ddc330c0e015534a2 (HEAD 79ad183cac545fef52ea35602e6e746518dbd558)"
+    result: "228a029c41d196de3ff9219de9c9741757bfe288 (HEAD 90c18bfdc057309943a82af0edb0b306211beb6e)"
     exit: 0
-    ts: "2026-09-16T15:05:00Z"
-    seat: Claude Sonnet 5 (evidence-pack writer)
-  - claim: Changed-file set and numstat, merge-base anchored (never a two-dot diff).
-    cmd: git diff --name-only/--numstat 8aea5480241bafce051d574ddc330c0e015534a2...HEAD
-    result: "12 files changed (2 backend source, 1 fixture, 3 backend tests, 6 mouth files)"
-    exit: 0
-    ts: "2026-09-16T15:06:00Z"
-    seat: Claude Sonnet 5 (evidence-pack writer)
-  - claim: Gear-3 floor and its source, on the measured diff.
-    cmd: python3 scripts/evidence_pack_lint.py --print-floor --print-floor-source --changed-files-file <f> --numstat-file <f>
-    result: "3 / size"
-    exit: 0
-    ts: "2026-09-16T15:07:00Z"
-    seat: Claude Sonnet 5 (evidence-pack writer)
-  - claim:
-      PII scan of the full diff — no email, phone, passport-like or NIK-like string; the
-      five "email-shaped" hits are `@pytest.fixture` decorators, and the digit-run hits are
-      UUIDs/`max_age_seconds`/monetary `value` fields, none client-identifying.
-    cmd: >-
-      git diff 8aea548...HEAD > full.diff; grep -nE
-      '[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}' full.diff; grep -nE
-      '(\+?[0-9][0-9().-]{7,}[0-9])' full.diff; grep -nE '\b[A-Z]{1,2}[0-9]{6,9}\b' full.diff;
-      grep -cE '\b[0-9]{16}\b' full.diff
-    result: "5 @pytest.fixture false positives, 0 passport-like matches, 0 16-digit NIK matches, all digit-run hits are UUIDs/timestamps/monetary values"
-    exit: 0
-    ts: "2026-09-16T15:12:00Z"
-    seat: Claude Sonnet 5 (evidence-pack writer)
-  - claim: Ground-truth ledger's five untouched files, hashed in order.
-    cmd: >-
-      for f in rulepack-prod-020.signed.json rulepack-prod-020.source.json
-      253_visa_activation_writer_hardening.sql activate_pack.py sign_pack.py; do git diff
-      --name-only 8aea548...HEAD -- $f; done (all empty) ; { for f in ...; do git show
-      8aea548:$f; done; } | shasum -a 256
-    result: "1950b20510ec0d3639654d442a05d1e19463f7a720e3d94d03bfaf7e4e1c4c84 (identical to W-VO-S21's own query_hash, independently re-derived, not copied)"
-    exit: 0
-    ts: "2026-09-16T15:15:00Z"
-    seat: Claude Sonnet 5 (evidence-pack writer)
-  - claim:
-      Committed pack file sha256 and its canonical (JCS) payload sha256 both match the
-      digests stated in the coordinator's brief.
-    cmd: >-
-      shasum -a 256 rulepack-prod-022.source.json ; PYTHONPATH=. python -c
-      "from backend.services.visa_engine.bundle import canonicalize_json; ... hashlib.sha256(canonicalize_json(seq22)).hexdigest()"
+    ts: "2026-09-16T16:53:00Z"
+    seat: Claude Sonnet 5 (evidence-pack writer, successor turn)
+  - claim: Changed-file set and numstat, merge-base anchored (never a two-dot diff), re-measured.
+    cmd: git diff --name-only/--numstat 228a029c41d196de3ff9219de9c9741757bfe288...HEAD
     result: >-
-      file sha256 31f367a438f064b5eb53d957178e929d46d3180b3458178946e28534fc051cec ; JCS payload
-      sha256 3d7555afcc9496b451bc86235624b4a88d35aabb9df354778dcf9b0b3b276e37 ; previous_payload_sha256
-      field read from the pack = df02287b7fc8f572a9e6674fdf3445a2131c428e8a1492ab8a388dee5bf01a4d — all three match the brief exactly
+      24 files changed (2 backend source, 1 fixture, 3 backend tests, 11 mouth files, 7 evidence
+      files — up from the pre-rebase 12 because two follow-up commits (80145d358a, 90c18bfdc0)
+      touched five more mouth files, and the evidence pack's own brief.yml/pack.yml/council/*
+      count in the diff against this merge-base), +13882/-69 total
     exit: 0
-    ts: "2026-09-16T15:18:00Z"
-    seat: Claude Sonnet 5 (evidence-pack writer)
+    ts: "2026-09-16T16:54:00Z"
+    seat: Claude Sonnet 5 (evidence-pack writer, successor turn)
+  - claim: Gear-3 floor and its source, on the re-measured diff.
+    cmd: apps/backend-rag/.venv/bin/python scripts/evidence_pack_lint.py --print-floor --print-floor-source --changed-files-file <f> --numstat-file <f>
+    result: "3 / size (non-fixture churn 13,775, computed via the script's own _size_term_net_lines())"
+    exit: 0
+    ts: "2026-09-16T16:55:00Z"
+    seat: Claude Sonnet 5 (evidence-pack writer, successor turn)
   - claim:
-      Rule/product counts — 111 total rules, 38/38 products with a SUPPORT rule (was 29/38
-      on seq-20), 9 REQUIRE_REVIEW rules retired net one added (17 -> 9), pack-level valid_period
-      byte-identical to seq-20, 11 new rules each carrying rule-level valid_period.from
-      2026-09-16T00:00:00Z.
+      PII scan of the full diff, re-run against the current merge-base — no email, phone,
+      passport-like or NIK-like string; the five "email-shaped" hits are `@pytest.fixture`
+      decorators, and the digit-run hits are UUIDs/index-hashes/timestamps/monetary `value`
+      fields, none client-identifying.
+    cmd: >-
+      git diff 228a029c41...HEAD > full.diff; grep -cE
+      '[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}' full.diff; grep -cE
+      '(\+?[0-9][0-9().-]{7,}[0-9])' full.diff; grep -cE '\b[A-Z]{1,2}[0-9]{6,9}\b' full.diff;
+      grep -cE '\b[0-9]{16}\b' full.diff
+    result: >-
+      5 @pytest.fixture false positives, 473 phone-shaped digit-run hits (sampled: git index
+      hashes, 2026-09-16-style dates, FOLD_VERSION/FOLD_CREATED_AT constants, kid strings — none
+      a real phone number), 0 passport-like matches, 0 16-digit NIK matches
+    exit: 0
+    ts: "2026-09-16T16:56:00Z"
+    seat: Claude Sonnet 5 (evidence-pack writer, successor turn)
+  - claim: Ground-truth ledger's five untouched files, hashed in order, re-verified at the CURRENT merge-base.
+    cmd: >-
+      MB=228a029c41d196de3ff9219de9c9741757bfe288; for f in rulepack-prod-020.signed.json
+      rulepack-prod-020.source.json 253_visa_activation_writer_hardening.sql activate_pack.py
+      sign_pack.py; do git diff --name-only $MB...HEAD -- $f; done (all empty) ; { for f in ...;
+      do git show $MB:$f; done; } | shasum -a 256
+    result: "1950b20510ec0d3639654d442a05d1e19463f7a720e3d94d03bfaf7e4e1c4c84 (UNCHANGED from both the W-VO-S21 pack's own query_hash and this pack's FIRST derivation at the pre-rebase merge-base 8aea548, because all five files are byte-identical at all three merge-bases)" # pragma: allowlist secret
+    exit: 0
+    ts: "2026-09-16T16:57:00Z"
+    seat: Claude Sonnet 5 (evidence-pack writer, successor turn)
+  - claim: >-
+      Committed pack file sha256 and its canonical (JCS) payload sha256 both still match the
+      digests stated in the coordinator's brief — re-verified this turn; the rulepack file itself
+      is confirmed untouched by either of the two follow-up commits (`git diff --name-only
+      94299c4074..90c18bfdc0` names only two mouth files), so this receipt is a re-confirmation,
+      not a re-derivation from a changed input.
+    cmd: >-
+      shasum -a 256 rulepack-prod-022.source.json ; JWT_SECRET_KEY=<dummy> API_KEYS=<dummy>
+      PYTHONPATH=. python -c "from backend.services.visa_engine.bundle import canonicalize_json;
+      ... hashlib.sha256(canonicalize_json(seq22)).hexdigest()"
+    result: "file sha256 31f367a438f064b5eb53d957178e929d46d3180b3458178946e28534fc051cec ; JCS payload sha256 3d7555afcc9496b451bc86235624b4a88d35aabb9df354778dcf9b0b3b276e37 ; previous_payload_sha256 field read from the pack = df02287b7fc8f572a9e6674fdf3445a2131c428e8a1492ab8a388dee5bf01a4d — all three match the brief exactly, unchanged since the pre-rebase measurement" # pragma: allowlist secret
+    exit: 0
+    ts: "2026-09-16T16:58:00Z"
+    seat: Claude Sonnet 5 (evidence-pack writer, successor turn)
+  - claim: >-
+      Rule/product counts — re-confirmed this turn, unchanged since the rulepack file itself is
+      untouched by the two follow-up commits: 111 total rules, 38/38 products with a SUPPORT rule
+      (was 29/38 on seq-20), 9 REQUIRE_REVIEW rules retired net one added (17 -> 9), pack-level
+      valid_period byte-identical to seq-20, 11 new rules each carrying rule-level
+      valid_period.from 2026-09-16T00:00:00Z.
     cmd: python3 -c "... json.load both packs, compare products/rules/valid_period ..."
     result: >-
       seq20 SUPPORT-covered products 29/38 (missing E23U E23V E28B E28C E28D E28F E33A E33B E33C)
@@ -207,77 +288,110 @@ receipts:
       set exactly the 9 named products' review rules ; pack valid_period equal True ; 11 rules
       with valid_period.from 2026-09-16
     exit: 0
-    ts: "2026-09-16T15:10:00Z"
-    seat: Claude Sonnet 5 (evidence-pack writer)
-  - claim: test_seq22_pack.py (the dedicated fold-correctness suite) passes in full.
+    ts: "2026-09-16T16:59:00Z"
+    seat: Claude Sonnet 5 (evidence-pack writer, successor turn)
+  - claim: >-
+      test_seq22_pack.py (the dedicated fold-correctness suite) passes in full, re-run this turn
+      against the rebased HEAD (rulepack itself untouched, so 39/39 unchanged).
     cmd: cd apps/backend-rag && JWT_SECRET_KEY=<dummy> API_KEYS=<dummy> .venv/bin/python -m pytest backend/tests/services/visa_engine/test_seq22_pack.py
-    result: "39 passed in 19.92s"
+    result: "39 passed in 15.08s"
     exit: 0
-    ts: "2026-09-16T15:22:00Z"
-    seat: Claude Sonnet 5 (evidence-pack writer)
+    ts: "2026-09-16T17:00:00Z"
+    seat: Claude Sonnet 5 (evidence-pack writer, successor turn)
   - claim:
-      test_interview_walk_census.py passes in full, including the exact census pin
-      3 HUMAN_REVIEW_REQUIRED / 1 NEEDS_INPUT / 14 NO_SUPPORTED_PATH / 94 SUPPORTED_CANDIDATES over
-      the 112-walk corpus at ENGINE level for sequence 22 (`_SEQ22_OUTCOME_CHANGES`'s `by_sequence`
-      table, read directly this turn).
+      test_interview_walk_census.py passes in full, re-run this turn against the D19-rebased
+      walk fixture, including the exact census pin 3 HUMAN_REVIEW_REQUIRED / 1 NEEDS_INPUT / 14
+      NO_SUPPORTED_PATH / 94 SUPPORTED_CANDIDATES over the 112-walk corpus at ENGINE level for
+      sequence 22 (`_SEQ22_OUTCOME_CHANGES`'s `by_sequence` table, re-read this turn).
     cmd: cd apps/backend-rag && JWT_SECRET_KEY=<dummy> API_KEYS=<dummy> .venv/bin/python -m pytest backend/tests/services/visa_engine/test_interview_walk_census.py
-    result: "50 passed in 10.38s"
+    result: "50 passed in 9.42s"
     exit: 0
-    ts: "2026-09-16T15:23:00Z"
-    seat: Claude Sonnet 5 (evidence-pack writer)
-  - claim:
-      test_seq21_pack.py still passes in full — seq-21 stays pinned as the STOPPED sequence,
-      unaffected in substance by this PR.
+    ts: "2026-09-16T17:01:00Z"
+    seat: Claude Sonnet 5 (evidence-pack writer, successor turn)
+  - claim: >-
+      test_seq21_pack.py still passes in full, re-run this turn — seq-21 stays pinned as the
+      STOPPED sequence, unaffected in substance by this PR or the rebase.
     cmd: cd apps/backend-rag && JWT_SECRET_KEY=<dummy> API_KEYS=<dummy> .venv/bin/python -m pytest backend/tests/services/visa_engine/test_seq21_pack.py
-    result: "52 passed in 17.56s"
+    result: "52 passed in 17.50s"
     exit: 0
-    ts: "2026-09-16T15:24:00Z"
-    seat: Claude Sonnet 5 (evidence-pack writer)
+    ts: "2026-09-16T17:02:00Z"
+    seat: Claude Sonnet 5 (evidence-pack writer, successor turn)
   - claim:
-      Full backend visa_engine suite, parallel — the only red is the pre-existing
-      local-Postgres schema state, not this diff (39 errors are asyncpg/migration-264/281 state on
-      M5's local clone; the 1 failure is test_visa_engine_retention_fk_registry's own premise
-      about migration 281 being live, which the seq-21 pack already recorded as failing
-      identically on a git-archive export of origin/main).
+      Full backend visa_engine suite, parallel, re-run this turn — the only red is the same
+      pre-existing local-Postgres schema state as before the rebase, not this diff (39 errors are
+      asyncpg/migration-264/281 state on M5's local clone; the 1 failure is
+      test_visa_engine_retention_fk_registry's own premise about migration 281 being live, which
+      the seq-21 pack already recorded as failing identically on a git-archive export of
+      origin/main).
     cmd: cd apps/backend-rag && JWT_SECRET_KEY=<dummy> API_KEYS=<dummy> .venv/bin/python -m pytest backend/tests/services/visa_engine -n 4
-    result: "1 failed, 2442 passed, 1 skipped, 39 errors in 110.12s"
+    result: "1 failed, 2442 passed, 1 skipped, 39 errors in 55.80s"
     exit: 1
-    ts: "2026-09-16T15:26:00Z"
-    seat: Claude Sonnet 5 (evidence-pack writer)
-  - claim:
-      Mouth vitest suite for the whole visa-oracle surface passes in full (covers
-      OutcomeSheet.test.tsx, engine-adapter's twin-basis guard, walk-corpus-determinism.test.ts).
+    ts: "2026-09-16T17:04:00Z"
+    seat: Claude Sonnet 5 (evidence-pack writer, successor turn)
+  - claim: >-
+      Mouth vitest suite for the whole visa-oracle surface passes in full, re-run this turn
+      against the two follow-up commits (covers OutcomeSheet.test.tsx, VerdictReveal.test.tsx —
+      new this round, engine-adapter's twin-basis guard, walk-corpus-determinism.test.ts, and the
+      new ID-wording assertion from 90c18bfdc0).
     cmd: cd apps/mouth && ../../node_modules/.bin/vitest run "src/app/(visa-oracle)/visa-oracle"
-    result: "Test Files 41 passed (41), Tests 973 passed (973)"
+    result: "Test Files 42 passed (42), Tests 1005 passed (1005)"
     exit: 0
-    ts: "2026-09-16T15:19:00Z"
-    seat: Claude Sonnet 5 (evidence-pack writer)
-  - claim: Mouth typecheck clean.
+    ts: "2026-09-16T17:05:00Z"
+    seat: Claude Sonnet 5 (evidence-pack writer, successor turn)
+  - claim: Mouth typecheck clean, re-run this turn.
     cmd: cd apps/mouth && ../../node_modules/.bin/tsc --noEmit
     result: "exit 0, no output"
     exit: 0
-    ts: "2026-09-16T15:19:30Z"
-    seat: Claude Sonnet 5 (evidence-pack writer)
-  - claim: Prettier clean on every touched mouth TS/TSX file.
-    cmd: node_modules/.bin/prettier --check <6 touched mouth files>
+    ts: "2026-09-16T17:06:00Z"
+    seat: Claude Sonnet 5 (evidence-pack writer, successor turn)
+  - claim: >-
+      Prettier clean on every touched mouth TS/TSX file — 11 files now (up from 6 pre-rebase:
+      the two follow-up commits touch OracleShell.tsx/.test.tsx, VerdictReveal.tsx/.test.tsx,
+      engine-adapter.test.ts and re-touch OutcomeSheet.tsx/.test.tsx and i18n.ts).
+    cmd: node_modules/.bin/prettier --check <11 touched mouth files>
     result: "All matched files use Prettier code style!"
     exit: 0
-    ts: "2026-09-16T15:20:00Z"
-    seat: Claude Sonnet 5 (evidence-pack writer)
-  - claim: Ruff and pyright clean on the two touched backend Python files (fold_pack_seq22.py, test_seq22_pack.py).
-    cmd: .venv/bin/python -m ruff check <files> ; pyright <files>
+    ts: "2026-09-16T17:07:00Z"
+    seat: Claude Sonnet 5 (evidence-pack writer, successor turn)
+  - claim: >-
+      Ruff and pyright clean on the two touched backend Python files (fold_pack_seq22.py,
+      test_seq22_pack.py), re-run this turn. Bare `pyright <files>` fails to resolve `pytest`
+      (the venv isn't on pyright's default search path, same gap the leftovers below already
+      name) — `pyright --pythonpath .venv/bin/python <files>` is the working invocation and is
+      what this receipt's result reflects.
+    cmd: .venv/bin/python -m ruff check <files> ; pyright --pythonpath .venv/bin/python <files>
     result: "ruff: All checks passed! ; pyright: 0 errors, 0 warnings, 0 informations"
     exit: 0
-    ts: "2026-09-16T15:20:30Z"
-    seat: Claude Sonnet 5 (evidence-pack writer)
+    ts: "2026-09-16T17:08:00Z"
+    seat: Claude Sonnet 5 (evidence-pack writer, successor turn)
   - claim: >-
       bundle.py enforces signature before production activation — nothing a real visitor sees
       today changes until this pack is both signed and activated, both explicitly out of scope.
+      Re-confirmed this turn (bundle.py untouched by either follow-up commit).
     cmd: grep -rn "PRODUCTION rule packs must always be signed" apps/backend-rag/backend/services/visa_engine/bundle.py
     result: "bundle.py:788 and :829, 'PRODUCTION rule packs must always be signed — allow_unsigned...' guards production activation"
     exit: 0
-    ts: "2026-09-16T15:16:00Z"
-    seat: Claude Sonnet 5 (evidence-pack writer)
+    ts: "2026-09-16T17:09:00Z"
+    seat: Claude Sonnet 5 (evidence-pack writer, successor turn)
+  - claim: >-
+      Restated claim 5 (D-claim5-restated above) verified directly: the whole committed
+      rulepack-prod-022.source.json carries other pre-existing money-shaped `value` fields, and
+      apps/mouth's diff carries none at all.
+    cmd: >-
+      grep -oE '"value": [0-9]+' rulepack-prod-022.source.json | sort | uniq -c ; git diff
+      228a029c41...HEAD -- apps/mouth | grep -n '^+' | grep -oE '[0-9]{4,}' | sort -u
+    result: >-
+      rulepack whole-file value histogram: 180x15, 360x6, 1000000x6, 18x5, 130000x5, 55x4, 3000x3,
+      60x2, 50000x2, 2500000000x2, 10000000000x2, 30x1, 0x1 — 50000 traces to
+      secondhome.bank_deposit_usd on a DIFFERENT, pre-existing E33 sub-basis rule, 3000 to
+      secondhome.passive_monthly_income_usd, 2500000000/10000000000 to pre-existing E28
+      investment.investment_capital_idr rules, 18/55 to derived.age_years, 30/60/180/360 to
+      intent.stay_days/immigration.overstay_days — none of these rule_ids are new to seq-22 (a
+      rule_id-keyed diff against seq-20 confirms) ; mouth diff's added lines contain only the
+      digit run "2026" (dates), zero numeric literals
+    exit: 0
+    ts: "2026-09-16T17:10:00Z"
+    seat: Claude Sonnet 5 (evidence-pack writer, successor turn)
 dissent:
   - seat: Claude Sonnet 5 (evidence-pack writer, self-refutation)
     objection: >-
@@ -335,6 +449,8 @@ leftovers:
     globally mise-installed pyright binary instead (1.1.414) rather than skip the check; a
     future PR could vendor it into the venv so this gap does not need rediscovering.
   - >-
-    The council round below is round 1 for both seats on this PR; no prior round exists to
-    reconcile (unlike W-VO-S21's 5-round history), so seat_fallback_reason is not yet populated —
-    added only if either seat is actually unavailable when Task B runs.
+    Council went to three rounds for codex-gpt-5.6-sol (r1 CHANGES, r2 CHANGES on the new
+    ID-wording defect, r3 OK after the cure) and stayed at round 1 for agy-gemini-3.1-pro (OK,
+    never re-run after r1 since neither of codex's r1/r2 findings was in agy's own claim scope);
+    seat_fallback_reason is still not populated — added only if either seat is actually
+    unavailable on a future round.
