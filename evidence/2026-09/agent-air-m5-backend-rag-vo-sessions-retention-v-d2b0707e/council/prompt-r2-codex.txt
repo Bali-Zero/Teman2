@@ -1,7 +1,7 @@
-You are a REVIEW seat on a Gear-3 council (round 1). Worktree:
+You are a REVIEW seat on a Gear-3 council (round 2). Worktree:
 /Users/balizero/nuzantara/.worktrees/backend-rag-vo-sessions-retention-v2 (branch
 agent/air-m5/backend-rag/vo-sessions-retention-v2, merge-base
-c1db269aa9601914ec77250f7748f0ac2352cf55, HEAD 4be9b857a9).
+c1db269aa9601914ec77250f7748f0ac2352cf55, HEAD 42eed83339; application code identical to 7057dfbc8e).
 Read-only: no edits, no file creation, no git write commands. Do not quote secrets or PII.
 
 SCOPE. Review `git diff c1db269aa9601914ec77250f7748f0ac2352cf55...HEAD` in this worktree. Read,
@@ -13,21 +13,29 @@ in this order:
 - apps/backend-rag/backend/app/routers/visa_oracle.py: lines 634-657
   (`_persist_session_create` — the sole write consumer; confirm it never sets expires_at) AND the
   `_purge_expired_sessions` function (grep it in the same file, ~50 lines, right after
-  `_persist_session_append_message`; UNCHANGED from the previous round) AND lines ~740-762
-  (`_persist_session_handoff` + `_fetch_session_snapshot` — the ONLY app-level dependency the
-  purge must not break)
+  `_persist_session_append_message`; its failure-log line changed THIS round — see claim 8) AND
+  `_persist_session_handoff` (~lines 759-798, writes `handoff_triggered = TRUE`, keyed on
+  `session_id`) AND `_fetch_session_snapshot` (~lines 801-819 — an INDEPENDENT read, keyed only
+  on `session_id`, selecting `quiz_answers, recommended_visas`; it does NOT read
+  `handoff_triggered` and is not the purge's safety mechanism — see claim 7 for the corrected
+  wording)
 - apps/backend-rag/backend/tests/routers/test_visa_oracle_sessions_purge.py (whole file — the
-  guilt/innocence proof for the PURGE-SQL half; UNCHANGED)
-- apps/backend-rag/backend/app/main_api.py: `_visa_oracle_sessions_purge_enabled` and
-  `_run_visa_oracle_sessions_purge_scheduler` (grep them — both new this round, adjacent to the
-  existing `_garuda_outbox_poll_seconds`/`_run_garuda_outbox_scheduler` they were modeled on) AND
-  the wiring inside `_background_light_init`/`lifespan_light` (grep
-  `_visa_oracle_sessions_purge_task` — three sites: the DISABLE_BACKGROUND_WORKERS branch, the
-  spawn decision next to the GARUDA outbox spawn, and the shutdown cancellation next to the
-  GARUDA outbox cancellation)
+  guilt/innocence proof for the PURGE-SQL half, PLUS a new test this round asserting the failure
+  log never carries the exception message, only its class)
+- apps/backend-rag/backend/app/main_api.py: `_visa_oracle_sessions_purge_enabled`,
+  `_run_visa_oracle_sessions_purge_scheduler`, and `_spawn_visa_oracle_sessions_purge_task`
+  (grep them — adjacent to the existing `_garuda_outbox_poll_seconds`/
+  `_run_garuda_outbox_scheduler` they were modeled on) AND the wiring inside
+  `_background_light_init`/`lifespan_light` (grep `_visa_oracle_sessions_purge_task` — three
+  sites: the DISABLE_BACKGROUND_WORKERS branch, the ONE-LINE call to
+  `_spawn_visa_oracle_sessions_purge_task` next to the GARUDA outbox spawn — extracted THIS round,
+  council finding F10 — and the shutdown cancellation next to the GARUDA outbox cancellation)
 - apps/backend-rag/backend/tests/unit/services/test_visa_oracle_sessions_purge_scheduler.py
-  (whole file — the guilt/innocence proof for the NEW scheduling mechanism, this round's
-  addition)
+  (whole file — the guilt/innocence proof for the scheduling mechanism; THIS round replaced its
+  round-1 arming test, which called a hand-copied mirror of the spawn `if`/`elif`/`else`, with
+  three tests calling `_spawn_visa_oracle_sessions_purge_task` directly plus one test that drives
+  the REAL `lifespan_light` end to end with only the heavy, unrelated service-init internals
+  mocked — see claim 10)
 - apps/backend-rag/backend/app/setup/router_manifest.py line 424 (`visa_oracle` entry — confirm
   `process_groups=_API`)
 - apps/backend-rag/backend/db/migration_manager.py lines 39-69 (`_assert_unique_migration_numbers`)
@@ -86,29 +94,45 @@ decides it.
 6. PURGE SQL SHAPE (unchanged from the prior round): `_purge_expired_sessions`'s DELETE
    predicate is EXACTLY `expires_at < NOW() AND NOT COALESCE(handoff_triggered, false)`, bounded
    by a LIMIT-bearing subquery — no bare unbounded DELETE, no missing handoff exclusion.
-7. HANDOFF SAFETY (unchanged): grep this whole diff and `backend/db/migrations_v2/*.sql` for any
-   FK or table that references `visa_oracle_sessions` by ID — confirm there is none, and that
-   `handoff_triggered` (set only by `_persist_session_handoff`, read only by
-   `_fetch_session_snapshot`, both in this same file) is genuinely the only durable
-   "this row still matters" signal the purge must respect.
-8. NON-FATAL + PII-FREE: `_purge_expired_sessions` catches its own DB exception and returns 0
-   rather than raising; its success/failure log lines contain a bare integer count only — never a
-   session_id, quiz_answers, message or ip_hash substring. The LOOP's own outer catch in
-   `_run_visa_oracle_sessions_purge_scheduler` logs only the exception CLASS name
+7. HANDOFF SAFETY (wording CORRECTED this round, finding F7 — was BROKEN, PROVEN by Codex): grep
+   this whole diff and `backend/db/migrations_v2/*.sql` for any FK or table that references
+   `visa_oracle_sessions` by ID — confirm there is none. Confirm `handoff_triggered` (set only by
+   `_persist_session_handoff`) is read ONLY by the purge's own WHERE clause — NOT by
+   `_fetch_session_snapshot`, whose SELECT names only `quiz_answers, recommended_visas` and which
+   runs synchronously at handoff time on a still-live session to build the pricing response, not
+   as a read gated by the marker. The real safety argument: a handed-off session is excluded from
+   the purge by its own marker alone.
+8. NON-FATAL + PII-FREE (log-content fix this round, finding F8 — was BROKEN, PROVEN by Codex):
+   `_purge_expired_sessions` catches its own DB exception and returns 0 rather than raising;
+   confirm its failure-log line now reads `type(exc).__name__`, NOT `str(exc)` (it used to log the
+   exception message — this round's fix). Its success log line contains a bare integer count
+   only — never a session_id, quiz_answers, message or ip_hash substring. Confirm the new test
+   `test_purge_failure_log_never_carries_the_exception_message` actually proves this (plants a
+   sentinel string in the exception's message, asserts it never reaches any log record). The
+   LOOP's own outer catch in `_run_visa_oracle_sessions_purge_scheduler` logs only the exception
+   CLASS name
    (`type(exc).__name__`), never `str(exc)` — confirm there is no second log line anywhere in the
    loop that carries the exception message.
 9. PROCESS-GROUP CORRECTNESS: `router_manifest.py:424` registers `visa_oracle` as
-   `process_groups=_API`; `main_api.py`'s own `lifespan_light`/`_background_light_init` is the
-   function that spawns `_run_visa_oracle_sessions_purge_scheduler` (grep
-   `_visa_oracle_sessions_purge_task = asyncio.create_task`); confirm the spawn is gated on BOTH
-   `_visa_oracle_sessions_purge_enabled()` and a non-None `app.state.db_pool`, and that the
+   `process_groups=_API`; `main_api.py`'s own `_background_light_init` calls
+   `_spawn_visa_oracle_sessions_purge_task(app)` (grep the call site — a single line, extracted
+   this round from an inline `if`/`elif`/`else` into that named function, finding F10) and that
+   function itself is gated on BOTH `_visa_oracle_sessions_purge_enabled()` and a non-None
+   `app.state.db_pool`, `asyncio.create_task`-ing the loop only when both hold; confirm the
    shutdown block cancels the task and awaits it BEFORE `db_pool.close()` — the same order the
    adjacent GARUDA outbox task cancellation already uses.
-10. TEST VALIDITY: `test_the_lifespan_spawns_the_purge_when_enabled` is real coverage, not
-    vacuous — confirm its assertion would fail if the spawn were removed or the kill switch were
-    forced off (the PR body/pack.yml claims this was proven red via a `cp` backup/restore
-    mutation of `_visa_oracle_sessions_purge_enabled`; you do not need to reproduce the mutation,
-    just judge whether the assertion as written is capable of catching that regression).
+10. TEST VALIDITY (rewritten this round, finding F10 — was BROKEN, PROVEN by both seats): the
+    round-1 test called a hand-copied mirror of the spawn logic, so deleting the real spawn line
+    at `main_api.py:810-812` left it green — this is fixed by extraction, not by a better
+    assertion. Confirm `test_spawn_task_enabled_and_pool_ready_creates_the_real_loop_task` calls
+    `main_api._spawn_visa_oracle_sessions_purge_task` DIRECTLY (the production function, not a
+    reimplementation), and that `test_the_lifespan_actually_calls_the_real_spawn_function` drives
+    the REAL `lifespan_light` context manager end to end (only `initialize_services_light` is
+    faked, plus the WA/GARUDA sub-schedulers disabled via env) and asserts
+    `_spawn_visa_oracle_sessions_purge_task` was actually invoked by it. You do not need to
+    reproduce the guilt mutation (delete the real spawn call, confirm this test goes red) — the
+    PR body/pack.yml reports its verbatim red — just judge whether these two tests, AS WRITTEN,
+    are capable of catching that regression the round-1 test could not.
 
 Be terse: at most 6 lines per claim. Your LAST line must be exactly one of:
 VERDICT: OK
