@@ -4,7 +4,12 @@ from __future__ import annotations
 
 import pytest
 
-from backend.services.kbli_pma_disclosure import disclose_bali, disclose_pma, pma_claims_verified
+from backend.services.kbli_pma_disclosure import (
+    disclose_bali,
+    disclose_pma,
+    is_sourced_bali_closure,
+    pma_claims_verified,
+)
 
 
 @pytest.mark.parametrize(
@@ -106,6 +111,9 @@ def test_bali_disclosure_requires_the_complete_pma_tuple() -> None:
         "bali_needs_review": None,
         "bali_reason": "",
         "has_bali_l4": False,
+        "bali_closure_url": None,
+        "bali_closure_scope": None,
+        "bali_confidence": None,
     }
 
 
@@ -169,6 +177,9 @@ def test_bali_disclosure_supports_nested_and_flat_verified_shapes() -> None:
         "bali_needs_review": False,
         "bali_reason": "moratorium",
         "has_bali_l4": True,
+        "bali_closure_url": None,
+        "bali_closure_scope": None,
+        "bali_confidence": None,
     }
     nested = {
         **_located_record(),
@@ -284,3 +295,169 @@ def test_located_auxiliary_fields_use_exact_public_types() -> None:
     assert disclosed["pma_kondisi"] is None
     assert disclosed["pma_prioritas"] is False
     assert disclosed["pma_nota"] is None
+
+
+# --------------------------------------------------------------------------
+# Sourced Bali closure — disclosable WITHOUT a verified national PMA tuple
+# --------------------------------------------------------------------------
+
+
+def _unverified_record() -> dict:
+    return {
+        "pma_status": "TERBUKA",
+        "pma_verification_status": "declared_gap",
+        "pma_official_basis": None,
+        "pma_source_vintage": None,
+    }
+
+
+_CLOSURE_URL = "https://www.baliprov.go.id/web/gubernur-koster-batasi-akses-oss"
+
+
+def _sourced_closure_l4(**overrides: object) -> dict:
+    l4: dict = {
+        "status": "CHIUSO_BALI",
+        "blocked": True,
+        "needs_review": False,
+        "reason": "Closed to new PMA licensing in Bali (18 business fields).",
+        "confidence": "HIGH",
+        "closure": {"url": _CLOSURE_URL, "scope_qualifier": None},
+    }
+    l4.update(overrides)
+    return l4
+
+
+def test_is_sourced_bali_closure_predicate() -> None:
+    assert (
+        is_sourced_bali_closure(
+            status="CHIUSO_BALI", blocked=True, needs_review=False, closure_url=_CLOSURE_URL
+        )
+        is True
+    )
+    assert (
+        is_sourced_bali_closure(
+            status="CHIUSO_MORATORIA_BALI",
+            blocked=True,
+            needs_review=False,
+            closure_url=_CLOSURE_URL,
+        )
+        is False
+    )
+    assert (
+        is_sourced_bali_closure(
+            status="CHIUSO_BALI", blocked=False, needs_review=False, closure_url=_CLOSURE_URL
+        )
+        is False
+    )
+    assert (
+        is_sourced_bali_closure(
+            status="CHIUSO_BALI", blocked=True, needs_review="false", closure_url=_CLOSURE_URL
+        )
+        is False
+    )
+    assert (
+        is_sourced_bali_closure(
+            status="CHIUSO_BALI", blocked=True, needs_review=False, closure_url="javascript:x"
+        )
+        is False
+    )
+    assert (
+        is_sourced_bali_closure(
+            status="CHIUSO_BALI", blocked=True, needs_review=False, closure_url=None
+        )
+        is False
+    )
+
+
+def test_a_declared_gap_with_a_sourced_closure_is_disclosed() -> None:
+    """GUILT: an unverified (`declared_gap`) record still discloses a Bali
+    closure that carries its own https source — the website's own
+    `isSourcedBaliClosure` class."""
+    raw = {**_unverified_record(), "l4_bali": _sourced_closure_l4()}
+
+    disclosed = disclose_bali(raw)
+
+    assert pma_claims_verified(raw) is False
+    assert disclosed["has_bali_l4"] is True
+    assert disclosed["bali_status"] == "CHIUSO_BALI"
+    assert disclosed["bali_blocked"] is True
+    assert disclosed["bali_needs_review"] is False
+    assert disclosed["bali_closure_url"] == _CLOSURE_URL
+    assert disclosed["bali_confidence"] == "HIGH"
+    assert disclosed["bali_closure_scope"] is None
+
+
+def test_a_declared_gap_with_a_sourced_closure_carries_its_scope() -> None:
+    """GUILT: the scope qualifier (e.g. the 6 hotel codes' building-area
+    threshold) rides through when present."""
+    raw = {
+        **_unverified_record(),
+        "l4_bali": _sourced_closure_l4(
+            closure={"url": _CLOSURE_URL, "scope_qualifier": "building area under 6,000 m²"}
+        ),
+    }
+
+    disclosed = disclose_bali(raw)
+
+    assert disclosed["bali_closure_scope"] == "building area under 6,000 m²"
+
+
+@pytest.mark.parametrize(
+    "confidence_in,confidence_out",
+    [("HIGH", "HIGH"), ("medium", "MEDIUM"), ("Low", "LOW"), ("unknown", None), (7, None)],
+)
+def test_bali_confidence_is_normalized_to_the_known_vocabulary(
+    confidence_in: object, confidence_out: str | None
+) -> None:
+    raw = {**_unverified_record(), "l4_bali": _sourced_closure_l4(confidence=confidence_in)}
+
+    assert disclose_bali(raw)["bali_confidence"] == confidence_out
+
+
+@pytest.mark.parametrize(
+    "override",
+    [
+        {"closure": {"url": "javascript:alert(1)"}},
+        {"closure": {"url": None}},
+        {"closure": {}},
+        {"blocked": False},
+        {"status": "CHIUSO_MORATORIA_BALI"},
+        {"needs_review": "false"},
+        {"needs_review": "true"},
+    ],
+)
+def test_an_unsourced_or_malformed_closure_stays_withheld_on_a_declared_gap(
+    override: dict,
+) -> None:
+    """INNOCENCE: every shape the sourced-closure rule excludes stays withheld
+    exactly as before on an unverified record."""
+    raw = {**_unverified_record(), "l4_bali": _sourced_closure_l4(**override)}
+
+    disclosed = disclose_bali(raw)
+
+    assert disclosed == {
+        "bali_status": None,
+        "bali_blocked": None,
+        "bali_needs_review": None,
+        "bali_reason": "",
+        "has_bali_l4": False,
+        "bali_closure_url": None,
+        "bali_closure_scope": None,
+        "bali_confidence": None,
+    }
+
+
+def test_a_verified_record_with_the_same_status_is_unaffected_by_the_new_bypass() -> None:
+    """INNOCENCE: a verified record already disclosed CHIUSO_BALI before this
+    change and must keep doing so identically, closure URL or not."""
+    verified = {
+        **_located_record(),
+        "l4_bali": {"status": "CHIUSO_BALI", "blocked": True, "needs_review": False},
+    }
+
+    disclosed = disclose_bali(verified)
+
+    assert disclosed["has_bali_l4"] is True
+    assert disclosed["bali_status"] == "CHIUSO_BALI"
+    assert disclosed["bali_closure_url"] is None
+    assert disclosed["bali_confidence"] is None

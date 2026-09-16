@@ -29,6 +29,7 @@ from backend.core.collection_registry import resolve_collection_name
 from backend.services.kbli_pma_disclosure import (
     disclose_bali,
     disclose_pma,
+    is_sourced_bali_closure,
     pma_claims_verified,
 )
 from backend.services.kbli_pp28_provenance import licensing_disclosure
@@ -191,6 +192,12 @@ class KBLISearchResult(_PMADisclosure):
     bali_blocked: bool | None = None
     bali_needs_review: bool | None = None
     bali_reason: str = ""
+    # The sourced-closure trio (2026-09-16): a Bali closure with its own
+    # published source survives even a `NOT_VERIFIED` national PMA tuple — see
+    # `is_sourced_bali_closure`. `None` for every other Bali status/record.
+    bali_closure_url: str | None = None
+    bali_closure_scope: str | None = None
+    bali_confidence: str | None = None
     # The national foreign-ownership CEILING, carried on the same flat payload.
     # `pma_status` is a word ("TERBUKA"/"TERBATAS"/"TERTUTUP") and it is the only
     # ownership fact the context line prints; the ceiling is the number, and the
@@ -218,19 +225,38 @@ class KBLISearchResult(_PMADisclosure):
                 "bali_blocked": bali["bali_blocked"],
                 "bali_needs_review": bali["bali_needs_review"],
                 "bali_reason": bali["bali_reason"],
+                "bali_closure_url": bali["bali_closure_url"],
+                "bali_closure_scope": bali["bali_closure_scope"],
+                "bali_confidence": bali["bali_confidence"],
             }
         )
         return disclosed
 
     @model_validator(mode="after")
     def _withhold_unverified_editorial(self) -> "KBLISearchResult":
-        """Withhold uncertified KG editorial and gate the structured Bali tuple."""
+        """Withhold uncertified KG editorial and gate the structured Bali tuple.
+
+        A Bali verdict survives an unverified national PMA tuple only for the
+        narrow sourced-closure class `is_sourced_bali_closure` recognises:
+        exact `CHIUSO_BALI`, a real `blocked is True`, a real bool
+        `needs_review`, and an http(s) closure source URL — mirroring the
+        website's `isSourcedBaliClosure`. Every other unverified Bali tuple is
+        withheld exactly as before.
+        """
         self.expert_legal = None
-        if not self.pma_verdict_verified:
+        if not self.pma_verdict_verified and not is_sourced_bali_closure(
+            status=self.bali_status,
+            blocked=self.bali_blocked,
+            needs_review=self.bali_needs_review,
+            closure_url=self.bali_closure_url,
+        ):
             self.bali_status = None
             self.bali_blocked = None
             self.bali_needs_review = None
             self.bali_reason = ""
+            self.bali_closure_url = None
+            self.bali_closure_scope = None
+            self.bali_confidence = None
         return self
 
 
@@ -325,6 +351,9 @@ def _result_from_payload(payload: dict[str, Any], score: float) -> "KBLISearchRe
         bali_blocked=_payload_value(payload, "bali_blocked"),
         bali_needs_review=_payload_value(payload, "bali_needs_review"),
         bali_reason=_payload_value(payload, "bali_reason", default="") or "",
+        bali_closure_url=_payload_value(payload, "bali_closure_url"),
+        bali_closure_scope=_payload_value(payload, "bali_closure_scope"),
+        bali_confidence=_payload_value(payload, "bali_confidence"),
         **_pma_disclosure_fields(payload),
     )
 

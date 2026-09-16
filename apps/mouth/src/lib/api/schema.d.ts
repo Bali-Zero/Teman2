@@ -22590,6 +22590,12 @@ export interface components {
     KBLISearchResult: {
       /** Bali Blocked */
       bali_blocked?: boolean | null;
+      /** Bali Closure Scope */
+      bali_closure_scope?: string | null;
+      /** Bali Closure Url */
+      bali_closure_url?: string | null;
+      /** Bali Confidence */
+      bali_confidence?: string | null;
       /** Bali Needs Review */
       bali_needs_review?: boolean | null;
       /**

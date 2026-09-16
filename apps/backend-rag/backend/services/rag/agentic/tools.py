@@ -424,6 +424,12 @@ class KBLICanonicalLookupTool(BaseTool):
                 "blocked": bali_disclosure["bali_blocked"],
                 "needs_review": bali_disclosure["bali_needs_review"],
                 "reason": bali_disclosure["bali_reason"],
+                # A sourced Bali closure carries its own source, its scope
+                # (hotels: under 6,000 m²) and whether it is a conservative
+                # reading — the raw confidence token stays internal.
+                "closure_url": bali_disclosure["bali_closure_url"],
+                "closure_scope": bali_disclosure["bali_closure_scope"],
+                "conservative_reading": bali_disclosure["bali_confidence"] != "HIGH",
             }
 
         payload = {

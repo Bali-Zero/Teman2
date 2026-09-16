@@ -155,6 +155,15 @@ def render_bali_embedding_block(entry: dict) -> list[str]:
 
     if bali["bali_reason"]:
         lines.append(f"- Alasan: {bali['bali_reason']}")
+    if bali["bali_closure_scope"]:
+        lines.append(f"- Cakupan penutupan: {bali['bali_closure_scope']}")
+    if bali["bali_confidence"] and bali["bali_confidence"] != "HIGH":
+        lines.append(
+            f"- Catatan: tingkat keyakinan penutupan ini {bali['bali_confidence']} "
+            "— bacaan konservatif, menunggu verifikasi lebih lanjut."
+        )
+    if bali["bali_closure_url"]:
+        lines.append(f"- Sumber penutupan: {bali['bali_closure_url']}")
     lines.append(
         "- Note: national status (Perpres 10/2021) can differ from the "
         "provincial block; read both verdicts."
