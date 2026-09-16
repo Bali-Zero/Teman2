@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import { buildKbliFaq } from "./kbli-faq";
 import { getAllCodes, getCode } from "./kbli-data";
 import type { KBLICode } from "./kbli-types";
+import { isSourcedBaliClosure } from "./kbli-pma-disclosure";
+import { isPmaVerdictVerified } from "./kbli-provenance";
 
 function withLocatedPma(code: KBLICode): KBLICode {
   return {
@@ -550,7 +552,9 @@ describe("buildKbliFaq — a sourced Bali closure answers even when the national
     expect(code.baliL4).toMatchObject({ status: "CHIUSO_BALI", blocked: true });
 
     const answer = buildKbliFaq(code)[0].answer;
-    expect(answer).toMatch(/^Not in Bali\./);
+    expect(answer).toMatch(
+      /^In Bali, no; elsewhere in Indonesia, not yet verified\./,
+    );
     expect(answer).not.toContain("Outside Bali it is open");
     expect(answer).toContain("not yet verified");
   });
@@ -561,13 +565,15 @@ describe("buildKbliFaq — a sourced Bali closure answers even when the national
     expect(code.baliL4).toBeUndefined();
 
     const answer = buildKbliFaq(code)[0].answer;
+    expect(answer).not.toMatch(/^In Bali, no/);
     expect(answer).not.toMatch(/^Not in Bali\./);
   });
 
-  // Review F1: the LEAD sentence — the part a search snippet actually shows —
-  // must carry the closure's own scope or conservative-reading caveat, not a
-  // bare "Not in Bali."
-  it("55101 (Five-Star Hotel, HIGH confidence, scoped: building area under 6,000 m²) leads with the scope", () => {
+  // Review F1 / r2 M1: the LEAD sentence — the part a search snippet actually
+  // shows — must carry BOTH halves (the Bali verdict AND the "elsewhere, not
+  // yet verified" half), and the closure's own scope or conservative-reading
+  // caveat, never a bare "Not in Bali." (which implies "yes elsewhere").
+  it("55101 (Five-Star Hotel, HIGH confidence, scoped: building area under 6,000 m²) leads with the scope and the elsewhere-unverified half", () => {
     const code = getCode("55101") as KBLICode;
     expect(code.provenance?.pma.status).toBe("declared_gap");
     expect(code.baliL4?.confidence).toBe("HIGH");
@@ -576,10 +582,12 @@ describe("buildKbliFaq — a sourced Bali closure answers even when the national
     );
 
     const answer = buildKbliFaq(code)[0].answer;
-    expect(answer).toMatch(/^Not in Bali for building area under 6,000 m²\./);
+    expect(answer).toMatch(
+      /^In Bali, no for building area under 6,000 m²; elsewhere in Indonesia, not yet verified\./,
+    );
   });
 
-  it("47211 (MEDIUM confidence, unscoped) leads with the conservative-reading caveat, not a bare 'Not in Bali.'", () => {
+  it("47211 (MEDIUM confidence, unscoped) leads with the conservative-reading caveat and the elsewhere-unverified half, not a bare 'Not in Bali.'", () => {
     const code = getCode("47211") as KBLICode;
     expect(code.provenance?.pma.status).toBe("declared_gap");
     expect(code.baliL4?.confidence).toBe("MEDIUM");
@@ -587,8 +595,60 @@ describe("buildKbliFaq — a sourced Bali closure answers even when the national
 
     const answer = buildKbliFaq(code)[0].answer;
     expect(answer).toMatch(
-      /^Treated as closed in Bali \(conservative reading\)\./,
+      /^Treated as closed in Bali \(conservative reading\); elsewhere in Indonesia, not yet verified\./,
     );
     expect(answer).not.toMatch(/^Not in Bali\./);
+  });
+
+  // Review r2 M1: data-driven — EVERY code on this branch must carry the
+  // "elsewhere in Indonesia, not yet verified" half in its first sentence,
+  // and never open on the old, one-sided "Not in Bali." lead. Asserts the
+  // set is non-empty so this cannot pass vacuously.
+  it("every sourced-Bali-closure/unverified-national code's first sentence names both halves", () => {
+    const affected = getAllCodes().filter(
+      (c) => isSourcedBaliClosure(c.baliL4) && !isPmaVerdictVerified(c),
+    );
+    expect(affected.length).toBeGreaterThanOrEqual(30);
+
+    for (const code of affected) {
+      const answer = buildKbliFaq(code)[0].answer;
+      // Split on the first sentence boundary that actually separates the
+      // two halves: "; elsewhere" — NOT the first ".", because a scope like
+      // "building area under 6,000 m²" contains a comma, not a period, so a
+      // naive split on the first "." never fires early on those rows either;
+      // still, guard explicitly rather than relying on that accident.
+      const firstSentence = answer.split("; elsewhere")[0];
+      expect(answer).toContain("elsewhere in Indonesia, not yet verified");
+      expect(firstSentence).not.toMatch(/^Not in Bali/);
+    }
+  });
+
+  // Review r2 m1: the generic "no adjudicated per-code official basis"
+  // caveat must not stack on top of an already-self-sufficient Bali closure
+  // — but must still appear on an ordinary unverified code with no Bali
+  // closure (innocence).
+  describe("pmaSourceNote suppression on the sourced-Bali-closure branch", () => {
+    it("guilt: 68111 (sourced Bali closure, unverified nationally) never carries the generic disclaimer", () => {
+      const code = getCode("68111") as KBLICode;
+      expect(isSourcedBaliClosure(code.baliL4)).toBe(true);
+      expect(isPmaVerdictVerified(code)).toBe(false);
+
+      const answer = buildKbliFaq(code)[0].answer;
+      expect(answer).not.toContain("No adjudicated per-code official basis");
+    });
+
+    it("innocence: an ordinary unverified code with no Bali closure keeps the disclaimer", () => {
+      const code = getAllCodes().find(
+        (c) =>
+          !isSourcedBaliClosure(c.baliL4) &&
+          !isPmaVerdictVerified(c) &&
+          c.provenance?.pma.status === "declared_gap" &&
+          !c.pmaReviewNotice,
+      );
+      expect(code).toBeDefined();
+
+      const answer = buildKbliFaq(code as KBLICode)[0].answer;
+      expect(answer).toContain("No adjudicated per-code official basis");
+    });
   });
 });

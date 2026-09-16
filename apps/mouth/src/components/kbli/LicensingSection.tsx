@@ -990,6 +990,14 @@ export function LicensingSection({ kbli, gold }: LicensingSectionProps) {
   // new PMA licensing" overstates the record.
   const closureScope = kbli.baliL4?.closure?.scopeQualifier;
   const closureQualifier = baliClosureQualifier(kbli.baliL4);
+  // Review r2 m3: when there is no scope AND the record is not
+  // HIGH-confidence-and-not-needs-review, the heading itself must carry the
+  // conservative-reading caveat too — the body already does (via
+  // `closureQualifier`), but a search snippet or a quick scan of the badge
+  // strip only sees the heading.
+  const closureHeadingConservative =
+    !closureScope &&
+    (kbli.baliL4?.confidence !== "HIGH" || kbli.baliL4?.needsReview === true);
 
   return (
     <div className="space-y-8">
@@ -1033,6 +1041,7 @@ export function LicensingSection({ kbli, gold }: LicensingSectionProps) {
             >
               Bali — closed to new PMA licensing
               {closureScope ? ` for ${closureScope}` : ""}
+              {closureHeadingConservative ? " (conservative reading)" : ""}
             </span>
           </div>
           <p className="text-sm leading-relaxed text-[var(--foreground-secondary)]">

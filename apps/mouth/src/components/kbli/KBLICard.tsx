@@ -90,6 +90,7 @@ export function KBLICard({ code, showTransition = false }: KBLICardProps) {
             confidence={code.baliL4.confidence}
             needsReview={code.baliL4.needsReview}
             pmaStatus={pmaVerified ? code.pma.status : "unknown"}
+            scope={code.baliL4.closure?.scopeQualifier}
             size="sm"
           />
         )}

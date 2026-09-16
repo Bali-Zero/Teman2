@@ -118,9 +118,13 @@ describe("LicensingSection — unlocated sourced Bali closure frame", () => {
         <LicensingSection kbli={kbli} gold={null} />,
       );
 
-      // Header carries no scope text (there is none) — still the bare label.
+      // Header carries no scope text (there is none), but — review r2 m3 —
+      // the conservative-reading caveat now appears in the heading itself,
+      // not only in the body sentence below.
       expect(
-        screen.getByText("Bali — closed to new PMA licensing"),
+        screen.getByText(
+          "Bali — closed to new PMA licensing (conservative reading)",
+        ),
       ).toBeInTheDocument();
       expect(container.textContent).toContain(
         "conservative reading: this 2025 code also covers activities not on Bali's list",

@@ -1,12 +1,15 @@
 import { describe, expect, it } from "vitest";
 import { getCode } from "@/lib/kbli-data";
 import type { KBLICode } from "@/lib/kbli-types";
-import { statusChip } from "./route";
+import { statusChip } from "./kbli-og-status-chip";
 
 // Review F1(f): the social-preview chip must carry the same scope/confidence
 // caveat as every other surface — `statusChip` is the pure label/color
 // function extracted from the route (next/og's `ImageResponse` cannot be
-// rendered under vitest, so this is the unit under test instead).
+// rendered under vitest, so this is the unit under test instead). Moved out
+// of the route's own test file (review r2 BLOCKER B1): a Next.js route
+// module may only export route handlers/config, so `statusChip` moved to
+// `kbli-og-status-chip.ts` and this test moved with it.
 describe("statusChip — the Bali closure's own scope/conservative-reading caveat", () => {
   it("68111 (unscoped, HIGH confidence, declared_gap nationally): bare 'BALI: CLOSED TO PMA'", () => {
     const kbli = getCode("68111") as KBLICode;

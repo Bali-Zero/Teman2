@@ -118,6 +118,7 @@ describe("toPanelDetail", () => {
       blocked: false,
       confidence: "MEDIUM",
       needsReview: false,
+      scopeQualifier: null,
     });
   });
 

@@ -438,9 +438,7 @@ export function baliBlockedHint(
       // no-census path below (see NOTE at line ~430) already refuses to
       // make. `baliBlockClause` states the real one per code, on the page
       // that has the code in front of it.
-      clauses.push(
-        `${other} for other reasons stated individually on each code's page`,
-      );
+      clauses.push(`${other} for other reasons`);
     }
     const causeList =
       clauses.length <= 1

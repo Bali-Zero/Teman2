@@ -489,6 +489,7 @@ export default async function KBLICodePage({
                     confidence={kbli.baliL4.confidence}
                     needsReview={kbli.baliL4.needsReview}
                     pmaStatus={pmaVerdictVerified ? kbli.pma.status : "unknown"}
+                    scope={kbli.baliL4.closure?.scopeQualifier}
                   />
                 )}
                 {kbli.provenance && (

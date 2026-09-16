@@ -937,7 +937,7 @@ describe("baliBlockedHint(codes, census) — the canonical census, not the serve
       "135 of 1559 codes are treated as closed to a foreign-owned company (PT PMA) in Bali in our working census — " +
         "40 by Bali's own 2026 closure of specific business fields, " +
         "12 held under Bali Zero's conservative reading of the 2026 Bali risk-tier request pending verification, " +
-        "and 83 for other reasons stated individually on each code's page. " +
+        "and 83 for other reasons. " +
         "53 of them state the closure and its cause on the code's own page; the others are marked " +
         '"PMA status not yet verified" there until the national record is adjudicated. A working assessment, ' +
         "not a certified legal determination.",
@@ -961,7 +961,7 @@ describe("baliBlockedHint(codes, census) — the canonical census, not the serve
     expect(hint).not.toContain("Bali's own 2026 closure");
     expect(hint).not.toContain("national closure");
     expect(hint).toContain(
-      "10 held under Bali Zero's conservative reading of the 2026 Bali risk-tier request pending verification and 5 for other reasons stated individually on each code's page.",
+      "10 held under Bali Zero's conservative reading of the 2026 Bali risk-tier request pending verification and 5 for other reasons.",
     );
     expect(hint).toContain("0 of them state the closure");
   });

@@ -67,6 +67,7 @@ export function KBLIPanelCodeDetail({
             pmaStatus={
               detail.pma.verdictVerified ? detail.pma.status : "unknown"
             }
+            scope={detail.bali.scopeQualifier}
             size="sm"
           />
         )}

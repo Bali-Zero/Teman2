@@ -59,6 +59,11 @@ export interface KBLIPanelDetail {
   > & { verdictVerified: boolean };
   bali: Pick<KBLIBaliL4, "status" | "confidence" | "needsReview"> & {
     blocked: boolean;
+    // Review r2 M2: the hotel-rows scope ("building area under 6,000 m²")
+    // must reach the listing/panel badge too, not just the code's own page —
+    // otherwise a scoped closure renders there as an unqualified whole-code
+    // bar.
+    scopeQualifier: string | null;
   };
   transition: KBLITransition;
 }
@@ -90,6 +95,7 @@ export function toPanelDetail(code: KBLICode): KBLIPanelDetail {
       // for a malformed/absent confidence value), never "HIGH".
       confidence: code.baliL4?.confidence ?? "MEDIUM",
       needsReview: code.baliL4?.needsReview === true,
+      scopeQualifier: code.baliL4?.closure?.scopeQualifier ?? null,
     },
     transition: code.transition,
   };
