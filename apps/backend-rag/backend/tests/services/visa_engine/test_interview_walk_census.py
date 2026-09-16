@@ -1146,6 +1146,29 @@ EXPECTED_DISCLOSED_REVIEW_FLAGS: dict[str, tuple[str, ...]] = {
 #: hide behind the privacy one, or the reverse.
 PRIVACY_HELD_WALKS: set[str] = {"offshore/family/PARENT/spNat=IT/minor"}
 
+#: Walks the highest signed pack ITSELF holds — a `REQUIRE_REVIEW` rule in the
+#: pack, so neither a disclosure flag nor the minor-privacy adapter. Empty
+#: through seq-21. seq-22 (D23 "OPTION B-STUDIO", `review.e33.below-threshold-
+#: studio`, see `_SEQ22_OUTCOME_CHANGES`) routes the two below-threshold
+#: Second Home walks to the Studio with the one named reason
+#: `SECOND_HOME_BELOW_THRESHOLD_STUDIO`. Its own per-sequence table, NAMED
+#: like `PRIVACY_HELD_WALKS` rather than counted, for the same reason: a
+#: third engine hold, a different walk holding, or one of these two held for
+#: another reason must still go red. Landing the signed seq-22 bundle
+#: (SAETTA-20260916) moved this pin; no walk's facts moved.
+STUDIO_HELD_WALKS_BY_SEQUENCE: dict[int, frozenset[str]] = {
+    20: frozenset(),
+    21: frozenset(),
+    22: frozenset(
+        {
+            "offshore/invest/bank_deposit/below_threshold",
+            "offshore/invest/property/below_threshold",
+        }
+    ),
+}
+STUDIO_HELD_WALKS: frozenset[str] = STUDIO_HELD_WALKS_BY_SEQUENCE.get(_SIGNED_SEQUENCE, frozenset())
+STUDIO_REVIEW_REASON = "SECOND_HOME_BELOW_THRESHOLD_STUDIO"
+
 #: The FUNNEL-level state census, DERIVED from the two tables above rather
 #: than pinned as a third one — and the derivation is itself the claim under
 #: test. `_apply_disclosed_review_flags` is monotone, and unconditional for
@@ -2039,11 +2062,18 @@ def test_walk_state_census_is_the_pinned_census_of_the_signed_sequence(
     held = {
         label for label, outcome in outcomes.items() if outcome["state"] == "HUMAN_REVIEW_REQUIRED"
     }
-    assert held == PRIVACY_HELD_WALKS == {"offshore/family/PARENT/spNat=IT/minor"}
-    minor_walk = _load_walks()["offshore/family/PARENT/spNat=IT/minor"]
+    assert PRIVACY_HELD_WALKS == {"offshore/family/PARENT/spNat=IT/minor"}
+    assert held == PRIVACY_HELD_WALKS | STUDIO_HELD_WALKS
+    walks = _load_walks()
+    minor_walk = walks["offshore/family/PARENT/spNat=IT/minor"]
     public = _public_decision(minor_walk["overrides"], "offshore/family/PARENT/spNat=IT/minor")
     assert [reason.code for reason in public.review_reasons] == ["MINOR_GUARDIAN_PRIVACY_REVIEW"]
-    assert census["NO_SUPPORTED_PATH"] == 17
+    # The Studio holds are named by CAUSE too: on seq-22 each of the two walks
+    # is held on exactly the one Studio reason, never on a second one.
+    for label in sorted(STUDIO_HELD_WALKS):
+        studio = _public_decision(walks[label]["overrides"], label)
+        assert [reason.code for reason in studio.review_reasons] == [STUDIO_REVIEW_REASON], label
+    assert census["NO_SUPPORTED_PATH"] == by_sequence[_SIGNED_SEQUENCE]["NO_SUPPORTED_PATH"]
 
 
 def test_dead_end_fact_census_matches_the_blocking_fact_table(
@@ -2672,10 +2702,13 @@ def test_the_flagged_census_is_the_funnel_the_applicant_meets(
             if actual["state"] == "HUMAN_REVIEW_REQUIRED"
             and label not in EXPECTED_DISCLOSED_REVIEW_FLAGS
         }
-        assert held_without_a_flag == PRIVACY_HELD_WALKS
+        assert held_without_a_flag == PRIVACY_HELD_WALKS | STUDIO_HELD_WALKS
+    # The Studio walks raise no disclosure flag either, or the sum below would
+    # count them twice.
+    assert not (STUDIO_HELD_WALKS & set(EXPECTED_DISCLOSED_REVIEW_FLAGS))
     assert funnel_census["HUMAN_REVIEW_REQUIRED"] == len(EXPECTED_DISCLOSED_REVIEW_FLAGS) + len(
         PRIVACY_HELD_WALKS
-    )
+    ) + len(STUDIO_HELD_WALKS)
 
 
 def test_innocence_an_unflagged_walk_keeps_its_whole_engine_outcome(
