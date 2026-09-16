@@ -270,6 +270,9 @@ def test_a_verified_record_without_a_bali_status_clears_stale_bali_claims():
         "bali_needs_review": None,
         "bali_reason": "",
         "has_bali_l4": False,
+        "bali_closure_url": None,
+        "bali_closure_scope": None,
+        "bali_confidence": None,
     }
 
 
@@ -292,6 +295,9 @@ def test_a_declared_gap_clears_all_flat_bali_claims():
         "bali_needs_review": None,
         "bali_reason": "",
         "has_bali_l4": False,
+        "bali_closure_url": None,
+        "bali_closure_scope": None,
+        "bali_confidence": None,
     }
 
 
@@ -371,7 +377,7 @@ def test_sync_disclosures_match_the_shared_runtime_contract() -> None:
     }
 
 
-def test_the_bali_layer_writes_its_five_keys_and_no_pma_key():
+def test_the_bali_layer_writes_its_eight_keys_and_no_pma_key():
     """Layer isolation, asserted on the wire. A Bali cure that also carried a
     `pma_status` would silently make the national answer this tool's business."""
     fake = FakeQdrant({"86995": [[{"id": 5, "payload": {"bali_status": "CHIUSO_PMA_NO_BESAR"}}]]})
@@ -389,6 +395,9 @@ def test_the_bali_layer_writes_its_five_keys_and_no_pma_key():
         "bali_needs_review",
         "bali_reason",
         "has_bali_l4",
+        "bali_closure_url",
+        "bali_closure_scope",
+        "bali_confidence",
     }
     assert not any(k.startswith("pma_") for k in written)
 
@@ -702,9 +711,7 @@ def test_a_cap_that_falls_after_the_whole_reviewed_block_is_accepted():
     )
 
     reviewed = [_INTEL_HEADING, "- reviewed line one", "- reviewed line two"]
-    whole_block_then_blank = "\n".join(
-        ["# head", *reviewed, "", _TRUNCATION_MARKER]
-    )
+    whole_block_then_blank = "\n".join(["# head", *reviewed, "", _TRUNCATION_MARKER])
     assert _truncated_section_matches_reviewed_prefix(
         whole_block_then_blank, _INTEL_HEADING, reviewed
     )

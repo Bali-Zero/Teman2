@@ -3,7 +3,8 @@ kbli_qdrant_pma_sync.py — sync a named LAYER of the KBLI Qdrant payload from t
 canonical dataset. `--layer pma` (default) owns the complete PMA evidence tuple
 (`pma_status`, `pma_max_asing`, verification status, official basis, vintage);
 `--layer bali` owns `bali_status` / `bali_blocked` /
-`bali_needs_review` / `bali_reason` / `has_bali_l4`.
+`bali_needs_review` / `bali_reason` / `has_bali_l4` / `bali_closure_url` /
+`bali_closure_scope` / `bali_confidence`.
 
 WHY THE BALI LAYER LIVES HERE AND NOT IN ITS OWN TOOL (2026-08-03): there WAS a
 second tool, `apps/backend-rag/scripts/patch_qdrant_bali_l4.py`, and it is
@@ -376,6 +377,15 @@ def render_bali_block(rec: dict) -> list[str]:
     lines.append(f"- Status Bali: {fields['bali_status']}")
     if fields["bali_reason"]:
         lines.append(f"- Alasan: {fields['bali_reason']}")
+    if fields["bali_closure_scope"]:
+        lines.append(f"- Cakupan penutupan: {fields['bali_closure_scope']}")
+    if fields["bali_confidence"] and fields["bali_confidence"] != "HIGH":
+        lines.append(
+            f"- Catatan: tingkat keyakinan penutupan ini {fields['bali_confidence']} "
+            "— bacaan konservatif, menunggu verifikasi lebih lanjut."
+        )
+    if fields["bali_closure_url"]:
+        lines.append(f"- Sumber penutupan: {fields['bali_closure_url']}")
     lines.append(
         "- Note: national status (Perpres 10/2021) can differ from the "
         "provincial block; read both verdicts."
@@ -844,7 +854,8 @@ def main() -> int:
         help="which payload layer to sync: 'pma' (national ownership: pma_status, "
         "pma_max_asing, AND the '## Status PMA:' block inside the content/text blob), "
         "'bali' (provincial verdict: bali_status, bali_blocked, bali_needs_review, "
-        "bali_reason, has_bali_l4) or 'whatchanged' (legacy name for atomic certified "
+        "bali_reason, has_bali_l4, bali_closure_url, bali_closure_scope, bali_confidence) "
+        "or 'whatchanged' (legacy name for atomic certified "
         "Intelligence-section reconciliation; no flat payload key). One layer per run, on purpose — "
         "they answer different questions from different instruments.",
     )

@@ -5,6 +5,13 @@ values even when their official per-code locator has not been found.  Those
 values are useful for remediation work, but they are not publishable facts.
 Every runtime consumer must therefore read the complete evidence tuple, not a
 bare ``pma_status`` or ``pma_max_asing`` field.
+
+The one deliberate exception is the Bali provincial closure: Bali's Provincial
+Government closed OSS to new PT PMA licensing for 18 business fields (press
+release, 24 Jul 2026), independently of whether the national PMA tuple for
+that code has been verified. ``disclose_bali`` discloses that sourced closure
+— status, scope, confidence and its source URL — even on a ``NOT_VERIFIED``
+record; see :func:`is_sourced_bali_closure` for the exact predicate.
 """
 
 from __future__ import annotations
@@ -41,7 +48,17 @@ _BALI_NEUTRAL = {
     "bali_needs_review": None,
     "bali_reason": "",
     "has_bali_l4": False,
+    "bali_closure_url": None,
+    "bali_closure_scope": None,
+    "bali_confidence": None,
 }
+
+# The one Bali status that can be disclosed WITHOUT a verified national PMA
+# tuple — a sourced provincial closure (Bali Provincial Government press
+# release, 24 Jul 2026) speaks about Bali registrability only, never about
+# national foreign-ownership.
+_CHIUSO_BALI_STATUS = "CHIUSO_BALI"
+_BALI_CONFIDENCE_LEVELS = frozenset({"HIGH", "MEDIUM", "LOW"})
 
 
 def _clean_text(value: object) -> str | None:
@@ -83,6 +100,40 @@ def pma_claims_verified(payload: Mapping[str, Any]) -> bool:
     )
 
 
+def _valid_http_url(value: object) -> str | None:
+    """Return *value* only if it is a non-empty ``http://``/``https://`` string."""
+    text = _clean_text(value)
+    if text is None:
+        return None
+    if text.startswith("http://") or text.startswith("https://"):
+        return text
+    return None
+
+
+def is_sourced_bali_closure(
+    *,
+    status: object,
+    blocked: object,
+    needs_review: object,
+    closure_url: object,
+) -> bool:
+    """True for the one Bali closure disclosable without a verified PMA tuple.
+
+    Mirrors the website's ``isSourcedBaliClosure``: exact ``"CHIUSO_BALI"``
+    status, a real ``blocked is True``, a real bool ``needs_review``, and an
+    http(s) closure source URL. Every other status, a non-boolean
+    ``needs_review``, a false/absent ``blocked``, or a missing/invalid URL
+    falls back to the ordinary national-tuple gate — withheld exactly as
+    before on an unverified record.
+    """
+    return bool(
+        status == _CHIUSO_BALI_STATUS
+        and blocked is True
+        and isinstance(needs_review, bool)
+        and _valid_http_url(closure_url) is not None
+    )
+
+
 def disclose_pma(payload: Mapping[str, Any]) -> dict[str, Any]:
     """Return the public PMA view of a canonical/Qdrant/KG record.
 
@@ -120,32 +171,71 @@ def disclose_pma(payload: Mapping[str, Any]) -> dict[str, Any]:
     }
 
 
-def disclose_bali(payload: Mapping[str, Any]) -> dict[str, Any]:
-    """Return the public Bali view without coercing malformed source values.
+def _bali_raw_fields(
+    payload: Mapping[str, Any],
+) -> tuple[Any, Any, Any, Any, Any, Any, Any] | None:
+    """Read the raw Bali tuple from nested ``l4_bali`` or flat payload keys.
 
-    A Bali verdict is subordinate to the same complete PMA evidence tuple used
-    by :func:`disclose_pma`.  It is publishable only when its status is one of
-    the exact canonical Bali tokens and both ``blocked`` and ``needs_review``
-    are actual booleans. In particular, ``"false"`` must never become ``True``
-    through Python truthiness.  The helper accepts both canonical nested
-    ``l4_bali`` records and already-flat Qdrant/KG payloads.
+    Returns ``None`` when a nested ``l4_bali`` value is present but is not a
+    mapping — the caller must withhold rather than guess a shape.
     """
-    if not pma_claims_verified(payload):
-        return dict(_BALI_NEUTRAL)
-
     nested = payload.get("l4_bali")
     if nested is not None:
         if not isinstance(nested, Mapping):
-            return dict(_BALI_NEUTRAL)
-        raw_status = nested.get("status")
-        raw_blocked = nested.get("blocked")
-        raw_needs_review = nested.get("needs_review")
-        raw_reason = nested.get("reason")
-    else:
-        raw_status = payload.get("bali_status")
-        raw_blocked = payload.get("bali_blocked")
-        raw_needs_review = payload.get("bali_needs_review")
-        raw_reason = payload.get("bali_reason")
+            return None
+        closure = nested.get("closure")
+        closure = closure if isinstance(closure, Mapping) else {}
+        return (
+            nested.get("status"),
+            nested.get("blocked"),
+            nested.get("needs_review"),
+            nested.get("reason"),
+            closure.get("url"),
+            closure.get("scope_qualifier"),
+            nested.get("confidence"),
+        )
+    return (
+        payload.get("bali_status"),
+        payload.get("bali_blocked"),
+        payload.get("bali_needs_review"),
+        payload.get("bali_reason"),
+        payload.get("bali_closure_url"),
+        payload.get("bali_closure_scope"),
+        payload.get("bali_confidence"),
+    )
+
+
+def disclose_bali(payload: Mapping[str, Any]) -> dict[str, Any]:
+    """Return the public Bali view without coercing malformed source values.
+
+    A Bali verdict is ordinarily subordinate to the same complete PMA evidence
+    tuple used by :func:`disclose_pma`. The ONE exception is a sourced Bali
+    closure (see :func:`is_sourced_bali_closure`): the Bali Provincial
+    Government's own 24 Jul 2026 press release closing OSS to new PT PMA
+    licensing for 18 business fields is a Bali-only fact with its own citable
+    source, and it is disclosable even while the national PMA tuple stays
+    ``NOT_VERIFIED`` — the closure asserts nothing about national ownership.
+
+    Every publishable tuple still requires its status to be one of the exact
+    canonical Bali tokens and both ``blocked`` and ``needs_review`` to be
+    actual booleans. In particular, ``"false"`` must never become ``True``
+    through Python truthiness. The helper accepts both canonical nested
+    ``l4_bali`` records (reading ``closure.url``/``closure.scope_qualifier``/
+    ``confidence``) and already-flat Qdrant/KG payloads (``bali_closure_url``/
+    ``bali_closure_scope``/``bali_confidence``).
+    """
+    raw = _bali_raw_fields(payload)
+    if raw is None:
+        return dict(_BALI_NEUTRAL)
+    (
+        raw_status,
+        raw_blocked,
+        raw_needs_review,
+        raw_reason,
+        raw_closure_url,
+        raw_closure_scope,
+        raw_confidence,
+    ) = raw
 
     status = _clean_text(raw_status)
     if (
@@ -156,12 +246,32 @@ def disclose_bali(payload: Mapping[str, Any]) -> dict[str, Any]:
     ):
         return dict(_BALI_NEUTRAL)
 
+    closure_url = _valid_http_url(raw_closure_url)
+    sourced_closure = is_sourced_bali_closure(
+        status=status,
+        blocked=raw_blocked,
+        needs_review=raw_needs_review,
+        closure_url=closure_url,
+    )
+    if not sourced_closure and not pma_claims_verified(payload):
+        return dict(_BALI_NEUTRAL)
+
+    confidence = _clean_text(raw_confidence)
+    if isinstance(confidence, str):
+        confidence = confidence.upper()
+    if confidence not in _BALI_CONFIDENCE_LEVELS:
+        # Consumers treat None as "not HIGH" (hedged), never as certain.
+        confidence = None
+
     return {
         "bali_status": status,
         "bali_blocked": raw_blocked,
         "bali_needs_review": raw_needs_review,
         "bali_reason": _clean_text(raw_reason) or "",
         "has_bali_l4": True,
+        "bali_closure_url": closure_url,
+        "bali_closure_scope": _clean_text(raw_closure_scope),
+        "bali_confidence": confidence,
     }
 
 
@@ -284,6 +394,10 @@ def sanitize_kbli_search_result(
             )
             if bali["bali_reason"]:
                 lines.append(f"- Reason: {bali['bali_reason']}")
+            if bali["bali_closure_scope"]:
+                lines.append(f"- Scope: {bali['bali_closure_scope']}")
+            if bali["bali_closure_url"]:
+                lines.append(f"- Source: {bali['bali_closure_url']}")
     else:
         lines.extend(
             [
@@ -292,5 +406,30 @@ def sanitize_kbli_search_result(
                 "- Whole-code foreign ownership is withheld: no located official basis and source vintage are recorded.",
             ]
         )
+        # `has_bali_l4` can only be True here for the narrow sourced-closure
+        # class (see `is_sourced_bali_closure`): the closure has its own
+        # published Bali source and is disclosed even though the national
+        # tuple above stays withheld. Never let this imply a national verdict.
+        if bali["has_bali_l4"]:
+            lines.extend(
+                [
+                    "",
+                    f"## Bali registration status: {bali['bali_status']} (Bali-sourced closure)",
+                    f"- Blocked: {'yes' if bali['bali_blocked'] else 'no'}",
+                ]
+            )
+            if bali["bali_reason"]:
+                lines.append(f"- Reason: {bali['bali_reason']}")
+            if bali["bali_closure_scope"]:
+                lines.append(f"- Scope: {bali['bali_closure_scope']}")
+            if bali["bali_confidence"] and bali["bali_confidence"] != "HIGH":
+                lines.append(
+                    "- Note: confidence on this closure is "
+                    f"{bali['bali_confidence']}; treat as a conservative "
+                    "reading pending further verification, not a certified "
+                    "legal determination."
+                )
+            if bali["bali_closure_url"]:
+                lines.append(f"- Source: {bali['bali_closure_url']}")
 
     return "\n".join(lines), safe_metadata

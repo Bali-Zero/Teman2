@@ -109,12 +109,47 @@ async def test_lookup_exposes_only_the_reviewed_bali_verdict_shape():
     # Bali object is eligible for model-facing disclosure.
     payload = json.loads(await tool.execute(code="02102"))
 
-    assert set(payload["bali"]) == {"status", "blocked", "needs_review", "reason"}
+    assert set(payload["bali"]) == {
+        "status",
+        "blocked",
+        "needs_review",
+        "reason",
+        "closure_url",
+        "closure_scope",
+        "conservative_reading",
+    }
     assert payload["bali"]["blocked"] is False
     assert payload["bali"]["needs_review"] is False
     rendered = json.dumps(payload["bali"])
     for internal_field in ("moratorium", "verdict", "verdict_state", "confidence"):
         assert internal_field not in rendered
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("code", "scope", "conservative"),
+    [
+        ("68111", None, False),
+        ("55101", "building area under 6,000 m²", False),
+        ("47211", None, True),
+    ],
+)
+async def test_a_sourced_bali_closure_carries_source_scope_and_hedge_on_an_unverified_code(
+    code, scope, conservative
+):
+    """The canonical's Bali closures are nationally unverified, yet the tool
+    discloses them — so the source, the hotel scope and the conservative-reading
+    flag must travel as fields, not only inside the free-form reason."""
+    tool = KBLICanonicalLookupTool(dataset_path=_DATASET)
+
+    payload = json.loads(await tool.execute(code=code))
+
+    assert payload["pma"]["status"] == "NOT_VERIFIED"
+    assert payload["bali"]["status"] == "CHIUSO_BALI"
+    assert payload["bali"]["blocked"] is True
+    assert payload["bali"]["closure_url"].startswith("https://")
+    assert payload["bali"]["closure_scope"] == scope
+    assert payload["bali"]["conservative_reading"] is conservative
 
 
 @pytest.mark.asyncio

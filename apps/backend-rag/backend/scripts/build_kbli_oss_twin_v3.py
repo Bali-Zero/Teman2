@@ -80,6 +80,12 @@ def l4_text_block(e: dict) -> list[str]:
     out.append(f"- Status Bali: {bali['bali_status']}")
     if bali["bali_reason"]:
         out.append(f"- Catatan: {bali['bali_reason']}")
+    if bali["bali_closure_scope"]:
+        out.append(f"- Cakupan penutupan: {bali['bali_closure_scope']}")
+    if bali["bali_confidence"] and bali["bali_confidence"] != "HIGH":
+        out.append(f"- Keyakinan penutupan ini {bali['bali_confidence']} — bacaan konservatif.")
+    if bali["bali_closure_url"]:
+        out.append(f"- Sumber penutupan: {bali['bali_closure_url']}")
     out.append("- Status nasional dan verdict Bali adalah lapisan terpisah; baca keduanya.")
     return out
 
