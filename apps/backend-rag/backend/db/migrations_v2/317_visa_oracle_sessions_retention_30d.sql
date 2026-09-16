@@ -169,12 +169,114 @@ CREATE INDEX IF NOT EXISTS idx_vo_sessions_created_at
 -- The declaration this migration actually exists for. It runs identically on
 -- both paths: on production against the table that was already there, on a
 -- fresh database against the one just created above with the 90-day default.
-ALTER TABLE public.visa_oracle_sessions
-    ALTER COLUMN expires_at SET DEFAULT (NOW() + INTERVAL '30 days');
+--
+-- ----------------------------------------------------------------------------
+-- RETRY-WITH-BACKOFF CURE (2026-09-17, PROD incident, Fly release v4472/v4473).
+--
+-- Verbatim from the deploy log: "Failed to apply migration 317: SQL execution
+-- failed: canceling statement due to lock timeout". `ALTER COLUMN ... SET
+-- DEFAULT` is catalog-only (no table rewrite) but still takes a brief ACCESS
+-- EXCLUSIVE lock for the DDL statement itself, and that night a `pg_dump`
+-- backup held AccessShareLock on this table for ~40 minutes. The original
+-- single `SET lock_timeout = '5s'` waited once, failed once, and left 317
+-- permanently pending in `_schema_versions` (last applied = 318) — every
+-- subsequent `apply-all` retried the SAME single 5s wait and failed the same
+-- way, closing the whole backend deploy lane. CI never saw this because a
+-- fresh CI database has no concurrent reader.
+--
+-- The fix is many SHORT attempts, never one long wait: an ACCESS EXCLUSIVE
+-- lock request queues FIFO, so a request that waits a long time also blocks
+-- every ordinary reader that arrives after it — a single long wait here would
+-- risk stalling live traffic, not just this migration. Each attempt below
+-- asks for the lock for at most 3s; between attempts nothing is queued, so
+-- normal traffic is never blocked by a waiting migration. Budget: up to 8
+-- attempts * 3s lock_timeout (24s worst case) plus backoff sleeps capped at
+-- 4s each (~14.5s worst case) = ~38.5s worst case, comfortably under the
+-- file's own `statement_timeout = '60s'` (a `DO $$ ... $$` block is ONE
+-- statement, so the whole loop must fit inside that single budget — verified
+-- by reading how `MigrationManager`/`BaseMigration.apply()` execute this file:
+-- `migration_base.py::apply()` reads the forward SQL, splits off the
+-- rollback marker's section (see the literal marker line further down this
+-- file, ahead of the ROLLBACK heading below it), and sends the REMAINDER as
+-- one `conn.execute(sql_forward)` inside one `async with conn.transaction()` —
+-- a single asyncpg connection opened directly, not the pool that sets
+-- `command_timeout=60`, so the only ceiling on this block is the server-side
+-- `statement_timeout` declared at the top of this file).
+--
+-- On exhaustion this RAISEs (never skips) and names the blockers: pid,
+-- usename and application_name from `pg_stat_activity` joined to
+-- `pg_locks` for any other backend holding a lock on this table — those
+-- three columns are visible to any role in `pg_stat_activity`; `query` and
+-- `state` are not, and are not needed here.
+--
+-- SQLSTATE catches, checked against a live lock_timeout cancellation:
+-- lock_timeout expiring while waiting for a lock raises `lock_not_available`
+-- (55P03); `query_canceled` (57014) is caught too as the fallback code a
+-- lock_timeout cancellation can surface, matching the ROLLBACK path below
+-- symmetrically (90 days instead of 30).
+-- ----------------------------------------------------------------------------
+DO $$
+DECLARE
+    max_attempts CONSTANT int := 8;
+    attempt int := 0;
+    blockers text;
+BEGIN
+    LOOP
+        attempt := attempt + 1;
+        BEGIN
+            EXECUTE 'SET LOCAL lock_timeout = ''3s''';
+            ALTER TABLE public.visa_oracle_sessions
+                ALTER COLUMN expires_at SET DEFAULT (NOW() + INTERVAL '30 days');
+            EXIT;
+        EXCEPTION
+            WHEN lock_not_available OR query_canceled THEN
+                IF attempt >= max_attempts THEN
+                    SELECT string_agg(format('pid=%s user=%s app=%s', a.pid, a.usename, a.application_name), ', ')
+                      INTO blockers
+                      FROM pg_locks l
+                      JOIN pg_stat_activity a ON a.pid = l.pid
+                     WHERE l.relation = 'public.visa_oracle_sessions'::regclass
+                       AND l.pid <> pg_backend_pid();
+                    RAISE EXCEPTION 'migration 317: ALTER on public.visa_oracle_sessions did not acquire its lock after % attempts; blockers holding a lock on the table: %', attempt, COALESCE(blockers, 'none found in pg_locks (lock may have cleared between the failed attempt and this check)');
+                ELSE
+                    PERFORM pg_sleep(least(attempt * 0.5, 4));
+                END IF;
+        END;
+    END LOOP;
+END $$;
 
 -- === ROLLBACK ===
 SET lock_timeout = '5s';
 SET statement_timeout = '60s';
 
-ALTER TABLE public.visa_oracle_sessions
-    ALTER COLUMN expires_at SET DEFAULT (NOW() + INTERVAL '90 days');
+-- Symmetric retry-with-backoff (see the forward ALTER's comment above for the
+-- full rationale, budget and SQLSTATE notes) — same shape, back to 90 days.
+DO $$
+DECLARE
+    max_attempts CONSTANT int := 8;
+    attempt int := 0;
+    blockers text;
+BEGIN
+    LOOP
+        attempt := attempt + 1;
+        BEGIN
+            EXECUTE 'SET LOCAL lock_timeout = ''3s''';
+            ALTER TABLE public.visa_oracle_sessions
+                ALTER COLUMN expires_at SET DEFAULT (NOW() + INTERVAL '90 days');
+            EXIT;
+        EXCEPTION
+            WHEN lock_not_available OR query_canceled THEN
+                IF attempt >= max_attempts THEN
+                    SELECT string_agg(format('pid=%s user=%s app=%s', a.pid, a.usename, a.application_name), ', ')
+                      INTO blockers
+                      FROM pg_locks l
+                      JOIN pg_stat_activity a ON a.pid = l.pid
+                     WHERE l.relation = 'public.visa_oracle_sessions'::regclass
+                       AND l.pid <> pg_backend_pid();
+                    RAISE EXCEPTION 'migration 317 rollback: ALTER on public.visa_oracle_sessions did not acquire its lock after % attempts; blockers holding a lock on the table: %', attempt, COALESCE(blockers, 'none found in pg_locks (lock may have cleared between the failed attempt and this check)');
+                ELSE
+                    PERFORM pg_sleep(least(attempt * 0.5, 4));
+                END IF;
+        END;
+    END LOOP;
+END $$;
