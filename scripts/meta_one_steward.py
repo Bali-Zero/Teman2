@@ -1,0 +1,650 @@
+#!/usr/bin/env python3
+"""meta_one_steward.py — the Meta One Advanced Access ledger + probe (Pro-resident).
+
+Spec: docs/marketing/meta-one-advanced-playbook.md §4.3/4.4. Deterministic,
+stdlib + urllib only. Runs daily 06:20 WITA through
+scripts/meta-one-steward.sh; nothing it does publishes, schedules, or writes
+to a Meta endpoint — it only reads the token's health and the local queue,
+and keeps `shared/meta_one/ledger.json` honest so nothing paid-for expires
+unused.
+
+Subcommands:
+    tick     — probe -> ingest -> ledger -> digest -> heartbeat (the cron entry)
+    use      — record one benefit spend, idempotent on (month, benefit, ref)
+    status   — print the current month's ledger (--json for the raw record)
+    --selftest — temp world, no HOME, no network; must name a dead AND a
+                 healthy verdict and exit 0 only if each tick's heartbeat
+                 status equals that tick's own verdict.
+
+Contracts:
+    - The token value is NEVER logged, printed, or persisted. Any URL
+      fragment carrying `access_token=...` is redacted before it reaches an
+      exception message, a log line or a Telegram text (W-class #4, secret
+      in the clear).
+    - `unknown` (network/timeout/unexpected-status) is NOT `dead` — only an
+      HTTP 400/401 body naming OAuthException classifies as dead. Guilt
+      needs positive evidence; the absence of a clean answer is innocence,
+      not condemnation (superscar #3, guard-over/under-match).
+    - The heartbeat's `status` always equals this run's own verdict — `ok`
+      (token alive, nothing expiring), `warning` (token dead/unknown, a
+      link-benefit quota expiring, or the newest export past 35 days), or
+      `error` (unhandled exception — the heartbeat is still written before
+      re-raising the non-zero exit, superscar #2 esiste!=armato).
+"""
+from __future__ import annotations
+
+import argparse
+import json
+import os
+import re
+import subprocess
+import sys
+import tempfile
+import urllib.error
+import urllib.request
+from datetime import datetime, timedelta, timezone
+from pathlib import Path
+from typing import Any, Callable
+
+_REPO = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(_REPO))
+
+from scripts.lib.heartbeat import organism_heartbeat  # noqa: E402
+
+ORGAN_ID = "pro.meta_one_steward"
+
+# Meta Help Centre article 960854640235758 (read 2026-09-16): Advanced Access
+# monthly caps for a Business Agent-approved account. One constant, dated,
+# per spec §4.3 — never hard-code a quota number anywhere else in this file.
+ADVANCED_QUOTAS: dict[str, int] = {
+    "ig_post_link": 4,
+    "ig_reel_link": 4,
+    "fb_post_link": 8,
+    "fb_reel_link": 8,
+    "support_chat": 1,
+    "content_credit": 2,
+}
+
+# The four benefits the "quota expiring" P0 rule watches (spec §4.3).
+LINK_BENEFITS: tuple[str, ...] = ("ig_post_link", "ig_reel_link", "fb_post_link", "fb_reel_link")
+
+TOKEN_ENV_VARS: tuple[str, ...] = ("INSTAGRAM_ACCESS_TOKEN", "IG_LONG_LIVED_TOKEN")
+
+GRAPH_ME_URL = "https://graph.instagram.com/me?fields=id,username"
+GRAPH_METRICS_URL = "https://graph.instagram.com/me?fields=followers_count,media_count"
+GRAPH_INSIGHTS_URL = (
+    "https://graph.instagram.com/me/insights"
+    "?metric=reach,profile_links_taps,follows_and_unfollows"
+    "&period=day&metric_type=total_value"
+)
+
+EXPORT_STALE_DAYS = 35
+QUOTA_EXPIRING_DAYS = 5
+QUOTA_EXPIRING_FRACTION = 0.5
+HTTP_TIMEOUT_S = 15.0
+
+_ACCESS_TOKEN_RE = re.compile(r"access_token=[^&\s]+")
+
+
+# ---------------------------------------------------------------- paths
+
+
+def state_dir() -> Path:
+    return Path(os.environ.get("META_ONE_STATE_DIR", str(_REPO / "shared" / "meta_one")))
+
+
+def ledger_path() -> Path:
+    return state_dir() / "ledger.json"
+
+
+def usage_path() -> Path:
+    return state_dir() / "usage.jsonl"
+
+
+def metrics_dir() -> Path:
+    return state_dir() / "metrics"
+
+
+def exports_dir() -> Path:
+    return state_dir() / "exports"
+
+
+def queue_path() -> Path:
+    default = str(Path.home() / "nuzantara" / "apps" / "war-room" / "output" / "queue" / "human-review-queue.json")
+    return Path(os.environ.get("META_ONE_QUEUE_JSON", default))
+
+
+# ---------------------------------------------------------------- redaction
+
+
+def _redact(text: str) -> str:
+    """Strip any `access_token=...` fragment before it reaches a log/message."""
+    return _ACCESS_TOKEN_RE.sub("access_token=REDACTED", text)
+
+
+# ---------------------------------------------------------------- atomic IO
+
+
+def _atomic_write_json(path: Path, data: Any) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    fd, tmp_name = tempfile.mkstemp(dir=str(path.parent), prefix=path.name + ".tmp.")
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as fh:
+            json.dump(data, fh, indent=2, sort_keys=True)
+            fh.write("\n")
+        os.replace(tmp_name, path)
+    except Exception:
+        try:
+            os.unlink(tmp_name)
+        except OSError:
+            pass
+        raise
+
+
+def load_ledger() -> dict[str, Any]:
+    p = ledger_path()
+    if not p.is_file():
+        return {}
+    try:
+        return json.loads(p.read_text(encoding="utf-8"))
+    except Exception:
+        return {}
+
+
+# ---------------------------------------------------------------- token probe
+
+
+def _get_token() -> str | None:
+    for name in TOKEN_ENV_VARS:
+        val = os.environ.get(name)
+        if val:
+            return val
+    return None
+
+
+def _http_get(url: str, timeout: float) -> tuple[int, str]:
+    """GET url. HTTP error responses return (code, body) rather than raising —
+    only network/timeout/other failures propagate as exceptions."""
+    req = urllib.request.Request(url, method="GET")
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as resp:  # noqa: S310
+            return resp.getcode(), resp.read().decode("utf-8", "replace")
+    except urllib.error.HTTPError as exc:
+        body = ""
+        try:
+            body = exc.read().decode("utf-8", "replace")
+        except Exception:
+            pass
+        return exc.code, body
+
+
+def probe_token(
+    token: str | None,
+    *,
+    timeout: float = HTTP_TIMEOUT_S,
+    fetch: Callable[[str, float], tuple[int, str]] | None = None,
+) -> tuple[str, dict[str, Any]]:
+    """Classify the token: 'alive' | 'dead' | 'unknown'. Never raises.
+
+    'dead' requires positive evidence (HTTP 400/401 + OAuthException in the
+    body). Everything else — no token, network error, timeout, an
+    unexpected status, a 200 without a username — is 'unknown', which is
+    warning-worthy but NEVER treated as dead (guilt needs evidence).
+    """
+    if not token:
+        return "unknown", {"reason": "no-token"}
+    fetch = fetch or _http_get
+    url = f"{GRAPH_ME_URL}&access_token={token}"
+    try:
+        status, body = fetch(url, timeout)
+    except Exception as exc:  # network/timeout/other — never dead
+        return "unknown", {"reason": _redact(str(exc))}
+
+    redacted_body = _redact(body)[:500]
+    if status == 200:
+        try:
+            data = json.loads(body)
+        except Exception:
+            return "unknown", {"reason": "bad-json", "http_status": status}
+        if isinstance(data, dict) and data.get("username"):
+            return "alive", {"username": data.get("username"), "id": data.get("id")}
+        return "unknown", {"reason": "no-username-in-200", "http_status": status}
+    if status in (400, 401) and "OAuthException" in redacted_body:
+        return "dead", {"http_status": status, "body": redacted_body}
+    return "unknown", {"http_status": status, "body": redacted_body}
+
+
+def _fetch_metrics(token: str, now: datetime, *, timeout: float = HTTP_TIMEOUT_S, fetch: Callable | None = None) -> dict[str, Any]:
+    """Best-effort: followers/media counts + day insights. Tolerates missing
+    metrics — a partial 200 or a failed insights call never aborts the tick."""
+    fetch = fetch or _http_get
+    result: dict[str, Any] = {"followers_count": None, "media_count": None, "insights": {}}
+    try:
+        status, body = fetch(f"{GRAPH_METRICS_URL}&access_token={token}", timeout)
+        if status == 200:
+            data = json.loads(body)
+            result["followers_count"] = data.get("followers_count")
+            result["media_count"] = data.get("media_count")
+    except Exception:
+        pass
+    try:
+        status, body = fetch(f"{GRAPH_INSIGHTS_URL}&access_token={token}", timeout)
+        if status == 200:
+            data = json.loads(body)
+            for item in data.get("data", []) or []:
+                name = item.get("name")
+                tv = item.get("total_value") or {}
+                if name:
+                    result["insights"][name] = tv.get("value")
+    except Exception:
+        pass
+    try:
+        day_file = metrics_dir() / f"{now.strftime('%Y-%m-%d')}.json"
+        _atomic_write_json(day_file, {**result, "ts": now.strftime("%Y-%m-%dT%H:%M:%SZ")})
+    except Exception:
+        pass
+    return result
+
+
+# ---------------------------------------------------------------- quota math
+
+
+def _month_key(now: datetime) -> str:
+    return now.strftime("%Y-%m")
+
+
+def days_to_month_end(now: datetime) -> int:
+    if now.month == 12:
+        last_day = 31
+    else:
+        first_of_next = now.replace(month=now.month + 1, day=1)
+        last_day = (first_of_next - timedelta(days=1)).day
+    return last_day - now.day
+
+
+def build_benefits(usage_counts: dict[str, int]) -> dict[str, dict[str, int]]:
+    return {b: {"used": usage_counts.get(b, 0), "quota": q} for b, q in ADVANCED_QUOTAS.items()}
+
+
+def quota_expiring(benefits: dict[str, dict[str, int]], days_left: int) -> bool:
+    if days_left > QUOTA_EXPIRING_DAYS:
+        return False
+    for b in LINK_BENEFITS:
+        info = benefits.get(b, {})
+        quota = info.get("quota", 0)
+        used = info.get("used", 0)
+        if quota > 0 and (used / quota) < QUOTA_EXPIRING_FRACTION:
+            return True
+    return False
+
+
+def read_usage(month: str) -> dict[str, int]:
+    counts: dict[str, int] = {b: 0 for b in ADVANCED_QUOTAS}
+    p = usage_path()
+    if not p.is_file():
+        return counts
+    seen: set[tuple[Any, Any, Any]] = set()
+    for line in p.read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        try:
+            rec = json.loads(line)
+        except Exception:
+            continue
+        if rec.get("month") != month:
+            continue
+        key = (rec.get("month"), rec.get("benefit"), rec.get("ref"))
+        if key in seen:
+            continue
+        seen.add(key)
+        b = rec.get("benefit")
+        if b in counts:
+            counts[b] += 1
+    return counts
+
+
+def _usage_key_exists(key: tuple[Any, Any, Any]) -> bool:
+    p = usage_path()
+    if not p.is_file():
+        return False
+    for line in p.read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        try:
+            rec = json.loads(line)
+        except Exception:
+            continue
+        if (rec.get("month"), rec.get("benefit"), rec.get("ref")) == key:
+            return True
+    return False
+
+
+def cmd_use(benefit: str, ref: str, *, now: datetime | None = None) -> int:
+    if benefit not in ADVANCED_QUOTAS:
+        print(f"meta_one_steward: unknown benefit {benefit!r} (known: {sorted(ADVANCED_QUOTAS)})", file=sys.stderr)
+        return 2
+    now = now or datetime.now(timezone.utc)
+    month = _month_key(now)
+    key = (month, benefit, ref)
+    if _usage_key_exists(key):
+        print(f"already recorded: {month} {benefit} {ref}")
+        return 0
+    p = usage_path()
+    p.parent.mkdir(parents=True, exist_ok=True)
+    rec = {"month": month, "benefit": benefit, "ref": ref, "ts": now.strftime("%Y-%m-%dT%H:%M:%SZ")}
+    with p.open("a", encoding="utf-8") as fh:
+        fh.write(json.dumps(rec, sort_keys=True) + "\n")
+    print(f"recorded: {month} {benefit} {ref}")
+    return 0
+
+
+# ---------------------------------------------------------------- queue + export
+
+
+def read_queue_counts() -> dict[str, Any]:
+    result: dict[str, Any] = {"drafted": 0, "published": 0, "last_published_at": None}
+    p = queue_path()
+    if not p.is_file():
+        return result
+    try:
+        data = json.loads(p.read_text(encoding="utf-8"))
+    except Exception:
+        return result
+    if isinstance(data, dict):
+        items = data.get("items", [])
+    elif isinstance(data, list):
+        items = data
+    else:
+        items = []
+    drafted = 0
+    published = 0
+    last_pub: str | None = None
+    for item in items:
+        if not isinstance(item, dict):
+            continue
+        state = item.get("state")
+        if state == "drafted":
+            drafted += 1
+        elif state == "published":
+            published += 1
+            pub_at = item.get("published_at")
+            if pub_at and (last_pub is None or pub_at > last_pub):
+                last_pub = pub_at
+    result.update({"drafted": drafted, "published": published, "last_published_at": last_pub})
+    return result
+
+
+def newest_export_mtime() -> float | None:
+    d = exports_dir()
+    if not d.is_dir():
+        return None
+    newest: float | None = None
+    for p in d.rglob("*.csv"):
+        try:
+            mtime = p.stat().st_mtime
+        except OSError:
+            continue
+        if newest is None or mtime > newest:
+            newest = mtime
+    return newest
+
+
+def export_age_days(now: datetime) -> float | None:
+    mtime = newest_export_mtime()
+    if mtime is None:
+        return None
+    dt = datetime.fromtimestamp(mtime, tz=timezone.utc)
+    return (now - dt).total_seconds() / 86400.0
+
+
+# ---------------------------------------------------------------- messages
+
+
+def _digest_text(entry: dict[str, Any]) -> str:
+    lines = ["Meta One — riepilogo giornaliero"]
+    benefits = entry.get("benefits", {})
+    for b in ADVANCED_QUOTAS:
+        info = benefits.get(b, {"used": 0, "quota": ADVANCED_QUOTAS[b]})
+        lines.append(f"- {b}: {info['used']}/{info['quota']}")
+    lines.append(f"Giorni a fine mese: {entry.get('days_to_month_end')}")
+    q = entry.get("queue", {})
+    lines.append(f"Coda: {q.get('drafted', 0)} bozze, {q.get('published', 0)} pubblicate")
+    age = entry.get("export_age_days")
+    if age is not None:
+        lines.append(f"Export piu recente: {age:.1f} giorni fa")
+    else:
+        lines.append("Export piu recente: nessuno trovato")
+    lines.append(f"Stato token: {entry.get('token_state')}")
+    return "\n".join(lines)
+
+
+def _p0_token_dead_text(dead_since: str) -> str:
+    return f"Token Instagram morto dal {dead_since}: nessuna telemetria; serve nuovo token (Zero)."
+
+
+def _p0_quota_expiring_text(days_left: int, benefits: dict[str, dict[str, int]]) -> str:
+    expiring = [
+        b for b in LINK_BENEFITS
+        if benefits.get(b, {}).get("quota", 0) > 0
+        and (benefits[b]["used"] / benefits[b]["quota"]) < QUOTA_EXPIRING_FRACTION
+    ]
+    names = ", ".join(expiring)
+    return f"Quota Meta One in scadenza tra {days_left} giorni sotto il 50% di utilizzo: {names}."
+
+
+# ---------------------------------------------------------------- telegram
+
+
+def _tg_notify(tier: str, dedup_key: str, text: str) -> bool:
+    """Route through the tg_notify gateway; never raises."""
+    try:
+        script = _REPO / "scripts" / "tg_notify.py"
+        if not script.is_file():
+            return False
+        res = subprocess.run(
+            [
+                sys.executable, str(script),
+                "--tier", tier,
+                "--source", "meta-one-steward",
+                "--dedup-key", dedup_key,
+                text,
+            ],
+            capture_output=True, text=True, timeout=30,
+        )
+        return res.returncode == 0
+    except Exception:
+        return False
+
+
+# ---------------------------------------------------------------- tick core
+
+
+def tick(
+    *,
+    now: datetime | None = None,
+    probe_fn: Callable[..., tuple[str, dict[str, Any]]] | None = None,
+    tg_notify_fn: Callable[[str, str, str], bool] | None = None,
+) -> dict[str, Any]:
+    now = now or datetime.now(timezone.utc)
+    probe_fn = probe_fn or probe_token
+    notify = tg_notify_fn or _tg_notify
+
+    month = _month_key(now)
+    ledger = load_ledger()
+    prev_entry = ledger.get(month, {})
+
+    token = _get_token()
+    state, _details = probe_fn(token)
+
+    if state == "dead":
+        dead_since = prev_entry.get("token_dead_since") or now.strftime("%Y-%m-%d")
+    else:
+        dead_since = None
+
+    followers_count = prev_entry.get("followers_count")
+    if state == "alive" and token:
+        metrics = _fetch_metrics(token, now)
+        if metrics.get("followers_count") is not None:
+            followers_count = metrics["followers_count"]
+
+    usage_counts = read_usage(month)
+    benefits = build_benefits(usage_counts)
+    days_left = days_to_month_end(now)
+    queue = read_queue_counts()
+    exp_age = export_age_days(now)
+    export_stale = exp_age is not None and exp_age > EXPORT_STALE_DAYS
+    quota_flag = quota_expiring(benefits, days_left)
+
+    if state in ("dead", "unknown") or quota_flag or export_stale:
+        verdict = "warning"
+    else:
+        verdict = "ok"
+
+    entry = {
+        "benefits": benefits,
+        "days_to_month_end": days_left,
+        "token_state": state,
+        "token_dead_since": dead_since,
+        "followers_count": followers_count,
+        "export_age_days": exp_age,
+        "queue": queue,
+        "updated_at": now.strftime("%Y-%m-%dT%H:%M:%SZ"),
+    }
+    ledger[month] = entry
+    _atomic_write_json(ledger_path(), ledger)
+
+    if state == "dead":
+        notify("p0", "meta-one-token-dead", _p0_token_dead_text(dead_since))
+    if quota_flag:
+        notify("p0", "meta-one-quota-expiring", _p0_quota_expiring_text(days_left, benefits))
+    notify("digest", "meta-one-steward-digest", _digest_text(entry))
+
+    return {"verdict": verdict, "entry": entry}
+
+
+def _run_tick_and_heartbeat(
+    *,
+    probe_fn: Callable[..., tuple[str, dict[str, Any]]] | None = None,
+    tg_notify_fn: Callable[[str, str, str], bool] | None = None,
+) -> dict[str, Any]:
+    """Run one tick and write the heartbeat with the run's REAL verdict —
+    on every path, including an unhandled exception (superscar #2:
+    esiste!=armato — a crashed cron must still leave a true verdict)."""
+    try:
+        result = tick(probe_fn=probe_fn, tg_notify_fn=tg_notify_fn)
+        organism_heartbeat(ORGAN_ID, result["verdict"], note=f"token={result['entry']['token_state']}")
+        return {**result, "error": None}
+    except Exception as exc:  # noqa: BLE001
+        message = _redact(str(exc))
+        organism_heartbeat(ORGAN_ID, "error", note=message[:200])
+        return {"verdict": "error", "entry": {"token_state": "error"}, "error": message}
+
+
+def cmd_tick(
+    *,
+    probe_fn: Callable[..., tuple[str, dict[str, Any]]] | None = None,
+    tg_notify_fn: Callable[[str, str, str], bool] | None = None,
+) -> int:
+    result = _run_tick_and_heartbeat(probe_fn=probe_fn, tg_notify_fn=tg_notify_fn)
+    if result["error"] is not None:
+        print(f"meta_one_steward: tick failed: {result['error']}", file=sys.stderr)
+        return 1
+    return 0
+
+
+def cmd_status(as_json: bool) -> int:
+    now = datetime.now(timezone.utc)
+    month = _month_key(now)
+    ledger = load_ledger()
+    entry = ledger.get(month)
+    if as_json:
+        print(json.dumps(entry or {}, indent=2, sort_keys=True))
+        return 0
+    if not entry:
+        print(f"meta_one_steward: no ledger entry for {month} yet")
+        return 0
+    print(_digest_text(entry))
+    return 0
+
+
+# ---------------------------------------------------------------- selftest
+
+
+def selftest() -> int:
+    with tempfile.TemporaryDirectory() as td:
+        state_d = Path(td) / "state"
+        last_seen_d = Path(td) / "last_seen"
+        queue_f = Path(td) / "queue.json"
+        queue_f.write_text(json.dumps({"items": []}), encoding="utf-8")
+
+        os.environ["META_ONE_STATE_DIR"] = str(state_d)
+        os.environ["ORGANISM_LAST_SEEN_DIR"] = str(last_seen_d)
+        os.environ["META_ONE_QUEUE_JSON"] = str(queue_f)
+        os.environ["TG_DRY_RUN"] = "1"
+        for var in TOKEN_ENV_VARS:
+            os.environ.pop(var, None)
+
+        calls = {"n": 0}
+
+        def fake_probe(token: str | None, **_kw: Any) -> tuple[str, dict[str, Any]]:
+            calls["n"] += 1
+            if calls["n"] == 1:
+                return "dead", {"http_status": 400}
+            return "alive", {"username": "balizero_selftest", "id": "1"}
+
+        def fake_notify(tier: str, dedup_key: str, text: str) -> bool:
+            return True
+
+        ok = True
+        summaries = []
+        for _ in range(2):
+            result = _run_tick_and_heartbeat(probe_fn=fake_probe, tg_notify_fn=fake_notify)
+            token_state = result["entry"]["token_state"]
+            verdict = result["verdict"]
+            hb_path = last_seen_d / f"{ORGAN_ID}.json"
+            hb = json.loads(hb_path.read_text(encoding="utf-8"))
+            if hb["status"] != verdict:
+                ok = False
+            summaries.append(f"token_state={token_state} verdict={verdict} heartbeat={hb['status']}")
+
+        for line in summaries:
+            print(f"selftest: {line}")
+        return 0 if ok else 1
+
+
+# ---------------------------------------------------------------- CLI
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(prog="meta_one_steward.py")
+    parser.add_argument("--selftest", action="store_true")
+    sub = parser.add_subparsers(dest="cmd")
+
+    sub.add_parser("tick")
+
+    p_use = sub.add_parser("use")
+    p_use.add_argument("--benefit", required=True)
+    p_use.add_argument("--ref", required=True)
+
+    p_status = sub.add_parser("status")
+    p_status.add_argument("--json", action="store_true")
+
+    args = parser.parse_args(argv)
+
+    if args.selftest:
+        return selftest()
+    if args.cmd == "tick":
+        return cmd_tick()
+    if args.cmd == "use":
+        return cmd_use(args.benefit, args.ref)
+    if args.cmd == "status":
+        return cmd_status(args.json)
+
+    parser.print_help()
+    return 2
+
+
+if __name__ == "__main__":
+    sys.exit(main())
