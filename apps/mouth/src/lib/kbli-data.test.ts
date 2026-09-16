@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   getAllCodes,
+  getBaliCensus,
   getCode,
   getCodesBySection,
   getHeroStyle,
@@ -10,6 +11,7 @@ import {
   getSections,
 } from "./kbli-data";
 import { hasPublishablePmaCap } from "./kbli-pma-disclosure";
+import rawData from "../../data/KBLI_2025_FINAL_CLEAN.json";
 
 describe("kbli-data", () => {
   it("maps only the three canonical PMA tokens and fails closed otherwise", () => {
@@ -95,9 +97,47 @@ describe("kbli-data", () => {
         citation: null,
       });
       expect(code.intel_2026, `${code.code} intel`).toBeUndefined();
-      expect(code.baliL4, `${code.code} Bali L4`).toBeUndefined();
       expect(code.tier, `${code.code} tier`).not.toBe("gold");
     }
+
+    // Added 2026-09-16 (W-J B1 disclose, review F5): "no baliL4 on a gap" has
+    // exactly ONE named exception — a Bali APPLIED closure sourced to a
+    // public press release. Testing that exception through the very
+    // function that implements it (`isSourcedBaliClosure`, which by its own
+    // definition REQUIRES `status === "CHIUSO_BALI"`) would be tautological:
+    // it cannot catch a bug that widens the exception, only one that changes
+    // which field it inspects. Instead this derives the expected set
+    // independently from the raw JSON and asserts the served set matches it
+    // exactly — no more, no fewer members.
+    const rawDeclaredGapChiusoBali = (
+      rawData as {
+        data: Array<{
+          kode_kbli_2025: string;
+          pma_verification_status?: string;
+          l4_bali?: { status?: string };
+        }>;
+      }
+    ).data
+      .filter(
+        (r) =>
+          r.l4_bali?.status === "CHIUSO_BALI" &&
+          r.pma_verification_status !== "located",
+      )
+      .map((r) => r.kode_kbli_2025)
+      .sort();
+    const disclosedOnAGap = gaps
+      .filter((code) => code.baliL4 !== undefined)
+      .map((code) => code.code)
+      .sort();
+    expect(disclosedOnAGap).toEqual(rawDeclaredGapChiusoBali);
+    expect(disclosedOnAGap).toHaveLength(39);
+    for (const code of gaps) {
+      if (code.baliL4 !== undefined) {
+        expect(code.baliL4.status, code.code).toBe("CHIUSO_BALI");
+        expect(code.baliL4.closure?.url, code.code).toMatch(/^https:\/\//);
+      }
+    }
+
     expect(located?.intel_2026).toBeDefined();
     expect(located?.baliL4).toBeDefined();
     for (const code of locatedCodes) {
@@ -288,5 +328,53 @@ describe("kbli-data", () => {
       expect(bpsVintageLinkTraps).toHaveLength(359);
       expect(pp28VintageLinkTraps).toHaveLength(36);
     });
+  });
+});
+
+// =============================================================================
+// W-J B1 disclose (2026-09-16): a Bali APPLIED closure (CHIUSO_BALI, sourced
+// to a public press release) discloses even when the national PMA verdict is
+// not located. 39 of the 40 CHIUSO_BALI records were `declared_gap` and
+// therefore hidden before this change; only 55105 (already `located`) was
+// served. These pins anchor the real-data population the disclosure/render
+// tests elsewhere (kbli-pma-disclosure.test.ts, KBLIProvenancePanel.test.ts,
+// kbli-faq.test.ts, kbli-meta.test.ts, kbli-bali-block.test.ts) depend on.
+// =============================================================================
+describe("W-J B1 disclose — real-data population", () => {
+  it("68111 (Residential Property Development) discloses a sourced Bali closure though the national PMA verdict is not located", () => {
+    const kbli = getCode("68111");
+    expect(kbli?.provenance?.pma.status).toBe("declared_gap");
+    expect(kbli?.baliL4).toMatchObject({
+      status: "CHIUSO_BALI",
+      blocked: true,
+    });
+    expect(kbli?.baliL4?.closure?.url).toMatch(
+      /^https:\/\/www\.baliprov\.go\.id\//,
+    );
+  });
+
+  it("01192 (ATTENZIONE_FASCIA_BALI, unlocated) stays undisclosed — the rule is additive, not looser", () => {
+    const kbli = getCode("01192");
+    expect(kbli?.provenance?.pma.status).toBe("declared_gap");
+    expect(kbli?.baliL4).toBeUndefined();
+  });
+
+  it("53 served codes now disclose baliL4.blocked (up from 14 pre-disclosure)", () => {
+    const blocked = getAllCodes().filter((c) => c.baliL4?.blocked === true);
+    expect(blocked).toHaveLength(53);
+  });
+
+  it("40 served codes disclose CHIUSO_BALI (39 newly-disclosed declared_gap + 1 already-located)", () => {
+    const chiusoBali = getAllCodes().filter(
+      (c) => c.baliL4?.status === "CHIUSO_BALI",
+    );
+    expect(chiusoBali).toHaveLength(40);
+    expect(chiusoBali.every((c) => c.baliL4?.blocked === true)).toBe(true);
+  });
+
+  it("the canonical census counts 135 blocked regardless of per-code disclosure gating", () => {
+    const census = getBaliCensus();
+    expect(census.filter((c) => c.blocked)).toHaveLength(135);
+    expect(census.length).toBeGreaterThan(1500);
   });
 });

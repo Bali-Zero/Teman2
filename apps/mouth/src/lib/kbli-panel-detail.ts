@@ -57,7 +57,14 @@ export interface KBLIPanelDetail {
     KBLIPmaInfo,
     "status" | "maxForeign" | "capSpecial" | "capVerified"
   > & { verdictVerified: boolean };
-  bali: Pick<KBLIBaliL4, "status"> & { blocked: boolean };
+  bali: Pick<KBLIBaliL4, "status" | "confidence" | "needsReview"> & {
+    blocked: boolean;
+    // Review r2 M2: the hotel-rows scope ("building area under 6,000 m²")
+    // must reach the listing/panel badge too, not just the code's own page —
+    // otherwise a scoped closure renders there as an unqualified whole-code
+    // bar.
+    scopeQualifier: string | null;
+  };
   transition: KBLITransition;
 }
 
@@ -81,6 +88,14 @@ export function toPanelDetail(code: KBLICode): KBLIPanelDetail {
     bali: {
       status: code.baliL4?.status ?? "",
       blocked: code.baliL4?.blocked === true,
+      // Added 2026-09-16 (review F1g): a MEDIUM-confidence or needs-review
+      // Bali verdict must show its own "· medium conf." / "· needs review"
+      // marker in the listing badge too, not just on the code's own page —
+      // "MEDIUM" is the safe default (the disclosure layer's own default
+      // for a malformed/absent confidence value), never "HIGH".
+      confidence: code.baliL4?.confidence ?? "MEDIUM",
+      needsReview: code.baliL4?.needsReview === true,
+      scopeQualifier: code.baliL4?.closure?.scopeQualifier ?? null,
     },
     transition: code.transition,
   };

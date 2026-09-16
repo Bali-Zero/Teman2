@@ -19,7 +19,10 @@ import {
   isPmaVerdictVerified,
 } from "@/lib/kbli-provenance";
 import { kbliMetaDescription, kbliMetaTitle } from "@/lib/kbli-meta";
-import { formatPmaOwnership } from "@/lib/kbli-pma-disclosure";
+import {
+  formatPmaOwnership,
+  isSourcedBaliClosure,
+} from "@/lib/kbli-pma-disclosure";
 import {
   discloseKbliBaliReason,
   discloseKbliEditorial,
@@ -139,6 +142,11 @@ export default async function KBLICodePage({
   const kbli = getCode(codeParam);
   if (!kbli) notFound();
   const pmaVerdictVerified = isPmaVerdictVerified(kbli);
+  // A Bali APPLIED closure (CHIUSO_BALI, sourced to a public press release)
+  // is self-sufficient evidence — disclosed even when the NATIONAL PMA
+  // verdict below is not yet located (W-J B1 disclose, 2026-09-16). See
+  // `isSourcedBaliClosure`'s doc comment in kbli-pma-disclosure.ts.
+  const baliSourcedClosure = isSourcedBaliClosure(kbli.baliL4);
 
   const rawGold = getGoldContent(kbli.code);
   const { gold, intel } = discloseKbliEditorial(kbli, rawGold);
@@ -306,49 +314,114 @@ export default async function KBLICodePage({
                 // NATIONAL closure — the central bank among them. Reading them
                 // alone put "does not apply to a PT PMA in Bali" above an
                 // article saying the bar is nationwide. See isNationalClosure.
+                // Gated on `pmaVerdictVerified` (behavior-preserving: every
+                // use below is already gated on it too) so the flag is only
+                // ever meaningful once the national tuple is actually
+                // located — leaving room for the unverified-but-sourced-Bali-
+                // closure branch added below, which must never read as
+                // "nationally closed".
                 const nationallyClosed =
-                  isNationalClosure(kbli.baliL4?.status, kbli.code) ||
-                  (!exactSpecialCap &&
-                    (kbli.pma.status === "closed" ||
-                      (kbli.pma.capVerified && kbli.pma.maxForeign === 0)));
+                  pmaVerdictVerified &&
+                  (isNationalClosure(kbli.baliL4?.status, kbli.code) ||
+                    (!exactSpecialCap &&
+                      (kbli.pma.status === "closed" ||
+                        (kbli.pma.capVerified && kbli.pma.maxForeign === 0))));
                 const pmaBlocked =
                   pmaVerdictVerified && (baliBlocked || nationallyClosed);
                 const baliVerdictMissing =
                   pmaVerdictVerified &&
                   !nationallyClosed &&
                   kbli.baliL4 === undefined;
+                // Added 2026-09-16 (W-J B1 disclose): the national verdict is
+                // NOT located, but Bali's own applied closure is self-
+                // sufficient evidence (see `isSourcedBaliClosure`). This must
+                // read as a BALI-scoped closure only — the national verdict
+                // stays "not yet verified", never implied open or closed.
+                const unverifiedBaliClosure =
+                  !pmaVerdictVerified && baliSourcedClosure;
+                const closure = kbli.baliL4?.closure;
+                // Review F1(c): a scoped closure (the hotel rows: "building
+                // area under 6,000 m²") must not read as a bar on the WHOLE
+                // code — `closureWholeCode` requires the absence of a scope
+                // in addition to HIGH confidence + no review flag, so a
+                // scoped-but-HIGH-confidence record is never miscategorized
+                // as a blanket closure anywhere this flag is read below.
+                const closureWholeCode =
+                  kbli.baliL4?.confidence === "HIGH" &&
+                  !kbli.baliL4?.needsReview &&
+                  !closure?.scopeQualifier;
+                const closedHeading = closure?.scopeQualifier
+                  ? `Closed for PMA in Bali for ${closure.scopeQualifier} — confirm your project's scope on OSS`
+                  : closureWholeCode
+                    ? "Closed for PMA in Bali — a PT PMA cannot register this code in Bali"
+                    : "Treated as closed for PMA in Bali — conservative reading; confirm the individual code on OSS";
                 return (
                   <>
                     <div
                       className={cn(
                         "mt-5 rounded-xl border px-4 py-3",
-                        !pmaVerdictVerified || baliVerdictMissing
-                          ? "border-slate-400/30 bg-slate-400/10"
-                          : pmaBlocked
-                            ? "border-[var(--kbli-pma-closed)]/30 bg-[var(--kbli-pma-closed-bg)]"
-                            : "border-[var(--kbli-pma-open)]/30 bg-[var(--kbli-pma-open-bg)]",
+                        unverifiedBaliClosure
+                          ? "border-[var(--kbli-pma-closed)]/30 bg-[var(--kbli-pma-closed-bg)]"
+                          : !pmaVerdictVerified || baliVerdictMissing
+                            ? "border-slate-400/30 bg-slate-400/10"
+                            : pmaBlocked
+                              ? "border-[var(--kbli-pma-closed)]/30 bg-[var(--kbli-pma-closed-bg)]"
+                              : "border-[var(--kbli-pma-open)]/30 bg-[var(--kbli-pma-open-bg)]",
                       )}
                     >
                       <p
                         className={cn(
                           "text-base font-semibold",
-                          !pmaVerdictVerified || baliVerdictMissing
-                            ? "text-white/70"
-                            : pmaBlocked
-                              ? "text-[var(--kbli-pma-closed)]"
-                              : "text-[var(--kbli-pma-open)]",
+                          unverifiedBaliClosure
+                            ? "text-[var(--kbli-pma-closed)]"
+                            : !pmaVerdictVerified || baliVerdictMissing
+                              ? "text-white/70"
+                              : pmaBlocked
+                                ? "text-[var(--kbli-pma-closed)]"
+                                : "text-[var(--kbli-pma-open)]",
                         )}
                       >
-                        {!pmaVerdictVerified
-                          ? "PMA status not yet verified for this KBLI 2025 code"
-                          : nationallyClosed
-                            ? `Closed to PMA (national)${kbli.pma.routeTo ? ` — route to the private code ${kbli.pma.routeTo}` : ""}`
-                            : baliVerdictMissing
-                              ? "Bali-specific status not verified — do not infer registrability from a missing Bali record"
-                              : baliBlocked
-                                ? "In Bali: a PT PMA cannot register this code"
-                                : "Bali record: not blocked by the provincial restriction; national ownership and licensing rules still apply"}
+                        {unverifiedBaliClosure
+                          ? closedHeading
+                          : !pmaVerdictVerified
+                            ? "PMA status not yet verified for this KBLI 2025 code"
+                            : nationallyClosed
+                              ? `Closed to PMA (national)${kbli.pma.routeTo ? ` — route to the private code ${kbli.pma.routeTo}` : ""}`
+                              : baliVerdictMissing
+                                ? "Bali-specific status not verified — do not infer registrability from a missing Bali record"
+                                : baliBlocked
+                                  ? "In Bali: a PT PMA cannot register this code"
+                                  : "Bali record: not blocked by the provincial restriction; national ownership and licensing rules still apply"}
                       </p>
+                      {unverifiedBaliClosure && (
+                        <p className="mt-1 text-sm text-[var(--kbli-text-muted)]">
+                          {closure?.scopeQualifier
+                            ? `Bali's applied closure of 18 business fields covers this code for ${closure.scopeQualifier}`
+                            : closureWholeCode
+                              ? "Bali's applied closure of 18 business fields covers this code"
+                              : "Bali's applied closure of 18 business fields covers part of this code"}
+                          {closure?.instrument || closure?.published ? (
+                            <>
+                              {" ("}
+                              {[closure?.instrument, closure?.published]
+                                .filter(Boolean)
+                                .join(", ")}
+                              {")"}
+                            </>
+                          ) : null}{" "}
+                          —{" "}
+                          <a
+                            href={closure?.url ?? undefined}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="underline"
+                          >
+                            source
+                          </a>
+                          . Outside Bali, the national foreign-ownership status
+                          of this KBLI 2025 code is not yet verified.
+                        </p>
+                      )}
                     </div>
                     {pmaVerdictVerified && baliBlocked && !nationallyClosed && (
                       <div className="mt-3 rounded-xl border border-[var(--kbli-pma-restricted)]/30 bg-[var(--kbli-pma-restricted-bg)] px-4 py-3">
@@ -409,13 +482,14 @@ export default async function KBLICodePage({
                   />
                 )}
                 <TransitionBadge transition={kbli.transition} />
-                {pmaVerdictVerified && kbli.baliL4 && (
+                {(pmaVerdictVerified || baliSourcedClosure) && kbli.baliL4 && (
                   <BaliStatusBadge
                     status={kbli.baliL4.status}
                     reason={discloseKbliBaliReason(kbli)}
                     confidence={kbli.baliL4.confidence}
                     needsReview={kbli.baliL4.needsReview}
                     pmaStatus={pmaVerdictVerified ? kbli.pma.status : "unknown"}
+                    scope={kbli.baliL4.closure?.scopeQualifier}
                   />
                 )}
                 {kbli.provenance && (

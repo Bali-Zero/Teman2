@@ -1,6 +1,11 @@
 import type { ReactNode } from "react";
 import type { KBLIBaliL4, KBLICode, KBLIProvenance } from "@/lib/kbli-types";
-import { baliBlockClause, isMoratoriumBasis } from "@/lib/kbli-bali-block";
+import {
+  baliBlockClause,
+  baliClosureQualifier,
+  isMoratoriumBasis,
+} from "@/lib/kbli-bali-block";
+import { isSourcedBaliClosure } from "@/lib/kbli-pma-disclosure";
 
 // =============================================================================
 // TRACK-P — "Sources & Verification" panel
@@ -178,7 +183,15 @@ export function buildRows(kbli: KBLICode, prov: KBLIProvenance): SourceRow[] {
         },
   );
 
-  if (prov.pma.status === "located" && kbli.baliL4) {
+  // Added 2026-09-16 (W-J B1 disclose): a Bali applied closure sourced to a
+  // public press release (`isSourcedBaliClosure`) is self-sufficient evidence
+  // and does not need the national PMA tuple located to be shown here — the
+  // panel's whole point is to say what IS and ISN'T verified, and this row
+  // states its OWN Bali-scoped provenance regardless of the national one.
+  if (
+    (prov.pma.status === "located" || isSourcedBaliClosure(kbli.baliL4)) &&
+    kbli.baliL4
+  ) {
     const m = kbli.baliL4.moratorium;
     const isNonClassifiable = kbli.baliL4.status === "NON_CLASSIFICABILE";
     // Added 2026-09-15 (W-J B1): off Bali's applied PMA closure list —
@@ -227,7 +240,7 @@ export function buildRows(kbli: KBLICode, prov: KBLIProvenance): SourceRow[] {
           ? `Not among the 18 business fields Bali closed to new PMA licensing since the third week of May 2026; the low/medium-low risk tier named in the Governor's January 2026 request letter does not by itself close this code — verify the applicable tier and zoning on OSS · confidence ${kbli.baliL4.confidence}.`
           : moratoriumBasis
             ? `Conservative posture derived from the risk tier · confidence ${kbli.baliL4.confidence}.`
-            : `This activity is ${baliBlockClause(kbli.baliL4.status)} · confidence ${kbli.baliL4.confidence}.`,
+            : `This activity is ${baliBlockClause(kbli.baliL4.status)}${baliClosureQualifier(kbli.baliL4)} · confidence ${kbli.baliL4.confidence}.`,
     });
   }
 
