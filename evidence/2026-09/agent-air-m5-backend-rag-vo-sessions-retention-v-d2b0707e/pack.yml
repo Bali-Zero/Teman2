@@ -68,6 +68,14 @@ lanes:
       `git show HEAD:<path>` at this commit, concatenated in that order.
     query_hash: "aa9d58c4bf947b1f762d7589a5958f8fe6e6ce720c3f3b22b1991a8dd955e063" # pragma: allowlist secret
 council_run: council/journal.jsonl
+seat_fallback_reason: >-
+  agy-gemini-3.1-pro (reserve) replaced tp1-qwen3.8-max (titolare). `python3
+  scripts/arsenal_probe.py --seats kimi,tp1-qwen3.8-max,codex,agy` on M5 at 2026-09-16T18:53:00Z
+  returned tp1-qwen3.8-max QUOTA_DEAD: HTTP 429, "1-week quota has been exhausted", reset
+  2026-09-18 08:39 UTC. The other remaining titolare, kimi-code/k3, returned TIMEOUT (15074 ms)
+  on the same probe and was already missing from this session's SessionStart arsenal probe
+  (PARTIAL 1/16, "missing: ... kimi ..."). The third titolare, codex-gpt-5.6-sol, did play and
+  holds the other quorum seat.
 pii_scan: clean
 bites:
   consumer: >-
