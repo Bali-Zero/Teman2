@@ -172,7 +172,10 @@ async def test_shutdown_is_a_no_op_when_the_purge_was_never_spawned() -> None:
             await purge_task
         except (asyncio.CancelledError, Exception):
             pass
-    # Reaching this line without an AttributeError/TypeError is the assertion.
+    # The guard must have taken the `is None` branch — not "no exception was
+    # raised", which an accidental removal of the guard could still satisfy
+    # by coincidence.
+    assert purge_task is None
 
 
 # --------------------------------------------------------------------------
