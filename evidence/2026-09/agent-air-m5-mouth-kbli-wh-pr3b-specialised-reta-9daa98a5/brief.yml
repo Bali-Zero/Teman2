@@ -1,14 +1,21 @@
 task_id: kbli-wh-pr3b-specialised-retail
 gear: 2
-base_sha: 34a64579b0
-# Floor 2, source `size` (scripts/evidence_pack_lint.py --print-floor).
+base_sha: 88a8613679
+# Floor 2, source `size` (scripts/evidence_pack_lint.py --print-floor). Replayed onto fresh main (was 34a64579b0, 44 commits behind): merge -s ours + re-apply of the branch's own net patch, restricted to non-derived files; derived artifacts regenerated through the compilers only.
 objective: "W-H PR-3b2: allocate 8 specialised-retail codes (47241 47242 47244 47245 47246 47249 47712 47722, Lampiran II entry 46) TERBUKA/100 -> TERBATAS/0/located via the PR-3b1 compiler; cure the canonical prose the mechanical detector missed; move every census pin the shift causes; recert the editorial registry."
 constraints:
-  - "No new editorial-certification registry entries: recert.py bumps sourceDatasetSha256/reviewedAt only (differing=0 on the 66 existing entries). 47712/47722's gold PMA sentence got AUTHORED_SENTENCES entries (from the reference lane, corrected per Dux review). 47242's gold opener/baliContext is deferred to PR-8 (no test fires — uncertified). The openness guard test was split out to its own PR (PR-3d) to keep this PR's floor at 2."
+  - "No new editorial-certification registry entries: recert.py --base <this lane's gold commit> bumps sourceDatasetSha256/reviewedAt only (38 certified codes union, 0 pmaFingerprint mismatches, overlap empty). cure_gold_pma_line.py needed BOTH the intermediate (ea22b2f9d5) and final (1cf768a311) compiler versions run in sequence against pristine gold, since HEAD's AUTHORED_SENTENCES pins are written against the already-once-cured text. 47242's gold opener/baliContext stays deferred to PR-8 (uncertified, confirmed not served: hasCertifiedMouthGold/hasCertifiedCanonicalIntel return false for all 8 codes, so intel_2026 AND gold are both withheld on the live page for every one of them, not just 47242). The certified-openness guard test lives on main already (PR-3d merged); this lane never re-adds it."
+  - "Only 47249 of the 8 codes is actually l4_bali.blocked under the W-J B1 v2 applied-closure redo that landed on main after this branch's base (the other 7 read ATTENZIONE_FASCIA_BALI, blocked:false) — kbli-bali-block.test.ts and KBLIProvenancePanel.test.ts pins move by 1, not by 8."
 appetite: { wall_clock_hours: 3 }
 acceptance:
-  - text: "Filiera + full backend kbli + navigator + full mouth kbli glob (56 files) pass with ZERO failures (see PR body for exact counts)."
-    probe: "see PR body for the full command list and counts"
+  - text: "Filiera (1475 passed, 1 skipped) + full backend kbli sweep (776 passed) + navigator tsx test (pass) + full mouth kbli glob (56 files, 793 tests passed) all ZERO failures."
+    probe: "python3 -m pytest scripts/kbli_filiera/tests/ -q; cd apps/backend-rag && .venv/bin/python -m pytest $(git ls-files 'backend/tests/**/test_*kbli*.py'); cd apps/kbli-navigator && ../../node_modules/.bin/tsx --test lib/__tests__/kbli-data.test.ts; cd apps/mouth && git ls-files 'src/**/*kbli*.test.ts*' 'src/**/*KBLI*.test.ts*' | xargs ../../node_modules/.bin/vitest run"
+  - text: "tsc --noEmit clean in apps/mouth; prettier --check clean on every changed ts/tsx/json/yml/md file; ruff check + ruff format --check clean on every changed python file."
+    probe: "cd apps/mouth && ../../node_modules/.bin/tsc --noEmit -p .; node_modules/.bin/prettier --check <changed files>; apps/backend-rag/.venv/bin/ruff check <changed .py>; apps/backend-rag/.venv/bin/ruff format --check <changed .py>"
+  - text: "kbli-filiera-vault-compilers.yml's 4 checks (coverage ratchet, perpres body/slice/foreign-cap relations) all exit 0 with zero artifact drift on re-run."
+    probe: "python3 scripts/kbli_filiera/kbli_coverage_scoreboard.py --check; python3 scripts/kbli_filiera/perpres_body_default_relation.py --check-artifact; python3 scripts/kbli_filiera/perpres_slice_disclosure_relation.py --check-artifact; python3 scripts/kbli_filiera/perpres_foreign_cap_relation.py --strict; git status --short"
 assumptions:
   - text: "The allocation/prose cure specs are the reference lane's own adjudicated text (agent/.../kbli-wh-pr3-lampiran2-allocation), reused verbatim restricted to this 8-code subset."
+    status: verified
+  - text: "PR-3a's sibling test (test_lampiran2_allocation_wh_pr3.py, already on main) reserved these 8 codes as out-of-scope for ITS lane, not as a permanent ban; retired that fence now that PR-3b legitimately allocates them via its own compiler."
     status: verified
