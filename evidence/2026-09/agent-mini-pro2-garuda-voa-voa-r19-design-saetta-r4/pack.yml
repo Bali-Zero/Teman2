@@ -1,0 +1,163 @@
+# SAETTA R4 — GARUDA VOA. Receipts for the /visa/voa R19 slice (#6638) and the
+# sandbox purchase proof. Synthetic applicant throughout: no client PII, no
+# passport data, no credential value anywhere in this pack or in the images.
+lane: agent/mini-pro2/garuda-voa/voa-r19-design
+host: mini-pro2
+date: 2026-09-16
+prs:
+  - number: 6570
+    what: Xendit goes live by env alone — a production key only with GARUDA_PAYMENTS_LIVE=true
+    note: >-
+      Armed since 2026-09-15 09:10Z and never merged. It was CLEAN with 13/13 required
+      checks green while the merge queue was EMPTY: auto-merge enqueues once, and after an
+      ejection it does not retry. `gh pr merge 6570` with NO strategy flag enqueued it at
+      the first attempt (any --merge/--squash is refused: "the merge strategy for main is
+      set by the merge queue"). Merged 14:23:30Z.
+  - number: 6638
+    what: /visa/voa wears R19 and gains a 48px WhatsApp handoff that saves the lead
+  - number: 6642
+    what: ledger row for the paid invoice whose callback never arrives
+  - number: 6643
+    what: a WhatsApp capture that never answers must still reach WhatsApp
+  - number: 6644
+    what: the live-switch runbook names the callback URL nobody can set from here
+  - number: 6647
+    what: the font cache rule matched a spelling, not a font
+
+design_prove_live:
+  url: https://balizero.com/visa/voa
+  measured_after_vercel_deploy: true
+  wrapper:
+    data-theme: operative-light
+    data-product: my
+    background: rgb(247, 244, 238)
+    ink: rgb(29, 44, 59)
+    h1_face: Fraunces
+  negative_control: >-
+    On main before this slice the same probe read `root: null` — the element does not
+    exist at all, so the marker cannot be confused with the old page. /visa and /kbli
+    were checked on a local build and carry neither the wrapper nor the pill.
+  whatsapp_cta:
+    - viewport: 390
+      height_px: 48
+      width_px: 326
+      top_px: 491
+      in_fold: true
+    - viewport: 1280
+      height_px: 48
+      width_px: 227
+      top_px: 323
+      in_fold: true
+  before_this_slice_at_390: >-
+    No tappable WhatsApp control in the first screen. The two matches were the nav link,
+    rendered at height 0 inside the collapsed hamburger, and a footer "Get Started" at
+    y=722.
+  lead_chain:
+    dom_attribute: data-lead-source="garuda_voa"
+    endpoint: POST /api/lead/capture -> 201 with lead_intent_id and a wa.me URL
+  copper_computed_on_page: 0
+  horizontal_overflow: false
+  console_errors: 0
+  contrast:
+    pill_text_and_border_on_paper: 11.3:1
+    inverted_hover_state: 11.3:1
+  screenshots:
+    captured: true
+    committed: false
+    why_not: >-
+      `.gitignore:286` excludes `*.PNG` repo-wide, so screenshots are deliberately not
+      repo content here and were not force-added against that policy. What they show is
+      transcribed above as numbers, which is the part a later reader can re-measure.
+    what_they_show:
+      at_390: >-
+        Paper ground under a Fraunces "Visa on Arrival", the three-stat trust strip, then
+        the full-width green-outlined pill "Talk to us on WhatsApp" with a hairline rule
+        under it, then "STEP 1 OF 4" and the first question. The two rules no longer stack:
+        the collision the first pass of this lane produced is gone.
+      at_1280: >-
+        Same ground, the pill sitting right of its one-line invitation on the same row, and
+        the wizard's primary button rendering INK rather than the shared /visa red — which
+        is the visible proof that the 0-3-0 [data-funnel] rule in voa-r19.css reaches the
+        element that redeclares --accent-funnel.
+    reproduce: >-
+      node shots-r19.mjs https://balizero.com <tag> /visa/voa   (script in the session
+      scratchpad; it screenshots 390x844 and 1280x800 and prints the same measurements)
+
+lighthouse_mobile:
+  verdict: NOT PROVEN — reported as measured rather than rounded to green
+  before_median_of_3:
+    {
+      perf: 64,
+      a11y: 93,
+      best_practices: 100,
+      seo: 69,
+      lcp_ms: 7623,
+      cls: 0,
+      tbt_ms: 155,
+    }
+  before_runs_perf: [64, 64, 64]
+  after_runs_perf: [61, 58, 59, 61, 60, 98]
+  note: >-
+    The before set is stable and the after set is bimodal, from this machine over a home
+    ISP to a Singapore CDN. That spread is wider than any effect the slice could have, so
+    neither ">= baseline" nor "regression" is honestly claimable here; a verdict needs a
+    measurement point that is not this one. What the runs DID surface unambiguously is in
+    #6647: the font cache rule matched only .woff2 while the R19 faces are .ttf, so 525 KB
+    was served with max-age=0 and revalidated on every navigation.
+
+sandbox_purchase:
+  applicant: synthetic, temp inbox, placeholder passport — no client data
+  steps:
+    - eligibility_check: 201 ACCEPT, price_idr 750000
+    - magic_link: 202; email from zantara@balizero.com arrived in 6 s (acceptance allowed 10)
+    - auth_landing: 303
+    - session_exchange: 303, cookies garuda_result_session + garuda_session
+    - create_order: 201, order_state awaiting_payment, price_idr 750000
+    - invoice_host: checkout-staging.xendit.co # TEST mode
+    - invoice_paid: true # 3DS test card; Xendit's own page confirmed IDR 750.000
+    - tracker_after_payment: awaiting_payment, practice null, for 20+ minutes
+    - garuda_payment_inbox_rows: 0 # zero, ever
+  blocked_at: webhook
+  why: >-
+    No Xendit callback has ever reached the backend. The mouth proxy was excluded on disk
+    (it forwards x-callback-token; it deletes only host/connection/content-length/
+    transfer-encoding). What remains is an Invoice callback URL unregistered in the Xendit
+    TEST dashboard — a console action behind the Xendit login, which no session holds.
+  instrument_warning: >-
+    `fly logs | grep` is BLIND on /api/visa/voa/webhooks/payment. A deliberate control call
+    answered 401 and produced no log line at all, so log silence proved nothing. The empty
+    table is the only load-bearing measurement on this route.
+  business_consequence: >-
+    With this configuration the live switch would take a real client's money and leave the
+    order looking unpaid to us, with no practice and no alert. It must close BEFORE
+    GARUDA_PAYMENTS_LIVE, not after.
+
+negative_test_from_6570:
+  run_on: origin/main
+  result: 28 passed
+  named:
+    - test_production_key_without_live_enabled_is_refused
+    - test_development_key_with_live_enabled_is_refused
+    - test_the_secret_key_value_is_never_in_the_message
+
+sandbox_mode_evidence:
+  boot_log_line_not_captured: true
+  why: >-
+    The acceptance asked for the Fly boot line "sandbox mode". The literal line is
+    "GARUDA VOA order repository + Xendit payment provider wired (mode=%s)" and boot had
+    already rolled out of the log buffer of a very chatty app. Capturing it would have
+    meant restarting the single `api` machine in production purely to read a string. The
+    substitute is stronger and was taken instead: the invoice this build actually created
+    lives on checkout-staging.xendit.co, which live mode cannot produce.
+
+review:
+  dispatched_lane: delivered nothing in 26 minutes across three explicit asks
+  graded_directly_instead:
+    - all 9 selectors in voa-r19.css carry [data-garuda-voa="r19"], including inside @media
+    - negative control on /visa and /kbli
+    - contrast computed, 11.3:1
+    - four mutations verified red — 48px, copper ban, bare wa.me anchor, DOM ordering
+  finding_from_own_grading: >-
+    WhatsAppLeadButton's capture had no timeout; a stalled request left the visitor unable
+    to reach WhatsApp at all, with every further tap swallowed by the pending guard.
+    Cured in #6643.
