@@ -1318,12 +1318,16 @@ async def _handle_meta_inbox_message(
                 )
                 await conn.execute(
                     """
-                    INSERT INTO wa_outbox (thread_id, message_id, needs_generation, status)
-                    VALUES ($1, $2, true, 'pending')
+                    INSERT INTO wa_outbox (
+                        thread_id, message_id, needs_generation, status,
+                        inbound_message_id
+                    )
+                    VALUES ($1, $2, true, 'pending', $3)
                     ON CONFLICT (message_id) DO NOTHING
                     """,
                     thread_id,
                     bot_row["id"],
+                    inbound["id"],
                 )
         # else: duplicate inbound (Meta retry) → nothing more to do, transaction
         # commits as a no-op past this point.

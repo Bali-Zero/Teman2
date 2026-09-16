@@ -1,0 +1,97 @@
+task_id: infra-meta-one-plist
+gear: 3
+l_level: L2
+gate_class: opus
+objective: >-
+  Arm organ pro.meta_one_steward on Pro via a LaunchAgent plist —
+  com.nuzantara.meta-one-steward.plist — that runs the daily quota-ledger
+  tick documented in docs/marketing/meta-one-advanced-playbook.md §4.3.
+  Daily at 06:20 WITA, RunAtLoad false (the first run waits for the
+  scheduled slot rather than firing at load time), and deliberately NO
+  KeepAlive key — this is a one-shot cron tick, not a long-running daemon,
+  and superscar #7/W67 names KeepAlive-on-one-shot as a SIGTERM
+  restart-loop. ThrottleInterval 60 bounds any accidental rapid relaunch.
+constraints:
+  - >-
+    Scope is the plist file only — a single mechanical LaunchAgent
+    definition, 41 lines, no logic of its own. It invokes
+    /Users/nuzantara/nuzantara/scripts/meta-one-steward.sh, which ships in
+    a SIBLING PR from a separate worktree
+    (.worktrees/infra-meta-one-steward) and carries the actual reviewed
+    behaviour (kill switch, secrets sourcing, heartbeat). This PR does not
+    touch that script, the steward's Python entry point, or the organism
+    registry wiring.
+  - >-
+    Installing the LaunchAgent on Pro (copying the file into
+    ~/Library/LaunchAgents and running launchctl bootstrap/load) is a
+    SEPARATE ALIGN step performed by the Dux session after this PR merges.
+    This PR does not run launchctl, does not ssh into Pro, and does not
+    touch any live launchd state.
+  - No client PII in the diff, the tests, the PR body, this brief or the pack.
+acceptance:
+  - text: >-
+      WHEN infra/launchagents/com.nuzantara.meta-one-steward.plist is
+      linted as a property list THE tool SHALL report it well-formed.
+    probe: "plutil -lint infra/launchagents/com.nuzantara.meta-one-steward.plist"
+  - text: >-
+      WHEN infra/launchagents/com.nuzantara.meta-one-steward.plist is
+      checked by the superscar #7 antidote THE lint SHALL report zero
+      findings and zero errors for this plist (KeepAlive-on-one-shot is
+      the exact defect class it exists to catch).
+    probe: >-
+      python3 scripts/lint_plist_keepalive.py --root
+      infra/launchagents --json
+  - text: >-
+      WHEN the plist's keys are inspected THE file SHALL declare no
+      KeepAlive key at all and SHALL set RunAtLoad to false, so the organ
+      never fires outside its scheduled 06:20 WITA slot and is never
+      restart-looped on a one-shot exit.
+    probe: >-
+      grep -c "<key>KeepAlive</key>" infra/launchagents/com.nuzantara.meta-one-steward.plist
+  - text: >-
+      WHEN ProgramArguments is inspected THE plist SHALL name
+      /Users/nuzantara/nuzantara/scripts/meta-one-steward.sh — the wrapper
+      the sibling PR ships — as the program it runs, run under /bin/bash.
+    probe: >-
+      grep -A3 ProgramArguments infra/launchagents/com.nuzantara.meta-one-steward.plist
+consumer_map:
+  - >-
+    launchd on Pro (user nuzantara, ~/Library/LaunchAgents once installed
+    by the post-merge ALIGN step) schedules this plist and invokes
+    scripts/meta-one-steward.sh, which runs
+    scripts/meta_one_steward.py's daily tick: probe -> ingest -> ledger ->
+    digest -> heartbeat, per docs/marketing/meta-one-advanced-playbook.md
+    §4.3 and §4.2 (`.claude/agents/meta-one-steward.md`).
+risks:
+  - >-
+    The wrapper path this plist names
+    (/Users/nuzantara/nuzantara/scripts/meta-one-steward.sh) exists only
+    once the sibling code PR (from .worktrees/infra-meta-one-steward)
+    merges to main. Serialized by design: this PR is written to merge
+    AFTER that one, so the referenced path is live on Pro before the
+    LaunchAgent that calls it is ever installed.
+  - >-
+    A single mechanical plist diff carries no independent BUILD lane worth
+    a second reviewer of its own. Heterogeneity here comes from three
+    non-overlapping mechanical checks — plutil, the keepalive-superscar
+    linter, and a Codex second opinion run directly against this plist —
+    rather than a second human/LLM build lane on this 41-line file,
+    declared via seat_override on the pack rather than fabricating a
+    council journal for a diff with no logic to disagree about. The
+    script this plist invokes is reviewed separately, in the sibling PR
+    that carries it.
+assumptions:
+  - text: >-
+      docs/marketing/meta-one-advanced-playbook.md §4.3 is the authoritative
+      spec for the steward's schedule (daily 06:20 WITA) and the wrapper
+      script's invocation contract.
+    status: verified
+    probe: >-
+      grep -n '4.3\|06:20' docs/marketing/meta-one-advanced-playbook.md in
+      the sibling docs worktree. See receipts.
+grader: >-
+  A fresh Opus 5 session outside the contribution chain, per the on-disk
+  gate convention (CLAUDE.md §5 ship sequence) — this brief and pack are
+  written for that seat to verify, not to self-certify.
+budget: Existing subscriptions and CLI OAuth only; no paid per-token API calls.
+pii: none

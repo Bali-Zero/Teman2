@@ -10,6 +10,7 @@ import { humanizeInternalEnums } from "./kbli-status-labels";
 
 const ALLOWED_BALI_STATUSES = new Set([
   "APERTO_BALI_RISCHIO_ALTO",
+  "ATTENZIONE_FASCIA_BALI",
   "BLOCCATO_CLASSE_RISCHIO",
   "BLOCCATO_DIPENDE_SCOPE",
   "CHIUSO_BALI",
@@ -23,8 +24,27 @@ const ALLOWED_BALI_STATUSES = new Set([
   "TERTUTUP",
 ]);
 
+/**
+ * Is `s` one of the L4 Bali statuses this disclosure layer recognizes?
+ *
+ * Exported so `kbli-data.ts`'s `getBaliCensus()` reuses the SAME allow-list
+ * instead of re-declaring it — a second list drifts the moment one status is
+ * added here and not there. `test_kbli_pma_disclosure_ts_sync.py` parses the
+ * `ALLOWED_BALI_STATUSES` declaration above by regex, so its shape (a single
+ * `const ALLOWED_BALI_STATUSES = new Set([...])` literal) must not change.
+ */
+export function isAllowedBaliStatus(s: string): boolean {
+  return ALLOWED_BALI_STATUSES.has(s);
+}
+
 function publicText(value: unknown): string | null {
   return typeof value === "string" && value.trim() ? value.trim() : null;
+}
+
+/** Same as `publicText`, but only for a value that is actually an http(s) URL. */
+function publicUrl(value: unknown): string | null {
+  const text = publicText(value);
+  return text && /^https?:\/\//i.test(text) ? text : null;
 }
 
 function publicPmaCap(raw: KBLIRawCode): number | "special" | null {
@@ -188,15 +208,64 @@ export function formatPmaOwnership(
 }
 
 /**
- * Public Bali disclosure. It is subordinate to the complete national PMA
- * tuple and requires an allow-listed status plus actual source booleans.
+ * A Bali APPLIED closure is self-sufficient evidence, independent of the
+ * NATIONAL PMA tuple.
+ *
+ * Every other Bali status this file discloses (ATTENZIONE_FASCIA_BALI, an
+ * unresolved risk tier, a proposed-not-enacted closure, …) is a READING of
+ * some other fact — the national verdict, a moratorium letter, a risk class —
+ * so withholding it until that fact is located is the right, fail-closed
+ * default. `CHIUSO_BALI` with `blocked: true` and a public `closure.url` is
+ * different in kind: it is Bali's OWN provincial government, in its own named
+ * instrument (`closure.url`, always a public press release), stating it
+ * closed OSS to new PMA licensing for THIS business field. That fact does not
+ * become less true because the unrelated NATIONAL open/restricted/closed
+ * tuple has no located locator+vintage — the two are different sovereigns
+ * making different statements. A record failing this check (wrong status,
+ * `blocked` false, or no verifiable URL) still requires the national tuple,
+ * same as before: this is an ADDITIONAL sufficient condition, never a looser
+ * replacement for it.
+ *
+ * The URL is re-validated http(s)-only HERE too (review F6), not merely
+ * assumed safe because `discloseBaliL4` already ran it through `publicUrl`
+ * before this function ever sees it: `isSourcedBaliClosure` is exported and
+ * called from render surfaces on the ALREADY-disclosed `KBLIBaliL4`, but a
+ * defensive function that trusts its caller's caller is a check in name
+ * only — the same discipline `discloseBaliL4`'s own comment states for
+ * `closureSourceNode`.
+ */
+export function isSourcedBaliClosure(
+  l4:
+    | {
+        status?: string | null;
+        blocked?: boolean | null;
+        closure?: { url?: string | null } | null;
+      }
+    | null
+    | undefined,
+): boolean {
+  const url = l4?.closure?.url;
+  return (
+    l4?.status === "CHIUSO_BALI" &&
+    l4?.blocked === true &&
+    typeof url === "string" &&
+    /^https?:\/\//i.test(url.trim())
+  );
+}
+
+/**
+ * Public Bali disclosure. Ordinarily subordinate to the complete national PMA
+ * tuple (an allow-listed status plus actual source booleans) — EXCEPT for a
+ * sourced applied closure (`isSourcedBaliClosure`, checked below against the
+ * ALREADY-built, already-`publicUrl`-filtered disclosure), which discloses on
+ * its own provincial evidence even when the national verdict is not located.
  */
 export function discloseBaliL4(
   raw: KBLIRawCode,
   pmaVerdictLocated: boolean,
 ): KBLIBaliL4 | undefined {
   const l4 = raw.l4_bali;
-  if (!pmaVerdictLocated || !l4) return undefined;
+  if (!l4) return undefined;
   if (
     typeof l4.status !== "string" ||
     !ALLOWED_BALI_STATUSES.has(l4.status) ||
@@ -218,7 +287,32 @@ export function discloseBaliL4(
       }
     : undefined;
 
-  return {
+  // The applied-closure citation (CHIUSO_BALI only). Every URL is re-verified
+  // http(s)-only here, at the ONE place that turns raw data into something a
+  // component may render as a link — a component must never re-check a URL
+  // it is handed, or the check exists in name only.
+  const rawClosure = l4.closure;
+  const closure =
+    rawClosure && typeof rawClosure === "object"
+      ? {
+          instrument: publicText(rawClosure.instrument) ?? undefined,
+          published: publicText(rawClosure.published) ?? undefined,
+          url: publicUrl(rawClosure.url),
+          listSource: publicText(rawClosure.list_source) ?? undefined,
+          listUrl: publicUrl(rawClosure.list_url),
+          effective: publicText(rawClosure.effective) ?? undefined,
+          until: publicText(rawClosure.until) ?? undefined,
+          approval: publicText(rawClosure.approval) ?? undefined,
+          ancestors2020: Array.isArray(rawClosure.ancestors_2020)
+            ? rawClosure.ancestors_2020.filter(
+                (x): x is string => typeof x === "string" && x.trim() !== "",
+              )
+            : undefined,
+          scopeQualifier: publicText(rawClosure.scope_qualifier),
+        }
+      : undefined;
+
+  const disclosed: KBLIBaliL4 = {
     status: l4.status,
     reason: humanizeInternalEnums(publicText(l4.reason) ?? ""),
     confidence: confidence ?? "MEDIUM",
@@ -226,5 +320,18 @@ export function discloseBaliL4(
     blocked: l4.blocked,
     from2020: publicText(l4.from_2020),
     moratorium,
+    closure,
   };
+
+  // The national tuple is irrelevant to a provincial closure (see
+  // `isSourcedBaliClosure`'s doc comment) — but every OTHER Bali status on an
+  // unlocated national record stays hidden exactly as before. Checked against
+  // `disclosed`, not `raw`: `closure.url` above already went through
+  // `publicUrl`, so a non-http(s) URL (or a missing one) fails this check and
+  // the record is withheld, same as today.
+  if (!pmaVerdictLocated && !isSourcedBaliClosure(disclosed)) {
+    return undefined;
+  }
+
+  return disclosed;
 }

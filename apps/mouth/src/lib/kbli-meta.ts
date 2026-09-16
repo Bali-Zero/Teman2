@@ -31,6 +31,7 @@ import { pmaCapShape } from "./kbli-pma-shape";
 import {
   formatPmaOwnership,
   hasPublishablePmaCap,
+  isSourcedBaliClosure,
 } from "./kbli-pma-disclosure";
 import {
   isBaliL4BlockVerifiedForBareClaim,
@@ -91,8 +92,23 @@ export function kbliPmaLabel(kbli: KBLICode): string {
  * verified — the Bali caveat is then carried by the page body, not the title.
  */
 export function kbliMetaTitleSuffix(kbli: KBLICode): string {
-  if (!isPmaVerdictVerified(kbli))
+  if (!isPmaVerdictVerified(kbli)) {
+    // Added 2026-09-16 (W-J B1 disclose): a Bali applied closure sourced to a
+    // public press release is self-sufficient evidence — bare-claim gated
+    // the same way `isBaliL4BlockVerifiedForBareClaim` already gates every
+    // other bare Bali claim on this indexed surface (HIGH confidence, not
+    // flagged for review).
+    if (
+      isSourcedBaliClosure(kbli.baliL4) &&
+      isBaliL4BlockVerifiedForBareClaim(kbli) &&
+      // A scoped closure (hotels: under 6,000 m²) is not a whole-code bar,
+      // and a <title> has no room for the qualifier.
+      !kbli.baliL4?.closure?.scopeQualifier
+    ) {
+      return "Closed to PT PMA in Bali (2026)";
+    }
     return "PMA Eligibility Requires Verification";
+  }
   const ownership = formatPmaOwnership(kbli.pma, "metadata");
   // A whole-code status can be located while the independent ownership-cap
   // tuple is absent. Surface that qualifier before any status-specific title,
@@ -104,6 +120,17 @@ export function kbliMetaTitleSuffix(kbli: KBLICode): string {
     }
     if (isBaliL4BlockVerifiedForBareClaim(kbli)) {
       return "Blocked for PT PMA in Bali (2026)";
+    }
+    // Added 2026-09-15 (W-J B1, Codex sol MAJOR finding 3 on PR #6578): off
+    // Bali's applied closure list, but not a bare "clear" either — the
+    // low/medium-low risk tier the OLD blanket reading relied on was only
+    // ever named in the Governor's own request letter, never enacted for
+    // this code. An unqualified "100% Foreign Ownership, Low Risk" title on
+    // this status is exactly the unqualified-open claim the gate above
+    // exists to prevent — it wins over the plain risk variant for the same
+    // reason a verified Bali block does.
+    if (kbli.baliL4?.status === "ATTENZIONE_FASCIA_BALI") {
+      return "Verify Bali PMA Closure List (2026)";
     }
     const risk = verifiedRiskLabel(kbli);
     return risk ? `${ownership}, ${risk} Risk` : ownership;
@@ -148,12 +175,35 @@ export function kbliMetaDescription(
 ): string {
   const baliBlocked =
     kbli.pma.status === "open" && isBaliL4BlockVerifiedForBareClaim(kbli);
+  // Added 2026-09-15 (W-J B1, Codex sol MAJOR finding 3 on PR #6578) — see
+  // `kbliMetaTitleSuffix` for the same reasoning: off the closure list is
+  // not the same as cleared, so the description must not go silent about it.
+  const baliAttentionFascia =
+    kbli.pma.status === "open" &&
+    !baliBlocked &&
+    kbli.baliL4?.status === "ATTENZIONE_FASCIA_BALI";
+  // Added 2026-09-16 (review F3): the SAME bare-claim predicate
+  // `kbliMetaTitleSuffix` uses for its unverified "Closed to PT PMA in Bali
+  // (2026)" title suffix — HIGH confidence, not flagged for review, and
+  // unscoped (a scoped closure, the hotel rows, is not a whole-code bar and
+  // this description has no room for the scope text).
+  const baliClosureUnverified =
+    !isPmaVerdictVerified(kbli) &&
+    isSourcedBaliClosure(kbli.baliL4) &&
+    isBaliL4BlockVerifiedForBareClaim(kbli) &&
+    !kbli.baliL4?.closure?.scopeQualifier;
   const risk = verifiedRiskLabel(kbli);
   const license = verifiedLicenseType(kbli);
 
   return [
     `${metaTitleEn} (KBLI ${kbli.code}): ${kbliPmaLabel(kbli)}${
-      baliBlocked ? " nationally — blocked for a PT PMA in Bali (2026)" : ""
+      baliBlocked
+        ? " nationally — blocked for a PT PMA in Bali (2026)"
+        : baliAttentionFascia
+          ? " nationally — verify Bali's 2026 PMA closure list before filing"
+          : baliClosureUnverified
+            ? " nationally — closed to new PT PMA licensing in Bali (2026)"
+            : ""
     }.`,
     // Degrade one fact at a time. `risk && license ? … : null` dropped BOTH
     // when only the licence was ungated, so the 337 inherited-content codes

@@ -1,0 +1,25 @@
+task_id: garuda-voa-checkout-reach-payment
+mandate_id: SAETTA-20260915/W-L/A
+colour: BLUE
+l_level: L2
+gate_class: opus
+gear: 2
+gear_reason: >-
+  Measured, not chosen: `python3 scripts/evidence_pack_lint.py --print-floor` on this
+  branch's changed files and numstat returns 2, and `--print-floor-source` returns
+  `size`. No hot-zone path. Gear = floor (fluidity addendum, 2026-09-15).
+objective: >-
+  An eligible tourist reaches the payment step of the public GARUDA VOA funnel. On
+  production the document store is unconfigured (upload 503) and checkout only read the
+  passport fields from the upload handoff, so the funnel dead-ended. Checkout now accepts
+  typed name + passport number when the handoff is missing, and a request-time switch
+  (GARUDA_PAYMENTS_LIVE, fail-closed) shows a payment-activating panel that captures the
+  lead to WhatsApp and never creates an order while Xendit is not approved.
+acceptance:
+  - "`npx vitest run src/app/visa/voa` green (16 files / 169 on mini-pro2) and `tsc --noEmit` 0 errors"
+  - "hard-coding paymentsLive={true} in the checkout page turns page.test.tsx red"
+  - "with the switch off, no code path calls createOrder or navigates to a checkout_url"
+  - "PROVE-LIVE: on balizero.com with GARUDA_PAYMENTS_LIVE unset, /visa/voa/checkout/{id} shows the activating panel and no POST /api/visa/voa/orders is made"
+appetite:
+  wall_clock_hours: 2
+  adversarial_rounds: 1

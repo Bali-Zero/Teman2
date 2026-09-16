@@ -515,6 +515,43 @@ def _read_migration(filename: str) -> tuple[str, str]:
     return forward, rollback
 
 
+#: The registered dependent that introduced ``policy_scope``. Its rollback
+#: drops that column and re-creates 264's scope-less
+#: ``EXCLUDE (environment WITH =, effective_period WITH &&)``.
+_SCOPE_INTRODUCING_DEPENDENT = 281
+
+
+async def _drop_policy_rows_without_a_264_shape(conn: asyncpg.Connection) -> None:
+    """Delete every retention-policy row whose scope is not 264's own
+    (``VISA_DECISION``), just before 281 is rolled back.
+
+    Test files that commit GARUDA policies (``test_check_to_order_journey.py``
+    seeds a GARUDA_CHECK and a GARUDA_ORDER row per test, open at the same
+    instant, closed at teardown) leave rows that 281's per-scope EXCLUDE
+    accepts but 264's scope-less one cannot: two TEST rows whose periods
+    overlap. On an xdist worker clone that ran such a file first, 281's
+    rollback then raised ``ExclusionViolationError`` and every caller of this
+    unwind went red (2026-09-16, Backend Shard 3). A 264-shaped table has no
+    place for another product's scope anyway -- restore used to bring such
+    rows back relabelled VISA_DECISION. The rows are append-only, and
+    GARUDA_CHECK rows may still be referenced from 281's own tables, which
+    281's rollback drops right after; ``session_replication_role = replica``
+    skips both the guard trigger and the FK triggers for this one statement.
+    VISA_DECISION rows are untouched: 281's EXCLUDE already keeps them apart.
+    """
+    if not await conn.fetchval(
+        "SELECT EXISTS (SELECT 1 FROM public.visa_decision_retention_policies "
+        "WHERE policy_scope <> 'VISA_DECISION')"
+    ):
+        return
+    async with conn.transaction():
+        await conn.execute("SET LOCAL session_replication_role = replica")
+        await conn.execute(
+            "DELETE FROM public.visa_decision_retention_policies "
+            "WHERE policy_scope <> 'VISA_DECISION'"
+        )
+
+
 async def unwind_garuda_voa_retention_fk(conn: asyncpg.Connection) -> bool:
     """Roll back every registered dependent migration's FK onto
     ``visa_decision_retention_policies`` (264) that is currently applied, in
@@ -539,7 +576,7 @@ async def unwind_garuda_voa_retention_fk(conn: asyncpg.Connection) -> bool:
     if that line is missing.
     """
     unwound_any = False
-    for _number, filename, marker_table, marker_column in sorted(
+    for number, filename, marker_table, marker_column in sorted(
         _GARUDA_VOA_RETENTION_FK_DEPENDENTS, key=lambda entry: entry[0], reverse=True
     ):
         applied = await conn.fetchval(
@@ -550,6 +587,8 @@ async def unwind_garuda_voa_retention_fk(conn: asyncpg.Connection) -> bool:
         )
         if applied:
             _, rollback_sql = _read_migration(filename)
+            if number == _SCOPE_INTRODUCING_DEPENDENT:
+                await _drop_policy_rows_without_a_264_shape(conn)
             await conn.execute(rollback_sql)
             unwound_any = True
     return unwound_any

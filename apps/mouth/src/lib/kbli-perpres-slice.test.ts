@@ -367,13 +367,22 @@ describe("the artifact on disk", () => {
     }
   });
 
-  it("population count matches the compiler's pinned population (12 codes)", () => {
-    expect(Object.keys(parsed.disclosures)).toHaveLength(12);
+  it("population count matches the compiler's pinned population (13 codes)", () => {
+    expect(Object.keys(parsed.disclosures)).toHaveLength(13);
   });
 
   it("20235 and 30303 are excluded — adjacent-not-contained, not a slice inside the code", () => {
     expect(parsed.disclosures["20235"]).toBeUndefined();
     expect(parsed.disclosures["30303"]).toBeUndefined();
+  });
+
+  it("43110 carries the Lampiran II (UMKM dialokasikan) demolition slice — SAETTA W-H PR-2", () => {
+    const rows = parsed.disclosures["43110"];
+    expect(rows).toBeDefined();
+    expect(rows).toHaveLength(1);
+    expect(rows[0].bidangUsaha).toBe(
+      "Pembongkaran yang menggunakan teknologi sederhana dan madya",
+    );
   });
 });
 
@@ -464,8 +473,11 @@ describe("RENDER CONTRACT: LicensingSection.tsx and kbli-faq.ts", () => {
 
   it("kbli-faq.ts appends a perpresSlice qualifier to the PMA answer", () => {
     expect(FAQ_SOURCE).toContain("perpresSliceQualifier");
+    // Review r2 m1: `pmaSourceNote` is now conditionally suppressed on the
+    // sourced-Bali-closure/unverified-national branch — the answer template
+    // reads `pmaSourceNoteForAnswer`, not the raw `pmaSourceNote`, directly.
     expect(FAQ_SOURCE).toContain(
-      "answer: `${pmaAnswer}${perpresSliceQualifier}${pmaSourceNote}`",
+      "answer: `${pmaAnswer}${perpresSliceQualifier}${pmaSourceNoteForAnswer}`",
     );
   });
 });

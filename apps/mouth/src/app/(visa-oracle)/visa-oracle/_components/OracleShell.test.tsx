@@ -41,9 +41,11 @@ const ANSWERS = [
   // Offshore now asks a single permit-status gate question, converging
   // immediately on "no" (fixed 2026-08-24, D12 offshore-reachability P0,
   // then re-fixed same day after a funnel-cost review) — answered "no"
-  // to preserve this fixture's original downstream intent.
+  // to preserve this fixture's original downstream intent. D19
+  // (2026-09-16): that convergence lands on `nationalities` directly —
+  // `overstay_days` is no longer asked offshore at all, so it is not
+  // answered here either.
   ["holds_stay_permit", "no"],
-  ["overstay_days", "0"],
   ["nationalities", "US"],
   ["birth_date", "1990-01-01"],
   ["category", "tourism"],
@@ -114,18 +116,16 @@ async function completeFreshInterview(): Promise<void> {
   // converging (fixed 2026-08-24, D12 offshore-reachability P0, then
   // re-fixed same day after a funnel-cost review — see flow.ts's
   // `in_indonesia`/`holds_stay_permit` cases). "no" here converges
-  // straight to overstay_days with no further permit questions — the
-  // fact resolves from this answer alone via fact-mapper.ts's
-  // synthesized NO_STAY_PERMIT (see fact-mapper.test.ts for that proof).
+  // straight to nationalities with no further permit questions — the
+  // current-status fact resolves from this answer alone via
+  // fact-mapper.ts's synthesized NO_STAY_PERMIT (see fact-mapper.test.ts
+  // for that proof). D19 (2026-09-16): `overstay_days` is no longer part
+  // of that convergence either — you cannot overstay while outside
+  // Indonesia, so no spinbutton step is rendered here any more.
   await screen.findByRole("heading", {
     name: /do you currently hold a limited or permanent stay permit/i,
   });
   fireEvent.click(await screen.findByRole("button", { name: /^no$/i }));
-
-  fireEvent.change(await screen.findByRole("spinbutton"), {
-    target: { value: "0" },
-  });
-  fireEvent.click(screen.getByRole("button", { name: /^continue$/i }));
 
   fireEvent.change(await screen.findByRole("combobox"), {
     target: { value: "US" },
@@ -262,7 +262,9 @@ describe("OracleShell authoritative evaluate integration", () => {
     "missing-input Edit reopens the $category interview question",
     async ({ category, questionId, factPath, internalMode, details }) => {
       installVerdictResume([
-        ...ANSWERS.slice(0, 5),
+        // D19 (2026-09-16): one fewer entry in ANSWERS ahead of "category"
+        // (`overstay_days` is gone), so the slice boundary moves 5 -> 4.
+        ...ANSWERS.slice(0, 4),
         ["category", category],
         ["trip_scope", "single"],
         ...details,
@@ -344,7 +346,7 @@ describe("OracleShell authoritative evaluate integration", () => {
     installVerdictResume([
       ["in_indonesia", "no"],
       ["holds_stay_permit", "no"],
-      ["overstay_days", "0"],
+      // D19 (2026-09-16): offshore no longer asks `overstay_days`.
       ["nationalities", "US"],
       ["birth_date", "1990-01-01"],
       ["category", "family"],
@@ -508,6 +510,67 @@ describe("OracleShell authoritative evaluate integration", () => {
     await expectStateHeading("HUMAN_REVIEW_REQUIRED");
     expect(screen.queryByText(/no evaluation was submitted/i)).toBeNull();
     expect(screen.queryByText("Client safety hold")).toBeNull();
+  });
+
+  // D23 "OPTION B-STUDIO", end-to-end wiring: an ENGINE response whose only
+  // review reason is the Studio code must reach `VerdictReveal` with
+  // `isSecondHomeStudioOnly` true — proven here through the real fetch ->
+  // `buildEngineOutcome` -> `OracleShell` -> `VerdictReveal` path, not a
+  // component-level stub. GUILT: no "human"/"algorithm" wording anywhere.
+  it("D23: a Studio-only review reason renders the Studio headline, with no human/algorithm wording anywhere", async () => {
+    const response = makeVisaOracleResponse("HUMAN_REVIEW_REQUIRED");
+    response.decision.review_reasons[0].code =
+      "SECOND_HOME_BELOW_THRESHOLD_STUDIO";
+    global.fetch = vi.fn<typeof fetch>(
+      async () =>
+        new Response(JSON.stringify(response), {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        }),
+    );
+    render(<OracleShell />);
+
+    expect(
+      await screen.findByRole("heading", {
+        name: "Below the Second Home guarantee threshold",
+      }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("heading", {
+        name: translate("en", "verdict.headline.HUMAN_REVIEW_REQUIRED"),
+      }),
+    ).toBeNull();
+    expect(
+      screen.getByRole("link", { name: "Open the Second Home Studio" }),
+    ).toBeInTheDocument();
+    // Scoped to the verdict card + outcome body — NOT the whole page, which
+    // always carries an unrelated, state-independent "Talk to a consultant"
+    // WhatsApp-fallback CTA (ConsentHandoff) that has nothing to do with
+    // D23's review-reason framing.
+    const verdictAndOutcomeText =
+      (document.querySelector(".oracle-verdict-card")?.textContent ?? "") +
+      (document.querySelector(".oracle-outcome")?.textContent ?? "");
+    expect(verdictAndOutcomeText.length).toBeGreaterThan(0);
+    expect(verdictAndOutcomeText).not.toMatch(/\ba human\b/i);
+    expect(verdictAndOutcomeText).not.toMatch(/algorithm/i);
+    expect(verdictAndOutcomeText).not.toMatch(/consultant/i);
+  });
+
+  // INNOCENCE: an unrelated review reason keeps the pre-existing generic
+  // human-review headline (already covered by the it.each state matrix
+  // above; re-asserted here alongside the Studio-only case for contrast).
+  it("D23: a non-Studio review reason keeps the generic human-review headline", async () => {
+    global.fetch = engineFetch("HUMAN_REVIEW_REQUIRED");
+    render(<OracleShell />);
+
+    expect(
+      await screen.findByRole("heading", {
+        name: translate("en", "verdict.headline.HUMAN_REVIEW_REQUIRED"),
+      }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("link", { name: "Open the Second Home Studio" }),
+    ).toBeNull();
   });
 
   it("keeps automatic network retry byte-identical and renders no fabricated result", async () => {
@@ -804,7 +867,9 @@ describe("OracleShell persistent consultant contact", () => {
     async (stage) => {
       if (stage !== "framing")
         resumeBeforeVerdict(
-          stage === "question" ? ANSWERS.slice(0, 7) : ANSWERS,
+          // D19 (2026-09-16): slice boundary moves 7 -> 6 (one fewer entry
+          // ahead of "stay_days" now that `overstay_days` is gone).
+          stage === "question" ? ANSWERS.slice(0, 6) : ANSWERS,
         );
       render(<OracleShell />);
       const heading = await screen.findByRole("heading", {
@@ -910,7 +975,9 @@ describe("OracleShell persistent consultant contact", () => {
     "honours %s language and hydrated guardian authority before offering a known minor consent",
     async (language) => {
       const birthDate = `${new Date().getUTCFullYear() - 10}-01-01`;
-      resumeBeforeVerdict([...ANSWERS.slice(0, 4), ["birth_date", birthDate]]);
+      // D19 (2026-09-16): slice boundary moves 4 -> 3 (one fewer entry
+      // ahead of "nationalities" now that `overstay_days` is gone).
+      resumeBeforeVerdict([...ANSWERS.slice(0, 3), ["birth_date", birthDate]]);
       render(<OracleShell />);
       await screen.findByRole("button", { name: consultant });
       if (language === "id") {
@@ -954,7 +1021,9 @@ describe("OracleShell persistent consultant contact", () => {
 
   it("supports keyboard disclosure, Escape focus return and Indonesian without resetting the interview", async () => {
     const user = userEvent.setup();
-    resumeBeforeVerdict(ANSWERS.slice(0, 7));
+    // D19 (2026-09-16): slice boundary moves 7 -> 6 (one fewer entry ahead
+    // of "stay_days" now that `overstay_days` is gone).
+    resumeBeforeVerdict(ANSWERS.slice(0, 6));
     render(<OracleShell />);
     const toggle = await screen.findByRole("button", { name: consultant });
     toggle.focus();

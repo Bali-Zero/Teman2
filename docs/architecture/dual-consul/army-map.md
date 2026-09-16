@@ -60,6 +60,69 @@ three at a time at most. Each window opens against the seven-section spec
 before executing. The staff room (Fable 5.1 + Astra, with Zero only) fixes the windows, the teams
 and the specs; it never fans out and never implements.
 
+## 1ter. The second army (Gear ≤ 2)
+
+A lighter chain for missions whose Gear floor is 2 or below, so a small fix does not pay a
+general's boot cost. It answers to the same imperators and the same colour rule as §1/§1bis; it
+is not a parallel doctrine.
+
+| Rank                                              | Seats                                                                                                                                                                                                                                                                                                                                                          | Talks to                                                            | Owns                                                                                                                                                                          | Never                                                                                                           |
+| ------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| **Dux (second army)**                             | Sonnet 5 on BLUE-light · Terra (`gpt-5.6-terra`) on ORANGE-light                                                                                                                                                                                                                                                                                               | Its own builders and supports; the imperators for a floor-3 handoff | The whole Gear ≤ 2 mission end to end, the verification on disk of every build, and the release: push, PR-open with auto-merge armed at once, queue merge, deploy, prove-live | Running a Gear-3 mission; building the slice it grades; letting a builder grade itself; changing the floor      |
+| **Builders** (the inferior seats)                 | Under a Sonnet Dux: Codex Luna (`gpt-5.6-luna`, live Codex builder seat) · Codex Spark (`gpt-5.3-codex-spark`; STATE: 400-dead for ChatGPT accounts since 2026-09-15) · Gemini Flash via `agy` · TP1 `deepseek-v4-flash-0731` · TP1 `qwen3.7-plus` · Haiku 4.5 **only as Anthropic-native grunt**. Under a Terra Dux: Haiku 4.5 · Gemini Flash via `agy` · TP1 | Its Dux only                                                        | Bounded file ownership + a proof criterion, one worktree each                                                                                                                 | Grading its own output; merging, arming, deploying; touching files outside ownership                            |
+| **Supports**                                      | Haiku 4.5 · TP1 `qwen3.6-flash` · local Ollama (PII lanes only)                                                                                                                                                                                                                                                                                                | The Dux that dispatched it                                          | One narrow task with a return contract: fixtures, cleanup, mechanical checks                                                                                                  | Weakening tests to make them pass; grading a build; fixing someone else's code                                  |
+| **Async queue front**                             | Jules (dispatch 09:00 WITA, harvest every 3h, cap 3/day, queue `infra/army/jules-queue/`)                                                                                                                                                                                                                                                                      | The Dux that fed the queue                                          | Repo tasks that can wait a harvest cycle                                                                                                                                      | Being a synchronous lane; being on any mission's critical path; being probed as if it answered in-turn          |
+| **Verification** (assignment, not rank)           | **The Dux lane itself**, on disk — Sonnet 5 on BLUE-light, Terra on ORANGE-light                                                                                                                                                                                                                                                                               | Its builders                                                        | Re-deriving every proof criterion on disk: running the task's proof command, reading the diff                                                                                 | Being shown the builder's claim before deriving its own answer; accepting a builder's report as the observation |
+| **Cross-family refuter** (floor 2 only, one seat) | Codex Spark (STATE: 400-dead for ChatGPT accounts since 2026-09-15, no Codex refuter from cron today) · Gemini Flash via `agy` — whichever probes live first                                                                                                                                                                                                   | The Dux                                                             | One cheap adversarial read of the FROZEN diff, after push                                                                                                                     | Editing the diff; being the builder of any slice in it; growing into a council                                  |
+| **Final on-disk gate** (unchanged from §1)        | A FRESH Opus 5 `xhigh` session outside the chain on BLUE-light · a FRESH Sol `xhigh` session outside the chain on ORANGE-light                                                                                                                                                                                                                                 | The Dux                                                             | Signing                                                                                                                                                                       | Arming, merging or altering the candidate; cascading to a cheaper seat                                          |
+
+(a) **Eligibility is the deterministic floor, not an opinion.** A mission is second-army only when
+the floor computed by `scripts/evidence_pack_lint.py` / the `harness-floor.yml` required check is
+<= 2. A floor of 3 **promotes** the mission to the champions' chain of §1 — no exception, no Dux
+discretion, and the second-army Dux stops and hands off rather than continuing at a rank it does
+not hold.
+
+(b) **Direction of verification — RULED by Zero, 2026-09-15.** The INFERIOR seats BUILD; the Dux
+SPAWNS them and VERIFIES on disk. A weaker seat never grades a stronger one — that is the whole
+ruling, and it is the opposite of what a "cheap verifier" instinct suggests. Builders are chosen
+from a family != the Dux's wherever the task allows (W100: same-family agreement certified 7
+false-clean of 8): a **Sonnet Dux** dispatches Luna / Spark / Gemini Flash / TP1
+`deepseek-v4-flash-0731` / `qwen3.7-plus`; a **Terra Dux** dispatches Haiku / Gemini Flash / TP1.
+Haiku under a Sonnet Dux is allowed for **Anthropic-native grunt only** — it is the last builder
+reached for, never the first, and only when every cross-family door is dead. **Builder != verifier
+always** (generator != grader): the Dux runs the task's proof command itself and reads the diff
+itself, and is never shown the builder's claim before deriving its own answer. At floor 2, ONE
+cheap cross-family refuter (Spark or Flash, whichever probes live first) reads the **frozen** diff
+AFTER push — one refuter, never a council, per the FLUIDITÀ addendum.
+
+> **STATE, not a rule (2026-09-15):** Spark (`gpt-5.3-codex-spark`) is 400-dead for ChatGPT
+> accounts since 2026-09-15 (fleet mail `spark-morto-flotta`; #6609 moved `spark_lane` to Luna).
+> Luna is the live Codex builder seat; no Codex from cron today. The ruling above is unchanged.
+
+(c) **Probe-then-trust.** Every external seat answers a 1-token probe before it is load-bearing; a
+seat that fails is a **dead tier DECLARED in the run output**, never a lane silently skipped, and
+the roster falls through to the next live builder. Seats QUOTA_DEAD at the 2026-09-15 08:00Z
+probe: `kimi`, `qwen-cloud-code`, `tp1-glm-5.2`, `tp1-deepseek-v4-pro`.
+
+(d) **The final on-disk gate does not get cheaper.** It stays the §1bis seat for the colour and is
+the one general-tier touch a second-army mission pays. It never cascades and it is never an
+`agent()` lane.
+
+(e) **The second-army Dux is the release owner** of its own mission, exactly as §1bis defines it
+for a general — and it is never the grader of a slice it built itself.
+
+(f) **PII stays local.** A lane that carries client PII routes to local Ollama and nowhere else;
+the boundary is the OUTPUT boundary of Builder Contract 4 — no report, log, memory or artifact
+carries PII in cleartext at any rank of this army either.
+
+This second army sits under the same colour table (§1bis) and the same W0 protocol (§3): a
+second-army mission still declares its colour before the first assignment, and eligibility (a)
+above is checked at W0 step 2, not after the fact. **This map grants no permissions here either**
+— the Builder Contract, the Gear floor and the PII boundary bind this army identically to §1.
+The executable consumer is `infra/workflows/second-army.js` with its runner
+`infra/workflows/run-second-army.mjs` (shipping in a follow-up PR of the same mission) plus
+`FLEET_TOPOLOGY.json` `role_chains.second_army`.
+
 ## 2. Communication: strictly along the chain
 
 Zero, 2026-09-06 12:33: _"anche la comunicazione è gerarchica ... il supporto operativo parla solo

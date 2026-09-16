@@ -143,7 +143,7 @@ openinference-instrumentation-openai>=0.1.54  # Auto-trace OpenAI-compat (DeepSe
 # Data Processing
 datasets>=5.0.1
 pandas>=2.0.0
-numpy>=2.0.0,<3.0.0  # Updated for compatibility with scipy/sklearn
+numpy>=2.2.6,<3.0.0  # Updated for compatibility with scipy/sklearn
 opencv-python-headless>=5.0.0.93  # intake OCR preprocess deskew/denoise (preprocess.py:18 promised "already in venv" but was missing; graceful-fallback to raw page when absent, Mythos M4 2026-06-14)
 psutil>=5.9.0  # Required by metrics module/tests
 

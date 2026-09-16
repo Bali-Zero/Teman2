@@ -195,6 +195,45 @@ class TestBuildWaPackageRoute:
             "'greeting' label — the real orchestrator only short-circuits on 'general'"
         )
 
+    async def test_identity_query_returns_unbuildable_not_an_error(self) -> None:
+        """B2.5-1b, second authority, same order as greeting."""
+        orchestrator = FakeOrchestrator()
+        request = WaPackageBuildRequest(
+            query="ciao tu sei Zantara?", history=[], thread_epoch=0
+        )
+
+        response = await build_wa_package(request, orchestrator=orchestrator)
+
+        assert response.package_wire is None
+        assert response.unbuildable == "identity_domain"
+
+    async def test_identity_query_never_spends_the_curated_qa_lookup(self) -> None:
+        """Same cost guard as the greeting one: an identity query is about to
+        be declared unbuildable — no embedding + Qdrant spend for it."""
+        orchestrator = FakeOrchestrator()
+        request = WaPackageBuildRequest(
+            query="ciao tu sei Zantara?", history=[], thread_epoch=0
+        )
+
+        await build_wa_package(request, orchestrator=orchestrator)
+
+        assert orchestrator.core.curated_qa_calls == []
+
+    async def test_a_case_question_with_an_identity_phrase_still_spends_the_lookup(
+        self,
+    ) -> None:
+        """Innocence pair: the domain veto wins, so "cosa puoi fare per la
+        mia PT PMA?" builds for real and must still get its curated-QA
+        evidence."""
+        orchestrator = FakeOrchestrator()
+        query = "cosa puoi fare per la mia PT PMA?"
+        request = WaPackageBuildRequest(query=query, history=[], thread_epoch=0)
+
+        response = await build_wa_package(request, orchestrator=orchestrator)
+
+        assert response.unbuildable is None
+        assert orchestrator.core.curated_qa_calls
+
 
 class TestRequireInternalCaller:
     """finding 7: authentication is not authorization — any portal JWT

@@ -30,7 +30,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from backend.services.integrations import wa_broker, wa_codex_leg
+from backend.services.integrations import human_escalation_notifier, wa_broker, wa_codex_leg
 from backend.services.integrations.wa_broker import (
     OfferOutcome,
     OfferResult,
@@ -42,6 +42,7 @@ from backend.services.integrations.wa_finalize import (
     FinalizeOutcome,
     FinalizeResult,
 )
+from backend.services.integrations.wa_inbox_bot import BoundThreadContext
 from backend.services.rag.agentic._support_signal import SupportVerdict
 
 # B2.4 PR-2: every consumed completion is now a MAC-authenticated envelope
@@ -202,8 +203,18 @@ def _wire_stubs(
     # the attribute here is what a real deploy's Fly secret would do.
     monkeypatch.setattr(wa_codex_leg.settings, "wa_broker_key", _TEST_BROKER_KEY, raising=False)
 
-    load = AsyncMock(return_value=(query, [{"role": "user", "content": "hi"}]))
-    monkeypatch.setattr(wa_codex_leg, "_load_thread_context", load)
+    # B2.5 (migration 318): the leg now loads a context BOUND to its own
+    # inbound message, never the thread's latest — `inbound_message_id=830`
+    # is an arbitrary fixed id (the pre-existing suite below never asserts
+    # on it; the binding-specific behaviour has its own tests further down).
+    load = AsyncMock(
+        return_value=BoundThreadContext(
+            inbound_message_id=830,
+            query=query,
+            history=[{"role": "user", "content": "hi"}],
+        )
+    )
+    monkeypatch.setattr(wa_codex_leg, "_load_bound_thread_context", load)
 
     client = MagicMock()
     if build_exc is not None:
@@ -375,6 +386,160 @@ async def test_a_question_that_merely_opens_with_a_greeting_takes_the_normal_rou
     await _run()
 
     stubs.rag_client.post.assert_awaited()
+
+
+# ── gate 2c: the scripted identity turn (B2.5-1b) ───────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_an_identity_question_is_served_from_the_script_before_any_io(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Measured on real delivery, 2026-09-15 15:47-15:49 WITA: "ciao tu sei
+    Zantara?" and "ti ho chiesto chi sei tu?" both reached the package build,
+    found no chunk that says who Zantara is, and terminalized as the ABSTAIN
+    stub — the second reply in English, to a client writing Italian.
+
+    The assertions that matter are the NEGATIVE ones, same shape as the
+    greeting test right above: no build request, no broker offer. If the
+    identity short-circuit is removed, `rag_client.post` is awaited and this
+    test fails."""
+    stubs = _wire_stubs(monkeypatch, query="ciao tu sei Zantara?")
+    result = await _run()
+
+    assert result.text is not None
+    assert "Zantara" in result.text
+    assert result.reason == "" and not result.stand_down and not result.fail
+    stubs.rag_client.post.assert_not_awaited()
+    stubs.offer_job.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_the_second_real_production_message_also_short_circuits(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The exact second message of the same production thread, "ti ho
+    chiesto chi sei tu?" — it must resolve to the SAME Italian presentation,
+    not the English fallback the production incident actually sent."""
+    stubs = _wire_stubs(monkeypatch, query="ti ho chiesto chi sei tu?")
+    result = await _run()
+
+    assert result.text is not None
+    assert result.text == wa_codex_leg.match_identity_question(
+        "ti ho chiesto chi sei tu?"
+    ).text
+    stubs.rag_client.post.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_a_case_question_that_carries_an_identity_phrase_takes_the_normal_route(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Innocence, and the expensive half: "cosa puoi fare per la mia PT PMA?"
+    contains the identity phrase "cosa puoi fare" but is really about a case
+    — the domain veto must win and the package build must still run."""
+    stubs = _wire_stubs(monkeypatch, query="cosa puoi fare per la mia PT PMA?")
+    await _run()
+
+    stubs.rag_client.post.assert_awaited()
+
+
+# ── gate 2d: the scripted human-handoff turn (B2.5-2) ───────────────────────
+
+
+@pytest.mark.asyncio
+async def test_a_human_handoff_request_is_served_from_the_script_before_any_io(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A client who asks to speak to a person is the highest-intent message
+    the bot ever receives. Same shape as the greeting/identity short-circuit
+    tests above: the assertions that matter are the NEGATIVE ones — no
+    build request, no broker offer — plus the POSITIVE one that a human was
+    actually notified, not just told a client-facing lie."""
+    stubs = _wire_stubs(monkeypatch, query="voglio parlare con una persona")
+    notify = AsyncMock(return_value=True)
+    monkeypatch.setattr(wa_codex_leg, "notify_human_handoff", notify)
+
+    result = await _run()
+
+    assert result.text is not None
+    assert result.reason == "" and not result.stand_down and not result.fail
+    stubs.rag_client.post.assert_not_awaited()
+    stubs.offer_job.assert_not_awaited()
+    notify.assert_awaited_once()
+    assert notify.await_args.kwargs["thread_id"] == 7
+    assert notify.await_args.kwargs["counterpart_phone"] == "628111"
+    assert notify.await_args.kwargs["language"] == "it"
+
+
+@pytest.mark.asyncio
+async def test_two_authorities_match_human_request_wins_over_identity(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """"are you human or can I talk to a person" matches BOTH
+    `match_identity_question` and `match_human_request`. This pins the
+    ORDER: human-request is checked first, so a lead is never silently
+    reduced to a capability list with nobody notified."""
+    _wire_stubs(monkeypatch, query="are you human or can I talk to a person")
+    notify = AsyncMock(return_value=True)
+    monkeypatch.setattr(wa_codex_leg, "notify_human_handoff", notify)
+
+    result = await _run()
+
+    notify.assert_awaited_once()
+    assert result.text == wa_codex_leg.match_human_request(
+        "are you human or can I talk to a person"
+    ).text
+    assert result.text != wa_codex_leg.match_identity_question(
+        "are you human or can I talk to a person"
+    ).text
+
+
+@pytest.mark.asyncio
+async def test_human_handoff_notification_failure_does_not_lose_the_confirmation(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The client's confirmation must never be lost because Brevo failed —
+    the notification is wrapped at THIS call site precisely so an
+    exception from `notify_human_handoff` cannot turn a served confirmation
+    into a text=None fall-off (see `attempt()`'s broad except)."""
+    _wire_stubs(monkeypatch, query="talk to a human")
+    notify = AsyncMock(side_effect=RuntimeError("brevo down"))
+    monkeypatch.setattr(wa_codex_leg, "notify_human_handoff", notify)
+
+    result = await _run()
+
+    assert result.text is not None
+    assert result.reason == "" and not result.stand_down and not result.fail
+    notify.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_a_repeated_human_handoff_request_still_confirms_but_notifies_once(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The dedup window lives inside `notify_human_handoff` (reused from
+    `human_escalation_notifier`), not at this call site — this test proves
+    the call site does not defeat it: two real calls through the actual
+    (unmocked) notifier, second one inside the window, still both confirm
+    the client and only the first accepts a send."""
+    human_escalation_notifier._recent_escalations.clear()
+    sent = AsyncMock()
+    monkeypatch.setattr(
+        "backend.services.integrations.wa_human_handoff.send_internal_email", sent
+    )
+    monkeypatch.setattr(
+        "backend.services.integrations.wa_human_handoff._resolve_assignee",
+        AsyncMock(return_value=(None, None)),
+    )
+
+    _wire_stubs(monkeypatch, query="talk to a human")
+    first = await _run()
+    _wire_stubs(monkeypatch, query="talk to a human")
+    second = await _run()
+
+    assert first.text is not None and second.text is not None
+    sent.assert_awaited_once()
 
 
 # ── gate 3: the package build ───────────────────────────────────────────────
@@ -636,7 +801,12 @@ async def test_completed_with_takeover_drift_discards_and_stands_down(
     stubs.discard_completion.assert_awaited_once()
     assert stubs.discard_completion.await_args.kwargs["reason"] == "takeover"
     stubs.consume_result.assert_not_awaited()
-    assert conn.sql_contains("UPDATE wa_outbox SET status = 'failed'")
+    # B2.5 (migration 318): the atomic abort now sets the fall-off reason
+    # in the SAME statement — "UPDATE wa_outbox" and "SET status = 'failed'"
+    # are no longer on one line, so pin the clauses that survive separately
+    # (same pattern the B2.3b carrier comment above already established).
+    assert conn.sql_contains("SET status = 'failed'")
+    assert conn.sql_contains("generation_fall_off_reason = 'stand_down_drift'")
     assert conn.sql_contains("aborted_human_takeover_codex_drift")
 
 
@@ -1765,7 +1935,11 @@ def test_every_stored_fall_off_value_is_allowed_by_the_live_check_constraint() -
     # The UP block only — the file's ROLLBACK section restores the older,
     # narrower vocabulary on purpose.
     up = newest.read_text(encoding="utf-8").split("=== ROLLBACK ===")[0]
-    allowed = set(re.findall(r"'([a-z_]+)'", up))
+    # B2.5 (migration 318) introduced the first fall-off reason with a
+    # digit in it (`window_closed_24h`) — widen from [a-z_]+ so extraction
+    # does not silently drop a real, present value and report a false
+    # "rejected by the CHECK constraint".
+    allowed = set(re.findall(r"'([a-z0-9_]+)'", up))
 
     produced = (
         set(wa_codex_leg._FALL_OFF_REASON_PREFIX_MAP.values())

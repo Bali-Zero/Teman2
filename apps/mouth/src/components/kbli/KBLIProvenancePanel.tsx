@@ -1,5 +1,11 @@
-import type { KBLICode, KBLIProvenance } from "@/lib/kbli-types";
-import { baliBlockClause, isMoratoriumBasis } from "@/lib/kbli-bali-block";
+import type { ReactNode } from "react";
+import type { KBLIBaliL4, KBLICode, KBLIProvenance } from "@/lib/kbli-types";
+import {
+  baliBlockClause,
+  baliClosureQualifier,
+  isMoratoriumBasis,
+} from "@/lib/kbli-bali-block";
+import { isSourcedBaliClosure } from "@/lib/kbli-pma-disclosure";
 
 // =============================================================================
 // TRACK-P — "Sources & Verification" panel
@@ -33,11 +39,53 @@ const VERDICT_STYLE: Record<Verdict, { label: string; color: string }> = {
 
 interface SourceRow {
   layer: string;
-  source: string;
+  /** Usually plain text; a CHIUSO_BALI closure citation renders as links. */
+  source: ReactNode;
   vintage: string;
   verdict: Verdict;
   detail?: string;
   locator?: string | null;
+}
+
+/**
+ * The applied-closure citation for a CHIUSO_BALI row: the instrument (linked),
+ * the code list it was matched against (linked), and the KBLI-2020 ancestors
+ * the match ran through. Every URL here already passed the http(s)-only gate
+ * in `discloseBaliL4` — this renders whatever it is handed, so that gate is
+ * the ONLY place a bad URL can be stopped, never re-checked per surface.
+ */
+function closureSourceNode(
+  closure: NonNullable<KBLIBaliL4["closure"]>,
+): ReactNode {
+  const instrumentLabel = closure.instrument ?? "Bali PMA closure instrument";
+  const ancestors = closure.ancestors2020 ?? [];
+  return (
+    <>
+      {closure.url ? (
+        <a href={closure.url} target="_blank" rel="noopener noreferrer">
+          {instrumentLabel}
+        </a>
+      ) : (
+        instrumentLabel
+      )}
+      {closure.listSource && (
+        <>
+          {" "}
+          · code list:{" "}
+          {closure.listUrl ? (
+            <a href={closure.listUrl} target="_blank" rel="noopener noreferrer">
+              {closure.listSource}
+            </a>
+          ) : (
+            closure.listSource
+          )}
+        </>
+      )}
+      {ancestors.length > 0 && (
+        <> · KBLI 2020 {ancestors.join(", ")}, BPS conversion table</>
+      )}
+    </>
+  );
 }
 
 /** Exported for test: this panel had no test at all, which is how the Bali row
@@ -135,9 +183,28 @@ export function buildRows(kbli: KBLICode, prov: KBLIProvenance): SourceRow[] {
         },
   );
 
-  if (prov.pma.status === "located" && kbli.baliL4) {
+  // Added 2026-09-16 (W-J B1 disclose): a Bali applied closure sourced to a
+  // public press release (`isSourcedBaliClosure`) is self-sufficient evidence
+  // and does not need the national PMA tuple located to be shown here — the
+  // panel's whole point is to say what IS and ISN'T verified, and this row
+  // states its OWN Bali-scoped provenance regardless of the national one.
+  if (
+    (prov.pma.status === "located" || isSourcedBaliClosure(kbli.baliL4)) &&
+    kbli.baliL4
+  ) {
     const m = kbli.baliL4.moratorium;
     const isNonClassifiable = kbli.baliL4.status === "NON_CLASSIFICABILE";
+    // Added 2026-09-15 (W-J B1): off Bali's applied PMA closure list —
+    // `blocked` is false, but the generic "the risk tier cleared it" wording
+    // below would be a NEW misattribution of the same shape this row exists
+    // to prevent: this code was never tested against the applied closure and
+    // cleared, it was simply never on the 18-field list to begin with.
+    const isAttentionFascia = kbli.baliL4.status === "ATTENZIONE_FASCIA_BALI";
+    // CHIUSO_BALI with a `closure` citation gets the richer instrument + code
+    // list + ancestors source; without one (today's data, before the data PR
+    // lands `closure`), it falls through to the existing moratorium-basis text.
+    const closure =
+      kbli.baliL4.status === "CHIUSO_BALI" ? kbli.baliL4.closure : undefined;
     // This row is the honesty surface for the Bali layer, so it must not
     // attribute the verdict to a rule that did not produce it. `m.rule` is a
     // constant on every record, not per-code evidence — citing it for the 111
@@ -149,18 +216,31 @@ export function buildRows(kbli: KBLICode, prov: KBLIProvenance): SourceRow[] {
     );
     rows.push({
       layer: "Bali status",
-      source: moratoriumBasis
-        ? m?.rule
-          ? `${m.rule}${m.effective ? ` (effective ${m.effective})` : ""}`
-          : "Bali moratorium overlay (Gubernur letter B.27.000/642)"
-        : "Activity-level restriction — not the risk-tier moratorium overlay",
+      // ATTENZIONE_FASCIA_BALI is checked FIRST and unconditionally: a record
+      // that still carries the old blanket `moratorium.rule` ("blocks ALL Low
+      // + Medium-Low ... permanent (effective 2026-05-13)") must never print
+      // it here — `isMoratoriumBasis` returns true for any non-blocked code
+      // by design, so falling through to that branch would self-contradict
+      // the `detail` text two lines below on the very same row (Codex sol
+      // MAJOR finding 1 on PR #6578).
+      source: isAttentionFascia
+        ? "Bali Provincial Government press release (24 Jul 2026): OSS closed to new PMA licensing for 18 business fields"
+        : closure
+          ? closureSourceNode(closure)
+          : moratoriumBasis
+            ? m?.rule
+              ? `${m.rule}${m.effective ? ` (effective ${m.effective})` : ""}`
+              : "Bali moratorium overlay (Gubernur letter B.27.000/642)"
+            : "Activity-level restriction — not the risk-tier moratorium overlay",
       vintage: "2026 overlay",
       verdict: isNonClassifiable ? "gap" : "pending",
       detail: isNonClassifiable
         ? "Not classifiable until the true risk tier is re-derived — the tier this verdict depended on was detached."
-        : moratoriumBasis
-          ? `Conservative posture derived from the risk tier · confidence ${kbli.baliL4.confidence}.`
-          : `This activity is ${baliBlockClause(kbli.baliL4.status)} · confidence ${kbli.baliL4.confidence}.`,
+        : isAttentionFascia
+          ? `Not among the 18 business fields Bali closed to new PMA licensing since the third week of May 2026; the low/medium-low risk tier named in the Governor's January 2026 request letter does not by itself close this code — verify the applicable tier and zoning on OSS · confidence ${kbli.baliL4.confidence}.`
+          : moratoriumBasis
+            ? `Conservative posture derived from the risk tier · confidence ${kbli.baliL4.confidence}.`
+            : `This activity is ${baliBlockClause(kbli.baliL4.status)}${baliClosureQualifier(kbli.baliL4)} · confidence ${kbli.baliL4.confidence}.`,
     });
   }
 

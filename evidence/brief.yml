@@ -1,59 +1,95 @@
-task_id: kbli-l2-pr-a-vault-adapter
+task_id: b2-5-2-wa-human-handoff
 gear: 2
 l_level: L2
 gate_class: opus
-# Floor for this diff: 2, source `size` (440 added lines: adapter, flags, tests, six one-line
-# fixtures, spec §6). No hot-zone path. Gear 2 declared to match the floor; no pack below Gear 3.
+# Floor for this diff is 2, reached via the SIZE term alone (1018 added / 32 deleted across 10
+# files) — no hot-zone path, no migration, no new dependency. Measured WITH this brief staged:
+# the brief's own churn (~90 lines) leaves the total well under the floor-3 threshold, which is
+# the mistake that sank PR #6602.
 objective: >-
-  PR-A of docs/specs/2026-09-11-kbli-l2-oss-resnapshot-reingest-spec.md: make the KBLI L2
-  risk transform reproducible from a frozen vault snapshot. Adds the pure adapter
-  scripts/kbli_filiera/vault_to_risk_jsonl.py (vault -> the jsonl the transform already reads),
-  --root/--raw flags on scripts/build_kbli_l2_oss_risk.py with defaults equal to today's
-  literals, a machine-readable SUMMARY line, adapter tests, a six-code reproduction test on
-  real July-vault fixtures, and the spec's §6 recording the full-scale rule-4/rule-5 outcome.
+  A client who asks to speak to a person is the highest-intent message this bot ever receives —
+  it is a lead. Today nothing on the Meta Inbox channel detects it: the message falls through to
+  retrieval, abstains, and reaches no human being. Measured 2026-09: 32 of 40 conversations end
+  in an abstain, 4 were picked up by a person. This PR detects the ask in five languages, answers
+  the client in their own language, and notifies a human on two channels — the kita notification
+  bell for the assigned consultant, and email for everyone including a number no client row
+  matches yet.
 constraints:
   - >-
-    No logic change in the transform: flags, derived paths and one SUMMARY print only.
-    apps/backend-rag/scripts/build_kbli_l2_oss_risk.py untouched (its merge is a deploy).
+    No Anthropic per-token door in any form, no new dependency, no migration. The notification
+    table (notification_alerts, migration 071) and the email adapter
+    (/api/notifications/send-email, from=zantara@balizero.com) both already exist on main.
   - >-
-    No data file changes: the canonical corpus, its five copies and the sidecar are
-    byte-identical to origin/main. --apply was run only on /tmp copies.
+    PII is an OUTPUT boundary. The phone number is used ONLY in-process to resolve the consultant.
+    It never appears in the email subject, the email body, the in-app row, or any log line; the
+    client's own words are never transcribed anywhere. The in-app message is a fixed English
+    sentence and the email body a fixed Bahasa Indonesia one, deliberately — a robust
+    "free of identifiers" classifier is out of scope for this size, so when in doubt this omits.
   - >-
-    No network, no credentials: the adapter reads a vault on disk; vaults were never modified
-    (the September vault is chmod a-w with a sha256 manifest).
+    The client's confirmation must survive any notification failure. Both channels are best-effort
+    at their own layer, and the call site in wa_codex_leg.py wraps the whole call again, because
+    the outer attempt() turns an unhandled exception into a text=None fall-off — which would
+    silently swallow the very confirmation this leg exists to send.
+  - >-
+    meta_inbox_threads.human_handling is NOT set. A client who ASKS for a human is not a human who
+    HAS TAKEN the thread; setting it aborts every later generation (aborted_human_takeover,
+    wa_outbox_worker.py:930) and, if nobody arrives, leaves the client in total silence.
 acceptance:
   - text: >-
-      A1: WHEN `python3 -m pytest scripts/kbli_filiera/tests -q` runs SHALL pass, including the
-      adapter determinism/ordering/404/exit-2 tests and the six-code reproduction test that
-      asserts the L2-owned field set equal to the canonical slice.
-    probe: python3 -m pytest scripts/kbli_filiera/tests -q
+      A1 GUILT: WHEN a client writes any of 23 real phrasings across it/en/id/ru/uk — including
+      "I want to talk to a human", "voglio parlare con una persona riguardo alla mia PT PMA" and
+      "saya mau bicara dengan orang" — SHALL match and return a confirmation in that language.
+      The domain veto is INVERTED relative to wa_identity: naming your own case while asking for a
+      human is the most valuable lead there is, and must match rather than be vetoed.
+    probe: "cd apps/backend-rag && .venv/bin/python -m pytest backend/tests/unit/services/test_wa_human_handoff.py -k TestGuilt"
   - text: >-
-      A2 Bites: WHEN the adapter runs over the frozen July vault and the transform dry-runs with
-      --root /tmp/l2/root --raw /tmp/l2/july.jsonl SHALL print one line starting with SUMMARY
-      carrying no_oss_risk=221 and l4_changed=21 (this scripts/ copy; the backend copy gives 0),
-      and the field-level table of an --apply on that /tmp copy (spec §6, measured before this
-      PR was opened) SHALL show 0 codes differing on skala_usaha/kategori_risiko/scope_index
-      and exactly 1 (49213) on the other L2-owned fields, counted on rows common to both sides
-      (20111's 12 new rows are reported on the row-count line).
-    probe: set -o pipefail; python3 scripts/kbli_filiera/vault_to_risk_jsonl.py --vault-root ~/nuzantara-vault --out /tmp/l2/july.jsonl && python3 scripts/build_kbli_l2_oss_risk.py --root /tmp/l2/root --raw /tmp/l2/july.jsonl | grep '^SUMMARY'
+      A2 INNOCENCE: WHEN the message is "humanitarian visa", "how long does PT PMA take?",
+      "sei un umano?" or a third-person question about staff SHALL NOT match. The guard judges
+      whole TOKENS over a normalized window, never a substring — "humanitarian" cannot reach any
+      phrase in the table.
+    probe: "cd apps/backend-rag && .venv/bin/python -m pytest backend/tests/unit/services/test_wa_human_handoff.py -k TestInnocence"
   - text: >-
-      A3: WHEN the transform's source is read SHALL still define ROOT as /tmp/kbli-l2-risk and
-      RAW as /tmp/oss_risk_raw.jsonl and use them as the --root/--raw defaults (grep count 2),
-      so the June run is still reproducible.
-    probe: grep -c 'Path("/tmp/kbli-l2-risk")\|Path("/tmp/oss_risk_raw.jsonl")' scripts/build_kbli_l2_oss_risk.py
+      A3 THE ROW IS ALSO RENDERED: WHEN the module writes a notification_alerts row SHALL be a
+      type the kita bell actually shows. /api/crm/notifications filters on a fixed allow-list, so a
+      new alert_type would otherwise be written and never seen — for a lead, the same outcome as
+      not writing it. The allow-list is now one constant read by both the list and the count query,
+      and the test binds the two constants by ENTITY, not by grepping a SQL literal.
+    probe: "cd apps/backend-rag && .venv/bin/python -m pytest backend/tests/unit/services/test_wa_human_handoff.py -k TestInAppAlert"
+  - text: >-
+      A4 THE PROMISE IS KEPT: WHEN any of the five wa_identity presentations offers the client a
+      human SHALL use wording that match_human_request recognises. Before this PR that line was a
+      promise no code kept; the test walks every presentation and requires the detector to find a
+      request inside the exact sentence it suggests.
+    probe: "cd apps/backend-rag && .venv/bin/python -m pytest backend/tests/unit/services/test_wa_human_handoff.py -k TestPresentationKeepsItsPromise"
+  - text: >-
+      A5 NOTHING ELSE MOVED: WHEN the backend unit suite runs SHALL be 8534 passed with exactly one
+      pre-existing unrelated failure (autonomous_lab/test_consul_native_broker.py,
+      ModuleNotFoundError scripts.conductor), reproduced identically on a clean main checkout.
+    probe: "cd apps/backend-rag && .venv/bin/python -m pytest backend/tests/unit/services/autonomous_lab/test_consul_native_broker.py  # same red on main"
 assumptions:
   - text: >-
-      The vault ruang_lingkup.json has the same response shape the June fetcher stored under
-      "data" ({success,data,meta,code}), so the adapter's records are the transform's native
-      input; shape compatibility is what is proven, not byte identity with the lost June file.
+      notification_alerts.client_id is NOT NULL with an FK to clients, and the bell's own query
+      JOINs clients to resolve the assignee — so an unrecognised number structurally CANNOT have an
+      in-app row. This is why the email is unconditional rather than a fallback: the newest lead is
+      exactly the one no client row matches.
     status: verified
-    probe: "rule-5 recheck — adapter-driven change set equals the raw-vault change set under the same triple definition (181/181 with the pinned triple of spec §6)"
+    probe: "scripts/pg.sh -c '\\d notification_alerts' — client_id integer not null, FK to clients(id)"
   - text: >-
-      jangka_waktu, fiktif_positif and jangka_waktu_source are owned by layers after L2, so
-      their divergence is not a transform defect.
+      The table carries UNIQUE (client_id, alert_type, created_date), so a client asking twice in
+      one day would raise without ON CONFLICT. DO UPDATE rather than DO NOTHING because a second
+      ask means the first went unanswered: the alert returns to unread and rises in the bell.
     status: verified
-    probe: "scripts/enrich_kbli_jangka_waktu.py (2026-06-28) writes jangka_waktu_source; canonical carries it on 4,200 rows of 941 codes"
+    probe: "scripts/pg.sh -c '\\d notification_alerts' — uq_notification_alert_daily UNIQUE (client_id, alert_type, created_date)"
   - text: >-
-      The apps/backend-rag copy of the transform is the one whose L4 logic the canonical reflects.
+      PackageUnbuildable("human_handoff_domain") cannot violate the wa_outbox CHECK constraint on
+      generation_fall_off_reason: unknown sub-reasons fall through to the generic
+      "package_unbuildable" bucket, which the constraint allows. wa_codex_leg short-circuits before
+      the builder is ever reached on this path anyway — the raise is a second line of defense.
     status: verified
-    probe: "full-scale run of both copies on the July jsonl — l4_bali.blocked flips: scripts/ 21, backend 0"
+    probe: "wa_codex_leg.py:268 _UNBUILDABLE_SUB_REASON_MAP has 3 keys; anything else falls to _FALL_OFF_REASON_PREFIX_MAP['unbuildable']"
+  - text: >-
+      The live proof must come from a real phone. /webhook/whatsapp is fail-closed on the
+      X-Hub-Signature-256 HMAC and WHATSAPP_APP_SECRET is a Fly secret, absent on Pro (presence
+      probe only, value never read) — so no test inbound can be injected from this machine.
+    status: verified
+    probe: "presence probe over ~/.nuzantara-secrets.env and apps/backend-rag/.env: absent_local for all four WhatsApp vars"

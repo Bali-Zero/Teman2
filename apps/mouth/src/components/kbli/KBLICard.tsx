@@ -87,7 +87,10 @@ export function KBLICard({ code, showTransition = false }: KBLICardProps) {
         {code.baliL4?.status && (
           <BaliStatusBadge
             status={code.baliL4.status}
+            confidence={code.baliL4.confidence}
+            needsReview={code.baliL4.needsReview}
             pmaStatus={pmaVerified ? code.pma.status : "unknown"}
+            scope={code.baliL4.closure?.scopeQualifier}
             size="sm"
           />
         )}
@@ -105,6 +108,7 @@ export function KBLICard({ code, showTransition = false }: KBLICardProps) {
           capSpecial={code.pma.capSpecial}
           capVerified={code.pma.capVerified}
           baliBlocked={code.baliL4?.blocked === true}
+          baliAttentionFascia={code.baliL4?.status === "ATTENZIONE_FASCIA_BALI"}
           size="sm"
         />
         {code.licensing[0] && (

@@ -148,4 +148,69 @@ describe("UploadFlow", () => {
 
     expect(onConfirmed).toHaveBeenCalledWith({ full_name: "JOHN DOE" });
   });
+
+  it("always shows a manual-entry link to checkout, even before any photo is picked", () => {
+    render(<UploadFlow resultId="result-1" />);
+
+    const link = screen.getByRole("link", {
+      name: /type your passport details instead/i,
+    });
+    expect(link).toHaveAttribute("href", "/visa/voa/checkout/result-1");
+  });
+
+  it("renders the manual-entry link a second time, prominently, in a document-store-down error", async () => {
+    mockFetch.mockResolvedValueOnce(
+      jsonResponse(503, {
+        code: "PERSISTENCE_POLICY_UNAVAILABLE",
+        retryable: true,
+        message_key: "garuda_voa.error.persistence_policy_unavailable",
+      }),
+    );
+
+    render(<UploadFlow resultId="result-1" />);
+    const input = screen.getByLabelText(
+      "Upload passport photo",
+    ) as HTMLInputElement;
+    const file = new File([new Uint8Array(10)], "passport.jpg", {
+      type: "image/jpeg",
+    });
+
+    await userEvent.upload(input, file);
+
+    await waitFor(() =>
+      expect(
+        screen.getAllByRole("link", {
+          name: /type your passport details instead/i,
+        }),
+      ).toHaveLength(2),
+    );
+  });
+
+  it("does not render the manual-entry link twice for an error unrelated to the document store", async () => {
+    mockFetch.mockResolvedValueOnce(
+      jsonResponse(400, {
+        code: "UNSUPPORTED_DOCUMENT_MEDIA_TYPE",
+        retryable: false,
+        message_key: "garuda_voa.error.unsupported_document_media_type",
+      }),
+    );
+
+    render(<UploadFlow resultId="result-1" />);
+    const input = screen.getByLabelText(
+      "Upload passport photo",
+    ) as HTMLInputElement;
+    const file = new File([new Uint8Array(10)], "passport.jpg", {
+      type: "image/jpeg",
+    });
+
+    await userEvent.upload(input, file);
+
+    await waitFor(() =>
+      expect(
+        screen.getAllByRole("link", {
+          name: /type your passport details instead/i,
+        }),
+      ).toHaveLength(1),
+    );
+  });
 });

@@ -6,6 +6,7 @@ import {
   disclosePmaInfo,
   formatPmaOwnership,
   hasPublishablePmaCap,
+  isSourcedBaliClosure,
 } from "./kbli-pma-disclosure";
 import type { KBLIRawCode } from "./kbli-types";
 
@@ -244,5 +245,270 @@ describe("atomic PMA and Bali disclosure", () => {
       reason: "Registrable in Bali",
     });
     expect(discloseBaliL4(raw, false)).toBeUndefined();
+  });
+});
+
+// =============================================================================
+// ATTENZIONE_FASCIA_BALI (added 2026-09-15, W-J B1 overlay) — GUILT + INNOCENCE
+// =============================================================================
+describe("discloseBaliL4 — ATTENZIONE_FASCIA_BALI", () => {
+  it("INNOCENCE: the new status is allowed through, not dropped like an unknown one", () => {
+    const raw = located({
+      l4_bali: {
+        status: "ATTENZIONE_FASCIA_BALI",
+        blocked: false,
+        needs_review: true,
+        confidence: "MEDIUM",
+        reason: "not on the closure list",
+      },
+    });
+    expect(discloseBaliL4(raw, true)).toMatchObject({
+      status: "ATTENZIONE_FASCIA_BALI",
+      blocked: false,
+      needsReview: true,
+    });
+  });
+
+  it("GUILT: a status one character off ATTENZIONE_FASCIA_BALI is still dropped", () => {
+    const raw = located({
+      l4_bali: {
+        status: "ATTENZIONE_FASCIA_BALI_X",
+        blocked: false,
+        needs_review: false,
+        reason: "must not escape",
+      },
+    });
+    expect(discloseBaliL4(raw, true)).toBeUndefined();
+  });
+});
+
+// =============================================================================
+// l4_bali.closure (CHIUSO_BALI applied-closure citation) — the ONLY place a
+// URL is validated, so a bad one is caught here rather than trusted by a
+// component downstream.
+// =============================================================================
+describe("discloseBaliL4 — closure citation", () => {
+  function withClosure(closure: Record<string, unknown>) {
+    return located({
+      l4_bali: {
+        status: "CHIUSO_BALI",
+        blocked: true,
+        needs_review: false,
+        confidence: "HIGH",
+        reason: "closed to new PMA licensing",
+        closure,
+      },
+    });
+  }
+
+  it("INNOCENCE: a well-formed closure survives with its http(s) URLs intact", () => {
+    const raw = withClosure({
+      instrument: "Pemprov Bali press release",
+      published: "2026-07-24",
+      url: "https://www.baliprov.go.id/web/gubernur-koster-batasi-akses-oss",
+      list_source: "ANTARA Bali",
+      list_url: "https://bali.antaranews.com/berita/410161",
+      effective: "third week of May 2026",
+      ancestors_2020: ["55110", "55120"],
+      scope_qualifier: null,
+    });
+    const disclosed = discloseBaliL4(raw, true);
+    expect(disclosed?.closure).toMatchObject({
+      instrument: "Pemprov Bali press release",
+      url: "https://www.baliprov.go.id/web/gubernur-koster-batasi-akses-oss",
+      listSource: "ANTARA Bali",
+      listUrl: "https://bali.antaranews.com/berita/410161",
+      ancestors2020: ["55110", "55120"],
+    });
+  });
+
+  it("GUILT: a non-http(s) url and list_url are rejected, never rendered as a link", () => {
+    const raw = withClosure({
+      instrument: "Pemprov Bali press release",
+      url: "javascript:alert(1)",
+      list_source: "ANTARA Bali",
+      list_url: "ftp://bali.antaranews.com/berita/410161",
+    });
+    const disclosed = discloseBaliL4(raw, true);
+    expect(disclosed?.closure?.url).toBeNull();
+    expect(disclosed?.closure?.listUrl).toBeNull();
+    // The text fields survive even when their URL is rejected.
+    expect(disclosed?.closure?.instrument).toBe("Pemprov Bali press release");
+    expect(disclosed?.closure?.listSource).toBe("ANTARA Bali");
+  });
+
+  it("INNOCENCE: a record with no closure object still discloses normally", () => {
+    const raw = located({
+      l4_bali: {
+        status: "CHIUSO_BALI",
+        blocked: true,
+        needs_review: false,
+        confidence: "HIGH",
+        reason: "closed to new PMA licensing",
+      },
+    });
+    const disclosed = discloseBaliL4(raw, true);
+    expect(disclosed?.status).toBe("CHIUSO_BALI");
+    expect(disclosed?.closure).toBeUndefined();
+  });
+});
+
+// =============================================================================
+// A Bali APPLIED closure is self-sufficient evidence — disclosed even when
+// the NATIONAL PMA verdict is not located (added 2026-09-16, W-J B1
+// disclose). Every OTHER Bali status on an unlocated record stays hidden
+// exactly as before: GUILT proves the one exception, INNOCENCE (a-g) proves
+// the fail-closed default still holds for everything else.
+// =============================================================================
+describe("discloseBaliL4 — a sourced Bali closure discloses even when the national verdict is not located", () => {
+  function chiusoBali(l4Overrides: Record<string, unknown> = {}) {
+    return located({
+      l4_bali: {
+        status: "CHIUSO_BALI",
+        blocked: true,
+        needs_review: false,
+        confidence: "HIGH",
+        reason: "closed to new PMA licensing",
+        closure: {
+          instrument: "Pemprov Bali press release",
+          url: "https://www.baliprov.go.id/web/gubernur-koster-batasi-akses-oss",
+        },
+        ...l4Overrides,
+      },
+    });
+  }
+
+  it("GUILT: CHIUSO_BALI + blocked + a sourced http(s) closure discloses with pmaVerdictLocated=false", () => {
+    const disclosed = discloseBaliL4(chiusoBali(), false);
+    expect(disclosed).toMatchObject({ status: "CHIUSO_BALI", blocked: true });
+    expect(disclosed?.closure?.url).toBe(
+      "https://www.baliprov.go.id/web/gubernur-koster-batasi-akses-oss",
+    );
+  });
+
+  it("also discloses when the national verdict IS located (unchanged path)", () => {
+    expect(discloseBaliL4(chiusoBali(), true)).toMatchObject({
+      status: "CHIUSO_BALI",
+      blocked: true,
+    });
+  });
+
+  it("INNOCENCE (a): ATTENZIONE_FASCIA_BALI stays hidden when unlocated", () => {
+    const raw = located({
+      l4_bali: {
+        status: "ATTENZIONE_FASCIA_BALI",
+        blocked: false,
+        needs_review: true,
+        confidence: "MEDIUM",
+        reason: "not on the closure list",
+      },
+    });
+    expect(discloseBaliL4(raw, false)).toBeUndefined();
+  });
+
+  it("INNOCENCE (b): OK_or_HIGHER_RISK stays hidden when unlocated", () => {
+    expect(discloseBaliL4(located(), false)).toBeUndefined();
+  });
+
+  it("INNOCENCE (c): a blocked TERTUTUP stays hidden when unlocated", () => {
+    const raw = located({
+      l4_bali: {
+        status: "TERTUTUP",
+        blocked: true,
+        needs_review: false,
+        confidence: "HIGH",
+        reason: "closed to a PT PMA by an ownership restriction",
+      },
+    });
+    expect(discloseBaliL4(raw, false)).toBeUndefined();
+  });
+
+  it("INNOCENCE (d): a blocked CHIUSO_MORATORIA_BALI stays hidden when unlocated", () => {
+    const raw = located({
+      l4_bali: {
+        status: "CHIUSO_MORATORIA_BALI",
+        blocked: true,
+        needs_review: false,
+        confidence: "HIGH",
+        reason: "OSS risk at scale Besar is Rendah/Menengah-Rendah",
+      },
+    });
+    expect(discloseBaliL4(raw, false)).toBeUndefined();
+  });
+
+  it("INNOCENCE (e): CHIUSO_BALI with a javascript: url stays hidden when unlocated", () => {
+    const raw = chiusoBali({
+      closure: {
+        instrument: "Pemprov Bali press release",
+        url: "javascript:alert(1)",
+      },
+    });
+    expect(discloseBaliL4(raw, false)).toBeUndefined();
+  });
+
+  it("INNOCENCE (f): CHIUSO_BALI with no closure object stays hidden when unlocated", () => {
+    const raw = located({
+      l4_bali: {
+        status: "CHIUSO_BALI",
+        blocked: true,
+        needs_review: false,
+        confidence: "HIGH",
+        reason: "closed to new PMA licensing",
+      },
+    });
+    expect(discloseBaliL4(raw, false)).toBeUndefined();
+  });
+
+  it("INNOCENCE (g): CHIUSO_BALI with blocked false stays hidden when unlocated", () => {
+    expect(
+      discloseBaliL4(chiusoBali({ blocked: false }), false),
+    ).toBeUndefined();
+  });
+});
+
+describe("isSourcedBaliClosure", () => {
+  it("true only for CHIUSO_BALI + blocked + a non-empty closure.url string", () => {
+    expect(
+      isSourcedBaliClosure({
+        status: "CHIUSO_BALI",
+        blocked: true,
+        closure: { url: "https://www.baliprov.go.id/x" },
+      }),
+    ).toBe(true);
+  });
+
+  it("false for a null/undefined/malformed input, never throws", () => {
+    expect(isSourcedBaliClosure(null)).toBe(false);
+    expect(isSourcedBaliClosure(undefined)).toBe(false);
+    expect(isSourcedBaliClosure({})).toBe(false);
+    expect(isSourcedBaliClosure({ status: "CHIUSO_BALI", blocked: true })).toBe(
+      false,
+    );
+    expect(
+      isSourcedBaliClosure({
+        status: "CHIUSO_BALI",
+        blocked: true,
+        closure: { url: "" },
+      }),
+    ).toBe(false);
+    expect(
+      isSourcedBaliClosure({
+        status: "TERTUTUP",
+        blocked: true,
+        closure: { url: "https://www.baliprov.go.id/x" },
+      }),
+    ).toBe(false);
+  });
+
+  // Review F6: the function re-validates http(s)-only ITSELF rather than
+  // trusting a caller that skipped `discloseBaliL4`'s own `publicUrl` gate.
+  it("false for a non-http(s) url, even with an otherwise-valid tuple", () => {
+    expect(
+      isSourcedBaliClosure({
+        status: "CHIUSO_BALI",
+        blocked: true,
+        closure: { url: "javascript:alert(1)" },
+      }),
+    ).toBe(false);
   });
 });

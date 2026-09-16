@@ -62,9 +62,12 @@ export function KBLIPanelCodeDetail({
         {detail.bali.status && (
           <BaliStatusBadge
             status={detail.bali.status}
+            confidence={detail.bali.confidence}
+            needsReview={detail.bali.needsReview}
             pmaStatus={
               detail.pma.verdictVerified ? detail.pma.status : "unknown"
             }
+            scope={detail.bali.scopeQualifier}
             size="sm"
           />
         )}
@@ -75,6 +78,7 @@ export function KBLIPanelCodeDetail({
           capSpecial={detail.pma.capSpecial}
           capVerified={detail.pma.capVerified}
           baliBlocked={detail.bali.blocked}
+          baliAttentionFascia={detail.bali.status === "ATTENZIONE_FASCIA_BALI"}
           size="sm"
         />
         {detail.riskCategory && (

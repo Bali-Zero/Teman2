@@ -1,0 +1,19 @@
+task: >-
+  SAETTA-20260915 / W-H PR-5 — the twelve KBLI codes OSS lists without a large-scale row
+  (38110 55202 55300 56102 56304 56306 70201 73300 74199 79901 79902 86995) are never published
+  as a 0% PMA verdict: l4_bali.reason carries dossier Template H r2 (confidence MEDIUM,
+  needs_review), and the FAQ PMA answer shows a "not a national 0% finding — confirm in OSS"
+  notice derived from the record's own scales. status/blocked unchanged (owner decision D5g).
+lane: mouth/kbli-wh-pr5-v2-twelve-hold
+machine: M5
+date: 2026-09-15
+gear: 2
+gear_reason: >-
+  Deterministic floor 2 (size, no hot-zone path). Client-facing KBLI data + one mouth lib.
+acceptance:
+  - probe: python3 -m pytest scripts/kbli_filiera/tests/ -q
+    expect: 0 failed
+  - probe: cd apps/mouth && npx vitest run src/lib/kbli-pma-review.test.ts src/lib/kbli-faq-hold-review.test.ts src/lib/kbli-prose-pins.test.ts
+    expect: all passed
+  - probe: curl -sL https://balizero.com/kbli/73300 after deploy
+    expect: FAQ says "Not a national 0% finding"; no "Open", "100%" or "0%" PMA verdict on the page

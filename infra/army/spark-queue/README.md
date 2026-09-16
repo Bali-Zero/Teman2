@@ -1,9 +1,13 @@
 # Spark lane queue
 
-Task backlog for `scripts/army/spark_lane.sh` — the standing lane that spends
-the otherwise-idle `gpt-5.3-codex-spark` weekly bucket (separate from the
-main Codex bucket, PONG-verified 2026-08-14) on **read-only** analysis of
-this repo, ticking every 2h on Pro.
+Task backlog for `scripts/army/spark_lane.sh` — the standing lane that runs
+**read-only** analysis of this repo, ticking every 2h on Pro. State as of
+2026-09-16 (Zero, "sposta su luna"): the lane runs on `gpt-5.6-luna`, not
+the originally-idle `gpt-5.3-codex-spark` weekly bucket (PONG-verified
+2026-08-14) — every codex-spark slug started returning HTTP 400 "not
+supported when using Codex with a ChatGPT account" on every account/host as
+of 2026-09-15/16. Luna draws on the primary ChatGPT bucket, not a separate
+idle one; see `scripts/army/spark_lane.sh`'s header for the full amendment.
 
 ## Format
 

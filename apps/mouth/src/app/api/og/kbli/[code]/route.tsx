@@ -1,7 +1,7 @@
 import { ImageResponse } from "next/og";
 import type { NextRequest } from "next/server";
 import { getCode } from "@/lib/kbli-data";
-import { isPmaVerdictVerified } from "@/lib/kbli-provenance";
+import { statusChip } from "@/lib/kbli-og-status-chip";
 import {
   getSectionVisual,
   codeFingerprint,
@@ -31,38 +31,6 @@ export const runtime = "nodejs";
 
 const WIDTH = 1200;
 const HEIGHT = 630;
-
-function statusChip(kbli: NonNullable<ReturnType<typeof getCode>>): {
-  label: string;
-  color: string;
-} {
-  if (!isPmaVerdictVerified(kbli)) {
-    return { label: "PMA: VERIFY", color: "#8f96a3" };
-  }
-  if (kbli.baliL4?.blocked) {
-    return { label: "BALI: BLOCKED", color: "#e0645a" };
-  }
-  // GARUDA-FILIERA Fase-1 cure #4 (2026-07-17): a code whose Bali risk tier
-  // was carried over from a different activity (code-number collision) is
-  // neither blocked nor confirmed open — a neutral verify chip, not the
-  // green "OPEN" the pma.status fallthrough below would otherwise render.
-  if (kbli.baliL4?.status === "NON_CLASSIFICABILE") {
-    return { label: "BALI: VERIFY", color: "#c9a227" };
-  }
-  switch (kbli.pma.status) {
-    case "open":
-      return { label: "OPEN", color: "#5aab6e" };
-    case "restricted":
-      return { label: "RESTRICTED", color: "#c9a227" };
-    case "closed":
-      return { label: "CLOSED", color: "#e0645a" };
-    default:
-      // A complete provenance tuple does not make an unrecognised vocabulary
-      // token mean "open". Keep the social preview neutral rather than turning
-      // future/legacy status values into a foreign-ownership permission.
-      return { label: "PMA: VERIFY", color: "#8f96a3" };
-  }
-}
 
 /**
  * One fingerprint lane: a chart-like bar whose height encodes one digit of

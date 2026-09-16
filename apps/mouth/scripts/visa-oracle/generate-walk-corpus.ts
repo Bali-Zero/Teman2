@@ -786,6 +786,26 @@ export function enumerateScenarios(): Scenario[] {
       sponsor_government_invitation: "no",
     },
   });
+  // E23V-DEFECT (seq-22): the same trade-office branch, but the applicant's
+  // employer is the foreign trade office itself — genuinely NOT an
+  // Indonesian entity, the fact `el.e23v.trade-office`'s own qualification
+  // (`sponsor.trade_office`) already establishes. `work_payer` is asked on
+  // every `work`-category walk regardless of `sponsor_category`
+  // (`FIXED_CATEGORY_QUESTIONS.work`), so this branch is reachable today; no
+  // existing walk answers it "no" here, which is exactly why
+  // `hf.employment-without-indonesian-sponsor` (fold_pack_seq21.py) sweeping
+  // E23V into its EXCLUDE list went unnoticed — see
+  // `fold_pack_seq22.py` for the cure.
+  scenarios.push({
+    label: "offshore/work/sponsor_government/trade_office_only/employer_no",
+    overrides: {
+      ...base,
+      category: "work",
+      sponsor_category: "GOVERNMENT",
+      sponsor_government_invitation: "no",
+      work_payer: "no",
+    },
+  });
   scenarios.push({
     label: "offshore/work/sponsor_government/neither",
     overrides: {

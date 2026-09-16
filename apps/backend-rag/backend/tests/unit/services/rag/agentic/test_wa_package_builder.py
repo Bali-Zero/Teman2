@@ -409,6 +409,42 @@ class TestUnbuildableGate:
 
 
 # ============================================================================
+# 3ter. IDENTITY authority (B2.5-1b, second authority, same order as greeting)
+# ============================================================================
+
+
+class TestIdentityAuthority:
+    """`wa_identity.match_identity_question` is the second authority, checked
+    right after `match_greeting` and by the same reasoning: a question about
+    the assistant itself has no retrieval answer, so it is never an
+    unbuildable package — it is a scripted turn, short-circuited by
+    `wa_codex_leg` before this function is ever called on that query. This
+    class is the second line of defense for any other caller."""
+
+    async def test_identity_query_raises_unbuildable(self) -> None:
+        with pytest.raises(PackageUnbuildable) as exc_info:
+            await build_context_package(
+                query="ciao tu sei Zantara?",
+                history=[],
+                thread_epoch=0,
+                retriever=FakeRetriever(),
+            )
+        assert exc_info.value.reason == "identity_domain"
+
+    async def test_a_case_question_with_an_identity_phrase_still_builds(self) -> None:
+        """The domain-veto half: "cosa puoi fare per la mia PT PMA?" contains
+        the identity phrase "cosa puoi fare" but is a real case question —
+        it must build exactly like any other visa query, never raise."""
+        package = await build_context_package(
+            query="cosa puoi fare per la mia PT PMA?",
+            history=[],
+            thread_epoch=0,
+            retriever=_visa_retriever(),
+        )
+        assert isinstance(package, ContextPackage)
+
+
+# ============================================================================
 # 3bis. GREETING authority (B2.5 PR-3, ruling d, measured defect D4)
 # ============================================================================
 
@@ -1101,6 +1137,7 @@ class TestGeneralFallbackNeverReroutesRealQuestions:
 
     async def test_effective_domain_diverges_from_planner_only_on_greeting(self) -> None:
         from backend.services.integrations.wa_greeting import match_greeting
+        from backend.services.integrations.wa_human_handoff import match_human_request
         from backend.services.rag.agentic.query_planner import QueryPlanner
 
         planner = QueryPlanner()
@@ -1122,13 +1159,24 @@ class TestGeneralFallbackNeverReroutesRealQuestions:
             planner_domain = planner.plan(text).domain.value
             effective = await self._effective_domain(text)
             mg = match_greeting(text)
+            mhr = match_human_request(text)
 
             if effective == planner_domain:
                 continue
-            # Any divergence — either the override to GENERAL, or a raised
-            # greeting_domain that the planner's raw domain doesn't spell —
-            # is only legitimate when the planner itself called GREETING.
             divergences += 1
+            # B2.5-2: a human-handoff request short-circuits `build_context_
+            # package` unconditionally (same authority family as greeting,
+            # but never GREETING-gated) — legitimate whatever the planner's
+            # raw domain was, unlike the GREETING-correction case below.
+            if effective == "unbuildable:human_handoff_domain":
+                assert mhr is not None, (
+                    f"{text!r}: raised human_handoff_domain but match_human_request is None"
+                )
+                continue
+            # Any OTHER divergence — either the override to GENERAL, or a
+            # raised greeting_domain that the planner's raw domain doesn't
+            # spell — is only legitimate when the planner itself called
+            # GREETING.
             assert planner_domain == "greeting", (
                 f"{text!r}: effective domain {effective!r} diverged from a "
                 f"NON-greeting planner domain {planner_domain!r} — the "
@@ -1139,7 +1187,7 @@ class TestGeneralFallbackNeverReroutesRealQuestions:
                     f"{text!r}: raised greeting_domain but match_greeting is None"
                 )
             else:
-                assert effective == "general" and mg is None, (
+                assert effective == "general" and mg is None and mhr is None, (
                     f"{text!r}: expected the GENERAL override with no scripted "
                     f"greeting match, got effective={effective!r} match_greeting={mg!r}"
                 )

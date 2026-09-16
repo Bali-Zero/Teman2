@@ -1,0 +1,302 @@
+brief_ref: evidence/brief.yml
+plan_ref: >-
+  "PR on agent/air-m5/infra/secondo-livello-ci-v3 — the CI wiring deliverable of mission
+  SECONDO-LIVELLO-20260915 (brief ~/BATTAGLIA-20260911/8-SECONDO-LIVELLO/BRIEF-20260915.md).
+  Governing doctrine: docs/architecture/dual-consul/army-map.md §1ter, shipped in #6601.
+  Third attempt: #6606 was BLOCKED by its own gate for a false seat_override, #6607 died on a real
+  defect this PR fixes — the new workflow was not registered with the repo's failure watcher."
+lanes:
+  - lane: workflows-tests-ci-build
+    role: build
+    seat: >-
+      claude-opus-5 (the mission's Dux and release owner — wrote the workflow, ran every step of the
+      job locally before opening, and disposed of every council finding)
+  - lane: workflows-tests-ci-council-titolare
+    role: review
+    seat: >-
+      codex-gpt-5.6-sol (COUNCIL_REVIEW_SEATS_TITOLARI, convened on the full candidate diff,
+      verdict NO-GO with 2 findings, both applied — see dissent)
+  - lane: workflows-tests-ci-council-riserva
+    role: review
+    seat: >-
+      agy-gemini-3.1-pro (COUNCIL_REVIEW_SEATS_FALLBACK, convened independently on the same diff,
+      verdict NO-GO with 1 finding, refuted by the repository and by a live CI run — see dissent
+      and seat_fallback_reason)
+  - lane: workflows-tests-ci-gate
+    role: review
+    seat: >-
+      a FRESH claude-opus-5 xhigh session outside the contribution chain, per army-map.md §1 — it
+      signs and never arms or alters the candidate
+pii_scan: clean
+council_run: journal.jsonl
+seat_fallback_reason: >-
+  ONE RESERVE COUNTS TOWARD THIS QUORUM: agy-gemini-3.1-pro, substituting for the two titolari
+  below. Both were probed in the session that wrote this pack, minutes before the council was
+  convened, and both are down for a reason that is a clock rather than an effort.
+  kimi-code/k3 — DEAD. `kimi -p "reply pong"` returns `provider.auth_error: 403 You've reached your
+  monthly usage limit for this billing cycle`, and the quota refreshes on the next billing cycle.
+  tp1-qwen3.8-max — DEAD. `python3 scripts/tp1_call.py --model qwen3.8-max -p "reply pong"` returns
+  HTTP 429 `insufficient_quota`, "Your token-plan 1-week quota has been exhausted. The quota will
+  reset at 09-18 08:39:00 UTC."
+  codex-gpt-5.6-sol — ALIVE, and it was seated as a titolare, not substituted: `codex exec -m
+  gpt-5.6-sol "reply with the single word: pong"` returns pong on exit 0. The reserve fills the
+  SECOND chair only.
+  WHY THIS PARAGRAPH EXISTS AT ALL, stated because the predecessors got it wrong twice: #6606
+  declared all three titolari dead, which was false about sol and its gate caught it. #6607 then
+  carried a `seat_override` claiming the quorum was unreachable with three seats — and the roster
+  has held SIX since #5569, three titolari plus this reserve bench. The release owner refuted that
+  gate finding and the refutation was itself false: it quoted a 3-tuple read from a working
+  checkout 161 commits behind origin/main, which is cicatrix #1. The quorum was reachable the whole
+  time, and this pack reaches it instead of overriding it. There is no seat_override in this pack.
+seat_diversity: satisfied
+seat_diversity_note: >-
+  "Three families sit on this diff and none of them is the builder's. The builder is Anthropic
+  (claude-opus-5); the titolare council seat is OpenAI (codex-gpt-5.6-sol); the reserve is Google
+  (agy-gemini-3.1-pro). That is the W100 cross-family pairing twice over, and it replaces a note on
+  the predecessor PR that claimed codex was unavailable on M5 — false, and contradicted by the very
+  override it sat beside. Codex was reachable then and is reachable now, probed both times."
+diff:
+  net_lines: >-
+    5 files, +546/-0, measured by `git diff --cached --numstat` on the FINAL staged tree with this
+    pack in it, and re-measured after the last edit to any file until the figure stopped moving.
+    Two .github/workflows/ files — one new, one existing gaining a single line — plus this pack,
+    its brief and the council journal. Zero source code, zero application behaviour, zero data.
+    #6606 narrated a figure measured before its last edits and CI caught the discrepancy; that is
+    why this sentence describes WHEN it was measured and not only what it says.
+  behaviour_change: >-
+    A new GitHub Actions job runs on any PR touching infra/workflows/, and on any push to main
+    touching it. It executes every *-contract*.mjs in infra/workflows/tests/, the behavioural
+    runner suite, and a --dry-run boot of the standalone runner. The one line added to
+    main-push-failure-watch.yml makes a failure of that job on main reach the watcher's alert path.
+    Nothing in the repository's runtime changes. The job is NOT added to branch-protection
+    required_status_checks by this PR, so its first effect on a PR is advisory.
+receipts:
+  - claim: >-
+      THE DEFECT THAT KILLED #6607 — the new workflow was not registered with the repo's failure
+      watcher, and this PR fixes it. Both halves measured: green with the line, red without it.
+    cmd: >-
+      python3 scripts/check_watcher_coverage.py; then the same with the line deleted from
+      main-push-failure-watch.yml, and restored immediately after
+    result: >-
+      WITH the line, exit 0, "all 119 live workflow(s) covered". WITHOUT it, exit 1, "✗
+      `infra/workflows contract tests` (workflows-tests.yml) is not covered by
+      main-push-failure-watch.yml" — the exact string CI printed on #6607.
+    exit: 0
+    ts: 2026-09-15T19:05Z
+    seat: session (M5)
+  - claim: >-
+      THE BITES OBSERVATION, and it is a real run rather than a promise about a future one: the
+      identical job already executed in CI on the predecessor PR #6607 and all three of its test
+      steps reported real results.
+    cmd: gh run view --job 104518590037 --log | grep -E "PASS SUMMARY|15/15|promoted"
+    result: >-
+      workflows-contract-tests, pass, 32s. Log: "15/15 passed" (kbli certification contract),
+      "PASS SUMMARY: 12/12 second-army contract tests passed", "PASS SUMMARY: 5/5 run-second-army
+      behavioural tests passed", and the runner boot printing promoted:false, built by seat luna
+      (openai), verified by seat sonnet (anthropic) — the ruled direction, in CI.
+    exit: 0
+    ts: 2026-09-15T19:02Z
+    seat: session (M5)
+  - claim: >-
+      Deterministic gear floor recomputed from THIS PR's actual changed-file list is 3, source
+      `path` — matching the declared gear
+    cmd: >-
+      git diff --cached --name-only > /tmp/cf-v3.txt && git diff --cached --numstat >
+      /tmp/ns-v3.txt && python3 scripts/evidence_pack_lint.py --print-floor --changed-files-file
+      /tmp/cf-v3.txt --numstat-file /tmp/ns-v3.txt && python3 scripts/evidence_pack_lint.py
+      --print-floor-source --changed-files-file /tmp/cf-v3.txt --numstat-file /tmp/ns-v3.txt
+    result: 3 / path (.github/workflows/* is hot-zone; the diff is far below the size threshold, so the size term is irrelevant)
+    exit: 0
+    ts: 2026-09-15T19:40Z
+    seat: session (M5)
+  - claim: >-
+      THE CENTRAL RECEIPT — nothing in .github/workflows/ ran infra/workflows/tests/ before this
+      file, which is the entire justification for the PR
+    cmd: git grep -l "infra/workflows" origin/main -- .github/workflows/
+    result: >-
+      no match, exit 1, across 120 workflow files. test-kbli-certification-contract.mjs has
+      therefore never executed in CI since it was written; it was run by hand or not at all.
+    exit: 1
+    ts: 2026-09-15T18:05Z
+    seat: session (M5)
+  - claim: >-
+      THE RISK THIS PR CARRIES — the pre-existing suite this workflow arms is GREEN today, so
+      landing it does not block every future infra/workflows/ PR
+    cmd: node infra/workflows/tests/test-kbli-certification-contract.mjs
+    result: 15/15 passed
+    exit: 0
+    ts: 2026-09-15T19:00Z
+    seat: session (M5)
+  - claim: >-
+      Every command the job will run passes locally on THIS branch's base, after the council's
+      fixes — the glob step, the behavioural step and the runner boot
+    cmd: >-
+      node infra/workflows/tests/test-kbli-certification-contract.mjs && node
+      infra/workflows/tests/test-second-army-contract.mjs && node
+      infra/workflows/tests/test-run-second-army.mjs && node infra/workflows/run-second-army.mjs
+      --args-file /tmp/ci-smoke-args.json --dry-run
+    result: >-
+      15/15 · 13/13 · 5/5 · runner boot exit 0 returning promoted:false, built by luna (openai, the
+      inferior roster's first seat under the dry-run door), verified by sonnet (the Dux). Thirteen,
+      not the twelve an earlier draft of this receipt said: #6608 merged to main while this branch
+      was open and the rebase brought its thirteenth test in, so the figure was re-measured on the
+      rebased tree rather than carried over.
+    exit: 0
+    ts: 2026-09-15T19:01Z
+    seat: session (M5)
+  - claim: >-
+      Both workflow files pass the repo's own workflow linter after the council's fixes were
+      applied
+    cmd: actionlint .github/workflows/workflows-tests.yml .github/workflows/main-push-failure-watch.yml
+    result: no output, exit 0
+    exit: 0
+    ts: 2026-09-15T19:35Z
+    seat: session (M5)
+  - claim: >-
+      actions/checkout@v7 is this repository's own pin and resolves on the runner — the reserve
+      seat's contrary BLOCKER is stale model knowledge, refuted twice over
+    cmd: >-
+      grep -rho "actions/checkout@v[0-9]*" .github/workflows/ | sort | uniq -c, and the #6607 job
+      log's action-download line
+    result: >-
+      121 workflows pin @v7 against 1 pinning @v4, and the live run resolved it: "Download action
+      repository 'actions/checkout@v7' (SHA: 3d3c42e5aac5ba805825da76410c181273ba90b1)"
+    exit: 0
+    ts: 2026-09-15T19:26Z
+    seat: session (M5)
+  - claim: >-
+      A1 — the workflow parses as valid YAML with exactly one job and five steps, after the
+      council's two fixes added conditions to two of them
+    cmd: >-
+      python3 -c "import yaml;d=yaml.safe_load(open('.github/workflows/workflows-tests.yml'));print(sorted(d['jobs'].keys()),
+      len(d['jobs']['workflows-contract-tests']['steps']))"
+    result: "['workflows-contract-tests'] 5"
+    exit: 0
+    ts: 2026-09-15T19:45Z
+    seat: session (M5)
+dissent:
+  - seat: codex-gpt-5.6-sol (titolare council seat, convened 2026-09-15T19:18Z, verdict NO-GO)
+    objection: >-
+      "The aggregate-failure fix is incomplete: a nonzero exit from the contract-suite step causes
+      Actions to skip both Behavioural runner tests and Runner boots in --dry-run, neither of which
+      has an always() condition."
+    status: CONFIRMED
+    disposition: >-
+      ACCEPTED AND APPLIED. Both later steps now carry `if: always()`. This is the sharpest kind of
+      finding: the aggregate loop was itself a fix for fail-fast hiding information, and the seat
+      saw that the same flaw survived one level up, between steps instead of within one. A reader
+      with a broken contract now still learns whether the runner boots.
+  - seat: codex-gpt-5.6-sol (titolare council seat, convened 2026-09-15T19:18Z, verdict NO-GO)
+    objection: >-
+      "The comment claiming the job needs 'no credential' remains false: actions/checkout still
+      receives GITHUB_TOKEN, and persist-credentials:false prevents persistence without eliminating
+      credential use."
+    status: CONFIRMED
+    disposition: >-
+      ACCEPTED AND APPLIED. The header now says the narrower true thing — no model credential and
+      no repository secret, a read-only token that checkout does not persist — and names the seat
+      that caught it. Note this is the SECOND time a council seat has corrected this same sentence:
+      the first correction (permissions + persist-credentials) fixed the mechanism and left the
+      claim overstated. A sentence that keeps needing correction is worth writing down.
+  - seat: codex-gpt-5.6-sol (titolare council seat)
+    objection: >-
+      "Verification boundary: from the diff alone I could not verify the referenced action versions
+      exist, nor inspect the Node suites and runner to confirm their assertions, imports, network
+      behaviour and dry-run semantics."
+    status: PLAUSIBLE
+    disposition: >-
+      ACCEPTED AS STATED, and recorded because a reviewer that names the limit of its own evidence
+      is worth more than one that does not. The release owner ran all four suites and the boot on
+      M5, and the #6607 CI run covers the Node 20 runner path — both are in receipts above.
+  - seat: agy-gemini-3.1-pro (reserve council seat, convened 2026-09-15T19:24Z, verdict NO-GO)
+    objection: >-
+      "BLOCKER: actions/checkout@v7 does not exist — the current latest major is v4 — so the runner
+      will fail to download the action and abort the job."
+    status: RETRACTED
+    disposition: >-
+      REFUTED, and by a stronger measurement than last time. 121 workflows on main pin @v7, and the
+      identical job has now actually RUN on #6607, its log showing the action resolving to SHA
+      3d3c42e5aac5ba805825da76410c181273ba90b1. This is the same stale-knowledge claim this family
+      made on the predecessor; it is recorded rather than deleted because a seat being wrong about
+      one thing is not a reason to stop seating it, and the roster counts this seat whether or not
+      the release owner likes its finding.
+  - seat: agy-gemini-3.1-pro (reserve council seat)
+    objection: >-
+      "Verification boundary: I could not execute the bash, so I cannot guarantee there are no
+      version-specific parsing bugs around empty arrays and set -u in your runner image."
+    status: PLAUSIBLE
+    disposition: >-
+      ACCEPTED AS STATED, and already covered: the gate on #6606 ran the job's shell in a scratch
+      tree under bash 3.2, which is STRICTER than the runner's bash 5 — an empty glob exits 1, one
+      failing suite still runs the others and then exits 1 naming it, all-green exits 0 with an
+      empty array safe under set -u.
+  - seat: gemini-3.8-flash-low via agy (cross-family refuter, earlier round on the same workflow)
+    objection: >-
+      "`cancel-in-progress: true` is unscoped, so an in-flight run on refs/heads/main is aborted
+      when commits land in quick succession, leaving those commits unverified."
+    status: CONFIRMED
+    disposition: >-
+      ACCEPTED AND APPLIED in the earlier round and carried here unchanged. An unverified commit on
+      main is the exact shape of cicatrix #2 that this workflow exists to close, so shipping it
+      inside the cure would have been self-defeating. Superseded in part by the sol finding below,
+      which saw the whole of the hazard.
+  - seat: codex-gpt-5.6-sol (titolare council seat, earlier round on the same workflow)
+    objection: >-
+      "A concurrency group permits only one PENDING run, so a third push to main replaces the
+      second even with cancel-in-progress false — the middle commit is never verified."
+    status: CONFIRMED
+    disposition: >-
+      ACCEPTED AND APPLIED in the earlier round and carried here unchanged. The group is
+      `${{ github.event_name == 'pull_request' && github.ref || github.run_id }}`: PR runs share a
+      group per ref so a superseded one is cancelled, while every push gets its own group and can
+      never displace another.
+  - seat: gemini-3.8-flash-low via agy (cross-family refuter, earlier round)
+    objection: >-
+      "--dry-run short-circuits execution, so the real dispatch path, process handling and timeout
+      logic are never evaluated; runtime bugs there pass CI silently."
+    status: CONFIRMED
+    disposition: >-
+      ACCEPTED AS DECLARED SCOPE, and written into the workflow header as a limit rather than left
+      implied. CI cannot spawn a model seat here without a credential this job deliberately does
+      not have. The live path is exercised by running a real mission; the one run so far is
+      recorded in research/operations/second-army-D5-restamp-6579-20260915T164000Z.md, and it is
+      what found the verify-lane defect fixed in #6608.
+  - seat: gemini-3.8-flash-low via agy (cross-family refuter, earlier round)
+    objection: >-
+      "The glob is non-recursive and does not match the behavioural suite, so 'armed the day it
+      lands' is overstated."
+    status: CONFIRMED
+    disposition: >-
+      ACCEPTED AS DECLARED SCOPE. Written into both the workflow header and the brief's third
+      assumption: a flat new *-contract*.mjs is armed automatically; a suite in a subdirectory, or
+      a new behavioural suite, needs a line added here.
+  - seat: gemini-3.8-flash-low via agy (cross-family refuter, earlier round)
+    objection: >-
+      "The paths filter only watches infra/workflows/**, so a breaking change outside it bypasses
+      the workflow."
+    status: PLAUSIBLE
+    disposition: >-
+      ACKNOWLEDGED, NOT ACTED ON. The suites depend on node: builtins only — no package.json, no
+      workspace config, no shared utility. Widening the filter would make every unrelated PR pay
+      for a job that cannot break from outside that directory. Revisit if a suite ever grows a
+      dependency.
+  - seat: claude-opus-5 (release owner, on its own work)
+    objection: >-
+      "This job is not a required check, so on the day it lands it can go red and nothing stops a
+      merge."
+    status: PLAUSIBLE
+    disposition: >-
+      DELIBERATE, AND SAID OUT LOUD IN THE FILE. Arming a new required check is a separate decision
+      with its own blast radius and should follow a history on main rather than one green run. The
+      watcher registration this PR adds is the weaker but immediate half: nobody is stopped from
+      merging, but somebody is told when it breaks on main.
+  - seat: claude-opus-5 (release owner, on its own process)
+    objection: >-
+      "Two predecessors of this PR died on claims the release owner measured against a stale local
+      checkout rather than the branch's base — the seat roster on #6607 and, in the same mission,
+      the premise of a live-run report."
+    status: CONFIRMED
+    disposition: >-
+      NAMED, NOT SMOOTHED. It is cicatrix #1 and the repo already has a lint for the class. Every
+      repo-fact receipt in this pack was re-derived from `origin/main` or from a fresh worktree at
+      the PR's own base, not from /Users/balizero/nuzantara, which is 161 commits behind.

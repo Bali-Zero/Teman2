@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { isGarudaVoaPublicEnabled } from "./flag";
+import "../../portal/r19-fonts.css";
+import "./voa-r19.css";
 
 /**
  * Ship-dark per docs/factory/ASSEMBLY-LINE.md stage 6: the funnel is real
@@ -48,5 +50,9 @@ export default function GarudaVoaLayout({
   if (!isGarudaVoaPublicEnabled()) {
     notFound();
   }
-  return children;
+  return (
+    <div data-theme="operative-light" data-product="my" data-garuda-voa="r19">
+      {children}
+    </div>
+  );
 }

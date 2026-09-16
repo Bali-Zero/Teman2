@@ -13,9 +13,9 @@
 
 | Artifact | Pin |
 | --- | --- |
-| canonical (`data/source_documents/KBLI_2025_FINAL_CLEAN.json`) | git revision `6d1367d9c8b480838e966cd389c99cae882a6466` |
+| canonical (`data/source_documents/KBLI_2025_FINAL_CLEAN.json`) | git revision `20791999d9e07a9a1dcd0e58948caea6ae357801` |
 | vault manifest (`data/kbli-filiera/manifest/vault-manifest-batch0-2026-07-18.json`) | sha256 `e7d25a377b717ed76efd1c7c806fe74b45067321629c5ed77655aeea9375db9d` |
-| membership (`data/kbli-filiera/membership/batch-a-members.json`) | sha256 `7e6d0cd819ea32da6e85c2656ff138d422c561b2cc981d4e77fb3633fb5ca559` |
+| membership (`data/kbli-filiera/membership/batch-a-members.json`) | sha256 `6c4a858b3bc3fd58f089ab20ee7245d624f2286e881792a88ebbfd756c966e51` |
 
 ## Control limits m1-m5 (v3 — three-lot registry)
 
@@ -101,7 +101,7 @@ Eligibility: the 47 codes cured as of Lot 3 close: the 21 v2 NEGATIVE codes (8 p
 - `fc7f90f029841a6a574597c8f70c39c3ae8ccba314d5e4764ef0492dd67adf4e`
 - `ff23050a23380060fc68146fa0af51f7de411f7d6842387f8635185c72f29752`
 
-### POSITIVE controls (8 of 1321 eligible after excluding 8 Lot-1 + 8 Lot-2 revealed controls; 1329 eligible after Lot-1 exclusion only; 1337 eligible before any exclusion)
+### POSITIVE controls (8 of 1324 eligible after excluding 8 Lot-1 + 8 Lot-2 revealed controls; 1332 eligible after Lot-1 exclusion only; 1340 eligible before any exclusion)
 
 Eligibility predicate: canonical record has kode_kbli_2025 set AND _l2_source is non-null AND per_skala is non-empty (the OSS-native Batch-C class).
 

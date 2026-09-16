@@ -8,6 +8,7 @@ import {
   mapPmaStatus,
 } from "./kbli-data.server";
 import { hasPublishablePmaCap } from "./kbli-pma-disclosure";
+import rawData from "../../data/KBLI_2025_FINAL_CLEAN.json";
 
 /**
  * Mandate 12 (2026-08-09, PENDING-ARMS.md "sektor_id is not a malformed
@@ -50,17 +51,54 @@ describe("kbli-data.server — section derivation (Mandate 12 fix)", () => {
       sourceVintage: "2021-05-25",
     });
     expect(getAllCodes()).toHaveLength(1559);
-    expect(
-      getAllCodes().filter(
-        (code) => code.pma.verificationStatus === "declared_gap",
-      ),
-    ).toHaveLength(1505);
-    for (const code of getAllCodes().filter(
-      (item) => item.pma.verificationStatus === "declared_gap",
-    )) {
+    // SAETTA-20260915 W-H PR-3a moved 3 codes (55201/55203/79903) from
+    // declared_gap to located (Lampiran II allocation): 1505 -> 1502.
+    const gaps = getAllCodes().filter(
+      (code) => code.pma.verificationStatus === "declared_gap",
+    );
+    expect(gaps).toHaveLength(1502);
+    for (const code of gaps) {
       expect(code.intel, `${code.code} intel`).toBeUndefined();
-      expect(code.baliL4, `${code.code} Bali L4`).toBeUndefined();
     }
+
+    // Added 2026-09-16 (W-J B1 disclose, review F5): "no baliL4 on a gap" has
+    // exactly ONE named exception — a Bali APPLIED closure sourced to a
+    // public press release. Testing that exception through the very
+    // function that implements it (`isSourcedBaliClosure`, which by its own
+    // definition REQUIRES `status === "CHIUSO_BALI"`) would be tautological:
+    // it cannot catch a bug that widens the exception, only one that changes
+    // which field it inspects. Instead this derives the expected set
+    // independently from the raw JSON and asserts the served set matches it
+    // exactly — no more, no fewer members.
+    const rawDeclaredGapChiusoBali = (
+      rawData as {
+        data: Array<{
+          kode_kbli_2025: string;
+          pma_verification_status?: string;
+          l4_bali?: { status?: string };
+        }>;
+      }
+    ).data
+      .filter(
+        (r) =>
+          r.l4_bali?.status === "CHIUSO_BALI" &&
+          r.pma_verification_status !== "located",
+      )
+      .map((r) => r.kode_kbli_2025)
+      .sort();
+    const disclosedOnAGap = gaps
+      .filter((code) => code.baliL4 !== undefined)
+      .map((code) => code.code)
+      .sort();
+    expect(disclosedOnAGap).toEqual(rawDeclaredGapChiusoBali);
+    expect(disclosedOnAGap).toHaveLength(39);
+    for (const code of gaps) {
+      if (code.baliL4 !== undefined) {
+        expect(code.baliL4.status, code.code).toBe("CHIUSO_BALI");
+        expect(code.baliL4.closure?.url, code.code).toMatch(/^https:\/\//);
+      }
+    }
+
     expect(located?.intel).toBeDefined();
     expect(located?.baliL4).toBeDefined();
   });
@@ -75,7 +113,20 @@ describe("kbli-data.server — section derivation (Mandate 12 fix)", () => {
     expect(hasGoldContent("47221")).toBe(true);
     expect(getGoldCodes()).toContain("47221");
     expect(getGoldCodes()).not.toContain("16291");
-    expect(getGoldCodes()).toHaveLength(15);
+    // 15 -> 14: 47111 was de-certified from mouthGold by W-H PR-3c (its gold
+    // prose named 47191/47192 as "fully open to 100% PMA" while both are
+    // declared_gap; withdrawn rather than hand-edited, no compiler exists
+    // for non-whatYouNeed gold fields). 14 -> 8: W-H PR-3c v3 de-certified
+    // 41020/50133/65121/79122/96210/96220, whose prose still claimed an
+    // openness their own tuple denies.
+    expect(getGoldCodes()).not.toContain("47111");
+    expect(getGoldCodes()).not.toContain("41020");
+    expect(getGoldCodes()).not.toContain("50133");
+    expect(getGoldCodes()).not.toContain("65121");
+    expect(getGoldCodes()).not.toContain("79122");
+    expect(getGoldCodes()).not.toContain("96210");
+    expect(getGoldCodes()).not.toContain("96220");
+    expect(getGoldCodes()).toHaveLength(8);
     for (const code of getGoldCodes()) {
       expect(getCode(code)?.pma.verificationStatus, code).toBe("located");
       expect(hasPublishablePmaCap(getCode(code)!.pma), code).toBe(true);
