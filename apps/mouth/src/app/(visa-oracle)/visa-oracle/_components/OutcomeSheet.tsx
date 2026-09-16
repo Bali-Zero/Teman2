@@ -548,16 +548,20 @@ function CandidateCard({
           labelKey={"outcome.axis.legal" as I18nKey}
           status={candidate.legal.status}
         />
-        <AxisBadge
-          language={language}
-          labelKey={"outcome.axis.operational" as I18nKey}
-          status={candidate.operational.status}
-        />
-        <AxisBadge
-          language={language}
-          labelKey={"outcome.axis.service" as I18nKey}
-          status={candidate.service.status}
-        />
+        {candidate.operational.status !== "UNKNOWN" && (
+          <AxisBadge
+            language={language}
+            labelKey={"outcome.axis.operational" as I18nKey}
+            status={candidate.operational.status}
+          />
+        )}
+        {candidate.service.status !== "UNKNOWN" && (
+          <AxisBadge
+            language={language}
+            labelKey={"outcome.axis.service" as I18nKey}
+            status={candidate.service.status}
+          />
+        )}
       </div>
 
       <section>
@@ -587,19 +591,12 @@ function CandidateCard({
         </section>
       </div>
 
-      <section>
-        <h3 className="oracle-outcome__section-title">
-          <FileCheck aria-hidden="true" size={18} />
-          {translate(language, "outcome.checklist_title")}
-        </h3>
-        {candidate.documents.length === 0 ? (
-          <div className="oracle-unverified" role="status">
-            <strong>
-              {translate(language, "outcome.documents_unknown" as I18nKey)}
-            </strong>
-            <p>{translate(language, "outcome.documents_contact" as I18nKey)}</p>
-          </div>
-        ) : (
+      {candidate.documents.length > 0 && (
+        <section>
+          <h3 className="oracle-outcome__section-title">
+            <FileCheck aria-hidden="true" size={18} />
+            {translate(language, "outcome.checklist_title")}
+          </h3>
           <fieldset className="oracle-checklist oracle-checklist-doc--checkable">
             <legend className="oracle-sr-only">
               {translate(language, "outcome.checklist_title")}
@@ -628,8 +625,8 @@ function CandidateCard({
               );
             })}
           </fieldset>
-        )}
-      </section>
+        </section>
+      )}
     </article>
   );
 }
