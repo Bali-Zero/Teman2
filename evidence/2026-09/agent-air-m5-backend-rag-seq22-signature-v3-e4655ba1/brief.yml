@@ -1,0 +1,106 @@
+task_id: seq22-signature-v3
+gear: 3
+l_level: L2
+gate_class: opus
+# Floor measured this session: `python3 scripts/evidence_pack_lint.py --print-floor
+# --print-floor-source --numstat-file <numstat> --changed-files-file <changed>` on the
+# staged diff returns `3` / `size`. The size is one file: rulepack-prod-022.signed.json is
+# 9,487 lines of GENERATED, signed artifact (Prettier-formatted, the pre-commit norm the
+# seq-20 bundle already follows; the signature is over the JCS form and was re-verified
+# after formatting). The authored footprint is 38/5 on test_interview_walk_census.py,
+# 85/4 on engine-adapter.test.ts (both test-only pin moves), one 74-line CI observer and
+# this evidence pack. Successor of #6673 (gate PASS on 9b30782aae, closed because its
+# executable bites block names an observer the base checkout cannot hold: deterministic
+# red in "Bites contract"), itself the successor of #6670. Same four content blobs,
+# proven by git hash-object against 9b30782aae; only pack.yml's bites form changes.
+objective: >-
+  Land the SIGNED seq-22 production RulePack bundle (`rulepack-prod-022.signed.json`)
+  produced in THIS session's offline Ed25519 ceremony on M5 (SAETTA-20260916, D17-bis: the
+  signing seat is a fresh Fable session outside the seq-22 contribution chain; D31: full
+  delegation), and the two test pins that MOVE the moment the bundle lands because both read
+  "the highest signed pack on disk": the backend walk census and the mouth review-reason
+  copy guard. Signing seq-22 is what turns the fold (#6663, merged, gate PASS on 12f6bc4409)
+  from a source file into a pack an activation ceremony can act on. NO ACTIVATION here:
+  activating is a separate ceremony (D24) and is deliberately not bundled.
+constraints:
+  - >-
+    NO ACTIVATION IN THIS PR. This seat ran neither `activate_pack.py` nor any DB write;
+    `visa_ruleset_activations` must still show seq-20 as the latest PRODUCTION after merge
+    (merging apps/backend-rag IS the deploy: the signed file ships to prod and changes
+    nothing until activation).
+  - >-
+    Key custody untouched: the private key was checked for presence and mode with `ls -la`
+    only (0600, directory 0700), read exclusively in-process by `sign_pack.py`, never
+    printed, copied, moved or committed. The derived PUBLIC key
+    `gZoo1nzMsRpwWgw4HCzV_2YYxU0Vbt5FMfLWeOzAchA` equals the runbook's trust-store entry
+    for kid `prod-2026-07-1`.
+  - >-
+    Every fact R2 declared was RE-MEASURED on disk before signing (source blob, absence of
+    the signed file, JCS digest via sign_pack's own `compile_pack_source` ->
+    `canonicalize_json` path, chain to seq-20's `payload_sha256`); any mismatch would have
+    STOPPED the ceremony with no signature.
+  - >-
+    Pin moves are test-only and per signed sequence, never a loosened guard: the Studio
+    holds are NAMED (walk + reason code) and proven guilty by mutation; the eight review
+    codes seq-22 retires keep their copy in REVIEW_REASON_COPY because production still
+    evaluates on seq-20, which emits all eight — deleting them before D24 would print a
+    machine code on a live applicant's verdict. Their deletion is owed in the activation PR.
+acceptance:
+  - text: >-
+      A1: WHEN the committed `rulepack-prod-022.signed.json` is verified with
+      `bundle.verify_rule_pack` against the PINNED production trust store (kid
+      `prod-2026-07-1`, `StaticTrustStore.from_env`), it SHALL verify with
+      `unsigned_dev=False`, sequence 22, environment PRODUCTION, and its `payload_sha256`
+      SHALL equal the declared digest
+      `3d7555afcc9496b451bc86235624b4a88d35aabb9df354778dcf9b0b3b276e37` — read out of
+      `verify_rule_pack`'s return value, not the signer's self-report.
+    probe: >-
+      verify_rule_pack(env, trust_store=StaticTrustStore.from_env()
+  - text: >-
+      A2: WHERE the payload digest is recomputed independently through sign_pack's own
+      path (`compile_pack_source(rulepack-prod-022.source.json)` ->
+      `model_dump(mode="json", by_alias=True)` -> `canonicalize_json` -> sha256), it SHALL
+      equal the declared digest byte for byte, and the payload's `previous_payload_sha256`
+      SHALL equal `rulepack-prod-020.signed.json`'s `payload_sha256`
+      (`df02287b7fc8f572a9e6674fdf3445a2131c428e8a1492ab8a388dee5bf01a4d`): the chain
+      points to seq-20 on purpose, seq-21 was signed and never activated.
+    probe: >-
+      compile_pack_source(src)
+  - text: >-
+      A3: WHEN `select_highest_repository_pack` runs over the packs directory, it SHALL
+      return `rulepack-prod-022.signed.json` (sequence 22), and every other reader of the
+      highest signed pack (gold coverage floor, gold replay artifact, seq-20/seq-21 pack
+      tests, gold replay/eval/driver) SHALL stay green.
+    probe: >-
+      PYTHONPATH=. .venv/bin/python -m pytest backend/tests/services/visa_engine/test_gold_coverage_floor.py
+      backend/tests/services/visa_engine/test_gold_replay_artifact.py
+      backend/tests/services/visa_engine/test_seq20_pack.py
+      backend/tests/services/visa_engine/test_seq21_pack.py backend/tests/scripts/visa_engine/
+  - text: >-
+      A4: WHEN the 112 interview walks are replayed against the HIGHEST SIGNED pack — now
+      seq-22 — the census SHALL read the per-sequence pin already on main (3
+      HUMAN_REVIEW_REQUIRED / 1 NEEDS_INPUT / 14 NO_SUPPORTED_PATH / 94
+      SUPPORTED_CANDIDATES), and the two Studio-held walks
+      (`offshore/invest/{property,bank_deposit}/below_threshold`) SHALL be NAMED per signed
+      sequence with the one reason `SECOND_HOME_BELOW_THRESHOLD_STUDIO`; emptying that set
+      SHALL turn both census tests red (guilt).
+    probe: >-
+      backend/tests/services/visa_engine/test_interview_walk_census.py
+  - text: >-
+      A5: WHEN engine-adapter.test.ts reads the highest signed pack, the real-code floor
+      SHALL be the MEASURED 31 (13 pack + 18 pack-independent), the eight codes seq-22
+      retires SHALL be matched BY NAME in `REVIEW_REASON_COPY_KEYS_LIVE_ON_SEQ20_ONLY`
+      (not deleted), and an honesty test SHALL pin that each entry is live on signed
+      seq-20, absent from the highest signed pack, and still has copy; dropping one entry
+      SHALL turn the stale-key test red (guilt).
+    probe: >-
+      cd apps/mouth && npx vitest run "src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter.test.ts"
+  - text: >-
+      A6: the four content blobs of this PR (signed bundle, two tests, observer) SHALL be
+      byte-identical to #6673's head 9b30782aae (`git hash-object` == `git rev-parse
+      9b30782aae:<path>`), which carries #6670's three blobs unchanged, so the fresh gate
+      reads the same bytes R2's declared facts were verified against.
+    probe: >-
+      git hash-object <path>
+appetite:
+  wall_clock_hours: 2
