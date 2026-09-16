@@ -1,0 +1,20 @@
+task_id: kbli-bali-sourced-closure
+gear: 2
+base_sha: 228a029c41 # pragma: allowlist secret
+# Floor 2, source `size` (scripts/evidence_pack_lint.py --print-floor): ~760 net lines, two thirds of them tests.
+objective: "W-J B1 backend (SAETTA-20260916 R1): chat_kbli and the Qdrant/KG payload writers carry Bali's sourced applied closure (CHIUSO_BALI, blocked, press-release URL, scope, confidence), so the assistant answering about /kbli/68111 says what the page says: closed to new PT PMA licensing in Bali, with the source, and national status not verified."
+constraints:
+  - "Same rule as the page (isSourcedBaliClosure): exact CHIUSO_BALI, blocked is True, needs_review a real bool, http(s) closure URL. Every other Bali status on an unverified record stays withheld."
+  - "The model note never states or infers a national ownership status or percentage on the unverified branch; a scoped closure is instructed for its scope only."
+  - "Payload writers stay flat (bali_closure_url, bali_closure_scope, bali_confidence); no canonical, registry or prose file changes."
+appetite: { wall_clock_hours: 3 }
+acceptance:
+  - text: "Backend KBLI suite (all test_*kbli*.py plus test_result_formatter.py) passes serially: 821 passed."
+    probe: "cd apps/backend-rag && .venv/bin/python -m pytest $(git ls-files 'backend/tests/**/test_*kbli*.py') backend/tests/services/misc/test_result_formatter.py -p no:cacheprovider"
+  - text: "Guilt: an unverified 68111-shaped result with a sourced closure yields a note naming the closure and its URL and NOT_VERIFIED; a scoped one names the scope. Innocence: javascript: URL, blocked false, another status, a string needs_review, or no URL all yield an empty note."
+    probe: "pytest backend/tests/unit/routers/test_kbli_bali_verdict_reaches_the_model.py"
+  - text: "After deploy and kbli_qdrant_pma_sync.py --layer bali, chat_kbli on 68111 mentions the Bali closure and the baliprov.go.id source."
+    probe: "POST the public chat_kbli endpoint for 68111 after the sync (observed by the Dux after merge)"
+assumptions:
+  - text: "The 40 CHIUSO_BALI reasons are provincial statements plus BPS ancestry with no national PMA claim, so surfacing them to the model is safe (same check as the page PR)."
+    status: verified
