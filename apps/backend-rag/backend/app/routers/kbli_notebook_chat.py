@@ -31,7 +31,7 @@ from backend.app.routers.kbli_notebook import (
     _search_kbli_qdrant,
 )
 from backend.core.cache import cached
-from backend.services.kbli_pma_disclosure import disclose_bali
+from backend.services.kbli_pma_disclosure import disclose_bali, is_sourced_bali_closure
 from backend.services.rag.agentic.kg_orchestrator import KGAgenticOrchestrator
 
 logger = logging.getLogger(__name__)
@@ -255,6 +255,9 @@ async def _fill_bali_verdicts(results: list["KBLISearchResult"]) -> None:
                     "bali_needs_review": _payload_value(payload, "bali_needs_review"),
                     "bali_status": _payload_value(payload, "bali_status"),
                     "bali_reason": _payload_value(payload, "bali_reason", default=""),
+                    "bali_closure_url": _payload_value(payload, "bali_closure_url"),
+                    "bali_closure_scope": _payload_value(payload, "bali_closure_scope"),
+                    "bali_confidence": _payload_value(payload, "bali_confidence"),
                 }
             )
             candidate.update(
@@ -263,6 +266,9 @@ async def _fill_bali_verdicts(results: list["KBLISearchResult"]) -> None:
                     "bali_needs_review": bali["bali_needs_review"],
                     "bali_status": bali["bali_status"],
                     "bali_reason": bali["bali_reason"],
+                    "bali_closure_url": bali["bali_closure_url"],
+                    "bali_closure_scope": bali["bali_closure_scope"],
+                    "bali_confidence": bali["bali_confidence"],
                 }
             )
         disclosed = KBLISearchResult(**candidate)
@@ -282,6 +288,9 @@ async def _fill_bali_verdicts(results: list["KBLISearchResult"]) -> None:
         result.bali_blocked = disclosed.bali_blocked
         result.bali_needs_review = disclosed.bali_needs_review
         result.bali_reason = disclosed.bali_reason
+        result.bali_closure_url = disclosed.bali_closure_url
+        result.bali_closure_scope = disclosed.bali_closure_scope
+        result.bali_confidence = disclosed.bali_confidence
         if not result.pma_verdict_verified:
             continue
         if not needs_bali_verdict or result.bali_blocked is None:
@@ -466,9 +475,53 @@ def _bali_verdict_context_note(result: "KBLISearchResult") -> str:
       (`kbli-status-labels.ts::INTERNAL_ENUM_LABELS`); this was the surface that
       had not. The symbol still goes to the log, where it belongs.
 
+    Sourced-closure addendum (2026-09-16): a Bali closure with its own
+    published source (`is_sourced_bali_closure`) fires even when the national
+    PMA tuple is `NOT_VERIFIED` — the website discloses the same closure under
+    the same condition. That branch names ONLY the Bali closure and its
+    source; it never states or infers a national ownership verdict, because
+    none is verified for that record.
     """
-    if not result.pma_verdict_verified or result.bali_blocked is None:
+    if result.bali_blocked is None:
         return ""
+
+    if not result.pma_verdict_verified:
+        if not is_sourced_bali_closure(
+            status=result.bali_status,
+            blocked=result.bali_blocked,
+            needs_review=result.bali_needs_review,
+            closure_url=result.bali_closure_url,
+        ):
+            return ""
+        reason = _speak_internal_symbols(result.bali_reason or "").strip()
+        review_note = (
+            " Present this as a conservative, Bali-sourced reading pending "
+            "further verification, not a certified legal determination."
+            if result.bali_needs_review is True
+            else ""
+        )
+        pieces = [
+            "BALI — CLOSED TO A FOREIGN-OWNED COMPANY (PT PMA) BY A SOURCED "
+            "BALI PROVINCIAL CLOSURE. The NATIONAL PMA status for this code is "
+            "NOT_VERIFIED: you MUST NOT state or infer a national ownership "
+            "status or percentage for this code from this Bali fact."
+        ]
+        if reason:
+            pieces.append(f"Stated cause: {reason}")
+        if result.bali_closure_scope:
+            pieces.append(f"Scope: {result.bali_closure_scope}")
+        if result.bali_confidence and result.bali_confidence != "HIGH":
+            pieces.append(
+                f"Confidence on this closure is {result.bali_confidence}; "
+                "present it as a conservative reading."
+            )
+        pieces.append(f"Source: {result.bali_closure_url}")
+        note = " ".join(pieces)
+        return (
+            f"{note} You MUST say the Bali provincial government has closed "
+            "this activity to new PT PMA licensing and cite the source URL."
+            f"{review_note}"
+        )
 
     national = _national_closure_basis(result)
     # Coerce BEFORE `.strip()`, not after: `(42 or "").strip()` raises, and that

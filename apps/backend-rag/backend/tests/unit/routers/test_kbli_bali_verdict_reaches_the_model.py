@@ -31,6 +31,7 @@ from backend.app.routers.kbli_notebook_chat import (
     _bali_verdict_context_note,
     _fill_bali_verdicts,
 )
+from backend.services.kbli_pma_disclosure import is_sourced_bali_closure
 
 
 def _result(code: str = "86995", **kwargs) -> KBLISearchResult:
@@ -118,6 +119,98 @@ async def test_a_result_built_without_a_payload_is_backfilled_at_the_choke_point
     assert result.bali_status == "CHIUSO_MORATORIA_BALI"
     assert result.bali_reason == "the moratorium"
     assert "BLOCKED" in _bali_verdict_context_note(result)
+
+
+# ---------------------------------------------------- sourced Bali closure
+#
+# Bali's Provincial Government closed OSS to new PT PMA licensing for 18
+# business fields (press release, 24 Jul 2026). 39 of the 40 affected codes
+# are nationally `declared_gap` (unverified) — and unlike every other Bali
+# status, THIS one is disclosable without the national tuple, mirroring the
+# website's `isSourcedBaliClosure`.
+
+_CLOSURE_URL = "https://www.baliprov.go.id/web/gubernur-koster-batasi-akses-oss"
+
+
+def test_a_sourced_closure_survives_an_unverified_national_tuple():
+    """GUILT: exact CHIUSO_BALI + blocked True + a real needs_review bool +
+    an https closure URL survives even though the PMA tuple is NOT_VERIFIED."""
+    result = _result(
+        code="68111",
+        pma_status="TERBUKA",
+        pma_verification_status="declared_gap",
+        bali_status="CHIUSO_BALI",
+        bali_blocked=True,
+        bali_reason="Closed to new PMA licensing in Bali (18 business fields).",
+        bali_closure_url=_CLOSURE_URL,
+        bali_confidence="HIGH",
+    )
+
+    assert result.pma_verdict_verified is False
+    assert result.bali_status == "CHIUSO_BALI"
+    assert result.bali_blocked is True
+    assert result.bali_closure_url == _CLOSURE_URL
+
+    note = _bali_verdict_context_note(result)
+    assert "CLOSED TO A FOREIGN-OWNED COMPANY" in note
+    assert "SOURCED BALI PROVINCIAL CLOSURE" in note
+    assert _CLOSURE_URL in note
+    assert "NOT_VERIFIED" in note
+    # The literal phrasing production once used when it had no Bali fact at
+    # all — the fix must never let this survive next to a real closure.
+    assert "if your PT PMA is able to register" not in note
+
+
+@pytest.mark.parametrize(
+    "overrides",
+    [
+        {"bali_closure_url": "javascript:alert(1)"},
+        {"bali_blocked": False},
+        {"bali_status": "CHIUSO_MORATORIA_BALI"},
+        {"bali_needs_review": "true"},
+        {"bali_closure_url": None},
+    ],
+)
+def test_an_unsourced_closure_is_withheld_on_an_unverified_record(overrides: dict):
+    """INNOCENCE: every shape outside the sourced-closure class stays withheld
+    on an unverified record, exactly as before."""
+    base = {
+        "code": "68111",
+        "pma_status": "TERBUKA",
+        "pma_verification_status": "declared_gap",
+        "bali_status": "CHIUSO_BALI",
+        "bali_blocked": True,
+        "bali_reason": "x",
+        "bali_closure_url": _CLOSURE_URL,
+    }
+    base.update(overrides)
+    result = _result(**base)
+
+    assert result.bali_status is None
+    assert result.bali_blocked is None
+    assert result.bali_closure_url is None
+    assert _bali_verdict_context_note(result) == ""
+
+
+def test_a_sourced_closure_on_a_verified_record_behaves_exactly_as_before():
+    """INNOCENCE: a verified record with the same sourced closure is not a
+    special case — it takes the ordinary verified branch, unaffected by the
+    new bypass."""
+    result = _result(
+        code="68111",
+        **_LOCATED_PMA,
+        pma_status="TERBUKA",
+        pma_max_asing=100,
+        bali_status="CHIUSO_BALI",
+        bali_blocked=True,
+        bali_reason="Closed to new PMA licensing in Bali (18 business fields).",
+        bali_closure_url=_CLOSURE_URL,
+    )
+
+    assert result.pma_verdict_verified is True
+    note = _bali_verdict_context_note(result)
+    assert "BLOCKED FOR A FOREIGN-OWNED COMPANY" in note
+    assert "SOURCED BALI PROVINCIAL CLOSURE" not in note
 
 
 # ----------------------------------------------------------- innocence
@@ -421,6 +514,8 @@ def catalogue() -> list[dict]:
 def _result_for(record: dict) -> KBLISearchResult:
     """A search result carrying exactly what the Qdrant payload carries."""
     l4 = record.get("l4_bali") or {}
+    closure = l4.get("closure")
+    closure = closure if isinstance(closure, dict) else {}
     return KBLISearchResult(
         code=record["kode_kbli_2025"],
         title=record.get("judul") or "",
@@ -435,6 +530,9 @@ def _result_for(record: dict) -> KBLISearchResult:
         bali_blocked=l4.get("blocked"),
         bali_needs_review=l4.get("needs_review"),
         bali_reason=l4.get("reason") or "",
+        bali_closure_url=closure.get("url"),
+        bali_closure_scope=closure.get("scope_qualifier"),
+        bali_confidence=l4.get("confidence"),
     )
 
 
@@ -681,19 +779,39 @@ def test_no_note_in_the_whole_catalogue_hands_the_model_an_internal_symbol(catal
 
 
 def test_declared_gap_notes_withhold_mixed_free_form_reasons_across_the_catalogue(catalogue):
-    """Every Bali field is silent for every declared-gap catalogue row."""
+    """Every Bali field is silent for every declared-gap catalogue row — EXCEPT
+    the one carved-out class: a sourced Bali closure (`is_sourced_bali_closure`)
+    survives on purpose, and its note must still never assert a national verdict.
+    """
     checked = 0
+    sourced_closures = 0
     for record in catalogue:
         if record.get("pma_verification_status") == "located":
             continue
         result = _result_for(record)
         note = _bali_verdict_context_note(result)
+        if is_sourced_bali_closure(
+            status=result.bali_status,
+            blocked=result.bali_blocked,
+            needs_review=result.bali_needs_review,
+            closure_url=result.bali_closure_url,
+        ):
+            sourced_closures += 1
+            assert result.bali_blocked is True, record["kode_kbli_2025"]
+            assert result.bali_status == "CHIUSO_BALI", record["kode_kbli_2025"]
+            assert note != "", record["kode_kbli_2025"]
+            assert "NOT_VERIFIED" in note, record["kode_kbli_2025"]
+            assert "you must not state or infer a national ownership" in note.lower(), record[
+                "kode_kbli_2025"
+            ]
+            continue
         assert result.bali_blocked is None, record["kode_kbli_2025"]
         assert result.bali_status is None, record["kode_kbli_2025"]
         assert result.bali_reason == "", record["kode_kbli_2025"]
         assert note == "", record["kode_kbli_2025"]
         checked += 1
     assert checked > 1000, "declared-gap property gate would be vacuous"
+    assert sourced_closures > 0, "sourced-closure carve-out gate would be vacuous"
 
 
 def test_every_national_closure_in_the_catalogue_refuses_the_provincial_wording(catalogue):
