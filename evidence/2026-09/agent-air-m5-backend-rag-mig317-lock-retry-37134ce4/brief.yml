@@ -97,8 +97,7 @@ acceptance:
       budget constants (15 attempts, 500ms lock_timeout, 3s backoff cap) are pinned per
       direction.
     probe: >-
-      test_migration_317_visa_oracle_sessions_retention.py, twice consecutively (idempotent
-      re-run), against a dedicated throwaway PostgreSQL 17.10 database
+      backend/tests/db/test_migration_317_visa_oracle_sessions_retention.py
 assumptions:
   - text: >-
       migration_base.py::apply() sends the whole forward SQL as one conn.execute() inside

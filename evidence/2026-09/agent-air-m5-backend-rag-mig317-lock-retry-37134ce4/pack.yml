@@ -115,16 +115,17 @@ outcome: >-
   commit — see the header comment).
 diff:
   shape: >-
-    Two files touched across two commits on this branch: 37134ce469 (round 1, the initial
-    retry-with-backoff cure) and 70e6771122 (round 2, this pack's Codex-review cures F2-F5 —
-    query_canceled removed, both indexes guarded behind a pg_indexes existence check instead
-    of a bare CREATE INDEX IF NOT EXISTS, the blocker diagnostic isolated in its own
-    exception handler and filtered to granted/current-database locks, and the retry budget
-    recomputed exactly at 15 attempts / 500ms / 3s cap). Same two files both rounds: the 317
-    migration SQL and its existing static test file (round 2 also rewrites the test file's
-    own splitter to the canonical `split_migration_sql` and adds two live-Postgres
-    concurrency tests — still no NEW test file, no other file in the repo touched by either
-    round).
+    Code touches the same two files across both rounds on this branch: 37134ce469 (round 1,
+    the initial retry-with-backoff cure) then 70e6771122 (round 2, this pack's Codex-review
+    cures F2-F5 — query_canceled removed, both indexes guarded behind a pg_indexes existence
+    check instead of a bare CREATE INDEX IF NOT EXISTS, the blocker diagnostic isolated in
+    its own exception handler and filtered to granted/current-database locks, and the retry
+    budget recomputed exactly at 15 attempts / 500ms / 3s cap) — the 317 migration SQL and
+    its existing static test file (round 2 also rewrites the test file's own splitter to the
+    canonical `split_migration_sql` and adds two live-Postgres concurrency tests — still no
+    NEW test file, no other file in the repo touched by either round). This pack itself
+    (evidence/brief.yml, evidence/pack.yml) is a separate, docs-only commit on top of those
+    two.
   measured_at: >-
     git diff --stat / --numstat against origin/main in the worktree, this session, after
     each cure commit landed and again after this pack's own commit — see the floor receipts
@@ -203,9 +204,9 @@ dissent:
       a stored-checksum mismatch on an already-applied migration is a silent, non-blocking
       audit fact in this codebase today, not an error the runner surfaces or acts on.
   - seat: codex (gpt-6-astra, xhigh), second-round adversarial review of commit 37134ce469
-    status: CONFIRMED — disposed FIX-FIRST by the coordinating session (nuzantara-8d)
+    status: CONFIRMED
     objection: >-
-      F1 (OK, no change) — `migration_base.py::apply()` runs the whole forward SQL in one
+      DISPOSITION: disposed FIX-FIRST by the coordinating session (nuzantara-8d). F1 (OK, no change) — `migration_base.py::apply()` runs the whole forward SQL in one
       `conn.execute()` inside one transaction; each `EXCEPTION` block only rolls back the
       implicit sub-transaction Postgres opens around it, so a failed attempt does not poison
       later attempts, and `SET LOCAL lock_timeout` reverts to the surrounding value (5s) on
@@ -214,9 +215,9 @@ dissent:
       the subtransaction boundary this loop relies on is preserved by construction. Cure:
       none for this structure.
   - seat: codex (gpt-6-astra, xhigh), second-round adversarial review of commit 37134ce469
-    status: CONFIRMED — disposed FIX-FIRST, CURED
+    status: CONFIRMED
     objection: >-
-      F2 (BLOCKING) — a lock_timeout expiry raises SQLSTATE 55P03 (`lock_not_available`)
+      DISPOSITION: disposed FIX-FIRST, CURED. F2 (BLOCKING) — a lock_timeout expiry raises SQLSTATE 55P03 (`lock_not_available`)
       specifically; 57014 (`query_canceled`) is the SAME code a `statement_timeout` OR an
       operator's `pg_cancel_backend` raise. Catching 57014 alongside 55P03 here meant an
       operator's explicit attempt to cancel this DDL mid-attempt would be silently absorbed
@@ -225,9 +226,9 @@ dissent:
       to match (this pack's own dissent entry below shows the FIRST round's test file still
       asserted 57014's presence, which the cure removed along with the code).
   - seat: codex (gpt-6-astra, xhigh), second-round adversarial review of commit 37134ce469
-    status: CONFIRMED — disposed FIX-FIRST, CURED (refined — see note)
+    status: CONFIRMED
     objection: >-
-      F3 (SHOULD-FIX) — the first round's budget comment stated "~38.5s worst case" without
+      DISPOSITION: disposed FIX-FIRST, CURED (refined — see note). F3 (SHOULD-FIX) — the first round's budget comment stated "~38.5s worst case" without
       showing the arithmetic, and conflated the file's own 60s `statement_timeout` with the
       Fly deploy's unrelated 5-minute default release-command timeout (no override was found
       in fly.toml). Cure: the budget is now computed exactly in the file's own comment (15
@@ -238,9 +239,9 @@ dissent:
       FIRST for F2 takes precedence where the two findings' suggested cures would otherwise
       conflict; F3's core ask (show the exact math, separate the two timeouts) is honored.
   - seat: codex (gpt-6-astra, xhigh), second-round adversarial review of commit 37134ce469
-    status: CONFIRMED — disposed FIX-FIRST, CURED
+    status: CONFIRMED
     objection: >-
-      F4 (SHOULD-FIX) — pid/usename/application_name are readable by any role without
+      DISPOSITION: disposed FIX-FIRST, CURED. F4 (SHOULD-FIX) — pid/usename/application_name are readable by any role without
       `pg_read_all_stats` and the diagnostic SELECT takes no lock on the application table,
       but it lacked a `datname` filter (could misname a backend in a DIFFERENT database
       sharing a recycled pid) and a `granted` filter (could name a WAITING backend as a
@@ -250,9 +251,9 @@ dissent:
       `BEGIN ... EXCEPTION WHEN OTHERS` so a diagnostic failure falls back to a "lookup
       unavailable" message instead of masking the RAISE that reports the real cause.
   - seat: codex (gpt-6-astra, xhigh), second-round adversarial review of commit 37134ce469
-    status: CONFIRMED — disposed FIX-FIRST, CURED
+    status: CONFIRMED
     objection: >-
-      F5 (BLOCKING) — the two `CREATE INDEX IF NOT EXISTS` statements ahead of the retry
+      DISPOSITION: disposed FIX-FIRST, CURED. F5 (BLOCKING) — the two `CREATE INDEX IF NOT EXISTS` statements ahead of the retry
       loop take a ShareLock on the table for the length of the WHOLE transaction even in the
       no-op case (index already exists), and that lock is held OUTSIDE the loop's own
       sub-transactions — so for as long as the ALTER's retry loop ran (then ~38s, now ~42s
@@ -267,9 +268,9 @@ dissent:
       window naming the blocker on exhaustion — the write-starvation Codex identified is
       gone, not merely shortened.
   - seat: codex (gpt-6-astra, xhigh), second-round adversarial review of commit 37134ce469
-    status: CONFIRMED — disposed FIX-FIRST, NO CHANGE (already correct)
+    status: CONFIRMED
     objection: >-
-      F6 (OK, no change) — exactly one `-- === ROLLBACK ===` marker exists, matched
+      DISPOSITION: disposed FIX-FIRST, NO CHANGE (already correct). F6 (OK, no change) — exactly one `-- === ROLLBACK ===` marker exists, matched
       identically by a literal search and by the canonical `ROLLBACK_MARKER_RE`; the forward
       and rollback DO blocks are symmetric apart from the 30/90-day value and the error
       message text; `MigrationManager.rollback_migration` executes the stored rollback SQL
@@ -278,9 +279,9 @@ dissent:
       identical `max_attempts`, `lock_timeout`, backoff cap, single `lock_not_available`
       catch, and the same diagnostic guard shape).
   - seat: codex (gpt-6-astra, xhigh), second-round adversarial review of commit 37134ce469
-    status: CONFIRMED — disposed FIX-FIRST, CURED
+    status: CONFIRMED
     objection: >-
-      F7 (SHOULD-FIX) — the first round's 11 static tests passed but tolerated mutations
+      DISPOSITION: disposed FIX-FIRST, CURED. F7 (SHOULD-FIX) — the first round's 11 static tests passed but tolerated mutations
       that should have failed them: removing a correct SQLSTATE catch, setting the forward
       attempt count to a nonsense value, or breaking a direction outright could all leave
       the relevant assertions green, because they checked broad substring presence rather
@@ -298,15 +299,15 @@ dissent:
       trigger.py` uses, since these two tests hold a real table lock and apply DDL outside
       any test-controlled transaction.
   - seat: codex (gpt-6-astra, xhigh), second-round adversarial review of commit 37134ce469
-    status: CONFIRMED — disposed FIX-FIRST, NO CHANGE (verified clean)
+    status: CONFIRMED
     objection: >-
-      F8 (OK, no change) — no client PII or credential in the diff; the blocker diagnostic
+      DISPOSITION: disposed FIX-FIRST, NO CHANGE (verified clean). F8 (OK, no change) — no client PII or credential in the diff; the blocker diagnostic
       reads only connection metadata (pid/usename/application_name), never a client row,
       query text, or IP address.
   - seat: codex (gpt-6-astra, xhigh), second-round adversarial review of commit 37134ce469
-    status: CONFIRMED — disposed FIX-FIRST, CURED (re-verified per the finding's own ask)
+    status: CONFIRMED
     objection: >-
-      F9 (OK, with a forward ask) — W41/W42 passed (195 unique prefixes, 190 post-cutoff
+      DISPOSITION: disposed FIX-FIRST, CURED (re-verified per the finding's own ask). F9 (OK, with a forward ask) — W41/W42 passed (195 unique prefixes, 190 post-cutoff
       migrations with a ROLLBACK marker) and `git diff --check` was clean; Codex asked that
       bootstrap + `apply-all` be re-run on an isolated PostgreSQL after the F2-F5 cures
       landed, which it had not been able to do inside its own review. Done this round: a
@@ -500,9 +501,10 @@ receipts:
       correctly resets the migration ledger and table between runs)
     cmd: >-
       TEST_DATABASE_URL=postgresql://test:test@127.0.0.1:5433/nuzantara_test_317live
-      PYTHONPATH=. python -m pytest backend/tests/db/test_migration_317_visa_oracle_
-      sessions_retention.py (run twice consecutively)
-    result:
+      PYTHONPATH=. python -m pytest
+      backend/tests/db/test_migration_317_visa_oracle_sessions_retention.py
+      (run twice consecutively)
+    result: >-
       "14 passed (both runs); GUILT test measured ~50s wall time (holder outlives the
       ~42s budget), INNOCENCE test ~1s"
     ts: "2026-09-17T07:38:xxZ / 07:40:xxZ"
