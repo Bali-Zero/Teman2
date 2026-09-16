@@ -1,0 +1,17 @@
+1. CHAIN: PROVEN. `rulepack-prod-022.source.json` and `fold_pack_seq22.py` (line 125) define `previous_payload_sha256` as `df02287b7fc8f572a9e6674fdf3445a2131c428e8a1492ab8a388dee5bf01a4d`, correctly chaining to the signed seq-20 anchor digest instead of seq-21.
+
+2. DEFECT-1 CURE: PROVEN. `fold_pack_seq22.py` explicitly scopes `EMPLOYMENT_SPONSOR_PRODUCT_CODES` to `("E23", "E33B")`. Extracting from `rulepack-prod-022.source.json` confirms `hf.employment-without-indonesian-sponsor` applies exclusively to the `product_version_ids` for E23 and E33B, successfully curing E23V.
+
+3. DEFECT-2 COHERENCE: PROVEN. Querying `rulepack-prod-022.source.json` confirms that product `E33B` includes `"EMPLOYMENT"` within its `covered_purposes` array, meaning E33B applicants genuinely intersect with the hard filter's employment intent premise. 
+
+4. DEFECT-3 GUARD: PROVEN. Inspecting `rulepack-prod-022.source.json`, the four twin-basis facts appear only in `ELIGIBILITY` rules and the new `review.e33.below-threshold-studio` rule (which has stage `HUMAN_REVIEW` and evaluates using `lt`). None appear in any `HARD_FILTER`/`EXCLUDE` stage, and none are compared with `eq false`.
+
+5. NO INVENTED FIGURE: PROVEN. `review.e33.below-threshold-studio` in the JSON pack correctly reads exactly 130000 and 1000000. `engine-adapter.ts` already defined `SECOND_HOME_PROPERTY_THRESHOLD_USD` and `SECOND_HOME_DEPOSIT_THRESHOLD_USD` with these values. No other money figures are added anywhere in the diff.
+
+6. NO CONSULTANT WORDING: PROVEN. `OutcomeSheet.tsx` intentionally skips rendering `outcome.human_review_body` ("What a person will check...") when `SECOND_HOME_STUDIO_REVIEW_REASON_CODE` is the sole reason. The EN/ID copy in `engine-adapter.ts` and `i18n.ts` only explains the guarantee and routes users to the self-serve `/visa/second-home/studio` link.
+
+7. FAIL-OPEN CHECK: PROVEN. Nothing suggests a fail-open. `build_support_rule` in `fold_pack_seq22.py` enforces qualifying facts as strictly true (`{"op": "eq", "fact": row["qualifying_fact"], "value": True}`). Additionally, retired `review.*` rules are genuinely deleted from the JSON via list comprehension filtering, not just flipped to NO_EFFECT.
+
+8. VISIBLE-EFFECT HONESTY: PROVEN. The PR honestly frames its impact. Because it is deployed strictly as an unsigned, unactivated source pack, it physically cannot affect production traffic regardless of real applicant answers. The PR correctly characterizes its immediate blast radius as zero, acknowledging activation as a separate action.
+
+VERDICT: OK
