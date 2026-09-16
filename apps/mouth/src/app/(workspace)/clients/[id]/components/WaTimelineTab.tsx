@@ -23,9 +23,9 @@ const PRIORITY_STYLES: Record<
   { bg: string; text: string; border: string }
 > = {
   HIGH: {
-    bg: "bg-[var(--state-danger)]/10",
-    text: "text-[var(--state-danger)]",
-    border: "border-[var(--state-danger)]/60",
+    bg: "bg-[var(--state-warning)]/10",
+    text: "text-[var(--state-warning)]",
+    border: "border-[var(--state-warning)]/60",
   },
   MEDIUM: {
     bg: "bg-[var(--state-warning)]/10",
@@ -148,7 +148,7 @@ export function WaTimelineTab({
 
   if (error && messages.length === 0) {
     return (
-      <div className="rounded-lg border border-[var(--state-danger)]/30 bg-[var(--state-danger)]/10 p-4 text-sm text-[var(--state-danger)]">
+      <div className="rounded-lg border border-[var(--state-warning)]/30 bg-[var(--state-warning)]/10 p-4 text-sm text-[var(--state-warning)]">
         <div className="flex items-center gap-2 font-medium">
           <AlertTriangle className="w-4 h-4" /> Failed to load wa-mirror
           messages
@@ -181,7 +181,7 @@ export function WaTimelineTab({
           <span className="text-[var(--state-info)]">{stats.outbound}</span> out
         </span>
         {stats.high > 0 && (
-          <span className="text-[var(--state-danger)]">
+          <span className="text-[var(--state-warning)]">
             <AlertTriangle className="inline w-3 h-3 mr-1" />
             {stats.high} HIGH unresolved
           </span>

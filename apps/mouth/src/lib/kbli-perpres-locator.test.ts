@@ -45,10 +45,12 @@ describe("Perpres citation on the KBLI page", () => {
   });
 
   it("says when an activity is named through its KBLI-2020 predecessor", () => {
-    // `55203` (Vila) is not in the annex under its own code; `55193` is. A
-    // reader who greps the annex for 55203 and finds nothing must be able to
-    // see why, rather than conclude the citation is invented.
-    expect(perpresCitation("55203")).toContain("via KBLI-2020 55193");
+    // `55209` (Guest House) is not in the annex under its own code; `55199` is.
+    // A reader who greps the annex for 55209 and finds nothing must be able to
+    // see why, rather than conclude the citation is invented. (55203/Vila no
+    // longer fits this example — still IN REVIEW, W-H dossier §2, never
+    // adjudicated.)
+    expect(perpresCitation("55209")).toContain("via KBLI-2020 55199");
   });
 
   it("keeps the OSS scale axis OUT of the citation", () => {
@@ -56,9 +58,9 @@ describe("Perpres citation on the KBLI page", () => {
     // an absent Besar row in OSS licensing data is not a finding that the
     // activity cannot be run at that scale. Printing it as part of a legal
     // citation would state a bar the instrument does not.
-    const villa = getPerpresLocator("55203");
-    expect(villa?.besar).toBe("absent");
-    expect(villa?.cite).not.toMatch(/Besar|Pasal 7/);
+    const guestHouse = getPerpresLocator("55209");
+    expect(guestHouse?.besar).toBe("absent");
+    expect(guestHouse?.cite).not.toMatch(/Besar|Pasal 7/);
   });
 
   it("returns null for an unknown code rather than inventing one", () => {
@@ -85,8 +87,8 @@ describe("the page's own reader gates the citation with the whole-code PMA tuple
     const { getCode } = await import("./kbli-data");
     const restaurant = getCode("56101");
     expect(restaurant?.pma.citation).toBeNull();
-    const villa = getCode("55203");
-    expect(villa?.pma.citation).toBeNull();
+    const guestHouse = getCode("55209");
+    expect(guestHouse?.pma.citation).toBeNull();
   });
 
   it("agrees between the two readers, on every code", async () => {

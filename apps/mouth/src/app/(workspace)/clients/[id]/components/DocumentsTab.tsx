@@ -64,17 +64,17 @@ export function DocumentsTab({
     if (daysLeft < 0)
       return {
         label: `Expired ${Math.abs(daysLeft)}d ago`,
-        cls: "bg-[var(--state-danger)]/10 text-[var(--state-danger)]",
+        cls: "bg-[var(--state-warning)]/10 text-[var(--state-warning)]",
       };
     if (daysLeft === 0)
       return {
         label: "Expires today",
-        cls: "bg-[var(--state-danger)]/10 text-[var(--state-danger)]",
+        cls: "bg-[var(--state-warning)]/10 text-[var(--state-warning)]",
       };
     if (daysLeft <= 30)
       return {
         label: `⏰ ${daysLeft}d left`,
-        cls: "bg-[var(--state-danger)]/10 text-[var(--state-danger)]",
+        cls: "bg-[var(--state-warning)]/10 text-[var(--state-warning)]",
       };
     if (daysLeft <= 90)
       return {
@@ -126,7 +126,12 @@ export function DocumentsTab({
           <p className="text-sm text-[var(--bz-text-2)] mt-1 mb-4">
             Upload passport, visa, or company documents
           </p>
-          <Button size="sm" onClick={onAddClick} className="gap-2">
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={onAddClick}
+            className="gap-2 border-[var(--state-success)] bg-[var(--state-success)] text-white hover:bg-[var(--state-success)] hover:opacity-90"
+          >
             <Plus className="w-4 h-4" />
             Add Document
           </Button>
@@ -154,7 +159,12 @@ export function DocumentsTab({
             )}
           </p>
         </div>
-        <Button size="sm" onClick={onAddClick} className="gap-2">
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={onAddClick}
+          className="gap-2 border-[var(--state-success)] bg-[var(--state-success)] text-white hover:bg-[var(--state-success)] hover:opacity-90"
+        >
           <Plus className="w-4 h-4" />
           Add Document
         </Button>
@@ -185,14 +195,14 @@ export function DocumentsTab({
           <div key={cat} className="space-y-1">
             <button
               onClick={() => toggleCollapse(cat)}
-              className="w-full flex items-center gap-2 pb-1.5 border-b border-[var(--bz-border)] hover:border-[var(--bz-accent)]/40 transition-colors group"
+              className="w-full flex items-center gap-2 pb-1.5 border-b border-[var(--bz-border)] hover:border-[var(--line-control)] transition-colors group"
             >
               {isCollapsed ? (
                 <ChevronRight className="w-3.5 h-3.5 text-[var(--bz-text-2)] group-hover:text-[var(--bz-text-1)]" />
               ) : (
                 <ChevronDown className="w-3.5 h-3.5 text-[var(--bz-text-2)] group-hover:text-[var(--bz-text-1)]" />
               )}
-              <Icon className="w-4 h-4 text-[var(--bz-accent)]" />
+              <Icon className="w-4 h-4 text-[var(--tx-secondary)]" />
               <h4 className="text-sm font-semibold text-[var(--bz-text-1)] capitalize">
                 {categoryLabels[cat] || cat}
               </h4>
@@ -221,13 +231,13 @@ export function DocumentsTab({
                       key={doc.id}
                       className={`flex items-center justify-between rounded-lg border bg-[var(--bz-surface)] p-3 hover:bg-[var(--bz-surface)]/80 transition-colors ${
                         isUrgent
-                          ? "border-red-500/30"
+                          ? "border-[var(--state-warning)]/30"
                           : "border-[var(--bz-border)]"
                       }`}
                     >
                       <div className="flex items-center gap-3 min-w-0">
                         <FileText
-                          className={`w-4 h-4 shrink-0 ${isUrgent ? "text-[var(--state-danger)]" : "text-[var(--bz-text-2)]"}`}
+                          className={`w-4 h-4 shrink-0 ${isUrgent ? "text-[var(--state-warning)]" : "text-[var(--bz-text-2)]"}`}
                         />
                         <div className="min-w-0">
                           <p className="text-sm font-medium text-[var(--bz-text-1)] truncate">
@@ -261,7 +271,7 @@ export function DocumentsTab({
                                  so the team removing it from view would lose
                                  information they may need. */
                               <span
-                                className="text-xs px-1.5 py-0.5 rounded bg-[var(--state-danger)]/10 text-[var(--state-danger)]"
+                                className="text-xs px-1.5 py-0.5 rounded bg-[var(--state-warning)]/10 text-[var(--state-warning)]"
                                 title={`Removed by the client on ${formatDate(doc.deleted_at)} — restorable by them for 30 days`}
                               >
                                 Removed by client
@@ -282,7 +292,7 @@ export function DocumentsTab({
                             href={doc.google_drive_file_url}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="text-xs text-[var(--bz-accent)] hover:underline px-2 py-1 rounded border border-[var(--bz-border)] hover:bg-[var(--bz-base)]"
+                            className="text-xs text-[var(--tx-pure)] hover:underline px-2 py-1 rounded border border-[var(--bz-border)] hover:bg-[var(--bz-base)]"
                           >
                             View
                           </a>

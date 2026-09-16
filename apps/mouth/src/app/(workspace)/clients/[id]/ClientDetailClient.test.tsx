@@ -37,6 +37,13 @@ vi.mock("@/lib/api", () => ({
     getProfile: vi.fn().mockResolvedValue({
       email: "synthetic.team@example.test",
     }),
+    // K3b added a synchronous read for the ownership predicate (copper
+    // stamp, masthead subtitle) — same shape as `getUserProfile` everywhere
+    // else in kita. This mock did not carry it before; a component that now
+    // calls it would throw "api.getUserProfile is not a function" on every
+    // test in this file, which is why it is added here rather than guarded
+    // with optional chaining in the component itself.
+    getUserProfile: vi.fn(() => ({ email: "synthetic.team@example.test" })),
     crm: {
       updateClient: mockUpdateClient,
       createInteraction: vi.fn(),

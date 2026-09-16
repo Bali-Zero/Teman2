@@ -1,12 +1,15 @@
-"""Xendit sandbox adapter — owner decision 1 (ratified 2026-08-25), tier (a) only.
+"""Xendit adapter — owner decision 1 (ratified 2026-08-25), tier (a) only.
 
 Tier (a): small tickets (<= ~Rp 3jt), card in checkout, provider fee ABSORBED
 into the one all-inclusive `price_idr` (GARUDA VOA: 750.000 / 850.000 IDR).
 Never builds tier (b) (deposit+wire) or tier (c) (Virtual Account) — those
 are out of scope for this product (DECISIONS.md owner decision 1).
 
-Uses the Xendit Invoices API (sandbox secret key only — never a live key in
-this build; ASSEMBLY-LINE G5 gauntlet runs on sandbox exclusively). Webhook
+Uses the Xendit Invoices API. Sandbox by default; live only with BOTH a
+`xnd_production_` secret key AND `live_enabled=True` (wired from
+`GARUDA_PAYMENTS_LIVE=true`, `service_initializer.py` §5.7) — two
+independent switches, so a live key alone can never arm a real charge and
+flipping the env flag alone can never turn a sandbox key live. Webhook
 authenticity is Xendit's actual mechanism: a static `x-callback-token`
 header compared to our stored verification token, constant-time — NOT an
 HMAC signature (Xendit Invoices callbacks carry no body signature). The
@@ -44,7 +47,9 @@ from backend.services.payments.terminal_taxonomy import (
 
 logger = logging.getLogger(__name__)
 
-_SANDBOX_BASE_URL = "https://api.xendit.co"
+# Xendit selects sandbox vs. live by the KEY, not the host — one API base
+# serves both modes.
+_BASE_URL = "https://api.xendit.co"
 _CHECKOUT_TTL_MINUTES = 60
 
 # Xendit Invoices `failure_code` -> our closed vocabulary. Deliberately
@@ -80,7 +85,9 @@ class XenditFeeConfig:
 
 
 class XenditPaymentProvider:
-    """Implements `payments.port.PaymentProvider` against Xendit sandbox."""
+    """Implements `payments.port.PaymentProvider` against Xendit (sandbox by
+    default; live only when both `secret_key` and `live_enabled` agree — see
+    module docstring)."""
 
     def __init__(
         self,
@@ -90,13 +97,37 @@ class XenditPaymentProvider:
         public_base_url: str,
         fee_config: XenditFeeConfig,
         client: httpx.AsyncClient,
-        base_url: str = _SANDBOX_BASE_URL,
+        base_url: str = _BASE_URL,
+        live_enabled: bool = False,
     ) -> None:
-        if not secret_key.startswith("xnd_development_"):
-            # Fail closed rather than risk a live key reaching this sandbox
-            # adapter — ASSEMBLY-LINE G5 forbids a real charge in this build.
+        if secret_key.startswith("xnd_production_"):
+            if not live_enabled:
+                # A live key alone must not arm a real charge — two
+                # independent switches (this key AND the flag). Fail closed
+                # rather than let a secrets-only change go live.
+                raise ValueError(
+                    "XenditPaymentProvider was given a production (xnd_production_) "
+                    "secret key but live_enabled is False: set GARUDA_PAYMENTS_LIVE=true "
+                    "to arm live mode, or use a sandbox (xnd_development_) key"
+                )
+            self._mode = "live"
+        elif secret_key.startswith("xnd_development_"):
+            if live_enabled:
+                # The inverse mistake: a sandbox key with the live flag on
+                # would make the customer-facing site believe it is live and
+                # send real tourists to a sandbox invoice nobody can pay.
+                raise ValueError(
+                    "XenditPaymentProvider was given a sandbox (xnd_development_) "
+                    "secret key but live_enabled is True (GARUDA_PAYMENTS_LIVE=true): "
+                    "a live-mode deploy requires a production secret key"
+                )
+            self._mode = "sandbox"
+        else:
+            # Fail closed on any other prefix — never widen this to "accept
+            # anything" (ASSEMBLY-LINE G5).
             raise ValueError(
-                "XenditPaymentProvider requires a sandbox (xnd_development_) secret key"
+                "XenditPaymentProvider requires a sandbox (xnd_development_) or "
+                "production (xnd_production_) secret key"
             )
         if not callback_verification_token.strip():
             # The SECOND half of the credential, and the one that fails
@@ -142,6 +173,11 @@ class XenditPaymentProvider:
         )
         self._client = client
         self._base_url = base_url
+
+    @property
+    def mode(self) -> str:
+        """`"live"` or `"sandbox"` — set once in `__init__`, never mutated."""
+        return self._mode
 
     async def create_checkout_session(
         self,

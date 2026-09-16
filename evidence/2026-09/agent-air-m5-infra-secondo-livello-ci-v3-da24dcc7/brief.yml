@@ -1,0 +1,95 @@
+task_id: secondo-livello-workflows-tests-ci
+gear: 3
+l_level: L2
+gate_class: opus
+# Floor 3, source `path`: .github/workflows/* is a hot-zone pattern in
+# scripts/evidence_pack_lint.py HOTZONE_PATTERNS, and the first-party-action-pin exemption applies
+# only to version-pin-only diffs, not to a new workflow file. Gear 3 is declared because the floor
+# says 3 — not because the change is large. The diff is small YAML, and that mismatch is the point:
+# GEAR = FLOOR, in both directions, and this mission's whole subject is not paying more ceremony
+# than the floor demands. The exact line count is in the pack's `diff.net_lines`, measured on the
+# final staged tree rather than narrated from memory — a predecessor of this PR was caught stating
+# a stale figure here, twice.
+objective: >-
+  Arm infra/workflows/tests/ in CI, and make the new job's failures on main reach a human. Before
+  this workflow NOTHING in .github/workflows/ ran that directory — measured, not assumed. It held
+  test-kbli-certification-contract.mjs, a suite asserting the KBLI filiera workflow's contract,
+  which has therefore never once executed in CI since it was written, and now also the two suites
+  this mission shipped (#6603, #6604). That is cicatrix #2 (exists != armed) in its plainest form:
+  suites that prove a doctrine, that no machine has ever run. The job runs every *-contract*.mjs
+  under infra/workflows/tests/ plus the behavioural runner suite, then boots the standalone runner
+  in --dry-run to prove it compiles and executes. The second file in this diff registers the new
+  workflow's name in main-push-failure-watch.yml, because a job whose red on main nobody is told
+  about is the same disease one layer up.
+constraints:
+  - >-
+    The job gates only what it can honestly gate: no network, no claude/codex/agy binary, no model
+    credential, no repository secret. It is NOT credential-free — actions/checkout is still handed
+    a GITHUB_TOKEN by the runner — so what is claimed is the narrower true thing: the token is
+    read-only (`permissions: contents: read`) and is not persisted into the runner's git config.
+    The suites are pure Node with no dependency beyond node: builtins, and the runner's --dry-run
+    door spawns no process at all.
+  - >-
+    Exactly one existing workflow file is modified, by exactly one added line: the new workflow's
+    `name:` in main-push-failure-watch.yml's over-inclusive `on.workflow_run.workflows:` list,
+    which scripts/check_watcher_coverage.py requires of every workflow in the repo. Nothing outside
+    .github/workflows/ and this evidence directory is touched. The workflow is deliberately NOT
+    added to branch-protection required_status_checks in this PR: arming a new required check is a
+    separate decision with its own blast radius, and it should follow a history on main rather than
+    a first green run.
+  - >-
+    Actions are pinned the way the neighbouring workflows in this repo already pin them
+    (actions/checkout@v7, actions/setup-node@v4), rather than introducing a new pinning style in a
+    hot-zone file.
+acceptance:
+  - text: >-
+      A1: WHEN the workflow file is parsed SHALL be valid YAML declaring exactly one job with five
+      steps, and a paths filter naming infra/workflows/** and the workflow itself, so a PR touching
+      neither does not pay for it.
+    probe: python3 -c "import yaml;d=yaml.safe_load(open('.github/workflows/workflows-tests.yml'));print(sorted(d['jobs'].keys()), len(d['jobs']['workflows-contract-tests']['steps']))"
+  - text: >-
+      A2 Bites: WHEN the job runs in CI SHALL execute all three of its test steps and report their
+      real results. This is not a promise about a future job — the identical job ran on the
+      predecessor PR #6607, green in 32s, and its log is the observation.
+    probe: gh run view --job 104518590037 --log | grep -E "PASS SUMMARY|15/15|promoted"
+  - text: >-
+      A3 THE RISK THIS PR CARRIES: WHEN the PRE-EXISTING test-kbli-certification-contract.mjs is
+      run SHALL pass. Arming a suite that was already red would block every future
+      infra/workflows/ PR from the moment this lands, so it is checked before and not after.
+    probe: node infra/workflows/tests/test-kbli-certification-contract.mjs
+  - text: >-
+      A4: WHEN the behavioural runner suite and the runner boot step are run locally SHALL pass
+      5/5 and exit 0 respectively, the boot returning promoted:false with a builder from the
+      inferior roster and the Dux as verifier.
+    probe: node infra/workflows/tests/test-run-second-army.mjs && node infra/workflows/run-second-army.mjs --args-file /tmp/ci-smoke-args.json --dry-run
+  - text: >-
+      A5 THE DEFECT THAT KILLED THE PREDECESSOR: WHEN scripts/check_watcher_coverage.py is run
+      SHALL exit 0, and WHEN the added watcher line is removed SHALL exit 1 naming this exact
+      workflow. Both halves are measured, because a registration that cannot be shown to be load
+      bearing is decoration.
+    probe: python3 scripts/check_watcher_coverage.py; then the same with the line deleted
+assumptions:
+  - text: >-
+      Nothing in .github/workflows/ referenced infra/workflows/ before this file. The entire
+      justification rests on it, so it is measured rather than asserted.
+    status: verified
+    probe: "grep -rl 'infra/workflows' .github/workflows/ on origin/main returns nothing"
+  - text: >-
+      The floor is 3 by PATH, not by size. The Gear-3 ceremony is paid because the hot-zone rule
+      says so, not because the change is risky in proportion — and the honest response to that is
+      to pay it, not to argue it away.
+    status: verified
+    probe: "scripts/evidence_pack_lint.py --print-floor-source returns 'path' and --print-floor returns 3"
+  - text: >-
+      The glob *-contract*.mjs deliberately does NOT match test-run-second-army.mjs, which is why
+      that suite has its own step. A future contract suite dropped into the directory is armed the
+      day it lands; a future behavioural suite is not, and would need a line here.
+    status: verified
+    probe: "ls infra/workflows/tests/*-contract*.mjs lists two files, not three"
+  - text: >-
+      Registering the workflow in the watcher is not a formality for this job. The watcher's alert
+      path only fires for push-to-main and schedule completions, and this job HAS a
+      `push: branches: [main]` trigger — so the listing buys a real alert, not just a green
+      conformance check.
+    status: verified
+    probe: "the workflow's own `on:` block declares push.branches: [main]"

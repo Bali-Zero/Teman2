@@ -184,7 +184,10 @@ export const TEAM_ROSTER: RosterMember[] = [
     role: "Tax Care",
     dept: "tax",
     email: "faysha.tax@balizero.com",
-    photo: "/static/team/faisha.jpg",
+    // Portrait withdrawn from public/ under D6 (2026-09-15, owner ruling: default
+    // privacy for the two people excluded from public marketing surfaces — see
+    // PUBLIC_EXCLUDED_SLUGS in src/lib/team-public-listing.ts). No `photo` → this
+    // member renders the initials fallback per the `photo?` contract above.
   },
 
   // ── Accounting ──────────────────────────────────────────────────────────
@@ -211,7 +214,10 @@ export const TEAM_ROSTER: RosterMember[] = [
     role: "Marketing Specialist",
     dept: "support",
     email: "sahira@balizero.com",
-    photo: "/static/team/sahira.jpg",
+    // Portrait withdrawn from public/ under D6 (2026-09-15, owner ruling: default
+    // privacy for the two people excluded from public marketing surfaces — see
+    // PUBLIC_EXCLUDED_SLUGS in src/lib/team-public-listing.ts). No `photo` → this
+    // member renders the initials fallback per the `photo?` contract above.
   },
   {
     slug: "subhi",

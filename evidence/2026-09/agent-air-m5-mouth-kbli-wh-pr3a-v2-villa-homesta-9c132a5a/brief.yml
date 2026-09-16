@@ -1,0 +1,24 @@
+task: >-
+  SAETTA-20260915 W-H PR-3a (split from PR-3, size floor): publish the Perpres 49/2021
+  Lampiran II Koperasi/UMKM allocation on 3 KBLI 2025 codes — 55201 (homestay), 55203 (villa),
+  79903 (pramuwisata). Each moves to the certified template tuple (TERBATAS / pma_max_asing=0 /
+  pma_verification_status=located) already carried by 95291/96100/96210/96220, with a
+  pma_official_basis naming the exact Lampiran II page/entry/sub-row (never per_skala/Usaha
+  Besar). The 8 specialised-retail codes of Lampiran II entry 46 move to PR-3b (separate
+  worktree, after this PR merges).
+lane: mouth/kbli-wh-pr3a-villa-homestay-guide
+machine: M5
+date: 2026-09-15
+gear: 2
+gear_reason: >-
+  Deterministic floor 2 (size, no hot-zone path). Client-facing KBLI data + prose + two small
+  test re-pins only; no new compiler (reuses apply_umkm_reservations.py unmodified) and no
+  migration/endpoint.
+acceptance:
+  - probe: python3 -m pytest scripts/kbli_filiera/tests/ -q
+    expect: 0 failed
+  - probe: >-
+      cd apps/mouth && npx vitest run src/lib/kbli-perpres-locator.test.ts
+    expect: all passed
+  - probe: bash scripts/sync_kbli_dataset.sh --check
+    expect: all consumers in sync with canonical

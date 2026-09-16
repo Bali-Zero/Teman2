@@ -160,6 +160,80 @@ class TestBuildWaPackageRoute:
 
         assert orchestrator.core.curated_qa_calls == []
 
+    async def test_planner_greeting_disagreement_still_spends_the_curated_qa_lookup(
+        self,
+    ) -> None:
+        """B2.5 PR-3 (ruling d): the cost guard above used to key off
+        `plan.domain`, which the planner's cheap keyword heuristic can call
+        GREETING for a real question `wa_greeting.match_greeting` rejects
+        (verified with the real planner and matcher in
+        `test_wa_package_builder.py::TestGreetingAuthority`). That query is
+        no longer unbuildable — it builds with GENERAL's collections — so
+        starving its curated-QA prefetch here would leave a real answer
+        without evidence the builder is about to use. `match_greeting`, not
+        `plan.domain`, is the authority for this guard now.
+
+        Round-1 review cure (Codex + Gemini, converged): the wrapper must
+        also be called with the EFFECTIVE domain ("general"), not the
+        planner's raw, stale "greeting" label — `OrchestratorCore
+        ._inject_curated_qa_grounding` short-circuits (zero I/O) only on
+        `"general"`/falsy, so passing "greeting" for a disagreement query
+        silently spent the exact embedding+Qdrant search this cost guard
+        exists to avoid, on hits that same domain gate then discarded.
+        """
+        orchestrator = FakeOrchestrator()
+        query = "Halo, apa kabar semuanya di kantor hari ini?"
+        request = WaPackageBuildRequest(query=query, history=[], thread_epoch=0)
+
+        response = await build_wa_package(request, orchestrator=orchestrator)
+
+        assert response.unbuildable is None, "the disagreeing query must build, not fall off"
+        assert orchestrator.core.curated_qa_calls
+        assert orchestrator.core.curated_qa_calls[0][0] == query
+        assert orchestrator.core.curated_qa_calls[0][1] == {"domain": "general"}, (
+            "must pass the EFFECTIVE domain (general), not the planner's stale "
+            "'greeting' label — the real orchestrator only short-circuits on 'general'"
+        )
+
+    async def test_identity_query_returns_unbuildable_not_an_error(self) -> None:
+        """B2.5-1b, second authority, same order as greeting."""
+        orchestrator = FakeOrchestrator()
+        request = WaPackageBuildRequest(
+            query="ciao tu sei Zantara?", history=[], thread_epoch=0
+        )
+
+        response = await build_wa_package(request, orchestrator=orchestrator)
+
+        assert response.package_wire is None
+        assert response.unbuildable == "identity_domain"
+
+    async def test_identity_query_never_spends_the_curated_qa_lookup(self) -> None:
+        """Same cost guard as the greeting one: an identity query is about to
+        be declared unbuildable — no embedding + Qdrant spend for it."""
+        orchestrator = FakeOrchestrator()
+        request = WaPackageBuildRequest(
+            query="ciao tu sei Zantara?", history=[], thread_epoch=0
+        )
+
+        await build_wa_package(request, orchestrator=orchestrator)
+
+        assert orchestrator.core.curated_qa_calls == []
+
+    async def test_a_case_question_with_an_identity_phrase_still_spends_the_lookup(
+        self,
+    ) -> None:
+        """Innocence pair: the domain veto wins, so "cosa puoi fare per la
+        mia PT PMA?" builds for real and must still get its curated-QA
+        evidence."""
+        orchestrator = FakeOrchestrator()
+        query = "cosa puoi fare per la mia PT PMA?"
+        request = WaPackageBuildRequest(query=query, history=[], thread_epoch=0)
+
+        response = await build_wa_package(request, orchestrator=orchestrator)
+
+        assert response.unbuildable is None
+        assert orchestrator.core.curated_qa_calls
+
 
 class TestRequireInternalCaller:
     """finding 7: authentication is not authorization — any portal JWT

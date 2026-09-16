@@ -724,7 +724,7 @@
 42997 | Konstruksi Bangunan Sipil Fasilitas Sumber Radiasi Pengion | NOT_VERIFIED | Not verified | Menengah Tinggi
 42998 | Konstruksi Bangunan Sipil Reaktor Nuklir | NOT_VERIFIED | Not verified | Tinggi
 42999 | Konstruksi Bangunan Sipil Lainnya YTDL | NOT_VERIFIED | Not verified | Not classified
-43110 | Pembongkaran | NOT_VERIFIED | Not verified | Menengah Rendah
+43110 | Pembongkaran | NOT_VERIFIED | Not verified | Menengah Tinggi / Menengah Rendah
 43120 | Penyiapan Lahan | NOT_VERIFIED | Not verified | Menengah Tinggi
 43211 | Pemasangan Jaringan Listrik | NOT_VERIFIED | Not verified | Tinggi
 43212 | Pemasangan Jaringan Telekomunikasi | NOT_VERIFIED | Not verified | Menengah Tinggi
@@ -1057,9 +1057,9 @@
 55104 | Aktivitas Hotel Bintang Dua | NOT_VERIFIED | Not verified | Menengah Rendah / Menengah Tinggi
 55105 | Aktivitas Hotel Bintang Satu | TERBATAS | 0% | Menengah Rendah / Menengah Tinggi
 55106 | Aktivitas Hotel Nonbintang | NOT_VERIFIED | Not verified | Menengah Tinggi / Menengah Rendah
-55201 | Aktivitas Rumah Tinggal Sewa (Homestay) | NOT_VERIFIED | Not verified | Menengah Rendah
+55201 | Aktivitas Rumah Tinggal Sewa (Homestay) | TERBATAS | 0% | Menengah Rendah
 55202 | Aktivitas Hostel Remaja (Youth Hostel) | NOT_VERIFIED | Not verified | Menengah Rendah
-55203 | Aktivitas Vila | NOT_VERIFIED | Not verified | Menengah Rendah
+55203 | Aktivitas Vila | TERBATAS | 0% | Menengah Rendah
 55204 | Aktivitas Apartemen Hotel | NOT_VERIFIED | Not verified | Menengah Tinggi
 55209 | Aktivitas Penyediaan Akomodasi Jangka Pendek Lainnya | NOT_VERIFIED | Not verified | Menengah Rendah
 55300 | Aktivitas Penyediaan Bumi Perkemahan, Persinggahan Karavan, dan Taman Karavan | NOT_VERIFIED | Not verified | Menengah Rendah
@@ -1338,7 +1338,7 @@
 79129 | Aktivitas Biro Perjalanan Lainnya | NOT_VERIFIED | Not verified | Menengah Tinggi
 79901 | Jasa Informasi Pariwisata | NOT_VERIFIED | Not verified | Rendah
 79902 | Jasa Informasi Daya Tarik Wisata | NOT_VERIFIED | Not verified | Rendah
-79903 | Jasa Pramuwisata | NOT_VERIFIED | Not verified | Rendah
+79903 | Jasa Pramuwisata | TERBATAS | 0% | Rendah
 79909 | Aktivitas Terkait Perjalanan Lainnya YTDL | NOT_VERIFIED | Not verified | Not classified
 80110 | Aktivitas Investigasi dan Keamanan Swasta | NOT_VERIFIED | Not verified | Tinggi
 80190 | Aktivitas Keamanan YTDL | NOT_VERIFIED | Not verified | Not classified
@@ -1521,7 +1521,7 @@
 93111 | Fasilitas Stadion | NOT_VERIFIED | Not verified | Menengah Rendah
 93112 | Fasilitas Sirkuit | NOT_VERIFIED | Not verified | Menengah Tinggi
 93113 | Fasilitas Gelanggang/Arena | NOT_VERIFIED | Not verified | Not classified
-93114 | Fasilitas Lapangan | NOT_VERIFIED | Not verified | Menengah Rendah
+93114 | Fasilitas Lapangan | NOT_VERIFIED | Not verified | Menengah Rendah / Tinggi
 93115 | Fasilitas Olahraga Beladiri | NOT_VERIFIED | Not verified | Not classified
 93116 | Fasilitas Pusat Kebugaran/Fitness Center | NOT_VERIFIED | Not verified | Menengah Rendah
 93119 | Pengelolaan Fasilitas Olahraga Lainnya | NOT_VERIFIED | Not verified | Rendah

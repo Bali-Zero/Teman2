@@ -100,8 +100,11 @@ export function EditCompanyModal({
             Edit Company
           </h2>
           <button
+            type="button"
             onClick={onClose}
             className="p-1.5 rounded-lg hover:bg-[var(--kbli-bg-card-hover)] text-[var(--kbli-text-secondary)] transition-colors"
+            aria-label="Close modal"
+            title="Close modal"
           >
             <X className="w-4 h-4" />
           </button>

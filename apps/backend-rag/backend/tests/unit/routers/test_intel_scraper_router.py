@@ -222,6 +222,112 @@ class TestConvertStagingToEnrichedArticle:
         assert "Analysis text" in result["bali_zero_take"]["our_analysis"]
         assert "Advice text" in result["bali_zero_take"]["our_advice"]
 
+    def test_plain_bali_zero_take_is_not_split_mid_word(self) -> None:
+        from backend.app.routers.intel_scraper import convert_staging_to_enriched_article
+
+        take = "word " * 39 + "IDR 250 million must remain intact.\n\n" + "word " * 90
+        result = convert_staging_to_enriched_article(
+            {"content": f"## Facts\nFacts.\n## Bali Zero Take\n{take}"}
+        )
+
+        assert result["bali_zero_take"] == {
+            "hidden_insight": "",
+            "our_analysis": take.strip(),
+            "our_advice": "",
+        }
+
+        from backend.app.routers.article_composer import EnrichedArticle, generate_mdx_content
+
+        mdx = generate_mdx_content(EnrichedArticle(**result), "test-property-tax", None)
+        assert take.strip() in mdx
+        assert "### Our Analysis" in mdx
+        assert "### The Hidden Insight" not in mdx
+        assert "### Our Advice" not in mdx
+
+    def test_take_labels_preserve_duplicate_sections_and_do_not_match_prose(self) -> None:
+        from backend.app.routers.intel_scraper import _parse_bali_zero_take
+
+        result = _parse_bali_zero_take(
+            "### Our Analysis\nOur Advice is to read the full rule.\n"
+            "### Hidden Insight\nFirst insight.\n"
+            "Hidden Insight: Second insight.\nOur Advice: Check first."
+        )
+
+        assert result == {
+            "hidden_insight": "First insight.\n\nSecond insight.",
+            "our_analysis": "Our Advice is to read the full rule.",
+            "our_advice": "Check first.",
+        }
+
+    def test_tldr_facts_stop_at_word_boundary(self) -> None:
+        from backend.app.routers.intel_scraper import convert_staging_to_enriched_article
+
+        facts = "word " * 28 + "IDR 250 million applies."
+        result = convert_staging_to_enriched_article({"content": f"## Facts\n{facts}"})
+
+        assert result["tldr"]["what"] == " ".join(["word"] * 28) + "…"
+
+    @pytest.mark.parametrize("heading", ["## Bali Zero Take:", "## Bali Zero's Take"])
+    def test_take_heading_variants_preserve_editorial_content(self, heading: str) -> None:
+        from backend.app.routers.intel_scraper import convert_staging_to_enriched_article
+
+        result = convert_staging_to_enriched_article(
+            {"content": f"## Facts\nFacts.\n{heading}\nFull editorial analysis."}
+        )
+        assert result["bali_zero_take"]["our_analysis"] == "Full editorial analysis."
+
+    def test_markdown_take_labels_preserve_sections(self) -> None:
+        from backend.app.routers.intel_scraper import _parse_bali_zero_take
+
+        result = _parse_bali_zero_take(
+            "### The Hidden Insight\nInsight.\n"
+            "  #### Our Analysis\nAnalysis.\n- **Our Advice:** Check first."
+        )
+        assert result == {
+            "hidden_insight": "Insight.",
+            "our_analysis": "Analysis.",
+            "our_advice": "Check first.",
+        }
+
+    def test_missing_take_does_not_reclassify_other_sections(self) -> None:
+        from backend.app.routers.intel_scraper import convert_staging_to_enriched_article
+
+        result = convert_staging_to_enriched_article(
+            {"content": "## Facts\nFacts.\n## Next Steps\n- Check the source."}
+        )
+
+        assert result["bali_zero_take"] == {
+            "hidden_insight": "",
+            "our_analysis": "",
+            "our_advice": "",
+        }
+        from backend.app.routers.article_composer import EnrichedArticle, generate_mdx_content
+
+        mdx = generate_mdx_content(EnrichedArticle(**result), "test-missing-take", None)
+        assert "## Bali Zero Take" not in mdx
+
+    def test_partial_take_preserves_unlabelled_prose(self) -> None:
+        from backend.app.routers.intel_scraper import convert_staging_to_enriched_article
+
+        result = convert_staging_to_enriched_article(
+            {"content": "## Bali Zero Take\nOpening context.\n\nOur Advice: Check first."}
+        )
+
+        assert result["bali_zero_take"] == {
+            "hidden_insight": "",
+            "our_analysis": "Opening context.",
+            "our_advice": "Check first.",
+        }
+
+    def test_explicit_summary_stops_at_word_boundary(self) -> None:
+        from backend.app.routers.intel_scraper import convert_staging_to_enriched_article
+
+        result = convert_staging_to_enriched_article(
+            {"content": "## Summary\n" + "word " * 55 + "250million applies."}
+        )
+
+        assert result["ai_summary"] == " ".join(["word"] * 55) + "…"
+
 
 # ---------------------------------------------------------------------------
 # Helper: ingest_intel_to_qdrant

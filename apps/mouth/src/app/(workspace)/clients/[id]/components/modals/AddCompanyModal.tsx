@@ -22,12 +22,7 @@ import { fileToBase64 } from "@/lib/utils";
 // ADD COMPANY MODAL - TYPES
 // ============================================
 type DocumentType =
-  | "akta"
-  | "sk"
-  | "businessId"
-  | "nib"
-  | "npwp"
-  | "profilePerseroan";
+  "akta" | "sk" | "businessId" | "nib" | "npwp" | "profilePerseroan";
 
 interface CompanyDocuments {
   akta?: File;
@@ -392,7 +387,7 @@ export function AddCompanyModal({
   }, [handleClose]);
 
   const inputClass =
-    "w-full px-3 py-2 rounded-lg border border-[var(--bz-border)] bg-[var(--bz-surface)] text-[var(--bz-text-1)] focus:outline-none focus:ring-2 focus:ring-[var(--bz-accent)]/50 text-sm";
+    "w-full px-3 py-2 rounded-lg border border-[var(--bz-border)] bg-[var(--bz-surface)] text-[var(--bz-text-1)] focus:outline-none focus:ring-2 focus:ring-[var(--line-control)] text-sm";
 
   return (
     <div
@@ -415,6 +410,7 @@ export function AddCompanyModal({
             size="icon"
             onClick={onClose}
             aria-label="Close modal"
+            title="Close"
           >
             <X className="w-5 h-5" />
           </Button>
@@ -513,7 +509,7 @@ export function AddCompanyModal({
                   />
                   <label
                     htmlFor="nib-doc-upload"
-                    className="flex-1 px-3 py-2 rounded-lg border border-dashed border-[var(--bz-border)] bg-[var(--bz-surface)] cursor-pointer hover:border-[var(--accent)] transition-colors text-sm truncate"
+                    className="flex-1 px-3 py-2 rounded-lg border border-dashed border-[var(--bz-border)] bg-[var(--bz-surface)] cursor-pointer hover:border-[var(--line-control)] transition-colors text-sm truncate"
                   >
                     {documents.nib ? documents.nib.name : "Upload NIB file"}
                   </label>
@@ -540,8 +536,10 @@ export function AddCompanyModal({
                         type="button"
                         variant="ghost"
                         size="sm"
-                        className="h-8 w-8 p-0 text-red-500"
+                        className="h-8 w-8 p-0 text-[var(--tx-secondary)] hover:text-[var(--tx-pure)]"
                         onClick={() => updateDocument("nib", undefined)}
+                        aria-label="Remove NIB upload"
+                        title="Remove NIB upload"
                       >
                         <X className="w-4 h-4" />
                       </Button>
@@ -586,7 +584,7 @@ export function AddCompanyModal({
                   />
                   <label
                     htmlFor="npwp-upload"
-                    className="flex-1 px-3 py-2 rounded-lg border border-dashed border-[var(--bz-border)] bg-[var(--bz-surface)] cursor-pointer hover:border-[var(--accent)] transition-colors text-sm truncate"
+                    className="flex-1 px-3 py-2 rounded-lg border border-dashed border-[var(--bz-border)] bg-[var(--bz-surface)] cursor-pointer hover:border-[var(--line-control)] transition-colors text-sm truncate"
                   >
                     {documents.npwp ? documents.npwp.name : "Upload NPWP"}
                   </label>
@@ -613,8 +611,10 @@ export function AddCompanyModal({
                         type="button"
                         variant="ghost"
                         size="sm"
-                        className="h-8 w-8 p-0 text-red-500"
+                        className="h-8 w-8 p-0 text-[var(--tx-secondary)] hover:text-[var(--tx-pure)]"
                         onClick={() => updateDocument("npwp", undefined)}
+                        aria-label="Remove NPWP upload"
+                        title="Remove NPWP upload"
                       >
                         <X className="w-4 h-4" />
                       </Button>
@@ -656,7 +656,7 @@ export function AddCompanyModal({
                         />
                         <label
                           htmlFor={`${docType}-upload`}
-                          className="flex-1 px-3 py-2 rounded-lg border border-dashed border-[var(--bz-border)] bg-[var(--bz-surface)] cursor-pointer hover:border-[var(--accent)] transition-colors text-sm truncate"
+                          className="flex-1 px-3 py-2 rounded-lg border border-dashed border-[var(--bz-border)] bg-[var(--bz-surface)] cursor-pointer hover:border-[var(--line-control)] transition-colors text-sm truncate"
                         >
                           {documents[docType]
                             ? documents[docType]!.name
@@ -667,8 +667,10 @@ export function AddCompanyModal({
                             type="button"
                             variant="ghost"
                             size="sm"
-                            className="h-8 w-8 p-0 text-red-500"
+                            className="h-8 w-8 p-0 text-[var(--tx-secondary)] hover:text-[var(--tx-pure)]"
                             onClick={() => updateDocument(docType, undefined)}
+                            aria-label={`Remove ${labels[docType]} upload`}
+                            title={`Remove ${labels[docType]} upload`}
                           >
                             <X className="w-4 h-4" />
                           </Button>
@@ -824,7 +826,12 @@ export function AddCompanyModal({
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={isSubmitting}>
+            <Button
+              type="submit"
+              variant="outline"
+              disabled={isSubmitting}
+              className="border-[var(--state-success)] bg-[var(--state-success)] text-white hover:bg-[var(--state-success)] hover:opacity-90"
+            >
               {isSubmitting ? (
                 <>
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />

@@ -16,10 +16,15 @@ sections P2-P6/D2):
    (P3) — this is what stops two workers from concurrently processing two
    *different* pending rows of the *same* thread (SKIP LOCKED alone only
    dedupes the same row).
-3. Coalescing (P2): once a bot-reply row is claimed, every OTHER pending
-   bot-reply row for the same thread is superseded (marked failed,
-   ``error='superseded_by_coalescing'``) — the generator always answers the
-   *latest* thread message, so one send covers a whole burst.
+3. FIFO per thread (P2, B2.5 — replaces the coalescing this worker used to
+   do): a burst of same-thread rows is served ONE AT A TIME, oldest first —
+   the candidate scan skips a ``needs_generation`` row while an OLDER
+   ``needs_generation`` row of the same thread is still pending/claimed/
+   generating. Each row is bound to its OWN inbound message
+   (``wa_inbox_bot._load_bound_thread_context``, migration 318), never the
+   thread's latest — see D1/D2 in evidence/2026-09/.../B2-5-design.md for
+   why "one send covers a whole burst" silently dropped and misanswered
+   real customer messages.
 4. If the row needs bot generation, re-check ``human_handling`` (the operator
    may have taken over since the webhook enqueued it) → if true, ABORT and
    drop the outbox row (bot must stay silent on a human-handled thread). A
@@ -286,6 +291,34 @@ def _window_open_locally(thread: asyncpg.Record) -> bool:
     )
 
 
+async def _has_live_successor(
+    conn: asyncpg.Connection, thread_id: int, outbox_id: int
+) -> bool:
+    """True when a NEWER bot-reply row of the SAME thread has not yet
+    reached a terminal outcome (B2.5 FIFO per-thread bursts, migration 318
+    removed ``_coalesce_thread_bursts`` — a burst of client messages is now
+    one outbox row EACH, not one coalesced row). Used to suppress the
+    terminal apology for a row that is not the LAST one in a failing burst:
+    see ``_maybe_send_apology``'s call site for why this must not also
+    suppress the human alert.
+    """
+    return bool(
+        await conn.fetchval(
+            """
+            SELECT EXISTS (
+                SELECT 1 FROM wa_outbox
+                WHERE thread_id = $1
+                  AND id > $2
+                  AND needs_generation = true
+                  AND status IN ('pending', 'claimed', 'generating')
+            )
+            """,
+            thread_id,
+            outbox_id,
+        )
+    )
+
+
 async def _latest_inbound_text(conn: asyncpg.Connection, thread_id: int) -> str:
     """The most recent CUSTOMER message body for this thread — used only to
     drive should_send_ack's triviality filter and detect_language. Filters
@@ -302,6 +335,29 @@ async def _latest_inbound_text(conn: asyncpg.Connection, thread_id: int) -> str:
         thread_id,
     )
     return body or ""
+
+
+async def _recent_inbound_texts(
+    conn: asyncpg.Connection, thread_id: int, *, limit: int = 5
+) -> list[str]:
+    """Up to `limit` prior non-empty CUSTOMER message bodies for this thread,
+    newest first, EXCLUDING the latest one — the history-fallback candidates
+    for the apology's language (B2.5-1b) when the latest message alone does
+    not classify. Only queried by `_maybe_send_apology` when
+    `detect_language(latest_inbound) == "auto"` — the common case never pays
+    this extra round trip."""
+    rows = await conn.fetch(
+        """
+        SELECT body FROM meta_inbox_messages
+        WHERE thread_id = $1 AND direction = 'inbound'
+          AND body IS NOT NULL AND body != ''
+        ORDER BY created_at DESC
+        OFFSET 1 LIMIT $2
+        """,
+        thread_id,
+        limit,
+    )
+    return [row["body"] for row in rows]
 
 
 async def _maybe_send_ack(
@@ -416,8 +472,8 @@ async def _maybe_send_apology(
     Idempotent via the durable ``apology_sent_at`` column (migration 260):
     'failed' is a terminal wa_outbox status no other code path resets back
     to 'pending' (the stale-claim reclaimer only touches 'claimed'/
-    'generating'; coalescing only touches 'pending'), so in practice this
-    can only be entered once per row. As of 2026-08-27 (Kimi K3 adversarial
+    'generating'), so in practice this can only be entered once per row.
+    As of 2026-08-27 (Kimi K3 adversarial
     finding, minore) the durable claim is taken AFTER a successful
     client-facing send, not before — a read-only
     ``SELECT apology_sent_at`` guards against re-sending, and the post-send
@@ -440,6 +496,20 @@ async def _maybe_send_apology(
     finding, MAGGIORE): the Meta 24h window governs what can be sent TO the
     client, not the internal Telegram alert — see the call-site comment on
     `_tell_a_human` below for why that call now happens BEFORE this check.
+
+    Successor-aware for the CLIENT SEND ONLY (2026-09-15, B2.5 successor —
+    Gemini 3.1 Pro constructive review): `_coalesce_thread_bursts` used to
+    collapse a burst of client messages into ONE outbox row, so a total
+    generation failure produced ONE apology. Migration 318 gives each
+    message its own row instead (FIFO per thread), so a burst of N rows
+    that all exhaust retries would otherwise send N apologies — and worse,
+    if an EARLIER row's apology fires while a LATER row of the same burst
+    is still on its way to a real answer, the client gets "we gave up"
+    followed seconds later by a working reply. `_has_live_successor` skips
+    the CLIENT apology (not the human alert, see below) whenever a newer
+    row of the same thread has not yet reached a terminal outcome — only
+    the LAST row of a failing burst has no such successor, so a fully
+    failed burst still yields exactly ONE apology.
 
     Armed by ``_terminal_apology_enabled()`` (``WA_OUTBOX_TERMINAL_APOLOGY_ENABLED``,
     default **ON**, 2026-08-27) — a DEDICATED flag, deliberately NOT
@@ -481,6 +551,19 @@ async def _maybe_send_apology(
             thread_id=thread["thread_id"],
         )
 
+        # Successor suppression (2026-09-15, B2.5 successor): a newer row of
+        # this SAME thread is still live (pending/claimed/generating) —
+        # i.e. this is not the last row of the burst. Protects against a
+        # client receiving this apology followed, seconds later, by a
+        # working answer from that successor row. Deliberately AFTER
+        # `_tell_a_human` above: the human alert and the client apology are
+        # decoupled by design (see this function's docstring on the window
+        # check for the same pattern) — a colleague must be told about
+        # EVERY terminal row in the burst, even the ones whose client-facing
+        # apology is suppressed here.
+        if await _has_live_successor(conn, thread["thread_id"], outbox_id):
+            return
+
         if not _window_open_locally(thread):
             return
 
@@ -492,6 +575,19 @@ async def _maybe_send_apology(
 
         latest_inbound = await _latest_inbound_text(conn, thread["thread_id"])
         detected_language = detect_language(latest_inbound)
+        if detected_language == "auto":
+            # B2.5-1b: 'auto' is UNKNOWN, never a language — measured on
+            # ordinary openers ("Buongiorno, quanto costa aprire una PT PMA
+            # a Bali?" -> 'auto', no marker word matched). The SAME thread's
+            # earlier client messages often already established a real
+            # language; only when NONE of them classify either does this
+            # fall through to `_apology_text`'s own English default (the
+            # true last resort).
+            for candidate in await _recent_inbound_texts(conn, thread["thread_id"]):
+                candidate_language = detect_language(candidate)
+                if candidate_language != "auto":
+                    detected_language = candidate_language
+                    break
         await whatsapp_service.send_message(
             phone=thread["counterpart_phone"],
             text=_apology_text(detected_language),
@@ -574,71 +670,6 @@ async def _apply_pending_status(conn: asyncpg.Connection, wamid: str) -> None:
     logger.info("wa_outbox: applied staged status %s for wamid=%s", pending["status"], wamid)
 
 
-async def _coalesce_thread_bursts(
-    conn: asyncpg.Connection, thread_id: int, outbox_id: int
-) -> int:
-    """Supersede other NOT-YET-STARTED pending bot-reply rows of the same thread (P2).
-
-    The generator always answers the *latest* thread message (see
-    ``wa_inbox_bot._load_thread_context``), so whichever row of a same-thread
-    burst gets claimed first, its generated reply already covers the whole
-    burst — the other pending bot-reply rows would just be redundant sends.
-    Only ``needs_generation`` rows are touched: a pending HUMAN send must
-    never be silently dropped.
-
-    ``attempts = 0`` is what makes "redundant" TRUE, and it is not decorative
-    (2026-08-28, measured in production, thread 394 / row 363). Without it
-    this sweep also killed rows that had already generated real text. That
-    row's answer was produced by ChatGPT three times — every broker job
-    ``consumed_ok``, 9711/10137/8521 ms — and rejected three times by the
-    finalize safety pipeline; it sat at attempts 3 of MAX_ATTEMPTS waiting
-    for its 4th try when a follow-up message arrived 3m27s later and this
-    UPDATE marked it ``failed``. Silently: the sweep writes only ``status``,
-    never a fall-off reason, and never reaches ``_maybe_send_apology`` (which
-    is called ONLY from the two ladder-exhaustion branches). The client got
-    no answer and no apology, and nothing alerted.
-
-    A row with ``attempts > 0`` is not a burst duplicate — it is a question
-    somebody is still owed an answer to. Left alone, its ladder ends one of
-    only two ways: the answer is delivered, or the apology is sent. Never
-    silence. It may then reply after the newer row does; a second, later
-    message is a far smaller harm than a question answered by nothing, and
-    its own context load already includes the follow-up.
-    """
-    async with conn.transaction():
-        superseded = await conn.fetch(
-            """
-            UPDATE wa_outbox
-            SET status = 'failed'
-            WHERE thread_id = $1
-              AND status = 'pending'
-              AND needs_generation = true
-              AND attempts = 0
-              AND id <> $2
-            RETURNING id, message_id
-            """,
-            thread_id,
-            outbox_id,
-        )
-        for row in superseded:
-            await conn.execute(
-                """
-                UPDATE meta_inbox_messages
-                SET status = 'failed', error = 'superseded_by_coalescing'
-                WHERE id = $1
-                """,
-                row["message_id"],
-            )
-    if superseded:
-        logger.info(
-            "wa_outbox: coalesced %d pending bot reply(ies) for thread %s into outbox %s",
-            len(superseded),
-            thread_id,
-            outbox_id,
-        )
-    return len(superseded)
-
-
 async def _lease_heartbeat_loop(
     conn: asyncpg.Connection, outbox_id: int, claim_token: uuid.UUID
 ) -> None:
@@ -718,8 +749,24 @@ async def process_outbox_once(
             candidates = await conn.fetch(
                 """
                 SELECT id, thread_id, message_id, needs_generation, attempts
-                FROM wa_outbox
+                FROM wa_outbox AS w
                 WHERE status = 'pending' AND next_retry_at <= NOW()
+                  -- B2.5 FIFO per thread (migration 318's partial index
+                  -- serves this predicate): a bot-reply row waits behind
+                  -- any OLDER bot-reply row of the SAME thread that has
+                  -- not yet reached a terminal status. A human send
+                  -- (needs_generation = false) is neither blocked by this
+                  -- nor does it block a bot-reply row.
+                  AND (
+                    NOT needs_generation
+                    OR NOT EXISTS (
+                        SELECT 1 FROM wa_outbox AS older
+                        WHERE older.thread_id = w.thread_id
+                          AND older.needs_generation = true
+                          AND older.id < w.id
+                          AND older.status IN ('pending', 'claimed', 'generating')
+                    )
+                  )
                 ORDER BY next_retry_at, id
                 FOR UPDATE SKIP LOCKED
                 LIMIT $1
@@ -822,12 +869,10 @@ async def _process_claimed_row(
     # confirms (via RETURNING) that it actually matched.
     expected_status = "claimed"
 
-    # 3. Coalescing (P2) — before doing anything else, drop redundant pending
-    #    bot-reply rows of this thread. Safe from races: we hold the
-    #    per-thread advisory lock, so no other worker can claim a same-thread
-    #    row out from under this sweep.
-    if needs_generation:
-        await _coalesce_thread_bursts(conn, thread_id, outbox_id)
+    # 3. B2.5: no coalescing sweep — the claim SELECT's FIFO predicate
+    #    already guaranteed this row is the OLDEST needs_generation row of
+    #    its thread still in flight before we even got here (or a human
+    #    send, never gated by the predicate). Nothing to supersede.
 
     # Load the thread (human_handling gate + 24h window source;
     # handling_version = the epoch the codex leg fences its offer against).
@@ -844,7 +889,10 @@ async def _process_claimed_row(
         # Should not happen (FK), but never park the row.
         fenced = await conn.fetchrow(
             """
-            UPDATE wa_outbox SET status = 'failed'
+            UPDATE wa_outbox
+            SET status = 'failed',
+                generation_fall_off_reason = 'thread_missing',
+                generation_fall_off_at = NOW()
             WHERE id = $1 AND claim_token = $2 AND status = $3
             RETURNING id
             """,
@@ -882,7 +930,10 @@ async def _process_claimed_row(
         if thread["human_handling"]:
             fenced = await conn.fetchrow(
                 """
-                UPDATE wa_outbox SET status = 'failed'
+                UPDATE wa_outbox
+                SET status = 'failed',
+                    generation_fall_off_reason = 'aborted_human_takeover',
+                    generation_fall_off_at = NOW()
                 WHERE id = $1 AND claim_token = $2 AND status = $3
                 RETURNING id
                 """,
@@ -1093,9 +1144,20 @@ async def _process_claimed_row(
             standing = isinstance(gen_exc, BotStandingCondition)
             attempts += 1
             if attempts >= MAX_ATTEMPTS:
+                # COALESCE: the codex leg's own last attempt already wrote
+                # its OWN reason (best-effort, `wa_codex_leg.record_fall_
+                # off_reason`) in almost every case — this only fills the
+                # column when that write never happened (e.g. the leg
+                # itself never ran, or its best-effort write failed), so a
+                # terminal row is NEVER left with no reason (ruling a).
                 fenced = await conn.fetchrow(
                     """
-                    UPDATE wa_outbox SET status = 'failed', attempts = $2
+                    UPDATE wa_outbox
+                    SET status = 'failed', attempts = $2,
+                        generation_fall_off_reason = COALESCE(
+                            generation_fall_off_reason, 'generation_exhausted'
+                        ),
+                        generation_fall_off_at = COALESCE(generation_fall_off_at, NOW())
                     WHERE id = $1 AND claim_token = $3 AND status = $4
                     RETURNING id
                     """,
@@ -1248,16 +1310,42 @@ async def _process_claimed_row(
 
     if needs_generation and human_handling_now:
         # Operator took over WHILE we were generating — the reply we just
-        # produced must NEVER be sent.
-        await conn.execute(
+        # produced must NEVER be sent. Fenced like every other
+        # state-changing UPDATE after the claim (RETURNING id + a matched-
+        # row check) — this branch used to fire-and-forget a plain
+        # conn.execute() here, so a lease stolen mid-generation (fenced_abort
+        # is None below) silently recorded nothing: the row still reaches a
+        # terminal state via whichever worker actually owns it now, but the
+        # 'aborted_human_takeover_pre_send' reason — the one fact that would
+        # explain why nothing was sent — was lost. Execution still never
+        # falls through to the send below either way: the `return
+        # "aborted_human"` a few lines down is unconditional regardless of
+        # whether this UPDATE actually matched.
+        fenced_abort = await conn.fetchrow(
             """
-            UPDATE wa_outbox SET status = 'failed'
+            UPDATE wa_outbox
+            SET status = 'failed',
+                generation_fall_off_reason = 'aborted_human_takeover_pre_send',
+                generation_fall_off_at = NOW()
             WHERE id = $1 AND claim_token = $2 AND status = $3
+            RETURNING id
             """,
             outbox_id,
             claim_token,
             expected_status,
         )
+        if fenced_abort is None:
+            # Loud and greppable on purpose: this is exactly the "a row
+            # reached a terminal state and nothing recorded why" hole this
+            # PR exists to close — a stolen lease must not look identical
+            # to a clean recording in the logs.
+            logger.warning(
+                "wa_outbox: lease lost before aborted_human_takeover_pre_send "
+                "could be recorded (outbox=%s thread=%s) — the abort reason "
+                "was NOT written to wa_outbox",
+                outbox_id,
+                thread_id,
+            )
         await conn.execute(
             """
             UPDATE meta_inbox_messages
@@ -1286,7 +1374,10 @@ async def _process_claimed_row(
     if not window_open:
         fenced = await conn.fetchrow(
             """
-            UPDATE wa_outbox SET status = 'failed'
+            UPDATE wa_outbox
+            SET status = 'failed',
+                generation_fall_off_reason = 'window_closed_24h',
+                generation_fall_off_at = NOW()
             WHERE id = $1 AND claim_token = $2 AND status = $3
             RETURNING id
             """,
@@ -1322,9 +1413,17 @@ async def _process_claimed_row(
     except Exception as exc:
         attempts += 1
         if attempts >= MAX_ATTEMPTS:
+            # Overwrite unconditionally (not COALESCE): a Graph-send
+            # exhaustion is its OWN terminal event, distinct from whatever
+            # (if anything) generation itself recorded earlier on this row
+            # — generation already succeeded here, so any prior reason on
+            # this column describes a different, now-irrelevant attempt.
             fenced = await conn.fetchrow(
                 """
-                UPDATE wa_outbox SET status = 'failed', attempts = $2
+                UPDATE wa_outbox
+                SET status = 'failed', attempts = $2,
+                    generation_fall_off_reason = 'send_exhausted',
+                    generation_fall_off_at = NOW()
                 WHERE id = $1 AND claim_token = $3 AND status = $4
                 RETURNING id
                 """,

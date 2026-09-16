@@ -1,0 +1,16 @@
+task: Repair News Room conversion and live cover verification without bypassing editorial gates.
+lane: editorial/newsroom-section-boundaries
+machine: Mini
+date: 2026-09-14
+mission_id: newsroom-section-boundaries
+mission_colour: BLUE
+role: external builder, prepare only
+gear: 2
+gear_reason: Publishing correctness fix with regression tests and a mechanical repair of an existing public article.
+acceptance:
+  A1: Unlabelled Bali Zero Take prose remains intact; labelled and partial sections preserve their content.
+  A2: Summary and TLDR truncation respects words and keeps currency/number/scale phrases together.
+  A3: Existing property article restores IDR 250 million and alternative rates without changing frontmatter or URL.
+  A4: The live verifier recognizes approved Next.js optimized covers and rejects mismatched images, alt text, and external hosts.
+  A5: Fact-gate failures remain unpublished; no merge, auto-merge, or deployment by this external builder.
+out_of_scope: New covers, legal advice changes, gate bypasses, unrelated secrets baseline changes, production deployment.

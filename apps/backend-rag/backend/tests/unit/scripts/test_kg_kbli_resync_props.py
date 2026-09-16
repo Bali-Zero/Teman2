@@ -167,8 +167,12 @@ def test_a_gap_removes_all_known_editorial_and_bali_claims() -> None:
 
 
 def test_located_tuple_syncs_intel_and_typed_bali_authoritatively() -> None:
+    # 41016: 47111 was W-H PR-3c v3's certified example until that PR
+    # de-certified it (its baliContext/youllAlsoNeed named 47191/47192 as
+    # "fully open to 100% PMA" while both are declared_gap) — 41016 is a
+    # still-certified stand-in.
     canonical = {
-        **_CANONICAL_BY_CODE["47111"],
+        **_CANONICAL_BY_CODE["41016"],
         "l4_bali": {
             "status": "CHIUSO_MORATORIA_BALI",
             "blocked": True,
@@ -187,7 +191,7 @@ def test_located_tuple_syncs_intel_and_typed_bali_authoritatively() -> None:
     assert out["whatYouNeed"] == canonical["intel_2026"]["whatYouNeed"]
     assert out["whatChanged"] == canonical["intel_2026"]["whatChanged"]
     assert out["zantaraOpener"] == (
-        "Ask me about KBLI 47111: its official scope, licensing, risk, "
+        "Ask me about KBLI 41016: its official scope, licensing, risk, "
         "or foreign-ownership verification."
     )
     assert out["bali_status"] == "CHIUSO_MORATORIA_BALI"
