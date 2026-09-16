@@ -38,6 +38,11 @@ import {
   pmaEditorialFingerprint,
   stableEditorialSha256,
 } from "../kbli-editorial-certification";
+// Raw registry, imported directly (mirrors kbli-editorial-certification.ts's
+// own import) so the guilt/innocence check below can compare a computed
+// fingerprint against a value this file never derives from
+// pmaEditorialFingerprint() itself.
+import rawCertifications from "../../../../data/kbli-filiera/pma-editorial-certifications.json";
 import {
   getGoldCodes,
   getGoldContent,
@@ -155,8 +160,8 @@ function pmaDisclosureContract() {
   const certifiedIntel = locatedCodes.filter((code) => code.intel_2026);
   assert.equal(
     certifiedIntel.length,
-    37,
-    "only the 37 manually reviewed canonical editorial blocks may publish (49 - 12 de-certified by W-H PR-3c v3, whose prose still claimed an openness its own tuple denies)",
+    36,
+    "only the 36 manually reviewed canonical editorial blocks may publish (49 - 12 de-certified by W-H PR-3c v3, whose prose still claimed an openness its own tuple denies, then -1 for 47221 by W-H PR-3f)",
   );
   for (const code of [
     "10722",
@@ -176,6 +181,12 @@ function pmaDisclosureContract() {
     "79122",
     "95220",
     "96100",
+    // W-H PR-3f: 47221's canonicalIntel.whatYouNeed claimed a UMKM/Koperasi
+    // partnership condition that the record's own pma_kondisi denies (a
+    // distribution-network/location requirement instead, Perpres 10/2021
+    // Lampiran III line 4202 #44). canonicalIntel ONLY — 47221 stays
+    // located and its mouthGold certification is untouched.
+    "47221",
   ]) {
     assert.equal(getCode(code)?.intel_2026, undefined, `${code}: unsafe intel`);
   }
@@ -292,13 +303,30 @@ function editorialCertificationContract() {
     pmaFingerprint: pmaEditorialFingerprint(syntheticPma),
     contentSha256: stableEditorialSha256(syntheticContent),
   };
+  // W-H PR-3f gate condition (b): the previous form of this check compared
+  // `pmaEditorialFingerprint(syntheticPma)` against ANOTHER call to the same
+  // pure function with the same argument — a tautology that could never
+  // fail regardless of what the implementation computed. Compare instead
+  // against 41016's STORED registry value, read straight from the JSON file
+  // (never through pmaEditorialFingerprint): 41016's PMA tuple is unrelated
+  // to syntheticPma (65121's), so an accidental match is not possible, and a
+  // real drift in the fingerprint algorithm/field-selection breaks this.
+  const storedCanonicalFingerprint = (
+    rawCertifications.canonicalIntel as Record<
+      string,
+      { pmaFingerprint: string }
+    >
+  )["41016"].pmaFingerprint;
   assert.equal(
-    syntheticCertification.pmaFingerprint ===
-      pmaEditorialFingerprint(syntheticPma) &&
-      syntheticCertification.contentSha256 ===
-        stableEditorialSha256(syntheticContent),
+    pmaEditorialFingerprint(safe!.pma),
+    storedCanonicalFingerprint,
+    "41016's computed PMA fingerprint must match the registry's independently reviewed stored value",
+  );
+  assert.equal(
+    syntheticCertification.contentSha256 ===
+      stableEditorialSha256(syntheticContent),
     true,
-    "a certification built from a reviewed PMA tuple + content block must bind exactly",
+    "a certification's content hash must be reproducible from the same content block",
   );
   assert.equal(
     syntheticCertification.contentSha256 ===

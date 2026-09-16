@@ -51,7 +51,7 @@ def test_canonical_certification_partition_is_exact(
     }
 
     assert certified == set(registry["canonicalIntel"])
-    assert len(certified) == 37
+    assert len(certified) == 36
     # SAETTA-20260915 W-H PR-3a moved 55201/55203/79903 from declared_gap to
     # located (Perpres 49/2021 Lampiran II allocation); none of the three is
     # a certified canonicalIntel entry, so they join the pre-existing
@@ -59,6 +59,11 @@ def test_canonical_certification_partition_is_exact(
     # (10214/16221/22121/47111/50111/50112/51102/55105/65111/79122/95220/
     # 96100) whose prose still claimed an openness their own tuple denies —
     # they join the same set (fail closed: withheld, not re-authored blind).
+    # PR-3f de-certifies one more, canonicalIntel-only: 47221's whatYouNeed
+    # claimed a UMKM/Koperasi partnership condition the record's own
+    # pma_kondisi denies (a distribution-network/location requirement
+    # instead, Perpres 10/2021 Lampiran III line 4202 #44). 47221 stays
+    # located and keeps its mouthGold certification untouched.
     assert {
         code
         for code, record in records.items()
@@ -84,6 +89,7 @@ def test_canonical_certification_partition_is_exact(
         "79122",
         "95220",
         "96100",
+        "47221",
     }
 
 
@@ -155,13 +161,43 @@ def test_decertified_code_is_withheld_not_reauthored(
     )
 
 
+def test_decertified_canonical_intel_leaves_mouth_gold_untouched(
+    registry: dict,
+    records: dict[str, dict],
+) -> None:
+    """W-H PR-3f: 47221's canonicalIntel.whatYouNeed claimed a UMKM/Koperasi
+    partnership condition the record's own pma_kondisi denies (a
+    distribution-network/location requirement instead, Perpres 10/2021
+    Lampiran III line 4202 #44). De-certify canonicalIntel ONLY — assert the
+    withdrawal fails closed there while mouthGold's separately reviewed
+    prose for the same code stays certified, proving the scope was exact."""
+    record = records["47221"]
+    assert "47221" not in registry["canonicalIntel"]
+    assert not matches_editorial_certification(
+        "canonicalIntel",
+        "47221",
+        record,
+        record["intel_2026"],
+        registry,
+    )
+    assert "47221" in registry["mouthGold"]
+
+
 def test_explicit_bad_registry_never_falls_back_to_the_default(
     records: dict[str, dict],
 ) -> None:
-    record = records["47111"]
+    # 41016 (not 47111): 47111 is no longer certified in the real registry,
+    # so `matches_editorial_certification(..., {})` would pass for it
+    # regardless of whether the empty-registry argument is actually
+    # respected — a fallback bug (e.g. `registry or load_editorial_registry()`
+    # silently substituting the real default for a falsy `{}`) would produce
+    # the SAME "not matched" result for 47111, since 47111 isn't in the real
+    # registry either. 41016 IS certified in the real registry, so the same
+    # fallback bug would flip this assertion to matched=True and fail it.
+    record = records["41016"]
     assert not matches_editorial_certification(
         "canonicalIntel",
-        "47111",
+        "41016",
         record,
         record["intel_2026"],
         {},
