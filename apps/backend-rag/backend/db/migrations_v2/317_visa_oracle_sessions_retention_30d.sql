@@ -136,15 +136,16 @@ SET statement_timeout = '60s';
 -- would not protect anything — it would BUILD A SECOND, DUPLICATE INDEX on a
 -- live table. Using production's names makes it the intended no-op.
 --
--- LOCKS: on production, CREATE TABLE IF NOT EXISTS and both CREATE INDEX IF
--- NOT EXISTS calls are no-ops (table and indexes already exist) — no lock of
--- consequence. The one statement with a real effect, ALTER COLUMN ... SET
--- DEFAULT, is a catalog-only change (it does not rewrite existing rows or
--- take an ACCESS EXCLUSIVE table rewrite lock); it takes a brief ACCESS
--- EXCLUSIVE lock only for the DDL statement itself, matching every other
--- SET DEFAULT change already in this directory. On a genuinely fresh
--- database the CREATE TABLE/INDEX statements run for real, against a table
--- with zero rows.
+-- LOCKS: on production, CREATE TABLE IF NOT EXISTS is a no-op that takes no
+-- lock of consequence (measured empirically this turn, see the guard comment
+-- above the index creation below for the CREATE INDEX case, which is NOT
+-- free the same way and is guarded accordingly). The one statement with a
+-- real effect, ALTER COLUMN ... SET DEFAULT, is a catalog-only change (it
+-- does not rewrite existing rows or take an ACCESS EXCLUSIVE table rewrite
+-- lock); it takes a brief ACCESS EXCLUSIVE lock only for the DDL statement
+-- itself, matching every other SET DEFAULT change already in this directory.
+-- On a genuinely fresh database the CREATE TABLE/INDEX statements run for
+-- real, against a table with zero rows.
 -- ----------------------------------------------------------------------------
 
 CREATE TABLE IF NOT EXISTS public.visa_oracle_sessions (
@@ -160,18 +161,65 @@ CREATE TABLE IF NOT EXISTS public.visa_oracle_sessions (
     expires_at          TIMESTAMP WITH TIME ZONE DEFAULT (NOW() + INTERVAL '90 days')
 );
 
-CREATE INDEX IF NOT EXISTS idx_vo_sessions_session_id
-    ON public.visa_oracle_sessions (session_id);
+-- ----------------------------------------------------------------------------
+-- INDEX GUARD (2026-09-17, Codex gpt-6-astra F5, BLOCKING — disposed
+-- FIX-FIRST). A bare `CREATE INDEX IF NOT EXISTS` is NOT the free no-op its
+-- name suggests: Postgres still evaluates the CREATE INDEX command and takes
+-- a ShareLock on the target table for the length of the ENCLOSING
+-- transaction, even when the index already exists and nothing gets built.
+-- Measured this turn against a throwaway PG 17.10: a session holding
+-- `CREATE INDEX IF NOT EXISTS` open inside a transaction (no-op case, index
+-- pre-existing) blocked a concurrent write (INSERT) against that table for
+-- the whole transaction (the write was canceled by its own 3s
+-- statement_timeout while the holder's transaction stayed open for 15s). On
+-- production, where the ALTER's own retry loop below can now run for up to
+-- ~42s, two bare `CREATE INDEX IF NOT EXISTS` no-ops ahead of it would have
+-- queued every ordinary writer against this table for that whole span —
+-- exactly the "long wait blocks ordinary readers/writers" problem the retry
+-- loop exists to avoid, just moved one statement earlier.
+--
+-- `CREATE TABLE IF NOT EXISTS` above does NOT have this problem — the same
+-- throwaway cluster proved a `CREATE TABLE IF NOT EXISTS` against an
+-- already-existing table returns in under 1ms even while another session
+-- holds an open ACCESS SHARE lock on it, so it is left as a bare statement.
+--
+-- The cure: guard each index behind an existence check against `pg_indexes`.
+-- That SELECT takes only an ACCESS SHARE lock on the system catalog, never on
+-- `visa_oracle_sessions` itself — on production (both indexes already exist)
+-- this section takes NO lock of consequence on the table at all. On a fresh
+-- database the index does not exist yet, so the guard is true and the real
+-- CREATE INDEX runs once, against a zero-row table.
+-- ----------------------------------------------------------------------------
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_indexes
+         WHERE schemaname = 'public'
+           AND indexname = 'idx_vo_sessions_session_id'
+    ) THEN
+        EXECUTE 'CREATE INDEX idx_vo_sessions_session_id ON public.visa_oracle_sessions (session_id)';
+    END IF;
+END $$;
 
-CREATE INDEX IF NOT EXISTS idx_vo_sessions_created_at
-    ON public.visa_oracle_sessions (created_at DESC);
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_indexes
+         WHERE schemaname = 'public'
+           AND indexname = 'idx_vo_sessions_created_at'
+    ) THEN
+        EXECUTE 'CREATE INDEX idx_vo_sessions_created_at ON public.visa_oracle_sessions (created_at DESC)';
+    END IF;
+END $$;
 
 -- The declaration this migration actually exists for. It runs identically on
 -- both paths: on production against the table that was already there, on a
 -- fresh database against the one just created above with the 90-day default.
 --
 -- ----------------------------------------------------------------------------
--- RETRY-WITH-BACKOFF CURE (2026-09-17, PROD incident, Fly release v4472/v4473).
+-- RETRY-WITH-BACKOFF CURE (2026-09-17, PROD incident, Fly release v4472/v4473;
+-- CURED FURTHER same day per Codex gpt-6-astra adversarial review (xhigh),
+-- disposed FIX-FIRST by the imperator — findings F2/F4/F5 below).
 --
 -- Verbatim from the deploy log: "Failed to apply migration 317: SQL execution
 -- failed: canceling statement due to lock timeout". `ALTER COLUMN ... SET
@@ -187,11 +235,20 @@ CREATE INDEX IF NOT EXISTS idx_vo_sessions_created_at
 -- The fix is many SHORT attempts, never one long wait: an ACCESS EXCLUSIVE
 -- lock request queues FIFO, so a request that waits a long time also blocks
 -- every ordinary reader that arrives after it — a single long wait here would
--- risk stalling live traffic, not just this migration. Each attempt below
--- asks for the lock for at most 3s; between attempts nothing is queued, so
--- normal traffic is never blocked by a waiting migration. Budget: up to 8
--- attempts * 3s lock_timeout (24s worst case) plus backoff sleeps capped at
--- 4s each (~14.5s worst case) = ~38.5s worst case, comfortably under the
+-- risk stalling live traffic, not just this migration. The FIRST cure of this
+-- file (same day) still left both `CREATE INDEX IF NOT EXISTS` calls above
+-- queuing every writer continuously for as long as this loop ran (F5,
+-- BLOCKING) — fixed there, not here (see the INDEX GUARD comment above), but
+-- it means the budget below is now the ONLY queuing surface left in this
+-- file, and it is shrunk to match.
+--
+-- BUDGET, computed exactly rather than re-derived at read time: each attempt
+-- asks for the lock via `SET LOCAL lock_timeout = '500ms'`, up to
+-- `max_attempts CONSTANT int := 15`, with `pg_sleep(least(attempt * 0.5, 3))`
+-- between attempts (none after the last — that attempt raises instead).
+-- Worst case = lock-wait budget (15 attempts * 0.5s = 7.5s) + backoff budget
+-- (attempts 1-6 uncapped: 0.5+1+1.5+2+2.5+3 = 10.5s, attempts 7-14 at the 3s
+-- cap: 8 * 3s = 24s; backoff total 34.5s) = 42.0s, comfortably under the
 -- file's own `statement_timeout = '60s'` (a `DO $$ ... $$` block is ONE
 -- statement, so the whole loop must fit inside that single budget — verified
 -- by reading how `MigrationManager`/`BaseMigration.apply()` execute this file:
@@ -201,45 +258,65 @@ CREATE INDEX IF NOT EXISTS idx_vo_sessions_created_at
 -- one `conn.execute(sql_forward)` inside one `async with conn.transaction()` —
 -- a single asyncpg connection opened directly, not the pool that sets
 -- `command_timeout=60`, so the only ceiling on this block is the server-side
--- `statement_timeout` declared at the top of this file).
+-- `statement_timeout` declared at the top of this file). The SAME shape at
+-- 20 attempts (first proposed) measures ~59.5s worst case — too close to the
+-- 60s ceiling to call comfortable — so attempts is capped at 15, not 20.
 --
 -- On exhaustion this RAISEs (never skips) and names the blockers: pid,
--- usename and application_name from `pg_stat_activity` joined to
--- `pg_locks` for any other backend holding a lock on this table — those
--- three columns are visible to any role in `pg_stat_activity`; `query` and
--- `state` are not, and are not needed here.
+-- usename and application_name from `pg_stat_activity` joined to `pg_locks`
+-- for any other backend actually HOLDING a lock on this table (`l.granted`,
+-- F4) in THIS database (`a.datname = current_database()`, F4) — those three
+-- columns are visible to any role in `pg_stat_activity`; `query` and `state`
+-- are not, and are not needed here. That diagnostic SELECT now runs inside
+-- its own `BEGIN ... EXCEPTION WHEN OTHERS` (F4, SHOULD-FIX): a failure in
+-- the blocker lookup itself (a catalog hiccup, a permission change) must
+-- never mask the real error — it falls back to a "lookup unavailable"
+-- message and the RAISE still fires naming the true cause (lock exhaustion),
+-- never the diagnostic's own exception.
 --
--- SQLSTATE catches, checked against a live lock_timeout cancellation:
--- lock_timeout expiring while waiting for a lock raises `lock_not_available`
--- (55P03); `query_canceled` (57014) is caught too as the fallback code a
--- lock_timeout cancellation can surface, matching the ROLLBACK path below
--- symmetrically (90 days instead of 30).
+-- SQLSTATE catch (F2, BLOCKING, narrowed from the first cure): the only
+-- lock_timeout in force here is exactly `500ms`, and nothing else in this
+-- block sets a shorter statement_timeout, so the only cancellation this loop
+-- is meant to absorb is the lock wait itself — Postgres always raises that
+-- as `lock_not_available` (55P03). The first cure also caught a second,
+-- broader cancellation code as a "fallback" — that code is also what a
+-- `statement_timeout` OR an operator's `pg_cancel_backend` raise, and
+-- catching it here would silently swallow either of those distinct failures
+-- instead of letting them propagate. Only `lock_not_available` is caught now,
+-- in both directions.
 -- ----------------------------------------------------------------------------
 DO $$
 DECLARE
-    max_attempts CONSTANT int := 8;
+    max_attempts CONSTANT int := 15;
     attempt int := 0;
     blockers text;
 BEGIN
     LOOP
         attempt := attempt + 1;
         BEGIN
-            EXECUTE 'SET LOCAL lock_timeout = ''3s''';
+            EXECUTE 'SET LOCAL lock_timeout = ''500ms''';
             ALTER TABLE public.visa_oracle_sessions
                 ALTER COLUMN expires_at SET DEFAULT (NOW() + INTERVAL '30 days');
             EXIT;
         EXCEPTION
-            WHEN lock_not_available OR query_canceled THEN
+            WHEN lock_not_available THEN
                 IF attempt >= max_attempts THEN
-                    SELECT string_agg(format('pid=%s user=%s app=%s', a.pid, a.usename, a.application_name), ', ')
-                      INTO blockers
-                      FROM pg_locks l
-                      JOIN pg_stat_activity a ON a.pid = l.pid
-                     WHERE l.relation = 'public.visa_oracle_sessions'::regclass
-                       AND l.pid <> pg_backend_pid();
-                    RAISE EXCEPTION 'migration 317: ALTER on public.visa_oracle_sessions did not acquire its lock after % attempts; blockers holding a lock on the table: %', attempt, COALESCE(blockers, 'none found in pg_locks (lock may have cleared between the failed attempt and this check)');
+                    BEGIN
+                        SELECT string_agg(format('pid=%s user=%s app=%s', a.pid, a.usename, a.application_name), ', ')
+                          INTO blockers
+                          FROM pg_locks l
+                          JOIN pg_stat_activity a ON a.pid = l.pid
+                         WHERE l.relation = 'public.visa_oracle_sessions'::regclass
+                           AND l.pid <> pg_backend_pid()
+                           AND l.granted
+                           AND a.datname = current_database();
+                    EXCEPTION
+                        WHEN OTHERS THEN
+                            blockers := NULL;
+                    END;
+                    RAISE EXCEPTION 'migration 317: ALTER on public.visa_oracle_sessions did not acquire its lock after % attempts; blockers holding a lock on the table: %', attempt, COALESCE(blockers, 'lookup unavailable, or none found in pg_locks (lock may have cleared between the failed attempt and this check)');
                 ELSE
-                    PERFORM pg_sleep(least(attempt * 0.5, 4));
+                    PERFORM pg_sleep(least(attempt * 0.5, 3));
                 END IF;
         END;
     END LOOP;
@@ -253,29 +330,36 @@ SET statement_timeout = '60s';
 -- full rationale, budget and SQLSTATE notes) — same shape, back to 90 days.
 DO $$
 DECLARE
-    max_attempts CONSTANT int := 8;
+    max_attempts CONSTANT int := 15;
     attempt int := 0;
     blockers text;
 BEGIN
     LOOP
         attempt := attempt + 1;
         BEGIN
-            EXECUTE 'SET LOCAL lock_timeout = ''3s''';
+            EXECUTE 'SET LOCAL lock_timeout = ''500ms''';
             ALTER TABLE public.visa_oracle_sessions
                 ALTER COLUMN expires_at SET DEFAULT (NOW() + INTERVAL '90 days');
             EXIT;
         EXCEPTION
-            WHEN lock_not_available OR query_canceled THEN
+            WHEN lock_not_available THEN
                 IF attempt >= max_attempts THEN
-                    SELECT string_agg(format('pid=%s user=%s app=%s', a.pid, a.usename, a.application_name), ', ')
-                      INTO blockers
-                      FROM pg_locks l
-                      JOIN pg_stat_activity a ON a.pid = l.pid
-                     WHERE l.relation = 'public.visa_oracle_sessions'::regclass
-                       AND l.pid <> pg_backend_pid();
-                    RAISE EXCEPTION 'migration 317 rollback: ALTER on public.visa_oracle_sessions did not acquire its lock after % attempts; blockers holding a lock on the table: %', attempt, COALESCE(blockers, 'none found in pg_locks (lock may have cleared between the failed attempt and this check)');
+                    BEGIN
+                        SELECT string_agg(format('pid=%s user=%s app=%s', a.pid, a.usename, a.application_name), ', ')
+                          INTO blockers
+                          FROM pg_locks l
+                          JOIN pg_stat_activity a ON a.pid = l.pid
+                         WHERE l.relation = 'public.visa_oracle_sessions'::regclass
+                           AND l.pid <> pg_backend_pid()
+                           AND l.granted
+                           AND a.datname = current_database();
+                    EXCEPTION
+                        WHEN OTHERS THEN
+                            blockers := NULL;
+                    END;
+                    RAISE EXCEPTION 'migration 317 rollback: ALTER on public.visa_oracle_sessions did not acquire its lock after % attempts; blockers holding a lock on the table: %', attempt, COALESCE(blockers, 'lookup unavailable, or none found in pg_locks (lock may have cleared between the failed attempt and this check)');
                 ELSE
-                    PERFORM pg_sleep(least(attempt * 0.5, 4));
+                    PERFORM pg_sleep(least(attempt * 0.5, 3));
                 END IF;
         END;
     END LOOP;
