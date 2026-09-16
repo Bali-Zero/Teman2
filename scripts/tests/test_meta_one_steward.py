@@ -163,6 +163,52 @@ def test_probe_token_unknown_on_unexpected_status_never_dead():
     assert state == "unknown"
 
 
+def test_probe_token_dead_even_when_oauthexception_is_past_the_truncation_window():
+    """Codex finding #2 (false negative): classification parses the FULL
+    body; only the STORED diagnostic copy is truncated to 500 chars. A
+    verbose error.message padding the body past 500 chars must not hide the
+    error.type that proves guilt."""
+    padding = "x" * 600
+
+    def fetch(url, timeout):
+        return 400, json.dumps({"error": {"type": "OAuthException", "message": f"expired {padding}"}})
+
+    state, details = mos.probe_token("fake-token", fetch=fetch)
+    assert state == "dead"
+
+
+def test_probe_token_unknown_when_message_merely_mentions_oauthexception():
+    """Codex finding #2 (false positive): classification checks
+    error.type, never a substring match against the body text — a
+    different error.type whose free-text message happens to mention
+    "OAuthException" must NOT be misread as guilt."""
+
+    def fetch(url, timeout):
+        return 400, json.dumps({"error": {"type": "OtherError", "message": "see OAuthException docs"}})
+
+    state, details = mos.probe_token("fake-token", fetch=fetch)
+    assert state == "unknown"
+
+
+def test_probe_token_dead_on_error_code_190_even_without_type_field():
+    def fetch(url, timeout):
+        return 401, json.dumps({"error": {"code": 190, "message": "token expired"}})
+
+    state, details = mos.probe_token("fake-token", fetch=fetch)
+    assert state == "dead"
+
+
+def test_probe_token_unknown_on_500_even_with_oauthexception_in_body():
+    """Excluded suspect, kept as a regression guard: 5xx never classifies,
+    regardless of what the body says."""
+
+    def fetch(url, timeout):
+        return 500, json.dumps({"error": {"type": "OAuthException", "message": "boom"}})
+
+    state, details = mos.probe_token("fake-token", fetch=fetch)
+    assert state == "unknown"
+
+
 # ── expiring-quota rule ──────────────────────────────────────────────────
 
 
@@ -262,6 +308,13 @@ def test_digest_never_contains_token_or_at_handles(tmp_path, monkeypatch):
 
 # ── heartbeat status == run verdict, on every path ───────────────────────
 
+# Fixed instant, day 15, far from ANY month-end in either UTC or WITA — the
+# real wall clock must never be able to flip an "ok" test to "warning" just
+# because it happened to run near a month boundary (the exact brittleness
+# Codex's finding #8 reproduced against test_heartbeat_matches_ok_verdict at
+# real-world 2026-09-28).
+_FAR_FROM_MONTH_END = datetime(2026, 6, 15, 6, 20, tzinfo=timezone.utc)
+
 
 def test_heartbeat_matches_ok_verdict(tmp_path, monkeypatch):
     _, last_seen_dir, _ = _isolate(tmp_path, monkeypatch)
@@ -269,7 +322,7 @@ def test_heartbeat_matches_ok_verdict(tmp_path, monkeypatch):
     def alive_probe(token, **kw):
         return "alive", {"username": "balizero0", "id": "1"}
 
-    rc = mos.cmd_tick(probe_fn=alive_probe, tg_notify_fn=_noop_notify)
+    rc = mos.cmd_tick(now=_FAR_FROM_MONTH_END, probe_fn=alive_probe, tg_notify_fn=_noop_notify)
     assert rc == 0
     hb = json.loads((last_seen_dir / f"{mos.ORGAN_ID}.json").read_text(encoding="utf-8"))
     assert hb["status"] == "ok"
@@ -281,7 +334,7 @@ def test_heartbeat_matches_warning_verdict_on_dead_token(tmp_path, monkeypatch):
     def dead_probe(token, **kw):
         return "dead", {"http_status": 400}
 
-    rc = mos.cmd_tick(probe_fn=dead_probe, tg_notify_fn=_noop_notify)
+    rc = mos.cmd_tick(now=_FAR_FROM_MONTH_END, probe_fn=dead_probe, tg_notify_fn=_noop_notify)
     assert rc == 0
     hb = json.loads((last_seen_dir / f"{mos.ORGAN_ID}.json").read_text(encoding="utf-8"))
     assert hb["status"] == "warning"
@@ -293,7 +346,7 @@ def test_heartbeat_matches_warning_verdict_on_unknown_token(tmp_path, monkeypatc
     def unknown_probe(token, **kw):
         return "unknown", {"reason": "timeout"}
 
-    rc = mos.cmd_tick(probe_fn=unknown_probe, tg_notify_fn=_noop_notify)
+    rc = mos.cmd_tick(now=_FAR_FROM_MONTH_END, probe_fn=unknown_probe, tg_notify_fn=_noop_notify)
     assert rc == 0
     hb = json.loads((last_seen_dir / f"{mos.ORGAN_ID}.json").read_text(encoding="utf-8"))
     assert hb["status"] == "warning"
@@ -305,10 +358,41 @@ def test_heartbeat_matches_error_verdict_on_exception(tmp_path, monkeypatch):
     def raising_probe(token, **kw):
         raise RuntimeError("boom")
 
-    rc = mos.cmd_tick(probe_fn=raising_probe, tg_notify_fn=_noop_notify)
+    rc = mos.cmd_tick(now=_FAR_FROM_MONTH_END, probe_fn=raising_probe, tg_notify_fn=_noop_notify)
     assert rc == 1
     hb = json.loads((last_seen_dir / f"{mos.ORGAN_ID}.json").read_text(encoding="utf-8"))
     assert hb["status"] == "error"
+
+
+def test_heartbeat_matches_warning_at_the_month_end_boundary_even_when_alive(tmp_path, monkeypatch):
+    """Explicit boundary case (Codex finding #8): 5 days out, alive, empty
+    usage is LEGITIMATELY 'warning' (a link benefit is <50% used with the
+    window open) — this must be asserted on purpose, not stumbled into by
+    an untested real clock."""
+    _, last_seen_dir, _ = _isolate(tmp_path, monkeypatch)
+    near_month_end = datetime(2026, 9, 25, 6, 20, tzinfo=timezone.utc)  # 5 days left in Sept (WITA)
+
+    def alive_probe(token, **kw):
+        return "alive", {"username": "balizero0", "id": "1"}
+
+    rc = mos.cmd_tick(now=near_month_end, probe_fn=alive_probe, tg_notify_fn=_noop_notify)
+    assert rc == 0
+    hb = json.loads((last_seen_dir / f"{mos.ORGAN_ID}.json").read_text(encoding="utf-8"))
+    assert hb["status"] == "warning"
+
+
+def test_heartbeat_write_failure_is_reported_not_swallowed(tmp_path, monkeypatch):
+    """Codex finding #4: organism_heartbeat() never raises — it reports
+    failure by returning False. cmd_tick must check that return value
+    instead of assuming a call that didn't raise succeeded."""
+    _isolate(tmp_path, monkeypatch)
+
+    def alive_probe(token, **kw):
+        return "alive", {"username": "balizero0", "id": "1"}
+
+    monkeypatch.setattr(mos, "organism_heartbeat", lambda *a, **kw: False)
+    rc = mos.cmd_tick(now=_FAR_FROM_MONTH_END, probe_fn=alive_probe, tg_notify_fn=_noop_notify)
+    assert rc == 1
 
 
 def test_token_dead_since_persists_first_observed_date(tmp_path, monkeypatch):
@@ -325,6 +409,85 @@ def test_token_dead_since_persists_first_observed_date(tmp_path, monkeypatch):
     assert r2["entry"]["token_dead_since"] == "2026-09-15"
 
 
+def test_token_dead_since_survives_an_unknown_response_in_between(tmp_path, monkeypatch):
+    """Codex finding #6: dead(15th) -> unknown(16th) -> dead(17th) must keep
+    reporting the 15th throughout — 'unknown' is not evidence of anything
+    (the classifier's own contract) so it must neither erase a previously
+    observed dead date nor manufacture a fresh one."""
+    _isolate(tmp_path, monkeypatch)
+
+    def dead_probe(token, **kw):
+        return "dead", {"http_status": 400}
+
+    def unknown_probe(token, **kw):
+        return "unknown", {"reason": "timeout"}
+
+    d15 = datetime(2026, 9, 15, 6, 20, tzinfo=timezone.utc)
+    d16 = datetime(2026, 9, 16, 6, 20, tzinfo=timezone.utc)
+    d17 = datetime(2026, 9, 17, 6, 20, tzinfo=timezone.utc)
+    r1 = mos.tick(now=d15, probe_fn=dead_probe, tg_notify_fn=_noop_notify)
+    r2 = mos.tick(now=d16, probe_fn=unknown_probe, tg_notify_fn=_noop_notify)
+    r3 = mos.tick(now=d17, probe_fn=dead_probe, tg_notify_fn=_noop_notify)
+    assert r1["entry"]["token_dead_since"] == "2026-09-15"
+    assert r2["entry"]["token_dead_since"] == "2026-09-15"
+    assert r3["entry"]["token_dead_since"] == "2026-09-15"
+
+
+def test_token_dead_since_survives_a_month_rollover(tmp_path, monkeypatch):
+    """Codex finding #6: the month-keyed ledger entry is a fresh dict every
+    month — token_dead_since must NOT live only inside it, or a token that
+    has been dead since September silently reports as 'just died today' on
+    the first October tick."""
+    _isolate(tmp_path, monkeypatch)
+
+    def dead_probe(token, **kw):
+        return "dead", {"http_status": 400}
+
+    sept = datetime(2026, 9, 28, 6, 20, tzinfo=timezone.utc)
+    octo = datetime(2026, 10, 2, 6, 20, tzinfo=timezone.utc)
+    r1 = mos.tick(now=sept, probe_fn=dead_probe, tg_notify_fn=_noop_notify)
+    r2 = mos.tick(now=octo, probe_fn=dead_probe, tg_notify_fn=_noop_notify)
+    assert r1["entry"]["token_dead_since"] == "2026-09-28"
+    assert r2["entry"]["token_dead_since"] == "2026-09-28"
+
+
+def test_token_dead_since_clears_only_on_confirmed_alive(tmp_path, monkeypatch):
+    _isolate(tmp_path, monkeypatch)
+
+    def dead_probe(token, **kw):
+        return "dead", {"http_status": 400}
+
+    def alive_probe(token, **kw):
+        return "alive", {"username": "balizero0", "id": "1"}
+
+    d15 = datetime(2026, 9, 15, 6, 20, tzinfo=timezone.utc)
+    d16 = datetime(2026, 9, 16, 6, 20, tzinfo=timezone.utc)
+    mos.tick(now=d15, probe_fn=dead_probe, tg_notify_fn=_noop_notify)
+    r2 = mos.tick(now=d16, probe_fn=alive_probe, tg_notify_fn=_noop_notify)
+    assert r2["entry"]["token_dead_since"] is None
+
+
+# ── WITA calendar (Codex finding #3) ──────────────────────────────────────
+
+
+def test_month_key_and_days_to_month_end_use_wita_not_utc():
+    # 2026-09-30T22:30:00Z == 2026-10-01T06:30:00+08:00 (Asia/Makassar) — a
+    # UTC-naive bucketing would call this September with 0 days left and
+    # could fire a quota-expiring P0 for a month that (in WITA) already ended.
+    instant = datetime(2026, 9, 30, 22, 30, 0, tzinfo=timezone.utc)
+    assert mos._month_key(instant) == "2026-10"
+    assert mos.days_to_month_end(instant) == 30  # Oct 1 -> Oct 31 inclusive-start
+
+
+def test_use_attributes_to_the_wita_month_across_midnight_utc(tmp_path, monkeypatch):
+    _isolate(tmp_path, monkeypatch)
+    # 2026-09-30T23:00:00Z is already 2026-10-01 07:00 WITA.
+    instant = datetime(2026, 9, 30, 23, 0, 0, tzinfo=timezone.utc)
+    mos.cmd_use("ig_post_link", "WR2-000099", now=instant)
+    assert mos.read_usage("2026-10")["ig_post_link"] == 1
+    assert mos.read_usage("2026-09")["ig_post_link"] == 0
+
+
 # ── --selftest ────────────────────────────────────────────────────────────
 
 
@@ -332,5 +495,71 @@ def test_selftest_exits_zero_and_names_both_verdicts(capsys):
     rc = mos.selftest()
     out = capsys.readouterr().out
     assert rc == 0
-    assert "dead" in out
-    assert ("alive" in out) or ("ok" in out)
+    assert "token_state=dead verdict=warning" in out
+    assert "token_state=alive verdict=ok" in out
+
+
+# ── anti-token-leak fault injection (Codex findings #1 / #9) ─────────────
+
+
+def test_synthetic_token_never_leaks_through_an_exception_path(tmp_path, monkeypatch, capsys):
+    """A raw token VALUE embedded in an exception message (no `access_token=`
+    prefix — e.g. a library that reformats the request URL) must be scrubbed
+    from every diagnostic surface: stderr, the heartbeat note-on-disk, and
+    the text handed to the Telegram notifier."""
+    _, last_seen_dir, _ = _isolate(tmp_path, monkeypatch)
+    synthetic_token = "SYNTHTOKEN123"
+    monkeypatch.setenv("INSTAGRAM_ACCESS_TOKEN", synthetic_token)
+
+    notified_texts: list[str] = []
+
+    def capturing_notify(tier, dedup_key, text):
+        notified_texts.append(text)
+        return True
+
+    def leaking_probe(token, **kw):
+        # No "access_token=" anywhere — just the bare value, the shape the
+        # old regex-only redactor could not catch.
+        raise RuntimeError(f"connection reset while calling graph API with token {synthetic_token}")
+
+    rc = mos.cmd_tick(now=_FAR_FROM_MONTH_END, probe_fn=leaking_probe, tg_notify_fn=capturing_notify)
+    assert rc == 1
+
+    captured = capsys.readouterr()
+    hb = json.loads((last_seen_dir / f"{mos.ORGAN_ID}.json").read_text(encoding="utf-8"))
+
+    assert synthetic_token not in captured.err
+    assert synthetic_token not in captured.out
+    assert synthetic_token not in json.dumps(hb)
+    assert all(synthetic_token not in t for t in notified_texts)
+
+
+def test_redact_scrubs_a_bare_token_value_with_no_access_token_prefix(monkeypatch):
+    monkeypatch.setenv("INSTAGRAM_ACCESS_TOKEN", "SYNTHTOKEN123")
+    text = mos._redact("error: token SYNTHTOKEN123 rejected")
+    assert "SYNTHTOKEN123" not in text
+    assert "REDACTED" in text
+
+
+# ── `use` interprocess lock (Codex finding #7, optional) ─────────────────
+
+
+def test_use_lock_survives_concurrent_callers_without_duplicate_lines(tmp_path, monkeypatch):
+    import threading
+
+    _isolate(tmp_path, monkeypatch)
+    now = datetime(2026, 6, 15, tzinfo=timezone.utc)
+    barrier = threading.Barrier(5)
+
+    def worker():
+        barrier.wait()
+        mos.cmd_use("ig_post_link", "WR2-RACE", now=now)
+
+    threads = [threading.Thread(target=worker) for _ in range(5)]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
+
+    lines = mos.usage_path().read_text(encoding="utf-8").strip().splitlines()
+    assert len(lines) == 1
