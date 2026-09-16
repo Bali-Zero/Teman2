@@ -126,8 +126,14 @@ Real-code roundtrip via `StaticTrustStore.from_env`:
 
 ## FIREBREAK reminder
 
-- No `sign_pack.py` ships in this repo. Signing only happens in the offline
-  environment (M5) during RulePack authoring.
+- `sign_pack.py` DOES ship in this repo, at
+  `apps/backend-rag/backend/scripts/visa_engine/sign_pack.py`. What does not
+  ship is any private key, and what never happens is signing from inside a
+  server process: the script is an offline operator CLI, run by hand on M5
+  during RulePack authoring, and nothing in `backend/services/` imports it.
+  (This line used to read "No `sign_pack.py` ships in this repo", which is
+  false and cost a signing session real time in 2026-09-15's seq-21 ceremony
+  — the operator went looking for a script the runbook said was absent.)
 - Test suites use ephemeral, in-fixture Ed25519 keys — never the keys
   described in this document.
 - Runtime code path (`bundle.py`) never opens a private-key file; it only

@@ -1,0 +1,107 @@
+/**
+ * K3b table/detail grammar for /clients/[id] — SAETTA-R19K window K3.
+ *
+ * Own module, following the K3a idiom (`../clients-desk.module.css`):
+ * token-only, no hex, declaration order first. This page does not import
+ * K3a's module — it needs a different shape (a status-first two-column
+ * layout and a hairline tab bar, not a table).
+ *
+ * DECLARATION ORDER IS LOAD-BEARING, same law as K3a: every base rule a
+ * media query later overrides is declared FIRST, because these selectors
+ * have equal specificity and the later source wins.
+ *
+ * `client-detail-desk.test.tsx` pins the DOM order of the status block vs.
+ * the tab bar directly (a DOM assertion, jsdom applies no layout so a CSS
+ * assertion here would be dishonest) — this module is what makes that DOM
+ * order paint right-column-on-desktop without ever moving the status block
+ * later in the document. The status block stays FIRST in the DOM at every
+ * width (mobile reading/focus order, concept.md C14b); only its visual
+ * column changes, via `order` on itself — never `order: -1` on the main
+ * column, which would be the wrong direction (that hack would visually
+ * demote the status block back to first only by *also* moving everything
+ * else, which is brittle the moment a third sibling is added).
+ */
+
+/* ── Base rules (mobile: one column, status block first) ── */
+
+.detailLayout {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.statusColumn {
+  order: 0;
+  min-width: 0;
+}
+
+.mainColumn {
+  order: 1;
+  min-width: 0;
+}
+
+/* The hairline tab bar: 44px row, ink underline on the active tab. Sticky
+   under the shell header (K3b C4) so a long tab stays reachable while it
+   scrolls — the header AND this bar are the only sticky elements on this
+   page (no DeskStrip above it, unlike K3a's /clients desk), so this pins at
+   the bare header height rather than adding a strip's height to it. An
+   opaque background is required or content scrolling underneath would show
+   through. `overflow-x: auto` is this rule's OWN scroll only — no ancestor
+   in this module may set overflow, or the sticky breaks silently (same law
+   as `../clients-desk.module.css`'s sticky head). */
+.tabBar {
+  display: flex;
+  gap: 4px;
+  overflow-x: auto;
+  border-bottom: 1px solid var(--line-control);
+  position: sticky;
+  top: var(--bz-header-height, 48px);
+  z-index: 10;
+  background: var(--bz-base);
+}
+
+.tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 44px;
+  padding: 0 10px;
+  white-space: nowrap;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  font-size: 12px;
+  font-weight: 650;
+  color: var(--tx-secondary);
+  cursor: pointer;
+}
+
+/* Ink selection, not copper: a selected tab is a state the viewer chose, not
+   ownership. Copper on this page is reserved for "you are the next actor"
+   (the Stamp, gated by `needsViewerAction`) — a tab bar has no ownership
+   meaning, so it paints the same ink as the label text (K3b C1). */
+.tabActive {
+  border-bottom-color: var(--tx-pure);
+  color: var(--tx-pure);
+}
+
+/* ── Overrides ── */
+
+/* Above 1100px the status column moves to the right, the main column takes
+   the left — DOM order is untouched, only the flex `order` changes. */
+@media (min-width: 1100.02px) {
+  .detailLayout {
+    flex-direction: row;
+    align-items: flex-start;
+  }
+
+  .mainColumn {
+    order: 1;
+    flex: 1 1 auto;
+  }
+
+  .statusColumn {
+    order: 2;
+    flex: 0 0 320px;
+  }
+}

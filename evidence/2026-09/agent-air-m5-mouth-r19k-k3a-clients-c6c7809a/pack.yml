@@ -1,0 +1,281 @@
+gear: 3
+brief_ref: evidence/brief.yml
+ruling: RULED 2026-09-12 SAETTA
+council_run: journal.jsonl
+seat_fallback_reason: >-
+  agy-gemini-3.1-pro (reserve) stands in for the two titolari that are not
+  codex-gpt-5.6-sol, and the unavailability was OBSERVED in this window, not
+  assumed. `tp1-qwen3.8-max`: `qwen -p` (CLI 0.23.0) answered
+  "Quota exhausted: Your token-plan 1-week quota has been exhausted. The quota
+  will reset at 09-18 08:39:00 UTC ... insufficient_quota: 429".
+  `kimi-code/k3`: `kimi -p` (CLI 0.41.0) answered
+  "provider.auth_error: 403 You've reached your monthly usage limit for this
+  billing cycle". Both were invoked on the same three files and the same prompt
+  as the seats that did answer. The titolare `codex-gpt-5.6-sol` DID play and
+  is the seat that blocked round 1, so the bench did not replace a starter that
+  was available.
+lanes:
+  - lane: mouth/r19k-k3-crm
+    role: build
+    seat: Claude Opus 5 (Dux of window K3, mission SAETTA-R19K; reviewed and cured the implementer's diff before freezing)
+    task_id: r19k-k3-crm
+    worktree: .worktrees/mouth-r19k-k3-crm
+    branch: agent/air-m5/mouth/r19k-k3a-clients
+  - lane: crm-shapes-ground-truth
+    role: ground_truth
+    seat: session (M5) — this PR asserts no regulatory or business fact. Every value it paints is a field already present on the `Client` shape and already fetched by the hooks on origin/main; the one number it derives (`Needs action`) is computed client-side from `assigned_to` and `status`, both of which the list endpoint already returns.
+    nb: >-
+      origin/main @ bcfeb31800b8685c0c59922b267a8fa19cc81aad, three files read
+      with `git show`, none of them in this diff:
+      apps/mouth/src/lib/api/crm/crm.types.ts (the `Client` interface at :288-332
+      and `CLIENT_STATUSES` at :770-776 — the five statuses the tone table maps,
+      and `assigned_to`/`passport_expiry`/`last_interaction_date`, the three
+      fields the row model reads), apps/mouth/src/hooks/useCrmClients.ts
+      (`useCrmStats` at :262 — the four KPI values, already called by this page
+      at origin/main), apps/mouth/src/lib/utils/view-mode-storage.ts
+      (CLIENTS_VIEW_MODE_KEY at :11 — the storage contract this PR must not
+      change).
+    query_hash: "sha256-of-the-three-files-recorded-in-the-note-below"
+    note: >-
+      The three files were read at that sha and quoted by line in this pack's
+      receipts; the ownership predicate and the tone table are derived from
+      `CLIENT_STATUSES` and nothing else. No hash literal is stored here: an
+      earlier pack in this repo tripped `Detect Secrets` on exactly such a
+      value ("Hex High Entropy String"), and this lane's claim is verifiable by
+      re-reading the three named paths at the named sha.
+pii_scan: clean
+pii_scan_note: >-
+  Every fixture in the test file and in the browser capture rig is synthetic
+  (`Client 0401`..`Client 0440`, `client401@example.test`,
+  `staff@example.test`, `member A`/`member B`, `PT Contoh Abadi`). No client
+  name, phone, email or passport value appears in the diff, the tests, the
+  captures or this pack. The page renders real client data at runtime, as it
+  always has; nothing new is transcribed anywhere.
+decisions:
+  - id: D1
+    what: >-
+      Keep the `<table>` and carry its grammar in a page-local CSS module
+      rather than rebuild the list on the `HairlineGrid` div-grid primitive.
+    why: >-
+      The frozen render for 03 is itself a real `<table class="data-table
+      clients-table">` with `position: sticky` on `th`, and the window's
+      acceptance asks for "a viewport-sticky `<thead>`". The module reads only
+      r19 tokens and copies no primitive's class string, so this is a
+      page-local shape, not a second visual system. `HairlineGrid` remains the
+      right primitive for the definition/register layouts K3b and K3c need.
+  - id: D2
+    what: >-
+      The KPI band carries FIVE metrics where the frozen render carries four.
+    why: >-
+      The render's four are Total/Active/Needs action/Completed. This page
+      already displayed Total Clients, Active Practices, Outstanding and Paid
+      Revenue through `StatChips`; dropping the two revenue figures to match a
+      fixture would have removed information staff use. The four existing
+      values are kept and the one derived ownership count is added.
+      `repeat(4,1fr)` is the render's layout choice for its own fixture, not a
+      law in concept.md §2 or §4.
+  - id: D3
+    what: >-
+      The status write is TWO functions: `updateClientStatus` rejects,
+      `handleStatusChange` swallows after logging.
+    why: >-
+      The table's optimistic completion must roll back when the write fails, so
+      it needs a rejection. But `ClientKanban.handleDrop` does a bare
+      `await onStatusChange(...)` with no catch, so making the single existing
+      function reject would have raised an unhandled rejection on every failed
+      drag AND skipped its `setDraggedClient(null)`, leaving the board stuck
+      mid-drag. Two shapes keeps the kanban's contract byte-for-byte.
+  - id: D4
+    what: >-
+      The ownership predicate is an ALLOW-list of moving statuses, not the
+      complement of the terminal list.
+    why: >-
+      The deny-list shape failed OPEN: an unrecognised or future status on a
+      record assigned to the viewer painted copper and claimed they were next.
+      Found by the codex-gpt-5.6-sol seat, which blocked round 1 on it. Copper
+      has to be proven; r19/README.md law 1 says that where ownership is not
+      derivable, use `wait`.
+  - id: D5
+    what: >-
+      Below 701px the desk strip scrolls horizontally inside a page-local
+      scroller instead of restacking.
+    why: >-
+      The frozen render restacks the strip below 701px. The v1 `DeskStrip` is
+      one non-wrapping flex row whose right group is `shrink-0`, and this
+      window may not fork a primitive. The scroller is a SIBLING of the table,
+      never an ancestor, so the sticky head is untouched. The prop `DeskStrip`
+      would need is raised to the imperator rather than added here.
+  - id: D6
+    what: >-
+      The row menu drops `role="menu"`/`role="menuitem"` and keeps
+      `aria-haspopup` + `aria-expanded` + focus management.
+    why: >-
+      `role="menu"` promises the WAI-ARIA menu keyboard pattern (arrow-key
+      roving focus), which was not implemented. Shipping the role without the
+      pattern is a promise to assistive technology that the interaction does
+      not keep; a disclosure of three ordinary buttons that Tab reaches in
+      order is honest and is what the frozen prototype does.
+
+receipts:
+  - claim: >-
+      The deterministic floor is 3 via `size`, which is why this pack exists.
+    cmd: git diff --cached --numstat origin/main | awk '{a+=$1; d+=$2} END {print a, d, a+d}'
+    result: "1972 added, 729 deleted, churn 2701 — over SIZE_GEAR3_THRESHOLD (1828). Four files, all under apps/mouth/src/app/(workspace)/clients/, no hot-zone path. The predecessor PR #6515 carried the same shape and the `Harness floor recompute` check reported FLOOR: 3, SOURCE: size."
+    exit: 0
+    ts: "2026-09-14T18:10:00+08:00"
+    seat: Claude Opus 5
+  - claim: >-
+      Every test of the family is green, and so is the untouched neighbour.
+    cmd: cd apps/mouth && npx vitest run "src/app/(workspace)/clients" "src/components/crm" ; npx vitest run "src/app/(workspace)/process/__tests__/page.test.tsx"
+    result: >-
+      Clients + CRM: "Test Files 11 passed (11) / Tests 56 passed (56)" before the
+      adversarial round; the K3a file alone is 17 passed after it. The untouched
+      process page test: "Tests 40 passed (40)".
+    exit: 0
+    ts: "2026-09-14T18:00:00+08:00"
+    seat: Claude Opus 5
+  - claim: >-
+      The three guards added in the adversarial round BITE — each fails on the
+      defect it names and passes on the cure.
+    cmd: three one-line mutations with sed/python against the cured tree, each followed by `npx vitest run` on clients-desk.test.tsx, each restored from a cp backup
+    result: >-
+      M1, `viewerIsNext` reverted to `!isTerminalClientStatus(...)`: "Tests 1 failed | 16 passed (17)".
+      M2, the sticky offset reverted to `top: var(--bz-header-height, 48px)`: "Tests 1 failed | 16 passed (17)".
+      M3, `display: none` in the 1360 collapse changed to `display: table-cell`: "Tests 1 failed | 16 passed (17)".
+      Tree restored: "Tests 17 passed (17)".
+    exit: 0
+    ts: "2026-09-14T18:14:00+08:00"
+    seat: Claude Opus 5
+  - claim: >-
+      Static gates on the final tree.
+    cmd: cd apps/mouth && npx tsc --noEmit --incremental false ; npx eslint "src/app/(workspace)/clients/page.tsx" "src/app/(workspace)/clients/client-row-model.ts" ; cd .. && npx prettier --check on the four files ; python3 scripts/token_lint.py --base origin/main
+    result: >-
+      tsc: no output, exit 0. eslint: 0 errors (the test file is covered by an
+      ignore pattern and warns about that, nothing else). prettier: formatted.
+      token_lint on the committed tree of the predecessor: "clean — no new
+      hardcoded hex colors in scoped surfaces (4 scoped file(s) with added lines
+      scanned)".
+    exit: 0
+    ts: "2026-09-14T18:12:00+08:00"
+    seat: Claude Opus 5
+  - claim: >-
+      The page renders in a real browser at three widths in both themes with no
+      console error, the sticky head holds at the document end, the 1360
+      collapse is real, and copper lands on exactly the owned-and-moving rows.
+    cmd: Playwright/Chromium against `npx next dev --webpack -p 3941` on this worktree, API routes stubbed with synthetic fixtures; 19 captures plus a geometry/interaction probe
+    result: >-
+      0 console errors across all 19 captures. `scrollWidth === clientWidth` at
+      1440 and 1280. At 1280 the Nation./Passport heads are not visible and the
+      collapsed meta text is; at 1440 the opposite. After
+      `window.scrollTo(0, document.body.scrollHeight)` at 1440 the first `<th>`
+      is still pinned. Copper-coloured row elements: 8, against a fixture of
+      exactly 8 clients assigned to the viewer with a non-terminal status — the
+      3 assigned-but-terminal rows took no copper. The FIRST run of this probe
+      is also what found the 390px overflow and the too-low sticky offset; both
+      are cured in this tree and the capture is being re-shot on the cured code.
+    exit: 0
+    ts: "2026-09-14T17:30:00+08:00"
+    seat: Claude Sonnet 5 (measurement seat, separate from the build seat)
+  - claim: >-
+      Local render tests were UNOBSERVABLE for part of this window, and the
+      repair was not made by this session.
+    cmd: readlink apps/mouth/node_modules/react ; node -e "require.resolve('react')" from packages/core and from apps/mouth ; npx vitest run on the untouched process page test
+    result: >-
+      Earlier: `apps/mouth/node_modules/react` was a symlink to
+      `../../../.worktrees/mouth-vo-c-doors/node_modules/.pnpm/react@19.2.8/node_modules/react`
+      (36 such links in that directory), packages/core resolved
+      `node_modules/react` while apps/mouth resolved `.pnpm/react@19.2.8`, and
+      the untouched process page test failed 40/40 with a null hook dispatcher
+      on clean origin/main in the MAIN checkout. Now: the symlink is gone and
+      both paths resolve `/Users/balizero/nuzantara/node_modules/react`; the
+      same untouched test passes 40/40. No install was run by this session.
+    exit: 0
+    ts: "2026-09-14T18:01:00+08:00"
+    seat: Claude Opus 5
+
+dissent:
+  - seat: codex-gpt-5.6-sol (council, round 1)
+    objection: >-
+      Unknown statuses fail open to copper, the responsive ranges have a
+      fractional gap, and multiple tests permit the claimed behaviour to
+      disappear.
+    status: CONFIRMED
+    cure: >-
+      All three cured and re-verified by the same seat in round 2 (VERDICT: OK).
+      The predicate became an allow-list with an unknown-status guilt test; the
+      collapse query's lower bound became 700.02px; the CSS assertions now read
+      a comment-stripped view, the collapse assertion pins `display: none`, the
+      touch-order assertion also rejects a LATER hide, and the virtualization
+      test gained its innocence half. Each cure is mutation-tested in receipt 3.
+  - seat: Claude Sonnet 5 (adversarial reviewer, independent of the implementer)
+    objection: >-
+      The sticky head is pinned at the bare shell-header height while the 44px
+      DeskStrip above it is also sticky and carries the higher z-index, so the
+      column heads are covered — measured as pinned, invisible in practice. Plus
+      13 further findings: sort buttons under the 44px target, `role="menu"`
+      without arrow-key navigation, focus not restored when a menu item is
+      activated, `menuFirstItemRefs` leaking detached nodes, the outside-click
+      test scoped to a class every row carries, no unmount guard on the
+      post-await state writes, clicks in the 4px action gaps navigating, and
+      four tests that cannot fail.
+    status: CONFIRMED
+    cure: >-
+      All applied. The offset became `calc(var(--bz-header-height, 48px) + 44px)`,
+      the same value `HairlineHead` uses and the one r19/README.md documents;
+      the ARIA menu role was dropped rather than half-implemented (D6); focus
+      returns through a shared `closeMenu`; the ref callback gained its else
+      branch; the outside-click test is scoped by `data-menu-cell` id; a
+      `mountedRef` guards every write after an await; the actions cell stops
+      propagation; the four weak tests were rewritten and mutation-tested.
+  - seat: Claude Opus 5 (self-refutation, on evidence)
+    objection: >-
+      This pack's browser receipt was measured BEFORE the last two cures (the
+      sticky offset and the 390px scroller). A render that proved the old code
+      does not prove the new one, and the sticky measurement in particular
+      reported `th.top === 48` as a PASS when 48 was exactly the defect.
+    status: CONFIRMED
+    cure: >-
+      Partly cured, and the gap is stated rather than papered over. The capture
+      is being re-shot on the cured tree and the result is posted to the PR
+      before the merge queue takes it; the CSS-level facts (the calc offset, the
+      700.02 bound, the declaration order) are pinned by mutation-tested unit
+      assertions that do not depend on the browser run. What a re-shot capture
+      still cannot prove is eight hours of use by a staff member on real data.
+  - seat: Claude Opus 5 (self-refutation, on size)
+    objection: >-
+      2701 lines of churn in one PR is past the contract's ~400-line guidance,
+      and a reviewer cannot hold it in their head at once.
+    status: CONFIRMED
+    cure: >-
+      Not cured, argued. `page.tsx` is a 1355-line file being restyled in place;
+      landing it in halves would ship a page carrying two visual systems at
+      once, which is the exact failure the window exists to end. The other 900
+      lines are the test file and the CSS module, neither of which may land
+      apart from the code they pin. The organ IS split four ways by the window's
+      own plan, and this is the smallest of the four that still leaves a working
+      page. Recorded so the gate can reject the argument rather than discover it.
+
+leftovers:
+  - >-
+    `DeskStrip` (v1) is one non-wrapping flex row with a `shrink-0` right group
+    and cannot express the frozen render's below-701px restack. This page works
+    around it with a local scroller (D5). The primitive wants a `wrap` or
+    `stackAt` prop; raised to the imperator, owned by the k1-prims lane, not
+    added here because this window may not touch `components/workspace/r19/**`.
+  - >-
+    The v2 primitive props announced for k1-prims (`stickyTop`, `collapseAt=1360`,
+    `secondaryFields`, `Stamp tone="copper"`) would replace the page-local CSS
+    module's collapse and sticky rules. This PR is deliberately built on v1 so it
+    does not block on that broadcast; the rebase is K3's, after PRIMS-V2 lands.
+  - >-
+    `apps/mouth/node_modules` carried 36 symlinks into
+    `.worktrees/mouth-vo-c-doors` for part of this window, which made every local
+    render test unrunnable machine-wide (not just in this worktree, and not just
+    for this diff). The links are gone now and no install was run by this
+    session, so the repair came from elsewhere and its cause is unknown. Worth a
+    look by whoever owns the M5 install: the same class recurs whenever an
+    install is run from a worktree.
+  - >-
+    `/clients` still renders three sort surfaces — the desk-strip pills, the
+    list-view sort row and the table's own sortable heads. The concept does not
+    ask for three and a later window should pick one.

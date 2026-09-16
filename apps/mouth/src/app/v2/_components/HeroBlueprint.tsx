@@ -14,10 +14,15 @@ import { HeroCTA } from "./HeroCTA";
  *
  * Server Component. Zero JS. Image via next/image with priority.
  */
-export function HeroBlueprint() {
+export function HeroBlueprint({
+  variant = "default",
+}: {
+  variant?: "default" | "r19";
+}) {
+  const isR19 = variant === "r19";
   return (
     <section
-      id="top"
+      id={isR19 ? undefined : "top"}
       className="relative overflow-hidden"
       style={{ background: "var(--surface-base)" }}
     >
@@ -97,11 +102,12 @@ export function HeroBlueprint() {
                   textShadow: "0 2px 24px rgba(0,0,0,0.5)",
                 }}
               >
-                Most people moving to Bali pick the wrong visa in the first
-                month.
+                {isR19
+                  ? "What's your next step in Indonesia?"
+                  : "Most people moving to Bali pick the wrong visa in the first month."}
                 <span
                   style={{
-                    display: "block",
+                    display: isR19 ? "none" : "block",
                     marginTop: 12,
                     color: "rgba(255,255,255,0.75)",
                     fontFamily: "var(--font-sans)",
@@ -120,6 +126,7 @@ export function HeroBlueprint() {
                 className="mb-6 md:mb-10 hidden sm:block"
                 style={{
                   color: "rgba(255,255,255,0.82)",
+                  display: isR19 ? "none" : undefined,
                   fontSize: "clamp(14px, 1.2vw, 17px)",
                   lineHeight: 1.55,
                   textShadow: "0 1px 12px rgba(0,0,0,0.5)",
@@ -131,12 +138,15 @@ export function HeroBlueprint() {
               </p>
 
               {/* CTAs — delegated to client island for onClick analytics */}
-              <HeroCTA />
+              <HeroCTA variant={variant} />
 
               {/* Trust line — concrete, not generic. Hidden on small mobile. */}
               <div
                 className="text-[11px] md:text-[12px] leading-[1.6] hidden sm:block"
-                style={{ color: "rgba(255,255,255,0.55)" }}
+                style={{
+                  color: "rgba(255,255,255,0.55)",
+                  display: isR19 ? "none" : undefined,
+                }}
               >
                 Filed this month: 47 KITAS, 9 PT PMAs · Office in Kerobokan
                 <br />

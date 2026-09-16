@@ -1,0 +1,49 @@
+task_id: b2-5-outbox-binding-v2
+mandate_id: SAETTA-20260915/W-B/PR-1
+colour: BLUE
+l_level: L2
+gate_class: opus
+gear: 3
+gear_reason: >-
+  Measured the way CI measures it, with BOTH inputs:
+  `python3 scripts/evidence_pack_lint.py --print-floor --changed-files-file <f>
+  --numstat-file <n>` returns 3, and `--print-floor-source` returns `path` — the
+  floor comes from the HOT ZONE (a migrations_v2 file plus the WhatsApp outbox
+  worker), not from churn. No digit here is typed from memory: re-run both
+  invocations on this branch to check. The diff is 12 files, +1308/-288, which is
+  well over the ~400-net-line PR ceiling; that overrun is deliberate and is
+  explained under `oversize_reason` below rather than split, because the schema
+  column, the claim predicate that reads it and the tests that prove the binding
+  cannot land in separate PRs without leaving main in a state where the column
+  exists and nothing enforces it.
+oversize_reason: >-
+  This commit is a RECOVERY, not a fresh authoring: it is cherry-pick of
+  8c4d310b16, a commit that was built and tested in a previous window and never
+  pushed. Splitting it now would mean re-deriving a diff that is already proven
+  green, and would land migration 318 (the column + the partial index) apart from
+  the worker code that is the index's only reader — a schema surface with no
+  enforcement is exactly the "esiste != armato" shape (superscar #2). The
+  mandate (SAETTA-20260915 §6) names the size up front and asks for it to be
+  declared rather than split.
+objective: >-
+  "One message, one answer" (B2.5 PR-1). Today a burst of client messages is
+  merged by `_coalesce_thread_bursts` into a single generation, so a client who
+  sends three messages in a row can receive one answer bound to none of them in
+  particular, and a retried row is answered against whatever the thread looks
+  like at retry time rather than against the message that created it. This PR
+  binds every `wa_outbox` row to its own inbound message through a new
+  `wa_outbox.inbound_message_id` column (migration 318), removes the coalescing
+  path entirely, serves a thread's rows strictly FIFO via a partial index the
+  claim SELECT reads, derives an anchor for pre-migration rows (always the OLDER
+  inbound, never a newer one), and closes the ledger gap where a failed row could
+  carry a NULL reason by adding the terminal fall-off reasons and pinning the
+  code-vs-CHECK vocabulary with a test that parses the migration itself.
+acceptance:
+  - "`pytest backend/tests/unit/services/test_wa_inbox_bot_bound_context.py test_wa_outbox_worker.py test_wa_codex_leg.py` green"
+  - "the whole wa_* surface (unit services + tests/db) green, zero failures, zero unexplained skips"
+  - "migration 318 applies AND rolls back on a database that does not already carry the column"
+  - "every fall-off reason value the Python can write is admitted by the CHECK constraint, proven against the migration file rather than against a local database"
+  - "PROVE-LIVE: a burst of 3 messages to the sandbox number produces 3 wa_outbox rows with 3 DISTINCT inbound_message_id"
+appetite:
+  wall_clock_hours: 3
+  adversarial_rounds: 2

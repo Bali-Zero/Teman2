@@ -284,10 +284,11 @@ export function ClientProfilePanel({
       )}
 
       {error && (
+        // Copper: the viewer is the next actor — retry the load or move on.
         <p
           className="text-sm"
           role="alert"
-          style={{ color: "var(--state-danger)" }}
+          style={{ color: "var(--bz-copper-text)" }}
         >
           {error}
         </p>
@@ -431,13 +432,14 @@ export function ClientProfilePanel({
           </div>
 
           <div className="mt-4 flex flex-wrap items-center gap-3">
+            {/* Copper is never a fill: the primary submit reads forest
+                (done), matching the Generate proposals action. */}
             <button
               type="button"
               disabled={saving || touchedKeys.length === 0}
               onClick={() => void handleSave()}
-              className="rounded-md px-4 py-2 text-sm font-medium text-white"
+              className="rounded-md bg-[var(--state-success)] px-4 py-2 text-sm font-medium text-[var(--bz-on-warm)]"
               style={{
-                background: "var(--bz-accent)",
                 opacity: saving || touchedKeys.length === 0 ? 0.6 : 1,
               }}
             >
@@ -453,10 +455,12 @@ export function ClientProfilePanel({
           </div>
 
           {saveError && (
+            // Copper: the viewer must fix or retry the save — the record
+            // itself has no status here, only the viewer's own blocked action.
             <p
               className="mt-2 text-sm"
               role="alert"
-              style={{ color: "var(--state-danger)" }}
+              style={{ color: "var(--bz-copper-text)" }}
             >
               {saveError}
             </p>

@@ -22,7 +22,7 @@ export default function TaxCalendarLayout({
       <NavShell
         logo={<BZLogo variant="full" />}
         items={navItems}
-        slotAfter={<MobileNav items={navItems} />}
+        slotAfter={<MobileNav items={navItems} funnel="tax" />}
         actions={<HeaderWhatsAppCTA funnel="tax" />}
       />
       <SessionInit funnel="tax" />

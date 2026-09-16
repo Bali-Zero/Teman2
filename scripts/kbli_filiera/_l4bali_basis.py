@@ -61,6 +61,15 @@ NON_RISK_DERIVED_STATUSES = frozenset(
         "CHIUSO_BALI_PROPOSTO",
         "NEEDS_REVIEW_NO_OSS_SCOPE",
         "NON_CLASSIFICABILE",
+        # W-J B1 (SAETTA-20260915): the applied 2026 Bali closure overlay's
+        # "not among the 18 fields, verify on OSS" flag. Like CHIUSO_BALI, its
+        # basis is the closure-list/exclusion-list layer this program's
+        # cure_l4bali_applied_closure.py computes from
+        # (bps_2020_ancestors + the excluded-19 set) — NOT the #1814
+        # risk/scale pass this frozenset classifies. A record's per_skala
+        # tier can change without making this verdict wrong or right; it is
+        # a static "check it yourself" flag, same family as NON_CLASSIFICABILE.
+        "ATTENZIONE_FASCIA_BALI",
     }
 )
 

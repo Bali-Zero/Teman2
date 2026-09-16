@@ -370,11 +370,18 @@ async def takeover(
 
             # Cancel any pending/generating bot outbox for this thread so a
             # half-claimed bot reply cannot still go out after the takeover.
+            # B2.5 (ruling a): the same reason wa_outbox_worker.py records
+            # for its own pre-generation/pre-send takeover aborts — this
+            # endpoint is the THIRD writer of that outcome, found by
+            # grepping every `UPDATE wa_outbox ... status = 'failed'` in
+            # the backend (B2-5-design.md BUILD step 5).
             await conn.execute(
                 """
                 UPDATE wa_outbox o
                 SET status = 'failed', claim_token = NULL, claimed_at = NULL,
-                    claim_expires_at = NULL
+                    claim_expires_at = NULL,
+                    generation_fall_off_reason = 'aborted_human_takeover',
+                    generation_fall_off_at = NOW()
                 FROM meta_inbox_messages m
                 WHERE o.message_id = m.id
                   AND o.thread_id = $1

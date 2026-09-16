@@ -43,14 +43,22 @@ import { useRouter } from "next/navigation";
 
 import { api } from "@/lib/api";
 import { logger } from "@/lib/logger";
+import { cn } from "@/lib/utils";
+import {
+  DeskStrip,
+  EmptyState,
+  FOCUS,
+  Masthead,
+  Notice,
+  SERIF_SECTION,
+  StatePill,
+} from "@/components/workspace/r19";
 
 import { ClientProfilePanel } from "./components/ClientProfilePanel";
 import { ObligationsTable } from "./components/ObligationsTable";
 import { StatusCounters } from "./components/StatusCounters";
 import { describeError } from "./components/describe-error";
 import {
-  CARD,
-  INPUT_STYLE,
   STATUS_FILTER_OPTIONS,
   type ApproveOut,
   type GenerateOut,
@@ -282,71 +290,58 @@ export default function ObligationsPage() {
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-8">
-      <div className="mb-6 flex items-center justify-between">
-        <div>
-          <h1
-            className="text-2xl font-semibold"
-            style={{ color: "var(--bz-text-1)" }}
+      <Masthead
+        eyebrow="Compliance"
+        title="Obligations register"
+        subtitle="Generate, review and decide compliance obligation proposals before they become client-visible deadline alerts."
+        className="mb-6"
+        right={
+          <button
+            type="button"
+            onClick={() => router.push("/dashboard")}
+            className={cn(
+              "inline-flex min-h-11 items-center border border-[var(--line-control)] bg-transparent px-3.5 text-[12px] font-[650] text-[var(--tx-pure)] hover:bg-[var(--bz-card-hover)]",
+              FOCUS,
+            )}
           >
-            Obligations register
-          </h1>
-          <p className="mt-1 text-sm" style={{ color: "var(--bz-text-3)" }}>
-            Generate, review and decide compliance obligation proposals before
-            they become client-visible deadline alerts.
-          </p>
-        </div>
-        <button
-          type="button"
-          onClick={() => router.push("/dashboard")}
-          className="rounded-md border px-3 py-1.5 text-sm"
-          style={{ borderColor: "var(--bz-border)", color: "var(--bz-text-2)" }}
-        >
-          ← Back
-        </button>
-      </div>
+            ← Back
+          </button>
+        }
+      />
 
       {notice && (
-        <div
-          className="mb-4 rounded-md border px-4 py-2 text-sm"
-          role="status"
-          style={{
-            borderColor: "var(--state-success)",
-            color: "var(--bz-text-1)",
-          }}
-        >
+        <Notice tone="ok" role="status" className="mb-4">
           {notice}
-        </div>
+        </Notice>
       )}
 
       {/* ── Generate proposals ───────────────────────────────────────── */}
-      <section className="mb-6 rounded-xl border p-4" style={CARD}>
+      <section className="mb-6 border-t border-[var(--bz-border)] pt-4">
         <h2
-          className="mb-2 text-lg font-medium"
-          style={{ color: "var(--bz-text-1)" }}
+          className="mb-3 text-[19px] leading-[1.2] tracking-[-0.02em] text-[var(--tx-pure)]"
+          style={SERIF_SECTION}
         >
           Generate proposals
         </h2>
         <div className="flex flex-wrap items-end gap-3">
-          <label className="text-xs" style={{ color: "var(--bz-text-3)" }}>
+          <label className="text-[10px] font-[650] uppercase tracking-[0.12em] text-[var(--tx-secondary)]">
             Client id
             <input
               type="number"
               min={1}
-              className="mt-1 block w-32 rounded border px-2 py-1.5 text-sm"
-              style={INPUT_STYLE}
+              className="mt-1 block h-9 w-32 border border-[var(--line-control)] bg-transparent px-2 text-[12px] normal-case tracking-normal text-[var(--tx-pure)] focus:border-[var(--bz-copper)] focus:outline-none"
               value={genClientId}
               onChange={(e) => setGenClientId(e.target.value)}
               placeholder="e.g. 42"
             />
           </label>
-          <label className="text-xs" style={{ color: "var(--bz-text-3)" }}>
+          <label className="text-[10px] font-[650] uppercase tracking-[0.12em] text-[var(--tx-secondary)]">
             Horizon days
             <input
               type="number"
               min={1}
               max={730}
-              className="mt-1 block w-32 rounded border px-2 py-1.5 text-sm"
-              style={INPUT_STYLE}
+              className="mt-1 block h-9 w-32 border border-[var(--line-control)] bg-transparent px-2 text-[12px] normal-case tracking-normal text-[var(--tx-pure)] focus:border-[var(--bz-copper)] focus:outline-none"
               value={genHorizonDays}
               onChange={(e) => setGenHorizonDays(e.target.value)}
             />
@@ -355,24 +350,22 @@ export default function ObligationsPage() {
             type="button"
             disabled={generating}
             onClick={() => void handleGenerate()}
-            className="rounded-md px-4 py-2 text-sm font-medium text-white"
-            style={{
-              background: "var(--bz-accent)",
-              opacity: generating ? 0.6 : 1,
-            }}
+            className={cn(
+              "inline-flex min-h-11 items-center border border-[var(--line-control)] bg-transparent px-3.5 text-[12px] font-[650] text-[var(--tx-pure)] hover:bg-[var(--bz-card-hover)]",
+              FOCUS,
+            )}
+            style={{ opacity: generating ? 0.6 : 1 }}
           >
             {generating ? "Generating…" : "Generate proposals"}
           </button>
         </div>
 
         {generateError && (
-          <p
-            className="mt-2 text-sm"
-            role="alert"
-            style={{ color: "var(--state-danger)" }}
-          >
+          // Copper: the viewer must fix the input or retry — they are the
+          // next actor on their own blocked action, not on a record's status.
+          <Notice tone="you" role="alert" className="mt-2">
             {generateError}
-          </p>
+          </Notice>
         )}
 
         {generateResult && (
@@ -427,47 +420,58 @@ export default function ObligationsPage() {
       />
 
       {/* ── Filters ──────────────────────────────────────────────────── */}
-      <section className="mb-4 flex flex-wrap items-end gap-3">
-        <label className="text-xs" style={{ color: "var(--bz-text-3)" }}>
-          Client id
-          <input
-            type="number"
-            min={1}
-            className="mt-1 block w-32 rounded border px-2 py-1.5 text-sm"
-            style={INPUT_STYLE}
-            value={filterClientId}
-            onChange={(e) => setFilterClientId(e.target.value)}
-            placeholder="all clients"
-          />
-        </label>
-        <label className="text-xs" style={{ color: "var(--bz-text-3)" }}>
-          Status
-          <select
-            className="mt-1 block w-40 rounded border px-2 py-1.5 text-sm"
-            style={INPUT_STYLE}
-            value={filterStatus}
-            onChange={(e) => setFilterStatus(e.target.value as StatusFilter)}
-          >
+      <DeskStrip
+        className="mb-4"
+        filters={
+          // DeskStrip clips its filter group with overflow-hidden and lets
+          // `right` keep its width, so at 390 the pills past the fold were
+          // neither visible NOR scrollable — six filters, and a phone reader
+          // could reach the first one or two. The primitive is not this
+          // window's to edit, so the scroller is page-local, inside the slot
+          // it hands us. Same finding and same cure as /review and
+          // /notifications; the strip itself still owes this.
+          <div className="flex min-w-0 items-center gap-1.5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             {STATUS_FILTER_OPTIONS.map((s) => (
-              <option key={s} value={s}>
-                {s}
-              </option>
+              <StatePill
+                key={s}
+                tone="wait"
+                label={s}
+                pressed={filterStatus === s}
+                onClick={() => setFilterStatus(s)}
+              />
             ))}
-          </select>
-        </label>
-        <button
-          type="button"
-          onClick={() => {
-            setRefreshTick((t) => t + 1);
-            void loadList();
-          }}
-          disabled={loading}
-          className="rounded-md border px-3 py-1.5 text-sm"
-          style={{ borderColor: "var(--bz-border)", color: "var(--bz-text-2)" }}
-        >
-          {loading ? "Refreshing…" : "Refresh"}
-        </button>
-      </section>
+          </div>
+        }
+        right={
+          <>
+            <label className="flex items-center gap-2 text-[10px] font-[650] uppercase tracking-[0.12em] text-[var(--tx-secondary)]">
+              Client id
+              <input
+                type="number"
+                min={1}
+                className="h-9 w-28 border border-[var(--line-control)] bg-transparent px-2 text-[12px] normal-case tracking-normal text-[var(--tx-pure)] focus:border-[var(--bz-copper)] focus:outline-none"
+                value={filterClientId}
+                onChange={(e) => setFilterClientId(e.target.value)}
+                placeholder="all clients"
+              />
+            </label>
+            <button
+              type="button"
+              onClick={() => {
+                setRefreshTick((t) => t + 1);
+                void loadList();
+              }}
+              disabled={loading}
+              className={cn(
+                "inline-flex min-h-11 items-center border border-[var(--line-control)] bg-transparent px-3.5 text-[12px] font-[650] text-[var(--tx-pure)] hover:bg-[var(--bz-card-hover)]",
+                FOCUS,
+              )}
+            >
+              {loading ? "Refreshing…" : "Refresh"}
+            </button>
+          </>
+        }
+      />
 
       {catalog.error && (
         <p className="mb-3 text-xs" style={{ color: "var(--state-warning)" }}>
@@ -476,23 +480,18 @@ export default function ObligationsPage() {
       )}
 
       {listError && (
-        <div
-          className="mb-4 rounded-md border px-4 py-2 text-sm"
-          role="alert"
-          style={{
-            borderColor: "var(--state-danger)",
-            color: "var(--bz-text-1)",
-          }}
-        >
+        // Copper: the viewer must retry — nothing else on the page can move
+        // until this load succeeds again.
+        <Notice tone="you" role="alert" className="mb-4">
           {listError}
-        </div>
+        </Notice>
       )}
 
       {/* ── Table ────────────────────────────────────────────────────── */}
       {loading ? (
         <p style={{ color: "var(--bz-text-3)" }}>Loading…</p>
       ) : !listError && items.length === 0 ? (
-        <p style={{ color: "var(--bz-text-3)" }}>No obligations found.</p>
+        <EmptyState>No obligations found.</EmptyState>
       ) : (
         !listError && (
           <ObligationsTable
@@ -524,11 +523,10 @@ export default function ObligationsPage() {
               type="button"
               disabled={offset === 0 || loading}
               onClick={() => setOffset((o) => Math.max(0, o - LIMIT))}
-              className="rounded-md border px-3 py-1"
-              style={{
-                borderColor: "var(--bz-border)",
-                color: "var(--bz-text-2)",
-              }}
+              className={cn(
+                "inline-flex min-h-11 items-center border border-[var(--line-control)] bg-transparent px-3.5 text-[12px] font-[650] text-[var(--tx-pure)] hover:bg-[var(--bz-card-hover)] disabled:opacity-40",
+                FOCUS,
+              )}
             >
               Previous
             </button>
@@ -536,11 +534,10 @@ export default function ObligationsPage() {
               type="button"
               disabled={offset + LIMIT >= total || loading}
               onClick={() => setOffset((o) => o + LIMIT)}
-              className="rounded-md border px-3 py-1"
-              style={{
-                borderColor: "var(--bz-border)",
-                color: "var(--bz-text-2)",
-              }}
+              className={cn(
+                "inline-flex min-h-11 items-center border border-[var(--line-control)] bg-transparent px-3.5 text-[12px] font-[650] text-[var(--tx-pure)] hover:bg-[var(--bz-card-hover)] disabled:opacity-40",
+                FOCUS,
+              )}
             >
               Next
             </button>

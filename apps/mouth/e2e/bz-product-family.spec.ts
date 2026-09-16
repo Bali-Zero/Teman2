@@ -13,6 +13,18 @@ const syntheticPortalProfile = {
 };
 
 async function seedSyntheticPortalSession(page: Page): Promise<void> {
+  // A real login sets the HttpOnly session cookie as well as localStorage, and
+  // proxy.ts gates workspace paths on that cookie server-side (SAETTA W-C R-A):
+  // seeding localStorage alone is an anonymous visitor to the server.
+  await page.context().addCookies(
+    [KITA_ORIGIN, MY_ORIGIN].map((url) => ({
+      name: "nz_access_token",
+      value: "synthetic-ui-test-token",
+      url,
+      httpOnly: true,
+      sameSite: "Lax" as const,
+    })),
+  );
   await page.addInitScript((profile) => {
     localStorage.setItem("auth_token", "synthetic-ui-test-token");
     localStorage.setItem("user_profile", JSON.stringify(profile));

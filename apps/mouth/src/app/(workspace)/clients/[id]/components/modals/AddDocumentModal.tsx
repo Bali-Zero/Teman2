@@ -153,7 +153,7 @@ export function AddDocumentModal({
   };
 
   const inputClass =
-    "w-full px-4 py-2.5 rounded-lg border border-[var(--bz-border)] bg-[var(--bz-surface)] text-[var(--bz-text-1)] focus:outline-none focus:ring-2 focus:ring-[var(--bz-accent)]/50";
+    "w-full px-4 py-2.5 rounded-lg border border-[var(--bz-border)] bg-[var(--bz-surface)] text-[var(--bz-text-1)] focus:outline-none focus:ring-2 focus:ring-[var(--line-control)]";
 
   return (
     <Modal
@@ -171,10 +171,10 @@ export function AddDocumentModal({
         onClick={() => fileInputRef.current?.click()}
         className={`mb-4 border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition-colors ${
           isDragging
-            ? "border-[var(--bz-accent)] bg-[var(--bz-accent)]/10"
+            ? "border-[var(--tx-pure)] bg-[var(--bz-card)]"
             : selectedFile
               ? "border-green-500/50 bg-green-500/5"
-              : "border-[var(--bz-border)] hover:border-[var(--bz-accent)]/50"
+              : "border-[var(--bz-border)] hover:border-[var(--line-control)]"
         }`}
       >
         <input
@@ -200,6 +200,8 @@ export function AddDocumentModal({
                 setSelectedFile(null);
               }}
               className="p-1 rounded hover:bg-[var(--bz-surface-2)]"
+              aria-label="Remove selected file"
+              title="Remove selected file"
             >
               <X className="w-4 h-4 text-[var(--bz-text-3)]" />
             </button>
