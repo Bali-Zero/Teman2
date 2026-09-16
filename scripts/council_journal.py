@@ -60,10 +60,19 @@ Exit codes:
 from __future__ import annotations
 
 import argparse
+import concurrent.futures
 import datetime
+import hashlib
 import importlib.util
 import json
+import os
+import re
+import select
+import signal
+import subprocess
 import sys
+import threading
+import time
 from pathlib import Path
 from typing import Any
 
@@ -239,7 +248,7 @@ def cmd_check(args: argparse.Namespace) -> int:
     # finding fails a required check.
     results: dict[str, tuple[list[str], str | None]] = {}
     for label, day in (("before", before), ("on/after", flip)):
-        violations, notice = lint.check_council_run_gear3(
+        violations, notice = lint.check_council_gear3(
             pack, pack_dir=pack_dir, gear=3, today=day
         )
         results[label] = (list(violations or []), notice)
@@ -260,6 +269,333 @@ def cmd_check(args: argparse.Namespace) -> int:
     return 1 if results["on/after"][0] else 0
 
 
+#: SAETTA review policy v2 routes (RULED 2026-09-13). Only first-party CLIs on their existing
+#: OAuth/subscription profiles; no raw model HTTP. `{prompt}` is replaced by the packet; a route
+#: with `stdin` feeds the packet on stdin instead. The review packet is code-only.
+AGY = "/Users/nuzantara/.local/bin/agy"
+KIMI = "/Users/nuzantara/.kimi-code/bin/kimi"
+SEAT_ROUTES: dict[str, dict[str, Any]] = {
+    "agy-gemini-3.1-pro-high": {
+        "host": "pro-local", "account_ref": "agy-oauth-default",
+        "argv": [AGY, "--model", "gemini-3.1-pro-high", "--effort", "high", "--mode", "plan",
+                 "--sandbox", "--output-format", "stream-json", "--print-timeout", "5m",
+                 "--add-dir", "{worktree}", "-p", "{prompt}"],
+    },
+    "kimi-code/k3": {
+        "host": "pro-local", "account_ref": "kimi-allegro-oauth",
+        "argv": [KIMI, "-m", "kimi-code/k3", "--output-format", "stream-json", "-p", "{prompt}"],
+    },
+    "codex-gpt-5.6-sol": {
+        "host": "pro-local", "account_ref": "codex-oauth",
+        "argv": ["codex", "exec", "-m", "gpt-5.6-sol", "--sandbox", "read-only", "--json", "-"],
+        "stdin": True,
+    },
+}
+for _model in ("qwen3.8-max", "glm-5.2", "deepseek-v4-pro"):
+    SEAT_ROUTES[f"tp1-{_model}"] = {
+        "host": "m5-ssh-air", "account_ref": "tp1-qwen-code-profile",
+        "argv": ["ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=10", "air",
+                 'echo "SAETTA_REMOTE_PID=$$ PGID=$(ps -o pgid= -p $$ | tr -d " ")" >&2;'
+                 " export PATH=$HOME/.local/share/mise/shims:$PATH;"
+                 f" exec qwen -m {_model} --output-format stream-json -p 'Review the code packet on stdin.'"],
+        "stdin": True, "remote": "air",
+    }
+
+_VERDICT = re.compile(r"VERDICT=(PASS|BLOCK)\b")
+_FINDING = re.compile(r"FINDING=([A-Za-z0-9_.-]{1,40})\|(high|medium|low)\|([^\n]{1,240})", re.I)
+_MODEL_KEYS = {"model", "modelId", "model_id", "modelVersion", "resolved_model", "modelName"}
+_SESSION_KEYS = {"session_id", "sessionId", "conversation_id", "conversationId", "cascade_id", "cascadeId"}
+_COUNT_KEYS = {"num_turns", "numTurns", "request_count", "api_requests", "retries", "retry_count"}
+_NON_JUDGMENT_HINTS = re.compile(r"\b(429|403|quota|rate.?limit|unauthori[sz]ed|sign.?in|not logged)\b", re.I)
+
+
+def _walk(node: Any, sink: dict[str, list]) -> None:
+    if isinstance(node, dict):
+        for key, value in node.items():
+            if isinstance(value, (str, int)) and not isinstance(value, bool):
+                if key in _MODEL_KEYS and isinstance(value, str):
+                    sink["models"].append(value)
+                elif key in _SESSION_KEYS:
+                    sink["sessions"].append(str(value))
+                elif key in _COUNT_KEYS and isinstance(value, int):
+                    sink["counts"].append((key, value))
+            if isinstance(value, str):
+                sink["text"].append(value)
+            else:
+                _walk(value, sink)
+    elif isinstance(node, list):
+        for item in node:
+            _walk(item, sink)
+
+
+def classify_output(seat: str, stdout: str, exit_code: int | None, timed_out: bool, packet: str = "") -> dict[str, Any]:
+    """Turn one real process result into a journal verdict. Only a VERDICT= line from a process
+    that exited 0 in time, whose EVERY observed model identity is the exact requested one, is a
+    judgment; everything else is NON_JUDGMENT with the reason — never PASS."""
+    lint = _load_lint_module()
+    _family, accepted = lint.COUNCIL_V2_SEATS[seat]
+    sink: dict[str, list] = {"models": [], "sessions": [], "counts": [], "text": []}
+    for line in stdout.splitlines():
+        try:
+            _walk(json.loads(line), sink)
+        except (json.JSONDecodeError, RecursionError):
+            if not (packet and len(line) >= 64 and line in packet):
+                sink["text"].append(line)
+    # An echoed prompt chunk is not the reviewer speaking: drop long strings copied from the packet.
+    blob = "\n".join(t for t in sink["text"] if not (packet and len(t) >= 64 and t in packet))
+    models = sorted(set(sink["models"]))
+    result: dict[str, Any] = {
+        "observed_models": models,
+        "resolved_model": models[0] if len(models) == 1 else None,
+        "session_ref": hashlib.sha256(sink["sessions"][0].encode()).hexdigest()[:16] if sink["sessions"] else None,
+        "request_counts": dict(sink["counts"]) or None,
+        "findings": [],
+    }
+    verdicts = _VERDICT.findall(blob)
+    reason = None
+    if timed_out:
+        reason = "timeout"
+    elif exit_code != 0:
+        reason = f"exit_{exit_code}"
+    elif not verdicts:
+        reason = "quota_or_auth_error" if _NON_JUDGMENT_HINTS.search(blob) else "no_verdict"
+    elif not models:
+        reason = "model_identity_unproven"
+    elif any(m not in accepted for m in models):
+        reason = "model_mismatch"
+    if reason:
+        result.update(outcome="NON_JUDGMENT", non_judgment_reason=reason)
+        return result
+    result["outcome"] = "BLOCK" if "BLOCK" in verdicts else "PASS"
+    result["resolved_model"] = next(m for m in models if m in accepted)
+    result["verdict_sha256"] = hashlib.sha256(blob.encode()).hexdigest()
+    seen = set()
+    for fid, sev, text in _FINDING.findall(blob):
+        if fid not in seen:
+            seen.add(fid)
+            result["findings"].append({"id": fid, "severity": sev.lower(), "summary": text.strip()[:240]})
+    return result
+
+
+def _live_group_members(pgid: int) -> list[int]:
+    """Live (non-zombie) processes whose PGID is `pgid`, read from the process table. A leader that
+    is gone is not proof that its group is empty; this list is."""
+    table = subprocess.run(["ps", "-A", "-o", "pid=,pgid=,stat="], capture_output=True, text=True,
+                           timeout=10, check=True).stdout
+    return [int(r.split()[0]) for r in table.splitlines()
+            if len(r.split()) >= 3 and r.split()[1] == str(pgid) and not r.split()[2].startswith("Z")]
+
+
+def _wait_exit_unreaped(pid: int, timeout: float) -> bool:
+    """True once the leader exited, WITHOUT reaping it: an unreaped zombie keeps its PID and PGID
+    reserved, so signalling the group afterwards can never reach a reused id."""
+    deadline = time.monotonic() + timeout
+    if hasattr(os, "waitid"):
+        while os.waitid(os.P_PID, pid, os.WEXITED | os.WNOHANG | os.WNOWAIT) is None:
+            if time.monotonic() >= deadline:
+                return False
+            time.sleep(0.1)
+        return True
+    kq = select.kqueue()
+    try:
+        event = select.kevent(pid, filter=select.KQ_FILTER_PROC,
+                              flags=select.KQ_EV_ADD | select.KQ_EV_ONESHOT, fflags=select.KQ_NOTE_EXIT)
+        try:
+            return bool(kq.control([event], 1, max(0.0, deadline - time.monotonic())))
+        except OSError:
+            state = subprocess.run(["ps", "-o", "stat=", "-p", str(pid)], capture_output=True, text=True).stdout
+            return state.strip().startswith("Z")
+    finally:
+        kq.close()
+
+
+def _close_group(proc: subprocess.Popen, grace: float = 3.0) -> dict[str, Any]:
+    """Close the OWNED group while its leader is still unreaped, verify from the process table, and
+    only then reap. No signal is ever sent after the reap."""
+    pgid = proc.pid
+    before = _live_group_members(pgid)
+    signals: list[str] = []
+    if before:
+        for sig in (signal.SIGTERM, signal.SIGKILL):
+            try:
+                os.killpg(pgid, sig)
+                signals.append(sig.name)
+            except (ProcessLookupError, PermissionError):
+                pass  # Darwin answers EPERM when only zombies are left in the group
+            end = time.monotonic() + grace
+            while _live_group_members(pgid) and time.monotonic() < end:
+                time.sleep(0.1)
+            if not _live_group_members(pgid):
+                break
+    after = _live_group_members(pgid)
+    proc.wait(timeout=grace)
+    return {"members_before": len(before), "signals": signals, "members_after": len(after),
+            "closure": "verified" if not after else "ambiguous"}
+
+
+_REMOTE_MARK = re.compile(r"SAETTA_REMOTE_PID=(\d+) PGID=(\d+)")
+
+
+def _remote_closure(host: str, stderr: str) -> dict[str, Any]:
+    mark = _REMOTE_MARK.search(stderr)
+    if not mark:
+        return {"remote_closure": "ambiguous", "remote_closure_error": "remote_pid_unobserved"}
+    pid, pgid = int(mark.group(1)), int(mark.group(2))
+    try:
+        table = subprocess.run(["ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=5", host,
+                                "ps -A -o pid=,pgid=,stat="], capture_output=True, text=True, timeout=20, check=True).stdout
+    except Exception as exc:  # noqa: BLE001 - an unobservable remote group is ambiguous, never verified
+        return {"remote_pid": pid, "remote_pgid": pgid, "remote_closure": "ambiguous", "remote_closure_error": type(exc).__name__}
+    live = [r for r in table.splitlines() if len(r.split()) >= 3 and r.split()[1] == str(pgid) and not r.split()[2].startswith("Z")]
+    return {"remote_pid": pid, "remote_pgid": pgid, "remote_members_after": len(live),
+            "remote_closure": "verified" if not live else "ambiguous"}
+
+
+def run_seat(seat: str, route: dict[str, Any], packet: str, worktree: str, timeout: float) -> dict[str, Any]:
+    argv = [a.replace("{worktree}", worktree).replace("{prompt}", packet) for a in route["argv"]]
+    started = time.monotonic()
+    dispatch: dict[str, Any] = {"pid": None, "pgid": None, "binary": Path(argv[0]).name, "host": route["host"],
+                                "exit_code": None, "timed_out": False, "timeout_s": timeout}
+    try:
+        proc = subprocess.Popen(argv, stdin=subprocess.PIPE if route.get("stdin") else subprocess.DEVNULL,
+                                stdout=subprocess.PIPE, stderr=subprocess.PIPE, start_new_session=True)
+    except Exception as exc:  # noqa: BLE001 - one seat's missing binary must not abort the fan-out
+        dispatch.update(spawn_error=type(exc).__name__, closure="not_spawned",
+                        elapsed_s=round(time.monotonic() - started, 1))
+        return {"stdout": "", "stderr": "", "dispatch": dispatch}
+    dispatch.update(pid=proc.pid, pgid=proc.pid)
+    chunks: dict[str, bytes] = {}
+
+    def pump(name: str, stream: Any) -> None:
+        chunks[name] = stream.read()
+
+    def feed() -> None:
+        try:
+            proc.stdin.write(packet.encode("utf-8"))
+            proc.stdin.close()
+        except OSError:
+            pass
+
+    threads = [threading.Thread(target=pump, args=("out", proc.stdout), daemon=True),
+               threading.Thread(target=pump, args=("err", proc.stderr), daemon=True)]
+    if route.get("stdin"):
+        threads.append(threading.Thread(target=feed, daemon=True))
+    for thread in threads:
+        thread.start()
+    try:
+        exited = _wait_exit_unreaped(proc.pid, timeout)
+        dispatch["timed_out"] = not exited
+        dispatch.update(_close_group(proc))
+        dispatch["exit_code"] = proc.returncode if exited else None
+    except Exception as exc:  # noqa: BLE001 - recorded as ambiguous closure, which blocks release
+        dispatch.update(closure="ambiguous", closure_error=type(exc).__name__)
+    for thread in threads:
+        thread.join(timeout=5)
+    if any(t.is_alive() for t in threads):
+        dispatch.update(closure="ambiguous", closure_error=dispatch.get("closure_error") or "pipe_held_open")
+    stderr = chunks.get("err", b"").decode("utf-8", "replace")
+    if route.get("remote"):
+        remote = _remote_closure(route["remote"], stderr)
+        dispatch.update(remote)
+        if remote["remote_closure"] != "verified":
+            dispatch["closure"] = "ambiguous"
+    dispatch["elapsed_s"] = round(time.monotonic() - started, 1)
+    return {"stdout": chunks.get("out", b"").decode("utf-8", "replace"), "stderr": stderr, "dispatch": dispatch}
+
+
+def cmd_dispatch(args: argparse.Namespace) -> int:
+    lint = _load_lint_module()
+    pack_dir = Path(args.pack_dir)
+    journal, err = _resolve_journal(pack_dir, args.journal) if pack_dir.is_dir() else (None, "pack dir missing")
+    if journal is None:
+        print(f"council_journal: {err}", file=sys.stderr)
+        return 2
+    if not 0 < args.timeout <= lint.COUNCIL_V2_MAX_TIMEOUT_S:
+        print(f"council_journal: --timeout must be in (0, {lint.COUNCIL_V2_MAX_TIMEOUT_S}]", file=sys.stderr)
+        return 2
+    wt = args.worktree
+    head = subprocess.run(["git", "-C", wt, "rev-parse", "HEAD"], capture_output=True, text=True).stdout.strip()
+    dirty = subprocess.run(["git", "-C", wt, "status", "--porcelain", "--untracked-files=no"], capture_output=True, text=True).stdout.strip()
+    if head != args.candidate_sha or dirty:
+        print("council_journal: worktree HEAD is not the frozen, clean candidate — refusing to dispatch", file=sys.stderr)
+        return 2
+    diff = subprocess.run(["git", "-C", wt, "diff", "--no-color", f"{args.base_sha}..{args.candidate_sha}"],
+                          capture_output=True, text=True, check=True).stdout
+    packet = (
+        f"You are an independent code reviewer. Review ONLY this diff, candidate commit {args.candidate_sha}. "
+        "Do not edit files. Report substantive defects only (correctness bugs, policy bypasses, a test that "
+        "hides a bug). Put each defect on its own line as FINDING=<short-id>|<high|medium|low>|<one sentence>. "
+        "End with exactly one line VERDICT=<PASS|BLOCK>; BLOCK if any high or medium finding.\n\n" + diff
+    )
+    contributing = set(args.contributing_family) | set(lint.COUNCIL_V2_ALWAYS_CONTRIBUTING)
+    capture = Path(args.capture_dir) / pack_dir.resolve().name
+    capture.mkdir(parents=True, exist_ok=True, mode=0o700)
+    entries: list[dict[str, Any]] = []
+    eligible: list[str] = []
+    for seat, (family, accepted) in lint.COUNCIL_V2_SEATS.items():
+        base = {"policy": lint.COUNCIL_POLICY_V2, "seat": seat, "family": family, "role": "review",
+                "requested_model": accepted[0], "candidate_sha": args.candidate_sha,
+                "account_ref": SEAT_ROUTES.get(seat, {}).get("account_ref")}
+        if family in contributing:
+            entries.append({**base, "eligible": False, "invoked": False, "ok": False,
+                            "exclusion_reason": f"contributing family {family}"})
+        elif not SEAT_ROUTES.get(seat, {}).get("argv"):
+            entries.append({**base, "eligible": True, "invoked": False, "ok": False, "outcome": "NON_JUDGMENT",
+                            "non_judgment_reason": "no first-party route"})
+        else:
+            eligible.append(seat)
+    stamp = lambda: datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")  # noqa: E731
+
+    def record(entry: dict[str, Any]) -> None:
+        # One line per seat as soon as it returns: a later crash cannot erase earlier receipts.
+        with journal.open("a", encoding="utf-8") as handle:
+            handle.write(json.dumps({**entry, "ts": stamp()}, ensure_ascii=False) + "\n")
+        print(f"council_journal: {entry['seat']}: eligible={entry['eligible']} invoked={entry['invoked']} "
+              f"outcome={entry.get('outcome', 'EXCLUDED')} {entry.get('non_judgment_reason', '')}".rstrip())
+
+    for entry in entries:
+        record(entry)
+    # All eligible seats start together and every one runs to its own end: no early-success skip.
+    with concurrent.futures.ThreadPoolExecutor(max_workers=max(1, len(eligible))) as pool:
+        futures = {pool.submit(run_seat, s, SEAT_ROUTES[s], packet, wt, args.timeout): s for s in eligible}
+        for future in concurrent.futures.as_completed(futures):
+            seat = futures[future]
+            family, accepted = lint.COUNCIL_V2_SEATS[seat]
+            try:
+                ran = future.result()
+            except Exception as exc:  # noqa: BLE001 - one seat's runner fault never aborts the others
+                ran = {"stdout": "", "stderr": "", "dispatch": {"pid": None, "host": SEAT_ROUTES[seat]["host"],
+                       "exit_code": None, "timed_out": False, "timeout_s": args.timeout,
+                       "closure": "ambiguous", "closure_error": type(exc).__name__}}
+            safe = re.sub(r"[^A-Za-z0-9_.-]", "_", seat)
+            raw = capture / f"{safe}.raw"
+            fd = os.open(raw, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+            with os.fdopen(fd, "w", encoding="utf-8") as handle:
+                handle.write(ran["stdout"] + "\n--stderr--\n" + ran["stderr"])
+            d = ran["dispatch"]
+            if d.get("spawn_error") or d.get("closure_error") == "runner_error" or (d.get("pid") is None and not d.get("spawn_error")):
+                reason = "spawn_error" if d.get("spawn_error") else "runner_error"
+                verdict = {"outcome": "NON_JUDGMENT", "non_judgment_reason": reason, "findings": []}
+            else:
+                verdict = classify_output(seat, ran["stdout"], d["exit_code"], d["timed_out"], packet)
+            entry = {
+                "policy": lint.COUNCIL_POLICY_V2, "seat": seat, "family": family, "role": "review",
+                "requested_model": accepted[0], "candidate_sha": args.candidate_sha,
+                "account_ref": SEAT_ROUTES[seat]["account_ref"], "eligible": True, "invoked": True,
+                "dispatch": d, "capture_sha256": hashlib.sha256(raw.read_bytes()).hexdigest(),
+                "ok": verdict["outcome"] in ("PASS", "BLOCK"), **verdict,
+            }
+            entries.append(entry)
+            record(entry)
+    ambiguous = [e for e in entries if e.get("invoked") and e["dispatch"].get("closure") not in ("verified", "not_spawned")]
+    judged = [e for e in entries if e.get("outcome") in ("PASS", "BLOCK")]
+    blocked = [e for e in judged if e["outcome"] == "BLOCK" or e.get("findings")]
+    print(f"council_journal: judgments={len(judged)} with_findings={len(blocked)} -> {journal}")
+    if ambiguous:
+        print(f"council_journal: ambiguous process closure on {', '.join(e['seat'] for e in ambiguous)} — release blocked")
+    return 0 if judged and not blocked and not ambiguous else 1
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description=(
@@ -275,6 +611,20 @@ def build_parser() -> argparse.ArgumentParser:
     ap.add_argument("--note", default="", help="what the seat returned; required for --outcome ok")
     ap.add_argument("--journal", default=DEFAULT_JOURNAL_NAME)
     ap.set_defaults(func=cmd_append)
+
+    dp = sub.add_parser(
+        "dispatch",
+        help="SAETTA review policy v2: invoke EVERY eligible seat once on a frozen candidate",
+    )
+    dp.add_argument("--pack-dir", required=True)
+    dp.add_argument("--worktree", required=True)
+    dp.add_argument("--base-sha", required=True)
+    dp.add_argument("--candidate-sha", required=True)
+    dp.add_argument("--contributing-family", action="append", default=[])
+    dp.add_argument("--timeout", type=float, default=300.0)
+    dp.add_argument("--capture-dir", default="/tmp/saetta-review-captures")
+    dp.add_argument("--journal", default=DEFAULT_JOURNAL_NAME)
+    dp.set_defaults(func=cmd_dispatch)
 
     cp = sub.add_parser(
         "check", help="report what R9 says about this pack, before and after its flip date"

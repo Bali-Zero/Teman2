@@ -1,0 +1,37 @@
+task_id: infra-saetta-review-policy
+gear: 3
+l_level: L2
+gate_class: opus
+colour: BLUE
+mandate: SAETTA-REVIEW-POLICY
+base_sha: 316a8e84fa3de399a47c8d679e12d42e86d013e6 # pragma: allowlist secret
+ruling: >-
+  Owner policy ruling 2026-09-13 (canonical change, not a one-off waiver), verbatim: "ok inserire
+  anche gemini 3.1 pro high nella lista - e non diminuiamo, ma una regola che tutti vengono invocati
+  i revisori ma basta la risposta di uno".
+deadline: "2026-09-13T20:58:23Z (1800s preparation budget from supervisor start 2026-09-13T20:28:23Z)"
+objective: >-
+  Machine-enforce SAETTA review policy v2 in the live producer (scripts/council_journal.py dispatch)
+  and the canonical evidence lint (R9 v2 in scripts/evidence_pack_lint.py), keeping roster, skills
+  and RULINGS aligned.
+acceptance:
+  - id: A1
+    text: all eligible seats invoked and one bound PASS satisfies quorum
+  - id: A2
+    text: an omitted eligible seat (reserves included) blocks
+  - id: A3
+    text: zero completed judgments block; quota exit 0, timeout, wrong or unproven model are NON_JUDGMENT
+  - id: A4
+    text: contributing families are excluded, recorded, and never counted
+  - id: A5
+    text: a BLOCK finding is not masked by another seat's PASS until disposed fixed|rejected
+  - id: A6
+    text: exact gemini-3.1-pro-high identity and immutable candidate revision are enforced
+  - id: A7
+    text: a post-ruling pack cannot opt out by omitting council_policy; truly historical packs keep v1
+seats:
+  dux: "claude-opus-5 xhigh (native Claude Code session, Pro) — builder, contributing family anthropic"
+  supervisor: "Codex (supervising session that wrote the implementation contract) — contributing family openai"
+  council: "every eligible COUNCIL_V2_SEATS seat via scripts/council_journal.py dispatch"
+  gate: "a FRESH Opus 5 xhigh session outside the contribution chain (commissioned by root)"
+brief_ref: evidence/brief.yml

@@ -67,6 +67,7 @@ acknowledgment after the fact. Absence of the block is silent, never a gap.
 
 **Anti-sperpero rules (BUDGET made a router):**
 
+- **Gear-3 review under SAETTA review policy v2 (RULED 2026-09-13, `docs/rules/RULINGS.md` §5):** run `python3 scripts/council_journal.py dispatch --pack-dir <pack> --worktree <wt> --base-sha <base> --candidate-sha <head> --contributing-family <family>` — it invokes EVERY eligible seat once (reserves included, Gemini 3.1 Pro High included), one bound judgment is quorum, any unresolved finding blocks beside a PASS; R9 v2 in `scripts/evidence_pack_lint.py` enforces it. Supersedes the reserve-only-after-titolare-failure practice.
 - **Council is NOT automatic at Gear 3.** Convene it only if ALL THREE: divergent priors can change
   the answer ∧ error costs >15× tokens ∧ genuinely parallel breadth. Else: solo + more reasoning
   budget + 1 red-team spalla (evidence: 1 agent with 10× budget beats homogeneous debate at ⅓ cost).

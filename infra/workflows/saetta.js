@@ -179,7 +179,9 @@ You are the appointed Claude Dux of slice ${task.key}, not its final grader.
 Read brief ${JSON.stringify(task.brief)}. Write scope ${JSON.stringify(task.scope)}.
 Create your own worktree with scripts/agent_start.py; other agents share the repository.
 Predecessors have merged after an independent exact-head PASS: ${JSON.stringify(dependencies)}.
-Follow the brief through tests, independent cross-family review, push and PR creation.
+Follow the brief through tests, independent review under saetta-review-policy-v2
+(python3 scripts/council_journal.py dispatch invokes every eligible seat once on the frozen candidate;
+evidence_pack_lint R9 v2 blocks omitted seats, zero judgments and undisposed findings), push and PR creation.
 Read AUTONOMOUS_OPS.md fully before release. Arm auto-merge when opening the PR,
 then freeze the candidate. Return the exact PR numbers and full head SHAs for the fresh gate.
 Never self-sign the gate. Never deploy an unmerged candidate or bypass required checks.
