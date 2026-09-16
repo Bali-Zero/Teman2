@@ -1109,6 +1109,35 @@ export const QUESTIONS: Record<string, OracleQuestion> = {
     whyWeAsk: { i18nKey: "why.family_sponsor_confirmed" },
     notSure: { mode: "human-review" },
   },
+  // D12-only sibling of `family_sponsor_confirmed` (Zero decision
+  // 2026-09-16, mandate SAETTA R2). `businessExplorerQuestionIds`
+  // (flow.ts) asks THIS id — never `family_sponsor_confirmed` — on the
+  // business/investment explorer branch (`category === "business" &&
+  // business_activity === "exploring"`), whose target population is a
+  // company or guarantor sponsoring the applicant's stay, not a family
+  // member. Same engine fact as its sibling (`el.c2.business` reads
+  // `family.sponsor_confirmed` regardless of which question asked it —
+  // `fact-mapper.ts` merges both ids with `pairedBooleanFact`, the same
+  // pattern `investment.pt_pma_committed` uses for
+  // `investment_pt_pma`/`remote_pt_pma`), so this is copy-only: no new
+  // fact, no new rule, no behavior change for any other branch.
+  business_sponsor_confirmed: {
+    id: "business_sponsor_confirmed",
+    i18nKey: "q.business_sponsor_confirmed",
+    kind: "branch",
+    group: "details",
+    decisionMapping: {
+      kind: "FACT",
+      factPaths: ["family.sponsor_confirmed"],
+    },
+    sensitive: false,
+    options: [
+      { key: "yes", labelI18nKey: "q.boolean.yes" },
+      { key: "no", labelI18nKey: "q.boolean.no" },
+    ],
+    whyWeAsk: { i18nKey: "why.business_sponsor_confirmed" },
+    notSure: { mode: "human-review" },
+  },
   // Stepchild route (2026-08-23 owner ruling — the E31D stepchild-of-a-
   // mixed-marriage product exists in the catalog, but every one of its
   // rules could previously only read `intent.purposes ∩ FAMILY`; the

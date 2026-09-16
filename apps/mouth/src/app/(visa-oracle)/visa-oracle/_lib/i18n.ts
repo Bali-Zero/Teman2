@@ -258,6 +258,12 @@ const en = {
   "q.business_activity.opt.other": "Another business activity",
   "why.business_activity":
     "Only one answer changes what the engine receives: exploring whether to invest or open a business is sent as an investment purpose, and we then ask the few questions that decide it. Otherwise this detail only decides whether a human reviewer has to look at your trip — training and “another business activity” do, the other answers do not.",
+  "q.business_sponsor_confirmed":
+    "Has a company sponsor or guarantor confirmed they will support the process?",
+  "q.business_sponsor_confirmed.hint":
+    "A conversation or possible partner is not a confirmed sponsor.",
+  "why.business_sponsor_confirmed":
+    "Sponsor confirmation is sent as its own boolean decision fact.",
 
   "q.work_payer":
     "Will an Indonesian-registered company employ and pay you here?",
@@ -697,6 +703,7 @@ const en = {
   "tree.entry_pattern": "Entry pattern",
   "tree.sponsor_category": "Sponsor category",
   "tree.business_activity": "Business activity",
+  "tree.business_sponsor_confirmed": "Company sponsor",
   "tree.work_payer": "Who pays you",
   "tree.work_indonesia_compensation": "Payment source",
   "tree.work_sponsor_confirmed": "Work sponsor",
@@ -931,9 +938,6 @@ const en = {
     "Timeline unavailable — no verified calendar estimate",
   "outcome.timeline_contact_required":
     "Timeline needs operational confirmation",
-  "outcome.documents_unknown": "Document requirements unknown — not verified",
-  "outcome.documents_contact":
-    "The verified document checklist is not available yet. Contact an advisor before preparing files.",
   "outcome.document_status.CONDITIONAL": "Conditional",
   "outcome.document_status.UNKNOWN": "To be confirmed",
   "outcome.needs_input_body":
@@ -1260,6 +1264,12 @@ const id: Record<Keys, string> = {
   "q.business_activity.opt.other": "Kegiatan bisnis lainnya",
   "why.business_activity":
     "Hanya satu jawaban yang mengubah apa yang diterima mesin: menjajaki peluang berinvestasi atau membuka usaha dikirim sebagai tujuan investasi, lalu kami menanyakan beberapa pertanyaan yang memutuskannya. Selain itu, rincian ini hanya menentukan apakah peninjau manusia perlu melihat perjalanan Anda — pelatihan dan “kegiatan bisnis lainnya” perlu, jawaban lainnya tidak.",
+  "q.business_sponsor_confirmed":
+    "Apakah sponsor perusahaan atau penjamin sudah mengonfirmasi dukungan proses?",
+  "q.business_sponsor_confirmed.hint":
+    "Percakapan atau calon mitra belum berarti sponsor sudah dikonfirmasi.",
+  "why.business_sponsor_confirmed":
+    "Konfirmasi sponsor dikirim sebagai fakta keputusan boolean tersendiri.",
 
   "q.work_payer":
     "Apakah perusahaan berbadan hukum Indonesia yang mempekerjakan dan menggaji Anda di sini?",
@@ -1698,6 +1708,7 @@ const id: Record<Keys, string> = {
   "tree.entry_pattern": "Pola masuk",
   "tree.sponsor_category": "Kategori sponsor",
   "tree.business_activity": "Kegiatan bisnis",
+  "tree.business_sponsor_confirmed": "Sponsor perusahaan",
   "tree.work_payer": "Siapa yang menggaji",
   "tree.work_indonesia_compensation": "Sumber pembayaran",
   "tree.work_sponsor_confirmed": "Sponsor kerja",
@@ -1922,10 +1933,6 @@ const id: Record<Keys, string> = {
     "Linimasa tidak tersedia — belum ada estimasi kalender terverifikasi",
   "outcome.timeline_contact_required":
     "Linimasa memerlukan konfirmasi operasional",
-  "outcome.documents_unknown":
-    "Persyaratan dokumen belum diketahui — belum terverifikasi",
-  "outcome.documents_contact":
-    "Daftar dokumen terverifikasi belum tersedia. Hubungi konsultan sebelum menyiapkan berkas.",
   "outcome.document_status.CONDITIONAL": "Bersyarat",
   "outcome.document_status.UNKNOWN": "Perlu dikonfirmasi",
   "outcome.needs_input_body":

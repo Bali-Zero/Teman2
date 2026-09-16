@@ -934,7 +934,7 @@ export function enumerateScenarios(): Scenario[] {
       ...base,
       category: "business",
       business_activity: "exploring",
-      family_sponsor_confirmed: "no",
+      business_sponsor_confirmed: "no",
       wants_onshore_conversion: "no",
     },
   });
@@ -944,7 +944,7 @@ export function enumerateScenarios(): Scenario[] {
       ...base,
       category: "business",
       business_activity: "exploring",
-      family_sponsor_confirmed: "no",
+      business_sponsor_confirmed: "no",
       investment_pt_pma: "no",
       investment_establishes_company: "no",
       investment_foreign_branch: "no",
