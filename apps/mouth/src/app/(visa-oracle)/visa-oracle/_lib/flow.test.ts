@@ -2030,7 +2030,7 @@ describe("business explorer — the D12 sequence", () => {
   it("offshore, asks the sponsor and the conversion question, then the stay, and nothing a business meeting reads", () => {
     expect(getCategoryQuestionIds(explorer)).toEqual([
       "business_activity",
-      "family_sponsor_confirmed",
+      "business_sponsor_confirmed",
       "wants_onshore_conversion",
       "stay_days",
     ]);
@@ -2038,7 +2038,7 @@ describe("business explorer — the D12 sequence", () => {
       getCategoryQuestionIds({ ...explorer, wants_onshore_conversion: "no" }),
     ).toEqual([
       "business_activity",
-      "family_sponsor_confirmed",
+      "business_sponsor_confirmed",
       "wants_onshore_conversion",
       "stay_days",
     ]);
@@ -2051,12 +2051,12 @@ describe("business explorer — the D12 sequence", () => {
         in_indonesia: "yes",
         wants_onshore_conversion: "no",
       }),
-    ).toEqual(["business_activity", "family_sponsor_confirmed", "stay_days"]);
+    ).toEqual(["business_activity", "business_sponsor_confirmed", "stay_days"]);
   });
 
   const INVESTOR_FACTS_AFTER_THE_STAY = [
     "business_activity",
-    "family_sponsor_confirmed",
+    "business_sponsor_confirmed",
     "wants_onshore_conversion",
     "stay_days",
     "sponsor_category",
@@ -2078,7 +2078,7 @@ describe("business explorer — the D12 sequence", () => {
     });
     expect(committed).toEqual([
       "business_activity",
-      "family_sponsor_confirmed",
+      "business_sponsor_confirmed",
       "wants_onshore_conversion",
       "stay_days",
       "sponsor_category",
@@ -2109,7 +2109,7 @@ describe("business explorer — the D12 sequence", () => {
       }),
     ).toEqual([
       "business_activity",
-      "family_sponsor_confirmed",
+      "business_sponsor_confirmed",
       "wants_onshore_conversion",
       "stay_days",
     ]);
@@ -2212,7 +2212,7 @@ describe("business explorer — the D12 sequence", () => {
     let state = startOffshore("business");
     state = answer(state, "trip_scope", "single");
     state = answer(state, "business_activity", "exploring");
-    state = answer(state, "family_sponsor_confirmed", "no");
+    state = answer(state, "business_sponsor_confirmed", "no");
     state = answer(state, "wants_onshore_conversion", "no");
     state = answer(state, "stay_days", "90");
     expectQuestion(state, "review_gate");

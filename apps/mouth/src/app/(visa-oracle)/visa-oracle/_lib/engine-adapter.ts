@@ -1386,14 +1386,23 @@ function price(
  * HISTORY collects the fact → reopen it (`followUp: false`); more than one
  * → ambiguous, fall back to the human handoff. Layer 2 only runs when
  * history holds NONE of them: if the whole registry has exactly one
- * question for the fact AND this interview's answers satisfy that
- * question's prerequisites, the interview can simply ASK it
- * (`followUp: true`) instead of rendering a row the user cannot act on.
- * Three fact paths are collected by two questions each
- * (`immigration.current_status_code`, `work.indonesia_source_compensation`,
- * `investment.pt_pma_committed`) and are therefore never followed up —
- * guessing which branch's question to splice in would be exactly the kind
- * of inference this adapter is forbidden to make.
+ * question for the fact, OR more than one but this interview's OWN
+ * answers satisfy exactly one of their branch prerequisites, the interview
+ * can simply ASK the unambiguous one (`followUp: true`) instead of
+ * rendering a row the user cannot act on. `family.sponsor_confirmed`
+ * (`family_sponsor_confirmed` / `business_sponsor_confirmed`, D12-explorer
+ * sibling, tree.ts) is the one fact path this disambiguates today: the two
+ * questions' branch conditions (`category` + `business_activity`) are
+ * mutually exclusive by construction, so `followUpPrerequisitesMet` — the
+ * same structural replay Layer 2 already trusts for the single-question
+ * case — settles it without guessing. `immigration.current_status_code`,
+ * `work.indonesia_source_compensation` and `investment.pt_pma_committed`
+ * remain collected by two questions each and, absent `facts` proving one
+ * branch over the other, still resolve to none: guessing which branch's
+ * question to splice in would be exactly the kind of inference this
+ * adapter is forbidden to make. Zero or more-than-one candidate meeting
+ * prerequisites is the same "genuinely ambiguous" case as before —
+ * fall back to the handoff row.
  *
  * The prerequisite conjunct is the narrowing the adversarial review of
  * 2026-09-06 (finding 1) imposed: a question whose branch condition the
@@ -1420,10 +1429,13 @@ function questionForFact(
     return { questionId: asked[0].id, followUp: false };
   }
   if (asked.length > 1) return undefined;
-  if (collecting.length !== 1) return undefined;
+  if (collecting.length === 0) return undefined;
   if (!facts) return undefined;
-  return followUpPrerequisitesMet(collecting[0].id, facts)
-    ? { questionId: collecting[0].id, followUp: true }
+  const eligible = collecting.filter((question) =>
+    followUpPrerequisitesMet(question.id, facts),
+  );
+  return eligible.length === 1
+    ? { questionId: eligible[0].id, followUp: true }
     : undefined;
 }
 

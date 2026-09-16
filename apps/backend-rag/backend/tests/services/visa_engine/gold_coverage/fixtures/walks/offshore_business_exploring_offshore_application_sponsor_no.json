@@ -8,7 +8,7 @@
     "category",
     "trip_scope",
     "business_activity",
-    "family_sponsor_confirmed",
+    "business_sponsor_confirmed",
     "wants_onshore_conversion",
     "stay_days",
     "review_gate"
@@ -88,7 +88,7 @@
     },
     "family.sponsor_status_code": {
       "status": "UNKNOWN",
-      "reason": "NOT_APPLICABLE"
+      "reason": "NOT_ASKED"
     },
     "family.marriage_registered": {
       "status": "UNKNOWN",
@@ -104,7 +104,7 @@
     },
     "family.sponsor_permit_basis": {
       "status": "UNKNOWN",
-      "reason": "NOT_APPLICABLE"
+      "reason": "NOT_ASKED"
     },
     "family.sponsor_confirmed": { "status": "KNOWN", "value": false },
     "study.level": { "status": "UNKNOWN", "reason": "NOT_ASKED" },

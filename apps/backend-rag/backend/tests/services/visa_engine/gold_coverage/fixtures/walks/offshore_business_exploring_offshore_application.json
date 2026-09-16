@@ -8,7 +8,7 @@
     "category",
     "trip_scope",
     "business_activity",
-    "family_sponsor_confirmed",
+    "business_sponsor_confirmed",
     "wants_onshore_conversion",
     "stay_days",
     "review_gate"

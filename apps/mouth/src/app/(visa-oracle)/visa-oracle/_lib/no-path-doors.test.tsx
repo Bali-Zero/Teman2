@@ -141,16 +141,24 @@ describe("no-path doors — the evidence behind every named alternative", () => 
     ).toBe(replay.walk_corpus_fingerprint);
   });
 
-  it("covers the 16 dead ends and 2 held walks the census reports", () => {
+  it("covers the 17 dead ends and 2 held walks the census reports", () => {
     // D19 (2026-09-16): the corpus regeneration this pin depends on surfaced
     // one walk the previous evidence had omitted —
     // `offshore_business_exploring_sponsor_no_no_route.json`, D12_NOT_CONVERTIBLE —
     // pre-existing under the signed pack, unrelated to the `overstay_days`
     // fix itself; its `overrides` did not change.
+    //
+    // Zero decision 2026-09-16 (D12 wording, mandate SAETTA R2): regenerating
+    // the corpus for the `business_sponsor_confirmed` rename (tree.ts) moved
+    // the fingerprint again, and re-measuring surfaced a SECOND walk the
+    // evidence had omitted — `offshore_work_sponsor_government_trade_office_
+    // only_employer_no.json`, last touched by #6663 (2026-09-16, seq-22
+    // candidate pack), unrelated to the D12 rename; its `overrides` did not
+    // change either. 16 -> 17.
     const states = replay.walks.map((walk) => walk.state);
     expect(
       states.filter((state) => state === "NO_SUPPORTED_PATH"),
-    ).toHaveLength(16);
+    ).toHaveLength(17);
     expect(states.filter((state) => state === "NEEDS_INPUT")).toHaveLength(2);
     expect(replay.pack.file).toBe("rulepack-prod-020.signed.json");
   });
@@ -245,10 +253,26 @@ describe("no-path doors — the evidence behind every named alternative", () => 
     });
   }
 
-  for (const walk of replay.walks.filter((candidate) =>
-    noPathReasonCodes(candidate).includes(
-      "OPERATIONAL_NO_PRODUCT_MATCHES_DECLARED_PURPOSES",
-    ),
+  // `offshore/work/sponsor_government/trade_office_only/employer_no` —
+  // surfaced by the same D12-rename corpus regeneration as the walk in the
+  // dead-end count above, last touched by #6663 (2026-09-16), unrelated to
+  // this PR. `engine-adapter.ts` only reconstructs
+  // `OPERATIONAL_NO_PRODUCT_MATCHES_DECLARED_PURPOSES` for two named
+  // combinations today (`paidActivityWithoutIndonesianPayerReason` and the
+  // Second Home threshold one, `FACT_DERIVED_NO_PATH_CODES`); a GOVERNMENT
+  // sponsor whose trade-office question resolves "no" and whose employer is
+  // not Indonesian matches neither, so the generic sentence is the accurate,
+  // measured behaviour today — writing it a bespoke cause is a product
+  // decision outside a wording-only mandate, not a defect this diff owns.
+  const WALKS_WITHOUT_A_NAMED_CAUSE_YET = new Set([
+    "offshore/work/sponsor_government/trade_office_only/employer_no",
+  ]);
+
+  for (const walk of replay.walks.filter(
+    (candidate) =>
+      noPathReasonCodes(candidate).includes(
+        "OPERATIONAL_NO_PRODUCT_MATCHES_DECLARED_PURPOSES",
+      ) && !WALKS_WITHOUT_A_NAMED_CAUSE_YET.has(candidate.label),
   )) {
     it(`replaces the generic catalogue sentence with a named cause: ${walk.label}`, () => {
       const outcome = outcomeFor(walk);

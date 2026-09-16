@@ -573,6 +573,48 @@ describe("AMBIGUOUS_SPONSOR — narrowed to unsure or a sponsor-dependent relati
   });
 });
 
+describe("family.sponsor_confirmed — merges the D12-explorer sibling (business_sponsor_confirmed)", () => {
+  // `business_sponsor_confirmed` (tree.ts) is asked ONLY on the D12/
+  // business-explorer branch (`businessExplorerQuestionIds`, flow.ts),
+  // company/guarantor wording instead of family wording, same engine fact.
+  // `pairedBooleanFact` merges it with `family_sponsor_confirmed` the same
+  // way `investment.pt_pma_committed` merges `investment_pt_pma`/
+  // `remote_pt_pma`.
+  it("innocence: business_sponsor_confirmed alone resolves family.sponsor_confirmed, same as its family sibling", () => {
+    expect(
+      mapFacts({ business_sponsor_confirmed: "yes" }).facts[
+        "family.sponsor_confirmed"
+      ],
+    ).toEqual({ status: "KNOWN", value: true });
+    expect(
+      mapFacts({ business_sponsor_confirmed: "no" }).facts[
+        "family.sponsor_confirmed"
+      ],
+    ).toEqual({ status: "KNOWN", value: false });
+    expect(
+      mapFacts({ family_sponsor_confirmed: "yes" }).facts[
+        "family.sponsor_confirmed"
+      ],
+    ).toEqual({ status: "KNOWN", value: true });
+  });
+
+  it("innocence: neither asked stays NOT_ASKED, exactly as the pre-D12-key behavior", () => {
+    expect(mapFacts({}).facts["family.sponsor_confirmed"]).toEqual({
+      status: "UNKNOWN",
+      reason: "NOT_ASKED",
+    });
+  });
+
+  it("guilt: the two ids disagreeing is CONFLICTING, never a silently picked side", () => {
+    expect(
+      mapFacts({
+        family_sponsor_confirmed: "yes",
+        business_sponsor_confirmed: "no",
+      }).facts["family.sponsor_confirmed"],
+    ).toEqual({ status: "UNKNOWN", reason: "CONFLICTING" });
+  });
+});
+
 describe("mapOracleFactsToApplicantFacts — discriminated-union validity (acceptance test 2)", () => {
   it("every emitted fact is a valid KNOWN(+value)/UNKNOWN(+reason) shape on an empty interview", () => {
     const result = mapFacts({});

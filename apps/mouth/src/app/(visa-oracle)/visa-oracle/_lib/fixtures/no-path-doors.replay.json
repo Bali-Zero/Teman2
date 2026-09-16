@@ -7,7 +7,7 @@
   },
   "as_of": "2026-09-06 14:59:27.320080+00:00",
   "age_55_birth_date": "1971-09-01",
-  "walk_corpus_fingerprint": "58a51259d734d446b92b833f5991cf52d6659a2d8a0b9da5325d5446dcb73987",
+  "walk_corpus_fingerprint": "6ef9ef912b126c3e1b57f189f92696c7458ee13bb06fc3f8d8d6952f8ac7244b",
   "walks": [
     {
       "label": "offshore/business",
@@ -155,6 +155,16 @@
       "state": "NEEDS_INPUT",
       "no_path_reason_codes": [],
       "missing_facts": ["family.sponsor_confirmed"],
+      "doors": { "TOURISM": ["C1"], "SECOND_HOME": [], "AGE_55": [] }
+    },
+    {
+      "label": "offshore/work/sponsor_government/trade_office_only/employer_no",
+      "walk_fixture": "offshore_work_sponsor_government_trade_office_only_employer_no.json",
+      "state": "NO_SUPPORTED_PATH",
+      "no_path_reason_codes": [
+        "OPERATIONAL_NO_PRODUCT_MATCHES_DECLARED_PURPOSES"
+      ],
+      "missing_facts": [],
       "doors": { "TOURISM": ["C1"], "SECOND_HOME": [], "AGE_55": [] }
     },
     {

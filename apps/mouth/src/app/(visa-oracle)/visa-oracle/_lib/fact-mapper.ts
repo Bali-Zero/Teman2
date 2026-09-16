@@ -1005,7 +1005,16 @@ export function mapOracleFactsToApplicantFacts(
       facts.family_stepchild_birth_certificate_confirmed,
     ),
     "family.sponsor_permit_basis": mapFamilySponsorPermitBasis(facts),
-    "family.sponsor_confirmed": booleanFact(facts.family_sponsor_confirmed),
+    // `business_sponsor_confirmed` (tree.ts) is the D12-explorer sibling of
+    // `family_sponsor_confirmed` — company/guarantor wording instead of
+    // family wording, same engine fact. `businessExplorerQuestionIds`
+    // (flow.ts) asks exactly one of the two per walk, so `pairedBooleanFact`
+    // resolves it the same way `investment.pt_pma_committed` merges
+    // `investment_pt_pma`/`remote_pt_pma` above.
+    "family.sponsor_confirmed": pairedBooleanFact(
+      facts.family_sponsor_confirmed,
+      facts.business_sponsor_confirmed,
+    ),
     "study.level": enumFact(facts.study_level, STUDY_LEVELS),
     "study.admission_confirmed": booleanFact(facts.study_admission_confirmed),
     "study.sponsor_confirmed": booleanFact(facts.study_sponsor_confirmed),

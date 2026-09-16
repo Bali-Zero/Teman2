@@ -737,7 +737,11 @@ export const D12_MAX_STAY_DAYS = 360;
  * INVESTMENT purpose in `mapPurposes`). Asked instead of the meetings
  * sequence, and only the facts an INVESTMENT-purpose rule reads:
  *
- * - `family_sponsor_confirmed` — `el.c2.business`.
+ * - `business_sponsor_confirmed` — `el.c2.business`. D12-only sibling of
+ *   `family_sponsor_confirmed` (Zero decision 2026-09-16): same engine fact
+ *   (`family.sponsor_confirmed`, merged in fact-mapper.ts via
+ *   `pairedBooleanFact`), company/guarantor wording instead of family
+ *   wording — this branch's sponsor is a business, not a relative.
  * - `wants_onshore_conversion`, offshore only (onshore the spine already
  *   asked it) — `hf.d12-onshore-conversion-excluded`. With "no", `el.d12-*`
  *   names D12 for a stay inside its bound, whatever the sponsor answer.
@@ -774,7 +778,7 @@ function businessExplorerQuestionIds(facts: OracleFacts): readonly string[] {
       : [];
   return [
     "business_activity",
-    "family_sponsor_confirmed",
+    "business_sponsor_confirmed",
     ...(facts.in_indonesia === "no" ? ["wants_onshore_conversion"] : []),
     "stay_days",
     ...investorFacts,
