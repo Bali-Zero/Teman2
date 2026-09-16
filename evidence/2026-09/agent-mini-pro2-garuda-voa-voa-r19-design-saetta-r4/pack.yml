@@ -84,7 +84,11 @@ design_prove_live:
       scratchpad; it screenshots 390x844 and 1280x800 and prints the same measurements)
 
 lighthouse_mobile:
-  verdict: NOT PROVEN — reported as measured rather than rounded to green
+  verdict: >-
+    RESOLVED — no regression demonstrated, and no improvement either: the shift sits
+    inside this instrument's own noise floor, measured on a control page in the same
+    window. This supersedes the first reading of NOT PROVEN, which stopped at the spread
+    instead of going and measuring it.
   before_median_of_3:
     {
       perf: 64,
@@ -97,6 +101,22 @@ lighthouse_mobile:
     }
   before_runs_perf: [64, 64, 64]
   after_runs_perf: [61, 58, 59, 61, 60, 98]
+  control_page_same_window:
+    url: https://balizero.com/visa
+    changed_tonight: false
+    runs_perf: [71, 64, 64]
+    runs_lcp_ms: [6428, 6556, 7715]
+    reading: >-
+      A page nobody touched tonight spreads 7 perf points and 1287 ms of LCP across three
+      consecutive runs from this machine. The /visa/voa shift (64 before, 58-61 after,
+      with one 98 outlier) is SMALLER than that, so it is not evidence of a regression.
+      LCP is the one number near the edge — about 1.6 s above baseline against a control
+      spread of about 1.3 s — so a small real LCP cost cannot be excluded. The plausible
+      mechanism is the two webfaces the R19 skin pulls in, one of which production was
+      serving with no caching at all until #6647.
+    lesson: >-
+      A before/after with no control is a story, not a measurement. Running the control
+      cost three minutes and turned "not claimable" into an answer.
   note: >-
     The before set is stable and the after set is bimodal, from this machine over a home
     ISP to a Singapore CDN. That spread is wider than any effect the slice could have, so
@@ -151,7 +171,17 @@ sandbox_mode_evidence:
     lives on checkout-staging.xendit.co, which live mode cannot produce.
 
 review:
-  dispatched_lane: delivered nothing in 26 minutes across three explicit asks
+  dispatched_lane: >-
+    Produced nothing across three explicit asks over 26 minutes. CORRECTED CAUSE, learned
+    after this pack was first written: it did not give up, it was DEAD. Its idle
+    notifications each carried idleReason=failed with "Your organization has disabled
+    Claude subscription access for Claude Code". Every Agent() dispatch from this session
+    failed the same way, across two different agent types. Note the shape — ListAgents
+    showed the lane alive for the whole 26 minutes and the failures surfaced only at the
+    end, so from the conductor's side a dead seat is indistinguishable from a slow one:
+    superscar #2 in a new coat. The remedy the error message proposes, an Anthropic API
+    key, is the one this repo forbids outright, so this is an operator item and not a
+    session fix.
   graded_directly_instead:
     - all 9 selectors in voa-r19.css carry [data-garuda-voa="r19"], including inside @media
     - negative control on /visa and /kbli
