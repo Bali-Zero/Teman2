@@ -64,27 +64,56 @@ export interface TaxConsultantOption {
 /**
  * The tax-consultant dropdown. NOT derived from the roster, deliberately.
  *
- * These `value`s are constrained by the backend: migration 093 carries a CHECK
- * constraint over exactly this set of addresses, and the form submits the value
- * verbatim. The roster's own emails DISAGREE with two of them — the roster has
- * `faysha.tax@…` (with a Y) where the constraint has `faisha.tax@…`, and
- * `tax@balizero.com` where the constraint has `veronika.tax@…`. Deriving the list
- * would therefore have silently changed what this form writes and broken the CHECK,
- * so the values are preserved here byte-for-byte and only MOVED off the client.
+ * These `value`s are constrained by the backend: a CHECK constraint on
+ * `clients.tax_consultant` gates exactly this set, and the form submits the
+ * value verbatim.
  *
- * The disagreement itself is real and is reported as a finding rather than papered
- * over: one of the two records is wrong, and which one is a question for the owner,
- * not for a presentation change.
+ * WHICH RECORD WAS WRONG, SETTLED (migration 319, 2026-09-16). This list used
+ * to carry `veronika.tax@…` and `faisha.tax@…` — the spelling the old CHECK
+ * constraint happened to hold — while the roster carried `tax@balizero.com`
+ * and `faysha.tax@…`. The comment here said the disagreement was "a question
+ * for the owner". It has been answered: `team_members` is canonical, neither
+ * of the two old values matches any staff record, and migration 319 moved the
+ * production rows and both CHECK lists onto the real addresses. So this list
+ * now agrees with the roster — and, because it does, with the API responses
+ * the form reads back.
  */
 export const TAX_CONSULTANTS: readonly TaxConsultantOption[] = [
-  { value: "veronika.tax@balizero.com", label: "Veronika" },
+  { value: "tax@balizero.com", label: "Veronika" },
   { value: "kadek.tax@balizero.com", label: "Kadek" },
   { value: "dewaayu.tax@balizero.com", label: "Dewa Ayu" },
   { value: "angel.tax@balizero.com", label: "Angel" },
-  { value: "faisha.tax@balizero.com", label: "Faisha" },
+  { value: "faysha.tax@balizero.com", label: "Faisha" },
 ];
+
+/**
+ * The LKPM assignment dropdown is the tax team PLUS Krisna.
+ *
+ * Krisna is the Executive Consultant who owns four PTs in the Q1 2026 handover
+ * ("Handle BY: Krisna") and has no `.tax@` sub-alias, so the backend whitelists
+ * his main inbox for LKPM assignment only (110_lkpm_allowlist_krisna.sql, and
+ * `TaxConsultantConstants.LKPM_ASSIGNEES`). The batch screen offered the five
+ * tax addresses only, so the one person the backend added for this exact
+ * screen could not be picked on it — his reports had to be assigned somewhere
+ * else or left unassigned.
+ */
+export const LKPM_ASSIGNEES: readonly TaxConsultantOption[] = [
+  ...TAX_CONSULTANTS,
+  { value: "krisna@balizero.com", label: "Krisna" },
+];
+
+// The read-side alias resolution lives in `./tax-consultant-alias`, NOT here:
+// this module imports the roster, and a "use client" module may not reach the
+// roster graph (client-roster-boundary.test.ts). Re-exported for server-side
+// callers that already import from this module.
+export { normalizeTaxConsultant } from "./tax-consultant-alias";
 
 /** A copy the client can hold: plain rows, no roster type crosses over. */
 export function taxConsultants(): TaxConsultantOption[] {
   return TAX_CONSULTANTS.map((c) => ({ ...c }));
+}
+
+/** Same, for the LKPM batch screen (tax team + Krisna). */
+export function lkpmAssignees(): TaxConsultantOption[] {
+  return LKPM_ASSIGNEES.map((c) => ({ ...c }));
 }

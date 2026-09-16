@@ -9,6 +9,7 @@ import {
   UserCheck,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { normalizeTaxConsultant } from "@/lib/workspace/tax-consultant-alias";
 import { toast } from "sonner";
 import { api } from "@/lib/api";
 import type { Client, ClientCompanyLink } from "@/lib/api/crm/crm.types";
@@ -91,13 +92,17 @@ const TaxConsultantSelector = memo(function TaxConsultantSelector({
   onSaved,
   consultants,
 }: TaxConsultantSelectorProps) {
-  const [value, setValue] = useState<string>(initialValue ?? "");
+  const [value, setValue] = useState<string>(
+    normalizeTaxConsultant(initialValue),
+  );
   const [isSaving, setIsSaving] = useState(false);
 
   // Keep local state in sync if the parent's initialValue changes
   // (e.g. after an external refresh).
   useEffect(() => {
-    setValue(initialValue ?? "");
+    // Normalized, not raw: a row still carrying a retired alias must render as
+    // its consultant, not fall through to "— not assigned —" (migration 319).
+    setValue(normalizeTaxConsultant(initialValue));
   }, [initialValue]);
 
   const handleChange = useCallback(
@@ -146,7 +151,8 @@ const TaxConsultantSelector = memo(function TaxConsultantSelector({
         value={value}
         onChange={handleChange}
         disabled={isSaving}
-        className="flex-1 max-w-[220px] px-3 py-1.5 rounded-lg border border-[var(--bz-border)] bg-[var(--bz-base)] text-sm text-[var(--bz-text-1)] focus:outline-none focus:border-[var(--line-control)] transition-colors disabled:opacity-60"
+        aria-busy={isSaving}
+        className="flex-1 max-w-[220px] px-3 py-1.5 rounded-lg border border-[var(--bz-border)] bg-[var(--bz-base)] text-sm text-[var(--bz-text-1)] hover:border-[var(--line-control)] focus:outline-none focus:border-[var(--line-control)] focus-visible:ring-2 focus-visible:ring-[var(--line-control)] transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
       >
         <option value="">— not assigned —</option>
         {consultants.map((c) => (
@@ -156,7 +162,9 @@ const TaxConsultantSelector = memo(function TaxConsultantSelector({
         ))}
       </select>
       {isSaving && (
-        <span className="text-xs text-[var(--bz-text-2)]">Saving…</span>
+        <span role="status" className="text-xs text-[var(--bz-text-2)]">
+          Saving…
+        </span>
       )}
     </div>
   );
