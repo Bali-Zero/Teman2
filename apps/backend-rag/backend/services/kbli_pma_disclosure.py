@@ -260,6 +260,7 @@ def disclose_bali(payload: Mapping[str, Any]) -> dict[str, Any]:
     if isinstance(confidence, str):
         confidence = confidence.upper()
     if confidence not in _BALI_CONFIDENCE_LEVELS:
+        # Consumers treat None as "not HIGH" (hedged), never as certain.
         confidence = None
 
     return {

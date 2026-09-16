@@ -519,12 +519,17 @@ def _bali_verdict_context_note(result: "KBLISearchResult") -> str:
         note = " ".join(pieces)
         # A scoped closure (the hotel rows) bars only that slice of the code:
         # the instruction must carry the scope, never a blanket "this activity".
-        scope_clause = (
-            f" for {result.bali_closure_scope} only, and say that the scope "
-            "must be confirmed on OSS"
-            if result.bali_closure_scope
-            else ""
-        )
+        if result.bali_closure_scope:
+            scope_clause = (
+                f" for {result.bali_closure_scope} only, and say that the scope "
+                "must be confirmed on OSS"
+            )
+        elif result.bali_confidence != "HIGH":
+            # MEDIUM codes merge 2020 activities not all on Bali's list: the
+            # instruction itself carries the hedge, as the page does.
+            scope_clause = " on a conservative reading, pending confirmation on OSS"
+        else:
+            scope_clause = ""
         return (
             f"{note} You MUST say the Bali provincial government has closed "
             f"this activity to new PT PMA licensing{scope_clause} and cite the "
@@ -757,7 +762,7 @@ async def _generate_kbli_explanation_gemini(
 
 @cached(
     ttl=43200,
-    prefix="kbli_explain_v34",
+    prefix="kbli_explain_v35",
 )  # Cache explanations for 12 hours.
 # v28 (2026-08-03): the Bali provincial verdict now reaches the model. The bump is
 # NOT cosmetic — this cache is 12h deep and keyed on the prefix, so every answer

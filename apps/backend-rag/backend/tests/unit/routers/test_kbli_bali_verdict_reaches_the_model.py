@@ -182,6 +182,24 @@ def test_a_scoped_sourced_closure_instructs_the_model_with_its_scope():
     assert "confirmed on OSS" in note
 
 
+def test_a_medium_sourced_closure_hedges_the_instruction_itself():
+    """GUILT: a MEDIUM closure (47211 shape) is instructed as a conservative
+    reading in the MUST sentence, not only in a preceding clause."""
+    result = _result(
+        code="47211",
+        pma_status="TERBUKA",
+        pma_verification_status="declared_gap",
+        bali_status="CHIUSO_BALI",
+        bali_blocked=True,
+        bali_reason="x",
+        bali_closure_url=_CLOSURE_URL,
+        bali_confidence="MEDIUM",
+    )
+
+    note = _bali_verdict_context_note(result)
+    assert "new PT PMA licensing on a conservative reading, pending confirmation on OSS" in note
+
+
 def test_an_unscoped_sourced_closure_carries_no_scope_instruction():
     """INNOCENCE: a whole-code closure keeps the plain instruction."""
     result = _result(
@@ -485,7 +503,7 @@ def test_the_explanation_cache_prefix_moved_with_this_change():
     # arithmetic across a worktree is its own way to fail while looking fine.
     source = Path(inspect.getsourcefile(mod))
     text = source.read_text(encoding="utf-8")
-    assert 'prefix="kbli_explain_v34"' in text
+    assert 'prefix="kbli_explain_v35"' in text
     assert 'prefix="kbli_explain_v33"' not in text
 
 
