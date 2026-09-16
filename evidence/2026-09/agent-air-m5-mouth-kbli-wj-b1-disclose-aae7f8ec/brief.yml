@@ -1,7 +1,7 @@
 task_id: kbli-wj-b1-disclose
 gear: 2
 base_sha: 88a8613679
-# Floor 2, source `size` (scripts/evidence_pack_lint.py --print-floor): ~840 net lines, more than half of them tests; presentation only, no data.
+# Floor 2, source `size` (scripts/evidence_pack_lint.py --print-floor): ~1,550 net lines after two review rounds, more than half of them tests; presentation only, no data.
 objective: "W-J B1 disclose (SAETTA-20260916 R1): a foreign investor opening /kbli/68111 (and the other 38 national declared_gap codes Bali closed) reads 'Closed for PMA in Bali' with the Pemprov Bali press-release link, instead of only 'PMA status not yet verified'; the /kbli stat and hint agree with the honest-map article (135 of 1,559)."
 constraints:
   - "Rule: a CHIUSO_BALI record with blocked=true and an http(s) closure URL is disclosed without the national tuple; every other Bali status on an unlocated record stays hidden."
@@ -14,7 +14,7 @@ acceptance:
     probe: "next dev --webpack on this worktree, curl localhost /kbli/68111 and /kbli/01192 (observed by the Dux before push)"
   - text: "55101 banner names the scope ('for building area under 6,000 m²'); 47211 (MEDIUM) reads 'Treated as closed ... conservative reading' and 'covers part of this code'."
     probe: "same local render"
-  - text: "/kbli hero reads '~9% Blocked in Bali' and the hint starts '135 of 1559 codes are treated as closed' and states that 53 show it on their own page."
+  - text: "/kbli hero reads '~9% Blocked in Bali' and the hint starts '135 of 1559 codes are treated as closed' and states that 53 show it on their own page; the PMA FAQ answer on a sourced closure starts 'In Bali, no …; elsewhere in Indonesia, not yet verified.'"
     probe: "same local render of /kbli"
   - text: "Whole mouth KBLI test glob, the new LicensingSection test, OG and sitemap tests pass; tsc 0 errors; prettier and eslint clean."
     probe: "see PR body for commands and counts"
