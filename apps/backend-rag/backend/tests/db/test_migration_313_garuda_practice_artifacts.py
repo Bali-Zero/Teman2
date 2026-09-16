@@ -727,11 +727,11 @@ async def test_the_next_file_can_still_unwind_this_database() -> None:
     What "back" does and does not mean, stated because round O5 caught the
     docstring overclaiming: the shared unwind/restore pair is not
     state-preserving for OTHER fixtures' committed rows -- 281's rollback
-    drops the `policy_scope` column and restore re-adds it with its default,
-    so a closed GARUDA_ORDER or GARUDA_MAGIC_LINK row another file left
-    behind comes back as VISA_DECISION. That is the mechanism's property,
-    identical for the three visa_engine consumers that call it, and this
-    test adds nothing to it; it is recorded here, not fixed here.
+    drops the `policy_scope` column, so the unwind first deletes every
+    non-VISA_DECISION row another file left behind (two of them overlapping
+    in TEST made 281's rollback raise ExclusionViolationError here on
+    2026-09-16). That is the mechanism's property, identical for the three
+    visa_engine consumers that call it, and lives in their conftest.
 
     Deliberately NOT using the `conn` fixture: the point is the state AFTER
     its teardown, and this test must own the connection to observe it. It
