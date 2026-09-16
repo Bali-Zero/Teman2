@@ -30,7 +30,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from backend.services.integrations import wa_broker, wa_codex_leg
+from backend.services.integrations import human_escalation_notifier, wa_broker, wa_codex_leg
 from backend.services.integrations.wa_broker import (
     OfferOutcome,
     OfferResult,
@@ -442,6 +442,104 @@ async def test_a_case_question_that_carries_an_identity_phrase_takes_the_normal_
     await _run()
 
     stubs.rag_client.post.assert_awaited()
+
+
+# ── gate 2d: the scripted human-handoff turn (B2.5-2) ───────────────────────
+
+
+@pytest.mark.asyncio
+async def test_a_human_handoff_request_is_served_from_the_script_before_any_io(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A client who asks to speak to a person is the highest-intent message
+    the bot ever receives. Same shape as the greeting/identity short-circuit
+    tests above: the assertions that matter are the NEGATIVE ones — no
+    build request, no broker offer — plus the POSITIVE one that a human was
+    actually notified, not just told a client-facing lie."""
+    stubs = _wire_stubs(monkeypatch, query="voglio parlare con una persona")
+    notify = AsyncMock(return_value=True)
+    monkeypatch.setattr(wa_codex_leg, "notify_human_handoff", notify)
+
+    result = await _run()
+
+    assert result.text is not None
+    assert result.reason == "" and not result.stand_down and not result.fail
+    stubs.rag_client.post.assert_not_awaited()
+    stubs.offer_job.assert_not_awaited()
+    notify.assert_awaited_once()
+    assert notify.await_args.kwargs["thread_id"] == 7
+    assert notify.await_args.kwargs["counterpart_phone"] == "628111"
+    assert notify.await_args.kwargs["language"] == "it"
+
+
+@pytest.mark.asyncio
+async def test_two_authorities_match_human_request_wins_over_identity(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """"are you human or can I talk to a person" matches BOTH
+    `match_identity_question` and `match_human_request`. This pins the
+    ORDER: human-request is checked first, so a lead is never silently
+    reduced to a capability list with nobody notified."""
+    _wire_stubs(monkeypatch, query="are you human or can I talk to a person")
+    notify = AsyncMock(return_value=True)
+    monkeypatch.setattr(wa_codex_leg, "notify_human_handoff", notify)
+
+    result = await _run()
+
+    notify.assert_awaited_once()
+    assert result.text == wa_codex_leg.match_human_request(
+        "are you human or can I talk to a person"
+    ).text
+    assert result.text != wa_codex_leg.match_identity_question(
+        "are you human or can I talk to a person"
+    ).text
+
+
+@pytest.mark.asyncio
+async def test_human_handoff_notification_failure_does_not_lose_the_confirmation(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The client's confirmation must never be lost because Brevo failed —
+    the notification is wrapped at THIS call site precisely so an
+    exception from `notify_human_handoff` cannot turn a served confirmation
+    into a text=None fall-off (see `attempt()`'s broad except)."""
+    _wire_stubs(monkeypatch, query="talk to a human")
+    notify = AsyncMock(side_effect=RuntimeError("brevo down"))
+    monkeypatch.setattr(wa_codex_leg, "notify_human_handoff", notify)
+
+    result = await _run()
+
+    assert result.text is not None
+    assert result.reason == "" and not result.stand_down and not result.fail
+    notify.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_a_repeated_human_handoff_request_still_confirms_but_notifies_once(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The dedup window lives inside `notify_human_handoff` (reused from
+    `human_escalation_notifier`), not at this call site — this test proves
+    the call site does not defeat it: two real calls through the actual
+    (unmocked) notifier, second one inside the window, still both confirm
+    the client and only the first accepts a send."""
+    human_escalation_notifier._recent_escalations.clear()
+    sent = AsyncMock()
+    monkeypatch.setattr(
+        "backend.services.integrations.wa_human_handoff.send_internal_email", sent
+    )
+    monkeypatch.setattr(
+        "backend.services.integrations.wa_human_handoff._resolve_assignee",
+        AsyncMock(return_value=(None, None)),
+    )
+
+    _wire_stubs(monkeypatch, query="talk to a human")
+    first = await _run()
+    _wire_stubs(monkeypatch, query="talk to a human")
+    second = await _run()
+
+    assert first.text is not None and second.text is not None
+    sent.assert_awaited_once()
 
 
 # ── gate 3: the package build ───────────────────────────────────────────────
