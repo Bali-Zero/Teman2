@@ -47,7 +47,8 @@ last-assistant-turn prefill; a declined request returns HTTP 200 + `stop_reason:
 Two ChatGPT Pro accounts: O1 `~/.codex` (refuter primary), O2 (builders + Sol backup) —
 `FLEET_TOPOLOGY.json`. **O2's `CODEX_HOME` dirname has per-machine drift, measured 2026-08-14**:
 `~/.codex-o2` on M5, `~/.codex-acct2` on Pro (neither name exists on the other machine) — the
-Codex Spark lane's default targets Pro's name since that's where it runs. Probe the actual dir
+Codex Spark lane's default targeted Pro's name (STATE: Spark is 400-dead for ChatGPT accounts since
+2026-09-15; Luna is the live Codex builder seat; no Codex from cron today). Probe the actual dir
 on whichever machine you're on before assuming either name.
 
 | Model                 | Role / strengths                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   | Effort notes                                              |
@@ -58,11 +59,7 @@ on whichever machine you're on before assuming either name.
 | `luna`                | Mechanical/grunt lanes. **LIVE** via `-m gpt-5.6-luna` (2026-08-27, live 1-token probe in this PR: `codex exec --sandbox read-only --skip-git-repo-check -m gpt-5.6-luna "reply pong" < /dev/null` → exit 0, 1582 stdout chars, reply `pong`). Door: `seat_build.sh --seat codex --tier luna` (PR #5044) → `-m gpt-5.6-luna`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      | low/medium                                                |
 | `$imagegen`           | gpt-image-2, image generation via Codex.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           | —                                                         |
 
-**SSOT since 2026-08-15** — PR #4179 ("spark standing lane — H24 read-only analysis on the idle
-`gpt-5.3-codex-spark` bucket") **MERGED 2026-08-15**; first-tick defects cured in #4217. The lane is
-LIVE on Pro (`com.nuzantara.army-spark`, 2h tick; queue `infra/army/spark-queue/`, reports
-`~/army/spark/reports/`). H24 mandate (Zero 2026-08-15, reconfirmed 2026-08-19): the lane must
-never starve — feeding the queue is part of every conductor session's CLEAN stage.
+**Spark: 400-dead for ChatGPT accounts since 2026-09-15** (fleet mail key spark-morto-flotta; #6609 moved spark_lane default to gpt-5.6-luna). The lane (PR #4179, MERGED 2026-08-15) ran on Pro (`com.nuzantara.army-spark`, 2h tick; queue `infra/army/spark-queue/`, last reports `~/army/spark/reports/` from 2026-09-10). **Luna is the live Codex builder seat; no Codex from cron today.** The H24 mandate's queue mechanics remain valid for successor lanes.
 
 ---
 
@@ -294,10 +291,10 @@ well-specified, testable BUILD units.
   need Anthropic behavior (harness-native Agent/Workflow lanes, Anthropic-specific contracts).
   Anthropic seats = orchestration, judgment, final gates (workhorse-first doctrine 2026-08-15,
   binding).
-- **H24 standing lanes must WORK, not exist** (famiglia #2): Codex Spark (2h tick), Jules (3/day
+- **H24 standing lanes must WORK, not exist** (famiglia #2): Codex Spark (2h tick; STATE: 400-dead for ChatGPT accounts since 2026-09-15), Jules (3/day
   cap), Gemini Spark (operator-driven schedules). A lane ticking on an empty queue is a starved
   lane — feeding `infra/army/spark-queue/` (and anchored Jules tasks) is part of every conductor
-  session's CLEAN stage.
+  session's CLEAN stage; Luna is the live Codex builder seat, no Codex from cron today.
 - **Consumption dashboard is INFORMATIVE, never a limiter** (Zero verbatim 2026-08-19: "che non
   sia un limite!"): orchestrators read `~/.agent/cost-ledger/seat_usage_snapshot.json` +
   `~/.agent/seat-usage/console_quota_snapshot.json` to ROUTE — pick the least-loaded door — never
