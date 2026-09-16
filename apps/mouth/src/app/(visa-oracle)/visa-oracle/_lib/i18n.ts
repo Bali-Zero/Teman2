@@ -1966,8 +1966,9 @@ const id: Record<Keys, string> = {
     "Ini bukan persetujuan, jaminan, atau pengajuan resmi.",
   "outcome.disclaimer.complex_to_human":
     "Kasus kompleks atau ditandai selalu diteruskan ke manusia — Ditjen Imigrasi yang memutuskan, bukan alat ini.",
+  // Never "penahanan" (detention) for a decision hold: this is immigration copy.
   "outcome.disclaimer.second_home_studio":
-    "Penahanan ini soal angka jaminan yang dinyatakan di bawah ambang batas Rumah Kedua (E33) — Second Home Studio menampilkan jalur-jalur dan angka untuk kasus Anda.",
+    "Hasil ini berkaitan dengan angka jaminan yang Anda nyatakan, yang masih di bawah ambang batas Rumah Kedua (E33) — Second Home Studio menampilkan jalur-jalur dan angka untuk kasus Anda.",
   "outcome.alternatives_title": "Pintu yang terbuka",
   "outcome.alternatives_intro":
     "Jalur lain yang dapat dinilai oleh aturan terverifikasi untuk Anda.",

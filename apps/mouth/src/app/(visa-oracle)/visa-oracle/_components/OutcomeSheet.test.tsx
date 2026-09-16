@@ -784,6 +784,21 @@ describe("OutcomeSheet — D23 Second Home Studio", () => {
     expect(container.textContent).not.toMatch(/consultant/i);
   });
 
+  // GUILT (ID): "penahanan" reads as detention to an applicant — a decision
+  // hold on an immigration page must never be worded that way.
+  it("swaps the ID disclaimer line too, without detention or human wording", () => {
+    const { container } = renderReview(
+      [SECOND_HOME_STUDIO_REVIEW_REASON_CODE],
+      "id",
+    );
+    const disclaimer = container.querySelector(".oracle-disclaimer");
+    expect(disclaimer).toHaveTextContent(
+      "Hasil ini berkaitan dengan angka jaminan yang Anda nyatakan, yang masih di bawah ambang batas Rumah Kedua (E33)",
+    );
+    expect(disclaimer?.textContent ?? "").not.toMatch(/penahanan|ditahan/i);
+    expect(container.textContent).not.toMatch(/manusia/i);
+  });
+
   // INNOCENCE: a mixed hold (Studio + another reason) keeps the generic
   // "always go to a human" disclaimer line unchanged.
   it("keeps the generic disclaimer line when the Studio code shares the hold with another reason", () => {
