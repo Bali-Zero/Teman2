@@ -904,6 +904,12 @@
       "machines": ["pro"]
     },
     {
+      "live": "~/Library/LaunchAgents/com.nuzantara.wa-mirror-freshness-liveness.plist",
+      "repo": "infra/launchagents/com.nuzantara.wa-mirror-freshness-liveness.plist",
+      "machines": ["pro"],
+      "_note": "Installed on the Pro 2026-09-16T03:03:00Z, a month after the plist was committed (PR #4223, 2026-08-16) and 32 days after its only heartbeat (a manual run on 2026-08-15, which is exactly why a sidecar must never be read as an armed organ). Declared here in the same breath as the install: the plist is now a live COPY under ~/Library/LaunchAgents, and an undeclared copy is superscar #1 (HOME-fork drift) waiting to happen. machines=pro and only pro — the plist's own header refuses Mini/M5 because the WhatsApp mirror and its Postgres table live on the Pro alone (superscar #10, active-active split-brain)."
+    },
+    {
       "live": "~/scripts/eventbus/meta_dispatcher.py",
       "repo": "infra/eventbus/meta_dispatcher.py",
       "machines": ["pro"],

@@ -1,71 +1,72 @@
 ---
-title: "The Honest Map: Nearly a Third of Bali Business Codes Are Blocked for PMA"
+title: "The Honest Map: Which Bali Business Codes Are Actually Closed to PMA"
 slug: "the-honest-map-blocked-bali-codes"
-excerpt: "This whole series has shown you locked doors one at a time — the villa, the café, the minimarket, the consulting firm. This final article steps back and counts them. How much of the Bali business map is actually walled off to foreign investment? Not as a slogan, but as a number you can audit."
+excerpt: 'This whole series has shown you locked doors one at a time — the villa, the café, the minimarket, the consulting firm. This final article steps back, counts them, and corrects a number we got wrong. Not a third of the map — 8.7%, five different kinds of "no," and a much larger pile of codes that still need checking before you file.'
 coverImage: "/static/news/kbli2025-the-honest-map-blocked-bali-codes-cover.png"
-coverImageAlt: "The Honest Map: Nearly a Third of Bali Business Codes Are Blocked for PMA"
+coverImageAlt: "The Honest Map: Which Bali Business Codes Are Actually Closed to PMA"
 category: "business_regulations"
 tags: ["business_regulations", "kbli", "kbli-2025", "bali", "pma"]
 publishedAt: "2026-06-23"
+updatedAt: "2026-09-15"
 author:
   name: "Bali Zero"
   avatar: /static/zantara-avatar.png
 trending: false
 featured: false
-readingTime: 4
+readingTime: 5
 difficulty: "intermediate"
-seoTitle: "The Honest Map: Nearly a Third of Bali Business Codes Are Bl"
-seoDescription: "This whole series has shown you locked doors one at a time — the villa, the café, the minimarket, the consulting firm. This final article steps back and co"
+seoTitle: "The Honest Map: Which Bali Business Codes Are Actually Close"
+seoDescription: "This whole series has shown you locked doors one at a time — the villa, the café, the minimarket, the consulting firm. This final article steps back, count"
 aiGenerated: true
 aiConfidenceScore: 0.9
 locale: "it"
-source_sha256: "c5dfa584d12961cf5148f8f55c32412e35361c315f86d0b6034d6232a4d04f39"
+source_sha256: "010806479aa7d5a41284c3fc58b23a9a4737231dd4d165d2421417a556526b77"
 ---
 
-Questa serie ti ha mostrato porte chiuse una alla volta — la villa, il caffè, il minimarket, lo studio di consulenza. Questo ultimo articolo fa un passo indietro e le conta. Quanta parte della mappa degli investimenti a Bali è effettivamente chiusa agli investitori esteri? Non come slogan, ma come numero verificabile.
+Questa serie ti ha mostrato porte chiuse una alla volta — la villa, il caffè, il minimarket, lo studio di consulenza. Questo ultimo articolo fa un passo indietro e le conta. Quanta parte della mappa degli investimenti a Bali è effettivamente chiusa agli investitori esteri? Non come slogan, ma come numero verificabile — e, questa volta, un numero che avevamo già calcolato in modo sbagliato e che correggiamo pubblicamente.
 
-Quindi abbiamo contato. E poiché l'onesto da fare è mostrare il nostro lavoro, ecco esattamente cosa abbiamo misurato — e dove la nostra prima stima si è rivelata troppo alta.
+Quindi abbiamo contato. E poiché l'onesto da fare è mostrare il nostro lavoro, ecco esattamente cosa abbiamo misurato, cosa è cambiato da quando abbiamo pubblicato questo numero l'ultima volta, e perché.
 
 ## Il metodo
 
-Abbiamo preso il dataset classificato del 2025 pulito — lo stesso file ground-truth contro cui ogni articolo di questa serie ha incrociato i codici — e abbiamo contato, meccanicamente, ogni codice con un verdetto Bali-status. Il dataset contiene **1.559 codici classificati**, ciascuno contrassegnato per indicare se una PT PMA di proprietà estera può registrarla a Bali (un semplice flag `blocked: true / false` derivato dallo status nazionale del codice e dalla sua classe di rischio OSS sotto il moratorium del 13 maggio 2026).
+Abbiamo preso il dataset classificato del 2025 pulito — lo stesso file ground-truth contro cui ogni articolo di questa serie ha incrociato i codici — e abbiamo contato, meccanicamente, ogni codice con un verdict Bali-status. Il dataset contiene **1.559 codici classificati**, ciascuno contrassegnato per indicare se una PT PMA di proprietà estera può registrarla a Bali oggi: un flag `blocked: true / false` derivato dallo status di proprietà nazionale del codice e, separatamente, dalla chiusura 2026 effettivamente _applicata_ da Bali — non solo dalla classe di rischio.
 
 Il conteggio non è un'impressione. È un filtro applicato a un file.
 
 ## Il numero
 
-**Su 1.559 codici KBLI classificati, 519 sono bloccati per una PT PMA estera a Bali. Questo rappresenta il 33,3% — quasi esattamente uno su tre.**
+**Su 1.559 codici KBLI classificati, 135 sono chiusi a una nuova PT PMA a Bali oggi. Questo rappresenta l'8,7%.**
 
-Questo è l'intestazione onesta. Non "metà dell'economia", non un numero da allarmismo — ma non è piccolo nemmeno. **Quasi un terzo** delle attività commerciali che un estero potrebbe ragionevolmente considerare sono, nel Bali del 2026, vietate alla proprietà estera.
+Cinque diversi tipi di "no" compongono quei 135 —
 
-E qui sta la parte che i conteggi aggregati nascondono: quei 519 si suddividono in distinte _tipi_ di "no" —
+- **72 — chiusi da una restrizione di proprietà sull'attività stessa** (`TERTUTUP`): 66 di essi portano già una quota estera dello 0% nel catalogo nazionale — Bali non aggiunge nulla qui, non sono mai stati aperti a una PT PMA da nessuna parte in Indonesia. Gli altri 6 mostrano il 100% in quello stesso campo di proprietà, e sono chiusi da una regola sull'attività anziché dal tetto: 69102 servizi legali (riservati agli avvocati abilitati in Indonesia, UU 18/2003), 69104 notariato (ufficio personale riservato ai cittadini indonesiani, UU 30/2004 modificata dalla UU 2/2014), 86201 e 86202 studio medico individuale generico e specialistico (norme del Ministero della Salute). Per 01111 colture di base e 47112 minimarket/supermercati i nostri dati registrano la riserva senza nominare lo strumento — considerali chiusi, e verifica la base su OSS prima di farvi affidamento.
+- **40 — chiusi da Bali stessa** (`CHIUSO_BALI`): dalla terza settimana di maggio 2026, la Provincia di Bali ha chiuso l'OSS alle nuove licenze PMA in **18 settori nominati** (numerazione KBLI 2020), "fino a nuova policy," con l'approvazione del Ministro degli Investimenti/BKPM (comunicato del Governo Provinciale di Bali, 24 lug 2026). Mappati sul KBLI 2025 tramite la tabella di conversione BPS, quei 18 settori ricadono su 40 dei codici attuali — inclusi tutti e sei i codici alberghieri, dal 55101 al 55106, ma solo per edifici sotto i 6.000 m². L'elenco dei codici stesso è quello riportato da ANTARA Bali, 23 lug 2026.
+- **14 — in attesa di verifica**: bloccati nei nostri dati per motivi che non possiamo ancora sostenere a livello del singolo codice — una nota sul moratorium che non nomina il codice, uno scope non ancora definito, o una chiusura di Bali ancora solo proposta. Trattare come bloccati fino a conferma verificata dal vivo.
+- **7 — riservati a cooperative e MSME** (`CHIUSO_PMA_NO_BESAR`): allocati nell'Allegato II del Perpres 10/2021 come modificato dal 49/2021, quindi una PT PMA non può assumere quel _bidang usaha_ in alcun modo, a nessuna scala.
+- **2 — chiusi dal proprio regolatore settoriale**: un'autorità di licensing esterna a OSS/BKPM esclude già la proprietà estera da quell'attività.
 
-- **373 — bloccato per classe di rischio** (`BLOCCATO_CLASSE_RISCHIO`): tutti tranne quattro sono aperti a livello nazionale, ma con basso/basso-medio rischio, quindi il moratorium li intercetta. Questa è la categoria dominante — il caffè, il grossista di gioielli, il rivenditore generico.
-- **48 — bloccato dal moratorium per altri motivi** (`CHIUSO_MORATORIA_BALI`): la stessa richiesta del Governatore, raggiunta tramite un percorso diverso.
-- **68 — chiuso sull'attività stessa** (`TERTUTUP`): 62 di essi portano al catalogo una quota estera pari allo 0%, quindi non sorge alcuna questione Bali. Gli altri 6 sono la trappola: il catalogo indica il 100%, ma la professione o una riserva li chiudono comunque: consulenza legale (69102), notai (69104), pratica medica e specialistica in solitaria (86201, 86202), minimarket (47112), agricoltura di colture base (01111).
-- **17 — non è possibile indicare una posizione Bali** (`NON_CLASSIFICABILE`): non disponiamo di righe di licenza verificate per il codice, quindi non possiamo affermarne una. Trattare come bloccato fino a verifica live.
-- **7 — riservati a cooperative e MSME** (`CHIUSO_PMA_NO_BESAR`): allocati nell'Allegato II del Perpres 10/2021 come modificato dal 49/2021, quindi una PT PMA non può assumere il _bidang usaha_. Questa è la trappola esatta della villa.
-- **6 — il resto**: 2 chiusi dal proprio regolatore settoriale, 2 dipendenti dallo scope, 2 sotto le chiuse annunciate da Bali (70209 e una proposta).
+Questo è l'intero 135: 72 + 40 + 14 + 7 + 2. Non tutti i 135 poggiano sulla stessa base: 106 hanno affidabilità alta (HIGH) nei nostri dati. Gli altri 29 sono una lettura prudente applicata da noi — 16 dei 40 codici "chiusi da Bali stessa", in cui il codice 2025 unisce più attività 2020 e solo alcune sono nell'elenco dei 18 settori; 12 dei 14 "in attesa di verifica"; e 1 codice chiuso a livello nazionale il cui verdetto è ancora provvisorio. Considera questi 29 come bloccati finché non confermi il singolo codice, non come diritto già stabilito.
 
-I muri non sono un unico muro. Sono sei muri diversi, e un estero può urtarne qualsiasi uno.
+## Cosa va ancora verificato prima di presentare domanda
 
-## Dove la nostra stima era troppo alta
+Un gruppo molto più ampio — **383 codici** — porta un avvertimento, non una chiusura. Nel gennaio 2026, il Governatore di Bali ha chiesto al BKPM, con lettera, di chiudere l'OSS a _ogni_ attività PMA a rischio basso e medio-basso nella provincia. Quella richiesta non è mai stata attuata come regola generale: la chiusura effettivamente applicata da Bali nomina 18 settori specifici, non una intera classe di rischio. Questi 383 codici si trovano in quel divario — nominati nella richiesta del Governatore, ma non nella chiusura che è seguita. Non li leggiamo come bloccati. Non ti diremo nemmeno che sono aperti: verifica la classe di rischio e la zonizzazione su OSS prima di presentare domanda, per ciascuno di essi.
 
-All'inizio della pianificazione di questa serie avevamo portato una cifra operativa di "circa 945 codici, circa il 39% bloccato". Stiamo correggendo pubblicamente, perché una serie costruita sul principio _verify-don't-presume_ non può tacitamente mantenere un numero che non può più difendere.
+## Dove il nostro conteggio era sbagliato
 
-La cifra 945/39% proveniva da un **conteggio più ampio e meno rigoroso** — l'export OSS completo di 2.422 righe, che include multiple righe scope e sub-scale per attività, quindi un singolo codice commerciale può apparire diverse volte. Contare a quella granularità gonfia sia il numeratore che il denominatore e mescola le righe scope con i codici attività. Quando contiamo al livello che conta realmente per un fondatore — **un verdetto per codice commerciale**, su 1.559 codici puliti — il tasso si stabilizza al **33,3%**.
+Fino al 15 settembre 2026, questo articolo contava **518 codici, 33,2% bloccati**. Quel numero trattava la lettera di richiesta del Governatore come se fosse essa stessa la chiusura — ogni codice a rischio basso e medio-basso, sull'intera isola. Non lo era. La lettera è una richiesta, `Lampiran: -`; non nomina alcun codice. Ciò che Bali ha effettivamente applicato, secondo il comunicato della Provincia stessa, tocca 18 settori, non un'intera classe di rischio. Ricalcolato rispetto a ciò che è stato effettivamente chiuso invece di ciò che era solo richiesto, il conteggio onesto scende da 518 a 135.
 
-Entrambe le affermazioni descrivono la stessa realtà (un blocco strutturale ampio sugli investimenti esteri a basso rischio). Ma la cifra su cui puoi basarti, codice per codice, è **519 su 1.559 — 33,3%**, non il 39%. Questa cifra si è già mossa una volta dall'inizio della serie: è un filtro applicato a un dataset, e il dataset viene corretto. È ancora ben sotto il 39%, e comunque abbastanza grande da rimodellare quasi ogni piano di un estero.
+(Questa è la seconda correzione su questo articolo. La prima, all'inizio della serie, ha portato una cifra operativa di "circa 945 codici, circa il 39% bloccato" a 518 — un export OSS più ampio e meno rigoroso, contato erroneamente a livello di scope invece che di codice. Entrambe le correzioni puntano nella stessa direzione: quanto più stretta e letterale è la chiusura che misuri, tanto più piccolo — e più difendibile — diventa il numero.)
 
-## Cosa dice realmente la mappa
+## Cosa dice davvero la mappa
 
-Dai conteggi derivano due letture, e puntano nella stessa direzione:
+Tre letture, non due:
 
-- **Quasi un terzo chiuso** significa non assumere che la tua idea sia registrabile. Il tasso base di "bloccato" è abbastanza alto da rendere la speranza non una strategia.
-- **Più dei due terzi non bloccati** (1.040 codici non portano il flag bloccato — anche se 65 di essi sono scope-dipendenti e alcuni non classificati) significa che la porta che desideri è _probabilmente_ trovabile — solitamente come fratello a rischio più alto del codice per cui ti sei rivolto inizialmente. Il pivot esiste più spesso che no.
+- **135 codici (8,7%) sono bloccati** nei nostri dati — 106 ad affidabilità alta (HIGH), 29 su una lettura prudente. Anche un verdetto HIGH può essere più stretto del codice: la chiusura alberghiera riguarda solo edifici sotto i 6.000 m², alcune riserve coprono una sola sotto-attività, e una chiusura è ancora solo proposta. Verifica il singolo codice prima di considerarlo definitivo.
+- **383 codici (circa un quarto) richiedono una verifica dal vivo** prima di presentare domanda — la classe di rischio che preoccupava il Governatore di Bali, senza la chiusura che li bloccherebbe davvero.
+- **1.041 codici non portano alcun flag** — anche se 60 di essi sono scope-dipendenti e 24 non classificati, quindi "non bloccato" significa comunque verificare il codice specifico, non solo la categoria.
 
-La mappa non dice "Bali è chiuso". Dice "Bali è chiuso alla versione _facile, a basso rischio_ della maggior parte delle cose, ed aperto alla versione _seria, a rischio più alto_ di molte di esse." Questa singola frase, supportata da 519 codici contati, è l'intero moratorium in una riga.
+La mappa non dice "Bali è chiusa." Dice "Bali ha chiuso 18 settori nominati, ha chiesto di chiuderne molti altri, e tutto il resto va comunque verificato codice per codice" — tre risposte molto diverse alla stessa domanda, e vale la pena distinguerle.
 
-Manteneremo questo conteggio aggiornato mentre evolvono i dati OSS e il moratorium — e continueremo a mostrare l'aritmetica, perché nel momento in cui un numero non può essere riprodotto dal file, smette di essere giornalismo e diventa una voce di corridoio.
+Manterremo questo conteggio aggiornato mentre evolvono i dati OSS e la chiusura di Bali stessa — e continueremo a mostrare l'aritmetica, perché nel momento in cui un numero non può essere riprodotto dal file, smette di essere giornalismo e diventa una voce di corridoio.
 
-_Non accettare l'aggregato per fede — controlla il tuo codice esatto contro il conteggio live sul Bali Zero KBLI Navigator su balizero.com, dove lo status nazionale di ogni codice e il verdetto Bali sono affiancati, tratti dagli stessi dati contati in questo articolo._
+_Non accettare l'aggregato per fede — controlla il tuo codice esatto contro il conteggio live sul Bali Zero KBLI Navigator su balizero.com, dove lo status nazionale di ogni codice e il verdict Bali sono affiancati, tratti dagli stessi dati contati in questo articolo._

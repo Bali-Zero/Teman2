@@ -98,6 +98,18 @@ const syntheticPractices = [
 ];
 
 async function seedSyntheticReviewData(page: Page): Promise<void> {
+  // Same reason as seedSyntheticPortalSession in bz-product-family.spec.ts:
+  // proxy.ts gates workspace paths on the HttpOnly session cookie a real login
+  // sets, so localStorage alone renders /login instead of the shell.
+  await page.context().addCookies(
+    [KITA_ORIGIN, MY_ORIGIN].map((url) => ({
+      name: "nz_access_token",
+      value: "synthetic-visual-review-token",
+      url,
+      httpOnly: true,
+      sameSite: "Lax" as const,
+    })),
+  );
   await page.addInitScript((profile) => {
     localStorage.setItem("auth_token", "synthetic-visual-review-token");
     localStorage.setItem("user_profile", JSON.stringify(profile));

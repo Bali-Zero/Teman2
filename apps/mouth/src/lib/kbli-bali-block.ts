@@ -159,9 +159,14 @@ export function isNationalClosure(
  */
 export function baliBlockClause(status?: string | null): string {
   switch (status) {
+    // Held pending verification, not an applied closure: only the Governor's
+    // Jan-2026 letter names the low/medium-low risk tier — OSS itself never
+    // closed on that basis. Dated language removed 2026-09-15 (W-J B1): the
+    // one date this repo could verify is the applied closure's (CHIUSO_BALI),
+    // not this one.
     case "BLOCCATO_CLASSE_RISCHIO":
     case "CHIUSO_MORATORIA_BALI":
-      return "blocked for a PT PMA under the 13 May 2026 moratorium";
+      return "blocked for a PT PMA under the 2026 Bali request to close low/medium-low-risk PMA (held as a conservative posture)";
     case "CHIUSO_PMA_NO_BESAR":
       return "reserved for micro/small/medium enterprises and closed to a PT PMA";
     case "TERTUTUP":
@@ -169,7 +174,10 @@ export function baliBlockClause(status?: string | null): string {
     case "CHIUSO_REGOLATORE_SETTORIALE":
       return "closed to private and foreign capital by the sector's own regulator";
     case "CHIUSO_BALI":
-      return "closed to PMA registration under Bali's announced sectoral closures";
+      // The one dated closure this repo can actually verify (Pemprov Bali
+      // press release, 24 Jul 2026): OSS closed 18 named business fields to
+      // new PMA licensing since the third week of May 2026.
+      return "closed to new PMA licensing in Bali: OSS closed for 18 business fields since the third week of May 2026";
     case "CHIUSO_BALI_PROPOSTO":
       // Announced, NOT in force. Stated as a conservative posture rather than a
       // settled bar, so a reader is not turned away from an activity that is
@@ -380,13 +388,22 @@ export function baliBlockedHint(
   // CHIUSO_BALI_PROPOSTO is the sharpest reason not to summarise: that closure
   // is proposed and NOT in force, so listing it beside settled bars would be a
   // third wrong statement, not a more complete one.
+  // Dated wording removed 2026-09-15 (W-J B1): "the 13 May 2026 moratorium"
+  // named a date this repo never verified for a blanket risk-tier block. The
+  // low/medium-low tier request is the Governor's own letter, not an applied
+  // closure — so these codes are held pending verification, never asserted
+  // closed on that basis alone. `other` still names no specific cause (see
+  // the note above): it may be a national closure, Bali's own applied closure
+  // of specific business fields, or something else — `baliBlockClause` states
+  // the real one per code, on the page that has the code in front of it.
   const causes =
     other > 0
-      ? `${moratorium} of them under Bali Zero's conservative reading of the 13 May 2026 provincial ` +
-        `risk-tier moratorium, pending clearer national guidance; the other ${other} for reasons that ` +
-        `have nothing to do with the risk tier, stated individually on each code's page.`
-      : `all of them under Bali Zero's conservative reading of the 13 May 2026 provincial risk-tier ` +
-        `moratorium, pending clearer national guidance.`;
+      ? `${moratorium} of them held under Bali Zero's conservative reading of the 2026 Bali risk-tier ` +
+        `request, pending verification; the other ${other} for reasons that have nothing to do with that ` +
+        `request — a national closure, Bali's applied closure of specific business fields, or another cause ` +
+        `stated individually on each code's page.`
+      : `all of them held under Bali Zero's conservative reading of the 2026 Bali risk-tier request, ` +
+        `pending verification.`;
 
   return (
     `${blocked.length} of ${codes.length} codes are treated as closed to a foreign-owned company ` +

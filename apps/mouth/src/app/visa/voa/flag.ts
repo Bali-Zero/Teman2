@@ -28,3 +28,18 @@ export function isGarudaVoaPublicEnabled(): boolean {
     (process.env.GARUDA_PUBLIC_ENABLED ?? "").trim().toLowerCase() === "true"
   );
 }
+
+/**
+ * GARUDA VOA payment switch. Card payment (Xendit) is awaiting provider approval;
+ * production still runs a sandbox key. Unset or anything but "true" means payments are
+ * NOT live — the checkout step must show the "payment activating" panel instead of
+ * creating a real order. Flip this together with the backend's own
+ * `GARUDA_PAYMENTS_LIVE` on Fly and a Xendit production key — a Vercel env change needs a
+ * redeploy to take effect (same call-time-read, fail-closed rule as
+ * `isGarudaVoaPublicEnabled` above; see that function's docblock for why).
+ */
+export function isGarudaPaymentsLive(): boolean {
+  return (
+    (process.env.GARUDA_PAYMENTS_LIVE ?? "").trim().toLowerCase() === "true"
+  );
+}

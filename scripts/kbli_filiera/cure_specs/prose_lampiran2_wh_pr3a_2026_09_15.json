@@ -1,0 +1,86 @@
+{
+  "compiler": "cure_prose_national_openness",
+  "_meta": {
+    "spec": "prose_lampiran2_wh_pr3_2026_09_15",
+    "population": "The 11 codes SAETTA-20260915 W-H PR-3 moved to TERBATAS/0 under Perpres 49/2021 Lampiran II (55201 55203 79903 47241 47242 47244 47245 47246 47249 47712 47722). Lot 5 of this compiler's national-openness backlog (prior lots: 34 -> 28 -> 21 -> 7 -> 0; these 11 are new backlog created by PR-3's own canonical write, not carried over from an earlier lot).",
+    "replacement_is_whole_field_not_sentence": "editorial.body keeps every paragraph that does not itself assert a PMA/national-openness or Bali-moratorium claim (the true product/scope and scale-range descriptions), and appends ONE corrected closing paragraph. No other field carries a true fact beyond the (now superseded) national-openness claim, so headline/standfirst/pullQuote/whatYouNeed are replaced whole.",
+    "no_new_claims_beyond_the_allocation": "Every replacement states only: the 0% ceiling, the Lampiran II locator already carried on the record's own pma_official_basis, and that the PT PMA route is unavailable nationwide. Retail codes name activity AND product (D5b). No Bali-specific claim is asserted (the pre-existing Bali moratorium text is DROPPED as moot, not re-asserted or newly characterised) — W113."
+  },
+  "codes": {
+    "55201": {
+      "judul": null,
+      "expect": {
+        "pma_max_asing": 0,
+        "pma_status": "TERBATAS",
+        "pma_kondisi_contains": "dialokasikan untuk Koperasi dan UMKM"
+      },
+      "fields": {
+        "whatYouNeed": {
+          "old_sha256": "8457ce6ec445d1a60274dd9771632c0e82272f1ac0486a42583d240277753ee6",
+          "old_excerpt": "Nationally, KBLI 55201 is listed as open to 100% foreign ownership. But Perpres 49/2021’s ",
+          "new": "The national foreign-ownership ceiling for this activity is 0%. Perpres 10/2021, as amended by 49/2021, allocates operating a homestay (Pondok Wisata) to Koperasi and UMKM (Perpres 49/2021 Lampiran II p.15, entry 48, sub-row \"Pondok Wisata\" (ex-KBLI 2020 55130)), so the PT PMA route is unavailable nationwide — not only in Bali."
+        },
+        "editorial.headline": {
+          "old_sha256": "38802d309c8aaa801c885ced8ca807fb9e2579df8e63b10913ecb63040709447",
+          "old_excerpt": "The Homestay Business: Nationally Open, Unregisterable for PMA Nationwide",
+          "new": "The Homestay Business Is Reserved for Koperasi and UMKM — Closed to PT PMA Nationwide"
+        }
+      }
+    },
+    "55203": {
+      "judul": null,
+      "expect": {
+        "pma_max_asing": 0,
+        "pma_status": "TERBATAS",
+        "pma_kondisi_contains": "dialokasikan untuk Koperasi dan UMKM"
+      },
+      "fields": {
+        "whatYouNeed": {
+          "old_sha256": "457459d77a10ef19eb76a2e4a5e40aa86a9199edbbd28ed7d7b480627758dc98",
+          "old_excerpt": "Nationally, the Positive Investment List (Perpres 10/2021, as amended by 49/2021) opens th",
+          "new": "The national foreign-ownership ceiling for this activity is 0%. Perpres 10/2021, as amended by 49/2021, allocates operating a villa (Vila) to Koperasi and UMKM (Perpres 49/2021 Lampiran II p.15, entry 48, sub-row \"Vila\" (ex-KBLI 2020 55193)), so the PT PMA route is unavailable nationwide — not only in Bali."
+        },
+        "editorial.standfirst": {
+          "old_sha256": "35e94500034f8ee5c21dc2aa024a437b1f2017c942692ae1e91376bf29bda674",
+          "old_excerpt": "This activity covers owner-managed private homes rented short-term to tourists—nationally ",
+          "new": "This activity — operating a villa (Vila) — is allocated to Koperasi and UMKM under Perpres 49/2021's Lampiran II, which sets foreign ownership at 0% and puts it out of reach of a PT PMA anywhere in Indonesia."
+        },
+        "editorial.body": {
+          "old_sha256": "560d1e85bbb05ee54162486a11b6e0a90cbd0b542ebe41dcbc231d2c7cb7625b",
+          "old_excerpt": "This classification concerns a particular form of tourist stay: private houses made specif",
+          "new": "This classification concerns a particular form of tourist stay: private houses made specifically available for short-term rental to the public, together with their facilities. The guests are tourists, and the property is managed by its owner. These are homes the record identifies as specially rented, not lodging described in generic terms. Read as an operating description, it is an owner-managed private villa placed in the short-stay market, with the owner’s management, the facilities and the rental purpose all forming part of the activity.\n\nThe scale frame is equally clear. Registration is open to Mikro, Kecil and Menengah businesses, and these are the only scale categories supplied in the record. An operator fitting this classification brings the elements together in one arrangement: a private house, a short stay for tourists, the related facilities and management by the owner. Each element comes from the stated scope; none needs to be supplied by a broader reading of the villa market.\n\nNationally, the foreign-ownership ceiling for this activity is 0%. Perpres 49/2021 Lampiran II p.15, entry 48, sub-row \"Vila\" (ex-KBLI 2020 55193) allocates operating a villa (Vila) to Koperasi and UMKM (the *dialokasikan* column), so a PT PMA cannot register it anywhere in Indonesia — not only in Bali."
+        }
+      }
+    },
+    "79903": {
+      "judul": null,
+      "expect": {
+        "pma_max_asing": 0,
+        "pma_status": "TERBATAS",
+        "pma_kondisi_contains": "dialokasikan untuk Koperasi dan UMKM"
+      },
+      "fields": {
+        "whatYouNeed": {
+          "old_sha256": "411140907fca9f475c9beb9e695d8a419a1df96f1643989252d29055db99b7e4",
+          "old_excerpt": "Nationally this KBLI is classified as open to foreign ownership, but the bidang usaha itse",
+          "new": "The national foreign-ownership ceiling for this activity is 0%. Perpres 10/2021, as amended by 49/2021, allocates tour-guide services (Jasa Pramuwisata) to Koperasi and UMKM (Perpres 49/2021 Lampiran II p.16, entry 56, sub-row \"Jasa pramuwisata\" (ex-KBLI 2020 79921)), so the PT PMA route is unavailable nationwide — not only in Bali."
+        },
+        "editorial.headline": {
+          "old_sha256": "9e94ed25c0a654bd39153cd90ef3f6060af18697c3a049b4a8a91d9071b58c3b",
+          "old_excerpt": "Tour-Guide Services: Nationally Open, Structurally Closed to PMA",
+          "new": "Tour-Guide Services Is Reserved for Koperasi and UMKM — Closed to PT PMA Nationwide"
+        },
+        "editorial.standfirst": {
+          "old_sha256": "5d3a51f5f03c8c34dc4d6974a3328a3af8a9280ff9b404d68cb37d16295f029e",
+          "old_excerpt": "Tour-guide services may be wholly foreign-owned nationally, but a PT PMA cannot register t",
+          "new": "This activity — tour-guide services (Jasa Pramuwisata) — is allocated to Koperasi and UMKM under Perpres 49/2021's Lampiran II, which sets foreign ownership at 0% and puts it out of reach of a PT PMA anywhere in Indonesia."
+        },
+        "editorial.pullQuote": {
+          "old_sha256": "2ded10d4b1b74d73f970188fcfec5890638e26d1a13c55a8814f3d437a35cec5",
+          "old_excerpt": "National policy permits up to 100% foreign ownership, while the Perpres 49/2021 annex allo",
+          "new": "The Perpres 49/2021 annex allocates tour-guide services (Jasa Pramuwisata) to Koperasi and UMKM, so the national ceiling is 0% — not a local Bali restriction on an otherwise-open activity."
+        }
+      }
+    }
+  }
+}

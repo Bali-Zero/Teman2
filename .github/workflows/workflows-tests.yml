@@ -1,0 +1,146 @@
+name: infra/workflows contract tests
+
+# WHY THIS FILE EXISTS. Before it, NOTHING in .github/workflows/ ran infra/workflows/tests/ —
+# measured on origin/main with `grep -rl "infra/workflows" .github/workflows/`, which returned
+# nothing. That directory held test-kbli-certification-contract.mjs, a suite asserting the KBLI
+# filiera workflow's contract, which had therefore never once executed in CI since it was
+# written; it was run by hand or not at all. That is cicatrix #2 (exists != armed) in its
+# plainest form: a suite that proves a doctrine, that no machine has ever run.
+#
+# This job runs EVERY *-contract*.mjs under infra/workflows/tests/ — the glob is deliberate, so
+# the next contract suite added to that directory is armed the day it lands rather than the day
+# someone remembers to add a line here — and then boots the standalone runner in --dry-run to
+# prove it still compiles and executes.
+#
+# WHAT IT CAN HONESTLY GATE, stated as a limit and not as a boast: the suites are pure Node with
+# no dependency beyond node: builtins, no network and no model call, and the runner's --dry-run
+# door spawns no process at all. So this job needs no claude/codex/agy binary, no model
+# credential and no repository secret. It is NOT credential-free, and an earlier draft of this
+# comment said so wrongly — the titolare council seat (codex-gpt-5.6-sol, 2026-09-16) caught it:
+# actions/checkout is still handed a GITHUB_TOKEN by the runner, and `permissions: contents: read`
+# narrows that token rather than removing it. What is true is the narrower sentence: the token is
+# read-only and `persist-credentials: false` stops checkout leaving it in the runner's git config
+# for later steps to pick up.
+# Equally, it does NOT exercise the real `claude` spawn path, the timeout kill, or
+# anything else that only runs when a lane actually reaches a door. The cross-family refuter
+# (Gemini via agy, 2026-09-15) named that gap and it is accepted as declared scope: the live path
+# is exercised by running a real mission, not by CI, and the one run so far is recorded in
+# research/operations/second-army-D5-restamp-6579-20260915T164000Z.md.
+#
+# The glob is also NOT recursive, and it does not match the behavioural suite
+# (test-run-second-army.mjs has no "-contract" in its name), which is why that suite has its own
+# step. A new contract suite dropped flat into the directory is armed the day it lands; one in a
+# subdirectory, or a new behavioural suite, needs a line here. Same refuter, same disposition.
+#
+# NOT ADDED to branch-protection required_status_checks by this PR. Arming a new required check
+# is a separate decision with its own blast radius, and it should be taken after this job has a
+# history on main, not on the strength of its first green run.
+#
+# References: infra/workflows/second-army.js, infra/workflows/run-second-army.mjs,
+# docs/architecture/dual-consul/army-map.md §1ter.
+
+on:
+  pull_request:
+    paths:
+      - "infra/workflows/**"
+      - ".github/workflows/workflows-tests.yml"
+  push:
+    branches: [main]
+    paths:
+      - "infra/workflows/**"
+      - ".github/workflows/workflows-tests.yml"
+
+concurrency:
+  # A concurrency group holds ONE pending run: on a busy main, a third push replaces the second
+  # even with cancel-in-progress false, so the middle commit is never verified. Council seat
+  # codex-gpt-5.6-sol raised this as a BLOCKER (2026-09-15) after the first cut only scoped
+  # cancel-in-progress. PR runs share a group per ref so a superseded one is cancelled; every
+  # push gets its OWN group via run_id, so no push run can ever displace another.
+  group: workflows-tests-${{ github.event_name == 'pull_request' && github.ref || github.run_id }}
+  # Cancel superseded PR runs, NEVER a run on main. Raised by the cross-family refuter
+  # (Gemini via agy, 2026-09-15) and accepted: `cancel-in-progress: true` unscoped would abort an
+  # in-flight run on refs/heads/main when commits land in quick succession, leaving those commits
+  # unverified — the exact shape of cicatrix #2 this workflow exists to close.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+# Least privilege, and it corrects a claim the first cut of this file made. Council seat
+# codex-gpt-5.6-sol pointed out that "this job needs no credential" was FALSE as written:
+# actions/checkout receives GITHUB_TOKEN and persists git credentials in the runner's config by
+# default, so the job held a write-capable token it never used. Now it is read-only and the
+# credential is not persisted — which makes the sentence above true instead of merely intended.
+permissions:
+  contents: read
+
+jobs:
+  workflows-contract-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Every contract suite under infra/workflows/tests/
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          suites=(infra/workflows/tests/*-contract*.mjs)
+          if [ ${#suites[@]} -eq 0 ]; then
+            echo "No contract suite matched infra/workflows/tests/*-contract*.mjs."
+            echo "That glob finding nothing means the suites moved or were deleted — fail rather"
+            echo "than report a green run over an empty set."
+            exit 1
+          fi
+          # Run EVERY suite before failing. Raised by the cross-family refuter and accepted: a
+          # fail-fast loop tells you about the first broken contract and hides the rest, so a
+          # reader fixes one, reruns, and discovers the next one round-trip later.
+          failed=()
+          for suite in "${suites[@]}"; do
+            echo "::group::$suite"
+            if node "$suite"; then
+              echo "::endgroup::"
+            else
+              echo "::endgroup::"
+              failed+=("$suite")
+            fi
+          done
+          if [ ${#failed[@]} -ne 0 ]; then
+            echo "::error::${#failed[@]} contract suite(s) failed: ${failed[*]}"
+            exit 1
+          fi
+
+      # `if: always()` on this step and the next, raised by the titolare council seat
+      # (codex-gpt-5.6-sol, 2026-09-16): the aggregate-failure loop above only aggregates WITHIN
+      # its own step. Without this, one red contract suite makes Actions skip the two steps below,
+      # so a reader learns about the contract break and nothing about whether the runner still
+      # boots — the same fix-one-rerun-discover-the-next round-trip the loop was written to end,
+      # displaced one level up. `always()` also runs them on a cancelled job, which is accepted:
+      # these are pure Node, seconds long, with no side effect worth suppressing.
+      - name: Behavioural runner tests
+        if: always()
+        run: node infra/workflows/tests/test-run-second-army.mjs
+
+      - name: Runner boots in --dry-run (proves it compiles and executes)
+        if: always()
+        run: |
+          set -euo pipefail
+          cat > "$RUNNER_ARGS" <<'EOF'
+          {
+            "mission": "ci-smoke",
+            "colour": "blue",
+            "floor": 1,
+            "stamp": "19700101T000000Z",
+            "outDir": "/tmp",
+            "tasks": [
+              { "key": "t1", "prompt": "noop", "files": ["README.md"], "proof": "nothing changes" }
+            ]
+          }
+          EOF
+          node infra/workflows/run-second-army.mjs --args-file "$RUNNER_ARGS" --dry-run
+        env:
+          RUNNER_ARGS: ${{ runner.temp }}/workflows-tests-runner-args.json
