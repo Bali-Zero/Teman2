@@ -55,6 +55,7 @@ from backend.prompts.zantara_core import (
     LANGUAGE_PROTOCOL,
 )
 from backend.services.integrations.wa_greeting import match_greeting
+from backend.services.integrations.wa_human_handoff import match_human_request
 from backend.services.integrations.wa_identity import match_identity_question
 from backend.services.misc.pricing_intent import has_pricing_intent
 from backend.services.pricing.pricing_service import get_pricing_service
@@ -555,6 +556,15 @@ async def build_context_package(
             planner's `QueryDomain.GREETING`). The caller routes the row to
             the Gemini leg instead of borrowing an LLM planner into this
             path.
+        PackageUnbuildable("human_handoff_domain"): `wa_human_handoff
+            .match_human_request` recognizes this query as a request to
+            reach a human (B2.5-2), checked THIRD, between greeting and
+            identity (same order as `wa_codex_leg.py`) — the client gets a
+            scripted confirmation and a human is notified, so building a
+            retrieval package for it would only ever be discarded.
+            `wa_codex_leg.py` already short-circuits before this call is
+            ever made; this raise is the same authority's second line of
+            defense for any other caller of this function.
         PackageUnbuildable("identity_domain"): `wa_identity
             .match_identity_question` recognizes this query as a scripted
             "who are you" turn (B2.5-1b), checked immediately after the
@@ -576,6 +586,8 @@ async def build_context_package(
 
     if match_greeting(query) is not None:
         raise PackageUnbuildable(reason="greeting_domain")
+    if match_human_request(query) is not None:
+        raise PackageUnbuildable(reason="human_handoff_domain")
     if match_identity_question(query) is not None:
         raise PackageUnbuildable(reason="identity_domain")
     corrected_domain = effective_domain(query, plan)

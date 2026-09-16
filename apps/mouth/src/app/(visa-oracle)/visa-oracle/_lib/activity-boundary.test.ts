@@ -37,7 +37,8 @@ function walkFacts(walk: WalkCase): OracleFacts {
   let state = flowReducer(initialFlowState("en"), { type: "ADVANCE" });
   state = answer(state, "in_indonesia", "no");
   state = answer(state, "holds_stay_permit", "no");
-  state = answer(state, "overstay_days", "0");
+  // D19 (2026-09-16): offshore no longer asks `overstay_days` at all — see
+  // `flow.ts::computeNextNode` — so it is not answered here either.
   state = answer(state, "nationalities", "IT");
   state = answer(state, "birth_date", "1990-02-03");
   state = answer(state, "category", walk.category);

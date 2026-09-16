@@ -14,12 +14,14 @@ const SCREENSHOT_DIR = path.resolve(
 const VERDICT_FACTS = {
   in_indonesia: "no",
   // Added 2026-08-24 (P0 offshore-reachability fix, PR #4727): offshore now
-  // gates on this question before converging on overstay_days — see
+  // gates on this question before converging on nationalities — see
   // flow.ts::computeNextNode's "in_indonesia" case. "no" here means the
   // synthesized NO_STAY_PERMIT sentinel resolves the derived fact without a
-  // further question (fact-mapper.ts::mapCurrentStatusCode).
+  // further question (fact-mapper.ts::mapCurrentStatusCode). D19
+  // (2026-09-16): `overstay_days` is no longer asked offshore at all, so it
+  // is not seeded here either — fact-mapper.ts synthesizes KNOWN 0 from
+  // `in_indonesia === "no"` directly.
   holds_stay_permit: "no",
-  overstay_days: "0",
   nationalities: "US",
   birth_date: "1990-01-01",
   category: "tourism",
@@ -34,7 +36,8 @@ const VERDICT_HISTORY = [
   // Added 2026-08-24 alongside VERDICT_FACTS.holds_stay_permit above — see
   // that constant's comment.
   { kind: "question", questionId: "holds_stay_permit" },
-  { kind: "question", questionId: "overstay_days" },
+  // D19 (2026-09-16): `overstay_days` dropped from this offshore history —
+  // it is never asked.
   { kind: "question", questionId: "nationalities" },
   { kind: "question", questionId: "birth_date" },
   { kind: "question", questionId: "category" },
@@ -367,12 +370,12 @@ test.describe("Visa Oracle v2 integration — page Page", () => {
     await page.getByRole("button", { name: /no, i.m planning ahead/i }).click();
 
     // Added 2026-08-24 (P0 offshore-reachability fix, PR #4727): offshore
-    // now gates on holds_stay_permit before overstay_days — see
+    // now gates on holds_stay_permit before nationalities — see
     // VERDICT_FACTS.holds_stay_permit's comment above for the mechanism.
+    // D19 (2026-09-16): `overstay_days` used to be asked here too; it is
+    // no longer part of the offshore route at all, so no spinbutton step
+    // follows this click any more.
     await page.getByRole("button", { name: "No", exact: true }).click();
-
-    await page.getByRole("spinbutton").fill("0");
-    await page.getByRole("button", { name: /^continue$/i }).click();
 
     await page.getByRole("combobox").selectOption("US");
     await page.getByRole("button", { name: /^add country$/i }).click();
@@ -501,19 +504,13 @@ test.describe("Visa Oracle v2 integration — page Page", () => {
         translate(language, "q.holds_stay_permit"),
       );
 
+      // D19 (2026-09-16): `overstay_days` used to be focused here, then
+      // skipped via "notsure.trigger" — it is no longer rendered offshore
+      // at all, so "No" here focuses `nationalities` directly.
       await keyboardActivate(
         page,
         page.getByRole("button", {
           name: translate(language, "q.boolean.no"),
-          exact: true,
-        }),
-      );
-      await expectFocusedHeading(page, translate(language, "q.overstay_days"));
-
-      await keyboardActivate(
-        page,
-        page.getByRole("button", {
-          name: translate(language, "notsure.trigger"),
           exact: true,
         }),
       );
