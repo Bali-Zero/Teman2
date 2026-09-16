@@ -517,10 +517,18 @@ def _bali_verdict_context_note(result: "KBLISearchResult") -> str:
             )
         pieces.append(f"Source: {result.bali_closure_url}")
         note = " ".join(pieces)
+        # A scoped closure (the hotel rows) bars only that slice of the code:
+        # the instruction must carry the scope, never a blanket "this activity".
+        scope_clause = (
+            f" for {result.bali_closure_scope} only, and say that the scope "
+            "must be confirmed on OSS"
+            if result.bali_closure_scope
+            else ""
+        )
         return (
             f"{note} You MUST say the Bali provincial government has closed "
-            "this activity to new PT PMA licensing and cite the source URL."
-            f"{review_note}"
+            f"this activity to new PT PMA licensing{scope_clause} and cite the "
+            f"source URL.{review_note}"
         )
 
     national = _national_closure_basis(result)

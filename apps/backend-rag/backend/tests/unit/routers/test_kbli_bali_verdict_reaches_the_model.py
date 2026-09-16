@@ -161,6 +161,45 @@ def test_a_sourced_closure_survives_an_unverified_national_tuple():
     assert "if your PT PMA is able to register" not in note
 
 
+def test_a_scoped_sourced_closure_instructs_the_model_with_its_scope():
+    """GUILT: a hotel row closes only buildings under 6,000 m² — the model is
+    told to state the closure FOR that scope, never as a blanket bar."""
+    scope = "building area under 6,000 m²"
+    result = _result(
+        code="55101",
+        pma_status="TERBUKA",
+        pma_verification_status="declared_gap",
+        bali_status="CHIUSO_BALI",
+        bali_blocked=True,
+        bali_reason="x",
+        bali_closure_url=_CLOSURE_URL,
+        bali_closure_scope=scope,
+        bali_confidence="HIGH",
+    )
+
+    note = _bali_verdict_context_note(result)
+    assert f"new PT PMA licensing for {scope} only" in note
+    assert "confirmed on OSS" in note
+
+
+def test_an_unscoped_sourced_closure_carries_no_scope_instruction():
+    """INNOCENCE: a whole-code closure keeps the plain instruction."""
+    result = _result(
+        code="68111",
+        pma_status="TERBUKA",
+        pma_verification_status="declared_gap",
+        bali_status="CHIUSO_BALI",
+        bali_blocked=True,
+        bali_reason="x",
+        bali_closure_url=_CLOSURE_URL,
+        bali_confidence="HIGH",
+    )
+
+    note = _bali_verdict_context_note(result)
+    assert "new PT PMA licensing and cite the source URL." in note
+    assert " only, and say that the scope" not in note
+
+
 @pytest.mark.parametrize(
     "overrides",
     [
