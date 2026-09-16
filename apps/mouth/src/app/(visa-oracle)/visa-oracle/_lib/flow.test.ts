@@ -70,12 +70,14 @@ function startOffshore(category?: string): FlowState {
   // converging (fixed 2026-08-24, D12 offshore-reachability P0, then
   // re-fixed same day after a funnel-cost review — see `computeNextNode`'s
   // `in_indonesia`/`holds_stay_permit` cases). "no" here converges
-  // straight to `overstay_days` with no further questions (the fact
+  // straight to `nationalities` with no further questions (the fact
   // resolves from this answer alone via `fact-mapper.ts`'s synthesized
   // `NO_STAY_PERMIT`) — preserved here to keep every downstream test's
-  // original intent (none of them are about permit status).
+  // original intent (none of them are about permit status). D19
+  // (2026-09-16): `overstay_days` itself is no longer asked offshore at
+  // all, so it is not answered here either — `flow.test.ts`'s dedicated
+  // D19 describe block below covers that skip directly.
   state = answer(state, "holds_stay_permit", "no");
-  state = answer(state, "overstay_days", "0");
   state = answer(state, "nationalities", "IT");
   state = answer(state, "birth_date", "1990-02-03");
   if (category) state = answer(state, "category", category);
@@ -394,7 +396,9 @@ describe("onshore/offshore canonical fact collection", () => {
     // holds_stay_permit FIRST for offshore instead, to avoid paying the
     // full chain for applicants who don't hold one (see the sibling test
     // below). wants_onshore_conversion/application_channel remain
-    // onshore-only, unchanged by this fix.
+    // onshore-only, unchanged by this fix. D19 (2026-09-16): the chain no
+    // longer stops at `overstay_days` either — offshore converges straight
+    // on `nationalities` (see the dedicated D19 describe block below).
     let state = initialFlowState("en");
     state = reduce(state, { type: "ADVANCE" });
     state = answer(state, "in_indonesia", "no");
@@ -404,14 +408,13 @@ describe("onshore/offshore canonical fact collection", () => {
     state = answer(state, "permit_expiry", "2026-09-01");
     expectQuestion(state, "stay_permit_code");
     state = answer(state, "stay_permit_code", "E28A", PERMIT_STILL_CURRENT);
-    expectQuestion(state, "overstay_days");
-    state = answer(state, "overstay_days", "0");
     expectQuestion(state, "nationalities");
     expect(state.facts.stay_permit_code).toBe("E28A");
+    expect(state.facts.overstay_days).toBeUndefined();
     expect(state.facts.application_channel).toBeUndefined();
   });
 
-  it("offshore + no permit: converges on overstay_days after exactly one gate question, no code/expiry asked", () => {
+  it("offshore + no permit: converges on nationalities after exactly one gate question, no code/expiry/overstay asked", () => {
     // The funnel-cost half of the same 2026-08-24 fix: an offshore
     // applicant who does not hold a permit pays exactly ONE extra
     // question (holds_stay_permit itself), not the full 3-question
@@ -421,18 +424,19 @@ describe("onshore/offshore canonical fact collection", () => {
     // NO_STAY_PERMIT sentinel resolving to a definite False) is proven
     // at the backend in fact-mapper.test.ts and
     // test_d12_active_stay_permit_exclusion.py, not here — this test
-    // only proves the frontend never asks the redundant questions.
+    // only proves the frontend never asks the redundant questions. D19
+    // (2026-09-16): `overstay_days` joins that redundant-question list —
+    // you cannot overstay while outside Indonesia, so it is never shown.
     let state = initialFlowState("en");
     state = reduce(state, { type: "ADVANCE" });
     state = answer(state, "in_indonesia", "no");
     expectQuestion(state, "holds_stay_permit");
     state = answer(state, "holds_stay_permit", "no");
-    expectQuestion(state, "overstay_days");
-    state = answer(state, "overstay_days", "0");
     expectQuestion(state, "nationalities");
     expect(state.facts.permit_expiry).toBeUndefined();
     expect(state.facts.stay_permit_code).toBeUndefined();
     expect(state.facts.current_status_code).toBeUndefined();
+    expect(state.facts.overstay_days).toBeUndefined();
     expect(state.facts.application_channel).toBeUndefined();
   });
 
@@ -476,6 +480,78 @@ describe("onshore/offshore canonical fact collection", () => {
       kind: "question",
       questionId: "holds_stay_permit",
     });
+  });
+});
+
+describe("D19 — offshore never asks overstay_days (owner ruling, Zero, 2026-09-16)", () => {
+  // "You cannot be overstaying in Indonesia while you are outside it." Every
+  // offshore transition that used to lead into `overstay_days` now leads
+  // straight to `nationalities` instead; onshore is untouched.
+  it("guilt: holds_stay_permit='no' chain converges on nationalities, not overstay_days", () => {
+    expect(
+      computeNextNode(
+        { kind: "question", questionId: "holds_stay_permit" },
+        { in_indonesia: "no", holds_stay_permit: "no" },
+      ),
+    ).toEqual({ kind: "question", questionId: "nationalities" });
+  });
+
+  it("guilt: holds_stay_permit='yes' chain, current permit (no renewal_paid gate), converges on nationalities", () => {
+    expect(
+      computeNextNode(
+        { kind: "question", questionId: "stay_permit_code" },
+        {
+          in_indonesia: "no",
+          holds_stay_permit: "yes",
+          permit_expiry: "2099-01-01",
+          stay_permit_code: "E28A",
+        },
+        new Date(2026, 7, 24),
+      ),
+    ).toEqual({ kind: "question", questionId: "nationalities" });
+  });
+
+  it("guilt: holds_stay_permit='yes' chain, expired permit (renewal_paid gate fires), still converges on nationalities after it", () => {
+    expect(
+      computeNextNode(
+        { kind: "question", questionId: "renewal_paid" },
+        {
+          in_indonesia: "no",
+          holds_stay_permit: "yes",
+          permit_expiry: "2020-01-01",
+          stay_permit_code: "E28A",
+          renewal_paid: "yes",
+        },
+      ),
+    ).toEqual({ kind: "question", questionId: "nationalities" });
+  });
+
+  it("innocence: onshore holds_stay_permit='no' chain still asks overstay_days, unchanged", () => {
+    expect(
+      computeNextNode(
+        { kind: "question", questionId: "current_status_code" },
+        {
+          in_indonesia: "yes",
+          holds_stay_permit: "no",
+          current_status_code: "C1",
+        },
+      ),
+    ).toEqual({ kind: "question", questionId: "overstay_days" });
+  });
+
+  it("innocence: onshore holds_stay_permit='yes' chain still asks overstay_days, unchanged", () => {
+    expect(
+      computeNextNode(
+        { kind: "question", questionId: "stay_permit_code" },
+        {
+          in_indonesia: "yes",
+          holds_stay_permit: "yes",
+          permit_expiry: "2099-01-01",
+          stay_permit_code: "E28A",
+        },
+        new Date(2026, 7, 24),
+      ),
+    ).toEqual({ kind: "question", questionId: "overstay_days" });
   });
 });
 
@@ -884,12 +960,16 @@ describe("editing, pruning and branch projection", () => {
     // Prove the chain is genuinely reachable now, not just present in
     // history — answer it through to convergence via BOTH offshore
     // sub-branches are covered by the dedicated tests above; here, prove
-    // re-entry specifically converges correctly on the "no" path.
+    // re-entry specifically converges correctly on the "no" path. D19
+    // (2026-09-16): that convergence point is `nationalities`, not
+    // `overstay_days` — offshore never asks it at all, so the stale "0"
+    // answered onshore above must be pruned away, not carried over.
     state = answer(state, "holds_stay_permit", "no");
-    expectQuestion(state, "overstay_days");
+    expectQuestion(state, "nationalities");
     expect(state.facts.permit_expiry).toBeUndefined();
     expect(state.facts.current_status_code).toBeUndefined();
     expect(state.facts.application_channel).toBeUndefined();
+    expect(state.facts.overstay_days).toBeUndefined();
   });
 
   it("back is a real history step and prunes the removed answer", () => {
@@ -906,14 +986,14 @@ describe("editing, pruning and branch projection", () => {
   it("category leaves describe interview branches, with one selected", () => {
     const before = getTreeSteps(
       { kind: "question", questionId: "category" },
-      { in_indonesia: "no", overstay_days: "0" },
+      { in_indonesia: "no" },
     );
     expect(
       before.categoryLeaves?.every((leaf) => leaf.status === "pending"),
     ).toBe(true);
     const after = getTreeSteps(
       { kind: "question", questionId: "trip_scope" },
-      { in_indonesia: "no", overstay_days: "0", category: "study" },
+      { in_indonesia: "no", category: "study" },
     );
     expect(
       after.categoryLeaves?.filter((leaf) => leaf.status === "done"),
@@ -952,7 +1032,11 @@ describe("editing, pruning and branch projection", () => {
     // Every step already answered on the way here must read "done", not
     // "pending" — the whole-nav-blank symptom was every step (not just
     // "stay_days") losing its real status because `currentIdx` was -1.
-    const alreadyAnswered = ["framing", "in_indonesia", "overstay_days"];
+    // `overstay_days` is not one of these any more (D19, 2026-09-16):
+    // offshore's trunk never includes it at all, so `holds_stay_permit` —
+    // the actual offshore gate question `startOffshore` answers — replaces
+    // it here.
+    const alreadyAnswered = ["framing", "in_indonesia", "holds_stay_permit"];
     for (const id of alreadyAnswered) {
       expect(trunk.find((s) => s.id === id)?.status).not.toBe("pending");
     }

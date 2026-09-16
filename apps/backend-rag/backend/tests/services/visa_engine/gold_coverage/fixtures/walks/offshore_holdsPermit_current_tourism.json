@@ -5,7 +5,6 @@
     "holds_stay_permit",
     "permit_expiry",
     "stay_permit_code",
-    "overstay_days",
     "nationalities",
     "birth_date",
     "category",
