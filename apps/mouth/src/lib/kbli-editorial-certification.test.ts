@@ -86,7 +86,7 @@ describe("PMA editorial certification", () => {
     // pinned the pre-decertification counts and 47111 as certified gold —
     // do not let these numbers drift from the registry again without a test
     // failure naming the exact mismatch.
-    expect(all.filter((code) => code.intel_2026)).toHaveLength(37);
+    expect(all.filter((code) => code.intel_2026)).toHaveLength(36);
     expect(all.filter((code) => code.tier === "gold")).toHaveLength(8);
     expect(goldCodes).toHaveLength(8);
     expect(goldCodes).toEqual(
@@ -106,6 +106,7 @@ describe("PMA editorial certification", () => {
       "79122",
       "95220",
       "96100",
+      "47221",
       "10722",
       "47222",
       "50134",
@@ -151,8 +152,18 @@ describe("PMA editorial certification", () => {
       "95220 canonical intel withheld",
     ).toBeUndefined();
 
-    expect(getCode("47221")?.intel_2026?.zantaraOpener).toBe(
-      neutralKbliChatOpenerText("47221"),
+    // W-H PR-3f: 47221's canonicalIntel.whatYouNeed claimed a UMKM/Koperasi
+    // partnership condition that the record's own pma_kondisi denies (a
+    // distribution-network/location requirement instead, Perpres 10/2021
+    // Lampiran III line 4202 #44) — de-certify canonicalIntel ONLY.
+    // mouthGold's 47221 prose was reviewed separately and stays certified.
+    expect(
+      getCode("47221")?.intel_2026,
+      "47221 canonical intel withheld",
+    ).toBeUndefined();
+
+    expect(getCode("41016")?.intel_2026?.zantaraOpener).toBe(
+      neutralKbliChatOpenerText("41016"),
     );
     expect(getGoldContent("47221")?.zantaraOpener).toBe(
       neutralKbliChatOpenerText("47221"),
