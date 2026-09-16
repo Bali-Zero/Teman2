@@ -123,6 +123,55 @@ def _garuda_outbox_poll_seconds() -> float:
     return seconds
 
 
+def _visa_oracle_sessions_purge_enabled() -> bool:
+    """Kill switch for the retention purge below: `VISA_ORACLE_SESSIONS_PURGE_ENABLED`.
+
+    Default ENABLED (retention is a UU PDP data-minimisation requirement, not
+    an opt-in feature — migration 317's whole point is that expired rows stop
+    existing). "false"/"0" (case-insensitive, whitespace-trimmed) disables it.
+    Any OTHER non-empty value — a typo, "off", "no" — is treated as enabled
+    (fail toward retention, not away from it) but logs a warning, so a
+    misconfigured env var is visible in the deploy log instead of silently
+    doing what the operator actually wanted (disable) or silently doing
+    nothing wrong at all (a stray "1"/"true"), either of which would go
+    unnoticed for the same reason the launchd approach this replaces would
+    have: nothing was watching."""
+
+    raw = os.getenv("VISA_ORACLE_SESSIONS_PURGE_ENABLED")
+    if raw is None:
+        return True
+    normalized = raw.strip().lower()
+    if normalized in {"false", "0"}:
+        return False
+    if normalized not in {"true", "1", ""}:
+        logger.warning(
+            "VISA_ORACLE_SESSIONS_PURGE_ENABLED=%r is not a recognised boolean — "
+            "treating as enabled",
+            raw,
+        )
+    return True
+
+
+#: First tick fires after a random delay in this window rather than
+#: immediately on process start — spreads the very first purge across
+#: however many `api` machines boot together, instead of all of them hitting
+#: the DB in the same instant.
+_VISA_ORACLE_PURGE_INITIAL_DELAY_MIN_SECONDS = 30.0
+_VISA_ORACLE_PURGE_INITIAL_DELAY_MAX_SECONDS = 120.0
+
+#: Steady-state cadence: about once an hour, jittered so that N machines of
+#: the `api` process group (see `_run_visa_oracle_sessions_purge_scheduler`'s
+#: docstring for why more than one running this loop at once is fine) do not
+#: converge on the same wall-clock second forever.
+_VISA_ORACLE_PURGE_INTERVAL_SECONDS = 3600.0
+_VISA_ORACLE_PURGE_JITTER_SECONDS = 300.0
+
+#: Same bound `_purge_expired_sessions` defaults to — passed explicitly here
+#: too so the two stay visibly in sync rather than one silently trusting the
+#: other's default.
+_VISA_ORACLE_PURGE_LIMIT = 500
+
+
 #: How often the drain loop asks `count_undrained` whether anything is stuck.
 #: Five minutes: often enough that a burned job is seen the same hour it burns,
 #: rare enough that it costs one aggregate query per five minutes rather than
@@ -563,6 +612,98 @@ async def _run_garuda_outbox_scheduler(app: FastAPI) -> None:
                 await asyncio.sleep(interval)
 
 
+async def _run_visa_oracle_sessions_purge_scheduler(app: FastAPI) -> None:
+    """Hourly in-process TTL purge for `visa_oracle_sessions` — the retention
+    enforcement migration 317 declares (30-day DEFAULT) but does not, on its
+    own, DO: nothing was deleting rows once they aged past `expires_at`
+    (measured on PROD, read-only, by the Dux: 20 rows, 17 already expired,
+    oldest since 2026-04-13).
+
+    SUPERSEDES a launchd-plist + wrapper + one-shot-worker design from the
+    first pass at this problem. That design was correctly rejected: a
+    `.plist.example` nobody installs and a wrapper that wants its own
+    `DATABASE_URL` with DELETE on PROD (a credential only the operator can
+    provision) is superscar #2, "exists != armed" — built, never switched on,
+    indistinguishable from working right up until someone counts the rows.
+    This loop instead reuses the pool THIS PROCESS already holds, the same
+    way the GARUDA outbox drain above and the WA outbox scheduler in
+    `lifespan_light` do: no new credential, no external installer, nothing
+    to forget to `launchctl load`.
+
+    WHY THE `api` PROCESS GROUP AND NOT `rag`/`main_cloud`. `visa_oracle` is
+    registered `process_groups=_API` in `router_manifest.py` — it is the
+    `api` process (this file, `main_api.py`) that actually serves
+    `/api/visa-oracle`, and `api` is the always-on group in `fly.toml`
+    (`rag` autostops; the DLQ retry loop a few hundred lines up in
+    `service_initializer.py::initialize_services_light` was moved to `api`
+    for exactly this reason after `rag` autostopping silently starved it for
+    a week — 2026-06-21 incident, see that function's own comment). The
+    monolithic `initialize_services` / `_database_health_check_loop`
+    (`service_initializer.py` ~L573/~L706) that a first read of "follow the
+    existing db-health-check pattern" points at belongs to `main_cloud.py`,
+    which is not one of `fly.toml`'s three processes (`api`/`rag`/`drive`) —
+    code that lives there would never run in production at all. The SHAPE
+    (one `asyncio.create_task`, stored on `app.state`, cancelled in the same
+    lifespan's shutdown) is preserved; the PROCESS it runs in is corrected.
+
+    MULTIPLE `api` MACHINES RUNNING THIS LOOP AT ONCE IS FINE (scar #10,
+    active-active split-brain, considered and dismissed). The DELETE this
+    calls is idempotent — it removes rows matching
+    `expires_at < NOW() AND NOT COALESCE(handoff_triggered, false)`, and a
+    second machine's identical DELETE issued a moment later simply matches
+    zero rows. There is no shared counter, no lease and no leader election
+    to get wrong, unlike a true singleton job. Same bet the GARUDA outbox
+    loop above and the WA outbox scheduler already make for the same
+    process group.
+
+    NEVER RAISES past this function — an unhandled exception here would kill
+    the task silently (nothing awaits it until shutdown) and the purge would
+    go dark behind a green process, which is the exact failure shape this
+    loop exists to avoid reproducing. `_purge_expired_sessions` itself
+    already never raises (logs and returns 0 on any DB error); the `except`
+    below is a second net for anything unexpected in the scheduling code
+    around it, not a claim that the first net has a hole. Deliberately logs
+    only the exception CLASS name here, not `str(exc)` — this loop's own
+    catch is scheduling machinery, not the query path, so there is no
+    argument for carrying more detail into a log line than is needed to see
+    that a tick failed.
+    """
+
+    import random
+
+    from backend.app.routers.visa_oracle import _purge_expired_sessions
+
+    pool = app.state.db_pool
+    initial_delay = random.uniform(
+        _VISA_ORACLE_PURGE_INITIAL_DELAY_MIN_SECONDS,
+        _VISA_ORACLE_PURGE_INITIAL_DELAY_MAX_SECONDS,
+    )
+    logger.info(
+        "✅ visa-oracle session purge scheduler started (first run in %.0fs, "
+        "then ~%.0fs ± %.0fs)",
+        initial_delay,
+        _VISA_ORACLE_PURGE_INTERVAL_SECONDS,
+        _VISA_ORACLE_PURGE_JITTER_SECONDS,
+    )
+    await asyncio.sleep(initial_delay)
+    while True:
+        try:
+            await _purge_expired_sessions(pool, limit=_VISA_ORACLE_PURGE_LIMIT)
+        except asyncio.CancelledError:
+            logger.info("🛑 visa-oracle session purge scheduler cancelled")
+            raise
+        except Exception as exc:
+            logger.warning(
+                "visa-oracle session purge tick failed: %s",
+                type(exc).__name__,
+            )
+        jitter = random.uniform(
+            -_VISA_ORACLE_PURGE_JITTER_SECONDS,
+            _VISA_ORACLE_PURGE_JITTER_SECONDS,
+        )
+        await asyncio.sleep(_VISA_ORACLE_PURGE_INTERVAL_SECONDS + jitter)
+
+
 @asynccontextmanager
 async def lifespan_light(app: FastAPI):
     """
@@ -590,6 +731,7 @@ async def lifespan_light(app: FastAPI):
             )
             app.state.notification_scheduler = None
             app.state._wa_outbox_scheduler_tasks = []
+            app.state._visa_oracle_sessions_purge_task = None
         else:
             try:
                 from backend.app.modules.notifications.scheduler import init_scheduler
@@ -654,6 +796,27 @@ async def lifespan_light(app: FastAPI):
                     "⚠️ GARUDA outbox scheduler NOT started — db_pool unavailable",
                 )
 
+            # visa_oracle_sessions retention purge (migration 317, this PR).
+            # Same wiring shape as the GARUDA outbox block just above: an
+            # own kill switch checked first, then a db_pool guard, task
+            # stored on app.state so shutdown below can cancel it.
+            if not _visa_oracle_sessions_purge_enabled():
+                app.state._visa_oracle_sessions_purge_task = None
+                logger.info(
+                    "visa-oracle session purge scheduler disarmed "
+                    "(VISA_ORACLE_SESSIONS_PURGE_ENABLED=false/0)",
+                )
+            elif getattr(app.state, "db_pool", None) is not None:
+                app.state._visa_oracle_sessions_purge_task = asyncio.create_task(
+                    _run_visa_oracle_sessions_purge_scheduler(app)
+                )
+                logger.info("✅ visa-oracle session purge scheduler spawned")
+            else:
+                app.state._visa_oracle_sessions_purge_task = None
+                logger.warning(
+                    "⚠️ visa-oracle session purge scheduler NOT started — db_pool unavailable",
+                )
+
     init_task = asyncio.create_task(_background_light_init())
     app.state._init_task = init_task
 
@@ -680,6 +843,16 @@ async def lifespan_light(app: FastAPI):
         garuda_task.cancel()
         try:
             await garuda_task
+        except (asyncio.CancelledError, Exception):
+            pass
+
+    # Same order and the same reason as the two tasks above: cancel before
+    # the pool it acquires connections from is closed.
+    purge_task = getattr(app.state, "_visa_oracle_sessions_purge_task", None)
+    if purge_task is not None:
+        purge_task.cancel()
+        try:
+            await purge_task
         except (asyncio.CancelledError, Exception):
             pass
 
