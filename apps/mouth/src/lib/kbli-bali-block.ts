@@ -360,7 +360,64 @@ export function baliBlockedHint(
   codes: ReadonlyArray<{
     baliL4?: { status?: string | null; blocked?: boolean } | null;
   }>,
+  census?: ReadonlyArray<{ status: string; blocked: boolean }>,
 ): string {
+  // Added 2026-09-16 (W-J B1 disclose) — a SEPARATE, additive reading, never
+  // touching the doc comment above (which still describes the no-`census`
+  // path accurately and is owned by another window's in-flight edit).
+  //
+  // `codes` alone answers "how many SERVED pages currently say so" — the
+  // per-code disclosure gate (`discloseBaliL4`) withholds `baliL4` on most
+  // unlocated records, so `codes`'s own population understates the true
+  // count. `census` (`getBaliCensus()`) is the CANONICAL Bali status
+  // population, ungated by per-code disclosure, so the two numbers now
+  // answer different questions and this sentence states both explicitly
+  // instead of silently picking the smaller one (as the /kbli index page did
+  // until now: "14 of 1559" when the working census was already 135).
+  if (census) {
+    const censusBlocked = census.filter((c) => c.blocked);
+    const applied = censusBlocked.filter(
+      (c) => c.status === "CHIUSO_BALI",
+    ).length;
+    const moratorium = censusBlocked.filter((c) =>
+      MORATORIUM_STATUSES.has(c.status),
+    ).length;
+    const other = censusBlocked.length - applied - moratorium;
+    // The served subset: codes whose OWN page currently discloses the block
+    // (a strict subset of `censusBlocked` — the rest are still "PMA status
+    // not yet verified" pending the national tuple or a sourced closure).
+    const shown = codes.filter((c) => c.baliL4?.blocked === true).length;
+
+    const clauses: string[] = [];
+    if (applied > 0) {
+      clauses.push(
+        `${applied} by Bali's own 2026 closure of specific business fields`,
+      );
+    }
+    if (moratorium > 0) {
+      clauses.push(
+        `${moratorium} held under Bali Zero's conservative reading of the 2026 Bali risk-tier request pending verification`,
+      );
+    }
+    if (other > 0) {
+      clauses.push(`${other} for other reasons, such as a national closure`);
+    }
+    const causeList =
+      clauses.length <= 1
+        ? clauses.join("")
+        : clauses.length === 2
+          ? clauses.join(" and ")
+          : `${clauses.slice(0, -1).join(", ")}, and ${clauses[clauses.length - 1]}`;
+
+    return (
+      `${censusBlocked.length} of ${census.length} codes are treated as closed to a foreign-owned company ` +
+      `(PT PMA) in Bali in our working census${causeList ? ` — ${causeList}.` : "."} ` +
+      `${shown} of them state the closure and its cause on the code's own page; the others are marked ` +
+      `"PMA status not yet verified" there until the national record is adjudicated. A working assessment, ` +
+      `not a certified legal determination.`
+    );
+  }
+
   if (codes.length === 0) return "";
 
   const blocked = codes.filter((c) => c.baliL4?.blocked);

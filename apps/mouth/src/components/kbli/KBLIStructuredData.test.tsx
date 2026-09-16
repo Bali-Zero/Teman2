@@ -143,6 +143,37 @@ describe("structured data — whole-verdict PMA gate", () => {
 });
 
 // =============================================================================
+// A Bali APPLIED closure is self-sufficient evidence for the JSON-LD too —
+// Google/AI answers must not read a national "not yet verified" gap as
+// silence about Bali (added 2026-09-16, W-J B1 disclose).
+// =============================================================================
+describe("structured data — a sourced Bali closure on an unverified national record", () => {
+  it("68111 names the Bali closure inside the still-unverified national label", () => {
+    const code = getCode("68111") as KBLICode;
+    expect(code.provenance?.pma.status).toBe("declared_gap");
+    expect(code.baliL4).toMatchObject({ status: "CHIUSO_BALI", blocked: true });
+
+    const article = JSON.stringify(jsonLdOf(code));
+    expect(article).toContain("not yet verified for this KBLI 2025 code");
+    expect(article).toContain(
+      "closed to new PT PMA licensing in Bali (Bali Provincial Government, 2026)",
+    );
+  });
+
+  it("01192 (unlocated, no sourced closure) keeps the plain not-yet-verified label", () => {
+    const code = getCode("01192") as KBLICode;
+    expect(code.provenance?.pma.status).toBe("declared_gap");
+    expect(code.baliL4).toBeUndefined();
+
+    const article = JSON.stringify(jsonLdOf(code));
+    expect(article).toContain(
+      "Foreign-ownership status not yet verified for this KBLI 2025 code —",
+    );
+    expect(article).not.toContain("closed to new PT PMA licensing in Bali");
+  });
+});
+
+// =============================================================================
 // The rendered page translates the risk tier (PR #4776) and the JSON-LD did
 // not, so a block declaring `"inLanguage": "en"` shipped `Risk: Menengah
 // Rendah` into the description, keywords and GovernmentService that search

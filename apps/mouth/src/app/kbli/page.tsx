@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
-import { getAllCodes, getSections } from "@/lib/kbli-data";
+import { getAllCodes, getBaliCensus, getSections } from "@/lib/kbli-data";
 import { baliBlockedHint } from "@/lib/kbli-bali-block";
 import { KBLISearch } from "@/components/kbli/KBLISearch";
 import { KBLISectorBrowser } from "@/components/kbli/KBLISectorBrowser";
@@ -35,8 +35,15 @@ export default async function KBLIHomePage({
   const sections = getSections().filter((s) => s.codeCount > 0);
   const allCodes = getAllCodes();
   const codeCount = allCodes.length.toLocaleString("en-US");
+  // Added 2026-09-16 (W-J B1 disclose): the trust-bar stat now reads the
+  // canonical Bali status census (`getBaliCensus()`), not the served subset
+  // (`allCodes` withholds `baliL4` on most unlocated records) — the served
+  // subset alone used to understate the true population ("~1%"/14 of 1559
+  // vs. the working census of 135, already published on the honest-map
+  // article at /business/the-honest-map-blocked-bali-codes).
+  const baliCensus = getBaliCensus();
   const baliBlockedPct = Math.round(
-    (allCodes.filter((c) => c.baliL4?.blocked).length / allCodes.length) * 100,
+    (baliCensus.filter((c) => c.blocked).length / baliCensus.length) * 100,
   );
 
   return (
@@ -208,7 +215,7 @@ export default async function KBLIHomePage({
             {
               num: `~${baliBlockedPct}%`,
               label: "Blocked in Bali",
-              hint: baliBlockedHint(allCodes),
+              hint: baliBlockedHint(allCodes, baliCensus),
             },
             { num: "AI", label: "Powered by Zantara" },
           ].map((t) => (

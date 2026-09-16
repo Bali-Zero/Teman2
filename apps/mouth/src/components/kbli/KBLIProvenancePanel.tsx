@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import type { KBLIBaliL4, KBLICode, KBLIProvenance } from "@/lib/kbli-types";
 import { baliBlockClause, isMoratoriumBasis } from "@/lib/kbli-bali-block";
+import { isSourcedBaliClosure } from "@/lib/kbli-pma-disclosure";
 
 // =============================================================================
 // TRACK-P — "Sources & Verification" panel
@@ -178,7 +179,15 @@ export function buildRows(kbli: KBLICode, prov: KBLIProvenance): SourceRow[] {
         },
   );
 
-  if (prov.pma.status === "located" && kbli.baliL4) {
+  // Added 2026-09-16 (W-J B1 disclose): a Bali applied closure sourced to a
+  // public press release (`isSourcedBaliClosure`) is self-sufficient evidence
+  // and does not need the national PMA tuple located to be shown here — the
+  // panel's whole point is to say what IS and ISN'T verified, and this row
+  // states its OWN Bali-scoped provenance regardless of the national one.
+  if (
+    (prov.pma.status === "located" || isSourcedBaliClosure(kbli.baliL4)) &&
+    kbli.baliL4
+  ) {
     const m = kbli.baliL4.moratorium;
     const isNonClassifiable = kbli.baliL4.status === "NON_CLASSIFICABILE";
     // Added 2026-09-15 (W-J B1): off Bali's applied PMA closure list —

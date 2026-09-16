@@ -485,7 +485,13 @@ describe("real dataset: the gate binds, and v3 actually differentiates", () => {
     // and vintage; all other 1,505 records must reach the neutral metadata arm.
     // SAETTA-20260915 W-H PR-3a: 55201/55203/79903 moved declared_gap→located
     // (Perpres 49/2021 Lampiran II allocation), 1505→1502.
-    expect(pmaGaps).toBe(1502);
+    // 2026-09-16 (W-J B1 disclose, 1502 -> 1484): 23 of the 39 newly-disclosed
+    // `declared_gap` CHIUSO_BALI codes also pass `isBaliL4BlockVerifiedForBareClaim`
+    // (HIGH confidence, not flagged for review); 5 of those are the hotel rows
+    // whose closure carries a scope qualifier (building area under 6,000 m²),
+    // which a <title> cannot state, so they stay neutral too. The other 18
+    // reach "Closed to PT PMA in Bali (2026)"; the 16 MEDIUM codes stay neutral.
+    expect(pmaGaps).toBe(1484);
     expect(suffixes).toHaveLength(1559);
   });
 
@@ -623,5 +629,42 @@ describe("inherited PP 28 content withdraws the licence claim, not the risk", ()
     // Innocence at dataset scale: SOME code still states a licence, or the
     // gate is not a gate but a blanket.
     expect(codes.some((c) => verifiedLicenseType(c) !== null)).toBe(true);
+  });
+});
+
+// =============================================================================
+// A Bali APPLIED closure is self-sufficient evidence for the indexed <title>
+// too — but only at the same bare-claim bar every other Bali title fact
+// already clears (HIGH confidence, not flagged for review). Added 2026-09-16,
+// W-J B1 disclose.
+// =============================================================================
+describe("kbliMetaTitleSuffix — a sourced Bali closure on an unverified national record", () => {
+  it("68111 (HIGH confidence, real estate rental) ends the title with 'Closed to PT PMA in Bali (2026)'", () => {
+    const code = getAllCodes().find((c) => c.code === "68111")!;
+    expect(code.provenance?.pma.status).toBe("declared_gap");
+    expect(code.baliL4?.confidence).toBe("HIGH");
+    expect(kbliMetaTitleSuffix(code)).toBe("Closed to PT PMA in Bali (2026)");
+  });
+
+  it("47211 (MEDIUM confidence — merges several KBLI-2020 activities) stays on the neutral suffix", () => {
+    const code = getAllCodes().find((c) => c.code === "47211")!;
+    expect(code.provenance?.pma.status).toBe("declared_gap");
+    expect(code.baliL4?.status).toBe("CHIUSO_BALI");
+    expect(code.baliL4?.confidence).toBe("MEDIUM");
+    expect(kbliMetaTitleSuffix(code)).toBe(
+      "PMA Eligibility Requires Verification",
+    );
+  });
+
+  it("55101 (HIGH, but the closure is scoped to buildings under 6,000 m²) stays on the neutral suffix", () => {
+    const code = getAllCodes().find((c) => c.code === "55101")!;
+    expect(code.provenance?.pma.status).toBe("declared_gap");
+    expect(code.baliL4?.confidence).toBe("HIGH");
+    expect(code.baliL4?.closure?.scopeQualifier).toBe(
+      "building area under 6,000 m²",
+    );
+    expect(kbliMetaTitleSuffix(code)).toBe(
+      "PMA Eligibility Requires Verification",
+    );
   });
 });

@@ -7,6 +7,7 @@ import {
 import {
   formatPmaOwnership,
   hasPublishablePmaCap,
+  isSourcedBaliClosure,
 } from "@/lib/kbli-pma-disclosure";
 import { riskLabelEn } from "@/lib/kbli-derive";
 import { pmaCapShape } from "@/lib/kbli-pma-shape";
@@ -99,9 +100,18 @@ export function KBLICodeJsonLd({
       : code.pma.status === "restricted"
         ? "TERBATAS"
         : "TERTUTUP";
+  // Added 2026-09-16 (W-J B1 disclose): a Bali applied closure sourced to a
+  // public press release is self-sufficient evidence — Google/AI answers
+  // must not read a national "not yet verified" gap as silence about Bali.
   const pmaLabel = `${
     !pmaVerdictVerified
-      ? "Foreign-ownership status not yet verified for this KBLI 2025 code"
+      ? isSourcedBaliClosure(code.baliL4)
+        ? `Foreign-ownership status not yet verified for this KBLI 2025 code nationally — closed to new PT PMA licensing in Bali${
+            code.baliL4?.closure?.scopeQualifier
+              ? ` for ${code.baliL4.closure.scopeQualifier}`
+              : ""
+          } (Bali Provincial Government, 2026)`
+        : "Foreign-ownership status not yet verified for this KBLI 2025 code"
       : `${ownershipLabel} (${statusToken})${
           code.pma.status === "open" ? baliNat : ""
         }`

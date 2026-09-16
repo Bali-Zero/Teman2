@@ -2,6 +2,7 @@ import { ImageResponse } from "next/og";
 import type { NextRequest } from "next/server";
 import { getCode } from "@/lib/kbli-data";
 import { isPmaVerdictVerified } from "@/lib/kbli-provenance";
+import { isSourcedBaliClosure } from "@/lib/kbli-pma-disclosure";
 import {
   getSectionVisual,
   codeFingerprint,
@@ -36,7 +37,15 @@ function statusChip(kbli: NonNullable<ReturnType<typeof getCode>>): {
   label: string;
   color: string;
 } {
-  if (!isPmaVerdictVerified(kbli)) {
+  const verified = isPmaVerdictVerified(kbli);
+  // Added 2026-09-16 (W-J B1 disclose): a Bali applied closure sourced to a
+  // public press release is self-sufficient evidence for the SOCIAL PREVIEW
+  // too — checked before the neutral "verify" fallback below, which would
+  // otherwise say nothing about a closure the code's own page now discloses.
+  if (!verified && isSourcedBaliClosure(kbli.baliL4)) {
+    return { label: "BALI: CLOSED TO PMA", color: "#e0645a" };
+  }
+  if (!verified) {
     return { label: "PMA: VERIFY", color: "#8f96a3" };
   }
   if (kbli.baliL4?.blocked) {

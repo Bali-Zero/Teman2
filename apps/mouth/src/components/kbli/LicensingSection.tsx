@@ -20,7 +20,10 @@ import {
   isPmaVerdictVerified,
   licensingContentInheritedFrom,
 } from "@/lib/kbli-provenance";
-import { formatPmaOwnership } from "@/lib/kbli-pma-disclosure";
+import {
+  formatPmaOwnership,
+  isSourcedBaliClosure,
+} from "@/lib/kbli-pma-disclosure";
 import {
   baliBlockClause,
   shouldShowReason,
@@ -995,6 +998,38 @@ export function LicensingSection({ kbli, gold }: LicensingSectionProps) {
             source vintage for the current whole-code PMA value. Treat the
             licensing procedure below as business-licensing guidance, not proof
             that a PT PMA may register this activity; confirm at oss.go.id.
+          </p>
+        </div>
+      )}
+
+      {/* Added 2026-09-16 (W-J B1 disclose): a Bali applied closure sourced
+          to a public press release is self-sufficient evidence, disclosed
+          even though the NATIONAL PMA verdict above is not yet verified.
+          Does NOT reuse the verified block's "valid for a foreign-owned
+          company outside Bali" sentence below — that would assert an
+          unverified national permission this record cannot back. */}
+      {!pmaVerified && isSourcedBaliClosure(kbli.baliL4) && (
+        <div
+          className="rounded-xl border px-5 py-4"
+          style={{
+            background: "rgba(232, 113, 108, 0.06)",
+            borderColor: "rgba(232, 113, 108, 0.25)",
+          }}
+        >
+          <div className="mb-1.5 flex items-center gap-2">
+            <span aria-hidden="true">🏝️</span>
+            <span
+              className="text-xs font-bold uppercase tracking-[0.12em]"
+              style={{ color: "var(--kbli-pma-closed)" }}
+            >
+              Bali — closed to new PMA licensing
+            </span>
+          </div>
+          <p className="text-sm leading-relaxed text-[var(--foreground-secondary)]">
+            In <strong>Bali</strong>, this activity is currently{" "}
+            {baliBlockClause(kbli.baliL4?.status)}. The licensing path below is
+            the national procedure; whether a PT PMA may use it outside Bali is
+            not yet verified — see the note above.
           </p>
         </div>
       )}

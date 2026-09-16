@@ -7,7 +7,10 @@ import {
   hasGoldContent,
   mapPmaStatus,
 } from "./kbli-data.server";
-import { hasPublishablePmaCap } from "./kbli-pma-disclosure";
+import {
+  hasPublishablePmaCap,
+  isSourcedBaliClosure,
+} from "./kbli-pma-disclosure";
 
 /**
  * Mandate 12 (2026-08-09, PENDING-ARMS.md "sektor_id is not a malformed
@@ -61,7 +64,15 @@ describe("kbli-data.server — section derivation (Mandate 12 fix)", () => {
       (item) => item.pma.verificationStatus === "declared_gap",
     )) {
       expect(code.intel, `${code.code} intel`).toBeUndefined();
-      expect(code.baliL4, `${code.code} Bali L4`).toBeUndefined();
+      // Added 2026-09-16 (W-J B1 disclose): a Bali APPLIED closure sourced to
+      // a public press release is self-sufficient evidence and discloses
+      // even on a `declared_gap` national record — the ONE named exception
+      // to "no baliL4 on a gap", scoped exactly to `isSourcedBaliClosure`.
+      if (isSourcedBaliClosure(code.baliL4)) {
+        expect(code.baliL4?.status, `${code.code} Bali L4`).toBe("CHIUSO_BALI");
+      } else {
+        expect(code.baliL4, `${code.code} Bali L4`).toBeUndefined();
+      }
     }
     expect(located?.intel).toBeDefined();
     expect(located?.baliL4).toBeDefined();

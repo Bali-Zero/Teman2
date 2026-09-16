@@ -24,6 +24,19 @@ const ALLOWED_BALI_STATUSES = new Set([
   "TERTUTUP",
 ]);
 
+/**
+ * Is `s` one of the L4 Bali statuses this disclosure layer recognizes?
+ *
+ * Exported so `kbli-data.ts`'s `getBaliCensus()` reuses the SAME allow-list
+ * instead of re-declaring it — a second list drifts the moment one status is
+ * added here and not there. `test_kbli_pma_disclosure_ts_sync.py` parses the
+ * `ALLOWED_BALI_STATUSES` declaration above by regex, so its shape (a single
+ * `const ALLOWED_BALI_STATUSES = new Set([...])` literal) must not change.
+ */
+export function isAllowedBaliStatus(s: string): boolean {
+  return ALLOWED_BALI_STATUSES.has(s);
+}
+
 function publicText(value: unknown): string | null {
   return typeof value === "string" && value.trim() ? value.trim() : null;
 }
@@ -195,15 +208,55 @@ export function formatPmaOwnership(
 }
 
 /**
- * Public Bali disclosure. It is subordinate to the complete national PMA
- * tuple and requires an allow-listed status plus actual source booleans.
+ * A Bali APPLIED closure is self-sufficient evidence, independent of the
+ * NATIONAL PMA tuple.
+ *
+ * Every other Bali status this file discloses (ATTENZIONE_FASCIA_BALI, an
+ * unresolved risk tier, a proposed-not-enacted closure, …) is a READING of
+ * some other fact — the national verdict, a moratorium letter, a risk class —
+ * so withholding it until that fact is located is the right, fail-closed
+ * default. `CHIUSO_BALI` with `blocked: true` and a public `closure.url` is
+ * different in kind: it is Bali's OWN provincial government, in its own named
+ * instrument (`closure.url`, always a public press release), stating it
+ * closed OSS to new PMA licensing for THIS business field. That fact does not
+ * become less true because the unrelated NATIONAL open/restricted/closed
+ * tuple has no located locator+vintage — the two are different sovereigns
+ * making different statements. A record failing this check (wrong status,
+ * `blocked` false, or no verifiable URL) still requires the national tuple,
+ * same as before: this is an ADDITIONAL sufficient condition, never a looser
+ * replacement for it.
+ */
+export function isSourcedBaliClosure(
+  l4:
+    | {
+        status?: string | null;
+        blocked?: boolean | null;
+        closure?: { url?: string | null } | null;
+      }
+    | null
+    | undefined,
+): boolean {
+  return (
+    l4?.status === "CHIUSO_BALI" &&
+    l4?.blocked === true &&
+    typeof l4?.closure?.url === "string" &&
+    l4.closure.url !== ""
+  );
+}
+
+/**
+ * Public Bali disclosure. Ordinarily subordinate to the complete national PMA
+ * tuple (an allow-listed status plus actual source booleans) — EXCEPT for a
+ * sourced applied closure (`isSourcedBaliClosure`, checked below against the
+ * ALREADY-built, already-`publicUrl`-filtered disclosure), which discloses on
+ * its own provincial evidence even when the national verdict is not located.
  */
 export function discloseBaliL4(
   raw: KBLIRawCode,
   pmaVerdictLocated: boolean,
 ): KBLIBaliL4 | undefined {
   const l4 = raw.l4_bali;
-  if (!pmaVerdictLocated || !l4) return undefined;
+  if (!l4) return undefined;
   if (
     typeof l4.status !== "string" ||
     !ALLOWED_BALI_STATUSES.has(l4.status) ||
@@ -250,7 +303,7 @@ export function discloseBaliL4(
         }
       : undefined;
 
-  return {
+  const disclosed: KBLIBaliL4 = {
     status: l4.status,
     reason: humanizeInternalEnums(publicText(l4.reason) ?? ""),
     confidence: confidence ?? "MEDIUM",
@@ -260,4 +313,16 @@ export function discloseBaliL4(
     moratorium,
     closure,
   };
+
+  // The national tuple is irrelevant to a provincial closure (see
+  // `isSourcedBaliClosure`'s doc comment) — but every OTHER Bali status on an
+  // unlocated national record stays hidden exactly as before. Checked against
+  // `disclosed`, not `raw`: `closure.url` above already went through
+  // `publicUrl`, so a non-http(s) URL (or a missing one) fails this check and
+  // the record is withheld, same as today.
+  if (!pmaVerdictLocated && !isSourcedBaliClosure(disclosed)) {
+    return undefined;
+  }
+
+  return disclosed;
 }

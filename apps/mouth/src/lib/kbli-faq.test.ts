@@ -537,3 +537,30 @@ describe("restrictedPmaAnswer — the trailing absolute only holds when there is
     );
   });
 });
+
+// =============================================================================
+// A Bali APPLIED closure is self-sufficient evidence — the FAQ must answer
+// "Not in Bali" without waiting on the national tuple, and must never say
+// the national side is open (added 2026-09-16, W-J B1 disclose).
+// =============================================================================
+describe("buildKbliFaq — a sourced Bali closure answers even when the national verdict is not located", () => {
+  it("68111 (real estate rental, declared_gap nationally) starts 'Not in Bali.' and never claims the national side is open", () => {
+    const code = getCode("68111") as KBLICode;
+    expect(code.provenance?.pma.status).toBe("declared_gap");
+    expect(code.baliL4).toMatchObject({ status: "CHIUSO_BALI", blocked: true });
+
+    const answer = buildKbliFaq(code)[0].answer;
+    expect(answer).toMatch(/^Not in Bali\./);
+    expect(answer).not.toContain("Outside Bali it is open");
+    expect(answer).toContain("not yet verified");
+  });
+
+  it("a genuinely unlocated, non-sourced-closure code keeps today's generic unverified answer", () => {
+    const code = getCode("01192") as KBLICode;
+    expect(code.provenance?.pma.status).toBe("declared_gap");
+    expect(code.baliL4).toBeUndefined();
+
+    const answer = buildKbliFaq(code)[0].answer;
+    expect(answer).not.toMatch(/^Not in Bali\./);
+  });
+});
