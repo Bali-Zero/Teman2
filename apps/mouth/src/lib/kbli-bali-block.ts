@@ -330,14 +330,13 @@ export function narratesUnverifiedRoute(
  *
  * Two things were wrong with it, both measured on the served dataset:
  *
- *  - **Cause.** Of 518 blocked codes, 420 are moratorium-based
- *    (BLOCCATO_CLASSE_RISCHIO 372 + CHIUSO_MORATORIA_BALI 48) and **98 are
- *    not** — 68 TERTUTUP (an ownership restriction on the activity itself),
- *    17 NON_CLASSIFICABILE (we hold no licensing rows, so no Bali position can
- *    be stated), 7 CHIUSO_PMA_NO_BESAR (genuinely allocated to Koperasi/UMKM
- *    by Perpres 49/2021 Lampiran II), 2 closed by their sector's own regulator,
- *    2 scope-dependent, 2 by Bali's announced sectoral closures. That 98 is the
- *    same figure this module's own comment already names.
+ *  - **Cause.** Of 1,559 codes, 135 are blocked: 72 TERTUTUP (an ownership
+ *    restriction on the activity itself), 40 CHIUSO_BALI (Pemprov closure),
+ *    14 held for further adjudication, 7 CHIUSO_PMA_NO_BESAR (genuinely
+ *    allocated to Koperasi/UMKM by Perpres 49/2021 Lampiran II), 2 closed by
+ *    their sector's own regulator. The remaining 383 codes show "tier-only"
+ *    (unverified or insufficient licensing data — see "verify on OSS"). This
+ *    breakdown is derived from #6597, 2026-09-15.
  *
  *    Was 407/111 with 39 CHIUSO_PMA_NO_BESAR until 2026-08-03. The old figure
  *    counted an INFERENCE, not a reservation: 32 of the 39 were closed because
