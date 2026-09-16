@@ -87,7 +87,10 @@ export function KBLICard({ code, showTransition = false }: KBLICardProps) {
         {code.baliL4?.status && (
           <BaliStatusBadge
             status={code.baliL4.status}
+            confidence={code.baliL4.confidence}
+            needsReview={code.baliL4.needsReview}
             pmaStatus={pmaVerified ? code.pma.status : "unknown"}
+            scope={code.baliL4.closure?.scopeQualifier}
             size="sm"
           />
         )}

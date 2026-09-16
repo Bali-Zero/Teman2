@@ -33,6 +33,14 @@ interface BaliStatusBadgeProps {
    * in Bali, no matter the Besar risk tier the #1814 pass scored.
    */
   pmaStatus?: "open" | "restricted" | "closed" | "unknown";
+  /**
+   * A scoped closure's own qualifier (e.g. "building area under 6,000 m²",
+   * the hotel rows) — review r2 M2. Renders as a `· ${scope} only` marker,
+   * same visual treatment as the confidence/needs-review markers, so a
+   * scoped closure never reads as an unqualified whole-code bar in the
+   * listing/panel/detail badge.
+   */
+  scope?: string | null;
   size?: "sm" | "md";
 }
 
@@ -53,6 +61,7 @@ export function BaliStatusBadge({
   confidence,
   needsReview,
   pmaStatus,
+  scope,
   size = "md",
 }: BaliStatusBadgeProps) {
   let c = config[status];
@@ -101,6 +110,7 @@ export function BaliStatusBadge({
         {confidence && confidence !== "HIGH" && (
           <span className="opacity-60">· {confidence.toLowerCase()} conf.</span>
         )}
+        {scope && <span className="opacity-70">· {scope} only</span>}
       </span>
       {reason && (
         <span className="text-xs leading-snug text-[var(--kbli-text-muted)]">

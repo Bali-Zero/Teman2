@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "hashAlgorithm": "sha256-stable-json-v1",
-  "reviewedAt": "2026-09-15",
-  "sourceDatasetSha256": "546fe2e34716e10de7a5b78270914e898b1c1b5b96018b06e33bbe3501b9764e",
+  "reviewedAt": "2026-09-17",
+  "sourceDatasetSha256": "b30b1759dadf0b6cbe591407b10641ade3bcb7a374d1e51ef30b86827c350a7b",
   "canonicalIntel": {
     "21021": {
       "pmaFingerprint": "c818db6425cc3befe231689f1c203d44f1dce61bf753a919abdebc01e42068fa",
@@ -31,10 +31,6 @@
     "41020": {
       "pmaFingerprint": "2823a4fdaaa4dfac903d71c26d9e54152bcaa91bffc9a2a987b73acfb89a5c3d",
       "contentSha256": "f7e6b0cc0c5b8ef405c0562ea85427950516fcec6fba19b1a1fbfdda1b610fce"
-    },
-    "47221": {
-      "pmaFingerprint": "d945185f9c671e54ae9489fd4a093d8ec2412e16b4fd2ce026ed1c9882fbf706",
-      "contentSha256": "82d381aa7325b7fb21a7b1ec8a445dd8146b5e31e5c7ec79f05fbe07bfe06669"
     },
     "50113": {
       "pmaFingerprint": "7730749836800ba8226cfa4c3d6316fa028d4ac47ccb97dd8ad6e29d117be512",

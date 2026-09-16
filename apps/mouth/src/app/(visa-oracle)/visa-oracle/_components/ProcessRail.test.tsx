@@ -689,10 +689,11 @@ describe("a stage started but not finished (council round 8)", () => {
   function offshoreInvest() {
     let state = initialFlowState();
     state = flowReducer(state, { type: "ADVANCE" });
+    // D19 (2026-09-16): `overstay_days` is not one of these any more —
+    // offshore never asks it — so it is not answered here either.
     const pairs: Array<[string, string]> = [
       ["in_indonesia", "no"],
       ["holds_stay_permit", "no"],
-      ["overstay_days", "0"],
       ["nationalities", "IT"],
       ["birth_date", "1990-02-03"],
       ["category", "invest"],
@@ -707,13 +708,16 @@ describe("a stage started but not finished (council round 8)", () => {
     return state;
   }
 
-  it("does not call a stage with three of its four answers 'not started'", () => {
+  it("does not call a stage with two of its three answers 'not started'", () => {
     const state = offshoreInvest();
     const current = state.history[state.history.length - 1];
     const model = m(current, state.facts);
     const location = model.phases.find((phase) => phase.key === "location");
-    expect(location?.answered).toBe(3);
-    expect(location?.total).toBe(4);
+    // D19 (2026-09-16): `overstay_days` no longer counts here — offshore
+    // location facts are `in_indonesia` + `holds_stay_permit`, with
+    // `wants_onshore_conversion` (offshore invest branch) still pending.
+    expect(location?.answered).toBe(2);
+    expect(location?.total).toBe(3);
     expect(location?.status).toBe("partial");
 
     render(<ProcessProgress language="en" model={model} variant="desktop" />);
@@ -731,7 +735,9 @@ describe("a stage started but not finished (council round 8)", () => {
     const current = state.history[state.history.length - 1];
     expect(current.kind).toBe("question");
     const answeredFacts = Object.keys(state.facts).length;
-    expect(answeredFacts).toBe(6);
+    // D19 (2026-09-16): one fewer fact than before — `overstay_days` is not
+    // among them (offshore never asks it).
+    expect(answeredFacts).toBe(5);
     expect(m(current, state.facts).answeredQuestions).toBe(answeredFacts);
   });
 });
@@ -764,7 +770,6 @@ describe("council round 10", () => {
   const TOURIST = {
     in_indonesia: "no",
     holds_stay_permit: "no",
-    overstay_days: "0",
     nationalities: "IT",
     birth_date: "1985-04-12",
     category: "tourism",
@@ -774,12 +779,13 @@ describe("council round 10", () => {
   };
 
   it("a purpose answered 'unsure' shows no branch fan that calls eleven branches open", () => {
-    // Walk to the purpose question by hand: `replay` would answer it.
+    // Walk to the purpose question by hand: `replay` would answer it. D19
+    // (2026-09-16): `overstay_days` is not one of these any more — offshore
+    // never asks it — so it is not answered here either.
     let state = flowReducer(initialFlowState("en"), { type: "ADVANCE" });
     for (const id of [
       "in_indonesia",
       "holds_stay_permit",
-      "overstay_days",
       "nationalities",
       "birth_date",
     ] as const) {

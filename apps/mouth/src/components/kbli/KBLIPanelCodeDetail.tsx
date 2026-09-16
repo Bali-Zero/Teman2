@@ -62,9 +62,12 @@ export function KBLIPanelCodeDetail({
         {detail.bali.status && (
           <BaliStatusBadge
             status={detail.bali.status}
+            confidence={detail.bali.confidence}
+            needsReview={detail.bali.needsReview}
             pmaStatus={
               detail.pma.verdictVerified ? detail.pma.status : "unknown"
             }
+            scope={detail.bali.scopeQualifier}
             size="sm"
           />
         )}

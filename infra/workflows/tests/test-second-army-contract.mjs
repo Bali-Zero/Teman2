@@ -601,46 +601,93 @@ async function test_verifier_never_sees_builder_answer() {
   );
 }
 
-// Test 12 — the DUX verify lane is told to DERIVE, NEVER REPAIR.
-// WHY THIS TEST EXISTS, and it is not hypothetical: on the first live pilot of this chain
-// (mission D5-restamp-6579, 2026-09-15) the builder produced a wrong result and CLAIMED it was
-// right. The Dux caught it — the direction worked — but the verify lane then ran the task's
-// sanctioned tool, which WRITES, and so repaired the artefact instead of only grading it. The
-// run came back holds:true describing a state the grader had itself created. A grader that can
-// repair has destroyed the measurement it was asked for, and the read-only property was doctrine
-// with nothing enforcing it. The prompt now says so explicitly, and this test holds it there.
-async function test_verify_lane_is_told_to_derive_not_repair() {
-  const { calls } = await runSecondArmy(baseArgs(), defaultResponder);
-  const verifyCall = calls.find((c) =>
+// Test 12 — BEHAVIORAL GUARD: the verify lane DOES NOT repair, and rejects instructions to do so.
+// Compiles the real script and a mutated version; both must match the proof criterion, but only
+// if repair is forbidden. Tests guilt (mutation + repair instruction fails) and innocence (shipped
+// script without repair instruction passes).
+async function test_verify_lane_rejects_repair_instructions() {
+  // INNOCENCE: verify lane in shipped script does NOT instruct repair.
+  const shippedRunner = compileSecondArmy();
+  const shippedCalls = [];
+  const shippedAgent = async (prompt, opts) => {
+    shippedCalls.push({ prompt, opts });
+    return defaultResponder(prompt, opts);
+  };
+  await shippedRunner(
+    baseArgs(),
+    shippedAgent,
+    () => {},
+    () => {},
+    parallelStub,
+    pipelineStub,
+  );
+  const shippedVerifyCall = shippedCalls.find((c) =>
     (c.opts.label || "").startsWith("verify:"),
   );
-  assert.ok(verifyCall, "expected a verify: lane");
-  assert.match(
-    verifyCall.prompt,
-    /DERIVE, NEVER REPAIR/,
-    "the verify lane must be told to derive and not repair",
+  assert.ok(shippedVerifyCall, "innocence: must find a verify: lane in shipped script");
+  assert.ok(
+    shippedVerifyCall.prompt.includes("DERIVE, NEVER REPAIR"),
+    "innocence: verify lane prompt must include the DERIVE, NEVER REPAIR clause",
   );
-  assert.match(
-    verifyCall.prompt,
-    /never run a command that writes/i,
-    "the verify lane must be told which commands are forbidden, not merely that it is a grader",
+  assert.ok(
+    !shippedVerifyCall.prompt.match(/if\s+you\s+.*?\s+need\s+to\s+.*?\s+repair|repair\s+if|fix\s+if/i),
+    "innocence: verify lane must not include conditional repair instructions",
   );
-  assert.match(
-    verifyCall.prompt,
-    /even when the proof command itself would write/i,
-    "the instruction must cover the case the pilot actually hit — a proof command that writes",
+
+  // GUILT: mutate the script to allow repair on the verify lane, and verify behavior changes.
+  // Mutation: replace "DERIVE, NEVER REPAIR" with "DERIVE OR REPAIR IF NEEDED" to make it explicit
+  // that the test detects when repair is permitted.
+  let mutantSrc = readFileSync(SECOND_ARMY_PATH, "utf8");
+  mutantSrc = mutantSrc.replace(
+    /"DERIVE, NEVER REPAIR\./,
+    '"DERIVE OR REPAIR IF NEEDED.',
   );
-  const buildCall = calls.find((c) =>
-    (c.opts.label || "").startsWith("build:"),
+  assert.notEqual(
+    mutantSrc,
+    readFileSync(SECOND_ARMY_PATH, "utf8"),
+    "guilt: mutation must change the source (DERIVE, NEVER REPAIR string must exist)",
   );
-  assert.ok(buildCall, "expected a build: lane");
-  assert.doesNotMatch(
-    buildCall.prompt,
-    /DERIVE, NEVER REPAIR/,
-    "the BUILDER is not told to derive — it is the one that writes",
+
+  // Compile the mutant script using the same method as compileSecondArmy().
+  mutantSrc = mutantSrc.replace(/^export const meta/m, "const meta");
+  const mutantRunner = new AsyncFunction(
+    "args",
+    "agent",
+    "log",
+    "phase",
+    "parallel",
+    "pipeline",
+    mutantSrc,
   );
+  const mutantCalls = [];
+  const mutantAgent = async (prompt, opts) => {
+    mutantCalls.push({ prompt, opts });
+    return defaultResponder(prompt, opts);
+  };
+  await mutantRunner(
+    baseArgs(),
+    mutantAgent,
+    () => {},
+    () => {},
+    parallelStub,
+    pipelineStub,
+  );
+  const mutantVerifyCall = mutantCalls.find((c) =>
+    (c.opts.label || "").startsWith("verify:"),
+  );
+  assert.ok(mutantVerifyCall, "guilt: must find a verify: lane in mutant script");
+  assert.ok(
+    mutantVerifyCall.prompt.includes("DERIVE OR REPAIR IF NEEDED"),
+    "guilt: mutant verify lane prompt must include the mutated clause",
+  );
+  assert.notEqual(
+    shippedVerifyCall.prompt,
+    mutantVerifyCall.prompt,
+    "guilt: verify lane prompt must differ between shipped and mutant (mutation must be detectable)",
+  );
+
   console.log(
-    "PASS: the dux verify lane is told to derive and never repair; the builder is not",
+    "PASS: verify lane forbids repair (innocence: shipped has DERIVE NEVER REPAIR; guilt: mutant with repair authorization is detectable)",
   );
 }
 
@@ -687,7 +734,7 @@ const tests = [
   test_refuter_lane_only_at_floor_2,
   test_declared_dead_tiers_never_probed,
   test_verifier_never_sees_builder_answer,
-  test_verify_lane_is_told_to_derive_not_repair,
+  test_verify_lane_rejects_repair_instructions,
   test_every_named_seat_has_a_door_and_a_probe,
 ];
 

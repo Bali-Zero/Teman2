@@ -1,0 +1,31 @@
+{
+  "code": "50112",
+  "adjudicated": "SAETTA-20260916 R1 (Dux Opus 5, M5), W-H PR-3e — source read on disk 2026-09-16: ~/nuzantara-vault/perpres/161565__Perpres Nomor 49 Tahun 2021 - Lampiran III.pdf",
+  "facts_basis": {
+    "source": "Perpres 49/2021 Lampiran III (Bidang Usaha dengan Persyaratan Tertentu), row 11: 'Angkutan laut dalam negeri perintis untuk penumpang' — KBLI 2020 50114 — 'Modal asing maksimal 49%'",
+    "canonical_verdict": "50112 Angkutan Laut Dalam Negeri Perintis untuk Penumpang — TERBATAS, pma_max_asing 49, pma_cap_verified True (BPS 2020 ancestor 50114)",
+    "why": "pma_kondisi 'Hanya PMDN (100% domestik)' contradicts the record's own 49% foreign cap and the annex row it cites: the live page read 'foreign ownership is capped at 49%. Condition: Hanya PMDN (100% domestik)' — two incompatible answers for a foreign investor on one page. The annex condition is the 49% foreign-capital ceiling itself. pma_nota named goods transport ('barang') on a passenger code whose own title and BPS ancestor (50114) are pioneer PASSENGER transport — copy residue from the neighbouring goods row."
+  },
+  "expect": {
+    "pma_status": "TERBATAS",
+    "pma_max_asing": 49,
+    "pma_cap_verified": true,
+    "pma_official_basis_contains": "Modal Asing Maksimal 49%"
+  },
+  "fields": {
+    "pma_kondisi": {
+      "old": "Hanya PMDN (100% domestik)",
+      "new": "Modal asing maksimal 49%"
+    },
+    "pma_nota": {
+      "old": "Angkutan laut dalam negeri barang",
+      "new": "Angkutan laut dalam negeri perintis untuk penumpang — Perpres 49/2021 Lampiran III no. 11 (KBLI 2020 50114)"
+    }
+  },
+  "untouched_fields": [
+    "pma_status",
+    "pma_max_asing",
+    "pma_cap_verified",
+    "pma_official_basis"
+  ]
+}

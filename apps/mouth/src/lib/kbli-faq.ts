@@ -9,7 +9,10 @@ import {
   shouldShowReason,
 } from "@/lib/kbli-bali-block";
 import { pmaCapShape } from "@/lib/kbli-pma-shape";
-import { formatPmaOwnership } from "@/lib/kbli-pma-disclosure";
+import {
+  formatPmaOwnership,
+  isSourcedBaliClosure,
+} from "@/lib/kbli-pma-disclosure";
 import { riskLabelEn } from "@/lib/kbli-derive";
 import { pmaSourceNoteFaq } from "@/lib/kbli-pma-source";
 
@@ -197,13 +200,47 @@ export function buildKbliFaq(code: KBLICode): KbliFaqEntry[] {
       ? `${code.perpresSlice.length} carve-outs`
       : "one carve-out";
 
+  // Added 2026-09-16 (W-J B1 disclose): a Bali applied closure sourced to a
+  // public press release is self-sufficient evidence — "Not in Bali" answers
+  // the question without waiting on the national tuple, and never claims the
+  // national side is open (that would be "Outside Bali it is open…", which
+  // this branch must never say).
+  const baliSourcedClosure = isSourcedBaliClosure(code.baliL4);
+  // Review F1: the LEAD sentence must carry the closure's own qualifier —
+  // scope (the hotel rows, "building area under 6,000 m²") or the
+  // conservative-reading caveat (16 MEDIUM codes, e.g. 47211) — because a
+  // search snippet truncates to the first sentence; burying the caveat later
+  // in the answer is the same defect as never stating it.
+  const baliClosureScope = code.baliL4?.closure?.scopeQualifier;
+  const baliClosureConfident =
+    code.baliL4?.confidence === "HIGH" && code.baliL4?.needsReview !== true;
+  // Review r2 M1: the FIRST sentence — the part a search snippet actually
+  // shows — must carry BOTH halves of the verdict, not just the Bali one.
+  // "Not in Bali." alone implies "yes elsewhere"; scope wins over the
+  // confidence caveat when both apply, matching `baliClosureQualifier`'s own
+  // precedence.
+  const baliClosureLead = baliClosureScope
+    ? `In Bali, no for ${baliClosureScope}; elsewhere in Indonesia, not yet verified.`
+    : baliClosureConfident
+      ? "In Bali, no; elsewhere in Indonesia, not yet verified."
+      : "Treated as closed in Bali (conservative reading); elsewhere in Indonesia, not yet verified.";
+
   const pmaAnswer = !pmaVerdictVerified
-    ? // A registered, still-matching review notice (kbli-pma-review.ts) names
-      // the SPECIFIC reason for the 12 no-Besar-row hold codes
-      // (SAETTA-20260915/W-H PR-5) instead of this generic sentence every
-      // other unverified code falls back to.
-      (code.pmaReviewNotice ??
-      `Not yet verified. The canonical record carries a current PMA label for KBLI ${code.code} (${code.titleId}), but no adjudicated per-code official basis and source vintage verify that whole-code verdict. Confirm the current treatment at oss.go.id before planning a PT PMA.`)
+    ? baliSourcedClosure
+      ? `${baliClosureLead} KBLI ${code.code} (${code.titleId}): ${
+          shouldShowReason(code.baliL4?.status, code.baliL4?.reason)
+            ? (code.baliL4?.reason ?? "").replace(/\.\s*$/, "")
+            : `in Bali this activity is ${baliBlockClause(code.baliL4?.status)}`
+        }. ${
+          code.pmaReviewNotice ??
+          "Confirm the current national treatment at oss.go.id before planning a PT PMA."
+        }`
+      : // A registered, still-matching review notice (kbli-pma-review.ts) names
+        // the SPECIFIC reason for the 12 no-Besar-row hold codes
+        // (SAETTA-20260915/W-H PR-5) instead of this generic sentence every
+        // other unverified code falls back to.
+        (code.pmaReviewNotice ??
+        `Not yet verified. The canonical record carries a current PMA label for KBLI ${code.code} (${code.titleId}), but no adjudicated per-code official basis and source vintage verify that whole-code verdict. Confirm the current treatment at oss.go.id before planning a PT PMA.`)
     : code.pma.status === "open"
       ? nationallyClosed
         ? `No — and not only in Bali. KBLI ${code.code} (${code.titleId}) is ${baliBlockClause(code.baliL4?.status)}, and that closure applies everywhere in Indonesia, so registering the activity in another province does not change the answer.${
@@ -361,10 +398,18 @@ export function buildKbliFaq(code: KBLICode): KbliFaqEntry[] {
       ? ` (${code.titleEn})`
       : "";
 
+  // Review r2 m1: on the sourced-Bali-closure/unverified-national branch,
+  // `pmaSourceNote` (a "no adjudicated per-code official basis" caveat)
+  // reads as a disclaimer stacked on top of a Bali closure that is already
+  // self-sufficient evidence — appending it there implied doubt about the
+  // Bali verdict itself. Every other branch is unchanged.
+  const pmaSourceNoteForAnswer =
+    baliSourcedClosure && !pmaVerdictVerified ? "" : pmaSourceNote;
+
   const entries: KbliFaqEntry[] = [
     {
       question: `Can foreigners operate a ${code.titleEn.toLowerCase()} business in Indonesia?`,
-      answer: `${pmaAnswer}${perpresSliceQualifier}${pmaSourceNote}`,
+      answer: `${pmaAnswer}${perpresSliceQualifier}${pmaSourceNoteForAnswer}`,
     },
     {
       question: `What license is required for KBLI ${code.code}?`,

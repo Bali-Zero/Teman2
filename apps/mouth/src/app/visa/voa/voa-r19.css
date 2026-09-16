@@ -1,0 +1,138 @@
+/**
+ * GARUDA VOA — R19 skin, scoped to this funnel only.
+ *
+ * Reuses the [data-theme="operative-light"][data-product="my"] tokens
+ * declared in app/globals.css — no new colour is introduced here. That
+ * block never declares the funnel-shell vocabulary AppFrame/AppWizard read
+ * (--surface-base, --text-primary, --color-text-muted,
+ * --color-border-subtle, --accent-funnel), so this file bridges those
+ * names onto the my-block's --bz-* and --tx-* tokens. Primary CTA = ink
+ * fill + paper text, never a copper fill (R19 law: copper is a person,
+ * not an action).
+ *
+ * Selector bumped to [data-theme="operative-light"][data-garuda-voa="r19"]
+ * (0-2-0) to unambiguously beat packages/core/tokens/themes/operative-light.css's
+ * plain [data-theme="operative-light"] (0-1-0), which redeclares
+ * --surface-base and --text-primary on the SAME element and would
+ * otherwise tie on stylesheet import order.
+ */
+[data-theme="operative-light"][data-garuda-voa="r19"] {
+  min-height: 100vh;
+  background: var(--bz-base);
+  color: var(--tx-pure);
+  font-family: var(--font-sans);
+
+  --surface-base: var(--bz-base);
+  --text-primary: var(--tx-pure);
+  --color-text-muted: var(--tx-secondary);
+  --color-border-subtle: var(--bz-border);
+  --accent-funnel: var(--tx-pure);
+  --text-on-accent: var(--bz-on-warm);
+}
+
+/*
+ * AppFrame stamps data-funnel="visa" on its own inner section element.
+ * That element also matches packages/core/tokens/semantic.css's rule for
+ * [data-funnel="visa"] (0-1-0) and themes/editorial.css's rule for
+ * [data-theme="editorial"] [data-funnel="visa"] (0-2-0, matching via the
+ * html data-theme="editorial" ancestor the pre-paint script always sets).
+ * Both redeclare --accent-funnel back to red directly on that element,
+ * which an ancestor's inherited value can never out-cascade. Redeclared
+ * here at 0-3-0 so the ink fill actually reaches it.
+ */
+[data-theme="operative-light"][data-garuda-voa="r19"] [data-funnel] {
+  --accent-funnel: var(--tx-pure);
+  --accent-funnel-text: var(--tx-pure);
+  --text-on-accent: var(--bz-on-warm);
+}
+
+/*
+ * Hero handoff — "rather ask a person first?".
+ *
+ * R19 law, three ways: the pill is NOT copper (copper marks ownership, the
+ * person who owns a case, never an action a visitor takes), NOT red (the
+ * my-block has no red at all — danger itself speaks copper), and its target
+ * is 48px tall, above the 44px floor, because on a 390px phone this is the
+ * one control a visitor uses when the wizard is not what they wanted.
+ * Forest --bz-green carries WhatsApp's meaning inside the palette instead of
+ * importing WhatsApp's own brand green, which token-lint would read as a new
+ * hardcoded brand hex on a redesigned surface. (Not spelled out here either:
+ * this file's own contract test forbids a colour literal anywhere in it,
+ * comments included — which is how this docblock first turned it red.)
+ *
+ * The rule that follows sits BELOW the hero copy and ABOVE the wizard's own
+ * "STEP 1 OF 4" strip, so the two rules never stack into the collision the
+ * first pass of this lane produced.
+ */
+[data-theme="operative-light"][data-garuda-voa="r19"] .voa-hero-wa {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem 1.25rem;
+  margin: 0 0 1.5rem;
+  padding-bottom: 1.25rem;
+  border-bottom: 1px solid var(--bz-border);
+}
+
+[data-theme="operative-light"][data-garuda-voa="r19"] .voa-hero-wa__line {
+  margin: 0;
+  flex: 1 1 14rem;
+  font-family: var(--font-sans);
+  font-size: 0.95rem;
+  line-height: 1.45;
+  color: var(--tx-secondary);
+}
+
+[data-theme="operative-light"][data-garuda-voa="r19"] .voa-hero-wa__cta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.55rem;
+  min-height: 48px;
+  padding: 0 1.25rem;
+  border: 1px solid var(--bz-green);
+  border-radius: 999px;
+  background: var(--bz-elevated);
+  color: var(--bz-green);
+  font-family: var(--font-sans);
+  font-size: 0.95rem;
+  font-weight: 600;
+  line-height: 1.2;
+  text-decoration: none;
+  white-space: nowrap;
+  transition:
+    background 160ms ease,
+    color 160ms ease;
+}
+
+/* The dot is the only ornament: a presence light, not a logo. */
+[data-theme="operative-light"][data-garuda-voa="r19"]
+  .voa-hero-wa__cta::before {
+  content: "";
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  background: var(--bz-green);
+}
+
+[data-theme="operative-light"][data-garuda-voa="r19"] .voa-hero-wa__cta:hover,
+[data-theme="operative-light"][data-garuda-voa="r19"]
+  .voa-hero-wa__cta:focus-visible {
+  background: var(--bz-green);
+  color: var(--bz-elevated);
+}
+
+[data-theme="operative-light"][data-garuda-voa="r19"]
+  .voa-hero-wa__cta:hover::before,
+[data-theme="operative-light"][data-garuda-voa="r19"]
+  .voa-hero-wa__cta:focus-visible::before {
+  background: var(--bz-elevated);
+}
+
+/* Phone: the pill takes the full row rather than crowding the copy. */
+@media (max-width: 30rem) {
+  [data-theme="operative-light"][data-garuda-voa="r19"] .voa-hero-wa__cta {
+    width: 100%;
+  }
+}

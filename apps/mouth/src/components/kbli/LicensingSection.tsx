@@ -20,9 +20,13 @@ import {
   isPmaVerdictVerified,
   licensingContentInheritedFrom,
 } from "@/lib/kbli-provenance";
-import { formatPmaOwnership } from "@/lib/kbli-pma-disclosure";
+import {
+  formatPmaOwnership,
+  isSourcedBaliClosure,
+} from "@/lib/kbli-pma-disclosure";
 import {
   baliBlockClause,
+  baliClosureQualifier,
   shouldShowReason,
   narratesUnverifiedRoute,
 } from "@/lib/kbli-bali-block";
@@ -978,6 +982,22 @@ export function LicensingSection({ kbli, gold }: LicensingSectionProps) {
   // reading relied on was only ever named in the Governor's own request
   // letter, never enacted for it. Must read as "verify", never as "cleared".
   const baliAttentionFascia = kbli.baliL4?.status === "ATTENZIONE_FASCIA_BALI";
+  // Added 2026-09-16 (review F1): a CHIUSO_BALI closure can be SCOPED (the
+  // hotel rows: "building area under 6,000 m²" — bars only that slice, not
+  // the whole code) or MEDIUM-confidence/needs-review (Bali Zero's own
+  // conservative reading applied to a 2025 code that also merges KBLI-2020
+  // activities not on Bali's 18-field list). Either way a bare "closed to
+  // new PMA licensing" overstates the record.
+  const closureScope = kbli.baliL4?.closure?.scopeQualifier;
+  const closureQualifier = baliClosureQualifier(kbli.baliL4);
+  // Review r2 m3: when there is no scope AND the record is not
+  // HIGH-confidence-and-not-needs-review, the heading itself must carry the
+  // conservative-reading caveat too — the body already does (via
+  // `closureQualifier`), but a search snippet or a quick scan of the badge
+  // strip only sees the heading.
+  const closureHeadingConservative =
+    !closureScope &&
+    (kbli.baliL4?.confidence !== "HIGH" || kbli.baliL4?.needsReview === true);
 
   return (
     <div className="space-y-8">
@@ -995,6 +1015,41 @@ export function LicensingSection({ kbli, gold }: LicensingSectionProps) {
             source vintage for the current whole-code PMA value. Treat the
             licensing procedure below as business-licensing guidance, not proof
             that a PT PMA may register this activity; confirm at oss.go.id.
+          </p>
+        </div>
+      )}
+
+      {/* Added 2026-09-16 (W-J B1 disclose): a Bali applied closure sourced
+          to a public press release is self-sufficient evidence, disclosed
+          even though the NATIONAL PMA verdict above is not yet verified.
+          Does NOT reuse the verified block's "valid for a foreign-owned
+          company outside Bali" sentence below — that would assert an
+          unverified national permission this record cannot back. */}
+      {!pmaVerified && isSourcedBaliClosure(kbli.baliL4) && (
+        <div
+          className="rounded-xl border px-5 py-4"
+          style={{
+            background: "rgba(232, 113, 108, 0.06)",
+            borderColor: "rgba(232, 113, 108, 0.25)",
+          }}
+        >
+          <div className="mb-1.5 flex items-center gap-2">
+            <span aria-hidden="true">🏝️</span>
+            <span
+              className="text-xs font-bold uppercase tracking-[0.12em]"
+              style={{ color: "var(--kbli-pma-closed)" }}
+            >
+              Bali — closed to new PMA licensing
+              {closureScope ? ` for ${closureScope}` : ""}
+              {closureHeadingConservative ? " (conservative reading)" : ""}
+            </span>
+          </div>
+          <p className="text-sm leading-relaxed text-[var(--foreground-secondary)]">
+            In <strong>Bali</strong>, this activity is currently{" "}
+            {baliBlockClause(kbli.baliL4?.status)}
+            {closureQualifier}. The licensing path below is the national
+            procedure; whether a PT PMA may use it outside Bali is not yet
+            verified — see the note above.
           </p>
         </div>
       )}

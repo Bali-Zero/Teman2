@@ -15,6 +15,7 @@ import {
 import rawData from "../../data/KBLI_2025_FINAL_CLEAN.json";
 import goldData from "../../data/kbli-gold-all.json";
 import { buildKbliFaq } from "./kbli-faq";
+import { getAllCodes, getBaliCensus } from "./kbli-data";
 import type { KBLICode } from "./kbli-types";
 
 interface RawL4 {
@@ -920,6 +921,49 @@ describe("baliBlockedHint — the index card must not blame the moratorium for e
     // sentence might gain later, which is how a pin stops pinning.
     expect(hint).toContain("12 of them");
     expect(hint).toContain("the other 123");
+  });
+});
+
+// =============================================================================
+// baliBlockedHint(codes, census) — the /kbli index page's true-population
+// reading (added 2026-09-16, W-J B1 disclose). Without `census` the function
+// above is completely unchanged (asserted by every test above, which never
+// passes a second argument); this is a SEPARATE, additive branch.
+// =============================================================================
+describe("baliBlockedHint(codes, census) — the canonical census, not the served subset", () => {
+  it("pins the full sentence on the real census + real served population", () => {
+    const hint = baliBlockedHint(getAllCodes(), getBaliCensus());
+    expect(hint).toBe(
+      "135 of 1559 codes are treated as closed to a foreign-owned company (PT PMA) in Bali in our working census — " +
+        "40 by Bali's own 2026 closure of specific business fields, " +
+        "12 held under Bali Zero's conservative reading of the 2026 Bali risk-tier request pending verification, " +
+        "and 83 for other reasons. " +
+        "53 of them state the closure and its cause on the code's own page; the others are marked " +
+        '"PMA status not yet verified" there until the national record is adjudicated. A working assessment, ' +
+        "not a certified legal determination.",
+    );
+  });
+
+  it("omits a clause whose count is 0 (synthetic: no applied closures)", () => {
+    const census = [
+      ...Array.from({ length: 10 }, () => ({
+        status: "CHIUSO_MORATORIA_BALI",
+        blocked: true,
+      })),
+      ...Array.from({ length: 5 }, () => ({
+        status: "TERTUTUP",
+        blocked: true,
+      })),
+      ...Array.from({ length: 85 }, () => ({ status: "OK", blocked: false })),
+    ];
+    const hint = baliBlockedHint([], census);
+    expect(hint).toContain("15 of 100");
+    expect(hint).not.toContain("Bali's own 2026 closure");
+    expect(hint).not.toContain("national closure");
+    expect(hint).toContain(
+      "10 held under Bali Zero's conservative reading of the 2026 Bali risk-tier request pending verification and 5 for other reasons.",
+    );
+    expect(hint).toContain("0 of them state the closure");
   });
 });
 

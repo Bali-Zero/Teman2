@@ -1,5 +1,8 @@
 import { isPmaVerdictVerified } from "./kbli-provenance";
-import { hasPublishablePmaCap } from "./kbli-pma-disclosure";
+import {
+  hasPublishablePmaCap,
+  isSourcedBaliClosure,
+} from "./kbli-pma-disclosure";
 import { neutralKbliChatOpenerText } from "./kbli-editorial-certification";
 import type { KBLICode, KBLIGoldContent } from "./kbli-types";
 
@@ -42,10 +45,13 @@ export function discloseKbliEditorial(
  * Bali reason prose can repeat national PMA status/cap claims from the same
  * pre-provenance editorial layer. Keep the structured Bali classification,
  * but disclose its free text only when the national verdict has the complete
- * official provenance tuple.
+ * official provenance tuple — OR the Bali verdict is itself a sourced applied
+ * closure (`isSourcedBaliClosure`), which needs no national tuple to be true.
  */
 export function discloseKbliBaliReason(code: KBLICode): string | undefined {
-  return isPmaVerdictVerified(code) ? code.baliL4?.reason : undefined;
+  return isPmaVerdictVerified(code) || isSourcedBaliClosure(code.baliL4)
+    ? code.baliL4?.reason
+    : undefined;
 }
 
 export function neutralKbliChatOpener(code: KBLICode): string {
