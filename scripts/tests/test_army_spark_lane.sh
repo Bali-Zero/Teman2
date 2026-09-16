@@ -116,6 +116,7 @@ case "\$STUB_CODEX_MODE" in
     success_quota_text) echo "Analysis: this queue documents a usage limit and 429 backoff policy."; exit 0 ;;
     quota) echo "error: out of extra usage on this weekly bucket"; exit 1 ;;
     quota_with_reset) echo "ERROR: You've hit your usage limit for GPT-5.3-Codex-Spark. Switch to another model now, or try again at Jan 1st, 2030 8:06 PM."; exit 1 ;;
+    luna_quota) echo "ERROR: You've hit your usage limit for GPT-5.6-Luna. Switch to another model now, or try again at Jan 1st, 2030 8:06 PM."; exit 1 ;;
     fail) echo "boom: synthetic codex crash"; exit 3 ;;
     *) echo "unset STUB_CODEX_MODE"; exit 9 ;;
 esac
@@ -271,6 +272,27 @@ else
 fi
 
 # ---------------------------------------------------------------------------
+# Case 4c (2026-09-16 "sposta su luna"): with no ARMY_SPARK_MODEL override,
+# the wrapper's own default must be gpt-5.6-luna, not gpt-5.3-codex-spark
+# (Spark returns HTTP 400 "not supported when using Codex with a ChatGPT
+# account" on every account/host as of 2026-09-15/16).
+# ---------------------------------------------------------------------------
+setup_world
+write_codex_stub success
+run_wrapper STUB_CODEX_MODE=success > /dev/null
+report_file="$(find "$WORK/world/reports" -maxdepth 1 -name '*.md' 2>/dev/null | head -1)"
+if [ -n "$report_file" ] && grep -q "model: gpt-5.6-luna" "$report_file"; then
+    note_pass "default model: report header names gpt-5.6-luna with no override"
+else
+    note_fail "default model: report_file=$report_file did not name gpt-5.6-luna"
+fi
+if grep -q "model=gpt-5.6-luna" "$WORK/world/logs/run.log" 2>/dev/null; then
+    note_pass "default model: run.log dispatch line names gpt-5.6-luna"
+else
+    note_fail "default model: run.log did not name gpt-5.6-luna"
+fi
+
+# ---------------------------------------------------------------------------
 # Case 5 (guilt): quota marker in codex output -> backoff written (fixed
 # ${BACKOFF_HOURS}h), task attempt recorded as "quota" (not "ok" — stays
 # eligible for retry after backoff), a digest alert fires.
@@ -379,6 +401,36 @@ if [ "$rc" = "0" ] && [ "$backoff_val" -ge "$lower" ] && [ "$backoff_val" -le "$
     note_pass "quota without a parseable reset: backoff stays at the fixed ~12h default"
 else
     note_fail "quota without a parseable reset: backoff_val=$backoff_val expected within [$lower,$upper]"
+fi
+
+# ---------------------------------------------------------------------------
+# Case 5e (innocence, 2026-09-16 "sposta su luna"): the quota classifier
+# (grep -qiE 'out of extra usage|usage limit|quota exceeded|rate.limit|429|
+# weekly limit') never named gpt-5.3-codex-spark in the pattern itself — it
+# matches on the REPLY TEXT, not the model slug — so a Luna usage-limit
+# reply must be classified exactly like a Spark one: status=quota (not
+# "failed"), backoff written, consecutive-non-quota-fail counter left at 0.
+# ---------------------------------------------------------------------------
+setup_world
+write_codex_stub luna_quota
+rc="$(run_wrapper STUB_CODEX_MODE=luna_quota ARMY_SPARK_MODEL=gpt-5.6-luna)"
+status="$(sidecar_status)"
+if [ "$rc" = "0" ] && [ "$status" = "degraded" ] && [ -f "$WORK/world/state/backoff-until.txt" ]; then
+    note_pass "luna quota generalization: degraded heartbeat, backoff file written"
+else
+    note_fail "luna quota generalization: rc=$rc status=$status backoff_exists=$([ -f "$WORK/world/state/backoff-until.txt" ] && echo y || echo n)"
+fi
+if grep -q '"status":"quota"' "$WORK/world/state/attempts.jsonl" 2>/dev/null \
+    && ! grep -q '"status":"failed"' "$WORK/world/state/attempts.jsonl" 2>/dev/null; then
+    note_pass "luna quota generalization innocence: attempt recorded as quota, NOT failed"
+else
+    note_fail "luna quota generalization: attempts.jsonl did not record the expected quota-not-failed shape"
+fi
+consec="$(cat "$WORK/world/state/consecutive-non-quota-fails.txt" 2>/dev/null || echo unset)"
+if [ "$consec" = "0" ]; then
+    note_pass "luna quota generalization: consecutive-non-quota-fail counter reset to 0 (quota is not a format-change failure)"
+else
+    note_fail "luna quota generalization: consecutive-non-quota-fail counter=$consec (expected 0)"
 fi
 
 # ---------------------------------------------------------------------------

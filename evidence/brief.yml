@@ -1,59 +1,69 @@
-task_id: kbli-l2-pr-a-vault-adapter
+task_id: secondo-livello-second-army-runner
 gear: 2
 l_level: L2
 gate_class: opus
-# Floor for this diff: 2, source `size` (440 added lines: adapter, flags, tests, six one-line
-# fixtures, spec §6). No hot-zone path. Gear 2 declared to match the floor; no pack below Gear 3.
+# Floor for this diff, measured WITH this brief already staged — the mistake that sank PR #6602
+# was measuring on the code-only commit and letting the brief's own churn cross the threshold
+# afterwards. No hot-zone path here; the CI wiring that would add one ships separately.
 objective: >-
-  PR-A of docs/specs/2026-09-11-kbli-l2-oss-resnapshot-reingest-spec.md: make the KBLI L2
-  risk transform reproducible from a frozen vault snapshot. Adds the pure adapter
-  scripts/kbli_filiera/vault_to_risk_jsonl.py (vault -> the jsonl the transform already reads),
-  --root/--raw flags on scripts/build_kbli_l2_oss_risk.py with defaults equal to today's
-  literals, a machine-readable SUMMARY line, adapter tests, a six-code reproduction test on
-  real July-vault fixtures, and the spec's §6 recording the full-scale rule-4/rule-5 outcome.
+  The standalone runner for infra/workflows/ scripts, split out of PR #6602 so each piece lands at
+  its own honest size. run-second-army.mjs compiles and executes a workflow script OUTSIDE the
+  Workflow tool — shell, cron or CI — by injecting the same args/agent/log/phase/parallel/pipeline
+  bindings the harness supplies. It is also the enforcement point for the Builder Contract's
+  "every agent() call pins model:" rule, and this PR makes that enforcement MEASURABLE: a --script
+  flag lets the behavioural suite point the runner at two fixtures that differ only in the pin.
 constraints:
   - >-
-    No logic change in the transform: flags, derived paths and one SUMMARY print only.
-    apps/backend-rag/scripts/build_kbli_l2_oss_risk.py untouched (its merge is a deploy).
+    No Anthropic per-token door in any form. The single door the runner opens is the `claude` CLI,
+    which carries its own OAuth. No credential is placed on argv, read from the environment, or
+    printed; the only env var read is a numeric per-lane timeout.
   - >-
-    No data file changes: the canonical corpus, its five copies and the sidecar are
-    byte-identical to origin/main. --apply was run only on /tmp copies.
+    No new dependency: node: builtins only, Node >= 18. The behavioural tests spawn the runner as
+    a child process and run everything through --dry-run, so no claude/codex/agy binary is ever
+    reached and there is no network call.
   - >-
-    No network, no credentials: the adapter reads a vault on disk; vaults were never modified
-    (the September vault is chmod a-w with a sha256 manifest).
+    Nothing outside infra/workflows/ is touched. second-army.js, shipped in #6603, is NOT modified
+    by this PR — the runner reaches it through a default path, and --script overrides that default
+    without changing it.
 acceptance:
   - text: >-
-      A1: WHEN `python3 -m pytest scripts/kbli_filiera/tests -q` runs SHALL pass, including the
-      adapter determinism/ordering/404/exit-2 tests and the six-code reproduction test that
-      asserts the L2-owned field set equal to the canonical slice.
-    probe: python3 -m pytest scripts/kbli_filiera/tests -q
+      A1: WHEN the behavioural suite runs SHALL pass 5/5 — a fixture lane that pins model: runs and
+      its return value reaches stdout; a fixture lane that omits it is refused with a non-zero exit
+      and a reason on stderr; an unsupported model alias is refused and named; a missing
+      --args-file is a usage error; stdout carries the JSON return value alone.
+    probe: node infra/workflows/tests/test-run-second-army.mjs
   - text: >-
-      A2 Bites: WHEN the adapter runs over the frozen July vault and the transform dry-runs with
-      --root /tmp/l2/root --raw /tmp/l2/july.jsonl SHALL print one line starting with SUMMARY
-      carrying no_oss_risk=221 and l4_changed=21 (this scripts/ copy; the backend copy gives 0),
-      and the field-level table of an --apply on that /tmp copy (spec §6, measured before this
-      PR was opened) SHALL show 0 codes differing on skala_usaha/kategori_risiko/scope_index
-      and exactly 1 (49213) on the other L2-owned fields, counted on rows common to both sides
-      (20111's 12 new rows are reported on the row-count line).
-    probe: set -o pipefail; python3 scripts/kbli_filiera/vault_to_risk_jsonl.py --vault-root ~/nuzantara-vault --out /tmp/l2/july.jsonl && python3 scripts/build_kbli_l2_oss_risk.py --root /tmp/l2/root --raw /tmp/l2/july.jsonl | grep '^SUMMARY'
+      A2 THE POINT OF THIS PR: WHEN both call sites of assertModelPinned() are removed in a scratch
+      copy SHALL go RED — 4/5, failing test_unpinned_fixture_is_refused. The test this replaces was
+      a regex over the runner's source, and an independent gate proved it passed with the guard
+      commented out. A guard is a behaviour and has to be measured as one.
+    probe: "copy the runner+suite to a scratch dir, replace both `assertModelPinned(opts);` call sites with a comment, rerun the suite"
   - text: >-
-      A3: WHEN the transform's source is read SHALL still define ROOT as /tmp/kbli-l2-risk and
-      RAW as /tmp/oss_risk_raw.jsonl and use them as the --root/--raw defaults (grep count 2),
-      so the June run is still reproducible.
-    probe: grep -c 'Path("/tmp/kbli-l2-risk")\|Path("/tmp/oss_risk_raw.jsonl")' scripts/build_kbli_l2_oss_risk.py
+      A3 THE MIRROR OF A2: WHEN the guard is rewritten as `if (!opts?.model)` in a scratch copy —
+      identical behaviour, different spelling — the suite SHALL stay 5/5. The replaced regex test
+      went red on exactly this rewrite. The two mutations together show the new test tracks
+      behaviour and not spelling.
+    probe: "copy the runner+suite to a scratch dir, rewrite the guard condition as optional chaining, rerun the suite"
+  - text: >-
+      A4: WHEN the pre-existing contract suite for second-army.js runs SHALL still pass 12/12 —
+      this PR must not disturb what #6603 shipped.
+    probe: node infra/workflows/tests/test-second-army-contract.mjs
 assumptions:
   - text: >-
-      The vault ruang_lingkup.json has the same response shape the June fetcher stored under
-      "data" ({success,data,meta,code}), so the adapter's records are the transform's native
-      input; shape compatibility is what is proven, not byte identity with the lost June file.
+      --script is load-bearing, not decoration. Without it the runner can only ever execute
+      second-army.js, and a guard that refuses a malformed lane cannot be measured, because
+      second-army.js never presents one. The fixtures are the malformed lane.
     status: verified
-    probe: "rule-5 recheck — adapter-driven change set equals the raw-vault change set under the same triple definition (181/181 with the pinned triple of spec §6)"
+    probe: "test_unpinned_fixture_is_refused passes only because --script can reach fixtures/fixture-model-missing.js"
   - text: >-
-      jangka_waktu, fiktif_positif and jangka_waktu_source are owned by layers after L2, so
-      their divergence is not a transform defect.
+      Importing the runner in-process is not a viable test form: it is a CLI entrypoint that
+      executes main() at import and exports nothing selectively. The suite therefore spawns it as a
+      child process and asserts on exit code and stderr.
     status: verified
-    probe: "scripts/enrich_kbli_jangka_waktu.py (2026-06-28) writes jangka_waktu_source; canonical carries it on 4,200 rows of 941 codes"
+    probe: "run-second-army.mjs ends with a bare main() call and has no export statement"
   - text: >-
-      The apps/backend-rag copy of the transform is the one whose L4 logic the canonical reflects.
+      Nothing in .github/workflows/ runs infra/workflows/tests/ today, so this suite — like the
+      contract suite beside it — is run by hand until the CI wiring ships as its own PR. The README
+      says so rather than implying a consumer that does not exist.
     status: verified
-    probe: "full-scale run of both copies on the July jsonl — l4_bali.blocked flips: scripts/ 21, backend 0"
+    probe: "grep -rl 'infra/workflows' .github/workflows/ returns nothing"

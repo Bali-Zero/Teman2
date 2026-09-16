@@ -23,7 +23,7 @@ export function OrganizationJsonLd() {
     logo: `${baseUrl}/static/balizero-logo-clean.png`,
     sameAs: [
       "https://www.linkedin.com/company/balizero",
-      "https://www.instagram.com/balizero",
+      "https://www.instagram.com/balizero0",
       "https://www.facebook.com/balizero",
       "https://wa.me/628213454721",
     ],

@@ -722,9 +722,25 @@ CURE4_CODES = ["68112", "49213", "51103", "51203", "20111", "50115", "60312", "6
 def test_cure4_l4_bali_non_classificabile_and_editorial_clean(code: str):
     rec = _load_record(REPO_ROOT / "apps/mouth/data/KBLI_2025_FINAL_CLEAN.json", code)
     l4 = rec.get("l4_bali") or {}
-    assert l4.get("status") == "NON_CLASSIFICABILE", f"{code}: l4 status regressed"
-    assert l4.get("needs_review") is True
-    assert "Previous status:" in (l4.get("reason") or ""), f"{code}: audit provenance missing"
+    if code == "68112":
+        # Re-pinned SAETTA-20260915 W-J B1: 68112 is one of "the 40"
+        # KBLI-2025 codes descending (via bps_2020_ancestors, never bare
+        # digit-prefix matching) from KBLI-2020 68111 — code #1 of the
+        # 18-field applied Bali PMA closure (Bali Provincial Government
+        # press release 24 Jul 2026; ANTARA Bali code list 23 Jul 2026).
+        # cure_l4bali_applied_closure.py legitimately moved it from
+        # NON_CLASSIFICABILE to CHIUSO_BALI, confidence HIGH — the applied
+        # closure list governs regardless of the code's prior cure-4
+        # false-friend history; needs_review flips to False because the
+        # closure verdict is not a "check on OSS" flag like
+        # NON_CLASSIFICABILE, it is a settled blocked verdict.
+        assert l4.get("status") == "CHIUSO_BALI", f"{code}: l4 status regressed"
+        assert l4.get("needs_review") is False
+        assert l4.get("blocked") is True
+    else:
+        assert l4.get("status") == "NON_CLASSIFICABILE", f"{code}: l4 status regressed"
+        assert l4.get("needs_review") is True
+        assert "Previous status:" in (l4.get("reason") or ""), f"{code}: audit provenance missing"
     blob = json.dumps(rec.get("intel_2026", {}).get("editorial", {}), ensure_ascii=False)
     for m in ["OK_or_HIGHER_RISK", "medium-high risk", "Menengah-Tinggi", "Low risk (Rendah)"]:
         assert m not in blob, f"{code}: collision marker {m!r} back in editorial"
