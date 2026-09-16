@@ -1,0 +1,324 @@
+# Gear-3 evidence pack — seq-22 SIGNING lane (SAETTA-20260916, M5). Written by the signing
+# seat itself (Claude Fable 5.1, a fresh session outside the seq-22 contribution chain per
+# D17-bis), in the worktree .worktrees/backend-rag-seq22-signature (first attempt, PR #6670,
+# closed: armed branch frozen without a brief, floor 3 deterministic) and then
+# .worktrees/backend-rag-seq22-signature-v2 (this successor, same three blobs by hash).
+# Every receipt below is a command this seat actually executed in this session; the seq-20
+# signing pack (evidence/2026-09/agent-air-m5-backend-rag-visa-seq20-sign-5717d691/pack.yml,
+# #5867) is the precedent for the shape.
+task_id: seq22-signature-v2
+gear: 3
+gate_class: opus
+brief_ref: evidence/brief.yml
+date: 2026-09-16
+machine: M5
+lanes:
+  - lane: seq-22 signed bundle + census pin move + review-copy pin move + CI observer
+    role: build
+    seat: >-
+      claude-fable-5-1 (signing seat, fresh session outside the seq-22 contribution chain —
+      D17-bis; worktree .worktrees/backend-rag-seq22-signature-v2, branch
+      agent/air-m5/backend-rag/seq22-signature-v2)
+    note: >-
+      Re-measured every fact R2 declared before touching the key (source blob 1dc08b9cd3,
+      signed file absent on origin/main, JCS digest through sign_pack's own path, chain to
+      seq-20), then ran the offline ceremony with sign_pack.py (kid prod-2026-07-1,
+      --i-know-this-is-production, self-verified through bundle.verify_rule_pack), then
+      verified the written envelope again with the PUBLIC trust store, then measured what
+      moved downstream: two backend census assertions and two mouth review-copy assertions,
+      both because "highest signed pack" flipped from seq-20 to seq-22. Moved only those,
+      per signed sequence and by name, and proved each pin guilty by mutation. NOTHING WAS
+      ACTIVATED: no activate_pack.py, no DB, no fly.toml/.env/zantara_core.py.
+
+seat_diversity: exempt
+seat_diversity_note: >-
+  One build lane, so D3's seat-diversity requirement does not attach (it binds packs with
+  >= 2 build lanes). No review lane is declared inside this pack: the adversarial read is
+  the fresh harness/fable-gate seat that signs the verdict on this head sha (Step 7c),
+  commissioned through the mailbox «GATE #<n> <sha>» line — a session outside this pack, so
+  the grader never sits inside the generator's own evidence.
+
+seat_override: >-
+  R8 ground_truth: this diff hits GROUND_TRUTH_PATH_PATTERNS (`*/visa_engine/*`) but
+  introduces NO regulatory claim of its own — no rule, no bound, no reason code. Every legal
+  proposition inside rulepack-prod-022.signed.json was authored, council-reviewed (Codex
+  sol r1-r3, Gemini r1) and gated (PASS on 12f6bc4409) in #6663 as the UNSIGNED source;
+  this PR adds the operator signature over bytes PROVEN identical to that source under JCS
+  (receipt below: the digest recomputed from rulepack-prod-022.source.json equals the
+  signed envelope's payload_sha256). The two pin moves are MEASUREMENTS of what those
+  already-ruled rules produce, not new claims. A fresh ground-truth lane would re-litigate
+  #6663's reviewed content.
+  .
+  R9 council_run: no council journal is declared, for the same reason plus one more. This
+  PR compiles no claim to adversarially review — the bytes were reviewed and merged as
+  #6663 and this diff proves them unchanged rather than restating them — and the signing
+  seat is by design a FRESH session outside the contribution chain (D17-bis) whose work is
+  graded by a second fresh session, the harness/fable-gate seat on this head sha. Running
+  council seats from inside the signer's own pack would put a review on the wrong side of
+  the generator-is-never-grader boundary, not add one.
+
+outcome: >-
+  The signed seq-22 bundle is on the branch as a verified PRODUCTION CANDIDATE, verified by
+  the repo's own code rather than by the signer's self-report: sequence 22, environment
+  PRODUCTION, kid prod-2026-07-1, unsigned_dev False, payload digest
+  3d7555afcc9496b451bc86235624b4a88d35aabb9df354778dcf9b0b3b276e37 (equal to the digest
+  R2 declared and to the digest recomputed off disk from the source), chain anchor
+  previous_payload_sha256 df02287b7fc8f572a9e6674fdf3445a2131c428e8a1492ab8a388dee5bf01a4d
+  (= seq-20's payload_sha256; seq-21 was signed and never activated, and its landing commit
+  0e1d08ab61 is not an ancestor of main). Landing it flips "highest signed pack" from
+  seq-20 to seq-22 for two consumers: test_interview_walk_census.py (census already
+  pinned per sequence at 3/1/14/94; the held-walk set and the funnel sum were not, and now
+  name the two Studio-held walks per sequence with their one reason code) and
+  engine-adapter.test.ts (real-code floor 38 -> 31 measured; the eight retired codes keep
+  their copy, matched by name, because production still evaluates on seq-20 until D24).
+  NOT ACTIVATED: visa_ruleset_activations is untouched and must still read seq-20 as the
+  latest PRODUCTION after merge.
+diff:
+  files: 6
+  net_lines: >-
+    9487/0 rulepack-prod-022.signed.json (the SIGNED artifact, generated by the offline
+    ceremony and Prettier-formatted like seq-20's — the entire Gear-3 size floor by
+    itself), 38/5 test_interview_walk_census.py (per-sequence Studio-held pin), 85/4
+    engine-adapter.test.ts (floor 31 + seq-20-only copy list + honesty test), 70/0
+    scripts/ci/observe_visa_seq22_signed.py (new, bites-observable), plus this evidence
+    pack (brief.yml + pack.yml).
+  measured_at: >-
+    `git diff --cached --numstat` in the successor worktree at origin/main c47bcf803e
+    (the three content blobs verified byte-identical to #6670's head 8b297409c1 with
+    git hash-object).
+  shape: >-
+    One signed pack artifact, two test-only pin moves in the consumers that read the
+    highest signed pack, one bites-observable CI wrapper, one evidence pack. No visa_engine
+    CODE file, no mouth component, no DB migration is touched.
+pii_scan: clean
+spend:
+  wall_clock_hours: 1
+bites:
+  consumer: >-
+    apps/backend-rag's select_highest_repository_pack readers — test_interview_walk_census.py
+    (reads the HIGHEST SIGNED production pack, so landing this bundle moves it off seq-20
+    by itself) and test_seq22_pack.py — AND apps/mouth's engine-adapter.test.ts
+    (latestSignedProductionPayload / highestSequencePack). All ship in this PR.
+  where: ci
+  observe: python3 scripts/ci/observe_visa_seq22_signed.py
+  expect: exit0
+bites_note: >-
+  scripts/ci/observe_visa_seq22_signed.py takes NO arguments — every path and command in
+  it is a literal. Before the pin move, test_interview_walk_census.py ran 2 FAILED / 73
+  passed against the seq-22 bundle sitting in the worktree (receipt below): the concrete
+  proof that landing a signed pack is observed by a downstream gate rather than merely
+  present on disk. After merge, the live observation is: rulepack-prod-022.signed.json on
+  origin/main verifies with kid prod-2026-07-1, and visa_ruleset_activations still shows
+  seq-20 as the latest PRODUCTION (activation is D24, separate).
+dissent:
+  - seat: claude-fable-5-1 (signing seat, this worktree session), self-caught
+    status: CONFIRMED
+    objection: >-
+      engine-adapter.test.ts's own doc-comment (above `reviewReasonCodesInPack`) says that
+      "the day the signed bundle lands, the eight retired keys stop being in the union and
+      the stale-key test names them, which is the moment their copy is allowed to go" — i.e.
+      the test author's stated intent for THIS PR was to DELETE the eight REVIEW_REASON_COPY
+      entries. This seat did not do that, and R2's handoff ("38→30 + 8 REVIEW_REASON_COPY
+      keys may be involved") pointed the same way. Reason: the premise "the highest signed
+      pack is the upper bound of what production can emit today" is false here — signing
+      and activation are separate ceremonies (D24; seq-21 was signed and never activated),
+      production evaluates on seq-20, and seq-20 emits all eight codes (measured against
+      rulepack-prod-020.signed.json). Deleting the copy now would put a raw machine code on
+      a live applicant's verdict for the whole pre-activation window. The copy therefore
+      stays, matched BY NAME in REVIEW_REASON_COPY_KEYS_LIVE_ON_SEQ20_ONLY with an honesty
+      test, and its deletion is owed in the D24 activation PR. The measured floor is 31,
+      not R2's estimated 30 (13 pack + 18 pack-independent).
+  - seat: claude-fable-5-1 (signing seat), self-caught
+    status: CONFIRMED
+    objection: >-
+      The first attempt (#6670) was armed without an evidence pack and went red on
+      "Harness floor recompute" (floor 3 by size, deterministic). The staff room initially
+      read that red as the PENDING-verdict shape and a gate was started on 8b297409c1; this
+      seat corrected it in the mailbox (02:04 WITA), the gate was killed, and this successor
+      carries the pack. Cost: one close/reopen cycle, no content change (blob parity proven).
+receipts:
+  - claim: >-
+      the gear floor for this PR's staged diff is Gear 3, sourced from size — the 9,487-line
+      signed artifact floors it by itself
+    cmd: >-
+      python3 scripts/evidence_pack_lint.py --print-floor --print-floor-source
+      --numstat-file /tmp/v2-numstat.txt --changed-files-file /tmp/v2-changed.txt
+    result: "3 / size"
+    ts: "2026-09-16T18:06:30Z"
+    seat: claude-fable-5-1 (signing seat, this worktree session)
+    exit: 0
+  - claim: >-
+      the source pack on the base is the gated blob, the signed file is absent on the base,
+      and the worktree base contains #6663
+    cmd: >-
+      git rev-parse HEAD:apps/backend-rag/backend/services/visa_engine/contracts/packs/rulepack-prod-022.source.json;
+      git cat-file -e HEAD:.../rulepack-prod-022.signed.json; git merge-base --is-ancestor 1e5027d846 HEAD
+    result: >-
+      1dc08b9cd3293a7403fb017fa416df5f1398b639; "does not exist in HEAD"; ANCESTOR_OK
+    ts: "2026-09-16T17:46:00Z"
+    seat: claude-fable-5-1 (signing seat, worktree backend-rag-seq22-signature)
+    exit: 0
+  - claim: >-
+      the payload JCS digest recomputed through sign_pack's own path equals the digest R2
+      declared, and the chain anchor equals seq-20's payload_sha256
+    cmd: >-
+      PYTHONPATH=. .venv/bin/python -c "payload, report = compile_pack_source(src);
+      sha256(canonicalize_json(payload.model_dump(mode='json', by_alias=True)))" +
+      json.load(rulepack-prod-020.signed.json)['payload_sha256'] (apps/backend-rag)
+    result: >-
+      compile ok True; recomputed 3d7555afcc9496b451bc86235624b4a88d35aabb9df354778dcf9b0b3b276e37
+      == declared; payload seq 22 PRODUCTION; previous_payload_sha256
+      df02287b7fc8f572a9e6674fdf3445a2131c428e8a1492ab8a388dee5bf01a4d == seq-20 payload_sha256
+      (seq 20); PREV_CHAIN_OK True
+    ts: "2026-09-16T17:47:30Z"
+    seat: claude-fable-5-1 (signing seat)
+    exit: 0
+  - claim: >-
+      the private key is present with the runbook's custody mode and was never read outside
+      sign_pack.py's own in-process loader
+    cmd: "ls -la ~/.config/nuzantara/visa-signing/; ls -ld ~/.config/nuzantara/visa-signing/"
+    result: "2026-07-prod-1.ed25519.pem .rw------- (0600) balizero; directory drwx------ (0700)"
+    ts: "2026-09-16T17:45:30Z"
+    seat: claude-fable-5-1 (signing seat)
+    exit: 0
+  - claim: >-
+      the offline ceremony signed the pack and self-verified through bundle.verify_rule_pack
+      before writing
+    cmd: >-
+      PYTHONPATH=. .venv/bin/python -m backend.scripts.visa_engine.sign_pack
+      backend/services/visa_engine/contracts/packs/rulepack-prod-022.source.json --kid
+      prod-2026-07-1 --key-file ~/.config/nuzantara/visa-signing/2026-07-prod-1.ed25519.pem
+      --environment PRODUCTION --sequence 22 --i-know-this-is-production --output
+      backend/services/visa_engine/contracts/packs/rulepack-prod-022.signed.json
+    result: >-
+      OK — signed and self-verified. rule_pack_id=916915d8-1c58-508d-aff7-742a3c012df7
+      sequence=22 environment=PRODUCTION kid=prod-2026-07-1
+      payload_sha256=3d7555afcc9496b451bc86235624b4a88d35aabb9df354778dcf9b0b3b276e37
+      public_key=gZoo1nzMsRpwWgw4HCzV_2YYxU0Vbt5FMfLWeOzAchA
+    ts: "2026-09-16T17:48:07Z"
+    seat: claude-fable-5-1 (signing seat)
+    exit: 0
+  - claim: >-
+      the written envelope verifies against the PUBLIC production trust store with the repo's
+      own verify_rule_pack, before and after Prettier formatting, and select_highest picks it
+    cmd: >-
+      PYTHONPATH=. .venv/bin/python -c "verify_rule_pack(env, trust_store=StaticTrustStore.from_env(),
+      observed_at=now); select_highest_repository_pack(P)" with
+      VISA_ENGINE_TRUST_STORE_KEYS_JSON = the runbook's prod-2026-07-1 entry
+    result: >-
+      VerifiedRulePack seq=22 env=PRODUCTION kid=prod-2026-07-1 unsigned_dev=False
+      sha=3d7555af…6e37; DECLARED_MATCH True; select_highest -> rulepack-prod-022.signed.json
+      (seq 22); identical result after `npx prettier --write` on the signed file
+    ts: "2026-09-16T17:59:00Z"
+    seat: claude-fable-5-1 (signing seat)
+    exit: 0
+  - claim: >-
+      landing this bundle MOVES a downstream gate — test_interview_walk_census.py reads the
+      highest SIGNED pack and went red against seq-22 before the pin move
+    cmd: >-
+      PYTHONPATH=. .venv/bin/python -m pytest backend/tests/services/visa_engine/test_seq22_pack.py
+      backend/tests/services/visa_engine/test_interview_walk_census.py -p no:cacheprovider
+      (signed bundle present, pins still on seq-20)
+    result: >-
+      2 failed, 73 passed, 14 skipped — test_walk_state_census_is_the_pinned_census_of_the_signed_sequence
+      and test_the_flagged_census_is_the_funnel_the_applicant_meets: held set has extra
+      'offshore/invest/bank_deposit/below_threshold' and 'offshore/invest/property/below_threshold'
+      (the Studio holds); the census 3/1/14/94 itself already matched by_sequence[22]
+    ts: "2026-09-16T17:52:00Z"
+    seat: claude-fable-5-1 (signing seat)
+    exit: 1
+  - claim: >-
+      after the per-sequence Studio-held pin, both backend modules are green and the 14 skips
+      are all the expected "no unsigned production source pack sits above the highest signed one"
+    cmd: >-
+      PYTHONPATH=. .venv/bin/python -m pytest backend/tests/services/visa_engine/test_seq22_pack.py
+      backend/tests/services/visa_engine/test_interview_walk_census.py -p no:cacheprovider -rs
+    result: "75 passed, 14 skipped (6 skip sites, all the same reason), 0 failed"
+    ts: "2026-09-16T17:57:00Z"
+    seat: claude-fable-5-1 (signing seat)
+    exit: 0
+  - claim: >-
+      the census pin is a guard, not a ratchet — emptying STUDIO_HELD_WALKS_BY_SEQUENCE[22]
+      turns both tests red again
+    cmd: >-
+      python edit: `22: frozenset()` then pytest the two tests; file restored from backup
+      afterwards (git diff --stat unchanged)
+    result: "2 failed in 5.58s; restored"
+    ts: "2026-09-16T18:00:30Z"
+    seat: claude-fable-5-1 (signing seat)
+    exit: 1
+  - claim: >-
+      every other reader of the highest signed pack stays green with seq-22 as the highest
+    cmd: >-
+      PYTHONPATH=. .venv/bin/python -m pytest backend/tests/services/visa_engine/test_gold_coverage_floor.py
+      backend/tests/services/visa_engine/test_gold_replay_artifact.py
+      backend/tests/services/visa_engine/test_seq20_pack.py
+      backend/tests/services/visa_engine/test_seq21_pack.py
+      backend/tests/scripts/visa_engine/test_gold_coverage_replay.py
+      backend/tests/scripts/visa_engine/test_gold_replay_driver.py
+      backend/tests/scripts/visa_engine/test_gold_coverage_eval.py -p no:cacheprovider
+    result: "196 passed in 198.42s"
+    ts: "2026-09-16T17:59:30Z"
+    seat: claude-fable-5-1 (signing seat)
+    exit: 0
+  - claim: >-
+      engine-adapter.test.ts went red against the seq-22 bundle before the pin move —
+      measured, not guessed
+    cmd: >-
+      cd apps/mouth && npx vitest run "src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter.test.ts"
+      (signed bundle present, test unchanged)
+    result: >-
+      2 failed | 57 passed: "expected 31 to be greater than or equal to 38" and staleKeys =
+      [E23U_DIPLOMATIC_HOUSEHOLD_STAFF_REVIEW, E23V_TRADE_OFFICE_STAFF_REVIEW,
+      E28B_USD_THRESHOLD_MANUAL_CHECK, E28C_USD_THRESHOLD_AND_INSTRUMENT_CHECK,
+      E28D_USD_THRESHOLD_AND_TURNOVER_CHECK, E28F_IKN_THRESHOLD_MANUAL_CHECK,
+      E33B_EXPERTISE_QUALIFICATION_CHECK, GOVT_INVITATION_REQUIRED]
+    ts: "2026-09-16T17:53:30Z"
+    seat: claude-fable-5-1 (signing seat)
+    exit: 1
+  - claim: >-
+      all eight retired codes are still emitted by the signed seq-20 pack production runs on,
+      so their copy must stay until D24
+    cmd: >-
+      python3: HUMAN_REVIEW-stage (or HARD_FILTER with on_unknown HUMAN_REVIEW) reason codes
+      of rulepack-prod-020.signed.json's payload.rules, intersected with the eight
+    result: "seq20 codes: 20; all 8 in seq20: True; missing: []"
+    ts: "2026-09-16T17:56:30Z"
+    seat: claude-fable-5-1 (signing seat)
+    exit: 0
+  - claim: >-
+      after the pin move engine-adapter.test.ts is green, Prettier-clean, and the seq-20-only
+      list is a guard — dropping one entry turns the stale-key test red
+    cmd: >-
+      cd apps/mouth && npx vitest run "src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter.test.ts";
+      npx prettier --check <same file>; then the guilt edit (GOVT_INVITATION_REQUIRED removed
+      from the list), vitest again, file restored from backup
+    result: >-
+      60 passed (60) — 59 + the new honesty test; "All matched files use Prettier code style!";
+      guilt: 1 failed | 59 passed ("never lets a stale key sit in the copy map"); restored;
+      tsc --noEmit 0 in the pre-commit hook of commit 8b297409c1
+    ts: "2026-09-16T18:01:00Z"
+    seat: claude-fable-5-1 (signing seat)
+    exit: 0
+  - claim: >-
+      this successor carries byte-identical content blobs to #6670's head 8b297409c1, and
+      neither test file nor the packs directory moved on main between 1e5027d846 and the
+      successor base c47bcf803e
+    cmd: >-
+      git checkout 8b297409c1 -- <3 files>; for each: git rev-parse 8b297409c1:<path> vs
+      git hash-object <path>; git diff --stat 1e5027d846 HEAD -- <2 test files> <packs dir>
+    result: >-
+      SAME 93be2b80e5 rulepack-prod-022.signed.json; SAME 4d8e2dda14 test_interview_walk_census.py;
+      SAME f2854966d7 engine-adapter.test.ts; diff --stat empty
+    ts: "2026-09-16T18:05:30Z"
+    seat: claude-fable-5-1 (signing seat, successor worktree)
+    exit: 0
+  - claim: >-
+      the bites observer runs both backend consumers against the committed signed bundle
+      with no arguments and exits 0 (observer_receipt)
+    cmd: "python3 scripts/ci/observe_visa_seq22_signed.py"
+    result: >-
+      39 passed in 183.82s (0:03:03); 36 passed, 14 skipped in 64.14s (0:01:04); observe_visa_seq22_signed: both consumers green
+    ts: "2026-09-16T18:12:04Z"
+    seat: claude-fable-5-1 (signing seat, successor worktree)
+    exit: 0

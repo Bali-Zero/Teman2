@@ -1258,6 +1258,54 @@ describe("review reasons cover every code the current pack can emit", () => {
   // orphaned in an empty array.
   const KNOWN_UNMAPPED_REVIEW_REASON_CODES: string[] = [];
 
+  // SAETTA-20260916: the signed seq-22 bundle landed on 2026-09-16 WITHOUT
+  // activation — activating is a separate ceremony (D24) the repo does not
+  // record, and production still evaluates on seq-20 (the pack seq-22 chains
+  // from; seq-21 was signed and never activated). seq-22 no longer emits
+  // these eight codes, so against the highest signed pack their
+  // REVIEW_REASON_COPY entries read as "stale" — but a live seq-20 verdict
+  // still emits every one of them, and deleting the copy now would print a
+  // machine code on a real applicant's sheet until seq-22 goes live. The
+  // stale-key test therefore matches this list BY NAME instead of the empty
+  // array: a ninth stale key still goes red, and so does deleting one of
+  // these copies without removing it here. Once seq-22 is ACTIVATED (D24),
+  // the copy for these eight goes, and this list empties in the same PR.
+  const REVIEW_REASON_COPY_KEYS_LIVE_ON_SEQ20_ONLY: string[] = [
+    "E23U_DIPLOMATIC_HOUSEHOLD_STAFF_REVIEW",
+    "E23V_TRADE_OFFICE_STAFF_REVIEW",
+    "E28B_USD_THRESHOLD_MANUAL_CHECK",
+    "E28C_USD_THRESHOLD_AND_INSTRUMENT_CHECK",
+    "E28D_USD_THRESHOLD_AND_TURNOVER_CHECK",
+    "E28F_IKN_THRESHOLD_MANUAL_CHECK",
+    "E33B_EXPERTISE_QUALIFICATION_CHECK",
+    "GOVT_INVITATION_REQUIRED",
+  ];
+
+  /** Review reason codes a given signed pack's rules can emit. */
+  function reviewReasonCodesInSignedPack(sequence: number): Set<string> {
+    const envelope = JSON.parse(
+      fs.readFileSync(
+        path.join(
+          PACKS_DIR,
+          `rulepack-prod-${String(sequence).padStart(3, "0")}.signed.json`,
+        ),
+        "utf-8",
+      ),
+    ) as { payload?: { rules?: Array<Record<string, unknown>> } };
+    const codes = new Set<string>();
+    for (const rule of envelope.payload?.rules ?? []) {
+      const effect = rule.effect as Record<string, unknown> | undefined;
+      if (!effect || typeof effect.reason_code !== "string") continue;
+      if (
+        rule.stage === "HUMAN_REVIEW" ||
+        (rule.stage === "HARD_FILTER" && rule.on_unknown === "HUMAN_REVIEW")
+      ) {
+        codes.add(effect.reason_code);
+      }
+    }
+    return codes;
+  }
+
   it("names every code the current pack + backend can emit, mapped or in the known gap", () => {
     const allRealCodes = [
       ...reviewReasonCodesInPack(),
@@ -1275,7 +1323,12 @@ describe("review reasons cover every code the current pack can emit", () => {
     // retires eight of the 20 pack codes, but `reviewReasonCodesInPack()`
     // reads the signed seq-20 payload too, so all 20 are still counted
     // while seq-20 is the newest pack that can be in force.
-    expect(allRealCodes.length).toBeGreaterThanOrEqual(38);
+    //
+    // 38 -> 31 when the signed seq-22 bundle landed (SAETTA-20260916): the
+    // highest signed pack is now seq-22, which emits 13 codes (the eight
+    // above retired), + 18 pack-independent = 31, measured. The eight keep
+    // their copy under REVIEW_REASON_COPY_KEYS_LIVE_ON_SEQ20_ONLY below.
+    expect(allRealCodes.length).toBeGreaterThanOrEqual(31);
 
     const unaccounted = allRealCodes.filter(
       (code) =>
@@ -1290,10 +1343,38 @@ describe("review reasons cover every code the current pack can emit", () => {
       ...reviewReasonCodesInPack(),
       ...PACK_INDEPENDENT_REVIEW_REASON_CODES,
     ]);
-    const staleKeys = Object.keys(REVIEW_REASON_COPY).filter(
-      (code) => !allRealCodes.has(code),
+    const staleKeys = Object.keys(REVIEW_REASON_COPY)
+      .filter((code) => !allRealCodes.has(code))
+      .sort();
+    expect(staleKeys).toEqual(
+      [...REVIEW_REASON_COPY_KEYS_LIVE_ON_SEQ20_ONLY].sort(),
     );
-    expect(staleKeys).toEqual([]);
+  });
+
+  it("keeps the seq-20-only list honest: every entry is live on signed seq-20 and gone from the highest signed pack", () => {
+    // The list above is a claim about production, not a parking lot: each
+    // entry must be a code the signed seq-20 pack still emits (or its copy
+    // really is dead and must go), and must be absent from the highest
+    // signed pack (or it is not "seq-20 only" and belongs in the ordinary
+    // stale-key check).
+    const seq20 = reviewReasonCodesInSignedPack(20);
+    const highest = new Set([
+      ...reviewReasonCodesInPack(),
+      ...PACK_INDEPENDENT_REVIEW_REASON_CODES,
+    ]);
+    const notLiveOnSeq20 = REVIEW_REASON_COPY_KEYS_LIVE_ON_SEQ20_ONLY.filter(
+      (code) => !seq20.has(code),
+    );
+    expect(notLiveOnSeq20).toEqual([]);
+    const stillEmittedByHighest =
+      REVIEW_REASON_COPY_KEYS_LIVE_ON_SEQ20_ONLY.filter((code) =>
+        highest.has(code),
+      );
+    expect(stillEmittedByHighest).toEqual([]);
+    const withoutCopy = REVIEW_REASON_COPY_KEYS_LIVE_ON_SEQ20_ONLY.filter(
+      (code) => !(code in REVIEW_REASON_COPY),
+    );
+    expect(withoutCopy).toEqual([]);
   });
 
   it("keeps the known-gap list honest: no entry there already has copy", () => {
