@@ -56,6 +56,9 @@ BALI_METADATA_KEYS = (
     "bali_needs_review",
     "bali_reason",
     "has_bali_l4",
+    "bali_closure_url",
+    "bali_closure_scope",
+    "bali_confidence",
 )
 
 results: list[tuple[str, bool, str]] = []
