@@ -1,57 +1,96 @@
 You are a REVIEW seat on a Gear-3 council (round 1). Worktree:
 /Users/balizero/nuzantara/.worktrees/backend-rag-vo-sessions-retention-v2 (branch
 agent/air-m5/backend-rag/vo-sessions-retention-v2, merge-base
-c1db269aa9601914ec77250f7748f0ac2352cf55, HEAD a76050925ca29ec1bf3b4c4882be913986a03b5d).
+c1db269aa9601914ec77250f7748f0ac2352cf55, HEAD 67d00e0b8c992cdde800b381c156950937d3194d).
 Read-only: no edits, no file creation, no git write commands. Do not quote secrets or PII.
 
 SCOPE. Review `git diff c1db269aa9601914ec77250f7748f0ac2352cf55...HEAD` in this worktree. Read,
 in this order:
 - apps/backend-rag/backend/db/migrations_v2/317_visa_oracle_sessions_retention_30d.sql (whole
-  file — 180 lines, mostly comment/provenance; this IS the change)
+  file — 180 lines, mostly comment/provenance; this IS the DEFAULT half of the change)
 - apps/backend-rag/backend/tests/db/test_migration_317_visa_oracle_sessions_retention.py (whole
-  file — the guilt/innocence proof for every claim below)
-- apps/backend-rag/backend/app/routers/visa_oracle.py lines 634-657 (`_persist_session_create` —
-  the sole consumer; confirm it never sets expires_at)
+  file — the guilt/innocence proof for the DEFAULT claims)
+- apps/backend-rag/backend/app/routers/visa_oracle.py: lines 634-657
+  (`_persist_session_create` — the sole write consumer; confirm it never sets expires_at) AND the
+  new `_purge_expired_sessions` function (grep it in the same file, ~50 lines, right after
+  `_persist_session_append_message`) AND lines ~740-762 (`_persist_session_handoff` +
+  `_fetch_session_snapshot` — the ONLY app-level dependency the purge must not break)
+- apps/backend-rag/backend/tests/routers/test_visa_oracle_sessions_purge.py (whole file — the
+  guilt/innocence proof for the PURGE half)
+- apps/backend-rag/backend/scripts/visa_engine/visa_oracle_sessions_purge_worker.py (whole file
+  — the scheduled entry point)
+- infra/launchagents/wrappers/visa-oracle-sessions-purge-run.sh and
+  infra/launchagents/com.nuzantara.visa-oracle-sessions-purge.15min.plist.example (both short)
 - apps/backend-rag/backend/db/migration_manager.py lines 39-69 (`_assert_unique_migration_numbers`)
-  and lines 559-655 (`_apply_all_pending_locked`) — the numbering-safety claim below rests on
-  these two functions.
+  and lines 559-655 (`_apply_all_pending_locked`) — the numbering-safety claim rests on these two
+  functions.
 Never open PENDING-ARMS.md, docs/, research/, or any file under this worktree's own
 evidence/2026-09/agent-air-m5-backend-rag-vo-sessions-retention-v-d2b0707e/council/.
 
-WHAT THE CHANGE CLAIMS. Migration 317 changes `visa_oracle_sessions.expires_at`'s DEFAULT from
-`NOW() + INTERVAL '90 days'` to `NOW() + INTERVAL '30 days'` (Owner ruling, Zero, 2026-08-25 —
-UU PDP data minimisation). It is a successor of PR #6478 (armed, frozen, no evidence pack, same
-filename, same SQL body) — reusing the SAME migration number 317, not renumbering. The forward
-section is idempotent (CREATE TABLE/INDEX IF NOT EXISTS, matching production's existing shape;
-the ALTER is the only statement with a real effect on production). No existing row is rewritten
-(no UPDATE/DELETE anywhere in the file). The rollback section restores 90 days. No router code
-changes — `_persist_session_create`'s INSERT never names `expires_at`, so the DEFAULT alone
-governs every new row.
+WHAT THE CHANGE CLAIMS. Two halves, both required for the stated business goal ("Visa Oracle
+session retention is actually enforced at 30 days", not merely declared — a Dux found PROD held
+20 rows, 17 already past expires_at, nothing deleting them).
 
-FALSIFY THESE SIX CLAIMS. For each: PROVEN or BROKEN, with file:line or command output that
+HALF 1 (DEFAULT). Migration 317 changes `visa_oracle_sessions.expires_at`'s DEFAULT from
+`NOW() + INTERVAL '90 days'` to `NOW() + INTERVAL '30 days'` (Owner ruling, Zero, 2026-08-25 —
+UU PDP data minimisation). Successor of PR #6478 (armed, frozen, no evidence pack, same
+filename, same SQL body) — reuses the SAME migration number 317, not renumbering. Idempotent
+forward section; no existing row rewritten (no UPDATE/DELETE in the file); rollback restores 90
+days. `_persist_session_create`'s INSERT never names `expires_at`, so the DEFAULT alone governs
+every new row.
+
+HALF 2 (PURGE, this turn's addition). A new `_purge_expired_sessions` helper (next to the
+router's other session helpers) runs
+`DELETE FROM visa_oracle_sessions WHERE ctid IN (SELECT ctid FROM visa_oracle_sessions WHERE
+expires_at < NOW() AND NOT COALESCE(handoff_triggered, false) LIMIT $1)` — bounded, and NEVER
+deletes a row with `handoff_triggered = TRUE` (the consultant's own follow-up record). Reachable
+only via a new one-shot scheduled worker
+(`visa_oracle_sessions_purge_worker.py`, `--apply`-gated) invoked by a launchd
+wrapper/plist/`cron-wrapper.sh` trio mirroring `visa-oracle-retention-run.sh`'s shape — never
+from the FastAPI request path. `lead_capture.repository.purge_expired` (the pattern this new
+function's return-count contract copies) has zero callers anywhere in the repo, so there was
+nothing to reuse directly for scheduling; the visa_engine `retention_worker.py` (visa DECISIONS)
+IS scheduled that way already and is the closest same-domain precedent, but is gated by a
+Zero-approved retention-policy table this session did not create one of (deliberately — argued
+disproportionate for a table with no such policy row).
+
+FALSIFY THESE TEN CLAIMS. For each: PROVEN or BROKEN, with file:line or command output that
 decides it.
 1. DEFAULT CHANGE: the LAST `ALTER COLUMN expires_at SET DEFAULT` in the forward section reads
    '30 days', not '90 days' (the CREATE TABLE fallback still names '90 days' as production's
-   pre-existing value for a genuinely fresh database — that is NOT a defect, confirm it is not
-   confused with the real declaration).
-2. NO DATA REWRITE: neither the forward nor rollback section contains an UPDATE or DELETE
-   against visa_oracle_sessions — existing rows keep their currently-declared expires_at.
-3. IDEMPOTENCY: CREATE TABLE and both CREATE INDEX statements are IF NOT EXISTS-guarded, so a
-   run against production (where all three already exist) is a no-op; the ALTER SET DEFAULT is
-   itself idempotent (re-running it is harmless).
-4. ROUTER SUFFICIENCY: `_persist_session_create`'s INSERT statement (visa_oracle.py) names only
-   (session_id, quiz_answers, recommended_visas, ip_hash) — expires_at is absent from both the
-   column list and the bound params — so this migration alone is sufficient and no router change
-   is missing.
+   pre-existing value for a fresh database — NOT a defect, confirm it is not confused with the
+   real declaration).
+2. NO DATA REWRITE (migration): neither the forward nor rollback section of the .sql file
+   contains an UPDATE or DELETE against visa_oracle_sessions.
+3. IDEMPOTENCY (migration): CREATE TABLE and both CREATE INDEX statements are
+   IF NOT EXISTS-guarded; the ALTER SET DEFAULT is itself idempotent.
+4. ROUTER SUFFICIENCY (write path): `_persist_session_create`'s INSERT statement names only
+   (session_id, quiz_answers, recommended_visas, ip_hash) — expires_at absent from both the
+   column list and the bound params.
 5. NUMBER SAFETY: `_assert_unique_migration_numbers` only rejects two files sharing the SAME
-   numeric prefix; it does not require monotonic/contiguous numbering. `_apply_all_pending_locked`
-   computes `pending` as `migration["number"] not in applied_numbers` — never a comparison against
-   the highest applied number — so a database that has already applied migration 318 will still
-   pick up and correctly apply 317 on its next run, out of numeric order, with no special-casing
-   needed.
-6. TEST VALIDITY: the new test file's guilt case (flip the forward section's real default to
-   '90 days') is real coverage — i.e., if a future edit silently reverted the DEFAULT to 90 days,
-   `test_forward_sets_the_default_to_30_days` would fail, not pass vacuously.
+   numeric prefix, never out-of-order gaps; `_apply_all_pending_locked` computes `pending` as
+   `migration["number"] not in applied_numbers`, never a comparison against the highest applied
+   number — a database that already applied 318 will still correctly pick up and apply 317.
+6. PURGE SQL SHAPE: `_purge_expired_sessions`'s DELETE predicate is EXACTLY `expires_at < NOW()
+   AND NOT COALESCE(handoff_triggered, false)`, bounded by a LIMIT-bearing subquery — no bare
+   unbounded DELETE, no missing handoff exclusion.
+7. HANDOFF SAFETY: grep this whole diff and `backend/db/migrations_v2/*.sql` for any FK or table
+   that references `visa_oracle_sessions` by ID — confirm there is none, and that
+   `handoff_triggered` (set only by `_persist_session_handoff`, read only by
+   `_fetch_session_snapshot`, both in this same file) is genuinely the only durable
+   "this row still matters" signal the purge must respect.
+8. NON-FATAL + PII-FREE: `_purge_expired_sessions` catches its own DB exception and returns 0
+   rather than raising; its success/failure log lines contain a bare integer count only — never a
+   session_id, quiz_answers, message or ip_hash substring.
+9. SCHEDULER SHAPE: `visa-oracle-sessions-purge-run.sh` never hardcodes `--apply` (env-var-gated,
+   same `case` validation shape as `visa-oracle-retention-run.sh`, same exit 78 on a bad value);
+   the plist has `KeepAlive=false` + a `StartInterval` (never `KeepAlive=true` on a one-shot —
+   cicatrix scar #7).
+10. TEST VALIDITY: `test_purge_sql_excludes_handoff_triggered_rows_and_expired_only` is real
+    coverage, not vacuous — confirm its assertion would fail if the `NOT COALESCE(...)` clause
+    were removed (the PR body/pack.yml claims this was proven red and restored via `cp`; you do
+    not need to reproduce the mutation, just judge whether the assertion as written is capable of
+    catching that regression).
 
 Be terse: at most 6 lines per claim. Your LAST line must be exactly one of:
 VERDICT: OK
