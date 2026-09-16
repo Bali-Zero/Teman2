@@ -888,3 +888,15 @@ async def test_create_client_allows_duplicate_phone_override(
 
     assert result.id == 1
     mock_service.create_client.assert_called_once()  # insert DID happen
+
+
+def test_client_update_tax_consultant_mixed_case_padded_legacy_alias_normalizes():
+    """Acceptance (b) of the R-C mandate, on the ROUTER path rather than on
+    `normalize()` alone: a legacy alias that arrives upper-cased and padded
+    must still land on the real address, not be rejected as unknown."""
+    from backend.app.core.constants import TaxConsultantConstants
+    from backend.app.routers.crm_clients import ClientUpdate
+
+    ghost, real = next(iter(TaxConsultantConstants.LEGACY_ALIASES.items()))
+    u = ClientUpdate(tax_consultant=f"  {ghost.upper()}  ")
+    assert u.tax_consultant == real

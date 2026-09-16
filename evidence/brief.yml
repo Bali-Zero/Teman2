@@ -1,95 +1,95 @@
-task_id: b2-5-2-wa-human-handoff
-gear: 2
+task_id: shweb-w2-tax-allowlist-align
+gear: 3
 l_level: L2
 gate_class: opus
-# Floor for this diff is 2, reached via the SIZE term alone (1018 added / 32 deleted across 10
-# files) — no hot-zone path, no migration, no new dependency. Measured WITH this brief staged:
-# the brief's own churn (~90 lines) leaves the total well under the floor-3 threshold, which is
-# the mistake that sank PR #6602.
+# Floor is 3 via the HOT-ZONE term, not size: this PR adds a schema migration
+# (db/migrations_v2/319_*.sql) that rewrites rows in two production tables and
+# swaps two CHECK constraints. Size alone (826/37 over 14 files) would already
+# put it at 2; the migration is what makes it 3, so the pack is mandatory and
+# the gate class is opus.
 objective: >-
-  A client who asks to speak to a person is the highest-intent message this bot ever receives —
-  it is a lead. Today nothing on the Meta Inbox channel detects it: the message falls through to
-  retrieval, abstains, and reaches no human being. Measured 2026-09: 32 of 40 conversations end
-  in an abstain, 4 were picked up by a person. This PR detects the ask in five languages, answers
-  the client in their own language, and notifies a human on two channels — the kita notification
-  bell for the assigned consultant, and email for everyone including a number no client row
-  matches yet.
+  The tax team's allowlist and the canonical staff table disagree, and the disagreement is
+  live in production. `team_members` holds tax@balizero.com (Veronika) and faysha.tax@…
+  (Faisha, with a Y); the two CHECK constraints on clients.tax_consultant and
+  lkpm_reports.lkpm_assigned_to instead allow veronika.tax@… and faisha.tax@… — two addresses
+  that match no staff record — while REJECTING the two real ones. Consequence today: two of
+  five tax consultants cannot be assigned under their own address, LKPM deadline reminders are
+  emailed verbatim to a mailbox nobody reads, and the manager CC goes to a ghost. This PR makes
+  team_members canonical: migration 319 rewrites the offending rows and both CHECK lists, one
+  shared Python constant replaces four drifted copies of the allowlist, and the write path
+  normalizes the retired aliases so the kita dropdown — which still sends them — keeps working
+  through the transition instead of bouncing with a 422.
 constraints:
   - >-
-    No Anthropic per-token door in any form, no new dependency, no migration. The notification
-    table (notification_alerts, migration 071) and the email adapter
-    (/api/notifications/send-email, from=zantara@balizero.com) both already exist on main.
+    A migration already applied is never edited: migration_093 stays byte-identical to
+    origin/main (verified by an empty `git diff origin/main…HEAD` on that path). The change
+    lives only in db/migrations_v2/319_*.sql, with a symmetric ROLLBACK section.
   - >-
-    PII is an OUTPUT boundary. The phone number is used ONLY in-process to resolve the consultant.
-    It never appears in the email subject, the email body, the in-app row, or any log line; the
-    client's own words are never transcribed anywhere. The in-app message is a fixed English
-    sentence and the email body a fixed Bahasa Indonesia one, deliberately — a robust
-    "free of identifiers" classifier is out of scope for this size, so when in doubt this omits.
+    Downstream readers do not change contract. The invite path (#6480) and the session gate
+    (#6569) are untouched; the only observable difference for a caller is that a legacy alias is
+    now ACCEPTED and stored under its real address instead of being rejected.
   - >-
-    The client's confirmation must survive any notification failure. Both channels are best-effort
-    at their own layer, and the call site in wa_codex_leg.py wraps the whole call again, because
-    the outer attempt() turns an unhandled exception into a text=None fall-off — which would
-    silently swallow the very confirmation this leg exists to send.
+    PII is an OUTPUT boundary. Every address in this diff is an internal @balizero.com staff
+    mailbox; no client row, name, company or identifier appears in the migration, the tests, the
+    receipts or this pack. The live DB proof ran against a throwaway local database seeded with
+    synthetic rows ("Synthetic Alpha Ltd" …), never against production data.
   - >-
-    meta_inbox_threads.human_handling is NOT set. A client who ASKS for a human is not a human who
-    HAS TAKEN the thread; setting it aborts every later generation (aborted_human_takeover,
-    wa_outbox_worker.py:930) and, if nobody arrives, leaves the client in total silence.
+    Migration numbering was re-verified against open siblings at ship time, not assumed: 316/317
+    are claimed by open PRs #6474/#6478 and 318 is already on main, so 319 is the first free
+    number. `_assert_unique_migration_numbers` only sees files on disk and cannot catch a number
+    reserved by an unmerged sibling (cicatrix W40).
 acceptance:
   - text: >-
-      A1 GUILT: WHEN a client writes any of 23 real phrasings across it/en/id/ru/uk — including
-      "I want to talk to a human", "voglio parlare con una persona riguardo alla mia PT PMA" and
-      "saya mau bicara dengan orang" — SHALL match and return a confirmation in that language.
-      The domain veto is INVERTED relative to wa_identity: naming your own case while asking for a
-      human is the most valuable lead there is, and must match rather than be vetoed.
-    probe: "cd apps/backend-rag && .venv/bin/python -m pytest backend/tests/unit/services/test_wa_human_handoff.py -k TestGuilt"
+      A1 FORWARD AND BACK ON A CLEAN DATABASE. WHEN migration 319 is applied through the REAL
+      call path (MigrationManager.apply_migration → BaseMigration.apply, the same path the Fly
+      release_command uses) against a freshly created Postgres 17 database holding the pre-319
+      schema and synthetic rows, THEN both ghost addresses SHALL disappear from both tables, the
+      real addresses SHALL carry the rows, the new CHECK SHALL accept the five real addresses and
+      reject both ghosts and an unknown address; and WHEN rollback_migration runs, the previous
+      state SHALL be restored (values back on the ghosts, old CHECK back in force). Re-applying
+      afterwards SHALL succeed, proving the UPDATEs are no-ops on re-run.
+    probe: "PYTHONPATH=. .venv/bin/python scratchpad/prove_319.py  # 30/30 PASS, see receipts"
   - text: >-
-      A2 INNOCENCE: WHEN the message is "humanitarian visa", "how long does PT PMA take?",
-      "sei un umano?" or a third-person question about staff SHALL NOT match. The guard judges
-      whole TOKENS over a normalized window, never a substring — "humanitarian" cannot reach any
-      phrase in the table.
-    probe: "cd apps/backend-rag && .venv/bin/python -m pytest backend/tests/unit/services/test_wa_human_handoff.py -k TestInnocence"
+      A2 THE WRITE PATH ACCEPTS A LEGACY ALIAS AND REJECTS AN UNKNOWN ONE. WHEN ClientUpdate or
+      LKPMAssignBody receives a retired alias — including upper-cased and whitespace-padded —
+      THEN the stored value SHALL be the real replacement; WHEN it receives an address outside
+      both the allowlist and the alias map THEN it SHALL still raise exactly as before.
+    probe: "cd apps/backend-rag && PYTHONPATH=. .venv/bin/python -m pytest backend/tests/unit/routers/test_lkpm_assign_allowlist.py backend/tests/unit/routers/test_crm_clients_coverage.py"
   - text: >-
-      A3 THE ROW IS ALSO RENDERED: WHEN the module writes a notification_alerts row SHALL be a
-      type the kita bell actually shows. /api/crm/notifications filters on a fixed allow-list, so a
-      new alert_type would otherwise be written and never seen — for a lead, the same outcome as
-      not writing it. The allow-list is now one constant read by both the list and the count query,
-      and the test binds the two constants by ENTITY, not by grepping a SQL literal.
-    probe: "cd apps/backend-rag && .venv/bin/python -m pytest backend/tests/unit/services/test_wa_human_handoff.py -k TestInAppAlert"
+      A3 THE SQL AND THE PYTHON CANNOT DRIFT APART. WHEN the parity test runs THEN it SHALL parse
+      the two CHECK clauses out of 319_*.sql and compare them to TaxConsultantConstants.CANONICAL
+      and .LKPM_ASSIGNEES by value — the test restates nothing by hand, so an edit to either side
+      alone fails. A second sweep SHALL fail if either ghost string reappears anywhere under
+      backend/ outside four named settled-history files.
+    probe: "cd apps/backend-rag && PYTHONPATH=. .venv/bin/python -m pytest backend/tests/migrations/test_migration_319_tax_consultant_allowlist_parity.py backend/tests/test_tax_consultant_ghost_address_guard.py"
   - text: >-
-      A4 THE PROMISE IS KEPT: WHEN any of the five wa_identity presentations offers the client a
-      human SHALL use wording that match_human_request recognises. Before this PR that line was a
-      promise no code kept; the test walks every presentation and requires the detector to find a
-      request inside the exact sentence it suggests.
-    probe: "cd apps/backend-rag && .venv/bin/python -m pytest backend/tests/unit/services/test_wa_human_handoff.py -k TestPresentationKeepsItsPromise"
-  - text: >-
-      A5 NOTHING ELSE MOVED: WHEN the backend unit suite runs SHALL be 8534 passed with exactly one
-      pre-existing unrelated failure (autonomous_lab/test_consul_native_broker.py,
-      ModuleNotFoundError scripts.conductor), reproduced identically on a clean main checkout.
-    probe: "cd apps/backend-rag && .venv/bin/python -m pytest backend/tests/unit/services/autonomous_lab/test_consul_native_broker.py  # same red on main"
+      A4 NOTHING ELSE IN THE TOUCHED SURFACE MOVED. WHEN the nine test files this PR touches run
+      together THEN 155 SHALL pass, 0 fail.
+    probe: "cd apps/backend-rag && PYTHONPATH=. .venv/bin/python -m pytest $(git diff --name-only origin/main...HEAD | grep test | sed 's|apps/backend-rag/||')"
 assumptions:
   - text: >-
-      notification_alerts.client_id is NOT NULL with an FK to clients, and the bell's own query
-      JOINs clients to resolve the assignee — so an unrecognised number structurally CANNOT have an
-      in-app row. This is why the email is unconditional rather than a fallback: the newest lead is
-      exactly the one no client row matches.
+      The runner executes ONLY the forward half of a .sql migration. `split_migration_sql`
+      (migration_base.py) cuts at `-- === ROLLBACK ===`; without it PostgreSQL would treat the
+      marker as a comment and run the rollback in the same transaction (SCAR 2026-04-19, PB2
+      deploy). Verified on THIS file rather than assumed: exactly one marker match, 12 forward
+      statements, 10 rollback statements, and the forward half ends at the avatar UPDATE.
     status: verified
-    probe: "scripts/pg.sh -c '\\d notification_alerts' — client_id integer not null, FK to clients(id)"
+    probe: "python3 -c \"…split on ROLLBACK_MARKER_RE…\" → match count: 1, FORWARD 12 / ROLLBACK 10"
   - text: >-
-      The table carries UNIQUE (client_id, alert_type, created_date), so a client asking twice in
-      one day would raise without ON CONFLICT. DO UPDATE rather than DO NOTHING because a second
-      ask means the first went unanswered: the alert returns to unread and rises in the bell.
+      The rollback is honest about what it cannot undo. Row reversion is VALUE-based, so a row
+      that legitimately starts using tax@balizero.com AFTER this migration is indistinguishable
+      from a pre-migration row and would be reverted to the ghost too; and team_members.avatar is
+      deliberately NOT restored, because the sibling D6 PR deletes the two portrait files
+      independently and writing the path back would re-point at a 404. Both are stated in the
+      migration header, not discovered later.
     status: verified
-    probe: "scripts/pg.sh -c '\\d notification_alerts' — uq_notification_alert_daily UNIQUE (client_id, alert_type, created_date)"
+    probe: "grep -n 'HONESTY ABOUT WHAT THIS CANNOT RESTORE' -A 18 apps/backend-rag/backend/db/migrations_v2/319_*.sql"
   - text: >-
-      PackageUnbuildable("human_handoff_domain") cannot violate the wa_outbox CHECK constraint on
-      generation_fall_off_reason: unknown sub-reasons fall through to the generic
-      "package_unbuildable" bucket, which the constraint allows. wa_codex_leg short-circuits before
-      the builder is ever reached on this path anyway — the raise is a second line of defense.
+      The kita dropdown (apps/mouth/src/lib/workspace/roster-directory.ts) still holds the two
+      retired addresses. That is why normalize() exists on the write path and why this PR does not
+      need a same-PR frontend change to stay correct — but a client saved through it will come
+      back from the API on the REAL address, which that dropdown has no option for, so the select
+      renders as "not assigned". The mouth-side alignment is a separate PR in this same window,
+      shipped after this one (mandate order: PR-3a backend before PR-3b mouth).
     status: verified
-    probe: "wa_codex_leg.py:268 _UNBUILDABLE_SUB_REASON_MAP has 3 keys; anything else falls to _FALL_OFF_REASON_PREFIX_MAP['unbuildable']"
-  - text: >-
-      The live proof must come from a real phone. /webhook/whatsapp is fail-closed on the
-      X-Hub-Signature-256 HMAC and WHATSAPP_APP_SECRET is a Fly secret, absent on Pro (presence
-      probe only, value never read) — so no test inbound can be injected from this machine.
-    status: verified
-    probe: "presence probe over ~/.nuzantara-secrets.env and apps/backend-rag/.env: absent_local for all four WhatsApp vars"
+    probe: "grep -n 'veronika.tax\\|faisha.tax' apps/mouth/src/lib/workspace/roster-directory.ts"

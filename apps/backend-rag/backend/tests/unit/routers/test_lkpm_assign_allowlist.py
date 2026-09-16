@@ -60,3 +60,16 @@ def test_lkpm_assign_body_krisna_still_allowed():
 
     body = LKPMAssignBody(lkpm_assigned_to="krisna@balizero.com")
     assert body.lkpm_assigned_to == "krisna@balizero.com"
+
+
+def test_lkpm_assign_body_mixed_case_padded_legacy_alias_normalizes():
+    """Acceptance (b) of the R-C mandate, on the ROUTER path rather than on
+    `normalize()` alone: a legacy alias that arrives upper-cased and padded
+    — the shape a hand-typed or copy-pasted submission takes — must still
+    land on the real address, not be rejected as unknown."""
+    from backend.app.core.constants import TaxConsultantConstants
+    from backend.app.routers.lkpm import LKPMAssignBody
+
+    ghost, real = list(TaxConsultantConstants.LEGACY_ALIASES.items())[1]
+    body = LKPMAssignBody(lkpm_assigned_to=f"  {ghost.upper()}  ")
+    assert body.lkpm_assigned_to == real
