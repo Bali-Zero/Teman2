@@ -13,6 +13,12 @@ may be typed into — the native route cross-checks the name of the window its
 own API handed back. The name-level guilt/innocence lives in
 infra/claude-hooks/test_window_jump_gesture.sh; what this file pins is the
 ORDER of the two routes and the ending of the old session.
+
+v2.2 (2026-09-17): the OLD window is never the front window. It is resolved
+AFTER the new session claimed the jump, by an OSC title stamped on the tty of
+`from_pid` (seam: JUMP_TTY=<file>) — only the old claude's own terminal can show
+it — and `/exit` goes to the ONE window whose name carries the session id, or
+nowhere. On 2026-09-17 01:35 the front window was Zero's fresh Sonnet session.
 """
 from __future__ import annotations
 
@@ -46,6 +52,11 @@ case "$(basename "$1")|$2|$STUB_MODE" in
   *native*"|type-into|"*)              echo "ok"; exit 0 ;;
   *native*"|close-window|"*)           echo "ok"; exit 0 ;;
   window_jump.applescript"|window-names|keys-front-stuck") echo "old title"; exit 0 ;;
+  window_jump.applescript"|window-names|keys-stamped")
+    # snapshot = front is Zero's other session; later lists carry OUR stamped
+    # old window too, which must never be taken for the birth of the new one
+    n=$(cat "$d/wn" 2>/dev/null || echo 0); n=$((n+1)); echo "$n" > "$d/wn"
+    if [ "$n" = 1 ]; then echo "old title"; else printf 'old title\n⏩ nz-jump sess-123\nnew title\n'; fi; exit 0 ;;
   window_jump.applescript"|window-names|"*)
     # first call = the snapshot; every later one also shows the new window
     n=$(cat "$d/wn" 2>/dev/null || echo 0); n=$((n+1)); echo "$n" > "$d/wn"
@@ -70,7 +81,15 @@ def _home(tmp_path: Path, from_pid: int, *, cwd: str = "/tmp/wd") -> tuple[Path,
     stub = tmp_path / "osascript"
     stub.write_text(STUB)
     stub.chmod(stub.stat().st_mode | stat.S_IEXEC)
+    (home / "stamp.tty").write_bytes(b"")   # the seam for the old claude's tty
     return home, pending
+
+
+STAMP = "\x1b]0;⏩ nz-jump sess-123\x07"
+
+
+def _stamp(home: Path) -> str:
+    return (home / "stamp.tty").read_bytes().decode("utf-8")
 
 
 def _run(home: Path, mode: str, *, claim_after: float | None = 0.5, from_pid: int | None = None):
@@ -79,7 +98,8 @@ def _run(home: Path, mode: str, *, claim_after: float | None = 0.5, from_pid: in
     pending = home / ".organism" / "context-guard" / "pending-jump-sess-1234-abcd.json"
     env = {"HOME": str(home), "PATH": "/usr/bin:/bin", "OSASCRIPT": str(home.parent / "osascript"),
            "STUB_MODE": mode, "STUB_LOG": str(home / "calls.log"),
-           "JUMP_WAIT_S": "6", "EXIT_WAIT_S": "1", "JUMP_POLL_MAX_S": "2"}
+           "JUMP_WAIT_S": "6", "EXIT_WAIT_S": "1", "JUMP_POLL_MAX_S": "2",
+           "JUMP_TTY": str(home / "stamp.tty")}
     p = subprocess.Popen(["bash", str(SCRIPT), "sess-1234-abcd"], env=env,
                          stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     if claim_after is not None:
@@ -107,13 +127,16 @@ def test_native_route_opens_by_id_types_into_new_then_exits_and_closes_old(tmp_p
     finally:
         old.kill()
     assert rc == 0, log
-    assert calls[:5] == ["window_jump_native.applescript window-names  ",
-                         "window_jump_native.applescript old-id sess-123 ",
+    assert calls[:4] == ["window_jump_native.applescript window-names  ",
                          "window_jump_native.applescript new-window /tmp/wd ",
                          "window_jump_native.applescript name-of-id win-NEW ",
                          "window_jump_native.applescript type-into win-NEW nz-jump sess-1234-abcd"]
     assert "name='new title' (absent from the snapshot)" in log, "the id is a handle; the NAME authorises the keystroke"
+    # the old window is asked for only AFTER the claim, and only by the stamp
+    assert calls.index("window_jump_native.applescript old-id sess-123 ") > 3
+    assert _stamp(home) == STAMP, "the stamp goes to the tty of from_pid, nowhere else"
     assert "window_jump_native.applescript type-into win-OLD /exit" in calls
+    assert "/exit typed into old window id=win-OLD (proven ours by stamp)" in log
     assert calls[-1] == "window_jump_native.applescript close-window win-OLD "
     assert not any(c.startswith("window_jump.applescript") for c in calls), "native route must never touch System Events"
     assert "new session sess-NEW is up" in log and "old window id=win-OLD closed" in log
@@ -156,9 +179,49 @@ def test_native_disabled_falls_back_to_keystrokes(tmp_path):
     assert calls[1:] == ["window_jump.applescript window-names  ",
                          "window_jump.applescript cmd-n  ",
                          "window_jump.applescript window-names  ",
-                         "window_jump.applescript raise-type new title nz-jump sess-1234-abcd",
-                         "window_jump.applescript raise-type old title /exit"]
-    assert "'nz-jump sess-1234-abcd' typed" in log and "/exit typed into old window" in log
+                         "window_jump.applescript raise-type new title nz-jump sess-1234-abcd"]
+    assert "'nz-jump sess-1234-abcd' typed" in log
+    # no from_pid = no stamp = no window proven ours: the front window
+    # ("old title") is NOT typed into, whatever the snapshot said
+    assert "own window not stamped: no from_pid" in log and "/exit NOT typed" in log
+    assert not any("/exit" in c for c in calls)
+
+
+def test_keys_route_exits_only_the_window_proven_ours_by_stamp(tmp_path):
+    # 2026-09-17 01:35 on M5: the front window was a Sonnet session Zero had
+    # opened 30 seconds earlier; v2.1 typed /exit into it. Now the snapshot
+    # head ("old title") is never the target: only the name carrying the
+    # stamped session id is — and that name is never taken for the new window.
+    old = _sleeper()
+    try:
+        home, _ = _home(tmp_path, old.pid)
+        rc, calls, log = _run(home, "keys-stamped")
+    finally:
+        old.kill()
+    assert rc == 0, log
+    assert "window_jump.applescript raise-type new title nz-jump sess-1234-abcd" in calls
+    assert not any("⏩ nz-jump sess-123\tnz-jump" in c or "raise-type ⏩ nz-jump sess-123 nz-jump" in c for c in calls), \
+        "our own stamped window must never receive nz-jump"
+    assert _stamp(home) == STAMP
+    assert "window_jump.applescript raise-type ⏩ nz-jump sess-123 /exit" in calls
+    assert not any("raise-type old title /exit" in c for c in calls), "the front window is not ours"
+    assert "/exit typed into old window '⏩ nz-jump sess-123' (proven ours by stamp)" in log
+
+
+def test_old_window_is_never_the_front_window(tmp_path):
+    # The AppleScript the gesture writes must not carry the v2.1 shortcut
+    # (`if frontmost then return id of front window`): the old window is the
+    # ONE whose title contains the session id, or unknown.
+    old = _sleeper()
+    try:
+        home, _ = _home(tmp_path, old.pid)
+        rc, calls, log = _run(home, "native-ok")
+    finally:
+        old.kill()
+    assert rc == 0, log
+    native = (home / ".organism" / "context-guard" / "window_jump_native.applescript").read_text()
+    assert "frontmost" not in native and "id of front window" not in native
+    assert "front window: 'old title' (not assumed ours)" in log
 
 
 def test_keystroke_route_types_nothing_when_no_new_window_was_born(tmp_path):

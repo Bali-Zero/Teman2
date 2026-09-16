@@ -42,11 +42,17 @@ Ghostty, solo macOS). Dettaglio storico:
    `NZ_JUMP_FROM`, non è mai una continuazione: resta muto anche con un pending fresco nello
    stesso cwd (fino al 2026-09-09 pescava «il più fresco non reclamato» e per 15 minuti dopo
    ogni guard una finestra di Zero partiva da sola sul mandato vecchio).
-7. `window_jump.sh` vede `to_session` (poll 1s, max `JUMP_WAIT_S`) e chiude la vecchia:
-   `/exit` nel terminale vecchio **per id** (rotta native) o rialzando la finestra per nome
-   (rotta keystroke); se il PID sopravvive, `SIGINT` ×2 su `from_pid`; e solo quando quel
-   claude è morto, `close window` sull'id vecchio — solo native, la rotta keystroke non può
-   chiudere in sicurezza.
+7. `window_jump.sh` vede `to_session` (poll 1s, max `JUMP_WAIT_S`) e chiude la vecchia —
+   **solo la propria** (Zero 2026-09-17: «il saltatore o quello che è atterrato non possono
+   killare finestre al di fuori di loro»). Prima scrive un titolo OSC `⏩ nz-jump <sid8>` sul
+   **tty di `from_pid`** (`ps -o tty=`): solo il terminale del claude vecchio può mostrarlo.
+   Poi la finestra vecchia è l'UNICA il cui nome porta il sid (`old-id` per id, rotta native;
+   per nome, rotta keystroke) e riceve `/exit`. Mai la finestra frontale, mai la prima dello
+   snapshot: il 2026-09-17 01:35 la frontale era una Sonnet aperta da Zero 30 s prima e si è
+   presa l'`/exit`. Senza tty, senza stampa o con due/zero match: `/exit` NON digitato. Se il
+   PID sopravvive, `SIGINT` ×2 su `from_pid`; e solo quando quel claude è morto,
+   `close window` sull'id vecchio — solo native, la rotta keystroke non può chiudere in
+   sicurezza.
 
 Misurato 2026-09-09: **~6s** dal keystroke a `to_session`. Cap: 3 hop per catena
 (`JUMP_MAX_HOPS`), 3 gesti per sessione (`gesture_attempts`, il guard ritenta da solo e
@@ -84,10 +90,13 @@ davanti (`AS_N=~/.organism/context-guard/window_jump_native.applescript`):
 `osascript -e 'tell application "Ghostty" to get id of every window'` per l'id, poi
 `osascript "$AS_N" type-into <id> "nz-jump $SID"`.
 
-Poi, **solo dopo** che `to_session` è timbrato nel file pending, si chiude la vecchia:
+Poi, **solo dopo** che `to_session` è timbrato nel file pending, si chiude la vecchia —
+e a mano vale la stessa regola dello script: prova che è la tua prima di digitarci.
 
 ```bash
-osascript "$AS" raise-type "◑ Interactive" "/exit"          # nome ESATTO della finestra vecchia
+printf '\033]0;⏩ nz-jump %s\007' "${SID:0:8}" > /dev/$(ps -o tty= -p "$FROM_PID" | tr -d ' ')  # timbro sul tty del claude vecchio
+osascript "$AS_N" old-id "${SID:0:8}"                        # l'UNICA finestra col sid nel nome, o ""
+osascript "$AS" raise-type "⏩ nz-jump ${SID:0:8}" "/exit"    # mai la frontale, mai «Interactive»
 ```
 
 I nomi finestra **collidono**: Claude Code mette come titolo il titolo di sessione, quindi

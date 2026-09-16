@@ -55,6 +55,22 @@
 # on the old window id (native route only; the keystroke route cannot close
 # safely).
 #
+# OWN WINDOW ONLY (v2.2, Zero 2026-09-17: «il saltatore o quello che è atterrato
+# non possono killare finestre al di fuori di loro»). The jumper may touch two
+# windows: the one it opens (bound by id + a name absent from the snapshot) and
+# ITS OWN (the terminal of `from_pid`). v2.1 resolved "its own" as `front window`
+# whenever Ghostty was the active app — on 2026-09-17 01:35 the front window was
+# a Sonnet session Zero had opened 30 seconds earlier, and it took the `/exit`
+# (jump.log: "old window: '◑ Verificare sessioni attive sulle machine'"). The
+# front window, the first window of the snapshot and "the window this hook runs
+# in" are all guesses. The binding is now POSITIVE: after the new session has
+# claimed the jump, the gesture writes an OSC title carrying the session id to
+# the TTY OF `from_pid` (`ps -o tty=`) — only the old claude's own terminal can
+# show that title — and the old window is the ONE window whose name carries it.
+# No tty, no writable device, two matches or none: `/exit` is NOT typed, SIGINT
+# to `from_pid` ends the session, and the window is left open. A stamped name
+# is never taken for the birth of the new window either.
+#
 # Contract: $1 = from_session. Reads ~/.organism/context-guard/pending-jump-<from>.json
 # (per-session file: two windows jumping at once never overwrite each other).
 # A wrong keystroke in Zero's other window is worse than an idle one: every
@@ -86,6 +102,29 @@ command -v "$OSASCRIPT" >/dev/null 2>&1 || { log "no osascript on PATH: no windo
 [ -n "$FROM" ] && [ -f "$PENDING" ] || { log "no pending-jump file for '$FROM'"; exit 1; }
 FROM_PID=$(jget from_pid)
 CWD=$(jget cwd)
+SID8="${FROM:0:8}"
+STAMP="⏩ nz-jump $SID8"
+
+# Write the stamp to the old claude's own terminal. JUMP_TTY overrides the
+# device (tests only). Returns 1 — and logs why — whenever the window cannot be
+# PROVEN ours: then nothing is typed into any window.
+stamp_own_window() {
+    [ -n "${FROM_PID:-}" ] && [ "$FROM_PID" -gt 1 ] 2>/dev/null || { log "own window not stamped: no from_pid"; return 1; }
+    alive "$FROM_PID" || { log "own window not stamped: pid $FROM_PID not alive"; return 1; }
+    local dev="${JUMP_TTY:-}"
+    if [ -z "$dev" ]; then
+        local tty
+        tty=$(ps -o tty= -p "$FROM_PID" 2>/dev/null | tr -d ' ')
+        [ -n "$tty" ] && [ "$tty" != "??" ] || { log "own window not stamped: pid $FROM_PID has no tty (window left open)"; return 1; }
+        dev="/dev/$tty"
+    fi
+    [ -w "$dev" ] || { log "own window not stamped: $dev not writable (window left open)"; return 1; }
+    printf '\033]0;%s\007' "$STAMP" > "$dev" 2>/dev/null || { log "own window not stamped: write to $dev failed (window left open)"; return 1; }
+    log "own window stamped '$STAMP' on $dev (tty of pid $FROM_PID)"
+    sleep 0.5
+}
+# The ONE line of a window list that carries our session id; two or none -> "".
+own_name_in() { printf '%s\n' "$1" | grep -F -- "$SID8" | awk 'NR==1{a=$0} END{if(NR==1) printf "%s", a}'; }
 
 # AppleScript takes every value as an ARGUMENT (on run argv), never spliced
 # into source: a title, a path or a session id with a quote or backslash must
@@ -102,16 +141,14 @@ on run argv
       set AppleScript's text item delimiters to ""
       return out
     else if act is "old-id" then
-      -- The window this hook runs in is the one the operator is looking at
-      -- when Ghostty is the active app; otherwise the ONLY terminal whose
-      -- title names this session (Claude Code titles the tab after the
-      -- mandate; nz-jump's stub names the session). Two or none: unknown —
-      -- better an old window left open than /exit typed into the wrong one.
+      -- The ONLY window whose title carries this session id: the title the
+      -- gesture stamped on the old claude's tty (or nz-jump's stub name).
+      -- NEVER the front window — on 2026-09-17 01:35 "front" was the Sonnet
+      -- session Zero had opened 30 seconds earlier, and it took the /exit.
+      -- Two or none: unknown — better an old window left open than /exit
+      -- typed into the wrong one.
       set sid to item 2 of argv
       set found to {}
-      try
-        if frontmost then return id of front window
-      end try
       repeat with w in windows
         try
           if (name of w) contains sid then set end of found to id of w
@@ -193,8 +230,8 @@ if [ -z "$BEFORE" ]; then
     SNAP_SRC="keys"
     BEFORE=$("$OSASCRIPT" "$AS_KEYS" window-names 2>/dev/null || true)
 fi
-OLD_NAME=$(printf '%s\n' "$BEFORE" | head -1)
-log "old window: '${OLD_NAME:-?}' pid=${FROM_PID:-?} · windows before ($SNAP_SRC): [$(flat "$BEFORE")]"
+FRONT_BEFORE=$(printf '%s\n' "$BEFORE" | head -1)
+log "front window: '${FRONT_BEFORE:-?}' (not assumed ours) pid=${FROM_PID:-?} · windows before ($SNAP_SRC): [$(flat "$BEFORE")]"
 # An UNREADABLE window list is not an empty desktop. With BEFORE empty, every
 # name read after the gesture looks "new", and the first pre-existing window —
 # Zero's other session — would take the keystroke. No snapshot, no gesture.
@@ -202,31 +239,31 @@ log "old window: '${OLD_NAME:-?}' pid=${FROM_PID:-?} · windows before ($SNAP_SR
 
 # ---- NATIVE route -----------------------------------------------------------
 if [ "$SNAP_SRC" = "native" ]; then
-    if OLD_ID=$("$OSASCRIPT" "$AS_NATIVE" old-id "${FROM:0:8}" 2>"$NERR"); then
-        NEW_ID=$("$OSASCRIPT" "$AS_NATIVE" new-window "$CWD" 2>"$NERR" || true)
-        if [ -z "$NEW_ID" ]; then
-            log "native: new window FAILED ($(tr '\n' ' ' < "$NERR" | cut -c1-160)): falling back to keystrokes"
-        else
-            # The id is a handle, but the RULE is the name: a window whose name
-            # was already in the snapshot is somebody else's, whatever handed
-            # it to us. Unreadable is refused too — no evidence, no keystroke.
-            NEW_NAME=$("$OSASCRIPT" "$AS_NATIVE" name-of-id "$NEW_ID" 2>/dev/null || true)
-            if [ -z "$NEW_NAME" ]; then
-                log "native: window id='$NEW_ID' created but its name is unreadable, so it cannot be checked against the snapshot: nothing typed (window left open)"
-                rm -f "$NERR"; exit 1
-            elif in_snapshot "$BEFORE" "$NEW_NAME"; then
-                log "native: window id='$NEW_ID' is named '$NEW_NAME', a name ALREADY in the snapshot (not a birth): nothing typed (window left open)"
-                rm -f "$NERR"; exit 1
-            elif "$OSASCRIPT" "$AS_NATIVE" type-into "$NEW_ID" "nz-jump $FROM" >/dev/null 2>"$NERR"; then
-                ROUTE="native"
-                log "native: old window id='${OLD_ID:-?}' pid=${FROM_PID:-?}; new window id='$NEW_ID' name='$NEW_NAME' (absent from the snapshot), 'nz-jump $FROM' sent"
-            else
-                log "native: new window id='$NEW_ID' opened but input FAILED ($(tr '\n' ' ' < "$NERR" | cut -c1-160)): nothing typed"
-                rm -f "$NERR"; exit 1
-            fi
-        fi
+    NEW_ID=$("$OSASCRIPT" "$AS_NATIVE" new-window "$CWD" 2>"$NERR" || true)
+    if [ -z "$NEW_ID" ]; then
+        log "native: new window FAILED ($(tr '\n' ' ' < "$NERR" | cut -c1-160)): falling back to keystrokes"
     else
-        log "native route unavailable ($(tr '\n' ' ' < "$NERR" | cut -c1-120)): falling back to keystrokes"
+        # The id is a handle, but the RULE is the name: a window whose name
+        # was already in the snapshot is somebody else's, whatever handed
+        # it to us. Unreadable is refused too — no evidence, no keystroke.
+        # A name carrying OUR session id is our own old window, not a birth.
+        NEW_NAME=$("$OSASCRIPT" "$AS_NATIVE" name-of-id "$NEW_ID" 2>/dev/null || true)
+        if [ -z "$NEW_NAME" ]; then
+            log "native: window id='$NEW_ID' created but its name is unreadable, so it cannot be checked against the snapshot: nothing typed (window left open)"
+            rm -f "$NERR"; exit 1
+        elif in_snapshot "$BEFORE" "$NEW_NAME"; then
+            log "native: window id='$NEW_ID' is named '$NEW_NAME', a name ALREADY in the snapshot (not a birth): nothing typed (window left open)"
+            rm -f "$NERR"; exit 1
+        elif [ -n "$(own_name_in "$NEW_NAME")" ]; then
+            log "native: window id='$NEW_ID' is named '$NEW_NAME', which carries THIS session's id (our own window, not a birth): nothing typed (window left open)"
+            rm -f "$NERR"; exit 1
+        elif "$OSASCRIPT" "$AS_NATIVE" type-into "$NEW_ID" "nz-jump $FROM" >/dev/null 2>"$NERR"; then
+            ROUTE="native"
+            log "native: new window id='$NEW_ID' name='$NEW_NAME' (absent from the snapshot), 'nz-jump $FROM' sent; old window resolved by stamp after the claim"
+        else
+            log "native: new window id='$NEW_ID' opened but input FAILED ($(tr '\n' ' ' < "$NERR" | cut -c1-160)): nothing typed"
+            rm -f "$NERR"; exit 1
+        fi
     fi
 fi
 rm -f "$NERR"
@@ -236,8 +273,8 @@ if [ -z "$ROUTE" ]; then
     if [ "$SNAP_SRC" != "keys" ]; then
         SNAP_SRC="keys"
         BEFORE=$("$OSASCRIPT" "$AS_KEYS" window-names 2>/dev/null || true)
-        OLD_NAME=$(printf '%s\n' "$BEFORE" | head -1)
-        log "keys: old window: '${OLD_NAME:-?}' · windows before: [$(flat "$BEFORE")]"
+        FRONT_BEFORE=$(printf '%s\n' "$BEFORE" | head -1)
+        log "keys: front window: '${FRONT_BEFORE:-?}' (not assumed ours) · windows before: [$(flat "$BEFORE")]"
         [ -n "$BEFORE" ] || { log "keys: window list unreadable before ⌘N (Accessibility not granted, or Ghostty not up): nothing typed"; exit 1; }
     fi
     "$OSASCRIPT" "$AS_KEYS" cmd-n >/dev/null 2>&1 || { log "keys: ⌘N could not be sent (Accessibility?): nothing typed"; exit 1; }
@@ -245,6 +282,7 @@ if [ -z "$ROUTE" ]; then
     # Poll instead of betting on a delay (v2). ONLY a name that was ABSENT from
     # the snapshot may be typed into: a window that already existed is somebody
     # else's session, and a front-window change is not evidence of a birth.
+    # A name carrying OUR session id is our own old window, never the new one.
     AFTER="$BEFORE"
     POLL_DEADLINE=$(( $(date +%s) + JUMP_POLL_MAX_S ))
     while :; do
@@ -252,6 +290,7 @@ if [ -z "$ROUTE" ]; then
         AFTER=$("$OSASCRIPT" "$AS_KEYS" window-names 2>/dev/null || true)
         while IFS= read -r n; do
             [ -z "$n" ] && continue
+            [ -n "$(own_name_in "$n")" ] && continue
             in_snapshot "$BEFORE" "$n" || { NEW_NAME="$n"; break; }
         done <<< "$AFTER"
         [ -n "$NEW_NAME" ] && break
@@ -259,7 +298,7 @@ if [ -z "$ROUTE" ]; then
     done
     FRONT=$(printf '%s\n' "$AFTER" | head -1)
     log "keys: windows after: [$(flat "$AFTER")] · new='${NEW_NAME:-}'"
-    if [ -z "$NEW_NAME" ] && [ -n "$FRONT" ] && [ "$FRONT" != "$OLD_NAME" ]; then
+    if [ -z "$NEW_NAME" ] && [ -n "$FRONT" ] && [ "$FRONT" != "$FRONT_BEFORE" ]; then
         log "keys: front window is now '$FRONT', but that name was already in the snapshot (a reorder, not a new window): nothing typed"
     fi
     [ -n "$NEW_NAME" ] || { log "keys: no new window within ${JUMP_POLL_MAX_S}s of ⌘N: nothing typed"; exit 1; }
@@ -278,20 +317,32 @@ done
 [ -n "$TO" ] || { log "new session did not report within ${JUMP_WAIT_S}s: old window left open"; exit 2; }
 log "new session $TO is up"
 
-# ---- end the OLD session -----------------------------------------------------
+# ---- end the OLD session — OWN WINDOW ONLY -----------------------------------
+# Resolved NOW, after the claim: stamp the old claude's tty, then take the ONE
+# window whose name carries the stamp. Front window, snapshot head, "the window
+# this hook runs in": never. Unproven = not typed (SIGINT to from_pid, window
+# left open).
+if stamp_own_window; then
+    if [ "$ROUTE" = "native" ]; then
+        OLD_ID=$("$OSASCRIPT" "$AS_NATIVE" old-id "$SID8" 2>/dev/null || true)
+        [ -n "$OLD_ID" ] && [ "$OLD_ID" = "$NEW_ID" ] && { log "stamp resolved to the NEW window id=$NEW_ID: refused"; OLD_ID=""; }
+    else
+        OLD_NAME=$(own_name_in "$("$OSASCRIPT" "$AS_KEYS" window-names 2>/dev/null || true)")
+    fi
+fi
 if [ "$ROUTE" = "native" ]; then
-    if [ -n "$OLD_ID" ] && [ "$OLD_ID" != "$NEW_ID" ]; then
+    if [ -n "$OLD_ID" ]; then
         "$OSASCRIPT" "$AS_NATIVE" type-into "$OLD_ID" "/exit" >/dev/null 2>&1 \
-            && log "/exit typed into old window id=$OLD_ID" \
+            && log "/exit typed into old window id=$OLD_ID (proven ours by stamp)" \
             || log "old window id=$OLD_ID gone or refused input: /exit NOT typed"
     else
         log "old window id unknown: /exit NOT typed (SIGINT fallback only, window left open)"
     fi
 else
     if [ -n "$OLD_NAME" ] && "$OSASCRIPT" "$AS_KEYS" raise-type "$OLD_NAME" "/exit" >/dev/null 2>&1; then
-        log "/exit typed into old window"
+        log "/exit typed into old window '$OLD_NAME' (proven ours by stamp)"
     else
-        log "old window not found by name or front changed: /exit NOT typed"
+        log "old window not proven ours by stamp or front changed: /exit NOT typed (SIGINT fallback only, window left open)"
     fi
 fi
 if alive "$FROM_PID"; then
