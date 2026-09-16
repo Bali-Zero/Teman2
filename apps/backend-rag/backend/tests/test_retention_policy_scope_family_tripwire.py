@@ -73,6 +73,17 @@ _SUPERSEDED_BINDERS = (
     "bind_visa_evaluate_idempotency_retention_policy",
 )
 
+# 316 defines visa_oracle_consultant_request_retention_policies, a table
+# outside the visa_decision_retention_policies family with no policy_scope
+# column by design (one governed table, not several sharing one policy
+# table) -- its `effective_period @>` lookups have nothing to scope. It is
+# swept into the census only because its header comment names
+# `visa_decision_retention_policies` in prose while explaining why it does
+# NOT reuse it.
+_UNSCOPED_BY_DESIGN_MIGRATIONS = frozenset(
+    {"316_visa_oracle_consultant_requests_retention_policy.sql"}
+)
+
 # A migration's own ROLLBACK half deliberately restores the pre-fix bodies --
 # that is what a rollback means. Only the forward half is live code. The split
 # uses the runner's OWN function rather than a substring search: the marker
@@ -100,6 +111,8 @@ def _candidate_files() -> list[Path]:
             if any(part in as_text for part in _EXCLUDED_PARTS):
                 continue
             if path.name in _HISTORICAL_MIGRATIONS:
+                continue
+            if path.name in _UNSCOPED_BY_DESIGN_MIGRATIONS:
                 continue
             try:
                 content = path.read_text(encoding="utf-8")
