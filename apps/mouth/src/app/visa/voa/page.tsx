@@ -10,6 +10,7 @@ import {
   type WizardStep,
 } from "@balizero/core";
 import { buildWhatsAppLink } from "@/lib/whatsapp-utm";
+import { WhatsAppLeadButton } from "@/components/lead/WhatsAppLeadButton";
 import type { CaseType, Purpose } from "@/components/garuda/declineEducation";
 
 /**
@@ -497,27 +498,34 @@ export default function VoaEligibilityPage() {
         />
       }
     >
-      <p
-        style={{
-          margin: "0 0 var(--space-3, 0.9rem)",
-          fontSize: "var(--text-sm, 0.88rem)",
-          color: "var(--color-text-muted)",
-        }}
-      >
-        Prefer to talk to a person?{" "}
-        <a
-          href={buildWhatsAppLink(
+      {/*
+       * Measured on production 2026-09-16 at 390px: the only WhatsApp
+       * controls on this page were the nav link (height 0 — it lives inside
+       * the collapsed hamburger) and a footer "Get Started". A visitor who
+       * wants a human had nothing to tap in the first screen. This is that
+       * control, and it is a WhatsAppLeadButton rather than a bare wa.me
+       * anchor so the tap writes a lead_intents row first: a tourist who
+       * leaves the funnel for a human is a lead saved, not a lead lost.
+       */}
+      <div className="voa-hero-wa">
+        <p className="voa-hero-wa__line">
+          Rather ask a person first? Our visa desk answers on WhatsApp.
+        </p>
+        <WhatsAppLeadButton
+          source="garuda_voa"
+          className="voa-hero-wa__cta"
+          fallbackHref={buildWhatsAppLink(
             "visa",
             "Hi Bali Zero, I'd like help with a Visa on Arrival.",
           )}
-          target="_blank"
-          rel="noopener noreferrer"
-          style={{ color: "var(--accent-funnel)", textDecoration: "underline" }}
-          onClick={() => tracker.ctaClicked("whatsapp_hero", "wa.me")}
+          whatsappContext={[
+            { label: "Page", value: "Visa on Arrival — eligibility wizard" },
+          ]}
+          context={{ surface: "voa_hero" }}
         >
-          WhatsApp us →
-        </a>
-      </p>
+          Talk to us on WhatsApp
+        </WhatsAppLeadButton>
+      </div>
       <AppWizard
         steps={steps}
         persistKey="bz.garuda_voa.wizard"

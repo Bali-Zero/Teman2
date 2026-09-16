@@ -45,3 +45,39 @@ describe("layout.tsx — R19 wrapper wiring", () => {
     expect(layoutSrc).toMatch(/data-garuda-voa="r19"/);
   });
 });
+
+/**
+ * Hero handoff pins. The acceptance this lane answers to names 48px, and the
+ * R19 law names copper as ownership — a person who owns a case — never an
+ * action a visitor takes. A grep for "--bz-accent" anywhere in the file
+ * would be a spelling test; these read the CTA's OWN rule block, so a later
+ * edit that paints the pill copper is caught even if it spells the token
+ * differently by reaching for --bz-copper or --bz-accent-warm.
+ */
+describe("voa-r19.css — hero WhatsApp handoff", () => {
+  const ctaBlock = (() => {
+    const start = css.indexOf(".voa-hero-wa__cta {");
+    expect(start, ".voa-hero-wa__cta rule must exist").toBeGreaterThan(-1);
+    return css.slice(start, css.indexOf("}", start));
+  })();
+
+  it("gives the tap target at least 48px of height", () => {
+    const m = ctaBlock.match(/min-height:\s*(\d+)px/);
+    expect(m, "the CTA rule must declare a min-height in px").not.toBeNull();
+    expect(Number(m![1])).toBeGreaterThanOrEqual(48);
+  });
+
+  it("never paints the action in copper — copper is ownership, not an action", () => {
+    for (const copper of ["--bz-accent", "--bz-copper", "--bz-accent-warm"]) {
+      expect(ctaBlock, `${copper} must not reach the hero CTA`).not.toContain(
+        copper,
+      );
+    }
+  });
+
+  it("does not reintroduce a red, in any of the names this palette retired", () => {
+    for (const red of ["--accent-red", "--color-error", "--state-danger-red"]) {
+      expect(css).not.toContain(red);
+    }
+  });
+});
