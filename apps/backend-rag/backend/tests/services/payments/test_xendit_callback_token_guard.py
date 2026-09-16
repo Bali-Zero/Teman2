@@ -67,10 +67,12 @@ class TestTheConstructorRefusesAnUnverifiableProvider:
         provider = _build(token="a-real-callback-token")
         assert provider is not None
 
-    def test_the_sandbox_key_guard_is_unchanged(self) -> None:
+    def test_the_production_key_guard_is_unchanged(self) -> None:
         """The pre-existing half of the pair, pinned so this PR cannot have
-        loosened it while adding the second."""
-        with pytest.raises(ValueError, match="sandbox"):
+        loosened it while adding the second: a production key still needs
+        `live_enabled=True` (default False), on top of a real callback
+        token -- see the live/sandbox matrix in test_xendit_mode_matrix.py."""
+        with pytest.raises(ValueError, match="GARUDA_PAYMENTS_LIVE"):
             _build(secret_key="xnd_production_looks_real", token="a-real-callback-token")
 
 

@@ -1,0 +1,193 @@
+brief_ref: evidence/brief.yml
+seat_override: >-
+  Single 41-line mechanical LaunchAgent plist, no logic of its own — it
+  only names a schedule and a program path. R9's council_run quorum
+  requirement is designed for a diff with a build lane whose reasoning a
+  second reviewer can disagree with; there is none here to disagree about.
+  Heterogeneity is supplied by three non-overlapping mechanical checks
+  instead: plutil (Apple's own plist validator), scripts/lint_plist_keepalive.py
+  (this repo's dedicated superscar #7/W67 antidote for exactly the defect
+  class a plist like this could carry), and a live Codex (gpt-6-astra)
+  second opinion run directly against this file via `codex exec
+  --sandbox read-only` (receipt below) — it found one real, declared-not-
+  cured imprecision (see dissent). The script this plist invokes is
+  reviewed separately, in the sibling PR that ships it. Fabricating a
+  two-seat council journal for a diff with no behaviour of its own to
+  review would be a hollow gesture, not evidence.
+plan_ref: >-
+  docs/marketing/meta-one-advanced-playbook.md §4.3 (Cron
+  scripts/meta_one_steward.py, deterministic, stdlib + urllib, Pro-resident,
+  daily 06:20 WITA through scripts/meta-one-steward.sh) — read in the
+  sibling docs worktree .worktrees/docs-meta-one-playbook. No PENDING-ARMS
+  ledger row: this is a mechanical infra artifact serializing after the
+  sibling code PR, not a standalone feature.
+
+lanes:
+  - lane: meta-one-plist
+    role: build
+    seat: claude-sonnet-5
+
+diff:
+  behaviour_change: >-
+    Adds one new file, infra/launchagents/com.nuzantara.meta-one-steward.plist
+    (41 lines) — no existing file is modified. It declares no runtime
+    behaviour by itself: launchd only acts on it once a separate, later
+    ALIGN step installs it on Pro. The behaviour it will eventually trigger
+    (the steward's daily tick) is entirely defined by the sibling PR's
+    scripts/meta-one-steward.sh and scripts/meta_one_steward.py, neither of
+    which this diff touches.
+  files: 3
+  net_lines: 41
+  measured_at: >-
+    git diff origin/main --numstat after `git add` of the plist and these
+    two evidence files, on branch agent/air-m5/infra/meta-one-plist at
+    baseline.commit below. See receipts for the exact command and output.
+
+baseline:
+  commit: e0bcae5b8d12d84afda708c5ace71ef97843257f # pragma: allowlist secret - public commit sha, origin/main at pack-authoring time, not a credential
+
+known_debt:
+  - >-
+    The plist is inert until a post-merge ALIGN step installs it on Pro
+    (~/Library/LaunchAgents + launchctl bootstrap/load) — this PR does not
+    perform that step, per the brief's constraint. Until installed, the
+    steward organ pro.meta_one_steward does not run on any schedule.
+  - >-
+    ProgramArguments names /Users/nuzantara/nuzantara/scripts/meta-one-steward.sh,
+    which exists only once the sibling PR (from
+    .worktrees/infra-meta-one-steward) merges to main. This PR must merge
+    AFTER that one — merging first would arm a schedule pointing at a
+    not-yet-existent script, harmless until install but worth stating
+    explicitly as a merge-order constraint.
+
+seat_diversity: satisfied
+seat_diversity_note: >-
+  A single build lane; D3's non-Anthropic-seat requirement only binds at
+  >=2 build lanes on the same pack, so it does not apply by its own terms.
+
+pii_scan: clean
+
+receipts_note: >-
+  Every receipt below was executed as written, in this window, on branch
+  agent/air-m5/infra/meta-one-plist, from worktree
+  .worktrees/infra-meta-one-plist. Nothing folded in from another
+  invocation or another worktree.
+
+receipts:
+  - claim: "The plist is a well-formed property list"
+    cmd: "plutil -lint infra/launchagents/com.nuzantara.meta-one-steward.plist"
+    result: "infra/launchagents/com.nuzantara.meta-one-steward.plist: OK"
+    exit: 0
+    ts: "2026-09-16T13:02:50Z"
+    seat: claude-sonnet-5 on M5
+  - claim: >-
+      The superscar #7/W67 KeepAlive-on-one-shot antidote reports zero
+      findings and zero errors for this plist (the two WARNs it emits
+      belong to two unrelated, pre-existing plists in the same directory,
+      not to the one this PR adds)
+    cmd: "python3 scripts/lint_plist_keepalive.py --root infra/launchagents --json"
+    result: >-
+      {"schema": 1, "findings": [], "warns": ["infra/launchagents/com.balizero.wa-codex-broker.plist: KeepAlive=true and infra/launchagents/wrappers/wa-codex-broker-wrapper.sh:84 exec replaces the process — if the payload exits, KeepAlive misreads it as death and restarts (W67/W60 restart-storm risk) (WARN: legitimate iff the exec target runs forever — verify, or run --strict)", "infra/launchagents/com.balizero.wr2.pg-proxy.plist: KeepAlive=true but infra/launchagents/wrappers/fly-pg-proxy-wrapper.sh has no exec/nohup smell and no blocking construct detected either — cannot confirm it stays alive under KeepAlive (WARN, W60)"], "unresolved": [], "errors": [], "exit": 0}
+    exit: 0
+    ts: "2026-09-16T13:02:51Z"
+    seat: claude-sonnet-5 on M5
+  - claim: >-
+      The plist declares no KeepAlive key at all (grep exits 1 — no match
+      — which IS the passing outcome: absence of the key is what is being
+      proven) and RunAtLoad is set to false
+    cmd: 'grep -c "<key>KeepAlive</key>" infra/launchagents/com.nuzantara.meta-one-steward.plist'
+    result: "0 matches (grep exit 1 = no occurrences of the KeepAlive key, confirming absence)"
+    exit: 1
+    ts: "2026-09-16T13:02:55Z"
+    seat: claude-sonnet-5 on M5
+  - claim: "RunAtLoad is set to false"
+    cmd: "grep -A1 RunAtLoad infra/launchagents/com.nuzantara.meta-one-steward.plist"
+    result: |-
+      <key>RunAtLoad</key>
+      <false/>
+    exit: 0
+    ts: "2026-09-16T13:02:55Z"
+    seat: claude-sonnet-5 on M5
+  - claim: >-
+      ProgramArguments names /bin/bash running
+      /Users/nuzantara/nuzantara/scripts/meta-one-steward.sh — the wrapper
+      the sibling PR ships
+    cmd: "grep -A3 ProgramArguments infra/launchagents/com.nuzantara.meta-one-steward.plist"
+    result: |-
+      <key>ProgramArguments</key>
+      <array>
+      	<string>/bin/bash</string>
+      	<string>/Users/nuzantara/nuzantara/scripts/meta-one-steward.sh</string>
+    exit: 0
+    ts: "2026-09-16T13:02:56Z"
+    seat: claude-sonnet-5 on M5
+  - claim: "The plist is 41 lines, matching the diff.net_lines declared above"
+    cmd: "wc -l infra/launchagents/com.nuzantara.meta-one-steward.plist"
+    result: "41 infra/launchagents/com.nuzantara.meta-one-steward.plist"
+    exit: 0
+    ts: "2026-09-16T13:03:04Z"
+    seat: claude-sonnet-5 on M5
+  - claim: >-
+      docs/marketing/meta-one-advanced-playbook.md §4.3 names the same
+      daily 06:20 WITA schedule and the same wrapper script this plist
+      arms
+    cmd: >-
+      grep -n "4\.3\|06:20 WITA" docs/marketing/meta-one-advanced-playbook.md
+      (run in the sibling worktree .worktrees/docs-meta-one-playbook)
+    result: |-
+      143:### 4.3 Cron `scripts/meta_one_steward.py` (deterministic, stdlib + urllib, Pro-resident)
+      145:Runs daily 06:20 WITA through `scripts/meta-one-steward.sh` (sources `~/.nuzantara-secrets.env`,
+    exit: 0
+    ts: "2026-09-16T13:03:04Z"
+    seat: claude-sonnet-5 on M5
+  - claim: >-
+      Codex (gpt-6-astra) second opinion, run live and read-only against
+      this exact plist, reports no functional defect and `plutil -lint`
+      passing, with one real but out-of-scope wording imprecision in the
+      file's own inline comment (see dissent)
+    cmd: >-
+      codex exec --sandbox read-only "Review this LaunchAgent plist file
+      for correctness and safety. ... Give a short list of findings, each
+      marked as either a real issue or 'no issue found'."
+    result: >-
+      "Nessun difetto funzionale evidente nel plist; `plutil -lint`
+      passa." Five "No issue found" items (one-shot RunAtLoad/KeepAlive
+      correctness, ThrottleInterval sensibleness, schedule semantics,
+      ProgramArguments/path separation, LaunchAgent-vs-daemon session
+      dependency) and one "Real issue — Solo commento, riga 26": the
+      inline comment's "SIGTERM crash-loop" phrasing is technically
+      imprecise (KeepAlive=true restarts on ANY exit, not specifically a
+      SIGTERM), with zero effect on this plist's behaviour since it
+      carries no KeepAlive key at all.
+    exit: 0
+    ts: "2026-09-16T13:05:00Z"
+    seat: codex-gpt-6-astra (read-only sandbox, M5)
+
+dissent:
+  - seat: codex-gpt-6-astra
+    status: CONFIRMED
+    objection: >-
+      Run live via `codex exec --sandbox read-only` against this exact
+      file (receipt below). Finding: the plist's own inline comment —
+      "KeepAlive + one-shot = SIGTERM crash-loop" — is technically
+      imprecise. `KeepAlive=true` restarts a job after ANY exit, including
+      a clean exit 0; it is not specifically about SIGTERM or a killed
+      process. Verified true. Declared, not cured: this plist carries no
+      KeepAlive key at all (the comment only explains why it was omitted),
+      so the imprecision has zero effect on this file's actual behaviour,
+      and the brief scopes changes to what a lint demands — a wording nit
+      in a comment is neither. The same phrasing is repeated verbatim in
+      cicatrix-superscar.md's #7 entry and in this task's own brief; a
+      wording fix belongs there, not in a one-off plist diff.
+  - seat: claude-sonnet-5 (self-review, build lane)
+    status: RETRACTED
+    objection: >-
+      Considered whether ThrottleInterval 60 is too short to protect
+      against a restart storm, given the job also has no KeepAlive.
+      Retracted: ThrottleInterval only bounds re-launch frequency for a
+      job that keeps exiting and being relaunched, and with RunAtLoad
+      false and no KeepAlive this job is invoked exactly once per
+      StartCalendarInterval match — there is nothing for it to restart
+      from. The key is defensive headroom, not load-bearing, confirmed by
+      codex-gpt-6-astra's independent read reaching the same "no issue
+      found" verdict on this point.
