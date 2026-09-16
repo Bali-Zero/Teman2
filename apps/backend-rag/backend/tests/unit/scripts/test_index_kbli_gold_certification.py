@@ -107,6 +107,55 @@ def test_content_or_pma_mutation_prevents_point_construction() -> None:
     assert build_point("65121", gold["65121"], changed_pma, "test", registry) is None
 
 
+def test_certified_point_discloses_a_zero_percent_cap_verbatim() -> None:
+    """41020 (base pma_max_asing == 0, TERBATAS, located) is certified here
+    through a registry built in-test, because standaloneGold is empty on main.
+    Its standalone gold prose still reads "PMA: TERBUKA 100% — fully open to
+    foreign ownership." — which is exactly why it stays UNCERTIFIED (and
+    unserved) in the real registry; this test does not certify it for real.
+    What it asserts is structural: a 0% cap survives the indexer's payload
+    untouched (never coerced to None/falsy by a `cap or default` bug), with
+    `editorial_disclosed=True` and the neutral opener, like any other
+    certified gold point (gate-6598 condition, SAETTA W-H PR-3d)."""
+    gold = parse_gold_content_ts(GOLD_CONTENT_FILE)
+    base = load_kbli_base_data(KBLI_DATA_FILE)
+    assert base["41020"]["pma_max_asing"] == 0
+    assert base["41020"]["pma_status"] == "TERBATAS"
+    assert base["41020"]["pma_cap_verified"] is True
+    registry = _synthetic_registry_certifying("41020", gold["41020"], base["41020"])
+
+    partial = build_point("41020", gold["41020"], base["41020"], "test", registry)
+
+    assert partial is not None
+    payload = partial["payload"]
+    assert payload["pma_max_asing"] == 0
+    assert payload["pma_status"] == "TERBATAS"
+    assert payload["pma_verification_status"] == "located"
+    assert payload["pma_cap_verified"] is True
+    assert payload["pma_cap_special"] is False
+    assert payload["editorial_disclosed"] is True
+    assert (
+        "Ask me about KBLI 41020: its official scope, licensing, risk, "
+        "or foreign-ownership verification."
+    ) in partial["_text_to_embed"]
+
+
+def test_mutating_a_zero_percent_base_cap_prevents_point_construction() -> None:
+    """Guilt half of the 0%-cap assertion above: a registry certified against
+    the REAL 0%-cap tuple must refuse to build a point once the base
+    record's cap changes underneath it — the exact failure mode gate-6593
+    exists to prevent (stale prose surviving a PMA tuple it no longer
+    matches)."""
+    gold = parse_gold_content_ts(GOLD_CONTENT_FILE)
+    base = load_kbli_base_data(KBLI_DATA_FILE)
+    registry = _synthetic_registry_certifying("41020", gold["41020"], base["41020"])
+
+    mutated_base = copy.deepcopy(base["41020"])
+    mutated_base["pma_max_asing"] = 49
+
+    assert build_point("41020", gold["41020"], mutated_base, "test", registry) is None
+
+
 def test_located_but_uncertified_gold_is_not_a_point() -> None:
     gold = parse_gold_content_ts(GOLD_CONTENT_FILE)
     base = load_kbli_base_data(KBLI_DATA_FILE)

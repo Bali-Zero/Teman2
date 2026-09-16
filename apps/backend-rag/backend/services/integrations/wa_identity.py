@@ -318,7 +318,8 @@ _IDENTITY_REPLIES: dict[str, str] = {
         "• Pajak & pelaporan (NPWP, SPT, LKPM)\n"
         "• Properti & sertifikat tanah\n\n"
         "Jawaban saya selalu berdasarkan sumber resmi; jika saya belum yakin, "
-        "saya akan sampaikan apa adanya dan tidak menebak."
+        "saya akan sampaikan apa adanya dan tidak menebak.\n\n"
+        "Anda juga bisa kapan saja minta bicara dengan konsultan kami."
     ),
     "en": (
         "I'm Zantara, the Bali Zero digital assistant.\n\n"
@@ -328,7 +329,8 @@ _IDENTITY_REPLIES: dict[str, str] = {
         "• Tax & reporting (NPWP, SPT, LKPM)\n"
         "• Property & land titles\n\n"
         "My answers come from official sources; when I'm not sure, I say so "
-        "instead of guessing."
+        "instead of guessing.\n\n"
+        "You can also ask to talk to a human colleague any time."
     ),
     "it": (
         "Sono Zantara, l'assistente digitale di Bali Zero.\n\n"
@@ -338,7 +340,9 @@ _IDENTITY_REPLIES: dict[str, str] = {
         "• Tasse e adempimenti (NPWP, SPT, LKPM)\n"
         "• Immobili e titoli di proprietà\n\n"
         "Le mie risposte vengono da fonti ufficiali; quando non sono sicuro te "
-        "lo dico, invece di tirare a indovinare."
+        "lo dico, invece di tirare a indovinare.\n\n"
+        "Puoi anche chiedere in qualsiasi momento di parlare con una persona "
+        "del nostro team."
     ),
     "ru": (
         "Я Zantara, цифровой ассистент Bali Zero.\n\n"
@@ -348,7 +352,8 @@ _IDENTITY_REPLIES: dict[str, str] = {
         "• Налоги и отчётность (NPWP, SPT, LKPM)\n"
         "• Недвижимость и права на землю\n\n"
         "Мои ответы основаны на официальных источниках; если я не уверена, "
-        "я так и скажу, а не буду гадать."
+        "я так и скажу, а не буду гадать.\n\n"
+        "Вы также можете в любой момент попросить поговорить с человеком."
     ),
     "uk": (
         "Я Zantara, цифровий асистент Bali Zero.\n\n"
@@ -358,7 +363,8 @@ _IDENTITY_REPLIES: dict[str, str] = {
         "• Податки та звітність (NPWP, SPT, LKPM)\n"
         "• Нерухомість та права на землю\n\n"
         "Моя відповідь ґрунтується на офіційних джерелах; якщо я не впевнена, "
-        "я так і скажу, а не вигадуватиму."
+        "я так і скажу, а не вигадуватиму.\n\n"
+        "Ви також можете будь-коли попросити поговорити з людиною."
     ),
 }
 
