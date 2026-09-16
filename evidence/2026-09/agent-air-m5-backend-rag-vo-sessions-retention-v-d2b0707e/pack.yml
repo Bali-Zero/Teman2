@@ -39,10 +39,18 @@ lanes:
       (apps/backend-rag/CLAUDE.md §8 Golden Rule #12: "matches what the harness itself appends").
   - lane: vo-sessions-retention-v2-council-codex
     role: review
-    seat: codex (review seat, read-only) — NOT YET RUN, prompt prepared at council/prompt-r1-codex.txt
+    seat: >-
+      codex-gpt-5.6-sol (review seat, read-only sandbox, reasoning high) — r1 on 48c40e5078
+      CHANGES (BROKEN 7, 8, 10; council/codex-gpt-5.6-sol-r1-changes.txt), r2 on 918f51a328 OK
+      (claims 1-10 PROVEN; council/codex-gpt-5.6-sol-r2-ok.txt). Prompts council/prompt-r1-codex.txt
+      (as run) and council/prompt-r2-codex.txt.
   - lane: vo-sessions-retention-v2-council-agy
     role: review
-    seat: agy-gemini (review seat, read-only) — NOT YET RUN, prompt prepared at council/prompt-r1-agy.txt
+    seat: >-
+      agy-gemini-3.1-pro (review seat, Gemini 3.1 Pro High, prompt + inline code diff) — r1 on
+      48c40e5078 CHANGES (BROKEN 10; council/agy-gemini-3.1-pro-r1-changes.txt), r2 on 918f51a328
+      OK (claims 1-10 PROVEN; council/agy-gemini-3.1-pro-r2-ok.txt). Prompts
+      council/prompt-r1-agy.txt (as run) and council/prompt-r2-agy.txt.
   - lane: vo-sessions-retention-v2-ground-truth
     role: ground_truth
     seat: >-
@@ -872,6 +880,47 @@ receipts:
     exit: 1
     ts: "2026-09-17T03:00:00Z"
     seat: this session (M5)
+  - claim: >-
+      F10 cure is a guard, not a ratchet — deleting the REAL spawn call in
+      _background_light_init turns the lifespan test red, and restoring it turns it green
+    cmd: >-
+      cp main_api.py <scratch backup>; replace the one-line
+      `app.state._visa_oracle_sessions_purge_task = _spawn_visa_oracle_sessions_purge_task(app)`
+      with `= None`; PYTHONPATH=. pytest
+      backend/tests/unit/services/test_visa_oracle_sessions_purge_scheduler.py; cp the backup
+      back; cmp; pytest again
+    result: >-
+      1 failed, 22 passed — test_the_lifespan_actually_calls_the_real_spawn_function: "Failed:
+      _background_light_init never reached the purge spawn call"; cmp identical (RESTORED);
+      23 passed
+    exit: 1
+    ts: "2026-09-16T18:40:31Z"
+    seat: Dux (claude-opus-5, R2, M5) — independent of the implementer that wrote the cure
+  - claim: >-
+      the three retention test files are green on the council r2 head
+    cmd: >-
+      PYTHONPATH=. .venv/bin/python -m pytest backend/tests/routers/test_visa_oracle_sessions_purge.py
+      backend/tests/unit/services/test_visa_oracle_sessions_purge_scheduler.py
+      backend/tests/db/test_migration_317_visa_oracle_sessions_retention.py -p no:cacheprovider
+    result: "35 passed in 10.57s"
+    exit: 0
+    ts: "2026-09-16T18:39:30Z"
+    seat: Dux (claude-opus-5, R2, M5)
+  - claim: >-
+      the Harness floor recompute job, emulated step by step on a base tree (git archive of
+      origin/main 8f86b430bb) against this branch, fails ONLY on the council journal before r2
+    cmd: >-
+      emulate_harness.sh <origin/main> <918f51a328> <workdir> (each step's own command from
+      .github/workflows/harness-floor.yml: hotzone_changed_files.sh, evidence_paths.py --resolve,
+      merge-base numstat, evidence_pack_lint.py --print-floor[-source],
+      tracked_file_present_in_diff.sh, stage_council_journal.py, evidence_pack_lint.py staged,
+      bites_parse.py --pack -)
+    result: >-
+      floor 3 / source both; gear 3 >= 3; brief and pack present; lint FAIL 1 violation
+      (council_run: no >=2 ok:true seats, i.e. before the r2 rows existed); bites rc 0 class legacy
+    exit: 1
+    ts: "2026-09-16T18:45:00Z"
+    seat: Dux (claude-opus-5, R2, M5)
 dissent:
   - seat: this session (M5, self-refutation)
     objection: >-
@@ -891,9 +940,11 @@ dissent:
       PR rather than discovering the collision at merge time.
 leftovers:
   - >-
-    Council (codex + agy) has NOT been run — prompts prepared at council/prompt-r1-codex.txt and
-    council/prompt-r1-agy.txt per this mandate's own instruction that the Dux runs the council and
-    writes council/journal.jsonl. This pack's only expected lint FAIL is the missing journal.
+    RESOLVED (Dux, 2026-09-17): the council ran two rounds. r1 (48c40e5078) returned CHANGES from
+    both seats: F7 was the claim wording on _fetch_session_snapshot, F8 was str(exc) in the purge
+    failure log, F10 was a spawn test that exercised a copied helper. The cures are in 7057dfbc8e.
+    r2 (918f51a328) returned OK from both seats. council/journal.jsonl holds four rows, and the
+    two r2 rows are ok:true.
   - >-
     PR #6478 itself is still open on GitHub as of this pack — closing it is the Dux's job once
     this successor is armed, not this session's (out of this worktree's write scope: PR

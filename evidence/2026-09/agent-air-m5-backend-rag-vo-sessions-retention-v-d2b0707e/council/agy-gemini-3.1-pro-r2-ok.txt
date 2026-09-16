@@ -1,0 +1,11 @@
+1. DEFAULT CHANGE: PROVEN. `apps/backend-rag/backend/db/migrations_v2/317_visa_oracle_sessions_retention_30d.sql:172-173` uses `ALTER COLUMN expires_at SET DEFAULT (NOW() + INTERVAL '30 days')` at the very end of the file.
+2. NO DATA REWRITE (migration): PROVEN. `317_visa_oracle_sessions_retention_30d.sql` contains only CREATE TABLE, CREATE INDEX, and ALTER TABLE statements; no UPDATE or DELETE is present in either section.
+3. IDEMPOTENCY (migration): PROVEN. `317_visa_oracle_sessions_retention_30d.sql:150, 163, 166` appropriately guards the table and indexes with `IF NOT EXISTS`.
+4. ROUTER SUFFICIENCY (write path): PROVEN. `apps/backend-rag/backend/app/routers/visa_oracle.py:646-648` names only `(session_id, quiz_answers, recommended_visas, ip_hash)` in the INSERT. `expires_at` is omitted.
+5. NUMBER SAFETY: PROVEN. `apps/backend-rag/backend/db/migration_manager.py:55-58` flags duplicates by matching numeric prefixes in a `seen` dict; line 574 computes pending via `m["number"] not in applied_numbers`.
+6. PURGE SQL SHAPE: PROVEN. `apps/backend-rag/backend/app/routers/visa_oracle.py` (diff) uses exactly `expires_at < NOW() AND NOT COALESCE(handoff_triggered, false)` inside a `ctid IN (SELECT ... LIMIT $1)` subquery.
+7. HANDOFF SAFETY: PROVEN. Grep across the backend for `REFERENCES.*visa_oracle_sessions` returned 0 results. `visa_oracle.py:824-825` (`_fetch_session_snapshot`) SELECTs only `quiz_answers, recommended_visas`.
+8. NON-FATAL + PII-FREE: PROVEN. `visa_oracle.py` and `main_api.py:695` both log `type(exc).__name__` instead of `str(exc)`. `test_visa_oracle_sessions_purge.py:100` plants a sentinel string and asserts it never reaches the logs.
+9. PROCESS-GROUP CORRECTNESS: PROVEN. `router_manifest.py:424` registers `process_groups=_API`. `main_api.py:830-832` spawns it. Lines 711-722 gate on the kill switch and `db_pool`. Lines 864-871 cancel/await it before `db_pool.close()`.
+10. TEST VALIDITY: PROVEN. `test_visa_oracle_sessions_purge_scheduler.py:103` explicitly calls `main_api._spawn_visa_oracle_sessions_purge_task(app)`. Lines 195-204 run `async with main_api.lifespan_light(app):` and assert the spawn function was called.
+VERDICT: OK
