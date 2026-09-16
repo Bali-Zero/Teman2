@@ -16,14 +16,46 @@ from unittest.mock import AsyncMock
 
 import pytest
 
+from backend.app.routers.crm_notifications import BELL_ALERT_TYPES
 from backend.services.integrations import human_escalation_notifier
 from backend.services.integrations.wa_human_handoff import (
+    ALERT_TYPE,
     HumanRequestTurn,
     _resolve_assignee,
     match_human_request,
     notify_human_handoff,
 )
 from backend.services.integrations.wa_identity import match_identity_question
+
+
+class _RecordingConn:
+    """Captures every execute() so a test can assert on the real SQL + args."""
+
+    def __init__(self, fail: bool = False) -> None:
+        self.calls: list[tuple] = []
+        self._fail = fail
+
+    async def execute(self, sql: str, *args: object) -> None:
+        if self._fail:
+            raise RuntimeError("deadlock detected")
+        self.calls.append((sql, args))
+
+
+class _RecordingPool:
+    def __init__(self, conn: _RecordingConn) -> None:
+        self.conn = conn
+
+    def acquire(self) -> object:
+        conn = self.conn
+
+        class _CM:
+            async def __aenter__(self) -> _RecordingConn:
+                return conn
+
+            async def __aexit__(self, *exc: object) -> bool:
+                return False
+
+        return _CM()
 
 
 class TestGuilt:
@@ -239,6 +271,130 @@ class TestNotifyHumanHandoff:
             await notify_human_handoff(
                 object(), thread_id=7, counterpart_phone=None, language="it"
             )
+
+
+class TestInAppAlert:
+    """The kita bell half — where the team actually looks during the day."""
+
+    def setup_method(self) -> None:
+        human_escalation_notifier._recent_escalations.clear()
+
+    def test_the_alert_type_is_on_the_bells_guest_list(self) -> None:
+        """The row is written AND rendered.
+
+        `notification_alerts` is read by /api/crm/notifications through a
+        fixed allow-list of alert types. Writing a type absent from that
+        list produces a row nobody sees — which, for a lead, is the same
+        outcome as not writing it. This pins the pair by ENTITY (the two
+        constants), not by grepping a string out of a SQL literal.
+        """
+        assert ALERT_TYPE in BELL_ALERT_TYPES
+
+    @pytest.mark.asyncio
+    async def test_known_client_gets_a_pending_bell_row(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        conn = _RecordingConn()
+        pool = _RecordingPool(conn)
+        monkeypatch.setattr(
+            "backend.services.integrations.wa_human_handoff._resolve_assignee",
+            AsyncMock(return_value=(4242, "consultant@balizero.com")),
+        )
+        monkeypatch.setattr(
+            "backend.services.integrations.wa_human_handoff.send_internal_email", AsyncMock()
+        )
+
+        await notify_human_handoff(
+            pool, thread_id=99, counterpart_phone="628111222333", language="id"
+        )
+
+        assert len(conn.calls) == 1
+        sql, args = conn.calls[0]
+        assert "notification_alerts" in sql
+        # 'pending' is what the bell COUNTS — a 'sent' row shows no badge.
+        assert "'pending'" in sql
+        # The daily unique constraint would otherwise raise on a second ask.
+        assert "ON CONFLICT" in sql
+        assert args[0] == 4242
+        assert args[1] == ALERT_TYPE
+        # PII: neither the phone nor the client's own words reach the row.
+        assert "628111222333" not in " ".join(str(a) for a in args)
+
+    @pytest.mark.asyncio
+    async def test_an_unknown_number_still_gets_the_email(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """The newest lead is the one no client row matches yet.
+
+        `notification_alerts.client_id` is NOT NULL with an FK to `clients`,
+        so an unrecognised number CANNOT have an in-app row. The email is
+        therefore unconditional — it is the only channel that lead has.
+        """
+        conn = _RecordingConn()
+        pool = _RecordingPool(conn)
+        monkeypatch.setattr(
+            "backend.services.integrations.wa_human_handoff._resolve_assignee",
+            AsyncMock(return_value=(None, None)),
+        )
+        sent = AsyncMock()
+        monkeypatch.setattr(
+            "backend.services.integrations.wa_human_handoff.send_internal_email", sent
+        )
+
+        result = await notify_human_handoff(
+            pool, thread_id=7, counterpart_phone="628999000111", language="en"
+        )
+
+        assert result is True
+        assert conn.calls == []
+        sent.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_a_failing_bell_insert_never_costs_the_email(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        pool = _RecordingPool(_RecordingConn(fail=True))
+        monkeypatch.setattr(
+            "backend.services.integrations.wa_human_handoff._resolve_assignee",
+            AsyncMock(return_value=(4242, "consultant@balizero.com")),
+        )
+        sent = AsyncMock()
+        monkeypatch.setattr(
+            "backend.services.integrations.wa_human_handoff.send_internal_email", sent
+        )
+
+        result = await notify_human_handoff(
+            pool, thread_id=8, counterpart_phone="628111222333", language="it"
+        )
+
+        assert result is True
+        sent.assert_awaited_once()
+
+
+class TestPresentationKeepsItsPromise:
+    """Every "you can ask for a human" line must be a phrase that MATCHES.
+
+    `wa_identity`'s presentation tells the client, in their own language,
+    that they may ask to speak to a person. Until this slice nothing
+    detected that ask, and the line was a promise no code kept. The pairing
+    is only real if the exact wording the presentation suggests is wording
+    `match_human_request` recognises — so this walks every presentation and
+    requires the detector to find a request inside it.
+    """
+
+    @pytest.mark.parametrize("language", ["id", "en", "it", "ru", "uk"])
+    def test_each_presentation_contains_a_phrase_the_detector_matches(
+        self, language: str
+    ) -> None:
+        from backend.services.integrations.wa_identity import _IDENTITY_REPLIES
+
+        presentation = _IDENTITY_REPLIES[language]
+        # The handoff sentence is the last line of every presentation.
+        offer = presentation.strip().splitlines()[-1]
+        assert match_human_request(offer) is not None, (
+            f"{language}: the presentation offers a human but the detector "
+            f"does not recognise the wording it suggests — {offer!r}"
+        )
 
 
 class TestResolveAssignee:

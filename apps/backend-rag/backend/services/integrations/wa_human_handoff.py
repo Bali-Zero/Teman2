@@ -29,9 +29,27 @@ Two authorities can both claim one message ("are you human or can I talk to a
 person" matches both this module and ``wa_identity``). The call site decides
 the order and a test pins it — see ``wa_codex_leg.py``.
 
-CONTRACT — Half B, ``notify_human_handoff``: async, does I/O (DB read +
-email), never raises (the caller still wraps it — see the call site comment
-for why a defensive belt-and-suspenders layer lives there too). Resolves the
+CONTRACT — Half B, ``notify_human_handoff``: async, does I/O (DB read + DB
+write + email), never raises (the caller still wraps it — see the call site
+comment for why a defensive belt-and-suspenders layer lives there too).
+
+TWO notification channels, and the asymmetry between them is the point:
+
+- **In-app (kita bell)** — a ``notification_alerts`` row of type
+  ``wa_human_handoff``, status ``pending`` so the badge counts it. This is
+  where the team already looks during the day. It REQUIRES a resolved
+  ``client_id`` (the column is NOT NULL with an FK, and the bell's query
+  JOINs ``clients`` to find the assignee), so it is structurally unavailable
+  for an unknown number.
+- **Email** — unconditional, precisely because of that gap: an unrecognised
+  number is the NEWEST lead, not the least important one, and the email is
+  the only channel it has. It also survives a consultant who never opens
+  kita that day.
+
+Neither channel may cost the client their confirmation, so both are
+best-effort at their own layer.
+
+Resolves the
 consultant via ``meta_inbox_threads.counterpart_phone`` -> ``clients.phone``/
 ``clients.whatsapp`` -> ``clients.assigned_to`` (``meta_inbox_threads`` has no
 assignee column of its own), falls back to ``zero@balizero.com``. Dedup reuses
@@ -192,6 +210,59 @@ SELECT id, assigned_to
 _FALLBACK_RECIPIENT = "zero@balizero.com"
 _EMAIL_TYPE = "wa_human_handoff"
 
+# The in-app half: the kita notification bell. `ALERT_TYPE` must also appear in
+# `crm_notifications.BELL_ALERT_TYPES` or the row is written and never shown —
+# a test pins the pair, because an unread row nobody renders is the exact shape
+# of a lost lead.
+ALERT_TYPE = "wa_human_handoff"
+
+# 'pending' is what the bell counts as unread: the consultant sees a badge, not
+# just a line buried in a list. ON CONFLICT is required, not defensive — the
+# table carries UNIQUE (client_id, alert_type, created_date), so a client who
+# asks twice in one day would otherwise raise. DO UPDATE rather than DO NOTHING
+# because a second ask means the first one has not been answered yet: the alert
+# goes back to unread and rises to the top of the bell.
+_INAPP_ALERT_SQL = """
+INSERT INTO notification_alerts
+    (client_id, alert_type, status, message, email_subject)
+VALUES ($1, $2, 'pending', $3, $4)
+ON CONFLICT (client_id, alert_type, created_date) DO UPDATE
+   SET status = 'pending',
+       message = EXCLUDED.message,
+       created_at = NOW(),
+       sent_at = NULL
+"""
+
+_INAPP_MESSAGE = "Client asked to speak to a person on WhatsApp"
+
+
+async def _record_inapp_alert(pool: asyncpg.Pool, client_id: int, thread_id: int) -> bool:
+    """Raise the kita bell for the consultant who owns this client.
+
+    Never raises: an in-app failure must not cost the email, and neither may
+    cost the client their confirmation. Returns True only on a written row.
+
+    `client_id` is not optional here and cannot be made so: the column is NOT
+    NULL with an FK to `clients`, and the bell's own query JOINs `clients` to
+    find the assignee. An unfamiliar number therefore has no in-app row and is
+    carried by the email alone — which is why the email is never conditional.
+    """
+    try:
+        async with pool.acquire() as conn:
+            await conn.execute(
+                _INAPP_ALERT_SQL,
+                client_id,
+                ALERT_TYPE,
+                _INAPP_MESSAGE,
+                f"[WA] Client asked for a human — thread {thread_id}",
+            )
+    except Exception as exc:
+        logger.warning(
+            "wa_human_handoff: in-app alert failed thread=%s: %s", thread_id, type(exc).__name__
+        )
+        return False
+    return True
+
 
 async def _resolve_assignee(
     pool: asyncpg.Pool, counterpart_phone: str | None
@@ -225,6 +296,12 @@ async def notify_human_handoff(
 ) -> bool:
     """Tell a human this thread's client asked for one. Never raises.
 
+    TWO channels, deliberately: the kita notification bell (where the team
+    already looks) and email (which reaches a phone at 21:00 and survives a
+    consultant who never opens kita that day). The in-app one needs a known
+    client and is therefore best-effort; the email always goes out, so an
+    unrecognised number — the newest lead there is — is never dropped.
+
     Dedup: per-thread 30-minute window, reusing
     ``human_escalation_notifier``'s TTL map under a namespaced key (this
     channel is email, not Telegram — only the mechanism is shared).
@@ -237,6 +314,16 @@ async def notify_human_handoff(
 
     client_id, assignee = await _resolve_assignee(pool, counterpart_phone)
     to_email = assignee or _FALLBACK_RECIPIENT
+
+    in_app = False
+    if client_id is not None:
+        in_app = await _record_inapp_alert(pool, client_id, thread_id)
+    logger.info(
+        "wa_human_handoff: notifying thread=%s in_app=%s assignee_known=%s",
+        thread_id,
+        in_app,
+        assignee is not None,
+    )
 
     body_lines = [
         "Klien meminta untuk berbicara dengan kolega manusia melalui WhatsApp.",
