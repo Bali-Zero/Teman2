@@ -356,7 +356,7 @@ export function VisaCard({
                 <div
                   className={`rounded-lg p-2 ${
                     visaAlert.alertLevel === "critical"
-                      ? "bg-red-500 text-white border border-red-600 animate-pulse"
+                      ? "bg-[color-mix(in_srgb,var(--state-warning)_20%,transparent)] text-[var(--state-warning)] border border-[var(--state-warning)] animate-pulse"
                       : visaAlert.alertLevel === "warning"
                         ? "bg-yellow-500 text-black border border-yellow-600"
                         : "bg-[var(--bz-base)] border border-[var(--bz-border)]"
@@ -404,9 +404,9 @@ export function VisaCard({
                               visaAlert.alertLevel === "warning"
                                 ? "bg-black/20 text-current"
                                 : days < 0
-                                  ? "bg-red-500/20 text-red-400"
+                                  ? "bg-[var(--state-warning)]/20 text-[var(--state-warning)]"
                                   : days < 30
-                                    ? "bg-red-500/15 text-red-400"
+                                    ? "bg-[var(--state-warning)]/15 text-[var(--state-warning)]"
                                     : days < 60
                                       ? "bg-yellow-500/20 text-yellow-400"
                                       : "bg-green-500/10 text-green-400"
@@ -454,7 +454,9 @@ export function VisaCard({
                 size="sm"
                 onClick={handleDelete}
                 disabled={isDeleting}
-                className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                className="text-[var(--state-warning)] hover:opacity-80"
+                aria-label="Delete visa"
+                title="Delete visa"
               >
                 {isDeleting ? (
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />

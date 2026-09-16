@@ -129,7 +129,7 @@ export function PortalAccess({
     <div className="bz-product-panel overflow-hidden">
       <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--bz-border)]">
         <div className="flex items-center gap-2">
-          <KeyRound className="w-4 h-4 text-[var(--bz-accent)]" />
+          <KeyRound className="w-4 h-4 text-[var(--tx-secondary)]" />
           <h3 className="text-sm font-medium text-[var(--bz-text-1)]">
             Client Portal Access
           </h3>
@@ -140,7 +140,7 @@ export function PortalAccess({
       <div className="px-4 py-4">
         {isLoading ? (
           <div className="flex items-center justify-center py-4">
-            <div className="w-5 h-5 border-2 border-[var(--bz-accent)] border-t-transparent rounded-full animate-spin" />
+            <div className="w-5 h-5 border-2 border-[var(--line-control)] border-t-transparent rounded-full animate-spin" />
           </div>
         ) : loadFailed ? (
           <div className="flex items-start gap-2">
@@ -168,7 +168,7 @@ export function PortalAccess({
           </div>
         ) : status?.has_portal_access ? (
           <div className="flex items-start gap-2">
-            <MailCheck className="w-4 h-4 text-[var(--bz-accent)] mt-0.5 shrink-0" />
+            <MailCheck className="w-4 h-4 text-[var(--tx-secondary)] mt-0.5 shrink-0" />
             <div>
               <p className="text-sm text-[var(--bz-text-1)]">
                 Portal active
@@ -232,11 +232,17 @@ export function PortalAccess({
                   ? `Emails an invitation to ${clientEmail}, where they choose their own PIN.`
                   : "This client has no email address on file, so there is nowhere to send the invitation."}
               </p>
+              {/* Primary action on this card — forest fill, per Masthead.tsx's
+                  own law ("the PRIMARY action is a forest button, the
+                  SECONDARY an ink outline"). `variant="outline"` strips the
+                  shadcn default's copper fill (bg-[var(--accent)]); the
+                  className below is what actually paints forest. */}
               <Button
                 size="sm"
+                variant="outline"
                 onClick={handleInvite}
                 disabled={isSending || !clientEmail}
-                className="mt-2 gap-1"
+                className="mt-2 gap-1 border-[var(--state-success)] bg-[var(--state-success)] text-white hover:bg-[var(--state-success)] hover:opacity-90"
               >
                 <Send className="w-3.5 h-3.5" />
                 {isSending ? "Sending..." : "Invite to portal"}

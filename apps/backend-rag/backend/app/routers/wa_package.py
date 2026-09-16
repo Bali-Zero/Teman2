@@ -26,11 +26,13 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 
 from backend.app.dependencies import get_orchestrator
-from backend.services.rag.agentic.query_plan import QueryDomain
+from backend.services.integrations.wa_greeting import match_greeting
+from backend.services.integrations.wa_identity import match_identity_question
 from backend.services.rag.agentic.query_planner import QueryPlanner
 from backend.services.rag.agentic.wa_package_builder import (
     PackageUnbuildable,
     build_context_package,
+    effective_domain,
 )
 
 logger = logging.getLogger(__name__)
@@ -124,23 +126,42 @@ async def build_wa_package(
     # the same pure heuristic `build_context_package` runs internally — no
     # I/O, <50ms, deterministic for a given query. Duplicating the plan()
     # call here (rather than threading a precomputed plan through
-    # `build_context_package`) keeps the "is this query unbuildable"
-    # decision owned by exactly one function — D1's own GREETING /
-    # no-collections gate — so the router and the builder can never
-    # disagree about what counts as classifiable.
+    # `build_context_package`) keeps the domain metadata used below owned
+    # by the same heuristic the builder itself runs.
     plan = QueryPlanner().plan(request.query)
 
     # Cost guard, not a routing decision (S2 cross-family review, finding
-    # 9): a GREETING query is about to be declared unbuildable by D1's own
-    # gate — prefetching curated-QA for it would spend an embedding + a
-    # Qdrant search per "ciao". Same pure function, same query, so this can
-    # never disagree with the builder's verdict; the builder still OWNS
-    # the unbuildable decision.
+    # 9): a scripted greeting is about to be declared unbuildable by the
+    # builder's own gate — prefetching curated-QA for it would spend an
+    # embedding + a Qdrant search per "ciao". `match_greeting` — not
+    # `plan.domain` — is the authority for that verdict (B2.5 PR-3, ruling
+    # d): the planner's cheap keyword heuristic calls some real questions
+    # GREETING too (e.g. too long, or under-specified content), and those
+    # are NOT unbuildable any more — they build with GENERAL's collections,
+    # so skipping their curated-QA prefetch here would silently starve a
+    # query the builder is about to answer for real. Same pure function,
+    # same query, so this can never disagree with the builder's verdict.
+    #
+    # Round-1 review cure (Codex + Gemini, converged): the domain passed to
+    # `curated_qa_grounding_block` must be `effective_domain` — the SAME
+    # single authority `build_context_package` uses to decide what it
+    # actually builds with — not the planner's raw (possibly stale)
+    # `plan.domain`. For a planner/matcher disagreement, `plan.domain` is
+    # still `"greeting"`, which does NOT short-circuit
+    # `_inject_curated_qa_grounding` (only `"general"`/falsy do) — passing
+    # it spent an embedding + Qdrant search whose hits were then always
+    # discarded downstream by that same gate.
+    #
+    # `match_identity_question` (B2.5-1b) is the same cost guard, second
+    # authority, same order as everywhere else: an identity question is
+    # about to be declared unbuildable("identity_domain") below, so
+    # prefetching curated-QA evidence for it would spend an embedding +
+    # Qdrant search on hits the builder can never use.
     curated_qa_block = ""
-    if plan.domain is not QueryDomain.GREETING:
+    if match_greeting(request.query) is None and match_identity_question(request.query) is None:
         curated_qa_block = await orchestrator.core.curated_qa_grounding_block(
             request.query,
-            {"domain": plan.domain.value},
+            {"domain": effective_domain(request.query, plan).value},
         )
 
     try:

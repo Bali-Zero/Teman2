@@ -51,23 +51,60 @@ def test_canonical_certification_partition_is_exact(
     }
 
     assert certified == set(registry["canonicalIntel"])
-    assert len(certified) == 49
+    assert len(certified) == 36
+    # SAETTA-20260915 W-H PR-3a moved 55201/55203/79903 from declared_gap to
+    # located (Perpres 49/2021 Lampiran II allocation); none of the three is
+    # a certified canonicalIntel entry, so they join the pre-existing
+    # located-but-uncertified set. PR-3c v3 de-certified 12 further codes
+    # (10214/16221/22121/47111/50111/50112/51102/55105/65111/79122/95220/
+    # 96100) whose prose still claimed an openness their own tuple denies —
+    # they join the same set (fail closed: withheld, not re-authored blind).
+    # PR-3f de-certifies one more, canonicalIntel-only: 47221's whatYouNeed
+    # claimed a UMKM/Koperasi partnership condition the record's own
+    # pma_kondisi denies (a distribution-network/location requirement
+    # instead, Perpres 10/2021 Lampiran III line 4202 #44). 47221 stays
+    # located and keeps its mouthGold certification untouched.
     assert {
         code
         for code, record in records.items()
         if record.get("pma_verification_status") == "located"
-    } - certified == {"10722", "47222", "50134", "73100", "96220"}
+    } - certified == {
+        "10722",
+        "47222",
+        "50134",
+        "55201",
+        "55203",
+        "73100",
+        "79903",
+        "96220",
+        "10214",
+        "16221",
+        "22121",
+        "47111",
+        "50111",
+        "50112",
+        "51102",
+        "55105",
+        "65111",
+        "79122",
+        "95220",
+        "96100",
+        "47221",
+    }
 
 
 def test_content_pma_and_code_drift_fail_closed(
     registry: dict,
     records: dict[str, dict],
 ) -> None:
-    original = records["47111"]
+    # 47111 was de-certified in PR-3c v3 (canonicalIntel AND mouthGold) — a
+    # still-certified code exercises the drift checks; 47111's withheld state
+    # is asserted separately below.
+    original = records["41016"]
     content = original["intel_2026"]
     assert matches_editorial_certification(
         "canonicalIntel",
-        "47111",
+        "41016",
         original,
         content,
         registry,
@@ -77,7 +114,7 @@ def test_content_pma_and_code_drift_fail_closed(
     changed_content["whatItMeans"] += "!"
     assert not matches_editorial_certification(
         "canonicalIntel",
-        "47111",
+        "41016",
         original,
         changed_content,
         registry,
@@ -87,7 +124,7 @@ def test_content_pma_and_code_drift_fail_closed(
     changed_pma["pma_max_asing"] = 1
     assert not matches_editorial_certification(
         "canonicalIntel",
-        "47111",
+        "41016",
         changed_pma,
         content,
         registry,
@@ -97,20 +134,70 @@ def test_content_pma_and_code_drift_fail_closed(
     wrong_code["kode_kbli_2025"] = "65121"
     assert not matches_editorial_certification(
         "canonicalIntel",
-        "47111",
+        "41016",
         wrong_code,
         content,
         registry,
     )
 
 
-def test_explicit_bad_registry_never_falls_back_to_the_default(
+def test_decertified_code_is_withheld_not_reauthored(
+    registry: dict,
     records: dict[str, dict],
 ) -> None:
+    """GATE-6593 (predecessor #6593/#6594) BLOCKED partly on a stale test that
+    still pinned a de-certified code as certified. 47111 lost both
+    canonicalIntel and mouthGold certification in this PR (PR-3c v3) — assert
+    the withdrawal fails closed rather than silently re-matching."""
     record = records["47111"]
+    assert "47111" not in registry["canonicalIntel"]
+    assert "47111" not in registry["mouthGold"]
     assert not matches_editorial_certification(
         "canonicalIntel",
         "47111",
+        record,
+        record["intel_2026"],
+        registry,
+    )
+
+
+def test_decertified_canonical_intel_leaves_mouth_gold_untouched(
+    registry: dict,
+    records: dict[str, dict],
+) -> None:
+    """W-H PR-3f: 47221's canonicalIntel.whatYouNeed claimed a UMKM/Koperasi
+    partnership condition the record's own pma_kondisi denies (a
+    distribution-network/location requirement instead, Perpres 10/2021
+    Lampiran III line 4202 #44). De-certify canonicalIntel ONLY — assert the
+    withdrawal fails closed there while mouthGold's separately reviewed
+    prose for the same code stays certified, proving the scope was exact."""
+    record = records["47221"]
+    assert "47221" not in registry["canonicalIntel"]
+    assert not matches_editorial_certification(
+        "canonicalIntel",
+        "47221",
+        record,
+        record["intel_2026"],
+        registry,
+    )
+    assert "47221" in registry["mouthGold"]
+
+
+def test_explicit_bad_registry_never_falls_back_to_the_default(
+    records: dict[str, dict],
+) -> None:
+    # 41016 (not 47111): 47111 is no longer certified in the real registry,
+    # so `matches_editorial_certification(..., {})` would pass for it
+    # regardless of whether the empty-registry argument is actually
+    # respected — a fallback bug (e.g. `registry or load_editorial_registry()`
+    # silently substituting the real default for a falsy `{}`) would produce
+    # the SAME "not matched" result for 47111, since 47111 isn't in the real
+    # registry either. 41016 IS certified in the real registry, so the same
+    # fallback bug would flip this assertion to matched=True and fail it.
+    record = records["41016"]
+    assert not matches_editorial_certification(
+        "canonicalIntel",
+        "41016",
         record,
         record["intel_2026"],
         {},
@@ -122,7 +209,7 @@ def test_explicit_bad_registry_never_falls_back_to_the_default(
 def test_registry_validation_and_neutral_opener(registry: dict) -> None:
     assert validate_editorial_registry(copy.deepcopy(registry)) == registry
     malformed = copy.deepcopy(registry)
-    malformed["canonicalIntel"]["47111"]["contentSha256"] = "not-a-digest"
+    malformed["canonicalIntel"]["41016"]["contentSha256"] = "not-a-digest"
     with pytest.raises(ValueError, match="contentSha256"):
         validate_editorial_registry(malformed)
 

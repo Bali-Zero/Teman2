@@ -50,6 +50,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import os
+from dataclasses import dataclass
 from typing import Any
 
 import asyncpg
@@ -307,6 +308,117 @@ async def _load_thread_context(
         history.append({"role": role, "content": r["body"]})
 
     return latest_query, history
+
+
+@dataclass(frozen=True)
+class BoundThreadContext:
+    """The context bound to ONE outbox row's own inbound message (B2.5).
+
+    Unlike ``_load_thread_context`` (thread-latest, drifts under retry —
+    see D1 in evidence/2026-09/.../B2-5-design.md), every field here is
+    anchored to a single ``inbound_message_id``: never a message that
+    arrived after it.
+    """
+
+    inbound_message_id: int | None
+    query: str
+    history: list[dict[str, str]]
+
+
+async def _load_bound_thread_context(
+    pool: asyncpg.Pool, *, thread_id: int, outbox_id: int
+) -> BoundThreadContext:
+    """Return the context bound to the ONE inbound message this outbox row
+    was created to answer (B2.5 PR-1, migration 318) — never the thread's
+    latest, which is what let a retry answer a newer message than the one
+    its own row was for (D1).
+
+    Anchor resolution, one query: ``wa_outbox.inbound_message_id`` when the
+    row carries it (every row inserted after this PR); for a legacy NULL
+    row, the latest ``meta_inbox_messages`` customer inbound with
+    ``id < wa_outbox.message_id`` (this row's own outbound stub) — NEVER a
+    newer one, since the webhook transaction always inserts the inbound
+    before the stub (``whatsapp_chat.py``).
+
+    Second query: the anchor's own body (query = "" if NULL/empty, never
+    excluded — a blank anchor is a real, answerable outcome, not "anchor
+    not found") plus up to ``_HISTORY_TURNS`` prior non-empty-body
+    messages strictly older than the anchor, oldest -> newest, same
+    {role, content} mapping as ``_load_thread_context``.
+
+    No anchor at all (defensive only — should not happen for a row whose
+    stub follows a real inbound in the same transaction) returns an empty
+    context, mirroring ``_load_thread_context``'s own "no query" outcome so
+    the caller's existing ``no_customer_message`` path is unchanged.
+    """
+    async with pool.acquire() as conn:
+        anchor_row = await conn.fetchrow(
+            """
+            SELECT COALESCE(
+                wo.inbound_message_id,
+                (
+                    -- Legacy-row derive: correct ONLY because two webhooks for the
+                    -- SAME thread can never interleave their ids. That serialization
+                    -- comes from whatsapp_chat.py's _handle_meta_inbox_message: its
+                    -- `INSERT INTO meta_inbox_threads ... ON CONFLICT
+                    -- (counterpart_phone) DO UPDATE ... RETURNING` takes a row-level
+                    -- lock on the thread row held until COMMIT, so a concurrent
+                    -- webhook for this phone serializes behind it and ids always come
+                    -- out inbound1 < stub1 < inbound2 < stub2. If that upsert ever
+                    -- becomes DO NOTHING, or the inbound insert moves out of that
+                    -- transaction, this derive can silently pick a NEWER inbound than
+                    -- this row's real cause. Guarded by
+                    -- test_legacy_anchor_derive_depends_on_the_thread_upsert_serializing_webhooks.
+                    SELECT m.id FROM meta_inbox_messages m
+                    WHERE m.thread_id = wo.thread_id
+                      AND m.direction = 'inbound'
+                      AND m.sender_role = 'customer'
+                      AND m.id < wo.message_id
+                    ORDER BY m.id DESC
+                    LIMIT 1
+                )
+            ) AS anchor_id
+            FROM wa_outbox wo
+            WHERE wo.id = $1
+            """,
+            outbox_id,
+        )
+        anchor_id = anchor_row["anchor_id"] if anchor_row is not None else None
+        if anchor_id is None:
+            return BoundThreadContext(inbound_message_id=None, query="", history=[])
+
+        rows = await conn.fetch(
+            """
+            SELECT id, sender_role, body
+            FROM meta_inbox_messages
+            WHERE thread_id = $1
+              AND (id = $2 OR (id < $2 AND body IS NOT NULL AND BTRIM(body) <> ''))
+            ORDER BY id DESC
+            LIMIT $3
+            """,
+            thread_id,
+            anchor_id,
+            _HISTORY_TURNS + 1,
+        )
+
+    # The anchor is always the largest id in the WHERE set by construction,
+    # so ORDER BY id DESC places it first — unless it is missing entirely
+    # (the row was deleted between the two queries; defensive only).
+    if not rows or rows[0]["id"] != anchor_id:
+        return BoundThreadContext(inbound_message_id=anchor_id, query="", history=[])
+
+    # A whitespace-only anchor body must reach the caller as "" (same outcome
+    # as NULL/empty, per the docstring) — never as literal spaces, which
+    # would slip past the `if not query:` guard in wa_codex_leg.py. A body
+    # that DOES carry content is preserved verbatim, whitespace and all.
+    raw_query = rows[0]["body"] or ""
+    query = raw_query if raw_query.strip() else ""
+    history: list[dict[str, str]] = []
+    for r in reversed(rows[1:]):
+        role = "user" if r["sender_role"] == "customer" else "assistant"
+        history.append({"role": role, "content": r["body"]})
+
+    return BoundThreadContext(inbound_message_id=anchor_id, query=query, history=history)
 
 
 async def generate_bot_reply(pool: asyncpg.Pool, thread: Any) -> str:

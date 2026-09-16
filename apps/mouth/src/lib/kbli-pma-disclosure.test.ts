@@ -246,3 +246,108 @@ describe("atomic PMA and Bali disclosure", () => {
     expect(discloseBaliL4(raw, false)).toBeUndefined();
   });
 });
+
+// =============================================================================
+// ATTENZIONE_FASCIA_BALI (added 2026-09-15, W-J B1 overlay) — GUILT + INNOCENCE
+// =============================================================================
+describe("discloseBaliL4 — ATTENZIONE_FASCIA_BALI", () => {
+  it("INNOCENCE: the new status is allowed through, not dropped like an unknown one", () => {
+    const raw = located({
+      l4_bali: {
+        status: "ATTENZIONE_FASCIA_BALI",
+        blocked: false,
+        needs_review: true,
+        confidence: "MEDIUM",
+        reason: "not on the closure list",
+      },
+    });
+    expect(discloseBaliL4(raw, true)).toMatchObject({
+      status: "ATTENZIONE_FASCIA_BALI",
+      blocked: false,
+      needsReview: true,
+    });
+  });
+
+  it("GUILT: a status one character off ATTENZIONE_FASCIA_BALI is still dropped", () => {
+    const raw = located({
+      l4_bali: {
+        status: "ATTENZIONE_FASCIA_BALI_X",
+        blocked: false,
+        needs_review: false,
+        reason: "must not escape",
+      },
+    });
+    expect(discloseBaliL4(raw, true)).toBeUndefined();
+  });
+});
+
+// =============================================================================
+// l4_bali.closure (CHIUSO_BALI applied-closure citation) — the ONLY place a
+// URL is validated, so a bad one is caught here rather than trusted by a
+// component downstream.
+// =============================================================================
+describe("discloseBaliL4 — closure citation", () => {
+  function withClosure(closure: Record<string, unknown>) {
+    return located({
+      l4_bali: {
+        status: "CHIUSO_BALI",
+        blocked: true,
+        needs_review: false,
+        confidence: "HIGH",
+        reason: "closed to new PMA licensing",
+        closure,
+      },
+    });
+  }
+
+  it("INNOCENCE: a well-formed closure survives with its http(s) URLs intact", () => {
+    const raw = withClosure({
+      instrument: "Pemprov Bali press release",
+      published: "2026-07-24",
+      url: "https://www.baliprov.go.id/web/gubernur-koster-batasi-akses-oss",
+      list_source: "ANTARA Bali",
+      list_url: "https://bali.antaranews.com/berita/410161",
+      effective: "third week of May 2026",
+      ancestors_2020: ["55110", "55120"],
+      scope_qualifier: null,
+    });
+    const disclosed = discloseBaliL4(raw, true);
+    expect(disclosed?.closure).toMatchObject({
+      instrument: "Pemprov Bali press release",
+      url: "https://www.baliprov.go.id/web/gubernur-koster-batasi-akses-oss",
+      listSource: "ANTARA Bali",
+      listUrl: "https://bali.antaranews.com/berita/410161",
+      ancestors2020: ["55110", "55120"],
+    });
+  });
+
+  it("GUILT: a non-http(s) url and list_url are rejected, never rendered as a link", () => {
+    const raw = withClosure({
+      instrument: "Pemprov Bali press release",
+      url: "javascript:alert(1)",
+      list_source: "ANTARA Bali",
+      list_url: "ftp://bali.antaranews.com/berita/410161",
+    });
+    const disclosed = discloseBaliL4(raw, true);
+    expect(disclosed?.closure?.url).toBeNull();
+    expect(disclosed?.closure?.listUrl).toBeNull();
+    // The text fields survive even when their URL is rejected.
+    expect(disclosed?.closure?.instrument).toBe("Pemprov Bali press release");
+    expect(disclosed?.closure?.listSource).toBe("ANTARA Bali");
+  });
+
+  it("INNOCENCE: a record with no closure object still discloses normally", () => {
+    const raw = located({
+      l4_bali: {
+        status: "CHIUSO_BALI",
+        blocked: true,
+        needs_review: false,
+        confidence: "HIGH",
+        reason: "closed to new PMA licensing",
+      },
+    });
+    const disclosed = discloseBaliL4(raw, true);
+    expect(disclosed?.status).toBe("CHIUSO_BALI");
+    expect(disclosed?.closure).toBeUndefined();
+  });
+});

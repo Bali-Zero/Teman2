@@ -1,0 +1,19 @@
+task: >-
+  SAETTA-20260915 W-H PR-2b v3 (successor of #6595): restore 93114's golf row
+  + 43110's 3 legacy rows (PP 28/2025 I.H entry 39, I.H.224-228), flip 43110
+  blocked (D5f); prose contradicting the restored rows cured via
+  cure_prose_national_openness; Perpres locator artifact re-emitted.
+lane: mouth/kbli-wh-pr2b-v3-source-rows
+machine: M5
+date: 2026-09-15
+
+gear: 2
+gear_reason: harness floor recipe prints 2 (29 files, +984/-190); no hot zone.
+
+acceptance:
+  - "A1 filiera suite, sync_kbli_dataset.sh --check and the backend kbli suite are green."
+  - "A2 the 4 kbli-filiera-vault-compilers checks pass (scoreboard, body-default, slice, foreign-cap)."
+  - "A3 the mouth kbli test glob, tsc --noEmit and prettier on changed files pass."
+
+pii_scan: clean
+pii_scan_note: KBLI codes and Indonesian regulation citations only.

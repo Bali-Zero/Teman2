@@ -14,11 +14,49 @@
 // both served "Bali province blocks ALL Low + Medium-Low risk KBLI for PMA" as
 // their source and "derived from the risk tier" as their basis.
 // =============================================================================
+import type { ReactElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { buildRows } from "./KBLIProvenancePanel";
 import { getAllCodes, getCode } from "@/lib/kbli-data";
 import { isMoratoriumBasis } from "@/lib/kbli-bali-block";
 import type { KBLICode, KBLIProvenance } from "@/lib/kbli-types";
+
+/** Minimal synthetic located-PMA code, for statuses not yet in the live dataset
+ * (ATTENZIONE_FASCIA_BALI / l4_bali.closure land with a separate data PR — see
+ * W-J B1 spec). Only the fields `buildRows` reads are load-bearing. */
+function syntheticLocatedCode(baliL4: KBLICode["baliL4"]): {
+  code: KBLICode;
+  provenance: KBLIProvenance;
+} {
+  const provenance: KBLIProvenance = {
+    state: "verified",
+    definition: { locator: "fixture", assembly: "BPS_7_2025_ONLY" },
+    licensing: {
+      status: "oss_native",
+      locator: "fixture",
+      vintage: "2025",
+      noOssScope: false,
+      contentInheritedFrom: null,
+    },
+    pma: {
+      source: "fixture",
+      status: "located",
+      locator: "fixture locator",
+      vintage: "2026-01-01",
+    },
+    dataNote: null,
+    disputed: null,
+  };
+  const code = {
+    code: "99999",
+    titleId: "(fixture)",
+    titleEn: "(fixture)",
+    baliL4,
+    provenance,
+  } as unknown as KBLICode;
+  return { code, provenance };
+}
 
 const baliRow = (code: string) => {
   const kbli = getCode(code);
@@ -43,7 +81,13 @@ const pmaRow = (code: string) => {
   )!;
 };
 
-const MORATORIUM_RULE = "Bali province blocks ALL";
+// SAETTA-20260915 W-J B1 v2 redo (applied onto post-#6596 main):
+// cure_l4bali_applied_closure.py rewrote l4_bali.moratorium.rule on all
+// 1,559 records, retiring the old blanket string this constant used to
+// match ("Bali province blocks ALL Low + Medium-Low risk KBLI for PMA
+// (permanent, effective 2026-05-13)") for one that names the actual applied
+// closure instead of an unverified date.
+const MORATORIUM_RULE = "Bali closed OSS to new PMA licensing";
 const RISK_TIER_BASIS = "derived from the risk tier";
 
 describe("the Bali provenance row attributes the verdict to what produced it", () => {
@@ -80,11 +124,32 @@ describe("the Bali provenance row attributes the verdict to what produced it", (
   });
 
   it("INNOCENCE: a genuine risk-class block keeps the moratorium attribution", () => {
-    const riskClass = getAllCodes().find(
-      (c) => c.baliL4?.status === "BLOCCATO_CLASSE_RISCHIO",
-    );
-    expect(riskClass).toBeDefined();
-    const row = baliRow(riskClass!.code);
+    // SAETTA-20260915 W-J B1 v2 redo: the applied-closure migration
+    // reclassified every BLOCCATO_CLASSE_RISCHIO record (mostly into
+    // ATTENZIONE_FASCIA_BALI or one of the applied-closure statuses), so it
+    // no longer exists in the canonical at all — not a data-coverage gap
+    // like NON_CLASSIFICABILE below, a full retirement. CHIUSO_MORATORIA_BALI
+    // survives (12 live records) but none currently has a "located" PMA
+    // basis, so getAllCodes() cannot surface one either — that IS a coverage
+    // gap. Both statuses stay in kbli-bali-block.ts's MORATORIUM_STATUSES/
+    // isMoratoriumBasis, so the attribution logic itself is still live and
+    // load-bearing; exercised here via the same syntheticLocatedCode()
+    // fixture the ATTENZIONE_FASCIA_BALI/CHIUSO_BALI blocks below use, so
+    // this stays a real assertion instead of a skip.
+    const { code, provenance } = syntheticLocatedCode({
+      status: "CHIUSO_MORATORIA_BALI",
+      reason: "OSS risk at scale Besar is Rendah/Menengah-Rendah",
+      confidence: "HIGH",
+      needsReview: false,
+      blocked: true,
+      moratorium: {
+        rule: "Bali closed OSS to new PMA licensing for 18 business fields (KBLI 2020 numbering), not for every low/medium-low risk activity",
+        effective: "third week of May 2026",
+      },
+    });
+    const row = buildRows(code, provenance).find(
+      (r) => r.layer === "Bali status",
+    )!;
     expect(row.source).toContain(MORATORIUM_RULE);
     expect(row.detail).toContain(RISK_TIER_BASIS);
   });
@@ -113,7 +178,7 @@ describe("the Bali provenance row attributes the verdict to what produced it", (
     expect(row.detail).toContain("Not classifiable until the true risk tier");
   });
 
-  it("pins the verified population: 6 located codes are blocked by something other than the moratorium", () => {
+  it("pins the verified population: 14 located codes are blocked by something other than the moratorium", () => {
     const misattributed = getAllCodes().filter(
       (c) =>
         c.baliL4?.blocked === true &&
@@ -121,14 +186,165 @@ describe("the Bali provenance row attributes the verdict to what produced it", (
     );
     // The public loader exposes Bali only for the exact located+basis+vintage
     // PMA atom. The former 98-record population included unverified Bali
-    // verdicts; six independently adjudicated non-moratorium blocks remain.
-    expect(misattributed).toHaveLength(6);
+    // verdicts; ten independently adjudicated non-moratorium blocks remain.
+    // SAETTA-20260915 W-H PR-3a: 55201/55203/79903 moved declared_gap→located
+    // (Perpres 49/2021 Lampiran II allocation), 6→9.
+    // SAETTA-20260915 W-J B1 v2 redo: the applied-closure migration also
+    // retired BLOCCATO_CLASSE_RISCHIO/CHIUSO_MORATORIA_BALI as the basis for
+    // 55105 (one-star hotel, <6,000 m², one of the 18 applied-closure
+    // fields) — it moved to CHIUSO_BALI, a non-moratorium status, adding a
+    // 10th member that was always "located" but previously WAS
+    // moratorium-attributed.
+    // SAETTA-20260915 W-J B1 national-cap cure (10 -> 14): the tier->
+    // ATTENZIONE conversion had been overriding a record's own NATIONAL
+    // pma_* 0%-cap closure; 10214/16221/95220/95299 (pma_status TERBATAS,
+    // pma_max_asing 0, located) are kept TERTUTUP/blocked with a
+    // field-derived reason instead of being wrongly un-blocked, adding 4
+    // more non-moratorium members.
+    expect(misattributed).toHaveLength(14);
     // Every one of them must now name its own cause, never the risk tier.
     for (const c of misattributed) {
       const row = baliRow(c.code);
       expect(row.detail, `code ${c.code}`).not.toContain(RISK_TIER_BASIS);
       expect(row.source, `code ${c.code}`).not.toContain(MORATORIUM_RULE);
     }
+  });
+});
+
+describe("the Bali provenance row — ATTENZIONE_FASCIA_BALI (added 2026-09-15, W-J B1)", () => {
+  it("GUILT: never repeats the 'derived from the risk tier' wording for this status", () => {
+    const { code, provenance } = syntheticLocatedCode({
+      status: "ATTENZIONE_FASCIA_BALI",
+      reason: "not on the closure list",
+      confidence: "MEDIUM",
+      needsReview: true,
+      blocked: false,
+    });
+    const row = buildRows(code, provenance).find(
+      (r) => r.layer === "Bali status",
+    )!;
+    expect(row.detail).not.toContain(RISK_TIER_BASIS);
+    expect(row.detail).toContain("18 business fields");
+    expect(row.detail).toContain("verify");
+  });
+
+  it("INNOCENCE: a genuinely-cleared non-blocked code (today's data shape) keeps its wording", () => {
+    // Guards against a regression that would widen the new branch to every
+    // non-blocked status — the pinned INNOCENCE test above (line ~92) already
+    // locks this in for TODAY's dataset; this one locks it in for the
+    // fixture shape too, so both paths are covered.
+    const { code, provenance } = syntheticLocatedCode({
+      status: "OK_or_HIGHER_RISK",
+      reason: "OK_or_HIGHER_RISK",
+      confidence: "HIGH",
+      needsReview: false,
+      blocked: false,
+    });
+    const row = buildRows(code, provenance).find(
+      (r) => r.layer === "Bali status",
+    )!;
+    expect(row.detail).toContain(RISK_TIER_BASIS);
+  });
+
+  it("GUILT: the `source` field never repeats the old blanket moratorium.rule either (Codex sol MAJOR finding 1, PR #6578)", () => {
+    // `isMoratoriumBasis` returns true for ANY non-blocked code by design
+    // (see its own docstring), so before this fix the `source` field fell
+    // through to `m?.rule` regardless of `isAttentionFascia` — even though
+    // `detail` two lines below was already correct. A record that still
+    // carries the OLD blanket moratorium object (today's data shape, before
+    // the data PR rewrites l4_bali.moratorium on every record) must not
+    // print "blocks ALL ... permanent (effective 2026-05-13)" as the SOURCE
+    // of a status whose own detail says "does not by itself close this code".
+    const { code, provenance } = syntheticLocatedCode({
+      status: "ATTENZIONE_FASCIA_BALI",
+      reason: "not on the closure list",
+      confidence: "MEDIUM",
+      needsReview: true,
+      blocked: false,
+      moratorium: {
+        rule: "Bali province blocks ALL Low + Medium-Low risk KBLI for PMA",
+        effective: "2026-05-13",
+      },
+    });
+    const row = buildRows(code, provenance).find(
+      (r) => r.layer === "Bali status",
+    )!;
+    expect(row.source).not.toContain("blocks ALL");
+    expect(row.source).not.toContain("2026-05-13");
+    expect(row.source).toContain("18 business fields");
+  });
+});
+
+describe("the Bali provenance row — CHIUSO_BALI closure citation (added 2026-09-15, W-J B1)", () => {
+  it("INNOCENCE: instrument + code list render as links, ancestors are named", () => {
+    const { code, provenance } = syntheticLocatedCode({
+      status: "CHIUSO_BALI",
+      reason: "closed to new PMA licensing",
+      confidence: "HIGH",
+      needsReview: false,
+      blocked: true,
+      closure: {
+        instrument: "Pemprov Bali press release",
+        url: "https://www.baliprov.go.id/web/gubernur-koster-batasi-akses-oss",
+        listSource: "ANTARA Bali",
+        listUrl: "https://bali.antaranews.com/berita/410161",
+        ancestors2020: ["55110", "55120"],
+      },
+    });
+    const row = buildRows(code, provenance).find(
+      (r) => r.layer === "Bali status",
+    )!;
+    const html = renderToStaticMarkup(row.source as ReactElement);
+    expect(html).toContain(
+      'href="https://www.baliprov.go.id/web/gubernur-koster-batasi-akses-oss"',
+    );
+    expect(html).toContain('href="https://bali.antaranews.com/berita/410161"');
+    expect(html).toContain("Pemprov Bali press release");
+    expect(html).toContain("ANTARA Bali");
+    expect(html).toContain("KBLI 2020 55110, 55120, BPS conversion table");
+  });
+
+  it("GUILT: a rejected (non-http) url never reaches the panel as a link", () => {
+    // discloseBaliL4 is the ONLY gate — a closure object handed to the panel
+    // pre-validated (as it always is in production) with a null url must not
+    // render an <a> tag; the instrument text still renders.
+    const { code, provenance } = syntheticLocatedCode({
+      status: "CHIUSO_BALI",
+      reason: "closed to new PMA licensing",
+      confidence: "HIGH",
+      needsReview: false,
+      blocked: true,
+      closure: {
+        instrument: "Pemprov Bali press release",
+        url: null,
+        listSource: "ANTARA Bali",
+        listUrl: null,
+      },
+    });
+    const row = buildRows(code, provenance).find(
+      (r) => r.layer === "Bali status",
+    )!;
+    const html = renderToStaticMarkup(row.source as ReactElement);
+    expect(html).not.toContain("<a ");
+    expect(html).toContain("Pemprov Bali press release");
+    expect(html).toContain("ANTARA Bali");
+  });
+
+  it("INNOCENCE: CHIUSO_BALI without a closure object keeps current behaviour", () => {
+    const { code, provenance } = syntheticLocatedCode({
+      status: "CHIUSO_BALI",
+      reason: "closed to new PMA licensing",
+      confidence: "HIGH",
+      needsReview: false,
+      blocked: true,
+    });
+    const row = buildRows(code, provenance).find(
+      (r) => r.layer === "Bali status",
+    )!;
+    // Falls through to the existing non-moratorium-basis wording, unchanged.
+    expect(row.source).toBe(
+      "Activity-level restriction — not the risk-tier moratorium overlay",
+    );
   });
 });
 

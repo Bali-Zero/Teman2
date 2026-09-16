@@ -38,7 +38,12 @@ const RECORDS = (rawData as { data: RawRecord[] }).data;
 const BLOCKED = RECORDS.filter((r) => r.l4_bali?.blocked === true);
 const GOLD = goldData as unknown as Record<string, { whatYouNeed?: string }>;
 
-const MORATORIUM_SENTENCE = "under the 13 May 2026 moratorium";
+// Wording updated 2026-09-15 (W-J B1): the dated "13 May 2026 moratorium"
+// phrase is gone (never a verified applied closure) — the substring pinned
+// here is the CURRENT clause's own distinguishing phrase, still exclusive to
+// the two real risk-tier statuses (see the INNOCENCE/GUILT pair below).
+const MORATORIUM_SENTENCE =
+  "under the 2026 Bali request to close low/medium-low-risk PMA";
 
 // The FAQ reads a transformed `KBLICode`, and `transformCode` is module-private
 // in the loader. Rather than export internals for a test, this builds the exact
@@ -145,6 +150,66 @@ describe("baliBlockClause — the cause is derived, never defaulted", () => {
     expect(clause).toContain("not yet in force");
     expect(isProposalOnly("CHIUSO_BALI_PROPOSTO")).toBe(true);
     expect(isProposalOnly("CHIUSO_BALI")).toBe(false);
+  });
+
+  it("CHIUSO_BALI names the applied closure (added 2026-09-15, W-J B1)", () => {
+    // The one date this repo can actually verify (Pemprov Bali press release,
+    // 24 Jul 2026): OSS closed 18 named business fields since the third week
+    // of May 2026 — distinct from the unverified "13 May 2026" blanket date.
+    const clause = baliBlockClause("CHIUSO_BALI");
+    expect(clause).toContain("18 business fields");
+    expect(clause).toContain("third week of May 2026");
+    expect(clause).not.toContain("13 May 2026");
+  });
+});
+
+describe("no client-facing output states the unverified '13 May 2026' date (W-J B1, 2026-09-15)", () => {
+  // The blanket "13 May 2026 moratorium" date was never verified for the
+  // ~500-code risk-tier reading — only the applied closure (CHIUSO_BALI, 18
+  // business fields, third week of May 2026) has a source. Functional check
+  // rather than a source grep: it survives however the wording is phrased,
+  // and does not false-positive on a historical comment documenting the bug
+  // this file already fixed once.
+  const ALL_STATUSES = [
+    "APERTO_BALI_RISCHIO_ALTO",
+    "BLOCCATO_CLASSE_RISCHIO",
+    "BLOCCATO_DIPENDE_SCOPE",
+    "CHIUSO_PMA_NO_BESAR",
+    "CHIUSO_MORATORIA_BALI",
+    "CHIUSO_REGOLATORE_SETTORIALE",
+    "CHIUSO_BALI",
+    "CHIUSO_BALI_PROPOSTO",
+    "TERTUTUP",
+    "ATTENZIONE_FASCIA_BALI",
+    "NON_CLASSIFICABILE",
+    "SOME_FUTURE_STATUS",
+  ];
+
+  it("baliBlockClause never emits the date for any known or unknown status", () => {
+    for (const status of ALL_STATUSES) {
+      expect(baliBlockClause(status)).not.toContain("13 May 2026");
+    }
+  });
+
+  it("baliBlockedHint never emits the date, whatever the population shape", () => {
+    const moratorium = (n: number) =>
+      Array.from({ length: n }, () => ({
+        baliL4: { status: "BLOCCATO_CLASSE_RISCHIO", blocked: true },
+      }));
+    const other = (n: number) =>
+      Array.from({ length: n }, () => ({
+        baliL4: { status: "TERTUTUP", blocked: true },
+      }));
+    const open = (n: number) =>
+      Array.from({ length: n }, () => ({
+        baliL4: { status: "OK_or_HIGHER_RISK", blocked: false },
+      }));
+    expect(
+      baliBlockedHint([...moratorium(10), ...other(5), ...open(20)]),
+    ).not.toContain("13 May 2026");
+    expect(baliBlockedHint([...moratorium(10), ...open(20)])).not.toContain(
+      "13 May 2026",
+    );
   });
 });
 
@@ -422,10 +487,36 @@ describe("the PMA verdict banner — the SECOND render site", () => {
     // 448 → 449 and 445 → 446 on 2026-09-11: the L2 re-ingestion from the
     // September OSS vault (spec 2026-09-11 §7) moved l4_bali on 27 codes — 7
     // block flips, net +1 blocked; msme unchanged at 3.
-    expect(notice.length).toBe(449);
-    expect(msme.length).toBe(3);
-    // 446 pages carry the notice for a cause other than an MSME reservation.
-    expect(notice.length - msme.length).toBe(446);
+    // 449 -> 448 on 2026-09-15 (SAETTA-20260915 W-H PR-2b): 43110 flips
+    // l4_bali.blocked true -> false (D5f, PP 28/2025 Lampiran I.H entry 39
+    // publishes a Besar row for BUJK PMA) and is not nationally closed, so it
+    // leaves `notice` (and `blocked` entirely); msme unchanged (43110 never
+    // carried CHIUSO_PMA_NO_BESAR). Merged with SAETTA-20260915 W-H PR-3a
+    // (same day): 55201/55203/79903 moved declared_gap→located (Perpres
+    // 49/2021 Lampiran II allocation) and leave `notice` too, but by becoming
+    // `excluded` (nationallyClosed via 0% cap) rather than by leaving
+    // `blocked` — they were the entire remaining msme population, so msme
+    // moves 3→0 in the same step. Combined: 449 - 1 (43110) - 3 (PR-3a) = 445.
+    //
+    // 445 -> 61 on 2026-09-15 (SAETTA-20260915 W-J B1 v2 redo, applied onto
+    // post-#6596 main): `cure_l4bali_applied_closure.py` replaced the whole
+    // risk-tier reading (`BLOCCATO_CLASSE_RISCHIO`, retired outright) with
+    // Bali's ACTUAL applied closure — 18 named KBLI-2020 business fields,
+    // not a blanket low/medium-low-risk rule. `blocked` itself collapses
+    // dataset-wide, 518 -> 131; `notice` collapses with it, by status:
+    // 39 CHIUSO_BALI + 12 CHIUSO_MORATORIA_BALI + 6 TERTUTUP (the "trap"
+    // codes — 100% national cap, blocked by profession/reservation, so
+    // `nationallyClosed` does not catch them) + 2 CHIUSO_REGOLATORE_SETTORIALE
+    // + 1 BLOCCATO_DIPENDE_SCOPE + 1 CHIUSO_BALI_PROPOSTO = 61. `msme` stays
+    // 0 — CHIUSO_PMA_NO_BESAR is untouched by this migration (a Perpres
+    // 10/2021+49/2021 Annex II allocation, not a moratorium reading), and all
+    // 7 of its blocked members already carry a 0% national cap, so every one
+    // of them was already `excluded`, not `notice`, before this cure too.
+    expect(notice.length).toBe(61);
+    expect(msme.length).toBe(0);
+    // 61 pages carry the notice for a cause other than an MSME reservation —
+    // which as of this cure is all of them (msme is now empty).
+    expect(notice.length - msme.length).toBe(61);
   });
 
   it("the count above is a SUBTRACTION, and names what it subtracted", () => {
@@ -441,20 +532,92 @@ describe("the PMA verdict banner — the SECOND render site", () => {
         (r.pma_max_asing ?? 0) === 0);
     const blocked = RECORDS.filter((r) => r.l4_bali?.blocked === true);
     const excluded = blocked.filter(nationallyClosed);
-    expect(excluded.map((r) => r.kode_kbli_2025)).toContain("16221");
-    // …and the four the Lampiran II cure sent the same way, for the same
-    // reason: a 0% national cap outranks a Bali-scoped explanation.
-    for (const code of ["10214", "95220", "95291", "95299"]) {
+    // 16221/10214/95220/95299 were named here through 2026-09-15 (W-H
+    // PR-2b/PR-3a): each left `notice` for `excluded` because its national
+    // cap went to 0%, while it stayed `blocked`. The SAETTA-20260915 W-J B1
+    // v2 redo's FIRST pass at the applied-closure overlay then un-blocked all
+    // four OUTRIGHT — a bug, not a finding: the tier→ATTENZIONE conversion
+    // was overriding a genuine national 0% foreign-ownership cap, a non-tier
+    // reason to stay blocked. Cured the same day (national-cap guard,
+    // `is_nationally_capped` in `cure_l4bali_applied_closure.py`): all four
+    // are back in `blocked` — TERTUTUP now, not the pre-migration status —
+    // and, because none of them is `pma_cap_special`, they are back in
+    // `excluded` too. Named again here rather than left to the arithmetic
+    // alone, because the arithmetic on its own cannot tell "these four
+    // rejoined `excluded`" apart from "some other four did" — the same
+    // reason every other member of this population is named individually
+    // below.
+    //
+    // …all SEVEN live CHIUSO_PMA_NO_BESAR codes survive this migration
+    // untouched — that status is a Perpres 10/2021+49/2021 Annex II
+    // allocation, not a moratorium reading, so the applied-closure compiler
+    // does not touch it. Named rather than counted, for the same reason as
+    // everywhere else in this test: a population that only has a size cannot
+    // be checked by the pass that closes it (adversarial review finding,
+    // agy-gemini-3.1-pro, 2026-09-15 — the prior revision named only 95291
+    // as "representative" and left the other six implicit).
+    // 95291: Lampiran II re-adjudication, 2026-08-06.
+    // 96210/96220/96100: the SPLIT-HEIR cure, same day.
+    // 55201/55203/79903: SAETTA-20260915 W-H PR-3a (merged into this
+    // branch's base), moved declared_gap→located the same way.
+    for (const code of [
+      "95291",
+      "96210",
+      "96220",
+      "96100",
+      "55201",
+      "55203",
+      "79903",
+    ]) {
       expect(excluded.map((r) => r.kode_kbli_2025)).toContain(code);
     }
-    // …and the three the SPLIT-HEIR cure sent the same way on 2026-08-06. Named
-    // rather than counted, for the same reason as the four above: a population
-    // that only has a size cannot be checked by the pass that closes it.
-    for (const code of ["96210", "96220", "96100"]) {
+    // …and 55105 (one-star hotel <6,000 m²) newly joins `excluded` on
+    // 2026-09-15: it is one of Bali's 18 named applied-closure fields
+    // (CHIUSO_BALI) AND carries a 0% national cap (TERBATAS/0), so the
+    // nationally-closed cause outranks the Bali-scoped one for it too —
+    // proof the migration adds members to this population, not only removes
+    // them.
+    expect(excluded.map((r) => r.kode_kbli_2025)).toContain("55105");
+    // …and 10214/16221/95220/95299 rejoin `excluded` the same day, cured by
+    // the national-cap guard (see the comment above `excluded` itself): each
+    // carries a genuine 0% national cap (16221 TERBATAS/0; the other three
+    // TERTUTUP), none is `pma_cap_special`, so `nationallyClosed` catches all
+    // four again. GUILT would be losing this population silently a second
+    // time; INNOCENCE is that a genuinely tier-only 49% code (e.g. any other
+    // ATTENZIONE_FASCIA_BALI member) never appears here.
+    for (const code of ["10214", "16221", "95220", "95299"]) {
       expect(excluded.map((r) => r.kode_kbli_2025)).toContain(code);
     }
+    const tierOnlyAttenzione = RECORDS.find(
+      (r) => r.l4_bali?.status === "ATTENZIONE_FASCIA_BALI",
+    );
+    expect(tierOnlyAttenzione).toBeDefined();
+    expect(excluded.map((r) => r.kode_kbli_2025)).not.toContain(
+      tierOnlyAttenzione?.kode_kbli_2025,
+    );
     // 448 → 449 on 2026-09-11 (September L2 re-ingestion, net +1 blocked).
-    expect(blocked.length - excluded.length).toBe(449);
+    // 449 -> 448 on 2026-09-15 (SAETTA-20260915 W-H PR-2b): 43110's blocked
+    // flip, same event as the notice-population pin above. Merged with
+    // SAETTA-20260915 W-H PR-3a (same day): 55201/55203/79903 move from
+    // `notice` to `excluded` (cap now 0%). Combined: 449 - 1 - 3 = 445.
+    // 445 -> 61 on 2026-09-15 (SAETTA-20260915 W-J B1 v2 redo, first pass):
+    // blocked 518 -> 131, excluded (by status) 62 TERTUTUP + 7
+    // CHIUSO_PMA_NO_BESAR + 1 CHIUSO_BALI (55105) = 70, blocked - excluded =
+    // 131 - 70 = 61.
+    // 61 stays 61 on 2026-09-15 (cure round, national-cap guard): blocked
+    // 131 -> 135 (+4) and excluded 70 -> 74 (+4, the same four codes) move
+    // together, so the DIFFERENCE is unchanged — the signature of a
+    // population re-entering both sets at once, same as the 2026-08-06 note
+    // above about `notice`/`msme`. `excluded` is cap-based (this file's own
+    // `nationallyClosed`, which reads the record's NATIONAL pma_status/
+    // pma_max_asing, not l4_bali.status), so its new 74 splits as 66
+    // l4_bali.status TERTUTUP with a genuine 0% national cap + 7
+    // CHIUSO_PMA_NO_BESAR + 1 CHIUSO_BALI (55105) — the other 6
+    // l4_bali.status TERTUTUP records are the TERBUKA/100% anomaly
+    // (kbli-prose-pins.test.ts's tertutupZero/tertutupNonZero split): their
+    // OWN national fields read wide open, so this cap-based predicate does
+    // not catch them and they stay in `notice`, not `excluded`.
+    expect(blocked.length - excluded.length).toBe(61);
     // and it left by CAP, not by status — the status is TERBATAS, which the
     // banner's guard does not look at
     const woodBuilding = RECORDS.find((r) => r.kode_kbli_2025 === "16221");
@@ -550,12 +713,27 @@ describe("the FAQ + FAQPage JSON-LD — the THIRD render site in this file, FIFT
     // three left both sets together.
     // 447 → 448 and 444 → 445 on 2026-09-11: same event as the banner site
     // above (September L2 re-ingestion, net +1 blocked); msme unchanged at 3.
-    expect(answers.length).toBe(448);
-    expect(msme.length).toBe(3);
-    // 445 answers carry the block for a cause other than an MSME reservation —
+    // 448 -> 447 on 2026-09-15 (SAETTA-20260915 W-H PR-2b): 43110's blocked
+    // flip, same event as the notice-population pin above. Merged with
+    // SAETTA-20260915 W-H PR-3a (same day): 55201/55203/79903 moved
+    // declared_gap→located (Perpres 49/2021 Lampiran II allocation);
+    // pma_status leaves TERBUKA, so openNationally no longer matches, and
+    // they were the entire msme population here too. Combined: 448 - 1 - 3 = 444.
+    //
+    // 444 -> 60 on 2026-09-15 (SAETTA-20260915 W-J B1 v2 redo): same event as
+    // the notice-population pin above — the applied-closure overlay retires
+    // `BLOCCATO_CLASSE_RISCHIO` and collapses `blocked` 518 -> 131, so
+    // `answers` (blocked && pma_status TERBUKA) collapses with it. `msme`
+    // stays 0 for the same reason as the banner site: CHIUSO_PMA_NO_BESAR is
+    // untouched by this migration and every one of its 7 blocked members
+    // already reads TERBATAS nationally, not TERBUKA, so none was ever in
+    // `answers` to begin with.
+    expect(answers.length).toBe(60);
+    expect(msme.length).toBe(0);
+    // 60 answers carry the block for a cause other than an MSME reservation —
     // in the visible Q&A and in the FAQPage JSON-LD, the copy that leaves the
-    // site.
-    expect(answers.length - msme.length).toBe(445);
+    // site — which as of this cure is all of them (msme is now empty).
+    expect(answers.length - msme.length).toBe(60);
   });
 
   it("this site is a SUBSET of the banner's — a cure for one is not a cure for the other", () => {
@@ -716,12 +894,32 @@ describe("baliBlockedHint — the index card must not blame the moratorium for e
     // 518 → 519 and 420 → 421 on 2026-09-11: the September L2 re-ingestion
     // (spec 2026-09-11 §7) flipped l4_bali.blocked on 7 codes, net +1, all
     // under the moratorium reading; the other-cause 98 is unchanged.
-    expect(hint).toContain("519 of 1559");
-    // Both halves of the split, each with the words around it: a bare "98"
+    // 519 → 518 and 98 → 97 on 2026-09-15 (SAETTA-20260915 W-H PR-2b): 43110
+    // flips l4_bali.blocked true → false (D5f) — an other-cause code, not a
+    // moratorium one, so 421 (moratorium-attributed) is unchanged.
+    //
+    // 518 → 131 and 421 → 12 on 2026-09-15 (SAETTA-20260915 W-J B1 v2 redo):
+    // `cure_l4bali_applied_closure.py` retires `BLOCCATO_CLASSE_RISCHIO`
+    // outright — every code MORATORIUM_STATUSES used to count through that
+    // status either gets a real applied-closure reading (CHIUSO_BALI, one of
+    // the 18 named fields) or is un-blocked entirely (ATTENZIONE_FASCIA_BALI).
+    // `CHIUSO_MORATORIA_BALI`, the surviving member of MORATORIUM_STATUSES,
+    // is untouched by this migration, so the moratorium-attributed count is
+    // now exactly its own population: 12. `blocked` collapses 518 -> 131, so
+    // other-cause is 131 - 12 = 119.
+    //
+    // 131 → 135 and 119 → 123 on 2026-09-15 (cure round, national-cap guard):
+    // the compiler's tier→ATTENZIONE conversion was un-blocking 4 codes
+    // (10214/16221/95220/95299) that carry a genuine national 0% foreign-
+    // ownership cap — a non-tier reason to stay blocked. All 4 now read
+    // TERTUTUP, not CHIUSO_MORATORIA_BALI, so the moratorium-attributed
+    // count (12) is unchanged; other-cause is 135 - 12 = 123.
+    expect(hint).toContain("135 of 1559");
+    // Both halves of the split, each with the words around it: a bare "123"
     // would also be satisfied by the digits of some unrelated figure the
     // sentence might gain later, which is how a pin stops pinning.
-    expect(hint).toContain("421 of them");
-    expect(hint).toContain("the other 98");
+    expect(hint).toContain("12 of them");
+    expect(hint).toContain("the other 123");
   });
 });
 
@@ -769,9 +967,16 @@ describe("isNationalClosure — the banner and the FAQ must not send a client to
     // (96210, 96220, 96100), each of which had carried CHIUSO_PMA_NO_BESAR
     // while publishing 100%.
     //
-    // The five that remain are NAMED below and not merely counted, because a
+    // SAETTA-20260915 W-H PR-3a: 5→2. 55201 (homestay), 55203 (villa) and
+    // 79903 (tour guide) — the vintage carries this comment used to describe
+    // as staying open on purpose — are now allocated to Koperasi/UMKM by
+    // Perpres 49/2021 Lampiran II (dialokasikan column) and moved
+    // declared_gap→located, TERBUKA/100%→TERBATAS/0%. They leave this
+    // population for the same reason the earlier cures did.
+    //
+    // The two that remain are NAMED below and not merely counted, because a
     // population with only a size cannot be closed by the pass that comes for
-    // it — and these five are not one population at all:
+    // it — and these two are not one population at all:
     //
     //   64110 (Bank Indonesia) and 38122 (radioactive-waste collection) are
     //     CHIUSO_REGOLATORE_SETTORIALE — shut by their own sector's regulator,
@@ -779,25 +984,13 @@ describe("isNationalClosure — the banner and the FAQ must not send a client to
     //     have never had one. Writing them down here is the point: they have
     //     been sitting inside an aggregate labelled "the remaining
     //     contradiction" and would have left it only by accident.
-    //
-    //   55201 (homestay), 55203 (villa) and 79903 (tour guide) are the vintage
-    //     carries, adjudicated 2026-08-06 across two model families. 55203 is
-    //     due to be cured (three seats, two families, all SAME); 55201 and
-    //     79903 stay open on purpose — a cross-family seat withheld on 55201
-    //     because settling it needs the KBLI-2020 text for "Pondok Wisata",
-    //     which we do not hold, and 79903's own 2025 description adds
-    //     coordinating freelance guides for travel agencies, which the annex
-    //     row "Jasa pramuwisata" does not name.
     const stillContradictory = national.filter(
       (r) => r.pma_status === "TERBUKA" && r.pma_max_asing === 100,
     );
-    expect(stillContradictory.length).toBe(5);
+    expect(stillContradictory.length).toBe(2);
     expect(stillContradictory.map((r) => r.kode_kbli_2025).sort()).toEqual([
       "38122",
-      "55201",
-      "55203",
       "64110",
-      "79903",
     ]);
     expect(national.map((r) => r.kode_kbli_2025)).toContain("95291");
     expect(stillContradictory.map((r) => r.kode_kbli_2025)).not.toContain(

@@ -104,8 +104,12 @@ def wiring(monkeypatch: pytest.MonkeyPatch) -> dict[str, Any]:
         state["phone_lookups"].append(phone_norm)
         return "client-from-phone"
 
-    async def _record(_conn: Any, *, intent: dict[str, Any], client: dict[str, Any], **kw: Any) -> None:
+    async def _record(_conn: Any, *, intent: dict[str, Any], client: dict[str, Any], **kw: Any) -> bool:
         state["matches"].append((intent["id"], client["id"], kw.get("match_method")))
+        # True = "this call claimed the intent". run() now counts only claimed
+        # matches, so a fake that returned None would silently zero the
+        # counters these tests assert on.
+        return True
 
     async def _nothing(_conn: Any) -> list[dict[str, Any]]:
         return []

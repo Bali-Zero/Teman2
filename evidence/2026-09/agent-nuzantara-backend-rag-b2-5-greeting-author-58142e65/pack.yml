@@ -1,0 +1,173 @@
+task_id: backend-rag-b2-5-greeting-authority
+mandate: B2.5
+colour: BLUE
+pr: B2.5 PR-3 (successor of #6498)
+base_sha: ad1dacc3b648c523a9a8336261b65464f45f0a43 # pragma: allowlist secret
+brief_ref: evidence/brief.yml
+gear: 3
+successor_of:
+  pr: 6498
+  frozen_head: 1e5497871213c5e18f0fcf7a66ecd3d592cce5e2 # pragma: allowlist secret
+  reason: >-
+    #6498 was armed, so frozen; its pack failed R9 (no council_run journal) at
+    harness floor run 34808043054. Imperator ruling (B2-ack on gate-6498): close
+    it and open this successor from fresh origin/main with the three production
+    files and the tests blob-identical to the frozen head, plus a pack carrying
+    the council journal. gate-6498 read the code PASS-WITH-CONDITIONS; the
+    re-gate covers blob identity and lint.
+spend:
+  wall_clock_hours: 1.6
+  wall_clock_note: >-
+    One window (Pro, 04:14Z-): ground and verify the defect, design and I110
+    ack, build (Sonnet), C1 corpus gap found by the Dux and cured, round 1
+    (Codex + Gemini in parallel), converged MINOR cured, pack, #6498 armed and
+    red at pack-lint R9 (the Dux's local lint omitted --repo-root on the staged
+    tree, so it never resolved the brief's gear and skipped R9), closed, this
+    successor. Hops 0 of 3.
+  adversarial_rounds: 1
+  tokens: 900000
+seat_fallback_reason: >-
+  agy-gemini-3.1-pro replaced kimi-code/k3 (HTTP 403 monthly limit) and
+  tp1-qwen3.8-max (HTTP 429 until 2026-09-18T08:39Z), both as stated in the
+  B2.5 mandate; codex-gpt-5.6-sol played as titolare.
+result: >-
+  SHIP. wa_greeting.match_greeting is the one greeting authority on the WA
+  path: it strips one leading list ordinal, the package builder raises
+  greeting_domain only when it matches, a planner-only GREETING builds with
+  GENERAL's collections through effective_domain(), and the wa_package router
+  prefetches curated QA under that same effective domain. query_planner.py and
+  the B2.4 support gate are untouched.
+measured:
+  defect_before:
+    at: "2026-09-14T04:25Z, read-only, prod, thread 394"
+    observation: >-
+      outbox 439 (inbound 830, matches ^\d+\.\s+halo$) done after 4 attempts with
+      generation_fall_off_reason package_unbuildable_greeting_domain; its reply
+      was sent 23:54:11 with a body md5-identical to the reply to a later inbound
+      (that part is PR-1's defect).
+  c1_domain_table:
+    corpus: >-
+      23 query_list texts of tests/benchmarks/evidence_sufficiency/query_vectors_b1_5.json
+      + 8 B2.5 probe texts, each as-is and with a leading "11.  " = 62 rows.
+      Correction (gate-6498): the owner's 26-message battery exists on the M5
+      Desk, not in this repo; this window could not find it on Pro and used the
+      committed synthetic superset. The gate ran the 26-message battery x
+      {bare, "11.  "}: 0 domain shifts, only "11.  Hi" / "11.  Halo" become
+      scripted.
+    changed_rows: 4
+    changed_detail: >-
+      Halo, "11.  Halo" (as-is) and "11.  Halo" prefixed-as-is -> unbuildable:greeting_domain
+      (planner greeting, match_greeting id); "11.  11.  Halo" -> general (only ONE
+      ordinal is stripped, by design). Zero rows changed where the planner did not
+      say greeting.
+    record: C1-domain-table.md
+pii_scan: clean
+pii_scan_note: >-
+  Every fixture and probe text is synthetic; the B1.5 texts are loaded from the
+  committed synthetic fixture and the table labels them by index. No body,
+  phone or wamid appears in code, logs, tests or this pack.
+receipts:
+  - claim: >-
+      A2/A3 — greeting, whole rag/agentic tree (incl. the C1 corpus test and the
+      builder authority tests), wa_package router, wa_codex_leg and the
+      integrations tree green in one process on the cured head 36ed04818d.
+    cmd: "cd apps/backend-rag && PYTHONPATH=. .venv/bin/python -m pytest -p no:cacheprovider backend/tests/unit/services/test_wa_greeting.py backend/tests/unit/services/rag/agentic backend/tests/unit/app/routers/test_wa_package_router.py backend/tests/unit/services/test_wa_codex_leg.py backend/tests/unit/services/integrations"
+    exit: 0
+    ts: "2026-09-14T05:1xZ"
+    seat: claude-opus-5
+    note: "2842 passed, 30 skipped, 7 xfailed (pre-existing test_wa_dlp.py xfails)"
+  - claim: >-
+      Guilt — removing the `text = _strip_leading_ordinal(text)` call turns the
+      greeting and builder tests red; the cure restored by cp leaves the worktree
+      clean (git status empty).
+    cmd: "mutate wa_greeting.py (cp backup to scratchpad) then pytest test_wa_greeting.py test_wa_package_builder.py -> 6 failed / 112 passed; cp restore"
+    exit: 1
+    ts: "2026-09-14T04:5xZ"
+    seat: claude-opus-5
+  - claim: >-
+      Successor blob identity — the three production files and the three test
+      files on this branch hash to the same git blobs as the gated frozen head
+      1e5497871213.
+    cmd: 'for f in <6 paths>; do [ "$(git rev-parse 1e5497871213:$f)" = "$(git hash-object $f)" ]; done'
+    exit: 0
+    ts: "2026-09-14T05:12Z"
+    seat: claude-opus-5
+    note: "6/6 IDENT; main touched none of the six paths since the frozen head (git log 1e5497871213..HEAD -- <paths> empty)"
+lanes:
+  - { lane: greeting-authority, role: build, seat: claude-sonnet-5 }
+  - { lane: dux-verification, role: read, seat: claude-opus-5 }
+  - { lane: adversarial-review, role: review, seat: codex-gpt-5.6-sol }
+  - {
+      lane: second-reader,
+      role: review,
+      seat: agy-gemini-3.1-pro,
+      seat_fallback_reason: "kimi-code/k3 HTTP 403 monthly limit; tp1-qwen HTTP 429 until 2026-09-18T08:39Z",
+    }
+council_run: council-journal.jsonl
+bites:
+  consumer: >-
+    wa_codex_leg._attempt on the Fly rag process group (match_greeting before the
+    package build) and the /api/wa-package/build router + build_context_package
+    it calls, all changed or reached by this PR.
+  observation: >-
+    Owed after merge, not claimed here: sha256 of wa_greeting.py,
+    wa_package_builder.py and wa_package.py inside the rag machine == merged
+    blobs; then in the B3 probe "11.  Halo" and "Halo" from the test number get
+    the scripted greeting on the first attempt (wa_outbox attempts 0, no
+    generation_fall_off_reason).
+adversarial:
+  - seat: codex-gpt-5.6-sol
+    round: 1
+    verdict: SHIP
+    findings: 1
+    cured: 1
+    note: >-
+      MINOR: the router passed plan.domain "greeting" to the curated-QA prefetch
+      for a planner-only GREETING, which does not short-circuit and spends an
+      embedding + Qdrant search. Cured in 36ed04818d (effective_domain shared by
+      builder and router; router test asserts "general", mutation-checked).
+      Seat verified in memory 75 greeting cases, the authority tests and C1 on
+      62 texts; full pytest not runnable in its sandbox.
+  - seat: agy-gemini-3.1-pro
+    round: 1
+    verdict: SHIP
+    findings: 2
+    cured: 1
+    note: >-
+      MINOR 1 = the same router finding, converged, cured in 36ed04818d.
+      MINOR 2 = private import of _DOMAIN_COLLECTIONS from query_planner:
+      accepted, because query_planner.py stays untouched under this mandate;
+      carried as V1.
+dissent:
+  - seat: agy-gemini-3.1-pro
+    status: PLAUSIBLE
+    objection: "wa_package_builder imports the private _DOMAIN_COLLECTIONS from query_planner"
+    disposition: "accepted and declared (V1); exposing a public accessor needs a query_planner change outside this mandate"
+vulnerabilities:
+  - id: V1-private-planner-import
+    severity: declared
+    what: "wa_package_builder reads query_planner._DOMAIN_COLLECTIONS to build GENERAL's collections."
+    disposition: "A rename in query_planner breaks the import loudly at import time (not silently); a public accessor is a follow-up outside B2.5."
+  - id: V2-planner-greeting-with-content-builds-general-only
+    severity: named-and-open
+    what: >-
+      gate-6498 C5 (record-only): a planner-GREETING text that carries content
+      (e.g. 'Selamat pagi, saya mau buka PT') now builds GENERAL, i.e.
+      legal_unified_hybrid + training_conversations_hybrid only, without the
+      kbli/visa collections a keyword-classified question would reach.
+    disposition: >-
+      Before this PR the same text fell off unbuildable through five attempts;
+      now it reaches the support-judged path with a narrower collection set and
+      ends in a supported answer or a terminal stub. Widening GENERAL for these
+      rows is a retrieval decision outside B2.5.
+  - id: V3-one-ordinal-only
+    severity: declared
+    what: "Only ONE leading list ordinal is stripped; '11.  11.  Halo' builds as GENERAL instead of getting the scripted greeting."
+    disposition: "By design (the regex is anchored and count=1); the GENERAL build still ends in an answer or a terminal stub, never a retry loop."
+  - id: V4-router-comment-overstates-general-prefetch
+    severity: record-only
+    what: >-
+      gate-6498: the wa_package.py comment and the router test name speak of
+      prefetching curated QA for a 'general' domain, but curated_qa_grounding_block
+      returns '' for 'general' without any I/O.
+    disposition: "Wording only; not changed here because the successor must stay blob-identical to the gated head."

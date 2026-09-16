@@ -1,0 +1,27 @@
+{
+  "name": "typescript-lsp",
+  "version": "1.0.0-nz1",
+  "description": "typescript-language-server with global tsserver fallback",
+  "strict": false,
+  "lspServers": {
+    "typescript": {
+      "command": "typescript-language-server",
+      "args": ["--stdio"],
+      "initializationOptions": {
+        "tsserver": {
+          "fallbackPath": "/Users/balizero/nuzantara/node_modules/typescript/lib"
+        }
+      },
+      "extensionToLanguage": {
+        ".ts": "typescript",
+        ".tsx": "typescriptreact",
+        ".js": "javascript",
+        ".jsx": "javascriptreact",
+        ".mts": "typescript",
+        ".cts": "typescript",
+        ".mjs": "javascript",
+        ".cjs": "javascript"
+      }
+    }
+  }
+}

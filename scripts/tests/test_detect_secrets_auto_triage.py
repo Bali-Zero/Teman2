@@ -322,8 +322,8 @@ def test_kbli_gold_rule_registered_and_scoped_to_exactly_one_file() -> None:
     # trail are derived from the live registry post-merge, not summed by
     # hand (team-lead's call: a rule appears once in the trail regardless of
     # how many PRs tried to add it).
-    assert len(CONTENT_KEYED_RULES) == 38, (
-        f"CONTENT_KEYED_RULES now has {len(CONTENT_KEYED_RULES)} entries, not 38. "
+    assert len(CONTENT_KEYED_RULES) == 39, (
+        f"CONTENT_KEYED_RULES now has {len(CONTENT_KEYED_RULES)} entries, not 39. "
         "If you just ADDED a rule: bump this number AND append a `# +1: <what> "
         "(<date>, PR #NNNN)` line below, matching the existing trail's format — "
         "that comment IS the audit record this assert exists to force. "
@@ -363,6 +363,7 @@ def test_kbli_gold_rule_registered_and_scoped_to_exactly_one_file() -> None:
     # +1: evidence/<month>/<slug>/pack.yml secrets_note: block-scalar key name (2026-09-13, B2 ledger close PR, #6440/#6455)
     # +1: evidence/<month>/<slug>/receipts/*.txt isolated test:test@loopback DATABASE_URL export (2026-09-13, B2 ledger close PR, #6440)
     # +1: evidence/<month>/<slug>/reviews/prompt-r*.txt VERDICT sha256 of the prompt round's own text (2026-09-13, B2 ledger close PR, #6440)
+    # +1: infra/claude-plugins/local-marketplace/vendor.lock.json per-file sha256 + upstream_commit pins (2026-09-15, PR #6554 follow-up)
     #
     # Note (2026-08-23): "appended last" is no longer a constraint. It was
     # true only because this test and the two Google-OAuth tests below
@@ -1801,3 +1802,84 @@ def test_innocence_is_secret_narration_other_value_not_approved() -> None:
         EVIDENCE_PACK_IS_SECRET_NARRATION_REASON
     )
     assert content_pat.search("      set `is_secret: sk-abcdef123456`\n") is None
+
+
+# --- infra/claude-plugins/local-marketplace/vendor.lock.json (PR #6554) ---
+
+VENDOR_LOCK_REASON = "local-marketplace vendor.lock.json"
+
+
+def test_vendor_lock_rule_registered_and_scoped_to_exactly_one_file() -> None:
+    """Path-keyed to the one lock file only — never another vendor.lock.json
+    that might exist elsewhere in the tree, and never a sibling file in the
+    same directory (e.g. a future declared-pairs.json)."""
+    path_pat, _content_pat, reason = _find_content_keyed_rule(VENDOR_LOCK_REASON)
+    assert path_pat.search("infra/claude-plugins/local-marketplace/vendor.lock.json")
+    assert not path_pat.search(
+        "infra/claude-plugins/local-marketplace/declared-pairs.json"
+    )
+    assert not path_pat.search(
+        "infra/claude-plugins/local-marketplace/plugins/vendor.lock.json"
+    )
+    assert "credential" in reason
+
+
+def test_guilt_vendor_lock_real_file_hash_line_approved() -> None:
+    """A real `files` entry from the checked-in vendor.lock.json, keyed by a
+    nested relative path (slashes/dashes/dots) — the common shape in this
+    file's `files` map — is not rejected for non-hex chars in the KEY."""
+    _path_pat, content_pat, _reason = _find_content_keyed_rule(VENDOR_LOCK_REASON)
+    real_line = (
+        '        "skills/systematic-debugging/test-pressure-3.md": '
+        '"96b50a52e2c7989c9cf20fb752c47c1e9a3a70dc362f8f7989f8f5b64dac7708",'
+    )
+    assert content_pat.match(real_line)
+
+
+def test_guilt_vendor_lock_real_upstream_commit_line_approved() -> None:
+    """The real line 6 of the checked-in vendor.lock.json (superpowers'
+    upstream_commit)."""
+    _path_pat, content_pat, _reason = _find_content_keyed_rule(VENDOR_LOCK_REASON)
+    real_line = '      "upstream_commit": "b36e0829c6d0140e93cfef2ca599b1b07d4a7797",'
+    assert content_pat.match(real_line)
+
+
+def test_innocence_vendor_lock_mixed_case_hash_not_approved() -> None:
+    """A 64-char value that is not all-lowercase-hex (uppercase letters
+    mixed in) — the shape a real base64-ish credential could take — stays
+    unaudited rather than being waved through on length alone."""
+    _path_pat, content_pat, _reason = _find_content_keyed_rule(VENDOR_LOCK_REASON)
+    bad_value = "A37e0e9697144819e1d965176ac4ae5bc3fa02d11e7812036bbcadf6dafe2400"
+    assert content_pat.match(f'        "LICENSE": "{bad_value}",') is None
+
+
+def test_innocence_vendor_lock_wrong_hex_length_not_approved() -> None:
+    """63 or 65 hex chars — one short or one long of the exact sha256
+    shape — both stay unaudited; the rule requires exactly 64."""
+    _path_pat, content_pat, _reason = _find_content_keyed_rule(VENDOR_LOCK_REASON)
+    assert content_pat.match(f'        "LICENSE": "{"a" * 63}",') is None
+    assert content_pat.match(f'        "LICENSE": "{"a" * 65}",') is None
+
+
+def test_innocence_vendor_lock_plausible_token_not_approved() -> None:
+    """A real-secret-shaped value under an unrelated key — `ghp_...` is
+    neither 64 nor 40 lowercase-hex, so it cannot ride through on shape
+    alone regardless of the key name."""
+    _path_pat, content_pat, _reason = _find_content_keyed_rule(VENDOR_LOCK_REASON)
+    token_line = '        "token": "ghp_1234567890abcdefghijklmnopqrstuvwxyz01",'
+    assert content_pat.match(token_line) is None
+
+
+def test_innocence_vendor_lock_same_shape_different_path_not_approved() -> None:
+    """The exact same line shape, correctly matching the CONTENT pattern,
+    must still be left unaudited if the FINDING is in a different file —
+    the path half of the rule is what scopes it, not the line shape alone."""
+    path_pat, content_pat, _reason = _find_content_keyed_rule(VENDOR_LOCK_REASON)
+    real_line = (
+        '        "LICENSE": '
+        '"a37e0e9697144819e1d965176ac4ae5bc3fa02d11e7812036bbcadf6dafe2400",'
+    )
+    assert content_pat.match(real_line)  # line shape alone would match
+    assert not path_pat.search(
+        "infra/claude-plugins/local-marketplace/plugins/superpowers/LICENSE"
+    )

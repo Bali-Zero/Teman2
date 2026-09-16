@@ -22,11 +22,24 @@ const PAGES: Array<{ name: string; path: string; pins: string[] }> = [
   {
     name: "notifications",
     path: join(__dirname, "..", "notifications", "page.tsx"),
-    pins: [
-      "var(--state-success)",
-      "var(--state-warning)",
-      "var(--state-danger)",
-    ],
+    // RE-PINNED by SAETTA-R19K K2c, and narrowed on purpose rather than
+    // weakened. This entry used to also pin "var(--state-danger)". What that
+    // pin was ever for is the DRAIN — proof the page reads tokens instead of
+    // raw hex — and the two pins below still prove exactly that; the three
+    // hex/rgba/palette assertions above, which are the drain's real teeth,
+    // are untouched.
+    //
+    // The danger token had to go because on kita --state-danger resolves to
+    // COPPER, and copper means "the signed-in viewer is the next actor". A
+    // failed delivery on a fleet-wide automated alert has no viewer and no
+    // owned record, so painting it copper made the page claim something
+    // false. It now reads --state-warning, which is what urgency uses, and
+    // the WORD "Error" carries the meaning either way.
+    //
+    // Keeping the old pin would have forced this page to go on lying in
+    // order to keep a guard green — a guard holding content hostage to its
+    // own baseline. The drain is still pinned; only the colour changed.
+    pins: ["var(--state-success)", "var(--state-warning)"],
   },
   {
     name: "admin/team-activity",

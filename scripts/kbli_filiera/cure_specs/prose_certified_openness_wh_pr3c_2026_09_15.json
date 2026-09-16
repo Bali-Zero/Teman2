@@ -1,0 +1,407 @@
+{
+  "compiler": "cure_prose_national_openness",
+  "_why": "PR-3c (W-H, SAETTA-20260915): certified prose must not claim foreign openness its own tuple, or another code it names, does not support. 28 codes carried a stale zantaraOpener template literally saying 'PMA status: Open' while their own record is TERBATAS/capped; 50135's standfirst said 'open to PMA nationally' while its own body states a 49% cap two paragraphs later; 47111 (0%, located) told a reader 47192 is '100% PMA open' / 'fully open to PMA' when 47192's own record is declared_gap (not yet verified). Every replacement repeats the record's OWN tuple or, for another code named in the prose, states that the other code's position is unverified rather than asserting a value for it. Whole-field replacement; every other sentence of each field is byte-identical to the live text.",
+  "codes": {
+    "21021": {
+      "expect": {
+        "pma_max_asing": 0,
+        "pma_status": "TERBATAS",
+        "pma_kondisi_contains": "domestic capital only"
+      },
+      "fields": {
+        "zantaraOpener": {
+          "old_sha256": "52cba5a3d5e8ecd9636aa5517949e761068858651b0e812836c3404a2995f8d1",
+          "old_excerpt": "Looking into Industri Bahan Baku Obat Bahan Alam untuk Manusia (21021)? Nationally this carries PMA status: Open. Let me",
+          "new": "Looking into Industri Bahan Baku Obat Bahan Alam untuk Manusia (21021)? Nationally this carries PMA status: TERBATAS — 0% foreign ownership; only domestic capital may hold it. Let me walk you through what it means for a foreign-owned setup."
+        }
+      }
+    },
+    "21022": {
+      "expect": {
+        "pma_max_asing": 0,
+        "pma_status": "TERBATAS",
+        "pma_kondisi_contains": "domestic capital only"
+      },
+      "fields": {
+        "zantaraOpener": {
+          "old_sha256": "0ba674721a55138ffccd380e19e71b8e146d9a7cc3e6a66a6fdf0159038062bb",
+          "old_excerpt": "Looking into Industri Produk Obat Bahan Alam untuk Manusia (21022)? Nationally this carries PMA status: Open. Let me wal",
+          "new": "Looking into Industri Produk Obat Bahan Alam untuk Manusia (21022)? Nationally this carries PMA status: TERBATAS — 0% foreign ownership; only domestic capital may hold it. Let me walk you through what it means for a foreign-owned setup."
+        }
+      }
+    },
+    "25200": {
+      "expect": {
+        "pma_max_asing": 49,
+        "pma_status": "TERBATAS",
+        "pma_kondisi_contains": "Menteri Pertahanan"
+      },
+      "fields": {
+        "zantaraOpener": {
+          "old_sha256": "05ca1e8284bf6a8032e74764a49431a0caa02f90e5cee11e2af7b463c4ac973a",
+          "old_excerpt": "Looking into Industri Senjata dan Amunisi (25200)? Nationally this carries PMA status: Open. Let me walk you through wha",
+          "new": "Looking into Industri Senjata dan Amunisi (25200)? Nationally this carries PMA status: TERBATAS — capped at 49% foreign ownership, exceedable only with Menteri Pertahanan approval. Let me walk you through what it means for a foreign-owned setup."
+        }
+      }
+    },
+    "30400": {
+      "expect": {
+        "pma_max_asing": 49,
+        "pma_status": "TERBATAS",
+        "pma_kondisi_contains": "Menteri Pertahanan"
+      },
+      "fields": {
+        "zantaraOpener": {
+          "old_sha256": "50c14ce8862f26765b38b9230b26c305401333321b3d4172a24c50ca325c46b0",
+          "old_excerpt": "Looking into Industri Kendaraan Tempur Militer (30400)? Nationally this carries PMA status: Open. Let me walk you throug",
+          "new": "Looking into Industri Kendaraan Tempur Militer (30400)? Nationally this carries PMA status: TERBATAS — capped at 49% foreign ownership, exceedable only with Menteri Pertahanan approval. Let me walk you through what it means for a foreign-owned setup."
+        }
+      }
+    },
+    "41016": {
+      "expect": {
+        "pma_max_asing": 0,
+        "pma_status": "TERBATAS",
+        "pma_kondisi_contains": "Koperasi dan UMKM"
+      },
+      "fields": {
+        "zantaraOpener": {
+          "old_sha256": "8e7829b6f7499b7aefa6726dbae487f4ef599b3b2ef4297b24ac775c0a30dd76",
+          "old_excerpt": "Looking into Konstruksi Konvensional Gedung Pendidikan (41016)? Nationally this carries PMA status: Open. Let me walk yo",
+          "new": "Looking into Konstruksi Konvensional Gedung Pendidikan (41016)? Nationally this carries PMA status: TERBATAS — the whole bidang usaha is allocated to Koperasi and UMKM under Perpres 49/2021 Lampiran II; foreign ownership 0%. Let me walk you through what it means for a foreign-owned setup."
+        }
+      }
+    },
+    "41018": {
+      "expect": {
+        "pma_max_asing": 0,
+        "pma_status": "TERBATAS",
+        "pma_kondisi_contains": "Koperasi dan UMKM"
+      },
+      "fields": {
+        "zantaraOpener": {
+          "old_sha256": "1ffb2c57e7e7316dd037768d0d0e435f9fe4ea9c0c11a5adc6225f877f207b99",
+          "old_excerpt": "Looking into Konstruksi Konvensional Gedung Hiburan dan Olahraga (41018)? Nationally this carries PMA status: Open. Let ",
+          "new": "Looking into Konstruksi Konvensional Gedung Hiburan dan Olahraga (41018)? Nationally this carries PMA status: TERBATAS — the whole bidang usaha is allocated to Koperasi and UMKM under Perpres 49/2021 Lampiran II; foreign ownership 0%. Let me walk you through what it means for a foreign-owned setup."
+        }
+      }
+    },
+    "41020": {
+      "expect": {
+        "pma_max_asing": 0,
+        "pma_status": "TERBATAS",
+        "pma_kondisi_contains": "Koperasi dan UMKM"
+      },
+      "fields": {
+        "zantaraOpener": {
+          "old_sha256": "71155194597110226eddb2c4e8570611bcf70c6e7800160cb21d6dd75dec41fc",
+          "old_excerpt": "Looking into Konstruksi Prapabrikasi Bangunan Gedung (41020)? Nationally this carries PMA status: Open. Let me walk you ",
+          "new": "Looking into Konstruksi Prapabrikasi Bangunan Gedung (41020)? Nationally this carries PMA status: TERBATAS — the whole bidang usaha is allocated to Koperasi and UMKM under Perpres 49/2021 Lampiran II; foreign ownership 0%. Let me walk you through what it means for a foreign-owned setup."
+        }
+      }
+    },
+    "47111": {
+      "expect": {
+        "pma_max_asing": 0,
+        "pma_status": "TERBATAS"
+      },
+      "fields": {
+        "baliContext": {
+          "old_sha256": "c33e6d568338855ebe2b479fb1f1a9a9cd5ef8faa928dbe33ee62e7bd4c982bf",
+          "old_excerpt": "**TRIPLE-LOCKED IN BALI (as of Feb 2026):** This code is blocked three ways:\n- **Lock 1:** 0% PMA — foreigners cannot ow",
+          "new": "**TRIPLE-LOCKED IN BALI (as of Feb 2026):** This code is blocked three ways:\n- **Lock 1:** 0% PMA — foreigners cannot own it, period\n- **Lock 2:** Governor has asked BKPM to close OSS for all low-risk PMA in Bali\n- **Lock 3:** Instruksi Gubernur No. 6/2025 — MORATORIUM on all new Toko Modern Berjejaring (chain modern store) permits across Bali, both PBG and business licenses\n\n---\n\n**The moratorium explained:** The Governor's response to the explosive growth of Alfamart and Indomaret, which has devastated traditional warung and pasar. Addressed to all 9 Bupati/Walikota and DPMPTSP heads across Bali. Remains in effect until a provincial Perda on chain store control is enacted — which could take **years**.\n\n---\n\n**Common client mistakes:**\n- **Nominee structure** — the single most dangerous legal move a foreigner can make in Indonesia. Asset seizure, deportation, and criminal charges are real outcomes\n- **Confusing 47111 with 47192** — 47111 is self-service food retail (0% PMA), 47192 is a different code whose own foreign-ownership position is not yet verified — confirm it on its own page or with OSS before assuming it is open\n- **\"Organic grocery\" loophole** — if customers pick items from shelves and pay at a cashier, it's 47111 regardless of branding\n- **Franchise partner (waralaba)** for Alfamart/Indomaret — the moratorium blocks ALL new chain store licenses, even for domestic franchisees\n- **56101 restaurant workaround** — selling primarily packaged retail goods through a restaurant license is a reclassification risk; if the majority of revenue is from packaged goods, it's retail, not F&B"
+        },
+        "youllAlsoNeed": {
+          "old_sha256": "a960177c57c189b9013183d099c682d6566be5ea1fff6e059da2c91e1c3d933f",
+          "old_excerpt": "- 47192 — Non-Food Retail (fully open to PMA, the legal alternative for general boutiques)\n- 56101 — Restaurants (the mo",
+          "new": "- 47192 — Non-Food Retail (a different code — its own foreign-ownership position is not yet verified; confirm via OSS before treating it as an alternative)\n- 56101 — Restaurants (the most common legal pivot for foreigners wanting to sell food to consumers)\n- 46314 — Wholesale of Food (if you decide to supply the minimarkets instead of owning one)\n- 47221 — Alcoholic Beverage Retail (if your concept includes premium drinks)"
+        }
+      }
+    },
+    "50122": {
+      "expect": {
+        "pma_max_asing": 49,
+        "pma_status": "TERBATAS"
+      },
+      "fields": {
+        "zantaraOpener": {
+          "old_sha256": "3aef2a22841b564fd918f66721808ca5f99232a6ec90ede292c670c1e8e280ed",
+          "old_excerpt": "Looking into Angkutan Laut Dalam Negeri untuk Barang Khusus (50122)? Nationally this carries PMA status: Open. Let me wa",
+          "new": "Looking into Angkutan Laut Dalam Negeri untuk Barang Khusus (50122)? Nationally this carries PMA status: TERBATAS — capped at 49% foreign ownership. Let me walk you through what it means for a foreign-owned setup."
+        }
+      }
+    },
+    "50123": {
+      "expect": {
+        "pma_max_asing": 49,
+        "pma_status": "TERBATAS"
+      },
+      "fields": {
+        "zantaraOpener": {
+          "old_sha256": "ccaf363fffefe0f4145b19ead69a9a852ff12c2fe59a4b2a89eb002a3a80b45e",
+          "old_excerpt": "Looking into Angkutan Laut Dalam Negeri Perintis untuk Barang (50123)? Nationally this carries PMA status: Open. Let me ",
+          "new": "Looking into Angkutan Laut Dalam Negeri Perintis untuk Barang (50123)? Nationally this carries PMA status: TERBATAS — capped at 49% foreign ownership. Let me walk you through what it means for a foreign-owned setup."
+        }
+      }
+    },
+    "50124": {
+      "expect": {
+        "pma_max_asing": 49,
+        "pma_status": "TERBATAS"
+      },
+      "fields": {
+        "zantaraOpener": {
+          "old_sha256": "90da86c379d9e620af7bb7e87190bc97aec284b5e501aced9084d444c56c7a71",
+          "old_excerpt": "Looking into Angkutan Laut Dalam Negeri Pelayaran Rakyat untuk Barang (50124)? Nationally this carries PMA status: Open.",
+          "new": "Looking into Angkutan Laut Dalam Negeri Pelayaran Rakyat untuk Barang (50124)? Nationally this carries PMA status: TERBATAS — capped at 49% foreign ownership. Let me walk you through what it means for a foreign-owned setup."
+        }
+      }
+    },
+    "50125": {
+      "expect": {
+        "pma_max_asing": 49,
+        "pma_status": "TERBATAS"
+      },
+      "fields": {
+        "zantaraOpener": {
+          "old_sha256": "34f15e6668d9263c31bdd87a246ac9408ccd4034183fd10338bca58e83a8b34e",
+          "old_excerpt": "Looking into Angkutan Laut Luar Negeri untuk Barang Umum (50125)? Nationally this carries PMA status: Open. Let me walk ",
+          "new": "Looking into Angkutan Laut Luar Negeri untuk Barang Umum (50125)? Nationally this carries PMA status: TERBATAS — capped at 49% foreign ownership. Let me walk you through what it means for a foreign-owned setup."
+        }
+      }
+    },
+    "50126": {
+      "expect": {
+        "pma_max_asing": 49,
+        "pma_status": "TERBATAS"
+      },
+      "fields": {
+        "zantaraOpener": {
+          "old_sha256": "485bcd9f09a1305c57a7887d0e22f14148d516b82610c2c4ddffc7787c21aec0",
+          "old_excerpt": "Looking into Angkutan Laut Luar Negeri untuk Barang Khusus (50126)? Nationally this carries PMA status: Open. Let me wal",
+          "new": "Looking into Angkutan Laut Luar Negeri untuk Barang Khusus (50126)? Nationally this carries PMA status: TERBATAS — capped at 49% foreign ownership. Let me walk you through what it means for a foreign-owned setup."
+        }
+      }
+    },
+    "50131": {
+      "expect": {
+        "pma_max_asing": 49,
+        "pma_status": "TERBATAS"
+      },
+      "fields": {
+        "zantaraOpener": {
+          "old_sha256": "ccf3ed1f9cc2b1f2da13767bc1e9733a351bf50e1b81e5abf35a62343c0ec7b0",
+          "old_excerpt": "Looking into Angkutan Penyeberangan Umum Antarprovinsi untuk Penumpang (50131)? Nationally this carries PMA status: Open",
+          "new": "Looking into Angkutan Penyeberangan Umum Antarprovinsi untuk Penumpang (50131)? Nationally this carries PMA status: TERBATAS — capped at 49% foreign ownership. Let me walk you through what it means for a foreign-owned setup."
+        }
+      }
+    },
+    "50132": {
+      "expect": {
+        "pma_max_asing": 49,
+        "pma_status": "TERBATAS"
+      },
+      "fields": {
+        "zantaraOpener": {
+          "old_sha256": "33207705af2927a5a37ddcb33d3bccde6a19032817e91afd8eaed4a2a2e3312b",
+          "old_excerpt": "Looking into Angkutan Penyeberangan Umum Antarkabupaten/kota untuk Penumpang (50132)? Nationally this carries PMA status",
+          "new": "Looking into Angkutan Penyeberangan Umum Antarkabupaten/kota untuk Penumpang (50132)? Nationally this carries PMA status: TERBATAS — capped at 49% foreign ownership. Let me walk you through what it means for a foreign-owned setup."
+        }
+      }
+    },
+    "50135": {
+      "expect": {
+        "pma_max_asing": 49,
+        "pma_status": "TERBATAS",
+        "pma_official_basis_contains": "entry #21"
+      },
+      "fields": {
+        "zantaraOpener": {
+          "old_sha256": "89d7aed6b35582e23246348ccf31e1ddb56b0fa953c5f051d49aa0448dae6d9e",
+          "old_excerpt": "Looking into Angkutan Penyeberangan Perintis Antarkabupaten/kota untuk Penumpang (50135)? Nationally this carries PMA st",
+          "new": "Looking into Angkutan Penyeberangan Perintis Antarkabupaten/kota untuk Penumpang (50135)? Nationally this carries PMA status: TERBATAS — capped at 49% foreign ownership. Let me walk you through what it means for a foreign-owned setup."
+        },
+        "editorial.standfirst": {
+          "old_sha256": "289042f94542fa261e18d4992cd77f69c9e4722c36e58af2828e7507eb5bd52a",
+          "old_excerpt": "This Big-scale passenger-ferry activity links remote or not-yet-commercial routes to developed areas—and is open to PMA ",
+          "new": "This Big-scale passenger-ferry activity links remote or not-yet-commercial routes to developed areas—and foreign ownership is capped at 49% nationally and not blocked by Bali’s risk-based moratorium."
+        }
+      }
+    },
+    "50211": {
+      "expect": {
+        "pma_max_asing": 49,
+        "pma_status": "TERBATAS"
+      },
+      "fields": {
+        "zantaraOpener": {
+          "old_sha256": "820e9c59bcbe119b77e876c897cba3635562c5b2e14eca6f0fd0c2f649d01bcf",
+          "old_excerpt": "Looking into Angkutan Sungai dan Danau Liner (Trayek Tetap dan Teratur) untuk Penumpang (50211)? Nationally this carries",
+          "new": "Looking into Angkutan Sungai dan Danau Liner (Trayek Tetap dan Teratur) untuk Penumpang (50211)? Nationally this carries PMA status: TERBATAS — capped at 49% foreign ownership. Let me walk you through what it means for a foreign-owned setup."
+        }
+      }
+    },
+    "50212": {
+      "expect": {
+        "pma_max_asing": 49,
+        "pma_status": "TERBATAS"
+      },
+      "fields": {
+        "zantaraOpener": {
+          "old_sha256": "0c51f72f856119475a23fc7d6f6bba2ad0f2bda8d0f2a9c9309f63555302a1a6",
+          "old_excerpt": "Looking into Angkutan Sungai dan Danau Tramper (Trayek Tidak Tetap dan Tidak Teratur) untuk Penumpang (50212)? Nationall",
+          "new": "Looking into Angkutan Sungai dan Danau Tramper (Trayek Tidak Tetap dan Tidak Teratur) untuk Penumpang (50212)? Nationally this carries PMA status: TERBATAS — capped at 49% foreign ownership. Let me walk you through what it means for a foreign-owned setup."
+        }
+      }
+    },
+    "50213": {
+      "expect": {
+        "pma_max_asing": 49,
+        "pma_status": "TERBATAS"
+      },
+      "fields": {
+        "zantaraOpener": {
+          "old_sha256": "646e14ad6109c2cb98bff2f8c8f68b8ae7663ac80281034e79dff3f2020a7587",
+          "old_excerpt": "Looking into Angkutan Sungai dan Danau untuk Wisata (50213)? Nationally this carries PMA status: Open. Let me walk you t",
+          "new": "Looking into Angkutan Sungai dan Danau untuk Wisata (50213)? Nationally this carries PMA status: TERBATAS — capped at 49% foreign ownership. Let me walk you through what it means for a foreign-owned setup."
+        }
+      }
+    },
+    "50221": {
+      "expect": {
+        "pma_max_asing": 49,
+        "pma_status": "TERBATAS"
+      },
+      "fields": {
+        "zantaraOpener": {
+          "old_sha256": "b7572d73027e38d8cd8a91b8361097e49c90b5ecb45ef823edac29eba58306f8",
+          "old_excerpt": "Looking into Angkutan Sungai dan Danau untuk Barang Umum (50221)? Nationally this carries PMA status: Open. Let me walk ",
+          "new": "Looking into Angkutan Sungai dan Danau untuk Barang Umum (50221)? Nationally this carries PMA status: TERBATAS — capped at 49% foreign ownership. Let me walk you through what it means for a foreign-owned setup."
+        }
+      }
+    },
+    "50222": {
+      "expect": {
+        "pma_max_asing": 49,
+        "pma_status": "TERBATAS"
+      },
+      "fields": {
+        "zantaraOpener": {
+          "old_sha256": "7bfbfd1edc0df327200ee47effb208adfb0ddb07373a5a9d6c61197f3a93314b",
+          "old_excerpt": "Looking into Angkutan Sungai dan Danau untuk Barang Khusus (50222)? Nationally this carries PMA status: Open. Let me wal",
+          "new": "Looking into Angkutan Sungai dan Danau untuk Barang Khusus (50222)? Nationally this carries PMA status: TERBATAS — capped at 49% foreign ownership. Let me walk you through what it means for a foreign-owned setup."
+        }
+      }
+    },
+    "50223": {
+      "expect": {
+        "pma_max_asing": 49,
+        "pma_status": "TERBATAS"
+      },
+      "fields": {
+        "zantaraOpener": {
+          "old_sha256": "aeefb127c8025dbf23e1ecc1a195a58f22e26a3e45f754585de87bdd9d4dc9a0",
+          "old_excerpt": "Looking into Angkutan Sungai dan Danau untuk Barang Berbahaya (50223)? Nationally this carries PMA status: Open. Let me ",
+          "new": "Looking into Angkutan Sungai dan Danau untuk Barang Berbahaya (50223)? Nationally this carries PMA status: TERBATAS — capped at 49% foreign ownership. Let me walk you through what it means for a foreign-owned setup."
+        }
+      }
+    },
+    "51101": {
+      "expect": {
+        "pma_max_asing": 49,
+        "pma_status": "TERBATAS",
+        "pma_kondisi_contains": "single majority"
+      },
+      "fields": {
+        "zantaraOpener": {
+          "old_sha256": "d0226c97ae00a67ab5c093c91fb05e29f5a9ca83322d8c759740ec1db5c6069d",
+          "old_excerpt": "Looking into Angkutan Udara Niaga Berjadwal untuk Penumpang (51101)? Nationally this carries PMA status: Open. Let me wa",
+          "new": "Looking into Angkutan Udara Niaga Berjadwal untuk Penumpang (51101)? Nationally this carries PMA status: TERBATAS — capped at 49% foreign ownership, with a national capital owner required to retain single majority. Let me walk you through what it means for a foreign-owned setup."
+        }
+      }
+    },
+    "51102": {
+      "expect": {
+        "pma_max_asing": 49,
+        "pma_status": "TERBATAS",
+        "pma_kondisi_contains": "single majority"
+      },
+      "fields": {
+        "zantaraOpener": {
+          "old_sha256": "b317837594544d64d8ef73a95c764d2443274b0895dd932d30191244b0e533e4",
+          "old_excerpt": "Looking into Angkutan Udara Niaga Tidak Berjadwal untuk Penumpang (51102)? Nationally this carries PMA status: Open. Let",
+          "new": "Looking into Angkutan Udara Niaga Tidak Berjadwal untuk Penumpang (51102)? Nationally this carries PMA status: TERBATAS — capped at 49% foreign ownership, with a national capital owner required to retain single majority. Let me walk you through what it means for a foreign-owned setup."
+        }
+      }
+    },
+    "53200": {
+      "expect": {
+        "pma_max_asing": 49,
+        "pma_status": "TERBATAS"
+      },
+      "fields": {
+        "zantaraOpener": {
+          "old_sha256": "85baf3cbdeb57ee38a877dc4cf44e0294fa1fa2b4ea30ddbe591894356509f40",
+          "old_excerpt": "Looking into Aktivitas Kurir (53200)? Nationally this carries PMA status: Open. Let me walk you through what it means fo",
+          "new": "Looking into Aktivitas Kurir (53200)? Nationally this carries PMA status: TERBATAS — capped at 49% foreign ownership. Let me walk you through what it means for a foreign-owned setup."
+        }
+      }
+    },
+    "79122": {
+      "expect": {
+        "pma_max_asing": 0,
+        "pma_status": "TERBATAS",
+        "pma_kondisi_contains": "Islamic faith"
+      },
+      "fields": {
+        "zantaraOpener": {
+          "old_sha256": "b2dcc43a7d3a6f369c4df319236c4c22e73a4b5ab52f2c3ebf6bcab93b382475",
+          "old_excerpt": "Looking into Aktivitas Biro Perjalanan Ibadah Umrah dan Haji Khusus (79122)? Nationally this carries PMA status: Open. L",
+          "new": "Looking into Aktivitas Biro Perjalanan Ibadah Umrah dan Haji Khusus (79122)? Nationally this carries PMA status: TERBATAS — 0% foreign ownership; domestic capital and an Islamic-faith requirement apply. Let me walk you through what it means for a foreign-owned setup."
+        }
+      }
+    },
+    "95220": {
+      "expect": {
+        "pma_max_asing": 0,
+        "pma_status": "TERBATAS",
+        "pma_kondisi_contains": "Koperasi dan UMKM"
+      },
+      "fields": {
+        "zantaraOpener": {
+          "old_sha256": "5360c0c892d8d2d72e637a330e048470c94c0e9a6235d29367c55032303a8414",
+          "old_excerpt": "Looking into Reparasi dan Pemeliharaan Peralatan Rumah Tangga dan Peralatan Rumah dan Kebun (95220)? Nationally this car",
+          "new": "Looking into Reparasi dan Pemeliharaan Peralatan Rumah Tangga dan Peralatan Rumah dan Kebun (95220)? Nationally this carries PMA status: TERBATAS — the whole bidang usaha is allocated to Koperasi and UMKM under Perpres 49/2021 Lampiran II; foreign ownership 0%. Let me walk you through what it means for a foreign-owned setup."
+        }
+      }
+    },
+    "95291": {
+      "expect": {
+        "pma_max_asing": 0,
+        "pma_status": "TERBATAS",
+        "pma_kondisi_contains": "Koperasi dan UMKM"
+      },
+      "fields": {
+        "zantaraOpener": {
+          "old_sha256": "ccd2b11d66764e1305b34e29dc5444870be99b43149cf03fab60954de63fbfcd",
+          "old_excerpt": "Looking into Aktivitas Vermak Pakaian (95291)? Nationally this carries PMA status: Open. Let me walk you through what it",
+          "new": "Looking into Aktivitas Vermak Pakaian (95291)? Nationally this carries PMA status: TERBATAS — the whole bidang usaha is allocated to Koperasi and UMKM under Perpres 49/2021 Lampiran II; foreign ownership 0%. Let me walk you through what it means for a foreign-owned setup."
+        }
+      }
+    },
+    "95299": {
+      "expect": {
+        "pma_max_asing": 0,
+        "pma_status": "TERBATAS",
+        "pma_kondisi_contains": "Koperasi dan UMKM"
+      },
+      "fields": {
+        "zantaraOpener": {
+          "old_sha256": "1531e972e9690f0f2add6f583ea995a150f5726cb79ed6f473a796da1a61541d",
+          "old_excerpt": "Looking into Reparasi dan Pemeliharaan Barang Keperluan Pribadi dan Perlengkapan Rumah Tangga Lainnya (95299)? Nationall",
+          "new": "Looking into Reparasi dan Pemeliharaan Barang Keperluan Pribadi dan Perlengkapan Rumah Tangga Lainnya (95299)? Nationally this carries PMA status: TERBATAS — the whole bidang usaha is allocated to Koperasi and UMKM under Perpres 49/2021 Lampiran II; foreign ownership 0%. Let me walk you through what it means for a foreign-owned setup."
+        }
+      }
+    }
+  }
+}

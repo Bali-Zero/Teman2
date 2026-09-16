@@ -1,0 +1,85 @@
+task: >-
+  SAETTA-20260915 mission W-H, lane PR-6 (dossier §6.1, "Piano PR atomiche"): the public
+  article `the-honest-map-blocked-bali-codes` (EN/IT/ID) states three figures that drifted
+  from `apps/mouth/data/KBLI_2025_FINAL_CLEAN.json` — 372 blocked-by-risk-class (measured
+  373), 33.2% in the 945/39% correction paragraph (measured 33.3%, the same article already
+  says 33.3% elsewhere) and 70 scope-dependent among the not-blocked codes (measured 65). Its
+  own category list sums to 518 while its title says 519. Correct the three drifted figures in
+  all three locales and extend `kbli-prose-pins.test.ts` so every category count in the
+  breakdown, the narrative percentage and the scope-dependent count are pinned to the dataset
+  — never hard-coded — plus an invariant asserting the six published category counts sum to
+  the headline's blocked total. Independent of the 19-code W-H verdict work; the "519 blocked"
+  framing itself is untouched (a separate B1 Bali-overlay window owns that rewrite).
+lane: mouth/kbli-wh-pr6-honest-map-pins
+machine: M5
+date: 2026-09-15
+
+gear: 2
+gear_reason: >-
+  Deterministic floor is 1 via `size` (`python3 scripts/evidence_pack_lint.py --print-floor
+  --print-floor-source`: churn 232 added / 66 deleted against origin/main 449def3cb3, four
+  files, no hot-zone path — well under SIZE_GEAR2_THRESHOLD 400). Raised to Gear 2 by the
+  mission's own ceremony assignment (WH-COMMON.md / dossier §6: "Ceremony: Gear 2 per PR-1..8
+  — dati client-facing, niente hot zone backend"): the change reaches a live investor-facing
+  page even though the diff is small.
+
+appetite:
+  wall_clock_hours: 1
+  adversarial_rounds: 1
+
+acceptance:
+  A1: >-
+    The three drifted figures (372→373, 33.2%→33.3%, 70→65) are corrected in all three
+    locale files, and no other sentence in the article is reworded — the "519 blocked"
+    framing and every already-correct number (48, 68, 17, 7, the "6" remainder, 1,559,
+    519, 1,040) are untouched.
+    probe: >-
+      `git diff apps/mouth/src/content/articles/business_regulations/the-honest-map-blocked-bali-codes*.mdx`
+      shows exactly 3 changed lines per file (9 total), each swapping only the drifted digit.
+  A2: >-
+    Every category count in the breakdown list, the narrative percentage and the
+    scope-dependent count are pinned in `kbli-prose-pins.test.ts`, computed from
+    `KBLI_2025_FINAL_CLEAN.json` via `l4_bali.status`/`l4_bali.blocked` — never hard-coded —
+    for all three locales (EN sentence-regex, IT/ID number-window per the file's existing
+    convention), plus an invariant that the six category counts sum to the headline's
+    blocked total.
+    probe: >-
+      `cd apps/mouth && npx vitest run src/lib/kbli-prose-pins.test.ts` — the new pins were
+      observed failing on the unmodified (pre-fix) articles for the stated reason (373≠372,
+      33.3≠33.2, 65≠70), then passing after the article fix; 57/57 passing in the final run
+      together with `kbli-withdrawn-umkm-inference.test.ts` and `blog/categories.test.ts`
+      (the only other consumer of this article slug, via `grep -rl` under `apps/mouth/src`).
+  A3: >-
+    No superseded reading is reintroduced and no other article/test asserts a number this PR
+    changes.
+    probe: >-
+      `npx vitest run src/lib/kbli-prose-pins.test.ts` — "no superseded reading of this
+      dataset survives in any language" passes unchanged; `grep -rl
+      "the-honest-map-blocked-bali-codes" apps/mouth/src` finds no third consumer beyond the
+      two test files already run.
+
+out_of_scope: >-
+  The 19-code W-H verdict work (PR-1..5, PR-7..9): no `l4_bali` row, no per-status count
+  source data, and no other article is touched. The B1 Bali-overlay window's reframing of
+  "519 blocked" as an overlay figure vs. an 18-KBLI applied closure (dossier §4). 55209 and
+  79110 (IN REVIEW, untouched anywhere in this mission).
+
+assumptions:
+  - text: >-
+      The dossier's "Expected on main" census (519 / 1,040 / 33.3%; 373/68/48/17/7/2/2/1/1;
+      65 scope-dependent) is itself trusted only as a prior — this lane re-measured
+      independently on this worktree's copy of the dataset before touching any prose, per
+      WH-COMMON's "if the disk disagrees, the disk wins" instruction.
+    status: verified
+    probe: >-
+      `python3 -c "..."` census over `apps/mouth/data/KBLI_2025_FINAL_CLEAN.json` in this
+      worktree reproduced the dossier's figures exactly: total 1559, blocked 519, open 1040,
+      pct 33.3; per-status 373/68/48/17/7/2/2/1/1; 65 `BLOCCATO_DIPENDE_SCOPE` blocked=false.
+  - text: >-
+      The article's "6 — the remainder" grouping (2 `CHIUSO_REGOLATORE_SETTORIALE` + 2
+      `BLOCCATO_DIPENDE_SCOPE` blocked=true + 1 `CHIUSO_BALI` + 1 `CHIUSO_BALI_PROPOSTO`) is
+      truthful and needed no correction, only a pin.
+    status: verified
+    probe: >-
+      Same census script, filtered to the four small statuses among blocked rows:
+      2+2+1+1 = 6, matching the article's own arithmetic in all three locales.

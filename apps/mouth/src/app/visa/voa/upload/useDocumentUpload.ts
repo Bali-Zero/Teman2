@@ -12,6 +12,7 @@ import {
   MAX_UPLOAD_BYTES_CLIENT_HINT,
   type ReviewField,
   type UncertainReviewField,
+  type UploadErrorCode,
 } from "./types";
 
 // PROCESSING is a real state in the frozen contract (async OCR is a legitimate future
@@ -30,7 +31,16 @@ export type UploadState =
   | { step: "ready"; fields: ReviewField[] }
   | { step: "low_confidence"; uncertainFields: UncertainReviewField[] }
   | { step: "unreadable" }
-  | { step: "error"; message: string; retryable: boolean };
+  | {
+      step: "error";
+      message: string;
+      retryable: boolean;
+      /** The contract's error code when the server sent one (or the synthesized
+       * "SERVICE_UNAVAILABLE" for an unparseable 5xx body) — null for a pure
+       * network failure or an unrecognized code. Lets the UI single out the
+       * "the document store itself is down" family without re-parsing `message`. */
+      code: UploadErrorCode | null;
+    };
 
 function newIdempotencyKey(): string {
   return crypto.randomUUID();
@@ -125,6 +135,7 @@ export function useDocumentUpload(resultId: string) {
           message:
             "This is taking longer than expected. Please try again in a moment.",
           retryable: true,
+          code: null,
         });
         return;
       }
@@ -143,6 +154,7 @@ export function useDocumentUpload(resultId: string) {
           step: "error",
           message: messageFor(err.code),
           retryable: err.retryable,
+          code: err.code,
         });
         return;
       }
@@ -151,13 +163,14 @@ export function useDocumentUpload(resultId: string) {
         // ErrorResponse shape) is a backend problem, not the customer's connection
         // (refuter finding, 2026-08-25) — `httpStatus === null` is the true network-layer
         // case (fetch itself rejected, request never reached the server).
+        const is5xx = err.httpStatus !== null && err.httpStatus >= 500;
         setState({
           step: "error",
-          message:
-            err.httpStatus !== null && err.httpStatus >= 500
-              ? messageFor("SERVICE_UNAVAILABLE")
-              : messageForUnknownCode("__network__"),
+          message: is5xx
+            ? messageFor("SERVICE_UNAVAILABLE")
+            : messageForUnknownCode("__network__"),
           retryable: true,
+          code: is5xx ? "SERVICE_UNAVAILABLE" : null,
         });
         return;
       }
@@ -165,6 +178,7 @@ export function useDocumentUpload(resultId: string) {
         step: "error",
         message: messageForUnknownCode("__unknown__"),
         retryable: true,
+        code: null,
       });
     }
   }, [resultId]);

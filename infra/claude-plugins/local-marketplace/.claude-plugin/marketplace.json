@@ -1,0 +1,24 @@
+{
+  "name": "nuzantara-local",
+  "owner": {
+    "name": "Bali Zero"
+  },
+  "plugins": [
+    {
+      "name": "superpowers",
+      "source": "./plugins/superpowers",
+      "description": "obra/superpowers 6.3.0 skills without the SessionStart injection hook"
+    },
+    {
+      "name": "typescript-lsp",
+      "source": "./plugins/typescript-lsp",
+      "strict": false,
+      "description": "typescript-language-server with a tsserver fallback to the host repo's TypeScript"
+    },
+    {
+      "name": "caveman",
+      "source": "./plugins/caveman",
+      "description": "caveman: only the /caveman skill + mode hooks (default off)"
+    }
+  ]
+}

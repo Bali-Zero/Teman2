@@ -1,0 +1,47 @@
+task_id: meta-one-steward
+gear: 2
+l_level: L2
+gate_class: opus
+objective: >-
+  Land the Meta One Advanced steward as code: a deterministic daily cron (scripts/meta_one_steward.py
+  + wrapper) that keeps a per-month ledger of the paid Advanced quotas (clickable links 4 IG posts /
+  4 IG reels / 8 FB posts / 8 FB reels, 1 support chat, 2 content credits), probes the Instagram
+  Graph token read-only, ingests the Pro publish queue and analytics exports, writes a real-verdict
+  heartbeat for organ pro.meta_one_steward and notifies Zero through scripts/tg_notify.py. The
+  LaunchAgent plist that arms it on Pro ships in a sibling PR (hot-zone path, Gear 3).
+constraints:
+  - Read-only towards Meta; never publishes, schedules or writes to any Graph endpoint (Law 5).
+  - The token value never appears in logs, errors, stdout, ledger or messages; aggregates only (Law 2).
+  - Stdlib only; no paid per-token API; the cron never invokes an LLM.
+  - >-
+    Files touched: scripts/meta_one_steward.py, scripts/meta-one-steward.sh,
+    scripts/tests/test_meta_one_steward.py, apps/organism/organism/organs_registry.yaml and this brief.
+acceptance:
+  - text: >-
+      WHEN the unit suite runs THE steward SHALL pass every case, including token guilt (OAuthException
+      -> dead) and innocence (network error -> unknown, never dead), quota month rollover, `use`
+      idempotency, the day-minus-5 expiring rule firing at 1/4 and staying silent at 3/4, and a digest
+      that carries no token substring.
+    probe: python3 -m pytest scripts/tests/test_meta_one_steward.py -q
+  - text: >-
+      WHEN --selftest runs in a temp world THE steward SHALL exit 0 and print both a dead/warning and an
+      alive/ok verdict whose heartbeat status equals the run verdict.
+    probe: TG_DRY_RUN=1 python3 scripts/meta_one_steward.py --selftest
+  - text: >-
+      WHEN the real Pro queue shape is read (list of items with `state` and `instagram_published_at`)
+      THE queue reader SHALL return the published count and a non-null last_published_at.
+    probe: python3 -m pytest scripts/tests/test_meta_one_steward.py -q -k queue
+  - text: >-
+      WHEN the organs registry is loaded THE entry pro.meta_one_steward SHALL be present and the
+      conformance checker SHALL report 0 non-conformant organs.
+    probe: python3 infra/organ-conformance/check_organ_conformance.py
+consumer_map:
+  - Zero reads the Telegram digest (tier digest, flushed by com.nuzantara.tg-digest-flush on Pro) and the P0 on a dead token or an expiring quota.
+  - The /metaone corner and the meta-one-steward weekly agent read shared/meta_one/ledger.json and shared/meta_one/metrics/*.json.
+  - The organism stale detector reads ~/.organism/last_seen/pro.meta_one_steward.json.
+risks:
+  - The Instagram token is dead since 2026-08-31, so the first real ticks report token_state=dead by design; alive-path code is exercised only by tests until Zero re-issues the token.
+  - Arming is not in this PR: until the plist PR lands and Pro installs it, the organ exists but does not breathe (superscar #2) — tracked in the mission's PENDING-ARMS row.
+grader: fresh Opus 5 session outside the contribution chain (builder was Sonnet 5), Codex GPT-5.6 spalla red-team.
+budget: existing subscriptions only; no paid API calls.
+pii: none

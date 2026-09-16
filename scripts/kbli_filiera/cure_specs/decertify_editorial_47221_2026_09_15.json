@@ -1,0 +1,14 @@
+{
+  "_meta": {
+    "lane": "W-H PR-3f, condition of GATE-6598",
+    "ground": "GATE-6598 (receipts/GATE-6598.md): the Opus spalla + fresh gate verified canonicalIntel 47221's intel_2026.whatYouNeed says foreign investment in alcoholic-beverage retail comes with partnership with UMKM/Koperasi as the registered condition, while the record's own pma_kondisi says a special distribution-network/location requirement (Perpres 10/2021 Lampiran III line 4202 entry #44), not a UMKM/Koperasi partnership duty. Fail closed: de-certify canonicalIntel, do not edit prose. mouthGold's separately reviewed 47221 prose is untouched by this spec."
+  },
+  "entries": [
+    {
+      "section": "canonicalIntel",
+      "code": "47221",
+      "reason": "whatYouNeed claims a UMKM/Koperasi partnership condition that pma_kondisi denies (Perpres 10/2021 Lampiran III entry #44 special distribution/location requirement instead) — GATE-6598",
+      "expected_content_sha256": "82d381aa7325b7fb21a7b1ec8a445dd8146b5e31e5c7ec79f05fbe07bfe06669"
+    }
+  ]
+}

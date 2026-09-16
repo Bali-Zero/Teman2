@@ -229,9 +229,10 @@ def test_cap_is_always_a_percentage_or_a_declared_gap(records: list[dict]) -> No
 
 
 def test_every_unlocated_record_withholds_cap_and_condition(records: list[dict]) -> None:
-    """All 1,505 declared gaps fail closed, not just a hand-picked sample."""
+    """All 1,502 declared gaps fail closed, not just a hand-picked sample."""
     unlocated = [r for r in records if not _located(r)]
-    assert len(unlocated) == 1505
+    # SAETTA-20260915 W-H PR-3a: 55201/55203/79903 moved declared_gap→located (Perpres 49/2021 Lampiran II allocation), 1505→1502.
+    assert len(unlocated) == 1502
     for record in unlocated:
         cap, basis, verified = KBLIEye._foreign_cap(record)
         assert (cap, basis, verified) == (None, None, False)
@@ -239,11 +240,12 @@ def test_every_unlocated_record_withholds_cap_and_condition(records: list[dict])
 
 
 def test_umkm_reserved_is_tri_state_and_provenance_gated(records: list[dict]) -> None:
-    """Only the 54 located tuples may emit either a positive or negative claim."""
+    """Only the 57 located tuples may emit either a positive or negative claim."""
     verdicts = [KBLIEye._umkm_reserved(r) for r in records]
-    assert verdicts.count(True) == 15
+    # W-H PR-3a: the 3 Lampiran II allocations are named by pma_official_basis, 15→18 / 1541→1538.
+    assert verdicts.count(True) == 18
     assert verdicts.count(False) == 3
-    assert verdicts.count(None) == 1541
+    assert verdicts.count(None) == 1538
     named = {r["kode_kbli_2025"] for r in records if KBLIEye._umkm_reserved(r) is True}
     terbuka = {
         r["kode_kbli_2025"] for r in records if _located(r) and r.get("pma_status") == "TERBUKA"
@@ -264,8 +266,9 @@ def test_only_located_zero_caps_enter_the_rejected_bucket(records: list[dict]) -
     """A raw 0% working value is not rejection evidence without provenance."""
     located = {r["kode_kbli_2025"] for r in records if _located(r)}
     new_rejected = {r["kode_kbli_2025"] for r in records if KBLIEye._foreign_cap(r)[0] == 0}
-    assert len(located) == 54
-    assert len(new_rejected) == 19
+    # W-H PR-3a: +3 located 0% tuples (55201/55203/79903), 54→57 / 19→22.
+    assert len(located) == 57
+    assert len(new_rejected) == 22
     assert new_rejected <= located
 
 

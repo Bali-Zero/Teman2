@@ -1,0 +1,61 @@
+task_id: backend-rag-b2-5-greeting-authority
+gear: 3
+l_level: L2
+gate_class: opus
+base_sha: ad1dacc3b648c523a9a8336261b65464f45f0a43 # pragma: allowlist secret
+mandate: B2.5
+colour: BLUE
+pr: B2.5 PR-3 (one greeting authority for the WA leg and the package builder)
+envelope: I105/I107/I108 (Desk) under Zero's full delegation; design ruling I110
+checkpoint_refs:
+  - 20260914T042725Z-6dc0 # B2.5 OPEN, acked by B2-ack RULING I110 (design approved, C1-C5)
+rulings:
+  - "(d) one greeting authority for both the leg and the builder; a leading list ordinal does not change the classification"
+  - "(e) B2.4 fail-closed release stays untouched: no model text without an authenticated SUPPORTED envelope"
+  - "I110 C1: the builder's GENERAL fallback must not reroute real questions; only greeting-classified texts change domain, table in the pack"
+deadline: "2026-09-14T16:00:00Z"
+objective: >-
+  Measured on thread 394: "11.  Halo" looped through the retry ladder because
+  wa_greeting.match_greeting returned None (the ordinal token aborted the
+  match) while QueryPlanner classified GREETING and the package builder raised
+  PackageUnbuildable("greeting_domain"). match_greeting becomes the one
+  authority: it strips one leading list ordinal, the builder raises
+  greeting_domain only when match_greeting matches, and a planner-only GREETING
+  builds with GENERAL's collections. query_planner.py is untouched. Design:
+  evidence/2026-09/agent-nuzantara-backend-rag-b2-5-one-message-one-406b5577/B2-5-design.md
+  (PR-1 branch; this PR ships first in the order PR-3 -> PR-1 -> PR-2 -> PR-4).
+appetite:
+  wall_clock_hours: 3
+  adversarial_rounds: 2
+  tokens: 1000000
+acceptance:
+  - id: A1
+    text: >-
+      Diff = wa_greeting.py (leading ordinal strip), wa_package_builder.py
+      (match_greeting gate, GENERAL fallback), wa_package.py router (curated-QA
+      prefetch gate follows the same authority), tests, this directory.
+      query_planner.py, wa_codex_leg.py, _support_signal.py,
+      wa_completion_envelope.py and migrations untouched.
+  - id: A2
+    text: >-
+      Guilt and innocence: ordinal-prefixed greetings match with the same
+      language as without; "11. Halo, berapa harga PT PMA?", "2026 halo",
+      "11.", "1. KITAS", "Pasal 6. Halo" stay None; a planner-only GREETING
+      builds with GENERAL; a true greeting still raises greeting_domain.
+      Removing the strip turns the tests red.
+  - id: A3
+    text: >-
+      C1: over the 23 B1.5 query_list texts and the 8 B2.5 probe texts, each
+      as-is and with a leading "11.  " (62 rows), the effective domain differs
+      from the planner domain only where the planner said GREETING.
+  - id: A4
+    text: >-
+      After merge: the three changed source files in the Fly rag container are
+      sha256-identical to the merged blobs, and "11.  Halo" from the test
+      number receives the scripted greeting with no retry (B3 probe).
+seats:
+  dux: "Opus 5 xhigh (Pro)"
+  implementer: "Sonnet 5 subagent, verified by the Dux"
+  adversarial_reviewer: "codex-gpt-5.6-sol (CODEX_HOME=~/.codex-acct2, read-only sandbox, effort high)"
+  second_quorum_seat: "agy-gemini-3.1-pro (fallback: kimi-code/k3 HTTP 403; tp1-qwen HTTP 429 until 2026-09-18T08:39Z)"
+  gate: "a FRESH Opus 5 session outside the contribution chain, commissioned by the imperator"

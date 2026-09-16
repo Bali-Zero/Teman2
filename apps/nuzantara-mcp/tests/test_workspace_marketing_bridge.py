@@ -1059,8 +1059,16 @@ async def test_write_tools_are_fail_closed_until_armed(monkeypatch) -> None:
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "cover_src",
+    [
+        "/static/news/complete-cover.png",
+        "/_next/image?url=%2Fstatic%2Fnews%2Fcomplete-cover.png&w=1920&q=75",
+    ],
+)
 async def test_live_verifier_checks_seo_alt_cover_and_persists_confirmation(
-    monkeypatch,
+    monkeypatch: pytest.MonkeyPatch,
+    cover_src: str,
 ) -> None:
     monkeypatch.setenv("WORKSPACE_MARKETING_WRITES_ENABLED", "true")
     slug = "complete-article"
@@ -1091,13 +1099,13 @@ async def test_live_verifier_checks_seo_alt_cover_and_persists_confirmation(
     html_doc = f"""
       <html><head>
       <title>Complete Bali Business Update</title>
-      <meta name="description" content="{status_payload['seo_description']}">
+      <meta name="description" content="{status_payload["seo_description"]}">
       <meta property="og:title" content="Complete Bali Business Update">
-      <meta property="og:description" content="{status_payload['seo_description']}">
+      <meta property="og:description" content="{status_payload["seo_description"]}">
       <meta property="og:image" content="{cover_path}">
       <link rel="canonical" href="{article_url}">
       </head><body>{slug}<h1>A complete public article</h1>
-      <img src="{cover_path}" alt="Jakarta skyline illustrating the business update">
+      <img src="{cover_src}" alt="Jakarta skyline illustrating the business update">
       <a href="https://example.go.id/business-update?tracking=removed">Primary source</a>
       </body></html>
     """
@@ -1133,9 +1141,7 @@ async def test_live_verifier_checks_seo_alt_cover_and_persists_confirmation(
             if url == article_url:
                 return Response(text=html_doc)
             if url == "https://balizero.com/news":
-                return Response(
-                    text=f'<a href="/business/{slug}">latest story</a>'
-                )
+                return Response(text=f'<a href="/business/{slug}">latest story</a>')
             if url.endswith("complete-cover.png"):
                 return Response(headers={"content-type": "image/png"})
             raise AssertionError(f"unexpected URL {url}")
@@ -1157,6 +1163,56 @@ async def test_live_verifier_checks_seo_alt_cover_and_persists_confirmation(
         method="POST",
         json={"confirmation": "LIVE_VERIFIED"},
     )
+
+
+@pytest.mark.parametrize(
+    ("src", "alt", "expected"),
+    [
+        (
+            "/_next/image?url=%2Fstatic%2Fnews%2Fcover.jpg&w=640&q=75",
+            "Approved cover",
+            True,
+        ),
+        (
+            "/_next/image?url=%2Fstatic%2Fnews%2Fwrong.jpg&w=640",
+            "Approved cover",
+            False,
+        ),
+        ("/_next/image?url=%2Fstatic%2Fnews%2Fcover.jpg", "Wrong alt", False),
+        ("/_next/image?w=640", "Approved cover", False),
+        (
+            "/_next/image?url=%2Fstatic%2Fnews%2Fcover.jpg&url=%2Fother.jpg",
+            "Approved cover",
+            False,
+        ),
+        (
+            "/_next/image?url=https%3A%2F%2Fexample.com%2Fstatic%2Fnews%2Fcover.jpg",
+            "Approved cover",
+            False,
+        ),
+        (
+            "https://example.com/_next/image?url=%2Fstatic%2Fnews%2Fcover.jpg",
+            "Approved cover",
+            False,
+        ),
+        ("https://example.com/static/news/cover.jpg", "Approved cover", False),
+    ],
+)
+def test_live_cover_alt_is_bound_to_the_approved_public_image(
+    src: str,
+    alt: str,
+    expected: bool,
+) -> None:
+    checks = marketing._publication_document_checks(
+        f'<img src="{src}" alt="{alt}">',
+        base_url="https://balizero.com/business/article",
+        expected_title="",
+        expected_description="",
+        expected_cover_path="/static/news/cover.jpg",
+        expected_alt="Approved cover",
+        expected_source_url="",
+    )
+    assert checks["cover_alt"] is expected
 
 
 @pytest.mark.asyncio

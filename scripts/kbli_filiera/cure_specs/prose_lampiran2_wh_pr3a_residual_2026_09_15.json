@@ -1,0 +1,65 @@
+{
+  "compiler": "cure_prose_national_openness",
+  "_meta": {
+    "spec": "prose_lampiran2_wh_pr3a_residual_2026_09_15",
+    "population": "The 3 codes W-H PR-3a moved to TERBATAS/0 under Perpres 49/2021 Lampiran II (55201 55203 79903): the fields lot prose_lampiran2_wh_pr3a_2026_09_15 did not cover. Found on disk after the adversarial review of PR-3a: 79903 zantaraOpener still said \"PMA status: Open\"; 55203 baliContext described a PT PMA building and renting villas and budgeted a PT PMA setup; 55203 youllAlsoNeed assumed \"your PT PMA\"; 55203 zantaraOpener promised \"routes that actually exist\" without naming a sourced one; 55201 whoThisIsFor said \"exclusively for local Balinese homeowners\", which misstates a national Koperasi/UMKM allocation as a Bali residency rule.",
+    "no_new_claims": "Every replacement deletes or neutralises the ownership sentence and keeps every other line of the field byte-identical. The only affirmative sentence (79903 opener) repeats the record's own pma_kondisi and l4_bali.reason allocation. No percentage, date, price or code is added."
+  },
+  "codes": {
+    "55201": {
+      "judul": null,
+      "expect": {
+        "pma_max_asing": 0,
+        "pma_status": "TERBATAS",
+        "pma_kondisi_contains": "dialokasikan untuk Koperasi dan UMKM"
+      },
+      "fields": {
+        "whoThisIsFor": {
+          "old_sha256": "39adcf555019ae5dae5ee1d0c9cfa1e13ff7dc6e5724a1af7ef11d15604d2be8",
+          "old_excerpt": "This activity is exclusively for local Balinese homeowners running small-scale h",
+          "new": "This activity is reserved for Koperasi and UMKM running small-scale homestays, and is not available to foreign-owned companies (PT PMA) anywhere in Indonesia."
+        }
+      }
+    },
+    "55203": {
+      "judul": null,
+      "expect": {
+        "pma_max_asing": 0,
+        "pma_status": "TERBATAS",
+        "pma_kondisi_contains": "dialokasikan untuk Koperasi dan UMKM"
+      },
+      "fields": {
+        "zantaraOpener": {
+          "old_sha256": "2d980f904a2a6800696e7336f9e4a5d209938d441970008e157c400a57726d15",
+          "old_excerpt": "Let me walk you through what that really means and the routes that actually exi",
+          "new": "Running a villa in Bali? 55203 is the code everyone asks about — and the one with the biggest trap: Perpres 49/2021's investment-list annex reserves this exact activity for Koperasi/UMKM, so a standard PT PMA cannot register it at all. Let me walk you through what that really means."
+        },
+        "baliContext": {
+          "old_sha256": "aba161f4aae2cd22333d3f78f0415e14a14782e7bdf56fc475d88dc70318cda6",
+          "old_excerpt": "- Most popular accommodation KBLI for foreign investors by volume\n- Typical stru",
+          "new": "**🏝 The Bali Villa Market (Reality Check)**\n- Villas ARE Bali's tourism identity: Seminyak, Canggu, Ubud, Uluwatu, Sanur — every area has its scene\n- **Oversupply warning:** Canggu and Seminyak have thousands of villas competing for the same guests; occupancy rates have dropped significantly since 2022\n- **Better ROI areas (2025):** Tabanan, Sidemen (Karangasem), Amed, north coast — lower land prices, growing demand\n\n**💸 Real Costs to Budget**\n- Land lease (Hak Sewa, 25 years, Canggu): IDR 1.5–4B per are (100m²)\n- Villa construction (mid-range): IDR 8–15M per m²\n- TDUP + permits + PBG: IDR 5–15M total\n- Monthly operational (staff, maintenance, pool, gardener): IDR 15–40M depending on size\n\n**⚠ Common Mistakes That Kill the Business**\n- **Operating without TDUP** — Dinas Pariwisata enforcement intensified in 2023–2024; fines and closure orders have been executed in Canggu, Pererenan, and Seminyak\n- **Building before PBG** — IMB/PBG crackdowns since 2024 have resulted in actual demolition orders in Bali\n- **Skipping Sertifikat Laik Sehat** — required for legal operation; without it your NIB is valid but your villa is not\n- **Ignoring the banjar** — local village council approval is not a government permit but is socially and operationally essential; no banjar consent = neighbor problems, access issues, staff walkouts\n- **Nominee land ownership** — still common, still illegal; BPN and PPATK have increased scrutiny on nominee arrangements since 2023"
+        },
+        "youllAlsoNeed": {
+          "old_sha256": "5b5ffb237599fbeddea2d81f33e2a7f0ae68e1f35270a268aa99d51c51d36163",
+          "old_excerpt": "(if your PT PMA also holds the lease)",
+          "new": "- **56101** — If you provide food service (in-villa chef, breakfast, restaurant)\n- **68112** — For the property lease/rental structure (if the same business also holds the lease)\n- **96230** — If you offer spa or massage services at the villa\n- **79110** — If you arrange tours, activities, or transfers for guests\n- **77311** — If you rent out motorbikes, scooters, or vehicles to guests\n- **41012** — If the same business also builds/constructs the villa itself"
+        }
+      }
+    },
+    "79903": {
+      "judul": null,
+      "expect": {
+        "pma_max_asing": 0,
+        "pma_status": "TERBATAS",
+        "pma_kondisi_contains": "dialokasikan untuk Koperasi dan UMKM"
+      },
+      "fields": {
+        "zantaraOpener": {
+          "old_sha256": "8688236cbe5689fe9e6dd6a7561c7bf17b09fea9500f342a8f27a269e0aee19f",
+          "old_excerpt": "Nationally this carries PMA status: Open. Let me walk you through what it means",
+          "new": "Looking into Jasa Pramuwisata (79903)? Nationally this bidang usaha is allocated to Koperasi and UMKM by Perpres 49/2021 Lampiran II, so a PT PMA cannot take it. Let me walk you through what that means."
+        }
+      }
+    }
+  }
+}
