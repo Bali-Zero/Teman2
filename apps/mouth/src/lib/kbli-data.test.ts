@@ -133,7 +133,13 @@ describe("kbli-data", () => {
       .map((code) => code.code)
       .sort();
     expect(disclosedOnAGap).toEqual(rawDeclaredGapChiusoBali);
-    expect(disclosedOnAGap).toHaveLength(39);
+    // 39 -> 38 (W-H PR-3b): 47249 was one of the 39 declared_gap/CHIUSO_BALI
+    // records the disclose change above surfaces. This cure moves it to
+    // `pma_verification_status: "located"`, so it now fails this filter's
+    // own `!== "located"` guard and leaves BOTH the raw-JSON-derived set and
+    // `gaps` (it is no longer declared_gap at all) — not a disclosure bug,
+    // the code is simply no longer a gap.
+    expect(disclosedOnAGap).toHaveLength(38);
     for (const code of gaps) {
       if (code.baliL4 !== undefined) {
         expect(code.baliL4.status, code.code).toBe("CHIUSO_BALI");
