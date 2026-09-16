@@ -1258,28 +1258,16 @@ describe("review reasons cover every code the current pack can emit", () => {
   // orphaned in an empty array.
   const KNOWN_UNMAPPED_REVIEW_REASON_CODES: string[] = [];
 
-  // SAETTA-20260916: the signed seq-22 bundle landed on 2026-09-16 WITHOUT
-  // activation — activating is a separate ceremony (D24) the repo does not
-  // record, and production still evaluates on seq-20 (the pack seq-22 chains
-  // from; seq-21 was signed and never activated). seq-22 no longer emits
-  // these eight codes, so against the highest signed pack their
-  // REVIEW_REASON_COPY entries read as "stale" — but a live seq-20 verdict
-  // still emits every one of them, and deleting the copy now would print a
-  // machine code on a real applicant's sheet until seq-22 goes live. The
-  // stale-key test therefore matches this list BY NAME instead of the empty
-  // array: a ninth stale key still goes red, and so does deleting one of
-  // these copies without removing it here. Once seq-22 is ACTIVATED (D24),
-  // the copy for these eight goes, and this list empties in the same PR.
-  const REVIEW_REASON_COPY_KEYS_LIVE_ON_SEQ20_ONLY: string[] = [
-    "E23U_DIPLOMATIC_HOUSEHOLD_STAFF_REVIEW",
-    "E23V_TRADE_OFFICE_STAFF_REVIEW",
-    "E28B_USD_THRESHOLD_MANUAL_CHECK",
-    "E28C_USD_THRESHOLD_AND_INSTRUMENT_CHECK",
-    "E28D_USD_THRESHOLD_AND_TURNOVER_CHECK",
-    "E28F_IKN_THRESHOLD_MANUAL_CHECK",
-    "E33B_EXPERTISE_QUALIFICATION_CHECK",
-    "GOVT_INVITATION_REQUIRED",
-  ];
+  // EMPTY SINCE THE seq-22 ACTIVATION (2026-09-16T20:16:45Z, activation_id
+  // 10937ac5, payload 3d7555af…6e37). While seq-20 was in force, the eight
+  // codes seq-22 retires still reached real applicants, so their copy had to
+  // stay and this list named them by name. Production now evaluates on
+  // seq-22, which cannot emit any of them, so the copy was deleted in the
+  // same change that emptied this list. An entry here is a claim that a code
+  // is live on signed seq-20 and gone from the highest signed pack; the
+  // honesty test below still enforces that, so the list cannot be used as a
+  // parking lot for a copy nobody wants to delete.
+  const REVIEW_REASON_COPY_KEYS_LIVE_ON_SEQ20_ONLY: string[] = [];
 
   /** Review reason codes a given signed pack's rules can emit. */
   function reviewReasonCodesInSignedPack(sequence: number): Set<string> {

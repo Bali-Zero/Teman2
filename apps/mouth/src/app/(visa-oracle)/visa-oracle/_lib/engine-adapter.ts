@@ -896,23 +896,12 @@ export const REVIEW_REASON_COPY: Record<string, LocalizedText> = {
     "This case involves a minor whose sponsor has not yet been confirmed, and a person needs to review it — confirming the sponsor is what resolves it.",
     "Kasus ini melibatkan anak di bawah umur yang sponsornya belum dikonfirmasi, dan memerlukan peninjauan oleh seseorang — konfirmasi sponsor adalah yang akan menyelesaikannya.",
   ),
-  // Wording follows the pack's own product names verbatim — "Working Visa —
-  // Foreign Diplomat House Assistant (E23U)" / "Visa Kerja Asisten Rumah
-  // Tangga Diplomat Asing" and "Working Visa — Trade and Economic Office
-  // (E23V)" / "Visa Kerja Kantor Dagang dan Ekonomi". An adversarial review
-  // of the first draft caught it narrowing E23V to "trade representative
-  // office", dropping "and Economic": the applicant would then be told about
-  // a category that is not the one the rule actually names. Both rules fire
-  // unconditionally for their product code (no distinguishing fact beyond
-  // the product itself), so naming the product IS the specific cause.
-  E23U_DIPLOMATIC_HOUSEHOLD_STAFF_REVIEW: text(
-    "Every application for the Working Visa — Foreign Diplomat House Assistant (E23U) is reviewed manually to confirm the household-employment relationship with the diplomat before it can be confirmed.",
-    "Setiap permohonan Visa Kerja Asisten Rumah Tangga Diplomat Asing (E23U) ditinjau secara manual untuk memastikan hubungan kerja rumah tangga dengan diplomat tersebut sebelum dapat dikonfirmasi.",
-  ),
-  E23V_TRADE_OFFICE_STAFF_REVIEW: text(
-    "Every application for the Working Visa — Trade and Economic Office (E23V) is reviewed manually to confirm the staff relationship with that trade and economic office before it can be confirmed.",
-    "Setiap permohonan Visa Kerja Kantor Dagang dan Ekonomi (E23V) ditinjau secara manual untuk memastikan hubungan kerja dengan kantor dagang dan ekonomi tersebut sebelum dapat dikonfirmasi.",
-  ),
+  // E23U_DIPLOMATIC_HOUSEHOLD_STAFF_REVIEW and E23V_TRADE_OFFICE_STAFF_REVIEW
+  // used to sit here. seq-22 retires both: it supports E23U/E23V outright
+  // instead of holding them for a manual staff-relationship check, so no
+  // verdict can emit either code any more. Activated in PRODUCTION on
+  // 2026-09-16T20:16:45Z (activation_id 10937ac5, payload 3d7555af…6e37),
+  // which is why their copy goes now and not when the bundle landed.
   // Renamed from STATUS_BRIDGING_REVIEW (QW-4a, 2026-08-17): same stale
   // situation — BRIDGING_ADVERSE_HISTORY is the current name for this rule
   // in rulepack-prod-007+. review.bridging.adverse-history fires on ANY of 4
@@ -957,31 +946,10 @@ export const REVIEW_REASON_COPY: Record<string, LocalizedText> = {
   // string below is written to D2-bis's three rules too: name the specific
   // fact, state the hold authoritatively, name what resolves it.
 
-  // 8 codes from rulepack-prod-020 (rulepack-prod-007+ lineage), stage
-  // HUMAN_REVIEW — each rule fires unconditionally for its product/purpose
-  // combination (no numeric threshold is modeled as a fact, hence "manual"),
-  // so naming the requested product IS the specific cause; the resolution is
-  // the manual check the code name itself describes.
-  E28B_USD_THRESHOLD_MANUAL_CHECK: text(
-    "You requested the Investor Golden Visa — Company Establishment (E28B), which always has its required USD investment amount checked manually — confirming that amount against your documents is what resolves it.",
-    "Anda mengajukan Visa Investor Pendirian Perusahaan (E28B), yang jumlah investasi USD yang disyaratkan selalu diperiksa secara manual — konfirmasi jumlah tersebut terhadap dokumen Anda adalah yang akan menyelesaikannya.",
-  ),
-  E28C_USD_THRESHOLD_AND_INSTRUMENT_CHECK: text(
-    "You requested the Investor Golden Visa — Capital Market (E28C), which always has its USD investment amount and financial instrument checked manually — confirming both against your documents is what resolves it.",
-    "Anda mengajukan Visa Investor Tanpa Mendirikan Perusahaan (E28C), yang jumlah investasi USD dan instrumen keuangannya selalu diperiksa secara manual — konfirmasi keduanya terhadap dokumen Anda adalah yang akan menyelesaikannya.",
-  ),
-  E28D_USD_THRESHOLD_AND_TURNOVER_CHECK: text(
-    "You requested the Investor Golden Visa — Branch or Subsidiary (E28D), which always has its USD investment amount and company turnover checked manually — confirming both against your documents is what resolves it.",
-    "Anda mengajukan Visa Investor Pendirian Kantor Cabang atau Anak Perusahaan (E28D), yang jumlah investasi USD dan omzet perusahaannya selalu diperiksa secara manual — konfirmasi keduanya terhadap dokumen Anda adalah yang akan menyelesaikannya.",
-  ),
-  E28F_IKN_THRESHOLD_MANUAL_CHECK: text(
-    "You requested the Investor Golden Visa — New Capital (IKN) Subsidiary (E28F), which always has its IKN investment threshold checked manually — confirming that amount against your documents is what resolves it.",
-    "Anda mengajukan Visa Investor Anak Perusahaan Ibukota Nusantara (E28F), yang ambang batas investasi IKN-nya selalu diperiksa secara manual — konfirmasi jumlah tersebut terhadap dokumen Anda adalah yang akan menyelesaikannya.",
-  ),
-  E33B_EXPERTISE_QUALIFICATION_CHECK: text(
-    "You requested the Second Home Golden Visa — Special-Expertise Collaboration (E33B), which always has the applicant's expertise checked manually — confirming your qualification against your documents is what resolves it.",
-    "Anda mengajukan Visa Rumah Kedua Kolaborasi Keahlian Khusus (E33B), yang keahlian pemohonnya selalu diperiksa secara manual — konfirmasi kualifikasi Anda terhadap dokumen Anda adalah yang akan menyelesaikannya.",
-  ),
+  // This block held 8 codes from rulepack-prod-020, stage HUMAN_REVIEW. Six
+  // of them (E28B, E28C, E28D, E28F, E33B, GOVT_INVITATION_REQUIRED) are
+  // retired by seq-22, live in PRODUCTION since 2026-09-16T20:16:45Z, and
+  // their copy went with this change. The two that survive keep theirs.
   E33G_EXCLUDES_LOCAL_COMPANY_OWNERSHIP: text(
     "You said you have committed to PT PMA company ownership, and the Second Home Visa — Remote Worker (E33G) excludes local company ownership — a person needs to confirm your PT PMA commitment before this can be resolved.",
     "Anda menyatakan telah berkomitmen pada kepemilikan perusahaan PT PMA, sedangkan Visa Rumah Kedua Pekerja Jarak Jauh (E33G) mengecualikan kepemilikan perusahaan lokal — diperlukan konfirmasi oleh seseorang atas komitmen PT PMA Anda sebelum hal ini dapat diselesaikan.",
@@ -992,10 +960,6 @@ export const REVIEW_REASON_COPY: Record<string, LocalizedText> = {
   ),
   // Fires identically for two products (E33A, E33C) that share this reason
   // code — both name their own product verbatim rather than picking one.
-  GOVT_INVITATION_REQUIRED: text(
-    "You requested the Second Home Visa — Special-Expertise Government Invitation (E33A) or the Second Home Golden Visa — World-Figure Government Invitation (E33C), both issued only on a central government invitation — confirming that invitation is what resolves it.",
-    "Anda mengajukan Visa Rumah Kedua Tenaga Ahli Undangan Pemerintah (E33A) atau Visa Rumah Kedua Tokoh Dunia Undangan Pemerintah (E33C), yang keduanya hanya diterbitkan berdasarkan undangan pemerintah pusat — konfirmasi undangan tersebut adalah yang akan menyelesaikannya.",
-  ),
 
   // 4 codes from rulepack-prod-020, stage HARD_FILTER with
   // `on_unknown: "HUMAN_REVIEW"` (hf.bridging.offshore / .from-visit-itk /
