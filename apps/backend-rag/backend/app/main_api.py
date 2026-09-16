@@ -704,6 +704,31 @@ async def _run_visa_oracle_sessions_purge_scheduler(app: FastAPI) -> None:
         await asyncio.sleep(_VISA_ORACLE_PURGE_INTERVAL_SECONDS + jitter)
 
 
+def _spawn_visa_oracle_sessions_purge_task(app: FastAPI) -> asyncio.Task | None:
+    """The actual spawn decision `_background_light_init` calls — same kill-switch-then-
+    db_pool-guard shape as the GARUDA outbox block just above it in that function.
+
+    EXTRACTED (council round 1, finding F10, both seats PROVEN): the round-1 test exercised a
+    hand-copied mirror of this `if`/`elif`/`else`, not this code — deleting the real spawn from
+    `_background_light_init` left that test green. There is now exactly ONE copy of this
+    decision, and a test can call it directly instead of reimplementing it.
+    """
+
+    if not _visa_oracle_sessions_purge_enabled():
+        logger.info(
+            "visa-oracle session purge scheduler disarmed "
+            "(VISA_ORACLE_SESSIONS_PURGE_ENABLED=false/0)",
+        )
+        return None
+    if getattr(app.state, "db_pool", None) is None:
+        logger.warning(
+            "⚠️ visa-oracle session purge scheduler NOT started — db_pool unavailable",
+        )
+        return None
+    logger.info("✅ visa-oracle session purge scheduler spawned")
+    return asyncio.create_task(_run_visa_oracle_sessions_purge_scheduler(app))
+
+
 @asynccontextmanager
 async def lifespan_light(app: FastAPI):
     """
@@ -797,25 +822,14 @@ async def lifespan_light(app: FastAPI):
                 )
 
             # visa_oracle_sessions retention purge (migration 317, this PR).
-            # Same wiring shape as the GARUDA outbox block just above: an
-            # own kill switch checked first, then a db_pool guard, task
-            # stored on app.state so shutdown below can cancel it.
-            if not _visa_oracle_sessions_purge_enabled():
-                app.state._visa_oracle_sessions_purge_task = None
-                logger.info(
-                    "visa-oracle session purge scheduler disarmed "
-                    "(VISA_ORACLE_SESSIONS_PURGE_ENABLED=false/0)",
-                )
-            elif getattr(app.state, "db_pool", None) is not None:
-                app.state._visa_oracle_sessions_purge_task = asyncio.create_task(
-                    _run_visa_oracle_sessions_purge_scheduler(app)
-                )
-                logger.info("✅ visa-oracle session purge scheduler spawned")
-            else:
-                app.state._visa_oracle_sessions_purge_task = None
-                logger.warning(
-                    "⚠️ visa-oracle session purge scheduler NOT started — db_pool unavailable",
-                )
+            # Extracted into _spawn_visa_oracle_sessions_purge_task (below
+            # _run_visa_oracle_sessions_purge_scheduler) so a test can call
+            # the REAL production decision instead of a hand-copied mirror
+            # of it (council finding F10, round 1: the mirror stayed green
+            # even with the real spawn deleted).
+            app.state._visa_oracle_sessions_purge_task = _spawn_visa_oracle_sessions_purge_task(
+                app
+            )
 
     init_task = asyncio.create_task(_background_light_init())
     app.state._init_task = init_task

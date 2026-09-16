@@ -22,6 +22,7 @@ from __future__ import annotations
 import asyncio
 import logging
 from types import SimpleNamespace
+from unittest.mock import AsyncMock
 
 import pytest
 
@@ -81,29 +82,16 @@ def test_purge_enabled_unrecognized_value_fails_toward_enabled_and_warns(
 # --------------------------------------------------------------------------
 
 
-async def _spawn_via_lifespan() -> asyncio.Task | None:
-    """Reproduces the exact spawn decision `_background_light_init` makes in
-    `main_api.py`, against the SAME predicate and the SAME `app.state`
-    attribute name the real lifespan uses — kept honest by the kill-switch
-    tests above rather than by driving the whole lifespan (which would drag
-    in full service init this test has no opinion about)."""
-
-    app = _app()
-    if not main_api._visa_oracle_sessions_purge_enabled():
-        app.state._visa_oracle_sessions_purge_task = None
-    else:
-        app.state._visa_oracle_sessions_purge_task = asyncio.create_task(
-            main_api._run_visa_oracle_sessions_purge_scheduler(app)
-        )
-    return app.state._visa_oracle_sessions_purge_task
-
-
-async def test_the_lifespan_spawns_the_purge_when_enabled(
+async def test_spawn_task_enabled_and_pool_ready_creates_the_real_loop_task(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """The arming test. Before this wiring exists, `_purge_expired_sessions`
-    is reachable and fully tested in isolation while never actually running
-    anywhere — exactly the shape the Dux's review named."""
+    """Calls the REAL production function directly — council round 1,
+    finding F10 (both seats, PROVEN): the previous version of this test
+    called a hand-copied mirror of `_background_light_init`'s `if`/`elif`/
+    `else`, not the code itself, so deleting the real spawn left the test
+    green. `_spawn_visa_oracle_sessions_purge_task` is now the ONE place
+    this decision is made — `_background_light_init` calls it too (see the
+    "lifespan calls it" test below), so there is nothing left to duplicate."""
 
     monkeypatch.delenv("VISA_ORACLE_SESSIONS_PURGE_ENABLED", raising=False)
     spawned: list[object] = []
@@ -113,14 +101,15 @@ async def test_the_lifespan_spawns_the_purge_when_enabled(
         await asyncio.sleep(3600)
 
     monkeypatch.setattr(main_api, "_run_visa_oracle_sessions_purge_scheduler", fake_loop)
-    task = await _spawn_via_lifespan()
-    await asyncio.sleep(0)  # let the freshly created task reach its first line
-    assert spawned, "the purge loop was never started"
+    app = _app()
+
+    task = main_api._spawn_visa_oracle_sessions_purge_task(app)
+
     assert task is not None
     task.cancel()
 
 
-async def test_the_lifespan_leaves_the_purge_disarmed_when_switch_is_false(
+async def test_spawn_task_disabled_returns_none_and_never_creates_a_task(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setenv("VISA_ORACLE_SESSIONS_PURGE_ENABLED", "false")
@@ -130,9 +119,91 @@ async def test_the_lifespan_leaves_the_purge_disarmed_when_switch_is_false(
         "_run_visa_oracle_sessions_purge_scheduler",
         lambda app: started.append(app),
     )
-    task = await _spawn_via_lifespan()
+    app = _app()
+
+    task = main_api._spawn_visa_oracle_sessions_purge_task(app)
+
     assert started == []
     assert task is None
+
+
+def test_spawn_task_returns_none_when_the_pool_is_not_ready(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.delenv("VISA_ORACLE_SESSIONS_PURGE_ENABLED", raising=False)
+    app = _app(pool=None)
+    app.state.db_pool = None  # explicit — _app()'s default gives a sentinel object
+
+    task = main_api._spawn_visa_oracle_sessions_purge_task(app)
+
+    assert task is None
+
+
+async def test_the_lifespan_actually_calls_the_real_spawn_function(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Drives the REAL `lifespan_light` context manager (not a mirror of it),
+    with only the heavy, unrelated service-init internals replaced — proves
+    `_background_light_init` (the nested closure `lifespan_light` schedules)
+    itself calls `_spawn_visa_oracle_sessions_purge_task`, closing exactly
+    the gap council round 1 finding F10 named: "deleting the real spawn at
+    main_api.py:810-812 leaves it green" is no longer true once this test
+    exists, because THIS test drives the code at that call site, not a
+    hand-copied stand-in for it."""
+
+    monkeypatch.delenv("VISA_ORACLE_SESSIONS_PURGE_ENABLED", raising=False)
+    # Silence the two other background-worker blocks _background_light_init
+    # also runs in the same pass, so this test's only real assertion is
+    # about the purge spawn call — not an accident of them succeeding.
+    monkeypatch.setenv("WA_OUTBOX_SCHEDULER_ENABLED", "false")
+    monkeypatch.delenv("GARUDA_OUTBOX_CONSUMER_ENABLED", raising=False)  # fail-closed default
+
+    # AsyncMock, not a bare object() — lifespan_light's own shutdown block
+    # unconditionally awaits `db_pool.close()`, so the fake pool must
+    # survive that call for this test to reach its own assertions.
+    db_pool_sentinel = AsyncMock()
+
+    async def fake_initialize_services_light(app: object) -> None:
+        app.state.db_pool = db_pool_sentinel
+        app.state.cache = None
+
+    monkeypatch.setattr(
+        "backend.app.setup.service_initializer.initialize_services_light",
+        fake_initialize_services_light,
+    )
+    # Deliberately NOT mocking the notification-scheduler import
+    # (`backend.app.modules.notifications.scheduler`) — in this venv it is
+    # missing its own `apscheduler` dependency, and `_background_light_init`
+    # already wraps that whole block (import included) in its own
+    # `try/except Exception`, so the ModuleNotFoundError is swallowed by the
+    # REAL production code path exactly the way it would be if apscheduler
+    # were briefly unavailable in prod. Patching it via a string target
+    # would have to import the module first, which fails before the app
+    # code even runs.
+
+    spawn_calls: list[object] = []
+
+    def fake_spawn(app: object) -> None:
+        spawn_calls.append(app)
+        return None
+
+    monkeypatch.setattr(main_api, "_spawn_visa_oracle_sessions_purge_task", fake_spawn)
+
+    app = SimpleNamespace(state=SimpleNamespace())
+    async with main_api.lifespan_light(app):
+        # `_background_light_init` runs as a scheduled task, not awaited
+        # before `yield` (Fly.io health-check grace-period design) — poll
+        # with a bounded number of zero-cost loop-yields rather than a
+        # fixed sleep, so this stays fast on a quiet CI box and still
+        # deterministic (no open-ended wait).
+        for _ in range(200):
+            if spawn_calls:
+                break
+            await asyncio.sleep(0)
+        else:
+            pytest.fail("_background_light_init never reached the purge spawn call")
+
+    assert spawn_calls == [app]
 
 
 # --------------------------------------------------------------------------

@@ -99,6 +99,33 @@ async def test_purge_is_non_fatal_on_db_error_and_returns_zero(caplog) -> None:
 
 
 @pytest.mark.asyncio
+async def test_purge_failure_log_never_carries_the_exception_message(caplog) -> None:
+    """Council round 1, finding F8 (Codex, PROVEN): this catch used to log
+    `str(exc)` — an asyncpg error's message can echo back bound values, and
+    this function's own docstring already promises "failures are logged,
+    not raised" under the same PII discipline as the other session helpers.
+    A sentinel string planted in the exception's message must never reach
+    any log record; only the exception's CLASS name may."""
+    from backend.app.routers import visa_oracle as mod
+
+    sentinel = "session_id=abc123-should-never-be-logged"
+    conn = AsyncMock()
+    conn.execute = AsyncMock(side_effect=RuntimeError(sentinel))
+    pool = MagicMock()
+    pool.acquire = MagicMock(return_value=_AcquireCM(conn))
+
+    with caplog.at_level("WARNING"):
+        deleted = await mod._purge_expired_sessions(pool, limit=500)
+
+    assert deleted == 0
+    messages = [r.message for r in caplog.records]
+    assert any("visa-oracle session purge failed" in m for m in messages)
+    assert any("RuntimeError" in m for m in messages)
+    for m in messages:
+        assert sentinel not in m
+
+
+@pytest.mark.asyncio
 async def test_purge_does_not_log_session_ids_or_answers_on_success(caplog) -> None:
     """PII discipline: a successful purge logs only the count, never a
     session_id, quiz_answers, message or ip_hash (none of which this

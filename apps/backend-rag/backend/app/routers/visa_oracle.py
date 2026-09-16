@@ -685,11 +685,18 @@ async def _purge_expired_sessions(db_pool: Any, *, limit: int = 500) -> int:
     (same convention as the other session helpers above).
 
     NEVER deletes a session with `handoff_triggered = TRUE` — that row is
-    the consultant's own follow-up record (`_fetch_session_snapshot` below
-    reads it by session_id for handoff pricing; grepped this file and
-    `db/migrations_v2/*.sql` this turn — no FK/table references
-    visa_oracle_sessions, so `handoff_triggered` is the only durable signal
-    that a row still matters). UU PDP data minimisation (migration 317)
+    the consultant's own follow-up record, excluded from the purge purely
+    by that marker (set by `_persist_session_handoff` below). CORRECTED
+    (council round 1, finding F7, Codex — PROVEN): an earlier version of
+    this paragraph implied `_fetch_session_snapshot` reads/keys on
+    `handoff_triggered`; it does not — its own SELECT names only
+    `quiz_answers, recommended_visas`, and it is called synchronously at
+    handoff time, on a still-live (not-yet-expired) session, to build the
+    handoff pricing response. The purge is the ONLY reader of
+    `handoff_triggered`; grepped this file and `db/migrations_v2/*.sql`
+    this turn — no FK/table references visa_oracle_sessions, so
+    `handoff_triggered` is the only durable signal that a row still
+    matters. UU PDP data minimisation (migration 317)
     only asks that the DECLARED default become 30 days; it does not ask to
     shorten a handed-off case's own record.
 
@@ -716,7 +723,14 @@ async def _purge_expired_sessions(db_pool: Any, *, limit: int = 500) -> int:
                 limit,
             )
     except Exception as exc:
-        logger.warning("visa-oracle session purge failed: %s", exc)
+        # Council round 1, finding F8 (Codex, PROVEN): this used to log
+        # `str(exc)` — the ONE catch on this file's session helpers that
+        # didn't follow the class-name-only convention the scheduler loop
+        # in main_api.py already uses for its own outer catch. An asyncpg
+        # error can echo back bound parameter values in its message; this
+        # query's only bound parameter is the purge LIMIT (an int), but the
+        # convention is kept uniform rather than argued case-by-case.
+        logger.warning("visa-oracle session purge failed: %s", type(exc).__name__)
         return 0
     # asyncpg returns "DELETE <count>".
     try:
