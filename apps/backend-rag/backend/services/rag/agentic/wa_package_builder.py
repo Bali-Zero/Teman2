@@ -354,6 +354,79 @@ def _sanitize_history(history: list[dict[str, str]], query: str) -> list[dict[st
     return sanitized
 
 
+def _append_pricing_evidence_chunk(
+    chunks: list[dict[str, Any]], pricing_block: dict[str, Any] | None
+) -> None:
+    """Let the price list COUNT as evidence, not just ride along as payload.
+
+    MEASURED DEFECT this cures (production, 2026-09-16). Two real turns,
+    same question, two languages:
+
+    - EN "How much is a PT PMA company, all in" -> evidence_score 0.60, the
+      answer carries 20.000.000.
+    - ID "Harga PT PMA berapa all in?" -> evidence_score 0.08, the answer is
+      a refusal. Same refusal twelve days earlier on the same phrasing: not
+      a one-off.
+
+    The control, in the same thread: ID questions about paid-up CAPITAL
+    ("modal disetor minimum PT PMA") answer correctly at 0.80. Bahasa is not
+    broken. The difference is WHERE the fact lives — the capital figure is
+    regulation and sits in the retrieved corpus, while Bali Zero's own
+    SERVICE price lives only in `pricing_block`, which the scorer never saw:
+    `evidence_inputs` is computed from `chunks` alone. In bahasa the
+    retrieval returns nothing lexically close, the score lands under the
+    0.15 abstain gate, and a client who asked something we can answer from
+    our own price list is told "I have no reliable source".
+
+    This does NOT loosen the sources gate. It is the opposite: the price
+    list IS an official source — ours, the one PricingTool is sole keeper of
+    — and it was the only source being silently discounted to zero. An
+    answer still cannot invent a price: `wa_finalize`'s
+    `price_tokens_outside_sources` veto is untouched and still measures
+    every figure in the reply against the sources.
+
+    Shape reuses the curated-QA precedent verbatim (the `curated_qa_block`
+    chunk below): a synthetic chunk at a literal 1.0 stamped
+    `CURATED_SYNTHETIC` — a label, not a measurement, and deliberately
+    outside `RETRIEVED_KINDS` so it never enters a numeric comparison with a
+    retrieved score.
+
+    PII: only `results` is read. `search_query` — the customer's own raw
+    words, which `_sanitize_pricing_block` keeps for the generator and the
+    DLP gate later redacts — is NEVER copied into a chunk.
+    """
+    if not pricing_block:
+        return
+    results = pricing_block.get("results")
+    if not isinstance(results, dict):
+        return
+
+    lines: list[str] = []
+    for entries in results.values():
+        if not isinstance(entries, dict):
+            continue
+        for name, entry in entries.items():
+            if not isinstance(entry, dict):
+                continue
+            price = entry.get("price") or " - ".join(entry.get("tier_range") or [])
+            if price:
+                lines.append(f"{name}: {price}")
+    if not lines:
+        return
+
+    # Names and figures only, no descriptions: ~2k chars, well under
+    # `_MAX_CHUNK_CHARS`, where the raw block (~6.6k) would be cut mid-JSON.
+    # Measured the same lift as the full block on all five probe phrasings.
+    text = "Bali Zero official price list 2026\n" + "\n".join(lines)
+    chunk = {
+        "collection": "pricing",
+        "text": text[:_MAX_CHUNK_CHARS],
+        "score": 1.0,
+    }
+    score_provenance.stamp(chunk, score_provenance.CURATED_SYNTHETIC)
+    chunks.append(chunk)
+
+
 def _sanitize_pricing_block(raw: Any) -> dict[str, Any] | None:
     """Reduce PricingService.search_service() output to the per-field allowlist.
 
@@ -643,6 +716,13 @@ async def build_context_package(
     pricing_block: dict[str, Any] | None = None
     if has_pricing_intent(query):
         pricing_block = _sanitize_pricing_block(get_pricing_service().search_service(query))
+        # AFTER `_cap_chunks`, deliberately, and it is the only chunk that
+        # gets that: the price list must not compete with retrieved chunks
+        # for one of the eight slots. Added before the cap it would be the
+        # first thing dropped exactly when retrieval is rich — a cure that
+        # vanishes silently is worse than no cure. The cost is one extra
+        # chunk on pricing turns only, already length-capped by the helper.
+        _append_pricing_evidence_chunk(chunks, pricing_block)
 
     payload_history = _sanitize_history(history, query)
 

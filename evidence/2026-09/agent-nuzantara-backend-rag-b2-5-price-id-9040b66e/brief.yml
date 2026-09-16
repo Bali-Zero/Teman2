@@ -1,0 +1,89 @@
+task_id: b2-5-3-wa-price-evidence
+gear: 2
+l_level: L2
+gate_class: opus
+# Deterministic floor for this diff is 1 (246 added / 3 deleted across 2 files, no hot-zone path,
+# no migration, no new dependency) — measured, not assumed:
+#   python3 scripts/evidence_pack_lint.py --print-floor --changed-files-file <f> --numstat-file <f>
+# Gear 2 is declared ABOVE the floor deliberately: merging apps/backend-rag IS the production
+# deploy of the WhatsApp bot, and this diff moves what counts as EVIDENCE for the abstain gate.
+# That decision is not one a green unit suite should be allowed to ship on its own, so the brief
+# opts into the blocking Opus verdict the floor would not have required.
+objective: >-
+  A client who asks in bahasa what a PT PMA costs is told the bot has no reliable source, while
+  the identical English question is answered with the figure. Measured on the production DB
+  (45 days, aggregate counts only, no message text read into any report): 8 inbound bahasa
+  questions about the price of a company, 1 reply carrying any figure at all, 0 replies carrying
+  the PT PMA price. The cause is not the language: Bali Zero's own service price lives ONLY in
+  `pricing_block`, which the evidence scorer never sees — `evidence_inputs` is computed from
+  `chunks` alone. In bahasa nothing lexically close is retrieved, the score lands under the 0.15
+  abstain gate, and a question we can answer from our own price list becomes a refusal.
+constraints:
+  - >-
+    This does NOT loosen the sources gate — it is the opposite. The price list IS an official
+    source, ours, and it was the only one silently discounted to zero. An answer still cannot
+    invent a figure: wa_finalize's `price_tokens_outside_sources` veto is untouched, and
+    `price_sources` already carried both every chunk text and the serialized pricing_block
+    (wa_codex_leg.py:543), so the new chunk adds no figure the veto did not already authorize.
+  - >-
+    PII is an OUTPUT boundary. Only `pricing_block["results"]` is read — service names and
+    figures. `search_query`, which is the customer's own raw words, is NEVER copied into a chunk:
+    a chunk is scored, hashed and shipped, a different surface with a different lifetime.
+  - >-
+    No new dependency, no migration, no Anthropic per-token door, no change to any prompt or to
+    the abstain thresholds themselves.
+  - >-
+    The chunk is appended AFTER `_cap_chunks`, deliberately and alone: the price list must not
+    compete for one of the eight retrieval slots. Added before the cap it would be dropped exactly
+    when retrieval is rich — a cure that vanishes silently is worse than no cure.
+acceptance:
+  - text: >-
+      A1 GUILT, and it is the production turn: WHEN a bahasa price question meets a corpus that
+      answers about LAW instead of price SHALL NOT abstain. The same test run against the
+      pre-cure builder scores 0.06 and abstains — measured by restoring HEAD~1's file, running,
+      and restoring from git.
+    probe: "cd apps/backend-rag && .venv/bin/python -m pytest backend/tests/unit/services/rag/agentic/test_wa_package_builder.py -k TestPriceListCountsAsEvidence"
+  - text: >-
+      A2 THE FIGURE IS REALLY THERE: WHEN the package is built SHALL carry exactly one `pricing`
+      chunk containing 20.000.000 IDR, stamped CURATED_SYNTHETIC and outside RETRIEVED_KINDS, so
+      the 1.0 is a label and can never be numerically compared against a retrieved score.
+    probe: "cd apps/backend-rag && .venv/bin/python -m pytest backend/tests/unit/services/rag/agentic/test_wa_package_builder.py -k test_the_price_list_is_in_the_chunks_carrying_the_real_figure"
+  - text: >-
+      A3 INNOCENCE: WHEN the turn has no pricing intent SHALL produce no pricing chunk at all,
+      and WHEN the customer's message contains their own identifiers SHALL NOT copy one word of
+      it into the chunk. The second test walks the chunk TEXT, not the helper's source.
+    probe: "cd apps/backend-rag && .venv/bin/python -m pytest backend/tests/unit/services/rag/agentic/test_wa_package_builder.py -k TestPriceListInnocence"
+  - text: >-
+      A4 THE CONTRACT CHANGE IS RECORDED, NOT SMUGGLED: WHEN a pricing-only package is built
+      SHALL report context_length == 1 (the chunk), where it used to report 0. The pricing_block
+      WIRE FIELD is still not counted — counted once as the chunk it now produces, never twice.
+      The test that asserted 0 was rewritten in place with the reason, not deleted.
+    probe: "cd apps/backend-rag && .venv/bin/python -m pytest backend/tests/unit/services/rag/agentic/test_wa_package_builder.py -k test_pricing_only_package_now_counts_the_price_list_as_context"
+  - text: >-
+      A5 NOTHING ELSE MOVED: WHEN the whole agentic unit suite runs SHALL be 2274 passed,
+      30 skipped, 7 xfailed, 0 failed.
+    probe: "cd apps/backend-rag && .venv/bin/python -m pytest backend/tests/unit/services/rag/agentic/"
+assumptions:
+  - text: >-
+      CURATED_SYNTHETIC is deliberately outside RETRIEVED_KINDS, so a synthetic 1.0 never enters a
+      numeric comparison with a retrieved score. The shape reuses the curated-QA precedent already
+      on main verbatim, rather than inventing a second synthetic-chunk convention.
+    status: verified
+    probe: "backend/core/score_provenance.py:67 CURATED_SYNTHETIC; :96 RETRIEVED_KINDS excludes it; wa_package_builder.py:697 curated_qa_block does the same at 1.0"
+  - text: >-
+      The price veto cannot be loosened by this chunk: `price_sources` is built from every chunk
+      text PLUS the serialized pricing_block, so every figure the new chunk carries was already an
+      authorized source on that turn.
+    status: verified
+    probe: "backend/services/integrations/wa_codex_leg.py:543-548"
+  - text: >-
+      The defect is real in production and not a lab artifact, measured in aggregate with no
+      message body read into any artifact.
+    status: verified
+    probe: "scripts/pg.sh — 45d window: 8 inbound bahasa price-of-a-company asks, 1 reply with any figure, 0 replies containing 20.000.000"
+  - text: >-
+      The live proof after the deploy must come from the production DB, not from a local inbound:
+      /webhook/whatsapp is fail-closed on the X-Hub-Signature-256 HMAC and WHATSAPP_APP_SECRET is
+      a Fly secret absent on Pro (presence probe only, value never read).
+    status: verified
+    probe: "evidence/brief.yml on main (B2.5-2) recorded the same boundary; unchanged by this PR"
