@@ -486,12 +486,13 @@
       },
       "eligibility": "second-army only when the Gear floor computed by scripts/evidence_pack_lint.py / the harness-floor.yml required check is <= 2; a floor of 3 promotes the mission to role_chains.generals (army-map.md §1), no Dux discretion",
       "builders_under_sonnet_dux": [
-        "codex gpt-5.6-luna",
-        "codex gpt-5.3-codex-spark",
+        "codex gpt-5.6-luna (live Codex builder seat)",
+        "codex gpt-5.3-codex-spark (STATE: 400-dead for ChatGPT accounts since 2026-09-15)",
         "gemini-3.8-flash-low (agy)",
         "deepseek-v4-flash-0731 (TP1)",
         "qwen3.7-plus (TP1)"
       ],
+      "_spark_status": "codex gpt-5.3-codex-spark: 400-dead for ChatGPT accounts since 2026-09-15; Luna is the live Codex builder seat; no Codex from cron today",
       "builders_under_terra_dux": [
         "claude-haiku-4-5",
         "gemini-3.8-flash-low (agy)",
@@ -501,10 +502,10 @@
       "haiku_grunt_rule": "claude-haiku-4-5 is a legal builder under a Sonnet Dux for Anthropic-native grunt ONLY — the last seat reached for, never the first, and only when every cross-family door has probed dead",
       "verifier": "the Dux lane, on disk — it runs the task's proof command itself and reads the diff itself, and is never shown the builder's claim before deriving its own answer",
       "refuter_floor2": [
-        "codex gpt-5.3-codex-spark",
+        "codex gpt-5.3-codex-spark (STATE: 400-dead for ChatGPT accounts since 2026-09-15)",
         "gemini-3.8-flash-low (agy)"
       ],
-      "_refuter_note": "ONE seat, whichever probes live first, reading the FROZEN diff AFTER push — never a council (Zero's FLUIDITÀ addendum 2026-09-15)",
+      "_refuter_note": "ONE seat, whichever probes live first (Spark: 400-dead for ChatGPT accounts since 2026-09-15, no Codex refuter from cron today), reading the FROZEN diff AFTER push — never a council (Zero's FLUIDITÀ addendum 2026-09-15)",
       "supports": [
         "claude-haiku-4-5",
         "qwen3.6-flash (TP1)",
