@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { vi } from "vitest";
 import type { ComponentProps } from "react";
 import {
@@ -6,7 +6,11 @@ import {
   SYSTEM_REVIEW_REASON_CODES,
   demonstratedReviewCauses,
 } from "./OutcomeSheet";
-import { REVIEW_REASON_COPY } from "../_lib/engine-adapter";
+import {
+  REVIEW_REASON_COPY,
+  SECOND_HOME_STUDIO_REVIEW_REASON_CODE,
+  SECOND_HOME_STUDIO_URL,
+} from "../_lib/engine-adapter";
 import { mapDisclosedReviewFlags } from "../_lib/fact-mapper";
 import type { Language } from "../_lib/flow";
 import type {
@@ -652,5 +656,185 @@ describe("OutcomeSheet — PR-O4 review causes", () => {
         not_a_question: "unsure",
       }),
     ).toEqual([]);
+  });
+});
+
+describe("OutcomeSheet — D23 Second Home Studio", () => {
+  const reviewReasonFor = (code: string): OutcomeReason => ({
+    code,
+    message: text(`Copy for ${code}`, `Salinan untuk ${code}`),
+    sourceIds: [],
+  });
+
+  const reviewOutcome = (
+    codes: readonly [string, ...string[]],
+  ): HumanReviewOutcome => ({
+    ...common(),
+    state: "HUMAN_REVIEW_REQUIRED",
+    candidates: [],
+    reviewReasons: [
+      reviewReasonFor(codes[0]),
+      ...codes.slice(1).map(reviewReasonFor),
+    ],
+  });
+
+  function renderReview(
+    codes: readonly [string, ...string[]],
+    language: Language = "en",
+  ) {
+    return render(
+      <OutcomeSheet
+        language={language}
+        outcome={reviewOutcome(codes)}
+        facts={FACTS}
+      />,
+    );
+  }
+
+  // GUILT: the only review reason is the Studio code — this hold must never
+  // read as "a person will check", and the self-serve link must be present.
+  it("links to the Second Home Studio and drops the consultant wording when it is the only hold", () => {
+    renderReview([SECOND_HOME_STUDIO_REVIEW_REASON_CODE]);
+
+    const link = screen.getByRole("link", {
+      name: "Open the Second Home Studio",
+    });
+    expect(link).toHaveAttribute("href", SECOND_HOME_STUDIO_URL);
+
+    expect(
+      screen.queryByText(
+        "Your case needs a person’s judgment — nothing here was guessed on your behalf.",
+      ),
+    ).toBeNull();
+    expect(
+      screen.queryByRole("heading", {
+        name: "What a person will check about your case",
+      }),
+    ).toBeNull();
+    expect(
+      screen.queryByRole("heading", {
+        name: "Checks on our side, not on your answers",
+      }),
+    ).toBeNull();
+    expect(
+      screen.getByText(`Copy for ${SECOND_HOME_STUDIO_REVIEW_REASON_CODE}`),
+    ).toBeInTheDocument();
+  });
+
+  it("shows the Studio link's ID label and drops the ID consultant wording", () => {
+    renderReview([SECOND_HOME_STUDIO_REVIEW_REASON_CODE], "id");
+
+    expect(
+      screen.getByRole("link", { name: "Buka Second Home Studio" }),
+    ).toHaveAttribute("href", SECOND_HOME_STUDIO_URL);
+    expect(
+      screen.queryByText(
+        "Kasus Anda butuh penilaian manusia — tidak ada yang ditebak atas nama Anda.",
+      ),
+    ).toBeNull();
+  });
+
+  // INNOCENCE: any other review code renders exactly as before — generic
+  // body, normal case-review heading, and no Studio link anywhere.
+  it("leaves an unrelated review reason unchanged, with no Studio link", () => {
+    renderReview(["DISCLOSED_UNCERTAINTY_REVIEW"]);
+
+    expect(
+      screen.getByText(
+        "Your case needs a person’s judgment — nothing here was guessed on your behalf.",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", {
+        name: "What a person will check about your case",
+      }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("link", { name: "Open the Second Home Studio" }),
+    ).toBeNull();
+  });
+
+  // A case that ALSO carries a different hold keeps the generic body and the
+  // normal groups — the override is scoped to "Studio is the ONLY reason".
+  it("keeps the generic body, and still links the Studio, when the Studio code shares the hold with another reason", () => {
+    renderReview([
+      SECOND_HOME_STUDIO_REVIEW_REASON_CODE,
+      "DISCLOSED_UNCERTAINTY_REVIEW",
+    ]);
+
+    expect(
+      screen.getByText(
+        "Your case needs a person’s judgment — nothing here was guessed on your behalf.",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: "Open the Second Home Studio" }),
+    ).toHaveAttribute("href", SECOND_HOME_STUDIO_URL);
+  });
+
+  // GUILT: the disclaimer's "always go to a human" line must not appear
+  // anywhere on the page when the Studio code is the only hold.
+  it("swaps the disclaimer's human line for Studio-specific copy when it is the only hold", () => {
+    const { container } = renderReview([SECOND_HOME_STUDIO_REVIEW_REASON_CODE]);
+    const disclaimer = container.querySelector(".oracle-disclaimer");
+    expect(disclaimer).toHaveTextContent(
+      "This hold is about a declared guarantee figure below the Second Home (E33) thresholds — the Second Home Studio shows the routes and the numbers for your case.",
+    );
+    expect(container.textContent).not.toMatch(/\ba human\b/i);
+    expect(container.textContent).not.toMatch(/consultant/i);
+  });
+
+  // GUILT (ID): "penahanan" reads as detention to an applicant — a decision
+  // hold on an immigration page must never be worded that way.
+  it("swaps the ID disclaimer line too, without detention or human wording", () => {
+    const { container } = renderReview(
+      [SECOND_HOME_STUDIO_REVIEW_REASON_CODE],
+      "id",
+    );
+    const disclaimer = container.querySelector(".oracle-disclaimer");
+    expect(disclaimer).toHaveTextContent(
+      "Hasil ini berkaitan dengan angka jaminan yang Anda nyatakan, yang masih di bawah ambang batas Rumah Kedua (E33)",
+    );
+    expect(disclaimer?.textContent ?? "").not.toMatch(/penahanan|ditahan/i);
+    expect(container.textContent).not.toMatch(/manusia/i);
+  });
+
+  // INNOCENCE: a mixed hold (Studio + another reason) keeps the generic
+  // "always go to a human" disclaimer line unchanged.
+  it("keeps the generic disclaimer line when the Studio code shares the hold with another reason", () => {
+    const { container } = renderReview([
+      SECOND_HOME_STUDIO_REVIEW_REASON_CODE,
+      "DISCLOSED_UNCERTAINTY_REVIEW",
+    ]);
+    const disclaimer = container.querySelector(".oracle-disclaimer");
+    expect(disclaimer).toHaveTextContent(
+      "Complex or flagged cases always go to a human — Ditjen Imigrasi decides, not this tool.",
+    );
+  });
+
+  // GUILT: the share text (built from the same headline VerdictReveal
+  // shows, per `engine-adapter.ts`'s `isSecondHomeStudioOnly`) must not
+  // carry "needs a human, not an algorithm" for a Studio-only hold.
+  it("builds Studio-specific share text with no human/algorithm wording", async () => {
+    renderReview([SECOND_HOME_STUDIO_REVIEW_REASON_CODE]);
+    const writeText = navigator.clipboard.writeText as ReturnType<typeof vi.fn>;
+    writeText.mockClear();
+    fireEvent.click(screen.getByRole("button", { name: "Copy summary" }));
+    await waitFor(() => expect(writeText).toHaveBeenCalledTimes(1));
+    const summary = writeText.mock.calls[0]?.[0] as string;
+    expect(summary).toContain("Below the Second Home guarantee threshold");
+    expect(summary).not.toMatch(/\ba human\b/i);
+    expect(summary).not.toMatch(/algorithm/i);
+  });
+
+  // INNOCENCE: any other review code keeps the pre-existing share headline.
+  it("keeps the generic human-review headline in share text for an unrelated review code", async () => {
+    renderReview(["DISCLOSED_UNCERTAINTY_REVIEW"]);
+    const writeText = navigator.clipboard.writeText as ReturnType<typeof vi.fn>;
+    writeText.mockClear();
+    fireEvent.click(screen.getByRole("button", { name: "Copy summary" }));
+    await waitFor(() => expect(writeText).toHaveBeenCalledTimes(1));
+    const summary = writeText.mock.calls[0]?.[0] as string;
+    expect(summary).toContain("This needs a human, not an algorithm");
   });
 });

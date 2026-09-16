@@ -138,11 +138,18 @@ QUALIFICATION_FACTS: frozenset[str] = frozenset(
 )
 
 #: The three ``§B2`` walks that answered with the generic catalogue sentence
-#: on seq-20, and the named cause each one must answer with on seq-21.
+#: on seq-20, and the named cause each one must answer with on seq-21. A
+#: fourth row (E23V-DEFECT, mission seq-22) joined later: the same
+#: already-existing ``hf.employment-without-indonesian-sponsor`` hard filter
+#: this fold added also fires on the new
+#: ``offshore/work/sponsor_government/trade_office_only/employer_no`` walk —
+#: measured identically to ``offshore/other/paid/employer_no`` above (GENERIC
+#: on seq-20, ``PAID_ACTIVITY_WITHOUT_INDONESIAN_SPONSOR`` on seq-21).
 NAMED_CAUSE_WALKS: dict[str, str] = {
     "offshore/invest/bank_deposit/below_threshold": E33_GUARANTEE_REASON,
     "offshore/invest/property/below_threshold": E33_GUARANTEE_REASON,
     "offshore/other/paid/employer_no": EMPLOYMENT_SPONSOR_REASON,
+    "offshore/work/sponsor_government/trade_office_only/employer_no": EMPLOYMENT_SPONSOR_REASON,
 }
 
 _GENERIC_CAUSE = "OPERATIONAL_NO_PRODUCT_MATCHES_DECLARED_PURPOSES"
@@ -1086,6 +1093,29 @@ class TestSponsorTypeAloneIsNotEvidence:
 # ---------------------------------------------------------------------------
 
 
+#: E23V-DEFECT (mission seq-22): the ONE walk whose "unasked" (pre-W-VO-Q)
+#: replay legitimately DOES drift between seq-20 and seq-21, and exactly why.
+#: With BOTH seq-21 qualification facts on the `sponsor.type == GOVERNMENT`
+#: branch back at UNKNOWN, `el.e33a.government-invitation` and
+#: `el.e23v.trade-office` are both undetermined — but on every OTHER walk on
+#: that branch `work.employer_is_indonesian_entity` stays the corpus default
+#: `true`, so E23 alone (unaffected by the two pending SUPPORT rules) already
+#: covers EMPLOYMENT and the decision stays decisive. This walk is the ONE
+#: exception: `work.employer_is_indonesian_entity = false` is NOT one of the
+#: ten qualification facts `_as_before_the_questions` strips, so it survives
+#: unasking and `hf.employment-without-indonesian-sponsor` (KNOWN, not
+#: pending) excludes E23 too — the corpus's only safety net on this branch —
+#: leaving E33A's own pending `sponsor.government_invitation` as the ONLY
+#: still-open question. Measured: seq-20 NO_SUPPORTED_PATH (), seq-21
+#: NEEDS_INPUT on `sponsor.government_invitation`.
+_UNASKED_DRIFT_ALLOWLIST: dict[str, tuple[str, str]] = {
+    "offshore/work/sponsor_government/trade_office_only/employer_no": (
+        "NO_SUPPORTED_PATH",
+        "NEEDS_INPUT",
+    ),
+}
+
+
 class TestCensusReplay:
     def test_without_the_answers_no_walk_changes_state_or_candidates(
         self,
@@ -1097,7 +1127,9 @@ class TestCensusReplay:
         UNKNOWN (the interview before W-VO-Q), no walk gains a product and —
         what must never happen — no walk loses its answer, and no
         ``on_unknown: NEEDS_INPUT`` rule turns a decided dead end into a
-        question."""
+        question, with exactly one named, checked exception —
+        ``_UNASKED_DRIFT_ALLOWLIST`` — where a dead end becomes a QUESTION
+        (never a lost answer) for a reason pinned above."""
         before = _replay(seq20_compiled, unasked_walks)
         after = _replay(seq21_compiled, unasked_walks)
         drift = [
@@ -1106,10 +1138,15 @@ class TestCensusReplay:
             for label in sorted(before)
             if (before[label]["state"], before[label]["candidates"])
             != (after[label]["state"], after[label]["candidates"])
+            and label not in _UNASKED_DRIFT_ALLOWLIST
         ]
         assert drift == []
+        for label, (before_state, after_state) in _UNASKED_DRIFT_ALLOWLIST.items():
+            assert before[label]["state"] == before_state, label
+            assert after[label]["state"] == after_state, label
+            assert before[label]["candidates"] == after[label]["candidates"] == [], label
 
-    def test_without_the_answers_the_census_is_89_answers_15_no_paths_2_questions(
+    def test_without_the_answers_the_census_is_89_answers_15_no_paths_3_questions(
         self,
         seq21_compiled: compiler.CompiledRulePack,
         unasked_walks: dict[str, dict[str, Any]],
@@ -1117,12 +1154,15 @@ class TestCensusReplay:
         """67 / 15 / 2 / 0 over the 84-walk corpus this fold was measured on;
         89 / 15 / 2 / 1 over W-VO-Q's 107 walks (W-VO-E's nine adult walks and
         W-VO-Q's thirteen are all answers on the signed pack, and the one hold is W-VO-E's
-        minor walk, held by the privacy adapter, not by this pack)."""
+        minor walk, held by the privacy adapter, not by this pack). E23V-DEFECT
+        (mission seq-22) adds one walk over a 107 -> 108 unasked corpus, and
+        it is the one exception in ``_UNASKED_DRIFT_ALLOWLIST`` above:
+        89 / 15 / 3 / 1."""
         replayed = _replay(seq21_compiled, unasked_walks)
         census = Counter(actual["state"] for actual in replayed.values())
         assert census["SUPPORTED_CANDIDATES"] == 89
         assert census["NO_SUPPORTED_PATH"] == 15
-        assert census["NEEDS_INPUT"] == 2
+        assert census["NEEDS_INPUT"] == 3
         assert census["HUMAN_REVIEW_REQUIRED"] == 1
         held = [
             label
@@ -1181,7 +1221,7 @@ class TestCensusReplay:
         ]
         assert offenders == []
 
-    def test_the_three_generic_dead_ends_now_name_their_cause(
+    def test_the_four_generic_dead_ends_now_name_their_cause(
         self,
         seq20_compiled: compiler.CompiledRulePack,
         seq21_compiled: compiler.CompiledRulePack,

@@ -28,6 +28,7 @@ import { EvaluationRunCache } from "../_lib/evaluation-run-cache";
 import {
   buildEngineOutcome,
   buildInternalPreviewOutcome,
+  isSecondHomeStudioOnly,
 } from "../_lib/engine-adapter";
 import { VisaOracleResponseError } from "../_lib/engine-response";
 import { buildPreviewOutcome } from "../_lib/preview-adapter";
@@ -1001,6 +1002,7 @@ function OracleShellRuntime({
                     state={outcome.state}
                     provenance={outcome.provenance}
                     legalStatus={outcome.candidates[0]?.legal.status}
+                    isSecondHomeStudioOnly={isSecondHomeStudioOnly(outcome)}
                   />
                   <OutcomeSheet
                     language={language}

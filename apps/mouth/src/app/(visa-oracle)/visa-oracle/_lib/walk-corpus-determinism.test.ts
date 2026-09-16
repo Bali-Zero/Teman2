@@ -85,8 +85,14 @@ import {
  * seventeen new walks are the new `capital_market` vehicle's default walk,
  * one product per walk, the honest "no" on each question, and four business
  * explorers (`business_activity = exploring`, the D12 sequence).
- * See generate-walk-corpus.ts. */
-const EXPECTED_WALK_COUNT = 111;
+ * See generate-walk-corpus.ts.
+ *
+ * 111 → 112 on E23V-DEFECT (mission seq-22): one new walk,
+ * `offshore/work/sponsor_government/trade_office_only/employer_no` — the
+ * `trade_office_only` branch's own `work_payer` answered "no" instead of the
+ * corpus-wide default "yes", the honest trade-office employee whose employer
+ * is not an Indonesian entity. No existing fixture changes a byte. */
+const EXPECTED_WALK_COUNT = 112;
 
 function jsonFilesIn(dir: string): string[] {
   return readdirSync(dir)

@@ -2,16 +2,21 @@
 
 ``test_gold_coverage_floor.py`` proves the pack can support a product when
 every fact arrives. This file proves the opposite half, and it is the half
-the user lives in: replay the **111 real interview walks** — every distinct
+the user lives in: replay the **112 real interview walks** — every distinct
 path through ``flow.ts``'s two-arm spine and ``getCategoryQuestionIds``'
 eleven categories, each answered through the real ``fact-mapper.ts`` —
 against the highest signed PRODUCTION pack, and pin the outcome census.
-Current ENGINE census (W-VO-Q, 2026-09-14), on signed seq-20: **1
-HUMAN_REVIEW_REQUIRED / 2 NEEDS_INPUT / 16 NO_SUPPORTED_PATH / 92
-SUPPORTED_CANDIDATES** (W-VO-E's 94-walk figure was 76); on signed seq-21
-**1 / 1 / 16 / 93** — the pins are kept per signed sequence
+Current ENGINE census (E23V-DEFECT, mission seq-22, 2026-09-15), on signed
+seq-20: **1 HUMAN_REVIEW_REQUIRED / 2 NEEDS_INPUT / 17 NO_SUPPORTED_PATH /
+92 SUPPORTED_CANDIDATES** (W-VO-E's 94-walk figure was 76; W-VO-Q's 111-walk
+figure was 16 NO_SUPPORTED_PATH); on signed seq-21 **1 / 1 / 17 / 93**; on
+the seq-22 fold that actually CURES the E23V defect (``fold_pack_seq22.py``),
+now carrying D23 "OPTION B-STUDIO" (2026-09-16) — the highest candidate
+source above signed seq-20 today, seq-21 having been signed (2026-09-15) but
+stopped before ACTIVATION, its bundle never entering this repo — **3 / 1 /
+14 / 94** — the pins are kept per candidate/signed sequence
 (``EXPECTED_OUTCOME_BY_SEQUENCE``), so the census stays green on both sides
-of the seq-21 signature. The FUNNEL
+of a signature. The FUNNEL
 census the applicant actually meets is the second column of the table under
 "THE DISCLOSURE-FLAG LAYER" below. The paragraphs below are the historical
 record of how it got here, each keeping the count that was true when it was
@@ -343,10 +348,12 @@ _AS_OF = _parse_utc(_HIGHEST_SIGNED_PACK["protected"]["signed_at"])
 #: The sequence every per-walk pin below is read for. W-VO-Q (mission
 #: SAETTA-VO3): the pins are kept PER SIGNED SEQUENCE, because the census has
 #: to stay green on both sides of a signature — on main while seq-20 is the
-#: highest signed pack, and in the PR that lands the signed seq-21 bundle,
-#: which changes no walk's facts but does change what the engine answers. A
-#: signed sequence with no pins fails `test_the_census_pins_the_signed_sequence`
-#: by name instead of quietly grading against the previous one.
+#: highest signed pack, and in the PR that lands the next fold's signed
+#: bundle (seq-22 today; seq-21 was signed but stopped before activation and
+#: never entered this repo — see `fold_pack_seq22.py`), which changes no walk's
+#: facts but does change what the engine answers. A signed sequence with no
+#: pins fails `test_the_census_pins_the_signed_sequence` by name instead of
+#: quietly grading against the previous one.
 _SIGNED_SEQUENCE = int(_HIGHEST_SIGNED_PACK["payload"]["sequence"])
 
 
@@ -528,6 +535,10 @@ WALK_DEAD_END_ALLOWLIST_BY_SEQUENCE: dict[int, dict[str, tuple[DeadEnd, ...]]] =
         "offshore/retirement/undecided/age64/still_unsure": _STILL_UNSURE_RETIREMENT_ROW,
     },
     21: {"offshore/retirement/undecided/age64/still_unsure": _STILL_UNSURE_RETIREMENT_ROW},
+    # E23V-DEFECT (mission seq-22): unchanged from seq-21 — the walk this
+    # fold cures was never allowlisted (it dead-ended on NO_SUPPORTED_PATH,
+    # an ANSWER, not a NEEDS_INPUT this table would need to excuse).
+    22: {"offshore/retirement/undecided/age64/still_unsure": _STILL_UNSURE_RETIREMENT_ROW},
 }
 WALK_DEAD_END_ALLOWLIST: dict[str, tuple[DeadEnd, ...]] = WALK_DEAD_END_ALLOWLIST_BY_SEQUENCE.get(
     _SIGNED_SEQUENCE, {}
@@ -930,6 +941,16 @@ _EXPECTED_OUTCOME_ON_SEQ20: dict[str, tuple[str, tuple[str, ...]]] = {
     "offshore/work/sponsor_government/invitation_only": ("SUPPORTED_CANDIDATES", ("E23",)),
     "offshore/work/sponsor_government/neither": ("SUPPORTED_CANDIDATES", ("E23",)),
     "offshore/work/sponsor_government/trade_office_only": ("SUPPORTED_CANDIDATES", ("E23",)),
+    # E23V-DEFECT (seq-22): the trade-office applicant whose employer is
+    # genuinely NOT an Indonesian entity — el.e23-employment-support already
+    # requires `work.employer_is_indonesian_entity == true` on seq-20, so
+    # this walk dead-ends on the generic cause. Measured
+    # (`_decide` against `_signed_pack()`): NO_SUPPORTED_PATH, candidates
+    # (), reason OPERATIONAL_NO_PRODUCT_MATCHES_DECLARED_PURPOSES.
+    "offshore/work/sponsor_government/trade_office_only/employer_no": (
+        "NO_SUPPORTED_PATH",
+        (),
+    ),
     "offshore/work/sponsor_individual/not_diplomatic": ("SUPPORTED_CANDIDATES", ("E23",)),
 }
 
@@ -995,9 +1016,38 @@ _SEQ21_OUTCOME_CHANGES: dict[str, tuple[str, tuple[str, ...]]] = {
     "onshore/work": ("SUPPORTED_CANDIDATES", ("E23", "E33B")),
 }
 
+#: E23V-DEFECT (mission seq-22): seq-22's changes over seq-20, identical to
+#: `_SEQ21_OUTCOME_CHANGES` with three additions.
+#:
+#: 1. The walk seq-21 added AFTER it (mission seq-22, corpus 111 -> 112) and
+#:    never itself moved on seq-21. `fold_pack_seq22.py` scopes
+#:    `hf.employment-without-indonesian-sponsor` to `("E23", "E33B")` only
+#:    (E23V removed, DEFECT 1 cured), so this trade-office applicant's
+#:    honest `work.employer_is_indonesian_entity == false` no longer
+#:    excludes E23V — the walk answers instead of dead-ending.
+#: 2. and 3. D23 "OPTION B-STUDIO" (2026-09-16, DEFECT 3's redesign): the two
+#:    `offshore/invest/{property,bank_deposit}/below_threshold` walks move
+#:    from `NO_SUPPORTED_PATH` to `HUMAN_REVIEW_REQUIRED`, held by
+#:    `review.e33.below-threshold-studio` (`SECOND_HOME_BELOW_THRESHOLD_
+#:    STUDIO`) — each walk's own DECLARED figure (property 500_000 <
+#:    1_000_000; deposit 50_000 < 130_000) is below its own threshold, and
+#:    the twin basis's SYNTHESISED `known(0)` conjunct is along for the ride,
+#:    never the cause (see `fold_pack_seq22.py`'s DEFECT 3). Neither walk had
+#:    a candidate to lose. Measured against `rulepack-prod-022.source.json`.
+_SEQ22_OUTCOME_CHANGES: dict[str, tuple[str, tuple[str, ...]]] = {
+    **_SEQ21_OUTCOME_CHANGES,
+    "offshore/work/sponsor_government/trade_office_only/employer_no": (
+        "SUPPORTED_CANDIDATES",
+        ("E23V",),
+    ),
+    "offshore/invest/property/below_threshold": ("HUMAN_REVIEW_REQUIRED", ()),
+    "offshore/invest/bank_deposit/below_threshold": ("HUMAN_REVIEW_REQUIRED", ()),
+}
+
 EXPECTED_OUTCOME_BY_SEQUENCE: dict[int, dict[str, tuple[str, tuple[str, ...]]]] = {
     20: _EXPECTED_OUTCOME_ON_SEQ20,
     21: {**_EXPECTED_OUTCOME_ON_SEQ20, **_SEQ21_OUTCOME_CHANGES},
+    22: {**_EXPECTED_OUTCOME_ON_SEQ20, **_SEQ22_OUTCOME_CHANGES},
 }
 EXPECTED_OUTCOME: dict[str, tuple[str, tuple[str, ...]]] = EXPECTED_OUTCOME_BY_SEQUENCE.get(
     _SIGNED_SEQUENCE, {}
@@ -1026,10 +1076,14 @@ EXPECTED_STATE_CENSUS: dict[str, int] = dict(
 #: WALK_DEAD_END_ALLOWLIST above) rather than allowlisted, so they never
 #: reach NEEDS_INPUT and never appear here. Two facts remain, one each.
 #: W-VO-Q: one on seq-21, where the E23 sponsor row is cured (see
-#: `WALK_DEAD_END_ALLOWLIST_BY_SEQUENCE`).
+#: `WALK_DEAD_END_ALLOWLIST_BY_SEQUENCE`). E23V-DEFECT (mission seq-22): the
+#: employer_no walk this fold cures was never a dead end on seq-21 either
+#: (it was NO_SUPPORTED_PATH, not NEEDS_INPUT), so it drops out of neither
+#: table — seq-22 reads identically to seq-21 here.
 EXPECTED_DEAD_END_FACT_CENSUS_BY_SEQUENCE: dict[int, dict[str, int]] = {
     20: {"work.indonesian_work_sponsor_confirmed": 1, "family.sponsor_confirmed": 1},
     21: {"family.sponsor_confirmed": 1},
+    22: {"family.sponsor_confirmed": 1},
 }
 EXPECTED_DEAD_END_FACT_CENSUS: dict[str, int] = EXPECTED_DEAD_END_FACT_CENSUS_BY_SEQUENCE.get(
     _SIGNED_SEQUENCE, {}
@@ -1657,7 +1711,7 @@ def candidate_funnel_named(
     return _funnel_named_products(walks, candidate_pack)
 
 
-def test_corpus_is_the_111_real_interview_walks(walks: dict[str, dict[str, Any]]) -> None:
+def test_corpus_is_the_112_real_interview_walks(walks: dict[str, dict[str, Any]]) -> None:
     """An empty or shrunken corpus fails loudly: a census that passes because
     nobody fed it any walks is the green-but-dead shape (cicatrix #2).
 
@@ -1733,9 +1787,22 @@ def test_corpus_is_the_111_real_interview_walks(walks: dict[str, dict[str, Any]]
     The new walks are the `capital_market` vehicle's default walk, one seq-21
     product per walk, the honest "no" on each question, and four business
     explorers (item 7: the D12 walk, with and without a sponsor, the default
-    and the named dead end)."""
+    and the named dead end).
 
-    assert len(walks) == 111, f"expected 111 interview walks, found {len(walks)}"
+    E23V-DEFECT (mission seq-22) adds 1, corpus 111 -> 112:
+    `offshore/work/sponsor_government/trade_office_only/employer_no`, the
+    `trade_office_only` branch's own `work_payer` answered "no" instead of
+    the corpus-wide default "yes". No existing fixture changes — `work_payer`
+    was already asked on this branch (`FIXED_CATEGORY_QUESTIONS.work`), only
+    never answered anything but the default. On signed seq-20 this walk
+    dead-ends on the generic cause (`el.e23-employment-support` already
+    requires `work.employer_is_indonesian_entity == true`); on the seq-21
+    candidate it dead-ends on `PAID_ACTIVITY_WITHOUT_INDONESIAN_SPONSOR`
+    instead (`hf.employment-without-indonesian-sponsor` sweeps E23V in) —
+    same (state, candidates) pin both sides, see the comment on this walk's
+    `EXPECTED_OUTCOME` row for what moved and what did not."""
+
+    assert len(walks) == 112, f"expected 112 interview walks, found {len(walks)}"
     assert sorted(walks) == sorted(EXPECTED_OUTCOME), "corpus and EXPECTED_OUTCOME disagree"
     for label, spec in walks.items():
         assert spec["asked"], f"{label}: walk carries no asked-question history"
@@ -1768,6 +1835,10 @@ def test_the_census_pins_the_signed_sequence() -> None:
     # Every seq-21 change is an ADDITION: no walk loses a candidate the
     # seq-20 table gave it (the one state change keeps no candidate to lose).
     for label, (_state, candidates) in _SEQ21_OUTCOME_CHANGES.items():
+        assert set(_EXPECTED_OUTCOME_ON_SEQ20[label][1]) <= set(candidates), label
+    # Same check for seq-22: the employer_no row goes from () to (E23V,),
+    # still an addition (it had nothing to lose).
+    for label, (_state, candidates) in _SEQ22_OUTCOME_CHANGES.items():
         assert set(_EXPECTED_OUTCOME_ON_SEQ20[label][1]) <= set(candidates), label
 
 
@@ -1806,12 +1877,16 @@ def test_every_walk_ends_in_its_pinned_outcome_on_the_candidate_pack(
     walks: dict[str, dict[str, Any]],
     candidate_pack: PackUnderTest,
 ) -> None:
-    """The next sequence's pins, exercised BEFORE its signature: while seq-21
-    is an unsigned source above signed seq-20, the corpus is graded against
-    it with the seq-21 table, so those pins are proven on main today and not
-    first in the PR that lands the bundle. Once seq-21 is signed this skips
-    and ``test_every_walk_ends_in_its_pinned_outcome`` grades the same table
-    against the verified bytes."""
+    """The next sequence's pins, exercised BEFORE its signature: while an
+    unsigned source sits above signed seq-20, the corpus is graded against
+    it with that sequence's own table, so those pins are proven on main
+    today and not first in the PR that lands the bundle. The candidate is
+    the HIGHEST such source — seq-22 today (``_candidate_source_pack_path``);
+    when this test was written it was seq-21, which was signed but stopped
+    before activation and never entered this repo (``fold_pack_seq22.py``),
+    so seq-22 took its place with no code change here. Once the current candidate is
+    signed this skips and ``test_every_walk_ends_in_its_pinned_outcome``
+    grades the same table against the verified bytes."""
 
     sequence = candidate_pack.compiled.sequence
     assert sequence in EXPECTED_OUTCOME_BY_SEQUENCE, f"no pins for candidate seq-{sequence}"
@@ -1889,21 +1964,56 @@ def test_walk_state_census_is_the_pinned_census_of_the_signed_sequence(
     the census is 1/1/16/93: ``offshore/other/paid/sponsor_unsure`` is
     answered by E33B (see ``_SEQ21_OUTCOME_CHANGES``). The literal is kept
     per signed sequence, so the PR that lands the seq-21 bundle moves no pin
-    here."""
+    here.
+
+    E23V-DEFECT (mission seq-22) adds 1 walk over a 111 -> 112 corpus:
+    ``offshore/work/sponsor_government/trade_office_only/employer_no``. On
+    BOTH signed seq-20 and the seq-21 candidate it ends NO_SUPPORTED_PATH
+    (16 -> 17), with two different reason codes (see the walk's own
+    ``EXPECTED_OUTCOME`` comment) — the (state, candidates) pin does not
+    move, so it needs no ``_SEQ21_OUTCOME_CHANGES`` row. No existing walk
+    moves.
+
+    THE SEQ-22 FOLD (a previous PR) added no walk — the corpus stayed 112 —
+    and cured the defect the walk above is named for:
+    ``fold_pack_seq22.py`` scopes ``hf.employment-without-indonesian-
+    sponsor`` to ``("E23", "E33B")`` only, so the employer_no walk's pin
+    finally MOVED, against the seq-22 candidate (the highest candidate
+    source above signed seq-20 today — seq-21 was signed but stopped before
+    activation and never entered this repo): SUPPORTED_CANDIDATES [E23V],
+    1/1/17/93 -> 1/1/16/94 over the same 112-walk corpus. No other walk
+    moved then.
+
+    D23 "OPTION B-STUDIO" (THIS PR, 2026-09-16) redesigns DEFECT 3: the
+    HARD_FILTER/EXCLUDE seq-21 added and the first seq-22 fold deleted comes
+    back as ``review.e33.below-threshold-studio``, a REQUIRE_REVIEW on the
+    SAME two thresholds (see ``fold_pack_seq22.py``'s DEFECT 3 and
+    ``_SEQ22_OUTCOME_CHANGES``). The two walks that used to prove the
+    deletion cost nothing — ``offshore/invest/{property,bank_deposit}/
+    below_threshold`` — now hold on ``SECOND_HOME_BELOW_THRESHOLD_STUDIO``
+    instead of answering ``NO_SUPPORTED_PATH``: 1/1/16/94 -> 3/1/14/94 over
+    the same 112-walk corpus. No other walk moves; SUPPORTED_CANDIDATES is
+    unaffected because neither walk ever named a candidate."""
 
     census = dict(Counter(outcome["state"] for outcome in outcomes.values()))
     by_sequence = {
         20: {
             "HUMAN_REVIEW_REQUIRED": 1,
             "NEEDS_INPUT": 2,
-            "NO_SUPPORTED_PATH": 16,
+            "NO_SUPPORTED_PATH": 17,
             "SUPPORTED_CANDIDATES": 92,
         },
         21: {
             "HUMAN_REVIEW_REQUIRED": 1,
             "NEEDS_INPUT": 1,
-            "NO_SUPPORTED_PATH": 16,
+            "NO_SUPPORTED_PATH": 17,
             "SUPPORTED_CANDIDATES": 93,
+        },
+        22: {
+            "HUMAN_REVIEW_REQUIRED": 3,
+            "NEEDS_INPUT": 1,
+            "NO_SUPPORTED_PATH": 14,
+            "SUPPORTED_CANDIDATES": 94,
         },
     }
     assert census == EXPECTED_STATE_CENSUS == by_sequence[_SIGNED_SEQUENCE]
@@ -1933,7 +2043,7 @@ def test_walk_state_census_is_the_pinned_census_of_the_signed_sequence(
     minor_walk = _load_walks()["offshore/family/PARENT/spNat=IT/minor"]
     public = _public_decision(minor_walk["overrides"], "offshore/family/PARENT/spNat=IT/minor")
     assert [reason.code for reason in public.review_reasons] == ["MINOR_GUARDIAN_PRIVACY_REVIEW"]
-    assert census["NO_SUPPORTED_PATH"] == 16
+    assert census["NO_SUPPORTED_PATH"] == 17
 
 
 def test_dead_end_fact_census_matches_the_blocking_fact_table(
@@ -2054,13 +2164,19 @@ def test_allowlist_has_exactly_the_two_pr_d3_rows() -> None:
 
     W-VO-Q: named per signed sequence — the two rows on seq-20, and on seq-21
     only the retirement row, because the tree's new government-collaboration
-    question cures the other (see `WALK_DEAD_END_ALLOWLIST_BY_SEQUENCE`)."""
+    question cures the other (see `WALK_DEAD_END_ALLOWLIST_BY_SEQUENCE`).
+    E23V-DEFECT (mission seq-22): unchanged from seq-21 — the walk this fold
+    cures answers instead of dead-ending, so it was never a row here to
+    remove."""
 
     assert set(WALK_DEAD_END_ALLOWLIST_BY_SEQUENCE[20]) == {
         "offshore/other/paid/sponsor_unsure",
         "offshore/retirement/undecided/age64/still_unsure",
     }
     assert set(WALK_DEAD_END_ALLOWLIST_BY_SEQUENCE[21]) == {
+        "offshore/retirement/undecided/age64/still_unsure",
+    }
+    assert set(WALK_DEAD_END_ALLOWLIST_BY_SEQUENCE[22]) == {
         "offshore/retirement/undecided/age64/still_unsure",
     }
     assert WALK_DEAD_END_ALLOWLIST is WALK_DEAD_END_ALLOWLIST_BY_SEQUENCE[_SIGNED_SEQUENCE]
@@ -2740,9 +2856,13 @@ def test_every_support_bearing_product_is_named_by_some_walk(
     )
 
 
-#: The candidate pack's catalogue, measured 2026-09-14 on
-#: rulepack-prod-021.source.json: the same 38 product codes as seq-20, and
-#: every one of them carries a SUPPORT rule once seq-21's nine are in force.
+#: The candidate pack's catalogue: 38 product codes, unchanged since seq-20.
+#: Measured 2026-09-14 on rulepack-prod-021.source.json when seq-21 was the
+#: candidate; re-measured 2026-09-16 on rulepack-prod-022.source.json, the
+#: candidate today (seq-21 was signed but stopped before activation and
+#: never entered this repo — see `fold_pack_seq22.py`) — same count, every
+#: code still carrying a SUPPORT rule once the nine seq-21/seq-22 products
+#: are in force.
 CANDIDATE_CATALOGUE_SIZE = 38
 
 
@@ -2751,15 +2871,19 @@ def test_every_support_bearing_product_of_the_candidate_pack_is_named_by_some_wa
     candidate_engine_named: dict[str, tuple[str, ...]],
 ) -> None:
     """W-VO-Q's acceptance, measured rather than asserted: against the
-    UNSIGNED candidate (seq-21), every product in the catalogue carries a
-    SUPPORT rule, and every one of them is named by at least one interview
-    walk — except the one product an owner ruling forbids the funnel to reach
+    UNSIGNED candidate — the highest unsigned source above the highest
+    signed pack, seq-22 today (seq-21 when this test was written; seq-21 was
+    signed but stopped before activation and never entered this repo, see
+    `fold_pack_seq22.py`) — every product in the catalogue carries a SUPPORT
+    rule, and every one of them is named by at least one interview walk —
+    except the one product an owner ruling forbids the funnel to reach
     (``UNREACHABLE_BY_RULING``), which is still accounted for by name.
 
-    The signed default above cannot see this: seq-21's nine new SUPPORT rules
-    exist in no signed pack, so a tree that stopped asking their facts would
-    stay green there. This mode grades the same corpus against the pack that
-    will be signed, which is the only place the ten new questions can fail.
+    The signed default above cannot see this: the candidate's nine new
+    SUPPORT rules exist in no signed pack, so a tree that stopped asking
+    their facts would stay green there. This mode grades the same corpus
+    against the pack that will be signed, which is the only place the ten
+    new questions can fail.
     """
 
     catalogue = {product.product_code for product in candidate_pack.compiled.products}
@@ -2788,8 +2912,9 @@ def test_the_candidate_ruling_row_still_depends_on_its_forbidden_fact(
 
 
 #: The nine products the candidate pack makes supportable, as the census
-#: measures them: named at engine level against seq-21 and on no walk against
-#: the signed pack.
+#: measures them: named at engine level against the candidate (seq-22 today,
+#: seq-21 when first measured — the same nine products, unaffected by
+#: seq-22's two cures) and on no walk against the signed pack.
 SEQ21_ADDED_PRODUCTS = ("E23U", "E23V", "E28B", "E28C", "E28D", "E28F", "E33A", "E33B", "E33C")
 
 

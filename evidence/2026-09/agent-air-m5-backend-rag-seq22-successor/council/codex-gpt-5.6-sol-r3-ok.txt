@@ -1,0 +1,7 @@
+PROVEN (1) — The ID sentence is natural, detention-free, contains no human/person/consultant/advisor wording, and preserves the EN meaning: `i18n.ts:977-978`, `i18n.ts:1970-1971`.
+
+PROVEN (2) — The test asserts the new ID text and rejects both `penahanan` and `ditahan`: `OutcomeSheet.test.tsx:789-799`. It would fail twice against the old wording at base `i18n.ts:1969-1970`.
+
+PROVEN (3) — The cure changes only the intended translation/comment and adds its focused regression test: `i18n.ts:1969-1971`, `OutcomeSheet.test.tsx:787-799`. No other files or hunks changed. Pre-existing `Penahanan` under `CLIENT_GUARD` remains out of scope at `i18n.ts:1944-1946`.
+
+VERDICT: OK
