@@ -855,13 +855,13 @@
 47221 | Perdagangan Eceran Minuman Beralkohol | TERBATAS | special | Tinggi
 47222 | Perdagangan Eceran Minuman Tidak Beralkohol | TERBATAS | 0% | Rendah
 47230 | Perdagangan Eceran Rokok dan Tembakau | NOT_VERIFIED | Not verified | Rendah
-47241 | Perdagangan Eceran Beras | TERBATAS | 0% | Rendah
-47242 | Perdagangan Eceran Roti, Kue Kering, serta Kue Basah dan Sejenisnya | TERBATAS | 0% | Rendah
+47241 | Perdagangan Eceran Beras | NOT_VERIFIED | Not verified | Rendah
+47242 | Perdagangan Eceran Roti, Kue Kering, serta Kue Basah dan Sejenisnya | NOT_VERIFIED | Not verified | Rendah
 47243 | Perdagangan Eceran Kopi, Gula Pasir, Gula Merah, dan Sejenisnya | NOT_VERIFIED | Not verified | Rendah
-47244 | Perdagangan Eceran Tahu, Tempe, Tauco, dan Oncom | TERBATAS | 0% | Rendah
-47245 | Perdagangan Eceran Daging Olahan | TERBATAS | 0% | Rendah
-47246 | Perdagangan Eceran Ikan Olahan | TERBATAS | 0% | Rendah
-47249 | Perdagangan Eceran Makanan Lainnya | TERBATAS | 0% | Rendah
+47244 | Perdagangan Eceran Tahu, Tempe, Tauco, dan Oncom | NOT_VERIFIED | Not verified | Rendah
+47245 | Perdagangan Eceran Daging Olahan | NOT_VERIFIED | Not verified | Rendah
+47246 | Perdagangan Eceran Ikan Olahan | NOT_VERIFIED | Not verified | Rendah
+47249 | Perdagangan Eceran Makanan Lainnya | NOT_VERIFIED | Not verified | Rendah
 47301 | Perdagangan Eceran Bahan Bakar di Sarana Pengisian Bahan Bakar | NOT_VERIFIED | Not verified | Menengah Tinggi
 47302 | Perdagangan Eceran Bahan Bakar Selain di Sarana Pengisian Bahan Bakar | NOT_VERIFIED | Not verified | Menengah Tinggi
 47303 | Perdagangan Eceran Minyak Pelumas | NOT_VERIFIED | Not verified | Rendah
@@ -893,11 +893,11 @@
 47630 | Perdagangan Eceran Alat Permainan dan Mainan | NOT_VERIFIED | Not verified | Rendah
 47690 | Perdagangan Eceran Khusus Barang Kesenian dan Rekreasi YTDL | NOT_VERIFIED | Not verified | Rendah
 47711 | Perdagangan Eceran Pakaian | NOT_VERIFIED | Not verified | Rendah
-47712 | Perdagangan Eceran Sepatu, Sandal, dan Alas Kaki Lainnya | TERBATAS | 0% | Rendah
+47712 | Perdagangan Eceran Sepatu, Sandal, dan Alas Kaki Lainnya | NOT_VERIFIED | Not verified | Rendah
 47713 | Perdagangan Eceran Perlengkapan Pakaian | NOT_VERIFIED | Not verified | Rendah
 47714 | Perdagangan Eceran Tas, Dompet, Koper, Ransel, dan Sejenisnya | NOT_VERIFIED | Not verified | Rendah
 47721 | Perdagangan Eceran Sediaan Farmasi untuk Manusia di Apotek | NOT_VERIFIED | Not verified | Menengah Tinggi
-47722 | Perdagangan Eceran Sediaan Farmasi untuk Manusia Selain di Apotek | TERBATAS | 0% | Menengah Rendah
+47722 | Perdagangan Eceran Sediaan Farmasi untuk Manusia Selain di Apotek | NOT_VERIFIED | Not verified | Menengah Rendah
 47723 | Perdagangan Eceran Obat Bahan Alam untuk Manusia | NOT_VERIFIED | Not verified | Menengah Rendah
 47724 | Perdagangan Eceran Kosmetik untuk Manusia | NOT_VERIFIED | Not verified | Menengah Rendah
 47725 | Perdagangan Eceran Alat Kesehatan untuk Manusia | NOT_VERIFIED | Not verified | Menengah Rendah
