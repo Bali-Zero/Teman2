@@ -1,0 +1,975 @@
+# Gear-3 evidence pack — visa_oracle_sessions 30-day retention, successor of PR #6478
+# (mandate SAETTA R2, Dux = parent session, M5). Written by the same session that built the
+# migration and the test, in this worktree (sole writer, per the task's own worktree-discipline
+# constraint) — there is no separate evidence-pack-writer lane on this small a change. Every
+# receipt below is a command this session actually executed in this authoring turn
+# (anti-hallucination discipline); nothing is narrated from memory or from #6478's own history
+# without a fresh command backing it this turn.
+#
+# EXTENDED same-slice (2026-09-17, second authoring turn) by a Dux finding measured read-only on
+# PROD: visa_oracle_sessions had 20 rows, 17 already past expires_at, oldest created 2026-04-13 —
+# nothing deleted them, so the DEFAULT change alone enforced no retention. This turn adds the
+# scheduled, handoff-safe purge that actually enforces it. Every receipt in the newly-added block
+# below is likewise a command this session executed in THIS turn.
+#
+# EXTENDED AGAIN (2026-09-17, third authoring turn) by a Dux REVIEW of the second turn's
+# scheduling mechanism: a launchd `.plist.example` + wrapper that no one installs, wanting its
+# own DATABASE_URL with DELETE on PROD, is superscar #2 ("exists != armed") — the purge would
+# never actually run. This turn replaces that mechanism with an in-process asyncio loop inside
+# the `api` Fly process (the one that already holds the pool and already serves
+# /api/visa-oracle), removes the now-superseded plist/wrapper/one-shot-worker/ops-test, and
+# re-measures the floor and lint on the new diff. The receipts from the second turn describing
+# the superseded artifacts are LEFT IN PLACE below as a true record of commands this session
+# actually ran at the time — not deleted, since they were not false when written — but the
+# CURRENT acceptance C probe and consumer_map now point at the replacement.
+gear: 3
+brief_ref: evidence/brief.yml
+ruling: mandate SAETTA R2 (Dux = parent session, M5)
+mission: >-
+  SAETTA R2, M5 — visa_oracle_sessions 30-day retention, successor of PR #6478 (armed, frozen,
+  no evidence pack, can never pass), extended to enforce the retention with a scheduled purge.
+lanes:
+  - lane: vo-sessions-retention-v2
+    role: build
+    seat: >-
+      Claude (implementer session, M5, worktree
+      .worktrees/backend-rag-vo-sessions-retention-v2) — sole writer per this mandate's own
+      constraint; no separate evidence-writer session for a single-migration-file change. Commit
+      trailer uses "Claude Opus 5" per this repo's standing convention
+      (apps/backend-rag/CLAUDE.md §8 Golden Rule #12: "matches what the harness itself appends").
+  - lane: vo-sessions-retention-v2-council-codex
+    role: review
+    seat: >-
+      codex-gpt-5.6-sol (review seat, read-only sandbox, reasoning high) — r1 on 48c40e5078
+      CHANGES (BROKEN 7, 8, 10; council/codex-gpt-5.6-sol-r1-changes.txt), r2 on 918f51a328 OK
+      (claims 1-10 PROVEN; council/codex-gpt-5.6-sol-r2-ok.txt). Prompts council/prompt-r1-codex.txt
+      (as run) and council/prompt-r2-codex.txt.
+  - lane: vo-sessions-retention-v2-council-agy
+    role: review
+    seat: >-
+      agy-gemini-3.1-pro (review seat, Gemini 3.1 Pro High, prompt + inline code diff) — r1 on
+      48c40e5078 CHANGES (BROKEN 10; council/agy-gemini-3.1-pro-r1-changes.txt), r2 on 918f51a328
+      OK (claims 1-10 PROVEN; council/agy-gemini-3.1-pro-r2-ok.txt). Prompts
+      council/prompt-r1-agy.txt (as run) and council/prompt-r2-agy.txt.
+  - lane: vo-sessions-retention-v2-ground-truth
+    role: ground_truth
+    seat: >-
+      this session (M5) — the change (now including a new file under backend/scripts/
+      visa_engine/) touches no KB/regulatory dataset; ground truth is the router's INSERT/DELETE
+      statements and the migration runner's own pending logic, both read directly from disk this
+      turn, never from a notebook.
+    nb: >-
+      No NotebookLM query exists for this lane and none was invented: the 30-day figure is not a
+      new regulatory number requiring an NB lookup — it is Zero's own already-recorded ruling
+      (docs/plans/2026-08-24-visa-oracle-live/OWNER-RULINGS-2026-08-25.md §3), quoted verbatim in
+      both this migration's header and brief.yml above. `query_hash` below grounds the claim in
+      CODE instead: sha256 of the two files this session's decisions rest on
+      (backend/app/routers/visa_oracle.py + backend/db/migration_manager.py), read verbatim via
+      `git show HEAD:<path>` at this commit, concatenated in that order.
+    query_hash: "aa9d58c4bf947b1f762d7589a5958f8fe6e6ce720c3f3b22b1991a8dd955e063" # pragma: allowlist secret
+council_run: council/journal.jsonl
+seat_fallback_reason: >-
+  agy-gemini-3.1-pro (reserve) replaced tp1-qwen3.8-max (titolare). `python3
+  scripts/arsenal_probe.py --seats kimi,tp1-qwen3.8-max,codex,agy` on M5 at 2026-09-16T18:53:00Z
+  returned tp1-qwen3.8-max QUOTA_DEAD: HTTP 429, "1-week quota has been exhausted", reset
+  2026-09-18 08:39 UTC. The other remaining titolare, kimi-code/k3, returned TIMEOUT (15074 ms)
+  on the same probe and was already missing from this session's SessionStart arsenal probe
+  (PARTIAL 1/16, "missing: ... kimi ..."). The third titolare, codex-gpt-5.6-sol, did play and
+  holds the other quorum seat.
+pii_scan: clean
+bites:
+  consumer: >-
+    Two, both required: (1) apps/backend-rag/backend/app/routers/visa_oracle.py::
+    _persist_session_create — the sole INSERT path for new visa_oracle_sessions rows; its INSERT
+    statement names only (session_id, quiz_answers, recommended_visas, ip_hash), never
+    expires_at, so the column's DEFAULT is what applies to every new row. (2) THE PURGE LOOP —
+    `_run_visa_oracle_sessions_purge_scheduler` (apps/backend-rag/backend/app/main_api.py:615),
+    spawned automatically by `lifespan_light` on every `api` Fly machine at boot — the consumer
+    that turns the DEFAULT into an actually-enforced retention by deleting rows once they age
+    past it, with no separate install step (superseding the launchd-plist design the Dux
+    reviewed and rejected in the previous turn).
+  observation: >-
+    Two, both owed by the Dux post-merge: (1) PROD's information_schema.columns.column_default
+    for visa_oracle_sessions.expires_at reads the 30-day expression, not 90 — e.g.
+    `SELECT column_default FROM information_schema.columns WHERE table_name =
+    'visa_oracle_sessions' AND column_name = 'expires_at';` against nuzantara-postgres.
+    (2) PROD's count of `expires_at < now() AND NOT COALESCE(handoff_triggered, false)` on
+    visa_oracle_sessions drops to 0 within roughly one hour of deploy — no install step or
+    machine-local flag flip is a precondition any more, since the loop starts inside the `api`
+    process itself (first tick fires 30-120s after boot, then hourly +/- 5min jitter); the
+    17-of-20 backlog the Dux measured this turn is the first real exercise of that observation.
+decisions:
+  - id: D-gear
+    decision: >-
+      Gear 3. Measured this turn with `apps/backend-rag/.venv/bin/python
+      scripts/evidence_pack_lint.py --print-floor --changed-files-file <changed> --numstat-file
+      <numstat>` on the merge-base diff (c1db269aa9601914ec77250f7748f0ac2352cf55 # pragma: allowlist secret
+      ...a76050925ca29ec1bf3b4c4882be913986a03b5d # pragma: allowlist secret
+      ): floor 3. `--print-floor-source` (run separately — the script returns early on
+      `--print-floor` before reaching the source branch, confirmed by reading main() this turn,
+      evidence_pack_lint.py:4612-4644) reports source "path": the migrations_v2/*.sql path alone
+      triggers HOTZONE_PATTERNS regardless of this PR's small size (net churn +263, well under
+      SIZE_GEAR3_THRESHOLD 1,828).
+  - id: D-numbering
+    decision: >-
+      317 is KEPT, not renumbered. Re-measured this turn: `git ls-tree -r --name-only origin/main
+      -- apps/backend-rag/backend/db/migrations_v2/` shows highest present is 318
+      (318_wa_outbox_inbound_binding_and_terminal_reasons.sql), with 315 present and 316/317 BOTH
+      free — no file on origin/main claims either number. `gh pr list --state open --limit 500
+      --json number,headRefName,files | grep migrations_v2` finds exactly two open-PR hits in
+      that gap: #6478 (agent/air-m5/db/vo-sessions-retention-317) claims 317 with the IDENTICAL
+      filename this PR uses — the fossil this PR supersedes, not a competing author, since #6478
+      is armed/frozen and expected to be closed by the Dux, never merged alongside this successor;
+      and #6474 (agent/air-m5/db/vo-consultant-split) claims 315 (DIFFERENT filename,
+      315_visa_oracle_consultant_requests.sql, colliding with origin/main's own 315 under a
+      different name) and 316 (316_visa_oracle_consultant_requests_retention_policy.sql,
+      colliding with nothing on main) — neither is 317 and neither is this PR's collision to fix.
+  - id: D-order-safety
+    decision: >-
+      Applying 317 on a database where 318 is already applied is safe and requires no
+      renumbering. Read `backend/db/migration_manager.py::_apply_all_pending_locked` this turn
+      (L559-655): `pending = [m for m in discovered if m["number"] not in applied_numbers]` —
+      pending status is set-membership in `_schema_versions`, never a comparison against the max
+      applied number, and `discover_migrations` only rejects DUPLICATE prefixes
+      (`_assert_unique_migration_numbers`), never out-of-order gaps. A DB that already ran 318
+      will pick up 317 on its next `apply-all` and run it after 318 chronologically; this
+      migration's SQL (idempotent CREATE TABLE/INDEX IF NOT EXISTS + idempotent ALTER ... SET
+      DEFAULT) has no dependency on 318's content, a disjoint table (wa_outbox).
+  - id: D-router
+    decision: >-
+      No router change needed. Read `_persist_session_create`
+      (apps/backend-rag/backend/app/routers/visa_oracle.py:634-656) this turn: its INSERT names
+      only (session_id, quiz_answers, recommended_visas, ip_hash) — expires_at is never set
+      explicitly, so the column DEFAULT this migration changes is the only source of the value on
+      every new row. This confirms the mandate's own framing (migration alone suffices) rather
+      than the alternative branch (router also needs a change).
+  - id: D-existing-rows
+    decision: >-
+      The migration's own DDL still touches no existing row's expires_at VALUE (no UPDATE/DELETE
+      in the .sql file — unchanged from the first measurement). What changed this turn: the first
+      purge run after deploy DOES delete rows already past their own expires_at — PROD count
+      today is 17 of 20 (measured read-only by the Dux, oldest created 2026-04-13); the exact
+      number at deploy time is measured by the Dux then, not assumed here. Handoff rows are NEVER
+      deleted, at any age — see D-handoff-safety.
+  - id: D-handoff-safety
+    decision: >-
+      The purge DELETE is `WHERE expires_at < NOW() AND NOT COALESCE(handoff_triggered, false)`.
+      Grepped this turn for every table/code reference to visa_oracle_sessions: `grep -rn
+      "REFERENCES.*visa_oracle_sessions" backend/db/migrations_v2/*.sql` — zero hits (no FK
+      anywhere references this table); `grep -rln "visa_oracle_sessions"
+      backend/**/*.py` (excluding tests/.venv) — only visa_oracle.py itself, the legacy
+      migration_080a/migration_109 files (comments only, no join), and migration_base.py's
+      legacy-rollback whitelist entry. CORRECTED (council round 1, finding F7, Codex — PROVEN):
+      an earlier version of this decision said `_fetch_session_snapshot` was "keyed on"
+      `handoff_triggered`; that is false — `_fetch_session_snapshot`'s SELECT names only
+      `quiz_answers, recommended_visas` (visa_oracle.py:817), never `handoff_triggered`, and it is
+      called synchronously AT handoff time, on a session that is still live (not yet expired), to
+      build the handoff pricing response — not as a read gated by the marker. The REAL safety
+      argument: a handed-off session is excluded from the purge purely by its own marker
+      (`handoff_triggered`, set by `_persist_session_handoff`, visa_oracle.py:700-761); the purge
+      itself is the ONLY reader of that marker. `handoff_triggered` is the single durable signal
+      that a row still matters (no FK/table anywhere else references visa_oracle_sessions), and
+      the purge excludes it unconditionally, regardless of age.
+  - id: D-scheduler
+    decision: >-
+      SUPERSEDED (this turn) by the Dux's review of the previous decision. Original reasoning,
+      kept for the record: `lead_capture.repository.LeadCaptureRepository.purge_expired`
+      (backend/services/lead_capture/repository.py:155) has ZERO callers anywhere in the repo;
+      the closest same-domain precedent, `backend/scripts/visa_engine/retention_worker.py`, is
+      gated by a Zero-approved retention-POLICY table this session had no authority to add a row
+      to, so a lighter-weight structural mirror (one-shot worker + wrapper + plist) was built
+      instead. The Dux's review named the actual defect in THAT choice, independent of its
+      weight: `com.nuzantara.visa-oracle-retention.15min.plist.example`'s own sibling job is
+      installed on Mini under a dedicated role (`VISA_ENGINE_RETENTION_DATABASE_URL`) — the new
+      plist this session built had no such installed counterpart anywhere, and its wrapper wanted
+      a `DATABASE_URL` with DELETE on PROD on an H24 host, a credential only the operator can
+      provision. Built, never armed — cicatrix scar #2 exactly, regardless of how light the
+      worker itself was.
+
+      REPLACEMENT (this turn): run the purge inside the Fly process that already holds the pool
+      and already serves the traffic it protects. `router_manifest.py:424` registers
+      `visa_oracle` as `process_groups=_API` — `main_api.py` is the process, not `main_rag.py` or
+      the monolithic `main_cloud.py`. Read `main_api.py`'s existing GARUDA-outbox scheduler
+      (`_run_garuda_outbox_scheduler`, ~line 260) and its own docstring first: that loop exists
+      for the identical reason — `outbox_consumer.py` and its handlers existed and were fully
+      tested with ZERO non-test callers in the whole tree, "Built is not armed" in its own words —
+      and its DLQ-retry-loop sibling in `service_initializer.py::initialize_services_light`
+      carries a comment explaining it was moved from `rag` to `api` specifically because `rag`
+      autostops and starved it for a week (2026-06-21 incident). Both are exactly this problem
+      solved once already in this same file; `_run_visa_oracle_sessions_purge_scheduler`
+      (main_api.py:615) reuses their SHAPE: task stored on `app.state`, spawned in
+      `_background_light_init` guarded on `db_pool` + its own kill switch
+      (`VISA_ORACLE_SESSIONS_PURGE_ENABLED`), cancelled in `lifespan_light`'s shutdown before the
+      pool closes. Multiple `api` machines each running the loop is fine — the DELETE is
+      idempotent, the same bet `_run_garuda_outbox_scheduler`'s own docstring already makes for
+      its queue (scar #10 considered, not merely asserted away).
+  - id: D-review
+    decision: >-
+      Reviewed the migration against this directory's own conventions (315, 318 read as recent
+      examples this turn) — idempotent DDL (CREATE TABLE/INDEX IF NOT EXISTS, matches both
+      siblings), `-- === ROLLBACK ===` marker present and restores 90 days (matches convention),
+      lock footprint is metadata-only (ALTER ... SET DEFAULT takes no table-rewrite lock; the
+      CREATE statements are no-ops on PROD since the table/indexes already exist — added an
+      explicit LOCKS note to the file's header this turn, matching 318's own LOCKS section
+      convention, since the original file had none). No other defect found — the file's own
+      "Scope, stated so it cannot be over-read" section already matched every convention checked.
+receipts:
+  - claim: Merge-base and HEAD, this turn.
+    cmd: git fetch -q origin && git merge-base origin/main HEAD && git rev-parse HEAD
+    result: "merge-base c1db269aa9601914ec77250f7748f0ac2352cf55, HEAD a76050925ca29ec1bf3b4c4882be913986a03b5d" # pragma: allowlist secret
+    exit: 0
+    ts: "2026-09-17T01:11:00Z"
+    seat: this session (M5)
+  - claim: Changed-file set and numstat, merge-base anchored (never a two-dot diff).
+    cmd: git diff --name-only/--numstat c1db269aa9...HEAD
+    result: "2 files changed (1 migration, 1 test), +263/-0"
+    exit: 0
+    ts: "2026-09-17T01:12:00Z"
+    seat: this session (M5)
+  - claim: Gear-3 floor and its source, on the merge-base diff.
+    cmd: >-
+      apps/backend-rag/.venv/bin/python scripts/evidence_pack_lint.py --print-floor
+      --changed-files-file <f> --numstat-file <f> ; (separately) --print-floor-source
+      --changed-files-file <f> --numstat-file <f>
+    result: 'floor 3 ; source "path"'
+    exit: 0
+    ts: "2026-09-17T01:13:00Z"
+    seat: this session (M5)
+  - claim: >-
+      PII scan of the full merge-base diff — no email, phone, passport-like or 16-digit NIK-like
+      string. The 7 "phone-shaped" digit-run hits are git index hashes (0000000000, 3f38f30ac1,
+      14d1a5f0f0) and PR/date numbers (#6478, 2026-09-17, #5037, 2026-09-14, Zero 2026-08-25,
+      2026-08-25) in the migration's own header comments — none client-identifying.
+    cmd: >-
+      git diff c1db269aa9...HEAD > full.diff; grep -cE
+      '[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}' full.diff; grep -cE
+      '(\+?[0-9][0-9().-]{7,}[0-9])' full.diff; grep -cE '\b[A-Z]{1,2}[0-9]{6,9}\b' full.diff;
+      grep -cE '\b[0-9]{16}\b' full.diff
+    result: >-
+      0 email hits, 7 phone-shaped hits (all git hashes/PR-date numbers, sampled and confirmed
+      benign), 0 passport-like matches, 0 16-digit NIK matches
+    exit: 0
+    ts: "2026-09-17T01:14:00Z"
+    seat: this session (M5)
+  - claim: >-
+      317 remains free on origin/main; the only open-PR claim on it is #6478, the fossil this PR
+      supersedes.
+    cmd: >-
+      git ls-tree -r --name-only origin/main -- apps/backend-rag/backend/db/migrations_v2/ | sort
+      ; gh pr list --state open --limit 500 --json number,headRefName,files | python3 -c "...
+      filter files containing migrations_v2 ..."
+    result: >-
+      origin/main highest = 318 (315 present, 316/317 both absent) ; open-PR hits in
+      migrations_v2: #6478 headRefName agent/air-m5/db/vo-sessions-retention-317 file
+      317_visa_oracle_sessions_retention_30d.sql ; #6474 headRefName
+      agent/air-m5/db/vo-consultant-split files
+      315_visa_oracle_consultant_requests.sql + 316_visa_oracle_consultant_requests_retention_policy.sql
+    exit: 0
+    ts: "2026-09-17T01:00:00Z"
+    seat: this session (M5)
+  - claim: >-
+      migration_manager.py's pending-migration logic is set-membership, not max-number
+      comparison — out-of-order application of 317 after 318 is safe.
+    cmd: >-
+      Read apps/backend-rag/backend/db/migration_manager.py::_apply_all_pending_locked (L559-655)
+      and discover_migrations (L426-471) in full this turn.
+    result: >-
+      `pending = [m for m in discovered if m["number"] not in applied_numbers]` (L574);
+      `_assert_unique_migration_numbers` (L39-69) only rejects duplicate prefixes, never
+      out-of-order gaps; no comparison against max(applied_numbers) anywhere in the file.
+    exit: 0
+    ts: "2026-09-17T01:05:00Z"
+    seat: this session (M5)
+  - claim: >-
+      `_persist_session_create`'s INSERT never sets expires_at — the DEFAULT alone governs, no
+      router change needed.
+    cmd: grep -n "_persist_session_create" -A 40 apps/backend-rag/backend/app/routers/visa_oracle.py
+    result: >-
+      "INSERT INTO visa_oracle_sessions (session_id, quiz_answers, recommended_visas, ip_hash)
+      VALUES ($1, $2::text::jsonb, $3::text::jsonb, $4)" — expires_at absent from both the
+      column list and the bound params (visa_oracle.py:646-648)
+    exit: 0
+    ts: "2026-09-17T00:40:00Z"
+    seat: this session (M5)
+  - claim: Existing shipped tests pass, both the named tripwire and the keyword-filtered set.
+    cmd: >-
+      cd apps/backend-rag && PYTHONPATH=. .venv/bin/python -m pytest
+      backend/tests/test_retention_policy_scope_family_tripwire.py -p no:cacheprovider ; PYTHONPATH=.
+      .venv/bin/python -m pytest backend/tests -k "migration_uniqueness or checksum_verification
+      or rollback_extraction or post_d1_guard_ledger or data_invariant_tripwires" -p no:cacheprovider
+    result: "5 passed (tripwire) ; 72 passed, 31968 deselected (keyword-filtered set)"
+    exit: 0
+    ts: "2026-09-17T00:55:00Z"
+    seat: this session (M5)
+  - claim: >-
+      No shipped test previously named visa_oracle_sessions' expires_at default — confirmed
+      before writing the new test, to avoid duplicating coverage.
+    cmd: grep -rln "visa_oracle_sessions" apps/backend-rag/backend/tests/
+    result: >-
+      backend/tests/routers/test_visa_oracle_handoff.py (price-snapshot scope, unrelated) ;
+      backend/tests/db/test_migration_base_rollback.py (legacy-migration-080a whitelist, unrelated)
+    exit: 0
+    ts: "2026-09-17T01:06:00Z"
+    seat: this session (M5)
+  - claim: New guilt/innocence test passes green against the real migration file.
+    cmd: >-
+      cd apps/backend-rag && PYTHONPATH=. .venv/bin/python -m pytest
+      backend/tests/db/test_migration_317_visa_oracle_sessions_retention.py -p no:cacheprovider
+    result: "6 passed"
+    exit: 0
+    ts: "2026-09-17T01:09:00Z"
+    seat: this session (M5)
+  - claim: >-
+      Proven red: temporarily flipped the forward section's real ALTER's default from 30 to 90
+      days (simulating the regression this test exists to catch), backed up first via `cp` (never
+      `git checkout --`, per this repo's own guardrail on wiping an uncommitted cure).
+    cmd: >-
+      cp 317_....sql <scratch>/317_backup.sql ; python3 -c "mutate the LAST 'SET DEFAULT ... 30
+      days' occurrence in the forward section to 90 days, rewrite the file" ; cd
+      apps/backend-rag && PYTHONPATH=. .venv/bin/python -m pytest
+      backend/tests/db/test_migration_317_visa_oracle_sessions_retention.py -p no:cacheprovider
+    result: "1 failed (test_forward_sets_the_default_to_30_days), 5 passed"
+    exit: 1
+    ts: "2026-09-17T01:10:30Z"
+    seat: this session (M5)
+  - claim: Restored the migration file byte-identical to its committed state via `cp` from the backup.
+    cmd: >-
+      cp <scratch>/317_backup.sql 317_....sql ; diff <scratch>/317_backup.sql 317_....sql
+    result: "diff empty — RESTORED-IDENTICAL"
+    exit: 0
+    ts: "2026-09-17T01:11:05Z"
+    seat: this session (M5)
+  - claim: Full targeted suite green again post-restore, plus the two adjacent migration-manager suites.
+    cmd: >-
+      cd apps/backend-rag && PYTHONPATH=. .venv/bin/python -m pytest
+      backend/tests/db/test_migration_317_visa_oracle_sessions_retention.py
+      backend/tests/db/test_migration_uniqueness.py
+      backend/tests/db/test_migration_rollback_extraction.py -p no:cacheprovider
+    result: "16 passed"
+    exit: 0
+    ts: "2026-09-17T01:11:40Z"
+    seat: this session (M5)
+  - claim: Pre-commit hooks (W41 migration-number uniqueness, W42 rollback-marker presence, anti-reward-hacking, import chain) all pass on the real commit.
+    cmd: git commit (pre-commit hooks run automatically)
+    result: >-
+      "migration-numbers lint: 195 files, all unique prefixes" ; "migration-rollback lint: 190
+      post-cutoff migrations, all have ROLLBACK marker" ; "anti-reward-hacking: clean" ; "import
+      chain OK" ; "All pre-commit checks passed!"
+    exit: 0
+    ts: "2026-09-17T01:11:05Z"
+    seat: this session (M5)
+  - claim: "brief.yml acceptance A1 probe, run individually."
+    cmd: "PYTHONPATH=. pytest backend/tests/db/test_migration_317_visa_oracle_sessions_retention.py::test_forward_sets_the_default_to_30_days"
+    result: "1 passed"
+    exit: 0
+    ts: "2026-09-17T01:16:00Z"
+    seat: this session (M5)
+  - claim: "brief.yml acceptance A2 probe, run individually."
+    cmd: "PYTHONPATH=. pytest backend/tests/db/test_migration_317_visa_oracle_sessions_retention.py::test_rollback_restores_90_days"
+    result: "1 passed"
+    exit: 0
+    ts: "2026-09-17T01:16:10Z"
+    seat: this session (M5)
+  - claim: "brief.yml acceptance A3 probe, run individually."
+    cmd: "PYTHONPATH=. pytest backend/tests/db/test_migration_317_visa_oracle_sessions_retention.py::test_forward_does_not_rewrite_existing_rows backend/tests/db/test_migration_317_visa_oracle_sessions_retention.py::test_rollback_does_not_rewrite_existing_rows"
+    result: "2 passed"
+    exit: 0
+    ts: "2026-09-17T01:16:20Z"
+    seat: this session (M5)
+  - claim: "brief.yml acceptance A4 probe, run individually."
+    cmd: "PYTHONPATH=. pytest backend/tests/db/test_migration_317_visa_oracle_sessions_retention.py::test_forward_ddl_is_idempotent"
+    result: "1 passed"
+    exit: 0
+    ts: "2026-09-17T01:16:30Z"
+    seat: this session (M5)
+  - claim: "brief.yml acceptance A5 probe, run individually."
+    cmd: "grep -A15 'INSERT INTO visa_oracle_sessions' apps/backend-rag/backend/app/routers/visa_oracle.py | grep -v expires_at"
+    result: >-
+      INSERT column list + bound params both print with no `expires_at` line — confirms the
+      router never sets it explicitly.
+    exit: 0
+    ts: "2026-09-17T01:16:40Z"
+    seat: this session (M5)
+  - claim: "brief.yml acceptance A6 probe, run individually."
+    cmd: "PYTHONPATH=. pytest backend/tests/db/test_migration_uniqueness.py::test_real_migrations_v2_has_no_duplicates"
+    result: "1 passed"
+    exit: 0
+    ts: "2026-09-17T01:16:50Z"
+    seat: this session (M5)
+  - claim: >-
+      lead_capture.repository.purge_expired has zero callers anywhere in the repo — no
+      scheduler/lifespan/cron/worker to reuse.
+    cmd: >-
+      grep -rn "purge_expired" --include='*.py' . | grep -v '.venv\|__pycache__' ; grep -rn
+      '\.purge_expired(' --include='*.py' -r . | grep -v '.venv\|__pycache__'
+    result: >-
+      first grep: only the method's own definition (repository.py:155) plus unrelated
+      garuda_flow/visa_engine functions sharing the "purge_expired" substring
+      (purge_expired_garuda_checks, purge_expired_decisions, purge_expired_idempotency, their own
+      tests) ; second grep (the actual method-call syntax): zero hits anywhere
+    exit: 0
+    ts: "2026-09-17T01:20:00Z"
+    seat: this session (M5)
+  - claim: >-
+      retention_worker.py (visa_engine's own scheduled retention worker) IS invoked by a launchd
+      wrapper + cron-wrapper.sh — the closest same-domain scheduling precedent.
+    cmd: grep -rln "retention_worker" --include='*.py' --include='*.sh' --include='*.plist*' .
+    result: >-
+      infra/launchagents/wrappers/visa-oracle-retention-run.sh (sole caller, via `python -m
+      backend.scripts.visa_engine.retention_worker`) ; the plist
+      com.nuzantara.visa-oracle-retention.15min.plist.example invokes that wrapper through
+      scripts/cron-wrapper.sh ; plus retention_worker.py itself and its tests
+    exit: 0
+    ts: "2026-09-17T01:21:00Z"
+    seat: this session (M5)
+  - claim: No FK/table anywhere references visa_oracle_sessions.
+    cmd: >-
+      grep -rn "REFERENCES.*visa_oracle_sessions" apps/backend-rag/backend/db/migrations_v2/*.sql
+      apps/backend-rag/backend/migrations/*.py ; grep -rln "visa_oracle_sessions"
+      apps/backend-rag/backend/ --include='*.py' | grep -v '.venv\|__pycache__\|/tests/'
+    result: >-
+      first grep: zero hits ; second grep: migration_080a_visa_oracle_sessions.py (legacy
+      CREATE, no FK) ; migration_109_funnel_sessions.py (comment only: "extends the pattern
+      already in prod for visa_oracle_sessions" — no join, separate independent table) ;
+      visa_oracle.py (the router itself) ; migration_base.py (legacy-rollback whitelist string
+      only)
+    exit: 0
+    ts: "2026-09-17T01:22:00Z"
+    seat: this session (M5)
+  - claim: >-
+      CORRECTED (council round 1, finding F7, Codex — PROVEN; original claim below was false).
+      handoff_triggered is set by _persist_session_handoff (visa_oracle.py:759-798) and read ONLY
+      by the purge's own WHERE clause — _fetch_session_snapshot (visa_oracle.py:801-819) selects
+      only quiz_answers, recommended_visas and never touches handoff_triggered; it runs
+      synchronously at handoff time, on a still-live session, to build the pricing response, not
+      as a read gated by the marker. The real safety argument: a handed-off session is excluded
+      from the purge by the marker alone.
+    cmd: grep -n "handoff_triggered" apps/backend-rag/backend/app/routers/visa_oracle.py
+    result: >-
+      4 hits: the UPDATE SQL constant (line ~742), _persist_session_handoff's docstring/body
+      (~752), a RESIDUE comment (~768) — all in the same file, all keyed on session_id, no other
+      table involved
+    exit: 0
+    ts: "2026-09-17T01:23:00Z"
+    seat: this session (M5)
+  - claim: Import-safety smoke test — importing the router module standalone (not via FastAPI app) is fast and side-effect-free.
+    cmd: >-
+      PYTHONPATH=. .venv/bin/python -c "import time; t0=time.time(); from
+      backend.app.routers.visa_oracle import _purge_expired_sessions; print('import OK in',
+      time.time()-t0, 's')"
+    result: "import OK in 0.406s"
+    exit: 0
+    ts: "2026-09-17T01:24:00Z"
+    seat: this session (M5)
+  - claim: New purge SQL-shape guilt/innocence suite passes green.
+    cmd: >-
+      cd apps/backend-rag && PYTHONPATH=. .venv/bin/python -m pytest
+      backend/tests/routers/test_visa_oracle_sessions_purge.py -p no:cacheprovider
+    result: "5 passed"
+    exit: 0
+    ts: "2026-09-17T01:26:00Z"
+    seat: this session (M5)
+  - claim: >-
+      Proven red: temporarily removed the `NOT COALESCE(handoff_triggered, false)` clause from
+      the router source (backed up via `cp` first, never `git checkout --`).
+    cmd: >-
+      cp visa_oracle.py <scratch>/visa_oracle_backup.py ; python3 -c "replace the ctid-subquery
+      WHERE clause with one that drops the handoff exclusion" ; PYTHONPATH=. pytest
+      backend/tests/routers/test_visa_oracle_sessions_purge.py -p no:cacheprovider
+    result:
+      "1 failed (test_purge_sql_excludes_handoff_triggered_rows_and_expired_only:
+      AssertionError, 'NOT COALESCE(handoff_triggered, false)' not in sql_arg), 4 passed"
+    exit: 1
+    ts: "2026-09-17T01:27:00Z"
+    seat: this session (M5)
+  - claim: Restored visa_oracle.py byte-identical to its committed state via `cp`.
+    cmd: cp <scratch>/visa_oracle_backup.py visa_oracle.py ; diff <scratch>/visa_oracle_backup.py visa_oracle.py
+    result: "diff empty — RESTORED-IDENTICAL"
+    exit: 0
+    ts: "2026-09-17T01:27:30Z"
+    seat: this session (M5)
+  - claim: >-
+      Combined suite green post-restore, including the pre-existing handoff suite (30 tests, no
+      regression from the router edit).
+    cmd: >-
+      cd apps/backend-rag && PYTHONPATH=. .venv/bin/python -m pytest
+      backend/tests/routers/test_visa_oracle_sessions_purge.py
+      backend/tests/routers/test_visa_oracle_handoff.py -p no:cacheprovider
+    result: "30 passed"
+    exit: 0
+    ts: "2026-09-17T01:28:00Z"
+    seat: this session (M5)
+  - claim: >-
+      Ops-shape tests for the new plist/wrapper pair pass, plus the two repo-wide scheduler
+      tests this touches scheduler registration.
+    cmd: >-
+      apps/backend-rag/.venv/bin/python -m pytest scripts/tests/test_visa_oracle_sessions_purge_ops.py
+      -p no:cacheprovider ; apps/backend-rag/.venv/bin/python -m pytest
+      scripts/tests/test_lint_plist_keepalive.py -p no:cacheprovider ; apps/backend-rag/.venv/bin/python
+      -m pytest scripts/tests/test_launchagent_reconcile.py -p no:cacheprovider
+    result:
+      "4 passed (new ops test) ; 24 passed (KeepAlive lint, repo-wide) ; 43 passed
+      (launchagent reconcile, repo-wide)"
+    exit: 0
+    ts: "2026-09-17T01:29:00Z"
+    seat: this session (M5)
+  - claim: Ruff clean on every new/modified Python file; import chain OK.
+    cmd: >-
+      cd apps/backend-rag && .venv/bin/python -m ruff check backend/app/routers/visa_oracle.py
+      backend/scripts/visa_engine/visa_oracle_sessions_purge_worker.py
+      backend/tests/routers/test_visa_oracle_sessions_purge.py ; PYTHONPATH=. .venv/bin/python -c
+      "from backend.app.dependencies import get_current_user; print('OK')"
+    result: "All checks passed! ; OK"
+    exit: 0
+    ts: "2026-09-17T01:30:00Z"
+    seat: this session (M5)
+  - claim: Second commit (worker/wrapper/plist/tests) created; pre-commit hooks (lease-check, anti-reward-hacking, linting, import chain) all pass.
+    cmd: git commit (pre-commit hooks run automatically)
+    result: >-
+      "lease-check: no blocking leases" ; "anti-reward-hacking: clean (2 test file(s) checked)" ;
+      "All checks passed!" (linting) ; "import chain OK" ; commit 67d00e0b8c992cdde800b381c156950937d3194d # pragma: allowlist secret
+    exit: 0
+    ts: "2026-09-17T01:28:23Z"
+    seat: this session (M5)
+  - claim: Gear-3 floor and source re-measured on the extended merge-base diff — unchanged (3, "path").
+    cmd: >-
+      apps/backend-rag/.venv/bin/python scripts/evidence_pack_lint.py --print-floor
+      --changed-files-file <f> --numstat-file <f> ; (separately) --print-floor-source
+      --changed-files-file <f> --numstat-file <f>
+    result: 'floor 3 ; source "path" (12 files changed, +995/-0)'
+    exit: 0
+    ts: "2026-09-17T01:31:00Z"
+    seat: this session (M5)
+  - claim: "brief.yml acceptance B probe, run verbatim."
+    cmd: "PYTHONPATH=. pytest backend/tests/routers/test_visa_oracle_sessions_purge.py::test_purge_sql_excludes_handoff_triggered_rows_and_expired_only backend/tests/routers/test_visa_oracle_sessions_purge.py::test_purge_returns_deleted_count_from_asyncpg_status backend/tests/routers/test_visa_oracle_sessions_purge.py::test_purge_is_non_fatal_on_db_error_and_returns_zero"
+    result: "3 passed"
+    exit: 0
+    ts: "2026-09-17T01:33:00Z"
+    seat: this session (M5)
+  - claim: "brief.yml acceptance C probe, run verbatim."
+    cmd: "PYTHONPATH=. pytest ../../scripts/tests/test_visa_oracle_sessions_purge_ops.py"
+    result: "4 passed"
+    exit: 0
+    ts: "2026-09-17T01:33:30Z"
+    seat: this session (M5)
+  - claim: >-
+      Ground-truth lane query_hash — sha256 of the two files this session's decisions rest on,
+      read verbatim at HEAD.
+    cmd: >-
+      { git show HEAD:apps/backend-rag/backend/app/routers/visa_oracle.py; git show
+      HEAD:apps/backend-rag/backend/db/migration_manager.py; } | shasum -a 256
+    result: "aa9d58c4bf947b1f762d7589a5958f8fe6e6ce720c3f3b22b1991a8dd955e063" # pragma: allowlist secret
+    exit: 0
+    ts: "2026-09-17T01:34:00Z"
+    seat: this session (M5)
+  - claim: PII scan of the FULL extended merge-base diff — no email, phone, passport-like or 16-digit NIK-like string.
+    cmd: >-
+      git diff c1db269aa9...HEAD > full2.diff; grep -cE
+      '[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}' full2.diff; grep -cE
+      '(\+?[0-9][0-9().-]{7,}[0-9])' full2.diff; grep -cE '\b[A-Z]{1,2}[0-9]{6,9}\b' full2.diff;
+      grep -cE '\b[0-9]{16}\b' full2.diff
+    result: >-
+      5 email-shaped hits, all `@pytest.mark.asyncio` decorators in the two new test files ; 46
+      phone-shaped hits, all git index hashes (0000000000..*) and dates/line-ranges ; 0
+      passport-like matches ; 0 16-digit NIK matches
+    exit: 0
+    ts: "2026-09-17T01:32:00Z"
+    seat: this session (M5)
+  - claim: >-
+      visa_oracle is registered process_groups=_API (main_api.py, not main_rag.py/main_cloud.py)
+      — the `api` process is the one that must host the loop.
+    cmd: >-
+      grep -n "visa_oracle" apps/backend-rag/backend/app/setup/router_manifest.py ; grep -n
+      "initialize_services\|initialize_services_light" apps/backend-rag/backend/app/main_api.py
+      apps/backend-rag/backend/app/main_rag.py apps/backend-rag/backend/app/main_cloud.py
+    result: >-
+      router_manifest.py:424 RouterEntry(name="visa_oracle", process_groups=_API, ...) ;
+      main_api.py imports initialize_services_light (light init, own db_pool, NO
+      initialize_database_services call) ; main_cloud.py imports the monolithic
+      initialize_services (which DOES register db_health_check_task, but main_cloud.py is not one
+      of fly.toml's three processes) ; main_rag.py uses the full app_factory lifespan, unrelated
+      to visa_oracle
+    exit: 0
+    ts: "2026-09-17T02:05:00Z"
+    seat: this session (M5)
+  - claim: >-
+      The `api` process's own light init has an EXISTING precedent for exactly this shape — the
+      GARUDA outbox drain and its "MULTIPLE MACHINES ARE SAFE" reasoning, and the DLQ retry loop's
+      comment explaining it was moved from `rag` to `api` because `rag` autostops.
+    cmd: >-
+      Read apps/backend-rag/backend/app/main_api.py::_run_garuda_outbox_scheduler (L260-334, incl.
+      its own docstring) and
+      apps/backend-rag/backend/app/setup/service_initializer.py::initialize_services_light's "4b.
+      Channel DLQ retry loop" comment (L2197-2205) in full this turn.
+    result: >-
+      _run_garuda_outbox_scheduler's docstring: "nothing in the repository ever called either of
+      them outside tests ... Built is not armed. This is that act." ; same function: "MULTIPLE
+      MACHINES ARE SAFE FOR THE SAME REASON ... SKIP LOCKED steps over a row another transaction
+      holds" ; service_initializer.py:2197-2199: "hosted HERE on the always-on `api` group, NOT in
+      initialize_services (group `rag`, not always-on). The retry loop sat on `rag`, so when `rag`
+      autostopped nothing drained the DLQ"
+    exit: 0
+    ts: "2026-09-17T02:08:00Z"
+    seat: this session (M5)
+  - claim: New loop + kill switch written; import chain still clean.
+    cmd: >-
+      cd apps/backend-rag && PYTHONPATH=. .venv/bin/python -c "from backend.app import main_api;
+      print('OK'); print(main_api._visa_oracle_sessions_purge_enabled);
+      print(main_api._run_visa_oracle_sessions_purge_scheduler)"
+    result: "OK printed, both functions resolve"
+    exit: 0
+    ts: "2026-09-17T02:15:00Z"
+    seat: this session (M5)
+  - claim: >-
+      Superseded plist/wrapper/one-shot-worker/ops-test removed; nothing else in the repo
+      references them.
+    cmd: >-
+      grep -rln "visa_oracle_sessions_purge_worker\|visa-oracle-sessions-purge" --include='*.py'
+      --include='*.sh' --include='*.plist*' --include='*.yml' --include='*.yaml' --include='*.md'
+      --include='*.toml' . ; git rm -q <the 4 files>
+    result: >-
+      Pre-removal: only the 4 files' own self-references, plus this evidence pack (updated
+      separately). No other caller anywhere. Removal via `git rm`.
+    exit: 0
+    ts: "2026-09-17T02:18:00Z"
+    seat: this session (M5)
+  - claim: >-
+      test_lint_plist_keepalive.py / test_launchagent_reconcile.py (repo-wide, scar #7 antibody)
+      still pass after the removal.
+    cmd: >-
+      apps/backend-rag/.venv/bin/python -m pytest scripts/tests/test_lint_plist_keepalive.py
+      scripts/tests/test_launchagent_reconcile.py -p no:cacheprovider
+    result: "67 passed"
+    exit: 0
+    ts: "2026-09-17T02:19:00Z"
+    seat: this session (M5)
+  - claim: New scheduler test suite green.
+    cmd: >-
+      cd apps/backend-rag && PYTHONPATH=. .venv/bin/python -m pytest
+      backend/tests/unit/services/test_visa_oracle_sessions_purge_scheduler.py -p no:cacheprovider
+    result: "21 passed"
+    exit: 0
+    ts: "2026-09-17T02:21:00Z"
+    seat: this session (M5)
+  - claim: >-
+      Proven red: forced `_visa_oracle_sessions_purge_enabled()` to `return False`
+      unconditionally (backed up via `cp` first, never `git checkout --`).
+    cmd: >-
+      cp main_api.py <scratch>/main_api_backup.py ; (edit: replace the function body with
+      `return False`) ; PYTHONPATH=. pytest
+      backend/tests/unit/services/test_visa_oracle_sessions_purge_scheduler.py::test_the_lifespan_spawns_the_purge_when_enabled
+      -p no:cacheprovider
+    result: >-
+      "1 failed — AssertionError: the purge loop was never started, assert []" (the arming test
+      goes red exactly as the mutation predicts)
+    exit: 1
+    ts: "2026-09-17T02:23:00Z"
+    seat: this session (M5)
+  - claim: Restored main_api.py byte-identical to its committed state via `cp`; the same arming test is green again.
+    cmd: >-
+      cp <scratch>/main_api_backup.py main_api.py ; diff <scratch>/main_api_backup.py main_api.py ;
+      PYTHONPATH=. pytest
+      backend/tests/unit/services/test_visa_oracle_sessions_purge_scheduler.py::test_the_lifespan_spawns_the_purge_when_enabled
+      -p no:cacheprovider
+    result: "diff empty — RESTORED-IDENTICAL ; 1 passed"
+    exit: 0
+    ts: "2026-09-17T02:24:00Z"
+    seat: this session (M5)
+  - claim: Combined regression sweep green post-restore (new + adjacent scheduler/router suites).
+    cmd: >-
+      cd apps/backend-rag && PYTHONPATH=. .venv/bin/python -m pytest
+      backend/tests/unit/services/test_visa_oracle_sessions_purge_scheduler.py
+      backend/tests/unit/services/test_garuda_outbox_scheduler.py
+      backend/tests/unit/services/test_wa_outbox_scheduler.py
+      backend/tests/routers/test_visa_oracle_sessions_purge.py
+      backend/tests/routers/test_visa_oracle_handoff.py
+      backend/tests/unit/app/lifecycle/test_shutdown.py -p no:cacheprovider
+    result: "116 passed"
+    exit: 0
+    ts: "2026-09-17T02:26:00Z"
+    seat: this session (M5)
+  - claim: >-
+      Pre-commit anti-reward-hacking lint flagged one test with no assertion (non-blocking WARN);
+      fixed same turn.
+    cmd: git commit (pre-commit hooks run automatically) — first commit; then fixed + re-committed
+    result: >-
+      First commit: "WARN apps/backend-rag/backend/tests/unit/services/
+      test_visa_oracle_sessions_purge_scheduler.py:165: RH005 ... asserts nothing" (non-blocking,
+      commit succeeded) ; second commit after the fix: "anti-reward-hacking: clean (1 test
+      file(s) checked)"
+    exit: 0
+    ts: "2026-09-17T02:30:00Z"
+    seat: this session (M5)
+  - claim: Two new commits created this turn (scheduling-mechanism replacement + lint fix).
+    cmd: git log --oneline -6
+    result: >-
+      4be9b857a9 fix(visa-oracle): add the missing assertion the RH005 lint warned about ;
+      6fc3473509 fix(visa-oracle): run the session-retention purge in-process on the api group,
+      not a launchd plist ; 9839ae7583 docs(evidence): extend Gear-3 pack for the scheduled
+      sessions purge ; 67d00e0b8c992cdde800b381c156950937d3194d feat(visa-oracle): enforce the
+      30-day session default with a scheduled purge ; 4d76c55541 docs(evidence): Gear-3 pack for
+      migration 317 visa_oracle_sessions retention ; a76050925c feat(visa-oracle): 30-day
+      retention for visa_oracle_sessions (migration 317, successor of #6478)
+    exit: 0
+    ts: "2026-09-17T02:31:00Z"
+    seat: this session (M5)
+  - claim: Gear-3 floor and source re-measured on the third-turn merge-base diff — unchanged (3, "path").
+    cmd: >-
+      apps/backend-rag/.venv/bin/python scripts/evidence_pack_lint.py --print-floor
+      --changed-files-file <f> --numstat-file <f> ; (separately) --print-floor-source
+      --changed-files-file <f> --numstat-file <f>
+    result: 'floor 3 ; source "path" (10 files changed, +1797/-0)'
+    exit: 0
+    ts: "2026-09-17T02:33:00Z"
+    seat: this session (M5)
+  - claim: "brief.yml acceptance C probe, run verbatim against the new consumer."
+    cmd: "PYTHONPATH=. pytest backend/tests/unit/services/test_visa_oracle_sessions_purge_scheduler.py"
+    result: "21 passed"
+    exit: 0
+    ts: "2026-09-17T02:34:00Z"
+    seat: this session (M5)
+  - claim: PII scan of the FULL third-turn merge-base diff — no email, phone, passport-like or 16-digit NIK-like string.
+    cmd: >-
+      git diff c1db269aa9...HEAD > full3.diff; grep -cE
+      '[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}' full3.diff; grep -cE
+      '(\+?[0-9][0-9().-]{7,}[0-9])' full3.diff; grep -cE '\b[A-Z]{1,2}[0-9]{6,9}\b' full3.diff;
+      grep -cE '\b[0-9]{16}\b' full3.diff
+    result: >-
+      7 email-shaped hits, all `@pytest.mark.asyncio`/`@pytest.mark.parametrize` decorators in the
+      new test file ; 69 phone-shaped hits, sampled — all git index hashes (0000000000..*),
+      dates, commit/PR refs and line-range comments ; 0 passport-like matches ; 0 16-digit NIK
+      matches
+    exit: 0
+    ts: "2026-09-17T02:35:00Z"
+    seat: this session (M5)
+  - claim: >-
+      Council round 1 (Codex Sol + Gemini 3.1 Pro) on HEAD 48c40e5078: CHANGES, both seats.
+      Claims 1-6 and 9 PROVEN by both; claims 7, 8, 10 BROKEN — 7 and 8 by Codex only (Gemini
+      read claim 7 as PROVEN, but the coordinator's relayed instruction named Codex's specific
+      wording defect, cured regardless of the split verdict), 10 by both seats.
+    cmd: >-
+      Read council/codex-gpt-5.6-sol-r1-changes.txt and
+      council/agy-gemini-3.1-pro-r1-changes.txt in full this turn (written by the Dux's council
+      run — not touched by this session).
+    result: >-
+      codex claim 10: "Removing the real production spawn at main_api.py:810-812 would leave
+      this test green." ; codex claim 8: "the purge's own failure log emits str(exc) at
+      visa_oracle.py:719" ; codex claim 7: "_fetch_session_snapshot does NOT read
+      handoff_triggered; it selects only quiz_answers, recommended_visas at 810-815" ; agy claim
+      10 (same defect, different words): "tests a local mock function... If the spawn is removed
+      ... this test will still pass."
+    exit: 0
+    ts: "2026-09-17T02:40:00Z"
+    seat: this session (M5)
+  - claim: >-
+      F10 cure — extracted `_spawn_visa_oracle_sessions_purge_task(app)` as the ONE real spawn
+      decision; `_background_light_init` now calls it in a single line. Four new/rewritten tests:
+      three call the extracted function directly, one drives the REAL `lifespan_light` context
+      manager end to end (`initialize_services_light` faked; WA/GARUDA sub-schedulers disabled
+      via env) and asserts the extraction was actually invoked.
+    cmd: >-
+      cd apps/backend-rag && PYTHONPATH=. .venv/bin/python -m pytest
+      backend/tests/unit/services/test_visa_oracle_sessions_purge_scheduler.py -p no:cacheprovider
+    result: "23 passed"
+    exit: 0
+    ts: "2026-09-17T02:45:00Z"
+    seat: this session (M5)
+  - claim: >-
+      F10 guilt proof: deleted the real spawn call in main_api.py (backed up via `cp` first,
+      never `git checkout --`) — the new real-lifespan test went red exactly as predicted.
+    cmd: >-
+      cp main_api.py <scratch>/main_api_backup_p4.py ; (edit: replace the extracted-function call
+      site with `app.state._visa_oracle_sessions_purge_task = None`) ; PYTHONPATH=. pytest
+      backend/tests/unit/services/test_visa_oracle_sessions_purge_scheduler.py::test_the_lifespan_actually_calls_the_real_spawn_function
+      -p no:cacheprovider
+    result: >-
+      "1 failed — Failed: _background_light_init never reached the purge spawn call" (captured
+      stdout shows the init/notification/WA/GARUDA log lines running normally, then the poll loop
+      exhausting its 200 zero-cost iterations without the patched spawn ever being called)
+    exit: 1
+    ts: "2026-09-17T02:47:00Z"
+    seat: this session (M5)
+  - claim: Restored main_api.py byte-identical to its committed state via `cp`; the same test is green again.
+    cmd: >-
+      cp <scratch>/main_api_backup_p4.py main_api.py ; diff <scratch>/main_api_backup_p4.py
+      main_api.py ; PYTHONPATH=. pytest
+      backend/tests/unit/services/test_visa_oracle_sessions_purge_scheduler.py -p no:cacheprovider
+    result: "diff empty — RESTORED-IDENTICAL ; 23 passed"
+    exit: 0
+    ts: "2026-09-17T02:48:00Z"
+    seat: this session (M5)
+  - claim: >-
+      F8 cure — `_purge_expired_sessions`'s failure-log line changed from `str(exc)` to
+      `type(exc).__name__`. New test plants a sentinel string in the exception's message and
+      asserts it never reaches any log record.
+    cmd: >-
+      cd apps/backend-rag && PYTHONPATH=. .venv/bin/python -m pytest
+      backend/tests/routers/test_visa_oracle_sessions_purge.py -p no:cacheprovider
+    result: "6 passed"
+    exit: 0
+    ts: "2026-09-17T02:50:00Z"
+    seat: this session (M5)
+  - claim: >-
+      F7 cure — corrected the false "keyed on handoff_triggered" / "matching the read at
+      _fetch_session_snapshot" wording in the router's own docstring, D-handoff-safety, and the
+      matching receipt — nowhere left claims `_fetch_session_snapshot` reads `handoff_triggered`.
+    cmd: >-
+      grep -n "keyed on\|matching the read" apps/backend-rag/backend/app/routers/visa_oracle.py
+      evidence/2026-09/agent-air-m5-backend-rag-vo-sessions-retention-v-d2b0707e/pack.yml
+      evidence/2026-09/agent-air-m5-backend-rag-vo-sessions-retention-v-d2b0707e/council/prompt-r1-codex.txt
+      evidence/2026-09/agent-air-m5-backend-rag-vo-sessions-retention-v-d2b0707e/council/prompt-r1-agy.txt
+    result: >-
+      zero hits of the false claim shape anywhere in these four files after the edit (the
+      surviving "keyed on `session_id`" phrasing describes `_persist_session_handoff` and
+      `_fetch_session_snapshot` correctly — both ARE keyed on session_id, neither is keyed on
+      handoff_triggered)
+    exit: 0
+    ts: "2026-09-17T02:52:00Z"
+    seat: this session (M5)
+  - claim: Full regression sweep green after all three cures.
+    cmd: >-
+      cd apps/backend-rag && PYTHONPATH=. .venv/bin/python -m pytest
+      backend/tests/unit/services/test_visa_oracle_sessions_purge_scheduler.py
+      backend/tests/unit/services/test_garuda_outbox_scheduler.py
+      backend/tests/unit/services/test_wa_outbox_scheduler.py
+      backend/tests/routers/test_visa_oracle_sessions_purge.py
+      backend/tests/routers/test_visa_oracle_handoff.py
+      backend/tests/unit/app/lifecycle/test_shutdown.py
+      backend/tests/db/test_migration_317_visa_oracle_sessions_retention.py
+      backend/tests/db/test_migration_uniqueness.py -p no:cacheprovider
+    result: "129 passed"
+    exit: 0
+    ts: "2026-09-17T02:54:00Z"
+    seat: this session (M5)
+  - claim: >-
+      Gear-3 floor and source re-measured on the fourth-turn merge-base diff — floor unchanged
+      (3), source now "both" (was "path"): net churn crossed SIZE_GEAR3_THRESHOLD for the first
+      time, in addition to the migration hot-zone path already present.
+    cmd: >-
+      apps/backend-rag/.venv/bin/python scripts/evidence_pack_lint.py --print-floor
+      --changed-files-file <f> --numstat-file <f> ; (separately) --print-floor-source
+      --changed-files-file <f> --numstat-file <f>
+    result: 'floor 3 ; source "both" (10 files changed, +2166/-0)'
+    exit: 0
+    ts: "2026-09-17T02:56:00Z"
+    seat: this session (M5)
+  - claim: PII scan of the FULL fourth-turn merge-base diff — no email, phone, passport-like or 16-digit NIK-like string.
+    cmd: >-
+      git diff c1db269aa9...HEAD > full4.diff; grep -cE
+      '[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}' full4.diff; grep -cE
+      '(\+?[0-9][0-9().-]{7,}[0-9])' full4.diff; grep -cE '\b[A-Z]{1,2}[0-9]{6,9}\b' full4.diff;
+      grep -cE '\b[0-9]{16}\b' full4.diff
+    result: >-
+      8 email-shaped hits, sampled — all `@pytest.mark.asyncio`/`@pytest.mark.parametrize`
+      decorators ; 86 phone-shaped hits, sampled at head and tail — all git index hashes, ISO
+      timestamps and commit/PR references ; 0 passport-like matches ; 0 16-digit NIK matches (the
+      F8 test's sentinel string "session_id=abc123-should-never-be-logged" is neither
+      email-shaped nor phone-shaped nor passport-like, confirmed by these same four greps
+      returning the counts above and not the sentinel line itself)
+    exit: 0
+    ts: "2026-09-17T02:58:00Z"
+    seat: this session (M5)
+  - claim: >-
+      CI-shaped lint (synthetic tree, --repo-root/--source-path/--brief-source-path) on the
+      fourth-turn pack — only remaining FAIL is the missing council/journal.jsonl, unchanged from
+      every prior turn (council has run per the files in council/, but this session does not
+      write journal.jsonl — the Dux's job).
+    cmd: >-
+      cp brief.yml pack.yml <scratch>/retention-lint/evidence/ ; apps/backend-rag/.venv/bin/python
+      scripts/evidence_pack_lint.py <scratch>/retention-lint/evidence/pack.yml --repo-root
+      <scratch>/retention-lint --source-path
+      evidence/2026-09/agent-air-m5-backend-rag-vo-sessions-retention-v-d2b0707e/pack.yml
+      --brief-source-path
+      evidence/2026-09/agent-air-m5-backend-rag-vo-sessions-retention-v-d2b0707e/brief.yml
+      --changed-files-file <f> --numstat-file <f>
+    result: >-
+      "evidence_pack_lint: FAIL — 1 violation(s): - council_run: gear:3 pack declares no
+      council_run journal with >=2 distinct review seats ... marked ok:true"
+    exit: 1
+    ts: "2026-09-17T03:00:00Z"
+    seat: this session (M5)
+  - claim: >-
+      F10 cure is a guard, not a ratchet — deleting the REAL spawn call in
+      _background_light_init turns the lifespan test red, and restoring it turns it green
+    cmd: >-
+      cp main_api.py <scratch backup>; replace the one-line
+      `app.state._visa_oracle_sessions_purge_task = _spawn_visa_oracle_sessions_purge_task(app)`
+      with `= None`; PYTHONPATH=. pytest
+      backend/tests/unit/services/test_visa_oracle_sessions_purge_scheduler.py; cp the backup
+      back; cmp; pytest again
+    result: >-
+      1 failed, 22 passed — test_the_lifespan_actually_calls_the_real_spawn_function: "Failed:
+      _background_light_init never reached the purge spawn call"; cmp identical (RESTORED);
+      23 passed
+    exit: 1
+    ts: "2026-09-16T18:40:31Z"
+    seat: Dux (claude-opus-5, R2, M5) — independent of the implementer that wrote the cure
+  - claim: >-
+      the three retention test files are green on the council r2 head
+    cmd: >-
+      PYTHONPATH=. .venv/bin/python -m pytest backend/tests/routers/test_visa_oracle_sessions_purge.py
+      backend/tests/unit/services/test_visa_oracle_sessions_purge_scheduler.py
+      backend/tests/db/test_migration_317_visa_oracle_sessions_retention.py -p no:cacheprovider
+    result: "35 passed in 10.57s"
+    exit: 0
+    ts: "2026-09-16T18:39:30Z"
+    seat: Dux (claude-opus-5, R2, M5)
+  - claim: >-
+      the Harness floor recompute job, emulated step by step on a base tree (git archive of
+      origin/main 8f86b430bb) against this branch, fails ONLY on the council journal before r2
+    cmd: >-
+      emulate_harness.sh <origin/main> <918f51a328> <workdir> (each step's own command from
+      .github/workflows/harness-floor.yml: hotzone_changed_files.sh, evidence_paths.py --resolve,
+      merge-base numstat, evidence_pack_lint.py --print-floor[-source],
+      tracked_file_present_in_diff.sh, stage_council_journal.py, evidence_pack_lint.py staged,
+      bites_parse.py --pack -)
+    result: >-
+      floor 3 / source both; gear 3 >= 3; brief and pack present; lint FAIL 1 violation
+      (council_run: no >=2 ok:true seats, i.e. before the r2 rows existed); bites rc 0 class legacy
+    exit: 1
+    ts: "2026-09-16T18:45:00Z"
+    seat: Dux (claude-opus-5, R2, M5)
+dissent:
+  - seat: this session (M5, self-refutation)
+    objection: >-
+      Keeping migration number 317 (rather than renumbering) risks a REAL on-disk collision if PR
+      #6478 is ever merged instead of closed: both branches add a file with the byte-identical
+      path apps/backend-rag/backend/db/migrations_v2/317_visa_oracle_sessions_retention_30d.sql,
+      and merging both would be a genuine duplicate the uniqueness guard could not have caught in
+      either PR alone (each is clean on its OWN branch).
+    status: CONFIRMED
+    cure: >-
+      Not fully curable by this session — recorded so it is not lost. #6478 is armed AND frozen
+      (Builder Contract §1: an armed branch is read-only) and carries no Gear-3 evidence pack, so
+      per the mandate's own framing it "can never pass" as-is — it is expected to be closed, not
+      merged, once this successor is ready. This session cannot close #6478 itself (PR
+      open/close/merge is reserved to the Dux by this task's own constraints); recorded here, and
+      again in leftovers below, so the Dux closes #6478 before or at the same time as arming this
+      PR rather than discovering the collision at merge time.
+leftovers:
+  - >-
+    RESOLVED (Dux, 2026-09-17): the council ran two rounds. r1 (48c40e5078) returned CHANGES from
+    both seats: F7 was the claim wording on _fetch_session_snapshot, F8 was str(exc) in the purge
+    failure log, F10 was a spawn test that exercised a copied helper. The cures are in 7057dfbc8e.
+    r2 (918f51a328) returned OK from both seats. council/journal.jsonl holds four rows, and the
+    two r2 rows are ok:true.
+  - >-
+    PR #6478 itself is still open on GitHub as of this pack — closing it is the Dux's job once
+    this successor is armed, not this session's (out of this worktree's write scope: PR
+    open/close/merge are explicitly reserved to the Dux by the task brief). See the dissent entry
+    above: closing #6478 (rather than letting it merge) is what keeps migration number 317 from
+    becoming a genuine on-disk duplicate.
+  - >-
+    SUPERSEDED (third turn): the launchd plist/wrapper/one-shot-worker this leftover used to
+    describe were removed this turn along with the "operator must install it" precondition they
+    implied — see D-scheduler. Merging this PR now DOES itself start enforcing retention on
+    PROD: `_run_visa_oracle_sessions_purge_scheduler` is spawned automatically by every `api`
+    Fly machine's own lifespan, no operator action required. What remains genuinely owed to the
+    Dux is only the "bites" observation itself (the two PROD reads named in `bites.observation`
+    above) — not an install step.
+  - >-
+    The `VISA_ORACLE_SESSIONS_PURGE_ENABLED` kill switch is a real off-ramp if the first live
+    hour looks wrong (e.g. an unexpectedly large delete count) — `fly secrets set
+    VISA_ORACLE_SESSIONS_PURGE_ENABLED=false -a nuzantara-rag` and a rolling restart disables the
+    loop on every `api` machine without a code change or redeploy of anything else. Named here so
+    the Dux has it in hand before the first bites observation, not after.

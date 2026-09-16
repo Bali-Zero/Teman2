@@ -1,0 +1,16 @@
+Nota: HEAD reale `918f51a3`; i file in scope sono byte-identici a `42eed833` e `7057dfbc`.
+
+1. **PROVEN — DEFAULT:** migration 317:150-173; il CREATE fallback usa 90 giorni, l’ultimo ALTER forward imposta 30.
+2. **PROVEN — NO REWRITE:** migration 317:150-180 non contiene UPDATE/DELETE eseguibili; rollback incluso.
+3. **PROVEN — IDEMPOTENCY:** migration 317:150,163,166 usa `IF NOT EXISTS`; SET DEFAULT è ripetibile.
+4. **PROVEN — WRITE PATH:** visa_oracle.py:646-653 inserisce solo i quattro campi dichiarati; `expires_at` assente.
+5. **PROVEN — NUMBER SAFETY:** migration_manager.py:39-69 controlla solo duplicati; :563-574 usa appartenenza, non massimo. Origin/main non contiene un altro 317.
+6. **PROVEN — PURGE SQL:** visa_oracle.py:715-723 contiene entrambi i predicati richiesti dentro subquery con `LIMIT $1`.
+7. **PROVEN — HANDOFF:** nessun FK/riferimento trovato nel diff o migrations_v2; unico writer TRUE a :755-758, unico reader eseguibile a :719; snapshot :824-830 è indipendente.
+8. **PROVEN — LOGGING:** purge :725-742 ritorna 0 e registra solo classe/count; scheduler :690-704 non registra il messaggio. Sentinel test :102-125 copre tutti i record.
+9. **PROVEN — PROCESS/WIRING:** router_manifest.py:424 è `_API`; spawn :717-729 richiede switch+pool; chiamata :830-832; cancellazione/await precedono pool close :865-875.
+10. **PROVEN — TEST VALIDITY:** test :85-110 chiama direttamente la funzione produttiva; :142-206 attraversa il vero lifespan e fallirebbe rimuovendo il call-site.
+
+Verifica dinamica read-only: `6 + 6 + 23` test passati; per lo scheduler solo stub in-memory degli import estranei che tentavano scritture, senza alterare funzioni o test in esame. Worktree rimasto pulito.
+
+VERDICT: OK

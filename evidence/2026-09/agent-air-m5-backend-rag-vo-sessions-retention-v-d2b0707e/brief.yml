@@ -1,0 +1,159 @@
+gear: 3
+gear_reason: >-
+  Floor measured with scripts/evidence_pack_lint.py --print-floor / --print-floor-source on the
+  merge-base diff (git diff --name-only / --numstat, merge-base c1db269aa9601914ec77250f7748f0ac2352cf55 # pragma: allowlist secret
+  ...HEAD 7057dfbc8e # pragma: allowlist secret
+  , re-measured a fourth time after curing council round-1 findings F7/F8/F10): floor 3, source
+  "both" — the changed set still touches
+  apps/backend-rag/backend/db/migrations_v2/317_visa_oracle_sessions_retention_30d.sql (matches
+  HOTZONE_PATTERNS for the migration hot-zone regardless of size), AND net churn crossed
+  SIZE_GEAR3_THRESHOLD (1,828) for the first time this measurement — now +2,166 across 10 files
+  (the F10 cure's real-lifespan test and its supporting mocks added real size; nothing here is
+  padding — see the test file's own docstring). Both sources independently justify floor 3, so
+  the declared gear does not change. Judgement agrees independently of the floor, more strongly
+  than at any earlier measurement: this PR no longer just changes a DEFAULT — it adds a purge
+  that actually deletes rows against live PROD data holding raw quiz_answers/messages/ip_hash,
+  running inside the SAME process that already serves /api/visa-oracle, over
+  apps/backend-rag/** where merging a PR is itself the deploy (memory
+  discovery_merging_a_backend_rag_pr_deploys_by_itself_2026_09_01).
+ruling: mandate SAETTA R2 (Dux = parent session, M5) — not a Zero-declared ORANGE/BLUE mission
+mission: >-
+  SAETTA R2, host M5 — successor of PR #6478 ("feat(visa-oracle): 30-day retention for
+  visa_oracle_sessions (migration 317)", branch agent/air-m5/db/vo-sessions-retention-317),
+  extended same-slice by a Dux finding: PROD measured (read-only) 20 rows, 17 already past
+  expires_at, oldest created 2026-04-13 — nothing was deleting them, so the default change alone
+  enforced no retention. Implementer: this worktree/session (sole writer). Dux (parent session,
+  M5) ships: review, merge, arm, deploy, prove-live.
+objective: >-
+  #6478 is armed and frozen on GitHub — Builder Contract §1 makes an armed branch read-only, so
+  it can never grow the Gear-3 evidence pack it is missing, and its Harness floor (3, migration
+  hot-zone) means it can never pass as-is. This PR is the fresh-from-origin/main follow-up the
+  Contract requires. Business, restated after the Dux's PROD finding: "Visa Oracle session
+  retention is actually enforced at 30 days" — not merely declared. The public page
+  apps/mouth/src/app/(visa-oracle)/visa-oracle/privacy/page.tsx promises decisions kept 30 days
+  and only PII-free telemetry kept 90; these rows hold raw quiz_answers/messages/ip_hash, so a
+  DEFAULT with nothing purging expired rows did not satisfy that promise. Owner ruling (Zero,
+  2026-08-25, docs/plans/2026-08-24-visa-oracle-live/OWNER-RULINGS-2026-08-25.md §3): "30 giorni
+  (non i 90 dichiarati) — bastano per il visitatore che torna e per l'analisi funnel, minimizzano
+  la ritenzione dichiarata." This PR ships both halves: (1) the DEFAULT (migration 317, unchanged
+  from the first measurement), and (2) a handoff-safe purge that actually deletes expired rows,
+  running as an in-process asyncio loop inside the `api` Fly process
+  (`_run_visa_oracle_sessions_purge_scheduler`, apps/backend-rag/backend/app/main_api.py) — NOT
+  the launchd plist + wrapper + one-shot-worker of the first pass at this problem, which the Dux
+  correctly rejected as superscar #2 ("exists != armed"): nothing installs the plist and the
+  worker wants its own PROD-DELETE credential only the operator can provision, so the purge would
+  never actually run. The loop reuses the pool `api` already holds and already serves
+  /api/visa-oracle with — no new credential, no install step, armed the moment this PR deploys.
+scope:
+  - apps/backend-rag/backend/db/migrations_v2/317_visa_oracle_sessions_retention_30d.sql
+  - apps/backend-rag/backend/app/routers/visa_oracle.py (`_purge_expired_sessions`, unchanged from
+    the previous measurement — still the query the loop below calls)
+  - apps/backend-rag/backend/app/main_api.py
+    (`_run_visa_oracle_sessions_purge_scheduler`/`_visa_oracle_sessions_purge_enabled`, new; wired
+    into `_background_light_init`/`lifespan_light`)
+  - apps/backend-rag/backend/tests/db/test_migration_317_visa_oracle_sessions_retention.py
+  - apps/backend-rag/backend/tests/routers/test_visa_oracle_sessions_purge.py
+  - apps/backend-rag/backend/tests/unit/services/test_visa_oracle_sessions_purge_scheduler.py (new)
+  - evidence/2026-09/agent-air-m5-backend-rag-vo-sessions-retention-v-d2b0707e/**
+constraints:
+  - No router change to the WRITE path — `_persist_session_create`'s INSERT (visa_oracle.py, still
+    lines 634-656) never sets expires_at explicitly, so the DEFAULT alone governs new rows;
+    verified this turn by reading the router, not assumed. (The purge DELETE, below, is a
+    separate, new router-adjacent helper — this constraint is scoped to the INSERT path only.)
+  - The migration file itself still contains no UPDATE/DELETE — existing rows' `expires_at` value
+    is never rewritten by the DDL; shortening a live row's expiry column value would be a
+    production-data mutation distinct from a schema declaration.
+  - The NEW purge DELETE must be conservative, shaped like
+    `WHERE expires_at < NOW() AND NOT COALESCE(handoff_triggered, false)` — a session handed off
+    to a consultant is NEVER deleted, regardless of age. Grepped migrations_v2/*.sql and this
+    router for every FK/session_id reference to visa_oracle_sessions this turn — none exists;
+    handoff_triggered is the only durable "this row still matters" signal.
+  - >-
+    No touch to the `messages` column's own semantics (the free-text funnel stop is an
+    application-code change already shipped, per #6478's own header) — the purge deletes whole
+    rows, it does not edit `messages`.
+  - Migration must stay idempotent (CREATE TABLE/INDEX IF NOT EXISTS) and keep the `-- ===
+    ROLLBACK ===` marker; ALTER ... SET DEFAULT is metadata-only, no table rewrite. The purge
+    DELETE must be bounded (LIMIT via a ctid subquery) and non-fatal on error.
+  - No client PII in any log line — the purge logs a count only, never a session_id,
+    quiz_answers, message or ip_hash; the loop's own exception handler logs only the exception
+    CLASS name, never `str(exc)`, so a future error message cannot smuggle a value through it.
+  - No client PII; no credential value anywhere; never renumber past a genuine on-main collision.
+  - No `.env*`/`fly.toml`/`zantara_core.py` edits; no `npm install/ci`; no PROD Postgres query or
+    write from this worktree (Dux's job) — the loop is prepared and unit-tested here but never
+    invoked against PROD by this session; it needs no new credential (reuses `api`'s existing
+    `db_pool`) and no operator install step, unlike the superseded scheduling mechanism.
+  - The loop must not run in a process that does not serve `/api/visa-oracle` — verified this turn
+    that `visa_oracle` is registered `process_groups=_API`
+    (apps/backend-rag/backend/app/setup/router_manifest.py:424) and that `main_api.py`'s
+    `initialize_services_light` (the `api` process's own init path) never calls
+    `initialize_database_services`/`_database_health_check_loop`
+    (service_initializer.py:458/706) — that pair belongs to the monolithic `main_cloud.py`, which
+    is not one of `fly.toml`'s three processes (`api`/`rag`/`drive`) and would never run in
+    production.
+acceptance:
+  - text: >-
+      A1 the forward section's LAST expires_at DEFAULT SHALL be 30 days, not 90
+    probe: "PYTHONPATH=. pytest backend/tests/db/test_migration_317_visa_oracle_sessions_retention.py::test_forward_sets_the_default_to_30_days"
+  - text: >-
+      A2 the rollback section SHALL restore the 90-day default
+    probe: "PYTHONPATH=. pytest backend/tests/db/test_migration_317_visa_oracle_sessions_retention.py::test_rollback_restores_90_days"
+  - text: >-
+      A3 neither the forward nor the rollback section SHALL contain an UPDATE or DELETE statement
+      against visa_oracle_sessions — existing rows are never rewritten
+    probe: "PYTHONPATH=. pytest backend/tests/db/test_migration_317_visa_oracle_sessions_retention.py::test_forward_does_not_rewrite_existing_rows backend/tests/db/test_migration_317_visa_oracle_sessions_retention.py::test_rollback_does_not_rewrite_existing_rows"
+  - text: >-
+      A4 the CREATE TABLE and both CREATE INDEX statements SHALL be IF NOT EXISTS-guarded (a
+      re-run against PROD, where the table already exists, is a no-op)
+    probe: "PYTHONPATH=. pytest backend/tests/db/test_migration_317_visa_oracle_sessions_retention.py::test_forward_ddl_is_idempotent"
+  - text: >-
+      A5 `_persist_session_create`'s INSERT SHALL name no `expires_at` column, so the new DEFAULT
+      is what governs every new row with no router change
+    probe: "grep -A15 'INSERT INTO visa_oracle_sessions' apps/backend-rag/backend/app/routers/visa_oracle.py | grep -v expires_at"
+    consumer: >-
+      apps/backend-rag/backend/app/routers/visa_oracle.py::_persist_session_create — the sole
+      writer of new session rows
+  - text: >-
+      A6 the migration number 317 SHALL remain unique across migrations_v2/ (no duplicate
+      prefix), matching this repo's structural guardrail
+    probe: "PYTHONPATH=. pytest backend/tests/db/test_migration_uniqueness.py::test_real_migrations_v2_has_no_duplicates"
+  - text: >-
+      B the purge SHALL delete a session row only when BOTH expires_at < NOW() AND
+      handoff_triggered is not true, and SHALL leave every not-yet-expired or handed-off row
+      untouched
+    probe: "PYTHONPATH=. pytest backend/tests/routers/test_visa_oracle_sessions_purge.py::test_purge_sql_excludes_handoff_triggered_rows_and_expired_only backend/tests/routers/test_visa_oracle_sessions_purge.py::test_purge_returns_deleted_count_from_asyncpg_status backend/tests/routers/test_visa_oracle_sessions_purge.py::test_purge_is_non_fatal_on_db_error_and_returns_zero"
+  - text: >-
+      C the purge SHALL be reachable by an in-process hourly loop on the Fly app that actually
+      serves /api/visa-oracle (never by the request path, never by an artifact that needs a
+      separate manual install)
+    probe: "PYTHONPATH=. pytest backend/tests/unit/services/test_visa_oracle_sessions_purge_scheduler.py"
+    consumer: >-
+      `_run_visa_oracle_sessions_purge_scheduler` (apps/backend-rag/backend/app/main_api.py:615)
+      — spawned as an `asyncio.create_task` in `_background_light_init` (main_api.py:810, inside
+      `lifespan_light`), cancelled in the same lifespan's shutdown block (main_api.py:851) before
+      `db_pool.close()`. Runs on every `api` Fly machine automatically; no plist, no wrapper, no
+      operator install step, no new credential — it acquires connections from
+      `app.state.db_pool`, the same pool `_persist_session_create` (acceptance A5) already writes
+      through.
+consumer_map:
+  - >-
+    `_persist_session_create` (apps/backend-rag/backend/app/routers/visa_oracle.py:634-656) — the
+    sole INSERT path for new visa_oracle_sessions rows; consumes the new 30-day DEFAULT with zero
+    code change once this migration applies.
+  - >-
+    `backend/db/migrate.py apply-all` / Fly `release_command` — the runner that actually executes
+    this migration's DDL against PROD at deploy time (merging this PR onto apps/backend-rag/** is
+    itself the deploy).
+  - >-
+    `_run_visa_oracle_sessions_purge_scheduler` (apps/backend-rag/backend/app/main_api.py:615),
+    spawned by `lifespan_light` on every `api` Fly machine — the consumer that turns the DEFAULT
+    into an actually-enforced retention, armed the moment this PR deploys, with no operator
+    install step and no new credential (superseding a launchd-plist design that needed both).
+  - >-
+    A future PROD schema read of `information_schema.columns.column_default` for
+    `visa_oracle_sessions.expires_at`, AND a future PROD count of
+    `expires_at < now() AND NOT handoff_triggered` — the direct, disk-verifiable observations that
+    both halves (declared default, enforced purge) are live (see pack.yml `bites`).
+appetite:
+  budget: 2 hours, 1 PR
+  stop_loss: three reds on the same cause suspends; a fix-of-a-fix stops at depth 1

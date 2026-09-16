@@ -1,0 +1,115 @@
+You are a REVIEW seat on a Gear-3 council (round 1). Worktree:
+/Users/balizero/nuzantara/.worktrees/backend-rag-vo-sessions-retention-v2 (branch
+agent/air-m5/backend-rag/vo-sessions-retention-v2, merge-base
+c1db269aa9601914ec77250f7748f0ac2352cf55, HEAD 4be9b857a9).
+Read-only: no edits, no file creation, no git write commands. Do not quote secrets or PII.
+
+SCOPE. Review `git diff c1db269aa9601914ec77250f7748f0ac2352cf55...HEAD` in this worktree. Read,
+in this order:
+- apps/backend-rag/backend/db/migrations_v2/317_visa_oracle_sessions_retention_30d.sql (whole
+  file — 180 lines, mostly comment/provenance; this IS the DEFAULT half of the change)
+- apps/backend-rag/backend/tests/db/test_migration_317_visa_oracle_sessions_retention.py (whole
+  file — the guilt/innocence proof for the DEFAULT claims)
+- apps/backend-rag/backend/app/routers/visa_oracle.py: lines 634-657
+  (`_persist_session_create` — the sole write consumer; confirm it never sets expires_at) AND the
+  `_purge_expired_sessions` function (grep it in the same file, ~50 lines, right after
+  `_persist_session_append_message`; UNCHANGED from the previous round) AND lines ~740-762
+  (`_persist_session_handoff` + `_fetch_session_snapshot` — the ONLY app-level dependency the
+  purge must not break)
+- apps/backend-rag/backend/tests/routers/test_visa_oracle_sessions_purge.py (whole file — the
+  guilt/innocence proof for the PURGE-SQL half; UNCHANGED)
+- apps/backend-rag/backend/app/main_api.py: `_visa_oracle_sessions_purge_enabled` and
+  `_run_visa_oracle_sessions_purge_scheduler` (grep them — both new this round, adjacent to the
+  existing `_garuda_outbox_poll_seconds`/`_run_garuda_outbox_scheduler` they were modeled on) AND
+  the wiring inside `_background_light_init`/`lifespan_light` (grep
+  `_visa_oracle_sessions_purge_task` — three sites: the DISABLE_BACKGROUND_WORKERS branch, the
+  spawn decision next to the GARUDA outbox spawn, and the shutdown cancellation next to the
+  GARUDA outbox cancellation)
+- apps/backend-rag/backend/tests/unit/services/test_visa_oracle_sessions_purge_scheduler.py
+  (whole file — the guilt/innocence proof for the NEW scheduling mechanism, this round's
+  addition)
+- apps/backend-rag/backend/app/setup/router_manifest.py line 424 (`visa_oracle` entry — confirm
+  `process_groups=_API`)
+- apps/backend-rag/backend/db/migration_manager.py lines 39-69 (`_assert_unique_migration_numbers`)
+  and lines 559-655 (`_apply_all_pending_locked`) — the numbering-safety claim rests on these two
+  functions; UNCHANGED.
+Never open PENDING-ARMS.md, docs/, research/, or any file under this worktree's own
+evidence/2026-09/agent-air-m5-backend-rag-vo-sessions-retention-v-d2b0707e/council/.
+
+WHAT THE CHANGE CLAIMS. Two halves, both required for the stated business goal ("Visa Oracle
+session retention is actually enforced at 30 days", not merely declared — a Dux found PROD held
+20 rows, 17 already past expires_at, nothing deleting them).
+
+HALF 1 (DEFAULT). Migration 317 changes `visa_oracle_sessions.expires_at`'s DEFAULT from
+`NOW() + INTERVAL '90 days'` to `NOW() + INTERVAL '30 days'` (Owner ruling, Zero, 2026-08-25 —
+UU PDP data minimisation). Successor of PR #6478 (armed, frozen, no evidence pack, same
+filename, same SQL body) — reuses the SAME migration number 317, not renumbering. Idempotent
+forward section; no existing row rewritten (no UPDATE/DELETE in the file); rollback restores 90
+days. `_persist_session_create`'s INSERT never names `expires_at`, so the DEFAULT alone governs
+every new row.
+
+HALF 2 (PURGE, this round replaces a prior round's scheduling mechanism). The query itself —
+`_purge_expired_sessions` — is UNCHANGED from the previous council round: bounded, conservative,
+never deletes a `handoff_triggered = TRUE` row. What changed is HOW it gets called. A PRIOR
+round shipped a launchd `.plist.example` + wrapper + one-shot `--apply`-gated worker. A Dux
+review rejected that mechanism as cicatrix scar #2 ("exists != armed"): nothing installs the
+plist, and the wrapper wants its own `DATABASE_URL` with DELETE on PROD — a credential only the
+operator can provision, so the purge would never actually run. THIS round replaces it with
+`_run_visa_oracle_sessions_purge_scheduler`, an `asyncio.create_task` loop started inside the
+`api` Fly process (`main_api.py`) — the SAME process `router_manifest.py:424` names as the one
+that serves `/api/visa-oracle`, and the SAME process that already holds `app.state.db_pool`. No
+new credential, no install step: every `api` machine runs the loop from boot. First tick fires
+30-120s after start (randomized), then roughly hourly +/- 5 minutes of jitter. Kill switch
+`VISA_ORACLE_SESSIONS_PURGE_ENABLED` (default on; "false"/"0" disables; anything else non-empty
+stays enabled and logs a warning). The loop is modeled on two EXISTING loops in the same file —
+`_run_garuda_outbox_scheduler` and the WA outbox scheduler — reusing their task/app.state/cancel
+shape and their "multiple machines running this loop is fine because the write is idempotent"
+argument.
+
+FALSIFY THESE TEN CLAIMS. For each: PROVEN or BROKEN, with file:line or command output that
+decides it.
+1. DEFAULT CHANGE: the LAST `ALTER COLUMN expires_at SET DEFAULT` in the forward section reads
+   '30 days', not '90 days' (the CREATE TABLE fallback still names '90 days' as production's
+   pre-existing value for a fresh database — NOT a defect, confirm it is not confused with the
+   real declaration).
+2. NO DATA REWRITE (migration): neither the forward nor rollback section of the .sql file
+   contains an UPDATE or DELETE against visa_oracle_sessions.
+3. IDEMPOTENCY (migration): CREATE TABLE and both CREATE INDEX statements are
+   IF NOT EXISTS-guarded; the ALTER SET DEFAULT is itself idempotent.
+4. ROUTER SUFFICIENCY (write path): `_persist_session_create`'s INSERT statement names only
+   (session_id, quiz_answers, recommended_visas, ip_hash) — expires_at absent from both the
+   column list and the bound params.
+5. NUMBER SAFETY: `_assert_unique_migration_numbers` only rejects two files sharing the SAME
+   numeric prefix, never out-of-order gaps; `_apply_all_pending_locked` computes `pending` as
+   `migration["number"] not in applied_numbers`, never a comparison against the highest applied
+   number — a database that already applied 318 will still correctly pick up and apply 317.
+6. PURGE SQL SHAPE (unchanged from the prior round): `_purge_expired_sessions`'s DELETE
+   predicate is EXACTLY `expires_at < NOW() AND NOT COALESCE(handoff_triggered, false)`, bounded
+   by a LIMIT-bearing subquery — no bare unbounded DELETE, no missing handoff exclusion.
+7. HANDOFF SAFETY (unchanged): grep this whole diff and `backend/db/migrations_v2/*.sql` for any
+   FK or table that references `visa_oracle_sessions` by ID — confirm there is none, and that
+   `handoff_triggered` (set only by `_persist_session_handoff`, read only by
+   `_fetch_session_snapshot`, both in this same file) is genuinely the only durable
+   "this row still matters" signal the purge must respect.
+8. NON-FATAL + PII-FREE: `_purge_expired_sessions` catches its own DB exception and returns 0
+   rather than raising; its success/failure log lines contain a bare integer count only — never a
+   session_id, quiz_answers, message or ip_hash substring. The LOOP's own outer catch in
+   `_run_visa_oracle_sessions_purge_scheduler` logs only the exception CLASS name
+   (`type(exc).__name__`), never `str(exc)` — confirm there is no second log line anywhere in the
+   loop that carries the exception message.
+9. PROCESS-GROUP CORRECTNESS: `router_manifest.py:424` registers `visa_oracle` as
+   `process_groups=_API`; `main_api.py`'s own `lifespan_light`/`_background_light_init` is the
+   function that spawns `_run_visa_oracle_sessions_purge_scheduler` (grep
+   `_visa_oracle_sessions_purge_task = asyncio.create_task`); confirm the spawn is gated on BOTH
+   `_visa_oracle_sessions_purge_enabled()` and a non-None `app.state.db_pool`, and that the
+   shutdown block cancels the task and awaits it BEFORE `db_pool.close()` — the same order the
+   adjacent GARUDA outbox task cancellation already uses.
+10. TEST VALIDITY: `test_the_lifespan_spawns_the_purge_when_enabled` is real coverage, not
+    vacuous — confirm its assertion would fail if the spawn were removed or the kill switch were
+    forced off (the PR body/pack.yml claims this was proven red via a `cp` backup/restore
+    mutation of `_visa_oracle_sessions_purge_enabled`; you do not need to reproduce the mutation,
+    just judge whether the assertion as written is capable of catching that regression).
+
+Be terse: at most 6 lines per claim. Your LAST line must be exactly one of:
+VERDICT: OK
+VERDICT: CHANGES
