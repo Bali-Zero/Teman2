@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>Label</key>
+	<string>com.nuzantara.meta-one-steward</string>
+	<key>ProgramArguments</key>
+	<array>
+		<string>/bin/bash</string>
+		<string>/Users/nuzantara/nuzantara/scripts/meta-one-steward.sh</string>
+	</array>
+	<key>EnvironmentVariables</key>
+	<dict>
+		<key>HOME</key>
+		<string>/Users/nuzantara</string>
+		<key>PATH</key>
+		<string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
+		<key>META_ONE_REPO_ROOT</key>
+		<string>/Users/nuzantara/nuzantara</string>
+	</dict>
+	<key>StandardOutPath</key>
+	<string>/Users/nuzantara/logs/meta-one-steward.launchd.out.log</string>
+	<key>StandardErrorPath</key>
+	<string>/Users/nuzantara/logs/meta-one-steward.launchd.err.log</string>
+	<!-- Daily 06:20 WITA. NO KeepAlive: this is a one-shot tick, not a daemon
+	     (superscar #7: KeepAlive + one-shot = SIGTERM crash-loop). RunAtLoad
+	     false — the first run waits for the scheduled slot, it does not fire
+	     the moment this is loaded. -->
+	<key>StartCalendarInterval</key>
+	<dict>
+		<key>Hour</key>
+		<integer>6</integer>
+		<key>Minute</key>
+		<integer>20</integer>
+	</dict>
+	<key>RunAtLoad</key>
+	<false/>
+	<key>ThrottleInterval</key>
+	<integer>60</integer>
+</dict>
+</plist>
