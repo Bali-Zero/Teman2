@@ -64,4 +64,21 @@ describe("GarudaVoaLayout — server-side gate", () => {
     expect(screen.getByTestId("voa-content")).toBeInTheDocument();
     expect(notFoundMock).not.toHaveBeenCalled();
   });
+
+  // R19 skin (garuda-voa/voa-r19-design): the funnel must wear the same
+  // [data-theme="operative-light"][data-product="my"] tokens as /portal,
+  // via a wrapper this layout owns — not the shared /visa navy+red skin.
+  it("wraps children in the R19 wrapper (data-product=my, data-theme=operative-light)", () => {
+    process.env.GARUDA_PUBLIC_ENABLED = "true";
+    const { container } = render(
+      <GarudaVoaLayout>
+        <div data-testid="voa-content" />
+      </GarudaVoaLayout>,
+    );
+    const wrapper = container.querySelector('[data-garuda-voa="r19"]');
+    expect(wrapper).not.toBeNull();
+    expect(wrapper).toHaveAttribute("data-product", "my");
+    expect(wrapper).toHaveAttribute("data-theme", "operative-light");
+    expect(wrapper?.contains(screen.getByTestId("voa-content"))).toBe(true);
+  });
 });

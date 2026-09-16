@@ -219,3 +219,69 @@ describe("VoaEligibilityPage — customer-facing surface", () => {
     expect(trackerMocks.wizardAbandoned).toHaveBeenCalledWith(1);
   });
 });
+
+/**
+ * Hero handoff (garuda-voa/voa-r19-design lane).
+ *
+ * Measured on production 2026-09-16 at a 390px viewport: the page carried
+ * two WhatsApp-matching anchors and NEITHER was tappable in the first
+ * screen — the nav link rendered at height 0 inside the collapsed
+ * hamburger, and "Get Started" sat in the footer. So a visitor who wanted a
+ * human had to hunt. These pin the replacement, and pin it as a LEAD
+ * control: the failure mode this lane must not reintroduce is a bare wa.me
+ * anchor, which hands the visitor to WhatsApp while writing no
+ * lead_intents row — the lead leaves the funnel and nobody knows.
+ */
+describe("VoaEligibilityPage — hero WhatsApp handoff", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    window.localStorage.clear();
+    fetchMock.mockReset();
+  });
+
+  it("renders a WhatsApp control before the wizard, carrying the garuda_voa lead source", () => {
+    render(<VoaEligibilityPage />);
+    const cta = screen.getByRole("link", { name: /Talk to us on WhatsApp/i });
+    expect(cta).toHaveAttribute("data-lead-source", "garuda_voa");
+    // No-JS / capture-failure floor: the href alone still reaches the desk.
+    expect(cta.getAttribute("href")).toMatch(/wa\.me|whatsapp/i);
+  });
+
+  it("captures a lead BEFORE handing off, and never posts an answer value", async () => {
+    fetchMock.mockResolvedValue({
+      ok: true,
+      status: 201,
+      json: async () => ({
+        lead_intent_id: "li_test",
+        whatsapp_url: "https://wa.me/628213454721?text=x",
+      }),
+    });
+    render(<VoaEligibilityPage />);
+    fireEvent.click(
+      screen.getByRole("link", { name: /Talk to us on WhatsApp/i }),
+    );
+
+    await waitFor(() => expect(fetchMock).toHaveBeenCalled());
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(url).toBe("/api/lead/capture");
+    const body = JSON.parse(init.body);
+    expect(body.source).toBe("garuda_voa");
+    expect(body.context).toMatchObject({ surface: "voa_hero" });
+    // Law 2: the capture describes the SURFACE, never what the visitor typed.
+    expect(JSON.stringify(body)).not.toMatch(/passport|nationality|ITA/i);
+  });
+
+  it("sits above the wizard, so the handoff is reachable without scrolling past step 1", () => {
+    const { container } = render(<VoaEligibilityPage />);
+    const cta = screen.getByRole("link", { name: /Talk to us on WhatsApp/i });
+    const firstStepOption = screen.getByRole("button", {
+      name: /Get a new Visa on Arrival/,
+    });
+    // Node.compareDocumentPosition: DOCUMENT_POSITION_FOLLOWING === 4.
+    expect(
+      cta.compareDocumentPosition(firstStepOption) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(container.querySelector(".voa-hero-wa")).not.toBeNull();
+  });
+});

@@ -19,6 +19,7 @@ import dataclasses
 
 import pytest
 
+from backend.services.integrations.wa_human_handoff import match_human_request
 from backend.services.integrations.wa_identity import (
     _IDENTITY_REPLIES,
     IdentityTurn,
@@ -127,15 +128,21 @@ class TestGuilt:
             assert "Rp" not in reply
             assert "IDR" not in reply
 
-    def test_the_answer_makes_no_handoff_promise(self) -> None:
-        """CURE 1: nothing in this repository detects a handoff phrase today
-        (see the comment above `_IDENTITY_REPLIES`), so the presentation must
-        not promise one. It returns in the slice that wires the detector."""
-        for reply in _IDENTITY_REPLIES.values():
-            lowered = reply.lower()
-            assert "human" not in lowered
-            assert "manusia" not in lowered
-            assert "operatore" not in lowered
+    def test_the_answer_now_makes_a_handoff_promise(self) -> None:
+        """B2.5-2 supersedes CURE 1 from B2.5-1b: the detector this slice
+        ships (`wa_human_handoff.match_human_request`) keeps the promise, so
+        it returns. See `TestHandoffPromiseIsKept` below for the proof that
+        each restored sentence actually round-trips through the detector —
+        this test only pins that the words are there in every language."""
+        expected_word = {
+            "id": "konsultan",
+            "en": "human",
+            "it": "persona",
+            "ru": "человеком",
+            "uk": "людиною",
+        }
+        for language, reply in _IDENTITY_REPLIES.items():
+            assert expected_word[language] in reply.lower()
 
 
 class TestInnocence:
@@ -357,3 +364,21 @@ class TestAIPhrasing:
 
     def test_a_domain_case_question_about_ai_is_still_vetoed(self) -> None:
         assert match_identity_question("what can this AI do for my PT PMA?") is None
+
+
+class TestHandoffPromiseIsKept:
+    """B2.5-2: the identity presentation once again promises a human is
+    reachable — and, unlike the slice that removed it, the promise is now
+    true: the phrase it uses is itself recognised by `match_human_request`.
+    One language per assertion, feeding the trailing sentence each reply
+    was extended with (the whole multi-paragraph presentation exceeds
+    `match_human_request`'s own length brake by design, same as a client
+    quoting a whole presentation back would) — proving the sentence a real
+    client reads actually round-trips through the detector it advertises."""
+
+    @pytest.mark.parametrize("language", ["id", "en", "it", "ru", "uk"])
+    def test_the_restored_sentence_matches_the_detector(self, language: str) -> None:
+        trigger_sentence = _IDENTITY_REPLIES[language].rsplit("\n\n", 1)[-1]
+        turn = match_human_request(trigger_sentence)
+        assert turn is not None, f"{language}: restored promise does not round-trip"
+        assert turn.language == language

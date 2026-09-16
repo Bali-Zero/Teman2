@@ -738,6 +738,65 @@ describe("mapCurrentStatusCode — the synthesized NO_STAY_PERMIT sentinel (2026
   });
 });
 
+describe("immigration.overstay_days — D19 offshore synthesis (owner ruling, 2026-09-16)", () => {
+  // You cannot be overstaying in Indonesia while outside it: `flow.ts`'s
+  // `computeNextNode` never shows `overstay_days` on any offshore route, so
+  // this mapper synthesizes KNOWN 0 straight off `in_indonesia === "no"` —
+  // same shape as `mapCurrentStatusCode`'s `NO_STAY_PERMIT` sentinel above.
+  it("guilt: offshore, holds_stay_permit='no' chain -> KNOWN 0 even with a stale answer left over from switching arms", () => {
+    expect(
+      mapFacts({
+        in_indonesia: "no",
+        holds_stay_permit: "no",
+        overstay_days: "45",
+      }).facts["immigration.overstay_days"],
+    ).toEqual({ status: "KNOWN", value: 0 });
+  });
+
+  it("guilt: offshore, holds_stay_permit='yes' chain -> KNOWN 0 even with a stale answer left over from switching arms", () => {
+    expect(
+      mapFacts({
+        in_indonesia: "no",
+        holds_stay_permit: "yes",
+        stay_permit_code: "E28A",
+        overstay_days: "45",
+      }).facts["immigration.overstay_days"],
+    ).toEqual({ status: "KNOWN", value: 0 });
+  });
+
+  it("guilt: offshore with no overstay_days answer at all (the live path since D19) -> KNOWN 0, not NOT_ASKED", () => {
+    expect(
+      mapFacts({ in_indonesia: "no", holds_stay_permit: "no" }).facts[
+        "immigration.overstay_days"
+      ],
+    ).toEqual({ status: "KNOWN", value: 0 });
+  });
+
+  it("innocence: onshore still maps the real answer, unaffected", () => {
+    expect(
+      mapFacts({ in_indonesia: "yes", overstay_days: "12" }).facts[
+        "immigration.overstay_days"
+      ],
+    ).toEqual({ status: "KNOWN", value: 12 });
+  });
+
+  it("innocence: onshore never asked -> UNKNOWN NOT_ASKED, unaffected", () => {
+    expect(
+      mapFacts({ in_indonesia: "yes" }).facts["immigration.overstay_days"],
+    ).toEqual({ status: "UNKNOWN", reason: "NOT_ASKED" });
+  });
+
+  it("innocence: in_indonesia unanswered or 'unsure' falls through to the ordinary mapper, never forced to 0", () => {
+    expect(mapFacts({}).facts["immigration.overstay_days"]).toEqual({
+      status: "UNKNOWN",
+      reason: "NOT_ASKED",
+    });
+    expect(
+      mapFacts({ in_indonesia: "unsure" }).facts["immigration.overstay_days"],
+    ).toEqual({ status: "UNKNOWN", reason: "NOT_ASKED" });
+  });
+});
+
 describe("mapSponsorType — sponsor_category -> sponsor.type", () => {
   it("never asked -> UNKNOWN NOT_ASKED (the pre-existing default value)", () => {
     expect(mapSponsorType({})).toEqual({

@@ -19,7 +19,8 @@ const SHA256 = /^[0-9a-f]{64}$/;
 const SYNTHETIC_VERDICT_FACTS: OracleFacts = {
   in_indonesia: "no",
   holds_stay_permit: "no",
-  overstay_days: "0",
+  // D19 (2026-09-16): `overstay_days` dropped — offshore never asks it, so
+  // `deriveVerdictHistory` below never needs an answer for it.
   nationalities: "US",
   birth_date: "1990-01-01",
   category: "tourism",
