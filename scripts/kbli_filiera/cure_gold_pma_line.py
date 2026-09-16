@@ -281,7 +281,7 @@ AUTHORED_SENTENCES = {
             "46); a new PT PMA cannot open it. Selling the same goods inside "
             "a supermarket or general store uses a different KBLI."
         ),
-        "why": "canonical cap 0 (W-H PR-3, Lampiran II p.13-14 entry 46 sub-row \"Alas kaki\", ex-KBLI 2020 47712); the old sentence asserted the exact opposite",
+        "why": 'canonical cap 0 (W-H PR-3, Lampiran II p.13-14 entry 46 sub-row "Alas kaki", ex-KBLI 2020 47712); the old sentence asserted the exact opposite',
         "also": [
             {
                 "field": "zantaraOpener",
@@ -321,7 +321,7 @@ AUTHORED_SENTENCES = {
             "47721, whose foreign-ownership position must be confirmed "
             "separately."
         ),
-        "why": "canonical cap 0 (W-H PR-3, Lampiran II p.13-14 entry 46 sub-row \"Barang dan obat farmasi untuk manusia bukan di apotik\", ex-KBLI 2020 47722); the old sentence asserted the exact opposite; 47721's own PMA figure is declared_gap/unverified, so it must not be asserted as \"PMA-open\"",
+        "why": 'canonical cap 0 (W-H PR-3, Lampiran II p.13-14 entry 46 sub-row "Barang dan obat farmasi untuk manusia bukan di apotik", ex-KBLI 2020 47722); the old sentence asserted the exact opposite; 47721\'s own PMA figure is declared_gap/unverified, so it must not be asserted as "PMA-open"',
     },
 }
 
@@ -373,7 +373,9 @@ def stated_figure(sentence: str) -> int | None:
     return int(m.group(1)) if m else None
 
 
-def scan(gold: dict, by_code: dict, incomparable: list | None = None) -> dict[str, dict]:
+def scan(
+    gold: dict, by_code: dict, incomparable: list | None = None
+) -> dict[str, dict]:
     """Every gold code whose PMA sentence states a figure ≠ the canonical cap.
 
     Returns {code: {field, sentence, stated, cap, more_open, is_default}}.
@@ -474,7 +476,9 @@ def plan(findings: dict[str, dict], gold: dict) -> tuple[dict, dict]:
             lambda _m: derived_sentence(f["cap"]), old_text, count=1
         )
         if new_text == old_text:
-            raise CureError(f"{code}: replacement was a no-op — refusing to claim a cure")
+            raise CureError(
+                f"{code}: replacement was a no-op — refusing to claim a cure"
+            )
         for got in PERCENT_RE.findall(derived_sentence(f["cap"])):
             if int(got) != f["cap"]:
                 raise CureError(
@@ -520,7 +524,9 @@ def main() -> int:
         for p in patches:
             live = gold.get(code, {}).get(p["field"])
             if live is None:
-                raise CureError(f"{code}.{p['field']}: field is gone — the pin is stale")
+                raise CureError(
+                    f"{code}.{p['field']}: field is gone — the pin is stale"
+                )
             if p["old"] not in live:
                 if p["new"] in live:
                     continue  # already applied; idempotent, not a failure
@@ -529,30 +535,47 @@ def main() -> int:
                     "It was authored against a paragraph that has since moved; re-read "
                     "it before re-pinning."
                 )
-            applied.append({"field": p["field"], "new": live.replace(p["old"], p["new"], 1)})
+            applied.append(
+                {"field": p["field"], "new": live.replace(p["old"], p["new"], 1)}
+            )
         if applied:
             authored[code] = applied
 
     prose = prose_scan(gold, by_code)
-    unacquitted = {c: v for c, v in prose.items()
-                   if c not in PROSE_ACQUITTED and c not in AUTHORED_SENTENCES
-                   and c not in refused}
-    log.info("prose openness on capped codes: %d found | %d acquitted | %d to author",
-             len(prose), len(PROSE_ACQUITTED), len(unacquitted))
+    unacquitted = {
+        c: v
+        for c, v in prose.items()
+        if c not in PROSE_ACQUITTED and c not in AUTHORED_SENTENCES and c not in refused
+    }
+    log.info(
+        "prose openness on capped codes: %d found | %d acquitted | %d to author",
+        len(prose),
+        len(PROSE_ACQUITTED),
+        len(unacquitted),
+    )
     for code, hits in sorted(unacquitted.items()):
         cap, field, frag = hits[0]
         log.info("    PROSE %s cap=%s [%s] …%s…", code, cap, field, frag.strip()[:110])
 
     log.info("gold codes: %d | divergences: %d", len(gold), len(findings))
     for code, stated, cap, _s in sorted(incomparable):
-        log.info("  NOT COMPARABLE %s  gold=%s%% canonical=%r — no figure to compare",
-                 code, stated, cap)
+        log.info(
+            "  NOT COMPARABLE %s  gold=%s%% canonical=%r — no figure to compare",
+            code,
+            stated,
+            cap,
+        )
     log.info("  patchable (default sentence, gold more open): %d", len(patch))
     log.info("  refused and named: %d", len(refused))
     for code, why in sorted(refused.items()):
         f = findings[code]
-        log.info("    REFUSE %s  gold=%s%% canonical=%s%% — %s",
-                 code, f["stated"], f["cap"], why)
+        log.info(
+            "    REFUSE %s  gold=%s%% canonical=%s%% — %s",
+            code,
+            f["stated"],
+            f["cap"],
+            why,
+        )
     if args.report or not args.apply:
         for code, p in sorted(patch.items()):
             log.info("    %s  «%s»  ->  «%s»", code, p["was"], p["now"])
@@ -591,7 +614,9 @@ def main() -> int:
             raise CureError(f"{code}: still divergent after the patch")
     for code, f in after.items():
         if code not in before or before[code] != f["stated"]:
-            raise CureError(f"{code}: verdict changed on a code this cure never touched")
+            raise CureError(
+                f"{code}: verdict changed on a code this cure never touched"
+            )
 
     if not args.apply:
         log.info("DRY-RUN — nothing written. Re-run with --apply.")
@@ -604,8 +629,12 @@ def main() -> int:
     GOLD_PATH.write_text(
         json.dumps(gold_raw, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
     )
-    log.info("WROTE %s — %d re-derived, %d authored", GOLD_PATH.name,
-             len(patch), len(authored))
+    log.info(
+        "WROTE %s — %d re-derived, %d authored",
+        GOLD_PATH.name,
+        len(patch),
+        len(authored),
+    )
     return 0
 
 

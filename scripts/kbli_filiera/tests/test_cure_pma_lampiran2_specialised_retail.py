@@ -33,7 +33,9 @@ def item(code, self_ancestor, split_siblings=None, was=None, locator="L-II entry
         "self_ancestor": self_ancestor,
         "split_siblings": split_siblings or [],
         "locator": locator,
-        "was": was if was is not None else {"pma_status": "TERBUKA", "pma_max_asing": 100},
+        "was": was
+        if was is not None
+        else {"pma_status": "TERBUKA", "pma_max_asing": 100},
     }
 
 
@@ -104,7 +106,9 @@ def test_refuses_partial_split_sibling_missing_from_spec():
 
 
 def test_refuses_conflicting_existing_basis():
-    records = [rec("47241", ancestors=["47241"], basis="some other hand-adjudicated basis")]
+    records = [
+        rec("47241", ancestors=["47241"], basis="some other hand-adjudicated basis")
+    ]
     spec = {"items": [item("47241", "47241")]}
     todo, refusals = C.check(spec, records)
     assert todo == []
@@ -113,7 +117,11 @@ def test_refuses_conflicting_existing_basis():
 
 def test_refuses_when_world_moved_since_adjudication():
     records = [rec("47241", status="TERTUTUP", maxa=0, ancestors=["47241"])]
-    spec = {"items": [item("47241", "47241", was={"pma_status": "TERBUKA", "pma_max_asing": 100})]}
+    spec = {
+        "items": [
+            item("47241", "47241", was={"pma_status": "TERBUKA", "pma_max_asing": 100})
+        ]
+    }
     todo, refusals = C.check(spec, records)
     assert todo == []
     assert "moved since adjudication" in refusals[0]
@@ -122,7 +130,9 @@ def test_refuses_when_world_moved_since_adjudication():
 def test_idempotent_noop_when_already_applied():
     already = rec("47241", ancestors=["47241"])
     already.update(C.base.patch_for(item("47241", "47241", locator="L-II entry 46")))
-    todo, refusals = C.check({"items": [item("47241", "47241", locator="L-II entry 46")]}, [already])
+    todo, refusals = C.check(
+        {"items": [item("47241", "47241", locator="L-II entry 46")]}, [already]
+    )
     assert refusals == []
     assert todo == []  # nothing left to do — already carries the target tuple
 

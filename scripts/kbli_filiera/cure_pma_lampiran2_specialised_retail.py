@@ -50,7 +50,9 @@ def check(spec: dict[str, Any], records: list[dict]) -> tuple[list[dict], list[s
             refusals.append(f"{code}: not in the dataset")
             continue
         ancestor = item["self_ancestor"]
-        ancestors = [str(a) for a in (record.get("bps_2020_ancestors") or {}).get("codes") or []]
+        ancestors = [
+            str(a) for a in (record.get("bps_2020_ancestors") or {}).get("codes") or []
+        ]
         if ancestor not in ancestors:
             refusals.append(
                 f"{code}: self_ancestor {ancestor} is not among its bps_2020_ancestors {ancestors}"
@@ -81,7 +83,10 @@ def check(spec: dict[str, Any], records: list[dict]) -> tuple[list[dict], list[s
         if all(record.get(key) == value for key, value in target.items()):
             continue
         was = item.get("was") or {}
-        now = {"pma_status": record.get("pma_status"), "pma_max_asing": record.get("pma_max_asing")}
+        now = {
+            "pma_status": record.get("pma_status"),
+            "pma_max_asing": record.get("pma_max_asing"),
+        }
         if was and was != now:
             refusals.append(f"{code}: moved since adjudication — spec {was}, now {now}")
             continue
@@ -107,10 +112,14 @@ def main(argv: list[str] | None = None) -> int:
     for r in refusals:
         print(f"  REFUSE {r}")
     if refusals:
-        print("\nrefusing to write: a spec wrong about one code is not trusted for the rest")
+        print(
+            "\nrefusing to write: a spec wrong about one code is not trusted for the rest"
+        )
         return EXIT_REFUSED
     for item in todo:
-        print(f"  {item['code']} (self_ancestor {item['self_ancestor']}): {item['was']} -> TERBATAS/0")
+        print(
+            f"  {item['code']} (self_ancestor {item['self_ancestor']}): {item['was']} -> TERBATAS/0"
+        )
     if not args.apply:
         print("\ndry-run — rerun with --apply to write")
         return EXIT_OK
@@ -127,7 +136,8 @@ def main(argv: list[str] | None = None) -> int:
     wrong = [
         i["code"]
         for i in todo
-        if fresh[i["code"]].get("pma_max_asing") != 0 or fresh[i["code"]].get("pma_status") != "TERBATAS"
+        if fresh[i["code"]].get("pma_max_asing") != 0
+        or fresh[i["code"]].get("pma_status") != "TERBATAS"
     ]
     if wrong:
         print(f"WROTE BUT READ BACK WRONG on {len(wrong)}: {wrong[:10]}")

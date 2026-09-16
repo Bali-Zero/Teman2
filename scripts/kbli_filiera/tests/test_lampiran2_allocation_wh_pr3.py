@@ -70,12 +70,18 @@ def test_tuple_matches_certified_template(code, by_code):
 @pytest.mark.parametrize("code", WHOLE_CODE)
 def test_locator_names_lampiran_ii_never_per_skala(code, by_code):
     basis = by_code[code].get("pma_official_basis") or ""
-    assert "Lampiran II" in basis, f"{code}: pma_official_basis does not cite Lampiran II: {basis!r}"
-    assert "per_skala" not in basis, f"{code}: locator leans on per_skala — the withdrawn inference"
+    assert "Lampiran II" in basis, (
+        f"{code}: pma_official_basis does not cite Lampiran II: {basis!r}"
+    )
+    assert "per_skala" not in basis, (
+        f"{code}: locator leans on per_skala — the withdrawn inference"
+    )
     assert "Usaha Besar" not in basis, (
         f"{code}: locator leans on absence of an Usaha Besar row — the withdrawn inference"
     )
-    assert "Koperasi" in basis or "UMKM" in basis, f"{code}: locator does not name the K-UMKM allocation"
+    assert "Koperasi" in basis or "UMKM" in basis, (
+        f"{code}: locator does not name the K-UMKM allocation"
+    )
 
 
 def test_kondisi_field_matches_template(by_code):
@@ -111,6 +117,10 @@ def test_out_of_scope_codes_untouched(by_code):
         rec = by_code.get(code)
         if rec is None:
             continue
-        assert rec.get("pma_status") != "TERBATAS" or rec.get("pma_official_basis") is None or (
-            "Lampiran II" not in (rec.get("pma_official_basis") or "")
-        ), f"{code} is out of PR-3a scope and must not carry a Lampiran II verdict from this lane"
+        assert (
+            rec.get("pma_status") != "TERBATAS"
+            or rec.get("pma_official_basis") is None
+            or ("Lampiran II" not in (rec.get("pma_official_basis") or ""))
+        ), (
+            f"{code} is out of PR-3a scope and must not carry a Lampiran II verdict from this lane"
+        )
