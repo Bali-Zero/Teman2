@@ -679,6 +679,55 @@ async def _persist_session_append_message(
         logger.warning("visa-oracle session persist (message) failed: %s", exc)
 
 
+async def _purge_expired_sessions(db_pool: Any, *, limit: int = 500) -> int:
+    """Hard-delete visa_oracle_sessions rows past their TTL. Returns count.
+    Safe to run periodically. Non-fatal — failures are logged, not raised
+    (same convention as the other session helpers above).
+
+    NEVER deletes a session with `handoff_triggered = TRUE` — that row is
+    the consultant's own follow-up record (`_fetch_session_snapshot` below
+    reads it by session_id for handoff pricing; grepped this file and
+    `db/migrations_v2/*.sql` this turn — no FK/table references
+    visa_oracle_sessions, so `handoff_triggered` is the only durable signal
+    that a row still matters). UU PDP data minimisation (migration 317)
+    only asks that the DECLARED default become 30 days; it does not ask to
+    shorten a handed-off case's own record.
+
+    Bounded via a `ctid` subquery + LIMIT — no existing purge in this repo
+    happens to use that exact shape (`lead_capture.repository.purge_expired`
+    is unbounded; the visa_engine/garuda_flow purges delegate the bound to a
+    SECURITY DEFINER SQL function tied to a Zero-approved retention-policy
+    table this session doesn't have) — the bound here is a plain safety net
+    against a future growth in session volume turning one purge tick into
+    an unbounded table lock, not a reused convention.
+    """
+    try:
+        async with db_pool.acquire() as conn:
+            result = await conn.execute(
+                """
+                DELETE FROM visa_oracle_sessions
+                 WHERE ctid IN (
+                    SELECT ctid FROM visa_oracle_sessions
+                     WHERE expires_at < NOW()
+                       AND NOT COALESCE(handoff_triggered, false)
+                     LIMIT $1
+                 )
+                """,
+                limit,
+            )
+    except Exception as exc:
+        logger.warning("visa-oracle session purge failed: %s", exc)
+        return 0
+    # asyncpg returns "DELETE <count>".
+    try:
+        deleted = int(result.split()[-1])
+    except (ValueError, IndexError):
+        deleted = 0
+    if deleted:
+        logger.info("visa-oracle session purge: deleted=%d", deleted)
+    return deleted
+
+
 def _update_row_count(status: str | None) -> int:
     """Parse asyncpg's `UPDATE N` command-status string. Returns 0 on any
     unparseable/missing status — a safe default that just triggers the
