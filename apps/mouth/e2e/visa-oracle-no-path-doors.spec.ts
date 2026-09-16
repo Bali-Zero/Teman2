@@ -39,14 +39,15 @@ interface Step {
 }
 
 /** The answers `generate-walk-corpus.ts` gives on these three walks (first
- * option everywhere, its fixed synthetic identity for typed questions). */
+ * option everywhere, its fixed synthetic identity for typed questions). D19
+ * (2026-09-16): `overstay_days` dropped from all three — offshore never
+ * asks it any more. */
 const WALKS: { label: string; steps: Step[] }[] = [
   {
     label: "offshore/business",
     steps: [
       { id: "in_indonesia", value: "no" },
       { id: "holds_stay_permit", value: "no" },
-      { id: "overstay_days", value: "0" },
       { id: "nationalities", value: "IT" },
       { id: "birth_date", value: "2000-11-11" },
       { id: "category", value: "business" },
@@ -63,7 +64,6 @@ const WALKS: { label: string; steps: Step[] }[] = [
     steps: [
       { id: "in_indonesia", value: "no" },
       { id: "holds_stay_permit", value: "no" },
-      { id: "overstay_days", value: "0" },
       { id: "nationalities", value: "IT" },
       { id: "birth_date", value: "2000-11-11" },
       { id: "category", value: "retirement" },
@@ -84,7 +84,6 @@ const WALKS: { label: string; steps: Step[] }[] = [
     steps: [
       { id: "in_indonesia", value: "no" },
       { id: "holds_stay_permit", value: "no" },
-      { id: "overstay_days", value: "0" },
       { id: "nationalities", value: "IT" },
       { id: "birth_date", value: "2000-11-11" },
       { id: "category", value: "other" },

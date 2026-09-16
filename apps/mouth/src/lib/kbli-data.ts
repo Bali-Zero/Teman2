@@ -23,6 +23,7 @@ import { ENGLISH_TITLES } from "./kbli-english";
 import {
   discloseBaliL4,
   disclosePmaInfo,
+  isAllowedBaliStatus,
   normalizedPmaStatus,
 } from "./kbli-pma-disclosure";
 import {
@@ -428,6 +429,9 @@ let _allCodes: KBLICode[] | null = null;
 let _codeMap: Map<string, KBLICode> | null = null;
 let _sectionMap: Map<string, KBLICode[]> | null = null;
 let _prefixMap: Map<string, KBLICode[]> | null = null;
+/** Bali status census (added 2026-09-16, W-J B1 disclose) — see `getBaliCensus`. */
+let _baliCensus: ReadonlyArray<{ status: string; blocked: boolean }> | null =
+  null;
 
 /**
  * Load and parse the KBLI JSON file.
@@ -492,6 +496,27 @@ function loadData(): void {
   _codeMap = codeMap;
   _sectionMap = sectionMap;
   _prefixMap = prefixMap;
+
+  // Bali status census: counts only (status + blocked), from the SAME raw
+  // records `codes` was just built from — never from the public `codes`
+  // array itself, which withholds `baliL4` on most records (only the
+  // located+sourced-closure subset discloses it). The index-page trust bar
+  // needs the true population size, not the served-page subset.
+  _baliCensus = raw.data
+    .map((record) => record.l4_bali)
+    .filter(
+      (
+        l4,
+      ): l4 is NonNullable<KBLIRawCode["l4_bali"]> & {
+        status: string;
+        blocked: boolean;
+      } =>
+        !!l4 &&
+        typeof l4.status === "string" &&
+        isAllowedBaliStatus(l4.status) &&
+        typeof l4.blocked === "boolean",
+    )
+    .map((l4) => ({ status: l4.status, blocked: l4.blocked }));
 }
 
 // =============================================================================
@@ -505,6 +530,23 @@ function loadData(): void {
 export function getAllCodes(): KBLICode[] {
   loadData();
   return _allCodes!;
+}
+
+/**
+ * The canonical Bali status census — counts only, no prose, no per-code
+ * detail. Every record whose `l4_bali.status` is an allow-listed string and
+ * whose `blocked` is a real boolean, from the SAME raw file `getAllCodes()`
+ * loads. Unlike `getAllCodes()[i].baliL4`, this is NOT gated on the national
+ * PMA verdict being located or the closure being sourced — it is the true
+ * population size the index-page trust bar counts against, not the subset a
+ * per-code page is currently allowed to disclose.
+ */
+export function getBaliCensus(): ReadonlyArray<{
+  status: string;
+  blocked: boolean;
+}> {
+  loadData();
+  return _baliCensus!;
 }
 
 /**

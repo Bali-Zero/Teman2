@@ -123,6 +123,10 @@ from backend.services.integrations.wa_finalize import (
     finalize_wa_answer,
 )
 from backend.services.integrations.wa_greeting import match_greeting
+from backend.services.integrations.wa_human_handoff import (
+    match_human_request,
+    notify_human_handoff,
+)
 from backend.services.integrations.wa_identity import match_identity_question
 
 # Same-package deliberate reuse of the bot leg's lazy-singleton RAG client,
@@ -703,6 +707,42 @@ async def _attempt(
             greeting.language,
         )
         return CodexLegResult(text=greeting.text, served_by="scripted_greeting")
+
+    # Deterministic human-handoff turn (B2.5-2), THIRD authority, checked
+    # BEFORE identity and AFTER greeting: this order is deliberate and
+    # pinned by a test (test_two_authorities_match_human_request_wins_over_
+    # identity in test_wa_codex_leg.py). A message can carry BOTH an
+    # identity phrase and a human-request phrase ("are you human or can I
+    # talk to a person") — identity alone would answer with a capability
+    # list and notify nobody, silently dropping the highest-intent message
+    # this bot ever receives. Human-request wins the double-match.
+    #
+    # Notification is best-effort and wrapped here, not inside
+    # `notify_human_handoff`: the client's confirmation must never be lost
+    # because Brevo failed, and the outer `attempt()` turns any unhandled
+    # exception from `_attempt` into a text=None fall-off — which would
+    # silently swallow the confirmation this leg is about to return.
+    human_request = match_human_request(query)
+    if human_request is not None:
+        try:
+            await notify_human_handoff(
+                pool,
+                thread_id=thread_id,
+                counterpart_phone=thread["counterpart_phone"],
+                language=human_request.language,
+            )
+        except Exception as exc:
+            logger.error(
+                "wa_codex_leg: human handoff notification failed (outbox=%s): %s",
+                outbox_id,
+                type(exc).__name__,
+            )
+        logger.info(
+            "wa_codex_leg: scripted human handoff served outbox=%s lang=%s",
+            outbox_id,
+            human_request.language,
+        )
+        return CodexLegResult(text=human_request.text, served_by="scripted_human_handoff")
 
     # Deterministic identity turn (B2.5-1b), second authority, same order,
     # same reasoning, checked right after the greeting: measured on real

@@ -4,7 +4,8 @@ CRM Notifications Endpoints
 GET /api/crm/notifications — returns notification_alerts for the current team member.
 Used by the NotificationBell component in the CRM header.
 
-Surfaces: portal document uploads, portal profile updates, and future alert types from notification_alerts.
+Surfaces: portal document uploads, portal profile updates, WhatsApp clients who asked
+to speak to a human, and future alert types from notification_alerts — see BELL_ALERT_TYPES.
 """
 
 from typing import Any
@@ -19,6 +20,16 @@ from backend.app.utils.logging_utils import get_logger
 logger = get_logger(__name__)
 
 router = APIRouter(prefix="/api/crm", tags=["crm-notifications"])
+
+# The bell's guest list. A writer of `notification_alerts` whose alert_type is
+# absent from this tuple writes a row nobody ever sees — the row exists, the
+# notification does not. Kept as ONE constant read by both queries below so a
+# new alert type cannot be admitted to the list and forgotten by the counter.
+BELL_ALERT_TYPES: tuple[str, ...] = (
+    "portal_document_upload",
+    "portal_profile_update",
+    "wa_human_handoff",
+)
 
 
 @router.get("/notifications")
@@ -44,10 +55,10 @@ async def get_crm_notifications(
                 c.full_name AS client_name, c.assigned_to
             FROM notification_alerts na
             JOIN clients c ON c.id = na.client_id AND c.deleted_at IS NULL
-            WHERE na.alert_type IN ('portal_document_upload', 'portal_profile_update')
+            WHERE na.alert_type = ANY($1::text[])
         """
-        params: list = []
-        idx = 1
+        params: list = [list(BELL_ALERT_TYPES)]
+        idx = 2
 
         if assigned_filter:
             query += f" AND LOWER(c.assigned_to) = ${idx}"
@@ -117,12 +128,12 @@ async def get_unread_notifications_count(
             SELECT COUNT(*)
             FROM notification_alerts na
             JOIN clients c ON c.id = na.client_id AND c.deleted_at IS NULL
-            WHERE na.alert_type IN ('portal_document_upload', 'portal_profile_update')
+            WHERE na.alert_type = ANY($1::text[])
               AND na.status = 'pending'
         """
-        params: list = []
+        params: list = [list(BELL_ALERT_TYPES)]
         if assigned_filter:
-            query += " AND LOWER(c.assigned_to) = $1"
+            query += " AND LOWER(c.assigned_to) = $2"
             params.append(assigned_filter)
 
         count = await conn.fetchval(query, *params)

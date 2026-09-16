@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
-import { getAllCodes, getSections } from "@/lib/kbli-data";
+import { getAllCodes, getBaliCensus, getSections } from "@/lib/kbli-data";
 import { baliBlockedHint } from "@/lib/kbli-bali-block";
 import { KBLISearch } from "@/components/kbli/KBLISearch";
 import { KBLISectorBrowser } from "@/components/kbli/KBLISectorBrowser";
@@ -35,8 +35,15 @@ export default async function KBLIHomePage({
   const sections = getSections().filter((s) => s.codeCount > 0);
   const allCodes = getAllCodes();
   const codeCount = allCodes.length.toLocaleString("en-US");
+  // Added 2026-09-16 (W-J B1 disclose): the trust-bar stat now reads the
+  // canonical Bali status census (`getBaliCensus()`), not the served subset
+  // (`allCodes` withholds `baliL4` on most unlocated records) — the served
+  // subset alone used to understate the true population ("~1%"/14 of 1559
+  // vs. the working census of 135, already published on the honest-map
+  // article at /business/the-honest-map-blocked-bali-codes).
+  const baliCensus = getBaliCensus();
   const baliBlockedPct = Math.round(
-    (allCodes.filter((c) => c.baliL4?.blocked).length / allCodes.length) * 100,
+    (baliCensus.filter((c) => c.blocked).length / baliCensus.length) * 100,
   );
 
   return (
@@ -50,7 +57,7 @@ export default async function KBLIHomePage({
     >
       <div className="space-y-16">
         {/* ── HERO ── */}
-        <div className="relative -mx-4 overflow-hidden rounded-3xl sm:-mx-6 lg:-mx-8 bg-[#141416]">
+        <div className="relative -mx-4 overflow-hidden rounded-3xl sm:-mx-6 lg:-mx-8 bg-[var(--kbli-ink)]">
           {/* Balinese ornamental pattern */}
           <div
             className="hidden lg:block absolute inset-0 opacity-100"
@@ -64,7 +71,7 @@ export default async function KBLIHomePage({
             className="absolute inset-0"
             style={{
               background:
-                "radial-gradient(ellipse 80% 70% at 50% 50%, transparent 30%, rgba(20,20,22,0.9) 100%)",
+                "radial-gradient(ellipse 80% 70% at 50% 50%, transparent 30%, color-mix(in srgb, var(--kbli-ink) 90%, transparent) 100%)",
             }}
           />
           {/* Ambient orbs — subtle red and white for Indonesian flag feel */}
@@ -208,7 +215,7 @@ export default async function KBLIHomePage({
             {
               num: `~${baliBlockedPct}%`,
               label: "Blocked in Bali",
-              hint: baliBlockedHint(allCodes),
+              hint: baliBlockedHint(allCodes, baliCensus),
             },
             { num: "AI", label: "Powered by Zantara" },
           ].map((t) => (
@@ -230,7 +237,7 @@ export default async function KBLIHomePage({
         {/* ── SEARCH ── */}
         <div
           id="search"
-          className="sticky top-14 z-40 -mx-4 px-4 py-4 backdrop-blur-2xl bg-[#141416]/80 border border-white/[0.05] sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8 shadow-[0_10px_40px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(255,255,255,0.03)] rounded-3xl mb-8"
+          className="sticky top-14 z-40 -mx-4 px-4 py-4 backdrop-blur-2xl bg-[var(--kbli-ink)]/80 border border-white/[0.05] sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8 shadow-[0_10px_40px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(255,255,255,0.03)] rounded-3xl mb-8"
         >
           <KBLISearch
             autoFocus

@@ -473,8 +473,11 @@ describe("RENDER CONTRACT: LicensingSection.tsx and kbli-faq.ts", () => {
 
   it("kbli-faq.ts appends a perpresSlice qualifier to the PMA answer", () => {
     expect(FAQ_SOURCE).toContain("perpresSliceQualifier");
+    // Review r2 m1: `pmaSourceNote` is now conditionally suppressed on the
+    // sourced-Bali-closure/unverified-national branch — the answer template
+    // reads `pmaSourceNoteForAnswer`, not the raw `pmaSourceNote`, directly.
     expect(FAQ_SOURCE).toContain(
-      "answer: `${pmaAnswer}${perpresSliceQualifier}${pmaSourceNote}`",
+      "answer: `${pmaAnswer}${perpresSliceQualifier}${pmaSourceNoteForAnswer}`",
     );
   });
 });

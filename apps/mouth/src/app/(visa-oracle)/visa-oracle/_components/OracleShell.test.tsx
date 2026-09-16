@@ -41,9 +41,11 @@ const ANSWERS = [
   // Offshore now asks a single permit-status gate question, converging
   // immediately on "no" (fixed 2026-08-24, D12 offshore-reachability P0,
   // then re-fixed same day after a funnel-cost review) — answered "no"
-  // to preserve this fixture's original downstream intent.
+  // to preserve this fixture's original downstream intent. D19
+  // (2026-09-16): that convergence lands on `nationalities` directly —
+  // `overstay_days` is no longer asked offshore at all, so it is not
+  // answered here either.
   ["holds_stay_permit", "no"],
-  ["overstay_days", "0"],
   ["nationalities", "US"],
   ["birth_date", "1990-01-01"],
   ["category", "tourism"],
@@ -114,18 +116,16 @@ async function completeFreshInterview(): Promise<void> {
   // converging (fixed 2026-08-24, D12 offshore-reachability P0, then
   // re-fixed same day after a funnel-cost review — see flow.ts's
   // `in_indonesia`/`holds_stay_permit` cases). "no" here converges
-  // straight to overstay_days with no further permit questions — the
-  // fact resolves from this answer alone via fact-mapper.ts's
-  // synthesized NO_STAY_PERMIT (see fact-mapper.test.ts for that proof).
+  // straight to nationalities with no further permit questions — the
+  // current-status fact resolves from this answer alone via
+  // fact-mapper.ts's synthesized NO_STAY_PERMIT (see fact-mapper.test.ts
+  // for that proof). D19 (2026-09-16): `overstay_days` is no longer part
+  // of that convergence either — you cannot overstay while outside
+  // Indonesia, so no spinbutton step is rendered here any more.
   await screen.findByRole("heading", {
     name: /do you currently hold a limited or permanent stay permit/i,
   });
   fireEvent.click(await screen.findByRole("button", { name: /^no$/i }));
-
-  fireEvent.change(await screen.findByRole("spinbutton"), {
-    target: { value: "0" },
-  });
-  fireEvent.click(screen.getByRole("button", { name: /^continue$/i }));
 
   fireEvent.change(await screen.findByRole("combobox"), {
     target: { value: "US" },
@@ -262,7 +262,9 @@ describe("OracleShell authoritative evaluate integration", () => {
     "missing-input Edit reopens the $category interview question",
     async ({ category, questionId, factPath, internalMode, details }) => {
       installVerdictResume([
-        ...ANSWERS.slice(0, 5),
+        // D19 (2026-09-16): one fewer entry in ANSWERS ahead of "category"
+        // (`overstay_days` is gone), so the slice boundary moves 5 -> 4.
+        ...ANSWERS.slice(0, 4),
         ["category", category],
         ["trip_scope", "single"],
         ...details,
@@ -344,7 +346,7 @@ describe("OracleShell authoritative evaluate integration", () => {
     installVerdictResume([
       ["in_indonesia", "no"],
       ["holds_stay_permit", "no"],
-      ["overstay_days", "0"],
+      // D19 (2026-09-16): offshore no longer asks `overstay_days`.
       ["nationalities", "US"],
       ["birth_date", "1990-01-01"],
       ["category", "family"],
@@ -804,7 +806,9 @@ describe("OracleShell persistent consultant contact", () => {
     async (stage) => {
       if (stage !== "framing")
         resumeBeforeVerdict(
-          stage === "question" ? ANSWERS.slice(0, 7) : ANSWERS,
+          // D19 (2026-09-16): slice boundary moves 7 -> 6 (one fewer entry
+          // ahead of "stay_days" now that `overstay_days` is gone).
+          stage === "question" ? ANSWERS.slice(0, 6) : ANSWERS,
         );
       render(<OracleShell />);
       const heading = await screen.findByRole("heading", {
@@ -910,7 +914,9 @@ describe("OracleShell persistent consultant contact", () => {
     "honours %s language and hydrated guardian authority before offering a known minor consent",
     async (language) => {
       const birthDate = `${new Date().getUTCFullYear() - 10}-01-01`;
-      resumeBeforeVerdict([...ANSWERS.slice(0, 4), ["birth_date", birthDate]]);
+      // D19 (2026-09-16): slice boundary moves 4 -> 3 (one fewer entry
+      // ahead of "nationalities" now that `overstay_days` is gone).
+      resumeBeforeVerdict([...ANSWERS.slice(0, 3), ["birth_date", birthDate]]);
       render(<OracleShell />);
       await screen.findByRole("button", { name: consultant });
       if (language === "id") {
@@ -954,7 +960,9 @@ describe("OracleShell persistent consultant contact", () => {
 
   it("supports keyboard disclosure, Escape focus return and Indonesian without resetting the interview", async () => {
     const user = userEvent.setup();
-    resumeBeforeVerdict(ANSWERS.slice(0, 7));
+    // D19 (2026-09-16): slice boundary moves 7 -> 6 (one fewer entry ahead
+    // of "stay_days" now that `overstay_days` is gone).
+    resumeBeforeVerdict(ANSWERS.slice(0, 6));
     render(<OracleShell />);
     const toggle = await screen.findByRole("button", { name: consultant });
     toggle.focus();

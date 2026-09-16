@@ -111,7 +111,15 @@ describe("toPanelDetail", () => {
     const d = toPanelDetail(code({ licensing: [], baliL4: undefined }));
 
     expect(d.riskCategory).toBeNull();
-    expect(d.bali).toEqual({ status: "", blocked: false });
+    // "MEDIUM"/false are the same safe defaults the disclosure layer itself
+    // uses for a malformed/absent confidence value — never "HIGH".
+    expect(d.bali).toEqual({
+      status: "",
+      blocked: false,
+      confidence: "MEDIUM",
+      needsReview: false,
+      scopeQualifier: null,
+    });
   });
 
   it("reports the Bali block as a boolean the badge can consume directly", () => {
@@ -123,5 +131,27 @@ describe("toPanelDetail", () => {
 
     expect(d.bali.status).toBe("BLOCKED");
     expect(d.bali.blocked).toBe(true);
+  });
+
+  // Added 2026-09-16 (review F1g): a listing badge must show the SAME
+  // "· medium conf." / "· needs review" marker the code's own page does —
+  // added here because MEDIUM-confidence CHIUSO_BALI codes (e.g. 47211) now
+  // disclose `baliL4` on an unlocated national record (W-J B1 disclose), and
+  // a listing that only ever showed HIGH-confidence Bali verdicts before
+  // never had a MEDIUM case to carry.
+  it("forwards confidence and needsReview so a MEDIUM/needs-review verdict is not shown as a bare fact", () => {
+    const d = toPanelDetail(
+      code({
+        baliL4: {
+          status: "CHIUSO_BALI",
+          blocked: true,
+          confidence: "MEDIUM",
+          needsReview: false,
+        } as KBLICode["baliL4"],
+      }),
+    );
+
+    expect(d.bali.confidence).toBe("MEDIUM");
+    expect(d.bali.needsReview).toBe(false);
   });
 });

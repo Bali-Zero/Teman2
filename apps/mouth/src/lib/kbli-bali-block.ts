@@ -189,6 +189,40 @@ export function baliBlockClause(status?: string | null): string {
 }
 
 /**
+ * The caveat that follows `baliBlockClause` for a CHIUSO_BALI closure
+ * disclosed on its own sourced evidence (review F1, added 2026-09-16). A
+ * bare "closed to new PMA licensing" overstates the record in two
+ * independent ways this function guards against:
+ *
+ *  - A SCOPED closure (the hotel rows — `closure.scopeQualifier`, e.g.
+ *    "building area under 6,000 m²") bars only that slice of the code, not
+ *    the whole thing. Every surface stating the closure must name the
+ *    scope, never imply a blanket bar.
+ *  - A record whose confidence is not HIGH, or is flagged `needsReview` (16
+ *    MEDIUM codes, e.g. 47211 — a 2025 code that merges several KBLI-2020
+ *    activities, only some of which are on Bali's 18-field list), is Bali
+ *    Zero's own conservative reading applied to the WHOLE code. That is a
+ *    posture, not a certainty, and every surface stating the closure must
+ *    say so.
+ *
+ * Scope wins when both apply — it is the more specific, actionable fact.
+ */
+export function baliClosureQualifier(
+  l4?: {
+    confidence?: string | null;
+    needsReview?: boolean | null;
+    closure?: { scopeQualifier?: string | null } | null;
+  } | null,
+): string {
+  const scope = l4?.closure?.scopeQualifier;
+  if (scope) return ` for ${scope}`;
+  if (l4?.confidence !== "HIGH" || l4?.needsReview) {
+    return " (conservative reading: this 2025 code also covers activities not on Bali's list)";
+  }
+  return "";
+}
+
+/**
  * Is the risk-tier moratorium the ACTUAL basis of this code's Bali verdict?
  *
  * `l4_bali.moratorium.rule` is not per-code evidence: it is one constant string
@@ -330,14 +364,13 @@ export function narratesUnverifiedRoute(
  *
  * Two things were wrong with it, both measured on the served dataset:
  *
- *  - **Cause.** Of 518 blocked codes, 420 are moratorium-based
- *    (BLOCCATO_CLASSE_RISCHIO 372 + CHIUSO_MORATORIA_BALI 48) and **98 are
- *    not** — 68 TERTUTUP (an ownership restriction on the activity itself),
- *    17 NON_CLASSIFICABILE (we hold no licensing rows, so no Bali position can
- *    be stated), 7 CHIUSO_PMA_NO_BESAR (genuinely allocated to Koperasi/UMKM
- *    by Perpres 49/2021 Lampiran II), 2 closed by their sector's own regulator,
- *    2 scope-dependent, 2 by Bali's announced sectoral closures. That 98 is the
- *    same figure this module's own comment already names.
+ *  - **Cause.** Of 1,559 codes, 135 are blocked: 72 TERTUTUP (an ownership
+ *    restriction on the activity itself), 40 CHIUSO_BALI (Pemprov closure),
+ *    14 held for further adjudication, 7 CHIUSO_PMA_NO_BESAR (genuinely
+ *    allocated to Koperasi/UMKM by Perpres 49/2021 Lampiran II), 2 closed by
+ *    their sector's own regulator. The remaining 383 codes show "tier-only"
+ *    (unverified or insufficient licensing data — see "verify on OSS"). This
+ *    breakdown is derived from #6597, 2026-09-15.
  *
  *    Was 407/111 with 39 CHIUSO_PMA_NO_BESAR until 2026-08-03. The old figure
  *    counted an INFERENCE, not a reservation: 32 of the 39 were closed because
@@ -360,7 +393,69 @@ export function baliBlockedHint(
   codes: ReadonlyArray<{
     baliL4?: { status?: string | null; blocked?: boolean } | null;
   }>,
+  census?: ReadonlyArray<{ status: string; blocked: boolean }>,
 ): string {
+  // Added 2026-09-16 (W-J B1 disclose) — a SEPARATE, additive reading, never
+  // touching the doc comment above (which still describes the no-`census`
+  // path accurately and is owned by another window's in-flight edit).
+  //
+  // `codes` alone answers "how many SERVED pages currently say so" — the
+  // per-code disclosure gate (`discloseBaliL4`) withholds `baliL4` on most
+  // unlocated records, so `codes`'s own population understates the true
+  // count. `census` (`getBaliCensus()`) is the CANONICAL Bali status
+  // population, ungated by per-code disclosure, so the two numbers now
+  // answer different questions and this sentence states both explicitly
+  // instead of silently picking the smaller one (as the /kbli index page did
+  // until now: "14 of 1559" when the working census was already 135).
+  if (census) {
+    const censusBlocked = census.filter((c) => c.blocked);
+    const applied = censusBlocked.filter(
+      (c) => c.status === "CHIUSO_BALI",
+    ).length;
+    const moratorium = censusBlocked.filter((c) =>
+      MORATORIUM_STATUSES.has(c.status),
+    ).length;
+    const other = censusBlocked.length - applied - moratorium;
+    // The served subset: codes whose OWN page currently discloses the block
+    // (a strict subset of `censusBlocked` — the rest are still "PMA status
+    // not yet verified" pending the national tuple or a sourced closure).
+    const shown = codes.filter((c) => c.baliL4?.blocked === true).length;
+
+    const clauses: string[] = [];
+    if (applied > 0) {
+      clauses.push(
+        `${applied} by Bali's own 2026 closure of specific business fields`,
+      );
+    }
+    if (moratorium > 0) {
+      clauses.push(
+        `${moratorium} held under Bali Zero's conservative reading of the 2026 Bali risk-tier request pending verification`,
+      );
+    }
+    if (other > 0) {
+      // Review F4: naming "a national closure" here asserted a specific
+      // cause for the whole `other` group — the same over-attribution the
+      // no-census path below (see NOTE at line ~430) already refuses to
+      // make. `baliBlockClause` states the real one per code, on the page
+      // that has the code in front of it.
+      clauses.push(`${other} for other reasons`);
+    }
+    const causeList =
+      clauses.length <= 1
+        ? clauses.join("")
+        : clauses.length === 2
+          ? clauses.join(" and ")
+          : `${clauses.slice(0, -1).join(", ")}, and ${clauses[clauses.length - 1]}`;
+
+    return (
+      `${censusBlocked.length} of ${census.length} codes are treated as closed to a foreign-owned company ` +
+      `(PT PMA) in Bali in our working census${causeList ? ` — ${causeList}.` : "."} ` +
+      `${shown} of them state the closure and its cause on the code's own page; the others are marked ` +
+      `"PMA status not yet verified" there until the national record is adjudicated. A working assessment, ` +
+      `not a certified legal determination.`
+    );
+  }
+
   if (codes.length === 0) return "";
 
   const blocked = codes.filter((c) => c.baliL4?.blocked);
