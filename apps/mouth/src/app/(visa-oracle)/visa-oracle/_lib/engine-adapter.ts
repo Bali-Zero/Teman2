@@ -3,7 +3,7 @@ import {
   VisaOracleResponseError,
 } from "./engine-response";
 import { QUESTIONS, type OracleFacts } from "./tree";
-import { followUpPrerequisitesMet } from "./flow";
+import { followUpPrerequisitesMet, walkQuestionIds } from "./flow";
 import { translate, type I18nKey } from "./i18n";
 import { trustedPrimarySourceUrl } from "./trusted-source-url";
 import type {
@@ -1431,6 +1431,25 @@ function questionForFact(
   if (asked.length > 1) return undefined;
   if (collecting.length === 0) return undefined;
   if (!facts) return undefined;
+  // THIS interview's own walk first. `followUpPrerequisitesMet` is
+  // deliberately generous — it replays the walk once per category, so a
+  // question is "eligible" if ANY category could reach it. That is the
+  // right test for a fact no branch of the current walk collects, but it
+  // makes D12's two sponsor questions BOTH eligible for the business
+  // explorer (measured 2026-09-17: family=true, business=true), and two
+  // candidates fall back to the handoff row — the applicant is sent to a
+  // consultant instead of being asked the question their own branch
+  // already asks. When the applicant's own answers reach exactly one of
+  // the candidates, there is nothing to guess: that walk IS the tree's
+  // ordering, not an inference about which branch they belong to.
+  const onThisWalk = walkQuestionIds(facts);
+  const reached = collecting.filter((question) =>
+    onThisWalk.includes(question.id),
+  );
+  if (reached.length === 1) {
+    return { questionId: reached[0].id, followUp: true };
+  }
+  if (reached.length > 1) return undefined;
   const eligible = collecting.filter((question) =>
     followUpPrerequisitesMet(question.id, facts),
   );

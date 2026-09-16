@@ -434,6 +434,48 @@ describe("Visa Oracle authoritative outcome adapter", () => {
     });
   });
 
+  // D12 (SAETTA-20260916): `family.sponsor_confirmed` is collected by TWO
+  // questions since the explorer got its own company-sponsor wording, and
+  // `followUpPrerequisitesMet` calls both eligible (it replays the walk once
+  // per category). Measured 2026-09-17: that sent the explorer to the
+  // handoff row instead of asking the question their own branch asks.
+  it("innocence: the D12 explorer is asked the sponsor question their own walk reaches", () => {
+    const response = makeVisaOracleResponse("NEEDS_INPUT");
+    response.decision.missing_facts = ["family.sponsor_confirmed"];
+    const outcome = buildEngineOutcome(response, {
+      facts: {
+        in_indonesia: "no",
+        category: "business",
+        business_activity: "exploring",
+      },
+      editableQuestionIds: ["category", "business_activity"],
+    });
+    if (outcome.state !== "NEEDS_INPUT") throw new Error("unexpected state");
+    expect(outcome.missingInputs[0]).toMatchObject({
+      questionId: "business_sponsor_confirmed",
+      followUp: true,
+    });
+  });
+
+  // The other side of the same narrowing: a family applicant reaches the
+  // family wording, never the D12 one.
+  it("innocence: a family applicant reaches the family sponsor question, not D12's", () => {
+    const response = makeVisaOracleResponse("NEEDS_INPUT");
+    response.decision.missing_facts = ["family.sponsor_confirmed"];
+    const outcome = buildEngineOutcome(response, {
+      facts: {
+        in_indonesia: "no",
+        category: "family",
+        family_relation: "SPOUSE",
+      },
+      editableQuestionIds: ["category", "family_relation"],
+    });
+    if (outcome.state !== "NEEDS_INPUT") throw new Error("unexpected state");
+    expect(outcome.missingInputs[0].questionId).not.toBe(
+      "business_sponsor_confirmed",
+    );
+  });
+
   it("guilt: no facts supplied means no follow-up — fail-closed", () => {
     const response = makeVisaOracleResponse("NEEDS_INPUT");
     response.decision.missing_facts = ["process.wants_onshore_conversion"];
