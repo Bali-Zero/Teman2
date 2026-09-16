@@ -1,0 +1,34 @@
+CLAIM 6 — PROVEN
+
+- Studio-only detection requires review state, a non-empty reason list, and exclusively the Studio code: `engine-adapter.ts:130-137`.
+- Mixed and empty lists remain generic: `engine-adapter.test.ts:1340-1357`.
+- Headline/description, body, disclaimer, and copied summary all use the shared predicate: `OracleShell.tsx:1000-1006`, `VerdictReveal.tsx:87-100`, `OutcomeSheet.tsx:121-133,680,823-850,1147-1152`.
+- EN/ID Studio copy contains no human/consultant/advisor wording: `i18n.ts:845-865,977-978,1838-1856,1969-1970`.
+- Description non-duplication is tested at `VerdictReveal.test.tsx:92-110`.
+- The four targeted test files pass: 152/152.
+
+CLAIM 5 (restated) — PROVEN
+
+- The new Studio rule publishes only `130000` and `1000000`: `rulepack-prod-022.source.json:6443-6450`.
+- Applicant copy interpolates those same extracted constants: `engine-adapter.ts:105-107,1034-1036`.
+- The synthetic probe values remain in tests: `test_seq22_pack.py:589-592,637-640,679`.
+- No probe values appear in the mouth cure diff. The pack’s `50000` occurrence belongs to pre-existing E33E rules and is inherited from seq-20, not leaked from the synthetic probe.
+
+ANCILLARY — PROVEN
+
+- Seq-21 is described as signed but stopped before activation, with no signed bundle entering the repo: `fold_pack_seq22.py:5-13`.
+- Census opening prose says the same and reports seq-22 as `3 / 1 / 14 / 94`: `test_interview_walk_census.py:13-18`.
+
+WALK FIXTURE — PROVEN
+
+- The entire fixture diff contains exactly one deletion: `overstay_days` from `asked`.
+- Current asked-list evidence: `offshore_work_sponsor_government_trade_office_only_employer_no.json:3-18`.
+
+NEW defect introduced by the cure
+
+- `i18n.ts:1969-1970` translates “This hold…” as “Penahanan ini…”. In Indonesian, *penahanan* means detention/retention—especially harmful in immigration copy—not a decision hold. The new ID disclaimer therefore tells applicants “This detention…”.
+- Existing tests miss it: the Studio disclaimer assertion is English-only (`OutcomeSheet.test.tsx:775-785`).
+
+Full-surface Vitest result: 41 files passed and 890 tests passed; only `walk-corpus-determinism.test.ts` failed because the read-only sandbox denied `mkdtemp('/tmp/...')`, not because of an assertion.
+
+VERDICT: CHANGES

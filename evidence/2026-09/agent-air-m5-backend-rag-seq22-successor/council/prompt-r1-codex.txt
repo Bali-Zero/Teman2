@@ -1,0 +1,109 @@
+You are a REVIEW seat on a Gear-3 council (round 1). Worktree:
+/Users/balizero/nuzantara/.worktrees/backend-rag-seq22-successor (branch
+agent/air-m5/backend-rag/seq22-successor, merge-base 8aea5480241bafce051d574ddc330c0e015534a2).
+Read-only: no edits, no file creation, no git write commands. Do not quote secrets or PII.
+
+SCOPE. Review `git diff 8aea5480241bafce051d574ddc330c0e015534a2...HEAD` in this worktree.
+Read, in this order:
+- apps/backend-rag/backend/scripts/visa_engine/fold_pack_seq22.py (whole file; it is the fold's
+  own reasoning, including its own docstring's DEFECT 1/2/3 sections)
+- apps/backend-rag/backend/services/visa_engine/contracts/packs/rulepack-prod-022.source.json —
+  do NOT dump the whole 9,400-line file; grep/sed for specific rule_ids named below, or use a
+  short python one-liner from apps/backend-rag (PYTHONPATH=. , set JWT_SECRET_KEY and API_KEYS to
+  any 20+ char dummy string first) printing ONLY the fields you need, e.g.:
+    python3 -c "import json; d=json.load(open('backend/services/visa_engine/contracts/packs/rulepack-prod-022.source.json')); print([r for r in d['rules'] if r['rule_id']=='hf.employment-without-indonesian-sponsor'])"
+- apps/backend-rag/backend/tests/services/visa_engine/test_seq22_pack.py (whole file — it is
+  short enough and is the guilt/innocence proof for every claim below)
+- git diff 8aea548...HEAD -- 'apps/backend-rag/backend/tests/services/visa_engine/test_interview_walk_census.py' (the census-pin hunks only, not the whole 2700-line file — use -U5)
+- git diff 8aea548...HEAD -- 'apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter.ts' 'apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/i18n.ts' 'apps/mouth/src/app/(visa-oracle)/visa-oracle/_components/OutcomeSheet.tsx'
+- apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter.test.ts lines 874-952 (the
+  twin-basis guard this PR must never trip) — read-only, do not run vitest yourself unless your
+  sandbox permits a writable temp dir; if it does, `cd apps/mouth && npx vitest run
+  "src/app/(visa-oracle)/visa-oracle"` is safe (no repo mutation).
+- You MAY run `PYTHONPATH=. pytest backend/tests/services/visa_engine/test_seq22_pack.py -q` from
+  apps/backend-rag with JWT_SECRET_KEY / API_KEYS set to dummy 20+ char strings if your sandbox
+  gives you a writable temp dir (pytest needs one); if it does not, trust the file evidence.
+Never open PENDING-ARMS.md, docs/, research/, or any file under evidence/2026-09/agent-air-m5-backend-rag-seq22-successor/council/.
+
+WHAT THE CHANGE CLAIMS. seq-22 (rulepack-prod-022.source.json, 111 rules, unsigned, unactivated)
+folds DIRECTLY from the SIGNED seq-20 anchor (previous_payload_sha256
+df02287b7fc8f572a9e6674fdf3445a2131c428e8a1492ab8a388dee5bf01a4d), never from seq-21
+(rulepack-prod-021.source.json, on disk, unsigned, a STOPPED sequence — three defects found
+before its own signature). seq-22 carries seq-21's content with all three defects cured:
+
+DEFECT 1 (E23V). seq-21's `hf.employment-without-indonesian-sponsor` (a HARD_FILTER/EXCLUDE)
+scoped to products (E23, E23V, E33B) excluded a foreign trade-office employee (product E23V,
+"Working Visa — Trade and Economic Office", catalogue sponsor_types=['GOVERNMENT']) whose HONEST
+answer "my employer is not an Indonesian entity" is the CORRECT description of a trade-office
+job. seq-22 narrows the scope to (E23, E33B) only — E23V removed.
+
+DEFECT 2 (E33B). E33B ("Second Home Golden Visa — Special-Expertise Collaboration", catalogue
+sponsor_types=['NONE'], covered_purposes INCLUDES 'EMPLOYMENT') stays INSIDE that same exclusion
+scope on purpose: its qualifying fact `sponsor.government_collaboration` (enums.py, unchanged by
+this diff) names a collaboration with an INDONESIAN government body, so an E33B applicant who
+separately declares EMPLOYMENT and answers "my employer is not an Indonesian entity" genuinely
+contradicts their own qualification.
+
+DEFECT 3 (E33 threshold, "D23 OPTION B-STUDIO", owner decision 2026-09-16). seq-21 also added
+`hf.e33.guarantee-below-threshold`, a HARD_FILTER/EXCLUDE reading
+`secondhome.bank_deposit_usd` / `secondhome.qualifying_property_value_usd` — TWO of the four
+Second-Home "twin-basis" facts that `fact-mapper.ts` SYNTHESISES as KNOWN(0)/KNOWN(false) for
+whichever basis (deposit vs property) the interview did NOT route to. The mouth guard
+`engine-adapter.test.ts` (~line 887-951, "never lets a HARD_FILTER/EXCLUDE rule, or an eq-false
+comparison, read a synthesised Second-Home twin-basis fact") exists exactly to catch this: a
+HARD_FILTER on a synthesised "not claimed here" zero turns it into an ACTIVE exclusion of a
+visitor who never answered the question. seq-22 does NOT carry that HARD_FILTER forward at all.
+Instead, the SAME two thresholds (1,000,000 property / 130,000 USD deposit, both EXTRACTED from
+seq-20's own el.e33.property-basis / el.e33.deposit-basis SUPPORT rules at fold time, never typed
+in the fold script) come back as `review.e33.below-threshold-studio`, a REQUIRE_REVIEW rule
+(reason SECOND_HOME_BELOW_THRESHOLD_STUDIO, on_unknown NO_EFFECT). Mouth's OutcomeSheet.tsx routes
+that ONE reason to a public self-serve page `/visa/second-home/studio` (never
+`/second-home/studio`, which 301s to an internal staff workspace) and SKIPS the generic
+"a person will check this" copy/heading when it is the only review reason present.
+
+CENSUS. `test_interview_walk_census.py`'s own `_SEQ22_OUTCOME_CHANGES` / `by_sequence` table
+(read it directly) pins the ENGINE-level state distribution over all 112 walks for sequence 22 at
+exactly 3 HUMAN_REVIEW_REQUIRED / 1 NEEDS_INPUT / 14 NO_SUPPORTED_PATH / 94 SUPPORTED_CANDIDATES,
+and names exactly three walks that move relative to what the corpus read before this PR's D23
+step: offshore/work/sponsor_government/trade_office_only/employer_no (-> SUPPORTED_CANDIDATES
+[E23V], DEFECT 1's cure) and offshore/invest/property/below_threshold +
+offshore/invest/bank_deposit/below_threshold (both -> HUMAN_REVIEW_REQUIRED, DEFECT 3's cure);
+SUPPORTED_CANDIDATES is otherwise unaffected because neither below-threshold walk ever named a
+candidate.
+
+FALSIFY THESE EIGHT CLAIMS. For each: PROVEN or BROKEN, with file:line or command output that
+decides it.
+1. CHAIN: seq-22's previous_payload_sha256 equals the SIGNED seq-20 digest, never seq-21's, and
+   the fold refuses to run against any other anchor (test_fold_chains_to_seq20_not_to_seq21 or
+   equivalent, or read fold_pack_seq22.py's own anchor-check function).
+2. DEFECT-1 CURE: product E23V's product_version_id is NOT in
+   `hf.employment-without-indonesian-sponsor`'s product_version_ids; E23 and E33B's ARE, and no
+   OTHER product was added or removed from that scope.
+3. DEFECT-2 COHERENCE: E33B's own `covered_purposes` genuinely includes 'EMPLOYMENT' (not
+   assumed) — if it did NOT, the hard filter's `intent.purposes intersects EMPLOYMENT` premise
+   could never even reach an E33B applicant, and keeping E33B in scope would be inert theatre
+   rather than a real exclusion.
+4. DEFECT-3 GUARD: no rule in the committed seq-22 pack is a HARD_FILTER/EXCLUDE stage reading
+   any of the four twin-basis facts, and no rule anywhere compares one of them with `eq false`;
+   `review.e33.below-threshold-studio` is HUMAN_REVIEW stage with `lt` comparisons only, never
+   HARD_FILTER/EXCLUDE.
+5. NO INVENTED FIGURE: the two thresholds in `review.e33.below-threshold-studio`'s `when` (1000000
+   / 130000) are the SAME values already hardcoded as SECOND_HOME_PROPERTY_THRESHOLD_USD /
+   SECOND_HOME_DEPOSIT_THRESHOLD_USD in engine-adapter.ts (pre-existing, not new), and no other
+   money figure appears anywhere in the diff.
+6. NO CONSULTANT WORDING: nothing OutcomeSheet.tsx or engine-adapter.ts's
+   SECOND_HOME_BELOW_THRESHOLD_STUDIO copy renders for this ONE reason code says a person,
+   consultant or staff member reviews anything, in EITHER locale (en/id); the link text names only
+   "Second Home Studio" and the href is exactly `/visa/second-home/studio`.
+7. FAIL-OPEN CHECK: the nine newly-unlocked products' SUPPORT rules each require their qualifying
+   fact to be KNOWN true (on_unknown NEEDS_INPUT, never NO_EFFECT/fail-open on the SUPPORT side),
+   and none of the nine retired seq-20 review.* rules is flipped to NO_EFFECT rather than deleted.
+8. VISIBLE-EFFECT HONESTY: `fact-mapper.ts` maps `sponsor.government_invitation` /
+   `sponsor.government_collaboration` / (check the other sponsor.* facts too) from REAL applicant
+   answers today, not a hardcoded NOT_ASKED — confirm or refute whether signing+activating this
+   pack (separately ordered, not done by this PR) would have an IMMEDIATE effect on real
+   production traffic rather than a dormant one, and whether the PR/pack is honest about that.
+
+Be terse: at most 8 lines per claim. Your LAST line must be exactly one of:
+VERDICT: OK
+VERDICT: CHANGES
