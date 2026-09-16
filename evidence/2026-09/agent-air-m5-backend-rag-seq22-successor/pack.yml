@@ -1,0 +1,337 @@
+# Gear-3 evidence pack — seq-22 successor (SAETTA-20260916 R2, BLUE, M5).
+# Written by the evidence-pack writer (Claude Sonnet 5, M5), a distinct session from the Dux
+# (Claude Opus 5) who built the three commits on this branch. Every receipt below marked
+# "seat: Claude Sonnet 5 (evidence-pack writer)" is a command this writer actually executed in
+# its own authoring turn (anti-hallucination discipline); receipts describing what the fold
+# script itself asserts are backed by the pytest run that exercises that assertion, not narrated
+# from memory.
+gear: 3
+brief_ref: evidence/brief.yml
+ruling: RULED 2026-09-16 SAETTA
+mission: SAETTA-20260916 R2 (BLUE, M5), seq-22 successor
+lanes:
+  - lane: seq22-successor
+    role: build
+    seat: Claude Opus 5 (Dux of the window, successor of a dead Dux; W-K on Pro was the original owner)
+  - lane: seq22-successor-evidence
+    role: build
+    seat: Claude Sonnet 5 (evidence-pack writer, distinct session, non-Anthropic-diverse council below)
+  - lane: seq22-successor-council-codex
+    role: review
+    seat: codex-gpt-5.6-sol (codex exec --sandbox read-only, round 1)
+  - lane: seq22-successor-council-agy
+    role: review
+    seat: agy-gemini-3.1-pro (round 1)
+  - lane: seq22-successor-ground-truth
+    role: ground_truth
+    seat:
+      session (M5) - the pack asserts no new regulatory figure and registers no new fact; its
+      ground truth is the signed seq-20 pack and the activation/signing code already on
+      origin/main, not a notebook
+    nb: >-
+      merge-base 8aea5480241bafce051d574ddc330c0e015534a2, five files read verbatim via
+      `git show <merge-base>:<path>` and all five UNTOUCHED by this diff (confirmed this turn with
+      `git diff --name-only <merge-base>...HEAD -- <path>`, empty for each):
+      contracts/packs/rulepack-prod-020.signed.json (chain anchor, kid, signature the fold
+      verifies), rulepack-prod-020.source.json (products, sponsor_types, source records, the E33
+      bounds the fold extracts for the Studio rule, the nine dormant review rules it retires),
+      db/migrations_v2/253_visa_activation_writer_hardening.sql (visa_activate_rule_pack step 4
+      legal-period overlap guard, sequence/chain triggers), scripts/visa_engine/activate_pack.py
+      (legal_period from valid_period, trust store before the dry-run return) and
+      scripts/visa_engine/sign_pack.py (typed payload canonicalization). This is the SAME set of
+      five files W-VO-S21's evidence pack hashed at its own merge-base 52ebe96b62 — the two
+      merge-bases carry byte-identical copies of all five, which is why the hash below is
+      identical to that pack's, independently re-derived here rather than copied.
+    query_hash: "1950b20510ec0d3639654d442a05d1e19463f7a720e3d94d03bfaf7e4e1c4c84" # pragma: allowlist secret
+    note: >-
+      query_hash = sha256 of the five files concatenated in that order via `git show
+      8aea5480241bafce051d574ddc330c0e015534a2:<path>` piped together, computed this turn. No
+      NotebookLM query exists for this lane and none was invented: no USD minimum is stated
+      anywhere in fold_pack_seq22.py — the Studio rule's 1,000,000 / 130,000 bounds are EXTRACTED
+      from seq-20's own el.e33.property-basis / el.e33.deposit-basis rules at fold time, and this
+      writer independently confirmed both bounds against the committed seq-22 pack's
+      review.e33.below-threshold-studio rule (`when` args `secondhome.qualifying_property_value_usd
+      lt 1000000` / `secondhome.bank_deposit_usd lt 130000`) and against the pre-existing mouth
+      constants SECOND_HOME_PROPERTY_THRESHOLD_USD / SECOND_HOME_DEPOSIT_THRESHOLD_USD it reuses.
+council_run: council/journal.jsonl
+pii_scan: clean
+decisions:
+  - id: D-gear
+    decision: >-
+      Gear 3. Floor measured this turn with `python3 scripts/evidence_pack_lint.py --print-floor
+      --print-floor-source --changed-files-file <changed-files> --numstat-file <numstat>` on the
+      merge-base diff (8aea5480241bafce051d574ddc330c0e015534a2...79ad183cac): floor 3, source
+      "size" — non-fixture churn 11,572 lines (9,424 from the folded pack, 922 from
+      fold_pack_seq22.py, 711 from the new test_seq22_pack.py, plus smaller edits), all above
+      SIZE_GEAR3_THRESHOLD 1,828 and touching no HOTZONE_PATTERNS path. Judgement agrees: an
+      unsigned production rule-pack candidate over apps/backend-rag/** (merging a PR here is the
+      deploy) that a future signing ceremony acts on directly.
+  - id: D-chain
+    decision: >-
+      seq-22 folds DIRECTLY from the signed seq-20 anchor (previous_payload_sha256
+      df02287b7fc8f572a9e6674fdf3445a2131c428e8a1492ab8a388dee5bf01a4d, verified this turn against
+      the committed pack's own field), never from seq-21. seq-21
+      (rulepack-prod-021.source.json, confirmed on disk this turn, unsigned, untouched by this
+      diff) is a STOPPED sequence — three defects found before its own signature — and is never
+      rebased or superseded in place; it stays on disk as the record of what was tried and
+      rejected, the same shape as the two existing unsigned-source precedents rulepack-prod-014
+      and -015 (confirmed this turn: neither has a `.signed.json` sibling, same as -021).
+  - id: D-e23v
+    decision: >-
+      DEFECT 1 cure. `hf.employment-without-indonesian-sponsor`'s product scope narrows from
+      seq-21's (E23, E23V, E33B) to (E23, E33B) — E23V removed. Verified this turn directly
+      against the committed pack: the rule's `product_version_ids` resolve to product_codes E23
+      and E33B only, never E23V's ('e8a1d738-daa7-5c99-a0c6-800b25579129' is absent). The new
+      gold-coverage walk fixture (offshore/work/sponsor_government/trade_office_only/employer_no)
+      proves the cure behaviourally: NO_SUPPORTED_PATH on seq-20/-21 -> SUPPORTED_CANDIDATES
+      [E23V] on seq-22, corpus 111 -> 112.
+  - id: D-e33b
+    decision: >-
+      DEFECT 2 kept as-is, deliberately. E33B stays inside the same exclusion scope: this
+      writer independently raised, then retracted, the objection that E33B (catalogue
+      sponsor_types = ['NONE']) looks incoherent inside an EMPLOYMENT-purpose-scoped exclusion —
+      resolved by checking E33B's own `covered_purposes`, which INCLUDES 'EMPLOYMENT' (confirmed
+      this turn by reading the committed pack's products array), so the hard filter's premise
+      (`intent.purposes intersects EMPLOYMENT`) legitimately reaches E33B applicants. Substantively:
+      E33B's qualifying fact (`sponsor.government_collaboration`) names a collaboration with an
+      INDONESIAN government body (enums.py, unchanged by this diff), so an E33B applicant who
+      answers "my employer is not an Indonesian entity" contradicts their own qualification — see
+      dissent below and `test_e23_and_e33b_stay_inside_the_employment_exclusion`'s own docstring.
+  - id: D-e33
+    decision: >-
+      DEFECT 3, OPTION B-STUDIO (Zero, D23, 2026-09-16). Measured alternatives (from the
+      module docstring and TestE33BelowThresholdStudio's guilt tests, both read this turn):
+      (A) carry seq-21's HARD_FILTER verbatim — IMPOSSIBLE in-pack (guard test
+      `test_guilt_reintroducing_seq21s_hard_filter_aborts_the_fold` proves the fold-time antibody
+      refuses it, and the mouth twin-basis guard in engine-adapter.test.ts independently refuses
+      the same shape once that pack is the highest SIGNED one) and RED on the guard either way;
+      (A') add new interview questions to un-synthesise the twin-basis facts — out of scope,
+      belongs to a future W-VO-Q-shaped window, not this fold; (B) REQUIRE_REVIEW on the same two
+      thresholds, chosen — a review.* rule reading a twin-basis fact passes both guards (verified:
+      `assert_no_hard_filter_reads_a_synthesised_twin_basis_fact` only refuses HARD_FILTER/EXCLUDE
+      stage or an eq-false comparison, neither of which review.e33.below-threshold-studio uses);
+      (C) delete the cause entirely, leaving the two walks at the generic NO_SUPPORTED_PATH
+      dead-end — rejected, this is exactly the "no named cause" defect the whole seq-21/-22
+      program exists to cure. B-STUDIO is B refined further: the review never says a person
+      reviews it, and mouth routes it to a self-serve calculator instead of a human-review queue.
+  - id: D-valid-period
+    decision: >-
+      Verified this turn by loading both packs directly: seq-22's pack-level `valid_period` is
+      BYTE-IDENTICAL to seq-20's ({"from": "2026-07-25T00:00:00Z", "to": null}) — unchanged, the
+      same pattern seq-21's own dossier established against migrations_v2/253 step 4 (an
+      activation whose legal period only partially overlaps a still-open prior one is refused).
+      The eleven NEW rules (nine SUPPORT + hf.employment-without-indonesian-sponsor +
+      review.e33.below-threshold-studio) each carry their own rule-level
+      `valid_period.from: "2026-09-16T00:00:00Z"` — confirmed this turn by listing every rule
+      whose valid_period.from starts with that date (exactly 11, matching the eleven new rule_ids
+      by name).
+  - id: D-studio-url
+    decision: >-
+      The Studio link target is the literal `/visa/second-home/studio` (SECOND_HOME_STUDIO_URL,
+      confirmed this turn by reading the diff) — deliberately NOT `/second-home/studio`, which
+      301s to the internal staff workspace (a different route entirely, unrelated to this PR's
+      diff). OutcomeSheet.tsx renders this link ONLY when
+      SECOND_HOME_BELOW_THRESHOLD_STUDIO is a review reason, and skips the generic
+      "outcome.human_review_body" / ReviewReasonGroup "what a person will check" copy when it is
+      the ONLY reason present (confirmed by reading the diff's `isSecondHomeStudioOnly` branch);
+      a case that ALSO carries a different hold keeps the generic body and still gets the Studio
+      link appended. `outcome.second_home_studio_link` ("Open the Second Home Studio" / "Buka
+      Second Home Studio") is the only new copy string mouth adds for this code.
+receipts:
+  - claim: Merge-base computed against a freshly fetched origin/main.
+    cmd: git fetch -q origin main && git merge-base origin/main HEAD
+    result: "8aea5480241bafce051d574ddc330c0e015534a2 (HEAD 79ad183cac545fef52ea35602e6e746518dbd558)"
+    exit: 0
+    ts: "2026-09-16T15:05:00Z"
+    seat: Claude Sonnet 5 (evidence-pack writer)
+  - claim: Changed-file set and numstat, merge-base anchored (never a two-dot diff).
+    cmd: git diff --name-only/--numstat 8aea5480241bafce051d574ddc330c0e015534a2...HEAD
+    result: "12 files changed (2 backend source, 1 fixture, 3 backend tests, 6 mouth files)"
+    exit: 0
+    ts: "2026-09-16T15:06:00Z"
+    seat: Claude Sonnet 5 (evidence-pack writer)
+  - claim: Gear-3 floor and its source, on the measured diff.
+    cmd: python3 scripts/evidence_pack_lint.py --print-floor --print-floor-source --changed-files-file <f> --numstat-file <f>
+    result: "3 / size"
+    exit: 0
+    ts: "2026-09-16T15:07:00Z"
+    seat: Claude Sonnet 5 (evidence-pack writer)
+  - claim:
+      PII scan of the full diff — no email, phone, passport-like or NIK-like string; the
+      five "email-shaped" hits are `@pytest.fixture` decorators, and the digit-run hits are
+      UUIDs/`max_age_seconds`/monetary `value` fields, none client-identifying.
+    cmd: >-
+      git diff 8aea548...HEAD > full.diff; grep -nE
+      '[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}' full.diff; grep -nE
+      '(\+?[0-9][0-9().-]{7,}[0-9])' full.diff; grep -nE '\b[A-Z]{1,2}[0-9]{6,9}\b' full.diff;
+      grep -cE '\b[0-9]{16}\b' full.diff
+    result: "5 @pytest.fixture false positives, 0 passport-like matches, 0 16-digit NIK matches, all digit-run hits are UUIDs/timestamps/monetary values"
+    exit: 0
+    ts: "2026-09-16T15:12:00Z"
+    seat: Claude Sonnet 5 (evidence-pack writer)
+  - claim: Ground-truth ledger's five untouched files, hashed in order.
+    cmd: >-
+      for f in rulepack-prod-020.signed.json rulepack-prod-020.source.json
+      253_visa_activation_writer_hardening.sql activate_pack.py sign_pack.py; do git diff
+      --name-only 8aea548...HEAD -- $f; done (all empty) ; { for f in ...; do git show
+      8aea548:$f; done; } | shasum -a 256
+    result: "1950b20510ec0d3639654d442a05d1e19463f7a720e3d94d03bfaf7e4e1c4c84 (identical to W-VO-S21's own query_hash, independently re-derived, not copied)"
+    exit: 0
+    ts: "2026-09-16T15:15:00Z"
+    seat: Claude Sonnet 5 (evidence-pack writer)
+  - claim:
+      Committed pack file sha256 and its canonical (JCS) payload sha256 both match the
+      digests stated in the coordinator's brief.
+    cmd: >-
+      shasum -a 256 rulepack-prod-022.source.json ; PYTHONPATH=. python -c
+      "from backend.services.visa_engine.bundle import canonicalize_json; ... hashlib.sha256(canonicalize_json(seq22)).hexdigest()"
+    result: >-
+      file sha256 31f367a438f064b5eb53d957178e929d46d3180b3458178946e28534fc051cec ; JCS payload
+      sha256 3d7555afcc9496b451bc86235624b4a88d35aabb9df354778dcf9b0b3b276e37 ; previous_payload_sha256
+      field read from the pack = df02287b7fc8f572a9e6674fdf3445a2131c428e8a1492ab8a388dee5bf01a4d — all three match the brief exactly
+    exit: 0
+    ts: "2026-09-16T15:18:00Z"
+    seat: Claude Sonnet 5 (evidence-pack writer)
+  - claim:
+      Rule/product counts — 111 total rules, 38/38 products with a SUPPORT rule (was 29/38
+      on seq-20), 9 REQUIRE_REVIEW rules retired net one added (17 -> 9), pack-level valid_period
+      byte-identical to seq-20, 11 new rules each carrying rule-level valid_period.from
+      2026-09-16T00:00:00Z.
+    cmd: python3 -c "... json.load both packs, compare products/rules/valid_period ..."
+    result: >-
+      seq20 SUPPORT-covered products 29/38 (missing E23U E23V E28B E28C E28D E28F E33A E33B E33C)
+      ; seq22 38/38 ; seq20 rules 109, seq22 rules 111 ; seq20 REQUIRE_REVIEW 17, seq22 9, retired
+      set exactly the 9 named products' review rules ; pack valid_period equal True ; 11 rules
+      with valid_period.from 2026-09-16
+    exit: 0
+    ts: "2026-09-16T15:10:00Z"
+    seat: Claude Sonnet 5 (evidence-pack writer)
+  - claim: test_seq22_pack.py (the dedicated fold-correctness suite) passes in full.
+    cmd: cd apps/backend-rag && JWT_SECRET_KEY=<dummy> API_KEYS=<dummy> .venv/bin/python -m pytest backend/tests/services/visa_engine/test_seq22_pack.py
+    result: "39 passed in 19.92s"
+    exit: 0
+    ts: "2026-09-16T15:22:00Z"
+    seat: Claude Sonnet 5 (evidence-pack writer)
+  - claim:
+      test_interview_walk_census.py passes in full, including the exact census pin
+      3 HUMAN_REVIEW_REQUIRED / 1 NEEDS_INPUT / 14 NO_SUPPORTED_PATH / 94 SUPPORTED_CANDIDATES over
+      the 112-walk corpus at ENGINE level for sequence 22 (`_SEQ22_OUTCOME_CHANGES`'s `by_sequence`
+      table, read directly this turn).
+    cmd: cd apps/backend-rag && JWT_SECRET_KEY=<dummy> API_KEYS=<dummy> .venv/bin/python -m pytest backend/tests/services/visa_engine/test_interview_walk_census.py
+    result: "50 passed in 10.38s"
+    exit: 0
+    ts: "2026-09-16T15:23:00Z"
+    seat: Claude Sonnet 5 (evidence-pack writer)
+  - claim:
+      test_seq21_pack.py still passes in full — seq-21 stays pinned as the STOPPED sequence,
+      unaffected in substance by this PR.
+    cmd: cd apps/backend-rag && JWT_SECRET_KEY=<dummy> API_KEYS=<dummy> .venv/bin/python -m pytest backend/tests/services/visa_engine/test_seq21_pack.py
+    result: "52 passed in 17.56s"
+    exit: 0
+    ts: "2026-09-16T15:24:00Z"
+    seat: Claude Sonnet 5 (evidence-pack writer)
+  - claim:
+      Full backend visa_engine suite, parallel — the only red is the pre-existing
+      local-Postgres schema state, not this diff (39 errors are asyncpg/migration-264/281 state on
+      M5's local clone; the 1 failure is test_visa_engine_retention_fk_registry's own premise
+      about migration 281 being live, which the seq-21 pack already recorded as failing
+      identically on a git-archive export of origin/main).
+    cmd: cd apps/backend-rag && JWT_SECRET_KEY=<dummy> API_KEYS=<dummy> .venv/bin/python -m pytest backend/tests/services/visa_engine -n 4
+    result: "1 failed, 2442 passed, 1 skipped, 39 errors in 110.12s"
+    exit: 1
+    ts: "2026-09-16T15:26:00Z"
+    seat: Claude Sonnet 5 (evidence-pack writer)
+  - claim:
+      Mouth vitest suite for the whole visa-oracle surface passes in full (covers
+      OutcomeSheet.test.tsx, engine-adapter's twin-basis guard, walk-corpus-determinism.test.ts).
+    cmd: cd apps/mouth && ../../node_modules/.bin/vitest run "src/app/(visa-oracle)/visa-oracle"
+    result: "Test Files 41 passed (41), Tests 973 passed (973)"
+    exit: 0
+    ts: "2026-09-16T15:19:00Z"
+    seat: Claude Sonnet 5 (evidence-pack writer)
+  - claim: Mouth typecheck clean.
+    cmd: cd apps/mouth && ../../node_modules/.bin/tsc --noEmit
+    result: "exit 0, no output"
+    exit: 0
+    ts: "2026-09-16T15:19:30Z"
+    seat: Claude Sonnet 5 (evidence-pack writer)
+  - claim: Prettier clean on every touched mouth TS/TSX file.
+    cmd: node_modules/.bin/prettier --check <6 touched mouth files>
+    result: "All matched files use Prettier code style!"
+    exit: 0
+    ts: "2026-09-16T15:20:00Z"
+    seat: Claude Sonnet 5 (evidence-pack writer)
+  - claim: Ruff and pyright clean on the two touched backend Python files (fold_pack_seq22.py, test_seq22_pack.py).
+    cmd: .venv/bin/python -m ruff check <files> ; pyright <files>
+    result: "ruff: All checks passed! ; pyright: 0 errors, 0 warnings, 0 informations"
+    exit: 0
+    ts: "2026-09-16T15:20:30Z"
+    seat: Claude Sonnet 5 (evidence-pack writer)
+  - claim: >-
+      bundle.py enforces signature before production activation — nothing a real visitor sees
+      today changes until this pack is both signed and activated, both explicitly out of scope.
+    cmd: grep -rn "PRODUCTION rule packs must always be signed" apps/backend-rag/backend/services/visa_engine/bundle.py
+    result: "bundle.py:788 and :829, 'PRODUCTION rule packs must always be signed — allow_unsigned...' guards production activation"
+    exit: 0
+    ts: "2026-09-16T15:16:00Z"
+    seat: Claude Sonnet 5 (evidence-pack writer)
+dissent:
+  - seat: Claude Sonnet 5 (evidence-pack writer, self-refutation)
+    objection: >-
+      E33B's catalogue sponsor_types is ['NONE'] (no employer sponsor at all), so keeping it
+      inside an exclusion scoped to `intent.purposes intersects EMPLOYMENT AND
+      work.employer_is_indonesian_entity == false` looked incoherent at first read — an applicant
+      with no employer sponsor should not be judged on an employer fact.
+    status: RETRACTED
+    cure: >-
+      E33B's own `covered_purposes` includes 'EMPLOYMENT' (confirmed by reading the committed
+      pack's products array), and E33B's qualifying fact `sponsor.government_collaboration` names
+      a collaboration with an INDONESIAN government body — so an E33B applicant who separately
+      declares EMPLOYMENT as a purpose AND answers "my employer is not an Indonesian entity" is
+      genuinely contradicting their own qualification, not being wrongly judged on an unrelated
+      fact. `test_e23_and_e33b_stay_inside_the_employment_exclusion`'s own docstring states the
+      same resolution; this was verified independently before that docstring was read.
+  - seat: builder-time antibody (fold_pack_seq22.py's own guard, exercised by this writer's pytest run)
+    objection: >-
+      seq-21's original HARD_FILTER `hf.e33.guarantee-below-threshold`, if carried forward as-is
+      (Option A) or reintroduced alongside the B-STUDIO rule by a future careless fold, would
+      abort — it is a HARD_FILTER/EXCLUDE reading a synthesised Second-Home twin-basis fact, which
+      turns the OTHER basis's harmless "not claimed here" synthesis into an active exclusion of a
+      visitor who never answered the question.
+    status: CONFIRMED
+    cure: >-
+      Verified this turn by running test_seq22_pack.py in full (39 passed), which includes
+      `TestE33BelowThresholdStudio::test_guilt_turning_the_studio_rule_into_a_hard_filter_aborts_the_fold`
+      and `::test_guilt_reintroducing_seq21s_hard_filter_aborts_the_fold` — both guilt cases raise
+      SystemExit naming the offending rule_id, and the innocence case
+      (`test_innocence_the_real_pack_still_passes_the_twin_basis_guard`) confirms the REAL
+      committed pack passes because review.e33.below-threshold-studio is HUMAN_REVIEW stage with
+      no eq-false comparison. D23 OPTION B-STUDIO is the cure, not a workaround: the same two
+      thresholds, never a HARD_FILTER again.
+  - seat: Claude Sonnet 5 (evidence-pack writer, self-refutation)
+    objection: >-
+      Unlike W-VO-S21's own dossier (which recorded "signing and activating changes no census
+      state and names no new product on any real walk today" because W-VO-Q's ten interview
+      questions had not shipped yet), this writer found `fact-mapper.ts` NOW maps
+      `sponsor.government_invitation` / `sponsor.government_collaboration` from real applicant
+      answers rather than hardcoding them NOT_ASKED — meaning signing and activating THIS pack
+      would have an IMMEDIATE visible effect on real production traffic, not a dormant one.
+    status: CONFIRMED
+    cure: >-
+      Not a defect of this window — it is the reason activation is explicitly D24, a SEPARATE
+      owner order, and why this pack states plainly it is not signed and not activated. Recorded
+      here so the signing session and D24's approver both know the blast radius is live, not
+      theoretical, unlike the prior sequence's ceremony.
+leftovers:
+  - >-
+    The later BUNDLE PR (after signature) must lower engine-adapter.test.ts's floor literal 38 to
+    the post-signature value and delete the 8 retired REVIEW_REASON_COPY keys — explicitly not
+    this PR's job (stated in the PR body's own Bites line).
+  - >-
+    pyright is not installed in apps/backend-rag/.venv (ModuleNotFoundError) — this writer ran the
+    globally mise-installed pyright binary instead (1.1.414) rather than skip the check; a
+    future PR could vendor it into the venv so this gap does not need rediscovering.
+  - >-
+    The council round below is round 1 for both seats on this PR; no prior round exists to
+    reconcile (unlike W-VO-S21's 5-round history), so seat_fallback_reason is not yet populated —
+    added only if either seat is actually unavailable when Task B runs.

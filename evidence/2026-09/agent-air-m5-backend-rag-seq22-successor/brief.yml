@@ -1,0 +1,104 @@
+gear: 3
+gear_reason: >-
+  Floor measured with scripts/evidence_pack_lint.py --print-floor --print-floor-source on the
+  merge-base diff (git diff --name-only / --numstat 8aea5480241bafce051d574ddc330c0e015534a2...HEAD,
+  79ad183cac): floor 3, source "size" (churn dominated by the folded pack
+  rulepack-prod-022.source.json at 9,424 added lines and fold_pack_seq22.py at 922 — total
+  non-fixture churn 11,572 lines, well past SIZE_GEAR3_THRESHOLD 1,828; no HOTZONE_PATTERNS path
+  is touched, so the size term alone explains the floor). Judgement agrees independently of the
+  floor: this PR folds a candidate production rule pack (unsigned, unactivated) that a future
+  Zero signing ceremony will act on directly, over apps/backend-rag/** where merging a PR is
+  itself the deploy (memory discovery_merging_a_backend_rag_pr_deploys_by_itself_2026_09_01).
+ruling: RULED 2026-09-16 SAETTA
+mission:
+  SAETTA-20260916 R2 (BLUE, host M5) — seq-22 successor, Dux Claude Opus 5 (successor of a
+  dead Dux; W-K on Pro was the original owner)
+objective: >-
+  A frozen, green, re-executable seq-22 candidate that folds DIRECTLY from the signed seq-20 pack
+  (never from seq-21, which is STOPPED with three defects found before activation) and carries
+  seq-21's content with all three defects cured: (1) E23V is no longer excluded by
+  hf.employment-without-indonesian-sponsor when a foreign trade-office employee honestly answers
+  "my employer is not Indonesian" (the hard filter's product scope narrows to E23+E33B); (2)
+  E33B stays inside that same exclusion scope (sponsor.government_collaboration is an INDONESIAN
+  government body, so a non-Indonesian sponsor genuinely disqualifies it); (3) seq-21's
+  HARD_FILTER hf.e33.guarantee-below-threshold is NOT carried forward — it read a Second-Home
+  twin-basis fact (deposit/property) the OTHER basis's fact-mapper.ts synthesises as known(0),
+  which the engine-adapter.test.ts twin-basis guard (~line 887-951) forbids a HARD_FILTER/EXCLUDE
+  or an eq-false comparison from ever reading. Per owner decision D23 "OPTION B-STUDIO" (Zero,
+  2026-09-16, ~/BATTAGLIA-20260911/SAETTA-20260916/Z-DECISIONI-ZERO.md) the same two thresholds
+  come back as a REQUIRE_REVIEW rule (review.e33.below-threshold-studio, reason
+  SECOND_HOME_BELOW_THRESHOLD_STUDIO, on_unknown NO_EFFECT, bounds read from seq-20's own E33
+  SUPPORT rules — never a typed figure), and the mouth OutcomeSheet routes that ONE reason to the
+  public Second Home Studio (/visa/second-home/studio — never /second-home/studio, which 301s to
+  the staff workspace) without ever saying a person or consultant reviews the case. Nine products
+  (E23U E23V E28B E28C E28D E28F E33A E33B E33C) go from zero SUPPORT rules in seq-20 to one each
+  in seq-22 (29 -> 38 of 38 products with a SUPPORT rule); nine dormant review.* rules keyed on
+  the never-asked intent.requested_product_code are retired. A new gold-coverage walk fixture
+  (offshore/work/sponsor_government/trade_office_only/employer_no) proves the E23V cure moves
+  NO_PATH -> SUPPORTED [E23V] (corpus 111 -> 112 walks). Not signed and not activated by this
+  window — activation is a separate owner order (D24), signature a separate fresh Fable/Opus
+  session outside this chain (D17-bis).
+scope:
+  - apps/backend-rag/backend/scripts/visa_engine/fold_pack_seq22.py
+  - apps/backend-rag/backend/services/visa_engine/contracts/packs/rulepack-prod-022.source.json
+  - apps/backend-rag/backend/tests/services/visa_engine/test_seq22_pack.py (new, dedicated)
+  - apps/backend-rag/backend/tests/services/visa_engine/test_interview_walk_census.py (census pins for sequence 22)
+  - apps/backend-rag/backend/tests/services/visa_engine/test_seq21_pack.py (minor: seq-21 stays pinned as the STOPPED sequence, unaffected in substance)
+  - apps/backend-rag/backend/tests/services/visa_engine/gold_coverage/fixtures/walks/offshore_work_sponsor_government_trade_office_only_employer_no.json (new)
+  - apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter.ts (SECOND_HOME_STUDIO_REVIEW_REASON_CODE, SECOND_HOME_STUDIO_URL, REVIEW_REASON_COPY entry)
+  - apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/i18n.ts (outcome.second_home_studio_link EN/ID)
+  - apps/mouth/src/app/(visa-oracle)/visa-oracle/_components/OutcomeSheet.tsx (+ .test.tsx) — Studio-only branch, never the generic human-review body for this one code
+  - apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/walk-corpus-determinism.test.ts, apps/mouth/scripts/visa-oracle/generate-walk-corpus.ts (corpus fingerprint, 111 -> 112)
+  - evidence/2026-09/agent-air-m5-backend-rag-seq22-successor/**
+constraints:
+  - Forbidden - evaluate_path.py, evaluator.py, models.py/enums.py/fact_registry.py (the ten
+    sponsor/secondhome facts are ALREADY on main from the prior W-VO-S21 cycle; this PR registers
+    no new fact), tree.ts/flow.ts (no question added or removed), pricing, any signing key, any DB.
+  - No HARD_FILTER/EXCLUDE rule and no eq-false comparison may read a synthesised Second-Home
+    twin-basis fact (secondhome.bank_deposit_usd / bank_deposit_at_state_bank /
+    bank_deposit_in_own_name / qualifying_property_value_usd) — this is what killed seq-21 and is
+    the one invariant this PR exists to keep true going forward, guarded at fold time
+    (TestNoExcludeReadsASynthesisedFact) AND at mouth build time (engine-adapter.test.ts twin-basis
+    guard reading the highest-sequence SIGNED pack, currently seq-20).
+  - review.e33.below-threshold-studio's copy and the mouth link it drives may never say a person,
+    consultant or staff member reviews the case — it is a self-serve calculator, not a hold.
+  - No figure invented - the Studio bounds are EXTRACTED from seq-20's own el.e33 SUPPORT rules
+    at fold time, never typed in fold_pack_seq22.py.
+  - No client PII; no credential value anywhere; never sign or activate; never edit PENDING-ARMS.md.
+  - Push once, complete.
+acceptance:
+  - text: "A1 WHEN the fold CLI re-runs on the signed seq-20 anchor, its output SHALL canonicalize to the committed pack's JCS bytes and previous_payload_sha256 SHALL equal the seq-20 signed digest, never seq-21's"
+    probe: "pytest backend/tests/services/visa_engine/test_seq22_pack.py::TestFoldIntegrity::test_fold_is_deterministic backend/tests/services/visa_engine/test_seq22_pack.py::TestFoldIntegrity::test_fold_chains_to_seq20_not_to_seq21"
+  - text: "A2 WHEN work.employer_is_indonesian_entity is declared false for an EMPLOYMENT purpose, hf.employment-without-indonesian-sponsor SHALL scope to (E23, E33B) only and SHALL NOT exclude E23V"
+    probe: "pytest backend/tests/services/visa_engine/test_seq22_pack.py::TestTheEditsContent::test_e23v_is_removed_from_the_employment_exclusion backend/tests/services/visa_engine/test_seq22_pack.py::TestTheEditsContent::test_e23_and_e33b_stay_inside_the_employment_exclusion"
+    consumer: apps/backend-rag/backend/tests/services/visa_engine/gold_coverage/fixtures/walks/offshore_work_sponsor_government_trade_office_only_employer_no.json — the new walk that PROVES the cure, not just asserts it
+  - text: "A3 IF a HARD_FILTER/EXCLUDE rule or an eq-false comparison reads any of the four Second-Home twin-basis facts, the fold SHALL abort, and this invariant SHALL hold on both the fold's own guard and the mouth's engine-adapter.test.ts guard on the highest-sequence SIGNED pack"
+    probe: "pytest backend/tests/services/visa_engine/test_seq22_pack.py::TestNoExcludeReadsASynthesisedFact -k guilt_or_innocence ; npx vitest run 'src/app/(visa-oracle)/visa-oracle' -t 'twin-basis'"
+  - text: "A4 WHEN a declared property or deposit figure is below its seq-20-sourced threshold, the outcome SHALL be HUMAN_REVIEW_REQUIRED with reason SECOND_HOME_BELOW_THRESHOLD_STUDIO, and WHILE the sibling basis's figure is UNKNOWN (never declared) the Studio reason SHALL NOT fire"
+    probe: "pytest backend/tests/services/visa_engine/test_seq22_pack.py::TestE33BelowThresholdStudio backend/tests/services/visa_engine/test_seq22_pack.py::TestTheCureIsReachable::test_an_unasked_deposit_never_routes_anyone_to_the_studio backend/tests/services/visa_engine/test_seq22_pack.py::TestTheCureIsReachable::test_the_deposit_basis_visitor_is_never_judged_on_an_unasked_property"
+  - text: "A5 the review.e33.below-threshold-studio copy and its mouth rendering SHALL never introduce the hold as needing a person's or consultant's judgment, and SHALL link only to /visa/second-home/studio"
+    probe: "grep -niE 'consultant|a person|staff' apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter.ts | grep -i studio ; npx vitest run apps/mouth/src/app/(visa-oracle)/visa-oracle/_components/OutcomeSheet.test.tsx"
+  - text: "A6 WHEN the 112-walk corpus is replayed at ENGINE level against the seq-22 candidate with no flags, the census SHALL read exactly 3 HUMAN_REVIEW_REQUIRED / 1 NEEDS_INPUT / 14 NO_SUPPORTED_PATH / 94 SUPPORTED_CANDIDATES, and no walk outside the three named ones SHALL move from seq-20's 1/2/17/92"
+    probe: "pytest backend/tests/services/visa_engine/test_interview_walk_census.py::test_the_flagged_census_is_the_funnel_the_applicant_meets backend/tests/services/visa_engine/test_interview_walk_census.py::test_every_walk_ends_in_its_pinned_outcome_on_the_candidate_pack"
+  - text: "A7 the nine unlocked products SHALL each gain exactly one ELIGIBILITY/SUPPORT rule conjoining a declared qualifying fact, on_unknown NEEDS_INPUT, and no product SHALL be reachable on sponsor.type alone"
+    probe: "pytest backend/tests/services/visa_engine/test_seq22_pack.py::TestTheEditsContent::test_the_nine_unlocked_products_each_gain_an_eligibility_rule backend/tests/services/visa_engine/test_seq22_pack.py::TestFoldIntegrity::test_fold_retires_nine_and_inserts_eleven"
+  - text: "A8 the fold SHALL edit no surviving rule and SHALL touch no top-level pack key other than the ones it declares, and the whole visa_engine suite plus the mouth typecheck/format/lint SHALL stay clean modulo the pre-existing local-Postgres schema errors"
+    probe: "pytest backend/tests/services/visa_engine/test_seq22_pack.py::TestFoldIntegrity::test_fold_edits_no_surviving_rule backend/tests/services/visa_engine/test_seq22_pack.py::TestFoldIntegrity::test_fold_touches_no_other_top_level_key ; pytest backend/tests/services/visa_engine -n 4 ; npx vitest run 'src/app/(visa-oracle)/visa-oracle' ; npx tsc --noEmit ; ruff check ; pyright"
+consumer_map:
+  - >-
+    Zero's future signing ceremony (sign_pack.py on rulepack-prod-022.source.json) and the
+    activation ceremony that follows it (D24, separate order).
+  - >-
+    A fresh Fable/Opus session outside this contribution chain, which signs the declared digest
+    (D17-bis) — this pack's job is to make that session's job checkable, not to sign anything itself.
+  - >-
+    The required checks that already run test_seq22_pack.py / test_interview_walk_census.py /
+    test_seq21_pack.py / engine-adapter.test.ts on every future visa-engine PR — this PR is the
+    first to make them pass on the seq-22 candidate.
+  - >-
+    The later BUNDLE PR, after signature, must lower engine-adapter.test.ts's floor literal from
+    38 and delete the 8 retired REVIEW_REASON_COPY keys — explicitly NOT this PR's job, named here
+    so it is not lost.
+appetite:
+  budget: 8 hours, 1 PR
+  stop_loss: three reds on the same cause suspends; a fix-of-a-fix stops at depth 1
