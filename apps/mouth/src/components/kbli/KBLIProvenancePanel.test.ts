@@ -201,7 +201,13 @@ describe("the Bali provenance row attributes the verdict to what produced it", (
     // pma_max_asing 0, located) are kept TERTUTUP/blocked with a
     // field-derived reason instead of being wrongly un-blocked, adding 4
     // more non-moratorium members.
-    expect(misattributed).toHaveLength(14);
+    // W-H PR-3b (14 -> 15): 47249 moves declared_gap -> located (Perpres
+    // 49/2021 Lampiran II entry 46); its l4_bali verdict (CHIUSO_BALI,
+    // blocked: true, already non-moratorium) was never exposed on the public
+    // KBLICode while unverified, so it only now joins this population. The
+    // other 7 PR-3b codes also move to located, but their l4_bali.status is
+    // ATTENZIONE_FASCIA_BALI (blocked: false) — they do not qualify.
+    expect(misattributed).toHaveLength(15);
     // Every one of them must now name its own cause, never the risk tier.
     for (const c of misattributed) {
       const row = baliRow(c.code);
