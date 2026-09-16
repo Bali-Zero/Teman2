@@ -8,6 +8,7 @@ import {
   neutralKbliChatOpener,
 } from "./kbli-pma-editorial";
 import { isPmaVerdictVerified } from "./kbli-provenance";
+import { isSourcedBaliClosure } from "./kbli-pma-disclosure";
 
 describe("PMA editorial disclosure boundary", () => {
   it.each(["16291", "10793"])(
@@ -118,7 +119,15 @@ describe("PMA editorial disclosure boundary", () => {
       );
       expect(disclosed.intel).toBeUndefined();
       expect(disclosed.gold).toBeNull();
-      expect(discloseKbliBaliReason(record)).toBeUndefined();
+      // Added 2026-09-16 (W-J B1 disclose): a Bali APPLIED closure sourced to
+      // a public press release discloses its reason too, even on a
+      // `declared_gap` national record — the ONE named exception, scoped
+      // exactly to `isSourcedBaliClosure`.
+      if (isSourcedBaliClosure(record.baliL4)) {
+        expect(discloseKbliBaliReason(record)).toBe(record.baliL4?.reason);
+      } else {
+        expect(discloseKbliBaliReason(record)).toBeUndefined();
+      }
     }
     for (const record of located) {
       const gold = getGoldContent(record.code);

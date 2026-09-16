@@ -484,10 +484,23 @@ describe("real dataset: the gate binds, and v3 actually differentiates", () => {
     // Compiler-owned partition: 65 whole-code verdicts have a per-code locator
     // and vintage; all other 1,494 records must reach the neutral metadata arm.
     // SAETTA-20260915 W-H PR-3a: 55201/55203/79903 moved declared_gap→located
-    // (Perpres 49/2021 Lampiran II allocation), 1505→1502, 54→57.
-    // W-H PR-3b: 8 more codes (47241 47242 47244 47245 47246 47249 47712
-    // 47722) moved declared_gap→located, 1502→1494, 57→65.
-    expect(pmaGaps).toBe(1494);
+    // (Perpres 49/2021 Lampiran II allocation), 1505→1502.
+    // 2026-09-16 (W-J B1 disclose, 1502 -> 1484): 23 of the 39 newly-disclosed
+    // `declared_gap` CHIUSO_BALI codes also pass `isBaliL4BlockVerifiedForBareClaim`
+    // (HIGH confidence, not flagged for review); 5 of those are the hotel rows
+    // whose closure carries a scope qualifier (building area under 6,000 m²),
+    // which a <title> cannot state, so they stay neutral too. The other 18
+    // reach "Closed to PT PMA in Bali (2026)"; the 16 MEDIUM codes stay neutral.
+    // W-H PR-3b (1484 -> 1476): 8 more codes (47241 47242 47244 47245 47246
+    // 47249 47712 47722) moved declared_gap→located. 47249 is MEDIUM
+    // confidence, so it was one of the 16 "stays neutral" codes above (not
+    // one of the 18 promoted to a bare claim) — it leaves the declared_gap
+    // pool entirely and stops counting as a neutral pmaGap. The other 7 were
+    // never in the disclosed-39 set (their l4_bali.status is
+    // ATTENZIONE_FASCIA_BALI, not CHIUSO_BALI) but were already counted as
+    // plain neutral declared_gap codes, so they also leave the count.
+    // 1484 - 8 = 1476.
+    expect(pmaGaps).toBe(1476);
     expect(suffixes).toHaveLength(1559);
   });
 
@@ -625,5 +638,82 @@ describe("inherited PP 28 content withdraws the licence claim, not the risk", ()
     // Innocence at dataset scale: SOME code still states a licence, or the
     // gate is not a gate but a blanket.
     expect(codes.some((c) => verifiedLicenseType(c) !== null)).toBe(true);
+  });
+});
+
+// =============================================================================
+// A Bali APPLIED closure is self-sufficient evidence for the indexed <title>
+// too — but only at the same bare-claim bar every other Bali title fact
+// already clears (HIGH confidence, not flagged for review). Added 2026-09-16,
+// W-J B1 disclose.
+// =============================================================================
+describe("kbliMetaTitleSuffix — a sourced Bali closure on an unverified national record", () => {
+  it("68111 (HIGH confidence, Residential Property Development) ends the title with 'Closed to PT PMA in Bali (2026)'", () => {
+    const code = getAllCodes().find((c) => c.code === "68111")!;
+    expect(code.provenance?.pma.status).toBe("declared_gap");
+    expect(code.baliL4?.confidence).toBe("HIGH");
+    expect(kbliMetaTitleSuffix(code)).toBe("Closed to PT PMA in Bali (2026)");
+  });
+
+  it("47211 (MEDIUM confidence — merges several KBLI-2020 activities) stays on the neutral suffix", () => {
+    const code = getAllCodes().find((c) => c.code === "47211")!;
+    expect(code.provenance?.pma.status).toBe("declared_gap");
+    expect(code.baliL4?.status).toBe("CHIUSO_BALI");
+    expect(code.baliL4?.confidence).toBe("MEDIUM");
+    expect(kbliMetaTitleSuffix(code)).toBe(
+      "PMA Eligibility Requires Verification",
+    );
+  });
+
+  it("55101 (HIGH, but the closure is scoped to buildings under 6,000 m²) stays on the neutral suffix", () => {
+    const code = getAllCodes().find((c) => c.code === "55101")!;
+    expect(code.provenance?.pma.status).toBe("declared_gap");
+    expect(code.baliL4?.confidence).toBe("HIGH");
+    expect(code.baliL4?.closure?.scopeQualifier).toBe(
+      "building area under 6,000 m²",
+    );
+    expect(kbliMetaTitleSuffix(code)).toBe(
+      "PMA Eligibility Requires Verification",
+    );
+  });
+});
+
+// =============================================================================
+// Review F3: `kbliMetaDescription` needs the SAME bare-claim branch as the
+// title suffix above — the title and description are two separate indexed
+// surfaces, and a fix to one gate must not silently leave the other unfixed.
+// =============================================================================
+describe("kbliMetaDescription — the same sourced-Bali-closure branch as the title suffix", () => {
+  it("68111 (HIGH confidence, unscoped, declared_gap nationally) states the closure in the description", () => {
+    const code = getAllCodes().find((c) => c.code === "68111")!;
+    expect(code.provenance?.pma.status).toBe("declared_gap");
+    expect(code.baliL4?.confidence).toBe("HIGH");
+    expect(code.baliL4?.closure?.scopeQualifier).toBeFalsy();
+
+    expect(kbliMetaDescription(code, code.titleEn)).toContain(
+      "nationally — closed to new PT PMA licensing in Bali (2026).",
+    );
+  });
+
+  it("55101 (scoped: building area under 6,000 m²) omits the whole-code closure clause — no room for the scope text", () => {
+    const code = getAllCodes().find((c) => c.code === "55101")!;
+    expect(code.provenance?.pma.status).toBe("declared_gap");
+    expect(code.baliL4?.closure?.scopeQualifier).toBe(
+      "building area under 6,000 m²",
+    );
+
+    expect(kbliMetaDescription(code, code.titleEn)).not.toContain(
+      "closed to new PT PMA licensing in Bali",
+    );
+  });
+
+  it("47211 (MEDIUM confidence, unscoped) omits the whole-code closure clause — below the bare-claim gate", () => {
+    const code = getAllCodes().find((c) => c.code === "47211")!;
+    expect(code.provenance?.pma.status).toBe("declared_gap");
+    expect(code.baliL4?.confidence).toBe("MEDIUM");
+
+    expect(kbliMetaDescription(code, code.titleEn)).not.toContain(
+      "closed to new PT PMA licensing in Bali",
+    );
   });
 });

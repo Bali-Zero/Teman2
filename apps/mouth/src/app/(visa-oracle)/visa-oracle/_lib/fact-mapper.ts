@@ -677,11 +677,12 @@ export function mapDisclosedReviewFlags(
 // OFFSHORE applicant (`in_indonesia === "no"`) who answers
 // `holds_stay_permit === "no"` is never asked `current_status_code` at all
 // — `flow.ts::computeNextNode`'s offshore branch converges straight to
-// `overstay_days` instead, specifically to avoid paying a redundant
-// question for a fact `holds_stay_permit`'s own answer already fully
-// determines (measured funnel-cost review, PR #4727: asking it anyway
-// would cost every offshore applicant of every product 3 questions to
-// serve one product's rule). When neither raw field is populated but
+// `nationalities` instead (D19, 2026-09-16: skipping `overstay_days` too —
+// see `immigration.overstay_days` below), specifically to avoid paying a
+// redundant question for a fact `holds_stay_permit`'s own answer already
+// fully determines (measured funnel-cost review, PR #4727: asking it
+// anyway would cost every offshore applicant of every product 3 questions
+// to serve one product's rule). When neither raw field is populated but
 // `holds_stay_permit` is explicitly "no", emit the synthesized
 // `NO_STAY_PERMIT` sentinel directly (see `fact_registry.py`'s
 // `_VISIT_CLASS_STATUS_CODES` docstring for why this is honest, not a
@@ -919,7 +920,18 @@ export function mapOracleFactsToApplicantFacts(
     "immigration.current_status_code": mapCurrentStatusCode(facts),
     "immigration.current_status_expiry": mapCurrentStatusExpiry(facts),
     "immigration.last_entry_date": unknownFact(NOT_ASKED),
-    "immigration.overstay_days": integerFact(facts.overstay_days, 0, 36_500),
+    // D19 (owner ruling, Zero, 2026-09-16): an applicant outside Indonesia
+    // cannot be overstaying inside it, so `flow.ts::computeNextNode` never
+    // asks `overstay_days` on any offshore route — KNOWN(0) by the same
+    // "the answer already resolves the fact" logic as `mapCurrentStatusCode`'s
+    // `NO_STAY_PERMIT` sentinel above. Checked on `in_indonesia` directly,
+    // not on whether `facts.overstay_days` happens to be populated, so a
+    // stale answer left over from answering it onshore and then editing
+    // `in_indonesia` back to "no" is never read.
+    "immigration.overstay_days":
+      facts.in_indonesia === "no"
+        ? known(0)
+        : integerFact(facts.overstay_days, 0, 36_500),
     "immigration.violation_history": mapViolationHistory(facts),
     // F4, 2026-08-24: the `renewal_paid` question now ships (tree.ts,
     // gated in flow.ts's `computeNextNode`/`shouldAskRenewalPaid` on an

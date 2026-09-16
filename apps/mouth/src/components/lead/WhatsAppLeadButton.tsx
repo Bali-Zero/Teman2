@@ -13,6 +13,21 @@ import { trackLeadCreated, trackLeadWhatsAppCTA } from "@/lib/analytics";
  *  Same number used by the backend deeplink builder default. */
 export const FALLBACK_WA_URL = "https://wa.me/628213454721";
 
+/**
+ * How long we let the capture run before handing off anyway.
+ *
+ * Measured gap (2026-09-16, GARUDA VOA lane): the fetch below carried no
+ * timeout, so a request that never settles left `pending` true forever. The
+ * click handler calls preventDefault() unconditionally and then returns early
+ * while pending, so in that state the anchor's own href is dead too: the
+ * visitor taps a WhatsApp button and nothing happens, with no error and no
+ * way to retry short of reloading. The lead is not merely uncaptured — it is
+ * lost, which is the one outcome this component exists to prevent. Six
+ * seconds is longer than the capture has ever taken in production and far
+ * shorter than a person's patience with a button that does nothing.
+ */
+export const CAPTURE_TIMEOUT_MS = 6000;
+
 export interface WhatsAppLeadButtonProps {
   /** LeadSource wire value (backend enum): "article" | "kbli_navigator" | ... */
   source: string;
@@ -57,6 +72,12 @@ export function WhatsAppLeadButton({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         keepalive: true,
+        // An abort lands in the catch below, which is the fallback handoff —
+        // so a stalled capture degrades to the bare wa.me link instead of
+        // stranding the visitor. AbortSignal.timeout is absent in older
+        // engines and in some test environments; there it simply stays
+        // undefined and the behaviour is exactly what it was before.
+        signal: AbortSignal.timeout?.(CAPTURE_TIMEOUT_MS),
         body: JSON.stringify({
           source,
           context: context ?? {},

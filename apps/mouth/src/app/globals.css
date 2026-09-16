@@ -422,6 +422,7 @@
      surface light. Remap them to the paper palette so the whole client
      surface — not just the GARUDA-token components — turns light. */
   --kbli-bg-base: #f4f1ea;
+  --kbli-ink: #141416;
   --kbli-bg-primary: #f4f1ea;
   --kbli-bg-secondary: #ffffff;
   --kbli-bg-elevated: #ffffff;
@@ -636,6 +637,7 @@
   --error: #a44b36;
 
   --kbli-bg-base: var(--bz-kita-canvas);
+  --kbli-ink: #141416;
   --kbli-bg-primary: var(--bz-kita-canvas);
   --kbli-bg-secondary: var(--bz-kita-card);
   --kbli-bg-elevated: var(--bz-kita-card);
@@ -788,6 +790,7 @@
   --error: #c46a52;
 
   --kbli-bg-base: var(--bz-kita-canvas);
+  --kbli-ink: #141416;
   --kbli-bg-primary: var(--bz-kita-canvas);
   --kbli-bg-secondary: var(--bz-kita-card);
   --kbli-bg-elevated: var(--bz-kita-card);

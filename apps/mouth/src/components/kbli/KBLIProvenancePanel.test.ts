@@ -178,7 +178,7 @@ describe("the Bali provenance row attributes the verdict to what produced it", (
     expect(row.detail).toContain("Not classifiable until the true risk tier");
   });
 
-  it("pins the verified population: 14 located codes are blocked by something other than the moratorium", () => {
+  it("pins the verified population: 53 located-or-sourced-closure codes are blocked by something other than the moratorium", () => {
     const misattributed = getAllCodes().filter(
       (c) =>
         c.baliL4?.blocked === true &&
@@ -201,18 +201,38 @@ describe("the Bali provenance row attributes the verdict to what produced it", (
     // pma_max_asing 0, located) are kept TERTUTUP/blocked with a
     // field-derived reason instead of being wrongly un-blocked, adding 4
     // more non-moratorium members.
-    // W-H PR-3b (14 -> 15): 47249 moves declared_gap -> located (Perpres
-    // 49/2021 Lampiran II entry 46); its l4_bali verdict (CHIUSO_BALI,
-    // blocked: true, already non-moratorium) was never exposed on the public
-    // KBLICode while unverified, so it only now joins this population. The
-    // other 7 PR-3b codes also move to located, but their l4_bali.status is
-    // ATTENZIONE_FASCIA_BALI (blocked: false) — they do not qualify.
-    expect(misattributed).toHaveLength(15);
+    // 2026-09-16 (W-J B1 disclose, 14 -> 53): `discloseBaliL4` now discloses
+    // a Bali APPLIED closure (CHIUSO_BALI, sourced to a public press
+    // release) even when the national PMA verdict is not located — the 39
+    // `declared_gap` CHIUSO_BALI records (all with a sourced closure.url)
+    // that were previously withheld from `getAllCodes()` entirely now carry
+    // a `baliL4`, and none of them is moratorium-attributed.
+    // W-H PR-3b (53 -> 53, no change): 47249 moves declared_gap -> located
+    // (Perpres 49/2021 Lampiran II entry 46). Before this cure it was ALREADY
+    // one of the 39 declared_gap/CHIUSO_BALI/closure.url records the disclose
+    // change above surfaces, so it was already counted in 53 — becoming
+    // "located" does not add it a second time. The other 7 PR-3b codes also
+    // move to located, but their l4_bali.status is ATTENZIONE_FASCIA_BALI
+    // (blocked: false) — they never qualified and still do not.
+    expect(misattributed).toHaveLength(53);
     // Every one of them must now name its own cause, never the risk tier.
+    // `baliRow` asserts a LOCATED national PMA tuple, which no longer holds
+    // for the 39 newly-disclosed `declared_gap` CHIUSO_BALI members — the
+    // whole point of W-J B1 disclose. Use `buildRows` directly instead, and
+    // render `source` (a plain string for most statuses, but the CHIUSO_BALI
+    // closure citation is a ReactNode with an `<a>` link) to text before
+    // substring-checking it.
     for (const c of misattributed) {
-      const row = baliRow(c.code);
-      expect(row.detail, `code ${c.code}`).not.toContain(RISK_TIER_BASIS);
-      expect(row.source, `code ${c.code}`).not.toContain(MORATORIUM_RULE);
+      const row = buildRows(c, c.provenance as KBLIProvenance).find(
+        (r) => r.layer === "Bali status",
+      );
+      expect(row, `code ${c.code} must render a Bali status row`).toBeDefined();
+      const sourceText =
+        typeof row!.source === "string"
+          ? row!.source
+          : renderToStaticMarkup(row!.source as ReactElement);
+      expect(row!.detail, `code ${c.code}`).not.toContain(RISK_TIER_BASIS);
+      expect(sourceText, `code ${c.code}`).not.toContain(MORATORIUM_RULE);
     }
   });
 });
@@ -351,6 +371,31 @@ describe("the Bali provenance row — CHIUSO_BALI closure citation (added 2026-0
     expect(row.source).toBe(
       "Activity-level restriction — not the risk-tier moratorium overlay",
     );
+  });
+});
+
+describe("the Bali provenance row — an unlocated sourced closure discloses on its own evidence (added 2026-09-16, W-J B1 disclose)", () => {
+  it("INNOCENCE: 68111 (national PMA verdict still declared_gap) renders the Bali status row with the press-release link", () => {
+    const kbli = getCode("68111") as KBLICode;
+    expect(kbli.provenance?.pma.status).toBe("declared_gap");
+    expect(kbli.baliL4?.status).toBe("CHIUSO_BALI");
+    const row = buildRows(kbli, kbli.provenance as KBLIProvenance).find(
+      (r) => r.layer === "Bali status",
+    );
+    expect(row).toBeDefined();
+    const html = renderToStaticMarkup(row!.source as ReactElement);
+    expect(html).toContain("<a ");
+    expect(html).toContain("baliprov.go.id");
+  });
+
+  it("GUILT: a genuinely unlocated, non-sourced-closure code (01192) still withholds the row", () => {
+    const kbli = getCode("01192") as KBLICode;
+    expect(kbli.provenance?.pma.status).toBe("declared_gap");
+    expect(kbli.baliL4).toBeUndefined();
+    const row = buildRows(kbli, kbli.provenance as KBLIProvenance).find(
+      (r) => r.layer === "Bali status",
+    );
+    expect(row).toBeUndefined();
   });
 });
 
