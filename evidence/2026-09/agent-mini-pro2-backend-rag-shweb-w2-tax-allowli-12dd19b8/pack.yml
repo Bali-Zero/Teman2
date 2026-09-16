@@ -16,7 +16,7 @@ lanes:
       gpt-5.6-codex (adversarial, dispatched from a neutral directory with the diff inline and
       told to BREAK the change, not to summarise it — sandbox read-only)
   - lane: tax-allowlist-align-gate
-    role: gate
+    role: review
     seat: claude-opus-5 (FRESH session, outside this contribution chain — commissioned via the imperatore, mailbox key saetta-r5)
 seat_diversity: satisfied
 seat_diversity_note:
@@ -28,10 +28,11 @@ seat_diversity_note:
   reading a 1086-line diff, and it is the one that reviewed it."
 diff:
   net_lines:
-    "15 files, +852/-37 measured by `git diff --stat origin/main...HEAD`. One new .sql migration
-    (235 lines, forward + symmetric rollback), one new shared constants class, two one-line
-    normalization calls on the two Pydantic write paths, four allowlist copies collapsed into
-    that constant, two new test files plus five amended ones, and this pack. Zero frontend."
+    "19 files, +1539/-116 measured by `git diff --numstat origin/main...HEAD`. One new .sql
+    migration (expand + symmetric rollback), one new shared constants class, one new executable
+    migration test, two new/rewritten parity and router test files, four allowlist copies
+    collapsed into the shared constant, a PII fix in the shared database-error handler, and this
+    pack. Zero frontend — the mouth-side alignment is a separate PR."
   behaviour_change:
     "At apply time migration 319 rewrites 2 rows in clients and 12 in lkpm_reports off two ghost
     addresses onto the two real ones, swaps both CHECK constraints to the team_members-derived
@@ -42,15 +43,46 @@ diff:
     reminder now addresses a mailbox that exists."
 receipts:
   - claim:
-      "Forward AND rollback both work on a clean database, through the REAL call path
-      (MigrationManager.apply_migration -> BaseMigration.apply -> rollback_migration), including
-      re-apply after rollback. 30 assertions: row census before/after in both tables, CHECK
-      acceptance and refusal probes for the five real addresses, both ghosts and an unknown
-      address, avatar NULLing, and the documented non-restoration of avatar on rollback."
-    cmd: "PYTHONPATH=. .venv/bin/python scratchpad/prove_319.py   # DB nuz_r5_mig319, Postgres 17, synthetic rows only"
-    result: "30/30 PASS — 'RISULTATO: TUTTO VERDE'"
+      "Forward AND rollback work on a clean database, EXECUTED (not parsed) through the runner's
+      own `split_migration_sql()` — the same cut the Fly release_command uses. 8 tests over a
+      throwaway database created and dropped per test, seeded with synthetic rows: ghost rows
+      moved onto the real addresses, untouched rows untouched, every real address accepted, a
+      stranger refused, the two retired aliases still writable (the EXPAND decision), the two
+      avatars NULLed and the third untouched, forward idempotent on re-run, and rollback
+      restoring the previous state INCLUDING the old CHECK. Plus 7 parity tests over the .sql."
+    cmd: "cd apps/backend-rag && SKIP_SENTRY_INIT=1 PYTHONPATH=. .venv/bin/python -m pytest backend/tests/migrations/test_migration_319_applies_to_postgres.py backend/tests/migrations/test_tax_consultant_allowlist_sql_parity.py"
+    result: "15 passed"
     exit: 0
-    ts: "2026-09-16T18:20:11Z"
+    ts: "2026-09-16T19:02:40Z"
+    seat: claude-opus-5
+  - claim:
+      "The executable test MORDE where the parity tests are blind — the refuter's finding,
+      reproduced before curing it. With both `IN` predicates mutated to `NOT IN` in the migration
+      file, the parity suite stayed 7/7 GREEN while the executable suite went to 8 errors
+      (CheckViolationError). File restored from a byte copy, not `git checkout`."
+    cmd: "cp 319_*.sql /tmp/319.backup.sql ; python - <<mutate IN -> NOT IN ; pytest <parity> ; pytest <executable> ; cp /tmp/319.backup.sql 319_*.sql"
+    result: "parity: 7 passed | executable: 8 errors | restored: git diff shows only the intended 46 insertions"
+    exit: 0
+    ts: "2026-09-16T18:55:10Z"
+    seat: claude-opus-5
+  - claim:
+      "A rejected row really does reach the log today: a synthetic sentinel client name appeared
+      in BOTH `str(e)` and `e.detail` of a real asyncpg CheckViolationError raised by Postgres 17.
+      This is what the error-handler fix removes."
+    cmd: "python - <<'PY' … INSERT a SENTINEL row violating the CHECK, print whether the sentinel is in str(e)/e.detail …"
+    result: "str(e) contains the row: True | e.detail contains the row: True"
+    exit: 0
+    ts: "2026-09-16T18:51:30Z"
+    seat: claude-opus-5
+  - claim:
+      "The whole touched surface passes together after round 2: the allowlist constants, both
+      migration suites, the LKPM router allowlist, the CRM router coverage, the ghost-address
+      sweep, the compliance services, the LKPM ready-pack and receipt routers, and the shared
+      error-handler tests."
+    cmd: "cd apps/backend-rag && SKIP_SENTRY_INIT=1 PYTHONPATH=. .venv/bin/python -m pytest backend/tests/unit/core/test_constants.py backend/tests/migrations/ backend/tests/unit/routers/test_lkpm_assign_allowlist.py backend/tests/unit/routers/test_crm_clients_coverage.py backend/tests/test_tax_consultant_ghost_address_guard.py backend/tests/services/compliance/ backend/tests/app/routers/test_compliance_lkpm_readypack.py backend/tests/unit/app/routers/test_lkpm_receipt_client_safe.py backend/tests/unit/app/utils/test_error_handlers.py"
+    result: "688 passed, 1 warning"
+    exit: 0
+    ts: "2026-09-16T18:58:20Z"
     seat: claude-opus-5
   - claim:
       "The nine test files this PR touches pass together, including the two new router-path
@@ -110,6 +142,14 @@ receipts:
     ts: "2026-09-16T18:22:40Z"
     seat: claude-opus-5
 pii_scan: clean
+cloud_ok:
+  "No DPA is relied on here, because no personal data left the machine. What was sent to the two
+  non-local review seats (codex, agy) is THIS DIFF: source code, SQL, tests and internal
+  @balizero.com staff addresses. No client row, name, phone, passport, NPWP or client_id was in
+  the prompt, and the seats were given the diff inline precisely so they would not go reading a
+  database. The live DB proof ran locally against a throwaway database of synthetic rows. R10
+  fires because the diff TOUCHES a CRM path, which is true and worth flagging — the declaration
+  is that the touch is code, not data."
 pii_scan_note:
   "Every address in the diff, the tests, this pack and the PR body is an internal @balizero.com
   staff mailbox — no client name, company, phone, passport, NPWP, NIB or client_id appears
@@ -124,7 +164,7 @@ dissent:
       serves traffic, so for the duration of the rolling deploy the OLD code is live against the
       NEW constraint: a tax member assigning in that window submits a retired alias, the old
       validator accepts it, and Postgres refuses the write with a CheckViolationError."
-    status: accepted-with-mitigation
+    status: CONFIRMED
     resolution:
       "Not curable inside one PR — removing the window needs two deploys (normalize first, then
       the constraint), which costs a day for a failure mode that lasts minutes. Measured
@@ -135,7 +175,7 @@ dissent:
     objection:
       "The rollback cannot distinguish a row that legitimately started using tax@balizero.com
       AFTER the migration from a pre-migration row still on the ghost, and will revert both."
-    status: accepted
+    status: CONFIRMED
     resolution:
       "Kept, stated in the migration header under 'HONESTY ABOUT WHAT THIS CANNOT RESTORE'. The
       alternative — a column recording which rows 319 touched — is more schema than the defect
@@ -145,7 +185,7 @@ dissent:
       "The kita dropdown still sends the retired addresses, so after this merges a client saved
       through it comes back from the API on the REAL address, which that dropdown has no option
       for: the select will render as '— not assigned —' even though the client IS assigned."
-    status: accepted-open
+    status: CONFIRMED
     resolution:
       "Real, and it is why this window does not stop at the backend: the mouth-side alignment
       ships as a separate PR right after this one (mandate order: PR-3a backend before PR-3b
@@ -156,10 +196,105 @@ dissent:
       "The 'five real addresses' census was measured live against production by the PREDECESSOR
       session, not by this one. Re-verification from this host is blocked: scripts/pg.sh finds no
       Keychain password for target=prod on Mini."
-    status: accepted-with-independent-corroboration
+    status: CONFIRMED
     resolution:
       "Not left on a single inherited measurement: two independent registers on disk agree with
       it — apps/mouth/src/data/team-roster.ts carries faysha.tax@balizero.com, and
       team-public-listing.ts documents the slug/email disagreement explicitly ('the roster slug
       is faisha, the email prefix is faysha.tax'). Declared as inherited rather than restated as
       if this session had run the query."
+  - seat: codex-gpt-5.6-sol
+    objection:
+      "BLOCKER — the first draft was a CUT-OVER: `release_command` applies the migration before
+      the new code serves traffic, and `.github/workflows/fly-deploy.yml` documents image-only
+      rollback, so the incompatibility would OUTLIVE a rollback meant to cure it."
+    status: CONFIRMED
+    resolution:
+      "Cured, not mitigated: the forward CHECK is now the UNION (real addresses + the two retired
+      aliases), so no code version is ever refused; the row rewrite still happens on this deploy,
+      so the whole business effect lands now. An executable test pins it
+      (test_expand_keeps_the_retired_aliases_writable). Dropping the aliases is a separate
+      migration once the kita dropdown stops sending them."
+  - seat: codex-gpt-5.6-sol
+    objection:
+      "HIGH — a failed write logs the exception verbatim, and a Postgres constraint violation
+      carries `Failing row contains (...)`: the client's name, phone, passport and NPWP land in
+      the application log."
+    status: CONFIRMED
+    resolution:
+      "Verified independently on Postgres 17 with a sentinel row before curing it — the sentinel
+      appeared in both `str(e)` and `e.detail`. All four database-error branches now log a
+      signature (class, SQLSTATE, constraint/column/table) and never the exception, with guilt
+      and innocence tests. Pre-existing on main, not introduced here; cured here because this
+      migration makes that branch reachable. The generic `Unexpected error` line at the bottom of
+      the same file still interpolates the exception and is NOT touched — out of this PR's
+      concern, recorded rather than silently left."
+  - seat: codex-gpt-5.6-sol
+    objection:
+      "HIGH — the migration takes ACCESS EXCLUSIVE on `clients`, then on `lkpm_reports`, and
+      holds both to commit; unrelated CRM and portal reads queue behind it."
+    status: CONFIRMED
+    resolution:
+      "`SET LOCAL lock_timeout = '5s'` and `statement_timeout = '60s'` at the head of the forward
+      section (LOCAL: dies with the transaction, never leaks into the pool). The migration now
+      fails fast and aborts the deploy rather than stalling the CRM — the better of the two
+      outcomes. Splitting the avatar UPDATE into its own migration was NOT done: it touches
+      team_members, a third table, and would add a second migration number to the race for no
+      reduction in the lock window that matters."
+  - seat: codex-gpt-5.6-sol
+    objection:
+      "MEDIUM — every parity test passes with the constraints inverted: changing both `IN`
+      predicates to `NOT IN` keeps them green while the SQL aborts the deploy."
+    status: CONFIRMED
+    resolution:
+      "The strongest finding of the round, and reproduced here before curing: under that exact
+      mutation the parity file stayed 7/7 green and the new executable test went to 8 errors.
+      `tests/migrations/test_migration_319_applies_to_postgres.py` runs the forward half through
+      the runner's own `split_migration_sql()` against a throwaway database and asks Postgres
+      what it accepts. It SKIPS where no Postgres is reachable — which is CI today: declared, not
+      hidden. The fleet machines and anyone touching this migration get the executable proof."
+  - seat: codex-gpt-5.6-sol
+    objection:
+      "MEDIUM — pinning migration 319 by name makes the documented procedure for the next staff
+      change fail this test, pressuring a maintainer to rewrite an already-applied migration."
+    status: CONFIRMED
+    resolution:
+      "The parity file no longer names 319: it resolves the HIGHEST-numbered migration that adds
+      each constraint, and asserts the two invariants true in both the expand and the later
+      contract state (every canonical address accepted; nothing outside canonical + known aliases
+      accepted), with a guilt control for each."
+  - seat: agy-gemini-3.1-pro
+    objection:
+      "HIGH — a REAL consultant's address submitted with different case or stray whitespace
+      (`' Tax@BaliZero.com '`) is returned verbatim by normalize() and then refused by an
+      allowlist that compares exact bytes."
+    status: CONFIRMED
+    resolution:
+      "Cured: normalize() now also resolves a canonical address that differs only in case or
+      padding, over LKPM_ASSIGNEES (the wider set, so the LKPM path is covered too). An address
+      matching neither rule is still returned EXACTLY as received, so the allowlist judges it and
+      the error quotes back what was sent. Three tests."
+  - seat: agy-gemini-3.1-pro
+    objection:
+      "BLOCKER — `ClientCreate` does not normalize, so creating a client with a legacy alias
+      fails; BLOCKER — Krisna is missing from TAX_CONSULTANTS_NON_MANAGER, so his 4 PTs get no
+      deadline reminder; HIGH — Veronika, now the assignee of rewritten rows, is filtered out of
+      the same tuple and never notified."
+    status: RETRACTED
+    resolution:
+      "All three checked on disk and none survives. `ClientCreate` (crm_clients.py:244-330) has
+      no `tax_consultant` field at all — the field and its validator are both inside
+      `ClientUpdate`, which begins at line 334; the seat read the diff's line numbers without the
+      class boundaries. `TAX_CONSULTANTS_NON_MANAGER` has exactly one consumer,
+      `_send_unassigned_alert` (lkpm_deadline_notifier.py:254) — the alert for UNASSIGNED
+      reports, addressed to the pool with the manager in CC; per-assignee reminders go to
+      `row['lkpm_assigned_to']` directly, so Veronika is notified for her own rows and Krisna's
+      absence from that tuple is neither new (the hard-coded list before this diff did not carry
+      him either) nor a reminder failure."
+council_run: council.jsonl
+seat_fallback_reason:
+  "agy-gemini-3.1-pro is a RESERVE seat and is counted here because the titolari were not
+  available: measured by scripts/arsenal_probe.py at 18:16Z this session, kimi-code/k3 is
+  QUOTA_DEAD (subscription quota exhausted) and tp1-qwen3.8-max — with every other tp1-* seat —
+  is QUOTA_DEAD until 2026-09-18 08:39Z. codex-gpt-5.6-sol, a titolare, is the other seat on the
+  council and was live (12.9 s probe)."

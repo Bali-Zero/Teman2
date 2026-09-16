@@ -152,8 +152,15 @@ ALTER TABLE clients
       'dewaayu.tax@balizero.com',
       'faysha.tax@balizero.com',
       -- TRANSITIONAL, see EXPAND note in the header: the two retired aliases
-      -- stay accepted so code that predates this deploy keeps working. No row
-      -- carries them after step 2; a later migration drops these two lines.
+      -- stay accepted so code that predates this deploy keeps working.
+      -- READ THIS BEFORE WRITING THE MIGRATION THAT DROPS THESE TWO LINES:
+      -- step 2 empties the ghosts out of this table, but EXPAND means the old
+      -- code, still live for the rest of the rolling deploy, can write a NEW
+      -- ghost row afterwards -- and nothing cleans it up. That is the price
+      -- paid for never refusing a write: the cut-over failed LOUDLY, this
+      -- fails QUIETLY. So the contract migration MUST repeat both UPDATEs
+      -- immediately before its ADD CONSTRAINT, or it will abort on a row born
+      -- during THIS deploy.
       'veronika.tax@balizero.com',
       'faisha.tax@balizero.com'
     )
@@ -226,6 +233,15 @@ WHERE (email, avatar) IN (
 --   writing the old path back would just re-point at a 404. If D6 is ever
 --   reverted too, restoring these two avatar values is a manual follow-up,
 --   not something this rollback can determine on its own.
+
+-- Same bound as the forward section, for the same reason and in the worse
+-- moment: a rollback runs during an incident, on a database already under
+-- load, and takes ACCESS EXCLUSIVE on both tables for the rest of its
+-- transaction. `MigrationManager.rollback_migration` executes this section as
+-- one string inside `async with conn.transaction()`, exactly like the forward
+-- half, so LOCAL applies here too. Asymmetry found by peer review 2026-09-16.
+SET LOCAL lock_timeout = '5s';
+SET LOCAL statement_timeout = '60s';
 
 ALTER TABLE lkpm_reports
   DROP CONSTRAINT IF EXISTS lkpm_reports_assigned_to_check;

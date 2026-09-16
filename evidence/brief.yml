@@ -48,24 +48,25 @@ acceptance:
       reject both ghosts and an unknown address; and WHEN rollback_migration runs, the previous
       state SHALL be restored (values back on the ghosts, old CHECK back in force). Re-applying
       afterwards SHALL succeed, proving the UPDATEs are no-ops on re-run.
-    probe: "PYTHONPATH=. .venv/bin/python scratchpad/prove_319.py  # 30/30 PASS, see receipts"
+    probe: "cd apps/backend-rag && SKIP_SENTRY_INIT=1 PYTHONPATH=. .venv/bin/python -m pytest backend/tests/migrations/test_migration_319_applies_to_postgres.py backend/tests/migrations/test_tax_consultant_allowlist_sql_parity.py"
   - text: >-
       A2 THE WRITE PATH ACCEPTS A LEGACY ALIAS AND REJECTS AN UNKNOWN ONE. WHEN ClientUpdate or
       LKPMAssignBody receives a retired alias — including upper-cased and whitespace-padded —
       THEN the stored value SHALL be the real replacement; WHEN it receives an address outside
       both the allowlist and the alias map THEN it SHALL still raise exactly as before.
-    probe: "cd apps/backend-rag && PYTHONPATH=. .venv/bin/python -m pytest backend/tests/unit/routers/test_lkpm_assign_allowlist.py backend/tests/unit/routers/test_crm_clients_coverage.py"
+    probe: "cd apps/backend-rag && SKIP_SENTRY_INIT=1 PYTHONPATH=. .venv/bin/python -m pytest backend/tests/unit/routers/test_lkpm_assign_allowlist.py backend/tests/unit/routers/test_crm_clients_coverage.py backend/tests/unit/core/test_constants.py"
   - text: >-
       A3 THE SQL AND THE PYTHON CANNOT DRIFT APART. WHEN the parity test runs THEN it SHALL parse
       the two CHECK clauses out of 319_*.sql and compare them to TaxConsultantConstants.CANONICAL
       and .LKPM_ASSIGNEES by value — the test restates nothing by hand, so an edit to either side
       alone fails. A second sweep SHALL fail if either ghost string reappears anywhere under
       backend/ outside four named settled-history files.
-    probe: "cd apps/backend-rag && PYTHONPATH=. .venv/bin/python -m pytest backend/tests/migrations/test_migration_319_tax_consultant_allowlist_parity.py backend/tests/test_tax_consultant_ghost_address_guard.py"
+    probe: "cd apps/backend-rag && SKIP_SENTRY_INIT=1 PYTHONPATH=. .venv/bin/python -m pytest backend/tests/migrations/test_tax_consultant_allowlist_sql_parity.py backend/tests/test_tax_consultant_ghost_address_guard.py"
   - text: >-
-      A4 NOTHING ELSE IN THE TOUCHED SURFACE MOVED. WHEN the nine test files this PR touches run
-      together THEN 155 SHALL pass, 0 fail.
-    probe: "cd apps/backend-rag && PYTHONPATH=. .venv/bin/python -m pytest $(git diff --name-only origin/main...HEAD | grep test | sed 's|apps/backend-rag/||')"
+      A4 NOTHING ELSE IN THE TOUCHED SURFACE MOVED. WHEN the touched test surface runs together
+      — the allowlist tests, both migration suites, the compliance services and the shared
+      error-handler tests — THEN 688 SHALL pass, 0 fail.
+    probe: "cd apps/backend-rag && SKIP_SENTRY_INIT=1 PYTHONPATH=. .venv/bin/python -m pytest backend/tests/unit/core/test_constants.py backend/tests/migrations/ backend/tests/unit/routers/test_lkpm_assign_allowlist.py backend/tests/unit/routers/test_crm_clients_coverage.py backend/tests/test_tax_consultant_ghost_address_guard.py backend/tests/services/compliance/ backend/tests/app/routers/test_compliance_lkpm_readypack.py backend/tests/unit/app/routers/test_lkpm_receipt_client_safe.py backend/tests/unit/app/utils/test_error_handlers.py"
 assumptions:
   - text: >-
       The runner executes ONLY the forward half of a .sql migration. `split_migration_sql`
