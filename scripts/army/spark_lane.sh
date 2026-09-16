@@ -1,8 +1,22 @@
 #!/bin/bash
-# army.spark_lane — Armata H24 lane 1: standing read-only analysis on the
-# gpt-5.3-codex-spark weekly bucket (measured idle 2026-08-14, separate
+# army.spark_lane — Armata H24 lane 1: standing read-only analysis, originally
+# on the gpt-5.3-codex-spark weekly bucket (measured idle 2026-08-14, separate
 # bucket from the primary codex quota — see
 # research/operations/2026-08-14-armata-h24-standing-lanes.md).
+#
+# State as of 2026-09-16 (Zero, "sposta su luna"): the default MODEL is now
+# gpt-5.6-luna, not gpt-5.3-codex-spark. Every codex-spark slug (5.3/5.4/5.5/
+# 5.6-codex-spark) started returning HTTP 400 "not supported when using
+# Codex with a ChatGPT account" on every account and every host (M5 ~/.codex,
+# ~/.codex-acct2, ~/.codex-o2; Pro ~/.codex-acct2; Mini ~/.codex; measured
+# 2026-09-15/16) — Pro's state/attempts.jsonl shows 3 straight `failed`
+# attempts on 2026-09-15, run.log hit the consecutive-non-quota-fail backoff,
+# and no report has landed since 2026-09-10. gpt-5.6-luna answers on M5 and
+# on Pro's ~/.codex and ~/.codex-acct2. Accepted tradeoff: Luna draws on the
+# PRIMARY ChatGPT bucket, not a separate idle one — DAILY_CAP (6) and the 12h
+# backoff below still bound it either way. The section below is the ORIGINAL
+# design history for this lane and is left intact; only the MODEL default
+# changed.
 #
 # Amended same day after a cross-family Kimi K3 refutation closed 12
 # numbered defects (design doc §Amendment log). What changed vs the first
@@ -55,7 +69,7 @@ TIMEOUT_S="${ARMY_SPARK_TIMEOUT_S:-900}"
 BACKOFF_HOURS="${ARMY_SPARK_BACKOFF_HOURS:-12}"
 CONSEC_FAIL_LIMIT="${ARMY_SPARK_CONSEC_FAIL_LIMIT:-3}"
 DIGEST_HOUR="${ARMY_SPARK_DIGEST_HOUR:-7}"
-MODEL="${ARMY_SPARK_MODEL:-gpt-5.3-codex-spark}"
+MODEL="${ARMY_SPARK_MODEL:-gpt-5.6-luna}"
 EFFORT="${ARMY_SPARK_EFFORT:-medium}"
 # Seat resolution goes through the fleet door (scripts/lib/codex_seat.sh):
 # the second ChatGPT Pro seat has two names in the fleet (~/.codex-acct2 on
@@ -639,7 +653,7 @@ if [ "$SHOULD_WORK" = "1" ]; then
                 append_attempt "$TASK_SHA" "$(basename "$TASK_FILE")" "quota" "-"
                 backoff_human="$(date -r "$new_backoff" '+%Y-%m-%d %H:%M UTC' 2>/dev/null || date -u -d "@$new_backoff" '+%Y-%m-%d %H:%M UTC' 2>/dev/null || echo "epoch $new_backoff")"
                 telegram digest "army-spark:quota" \
-                    "🐢 army.spark_lane: bucket gpt-5.3-codex-spark in quota — backoff until ${backoff_human} (${backoff_source}). Task NON consumato: $(basename "$TASK_FILE"). Codex: ${quota_line:0:200}"
+                    "🐢 army.spark_lane: bucket $MODEL in quota — backoff until ${backoff_human} (${backoff_source}). Task NON consumato: $(basename "$TASK_FILE"). Codex: ${quota_line:0:200}"
             elif [ "$CODEX_RC" -eq 0 ]; then
                 report_date="$(wita_date)"
                 head_sha="$(cd "$REPO" && git rev-parse HEAD 2>/dev/null || echo unknown)"

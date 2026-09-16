@@ -398,6 +398,9 @@ export default async function KBLICodePage({
                   capSpecial={kbli.pma.capSpecial}
                   capVerified={kbli.pma.capVerified}
                   baliBlocked={kbli.baliL4?.blocked === true}
+                  baliAttentionFascia={
+                    kbli.baliL4?.status === "ATTENZIONE_FASCIA_BALI"
+                  }
                 />
                 {kbli.licensing[0] && (
                   <RiskBadge
@@ -1066,6 +1069,18 @@ export default async function KBLICodePage({
                     // string seeds the assistant's context, so a wrong cause
                     // here is a wrong cause in the answer. Derived instead.
                     return `Looking at KBLI ${kbli.code} — ${kbli.titleEn}? Note that in Bali this code is currently ${baliBlockClause(kbli.baliL4?.status)}. Ask me about the national procedure, the Bali restriction, or alternatives.`;
+                  }
+                  // Added 2026-09-15 (W-J B1): `blocked` is false for this
+                  // status, so the branch above never fires — but a gold
+                  // opener still cheerfully promises a "PT PMA setup" for a
+                  // code that is off Bali's applied closure list on a
+                  // technicality, not because its tier was ever verified.
+                  // Never let it greet the reader with an unqualified go-ahead.
+                  if (
+                    kbli.baliL4?.status === "ATTENZIONE_FASCIA_BALI" &&
+                    /\b(PT PMA|100% foreign|foreign-owned)\b/i.test(op)
+                  ) {
+                    return `Looking at KBLI ${kbli.code} — ${kbli.titleEn}? Note that this code is not on Bali's 2026 PMA closure list, but the low/medium-low risk tier was only named in the Governor's request letter — verify the risk tier and zoning on OSS before filing. Ask me about the closure list, the national procedure, or alternatives.`;
                   }
                   return op;
                 })()}

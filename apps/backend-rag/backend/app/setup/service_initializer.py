@@ -1385,19 +1385,21 @@ async def initialize_garuda_services(app: FastAPI, db_pool) -> None:
             logger.warning("⚠️ GARUDA VOA check store wiring failed (non-critical): %s", e)
 
     # 5.7 GARUDA VOA — order repository + payment provider wiring (L3).
-    # Gated on GARUDA_XENDIT_SECRET_KEY (sandbox-only, ASSEMBLY-LINE G5 —
-    # XenditPaymentProvider itself refuses a non-`xnd_development_` key):
-    # nobody has configured a Xendit sandbox account for this product yet
-    # (owner decision, "GARUDA VOA MANDATE" — not a code gap), so on every
-    # environment today this block logs one line and leaves
-    # `app.state.garuda_order_repository`/`garuda_payment_provider` unset,
-    # which is `get_repository()`/the webhook route's existing fail-closed
-    # 503 — the exact same shape as before this PR. The moment Zero
-    # provisions a sandbox account and sets the four env vars below, this
-    # starts working with no further code change — but ONLY because this
-    # block now runs on the `api` process too. Until this PR it lived solely
-    # in `initialize_services`, which the process that mounts these routers
+    # Gated on GARUDA_XENDIT_SECRET_KEY: nobody has configured a Xendit
+    # account for this product yet (owner decision, "GARUDA VOA MANDATE" —
+    # not a code gap), so on every environment today this block logs one
+    # line and leaves `app.state.garuda_order_repository`/
+    # `garuda_payment_provider` unset, which is `get_repository()`/the
+    # webhook route's existing fail-closed 503 — the exact same shape as
+    # before this PR. The moment Zero sets the env vars below, this starts
+    # working with no further code change — but ONLY because this block now
+    # runs on the `api` process too. Until this PR it lived solely in
+    # `initialize_services`, which the process that mounts these routers
     # never runs, so setting the env vars alone would have changed nothing.
+    # Sandbox vs. live is now switchable by env alone (no code change):
+    # `XenditPaymentProvider` accepts a `xnd_production_` key ONLY when
+    # `GARUDA_PAYMENTS_LIVE=true` is also set — two independent switches, see
+    # `payments/xendit.py` module docstring.
     # A persistent `httpx.AsyncClient` (Golden Rule #10 — never per-request)
     # is stored under `garuda_payment_http_client`.
     #
@@ -1436,6 +1438,11 @@ async def initialize_garuda_services(app: FastAPI, db_pool) -> None:
     # truth).
     garuda_xendit_secret_key = os.environ.get("GARUDA_XENDIT_SECRET_KEY", "").strip()
     garuda_xendit_callback_token = os.environ.get("GARUDA_XENDIT_CALLBACK_TOKEN", "").strip()
+    # Fail-closed: only the literal "true" (case-insensitive, trimmed) arms
+    # live mode. Anything else -- unset, "1", "yes", a typo -- stays sandbox.
+    garuda_payments_live = (
+        os.environ.get("GARUDA_PAYMENTS_LIVE", "").strip().lower() == "true"
+    )
     if garuda_xendit_secret_key and not garuda_xendit_callback_token:
         # Named out loud, because this pair used to be armable by halves. The
         # gate below required only the secret key while the callback token
@@ -1474,6 +1481,7 @@ async def initialize_garuda_services(app: FastAPI, db_pool) -> None:
                     fixed_idr=int(os.environ.get("GARUDA_XENDIT_FEE_FIXED_IDR", "0") or "0"),
                 ),
                 client=garuda_payment_http_client,
+                live_enabled=garuda_payments_live,
             )
             garuda_eligibility_lookup = PostgresEligibilityCheckLookup(db_pool)
             garuda_environment_for_orders = (
@@ -1487,7 +1495,16 @@ async def initialize_garuda_services(app: FastAPI, db_pool) -> None:
                 provider=garuda_payment_provider,
                 environment=garuda_environment_for_orders,
             )
-            logger.info("✅ GARUDA VOA order repository + Xendit sandbox payment provider wired")
+            logger.info(
+                "✅ GARUDA VOA order repository + Xendit payment provider wired (mode=%s)",
+                garuda_payment_provider.mode,
+            )
+        except ValueError as e:
+            # A deliberate refusal, not an incidental failure: most often a
+            # payment mode mismatch (production key without the live flag, or
+            # vice versa), but a malformed GARUDA_XENDIT_FEE_* integer lands
+            # here too. Both messages carry variable names, never a key.
+            logger.error("⛔ GARUDA VOA order lane NOT wired: configuration refused — %s", e)
         except Exception as e:
             logger.warning(
                 "⚠️ GARUDA VOA order/payment wiring failed (non-critical, L3 fail closed): %s", e

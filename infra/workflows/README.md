@@ -84,3 +84,107 @@ Returns `{ evidenceRoot, codes, results, quarantinedCodes, summary }`. Requires
 **Doctrine reference**: research/operations/2026-07-16-kbli-garuda-filiera-workflow.md
 (seats §2, protocol §3) + research/operations/2026-07-17-kbli-pilot-a1-preregistration.md
 (the frozen pilot plan this run is measured against).
+
+## second-army.js — the Gear <= 2 army, made executable
+
+The mechanical layer for the "second army" doctrine (`docs/architecture/dual-consul/army-map.md`
+§1ter) — everything BELOW the Gear-3 floor that belongs to the champions' chain of §1
+(Generals/Dux/gate/release-owner).
+
+**The direction of verification is the whole point, and it is the opposite of the "cheap
+verifier" instinct** (RULED by Zero 2026-09-15): the INFERIOR seats BUILD, the Dux SPAWNS them
+and VERIFIES on disk. A weaker seat never grades a stronger one.
+
+```
+Workflow({ scriptPath: "infra/workflows/second-army.js", args: {
+  mission: "…", colour: "blue" | "orange", floor: 1,
+  tasks: [ { key: "t1", prompt: "…", files: ["…"], proof: "…" } ],
+  outDir: "research/operations",       // default if omitted
+  stamp: "20260915T120000Z",           // REQUIRED — Date is unavailable inside a Workflow script
+  frozenRef: "origin/agent/…",         // floor 2 only: the PUSHED ref the refuter reads
+}})
+```
+
+Returns `{ mission, colour, floor, promoted, built, verified, refuted, refuter, deadTiers, reportPath }`.
+
+- **Floor-3 promotion**: `floor >= 3` PROMOTES the mission to the champions' chain of §1 — no
+  build, verify or refute lane runs; only a report lane records the promotion. `deadTiers` still
+  carries the four declared-dead seats (see below), unprobed.
+- **Who builds** (`CHAIN[colour].builders`, and roster order IS fallthrough order): BLUE, under a
+  Sonnet Dux, tries `luna` → `spark` → `flash` → `deepseek-flash` → `qwen-plus` → `haiku`;
+  ORANGE, under a Terra Dux, tries `haiku` → `flash` → `deepseek-flash` → `qwen-plus`.
+  `chooseBuilder()` skips any seat sharing the Dux's OWN family outright unless it is
+  `HAIKU_GRUNT_SEAT`. That exception only ever binds on BLUE, where Haiku is Anthropic-native
+  like the Sonnet Dux: there it sits last in the roster, so it is reached only once every
+  cross-family door has probed dead, and its use is logged rather than hidden. On ORANGE Haiku is
+  first in the roster and correctly so — under a Terra Dux it is already cross-family, and the
+  grunt exception never applies. Every build lane is `model:"haiku"`: either Haiku is the chosen
+  builder, or Haiku is only the grunt shell that reaches the external door.
+- **Who verifies**: the DUX lane, `model:"sonnet"` (`DUX_LANE_MODEL`). It re-derives the proof
+  criterion ON DISK — runs the proof command, reads the files, reads the diff — and returns
+  `{holds, observation, command}`, so a verdict always names the command that produced it. On
+  ORANGE that sonnet lane is only the harness-side driver: it shells to the Terra door so the Dux
+  SEAT derives the verdict. The verify lane is read-only by doctrine; a grader that can edit what
+  it grades is not a grader.
+- **The verifier never sees the builder's claim** — the verify prompt restates the task and the
+  `proof` criterion only. The script compares verdict against claim only after the verdict returns.
+- **Floor-2 cross-family refuter**: at `floor === 2` exactly ONE cheap seat (`spark`, else `flash`
+  — whichever probes live first) reads the FROZEN diff at `args.frozenRef` AFTER push and tries to
+  refute it. One seat, never a council. At any other floor no refuter lane is launched and
+  `refuter` comes back `null`.
+- **Probe-then-trust**: every bash-door seat in play (the Dux door, the whole builder roster, and
+  the refuter candidates at floor 2) gets a live 1-token probe THIS run before it can be chosen —
+  a seat is never trusted on reputation. Native seats (`sonnet`/`haiku`) are not probed; the
+  harness running them is their own probe. `kimi`, `qwen-cloud-code`, `tp1-glm-5.2`,
+  `tp1-deepseek-v4-pro` are declared dead WITHOUT probing (probing a known-dead seat burns quota
+  for nothing) and always land in `deadTiers` with `reason: "declared-quota-dead-2026-09-15"`.
+- **Gemini slug**: `agy models` on M5, 2026-09-15, returned `gemini-3.8-flash-{high,medium,low}`
+  and the 3.7/3.6 families — `gemini-3.5-flash`, the spelling the rest of the repo still carries,
+  was NOT in the live list. The `flash` door pins `gemini-3.8-flash-low`.
+- The run report lands at `` `${outDir}/second-army-${mission}-${stamp}.md` `` — written by a
+  `model:"haiku"` lane with the Write tool, never by the script directly.
+
+**Testing**: `node infra/workflows/tests/test-second-army-contract.mjs` — 12 contract tests that
+assert the ruled DIRECTION, not merely the syntax. They are run by hand today; nothing in
+`.github/workflows/` executes `infra/workflows/tests/` yet, for this suite or any other, and
+wiring that up is its own PR because `.github/workflows/` is a hot-zone path.
+
+## run-second-army.mjs — running a workflow script without the Workflow tool
+
+A standalone Node ESM runner (Node >=18, no dependencies beyond `node:*`) that compiles and
+executes a workflow script OUTSIDE the Workflow tool — from a shell, a cron, or CI — by injecting
+the same `args`/`agent`/`log`/`phase`/`parallel`/`pipeline`/`budget` bindings the harness would
+otherwise supply, using the same `AsyncFunction` compile trick as
+`infra/workflows/tests/test-second-army-contract.mjs`.
+
+```
+node infra/workflows/run-second-army.mjs --args-file <path-to-json> [--script <path>] [--dry-run]
+```
+
+- `--script` defaults to `infra/workflows/second-army.js`. It is a real flag, not decoration: the
+  behavioural tests point the runner at fixture scripts, which is the only way to measure what the
+  runner does with a lane it should refuse.
+- Prints ONLY the script's JSON return value to stdout; `log()`/`phase()` and every diagnostic go
+  to stderr, prefixed `[second-army]`. A caller piping stdout into `jq` never gets a log line.
+- `--dry-run` swaps in a canned `agent()` that spawns nothing (deterministic per-label-prefix
+  responses) — no `claude`/`codex`/`agy` binary required.
+- **Model-pin enforcement**: `agent()` throws when `opts.model` is missing, and again when the
+  alias is not one the `claude` CLI accepts here (`sonnet`/`haiku`/`opus`). The runner is itself an
+  enforcement point for the Builder Contract's "every `agent()` call pins `model:`" rule, and
+  `infra/workflows/tests/test-run-second-army.mjs` measures that as a BEHAVIOUR — it spawns the
+  runner against two fixtures differing only in the pin and asserts on the exit code. An earlier
+  version of that test scanned the runner's source instead, and an independent gate proved the
+  scan passed with the guard commented out. A guard is a behaviour; it has to be tested as one.
+- **The fleet-mail hook cure**: measured on M5 2026-09-15, `claude -p` inherits a SessionStart hook
+  that injects fleet mail, and a small model then answers the mail instead of the prompt. The
+  runner always passes `--output-format json` and, when a lane requests one, `--json-schema
+  '<schema>'` — this makes the prompt dominant. It never uses `--bare` (that skips hooks but also
+  breaks OAuth).
+- **Per-lane timeout**: default 900s, override with env `SECOND_ARMY_LANE_TIMEOUT_S` — enforced
+  with `setTimeout` + `child.kill('SIGTERM')`, never the `timeout` binary (macOS lacks it).
+- The only door it opens is the `claude` CLI, which carries its own OAuth. No credential is ever
+  placed on argv, read from the environment, or printed.
+
+**Testing**: `node infra/workflows/tests/test-run-second-army.mjs` — 5 behavioural tests. Like the
+rest of `infra/workflows/tests/`, they are run by hand today; nothing in `.github/workflows/`
+executes this directory yet.

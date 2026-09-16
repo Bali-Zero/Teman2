@@ -160,6 +160,7 @@ on:
       - Hook innocence gate (vaccine)
       - hot-zone-enforcement
       - Immune enforcement (superscar antidotes)
+      - infra/workflows contract tests
       - Insight cover cards — no article may wear another article's card
       - "intake-review reader liveness (5xx SICK corpus)"
       - Intel Router Tests

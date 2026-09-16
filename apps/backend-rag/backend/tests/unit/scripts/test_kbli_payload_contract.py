@@ -3,6 +3,7 @@ from backend.scripts.build_kbli_oss_twin_v3 import build_chunks
 from backend.scripts.index_kbli_gold_content import (
     GOLD_CONTENT_FILE,
     KBLI_DATA_FILE,
+    certification_content,
     load_kbli_base_data,
     parse_gold_content_ts,
 )
@@ -15,6 +16,28 @@ from backend.scripts.reindex_kbli_2025_final import (
 from backend.scripts.reindex_kbli_2025_final import (
     build_payload as build_bps_payload,
 )
+from backend.services.kbli_editorial_certification import (
+    pma_editorial_fingerprint,
+    stable_editorial_sha256,
+)
+
+
+def _synthetic_registry_certifying(code: str, gold: dict, base: dict) -> dict:
+    """standaloneGold is empty after W-H PR-3c v3 de-certified its last entry,
+    65121 (its baliContext/zantaraOpener steered a foreign investor to 66221,
+    a declared_gap code, as a "more practical"/"more accessible" route). No
+    real code can stand in for a positive example any more, so this builds a
+    registry entry inline from 65121's own real, current (untouched) data —
+    the same two primitives matches_editorial_certification() compares a
+    registry entry against."""
+    return {
+        "standaloneGold": {
+            code: {
+                "pmaFingerprint": pma_editorial_fingerprint(base),
+                "contentSha256": stable_editorial_sha256(certification_content(gold)),
+            }
+        }
+    }
 
 
 def test_payload_value_supports_flat_and_legacy_shapes() -> None:
@@ -52,14 +75,22 @@ def test_reindex_kbli_payload_is_flat() -> None:
 
 
 def test_gold_kbli_payload_is_flat() -> None:
-    code = "47111"
+    # standaloneGold is EMPTY (W-H PR-3c v3 de-certified its last entry,
+    # 65121 — 47111 had already been de-certified by the predecessor PR-3c),
+    # so no real code certifies against the on-disk registry any more (the
+    # default `registry=None` falls back to it). A registry built inline
+    # from 65121's own real, current data exercises the certified-payload
+    # shape without pinning a real registry entry.
+    code = "65121"
     gold = parse_gold_content_ts(GOLD_CONTENT_FILE)[code]
     base = load_kbli_base_data(KBLI_DATA_FILE)[code]
+    registry = _synthetic_registry_certifying(code, gold, base)
     payload = build_gold_payload(
         code,
         gold,
         base,
-        embedding_text="KBLI 47111 Perdagangan Eceran",
+        embedding_text="KBLI 65121 Asuransi Umum Konvensional",
+        registry=registry,
     )
 
     assert "metadata" not in payload

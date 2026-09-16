@@ -1,0 +1,70 @@
+task: >-
+  SAETTA-20260915 / W-J (B1 Bali overlay), PR-D data layer, v2 rebuild, SECOND
+  pass ("v2 redo") after #6596 (W-H PR-2b, 93114/43110) merged into origin/main
+  mid-mission. Per Dux addendum: discarded the first v2 attempt's 9 commits
+  (based on pre-#6596 main) via `git reset --hard` to the fresh #6596-merged
+  origin/main tip (7c977eaf73), then replayed the WHOLE applied-closure
+  pipeline again on that new base rather than rebasing commit-by-commit —
+  carry compiler+spec+tests -> apply -> sync -> sidecar -> recert -> cure-spec
+  re-pins (proved via restore-and-reproduce, not asserted; including a NEW
+  per-field-hash case in W-H's own pr2b_source_rows_93114_43110 spec, drifted
+  by this branch's own moratorium-text rewrite) -> l4bali verdict_state spec
+  re-emit -> gold_risk_dispute_relation re-emit -> batch-A membership/
+  calibration re-emit -> the 4 CI vault-compiler checks -> the navigator test
+  -> the FULL backend kbli test sweep (31 files, not just -k kbli) ->
+  honest-map + real-estate-68111 articles rewritten against the NEW post-#6596
+  census (131 blocked, not 132 — #6596 itself moved main's raw pre-cure count
+  519->518 by lifting 43110's block) -> every mouth test pin the migration
+  broke re-derived a SECOND time, since #6596 moved the population under the
+  same fixes that were already applied once pre-#6596 -> an independent
+  adversarial review (agy CLI) of the re-derived diff, findings applied.
+lane: mouth/kbli-wj-b1-overlay-data-v2
+machine: M5
+date: 2026-09-15
+gear: 3
+gear_reason: >-
+  Deterministic floor 3 by churn: 42 files changed vs origin/main merge-base,
+  +43173/-25717 lines (mostly the 4 synced copies of the 1,559-record
+  canonical JSON re-serializing after every l4_bali field rewrite). Confirmed
+  via `scripts/evidence_pack_lint.py --print-floor`, not self-declared.
+acceptance:
+  - probe: source .venv/bin/activate && python3 -m pytest scripts/kbli_filiera/tests -q
+    expect: all passed (1437 passed, 1 skipped — the skip is pre-existing/unrelated)
+  - probe: >-
+      python3 scripts/kbli_filiera/kbli_coverage_scoreboard.py --check &&
+      python3 scripts/kbli_filiera/perpres_body_default_relation.py --check-artifact &&
+      python3 scripts/kbli_filiera/perpres_slice_disclosure_relation.py --check-artifact &&
+      python3 scripts/kbli_filiera/perpres_foreign_cap_relation.py --strict
+    expect: >-
+      all 4 exit 0, exactly as .github/workflows/kbli-filiera-vault-compilers.yml
+      invokes them (these took down #6595 previously, per Dux instruction to
+      run them explicitly this time)
+  - probe: cd apps/kbli-navigator && npx tsx lib/__tests__/kbli-data.test.ts
+    expect: >-
+      exit 0, all 7 quarantine-transform checks PASS (tsx resolved from the
+      repo-root node_modules the worktree symlinks to, no network fetch
+      needed — confirmed via `npx --no-install tsx --version` first)
+  - probe: >-
+      apps/backend-rag/.venv/bin/python -m pytest <31 test_*kbli*.py files
+      under apps/backend-rag/backend/tests>
+    expect: >-
+      all passed (773 passed) — includes test_kbli_eye.py's PMA-cap-disclosure
+      population pins (1502/18/3/1538/57/22/1), confirmed unaffected by this
+      branch's l4_bali-only compiler and already correct against an UNRELATED
+      W-H PR-3a re-derivation already on this branch's base, not something
+      this PR needed to touch
+  - probe: cd apps/mouth && npx vitest run <58 kbli/bali/perpres/filiera test files>
+    expect: all passed (771 tests)
+  - probe: cd apps/mouth && npx tsc --noEmit -p .
+    expect: exit 0
+  - probe: npx prettier --check <17 files changed vs origin/main + working tree>
+    expect: exit 0 (6 mdx needed --write; fixed, source_sha256 restamped)
+  - probe: >-
+      python3 -c "import yaml,sys;yaml.safe_load(open(sys.argv[1]))" on this
+      pack's own brief.yml and pack.yml
+    expect: both parse clean
+  - probe: >-
+      .venv/bin/python -m pytest scripts/tests/test_kbli_false_friend_registry.py
+      scripts/tests/test_kbli_lot2_56101_metadata_cure.py
+      scripts/tests/test_kbli_metadata_residuals_52101_10433.py -q
+    expect: "187 passed, 1 skipped"

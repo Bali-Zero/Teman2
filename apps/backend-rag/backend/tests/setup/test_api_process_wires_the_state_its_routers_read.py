@@ -30,6 +30,7 @@ Each is checked below and each fails loudly.
 from __future__ import annotations
 
 import ast
+import logging
 import re
 from pathlib import Path
 
@@ -405,3 +406,60 @@ class TestTheWiringActuallyRuns:
         assert getattr(app.state, "garuda_check_store", None) is None, (
             "with no pool the adapters must stay unset and the routes fail closed"
         )
+
+
+class TestThePaymentModeSwitchIsWired:
+    """Executes §5.7 with the env pair set (spalla-review finding, W-L 2026-09-15).
+
+    `test_xendit_mode_matrix.py` proves the adapter refuses a mismatched pair; it cannot see
+    whether `initialize_garuda_services` passes `GARUDA_PAYMENTS_LIVE` through at all. Deleting
+    `live_enabled=garuda_payments_live` would leave every adapter test green and make a live key
+    refuse forever — this is the test that goes red.
+    """
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        ("key", "live", "expected_mode"),
+        [
+            ("xnd_development_TESTKEY", None, "sandbox"),
+            ("xnd_production_TESTKEY", "true", "live"),
+            ("xnd_production_TESTKEY", None, None),
+            ("xnd_development_TESTKEY", "true", None),
+        ],
+    )
+    async def test_the_env_pair_decides_whether_the_order_lane_is_wired(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        caplog: pytest.LogCaptureFixture,
+        key: str,
+        live: str | None,
+        expected_mode: str | None,
+    ) -> None:
+        from fastapi import FastAPI
+
+        from backend.app.setup.service_initializer import initialize_garuda_services
+
+        class _FakePool:
+            """Adapters only stash the pool at construction; nothing is queried here."""
+
+        monkeypatch.setenv("GARUDA_XENDIT_SECRET_KEY", key)
+        monkeypatch.setenv("GARUDA_XENDIT_CALLBACK_TOKEN", "callback-token-TEST")
+        if live is None:
+            monkeypatch.delenv("GARUDA_PAYMENTS_LIVE", raising=False)
+        else:
+            monkeypatch.setenv("GARUDA_PAYMENTS_LIVE", live)
+
+        app = FastAPI()
+        with caplog.at_level(logging.INFO):
+            await initialize_garuda_services(app, _FakePool())
+
+        provider = getattr(app.state, "garuda_payment_provider", None)
+        if expected_mode is None:
+            assert provider is None
+            assert getattr(app.state, "garuda_order_repository", None) is None
+            assert "configuration refused" in caplog.text
+        else:
+            assert provider is not None
+            assert provider.mode == expected_mode
+            assert f"mode={expected_mode}" in caplog.text
+        assert key not in caplog.text, "a log line carried the secret key value"

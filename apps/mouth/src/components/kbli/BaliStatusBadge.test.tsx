@@ -53,3 +53,21 @@ describe("BaliStatusBadge — reason visibility (no longer hover-only)", () => {
     expect(container.firstChild).toBeNull();
   });
 });
+
+describe("BaliStatusBadge — ATTENZIONE_FASCIA_BALI (added 2026-09-15, W-J B1 overlay)", () => {
+  it("GUILT: renders the warn label and never a green/ok wording", () => {
+    render(<BaliStatusBadge status="ATTENZIONE_FASCIA_BALI" />);
+    expect(
+      screen.getByText("Not on Bali's PMA closure list — verify on OSS"),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/registrable/i)).toBeNull();
+    expect(screen.queryByText(/^open in bali$/i)).toBeNull();
+  });
+
+  it("INNOCENCE: renders with the pill present (not dropped like an unknown status)", () => {
+    const { container } = render(
+      <BaliStatusBadge status="ATTENZIONE_FASCIA_BALI" />,
+    );
+    expect(container.firstChild).not.toBeNull();
+  });
+});

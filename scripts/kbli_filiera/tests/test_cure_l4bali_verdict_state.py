@@ -74,21 +74,48 @@ def test_emitter_population_pins_measured_live_canonical_counts() -> None:
     spec, stats = emitter.build_spec(records, emitter.DEFAULT_CANONICAL)
 
     assert len(records) == len(spec["codes"]) == 1559
-    assert stats["status:NON_CLASSIFICABILE"] == 25
-    assert stats["unknown_blocked_true_preserved"] == 17
-    assert stats["open_supporting_tier_absent:APERTO_BALI_RISCHIO_ALTO"] == 11
-    assert stats["open_supporting_tier_absent:OK_or_HIGHER_RISK"] == 90
-    assert stats["open_supporting_tier_absent"] == 101
+    # SAETTA-20260915 W-J B1: cure_l4bali_applied_closure.py's non_classificabile
+    # group (17 codes) deliberately un-blocks every NON_CLASSIFICABILE record —
+    # the applied-closure overlay draws no verdict for a code it cannot classify,
+    # so "conservatively retained blocked=true" is retired: 25 (17 true + 8
+    # false) -> 24, all blocked=false, 0 preserved true.
+    assert stats["status:NON_CLASSIFICABILE"] == 24
+    assert stats["unknown_blocked_true_preserved"] == 0
+    # 11 -> 10 on 2026-09-15 (SAETTA-20260915 W-H PR-2b): 93114 leaves this
+    # bucket -- its golf-course Besar/Tinggi row (PP 28/2025 Lampiran I.L.61)
+    # is restored, its status moves off APERTO_BALI_RISCHIO_ALTO, and it no
+    # longer has a supporting-tier-absent open verdict.
+    assert stats["open_supporting_tier_absent:APERTO_BALI_RISCHIO_ALTO"] == 10
+    # W-J B1 also moved 3 codes out of OK_or_HIGHER_RISK (into chiuso_bali/
+    # attenzione), so its disowned-tier population drops 90 -> 87 (97 total).
+    assert stats["open_supporting_tier_absent:OK_or_HIGHER_RISK"] == 87
+    assert stats["open_supporting_tier_absent"] == 97
     # SAETTA-20260915/W-H PR-5 moved 38110 55202 55300 56102 56304 56306
     # 70201 73300 74199 79901 79902 86995 to confidence=MEDIUM/needs_review=
     # true (dossier: no Perpres annex reservation, no national 0% finding —
     # honestly less certain than the prior HIGH/false), which correctly
-    # flips their derived verdict_state blocked->provisional (95->83,
-    # 1436->1448); open/unknown are untouched by that PR.
+    # flips their derived verdict_state blocked->provisional; open/unknown
+    # were untouched by that PR. SAETTA-20260915 W-H PR-2b (#6596, merged
+    # into this branch's base) then lifted 43110's own block (needs_review
+    # true, confidence MEDIUM), moving it blocked->provisional too. Finally
+    # SAETTA-20260915/W-J B1's applied-closure overlay re-shaped
+    # l4_bali.status/blocked across the whole dataset (518 -> 131
+    # raw-blocked, post-#6596), which moves every derived count again:
+    # blocked 82 -> 102, unknown 25 -> 24 (NON_CLASSIFICABILE, see above),
+    # provisional 1449 -> 1430 (net of all three events); open is untouched
+    # (the applied closure never rewrites an open-tier-derived status).
+    # Then the tier->ATTENZIONE conversion bug fix (national-cap cure:
+    # cure_l4bali_applied_closure.py's rule 2 was overriding a record's own
+    # NATIONAL pma_* 0%-cap closure) put 4 codes back to TERTUTUP/blocked
+    # that the buggy first pass had wrongly opened: 10214, 16221, 95220,
+    # 95299. 131 raw-blocked -> 135, which moves blocked 102 -> 106 and
+    # provisional 1430 -> 1426 (those 4 codes leave provisional for
+    # blocked); open/unknown are untouched (none of the 4 carried an
+    # open-tier-derived or NON_CLASSIFICABILE status).
     assert {
         state: stats[f"verdict_state:{state}"]
         for state in ("blocked", "open", "unknown", "provisional")
-    } == {"blocked": 83, "open": 3, "unknown": 25, "provisional": 1448}
+    } == {"blocked": 106, "open": 3, "unknown": 24, "provisional": 1426}
 
 
 def test_checked_in_spec_matches_fresh_live_state_emission() -> None:
@@ -100,12 +127,30 @@ def test_checked_in_spec_matches_fresh_live_state_emission() -> None:
     assert checked_in["_meta"]["measured_counts"] == fresh["_meta"]["measured_counts"]
 
 
-def test_93114_is_guilty_by_live_rows_not_a_code_list() -> None:
+def test_93124_is_guilty_by_live_rows_not_a_code_list() -> None:
+    # Was 93114 until SAETTA-20260915 W-H PR-2b restored its golf-course
+    # Besar row (PP 28/2025 Lampiran I.L.61) -- 93114 is no longer guilty by
+    # this predicate (see the innocence test right below). 93124 is a live,
+    # still-guilty sibling from the same 93xxx sports family, picked fresh
+    # from the census rather than hand-substituted.
     records = emitter.load_records(emitter.DEFAULT_CANONICAL)
-    record = next(r for r in records if r[basis.CODE_FIELD] == "93114")
+    record = next(r for r in records if r[basis.CODE_FIELD] == "93124")
 
     assert basis.besar_risks(record) == ()
     assert basis.open_supporting_tier_absent(record) is True
+    assert basis.derive_verdict_state(record) == "provisional"
+
+
+def test_93114_was_cured_and_is_now_innocent() -> None:
+    # SAETTA-20260915 W-H PR-2b: the golf-course Besar/Tinggi row (PP
+    # 28/2025 Lampiran I.L.61) is restored into per_skala, so this code now
+    # carries a real supporting Besar tier -- it left the guilty population.
+    records = emitter.load_records(emitter.DEFAULT_CANONICAL)
+    record = next(r for r in records if r[basis.CODE_FIELD] == "93114")
+
+    assert basis.besar_risks(record) == ("Tinggi",)
+    assert basis.open_supporting_tier_absent(record) is False
+    assert (record.get("l4_bali") or {}).get("status") == "BLOCCATO_DIPENDE_SCOPE"
     assert basis.derive_verdict_state(record) == "provisional"
 
 
@@ -115,10 +160,20 @@ def test_restricted_and_proposed_closed_live_statuses_are_provisional() -> None:
 
     assert (by_code["86102"].get("l4_bali") or {}).get("status") == "TERBATAS"
     assert basis.derive_verdict_state(by_code["86102"]) == "provisional"
-    assert (by_code["68111"].get("l4_bali") or {}).get("status") == (
-        "CHIUSO_BALI_PROPOSTO"
+    # SAETTA-20260915/W-J B1: 68111 is itself one of the 18 KBLI-2020 fields
+    # Bali applied-closure actually named, so cure_l4bali_applied_closure.py
+    # moved it CHIUSO_BALI_PROPOSTO -> CHIUSO_BALI/HIGH-confidence/blocked=True
+    # — it is no longer "proposed", it is applied, so it now derives "blocked"
+    # and is no longer a valid "still provisional" example. The
+    # still-genuinely-uncertain example is a W-H PR-5 MEDIUM-confidence/
+    # needs_review=True CHIUSO_MORATORIA_BALI code: the moratorium note names
+    # a risk tier, not this specific code, so its own dossier stays honestly
+    # unresolved.
+    assert (by_code["38110"].get("l4_bali") or {}).get("status") == (
+        "CHIUSO_MORATORIA_BALI"
     )
-    assert basis.derive_verdict_state(by_code["68111"]) == "provisional"
+    assert (by_code["38110"].get("l4_bali") or {}).get("blocked") is True
+    assert basis.derive_verdict_state(by_code["38110"]) == "provisional"
 
 
 def test_01112_open_family_with_live_support_is_innocent() -> None:

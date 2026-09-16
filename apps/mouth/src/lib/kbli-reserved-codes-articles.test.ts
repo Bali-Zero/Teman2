@@ -32,8 +32,13 @@ import { describe, expect, it } from "vitest";
  *   "one hundred percent", "seratus persen", "cento per cento") next to an
  *   open/foreign/ownership word, or naming Jakarta and Lombok together, is in
  *   scope UNLESS that same line names one of the genuinely open sibling
- *   codes these articles also cover (55204 apart-hotel, 55400 intermediation,
- *   56301 bar) — those really are `TERBUKA` and must stay sayable.
+ *   codes these articles also cover (55204 apart-hotel, 56301 bar) — those
+ *   really are `TERBUKA` and must stay sayable. 55400 (accommodation
+ *   intermediation) is DELIBERATELY NOT in that exemption any more
+ *   (SAETTA-20260915 W-J B1, 2026-09-15): it is one of the 40 codes the 2026
+ *   Bali applied PMA closure (18 KBLI-2020 fields, Bali Provincial
+ *   Government press release 24 Jul 2026) now blocks via its 55900 ancestor
+ *   — the-villa-dream-has-a-new-wall no longer calls it a working pivot.
  * - `kbli-2025-green-economy-waste` covers ~15 unrelated codes that really
  *   are 100% PMA (38121, 38212, 39001…), so there the same percent/open
  *   pattern is only in scope on a line that also names 38110 — a bare "100%"
@@ -69,7 +74,12 @@ const WASTE_FILES = [
 
 // Codes these same articles legitimately describe as open — a line naming
 // one of these is never an offender, even if it also carries a percent word.
-const OPEN_SIBLING_CODES = /\b(55204|55400|56301)\b/;
+// 55400 was REMOVED from this exemption (SAETTA-20260915 W-J B1, 2026-09-15):
+// it is one of the 40 KBLI-2025 codes descending (via its 55900 ancestor)
+// from the 18-field applied Bali PMA closure (Bali Provincial Government
+// press release, 24 Jul 2026) — l4_bali now reads CHIUSO_BALI/blocked=true
+// for it, so a future "55400 is 100% open" line must NOT be exempted here.
+const OPEN_SIBLING_CODES = /\b(55204|56301)\b/;
 
 const RESERVED_TERM =
   /\b(55201|55203|79903|villa|homestay|pondok\s*wisata|pramuwisata)\b/i;

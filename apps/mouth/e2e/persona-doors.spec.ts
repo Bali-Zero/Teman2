@@ -5,10 +5,8 @@ import { test, expect } from "@playwright/test";
  *
  * Pins the FOUR "Start where you are." doors (B2R2: tax added as the THIRD
  * door), their targets + copy + order, and the load-bearing brand rule:
- * exactly ONE red primary CTA on the page (`.cta-primary`, computed
- * background = #D01033 via the rumah theme override of --cta-primary-bg —
- * NOT --color-red-500 #ff2d4c), with zero red CTAs inside the doors band
- * (rule: NO red in that section).
+ * exactly ONE primary CTA on the page (`.cta-primary`), with zero primary
+ * CTAs inside the doors band (rule: no competing peak in that section).
  *
  * Describe title contains "page Page" — required by the CI grep
  * (.github/workflows/tests.yml runs `npx playwright test --grep "page Page"`).
@@ -64,7 +62,7 @@ test.describe("persona doors homepage page Page", () => {
     }
   });
 
-  test("exactly one red primary CTA on the page (P2)", async ({ page }) => {
+  test("exactly one primary CTA on the page (P2)", async ({ page }) => {
     const primaries = page.locator(".cta-primary");
     await expect(primaries).toHaveCount(1);
 
@@ -72,13 +70,10 @@ test.describe("persona doors homepage page Page", () => {
     // ("... avg reply: 2 min"), which made the test the OWNER of that claim:
     // deleting an unmeasured reply-time promise from the page then read as
     // breaking CI. Wording is deliberately NOT frozen here. What is
-    // load-bearing is that the one primary is the WhatsApp hero, painted red.
+    // load-bearing is that the one primary is the WhatsApp hero.
     //
-    // The red is #D01033 = rgb(208,16,51), from the rumah theme override in
-    // apps/mouth/src/lib/theme/rumahVars.ts:58 (`--cta-primary-bg`). It is
-    // NOT --color-red-500 (#ff2d4c, packages/core/tokens/primitives.css:15);
-    // the homepage overrides that token and an older comment here said
-    // otherwise. The href pattern avoids pinning the business number.
+    // R19 copper is #A44B36 = rgb(164,75,54). The href pattern avoids
+    // pinning the business number.
     const primary = primaries.first();
     await expect(primary).toHaveAttribute(
       "href",
@@ -87,7 +82,28 @@ test.describe("persona doors homepage page Page", () => {
     const bg = await primary.evaluate(
       (el) => getComputedStyle(el).backgroundColor,
     );
-    expect(bg).toBe("rgb(208, 16, 51)");
+    expect(bg).toBe("rgb(164, 75, 54)");
+    const minHeight = await primary.evaluate(
+      (el) => getComputedStyle(el).minHeight,
+    );
+    expect(minHeight).toBe("48px");
+  });
+
+  test("R19 fold keeps its supporting text and nav CTA readable", async ({
+    page,
+  }) => {
+    await expect(
+      page.getByText(
+        "Start with visa and residence, company setup, tax, or property.",
+      ),
+    ).not.toHaveCSS("text-shadow", "none");
+
+    const navCta = page
+      .locator("nav")
+      .getByRole("link", { name: /Get Started.*via WhatsApp/i });
+    await navCta.hover();
+    await expect(navCta).toHaveCSS("background-color", "rgb(234, 227, 216)");
+    await expect(navCta).toHaveCSS("color", "rgb(29, 44, 59)");
   });
 
   test("doors band contains no red primary styling", async ({ page }) => {
