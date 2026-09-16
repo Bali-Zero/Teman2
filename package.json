@@ -72,7 +72,7 @@
     "@types/express-rate-limit": "^6.0.2",
     "@types/jest": "^30.0.0",
     "@types/multer": "^2.2.0",
-    "@types/node": "^26.1.1",
+    "@types/node": "^26.5.1",
     "@types/node-cron": "^3.0.11",
     "@types/pg": "^8.23.1",
     "@types/supertest": "^6.0.3",
