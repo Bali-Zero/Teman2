@@ -2,16 +2,16 @@
 
 ``test_gold_coverage_floor.py`` proves the pack can support a product when
 every fact arrives. This file proves the opposite half, and it is the half
-the user lives in: replay the **111 real interview walks** — every distinct
+the user lives in: replay the **112 real interview walks** — every distinct
 path through ``flow.ts``'s two-arm spine and ``getCategoryQuestionIds``'
 eleven categories, each answered through the real ``fact-mapper.ts`` —
 against the highest signed PRODUCTION pack, and pin the outcome census.
-Current ENGINE census (W-VO-Q, 2026-09-14), on signed seq-20: **1
-HUMAN_REVIEW_REQUIRED / 2 NEEDS_INPUT / 16 NO_SUPPORTED_PATH / 92
-SUPPORTED_CANDIDATES** (W-VO-E's 94-walk figure was 76); on signed seq-21
-**1 / 1 / 16 / 93** — the pins are kept per signed sequence
-(``EXPECTED_OUTCOME_BY_SEQUENCE``), so the census stays green on both sides
-of the seq-21 signature. The FUNNEL
+Current ENGINE census (E23V-DEFECT, mission seq-22, 2026-09-15), on signed
+seq-20: **1 HUMAN_REVIEW_REQUIRED / 2 NEEDS_INPUT / 17 NO_SUPPORTED_PATH /
+92 SUPPORTED_CANDIDATES** (W-VO-E's 94-walk figure was 76; W-VO-Q's 111-walk
+figure was 16 NO_SUPPORTED_PATH); on signed seq-21 **1 / 1 / 17 / 93** — the
+pins are kept per signed sequence (``EXPECTED_OUTCOME_BY_SEQUENCE``), so the
+census stays green on both sides of the seq-21 signature. The FUNNEL
 census the applicant actually meets is the second column of the table under
 "THE DISCLOSURE-FLAG LAYER" below. The paragraphs below are the historical
 record of how it got here, each keeping the count that was true when it was
@@ -930,6 +930,16 @@ _EXPECTED_OUTCOME_ON_SEQ20: dict[str, tuple[str, tuple[str, ...]]] = {
     "offshore/work/sponsor_government/invitation_only": ("SUPPORTED_CANDIDATES", ("E23",)),
     "offshore/work/sponsor_government/neither": ("SUPPORTED_CANDIDATES", ("E23",)),
     "offshore/work/sponsor_government/trade_office_only": ("SUPPORTED_CANDIDATES", ("E23",)),
+    # E23V-DEFECT (seq-22): the trade-office applicant whose employer is
+    # genuinely NOT an Indonesian entity — el.e23-employment-support already
+    # requires `work.employer_is_indonesian_entity == true` on seq-20, so
+    # this walk dead-ends on the generic cause. Measured
+    # (`_decide` against `_signed_pack()`): NO_SUPPORTED_PATH, candidates
+    # (), reason OPERATIONAL_NO_PRODUCT_MATCHES_DECLARED_PURPOSES.
+    "offshore/work/sponsor_government/trade_office_only/employer_no": (
+        "NO_SUPPORTED_PATH",
+        (),
+    ),
     "offshore/work/sponsor_individual/not_diplomatic": ("SUPPORTED_CANDIDATES", ("E23",)),
 }
 
@@ -1657,7 +1667,7 @@ def candidate_funnel_named(
     return _funnel_named_products(walks, candidate_pack)
 
 
-def test_corpus_is_the_111_real_interview_walks(walks: dict[str, dict[str, Any]]) -> None:
+def test_corpus_is_the_112_real_interview_walks(walks: dict[str, dict[str, Any]]) -> None:
     """An empty or shrunken corpus fails loudly: a census that passes because
     nobody fed it any walks is the green-but-dead shape (cicatrix #2).
 
@@ -1733,9 +1743,22 @@ def test_corpus_is_the_111_real_interview_walks(walks: dict[str, dict[str, Any]]
     The new walks are the `capital_market` vehicle's default walk, one seq-21
     product per walk, the honest "no" on each question, and four business
     explorers (item 7: the D12 walk, with and without a sponsor, the default
-    and the named dead end)."""
+    and the named dead end).
 
-    assert len(walks) == 111, f"expected 111 interview walks, found {len(walks)}"
+    E23V-DEFECT (mission seq-22) adds 1, corpus 111 -> 112:
+    `offshore/work/sponsor_government/trade_office_only/employer_no`, the
+    `trade_office_only` branch's own `work_payer` answered "no" instead of
+    the corpus-wide default "yes". No existing fixture changes — `work_payer`
+    was already asked on this branch (`FIXED_CATEGORY_QUESTIONS.work`), only
+    never answered anything but the default. On signed seq-20 this walk
+    dead-ends on the generic cause (`el.e23-employment-support` already
+    requires `work.employer_is_indonesian_entity == true`); on the seq-21
+    candidate it dead-ends on `PAID_ACTIVITY_WITHOUT_INDONESIAN_SPONSOR`
+    instead (`hf.employment-without-indonesian-sponsor` sweeps E23V in) —
+    same (state, candidates) pin both sides, see the comment on this walk's
+    `EXPECTED_OUTCOME` row for what moved and what did not."""
+
+    assert len(walks) == 112, f"expected 112 interview walks, found {len(walks)}"
     assert sorted(walks) == sorted(EXPECTED_OUTCOME), "corpus and EXPECTED_OUTCOME disagree"
     for label, spec in walks.items():
         assert spec["asked"], f"{label}: walk carries no asked-question history"
@@ -1889,20 +1912,28 @@ def test_walk_state_census_is_the_pinned_census_of_the_signed_sequence(
     the census is 1/1/16/93: ``offshore/other/paid/sponsor_unsure`` is
     answered by E33B (see ``_SEQ21_OUTCOME_CHANGES``). The literal is kept
     per signed sequence, so the PR that lands the seq-21 bundle moves no pin
-    here."""
+    here.
+
+    E23V-DEFECT (mission seq-22) adds 1 walk over a 111 -> 112 corpus:
+    ``offshore/work/sponsor_government/trade_office_only/employer_no``. On
+    BOTH signed seq-20 and the seq-21 candidate it ends NO_SUPPORTED_PATH
+    (16 -> 17), with two different reason codes (see the walk's own
+    ``EXPECTED_OUTCOME`` comment) — the (state, candidates) pin does not
+    move, so it needs no ``_SEQ21_OUTCOME_CHANGES`` row. No existing walk
+    moves."""
 
     census = dict(Counter(outcome["state"] for outcome in outcomes.values()))
     by_sequence = {
         20: {
             "HUMAN_REVIEW_REQUIRED": 1,
             "NEEDS_INPUT": 2,
-            "NO_SUPPORTED_PATH": 16,
+            "NO_SUPPORTED_PATH": 17,
             "SUPPORTED_CANDIDATES": 92,
         },
         21: {
             "HUMAN_REVIEW_REQUIRED": 1,
             "NEEDS_INPUT": 1,
-            "NO_SUPPORTED_PATH": 16,
+            "NO_SUPPORTED_PATH": 17,
             "SUPPORTED_CANDIDATES": 93,
         },
     }
@@ -1933,7 +1964,7 @@ def test_walk_state_census_is_the_pinned_census_of_the_signed_sequence(
     minor_walk = _load_walks()["offshore/family/PARENT/spNat=IT/minor"]
     public = _public_decision(minor_walk["overrides"], "offshore/family/PARENT/spNat=IT/minor")
     assert [reason.code for reason in public.review_reasons] == ["MINOR_GUARDIAN_PRIVACY_REVIEW"]
-    assert census["NO_SUPPORTED_PATH"] == 16
+    assert census["NO_SUPPORTED_PATH"] == 17
 
 
 def test_dead_end_fact_census_matches_the_blocking_fact_table(
