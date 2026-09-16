@@ -41,7 +41,11 @@ def _isolate(tmp_path, monkeypatch):
     state_dir = tmp_path / "state"
     last_seen_dir = tmp_path / "last_seen"
     queue_json = tmp_path / "queue.json"
-    queue_json.write_text(json.dumps({"items": []}), encoding="utf-8")
+    # Real Pro queue schema (verified live 2026-09-16): top-level LIST of
+    # items with `state`, `instagram_published_at`, `instagram_post_url`,
+    # `ig_media_id`, `engagement_metrics`, `topic_slug`, `id` — no
+    # top-level "items" wrapper, and no `published_at` key at all.
+    queue_json.write_text(json.dumps([]), encoding="utf-8")
     monkeypatch.setenv("META_ONE_STATE_DIR", str(state_dir))
     monkeypatch.setenv("ORGANISM_LAST_SEEN_DIR", str(last_seen_dir))
     monkeypatch.setenv("META_ONE_QUEUE_JSON", str(queue_json))
@@ -185,7 +189,57 @@ def test_quota_expiring_silent_when_far_from_month_end():
     assert mos.quota_expiring(benefits, days_left=6) is False
 
 
+# ── queue reader: real Pro schema (instagram_published_at, not published_at) ──
+
+
+def test_read_queue_counts_uses_instagram_published_at_field(tmp_path, monkeypatch):
+    _, _, queue_json = _isolate(tmp_path, monkeypatch)
+    # Only the REAL key is present — no `published_at` at all. Before the
+    # fix, `item.get("published_at")` alone would have silently read None
+    # here, even though the item was in fact published.
+    queue_json.write_text(json.dumps([
+        {"id": "WR2-000001", "state": "published", "instagram_published_at": "2026-09-14T10:00:00Z"},
+        {"id": "WR2-000002", "state": "drafted"},
+    ]), encoding="utf-8")
+    counts = mos.read_queue_counts()
+    assert counts["published"] == 1
+    assert counts["drafted"] == 1
+    assert counts["last_published_at"] == "2026-09-14T10:00:00Z"
+    assert counts["last_published_at"] is not None
+
+
+def test_read_queue_counts_picks_the_newest_instagram_published_at(tmp_path, monkeypatch):
+    _, _, queue_json = _isolate(tmp_path, monkeypatch)
+    queue_json.write_text(json.dumps([
+        {"id": "WR2-000001", "state": "published", "instagram_published_at": "2026-09-10T10:00:00Z"},
+        {"id": "WR2-000002", "state": "published", "instagram_published_at": "2026-09-15T10:00:00Z"},
+    ]), encoding="utf-8")
+    counts = mos.read_queue_counts()
+    assert counts["published"] == 2
+    assert counts["last_published_at"] == "2026-09-15T10:00:00Z"
+
+
+def test_read_queue_counts_falls_back_to_legacy_published_at(tmp_path, monkeypatch):
+    _, _, queue_json = _isolate(tmp_path, monkeypatch)
+    queue_json.write_text(json.dumps([
+        {"id": "WR2-000001", "state": "published", "published_at": "2026-09-11T10:00:00Z"},
+    ]), encoding="utf-8")
+    counts = mos.read_queue_counts()
+    assert counts["last_published_at"] == "2026-09-11T10:00:00Z"
+
+
 # ── digest hygiene: no secret, no stray @-handles ────────────────────────
+
+
+def test_p0_token_dead_text_defaults_when_dead_since_is_none():
+    text = mos._p0_token_dead_text(None)
+    assert "data sconosciuta" in text
+    assert "None" not in text
+
+
+def test_p0_token_dead_text_uses_the_real_date():
+    text = mos._p0_token_dead_text("2026-09-15")
+    assert "2026-09-15" in text
 
 
 def test_digest_never_contains_token_or_at_handles(tmp_path, monkeypatch):

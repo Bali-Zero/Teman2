@@ -369,7 +369,10 @@ def read_queue_counts() -> dict[str, Any]:
             drafted += 1
         elif state == "published":
             published += 1
-            pub_at = item.get("published_at")
+            # Real Pro queue schema (verified live 2026-09-16): the key is
+            # `instagram_published_at`, not `published_at` — the latter is
+            # kept as a fallback only in case an older/synthetic queue uses it.
+            pub_at = item.get("instagram_published_at") or item.get("published_at")
             if pub_at and (last_pub is None or pub_at > last_pub):
                 last_pub = pub_at
     result.update({"drafted": drafted, "published": published, "last_published_at": last_pub})
@@ -420,8 +423,9 @@ def _digest_text(entry: dict[str, Any]) -> str:
     return "\n".join(lines)
 
 
-def _p0_token_dead_text(dead_since: str) -> str:
-    return f"Token Instagram morto dal {dead_since}: nessuna telemetria; serve nuovo token (Zero)."
+def _p0_token_dead_text(dead_since: str | None) -> str:
+    since = dead_since or "data sconosciuta"
+    return f"Token Instagram morto dal {since}: nessuna telemetria; serve nuovo token (Zero)."
 
 
 def _p0_quota_expiring_text(days_left: int, benefits: dict[str, dict[str, int]]) -> str:
