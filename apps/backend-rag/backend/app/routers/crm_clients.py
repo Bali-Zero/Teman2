@@ -29,6 +29,7 @@ from fastapi import (
 from fastapi.responses import RedirectResponse, Response
 from pydantic import BaseModel, EmailStr, field_validator
 
+from backend.app.core.constants import TaxConsultantConstants
 from backend.app.dependencies import get_current_user, get_database_pool
 from backend.app.deps.crm_access import get_crm_user_filter
 from backend.app.deps.crm_service_write import verify_crm_write_key
@@ -325,13 +326,9 @@ class ClientCreate(BaseModel):
         return v
 
 
-TAX_CONSULTANT_VALUES: set[str] = {
-    "veronika.tax@balizero.com",
-    "kadek.tax@balizero.com",
-    "dewaayu.tax@balizero.com",
-    "angel.tax@balizero.com",
-    "faisha.tax@balizero.com",
-}
+# Source of truth: backend.app.core.constants.TaxConsultantConstants (mirrors
+# team_members, kept in sync with migration 319 by a parsing test).
+TAX_CONSULTANT_VALUES: set[str] = set(TaxConsultantConstants.CANONICAL)
 
 
 class ClientUpdate(BaseModel):
@@ -392,6 +389,10 @@ class ClientUpdate(BaseModel):
         """Validate tax_consultant is one of the 5 Bali Zero tax team emails, or None."""
         if v is None or v == "":
             return None
+        # Normalize a legacy alias to its real replacement BEFORE the
+        # allowlist check, so the kita dropdown's still-live ghost
+        # submissions are accepted and stored under the real address.
+        v = TaxConsultantConstants.normalize(v)
         if v not in TAX_CONSULTANT_VALUES:
             raise ValueError(
                 f"tax_consultant must be one of {sorted(TAX_CONSULTANT_VALUES)} or null, got '{v}'",

@@ -1,0 +1,96 @@
+task_id: shweb-w2-tax-allowlist-align
+gear: 3
+l_level: L2
+gate_class: opus
+# Floor is 3 via the HOT-ZONE term, not size: this PR adds a schema migration
+# (db/migrations_v2/319_*.sql) that rewrites rows in two production tables and
+# swaps two CHECK constraints. Size alone (826/37 over 14 files) would already
+# put it at 2; the migration is what makes it 3, so the pack is mandatory and
+# the gate class is opus.
+objective: >-
+  The tax team's allowlist and the canonical staff table disagree, and the disagreement is
+  live in production. `team_members` holds tax@balizero.com (Veronika) and faysha.tax@…
+  (Faisha, with a Y); the two CHECK constraints on clients.tax_consultant and
+  lkpm_reports.lkpm_assigned_to instead allow veronika.tax@… and faisha.tax@… — two addresses
+  that match no staff record — while REJECTING the two real ones. Consequence today: two of
+  five tax consultants cannot be assigned under their own address, LKPM deadline reminders are
+  emailed verbatim to a mailbox nobody reads, and the manager CC goes to a ghost. This PR makes
+  team_members canonical: migration 319 rewrites the offending rows and both CHECK lists, one
+  shared Python constant replaces four drifted copies of the allowlist, and the write path
+  normalizes the retired aliases so the kita dropdown — which still sends them — keeps working
+  through the transition instead of bouncing with a 422.
+constraints:
+  - >-
+    A migration already applied is never edited: migration_093 stays byte-identical to
+    origin/main (verified by an empty `git diff origin/main…HEAD` on that path). The change
+    lives only in db/migrations_v2/319_*.sql, with a symmetric ROLLBACK section.
+  - >-
+    Downstream readers do not change contract. The invite path (#6480) and the session gate
+    (#6569) are untouched; the only observable difference for a caller is that a legacy alias is
+    now ACCEPTED and stored under its real address instead of being rejected.
+  - >-
+    PII is an OUTPUT boundary. Every address in this diff is an internal @balizero.com staff
+    mailbox; no client row, name, company or identifier appears in the migration, the tests, the
+    receipts or this pack. The live DB proof ran against a throwaway local database seeded with
+    synthetic rows ("Synthetic Alpha Ltd" …), never against production data.
+  - >-
+    Migration numbering was re-verified against open siblings at ship time, not assumed: 316/317
+    are claimed by open PRs #6474/#6478 and 318 is already on main, so 319 is the first free
+    number. `_assert_unique_migration_numbers` only sees files on disk and cannot catch a number
+    reserved by an unmerged sibling (cicatrix W40).
+acceptance:
+  - text: >-
+      A1 FORWARD AND BACK ON A CLEAN DATABASE. WHEN migration 319 is applied through the REAL
+      call path (MigrationManager.apply_migration → BaseMigration.apply, the same path the Fly
+      release_command uses) against a freshly created Postgres 17 database holding the pre-319
+      schema and synthetic rows, THEN both ghost addresses SHALL disappear from both tables, the
+      real addresses SHALL carry the rows, the new CHECK SHALL accept the five real addresses and
+      reject both ghosts and an unknown address; and WHEN rollback_migration runs, the previous
+      state SHALL be restored (values back on the ghosts, old CHECK back in force). Re-applying
+      afterwards SHALL succeed, proving the UPDATEs are no-ops on re-run.
+    probe: "cd apps/backend-rag && SKIP_SENTRY_INIT=1 PYTHONPATH=. .venv/bin/python -m pytest backend/tests/migrations/test_migration_319_applies_to_postgres.py backend/tests/migrations/test_tax_consultant_allowlist_sql_parity.py"
+  - text: >-
+      A2 THE WRITE PATH ACCEPTS A LEGACY ALIAS AND REJECTS AN UNKNOWN ONE. WHEN ClientUpdate or
+      LKPMAssignBody receives a retired alias — including upper-cased and whitespace-padded —
+      THEN the stored value SHALL be the real replacement; WHEN it receives an address outside
+      both the allowlist and the alias map THEN it SHALL still raise exactly as before.
+    probe: "cd apps/backend-rag && SKIP_SENTRY_INIT=1 PYTHONPATH=. .venv/bin/python -m pytest backend/tests/unit/routers/test_lkpm_assign_allowlist.py backend/tests/unit/routers/test_crm_clients_coverage.py backend/tests/unit/core/test_constants.py"
+  - text: >-
+      A3 THE SQL AND THE PYTHON CANNOT DRIFT APART. WHEN the parity test runs THEN it SHALL parse
+      the two CHECK clauses out of 319_*.sql and compare them to TaxConsultantConstants.CANONICAL
+      and .LKPM_ASSIGNEES by value — the test restates nothing by hand, so an edit to either side
+      alone fails. A second sweep SHALL fail if either ghost string reappears anywhere under
+      backend/ outside four named settled-history files.
+    probe: "cd apps/backend-rag && SKIP_SENTRY_INIT=1 PYTHONPATH=. .venv/bin/python -m pytest backend/tests/migrations/test_tax_consultant_allowlist_sql_parity.py backend/tests/test_tax_consultant_ghost_address_guard.py"
+  - text: >-
+      A4 NOTHING ELSE IN THE TOUCHED SURFACE MOVED. WHEN the touched test surface runs together
+      — the allowlist tests, both migration suites, the compliance services and the shared
+      error-handler tests — THEN 688 SHALL pass, 0 fail.
+    probe: "cd apps/backend-rag && SKIP_SENTRY_INIT=1 PYTHONPATH=. .venv/bin/python -m pytest backend/tests/unit/core/test_constants.py backend/tests/migrations/ backend/tests/unit/routers/test_lkpm_assign_allowlist.py backend/tests/unit/routers/test_crm_clients_coverage.py backend/tests/test_tax_consultant_ghost_address_guard.py backend/tests/services/compliance/ backend/tests/app/routers/test_compliance_lkpm_readypack.py backend/tests/unit/app/routers/test_lkpm_receipt_client_safe.py backend/tests/unit/app/utils/test_error_handlers.py"
+assumptions:
+  - text: >-
+      The runner executes ONLY the forward half of a .sql migration. `split_migration_sql`
+      (migration_base.py) cuts at `-- === ROLLBACK ===`; without it PostgreSQL would treat the
+      marker as a comment and run the rollback in the same transaction (SCAR 2026-04-19, PB2
+      deploy). Verified on THIS file rather than assumed: exactly one marker match, 12 forward
+      statements, 10 rollback statements, and the forward half ends at the avatar UPDATE.
+    status: verified
+    probe: 'python3 -c "…split on ROLLBACK_MARKER_RE…" → match count: 1, FORWARD 12 / ROLLBACK 10'
+  - text: >-
+      The rollback is honest about what it cannot undo. Row reversion is VALUE-based, so a row
+      that legitimately starts using tax@balizero.com AFTER this migration is indistinguishable
+      from a pre-migration row and would be reverted to the ghost too; and team_members.avatar is
+      deliberately NOT restored, because the sibling D6 PR deletes the two portrait files
+      independently and writing the path back would re-point at a 404. Both are stated in the
+      migration header, not discovered later.
+    status: verified
+    probe: "grep -n 'HONESTY ABOUT WHAT THIS CANNOT RESTORE' -A 18 apps/backend-rag/backend/db/migrations_v2/319_*.sql"
+  - text: >-
+      The kita dropdown (apps/mouth/src/lib/workspace/roster-directory.ts) still holds the two
+      retired addresses. That is why normalize() exists on the write path and why this PR does not
+      need a same-PR frontend change to stay correct — but a client saved through it will come
+      back from the API on the REAL address, which that dropdown has no option for, so the select
+      renders as "not assigned". The mouth-side alignment is a separate PR in this same window,
+      shipped after this one (mandate order: PR-3a backend before PR-3b mouth).
+    status: verified
+    probe: "grep -n 'veronika.tax\\|faisha.tax' apps/mouth/src/lib/workspace/roster-directory.ts"

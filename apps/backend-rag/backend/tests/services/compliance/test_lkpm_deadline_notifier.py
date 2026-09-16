@@ -17,6 +17,7 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 
 import backend.services.compliance.lkpm_deadline_notifier as mod
+from backend.app.core.constants import TaxConsultantConstants
 from backend.services.compliance.lkpm_deadline_notifier import (
     ADMIN_EMAIL,
     KILLSWITCH_KEY,
@@ -186,7 +187,8 @@ class TestFirstNameFromEmail:
     """5 tests for _first_name_from_email."""
 
     def test_veronika(self) -> None:
-        assert _first_name_from_email("veronika.tax@balizero.com") == "Veronika"
+        """Veronika's real address has no name prefix at all (migration 319)."""
+        assert _first_name_from_email("tax@balizero.com") == "Veronika"
 
     def test_kadek(self) -> None:
         assert _first_name_from_email("kadek.tax@balizero.com") == "Kadek"
@@ -198,7 +200,8 @@ class TestFirstNameFromEmail:
         assert _first_name_from_email("angel.tax@balizero.com") == "Angel"
 
     def test_faisha(self) -> None:
-        assert _first_name_from_email("faisha.tax@balizero.com") == "Faisha"
+        """Faisha's real address has a Y where her name has an I (migration 319)."""
+        assert _first_name_from_email("faysha.tax@balizero.com") == "Faisha"
 
 
 # =====================================================================
@@ -435,3 +438,21 @@ class TestTelegramAlert:
 
         result = await notifier.check_and_notify()
         assert result["telegram_sent"] is False
+
+
+class TestManagerNonManagerDerivation:
+    """TAX_CONSULTANT_MANAGER/NON_MANAGER (Round 2, SAETTA-20260915 / W-C
+    slice R-C) must come from an explicit named identity in
+    TaxConsultantConstants, not CANONICAL[0]/CANONICAL[1:] — so a reorder of
+    CANONICAL can't silently swap who gets escalation CC."""
+
+    def test_manager_is_in_canonical(self) -> None:
+        assert TAX_CONSULTANT_MANAGER == TaxConsultantConstants.MANAGER
+        assert TAX_CONSULTANT_MANAGER in TaxConsultantConstants.CANONICAL
+
+    def test_non_manager_equals_canonical_minus_manager_regardless_of_order(self) -> None:
+        assert set(TAX_CONSULTANTS_NON_MANAGER) == set(TaxConsultantConstants.CANONICAL) - {
+            TaxConsultantConstants.MANAGER
+        }
+        assert TAX_CONSULTANT_MANAGER not in TAX_CONSULTANTS_NON_MANAGER
+        assert len(TAX_CONSULTANTS_NON_MANAGER) == len(TaxConsultantConstants.CANONICAL) - 1

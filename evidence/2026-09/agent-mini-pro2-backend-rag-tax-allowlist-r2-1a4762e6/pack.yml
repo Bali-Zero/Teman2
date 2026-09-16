@@ -1,0 +1,306 @@
+brief_ref: evidence/brief.yml
+plan_ref:
+  "SAETTA-20260916 window R5 (successor of W-C), slice R-C — tax allowlist / migration 319.
+  SUCCESSOR of PR #6676, which the fresh gate BLOCKED on paperwork only (root brief deprecated
+  under Rule 12; pack counts stale by one commit; prettier on the brief) after verifying the
+  content correct — 688 green and the IN->NOT IN mutation reproduced. Identical blobs, per-task
+  brief, no narrated counts.
+  Mandate in fleet mailbox key saetta-r5; the defect census it rests on was measured live
+  against production by the W-C session (mailbox key saetta-w-c, 2026-09-15 10:06Z)."
+lanes:
+  - lane: tax-allowlist-align-build
+    role: build
+    seat:
+      claude-opus-5 (conducting session, Mini seat 5 — merged origin/main, re-ran the sibling
+      number check, wrote the two router-path normalization tests, proved forward+rollback on a
+      throwaway Postgres through the real MigrationManager call path, authored this pack)
+  - lane: tax-allowlist-align-refute
+    role: review
+    seat:
+      gpt-5.6-codex (adversarial, dispatched from a neutral directory with the diff inline and
+      told to BREAK the change, not to summarise it — sandbox read-only)
+  - lane: tax-allowlist-align-gate
+    role: review
+    seat: claude-opus-5 (FRESH session, outside this contribution chain — commissioned via the imperatore, mailbox key saetta-r5)
+seat_diversity: satisfied
+seat_diversity_note:
+  "Build is an Anthropic seat, refutation is an OpenAI seat. Declared rather than assumed
+  satisfied: the arsenal probe run at 18:16Z this session found 4 of 16 seats live — codex LIVE,
+  ollama LIVE, nlm LIVE, jules LIVE; claude-CLI and agy TIMEOUT; kimi, qwen-cloud-code and all
+  six tp1-* seats QUOTA_DEAD until 09-18 08:39Z; codex-spark MODEL_ERR (400, not served to
+  ChatGPT accounts fleet-wide). Codex was therefore the only non-Anthropic seat capable of
+  reading a 1086-line diff, and it is the one that reviewed it."
+diff:
+  net_lines:
+    "One new .sql migration (expand + symmetric rollback), one new shared constants class, one new
+    executable migration test, two new/rewritten parity and router test files, four allowlist
+    copies collapsed into the shared constant, a PII fix in the shared database-error handler, and
+    this pack. Zero frontend — the mouth-side alignment is PR #6677. No count is narrated here on
+    purpose: the previous attempt (#6676) went red because its numbers were computed before the
+    pack commit that changed them, and a number that must be re-measured after every amend is a
+    red check waiting to happen."
+  behaviour_change:
+    "At apply time migration 319 rewrites 2 rows in clients and 12 in lkpm_reports off two ghost
+    addresses onto the two real ones, swaps both CHECK constraints to the team_members-derived
+    list, and NULLs two team_members.avatar values whose portrait files a sibling D6 PR deletes.
+    At request time, a write carrying a retired alias is now accepted and stored under the real
+    address instead of being rejected with a 422; an unknown address is still refused. Two tax
+    consultants who could not be assigned under their own address can be, and the LKPM deadline
+    reminder now addresses a mailbox that exists."
+receipts:
+  - claim:
+      "Forward AND rollback work on a clean database, EXECUTED (not parsed) through the runner's
+      own `split_migration_sql()` — the same cut the Fly release_command uses. 8 tests over a
+      throwaway database created and dropped per test, seeded with synthetic rows: ghost rows
+      moved onto the real addresses, untouched rows untouched, every real address accepted, a
+      stranger refused, the two retired aliases still writable (the EXPAND decision), the two
+      avatars NULLed and the third untouched, forward idempotent on re-run, and rollback
+      restoring the previous state INCLUDING the old CHECK. Plus 7 parity tests over the .sql."
+    cmd: "cd apps/backend-rag && SKIP_SENTRY_INIT=1 PYTHONPATH=. .venv/bin/python -m pytest backend/tests/migrations/test_migration_319_applies_to_postgres.py backend/tests/migrations/test_tax_consultant_allowlist_sql_parity.py"
+    result: "15 passed"
+    exit: 0
+    ts: "2026-09-16T19:02:40Z"
+    seat: claude-opus-5
+  - claim:
+      "The executable test MORDE where the parity tests are blind — the refuter's finding,
+      reproduced before curing it. With both `IN` predicates mutated to `NOT IN` in the migration
+      file, the parity suite stayed 7/7 GREEN while the executable suite went to 8 errors
+      (CheckViolationError). File restored from a byte copy, not `git checkout`."
+    cmd: "cp 319_*.sql /tmp/319.backup.sql ; python - <<mutate IN -> NOT IN ; pytest <parity> ; pytest <executable> ; cp /tmp/319.backup.sql 319_*.sql"
+    result: "parity: 7 passed | executable: 8 errors | restored: git diff shows only the intended 46 insertions"
+    exit: 0
+    ts: "2026-09-16T18:55:10Z"
+    seat: claude-opus-5
+  - claim:
+      "A rejected row really does reach the log today: a synthetic sentinel client name appeared
+      in BOTH `str(e)` and `e.detail` of a real asyncpg CheckViolationError raised by Postgres 17.
+      This is what the error-handler fix removes."
+    cmd: "python - <<'PY' … INSERT a SENTINEL row violating the CHECK, print whether the sentinel is in str(e)/e.detail …"
+    result: "str(e) contains the row: True | e.detail contains the row: True"
+    exit: 0
+    ts: "2026-09-16T18:51:30Z"
+    seat: claude-opus-5
+  - claim:
+      "The whole touched surface passes together after round 2: the allowlist constants, both
+      migration suites, the LKPM router allowlist, the CRM router coverage, the ghost-address
+      sweep, the compliance services, the LKPM ready-pack and receipt routers, and the shared
+      error-handler tests."
+    cmd: "cd apps/backend-rag && SKIP_SENTRY_INIT=1 PYTHONPATH=. .venv/bin/python -m pytest backend/tests/unit/core/test_constants.py backend/tests/migrations/ backend/tests/unit/routers/test_lkpm_assign_allowlist.py backend/tests/unit/routers/test_crm_clients_coverage.py backend/tests/test_tax_consultant_ghost_address_guard.py backend/tests/services/compliance/ backend/tests/app/routers/test_compliance_lkpm_readypack.py backend/tests/unit/app/routers/test_lkpm_receipt_client_safe.py backend/tests/unit/app/utils/test_error_handlers.py"
+    result: "688 passed, 1 warning"
+    exit: 0
+    ts: "2026-09-16T18:58:20Z"
+    seat: claude-opus-5
+  - claim:
+      "The nine test files this PR touches pass together, including the two new router-path
+      normalization tests (mixed-case + padded legacy alias -> real address; unknown -> refused)."
+    cmd: "cd apps/backend-rag && SKIP_SENTRY_INIT=1 PYTHONPATH=. .venv/bin/python -m pytest $(git diff --name-only origin/main...HEAD | grep test | sed 's|apps/backend-rag/||')"
+    result: "155 passed, 1 warning"
+    exit: 0
+    ts: "2026-09-16T18:22:40Z"
+    seat: claude-opus-5
+  - claim:
+      "migration_093 is byte-identical to origin/main. An already-applied migration is never
+      edited — the imperatore's 14:08 note on this slice; the first draft of this work had
+      modified it."
+    cmd: "git diff origin/main agent/mini-pro2/backend-rag/shweb-w2-tax-allowlist-align -- apps/backend-rag/backend/migrations/migration_093_lkpm_assigns_and_oss_creds.py"
+    result: "empty output — no difference"
+    exit: 0
+    ts: "2026-09-16T18:09:52Z"
+    seat: claude-opus-5
+  - claim:
+      "319 is still the first free migration number at ship time. 316/317 are claimed by open
+      PRs #6474/#6478, 318 is already on origin/main, nothing on main or in an open PR uses 319.
+      Re-run because `_assert_unique_migration_numbers` only sees files on disk and cannot see a
+      number reserved by an unmerged sibling (cicatrix W40)."
+    cmd: "gh pr list --state open --limit 60 --json number,title,files --jq '…migrations_v2…' ; git ls-tree --name-only origin/main apps/backend-rag/backend/db/migrations_v2/"
+    result: "open: #6478 -> 317, #6474 -> 315/316. on main: …314, 315, 318. 319 free."
+    exit: 0
+    ts: "2026-09-16T18:11:30Z"
+    seat: claude-opus-5
+  - claim:
+      "The runner will execute the forward half ONLY. ROLLBACK_MARKER_RE matches exactly once in
+      this file; the split yields 12 forward statements ending at the avatar UPDATE and 10
+      rollback statements. Without the split, PostgreSQL would read the marker as a comment and
+      run both halves in one transaction (SCAR 2026-04-19, PB2 deploy)."
+    cmd: "python3 -c 'import re; …ROLLBACK_MARKER_RE.finditer(sql)…' on 319_*.sql"
+    result: "match count: 1 | FORWARD stmts: 12 | ROLLBACK stmts: 10"
+    exit: 0
+    ts: "2026-09-16T18:13:05Z"
+    seat: claude-opus-5
+  - claim:
+      "Class audit of the two columns: every write path to clients.tax_consultant and
+      lkpm_reports.lkpm_assigned_to in the backend goes through one of the two Pydantic models
+      this PR normalizes (ClientUpdate, LKPMAssignBody). ClientCreate carries no tax_consultant
+      field; the dynamic UPDATE builder at crm_clients.py:1609 reads its values from a validated
+      ClientUpdate; no service, repository or cron writes either column directly."
+    cmd: "grep -rn 'tax_consultant|SET lkpm_assigned_to|INSERT INTO clients' --include=*.py apps scripts | grep -v tests"
+    result: "2 write paths, both validated; remaining hits are reads, the two legacy migration modules, and the auth check at lkpm.py:743/803"
+    exit: 0
+    ts: "2026-09-16T18:15:20Z"
+    seat: claude-opus-5
+  - claim:
+      "No ghost address survives anywhere under backend/ outside four named settled-history files
+      (the 319 migration itself, migration_093, 110_lkpm_allowlist_krisna.sql, and
+      constants.py's LEGACY_ALIASES map, which must hold them as keys to recognise them)."
+    cmd: "cd apps/backend-rag && PYTHONPATH=. .venv/bin/python -m pytest backend/tests/test_tax_consultant_ghost_address_guard.py ; grep -rn 'veronika\\.tax|faisha\\.tax' --include=*.py apps scripts"
+    result: "guard green; grep finds only migration_093 (settled history) and constants.py (the alias map)"
+    exit: 0
+    ts: "2026-09-16T18:22:40Z"
+    seat: claude-opus-5
+pii_scan: clean
+cloud_ok:
+  "No DPA is relied on here, because no personal data left the machine. What was sent to the two
+  non-local review seats (codex, agy) is THIS DIFF: source code, SQL, tests and internal
+  @balizero.com staff addresses. No client row, name, phone, passport, NPWP or client_id was in
+  the prompt, and the seats were given the diff inline precisely so they would not go reading a
+  database. The live DB proof ran locally against a throwaway database of synthetic rows. R10
+  fires because the diff TOUCHES a CRM path, which is true and worth flagging — the declaration
+  is that the touch is code, not data."
+pii_scan_note:
+  "Every address in the diff, the tests, this pack and the PR body is an internal @balizero.com
+  staff mailbox — no client name, company, phone, passport, NPWP, NIB or client_id appears
+  anywhere. The live database proof ran against a throwaway local database (nuz_r5_mig319,
+  dropped-and-recreated at the start of the run) seeded with synthetic rows named 'Synthetic
+  Alpha/Bravo/Charlie/Delta Ltd'; production data was never read, copied or transcribed. The row
+  counts quoted (2 clients, 12 LKPM reports) are counts, not rows."
+dissent:
+  - seat: claude-opus-5 (conducting, against its own candidate)
+    objection:
+      "Deploy ordering leaves a real window. `release_command` applies 319 BEFORE the new code
+      serves traffic, so for the duration of the rolling deploy the OLD code is live against the
+      NEW constraint: a tax member assigning in that window submits a retired alias, the old
+      validator accepts it, and Postgres refuses the write with a CheckViolationError."
+    status: CONFIRMED
+    resolution:
+      "Not curable inside one PR — removing the window needs two deploys (normalize first, then
+      the constraint), which costs a day for a failure mode that lasts minutes. Measured
+      mitigation instead: this deploy lands at ~02:30 WITA, when no tax consultant is working,
+      and the failed gesture is retryable with no data loss. Stated as the rollback trigger in
+      the PR body rather than left for someone to discover from a 500."
+  - seat: claude-opus-5 (conducting)
+    objection:
+      "The rollback cannot distinguish a row that legitimately started using tax@balizero.com
+      AFTER the migration from a pre-migration row still on the ghost, and will revert both."
+    status: CONFIRMED
+    resolution:
+      "Kept, stated in the migration header under 'HONESTY ABOUT WHAT THIS CANNOT RESTORE'. The
+      alternative — a column recording which rows 319 touched — is more schema than the defect
+      is worth, and the rollback is an emergency path, not a routine one."
+  - seat: claude-opus-5 (conducting)
+    objection:
+      "The kita dropdown still sends the retired addresses, so after this merges a client saved
+      through it comes back from the API on the REAL address, which that dropdown has no option
+      for: the select will render as '— not assigned —' even though the client IS assigned."
+    status: CONFIRMED
+    resolution:
+      "Real, and it is why this window does not stop at the backend: the mouth-side alignment
+      ships as a separate PR right after this one (mandate order: PR-3a backend before PR-3b
+      mouth). Until it lands the DATA is correct and the WRITE works — only the rendering of the
+      current value is wrong."
+  - seat: claude-opus-5 (conducting)
+    objection:
+      "The 'five real addresses' census was measured live against production by the PREDECESSOR
+      session, not by this one. Re-verification from this host is blocked: scripts/pg.sh finds no
+      Keychain password for target=prod on Mini."
+    status: CONFIRMED
+    resolution:
+      "Not left on a single inherited measurement: two independent registers on disk agree with
+      it — apps/mouth/src/data/team-roster.ts carries faysha.tax@balizero.com, and
+      team-public-listing.ts documents the slug/email disagreement explicitly ('the roster slug
+      is faisha, the email prefix is faysha.tax'). Declared as inherited rather than restated as
+      if this session had run the query."
+  - seat: codex-gpt-5.6-sol
+    objection:
+      "BLOCKER — the first draft was a CUT-OVER: `release_command` applies the migration before
+      the new code serves traffic, and `.github/workflows/fly-deploy.yml` documents image-only
+      rollback, so the incompatibility would OUTLIVE a rollback meant to cure it."
+    status: CONFIRMED
+    resolution:
+      "Cured, not mitigated: the forward CHECK is now the UNION (real addresses + the two retired
+      aliases), so no code version is ever refused; the row rewrite still happens on this deploy,
+      so the whole business effect lands now. An executable test pins it
+      (test_expand_keeps_the_retired_aliases_writable). Dropping the aliases is a separate
+      migration once the kita dropdown stops sending them."
+  - seat: codex-gpt-5.6-sol
+    objection:
+      "HIGH — a failed write logs the exception verbatim, and a Postgres constraint violation
+      carries `Failing row contains (...)`: the client's name, phone, passport and NPWP land in
+      the application log."
+    status: CONFIRMED
+    resolution:
+      "Verified independently on Postgres 17 with a sentinel row before curing it — the sentinel
+      appeared in both `str(e)` and `e.detail`. All four database-error branches now log a
+      signature (class, SQLSTATE, constraint/column/table) and never the exception, with guilt
+      and innocence tests. Pre-existing on main, not introduced here; cured here because this
+      migration makes that branch reachable. The generic `Unexpected error` line at the bottom of
+      the same file still interpolates the exception and is NOT touched — out of this PR's
+      concern, recorded rather than silently left."
+  - seat: codex-gpt-5.6-sol
+    objection:
+      "HIGH — the migration takes ACCESS EXCLUSIVE on `clients`, then on `lkpm_reports`, and
+      holds both to commit; unrelated CRM and portal reads queue behind it."
+    status: CONFIRMED
+    resolution:
+      "`SET LOCAL lock_timeout = '5s'` and `statement_timeout = '60s'` at the head of the forward
+      section (LOCAL: dies with the transaction, never leaks into the pool). The migration now
+      fails fast and aborts the deploy rather than stalling the CRM — the better of the two
+      outcomes. Splitting the avatar UPDATE into its own migration was NOT done: it touches
+      team_members, a third table, and would add a second migration number to the race for no
+      reduction in the lock window that matters."
+  - seat: codex-gpt-5.6-sol
+    objection:
+      "MEDIUM — every parity test passes with the constraints inverted: changing both `IN`
+      predicates to `NOT IN` keeps them green while the SQL aborts the deploy."
+    status: CONFIRMED
+    resolution:
+      "The strongest finding of the round, and reproduced here before curing: under that exact
+      mutation the parity file stayed 7/7 green and the new executable test went to 8 errors.
+      `tests/migrations/test_migration_319_applies_to_postgres.py` runs the forward half through
+      the runner's own `split_migration_sql()` against a throwaway database and asks Postgres
+      what it accepts. It SKIPS where no Postgres is reachable — which is CI today: declared, not
+      hidden. The fleet machines and anyone touching this migration get the executable proof."
+  - seat: codex-gpt-5.6-sol
+    objection:
+      "MEDIUM — pinning migration 319 by name makes the documented procedure for the next staff
+      change fail this test, pressuring a maintainer to rewrite an already-applied migration."
+    status: CONFIRMED
+    resolution:
+      "The parity file no longer names 319: it resolves the HIGHEST-numbered migration that adds
+      each constraint, and asserts the two invariants true in both the expand and the later
+      contract state (every canonical address accepted; nothing outside canonical + known aliases
+      accepted), with a guilt control for each."
+  - seat: agy-gemini-3.1-pro
+    objection:
+      "HIGH — a REAL consultant's address submitted with different case or stray whitespace
+      (`' Tax@BaliZero.com '`) is returned verbatim by normalize() and then refused by an
+      allowlist that compares exact bytes."
+    status: CONFIRMED
+    resolution:
+      "Cured: normalize() now also resolves a canonical address that differs only in case or
+      padding, over LKPM_ASSIGNEES (the wider set, so the LKPM path is covered too). An address
+      matching neither rule is still returned EXACTLY as received, so the allowlist judges it and
+      the error quotes back what was sent. Three tests."
+  - seat: agy-gemini-3.1-pro
+    objection:
+      "BLOCKER — `ClientCreate` does not normalize, so creating a client with a legacy alias
+      fails; BLOCKER — Krisna is missing from TAX_CONSULTANTS_NON_MANAGER, so his 4 PTs get no
+      deadline reminder; HIGH — Veronika, now the assignee of rewritten rows, is filtered out of
+      the same tuple and never notified."
+    status: RETRACTED
+    resolution:
+      "All three checked on disk and none survives. `ClientCreate` (crm_clients.py:244-330) has
+      no `tax_consultant` field at all — the field and its validator are both inside
+      `ClientUpdate`, which begins at line 334; the seat read the diff's line numbers without the
+      class boundaries. `TAX_CONSULTANTS_NON_MANAGER` has exactly one consumer,
+      `_send_unassigned_alert` (lkpm_deadline_notifier.py:254) — the alert for UNASSIGNED
+      reports, addressed to the pool with the manager in CC; per-assignee reminders go to
+      `row['lkpm_assigned_to']` directly, so Veronika is notified for her own rows and Krisna's
+      absence from that tuple is neither new (the hard-coded list before this diff did not carry
+      him either) nor a reminder failure."
+council_run: council.jsonl
+seat_fallback_reason:
+  "agy-gemini-3.1-pro is a RESERVE seat and is counted here because the titolari were not
+  available: measured by scripts/arsenal_probe.py at 18:16Z this session, kimi-code/k3 is
+  QUOTA_DEAD (subscription quota exhausted) and tp1-qwen3.8-max — with every other tp1-* seat —
+  is QUOTA_DEAD until 2026-09-18 08:39Z. codex-gpt-5.6-sol, a titolare, is the other seat on the
+  council and was live (12.9 s probe)."
