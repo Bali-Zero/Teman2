@@ -533,6 +533,16 @@ async def _record_match(
     """Two updates, same transaction. Idempotent: the WHERE clauses
     guarantee we only write once even if a retry loops."""
     async with conn.transaction():
+        # str() and ONLY here. `lead_intents.matched_client_id` is VARCHAR(20)
+        # (migrations_v2/122_lead_intents.sql) while `clients.id` is INTEGER,
+        # and every source of `client["id"]` hands back the native integer:
+        # clients.id on Fly (both `_resolve_client_by_phone` and
+        # `_fetch_recent_wa_touches`) and whatsapp_message_context.client_id
+        # (bigint) on the Pro's mirror. asyncpg encodes each parameter against
+        # the column type it is bound to, so the int reached the text codec and
+        # every pass since died with `expected str, got int` — 0 of 170 intents
+        # were ever attributed. The UPDATE on `clients` below must keep the
+        # NATIVE id: there $3 is bound to the integer PK.
         await conn.execute(
             """
             UPDATE lead_intents
@@ -541,7 +551,7 @@ async def _record_match(
              WHERE id = $2
                AND matched_client_id IS NULL
             """,
-            client["id"],
+            str(client["id"]),
             intent["id"],
         )
 
