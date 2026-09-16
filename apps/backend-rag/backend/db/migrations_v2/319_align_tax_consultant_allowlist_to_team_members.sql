@@ -82,7 +82,41 @@
 -- is left untouched. The team UI (portal.py "avatar_url" consumer) falls
 -- back to rendering initials when avatar IS NULL, so this is a display
 -- degradation, not a break.
+-- === EXPAND, NOT CUT-OVER (round 2, adversarial review 2026-09-16) ===
+-- The first draft of this migration replaced both CHECK lists with the five
+-- REAL addresses only. That is a cut-over, and `release_command` runs it
+-- BEFORE the new code serves traffic (apps/backend-rag/fly.toml:15) -- so for
+-- the length of the rolling deploy the OLD code would have been live against
+-- the NEW constraint, submitting a retired alias that Postgres now refuses.
+-- Worse: a deploy rollback restores the IMAGE, never the SQL
+-- (.github/workflows/fly-deploy.yml documents image-only rollback), so the
+-- incompatibility would OUTLIVE the rollback that was meant to cure it, and
+-- the tax team would be unable to assign anyone until a follow-up shipped.
+--
+-- So the forward list is the UNION: the five real addresses (+ krisna on the
+-- LKPM side) AND the two retired aliases, which stay ACCEPTED for now. The
+-- rows still move to the real addresses in the same transaction, so every
+-- business effect of this fix -- two consultants assignable under their own
+-- address, 12 LKPM reminders reaching a mailbox that exists, the manager CC
+-- resolving to a real person -- lands immediately and with no window.
+-- Removing the two aliases from the CHECK is a separate, boring migration
+-- that becomes risk-free once the kita dropdown stops sending them
+-- (apps/mouth/src/lib/workspace/roster-directory.ts) and the normalizing code
+-- is live everywhere. `TaxConsultantConstants.LEGACY_ALIASES` is what keeps
+-- the two lists in step, and the parity test reads BOTH halves from it.
+
 -- === FORWARD ===
+
+-- 0. Bound the blast radius of the two ACCESS EXCLUSIVE locks below. A
+--    DROP/ADD CONSTRAINT pair takes ACCESS EXCLUSIVE on the table for the
+--    REST of the transaction (PostgreSQL releases it at commit, not at
+--    statement end), so with `clients` locked and `lkpm_reports` next, any
+--    concurrent CRM or portal read queues behind this migration. With a
+--    lock_timeout the migration fails fast and the deploy aborts -- which is
+--    the outcome to prefer over a CRM that stops answering. LOCAL, so the
+--    setting dies with this transaction and never leaks into the pool.
+SET LOCAL lock_timeout = '5s';
+SET LOCAL statement_timeout = '60s';
 
 -- 1. clients_tax_consultant_check: drop before the row rewrite below, or
 --    the still-attached OLD constraint rejects the new real address.
@@ -111,11 +145,17 @@ ALTER TABLE clients
   CHECK (
     tax_consultant IS NULL
     OR tax_consultant IN (
+      -- the five REAL addresses, from team_members
       'tax@balizero.com',
       'angel.tax@balizero.com',
       'kadek.tax@balizero.com',
       'dewaayu.tax@balizero.com',
-      'faysha.tax@balizero.com'
+      'faysha.tax@balizero.com',
+      -- TRANSITIONAL, see EXPAND note in the header: the two retired aliases
+      -- stay accepted so code that predates this deploy keeps working. No row
+      -- carries them after step 2; a later migration drops these two lines.
+      'veronika.tax@balizero.com',
+      'faisha.tax@balizero.com'
     )
   );
 
@@ -142,12 +182,16 @@ ALTER TABLE lkpm_reports
   CHECK (
     lkpm_assigned_to IS NULL
     OR lkpm_assigned_to IN (
+      -- the five REAL addresses + krisna (110_lkpm_allowlist_krisna.sql)
       'tax@balizero.com',
       'angel.tax@balizero.com',
       'kadek.tax@balizero.com',
       'dewaayu.tax@balizero.com',
       'faysha.tax@balizero.com',
-      'krisna@balizero.com'
+      'krisna@balizero.com',
+      -- TRANSITIONAL, see EXPAND note in the header.
+      'veronika.tax@balizero.com',
+      'faisha.tax@balizero.com'
     )
   );
 

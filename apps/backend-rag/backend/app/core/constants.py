@@ -245,13 +245,24 @@ class TaxConsultantConstants:
 
     @classmethod
     def normalize(cls, email: str | None) -> str | None:
-        """Map a legacy alias to its real replacement; pass anything else through.
+        """Resolve a submitted address to its canonical spelling.
 
-        Matching is casefolded and whitespace-stripped (a mixed-case or
-        padded legacy submission must still resolve), but an unmatched
-        input is returned EXACTLY as received -- normalize() only ever
-        rewrites a known legacy alias, never reshapes an address the
-        allowlist check downstream still needs to judge on its own terms.
+        Two rewrites, both of SPELLING and never of identity:
+          1. a retired alias -> its real replacement (the kita dropdown still
+             sends both retired addresses);
+          2. a real address that differs only in case or surrounding
+             whitespace -> the canonical form stored in this module.
+
+        Matching is casefolded and whitespace-stripped in both cases. The
+        second rule is why the mandate for this change says "no consultant
+        excluded from the portal over a legacy SPELLING": before it,
+        `" Tax@BaliZero.com "` -- a plausible hand-typed or integration
+        submission for a real, active consultant -- was refused with a 422 by
+        an allowlist that only ever compared exact bytes.
+
+        Anything that matches neither is returned EXACTLY as received, so the
+        allowlist check downstream still judges it on its own terms and the
+        error message quotes back what the caller actually sent.
         """
         if email is None:
             return None
@@ -259,6 +270,9 @@ class TaxConsultantConstants:
         for legacy, real in cls.LEGACY_ALIASES.items():
             if candidate == legacy.casefold():
                 return real
+        for canonical in cls.LKPM_ASSIGNEES:
+            if candidate == canonical.casefold():
+                return canonical
         return email
 
 

@@ -176,3 +176,38 @@ class TestTaxConsultantConstants:
 
     def test_normalize_none_stays_none(self):
         assert TaxConsultantConstants.normalize(None) is None
+
+
+class TestTaxConsultantSpellingNormalization:
+    """Round 2 (adversarial review, 2026-09-16): normalize() used to rewrite
+    ONLY the two retired aliases, so a REAL, active consultant submitted with
+    different case or stray whitespace — `" Tax@BaliZero.com "` — fell through
+    to an allowlist that compares exact bytes and came back as a 422. The
+    mandate for this slice is "no consultant excluded from the portal over a
+    spelling"; that was one.
+    """
+
+    def test_canonical_address_with_case_and_padding_resolves(self):
+        from backend.app.core.constants import TaxConsultantConstants
+
+        assert (
+            TaxConsultantConstants.normalize("  TAX@BaliZero.com  ") == "tax@balizero.com"
+        )
+
+    def test_lkpm_only_assignee_also_resolves(self):
+        """Krisna is in LKPM_ASSIGNEES but not in CANONICAL — the loop must
+        cover the wider set, or LKPM assignment keeps the defect the CRM path
+        just lost."""
+        from backend.app.core.constants import TaxConsultantConstants
+
+        assert (
+            TaxConsultantConstants.normalize(" Krisna@Balizero.com ") == "krisna@balizero.com"
+        )
+
+    def test_an_unknown_address_is_still_returned_verbatim(self):
+        """Including its original case and padding: the allowlist check
+        downstream must judge it, and the error message must quote back what
+        the caller actually sent."""
+        from backend.app.core.constants import TaxConsultantConstants
+
+        assert TaxConsultantConstants.normalize("  Stranger@Balizero.com  ") == "  Stranger@Balizero.com  "
