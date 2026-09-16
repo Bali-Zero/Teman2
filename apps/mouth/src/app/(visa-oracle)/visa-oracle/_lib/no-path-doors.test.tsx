@@ -141,11 +141,16 @@ describe("no-path doors — the evidence behind every named alternative", () => 
     ).toBe(replay.walk_corpus_fingerprint);
   });
 
-  it("covers the 15 dead ends and 2 held walks the census reports", () => {
+  it("covers the 16 dead ends and 2 held walks the census reports", () => {
+    // D19 (2026-09-16): the corpus regeneration this pin depends on surfaced
+    // one walk the previous evidence had omitted —
+    // `offshore_business_exploring_sponsor_no_no_route.json`, D12_NOT_CONVERTIBLE —
+    // pre-existing under the signed pack, unrelated to the `overstay_days`
+    // fix itself; its `overrides` did not change.
     const states = replay.walks.map((walk) => walk.state);
     expect(
       states.filter((state) => state === "NO_SUPPORTED_PATH"),
-    ).toHaveLength(15);
+    ).toHaveLength(16);
     expect(states.filter((state) => state === "NEEDS_INPUT")).toHaveLength(2);
     expect(replay.pack.file).toBe("rulepack-prod-020.signed.json");
   });

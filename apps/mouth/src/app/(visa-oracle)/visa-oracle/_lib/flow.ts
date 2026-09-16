@@ -518,7 +518,7 @@ export function computeNextNode(
       // `holds_stay_permit` FIRST for offshore — a single gate question —
       // and only expands into the full `permit_expiry`/`stay_permit_code`
       // chain on "yes". A "no" answer converges straight to
-      // `overstay_days`: `fact-mapper.ts::mapCurrentStatusCode` derives
+      // `nationalities`: `fact-mapper.ts::mapCurrentStatusCode` derives
       // `immigration.current_status_code` directly from that "no" (the
       // synthesized `NO_STAY_PERMIT` sentinel — see its docstring and
       // `fact_registry.py`'s `_VISIT_CLASS_STATUS_CODES`), so the fact
@@ -526,6 +526,11 @@ export function computeNextNode(
       // Onshore is completely unchanged — see the `permit_expiry` and
       // `holds_stay_permit` cases below for how the two orders coexist
       // without looping.
+      //
+      // D19 (owner ruling, Zero, 2026-09-16): every offshore route below
+      // also skips `overstay_days` itself — you cannot overstay while
+      // outside Indonesia — and lands on `nationalities` instead; see the
+      // `holds_stay_permit`/`stay_permit_code`/`renewal_paid` cases below.
       return facts.in_indonesia === "yes"
         ? { kind: "question", questionId: "permit_expiry" }
         : { kind: "question", questionId: "holds_stay_permit" };
@@ -551,20 +556,35 @@ export function computeNextNode(
       // `permit_expiry`, unlike onshore). "yes" still needs the real
       // code+expiry chain; "no" converges directly — see the
       // `fact-mapper.ts` comment above for why no further question is
-      // needed to resolve the fact.
+      // needed to resolve the fact. D19: it converges to `nationalities`,
+      // not `overstay_days` — offshore never shows that question at all.
       return facts.holds_stay_permit === "yes"
         ? { kind: "question", questionId: "permit_expiry" }
-        : { kind: "question", questionId: "overstay_days" };
+        : { kind: "question", questionId: "nationalities" };
     }
     case "stay_permit_code":
+      // D19: offshore (only reachable here via `holds_stay_permit === "yes"`
+      // above) skips `overstay_days` too, straight to `nationalities`.
       return shouldAskRenewalPaid(facts, today)
         ? { kind: "question", questionId: "renewal_paid" }
-        : { kind: "question", questionId: "overstay_days" };
+        : facts.in_indonesia === "yes"
+          ? { kind: "question", questionId: "overstay_days" }
+          : { kind: "question", questionId: "nationalities" };
     case "renewal_paid":
-      return { kind: "question", questionId: "overstay_days" };
+      // D19: same offshore/onshore split as `stay_permit_code` above.
+      return facts.in_indonesia === "yes"
+        ? { kind: "question", questionId: "overstay_days" }
+        : { kind: "question", questionId: "nationalities" };
     case "current_status_code":
+      // Onshore only (offshore's "no" branch never reaches this question —
+      // see `holds_stay_permit` above), so `overstay_days` is unchanged here.
       return { kind: "question", questionId: "overstay_days" };
     case "overstay_days":
+      // D19: the offshore branch below is no longer reached by any live
+      // route into this case (every offshore transition above now skips
+      // straight to `nationalities`) — kept only so a pre-D19 saved
+      // snapshot that still holds an offshore `overstay_days` node replays
+      // to the same next node it always did, instead of truncating.
       return facts.in_indonesia === "yes"
         ? { kind: "question", questionId: "wants_onshore_conversion" }
         : { kind: "question", questionId: "nationalities" };
@@ -1657,9 +1677,12 @@ export function getTreeSteps(
     { id: "framing", labelI18nKey: "tree.framing" },
     { id: "in_indonesia", labelI18nKey: "tree.in_indonesia" },
     ...permitChainSteps,
-    { id: "overstay_days", labelI18nKey: "tree.overstay_days" },
+    // D19 (2026-09-16): offshore never asks `overstay_days` (see
+    // `computeNextNode`), so it never belongs on an offshore trunk either —
+    // same `facts.in_indonesia === "yes"` gate as `permitChainSteps` above.
     ...(facts.in_indonesia === "yes"
       ? [
+          { id: "overstay_days", labelI18nKey: "tree.overstay_days" },
           {
             id: "wants_onshore_conversion",
             labelI18nKey: "tree.wants_onshore_conversion",
