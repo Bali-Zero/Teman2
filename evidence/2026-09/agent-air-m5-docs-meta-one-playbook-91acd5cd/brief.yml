@@ -1,0 +1,36 @@
+task_id: meta-one-playbook
+gear: 2
+l_level: L2
+gate_class: opus
+objective: >-
+  Land the shared context for Bali Zero's Meta One Advanced subscription (Meta's new FB+IG+WA
+  bundle, launched 2026-09-15): the playbook (benefits with monthly quotas, current state, seven
+  plays, steward spec, rollout, scoreboard, operator list), the /metaone corner skill and the
+  meta-one-steward weekly agent definition. Docs, skill and agent definition only; no code.
+constraints:
+  - >-
+    Files touched: docs/marketing/meta-one-advanced-playbook.md, .agents/skills/metaone/SKILL.md,
+    the .claude/skills/metaone symlink, .claude/agents/meta-one-steward.md and one .gitignore allowlist line.
+  - Law 5 and Law 2 restated, never weakened; no secret, no client PII, no paid API.
+  - The steward cron, plist and registry entry ship in sibling PRs from the infra lane.
+acceptance:
+  - text: >-
+      WHEN the skills canonical suite runs THE new corner SHALL be within the per-skill description
+      limit and the suite SHALL pass.
+    probe: python3 -m pytest scripts/tests/test_skills_canonical.py -q
+  - text: >-
+      WHEN a session lists skills on a checkout of main THE symlink .claude/skills/metaone SHALL
+      resolve to ../../.agents/skills/metaone and the corner SHALL load through it.
+    probe: readlink .claude/skills/metaone && head -3 .claude/skills/metaone/SKILL.md
+  - text: >-
+      WHEN prettier checks the three markdown files THE check SHALL pass without content change.
+    probe: npx prettier --check docs/marketing/meta-one-advanced-playbook.md .agents/skills/metaone/SKILL.md .claude/agents/meta-one-steward.md
+consumer_map:
+  - Every Claude session on M5/Pro/Mini loads /metaone before Meta One work; the weekly agent appears in the agent roster.
+  - Zero and Damar read the playbook's plays, quotas and Solo-operatore list.
+risks:
+  - Quotas are Meta's Help Centre wording on 2026-09-16 and may change; the playbook names the source id so a change is a one-line edit.
+  - The playbook states the Instagram token is dead since 2026-08-31 (read live on Pro); it must be updated when Zero re-issues it.
+grader: fresh Opus 5 session outside the contribution chain (builder was Sonnet 5, spec author Fable 5.1).
+budget: existing subscriptions only; no paid API calls.
+pii: none
