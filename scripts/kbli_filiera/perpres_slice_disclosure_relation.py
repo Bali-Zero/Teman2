@@ -152,6 +152,36 @@ ADJACENT_NOT_CONTAINED: dict[str, str] = {
 }
 
 
+# Lampiran II (Koperasi/UMKM `dialokasikan`) partial-reservation disclosures —
+# a SEPARATE instrument from the Lampiran III foreign-cap slices above. Hand-
+# authored because, unlike the general Lampiran III ancestor-join, there is no
+# blanket derivation yet for a Pasal 5(5) partial UMKM reservation sitting
+# inside an otherwise-open code (first one: 43110 Pembongkaran, SAETTA-20260915
+# W-H PR-2, dossier BATTAGLIA-20260911/4-KBLI-APP/
+# DOSSIER-no-besar-normativo-2026-09-15.md §3.1/§7 item 7). Each row carries
+# its OWN instrument string (never the module-level Lampiran III
+# INSTRUMENT/VINTAGE) and `foreignCapPct: 0` — `dialokasikan` bars all foreign
+# ownership on the NAMED segment, same reading `perpres_umkm_reservation_
+# relation.py`'s docstring gives for the DIALOKASIKAN column generally.
+# Validated the same way as every other disclosure below: the code's own
+# whole-code `pma_status` must be TERBUKA (an already-restricted whole code
+# needs no slice notice, it IS the restriction).
+LAMPIRAN_II_INSTRUMENT = "Perpres 10/2021 as amended by Perpres 49/2021, Lampiran II"
+LAMPIRAN_II_VINTAGE = "2021-05-25"
+LAMPIRAN_II_MANUAL_SLICE_ROWS: dict[str, list[tuple[int, str, int, str | None]]] = {
+    "43110": [
+        (
+            37,
+            "Pembongkaran yang menggunakan teknologi sederhana dan madya",
+            0,
+            "dialokasikan untuk Koperasi dan UMKM — Pasal 5(5) scopes the "
+            "reservation to this named segment only; the rest of the code is "
+            "not reserved",
+        ),
+    ],
+}
+
+
 class SliceDisclosureError(RuntimeError):
     """A refusal. Never downgraded to a warning, never silently dropped."""
 
@@ -164,12 +194,14 @@ def broader_codes(adjudication: dict[str, tuple[str, str]]) -> set[str]:
     return {code for code, (verdict, _) in adjudication.items() if verdict == BROADER}
 
 
-def _row(entry: int, bidang: str, cap: int, cond: str | None) -> dict[str, Any]:
+def _row(
+    entry: int, bidang: str, cap: int, cond: str | None, instrument: str = INSTRUMENT
+) -> dict[str, Any]:
     return {
         "bidangUsaha": bidang,
         "foreignCapPct": cap,
         "condition": cond,
-        "locator": f"{INSTRUMENT} entry #{entry}",
+        "locator": f"{instrument} entry #{entry}",
     }
 
 
@@ -219,6 +251,24 @@ def manual_rows() -> dict[str, list[dict[str, Any]]]:
     }
 
 
+def lampiran_ii_rows() -> dict[str, list[dict[str, Any]]]:
+    """The hand-authored Lampiran II (UMKM `dialokasikan`) disclosures.
+
+    A separate population from `manual_rows()` — different instrument,
+    different column of the same Perpres — so it is never merged into
+    `MANUAL_SLICE_ROWS` (that dict's own guilt/innocence check in
+    `compute_disclosures` re-verifies its codes are BROADER-adjudicated under
+    Lampiran III, which is a claim this population never makes).
+    """
+    return {
+        code: [
+            _row(entry, bidang, cap, cond, instrument=LAMPIRAN_II_INSTRUMENT)
+            for entry, bidang, cap, cond in rows
+        ]
+        for code, rows in LAMPIRAN_II_MANUAL_SLICE_ROWS.items()
+    }
+
+
 def compute_disclosures(
     canonical: list[dict[str, Any]],
     adjudication: dict[str, tuple[str, str]] | None = None,
@@ -232,6 +282,7 @@ def compute_disclosures(
     disclosures: dict[str, list[dict[str, Any]]] = {}
     disclosures.update(general_rows(canonical, adjudication))
     disclosures.update(manual_rows())
+    disclosures.update(lampiran_ii_rows())
 
     # The two hand-authored codes must ALSO be BROADER-adjudicated — a
     # guilt/innocence pin against ADJUDICATION drifting out from under them,

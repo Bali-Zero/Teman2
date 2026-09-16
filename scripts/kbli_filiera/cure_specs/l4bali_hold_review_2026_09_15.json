@@ -1,0 +1,103 @@
+{
+  "_generated_by": "scripts/kbli_filiera/cure_l4bali_hold_review.py (dossier DOSSIER-no-besar-normativo-2026-09-15.md Template H r2, section 2.1)",
+  "_dossier_ref": "/Users/balizero/BATTAGLIA-20260911/4-KBLI-APP/DOSSIER-no-besar-normativo-2026-09-15.md#21",
+  "template": "No foreign-ownership reservation or cap for this activity was located in Perpres 10/2021 as amended by Perpres 49/2021 (Lampiran I, II, III) or in its closed list — so this is not a national 0% finding. OSS currently publishes licensing rows for this code only at {scales} scale, while a PT PMA is by law an Usaha Besar that must invest more than IDR 10 billion per KBLI per location (Perpres 10/2021 Pasal 7(1); Permen Investasi/BKPM 5/2025 Pasal 26(1)–(2)): whether OSS will license this code for a PT PMA must be confirmed in OSS; a scale missing from the licensing rules does not by itself restrict the activity (Permen Investasi/BKPM 5/2025 Pasal 8(6)).{sector} In Bali we flag this code as blocked as a precaution, not because a closure naming it was located. The Governor of Bali asked BKPM (letter B.27.000/642/PM/DPMPTSP, 28 Jan 2026) to close OSS to PT PMA in the Rendah and Menengah Rendah risk tiers, which include this code ({tier}). The provincial government reports that the closure applied from the third week of May 2026 covers 18 listed KBLI, and under the official BPS KBLI 2020→2025 crosswalk this code is not among them. Confirm the current OSS status in Bali before relying on this flag either way.",
+  "codes": {
+    "38110": {
+      "sector": " The only waste-sector Lampiran II row (38302) is a partnership (kemitraan) row, which does not bar a PT PMA.",
+      "expected_reason": "No foreign-ownership restriction located in Perpres 49/2021 Lampiran I/II/III, the closed list, or any sectoral instrument read — so this is NOT closed to foreign ownership. It is blocked in Bali by the PMA moratorium: risk tier ['Menengah Rendah'] falls inside the Rendah / Menengah Rendah categories the Governor of Bali asked BKPM to close on OSS (letter B.27.000/642/PM/DPMPTSP, 28 Jan 2026, read at source: the request is by RISK TIER, and carries no annex or code list).",
+      "expected_confidence": "HIGH",
+      "expected_needs_review": false,
+      "expected_blocked": true,
+      "expected_status": "CHIUSO_MORATORIA_BALI"
+    },
+    "55202": {
+      "sector": "",
+      "expected_reason": "No foreign-ownership restriction located in Perpres 49/2021 Lampiran I/II/III, the closed list, or any sectoral instrument read — so this is NOT closed to foreign ownership. It is blocked in Bali by the PMA moratorium: risk tier ['Menengah Rendah'] falls inside the Rendah / Menengah Rendah categories the Governor of Bali asked BKPM to close on OSS (letter B.27.000/642/PM/DPMPTSP, 28 Jan 2026, read at source: the request is by RISK TIER, and carries no annex or code list).",
+      "expected_confidence": "HIGH",
+      "expected_needs_review": false,
+      "expected_blocked": true,
+      "expected_status": "CHIUSO_MORATORIA_BALI"
+    },
+    "55300": {
+      "sector": "",
+      "expected_reason": "No foreign-ownership restriction located in Perpres 49/2021 Lampiran I/II/III, the closed list, or any sectoral instrument read — so this is NOT closed to foreign ownership. It is blocked in Bali by the PMA moratorium: risk tier ['Menengah Rendah'] falls inside the Rendah / Menengah Rendah categories the Governor of Bali asked BKPM to close on OSS (letter B.27.000/642/PM/DPMPTSP, 28 Jan 2026, read at source: the request is by RISK TIER, and carries no annex or code list).",
+      "expected_confidence": "HIGH",
+      "expected_needs_review": false,
+      "expected_blocked": true,
+      "expected_status": "CHIUSO_MORATORIA_BALI"
+    },
+    "56102": {
+      "sector": " The applicable tourism standard (Permenpar 6/2025) sets a Sertifikat Standar and hygiene requirement with no scale gating, and for food and beverage services the PMA investment threshold is counted per 2-digit KBLI per regency/city (Permen Investasi/BKPM 5/2025 Pasal 26).",
+      "expected_reason": "The located requirement is not an ownership rule and a PT PMA can satisfy it: Permenpar 6/2025 Lampiran, standards for 56103/56104/56109 — Sertifikat Standar + hygiene (HSP/SLHS). No 56xxx entry anywhere in Perpres 49/2021 — so this is NOT closed to foreign ownership. It is blocked in Bali by the PMA moratorium: risk tier ['Menengah Rendah'] falls inside the Rendah / Menengah Rendah categories the Governor of Bali asked BKPM to close on OSS (letter B.27.000/642/PM/DPMPTSP, 28 Jan 2026, read at source: the request is by RISK TIER, and carries no annex or code list).",
+      "expected_confidence": "HIGH",
+      "expected_needs_review": false,
+      "expected_blocked": true,
+      "expected_status": "CHIUSO_MORATORIA_BALI"
+    },
+    "56304": {
+      "sector": " The applicable tourism standard (Permenpar 6/2025) sets a Sertifikat Standar and hygiene requirement with no scale gating, and for food and beverage services the PMA investment threshold is counted per 2-digit KBLI per regency/city (Permen Investasi/BKPM 5/2025 Pasal 26).",
+      "expected_reason": "The located requirement is not an ownership rule and a PT PMA can satisfy it: Permenpar 6/2025 Lampiran, \"KBLI (56304) KEDAI MINUMAN\", risk Menengah Rendah — Sertifikat Standar + HSP; *Penggolongan Usaha* is \"-\" (no scale gating) — so this is NOT closed to foreign ownership. It is blocked in Bali by the PMA moratorium: risk tier ['Menengah Rendah'] falls inside the Rendah / Menengah Rendah categories the Governor of Bali asked BKPM to close on OSS (letter B.27.000/642/PM/DPMPTSP, 28 Jan 2026, read at source: the request is by RISK TIER, and carries no annex or code list).",
+      "expected_confidence": "HIGH",
+      "expected_needs_review": false,
+      "expected_blocked": true,
+      "expected_status": "CHIUSO_MORATORIA_BALI"
+    },
+    "56306": {
+      "sector": " The applicable tourism standard (Permenpar 6/2025) sets a Sertifikat Standar and hygiene requirement with no scale gating, and for food and beverage services the PMA investment threshold is counted per 2-digit KBLI per regency/city (Permen Investasi/BKPM 5/2025 Pasal 26).",
+      "expected_reason": "The located requirement is not an ownership rule and a PT PMA can satisfy it: Permenpar 6/2025 Lampiran p.170, \"KBLI (56306)\" — Sertifikat Standar + HSP; no scale gating — so this is NOT closed to foreign ownership. It is blocked in Bali by the PMA moratorium: risk tier ['Menengah Rendah'] falls inside the Rendah / Menengah Rendah categories the Governor of Bali asked BKPM to close on OSS (letter B.27.000/642/PM/DPMPTSP, 28 Jan 2026, read at source: the request is by RISK TIER, and carries no annex or code list).",
+      "expected_confidence": "HIGH",
+      "expected_needs_review": false,
+      "expected_blocked": true,
+      "expected_status": "CHIUSO_MORATORIA_BALI"
+    },
+    "70201": {
+      "sector": " Lampiran II entry 49 reserves 70202 (transport consultancy), not this code.",
+      "expected_reason": "No foreign-ownership restriction located in Perpres 49/2021 Lampiran I/II/III, the closed list, or any sectoral instrument read — so this is NOT closed to foreign ownership. It is blocked in Bali by the PMA moratorium: risk tier ['Rendah'] falls inside the Rendah / Menengah Rendah categories the Governor of Bali asked BKPM to close on OSS (letter B.27.000/642/PM/DPMPTSP, 28 Jan 2026, read at source: the request is by RISK TIER, and carries no annex or code list).",
+      "expected_confidence": "HIGH",
+      "expected_needs_review": false,
+      "expected_blocked": true,
+      "expected_status": "CHIUSO_MORATORIA_BALI"
+    },
+    "73300": {
+      "sector": " Two instruments disagree on scale: PP 28/2025 Lampiran I.P lists Mikro/Kecil/Menengah only, while Permen Ekraf 7/2025 lists Usaha Besar too.",
+      "expected_reason": "The located requirement is not an ownership rule and a PT PMA can satisfy it: Two instruments **conflict**: PP 28/2025 Lampiran I.P entry 9 (70203) gives Mikro/Kecil/Menengah, no Besar; Permen Ekraf 7/2025 Lampiran I entry 9 gives **UMKMB** (incl. Besar). No investment-annex entry either way — so this is NOT closed to foreign ownership. It is blocked in Bali by the PMA moratorium: risk tier ['Rendah'] falls inside the Rendah / Menengah Rendah categories the Governor of Bali asked BKPM to close on OSS (letter B.27.000/642/PM/DPMPTSP, 28 Jan 2026, read at source: the request is by RISK TIER, and carries no annex or code list).",
+      "expected_confidence": "HIGH",
+      "expected_needs_review": false,
+      "expected_blocked": true,
+      "expected_status": "CHIUSO_MORATORIA_BALI"
+    },
+    "74199": {
+      "sector": " PP 28/2025 lists Mikro/Kecil only and Permen Ekraf 7/2025 marks this activity UMK; the effect of that sectoral marking on a PT PMA is unverified.",
+      "expected_reason": "The located requirement is not an ownership rule and a PT PMA can satisfy it: PP 28/2025 Lampiran I.P entry 4 (74149) *Skala Usaha* = Mikro, Kecil only; Permen Ekraf 7/2025 Lampiran I entry 4 = **UMK** (the only 1 of its 16 codes so marked). Not a Pasal 5(1)(a) reservation — so this is NOT closed to foreign ownership. It is blocked in Bali by the PMA moratorium: risk tier ['Rendah'] falls inside the Rendah / Menengah Rendah categories the Governor of Bali asked BKPM to close on OSS (letter B.27.000/642/PM/DPMPTSP, 28 Jan 2026, read at source: the request is by RISK TIER, and carries no annex or code list).",
+      "expected_confidence": "HIGH",
+      "expected_needs_review": false,
+      "expected_blocked": true,
+      "expected_status": "CHIUSO_MORATORIA_BALI"
+    },
+    "79901": {
+      "sector": "",
+      "expected_reason": "No foreign-ownership restriction located in Perpres 49/2021 Lampiran I/II/III, the closed list, or any sectoral instrument read — so this is NOT closed to foreign ownership. It is blocked in Bali by the PMA moratorium: risk tier ['Rendah'] falls inside the Rendah / Menengah Rendah categories the Governor of Bali asked BKPM to close on OSS (letter B.27.000/642/PM/DPMPTSP, 28 Jan 2026, read at source: the request is by RISK TIER, and carries no annex or code list).",
+      "expected_confidence": "HIGH",
+      "expected_needs_review": false,
+      "expected_blocked": true,
+      "expected_status": "CHIUSO_MORATORIA_BALI"
+    },
+    "79902": {
+      "sector": "",
+      "expected_reason": "No foreign-ownership restriction located in Perpres 49/2021 Lampiran I/II/III, the closed list, or any sectoral instrument read — so this is NOT closed to foreign ownership. It is blocked in Bali by the PMA moratorium: risk tier ['Rendah'] falls inside the Rendah / Menengah Rendah categories the Governor of Bali asked BKPM to close on OSS (letter B.27.000/642/PM/DPMPTSP, 28 Jan 2026, read at source: the request is by RISK TIER, and carries no annex or code list).",
+      "expected_confidence": "HIGH",
+      "expected_needs_review": false,
+      "expected_blocked": true,
+      "expected_status": "CHIUSO_MORATORIA_BALI"
+    },
+    "86995": {
+      "sector": " The Permenkes 14/2021 standard for this activity has not been read from its annex.",
+      "expected_reason": "No foreign-ownership restriction located in Perpres 49/2021 Lampiran I/II/III, the closed list, or any sectoral instrument read — so this is NOT closed to foreign ownership. It is blocked in Bali by the PMA moratorium: risk tier ['Menengah Rendah'] falls inside the Rendah / Menengah Rendah categories the Governor of Bali asked BKPM to close on OSS (letter B.27.000/642/PM/DPMPTSP, 28 Jan 2026, read at source: the request is by RISK TIER, and carries no annex or code list).",
+      "expected_confidence": "HIGH",
+      "expected_needs_review": false,
+      "expected_blocked": true,
+      "expected_status": "CHIUSO_MORATORIA_BALI"
+    }
+  }
+}

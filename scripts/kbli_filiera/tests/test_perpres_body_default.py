@@ -320,7 +320,9 @@ def test_the_residual_bucket_is_the_bulk_of_the_catalogue(rep):
     and now falls back to residual instead of inheriting a foreign-cap citation.
     """
     # 2026-09-11 OSS re-snapshot (v11.0-L2-oss-risk-20260911): was 877, now 878 — the re-ingested canonical shifted one code's routing back onto the residual default.
-    assert rep["buckets"]["residual-besar-observed"] == 878
+    # 878 -> 879 on 2026-09-15 (SAETTA-20260915 W-H PR-2b): 93114/43110 both
+    # gained an observed Besar row, adding one net to this bucket.
+    assert rep["buckets"]["residual-besar-observed"] == 879
     assert rep["buckets"]["sector-law-carveout"] == 6
 
 
@@ -343,7 +345,9 @@ def test_an_absent_per_skala_is_unobserved_not_an_absence_of_besar(canonical):
 def test_the_besar_axis_partitions_every_record(rep):
     assert sum(rep["besar_axis"].values()) == rep["codes"] == 1559
     # 2026-09-11 OSS re-snapshot (v11.0-L2-oss-risk-20260911): was {observed 1318, absent 24, unobserved 217}, now {1319, 23, 217} — one Besar-absent record gained an observed scale row in the re-ingestion.
-    assert rep["besar_axis"] == {"observed": 1319, "absent": 23, "unobserved": 217}
+    # {1319, 23} -> {1321, 21} on 2026-09-15 (PR-2b): 93114 and 43110 BOTH
+    # gained a real Besar row, moving each from absent to observed.
+    assert rep["besar_axis"] == {"observed": 1321, "absent": 21, "unobserved": 217}
 
 
 # --------------------------------------------------------------------------
@@ -386,7 +390,12 @@ def test_the_barred_but_open_list_reads_across_every_bucket(rep):
     """
     rows = pasal7_review_flags(rep)
     # 2026-09-11 OSS re-snapshot (v11.0-L2-oss-risk-20260911): was 19, now 18 — same code membership shape (all prior guilt/innocence assertions below still hold), one fewer barred-but-open row in the re-ingested catalogue.
-    assert len(rows) == 18
+    # 18 -> 16 on 2026-09-15 (PR-2b): 93114 and 43110 both gained a real
+    # Besar row, so neither is "TERBUKA with no Besar row" any more. Merged
+    # with SAETTA-20260915 W-H PR-3 (same day): 55201/55203/79903 also
+    # depart — see the note below the `55201`/`55203` assertion. Combined:
+    # 18 - 2 (PR-2b) - 3 (PR-3) = 13.
+    assert len(rows) == 13
     codes = {r["code"] for r in rows}
     # 2026-08-06, THIRD movement — and the one that empties the "annex-named AND
     # Besar-less" example slot this line used to hold. `96210` (barber),
@@ -430,7 +439,22 @@ def test_the_barred_but_open_list_reads_across_every_bucket(rep):
     # This assertion existing is why the movement had to be argued rather than
     # absorbed: the tripwire fired on the apply and sent the reader back to the
     # withdrawal, which is exactly the job it was written for.
-    assert {"55201", "55203"} <= codes
+    #
+    # SAETTA-20260915 W-H PR-3, FOURTH movement — `55201` (homestay) and `55203`
+    # (villa) are OUT, and `79903` (pramuwisata) left with them. The check this
+    # docstring said "has not been done" is now done: `apply_umkm_reservations.
+    # check()`'s own `judged_as` gate re-derives, from `bps_2020_ancestors` and
+    # its reverse index, that each 2020 ancestor (55130, 55193, 79921) has
+    # EXACTLY ONE 2025 heir and that heir absorbs no other ancestor — the same
+    # proof that moved `96210`/`96220`/`96100` out in the THIRD movement above,
+    # now run on these three. They left as RESERVED (Lampiran II p.15 entry 48
+    # for the first two, p.16 entry 56 for the third — W-F dossier
+    # `DOSSIER-no-besar-normativo-2026-09-15.md` §2, §6.1), not as "still
+    # unexplained". `79903` was never named in this docstring's history because
+    # no prior lot had touched it; its lineage-vs-identity gap was the same one
+    # `55201`/`55203` carried, closed by the same spec
+    # (`cure_specs/lampiran2_allocation_wh_pr3_2026_09_15.json`).
+    assert not ({"55201", "55203", "79903"} & codes)
     assert "95291" not in codes
     assert "79110" not in codes
     assert all(r["besar"] == "absent" for r in rows)
@@ -572,11 +596,18 @@ def test_a_missing_besar_row_no_longer_decides_anything_by_itself(canonical):
     four different verdicts, because a missing Besar row is no longer a verdict
     at all: what decides is the Perpres annex for ownership and the risk tier for
     Bali. The two historical codes are still among them, which is how we know the
-    set grew rather than being replaced."""
+    set grew rather than being replaced.
+
+    2026-09-15 (SAETTA-20260915 W-H PR-2b): 93114 and 43110 both gained a real
+    Besar row (golf-course Tinggi; BUJK-PMA Menengah Tinggi), so both LEAVE
+    this population — a missing Besar row can no longer be argued for either.
+    79110 stays (still IN REVIEW per the dossier, untouched by this cure).
+    """
     ov = overlay_reconciliation(canonical)
     not_closed = {r["code"]: r for r in ov["absent_besar_not_closed"]}
-    assert {"79110", "93114"} <= set(not_closed)
-    assert not_closed["93114"]["l4_bali"] == "APERTO_BALI_RISCHIO_ALTO"
+    assert "79110" in not_closed
+    assert "93114" not in not_closed
+    assert "43110" not in not_closed
     assert len({r["l4_bali"] for r in not_closed.values()}) > 1, (
         "a single verdict across this set would mean the missing row is still deciding"
     )
@@ -748,7 +779,9 @@ def test_the_citation_never_carries_the_oss_scale_axis(rep):
     built = locators(rep)["locators"]
     absent = [c for c, v in built.items() if v["besar"] == "absent"]
     # 2026-09-11 OSS re-snapshot (v11.0-L2-oss-risk-20260911): was 24, now 23 — tracks the besar_axis "absent" shift above (one record gained an observed scale row).
-    assert len(absent) == 23
+    # 23 -> 21 on 2026-09-15 (PR-2b): 93114/43110 both gained an observed
+    # Besar row, tracking the besar_axis "absent" shift above.
+    assert len(absent) == 21
     for code in absent:
         assert "Besar" not in built[code]["cite"]
         assert "Pasal 7" not in built[code]["cite"]

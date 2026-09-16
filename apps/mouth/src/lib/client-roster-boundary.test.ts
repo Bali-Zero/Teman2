@@ -74,6 +74,24 @@ const ROSTER_GRAPH_MODULES = [
 const EXPECTED_CHUNK_EXCEPTIONS: readonly string[] = [];
 
 /**
+ * The guard's accepted-public-files list, pinned from here — and now EMPTY.
+ *
+ * Until D6 (2026-09-15) this list carried `static/team/faisha.jpg` and
+ * `static/team/sahira.jpg`: real portrait files under `public/`, unlinked from
+ * every page but still fetchable by anyone who guessed the URL, since a file
+ * under `public/` is served from the sessionless CDN with no session and no
+ * page in between. D6 removed the files instead of gating them (a gate would
+ * need a new authenticated route handler plus Next `outputFileTracingIncludes`
+ * wiring — unprovable end-to-end in the window that made the call — while
+ * removal is provable with one anonymous curl returning 404).
+ *
+ * This test fails if the guard's list grows, shrinks to something else, or is
+ * quietly reworded: an entry that can be added without a red test here is not a
+ * declared exception, it is a hole with a comment.
+ */
+const EXPECTED_ACCEPTED_PUBLIC_FILES: readonly string[] = [];
+
+/**
  * EMPTY, and that is the assertion.
  *
  * There used to be one declared exception: `book-data.ts` derived the book team
@@ -328,6 +346,20 @@ describe("the roster does not cross the client boundary", () => {
       guard,
       "the guard no longer imports the shared route walk — a private copy has come back",
     ).toContain('from "./lib/app-routes.mjs"');
+  });
+
+  it("the guard's accepted-public-files list matches this suite's pin", () => {
+    // Same reasoning as the exception-list test above, same reason for reading
+    // source instead of importing it: the guard script exits the process on
+    // failure.
+    const guard = readFileSync(
+      join(SRC, "..", "scripts", "assert-roster-not-in-public-chunks.mjs"),
+      "utf8",
+    );
+    const m = guard.match(/const ACCEPTED_PUBLIC_FILES = (\[[^\]]*\]);/);
+    expect(m, "ACCEPTED_PUBLIC_FILES not found in the guard").toBeTruthy();
+    const listed: string[] = JSON.parse(m![1].replace(/'/g, '"'));
+    expect(listed).toEqual(EXPECTED_ACCEPTED_PUBLIC_FILES);
   });
 
   it("the initials helper carries no roster data of its own", () => {

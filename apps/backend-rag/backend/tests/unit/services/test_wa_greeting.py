@@ -172,6 +172,55 @@ class TestInnocence:
         assert match_greeting("halo " * 20) is None
 
 
+class TestLeadingOrdinal:
+    """B2.5 PR-3 (measured defect D4): a client replying to a numbered menu
+    sends "11.  Halo" — the ordinal must not change the classification.
+    """
+
+    @pytest.mark.parametrize(
+        ("message", "bare_equivalent"),
+        [
+            ("11.  Halo", "Halo"),
+            ("1) Hi", "Hi"),
+            ("3. Selamat pagi", "Selamat pagi"),
+            ("12. hello", "hello"),
+            (" 3. Selamat pagi", "Selamat pagi"),
+        ],
+    )
+    def test_an_ordinal_prefixed_greeting_matches_like_the_bare_one(
+        self, message: str, bare_equivalent: str
+    ) -> None:
+        prefixed = match_greeting(message)
+        bare = match_greeting(bare_equivalent)
+        assert prefixed is not None, f"{message!r} must still be a greeting"
+        assert bare is not None
+        assert prefixed.language == bare.language
+        assert prefixed.text == bare.text
+
+    @pytest.mark.parametrize(
+        "message",
+        [
+            # Guilt without innocence eats real traffic (scar family #3):
+            # the ordinal must not turn a real question into a greeting.
+            "11. Halo, berapa harga PT PMA?",
+            # No dot/paren after the digits — not an ordinal at all.
+            "2026 halo",
+            # Nothing survives the strip — no content, no greeting.
+            "11.",
+            "11. ",
+            # A genuine numbered content message must still fall through.
+            "1. KITAS",
+            # A mid-sentence numbered reference, not a leading ordinal.
+            "Pasal 6. Halo",
+        ],
+    )
+    def test_an_ordinal_does_not_turn_content_into_a_greeting(self, message: str) -> None:
+        assert match_greeting(message) is None, (
+            f"{message!r} was swallowed by the ordinal strip — it carries content "
+            "the retrieval route must answer"
+        )
+
+
 def test_the_return_type_is_frozen() -> None:
     """The turn is a value, not a mutable bag the caller can edit."""
     turn = match_greeting("halo")

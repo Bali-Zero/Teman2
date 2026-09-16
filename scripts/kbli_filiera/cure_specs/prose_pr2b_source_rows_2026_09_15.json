@@ -1,0 +1,38 @@
+{
+  "compiler": "cure_prose_national_openness",
+  "_meta": {
+    "spec": "prose_pr2b_source_rows_2026_09_15",
+    "population": "93114 and 43110, SAETTA-20260915 W-H PR-2b: intel_2026 prose contradicting the licensing rows PR-2b's data compiler just restored. 93114.whatYouNeed said the Menengah/Besar golf-course tier 'could not be confirmed' and 'has been removed' and carried a stale 'Risk tier under review' paragraph; both premises are false now that the tier's row is restored. 43110.editorial.body said only Mikro is recorded and the PP 28/2025 Besar-scale BUJK PMA row is 'not reflected in this per-scale table', when the restored table carries three rows including that one.",
+    "no_new_claims": "Every replacement states only scale, risk tier, perizinan, kewenangan and the BUJK PMA Besar row already on the restored per_skala rows. No new date, price or code; every other paragraph in each field is byte-identical to the pre-cure text."
+  },
+  "codes": {
+    "93114": {
+      "judul": "Fasilitas Lapangan",
+      "expect": {
+        "pma_max_asing": 100,
+        "pma_status": "TERBUKA"
+      },
+      "fields": {
+        "whatYouNeed": {
+          "old_sha256": "46f2ebcce021c5656108ce864be44a540c537a76e44b1d9a689d92f2e094883c",
+          "old_excerpt": "**Mikro/Kecil/Menengah scale**: Medium-Low risk (Menengah Rendah). NIB + Standar",
+          "new": "**Mikro/Kecil/Menengah scale**: Medium-Low risk (Menengah Rendah). NIB + Standard Certificate, issued automatically — this tier's licensing is confirmed against the official PP28/2025 regulation text (own-code row, image-verified, explicitly excludes golf facilities).\n\n**Menengah/Besar scale (golf-course-specific \"Fasilitas Lapangan Golf\" facilities)**: Tinggi risk under PP 28/2025 Lampiran I.L.61. Licensing is NIB + Izin, with authority at Menteri/Kepala Badan level; requirements include a Penilaian Mandiri Kesiapan Penerapan Standar and a Sertifikat Standar Usaha Pariwisata issued by an LSPr. This scale sits outside the Rendah/Menengah Rendah tiers the Bali moratorium request targets, and no Perpres reservation for it was located; whether OSS licenses it for a PT PMA should still be confirmed case by case.\n\n**PMA:** Nationally fully open — 100% foreign ownership allowed.\n\nBefore registering or investing, confirm the current requirements with the Bali Zero team."
+        }
+      }
+    },
+    "43110": {
+      "judul": "Pembongkaran",
+      "expect": {
+        "pma_max_asing": 100,
+        "pma_status": "TERBUKA"
+      },
+      "fields": {
+        "editorial.body": {
+          "old_sha256": "d910d4ff551e48ad6d2cda02232dd60928b8beedfc5c6246da3f244e1fea7294",
+          "old_excerpt": "Demolition here is a broad, practical field: mechanically taking down multi-stor",
+          "new": "Demolition here is a broad, practical field: mechanically taking down multi-storey and non-storey buildings, dismantling and cutting steel structures, removing reinforced concrete, and dealing with semi-permanent buildings. Its scope also includes demolition involving hazardous materials, as well as controlled dismantling designed to recover materials for reuse. The defining idea is not simply destruction, but the managed removal of built structures and their components.\n\nThe scale table for this activity carries three rows. Mikro, Kecil and Menengah scale — for a BUJKN, not an individual operator — sits at Menengah Tinggi risk. A separate Mikro-scale row for an individual operator (Usaha Orang Perseorangan) sits at Menengah Rendah risk. PP 28/2025's Lampiran I.H entry 39 also carries a Besar-scale row for this code in the same per-scale table, with requirements specific to a foreign-invested construction company (BUJK PMA). For an entrepreneur, the practical reading begins with the scale actually declared: a BUJKN enters at Mikro through Menengah, an individual operator at Mikro, and a foreign-invested construction company at Besar.\n\nAt the national level, the investment position is straightforward. The activity is marked **TERBUKA**, with a maximum foreign ownership ceiling of **100%** under the cited national source. In plain terms, the national record permits full foreign ownership; there is no stated partial foreign-share cap within this entry. That national position describes the foreign-investment ceiling, but it does not by itself settle whether a PMA company can register the activity in every locality.\n\nBali is where the distinction becomes decisive. The Bali picture is **scope-dependent**: Perpres 10/2021's Lampiran II reserves one named sub-activity here — demolition using simple and medium technology — for Koperasi/UMKM only, while PP 28/2025's Lampiran I.H entry 39 publishes a Besar-scale row for this code written for BUJK PMA. For a foreigner considering a Bali-based PMA structure, the honest answer is that it depends on the exact sub-activity: the reserved slice is closed to foreign ownership, and the rest needs checking case by case. The record also notes a permanent, island-wide provincial rule blocking all Low and Medium-Low risk KBLI for PMA, cited to a Governor’s letter. National openness and Bali registration are different tests; on this activity, whether a PMA can register turns on the specific sub-activity reserved under Perpres 10/2021 and, separately, on whether the province-wide moratorium above applies to that project's risk tier — not a single blanket verdict either way."
+        }
+      }
+    }
+  }
+}

@@ -1,4 +1,13 @@
-import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
+import {
+  existsSync,
+  mkdtempSync,
+  readFileSync,
+  readdirSync,
+  rmSync,
+  statSync,
+  writeFileSync,
+} from "node:fs";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, it, expect } from "vitest";
 
@@ -64,16 +73,27 @@ const DESK_DIR = (() => {
  *
  * A page joins this list in the PR that restyles it, never before: a baseline
  * that lists a page it cannot hold is a guard that reports green on uncured
- * code. `/review` joins in K2b and `/obligations` in K2c, each flipping to
- * `dangerToken: false` in the same commit that removes its last danger read —
- * so the ratchet only ever tightens, and it tightens with the content that
- * earns it.
+ * code. `/review` joined in K2b, and `/obligations` and `/notifications` in
+ * K2c, each flipping to `dangerToken: false` in the same commit that removes
+ * its last danger read — so the ratchet only ever tightens, and it tightens
+ * with the content that earns it. All four desk pages are now bound, with no
+ * exemption left.
  */
 const DESK_PAGES: Array<{ name: string; dir: string; dangerToken: boolean }> = [
   { name: "dashboard", dir: "dashboard", dangerToken: false },
-  // See the doc block: pinned by the WS2 residuals drain guard.
-  { name: "notifications", dir: "notifications", dangerToken: true },
   { name: "review", dir: "review", dangerToken: false },
+  // K2c: the body (generate panel, status counters, table) moved onto the
+  // hairline ledger and its last --state-danger read left with it.
+  { name: "obligations", dir: "obligations", dangerToken: false },
+  // K2c: /notifications was the one page still EXEMPT here, because the WS2
+  // residuals drain guard pinned it to the danger token. That exemption is
+  // gone, and the pin with it. On kita --state-danger resolves to COPPER, so
+  // painting a failed delivery with it claimed the signed-in viewer is the
+  // next actor on a record nobody owns. Urgency reads --state-warning now,
+  // and token-drain.residuals.guard.test.ts was NARROWED in the same commit:
+  // it still pins this page's token reads and keeps all three of its
+  // hex/rgba/palette assertions, so the drain is still proved.
+  { name: "notifications", dir: "notifications", dangerToken: false },
 ];
 
 /** Rendered sources only — a test file's fixtures are not the page's paint. */
@@ -97,22 +117,53 @@ function sourcesOf(dir: string): string[] {
   return out;
 }
 
+/**
+ * Code lines only — a comment is PROSE, and judging prose is the over-match
+ * half of cicatrix family #3.
+ *
+ * The leading-marker test alone was not enough and this file's own history
+ * proves it: a wrapped JSX block comment explaining WHY --state-danger was
+ * removed was convicted of reading it, because its continuation lines start
+ * with neither `//` nor `*`. A guard that punishes a page for documenting the
+ * rule is a guard that teaches people to stop documenting. So this tracks
+ * block-comment state across lines instead of guessing per line.
+ *
+ * Deliberately NOT a parser: a `/*` inside a string literal would open a
+ * phantom comment here. That is a known and accepted limit — it can only ever
+ * make the guard MISS, never convict innocent code, and no desk page has such
+ * a literal. The innocence and guilt cases below pin both directions.
+ */
 function codeLines(file: string): Array<{ n: number; text: string }> {
-  return readFileSync(file, "utf8")
+  const out: Array<{ n: number; text: string }> = [];
+  let inBlock = false;
+  readFileSync(file, "utf8")
     .split("\n")
-    .map((text, i) => ({ n: i + 1, text }))
-    .filter(({ text }) => {
+    .forEach((text, i) => {
       const t = text.trimStart();
+      const opensBlock = /\/\*/.test(text);
+      const closesBlock = /\*\//.test(text);
+      if (inBlock) {
+        // Still inside a block comment. It ends on this line only if the
+        // closer appears; either way this line is prose, not paint.
+        if (closesBlock) inBlock = false;
+        return;
+      }
+      if (opensBlock && !closesBlock) {
+        inBlock = true;
+        return;
+      }
       if (
         t.startsWith("//") ||
         t.startsWith("*") ||
         t.startsWith("/*") ||
         t.startsWith("{/*")
       ) {
-        return false;
+        return;
       }
-      return !text.includes("token-lint-ok:");
+      if (text.includes("token-lint-ok:")) return;
+      out.push({ n: i + 1, text });
     });
+  return out;
 }
 
 const HEX_RE = /#[0-9a-fA-F]{3,8}\b/;
@@ -163,7 +214,18 @@ const COPPER_FILL_RE = new RegExp(
  * explicitly. Flipping it as-is would be cicatrix family #3 in the OVER
  * direction, which is the failure this file's own comments warn about.
  */
-const COPPER_FILL_PAGES = new Set(["review"]);
+// K2c adds /notifications and /obligations. Both were checked against this
+// rule before being added, and both are clean of the SHAPES it can see.
+//
+// What it CANNOT see, written down so its green is never read as more than it
+// measures: an INDIRECT fill. Both pages paint their state pips with
+// `bg-current` inside an element whose text colour is copper, which is a
+// copper background that no regex over the same line will ever catch. Those
+// two pips are legitimate — the concept grants the state pill a copper pip by
+// name — but the same trick would hide a real fill just as well. A rule that
+// followed `currentColor` would have to resolve a cascade this test does not
+// run, so the limit stands and is declared rather than papered over.
+const COPPER_FILL_PAGES = new Set(["review", "notifications", "obligations"]);
 
 /** The scanner. Exported so its own guilt and innocence are provable below. */
 export function redViolation(
@@ -183,6 +245,44 @@ export function redViolation(
 
 describe("the desk no-red scanner", () => {
   const strict = { dangerToken: false };
+
+  // The comment filter itself, both directions. It is a real scanner input:
+  // this guard once convicted a page for EXPLAINING why it dropped the danger
+  // token, because the explanation wrapped onto lines starting with neither
+  // "//" nor "*".
+  it("reads PROSE as prose and PAINT as paint, across a wrapped block comment", () => {
+    const dir = mkdtempSync(join(tmpdir(), "desk-no-red-"));
+    const file = join(dir, "sample.tsx");
+    writeFileSync(
+      file,
+      [
+        "export function Sample() {",
+        "  return (",
+        "    <>",
+        "      {/* Warning, not --state-danger. On kita",
+        "          --state-danger resolves to copper, which would",
+        "          claim the viewer is the next actor. */}",
+        '      <p className="text-[var(--state-warning)]">Error</p>',
+        '      <p className="text-[var(--state-danger)]">Real</p>',
+        "    </>",
+        "  );",
+        "}",
+      ].join("\n"),
+      "utf8",
+    );
+
+    const offences = codeLines(file)
+      .filter(({ text }) => redViolation(text, strict))
+      .map(({ n }) => n);
+
+    // INNOCENT: lines 4-6 are the wrapped comment. Line 5 names the token in
+    // prose and must NOT be convicted — that is the over-match this pins.
+    expect(offences).not.toContain(5);
+    // GUILTY: line 8 actually paints with it.
+    expect(offences).toEqual([8]);
+
+    rmSync(dir, { recursive: true, force: true });
+  });
 
   it("is GUILTY on the three shapes that put red back", () => {
     const redHexLine = '  style={{ color: "#b91c1c" }}'; // token-lint-ok: scanner fixture, not a colour use

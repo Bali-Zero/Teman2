@@ -1,0 +1,61 @@
+task_id: b2-5-identity-language
+mandate_id: SAETTA-20260915/W-B/PR-2
+colour: BLUE
+l_level: L2
+gate_class: opus
+gear: 2
+gear_reason: >-
+  Measured the way CI measures it, with BOTH inputs, on this branch against
+  origin/main: `python3 scripts/evidence_pack_lint.py --print-floor
+  --changed-files-file <f> --numstat-file <n>` returns 2, and
+  `--print-floor-source` returns `size`. The floor comes from the DIFF'S SIZE,
+  not from a hot path: this change set touches no migration, no schema and no
+  security boundary — ten files, all of them `wa_*` integration modules on the
+  WhatsApp leg plus their tests. No digit here is typed from memory; re-run both
+  invocations on this branch to check.
+oversize_reason: >-
+  About 1,460 net against the ~400 ceiling, of which exactly 987 is code and tests;
+  the remainder is this Evidence Pack, which the PR diff carries and which therefore
+  moves its own total every time it is edited — hence the round figure for the whole
+  and the exact one for the part that matters. Two thirds of it is
+  not logic: `wa_identity.py` is a phrase table across FIVE languages plus the
+  docstring that justifies each rule, and its test file is a GUILT and INNOCENCE
+  corpus of 118 cases.
+  A guard whose innocence half is the expensive one cannot be shipped with a
+  thin corpus; cicatrix family #3 is symmetric and both halves need cases.
+  The PR carries a second, smaller fix (the outbox worker's apology language,
+  +36 source lines) because it is the same client-visible concern in a second
+  place: the refusal and the apology must both speak the client's language.
+  Splitting it would cost a full extra ship cycle — PR, gate, deploy — for a
+  difference no client can see, which the mandate's business directive
+  (2026-09-15 14:00) rules against. If the adversarial review blocks on the
+  apology half, that half is DROPPED rather than allowed to hold the identity
+  fix hostage — declared here in advance so the decision is not made under
+  deadline pressure.
+objective: >-
+  A client's FIRST message decides whether they stay. Measured on the sandbox
+  number on 2026-09-15 between 15:47 and 15:49 WITA: a client opened the thread
+  with `ciao tu sei Zantara?` and received the ABSTAIN stub — "I have no reliable
+  source for this one, a Bali Zero colleague needs to look at it" — and when they
+  asked again, plainly, `ti ho chiesto chi sei tu?`, the same refusal came back in
+  ENGLISH to a client writing Italian. Nothing in that chain is broken: an identity
+  question has no retrieval answer, there is no chunk in any collection that says
+  who Zantara is, so the evidence gate does exactly what it exists to do. The
+  missing piece is the one `wa_greeting` already supplies for "halo" — some
+  questions are answered from the product's own definition rather than from the
+  corpus. This PR adds `wa_identity.match_identity_question` as the SECOND scripted
+  authority on the WhatsApp leg, consulted at the same call sites as the greeting
+  and in the same order (greeting first, identity second, both BEFORE the context
+  package is built), and makes the refusal template follow the language of the
+  client's LATEST message instead of falling back to the table's English default.
+acceptance:
+  - "WHEN the guard's own suite runs, it SHALL be green with GUILT and INNOCENCE cases in every scripted language. probe: .venv/bin/python -m pytest backend/tests/unit/services/test_wa_identity.py"
+  - "WHEN the whole WhatsApp unit surface runs, it SHALL report zero failures and zero unexplained skips. probe: .venv/bin/python -m pytest backend/tests/unit/services/ backend/tests/unit/app/routers/ -k 'wa_ or whatsapp'"
+  - "WHEN a client sends `ciao tu sei Zantara?` or `ti ho chiesto chi sei tu?` — the two real production messages — the bot SHALL answer with the presentation in ITALIAN, asserted by language code and not by text. probe: test_wa_identity.py::TestGuilt"
+  - "WHEN a client sends `siapa kamu?` the bot SHALL answer with the presentation in BAHASA. probe: test_wa_identity.py::TestGuilt"
+  - "IF a message names a case topic (`chi deve firmare la LKPM?`, `cosa puoi fare per la mia PT PMA?`, `berapa harga PT PMA all in`) the guard SHALL decline and the query SHALL take the normal retrieval route — the veto runs BEFORE the phrase match, and the innocence half is the expensive one. probe: test_wa_identity.py::TestInnocence"
+  - "IF the message is a bare greeting (`halo`, `ciao`, `hi`) the identity guard SHALL decline and leave it to the GREETING authority — two detectors that disagree is cicatrix family #3. probe: test_wa_identity.py::TestInnocence"
+  - "WHERE the change is live on the Fly rag process group, the four messages resent to the sandbox number SHALL produce two Italian presentations, one Bahasa presentation, and an unchanged sources answer for the real question that follows. probe: scripts/pg.sh on wa_outbox + meta_inbox_messages for those turns, post-merge"
+appetite:
+  wall_clock_hours: 2
+  adversarial_rounds: 1

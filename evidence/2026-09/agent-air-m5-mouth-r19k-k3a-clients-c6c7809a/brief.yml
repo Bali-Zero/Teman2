@@ -1,0 +1,144 @@
+task: >-
+  SAETTA-R19K window K3 (CRM), PR K3a: put the kita workspace `/clients` list on the frozen
+  concept-K v2 "TEPAT FORTE" desk grammar (`R19-KITA-20260914/fusion/03-clients-list.html`,
+  `fusion/concept.md`, `fusion/FROZEN-v2.md`). Masthead + eyebrow + copper rule replace
+  `ListPageHeader`; a hairline KPI band at the 22px desk-count size replaces the `StatChips`
+  ribbon; a `DeskStrip` carries the count, six `aria-pressed` filter pills, the existing
+  `SearchBox`, the four view toggles and the advanced `FilterBar`; the table keeps whole-row
+  open and gains a viewport-sticky head, a 1360 two-column collapse onto the row's secondary
+  line, hover/focus secondary actions, a 44px row menu for a pointer that cannot hover, and
+  optimistic completion with a six-second Undo slip. Colour becomes a vocabulary: copper is
+  derived from viewer OWNERSHIP only, urgency is `--state-warning`, terminal states are muted
+  plus their word, and `--state-danger` leaves the page entirely. Confined to
+  `apps/mouth/src/app/(workspace)/clients/` — four files, no shared token, no primitive, no
+  `packages/core` component, no data, no migration, no endpoint.
+lane: mouth/r19k-k3-crm
+machine: M5
+date: 2026-09-14
+
+gear: 3
+gear_reason: >-
+  Deterministic floor 3, source `size`. `git diff --cached --numstat` against origin/main
+  bcfeb31800b8685c0c59922b267a8fa19cc81aad measures 1972 added / 729 deleted, churn 2701,
+  over `SIZE_GEAR3_THRESHOLD` (1828, the measured churn p90 of 170 merged PRs). No hot-zone
+  path: all four files are under `apps/mouth/src/app/(workspace)/clients/`. The size is
+  intrinsic and not splittable below the threshold: `page.tsx` alone is a 1355-line file
+  being restyled in place (1668 of the churn), and it cannot land half-converted without
+  shipping a page in two visual systems at once; the remaining churn is the 584-line test
+  file and the 317-line CSS module, neither of which may land separately from the code they
+  pin. The window's own PR plan already splits this organ four ways (K3a list, K3b detail +
+  new, K3c process, K3d partners + second-home). Measured with
+  `python3 scripts/evidence_pack_lint.py --print-floor --print-floor-source`, matching the
+  value the `Harness floor recompute` check reported on the predecessor PR #6515.
+
+appetite:
+  wall_clock_hours: 8
+  adversarial_rounds: 2
+
+acceptance:
+  A1: >-
+    Copper resolves from OWNERSHIP and nothing else. `viewerIsNext` is true only when the
+    viewer is assigned AND the record is non-terminal, so a `completed`/`lost`/`inactive`
+    record assigned to the viewer is NOT copper (fusion DISPOSITION F15), an expiring
+    passport reads `--state-warning` (F3), and completing a row clears its copper in the same
+    paint and returns it on Undo (F6). `--state-danger` and every `bg-red`/`text-red`
+    utility are absent from all three source files.
+    probe: >-
+      npx vitest run "src/app/(workspace)/clients/__tests__/clients-desk.test.tsx" — the
+      F15 guilt case, the F6 optimistic case, the failed-write rollback case and the
+      three-file no-red scan; plus a browser count of copper-coloured row elements against
+      the owned-and-moving fixture count.
+  A2: >-
+    The table head is viewport-sticky and still pinned at the document end, and it clears the
+    44px sticky DeskStrip rather than hiding under it. No ancestor of the table carries
+    `overflow`.
+    probe: >-
+      Playwright against `next dev --webpack`: scroll to `document.body.scrollHeight` at
+      1440 and read the first `<th>`'s `getBoundingClientRect().top` against the shell
+      header height plus 44; plus the CSS assertion pinning
+      `top: calc(var(--bz-header-height, 48px) + 44px)`.
+  A3: >-
+    No horizontal overflow at 1440, 1280 or 390, and at 1280 the Nationality and Passport
+    columns have left the grid and reappeared in the client's secondary line.
+    probe: >-
+      `document.documentElement.scrollWidth === clientWidth` at all three widths, and the
+      visibility of the two column heads against the `.collapsedMeta` span.
+  A4: >-
+    Whole-row open survives and no secondary action navigates: click and Enter on a row open
+    the client, click and Enter on a row action do not. A pointer that cannot hover reaches
+    the same three actions through a 44px menu at every width, which closes on Escape and
+    on an outside click and returns focus to its trigger.
+    probe: >-
+      npx vitest run — the whole-row, stopPropagation, Enter-guard and row-menu cases; plus
+      the CSS declaration-order guard that pins `.rowMenuTrigger { display: none }` ABOVE
+      the `@media (hover: none)` block that turns it on.
+  A5: >-
+    Nothing the page already did was lost: the card view still virtualizes, the kanban and
+    map views are untouched, the `PrimeNexusLayout` dynamic import and its loading string are
+    byte-identical, `CLIENTS_VIEW_MODE_KEY` and the view-mode storage contract are unchanged,
+    `?unnamed=1` and `UnnamedLeadsBanner` still work, and every filter the page had is still
+    reachable (My Clients became the Mine pill, Silent 7d/30d became a Last-contact select).
+    probe: >-
+      npx vitest run "src/app/(workspace)/clients" "src/components/crm" — 56 tests including
+      the negative virtualization case on 200 rows; plus `git diff` showing
+      `components/maps/**`, `components/crm/**` and `lib/utils/view-mode-storage.ts`
+      untouched.
+
+out_of_scope: >-
+  `/clients/[id]`, `/clients/new`, `/clients/analytics` (K3b). `/process` (K3c). `/partners`
+  and `/second-home` (K3d), including the `token-drain.guard.test.ts` re-pin those pages
+  need. Every file under `components/workspace/r19/`, `AppSidebar`, `navigation.ts`,
+  `app/globals.css` and `packages/core` — imported, never forked, per the window's sibling
+  contract; the `DeskStrip` prop this page needed and did not have is raised to the imperator
+  rather than added here. `components/maps/**`. The v2 primitive props (`stickyTop`,
+  `collapseAt`, `secondaryFields`, copper `Stamp`) that land in the k1-prims upgrade — this
+  PR is built entirely on v1 so it does not block on that broadcast.
+
+assumptions:
+  - text: >-
+      The 22px desk-count size for the KPI band, rather than the 44px dashboard numeral, is
+      the concept's own cure for this exact screen (DISPOSITION F4 measured four 44px
+      numerals outshouting the 40px masthead at 1440 and 1280 and capped them at 22px for
+      03 only).
+    status: verified
+    probe: >-
+      fusion/DISPOSITION-fusion.md F4, and `.metric-band .metric-value{font-size:22px}` in
+      the FORTE override block of fusion/03-clients-list.html.
+  - text: >-
+      The band carries FIVE metrics where the frozen render carries four. The render's four
+      are Total/Active/Needs action/Completed; this page already displayed Total Clients,
+      Active Practices, Outstanding and Paid Revenue through `StatChips` and `useCrmStats`,
+      and dropping the two revenue figures to match a fixture would have removed information
+      staff use. The four existing values are kept and the one derived ownership count is
+      added. `repeat(4,1fr)` is the render's layout choice for its own fixture, not a law in
+      concept.md §2 or §4.
+    status: verified
+    probe: >-
+      `git show origin/main:apps/mouth/src/app/'(workspace)'/clients/page.tsx` — the
+      `StatChips` block lists exactly those four values.
+  - text: >-
+      The frozen render for 03 uses a real `<table>` with `position: sticky` on `th`, not the
+      `HairlineGrid` div-grid primitive, so this page keeps its `<table>` and carries the
+      table grammar in a page-local CSS module. The module reads only r19 tokens and copies
+      no primitive's class string.
+    status: verified
+    probe: >-
+      `<table class="data-table clients-table">` and `.clients-table th{position:sticky}` in
+      fusion/03-clients-list.html; `grep -c 'var(--' clients-desk.module.css` against a hex
+      scan returning zero.
+  - text: >-
+      Local test observability changed mid-window and the change was not made by this
+      session. At PR-open time for the predecessor #6515, `apps/mouth/node_modules` carried
+      36 symlinks into `.worktrees/mouth-vo-c-doors`, `packages/core` resolved
+      `node_modules/react` while `apps/mouth` resolved `node_modules/.pnpm/react@19.2.8`, and
+      every render test died on a null hook dispatcher — including the UNTOUCHED
+      `process/__tests__/page.test.tsx`, 40/40, on clean origin/main in the MAIN checkout.
+      Those symlinks are gone as of the measurements in this pack and both paths now resolve
+      `node_modules/react`. This session did not run any install; the repair came from
+      elsewhere on the machine.
+    status: verified
+    probe: >-
+      `readlink apps/mouth/node_modules/react` (was a path into .worktrees, now absent) and
+      `node -e "require.resolve('react')"` from both packages/core and apps/mouth returning
+      the same path; the control run of the untouched process page test going 40 failed ->
+      40 passed with no change to that file.
