@@ -49,6 +49,7 @@ from backend.services.integrations.wa_broker import (
 )
 from backend.services.integrations.wa_completion_envelope import encode_completion
 from backend.services.integrations.wa_finalize import FinalizeOutcome, FinalizeResult
+from backend.services.integrations.wa_inbox_bot import BoundThreadContext
 from backend.services.rag.agentic._support_signal import SupportVerdict
 
 _TEST_BROKER_KEY = "unit-test-broker-key-not-a-real-secret"
@@ -192,8 +193,14 @@ def _wire_stubs(
     # monkeypatch restores it after the test.
     monkeypatch.setattr(wa_codex_leg.settings, "wa_broker_key", broker_key, raising=False)
 
-    load = AsyncMock(return_value=(query, [{"role": "user", "content": "hi"}]))
-    monkeypatch.setattr(wa_codex_leg, "_load_thread_context", load)
+    load = AsyncMock(
+        return_value=BoundThreadContext(
+            inbound_message_id=830,
+            query=query,
+            history=[{"role": "user", "content": "hi"}],
+        )
+    )
+    monkeypatch.setattr(wa_codex_leg, "_load_bound_thread_context", load)
 
     client = MagicMock()
     build = {

@@ -32,7 +32,7 @@ export default function VisaLayout({
       <NavShell
         logo={<BZLogo variant="full" />}
         items={navItems}
-        slotAfter={<MobileNav items={navItems} />}
+        slotAfter={<MobileNav items={navItems} funnel="visa" />}
         actions={<HeaderWhatsAppCTA funnel="visa" />}
       />
       <SessionInit funnel="visa" />

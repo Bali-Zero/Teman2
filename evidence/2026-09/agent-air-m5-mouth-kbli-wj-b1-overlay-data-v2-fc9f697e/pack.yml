@@ -1,0 +1,361 @@
+gear: 3
+brief_ref: evidence/brief.yml
+lanes:
+  - lane: mouth/kbli-wj-b1-overlay-data-v2
+    role: build
+    seat: Claude Sonnet 5 (implementer, W-J PR-D v2 redo, Dux Opus 5 xhigh on M5)
+    task_id: kbli-wj-b1-overlay-data-v2
+    worktree: .worktrees/mouth-kbli-wj-b1-overlay-data-v2
+    branch: agent/air-m5/mouth/kbli-wj-b1-overlay-data-v2
+    head: f1f81a2eb061749f8f6b9aa1801bee7701706ef5 # pragma: allowlist secret
+    base: 1c8725d263 (origin/main, post-#6598 merge, merged into the branch as c32adeac37)
+  - lane: mouth/kbli-wj-b1-overlay-data-v2
+    role: ground_truth
+    seat: >-
+      session (M5, Dux Opus 5) — pages fetched 2026-09-15 by a web-fetch reader
+      and quoted verbatim in the first v2 pass; this v2 REDO reuses the same
+      two sources unchanged (neither #6596 nor this branch's own re-derivation
+      touched the closure's own named-field list), so no new fetch was needed.
+    nb: >-
+      Pemprov Bali press release (published 24 Jul 2026, 18 business fields by
+      name, "sejak minggu ketiga Mei 2026", "hingga terdapat kebijakan lebih
+      lanjut") + ANTARA Bali 23 Jul 2026 (the same 18 with KBLI 2020 codes,
+      18/18 names match)
+    query_hash: "24fc61b037c65f0cdd97bd3d990559fddaa83d2fc8e0acb2dabf7d99ae11664a" # pragma: allowlist secret
+    note: >-
+      sha256 of "<press-release path>|<antara path>|<the 18 codes
+      comma-joined>" — unchanged from the first v2 pass, reused not refetched.
+
+council_run: journal.jsonl
+
+seat_fallback_reason: >-
+  agy-gemini-3.1-pro (reserve bench) stands in for the titolare roster
+  (Zero 2026-09-02: codex-gpt-5.6-sol / kimi-code/k3 / tp1-qwen3.8-max).
+  kimi-code/k3 and tp1-qwen3.8-max are QUOTA_DEAD per arsenal_probe
+  2026-09-15T13:17:33Z on M5 (Dux's own fleet-watch reading, matches this
+  session's SessionStart probe: "tp1-qwen3.8-max quota_dead ... kimi
+  quota_dead"). codex-gpt-5.6-sol is separately auth-dead on M5 this
+  session — re-checked directly via `codex exec "reply with exactly:
+  PONG"`, same "Your access token could not be refreshed because your
+  refresh token was already used" error as the first v2 attempt, no change
+  in auth state. The titolare seat codex-gpt-5.6-sol then ran on Mini
+  (where it answers), xhigh, read-only, against the pushed head bd3233371a:
+  verdict FIX-FIRST (4 MAJOR + 2 MINOR), journal line + dissent below, all
+  six cured on this branch. council_run therefore carries 2 seats:
+  codex-gpt-5.6-sol (titolare) + agy-gemini-3.1-pro (reserve, for the two
+  QUOTA_DEAD titolari).
+
+dissent:
+  - seat: agy-gemini-3.1-pro (independent adversarial review, council-2)
+    objection: >-
+      HIGH: kbli-meta.test.ts's real-dataset "states a Bali block only when
+      its bare-claim gate passes" test's empty-population branch was carried
+      from this v2 redo's FIRST fix pass as a bare `if (...) return;` with no
+      assertion — a fail-open: a reader, or a future accidental population
+      change, hits a silent early exit instead of a loud, present check. (The
+      prior, pre-#6596 v2 attempt's own review round had already hardened
+      this exact idiom to an explicit assertion; the redo's first pass
+      regressed to the unhardened version by copying the pre-review commit,
+      not the post-review one.)
+    status: CONFIRMED
+    cure: >-
+      03028f701c: now asserts `expect(blockedOpen).toHaveLength(0)`
+      explicitly before returning — the same cure the prior review cycle
+      already vetted for this idiom, re-applied here.
+  - seat: agy-gemini-3.1-pro (independent adversarial review, council-2)
+    objection: >-
+      MEDIUM: kbli-bali-block.test.ts's "the count above is a SUBTRACTION,
+      and names what it subtracted" named only 1 of the 7 live
+      CHIUSO_PMA_NO_BESAR codes in `excluded` (95291) as "representative",
+      leaving the other 6 implicit — including 3 (55201, 55203, 79903, the
+      W-H PR-3a codes merged into this branch's base) never named at all.
+    status: CONFIRMED
+    cure: >-
+      03028f701c: now names and asserts all 7 live CHIUSO_PMA_NO_BESAR codes
+      in `excluded` (95291, 96210, 96220, 96100, 55201, 55203, 79903).
+  - seat: codex-gpt-5.6-sol (adversarial review, council-1, Mini, head bd3233371a)
+    objection: >-
+      MAJOR: the compiler un-blocked 10214, 16221, 95220, 95299 (TERBATAS,
+      pma_max_asing 0) because their previous Bali status was tier-based; a 0%
+      national cap is a non-tier reason to stay blocked, and the four
+      protective assertions in kbli-bali-block.test.ts had been retired.
+    status: CONFIRMED
+    cure: >-
+      a42c992763 (tertutup_national_cap group before the tier conversion:
+      blocked, TERTUTUP, field-derived TERBATAS-0% reason; census 131 -> 135)
+      + 295d4d5308 (assertions restored) + 7957bc81f1 / 17e5d86136 (sibling
+      population pins).
+  - seat: codex-gpt-5.6-sol (adversarial review, council-1)
+    objection: >-
+      MAJOR: honest-map said every TERTUTUP code carries 0% foreign ownership;
+      6 read 100% (01111 47112 69102 69104 86201 86202). The zero/non-zero pins
+      had been removed from kbli-prose-pins.test.ts.
+    status: CONFIRMED
+    cure: >-
+      a4dc71416f: 72 = 66 at 0% + 6 closed by a rule on the activity, each with
+      the instrument the dataset records (01111/47112 flagged as recorded
+      without a named instrument); tertutupZero/tertutupNonZero pinned again,
+      EN/IT/ID.
+  - seat: codex-gpt-5.6-sol (adversarial review, council-1)
+    objection: >-
+      MAJOR: honest-map "131 closed, full stop" / "fully cleared the rest"
+      while 29 blocked verdicts are provisional and the not-blocked side holds
+      60 scope-dependent + 24 unclassified; hotel size limit not stated.
+    status: CONFIRMED
+    cure: >-
+      a4dc71416f: 135 = 106 HIGH + 29 conservative (16 merged CHIUSO_BALI codes,
+      12 held, 1 TERTUTUP), each share pinned from the dataset; absolutes
+      removed; 55101-55106 under 6,000 m² stated.
+  - seat: codex-gpt-5.6-sol (adversarial review, council-1)
+    objection: >-
+      MAJOR: villa-dream stated 55400 as categorically closed; its ancestors are
+      55900/63122/79990 and only 55900 is on the list, verdict provisional.
+    status: CONFIRMED
+    cure: >-
+      a4dc71416f: the correction names the three ancestors, says only 55900 is
+      listed, and calls the whole-code block a provisional conservative reading
+      (EN/IT/ID).
+  - seat: codex-gpt-5.6-sol (adversarial review, council-1)
+    objection: >-
+      MINOR: kbli-meta.test.ts real-dataset gate test was tautological on an
+      empty population (zero gate calls).
+    status: CONFIRMED
+    cure: >-
+      295d4d5308: population assertion split from a mandatory non-empty gate
+      proof on a synthetic population that runs every time.
+  - seat: codex-gpt-5.6-sol (adversarial review, council-1)
+    objection: >-
+      MINOR (pre-existing): villa-dream ID "setengah tahun" contradicts EN
+      "a year-and-a-half".
+    status: CONFIRMED
+    cure: >-
+      a4dc71416f: "satu setengah tahun"; IT/ID source_sha256 restamped.
+
+pii_scan: clean
+pii_scan_note: >-
+  Only KBLI status labels, public government source names/URLs, compiler
+  code and test fixtures under scripts/kbli_filiera, scripts/tests,
+  apps/mouth/src — no client name, contact, or case data anywhere in the diff.
+
+decisions:
+  - id: D1
+    what: >-
+      Discard-and-redo (`git reset --hard` to the fresh #6596-merged
+      origin/main tip, then replay the full pipeline) instead of rebasing the
+      first v2 attempt's 9 commits through #6596's 1-commit-ahead diff.
+    why: >-
+      Same "ONE rebuild, not a rebase" philosophy the original W-J correction
+      established for the pre-#6596 v1->v2 move — a JSON-merge-conflict-free,
+      deterministic redo beats fighting a rebase commit-by-commit through a
+      canonical-dataset PR. #6596 was confirmed already MERGED via a single
+      `gh pr view 6596 --json state,mergedAt` call before any poll-wait was
+      needed.
+  - id: D2
+    what: >-
+      Re-verified the compiler's output population on the new base rather
+      than assuming it matched the first v2 attempt's numbers. It did NOT: #6596
+      itself moved main's own raw pre-cure population 519->518 (lifting
+      43110's block), so the applied-closure compiler's post-cure count moved
+      132->131, and every downstream pin (article prose, kbli-prose-pins.test.ts,
+      kbli-bali-block.test.ts, kbli-meta.test.ts, KBLIProvenancePanel.test.ts,
+      pr2b_source_rows_93114_43110's per-field hash pins) had to be re-derived
+      a SECOND time, not copied from the first attempt.
+    why: >-
+      The whole mission's thesis is verify-don't-presume; assuming an upstream
+      merge that touches the same canonical left the downstream numbers
+      unchanged would repeat the exact mistake the honest-map article itself
+      exists to correct.
+  - id: D3
+    what: >-
+      A per-field (not whole-record) hash pin in W-H's own
+      pr2b_source_rows_93114_43110 cure spec (l4_bali field only, for codes
+      93114/43110) drifted because this branch's OWN moratorium-text rewrite
+      (rule 5, touches l4_bali.moratorium on all 1,559 records) touched those
+      two records' l4_bali field too — an unrelated-sibling-cure collision,
+      not a defect in either cure. Re-pinned via the same restore-and-
+      reproduce proof methodology as the 4 whole-record cure specs (adapted
+      to `H.judge_patch`'s per-field hashing signature): restored each
+      record's PRE-cure l4_bali from the commit before this branch's
+      applied-closure write, proved it reproduces the spec's EXISTING
+      new_sha256 pin exactly, then rewrote to the live post-cure hash.
+    why: >-
+      Never overwrite a stale pin blind — the hardened cure-IO layer's own
+      `CureError` on a hash mismatch exists precisely to force this proof
+      step instead of a trust-me rewrite.
+  - id: D4
+    what: >-
+      real-estate-68111-on-the-chopping-block (EN/IT/ID) rewritten in full,
+      not just re-pinned — 68111 moved CHIUSO_BALI_PROPOSTO (proposed) ->
+      CHIUSO_BALI (applied) under this branch's own compiler, making the
+      article's entire prior thesis ("68111 is proposed, not yet closed...
+      race the clock before it shuts") factually wrong, not merely
+      stale-numbered. No test guards this article's prose (confirmed via
+      search across apps/mouth/src/lib and apps/mouth/src/content), so this
+      is a content-accuracy fix with no CI pin riding on it — done anyway,
+      because a wrong live claim about a code this exact migration decided is
+      squarely in scope for the migration that decided it.
+    why: >-
+      "Never loosen to vacuous" cuts both ways — an unguarded claim left
+      wrong because nothing forces a fix is the same failure mode as a
+      loosened assertion, just without a red test to announce it.
+  - id: D5
+    what: >-
+      Ran an independent adversarial review (agy CLI, agy-gemini-3.1-pro) a
+      SECOND time against this redo's own diff, rather than treating the
+      first v2 attempt's PASS verdict (on a since-discarded branch) as still
+      valid. Applied both findings (see dissent above).
+    why: >-
+      A review of a discarded 9-commit branch says nothing about a fresh
+      9-commit replay on a different base — the whole point of "generator is
+      never grader" is that an independent check runs against what actually
+      ships, not against an ancestor of it.
+
+receipts:
+  - claim: filiera compiler suite green on the v2-redo base
+    cmd: source .venv/bin/activate && python3 -m pytest scripts/kbli_filiera/tests -q
+    result: "1437 passed, 1 skipped in 105.12s"
+    exit: 0
+    ts: "2026-09-15T21:58:00+08:00"
+    seat: Claude Sonnet 5
+  - claim: the 4 kbli-filiera-vault-compilers.yml CI checks all pass, exactly as CI invokes them
+    cmd: >-
+      python3 scripts/kbli_filiera/kbli_coverage_scoreboard.py --check &&
+      python3 scripts/kbli_filiera/perpres_body_default_relation.py --check-artifact &&
+      python3 scripts/kbli_filiera/perpres_slice_disclosure_relation.py --check-artifact &&
+      python3 scripts/kbli_filiera/perpres_foreign_cap_relation.py --strict
+    result: >-
+      all 4 exit 0. coverage_scoreboard: "ratchet OK — no axis lost honest
+      coverage, no new bare facts." body_default: "apps/mouth/data/
+      perpres-locators.json matches the instrument (1559 codes)" (no --emit
+      needed, artifact already matched). slice_disclosure: "artifact fresh:
+      13 codes disclosed." foreign_cap --strict: "every DISAGREE/AMBIGUOUS
+      row is adjudicated, NO_DESCENDANT is empty — PASS" (re-wrote
+      perpres-foreign-caps.json, byte-identical, no diff).
+    exit: 0
+    ts: "2026-09-15T21:59:00+08:00"
+    seat: Claude Sonnet 5
+  - claim: navigator quarantine-transform test passes, tsx resolved without a network fetch
+    cmd: >-
+      npx --no-install tsx --version (confirms a cached/workspace tsx exists
+      first) && cd apps/kbli-navigator && npx tsx lib/__tests__/kbli-data.test.ts
+    result: >-
+      tsx resolved from repo-root node_modules (the worktree's node_modules is
+      a symlink to it) — no npm install/ci triggered. All 7 checks PASS:
+      guilt (68112 empty licensing withheld), innocence (55101 6 rows
+      unchanged), PMA disclosure (1502 gaps withheld, 49/57 located editorial
+      blocks certified), editorial certification, adversarial disclosure, PMA
+      badge wiring, dataset-shape (1559 records, canonical not a stale fork).
+    exit: 0
+    ts: "2026-09-15T21:38:00+08:00"
+    seat: Claude Sonnet 5 (dispatched via subagent, cross-verified)
+  - claim: full backend kbli test sweep clean with the correct backend-rag venv (31 files, not just -k kbli)
+    cmd: apps/backend-rag/.venv/bin/python -m pytest <31 test_*kbli*.py files> (repo pytest.ini addopts already sets verbosity)
+    result: >-
+      773 passed, 0 failed in 13.52s. test_kbli_eye.py's own 25 tests pass
+      with its OWN current pins (1502/18/3/1538/57/22/1) — these differ from
+      an earlier stale baseline this session started with (1505/15/1541/54/19),
+      but that baseline predates an UNRELATED W-H PR-3a re-derivation already
+      on this branch's base, confirmed via the file's own inline comments
+      documenting the 1505->1502/15->18/1541->1538/54->57/19->22 transition;
+      not something this PR's l4_bali-only compiler touched or needed to fix.
+    exit: 0
+    ts: "2026-09-15T21:38:00+08:00"
+    seat: Claude Sonnet 5 (dispatched via subagent, cross-verified)
+  - claim: full kbli/bali/perpres/filiera mouth vitest sweep green (58 files, final HEAD)
+    cmd: cd apps/mouth && npx vitest run <58 files matching kbli|bali|perpres|filiera under src/>
+    result: "Test Files 58 passed (58) / Tests 771 passed (771)"
+    exit: 0
+    ts: "2026-09-15T21:55:41+08:00"
+    seat: Claude Sonnet 5
+  - claim: whole-project TypeScript clean (also re-confirmed via 2 separate pre-commit hook runs)
+    cmd: cd apps/mouth && npx tsc --noEmit -p .
+    result: "no errors, exit 0"
+    exit: 0
+    ts: "2026-09-15T21:38:00+08:00"
+    seat: Claude Sonnet 5 (dispatched via subagent, cross-verified; also ran silently inside 2 pre-commit hooks this session)
+  - claim: prettier clean on every file changed vs origin/main + uncommitted, under apps/mouth's prettier scope
+    cmd: >-
+      npx --prefix apps/mouth prettier --check <17 files, absolute-from-
+      worktree-root paths> (verified empirically: --prefix changes the
+      resolved binary/node_modules, NOT the cwd, so paths must stay relative
+      to the worktree root, not to apps/mouth)
+    result: >-
+      6 mdx flagged (the 2 rewritten articles' EN/IT/ID copies) — fixed with
+      --write (pure emphasis-marker/quote-style normalization, *x*->_x_,
+      no wording changed), IT/ID source_sha256 restamped against the moved EN
+      body bytes for both articles. 6 cure-spec JSON files under
+      scripts/kbli_filiera/cure_specs (governed per
+      .github/workflows/prettier-changed-files.yml, confirmed not excluded by
+      .prettierignore) also checked clean. data/*.json, apps/kbli-navigator/
+      data/*.json and all *.py correctly out of prettier's scope
+      (.prettierignore's unanchored `data/` line + global `*.py`). Second
+      pass after --write: "All matched files use Prettier code style!"
+    exit: 0
+    ts: "2026-09-15T21:55:00+08:00"
+    seat: Claude Sonnet 5 (dispatched via subagent for discovery, fix verified directly)
+  - claim: scope-leak/false-friend guards resolve clean on the v2-redo base
+    cmd: >-
+      .venv/bin/python -m pytest
+      scripts/tests/test_kbli_false_friend_registry.py
+      scripts/tests/test_kbli_lot2_56101_metadata_cure.py
+      scripts/tests/test_kbli_metadata_residuals_52101_10433.py -q
+    result: "187 passed, 1 skipped in 27.19s"
+    exit: 0
+    ts: "2026-09-15T21:38:00+08:00"
+    seat: Claude Sonnet 5 (dispatched via subagent, cross-verified)
+  - claim: cure-spec old_sha256/new_sha256 re-pins are proven, not asserted (4 whole-record specs + 1 per-field spec)
+    cmd: >-
+      wj_repin_proof_v2b.py (whole-record specs, 4 files) + an inline
+      per-field adaptation for pr2b_source_rows_93114_43110's l4_bali-only
+      hash (93114, 43110) — each restores the record's PRE-cure state from
+      the commit before this branch's applied-closure write, proves it
+      reproduces the spec's EXISTING new_sha256 pin exactly, then rewrites to
+      the live post-cure hash via an exact-single-occurrence string
+      replacement
+    result: "ALL PROOFS OK (5 spec files, 11 code entries total)"
+    exit: 0
+    ts: "2026-09-15T21:20:00+08:00"
+    seat: Claude Sonnet 5
+  - claim: apps/mouth/data/perpres-locators.json needs no re-emit — already matches the instrument at final HEAD
+    cmd: python3 scripts/kbli_filiera/perpres_body_default_relation.py --check-artifact
+    result: "apps/mouth/data/perpres-locators.json matches the instrument (1559 codes)"
+    exit: 0
+    ts: "2026-09-15T21:59:00+08:00"
+    seat: Claude Sonnet 5
+
+leftovers:
+  - >-
+    apps/mouth/public/llms-full.txt and llms-id.txt are hand-maintained (not
+    generated by any compiler in this pipeline) and still carry the retired
+    "13 May 2026" moratorium framing and stale article excerpts (including the
+    honest-map's old 33.2%/519 figure and the 68111 "proposed" framing) in
+    several places — this PR does not touch them; a future llms-corpus refresh
+    needs to.
+  - >-
+    research/content/articles/20-the-honest-map-blocked-bali-codes.md is a
+    stale research draft (pre-dates this migration's census, and now
+    pre-dates BOTH the first and second v2 rewrites); not consumed by any
+    compiler or the live article, but worth pruning or refreshing separately.
+  - >-
+    Backend Qdrant Bali layer (kbli_pma_disclosure / kbli editorial
+    certification Qdrant sync) has not been re-synced against this branch's
+    rewritten l4_bali fields — no compiler in this pipeline pushes to Qdrant,
+    so served RAG answers will lag this dataset write until that sync runs
+    separately.
+  - >-
+    test_kbli_metadata_fixes_registry.py::test_per_skala_row_count_invariant[46100-*]
+    fails on origin/main itself (pin 15 rows, main's canonical carries 12);
+    untouched by this branch.
+  - >-
+    codex-gpt-5.6-sol remains unreachable ON M5 (it ran on Mini instead, see
+    seat_fallback_reason); M5 re-login is Zero's: `! codex login`. Original note: (refresh-token
+    dead — "Your access token could not be refreshed because your refresh
+    token was already used. Please log out and sign in again.", re-checked at
+    the start of this pack's review round, same error verbatim as the first
+    v2 attempt) — a Zero-side re-login is the only fix; council_run has only
+    1 of the 2 usually-sought independent seats (agy-gemini-3.1-pro), same gap
+    as the first v2 attempt, reported per instruction rather than fabricated.
+  - >-
+    kimi-code/k3, tp1-qwen3.8-max, tp1-deepseek-v4-pro, tp1-glm-5.2 confirmed
+    QUOTA_DEAD via this session's own fleet-watch probe (SessionStart hook),
+    unavailable as a third review seat for the same reason as codex.

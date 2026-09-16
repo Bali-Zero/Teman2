@@ -1,0 +1,100 @@
+task: >-
+  SAETTA-20260915 window W-E (mission SAETTA-R19K, window K3, PR K3b): put the
+  client detail page /clients/[id] of kita.balizero.com on the R19 desk grammar
+  (concept-K v2 "TEPAT FORTE"): r19 Masthead with the reference eyebrow and a
+  computed sentence that disappears when its data cannot prove it, the status
+  column first in DOM (right column at >=1100px), copper ONLY from ownership
+  (client assigned to the signed-in viewer and non-terminal), no red anywhere
+  in the route, ink tab selection, a sticky tab bar, and a 390px layout that
+  clips nothing. Recovered from the previous K3 Dux's uncommitted work
+  (commit "wip(k3b): recover") and finished on fresh origin/main after K3a
+  (#6562) merged.
+
+lane: mouth/r19k-k3b-v2
+machine: M5
+date: 2026-09-15
+
+gear: 3
+gear_reason: >-
+  Deterministic floor 3, source `size`. `git diff --numstat origin/main...HEAD`
+  measures 2481 added / 793 deleted, churn 3274, over SIZE_GEAR3_THRESHOLD
+  (1828). No hot-zone path: all 33 files are under
+  apps/mouth/src/app/(workspace)/clients/[id]/. The size is the organ, not
+  scope creep: ClientDetailClient.tsx is a ~1100-line page restyled in place,
+  and the mandate "copper only from ownership, no red" is a property of every
+  file the route renders (9 tabs, 7 modals, portal/WA panels), so a partial
+  sweep would ship a page whose copper still means "hover" or "error" on the
+  tabs it did not reach. About a third of the churn is the guard test file,
+  which must land with the code it pins.
+
+appetite:
+  wall_clock_hours: 6
+  adversarial_rounds: 2
+
+acceptance:
+  A1: >-
+    Copper resolves from OWNERSHIP only. On a synthetic client assigned to
+    someone else, the computed-style scan of the rendered page (Log panel,
+    Tax and Family tabs open, light and dark) finds copper only on the shared
+    r19 Masthead rule/eyebrow and the global skip link, never on anything this
+    route owns; on the same client assigned to the viewer the only addition
+    is the owned Stamp. Reference: fusion/concept.md §1 and §3, FROZEN-v2
+    ruling 4.
+  A2: >-
+    No red and no copper alias in any non-test file under [id]/**: a glob
+    guard (it walks the directory, so a new file is covered) fails on
+    --state-danger, --bz-accent/--accent/--bz-copper outside the owned Stamp,
+    any raw colour literal, any red/rose/orange/amber Tailwind utility on any
+    prefix, template-built CSS var names, and any shadcn Button without a
+    static outline|ghost|secondary|link variant. Each assertion has a guilt
+    fixture that goes red and an innocence fixture that stays green; three of
+    them were mutation-tested on the real tree.
+  A3: >-
+    Selection is ink: the active tab border and the open Log toggle compute to
+    ink (rgb(29,44,59) light), not copper. Reference: concept §10 FORTE "ink
+    selection".
+  A4: >-
+    The tab bar stays reachable: position sticky at
+    var(--bz-header-height, 48px), measured top === 48 after scrolling a long
+    tab to the document end, in both themes; no ancestor under [id]/** sets
+    overflow. Reference: concept §6.
+  A5: >-
+    Layout: document scrollWidth === clientWidth at 1440, 1280 and 390 in both
+    themes; at 390 every tab is reachable with non-zero width.
+  A6: >-
+    No capability dropped: every tab, modal, handler, confirm flow, link and
+    copy string of the page survives; icon-only destructive controls gain an
+    aria-label and title naming the action; the status menu trigger gains
+    type, aria-haspopup and aria-expanded.
+  A7: >-
+    The owner actually sees the stamp: the viewer email falls back once to
+    api.getProfile() when the synchronous cache is empty (unmount-guarded,
+    failure = no copper), pinned by tests for both halves.
+  A8: >-
+    Tests: `npx vitest run "src/app/(workspace)/clients" "src/components/crm"`
+    green and `npx tsc --noEmit --incremental false` clean on the final head.
+
+out_of_scope: >-
+  components/workspace/r19/** (the Masthead copper eyebrow and rule are the
+  approved shared primitive), components/workspace/AppSidebar.tsx (its
+  copper-rail hue reads as red to a hue scan; K1c-bis owns it), the global
+  .bz-skip-link, components/ui/button (its default variant stays copper; this
+  route simply never uses it), packages/core/**, globals.css, layouts,
+  /clients (K3a, merged as #6562), /clients/new and /clients/analytics,
+  public website, Visa Oracle.
+
+assumptions:
+  - >-
+    The mission prompt names the ownership field `received_by` (K2b's review
+    record). A Client record has no such field; its owner is `assigned_to`,
+    and the predicate reused is K3a's `viewerIsNext(client, viewerEmail)`
+    from ../client-row-model.ts, already gated on #6562.
+  - >-
+    The mission prompt names the path `(kita)/clients/[id]`; the route on disk
+    is `apps/mouth/src/app/(workspace)/clients/[id]`. Same organ.
+  - >-
+    The live page is behind the staff session; no staff credential is
+    available to the building seats, so browser measurements are taken on
+    `next dev --webpack` with synthetic route-intercepted data at the same
+    source tree, and the production proof is the served bundle plus an
+    authenticated check owed by a team member (PENDING-ARMS).

@@ -1,0 +1,223 @@
+task_id: b2-5-identity-language
+mandate: SAETTA-20260915/W-B
+colour: BLUE
+pr: "PR-2 — the bot can say who it is, in the client's own language (B2.5-1b)"
+base_sha: 449def3cb3 # pragma: allowlist secret
+brief_ref: evidence/brief.yml # MUST be the STAGING literal, never this mission's per-PR path: harness-floor.yml copies pack and brief into a synthetic tree under canonical names and lints there with --repo-root
+gear: 2
+gear_floor_measured: 2
+gear_floor_source: size # NOT a hot path: no migration, no schema, no security boundary — ten wa_* files on the WhatsApp leg plus their tests. Verified with --print-floor-source
+council_run: journal.jsonl
+pii_scan: clean
+
+# The R10 question, answered as a fact rather than filled as a field. This diff touches a PII
+# PATH (the WhatsApp channel), so the rule asks how a non-`ollama-` seat was allowed to see it.
+# What crossed the boundary was the DIFF ONLY: source plus tests whose fixtures are synthetic
+# throughout. The two Italian sentences quoted in the module and in the tests —
+# "ciao tu sei Zantara?" and "ti ho chiesto chi sei tu?" — are the OWNER's own probe messages to
+# the sandbox number; they name nobody and carry no identifier. One reviewing seat flagged them
+# as possible verbatim private conversation content, which is exactly the right instinct on this
+# surface; their provenance is now stated in the module docstring so the next reader does not
+# have to make that judgement again. Verified, not asserted:
+# `git diff origin/main | grep -nE "(api[_-]?key|password|@gmail|@balizero|\+62[0-9]{6,})"`
+# returns ZERO hits. No client message body, phone number or name is anywhere in this change.
+cloud_ok: >-
+  DIFF-ONLY EGRESS, SYNTHETIC FIXTURES, GREP-VERIFIED CLEAN. No client PII crossed to any
+  external seat. No production row was read for this slice.
+
+# The quorum counts agy-gemini-3.1-pro, a RESERVE seat, and the titolare codex-gpt-5.6-sol did
+# not deliver. Both facts are observations from THIS session, not a session-start banner:
+#   codex-gpt-5.6-sol -> dispatched `codex exec -m gpt-5.6-sol -c model_reasoning_effort=xhigh
+#                        --sandbox read-only` on the candidate. It ran, burned 251,565 tokens
+#                        exploring, and terminated on its own context checkpoint having written
+#                        77 bytes of stdout ("Checkpoint salvato") and no report. Its planning
+#                        trace survives in stderr and named two live leads — that both
+#                        over-match and under-match cases existed, and that the quoted Italian
+#                        sentences might be private content. BOTH were then measured directly
+#                        rather than re-dispatched (see receipts), which is why this pack does
+#                        not carry a second round: the leads were answered, not dropped.
+#   kimi-code/k3      -> weekly/monthly quota exhausted (403) as of this session's start banner;
+#                        tp1-qwen3.8-max QUOTA_DEAD (429, resets 2026-09-18 08:39 UTC).
+seat_fallback_reason: >-
+  agy-gemini-3.1-pro carried the council as the second FAMILY after codex-gpt-5.6-sol died on its
+  own context budget without emitting a report, and kimi/tp1-qwen were quota-dead. The property
+  the quorum exists to buy — a reviewer whose training prior is not the author's — was met by
+  agy; the codex seat's two surviving leads were converted into direct measurements by the Dux.
+
+spend:
+  wall_clock_hours: 1
+  adversarial_rounds: 1 # agy-gemini-3.1-pro constructive, all findings dispositioned; codex died before reporting
+  children: 3
+  child_depth: 1
+  tokens: not measured
+
+lanes:
+  - lane: b2-5-identity-language-build
+    role: build
+    seat: >-
+      claude-opus-5 xhigh (Dux, this session, on Pro) plus two claude-sonnet-5 implementer runs,
+      all LOCAL seats on the owner's own machine, dispatched as `claude -p` subprocesses because
+      in-process subagents in this session had no OAuth token and died "Not logged in". Worktree
+      .worktrees/backend-rag-b2-5-identity-language, branch
+      agent/nuzantara/backend-rag/b2-5-identity-language, base origin/main 449def3cb3. Recovers a
+      272-line module drafted in a previous window, never wired and never tested.
+  - lane: b2-5-review-gemini
+    role: review
+    seat: >-
+      agy-gemini-3.1-pro (`agy -p`), OUT of the contribution chain, constructive role, briefed to
+      read the client-facing strings as a CLIENT and to judge the new database query in the
+      outbox worker. Diff only; synthetic fixtures only.
+  - lane: b2-5-review-codex
+    role: review
+    seat: >-
+      codex gpt-5.6-sol xhigh (`codex exec --sandbox read-only`), OUT of the contribution chain,
+      adversarial role. Ran and did not deliver — see seat_fallback_reason. Recorded as a lane
+      because it consumed budget and produced two leads, not because it produced a verdict.
+  - lane: b2-5-gate
+    role: review
+    seat: >-
+      claude-opus-5 xhigh, FRESH read-only session outside the contribution chain, commissioned on
+      this PR's head sha. Generator is never grader, in either direction.
+
+receipts:
+  - claim: the deterministic gear floor for this changed-file set is 2, and it comes from the diff's SIZE rather than a hot path
+    cmd: python3 scripts/evidence_pack_lint.py --print-floor --changed-files-file <f> --numstat-file <n>; and --print-floor-source
+    result: "2; source: size"
+    ts: "2026-09-15T16:40:00+08:00"
+    seat: claude-opus-5 (Dux, this session)
+    exit: 0
+  - claim: the new guard's own suite is green and the whole WhatsApp unit surface is green with it
+    cmd: .venv/bin/python -m pytest backend/tests/unit/services/test_wa_identity.py; then backend/tests/unit/services/ backend/tests/unit/app/routers/ -k "wa_ or whatsapp"
+    result: "118 passed; then 1179 passed, 6 xfailed (all six pre-existing in test_wa_dlp.py, each carrying its own accepted-gap reason), 0 unexplained skips"
+    ts: "2026-09-15T16:38:00+08:00"
+    seat: claude-opus-5 (Dux, this session — re-run independently, not relayed from the implementer)
+    exit: 0
+  - claim: the innocence half of the guard is NOT vacuous — the domain veto is load-bearing
+    cmd: "mutation: replace `if any(token in _DOMAIN_VETO_TOKENS for token in tokens): return None` with `if False:`, run test_wa_identity.py, then restore from a cp backup"
+    result: "mutated -> 11 failed (all TestInnocence), 68 passed; restored -> 79 passed (pre-cure baseline)"
+    ts: "2026-09-15T16:20:00+08:00"
+    seat: claude-opus-5 (Dux, this session)
+    exit: 0
+  - claim: a new PackageUnbuildable reason cannot violate migration 318's CHECK constraint — this was the one way this slice could have broken production, and it is closed by construction rather than by care
+    cmd: python -c "from wa_codex_leg import _normalize_fall_off_reason as n; n('unbuildable:identity_domain')"; then grep the 318 migration for the produced value
+    result: "'unbuildable:identity_domain' -> 'package_unbuildable', which the 318 CHECK already admits (2 occurrences: UPGRADE and ROLLBACK). No migration needed. Declared cost: the ledger label is the generic bucket, not package_unbuildable_identity_domain — and that raise is unreachable from the live leg anyway, because wa_codex_leg short-circuits before the build"
+    ts: "2026-09-15T16:22:00+08:00"
+    seat: claude-opus-5 (Dux, this session)
+    exit: 0
+  - claim: the guard was censused for BOTH failure directions on disk, before and after the cures — not argued, not sampled by a model
+    cmd: "a 32-guilt / 23-innocence probe over match_identity_question and match_greeting, then re-run after the cures with the new languages added"
+    result: 'BEFORE: over-match 0/23, under-match 2/32 (''are you an AI?'' and "sei un''intelligenza artificiale?"). AFTER: over-match 0/10, under-match 0/16 including ru/uk and the AI phrasings'
+    ts: "2026-09-15T16:30:00+08:00"
+    seat: claude-opus-5 (Dux, this session)
+    exit: 0
+  - claim: the stub-language premise the mandate handed this slice was WRONG, and measuring it is what found the real defect
+    cmd: "python -c: detect_query_language over 8 ordinary client sentences in IT/ID/EN"
+    result: "7 of 8 correct. The ABSTAIN stub's detector (wa_finalize.py:245 -> detect_query_language) is healthy on real client questions; its single miss is 'ti ho chiesto chi sei tu?', which no longer reaches the abstain path because this PR intercepts it first. The defect is in a DIFFERENT stub — _apology_text in wa_outbox_worker.py, fed by services.communication.detect_language, which returns 'auto' on ordinary openers"
+    ts: "2026-09-15T16:18:00+08:00"
+    seat: claude-opus-5 (Dux, this session)
+    exit: 0
+  - claim: gemini round 1, constructive, on the pre-cure candidate
+    cmd: agy -p, briefed to read the client-facing strings as a client and to judge the new worker query
+    result: "FIX-FIRST. 4 findings cured (handoff promise, Indonesian calque, Italian narrowing, missing ru/uk), 2 declared measured-not-cured (compound question, statelessness), 1 verification that resolved the Dux's own split-or-not question with evidence (the new query is bounded at 5 rows, index-backed, outside the claim lock, exception-isolated, and runs only on 'auto')"
+    ts: "2026-09-15T16:28:00+08:00"
+    seat: agy-gemini-3.1-pro
+    exit: 0
+  - claim: no client PII is anywhere in this change
+    cmd: git diff origin/main | grep -nE "(api[_-]?key|password|@gmail|@balizero|\+62[0-9]{6,})"
+    result: "zero hits"
+    ts: "2026-09-15T16:40:00+08:00"
+    seat: claude-opus-5 (Dux, this session)
+    exit: 0
+
+result: >-
+  A client asking who this is now gets a scripted presentation from the product's own definition
+  instead of the abstain refusal, in five languages, at first contact — the turn that decides
+  whether they stay. The guard is consulted as the SECOND authority immediately after the
+  greeting, in the same order at all three call sites, so the two detectors and the package
+  builder cannot hold three opinions about one message. The presentation deliberately makes NO
+  promise about reaching a human: nothing in this repository detects that request yet, and the
+  invitation returns in the next slice, in the same PR that makes it true.
+
+measured:
+  - "test_wa_identity.py: 118 passed. Whole WhatsApp unit surface: 1179 passed, 6 xfailed (pre-existing, each with a written reason), 0 unexplained skips"
+  - "MUTATION-PROVEN guard: disabling the domain veto turns 11 innocence tests red; restored, green"
+  - "census BEFORE cures: over-match 0/23, under-match 2/32 — and both misses were the same shape, the 'are you an AI' phrasing, which is plausibly the commonest way a client asks this today"
+  - "census AFTER cures: over-match 0/10, under-match 0/16, including Cyrillic and the AI phrasings"
+  - "Cyrillic survives the normalizer: _normalize('Кто Ты?') -> 'кто ты', verified empirically before the ru/uk table was written rather than assumed from the regex"
+  - "'unbuildable:identity_domain' normalizes to 'package_unbuildable', a value migration 318's CHECK already admits — no migration, no production write can fail"
+  - "detect_query_language is correct on 7 of 8 ordinary client sentences; the abstain stub did NOT need the fix the mandate assumed"
+  - "diff: about 1,460 net across 15 files — exactly 987 of it code and tests across 10 files, the remainder this Evidence Pack, which moves its own total whenever it is edited; floor 2, source size"
+
+dissent:
+  - seat: agy-gemini-3.1-pro
+    status: CONFIRMED
+    objection: 'BLOCKER-class: the presentation instructs the client to write a magic phrase to reach a human (''Just write "I want to talk to a human"''), and nothing in this repository detects that phrase. A client who follows the instruction falls through to retrieval, abstains, and reaches nobody.'
+    resolution: >-
+      Correct, and it was the single most valuable finding of the review. CURED by DELETING the
+      invitation in all three languages rather than softening it — "let me know and a consultant
+      will take over" is the same untruth in a quieter voice, and it would be harder to make true
+      later because it names no trigger. This repo settled the identical question once already:
+      PR #3260's refusal copy deliberately does not promise "a colleague will reply here",
+      precisely because nothing notifies a human. The invitation comes back in the NEXT slice, in
+      the same PR that ships the detector and the email, so the promise and the mechanism land
+      together.
+  - seat: agy-gemini-3.1-pro
+    status: CONFIRMED
+    objection: "The Indonesian presentation is a calque from English: 'bicara dengan manusia' reads as human-versus-alien rather than as business Indonesian, and 'orang Bali Zero' is too colloquial for a first contact."
+    resolution: >-
+      CURED. The offending sentence was removed by the cure above; the remaining calques were
+      fixed ('bantu soal' -> 'bantu mengenai', and the grounding sentence rewritten). Worth
+      recording as a class: an Indonesian client is the one who reads this string, and it was
+      written by seats whose default is English.
+  - seat: agy-gemini-3.1-pro
+    status: CONFIRMED
+    objection: "The Italian narrows a category the other two do not: 'visti turistici' where English says 'visit visas' and Indonesian 'visa kunjungan', which cover business and pre-investment visits."
+    resolution: "CURED: 'visti d'ingresso'. The three languages now promise the same scope."
+  - seat: agy-gemini-3.1-pro
+    status: CONFIRMED
+    objection: "wa_greeting scripts ru and uk; wa_identity scripts only id/en/it. A Russian- or Ukrainian-speaking client asking who this is falls through to retrieval and gets the abstain refusal — the exact defect this slice exists to close."
+    resolution: >-
+      CURED: ru and uk added to both the phrase table and the replies, 33 phrases between them,
+      with guilt AND innocence cases. Not a hypothetical locale — that segment has its own team
+      corner in this repo. The normalizer's handling of Cyrillic was verified empirically BEFORE
+      the table was written, because a table that can never match would have passed every test
+      that only asserts "returns None".
+  - seat: agy-gemini-3.1-pro
+    status: CONFIRMED
+    objection: "A compound question under the length brakes — 'who are you and can you help me move next month?' — matches, and the client's practical half is answered by the presentation instead of by retrieval."
+    resolution: >-
+      Reproduced, and DECLARED rather than cured. The cost is one extra turn, and what the client
+      gets today in that same case is the abstain refusal, which is strictly worse. Every cure
+      considered (a conjunction list, a phrase-coverage ratio) either re-introduces the substring
+      thinking this guard exists to avoid, or breaks the real production case
+      'ti ho chiesto chi sei tu' whose matched phrase covers a third of the message. Written into
+      the module docstring so the next reader does not rediscover it as a defect.
+  - seat: agy-gemini-3.1-pro
+    status: CONFIRMED
+    objection: "The match is stateless: a second identity question in the same thread returns the same presentation verbatim."
+    resolution: "Deliberate and declared in the docstring. The module is a pure function with no thread access by design; giving it one would make it the kind of detector this slice exists to avoid."
+  - seat: codex-gpt-5.6-sol
+    status: CONFIRMED
+    objection: "(from the trace it left before dying) the source and tests appear to persist verbatim private conversation content."
+    resolution: >-
+      The instinct is right on this surface and the reading is wrong: the two Italian sentences
+      are the OWNER's own probe messages to the sandbox number, naming nobody and carrying no
+      identifier. CURED at the level that matters — their provenance is now stated in the module
+      docstring, so the next reader, human or machine, does not have to re-derive it. A grep of
+      the whole diff for credential and identifier shapes returns zero hits.
+  - seat: dux-claude-opus-5
+    status: CONFIRMED
+    objection: "The ledger cannot distinguish an identity turn: 'unbuildable:identity_domain' falls through to the generic 'package_unbuildable' bucket instead of its own value, which is the exact blindness migration 291's sub-reason map exists to end."
+    resolution: >-
+      Accepted, not cured. Giving it its own value means extending migration 318's CHECK
+      constraint — a whole migration, with its Squawk run and its rollback proof — for a ledger
+      label on a code path that is unreachable from the live leg, because wa_codex_leg
+      short-circuits before the build is ever called. The fallback is SAFE by construction, which
+      was the thing that actually had to be proven and is (see receipts). If that raise ever
+      becomes reachable, this is the row to come back to.
+
+pending_live_proof: >-
+  Merging apps/backend-rag IS the deploy. The observation owed after merge: the four messages
+  resent to the sandbox number produce two Italian presentations, one Bahasa presentation, and an
+  unchanged sources answer for the real question that follows — and no row on those turns carries
+  a generation_fall_off_reason. This slice is not called done until that is taken.

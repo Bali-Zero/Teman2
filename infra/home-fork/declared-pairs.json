@@ -904,6 +904,12 @@
       "machines": ["pro"]
     },
     {
+      "live": "~/Library/LaunchAgents/com.nuzantara.wa-mirror-freshness-liveness.plist",
+      "repo": "infra/launchagents/com.nuzantara.wa-mirror-freshness-liveness.plist",
+      "machines": ["pro"],
+      "_note": "Installed on the Pro 2026-09-16T03:03:00Z, a month after the plist was committed (PR #4223, 2026-08-16) and 32 days after its only heartbeat (a manual run on 2026-08-15, which is exactly why a sidecar must never be read as an armed organ). Declared here in the same breath as the install: the plist is now a live COPY under ~/Library/LaunchAgents, and an undeclared copy is superscar #1 (HOME-fork drift) waiting to happen. machines=pro and only pro — the plist's own header refuses Mini/M5 because the WhatsApp mirror and its Postgres table live on the Pro alone (superscar #10, active-active split-brain)."
+    },
+    {
       "live": "~/scripts/eventbus/meta_dispatcher.py",
       "repo": "infra/eventbus/meta_dispatcher.py",
       "machines": ["pro"],
@@ -1032,6 +1038,48 @@
       "repo": "infra/launchagents/com.nuzantara.automations-reference.plist",
       "machines": ["pro"],
       "_note": "Born 2026-09-11 to end the two-authors overwrite of docs/AUTOMATIONS_REFERENCE.md (Pro's 23:15 live regen into the main checkout vs the hand-edited committed copy, PENDING-ARMS #6137). The plist now points at scripts/automations-reference-cron-wrapper.sh, which runs the generator in an isolated worktree and promotes via PR instead."
+    },
+    {
+      "live": "~/.claude/local-marketplace/.claude-plugin/marketplace.json",
+      "repo": "infra/claude-plugins/local-marketplace/.claude-plugin/marketplace.json",
+      "machines": ["all"],
+      "_note": "Declared 2026-09-15 with the nuzantara-local plugin marketplace's repo declaration (infra/claude-plugins/local-marketplace/). This pair (and the four below it) covers only the AUTHORED files — hand-edited on top of upstream. The VENDORED files inside plugins/superpowers/ and plugins/caveman/ (upstream skill/hook trees) are NOT pairs here: they are verified by `python3 infra/claude-plugins/install_local_marketplace.py --check` against infra/claude-plugins/local-marketplace/vendor.lock.json (sha256 per file, pinned to an upstream commit), because a per-file pair list for ~40 vendored files would just be vendor.lock.json's content duplicated in a second place."
+    },
+    {
+      "live": "~/.claude/local-marketplace/README.md",
+      "repo": "infra/claude-plugins/local-marketplace/README.md",
+      "machines": ["all"],
+      "_note": "Same declaration as the marketplace.json pair above; vendored files are verified by install_local_marketplace.py --check against vendor.lock.json, not by pairs."
+    },
+    {
+      "live": "~/.claude/local-marketplace/plugins/superpowers/.claude-plugin/plugin.json",
+      "repo": "infra/claude-plugins/local-marketplace/plugins/superpowers/.claude-plugin/plugin.json",
+      "machines": ["all"],
+      "_note": "Same declaration as the marketplace.json pair above; vendored files (skills/, LICENSE) are verified by install_local_marketplace.py --check against vendor.lock.json, not by pairs."
+    },
+    {
+      "live": "~/.claude/local-marketplace/plugins/caveman/.claude-plugin/plugin.json",
+      "repo": "infra/claude-plugins/local-marketplace/plugins/caveman/.claude-plugin/plugin.json",
+      "machines": ["all"],
+      "_note": "Same declaration as the marketplace.json pair above; vendored files (skills/caveman/, src/hooks/, LICENSE) are verified by install_local_marketplace.py --check against vendor.lock.json, not by pairs."
+    },
+    {
+      "live": "~/.claude/local-marketplace/plugins/typescript-lsp/.claude-plugin/plugin.json",
+      "repo": "infra/claude-plugins/local-marketplace/machines/m5/typescript-lsp.plugin.json",
+      "machines": ["m5"],
+      "_note": "typescript-lsp's plugin.json is machine-specific (only initializationOptions.tsserver.fallbackPath differs, pointing at that host's own node_modules/typescript/lib) — one pair per machine against infra/claude-plugins/local-marketplace/machines/<m>/typescript-lsp.plugin.json, installed by install_local_marketplace.py --machine <m>. No vendored files under this plugin (it carries no skills/hooks, only the .claude-plugin/plugin.json itself)."
+    },
+    {
+      "live": "~/.claude/local-marketplace/plugins/typescript-lsp/.claude-plugin/plugin.json",
+      "repo": "infra/claude-plugins/local-marketplace/machines/pro/typescript-lsp.plugin.json",
+      "machines": ["pro"],
+      "_note": "Pro half of the typescript-lsp per-machine pair — see the m5 entry above for why this plugin.json is machine-specific. No vendored files under this plugin."
+    },
+    {
+      "live": "~/.claude/local-marketplace/plugins/typescript-lsp/.claude-plugin/plugin.json",
+      "repo": "infra/claude-plugins/local-marketplace/machines/mini/typescript-lsp.plugin.json",
+      "machines": ["mini"],
+      "_note": "Mini half of the typescript-lsp per-machine pair — see the m5 entry above for why this plugin.json is machine-specific. No vendored files under this plugin."
     }
   ],
   "allow": [

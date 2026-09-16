@@ -1,0 +1,286 @@
+gear: 3
+brief_ref: evidence/brief.yml
+ruling: RULED 2026-09-12 SAETTA
+council_run: journal.jsonl
+seat_fallback_reason: >-
+  agy-gemini-3.1-pro (reserve) sits beside the titolare codex-gpt-5.6-sol
+  because every other seat was observed down in this window, not assumed.
+  `python3 scripts/arsenal_probe.py --seats kimi,qwen-cloud-code,tp1-glm-5.2,tp1-deepseek-v4-pro`
+  at 2026-09-15T08:21:11Z on M5 returned 0 of 4 OK: kimi QUOTA_DEAD
+  ("purchase extra usage or upgrade your plan"), qwen-cloud-code QUOTA_DEAD
+  ("insufficient_quota: 429 ... token-plan 1-week quota has been exhausted
+  ... reset at 09-18 08:39:00 UTC"), tp1-glm-5.2 and tp1-deepseek-v4-pro
+  HTTP 429 with the same token-plan reset. The titolare codex-gpt-5.6-sol
+  DID play every round and is the seat that blocked rounds 2 and 3.
+appetite_exceeded: >-
+  Six codex rounds against a ceiling of two. Round 1 produced no verdict
+  (the codex CLI, launched with its cwd inside the repo, spent its context on
+  AGENTS/skills and hit the context-bridge rollover at ~176K tokens with only
+  a checkpoint on stdout), so it bought no review. Rounds 2 and 3 found real
+  defects the reserve seat had passed (a red gradient on the LKPM panel, a
+  guard that skipped CSS and could be bypassed from inside a string,
+  icon-only destructive buttons with no name); round 4 is a verification of
+  the micro-cures; round 4 then found the hand-written quote tracker of the guard itself could be desynchronised, and since that was a fix of a fix the surface was changed instead of patched (TypeScript AST scanner); round 5 found two more guard-only gaps with zero occurrences in the route, closed in one test-only commit, and round 6 is the binary release verdict (OK). The lint's council quorum needs the titolare's
+  ok:true, and no other titolare was reachable (seat_fallback_reason).
+  Wall clock is inside its ceiling: about 3h from recovery (14:25 WITA) to
+  the final head.
+spend:
+  adversarial_rounds: 6
+  wall_clock_hours: 3
+
+lanes:
+  - lane: mouth/r19k-k3b-v2
+    role: build
+    seat: >-
+      Claude Opus 5 (Dux of W-E, mission SAETTA-20260915; recovered the
+      previous K3 Dux's uncommitted work, verified every review finding on
+      disk before dispatching the cure, ran the checks the pack cites)
+    task_id: r19k-k3b-v2
+    worktree: .worktrees/mouth-r19k-k3b-v2
+    branch: agent/air-m5/mouth/r19k-k3b-v2
+  - lane: mouth/r19k-k3b-v2-implementer
+    role: build
+    seat: >-
+      Claude Sonnet 5 implementer subagent (rounds C1-C6, R1-R6, Q1-Q7,
+      M1-M4, 390 cure, AST guard scanner; browser captures on next dev --webpack)
+    task_id: r19k-k3b-v2
+    worktree: .worktrees/mouth-r19k-k3b-v2
+    branch: agent/air-m5/mouth/r19k-k3b-v2
+  - lane: crm-shapes-ground-truth
+    role: ground_truth
+    seat: >-
+      session (M5) — this PR asserts no regulatory, price or business fact. It
+      repaints fields the page already fetched on origin/main and reuses the
+      ownership predicate `viewerIsNext` from ../client-row-model.ts, which
+      landed and was gated in #6562.
+    nb: >-
+      origin/main @ 449def3cb33dd9ff7d8a5f2878f68c2d072cc7a5; no new request,
+      no new endpoint, no new field. The only new call is a one-shot
+      `api.getProfile()` fallback for the viewer email, an endpoint the page
+      already calls on status change.
+
+pii_scan: clean
+pii_scan_note: >-
+  Test and browser fixtures are synthetic (`Client 0412`, `PT Contoh Abadi`,
+  `client412@example.test`, `staff@example.test`, `member-a@example.test`).
+  `git diff origin/main...HEAD | grep -nE "(api[_-]?key|token|password|@gmail|\+62)"`
+  hits only "design token" prose. No capture was taken on the live workspace.
+
+decisions:
+  - id: D1
+    decision: >-
+      Ownership = `assigned_to` equals the signed-in viewer AND the status is
+      one the row model knows is still moving (`viewerIsNext`). The mission
+      prompt said `received_by`, which is the review record's field (K2b); a
+      Client has no such field.
+    reference: fusion/concept.md §1 "Copper appears only when the signed-in viewer is the next actor"
+  - id: D2
+    decision: >-
+      Sweep the WHOLE route, not the WIP's nine files. The review seats found
+      copper through `--bz-accent` (which resolves to copper on kita),
+      `--state-danger` (re-aliased to copper), raw rgba copper and shadcn's
+      default Button fill on tabs and modals the WIP had not touched; leaving
+      them would ship a page whose copper still means hover, error or
+      "primary" on six of nine tabs.
+    reference: fusion/concept.md §3 needs-you row "never a fill"; FROZEN-v2 ruling 4
+  - id: D3
+    decision: >-
+      Guards walk the directory (every non-test .ts/.tsx/.css under [id]/**)
+      and ban shapes rather than parse hue: no raw colour literal in any
+      syntax or case, no red/rose/orange/amber palette utility on any prefix,
+      no template-built var name, no Button without a static
+      outline|ghost|secondary|link variant, copper aliases only at the owned
+      Stamp. Simpler than a hue parser and it cannot be argued with.
+  - id: D4
+    decision: >-
+      Selection is ink (active tab, open Log toggle); primary actions are
+      forest; destructive icon-only controls are neutral with an aria-label
+      and title naming the action. Urgency reads --state-warning with a word.
+    reference: fusion/concept.md §10 FORTE "ink selection"; mission rule "forest = done, primary button"
+  - id: D5
+    decision: >-
+      Sticky tab bar at var(--bz-header-height, 48px) with an opaque base; the
+      status column stays first in DOM and moves right at >=1100px by flex
+      order only.
+    reference: fusion/concept.md §6 sticky failure mode; K3 brief "where it stands column first on mobile"
+  - id: D6
+    decision: >-
+      Viewer identity: synchronous cache first, then one unmount-guarded
+      api.getProfile(); failure leaves the viewer unknown and paints no
+      copper (fail closed).
+
+receipts:
+  - claim: >-
+      The deterministic floor is 3 via `size`, which is why this pack exists.
+    cmd: git diff --numstat origin/main...HEAD | awk '{a+=$1; d+=$2} END {print a, d, a+d}'
+    result: >-
+      2481 added, 793 deleted, churn 3274 over SIZE_GEAR3_THRESHOLD (1828);
+      33 files, all under apps/mouth/src/app/(workspace)/clients/[id]/; no
+      hot-zone path.
+    exit: 0
+    ts: "2026-09-15T16:45:00+08:00"
+    seat: Claude Opus 5
+  - claim: >-
+      The family's tests are green and the types check on the final head.
+    cmd: cd apps/mouth && npx vitest run "src/app/(workspace)/clients" "src/components/crm" ; npx tsc --noEmit --incremental false
+    result: >-
+      Run by the Dux on the final source head adab63824f:
+      13 test files / 115 tests passed; tsc exit 0 with no output (earlier
+      heads: 100/100 at ced83f7acb after the rebase, 109/109 at 619886aec9, 112/112 at 6f7c516e91).
+    exit: 0
+    ts: "2026-09-15T16:45:00+08:00"
+    seat: Claude Opus 5
+  - claim: >-
+      The round-7 AST guard catches the scanner bypass the regex version missed.
+    cmd: 'planted `const _mutationProbeRegex = /"/;` followed by `className="x /* bg-red-500 */"` in [id]/error.tsx'
+    result: offender scan red at error.tsx:11 bg-red-500; cp-restore; suite green; grep for the probe on disk after restore = 0 hits (checked by the Dux)
+    exit: 1
+    ts: "2026-09-15T17:05:00+08:00"
+    seat: Claude Sonnet 5 implementer; restore verified by the Dux
+  - claim: >-
+      The guards bite: each new glob assertion was mutation-tested on the real
+      tree (plant, red, cp-restore, green).
+    cmd: 'planted in real files: --bz-accent in PortalAccess.tsx; hover:border-[var(--bz-accent)] in ClientDetailClient.tsx; .tabActive back to copper; an orange gradient; className="x // bg-[var(--bz-accent)]"; className="x /* bg-red-500 */"; variant="destructive"; a TaxTab wrap removal'
+    result: every plant turned exactly its own assertion red; every restore returned the suite to green
+    exit: 1
+    ts: "2026-09-15T16:40:00+08:00"
+    seat: Claude Sonnet 5 implementer, spot-checked by the Dux
+  - claim: >-
+      Copper comes from ownership only, measured in a real browser, and
+      nothing overflows.
+    cmd: >-
+      Playwright/Chromium against `next dev --webpack` at HEAD
+      619886aec956948b1812da5b2b0fcb0280e28f1f with route-intercepted
+      synthetic data; fixture a = client assigned to the viewer (active),
+      fixture b = same client assigned to someone else; Log panel open, Tax
+      and Family tabs open; 1440/1280/390 x operative-light/dark.
+    result: >-
+      document scrollWidth === clientWidth in all 16 measured combos (the
+      first capture at ced83f7acb had 466 vs 390 with Log + Tax open; the
+      TaxTab YearSelector was the offender, cured layout-only in 619886aec9).
+      Sticky tab bar top === 48 after scrolling a 40-document tab to the end,
+      both themes. Copper-family computed hits: fixture b = Masthead eyebrow
+      x3 props, Masthead rule x1, global skip link x1 (all outside this
+      route); fixture a = the same + the owned Stamp. Red-hue hits inside
+      [id]/** = 0 (20 hits trace to components/workspace/AppSidebar.tsx, the
+      shell rail). Active tab border rgb(29,44,59) light / rgb(247,244,238)
+      dark. Captures: measure.json sha256
+      936c39d6555e365056ddba42a693acf80b46c033521a7072aad1727c8311ce33 with
+      16 PNGs (sha256 listed inside measure.json, e.g.
+      operative-light__b__tax__390.png ffd910c5ca012aa6b8c6d095b80912d0e06f2f6417d79b964d8849d323daa41a,
+      operative-dark__a__family__390.png 5f2d25d32a68fc92dad7d5e75527e073ec0b1eb50107453a29de065f34cf9b6b).
+    exit: 0
+    ts: "2026-09-15T16:35:00+08:00"
+    seat: Claude Sonnet 5 implementer; numbers re-read from measure.json by the Dux
+  - claim: >-
+      Round-3 capture confirms the Log panel and tab-bar fixes with the panel
+      open.
+    cmd: same rig at ced83f7acb, Log open + Tax + Family
+    result: >-
+      Log toggle and Save compute to ink / forest, not copper; all 9 tabs
+      reachable with non-zero width at 390; console errors 2 per combo from
+      the WaCaseIntelligencePanel stub in the synthetic fixture, none from
+      this route's code.
+    exit: 0
+    ts: "2026-09-15T16:20:00+08:00"
+    seat: Claude Sonnet 5 implementer
+
+dissent:
+  - seat: agy-gemini-3.1-pro (council, round 1, on the WIP + C1-C6 tree)
+    objection: >-
+      Copper fill on the Log toggle when open and on the Log Save button
+      (shadcn default variant); the Button guard listed two files so both
+      passed; the status trigger lacked type/aria-haspopup/aria-expanded.
+    status: CONFIRMED
+    cure: R1, R2, R3 (glob guard), R6 in round 3; seat re-reviewed round 2 and 3 VERDICT OK.
+  - seat: codex-gpt-5.6-sol (council, round 1)
+    objection: >-
+      No verdict: context rollover. Leads recovered from its checkpoint: the
+      viewer email came only from a synchronous cache (the owner never sees
+      the stamp on a cold cache) and copper aliases remained on untouched
+      tabs and modals.
+    status: CONFIRMED
+    cure: R5 async viewer fallback with tests; R4 route-wide sweep.
+  - seat: codex-gpt-5.6-sol (council, round 2)
+    objection: >-
+      LKPM panel red gradient escaped a bg|text|border-only guard; guard
+      skipped CSS; `//` inside strings stripped before scanning; icon-only
+      destructive controls with no word or name; Button guard accepted
+      variant={expr}.
+    status: CONFIRMED
+    cure: Q1-Q7 in round 4, plus a Dux find (EditClientModal built CSS var names at runtime) cured with a static map.
+  - seat: codex-gpt-5.6-sol (council, round 3)
+    objection: >-
+      Modal close X without title; block-comment markers inside strings still
+      stripped; data-variant masquerading as variant; RGB()/oklch() outside
+      the raw-colour ban.
+    status: CONFIRMED
+    cure: M1-M4 in 1b245b36ab; verified in round 4 (see journal).
+  - seat: codex-gpt-5.6-sol (council, round 4)
+    objection: >-
+      Product changes clean; the guard's hand-written quote tracker
+      desynchronises on a regex literal like /"/ so a later block comment
+      inside a string is stripped, and a title attribute containing
+      variant="outline" counts as a variant.
+    status: CONFIRMED
+    cure: >-
+      Fix-of-a-fix rule applied: the scanners were replaced by a TypeScript
+      compiler API walk (6f7c516e91, test file only) where a regex literal
+      is its own token and `variant` is its own JsxAttribute node; both
+      bypasses pinned as guilt cases and mutation-tested in error.tsx.
+  - seat: codex-gpt-5.6-sol (council, round 5)
+    objection: >-
+      AST scanner verified; two more guard gaps: a JSX spread after a literal
+      variant, and a partially template-built var name.
+    status: CONFIRMED
+    cure: >-
+      adab63824f (test file only), guilt + innocence, mutation-tested; round 6
+      VERDICT OK with no shipped-product defect.
+  - seat: codex-gpt-5.6-sol (council, round 6 notices)
+    objection: >-
+      Guard-only: the spread rejection is stricter than needed for
+      `{...props} variant="outline"`; `var( --state-${tone})` with inner
+      whitespace and string-concatenated var names are not detected.
+    status: PLAUSIBLE
+    cure: >-
+      Notices under SAETTA rule 1, zero occurrences in the route; the runtime
+      computed-style scan is the proof that what paints is clean. Recorded as
+      a leftover rather than a seventh round.
+  - seat: Claude Opus 5 (Dux, on the implementer's own evidence)
+    objection: >-
+      The implementer's "copper parity" metric (owned hits superset of
+      not-owned hits) passed while 43 non-ownership copper hits still painted
+      on a client the viewer does not own; and its J1 capture reported
+      scrollWidth 466 at 390 as pre-existing.
+    status: CONFIRMED
+    cure: acceptance re-stated as "fixture b carries no copper this route owns" (C6); 390 overflow cured in 619886aec9 and re-measured.
+  - seat: Claude Opus 5 (self-refutation, size)
+    objection: >-
+      Churn 3062 is seven times the ~400-line guidance.
+    status: CONFIRMED
+    cure: >-
+      Not splittable without shipping a route in two meanings of copper: the
+      mandate is a property of every file the page renders. A third of the
+      churn is the guard test file. The organ was already split (K3a list
+      #6562, K3b detail, K3c process, K3d partners + second-home).
+
+leftovers:
+  - >-
+    The static guard is an approximation of runtime values: string-built var
+    names (`"var(--state-" + tone + ")"`), inner-whitespace var() forms and
+    class names held in variables are not proven by it. The computed-style
+    browser scan is the proof for this head; a future refactor of the route
+    should re-run that scan, not only the guard.
+  - >-
+    components/workspace/AppSidebar.tsx rail reads as red to a hue scan (20
+    hits) and r19 Masthead's eyebrow is copper by design on every page:
+    outside this window's perimeter; for the K1c-bis owner to confirm the
+    rail hue against the frozen render.
+  - >-
+    /clients/new and /clients/analytics are not on the desk grammar yet (K3b's
+    window plan named "detail + new"; this PR ships detail only, the page the
+    team opens daily).
+  - >-
+    The live detail page cannot be measured by the building seats (staff
+    session); post-merge proof = served bundle markers + a team member's
+    authenticated look, as done for /clients by Zero on 2026-09-15 16:36.

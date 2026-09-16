@@ -26,7 +26,7 @@ export default function KBLILayout({
       <NavShell
         logo={<BZLogo variant="full" />}
         items={navItems}
-        slotAfter={<MobileNav items={navItems} />}
+        slotAfter={<MobileNav items={navItems} funnel="kbli" />}
         actions={
           <WhatsAppLeadButton
             source="kbli_navigator"

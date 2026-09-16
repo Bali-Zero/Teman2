@@ -247,3 +247,96 @@ describe("PMABadge — the cap extremes", () => {
     expect(screen.queryByText(/100%/)).toBeNull();
   });
 });
+
+describe("PMABadge — baliAttentionFascia (added 2026-09-15, W-J B1; Codex sol MAJOR finding 2, PR #6578)", () => {
+  it("GUILT: never renders the green open icon for an ATTENZIONE_FASCIA_BALI code", () => {
+    const { container } = render(
+      <PMABadge
+        status="open"
+        maxForeign={100}
+        verdictVerified
+        capSpecial={false}
+        capVerified
+        baliAttentionFascia
+      />,
+    );
+    expect(screen.queryByText("✅")).toBeNull();
+    expect(screen.getByText("⚠️")).toBeDefined();
+    expect(screen.getByText("Open")).toBeDefined();
+    expect(screen.getByText("· 100% nat'l · verify in Bali")).toBeDefined();
+    // Not the plain unqualified suffix a fully-open code would get.
+    expect(screen.queryByText("· 100% Foreign")).toBeNull();
+    // The warn className (shared with `restricted`), not the green `open` one.
+    expect(container.querySelector("span")?.className).toContain(
+      "kbli-pma-restricted",
+    );
+  });
+
+  it("INNOCENCE: false (or omitted) keeps the plain green open badge unchanged", () => {
+    render(
+      <PMABadge
+        status="open"
+        maxForeign={100}
+        verdictVerified
+        capSpecial={false}
+        capVerified
+      />,
+    );
+    expect(screen.getByText("✅")).toBeDefined();
+    expect(screen.getByText("· 100% Foreign")).toBeDefined();
+    expect(screen.queryByText(/verify in Bali/)).toBeNull();
+  });
+
+  it("GUILT: an unverified cap still gets the 'verify in Bali' qualifier, not a bare 'cap not verified'", () => {
+    render(
+      <PMABadge
+        status="open"
+        maxForeign={null}
+        verdictVerified
+        capVerified={false}
+        baliAttentionFascia
+      />,
+    );
+    expect(
+      screen.getByText("· cap not verified · verify in Bali"),
+    ).toBeDefined();
+  });
+
+  it("INNOCENCE: a verified zero cap (genuinely closed) outranks the attention-fascia warn", () => {
+    render(
+      <PMABadge
+        status="open"
+        maxForeign={0}
+        verdictVerified
+        capVerified
+        baliAttentionFascia
+      />,
+    );
+    expect(screen.getByText("Closed")).toBeDefined();
+    expect(screen.getByText("· 0% foreign ownership")).toBeDefined();
+    expect(screen.queryByText("Open")).toBeNull();
+    expect(screen.queryByText(/verify in Bali/)).toBeNull();
+  });
+
+  it("INNOCENCE: baliBlocked outranks baliAttentionFascia if both are somehow set", () => {
+    // Not a real data shape (a code is never both blocked=true and
+    // ATTENZIONE_FASCIA_BALI at once), but the badge must not split the
+    // fact across icon and suffix — `baliBlocked`'s pre-existing green-icon
+    // behavior wins wholesale rather than pairing a warn icon with
+    // "blocked in Bali" text.
+    render(
+      <PMABadge
+        status="open"
+        maxForeign={100}
+        verdictVerified
+        capVerified
+        baliBlocked
+        baliAttentionFascia
+      />,
+    );
+    expect(screen.getByText("✅")).toBeDefined();
+    expect(screen.queryByText("⚠️")).toBeNull();
+    expect(screen.getByText("· 100% nat'l · blocked in Bali")).toBeDefined();
+    expect(screen.queryByText(/verify in Bali/)).toBeNull();
+  });
+});

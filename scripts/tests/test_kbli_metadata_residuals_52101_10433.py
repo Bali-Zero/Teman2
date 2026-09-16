@@ -104,6 +104,61 @@ def _without_global_pma_verification_fields(record: dict[str, Any]) -> dict[str,
     }
 
 
+# Re-pinned SAETTA-20260915 W-J B1: cure_l4bali_applied_closure.py is a second
+# catalogue-wide sweep on this branch, same class as GLOBAL_PMA_VERIFICATION_
+# FIELDS above — an independently-adjudicated sibling cure that must not be
+# blamed for a scope leak it did not commit. It rewrites `l4_bali.moratorium`
+# on ALL 1,559 records (retiring the old blanket-13-May-2026 object) and, on
+# top of that, the six l4_bali verdict fields (status/blocked/needs_review/
+# confidence/reason/closure/verdict_state) ONLY on the codes its own plan()
+# classifies as "chiuso_bali" (the 40), "attenzione" (former risk-tier-only
+# blocks), "tertutup_national_cap" (re-pinned 2026-09-15: the national-cap
+# cure's new group, 4 codes the tier->ATTENZIONE conversion had wrongly
+# un-blocked) or "non_classificabile" (former blocked=true NON_CLASSIFICABILE).
+# Membership is derived by running the compiler's OWN plan() against
+# origin/main's pre-cure records — never a hand-maintained code list this
+# test would have to keep in sync with the compiler by hand — so a real scope
+# leak on any OTHER field of any OTHER record still fails this check
+# untouched, per the team-lead's explicit "never weaken the check for any
+# other field" instruction.
+_BALI_L4_STATUS_FIELDS = (
+    "status", "blocked", "needs_review", "confidence", "reason", "closure", "verdict_state",
+)
+
+
+def _bali_closure_touched_codes() -> set[str]:
+    import sys
+
+    filiera_dir = str(REPO_ROOT / "scripts" / "kbli_filiera")
+    if filiera_dir not in sys.path:
+        sys.path.insert(0, filiera_dir)
+    import cure_l4bali_applied_closure as bali_cure  # noqa: E402
+
+    closure_spec = bali_cure.load_closure_spec(bali_cure.DEFAULT_SPEC)
+    main_records = list(_git_show_by_code("origin/main", CANONICAL_REL).values())
+    plans = bali_cure.plan(main_records, closure_spec)
+    return {
+        code
+        for code, item in plans.items()
+        if item["group"] in ("chiuso_bali", "attenzione", "tertutup_national_cap", "non_classificabile")
+    }
+
+
+def _without_bali_applied_closure_noise(
+    record: dict[str, Any], code: str, touched_codes: set[str]
+) -> dict[str, Any]:
+    out = _without_global_pma_verification_fields(record)
+    l4 = out.get("l4_bali")
+    if not isinstance(l4, dict):
+        return out
+    l4 = dict(l4)
+    l4.pop("moratorium", None)  # rewritten on ALL 1,559 records — W-J B1
+    if code in touched_codes:
+        for key in _BALI_L4_STATUS_FIELDS:
+            l4.pop(key, None)
+    return {**out, "l4_bali": l4}
+
+
 def _load_spec_entries(spec_path: Path) -> dict[str, dict[str, Any]]:
     spec = json.loads(spec_path.read_text(encoding="utf-8"))
     return {e["code"]: e for e in spec["codes"]}
@@ -327,11 +382,12 @@ def test_canonical_diff_vs_origin_main_is_subset_of_residual_codes():
         "record set (code membership) drifted vs origin/main — this fix must "
         "never add/remove records."
     )
+    touched = _bali_closure_touched_codes()
     changed = {
         code
         for code in main_by_code
-        if _without_global_pma_verification_fields(main_by_code[code])
-        != _without_global_pma_verification_fields(disk_by_code[code])
+        if _without_bali_applied_closure_noise(main_by_code[code], code, touched)
+        != _without_bali_applied_closure_noise(disk_by_code[code], code, touched)
     }
     # The allowlist is every code a COMMITTED cure spec claims, not this lot's two.
     # A literal `changed <= RESIDUAL_CODES` holds only while this branch's sole
@@ -380,10 +436,11 @@ def test_innocent_controls_byte_identical_vs_origin_main():
     10433 finding is built on — legitimately owns 10490 as its ancestor)."""
     main_by_code = _git_show_by_code("origin/main", CANONICAL_REL)
     disk_by_code = _load_by_code(REPO_ROOT / CANONICAL_REL)
+    touched = _bali_closure_touched_codes()
     for code in INNOCENT_CONTROLS:
-        assert _without_global_pma_verification_fields(
-            main_by_code[code]
-        ) == _without_global_pma_verification_fields(disk_by_code[code]), (
+        assert _without_bali_applied_closure_noise(
+            main_by_code[code], code, touched
+        ) == _without_bali_applied_closure_noise(disk_by_code[code], code, touched), (
             f"{code}: unexpectedly diverged from origin/main — this residual fix "
             "must not touch this control code."
         )

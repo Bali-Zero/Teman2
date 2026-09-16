@@ -157,6 +157,12 @@ export function buildKbliFaq(code: KBLICode): KbliFaqEntry[] {
   // activity through a code-number collision and has been detached — Bali
   // applicability is genuinely unresolved, not "open" or "blocked".
   const baliNonClassifiable = code.baliL4?.status === "NON_CLASSIFICABILE";
+  // Added 2026-09-15 (W-J B1): not on Bali's applied PMA closure list (18
+  // business fields, OSS closed since the third week of May 2026) — but the
+  // OLD blanket "low/medium-low risk tier is closed" reading came only from
+  // the Governor's January 2026 request letter, never enacted for this code.
+  // `blocked` is false; this must still never read as an unqualified "yes".
+  const baliAttentionFascia = code.baliL4?.status === "ATTENZIONE_FASCIA_BALI";
 
   // A NATIONAL closure recorded in the Bali-scoped `l4_bali` field. Without this
   // branch the answer below ends "Outside Bali it is open to a PT PMA with no
@@ -192,7 +198,12 @@ export function buildKbliFaq(code: KBLICode): KbliFaqEntry[] {
       : "one carve-out";
 
   const pmaAnswer = !pmaVerdictVerified
-    ? `Not yet verified. The canonical record carries a current PMA label for KBLI ${code.code} (${code.titleId}), but no adjudicated per-code official basis and source vintage verify that whole-code verdict. Confirm the current treatment at oss.go.id before planning a PT PMA.`
+    ? // A registered, still-matching review notice (kbli-pma-review.ts) names
+      // the SPECIFIC reason for the 12 no-Besar-row hold codes
+      // (SAETTA-20260915/W-H PR-5) instead of this generic sentence every
+      // other unverified code falls back to.
+      (code.pmaReviewNotice ??
+      `Not yet verified. The canonical record carries a current PMA label for KBLI ${code.code} (${code.titleId}), but no adjudicated per-code official basis and source vintage verify that whole-code verdict. Confirm the current treatment at oss.go.id before planning a PT PMA.`)
     : code.pma.status === "open"
       ? nationallyClosed
         ? `No — and not only in Bali. KBLI ${code.code} (${code.titleId}) is ${baliBlockClause(code.baliL4?.status)}, and that closure applies everywhere in Indonesia, so registering the activity in another province does not change the answer.${
@@ -227,19 +238,23 @@ export function buildKbliFaq(code: KBLICode): KbliFaqEntry[] {
                   ? ` ${code.baliL4?.reason}`
                   : ""
               } ${outsideBali}`
-          : baliNonClassifiable
-            ? // No BROADER-adjudicated code currently reaches this branch
-              // (checked live, 2026-08-07) — declared, not silently assumed
-              // safe: a future one would still open on the unqualified "100%
-              // foreign ownership at the national level" claim below. Left
-              // unfixed rather than guessing untested wording; flag if one
-              // ever lands here.
-              `National status: TERBUKA (${openWording.short}) — but Bali applicability cannot be determined yet. Whether Bali's PMA moratorium applies to KBLI ${code.code} (${code.titleId}) is not yet classifiable, pending re-derivation of the correct risk tier. Verify with the Bali Zero team before planning a Bali setup.`
-            : hasPerpresSlice
-              ? `National status: TERBUKA for most of this code, with ${carveOutPhrase}. KBLI ${code.code} (${code.titleId}) is ${openWording.claim} for most of the activity.`
-              : openWording.fullyOpen
-                ? `Yes. KBLI ${code.code} (${code.titleId}) is TERBUKA — ${openWording.claim}. No local Indonesian partner required.`
-                : `National status: TERBUKA. KBLI ${code.code} (${code.titleId}) is ${openWording.claim}. Verify the exact ownership structure in OSS before relying on the status.`
+          : baliAttentionFascia
+            ? // Never "Yes"/"open"/"registrable": this code sits off Bali's
+              // applied closure list, but that is a "verify", not a "cleared".
+              `National status: TERBUKA (${openWording.short}) — not on Bali's PMA closure list, but verify before filing. KBLI ${code.code} (${code.titleId}) is not among the 18 business fields Bali closed to new PMA licensing in 2026; the low/medium-low risk tier was named only in the Governor's January 2026 request letter, never enacted for this code. Verify the applicable risk tier and zoning on OSS before filing in Bali.`
+            : baliNonClassifiable
+              ? // No BROADER-adjudicated code currently reaches this branch
+                // (checked live, 2026-08-07) — declared, not silently assumed
+                // safe: a future one would still open on the unqualified "100%
+                // foreign ownership at the national level" claim below. Left
+                // unfixed rather than guessing untested wording; flag if one
+                // ever lands here.
+                `National status: TERBUKA (${openWording.short}) — but Bali applicability cannot be determined yet. Whether Bali's PMA moratorium applies to KBLI ${code.code} (${code.titleId}) is not yet classifiable, pending re-derivation of the correct risk tier. Verify with the Bali Zero team before planning a Bali setup.`
+              : hasPerpresSlice
+                ? `National status: TERBUKA for most of this code, with ${carveOutPhrase}. KBLI ${code.code} (${code.titleId}) is ${openWording.claim} for most of the activity.`
+                : openWording.fullyOpen
+                  ? `Yes. KBLI ${code.code} (${code.titleId}) is TERBUKA — ${openWording.claim}. No local Indonesian partner required.`
+                  : `National status: TERBUKA. KBLI ${code.code} (${code.titleId}) is ${openWording.claim}. Verify the exact ownership structure in OSS before relying on the status.`
       : code.pma.status === "restricted"
         ? restrictedPmaAnswer(code)
         : `No. KBLI ${code.code} (${code.titleId}) is TERTUTUP — ${formatPmaOwnership(code.pma, "metadata")}. Reserved for Indonesian nationals only.`;

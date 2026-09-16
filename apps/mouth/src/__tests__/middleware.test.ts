@@ -420,7 +420,13 @@ describe("Middleware - Multi-domain Routing", () => {
     });
 
     it("should allow /lkpm on the app domain", () => {
-      const request = createRequest("https://kita.balizero.com/lkpm");
+      // W-C workspace session gate: a workspace route now needs the session
+      // cookie to be served at all — added here rather than dropping the
+      // assertion, since the assertion is still true for an authenticated
+      // request.
+      const request = createRequest("https://kita.balizero.com/lkpm", {
+        cookie: "nz_access_token=synthetic-session-token",
+      });
       const response = proxy(request);
 
       expect(response.status).not.toBe(301);
@@ -428,7 +434,10 @@ describe("Middleware - Multi-domain Routing", () => {
     });
 
     it("should allow internal app routes", () => {
-      const request = createRequest("https://kita.balizero.com/dashboard");
+      // W-C workspace session gate: same as /lkpm above.
+      const request = createRequest("https://kita.balizero.com/dashboard", {
+        cookie: "nz_access_token=synthetic-session-token",
+      });
       const response = proxy(request);
 
       expect(response.status).not.toBe(301);
@@ -437,7 +446,10 @@ describe("Middleware - Multi-domain Routing", () => {
     });
 
     it("should allow /clients route", () => {
-      const request = createRequest("https://kita.balizero.com/clients");
+      // W-C workspace session gate: same as /lkpm above.
+      const request = createRequest("https://kita.balizero.com/clients", {
+        cookie: "nz_access_token=synthetic-session-token",
+      });
       const response = proxy(request);
 
       expect(response.status).not.toBe(307);
@@ -517,8 +529,12 @@ describe("Middleware - Multi-domain Routing", () => {
       expect(response.headers.get("x-pathname")).toBe("/chat/conversation/123");
     });
 
+    // The probe path is deliberately NOT a session-gated route: the app block
+    // stamps noindex on EVERY path, so a non-gated path isolates host
+    // classification from the session gate, which since SAETTA W-C R-A also
+    // fires (and stamps noindex) on unclassified hosts.
     it.each([
-      ["notkita.balizero.com", "/dashboard"],
+      ["notkita.balizero.com", "/pricing"],
       ["mail.evil.test", "/inbox"],
     ])("does not classify lookalike app host %s", (host, path) => {
       const response = proxy(createRequest(`https://${host}${path}`));
@@ -526,6 +542,17 @@ describe("Middleware - Multi-domain Routing", () => {
       expect(response.headers.get("X-Robots-Tag")).not.toBe(
         "noindex, nofollow",
       );
+    });
+
+    it("still gates a workspace path on a lookalike app host, on that same host", () => {
+      const response = proxy(
+        createRequest("https://notkita.balizero.com/dashboard"),
+      );
+
+      expect(response.status).toBe(302);
+      const location = new URL(response.headers.get("location") ?? "");
+      expect(location.host).toBe("notkita.balizero.com");
+      expect(location.pathname).toBe("/login");
     });
 
     it("does not classify a lookalike visa hostname", () => {
@@ -646,7 +673,13 @@ describe("Middleware - Multi-domain Routing", () => {
     });
 
     it("does not redirect unrelated app-domain routes (e.g. /dashboard)", () => {
-      const request = createRequest("https://kita.balizero.com/dashboard");
+      // W-C workspace session gate: /dashboard is a SESSION_GATED_ROUTE now,
+      // so this needs the session cookie to keep testing what it says it
+      // tests — that /dashboard itself isn't caught by the ghost/retired
+      // route redirects above it, not that it's reachable with no session.
+      const request = createRequest("https://kita.balizero.com/dashboard", {
+        cookie: "nz_access_token=synthetic-session-token",
+      });
       const response = proxy(request);
 
       expect(response.status).not.toBe(302);

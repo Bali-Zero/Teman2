@@ -32,7 +32,7 @@ from datetime import datetime, timezone
 from html.parser import HTMLParser
 from pathlib import Path
 from typing import Any, Awaitable, Callable, Iterator
-from urllib.parse import quote, urljoin, urlsplit, urlunsplit
+from urllib.parse import parse_qs, quote, urljoin, urlsplit, urlunsplit
 
 import httpx
 from fastmcp.exceptions import ToolError
@@ -745,16 +745,33 @@ def _publication_document_checks(
     canonical = _normalized_public_url(parsed.canonical, base_url)
     cover_alt = ""
     for image in parsed.images:
-        image_url = _normalized_public_url(image.get("src", ""), base_url)
-        if image_url and urlsplit(image_url).path == expected_cover_path:
+        image_src = image.get("src", "")
+        image_url = _normalized_public_url(image_src, base_url)
+        if (
+            image_url
+            and _is_balizero_public_url(image_url)
+            and urlsplit(image_url).path == "/_next/image"
+        ):
+            # Next.js wraps the approved image path in its optimizer URL.
+            sources = parse_qs(urlsplit(image_src).query, keep_blank_values=True).get(
+                "url", []
+            )
+            image_url = (
+                _normalized_public_url(sources[0], base_url)
+                if len(sources) == 1
+                else ""
+            )
+        if (
+            image_url
+            and _is_balizero_public_url(image_url)
+            and urlsplit(image_url).path == expected_cover_path
+        ):
             cover_alt = image.get("alt", "").strip()
             break
     anchor_urls = {
         normalized
         for anchor in parsed.anchors
-        if (
-            normalized := _normalized_public_url(anchor.get("href", ""), base_url)
-        )
+        if (normalized := _normalized_public_url(anchor.get("href", ""), base_url))
     }
     return {
         "title": bool(expected_title and parsed.heading == expected_title),

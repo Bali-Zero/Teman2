@@ -55,7 +55,10 @@ export default async function NewsPage() {
       <NavShell
         logo={<BZLogo variant="full" size={36} />}
         items={NAV_ITEMS}
-        slotAfter={<MobileNav items={NAV_ITEMS} />}
+        slotAfter={
+          /* funnel="home": editorial surfaces have no Funnel value of their own — deliberate, not a fallback. */
+          <MobileNav items={NAV_ITEMS} funnel="home" />
+        }
         actions={null}
       />
 

@@ -23,7 +23,7 @@ import { AiSummaryCard } from "./AiSummaryCard";
 const PRIORITY_BADGES: Record<string, { label: string; className: string }> = {
   urgent: {
     label: "🔥 urgent",
-    className: "bg-[var(--state-danger)]/10 text-[var(--state-danger)]",
+    className: "bg-[var(--state-warning)]/10 text-[var(--state-warning)]",
   },
   high: {
     label: "↑ high",
@@ -34,7 +34,7 @@ const PRIORITY_BADGES: Record<string, { label: string; className: string }> = {
 const PAYMENT_STYLES: Record<string, string> = {
   paid: "bg-[var(--state-success)]/10 text-[var(--state-success)]",
   partial: "bg-[var(--state-warning)]/10 text-[var(--state-warning)]",
-  unpaid: "bg-[var(--state-danger)]/10 text-[var(--state-danger)]",
+  unpaid: "bg-[var(--state-warning)]/10 text-[var(--state-warning)]",
   pending: "bg-[var(--state-warning)]/10 text-[var(--state-warning)]",
 };
 
@@ -128,7 +128,8 @@ export function ProcessTab({
         </h3>
         <Button
           size="sm"
-          className="gap-2"
+          variant="outline"
+          className="gap-2 border-[var(--state-success)] bg-[var(--state-success)] text-white hover:bg-[var(--state-success)] hover:opacity-90"
           onClick={() => router.push(`/process/new?client_id=${clientId}`)}
         >
           <Plus className="w-4 h-4" />
@@ -197,7 +198,7 @@ export function ProcessTab({
                 onClick={() => setSortBy(s)}
                 className={`text-xs px-2 py-1 rounded transition-colors ${
                   sortBy === s
-                    ? "bg-[var(--bz-accent)]/20 text-[var(--bz-accent)]"
+                    ? "bg-[var(--tx-pure)] text-[var(--bz-base)]"
                     : "text-[var(--bz-text-2)] hover:text-[var(--bz-text-1)]"
                 }`}
               >
@@ -223,7 +224,8 @@ export function ProcessTab({
           <div className="pt-2">
             <Button
               size="sm"
-              className="gap-2"
+              variant="outline"
+              className="gap-2 border-[var(--state-success)] bg-[var(--state-success)] text-white hover:bg-[var(--state-success)] hover:opacity-90"
               onClick={() => router.push(`/process/new?client_id=${clientId}`)}
             >
               <Plus className="w-3.5 h-3.5" />
@@ -238,7 +240,7 @@ export function ProcessTab({
           </p>
           <button
             onClick={() => setFilterStatus("all")}
-            className="text-xs text-[var(--bz-accent)] mt-2 hover:underline"
+            className="text-xs text-[var(--tx-pure)] mt-2 hover:underline"
           >
             Clear filter
           </button>
@@ -248,7 +250,7 @@ export function ProcessTab({
           {sortedPractices.map((practice) => (
             <div
               key={practice.id}
-              className="rounded-lg border border-[var(--bz-border)] bg-[var(--bz-surface)] p-4 hover:border-[var(--bz-accent)]/50 transition-colors group"
+              className="rounded-lg border border-[var(--bz-border)] bg-[var(--bz-surface)] p-4 hover:border-[var(--line-control)] transition-colors group"
             >
               <div className="flex items-center justify-between mb-2">
                 <div
@@ -272,7 +274,7 @@ export function ProcessTab({
                     </span>
                   </div>
                   {practice.family_member_name && (
-                    <div className="mt-1 flex items-center gap-1 text-xs text-[var(--bz-accent)]">
+                    <div className="mt-1 flex items-center gap-1 text-xs text-[var(--tx-secondary)]">
                       <User className="w-3 h-3" />
                       <span className="truncate">
                         for {practice.family_member_name}
@@ -346,7 +348,7 @@ export function ProcessTab({
                         );
                       }}
                       disabled={deletingIds.has(practice.id)}
-                      className="p-1 rounded hover:bg-red-500/20 text-[var(--bz-text-2)] hover:text-red-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="p-1 rounded hover:bg-[var(--bz-card)] text-[var(--tx-secondary)] hover:text-[var(--tx-pure)] disabled:opacity-50 disabled:cursor-not-allowed"
                       title="Delete process"
                       aria-label="Delete process"
                     >
@@ -366,9 +368,9 @@ export function ProcessTab({
                     const isCritical = daysLeft >= 0 && daysLeft <= 14;
                     const isWarning = daysLeft > 14 && daysLeft <= 30;
                     const chipClass = isExpired
-                      ? "bg-[var(--state-danger)]/10 text-[var(--state-danger)]"
+                      ? "bg-[var(--state-warning)]/10 text-[var(--state-warning)]"
                       : isCritical
-                        ? "bg-[var(--state-danger)]/10 text-[var(--state-danger)]"
+                        ? "bg-[var(--state-warning)]/10 text-[var(--state-warning)]"
                         : isWarning
                           ? "bg-[var(--state-warning)]/10 text-[var(--state-warning)]"
                           : ALERT_COLORS[practice.alert_color || "green"];
@@ -424,9 +426,12 @@ export function ProcessTab({
                         style={{
                           background:
                             ageDays > 14
-                              ? "rgba(239,68,68,0.10)"
+                              ? "color-mix(in srgb, var(--state-warning) 15%, transparent)"
                               : "var(--surface-raised)",
-                          color: ageDays > 14 ? "#f87171" : "var(--bz-text-2)",
+                          color:
+                            ageDays > 14
+                              ? "var(--state-warning)"
+                              : "var(--bz-text-2)",
                         }}
                         title={`Last updated ${ageDays} days ago`}
                       >

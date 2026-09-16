@@ -84,7 +84,7 @@ export default async function HomePage() {
       <NavShell
         logo={<BZLogo variant="full" size={36} priority />}
         items={NAV_ITEMS}
-        slotAfter={<MobileNav items={NAV_ITEMS} />}
+        slotAfter={<MobileNav items={NAV_ITEMS} funnel="home" />}
         actions={
           <>
             <a
@@ -102,14 +102,14 @@ export default async function HomePage() {
                 (home_whatsapp_cta, trigger: nav). The previous inline copy
                 of this anchor had no onClick (server component); routing it
                 through the island restores the #1216 instrumentation.
-                P2: WhatsApp-green channel accent — red stays reserved for
-                the hero primary. */}
+                R19: copper outline keeps the action visible without competing
+                with the hero primary. */}
             <NavWhatsAppCTA variant="whatsapp" />
           </>
         }
       />
       <main id="main-content" style={RUMAH_VARS}>
-        <HeroBlueprint />
+        <HeroBlueprint variant="r19" />
         {/* MYTHOS B2R2: four persona doors (IA-1) are the navigation layer;
             each door carries its tool identity (ex-FunnelChips, strip
             removed per Antonello 2026-06-11). */}

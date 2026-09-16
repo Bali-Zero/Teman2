@@ -60,6 +60,27 @@ describe("buildKbliFaq", () => {
     expect(pmaAnswer).not.toMatch(/^Yes\./);
   });
 
+  it("GUILT: an ATTENZIONE_FASCIA_BALI code (added 2026-09-15, W-J B1) never reads as open/registrable", () => {
+    const base = withLocatedPma(getCode("56101") as KBLICode);
+    const synthetic: KBLICode = {
+      ...base,
+      pma: { ...base.pma, status: "open", maxForeign: 100, capVerified: true },
+      baliL4: {
+        ...(base.baliL4 ?? {}),
+        blocked: false,
+        status: "ATTENZIONE_FASCIA_BALI",
+        reason: "not on the closure list",
+      },
+    } as KBLICode;
+
+    const pmaAnswer = buildKbliFaq(synthetic)[0].answer;
+    expect(pmaAnswer).not.toMatch(/^Yes\./);
+    expect(pmaAnswer).not.toMatch(/\bregistrable\b/i);
+    expect(pmaAnswer).not.toMatch(/\bcan register\b/i);
+    expect(pmaAnswer).toContain("verify");
+    expect(pmaAnswer).toContain("closure list");
+  });
+
   it("innocence: an OK_or_HIGHER_RISK code keeps the plain unqualified open answer", () => {
     const base = withLocatedPma(getCode("56101") as KBLICode);
     const synthetic: KBLICode = {
