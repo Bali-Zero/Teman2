@@ -609,6 +609,11 @@ openclaw
 # lines `git add -A` skips the files in silence and the vendoring is a no-op.
 !.claude/agents/competitor-monitor.md
 !.claude/agents/nb-curator.md
+# 2026-09-16: meta-one-steward is the weekly reviewer for the Meta One Advanced
+# subscription (docs/marketing/meta-one-advanced-playbook.md, /metaone corner).
+# Same deliberate-allowlist act as the two blocks above: without this line
+# `git add` skips the file in silence and the def never ships in the PR.
+!.claude/agents/meta-one-steward.md
 # 2026-07-17: slash commands hold PER-PERSON team corners (subhi/ari/... with
 # probation dates, RBAC perimeters) that live ONLY in ~/.claude/commands and must
 # NEVER reach this PUBLIC repo (UU PDP / SYMBIOSIS Law 2). !.claude/commands/ nudo
