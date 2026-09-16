@@ -94,22 +94,19 @@ def test_l4_bali_untouched(by_code):
 
 
 def test_out_of_scope_codes_untouched(by_code):
-    """55209 and 79110 are IN REVIEW (dossier §2) — never touch them. 43110,
-    93114 and the 12 hold codes belong to other W-H lanes; the 8 specialised
-    retail codes of Lampiran II entry 46 are PR-3b (a sibling lane)."""
+    """55209 and 79110 are IN REVIEW (dossier §2) — never touch them. 43110
+    and 93114 belong to other W-H lanes. The 8 specialised-retail codes of
+    Lampiran II entry 46 (47241 47242 47244 47245 47246 47249 47712 47722)
+    WERE reserved for the sibling lane PR-3b at the time this test was
+    written — PR-3b has since landed and legitimately allocated them via its
+    own compiler (`cure_pma_lampiran2_specialised_retail.py`, not this file's
+    `apply_umkm_reservations.py`), so they are removed from this out-of-scope
+    fence rather than left to falsely accuse the sibling lane's own PR."""
     for code in [
         "55209",
         "79110",
         "43110",
         "93114",
-        "47241",
-        "47242",
-        "47244",
-        "47245",
-        "47246",
-        "47249",
-        "47712",
-        "47722",
     ]:
         rec = by_code.get(code)
         if rec is None:
