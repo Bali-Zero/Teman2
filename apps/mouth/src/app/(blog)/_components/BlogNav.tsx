@@ -35,7 +35,10 @@ export function BlogNav() {
         </Link>
       }
       items={items}
-      slotAfter={<MobileNav items={items} />}
+      slotAfter={
+        /* funnel="home": editorial surfaces have no Funnel value of their own — deliberate, not a fallback. */
+        <MobileNav items={items} funnel="home" />
+      }
       actions={
         <Link
           href="/contact"

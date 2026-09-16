@@ -405,15 +405,17 @@ describe("deriveProvenance — PMA traceability on the real dataset", () => {
     fs.readFileSync(DATA_PATH, "utf-8"),
   ) as KBLIRawDataFile;
 
-  it("pins the canonical honesty partition: 54 located, 1,505 gaps", () => {
+  it("pins the canonical honesty partition: 57 located, 1,502 gaps", () => {
     const located = parsed.data.filter(
       (r) => deriveProvenance(r).pma.status === "located",
     );
     const gaps = parsed.data.filter(
       (r) => deriveProvenance(r).pma.status === "declared_gap",
     );
-    expect(located).toHaveLength(54);
-    expect(gaps).toHaveLength(1505);
+    // SAETTA-20260915 W-H PR-3a: 55201/55203/79903 moved declared_gap→located
+    // (Perpres 49/2021 Lampiran II allocation), 54→57 / 1505→1502.
+    expect(located).toHaveLength(57);
+    expect(gaps).toHaveLength(1502);
     for (const r of located) {
       const prov = deriveProvenance(r).pma;
       expect(prov.locator, `code ${r.kode_kbli_2025}`).toBeTruthy();

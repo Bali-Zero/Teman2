@@ -185,20 +185,21 @@ export const getPassportValidityColor = (
     (expiry.getTime() - now.getTime()) / (1000 * 60 * 60 * 24 * 30);
 
   if (monthsUntilExpiry <= 0) {
+    // A passport expiry is a DATE: urgency, never ownership, never danger.
     return {
-      color: "red",
+      color: "warning",
       label: "EXPIRED",
-      bgClass: "bg-red-600/30",
-      textClass: "text-red-300",
+      bgClass: "bg-[var(--state-warning)]/30",
+      textClass: "text-[var(--state-warning)]",
       alertLevel: "expired",
       monthsUntil: monthsUntilExpiry,
     };
   } else if (monthsUntilExpiry < 9) {
     return {
-      color: "red",
+      color: "warning",
       label: `${Math.floor(monthsUntilExpiry)} months`,
-      bgClass: "bg-red-500/20",
-      textClass: "text-red-400",
+      bgClass: "bg-[var(--state-warning)]/20",
+      textClass: "text-[var(--state-warning)]",
       alertLevel: "critical",
       monthsUntil: monthsUntilExpiry,
     };
@@ -260,14 +261,14 @@ export const getVisaAlertStatus = (
     return {
       alertLevel: "critical",
       monthsUntil: monthsUntilExpiry,
-      bgClass: "bg-red-600 text-white",
+      bgClass: "bg-[var(--state-warning)] text-[var(--bz-base)]",
       textClass: "text-white",
     };
   } else if (monthsUntilExpiry <= 2) {
     return {
       alertLevel: "critical",
       monthsUntil: monthsUntilExpiry,
-      bgClass: "bg-red-500 text-white",
+      bgClass: "bg-[var(--state-warning)] text-[var(--bz-base)]",
       textClass: "text-white",
     };
   } else if (monthsUntilExpiry <= 4) {

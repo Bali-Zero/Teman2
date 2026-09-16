@@ -108,8 +108,8 @@ export function OverviewTab({
             <div className="p-4 space-y-4 flex-1">
               {/* Full Name */}
               <div className="flex items-start gap-3">
-                <div className="w-8 h-8 rounded-full bg-[var(--bz-accent)]/10 flex items-center justify-center">
-                  <User className="w-4 h-4 text-[var(--bz-accent)]" />
+                <div className="w-8 h-8 rounded-full bg-[var(--bz-card)] flex items-center justify-center">
+                  <User className="w-4 h-4 text-[var(--tx-secondary)]" />
                 </div>
                 <div className="flex-1">
                   <p className="text-xs text-[var(--bz-text-2)]">Full Name</p>
@@ -247,13 +247,12 @@ export function OverviewTab({
                   <div
                     className="rounded-lg p-4 -mx-1"
                     style={{
-                      background:
-                        "linear-gradient(135deg, rgba(212,132,90,0.12), rgba(212,132,90,0.03))",
-                      border: "1px solid rgba(212,132,90,0.28)",
+                      background: "var(--bz-card)",
+                      border: "1px solid var(--bz-border)",
                     }}
                   >
                     <div className="flex items-center justify-between mb-2">
-                      <p className="text-[11px] uppercase tracking-[0.15em] font-semibold text-[var(--bz-accent)] flex items-center gap-1.5">
+                      <p className="text-[11px] uppercase tracking-[0.15em] font-semibold text-[var(--tx-secondary)] flex items-center gap-1.5">
                         <span>◆</span>
                         Strategic recap
                       </p>
@@ -302,9 +301,11 @@ export function OverviewTab({
                       href={`tel:${client.phone}`}
                       className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all"
                       style={{
-                        background: "rgba(59,130,246,0.12)",
+                        background:
+                          "color-mix(in srgb, var(--state-info) 12%, transparent)",
                         color: "var(--state-info)",
-                        border: "1px solid rgba(59,130,246,0.25)",
+                        border:
+                          "1px solid color-mix(in srgb, var(--state-info) 25%, transparent)",
                       }}
                       title={`Call ${client.phone}`}
                     >
@@ -364,16 +365,16 @@ export function OverviewTab({
                     className="bz-product-panel bz-product-panel--interactive p-3 transition-all duration-300 hover:-translate-y-1"
                     style={{
                       borderColor:
-                        "color-mix(in srgb, var(--state-danger) 22%, transparent)",
+                        "color-mix(in srgb, var(--state-warning) 22%, transparent)",
                     }}
                   >
                     <div className="flex items-center gap-1.5 mb-1">
-                      <Clock className="w-3.5 h-3.5 text-red-500" />
+                      <Clock className="w-3.5 h-3.5 text-[var(--state-warning)]" />
                       <span className="text-[10px] text-[var(--bz-text-2)]">
                         Unpaid
                       </span>
                     </div>
-                    <p className="text-sm font-bold text-[var(--state-danger)] truncate">
+                    <p className="text-sm font-bold text-[var(--state-warning)] truncate">
                       {formatCurrency(unpaidValue)}
                     </p>
                   </div>

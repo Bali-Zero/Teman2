@@ -105,10 +105,47 @@ def _summary_from_content(content: str, limit: int = 300) -> str:
             break
         truncated_words.append(word)
 
-    return " ".join(truncated_words).rstrip(" (—-,;:") + "…"
+    truncated = " ".join(truncated_words)
+    # Keep currency/number/scale phrases together: "IDR 250 million" must
+    # never become the very different amount "IDR 250" at the cutoff.
+    for amount in re.finditer(
+        r"(?:\b(?:[A-Z]{3}|Rp)\s*|[$€£]\s*)?\b\d[\d,.]*"
+        r"(?:\s+(?i:thousand|million|billion|trillion|ribu|juta|miliar|triliun))?\b",
+        " ".join(words),
+    ):
+        if amount.start() < len(truncated) < amount.end():
+            truncated = truncated[: amount.start()].rstrip()
+            break
+    return truncated.rstrip(" (—-,;:") + "…"
 
 
-def convert_staging_to_enriched_article(staging_data: dict) -> dict:
+def _parse_bali_zero_take(text: str) -> dict[str, str]:
+    """Preserve prose intact; only explicit labels divide editorial subsections."""
+    sections = {"hidden_insight": "", "our_analysis": "", "our_advice": ""}
+    labels = list(
+        re.finditer(
+            r"^[ \t]*(?:#{3,6}[ \t]+|[-*][ \t]+)?(?:\*\*)?"
+            r"(?:The[ \t]+)?(Hidden Insight|Our Analysis|Our Advice)"
+            r"(?:\*\*)?[ \t]*(?::[ \t]*(?:\*\*)?[ \t]*|\n|$)",
+            text,
+            re.MULTILINE | re.IGNORECASE,
+        )
+    )
+    if not labels:
+        sections["our_analysis"] = text.strip()
+        return sections
+
+    # A preamble is still analysis, even when only some labels are supplied.
+    sections["our_analysis"] = text[: labels[0].start()].strip()
+    for index, label in enumerate(labels):
+        end = labels[index + 1].start() if index + 1 < len(labels) else len(text)
+        key = label.group(1).lower().replace(" ", "_")
+        body = text[label.end() : end].strip()
+        sections[key] = "\n\n".join(part for part in (sections[key], body) if part)
+    return sections
+
+
+def convert_staging_to_enriched_article(staging_data: dict[str, Any]) -> dict[str, Any]:
     """
     Convert staging item (markdown simple) to EnrichedArticle format.
 
@@ -138,7 +175,9 @@ def convert_staging_to_enriched_article(staging_data: dict) -> dict:
         re.DOTALL | re.IGNORECASE,
     )
     ai_summary = (
-        summary_match.group(1).strip()[:280] if summary_match else _summary_from_content(content)
+        _summary_from_content(summary_match.group(1), limit=280)
+        if summary_match
+        else _summary_from_content(content)
     )
 
     # Extract Facts section
@@ -147,43 +186,12 @@ def convert_staging_to_enriched_article(staging_data: dict) -> dict:
 
     # Extract Bali Zero Take section
     bali_zero_take_match = re.search(
-        r"## Bali Zero Take\s*\n(.*?)(?=\n## |$)",
+        r"## Bali Zero(?:['’]s)? Take:?[ \t]*\n(.*?)(?=\n## |$)",
         content,
         re.DOTALL | re.IGNORECASE,
     )
-    bali_zero_take_text = (
-        bali_zero_take_match.group(1).strip()
-        if bali_zero_take_match
-        else content[len(facts) :].strip()[:600]
-    )
-
-    # Parse Bali Zero Take subsections if present
-    hidden_insight_match = re.search(
-        r"(?:###\s*)?Hidden Insight[:\s]*(.*?)(?=\n(?:###|##)|$)",
-        bali_zero_take_text,
-        re.DOTALL | re.IGNORECASE,
-    )
-    hidden_insight = (
-        hidden_insight_match.group(1).strip() if hidden_insight_match else bali_zero_take_text[:200]
-    )
-
-    our_analysis_match = re.search(
-        r"(?:###\s*)?Our Analysis[:\s]*(.*?)(?=\n(?:###|##)|$)",
-        bali_zero_take_text,
-        re.DOTALL | re.IGNORECASE,
-    )
-    our_analysis = (
-        our_analysis_match.group(1).strip() if our_analysis_match else bali_zero_take_text[200:400]
-    )
-
-    our_advice_match = re.search(
-        r"(?:###\s*)?Our Advice[:\s]*(.*?)(?=\n(?:###|##)|$)",
-        bali_zero_take_text,
-        re.DOTALL | re.IGNORECASE,
-    )
-    our_advice = (
-        our_advice_match.group(1).strip() if our_advice_match else bali_zero_take_text[400:]
-    )
+    bali_zero_take_text = bali_zero_take_match.group(1).strip() if bali_zero_take_match else ""
+    bali_zero_take = _parse_bali_zero_take(bali_zero_take_text)
 
     # Extract Next Steps section
     next_steps_match = re.search(
@@ -257,7 +265,7 @@ def convert_staging_to_enriched_article(staging_data: dict) -> dict:
         priority = "low"
 
     # Generate TLDR from summary and facts
-    tldr_what = facts[:150] if facts else title
+    tldr_what = _summary_from_content(facts, limit=150) or title
     tldr_who = "Expats and investors in Indonesia"
     tldr_when = "Check article for specific dates"
     tldr_should_worry = (
@@ -291,11 +299,7 @@ def convert_staging_to_enriched_article(staging_data: dict) -> dict:
             "risk_level": tldr_risk_level,
         },
         "facts": facts,
-        "bali_zero_take": {
-            "hidden_insight": hidden_insight,
-            "our_analysis": our_analysis,
-            "our_advice": our_advice,
-        },
+        "bali_zero_take": bali_zero_take,
         "next_steps": {
             "expat": expat_steps[:5],  # Limit to 5 items
             "investor": investor_steps[:5],  # Limit to 5 items

@@ -19,7 +19,7 @@
       ]
     },
     "16103": {
-      "baliDependsOnTier": true,
+      "baliDependsOnTier": false,
       "editorial_mentions": {
         "Menengah Tinggi": [
           "whatYouNeed"
@@ -45,7 +45,7 @@
       ]
     },
     "46496": {
-      "baliDependsOnTier": true,
+      "baliDependsOnTier": false,
       "editorial_mentions": {
         "Menengah Tinggi": [
           "whatYouNeed"
@@ -57,7 +57,7 @@
       ]
     },
     "47246": {
-      "baliDependsOnTier": true,
+      "baliDependsOnTier": false,
       "editorial_mentions": {
         "Menengah Rendah": [
           "whatYouNeed"
@@ -134,7 +134,7 @@
       ]
     },
     "55909": {
-      "baliDependsOnTier": true,
+      "baliDependsOnTier": false,
       "editorial_mentions": {
         "Menengah Rendah": [
           "whatYouNeed"
@@ -185,7 +185,7 @@
       ]
     },
     "62204": {
-      "baliDependsOnTier": true,
+      "baliDependsOnTier": false,
       "editorial_mentions": {
         "Menengah Tinggi": [
           "whatYouNeed"
@@ -245,7 +245,7 @@
       ]
     },
     "68124": {
-      "baliDependsOnTier": true,
+      "baliDependsOnTier": false,
       "editorial_mentions": {
         "Tinggi": [
           "whatYouNeed"
@@ -281,7 +281,7 @@
       ]
     },
     "70202": {
-      "baliDependsOnTier": true,
+      "baliDependsOnTier": false,
       "editorial_mentions": {
         "Menengah Tinggi": [
           "baliContext",
@@ -308,7 +308,7 @@
       ]
     },
     "74910": {
-      "baliDependsOnTier": true,
+      "baliDependsOnTier": false,
       "editorial_mentions": {
         "Menengah Rendah": [
           "whatYouNeed",
@@ -333,7 +333,7 @@
       ]
     },
     "82300": {
-      "baliDependsOnTier": true,
+      "baliDependsOnTier": false,
       "editorial_mentions": {
         "Menengah Tinggi": [
           "whatYouNeed"
@@ -396,7 +396,7 @@
       ]
     },
     "90130": {
-      "baliDependsOnTier": true,
+      "baliDependsOnTier": false,
       "editorial_mentions": {
         "Menengah Rendah": [
           "whatYouNeed"
@@ -408,7 +408,7 @@
       ]
     },
     "93295": {
-      "baliDependsOnTier": true,
+      "baliDependsOnTier": false,
       "editorial_mentions": {
         "Menengah Tinggi": [
           "whatYouNeed"
@@ -420,7 +420,7 @@
       ]
     },
     "93296": {
-      "baliDependsOnTier": true,
+      "baliDependsOnTier": false,
       "editorial_mentions": {
         "Menengah Tinggi": [
           "whatYouNeed"
@@ -432,7 +432,7 @@
       ]
     },
     "93299": {
-      "baliDependsOnTier": true,
+      "baliDependsOnTier": false,
       "editorial_mentions": {
         "Menengah Rendah": [
           "whatYouNeed"

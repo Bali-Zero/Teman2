@@ -1,6 +1,6 @@
 version: 1
 checksum_algo: sha256
-checksum: 9104b0aec4d131448483391eee77e3995aa37792e46bfd125321a803ca919df0 # pragma: allowlist secret
+checksum: 3751329edd9ad778dd8fd5a866cb2364c53e5cfa4e41ce7de2003781dcafbf9b # pragma: allowlist secret
 organs:
 - id: infra.postgres
   runtime: fly_machine
@@ -2981,5 +2981,27 @@ organs:
   bridge_source:
     type: state_file
     path: ~/.organism/last_seen/pro.price_review_sentinel.json
+    timestamp_field: ts
+    status_field: status
+- id: pro.meta_one_steward
+  runtime: pro_launchd
+  type: cron
+  # 93600 = one day (86400) + slack, matches the daily 06:20 WITA StartCalendarInterval cadence.
+  expected_hb_seconds: 93600
+  owner_module: scripts/meta_one_steward.py
+  dependencies: []
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: pro
+    label: com.nuzantara.meta-one-steward
+  severity_on_silence: warning
+  notes: Meta One Advanced Access ledger (playbook docs/marketing/meta-one-advanced-playbook.md
+    section 4.3) — probes INSTAGRAM_ACCESS_TOKEN, tracks ADVANCED_QUOTAS usage,
+    alerts on a dead token or a link-benefit quota expiring within 5 days. Never
+    publishes, schedules, or writes to a Meta endpoint.
+  cicatrix_refs: []
+  bridge_source:
+    type: state_file
+    path: ~/.organism/last_seen/pro.meta_one_steward.json
     timestamp_field: ts
     status_field: status

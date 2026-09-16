@@ -12,6 +12,45 @@ import { Modal } from "../Modal";
 import { useTeamMemberOptions } from "@/hooks/useTeamMembers";
 import { COUNTRY_CODES, extractCountryCode } from "../utils";
 
+/**
+ * Static token map for the status picker — one named entry per
+ * `CLIENT_STATUSES` value. Round-4 Q2: the old version built the CSS var
+ * name AND the Tailwind class at runtime (`` `var(--${color}-500, #3b82f6)` ``,
+ * `` `border-${color}-500/50` ``), which a source-text guard cannot see
+ * through and which could resolve to the accent family. Every branch below
+ * is a literal token name, never assembled from a variable.
+ */
+const STATUS_PICKER_TONE: Record<
+  (typeof CLIENT_STATUSES)[number]["value"],
+  { border: string; text: string; bg: string }
+> = {
+  lead: {
+    border: "var(--state-info)",
+    text: "var(--state-info)",
+    bg: "color-mix(in srgb, var(--state-info) 20%, transparent)",
+  },
+  active: {
+    border: "var(--state-success)",
+    text: "var(--state-success)",
+    bg: "color-mix(in srgb, var(--state-success) 20%, transparent)",
+  },
+  completed: {
+    border: "var(--tx-pure)",
+    text: "var(--tx-pure)",
+    bg: "color-mix(in srgb, var(--tx-pure) 12%, transparent)",
+  },
+  lost: {
+    border: "var(--state-warning)",
+    text: "var(--state-warning)",
+    bg: "color-mix(in srgb, var(--state-warning) 20%, transparent)",
+  },
+  inactive: {
+    border: "var(--bz-border)",
+    text: "var(--bz-text-2)",
+    bg: "transparent",
+  },
+};
+
 export function EditClientModal({
   client,
   onClose,
@@ -168,7 +207,7 @@ export function EditClientModal({
   };
 
   const inputClass =
-    "w-full px-4 py-2.5 rounded-lg border border-[var(--bz-border)] bg-[var(--bz-surface)] text-[var(--bz-text-1)] focus:outline-none focus:ring-2 focus:ring-[var(--bz-accent)]/50 focus:border-[var(--accent)]";
+    "w-full px-4 py-2.5 rounded-lg border border-[var(--bz-border)] bg-[var(--bz-surface)] text-[var(--bz-text-1)] focus:outline-none focus:ring-2 focus:ring-[var(--line-control)] focus:border-[var(--line-control)]";
 
   return (
     <Modal
@@ -209,7 +248,8 @@ export function EditClientModal({
               type="button"
               onClick={removeAvatar}
               aria-label="Remove avatar"
-              className="absolute -top-1 -right-1 w-6 h-6 rounded-full bg-red-500 text-white flex items-center justify-center hover:bg-red-600 transition-colors"
+              title="Remove avatar"
+              className="absolute -top-1 -right-1 w-6 h-6 rounded-full bg-[var(--bz-card)] border border-[var(--bz-border)] text-[var(--tx-secondary)] flex items-center justify-center hover:text-[var(--tx-pure)] hover:bg-[var(--bz-surface)] transition-colors"
             >
               <X className="w-4 h-4" />
             </button>
@@ -224,7 +264,7 @@ export function EditClientModal({
             className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-[var(--bz-sidebar-active-fill)] text-white transition-colors ${
               isUploadingAvatar
                 ? "opacity-60 cursor-not-allowed"
-                : "hover:bg-[var(--bz-accent)]/90 cursor-pointer"
+                : "hover:bg-[var(--line-control)] cursor-pointer"
             }`}
           >
             <Upload className="w-4 h-4" />
@@ -447,30 +487,25 @@ export function EditClientModal({
         <div className="md:col-span-2">
           <label className="block text-sm font-medium mb-1.5">Status</label>
           <div className="flex gap-2 flex-wrap">
-            {CLIENT_STATUSES.map(({ value, label, color }) => (
-              <button
-                key={value}
-                type="button"
-                onClick={() => setFormData({ ...formData, status: value })}
-                className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all border ${
-                  formData.status === value
-                    ? `border-${color}-500/50`
-                    : "border-transparent bg-[var(--bz-surface)]"
-                }`}
-                style={{
-                  backgroundColor:
-                    formData.status === value
-                      ? `var(--${color === "blue" ? "accent" : color}-500-20, rgba(59, 130, 246, 0.2))`
-                      : undefined,
-                  color:
-                    formData.status === value
-                      ? `var(--${color === "blue" ? "accent" : color}-500, #3b82f6)`
-                      : "var(--bz-text-2)",
-                }}
-              >
-                {label}
-              </button>
-            ))}
+            {CLIENT_STATUSES.map(({ value, label }) => {
+              const tone = STATUS_PICKER_TONE[value];
+              const selected = formData.status === value;
+              return (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => setFormData({ ...formData, status: value })}
+                  className="px-3 py-1.5 rounded-full text-sm font-medium transition-all border"
+                  style={{
+                    borderColor: selected ? tone.border : "transparent",
+                    backgroundColor: selected ? tone.bg : "var(--bz-surface)",
+                    color: selected ? tone.text : "var(--bz-text-2)",
+                  }}
+                >
+                  {label}
+                </button>
+              );
+            })}
           </div>
         </div>
       </div>

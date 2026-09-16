@@ -3,12 +3,16 @@
 import { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { Menu, X } from "lucide-react";
+import { trackFunnelEvent } from "@balizero/core/analytics";
+import { getOrCreateSessionId } from "@balizero/core/auth";
+import { buildWhatsAppLink, type Funnel } from "@/lib/whatsapp-utm";
 
 interface MobileNavProps {
   items: { label: string; href: string }[];
+  funnel: Funnel;
 }
 
-export function MobileNav({ items }: MobileNavProps) {
+export function MobileNav({ items, funnel }: MobileNavProps) {
   const [open, setOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
 
@@ -123,8 +127,14 @@ export function MobileNav({ items }: MobileNavProps) {
               {/* Footer CTAs */}
               <div className="p-5 flex flex-col gap-3 flex-shrink-0">
                 <a
-                  href="#top"
-                  onClick={() => setOpen(false)}
+                  href={buildWhatsAppLink(funnel)}
+                  onClick={() => {
+                    setOpen(false);
+                    void trackFunnelEvent(`${funnel}_whatsapp_cta`, {
+                      sessionId: getOrCreateSessionId(),
+                      payload: { trigger: "drawer" },
+                    });
+                  }}
                   className="block text-center px-5 py-3 rounded-xl text-[14px] font-semibold"
                   style={{
                     background: "var(--accent-funnel)",

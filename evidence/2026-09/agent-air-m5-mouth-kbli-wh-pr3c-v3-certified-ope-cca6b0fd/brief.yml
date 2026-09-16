@@ -1,0 +1,30 @@
+task: >-
+  SAETTA-20260915 W-H PR-3c v3: successor of #6593/#6594, BLOCKED by a fresh
+  gate — certified text still claimed openness in paraphrase a lexical
+  detector cannot see, and a stale test pinned 47111 as certified gold. A
+  semantic read of 59 certified capped entries (16 FALSE + 41 AMBIGUOUS)
+  drove this PR: de-certify 21 entries whose prose could not be trivially
+  cured (canonicalIntel 49->37, mouthGold 15->8, standaloneGold 2->0 against
+  main's PR-2b v3 baseline — 47111 loses all 3 sections, its live gold
+  prose names 47191/47192 "fully open to 100% PMA" while both are
+  declared_gap; page withholds them, fail closed) + whole-field cure of all
+  12 target fields (21021/21022's whoThisIsFor initially held back — the
+  first-draft wording stated "100%" domestic capital on a 0%-cap record and
+  the compiler's percentage gate can't distinguish that from a foreign-cap
+  claim; re-worded to "domestic capital only", gate-clean, applied).
+lane: mouth/kbli-wh-pr3c-v3-certified-openness
+machine: M5
+date: 2026-09-15
+gear: 2
+gear_reason: >-
+  Deterministic floor 2 (size, no hot-zone path). Client-facing KBLI prose +
+  registry re-pin + 8 consumer-test updates, replayed on main's PR-2b v3
+  canonical; reuses cure_prose_national_openness.py and
+  backfill_new_sha256.py unmodified, no new compiler, no migration.
+acceptance:
+  - "python3 -m pytest scripts/kbli_filiera/ -q -> 0 failed (1418 passed, 1 skipped)"
+  - "cd apps/backend-rag && pytest $(find backend/tests -iname 'test_*kbli*.py') -> 0 failed (775 passed)"
+  - "cd apps/mouth && npx vitest run <whole kbli glob, 56 files> && npx tsc --noEmit -> 761 passed, tsc clean"
+  - "cd apps/kbli-navigator && npx tsx lib/__tests__/kbli-data.test.ts -> 1 passed (37/57 located certified)"
+  - "bash scripts/sync_kbli_dataset.sh --check -> all 5 consumers in sync"
+  - "the 4 kbli-filiera-vault-compilers checks (scoreboard/perpres_body_default/slice/foreign_cap) -> 4x rc=0"

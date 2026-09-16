@@ -33,7 +33,7 @@ export default function ClientError({
       </div>
 
       <div className="mt-8 flex gap-3">
-        <Button onClick={() => reset()} variant="default">
+        <Button onClick={() => reset()} variant="outline">
           <RefreshCw className="mr-2 h-4 w-4" />
           Try Again
         </Button>

@@ -1,0 +1,69 @@
+{
+  "93114": {
+    "disputed_key": "per_skala_disputed_pp28_collision",
+    "drop_keys": ["per_skala_disputed_pp28_collision", "_data_note"],
+    "premises": {
+      "per_skala": {
+        "old_sha256": "5b456929a131bef7a19482f284f5199a9d23ba82bee900d53cd2f8e287b08a35",
+        "new_sha256": "37e54673dc5e772d8a17d72b4c3e89997ab5989035c49d4f2629959858a322b6"
+      },
+      "per_skala_disputed_pp28_collision": {
+        "old_sha256": "bb40c70b996d2483ccd16fec7bd3272c89e7cf72cd70459b17d7fee25695f7af",
+        "new_sha256": "74234e98afe7498fb5daf1f36ac2d78acc339464f950703b8c019892f982b90b"
+      },
+      "_data_note": {
+        "old_sha256": "a86d0925eaf31c2951155228b7485c18c4a025d78aee1e1fe54e1840df31662d",
+        "new_sha256": "74234e98afe7498fb5daf1f36ac2d78acc339464f950703b8c019892f982b90b"
+      },
+      "l4_bali": {
+        "old_sha256": "bbfa8c2e7156d0402ee0ac721692b3d0199fe69700579fa8670544d42d6112a0",
+        "new_sha256": "0cf113889116d1cdc53272d37f0d574a1cefef4bed1e1dcb73a8e479c2629676"
+      }
+    },
+    "l4_patch": {
+      "status": "BLOCCATO_DIPENDE_SCOPE",
+      "blocked": false,
+      "confidence": "MEDIUM",
+      "needs_review": true,
+      "reason": "Scope-dependent. Golf courses are licensed at Menengah and Besar scale as Tinggi risk (PP 28/2025 Lampiran I.L.61), outside the Rendah / Menengah Rendah tiers of the Bali moratorium request, and no Perpres reservation was located. All other sports fields (driving range, mini-soccer, badminton, volleyball, basketball, tennis and similar) are licensed only at Mikro/Kecil/Menengah scale as Menengah Rendah risk: in Bali we flag that scope as blocked as a precaution, and whether OSS licenses it for a PT PMA must be confirmed (Permen Investasi/BKPM 5/2025 Pasal 8(6))."
+    },
+    "l4_drop": ["review_basis"]
+  },
+  "43110": {
+    "legacy_key": "per_skala_legacy",
+    "expected_legacy_count": 3,
+    "premises": {
+      "per_skala": {
+        "old_sha256": "87cfb026a12b94a95624d318e12141543f88aeda7855c977e61fa8922b4c283d",
+        "new_sha256": "0dfefe3a1465f15f47bc219f9cc8d4bb670ce91ffc783dcff0a1930f3b3967f7"
+      },
+      "per_skala_legacy": {
+        "old_sha256": "2d550c60cfb2eb684a8612dd56112c8e590e6f8ccb2d732853a6a06548321af1",
+        "new_sha256": "2d550c60cfb2eb684a8612dd56112c8e590e6f8ccb2d732853a6a06548321af1"
+      },
+      "l4_bali": {
+        "old_sha256": "ba8daa50ab72738faabd5f6da1373263623514d1dc3f0d9ca27411a46de01d84",
+        "new_sha256": "55294e23e39d9687478132237230811e38895b03b8b0afdb29928dbe76e5030a"
+      }
+    },
+    "row_fixes": [
+      {
+        "index": 2,
+        "field": "perizinan",
+        "value": "NIB dan Sertifikat Standar",
+        "why": "per_skala_legacy[2]'s live value 'NIB dan Sertifikat Standar 1' is a column-merge extraction artifact — the trailing '1' belongs to the adjacent Kewajiban column's numbered list ('1. Menyampaikan Laporan...'), confirmed by rasterized page-image inspection, not real source text for Perizinan."
+      }
+    ],
+    "_meta": {
+      "source_locator": "PP 28/2025 Lampiran I.H entry 39, pages I.H.224-228 (rasterized-image verified for row 3, I.H.227-228) — corrects the dossier's I.H.224-225 span"
+    },
+    "l4_patch": {
+      "status": "BLOCCATO_DIPENDE_SCOPE",
+      "blocked": false,
+      "confidence": "MEDIUM",
+      "needs_review": true,
+      "reason": "Demolition using simple and intermediate technology is allocated to cooperatives and MSMEs (Koperasi/UMKM) in the dialokasikan column of Perpres 10/2021 as amended by Perpres 49/2021 Lampiran II (p.10, entry 37); a new PT PMA cannot enter that activity, in Bali or elsewhere. Under Pasal 5(5) the reservation does not cover the rest of this code: PP 28/2025 Lampiran I.H entry 39 (pages I.H.224-228) licenses building demolition at every scale as Menengah Tinggi risk, including a Besar-scale route with requirements specific to a foreign-invested construction company (BUJK PMA), and a third row for individual operators (Usaha Orang Perseorangan) at Mikro scale as Menengah Rendah risk, source-verified on I.H.227-228. Whether a PT PMA can use the Besar route depends on the technology and scope declared — confirm it in OSS."
+    },
+    "l4_drop": ["verdict", "rule", "review_basis", "verdict_state"]
+  }
+}

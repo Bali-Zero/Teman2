@@ -1,0 +1,71 @@
+gear: 3
+# Declared at OPEN, not discovered at red. Two full desk rewrites plus the two
+# guards they move measure 2146 lines of churn against origin/main, over the
+# 1828 Gear-3 threshold. Splitting them would ship a page apart from the guard
+# that judges it, which is the content-ratchet failure this mission already
+# paid for once.
+objective: >-
+  Put /notifications and /obligations on the concept-K v2 "TEPAT FORTE" desk: masthead, desk strip,
+  hairline ledger rows, word-first empty states, and severity carried by a WORD plus a pip. Drain
+  the seven --state-danger reads from /obligations and enrol it in the desk no-red guard in the same
+  change.
+constraints:
+  - >-
+    No new endpoint, request, schema field or hook signature. Notification severity is DERIVED
+    client-side from the alert_type the API already sends; no field is invented.
+  - >-
+    Copper means the viewer is the NEXT ACTOR. On /obligations the two copper statuses are the two
+    whose rows render the viewer's own Approve and Reject controls — concept/DISPOSITION.md C11
+    ("obligations alerted -> copper, rejected -> waiting") and C10 (an approval queue stays copper).
+    A due date is urgency and takes --state-warning; it grants no ownership.
+  - >-
+    Terminal states are muted plus their own word. Copper is never a fill, with the one exception
+    the K2 brief sanctions: the filled critical severity pip.
+  - >-
+    CHANGED DURING THE WINDOW, and the change is the point. This brief originally said
+    /notifications KEEPS --state-danger because token-drain.residuals.guard.test.ts pinned that
+    string there as proof of the WS2 drain. That reasoning was wrong: on kita --state-danger
+    resolves to COPPER, and copper means the signed-in viewer is the next actor. A failed delivery
+    on a fleet-wide automated alert has no viewer and no owned record, so the page was making a
+    claim it could not support. The token is drained; urgency reads --state-warning; and the
+    residuals guard is NARROWED in the same commit — it still pins the page's token reads and keeps
+    all three of its hex/rgba/palette assertions, so the drain is still proved. Keeping the old pin
+    would have forced the page to go on lying to keep a guard green.
+  - >-
+    No hex literal and no red Tailwind family anywhere in the rendered sources of either page.
+  - >-
+    components/workspace/r19, AppSidebar, navigation.ts and globals.css are forbidden; a missing
+    shape becomes a page-local wrapper that imports the primitive or its exported constants.
+acceptance:
+  - text: >-
+      WHEN /obligations renders after this change, NO file under it SHALL read --state-danger, and
+      the desk no-red guard SHALL bind it strictly from this commit on.
+    probe: npx vitest --run "src/app/(workspace)/__tests__"
+  - text: >-
+      WHEN /notifications renders after this change, its WS2 residuals pins SHALL still hold — the
+      page still reads --state-success, --state-warning and --state-danger and carries no hex and no
+      palette utility.
+    probe: npx vitest --run "src/app/(workspace)/__tests__"
+  - text: >-
+      WHEN the obligations register renders, every one of its 874 lines of existing assertions SHALL
+      still pass unmodified — every testid, label and string it selects survives the restyle.
+    probe: npx vitest --run "src/app/(workspace)/obligations"
+  - text: >-
+      WHEN either page renders on a dev server with the API stubbed, at 1440x900 and 390x844 in both
+      themes, there SHALL be no horizontal overflow.
+    probe: chromium via playwright against next dev --webpack, full-page capture plus a scrollWidth probe
+route_boundaries:
+  - >-
+    Measured before opening: adding all four desk pages' error.tsx and loading.tsx to this PR takes
+    its churn to ~1517 and, with the pack, across SIZE_GEAR3_THRESHOLD 1828. Per the imperator's
+    ruling they ship as K2d "desk route boundaries" instead, small and floor 1, with the guard line
+    that makes the no-red scan cover them. State of each: dashboard/error.tsx and
+    dashboard/loading.tsx UNRESTYLED (K2d), notifications/error.tsx and notifications/loading.tsx
+    RESTYLED and held for K2d, review and obligations have no error.tsx or loading.tsx at all.
+consumer_map:
+  - >-
+    Every staff member who opens kita.balizero.com/notifications or /obligations. Both were rendered
+    on a dev server on this branch before the work was reported done.
+  - >-
+    desk-no-red.guard.test.ts goes red if /obligations reads the danger token again;
+    token-drain.residuals.guard.test.ts goes red if /notifications loses its drained tokens.

@@ -43,13 +43,16 @@ def _with_real_manual_codes(
     canonical: list[dict], adjudication: dict[str, tuple[str, str]]
 ) -> tuple[list[dict], dict[str, tuple[str, str]]]:
     """`compute_disclosures` always walks the REAL (unpatched) module-global
-    `MANUAL_SLICE_ROWS` for its ADJUDICATION-membership check, and the REAL
-    `ADJACENT_NOT_CONTAINED` for its own drift check — every synthetic
-    scenario that does not itself replace one of those two dicts (via
-    `monkeypatch.setattr(pm, ...)`, see `TestInvalidCap` / `TestNonTerbukaCode`)
-    must therefore also supply valid entries for the hand-authored codes and
-    the two adjacent-not-contained codes, or an unrelated check fires before
-    the scenario under test is ever reached."""
+    `MANUAL_SLICE_ROWS` for its ADJUDICATION-membership check, the REAL
+    `ADJACENT_NOT_CONTAINED` for its own drift check, and the REAL
+    `LAMPIRAN_II_MANUAL_SLICE_ROWS` (43110) — which needs no ADJUDICATION
+    entry at all, since it is a Lampiran II population, never derived from
+    the Lampiran III `ADJUDICATION` dict. Every synthetic scenario that does
+    not itself replace one of those dicts (via `monkeypatch.setattr(pm, ...)`,
+    see `TestInvalidCap` / `TestNonTerbukaCode`) must therefore also supply a
+    valid canonical entry for 43110, or an unrelated check (its own
+    `pma_status` lookup) fires before the scenario under test is ever
+    reached."""
     base_canonical = [
         _record("30111"),
         _record("30113"),
@@ -58,6 +61,7 @@ def _with_real_manual_codes(
         _record("51103"),
         _record("60103"),
         _record("60203"),
+        _record("43110"),
     ]
     base_adjudication = {
         "30111": (BROADER, "real"),
@@ -123,6 +127,7 @@ class TestInvalidCap:
             pm, "MANUAL_SLICE_ROWS", {"99997": [(1, "Industri uji coba", 30, None)]}
         )
         monkeypatch.setattr(pm, "ADJACENT_NOT_CONTAINED", {})
+        monkeypatch.setattr(pm, "LAMPIRAN_II_MANUAL_SLICE_ROWS", {})
         canonical = [_record("99997")]
         adjudication = {"99997": (BROADER, "test-only")}
         with pytest.raises(SliceDisclosureError, match="not one of"):
@@ -133,6 +138,7 @@ class TestInvalidCap:
             pm, "MANUAL_SLICE_ROWS", {"99996": [(1, "Industri uji coba", 49, None)]}
         )
         monkeypatch.setattr(pm, "ADJACENT_NOT_CONTAINED", {})
+        monkeypatch.setattr(pm, "LAMPIRAN_II_MANUAL_SLICE_ROWS", {})
         canonical = [_record("99996")]
         adjudication = {"99996": (BROADER, "test-only")}
         disclosures = compute_disclosures(canonical, adjudication)
@@ -153,6 +159,7 @@ class TestNonTerbukaCode:
             pm, "MANUAL_SLICE_ROWS", {"99995": [(1, "Industri uji coba", 49, None)]}
         )
         monkeypatch.setattr(pm, "ADJACENT_NOT_CONTAINED", {})
+        monkeypatch.setattr(pm, "LAMPIRAN_II_MANUAL_SLICE_ROWS", {})
         canonical = [_record("99995", pma_status="TERBATAS")]
         adjudication = {"99995": (BROADER, "test-only")}
         with pytest.raises(SliceDisclosureError, match="double-speak"):
@@ -163,6 +170,7 @@ class TestNonTerbukaCode:
             pm, "MANUAL_SLICE_ROWS", {"99994": [(1, "Industri uji coba", 49, None)]}
         )
         monkeypatch.setattr(pm, "ADJACENT_NOT_CONTAINED", {})
+        monkeypatch.setattr(pm, "LAMPIRAN_II_MANUAL_SLICE_ROWS", {})
         canonical = [_record("99994", pma_status="TERBUKA")]
         adjudication = {"99994": (BROADER, "test-only")}
         disclosures = compute_disclosures(canonical, adjudication)
@@ -317,9 +325,20 @@ class TestRealCatalogue:
     def test_population_count(self, real_disclosures):
         # 7 general BROADER codes (12 BROADER-adjudicated minus 20235/30303/
         # 51103/60103/60203, excluded as adjacent-not-contained) + 30111
-        # (2 rows) + 30113 (1 row).
-        assert len(real_disclosures) == 12
-        assert sum(len(rows) for rows in real_disclosures.values()) == 13
+        # (2 rows) + 30113 (1 row) + 43110 (1 Lampiran II row, SAETTA-20260915
+        # W-H PR-2 — a separate hand-authored population, never derived from
+        # ADJUDICATION).
+        assert len(real_disclosures) == 13
+        assert sum(len(rows) for rows in real_disclosures.values()) == 14
+
+    def test_43110_lampiran_ii_demolition_slice(self, real_disclosures):
+        rows = real_disclosures["43110"]
+        assert len(rows) == 1
+        assert rows[0]["bidangUsaha"] == (
+            "Pembongkaran yang menggunakan teknologi sederhana dan madya"
+        )
+        assert rows[0]["foreignCapPct"] == 0
+        assert "Lampiran II" in rows[0]["locator"]
 
     def test_20235_and_30303_never_appear(self, real_disclosures):
         # Their own ADJUDICATION reason says the annex activity is a

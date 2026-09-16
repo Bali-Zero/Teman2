@@ -90,10 +90,22 @@ describe("PMA editorial disclosure boundary", () => {
     const located = codes.filter(isPmaVerdictVerified);
     const gaps = codes.filter((record) => !isPmaVerdictVerified(record));
 
+    // SAETTA-20260915 W-H PR-3a moved 3 codes (55201/55203/79903) from
+    // declared_gap to located (Lampiran II allocation): 1505 -> 1502, 54 -> 57.
+    // The intel-bearing subset does NOT move with it: none of the 3 are
+    // registered in pma-editorial-certifications.json's `canonicalIntel`
+    // section, so `intel_2026` on the public KBLICode stays `undefined` for
+    // all 3 regardless of this PR. W-H PR-3c v3 then de-certified 12 of the
+    // 49 canonicalIntel entries (10214/16221/22121/47111/50111/50112/51102/
+    // 55105/65111/79122/95220/96100) whose prose still claimed an openness
+    // their own tuple denies: 49 -> 37. W-H PR-3f de-certified 47221's
+    // canonicalIntel too (whatYouNeed claimed a UMKM/Koperasi partnership
+    // condition its own pma_kondisi denies): 37 -> 36. 47221 stays located
+    // (its PMA tuple is unaffected) and keeps its mouthGold certification.
     expect(codes).toHaveLength(1559);
-    expect(located).toHaveLength(54);
-    expect(gaps).toHaveLength(1505);
-    expect(located.filter((record) => record.intel_2026)).toHaveLength(49);
+    expect(located).toHaveLength(57);
+    expect(gaps).toHaveLength(1502);
+    expect(located.filter((record) => record.intel_2026)).toHaveLength(36);
 
     for (const record of gaps) {
       const disclosed = discloseKbliEditorial(
