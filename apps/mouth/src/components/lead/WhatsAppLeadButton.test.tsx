@@ -160,3 +160,103 @@ describe("WhatsAppLeadButton", () => {
     expect(trackLeadCreated).not.toHaveBeenCalled();
   });
 });
+
+/**
+ * The stall (2026-09-16, GARUDA VOA lane). Before CAPTURE_TIMEOUT_MS the
+ * capture fetch had no timeout, so a request that never settled left the
+ * component `pending` forever — and because the click handler calls
+ * preventDefault() unconditionally and then returns early while pending, the
+ * anchor's own href was dead too. The visitor tapped a WhatsApp button and
+ * nothing happened, with no error and no retry. These pin the degradation:
+ * a capture that never answers must still put the visitor on WhatsApp.
+ */
+describe("WhatsAppLeadButton — a capture that never answers", () => {
+  const originalFetch = global.fetch;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    Object.defineProperty(window, "location", {
+      value: { ...window.location, href: "" },
+      writable: true,
+    });
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+    global.fetch = originalFetch;
+  });
+
+  it("asks for a bounded capture rather than an unbounded one", async () => {
+    const seen: RequestInit[] = [];
+    global.fetch = vi.fn(async (_u: unknown, init: RequestInit) => {
+      seen.push(init);
+      return {
+        ok: true,
+        json: async () => ({
+          lead_intent_id: "li_x",
+          whatsapp_url: "https://wa.me/1?text=y",
+        }),
+      };
+    }) as unknown as typeof fetch;
+
+    const { getByText } = render(
+      <WhatsAppLeadButton source="garuda_voa" whatsappContext={[]}>
+        Talk to us
+      </WhatsAppLeadButton>,
+    );
+    fireEvent.click(getByText("Talk to us"));
+    await waitFor(() => expect(seen.length).toBe(1));
+    // AbortSignal.timeout may be absent in this environment; what must never
+    // regress is that the call SITE asks for one when the engine offers it.
+    if (typeof AbortSignal.timeout === "function") {
+      expect(
+        seen[0].signal,
+        "the capture must carry an abort signal",
+      ).toBeInstanceOf(AbortSignal);
+    }
+  });
+
+  it("falls back to the bare wa.me link when the capture aborts", async () => {
+    global.fetch = vi.fn(async () => {
+      throw Object.assign(new Error("The operation was aborted."), {
+        name: "TimeoutError",
+      });
+    }) as unknown as typeof fetch;
+
+    const { getByText } = render(
+      <WhatsAppLeadButton source="garuda_voa" whatsappContext={[]}>
+        Talk to us
+      </WhatsAppLeadButton>,
+    );
+    fireEvent.click(getByText("Talk to us"));
+
+    await waitFor(() => expect(window.location.href).toBe(FALLBACK_WA_URL));
+    // captured=false is what distinguishes a handoff with no lead_intents row
+    // from a real capture — the analytics must not claim a lead was written.
+    expect(trackLeadWhatsAppCTA).toHaveBeenCalledWith("garuda_voa", {
+      captured: false,
+      result_ref: undefined,
+    });
+    expect(trackLeadCreated).not.toHaveBeenCalled();
+  });
+
+  it("lets the visitor tap again after a failed capture, instead of staying stuck", async () => {
+    global.fetch = vi.fn(async () => {
+      throw new Error("network down");
+    }) as unknown as typeof fetch;
+
+    const { getByText } = render(
+      <WhatsAppLeadButton source="garuda_voa" whatsappContext={[]}>
+        Talk to us
+      </WhatsAppLeadButton>,
+    );
+    const link = getByText("Talk to us");
+    fireEvent.click(link);
+    await waitFor(() => expect(window.location.href).toBe(FALLBACK_WA_URL));
+
+    window.location.href = "";
+    fireEvent.click(link);
+    await waitFor(() => expect(window.location.href).toBe(FALLBACK_WA_URL));
+    expect(global.fetch).toHaveBeenCalledTimes(2);
+  });
+});

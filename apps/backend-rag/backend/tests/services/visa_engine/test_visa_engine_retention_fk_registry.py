@@ -117,6 +117,8 @@ def test_the_registry_itself_only_names_files_that_still_exist_and_still_match()
 # and only re-applies what is actually missing.
 # ---------------------------------------------------------------------------
 
+import uuid
+
 import pytest
 
 from backend.db.migration_base import split_migration_sql
@@ -188,4 +190,86 @@ async def test_restore_only_reapplies_the_entry_that_was_actually_unwound(db_poo
         )
         assert await _marker_present(conn, marker_table_281, marker_column_281), (
             "281 must still be live and untouched by restore"
+        )
+
+
+@pytest.mark.asyncio
+async def test_unwind_survives_overlapping_policies_of_two_garuda_scopes(db_pool):
+    """Backend Shard 3, 2026-09-16: ``test_check_to_order_journey.py`` commits
+    a GARUDA_CHECK and a GARUDA_ORDER TEST policy open at the same instant and
+    closes both at teardown. 281's EXCLUDE is per scope, so it accepts them;
+    281's rollback drops the scope and re-creates 264's scope-less EXCLUDE,
+    which cannot hold two overlapping TEST rows -- ``ExclusionViolationError``
+    on whichever unwind caller ran next on that worker clone.
+
+    Guilt: the same two committed rows, then the shared unwind. Innocence:
+    the VISA_DECISION rows the database already carried are all still there
+    after restore, and the two GARUDA rows are not (a 264-shaped table has no
+    place for them), so this test leaves no residue behind.
+    """
+    from backend.tests.services.visa_engine.conftest import unwind_garuda_voa_retention_fk
+
+    async with db_pool.acquire() as conn:
+        visa_decision_ids = {
+            r["id"]
+            for r in await conn.fetch(
+                "SELECT id FROM public.visa_decision_retention_policies "
+                "WHERE policy_scope = 'VISA_DECISION'"
+            )
+        }
+        versions = []
+        for scope in ("GARUDA_CHECK", "GARUDA_ORDER"):
+            await conn.execute(
+                """
+                UPDATE public.visa_decision_retention_policies
+                   SET effective_period = tstzrange(lower(effective_period), clock_timestamp(), '[)')
+                 WHERE environment = 'TEST' AND policy_scope = $1
+                   AND upper(effective_period) IS NULL
+                """,
+                scope,
+            )
+            version = f"fk-registry-overlap-{scope.lower()}-{uuid.uuid4().hex[:12]}"
+            await conn.execute(
+                """
+                INSERT INTO public.visa_decision_retention_policies (
+                    environment, policy_scope, policy_version, retention_interval,
+                    idempotency_retention_interval, legal_hold_review_interval,
+                    retention_anchor, effective_period, approved_by, approval_reference
+                ) VALUES (
+                    'TEST', $1, $2, INTERVAL '90 days', INTERVAL '1 hour', INTERVAL '30 days',
+                    'CREATED_AT', tstzrange(clock_timestamp(), NULL, '[)'),
+                    'zero-test-approver', 'ZERO-FK-REGISTRY-OVERLAP-TEST'
+                )
+                """,
+                scope,
+                version,
+            )
+            versions.append((scope, version))
+        for scope, version in versions:
+            await conn.execute(
+                """
+                UPDATE public.visa_decision_retention_policies
+                   SET effective_period = tstzrange(lower(effective_period), clock_timestamp(), '[)')
+                 WHERE policy_scope = $1 AND policy_version = $2
+                """,
+                scope,
+                version,
+            )
+
+        try:
+            assert await unwind_garuda_voa_retention_fk(conn)
+        finally:
+            await restore_garuda_voa_retention_fk(conn)
+
+        assert {
+            r["id"]
+            for r in await conn.fetch(
+                "SELECT id FROM public.visa_decision_retention_policies "
+                "WHERE policy_scope = 'VISA_DECISION'"
+            )
+        } >= visa_decision_ids, "the unwind removed a VISA_DECISION row"
+        assert not await conn.fetchval(
+            "SELECT count(*) FROM public.visa_decision_retention_policies "
+            "WHERE policy_version = ANY($1::text[])",
+            [version for _, version in versions],
         )
