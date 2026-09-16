@@ -2,16 +2,19 @@ gear: 3
 gear_reason: >-
   Floor measured with scripts/evidence_pack_lint.py --print-floor / --print-floor-source on the
   merge-base diff (git diff --name-only / --numstat, merge-base c1db269aa9601914ec77250f7748f0ac2352cf55 # pragma: allowlist secret
-  ...HEAD 67d00e0b8c992cdde800b381c156950937d3194d # pragma: allowlist secret
-  , re-measured after the purge extension): floor 3, source "path" — the changed set still
-  touches apps/backend-rag/backend/db/migrations_v2/317_visa_oracle_sessions_retention_30d.sql,
-  which matches this repo's HOTZONE_PATTERNS for the migration hot-zone regardless of size (net
-  churn is now +995 across 12 files, still under SIZE_GEAR3_THRESHOLD on its own — "path" stayed
-  the deciding source both before and after the extension). Judgement agrees independently of the
-  floor, more strongly now than at the first measurement: this PR no longer just changes a
-  DEFAULT — it adds the DELETE that actually enforces it against live PROD rows holding raw
-  quiz_answers/messages/ip_hash, over apps/backend-rag/** where merging a PR is itself the deploy
-  (memory discovery_merging_a_backend_rag_pr_deploys_by_itself_2026_09_01).
+  ...HEAD 4be9b857a9 # pragma: allowlist secret
+  , re-measured a third time after the Dux's scheduling-mechanism correction — launchd
+  plist/wrapper/one-shot-worker replaced by an in-process loop on the `api` Fly process): floor
+  3, source "path" — the changed set still touches
+  apps/backend-rag/backend/db/migrations_v2/317_visa_oracle_sessions_retention_30d.sql, which
+  matches this repo's HOTZONE_PATTERNS for the migration hot-zone regardless of size (net churn
+  is now +1,797 across 10 files, still under SIZE_GEAR3_THRESHOLD on its own — "path" stayed the
+  deciding source across all three measurements). Judgement agrees independently of the floor,
+  more strongly than at either earlier measurement: this PR no longer just changes a DEFAULT — it
+  adds a purge that actually deletes rows against live PROD data holding raw
+  quiz_answers/messages/ip_hash, running inside the SAME process that already serves
+  /api/visa-oracle, over apps/backend-rag/** where merging a PR is itself the deploy (memory
+  discovery_merging_a_backend_rag_pr_deploys_by_itself_2026_09_01).
 ruling: mandate SAETTA R2 (Dux = parent session, M5) — not a Zero-declared ORANGE/BLUE mission
 mission: >-
   SAETTA R2, host M5 — successor of PR #6478 ("feat(visa-oracle): 30-day retention for
@@ -32,20 +35,24 @@ objective: >-
   2026-08-25, docs/plans/2026-08-24-visa-oracle-live/OWNER-RULINGS-2026-08-25.md §3): "30 giorni
   (non i 90 dichiarati) — bastano per il visitatore che torna e per l'analisi funnel, minimizzano
   la ritenzione dichiarata." This PR ships both halves: (1) the DEFAULT (migration 317, unchanged
-  from the first measurement), and (2) a scheduled, handoff-safe purge that actually deletes
-  expired rows (`_purge_expired_sessions` + a new one-shot worker + launchd wrapper, mirroring
-  the visa-oracle-retention scheduling shape without its policy-table/SECURITY-DEFINER
-  machinery — visa_oracle_sessions has no Zero-approved policy row and does not need one, since
-  its retention duration is just this migration's own DEFAULT).
+  from the first measurement), and (2) a handoff-safe purge that actually deletes expired rows,
+  running as an in-process asyncio loop inside the `api` Fly process
+  (`_run_visa_oracle_sessions_purge_scheduler`, apps/backend-rag/backend/app/main_api.py) — NOT
+  the launchd plist + wrapper + one-shot-worker of the first pass at this problem, which the Dux
+  correctly rejected as superscar #2 ("exists != armed"): nothing installs the plist and the
+  worker wants its own PROD-DELETE credential only the operator can provision, so the purge would
+  never actually run. The loop reuses the pool `api` already holds and already serves
+  /api/visa-oracle with — no new credential, no install step, armed the moment this PR deploys.
 scope:
   - apps/backend-rag/backend/db/migrations_v2/317_visa_oracle_sessions_retention_30d.sql
-  - apps/backend-rag/backend/app/routers/visa_oracle.py (`_purge_expired_sessions`, new)
-  - apps/backend-rag/backend/scripts/visa_engine/visa_oracle_sessions_purge_worker.py (new)
+  - apps/backend-rag/backend/app/routers/visa_oracle.py (`_purge_expired_sessions`, unchanged from
+    the previous measurement — still the query the loop below calls)
+  - apps/backend-rag/backend/app/main_api.py
+    (`_run_visa_oracle_sessions_purge_scheduler`/`_visa_oracle_sessions_purge_enabled`, new; wired
+    into `_background_light_init`/`lifespan_light`)
   - apps/backend-rag/backend/tests/db/test_migration_317_visa_oracle_sessions_retention.py
-  - apps/backend-rag/backend/tests/routers/test_visa_oracle_sessions_purge.py (new)
-  - infra/launchagents/wrappers/visa-oracle-sessions-purge-run.sh (new)
-  - infra/launchagents/com.nuzantara.visa-oracle-sessions-purge.15min.plist.example (new)
-  - scripts/tests/test_visa_oracle_sessions_purge_ops.py (new)
+  - apps/backend-rag/backend/tests/routers/test_visa_oracle_sessions_purge.py
+  - apps/backend-rag/backend/tests/unit/services/test_visa_oracle_sessions_purge_scheduler.py (new)
   - evidence/2026-09/agent-air-m5-backend-rag-vo-sessions-retention-v-d2b0707e/**
 constraints:
   - No router change to the WRITE path — `_persist_session_create`'s INSERT (visa_oracle.py, still
@@ -68,11 +75,21 @@ constraints:
     ROLLBACK ===` marker; ALTER ... SET DEFAULT is metadata-only, no table rewrite. The purge
     DELETE must be bounded (LIMIT via a ctid subquery) and non-fatal on error.
   - No client PII in any log line — the purge logs a count only, never a session_id,
-    quiz_answers, message or ip_hash.
+    quiz_answers, message or ip_hash; the loop's own exception handler logs only the exception
+    CLASS name, never `str(exc)`, so a future error message cannot smuggle a value through it.
   - No client PII; no credential value anywhere; never renumber past a genuine on-main collision.
   - No `.env*`/`fly.toml`/`zantara_core.py` edits; no `npm install/ci`; no PROD Postgres query or
-    write from this worktree (Dux's job) — the purge worker/wrapper/plist are prepared here but
-    never run against PROD by this session.
+    write from this worktree (Dux's job) — the loop is prepared and unit-tested here but never
+    invoked against PROD by this session; it needs no new credential (reuses `api`'s existing
+    `db_pool`) and no operator install step, unlike the superseded scheduling mechanism.
+  - The loop must not run in a process that does not serve `/api/visa-oracle` — verified this turn
+    that `visa_oracle` is registered `process_groups=_API`
+    (apps/backend-rag/backend/app/setup/router_manifest.py:424) and that `main_api.py`'s
+    `initialize_services_light` (the `api` process's own init path) never calls
+    `initialize_database_services`/`_database_health_check_loop`
+    (service_initializer.py:458/706) — that pair belongs to the monolithic `main_cloud.py`, which
+    is not one of `fly.toml`'s three processes (`api`/`rag`/`drive`) and would never run in
+    production.
 acceptance:
   - text: >-
       A1 the forward section's LAST expires_at DEFAULT SHALL be 30 days, not 90
@@ -105,18 +122,18 @@ acceptance:
       untouched
     probe: "PYTHONPATH=. pytest backend/tests/routers/test_visa_oracle_sessions_purge.py::test_purge_sql_excludes_handoff_triggered_rows_and_expired_only backend/tests/routers/test_visa_oracle_sessions_purge.py::test_purge_returns_deleted_count_from_asyncpg_status backend/tests/routers/test_visa_oracle_sessions_purge.py::test_purge_is_non_fatal_on_db_error_and_returns_zero"
   - text: >-
-      C the purge SHALL be reachable by a scheduled, external, --apply-gated one-shot worker
-      (never by the request path), named and its ops-shape asserted
-    probe: "PYTHONPATH=. pytest ../../scripts/tests/test_visa_oracle_sessions_purge_ops.py"
+      C the purge SHALL be reachable by an in-process hourly loop on the Fly app that actually
+      serves /api/visa-oracle (never by the request path, never by an artifact that needs a
+      separate manual install)
+    probe: "PYTHONPATH=. pytest backend/tests/unit/services/test_visa_oracle_sessions_purge_scheduler.py"
     consumer: >-
-      backend/scripts/visa_engine/visa_oracle_sessions_purge_worker.py, invoked by
-      infra/launchagents/wrappers/visa-oracle-sessions-purge-run.sh via
-      infra/launchagents/com.nuzantara.visa-oracle-sessions-purge.15min.plist.example +
-      scripts/cron-wrapper.sh — the same scheduling shape as
-      visa-oracle-retention-run.sh/com.nuzantara.visa-oracle-retention.15min.plist.example (visa
-      DECISIONS), the closest same-domain precedent; `lead_capture.repository.purge_expired` has
-      zero callers anywhere in the repo, so there was no existing caller/scheduler for that
-      pattern to reuse directly.
+      `_run_visa_oracle_sessions_purge_scheduler` (apps/backend-rag/backend/app/main_api.py:615)
+      — spawned as an `asyncio.create_task` in `_background_light_init` (main_api.py:810, inside
+      `lifespan_light`), cancelled in the same lifespan's shutdown block (main_api.py:851) before
+      `db_pool.close()`. Runs on every `api` Fly machine automatically; no plist, no wrapper, no
+      operator install step, no new credential — it acquires connections from
+      `app.state.db_pool`, the same pool `_persist_session_create` (acceptance A5) already writes
+      through.
 consumer_map:
   - >-
     `_persist_session_create` (apps/backend-rag/backend/app/routers/visa_oracle.py:634-656) — the
@@ -127,10 +144,10 @@ consumer_map:
     this migration's DDL against PROD at deploy time (merging this PR onto apps/backend-rag/** is
     itself the deploy).
   - >-
-    The scheduled purge (`visa_oracle_sessions_purge_worker.py` via the new launchd
-    wrapper/plist) — the consumer that turns the DEFAULT into an actually-enforced retention,
-    once an operator installs the plist and flips `VISA_ORACLE_SESSIONS_PURGE_APPLY=true`
-    (both machine-local acts, outside this PR's diff and outside this session's write scope).
+    `_run_visa_oracle_sessions_purge_scheduler` (apps/backend-rag/backend/app/main_api.py:615),
+    spawned by `lifespan_light` on every `api` Fly machine — the consumer that turns the DEFAULT
+    into an actually-enforced retention, armed the moment this PR deploys, with no operator
+    install step and no new credential (superseding a launchd-plist design that needed both).
   - >-
     A future PROD schema read of `information_schema.columns.column_default` for
     `visa_oracle_sessions.expires_at`, AND a future PROD count of

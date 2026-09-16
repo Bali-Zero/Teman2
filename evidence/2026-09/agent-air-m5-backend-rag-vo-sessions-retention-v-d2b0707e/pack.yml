@@ -11,6 +11,17 @@
 # nothing deleted them, so the DEFAULT change alone enforced no retention. This turn adds the
 # scheduled, handoff-safe purge that actually enforces it. Every receipt in the newly-added block
 # below is likewise a command this session executed in THIS turn.
+#
+# EXTENDED AGAIN (2026-09-17, third authoring turn) by a Dux REVIEW of the second turn's
+# scheduling mechanism: a launchd `.plist.example` + wrapper that no one installs, wanting its
+# own DATABASE_URL with DELETE on PROD, is superscar #2 ("exists != armed") — the purge would
+# never actually run. This turn replaces that mechanism with an in-process asyncio loop inside
+# the `api` Fly process (the one that already holds the pool and already serves
+# /api/visa-oracle), removes the now-superseded plist/wrapper/one-shot-worker/ops-test, and
+# re-measures the floor and lint on the new diff. The receipts from the second turn describing
+# the superseded artifacts are LEFT IN PLACE below as a true record of commands this session
+# actually ran at the time — not deleted, since they were not false when written — but the
+# CURRENT acceptance C probe and consumer_map now point at the replacement.
 gear: 3
 brief_ref: evidence/brief.yml
 ruling: mandate SAETTA R2 (Dux = parent session, M5)
@@ -55,22 +66,22 @@ bites:
     Two, both required: (1) apps/backend-rag/backend/app/routers/visa_oracle.py::
     _persist_session_create — the sole INSERT path for new visa_oracle_sessions rows; its INSERT
     statement names only (session_id, quiz_answers, recommended_visas, ip_hash), never
-    expires_at, so the column's DEFAULT is what applies to every new row. (2) The SCHEDULED
-    PURGE — backend/scripts/visa_engine/visa_oracle_sessions_purge_worker.py, invoked by
-    infra/launchagents/wrappers/visa-oracle-sessions-purge-run.sh via the new
-    com.nuzantara.visa-oracle-sessions-purge.15min.plist.example + scripts/cron-wrapper.sh — the
-    consumer that turns the DEFAULT into an actually-enforced retention by deleting rows once
-    they age past it.
+    expires_at, so the column's DEFAULT is what applies to every new row. (2) THE PURGE LOOP —
+    `_run_visa_oracle_sessions_purge_scheduler` (apps/backend-rag/backend/app/main_api.py:615),
+    spawned automatically by `lifespan_light` on every `api` Fly machine at boot — the consumer
+    that turns the DEFAULT into an actually-enforced retention by deleting rows once they age
+    past it, with no separate install step (superseding the launchd-plist design the Dux
+    reviewed and rejected in the previous turn).
   observation: >-
     Two, both owed by the Dux post-merge: (1) PROD's information_schema.columns.column_default
     for visa_oracle_sessions.expires_at reads the 30-day expression, not 90 — e.g.
     `SELECT column_default FROM information_schema.columns WHERE table_name =
     'visa_oracle_sessions' AND column_name = 'expires_at';` against nuzantara-postgres.
-    (2) After the plist is installed and `VISA_ORACLE_SESSIONS_PURGE_APPLY` is flipped to
-    `true` (both machine-local operator acts), PROD's count of
-    `expires_at < now() AND NOT COALESCE(handoff_triggered, false)` on visa_oracle_sessions
-    drops to 0 within one schedule period (900s) — the 17-of-20 backlog the Dux measured this
-    turn is the first real exercise of that observation.
+    (2) PROD's count of `expires_at < now() AND NOT COALESCE(handoff_triggered, false)` on
+    visa_oracle_sessions drops to 0 within roughly one hour of deploy — no install step or
+    machine-local flag flip is a precondition any more, since the loop starts inside the `api`
+    process itself (first tick fires 30-120s after boot, then hourly +/- 5min jitter); the
+    17-of-20 backlog the Dux measured this turn is the first real exercise of that observation.
 decisions:
   - id: D-gear
     decision: >-
@@ -139,30 +150,37 @@ decisions:
       matters, and the purge excludes it unconditionally, regardless of age.
   - id: D-scheduler
     decision: >-
-      `lead_capture.repository.LeadCaptureRepository.purge_expired` (backend/services/
-      lead_capture/repository.py:155) has ZERO callers anywhere in the repo — grepped
-      `grep -rn "purge_expired"` (only its own definition + unrelated garuda_flow/visa_engine
-      purge functions of the same name pattern) and `grep -rn "\.purge_expired\("` (zero hits) —
-      so there is no existing scheduler/lifespan/cron/worker invoking it to reuse directly. The
-      closest SAME-DOMAIN precedent is `backend/scripts/visa_engine/retention_worker.py`
-      (visa DECISIONS + evaluate-idempotency), scheduled via
-      `infra/launchagents/wrappers/visa-oracle-retention-run.sh` +
-      `infra/launchagents/com.nuzantara.visa-oracle-retention.15min.plist.example` +
-      `scripts/cron-wrapper.sh` (grepped `grep -rln "retention_worker"` this turn — that wrapper
-      is the sole caller). That worker is gated by a Zero-approved retention-POLICY table
-      (`visa_decision_retention_policies`) and SECURITY DEFINER SQL functions under a dedicated
-      least-privilege DSN/role — visa_oracle_sessions has no such policy row and does not need
-      one (its retention duration is just migration 317's own DEFAULT), so bolting a fourth data
-      class onto that policy-gated system would be disproportionate and would need a NEW
-      Zero-approved policy row, out of this session's authority. Reused the SAME scheduling
-      *shape* instead, at a lighter weight: a new one-shot worker
-      (`visa_oracle_sessions_purge_worker.py`) + a new wrapper
-      (`visa-oracle-sessions-purge-run.sh`, byte-for-byte structural mirror of
-      `visa-oracle-retention-run.sh`: same `--apply`-gated env-var-boolean validation, same exit
-      78 on a non-true/false value) + a new plist
-      (`com.nuzantara.visa-oracle-sessions-purge.15min.plist.example`, same KeepAlive=false +
-      StartInterval=900 shape — cicatrix scar #7 antibody) — through the SAME `scripts/
-      cron-wrapper.sh` every other launchd job in this repo already goes through.
+      SUPERSEDED (this turn) by the Dux's review of the previous decision. Original reasoning,
+      kept for the record: `lead_capture.repository.LeadCaptureRepository.purge_expired`
+      (backend/services/lead_capture/repository.py:155) has ZERO callers anywhere in the repo;
+      the closest same-domain precedent, `backend/scripts/visa_engine/retention_worker.py`, is
+      gated by a Zero-approved retention-POLICY table this session had no authority to add a row
+      to, so a lighter-weight structural mirror (one-shot worker + wrapper + plist) was built
+      instead. The Dux's review named the actual defect in THAT choice, independent of its
+      weight: `com.nuzantara.visa-oracle-retention.15min.plist.example`'s own sibling job is
+      installed on Mini under a dedicated role (`VISA_ENGINE_RETENTION_DATABASE_URL`) — the new
+      plist this session built had no such installed counterpart anywhere, and its wrapper wanted
+      a `DATABASE_URL` with DELETE on PROD on an H24 host, a credential only the operator can
+      provision. Built, never armed — cicatrix scar #2 exactly, regardless of how light the
+      worker itself was.
+
+      REPLACEMENT (this turn): run the purge inside the Fly process that already holds the pool
+      and already serves the traffic it protects. `router_manifest.py:424` registers
+      `visa_oracle` as `process_groups=_API` — `main_api.py` is the process, not `main_rag.py` or
+      the monolithic `main_cloud.py`. Read `main_api.py`'s existing GARUDA-outbox scheduler
+      (`_run_garuda_outbox_scheduler`, ~line 260) and its own docstring first: that loop exists
+      for the identical reason — `outbox_consumer.py` and its handlers existed and were fully
+      tested with ZERO non-test callers in the whole tree, "Built is not armed" in its own words —
+      and its DLQ-retry-loop sibling in `service_initializer.py::initialize_services_light`
+      carries a comment explaining it was moved from `rag` to `api` specifically because `rag`
+      autostops and starved it for a week (2026-06-21 incident). Both are exactly this problem
+      solved once already in this same file; `_run_visa_oracle_sessions_purge_scheduler`
+      (main_api.py:615) reuses their SHAPE: task stored on `app.state`, spawned in
+      `_background_light_init` guarded on `db_pool` + its own kill switch
+      (`VISA_ORACLE_SESSIONS_PURGE_ENABLED`), cancelled in `lifespan_light`'s shutdown before the
+      pool closes. Multiple `api` machines each running the loop is fine — the DELETE is
+      idempotent, the same bet `_run_garuda_outbox_scheduler`'s own docstring already makes for
+      its queue (scar #10 considered, not merely asserted away).
   - id: D-review
     decision: >-
       Reviewed the migration against this directory's own conventions (315, 318 read as recent
@@ -530,6 +548,173 @@ receipts:
     exit: 0
     ts: "2026-09-17T01:32:00Z"
     seat: this session (M5)
+  - claim: >-
+      visa_oracle is registered process_groups=_API (main_api.py, not main_rag.py/main_cloud.py)
+      — the `api` process is the one that must host the loop.
+    cmd: >-
+      grep -n "visa_oracle" apps/backend-rag/backend/app/setup/router_manifest.py ; grep -n
+      "initialize_services\|initialize_services_light" apps/backend-rag/backend/app/main_api.py
+      apps/backend-rag/backend/app/main_rag.py apps/backend-rag/backend/app/main_cloud.py
+    result: >-
+      router_manifest.py:424 RouterEntry(name="visa_oracle", process_groups=_API, ...) ;
+      main_api.py imports initialize_services_light (light init, own db_pool, NO
+      initialize_database_services call) ; main_cloud.py imports the monolithic
+      initialize_services (which DOES register db_health_check_task, but main_cloud.py is not one
+      of fly.toml's three processes) ; main_rag.py uses the full app_factory lifespan, unrelated
+      to visa_oracle
+    exit: 0
+    ts: "2026-09-17T02:05:00Z"
+    seat: this session (M5)
+  - claim: >-
+      The `api` process's own light init has an EXISTING precedent for exactly this shape — the
+      GARUDA outbox drain and its "MULTIPLE MACHINES ARE SAFE" reasoning, and the DLQ retry loop's
+      comment explaining it was moved from `rag` to `api` because `rag` autostops.
+    cmd: >-
+      Read apps/backend-rag/backend/app/main_api.py::_run_garuda_outbox_scheduler (L260-334, incl.
+      its own docstring) and
+      apps/backend-rag/backend/app/setup/service_initializer.py::initialize_services_light's "4b.
+      Channel DLQ retry loop" comment (L2197-2205) in full this turn.
+    result: >-
+      _run_garuda_outbox_scheduler's docstring: "nothing in the repository ever called either of
+      them outside tests ... Built is not armed. This is that act." ; same function: "MULTIPLE
+      MACHINES ARE SAFE FOR THE SAME REASON ... SKIP LOCKED steps over a row another transaction
+      holds" ; service_initializer.py:2197-2199: "hosted HERE on the always-on `api` group, NOT in
+      initialize_services (group `rag`, not always-on). The retry loop sat on `rag`, so when `rag`
+      autostopped nothing drained the DLQ"
+    exit: 0
+    ts: "2026-09-17T02:08:00Z"
+    seat: this session (M5)
+  - claim: New loop + kill switch written; import chain still clean.
+    cmd: >-
+      cd apps/backend-rag && PYTHONPATH=. .venv/bin/python -c "from backend.app import main_api;
+      print('OK'); print(main_api._visa_oracle_sessions_purge_enabled);
+      print(main_api._run_visa_oracle_sessions_purge_scheduler)"
+    result: "OK printed, both functions resolve"
+    exit: 0
+    ts: "2026-09-17T02:15:00Z"
+    seat: this session (M5)
+  - claim: >-
+      Superseded plist/wrapper/one-shot-worker/ops-test removed; nothing else in the repo
+      references them.
+    cmd: >-
+      grep -rln "visa_oracle_sessions_purge_worker\|visa-oracle-sessions-purge" --include='*.py'
+      --include='*.sh' --include='*.plist*' --include='*.yml' --include='*.yaml' --include='*.md'
+      --include='*.toml' . ; git rm -q <the 4 files>
+    result: >-
+      Pre-removal: only the 4 files' own self-references, plus this evidence pack (updated
+      separately). No other caller anywhere. Removal via `git rm`.
+    exit: 0
+    ts: "2026-09-17T02:18:00Z"
+    seat: this session (M5)
+  - claim: >-
+      test_lint_plist_keepalive.py / test_launchagent_reconcile.py (repo-wide, scar #7 antibody)
+      still pass after the removal.
+    cmd: >-
+      apps/backend-rag/.venv/bin/python -m pytest scripts/tests/test_lint_plist_keepalive.py
+      scripts/tests/test_launchagent_reconcile.py -p no:cacheprovider
+    result: "67 passed"
+    exit: 0
+    ts: "2026-09-17T02:19:00Z"
+    seat: this session (M5)
+  - claim: New scheduler test suite green.
+    cmd: >-
+      cd apps/backend-rag && PYTHONPATH=. .venv/bin/python -m pytest
+      backend/tests/unit/services/test_visa_oracle_sessions_purge_scheduler.py -p no:cacheprovider
+    result: "21 passed"
+    exit: 0
+    ts: "2026-09-17T02:21:00Z"
+    seat: this session (M5)
+  - claim: >-
+      Proven red: forced `_visa_oracle_sessions_purge_enabled()` to `return False`
+      unconditionally (backed up via `cp` first, never `git checkout --`).
+    cmd: >-
+      cp main_api.py <scratch>/main_api_backup.py ; (edit: replace the function body with
+      `return False`) ; PYTHONPATH=. pytest
+      backend/tests/unit/services/test_visa_oracle_sessions_purge_scheduler.py::test_the_lifespan_spawns_the_purge_when_enabled
+      -p no:cacheprovider
+    result: >-
+      "1 failed — AssertionError: the purge loop was never started, assert []" (the arming test
+      goes red exactly as the mutation predicts)
+    exit: 1
+    ts: "2026-09-17T02:23:00Z"
+    seat: this session (M5)
+  - claim: Restored main_api.py byte-identical to its committed state via `cp`; the same arming test is green again.
+    cmd: >-
+      cp <scratch>/main_api_backup.py main_api.py ; diff <scratch>/main_api_backup.py main_api.py ;
+      PYTHONPATH=. pytest
+      backend/tests/unit/services/test_visa_oracle_sessions_purge_scheduler.py::test_the_lifespan_spawns_the_purge_when_enabled
+      -p no:cacheprovider
+    result: "diff empty — RESTORED-IDENTICAL ; 1 passed"
+    exit: 0
+    ts: "2026-09-17T02:24:00Z"
+    seat: this session (M5)
+  - claim: Combined regression sweep green post-restore (new + adjacent scheduler/router suites).
+    cmd: >-
+      cd apps/backend-rag && PYTHONPATH=. .venv/bin/python -m pytest
+      backend/tests/unit/services/test_visa_oracle_sessions_purge_scheduler.py
+      backend/tests/unit/services/test_garuda_outbox_scheduler.py
+      backend/tests/unit/services/test_wa_outbox_scheduler.py
+      backend/tests/routers/test_visa_oracle_sessions_purge.py
+      backend/tests/routers/test_visa_oracle_handoff.py
+      backend/tests/unit/app/lifecycle/test_shutdown.py -p no:cacheprovider
+    result: "116 passed"
+    exit: 0
+    ts: "2026-09-17T02:26:00Z"
+    seat: this session (M5)
+  - claim: >-
+      Pre-commit anti-reward-hacking lint flagged one test with no assertion (non-blocking WARN);
+      fixed same turn.
+    cmd: git commit (pre-commit hooks run automatically) — first commit; then fixed + re-committed
+    result: >-
+      First commit: "WARN apps/backend-rag/backend/tests/unit/services/
+      test_visa_oracle_sessions_purge_scheduler.py:165: RH005 ... asserts nothing" (non-blocking,
+      commit succeeded) ; second commit after the fix: "anti-reward-hacking: clean (1 test
+      file(s) checked)"
+    exit: 0
+    ts: "2026-09-17T02:30:00Z"
+    seat: this session (M5)
+  - claim: Two new commits created this turn (scheduling-mechanism replacement + lint fix).
+    cmd: git log --oneline -6
+    result: >-
+      4be9b857a9 fix(visa-oracle): add the missing assertion the RH005 lint warned about ;
+      6fc3473509 fix(visa-oracle): run the session-retention purge in-process on the api group,
+      not a launchd plist ; 9839ae7583 docs(evidence): extend Gear-3 pack for the scheduled
+      sessions purge ; 67d00e0b8c992cdde800b381c156950937d3194d feat(visa-oracle): enforce the
+      30-day session default with a scheduled purge ; 4d76c55541 docs(evidence): Gear-3 pack for
+      migration 317 visa_oracle_sessions retention ; a76050925c feat(visa-oracle): 30-day
+      retention for visa_oracle_sessions (migration 317, successor of #6478)
+    exit: 0
+    ts: "2026-09-17T02:31:00Z"
+    seat: this session (M5)
+  - claim: Gear-3 floor and source re-measured on the third-turn merge-base diff — unchanged (3, "path").
+    cmd: >-
+      apps/backend-rag/.venv/bin/python scripts/evidence_pack_lint.py --print-floor
+      --changed-files-file <f> --numstat-file <f> ; (separately) --print-floor-source
+      --changed-files-file <f> --numstat-file <f>
+    result: 'floor 3 ; source "path" (10 files changed, +1797/-0)'
+    exit: 0
+    ts: "2026-09-17T02:33:00Z"
+    seat: this session (M5)
+  - claim: "brief.yml acceptance C probe, run verbatim against the new consumer."
+    cmd: "PYTHONPATH=. pytest backend/tests/unit/services/test_visa_oracle_sessions_purge_scheduler.py"
+    result: "21 passed"
+    exit: 0
+    ts: "2026-09-17T02:34:00Z"
+    seat: this session (M5)
+  - claim: PII scan of the FULL third-turn merge-base diff — no email, phone, passport-like or 16-digit NIK-like string.
+    cmd: >-
+      git diff c1db269aa9...HEAD > full3.diff; grep -cE
+      '[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}' full3.diff; grep -cE
+      '(\+?[0-9][0-9().-]{7,}[0-9])' full3.diff; grep -cE '\b[A-Z]{1,2}[0-9]{6,9}\b' full3.diff;
+      grep -cE '\b[0-9]{16}\b' full3.diff
+    result: >-
+      7 email-shaped hits, all `@pytest.mark.asyncio`/`@pytest.mark.parametrize` decorators in the
+      new test file ; 69 phone-shaped hits, sampled — all git index hashes (0000000000..*),
+      dates, commit/PR refs and line-range comments ; 0 passport-like matches ; 0 16-digit NIK
+      matches
+    exit: 0
+    ts: "2026-09-17T02:35:00Z"
+    seat: this session (M5)
 dissent:
   - seat: this session (M5, self-refutation)
     objection: >-
@@ -559,11 +744,16 @@ leftovers:
     above: closing #6478 (rather than letting it merge) is what keeps migration number 317 from
     becoming a genuine on-disk duplicate.
   - >-
-    The plist (`.plist.example`) is a TEMPLATE — matching every other launchd job in this
-    directory (all `.example`, not installed by this PR). Merging this PR ships the code and the
-    worker; it does NOT itself start enforcing retention on PROD. An operator (the Dux or Zero)
-    must still copy the plist into `~/Library/LaunchAgents/` on the machine that should run it,
-    `launchctl load` it, and flip `VISA_ORACLE_SESSIONS_PURGE_APPLY=true` once satisfied with a
-    dry-run cycle's logged `remaining=` count — matching exactly how visa-oracle-retention's own
-    plist is (was) installed. This is the "bites" observation's real precondition, named here so
-    it is not lost.
+    SUPERSEDED (third turn): the launchd plist/wrapper/one-shot-worker this leftover used to
+    describe were removed this turn along with the "operator must install it" precondition they
+    implied — see D-scheduler. Merging this PR now DOES itself start enforcing retention on
+    PROD: `_run_visa_oracle_sessions_purge_scheduler` is spawned automatically by every `api`
+    Fly machine's own lifespan, no operator action required. What remains genuinely owed to the
+    Dux is only the "bites" observation itself (the two PROD reads named in `bites.observation`
+    above) — not an install step.
+  - >-
+    The `VISA_ORACLE_SESSIONS_PURGE_ENABLED` kill switch is a real off-ramp if the first live
+    hour looks wrong (e.g. an unexpectedly large delete count) — `fly secrets set
+    VISA_ORACLE_SESSIONS_PURGE_ENABLED=false -a nuzantara-rag` and a rolling restart disables the
+    loop on every `api` machine without a code change or redeploy of anything else. Named here so
+    the Dux has it in hand before the first bites observation, not after.
