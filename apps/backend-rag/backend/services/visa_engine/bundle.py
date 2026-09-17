@@ -69,12 +69,14 @@ import json
 import logging
 import os
 import re
+import threading
+from collections import OrderedDict
 from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from functools import lru_cache
 from pathlib import Path
-from typing import Protocol, TypeAlias
+from typing import NamedTuple, Protocol, TypeAlias
 
 import rfc8785
 from cryptography.exceptions import InvalidSignature
@@ -601,6 +603,85 @@ def _has_signature(raw_envelope: Mapping[str, JsonValue]) -> bool:
     return isinstance(signature, str) and signature != ""
 
 
+# --- Bounded process-local verification-stage memo -------------------------
+#
+# The keyed evaluate path calls `verify_rule_pack` on the SAME ~290 KB
+# signed envelope up to five times per request. Canonicalization
+# (`_canonicalize_wire_object`) and `RulePack.model_validate` dominate the
+# cost (~2.4s/call on Fly's shared vCPU) and are PURE functions of the
+# envelope's own bytes, so their output is memoized per distinct envelope
+# below — while everything that is NOT a pure function of the envelope
+# (trust-store resolution/revocation, the future-skew check, the Ed25519
+# verify itself) still runs on EVERY call, memo hit or miss. See
+# `verify_rule_pack`'s body for exactly which stages are memoized.
+#
+# Bounded to 8 entries, evicted oldest-first (`OrderedDict` as an LRU), a
+# `threading.Lock` guarding every read/write.
+
+_VERIFIED_STAGE_MEMO_MAX_ENTRIES = 8
+
+
+class _VerifiedStageMemoEntry(NamedTuple):
+    """A successful signed-path verification's pure-function-of-the-bytes
+    results — frozen objects, safe to reuse for a byte-identical envelope."""
+
+    protected_bytes: bytes
+    payload_bytes: bytes
+    payload_sha256: bytes
+    signed_bytes: bytes
+    kid: JsonValue
+    signed_at: datetime
+    pack: RulePack
+
+
+_VERIFIED_STAGE_MEMO: OrderedDict[bytes, _VerifiedStageMemoEntry] = OrderedDict()
+_VERIFIED_STAGE_MEMO_LOCK = threading.Lock()
+
+
+def _stage_memo_key(envelope: dict[str, JsonValue]) -> bytes | None:
+    """SHA-256 over a sorted-key, compact JSON serialization of `envelope`
+    — a CACHE KEY ONLY, never cryptographic (JCS via `canonicalize_json`
+    remains the sole canonicalization used for signing/verification).
+    `envelope` MUST already be the `_snapshot_envelope` result.
+
+    Returns ``None`` (skip memoization entirely, never a fallback sentinel
+    key) if `envelope` can't be turned into a key at all — e.g. a lone
+    UTF-16 surrogate in a wire string, which JSON Schema permits but UTF-8
+    can't encode. Costs nothing: such an envelope fails real validation
+    moments later regardless."""
+
+    try:
+        blob = json.dumps(envelope, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+        return hashlib.sha256(blob.encode("utf-8")).digest()
+    except (TypeError, ValueError, UnicodeEncodeError):
+        return None
+
+
+def _verified_stage_memo_get(key: bytes) -> _VerifiedStageMemoEntry | None:
+    with _VERIFIED_STAGE_MEMO_LOCK:
+        entry = _VERIFIED_STAGE_MEMO.get(key)
+        if entry is not None:
+            _VERIFIED_STAGE_MEMO.move_to_end(key)
+        return entry
+
+
+def _verified_stage_memo_put(key: bytes, entry: _VerifiedStageMemoEntry) -> None:
+    with _VERIFIED_STAGE_MEMO_LOCK:
+        _VERIFIED_STAGE_MEMO[key] = entry
+        _VERIFIED_STAGE_MEMO.move_to_end(key)
+        while len(_VERIFIED_STAGE_MEMO) > _VERIFIED_STAGE_MEMO_MAX_ENTRIES:
+            _VERIFIED_STAGE_MEMO.popitem(last=False)
+
+
+def clear_verified_stage_memo() -> None:
+    """Test-only: clear the bounded `verify_rule_pack` stage memo so test
+    cases don't leak cache state into each other. Never called from a
+    production code path."""
+
+    with _VERIFIED_STAGE_MEMO_LOCK:
+        _VERIFIED_STAGE_MEMO.clear()
+
+
 def verify_rule_pack(
     raw_envelope: Mapping[str, JsonValue],
     *,
@@ -660,6 +741,11 @@ def verify_rule_pack(
     check below (schema validation, canonicalization, hashing, key
     resolution, ``model_validate``) operates on that snapshot, never on the
     caller's original object again. See that function's docstring.
+
+    STAGE MEMO: schema validation, canonicalization and ``model_validate``
+    are memoized per byte-identical envelope (see the module-level block
+    above this function). Trust-store resolution/revocation, the
+    future-skew check, and the Ed25519 verify still run on every call.
     """
 
     envelope = _snapshot_envelope(raw_envelope)
@@ -669,33 +755,65 @@ def verify_rule_pack(
             envelope, allow_unsigned=allow_unsigned, observed_at=observed_at
         )
 
-    _validate_envelope_against_schema(envelope)
+    # memo_key hashes the ENTIRE snapshotted envelope — any byte of
+    # difference anywhere (payload, protected header, hash, signature) is a
+    # miss; only a truly byte-identical envelope can ever hit.
+    memo_key = _stage_memo_key(envelope)
+    memo_entry = _verified_stage_memo_get(memo_key) if memo_key is not None else None
+    memo_hit = memo_entry is not None
 
+    # Type-narrow up front, unconditionally — trivial, not an expensive
+    # stage. Full schema validation (miss-only, below) already enforces
+    # object shape for both; this keeps the narrowing honest on a memo hit,
+    # which skips schema validation entirely.
     raw_protected = envelope["protected"]
     raw_payload = envelope["payload"]
     if not isinstance(raw_protected, Mapping) or not isinstance(raw_payload, Mapping):
-        # Schema validation above already enforces object shape for both —
-        # this is unreachable in practice, but keeps the type-narrowing
-        # honest rather than trusting an untyped Mapping[str, JsonValue].
         raise RulePackVerificationError(
             "rule pack envelope 'protected'/'payload' must be JSON objects"
         )
-
-    # Belt-and-suspenders: the compiler's own header/environment check
-    # re-enforces this too, but the cryptographic trust boundary should not
-    # depend on a downstream compile step ever running.
     protected_environment = raw_protected.get("environment")
-    payload_environment = raw_payload.get("environment")
-    if protected_environment != payload_environment:
-        raise RulePackVerificationError(
-            f"protected header environment {protected_environment!r} does not "
-            f"match payload environment {payload_environment!r}"
-        )
 
-    protected_bytes = _canonicalize_wire_object(raw_protected, label="protected")
-    payload_bytes = _canonicalize_wire_object(raw_payload, label="payload")
+    if memo_entry is not None:
+        # HIT: schema validation, the environment cross-check, both JCS
+        # canonicalizations, and model_validate already ran for this exact
+        # envelope — reuse verbatim. Everything below is NOT a pure
+        # function of the envelope's bytes and still runs unconditionally.
+        (
+            protected_bytes,
+            payload_bytes,
+            computed_payload_sha256,
+            signed_bytes,
+            raw_kid,
+            signed_at,
+            pack,
+        ) = memo_entry
+    else:
+        _validate_envelope_against_schema(envelope)
 
-    computed_payload_sha256 = hashlib.sha256(payload_bytes).digest()
+        # Belt-and-suspenders: the compiler's own header/environment check
+        # re-enforces this too, but the cryptographic trust boundary should not
+        # depend on a downstream compile step ever running.
+        payload_environment = raw_payload.get("environment")
+        if protected_environment != payload_environment:
+            raise RulePackVerificationError(
+                f"protected header environment {protected_environment!r} does not "
+                f"match payload environment {payload_environment!r}"
+            )
+
+        protected_bytes = _canonicalize_wire_object(raw_protected, label="protected")
+        payload_bytes = _canonicalize_wire_object(raw_payload, label="payload")
+        computed_payload_sha256 = hashlib.sha256(payload_bytes).digest()
+
+        raw_kid = raw_protected.get("kid")
+        raw_signed_at = raw_protected.get("signed_at")
+        signed_at = _parse_utc_datetime(raw_signed_at)
+
+        signed_bytes = _build_signed_bytes(protected_bytes, payload_bytes)
+        pack = None  # built below, only once the signature has verified
+
+    # NOT memoized: cheap once the bytes are (re)used, and keeps tamper
+    # detection unconditional on every call.
     declared_payload_sha256 = envelope.get("payload_sha256")
     if computed_payload_sha256.hex() != declared_payload_sha256:
         raise RulePackVerificationError(
@@ -704,20 +822,19 @@ def verify_rule_pack(
             "— the payload was tampered with, or the declared hash is stale"
         )
 
-    raw_kid = raw_protected.get("kid")
-    raw_signed_at = raw_protected.get("signed_at")
-    signed_at = _parse_utc_datetime(raw_signed_at)
+    # NOT memoized: key validity/revocation is a property of the CALL, not
+    # of the envelope's bytes — the memo must never shadow a revocation.
     signing_key = trust_store.resolve(
         key_id=raw_kid,
         signed_at=signed_at,
         environment=protected_environment,
     )
 
-    # Future-skew guard (3-seat verify FIX-NOW #3): `observed_at` was
-    # accepted as a parameter but never actually used on the signed path —
-    # a pack signed_at any arbitrary point in the future relative to
-    # observed_at sailed through untouched (a partial backdating/
-    # future-dating defense gap). Checked AFTER trust_store.resolve()
+    # Future-skew guard (3-seat verify FIX-NOW #3), NOT memoized —
+    # `observed_at` is supplied fresh on every call: a pack signed_at any
+    # arbitrary point in the future relative to observed_at sailed through
+    # untouched (a partial backdating/future-dating defense gap) before
+    # this guard existed. Checked AFTER trust_store.resolve()
     # succeeds so a key already invalid/expired/revoked/not-yet-valid at
     # signed_at is still reported as exactly that, not shadowed by this
     # check. NOT a fix for revocation-at-activation-time against a
@@ -732,9 +849,9 @@ def verify_rule_pack(
             f"{_SIGNED_AT_FUTURE_TOLERANCE} tolerance"
         )
 
+    # NOT memoized: the cryptographic check itself, run on every call.
     raw_signature = envelope.get("signature")
     signature_bytes = _decode_signature(raw_signature)
-    signed_bytes = _build_signed_bytes(protected_bytes, payload_bytes)
 
     try:
         signing_key.public_key.verify(signature_bytes, signed_bytes)
@@ -743,14 +860,30 @@ def verify_rule_pack(
             f"Ed25519 signature verification failed for key {raw_kid!r}"
         ) from exc
 
-    # ONLY AFTER the signature verifies do we build the typed model — see
-    # the trust-boundary invariant in the docstring above.
-    try:
-        pack = RulePack.model_validate(envelope)
-    except PydanticValidationError as exc:
-        raise RulePackVerificationError(
-            f"rule pack envelope failed model validation: {exc}"
-        ) from exc
+    if pack is None:
+        # ONLY AFTER the signature verifies do we build the typed model —
+        # see the trust-boundary invariant in the docstring above. Reached
+        # only on a memo miss; memoize it now that this fully verified.
+        try:
+            pack = RulePack.model_validate(envelope)
+        except PydanticValidationError as exc:
+            raise RulePackVerificationError(
+                f"rule pack envelope failed model validation: {exc}"
+            ) from exc
+
+        if memo_key is not None:
+            _verified_stage_memo_put(
+                memo_key,
+                _VerifiedStageMemoEntry(
+                    protected_bytes=protected_bytes,
+                    payload_bytes=payload_bytes,
+                    payload_sha256=computed_payload_sha256,
+                    signed_bytes=signed_bytes,
+                    kid=raw_kid,
+                    signed_at=signed_at,
+                    pack=pack,
+                ),
+            )
 
     logger.info(
         "verified rule pack %s sequence=%s kid=%s",
@@ -758,6 +891,7 @@ def verify_rule_pack(
         pack.payload.sequence,
         raw_kid,
     )
+    logger.debug("verify_rule_pack stage memo hit=%s", memo_hit)
 
     return VerifiedRulePack(
         pack=pack,
