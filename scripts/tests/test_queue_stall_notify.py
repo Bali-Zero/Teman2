@@ -44,8 +44,11 @@ def isolated_repeat_state(monkeypatch, tmp_path):
     monkeypatch.setattr(qsn, "LOCK_FILE", tmp_path / "queue_stall_notify_seen.json.lock")
 
 
-def make_row(number: int, cause: str, detail: str = "detail") -> dict:
-    return {"number": number, "title": f"PR {number}", "age_minutes": 45, "cause": cause, "detail": detail}
+def make_row(number: int, cause: str, detail: str = "detail", head_ref: str = "") -> dict:
+    return {
+        "number": number, "title": f"PR {number}", "age_minutes": 45, "cause": cause,
+        "detail": detail, "head_ref": head_ref,
+    }
 
 
 def make_report(rows: list[dict], *, examined_total: int | None = None, fetch_error: str | None = None) -> dict:
@@ -272,6 +275,59 @@ def test_real_stall_row_produces_exactly_one_send(monkeypatch, capsys):
     assert cmd[key_index] == "queue_stall:202:not-armed"
     assert "sent=1" in out
     assert "send_failed=0" in out
+
+
+# ── derive_to_targets: pure, no network ──────────────────────────────────────
+
+
+def test_derive_to_targets_innocence_agent_branch_yields_host_and_lane():
+    assert qsn.derive_to_targets("agent/air-m5/infra/mailbox-sender-discipline-20260918") == [
+        "host:air-m5", "lane:infra",
+    ]
+
+
+def test_derive_to_targets_guilt_non_agent_branch_falls_back_to_all():
+    assert qsn.derive_to_targets("main") == ["all"]
+    assert qsn.derive_to_targets("") == ["all"]
+    assert qsn.derive_to_targets("agent/air-m5") == ["all"]
+
+
+def test_send_notification_production_argv_carries_derived_to_and_from(monkeypatch, capsys):
+    monkeypatch.delenv("QUEUE_STALL_NOTIFY_ENABLED", raising=False)
+    report = make_report([make_row(909, "not-armed", "x", head_ref="agent/pro/wr2/dispatch-fix")])
+    monkeypatch.setattr(qsn, "run_classifier", lambda **kw: (0, report, "", ""))
+
+    calls = []
+
+    def fake_run(cmd, timeout=30):
+        calls.append(cmd)
+        return 0, "delivered", ""
+
+    monkeypatch.setattr(qsn, "_run", fake_run)
+
+    rc = qsn.main([])
+    assert rc == 0
+    cmd = calls[0]
+    to_indices = [i for i, a in enumerate(cmd) if a == "--to"]
+    to_values = [cmd[i + 1] for i in to_indices]
+    assert to_values == ["host:pro", "lane:wr2"]
+    from_index = cmd.index("--from") + 1
+    assert cmd[from_index] == "queue-stall"
+
+
+def test_send_notification_production_argv_falls_back_to_all_with_no_head_ref(monkeypatch):
+    monkeypatch.delenv("QUEUE_STALL_NOTIFY_ENABLED", raising=False)
+    report = make_report([make_row(910, "not-armed", "x")])
+    monkeypatch.setattr(qsn, "run_classifier", lambda **kw: (0, report, "", ""))
+
+    calls = []
+    monkeypatch.setattr(qsn, "_run", lambda cmd, timeout=30: (calls.append(cmd) or (0, "ok", "")))
+
+    rc = qsn.main([])
+    assert rc == 0
+    cmd = calls[0]
+    to_index = cmd.index("--to") + 1
+    assert cmd[to_index] == "all"
 
 
 # ── main(): innocence — clean board ─────────────────────────────────────────

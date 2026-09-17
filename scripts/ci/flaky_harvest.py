@@ -627,7 +627,10 @@ def send_to_mailbox(
     if not fleet_mail.is_file():
         return False, f"fleet_mail.sh not found at {fleet_mail}"
     proc = subprocess.run(
-        ["bash", str(fleet_mail), host, "broadcast", "--to", "all", "--key", key, "--ttl", str(ttl_hours), summary],
+        [
+            "bash", str(fleet_mail), host, "broadcast", "--to", "lane:ci", "--from", "flaky-harvest",
+            "--key", key, "--ttl", str(ttl_hours), summary,
+        ],
         capture_output=True,
         text=True,
         timeout=30,

@@ -23,5 +23,5 @@ Raw `gh` JSON/log responses are cached under `$TMPDIR/flaky_harvest/` for the ru
 each report — inspect that cache to see exactly what the API returned, not a reconstruction.
 
 The delivery wire also broadcasts a one-line summary to the fleet mailbox under key
-`flaky-harvest:weekly` via `scripts/fleet_mail.sh` (same argv shape as
-`scripts/queue_stall_notify.py`), pointing back at the day's report file.
+`flaky-harvest:weekly` via `scripts/fleet_mail.sh --to lane:ci --from flaky-harvest` (a session
+opts in to receive it with `NUZ_MAILBOX_LANE=ci`), pointing back at the day's report file.

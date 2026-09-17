@@ -376,6 +376,7 @@ query($owner:String!, $repo:String!, $cursor:String) {
         title
         isDraft
         headRefOid
+        headRefName
         createdAt
         mergeStateStatus
         autoMergeRequest { enabledAt }
@@ -405,6 +406,7 @@ def _normalize_open_pr(node: dict[str, Any]) -> dict[str, Any]:
         "title": node.get("title") or "",
         "is_draft": bool(node.get("isDraft")),
         "head_sha": node.get("headRefOid") or "",
+        "head_ref": node.get("headRefName") or "",
         "created_at": _parse_iso(node.get("createdAt")),
         "merge_state_status": node.get("mergeStateStatus"),
         "auto_merge_enabled": bool(node.get("autoMergeRequest")),
@@ -569,7 +571,13 @@ def _classify_one(repo: str, pr: dict[str, Any], now: _dt.datetime) -> dict[str,
     classify_stall() at the end, never re-derived inline (see that function's own docstring)."""
     number = pr["number"]
     age_minutes = int((now - pr["created_at"]).total_seconds() // 60)
-    base = {"number": number, "title": pr.get("title", ""), "age_minutes": age_minutes}
+    base = {
+        "number": number, "title": pr.get("title", ""), "age_minutes": age_minutes,
+        # 2026-09-18: threaded through so scripts/queue_stall_notify.py can address its
+        # broadcast to the PR's own host/lane (scripts/fleet_mail.sh's --to), instead of
+        # `all` -- read-only addition, no new query verb, no side effect.
+        "head_ref": pr.get("head_ref", ""),
+    }
 
     if pr.get("commits_missing"):
         # CONFIRMED finding (gpt-5.6-sol, 2026-08-31) — see _normalize_open_pr's own comment.
@@ -680,6 +688,7 @@ def build_report(repo: str, now: _dt.datetime, min_age_minutes: int) -> dict[str
                     "age_minutes": None,
                     "cause": CANNOT_VERIFY,
                     "detail": "createdAt missing/unparseable from GraphQL response",
+                    "head_ref": pr.get("head_ref", ""),
                 }
             )
             continue

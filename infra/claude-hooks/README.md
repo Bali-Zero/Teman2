@@ -55,9 +55,11 @@ questo fa proseguire il turno — wake-up cross-macchina voluto. Non blocca MAI
 un comando: registrato in `guard-conformance/registry.json`
 `command_hooks.exempt` (come `dispatch_nudge.py`), non `entries`.
 
-Mittente: `scripts/fleet_mail.sh <host> <session_id|broadcast> "<msg>"` (host
-∈ `local|pro|mini`), scrittura atomica (`.tmp-*` poi `mv`), dir sessione
-0700; il file diretto consegnato è rinominato `<name>.delivered-<ts>`.
+Mittente: `scripts/fleet_mail.sh <host> <session_id> "<msg>"` diretto, oppure
+`scripts/fleet_mail.sh <host> broadcast --to <target> --from <label> "<msg>"`
+(host ∈ `local|pro|mini|air`; `broadcast` richiede `--to` e `--from`, dal
+2026-09-18), scrittura atomica (`.tmp-*` poi `mv`), dir sessione 0700; il file
+diretto consegnato è rinominato `<name>.delivered-<ts>`.
 
 **Kill switch**: `NUZ_MAILBOX_OFF=1`. Root override: `NUZ_MAILBOX_DIR`.
 

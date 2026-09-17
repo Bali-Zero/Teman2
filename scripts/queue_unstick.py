@@ -197,6 +197,7 @@ query($owner:String!, $repo:String!, $cursor:String) {
         mergeStateStatus
         updatedAt
         headRefOid
+        headRefName
         baseRefName
         labels(first:20) { nodes { name } }
         commits(last:1) { nodes { commit { committedDate } } }
@@ -365,6 +366,7 @@ def _normalize_pr(node: dict) -> dict:
         "labels": labels,
         "last_commit_date": last_commit_date,
         "head_sha": node.get("headRefOid"),
+        "head_ref": node.get("headRefName") or "",
         "base_ref": node.get("baseRefName") or "main",
         "queued": node.get("mergeQueueEntry") is not None,
     }
@@ -763,6 +765,21 @@ def _dirty_fingerprint(sha: str | None, files_desc: str) -> str:
     return f"{sha or 'unknown'}:{digest}"
 
 
+def derive_to_targets(head_ref: str) -> list[str]:
+    """Pure, no network: a PR's own head branch names who should read its
+    mailbox page. `agent/<host>/<lane>/...` (this repo's own branch
+    convention, e.g. `agent/air-m5/infra/mailbox-...`) addresses the session
+    that owns the branch via `host:<host>` + `lane:<lane>` -- both already in
+    the exact lowercase short form `infra/claude-hooks/mailbox_inject.py`'s
+    `_this_host()`/`_lane_matches()` compare against. Anything else (no head
+    branch, or one that does not carry a host segment -- a fork, a manual
+    branch, a rename) falls back to `all`, same as before this PR."""
+    parts = (head_ref or "").split("/")
+    if len(parts) >= 3 and parts[0] == "agent" and parts[1] and parts[2]:
+        return [f"host:{parts[1].lower()}", f"lane:{parts[2].lower()}"]
+    return ["all"]
+
+
 def _mailbox_key(number) -> str:
     """The fleet-mailbox `key:` this script has ALWAYS used for PR `number`'s
     DIRTY page — shared between `send_dirty_signal` (writes it) and
@@ -786,12 +803,14 @@ def send_dirty_signal(
     # the mailbox-side `key: queue_unstick:<PR>` still collapses them to
     # the newest, fleet-wide, regardless of which host sent it.
     mailbox_key = _mailbox_key(number)
+    to_targets = derive_to_targets(pr.get("head_ref", ""))
+    to_desc = " ".join(f"--to {t}" for t in to_targets)
 
     if dry_run:
         return True, (
             f"[dry-run] would signal DIRTY PR #{number} at {short_sha} "
             f"(conflicting files not computed in dry-run) via fleet_mail.sh {FLEET_MAIL_HOST} "
-            f"broadcast --to all --key {mailbox_key} --ttl {DIRTY_SIGNAL_TTL_HOURS}"
+            f"broadcast {to_desc} --from queue-unstick --key {mailbox_key} --ttl {DIRTY_SIGNAL_TTL_HOURS}"
         )
 
     if files_desc is None:
@@ -803,13 +822,14 @@ def send_dirty_signal(
     fleet_mail = repo_root / "scripts" / "fleet_mail.sh"
     if not fleet_mail.is_file():
         return False, f"signal FAILED PR #{number}: fleet_mail.sh not found at {fleet_mail}"
-    rc, out, err = _run(
-        [
-            "bash", str(fleet_mail), FLEET_MAIL_HOST, "broadcast", "--to", "all",
-            "--key", mailbox_key, "--ttl", str(DIRTY_SIGNAL_TTL_HOURS), msg,
-        ],
-        timeout=30,
-    )
+    cmd = ["bash", str(fleet_mail), FLEET_MAIL_HOST, "broadcast"]
+    for target in to_targets:
+        cmd += ["--to", target]
+    cmd += [
+        "--from", "queue-unstick",
+        "--key", mailbox_key, "--ttl", str(DIRTY_SIGNAL_TTL_HOURS), msg,
+    ]
+    rc, out, err = _run(cmd, timeout=30)
     if rc != 0:
         return False, f"signal FAILED PR #{number} rc={rc}: {err.strip()[:300]}"
     return True, f"signal OK PR #{number}: {out.strip() or 'sent'}"
