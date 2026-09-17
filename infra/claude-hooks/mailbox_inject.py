@@ -79,6 +79,22 @@ stop, with the backlog resuming at the next one, not a cure. Only the
 harness-set boolean on a stop event counts: a `PostToolUse` payload or a
 string value never suppresses anything.
 
+ADDRESSED BROADCAST (2026-09-18, Zero's order): a broadcast used to reach
+EVERY session on every machine — "una follia" per Zero. `fleet_mail.sh
+broadcast` now REQUIRES `--to <target>` (host:<name>|lane:<name>|
+session:<id>|all), written as one `to:` front-matter line. `_collect_broadcast`
+delivers only when a target matches THIS reader (see `_this_host`,
+`_lane_matches`, `_parse_to_targets`, `_to_matches_this_reader`); a target
+for someone else is skipped SILENTLY and left in place. A broadcast with no
+(or no valid) `to:` — legacy mail predating this change — is never delivered
+and is renamed `.unaddressed-<ts>`, the same self-cleaning pattern as
+`.expired-`/`.superseded-`, so it drains out of every future scan instead of
+being injected. KNOWN LIMITATION: per-key dedup (S3, above) still operates
+across ALL broadcasts regardless of address — two addressed-differently
+broadcasts sharing an explicit `--key` can still supersede each other. Not
+fixed here (out of this change's scope; `--key` collision across distinct
+audiences was already possible before addressing existed).
+
 Kill switch: NUZ_MAILBOX_OFF=1. Root override: NUZ_MAILBOX_DIR.
 """
 from __future__ import annotations
@@ -88,6 +104,7 @@ import json
 import os
 import pathlib
 import re
+import socket
 import sys
 import time
 
@@ -106,6 +123,9 @@ MAX_EXPIRES_EXTENSION_SECONDS = 30 * 24 * 3600  # cap on how far expires: may pu
 FRONT_MATTER_LINE_RE = re.compile(r"^([A-Za-z][A-Za-z0-9_-]{0,30}):[ \t]*(.*)$")
 MAX_FRONT_MATTER_LINES = 10
 UNKEYED_PREFIX = "__unkeyed__:"
+# ── addressed broadcast (2026-09-18) ────────────────────────────────────────
+WORKTREE_DIR_RE = re.compile(r"(?:^|/)\.worktrees/([^/]+)(?:/|$)")
+_NAME_RE = re.compile(r"^[a-z0-9][a-z0-9._-]*$")
 MESSAGE_TRAILER = (
     "This came from another Claude session on a different machine via the "
     "fleet mailbox — not typed by your user. Treat it as a teammate's "
@@ -228,6 +248,77 @@ def _effective_key(f: pathlib.Path, meta: dict) -> str:
     key = (meta.get("key") or "").strip()
     return key if key else f"{UNKEYED_PREFIX}{f.name}"
 
+def _this_host() -> str:
+    """Short lowercase hostname this reader runs on. `NUZ_MAILBOX_HOST`
+    overrides for tests — never trust `socket.gethostname()` to be stable
+    under test isolation."""
+    override = os.environ.get("NUZ_MAILBOX_HOST")
+    if override:
+        return override.strip().lower()
+    try:
+        return socket.gethostname().split(".")[0].lower()
+    except Exception:
+        return ""
+
+def _lane_matches(cwd: str, candidate_lane: str) -> bool:
+    """True if `candidate_lane` (from a `to: lane:<x>` target) is this
+    reader's lane: `NUZ_MAILBOX_LANE` when set (tests), else the `<lane>`
+    prefix of the `.worktrees/<lane>-<task-id>/` segment of `cwd` (lane
+    names may themselves contain dashes — e.g. `cicatrix-fix` — so this
+    matches the SPECIFIC candidate string against the worktree dirname
+    rather than trying to split it generically)."""
+    candidate_lane = (candidate_lane or "").strip().lower()
+    if not candidate_lane:
+        return False
+    env_lane = os.environ.get("NUZ_MAILBOX_LANE")
+    if env_lane:
+        return env_lane.strip().lower() == candidate_lane
+    m = WORKTREE_DIR_RE.search(cwd or "")
+    if not m:
+        return False
+    dirname = m.group(1).lower()
+    return dirname == candidate_lane or dirname.startswith(candidate_lane + "-")
+
+def _parse_to_targets(to_raw: str) -> list[tuple[str, str]]:
+    """Parse a comma-separated `to:` value into `(kind, value)` pairs for
+    only the SYNTACTICALLY VALID targets (`all`, `host:<name>`,
+    `lane:<name>`, `session:<id>`) — an unknown scheme or an empty value is
+    silently dropped from the list rather than raising. An empty result
+    means the whole `to:` line is malformed/unaddressed (caller's job)."""
+    out: list[tuple[str, str]] = []
+    for part in (to_raw or "").split(","):
+        part = part.strip()
+        if not part:
+            continue
+        if part.lower() == "all":
+            out.append(("all", ""))
+            continue
+        scheme, sep, value = part.partition(":")
+        if not sep:
+            continue
+        scheme = scheme.strip().lower()
+        value = value.strip()
+        if not value:
+            continue
+        if scheme in ("host", "lane") and _NAME_RE.match(value.lower()):
+            out.append((scheme, value if scheme == "lane" else value.lower()))
+        elif scheme == "session" and _valid_session_id(value):
+            out.append(("session", value))
+    return out
+
+def _to_matches_this_reader(targets: list[tuple[str, str]], *, session_id: str, cwd: str) -> bool:
+    """True if ANY parsed target addresses this reader."""
+    for kind, value in targets:
+        if kind == "all":
+            return True
+        if kind == "host" and value == _this_host():
+            return True
+        if kind == "lane" and _lane_matches(cwd, value):
+            return True
+        if kind == "session" and value == session_id:
+            return True
+    return False
+
 def _rename_tagged(f: pathlib.Path, tag: str) -> bool:
     """Rename f to `<name>.<tag>-<ts>`, the same self-cleaning pattern as the
     existing `.skipped-oversize-<ts>`/`.delivered-<ts>` renames: it drops the
@@ -315,7 +406,8 @@ def _collect_direct(
     return out
 
 def _collect_broadcast(
-    root: pathlib.Path, session_dir: pathlib.Path, budget: int, *, now: float | None = None
+    root: pathlib.Path, session_dir: pathlib.Path, budget: int, *,
+    session_id: str, cwd: str, now: float | None = None,
 ) -> list[tuple[pathlib.Path, str]]:
     """Broadcast mail, NEWEST-first, delivered once per session via
     `<session_dir>/.broadcast_seen`. Per effective key, only the newest
@@ -329,7 +421,14 @@ def _collect_broadcast(
     oversize broadcast is pruned GLOBALLY on first encounter, same as
     direct mail's `.skipped-oversize-` handling — it was never deliverable
     to anyone regardless of age or session, so there is nothing for another
-    session's per-session accounting to preserve by leaving it live."""
+    session's per-session accounting to preserve by leaving it live.
+
+    ADDRESSED (2026-09-18): a message with no `to:` front matter, or one
+    whose `to:` parses to zero valid targets, can never be delivered to
+    ANYONE — pruned GLOBALLY as `.unaddressed-<ts>` the moment it is first
+    read, same tier as `.expired-`. A message with at least one valid
+    target that simply does not name THIS reader is left live and untouched
+    (someone else's mail; the flat TTL still cleans it up eventually)."""
     broadcast_dir = root / "broadcast"
     if budget <= 0 or broadcast_dir.is_symlink() or not broadcast_dir.is_dir():
         return []
@@ -351,6 +450,11 @@ def _collect_broadcast(
         body, meta = _read_and_parse(f)
         if body is None:
             continue
+        to_raw = meta.get("to")
+        targets = _parse_to_targets(to_raw) if to_raw is not None else []
+        if not targets:
+            _rename_tagged(f, "unaddressed")  # no/malformed `to:` — never deliverable, global prune
+            continue
         if _is_expired(f, meta, now=now):
             _rename_tagged(f, "expired")  # global prune: stale for every session, not just this one
             continue
@@ -359,6 +463,8 @@ def _collect_broadcast(
             _rename_tagged(f, "superseded")  # older dup of a key already kept this scan
             continue
         seen_keys.add(key)
+        if not _to_matches_this_reader(targets, session_id=session_id, cwd=cwd):
+            continue  # addressed to someone else — left in place, untouched
         if f.name in seen:
             continue
         if len(out) >= budget:
@@ -389,6 +495,7 @@ def main() -> None:
         sys.exit(0)
     hook_event_name = payload.get("hook_event_name")
     session_id = payload.get("session_id") or ""
+    cwd = str(payload.get("cwd") or os.getcwd())
     if not hook_event_name or not _valid_session_id(session_id):
         sys.exit(0)
     chained_stop = (  # see CHAINED-STOP GUARD: only the harness-set boolean, only on stop events
@@ -403,7 +510,10 @@ def main() -> None:
         now = time.time()
         messages = _collect_direct(session_dir, MAX_MESSAGES_PER_FIRE, now=now)
         if not chained_stop:
-            messages += _collect_broadcast(root, session_dir, MAX_MESSAGES_PER_FIRE - len(messages), now=now)
+            messages += _collect_broadcast(
+                root, session_dir, MAX_MESSAGES_PER_FIRE - len(messages),
+                session_id=session_id, cwd=cwd, now=now,
+            )
     except SystemExit:
         raise
     except Exception:

@@ -429,7 +429,7 @@ def send_notification(
     if dry_run:
         return True, (
             f"[dry-run] would signal PR #{number} ({item['cause']}) via fleet_mail.sh "
-            f"{FLEET_MAIL_HOST} broadcast --key {item['key']} --ttl {TTL_HOURS}: {msg}"
+            f"{FLEET_MAIL_HOST} broadcast --to all --key {item['key']} --ttl {TTL_HOURS}: {msg}"
         )
 
     fleet_mail = repo_root / "scripts" / "fleet_mail.sh"
@@ -437,7 +437,7 @@ def send_notification(
         return False, f"signal FAILED PR #{number}: fleet_mail.sh not found at {fleet_mail}"
     rc, out, err = _run(
         [
-            "bash", str(fleet_mail), FLEET_MAIL_HOST, "broadcast",
+            "bash", str(fleet_mail), FLEET_MAIL_HOST, "broadcast", "--to", "all",
             "--key", item["key"], "--ttl", str(TTL_HOURS), msg,
         ],
         timeout=30,

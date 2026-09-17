@@ -57,9 +57,15 @@ def run_hook(payload, mailbox_dir, extra_env=None, off=False):
     )
 
 
-def write_msg(path, sender, body):
+def write_msg(path, sender, body, to=None):
+    """`to=None` writes NO `to:` line (legacy/pre-addressing mail). Pass a
+    string (e.g. "all", "host:pro", "host:pro,lane:wr2") for an addressed
+    broadcast — irrelevant for direct (session-dir) mail, which ignores it."""
     path.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
-    path.write_text(f"from: {sender}\n\n{body}", encoding="utf-8")
+    header = f"from: {sender}\n"
+    if to is not None:
+        header += f"to: {to}\n"
+    path.write_text(f"{header}\n{body}", encoding="utf-8")
 
 
 class MailboxInjectTests(unittest.TestCase):
@@ -94,7 +100,7 @@ class MailboxInjectTests(unittest.TestCase):
     # ── broadcast delivery ─────────────────────────────────────────────
     def test_broadcast_delivered_once_per_session_to_two_sessions(self):
         bmsg = self.root / "broadcast" / "20260101T000000-0001.md"
-        write_msg(bmsg, "mini:cron", "Fleet-wide notice.")
+        write_msg(bmsg, "mini:cron", "Fleet-wide notice.", to="all")
 
         for sid in (self.sid, self.sid2):
             p1 = run_hook({"session_id": sid, "hook_event_name": "Stop"}, self.root)
@@ -206,7 +212,7 @@ class MailboxInjectTests(unittest.TestCase):
     # ── refuter round 1: broadcast marker fail-closed ────────────────────
     def test_broadcast_marker_directory_fails_closed(self):
         bmsg = self.root / "broadcast" / "20260101T000000-0001.md"
-        write_msg(bmsg, "mini:cron", "Fleet-wide notice.")
+        write_msg(bmsg, "mini:cron", "Fleet-wide notice.", to="all")
         (self.root / self.sid).mkdir(mode=0o700, parents=True)
         (self.root / self.sid / ".broadcast_seen").mkdir()  # marker is a DIR, not a file
         p = run_hook({"session_id": self.sid, "hook_event_name": "Stop"}, self.root)
@@ -242,7 +248,7 @@ class MailboxInjectTests(unittest.TestCase):
     # ── chained Stop (stop_hook_active) ────────────────────────────────
     def test_chained_stop_never_delivers_broadcast(self):
         bmsg = self.root / "broadcast" / "20260101T000000-0001.md"
-        write_msg(bmsg, "mini:cron", "Fleet-wide notice.")
+        write_msg(bmsg, "mini:cron", "Fleet-wide notice.", to="all")
         chained = {"session_id": self.sid, "hook_event_name": "Stop", "stop_hook_active": True}
         p1 = run_hook(chained, self.root)
         self.assertEqual(p1.returncode, 0)
@@ -254,7 +260,7 @@ class MailboxInjectTests(unittest.TestCase):
         self.assertIn("Fleet-wide notice.", out["hookSpecificOutput"]["additionalContext"])
 
     def test_chained_stop_still_delivers_direct_mail(self):
-        write_msg(self.root / "broadcast" / "20260101T000000-0001.md", "mini:cron", "Fleet-wide notice.")
+        write_msg(self.root / "broadcast" / "20260101T000000-0001.md", "mini:cron", "Fleet-wide notice.", to="all")
         write_msg(self.root / self.sid / "20260101T000000-0002.md", "pro:sess", "Direct for you.")
         chained = {"session_id": self.sid, "hook_event_name": "Stop", "stop_hook_active": True}
         p = run_hook(chained, self.root)
@@ -272,7 +278,7 @@ class MailboxInjectTests(unittest.TestCase):
         self.assertNotIn("Direct for you.", ctx3)
 
     def test_flag_outside_stop_events_or_non_boolean_is_ignored(self):
-        write_msg(self.root / "broadcast" / "20260101T000000-0001.md", "mini:cron", "Fleet-wide notice.")
+        write_msg(self.root / "broadcast" / "20260101T000000-0001.md", "mini:cron", "Fleet-wide notice.", to="all")
         for payload in (
             {"session_id": self.sid, "hook_event_name": "PostToolUse", "stop_hook_active": True},
             {"session_id": self.sid2, "hook_event_name": "Stop", "stop_hook_active": "true"},
@@ -280,6 +286,71 @@ class MailboxInjectTests(unittest.TestCase):
             p = run_hook(payload, self.root)
             ctx = json.loads(p.stdout)["hookSpecificOutput"]["additionalContext"]
             self.assertIn("Fleet-wide notice.", ctx, payload)
+
+    # ── addressed broadcast (2026-09-18, Zero's order) ───────────────────
+    def test_to_host_matching_this_reader_is_delivered(self):
+        bmsg = self.root / "broadcast" / "20260101T000000-0001.md"
+        write_msg(bmsg, "mini:cron", "For pro only.", to="host:pro")
+        p = run_hook({"session_id": self.sid, "hook_event_name": "Stop"}, self.root,
+                      extra_env={"NUZ_MAILBOX_HOST": "pro"})
+        out = json.loads(p.stdout)
+        self.assertIn("For pro only.", out["hookSpecificOutput"]["additionalContext"])
+
+    def test_to_host_other_is_skipped_and_untouched(self):
+        bmsg = self.root / "broadcast" / "20260101T000000-0001.md"
+        write_msg(bmsg, "mini:cron", "For mini only.", to="host:mini")
+        p = run_hook({"session_id": self.sid, "hook_event_name": "Stop"}, self.root,
+                      extra_env={"NUZ_MAILBOX_HOST": "pro"})
+        self.assertEqual(p.stdout.strip(), "")
+        self.assertTrue(bmsg.exists())  # left in place — mini still needs it
+
+    def test_to_all_is_delivered(self):
+        bmsg = self.root / "broadcast" / "20260101T000000-0001.md"
+        write_msg(bmsg, "mini:cron", "Everyone gets this.", to="all")
+        p = run_hook({"session_id": self.sid, "hook_event_name": "Stop"}, self.root,
+                      extra_env={"NUZ_MAILBOX_HOST": "anything"})
+        out = json.loads(p.stdout)
+        self.assertIn("Everyone gets this.", out["hookSpecificOutput"]["additionalContext"])
+
+    def test_to_lane_matches_env_override_lane_mismatch_skips(self):
+        bmsg = self.root / "broadcast" / "20260101T000000-0001.md"
+        write_msg(bmsg, "mini:cron", "For lane wr2.", to="lane:wr2")
+        p_mismatch = run_hook({"session_id": self.sid, "hook_event_name": "Stop"}, self.root,
+                               extra_env={"NUZ_MAILBOX_LANE": "infra"})
+        self.assertEqual(p_mismatch.stdout.strip(), "")
+        self.assertTrue(bmsg.exists())
+        p_match = run_hook({"session_id": self.sid2, "hook_event_name": "Stop"}, self.root,
+                            extra_env={"NUZ_MAILBOX_LANE": "wr2"})
+        out = json.loads(p_match.stdout)
+        self.assertIn("For lane wr2.", out["hookSpecificOutput"]["additionalContext"])
+
+    def test_to_session_matches_only_that_session(self):
+        bmsg = self.root / "broadcast" / "20260101T000000-0001.md"
+        write_msg(bmsg, "mini:cron", "For alpha only.", to=f"session:{self.sid}")
+        p_other = run_hook({"session_id": self.sid2, "hook_event_name": "Stop"}, self.root)
+        self.assertEqual(p_other.stdout.strip(), "")
+        self.assertTrue(bmsg.exists())
+        p_match = run_hook({"session_id": self.sid, "hook_event_name": "Stop"}, self.root)
+        out = json.loads(p_match.stdout)
+        self.assertIn("For alpha only.", out["hookSpecificOutput"]["additionalContext"])
+
+    def test_legacy_broadcast_without_to_is_renamed_unaddressed(self):
+        bmsg = self.root / "broadcast" / "20260101T000000-0001.md"
+        write_msg(bmsg, "mini:cron", "Old broadcast, no address.")  # to=None: legacy
+        p = run_hook({"session_id": self.sid, "hook_event_name": "Stop"}, self.root)
+        self.assertEqual(p.stdout.strip(), "")
+        self.assertFalse(bmsg.exists())
+        unaddressed = list((self.root / "broadcast").glob("*.unaddressed-*"))
+        self.assertEqual(len(unaddressed), 1)
+
+    def test_malformed_to_is_treated_as_unaddressed(self):
+        for i, bad_to in enumerate(("", "bogus:xyz", "unknownscheme")):
+            bmsg = self.root / "broadcast" / f"2026010{i}T000000-000{i}.md"
+            write_msg(bmsg, "mini:cron", f"Malformed {i}.", to=bad_to)
+        p = run_hook({"session_id": self.sid, "hook_event_name": "Stop"}, self.root)
+        self.assertEqual(p.stdout.strip(), "")
+        unaddressed = list((self.root / "broadcast").glob("*.unaddressed-*"))
+        self.assertEqual(len(unaddressed), 3)
 
 
 if __name__ == "__main__":
