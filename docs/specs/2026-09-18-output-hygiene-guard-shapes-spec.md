@@ -70,7 +70,7 @@ Everything not in this table is ALLOWED. In particular `wc`, `head`, `tail -n`, 
 A flood segment is ALLOWED when, in the SAME pipeline (segments joined by `|` up to the next `;`,
 `&&`, `||`, newline), ANY later segment starts with one of: `head`, `tail` (any form),
 `wc`, `cut`, `grep -c`, `grep -m N`, `grep -l`, `jq`, `--jq` inside a `gh` call, `sed -n` with
-an address range, `awk` whose program contains `NR`, `sort | uniq -c` (either), `xargs`,
+an address range (quoted or bare), `awk` whose program contains `NR` (quoted or bare), `sort | uniq -c` (either), `xargs`,
 `tee <file>` (stdout still flows — NOT a bound unless followed by another bound), `python3 -`
 / `python3 -c` (a consumer script), `md5`/`shasum`, `> /dev/null`, `>/dev/null`. Also when the
 flood segment's own **stdout** is redirected to a file (`> f`, `>> f`, `&> f`, `>f 2>&1`,
@@ -160,6 +160,8 @@ cases, and an added case that flips the verdict of an existing one is a spec cha
 | C59 | `ls ~/mailbox/broadcast &`                                     | ALLOW   | background                                             |
 | C60 | `git log \| git diff --stat $(git merge-base main HEAD)`       | DENY    | first segment unbounded (tee/pipe into a non-consumer) |
 | C61 | `find . -name x`                                               | ALLOW   | literal -name is an S5 own-bound (§3 row)              |
+| C62 | `cat big.log \| sed -n '1,40p'`                                | ALLOW   | §4 sed -n range, quoted                                |
+| C63 | `cat big.log \| awk 'NR<=20'`                                  | ALLOW   | §4 awk NR bound, quoted                                |
 
 ## 7. Tests and gate contract for the re-implementation
 

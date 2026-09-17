@@ -446,6 +446,19 @@ def _s5_has_literal_name_bound(orig_stage: str) -> bool:
     return False
 
 
+_S4_WORD_RE = re.compile(r"\"[^\"]*\"|'[^']*'|\$'[^']*'|\S+")
+
+
+def _s4_words(orig_text: str) -> list[str]:
+    """Quote-aware word split of ORIGINAL (pre-quote-blanking) text, each word
+    unquoted — mirrors `_s5_has_literal_name_bound`'s reasoning for §4's
+    `sed -n <range>` and `awk <NR-expr>` bounds, which can be quoted just like
+    a `find -name` pattern and are otherwise invisible (or fragmented by
+    `.split()`) once `_strip_quotes` has blanked them for split-boundary
+    purposes elsewhere."""
+    return [_s5_unquote(w) for w in _S4_WORD_RE.findall(orig_text)]
+
+
 def _check_s5(head: str, args: list[str], _cwd: str, orig_stage: str = "") -> tuple[str, str] | None:
     args = _strip_redirects(args)
     if head in ("fd", "fdfind"):
@@ -611,10 +624,13 @@ def _classify(
     return None
 
 
-def _downstream_bound(text: str, stage_spans: list[tuple[int, int]], idx: int) -> bool:
+def _downstream_bound(
+    text: str, orig_text: str, stage_spans: list[tuple[int, int]], idx: int
+) -> bool:
     for j in range(idx + 1, len(stage_spans)):
         s, e = stage_spans[j]
         seg = text[s:e]
+        orig_seg = orig_text[s:e]
         toks = seg.split()
         if not toks:
             continue
@@ -634,10 +650,16 @@ def _downstream_bound(text: str, stage_spans: list[tuple[int, int]], idx: int) -
         if head == "gh" and "--jq" in rest:
             return True
         if head == "sed" and "-n" in rest:
-            for t in rest:
-                if re.match(r"^\d+,\d+p$", t):
+            # -n's range argument (e.g. "1,40p") is often single- or
+            # double-quoted; a quoted range is blanked in `seg`/`rest`, so
+            # look it up, quoted or bare, in the ORIGINAL segment text.
+            for w in _s4_words(orig_seg):
+                if re.match(r"^\d+,\d+p$", w):
                     return True
-        if head == "awk" and "NR" in seg:
+        if head == "awk" and "NR" in orig_seg:
+            # same reasoning: an `awk 'NR<=20'` program is normally quoted,
+            # so "NR" itself is blanked out of `seg` by the time it gets
+            # here — check the ORIGINAL segment instead.
             return True
         if head == "sort":
             return True
@@ -693,7 +715,7 @@ def _evaluate(cmd: str, cwd: str, depth: int = 0) -> tuple[str, str] | None:
                 continue
             if STDOUT_REDIR_RE.search(raw_stage):
                 continue
-            if _downstream_bound(noise_stripped, stage_spans, idx):
+            if _downstream_bound(noise_stripped, cmd, stage_spans, idx):
                 continue
             return verdict
     for sub_text in subs:
