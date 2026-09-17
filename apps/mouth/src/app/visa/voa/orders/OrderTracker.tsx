@@ -101,7 +101,8 @@ function OrderTrackerReady({ order }: { order: OrderView }) {
 
       <ParcelSteps order={order} />
 
-      {order.order_state === "awaiting_payment" ? (
+      {order.order_state === "awaiting_payment" ||
+      order.order_state === "created" ? (
         <AwaitingPaymentPanel />
       ) : null}
 
@@ -140,6 +141,9 @@ function OrderTrackerReady({ order }: { order: OrderView }) {
 }
 
 function subtitleFor(order: OrderView): string {
+  if (order.order_state === "created") {
+    return "Setting up your payment — this takes a few seconds.";
+  }
   if (order.order_state === "awaiting_payment") {
     return order.browser_observation === "browser_return_observed"
       ? "We're confirming your payment — this can take a minute."
@@ -158,6 +162,7 @@ function subtitleFor(order: OrderView): string {
 }
 
 const ORDER_STEP_ORDER: OrderView["order_state"][] = [
+  "created",
   "awaiting_payment",
   "paid",
 ];
@@ -191,16 +196,20 @@ function ParcelSteps({ order }: { order: OrderView }) {
       : -1;
 
   const steps: { label: string; done: boolean; current: boolean }[] = [
-    { label: "Order placed", done: true, current: false },
     {
-      label: "Payment confirmed",
+      label: "Order placed",
       done: orderStepIndex >= 1,
       current: orderStepIndex === 0,
     },
+    {
+      label: "Payment confirmed",
+      done: orderStepIndex >= 2,
+      current: orderStepIndex === 1,
+    },
     ...PRACTICE_STEP_ORDER.map((label, i) => ({
       label,
-      done: orderStepIndex >= 1 && practiceStepIndex > i,
-      current: orderStepIndex >= 1 && practiceStepIndex === i,
+      done: orderStepIndex >= 2 && practiceStepIndex > i,
+      current: orderStepIndex >= 2 && practiceStepIndex === i,
     })),
   ];
 
@@ -243,9 +252,11 @@ function ParcelSteps({ order }: { order: OrderView }) {
  * `getOrderAndPractice`'s `OrderView` (unlike `createOrderFromCheck`'s `OrderCheckout`)
  * carries no `checkout_url` — the contract never lets this read-only view hand back a
  * live provider capability. A customer who lands here still `awaiting_payment` (e.g.
- * they closed the payment tab and came back later) therefore has no self-service resume
- * button this page can honestly render; a consultant reopening checkout for them is the
- * real path, not a link this component would have to invent.
+ * they closed the payment tab and came back later) — or still `created`, meaning
+ * checkout has not even started yet (e.g. a provider-call failure before the first
+ * redirect) — therefore has no self-service resume button this page can honestly
+ * render; a consultant reopening checkout for them is the real path, not a link this
+ * component would have to invent.
  */
 function AwaitingPaymentPanel() {
   return (
