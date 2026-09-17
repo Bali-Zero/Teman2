@@ -4,9 +4,11 @@
 #
 # Usage:
 #   fleet_mail.sh <host> --list
-#   fleet_mail.sh <host> <session_id|broadcast> [--key <k>] [--ttl <hours>] "<message text>"
-#   fleet_mail.sh <host> <session_id|broadcast> [--key <k>] [--ttl <hours>] -   # message on stdin
+#   fleet_mail.sh <host> <session_id> [--key <k>] [--ttl <hours>] "<message text>"
+#   fleet_mail.sh <host> broadcast --to <target> [--to <target> ...] [--key <k>] [--ttl <hours>] "<message text>"
+#   fleet_mail.sh <host> <session_id|broadcast> [flags] -   # message on stdin
 #   fleet_mail.sh <host> retract --key <k>
+#   <target> is host:<name> | lane:<name> | session:<id> | all
 #
 # retract (2026-09-02): sender-side cleanup — renames every LIVE broadcast
 # matching --key to `.retracted-<ts>` (same self-cleaning pattern
@@ -34,6 +36,16 @@
 # own predecessor instead of piling up forever; a direct message without
 # --key stays keyless (never deduped against another). Flags may appear
 # anywhere after <session_id|broadcast>.
+#
+# --to <target> (ADDRESSED BROADCAST, 2026-09-18, Zero's order): a plain
+# `broadcast` used to reach EVERY session on every machine — "una follia".
+# --to is REPEATABLE and REQUIRED for `broadcast` (missing it dies with a
+# usage line, exit 2); each value is `host:<name>` (short lowercase
+# hostname), `lane:<name>`, `session:<id>`, or `all`. All values are joined
+# with a comma into ONE `to:` front-matter line right after `from:` — the
+# reader (mailbox_inject.py's `_collect_broadcast`) delivers only when a
+# target matches it. Direct (session-dir) mail is unchanged: --to is
+# accepted but has no effect there (already addressed by its directory).
 #
 # `air` is M5. The fleet has been three nodes since 2026-05-31, and this
 # allowlist was still two — so no Pro or Mini session could reach M5 with the
@@ -65,16 +77,19 @@ case "$HOST" in
 esac
 shift || die "missing <host>"
 
-# Extract optional --key/--ttl anywhere in the remaining args (order-
-# independent, both take a value) BEFORE any positional parsing below, so
-# `--list`, <session_id|broadcast> and <message> parsing are unaffected.
+# Extract optional --key/--ttl/--to anywhere in the remaining args (order-
+# independent, all take a value; --to is repeatable) BEFORE any positional
+# parsing below, so `--list`, <session_id|broadcast> and <message> parsing
+# are unaffected.
 MSG_KEY=""
 MSG_TTL_HOURS="48"
+TO_TARGETS=()
 _rest=()
 while [ $# -gt 0 ]; do
     case "$1" in
         --key) MSG_KEY="${2:-}"; shift 2 || die "--key needs a value" ;;
         --ttl) MSG_TTL_HOURS="${2:-}"; shift 2 || die "--ttl needs a value" ;;
+        --to) TO_TARGETS+=("${2:-}"); shift 2 || die "--to needs a value" ;;
         *) _rest+=("$1"); shift ;;
     esac
 done
@@ -223,6 +238,10 @@ fi
 SESSION="${1:-}"
 [ -n "$SESSION" ] || die "missing <session_id|broadcast>"
 [[ "$SESSION" =~ $SESSION_ID_RE ]] || die "invalid session id '$SESSION'"
+if [ "$SESSION" = "broadcast" ] && [ ${#TO_TARGETS[@]} -eq 0 ]; then
+    echo "fleet_mail.sh: broadcast requires --to <target> (host:<name>|lane:<name>|session:<id>|all) — a broadcast with no address reaches EVERY session on every machine" >&2
+    exit 2
+fi
 shift
 MSG_ARG="${1:-}"
 [ -n "$MSG_ARG" ] || die "missing <message> (or '-' for stdin)"
@@ -234,6 +253,15 @@ fi
 # Sanitize FROM label to a safe charset before it is embedded in remote command text.
 RAW_FROM="$(hostname -s 2>/dev/null || echo unknown):${FLEET_MAIL_FROM:-fleet-watch}"
 FROM_LABEL="$(printf '%s' "$RAW_FROM" | tr -cd 'A-Za-z0-9:_.-')"
+
+# Join repeatable --to values into ONE comma-separated `to:` front-matter
+# value; sanitized to the same safe charset as MSG_KEY/FROM_LABEL for the
+# same reason (embedded unquoted in the remote command text below).
+TO_JOINED=""
+if [ ${#TO_TARGETS[@]} -gt 0 ]; then
+    _to_csv="$(IFS=,; echo "${TO_TARGETS[*]}")"
+    TO_JOINED="$(printf '%s' "$_to_csv" | tr -cd 'A-Za-z0-9:_.,-')"
+fi
 
 # S3 state-keyed front matter: a broadcast with no explicit --key gets one
 # derived from its own content (sha1 of the first line) so a repeated page
@@ -265,6 +293,7 @@ root = os.environ.get("NUZ_MAILBOX_DIR") or os.path.expanduser("~/.nuzantara-mai
 session, filename, from_label = sys.argv[1], sys.argv[2], sys.argv[3]
 msg_key = sys.argv[4] if len(sys.argv) > 4 else ""
 msg_expires = sys.argv[5] if len(sys.argv) > 5 else ""
+to_targets = sys.argv[6] if len(sys.argv) > 6 else ""
 # Owner-only root is the whole security story (messages become assistant-
 # visible context) -- create it 0700, and re-tighten it if some earlier
 # run left it wider (os.makedirs' mode is not honored on every platform).
@@ -283,6 +312,8 @@ for d in (root, target):  # owner-only: the root dir IS the security boundary
 body = sys.stdin.buffer.read()
 tmp = os.path.join(root, ".tmp-" + filename + "." + str(os.getpid()))
 header = "from: " + from_label + "\n"
+if to_targets:
+    header += "to: " + to_targets + "\n"
 if msg_key:
     header += "key: " + msg_key + "\n"
 if msg_expires:
@@ -295,7 +326,7 @@ os.replace(tmp, os.path.join(target, filename))
 PYEOF
 
 if [ "$HOST" = "local" ]; then
-    printf '%s' "$BODY" | python3 -c "$PY_SEND" "$SESSION" "$FILENAME" "$FROM_LABEL" "$MSG_KEY" "$MSG_EXPIRES" \
+    printf '%s' "$BODY" | python3 -c "$PY_SEND" "$SESSION" "$FILENAME" "$FROM_LABEL" "$MSG_KEY" "$MSG_EXPIRES" "$TO_JOINED" \
         || die "local delivery to $SESSION failed"
 else
     # Remote command is built as ONE argv string for ssh (never `-s`/stdin),
@@ -306,7 +337,7 @@ else
     # them is safe — none can contain a single quote).
     B64="$(printf '%s' "$PY_SEND" | base64 | tr -d '\n')"
     POP_AND_EXEC='import base64,sys;b=sys.argv.pop(1);exec(base64.b64decode(b).decode())'
-    REMOTE_CMD="python3 -c \"$POP_AND_EXEC\" '$B64' '$SESSION' '$FILENAME' '$FROM_LABEL' '$MSG_KEY' '$MSG_EXPIRES'"
+    REMOTE_CMD="python3 -c \"$POP_AND_EXEC\" '$B64' '$SESSION' '$FILENAME' '$FROM_LABEL' '$MSG_KEY' '$MSG_EXPIRES' '$TO_JOINED'"
     SSH_HOST="$(ssh_target "$HOST")" \
         || die "no reachable ssh route for '$HOST' (tried '$HOST' and '$(ssh_fallback_for "$HOST")')"
     printf '%s' "$BODY" | ssh -o BatchMode=yes -o ConnectTimeout=8 "$SSH_HOST" "$REMOTE_CMD" \

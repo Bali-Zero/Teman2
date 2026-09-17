@@ -27,9 +27,11 @@ SCRIPT = pathlib.Path(__file__).resolve().parents[1] / "fleet_mail.sh"
 
 
 def _send(mailbox_dir: pathlib.Path, key: str, body: str) -> None:
+    # --to all (2026-09-18): broadcast now requires an address; retract's own
+    # cleanup semantics (per-key, not per-address) are unaffected either way.
     env = dict(os.environ, NUZ_MAILBOX_DIR=str(mailbox_dir))
     proc = subprocess.run(
-        ["bash", str(SCRIPT), "local", "broadcast", "--key", key, body],
+        ["bash", str(SCRIPT), "local", "broadcast", "--to", "all", "--key", key, body],
         capture_output=True, text=True, timeout=30, env=env,
     )
     assert proc.returncode == 0, proc.stderr

@@ -791,7 +791,7 @@ def send_dirty_signal(
         return True, (
             f"[dry-run] would signal DIRTY PR #{number} at {short_sha} "
             f"(conflicting files not computed in dry-run) via fleet_mail.sh {FLEET_MAIL_HOST} "
-            f"broadcast --key {mailbox_key} --ttl {DIRTY_SIGNAL_TTL_HOURS}"
+            f"broadcast --to all --key {mailbox_key} --ttl {DIRTY_SIGNAL_TTL_HOURS}"
         )
 
     if files_desc is None:
@@ -805,7 +805,7 @@ def send_dirty_signal(
         return False, f"signal FAILED PR #{number}: fleet_mail.sh not found at {fleet_mail}"
     rc, out, err = _run(
         [
-            "bash", str(fleet_mail), FLEET_MAIL_HOST, "broadcast",
+            "bash", str(fleet_mail), FLEET_MAIL_HOST, "broadcast", "--to", "all",
             "--key", mailbox_key, "--ttl", str(DIRTY_SIGNAL_TTL_HOURS), msg,
         ],
         timeout=30,
