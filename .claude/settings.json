@@ -6,6 +6,9 @@
       "Bash(./scripts/ai-dispatch.sh:*)"
     ]
   },
+  "skillOverrides": {
+    "claude-api": "off"
+  },
   "hooks": {
     "SessionStart": [
       {
