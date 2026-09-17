@@ -129,11 +129,15 @@ KNOWN_CLAUDE_ONLY_NAMES = {
     "modus",
     "pipeline-ship",
     "reuse-first",
-    "skill-catalog",
     "slhs",
     "sota-architecture-loop",
     "workflow",
 }
+# "skill-catalog" pruned 2026-09-18 (prune-dead-defs): zero Skill-tool invocations
+# in 45 days on M5, no cross-reference from modus/karpathy-discipline/sota-
+# architecture-loop (unlike e.g. stadio-zero/karpathy-discipline, which ARE named
+# as live GROUND/BUILD-stage drivers inside modus/SKILL.md), no CLAUDE.md/rules
+# reference, not a Zero domain corner.
 
 
 def find_canonicity_violations(claude_skills: Path, agents_skills: Path) -> list[str]:
