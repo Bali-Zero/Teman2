@@ -657,7 +657,11 @@ REDIR_RE = re.compile(r"(?:[0-9]?>|&>)>?[ \t]*([^\s|;&)]+)")  # stdout/stderr/co
 # tee [-a] path...   (path before next pipe/redirect)
 TEE_RE = re.compile(r"\btee[ \t]+(?:-a[ \t]+)?([^\s|;&)]+)")
 # sed -i ... LAST-non-flag-token is the file (best-effort: take tokens after the script)
-SEDI_RE = re.compile(r"\bsed\b[^|;&\n]*?-i\S*[ \t]+(?:-e[ \t]+\S+[ \t]+|'[^'\n]*'[ \t]+|\"[^\"\n]*\"[ \t]+|\S+[ \t]+)*([^\s|;&)]+)")
+# 2026-09-18: the repeated token group used `\S+`, which swallows `;`, `|` and `&`,
+# so `sed -i '' s/a/b/ $S/p.py; python3 $S/p.py /Users/x/nuzantara` reported the
+# LAST token of the whole line as the sed target and refused a scratch edit. The
+# tokens are now confined to the sed segment, like the final capture already was.
+SEDI_RE = re.compile(r"\bsed\b[^|;&\n]*?-i\S*[ \t]+(?:-e[ \t]+[^\s|;&)]+[ \t]+|'[^'\n]*'[ \t]+|\"[^\"\n]*\"[ \t]+|[^\s|;&)]+[ \t]+)*([^\s|;&)]+)")
 # dd of=path
 DDOF_RE = re.compile(r"\bdd\b[^|;&\n]*?\bof=([^\s|;&)]+)")
 # cp/mv/install SRC... DEST  → DEST is the last non-flag token before pipe/sep
