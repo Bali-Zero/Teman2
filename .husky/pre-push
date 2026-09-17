@@ -197,6 +197,39 @@ if [ -n "$PREPUSH_REFS" ]; then
     cat > "$PREPUSH_REFS" || true
 fi
 
+# ============================================================================
+# preflight_pack (BLOCKING, 2026-09-17) — scripts/preflight_pack.sh
+#
+# Deliberately NOT advisory, and deliberately NOT a change to quickcheck. The
+# quickcheck block above is advisory BY DESIGN (S12 C4) and its `|| true` is
+# load-bearing; this block sits beside it and blocks, so that design is left
+# untouched. It also watches a different OBJECT: quickcheck's check_r1_heading()
+# reads the PR BODY for '## Adversarial review', while the required CI gate that
+# closed #6664 and #6665 reads `adversarial_review:` in the FILE's frontmatter.
+#
+# It runs ONLY when this push carries research/*.md, evidence/**/pack.yml or
+# .github/workflows/** — a push touching none of them exits 0 in silence, so
+# existing traffic is unaffected. It fails OPEN when a tool is missing and
+# CLOSED when a check runs and fails; both are stated in its header.
+#
+# It must live BELOW the PREPUSH_REFS slurp above: git's ref protocol is a
+# stream that serves exactly one reader, and this is the THIRD reader of the
+# captured FILE (after the path-aware gate and the tip-drift check). Placing it
+# above the slurp would make it consume stdin and silently decapitate both.
+#
+# The `exit 1` is explicit rather than relying on this hook's `sh -e`: a guard
+# whose blocking depends on an ambient shell flag is one `set +e` away from
+# being decoration (W101 family).
+#
+# Kill switch: PREFLIGHT_PACK_SKIP=1.
+# ============================================================================
+if [ "${PREFLIGHT_PACK_SKIP:-0}" != "1" ] && \
+   [ -f "$PREPUSH_TRUST_ROOT/scripts/preflight_pack.sh" ] && command -v bash >/dev/null 2>&1; then
+    if ! bash "$PREPUSH_TRUST_ROOT/scripts/preflight_pack.sh" "$PREPUSH_REFS"; then
+        exit 1
+    fi
+fi
+
 if [ "${PREPUSH_FULL:-0}" = "1" ]; then
     # Explicit set, not a reliance on the ambient default above: since
     # PREPUSH_RUN_BACKEND now defaults to 0 (DEFAULT-OFF note above), this
