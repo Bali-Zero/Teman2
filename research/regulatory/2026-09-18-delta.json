@@ -1,0 +1,63 @@
+{
+  "run_at": "2026-09-18T07:06:51+08:00",
+  "today": "2026-09-18",
+  "yesterday_file_used": "2026-09-17-delta.json",
+  "yesterday_seen_count": 24,
+  "new_today_count": 2,
+  "partial": false,
+  "unreachable_sources": [
+    {"url": "https://muc.co.id/article", "reason": "http_403", "note": "HTTP 403 on fetch + 1 retry"},
+    {"url": "https://jdih.kemenkeu.go.id/peraturan", "reason": "timeout", "note": "curl connection failed (exit, no HTTP code) on fetch + 1 retry"},
+    {"url": "https://ortax.org/news", "reason": "empty_shell", "note": "HTTP 200 but page title 'Artikel tidak ditemukan' (article not found), no listing content extractable"},
+    {"url": "https://ikpi.or.id/articles", "reason": "empty_shell", "note": "Nuxt/Tailwind SPA shell, HTTP 200 but static HTML has 0 article nodes"}
+  ],
+  "sources_checked_no_delta": [
+    {"url": "https://www.hukumonline.com/berita/", "reason": "checked_no_new", "note": "No PMK/PP/Perpres/UU/Permenaker/Permenkumham citations within 48h window; only recent item is PERADI Rakernas 2026 (bar association event, not a regulation)"},
+    {"url": "https://peraturan.go.id", "reason": "outside_window", "note": "Newest dated entry 31 Agustus 2026, older than 48h window"},
+    {"url": "https://peraturan.bpk.go.id/Search?type=PerundangUndangan&jenis=PMK&tahun=2026", "reason": "empty_shell", "note": "jenis=PMK&tahun=2026 filter not honored in static HTML; newest visible date 01 Agustus 2026, no confirmed match to actual query"},
+    {"url": "https://www.imigrasi.go.id", "reason": "outside_window", "note": "Newest dated entry 9 September 2026, older than 48h window"},
+    {"url": "https://www.pajak.go.id/peraturan", "reason": "checked_no_new", "note": "Only KEP-185/PJ/2026 visible in static HTML, already known since 2026-09-05 runs, not a new citation"},
+    {"url": "https://jdih.kemnaker.go.id/peraturan", "reason": "outside_window", "note": "Newest visible entry 30 April 2026, nothing dated 2026-09"}
+  ],
+  "nb_query_errors": [],
+  "deltas": [
+    {
+      "citation": "PER-10/PJ/2026",
+      "title_id": "DJP Atur Tata Cara Perawatan, Pengamanan, dan Penyelamatan Barang Sita",
+      "title_en": "DGT Regulates Procedure for Care, Security, and Rescue of Seized Goods",
+      "service_line": ["tax"],
+      "severity": "low",
+      "impact_note": "Internal DJP procedure for handling seized assets in tax-debt collection cases; relevant only if a client faces active tax enforcement/seizure, not a routine compliance item.",
+      "summary": "DJP menerbitkan Peraturan Dirjen Pajak baru yang mengatur tata cara perawatan, pengamanan, dan penyelamatan barang sitaan dalam proses penagihan pajak.",
+      "source": "news.ddtc.co.id | https://news.ddtc.co.id/berita/nasional/1822547/djp-atur-tata-cara-perawatan-pengamanan-dan-penyelamatan-barang-sita",
+      "verbatim_excerpt": "DJP Atur Tata Cara Perawatan, Pengamanan, dan Penyelamatan Barang Sita",
+      "confidence": "medium",
+      "first_seen_at": "2026-09-18T07:06:51+08:00"
+    },
+    {
+      "citation": "SE-10/PJ/2026",
+      "title_id": "DJP Atur 6 Tahap Kelola Benda Sitaan, Barang Sitaan, dan Jaminan Aset",
+      "title_en": "DGT Regulates 6 Stages for Managing Seized Objects, Seized Goods, and Asset Guarantees",
+      "service_line": ["tax"],
+      "severity": "low",
+      "impact_note": "Circular letter detailing a 6-stage internal DJP procedure for managing seized/guaranteed assets in tax-debt collection; informational, not a client-facing deadline or fee change.",
+      "summary": "Surat Edaran DJP menetapkan 6 tahap pengelolaan benda sitaan, barang sitaan, dan jaminan aset dalam rangka penagihan pajak.",
+      "source": "news.ddtc.co.id | https://news.ddtc.co.id/berita/nasional/1822533/djp-atur-6-tahap-kelola-benda-sitaan-barang-sitaan-dan-jaminan-aset",
+      "verbatim_excerpt": "DJP Atur 6 Tahap Kelola Benda Sitaan, Barang Sitaan, dan Jaminan Aset",
+      "confidence": "medium",
+      "first_seen_at": "2026-09-18T07:06:51+08:00"
+    }
+  ],
+  "note": "All 4 NB-INTEL queries (Regulation, Press, Immigration, Tax) answered 'nessuna novità' for the 24-48h window (Tax NB appended an unrelated proactive suggestion about DJP marketplace PPh 22 clarifications, not a verbatim citation, dropped per hard rule 2). Web cross-check found 2 new DJP citations on news.ddtc.co.id (PER-10/PJ/2026, SE-10/PJ/2026, both published 2026-09-17, single-source so confidence:medium) not present in yesterday's seen_citations. Both are internal tax-collection/asset-seizure procedure items, filed as service_line:tax per the PER-DJP filter rule but severity:low given narrow relevance to Bali Zero's typical PMA/expat client base. 6 backup government sources checked (peraturan.go.id, peraturan.bpk.go.id, imigrasi.go.id, pajak.go.id, jdih.kemenkeu.go.id, jdih.kemnaker.go.id) surfaced no additional deltas; jdih.kemenkeu.go.id was unreachable (timeout).",
+  "seen_citations": [
+    "PMK Nomor 28 Tahun 2026","PMK Nomor 40 Tahun 2026","PMK Nomor 41 Tahun 2026","PMK Nomor 42 Tahun 2026",
+    "PMK Nomor 43 Tahun 2026","PMK Nomor 44 Tahun 2026","PMK Nomor 55 Tahun 2026","PMK Nomor 57 Tahun 2026",
+    "PMK Nomor 61 Tahun 2026","PP Nomor 20 Tahun 2026","PP Nomor 24 Tahun 2026",
+    "Peraturan Direktur Jenderal Pajak Nomor PER-8/PJ/2026","Peraturan Menteri Hukum Nomor 13 Tahun 2026",
+    "Permen PMK/Badan PMI Nomor 5 Tahun 2026","Permenaker No. 12 Tahun 2026; BN 2026 (598)",
+    "Permenaker Nomor 7 Tahun 2026","Permenaker Nomor 8 Tahun 2026","Permenaker Nomor 9 Tahun 2026",
+    "Permenkes Nomor 6 Tahun 2026","Perpres Nomor 26 Tahun 2026","Perpres Nomor 27 Tahun 2026",
+    "Perpres Nomor 3 Tahun 2026","UU Nomor 4 Tahun 2026","UU Nomor 5 Tahun 2026",
+    "PER-10/PJ/2026","SE-10/PJ/2026"
+  ]
+}
