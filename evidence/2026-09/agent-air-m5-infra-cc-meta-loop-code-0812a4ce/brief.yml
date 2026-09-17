@@ -1,0 +1,60 @@
+task: >-
+  Ship the two scripts the cc-meta-loop mandate produced: `scripts/cc_meta_research_loop.py`
+  (Opus orchestrates every live frontier seat — Claude, codex, agy, Kimi, TP1 — over an
+  inventory of THIS machine's Claude Code configuration, two adversarial rounds, verdicts and
+  a REPORT per run) and `scripts/cc_context_cost_report.py` (per-machine context cost read
+  from the transcripts on disk — the number `/usage` and OTEL never gave the fleet). The
+  research outputs and the backlog those scripts produced ship in a sibling docs PR
+  (lane docs/cc-meta-loop-research); the hook-layer cures the loop found shipped in #6700.
+lane: infra/cc-meta-loop-code
+machine: Air-M5
+date: 2026-09-17
+mandate: >-
+  Zero, 2026-09-16: "scrivi un loop di deep research che coinvolge opus che orchestra tutti i
+  nostri LLM di frontiera disponibili per trovare le configurazioni più efficienti al mondo di
+  claude code ... e capire cosa ci manca al nostro attuale settaggio".
+
+gear: 2
+gear_reason: >-
+  Deterministic floor 2, source `size`: two new files, churn 994 (875 + 119), above
+  SIZE_GEAR2_THRESHOLD (400) and below SIZE_GEAR3_THRESHOLD (1828); no hot-zone path. The
+  predecessor #6698 carried the same scripts together with the research outputs and the hook
+  cures (churn 4700, floor 3) and was closed with its three reds classified; this successor
+  is cut from a fresh origin/main with one concern.
+
+appetite:
+  wall_clock_hours: 1
+  adversarial_rounds: 1
+
+acceptance:
+  A1: >-
+    Both scripts compile and answer --help with exit 0.
+    probe: python3 -m py_compile scripts/cc_meta_research_loop.py scripts/cc_context_cost_report.py
+      && python3 scripts/cc_meta_research_loop.py --help >/dev/null
+      && python3 scripts/cc_context_cost_report.py --help >/dev/null
+    observed: "2026-09-17 13:0x local, this worktree: py_compile OK, both --help exit 0"
+  A2: >-
+    The cost report produces a per-day table from the transcripts on this machine with no
+    model call (positive control: the table is non-empty for a day with known sessions).
+    probe: python3 scripts/cc_context_cost_report.py --days 4
+    observed: "host Air-M5, 5 day rows, e.g. 2026-09-15: 26,721 turns, 6,135,005,114 cache-read tokens"
+  A3: >-
+    The loop plans without calling any seat: --dry-run writes inventory.json and prints the
+    plan (seats, rounds, calls per round).
+    probe: python3 scripts/cc_meta_research_loop.py --dry-run --out <scratch>
+    observed: "rounds 2, seat_calls_per_round 12, inventory_bytes 6367, inventory.json written"
+  A4: >-
+    Neither script reaches a Claude model outside the `claude` CLI: no `anthropic` import, no
+    ANTHROPIC_API_KEY; the repo lints on headless invocations (model pin, budget) stay green
+    on this PR.
+    probe: grep -nE "import anthropic|ANTHROPIC_API_KEY" scripts/cc_meta_research_loop.py scripts/cc_context_cost_report.py ; echo "rc=$?"
+
+out_of_scope: >-
+  The research outputs (REPORTs, proposals, verdicts, BACKLOG, GAPS) — sibling docs PR. The
+  hook-layer cures — #6700. OTEL collector (O1), sandbox flip (S1), PreToolUse dispatcher
+  (H10) — decided and recorded in the BACKLOG, not built here.
+
+bites: >-
+  Consumer: `python3 scripts/cc_context_cost_report.py --days 4` run by the next Opus session
+  comparing M5/Pro/Mini, and the O1 row of research/agent-craft/cc-meta-loop/BACKLOG.md that
+  cites its number. Observation: the table above, produced from disk with zero model calls.
