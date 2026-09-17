@@ -68,6 +68,25 @@ def _derive_repo_root() -> str:
 REPO_ROOT = _derive_repo_root()
 BLOCK_COUNT_FILE = "/tmp/nuz_l5_1_blocks"
 PROBE_LOG = pathlib.Path.home() / ".claude" / "l5_1_hook_probe.jsonl"
+# Cap (2026-09-18): the probe log had been append-only since June — 4.7 MB on
+# M5 before a manual rotation, one line per tool call, both hooks writing the
+# same file. Above PROBE_LOG_MAX_BYTES the last PROBE_LOG_KEEP_LINES survive,
+# swapped in atomically. Never raises: a full disk or a race with the sibling
+# hook must not change a verdict.
+PROBE_LOG_MAX_BYTES = 2_000_000
+PROBE_LOG_KEEP_LINES = 2000
+
+
+def _rotate_probe_log() -> None:
+    try:
+        if PROBE_LOG.stat().st_size <= PROBE_LOG_MAX_BYTES:
+            return
+        tail = PROBE_LOG.read_bytes().splitlines(keepends=True)[-PROBE_LOG_KEEP_LINES:]
+        tmp = PROBE_LOG.with_name(f"{PROBE_LOG.name}.{os.getpid()}.tmp")
+        tmp.write_bytes(b"".join(tail))
+        os.replace(tmp, PROBE_LOG)
+    except Exception:
+        pass
 
 
 def _kill_switch_active() -> bool:
@@ -141,6 +160,7 @@ def _is_path_under_allowed_worktree(path_real: pathlib.Path) -> bool:
 def _probe_log(payload: dict, file_path: str, decision: str):
     try:
         PROBE_LOG.parent.mkdir(parents=True, exist_ok=True)
+        _rotate_probe_log()
         with PROBE_LOG.open("a") as f:
             json.dump({
                 "tool_name": payload.get("tool_name", ""),
