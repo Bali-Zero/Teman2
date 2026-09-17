@@ -1,0 +1,16 @@
+{
+ "claude:<REDACTED>": {
+  "id": "claude:<REDACTED>",
+  "grader": "codex",
+  "verdict": "UNVERIFIABLE",
+  "reason": "The nine registrations are supported, but counting them proves neither significant overhead nor that a timer can replace the event-specific behavior.",
+  "better_verification": "rg -n -C 5 'hook_event_name|subprocess|Popen|osascript|spawn|PermissionRequest|SessionEnd' ~/.config/iterm2/cc-status"
+ },
+ "claude:env-dump-hooks-remove": {
+  "id": "claude:env-dump-hooks-remove",
+  "grader": "codex",
+  "verdict": "REJECTED",
+  "reason": "The inventory reports command heads rather than complete shell commands, so interpreting env as a bare environment dump instead of a possible execution wrapper is unjustified.",
+  "better_verification": "jq '[.hooks | to_entries[] | .key as $event | .value[].hooks[]? | select((.command // \"\") | test(\"^env( |$)\")) | {event:$event,bare_env:(.command == \"env\")}]' ~/.claude/settings.json ~/.claude/settings.local.json"
+ }
+}

@@ -1,0 +1,52 @@
+task: >-
+  Ship the research outputs of the cc-meta-loop mandate: three run reports (2026-09-16
+  21:06Z, 21:19Z, 23:31Z) with their proposals, raw answers and verdicts, the intervention
+  BACKLOG (55 rows, execution status, C4 measurement table, decisions on H10/H11/N1/C3/S1)
+  and the on-disk gap verification (GAPS-VERIFIED). The per-run machine-config snapshot
+  (`inventory.json`) and the seats' raw answers (`raw_answers.json`, which embed that same
+  inventory as prompt echo plus codex's tool trace) are gitignored, not shipped. The scripts are PR #6705; the hook cures merged in #6700.
+lane: docs/cc-meta-loop-research-v3
+successor_of: "#6710 — REWORK-BUILD by the final gate on cf6f41b1 (fresh Opus session, 32 turns); itself successor of #6706 (REWORK-BUILD on 7c22d042)"
+rework:
+  - "(#6710) finding: raw_answers.json embeds each seat's prompt echo — the inventory the PR claims to withhold — and two codex entries carry no answer (cap consumed by header, echo and a tool trace over ~/.codex memory) → cure: raw_answers.json dropped from the PR and gitignored beside inventory.json; proposals + verdicts are the research. proof: git diff --name-only origin/main...HEAD | grep -c raw_answers → 0; git check-ignore prints the path"
+  - "(#6710) finding: 2106Z reader's warning was boilerplate (that run probed; nobody graded) → cure: warning rewritten for that run"
+  - "(#6710) finding: C3 prose count 12 vs 13 sites enumerated → cure: 13, with the grep quoted"
+  - "(#6710) finding: H10 numbers without their commands → cure: the event shape, the timing method and the bench path (scripts/bench/cc_hook_latency_bench.py, lint PR v3) are quoted; a second measurement on the 114 MB worst-case transcript added (2,703 ms serial; full read 809 ms vs 64 KB tail 33 ms), which reverses the first cut's conclusion: tail-reads first, dispatcher second"
+  - "finding: the loop scrubbed raw answers before parsing, proposal ids >=24 chars collapsed to <REDACTED>, verdicts attached to wrong proposals in the shipped REPORTs → cure: each REPORT opens with a reader's warning carrying its own collision count (2106Z 7/8, 2119Z 14/15, 2331Z 14/16), BACKLOG row L2 names the cause, M2's attribution corrected; the code fix rides the #6705 successor"
+  - "finding: seat tables print SKIPPED_PROBE for seats that authored and graded → cure: same warning names it; BACKLOG row L3"
+  - "finding: 2106Z review sentence said both seats failed their probe while the table shows codex LIVE → cure: sentence corrected (codex authored, no grader answered)"
+  - "finding: O1 figure (47,493 turns / 10.35 B) not reproducible: symlink double-count, mtime window, subagents missing → cure: O1 row marked REWORK, figure superseded by the #6705 successor"
+  - "finding: C3 count 11 and missed scripts/modus_autoloop.py:236 → cure: 12, site added"
+machine: Air-M5
+date: 2026-09-17
+gear: 2
+gear_reason: >-
+  Deterministic floor 2, source `size`: churn ≈1,300 (proposals/verdicts/raw_answers JSON
+  ≈600, three REPORTs ≈250 with their R1 frontmatter and review sections, BACKLOG ≈330,
+  GAPS 141, .gitignore 5) — above 400, below 1828; no hot-zone path. Predecessor #6698
+  carried this together with code (floor 3) and was closed with its reds classified.
+appetite:
+  wall_clock_hours: 1
+  adversarial_rounds: 1
+acceptance:
+  A1: >-
+    Every research/**/*.md in the diff passes the R1 gate.
+    probe: python3 scripts/check_adversarial_review.py --files research/agent-craft/cc-meta-loop/*.md research/agent-craft/cc-meta-loop/*/REPORT.md
+    observed: "PASS — 5 research file(s) carry a valid adversarial review (one NOTICE: the 21:06Z run is exempt, no grader answered) — re-run 2026-09-17 14:0x on the successor"
+  A2: >-
+    No machine-config snapshot ships, by CONTENT not by name: the diff contains no inventory.json
+    and no raw_answers.json, both ignore rules match, and no shipped file carries the inventory dump (hook timeouts,
+    exit codes, reads_transcript flags per hook). Hook BASENAMES in the proposals' own
+    verification commands (`~/.claude/hooks/<name>`) are the proposals, not the inventory.
+    probe: git diff --name-only origin/main...HEAD | grep -cE 'inventory.json|raw_answers.json' ; git check-ignore research/agent-craft/cc-meta-loop/x/inventory.json research/agent-craft/cc-meta-loop/x/round-1/raw_answers.json ; git grep -c 'hook_counts_global' -- research/agent-craft/cc-meta-loop || echo 0-hits ; git grep -n '/Users/' -- research/agent-craft/cc-meta-loop
+    observed: "0 / 0 ; check-ignore prints both paths ; hook_counts_global 0-hits ; /Users/ appears 3 times, all in BACKLOG rows C2/H16/H18 naming the MAIN checkout path for an operator command (no client data, no secret)"
+  A3: >-
+    Every number in the C4 table and the decisions section was produced by a command in the
+    window that wrote it (12:4x–13:0x local, 2026-09-17); the commands are quoted beside the
+    numbers.
+out_of_scope: >-
+  The scripts (#6705). The loop's own REPORT frontmatter emission (row L1, successor of #6705).
+bites: >-
+  Consumer: the next session that opens research/agent-craft/cc-meta-loop/BACKLOG.md to pick
+  an OPEN row (S1, H10, L1, C1 grandfather debt) — and scripts/check_adversarial_review.py,
+  which reads these files on every PR that touches them. Observation: A1 above, PASS on all five.
