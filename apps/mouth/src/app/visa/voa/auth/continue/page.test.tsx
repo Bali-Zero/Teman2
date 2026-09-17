@@ -124,7 +124,7 @@ describe("/visa/voa/auth/continue", () => {
     const { container } = render(await renderPage({}));
 
     expect(container.querySelector("form")).toBeNull();
-    expect(screen.getByText(/no longer valid/i)).toBeInTheDocument();
+    expect(screen.getByText(/used or has expired/i)).toBeInTheDocument();
   });
 
   it.each([
@@ -136,7 +136,7 @@ describe("/visa/voa/auth/continue", () => {
     );
 
     expect(container.querySelector("form")).toBeNull();
-    expect(screen.getByText(/no longer valid/i)).toBeInTheDocument();
+    expect(screen.getByText(/used or has expired/i)).toBeInTheDocument();
   });
 
   it.each([
@@ -152,7 +152,7 @@ describe("/visa/voa/auth/continue", () => {
     const { container } = render(await renderPage({}));
 
     expect(container.querySelector("form")).toBeNull();
-    expect(screen.getByText(/no longer valid/i)).toBeInTheDocument();
+    expect(screen.getByText(/used or has expired/i)).toBeInTheDocument();
   });
 
   // ============================================================
@@ -179,7 +179,7 @@ describe("/visa/voa/auth/continue", () => {
     const { container } = render(await renderPage({}));
 
     expect(container.querySelector("form")).toBeNull();
-    expect(screen.getByText(/no longer valid/i)).toBeInTheDocument();
+    expect(screen.getByText(/used or has expired/i)).toBeInTheDocument();
   });
 
   it("offers no form when the preview lookup transport fails", async () => {
@@ -188,7 +188,7 @@ describe("/visa/voa/auth/continue", () => {
     const { container } = render(await renderPage({}));
 
     expect(container.querySelector("form")).toBeNull();
-    expect(screen.getByText(/no longer valid/i)).toBeInTheDocument();
+    expect(screen.getByText(/used or has expired/i)).toBeInTheDocument();
   });
 
   it("offers no form when the preview lookup returns a malformed body", async () => {
@@ -197,7 +197,7 @@ describe("/visa/voa/auth/continue", () => {
     const { container } = render(await renderPage({}));
 
     expect(container.querySelector("form")).toBeNull();
-    expect(screen.getByText(/no longer valid/i)).toBeInTheDocument();
+    expect(screen.getByText(/used or has expired/i)).toBeInTheDocument();
   });
 
   it("gives the SAME failure copy for an invalid-cookie failure and a preview-lookup failure", async () => {
