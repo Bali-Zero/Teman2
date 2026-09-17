@@ -65,6 +65,18 @@
           }
         ]
       }
+    ],
+    "ConfigChange": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"${CLAUDE_PROJECT_DIR}/infra/claude-hooks/config_change_fork_guard.py\"",
+            "timeout": 10
+          }
+        ]
+      }
     ]
   }
 }
