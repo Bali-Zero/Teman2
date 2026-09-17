@@ -1,0 +1,97 @@
+brief_ref: evidence/brief.yml
+plan_ref: >-
+  One concern: sender-side discipline on scripts/fleet_mail.sh's broadcast path. A broadcast
+  must now say who sends it (--from <label> or FLEET_MAIL_FROM, exit 2 otherwise; direct
+  session-addressed mail is unchanged), the label is sanitized to the same charset
+  mailbox_inject.py enforces on read, and one sender is capped at FLEET_MAIL_MAX_PER_HOUR
+  (default 6) live broadcasts per rolling hour (exit 3, --urgent bypasses one send). The four
+  cron senders (queue_unstick.py, queue_stall_notify.py, scripts/ci/flaky_harvest.py,
+  scripts/ci/change_map_coverage.py) each pass a distinct --from label and target host:/lane:
+  of the PR they concern, or lane:ci, instead of everyone. Measured 2026-09-18 on M5's live
+  mailbox: 368 of 416 live broadcasts carried the identical anonymous label
+  "<host>:fleet-watch", up to 185 in one day, and the fleet's only lever was NUZ_MAILBOX_OFF.
+
+  Consumer: scripts/fleet_mail.sh as invoked by the four cron senders on Pro/Mini and by
+  sessions on M5/Pro after merge. Observation: a broadcast without --from is refused before
+  any file is written; the next live broadcast files under ~/.nuzantara-mailbox/broadcast/
+  carry a distinct "from: <host>:<label>" line per sender.
+
+lanes:
+  - lane: mailbox-sender-discipline
+    role: build
+    seat: >-
+      claude-sonnet-5 (implementer session "mailbox-sender-discipline", air-m5). The
+      implementer's commit covers scripts/fleet_mail.sh (required --from, sanitization, hourly cap inside
+      the existing PY_SEND, exit 3 propagated through local and remote paths), the four cron
+      senders wired to distinct labels and host:/lane: targets, a new
+      scripts/tests/test_fleet_mail_sender.py plus extended queue_unstick / queue_stall_notify
+      tests, and the README/flaky-harvest docs naming the new flag. Rebased onto origin/main
+      after PR #6722 (addressed broadcast) squash-merged; the rebase was conflict-free. The
+      evidence directory is the shipping session's own follow-up commit (claude-fable-5-1,
+      air-m5), with every receipt below re-run on the rebased head.
+
+seat_diversity: EXEMPT
+seat_diversity_note: >-
+  Single build lane (Anthropic, claude-sonnet-5), no review lane declared for this pack — D3's
+  cross-family floor is exempt below 2 build lanes, and reviewer-independence (W2) only fires
+  when both a build and a review lane are present. No adversarial review round was dispatched
+  for this task; the pack claims the proof commands run and quoted below, not a review.
+
+diff:
+  files: 15
+  net_lines: 733
+  measured_at: >-
+    `scripts/evidence_pack_lint.py --print-measured` against `git diff --numstat`/`--name-only`
+    from the merge-base with origin/main to the finalized head, run LAST after every other
+    edit including this evidence directory itself — see the matching receipt below.
+
+residual_risks:
+  - >-
+    NO INDEPENDENT ADVERSARIAL REVIEW ROUND is claimed in this pack. The productive attack
+    surface for the on-disk gate: (1) is the write-side --from sanitization in fleet_mail.sh
+    the same charset mailbox_inject.py's SENDER_UNSAFE_RE enforces on read, or can a label
+    survive the write and still be mangled on read; (2) is the rate cap's front-matter scan
+    bounded (<=2048 bytes) so a crafted oversized header cannot slow or defeat the count;
+    (3) is --urgent a genuine per-send bypass with no persisted state; (4) do the two new
+    positional arguments the shell passes to PY_SEND land in the right slots for every caller.
+  - >-
+    The rate cap's rolling hour is wall-clock mtime on the broadcast file, not a logical clock.
+    A skewed clock or an mtime-altering copy under- or over-counts. Same trust boundary the
+    existing TTL expiry already relies on.
+  - >-
+    The 368/416 baseline and the 185-a-day peak were measured on M5's mailbox only. The fix is
+    uniform (one shared fleet_mail.sh) but Pro's mailbox was not separately sampled.
+  - >-
+    The cron senders on Pro/Mini pick up the new flag only when their checkouts advance past
+    this merge; until then they still call the old signature and, on a refreshed script, would
+    be refused with exit 2 rather than broadcasting anonymously — a loud failure by design.
+
+pii_scan: clean
+
+receipts:
+  - claim: "the sender suite plus the four touched test files are green on the rebased head"
+    cmd: "python3 -m pytest -q -x scripts/tests/test_fleet_mail_sender.py scripts/tests/test_fleet_mail_to.py scripts/tests/test_fleet_mail_retract.py scripts/tests/test_queue_stall_notify.py scripts/tests/test_queue_unstick.py"
+    result: "141 passed in 2.87s"
+    exit: 0
+    ts: "2026-09-17T19:51:07Z"
+    seat: session (air-m5)
+  - claim: "the two CI senders' own unit suites still pass with the new --from wiring"
+    cmd: "PYTHONPATH=scripts/ci python3 -m unittest scripts.ci.test_flaky_harvest scripts.ci.test_change_map_coverage"
+    result: "Ran 38 tests in 0.001s / OK"
+    exit: 0
+    ts: "2026-09-17T19:51:07Z"
+    seat: session (air-m5)
+  - claim: "the edited shell script parses"
+    cmd: "bash -n scripts/fleet_mail.sh"
+    result: "bash -n OK"
+    exit: 0
+    ts: "2026-09-17T19:51:07Z"
+    seat: session (air-m5)
+  - claim: "this pack's diff.files/diff.net_lines match the measured merge-base diff, run LAST as its own step"
+    cmd: "python3 scripts/evidence_pack_lint.py --repo-root . --numstat-file <numstat> --changed-files-file <changed> --print-measured"
+    result: "15 files, +692/-41"
+    exit: 0
+    ts: "2026-09-17T19:51:07Z"
+    seat: session (air-m5)
+
+dissent: []
