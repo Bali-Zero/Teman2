@@ -1,0 +1,98 @@
+[
+ {
+  "id": "claude:<REDACTED>",
+  "author": "claude",
+  "claim": "cc-status is registered as a hook command on all 9 global events with matcher '*' (Notification, PermissionRequest, PostToolUse, PreToolUse, SessionEnd, SessionStart, Stop, StopFailure, UserPromptSubmit), so it forks a new process on almost every harness event, including every single tool call.",
+  "surface": "hooks",
+  "why": "Each hook registration is a separate subprocess spawn per matching event; a 719-line script with spawns:true attached to '*' on both PreToolUse and PostToolUse means every Bash/Edit/Write call pays two extra forks just for status-line bookkeeping that a timer-based statusLine refresh could do without any hook at all.",
+  "expected_gain": "latency, removes up to 2 of the ~14-16 subprocess spawns counted per Bash call, plus 1 per Notification/Stop/etc.",
+  "verification_command": "grep -c cc-status ~/.claude/settings.json ~/.claude/settings.local.json 2>/dev/null",
+  "risk": "if cc-status also writes state files that SessionEnd/StatusLine reads back, trimming its PreToolUse/PostToolUse registrations could silently stop those side effects",
+  "confidence": "medium",
+  "source": "reasoning"
+ },
+ {
+  "id": "claude:<REDACTED>",
+  "author": "claude",
+  "claim": "per the supplied hook_scripts data, mailbox_inject.py is actually registered on PostToolUse:* and Stop:* (emits_context true), not on SessionStart/UserPromptSubmit as the reported 90,627-token incident implies, meaning it re-injects mail as additionalContext after every single tool call, not just twice per turn.",
+  "surface": "hooks",
+  "why": "additionalContext returned by a PostToolUse hook is appended after every matching tool result; a '*' matcher on PostToolUse fires on every tool call in the session, so mail content (or a growing accumulation of it) is billed as input tokens far more often than a per-prompt or per-session injection would be.",
+  "expected_gain": "tokens, likely the dominant contributor to the reported 90,627-token headless call, and to steady per-tool-call token creep in long sessions",
+  "verification_command": "grep -n additionalContext ~/.claude/hooks/mailbox_inject.py && grep -n PostToolUse ~/.claude/settings.json",
+  "risk": "if mail delivery is intentionally tied to tool activity (e.g. to surface urgent cross-machine messages mid-task) rather than to session/prompt boundaries, moving the registration changes when the model actually sees mail",
+  "confidence": "high",
+  "source": "reasoning"
+ },
+ {
+  "id": "claude:<REDACTED>",
+  "author": "claude",
+  "claim": "mailbox_inject.py should emit a short additionalContext pointer (e.g. an unread count plus a file path) instead of the mail bodies, leaving full content for the model to Read on demand.",
+  "surface": "hooks",
+  "why": "additionalContext is charged as input tokens on the very next model turn it attaches to; a path costs a handful of tokens while full mail bodies (consistent with the 90k-token incident on a 4-token prompt) can cost tens of thousands, and the model only needs the full text once it decides to act on the mail.",
+  "expected_gain": "tokens, order of 10^4 tokens avoided per headless `claude -p` call",
+  "verification_command": "wc -l ~/.claude/hooks/mailbox_inject.py && grep -n additionalContext ~/.claude/hooks/mailbox_inject.py",
+  "risk": "a pointer-only injection depends on the model reliably choosing to read the file; if it doesn't, urgent mail could go unread",
+  "confidence": "high",
+  "source": "reasoning"
+ },
+ {
+  "id": "claude:<REDACTED>",
+  "author": "claude",
+  "claim": "the Notification hook list contains an entry whose recorded script name is 'null' and whose path is the literal string '2>/dev/null', indicating a malformed command (a shell redirection fragment stored as if it were the executable) rather than a working hook.",
+  "surface": "hooks",
+  "why": "hook commands are shell strings executed on every matching event; if the configured command was originally something like 'somecommand 2>/dev/null' and introspection only recovered the redirection, this entry is either dead config or a silently no-op/failing handler firing on every Notification.",
+  "expected_gain": "reliability, removes a non-functional handler firing on every Notification event",
+  "verification_command": "grep -A3 Notification ~/.claude/settings.json",
+  "risk": "if this is purely an artifact of how the config was introspected rather than a real settings.json entry, no action is needed",
+  "confidence": "medium",
+  "source": "reasoning"
+ },
+ {
+  "id": "claude:env-dump-hooks-remove",
+  "author": "claude",
+  "claim": "three separate hook registrations run the bare command 'env' with no further logic: PreToolUse on Bash|Edit|Write, PostToolUse on Bash|Edit|Write|WebFetch|WebSearch|Read, and SessionEnd on '*'.",
+  "surface": "hooks",
+  "why": "a hook command of literally 'env' forks a process and dumps the full environment to stdout on nearly every tool call; unless a downstream consumer parses that output, it is pure per-call subprocess and log-write overhead with no decision or context value.",
+  "expected_gain": "latency + cost, removes 2-3 of the ~14-16 PreToolUse/PostToolUse subprocess forks per Bash/Edit/Write/Read call",
+  "verification_command": "grep -n env ~/.claude/settings.json",
+  "risk": "if some other process tails these env dumps for audit/debugging, removing them loses that trail",
+  "confidence": "medium",
+  "source": "reasoning"
+ },
+ {
+  "id": "claude:<REDACTED>",
+  "author": "claude",
+  "claim": "on a single Edit/Write/MultiEdit call, at least four <REDACTED> PreToolUse hooks each read the session transcript from disk on their own: premise_gate.py, stadio_zero_nudge.py, <REDACTED>, and orchestrate_gate.py.",
+  "surface": "hooks",
+  "why": "each hook is its own OS process and does its own transcript file I/O; the harness has no shared-read path across hooks, so cost is proportional to the number of registered hooks rather than to the number of distinct checks needed.",
+  "expected_gain": "latency, cuts ~4 transcript reads plus process spawns down toward 1 per Edit/Write call",
+  "verification_command": "grep -c transcript ~/.claude/hooks/premise_gate.py ~/.claude/hooks/stadio_zero_nudge.py ~/.claude/hooks/<REDACTED> $HOME/.claude/hooks/orchestrate_gate.py",
+  "risk": "merging independently-authored gate scripts into one dispatcher means one script's crash can silently disable the others unless each check is wrapped with its own error boundary",
+  "confidence": "medium",
+  "source": "reasoning"
+ },
+ {
+  "id": "claude:<REDACTED>",
+  "author": "claude",
+  "claim": "PostToolUse has two adjacent registrations, one with matcher 'Edit|Write' and one with matcher 'Edit|Write|Bash', both invoking a command labeled 'bash', so a plain Edit or Write call matches both entries.",
+  "surface": "hooks",
+  "why": "Claude Code evaluates every matching hook registration independently per tool call and does not deduplicate overlapping matchers, so an Edit/Write call whose matcher is satisfied by two near-identical entries fires the equivalent handler twice.",
+  "expected_gain": "latency, removes one redundant subprocess spawn per Edit/Write call",
+  "verification_command": "grep -A40 PostToolUse ~/.claude/settings.json",
+  "risk": "if the two entries wrap genuinely different underlying scripts that both happen to be reported as 'bash' by this introspection, they are not duplicates and collapsing them drops a real handler",
+  "confidence": "low",
+  "source": "reasoning"
+ },
+ {
+  "id": "claude:<REDACTED>",
+  "author": "claude",
+  "claim": "the Stop event has four bare 'python3' handlers plus cc-status registered, meaning up to five processes spawn on every Stop attempt, with stop_verify.py and seam_verify.py additionally spawning their own children.",
+  "surface": "hooks",
+  "why": "Stop is a blocking-capable event (non-zero/exit-2 forces the model to continue), and it fires far more often than SessionStart/SessionEnd in a long autonomous session, so stacking multiple independent verifiers that each fork subprocesses multiplies the latency tax paid at the single most frequent blocking checkpoint.",
+  "expected_gain": "latency, cuts Stop-time overhead from ~5 spawns (plus nested spawns) toward 1-2",
+  "verification_command": "grep -A60 Stop ~/.claude/settings.json",
+  "risk": "stop_verify.py and seam_verify.py may enforce distinct, non-mergeable invariants (ta<REDACTED> checklist vs. seam/contract verification); merging them risks masking one check's failure behind another's success",
+  "confidence": "medium",
+  "source": "reasoning"
+ }
+]

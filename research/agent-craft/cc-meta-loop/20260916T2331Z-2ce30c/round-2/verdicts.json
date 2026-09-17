@@ -1,0 +1,16 @@
+{
+ "claude:<REDACTED>": {
+  "id": "claude:<REDACTED>",
+  "grader": "codex",
+  "verdict": "UNVERIFIABLE",
+  "reason": "Frequent invocation and context-emission capability do not prove repeated mail injection, because unread filtering, cursor advancement and empty-output branches are unexamined.",
+  "better_verification": "jq '{PostToolUse: .hooks.PostToolUse, Stop: .hooks.Stop}' ~/.claude/settings.json; nl -ba ~/.claude/hooks/mailbox_inject.py"
+ },
+ "claude:cc-status-not-a-hook": {
+  "id": "claude:cc-status-not-a-hook",
+  "grader": "codex",
+  "verdict": "UNVERIFIABLE",
+  "reason": "The nine event registrations are confirmed, but counting them cannot establish latency or whether statusLine preserves cc-status's event-specific behavior.",
+  "better_verification": "jq '{statusLine, hooks}' ~/.claude/settings.json; nl -ba ~/.config/iterm2/cc-status"
+ }
+}

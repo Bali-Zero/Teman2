@@ -1,0 +1,16 @@
+{
+ "claude:<REDACTED>": {
+  "id": "claude:<REDACTED>",
+  "grader": "codex",
+  "verdict": "UNVERIFIABLE",
+  "reason": "The native sandbox is disabled, but deny-list-only protection and unrestricted host access are unproven given the additional guards, and the Python pipeline incorrectly parses JSON line by line.",
+  "better_verification": ""
+ },
+ "claude:stale-agent-teams-flag": {
+  "id": "claude:stale-agent-teams-flag",
+  "grader": "codex",
+  "verdict": "REJECTED",
+  "reason": "Deprecating an explicit team_name argument does not imply that the flag enabling agent teams is obsolete, and a prompted model self-report cannot establish that implication.",
+  "better_verification": ""
+ }
+}

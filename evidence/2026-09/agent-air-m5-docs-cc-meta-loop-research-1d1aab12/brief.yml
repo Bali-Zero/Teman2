@@ -1,0 +1,38 @@
+task: >-
+  Ship the research outputs of the cc-meta-loop mandate: three run reports (2026-09-16
+  21:06Z, 21:19Z, 23:31Z) with their proposals, raw answers and verdicts, the intervention
+  BACKLOG (55 rows, execution status, C4 measurement table, decisions on H10/H11/N1/C3/S1)
+  and the on-disk gap verification (GAPS-VERIFIED). The per-run machine-config snapshot
+  (`inventory.json`) is regenerable and carries this machine's hook/path layout: it is
+  gitignored here, not shipped. The scripts are PR #6705; the hook cures merged in #6700.
+lane: docs/cc-meta-loop-research
+machine: Air-M5
+date: 2026-09-17
+gear: 2
+gear_reason: >-
+  Deterministic floor 2, source `size`: churn ≈1,300 (proposals/verdicts/raw_answers JSON
+  ≈600, three REPORTs ≈250 with their R1 frontmatter and review sections, BACKLOG ≈330,
+  GAPS 141, .gitignore 5) — above 400, below 1828; no hot-zone path. Predecessor #6698
+  carried this together with code (floor 3) and was closed with its reds classified.
+appetite:
+  wall_clock_hours: 1
+  adversarial_rounds: 1
+acceptance:
+  A1: >-
+    Every research/**/*.md in the diff passes the R1 gate.
+    probe: python3 scripts/check_adversarial_review.py --files research/agent-craft/cc-meta-loop/*.md research/agent-craft/cc-meta-loop/*/REPORT.md
+    observed: "PASS — 5 research file(s) carry a valid adversarial review (one NOTICE: the 21:06Z run is exempt, no grader was live)"
+  A2: >-
+    No machine-config snapshot ships: the diff contains no inventory.json and the ignore
+    rule matches the path (positive control: git check-ignore prints it).
+    probe: git diff --name-only origin/main...HEAD | grep -c inventory.json ; git check-ignore research/agent-craft/cc-meta-loop/x/inventory.json
+  A3: >-
+    Every number in the C4 table and the decisions section was produced by a command in the
+    window that wrote it (12:4x–13:0x local, 2026-09-17); the commands are quoted beside the
+    numbers.
+out_of_scope: >-
+  The scripts (#6705). The loop's own REPORT frontmatter emission (row L1, successor of #6705).
+bites: >-
+  Consumer: the next session that opens research/agent-craft/cc-meta-loop/BACKLOG.md to pick
+  an OPEN row (S1, H10, L1, C1 grandfather debt) — and scripts/check_adversarial_review.py,
+  which reads these files on every PR that touches them. Observation: A1 above, PASS on all five.

@@ -1,0 +1,98 @@
+[
+ {
+  "id": "codex:<REDACTED>",
+  "author": "codex",
+  "claim": "Replace the guardrails client's terminal exit 1 with exit 2 because its advertised fail-closed path currently permits execution to continue.",
+  "surface": "hooks",
+  "why": "The installed guardrails-client.sh prints a blocking warning but ends with exit 1 when both evaluators fail. Claude Code treats that exit without a JSON denial as a non-blocking error, making infrastructure failure an enforcement bypass.",
+  "expected_gain": "reliability: eliminate one deterministic fail-open path affecting every tool matched by the wildcard guard.",
+  "verification_command": "tail -n 11 \"$HOME/.claude/hooks/guardrails-client.sh\"",
+  "risk": "A guardrails outage will actually suspend tool execution; evaluator recovery must work.",
+  "confidence": "high",
+  "source": "[Claude Code hook exit codes](https://code.claude.com/docs/en/hooks#other-exit-codes)"
+ },
+ {
+  "id": "codex:delete-payload-logging",
+  "author": "codex",
+  "claim": "Delete raw tool-input persistence from <REDACTED>, remove codex-spalla-trigger.sh from PostToolUse, and remove bash_call_log.sh's raw-command fallback.",
+  "surface": "hooks",
+  "why": "The installed MOS hook stores the complete tool_input even when its sensitivity flag is set; gzip changes representation, not confidentiality. The Bash logger falls back to the original command when redaction produces nothing, while the 735-line spalla script adds another per-call parsing and logging path for an advisory suggestion.",
+  "expected_gain": "reliability/cost: remove two hook invocations per Bash/Edit/Write call, corresponding SQLite/file writes, and multiple paths that can persist sensitive payloads.",
+  "verification_command": "rg -n 'osint_sensitive|tool_input|gzip.compress|INSERT INTO|LOGGED_CMD|TARGET_JSON|NO auto-spawn' \"$HOME/.claude/hooks/<REDACTED>\" \"$HOME/.claude/hooks/bash_call_log.sh\" .claude/hooks/codex-spalla-trigger.sh",
+  "risk": "Historical command replay and automatic review suggestions disappear; retain only allowlisted metadata such as event type, duration, outcome and opaque identifiers.",
+  "confidence": "high",
+  "source": "reasoning"
+ },
+ {
+  "id": "codex:<REDACTED>",
+  "author": "codex",
+  "claim": "Replace the configured 3000-, 8000- and 10000-second hook timeouts with explicit short event budgets and internal dependency deadlines.",
+  "surface": "hooks",
+  "why": "The installed settings permit guardrails, precompact-mnemos and child-workflow stop handling to occupy approximately 50, 133 and 167 minutes respectively. Command-hook timeout cancellation does not itself deny PreToolUse, so enforcement hooks must produce a denial before their outer deadline rather than rely on cancellation.",
+  "expected_gain": "latency/reliability: reduce permitted stalls from hours to a target of 5 seconds for pre-tool enforcement and 30 seconds for lifecycle bookkeeping; these are proposed budgets, not measured runtimes.",
+  "verification_command": "python3 -c 'import json,pathlib; d=json.loads((pathlib.Path.home()/\".claude/settings.json\").read_text()); print([(e,g.get(\"matcher\",\"\"),h.get(\"timeout\")) for e,gs in d[\"hooks\"].items() for g in gs for h in g.get(\"hooks\",[]) if h.get(\"timeout\",0)>=1000])'",
+  "risk": "Legitimate long-running work will be interrupted unless moved out of lifecycle hooks; shorter outer timeouts alone can weaken enforcement.",
+  "confidence": "high",
+  "source": "[Claude Code hook timeouts](https://code.claude.com/docs/en/hooks#timeouts)"
+ },
+ {
+  "id": "codex:<REDACTED>",
+  "author": "codex",
+  "claim": "Remove bypassPermissions from both global and repository-local defaults, enable a scoped sandbox, and replace accumulated local approvals with a reviewed unattended allowlist.",
+  "surface": "settings.json",
+  "why": "Live inspection found 907 repository-local allow rules, including five broad shell/interpreter rules, beyond the snapshot's 46 global allows; the local file also selects bypassPermissions. With sandboxing disabled, a mistaken command can affect sibling worktrees and host resources, while command-pattern denies do not provide filesystem containment.",
+  "expected_gain": "reliability: reduce the execution boundary from host-accessible resources to explicitly permitted filesystem/network surfaces and remove hundreds of historical approvals.",
+  "verification_command": "python3 -c 'import json,pathlib; ps=[pathlib.Path.home()/\".claude/settings.json\",pathlib.Path.home()/\"nuzantara/.claude/settings.local.json\"]; broad={\"Bash\",\"Bash(*)\",\"Bash(python3:*)\",\"Bash(python:*)\",\"Bash(bash:*)\",\"Bash(zsh:*)\",\"Bash(python3 *)\",\"Bash(python *)\",\"Bash(bash *)\",\"Bash(zsh *)\"}; [(lambda d: print(str(p),{\"mode\":d.get(\"permissions\",{}).get(\"defaultMode\"),\"sandbox\":d.get(\"sandbox\",{",
+  "risk": "SSH, shared Git metadata and approved automation may stop until explicitly accommodated; use fail-closed unattended permissions rather than introducing interactive prompts into cron.",
+  "confidence": "high",
+  "source": "[Claude Code permissions](https://code.claude.com/docs/en/permissions)"
+ },
+ {
+  "id": "codex:<REDACTED>",
+  "author": "codex",
+  "claim": "Delete cc-status registrations from PreToolUse and PostToolUse and retain status updates at lifecycle transitions.",
+  "surface": "hooks",
+  "why": "The inspected global/project registrations produce 16 handlers per successful Bash call, 15 per Edit/Write and 7 per Read, before plugin contributions and subprocesses inside scripts. At an assumed three successful tools per turn, 300 turns means 900 calls and 1800 status-process launches; matching hooks run in parallel, so process totals must not be presented as summed wall latency.",
+  "expected_gain": "latency/cost: 1800 fewer launches in that scenario, removing 12.5% of Bash handler invocations or 28.6% of Read handler invocations; one universal PostToolUse hook alone runs 900 times.",
+  "verification_command": "python3 -c 'import json,pathlib,re; ds=[json.loads(p.read_text()) for p in [pathlib.Path.home()/\".claude/settings.json\",pathlib.Path(\".claude/settings.json\")]]; [(print(t,{e:sum(len(g.get(\"hooks\",[])) for d in ds for g in d.get(\"hooks\",{}).get(e,[]) if g.get(\"matcher\",\"\") in (\"\",\"*\") or re.search(g[\"matcher\"],t)) for e in [\"PreToolUse\",\"PostToolUse\"]})) for t in [\"Bash\",\"Edit\",\"Write\",\"Read\"]]'",
+  "risk": "Terminal status loses individual tool transitions; preserve permission-request, failure and completion visibility.",
+  "confidence": "high",
+  "source": "[Claude Code hook execution](https://code.claude.com/docs/en/hooks#hook-handler-fields)"
+ },
+ {
+  "id": "codex:<REDACTED>",
+  "author": "codex",
+  "claim": "Move context_hygiene.py's sampling decision before transcript access and remove its repeated fixed-150k compaction nag.",
+  "surface": "hooks",
+  "why": "The hook reads and decodes up to 400000 transcript bytes on every Read/Bash/Grep/Glob event; NUDGE_EVERY=20 throttles the message only after that work has happened. The fixed threshold also encourages compaction independently of the configured context capacity or the mission's handoff policy.",
+  "expected_gain": "latency/cost: sampling every twentieth eligible event reduces transcript-tail reads from up to 360 MB to 18 MB across 900 eligible calls, approximately 95%; these are logical bytes, not physical disk ",
+  "verification_command": "rg -n 'CTX_WARN|NUDGE_EVERY|400_000|last_context_tokens|ctx =|n %' \"$HOME/.tokenaudit/hooks/context_hygiene.py\"",
+  "risk": "Context warnings arrive later; retain explicit rollover handling and the inexpensive oversized-file check.",
+  "confidence": "high",
+  "source": "reasoning"
+ },
+ {
+  "id": "codex:<REDACTED>",
+  "author": "codex",
+  "claim": "Delete arsenal refresh dispatch from SessionStart and combine the escalation, proprioception and organism reporters into one bounded cached briefing.",
+  "surface": "hooks",
+  "why": "<REDACTED> can launch arsenal_probe.py when its report is missing or stale, coupling session creation to background fleet maintenance despite its existing lock. Three separate operational reporters also duplicate shell/Python startup and formatting; their parallel execution means startup delay follows the slowest dependency rather than a simple sum.",
+  "expected_gain": "latency/reliability: reduce project startup handlers from five to three and remove startup-triggered probe work; target a sub-250 ms cached operational briefing, subject to measurement.",
+  "verification_command": "rg -n 'arsenal_probe|nohup|refresh.lock|python3|signal.alarm|subprocess.run|timeout=' scripts/hooks/<REDACTED> scripts/hooks/<REDACTED> scripts/hooks/<REDACTED>",
+  "risk": "The briefing can become stale if scheduled refresh fails; display cache age and preserve urgent findings when combining outputs.",
+  "confidence": "medium",
+  "source": "reasoning"
+ },
+ {
+  "id": "codex:<REDACTED>",
+  "author": "codex",
+  "claim": "Delete the global stop_verify.py and seam_verify.py registrations and invoke these checks explicitly at an appropriate delivery checkpoint.",
+  "surface": "hooks",
+  "why": "Both installed scripts exit immediately unless their respective FORCE variable equals 1, and neither variable appears in the inspected global settings environment. When enabled, stop_verify reads the entire transcript before slicing it and lacks a stop_hook_active guard, while seam_verify inspects uncommitted changes rather than the delivered branch diff.",
+  "expected_gain": "latency/reliability: remove two Python launches per Stop event, or 600 launches if 300 Stop events occur, and eliminate an optional dirty-worktree stop loop.",
+  "verification_command": "rg -n 'STOP_VERIFY_FORCE|SEAM_VERIFY_FORCE|read_text|stop_hook_active|git.*diff|git.*status|sys.exit\\(2\\)' \"$HOME/.claude/hooks/stop_verify.py\" \"$HOME/.claude/hooks/seam_verify.py\"",
+  "risk": "Launchers may intentionally export the FORCE variables; preserve those workflows as explicit checks before removing registrations.",
+  "confidence": "high",
+  "source": "reasoning"
+ }
+]
