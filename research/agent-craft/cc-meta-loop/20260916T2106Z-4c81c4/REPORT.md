@@ -7,6 +7,16 @@ adversarial_review: exempt-no-grader-was-live-ungraded-census
 adversarial_review_note: "No verdict was produced in this run: the grader seats were unreachable, so every proposal is recorded UNGRADED and the run is a dry census, not a reviewed deliverable. Kept for the record of which seats were live at 21:06Z; the reviewed runs are 2119Z and 2331Z."
 summary: Machine-written report of one research-loop run over this machine's Claude Code configuration — seats, proposals, verdicts.
 ---
+> **Read with this in mind (gate finding, 2026-09-17, row L2 of BACKLOG.md):** the loop that wrote this file
+> scrubbed each seat's raw answer BEFORE parsing it, and the scrubber's catch-all replaces any token of
+> 24+ chars with `<REDACTED>` — proposal ids included. In this run 7 of 8 proposal ids collapsed to
+> `<seat>:<REDACTED>`; proposals and verdicts are dict-keyed by id, so colliding entries overwrote each other and
+> a verdict printed under a proposal below may belong to a different one. The header counts (`proposals:`,
+> `graded:`) are surviving dict keys, not what the seats produced (0 verdict entries survive). The seat table
+> reads `SKIPPED_PROBE` for seats that authored and graded in this very run: `--no-probe` was used, and the
+> writer printed the probe status as reachability. Both defects are fixed in the loop's successor PR; this file
+> is kept as the record of the run as it was written.
+
 
 # Claude Code meta-configuration — multi-seat research loop
 
@@ -57,4 +67,4 @@ _No grader was reachable for these._
 
 ## Adversarial review
 
-None: no grader seat was reachable in this run (codex and claude both failed their probe), so nothing was refuted. Every proposal above is UNGRADED. This file is a census of what the loop could see at 21:06Z, kept for the record; the graded runs are 2119Z and 2331Z.
+None: codex was LIVE and authored the proposals, but no seat answered as grader (claude failed its probe), so nothing was refuted. Every proposal above is UNGRADED. This file is a census of what the loop could see at 21:06Z, kept for the record; the graded runs are 2119Z and 2331Z.

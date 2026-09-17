@@ -117,11 +117,11 @@ suffix `.bak-ccmeta-20260917T035849Z`.
 | C2 | SHIPPED-HOME | allow rules 908 → 856; `claude -p` emits 0 wildcard warnings, was 21 |
 | S1 | OPEN — deliberate | 7 peer sessions, 4 busy at 12:5x on 2026-09-17; the flip is inherited by all of them. Command and rollback are known; it wants a quiet window. C3 closes into it |
 | A1 | PARTIAL | live seats went 1 → 2 (`codex`, `claude`) with no credential change, plus `nlm` and `jules`. `kimi`, every `tp1-*` and `qwen-cloud-code` are QUOTA_DEAD: that is a spend decision, owner Zero |
-| O1 | ARMED (report) · OPEN (OTEL) | `cc_context_cost_report.py` gives the number that did not exist: M5, 4 days, 47,493 turns, **10.35 B context tokens**, 217,824/turn. No OTEL collector yet |
+| O1 | REWORK (report) · OPEN (OTEL) | `cc_context_cost_report.py` gave a number — M5, 4 days, 47,493 turns, 10.35 B context tokens — that the gate on #6705 proved WRONG three ways: every main-repo session counted twice through the `~/.claude/projects` symlink (441 duplicated files), the window filtered on file mtime not record time, and `<session>/subagents/*.jsonl` (5,278 files, 36,406 turns in the window) never counted. The corrected figure ships with the #6705 successor (lane infra/cc-meta-loop-code-v2). No OTEL collector yet |
 | N1 | DECIDED | broker + MOS stay; native isolation only for read-only explorers; `memory:` not adopted — see decisions below |
 | N2 | PARTIAL | `ConfigChange` wired (H12); `WorktreeCreate`/`WorktreeRemove`/`PostToolBatch` still unused |
 | M1 | ARMED | `m5_block_heavy_brew.py` now reports `exit_codes=[0, 2]`, was `[2]` — the false accusation is gone |
-| M2 | ARMED | the report prints its grading regime; 1 seat refuses to grade |
+| M2 | CAUSE CORRECTED (row L2) | the report prints its grading regime — but "one reason stamped onto 8 verdicts" was NOT the 2-seat regime: it was an id collision (L2). The regime label stays; the attribution in the M2 row above is superseded |
 
 ### Found by walking into them (new rows)
 
@@ -254,7 +254,7 @@ live sessions (4 busy) — same quiet-window rule as S1.
 
 A `prompt` hook is one model call per firing. On a `PreToolUse` guard that fires per Bash call
 it would add ~2-4 s and thousands of tokens on top of the 364 ms above, on a machine that
-measured 47,493 turns in 4 days (O1). Decision: no hot-path guard is converted. The one place
+measured 47,493 main-session turns in 4 days by the first cut of O1 (a figure the gate later showed undercounts subagents and double-counts the symlinked project — the order of magnitude, not the digit, is what this decision rests on). Decision: no hot-path guard is converted. The one place
 where a model's judgement beats a regex AND the event is rare is `SubagentStop`
 (`subagent_stop_verify.py` grades a child's report once per child); it is the candidate for the
 first conversion, when a real regex-guessing defect is recorded against it — converting without
@@ -275,10 +275,10 @@ MOS is one FTS5 store with a SessionStart recall hook. Decision: MOS stays; `mem
 
 ### C3 — `--dangerously-skip-permissions` sites → the census was 3, the grep says 11; subsumed by S1
 
-`grep` over `scripts/ infra/ apps/` (tests, lints, docs excluded): 11 invocations carry the
+`grep` over `scripts/ infra/ apps/` (tests, lints, docs excluded): 12 invocations carry the
 flag, not 3 — `wr2_canva_headless_apply.py`, `organ_birth.py` (template for every organ
 wrapper), `wa_army_launcher.sh`, `tdd_pipeline.py` ×2, `healer-run.sh`, `pro-healer.sh`,
-`core_guardian/surgeon.py`, `auto_verifier.py`, `verified_generator.py`, plus
+`core_guardian/surgeon.py`, `auto_verifier.py`, `verified_generator.py`, `modus_autoloop.py:236` (found by the gate, missed by the first grep), plus
 `nb-curator-daily.sh` and `agy_code_dispatch.py` which pass it to the Gemini CLI, not to
 `claude`. Every `claude` site is an agentic unattended seat that must call tools without a
 person present: the flag is load-bearing at each of them, and
@@ -306,3 +306,12 @@ that only shrinks, and fails CI on any NEW unrestricted invocation.
 | id | surface | intervention | risk | status | proof required |
 |---|---|---|---|---|---|
 | L1 | loop | `cc_meta_research_loop.py` writes REPORT.md without the R1 frontmatter (`adversarial_review:` + an `## Adversarial review` section); the three reports in this PR carry it by hand, built from each run's verdicts.json. The writer must emit it itself, naming the grader seats it actually used — or `exempt-...` when no grader was live | low | OPEN — #6705 is frozen (armed); successor from fresh main | a fresh run's REPORT.md passes `scripts/check_adversarial_review.py --files` unedited |
+
+### Found by the final gates on #6705 and #6706 (2026-09-17)
+
+| id | surface | intervention | risk | status | proof required |
+|---|---|---|---|---|---|
+| L2 | loop | `cc_meta_research_loop.py` scrubs each raw answer BEFORE parsing; `arsenal_probe.scrub`'s catch-all `[A-Za-z0-9._\-]{24,}` → `<REDACTED>` eats every proposal id ≥ 24 chars, proposals/verdicts are dict-keyed by id, so entries collide and REPORT.md attaches verdicts to the wrong proposals (2119Z: 14 of 15 ids collapsed; 2331Z: 14 of 16; 2106Z: 7 of 8). This — not the 2-seat regime — is why "one reason was stamped onto 8 verdicts" (M2). Cure: parse first, scrub only free-text values, refuse duplicate ids | low | IN REWORK — #6705 successor | a run whose proposals have 30-char ids yields distinct keys; the three shipped REPORTs carry a reader's warning naming this row |
+| L3 | loop | `write_report()` prints the PROBE status as reachability: under `--no-probe` a seat that authored and graded every proposal is printed `SKIPPED_PROBE — hole in this report` | low | IN REWORK — #6705 successor | a `--no-probe` run's seat table says LIVE for every seat that answered |
+| C1c | context | the context-diet lint's engine anchors on a literal `-p`/`--print` near the `claude` anchor; an invocation built through an argument array (`CLAUDE_ARGS=("--print")` … `"$CLAUDE_BIN" "${CLAUDE_ARGS[@]}"`, i.e. `infra/launchagents/wrappers/claude-cascade.sh`, entry point of 11 cron wrappers) is neither flagged nor grandfathered | low | OPEN | the wrapper carries a per-job `CLAUDE_CONTEXT_DIET` choice, or the lint learns the array shape; either way one of the 11 jobs measured before/after |
+| P1 | preflight | `scripts/preflight_pack.sh` (#68fa8d1f14, today) runs `actionlint` WITH shellcheck and refused a push on three pre-existing SC2221 warnings in `immune-enforcement.yml`; CI runs `actionlint -shellcheck=` and is green on them — a local gate stricter than the CI it claims to mirror ("CI will reproduce it exactly" is false here) | none | OPEN — one-line fix | the preflight calls `actionlint -shellcheck=`; a push of a workflow file with an SC-only warning passes locally as it does in CI |

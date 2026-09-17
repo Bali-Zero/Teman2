@@ -5,7 +5,14 @@ task: >-
   and the on-disk gap verification (GAPS-VERIFIED). The per-run machine-config snapshot
   (`inventory.json`) is regenerable and carries this machine's hook/path layout: it is
   gitignored here, not shipped. The scripts are PR #6705; the hook cures merged in #6700.
-lane: docs/cc-meta-loop-research
+lane: docs/cc-meta-loop-research-v2
+successor_of: "#6706 — REWORK-BUILD by the final gate on 7c22d042 (fresh Opus session, 31 turns)"
+rework:
+  - "finding: the loop scrubbed raw answers before parsing, proposal ids >=24 chars collapsed to <REDACTED>, verdicts attached to wrong proposals in the shipped REPORTs → cure: each REPORT opens with a reader's warning carrying its own collision count (2106Z 7/8, 2119Z 14/15, 2331Z 14/16), BACKLOG row L2 names the cause, M2's attribution corrected; the code fix rides the #6705 successor"
+  - "finding: seat tables print SKIPPED_PROBE for seats that authored and graded → cure: same warning names it; BACKLOG row L3"
+  - "finding: 2106Z review sentence said both seats failed their probe while the table shows codex LIVE → cure: sentence corrected (codex authored, no grader answered)"
+  - "finding: O1 figure (47,493 turns / 10.35 B) not reproducible: symlink double-count, mtime window, subagents missing → cure: O1 row marked REWORK, figure superseded by the #6705 successor"
+  - "finding: C3 count 11 and missed scripts/modus_autoloop.py:236 → cure: 12, site added"
 machine: Air-M5
 date: 2026-09-17
 gear: 2
@@ -21,7 +28,7 @@ acceptance:
   A1: >-
     Every research/**/*.md in the diff passes the R1 gate.
     probe: python3 scripts/check_adversarial_review.py --files research/agent-craft/cc-meta-loop/*.md research/agent-craft/cc-meta-loop/*/REPORT.md
-    observed: "PASS — 5 research file(s) carry a valid adversarial review (one NOTICE: the 21:06Z run is exempt, no grader was live)"
+    observed: "PASS — 5 research file(s) carry a valid adversarial review (one NOTICE: the 21:06Z run is exempt, no grader answered) — re-run 2026-09-17 14:0x on the successor"
   A2: >-
     No machine-config snapshot ships: the diff contains no inventory.json and the ignore
     rule matches the path (positive control: git check-ignore prints it).
