@@ -217,6 +217,8 @@ CASES: dict[str, list[tuple[dict, str, str]]] = {
         (bash("pytest -xq bigdir"), "ALLOW", "C41: -q inside a flag cluster"),
         (bash("npx jest -q"), "ALLOW", "C46 counterpart: npx jest -q"),
         (bash("ssh pro 'git log'"), "ALLOW", "C55: remote dispatch runs off-box"),
+        (bash("cat big.log | sed -n '1,40p'"), "ALLOW", "C62: quoted sed -n range still bounds"),
+        (bash("cat big.log | awk 'NR<=20'"), "ALLOW", "C63: quoted awk NR still bounds"),
     ],
     # ---- orchestrate_gate.py (Bash/Edit/Write) — never blocks short/dispatched sessions
     # Without a long transcript on stdin it cannot reach the block branch → ALLOW.
