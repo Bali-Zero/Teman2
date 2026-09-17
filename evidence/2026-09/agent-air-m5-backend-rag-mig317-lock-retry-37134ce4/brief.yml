@@ -1,0 +1,122 @@
+task_id: mig317-lock-retry
+gear: 3
+l_level: L1
+gate_class: sonnet
+# Floor measured this session: `python3 scripts/evidence_pack_lint.py --print-floor
+# --print-floor-source --numstat-file <numstat> --changed-files-file <changed>` on the
+# staged diff returns `3` / `hotzone`. Sourced from HOTZONE_PATTERNS containing
+# `apps/backend-rag/backend/db/migrations_v2/*` — an unconditional hot-zone: touching ANY
+# file in that directory floors at 3 regardless of diff size or whether the change is a
+# genuine cure of existing content versus new content. The diff itself is small (two files,
+# no new tables, no new endpoints) and would floor at 1 by size/path alone; the coordinating
+# session (team-lead) confirmed there is no ORANGE exception for a hot-zone hit and directed
+# building this pack rather than seeking one.
+#
+# UPDATED IN PLACE for a second commit (70e6771122) on the same branch, same task_id: a
+# Codex gpt-6-astra adversarial review (xhigh) of the first cure (37134ce469) found F2/F5
+# BLOCKING and F3/F4/F7 SHOULD-FIX, disposed FIX-FIRST by the coordinating session. See
+# pack.yml's outcome/dissent/receipts for the full second-round record.
+objective: >-
+  Cure migration 317 (apps/backend-rag/backend/db/migrations_v2/317_visa_oracle_sessions_
+  retention_30d.sql) so its ALTER COLUMN ... SET DEFAULT statements (forward: 30 days,
+  rollback: 90 days) survive a long-lived competing lock instead of failing the whole
+  backend deploy lane. PROD incident (Fly release v4472/v4473, 2026-09-17), verbatim from
+  the deploy log: "Failed to apply migration 317: SQL execution failed: canceling statement
+  due to lock timeout" — caused by a multi-hour pg_dump backup holding AccessShareLock on
+  the table while the original single `SET lock_timeout = '5s'` waited once and lost. 317
+  never reached `_schema_versions`, so every subsequent `apply-all` retried the identical
+  losing wait.
+constraints:
+  - >-
+    File scope is literal: only the 317 .sql file and its existing static test file
+    (backend/tests/db/test_migration_317_visa_oracle_sessions_retention.py). No change to
+    migration 318, migration_manager.py, migration_base.py, fly.toml, .env*, or
+    zantara_core.py.
+  - >-
+    The whole retry loop must fit inside the file's own `statement_timeout = '60s'`: a
+    `DO $$ ... $$` block is ONE statement to migration_base.py::apply(), which sends the
+    entire forward SQL as one `conn.execute()` inside one transaction on a dedicated
+    `asyncpg.connect()` (not the pool that sets `command_timeout=60`) — so the server-side
+    statement_timeout is the only ceiling that applies.
+  - >-
+    On exhaustion the migration must RAISE, never skip, and must name the blocker
+    (pid/usename/application_name via pg_locks joined to pg_stat_activity — never
+    query/state, which a non-superuser cannot read for another backend's session).
+  - >-
+    No client PII anywhere in the migration, the test, or this pack. No secrets echoed.
+acceptance:
+  - text: >-
+      A1: WHEN migration 317 applies against a table with no competing lock, THE forward
+      ALTER SHALL succeed within the retry budget and `information_schema.columns` SHALL
+      report `column_default` for `visa_oracle_sessions.expires_at` as `now() + '30 days'`.
+    probe: >-
+      fresh throwaway PostgreSQL 17.10 database
+  - text: >-
+      A2: WHERE a competing backend holds ACCESS SHARE on the table for LONGER than the
+      retry budget (~42.0s worst case, recomputed and shrunk from ~38.5s after the F2-F5
+      Codex-review cures), THE migration SHALL fail only after exhausting its attempts
+      (exactly 15), and its error text SHALL name the blocking backend's pid, usename and
+      application_name — and a concurrent write to the table SHALL NOT be blocked for the
+      loop's duration (F5: the index-guard removes the ShareLock a bare CREATE INDEX IF NOT
+      EXISTS would otherwise hold throughout).
+    probe: >-
+      GUILT (cured): under the same lock held LONGER than the retry budget
+  - text: >-
+      A3: WHERE a competing lock is released WITHIN the retry budget, THE migration SHALL
+      succeed and the column default SHALL flip to 30 days.
+    probe: >-
+      INNOCENCE (cured): a lock released WITHIN the retry budget lets the cured migration
+  - text: >-
+      A4: WHEN the ORIGINAL (uncured) migration from origin/main is applied under the same
+      long-held lock, THE failure text SHALL be the plain single-wait message with no
+      blocker named — reproducing the PROD incident exactly, so the cure's behavior change
+      IS the delta this PR ships.
+    probe: >-
+      GUILT (original, byte-identical to origin/main): under a competing ACCESS SHARE lock
+  - text: >-
+      A5: WHERE the rollback SQL (extracted by migration_base.py's `-- === ROLLBACK ===`
+      marker) is run through `MigrationManager.rollback_migration`, THE same retry/blocker-
+      naming/success shape SHALL hold symmetrically, restoring the 90-day default on success
+      and leaving both ledgers untouched on failure.
+    probe: >-
+      rollback path (MigrationManager.rollback_migration, not exposed via migrate.py's CLI)
+  - text: >-
+      A6: WHEN the full migration corpus is applied end-to-end (bootstrap + all 300+
+      migrations_v2 files) against a fresh database, THE run SHALL exit 0 with 317 recorded
+      in `_schema_versions`.
+    probe: >-
+      python3 -m backend.db.migrate apply-all
+  - text: >-
+      A7: WHEN the extended test file (14 tests: static + 2 live-Postgres concurrency) runs,
+      ALL assertions SHALL pass, including that both ALTER statements sit inside a
+      `DO $$ ... $$` retry block, ONLY `lock_not_available` is caught (not
+      `query_canceled`, removed per F2), both indexes are guarded behind a `pg_indexes`
+      existence check rather than a bare `CREATE INDEX IF NOT EXISTS` (F5), the
+      blocker-naming RAISE reads pg_locks/pg_stat_activity (filtered to `l.granted` and
+      `a.datname = current_database()`, F4) without touching query/state, and the exact
+      budget constants (15 attempts, 500ms lock_timeout, 3s backoff cap) are pinned per
+      direction.
+    probe: >-
+      backend/tests/db/test_migration_317_visa_oracle_sessions_retention.py
+assumptions:
+  - text: >-
+      migration_base.py::apply() sends the whole forward SQL as one conn.execute() inside
+      one transaction on a dedicated (non-pooled) asyncpg connection, so no client-side
+      command_timeout applies to this migration's retry loop.
+    status: verified
+    probe: read migration_base.py lines ~825-905 this session; behavior reproduced live
+  - text: >-
+      a lock_timeout cancellation on this PostgreSQL version (17.10) raises SQLSTATE
+      lock_not_available (55P03); query_canceled (57014) is kept only as a documented
+      fallback.
+    status: verified
+    probe: reproduced directly via psql against the throwaway cluster this session
+  - text: >-
+      the two hot-zone-triggering files in this diff carry no regulatory/legal claim of
+      their own (no visa rule, no KBLI code, no price, no tax rate) — the change is purely
+      operational (lock-retry mechanics on an existing, already-reviewed retention default).
+    status: verified
+    probe: read the full diff this session; the two changed files do not match
+      GROUND_TRUTH_PATH_PATTERNS in scripts/evidence_pack_lint.py
+appetite:
+  wall_clock_hours: 3
