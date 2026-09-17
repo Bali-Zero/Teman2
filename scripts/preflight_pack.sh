@@ -19,9 +19,13 @@
 # frontmatter. Two different objects. This script sits ABOVE quickcheck in the
 # hook, blocks, and leaves quickcheck's `|| true` exactly as it is.
 #
-# SCOPE, deliberately narrow. It runs a check ONLY when the push actually
-# carries the files that check governs. A push touching none of them exits 0
-# in silence, so existing traffic is untouched.
+# WHAT IT RUNS (slice 2, contract_verify): nothing of its own. The predicate is
+# DATA — scripts/ci/contract_checks.yml, one row per REQUIRED CI context that
+# has killed a PR, each naming the script CI itself runs — executed by
+# scripts/contract_verify.py --local. A row runs ONLY when the push carries the
+# files it governs; a floor-1 push touching nothing governed exits 0 in silence.
+# The replay fixture (scripts/tests/fixtures/contract_replay_expected.yml) pins
+# that table to what CI actually judged on the closed heads.
 #
 # FAIL-OPEN ON INFRASTRUCTURE, FAIL-CLOSED ON VERDICTS — declared, not implied.
 # A check that RUNS and FAILS refuses the push. A check that CANNOT run (no
@@ -69,74 +73,69 @@ preflight_changed_files() {
     fi
 }
 
+preflight_span() {
+    # $1 = refs file. Echoes "BASE HEAD" when the push carries exactly ONE ref
+    # (the normal case), so contract_verify gets a numstat-bearing diff and the
+    # floor's SIZE term is asserted; echoes nothing for a multi-ref or unusable
+    # push, and the caller falls back to the file union with a path-only floor.
+    local refs_file="${1:-}" zero="0000000000000000000000000000000000000000"
+    local n=0 sha="" base
+    if [ -n "$refs_file" ] && [ -s "$refs_file" ]; then
+        while read -r local_ref local_sha remote_ref remote_sha; do
+            [ -z "${local_ref:-}" ] && continue
+            [ "${local_sha:-}" = "$zero" ] && continue
+            [ -z "${local_sha:-}" ] && continue
+            n=$((n + 1)); sha="$local_sha"
+        done < "$refs_file"
+    fi
+    [ "$n" -eq 0 ] && sha="HEAD" && n=1
+    [ "$n" -ne 1 ] && return 0
+    base="$(git -C "$PREFLIGHT_ROOT" merge-base origin/main "$sha" 2>/dev/null)" || return 0
+    [ -n "$base" ] && printf '%s %s' "$base" "$sha"
+}
+
 preflight_run_checks() {
-    # Reads the changed-file list on STDIN (one path per line). Returns 0 when
-    # nothing is wrong or nothing applies, 1 when a check ran and FAILED.
-    local files research workflows packs rc=0 out
+    # Reads the changed-file list on STDIN (one path per line) and hands it to
+    # the ONE predicate: scripts/contract_verify.py --local over the table in
+    # scripts/ci/contract_checks.yml. Returns 0 when nothing is wrong or nothing
+    # applies, 1 when a check ran and FAILED. This function owns no check of its
+    # own any more (slice 2): a check hard-coded here would be a second predicate,
+    # and two predicates drift — the replay fixture pins the table to CI, it
+    # cannot pin a bash function.
+    local files out rc=0
     files="$(cat)"
+    [ -z "$files" ] && return 0
 
-    research="$(printf '%s\n' "$files" | grep -E '^research/.*\.md$' || true)"
-    workflows="$(printf '%s\n' "$files" | grep -E '^\.github/workflows/' || true)"
-    packs="$(printf '%s\n' "$files" | grep -E '^evidence/.*/pack\.ya?ml$' || true)"
-
-    if [ -z "$research" ] && [ -z "$workflows" ] && [ -z "$packs" ]; then
-        return 0   # silence: this push carries nothing these checks govern
+    if ! command -v python3 >/dev/null 2>&1; then
+        echo "   ⚠️  preflight_pack INCONCLUSIVE — no python3 on PATH; the contract table cannot run."
+        return 0
+    fi
+    if [ ! -f "$PREFLIGHT_ROOT/scripts/contract_verify.py" ]; then
+        echo "   ⚠️  preflight_pack INCONCLUSIVE — scripts/contract_verify.py is not in this tree."
+        return 0
     fi
 
-    echo "🛡  preflight_pack — checking what CI would red on (skip: PREFLIGHT_PACK_SKIP=1)"
-
-    if [ -n "$research" ]; then
-        if ! command -v python3 >/dev/null 2>&1; then
-            echo "   ⚠️  [R1] INCONCLUSIVE — no python3 on PATH; cannot check research frontmatter."
-        else
-            # shellcheck disable=SC2086
-            if out="$(cd "$PREFLIGHT_ROOT" && printf '%s\n' "$research" | xargs python3 scripts/check_adversarial_review.py --files 2>&1)"; then
-                echo "   ✅ [R1] research frontmatter OK ($(printf '%s\n' "$research" | grep -c .) file(s))"
-            else
-                echo "   ❌ [R1] adversarial-review frontmatter — this push would red the REQUIRED check 'R1 gate — adversarial review present':"
-                printf '%s\n' "$out" | sed 's/^/        /'
-                rc=1
-            fi
-        fi
+    if [ -n "${PREFLIGHT_SPAN:-}" ]; then
+        # shellcheck disable=SC2086
+        out="$(CONTRACT_VERIFY_ROOT="$PREFLIGHT_ROOT" python3 "$PREFLIGHT_ROOT/scripts/contract_verify.py" --local --span $PREFLIGHT_SPAN 2>&1)"; rc=$?
+    else
+        out="$(printf '%s\n' "$files" | CONTRACT_VERIFY_ROOT="$PREFLIGHT_ROOT" python3 "$PREFLIGHT_ROOT/scripts/contract_verify.py" --local --files-from - 2>&1)"; rc=$?
     fi
 
-    if [ -n "$packs" ]; then
-        if ! command -v python3 >/dev/null 2>&1; then
-            echo "   ⚠️  [BITES] INCONCLUSIVE — no python3 on PATH."
-        else
-            while IFS= read -r pack; do
-                [ -z "$pack" ] && continue
-                if out="$(cd "$PREFLIGHT_ROOT" && python3 scripts/ci/bites_parse.py --pack "$pack" 2>&1)"; then
-                    echo "   ✅ [BITES] $pack parses"
-                else
-                    echo "   ❌ [BITES] $pack — this push would red the Harness floor pack lint:"
-                    printf '%s\n' "$out" | sed 's/^/        /'
-                    rc=1
-                fi
-            done <<< "$packs"
-        fi
-    fi
-
-    if [ -n "$workflows" ]; then
-        if ! command -v actionlint >/dev/null 2>&1; then
-            echo "   ⚠️  [actionlint] INCONCLUSIVE — actionlint not installed."
-        elif out="$(cd "$PREFLIGHT_ROOT" && actionlint 2>&1)"; then
-            echo "   ✅ [actionlint] .github/workflows/ clean"
-        else
-            echo "   ❌ [actionlint] .github/workflows/ — this push would red the workflow lint:"
-            printf '%s\n' "$out" | sed 's/^/        /'
-            rc=1
-        fi
+    if [ -n "$out" ]; then
+        echo "🛡  preflight_pack — scripts/ci/contract_checks.yml against this push (skip: PREFLIGHT_PACK_SKIP=1)"
+        printf '%s\n' "$out"
     fi
 
     if [ "$rc" -ne 0 ]; then
         echo ""
-        echo "   ⛔ PUSH REFUSED. Every red above is DETERMINISTIC: CI will reproduce it exactly."
+        echo "   ⛔ PUSH REFUSED. Every red above is DETERMINISTIC: CI runs the same script on the same files."
         echo "      Fix it here — it is one commit. After arming, the branch is frozen and the"
         echo "      same fix costs a closed PR and a successor (7 of 47 attempts in the audited window)."
         echo "      Override, if you know why: PREFLIGHT_PACK_SKIP=1 git push ..."
+        return 1
     fi
-    return "$rc"
+    return 0
 }
 
 [ "${PREFLIGHT_PACK_LIB:-0}" = "1" ] && return 0 2>/dev/null
@@ -144,6 +143,7 @@ preflight_run_checks() {
 main() {
     [ "${PREFLIGHT_PACK_SKIP:-0}" = "1" ] && { echo "🛡  preflight_pack SKIPPED (PREFLIGHT_PACK_SKIP=1)"; return 0; }
     command -v git >/dev/null 2>&1 || { echo "⚠️  preflight_pack INCONCLUSIVE — no git on PATH."; return 0; }
+    PREFLIGHT_SPAN="$(preflight_span "${1:-}")"
     preflight_changed_files "${1:-}" | sort -u | preflight_run_checks
 }
 

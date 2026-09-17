@@ -1,0 +1,48 @@
+task_id: contract-replay-20260917
+gear: 2
+l_level: L1
+gate_class: opus
+objective: >-
+  Slice 2 of the SAETTA successor (sota-workflow-scan 2026-09-16, Zero "go" 2026-09-17
+  04:39): the preflight's predicate becomes DATA. scripts/ci/contract_checks.yml carries
+  one row per REQUIRED CI context that actually killed a PR in #6633..#6682, each naming
+  the script CI itself runs (or an honest `remote_only:` reason); scripts/contract_verify.py
+  runs that table identically for every caller (--local for the pre-push hook, --head for a
+  sha, --replay to classify closed heads against what CI recorded). Slice 1's three
+  hard-coded bash checks are deleted from scripts/preflight_pack.sh, which now delegates to
+  --local — two predicates drift, one cannot.
+
+  The fixture scripts/tests/fixtures/contract_replay_expected.yml pins the verdict on the
+  eight closed heads plus the two cures, and scripts/tests/test_contract_replay.py reds the
+  day the table drifts from CI. Gear is 2 by the SIZE term alone (773 net lines, no hot-zone
+  path); the fixture directory is excluded from that count by evidence_pack_lint's own rule.
+constraints:
+  - >-
+    No workflow file is touched. Wiring the replay test into a required context is the
+    report's item 7, its own serialized hot-zone PR; here the consumers are the pre-push
+    hook (live on every push) and the nightly scripts/tests sweep (report-only).
+  - >-
+    Every `checks:` row invokes the script CI runs — never a re-implementation. The two
+    builtins (floor_brief, pack_lint) only stage inputs and call evidence_pack_lint.py /
+    evidence_paths.py with harness-floor.yml's own argv.
+  - >-
+    Fail-open on infrastructure (missing binary, missing PyYAML → INCONCLUSIVE, exit 0 in
+    --local), fail-closed on verdicts — the posture slice 1 declared, unchanged.
+  - >-
+    --post-merge (observer from the merge checkout) is NOT in this slice; it is slice 3's
+    third read and is stated as absent, not implied.
+acceptance:
+  - >-
+    WHEN --replay --expect runs over the ten pinned heads, THEN every verdict matches the
+    fixture: RED on #6664/#6665 (R1), #6670/#6676 (Harness floor), #6655 (antidotes);
+    GREEN on the cures #6666/#6667; NOT-LOCALLY-PREVENTABLE on #6673.
+    probe: python3 -m pytest scripts/tests/test_contract_replay.py -q
+  - >-
+    WHEN a push carries a research file without adversarial_review:, or a hot-zone path
+    without a brief, THEN the hook refuses it naming the exact CI context; WHEN the diff is
+    unrelated, THEN it prints nothing. probe: bash scripts/tests/test_preflight_pack.sh
+  - >-
+    WHEN the table has a row with both/neither of checks:/remote_only:, or an unknown
+    builtin or files: mode, THEN the loader refuses it.
+    probe: python3 scripts/contract_verify.py --selftest
+pii_scan: clean

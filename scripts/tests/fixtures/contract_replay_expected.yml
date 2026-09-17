@@ -1,0 +1,90 @@
+# contract_replay_expected.yml — the eight PRs closed unmerged in the audited
+# window (#6633..#6682, 2026-09-16) plus the two successors that shipped the
+# byte-identical content with the one-line cure. Head shas are PINNED (a PR
+# head is immutable by sha; `refs/pull/N/head` re-fetches it on any clone) and
+# `ci_red:` is what GitHub recorded, read with
+#   gh pr view N --json headRefOid,statusCheckRollup
+# on 2026-09-17 — never attested by a session.
+#
+# `expect:` is the verdict scripts/contract_verify.py --replay must reproduce
+# for each context. RED = the preflight would have refused the push; GREEN = the
+# cure passes; NOT-LOCALLY-PREVENTABLE = honest, no local run could have seen it.
+# Consumer: scripts/tests/test_contract_replay.py — it reds the day the table in
+# scripts/ci/contract_checks.yml drifts from what CI actually judges.
+heads:
+  6650:
+    sha: 9f7e20b21b71edf7b0222e936d819d5b80834c01
+    ci_red: ["E2E Tests (Playwright)", "Test Summary"]
+    expect:
+      "E2E Tests (Playwright)": NOT-LOCALLY-PREVENTABLE
+      "R1 gate — adversarial review present": GREEN
+      "Harness floor recompute": GREEN
+  6655:
+    sha: 311755b5d4cf60573afc8c9ec6bcd33b02697391
+    ci_red: ["antidotes"]
+    expect:
+      antidotes: RED # PENDING-ARMS.md entry with 2 pipe segments (need >= 3)
+      "R1 gate — adversarial review present": GREEN
+  6660:
+    sha: 81a0a0d48596093a76018a701478e9d01de2e187
+    ci_red: ["Backend Shard 3", "Backend Tests (Python)", "Test Summary"]
+    expect:
+      "Backend Tests (Python)": NOT-LOCALLY-PREVENTABLE
+      "Harness floor recompute": GREEN
+  6664:
+    sha: 43820ec7470e4bda2fb0579e27e114fcfa37f588
+    ci_red: ["R1 gate — adversarial review present"]
+    expect:
+      "R1 gate — adversarial review present": RED # research report, no adversarial_review: key — died after 6 min
+      "Harness floor recompute": GREEN
+  6665:
+    sha: cf1f34e13f3926aca61975d2d5c391c864aa5025
+    ci_red: ["R1 gate — adversarial review present", "harness/fable-gate"]
+    expect:
+      "R1 gate — adversarial review present": RED # same cause, 2 of 2 files — died after 4 min
+      "harness/fable-gate": NOT-LOCALLY-PREVENTABLE
+      "Harness floor recompute": GREEN
+  6666:
+    sha: ed7ba6d463b8f97c9658e63594950e7078394175
+    ci_red: []
+    expect: # the cure of #6664: merged 18:03Z
+      "R1 gate — adversarial review present": GREEN
+      "Harness floor recompute": GREEN
+      antidotes: GREEN
+  6667:
+    sha: f1344050e953ec9133d719312cbd5838b045abbb
+    ci_red: []
+    expect: # the cure of #6665: merged 17:57Z
+      "R1 gate — adversarial review present": GREEN
+      "Harness floor recompute": GREEN
+      antidotes: GREEN
+  6670:
+    sha: 8b297409c1569fc6f10252ed977af27b56b2ab45
+    ci_red: ["Harness floor recompute"]
+    expect:
+      "Harness floor recompute": RED # floor 3 (size), no evidence/brief.yml in the diff
+      "R1 gate — adversarial review present": GREEN
+  6673:
+    sha: 9b30782aae468f8eeeaf949f4f5035bff34af47c
+    ci_red: ["Harness floor recompute"]
+    expect:
+      "Harness floor recompute": NOT-LOCALLY-PREVENTABLE # base-checkout defect: observe: script exists only at HEAD
+      "R1 gate — adversarial review present": GREEN
+  6676:
+    sha: 1fa61d0a923f6f6eb34365264b8aaec90de21cae
+    ci_red:
+      [
+        "Backend Shard 1",
+        "Backend Shard 2",
+        "Backend Shard 3",
+        "Backend Tests (Python)",
+        "Harness floor recompute",
+        "Test Summary",
+        "harness/fable-gate",
+        "prettier --check (changed files)",
+      ]
+    expect:
+      "Harness floor recompute": RED # evidence_pack_lint: gear 2 below floor 3 + two wrong countable claims
+      "Backend Tests (Python)": NOT-LOCALLY-PREVENTABLE
+      "harness/fable-gate": NOT-LOCALLY-PREVENTABLE
+      "R1 gate — adversarial review present": GREEN

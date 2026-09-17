@@ -1,0 +1,99 @@
+# contract_checks.yml — the FROZEN predicate the preflight runs, as DATA.
+#
+# One row per REQUIRED CI context that actually KILLED a PR in the audited window
+# (#6633..#6682, 2026-09-16, 7.96h, 47 attempts, 8 closed unmerged). Each `checks:`
+# row names the script CI itself runs — never a re-implementation — so a local
+# PASS and a CI PASS are the same predicate on the same code. A row that names
+# nothing local says WHY under `remote_only:`; the loader refuses a row that does
+# both or neither. The replay fixture (scripts/tests/fixtures/
+# contract_replay_expected.yml) pins the verdict every `killed:` head must
+# reproduce, and reds the day this table drifts from CI.
+#
+# Consumers: scripts/preflight_pack.sh (--local, from .husky/pre-push) and
+# scripts/contract_verify.py --replay/--head. Edit here, never in the callers.
+#
+# `governs:` globs: `**` crosses directories, `*` does not. A row whose governed
+# set is empty in a diff does not run and prints nothing (slice 1's silence).
+# `files:` for argv rows — append (governed files after argv), each (one run per
+# governed file), none (argv alone).
+version: 1
+window: "#6633..#6682 (2026-09-16)"
+contexts:
+  - context: "R1 gate — adversarial review present"
+    workflow: .github/workflows/adversarial-review-gate.yml
+    killed: [6664, 6665]
+    checks:
+      - id: r1-frontmatter
+        governs: ["research/**/*.md"]
+        argv: ["python3", "scripts/check_adversarial_review.py", "--files"]
+        files: append
+
+  - context: "Harness floor recompute"
+    workflow: .github/workflows/harness-floor.yml
+    killed: [6670, 6673, 6676]
+    # #6673 is the honest NOT-LOCALLY-PREVENTABLE: CI parses the pack with the
+    # BASE checkout's allow-list, where a HEAD-only observe: script does not
+    # exist and the block is "malformed". At HEAD the same pack parses clean.
+    checks:
+      - id: bites-pack-parses
+        governs: ["evidence/**/pack.yml", "evidence/**/pack.yaml"]
+        argv: ["python3", "scripts/ci/bites_parse.py", "--pack"]
+        files: each
+      - id: floor-needs-brief
+        # Steps 3 + 5b + 7a: evidence_pack_lint --print-floor over the diff, then
+        # "does THIS diff carry the resolved brief". Floor >= 2 without one = red.
+        governs: ["**"]
+        builtin: floor_brief
+        quiet: true # every push has a floor; a floor-1 PASS says nothing
+      - id: pack-lint
+        # Step 7b: stage this diff's pack + brief and run evidence_pack_lint with
+        # CI's own argv (--source-path, --brief-source-path, --numstat-file).
+        governs: ["evidence/**/pack.yml", "evidence/**/brief.yml"]
+        builtin: pack_lint
+
+  - context: "harness/fable-gate"
+    killed: [6665]
+    remote_only: "a commit status posted on the exact head sha by a FRESH gate session (scripts/harness_fable_gate.py); by construction nothing in the contributing session can produce it"
+
+  - context: "antidotes"
+    workflow: .github/workflows/immune-enforcement.yml
+    killed: [6655]
+    checks:
+      - id: retracted-claims
+        # CI runs --all (14 s on M5); the preflight runs --files over the diff's
+        # markdown, which is the same lint on the only files this push can change.
+        governs: ["**/*.md"]
+        argv: ["python3", "scripts/lint_retracted_claims.py", "--files"]
+        files: append
+      - id: pending-arms-ledger-shape
+        governs: [".claude/skills/modus/PENDING-ARMS.md"]
+        argv:
+          [
+            "python3",
+            "-m",
+            "pytest",
+            "-q",
+            "-p",
+            "no:cacheprovider",
+            "scripts/tests/test_pending_arms_ref.py",
+            "scripts/tests/test_pending_arms_report.py",
+          ]
+        files: none
+
+  - context: "Backend Tests (Python)"
+    killed: [6660, 6676]
+    remote_only: "pytest over apps/backend-rag/backend/tests needs minutes and services; the path-aware pre-push gate already runs the targeted subset — not a preflight-class check"
+
+  - context: "E2E Tests (Playwright)"
+    killed: [6650]
+    remote_only: "browser end-to-end against a built app — not reproducible inside a pre-push budget"
+
+  - context: "actionlint — workflow schema + expression gate"
+    # Carried over from preflight_pack v1 (#6701); nothing in the window died on
+    # it, it is kept because a workflow typo is the cheapest red there is.
+    killed: []
+    checks:
+      - id: actionlint
+        governs: [".github/workflows/**"]
+        argv: ["actionlint"]
+        files: none
