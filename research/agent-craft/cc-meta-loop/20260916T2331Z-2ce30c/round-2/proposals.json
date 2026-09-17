@@ -1,0 +1,98 @@
+[
+ {
+  "id": "claude:<REDACTED>",
+  "author": "claude",
+  "claim": "mailbox_inject.py is registered on global PostToolUse:* and Stop:* with emits_context true, so it re-injects mail content as additionalContext after every single tool call and at every Stop, not just twice per turn as the incident description implies.",
+  "surface": "hooks",
+  "why": "additionalContext returned by a hook is spliced into the model's context on every firing of that hook; a PostToolUse:* registration fires once per tool call (dozens of times in a long session), so any non-trivial payload it returns is paid dozens of times per turn. The fix is to move the read of new mail to a single low-frequency event (SessionStart, or UserPromptSubmit gated to fire once), and to return only an unread-count plus a file path in additionalContext, leaving the model to Read the file body on demand only when it decides the mail is relevant to the task.",
+  "expected_gain": "tokens: likely 10x-100x reduction in mail-related context cost per session, directly targets the reported 90,627-token blowup on a 4-token prompt",
+  "verification_command": "grep -n 'PostToolUse\\|Stop\\|hookSpecificOutput\\|additionalContext' ~/.claude/hooks/mailbox_inject.py | head -80",
+  "risk": "if the pointer omits enough detail (e.g. sender/subject), the model may not know when to bother reading the mail file and cross-machine coordination messages get silently ignored",
+  "confidence": "high",
+  "source": "reasoning"
+ },
+ {
+  "id": "claude:cc-status-not-a-hook",
+  "author": "claude",
+  "claim": "cc-status is registered as a PreToolUse/PostToolUse/UserPromptSubmit/etc. hook command with matcher '*' on all 9 global events, meaning it forks a new process on nearly every harness event including every tool call, purely to update an iTerm2 status line.",
+  "surface": "hooks",
+  "why": "a statusline update is presentation state, not something that needs to intercept the PreToolUse/PostToolUse blocking-hook pipeline; Claude Code has a dedicated statusLine mechanism (separate from the hooks array, invoked on its own cadence) that does not sit in the tool-call critical path. Running it as a PreToolUse/PostToolUse hook adds one subprocess spawn per tool call for output the model never consumes (emits_context:false, emits_decision:false for cc-status in the supplied data).",
+  "expected_gain": "latency: removes 1 subprocess fork+exec per tool call (of the ~16 handlers/call the orchestrator cites, this is likely the single largest fixed contributor since it's on every event)",
+  "verification_command": "grep -c 'cc-status' ~/.claude/settings.json; jq '.statusLine' ~/.claude/settings.json",
+  "risk": "if cc-status also does state bookkeeping only reachable via hook firing (not just rendering), moving it to statusLine-only could break whatever state it tracks across tool calls",
+  "confidence": "medium",
+  "source": "reasoning"
+ },
+ {
+  "id": "claude:<REDACTED>",
+  "author": "claude",
+  "claim": "global PostToolUse has two adjacent registrations, matcher 'Edit|Write' and matcher 'Edit|Write|Bash', both invoking a command labeled 'bash', so a plain Edit or Write tool call matches both entries and runs two separate bash subprocesses where one would do.",
+  "surface": "hooks",
+  "why": "Claude Code evaluates every matching hook entry for an event independently; overlapping matcher strings are not deduplicated by the harness, so both entries fire and both incur process-spawn cost for what is very likely the same or near-identical script logic.",
+  "expected_gain": "latency: removes 1 redundant subprocess spawn on every Edit/Write call",
+  "verification_command": "jq '.hooks.PostToolUse[] | select(.matcher|test(\"Edit\"))' ~/.claude/settings.json",
+  "risk": "if the two 'bash' entries actually run different scripts with different side effects despite the identical label in the reduced JSON, merging them could silently drop one behavior",
+  "confidence": "medium",
+  "source": "reasoning"
+ },
+ {
+  "id": "claude:<REDACTED>",
+  "author": "claude",
+  "claim": "the Notification hook list contains a registered entry whose script name is literally 'null' and whose path is the string '2>/dev/null', which is a shell redirection fragment stored as if it were an executable command, not a working hook.",
+  "surface": "hooks",
+  "why": "this indicates the Notification command array was likely built by string-splitting a compound shell command (e.g. 'real-command 2>/dev/null') into separate array entries during hook registration, leaving a dangling fragment that the harness will still attempt to spawn as its own process on every Notification event, producing an exec error each time even though it does no useful work.",
+  "expected_gain": "reliability + latency: removes a guaranteed-to-fail spawn attempt on every Notification event",
+  "verification_command": "jq '.hooks.Notification' ~/.claude/settings.json",
+  "risk": "none expected; this fragment cannot be doing useful work as a standalone command",
+  "confidence": "high",
+  "source": "reasoning"
+ },
+ {
+  "id": "claude:<REDACTED>",
+  "author": "claude",
+  "claim": "m5_block_heavy_brew.py is registered on global PreToolUse:Bash (a blocking event where exit 2 denies the tool call) and its recorded exit_codes list contains only [2], with no 0 path recorded, meaning on the static scan it never signals 'allow'.",
+  "surface": "hooks",
+  "why": "per Claude Code's PreToolUse contract, exit 0 lets the tool proceed and exit 2 blocks it with stderr shown to the model; a hook meant to block only 'heavy brew' commands must have a conditional exit-0 branch for the non-matching case, or every Bash call on this machine would be denied, which is inconsistent with the fleet's observed heavy cron/daemon Bash usage.",
+  "expected_gain": "reliability: rules out (or confirms and fixes) a hook that could be silently blocking a subset of Bash calls it wasn't meant to",
+  "verification_command": "grep -n 'sys.exit\\|exit(' ~/.claude/hooks/m5_block_heavy_brew.py",
+  "risk": "if the exit(0) path exists but wasn't captured by the static scan (e.g. implicit fallthrough returning None which the harness treats as exit 0), this proposal is a false alarm and no change is needed",
+  "confidence": "medium",
+  "source": "reasoning"
+ },
+ {
+  "id": "claude:<REDACTED>",
+  "author": "claude",
+  "claim": "project SessionStart runs 5 scripts in sequence (escalations_alert, proprioception, organism_digest, memory_recall, host_boundary_reminder) plus global cc-status and context_jump_resume.py, and at least 3 of the project ones (<REDACTED>, <REDACTED>, plus context_jump_resume.py globally) are recorded emits_context:true, meaning they unconditionally push additionalContext into every fresh session re",
+  "surface": "hooks",
+  "why": "SessionStart additionalContext is prepended to the model's context on every new session and every resume; on a 3-machine fleet running many concurrent sessions per day, a few KB of unconditional boilerplate per hook multiplied by every session start is recurring fixed overhead that a file-pointer (path + one-line summary, read on demand) would avoid paying unless the model actually needs the escalation/proprioception/host-boundary content that turn.",
+  "expected_gain": "tokens: cuts fixed per-session-start overhead; magnitude unknown without the actual payload sizes",
+  "verification_command": "for f in <REDACTED> <REDACTED>; do wc -c <(grep -A2 'additionalContext\\|hookSpecificOutput' $CLAUDE_PROJECT_DIR/scripts/hooks/$f 2>/dev/null); done",
+  "risk": "escalation alerts specifically may be intentionally unconditional because missing a live escalation is worse than a few hundred extra tokens; collapsing to a pointer could delay the model noticing a real incident",
+  "confidence": "low",
+  "source": "reasoning"
+ },
+ {
+  "id": "claude:<REDACTED>",
+  "author": "claude",
+  "claim": "the Stop event runs 4 separate 'python3' handlers plus cc-status (5 processes) on every Stop attempt, and two of those python3 scripts (stop_verify.py, seam_verify.py) additionally spawn their own child processes, so a single Stop can cost 7+ process creations before the turn is allowed to end.",
+  "surface": "hooks",
+  "why": "Stop is a blocking event (exit 2 forces the model to keep working), so every one of these 5 handlers is on the critical path of ending a turn; consolidating the independent verification checks (stop_verify, seam_verify, plus whatever the other two python3 Stop handlers do) into one dispatcher process that performs the checks as in-process function calls, spawning subprocesses only where a check genuinely needs a separate tool (e.g. git status), would cut the fork count without changing the blocking semantics.",
+  "expected_gain": "latency: fewer process spawns on the highest-frequency blocking event (every turn end)",
+  "verification_command": "jq '.hooks.Stop' ~/.claude/settings.json; grep -n 'subprocess\\|Popen\\|os.system\\|sys.exit(2)' ~/.claude/hooks/stop_verify.py ~/.claude/hooks/seam_verify.py",
+  "risk": "merging independently-authored verification scripts risks one script's uncaught exception silencing another's check if not isolated carefully",
+  "confidence": "medium",
+  "source": "reasoning"
+ },
+ {
+  "id": "claude:<REDACTED>",
+  "author": "claude",
+  "claim": "guardrails-client.sh (PreToolUse:*, blocking) has a recorded timeout of 3000, child_workflow.py (PreToolUse:*/SubagentStop/SubagentStart) has recorded timeouts including 10000, and precompact-mnemos.py (PreCompact) has a recorded timeout of 8000 \u2014 values that look like milliseconds but Claude Code's hook 'timeout' field is specified in seconds, which would make these effective caps of 50, 166, and",
+  "surface": "hooks",
+  "why": "guardrails-client.sh runs on every single tool call and blocks tool execution until it returns; if its timeout is actually ~50 minutes instead of ~3 seconds, a hang in that script (network call, lock contention) stalls the entire session with no harness-level recovery until the mis-set timeout finally elapses.",
+  "expected_gain": "reliability: prevents <REDACTED> session stalls from a single slow/hung blocking hook",
+  "verification_command": "jq '.hooks.PreToolUse[] | select(.timeout != null) | {matcher, timeout}' ~/.claude/settings.json; jq '.hooks.PreCompact[] | select(.timeout != null)' ~/.claude/settings.json",
+  "risk": "if the timeout field is in fact milliseconds in this Claude Code version (contrary to my recollection), then these values (3s, 10s, 8s) are already correct and tightening them would cause premature timeouts on legitimately slower hooks",
+  "confidence": "low",
+  "source": "reasoning"
+ }
+]
