@@ -19,6 +19,7 @@ from backend.db.migration_base import (
     assume_runtime_role,
     migration_dsn_is_dedicated,
     resolve_migration_dsn,
+    run_with_lock_retry,
     split_migration_sql,
 )
 
@@ -99,9 +100,7 @@ class MigrationManager:
     - Connection pooling for performance
     """
 
-    def __init__(
-        self, database_url: str | None = None, *, dedicated: bool | None = None
-    ) -> None:
+    def __init__(self, database_url: str | None = None, *, dedicated: bool | None = None) -> None:
         """
         Initialize migration manager.
 
@@ -125,9 +124,7 @@ class MigrationManager:
         # not the one it dialled.
         self.database_url = database_url or resolve_migration_dsn()
         self._dedicated = (
-            migration_dsn_is_dedicated(self.database_url)
-            if dedicated is None
-            else dedicated
+            migration_dsn_is_dedicated(self.database_url) if dedicated is None else dedicated
         )
         if not self.database_url:
             raise MigrationError("DATABASE_URL not configured")
@@ -227,9 +224,9 @@ class MigrationManager:
             f"Migration runner cannot connect via {source} ({safe_url}): "
             f"{type(last_error).__name__}: {last_error}"
         )
-        if isinstance(last_error, (ConnectionResetError, OSError, ssl.SSLError)) and not _dsn_has_sslmode(
-            self.database_url
-        ):
+        if isinstance(
+            last_error, (ConnectionResetError, OSError, ssl.SSLError)
+        ) and not _dsn_has_sslmode(self.database_url):
             message += (
                 "\nhint: DATABASE_URL uses sslmode=disable; add "
                 "?sslmode=disable to this DSN if the server does not speak TLS"
@@ -396,7 +393,7 @@ class MigrationManager:
                 logger.warning("No rollback SQL for %s", migration_name)
                 return False
 
-            async with conn.transaction():
+            async def _attempt() -> bool:
                 # Execute rollback
                 await conn.execute(row["rollback_sql"])
 
@@ -419,6 +416,12 @@ class MigrationManager:
                 """,
                     migration_name,
                 )
+                return True
+
+            # Same lock-timeout-retry primitive as BaseMigration.apply(): a
+            # rollback's DDL is exposed to the identical nightly pg_dump /
+            # long-reader lock contention.
+            await run_with_lock_retry(conn, migration_name, _attempt)
 
         logger.info("✅ Rolled back migration: %s", migration_name)
         return True
@@ -483,9 +486,7 @@ class MigrationManager:
         Raises:
             MigrationError: If migration fails
         """
-        return await migration.apply(
-            database_url=self.database_url, dedicated=self._dedicated
-        )
+        return await migration.apply(database_url=self.database_url, dedicated=self._dedicated)
 
     # Process-wide advisory lock id used to serialise concurrent migration
     # runs. `pg_advisory_lock` / `pg_advisory_unlock` are *session-scoped* —

@@ -3,11 +3,15 @@ NUZANTARA PRIME - Base Migration Framework
 Provides base classes and utilities for database migrations
 """
 
+import asyncio
 import hashlib
 import logging
 import os
+import random
 import re
 import sys
+import time
+from collections.abc import Awaitable, Callable
 from pathlib import Path
 from urllib.parse import urlparse
 
@@ -327,6 +331,184 @@ async def _schema_versions_has_provenance(conn: asyncpg.Connection) -> bool:
     except Exception:  # a metadata read must never abort a good apply
         logger.warning("could not probe _schema_versions provenance columns; assuming absent")
         return False
+
+
+# ---------------------------------------------------------------------------
+# Lock-contention retry
+# ---------------------------------------------------------------------------
+# 2026-09-17: migration 317's `ALTER TABLE ... SET DEFAULT` (ACCESS EXCLUSIVE)
+# failed 3x under `lock_timeout 5s` with `canceling statement due to lock
+# timeout` (SQLSTATE 55P03) -- the nightly pg_dump window (19:20-22:20Z) holds
+# an AccessShareLock on every table for ~40 min per attempt, and an ordinary
+# long reader can do the same. Before this the runner had no retry at all: one
+# timeout killed the whole `apply()`, indistinguishable from any other SQL
+# error. `MigrationManager.rollback_migration` runs the same shape of
+# single-transaction DDL and shares the identical exposure, so both paths use
+# this one retry primitive.
+#
+# Per-attempt SHORT `lock_timeout` (fails fast rather than tying up the whole
+# release_command for the Fly ceiling) plus a bounded retry that re-runs the
+# WHOLE transaction body, INCLUDING the ledger write where the caller's `body`
+# includes one (`BaseMigration.apply()`'s `_log_migration` call): the
+# alternative -- writing the ledger row outside/after the retried transaction
+# -- could record a migration as applied when the DDL never committed. Retries
+# ONLY `asyncpg.exceptions.LockNotAvailableError` (55P03); a
+# `QueryCanceledError` (57014, e.g. a `statement_timeout` inside the migration
+# itself) or any other error propagates on the FIRST occurrence, unretried --
+# those are not lock contention and blind-retrying them would just repeat a
+# failure that will never resolve on its own.
+LOCK_RETRY_LOCK_TIMEOUT = "2s"
+LOCK_RETRY_BACKOFF_BASE_SECONDS = 0.5
+LOCK_RETRY_BACKOFF_CAP_SECONDS = 3.0
+LOCK_RETRY_MAX_ATTEMPTS = 8
+LOCK_RETRY_BUDGET_SECONDS = 90.0
+# Arithmetic (worst case, no jitter): 8 attempts x up to 2s lock wait each =
+# 16s, plus 7 inter-attempt backoffs 0.5+1+2+3+3+3+3 = 15.5s (doubling from
+# 0.5s, capped at 3s) = ~31.5s total, +≤20% jitter (~3.1s) = ~35s -- well
+# inside the 90s budget ceiling and Fly's release_command default (5 min).
+
+
+def _lock_retry_backoff_seconds(attempt: int) -> float:
+    """Backoff before the attempt AFTER `attempt` (which just failed).
+
+    Doubles from `LOCK_RETRY_BACKOFF_BASE_SECONDS`, capped at
+    `LOCK_RETRY_BACKOFF_CAP_SECONDS`, plus up to 20% jitter so several
+    concurrent retriers (a fleet of Fly machines hitting the same lock) don't
+    all wake up on the same tick.
+    """
+    base = min(
+        LOCK_RETRY_BACKOFF_BASE_SECONDS * (2 ** (attempt - 1)),
+        LOCK_RETRY_BACKOFF_CAP_SECONDS,
+    )
+    return base + random.uniform(0, base * 0.2)
+
+
+async def _describe_lock_blockers(conn: asyncpg.Connection) -> str:
+    """Best-effort: name who holds a granted lock that could block a DDL.
+
+    Never raises -- a failing diagnostic must not mask the
+    `LockNotAvailableError` it exists to explain, so it runs in its own
+    try/except. Reports `pid`/`usename`/`application_name`/`relname` ONLY --
+    never `query` or `state`, which can carry client PII or OSINT via a
+    session's bound parameters or an in-flight statement's literal text
+    (CLAUDE.md Builder Contract §4, output boundary).
+
+    Every lock mode conflicts with ACCESS EXCLUSIVE (the mode a DDL statement
+    needs), so any OTHER session's granted relation lock in `public` is a
+    candidate blocker; the explicit mode list documents that reasoning rather
+    than relying on an unfiltered scan.
+    """
+    try:
+        rows = await conn.fetch(
+            """
+            SELECT l.pid, a.usename, a.application_name, c.relname
+            FROM pg_locks l
+            JOIN pg_stat_activity a ON a.pid = l.pid
+            JOIN pg_class c ON c.oid = l.relation
+            WHERE l.database = (
+                    SELECT oid FROM pg_database WHERE datname = current_database()
+                  )
+              AND l.locktype = 'relation'
+              AND c.relnamespace = 'public'::regnamespace
+              AND l.granted
+              AND l.pid <> pg_backend_pid()
+              AND l.mode IN (
+                  'AccessShareLock', 'RowShareLock', 'RowExclusiveLock',
+                  'ShareUpdateExclusiveLock', 'ShareLock',
+                  'ShareRowExclusiveLock', 'ExclusiveLock', 'AccessExclusiveLock'
+              )
+            ORDER BY l.pid
+            """
+        )
+    except Exception as exc:  # diagnostic must never mask the real error
+        return f"(could not enumerate lock holders: {exc})"
+
+    if not rows:
+        return (
+            "(no granted relation locks found in 'public' at diagnostic time "
+            "-- the blocker may have already released)"
+        )
+
+    return ", ".join(
+        f"pid={r['pid']} usename={r['usename']!r} "
+        f"application_name={r['application_name']!r} relation={r['relname']!r}"
+        for r in rows
+    )
+
+
+async def run_with_lock_retry(
+    conn: asyncpg.Connection,
+    migration_name: str,
+    body: Callable[[], Awaitable[bool]],
+) -> bool:
+    """Run `body` inside a fresh transaction, retrying a lock-timed-out DDL.
+
+    `body` is invoked with no arguments, once per attempt, inside
+    `async with conn.transaction():`, right after a per-attempt SHORT
+    `SET LOCAL lock_timeout` is issued on `conn`. `SET LOCAL` is required, not
+    `SET`, because `MigrationManager.rollback_migration` runs this on a
+    POOLED connection (`self.pool.acquire()`): a plain `SET` inside a
+    transaction that COMMITS persists on that session for as long as it
+    stays checked out, and leaks the short lock_timeout into whatever the
+    next pool borrower does. `SET LOCAL` dies with the transaction either
+    way -- committed or rolled back -- so it never outlives this call
+    regardless of which connection kind calls it. A migration/rollback text
+    that issues its own (plain, non-LOCAL) `SET lock_timeout` still runs
+    AFTER this one inside the same transaction and still wins for the rest
+    of it -- Postgres GUC `SET` is last-write-wins within one transaction
+    scope, `LOCAL` or not, so no special-casing is needed for that override
+    to keep working.
+
+    On `asyncpg.exceptions.LockNotAvailableError` the transaction has already
+    been rolled back by the `async with` block -- `conn` is retried, not
+    reconnected. Sleeps `_lock_retry_backoff_seconds(attempt)` between
+    attempts, up to `LOCK_RETRY_MAX_ATTEMPTS` or until the next backoff would
+    cross `LOCK_RETRY_BUDGET_SECONDS`, whichever comes first. Any other
+    exception -- including `QueryCanceledError` (57014) -- propagates
+    immediately, unretried.
+
+    Raises `MigrationError` naming the blocking session(s) once attempts are
+    exhausted.
+    """
+    loop_start = time.monotonic()
+    last_lock_error: asyncpg.exceptions.LockNotAvailableError | None = None
+    attempt = 0
+    for attempt in range(1, LOCK_RETRY_MAX_ATTEMPTS + 1):
+        try:
+            async with conn.transaction():
+                await conn.execute(f"SET LOCAL lock_timeout = '{LOCK_RETRY_LOCK_TIMEOUT}'")
+                return await body()
+        except asyncpg.exceptions.LockNotAvailableError as exc:
+            last_lock_error = exc
+            elapsed = time.monotonic() - loop_start
+            logger.info(
+                "%s: lock timeout on attempt %d/%d (%.1fs elapsed): %s",
+                migration_name,
+                attempt,
+                LOCK_RETRY_MAX_ATTEMPTS,
+                elapsed,
+                exc,
+            )
+            if attempt == LOCK_RETRY_MAX_ATTEMPTS:
+                break
+            delay = _lock_retry_backoff_seconds(attempt)
+            if elapsed + delay >= LOCK_RETRY_BUDGET_SECONDS:
+                logger.info(
+                    "%s: next backoff would exceed the %.0fs budget; stopping at attempt %d/%d",
+                    migration_name,
+                    LOCK_RETRY_BUDGET_SECONDS,
+                    attempt,
+                    LOCK_RETRY_MAX_ATTEMPTS,
+                )
+                break
+            await asyncio.sleep(delay)
+
+    blockers = await _describe_lock_blockers(conn)
+    raise MigrationError(
+        f"{migration_name}: still lock-blocked after {attempt} attempt(s) "
+        f"({time.monotonic() - loop_start:.1f}s elapsed, budget "
+        f"{LOCK_RETRY_BUDGET_SECONDS:.0f}s) -- blocked by: {blockers}"
+    ) from last_lock_error
 
 
 class MigrationError(Exception):
@@ -870,56 +1052,61 @@ class BaseMigration:
             await conn.close()
             raise MigrationError(f"Cannot assume the runtime role: {e}") from e
 
-        import time
-
         start_time = time.time()
 
-        try:
-            # Use transaction for atomicity
-            async with conn.transaction():
-                # Check dependencies
-                await self._check_dependencies(conn)
+        async def _attempt() -> bool:
+            # Check dependencies
+            await self._check_dependencies(conn)
 
-                # Check if already applied
-                if await self._is_applied(conn):
-                    execution_time_ms = int((time.time() - start_time) * 1000)
-                    await self._log_migration(
-                        conn,
-                        sql,
-                        execution_time_ms,
-                        self.rollback_sql,
-                    )
-                    logger.info(
-                        "Migration %s already applied; migration ledgers reconciled",
-                        self.migration_name,
-                    )
-                    return True
-
-                # Execute SQL (forward portion only; rollback portion is
-                # stored on `self.rollback_sql` and will be re-run via
-                # MigrationManager.rollback_migration if ever invoked).
-                try:
-                    await conn.execute(sql_forward)
-                except (asyncpg.PostgresError, asyncpg.InterfaceError) as e:
-                    raise MigrationError(f"SQL execution failed: {e}") from e
-
-                # Verify migration
-                if not await self.verify(conn):
-                    raise MigrationError(f"Verification failed for {self.migration_name}")
-
-                if not await self.verify_apply(conn):
-                    raise MigrationError(f"verify_apply failed for {self.migration_name}")
-
-                # Log migration
+            # Check if already applied
+            if await self._is_applied(conn):
                 execution_time_ms = int((time.time() - start_time) * 1000)
-                await self._log_migration(conn, sql, execution_time_ms, self.rollback_sql)
-
+                await self._log_migration(
+                    conn,
+                    sql,
+                    execution_time_ms,
+                    self.rollback_sql,
+                )
                 logger.info(
-                    f"✅ Migration {self.migration_name} applied successfully "
-                    f"in {execution_time_ms}ms",
+                    "Migration %s already applied; migration ledgers reconciled",
+                    self.migration_name,
                 )
                 return True
 
+            # Execute SQL (forward portion only; rollback portion is
+            # stored on `self.rollback_sql` and will be re-run via
+            # MigrationManager.rollback_migration if ever invoked).
+            try:
+                await conn.execute(sql_forward)
+            except asyncpg.exceptions.LockNotAvailableError:
+                # Let run_with_lock_retry see this undisguised so it can
+                # decide whether to retry the whole attempt.
+                raise
+            except (asyncpg.PostgresError, asyncpg.InterfaceError) as e:
+                raise MigrationError(f"SQL execution failed: {e}") from e
+
+            # Verify migration
+            if not await self.verify(conn):
+                raise MigrationError(f"Verification failed for {self.migration_name}")
+
+            if not await self.verify_apply(conn):
+                raise MigrationError(f"verify_apply failed for {self.migration_name}")
+
+            # Log migration
+            execution_time_ms = int((time.time() - start_time) * 1000)
+            await self._log_migration(conn, sql, execution_time_ms, self.rollback_sql)
+
+            logger.info(
+                f"✅ Migration {self.migration_name} applied successfully in {execution_time_ms}ms",
+            )
+            return True
+
+        try:
+            # `run_with_lock_retry` opens the transaction (one per attempt) and
+            # retries the WHOLE body -- including the ledger write above -- on
+            # a lock-timed-out DDL; see its docstring for why the ledger write
+            # stays inside rather than moving after the retried transaction.
+            return await run_with_lock_retry(conn, self.migration_name, _attempt)
         except MigrationError:
             # Re-raise migration errors
             raise
