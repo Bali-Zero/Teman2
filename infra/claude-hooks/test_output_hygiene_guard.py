@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""test_output_hygiene_guard.py — the spec's §6 case corpus (C01-C63), run
+"""test_output_hygiene_guard.py — the spec's §6 case corpus (C01-C66), run
 against the real hook as a subprocess exactly as Claude Code would (JSON on
 stdin, exit 2 = DENY, exit 0 = ALLOW).
 
@@ -125,6 +125,9 @@ CASES: list[tuple[str, str, str, str]] = [
     ),
     ("C62", "cat big.log | sed -n '1,40p'", "ALLOW", "§4 sed -n range, quoted"),
     ("C63", "cat big.log | awk 'NR<=20'", "ALLOW", "§4 awk NR bound, quoted"),
+    ("C64", "find /tmp/x -depth -delete", "ALLOW", "S5 own-bound: -delete prints nothing"),
+    ("C65", "find . -name '*.pyc' -delete", "ALLOW", "S5 own-bound: -delete, glob irrelevant"),
+    ("C66", "find . -delete -print", "DENY", "-print re-opens the walk's output"),
 ]
 
 
@@ -170,8 +173,8 @@ def evaluate() -> list[str]:
         elif expect == "ALLOW" and denied:
             failures.append(f"{cid}: BIT-AN-INNOCENT: {desc}: expected ALLOW, got DENY\n  stderr={err.strip()[:200]}")
 
-    # completeness: every C01..C63 present (allow the C58/C60 split naming)
-    required = {f"C{n:02d}" for n in range(1, 64)}
+    # completeness: every C01..C66 present (allow the C58/C60 split naming)
+    required = {f"C{n:02d}" for n in range(1, 67)}
     missing = required - seen_ids
     if missing:
         failures.append(f"INCOMPLETE-CORPUS: missing case IDs: {sorted(missing)}")
@@ -222,6 +225,6 @@ if __name__ == "__main__":
     t0 = time.perf_counter()
     run("git log")
     deny_ms = (time.perf_counter() - t0) * 1000
-    print(f"=== ALL {total} OK (C01..C63 present, no innocent bitten, no guilt missed) ===")
+    print(f"=== ALL {total} OK (C01..C66 present, no innocent bitten, no guilt missed) ===")
     print(f"latency: allow-case subprocess {allow_ms:.1f}ms, deny-case subprocess {deny_ms:.1f}ms")
     sys.exit(0)

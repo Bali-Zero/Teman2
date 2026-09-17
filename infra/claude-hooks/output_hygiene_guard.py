@@ -480,7 +480,12 @@ def _check_s5(head: str, args: list[str], _cwd: str, orig_stage: str = "") -> tu
                 return None
         if _s5_has_literal_name_bound(orig_stage):
             return None
-    return ("S5", f"`{head}` without -maxdepth/literal -name")
+        if "-delete" in args and not any(
+            p in args
+            for p in ("-print", "-print0", "-ls", "-printf", "-fprint", "-fprint0", "-fprintf")
+        ):
+            return None
+    return ("S5", f"`{head}` without -maxdepth/literal -name/-delete")
 
 
 def _has_recursive_flag(args: list[str]) -> bool:

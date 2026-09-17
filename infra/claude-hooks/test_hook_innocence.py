@@ -213,6 +213,7 @@ CASES: dict[str, list[tuple[dict, str, str]]] = {
         (bash("pytest bigdir"), "BLOCK", "C39: pytest without -q"),
         (bash("git status\ngit log"), "BLOCK", "C52: newline split"),
         (bash("npx vitest run"), "BLOCK", "C46 counterpart: npx-prefixed runner unbounded"),
+        (bash("find . -delete -print"), "BLOCK", "C66: -print re-opens the walk's output"),
         # INNOCENCE
         (bash("ls"), "ALLOW", "C01: S1 under threshold"),
         (bash("git log --oneline origin/main..HEAD"), "ALLOW", "C17: range-bounded git log"),
@@ -224,6 +225,7 @@ CASES: dict[str, list[tuple[dict, str, str]]] = {
         (bash("ssh pro 'git log'"), "ALLOW", "C55: remote dispatch runs off-box"),
         (bash("cat big.log | sed -n '1,40p'"), "ALLOW", "C62: quoted sed -n range still bounds"),
         (bash("cat big.log | awk 'NR<=20'"), "ALLOW", "C63: quoted awk NR still bounds"),
+        (bash("find /tmp/x -depth -delete"), "ALLOW", "C64: S5 own-bound, -delete prints nothing"),
     ],
     # ---- orchestrate_gate.py (Bash/Edit/Write) — never blocks short/dispatched sessions
     # Without a long transcript on stdin it cannot reach the block branch → ALLOW.
