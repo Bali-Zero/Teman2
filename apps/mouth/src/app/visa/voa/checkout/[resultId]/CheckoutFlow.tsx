@@ -6,6 +6,7 @@ import { AppFrame, AppWhatsAppCTA, useFunnelApp } from "@balizero/core";
 import { formatIDR } from "@balizero/core/utils";
 import { buildWhatsAppLink } from "@/lib/whatsapp-utm";
 import { readCheckoutHandoff } from "../../checkoutHandoff";
+import { VOA_PRIMARY_ACTION_STYLE } from "../../voa-action-style";
 import { useCheckout } from "./useCheckout";
 import type { Applicant } from "../../orders/types";
 
@@ -210,8 +211,7 @@ export function CheckoutFlow({
             padding: "0.9rem 1.4rem",
             borderRadius: 8,
             border: "none",
-            background: "var(--accent-funnel, #ff3344)",
-            color: "#0a0a0a",
+            ...VOA_PRIMARY_ACTION_STYLE,
             fontWeight: 600,
             cursor: canSubmit ? "pointer" : "default",
             opacity: canSubmit ? 1 : 0.5,

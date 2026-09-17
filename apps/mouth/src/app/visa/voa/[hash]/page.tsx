@@ -17,6 +17,7 @@ import {
   type DeclineCode,
   type EligibilitySubmission,
 } from "@/components/garuda/declineEducation";
+import { VOA_PRIMARY_ACTION_STYLE } from "../voa-action-style";
 
 /**
  * GARUDA VOA — public result page (owner decision 5, constraints 5a/5b).
@@ -213,8 +214,7 @@ export default function VoaResultPage({
                     textAlign: "center",
                     padding: "0.9rem 1.4rem",
                     borderRadius: 8,
-                    background: "var(--accent-funnel, #ff3344)",
-                    color: "#0a0a0a",
+                    ...VOA_PRIMARY_ACTION_STYLE,
                     textDecoration: "none",
                     fontWeight: 600,
                   }}
@@ -392,8 +392,7 @@ function MagicLinkRequestForm({ resultId }: { resultId: string }) {
           padding: "0.9rem 1.4rem",
           borderRadius: 8,
           border: "none",
-          background: "var(--accent-funnel, #ff3344)",
-          color: "#0a0a0a",
+          ...VOA_PRIMARY_ACTION_STYLE,
           fontWeight: 600,
           cursor: status === "sending" ? "default" : "pointer",
         }}
