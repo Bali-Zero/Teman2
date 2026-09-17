@@ -602,7 +602,14 @@ def probe_claude(timeout: float, env_overrides: Optional[dict] = None) -> tuple[
     if env_overrides:
         env.update(env_overrides)
     res = run_probe_cmd(
-        [binp, "-p", PONG_PROMPT, "--model", "claude-sonnet-5"], timeout=timeout, env=env
+        # --restricted is the difference between probing the SEAT and probing the
+        # hooks. MEASURED on M5 2026-09-17: without it this probe costs ~55-90k
+        # input tokens and the reply is about the fleet mailbox that the global
+        # hooks inject, so the classifier never finds PONG and a live seat reads
+        # UNKNOWN_ERR. With it: 15.5k tokens and the literal answer PONG.
+        [binp, "-p", PONG_PROMPT, "--model", "claude-sonnet-5", "--restricted"],
+        timeout=timeout,
+        env=env,
     )
     latency_ms = int((time.monotonic() - t0) * 1000)
     ev = _path_note(via_path) + evidence_tail(res.stdout + " " + res.stderr)

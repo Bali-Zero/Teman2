@@ -91,8 +91,8 @@ import re
 import sys
 import time
 
-MAX_MESSAGES_PER_FIRE = 3
-MAX_MESSAGE_BYTES = 8000
+MAX_MESSAGES_PER_FIRE = 2  # H9 2026-09-17: 3x8000 could exceed the documented 10k additionalContext cap
+MAX_MESSAGE_BYTES = 3000  # H9 2026-09-17: was 8000 — 2x3000 stays inside the 10k cap, over which Claude Code spills to a file and passes a preview
 MAX_MESSAGE_READ_BYTES = 65536  # stat()'d BEFORE any read() — never load more into memory
 TRUNCATE_MARKER = "\n[truncated]"
 SESSION_ID_RE = re.compile(r"^[A-Za-z0-9_-]{8,80}$")
