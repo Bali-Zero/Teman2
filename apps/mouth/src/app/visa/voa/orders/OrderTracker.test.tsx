@@ -72,6 +72,32 @@ describe("OrderTracker", () => {
     },
   );
 
+  it("renders a current marker, a subtitle and a focusable control for the created state", async () => {
+    fetchMock.mockResolvedValue(
+      jsonResponse(200, order({ order_state: "created" })),
+    );
+    render(<OrderTracker orderId="order-1" />);
+
+    await screen.findByText(
+      "Setting up your payment — this takes a few seconds.",
+    );
+
+    const steps = screen.getByLabelText("Application progress");
+    const current = steps.querySelectorAll('[aria-hidden="true"]');
+    // "Order placed" is the only step marked current (●); everything else is
+    // still hollow (○) — exactly one current marker for this order state.
+    expect(current[0]?.textContent).toBe("●");
+    for (const marker of Array.from(current).slice(1)) {
+      expect(marker.textContent).toBe("○");
+    }
+
+    expect(
+      screen.getByRole("link", {
+        name: /consultant can help you complete it/i,
+      }),
+    ).toBeInTheDocument();
+  });
+
   it("never claims paid/success from a browser-return observation alone", async () => {
     fetchMock.mockResolvedValue(
       jsonResponse(
