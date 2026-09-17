@@ -271,6 +271,13 @@
       "hooks_dirs": ["infra/claude-hooks", "scripts/hooks", ".claude/hooks"],
       "vaccine": "infra/claude-hooks/test_hook_innocence.py",
       "entries": {
+        "infra/claude-hooks/output_hygiene_guard.py": {
+          "scar": ["W-output-hygiene-2026-09-18"],
+          "symbols": {},
+          "tests": ["infra/claude-hooks/test_output_hygiene_guard.py"],
+          "also_covered_by": ["vaccine"],
+          "note": "PreToolUse(Bash) guard born 2026-09-18 (Zero's order) after two live over-reads in one session -- `ls ~/.nuzantara-mailbox` (700+ entries) and `ls evidence/2026-09` (300+ entries), both read in full with no bound. DENIES (never rewrites) 8 unbounded guilt shapes -- ls/eza on a >60-entry directory, cat/bat of a >24KB file, git log without -n/--max-count, git diff/show without --stat-family, find without -maxdepth, grep -r/rg without -l/-c/-m, a test runner without -q/--tb=short|line, and tail -f/-F (never terminates in a tool call, no exemption possible) -- unless the SAME pipe-chain past the guilty stage carries a bounding stage (head/tail-without-f/cut/wc/grep -c/sort|uniq -c/awk NR/sed -n range/jq/--jq/python3 -c) or redirects to a file or backgrounds. Quoted strings and heredoc bodies are blanked length-preserving before any guilt regex runs, so a git-log-shaped string inside quotes or a heredoc body is text, not a command; a segment whose first stage is ssh/scp/rsync is skipped entirely (remote dispatch, same reasoning as worktree_isolation.py's W83). No subprocess calls (os.listdir/os.stat only), fails open on any exception. Kill switch NUZ_OUTPUT_HYGIENE_OFF=1. Own dedicated test file carries every guilt+innocence example named in the spec (39 cases) plus kill-switch/non-Bash/malformed-input checks; also registered in the vaccine (test_hook_innocence.py) against a synthetic-repo fixture set (bigdir/smalldir/big.log/small.py) for cross-hook regression coverage."
+        },
         "scripts/hooks/injected_surface_sessionstart.sh": {
           "scar": ["superscar-2-esiste-non-armato", "W55", "W76"],
           "symbols": {},

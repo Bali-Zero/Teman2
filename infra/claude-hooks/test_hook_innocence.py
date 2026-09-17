@@ -51,6 +51,16 @@ _SYN = pathlib.Path(REPO_ROOT)
 (_SYN / "scripts" / "agent_start.py").write_text("# synthetic signature\n")
 # a registered worktree under the synthetic root's .worktrees/ for allow-list cases
 (_SYN / ".worktrees" / "lane-x" / "apps").mkdir(parents=True, exist_ok=True)
+# output_hygiene_guard.py fixtures: a >60-entry dir, a <=60-entry dir, a
+# >24KB file, a small file.
+(_SYN / "bigdir").mkdir(parents=True, exist_ok=True)
+for _i in range(61):
+    (_SYN / "bigdir" / f"f{_i}.txt").write_text("x")
+(_SYN / "smalldir").mkdir(parents=True, exist_ok=True)
+for _i in range(3):
+    (_SYN / "smalldir" / f"f{_i}.txt").write_text("x")
+(_SYN / "big.log").write_text("x" * (25 * 1024))
+(_SYN / "small.py").write_text("print(1)\n")
 
 
 def _copy_hook(name: str) -> pathlib.Path:
@@ -182,6 +192,36 @@ CASES: dict[str, list[tuple[dict, str, str]]] = {
         # GUILT
         (write(REPO_ROOT + "/infra/brand_new_file.py"), "BLOCK", "write a new file into main checkout"),
         (edit(REPO_ROOT + "/apps/backend-rag/backend/app/main.py"), "BLOCK", "edit a main-checkout file"),
+    ],
+    # ---- output_hygiene_guard.py (Bash) — deny unbounded ls/cat/log/diff/find/grep/test
+    "output_hygiene_guard.py": [
+        # GUILT
+        (bash("ls bigdir"), "BLOCK", "ls on a >60-entry directory"),
+        (bash("cat big.log"), "BLOCK", "cat of a >24KB file"),
+        (bash("git log"), "BLOCK", "git log without a bound"),
+        (bash("git diff"), "BLOCK", "git diff without a bound"),
+        (bash("find ."), "BLOCK", "find without -maxdepth"),
+        (bash("grep -r foo ."), "BLOCK", "grep -r without a count/list bound"),
+        (bash("rg foo ."), "BLOCK", "rg without a count/list bound"),
+        (bash("pytest"), "BLOCK", "pytest without -q"),
+        (bash("tail -f big.log"), "BLOCK", "tail -f never terminates"),
+        # INNOCENCE
+        (bash("ls | head"), "ALLOW", "ls piped to head"),
+        (bash("ls -1 bigdir | wc -l"), "ALLOW", "ls piped to wc -l"),
+        (bash("ls smalldir"), "ALLOW", "ls on a small directory"),
+        (bash("cat small.py"), "ALLOW", "cat of a small file"),
+        (bash("cat big.log | tail -20"), "ALLOW", "cat piped to tail"),
+        (bash("git log -3"), "ALLOW", "git log with -n bound"),
+        (bash("git log --oneline | head -5"), "ALLOW", "git log piped to head"),
+        (bash("git diff --stat"), "ALLOW", "git diff --stat"),
+        (bash("find . -maxdepth 2 -name x"), "ALLOW", "find with -maxdepth"),
+        (bash("grep -rl foo ."), "ALLOW", "grep -rl bounded by -l"),
+        (bash("grep -rn foo . | head"), "ALLOW", "grep -rn piped to head"),
+        (bash("pytest -q"), "ALLOW", "pytest -q"),
+        (bash('echo "git log"'), "ALLOW", "quoted git log is text, not a command"),
+        (bash("ssh pro 'git log'"), "ALLOW", "remote dispatch runs off-box"),
+        (bash("tail -20 big.log"), "ALLOW", "bounded tail, no -f"),
+        (bash("python3 small.py"), "ALLOW", "arbitrary script is not a guilt shape"),
     ],
     # ---- orchestrate_gate.py (Bash/Edit/Write) — never blocks short/dispatched sessions
     # Without a long transcript on stdin it cannot reach the block branch → ALLOW.
