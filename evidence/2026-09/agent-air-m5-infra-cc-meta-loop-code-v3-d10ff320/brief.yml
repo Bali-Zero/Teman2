@@ -16,15 +16,18 @@ mandate: >-
 
 gear: 2
 gear_reason: >-
-  Deterministic floor 2, source `size`: two new files plus the rework diff (including the item-7
-  fix from the #6706 gate), churn 1497 (add 1497 / del 0) measured against the true merge-base
-  (`git diff --numstat origin/main...HEAD`, triple-dot — origin/main had advanced 2 commits,
-  #6704/#6707, since this branch was cut, so a plain double-dot diff over-counted by including
-  their reverse delta), above SIZE_GEAR2_THRESHOLD (400) and below
+  Deterministic floor 2, source `size`: two new files plus the full rework diff across both
+  REWORK-BUILD rounds (item 7 from #6706's gate, items 9-12 from #6709's gate), churn 1675 (add
+  1675 / del 0) measured LAST, after the final commit, against the true merge-base
+  (`git diff --numstat origin/main...HEAD`, triple-dot — origin/main had advanced 3 commits
+  since this branch was cut fresh for the v3 attempt, so a plain double-dot diff would
+  over-count by including their reverse delta), above SIZE_GEAR2_THRESHOLD (400) and below
   SIZE_GEAR3_THRESHOLD (1828); no hot-zone path. The predecessor #6698 carried the same scripts
   together with the research outputs and the hook cures (churn 4700, floor 3) and was closed
-  with its three reds classified; this successor is cut from a fresh origin/main with one
-  concern, then went through one REWORK-BUILD round (see `successor_of`/`rework` below).
+  with its three reds classified; #6705 was the first fresh-origin/main successor; #6709 was
+  the REWORK-BUILD successor to #6705; this branch (v3) is the depth-1 fix-of-a-fix successor to
+  #6709 — the last one this contract allows — cut from a fresh origin/main and cherry-picking
+  every prior commit (see `successor_of`/`rework` below).
 
 appetite:
   wall_clock_hours: 1
