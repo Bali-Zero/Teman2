@@ -422,3 +422,87 @@ def test_an_unwritable_jump_file_does_not_claim_a_counted_retry():
         d.chmod(0o700)
     assert "contatore NON è stato scritto" in err
     assert "gesto ritentato (0/3)" not in err
+
+
+# ---------------- (d) the tmux seat ----------------
+# 2026-09-16, M5: five army sessions (scripts/wa_army_launcher.sh puts claude in
+# a detached tmux session) tripped the guard, were classified "headless" because
+# TERM_PROGRAM was not ghostty, got no gesture, and died at the 400K deny with
+# the jump file never claimed. A pane has an id: the gesture is tmux_jump.sh.
+
+TMUX_ENV = {"TMUX": "/tmp/tmux-501/default,1,0", "TMUX_PANE": "%1"}
+
+
+def _plant_tmux_seat(home: pathlib.Path, *, script: bool = True, binary: bool = True) -> tuple[pathlib.Path, dict]:
+    """A fake tmux_jump.sh that records each spawn, a fake `tmux` on PATH (the
+    capability question, as osascript is for Ghostty) — each one optional so a
+    test can take it away. window_jump.sh is planted too, recording under
+    another name: the seat must pick ITS gesture, not the AppleScript one."""
+    hooks = home / ".claude" / "hooks"
+    hooks.mkdir(parents=True, exist_ok=True)
+    (hooks / "window_jump.sh").write_text('#!/bin/bash\necho "ghostty $1" >> "$HOME/spawns.log"\n')
+    if script:
+        (hooks / "tmux_jump.sh").write_text('#!/bin/bash\necho "tmux $1" >> "$HOME/spawns.log"\n')
+    bindir = home / "bin"
+    bindir.mkdir(exist_ok=True)
+    if binary:
+        (bindir / "tmux").write_text("#!/bin/bash\nexit 0\n")
+        (bindir / "tmux").chmod(0o755)
+    env = dict(TMUX_ENV)
+    env["PATH"] = f"{bindir}:/usr/bin:/bin"   # the real tmux, if any, is not on this PATH
+    return home / "spawns.log", env
+
+
+def test_tmux_pane_is_seat_tmux_even_when_the_terminal_says_ghostty():
+    # inside a pane the outer terminal's name can still be in the env
+    # (update-environment): the pane id is the only address the old session
+    # can be ended at, so TMUX decides.
+    rc, _, err, home = run_gate("Bash", {"command": "ls"}, tokens=TRIP, session_id="s-tm",
+                                env_extra={**TMUX_ENV, "TERM_PROGRAM": "ghostty", "CONTEXT_JUMP_NO_SPAWN": "1"})
+    assert rc == 2 and _jump(home, "s-tm")["seat"] == "tmux"
+    assert "Salto REGISTRATO" in err
+
+
+def test_tmux_seat_spawns_the_tmux_gesture_not_the_applescript_one():
+    home = pathlib.Path(tempfile.mkdtemp())
+    spawn_log, env = _plant_tmux_seat(home)
+    rc, _, err, _ = run_gate("Bash", {"command": "ls"}, tokens=TRIP, session_id="s-tmux", home=home, env_extra=env)
+    assert rc == 2 and _jump(home, "s-tmux")["seat"] == "tmux"
+    assert _spawns(spawn_log, 1) == 1 and spawn_log.read_text().split() == ["tmux", "s-tmux"]
+    assert _jump(home, "s-tmux")["gesture_attempts"] == 1
+    assert "Salto di finestra TENTATO" in err and "tmux_jump.sh" in err and "nz-jump s-tmux" in err
+    assert "window_jump.sh" not in err and "AVVIATO" not in err
+
+
+def test_a_missed_tmux_gesture_is_retried_with_the_tmux_gesture():
+    home = pathlib.Path(tempfile.mkdtemp())
+    spawn_log, env = _plant_tmux_seat(home)
+    run_gate("Bash", {"command": "ls"}, tokens=TRIP, session_id="s-tretry", home=home, env_extra=env)
+    assert _spawns(spawn_log, 1) == 1
+    _await_gesture_exit(home, "s-tretry")
+    _log_miss(home, "s-tretry")
+    rc, _, err, _ = run_gate("Bash", {"command": "ls"}, tokens=TRIP, session_id="s-tretry", home=home, env_extra=env)
+    assert rc == 2 and "gesto ritentato (2/3)" in err and "tmux_jump.sh" in err
+    assert _spawns(spawn_log, 2) == 2 and spawn_log.read_text().split() == ["tmux", "s-tretry"] * 2
+
+
+# innocence
+def test_tmux_seat_without_its_script_or_binary_records_and_never_spawns():
+    for kw in ({"script": False}, {"binary": False}):
+        home = pathlib.Path(tempfile.mkdtemp())
+        spawn_log, env = _plant_tmux_seat(home, **kw)
+        rc, _, err, _ = run_gate("Bash", {"command": "ls"}, tokens=TRIP, session_id="s-tno", home=home, env_extra=env)
+        j = _jump(home, "s-tno")
+        assert rc == 2 and j["seat"] == "tmux" and j["gesture_attempts"] == 0, kw
+        assert "Salto REGISTRATO" in err and "seat tmux" in err, kw
+        assert _spawns(spawn_log, 1, timeout=1.0) == 0, kw   # window_jump.sh was never a fallback
+
+
+def test_a_tmux_binary_alone_does_not_make_a_tmux_seat():
+    # no TMUX in the env: this claude is not in a pane, whatever is on PATH
+    home = pathlib.Path(tempfile.mkdtemp())
+    spawn_log, env = _plant_tmux_seat(home)
+    env.pop("TMUX"); env.pop("TMUX_PANE")
+    rc, _, err, _ = run_gate("Bash", {"command": "ls"}, tokens=TRIP, session_id="s-notm", home=home, env_extra=env)
+    assert rc == 2 and _jump(home, "s-notm")["seat"] == "headless"
+    assert "Salto REGISTRATO" in err and _spawns(spawn_log, 1, timeout=1.0) == 0
