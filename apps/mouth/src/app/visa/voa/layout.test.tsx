@@ -65,10 +65,12 @@ describe("GarudaVoaLayout — server-side gate", () => {
     expect(notFoundMock).not.toHaveBeenCalled();
   });
 
-  // R19 skin (garuda-voa/voa-r19-design): the funnel must wear the same
-  // [data-theme="operative-light"][data-product="my"] tokens as /portal,
-  // via a wrapper this layout owns — not the shared /visa navy+red skin.
-  it("wraps children in the R19 wrapper (data-product=my, data-theme=operative-light)", () => {
+  // R19 skin (GARUDA VOA DELIBERA fase 2 (a)): the funnel wears the
+  // [data-theme="operative-dark"][data-product="my"] tokens (anthracite
+  // ground, design-A/refutation-measured), via a wrapper this layout owns —
+  // not the shared /visa navy+red skin, and not the paper ground this
+  // surface shipped with before the flip.
+  it("wraps children in the R19 wrapper (data-product=my, data-theme=operative-dark)", () => {
     process.env.GARUDA_PUBLIC_ENABLED = "true";
     const { container } = render(
       <GarudaVoaLayout>
@@ -78,7 +80,7 @@ describe("GarudaVoaLayout — server-side gate", () => {
     const wrapper = container.querySelector('[data-garuda-voa="r19"]');
     expect(wrapper).not.toBeNull();
     expect(wrapper).toHaveAttribute("data-product", "my");
-    expect(wrapper).toHaveAttribute("data-theme", "operative-light");
+    expect(wrapper).toHaveAttribute("data-theme", "operative-dark");
     expect(wrapper?.contains(screen.getByTestId("voa-content"))).toBe(true);
   });
 });

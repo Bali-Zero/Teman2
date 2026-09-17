@@ -881,6 +881,17 @@
   --state-danger: #a44b36;
   --state-info: #233d52;
 
+  /* GARUDA VOA DELIBERA fase 2 (b): --bz-data / --bz-status-mark, mirrored
+     here so both grounds declare the names (only the dark block is live on
+     the VOA funnel today). Same hue family as the dark ground's #F4C430
+     (45.3°) so the token means the same thing on either ground; lightness
+     retuned for paper contrast — a flat mirror of #F4C430 measures well
+     under 4.5:1 on #f7f4ee. #7a6629 clears 5.09:1 here. --bz-status-mark is
+     non-text only (border/rule/dot, WCAG 1.4.11's 3:1, not 4.5:1) and reuses
+     the dark block's hex unchanged: 5.03:1 on paper, well clear either way. */
+  --bz-data: #7a6629;
+  --bz-status-mark: #d01033;
+
   /* Shell — hairline instead of a drop shadow */
   --portal-header-bg: rgba(255, 252, 247, 0.86);
   --bz-shell-header-shadow: none;
@@ -955,6 +966,16 @@
   --state-warning: color-mix(in srgb, #8a5a2b 45%, #f7f4ee);
   --state-danger: #c46a52;
   --state-info: color-mix(in srgb, #233d52 40%, #f7f4ee);
+
+  /* GARUDA VOA DELIBERA fase 2 (b): --bz-data prices/dates/order-reference
+     text (11.60:1 on #121016), --bz-status-mark a non-text status marker
+     (border/rule/dot only, max one per viewport, always paired with the
+     WORD — never a fill, never text) at 3.42:1 against #121016 (WCAG
+     1.4.11's 3:1 floor for non-text). Declared here in globals.css, never in
+     voa-r19.css — that file's own contract test forbids a colour literal in
+     it, comments included. */
+  --bz-data: #f4c430;
+  --bz-status-mark: #d01033;
 
   /* Shell */
   --portal-header-bg: rgba(18, 16, 22, 0.86);

@@ -1,0 +1,129 @@
+task_id: voa-operative-dark-ground
+gear: 2
+l_level: L1
+gate_class: sonnet
+# Floor measured this session: `python3 scripts/evidence_pack_lint.py --print-floor
+# --print-floor-source --numstat-file <numstat> --changed-files-file <changed>` on this
+# branch's diff (origin/main...HEAD) returns `2` / `size`. Churn is 519 lines
+# (329+6+89+21+12+13+49 across seven touched files, per `git diff --stat`), above the
+# 400-line deterministic floor; no HOTZONE_PATTERNS path is touched (mouth-only diff:
+# app/visa/voa/**, app/globals.css, e2e/voa-tint.computed.guard.spec.ts,
+# playwright.config.ts, playwright.voa-tint.config.ts). No evidence/brief.yml existed for
+# this branch before this commit.
+objective: >-
+  This branch flips the public GARUDA VOA funnel's ground from operative-light to
+  operative-dark per DELIBERA fase 2 (a)/(b) (design-A/refutation pass): the wrapper's
+  data-theme attribute, voa-r19.css's 15 selectors, and layout.test.tsx's pinned
+  assertion all move from operative-light to operative-dark, two new tokens (--bz-data,
+  --bz-status-mark) are declared in both operative-light and operative-dark blocks of
+  globals.css, --text-on-accent is rebound from --bz-on-warm to --bz-base to fix a
+  paper-on-paper primary CTA the theme flip would otherwise produce, and a dedicated
+  Playwright computed-style guard (voa-tint.computed.guard, with its own
+  playwright.voa-tint.config.ts) convicts any banned hue/saturation/chroma combination
+  on the six purchase screens. This brief documents the change post-hoc to satisfy the
+  Gear-2 evidence-pack floor; no PR is opened by this brief (prepare-only, per the S1
+  mandate — the theme flip itself waits on Zero's Q1/Q2 answers per the branch's own
+  commit message).
+constraints:
+  - >-
+    Theme change is scoped to the VOA route only: the wrapper's data-theme attribute in
+    apps/mouth/src/app/visa/voa/layout.tsx and the 15 selectors in
+    apps/mouth/src/app/visa/voa/voa-r19.css that reference
+    [data-theme="operative-dark"][data-garuda-voa="r19"]. No other route's rendering
+    changes — voa-r19.css's own docblock states it declares no new colour and reuses
+    tokens already scoped to [data-theme="operative-dark"][data-product="my"] in
+    globals.css.
+  - >-
+    The two new tokens (--bz-data, --bz-status-mark) are declared only inside the `my`
+    [data-product="my"] blocks of apps/mouth/src/app/globals.css (both the
+    operative-light and operative-dark theme blocks), never inside voa-r19.css — that
+    file's own docblock states its contract test forbids a colour literal in it,
+    comments included.
+  - >-
+    No colour literal (hex/rgb/hsl) is introduced in any component or in voa-r19.css;
+    the only literal hex values in the diff are the two --bz-data / --bz-status-mark
+    declarations inside globals.css's `my` blocks.
+  - >-
+    No change outside apps/mouth/src/app/visa/voa/**, apps/mouth/src/app/globals.css,
+    apps/mouth/e2e/voa-tint.computed.guard.spec.ts, apps/mouth/playwright.config.ts and
+    apps/mouth/playwright.voa-tint.config.ts — the seven files the diff actually touches.
+  - No npm install/ci run in this worktree at any point.
+acceptance:
+  - text: >-
+      A1 (INNOCENCE): THE GarudaVoaLayout wrapper SHALL carry
+      data-theme="operative-dark" (not operative-light), matching layout.test.tsx's
+      updated assertion.
+    probe:
+      apps/mouth/src/app/visa/voa/layout.test.tsx — "wraps children in the R19
+      wrapper (data-product=my, data-theme=operative-dark)"
+  - text: >-
+      A2 (INNOCENCE): THE voa-r19.css selectors SHALL all key off
+      [data-theme="operative-dark"][data-garuda-voa="r19"] (0-2-0 specificity, beating
+      the plain [data-theme="operative-dark"] declared in
+      packages/core/tokens/themes/operative-dark.css), so the funnel-shell tokens keep
+      reaching the wrapper instead of falling back to semantic.css's default.
+    probe:
+      git diff origin/main...HEAD -- apps/mouth/src/app/visa/voa/voa-r19.css — zero
+      remaining "operative-light" selector in the file
+  - text: >-
+      A3 (GUILT-boundary): THE primary "Next" CTA's --text-on-accent SHALL resolve to
+      --bz-base (not --bz-on-warm) both on the base wrapper rule and the [data-funnel]
+      override in voa-r19.css, so the CTA is never paper-on-paper under the dark ground.
+    probe: >-
+      git diff origin/main...HEAD -- apps/mouth/src/app/visa/voa/voa-r19.css — both
+      "--text-on-accent var(--bz-base)" occurrences present, zero remaining
+      "--bz-on-warm" reference
+  - text: >-
+      A4 (INNOCENCE): THE voa-tint.computed.guard Playwright spec SHALL convict every
+      guilt fixture (raw slate #233D52, plain CSS blue, teal-green in-band, a dark
+      saturated navy at low lightness) and acquit every innocence fixture (copper
+      #A44B36, brand yellow #F4C430, the dark ground's --state-info grey, its
+      --state-success forest mix, --bz-status-mark #D01033, --bz-base #121016,
+      --bz-elevated/--bz-card #1A1A1F), per the guilt/innocence pairs in
+      voa-tint.computed.guard.spec.ts's own test.describe block.
+    probe:
+      npx playwright test -c playwright.voa-tint.config.ts (from apps/mouth/) —
+      "the tint classifier — guilt and innocence" describe block
+  - text: >-
+      A5 (INNOCENCE): THE same guard SHALL run against the six live purchase screens
+      (wizard, verdict ACCEPT, verdict DECLINE, upload, checkout, tracker) under
+      GARUDA_PUBLIC_ENABLED and find no banned tint.
+    probe:
+      npx playwright test -c playwright.voa-tint.config.ts — "GARUDA VOA — no
+      banned tint on the six purchase screens (operative-dark)" describe block
+  - text: >-
+      A6 (INNOCENCE): THE shared playwright.config.ts SHALL exclude
+      voa-tint.computed.guard.spec.ts from its own testIgnore, so the funnel-flag-gated
+      spec never runs against the shared webServer that does not set
+      GARUDA_PUBLIC_ENABLED.
+    probe:
+      git diff origin/main...HEAD -- apps/mouth/playwright.config.ts — testIgnore
+      entry "voa-tint.computed.guard.spec.ts" present
+  - text: >-
+      A7 (release lane): THE existing VOA/mouth unit and type-check suites SHALL stay
+      green with this diff applied.
+    probe:
+      npx vitest run apps/mouth/src/app/visa/voa/layout.test.tsx; npx tsc --noEmit
+      (from apps/mouth/)
+assumptions:
+  - text: >-
+      The two PNG renders at
+      /Users/balizero/BATTAGLIA-20260911/GARUDA-20260917/receipts/S1-renders/ (
+      voa-wizard-390.png, voa-wizard-1280.png) are the 390/1280 viewport screenshots the
+      branch's own commit message cites as confirming the wrapper background (#121016)
+      and the Next CTA (paper fill, ink text, not red).
+    status: unverified
+    probe: ls -la
+      /Users/balizero/BATTAGLIA-20260911/GARUDA-20260917/receipts/S1-renders/ — two
+      files present, sized 81K and 188K, dated 2026-09-17; not re-opened/re-measured by
+      this brief
+  - text: >-
+      No PR is opened by this brief — the S1 mandate is prepare-only, and the branch's
+      own commit message states the theme flip waits on Zero's Q1/Q2 answers before a PR
+      is warranted.
+    status: verified
+    probe:
+      git log -1 --format=%B — "No PR opened -- prepare-only per S1 mandate; the
+      theme flip waits on Zero's Q1/Q2 answers."
+appetite:
+  wall_clock_hours: 1

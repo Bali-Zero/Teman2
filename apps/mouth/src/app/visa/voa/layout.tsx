@@ -42,6 +42,17 @@ export const metadata: Metadata = {
   },
 };
 
+/**
+ * GARUDA VOA DELIBERA FASE 2 (a): ground flipped to `operative-dark` — the
+ * anthracite `--bz-base` #121016 the design-A/refutation pass measured, not a
+ * cosmetic swap. `voa-r19.css`'s 15 selectors are re-keyed to
+ * `[data-theme="operative-dark"]` in the same PR (design-A-refutation.md
+ * finding 1, BLOCKING): flipping this attribute alone without that file would
+ * make its `[data-funnel]` override never match, letting
+ * `semantic.css`'s `--accent-funnel` fall back to its red default on the
+ * primary purchase CTA. `layout.test.tsx` pins `operative-dark` here for the
+ * same reason.
+ */
 export default function GarudaVoaLayout({
   children,
 }: {
@@ -51,7 +62,7 @@ export default function GarudaVoaLayout({
     notFound();
   }
   return (
-    <div data-theme="operative-light" data-product="my" data-garuda-voa="r19">
+    <div data-theme="operative-dark" data-product="my" data-garuda-voa="r19">
       {children}
     </div>
   );

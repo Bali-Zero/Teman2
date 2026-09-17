@@ -24,6 +24,12 @@ export default defineConfig({
     // build this config launches. Collected only by
     // playwright.production.config.ts (no webServer, no mocked auth).
     "production/**",
+    // GARUDA VOA DELIBERA fase 2: this guard needs GARUDA_PUBLIC_ENABLED set
+    // on the server it runs against (the funnel 404s fail-closed without
+    // it — src/app/visa/voa/flag.ts) — setting that here would open the
+    // funnel for every other spec sharing this webServer. Collected only by
+    // playwright.voa-tint.config.ts, whose webServer.env sets the flag.
+    "voa-tint.computed.guard.spec.ts",
   ],
 
   // Timeout per singolo test
