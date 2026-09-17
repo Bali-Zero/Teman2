@@ -52,11 +52,12 @@ SIMPLE_SHAPES = [
      re.compile(r"(?:^|\s)(-n\s*\d+|-\d+\b|--max-count(=|\s+)\d+|\S+\.\.\S+)"),
      "`git log` without -n/--max-count/a range", "`git log -10` or `git log --oneline | head -20`"),
     (re.compile(r"^git\s+(?:-C\s+\S+\s+)?(diff|show)\b"),
-     re.compile(r"--stat\b|--name-only\b|--name-status\b|--numstat\b|--shortstat\b"),
+     # --stat family, or a flag that prints no patch at all (-s/--no-patch/--quiet/--exit-code/--check)
+     re.compile(r"--stat\b|--name-only\b|--name-status\b|--numstat\b|--shortstat\b|--no-patch\b|--quiet\b|--exit-code\b|--check\b|(?:^|\s)-s(?=\s|$)"),
      "`git diff`/`git show` without --stat", "`git diff --stat` or `git diff ... | head -40`"),
     (re.compile(r"^find\b"), re.compile(r"-maxdepth\b"),
      "`find` without -maxdepth", "`find . -maxdepth 2 -name x` or `find . -name x | head`"),
-    (re.compile(r"^(python3?\s+-m\s+pytest|pytest|npm\s+test|pnpm\s+test|vitest|jest)\b"),
+    (re.compile(r"^(?:(?:npx|pnpm|yarn|bunx?)\s+(?:exec\s+)?)?(python3?\s+-m\s+pytest|pytest|npm\s+test|pnpm\s+test|yarn\s+test|vitest|jest)\b"),
      re.compile(r"-q\b|--quiet\b|--tb=short\b|--tb=line\b"),
      "test runner without -q/--tb=short", "`pytest -q` or `pytest ... 2>&1 | tail -20`"),
 ]

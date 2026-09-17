@@ -47,7 +47,7 @@ seat_diversity_note: >-
 
 diff:
   files: 7
-  net_lines: 807
+  net_lines: 828
   measured_at: >-
     `scripts/evidence_pack_lint.py --print-measured` against `git diff --numstat`/`--name-only`
     from the merge-base with origin/main to this pack's own finalized commit, run LAST as its own
@@ -65,7 +65,13 @@ residual_risks:
     (recursive listing is now denied regardless of the top-level count), and on
     `python3 -m pytest <dir>` (the python -m form now matches the test-runner shape). The
     threshold of 150 is a judgement: a repo root or a hooks directory sits at 69-76 entries, the
-    two incidents that motivated the guard sat at 300+ and 957.
+    two incidents that motivated the guard sat at 300+ and 957. GATE ROUND 2 (head abae8f514b)
+    confirmed the six cures hold and returned REWORK-BUILD again on two over-matches OUTSIDE the
+    round-1 surface (`git show -s`/`--no-patch`, `git diff --quiet`/`--exit-code`/`--check`:
+    flags that print no patch are now own-bounds) and one under-match (`npx vitest`/`npx jest`:
+    a package-runner prefix now matches the test-runner shape). Both are pinned in both suites.
+    Depth rule: this is the last cure round — a further over-match on an everyday command means
+    the shape list is under-specified and gets a written spec, not a third patch.
   - >-
     NO INDEPENDENT ADVERSARIAL REVIEW ROUND is claimed in this pack. This is a single-build-lane,
     Gear-2 change with the four proof commands team-lead specified run and quoted verbatim below
@@ -80,7 +86,7 @@ residual_risks:
     own pattern for a prior hook) — everything in this pack is local test/script evidence, not a
     live-session observation of a real denial yet.
   - >-
-    Latency (12.7ms allow-case, 12.8ms deny-case, this pack's own measured run below) is a
+    Latency (14.3ms allow-case, 13.5ms deny-case, this pack's own measured run below) is a
     single-machine (M5), single-run, no-concurrent-load figure — not an independently repeated
     benchmark and not measured on Pro.
   - >-
@@ -94,15 +100,15 @@ residual_risks:
 pii_scan: clean
 
 receipts:
-  - claim: "the guard's own dedicated guilt+innocence suite is green: ALL 49 OK"
+  - claim: "the guard's own dedicated guilt+innocence suite is green: ALL 60 OK"
     cmd: "python3 infra/claude-hooks/test_output_hygiene_guard.py"
-    result: "=== ALL 49 OK (no innocent bitten, no guilt missed) === / latency: allow-case subprocess 13.8ms, deny-case subprocess 13.8ms"
+    result: "=== ALL 60 OK (no innocent bitten, no guilt missed) === / latency: allow-case subprocess 14.3ms, deny-case subprocess 13.5ms"
     exit: 0
     ts: "2026-09-17T20:01:19Z"
     seat: session (air-m5)
-  - claim: "the shared vaccine, which also carries this guard's fixtures, is green: ALL 152 OK, no regression to any pre-existing guard"
+  - claim: "the shared vaccine, which also carries this guard's fixtures, is green: ALL 155 OK, no regression to any pre-existing guard"
     cmd: "python3 infra/claude-hooks/test_hook_innocence.py"
-    result: "=== ALL 152 OK (no innocent bitten, no guilt missed) ==="
+    result: "=== ALL 155 OK (no innocent bitten, no guilt missed) ==="
     exit: 0
     ts: "2026-09-17T20:01:19Z"
     seat: session (air-m5)
@@ -131,7 +137,7 @@ receipts:
     cmd: >-
       python3 scripts/evidence_pack_lint.py --repo-root . --numstat-file /tmp/net-lines-numstat-hygiene.txt
       --changed-files-file /tmp/changed-files-hygiene.txt --print-measured
-    result: "7 files, +807/-0"
+    result: "7 files, +828/-0"
     exit: 0
     ts: "2026-09-17T20:01:19Z"
     seat: session (air-m5)
