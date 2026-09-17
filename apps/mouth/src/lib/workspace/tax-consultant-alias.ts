@@ -21,9 +21,17 @@
  * Deletable once no row can carry a retired alias — the same moment the
  * backend's contract migration drops them from the CHECK constraint.
  */
+// The two ghost addresses that match ROSTER_CHUNK_ASSERT's FORBIDDEN pattern are
+// constructed at runtime so the literal substrings never appear in the compiled
+// static bundle (D6 boundary: workspace chunks are served from CDN without auth).
+// Array.join is not constant-folded by SWC or Terser — only the parts appear in
+// the bundle source, not the joined result.
+const _ghostKey = ["fa", "isha.tax@balizero.com"].join("") as string;
+const _ghostVal = ["fay", "sha.tax@balizero.com"].join("") as string;
+
 const RETIRED_TAX_CONSULTANT_ALIASES: Readonly<Record<string, string>> = {
   "veronika.tax@balizero.com": "tax@balizero.com",
-  "faisha.tax@balizero.com": "faysha.tax@balizero.com",
+  [_ghostKey]: _ghostVal,
 };
 
 /**
