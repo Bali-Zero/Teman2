@@ -270,6 +270,146 @@ describe("VoaResultPage — ACCEPT", () => {
   });
 });
 
+describe("VoaResultPage — self-service deletion (design-A §2, DELIBERA lane S6)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    fetchMock.mockReset();
+  });
+
+  it("ACCEPT: confirming and deleting sends a same-origin DELETE with an Idempotency-Key, then shows the terminal Deleted screen", async () => {
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        verdict: "ACCEPT",
+        reason_codes: [],
+        price_idr: 790000,
+      }),
+    });
+    renderWithHash("opaque-test-hash");
+    await waitFor(() =>
+      expect(screen.getByTestId("bz-stamp")).toBeInTheDocument(),
+    );
+
+    const user = userEvent.setup();
+    await user.click(
+      screen.getByRole("button", { name: /delete this check/i }),
+    );
+    expect(
+      screen.getByText(/delete this check\? this can't be undone/i),
+    ).toBeInTheDocument();
+
+    fetchMock.mockResolvedValueOnce({ status: 204 });
+    await user.click(screen.getByRole("button", { name: /yes, delete/i }));
+
+    await waitFor(() =>
+      expect(
+        screen.getByText(/this check has been deleted/i),
+      ).toBeInTheDocument(),
+    );
+
+    // The request itself: same-origin DELETE, cookie included, a real
+    // Idempotency-Key header (never empty, never a body).
+    const deleteCall = fetchMock.mock.calls.find(
+      ([, init]) => (init as RequestInit | undefined)?.method === "DELETE",
+    );
+    expect(deleteCall).toBeDefined();
+    const [url, init] = deleteCall as [string, RequestInit];
+    expect(url).toBe("/api/visa/voa/eligibility-checks/opaque-test-hash");
+    expect(init.credentials).toBe("include");
+    const headers = init.headers as Record<string, string>;
+    expect(headers["Idempotency-Key"]).toBeTruthy();
+    expect(init.body).toBeUndefined();
+
+    // Terminal screen offers exactly one control — the way back in.
+    expect(screen.getByRole("link", { name: /start again/i })).toHaveAttribute(
+      "href",
+      "/visa/voa",
+    );
+    expect(
+      screen.queryByRole("button", { name: /yes, delete/i }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("Cancel returns to the quiet idle link without calling fetch again", async () => {
+    fetchMock.mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        verdict: "ACCEPT",
+        reason_codes: [],
+        price_idr: 790000,
+      }),
+    });
+    renderWithHash();
+    await waitFor(() =>
+      expect(screen.getByTestId("bz-stamp")).toBeInTheDocument(),
+    );
+
+    const user = userEvent.setup();
+    await user.click(
+      screen.getByRole("button", { name: /delete this check/i }),
+    );
+    const callsBeforeCancel = fetchMock.mock.calls.length;
+    await user.click(screen.getByRole("button", { name: /cancel/i }));
+
+    expect(
+      screen.getByRole("button", { name: /delete this check/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText(/delete this check\? this can't be undone/i),
+    ).not.toBeInTheDocument();
+    expect(fetchMock.mock.calls.length).toBe(callsBeforeCancel);
+  });
+
+  it("a non-204 response shows a retryable error, never the DELETE-red colour token", async () => {
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        verdict: "ACCEPT",
+        reason_codes: [],
+        price_idr: 790000,
+      }),
+    });
+    renderWithHash();
+    await waitFor(() =>
+      expect(screen.getByTestId("bz-stamp")).toBeInTheDocument(),
+    );
+
+    const user = userEvent.setup();
+    await user.click(
+      screen.getByRole("button", { name: /delete this check/i }),
+    );
+    fetchMock.mockResolvedValueOnce({ status: 503 });
+    await user.click(screen.getByRole("button", { name: /yes, delete/i }));
+
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent(/couldn't delete this check/i);
+    // R19 law: no --color-error (red) on this surface's own new copy.
+    expect(alert.getAttribute("style") ?? "").not.toContain("color-error");
+
+    fetchMock.mockResolvedValueOnce({ status: 204 });
+    await user.click(screen.getByRole("button", { name: /try again/i }));
+    await waitFor(() =>
+      expect(
+        screen.getByText(/this check has been deleted/i),
+      ).toBeInTheDocument(),
+    );
+  });
+
+  it("DECLINE: the link sits under the empty stamp too", async () => {
+    fetchMock.mockResolvedValue({
+      ok: true,
+      json: async () => ({ verdict: "DECLINE", reason_codes: ["GROUP_CASE"] }),
+    });
+    renderWithHash();
+    await waitFor(() =>
+      expect(screen.getByTestId("bz-empty-stamp")).toBeInTheDocument(),
+    );
+    expect(
+      screen.getByRole("button", { name: /delete this check/i }),
+    ).toBeInTheDocument();
+  });
+});
+
 describe("VoaResultPage — result not found", () => {
   it("shows a recovery path, not a raw stack trace, on 404", async () => {
     fetchMock.mockResolvedValue({ ok: false, status: 404 });

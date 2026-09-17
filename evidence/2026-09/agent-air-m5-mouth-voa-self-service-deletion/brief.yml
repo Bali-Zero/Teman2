@@ -1,0 +1,102 @@
+task_id: voa-self-service-deletion
+gear: 2
+l_level: L1
+gate_class: sonnet
+# Floor measured this session: `python3 scripts/evidence_pack_lint.py --print-floor
+# --print-floor-source --numstat-file <numstat> --changed-files-file <changed>` on
+# `git diff origin/main...HEAD` (450 lines added, 0 removed, 4 files) returns `2` /
+# `size`: churn 450 > 400 alone crosses the Gear-2 threshold, no HOTZONE_PATTERNS hit.
+# The diff carried no evidence/brief.yml before this file, so the required Gear-2
+# artifact was simply absent.
+objective: >-
+  `DELETE /api/visa/voa/eligibility-checks/{result_id}` (implemented in
+  `apps/backend-rag/backend/app/routers/garuda_voa_public.py`, `delete_eligibility_result`,
+  and declared in `products/garuda-voa/contracts/openapi.yaml`) has existed with zero UI
+  caller (design-A-claude.md §2, DELIBERA-fase2 lane S6 (d)). This PR wires a caller: a
+  quiet "Delete this check" text link under the stamp on both the ACCEPT and DECLINE
+  verdict screens (`apps/mouth/src/app/visa/voa/[hash]/page.tsx`, new `DeleteCheckControl`
+  component), an inline two-control confirm (own component state, not a modal), a DELETE
+  fetch with `credentials: "include"` (same-origin `garuda_result_session` HttpOnly cookie,
+  no new auth) and a fresh `Idempotency-Key` header, and a terminal "This check has been
+  deleted." screen with one link back to `/visa/voa`. A non-204 response renders a
+  retryable error using font-weight, not colour. `apps/mouth/playwright.config.ts`'s shared
+  `webServer` now sets `GARUDA_PUBLIC_ENABLED=true`, without which `/visa/voa/**` 404s
+  server-side before any e2e spec (existing or new) can reach the segment.
+constraints:
+  - >-
+    Deletion authorizes only the caller's own check: the frontend never carries or reads
+    the `garuda_result_session` cookie itself — it sends `credentials: "include"` exactly
+    like the page's existing GET, and the backend's non-enumerating contract (per
+    openapi.yaml's `deleteEligibilityResult`: "Only a valid creator binding erases data;
+    the response reveals no existence oracle") is what actually enforces ownership. The
+    frontend adds no new authorization logic of its own.
+  - No change outside apps/mouth/src/app/visa/voa/**, apps/mouth/e2e/** and apps/mouth/playwright.config.ts.
+  - No npm install / npm ci anywhere in this lane.
+  - No `--color-error` (red) on the error state — font-weight (600) carries the alert instead, per DELIBERA (d)'s ban on red on this surface.
+  - The quiet link and confirm CTA use `var(--bz-copper-text, ...)` (ownership token), never a raw colour literal.
+  - No client PII in this brief, the diff, or any linked artifact.
+acceptance:
+  - text: >-
+      A1 (INNOCENCE, unit): WHEN a visitor on the ACCEPT screen clicks "Delete this check",
+      confirms "Yes, delete", and the mocked fetch resolves 204, THE component SHALL send a
+      DELETE to `/api/visa/voa/eligibility-checks/{resultId}` with `credentials: "include"`,
+      a non-empty `Idempotency-Key` header, no body, and render "This check has been deleted."
+    probe: >-
+      npx vitest run apps/mouth/src/app/visa/voa/[hash]/page.test.tsx -t "ACCEPT: confirming and deleting sends a same-origin DELETE"
+  - text: >-
+      A2 (INNOCENCE, unit): WHEN a visitor clicks "Delete this check" then "Cancel", THE
+      component SHALL return to the idle quiet-link state and SHALL NOT call fetch a second
+      time (no DELETE fired).
+    probe: >-
+      npx vitest run apps/mouth/src/app/visa/voa/[hash]/page.test.tsx -t "Cancel returns to the quiet idle link without calling fetch again"
+  - text: >-
+      A3 (GUILT, unit): WHEN the DELETE call resolves non-204, THE component SHALL render
+      the retryable error copy without applying the `--color-error` red token, and SHALL
+      offer a "Try again" control that re-fires the same DELETE.
+    probe: >-
+      npx vitest run apps/mouth/src/app/visa/voa/[hash]/page.test.tsx -t "a non-204 response shows a retryable error, never the DELETE-red colour token"
+  - text: >-
+      A4 (INNOCENCE, unit): WHEN the verdict is DECLINE, THE quiet "Delete this check" link
+      SHALL also render under the empty stamp (not ACCEPT-only).
+    probe: >-
+      npx vitest run apps/mouth/src/app/visa/voa/[hash]/page.test.tsx -t "DECLINE: the link sits under the empty stamp too"
+  - text: >-
+      A5 (INNOCENCE, unit, guilt control per PR body): mutating the DELETE call's method to
+      GET SHALL turn `expect(deleteCall).toBeDefined()` red in the ACCEPT deletion test,
+      proving the assertion is load-bearing and not vacuously green.
+    probe: >-
+      Manual guilt-mutation re-run recorded in the PR body ("Guilt control" section) — restored via `cp` backup, file confirmed unchanged by `git diff`.
+  - text: >-
+      A6 (INNOCENCE, browser, e2e): WHEN a Playwright browser walks the same two taps
+      (click "Delete this check", click "Yes, delete") against a mocked backend, THE page
+      SHALL fire the DELETE with a truthy Idempotency-Key header and land on "This check has
+      been deleted." with exactly one way back (`/visa/voa`), and no leftover "Yes, delete" control.
+    probe: >-
+      npx playwright test apps/mouth/e2e/voa-self-service-deletion.spec.ts
+  - text: >-
+      A7 (type/lint/format, whole-file): the 4 touched files SHALL type-check, lint and
+      format clean.
+    probe: >-
+      npx tsc --noEmit -p apps/mouth && npx eslint apps/mouth/src/app/visa/voa/[hash]/page.tsx apps/mouth/src/app/visa/voa/[hash]/page.test.tsx apps/mouth/e2e/voa-self-service-deletion.spec.ts apps/mouth/playwright.config.ts && npx prettier --check <same 4 files>
+assumptions:
+  - text: >-
+      `DELETE /api/visa/voa/eligibility-checks/{result_id}` already exists and is wired on
+      `origin/main` — this PR adds a UI caller only, no backend change. Confirmed:
+      `apps/backend-rag/backend/app/routers/garuda_voa_public.py` registers
+      `@router.delete(...)` with `operation_id="deleteEligibilityResult"` calling
+      `delete_eligibility_result`, matching the `delete:` block under
+      `/api/visa/voa/eligibility-checks/{result_id}` in
+      `products/garuda-voa/contracts/openapi.yaml`. Neither file is touched by this diff.
+    status: verified
+    probe: >-
+      grep -n "delete\|DELETE" apps/backend-rag/backend/app/routers/garuda_voa_public.py (lines 694-724, delete_eligibility_result) + sed -n '168,230p' products/garuda-voa/contracts/openapi.yaml (delete: operationId deleteEligibilityResult)
+  - text: >-
+      The Playwright e2e spec (`voa-self-service-deletion.spec.ts`) was not executed inside
+      this evidence-writing lane because its `webServer` requires `npm run build`, which this
+      lane is under an explicit ban from running (per the PR body's "Proof" section, a prior
+      lane's build left generated-file noise that had to be discarded). Left for CI.
+    status: unverified
+    probe: >-
+      apps/mouth/playwright.config.ts webServer command `npm run build && npm run start`; CI executes it, not this evidence lane
+appetite:
+  wall_clock_hours: 1

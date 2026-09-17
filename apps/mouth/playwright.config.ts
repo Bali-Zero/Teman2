@@ -106,6 +106,11 @@ export default defineConfig({
           NEXT_PUBLIC_HIDE_QUERY_DEVTOOLS: "1",
           NEXT_PUBLIC_HIDE_CELL_WIDGET: "1",
           NEXT_PUBLIC_VISA_ORACLE_WHATSAPP_NUMBER: "628123456789",
+          // `visa/voa/**` fails CLOSED behind this flag (layout.tsx / flag.ts) —
+          // without it every e2e spec touching that segment 404s regardless of
+          // what it mocks, since the gate runs server-side before any route
+          // handler or client route-mock sees the request.
+          GARUDA_PUBLIC_ENABLED: "true",
         },
         reuseExistingServer: !process.env.CI,
         timeout: 300 * 1000,
