@@ -76,3 +76,47 @@ on the critical path**, **33 with no explicit timeout** (⇒ 600 s default each)
   `UserPromptExpansion`, `SessionStart`, `PostModelSwitch`; elsewhere it goes to the
   debug log. `additionalContext` must sit inside `hookSpecificOutput` or it is
   silently ignored.
+
+## Execution status — 2026-09-17, after the first pass
+
+`SHIPPED-HOME` = applied to this machine's unversioned config (`~/.claude/**`,
+`~/.tokenaudit/**`, `.claude/settings.local.json`); no PR exists for those files
+by construction, so the proof IS the measurement, and it must be repeated per
+machine. `ARMED` = in PR #6698. Backups of every touched HOME file carry the
+suffix `.bak-ccmeta-20260917T035849Z`.
+
+| id | status | proof taken now |
+|---|---|---|
+| H1 | SHIPPED-HOME | Tier-3 branch is `exit 2`; `bash -n` clean; the fail log shows this branch had already fired 28 times while blocking nothing |
+| H2 | SHIPPED-HOME | 0 hook timeouts above 600 s (were 3000/8000/10000) |
+| H3 | SHIPPED-HOME | `cc-status` off PreToolUse+PostToolUse; 14 handlers per Bash call, was 16 |
+| H4 | SHIPPED-HOME | `stop_verify.py` + `seam_verify.py` unregistered from `Stop` |
+| H5 | SHIPPED-HOME | sampling now precedes the transcript read; hook still exits 0 on a synthetic event |
+| H6 | SHIPPED-HOME | 4 of the 14 handlers on a Bash call are `async: true` → 10 blocking, was 16 |
+| H7 | SHIPPED-HOME | 0 handlers without an explicit timeout, was 33 (each inheriting 600 s) |
+| H8 | PARTIAL | `exit 2` done via H1. The OTHER half stands: a `PreToolUse` hook of type `command` that times out does NOT block, so this remains an advisor unless it moves to an Agent-SDK callback |
+| H9 | SHIPPED-HOME + ARMED | removed from `PostToolUse` (mail no longer rides every tool call); byte caps in PR #6698 |
+| H10 | OPEN | 11 transcript readers on the hot path, still one process each |
+| H11 | OPEN | no guard converted to `type: prompt` yet |
+| H12 | ARMED | new `ConfigChange` hook, guilt+innocence proven, registered from `${CLAUDE_PROJECT_DIR}` |
+| H13 | SHIPPED-HOME | injection-scan matcher now names the 4 live web tools it was missing |
+| H14 | DONE (measurement) | 16 handlers from ENABLED plugins at their active version (not 92 — that figure counted cached old versions and disabled plugins). Real total: 64 |
+| H15 | PARTIAL | the two no-ops are gone; 2 `python3` handlers + an async `cc-status` remain on `Stop` |
+| C1 | ARMED (probe) · OPEN (rest) | `arsenal_probe.probe_claude` carries `--restricted` and the seat went UNKNOWN_ERR → **LIVE \| PONG**; every other programmatic `claude -p` in the repo still lacks it |
+| C1b | SHIPPED-HOME | one tool call no longer drags fleet mail into context |
+| C2 | SHIPPED-HOME | allow rules 908 → 856; `claude -p` emits 0 wildcard warnings, was 21 |
+| S1 | OPEN — deliberate | not switched on while four sessions are mid-campaign on this machine. Command and rollback are known; it wants a quiet window |
+| A1 | PARTIAL | live seats went 1 → 2 (`codex`, `claude`) with no credential change, plus `nlm` and `jules`. `kimi`, every `tp1-*` and `qwen-cloud-code` are QUOTA_DEAD: that is a spend decision, owner Zero |
+| O1 | ARMED (report) · OPEN (OTEL) | `cc_context_cost_report.py` gives the number that did not exist: M5, 4 days, 47,493 turns, **10.35 B context tokens**, 217,824/turn. No OTEL collector yet |
+| N1 | OPEN | native `isolation: worktree` / `memory:` vs `agent_start.py` + MOS: still undecided on disk |
+| N2 | PARTIAL | `ConfigChange` wired (H12); `WorktreeCreate`/`WorktreeRemove`/`PostToolBatch` still unused |
+| M1 | ARMED | `m5_block_heavy_brew.py` now reports `exit_codes=[0, 2]`, was `[2]` — the false accusation is gone |
+| M2 | ARMED | the report prints its grading regime; 1 seat refuses to grade |
+
+### Found by walking into them (new rows)
+
+| id | surface | intervention | risk | status | proof required |
+|---|---|---|---|---|---|
+| H16 | hooks · guard | `worktree_isolation.py` blocks `cp`/`git` into the main checkout but NOT a write performed by an inline interpreter (`python3 - <<'PY'` … `open(path,'w')`). I modified `/Users/balizero/nuzantara/.claude/settings.json` from a worktree session and nothing stopped me; the same write via `cp` was refused. Family #3, UNDER-match side | none to fix | OPEN | the same inline write is refused, and an innocent inline write inside the worktree still passes |
+| H17 | hooks · guard | the escape the guard itself prints — `AGENT_WORKTREE_ENFORCEMENT=false <cmd>` — does NOT work inline: the PreToolUse hook reads the SESSION's environment, not the command's. The message teaches a cure that does not cure | none | OPEN | either the message names the working form, or the hook honours a per-command override |
+| H18 | operator | `/Users/balizero/nuzantara/.claude/settings.json` in the MAIN checkout still carries my uncommitted `ConfigChange` block (identical to the one in PR #6698). Both guard paths refuse to let a session revert it. Operator command: `git -C /Users/balizero/nuzantara checkout -- .claude/settings.json` | none | OPEN — owner Zero | `git diff` on that path is empty in the main checkout |
