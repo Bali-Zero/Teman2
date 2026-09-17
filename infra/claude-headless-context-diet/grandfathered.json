@@ -1,0 +1,26 @@
+{
+  "_doc": "Headless `claude -p`/`--print` invocations missing a context-diet flag (--restricted/--safe-mode/--setting-sources) or an exempt pragma, grandfathered at lint birth (2026-09-17). This list only SHRINKS: apply the recipe (text-only seat -> --restricted --strict-mcp-config; Read/Write/Bash seat -> --safe-mode; custom --agent or project MCP -> record a `# context-diet: exempt \u2014 <reason>` pragma) at a call site, then remove its file here (or re-run --freeze once every listed file is fixed). ADVISORY until backlog row C1d lands: a NEW file introducing a bare invocation is reported by scripts/quickcheck.sh on every push from a dev machine \u2014 it does not fail CI, because that would require wiring this lint into a .github/workflows/ step, which is a hot-zone path and needs its own Gear-3 PR (C1d). See scripts/lint/lint_claude_headless_context_diet.py.",
+  "frozen_at": "2026-09-17",
+  "files": [
+    "agent-library/scar_replay/world-scan-run.sh",
+    "apps/evaluator/nlm_deep_research/t4_monitor.py",
+    "apps/mata-garuda/mata_garuda/domains/setup_team/obligation_engine.py",
+    "infra/launchagents/wrappers/run-nb-curator-mode-c.sh",
+    "infra/launchagents/wrappers/wr2-contract-test.sh",
+    "infra/launchagents/wrappers/wr2-external-bench-run.sh",
+    "infra/launchagents/wrappers/wr2-ig-metrics-analyst-run.sh",
+    "scripts/claude_seat_quota.py",
+    "scripts/codex_tri_llm_review.py",
+    "scripts/docs_link_fixer.py",
+    "scripts/fleet_burst.sh",
+    "scripts/generate_automations_excel.py",
+    "scripts/kbli_triangle/grade_editorials.py",
+    "scripts/sota_infer_personas.py",
+    "scripts/sota_write_gap_analysis.py",
+    "scripts/supervisor_autofix_tier2.sh",
+    "scripts/wr2_canva_garbage_collector.py",
+    "scripts/wr2_ledger_backfill.py",
+    "scripts/wr2_reflexion_synthesis.py",
+    "scripts/wr2_validate_master.py"
+  ]
+}

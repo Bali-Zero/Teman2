@@ -887,8 +887,16 @@ def get_or_create_session(job_name: str, scope: str = "daily") -> str | None:
         # Create new session via claude CLI
         import subprocess
         # Start a minimal session to get a session ID
+        # context-diet: text-only bootstrap prompt, no tools needed ->
+        # --restricted --strict-mcp-config (measured 2026-09-17 on M5 with
+        # fleet mail pending: 15,064 input tokens and answered, vs 36,322
+        # AND result:null on the unpinned default — numbers are
+        # environment-dependent, re-measure with
+        # scripts/bench/cc_headless_shape_bench.sh — see
+        # lint_claude_headless_context_diet.py).
         result = subprocess.run(
             ["claude", "--print", "--model", SESSION_BOOTSTRAP_MODEL,
+             "--restricted", "--strict-mcp-config",
              f"Session start for {job_name} {scope} {datetime.now(WITA).strftime('%Y-%m-%d')}"],
             capture_output=True, text=True, timeout=30,
             env={**os.environ, "ANTHROPIC_API_KEY": ""},
@@ -898,8 +906,10 @@ def get_or_create_session(job_name: str, scope: str = "daily") -> str | None:
         session_match = re.search(r'session[_-]?id["\s:]+([a-f0-9-]{36})', result.stdout + result.stderr, re.IGNORECASE)
         if not session_match:
             # Try environment variable approach
+            # context-diet: same recipe as above — text-only, no tools.
             env_result = subprocess.run(
                 ["claude", "--print", "--output-format=json", "--model", SESSION_BOOTSTRAP_MODEL,
+                 "--restricted", "--strict-mcp-config",
                  f"Session init {job_name}"],
                 capture_output=True, text=True, timeout=30,
                 env={**os.environ, "ANTHROPIC_API_KEY": ""},

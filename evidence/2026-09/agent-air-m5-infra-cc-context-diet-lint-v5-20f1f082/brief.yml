@@ -1,0 +1,152 @@
+task: >-
+  C1 of the cc-meta-loop backlog: every headless `claude -p`/`--print` invocation in the repo
+  carries a context-diet flag (`--restricted`, `--safe-mode`, `--setting-sources`) or an
+  explicit `# context-diet: exempt — <reason>` pragma. A new lint
+  (`scripts/lint/lint_claude_headless_context_diet.py`, reusing the anchor/window engine of
+  lint_claude_headless_limits.py, file-level grandfather list that only shrinks, --selftest,
+  monotone check vs origin/main) wired into the LOCAL pre-push consumer scripts/quickcheck.sh
+  (ADVISORY until backlog row C1d lands — a CI workflow step is a hot-zone-path edit and needs
+  its own Gear-3 PR); plus three cures in the same PR: agent_job.py session bootstrap (2
+  text-only calls → --restricted --strict-mcp-config), claude_vision.py (needs Read →
+  --safe-mode, proven live with a one-boolean json-schema against an on-disk PNG), and the
+  exempt pragma on the deliberate Canva-MCP exception. Ships two re-measure scripts so the
+  frozen numbers cited by the BACKLOG never have to be trusted cold:
+  scripts/bench/cc_headless_shape_bench.sh (the lint docstring's/cure comments' token numbers —
+  not itself cited by name in the BACKLOG's C4 row, which only describes the methodology
+  inline) and scripts/bench/cc_hook_latency_bench.py (cited BY PATH in the BACKLOG's H10 row).
+lane: infra/cc-context-diet-lint
+machine: Air-M5
+date: 2026-09-17
+gear: 2
+gear_reason: >-
+  Deterministic floor 2, source `size`: churn ~1130 (lint 555, test 187, bench-shape 43,
+  bench-latency 129, quickcheck wiring 39, grandfather 26, cures ~20, brief ~150) — above
+  SIZE_GEAR2_THRESHOLD (400), below 1828; no hot-zone path (the .github/workflows/ edit was
+  split out into backlog row C1d — this PR touches only scripts/, infra/ and evidence/).
+successor_of: >-
+  "#6708 — REWORK-BUILD (fresh Opus gate session, 50 turns): (1) the immune-enforcement.yml
+  edit is a hot-zone path per scripts/evidence_pack_lint.py's HOTZONE_PATTERNS and floored the
+  PR at Gear 3 unacknowledged; (2) the Bites line named agent_job.py's 21 cron-job callers of
+  get_or_create_session() as the consumer, but that function has had NO live caller since
+  compliance_ops.py removed it 2026-04-30 — only a test calls it; (3) the frozen token numbers
+  (36,322 / 15,064 / 16,923) were measured once on M5 with fleet mail pending at Stop and
+  presented as fixed facts, with no way for a later reader to tell whether they still hold.
+  #6714 — same content, all three findings fixed, auto-merge ARMED (never merged into this
+  history): superseded not for a defect but because the Builder Contract freezes a branch the
+  instant auto-merge is armed — an addendum (scripts/bench/cc_hook_latency_bench.py, for the
+  H10 backlog row) arrived after #6714 was already armed, so it could not land as a new commit
+  on that branch. #6715 — successor of #6714 (clean cherry-pick + the addendum), auto-merge
+  ARMED, then the final gate posted REWORK-BUILD (fresh Opus session, 32 turns) at head
+  a714f8d2 — depth-1 fix-of-a-fix, the LAST successor allowed: (1) BENCH DEFECT —
+  cc_headless_shape_bench.sh's default-list call passed the literal 2-char string `\"\"` to
+  --setting-sources (single-quoted `'\"\"'` in bash), which the CLI correctly rejects; a
+  genuinely empty argument is accepted and costs ~27k tokens (measured on CLI 2.1.274 in this
+  PR, A5); (2) FALSE CLAIM — the lint docstring stated `--setting-sources \"\"` is 'rejected
+  outright by newer CLI builds', an artefact of bug (1), not a CLI behavior — corrected to the
+  measured truth; (3) HONEST DOC — grandfathered.json's `_doc` and the lint's freeze() payload
+  claimed a new offender 'fails CI', which is untrue while C1d (the CI wiring) is unbuilt and
+  quickcheck.sh is advisory-only — corrected to say so explicitly; (4) BITES — the prior brief
+  undercounted --selftest at 14 (it is 18) and claimed the BACKLOG's C4 row cites
+  cc_headless_shape_bench.sh by name, which it does not (only H10 cites cc_hook_latency_bench.py
+  by path) — corrected. #6715 should be closed once this PR is confirmed open."
+rework:
+  - 'BENCH DEFECT fixed: scripts/bench/cc_headless_shape_bench.sh''s hardcoded default list now
+    calls `--setting-sources ""` (a real empty argv element, not the 2-char string) — proof:
+    re-ran the bench, setting_sources_empty now returns rc=0, result=''PONG'', TOTAL_IN=26973 (was
+    rc=1, NOJSON, ''Invalid setting source: ""''). Also replaced the SHAPES-override path''s
+    `eval run "$label" $flags` (word-splitting eats an empty flag value the same way) with a
+    ''|''-separated flag list parsed via `read -ra` behind a sentinel-token trick (bash''s `read`
+    silently drops a TRAILING empty field on plain split — appending then slicing off a sentinel
+    keeps it); verified in isolation for the no-flags / one-flag / two-flag / trailing-empty-flag
+    cases before wiring it in.'
+  - 'FALSE CLAIM corrected: the lint docstring no longer says `--setting-sources ""` is
+    ''rejected outright by newer CLI builds'' — it now states the measured truth (26,973 tokens,
+    answered, on CLI 2.1.274) and explains the rejection artefact was the bench''s own quoting
+    bug, not a CLI limitation. Checked agent_job.py/claude_vision.py comments and the prior
+    brief''s A5 for the same claim — neither cure comment mentioned --setting-sources at all, so
+    only the lint docstring and this brief needed the correction.'
+  - "HONEST DOC: grandfathered.json's `_doc` (regenerated via --freeze after the docstring edit,
+    same 20 files) and the lint's freeze() payload text no longer say a new offender 'fails CI'
+    — both now say ADVISORY until backlog row C1d lands, naming scripts/quickcheck.sh as the
+    actual (advisory) reporter and explaining why the CI step is a separate Gear-3 PR. Same
+    sentence added to the lint's module docstring, right after the GRANDFATHER LIST paragraph."
+  - "BITES corrected: consumer (b) now says 18 guilt/innocence checks in --selftest (counted via
+    `--selftest 2>&1 | grep -cE '^\\s+(ok|FAIL)\\s'` = 18, not the prior brief's 14 — the count
+    grew across #6708/#6714/#6715's fixes without the number being re-verified). Consumer (c)
+    split in two: cc_hook_latency_bench.py IS cited by path in the BACKLOG's H10 row (verified:
+    `grep -n cc_hook_latency_bench.py research/agent-craft/cc-meta-loop/BACKLOG.md` hits line
+    236's H10 section); cc_headless_shape_bench.sh is NOT cited by name anywhere in the C4 row
+    or section (verified: grep for the filename in BACKLOG.md returns zero hits) — its real
+    consumers are the lint docstring and the two cure comments, stated as such instead of a
+    false BACKLOG citation."
+appetite:
+  wall_clock_hours: 1
+  adversarial_rounds: 1
+acceptance:
+  A1: >-
+    The lint proves its own guilt path, then reports the repo clean with the debt frozen.
+    probe: python3 scripts/lint/lint_claude_headless_context_diet.py --selftest && python3 scripts/lint/lint_claude_headless_context_diet.py
+    observed: "SELFTEST PASS (18 checks); clean (3763 files scanned, 20 grandfathered, 0 new) — 2026-09-17, this worktree"
+  A2: >-
+    The unit tests (guilt + innocences incl. pragma above anchor and path-mention) pass.
+    probe: ~/nuzantara/.venv/bin/python3 -m pytest scripts/lint/test_lint_claude_headless_context_diet.py -q
+    observed: "10 passed in 0.04s"
+  A3: >-
+    The cured bootstrap shape still yields a session_id (what agent_job.py extracts).
+    probe: claude --print --restricted --strict-mcp-config --output-format=json --model haiku "Session init selftest" </dev/null | python3 -c "import json,sys; print(bool(json.load(sys.stdin)['session_id']))"
+  A4: >-
+    Declared blind spot, not a defect of this PR: an invocation built through an argument
+    array (`CLAUDE_ARGS=("--print")` … `"$CLAUDE_BIN" "${CLAUDE_ARGS[@]}"`, e.g.
+    infra/launchagents/wrappers/claude-cascade.sh) is outside the engine's window and is
+    neither flagged nor grandfathered — recorded as backlog row C1c.
+  A5: >-
+    The frozen numbers have a re-measure path, and it runs — INCLUDING the setting_sources_empty
+    shape now that its quoting bug is fixed.
+    probe: bash scripts/bench/cc_headless_shape_bench.sh /tmp/cc-shape-bench-v5
+    observed: >-
+      "default                      rc=1   6s result=''         TOTAL_IN=35984
+      (in=10 cache_create=20146 cache_read=15828) turns=2 err=True |
+      restricted                   rc=0   4s result='PONG'     TOTAL_IN=17863
+      (in=10 cache_create=6238 cache_read=11615) turns=1 err=False |
+      restricted_strictmcp         rc=0   3s result='PONG'     TOTAL_IN=15292
+      (in=10 cache_create=3667 cache_read=11615) turns=1 err=False |
+      setting_sources_empty        rc=0   5s result='PONG'     TOTAL_IN=26973
+      (in=10 cache_create=13261 cache_read=13702) turns=1 err=False |
+      safe_mode                    rc=0   2s result='PONG'     TOTAL_IN=17151
+      (in=10 cache_create=4259 cache_read=12882) turns=1 err=False"
+      — 2026-09-17, this worktree/machine, fleet mail pending at Stop (same environment shape
+      the frozen docstring numbers were measured under); CLI 2.1.274.
+  A6: >-
+    scripts/quickcheck.sh's run_context_diet_lint_if_touched() fires and reports OK on this
+    PR's own diff (a .py under scripts/ is touched).
+    probe: bash scripts/quickcheck.sh
+    observed: "see PR body / final report for the literal [context-diet-lint] line"
+  A7: >-
+    The H10 row's frozen hook-latency number also has a re-measure path:
+    scripts/bench/cc_hook_latency_bench.py, read-only, timing every registered PreToolUse
+    handler on a synthetic Bash event. This script IS cited by path in the BACKLOG's H10 row.
+    probe: python3 scripts/bench/cc_hook_latency_bench.py --startup
+    observed: >-
+      "handlers on a Bash PreToolUse: 8 — blocking 8, serial sum 820 ms" against
+      /Users/balizero/.claude/projects/-Users-balizero-Desktop-nuzantara/eb0d5ece-a75c-4271-8a4e-fd5a330efe15.jsonl
+      (114,110,555 bytes); startup baseline: python3 -c pass=17ms,
+      import json,re,sys,os,pathlib=27ms, read transcript fully=258ms,
+      json.loads each line=580ms, tail 64KB seek=19ms — 2026-09-17, this worktree/machine.
+out_of_scope: >-
+  Curing the 20 grandfathered files (each needs its job proven green on its own machine);
+  the cascade wrapper (C1c); the sandbox (S1); wiring the lint into CI (C1d, needs its own
+  Gear-3 PR because .github/workflows/ is a hot-zone path).
+bites: >-
+  Consumer (a): scripts/quickcheck.sh's run_context_diet_lint_if_touched(), which every dev
+  push on this machine runs when a changed file is a .py/.sh under scripts/, infra/, apps/,
+  agent-library/ or skills/. Observation: ran on this PR's own push — see PR body for the
+  literal "[context-diet-lint] OK." line. Consumer (b): the lint's own --selftest, 18
+  guilt/innocence checks, proven passing (A1). Consumer (c): the BACKLOG's H10 row cites
+  scripts/bench/cc_hook_latency_bench.py BY PATH as its re-measure path (verified: grep hit in
+  research/agent-craft/cc-meta-loop/BACKLOG.md's H10 section) — proven passing (A7).
+  scripts/bench/cc_headless_shape_bench.sh is NOT cited by the BACKLOG's C4 row (verified: zero
+  grep hits for the filename); its real consumers are the lint's own docstring and the two cure
+  comments (agent_job.py, claude_vision.py), which name it as the re-measure path for their
+  token numbers. NOT claimed as a consumer: agent_job.py's get_or_create_session() cron
+  callers — that function currently has no live caller (removed from compliance_ops.py
+  2026-04-30); the cure is correct but dormant until a caller returns.

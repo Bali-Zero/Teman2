@@ -501,9 +501,18 @@ def _run_claude_json(
     # judgment, lighter/cheaper than opus so it neither burns the MAX-plan quota
     # window nor trips the 120s timeout). Configurable without a code change.
     model = os.environ.get("WR2_VISION_MODEL", "claude-sonnet-5")
+    # context-diet: this call reads a PNG off disk, so it needs the Read
+    # tool -> --safe-mode (measured 2026-09-17 on M5 with fleet mail
+    # pending: 16,923 input tokens and answered; proven live for this
+    # exact call shape with a one-boolean json-schema against an on-disk
+    # PNG — structured_output came back populated. Numbers are
+    # environment-dependent, re-measure with
+    # scripts/bench/cc_headless_shape_bench.sh — see
+    # lint_claude_headless_context_diet.py).
     cmd = [
         _CLAUDE_BIN, "--print",
         "--model", model,
+        "--safe-mode",
         "--output-format", "json",
         "--json-schema", json.dumps(schema),
         prompt,
