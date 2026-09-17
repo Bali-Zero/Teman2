@@ -64,12 +64,12 @@ preflight_changed_files() {
             seen=$((seen + 1))
             base="$(git -C "$PREFLIGHT_ROOT" merge-base origin/main "$local_sha" 2>/dev/null)" || base=""
             [ -z "$base" ] && continue
-            git -C "$PREFLIGHT_ROOT" diff --name-only --diff-filter=d "$base" "$local_sha" 2>/dev/null
+            git -C "$PREFLIGHT_ROOT" diff --name-only "$base" "$local_sha" 2>/dev/null
         done < "$refs_file"
     fi
 
     if [ "$seen" -eq 0 ]; then
-        git -C "$PREFLIGHT_ROOT" diff --name-only --diff-filter=d origin/main...HEAD 2>/dev/null
+        git -C "$PREFLIGHT_ROOT" diff --name-only origin/main...HEAD 2>/dev/null
     fi
 }
 

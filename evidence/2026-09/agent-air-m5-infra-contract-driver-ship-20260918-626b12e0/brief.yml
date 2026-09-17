@@ -1,0 +1,98 @@
+task_id: contract-driver-ship-20260918
+gear: 2
+l_level: L1
+gate_class: sonnet
+# Floor measured this session: `python3 scripts/evidence_pack_lint.py --print-floor
+# --print-floor-source --numstat-file <numstat> --changed-files-file <changed>` on
+# origin/main...HEAD returns `2` / `size` — the SIZE term (382 insertions across 5
+# files), not a HOTZONE hit: no path under migrations_v2/, fly.toml, .env* or
+# zantara_core.py is touched.
+objective: >-
+  Ships slices 2-3 of the SOTA successor's contract-verification infra, rescued from an
+  uncommitted worktree (agent/air-m5/infra/contract-driver-20260917) whose base predates
+  several since-merged PRs. Slice 2 closes the PENDING-ARMS row opened on #6704
+  (contract-verify-ci-input-parity): scripts/contract_verify.py now feeds
+  evidence_pack_lint.py the same three inputs harness-floor.yml does — the
+  .github/workflows/ -U0 patch for --patch-file (C1: a pin-only action-pin bump no
+  longer false-refuses at floor 3 when CI computes 1), an unfiltered changed-file list
+  so a deleted hot-zone path still contributes to the floor (C2, matching
+  hotzone_changed_files.sh which carries no --diff-filter), and classify() now treats
+  any INCONCLUSIVE sibling as INCONCLUSIVE rather than only an all-INCONCLUSIVE row
+  (C3). scripts/preflight_pack.sh's two diff sites drop the same filter so its local
+  floor agrees with contract_verify's. Slice 3 adds scripts/contract_driver.py: three
+  host-read facts a seat may claim but must never attest on its own word — collide
+  (scope vs every open/recently-merged PR's files), merged (gh pr view's
+  mergedAt/mergeCommit, BLOCKing a false merged:true claim), and post-merge (a PR's
+  bites: observe run from a checkout containing the merge commit, INCONCLUSIVE when it
+  does not). Bites: preflight_pack.sh (the pre-push hook's caller) and
+  scripts/contract_verify.py's own --local/--replay callers are the consumers —
+  observed in this session: `bash scripts/preflight_pack.sh` on this PR's own tree
+  reds the (expected, now-satisfied-by-this-brief) floor-needs-brief check;
+  `python3 scripts/contract_verify.py --selftest` shows 0 failures including 3 new
+  C1/C2/C3 rows; `python3 scripts/contract_driver.py merged --pr 6664 --claim
+  '{"merged":true}'` exits 1 (BLOCK) against gh's live read.
+constraints:
+  - >-
+    No file under apps/backend-rag/backend/db/migrations_v2/ changes; no touch to
+    fly.toml, .env*, or zantara_core.py.
+  - >-
+    contract_verify.py's replay fixture (scripts/tests/fixtures/contract_replay_expected.yml)
+    stays pinned — the C1/C2/C3 fixes change INPUTS to the same predicate, never the
+    predicate itself, so all 10 replayed verdicts must stay unchanged.
+  - >-
+    contract_driver.py never trusts a seat's claim on its own word — every verb (merged,
+    post-merge) reads the host (gh/git) first and only ever COMPARES the claim against
+    that read.
+  - No client PII anywhere; no secret echoed, printed, or committed.
+acceptance:
+  - text: >-
+      A1 (INNOCENCE): WHEN contract_verify.py's selftest runs after the C1/C2/C3 fix,
+      THE three new rows (mixed PASS+INCONCLUSIVE, pin-only workflow bump floors 1,
+      hot-zone deletion floors 3) SHALL all pass alongside the pre-existing rows, with
+      0 failures reported.
+    probe: python3 scripts/contract_verify.py --selftest
+  - text: >-
+      A2 (regression guard): WHEN the replay fixture is re-run after the C1/C2/C3
+      input fix, THE 10 pinned closed-head verdicts SHALL be unchanged (0 verdicts
+      differ) — the fix touches inputs, not the predicate.
+    probe: python3 -m pytest scripts/tests/test_contract_replay.py
+  - text: >-
+      A3 (GUILT, contract_driver merged): WHEN a claim of merged:true is checked
+      against PR #6664 (closed, never merged), THE driver SHALL exit 1 with verdict
+      BLOCK and read.state == CLOSED.
+    probe: python3 -m pytest scripts/tests/test_contract_driver.py -k merged_read_blocks
+  - text: >-
+      A4 (INNOCENCE, contract_driver merged): WHEN a claim of merged:true with the
+      real merge commit is checked against PR #6704 (merged), THE driver SHALL exit 0
+      with verdict OK.
+    probe: python3 -m pytest scripts/tests/test_contract_driver.py -k merged_read_agrees
+  - text: >-
+      A5 (post-merge, GUILT+INNOCENCE pair): WHEN PR #6673's pack is observed at its
+      own base commit THE driver SHALL exit 1 reporting the observe script as
+      malformed/absent; WHEN observed at origin/main (which contains the merge) THE
+      driver SHALL exit 0 reporting the observe as executable, exit 0.
+    probe: python3 -m pytest scripts/tests/test_contract_driver.py -k post_merge_6673
+  - text: >-
+      A6: THE full contract_driver test module (5 tests, live gh+git, not offline)
+      SHALL pass end to end, and bash -n on preflight_pack.sh SHALL report no syntax
+      error.
+    probe: python3 -m pytest scripts/tests/test_contract_driver.py; bash -n scripts/preflight_pack.sh
+assumptions:
+  - text: >-
+      contract_driver.py's collide check flagging #6704/#6701 (both already MERGED
+      into this branch's own base, origin/main) is expected noise from its default
+      recent-merge window, not a real race — this branch already carries their content
+      by construction (forked from current origin/main), so there is no unmerged
+      concurrent edit to collide with.
+    status: verified
+    probe: python3 scripts/contract_driver.py collide --scope scripts/contract_driver.py scripts/contract_verify.py scripts/preflight_pack.sh scripts/tests/test_contract_driver.py --json
+  - text: >-
+      ruff check reports E702/E731 (semicolon one-liners, one lambda) in
+      contract_driver.py and pre-existing lines of contract_verify.py; this matches
+      the file's own established house style (main's contract_verify.py already
+      carries 11 such findings pre-PR) and CI does not run ruff over scripts/*.py, so
+      this is not a regression and was left as-is rather than fought.
+    status: verified
+    probe: ruff check scripts/contract_driver.py scripts/contract_verify.py; git show origin/main:scripts/contract_verify.py | ruff check -
+appetite:
+  wall_clock_hours: 1
