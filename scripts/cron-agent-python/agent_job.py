@@ -888,9 +888,12 @@ def get_or_create_session(job_name: str, scope: str = "daily") -> str | None:
         import subprocess
         # Start a minimal session to get a session ID
         # context-diet: text-only bootstrap prompt, no tools needed ->
-        # --restricted --strict-mcp-config (measured 2026-09-17: 15,064
-        # input tokens and answered, vs 36,322 AND result:null on the
-        # unpinned default — see lint_claude_headless_context_diet.py).
+        # --restricted --strict-mcp-config (measured 2026-09-17 on M5 with
+        # fleet mail pending: 15,064 input tokens and answered, vs 36,322
+        # AND result:null on the unpinned default — numbers are
+        # environment-dependent, re-measure with
+        # scripts/bench/cc_headless_shape_bench.sh — see
+        # lint_claude_headless_context_diet.py).
         result = subprocess.run(
             ["claude", "--print", "--model", SESSION_BOOTSTRAP_MODEL,
              "--restricted", "--strict-mcp-config",

@@ -253,6 +253,44 @@ run_prettier_changed() {
 }
 
 # ---------------------------------------------------------------------------
+# 2b. Claude-headless-context-diet lint — only when a .py/.sh under
+#     scripts/, infra/, apps/, agent-library/ or skills/ is touched. Local
+#     consumer for scripts/lint/lint_claude_headless_context_diet.py: there
+#     is no CI workflow step for this lint (a workflow edit is a hot-zone
+#     path per scripts/evidence_pack_lint.py's HOTZONE_PATTERNS, which
+#     floors any PR at Gear 3 — see backlog row C1d for that follow-up PR).
+# ---------------------------------------------------------------------------
+run_context_diet_lint_if_touched() {
+    local changed_all="$1"
+    if ! printf '%s\n' "$changed_all" | grep -qE '^(scripts|infra|apps|agent-library|skills)/.*\.(py|sh)$'; then
+        echo "   [context-diet-lint] no scripts/infra/apps/agent-library/skills .py or .sh in this diff — skipped."
+        return 0
+    fi
+
+    if [ ! -f scripts/lint/lint_claude_headless_context_diet.py ]; then
+        echo "   [context-diet-lint] lint_claude_headless_context_diet.py not on this branch yet — skipping."
+        return 0
+    fi
+    if ! command -v python3 >/dev/null 2>&1; then
+        echo "   [context-diet-lint] python3 not found — skipping."
+        return 0
+    fi
+
+    echo "   [context-diet-lint] scripts/infra/apps/agent-library/skills .py or .sh touched — checking..."
+    local out rc
+    out="$(python3 scripts/lint/lint_claude_headless_context_diet.py 2>&1)"
+    rc=$?
+    [ -n "$out" ] && printf '%s\n' "$out" | sed 's/^/            /'
+    if [ "$rc" -eq 0 ]; then
+        echo "   [context-diet-lint] OK."
+    else
+        echo "   [context-diet-lint] new headless claude -p/--print invocation(s) missing a"
+        echo "                       context-diet flag or exempt pragma (advisory, rc=$rc)."
+    fi
+    return 0
+}
+
+# ---------------------------------------------------------------------------
 # 3. actionlint — only when .github/workflows/ is touched
 # ---------------------------------------------------------------------------
 run_actionlint_if_touched() {
@@ -487,6 +525,7 @@ main() {
     run_impact_scoped_pytest "$changed_all"
     run_prettier_changed "$changed_existing"
     run_actionlint_if_touched "$changed_all"
+    run_context_diet_lint_if_touched "$changed_all"
     run_skills_canonical_check
     run_scripts_coupling_census_check
     run_r1_check
