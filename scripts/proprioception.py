@@ -80,6 +80,7 @@ KNOWN_BOUNDARY_CLASSES = [
     "door<->door",              # the SAME rule in each CLI's auto-loaded door file (2026-08-31)
     "process<->cwd",            # a headless claude CLI process vs. its own working dir / worktree registration (2026-09-01)
     "model<->calibration",      # configured child models vs. their stored context-window calibration (2026-09-10)
+    "config<->guard",           # a CLI setting vs. the trip point of the guard it must not pre-empt (autoCompactWindow, 2026-09-18)
 ]
 
 SSH_OPTS = ["-o", "BatchMode=yes", "-o", "ConnectTimeout=15",
@@ -1800,6 +1801,135 @@ def probe_child_calibration(root: Path, args: dict, timeout: int) -> tuple[str, 
         return UNPROBEABLE, 0, ["no configured profile exists on this machine"]
     return (DIVERGED if n_bad else RECONCILED), n_bad, ev
 
+
+def _guard_constants(root: Path) -> tuple[float, int, int]:
+    """DEFAULT_THRESHOLD / DEFAULT_WINDOW / LARGE_WINDOW read from the context
+    guard's own source by regex — never imported: it is a hook with env reads
+    and a __main__. Missing file or line = the values it shipped with on
+    2026-09-09, so the probe still says something rather than nothing."""
+    thr, small, large = 0.40, 200_000, 1_000_000
+    try:
+        text = (root / "infra" / "claude-hooks" / "context_window_guard.py").read_text(encoding="utf-8")
+    except OSError:
+        return thr, small, large
+    for name, cast in (("DEFAULT_THRESHOLD", float), ("DEFAULT_WINDOW", int), ("LARGE_WINDOW", int)):
+        m = re.search(rf"^{name}\s*=\s*([0-9_.]+)", text, re.M)
+        if not m:
+            continue
+        try:
+            val = cast(m.group(1).replace("_", ""))
+        except ValueError:
+            continue
+        if name == "DEFAULT_THRESHOLD":
+            thr = val
+        elif name == "DEFAULT_WINDOW":
+            small = int(val)
+        else:
+            large = int(val)
+    return thr, small, large
+
+
+def _profile_settings(pdir: Path) -> tuple[dict | None, list[str]]:
+    """settings.json overlaid by settings.local.json (key by key, `env` merged),
+    the way the CLI reads a profile. (None, []) = no settings file at all;
+    (dict, errors) otherwise — an unreadable file is an error, not silence."""
+    merged: dict = {}
+    errors: list[str] = []
+    found = False
+    for name in ("settings.json", "settings.local.json"):
+        fp = pdir / name
+        if not fp.is_file():
+            continue
+        found = True
+        try:
+            d = json.loads(fp.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            errors.append(f"{name}: unreadable JSON")
+            continue
+        if not isinstance(d, dict):
+            errors.append(f"{name}: not a JSON object")
+            continue
+        env = dict(merged.get("env") or {})
+        env.update(d.get("env") or {} if isinstance(d.get("env"), dict) else {})
+        merged.update(d)
+        merged["env"] = env
+    return (merged if found else None), errors
+
+
+def probe_autocompact_window(root: Path, args: dict, timeout: int) -> tuple[str, int, list[str]]:
+    """`autoCompactWindow` in each configured profile must sit ABOVE the
+    context guard's trip point — window × DEFAULT_THRESHOLD, 400K on the 1M
+    seat — or the CLI compacts the session in place before the guard can jump
+    it, and the handoff-by-window never happens. Measured 2026-09-17/18 on M5:
+    the key had been lowered under the trip, every long session compacted
+    instead of jumping, and the "Claude Code regression" was this one key.
+    `expected` (args) pins the fleet value (500K, decided 2026-09-18: jump
+    first at 400K, compaction as the backstop at 500K); a profile without the
+    key runs the CLI's own default, which is not the fleet's decision — a
+    finding when `expected` is set. Window resolution mirrors the guard's
+    `_window_size`: the profile's CONTEXT_WINDOW_TOKENS env wins, else a `1m`
+    model spelling is the large window, else the small one. Read-only;
+    evidence carries numbers and key names, never other settings content."""
+    thr, small, large = _guard_constants(root)
+    expected = args.get("expected")
+    host = machine_label()
+    ev, n_bad, seen = [], 0, 0
+    for prof in args.get("profiles", ["~/.claude"]):
+        pdir = Path(os.path.expanduser(prof))
+        if not pdir.is_dir():
+            continue  # this profile does not exist on this machine — not a finding
+        data, errors = _profile_settings(pdir)
+        if data is None:
+            continue  # a profile dir with no settings file: the CLI has nothing to read either
+        seen += 1
+        if errors:
+            # a file the CLI cannot read is the finding; judging the value of a
+            # profile we could not read would only add a second, derived one
+            for err in errors:
+                n_bad += 1
+                ev.append(f"{host}:{prof}/{err}")
+            continue
+        model = str(data.get("model") or "").lower()
+        env_win = (data.get("env") or {}).get("CONTEXT_WINDOW_TOKENS")
+        window = None
+        if env_win not in (None, ""):
+            try:
+                window = int(str(env_win))
+            except ValueError:
+                window = None
+        if window is None:
+            window = large if (model.endswith("[1m]") or "1m" in model) else small
+        trip = int(window * thr)
+        raw = data.get("autoCompactWindow")
+        if raw is None:
+            if expected is not None:
+                n_bad += 1
+                ev.append(f"{host}:{prof}: autoCompactWindow ABSENT (CLI default in force) — fleet "
+                          f"expects {expected}; guard trip {trip} on a {window}-token window")
+            else:
+                ev.append(f"{host}:{prof}: autoCompactWindow absent (CLI default); guard trip {trip}")
+            continue
+        try:
+            value = int(raw)
+        except (TypeError, ValueError):
+            n_bad += 1
+            ev.append(f"{host}:{prof}: autoCompactWindow is not an integer ({type(raw).__name__})")
+            continue
+        if value <= trip:
+            n_bad += 1
+            ev.append(f"{host}:{prof}: autoCompactWindow {value} <= guard trip {trip} ({window} × {thr:.2f}) "
+                      f"— compaction PRE-EMPTS the jump: long sessions compact in place and never hand off")
+        elif expected is not None and value != int(expected):
+            n_bad += 1
+            ev.append(f"{host}:{prof}: autoCompactWindow {value} != fleet value {expected} "
+                      f"(above the trip {trip}, so the jump still comes first)")
+        else:
+            ev.append(f"{host}:{prof}: autoCompactWindow {value} > guard trip {trip} ({window} × {thr:.2f}): OK")
+    if seen == 0:
+        return UNPROBEABLE, 0, ["no configured profile with a settings file exists on this machine"]
+    return (DIVERGED if n_bad else RECONCILED), n_bad, ev
+
+
 BUILTINS = {
     "git_alignment": probe_git_alignment,
     "executed_code_currency": probe_executed_code_currency,
@@ -1811,6 +1941,7 @@ BUILTINS = {
     "door_canon_parity": probe_door_canon_parity,
     "headless_zombies": probe_headless_zombies,
     "child_calibration": probe_child_calibration,
+    "autocompact_window": probe_autocompact_window,
 }
 
 
@@ -2315,6 +2446,28 @@ DEFAULT_REGISTRY: list[dict] = [
         "fix_hint": "MISSING/EXPIRED/VERSION-MISMATCH: re-run the owned native calibration probe "
                     "(child_context.py::calibrate) for that model/profile. UNKNOWN: fix the "
                     "unreadable input (CLI version, scope, or the capacities dir) first.",
+    },
+    {
+        # 2026-09-17/18 (M5): ~/.claude/settings.json carried autoCompactWindow
+        # BELOW the context guard's trip point (window × DEFAULT_THRESHOLD =
+        # 400K on the 1M seat). The CLI compacted every long session in place
+        # before the guard could jump it, and the "Claude Code regression"
+        # Zero asked about was this one key. Decided 2026-09-18: the jump
+        # comes first at 400K, auto-compact is the backstop at 500K —
+        # `expected` pins that on every seat. Report-only: the fix is one key
+        # in settings.json, read by the CLI at session start (live sessions:
+        # /autocompact 500k, or restart).
+        "id": "autocompact_window", "type": "builtin", "target": "autocompact_window",
+        "class": "config<->guard",
+        "boundary": "~/.claude/settings.json autoCompactWindow <-> context_window_guard.py trip point (window × threshold)",
+        "machines": ["all"], "tags": ["fast"], "timeout_sec": 5,
+        "severity": "P1",
+        "args": {"profiles": ["~/.claude"], "expected": 500000},
+        "fix_hint": "set `autoCompactWindow` in that profile's settings.json to the fleet value "
+                    "(500000), ABOVE the guard trip: the jump must come first, compaction is the "
+                    "backstop. The CLI reads it at start — live sessions need `/autocompact 500k` "
+                    "or a restart. Below the trip = every long session compacts in place and never "
+                    "jumps.",
     },
 ]
 
