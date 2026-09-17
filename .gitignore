@@ -951,3 +951,8 @@ research/commercial/*-yield-opportunities.md
 # DLQ/heartbeat state files already excluded here — not a source artifact.
 kb/ops/probe_history.jsonl
 scripts/tests/_fixtures_doctrine/
+
+# cc-meta-loop run artifacts: the per-run machine-config snapshot is regenerable
+# (`scripts/cc_meta_research_loop.py --inventory-only`) and carries this machine's hook
+# and path layout; the curated REPORT.md, proposals and verdicts are the research.
+research/agent-craft/cc-meta-loop/*/inventory.json
