@@ -159,16 +159,16 @@ class MailboxInjectTests(unittest.TestCase):
         self.assertEqual(before, after)  # nothing created/touched
 
     # ── per-fire cap ───────────────────────────────────────────────────
-    def test_at_most_three_messages_per_fire(self):
+    def test_at_most_two_messages_per_fire(self):
         sdir = self.root / self.sid
         for i in range(5):
             write_msg(sdir / f"2026010{i}T000000-000{i}.md", "pro:zero", f"msg {i}")
             time.sleep(0.01)
         p1 = run_hook({"session_id": self.sid, "hook_event_name": "PostToolUse"}, self.root)
         out1 = json.loads(p1.stdout)
-        self.assertEqual(out1["hookSpecificOutput"]["additionalContext"].count("<cross-machine-message"), 3)
+        self.assertEqual(out1["hookSpecificOutput"]["additionalContext"].count("<cross-machine-message"), 2)
         remaining = [f for f in sdir.iterdir() if ".delivered-" not in f.name]
-        self.assertEqual(len(remaining), 2)
+        self.assertEqual(len(remaining), 3)
 
         p2 = run_hook({"session_id": self.sid, "hook_event_name": "PostToolUse"}, self.root)
         out2 = json.loads(p2.stdout)
