@@ -1,0 +1,119 @@
+task_id: voa-cta-no-red-fallback
+gear: 2
+l_level: L1
+gate_class: sonnet
+# Floor measured this session: `python3 scripts/evidence_pack_lint.py --print-floor
+# --print-floor-source --numstat-file <numstat> --changed-files-file <changed>` on the
+# origin/main...HEAD diff returned `2` / `size` alone: churn is 449 (441 inserted + 8
+# deleted across 6 files), over the 400 SIZE threshold, with no evidence/brief.yml
+# present in the diff to route Gear-2 by evidence instead. This brief supplies that
+# evidence so the floor recomputes off the brief's own gear, not the raw churn.
+objective: >-
+  PR #6692 cures M6 (design-A-claude.md §0): the GARUDA VOA purchase CTA carried a RED
+  LITERAL as its fallback ground at four sites — `background: "var(--accent-funnel,
+  #ff3344)"` in `CheckoutFlow.tsx:213`, `[hash]/page.tsx:216,395` and
+  `OrderTracker.tsx:60`. `semantic.css:200` resolves `--accent-funnel` to red for
+  `[data-funnel="visa"]`; only `voa-r19.css`'s selector specificity has ever held that
+  red off this surface — one specificity accident away from a red purchase button. The
+  fix introduces one shared constant, `VOA_PRIMARY_ACTION_STYLE`
+  (`apps/mouth/src/app/visa/voa/voa-action-style.ts`) —
+  `{ background: "var(--state-success)", color: "var(--bz-base)" }`, mirroring the
+  workspace staff console's own sanctioned action ground (`GateScreen.tsx`'s
+  `GATE_ACTION_STYLE`) without crossing the `(workspace)` / `visa/voa` route-group
+  boundary — and spreads it into all four sites in place of the literal fallback. Two
+  new guards land with it: `voa-no-colour-literal.guard.test.ts` (vitest, comment-aware
+  source scan, per-screen ratchet) and `voa-accent-funnel.computed.guard.spec.ts`
+  (Playwright, real-browser computed-style check against the real `globals.css`
+  cascade), because jsdom never resolves CSS custom properties through
+  `getComputedStyle` and a vitest `.test.tsx` version of the second guard would report
+  green while asserting nothing.
+constraints:
+  - >-
+    No colour literal (hex, rgb()/hsl() call, or red-family Tailwind utility) on the VOA
+    purchase CTA at any of the four sites this PR touches; the shared
+    `VOA_PRIMARY_ACTION_STYLE` constant is the only sanctioned action ground for those
+    sites.
+  - >-
+    No change outside apps/mouth/src/app/visa/voa/** and apps/mouth/e2e/**.
+  - No npm install/ci in this lane; the worktree's existing node_modules is used as-is.
+  - >-
+    The colour-literal guard's ratchet (`SCREENS` in
+    voa-no-colour-literal.guard.test.ts) binds ONLY `wizard` and `checkout` as fully
+    clean; `verdict`, `upload` and `tracker` stay unbound because each still carries a
+    literal this PR's scope never touched (the WhatsApp `#25D366`/`#0a0a0a` brand pair,
+    upload's `text-red-600`, and an unrelated `rgba(255,255,255,0.96)` fallback on the
+    tracker) — widening the ratchet to cover those would be judging code this PR never
+    touched (cicatrix family #3, guard-over-match).
+  - No client PII, no price or visa-rule claim anywhere in this PR or this brief.
+acceptance:
+  - text: >-
+      GUILT: the colour-literal scanner convicts a hex literal, an rgb()/hsl() call and
+      a red-family Tailwind utility.
+    probe: >-
+      npx vitest run
+      src/app/visa/voa/voa-no-colour-literal.guard.test.ts -t "is GUILTY on a hex, an
+      rgb()/hsl() call and a red Tailwind utility"
+  - text: >-
+      INNOCENCE: the scanner does not convict a token reference (e.g.
+      `var(--state-success)`), and a comment naming a colour never reaches the scanner.
+    probe: >-
+      npx vitest run src/app/visa/voa/voa-no-colour-literal.guard.test.ts -t "is
+      INNOCENT on a token reference"
+  - text: >-
+      GUILT/INNOCENCE per-screen: `wizard` and `checkout` — the two screens this PR
+      binds — carry no colour literal; the ratchet still lists all six purchase screens,
+      bound or not.
+    probe: >-
+      npx vitest run src/app/visa/voa/voa-no-colour-literal.guard.test.ts -t "carries no
+      colour literal"
+  - text: >-
+      GUILT (import + fallback removal): each of the four cured sites imports
+      `VOA_PRIMARY_ACTION_STYLE` and no longer carries the `var(--accent-funnel,
+      #ff3344)` red fallback.
+    probe: >-
+      npx vitest run src/app/visa/voa/voa-no-colour-literal.guard.test.ts -t "imports
+      the shared action-ground constant"; npx vitest run
+      src/app/visa/voa/voa-no-colour-literal.guard.test.ts -t "no longer carries the red
+      fallback"
+  - text: >-
+      GUILT control (real browser): the hue/saturation classifier convicts the retired
+      red literal (`#ff3344`) as red, proving the classifier actually detects red before
+      trusting it to clear the sanctioned ground.
+    probe: >-
+      npx playwright test --project=chromium e2e/voa-accent-funnel.computed.guard.spec.ts
+      -g "is GUILTY on the retired red literal"
+  - text: >-
+      INNOCENCE (real browser, both themes): `VOA_PRIMARY_ACTION_STYLE`'s computed
+      `background-color`, resolved against the real `globals.css` cascade, never falls
+      in the red family (hue 340-20 deg, sat >= 15%) on the light (today's mounted) or
+      dark (S1's candidate) ground.
+    probe: >-
+      npx playwright test --project=chromium e2e/voa-accent-funnel.computed.guard.spec.ts
+      -g "resolves OFF the red family"
+  - text: >-
+      No regression: the full VOA vitest suite and the TypeScript typecheck stay green.
+    probe: npx vitest run src/app/visa/voa; npx tsc --noEmit
+assumptions:
+  - text: >-
+      The Playwright e2e guard cannot yet drive the live checkout/verdict/tracker
+      screens directly (checkout's form is gated behind `GARUDA_PAYMENTS_LIVE`, disarmed
+      in production; verdict/tracker each need their own backend-contract mock), so it
+      proves the shared constant's computed colour against the real CSS cascade instead
+      — sufficient because all four call sites spread the SAME constant verbatim, so one
+      proof transfers to all four.
+    status: verified
+    probe: >-
+      apps/mouth/e2e/voa-accent-funnel.computed.guard.spec.ts (scope note in its header
+      comment) + the 3-passed run quoted in PR #6692's body
+  - text: >-
+      jsdom does not resolve CSS custom properties through `getComputedStyle`, so a
+      vitest `.test.tsx` version of the computed-style guard would report green while
+      asserting nothing — matching this codebase's documented precedent in
+      `clients-desk.test.tsx`.
+    status: verified
+    probe: >-
+      empirical check quoted in voa-accent-funnel.computed.guard.spec.ts's header
+      comment (rendered button under vitest/jsdom, `getComputedStyle().backgroundColor`
+      returned `"rgba(0, 0, 0, 0)"`)
+appetite:
+  wall_clock_hours: 1
