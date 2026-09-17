@@ -10,6 +10,7 @@ from __future__ import annotations
 import json
 import os
 import pathlib
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -445,11 +446,16 @@ def _plant_tmux_seat(home: pathlib.Path, *, script: bool = True, binary: bool = 
         (hooks / "tmux_jump.sh").write_text('#!/bin/bash\necho "tmux $1" >> "$HOME/spawns.log"\n')
     bindir = home / "bin"
     bindir.mkdir(exist_ok=True)
+    # PATH is this dir ALONE. The guard spawns the gesture as `bash <script>`, so the real bash
+    # is linked in; nothing else is, because the capability question is "is tmux on PATH" and a
+    # CI runner's own /usr/bin/tmux (ubuntu-latest ships one, macOS does not) answered it for the
+    # `binary=False` case on the first run of this corpus — a green on M5, a red on the runner.
+    (bindir / "bash").symlink_to(shutil.which("bash") or "/bin/bash")
     if binary:
         (bindir / "tmux").write_text("#!/bin/bash\nexit 0\n")
         (bindir / "tmux").chmod(0o755)
     env = dict(TMUX_ENV)
-    env["PATH"] = f"{bindir}:/usr/bin:/bin"   # the real tmux, if any, is not on this PATH
+    env["PATH"] = str(bindir)
     return home / "spawns.log", env
 
 
