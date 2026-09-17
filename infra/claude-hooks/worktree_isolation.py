@@ -835,6 +835,52 @@ def _resolve_target(path_str: str, cwd: str) -> pathlib.Path | None:
         return None
 
 
+# superscar #3, 10th over-match of this guard (2026-09-18, found live on M5 by the
+# Claude Code regression audit): `cd /private/tmp/<scratch> && python3 probe.py
+# 2>err.log` was blocked as a "file-write into main checkout" — the RELATIVE
+# redirect target was resolved against the SESSION cwd (the main checkout),
+# ignoring the `cd` that precedes it on the same command line. The shell resolves
+# it against the directory the command has moved to. `_effective_cwd_at` replays
+# every segment that STARTS with `cd` and precedes the target's own segment; a
+# destination this guard cannot place (a variable, a substitution, `cd -`, a
+# quoted target the noise-stripper emptied to `""`, a bare `cd`) makes the target
+# UNCLASSIFIABLE → conservative allow, the contract `_extract_write_targets`
+# already has. A `cd` after the write, or one that is not the head of its
+# segment (`echo cd /tmp && ...`), does not count by construction. Unlike
+# `_segments`, this scan splits on newline too: a `cd` on its own line is a
+# statement of its own in bash, and missing it would resolve the next line's
+# relative target against the wrong directory.
+CD_SCAN_SEP_RE = re.compile(r"&&|\|\||;|\||\n")
+CD_SEGMENT_RE = re.compile(r"^\s*cd(?:\s+-[LP@]+)*(?:\s+(.+?))?\s*$")
+_CD_UNKNOWN_PREFIXES = ("$", "`", "-", '"', "'")
+
+
+def _effective_cwd_at(cmd_scan: str, pos: int, cwd: str) -> str | None:
+    """Directory a RELATIVE path at offset `pos` of the noise-stripped command
+    resolves against, after every `cd` segment before it. None = not knowable
+    → the caller must ALLOW (a target it cannot place is not a proven write)."""
+    effective: str | None = cwd or None
+    start = 0
+    for sep in [*CD_SCAN_SEP_RE.finditer(cmd_scan), None]:
+        end = sep.start() if sep else len(cmd_scan)
+        if start <= pos < end:
+            break
+        cd = CD_SEGMENT_RE.match(cmd_scan[start:end])
+        start = sep.end() if sep else end
+        if not cd:
+            continue
+        target = cd.group(1)
+        if target is None or target.startswith(_CD_UNKNOWN_PREFIXES) or re.search(r"\s", target):
+            effective = None  # bare cd, $VAR, $(...), `...`, `cd -`, a quoted/spaced destination
+            continue
+        target = os.path.expanduser(target)
+        if os.path.isabs(target):
+            effective = target
+        elif effective is not None:
+            effective = os.path.join(effective, target)
+    return effective
+
+
 def _write_hits_main(cmd: str, cwd: str) -> pathlib.Path | None:
     """Return the offending path if a shell write lands INSIDE main checkout
     (and NOT inside an allowed worktree). None = no main-write detected → allow.
@@ -881,7 +927,14 @@ def _write_hits_main(cmd: str, cwd: str) -> pathlib.Path | None:
         # off-box (6th over-match fix — see docstring above).
         if _is_position_remote_dispatched(cmd_stripped, pos):
             continue
-        resolved = _resolve_target(raw, cwd)
+        base: str | None = cwd
+        if not os.path.isabs(os.path.expanduser(raw)):
+            # 10th over-match (2026-09-18): a relative target resolves against the
+            # directory the command has `cd`-ed to, not the session cwd.
+            base = _effective_cwd_at(cmd_stripped, pos, cwd)
+            if base is None:
+                continue  # relative target after a `cd` this guard cannot place → conservative allow
+        resolved = _resolve_target(raw, base)
         if resolved is None:
             continue  # unclassifiable → conservative allow
         try:

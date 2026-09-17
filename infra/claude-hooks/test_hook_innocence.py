@@ -127,6 +127,11 @@ CASES: dict[str, list[tuple[dict, str, str]]] = {
         (bash(f"git -C {WT} checkout main"), "ALLOW", "git mutate inside worktree via -C"),
         (bash("grep -rn 'cp ' infra/ | head"), "ALLOW", "the word cp inside a grep pattern"),
         (bash("echo 'use tee to split output' "), "ALLOW", "the word tee inside a quoted string"),
+        # 10th over-match (2026-09-18): a relative redirect after a leading `cd`
+        # resolved against the session cwd (main) — `_effective_cwd_at` now
+        # replays the cd; the guilt twin proves a `cd` INTO main still bites.
+        (bash("cd /private/tmp/probe-x && python3 probe.py 2>err.log"), "ALLOW", "relative stderr redirect after cd out of main (10th over-match)"),
+        (bash("cd apps && echo x > f.py"), "BLOCK", "relative cd inside main then write (10th over-match guilt twin)"),
         # 7th over-match (2026-09-09): the EXACT command reported blocked in
         # the main checkout — `git diff $(git merge-base ...)` — plus the
         # rest of the read-only-verb allowlist this PR opens explicitly.
