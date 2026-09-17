@@ -8,10 +8,20 @@ machine-independent.
     python3 infra/claude-hooks/test_w79_shell_write.py
 
 Exit 0 = all pass, exit 1 = at least one mismatch.
+
+Second section (10th over-match, 2026-09-18): a RELATIVE write target after a
+leading `cd` used to resolve against the SESSION cwd — `cd /private/tmp/x &&
+python3 probe.py 2>err.log` typed from the main checkout was refused as a
+write into main. `_effective_cwd_at` replays the `cd` segments before the
+target; `_write_hits_main` consumes it for every relative target. Guilt half:
+a `cd` INTO main, a relative `cd` inside it, `cd` after the write, `~` into
+main still bite. Innocence half: `cd /tmp`, `cd ..`, `cd $S`, `cd $(mktemp
+-d)`, `cd -`, a quoted destination, across `;`, `&&` and a newline, allowed.
 """
 from __future__ import annotations
 
 import importlib.util
+import os
 import pathlib
 import sys
 import tempfile
@@ -93,6 +103,69 @@ def main() -> int:
             fails += 1
             print(f"  [{status}] block={got!s:5} expect={expect!s:5}  cwd={cwd[:18]:18}  {cmd}")
 
+    # --- 10th over-match (2026-09-18): relative target after a leading `cd`.
+    # `_effective_cwd_at` replays the cd segments; a destination it cannot place
+    # (variable, substitution, `cd -`, quoted → `""` after noise-strip, bare cd)
+    # makes the target unclassifiable → allow.
+    scratch = tmp / "scratch"
+    scratch.mkdir()
+    S = str(scratch)
+    home_before = os.environ.get("HOME")
+    os.environ["HOME"] = str(tmp)  # `~` → tmp, so `~/nuzantara` IS the main checkout
+    CD_CASES = [
+        # MUST BLOCK — the guard still bites
+        (f"cd {M} && echo x > apps/f.py", S, True),
+        ("cd apps && echo x > f.py", M, True),
+        ("cd -P apps && sed -i 's/a/b/' f.py", M, True),
+        ("echo cd /tmp && echo x > apps/f.py", M, True),
+        (f"cd {S}; cd {M} && echo x > apps/f.py", S, True),
+        (f"cd {S} && echo x > {M}/apps/f.py", M, True),
+        (f"cd {S} && echo x > f.py && cp /tmp/a {M}/apps/b.py", M, True),
+        ("cd ~/nuzantara && echo x > apps/f.py", S, True),
+        ("echo x > apps/f.py && cd /tmp", M, True),
+        (f"cd {S}\ncd {M}\necho x > apps/f.py", S, True),
+        # MUST ALLOW — the over-match is gone
+        (f"cd {S} && echo x > f.py", M, False),
+        (f"cd {S} && python3 probe.py 2>err.log", M, False),
+        ("cd .. && echo x > f.py", M, False),
+        ("cd $S && python3 probe.py 2>err.log", M, False),
+        ("cd $(mktemp -d) && echo x > f.py", M, False),
+        ("cd - && echo x > f.py", M, False),
+        (f'cd "{S}" && echo x > f.py', M, False),
+        (f"cd {S}; echo x > f.py", M, False),
+        (f"cd {S}\necho x > f.py", M, False),
+        (f"cd {S} && echo x | tee f.py", M, False),
+        (f"cd {S} && cp /tmp/a b.py", M, False),
+        ("cd && echo x > nuzantara/apps/f.py", S, False),
+    ]
+    for cmd, cwd, expect in CD_CASES:
+        got = mod._write_hits_main(cmd, cwd) is not None
+        if got != expect:
+            fails += 1
+            print(f"  [FAIL] block={got!s:5} expect={expect!s:5}  cwd={cwd[-8:]:8}  {cmd!r}")
+    # the replay itself, on the noise-stripped string, as _write_hits_main calls it
+    CD_UNIT = [
+        (f"cd {S} && echo x > f.py", M, S),
+        (f"cd {M}/apps && echo x > f.py", S, f"{M}/apps"),
+        ("cd apps && echo x > f.py", M, os.path.join(M, "apps")),
+        ("cd -P apps && echo x > f.py", M, os.path.join(M, "apps")),
+        ("cd $S && echo x > f.py", M, None),
+        ("cd $(mktemp -d) && echo x > f.py", M, None),
+        ('cd "" && echo x > f.py', M, None),
+        ("cd && echo x > f.py", M, None),
+        ("echo x > f.py && cd /tmp", M, M),
+        (f"cd {S}\necho x > f.py", M, S),
+    ]
+    for cmd_scan, cwd, expect in CD_UNIT:
+        got = mod._effective_cwd_at(cmd_scan, cmd_scan.index("f.py"), cwd)
+        if got != expect:
+            fails += 1
+            print(f"  [FAIL] _effective_cwd_at({cmd_scan!r}) -> {got!r}, expected {expect!r}")
+    if home_before is None:
+        os.environ.pop("HOME", None)
+    else:
+        os.environ["HOME"] = home_before
+
     # --- W79 path-allowlist: the REAL _is_path_in_allowed_worktree (NOT monkeypatched)
     # must allow REPO_ROOT/.worktrees/<x> even if not a git-registered worktree.
     mod2 = _load_mod()
@@ -108,7 +181,7 @@ def main() -> int:
             fails += 1
             print(f"  [FAIL] got={got!s:5} expect={expect!s:5}  {name}")
 
-    total = len(CASES) + len(REAL_CASES)
+    total = len(CASES) + len(CD_CASES) + len(CD_UNIT) + len(REAL_CASES)
     if fails:
         print(f"\n=== {fails}/{total} FAIL ===")
         return 1

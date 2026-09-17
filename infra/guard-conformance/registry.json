@@ -342,6 +342,13 @@
               ],
               "note": "W92 fix 2026-07-11: an ssh/scp/rsync-dispatched write with a RELATIVE destination used to resolve against the LOCAL session cwd, producing a phantom write-target into the main checkout for a write that never touches this machine. Fixed by consulting _is_remote_dispatch upstream of target extraction (same reuse discipline as the git-verb channel). 6th over-match (SAME session, PR-gate finding): the exemption was whole-command — now `_extract_write_targets` returns `(path, offset)` and each target is segment-scoped individually via `_is_position_remote_dispatched`."
             },
+            "_effective_cwd_at": {
+              "tests": [
+                "infra/claude-hooks/test_w79_shell_write.py",
+                "infra/claude-hooks/test_hook_innocence.py"
+              ],
+              "note": "10th over-match (2026-09-18, found live on M5 by the Claude Code regression audit): a RELATIVE write target after a leading `cd` (`cd /private/tmp/x && python3 probe.py 2>err.log`, typed from the main checkout) resolved against the SESSION cwd — the main checkout — instead of the directory the command had moved to. `_effective_cwd_at` replays the `cd` segments that precede the target (newline-aware); a destination it cannot place ($VAR, $(...), `cd -`, quoted, bare) makes the target unclassifiable → conservative allow. `_write_hits_main` consumes it for every relative target; guilt cases prove a `cd` INTO main, a relative `cd` inside it and a `cd` AFTER the write still bite."
+            },
             "_effective_git_target": {
               "tests": ["infra/claude-hooks/test_tilde_target_resolver.py"],
               "note": "tilde/env blind-spot fixed 2026-07-06 (expanduser+expandvars at the single choke point; found by the W85 live guilt-probe — the resolver sits UPSTREAM of BLOCKED_SUBCMD_RE)"
