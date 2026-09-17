@@ -48,6 +48,36 @@ CONTRACT = (
     "and deadline; do not reset those budgets when replacing a child."
 )
 
+def should_inject_contract(payload: dict[str, Any], event: str) -> bool:
+    """Once per (session_id, hook_event_name); fail-open on any state error.
+
+    Every Agent/Task PreToolUse and every SubagentStart re-injected the ~650
+    byte CONTRACT paragraph, landing 26 identical copies in one session. A
+    missing or unreadable session_id must still inject on every call --
+    silence-by-default would hide the paragraph from a session the hook
+    cannot identify, which is worse than the duplication it replaces.
+    """
+    if os.environ.get("NUZ_CHILD_WORKFLOW_EVERY") == "1":
+        return True
+    session_id = payload.get("session_id")
+    if not session_id or not isinstance(session_id, str):
+        return True
+    try:
+        root = (
+            Path(os.environ.get("CLAUDE_CONFIG_DIR") or Path.home() / ".claude")
+            / "state"
+            / "child-workflow-contract"
+        )
+        root.mkdir(parents=True, exist_ok=True, mode=0o700)
+        marker = root / f"{session_id}.{event}"
+        if marker.exists():
+            return False
+        marker.touch()
+        return True
+    except OSError:
+        return True
+
+
 REPORTING_TOOLS = ("SendMessage", "TaskStop")
 
 
@@ -506,7 +536,11 @@ def main() -> None:
             if result is None:
                 sys.stdin = io.StringIO(json.dumps(payload))
                 result = legacy.main()
-                if not result and payload.get("tool_name") in ("Agent", "Task"):
+                if (
+                    not result
+                    and payload.get("tool_name") in ("Agent", "Task")
+                    and should_inject_contract(payload, "PreToolUse")
+                ):
                     print(
                         json.dumps(
                             {
@@ -526,16 +560,17 @@ def main() -> None:
             mandate_id(payload),
             str(payload.get("agent_id") or "UNKNOWN"),
         )
-    print(
-        json.dumps(
-            {
-                "hookSpecificOutput": {
-                    "hookEventName": event,
-                    "additionalContext": CONTRACT,
+    if should_inject_contract(payload, str(event)):
+        print(
+            json.dumps(
+                {
+                    "hookSpecificOutput": {
+                        "hookEventName": event,
+                        "additionalContext": CONTRACT,
+                    }
                 }
-            }
+            )
         )
-    )
 
 
 def entrypoint() -> None:
