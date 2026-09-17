@@ -206,7 +206,7 @@ def selftest() -> int:
     check("collide: disjoint scope is clear", collisions(["q.py"], prs) == [])
     check("collide: literal, not glob — 'b/*' matches nothing", collisions(["b/*"], prs) == [])
     unmerged = {"mergedAt": None, "mergeCommit": None}
-    merged = {"mergedAt": "2026-09-17T05:54:57Z", "mergeCommit": "03516ea404f7c5370c4ec624fe223d2f832b3330"}
+    merged = {"mergedAt": "2026-09-17T05:54:57Z", "mergeCommit": "03516ea404f7c5370c4ec624fe223d2f832b3330"}  # pragma: allowlist secret — #6704's real merge commit, a public git SHA, not a credential
     check("merged: {merged:true, live_receipt:/tmp/x} on an unmerged PR = BLOCK", judge_merge(unmerged, {"merged": True, "live_receipt": "/tmp/x"}) == "BLOCK")
     check("merged: the same claim on a merged PR = OK", judge_merge(merged, {"merged": True, "live_receipt": "/tmp/x"}) == "OK")
     check("merged: claimed merge_commit that is not the real one = BLOCK", judge_merge(merged, {"merged": True, "merge_commit": "deadbeef"}) == "BLOCK")
