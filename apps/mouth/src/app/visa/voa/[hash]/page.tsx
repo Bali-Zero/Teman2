@@ -93,6 +93,7 @@ export default function VoaResultPage({
   const [hash, setHash] = useState<string | null>(null);
   const [data, setData] = useState<VoaResult | null>(null);
   const [err, setErr] = useState<string | null>(null);
+  const [deleted, setDeleted] = useState(false);
 
   useEffect(() => {
     void params.then((p) => setHash(p.hash));
@@ -122,6 +123,20 @@ export default function VoaResultPage({
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hash]);
+
+  if (deleted) {
+    return (
+      <AppFrame
+        funnel="visa"
+        title="Visa on Arrival"
+        subtitle="This check has been deleted."
+      >
+        <p>
+          <a href="/visa/voa">Start again →</a>
+        </p>
+      </AppFrame>
+    );
+  }
 
   if (err) {
     return (
@@ -182,6 +197,10 @@ export default function VoaResultPage({
         >
           <EmptyStampReveal />
         </div>
+        <DeleteCheckControl
+          resultId={hash ?? ""}
+          onDeleted={() => setDeleted(true)}
+        />
         {edu ? (
           <section
             style={{
@@ -284,6 +303,10 @@ export default function VoaResultPage({
           ariaLabel={`Approved — ${formatIDR(data.price_idr)}`}
         />
       </div>
+      <DeleteCheckControl
+        resultId={hash ?? ""}
+        onDeleted={() => setDeleted(true)}
+      />
       {/* Reachable only once `data` is set, which itself requires `hash` — see the
           two effects above — so this is never actually empty at render time. */}
       <MagicLinkRequestForm resultId={hash ?? ""} />
@@ -406,5 +429,161 @@ function MagicLinkRequestForm({ resultId }: { resultId: string }) {
         </p>
       ) : null}
     </form>
+  );
+}
+
+/**
+ * Self-service deletion (design-A §2, DELIBERA-fase2 lane S6,
+ * `products/garuda-voa/journeys/self-service-deletion.feature`). Deletion is
+ * authorized by the same creator-bound `garuda_result_session` HttpOnly
+ * cookie the page's own GET already relies on — this page never reads or
+ * carries that cookie itself, `credentials: "include"` sends it same-origin,
+ * exactly like the GET above and `MagicLinkRequestForm`'s POST. The contract
+ * (`deleteEligibilityResult`) always answers 204 (bound-and-erased or a
+ * no-op alike — non-enumerating, verbatim); a non-204 here is a network or
+ * server fault, not a "you may not delete this" answer, so a failure gets a
+ * retry, never a different copy.
+ *
+ * One quiet text link → inline confirm (two controls, R19 "one control per
+ * state" respected by treating confirm as its own state) → the terminal
+ * "Deleted" screen the parent renders once `onDeleted` fires. Copper marks
+ * this as the visitor's OWN thing to remove (R19 law: copper = ownership,
+ * never a generic action); the error tone deliberately avoids both copper
+ * and `--color-error` (red) per DELIBERA (d) — no dedicated error token
+ * exists yet for this surface (S3's lane), so weight carries the alert
+ * instead of a colour.
+ */
+function DeleteCheckControl({
+  resultId,
+  onDeleted,
+}: {
+  resultId: string;
+  onDeleted: () => void;
+}) {
+  const [state, setState] = useState<
+    "idle" | "confirming" | "deleting" | "error"
+  >("idle");
+  const idempotencyKeyRef = useRef<string | null>(null);
+
+  const startConfirm = () => {
+    idempotencyKeyRef.current =
+      globalThis.crypto?.randomUUID?.() ??
+      `voa-delete-${Date.now()}-${Math.random()}`;
+    setState("confirming");
+  };
+
+  const cancel = () => setState("idle");
+
+  const remove = async () => {
+    setState("deleting");
+    try {
+      const res = await fetch(
+        `/api/visa/voa/eligibility-checks/${encodeURIComponent(resultId)}`,
+        {
+          method: "DELETE",
+          credentials: "include",
+          headers: { "Idempotency-Key": idempotencyKeyRef.current ?? "" },
+        },
+      );
+      if (res.status === 204) {
+        onDeleted();
+        return;
+      }
+      setState("error");
+    } catch {
+      setState("error");
+    }
+  };
+
+  if (state === "idle") {
+    return (
+      <p style={{ margin: 0 }}>
+        <button
+          type="button"
+          onClick={startConfirm}
+          style={{
+            background: "none",
+            border: "none",
+            padding: 0,
+            font: "inherit",
+            fontSize: "0.85rem",
+            color: "var(--bz-copper-text, var(--color-text-muted))",
+            textDecoration: "underline",
+            cursor: "pointer",
+          }}
+        >
+          Delete this check
+        </button>
+      </p>
+    );
+  }
+
+  if (state === "error") {
+    return (
+      <div style={{ display: "grid", gap: "var(--space-2, 0.6rem)" }}>
+        <p role="alert" style={{ margin: 0, fontWeight: 600 }}>
+          Couldn&apos;t delete this check. Please try again.
+        </p>
+        <button
+          type="button"
+          onClick={remove}
+          style={{
+            alignSelf: "start",
+            padding: "0.6rem 1rem",
+            borderRadius: 8,
+            border: "1px solid var(--color-border-subtle)",
+            background: "none",
+            color: "inherit",
+            fontWeight: 600,
+            cursor: "pointer",
+          }}
+        >
+          Try again
+        </button>
+      </div>
+    );
+  }
+
+  // confirming | deleting
+  const isDeleting = state === "deleting";
+  return (
+    <div style={{ display: "grid", gap: "var(--space-2, 0.6rem)" }}>
+      <p style={{ margin: 0, fontSize: "0.9rem" }}>
+        Delete this check? This can&apos;t be undone.
+      </p>
+      <div style={{ display: "flex", gap: "0.75rem" }}>
+        <button
+          type="button"
+          onClick={remove}
+          disabled={isDeleting}
+          style={{
+            padding: "0.6rem 1rem",
+            borderRadius: 8,
+            border: "1px solid var(--bz-copper-text, currentColor)",
+            background: "none",
+            color: "var(--bz-copper-text, inherit)",
+            fontWeight: 600,
+            cursor: isDeleting ? "default" : "pointer",
+          }}
+        >
+          {isDeleting ? "Deleting…" : "Yes, delete"}
+        </button>
+        <button
+          type="button"
+          onClick={cancel}
+          disabled={isDeleting}
+          style={{
+            padding: "0.6rem 1rem",
+            borderRadius: 8,
+            border: "1px solid var(--color-border-subtle)",
+            background: "none",
+            color: "inherit",
+            cursor: isDeleting ? "default" : "pointer",
+          }}
+        >
+          Cancel
+        </button>
+      </div>
+    </div>
   );
 }
