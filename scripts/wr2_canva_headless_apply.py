@@ -120,6 +120,7 @@ async def apply_headless(conn, pending_path: Path, template_design_id: str,
             # unachievable (--strict-mcp-config kills account-hosted Canva;
             # --disallowedTools ignored under skip-permissions). NO regression vs the
             # AppleScript path (same built-ins). Blast-radius = upstream sanitization.
+            # context-diet: exempt — the account-hosted Canva MCP must load
             ["claude", "-p", cmd_text, "--dangerously-skip-permissions",
              "--output-format", "stream-json", "--verbose",
              "--max-budget-usd", str(HEADLESS_MAX_BUDGET_USD)],
