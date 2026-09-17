@@ -9,6 +9,7 @@ of scope by design — see ``bundle.py``'s module docstring).
 
 from __future__ import annotations
 
+import base64
 import copy
 import json
 from datetime import datetime, timedelta, timezone
@@ -18,6 +19,7 @@ import rfc8785
 
 import backend.services.visa_engine.bundle as bundle_module
 from backend.services.visa_engine.bundle import (
+    _VERIFIED_STAGE_MEMO_MAX_ENTRIES,
     StaticTrustStore,
     TrustedSigningKey,
     VerifiedRulePack,
@@ -27,6 +29,7 @@ from backend.services.visa_engine.bundle import (
     _snapshot_envelope,
     _validate_envelope_against_schema,
     canonicalize_json,
+    clear_verified_stage_memo,
     resolve_allow_unsigned_default,
     verify_rule_pack,
 )
@@ -947,3 +950,117 @@ class TestParseUtcDatetimeOffsetHardening:
     def test_genuine_utc_z_still_accepted(self) -> None:
         result = _parse_utc_datetime("2026-01-01T00:00:00Z")
         assert result.utcoffset() == timedelta(0)
+
+
+class TestVerifiedStageMemo:
+    """2026-09-17 incident: the keyed evaluate path re-verified the SAME
+    signed envelope up to five times per request, each call re-running RFC
+    8785 canonicalization + ``model_validate`` from scratch (~2.4s/call on
+    Fly). ``verify_rule_pack`` now memoizes those pure-of-the-bytes stages
+    per byte-identical envelope, bounded to 8 entries — trust-store
+    resolution/revocation, the future-skew check, and the Ed25519 verify
+    still run on EVERY call, so no guilt/innocence guarantee weakens."""
+
+    def setup_method(self) -> None:
+        clear_verified_stage_memo()
+
+    def teardown_method(self) -> None:
+        clear_verified_stage_memo()
+
+    def test_repeat_verification_memoizes_canonicalization(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        envelope, public_key = _signed_envelope(signed_at="2026-07-01T00:00:00Z")
+        trust_store = _trust_store_with(public_key=public_key)
+
+        real_canonicalize = bundle_module._canonicalize_wire_object
+        calls: list[str] = []
+
+        def counting_canonicalize(value, *, label):
+            calls.append(label)
+            return real_canonicalize(value, label=label)
+
+        monkeypatch.setattr(bundle_module, "_canonicalize_wire_object", counting_canonicalize)
+
+        first = verify_rule_pack(envelope, trust_store=trust_store, observed_at=_OBSERVED_AT)
+        assert calls == ["protected", "payload"]
+
+        calls.clear()
+        second = verify_rule_pack(envelope, trust_store=trust_store, observed_at=_OBSERVED_AT)
+        assert calls == []
+
+        assert first.payload_sha256 == second.payload_sha256
+        assert first.pack.payload.sequence == second.pack.payload.sequence
+
+    def test_tampered_payload_after_memoized_success_still_rejected(self) -> None:
+        """Guilt A: declared payload_sha256 left STALE — tampering changes
+        the envelope's bytes (a memo MISS), so the mismatch is still caught."""
+
+        envelope, public_key = _signed_envelope(signed_at="2026-07-01T00:00:00Z")
+        trust_store = _trust_store_with(public_key=public_key)
+
+        honest = verify_rule_pack(envelope, trust_store=trust_store, observed_at=_OBSERVED_AT)
+        assert honest.unsigned_dev is False
+
+        tampered = copy.deepcopy(envelope)
+        tampered["payload"]["created_by"] = "attacker"
+        assert tampered["payload_sha256"] == envelope["payload_sha256"]  # left stale
+
+        with pytest.raises(RulePackVerificationError, match="payload_sha256 mismatch"):
+            verify_rule_pack(tampered, trust_store=trust_store, observed_at=_OBSERVED_AT)
+
+    def test_flipped_signature_after_memoized_success_still_rejected(self) -> None:
+        """Guilt B: flipping one character of the signature also changes the
+        envelope's bytes (a memo MISS) — the Ed25519 check still fails."""
+
+        envelope, public_key = _signed_envelope(signed_at="2026-07-01T00:00:00Z")
+        trust_store = _trust_store_with(public_key=public_key)
+
+        honest = verify_rule_pack(envelope, trust_store=trust_store, observed_at=_OBSERVED_AT)
+        assert honest.unsigned_dev is False
+
+        # GATE-6696: flipping the LAST char is flaky — 64 bytes = 86 unpadded
+        # base64url chars carries only 2 significant bits in that last char
+        # (516 encoded bits vs 512 payload bits), so 1-in-4 flips decode to
+        # the SAME 64 bytes. Mutate a significant byte instead and assert
+        # the decoded bytes actually differ.
+        broken = copy.deepcopy(envelope)
+        honest_sig = base64.urlsafe_b64decode(broken["signature"] + "==")
+        broken_sig = bytes([honest_sig[0] ^ 0x01]) + honest_sig[1:]
+        assert broken_sig != honest_sig
+        broken["signature"] = base64.urlsafe_b64encode(broken_sig).rstrip(b"=").decode("ascii")
+        assert base64.urlsafe_b64decode(broken["signature"] + "==") == broken_sig
+
+        with pytest.raises(
+            RulePackVerificationError, match="Ed25519 signature verification failed"
+        ):
+            verify_rule_pack(broken, trust_store=trust_store, observed_at=_OBSERVED_AT)
+
+    def test_revoked_key_on_second_call_still_rejected_despite_memo_hit(self) -> None:
+        """Guilt C: SAME envelope verified twice (a genuine memo HIT), but
+        the second trust store has the key revoked — memo must not shadow
+        trust-store consultation."""
+
+        envelope, public_key = _signed_envelope(signed_at="2026-07-01T00:00:00Z")
+        live_trust_store = _trust_store_with(public_key=public_key)
+
+        first = verify_rule_pack(envelope, trust_store=live_trust_store, observed_at=_OBSERVED_AT)
+        assert first.unsigned_dev is False
+
+        revoked_trust_store = _trust_store_with(
+            public_key=public_key,
+            valid_from=datetime(2026, 1, 1, tzinfo=timezone.utc),
+            revoked_at=datetime(2026, 7, 1, tzinfo=timezone.utc),
+        )
+
+        with pytest.raises(RulePackVerificationError, match="revoked"):
+            verify_rule_pack(envelope, trust_store=revoked_trust_store, observed_at=_OBSERVED_AT)
+
+    def test_memo_bounded_at_max_entries(self) -> None:
+        for _ in range(_VERIFIED_STAGE_MEMO_MAX_ENTRIES + 1):
+            envelope, public_key = _signed_envelope(signed_at="2026-07-01T00:00:00Z")
+            trust_store = _trust_store_with(public_key=public_key)
+            result = verify_rule_pack(envelope, trust_store=trust_store, observed_at=_OBSERVED_AT)
+            assert result.unsigned_dev is False
+
+        assert len(bundle_module._VERIFIED_STAGE_MEMO) <= _VERIFIED_STAGE_MEMO_MAX_ENTRIES
