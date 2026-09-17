@@ -5,8 +5,8 @@ Cure for context bloat by accident (Zero, 2026-09-18) after two live
 over-reads in one session (`ls ~/.nuzantara-mailbox` 700+ entries,
 `ls evidence/2026-09` 300+ entries, both read in full, no bound).
 
-DENIES (exit 2, never rewrites) an UNBOUNDED command: ls/eza on a >60-entry
-dir; cat/bat of a >24KB file; git log w/o -n/--max-count; git diff/show w/o
+DENIES (exit 2, never rewrites) an UNBOUNDED command: ls/eza on a >150-entry
+dir or with -R/--recursive; cat/bat of a >24KB file; git log w/o -n/--max-count; git diff/show w/o
 --stat-family; find w/o -maxdepth; grep -r/rg w/o -l/-c/-m; a test runner w/o
 -q/--tb=short|line; tail -f/-F (never terminates, no exemption). Exempt if
 the SAME pipe-chain past the guilty stage carries head/tail(not -f)/cut/wc/
@@ -49,14 +49,14 @@ CD_RE = re.compile(r"^cd\s+(\S+)$")
 # (trigger, own-bound exemption, shape label, suggested bounded form)
 SIMPLE_SHAPES = [
     (re.compile(r"^git\s+(?:-C\s+\S+\s+)?log\b"),
-     re.compile(r"(?:^|\s)(-n\s*\d+|-\d+\b|--max-count(=|\s+)\d+)"),
-     "`git log` without -n/--max-count", "`git log -10` or `git log --oneline | head -20`"),
+     re.compile(r"(?:^|\s)(-n\s*\d+|-\d+\b|--max-count(=|\s+)\d+|\S+\.\.\S+)"),
+     "`git log` without -n/--max-count/a range", "`git log -10` or `git log --oneline | head -20`"),
     (re.compile(r"^git\s+(?:-C\s+\S+\s+)?(diff|show)\b"),
      re.compile(r"--stat\b|--name-only\b|--name-status\b|--numstat\b|--shortstat\b"),
      "`git diff`/`git show` without --stat", "`git diff --stat` or `git diff ... | head -40`"),
     (re.compile(r"^find\b"), re.compile(r"-maxdepth\b"),
      "`find` without -maxdepth", "`find . -maxdepth 2 -name x` or `find . -name x | head`"),
-    (re.compile(r"^(pytest|npm\s+test|pnpm\s+test|vitest|jest)\b"),
+    (re.compile(r"^(python3?\s+-m\s+pytest|pytest|npm\s+test|pnpm\s+test|vitest|jest)\b"),
      re.compile(r"-q\b|--quiet\b|--tb=short\b|--tb=line\b"),
      "test runner without -q/--tb=short", "`pytest -q` or `pytest ... 2>&1 | tail -20`"),
 ]
@@ -139,6 +139,30 @@ def _grep_bound_own(toks: list[str]) -> bool:
     return False
 
 
+def _grep_targets_are_files(toks: list[str], cwd: str) -> bool:
+    """`rg pat file.py` / `grep -rn pat file.py` read one named file each: not a flood."""
+    # the pattern is usually quoted and already stripped to blanks, so the file may be the
+    # only token left; an unquoted pattern occupies the first slot
+    non_flags = [t for t in toks[1:] if not t.startswith("-")]
+    candidates = non_flags[1:] if len(non_flags) >= 2 else non_flags
+    if not candidates:
+        return False
+    for p in candidates:
+        target = _resolve_path(p, cwd)
+        if target is None or not os.path.isfile(target):
+            return False
+    return True
+
+
+def _ls_recursive(toks: list[str]) -> bool:
+    for t in toks[1:]:
+        if t in ("--recursive", "--tree"):
+            return True
+        if t.startswith("-") and not t.startswith("--") and ("R" in t or (toks[0] == "eza" and "T" in t)):
+            return True
+    return False
+
+
 def _resolve_path(path_arg: str | None, cwd: str) -> str | None:
     if not path_arg:
         return cwd
@@ -154,7 +178,8 @@ def _resolve_path(path_arg: str | None, cwd: str) -> str | None:
 def _bounded(original: str, seg_start: int, seg_end: int,
              stages: list[tuple[int, int]], idx: int) -> bool:
     st_start, st_end = stages[idx]
-    if re.search(r">>?\s*\S", original[st_start:st_end]):
+    # a STDOUT redirect bounds the stage; `2>/dev/null` and `2>&1` do not
+    if re.search(r"(?<!2)>>?\s*(?!&)\S", original[st_start:st_end]):
         return True
     seg_text = original[seg_start:seg_end]
     if re.match(r"^\s*nohup\b", seg_text):
@@ -195,6 +220,12 @@ def _check_stage(toks: list[str], stage_stripped: str, original: str,
 
     if head in ("ls", "eza"):
         path_arg = next((t for t in toks[1:] if not t.startswith("-")), None)
+        if _ls_recursive(toks) and not _bounded(original, seg_start, seg_end, stages, idx):
+            shown = _short(path_arg or ".")
+            return _deny(
+                f"recursive `ls -R`/`eza -T` ({shown})",
+                f"`find {shown} -maxdepth 2 | head -40` or `ls -R {shown} | head -60`",
+            )
         target = _resolve_path(path_arg, cwd)
         if target is None:
             return None
@@ -202,7 +233,7 @@ def _check_stage(toks: list[str], stage_stripped: str, original: str,
             n = len(os.listdir(target))
         except Exception:
             return None
-        if n > 60 and not _bounded(original, seg_start, seg_end, stages, idx):
+        if n > 150 and not _bounded(original, seg_start, seg_end, stages, idx):
             shown = _short(path_arg or ".")
             return _deny(
                 f"`ls`/`eza` on a {n}-entry directory ({shown})",
@@ -232,7 +263,8 @@ def _check_stage(toks: list[str], stage_stripped: str, original: str,
         return None
 
     if _grep_trigger(toks):
-        if _grep_bound_own(toks) or _bounded(original, seg_start, seg_end, stages, idx):
+        if _grep_bound_own(toks) or _grep_targets_are_files(toks, cwd) \
+                or _bounded(original, seg_start, seg_end, stages, idx):
             return None
         return _deny("`grep -r`/`rg` without -l/-c/-m", "`grep -rl foo .` or `grep -rn foo . | head`")
 

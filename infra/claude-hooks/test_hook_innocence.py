@@ -51,11 +51,14 @@ _SYN = pathlib.Path(REPO_ROOT)
 (_SYN / "scripts" / "agent_start.py").write_text("# synthetic signature\n")
 # a registered worktree under the synthetic root's .worktrees/ for allow-list cases
 (_SYN / ".worktrees" / "lane-x" / "apps").mkdir(parents=True, exist_ok=True)
-# output_hygiene_guard.py fixtures: a >60-entry dir, a <=60-entry dir, a
-# >24KB file, a small file.
+# output_hygiene_guard.py fixtures: a >150-entry dir, a 100-entry dir (a repo root's
+# size), a small dir, a >24KB file, a small file.
 (_SYN / "bigdir").mkdir(parents=True, exist_ok=True)
-for _i in range(61):
+for _i in range(151):
     (_SYN / "bigdir" / f"f{_i}.txt").write_text("x")
+(_SYN / "middir").mkdir(parents=True, exist_ok=True)
+for _i in range(100):
+    (_SYN / "middir" / f"f{_i}.txt").write_text("x")
 (_SYN / "smalldir").mkdir(parents=True, exist_ok=True)
 for _i in range(3):
     (_SYN / "smalldir" / f"f{_i}.txt").write_text("x")
@@ -196,7 +199,10 @@ CASES: dict[str, list[tuple[dict, str, str]]] = {
     # ---- output_hygiene_guard.py (Bash) — deny unbounded ls/cat/log/diff/find/grep/test
     "output_hygiene_guard.py": [
         # GUILT
-        (bash("ls bigdir"), "BLOCK", "ls on a >60-entry directory"),
+        (bash("ls bigdir"), "BLOCK", "ls on a >150-entry directory"),
+        (bash("ls bigdir 2>/dev/null"), "BLOCK", "a stderr redirect is not a bound"),
+        (bash("ls -R smalldir"), "BLOCK", "recursive ls floods regardless of the top-level count"),
+        (bash("python3 -m pytest tests"), "BLOCK", "python -m pytest without -q"),
         (bash("cat big.log"), "BLOCK", "cat of a >24KB file"),
         (bash("git log"), "BLOCK", "git log without a bound"),
         (bash("git diff"), "BLOCK", "git diff without a bound"),
@@ -209,6 +215,10 @@ CASES: dict[str, list[tuple[dict, str, str]]] = {
         (bash("ls | head"), "ALLOW", "ls piped to head"),
         (bash("ls -1 bigdir | wc -l"), "ALLOW", "ls piped to wc -l"),
         (bash("ls smalldir"), "ALLOW", "ls on a small directory"),
+        (bash("ls middir"), "ALLOW", "ls on a 100-entry directory (a repo root)"),
+        (bash("ls bigdir > listing.txt"), "ALLOW", "stdout redirected to a file"),
+        (bash("git log --oneline origin/main..HEAD"), "ALLOW", "range-bounded git log"),
+        (bash("rg foo small.py"), "ALLOW", "rg on a single named file"),
         (bash("cat small.py"), "ALLOW", "cat of a small file"),
         (bash("cat big.log | tail -20"), "ALLOW", "cat piped to tail"),
         (bash("git log -3"), "ALLOW", "git log with -n bound"),

@@ -47,14 +47,25 @@ seat_diversity_note: >-
 
 diff:
   files: 7
-  net_lines: 735
+  net_lines: 807
   measured_at: >-
     `scripts/evidence_pack_lint.py --print-measured` against `git diff --numstat`/`--name-only`
     from the merge-base with origin/main to this pack's own finalized commit, run LAST as its own
     invocation after every other edit including this evidence directory itself and the
-    hook-innocence-gate.yml revert commit (33cd519e6a) — see the matching receipt below.
+    hook-innocence-gate.yml revert commit (33cd519e6a) and the gate-cure commit — see the matching receipt below.
 
 residual_risks:
+  - >-
+    THE FIRST ON-DISK GATE (Opus 5, 2026-09-18, head bd0a9a131a) RETURNED REWORK-BUILD with six
+    concrete findings, all cured in the follow-up commit and now pinned as guilt/innocence cases
+    in both suites: over-match on `ls` at a 69-entry repo root (threshold raised 60 -> 150), on a
+    range-bounded `git log --oneline origin/main..HEAD` (a `..` range is now an own-bound), and on
+    `rg pat <one-file>` (named existing files are not a flood); under-match on `ls X 2>/dev/null`
+    (a stderr redirect was read as a bound; only a stdout redirect counts now), on `ls -R apps`
+    (recursive listing is now denied regardless of the top-level count), and on
+    `python3 -m pytest <dir>` (the python -m form now matches the test-runner shape). The
+    threshold of 150 is a judgement: a repo root or a hooks directory sits at 69-76 entries, the
+    two incidents that motivated the guard sat at 300+ and 957.
   - >-
     NO INDEPENDENT ADVERSARIAL REVIEW ROUND is claimed in this pack. This is a single-build-lane,
     Gear-2 change with the four proof commands team-lead specified run and quoted verbatim below
@@ -83,17 +94,17 @@ residual_risks:
 pii_scan: clean
 
 receipts:
-  - claim: "the guard's own dedicated guilt+innocence suite is green: ALL 33 OK"
+  - claim: "the guard's own dedicated guilt+innocence suite is green: ALL 49 OK"
     cmd: "python3 infra/claude-hooks/test_output_hygiene_guard.py"
-    result: "=== ALL 33 OK (no innocent bitten, no guilt missed) === / latency: allow-case subprocess 12.7ms, deny-case subprocess 12.8ms"
+    result: "=== ALL 49 OK (no innocent bitten, no guilt missed) === / latency: allow-case subprocess 13.8ms, deny-case subprocess 13.8ms"
     exit: 0
-    ts: "2026-09-18T03:00:00Z"
+    ts: "2026-09-17T20:01:19Z"
     seat: session (air-m5)
-  - claim: "the shared vaccine, which also carries this guard's fixtures, is green: ALL 145 OK, no regression to any pre-existing guard"
+  - claim: "the shared vaccine, which also carries this guard's fixtures, is green: ALL 152 OK, no regression to any pre-existing guard"
     cmd: "python3 infra/claude-hooks/test_hook_innocence.py"
-    result: "=== ALL 145 OK (no innocent bitten, no guilt missed) ==="
+    result: "=== ALL 152 OK (no innocent bitten, no guilt missed) ==="
     exit: 0
-    ts: "2026-09-18T03:35:00Z"
+    ts: "2026-09-17T20:01:19Z"
     seat: session (air-m5)
   - claim: "the guard-conformance census shows 0 violations across every registered guard, including this one"
     cmd: "python3 infra/guard-conformance/check_guard_conformance.py"
@@ -102,7 +113,7 @@ receipts:
       evidence-pack-lint checks, 6 required-workflow-conformance checks, 9 bites-parse guards, 0
       violation(s) / every censused guard has guilt+innocence proofs, no phantoms, all armed in CI
     exit: 0
-    ts: "2026-09-18T03:40:00Z"
+    ts: "2026-09-17T20:01:19Z"
     seat: session (air-m5)
   - claim: >-
       after removing this branch's own hook-innocence-gate.yml edit in commit 33cd519e6a, the
@@ -110,19 +121,19 @@ receipts:
       not gated by the workflow's own explicit test-file list)
     cmd: "grep -n output_hygiene infra/claude-hooks/test_hook_innocence.py"
     result: >-
-      54:# output_hygiene_guard.py fixtures: a >60-entry dir, a <=60-entry dir, a ... / 196:    #
+      54:# output_hygiene_guard.py fixtures: a >150-entry dir, a <=150-entry dir, a ... / 196:    #
       ---- output_hygiene_guard.py (Bash) — deny unbounded ls/cat/log/diff/find/grep/test / 197:
       "output_hygiene_guard.py": [
     exit: 0
-    ts: "2026-09-18T03:36:00Z"
+    ts: "2026-09-17T20:01:19Z"
     seat: session (air-m5)
   - claim: "this pack's own diff.files/diff.net_lines match the measured merge-base diff, run LAST as its own step"
     cmd: >-
       python3 scripts/evidence_pack_lint.py --repo-root . --numstat-file /tmp/net-lines-numstat-hygiene.txt
       --changed-files-file /tmp/changed-files-hygiene.txt --print-measured
-    result: "7 files, +735/-0"
+    result: "7 files, +807/-0"
     exit: 0
-    ts: "2026-09-18T03:50:00Z"
+    ts: "2026-09-17T20:01:19Z"
     seat: session (air-m5)
 
 dissent: []

@@ -22,8 +22,11 @@ HOOK = HERE / "output_hygiene_guard.py"
 
 _TMP = pathlib.Path(tempfile.mkdtemp(prefix="output_hygiene_"))
 (_TMP / "bigdir").mkdir()
-for _i in range(61):
+for _i in range(151):
     (_TMP / "bigdir" / f"f{_i}.txt").write_text("x")
+(_TMP / "middir").mkdir()
+for _i in range(100):
+    (_TMP / "middir" / f"f{_i}.txt").write_text("x")
 (_TMP / "smalldir").mkdir()
 for _i in range(3):
     (_TMP / "smalldir" / f"f{_i}.txt").write_text("x")
@@ -34,8 +37,13 @@ CWD = str(_TMP)
 # (command, expect "BLOCK"/"ALLOW", description)
 CASES: list[tuple[str, str, str]] = [
     # ---- GUILT (one per shape) ----
-    ("ls bigdir", "BLOCK", "shape1: ls on a >60-entry directory"),
-    ("eza bigdir", "BLOCK", "shape1: eza on a >60-entry directory"),
+    ("ls bigdir", "BLOCK", "shape1: ls on a >150-entry directory"),
+    ("eza bigdir", "BLOCK", "shape1: eza on a >150-entry directory"),
+    ("ls bigdir 2>/dev/null", "BLOCK", "shape1: a stderr redirect is not a bound (gate 6724)"),
+    ("ls -R smalldir", "BLOCK", "shape1: recursive ls floods regardless of the top-level count (gate 6724)"),
+    ("eza -T smalldir", "BLOCK", "shape1: eza --tree is recursive (gate 6724)"),
+    ("python3 -m pytest tests", "BLOCK", "shape7: python -m pytest without -q (gate 6724)"),
+    ("rg foo", "BLOCK", "shape6: rg with no path searches the whole cwd"),
     ("cat big.log", "BLOCK", "shape2: cat of a >24KB file"),
     ("bat big.log", "BLOCK", "shape2: bat of a >24KB file"),
     ("git log", "BLOCK", "shape3: git log without -n"),
@@ -49,6 +57,17 @@ CASES: list[tuple[str, str, str]] = [
     ("ls | head", "ALLOW", "ls piped to head"),
     ("ls -1 bigdir | wc -l", "ALLOW", "ls -1 piped to wc -l"),
     ("ls smalldir", "ALLOW", "ls on a small directory"),
+    ("ls middir", "ALLOW", "ls on a 100-entry directory: a repo root is this size (gate 6724)"),
+    ("ls -la middir", "ALLOW", "ls -la on a 100-entry directory"),
+    ("ls bigdir > listing.txt", "ALLOW", "stdout redirected to a file"),
+    ("ls bigdir 2>&1 | head", "ALLOW", "2>&1 then head"),
+    ("git log --oneline origin/main..HEAD", "ALLOW", "range-bounded git log (gate 6724)"),
+    ("git log --oneline main...HEAD", "ALLOW", "three-dot range-bounded git log"),
+    ("rg foo small.py", "ALLOW", "rg on a single named file (gate 6724)"),
+    ('rg "def main" small.py', "ALLOW", "rg with a quoted pattern on a single named file (gate 6724)"),
+    ("rg foo small.py bigdir", "BLOCK", "rg over a directory target is still a flood"),
+    ("grep -rn foo small.py", "ALLOW", "grep -r on a single named file"),
+    ("python3 -m pytest -q tests", "ALLOW", "python -m pytest -q"),
     ("cat small.py", "ALLOW", "cat of a small file"),
     ("cat big.log | tail -20", "ALLOW", "cat piped to tail (no -f)"),
     ("git log -3", "ALLOW", "git log with -n bound"),
