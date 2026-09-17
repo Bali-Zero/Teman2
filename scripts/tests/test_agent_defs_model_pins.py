@@ -48,14 +48,14 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 AGENTS_DIR = REPO_ROOT / ".claude" / "agents"
 GATE_MODULE_PATH = REPO_ROOT / "infra" / "claude-hooks" / "model_routing_gate.py"
 
+# 2026-09-18 (prune-dead-defs): lint-fixer, i18n-sync, fixture-gen, catalog-meta,
+# docs-sync removed — zero Agent-tool dispatches in 45 days on M5 and no live
+# consumer beyond this enumeration (chore-queue/README.md named them only as an
+# aspirational "hand to X by hand" manual fallback, never an automated caller).
+# ledger-writer/log-triage stay: both have real dispatch counts.
 GRUNT_AGENTS = [
     "ledger-writer",
-    "lint-fixer",
-    "i18n-sync",
-    "fixture-gen",
     "log-triage",
-    "catalog-meta",
-    "docs-sync",
 ]
 
 MODEL_PIN_HAIKU_RE = re.compile(r"^model[ \t]*:[ \t]*haiku[ \t]*$", re.MULTILINE)
@@ -115,11 +115,12 @@ def _assert_minimal_non_overlapping_toolset(fm: str, label: str) -> None:
 
 
 # ---------------------------------------------------------------------------
-# Innocence: the 7 real defs exist and pass every check above.
+# Innocence: the 2 real defs (post prune-dead-defs 2026-09-18) exist and pass
+# every check above.
 # ---------------------------------------------------------------------------
 
 
-def test_seven_grunt_agent_defs_exist_pinned_to_haiku_with_grunt_description():
+def test_two_grunt_agent_defs_exist_pinned_to_haiku_with_grunt_description():
     assert AGENTS_DIR.is_dir(), f"{AGENTS_DIR} missing"
     for name in GRUNT_AGENTS:
         path = AGENTS_DIR / f"{name}.md"
@@ -128,7 +129,7 @@ def test_seven_grunt_agent_defs_exist_pinned_to_haiku_with_grunt_description():
         _assert_pinned_to_haiku_with_grunt_description(fm, str(path))
 
 
-def test_seven_grunt_agent_defs_declare_a_minimal_non_overlapping_toolset():
+def test_two_grunt_agent_defs_declare_a_minimal_non_overlapping_toolset():
     for name in GRUNT_AGENTS:
         path = AGENTS_DIR / f"{name}.md"
         fm = _frontmatter(path.read_text(encoding="utf-8"))
@@ -217,7 +218,7 @@ def _load_gate_module():
     return module
 
 
-def test_model_routing_gate_honors_the_pin_for_all_seven_defs():
+def test_model_routing_gate_honors_the_pin_for_all_grunt_defs():
     gate = _load_gate_module()
     if gate is None:
         pytest.skip(f"{GATE_MODULE_PATH} not found in this checkout — cannot verify Rule 1 live")
