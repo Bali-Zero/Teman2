@@ -264,7 +264,7 @@ export default function VoaResultPage({
       title="Visa on Arrival — you're eligible"
       subtitle={
         data.published_filing_deadline
-          ? `File by ${data.published_filing_deadline} at Ngurah Rai.`
+          ? `File by ${data.published_filing_deadline} at Ngurah Rai — the counter's published deadline.`
           : "We'll confirm your exact filing deadline before you pay."
       }
       footer="One all-inclusive price. Government fees, where they apply, are never billed separately from this figure."

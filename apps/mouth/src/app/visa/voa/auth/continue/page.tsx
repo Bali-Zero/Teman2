@@ -57,11 +57,12 @@ function firstValue(v: string | string[] | undefined): string | undefined {
 function InvalidLinkNotice() {
   return (
     <main className="mx-auto flex min-h-screen max-w-md flex-col items-center justify-center gap-4 p-6 text-center">
-      <h1 className="text-xl font-semibold">This link is no longer valid</h1>
-      <p className="text-gray-600">
-        Sign-in links expire and can only be used once. Please request a new one
-        from your eligibility result page.
-      </p>
+      <h1 className="text-xl font-semibold">
+        This link has been used or has expired.
+      </h1>
+      <a href="/visa/voa" className="rounded-md bg-black px-6 py-3 text-white">
+        Send me a new link
+      </a>
     </main>
   );
 }
