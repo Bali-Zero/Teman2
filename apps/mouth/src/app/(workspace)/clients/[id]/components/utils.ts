@@ -103,6 +103,27 @@ export const getDriveProxyUrl = (
   return null;
 };
 
+const DRIVE_URL_RE = /^https:\/\/(drive|docs)\.google\.com\//;
+
+// URL that opens a client document inline through the backend proxy, or null
+// when the row carries no Drive file to open. `file_id` comes first: portal
+// uploads store `file_id` + `file_url` but never `google_drive_file_url`, which
+// is why their row used to show no way to open the file. A URL is only mined
+// for an id when it is a Drive URL — `/d/` or `?id=` inside any other URL is
+// not a Drive file id.
+export const getDocumentOpenUrl = (doc: {
+  file_id?: string | null;
+  google_drive_file_url?: string | null;
+  file_url?: string | null;
+}): string | null => {
+  const driveUrl = [doc.google_drive_file_url, doc.file_url].find(
+    (url): url is string => !!url && DRIVE_URL_RE.test(url),
+  );
+  const fileId =
+    doc.file_id?.trim() || (driveUrl ? extractDriveFileId(driveUrl) : null);
+  return fileId ? `/api/documents/proxy/${encodeURIComponent(fileId)}` : null;
+};
+
 // Format phone number with country code detection
 export const formatPhoneNumber = (phone: string): string => {
   if (!phone) return "";

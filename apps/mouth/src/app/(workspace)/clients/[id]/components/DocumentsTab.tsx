@@ -12,10 +12,12 @@ import {
   AlertTriangle,
   ChevronDown,
   ChevronRight,
+  Eye,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { ClientDocument } from "@/lib/api/crm/crm.types";
 import { AiSummaryCard } from "./AiSummaryCard";
+import { getDocumentOpenUrl } from "./utils";
 
 export function DocumentsTab({
   clientId,
@@ -220,6 +222,8 @@ export function DocumentsTab({
               <div className="space-y-1 pt-1">
                 {sortedCatDocs.map((doc) => {
                   const badge = getExpiryBadge(doc);
+                  const openUrl = getDocumentOpenUrl(doc);
+                  const displayName = doc.file_name || doc.document_type;
                   const isUrgent =
                     doc.expiry_date &&
                     Math.ceil(
@@ -236,12 +240,39 @@ export function DocumentsTab({
                       }`}
                     >
                       <div className="flex items-center gap-3 min-w-0">
-                        <FileText
-                          className={`w-4 h-4 shrink-0 ${isUrgent ? "text-[var(--state-warning)]" : "text-[var(--bz-text-2)]"}`}
-                        />
+                        {openUrl ? (
+                          <a
+                            href={openUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            tabIndex={-1}
+                            aria-hidden="true"
+                            className="shrink-0"
+                          >
+                            <FileText
+                              className={`w-4 h-4 ${isUrgent ? "text-[var(--state-warning)]" : "text-[var(--bz-text-2)]"}`}
+                            />
+                          </a>
+                        ) : (
+                          <FileText
+                            className={`w-4 h-4 shrink-0 ${isUrgent ? "text-[var(--state-warning)]" : "text-[var(--bz-text-2)]"}`}
+                          />
+                        )}
                         <div className="min-w-0">
                           <p className="text-sm font-medium text-[var(--bz-text-1)] truncate">
-                            {doc.file_name || doc.document_type}
+                            {openUrl ? (
+                              <a
+                                href={openUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                aria-label={`Open ${displayName}`}
+                                className="rounded hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--tx-pure)]"
+                              >
+                                {displayName}
+                              </a>
+                            ) : (
+                              displayName
+                            )}
                           </p>
                           <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                             <span className="text-xs text-[var(--bz-text-2)] capitalize">
@@ -287,15 +318,24 @@ export function DocumentsTab({
                         </div>
                       </div>
                       <div className="flex items-center gap-2 shrink-0">
-                        {doc.google_drive_file_url && (
+                        {openUrl ? (
                           <a
-                            href={doc.google_drive_file_url}
+                            href={openUrl}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="text-xs text-[var(--tx-pure)] hover:underline px-2 py-1 rounded border border-[var(--bz-border)] hover:bg-[var(--bz-base)]"
+                            aria-label={`View ${displayName}`}
+                            className="inline-flex items-center gap-1 text-xs text-[var(--tx-pure)] hover:underline px-2 py-1 rounded border border-[var(--bz-border)] hover:bg-[var(--bz-base)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--tx-pure)]"
                           >
+                            <Eye className="w-3 h-3" aria-hidden="true" />
                             View
                           </a>
+                        ) : (
+                          <span
+                            className="text-xs text-[var(--bz-text-2)] px-2 py-1"
+                            title="File tidak tersedia"
+                          >
+                            File tidak tersedia
+                          </span>
                         )}
                         <Button
                           variant="ghost"
