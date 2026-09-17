@@ -1,0 +1,217 @@
+# Gear-3 evidence pack — migration 317 restore-to-applied-blob (nuzantara-8d GARUDA
+# implementer lane, 2026-09-17). Floor is 3 by HOT-ZONE (apps/backend-rag/backend/db/
+# migrations_v2/* is an unconditional hot-zone in scripts/evidence_pack_lint.py), same as
+# #6687's own pack — the diff is a pure revert (net negative lines, no new SQL) and would
+# floor lower by size alone.
+task_id: mig317-restore-applied-blob
+gear: 3
+gate_class: sonnet
+brief_ref: evidence/brief.yml
+date: 2026-09-17
+machine: M5
+lanes:
+  - lane: restore migration 317 + its test file to the blob PROD already applied
+    role: build
+    seat: claude-sonnet-5 (this worktree session, agent/air-m5/backend-rag/mig317-restore-applied-blob)
+    note: >-
+      PR #6687 rewrote 317's SQL text after PROD had already applied and recorded it
+      (ledger checksum b78d5a7d..., blob 3f38f30a at e8348e28f1). origin/main's post-#6687
+      text (blob 64acc85e) makes the Fly release_command's schema_audit step fail with
+      migration_checksum_mismatch on 317, killing every backend deploy since v4476. This
+      lane restored both the migration SQL and its existing static test file byte-exact to
+      their e8348e28f1 blobs (verified via git hash-object), then proved the fix reopens
+      the release lane against a throwaway PostgreSQL 17.10 cluster bootstrapped the CI
+      way: apply-all lands 317 in the ledger from the restored blob, schema_audit exits 0
+      (INNOCENCE); swapping the origin/main text back in and re-running schema_audit
+      reproduces the exact v4476 failure, naming migration 317's checksum mismatch
+      (GUILT); the file was then restored again. pytest and ruff on the test file are
+      clean.
+
+seat_diversity: exempt
+seat_diversity_note: >-
+  One build lane, so D3's seat-diversity requirement does not attach (it binds packs with
+  >= 2 build lanes). No dedicated review lane is declared inside this pack; see
+  seat_override below for R9 (Gear-3 council quorum).
+
+seat_override: >-
+  R9 council_run: this pack declares no `council_run` journal with two distinct seats from
+  the COUNCIL_REVIEW_SEATS roster. Disposed by seat_override per council quorum R9: the
+  arsenal note for this task is that Codex is unreliable tonight, and the change itself is
+  a byte-exact restore of a migration to the text PROD already applied and recorded —
+  proven mechanically by `git hash-object` equality against the two blob SHAs named in the
+  brief, not by judgment call. A second independent seat was not dispatched for this
+  narrowly-scoped, mechanically-verified revert; this is a stated human call (the
+  coordinating session, team-lead/nuzantara-8d, authorized proceeding on the imperator's
+  own verified cause), not silence on the requirement.
+
+outcome: >-
+  Migration 317's SQL and its static test file are restored byte-exact to the blobs PROD
+  already ran (e8348e28f1): git hash-object on both files matches the recorded blob SHAs
+  exactly. Against a throwaway PostgreSQL 17.10 cluster bootstrapped and migrated the CI
+  way (ci_bootstrap_schema.py then `migrate apply-all`), the ledger carries 317 from the
+  restored blob and `schema_audit` exits 0 with no migration_checksum_mismatch. Swapping
+  origin/main's post-#6687 text (blob 64acc85e) back into the file and re-running
+  schema_audit against the SAME ledger reproduces the v4476 failure exactly — exit 1,
+  naming migration 317's checksum mismatch, recomputed vs. stored checksum both printed —
+  before the file was restored to the correct blob again. pytest on the test file passes
+  (6/6), ruff check is clean, and `git status --short` shows only the two intended files
+  changed. The lock-retry fix that motivated #6687 does not ship here; it belongs in the
+  shared migration runner, in a separate PR, per the coordinating session's direction — a
+  migration's text must never change after it has been applied.
+diff:
+  shape: >-
+    Two files reverted to their e8348e28f1 blobs: the 317 migration SQL and its existing
+    static test file. Net diff is negative (removes #6687's added lock-retry/backoff logic
+    and its corresponding test assertions), no new file, no new table, no new endpoint.
+    This pack itself (evidence/brief.yml, evidence/pack.yml) is a separate, docs-only
+    commit on top of the revert.
+  measured_at: >-
+    git diff --stat / --numstat against origin/main, this session, after the revert commit
+    landed (2f754d6f32) — see the floor receipt below for the exact invocation.
+pii_scan: clean
+spend:
+  wall_clock_hours: 1
+bites: >-
+  CONSUMER: the Fly release_command of the next nuzantara-rag deploy
+  (`python -m backend.db.migrate apply-all && python -m backend.db.schema_audit`).
+  OBSERVATION: that release's `schema_audit` step exits 0 (no migration_checksum_mismatch
+  on 317) and the release completes with build_sha > e8348e28f1, replacing the v4476
+  failure this PR cures.
+dissent:
+  - seat: claude-sonnet-5 (this build lane)
+    status: CONFIRMED
+    objection: >-
+      council quorum R9 seat_override — no second independent seat (Codex/Kimi/Qwen/GLM/
+      Gemini) was dispatched against this hot-zone-floored pack. Rationale: the coordinating
+      session named Codex unreliable tonight (arsenal), and the change is a byte-exact
+      restore proven mechanically (git hash-object equality against two recorded blob
+      SHAs), not a judgment-dependent design choice a second reviewer would meaningfully
+      contest. Disposed by the coordinating session (team-lead/nuzantara-8d, GARUDA
+      imperator), acting on its own verified root-cause analysis of the v4476 failure.
+  - seat: claude-sonnet-5 (this build lane)
+    status: CONFIRMED
+    objection: >-
+      lesson: a migration's text must never change after it has been applied on PROD. The
+      317 file's checksum is written once at first apply and is descriptive metadata in
+      this codebase's runner (migrate.py's `_is_applied()` keys on migration_name, not
+      checksum, so a re-run of apply-all does not re-execute or re-validate the SQL) — but
+      `schema_audit` DOES compare the stored checksum against the file on disk, and that
+      comparison is what gates the Fly release_command. #6687's lock-retry cure, however
+      well-intentioned, rewrote an already-applied migration's SQL instead of extending the
+      shared runner — the correct home for retry/backoff mechanics that apply to every
+      migration, not just this one. This PR reverts the text; the retry logic belongs in a
+      follow-up PR against the runner, not the migration file.
+receipts:
+  - claim: >-
+      the gear floor for this diff is 3, sourced from HOT-ZONE (not size), because
+      apps/backend-rag/backend/db/migrations_v2/* is an unconditional hot-zone pattern
+    cmd: >-
+      python3 scripts/evidence_pack_lint.py --print-floor --print-floor-source
+      --numstat-file <numstat> --changed-files-file <changed>
+    result: "3 (source read from HOTZONE_PATTERNS match on migrations_v2/*, not the SIZE term)"
+    ts: "2026-09-17T02:30:00Z"
+    seat: claude-sonnet-5
+    exit: 0
+  - claim: >-
+      the migration SQL file, restored from `git show e8348e28f1:<path>`, hashes to
+      3f38f30ac156668fbaaa10fd5fbb7e56cca050b3 — the exact blob PROD applied and recorded
+      in the ledger (checksum b78d5a7d...)
+    cmd: >-
+      git hash-object apps/backend-rag/backend/db/migrations_v2/317_visa_oracle_sessions_retention_30d.sql
+    result: "3f38f30ac156668fbaaa10fd5fbb7e56cca050b3 (exact match)"
+    ts: "2026-09-17T02:24:xxZ"
+    seat: claude-sonnet-5
+    exit: 0
+  - claim: >-
+      the test file, restored from `git show e8348e28f1:<path>`, hashes to the same blob
+      SHA git rev-parse reports for that path at e8348e28f1
+    cmd: >-
+      git hash-object apps/backend-rag/backend/tests/db/test_migration_317_visa_oracle_sessions_retention.py
+      ; git rev-parse e8348e28f1:apps/backend-rag/backend/tests/db/test_migration_317_visa_oracle_sessions_retention.py
+    result: "both print 14d1a5f0f07e2861a034418b7ff1ddefe6b1624e (exact match)"
+    ts: "2026-09-17T02:24:xxZ"
+    seat: claude-sonnet-5
+    exit: 0
+  - claim: >-
+      full CI-style migration corpus (bootstrap + apply-all) applies end to end against a
+      fresh throwaway PostgreSQL 17.10 database, and migration 317 lands in the ledger
+      from the restored (applied) blob
+    cmd: >-
+      PYTHONPATH=.:../crm-cell python scripts/ci_bootstrap_schema.py; then
+      PYTHONPATH=.:../crm-cell python -m backend.db.migrate apply-all
+      (DATABASE_URL against 127.0.0.1:5433, mirroring .github/workflows/tests.yml)
+    result: >-
+      bootstrap exit 0 (17 tables registered + legacy tables ensured); apply-all exit 0,
+      log line "Migration 317_visa_oracle_sessions_retention_30d applied successfully in
+      2ms", 318 applied after it
+    ts: "2026-09-17T02:25:47Z"
+    seat: claude-sonnet-5
+    exit: 0
+  - claim: >-
+      INNOCENCE — with the ledger carrying 317 from the restored blob, schema_audit exits
+      0 and reports no migration_checksum_mismatch
+    cmd: PYTHONPATH=.:../crm-cell python -m backend.db.schema_audit
+    result: >-
+      "SCHEMA AUDIT / Checks run: pending_migrations, migration_checksums,
+      tracking_divergence, required_tables, client_email_uniqueness / Result: OK — no
+      errors"
+    ts: "2026-09-17T02:25:52Z"
+    seat: claude-sonnet-5
+    exit: 0
+  - claim: >-
+      GUILT — with the SAME ledger, temporarily swapping origin/main's post-#6687 text
+      (blob 64acc85e) into the 317 file reproduces the v4476 failure exactly: schema_audit
+      exits 1 naming migration 317's checksum mismatch, with the recomputed and stored
+      checksums both printed
+    cmd: >-
+      git cat-file -p 64acc85e7344759ad9b2f5909d02577ebb2a83bb > <317 sql path>; then
+      python -m backend.db.schema_audit
+    result: >-
+      "Result: FAIL — 1 error / [ERROR] migration_checksum_mismatch / migration 317 ...
+      does not match the file on disk ... recomputed_checksum:
+      5de1178ac7221882709aa8dc3695831da63c85a26e22d4561d33c6ddc58ba36e, stored_checksum:
+      b78d5a7d4576106ab5a03353c6045b12b5ab899fa728f260617a239088c13bf8" (exit code
+      captured directly via `echo $?` after redirecting to a file, not through a pipe)
+    ts: "2026-09-17T02:26:13Z"
+    seat: claude-sonnet-5
+    exit: 1
+  - claim: >-
+      after the guilt swap, the file was restored from the local backup and re-hashed to
+      confirm it is back to the applied blob (3f38f30a), and schema_audit was re-run to
+      confirm INNOCENCE holds again
+    cmd: >-
+      cp <local backup> <317 sql path>; git hash-object <path>; python -m
+      backend.db.schema_audit
+    result: >-
+      hash 3f38f30ac156668fbaaa10fd5fbb7e56cca050b3 (restored); schema_audit "Result: OK —
+      no errors", exit 0; `git status --short` showed only the two intended files modified
+    ts: "2026-09-17T02:26:22Z"
+    seat: claude-sonnet-5
+    exit: 0
+  - claim: the restored static test file passes in full under pytest
+    cmd: >-
+      PYTHONPATH=.:../crm-cell python -m pytest
+      backend/tests/db/test_migration_317_visa_oracle_sessions_retention.py -v
+    result: "6 passed in 0.01s"
+    ts: "2026-09-17T02:26:xxZ"
+    seat: claude-sonnet-5
+    exit: 0
+  - claim: ruff check on the restored test file is clean
+    cmd: >-
+      ruff check backend/tests/db/test_migration_317_visa_oracle_sessions_retention.py
+    result: "All checks passed!"
+    ts: "2026-09-17T02:26:xxZ"
+    seat: claude-sonnet-5
+    exit: 0
+  - claim: >-
+      pre-commit hooks on the revert commit (lease-check, W41 migration-number
+      uniqueness, W42 ROLLBACK marker presence, anti-reward-hacking P1-STRATO1, secrets
+      scan, ruff, import-chain smoke, off-limits-file guard) all passed
+    cmd: git commit (pre-commit hook chain, this worktree)
+    result: >-
+      "migration-numbers lint: 195 files, all unique prefixes"; "migration-rollback lint:
+      190 post-cutoff migrations, all have ROLLBACK marker"; "anti-reward-hacking: clean (1
+      test file(s) checked)"; "import chain OK"; "All pre-commit checks passed!"
+    ts: "2026-09-17T02:26:45Z"
+    seat: claude-sonnet-5
+    exit: 0
