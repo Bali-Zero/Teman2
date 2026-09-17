@@ -1,0 +1,196 @@
+task: >-
+  Ship the two scripts the cc-meta-loop mandate produced: `scripts/cc_meta_research_loop.py`
+  (Opus orchestrates every live frontier seat — Claude, codex, agy, Kimi, TP1 — over an
+  inventory of THIS machine's Claude Code configuration, two adversarial rounds, verdicts and
+  a REPORT per run) and `scripts/cc_context_cost_report.py` (per-machine context cost read
+  from the transcripts on disk — the number `/usage` and OTEL never gave the fleet). The
+  research outputs and the backlog those scripts produced ship in a sibling docs PR
+  (lane docs/cc-meta-loop-research); the hook-layer cures the loop found shipped in #6700.
+lane: infra/cc-meta-loop-code
+machine: Air-M5
+date: 2026-09-17
+mandate: >-
+  Zero, 2026-09-16: "scrivi un loop di deep research che coinvolge opus che orchestra tutti i
+  nostri LLM di frontiera disponibili per trovare le configurazioni più efficienti al mondo di
+  claude code ... e capire cosa ci manca al nostro attuale settaggio".
+
+gear: 2
+gear_reason: >-
+  Deterministic floor 2, source `size`: two new files plus the rework diff, churn measured
+  against the true merge-base (`git diff --numstat origin/main...HEAD`, triple-dot — origin/main
+  had advanced 2 commits, #6704/#6707, since this branch was cut, so a plain double-dot diff
+  over-counted by including their reverse delta), above SIZE_GEAR2_THRESHOLD (400) and below
+  SIZE_GEAR3_THRESHOLD (1828); no hot-zone path. The predecessor #6698 carried the same scripts
+  together with the research outputs and the hook cures (churn 4700, floor 3) and was closed
+  with its three reds classified; this successor is cut from a fresh origin/main with one
+  concern, then went through one REWORK-BUILD round (see `successor_of`/`rework` below).
+
+appetite:
+  wall_clock_hours: 1
+  adversarial_rounds: 1
+
+successor_of: >-
+  #6705 — REWORK-BUILD by the final gate on ba0ee932; the six findings and their cures are
+  listed under `rework:` below.
+
+rework:
+  - finding: >-
+      cc_context_cost_report.py double-counts every transcript: `~/.claude/projects/
+      -Users-balizero-nuzantara` is a symlink to `-Users-balizero-Desktop-nuzantara`, and
+      `PROJECTS.glob('*/*.jsonl')` walks both names for the same physical file.
+    cure: >-
+      Dedup on `(st_dev, st_ino)` via a shared `_iter_transcript_files()` generator instead of
+      globbing paths directly.
+    proof: python3 -c "from pathlib import Path; p=Path.home()/'.claude'/'projects'; import itertools; files=list(p.glob('*/*.jsonl')); seen={(f.stat().st_dev,f.stat().st_ino) for f in files}; print('listed',len(files),'distinct',len(seen))"
+    observed: "listed 1812, distinct 1371 (main-session glob alone; the shipped report also folds in the subagent glob — see the files: line in A2 below)"
+  - finding: >-
+      `--days N` windowed on file MTIME (the file's last write), not on each record's own
+      `timestamp`, so a file touched today could still count three-week-old turns as "today".
+    cure: >-
+      Every usage record's own ISO `timestamp` field now decides its day-bucket and the cutoff;
+      file mtime is kept only as a cheap pre-filter (mtime < cutoff => the file cannot hold an
+      in-window record) and as a last-resort per-record fallback, counted and reported if used.
+    proof: python3 scripts/cc_context_cost_report.py --days 4 | head -3
+    observed: >-
+      "host Air-M5 · last 4 day(s), windowed by each record's OWN `timestamp` field (not file
+      mtime)"; fallback counter printed 0 records this run (sampled 600 files / 65,880 usage
+      records beforehand, 0 missing a timestamp).
+  - finding: >-
+      Subagent transcripts (`<slug>/<session>/subagents/*.jsonl`) were never globbed, so a large
+      share of this machine's actual turns/tokens was invisible to the report.
+    cure: >-
+      Added the subagent glob to `_iter_transcript_files()`; main and subagent turns are now
+      two rows per day plus a combined TOTAL, so both numbers are visible.
+    proof: python3 scripts/cc_context_cost_report.py --days 4
+    observed: "see A2 below — turns 34,731 main + 36,444 subagent = 71,175 total (this replaces the wrong 47,493 turns / 10.35B figure the pre-rework report produced)"
+  - finding: >-
+      `build_hook_inventory()` put absolute `/Users/balizero/...` paths (machine identity, a
+      username) into `hook_scripts[].path`, sent to external seats under `--lens-set hooks`,
+      contradicting the module docstring's own PII rule ("only the configuration SHAPE ... hook
+      script basenames").
+    cure: >-
+      New `_display_path()` renders every emitted path as `$REPO/...` or `~/...`, falling back
+      to a bare basename for anything outside both roots; `build_hook_inventory()` now stores
+      that instead of the resolved absolute path.
+    proof: 'SCRATCH=$(mktemp -d); python3 scripts/cc_meta_research_loop.py --dry-run --lens-set hooks --seats codex,claude --out "$SCRATCH"; grep -c "/Users/" "$SCRATCH/inventory.json"'
+    observed: "0 (grep found no /Users/ path; sample entries: 'active-context-update.sh -> ~/.claude/scripts/active-context-update.sh', 'child_workflow.py -> ~/.claude/hooks/child_workflow.py')"
+  - finding: >-
+      `write_report()` counted `SKIPPED_PROBE` seats as usable for the grading-independence line
+      (`ap.healthy(st) or st == 'SKIPPED_PROBE'`) while the reachability table a few lines below
+      marked those same seats "NO — evidence missing" — self-contradicting under `--no-probe`.
+    cure: >-
+      One rule: a seat counts only if it produced at least one answer in the run (union of each
+      round's `answered_by`). `grading_independence()` now takes that set; the table's third
+      column is "answered" (yes / UNKNOWN-not-probed / NO-evidence-missing) instead of deriving
+      from probe status alone, and the two warning blocks below it are split into "unreachable"
+      vs "ran with --no-probe and never answered" so they cannot disagree with the line above.
+    proof: >-
+      python3 -c "import sys; sys.path.insert(0,'scripts'); import cc_meta_research_loop as loop,
+      tempfile, pathlib; run_dir=pathlib.Path(tempfile.mkdtemp()); seat_status={'claude':
+      'SKIPPED_PROBE','codex':'SKIPPED_PROBE'}; rounds=[{'round':1,'proposals':[],'verdicts':{},
+      'answered_by':['claude']}]; print(loop.write_report(run_dir,{'machine':'test',
+      'generated_at':'now'},rounds,seat_status).read_text())"
+    observed: >-
+      claude (answered) -> "yes", independence "NONE — a single seat cannot grade itself"; codex
+      (SKIPPED_PROBE, never answered) -> "UNKNOWN — not probed, produced no answer", listed under
+      its own warning block, not lumped in with "unreachable".
+  - finding: >-
+      `HOOK_LENSES['jules']` existed but `ask_seat()` has no `jules` branch, so
+      `--lens-set hooks --seats jules` failed with "unsupported seat jules" AFTER passing the
+      lens-membership check — a lens with no seat behind it.
+    cure: >-
+      Removed the `jules` lens. `which jules` finds no binary on this machine; it is invoked as
+      `python3 scripts/jules_dispatch.py {list-sources,new,status,activities}`, an ASYNC
+      dispatch-and-poll contract (create a task against a repo, check status later) with no
+      synchronous "answer this prompt" mode — not a missing `elif`, a different call shape this
+      one-shot loop does not support. The existing `unknown = [s for s in seats if s not in
+      lenses]` check now rejects `jules` up front with a clear message.
+    proof: python3 scripts/cc_meta_research_loop.py --lens-set hooks --seats jules --dry-run
+    observed: '"error: no lens defined for seat(s): jules" (exit 2, before any seat call)'
+  - finding: >-
+      Brief A4's probe (`grep -nE "import anthropic|ANTHROPIC_API_KEY"`) matched the module
+      docstring's own prose describing the ban and could not discriminate a real violation.
+    cure: >-
+      Rewrote A4's probe below to parse the AST for real `import anthropic`/`from anthropic`
+      nodes and to strip the module docstring before grepping code lines for `ANTHROPIC_API_KEY`.
+    proof: see A4 below
+    observed: see A4's `observed:` below
+
+acceptance:
+  A1: >-
+    Both scripts compile and answer --help with exit 0.
+    probe: python3 -m py_compile scripts/cc_meta_research_loop.py scripts/cc_context_cost_report.py
+      && python3 scripts/cc_meta_research_loop.py --help >/dev/null
+      && python3 scripts/cc_context_cost_report.py --help >/dev/null
+    observed: "2026-09-17 14:00 WITA, this worktree: py_compile OK, both --help exit 0"
+  A2: >-
+    The cost report produces a per-day table from the transcripts on this machine with no
+    model call (positive control: the table is non-empty for a day with known sessions), and —
+    post-rework — separates main-session from subagent turns and dedups symlinked project dirs.
+    probe: python3 scripts/cc_context_cost_report.py --days 4
+    observed: >-
+      2026-09-17 14:00 WITA, host Air-M5: "files: 4897 listed by glob, 2979 distinct after dedup
+      by inode (1918 were the same physical file under a symlinked project dir)"; TOTAL main
+      34,731 turns / 6,952,661,296 cache-read tokens, TOTAL subagent 36,444 turns /
+      5,599,311,741 cache-read tokens; combined 71,175 turns, context tokens read
+      12,913,195,862. This replaces the pre-rework figure ("47,493 turns, 10.35 B") which
+      double-counted the symlinked project dir, windowed by file mtime instead of record
+      timestamp, and never saw subagent transcripts at all.
+  A3: >-
+    The loop plans without calling any seat: --dry-run writes inventory.json and prints the
+    plan (seats, rounds, calls per round).
+    probe: python3 scripts/cc_meta_research_loop.py --dry-run --out <scratch>
+    observed: "2026-09-17 14:00 WITA: rounds 2, seat_calls_per_round 12, inventory_bytes 6428, inventory.json written"
+  A4: >-
+    Neither script reaches a Claude model outside the `claude` CLI: no `anthropic` import, no
+    ANTHROPIC_API_KEY; the repo lints on headless invocations (model pin, budget) stay green
+    on this PR.
+    probe: |-
+      python3 - <<'PY'
+      import ast, re
+      violations = []
+      for path in ["scripts/cc_meta_research_loop.py", "scripts/cc_context_cost_report.py"]:
+          src = open(path).read()
+          tree = ast.parse(src, filename=path)
+          doc = ast.get_docstring(tree, clean=False)
+          body = src.replace(doc, "", 1) if doc else src
+          for i, line in enumerate(body.splitlines(), 1):
+              if re.match(r"^\s*#", line):
+                  continue
+              if re.search(r"\bimport anthropic\b|\bfrom anthropic\b|\bANTHROPIC_API_KEY\b", line):
+                  violations.append((path, i, line.strip()))
+          for node in ast.walk(tree):
+              if isinstance(node, ast.Import):
+                  for a in node.names:
+                      if a.name.split(".")[0] == "anthropic":
+                          violations.append((path, node.lineno, "ast Import: " + a.name))
+              elif isinstance(node, ast.ImportFrom) and (node.module or "").split(".")[0] == "anthropic":
+                  violations.append((path, node.lineno, "ast ImportFrom: " + str(node.module)))
+      if violations:
+          for v in violations:
+              print("VIOLATION", v)
+          raise SystemExit(1)
+      print("OK: 0 anthropic imports (AST-verified), 0 code-line ANTHROPIC_API_KEY refs outside the module docstring")
+      PY
+    observed: >-
+      2026-09-17, this worktree: `grep -nE "import anthropic|ANTHROPIC_API_KEY"` (the original
+      probe) matched line 23 of cc_meta_research_loop.py — PROSE inside the module docstring
+      ("no anthropic SDK, no ANTHROPIC_API_KEY") — so the probe would have failed a clean file
+      and could never discriminate a real violation from a sentence describing the ban. Rewrote
+      it to parse the AST for actual `import anthropic`/`from anthropic import ...` nodes and to
+      strip the module docstring before grepping code lines for `ANTHROPIC_API_KEY`. Rerun:
+      "OK: 0 anthropic imports (AST-verified), 0 code-line ANTHROPIC_API_KEY refs outside the
+      module docstring, in both files".
+
+out_of_scope: >-
+  The research outputs (REPORTs, proposals, verdicts, BACKLOG, GAPS) — sibling docs PR. The
+  hook-layer cures — #6700. OTEL collector (O1), sandbox flip (S1), PreToolUse dispatcher
+  (H10) — decided and recorded in the BACKLOG, not built here.
+
+bites: >-
+  Consumer: `python3 scripts/cc_context_cost_report.py --days 4` run by the next Opus session
+  comparing M5/Pro/Mini, and the O1 row of research/agent-craft/cc-meta-loop/BACKLOG.md that
+  cites its number. Observation: the corrected table in A2 above — deduped by inode, windowed
+  by record timestamp, main and subagent turns both visible (34,731 + 36,444 = 71,175), in
+  place of the pre-rework "47,493 turns, 10.35 B" figure that double-counted a symlinked
+  project directory and never saw a subagent transcript.

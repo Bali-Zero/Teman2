@@ -68,6 +68,26 @@ import arsenal_probe as ap  # noqa: E402  (seat reachability + credential resolu
 HOME = Path.home()
 OUT_ROOT = _REPO_ROOT / "research" / "agent-craft" / "cc-meta-loop"
 
+
+def _display_path(p: Path) -> str:
+    """Render a filesystem path for a payload that leaves this machine, with the
+    username stripped. `$REPO`/`~` stand in for the repo root and home dir; a
+    path outside both is a bug in the caller, not something to send raw
+    (measured 2026-09-17: build_hook_inventory() was putting
+    `/Users/balizero/...` — machine identity, not configuration shape — into
+    hook_scripts[].path, contradicting this module's own PII rule above)."""
+    try:
+        s = str(p.resolve())
+    except OSError:
+        s = str(p)
+    repo_s = str(_REPO_ROOT)
+    home_s = str(HOME)
+    if s.startswith(repo_s):
+        return "$REPO" + s[len(repo_s):]
+    if s.startswith(home_s):
+        return "~" + s[len(home_s):]
+    return Path(s).name  # last resort: never leak an absolute path with a username
+
 OLLAMA_MODEL = "qwen3.5:9b"  # same model arsenal_probe probes locally
 SEAT_TIMEOUT = 300  # a research answer is not a PONG; the 15s probe budget would kill every seat
 
@@ -235,8 +255,10 @@ def build_hook_inventory() -> list[dict]:
             body = path.read_text(errors="replace")
         except Exception:
             r["readable"] = False
+            r["path"] = _display_path(path)
             continue
         r["readable"] = True
+        r["path"] = _display_path(path)
         r["lines"] = body.count("\n") + 1
         # M1: a Python hook usually exits via `return 0` inside main() plus
         # sys.exit(main()), so scanning for `exit(N)` alone reported exit_codes=[2]
@@ -335,11 +357,19 @@ HOOK_LENSES = {
         "exact about the mechanism; if you are not certain an event or field exists, say so "
         "instead of guessing."
     ),
-    "jules": (
-        "HOOK MECHANICS, ON DISK. Read the hook scripts and name every registration that is "
-        "dead, mis-exited, or pays its cost on every tool call for a throttled effect."
-    ),
 }
+# NOTE: a "jules" lens used to live here. Removed 2026-09-17: `jules` is not a
+# CLI binary on this fleet (`which jules` -> not found) — it is invoked as
+# `python3 scripts/jules_dispatch.py {list-sources,new,status,activities}`, an
+# ASYNC cloud-implementer dispatch (create a task against a repo, poll its
+# status later) with no synchronous "answer this prompt" mode, which is the
+# only contract `ask_seat()` and this one-shot loop support. Wiring it in
+# would mean a different call shape (dispatch + poll) than every other seat
+# here, not a missing `elif` branch. `ask_seat()` never had a `jules` case, so
+# `--lens-set hooks --seats jules` failed AFTER passing the lens-membership
+# check with "unsupported seat jules" — a lens with no seat behind it. The
+# `unknown = [s for s in seats if s not in lenses]` check below now rejects
+# `jules` (or any other undefined seat) up front with a clear message instead.
 
 DEFAULT_SEATS = ["agy", "codex", "kimi", "claude", "tp1-glm-5.2", "tp1-qwen3.8-max"]
 
@@ -556,14 +586,23 @@ def dedup(proposals: list[dict]) -> list[dict]:
 MIN_INDEPENDENT_SEATS = 3
 
 
-def grading_independence(live_seats: list[str]) -> str:
+def grading_independence(responded_seats: list[str]) -> str:
     """M2: with one seat there is no grader; with two, every verdict comes from the
     only other participant and one lazy grader reason gets stamped onto every
     proposal (observed 2026-09-17: codex emitted a single reason and it was
     attached to 8 verdicts, which then LOOKED earned). The loop must say which
     of the three regimes it ran in rather than printing verdicts that read the
-    same in all three."""
-    n = len(live_seats)
+    same in all three.
+
+    ONE RULE (fixed 2026-09-17): a seat counts here only if it PRODUCED AT LEAST
+    ONE ANSWER in this run. A seat's probe status alone used to decide this,
+    which meant `--no-probe` (every seat marked SKIPPED_PROBE) both counted
+    those seats toward independence on this line AND printed them as "NO —
+    unreachable" a few lines below in the same report — self-contradicting.
+    Probing tells you a seat was alive at t0; only an actual answer tells you
+    it did the work this loop needed. A seat that was never probed is UNKNOWN
+    until it answers, not credited and not blamed."""
+    n = len(responded_seats)
     if n >= MIN_INDEPENDENT_SEATS:
         return "INDEPENDENT"
     if n == 2:
@@ -678,26 +717,53 @@ def write_report(run_dir: Path, inventory: dict, rounds: list[dict], seat_status
             all_props[p["id"]] = p
         all_verdicts.update(r["verdicts"])
 
+    # ONE RULE (fixed 2026-09-17, see grading_independence docstring): a seat is
+    # counted here only if it actually answered — produced at least one
+    # proposal — in this run, never from probe status alone. `responded` is
+    # the single source of truth the table and the independence line both read
+    # from, so they cannot disagree with each other the way SKIPPED_PROBE used
+    # to (counted "used" for independence, printed "NO — evidence missing" a
+    # few lines below, in the same report).
+    responded: set[str] = set()
+    for r in rounds:
+        responded.update(r["answered_by"])
+
     lines = [
         "# Claude Code meta-configuration — multi-seat research loop",
         "",
         f"- run `{run_dir.name}` · machine `{inventory['machine']}` · {inventory['generated_at']}",
         f"- rounds: {len(rounds)} · proposals: {len(all_props)} · graded: {len(all_verdicts)}",
-        f"- grading independence: **{grading_independence([s for s, st in seat_status.items() if ap.healthy(st) or st == 'SKIPPED_PROBE'])}**",
+        f"- grading independence: **{grading_independence(sorted(responded))}**",
         "",
         "## Seat reachability (empirical, this run)",
         "",
-        "| seat | status | used |",
+        "| seat | probe status | answered |",
         "|---|---|---|",
     ]
     for seat, st in sorted(seat_status.items()):
-        lines.append(f"| {seat} | {st} | {'yes' if ap.healthy(st) else 'NO — evidence missing'} |")
+        if seat in responded:
+            answered = "yes"
+        elif st == "SKIPPED_PROBE":
+            answered = "UNKNOWN — not probed, produced no answer"
+        else:
+            answered = "NO — evidence missing"
+        lines.append(f"| {seat} | {st} | {answered} |")
     lines.append("")
-    dead = [s for s, st in seat_status.items() if not ap.healthy(st)]
-    if dead:
+    never_responded = [s for s in seat_status if s not in responded]
+    unreachable = [s for s in never_responded if seat_status[s] != "SKIPPED_PROBE"]
+    unprobed = [s for s in never_responded if seat_status[s] == "SKIPPED_PROBE"]
+    if unreachable:
         lines += [
-            f"> {len(dead)} seat(s) unreachable: **{', '.join(dead)}**. Their lens is a hole in "
-            "this report, not a negative finding.",
+            f"> {len(unreachable)} seat(s) unreachable and produced no answer: "
+            f"**{', '.join(unreachable)}**. Their lens is a hole in this report, not a "
+            "negative finding.",
+            "",
+        ]
+    if unprobed:
+        lines += [
+            f"> {len(unprobed)} seat(s) ran with `--no-probe` and never produced an answer: "
+            f"**{', '.join(unprobed)}**. UNKNOWN, not unreachable — nothing here says they "
+            "would have failed if asked.",
             "",
         ]
 
