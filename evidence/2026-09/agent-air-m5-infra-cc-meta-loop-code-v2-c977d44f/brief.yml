@@ -80,11 +80,15 @@ rework:
       (`ap.healthy(st) or st == 'SKIPPED_PROBE'`) while the reachability table a few lines below
       marked those same seats "NO — evidence missing" — self-contradicting under `--no-probe`.
     cure: >-
-      One rule: a seat counts only if it produced at least one answer in the run (union of each
-      round's `answered_by`). `grading_independence()` now takes that set; the table's third
+      One rule: a seat counts only if it produced at least one answer in the run — either an
+      AUTHOR (>=1 proposal, `answered_by`) or a GRADER (>=1 verdict row; `v["grader"]` names the
+      seat that wrote it). `grading_independence()` now takes that union; the table's third
       column is "answered" (yes / UNKNOWN-not-probed / NO-evidence-missing) instead of deriving
       from probe status alone, and the two warning blocks below it are split into "unreachable"
       vs "ran with --no-probe and never answered" so they cannot disagree with the line above.
+      Extended post-gate-#6706: a seat that only GRADED and never proposed was still being
+      printed as unreachable — `responded` now folds in every round's graders too, not only
+      `answered_by`.
     proof: >-
       python3 -c "import sys; sys.path.insert(0,'scripts'); import cc_meta_research_loop as loop,
       tempfile, pathlib; run_dir=pathlib.Path(tempfile.mkdtemp()); seat_status={'claude':
@@ -116,6 +120,56 @@ rework:
       nodes and to strip the module docstring before grepping code lines for `ANTHROPIC_API_KEY`.
     proof: see A4 below
     observed: see A4's `observed:` below
+  - finding: >-
+      (item 7, from the gate on the sibling docs PR #6706, not one of the original six but the
+      strongest finding overall) `ask_seat()` returned `"raw": ap.scrub(raw)[:60000]` — the seat's
+      JSON answer was scrubbed BEFORE `extract_json()`/`normalize_proposals()` ever parsed it.
+      `arsenal_probe.scrub()`'s catch-all `[A-Za-z0-9._\-]{24,}` redacts any long identifier-shaped
+      run, which is exactly the shape PROPOSAL_SCHEMA asks every seat to put in the `id` field
+      (verified: `scrub('guardrails-fail-closed-exit-code') == '<REDACTED>'`). Proposals and
+      verdicts are both dict-keyed by id downstream (`all_props[p["id"]] = p`,
+      `verdicts.setdefault(v["id"], v)`), so distinct ids collapsed to the literal string
+      `claude:<REDACTED>` and silently overwrote each other: 6/7 claude ids collided in one
+      research run (2119Z) and 14/16 in another (2331Z), and REPORT.md ended up attaching one
+      seat's verdict to a different seat's proposal.
+    cure: >-
+      Parse first, scrub only free text, never a structural key. `ask_seat()` now returns `raw`
+      UNSCRUBBED (id/seat/surface must survive intact for extract_json/normalize_proposals); the
+      on-disk copy in `raw_answers.json` is scrubbed separately, AFTER parsing has already run on
+      the pristine text. `_grade()`'s verdict rows scrub only `reason`/`better_verification` (free
+      text), never the verdict's `id`/`grader`/`verdict` fields. `normalize_proposals()` now also
+      refuses (counts + logs to stderr) a proposal whose normalized id collides with an earlier
+      one from the SAME seat's answer, instead of letting a later assignment silently overwrite an
+      earlier one two functions downstream. Also extended finding 5's fix: `write_report()`'s
+      `responded` set folds in every round's GRADERS (`v["grader"]`), not only proposal authors —
+      a seat that only graded was still being printed "unreachable" before this.
+    proof: >-
+      python3 - <<'PY'
+      import sys, json
+      sys.path.insert(0, "scripts")
+      import arsenal_probe as ap, cc_meta_research_loop as loop
+      id1, id2 = "guardrails-fail-closed-branchx", "mailbox-riding-every-tool-callx"  # 30/31 chars
+      assert ap.scrub(id1) == "<REDACTED>" and ap.scrub(id2) == "<REDACTED>"
+      raw = json.dumps({"proposals": [
+          {"id": id1, "claim": "one", "surface": "hooks", "why": "", "expected_gain": "",
+           "verification_command": "", "risk": "", "confidence": "high", "source": ""},
+          {"id": id2, "claim": "two", "surface": "hooks", "why": "", "expected_gain": "",
+           "verification_command": "", "risk": "", "confidence": "high", "source": ""},
+      ]})
+      old_ids = [p["id"] for p in loop.normalize_proposals("claude", loop.extract_json(ap.scrub(raw)))]
+      new_ids = [p["id"] for p in loop.normalize_proposals("claude", loop.extract_json(raw))]
+      print("OLD (scrub-before-parse):", old_ids)
+      print("NEW (parse-then-scrub-elsewhere):", new_ids)
+      assert len(set(new_ids)) == 2
+      print("PASS")
+      PY
+    observed: >-
+      2026-09-17: OLD pipeline (scrub-before-parse) -> `['claude:<REDACTED>']` (one entry — the
+      second collided and was silently dropped, reproducing the shipped bug). NEW pipeline
+      (parse-then-scrub-elsewhere) -> `['claude:guardrails-fail-closed-branchx',
+      'claude:mailbox-riding-every-tool-callx']` — two distinct ids, `PASS`. Separately verified a
+      grader-only seat (never proposed, only appears via `v["grader"]`) is now printed "yes" in
+      the reachability table, not "unreachable".
 
 acceptance:
   A1: >-

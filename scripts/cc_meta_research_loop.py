@@ -405,7 +405,22 @@ def _call_cli(cmd: list[str], timeout: int, capture_via_files: bool = False) -> 
 
 
 def ask_seat(seat: str, prompt: str, timeout: int = SEAT_TIMEOUT) -> dict:
-    """One-shot question to one seat. Returns {seat, ok, raw, error, ms}."""
+    """One-shot question to one seat. Returns {seat, ok, raw, error, ms}.
+
+    `raw` is returned UNSCRUBBED, deliberately (fixed 2026-09-17, gate on #6706):
+    this text is JSON the seat wrote, and `ap.scrub()`'s catch-all
+    `[A-Za-z0-9._\\-]{24,}` redacts any long identifier-shaped run — which is
+    exactly the shape of the `id` field PROPOSAL_SCHEMA asks every seat for.
+    Scrubbing here, before `extract_json()`/`normalize_proposals()` ever see the
+    text, collapsed proposal ids like `guardrails-fail-closed-exit-code` (33
+    chars) to the literal string `<REDACTED>` — measured: 6/7 claude ids
+    collided in one run, 14/16 in another, and since proposals/verdicts are
+    both dict-keyed by id, the collisions silently overwrote each other and
+    REPORT.md attached one seat's verdict to a different seat's proposal.
+    Scrubbing still happens — just AFTER parsing, and only on the free-text
+    fields that leave this process (grader `reason`/`better_verification` in
+    `_grade()`, and the copy of `raw` written to `raw_answers.json`), never on
+    a structural key like `id`, `seat`, or `surface`."""
     t0 = time.monotonic()
     ok, raw, err = False, "", None
 
@@ -485,7 +500,7 @@ def ask_seat(seat: str, prompt: str, timeout: int = SEAT_TIMEOUT) -> dict:
     return {
         "seat": seat,
         "ok": ok,
-        "raw": ap.scrub(raw)[:60000],
+        "raw": raw[:60000],  # UNSCRUBBED here on purpose — see the docstring above
         "error": err,
         "ms": int((time.monotonic() - t0) * 1000),
     }
@@ -537,16 +552,34 @@ def extract_json(text: str) -> Optional[dict]:
 
 
 def normalize_proposals(seat: str, payload: Optional[dict]) -> list[dict]:
+    """Note: `id`/`author`/`surface` are structural keys and are never scrubbed —
+    see ask_seat()'s docstring for why scrubbing them (or the raw text they were
+    parsed from, before parsing) is the bug this loop shipped once already.
+
+    Proposals and verdicts are both dict-keyed by id downstream (write_report's
+    `all_props[p["id"]] = p`, grade_round's `verdicts.setdefault(v["id"], v)`),
+    so a duplicate id — same seat, two proposals whose id collided or truncated
+    to the same 60 chars — must never be allowed to silently overwrite an
+    entry; that is exactly how one seat's verdict ended up attached to a
+    different seat's proposal in REPORT.md. Refuse the duplicate here, loudly,
+    instead of building a list that will collide two functions later."""
     if not payload or not isinstance(payload.get("proposals"), list):
         return []
     out = []
+    seen_ids: set[str] = set()
+    dropped = 0
     for p in payload["proposals"][:8]:
         if not isinstance(p, dict) or not p.get("claim"):
             continue
         pid = str(p.get("id") or "")[:60] or re.sub(r"\W+", "-", str(p["claim"]).lower())[:48]
+        full_id = f"{seat}:{pid}"
+        if full_id in seen_ids:
+            dropped += 1
+            continue
+        seen_ids.add(full_id)
         out.append(
             {
-                "id": f"{seat}:{pid}",
+                "id": full_id,
                 "author": seat,
                 "claim": str(p.get("claim"))[:400],
                 "surface": str(p.get("surface", "other"))[:40],
@@ -557,6 +590,12 @@ def normalize_proposals(seat: str, payload: Optional[dict]) -> list[dict]:
                 "confidence": str(p.get("confidence", "low"))[:10],
                 "source": str(p.get("source", ""))[:300],
             }
+        )
+    if dropped:
+        print(
+            f"warning: seat {seat} produced {dropped} proposal(s) whose id collided with an "
+            "earlier one in the same answer — dropped, not silently overwritten",
+            file=sys.stderr,
         )
     return out
 
@@ -647,11 +686,14 @@ def grade_round(proposals: list[dict], live_seats: list[str], inventory: dict, t
             if isinstance(v, dict) and v.get("id"):
                 rows.append(
                     {
+                        # NOT scrubbed: this must match a proposal id verbatim to land in
+                        # the same dict slot (see normalize_proposals()'s docstring).
                         "id": str(v["id"]),
                         "grader": seat,
                         "verdict": str(v.get("verdict", "UNVERIFIABLE")).upper()[:12],
-                        "reason": str(v.get("reason", ""))[:300],
-                        "better_verification": str(v.get("better_verification", ""))[:300],
+                        # free text the grader wrote — scrubbed, unlike id/grader/verdict above.
+                        "reason": ap.scrub(str(v.get("reason", ""))[:300]),
+                        "better_verification": ap.scrub(str(v.get("better_verification", ""))[:300]),
                     }
                 )
         return rows
@@ -718,15 +760,20 @@ def write_report(run_dir: Path, inventory: dict, rounds: list[dict], seat_status
         all_verdicts.update(r["verdicts"])
 
     # ONE RULE (fixed 2026-09-17, see grading_independence docstring): a seat is
-    # counted here only if it actually answered — produced at least one
-    # proposal — in this run, never from probe status alone. `responded` is
-    # the single source of truth the table and the independence line both read
-    # from, so they cannot disagree with each other the way SKIPPED_PROBE used
-    # to (counted "used" for independence, printed "NO — evidence missing" a
-    # few lines below, in the same report).
+    # counted here only if it actually answered in this run — either as an
+    # AUTHOR (>=1 proposal) or as a GRADER (>=1 verdict row; `v["grader"]` names
+    # who wrote it) — never from probe status alone. A seat that only graded
+    # and never proposed is still a seat that did the work this loop needed; it
+    # must not be printed as unreachable a few lines below just because
+    # `answered_by` alone doesn't see it. `responded` is the single source of
+    # truth the table and the independence line both read from, so they cannot
+    # disagree with each other the way SKIPPED_PROBE used to (counted "used"
+    # for independence, printed "NO — evidence missing" a few lines below, in
+    # the same report).
     responded: set[str] = set()
     for r in rounds:
         responded.update(r["answered_by"])
+        responded.update(v["grader"] for v in r["verdicts"].values() if v.get("grader"))
 
     lines = [
         "# Claude Code meta-configuration — multi-seat research loop",
@@ -901,7 +948,12 @@ def main(argv: Optional[list[str]] = None) -> int:
 
         with ThreadPoolExecutor(max_workers=len(live)) as pool:
             answers = list(pool.map(_ask, live))
-        (rdir / "raw_answers.json").write_text(json.dumps(answers, indent=1) + "\n")
+        # `answers` (unscrubbed, see ask_seat()'s docstring) feeds extract_json()
+        # below and must keep every id intact; ONLY the on-disk copy is scrubbed,
+        # after parsing has already happened downstream on the pristine text.
+        (rdir / "raw_answers.json").write_text(
+            json.dumps([{**a, "raw": ap.scrub(a["raw"])} for a in answers], indent=1) + "\n"
+        )
 
         proposals: list[dict] = []
         answered_by: list[str] = []
