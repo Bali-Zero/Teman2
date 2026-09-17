@@ -424,10 +424,24 @@ the law does.
 
 ## 7. Honest gaps
 - No government per-code machine-readable PMA table exists in public: `oss.go.id` BUPM pages
-  render client-side and the listed URLs 404; `nswi.bkpm.go.id` timed out; BPS 2020↔2025
-  conversion table 403. The crosswalk in use is the repo's own (`bps-crosswalk/edges-lampiran5.json`),
-  `mechanical-only`, and it produced three wrong-entity matches found in this pass (58120, 60101,
-  60201).
+  render client-side and the listed URLs 404; `nswi.bkpm.go.id` timed out.
+- **Crosswalk provenance (corrected 2026-09-18 after the owner asked; the first wording said
+  «BPS conversion table 403 … the repo's own crosswalk», which read as if the official table had
+  not been used).** The 2020↔2025 join IS the official BPS table: *Tabel Konversi KBLI 2020 –
+  KBLI 2025*, Vol. 2, Katalog 1302033, published 2026-04-22
+  (https://www.bps.go.id/id/publication/2026/04/22/909d503355d2b7664e43dea8/tabel-konversi-kbli-2020-kbli-2025.html),
+  fetched by browser 2026-07-16 because `bps.go.id` answers 403 to non-browser clients (it did so
+  again on 2026-09-18 — that is what the earlier «403» recorded), vault-pinned sha256
+  `29f17b3b…724949`, parsed fail-closed by `scripts/kbli_filiera/parse_bps_crosswalk.py` into
+  `data/kbli-filiera/bps-crosswalk/edges-lampiran5.json` (Lampiran 5 forward 2020→2025, 2,560
+  edges over 1,789 KBLI-2020 codes → 1,559 KBLI-2025 codes; Lampiran 10 reverse identical, 0
+  unresolved rows, 0 `sebagian` markers; `parser-run-manifest.json`). No later BPS edition was
+  found on 2026-09-18. What is *mechanical* is the join, not the source: BPS records that a 2020
+  code split or merged but not which activity went to which heir (Vol. 2 carries no `sebagian`
+  markers), so a Lampiran row that names one activity of a split 2020 code reaches every heir —
+  this pass found three such wrong-entity matches (58120, 60101, 60201) and cured them on the
+  Bidang Usaha text and the KBLI-2025 `uraian` (`split_heir_overlap`), which is the rule §3.3
+  now applies to every split.
 - Sector statutes were read on `pasal.id`, not on JDIH. UU 12/2011 was fetched from BPK in round 2
   after the refuter caught the misattribution: a Permen is NOT in the Pasal 7(1) list, it is a
   Pasal 8(1)-(2) regulation; §4.2(2) now says so.
@@ -553,3 +567,8 @@ Three rounds run; the third returned one BLOCKER that was a narrative lag, not a
 three MAJOR scope readings that moved 4 codes (3 out of the candidate bucket into segments, 1 into
 the closures). The relation is regenerated after every round; the figures in §0 are the round-3
 figures.
+
+Post-merge correction 2026-09-18 (owner's question, author's own — no refuter round): §7's first
+gap bullet mis-described the crosswalk as «the repo's own» with the BPS table «403»; it is the
+official BPS Tabel Konversi (vault-pinned, parsed fail-closed) and only the code-level join is
+mechanical. No figure and no verdict changes.
