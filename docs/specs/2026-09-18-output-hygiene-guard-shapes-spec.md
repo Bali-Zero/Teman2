@@ -127,7 +127,7 @@ cases, and an added case that flips the verdict of an existing one is a spec cha
 | C26 | `git show -s --format=%H HEAD`                                 | ALLOW   | no patch                                               |
 | C27 | `git show --no-patch HEAD`                                     | ALLOW   | no patch                                               |
 | C28 | `git -c core.pager=cat diff`                                   | DENY    | global `-c` peeled, still S4                           |
-| C29 | `find . -name x`                                               | DENY    | S5 no depth                                            |
+| C29 | `find . -name '*.x'`                                           | DENY    | S5 no depth, glob pattern does not bound               |
 | C30 | `find . -maxdepth 2 -name x`                                   | ALLOW   | depth                                                  |
 | C31 | `find . -name x \| head`                                       | ALLOW   | consumer                                               |
 | C32 | `rg foo`                                                       | DENY    | S6 no target, no bound                                 |
@@ -159,6 +159,7 @@ cases, and an added case that flips the verdict of an existing one is a spec cha
 | C58 | stdin empty / not JSON / a list / `command: 123` / tool `Read` | exit 0  | fail-open                                              |
 | C59 | `ls ~/mailbox/broadcast &`                                     | ALLOW   | background                                             |
 | C60 | `git log \| git diff --stat $(git merge-base main HEAD)`       | DENY    | first segment unbounded (tee/pipe into a non-consumer) |
+| C61 | `find . -name x`                                               | ALLOW   | literal -name is an S5 own-bound (§3 row)              |
 
 ## 7. Tests and gate contract for the re-implementation
 

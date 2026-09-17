@@ -1,0 +1,117 @@
+brief_ref: evidence/brief.yml
+plan_ref: >-
+  One concern: output_hygiene_guard.py v2, the PreToolUse Bash hook re-implemented against
+  docs/specs/2026-09-18-output-hygiene-guard-shapes-spec.md after the first implementation
+  (PR #6724) was suspended at three on-disk gate rounds. The hook denies (never rewrites) the
+  spec's eight flood shapes S1-S8 unless an own-bound (§3) or a downstream bound in the same
+  statement (§4) applies; quotes and heredoc bodies are blanked length-preserving before
+  scanning; ssh/scp/rsync statements are allowed whole; unresolvable `$VAR` paths fail open.
+  Every test case carries its spec C-ID and the suite asserts the whole corpus is present. The
+  one spec edit resolves an internal contradiction (S5 row vs C29) in favour of the row's prose:
+  C29 becomes a glob pattern, C61 pins the literal-name allow.
+
+  Consumer: `~/.claude/hooks/output_hygiene_guard.py`, installed in the PreToolUse Bash matcher
+  of `~/.claude/settings.json` on M5 and Pro by the shipping session after this PR merges — this
+  diff prepares the guard and its tests, it does not itself arm the live hook. Observation once
+  armed: `ls ~/.nuzantara-mailbox` from a session is refused with the entry count named in the
+  denial; `ls ~/.nuzantara-mailbox | head -5` passes unchanged.
+
+lanes:
+  - lane: output-hygiene-guard-v2
+    role: build
+    seat: >-
+      claude-sonnet-5 implementer subagent dispatched by the shipping session (air-m5), working
+      only from the merged spec with the suspended first implementation as reference material.
+      Wrote infra/claude-hooks/output_hygiene_guard.py (no subprocess calls, fails open on any
+      exception, kill switch NUZ_OUTPUT_HYGIENE_OFF) and infra/claude-hooks/test_output_hygiene_guard.py
+      (every case labelled by spec C-ID, corpus-completeness assertion, latency print), added the
+      guard-conformance registry entry, the vaccine fixtures in test_hook_innocence.py and the
+      home-fork declared pair. A second round, on the shipping session's review, implemented the
+      S5 literal-name own-bound as the spec row states it, amended the case table accordingly
+      and cleared three static-analysis nits.
+
+seat_diversity: EXEMPT
+seat_diversity_note: >-
+  Single build lane (Anthropic, claude-sonnet-5) reviewed by the shipping session (claude-fable);
+  D3's cross-family floor is exempt below two build lanes. The independent grader is the fresh
+  Opus 5 on-disk gate that signs harness/fable-gate after this pack is finalised; this pack does
+  not claim that verdict.
+
+diff:
+  files: 8
+  net_lines: 1200
+  measured_at: >-
+    `scripts/evidence_pack_lint.py --print-measured` against `git diff --numstat`/`--name-only`
+    from the merge-base with origin/main to this pack's own finalized commit, run LAST as its own
+    invocation after every other edit including this evidence directory — see the matching
+    receipt below.
+
+residual_risks:
+  - >-
+    THE SPEC, NOT THE GUARD, IS THE GRADER'S TABLE. v1 died because each gate round found an
+    over-match outside the previous round's surface; the cure was to enumerate the surface in a
+    spec with a case corpus. The corpus is finite (C01..C61) and everyday commands outside it can
+    still be bitten — the shipping session replayed every Bash command it had itself run in this
+    session (well over a hundred unique commands) through the v2 guard and got one denial, a
+    `find <dir> -type f | sed 's|…|'` that the spec does deny (S5 without depth, a `sed`
+    substitution is not a bound). The gate is asked to probe the corpus first and then commands of
+    its own outside it.
+  - >-
+    ONE SPEC EDIT rides in this PR: the S5 row (§3) and case C29 (§6) contradicted each other on
+    a literal `-name`; the prose was kept (a literal name bounds the walk in practice, and
+    `find . -name settings.json` is an everyday command) and the table amended (C29 → glob
+    pattern, DENY; C61 → literal, ALLOW). A grader who reads the corpus as immutable will call
+    this a spec finding; it is disclosed here rather than hidden in the diff.
+  - >-
+    THE LIVE HOOK IS NOT ARMED BY THIS PR. `~/.claude/hooks/output_hygiene_guard.py` and its
+    registration in `~/.claude/settings.json`'s PreToolUse Bash matcher on M5 and Pro are
+    installed by the shipping session after merge — everything in this pack is local test
+    evidence, not a live-session observation of a real denial yet.
+  - >-
+    Latency (28.3ms allow-case, 28.4ms deny-case, this pack's own measured run below, dominated by interpreter start-up) is
+    a single-machine (M5), single-run, no-concurrent-load figure — not repeated and not measured
+    on Pro.
+
+pii_scan: clean
+
+receipts:
+  - claim: "the guard's dedicated C-ID-labelled suite is green and the corpus C01..C61 is complete"
+    cmd: "python3 infra/claude-hooks/test_output_hygiene_guard.py"
+    result: "=== ALL 64 OK (C01..C61 present, no innocent bitten, no guilt missed) === / latency: allow-case subprocess 28.3ms, deny-case subprocess 28.4ms"
+    exit: 0
+    ts: "2026-09-17T21:47:15Z"
+    seat: session (air-m5)
+  - claim: "the shared vaccine, which also carries this guard's fixtures, is green with no regression to any pre-existing guard"
+    cmd: "python3 infra/claude-hooks/test_hook_innocence.py"
+    result: "=== ALL 135 OK (no innocent bitten, no guilt missed) ==="
+    exit: 0
+    ts: "2026-09-17T21:47:15Z"
+    seat: session (air-m5)
+  - claim: "the guard-conformance census shows no violation across every registered guard, including this one"
+    cmd: "python3 infra/guard-conformance/check_guard_conformance.py"
+    result: "guard-conformance: 10 bridge guards, 28 hook entries, 7 wr2-pregate checks, 18 evidence-pack-lint checks, 6 required-workflow-conformance checks, 9 bites-parse guards, 0 violation(s) / every censused guard has guilt+innocence proofs, no phantoms, all armed in CI"
+    exit: 0
+    ts: "2026-09-17T21:47:15Z"
+    seat: session (air-m5)
+  - claim: "the guard and its suite are lint-clean"
+    cmd: "ruff check infra/claude-hooks/output_hygiene_guard.py infra/claude-hooks/test_output_hygiene_guard.py"
+    result: "All checks passed!"
+    exit: 0
+    ts: "2026-09-17T21:47:15Z"
+    seat: session (air-m5)
+  - claim: "every Bash command the shipping session itself ran, replayed through the v2 guard, yields one spec-conformant denial"
+    cmd: "python3 <scratch replay: tool_use Bash commands from this session's transcript, each fed as PreToolUse stdin JSON to the guard>"
+    result: "replay: 153 unique session commands, denied: 1 — [S5] find <dir> -type f | sed (no depth, sed substitution is not a bound)"
+    exit: 0
+    ts: "2026-09-17T21:47:15Z"
+    seat: session (air-m5)
+  - claim: "this pack's own diff.files/diff.net_lines match the measured merge-base diff, run LAST as its own step"
+    cmd: >-
+      python3 scripts/evidence_pack_lint.py --repo-root . --numstat-file <scratch>/v2_numstat.txt
+      --changed-files-file <scratch>/v2_changed.txt --print-measured
+    result: "8 files, +1199/-1"
+    exit: 0
+    ts: "2026-09-17T21:47:15Z"
+    seat: session (air-m5)
+
+dissent: []
