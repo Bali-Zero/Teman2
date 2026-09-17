@@ -1,0 +1,101 @@
+task_id: output-hygiene-guard-0918
+gear: 2
+l_level: L1
+gate_class: sonnet
+objective: |
+  Zero, 2026-09-18: a session can dump an unbounded directory listing or log file into its own
+  context by accident, and every later turn in that session re-reads the bloated context along
+  with it — "una follia". Happened twice the same day: an `ls ~/.nuzantara-mailbox` (700+
+  entries) and a bare read of `evidence/2026-09` (300+ entries), each landing whole in a tool
+  result with no bound.
+
+  Root cause: no PreToolUse guard exists for Bash calls shaped to enumerate or dump an unbounded
+  quantity of output (`ls` without a limiting flag/pipe, `cat`/`find`/`grep`/`git diff`/`git log`
+  over a large tree, a test runner's full verbose log) — every existing guard in this repo judges
+  WHAT a command touches (a hot-zone path, a secret, an off-limits file), never HOW MUCH it is
+  about to print back into the session's own context.
+
+  Cure: `output_hygiene_guard.py`, a new PreToolUse Bash hook that DENIES (never rewrites, never
+  truncates on the caller's behalf) 8 unbounded shapes unless the command already bounds its own
+  output downstream (a `| head`, `| tail`, `-n`, `| wc -l`, a redirect to a file, etc.), with
+  quote/heredoc stripping so a denied shape hiding inside a quoted string or heredoc body is not
+  mistaken for a live command, and a remote-dispatch exemption (ssh/scp to another host is not
+  this session's own context and is out of scope for this guard).
+constraints:
+  - "One PR, one concern: the guard itself (infra/claude-hooks/output_hygiene_guard.py) plus its
+    guilt+innocence test suite and its guard-conformance registry entry. Not touching the
+    existing data-plane/W79/phase guards — this is a new, independent census entry, not a
+    rewrite of an existing one."
+  - "DENY, never REWRITE — a guard that silently rewrites the caller's command to add a `| head`
+    hides the bound from the person who typed the command and can silently truncate data they
+    actually needed; a denial with the reason and the bounding flag to add in the message keeps
+    the decision with the human."
+  - "Quote/heredoc stripping before pattern matching — cicatrix family #3 (guard-over-match):
+    an unbounded `ls` mentioned inside a quoted string (e.g. as literal text in a commit message
+    argument) or inside a heredoc body is not a live command this guard should judge; matching a
+    substring there would be OVER-match on an entity that never runs."
+  - "Remote-dispatch exemption: an `ssh <host> ...`/`scp ...` command that runs the unbounded
+    shape on ANOTHER machine is not this session's own context being flooded — exempting it is
+    deliberate, not an oversight (a fleet cron dispatching `ls` remotely is common and not the
+    failure mode this guard exists to catch)."
+acceptance:
+  - text: >
+      WHEN a Bash tool call is shaped as one of the 8 unbounded output patterns (bare `ls` over a
+      large/unknown-size directory, `cat`/`find`/`grep`/`git diff`/`git log`/`git show` with no
+      bounding flag or downstream pipe, or a verbose test-runner invocation) AND the command has
+      no bounding mechanism downstream, the PreToolUse hook SHALL deny the call and report the
+      reason plus a suggested bound in its denial message.
+    status: verified
+    probe: "local: python3 infra/claude-hooks/test_output_hygiene_guard.py -> ALL 33 OK (no innocent bitten, no guilt missed)"
+  - text: >
+      WHEN the same unbounded shape already carries a downstream bound (`| head`, `| tail`, `-n
+      N`, `| wc -l`, a redirect to a file), the hook SHALL allow the call unchanged.
+    status: verified
+    probe: "local: same suite, innocence half of the 33 cases (bounded variants of every guilty shape)"
+  - text: >
+      WHEN the unbounded shape is quoted, inside a heredoc body, or is itself an `ssh`/`scp`
+      dispatch to another host, the hook SHALL allow the call (not this session's own context,
+      or not a live command at all).
+    status: verified
+    probe: "local: same suite, quote/heredoc-stripping and remote-dispatch-exemption cases"
+  - text: >
+      The new guard SHALL be censused in infra/guard-conformance/registry.json with both a
+      guilt and an innocence proof, and SHALL NOT regress any of this repo's existing
+      PreToolUse-Bash guard fixtures already registered in the shared vaccine.
+    status: verified
+    probe: "local: python3 infra/claude-hooks/test_hook_innocence.py -> ALL 145 OK; python3 infra/guard-conformance/check_guard_conformance.py -> 0 violation(s)"
+risks:
+  - "This pack's own build lane is Anthropic-only (single build lane, D3-exempt below 2 build
+    lanes) and carries NO independent adversarial review round — team-lead's instruction for this
+    task named the proof commands to run and quote, not a review dispatch, so none is claimed
+    here. The dissent list is honestly empty rather than padded."
+  - "The workflow-wiring half of this change (registering
+    infra/claude-hooks/test_output_hygiene_guard.py inside
+    .github/workflows/hook-innocence-gate.yml's own test list) was deliberately DROPPED from this
+    branch in a follow-up commit (33cd519e6a) at team-lead's instruction, for a later PR — the
+    new guard's fixtures are already registered directly inside test_hook_innocence.py itself
+    (confirmed: `grep output_hygiene infra/claude-hooks/test_hook_innocence.py` finds them), so
+    the 145-case vaccine run above already exercises them without the workflow edit. The
+    workflow's own explicit test-file list simply does not yet name
+    test_output_hygiene_guard.py as a file it runs standalone in CI — a narrower, cosmetic gap
+    than the vaccine coverage itself."
+  - "The live consumer (~/.claude/hooks/output_hygiene_guard.py registered in the PreToolUse Bash
+    matcher of ~/.claude/settings.json on M5 and Pro) is NOT armed by this PR — it is prepared
+    here and armed by the shipping session post-merge, per the Agent PR Contract's own §2 Bites
+    convention (a future job/session installs it, this diff does not claim to have)."
+  - "Latency was measured once, locally, on this machine (M5) under no concurrent load — the
+    15ms figure team-lead's own instruction cited is this session's own measurement, not an
+    independently re-run benchmark; a different host's real per-call overhead under production
+    concurrency is unmeasured."
+instruction_to_the_grader: |
+  This is a Gear-2 guard-shaped change (a new PreToolUse Bash hook plus its own guilt+innocence
+  suite) with no independent review round in this pack — grade accordingly: the productive attack
+  surface is (1) does the quote/heredoc-stripping actually strip before pattern-matching, or could
+  a crafted quoted string still trip a false deny (over-match, cicatrix #3) or a crafted unquoted
+  command still slip through disguised as quoted (under-match, the symmetric failure); (2) is the
+  remote-dispatch exemption scoped narrowly to ssh/scp targets, or could it be used to launder an
+  unbounded LOCAL dump by prefixing it with a no-op ssh wrapper; (3) is DENY really terminal (the
+  hook never silently rewrites/truncates the command on the caller's behalf, per this pack's own
+  stated constraint) — verify against the actual hook's return value, not this brief's claim of
+  it; (4) does the guard-conformance registry entry actually carry both a guilt AND an innocence
+  proof reference, not just a census line with no test backing it.

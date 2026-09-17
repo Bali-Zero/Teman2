@@ -1,0 +1,128 @@
+brief_ref: evidence/brief.yml
+plan_ref: >-
+  One concern: output_hygiene_guard.py, a new PreToolUse Bash hook that denies (never rewrites)
+  8 unbounded output shapes (ls/eza over a large directory, cat/bat of a large file, git log
+  without -n/--max-count, git diff/show without a --stat-family flag, find without -maxdepth,
+  grep -r/rg without -l/-c/-m, a verbose test-runner call, tail -f/-F) unless a downstream
+  bounding stage (head/tail/cut/wc/grep -c/sort|uniq -c/awk/sed -n/jq/python3 -c) or a redirect
+  to a file is already present, with quote/heredoc stripping so a guilty shape sitting inside a
+  quoted string or heredoc body is judged as text, not a live command, and an ssh/scp/rsync
+  first-stage exemption for remote dispatch. Fixes the 2026-09-18 incident (Zero, "una follia"):
+  two accidental full-context dumps in one session, `ls ~/.nuzantara-mailbox` (700+ entries) and
+  a bare read of `evidence/2026-09` (300+ entries), each re-read by every later turn once in
+  context.
+
+  Consumer: `~/.claude/hooks/output_hygiene_guard.py`, to be installed in the PreToolUse Bash
+  matcher of `~/.claude/settings.json` on M5 and Pro by the shipping session after this PR
+  merges — this diff prepares the guard and its tests, it does not itself arm the live hook.
+  Observation once armed: `ls ~/.nuzantara-mailbox` from a session is refused with the entry
+  count named in the denial message; `ls ~/.nuzantara-mailbox | head -5` passes unchanged.
+
+lanes:
+  - lane: output-hygiene-guard
+    role: build
+    seat: >-
+      claude-sonnet-5 (this session, air-m5). Wrote infra/claude-hooks/output_hygiene_guard.py
+      (a new PreToolUse Bash guard, no subprocess calls, fails open on any exception, kill switch
+      NUZ_OUTPUT_HYGIENE_OFF=1) plus its own guilt+innocence test file
+      (infra/claude-hooks/test_output_hygiene_guard.py) and a guard-conformance registry.json
+      entry naming both. Also registered the same fixture set inside the shared vaccine
+      (infra/claude-hooks/test_hook_innocence.py) for cross-hook regression coverage, and added a
+      home-fork declared-pair entry (infra/home-fork/declared-pairs.json) for the new hook's
+      live-vs-repo drift lint. On team-lead's instruction, a separate follow-up commit
+      (33cd519e6a) removed this branch's own edit to
+      .github/workflows/hook-innocence-gate.yml (which had added
+      infra/claude-hooks/test_output_hygiene_guard.py to that workflow's explicit standalone
+      test list) for a later PR, after confirming the new guard's fixtures are already exercised
+      by the vaccine run without that workflow edit (the fixtures live inside
+      test_hook_innocence.py itself, not gated by the workflow's file list).
+
+seat_diversity: EXEMPT
+seat_diversity_note: >-
+  Single build lane (Anthropic, claude-sonnet-5), no review lane declared for this pack — D3's
+  cross-family floor is exempt below 2 build lanes, and reviewer-independence (W2) only fires
+  when both a build and a review lane are present. No adversarial review round was dispatched for
+  this task; team-lead's instruction named the proof commands to run and quote, not a review, and
+  this pack does not claim one that did not happen.
+
+diff:
+  files: 7
+  net_lines: 735
+  measured_at: >-
+    `scripts/evidence_pack_lint.py --print-measured` against `git diff --numstat`/`--name-only`
+    from the merge-base with origin/main to this pack's own finalized commit, run LAST as its own
+    invocation after every other edit including this evidence directory itself and the
+    hook-innocence-gate.yml revert commit (33cd519e6a) — see the matching receipt below.
+
+residual_risks:
+  - >-
+    NO INDEPENDENT ADVERSARIAL REVIEW ROUND is claimed in this pack. This is a single-build-lane,
+    Gear-2 change with the four proof commands team-lead specified run and quoted verbatim below
+    — the productive attack surface team-lead should still weigh before treating this as shipped:
+    does quote/heredoc stripping actually run before pattern matching (over/under-match,
+    cicatrix #3), and is the ssh/scp/rsync exemption scoped narrowly enough that it cannot
+    launder a local unbounded dump through a no-op remote wrapper.
+  - >-
+    THE LIVE HOOK IS NOT ARMED BY THIS PR. `~/.claude/hooks/output_hygiene_guard.py` and its
+    registration in `~/.claude/settings.json`'s PreToolUse Bash matcher on M5 and Pro are
+    installed by the shipping session after merge (per `infra/claude-hooks/install_mailbox_hook.sh`'s
+    own pattern for a prior hook) — everything in this pack is local test/script evidence, not a
+    live-session observation of a real denial yet.
+  - >-
+    Latency (12.7ms allow-case, 12.8ms deny-case, this pack's own measured run below) is a
+    single-machine (M5), single-run, no-concurrent-load figure — not an independently repeated
+    benchmark and not measured on Pro.
+  - >-
+    The workflow-wiring half of this change (naming
+    infra/claude-hooks/test_output_hygiene_guard.py inside
+    .github/workflows/hook-innocence-gate.yml's own explicit test list) was deliberately dropped
+    from this branch for a later PR, per team-lead's instruction — confirmed non-blocking because
+    the new guard's fixtures are already registered directly inside test_hook_innocence.py and
+    the 145-case vaccine run below already exercises them without that workflow edit.
+
+pii_scan: clean
+
+receipts:
+  - claim: "the guard's own dedicated guilt+innocence suite is green: ALL 33 OK"
+    cmd: "python3 infra/claude-hooks/test_output_hygiene_guard.py"
+    result: "=== ALL 33 OK (no innocent bitten, no guilt missed) === / latency: allow-case subprocess 12.7ms, deny-case subprocess 12.8ms"
+    exit: 0
+    ts: "2026-09-18T03:00:00Z"
+    seat: session (air-m5)
+  - claim: "the shared vaccine, which also carries this guard's fixtures, is green: ALL 145 OK, no regression to any pre-existing guard"
+    cmd: "python3 infra/claude-hooks/test_hook_innocence.py"
+    result: "=== ALL 145 OK (no innocent bitten, no guilt missed) ==="
+    exit: 0
+    ts: "2026-09-18T03:35:00Z"
+    seat: session (air-m5)
+  - claim: "the guard-conformance census shows 0 violations across every registered guard, including this one"
+    cmd: "python3 infra/guard-conformance/check_guard_conformance.py"
+    result: >-
+      guard-conformance: 10 bridge guards, 28 hook entries, 7 wr2-pregate checks, 18
+      evidence-pack-lint checks, 6 required-workflow-conformance checks, 9 bites-parse guards, 0
+      violation(s) / every censused guard has guilt+innocence proofs, no phantoms, all armed in CI
+    exit: 0
+    ts: "2026-09-18T03:40:00Z"
+    seat: session (air-m5)
+  - claim: >-
+      after removing this branch's own hook-innocence-gate.yml edit in commit 33cd519e6a, the
+      vaccine still runs the new guard's cases (they are registered inside the vaccine itself,
+      not gated by the workflow's own explicit test-file list)
+    cmd: "grep -n output_hygiene infra/claude-hooks/test_hook_innocence.py"
+    result: >-
+      54:# output_hygiene_guard.py fixtures: a >60-entry dir, a <=60-entry dir, a ... / 196:    #
+      ---- output_hygiene_guard.py (Bash) — deny unbounded ls/cat/log/diff/find/grep/test / 197:
+      "output_hygiene_guard.py": [
+    exit: 0
+    ts: "2026-09-18T03:36:00Z"
+    seat: session (air-m5)
+  - claim: "this pack's own diff.files/diff.net_lines match the measured merge-base diff, run LAST as its own step"
+    cmd: >-
+      python3 scripts/evidence_pack_lint.py --repo-root . --numstat-file /tmp/net-lines-numstat-hygiene.txt
+      --changed-files-file /tmp/changed-files-hygiene.txt --print-measured
+    result: "7 files, +735/-0"
+    exit: 0
+    ts: "2026-09-18T03:50:00Z"
+    seat: session (air-m5)
+
+dissent: []
