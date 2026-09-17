@@ -1,0 +1,93 @@
+task_id: migration-runner-lock-retry
+gear: 2
+l_level: L1
+gate_class: sonnet
+# Floor measured this session: `python3 scripts/evidence_pack_lint.py --print-floor
+# --print-floor-source --numstat-file <numstat> --changed-files-file <changed>` on the
+# staged diff returns `2` / `size`. No HOTZONE_PATTERNS hit: the diff touches
+# backend/db/migration_base.py, backend/db/migration_manager.py and one new test file,
+# NOT migrations_v2/*. Successor of #6687 (whose retry lived inside the 317 migration
+# text and was reverted by #6694 because an applied migration's text is immutable).
+objective: >-
+  Migration 317's `ALTER TABLE ... SET DEFAULT` (ACCESS EXCLUSIVE) failed three times on
+  2026-09-16 under a 5s lock_timeout because the nightly pg_dump window (19:20-22:20Z)
+  holds an ACCESS SHARE lock on every table for ~40 minutes; the shared runner had no
+  retry at all, so one lock timeout killed the whole release_command and closed the
+  backend deploy lane for hours. #6687 put the retry inside the 317 SQL text, which
+  rewrote an already-applied migration and broke schema_audit (v4476); #6694 restored the
+  applied blob. This PR puts the retry where it protects EVERY future DDL, in the shared
+  runner: `run_with_lock_retry()` in migration_base.py wraps both
+  `BaseMigration.apply()`'s transaction and `MigrationManager.rollback_migration()`'s,
+  with a per-attempt short `SET LOCAL lock_timeout`, bounded attempts and budget,
+  retrying ONLY SQLSTATE 55P03 (lock_not_available) and naming the blocking session
+  (pid/usename/application_name/relname, never query text) on exhaustion.
+constraints:
+  - >-
+    No file under apps/backend-rag/backend/db/migrations_v2/ changes (an applied
+    migration's text is immutable; the 317 blob stays 3f38f30ac1). No change to
+    fly.toml, .env*, zantara_core.py.
+  - >-
+    Retries are limited to asyncpg LockNotAvailableError (55P03). QueryCanceledError
+    (57014) and every other error propagate on the first occurrence, unretried.
+  - >-
+    The per-attempt timeout is `SET LOCAL`, never a plain `SET`: rollback_migration runs
+    on a POOLED connection and a plain SET inside a committed transaction would persist
+    on that session for the next pool user.
+  - >-
+    The ledger write stays INSIDE the retried transaction, so a migration is never
+    recorded as applied when its DDL did not commit.
+  - >-
+    No client PII anywhere; the blocker diagnostic reports pid/usename/application_name/
+    relname only. No secrets echoed; any local test DSN carries
+    `# pragma: allowlist secret`.
+acceptance:
+  - text: >-
+      A1 (INNOCENCE, unit): WHEN the transaction body raises LockNotAvailableError twice
+      and then succeeds, THE runner SHALL return True after exactly three attempts, each
+      preceded by `SET LOCAL lock_timeout`.
+    probe: pytest backend/tests/db/test_migration_runner_lock_retry.py -k "twice"
+  - text: >-
+      A2 (GUILT-boundary, unit): WHEN the body raises QueryCanceledError or a generic
+      PostgresError, THE runner SHALL propagate it on the FIRST attempt with no retry and
+      no sleep.
+    probe: pytest backend/tests/db/test_migration_runner_lock_retry.py -k "canceled or generic"
+  - text: >-
+      A3 (GUILT, unit): WHEN every attempt raises LockNotAvailableError, THE runner SHALL
+      raise MigrationError containing "still lock-blocked" and the blocker's
+      pid/usename/application_name/relname, and never a `query` field.
+    probe: pytest backend/tests/db/test_migration_runner_lock_retry.py -k "exhaust"
+  - text: >-
+      A4 (INNOCENCE, live): WHEN a session holding ACCESS SHARE on a throwaway table
+      releases it within the budget, THE migration apply() SHALL succeed, the DDL SHALL
+      be visible and the ledger SHALL carry the row.
+    probe: pytest backend/tests/db/test_migration_runner_lock_retry.py -k "live_released"
+  - text: >-
+      A5 (GUILT, live): WHEN the blocker is held beyond the budget, THE apply() SHALL
+      raise MigrationError naming the blocker's application_name, the DDL SHALL NOT be
+      applied and the ledger SHALL have NO row.
+    probe: pytest backend/tests/db/test_migration_runner_lock_retry.py -k "live_held"
+  - text: >-
+      A6 (release lane): WHEN `python -m backend.db.migrate apply-all && python -m
+      backend.db.schema_audit` (the fly.toml release_command chain) runs with this
+      runner against a database whose ledger already carries 317 from the PROD blob
+      (checksum b78d5a7d...), THE chain SHALL exit 0 with no migration_checksum_mismatch.
+    probe: apply-all && schema_audit against throwaway DB nuzantara_test_prb1 (127.0.0.1:5433)
+  - text: >-
+      A7: THE existing migration runner suites (advisory lock, base rollback/tracking,
+      manager connect retry/diag, dedicated role) SHALL stay green, and ruff check +
+      ruff format --check on the three touched files SHALL report no issues.
+    probe: pytest backend/tests/db/test_migration_*.py; ruff check; ruff format --check
+assumptions:
+  - text: >-
+      Postgres GUC `SET` is last-write-wins inside one transaction, so a migration file
+      that issues its own `SET lock_timeout` after the runner's `SET LOCAL` still wins for
+      the rest of that transaction — no special-casing needed.
+    status: verified
+    probe: Postgres docs (SET LOCAL) + live innocence test on PG 17.10
+  - text: >-
+      Worst-case retry arithmetic (8 attempts x 2s lock wait + backoffs 0.5,1,2,3,3,3,3 +
+      20% jitter ≈ 35s) stays under the 90s budget and Fly's release_command ceiling.
+    status: verified
+    probe: constants in migration_base.py; unit test on _lock_retry_backoff_seconds bounds
+appetite:
+  wall_clock_hours: 3
