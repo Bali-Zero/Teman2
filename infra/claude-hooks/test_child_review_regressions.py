@@ -335,3 +335,30 @@ def test_capped_child_names_the_counter_and_keeps_its_report_path(
     assert child.context_guard(search, guard) == 0
     assert child.context_guard({**search, "tool_input": {"query": "select:Bash"}}, guard) == 2
     assert child.context_guard({**event, "tool_name": "SendMessage"}, guard) == 0
+
+
+def test_contract_paragraph_injected_once_per_session_and_event(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("CLAUDE_CONFIG_DIR", str(tmp_path / "seat"))
+    monkeypatch.delenv("NUZ_CHILD_WORKFLOW_EVERY", raising=False)
+    payload = {"session_id": "s-once", "hook_event_name": "SubagentStart"}
+    assert child.should_inject_contract(payload, "SubagentStart") is True
+    assert child.should_inject_contract(payload, "SubagentStart") is False
+    assert child.should_inject_contract(payload, "PreToolUse") is True
+    assert child.should_inject_contract(payload, "PreToolUse") is False
+    assert child.should_inject_contract({**payload, "session_id": "s-two"}, "SubagentStart") is True
+    marker_root = tmp_path / "seat" / "state" / "child-workflow-contract"
+    assert sorted(p.name for p in marker_root.iterdir()) == [
+        "s-once.PreToolUse",
+        "s-once.SubagentStart",
+        "s-two.SubagentStart",
+    ]
+    assert child.should_inject_contract({"hook_event_name": "SubagentStart"}, "SubagentStart") is True
+    assert child.should_inject_contract({"session_id": 7}, "SubagentStart") is True
+    monkeypatch.setenv("NUZ_CHILD_WORKFLOW_EVERY", "1")
+    assert child.should_inject_contract(payload, "SubagentStart") is True
+    monkeypatch.delenv("NUZ_CHILD_WORKFLOW_EVERY", raising=False)
+    monkeypatch.setenv("CLAUDE_CONFIG_DIR", str(tmp_path / "unwritable-file"))
+    (tmp_path / "unwritable-file").write_text("not a directory")
+    assert child.should_inject_contract(payload, "SubagentStart") is True
