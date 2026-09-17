@@ -1,0 +1,107 @@
+task_id: voa-error-tone-contrast
+gear: 2
+l_level: L1
+gate_class: sonnet
+# Floor measured this session: `python3 scripts/evidence_pack_lint.py --print-floor
+# --numstat-file <numstat> --changed-files-file <changed>` on this PR's diff
+# (origin/main...HEAD) returns `2`; `--print-floor-source` (run separately — the
+# script returns before reaching the source branch when both flags are passed
+# together) returns `size`. The numstat sums to 495 insertions / 12 deletions =
+# 507 churn across six files, all under apps/mouth/src/app/visa/voa/**, none under
+# a HOTZONE_PATTERNS path — churn alone (>400) drives the floor to 2, and the diff
+# carried no evidence/brief.yml before this commit.
+objective: >-
+  PR #6691 replaces two colour-carried error signals on the six VOA purchase
+  screens with a token-carried one. Class 1: `upload/UploadFlow.tsx`'s three
+  error states (`client_rejected`, `unreadable`, `error`) used the Tailwind
+  utility `text-red-600`, which measures 4.40:1 against the paper background
+  (`--bz-base`) — an AA fail (needs 4.5:1), per design-A-claude.md M1. Class 2:
+  the four `role="alert"` sites (`page.tsx:541`, `[hash]/page.tsx:404`,
+  `checkout/[resultId]/CheckoutFlow.tsx:201`, `orders/OrderTracker.tsx:49`, plus
+  one WhatsApp-link `<a>` in `page.tsx`) read `--color-error`, which resolves to
+  copper (`#A44B36`) on this surface — the ownership tone, not an error status,
+  per M2. Both classes now use `--tx-pure` (ink, 12.9:1 on `--bz-base`) with an
+  existing hairline border (`--bz-border`) marking the alert region; the failure
+  is still carried in words by the copy itself and by `role="alert"`/
+  `aria-live="polite"` for assistive tech, never by colour alone. The new guard
+  `voa-contrast.computed.guard.test.tsx` renders the seven cured sites through
+  the real production components and checks real WCAG contrast math on the
+  resolved ink tone (tokens parsed live from `globals.css`) plus a DOM-output ban
+  on the red-family Tailwind class shape jsdom cannot resolve to a colour.
+constraints:
+  - >-
+    No red-family literal (Tailwind `text-red-*`/`bg-red-*`/etc. or an inline hex
+    in that family) may carry an error message on any of the seven cured sites;
+    error tone is `--tx-pure` only, enforced by `RED_CLASS_RE` in the new guard.
+  - >-
+    No file outside `apps/mouth/src/app/visa/voa/**` changes — verified against
+    this PR's diff (`git diff origin/main...HEAD --stat`), which touches only
+    `[hash]/page.tsx`, `checkout/[resultId]/CheckoutFlow.tsx`,
+    `orders/OrderTracker.tsx`, `page.tsx`, `upload/UploadFlow.tsx` and the new
+    `voa-contrast.computed.guard.test.tsx`, all under that path.
+  - No `npm install`/`npm ci` — the diff adds no new dependency, only source and test files.
+acceptance:
+  - text: >-
+      INNOCENCE: the cured tone (`--tx-pure` ink on `--bz-base` paper) clears
+      4.5:1 by real WCAG relative-luminance math.
+    probe: >-
+      npx vitest run apps/mouth/src/app/visa/voa/voa-contrast.computed.guard.test.tsx
+      -t "INNOCENT: the cured tone"
+  - text: >-
+      GUILT boundary: the ORIGINAL `text-red-600` hex (`#DC2626`) on paper
+      measures 4.40:1, an AA fail, matching design-A-claude.md M1's own number —
+      cross-checking that the guard's contrast formula is correct.
+    probe: >-
+      npx vitest run apps/mouth/src/app/visa/voa/voa-contrast.computed.guard.test.tsx
+      -t "GUILTY: the ORIGINAL text-red-600 hex"
+  - text: >-
+      GUILT: copper (`--color-error`'s resolved value on this surface) is a real
+      colour that clears contrast but is the WRONG one — the guard demands ink
+      specifically, not merely "passes contrast", proving a bare contrast check
+      alone would not have caught M2's finding.
+    probe: >-
+      npx vitest run apps/mouth/src/app/visa/voa/voa-contrast.computed.guard.test.tsx
+      -t "GUILTY: copper"
+  - text: >-
+      GUILT, the one regression shape jsdom's computed-style check cannot see
+      any other way: a red-family Tailwind class in the rendered `className`
+      trips the DOM-output ban even when jsdom resolves no colour for it.
+    probe: >-
+      npx vitest run apps/mouth/src/app/visa/voa/voa-contrast.computed.guard.test.tsx
+      -t "GUILTY, the DOM-output shape"
+  - text: >-
+      INNOCENCE, all seven real cured sites rendered through the actual
+      production components (upload's `client_rejected`/`unreadable`/`error`
+      states, the eligibility wizard's submit-failure alert, the verdict page's
+      magic-link resend failure, checkout's order-creation failure, and the
+      order tracker's load failure) each resolve to the ink tone at ≥4.5:1 and
+      carry no red-family class.
+    probe: >-
+      npx vitest run apps/mouth/src/app/visa/voa/voa-contrast.computed.guard.test.tsx
+  - text: >-
+      INNOCENCE, repo-wide: the full VOA suite and the type check stay green
+      after the token swap (per PR #6691's own Proof section: 18 files / 193
+      tests, all green; clean `tsc --noEmit`).
+    probe: "npx vitest run src/app/visa/voa; npx tsc --noEmit"
+assumptions:
+  - text: >-
+      `--color-error` on the `[data-theme="operative-light"][data-product="my"]`
+      block resolves to copper (`--state-danger`, `#a44b36`) rather than a red
+      hue on this surface today, so the pre-fix `role="alert"` sites were
+      reading the ownership tone, not a red literal — the token swap to
+      `--tx-pure` is a meaning fix, not merely a contrast fix.
+    status: verified
+    probe: >-
+      npx vitest run apps/mouth/src/app/visa/voa/voa-contrast.computed.guard.test.tsx
+      -t "copper (--color-error's resolved value on this surface) is a real colour but the wrong ONE"
+  - text: >-
+      jsdom applies no stylesheet, so `getComputedStyle()` cannot resolve a
+      Tailwind utility class or a `var(--x)` reference to a real colour; the
+      guard therefore hand-resolves tokens parsed live from `globals.css` and
+      separately bans the red-family class shape in the rendered `className`,
+      rather than trusting `getComputedStyle` alone.
+    status: verified
+    probe: >-
+      grep -n "JSDOM LIMIT" apps/mouth/src/app/visa/voa/voa-contrast.computed.guard.test.tsx
+appetite:
+  wall_clock_hours: 1

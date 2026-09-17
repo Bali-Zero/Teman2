@@ -400,7 +400,15 @@ function MagicLinkRequestForm({ resultId }: { resultId: string }) {
         {status === "sending" ? "Sending…" : "Email me a link →"}
       </button>
       {status === "error" ? (
-        <p role="alert" style={{ margin: 0, color: "var(--color-error)" }}>
+        <p
+          role="alert"
+          style={{
+            margin: 0,
+            color: "var(--tx-pure)",
+            borderLeft: "3px solid var(--bz-border)",
+            paddingLeft: "0.75rem",
+          }}
+        >
           Something went wrong. Please try again.
         </p>
       ) : null}

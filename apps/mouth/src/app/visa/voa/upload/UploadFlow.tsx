@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { useDocumentUpload } from "./useDocumentUpload";
 import {
   CHECKLIST_ITEMS,
@@ -24,6 +24,20 @@ const DOCUMENT_STORE_DOWN_CODES = new Set([
   "DOCUMENT_PROCESSING_UNAVAILABLE",
   "SERVICE_UNAVAILABLE",
 ]);
+
+/**
+ * GARUDA VOA DELIBERA (b): error tone is neither copper (ownership) nor red text
+ * (M1 — text-red-600 measured 4.40:1 on paper, an AA fail). The cure is the ink
+ * tone (`--tx-pure`, already 12.9:1 on `--bz-base` here) plus an existing
+ * hairline (`--bz-border`) marking the region, with the problem still carried
+ * by the copy itself (every string in `messages.ts` already states the
+ * failure in words) and by `role="alert"`/`aria-live="polite"` for assistive
+ * tech — never by colour alone.
+ */
+const ALERT_TONE_STYLE: CSSProperties = {
+  borderLeft: "3px solid var(--bz-border)",
+  paddingLeft: "0.75rem",
+};
 
 export interface UploadFlowProps {
   resultId: string;
@@ -178,8 +192,14 @@ function StateView({
 
     case "client_rejected":
       return (
-        <div className="flex flex-col gap-3" role="alert">
-          <p className="text-sm text-red-600">{state.message}</p>
+        <div
+          className="flex flex-col gap-3"
+          role="alert"
+          style={ALERT_TONE_STYLE}
+        >
+          <p className="text-sm" style={{ color: "var(--tx-pure)" }}>
+            {state.message}
+          </p>
           <PickButton label="Choose a different photo" onClick={onPickFile} />
         </div>
       );
@@ -211,16 +231,28 @@ function StateView({
 
     case "unreadable":
       return (
-        <div className="flex flex-col gap-3" aria-live="polite">
-          <p className="text-sm text-red-600">{COPY_UNREADABLE_INSTRUCTION}</p>
+        <div
+          className="flex flex-col gap-3"
+          aria-live="polite"
+          style={ALERT_TONE_STYLE}
+        >
+          <p className="text-sm" style={{ color: "var(--tx-pure)" }}>
+            {COPY_UNREADABLE_INSTRUCTION}
+          </p>
           <PickButton label="Retake photo" onClick={onRetake} />
         </div>
       );
 
     case "error":
       return (
-        <div className="flex flex-col gap-3" aria-live="polite">
-          <p className="text-sm text-red-600">{state.message}</p>
+        <div
+          className="flex flex-col gap-3"
+          aria-live="polite"
+          style={ALERT_TONE_STYLE}
+        >
+          <p className="text-sm" style={{ color: "var(--tx-pure)" }}>
+            {state.message}
+          </p>
           {state.code && DOCUMENT_STORE_DOWN_CODES.has(state.code) ? (
             <ManualEntryLink resultId={resultId} prominent />
           ) : null}

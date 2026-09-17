@@ -471,7 +471,7 @@ export default function VoaEligibilityPage() {
             )}
             target="_blank"
             rel="noopener noreferrer"
-            style={{ color: "var(--color-error)", textDecoration: "underline" }}
+            style={{ color: "var(--tx-pure)", textDecoration: "underline" }}
           >
             message us on WhatsApp
           </a>
@@ -539,7 +539,15 @@ export default function VoaEligibilityPage() {
         </p>
       ) : null}
       {submitError ? (
-        <p role="alert" style={{ color: "var(--color-error)", margin: 0 }}>
+        <p
+          role="alert"
+          style={{
+            color: "var(--tx-pure)",
+            margin: 0,
+            borderLeft: "3px solid var(--bz-border)",
+            paddingLeft: "0.75rem",
+          }}
+        >
           {submitError}
         </p>
       ) : null}
