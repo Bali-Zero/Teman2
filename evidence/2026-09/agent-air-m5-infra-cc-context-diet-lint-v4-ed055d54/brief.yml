@@ -9,18 +9,20 @@ task: >-
   backlog row C1d); plus three cures in the same PR: agent_job.py session bootstrap (2
   text-only calls → --restricted --strict-mcp-config), claude_vision.py (needs Read →
   --safe-mode, proven live with a one-boolean json-schema against an on-disk PNG), and the
-  exempt pragma on the deliberate Canva-MCP exception. Also ships
-  scripts/bench/cc_headless_shape_bench.sh so the frozen token numbers in the lint docstring
-  and cure comments have a re-measure path instead of being trusted cold.
+  exempt pragma on the deliberate Canva-MCP exception. Also ships two re-measure scripts so
+  the frozen numbers cited by the BACKLOG never have to be trusted cold:
+  scripts/bench/cc_headless_shape_bench.sh (the lint docstring's/cure comments' token numbers)
+  and scripts/bench/cc_hook_latency_bench.py (H10's PreToolUse-handler-latency number) —
+  both cited by exact path from research/agent-craft/cc-meta-loop/BACKLOG.md's H10 and C4 rows.
 lane: infra/cc-context-diet-lint
 machine: Air-M5
 date: 2026-09-17
 gear: 2
 gear_reason: >-
-  Deterministic floor 2, source `size`: churn ~830 (lint 545, test 187, bench 30, quickcheck
-  wiring 32, grandfather 26, cures ~20) — above SIZE_GEAR2_THRESHOLD (400), below 1828; no
-  hot-zone path (the .github/workflows/ edit was split out into backlog row C1d — this PR
-  touches only scripts/, infra/ and evidence/).
+  Deterministic floor 2, source `size`: churn ~1070 (lint 545, test 187, bench-shape 36,
+  bench-latency 106, quickcheck wiring 39, grandfather 26, cures ~20, brief ~130) — above
+  SIZE_GEAR2_THRESHOLD (400), below 1828; no hot-zone path (the .github/workflows/ edit was
+  split out into backlog row C1d — this PR touches only scripts/, infra/ and evidence/).
 successor_of: >-
   "#6708 — REWORK-BUILD (fresh Opus gate session, 50 turns): (1) the immune-enforcement.yml
   edit is a hot-zone path per scripts/evidence_pack_lint.py's HOTZONE_PATTERNS and floored the
@@ -28,7 +30,16 @@ successor_of: >-
   get_or_create_session() as the consumer, but that function has had NO live caller since
   compliance_ops.py removed it 2026-04-30 — only a test calls it; (3) the frozen token numbers
   (36,322 / 15,064 / 16,923) were measured once on M5 with fleet mail pending at Stop and
-  presented as fixed facts, with no way for a later reader to tell whether they still hold."
+  presented as fixed facts, with no way for a later reader to tell whether they still hold.
+  #6714 — same content, all three findings fixed, auto-merge ARMED (never merged into this
+  successor's history): superseded not for a defect but because the Builder Contract freezes
+  a branch the instant auto-merge is armed ('the branch is read-only and every follow-up
+  starts from a fresh origin/main') — an addendum (a second bench script,
+  scripts/bench/cc_hook_latency_bench.py, for the H10 backlog row) arrived after #6714 was
+  already armed, so it could not land as a new commit on that branch. This branch (v4) is a
+  clean cherry-pick of #6714's two commits from fresh origin/main plus that one addition; #6714
+  should be closed once this PR is confirmed open, to avoid a double-merge race on the shared
+  content."
 rework:
   - "Dropped the .github/workflows/immune-enforcement.yml step entirely (git checkout
     origin/main -- that file) — reverted to origin/main byte-for-byte, confirmed via
@@ -52,6 +63,11 @@ rework:
   - "Moved the evidence directory from the v2 slug to
     evidence/2026-09/agent-air-m5-infra-cc-context-diet-lint-v3-870494c1/ via
     scripts/ci/evidence_paths.py --ref agent/air-m5/infra/cc-context-diet-lint-v3."
+  - "Addendum on top of #6714 (armed, therefore frozen): copied
+    scripts/bench/cc_hook_latency_bench.py in verbatim (read-only, times every registered
+    PreToolUse handler on a synthetic Bash event; no hook decision is acted on), ran it with
+    --startup, and pasted its summary + 5 startup lines here (A7) and in the PR body. Moved
+    the evidence directory again, v3 slug -> v4 slug, same evidence_paths.py mechanism."
 appetite:
   wall_clock_hours: 1
   adversarial_rounds: 1
@@ -94,6 +110,17 @@ acceptance:
     this PR's own diff (a .py under scripts/ is touched).
     probe: bash scripts/quickcheck.sh
     observed: "see PR body / final report for the literal [context-diet-lint] line"
+  A7: >-
+    The H10 row's frozen hook-latency number (8 blocking handlers, 364 ms serial on M5,
+    2026-09-17) also has a re-measure path: scripts/bench/cc_hook_latency_bench.py,
+    read-only, timing every registered PreToolUse handler on a synthetic Bash event.
+    probe: python3 scripts/bench/cc_hook_latency_bench.py --startup
+    observed: >-
+      "handlers on a Bash PreToolUse: 8 — blocking 8, serial sum 820 ms" against
+      /Users/balizero/.claude/projects/-Users-balizero-Desktop-nuzantara/eb0d5ece-a75c-4271-8a4e-fd5a330efe15.jsonl
+      (114,110,555 bytes); startup baseline: python3 -c pass=17ms,
+      import json,re,sys,os,pathlib=27ms, read transcript fully=258ms,
+      json.loads each line=580ms, tail 64KB seek=19ms — 2026-09-17, this worktree/machine.
 out_of_scope: >-
   Curing the 20 grandfathered files (each needs its job proven green on its own machine);
   the cascade wrapper (C1c); the sandbox (S1); wiring the lint into CI (C1d, needs its own
@@ -104,6 +131,10 @@ bites: >-
   agent-library/ or skills/. Observation: ran quickcheck's own pre-push hook on this branch
   (a .py under scripts/ is touched) and the "[context-diet-lint]" line printed OK — see A6.
   Consumer 2: the lint's own --selftest (14 guilt/innocence cases), proven passing (A1).
+  Consumer 3: the H10 and C4 rows of research/agent-craft/cc-meta-loop/BACKLOG.md, which cite
+  scripts/bench/cc_headless_shape_bench.sh and scripts/bench/cc_hook_latency_bench.py by
+  these exact paths as the re-measure path for their frozen numbers — both scripts exist at
+  those paths and ran successfully in this PR (A5, A7).
   NOT claimed as a consumer: agent_job.py's get_or_create_session() cron callers — that
   function currently has no live caller (removed from compliance_ops.py 2026-04-30); the cure
   is correct but dormant until a caller returns.
