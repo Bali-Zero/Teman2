@@ -16,10 +16,11 @@ mandate: >-
 
 gear: 2
 gear_reason: >-
-  Deterministic floor 2, source `size`: two new files plus the rework diff, churn measured
-  against the true merge-base (`git diff --numstat origin/main...HEAD`, triple-dot — origin/main
-  had advanced 2 commits, #6704/#6707, since this branch was cut, so a plain double-dot diff
-  over-counted by including their reverse delta), above SIZE_GEAR2_THRESHOLD (400) and below
+  Deterministic floor 2, source `size`: two new files plus the rework diff, churn 1390 (add
+  1390 / del 0) measured against the true merge-base (`git diff --numstat origin/main...HEAD`,
+  triple-dot — origin/main had advanced 2 commits, #6704/#6707, since this branch was cut, so a
+  plain double-dot diff over-counted at 2057 by including their reverse delta), above
+  SIZE_GEAR2_THRESHOLD (400) and below
   SIZE_GEAR3_THRESHOLD (1828); no hot-zone path. The predecessor #6698 carried the same scripts
   together with the research outputs and the hook cures (churn 4700, floor 3) and was closed
   with its three reds classified; this successor is cut from a fresh origin/main with one
