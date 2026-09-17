@@ -466,6 +466,12 @@
       "machines": ["all"]
     },
     {
+      "live": "~/.claude/hooks/output_hygiene_guard.py",
+      "repo": "infra/claude-hooks/output_hygiene_guard.py",
+      "_note": "Declared at birth (2026-09-18, Zero's order): PreToolUse(Bash) guard denying an unbounded ls/cat/git-log/git-diff/find/grep/test-runner/tail-f call before it can flood a session's own context — the structural cure for two live over-reads in one session (~/.nuzantara-mailbox 700+ entries, evidence/2026-09 300+ entries), both read in full with no bound. Registration in ~/.claude/settings.json's PreToolUse Bash matcher is the parent shipping session's job, not this pair's.",
+      "machines": ["m5", "pro", "mini"]
+    },
+    {
       "live": "~/scripts/log-rotate-run.sh",
       "repo": "infra/launchagents/wrappers/log-rotate-run.sh",
       "_note": "Born via organ_birth.py 2026-07-17 (pro.log_rotate) to cure Pro logs growing unrotated (PENDING-ARMS ledger line ~306: supervisor.err 182M, cron-log-sentinel.log 122M, mata-garuda-kg-api.err 111M, translate-hourly.log 100M).",
