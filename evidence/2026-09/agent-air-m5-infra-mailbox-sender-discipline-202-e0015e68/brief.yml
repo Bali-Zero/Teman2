@@ -1,0 +1,104 @@
+task_id: mailbox-sender-discipline-0918
+gear: 2
+l_level: L1
+gate_class: sonnet
+objective: |
+  Zero, 2026-09-18: even after addressed broadcast (targets a host/lane/session instead of
+  everyone) and retract-stale (sender-side cleanup once a page resolves), the fleet mailbox still
+  cannot say WHO sent a given broadcast. Measured 2026-09-18 on M5's live mailbox: 368 of 416 live
+  broadcasts carried the exact same `from: <host>:fleet-watch` label — every anonymous session on
+  a machine writing under one indistinguishable identity, up to 185 broadcasts in a single day.
+  With no sender identity, nobody can tell WHICH session/cron to mute or rate-limit when one goes
+  noisy; the fleet's only lever was "kill the whole mailbox".
+
+  Root cause: `scripts/fleet_mail.sh`'s broadcast path always wrote `from:
+  <host>:${FLEET_MAIL_FROM:-fleet-watch}` — an env var nobody sets defaults every anonymous
+  broadcast to the SAME literal label, and nothing capped how many broadcasts one sender could
+  fire.
+
+  Cure: `--from <label>` (or `FLEET_MAIL_FROM=<label>`) is now REQUIRED for `broadcast` (direct,
+  session-addressed mail is unchanged and keeps the old `fleet-watch` default — this is a
+  broadcast-only tightening). The four cron senders that broadcast today (`queue_unstick.py`,
+  `queue_stall_notify.py`, `scripts/ci/flaky_harvest.py`, `scripts/ci/change_map_coverage.py`)
+  now each pass a distinct `--from` label (`queue-unstick`, `queue-stall`, `flaky-harvest`,
+  `change-map`) targeting `host:<name>`/`lane:<name>` or `lane:ci`. A sender is capped at
+  `FLEET_MAIL_MAX_PER_HOUR` (default 6) live broadcasts/hour, counted from front-matter `from:`
+  on non-expired `*.md` files in the last hour, bypassable per-send with `--urgent`.
+constraints:
+  - "One PR, one concern: sender identity + rate cap on scripts/fleet_mail.sh's broadcast path,
+    plus wiring the 4 existing cron senders to the new required flag. Not touching the addressed-
+    broadcast (--to) or retract (--key) mechanisms landed in the two prior PRs (#6722, and the
+    still-open retract-stale work) — this is additive on top of both, verified by rebasing this
+    branch onto the now-merged #6722 head with zero conflicts."
+  - "Direct (session-addressed) mail is UNCHANGED: only `broadcast` requires --from. A cron or
+    session sending to one named session id keeps the old fleet-watch-default behavior — the
+    identity problem this PR fixes is specific to the fan-out (broadcast) path, where one
+    indistinguishable sender can flood every session on every machine."
+  - "The rate cap counts LIVE broadcasts only (bare `*.md`, same convention retract-stale
+    established: a retracted/expired/superseded/muted/unaddressed/skipped file already carries a
+    suffix after .md and never matches this glob) from the SAME sanitized `from:` label in the
+    last hour, reading only the front-matter (<=2048 bytes) — never a message body, matching the
+    existing bounded-read posture in retract's own key scan."
+  - "--urgent is a per-send escape, not a config toggle: a single genuinely urgent broadcast
+    bypasses the cap once; a sender that needs to be exempted continuously belongs on a longer
+    natural cadence or a smaller-blast-radius address, not on --urgent forever."
+acceptance:
+  - text: >
+      WHEN `fleet_mail.sh <host> broadcast --to <target> "<msg>"` is invoked with neither --from
+      nor FLEET_MAIL_FROM set, the script SHALL exit 2 and report that every broadcast must say
+      who is sending it, before any mail is written.
+    status: verified
+    probe: "local: python3 -m pytest scripts/tests/test_fleet_mail_sender.py -q -> 173 lines of new coverage, part of the 266-test suite run below"
+  - text: >
+      WHEN a broadcast IS labelled via --from or FLEET_MAIL_FROM, the label SHALL be sanitized to
+      the same charset infra/claude-hooks/mailbox_inject.py's SENDER_UNSAFE_RE enforces on read
+      ([^A-Za-z0-9._:@-]) and capped at 64 characters before being embedded in the remote
+      command text or the front-matter from: line.
+    status: verified
+    probe: "local: same suite (test_fleet_mail_sender.py), sanitization/length-cap cases"
+  - text: >
+      WHEN a sender's label has already produced FLEET_MAIL_MAX_PER_HOUR (default 6) live
+      broadcasts in the last rolling hour, the NEXT broadcast from that same label SHALL be
+      refused with exit 3, UNLESS --urgent is passed.
+    status: verified
+    probe: "local: same suite, cap/--urgent-bypass cases; `bash -n scripts/fleet_mail.sh` confirms the shell syntax is valid"
+  - text: >
+      WHEN the four existing cron senders (queue_unstick.py, queue_stall_notify.py,
+      scripts/ci/flaky_harvest.py, scripts/ci/change_map_coverage.py) construct a broadcast
+      command, each SHALL pass a distinct, non-empty --from label targeting host:/lane: or
+      lane:ci — none SHALL fall back to the removed anonymous default.
+    status: verified
+    probe: "local: python3 -m pytest scripts/tests/test_queue_unstick.py scripts/tests/test_queue_stall_notify.py -q; PYTHONPATH=scripts/ci python3 -m unittest scripts.ci.test_flaky_harvest scripts.ci.test_change_map_coverage -> both green, part of the two full-suite runs below"
+risks:
+  - "This pack's own build lane is Anthropic-only (single build lane, D3-exempt below 2 build
+    lanes) and carries NO independent adversarial review round — team-lead's instruction named
+    the two suite reruns and a shell-syntax check as this pack's proof, not a review dispatch, so
+    none is claimed here. The dissent list is honestly empty rather than padded."
+  - "This branch was rebased (not merged) onto origin/main after PR #6722 (the addressed-
+    broadcast work this branch builds on) squash-merged as 1493ca1a1f — the rebase was clean
+    (zero conflicts, exactly one commit ahead of origin/main afterward), but the FULL suite rerun
+    below is this session's own verification that the rebased head still behaves correctly, not
+    an assumption carried over from before the rebase."
+  - "The rate cap's 'last hour' window is wall-clock mtime on the broadcast file, not a logical
+    clock — a sender whose system clock is skewed, or a file whose mtime is altered by an
+    unrelated filesystem operation (a backup/rsync that preserves mtime is fine; one that does
+    not would under- or over-count), is not specifically defended against. Same trust boundary
+    the existing TTL-expiry mechanism already relies on."
+  - "The 368/416 (88%) figure and the 185-a-day peak are both measured on M5's mailbox only,
+    2026-09-18 — Pro's mailbox was not separately sampled for this pack; the fix applies
+    uniformly to both hosts' shared fleet_mail.sh, but the specific baseline number is
+    single-host."
+instruction_to_the_grader: |
+  This is a Gear-2 mechanical-plus-behavioral change (a required flag, a sanitization rule reused
+  verbatim from the read side, and a rate cap) with no independent review round in this pack —
+  the productive attack surface: (1) is the --from sanitization on the WRITE side (fleet_mail.sh)
+  actually the same charset mailbox_inject.py's SENDER_UNSAFE_RE enforces on READ, or could a
+  label survive write-side sanitization but still get mangled/rejected on read (a symmetry gap
+  between the two would silently corrupt sender identity); (2) does the rate-cap's front-matter
+  scan bound itself correctly (<=2048 bytes, <=10 lines, matching retract's own bounded-read
+  posture) or could a crafted oversized front matter defeat/slow the count; (3) is --urgent
+  actually a genuine per-invocation bypass (checked once, not persisted anywhere) or could it
+  leak state across sends; (4) do all four cron callers' --from labels actually reach the
+  argv/PY_SEND call in the right positional slot (sys.argv[7]/[8] for max_per_hour/urgent per the
+  diff) rather than silently defaulting to 0/false due to an off-by-one in the new positional
+  args the shell script now passes to PY_SEND.

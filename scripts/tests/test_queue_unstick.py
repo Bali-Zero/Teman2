@@ -32,6 +32,7 @@ def make_pr(
     head_sha: str = "a" * 40,
     base_ref: str = "main",
     queued: bool = False,
+    head_ref: str = "",
 ) -> dict:
     commit_ts = NOW - _dt.timedelta(minutes=minutes_since_commit)
     return {
@@ -41,6 +42,7 @@ def make_pr(
         "labels": labels or [],
         "last_commit_date": _iso(commit_ts),
         "head_sha": head_sha,
+        "head_ref": head_ref,
         "base_ref": base_ref,
         "queued": queued,
     }
@@ -1113,6 +1115,79 @@ def test_send_dirty_signal_production_argv_includes_ttl():
     cmd = calls[0]
     ttl_index = cmd.index("--ttl") + 1
     assert cmd[ttl_index] == str(qu.DIRTY_SIGNAL_TTL_HOURS)
+
+
+# ── derive_to_targets: pure, no network ──────────────────────────────────────
+
+
+def test_derive_to_targets_innocence_agent_branch_yields_host_and_lane():
+    assert qu.derive_to_targets("agent/air-m5/infra/mailbox-sender-discipline-20260918") == [
+        "host:air-m5", "lane:infra",
+    ]
+
+
+def test_derive_to_targets_lowercases_host_and_lane():
+    assert qu.derive_to_targets("agent/Nuzantara/WR2/some-task") == ["host:nuzantara", "lane:wr2"]
+
+
+def test_derive_to_targets_guilt_non_agent_branch_falls_back_to_all():
+    assert qu.derive_to_targets("main") == ["all"]
+    assert qu.derive_to_targets("some-random-branch") == ["all"]
+
+
+def test_derive_to_targets_guilt_empty_head_ref_falls_back_to_all():
+    assert qu.derive_to_targets("") == ["all"]
+    assert qu.derive_to_targets(None) == ["all"]
+
+
+def test_derive_to_targets_guilt_agent_branch_missing_lane_segment_falls_back_to_all():
+    """`agent/<host>` alone (no lane segment) does not carry enough to address a reader --
+    same fallback as a non-agent branch."""
+    assert qu.derive_to_targets("agent/air-m5") == ["all"]
+
+
+def test_send_dirty_signal_production_argv_carries_derived_to_and_from():
+    pr = make_pr(607, merge_state_status="DIRTY", head_sha="2" * 40,
+                 head_ref="agent/mini-pro2/ops/queue-fix")
+    original_run = qu._run
+    calls = []
+
+    def fake_run(cmd, timeout=30):
+        calls.append(cmd)
+        return 0, "delivered", ""
+
+    qu._run = fake_run
+    try:
+        ok, _ = qu.send_dirty_signal(pr, dry_run=False, files_desc="scripts/foo.py")
+    finally:
+        qu._run = original_run
+    assert ok is True
+    cmd = calls[0]
+    to_indices = [i for i, a in enumerate(cmd) if a == "--to"]
+    to_values = [cmd[i + 1] for i in to_indices]
+    assert to_values == ["host:mini-pro2", "lane:ops"]
+    from_index = cmd.index("--from") + 1
+    assert cmd[from_index] == "queue-unstick"
+
+
+def test_send_dirty_signal_production_argv_falls_back_to_all_with_no_head_ref():
+    pr = make_pr(608, merge_state_status="DIRTY", head_sha="3" * 40, head_ref="")
+    original_run = qu._run
+    calls = []
+
+    def fake_run(cmd, timeout=30):
+        calls.append(cmd)
+        return 0, "delivered", ""
+
+    qu._run = fake_run
+    try:
+        ok, _ = qu.send_dirty_signal(pr, dry_run=False, files_desc="scripts/foo.py")
+    finally:
+        qu._run = original_run
+    assert ok is True
+    cmd = calls[0]
+    to_index = cmd.index("--to") + 1
+    assert cmd[to_index] == "all"
 
 
 # ── main(): retraction wired end-to-end ──────────────────────────────────────

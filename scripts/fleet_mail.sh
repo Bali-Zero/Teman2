@@ -5,10 +5,15 @@
 # Usage:
 #   fleet_mail.sh <host> --list
 #   fleet_mail.sh <host> <session_id> [--key <k>] [--ttl <hours>] "<message text>"
-#   fleet_mail.sh <host> broadcast --to <target> [--to <target> ...] [--key <k>] [--ttl <hours>] "<message text>"
+#   fleet_mail.sh <host> broadcast --to <target> [--to <target> ...] --from <label> \
+#       [--key <k>] [--ttl <hours>] [--urgent] "<message text>"
 #   fleet_mail.sh <host> <session_id|broadcast> [flags] -   # message on stdin
 #   fleet_mail.sh <host> retract --key <k>
 #   <target> is host:<name> | lane:<name> | session:<id> | all
+#   --from <label> (or FLEET_MAIL_FROM=<label>) is REQUIRED for `broadcast` —
+#   direct mail keeps the old "fleet-watch" default. Label charset
+#   [A-Za-z0-9._:@-]{1,64}. A sender is capped at FLEET_MAIL_MAX_PER_HOUR
+#   (default 6) live broadcasts/hour; --urgent bypasses the cap for one send.
 #
 # retract (2026-09-02): sender-side cleanup — renames every LIVE broadcast
 # matching --key to `.retracted-<ts>` (same self-cleaning pattern
@@ -84,16 +89,32 @@ shift || die "missing <host>"
 MSG_KEY=""
 MSG_TTL_HOURS="48"
 TO_TARGETS=()
+FROM_ARG=""
+URGENT=0
 _rest=()
 while [ $# -gt 0 ]; do
     case "$1" in
         --key) MSG_KEY="${2:-}"; shift 2 || die "--key needs a value" ;;
         --ttl) MSG_TTL_HOURS="${2:-}"; shift 2 || die "--ttl needs a value" ;;
         --to) TO_TARGETS+=("${2:-}"); shift 2 || die "--to needs a value" ;;
+        --from) FROM_ARG="${2:-}"; shift 2 || die "--from needs a value" ;;
+        --urgent) URGENT=1; shift ;;
         *) _rest+=("$1"); shift ;;
     esac
 done
 set -- "${_rest[@]}"
+# IDENTITY + RATE CAP (2026-09-18, Zero's order): a plain `broadcast` with no
+# sender label used to write `from: <host>:fleet-watch` for EVERY anonymous
+# session on a machine (measured 2026-09-18: 368/416 live broadcasts on M5
+# carried exactly that label) -- indistinguishable senders, so nobody could
+# tell who to mute. `--from <label>` (or FLEET_MAIL_FROM env) is now REQUIRED
+# for `broadcast` (checked below, after the --to check); direct (session-dir)
+# mail is UNCHANGED and keeps the `fleet-watch` default. FLEET_MAIL_MAX_PER_HOUR
+# (default 6) caps how many LIVE broadcasts one label may have sent in the
+# last hour -- see PY_SEND below for the count + refusal (exit 3), overridable
+# per-send with --urgent.
+FLEET_MAIL_MAX_PER_HOUR="${FLEET_MAIL_MAX_PER_HOUR:-6}"
+[[ "$FLEET_MAIL_MAX_PER_HOUR" =~ ^[0-9]+$ ]] || die "invalid FLEET_MAIL_MAX_PER_HOUR '$FLEET_MAIL_MAX_PER_HOUR' (want integer)"
 
 # Resolve <host> to an ssh target that actually answers. The primary alias may
 # be mDNS-backed and unresolvable when the peer is off-LAN (see CORRECTION
@@ -242,6 +263,10 @@ if [ "$SESSION" = "broadcast" ] && [ ${#TO_TARGETS[@]} -eq 0 ]; then
     echo "fleet_mail.sh: broadcast requires --to <target> (host:<name>|lane:<name>|session:<id>|all) — a broadcast with no address reaches EVERY session on every machine" >&2
     exit 2
 fi
+if [ "$SESSION" = "broadcast" ] && [ -z "$FROM_ARG" ] && [ -z "${FLEET_MAIL_FROM:-}" ]; then
+    echo "fleet_mail.sh: broadcast requires --from <label> or FLEET_MAIL_FROM=<label> — every broadcast must say who is sending it" >&2
+    exit 2
+fi
 shift
 MSG_ARG="${1:-}"
 [ -n "$MSG_ARG" ] || die "missing <message> (or '-' for stdin)"
@@ -250,9 +275,16 @@ if [ "$MSG_ARG" = "-" ]; then
 else
     BODY="$MSG_ARG"
 fi
-# Sanitize FROM label to a safe charset before it is embedded in remote command text.
-RAW_FROM="$(hostname -s 2>/dev/null || echo unknown):${FLEET_MAIL_FROM:-fleet-watch}"
-FROM_LABEL="$(printf '%s' "$RAW_FROM" | tr -cd 'A-Za-z0-9:_.-')"
+# Sender label (2026-09-18): --from wins over FLEET_MAIL_FROM wins over the
+# old "fleet-watch" default (broadcast can never reach here with neither set
+# -- see the exit-2 check above). Sanitized to the SAME charset
+# infra/claude-hooks/mailbox_inject.py's SENDER_UNSAFE_RE enforces on read
+# ([^A-Za-z0-9._:@-]) and capped at its MAX_SENDER_LEN(64) -- stripped, never
+# rejected outright, matching the existing --key/--to sanitization posture.
+SENDER_LABEL="${FROM_ARG:-${FLEET_MAIL_FROM:-fleet-watch}}"
+SENDER_LABEL="$(printf '%s' "$SENDER_LABEL" | tr -cd 'A-Za-z0-9._:@-' | cut -c1-64)"
+RAW_FROM="$(hostname -s 2>/dev/null || echo unknown):${SENDER_LABEL}"
+FROM_LABEL="$(printf '%s' "$RAW_FROM" | tr -cd 'A-Za-z0-9:_.@-')"
 
 # Join repeatable --to values into ONE comma-separated `to:` front-matter
 # value; sanitized to the same safe charset as MSG_KEY/FROM_LABEL for the
@@ -288,12 +320,14 @@ FILENAME="${TS}-$(printf '%04x' $((RANDOM % 65536))).md"
 # never ran). Passing this program via `-c` (argv, not stdin) keeps stdin
 # free end-to-end for the message BODY, identically for local and remote.
 read -r -d '' PY_SEND <<'PYEOF' || true
-import os, sys
+import glob, os, sys, time
 root = os.environ.get("NUZ_MAILBOX_DIR") or os.path.expanduser("~/.nuzantara-mailbox")
 session, filename, from_label = sys.argv[1], sys.argv[2], sys.argv[3]
 msg_key = sys.argv[4] if len(sys.argv) > 4 else ""
 msg_expires = sys.argv[5] if len(sys.argv) > 5 else ""
 to_targets = sys.argv[6] if len(sys.argv) > 6 else ""
+max_per_hour = int(sys.argv[7]) if len(sys.argv) > 7 and sys.argv[7] else 0
+urgent = (sys.argv[8] if len(sys.argv) > 8 else "0") == "1"
 # Owner-only root is the whole security story (messages become assistant-
 # visible context) -- create it 0700, and re-tighten it if some earlier
 # run left it wider (os.makedirs' mode is not honored on every platform).
@@ -309,7 +343,51 @@ for d in (root, target):  # owner-only: the root dir IS the security boundary
         os.chmod(d, 0o700)
     except OSError:
         pass
+# Body is read BEFORE the rate-cap decision (never after) so a refused send
+# still drains stdin -- a piped-but-unread body risks SIGPIPE on the sender
+# side once this process exits, on local AND remote (the message is on the
+# wire either way).
 body = sys.stdin.buffer.read()
+# RATE CAP (2026-09-18): count LIVE broadcasts (bare *.md -- a retracted/
+# expired/superseded/muted/unaddressed/skipped file already carries a
+# suffix AFTER .md and so never matches this glob) from THIS label in the
+# last hour. Front matter only (<=2048 bytes), same bounded-read posture as
+# retract's own key scan above -- a message body is never read here.
+if session == "broadcast" and max_per_hour > 0 and not urgent:
+    cutoff = time.time() - 3600
+    count = 0
+    for path in glob.glob(os.path.join(target, "*.md")):
+        if os.path.islink(path):  # containment, same posture as retract
+            continue
+        try:
+            st = os.stat(path)
+        except OSError:
+            continue
+        if st.st_mtime < cutoff:
+            continue
+        try:
+            with open(path, "r", encoding="utf-8", errors="replace") as fh:
+                head = fh.read(2048)
+        except OSError:
+            continue
+        sender = ""
+        for line in head.split("\n", 10)[:10]:
+            if not line.strip() or ":" not in line:
+                break
+            k, _, v = line.partition(":")
+            if k.strip().lower() == "from":
+                sender = v.strip()
+                break
+        if sender == from_label:
+            count += 1
+    if count >= max_per_hour:
+        print(
+            "fleet_mail.sh: sender '" + from_label + "' already sent " + str(count) +
+            " broadcast(s) in the last hour (cap " + str(max_per_hour) +
+            "); refusing (use --urgent to override)",
+            file=sys.stderr,
+        )
+        sys.exit(3)
 tmp = os.path.join(root, ".tmp-" + filename + "." + str(os.getpid()))
 header = "from: " + from_label + "\n"
 if to_targets:
@@ -318,6 +396,8 @@ if msg_key:
     header += "key: " + msg_key + "\n"
 if msg_expires:
     header += "expires: " + msg_expires + "\n"
+if urgent:
+    header += "urgent: true\n"
 header += "\n"
 with open(tmp, "wb") as fh:
     fh.write(header.encode())
@@ -326,8 +406,8 @@ os.replace(tmp, os.path.join(target, filename))
 PYEOF
 
 if [ "$HOST" = "local" ]; then
-    printf '%s' "$BODY" | python3 -c "$PY_SEND" "$SESSION" "$FILENAME" "$FROM_LABEL" "$MSG_KEY" "$MSG_EXPIRES" "$TO_JOINED" \
-        || die "local delivery to $SESSION failed"
+    printf '%s' "$BODY" | python3 -c "$PY_SEND" "$SESSION" "$FILENAME" "$FROM_LABEL" "$MSG_KEY" "$MSG_EXPIRES" "$TO_JOINED" "$FLEET_MAIL_MAX_PER_HOUR" "$URGENT"
+    SEND_RC=$?
 else
     # Remote command is built as ONE argv string for ssh (never `-s`/stdin),
     # so the remote shell's stdin stays untouched and forwards straight to
@@ -337,10 +417,18 @@ else
     # them is safe — none can contain a single quote).
     B64="$(printf '%s' "$PY_SEND" | base64 | tr -d '\n')"
     POP_AND_EXEC='import base64,sys;b=sys.argv.pop(1);exec(base64.b64decode(b).decode())'
-    REMOTE_CMD="python3 -c \"$POP_AND_EXEC\" '$B64' '$SESSION' '$FILENAME' '$FROM_LABEL' '$MSG_KEY' '$MSG_EXPIRES' '$TO_JOINED'"
+    REMOTE_CMD="python3 -c \"$POP_AND_EXEC\" '$B64' '$SESSION' '$FILENAME' '$FROM_LABEL' '$MSG_KEY' '$MSG_EXPIRES' '$TO_JOINED' '$FLEET_MAIL_MAX_PER_HOUR' '$URGENT'"
     SSH_HOST="$(ssh_target "$HOST")" \
         || die "no reachable ssh route for '$HOST' (tried '$HOST' and '$(ssh_fallback_for "$HOST")')"
-    printf '%s' "$BODY" | ssh -o BatchMode=yes -o ConnectTimeout=8 "$SSH_HOST" "$REMOTE_CMD" \
-        || die "ssh delivery to $HOST:$SESSION (via $SSH_HOST) failed"
+    printf '%s' "$BODY" | ssh -o BatchMode=yes -o ConnectTimeout=8 "$SSH_HOST" "$REMOTE_CMD"
+    SEND_RC=$?
+fi
+# Exit 3 (rate-cap refusal, see PY_SEND) is distinct from a plain delivery
+# failure and must propagate as-is, not collapse into die()'s exit 1 -- a
+# caller checks specifically for 3 to distinguish "capped" from "broken".
+if [ "$SEND_RC" -eq 3 ]; then
+    exit 3
+elif [ "$SEND_RC" -ne 0 ]; then
+    die "delivery to $HOST:$SESSION failed (rc=$SEND_RC)${SSH_HOST:+ via $SSH_HOST}"
 fi
 echo "delivered to $HOST:$SESSION ($FILENAME)${SSH_HOST:+ via $SSH_HOST}"

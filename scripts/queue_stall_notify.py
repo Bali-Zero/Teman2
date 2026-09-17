@@ -260,6 +260,7 @@ def plan_notifications(rows: list[dict[str, Any]], *, cap: int) -> dict[str, lis
             "key": f"queue_stall:{number}:{cause}",
             "cannot_verify": cannot_verify,
             "detail": row.get("detail", ""),
+            "head_ref": row.get("head_ref", ""),
         }
         if len(to_notify) < cap:
             to_notify.append(item)
@@ -416,6 +417,19 @@ def _format_message(item: dict[str, Any]) -> str:
 # ---------------------------------------------------------------------------
 
 
+def derive_to_targets(head_ref: str) -> list[str]:
+    """Pure, no network — duplicated from scripts/queue_unstick.py::derive_to_targets
+    (STANDALONE-by-design, the same convention this module's own docstring already uses for
+    REAL_STALL_CAUSES/CANNOT_VERIFY: no shared-import coupling between the two cron senders).
+    A PR's own head branch (`agent/<host>/<lane>/...`) addresses the session that owns it via
+    `host:<host>` + `lane:<lane>`; anything else (no head branch, or one without a host segment)
+    falls back to `all`."""
+    parts = (head_ref or "").split("/")
+    if len(parts) >= 3 and parts[0] == "agent" and parts[1] and parts[2]:
+        return [f"host:{parts[1].lower()}", f"lane:{parts[2].lower()}"]
+    return ["all"]
+
+
 def send_notification(
     item: dict[str, Any], *, dry_run: bool, repo_root: Path = REPO_ROOT
 ) -> tuple[bool, str]:
@@ -425,23 +439,24 @@ def send_notification(
     (ok, detail_line_for_the_log)."""
     msg = _format_message(item)
     number = item["number"]
+    to_targets = derive_to_targets(item.get("head_ref", ""))
+    to_desc = " ".join(f"--to {t}" for t in to_targets)
 
     if dry_run:
         return True, (
             f"[dry-run] would signal PR #{number} ({item['cause']}) via fleet_mail.sh "
-            f"{FLEET_MAIL_HOST} broadcast --to all --key {item['key']} --ttl {TTL_HOURS}: {msg}"
+            f"{FLEET_MAIL_HOST} broadcast {to_desc} --from queue-stall --key {item['key']} "
+            f"--ttl {TTL_HOURS}: {msg}"
         )
 
     fleet_mail = repo_root / "scripts" / "fleet_mail.sh"
     if not fleet_mail.is_file():
         return False, f"signal FAILED PR #{number}: fleet_mail.sh not found at {fleet_mail}"
-    rc, out, err = _run(
-        [
-            "bash", str(fleet_mail), FLEET_MAIL_HOST, "broadcast", "--to", "all",
-            "--key", item["key"], "--ttl", str(TTL_HOURS), msg,
-        ],
-        timeout=30,
-    )
+    cmd = ["bash", str(fleet_mail), FLEET_MAIL_HOST, "broadcast"]
+    for target in to_targets:
+        cmd += ["--to", target]
+    cmd += ["--from", "queue-stall", "--key", item["key"], "--ttl", str(TTL_HOURS), msg]
+    rc, out, err = _run(cmd, timeout=30)
     if rc != 0:
         return False, f"signal FAILED PR #{number} rc={rc}: {err.strip()[:300]}"
     return True, f"signal OK PR #{number}: {out.strip() or 'sent'}"

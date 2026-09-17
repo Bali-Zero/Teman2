@@ -515,12 +515,15 @@ MAIL_HOST = os.environ.get("CHANGE_MAP_COVERAGE_MAIL_HOST", "pro")
 
 def send_mail(message: str, *, dry_run: bool, repo_root: Path = REPO_ROOT) -> tuple[bool, str]:
     if dry_run:
-        return True, f"[dry-run] would fleet-mail {MAIL_HOST} broadcast --to all --key {MAIL_KEY}: {message}"
+        return True, (
+            f"[dry-run] would fleet-mail {MAIL_HOST} broadcast --to lane:ci --from change-map "
+            f"--key {MAIL_KEY}: {message}"
+        )
     fleet_mail = repo_root / "scripts" / "fleet_mail.sh"
     if not fleet_mail.is_file():
         return False, f"fleet_mail.sh not found at {fleet_mail}"
     proc = subprocess.run(
-        ["bash", str(fleet_mail), MAIL_HOST, "broadcast", "--to", "all",
+        ["bash", str(fleet_mail), MAIL_HOST, "broadcast", "--to", "lane:ci", "--from", "change-map",
          "--key", MAIL_KEY, "--ttl", str(MAIL_TTL_HOURS), message],
         capture_output=True, text=True, timeout=30,
     )

@@ -19,9 +19,13 @@ SCRIPT = pathlib.Path(__file__).resolve().parents[1] / "fleet_mail.sh"
 
 
 def _send(mailbox_dir: pathlib.Path, *extra_args: str, session: str = "broadcast") -> subprocess.CompletedProcess:
+    # --from (2026-09-18): broadcast now also requires a sender label; this file's own
+    # concern is --to, so every call here carries a fixed label unless the test itself is
+    # deliberately probing the --to contract on its own (missing --to still dies exit 2
+    # before the --from check ever runs — see fleet_mail.sh's ordering).
     env = dict(os.environ, NUZ_MAILBOX_DIR=str(mailbox_dir))
     return subprocess.run(
-        ["bash", str(SCRIPT), "local", session, *extra_args, "hello"],
+        ["bash", str(SCRIPT), "local", session, *extra_args, "--from", "test-sender", "hello"],
         capture_output=True, text=True, timeout=30, env=env,
     )
 
