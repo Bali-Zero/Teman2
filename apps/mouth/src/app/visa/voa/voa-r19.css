@@ -1,7 +1,7 @@
 /**
  * GARUDA VOA — R19 skin, scoped to this funnel only.
  *
- * Reuses the [data-theme="operative-light"][data-product="my"] tokens
+ * Reuses the [data-theme="operative-dark"][data-product="my"] tokens
  * declared in app/globals.css — no new colour is introduced here. That
  * block never declares the funnel-shell vocabulary AppFrame/AppWizard read
  * (--surface-base, --text-primary, --color-text-muted,
@@ -10,13 +10,27 @@
  * fill + paper text, never a copper fill (R19 law: copper is a person,
  * not an action).
  *
- * Selector bumped to [data-theme="operative-light"][data-garuda-voa="r19"]
- * (0-2-0) to unambiguously beat packages/core/tokens/themes/operative-light.css's
- * plain [data-theme="operative-light"] (0-1-0), which redeclares
+ * --text-on-accent is bound to --bz-base, not --bz-on-warm. --bz-on-warm's
+ * job elsewhere is "text on a warm/copper fill", which is always paper —
+ * correct in the light block, but in the dark block it resolves to the
+ * SAME value as --tx-pure. Since --accent-funnel here is tx-pure (not a
+ * copper fill), that identity made the dark-ground CTA paper-on-paper —
+ * invisible text, measured empirically against the running dev server
+ * before this fix (the computed foreground and background of the button
+ * were byte-identical). --bz-base is tx-pure's actual opposite by
+ * construction in BOTH themes (the ground a theme's ink text sits on), so
+ * it renders the SAME ink-fill/paper-text contrast in light (near-paper
+ * text, indistinguishable from the old --bz-on-warm there) and the correct
+ * inverted paper-fill/ink-text contrast in dark (ink text on a paper
+ * fill).
+ *
+ * Selector bumped to [data-theme="operative-dark"][data-garuda-voa="r19"]
+ * (0-2-0) to unambiguously beat packages/core/tokens/themes/operative-dark.css's
+ * plain [data-theme="operative-dark"] (0-1-0), which redeclares
  * --surface-base and --text-primary on the SAME element and would
  * otherwise tie on stylesheet import order.
  */
-[data-theme="operative-light"][data-garuda-voa="r19"] {
+[data-theme="operative-dark"][data-garuda-voa="r19"] {
   min-height: 100vh;
   background: var(--bz-base);
   color: var(--tx-pure);
@@ -27,7 +41,7 @@
   --color-text-muted: var(--tx-secondary);
   --color-border-subtle: var(--bz-border);
   --accent-funnel: var(--tx-pure);
-  --text-on-accent: var(--bz-on-warm);
+  --text-on-accent: var(--bz-base);
 }
 
 /*
@@ -40,10 +54,10 @@
  * which an ancestor's inherited value can never out-cascade. Redeclared
  * here at 0-3-0 so the ink fill actually reaches it.
  */
-[data-theme="operative-light"][data-garuda-voa="r19"] [data-funnel] {
+[data-theme="operative-dark"][data-garuda-voa="r19"] [data-funnel] {
   --accent-funnel: var(--tx-pure);
   --accent-funnel-text: var(--tx-pure);
-  --text-on-accent: var(--bz-on-warm);
+  --text-on-accent: var(--bz-base);
 }
 
 /*
@@ -64,7 +78,7 @@
  * "STEP 1 OF 4" strip, so the two rules never stack into the collision the
  * first pass of this lane produced.
  */
-[data-theme="operative-light"][data-garuda-voa="r19"] .voa-hero-wa {
+[data-theme="operative-dark"][data-garuda-voa="r19"] .voa-hero-wa {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -75,7 +89,7 @@
   border-bottom: 1px solid var(--bz-border);
 }
 
-[data-theme="operative-light"][data-garuda-voa="r19"] .voa-hero-wa__line {
+[data-theme="operative-dark"][data-garuda-voa="r19"] .voa-hero-wa__line {
   margin: 0;
   flex: 1 1 14rem;
   font-family: var(--font-sans);
@@ -84,7 +98,7 @@
   color: var(--tx-secondary);
 }
 
-[data-theme="operative-light"][data-garuda-voa="r19"] .voa-hero-wa__cta {
+[data-theme="operative-dark"][data-garuda-voa="r19"] .voa-hero-wa__cta {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -107,8 +121,7 @@
 }
 
 /* The dot is the only ornament: a presence light, not a logo. */
-[data-theme="operative-light"][data-garuda-voa="r19"]
-  .voa-hero-wa__cta::before {
+[data-theme="operative-dark"][data-garuda-voa="r19"] .voa-hero-wa__cta::before {
   content: "";
   width: 0.5rem;
   height: 0.5rem;
@@ -116,23 +129,23 @@
   background: var(--bz-green);
 }
 
-[data-theme="operative-light"][data-garuda-voa="r19"] .voa-hero-wa__cta:hover,
-[data-theme="operative-light"][data-garuda-voa="r19"]
+[data-theme="operative-dark"][data-garuda-voa="r19"] .voa-hero-wa__cta:hover,
+[data-theme="operative-dark"][data-garuda-voa="r19"]
   .voa-hero-wa__cta:focus-visible {
   background: var(--bz-green);
   color: var(--bz-elevated);
 }
 
-[data-theme="operative-light"][data-garuda-voa="r19"]
+[data-theme="operative-dark"][data-garuda-voa="r19"]
   .voa-hero-wa__cta:hover::before,
-[data-theme="operative-light"][data-garuda-voa="r19"]
+[data-theme="operative-dark"][data-garuda-voa="r19"]
   .voa-hero-wa__cta:focus-visible::before {
   background: var(--bz-elevated);
 }
 
 /* Phone: the pill takes the full row rather than crowding the copy. */
 @media (max-width: 30rem) {
-  [data-theme="operative-light"][data-garuda-voa="r19"] .voa-hero-wa__cta {
+  [data-theme="operative-dark"][data-garuda-voa="r19"] .voa-hero-wa__cta {
     width: 100%;
   }
 }
