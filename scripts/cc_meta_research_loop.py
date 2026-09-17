@@ -579,16 +579,22 @@ def normalize_proposals(seat: str, payload: Optional[dict]) -> list[dict]:
         seen_ids.add(full_id)
         out.append(
             {
+                # structural keys — NEVER scrubbed, see this function's docstring
                 "id": full_id,
                 "author": seat,
-                "claim": str(p.get("claim"))[:400],
                 "surface": str(p.get("surface", "other"))[:40],
-                "why": str(p.get("why", ""))[:600],
-                "expected_gain": str(p.get("expected_gain", ""))[:200],
-                "verification_command": str(p.get("verification_command", ""))[:400],
-                "risk": str(p.get("risk", ""))[:300],
                 "confidence": str(p.get("confidence", "low"))[:10],
-                "source": str(p.get("source", ""))[:300],
+                # free text the AUTHOR wrote — scrubbed (fixed 2026-09-17, gate on
+                # #6709 item 2: this side of scrub was skipped while the grader's
+                # reason/better_verification were already scrubbed, an asymmetry
+                # that let an author's free text carry an unredacted token-shaped
+                # value straight into proposals.json and REPORT.md).
+                "claim": ap.scrub(str(p.get("claim"))[:400]),
+                "why": ap.scrub(str(p.get("why", ""))[:600]),
+                "expected_gain": ap.scrub(str(p.get("expected_gain", ""))[:200]),
+                "verification_command": ap.scrub(str(p.get("verification_command", ""))[:400]),
+                "risk": ap.scrub(str(p.get("risk", ""))[:300]),
+                "source": ap.scrub(str(p.get("source", ""))[:300]),
             }
         )
     if dropped:

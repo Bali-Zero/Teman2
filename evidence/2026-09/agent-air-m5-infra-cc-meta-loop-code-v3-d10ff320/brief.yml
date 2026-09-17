@@ -31,8 +31,12 @@ appetite:
   adversarial_rounds: 1
 
 successor_of: >-
-  #6705 — REWORK-BUILD by the final gate on ba0ee932; the six findings and their cures are
-  listed under `rework:` below.
+  #6709 — REWORK-BUILD by the final gate on b62d2d75 (fresh Opus session, 30 turns): all seven
+  of #6709's own rework items reproduced clean, but the gate found four NEW reds in the fix
+  code itself (a fix-of-a-fix, depth 1 — the last one this contract allows). #6709 was itself
+  the successor to #6705 — REWORK-BUILD by the final gate on ba0ee932. The original six findings
+  (#6705), item 7 (#6706's gate), and these four new items (#6709's gate) are all listed under
+  `rework:` below, in the order they were found.
 
 rework:
   - finding: >-
@@ -170,6 +174,107 @@ rework:
       'claude:mailbox-riding-every-tool-callx']` — two distinct ids, `PASS`. Separately verified a
       grader-only seat (never proposed, only appears via `v["grader"]`) is now printed "yes" in
       the reachability table, not "unreachable".
+  - finding: >-
+      (item 9, from the gate on #6709, item 1 of that gate's four) `cc_context_cost_report.py`
+      keyed `per_session` by `f"{kind[0]}:{jf.stem[:8]}"`. A main session's stem IS a UUID, so
+      8 hex chars are unique enough — but a SUBAGENT sidecar is named
+      `agent-<name>-<hex>.jsonl`, and every one of them starts with the literal `agent-`, so
+      `stem[:8]` collapsed 2,713 distinct subagent files to 37 keys. `per_session[sess_key] =
+      sess` is last-write-wins, so `--json`'s `per_session` showed only 28 subagent entries /
+      1,419 turns against 36,858 subagent turns actually walked in `per_day`, and
+      `--top-sessions` never surfaced a single subagent row.
+    cure: >-
+      New `_session_key()`: mains keep `f"m:{jf.stem[:8]}"` (still unique — the file count on
+      this machine has never collided a UUID's first 8 hex chars); subagents get
+      `f"s:{session_stem}/{jf.stem}"` where `session_stem` is the parent session directory's
+      name (for a human to recognise which session dispatched it) and the FULL subagent stem
+      (already unique — it carries its own hex suffix) disambiguates. Added a self-check: after
+      the walk, `sum(per_session turns) == sum(per_day turns)` — both are built from the exact
+      same per-record loop in `scan()`, so a mismatch can ONLY mean a `per_session` key
+      collision. If they disagree, the script prints the mismatch and refuses to print the
+      day/session tables (exit 1) instead of showing a table that silently dropped rows.
+    proof: python3 scripts/cc_context_cost_report.py --days 4
+    observed: >-
+      "per_session/per_day turns reconcile: 72,373 == 72,373"; `--top-sessions 5` now lists
+      `s:e36b5d9b/agent-ak1-dux-38e362f69da00310  subagent  turns 1336  context 324,706,030` and
+      `s:c7002f39/agent-a20d4cc0d3a0a61d2  subagent  turns 1063  context 262,886,716` — two
+      subagent rows in the top 5, where none ever appeared before.
+  - finding: >-
+      (item 10, from the #6709 gate) Scrub asymmetry: an AUTHOR's free-text proposal fields
+      (`claim`/`why`/`expected_gain`/`verification_command`/`risk`/`source`) reached
+      `proposals.json` and REPORT.md completely unscrubbed, while a GRADER's
+      `reason`/`better_verification` were already scrubbed (item 7's fix) — an author could leak
+      a token-shaped value the item-7 fix never touched.
+    cure: >-
+      `normalize_proposals()` now applies `ap.scrub()` to every author free-text field
+      (`claim`, `why`, `expected_gain`, `verification_command`, `risk`, `source`) — never to the
+      structural `id`/`author`/`surface`/`confidence` keys, matching item 7's own rule.
+    proof: >-
+      python3 - <<'PY'
+      import sys, json
+      sys.path.insert(0, "scripts")
+      import arsenal_probe as ap, cc_meta_research_loop as loop
+      pid = "guardrails-fail-closed-branchx"
+      fake_token = "sk-abcdefghijklmnopqrstuvwx1234567890"
+      assert ap.scrub(fake_token) == "<REDACTED>"
+      raw = json.dumps({"proposals": [{"id": pid, "claim": "claim text", "surface": "hooks",
+          "why": f"because {fake_token} leaked in a log", "expected_gain": "reliability",
+          "verification_command": "", "risk": "", "confidence": "high", "source": "reasoning"}]})
+      p = loop.normalize_proposals("claude", loop.extract_json(raw))[0]
+      assert p["id"] == f"claude:{pid}"
+      assert "<REDACTED>" in p["why"] and fake_token not in p["why"]
+      print("id:", p["id"]); print("why:", p["why"]); print("PASS")
+      PY
+    observed: >-
+      2026-09-17: `id: claude:guardrails-fail-closed-branchx` (survives intact — a structural
+      key), `why: because <REDACTED> leaked in a log` (the fake token is gone), `PASS`.
+  - finding: >-
+      (item 11, from the #6709 gate) `_iter_transcript_files()` was annotated
+      `Iterator[tuple[Path, str]]` but its body always `yield`ed a 3-tuple `(jf, kind,
+      st.st_mtime)` — the annotation lied about the function's own return shape.
+    cure: Fixed the annotation to `Iterator[tuple[Path, str, float]]`.
+    proof: python3 -c "import ast; ast.parse(open('scripts/cc_context_cost_report.py').read())"
+    observed: "no syntax/type-annotation drift; the annotation now matches every yield site (there is exactly one)."
+  - finding: >-
+      (item 12, from the #6709 gate) A timezone-NAIVE record `timestamp` (no `Z`/offset) would
+      raise `TypeError: can't compare offset-naive and offset-aware datetimes` at the
+      `rec_dt < cutoff` comparison, since `cutoff` is always UTC-aware — crashing the whole
+      report on one odd record instead of degrading gracefully like a missing timestamp already
+      did.
+    cure: >-
+      After `datetime.fromisoformat()` parses successfully, if `rec_dt.tzinfo is None` the
+      record is assumed UTC (every timestamp sampled on this machine so far has carried a
+      `Z`/UTC offset; a naive one is presumed the same rather than guessed into local time) and
+      counted separately from the existing `fallback_mtime_records` counter. The header prints
+      `naive_timestamp_records` when non-zero, same shape as the existing fallback note.
+    proof: >-
+      python3 - <<'PY'
+      from datetime import datetime, timezone
+      def parse_like_scan(ts_raw, file_dt, cutoff):
+          rec_dt = None
+          naive = fallback = 0
+          if ts_raw:
+              try:
+                  rec_dt = datetime.fromisoformat(str(ts_raw).replace("Z", "+00:00"))
+              except ValueError:
+                  rec_dt = None
+              if rec_dt is not None and rec_dt.tzinfo is None:
+                  rec_dt = rec_dt.replace(tzinfo=timezone.utc); naive += 1
+          if rec_dt is None:
+              rec_dt = file_dt; fallback += 1
+          return rec_dt, naive, fallback
+      cutoff = datetime(2026, 9, 1, tzinfo=timezone.utc)
+      file_dt = datetime(2026, 9, 17, tzinfo=timezone.utc)
+      r = parse_like_scan("2026-09-15T04:44:55.548", file_dt, cutoff)  # no Z, no offset
+      assert r[0] < datetime(2026, 9, 20, tzinfo=timezone.utc)  # comparison that used to raise
+      assert r[1] == 1 and r[2] == 0
+      print(r); print("PASS")
+      PY
+    observed: >-
+      2026-09-17: naive timestamp parsed to a UTC-aware datetime, the cutoff comparison that
+      used to raise `TypeError` succeeded, `naive_timestamp_records` incremented to 1, `PASS`.
+      0 naive records observed in the live corpus this run (no `naive_timestamp_records` note
+      printed by `--days 4` above), consistent with the earlier 0/65,880 sample.
 
 acceptance:
   A1: >-
@@ -177,25 +282,30 @@ acceptance:
     probe: python3 -m py_compile scripts/cc_meta_research_loop.py scripts/cc_context_cost_report.py
       && python3 scripts/cc_meta_research_loop.py --help >/dev/null
       && python3 scripts/cc_context_cost_report.py --help >/dev/null
-    observed: "2026-09-17 14:00 WITA, this worktree: py_compile OK, both --help exit 0"
+    observed: "2026-09-17 14:59 WITA, this worktree (v3): py_compile OK, both --help exit 0"
   A2: >-
     The cost report produces a per-day table from the transcripts on this machine with no
     model call (positive control: the table is non-empty for a day with known sessions), and —
-    post-rework — separates main-session from subagent turns and dedups symlinked project dirs.
+    post-rework — separates main-session from subagent turns, dedups symlinked project dirs,
+    and self-reconciles per_session against per_day before printing anything.
     probe: python3 scripts/cc_context_cost_report.py --days 4
     observed: >-
-      2026-09-17 14:00 WITA, host Air-M5: "files: 4897 listed by glob, 2979 distinct after dedup
-      by inode (1918 were the same physical file under a symlinked project dir)"; TOTAL main
-      34,731 turns / 6,952,661,296 cache-read tokens, TOTAL subagent 36,444 turns /
-      5,599,311,741 cache-read tokens; combined 71,175 turns, context tokens read
-      12,913,195,862. This replaces the pre-rework figure ("47,493 turns, 10.35 B") which
-      double-counted the symlinked project dir, windowed by file mtime instead of record
-      timestamp, and never saw subagent transcripts at all.
+      2026-09-17 14:59 WITA, host Air-M5: "files: 4935 listed by glob, 3004 distinct after dedup
+      by inode (1931 were the same physical file under a symlinked project dir)";
+      "per_session/per_day turns reconcile: 72,429 == 72,429"; TOTAL main 35,399 turns /
+      7,028,834,293 cache-read tokens, TOTAL subagent 37,030 turns / 5,681,682,406 cache-read
+      tokens; combined 72,429 turns, context tokens read 13,076,681,333. `--top-sessions 5` now
+      lists two subagent rows (`s:e36b5d9b/agent-ak1-dux-38e362f69da00310` turns 1336,
+      `s:c7002f39/agent-a20d4cc0d3a0a61d2` turns 1063) where none ever appeared before item 9's
+      fix. This is the number that replaces the original pre-rework figure ("47,493 turns,
+      10.35 B") — it kept climbing across each rework round because this is a live, growing
+      corpus (concurrent sessions writing while this report runs), not a static fixture; each
+      round's `observed:` line is what THAT round measured, not a moving target it failed to hit.
   A3: >-
     The loop plans without calling any seat: --dry-run writes inventory.json and prints the
     plan (seats, rounds, calls per round).
     probe: python3 scripts/cc_meta_research_loop.py --dry-run --out <scratch>
-    observed: "2026-09-17 14:00 WITA: rounds 2, seat_calls_per_round 12, inventory_bytes 6428, inventory.json written"
+    observed: "2026-09-17 14:59 WITA: rounds 2, seat_calls_per_round 12, inventory_bytes 6428, inventory.json written"
   A4: >-
     Neither script reaches a Claude model outside the `claude` CLI: no `anthropic` import, no
     ANTHROPIC_API_KEY; the repo lints on headless invocations (model pin, budget) stay green
@@ -228,14 +338,9 @@ acceptance:
       print("OK: 0 anthropic imports (AST-verified), 0 code-line ANTHROPIC_API_KEY refs outside the module docstring")
       PY
     observed: >-
-      2026-09-17, this worktree: `grep -nE "import anthropic|ANTHROPIC_API_KEY"` (the original
-      probe) matched line 23 of cc_meta_research_loop.py — PROSE inside the module docstring
-      ("no anthropic SDK, no ANTHROPIC_API_KEY") — so the probe would have failed a clean file
-      and could never discriminate a real violation from a sentence describing the ban. Rewrote
-      it to parse the AST for actual `import anthropic`/`from anthropic import ...` nodes and to
-      strip the module docstring before grepping code lines for `ANTHROPIC_API_KEY`. Rerun:
-      "OK: 0 anthropic imports (AST-verified), 0 code-line ANTHROPIC_API_KEY refs outside the
-      module docstring, in both files".
+      2026-09-17 14:59 WITA, this worktree (v3): "OK: 0 anthropic imports (AST-verified), 0
+      code-line ANTHROPIC_API_KEY refs outside the module docstring" — reconfirmed unchanged
+      after items 9-12 (neither file touched an import statement this round).
 
 out_of_scope: >-
   The research outputs (REPORTs, proposals, verdicts, BACKLOG, GAPS) — sibling docs PR. The
@@ -246,6 +351,8 @@ bites: >-
   Consumer: `python3 scripts/cc_context_cost_report.py --days 4` run by the next Opus session
   comparing M5/Pro/Mini, and the O1 row of research/agent-craft/cc-meta-loop/BACKLOG.md that
   cites its number. Observation: the corrected table in A2 above — deduped by inode, windowed
-  by record timestamp, main and subagent turns both visible (34,731 + 36,444 = 71,175), in
-  place of the pre-rework "47,493 turns, 10.35 B" figure that double-counted a symlinked
-  project directory and never saw a subagent transcript.
+  by record timestamp, main and subagent turns both visible AND now keyed without collision
+  (72,429 = 35,399 main + 37,030 subagent, self-reconciling), in place of the pre-rework
+  "47,493 turns, 10.35 B" figure that double-counted a symlinked project directory, never saw a
+  subagent transcript, and — even after the first rework round fixed those two — was still
+  silently dropping subagent rows from `per_session`/`--top-sessions` behind a passing table.

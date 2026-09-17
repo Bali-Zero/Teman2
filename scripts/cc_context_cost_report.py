@@ -45,6 +45,7 @@ from __future__ import annotations
 import argparse
 import json
 import socket
+import sys
 from collections import defaultdict
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -59,12 +60,14 @@ TRANSCRIPT_GLOBS = (
 )
 
 
-def _iter_transcript_files() -> Iterator[tuple[Path, str]]:
+def _iter_transcript_files() -> Iterator[tuple[Path, str, float]]:
     """Every transcript file exactly once, main sessions and subagent sidecars
     alike. `~/.claude/projects` holds symlinked project dirs pointing at the
     same physical tree (observed: `-Users-balizero-nuzantara` ->
     `-Users-balizero-Desktop-nuzantara`), so a plain glob lists the same file
-    under two names. Dedup on (st_dev, st_ino), not on path string."""
+    under two names. Dedup on (st_dev, st_ino), not on path string. Yields
+    (path, kind, mtime) — the annotation used to say `tuple[Path, str]` while
+    the body always yielded a 3-tuple; fixed 2026-09-17."""
     seen: set[tuple[int, int]] = set()
     for pattern, kind in TRANSCRIPT_GLOBS:
         for jf in PROJECTS.glob(pattern):
@@ -79,6 +82,28 @@ def _iter_transcript_files() -> Iterator[tuple[Path, str]]:
             yield jf, kind, st.st_mtime
 
 
+def _session_key(jf: Path, kind: str) -> str:
+    """A stable, COLLISION-FREE identity for one transcript file, used to key
+    `per_session`. Fixed 2026-09-17 (gate on #6709, item 1): the old
+    `f"{kind[0]}:{jf.stem[:8]}"` truncated every stem to 8 hex chars. A main
+    session's stem IS a UUID, so its first 8 chars are unique on this
+    machine's actual file count (no collision observed across ~1.4k mains).
+    A SUBAGENT sidecar is named `agent-<name>-<hex>.jsonl` — every one of
+    them starts with the literal `agent-`, so `stem[:8]` produced the same
+    8 chars ("agent-ah"-shaped) for wildly different files: 2,713 subagent
+    files collapsed to 37 distinct keys, `per_session[sess_key] = sess`
+    kept only the last-write-wins entry, and the top-sessions table never
+    surfaced a subagent (28 entries / 1,419 turns survived out of 36,858
+    subagent turns actually walked). A subagent's own full stem already
+    contains its unique hex suffix, so it alone is enough to disambiguate;
+    the parent session's uuid prefix is added only for a human to recognise
+    which session dispatched it."""
+    if kind == "main":
+        return f"m:{jf.stem[:8]}"
+    session_stem = jf.parent.parent.name[:8]
+    return f"s:{session_stem}/{jf.stem}"
+
+
 def scan(days: int) -> tuple[dict, dict, dict]:
     """Returns (per_day, per_session, meta). meta carries the file-count and
     fallback counters the report header needs to state what it filtered."""
@@ -89,6 +114,7 @@ def scan(days: int) -> tuple[dict, dict, dict]:
     per_session: dict[str, dict] = {}
     distinct = 0
     fallback_mtime_records = 0
+    naive_timestamp_records = 0
 
     for jf, kind, mtime in _iter_transcript_files():
         distinct += 1
@@ -97,7 +123,7 @@ def scan(days: int) -> tuple[dict, dict, dict]:
             # the file's LAST write is already outside the window, so no
             # record inside it can be inside the window either — cheap skip.
             continue
-        sess_key = f"{kind[0]}:{jf.stem[:8]}"
+        sess_key = _session_key(jf, kind)
         sess = {
             "kind": kind,
             "turns": 0,
@@ -122,13 +148,23 @@ def scan(days: int) -> tuple[dict, dict, dict]:
                     if not u:
                         continue
                     ts_raw = rec.get("timestamp")
+                    rec_dt = None
                     if ts_raw:
                         try:
                             rec_dt = datetime.fromisoformat(str(ts_raw).replace("Z", "+00:00"))
                         except ValueError:
-                            rec_dt = file_dt
-                            fallback_mtime_records += 1
-                    else:
+                            rec_dt = None
+                        if rec_dt is not None and rec_dt.tzinfo is None:
+                            # A tz-naive timestamp would raise TypeError at the
+                            # `rec_dt < cutoff` comparison below (cutoff is
+                            # UTC-aware). Every timestamp sampled on this
+                            # machine so far has carried a `Z`/UTC offset; a
+                            # naive one is presumed to already be UTC rather
+                            # than guessed into local time, and counted so the
+                            # header can say how many records this touched.
+                            rec_dt = rec_dt.replace(tzinfo=timezone.utc)
+                            naive_timestamp_records += 1
+                    if rec_dt is None:
                         rec_dt = file_dt
                         fallback_mtime_records += 1
                     if rec_dt < cutoff:
@@ -154,9 +190,15 @@ def scan(days: int) -> tuple[dict, dict, dict]:
             sess["models"] = sorted(sess["models"])
             per_session[sess_key] = sess
 
+    per_session_turns = sum(s["turns"] for s in per_session.values())
+    per_day_turns = sum(d["turns"] for kind_map in per_day.values() for d in kind_map.values())
     meta = {
         "distinct_files": distinct,
         "fallback_mtime_records": fallback_mtime_records,
+        "naive_timestamp_records": naive_timestamp_records,
+        "per_session_turns": per_session_turns,
+        "per_day_turns": per_day_turns,
+        "reconciles": per_session_turns == per_day_turns,
     }
     return per_day, per_session, meta
 
@@ -193,9 +235,13 @@ def main() -> int:
             "host": host, "days": args.days,
             "files_listed": listed, "files_distinct": distinct,
             "fallback_mtime_records": meta["fallback_mtime_records"],
+            "naive_timestamp_records": meta["naive_timestamp_records"],
+            "per_session_turns": meta["per_session_turns"],
+            "per_day_turns": meta["per_day_turns"],
+            "reconciles": meta["reconciles"],
             "per_day": per_day, "per_session": per_session,
         }, indent=1, default=list))
-        return 0
+        return 0 if meta["reconciles"] else 1
 
     print(f"host {host} · last {args.days} day(s), windowed by each record's OWN "
           f"`timestamp` field (not file mtime) · source: transcripts on disk")
@@ -204,6 +250,25 @@ def main() -> int:
     if meta["fallback_mtime_records"]:
         print(f"note: {meta['fallback_mtime_records']} record(s) had no usable timestamp "
               f"and fell back to file mtime for bucketing")
+    if meta["naive_timestamp_records"]:
+        print(f"note: {meta['naive_timestamp_records']} record(s) had a timezone-naive "
+              f"timestamp; assumed UTC")
+
+    # Self-check (gate #6709 finding 1): per_session and per_day are built from
+    # the SAME per-record loop in scan(), so their turn totals must match
+    # exactly unless two distinct files silently share a `per_session` key —
+    # which is precisely the bug this fixes (`_session_key()`'s docstring). A
+    # report that cannot reconcile itself must say so, not print a table that
+    # LOOKS complete while `per_session` quietly dropped rows.
+    if meta["reconciles"]:
+        print(f"per_session/per_day turns reconcile: {meta['per_session_turns']:,} == "
+              f"{meta['per_day_turns']:,}")
+    else:
+        print(f"per_session/per_day turns MISMATCH: {meta['per_session_turns']:,} != "
+              f"{meta['per_day_turns']:,}", file=sys.stderr)
+        print("error: per_session and per_day disagree — refusing to print a table "
+              "that cannot be trusted", file=sys.stderr)
+        return 1
     print()
 
     header = f"{'day':12} {'kind':9} {'turns':>7} {'input':>12} {'cache read':>13} {'cache write':>13} {'output':>10}"
