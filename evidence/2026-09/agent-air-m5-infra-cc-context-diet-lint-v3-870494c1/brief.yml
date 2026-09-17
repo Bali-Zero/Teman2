@@ -1,0 +1,109 @@
+task: >-
+  C1 of the cc-meta-loop backlog: every headless `claude -p`/`--print` invocation in the repo
+  carries a context-diet flag (`--restricted`, `--safe-mode`, `--setting-sources`) or an
+  explicit `# context-diet: exempt — <reason>` pragma. A new lint
+  (`scripts/lint/lint_claude_headless_context_diet.py`, reusing the anchor/window engine of
+  lint_claude_headless_limits.py, file-level grandfather list that only shrinks, --selftest,
+  monotone check vs origin/main) wired into the LOCAL pre-push consumer scripts/quickcheck.sh
+  (no CI workflow step — that edit is hot-zone and floors any PR at Gear 3, split out as
+  backlog row C1d); plus three cures in the same PR: agent_job.py session bootstrap (2
+  text-only calls → --restricted --strict-mcp-config), claude_vision.py (needs Read →
+  --safe-mode, proven live with a one-boolean json-schema against an on-disk PNG), and the
+  exempt pragma on the deliberate Canva-MCP exception. Also ships
+  scripts/bench/cc_headless_shape_bench.sh so the frozen token numbers in the lint docstring
+  and cure comments have a re-measure path instead of being trusted cold.
+lane: infra/cc-context-diet-lint
+machine: Air-M5
+date: 2026-09-17
+gear: 2
+gear_reason: >-
+  Deterministic floor 2, source `size`: churn ~830 (lint 545, test 187, bench 30, quickcheck
+  wiring 32, grandfather 26, cures ~20) — above SIZE_GEAR2_THRESHOLD (400), below 1828; no
+  hot-zone path (the .github/workflows/ edit was split out into backlog row C1d — this PR
+  touches only scripts/, infra/ and evidence/).
+successor_of: >-
+  "#6708 — REWORK-BUILD (fresh Opus gate session, 50 turns): (1) the immune-enforcement.yml
+  edit is a hot-zone path per scripts/evidence_pack_lint.py's HOTZONE_PATTERNS and floored the
+  PR at Gear 3 unacknowledged; (2) the Bites line named agent_job.py's 21 cron-job callers of
+  get_or_create_session() as the consumer, but that function has had NO live caller since
+  compliance_ops.py removed it 2026-04-30 — only a test calls it; (3) the frozen token numbers
+  (36,322 / 15,064 / 16,923) were measured once on M5 with fleet mail pending at Stop and
+  presented as fixed facts, with no way for a later reader to tell whether they still hold."
+rework:
+  - "Dropped the .github/workflows/immune-enforcement.yml step entirely (git checkout
+    origin/main -- that file) — reverted to origin/main byte-for-byte, confirmed via
+    `git diff origin/main -- .github/workflows/immune-enforcement.yml` (empty). Wired the
+    lint into scripts/quickcheck.sh instead: new function
+    run_context_diet_lint_if_touched(), same advisory/return-0 convention as its neighbors
+    (run_actionlint_if_touched, run_scripts_coupling_census_check), triggered when a changed
+    file matches ^(scripts|infra|apps|agent-library|skills)/.*\\.(py|sh)$, called right after
+    run_actionlint_if_touched. Proof: ran quickcheck.sh's context-diet function on this
+    worktree with a touched .py — see acceptance A5."
+  - "Bites line corrected to name the real consumers: scripts/quickcheck.sh (runs on every
+    push from a dev machine touching scripts/infra/apps/agent-library/skills .py or .sh) and
+    the lint's own --selftest. Dropped the false '21 cron jobs' claim — agent_job.py's
+    get_or_create_session() has no live caller today; the cure is still correct (a future
+    caller inherits the diet for free) but is not yet load-bearing in production."
+  - "Added scripts/bench/cc_headless_shape_bench.sh (5-shape bench: default, restricted,
+    restricted_strictmcp, setting_sources_empty, safe_mode) and repointed every frozen-number
+    reference (lint docstring, agent_job.py comment, claude_vision.py comment, this brief) to
+    say the numbers are environment-dependent and name the bench script as the re-measure
+    path, instead of stating them as settled fact."
+  - "Moved the evidence directory from the v2 slug to
+    evidence/2026-09/agent-air-m5-infra-cc-context-diet-lint-v3-870494c1/ via
+    scripts/ci/evidence_paths.py --ref agent/air-m5/infra/cc-context-diet-lint-v3."
+appetite:
+  wall_clock_hours: 1
+  adversarial_rounds: 1
+acceptance:
+  A1: >-
+    The lint proves its own guilt path, then reports the repo clean with the debt frozen.
+    probe: python3 scripts/lint/lint_claude_headless_context_diet.py --selftest && python3 scripts/lint/lint_claude_headless_context_diet.py
+    observed: "SELFTEST PASS; clean (3756 files scanned, 20 grandfathered, 0 new) — 2026-09-17, this worktree"
+  A2: >-
+    The unit tests (guilt + innocences incl. pragma above anchor and path-mention) pass.
+    probe: ~/nuzantara/.venv/bin/python3 -m pytest scripts/lint/test_lint_claude_headless_context_diet.py -q
+    observed: "10 passed in 0.09s"
+  A3: >-
+    The cured bootstrap shape still yields a session_id (what agent_job.py extracts).
+    probe: claude --print --restricted --strict-mcp-config --output-format=json --model haiku "Session init selftest" </dev/null | python3 -c "import json,sys; print(bool(json.load(sys.stdin)['session_id']))"
+  A4: >-
+    Declared blind spot, not a defect of this PR: an invocation built through an argument
+    array (`CLAUDE_ARGS=("--print")` … `"$CLAUDE_BIN" "${CLAUDE_ARGS[@]}"`, e.g.
+    infra/launchagents/wrappers/claude-cascade.sh) is outside the engine's window and is
+    neither flagged nor grandfathered — recorded as backlog row C1c.
+  A5: >-
+    The frozen numbers have a re-measure path, and it runs.
+    probe: bash scripts/bench/cc_headless_shape_bench.sh /tmp/cc-shape-bench-v3
+    observed: >-
+      "default                      rc=1   9s result=''         TOTAL_IN=36278
+      (in=10 cache_create=24418 cache_read=11850) turns=2 err=True |
+      restricted                   rc=0   6s result='PONG'     TOTAL_IN=17769
+      (in=10 cache_create=6144 cache_read=11615) turns=1 err=False |
+      restricted_strictmcp         rc=0   4s result='PONG'     TOTAL_IN=15198
+      (in=10 cache_create=3573 cache_read=11615) turns=1 err=False |
+      setting_sources_empty        rc=1   0s NOJSON '' (CLI now rejects an empty
+      --setting-sources value outright: 'Invalid setting source: \"\". Valid
+      options are: user, project, local') |
+      safe_mode                    rc=0   5s result='PONG'     TOTAL_IN=17057
+      (in=10 cache_create=4165 cache_read=12882) turns=1 err=False"
+      — 2026-09-17, this worktree/machine, fleet mail pending at Stop (same
+      environment shape the frozen docstring numbers were measured under).
+  A6: >-
+    scripts/quickcheck.sh's new run_context_diet_lint_if_touched() fires and reports OK on
+    this PR's own diff (a .py under scripts/ is touched).
+    probe: bash scripts/quickcheck.sh
+    observed: "see PR body / final report for the literal [context-diet-lint] line"
+out_of_scope: >-
+  Curing the 20 grandfathered files (each needs its job proven green on its own machine);
+  the cascade wrapper (C1c); the sandbox (S1); wiring the lint into CI (C1d, needs its own
+  Gear-3 PR because .github/workflows/ is a hot-zone path).
+bites: >-
+  Consumer 1: scripts/quickcheck.sh's run_context_diet_lint_if_touched(), which every dev
+  push on this machine runs when a changed file is a .py/.sh under scripts/, infra/, apps/,
+  agent-library/ or skills/. Observation: ran quickcheck's own pre-push hook on this branch
+  (a .py under scripts/ is touched) and the "[context-diet-lint]" line printed OK — see A6.
+  Consumer 2: the lint's own --selftest (14 guilt/innocence cases), proven passing (A1).
+  NOT claimed as a consumer: agent_job.py's get_or_create_session() cron callers — that
+  function currently has no live caller (removed from compliance_ops.py 2026-04-30); the cure
+  is correct but dormant until a caller returns.

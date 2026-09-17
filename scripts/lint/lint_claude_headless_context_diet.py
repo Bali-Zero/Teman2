@@ -3,25 +3,32 @@
 `--print` invocation must carry a context-diet flag, or an explicit
 exemption pragma.
 
-WHY (measured 2026-09-17 on M5, same PONG prompt, `--model haiku
---output-format json --max-turns 1` on every shape): the DEFAULT shape —
-no diet flag at all — cost 36,322 input tokens AND came back with
-`result: null` (`terminal_reason: max_turns`), because a HOME `Stop` hook
-injected fleet mail as `hookAdditionalContext`, forcing a second turn the
-budget didn't allow. `--restricted --strict-mcp-config` cost 15,064 tokens
-and answered. `--safe-mode` cost 16,923 tokens and answered (tools and
-permissions stay normal; every customization — hooks, plugins, project
-CLAUDE.md/skills, project MCP — turns off). `--setting-sources ""` cost
-24-25k (CLAUDE.md/skills/plugins/MCP still load — it only trims settings
-FILES, not the surrounding project context). `--bare` is NOT a usable
-substitute: its auth is strictly `ANTHROPIC_API_KEY` (OAuth is never read),
-i.e. the banned paid endpoint (CLAUDE.md root Sec.3) — this lint does not
-accept it as a cure. Recipe: a text-only seat wants
-`--restricted --strict-mcp-config`; a seat that needs Read/Write/Bash wants
-`--safe-mode`; a seat that needs a custom `--agent` or a project MCP (Canva,
-NotebookLM) records a per-site decision with the exemption pragma instead.
-Full measurement table: `research/agent-craft/cc-meta-loop/BACKLOG.md`
-section "C4 measured" on branch `agent/air-m5/infra/cc-meta-loop-v2`.
+WHY (measured 2026-09-17 on M5 with fleet mail pending at Stop; numbers are
+environment-dependent — hooks, pending fleet mail, plugins — re-measure
+with `scripts/bench/cc_headless_shape_bench.sh` rather than trusting this
+table cold): same PONG prompt, `--model haiku --output-format json
+--max-turns 1` on every shape. The DEFAULT shape — no diet flag at all —
+cost 36,322 input tokens AND came back with `result: null`
+(`terminal_reason: max_turns`), because a HOME `Stop` hook injected fleet
+mail as `hookAdditionalContext`, forcing a second turn the budget didn't
+allow (a re-measure with no fleet mail pending saw 16,908 tokens and a
+normal 1-turn answer instead — the flag choice below is unaffected either
+way). `--restricted --strict-mcp-config` cost 15,064 tokens and answered.
+`--safe-mode` cost 16,923 tokens and answered (tools and permissions stay
+normal; every customization — hooks, plugins, project CLAUDE.md/skills,
+project MCP — turns off). `--setting-sources ""` cost 24-25k
+(CLAUDE.md/skills/plugins/MCP still load — it only trims settings FILES,
+not the surrounding project context) or is rejected outright by newer CLI
+builds (`Invalid setting source: ""`) — re-measure before relying on it.
+`--bare` is NOT a usable substitute: its auth is strictly
+`ANTHROPIC_API_KEY` (OAuth is never read), i.e. the banned paid endpoint
+(CLAUDE.md root Sec.3) — this lint does not accept it as a cure. Recipe: a
+text-only seat wants `--restricted --strict-mcp-config`; a seat that needs
+Read/Write/Bash wants `--safe-mode`; a seat that needs a custom `--agent`
+or a project MCP (Canva, NotebookLM) records a per-site decision with the
+exemption pragma instead. Full measurement table:
+`research/agent-craft/cc-meta-loop/BACKLOG.md` section "C4 measured" on
+branch `agent/air-m5/infra/cc-meta-loop-v2`.
 
 RULE: an invocation is CURED when its reconstructed window carries at least
 one of `--restricted`, `--safe-mode`, `--setting-sources` (anchored so

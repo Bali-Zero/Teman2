@@ -1363,22 +1363,6 @@ jobs:
             python3 scripts/lint/lint_claude_headless_model_pin.py
           fi
 
-      # Same sibling shape as model-pin above, one gap over: a `--model`
-      # pin says nothing about how much context the pinned model reads.
-      # Measured 2026-09-17 (research/agent-craft/cc-meta-loop/BACKLOG.md
-      # "C4 measured"): the unpinned default shape burned 36,322 input
-      # tokens AND came back with `result: null` on a HOME Stop-hook
-      # forcing a second turn — --restricted/--safe-mode/--setting-sources
-      # each cut that in roughly half. --selftest first, same discipline
-      # as the lints around it — a clean "0 findings" run is worth nothing
-      # until the guilt path is proven on THIS runner.
-      - name: Claude-headless-context-diet lint (-p/--print carries a context-diet flag or an exempt pragma)
-        run: |
-          if [ -f scripts/lint/lint_claude_headless_context_diet.py ]; then
-            python3 scripts/lint/lint_claude_headless_context_diet.py --selftest
-            python3 scripts/lint/lint_claude_headless_context_diet.py
-          fi
-
       # The two ledger gates below run on EVERY PR (cheap: parse one markdown
       # file) — they are the reason this check is required at all.
       # A node's IDENTITY in a tailnet is its MagicDNS name — never HostName, never an
