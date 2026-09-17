@@ -1,0 +1,85 @@
+task_id: mig317-restore-applied-blob
+gear: 3
+l_level: L1
+gate_class: sonnet
+# Floor measured this session: `python3 scripts/evidence_pack_lint.py --print-floor
+# --print-floor-source --numstat-file <numstat> --changed-files-file <changed>` on the
+# staged diff returns `3` / `hotzone`. Sourced from HOTZONE_PATTERNS containing
+# `apps/backend-rag/backend/db/migrations_v2/*` — same unconditional hot-zone as
+# #6687's own pack. The diff itself is a pure revert (two files, net negative lines,
+# no new SQL, no new table/endpoint) and would floor lower by size alone; there is no
+# ORANGE exception for a hot-zone hit, per the coordinating session (team-lead,
+# nuzantara-8d, GARUDA imperator).
+objective: >-
+  PR #6687 rewrote the text of migration
+  apps/backend-rag/backend/db/migrations_v2/317_visa_oracle_sessions_retention_30d.sql
+  AFTER it had already been applied on PROD (ledger row 317, checksum
+  b78d5a7d4576106ab5a03353c6045b12b5ab899fa728f260617a239088c13bf8, executed
+  2026-09-16 22:54Z from blob 3f38f30ac156668fbaaa10fd5fbb7e56cca050b3 at commit
+  e8348e28f1). origin/main then carried blob
+  64acc85e7344759ad9b2f5909d02577ebb2a83bb, and the Fly release_command's
+  `python -m backend.db.schema_audit` step started failing with
+  `migration_checksum_mismatch` on 317 — release v4476 FAILED and every backend
+  deploy has been dying there since. Restore the migration SQL and its existing
+  static test file byte-exact to their blobs at e8348e28f1, so schema_audit passes
+  against the ledger row already on PROD. The lock-retry fix that motivated #6687
+  moves to the shared migration runner in a separate PR (not this one) — a
+  migration's TEXT must never change after it has been applied.
+constraints:
+  - >-
+    File scope is literal: only the 317 .sql file and its existing static test file
+    (backend/tests/db/test_migration_317_visa_oracle_sessions_retention.py), restored
+    to their exact e8348e28f1 blobs. No re-added retry/lock logic, no change to
+    migration 318, migration_manager.py, migration_base.py, fly.toml, .env*, or
+    zantara_core.py.
+  - >-
+    No client PII anywhere in the migration, the test, or this pack. No secrets
+    echoed; any local test DSN carries `# pragma: allowlist secret`.
+acceptance:
+  - text: >-
+      A1: WHEN the migration SQL file is hashed with `git hash-object`, THE result
+      SHALL equal 3f38f30ac156668fbaaa10fd5fbb7e56cca050b3, the blob recorded as
+      applied on PROD at commit e8348e28f1.
+    probe: git hash-object apps/backend-rag/backend/db/migrations_v2/317_visa_oracle_sessions_retention_30d.sql
+  - text: >-
+      A2: WHEN the test file is hashed with `git hash-object`, THE result SHALL equal
+      the blob recorded at e8348e28f1 for that path (14d1a5f0f07e2861a034418b7ff1ddefe6b1624e).
+    probe: git hash-object apps/backend-rag/backend/tests/db/test_migration_317_visa_oracle_sessions_retention.py
+  - text: >-
+      A3: WHEN a throwaway PostgreSQL 17 cluster is bootstrapped the CI way
+      (ci_bootstrap_schema.py) and `python -m backend.db.migrate apply-all` is run,
+      THE ledger SHALL carry migration 317 with the restored (applied) checksum.
+    probe: python -m backend.db.migrate apply-all against a fresh throwaway database
+  - text: >-
+      A4 (INNOCENCE): WHEN `python -m backend.db.schema_audit` runs with the ledger
+      carrying 317 from the restored blob, THE audit SHALL exit 0 with no
+      migration_checksum_mismatch on 317 — reopening the release lane.
+    probe: python -m backend.db.schema_audit against the same throwaway database
+  - text: >-
+      A5 (GUILT): WHEN the origin/main (64acc85e) text is swapped back into the 317
+      file and schema_audit is re-run against the SAME ledger, THE audit SHALL exit 1
+      naming migration 317's checksum mismatch — reproducing the v4476 failure exactly
+      before the file is restored again.
+    probe: schema_audit against the throwaway database with the pre-fix text swapped in
+  - text: >-
+      A6: WHEN the restored static test file runs under pytest, ALL assertions SHALL
+      pass, and ruff check on the same file SHALL report no issues.
+    probe: pytest backend/tests/db/test_migration_317_visa_oracle_sessions_retention.py; ruff check <same file>
+assumptions:
+  - text: >-
+      migrate.py::_is_applied() keys on migration_name/number, not checksum, so a
+      byte-exact restore of the file's text (matching what PROD already ran) is
+      sufficient to make schema_audit's checksum comparison pass again — no new
+      migration number or ledger surgery is needed.
+    status: verified
+    probe: read migration_base.py / schema_audit.py this session; reproduced the
+      guilt/innocence pair live against a throwaway database
+  - text: >-
+      the two restored files carry no regulatory/legal claim of their own (no visa
+      rule, no KBLI code, no price, no tax rate) — the change is a pure revert to an
+      already-applied, already-reviewed state.
+    status: verified
+    probe: git diff against e8348e28f1 for both files is empty by construction
+      (hash-object equality)
+appetite:
+  wall_clock_hours: 1
