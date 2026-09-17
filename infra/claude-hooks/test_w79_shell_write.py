@@ -68,6 +68,13 @@ def main() -> int:
         ("sed -i 's/a/b/' apps/f.py", M, True),                 # relative → cwd=main
         ('cp /tmp/src apps/dest.py', M, True),
         ('dd if=/tmp/x of=apps/img', M, True),
+        # sed -i: the target is the last token of the SED SEGMENT, not of the line
+        ("sed -i '' 's/a/b/' apps/f.py; echo done", M, True),
+        (f"sed -i 's/a/b/' /tmp/x/p.py; sed -i 's/c/d/' {M}/apps/f.py", M, True),
+        (f"S=/tmp/x; sed -i '' 's/a/b/' $S/p.py; echo hi; python3 $S/p.py {M}", W, False),  # cwd=worktree: the live shape
+        (f"sed -i 's/a/b/' /tmp/x/p.py | grep {M}/apps/f.py", M, False),
+        (f"sed -i -e 's/a/b/' /tmp/x/p.py; echo {M}/apps/f.py", M, False),
+        (f"sed -i 's/a/b/' /tmp/x/p.py && cat {M}/apps/f.py", M, False),
         # MUST ALLOW — the false positives I actually hit (heredoc body + quoted msg)
         ("cat > /tmp/msg.txt <<'EOF'\nfix: _is_path_in_allowed_worktree > nothing\nredirect > file mention\nEOF", M, False),
         ('git commit -m "fix: _is_path_in_allowed_worktree > nothing"', M, False),
