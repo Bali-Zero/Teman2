@@ -1,0 +1,67 @@
+task_id: output-hygiene-guard-v2-0918
+gear: 2
+l_level: L1
+gate_class: sonnet
+objective: |
+  Zero, 2026-09-18: a session can dump an unbounded directory listing or log file into its own
+  context by accident, and every later turn re-reads it — measured the same day on M5, two thirds
+  of a week's context tokens came from turns above 200k. The first guard (PR #6724) was SUSPENDED
+  under the Builder Contract after three on-disk gate rounds each found a NEW over-match on an
+  everyday command; the contract's remedy is a written spec, which shipped as PR #6728
+  (docs/specs/2026-09-18-output-hygiene-guard-shapes-spec.md: segmentation rules, eight shapes
+  S1-S8 with their own-bounds, downstream bounds, visible-entry counting, and a case corpus).
+
+  This PR is the re-implementation AGAINST that spec: `infra/claude-hooks/output_hygiene_guard.py`
+  v2, a PreToolUse Bash hook that DENIES (never rewrites, never runs the command) a flood-shaped
+  Bash call unless the same statement bounds it, with every test case labelled by its spec C-ID
+  and a completeness assertion that the whole corpus is exercised. The spec, not the guard's own
+  judgement, is what a gate probes first.
+constraints:
+  - "One PR, one concern: the guard, its C-ID-labelled suite, its guard-conformance registry
+    entry, its vaccine fixtures and its home-fork declared pair. The spec is touched only to
+    resolve one internal contradiction found during implementation (S5 row vs case C29), by
+    amending the case table to match the S5 row's prose."
+  - "DENY, never REWRITE — a guard that silently appends `| head` hides the bound from the person
+    who typed the command and can truncate data they needed; the denial names the shape and the
+    bound to add."
+  - "Spec wins over the guard's own improvisation — where a probe disagrees with the spec, the
+    guard is fixed, not the probe; where the spec is ambiguous, the ambiguity is recorded in the
+    PR, never resolved silently."
+  - "No subprocess, fail-open on any exception or malformed stdin, kill switch
+    NUZ_OUTPUT_HYGIENE_OFF=1, under fifty milliseconds per call."
+acceptance:
+  - text: >
+      WHEN a Bash tool call matches one of the spec's eight shapes S1-S8 AND neither the shape's
+      own-bounds nor a downstream bound in the same statement applies, the hook SHALL deny the
+      call with exit 2 and a one-line reason naming the shape (and, for S1, the visible entry
+      count).
+    status: verified
+    probe: "local: python3 infra/claude-hooks/test_output_hygiene_guard.py -> ALL 64 OK (C01..C61 present)"
+  - text: >
+      WHEN the same shape carries an own-bound or a downstream bound listed in spec §3/§4, or sits
+      inside a quoted string or heredoc body, or is dispatched through ssh/scp/rsync, the hook
+      SHALL allow the call unchanged.
+    status: verified
+    probe: "local: same suite, every ALLOW row of the spec corpus; plus a replay of every Bash command this session ran (153 unique) with one spec-conformant denial"
+  - text: >
+      The guard SHALL be censused in infra/guard-conformance/registry.json with guilt and
+      innocence proofs and SHALL NOT regress any existing PreToolUse guard fixture in the shared
+      vaccine.
+    status: verified
+    probe: "local: python3 infra/claude-hooks/test_hook_innocence.py -> ALL 135 OK; python3 infra/guard-conformance/check_guard_conformance.py -> 0 violation(s)"
+risks:
+  - "Single build lane (a Sonnet implementer subagent) plus the shipping session's review; the
+    independent grader is the fresh Opus 5 on-disk gate that signs harness/fable-gate, which this
+    pack does not pre-empt."
+  - "The live hook is NOT armed by this PR: the shipping session installs
+    ~/.claude/hooks/output_hygiene_guard.py and the PreToolUse Bash entry on M5 and Pro after
+    merge and proves it from a live session (the Bites line)."
+  - "Latency is a single-machine, single-run figure on M5 with no concurrent load."
+instruction_to_the_grader: |
+  Probe the spec's case table FIRST (docs/specs/2026-09-18-output-hygiene-guard-shapes-spec.md
+  §6, C01..C61): every row is a stdin-JSON probe with a stated expected verdict. Then look for
+  an over-match on an everyday command OUTSIDE the corpus — that is the failure that killed v1
+  three times — and for an under-match on an obvious flood. A disagreement between the guard and
+  the spec is REWORK-BUILD on the guard; a disagreement between two parts of the spec is a
+  finding on the spec, to be named as such. Verify no subprocess, fail-open on malformed stdin,
+  and that the receipts below match what you run.

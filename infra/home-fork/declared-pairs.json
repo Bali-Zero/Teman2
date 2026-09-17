@@ -395,6 +395,12 @@
       "machines": ["all"]
     },
     {
+      "live": "~/.claude/hooks/output_hygiene_guard.py",
+      "repo": "infra/claude-hooks/output_hygiene_guard.py",
+      "_note": "Declared at birth (2026-09-18, Zero's order): PreToolUse(Bash) guard denying an unbounded ls/cat/git-log/git-diff/find/grep/test-runner/tail-f call before it can flood a session's own context — the structural cure for two live over-reads in one session (~/.nuzantara-mailbox 700+ entries, evidence/2026-09 300+ entries), both read in full with no bound. v1 (PR #6724) was SUSPENDED after three on-disk gate rounds finding new over-matches; this v2 is a from-scratch re-implementation graded against docs/specs/2026-09-18-output-hygiene-guard-shapes-spec.md's case table. Registration in ~/.claude/settings.json's PreToolUse Bash matcher is the parent shipping session's job, not this pair's.",
+      "machines": ["m5", "pro", "mini"]
+    },
+    {
       "live": "~/.claude/hooks/worktree_file_write_check.py",
       "repo": "infra/claude-hooks/worktree_file_write_check.py",
       "machines": ["all"]

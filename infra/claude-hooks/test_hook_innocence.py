@@ -51,6 +51,19 @@ _SYN = pathlib.Path(REPO_ROOT)
 (_SYN / "scripts" / "agent_start.py").write_text("# synthetic signature\n")
 # a registered worktree under the synthetic root's .worktrees/ for allow-list cases
 (_SYN / ".worktrees" / "lane-x" / "apps").mkdir(parents=True, exist_ok=True)
+# output_hygiene_guard.py fixtures (spec §6): a >150-entry dir, a 100-entry
+# dir (a repo root's size), a small dir, a >24KB file, a small file.
+(_SYN / "bigdir").mkdir(parents=True, exist_ok=True)
+for _i in range(151):
+    (_SYN / "bigdir" / f"f{_i}.txt").write_text("x")
+(_SYN / "middir").mkdir(parents=True, exist_ok=True)
+for _i in range(100):
+    (_SYN / "middir" / f"f{_i}.txt").write_text("x")
+(_SYN / "smalldir").mkdir(parents=True, exist_ok=True)
+for _i in range(3):
+    (_SYN / "smalldir" / f"f{_i}.txt").write_text("x")
+(_SYN / "big.log").write_text("x" * (25 * 1024))
+(_SYN / "small.py").write_text("print(1)\n")
 
 
 def _copy_hook(name: str) -> pathlib.Path:
@@ -182,6 +195,28 @@ CASES: dict[str, list[tuple[dict, str, str]]] = {
         # GUILT
         (write(REPO_ROOT + "/infra/brand_new_file.py"), "BLOCK", "write a new file into main checkout"),
         (edit(REPO_ROOT + "/apps/backend-rag/backend/app/main.py"), "BLOCK", "edit a main-checkout file"),
+    ],
+    # ---- output_hygiene_guard.py (Bash) — deny an unbounded ls/cat/git-log/
+    # git-diff/find/grep/test-runner/tail-f call, spec's vaccine minimum set
+    # (§7): C01, C03, C04, C07, C16, C17, C24, C25, C33, C39, C41, C46, C52, C55.
+    "output_hygiene_guard.py": [
+        # GUILT
+        (bash("ls bigdir"), "BLOCK", "C03 counterpart: S1 151 visible (cwd-relative, HOME not fixtured here)"),
+        (bash("ls bigdir 2>/dev/null"), "BLOCK", "C04: a stderr redirect is not a bound"),
+        (bash("ls -R smalldir"), "BLOCK", "C07: recursive ls floods regardless of count"),
+        (bash("git log"), "BLOCK", "C16: git log without a bound"),
+        (bash("pytest bigdir"), "BLOCK", "C39: pytest without -q"),
+        (bash("git status\ngit log"), "BLOCK", "C52: newline split"),
+        (bash("npx vitest run"), "BLOCK", "C46 counterpart: npx-prefixed runner unbounded"),
+        # INNOCENCE
+        (bash("ls"), "ALLOW", "C01: S1 under threshold"),
+        (bash("git log --oneline origin/main..HEAD"), "ALLOW", "C17: range-bounded git log"),
+        (bash("git diff --stat"), "ALLOW", "C24: git diff --stat"),
+        (bash("git diff --quiet && echo clean"), "ALLOW", "C25: git diff --quiet prints nothing"),
+        (bash("rg foo small.py"), "ALLOW", "C33: rg on a single named file"),
+        (bash("pytest -xq bigdir"), "ALLOW", "C41: -q inside a flag cluster"),
+        (bash("npx jest -q"), "ALLOW", "C46 counterpart: npx jest -q"),
+        (bash("ssh pro 'git log'"), "ALLOW", "C55: remote dispatch runs off-box"),
     ],
     # ---- orchestrate_gate.py (Bash/Edit/Write) — never blocks short/dispatched sessions
     # Without a long transcript on stdin it cannot reach the block branch → ALLOW.
