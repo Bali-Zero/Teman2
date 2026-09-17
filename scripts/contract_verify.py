@@ -139,24 +139,50 @@ class Result:
         return {"context": self.context, "check": self.check, "status": self.status, "output": self.output, "files": self.files}
 
 
+# C4 (found shipping this PR, 2026-09-18): every subprocess this module spawns — git,
+# gh, and any argv check (pytest for pending-arms-ledger-shape included) — runs during
+# a real `git push`, where git exports these to hook scripts so THEY operate on the
+# right repo. Inherited by a nested `git init`/`git add -A` in a pytest tmp-repo
+# fixture (scripts/tests/test_pending_arms_ref.py), those same vars point the nested
+# git at the OUTER repo instead of the fresh tmp one — `git add -A` there then fails
+# (exit 128) or silently touches the wrong tree. Reproduced by setting these vars
+# before invoking pytest directly, outside any hook. Scrubbed once here rather than in
+# every check that happens to shell out to git.
+_GIT_ENV_POLLUTANTS = (
+    "GIT_DIR", "GIT_WORK_TREE", "GIT_INDEX_FILE", "GIT_COMMON_DIR", "GIT_PREFIX",
+    "GIT_OBJECT_DIRECTORY", "GIT_ALTERNATE_OBJECT_DIRECTORIES", "GIT_QUARANTINE_PATH",
+)
+
+
+def _clean_env() -> Dict[str, str]:
+    return {k: v for k, v in os.environ.items() if k not in _GIT_ENV_POLLUTANTS}
+
+
 def _run(argv: List[str], cwd: Path) -> Tuple[Optional[int], str]:
     """(exit code or None when the binary is missing, combined output)."""
     try:
-        p = subprocess.run(argv, cwd=str(cwd), capture_output=True, text=True)
+        p = subprocess.run(argv, cwd=str(cwd), capture_output=True, text=True, env=_clean_env())
     except FileNotFoundError:
         return None, f"{argv[0]}: not found on PATH"
     return p.returncode, (p.stdout + p.stderr).strip()
 
 
 def _git(cwd: Path, *args: str) -> str:
-    p = subprocess.run(["git", *args], cwd=str(cwd), capture_output=True, text=True)
+    p = subprocess.run(["git", *args], cwd=str(cwd), capture_output=True, text=True, env=_clean_env())
     if p.returncode != 0:
         raise RuntimeError(f"git {' '.join(args)}: {p.stderr.strip()}")
     return p.stdout
 
 
 def run_argv_check(ctx: str, chk: Dict[str, Any], root: Path, files: List[str]) -> Result:
+    # C2 (PENDING-ARMS contract-verify-ci-input-parity): the changed-file list carries
+    # deletions now, as CI's does. A script that takes FILES gets only the ones that exist
+    # in this tree — CI's R1 diffs with --diff-filter=AM for the same reason.
     mode = chk.get("files", "append")
+    if mode != "none":
+        files = [f for f in files if (root / f).is_file()]
+        if not files:
+            return Result(ctx, chk["id"], "PASS", "only deletions in the governed set — nothing to run", files)
     runs = [list(chk["argv"]) + files] if mode == "append" else \
            [list(chk["argv"]) + [f] for f in files] if mode == "each" else [list(chk["argv"])]
     outputs, failed = [], False
@@ -170,12 +196,28 @@ def run_argv_check(ctx: str, chk: Dict[str, Any], root: Path, files: List[str]) 
     return Result(ctx, chk["id"], "FAIL" if failed else "PASS", "\n".join(outputs), files)
 
 
-def _diff_files(root: Path, base: str, head: str) -> Tuple[Path, Path]:
-    """Write CI's two inputs (changed files, numstat) exactly as harness-floor.yml does."""
+def _diff_files(root: Path, base: str, head: str) -> Tuple[Path, Path, Path]:
+    """Write CI's three inputs exactly as harness-floor.yml does: changed files (no
+    filter — a deletion still contributes to the floor, C2), numstat, and the -U0 patch
+    of .github/workflows/ that lets the floor exempt a first-party pin-only bump (C1)."""
     tmp = Path(tempfile.mkdtemp(prefix="contract-verify-"))
-    (tmp / "changed-files.txt").write_text(_git(root, "diff", "--name-only", "--diff-filter=d", base, head), encoding="utf-8")
+    (tmp / "changed-files.txt").write_text(_git(root, "diff", "--name-only", base, head), encoding="utf-8")
     (tmp / "numstat.txt").write_text(_git(root, "diff", "--no-renames", "--numstat", base, head), encoding="utf-8")
-    return tmp / "changed-files.txt", tmp / "numstat.txt"
+    (tmp / "workflow-patch.txt").write_text(_git(root, "diff", "--no-renames", "-U0", base, head, "--", ".github/workflows/"), encoding="utf-8")
+    return tmp / "changed-files.txt", tmp / "numstat.txt", tmp / "workflow-patch.txt"
+
+
+def floor_of(root: Path, changed_files: Path, numstat: Optional[Path], patch: Optional[Path]) -> Tuple[Optional[int], str]:
+    """evidence_pack_lint --print-floor with CI's argv. (floor or None, raw output)."""
+    argv = ["python3", "scripts/evidence_pack_lint.py", "--print-floor", "--changed-files-file", str(changed_files)]
+    if numstat is not None:
+        argv += ["--numstat-file", str(numstat)]
+    if patch is not None and patch.stat().st_size > 0:
+        argv += ["--patch-file", str(patch)]
+    rc, out = _run(argv, root)
+    if rc is None or rc != 0 or not out.strip().isdigit():
+        return None, f"--print-floor rc={rc}: {out}"
+    return int(out.strip()), out
 
 
 def run_floor_brief(ctx: str, chk: Dict[str, Any], root: Path, files: List[str], span: Optional[Tuple[str, str]]) -> Result:
@@ -183,20 +225,19 @@ def run_floor_brief(ctx: str, chk: Dict[str, Any], root: Path, files: List[str],
     if not (root / "scripts/evidence_pack_lint.py").is_file() or not (root / "scripts/ci/evidence_paths.py").is_file():
         return Result(ctx, chk["id"], "INCONCLUSIVE", "evidence_pack_lint.py / evidence_paths.py not in this tree", files)
     if span:
-        cf, ns = _diff_files(root, *span)
-        extra = ["--numstat-file", str(ns)]
+        cf, ns, patch = _diff_files(root, *span)
     else:
         tmp = Path(tempfile.mkdtemp(prefix="contract-verify-"))
         cf = tmp / "changed-files.txt"; cf.write_text("\n".join(files) + "\n", encoding="utf-8")
-        extra = []  # no diff span → path-only floor, exactly evidence_pack_lint's documented fallback
-    rc, floor = _run(["python3", "scripts/evidence_pack_lint.py", "--print-floor", "--changed-files-file", str(cf), *extra], root)
-    if rc is None or rc != 0 or not floor.strip().isdigit():
-        return Result(ctx, chk["id"], "INCONCLUSIVE", f"--print-floor rc={rc}: {floor}", files)
+        ns = patch = None  # no diff span → path-only floor, exactly evidence_pack_lint's documented fallback
+    floor_n, floor = floor_of(root, cf, ns, patch)
+    if floor_n is None:
+        return Result(ctx, chk["id"], "INCONCLUSIVE", floor, files)
     rc, brief = _run(["python3", "scripts/ci/evidence_paths.py", "--resolve", "brief", "--changed-files-file", str(cf)], root)
     if rc != 0:
         return Result(ctx, chk["id"], "FAIL", f"evidence_paths --resolve brief: {brief}", files)
     changed = set(cf.read_text(encoding="utf-8").split())
-    floor_n, brief = int(floor.strip()), brief.strip()
+    brief = brief.strip()
     if floor_n >= 2 and brief not in changed:
         return Result(ctx, chk["id"], "FAIL",
                       f"deterministic floor is {floor_n} but this diff carries no {brief} — CI reds 'Harness floor recompute' on exactly this (a floor>=2 diff needs a brief declaring gear>={floor_n})", files)
@@ -208,7 +249,7 @@ def run_pack_lint(ctx: str, chk: Dict[str, Any], root: Path, files: List[str], s
     if not (root / "scripts/evidence_pack_lint.py").is_file():
         return Result(ctx, chk["id"], "INCONCLUSIVE", "evidence_pack_lint.py not in this tree", files)
     if span:
-        cf, ns = _diff_files(root, *span)
+        cf, ns, _patch = _diff_files(root, *span)
     else:
         tmp = Path(tempfile.mkdtemp(prefix="contract-verify-")); cf = tmp / "changed-files.txt"; ns = None
         cf.write_text("\n".join(files) + "\n", encoding="utf-8")
@@ -265,8 +306,8 @@ def classify(row: Dict[str, Any], results: List[Result], ci_red: bool) -> str:
     statuses = [r.status for r in results if r.context == row["context"]]
     if "FAIL" in statuses:
         local = "FAIL"
-    elif statuses and all(s == "INCONCLUSIVE" for s in statuses):
-        local = "INCONCLUSIVE"
+    elif "INCONCLUSIVE" in statuses:
+        local = "INCONCLUSIVE"  # C3: one tool missing = nothing proven for this context, whatever its siblings said
     else:
         local = "PASS"  # PASS, or silent (nothing governed) — both mean "local sees nothing wrong"
     if local == "INCONCLUSIVE":
@@ -280,7 +321,7 @@ def classify(row: Dict[str, Any], results: List[Result], ci_red: bool) -> str:
 
 def changed_over_main(root: Path, head: str = "HEAD") -> Tuple[List[str], Tuple[str, str]]:
     base = _git(root, "merge-base", ORIGIN_MAIN, head).strip()
-    files = _git(root, "diff", "--name-only", "--diff-filter=d", base, head).split()
+    files = _git(root, "diff", "--name-only", base, head).split()
     return files, (base, head)
 
 
@@ -309,7 +350,7 @@ def mode_local(args: argparse.Namespace, root: Path) -> int:
     span: Optional[Tuple[str, str]] = None
     if args.span:
         base, head = args.span
-        files, span = _git(root, "diff", "--name-only", "--diff-filter=d", base, head).split(), (base, head)
+        files, span = _git(root, "diff", "--name-only", base, head).split(), (base, head)
     elif args.files_from:
         text = sys.stdin.read() if args.files_from == "-" else Path(args.files_from).read_text(encoding="utf-8")
         files = sorted({ln.strip() for ln in text.splitlines() if ln.strip()})
@@ -330,13 +371,13 @@ def with_worktree(root: Path, sha: str):
             return self.path
 
         def __exit__(self, *exc):
-            subprocess.run(["git", "worktree", "remove", "--force", str(self.path)], cwd=str(root), capture_output=True)
+            subprocess.run(["git", "worktree", "remove", "--force", str(self.path)], cwd=str(root), capture_output=True, env=_clean_env())
     return _WT()
 
 
 def verify_head(table: Dict[str, Any], root: Path, sha: str) -> List[Result]:
     base = _git(root, "merge-base", ORIGIN_MAIN, sha).strip()
-    files = _git(root, "diff", "--name-only", "--diff-filter=d", base, sha).split()
+    files = _git(root, "diff", "--name-only", base, sha).split()
     with with_worktree(root, sha) as wt:
         return verify_tree(table, wt, files, (base, sha))
 
@@ -352,15 +393,15 @@ def mode_head(args: argparse.Namespace, root: Path) -> int:
 
 
 def _ensure_commit(root: Path, pr: int, sha: str) -> None:
-    if subprocess.run(["git", "cat-file", "-e", f"{sha}^{{commit}}"], cwd=str(root), capture_output=True).returncode == 0:
+    if subprocess.run(["git", "cat-file", "-e", f"{sha}^{{commit}}"], cwd=str(root), capture_output=True, env=_clean_env()).returncode == 0:
         return
     _git(root, "fetch", "--no-tags", "origin", f"refs/pull/{pr}/head")
-    if subprocess.run(["git", "cat-file", "-e", f"{sha}^{{commit}}"], cwd=str(root), capture_output=True).returncode != 0:
+    if subprocess.run(["git", "cat-file", "-e", f"{sha}^{{commit}}"], cwd=str(root), capture_output=True, env=_clean_env()).returncode != 0:
         raise RuntimeError(f"#{pr}: head {sha} is not reachable even after fetching refs/pull/{pr}/head")
 
 
 def _gh_json(args: List[str]) -> Any:
-    p = subprocess.run(["gh", *args], capture_output=True, text=True)
+    p = subprocess.run(["gh", *args], capture_output=True, text=True, env=_clean_env())
     if p.returncode != 0:
         raise RuntimeError(f"gh {' '.join(args)}: {p.stderr.strip()}")
     return json.loads(p.stdout)
@@ -462,6 +503,33 @@ def selftest() -> int:
     check("local FAIL + CI green = DRIFT", classify(row, [fail], False) == "DRIFT")
     check("local PASS + CI green = GREEN", classify(row, [ok_], False) == "GREEN")
     check("INCONCLUSIVE never becomes a verdict", classify(row, [inc], True) == "INCONCLUSIVE" and classify(row, [inc], False) == "INCONCLUSIVE")
+    check("C3: PASS + INCONCLUSIVE siblings = INCONCLUSIVE, never GREEN", classify(row, [ok_, inc], False) == "INCONCLUSIVE" and classify(row, [ok_, inc], True) == "INCONCLUSIVE")
+    # C1/C2 against the REAL floor: the inputs, not a re-implementation
+    root = Path(__file__).resolve().parents[1]
+    if (root / "scripts/evidence_pack_lint.py").is_file():
+        tmp = Path(tempfile.mkdtemp(prefix="contract-verify-selftest-"))
+        cf = tmp / "cf.txt"; cf.write_text(".github/workflows/x.yml\n", encoding="utf-8")
+        patch = tmp / "patch.txt"; patch.write_text(
+            "diff --git a/.github/workflows/x.yml b/.github/workflows/x.yml\n--- a/.github/workflows/x.yml\n+++ b/.github/workflows/x.yml\n"
+            "@@ -10 +10 @@\n-      - uses: actions/checkout@v7\n+      - uses: actions/checkout@v8\n", encoding="utf-8")
+        check("C1: a pin-only workflow bump floors 1 WITH --patch-file (what CI computes)", floor_of(root, cf, None, patch)[0] == 1)
+        check("C1: the same list without the patch floors 3 (the false refusal, now gone)", floor_of(root, cf, None, None)[0] == 3)
+        cf2 = tmp / "cf2.txt"; cf2.write_text("apps/backend-rag/backend/db/migrations_v2/000_gone.sql\n", encoding="utf-8")
+        check("C2: a deleted hot-zone path still floors 3 (the list is unfiltered)", floor_of(root, cf2, None, None)[0] == 3)
+        shutil.rmtree(tmp, ignore_errors=True)
+    else:
+        check("C1/C2 floor rows need scripts/evidence_pack_lint.py (not in this tree)", False)
+    # C4 (found shipping this PR): a subprocess this module spawns must never inherit
+    # GIT_DIR/GIT_WORK_TREE/etc. — a real `git push` sets them for hook scripts, and a
+    # child that does its own `git init` in a tmp dir (test_pending_arms_ref.py's
+    # fixture) would otherwise operate on the OUTER repo instead of its own tmp one.
+    check("C4: _clean_env() strips every GIT_* plumbing pollutant", not (set(_clean_env()) & set(_GIT_ENV_POLLUTANTS)))
+    _poisoned = dict(os.environ, GIT_DIR="/nonexistent/should-be-stripped")
+    _dirty_check = subprocess.run(["git", "rev-parse", "--is-inside-work-tree"], cwd=str(root), capture_output=True, text=True, env=_poisoned)
+    _scrubbed = {k: v for k, v in _poisoned.items() if k not in _GIT_ENV_POLLUTANTS}
+    _clean_check = subprocess.run(["git", "rev-parse", "--is-inside-work-tree"], cwd=str(root), capture_output=True, text=True, env=_scrubbed)
+    check("C4: with GIT_DIR poisoned, an unscrubbed env breaks git in this tree", _dirty_check.returncode != 0)
+    check("C4: the same command with a scrubbed env still resolves this tree", _clean_check.returncode == 0)
     check("remote_only + CI red = NOT-LOCALLY-PREVENTABLE", classify({"context": "c", "remote_only": "x"}, [], True) == "NOT-LOCALLY-PREVENTABLE")
     check("remote_only + CI green = N/A", classify({"context": "c", "remote_only": "x"}, [], False) == "N/A")
     # a missing binary is INCONCLUSIVE, never PASS and never FAIL
@@ -500,7 +568,7 @@ def build_parser() -> argparse.ArgumentParser:
 def main(argv: Optional[List[str]] = None) -> int:
     args = build_parser().parse_args(argv)
     root = Path(os.environ.get("CONTRACT_VERIFY_ROOT") or subprocess.run(
-        ["git", "rev-parse", "--show-toplevel"], capture_output=True, text=True).stdout.strip() or ".").resolve()
+        ["git", "rev-parse", "--show-toplevel"], capture_output=True, text=True, env=_clean_env()).stdout.strip() or ".").resolve()
     if args.selftest:
         return selftest()
     if args.local:
