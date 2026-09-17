@@ -198,7 +198,15 @@ export function CheckoutFlow({
         </label>
 
         {state.step === "error" ? (
-          <p role="alert" style={{ margin: 0, color: "var(--color-error)" }}>
+          <p
+            role="alert"
+            style={{
+              margin: 0,
+              color: "var(--tx-pure)",
+              borderLeft: "3px solid var(--bz-border)",
+              paddingLeft: "0.75rem",
+            }}
+          >
             {state.message}
           </p>
         ) : null}
