@@ -83,7 +83,11 @@ def _dirty_objective(tmp_path, template, kit):
     return lambda: dw.cmd_brief(_brief_ns(dirty, template, kit))
 
 
-def _kit_inside_repo(tmp_path, template, _kit):
+def _kit_inside_repo(tmp_path, template, *_unused):
+    # REFUSALS calls every `build` uniformly as build(tmp_path, template, kit); this one needs
+    # its OWN kit path (must resolve inside REPO_ROOT), so the caller's `kit` is intentionally
+    # not used — a bare varargs tail reads as "accepted, deliberately ignored" to Pyright,
+    # where a plain named parameter reads as "bound but dead" (flagged on the PR1b branch).
     inside = dw.REPO_ROOT / "tmp-dw-kit-should-not-exist"
     return lambda: dw.cmd_brief(_brief_ns(_dummy_objective(tmp_path), template, inside))
 
@@ -254,6 +258,121 @@ def test_launch_seat_astra_degrades_silently_when_no_seat_resolves(tmp_path, mon
     assert output == ""  # out_file never written, "no seat" is not a crash
     assert len(calls) == 1
     assert calls[0].get("env") == dict(os.environ)
+
+
+# --------------------------------------------------------------- r2 (guilt + innocence)
+
+def _seed_answered(kit: Path, seat: str, text: str, sha16: str = "cafe") -> None:
+    """Bypass cmd_r1 to seed an `answered` ledger row + r1/<seat>.md directly, for judge
+    fixtures that need content cmd_r1's fake path cannot produce (a specific C1/C5/C8 defect)."""
+    dw.ledger_append(kit, seat, "sent", sha16)
+    (kit / "r1" / f"{seat}.md").write_text(text)
+    dw.ledger_append(kit, seat, "answered", sha16)
+
+
+def test_r2_pairing_is_deterministic_and_cross_family(tmp_path, template, clean_objective):
+    kit = tmp_path / "k"
+    dw.cmd_brief(_brief_ns(clean_objective, template, kit))
+    _seed_convener(kit)
+    dw.cmd_r1(argparse.Namespace(kit=str(kit), seats="kimi-k3,qwen3.8-max,gemini-3.1-pro-high",
+                                  astra_fallback=False))
+    first = dw.cmd_r2(argparse.Namespace(kit=str(kit)))
+    pairing_text = (kit / "pairing.md").read_text()
+    second = dw.cmd_r2(argparse.Namespace(kit=str(kit)))
+    assert (kit / "pairing.md").read_text() == pairing_text  # byte-for-byte, same recompute
+    assert first == second
+    pairing = dw.compute_pairing(kit, (kit / "brief.sha").read_text().strip())
+    for seat, targets in pairing.items():
+        assert seat not in targets
+        target_families = {dw._seat_family(t) for t in targets}
+        assert dw._seat_family(seat) not in target_families
+        assert len(target_families) == len(targets)  # two DIFFERENT other families, not the same twice
+
+
+def test_r2_refuses_a_mutated_pairing_md(tmp_path, template, clean_objective):
+    kit = tmp_path / "k"
+    dw.cmd_brief(_brief_ns(clean_objective, template, kit))
+    _seed_convener(kit)
+    dw.cmd_r1(argparse.Namespace(kit=str(kit), seats="kimi-k3,qwen3.8-max,gemini-3.1-pro-high",
+                                  astra_fallback=False))
+    dw.cmd_r2(argparse.Namespace(kit=str(kit)))
+    (kit / "pairing.md").write_text((kit / "pairing.md").read_text() + "| tampered | row |\n")
+    with pytest.raises(SystemExit) as e:
+        dw.cmd_r2(argparse.Namespace(kit=str(kit)))
+    assert e.value.code == 2
+
+
+def test_r2_filter_keeps_only_objections_with_an_fc_ref_and_a_test_line(tmp_path, template, clean_objective):
+    kit = tmp_path / "k"
+    dw.cmd_brief(_brief_ns(clean_objective, template, kit))
+    _seed_convener(kit)
+    dw.cmd_r1(argparse.Namespace(kit=str(kit), seats="kimi-k3,qwen3.8-max,gemini-3.1-pro-high",
+                                  astra_fallback=False))
+    summary = dw.cmd_r2(argparse.Namespace(kit=str(kit)))
+    for seat, counts in summary.items():
+        assert counts == {"kept": 1, "rejected": 1}
+        assert (kit / "r2" / f"{seat}.md").exists()
+        assert (kit / "r2" / f"{seat}.rejected.md").exists()
+        assert dw._FC_REF_RE.search((kit / "r2" / f"{seat}.md").read_text())
+
+
+def test_r2_filter_drops_a_referenceless_no_test_objection_entirely(tmp_path, template, clean_objective):
+    kit = tmp_path / "k"
+    dw.cmd_brief(_brief_ns(clean_objective, template, kit))
+    _seed_convener(kit)
+    dw.cmd_r1(argparse.Namespace(kit=str(kit), seats="kimi-k3,qwen3.8-max,gemini-3.1-pro-high-fakenoobject",
+                                  astra_fallback=False))
+    summary = dw.cmd_r2(argparse.Namespace(kit=str(kit)))
+    assert summary["gemini-3.1-pro-high-fakenoobject"] == {"kept": 0, "rejected": 1}
+    assert not (kit / "r2" / "gemini-3.1-pro-high-fakenoobject.md").read_text().strip()
+
+
+# --------------------------------------------------------------- judge (guilt + innocence)
+
+def test_judge_passes_a_clean_canned_answer(tmp_path, template, clean_objective):
+    kit = tmp_path / "k"
+    dw.cmd_brief(_brief_ns(clean_objective, template, kit))
+    sha = (kit / "brief.sha").read_text().strip()
+    _seed_answered(kit, "kimi-k3", dw._CANNED_VALID.format(seat="kimi-k3", sha=sha))
+    verdicts = dw.cmd_judge(argparse.Namespace(kit=str(kit)))
+    assert verdicts["kimi-k3"] == {"c1": True, "c5": True, "c8": True, "disqualified": False}
+    assert (kit / "judge.md").exists()
+
+
+def test_judge_disqualifies_a_c1_banned_entity(tmp_path, template, clean_objective):
+    kit = tmp_path / "k"
+    dw.cmd_brief(_brief_ns(clean_objective, template, kit))
+    sha = (kit / "brief.sha").read_text().strip()
+    dirty = dw._CANNED_VALID.format(seat="qwen3.8-max", sha=sha).replace(
+        "1 call per seat", "1 call per seat, leaked key=ANTHROPIC_API_KEY")
+    _seed_answered(kit, "qwen3.8-max", dirty)
+    verdicts = dw.cmd_judge(argparse.Namespace(kit=str(kit)))
+    assert verdicts["qwen3.8-max"]["c1"] is False
+    assert verdicts["qwen3.8-max"]["disqualified"] is True
+
+
+def test_judge_disqualifies_a_missing_gate_row(tmp_path, template, clean_objective):
+    kit = tmp_path / "k"
+    dw.cmd_brief(_brief_ns(clean_objective, template, kit))
+    sha = (kit / "brief.sha").read_text().strip()
+    no_gate = dw._CANNED_VALID.format(seat="kimi-k3", sha=sha).replace(
+        "| gate | opus-5 | window | serial | 1 | sign | done |\n", "")
+    _seed_answered(kit, "kimi-k3", no_gate)
+    verdicts = dw.cmd_judge(argparse.Namespace(kit=str(kit)))
+    assert verdicts["kimi-k3"]["c5"] is False
+    assert verdicts["kimi-k3"]["disqualified"] is True
+
+
+def test_judge_disqualifies_a_never_bullet_with_no_fc_ref(tmp_path, template, clean_objective):
+    kit = tmp_path / "k"
+    dw.cmd_brief(_brief_ns(clean_objective, template, kit))
+    sha = (kit / "brief.sha").read_text().strip()
+    no_ref = dw._CANNED_VALID.format(seat="kimi-k3", sha=sha).replace(
+        "- No paid Anthropic per-token endpoint (C1)", "- No paid Anthropic per-token endpoint")
+    _seed_answered(kit, "kimi-k3", no_ref)
+    verdicts = dw.cmd_judge(argparse.Namespace(kit=str(kit)))
+    assert verdicts["kimi-k3"]["c8"] is False
+    assert verdicts["kimi-k3"]["disqualified"] is True
 
 
 # --------------------------------------------------------------- validate_answer (guilt + innocence)

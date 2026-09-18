@@ -2,16 +2,18 @@
 """dynamic_workflow.py — the ONE launcher for /dynamic-workflow. Code, not prose; every
 verdict judged by CONTENT, never by exit code alone (scar #2, "Esiste != Armato").
 
-Subcommands (PR1a+PR1b — r2/judge/anonymise/capture-check land in PR2):
+Subcommands (PR1a+PR1b+PR2a — jury/anonymise/reveal/capture-check land in PR2b):
     brief    --slug S --objective-file F --colour BLUE|ORANGE [--floor X] [--template T] [--kit K]
     check    --kit K            # recompute BRIEF.md from template+inputs.json, byte-diff (W78)
     r1       --kit K --seats a,b,c [--astra-fallback]   # one-shot per seat, ledger, relaunch<=1
     validate FILE --sha S       # frontmatter+skeleton+word-count gate
+    r2       --kit K            # deterministic cross-family pairing, one shot, F/C+Test filter
+    judge    --kit K            # mechanical C1/C5/C8 disqualification of every r1 answer
 
 PII gate is fail-closed, no --skip-pii flag exists: the objective is redacted with the SAME
 Redactor used before anything leaves this machine; any change, or any raise, refuses with a
 SPAN COUNT only, never the text. DW_FAKE_SEATS=1 makes the arsenal-liveness probe AND every
-r1 seat launch offline and deterministic — what --selftest runs on, never a real invocation
+r1/r2 seat launch offline and deterministic — what --selftest runs on, never a real invocation
 and never a paid Anthropic endpoint.
 """
 
@@ -22,6 +24,7 @@ import difflib
 import hashlib
 import json
 import os
+import random
 import re
 import subprocess
 import sys
@@ -74,6 +77,7 @@ assumptions: 0
 ## Tactics
 | stage | seat(s) | in-script or window | parallel/serial | round cap | exit command | hands to next stage |
 | r1 | sonnet-5 | in-script | serial | 1 | validate | r2 |
+| gate | opus-5 | window | serial | 1 | sign | done |
 ## Termination
 Ledger sent-row counter caps relaunch at one; a third sent row is refused by the launcher.
 ## Evidence between stages
@@ -448,6 +452,203 @@ def cmd_r1(args: argparse.Namespace) -> dict[str, str]:
     return summary
 
 
+# --------------------------------------------------------------------- r2
+
+# Vendor family map for r2 pairing diversity. Deliberately NOT
+# evidence_pack_lint._reviewer_family: that helper tokenizes a seat as
+# "everything before its first '-'", which answers a DIFFERENT question
+# (same-string reviewer/contributor collision) and would split every
+# Anthropic model into its OWN family (fable/opus/sonnet/haiku) instead of
+# treating them as ONE family — exactly the grouping r2 pairing needs so a
+# seat is never paired with two answers from its own vendor. Forking that
+# tokenizer here would silently answer the wrong question, so this is a
+# fresh, explicit map instead (mandate's own family list).
+FAMILY_MAP: dict[str, frozenset[str]] = {
+    "anthropic": frozenset({"fable-5-1", "opus-5", "sonnet-5", "haiku-4-5"}),
+    "openai": frozenset({"astra", "sol", "luna"}),
+    "moonshot": frozenset({"kimi-k3", "kimi-code/kimi-for-coding-highspeed"}),
+    "alibaba": frozenset({"qwen3.8-max", "qwen3.7-plus", "qwen3.6-flash"}),
+    "deepseek": frozenset({"deepseek-v4-pro", "deepseek-v4-flash"}),
+    "zhipu": frozenset({"glm-5.2"}),
+    "google": frozenset({"gemini-3.1-pro-high", "gemini-3.8-flash"}),
+}
+
+
+def _seat_family(seat: str) -> str | None:
+    for family, seats in FAMILY_MAP.items():
+        if seat in seats:
+            return family
+    return None
+
+
+def _answered_r1_seats(kit: Path) -> list[str]:
+    """Every seat with an `answered` ledger row, convener excluded — r2 pairs and reviews
+    R1 ANSWERS, and the convener's is the brief for the round, not a peer to review."""
+    return sorted({r[1] for r in _ledger_rows(kit) if r[2] == "answered" and r[1] != "fable-5-1"})
+
+
+def compute_pairing(kit: Path, brief_sha: str) -> dict[str, list[str]]:
+    """seat -> up to two R1 answers from two OTHER families. Deterministic: seeded on
+    brief_sha, so recomputing against the same ledger state reproduces the identical
+    pairing byte-for-byte (that reproducibility IS the refusal check in cmd_r2)."""
+    answered = _answered_r1_seats(kit)
+    rng = random.Random(brief_sha)
+    pairing: dict[str, list[str]] = {}
+    for seat in answered:
+        own = _seat_family(seat)
+        candidates = [s for s in answered if s != seat and _seat_family(s) != own]
+        rng.shuffle(candidates)
+        picked: list[str] = []
+        seen_families: set[str | None] = set()
+        for c in candidates:
+            fam = _seat_family(c)
+            if fam in seen_families:
+                continue
+            picked.append(c)
+            seen_families.add(fam)
+            if len(picked) == 2:
+                break
+        pairing[seat] = picked
+    return pairing
+
+
+def _render_pairing_md(pairing: dict[str, list[str]]) -> str:
+    lines = ["| seat | reviews |", "|---|---|"]
+    for seat in sorted(pairing):
+        targets = ", ".join(pairing[seat]) or "(none — insufficient family diversity)"
+        lines.append(f"| {seat} | {targets} |")
+    return "\n".join(lines) + "\n"
+
+
+_R2_PROMPT_PREFIX = ("Object only where you can name an F/C and a test that would settle it. "
+                      "No test, no objection.\n\n")
+_FC_REF_RE = re.compile(r"\b[FC]\d+\b")
+
+
+def _split_objections(text: str) -> list[str]:
+    return [p.strip() for p in re.split(r"\n\s*\n", text) if p.strip()]
+
+
+def _objection_ok(paragraph: str) -> bool:
+    return bool(_FC_REF_RE.search(paragraph)) and bool(re.search(r"^Test:", paragraph, re.MULTILINE))
+
+
+def _fake_r2_output(seat: str) -> str:
+    if seat.endswith("fakenoobject"):
+        return "No objections. Everything checks out fine here."
+    return ("F1 pairing may be unstable across brief revisions.\nTest: rerun r2 twice on the "
+            "same kit, diff pairing.md byte-for-byte.\n\n"
+            "This one is just a vague worry with no F/C ref and no Test line, drop it.")
+
+
+def cmd_r2(args: argparse.Namespace) -> dict[str, dict[str, int]]:
+    kit = Path(args.kit)
+    brief_sha = (kit / "brief.sha").read_text().strip()
+    pairing = compute_pairing(kit, brief_sha)
+    rendered = _render_pairing_md(pairing)
+    pairing_path = kit / "pairing.md"
+    if pairing_path.exists():
+        if pairing_path.read_text() != rendered:
+            print("refused: pairing.md exists and differs from a fresh recompute", file=sys.stderr)
+            sys.exit(2)
+    else:
+        pairing_path.write_text(rendered)
+
+    (kit / "r2").mkdir(parents=True, exist_ok=True)
+    fake = os.environ.get("DW_FAKE_SEATS") == "1"
+    summary: dict[str, dict[str, int]] = {}
+    for seat, targets in pairing.items():
+        if fake:
+            output = _fake_r2_output(seat)
+        else:
+            answers = "\n\n".join((kit / "r1" / f"{t}.md").read_text() for t in targets)
+            prompt = _R2_PROMPT_PREFIX + answers
+            kind = _seat_kind(seat) or "kimi"
+            timeout = SEAT_TIMEOUTS.get(kind, 900)
+            output = _launch_seat(seat, prompt, timeout, kit)
+        paragraphs = _split_objections(output)
+        kept = [p for p in paragraphs if _objection_ok(p)]
+        rejected = [p for p in paragraphs if not _objection_ok(p)]
+        (kit / "r2" / f"{seat}.md").write_text("\n\n".join(kept) + ("\n" if kept else ""))
+        if rejected:
+            (kit / "r2" / f"{seat}.rejected.md").write_text("\n\n".join(rejected) + "\n")
+        ledger_append(kit, seat, f"r2-kept={len(kept)}-rejected={len(rejected)}", brief_sha[:16])
+        summary[seat] = {"kept": len(kept), "rejected": len(rejected)}
+    for seat, counts in summary.items():
+        print(f"{seat}: kept={counts['kept']} rejected={counts['rejected']}")
+    return summary
+
+
+# --------------------------------------------------------------------- judge (mechanical only;
+# jury + Borda tabulation lands in PR2b)
+
+_C1_BANNED_RE = re.compile(
+    r"ANTHROPIC_API_KEY|api_key\s*=|from\s+anthropic\s+import|\bbedrock\b|\bvertex\b|agy\s+.*claude-",
+    re.IGNORECASE,
+)
+
+
+def _check_c1(full_text: str) -> tuple[bool, str]:
+    m = _C1_BANNED_RE.search(full_text)
+    return (m is None), ("clean" if m is None else f"banned entity matched: {m.group(0)!r}")
+
+
+def _md_table_rows(body: str, section: str) -> list[list[str]]:
+    lines = [ln for ln in _section_text(body, section).splitlines() if ln.strip().startswith("|")]
+    return [[c.strip() for c in ln.strip().strip("|").split("|")] for ln in lines[1:]]  # skip header
+
+
+def _check_c5(body: str) -> tuple[bool, str]:
+    for row in _md_table_rows(body, "Tactics"):
+        if len(row) < 3:
+            continue
+        stage, seat, mode = row[0], row[1], row[2]
+        if "gate" in stage.lower():
+            if seat == "opus-5" and mode == "window":
+                return True, "gate row ok"
+            return False, f"gate row seat={seat!r} mode={mode!r}, want opus-5/window"
+    return False, "no gate row in Tactics"
+
+
+def _check_c8(body: str) -> tuple[bool, str]:
+    for role, seat, *_ in _md_table_rows(body, "Formation"):
+        if seat in ("fable-5-1", "astra") and role not in ("coach", "imperator"):
+            return False, f"seat {seat} carries role {role!r}, must be coach/imperator"
+    for row in _md_table_rows(body, "Tactics"):
+        if len(row) < 5 or not row[4].isdigit():
+            return False, f"Tactics round cap missing/non-integer: {row}"
+    for line in _section_text(body, "Never").splitlines():
+        line = line.strip()
+        if line.startswith("-") and not _FC_REF_RE.search(line):
+            return False, f"Never bullet cites no F/C: {line!r}"
+    wc = len(body.split())
+    if wc > 1500:
+        return False, f"word count {wc} > 1500"
+    return True, "ok"
+
+
+def cmd_judge(args: argparse.Namespace) -> dict[str, dict[str, object]]:
+    kit = Path(args.kit)
+    verdicts: dict[str, dict[str, object]] = {}
+    rows = ["| seat | C1 | C5 | C8 | disqualified |", "|---|---|---|---|---|"]
+    for seat in _answered_r1_seats(kit):
+        text = (kit / "r1" / f"{seat}.md").read_text()
+        m = _FM_RE.match(text)
+        body = text[m.end():] if m else text
+        c1_ok, c1_msg = _check_c1(text)
+        c5_ok, c5_msg = _check_c5(body)
+        c8_ok, c8_msg = _check_c8(body)
+        disq = not (c1_ok and c5_ok and c8_ok)
+        verdicts[seat] = {"c1": c1_ok, "c5": c5_ok, "c8": c8_ok, "disqualified": disq}
+        rows.append(f"| {seat} | {'pass' if c1_ok else 'FAIL: ' + c1_msg} "
+                     f"| {'pass' if c5_ok else 'FAIL: ' + c5_msg} "
+                     f"| {'pass' if c8_ok else 'FAIL: ' + c8_msg} | {'yes' if disq else 'no'} |")
+    (kit / "judge.md").write_text("\n".join(rows) + "\n")
+    for seat, v in verdicts.items():
+        print(f"{seat}: disqualified={v['disqualified']}")
+    return verdicts
+
+
 def cmd_validate(args: argparse.Namespace) -> None:
     text = Path(args.file).read_text()
     ok, reason = validate_answer(text, args.sha)
@@ -548,6 +749,49 @@ def run_selftest() -> None:
         summary_f2 = cmd_r1(argparse.Namespace(kit=str(kit_f), seats="x-fakeinvalid", astra_fallback=False))
         check("third attempt refused", summary_f2["x-fakeinvalid"] == "refused-max-relaunch")
         check("refusal added no third sent row", ledger_sent_count(kit_f, "x-fakeinvalid") == 2)
+
+        # G. r2: deterministic pairing, filter drops weak objections, refuses a mutated recompute.
+        kit_g = work / "kit-g"
+        cmd_brief(argparse.Namespace(slug="g", objective_file=str(clean_obj), colour="BLUE",
+                                      floor=None, template=str(_fixture_template()), kit=str(kit_g)))
+        sha_g = (kit_g / "brief.sha").read_text().strip()
+        (kit_g / "r1" / "fable-5-1.md").write_text(_CANNED_VALID.format(seat="fable-5-1", sha=sha_g))
+        cmd_r1(argparse.Namespace(kit=str(kit_g), seats="kimi-k3,qwen3.8-max,gemini-3.1-pro-high",
+                                   astra_fallback=False))
+        summary_g1 = cmd_r2(argparse.Namespace(kit=str(kit_g)))
+        check("r2 wrote pairing.md", (kit_g / "pairing.md").exists())
+        pairing_first = (kit_g / "pairing.md").read_text()
+        summary_g2 = cmd_r2(argparse.Namespace(kit=str(kit_g)))
+        check("r2 recompute matches, no refusal", summary_g2 == summary_g1)
+        check("r2 filter kept exactly one objection per seat",
+              all(v["kept"] == 1 for v in summary_g1.values()))
+        check("r2 filter rejected exactly one objection per seat",
+              all(v["rejected"] == 1 for v in summary_g1.values()))
+        (kit_g / "pairing.md").write_text(pairing_first + "| tampered | row |\n")
+        try:
+            cmd_r2(argparse.Namespace(kit=str(kit_g)))
+            check("r2 refuses on a mutated pairing.md", False)
+        except SystemExit as e:
+            check("r2 refuses on a mutated pairing.md", e.code == 2)
+
+        # H. judge: mechanical C1/C5/C8 disqualification — clean answer passes, C1-dirty fails.
+        kit_h = work / "kit-h"
+        cmd_brief(argparse.Namespace(slug="h", objective_file=str(clean_obj), colour="BLUE",
+                                      floor=None, template=str(_fixture_template()), kit=str(kit_h)))
+        sha_h = (kit_h / "brief.sha").read_text().strip()
+        (kit_h / "r1" / "fable-5-1.md").write_text(_CANNED_VALID.format(seat="fable-5-1", sha=sha_h))
+        ledger_append(kit_h, "kimi-k3", "sent", "aaaa")
+        (kit_h / "r1" / "kimi-k3.md").write_text(_CANNED_VALID.format(seat="kimi-k3", sha=sha_h))
+        ledger_append(kit_h, "kimi-k3", "answered", "aaaa")
+        dirty_answer = _CANNED_VALID.format(seat="qwen3.8-max", sha=sha_h).replace(
+            "1 call per seat", "1 call per seat, leaked key=ANTHROPIC_API_KEY")
+        ledger_append(kit_h, "qwen3.8-max", "sent", "bbbb")
+        (kit_h / "r1" / "qwen3.8-max.md").write_text(dirty_answer)
+        ledger_append(kit_h, "qwen3.8-max", "answered", "bbbb")
+        verdicts_h = cmd_judge(argparse.Namespace(kit=str(kit_h)))
+        check("judge.md written", (kit_h / "judge.md").exists())
+        check("judge passes a clean canned answer", verdicts_h["kimi-k3"]["disqualified"] is False)
+        check("judge disqualifies a C1-dirty answer", verdicts_h["qwen3.8-max"]["disqualified"] is True)
     finally:
         shutil.rmtree(work, ignore_errors=True)
         os.environ.pop("DW_FAKE_SEATS", None)
@@ -609,6 +853,14 @@ def main() -> None:
     p_val.add_argument("file")
     p_val.add_argument("--sha", required=True)
     p_val.set_defaults(func=cmd_validate)
+
+    p_r2 = sub.add_parser("r2")
+    p_r2.add_argument("--kit", required=True)
+    p_r2.set_defaults(func=cmd_r2)
+
+    p_judge = sub.add_parser("judge")
+    p_judge.add_argument("--kit", required=True)
+    p_judge.set_defaults(func=cmd_judge)
 
     args = parser.parse_args()
     if args.selftest:
