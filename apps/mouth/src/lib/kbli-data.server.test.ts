@@ -68,19 +68,20 @@ describe("kbli-data.server — section derivation (Mandate 12 fix)", () => {
     // Pasal 2(2)(b), 2 UU 25/2007 Pasal 12(2) items, 54 government activities
     // under Pasal 2(1)(b)/2(3), 99000 under Pasal 2(1a)) relabelled
     // declared_gap→located, TERTUTUP/0 unchanged: 1487→1428.
-    // 2026-09-18 naso PR-4 (residual lot 1): 330 codes the Perpres partition
+    // 2026-09-18 naso PR-4 (residual lot 1): 329 codes the Perpres partition
     // leaves RESIDUAL (no Lampiran I/II/III row, no body article, no Pasal
     // 11(2) carve-out, Usaha Besar row observed, Bali OK_or_HIGHER_RISK, no
     // legacy PMA prose) relabelled declared_gap→located under Pasal 3(1)(d) +
-    // 3(2). The rule reaches 507; 177 are WITHHELD because absence is evidence
+    // 3(2). The rule reaches 507; 178 are WITHHELD because absence is evidence
     // of openness only where the Perpres owns the ownership question — 61
-    // finance/banking codes Pasal 11(2) hands to their own legislation, 68 in
+    // finance/banking codes Pasal 11(2) hands to their own legislation, 67 in
     // sectors (09 35 49-53 61) whose statute this lane never read, 29 with an
     // adjudicated 4-digit sibling, 19 categories the body states in prose
     // (alcohol, tobacco, explosives and weapons repair, CITES breeding,
-    // penjaminan).
-    // TERBUKA/100 unchanged: 1428→1098 gaps / 131→461 located.
-    expect(gaps).toHaveLength(1098);
+    // penjaminan), and 2 whose 2025 judul IS the activity a Lampiran III row
+    // caps under a different number.
+    // TERBUKA/100 unchanged: 1428→1099 gaps / 131→460 located.
+    expect(gaps).toHaveLength(1099);
     for (const code of gaps) {
       expect(code.intel, `${code.code} intel`).toBeUndefined();
     }

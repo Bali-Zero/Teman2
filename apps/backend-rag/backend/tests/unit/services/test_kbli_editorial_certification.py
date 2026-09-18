@@ -95,18 +95,18 @@ def test_canonical_certification_partition_is_exact(
     # relabelled declared_gap -> located by apply_statutory_closures.py; none
     # is a certified canonicalIntel entry (86101's gold spec certifies
     # mouthGold, not canonicalIntel).
-    # 2026-09-18 naso PR-4 (residual lot 1): 330 codes relabelled
+    # 2026-09-18 naso PR-4 (residual lot 1): 329 codes relabelled
     # declared_gap -> located by apply_residual_open.py under the RESIDUAL
     # article. Enumerating them here would be a second copy of the lot; they
     # are identified by the basis the compiler writes, which is the property
     # that matters — a located code arriving WITHOUT that basis still has to be
-    # named below, and a 331st code carrying it breaks the count.
+    # named below, and a 330th code carrying it breaks the count.
     residual_lot = {
         code
         for code, record in records.items()
         if str(record.get("pma_official_basis") or "").startswith(RESIDUAL_BASIS_PREFIX)
     }
-    assert len(residual_lot) == 330
+    assert len(residual_lot) == 329
     assert residual_lot.isdisjoint(certified)
     assert all(
         records[code].get("pma_verification_status") == "located"
