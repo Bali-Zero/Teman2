@@ -254,7 +254,9 @@ def union_refusal(
     if not l2:
         return f"no Lampiran II dialokasikan row for KBLI-2020 {judged}"
     l2_text = " ".join(row.get("text") or "" for row in l2).casefold()
-    segments = [s.strip() for s in str(union.get("lampiran_ii_segments") or "").split(",")]
+    segments = [
+        s.strip() for s in str(union.get("lampiran_ii_segments") or "").split(",")
+    ]
     if not any(segments):
         return "union names no lampiran_ii_segments"
     for seg in segments:
@@ -277,7 +279,9 @@ def union_refusal(
         else:
             return f"neither annex names {m!r} — the union leaves it open"
     if not (in_l2 and in_l3):
-        return "the closure rests on one annex only — not a union, use the ordinary gate"
+        return (
+            "the closure rests on one annex only — not a union, use the ordinary gate"
+        )
 
     if len(lanes_of(item)) < 2:
         return (

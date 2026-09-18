@@ -15,10 +15,10 @@ import { getCode } from "@/lib/kbli-data";
 import { LicensingSection } from "./LicensingSection";
 
 describe("LicensingSection perpres slice-disclosure frame", () => {
-  it("13133 (batik cap, cap 0) renders the domestic-capital sentence with the annex's own bidang usaha text", () => {
-    const kbli = getCode("13133");
+  it("20232 (kosmetik tradisional, cap 0) renders the domestic-capital sentence with the annex's own bidang usaha text", () => {
+    const kbli = getCode("20232");
     expect(kbli?.perpresSlice).toHaveLength(1);
-    if (!kbli) throw new Error("13133 missing from kbli-data.ts");
+    if (!kbli) throw new Error("20232 missing from kbli-data.ts");
 
     render(<LicensingSection kbli={kbli} gold={null} />);
 
@@ -27,7 +27,9 @@ describe("LicensingSection perpres slice-disclosure frame", () => {
         /One activity inside this code is foreign-capital restricted/,
       ),
     ).toBeInTheDocument();
-    expect(screen.getByText(/Industri batik cap/)).toBeInTheDocument();
+    expect(
+      screen.getByText(/Industri kosmetik tradisional/),
+    ).toBeInTheDocument();
     expect(
       screen.getByText(
         /is reserved for domestic capital under Perpres 10\/2021/,
@@ -123,10 +125,10 @@ describe("LicensingSection perpres slice-disclosure frame", () => {
     expect(screen.queryByText(/no foreign equity in that slice/)).toBeNull();
   });
 
-  it("innocence: 13133 (cap 0, condition null) still renders the absolute closure sentence", () => {
-    const kbli = getCode("13133");
+  it("innocence: 20232 (cap 0, condition null) still renders the absolute closure sentence", () => {
+    const kbli = getCode("20232");
     expect(kbli?.perpresSlice?.[0].condition).toBeNull();
-    if (!kbli) throw new Error("13133 missing from kbli-data.ts");
+    if (!kbli) throw new Error("20232 missing from kbli-data.ts");
 
     render(<LicensingSection kbli={kbli} gold={null} />);
 
@@ -152,11 +154,11 @@ describe("LicensingSection perpres slice-disclosure frame", () => {
   });
 
   it("innocence: the frame is independent of the Bali-block frame — a non-Bali-blocked code still renders it", () => {
-    // 13133 carries no baliL4 block; proves the frame's own condition does
+    // 20232 carries no baliL4 block; proves the frame's own condition does
     // not silently require baliBlocked to be true or false in a way that
     // would hide it on a normal open code.
-    const kbli = getCode("13133");
-    if (!kbli) throw new Error("13133 missing from kbli-data.ts");
+    const kbli = getCode("20232");
+    if (!kbli) throw new Error("20232 missing from kbli-data.ts");
     expect(kbli.baliL4?.blocked).toBeFalsy();
 
     render(<LicensingSection kbli={kbli} gold={null} />);
@@ -166,5 +168,22 @@ describe("LicensingSection perpres slice-disclosure frame", () => {
         /One activity inside this code is foreign-capital restricted/,
       ),
     ).toBeInTheDocument();
+  });
+
+  it("13133 (closed by the union of Lampiran II item 11 and Lampiran III entry #2) renders no slice frame", () => {
+    // The whole code is TERBATAS/0 now; a "one activity inside this code"
+    // notice would tell a client the rest of the code is open when it is not.
+    const kbli = getCode("13133");
+    if (!kbli) throw new Error("13133 missing from kbli-data.ts");
+    expect(kbli.perpresSlice).toBeUndefined();
+
+    render(<LicensingSection kbli={kbli} gold={null} />);
+
+    expect(
+      screen.queryByText(
+        /One activity inside this code is foreign-capital restricted/,
+      ),
+    ).toBeNull();
+    expect(screen.queryByText(/Industri batik cap/)).toBeNull();
   });
 });

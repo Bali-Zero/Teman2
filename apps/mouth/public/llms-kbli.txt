@@ -306,7 +306,7 @@
 13122 | Pertenunan Tekstil Bukan dengan Mesin | NOT_VERIFIED | Not verified | Rendah / Menengah Rendah / Menengah Tinggi
 13131 | Penyempurnaan Benang | NOT_VERIFIED | Not verified | Rendah / Menengah Tinggi / Tinggi
 13132 | Penyempurnaan Basah Kain | NOT_VERIFIED | Not verified | Rendah / Menengah Tinggi / Tinggi / Menengah Rendah
-13133 | Industri Kain Batik | NOT_VERIFIED | Not verified | Rendah / Menengah Rendah / Menengah Tinggi
+13133 | Industri Kain Batik | TERBATAS | 0% | Rendah / Menengah Rendah / Menengah Tinggi
 13139 | Penyempurnaan Tekstil Lainnya | NOT_VERIFIED | Not verified | Rendah / Menengah Tinggi / Tinggi / Menengah Rendah
 13911 | Industri Kain Rajutan | NOT_VERIFIED | Not verified | Rendah / Menengah Rendah / Menengah Tinggi
 13912 | Industri Kain Crocheted | NOT_VERIFIED | Not verified | Rendah / Menengah Rendah

@@ -229,7 +229,7 @@ def test_cap_is_always_a_percentage_or_a_declared_gap(records: list[dict]) -> No
 
 
 def test_every_unlocated_record_withholds_cap_and_condition(records: list[dict]) -> None:
-    """All 1,488 declared gaps fail closed, not just a hand-picked sample."""
+    """All 1,487 declared gaps fail closed, not just a hand-picked sample."""
     unlocated = [r for r in records if not _located(r)]
     # SAETTA-20260915 W-H PR-3a: 55201/55203/79903 moved declared_gap→located (Perpres 49/2021 Lampiran II allocation), 1505→1502.
     # W-H PR-3b: 8 more codes (47241 47242 47244 47245 47246 47249 47712
@@ -237,7 +237,9 @@ def test_every_unlocated_record_withholds_cap_and_condition(records: list[dict])
     # entry 46 (Koperasi/UMKM reservation), 1502→1494.
     # 2026-09-18 naso lot: 6 coextensive codes (10307 10308 16291 16293 32201
     # 55106) moved declared_gap→located under Lampiran II, 1494→1488.
-    assert len(unlocated) == 1488
+    # 2026-09-18 naso PR-2: 13133 closed by the union of Lampiran II item 11 +
+    # Lampiran III entry #2, 1488→1487.
+    assert len(unlocated) == 1487
     for record in unlocated:
         cap, basis, verified = KBLIEye._foreign_cap(record)
         assert (cap, basis, verified) == (None, None, False)
@@ -245,16 +247,18 @@ def test_every_unlocated_record_withholds_cap_and_condition(records: list[dict])
 
 
 def test_umkm_reserved_is_tri_state_and_provenance_gated(records: list[dict]) -> None:
-    """Only the 71 located tuples may emit either a positive or negative claim."""
+    """Only the 72 located tuples may emit either a positive or negative claim."""
     # W-H PR-3b: 8 more codes (47241 47242 47244 47245 47246 47249 47712
     # 47722) are all located and UMKM-reserved (Perpres 49/2021 Lampiran II
     # entry 46), 57→65 located / 18→26 True / 1538→1530 None.
     # 2026-09-18 naso lot: +6 located, all UMKM-reserved, 65→71 / 26→32 / 1530→1524.
+    # 2026-09-18 naso PR-2: 13133 (union Lampiran II + III, kondisi names the
+    # Koperasi/UMKM allocation), 71→72 / 32→33 / 1524→1523.
     verdicts = [KBLIEye._umkm_reserved(r) for r in records]
     # W-H PR-3a: the 3 Lampiran II allocations are named by pma_official_basis, 15→18 / 1541→1538.
-    assert verdicts.count(True) == 32
+    assert verdicts.count(True) == 33
     assert verdicts.count(False) == 3
-    assert verdicts.count(None) == 1524
+    assert verdicts.count(None) == 1523
     named = {r["kode_kbli_2025"] for r in records if KBLIEye._umkm_reserved(r) is True}
     terbuka = {
         r["kode_kbli_2025"] for r in records if _located(r) and r.get("pma_status") == "TERBUKA"
@@ -280,8 +284,9 @@ def test_only_located_zero_caps_enter_the_rejected_bucket(records: list[dict]) -
     new_rejected = {r["kode_kbli_2025"] for r in records if KBLIEye._foreign_cap(r)[0] == 0}
     # W-H PR-3a: +3 located 0% tuples (55201/55203/79903), 54→57 / 19→22.
     # 2026-09-18 naso lot: +6 located 0% tuples, 65→71 / 30→36.
-    assert len(located) == 71
-    assert len(new_rejected) == 36
+    # 2026-09-18 naso PR-2: 13133 located 0% (union), 71→72 / 36→37.
+    assert len(located) == 72
+    assert len(new_rejected) == 37
     assert new_rejected <= located
 
 

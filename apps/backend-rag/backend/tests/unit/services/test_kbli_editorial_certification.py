@@ -68,6 +68,8 @@ def test_canonical_certification_partition_is_exact(
     # allocation, prose not certified.
     # 2026-09-18 naso lot: 10307 10308 16291 16293 32201 55106 located under
     # the Lampiran II allocation, prose not certified.
+    # 2026-09-18 naso PR-2: 13133 located by the union of Lampiran II item 11
+    # and Lampiran III entry #2, prose re-authored by spec, not certified.
     assert {
         code
         for code, record in records.items()
@@ -108,6 +110,7 @@ def test_canonical_certification_partition_is_exact(
         "16293",
         "32201",
         "55106",
+        "13133",
     }
 
 

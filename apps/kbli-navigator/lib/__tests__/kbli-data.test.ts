@@ -134,11 +134,13 @@ function pmaDisclosureContract() {
   // 2026-09-18 naso lot: 10307 10308 16291 16293 32201 55106 move
   // declared_gap→located under Perpres 49/2021 Lampiran II (whole-code rows
   // via 1:1 BPS crosswalk), 1494→1488 / 65→71.
-  assert.equal(gaps.length, 1488, "dataset must contain 1,488 PMA gaps");
+  // 2026-09-18 naso PR-2: 13133 closed by the union of Lampiran II item 11 +
+  // Lampiran III entry #2, declared_gap→located, 1488→1487 / 71→72.
+  assert.equal(gaps.length, 1487, "dataset must contain 1,487 PMA gaps");
   assert.equal(
     locatedCodes.length,
-    71,
-    "dataset must contain 71 located PMA verdicts",
+    72,
+    "dataset must contain 72 located PMA verdicts",
   );
   for (const code of gaps) {
     assert.equal(code.pma.status, "unknown", `${code.code}: PMA status`);

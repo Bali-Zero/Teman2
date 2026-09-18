@@ -371,7 +371,9 @@ def compute_disclosures(
             )
         record = records_by_code.get(code)
         if record is None:
-            raise SliceDisclosureError(f"{code}: not in canonical — cannot verify the union closure")
+            raise SliceDisclosureError(
+                f"{code}: not in canonical — cannot verify the union closure"
+            )
         status, cap = record.get("pma_status"), record.get("pma_max_asing")
         if status != "TERBATAS" or cap != 0:
             raise SliceDisclosureError(
@@ -390,7 +392,9 @@ def compute_disclosures(
     for code, rows in sorted(disclosures.items()):
         record = records_by_code.get(code)
         if record is None:
-            raise SliceDisclosureError(f"{code}: not in canonical — cannot verify pma_status")
+            raise SliceDisclosureError(
+                f"{code}: not in canonical — cannot verify pma_status"
+            )
         status = record.get("pma_status")
         if status != "TERBUKA":
             raise SliceDisclosureError(
@@ -434,7 +438,9 @@ def build_artifact(disclosures: dict[str, list[dict[str, Any]]]) -> dict[str, An
                 "double-speak."
             ),
             "count": len(disclosures),
-            "excluded_adjacent_not_contained": dict(sorted(ADJACENT_NOT_CONTAINED.items())),
+            "excluded_adjacent_not_contained": dict(
+                sorted(ADJACENT_NOT_CONTAINED.items())
+            ),
             "excluded_closed_by_union": dict(sorted(CLOSED_BY_UNION.items())),
         },
         "disclosures": disclosures,

@@ -62,7 +62,9 @@ describe("kbli-data.server — section derivation (Mandate 12 fix)", () => {
     // 2026-09-18 naso lot: 10307 10308 16291 16293 32201 55106 moved
     // declared_gap→located under Perpres 49/2021 Lampiran II (whole-code rows
     // via 1:1 BPS crosswalk), 1494→1488.
-    expect(gaps).toHaveLength(1488);
+    // 2026-09-18 naso PR-2: 13133 closed by the union of Lampiran II item 11 +
+    // Lampiran III entry #2, declared_gap→located, 1488→1487.
+    expect(gaps).toHaveLength(1487);
     for (const code of gaps) {
       expect(code.intel, `${code.code} intel`).toBeUndefined();
     }

@@ -5,11 +5,14 @@ import path from "path";
  * Codes whose WHOLE-CODE `pma.status` renders "100% open" (BROADER-adjudicated
  * — see `scripts/kbli_filiera/apply_perpres_foreign_caps.py`'s `ADJUDICATION`)
  * while a NARROWER bidang usaha inside them carries a Perpres 10/2021 (as
- * amended by 49/2021) Lampiran III foreign-ownership cap. `13133` (Industri
- * Kain Batik) is correctly 100% open as a whole code; "batik cap" (stamped
- * batik) specifically is reserved to domestic capital. A client filing under
- * 13133 for stamped-batik production would file "100% open" and be wrong
- * about the one activity they are actually doing.
+ * amended by 49/2021) Lampiran III foreign-ownership cap. `20232` (Industri
+ * Kosmetik untuk Manusia) is correctly 100% open as a whole code; "kosmetik
+ * tradisional" specifically is reserved to domestic capital. A client filing
+ * under 20232 for traditional cosmetics would file "100% open" and be wrong
+ * about the one activity they are actually doing. (`13133`, the original
+ * example, left this set on 2026-09-18: its batik-cap slice plus Lampiran II
+ * item 11's batik tulis/kombinasi allocation cover the whole code, so the
+ * record itself is TERBATAS/0 — `CLOSED_BY_UNION` in the relation script.)
  *
  * This module does NOT detect or adjudicate anything. The join (ancestor
  * lineage -> annex row), the two hand-authored 30111/30113 rows, the five

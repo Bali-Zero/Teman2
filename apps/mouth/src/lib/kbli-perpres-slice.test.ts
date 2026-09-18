@@ -35,20 +35,28 @@ function withLocatedPma(code: KBLICode): KBLICode {
   };
 }
 
-describe("perpresSlice — the /kbli/13133 batik-cap slice reader", () => {
+describe("perpresSlice — the /kbli/20232 traditional-cosmetics slice reader", () => {
   it("returns the single row for a real BROADER-adjudicated code", () => {
-    // 13133 (Industri Kain Batik) is 100% open as a whole code; "batik cap"
-    // (stamped batik) specifically is reserved to domestic capital under
-    // Perpres 49/2021 Lampiran III entry #2.
-    expect(perpresSlice("13133")).toEqual([
+    // 20232 (Industri Kosmetik untuk Manusia) is 100% open as a whole code;
+    // "kosmetik tradisional" specifically is reserved to domestic capital
+    // under Perpres 49/2021 Lampiran III entry #4.
+    expect(perpresSlice("20232")).toEqual([
       {
-        bidangUsaha: "Industri batik cap",
+        bidangUsaha: "Industri kosmetik tradisional",
         foreignCapPct: 0,
         condition: null,
         locator:
-          "Perpres 49/2021 Lampiran III (Daftar Bidang Usaha dengan Persyaratan Tertentu) entry #2",
+          "Perpres 49/2021 Lampiran III (Daftar Bidang Usaha dengan Persyaratan Tertentu) entry #4",
       },
     ]);
+  });
+
+  it("13133 no longer carries a slice: the whole code closed by the union of Lampiran II item 11 and Lampiran III entry #2", () => {
+    // Batik tulis + kombinasi are allocated to Koperasi/UMKM (Lampiran II)
+    // and batik cap to domestic capital (Lampiran III); together they cover
+    // every method the code names, so the record is TERBATAS/0 and the
+    // partial disclosure would contradict it.
+    expect(perpresSlice("13133")).toBeNull();
   });
 
   it("returns two rows for 30111 (warship + Pinisi/Cadik slices)", () => {
@@ -367,8 +375,10 @@ describe("the artifact on disk", () => {
     }
   });
 
-  it("population count matches the compiler's pinned population (13 codes)", () => {
-    expect(Object.keys(parsed.disclosures)).toHaveLength(13);
+  it("population count matches the compiler's pinned population (12 codes)", () => {
+    // 13 → 12 on 2026-09-18: 13133 retired from the slice population when the
+    // whole code closed (Lampiran II item 11 + Lampiran III entry #2).
+    expect(Object.keys(parsed.disclosures)).toHaveLength(12);
   });
 
   it("20235 and 30303 are excluded — adjacent-not-contained, not a slice inside the code", () => {
@@ -652,15 +662,15 @@ describe("the two KBLICode readers agree on perpresSlice", () => {
     expect(disagreements).toEqual([]);
   });
 
-  it("the page's own reader (kbli-data.ts) actually carries perpresSlice for 13133", async () => {
+  it("the page's own reader (kbli-data.ts) actually carries perpresSlice for 20232", async () => {
     const { getCode } = await import("./kbli-data");
-    expect(getCode("13133")?.perpresSlice).toEqual([
+    expect(getCode("20232")?.perpresSlice).toEqual([
       {
-        bidangUsaha: "Industri batik cap",
+        bidangUsaha: "Industri kosmetik tradisional",
         foreignCapPct: 0,
         condition: null,
         locator:
-          "Perpres 49/2021 Lampiran III (Daftar Bidang Usaha dengan Persyaratan Tertentu) entry #2",
+          "Perpres 49/2021 Lampiran III (Daftar Bidang Usaha dengan Persyaratan Tertentu) entry #4",
       },
     ]);
   });
