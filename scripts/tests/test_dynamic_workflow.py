@@ -721,6 +721,31 @@ def test_jury_scores_survivors_and_marks_a_malformed_ballot_dead(tmp_path, templ
     assert set(tabulation["firsts"]) == {"A", "B", "C"}
 
 
+def test_jury_tabulation_md_names_no_seat_id_before_reveal(tmp_path, template, clean_objective):
+    # guilt (dw-gate-5 on PR2d): the pre-fix rendering embedded mapping[ltr] in the table,
+    # the Disagreements line and the header's dead-ballot list -- all readable before reveal.
+    seats = "kimi-k3,qwen3.8-max,gemini-3.1-pro-high-fakejurydead"
+    kit = _judged_kit(tmp_path, template, clean_objective, seats)
+    dw.cmd_jury(argparse.Namespace(kit=str(kit)))
+    text = (kit / "jury" / "tabulation.md").read_text()
+    for seat in seats.split(","):
+        assert seat not in text, f"{seat} leaked into the blind jury/tabulation.md"
+
+
+def test_jury_prompt_never_names_an_answered_seat_id(tmp_path, template, clean_objective):
+    seats = "kimi-k3,qwen3.8-max,gemini-3.1-pro-high"
+    kit = _judged_kit(tmp_path, template, clean_objective, seats)
+    survivors = dw._jury_survivors(kit)
+    mapping = dw._jury_mapping(kit, survivors)
+    for juror in mapping.values():
+        others = sorted(ltr for ltr, seat in mapping.items() if seat != juror)
+        if not others:
+            continue
+        prompt = dw._jury_prompt(kit, mapping, others)
+        for seat in seats.split(","):
+            assert seat not in prompt, f"{seat} leaked into the prompt sent to {juror}"
+
+
 def test_jury_refuses_when_mapping_json_exists_and_differs(tmp_path, template, clean_objective):
     kit = _judged_kit(tmp_path, template, clean_objective, "kimi-k3,qwen3.8-max")
     (kit / "jury").mkdir(parents=True, exist_ok=True)
@@ -762,12 +787,25 @@ def test_anonymise_z_blind_copy_differs_from_the_original_only_on_seat_and_sha_l
     letter, seat = next(iter(mapping.items()))
     original = (kit / "r1" / f"{dw._file_slug(seat)}.md").read_text().splitlines()
     blind = (kit / "Z-BLIND" / f"{letter}.md").read_text().splitlines()
-    assert len(original) == len(blind)
-    changed = [i for i, (o, b) in enumerate(zip(original, blind)) if o != b]
+    changed = dw._diff_positions(original, blind)
     assert len(changed) == 2
     for i in changed:
         key = original[i].split(":", 1)[0].strip()
         assert key in ("seat", "objective_sha256")
+
+
+def test_diff_positions_refuses_a_length_mismatch_instead_of_a_silent_zip_truncation():
+    # guilt: a bare zip(a, b) would stop at the shorter list and miss the extra trailing
+    # line entirely -- _diff_positions must raise instead of returning a partial answer.
+    with pytest.raises(ValueError):
+        dw._diff_positions(["a", "b", "c"], ["a", "b"])
+
+
+def test_diff_positions_reports_every_differing_index_on_equal_length_input():
+    # innocence: same-length input still returns every differing position, unaffected by
+    # the added length guard.
+    assert dw._diff_positions(["a", "x", "c"], ["a", "b", "c"]) == [1]
+    assert dw._diff_positions(["a", "b", "c"], ["a", "b", "c"]) == []
 
 
 def test_anonymise_writes_one_z_blind_copy_per_surviving_letter(tmp_path, template, clean_objective):
@@ -802,12 +840,52 @@ def test_reveal_prints_the_jury_mapping_once_z_decisioni_exists(tmp_path, templa
     assert revealed == mapping
 
 
+def test_reveal_writes_a_seat_annotated_tabulation_revealed_md(tmp_path, template, clean_objective):
+    # innocence: the revealed file names them.
+    kit = _juried_kit(tmp_path, template, clean_objective, _THREE_FAMILY_SEATS)
+    mapping = dw.cmd_anonymise(argparse.Namespace(kit=str(kit)))
+    (kit / "Z-DECISIONI.md").write_text("# Zero's decision\nA\n")
+    dw.cmd_reveal(argparse.Namespace(kit=str(kit)))
+    revealed_path = kit / "jury" / "tabulation.revealed.md"
+    assert revealed_path.exists()
+    text = revealed_path.read_text()
+    for seat in mapping.values():
+        assert seat in text
+
+
+def test_reveal_never_rewrites_the_blind_tabulation_md(tmp_path, template, clean_objective):
+    kit = _juried_kit(tmp_path, template, clean_objective, _THREE_FAMILY_SEATS)
+    mapping = dw.cmd_anonymise(argparse.Namespace(kit=str(kit)))
+    (kit / "Z-DECISIONI.md").write_text("# Zero's decision\nA\n")
+    dw.cmd_reveal(argparse.Namespace(kit=str(kit)))
+    blind_text = (kit / "jury" / "tabulation.md").read_text()
+    for seat in mapping.values():
+        assert seat not in blind_text
+
+
 def _outcome_text() -> str:
     return "rounds_used: 1\ndead_at_launch: 0\nwall_clock: 4m\nbites: selftest green\n"
 
 
 def _capture_ready_kit(tmp_path, template, clean_objective) -> Path:
     kit = _juried_kit(tmp_path, template, clean_objective, _THREE_FAMILY_SEATS)
+    dw.cmd_anonymise(argparse.Namespace(kit=str(kit)))
+    (kit / "Z-DECISIONI.md").write_text("# Zero's decision\nA\n")
+    (kit / "OUTCOME.md").write_text(_outcome_text())
+    return kit
+
+
+def _capture_ready_kit_with_slug(tmp_path, template, clean_objective, slug: str) -> Path:
+    # own slug (not the shared "s" every other fixture in this file carries) so the two
+    # real-canonical-dest tests below each own a distinct research/operations/ path and
+    # can never collide, in this process or under any future parallel test run.
+    kit = tmp_path / "k"
+    dw.cmd_brief(argparse.Namespace(slug=slug, objective_file=str(clean_objective), colour="BLUE",
+                                     floor=None, template=str(template), kit=str(kit)))
+    _seed_convener(kit)
+    dw.cmd_r1(argparse.Namespace(kit=str(kit), seats=_THREE_FAMILY_SEATS, astra_fallback=False))
+    dw.cmd_judge(argparse.Namespace(kit=str(kit)))
+    dw.cmd_jury(argparse.Namespace(kit=str(kit)))
     dw.cmd_anonymise(argparse.Namespace(kit=str(kit)))
     (kit / "Z-DECISIONI.md").write_text("# Zero's decision\nA\n")
     (kit / "OUTCOME.md").write_text(_outcome_text())
@@ -840,19 +918,96 @@ def test_capture_check_refuses_naming_a_missing_outcome_key(tmp_path, template, 
     assert not dest.exists()
 
 
-def test_capture_check_copies_the_full_artifact_set_when_everything_is_present(
+def test_capture_check_refuses_a_dest_outside_research_operations(
         tmp_path, template, clean_objective):
+    # guilt: right shape in every way except location -- must name it and create nothing.
     kit = _capture_ready_kit(tmp_path, template, clean_objective)
     dest = tmp_path / "dest"
-    dw.cmd_capture_check(argparse.Namespace(kit=str(kit), dest=str(dest)))
-    assert (dest / "BRIEF.md").exists()
-    assert (dest / "brief.sha").exists()
-    assert (dest / "judge.md").exists()
-    assert (dest / "jury" / "tabulation.md").exists()
-    assert (dest / "Z-DECISIONI.md").exists()
-    assert (dest / "OUTCOME.md").exists()
-    assert (dest / "r1").is_dir()
-    assert (dest / "r2").is_dir()
+    with pytest.raises(SystemExit) as e:
+        dw.cmd_capture_check(argparse.Namespace(kit=str(kit), dest=str(dest)))
+    assert e.value.code == 2
+    assert not dest.exists()
+
+
+def test_capture_check_refuses_a_dotdot_escape_from_research_operations(
+        tmp_path, template, clean_objective):
+    # guilt: resolve()-then-compare must catch a '..' escape, not just a literal string check.
+    kit = _capture_ready_kit(tmp_path, template, clean_objective)
+    escaped = dw.REPO_ROOT / "research" / "operations" / ".." / ".." / "tmp-capture-escape"
+    with pytest.raises(SystemExit) as e:
+        dw.cmd_capture_check(argparse.Namespace(kit=str(kit), dest=str(escaped)))
+    assert e.value.code == 2
+    assert not escaped.resolve().exists()
+
+
+def test_capture_check_refuses_a_non_empty_existing_dest(tmp_path, template, clean_objective):
+    kit = _capture_ready_kit_with_slug(tmp_path, template, clean_objective,
+                                        "pytest-capture-nonempty")
+    dest = dw._capture_dest_for(kit)
+    try:
+        dest.mkdir(parents=True, exist_ok=True)
+        sentinel = dest / "already-here.txt"
+        sentinel.write_text("pre-existing, must survive untouched\n")
+        with pytest.raises(SystemExit) as e:
+            dw.cmd_capture_check(argparse.Namespace(kit=str(kit), dest=str(dest)))
+        assert e.value.code == 2
+        assert sentinel.read_text() == "pre-existing, must survive untouched\n"
+    finally:
+        shutil.rmtree(dest, ignore_errors=True)
+
+
+def test_capture_check_copies_the_full_artifact_set_when_everything_is_present(
+        tmp_path, template, clean_objective):
+    kit = _capture_ready_kit_with_slug(tmp_path, template, clean_objective,
+                                        "pytest-capture-success")
+    dest = dw._capture_dest_for(kit)
+    try:
+        dw.cmd_capture_check(argparse.Namespace(kit=str(kit), dest=str(dest)))
+        assert (dest / "BRIEF.md").exists()
+        assert (dest / "brief.sha").exists()
+        assert (dest / "judge.md").exists()
+        assert (dest / "jury" / "tabulation.md").exists()
+        assert (dest / "Z-DECISIONI.md").exists()
+        assert (dest / "OUTCOME.md").exists()
+        assert (dest / "r1").is_dir()
+        assert (dest / "r2").is_dir()
+    finally:
+        shutil.rmtree(dest, ignore_errors=True)
+
+
+def test_capture_check_refuses_a_fake_phone_in_outcome_md(
+        tmp_path, template, clean_objective, capsys):
+    # guilt fixture per the addendum, verbatim: 'a fake phone in OUTCOME.md'. Same phone
+    # literal _dirty_objective already uses elsewhere in this file to trip the redactor.
+    kit = _capture_ready_kit_with_slug(tmp_path, template, clean_objective, "pytest-capture-pii")
+    phone = "+6281234567890"
+    (kit / "OUTCOME.md").write_text(_outcome_text().rstrip("\n") + f"\ncontact: {phone}\n")
+    dest = dw._capture_dest_for(kit)
+    capsys.readouterr()
+    try:
+        with pytest.raises(SystemExit) as e:
+            dw.cmd_capture_check(argparse.Namespace(kit=str(kit), dest=str(dest)))
+        assert e.value.code == 3
+        assert not dest.exists()
+        captured = capsys.readouterr()
+        assert phone not in captured.out
+        assert phone not in captured.err
+        assert "OUTCOME.md" in captured.err
+    finally:
+        shutil.rmtree(dest, ignore_errors=True)
+
+
+def test_capture_check_copies_a_clean_outcome_md_once_the_pii_gate_clears(
+        tmp_path, template, clean_objective):
+    # innocence: identical kit shape, no PII -- the gate lets it straight through.
+    kit = _capture_ready_kit_with_slug(tmp_path, template, clean_objective,
+                                        "pytest-capture-pii-clean")
+    dest = dw._capture_dest_for(kit)
+    try:
+        dw.cmd_capture_check(argparse.Namespace(kit=str(kit), dest=str(dest)))
+        assert (dest / "OUTCOME.md").read_text() == _outcome_text()
+    finally:
+        shutil.rmtree(dest, ignore_errors=True)
 
 
 # --------------------------------------------------------------- validate_answer (guilt + innocence)

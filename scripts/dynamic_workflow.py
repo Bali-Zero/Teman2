@@ -11,8 +11,9 @@ Subcommands (PR1a+PR1b+PR2a+PR2b+PR2c+PR2d):
     judge    --kit K            # mechanical C1/C5/C8 disqualification of every r1 answer
     jury     --kit K            # blind peer review of survivors, six axes, Borda + firsts
     anonymise --kit K           # Z-BLIND/ A-F copies (seat/objective_sha256 stripped only)
-    reveal    --kit K           # prints letter->seat mapping, sealed until Z-DECISIONI.md exists
-    capture-check --kit K --dest D   # full artifact set incl. OUTCOME.md keys, copies to D
+    reveal    --kit K           # prints+writes tabulation.revealed.md, sealed until Z-DECISIONI.md
+    capture-check --kit K --dest D   # full artifact set incl. OUTCOME.md keys, canonical/empty
+                                      # --dest only, every file PII-gated, then copies to D
 
 PII gate is fail-closed, no --skip-pii flag exists: the objective is redacted with the SAME
 Redactor used before anything leaves this machine; any change, or any raise, refuses with a
@@ -833,6 +834,17 @@ def _strip_identity(text: str) -> str:
     return text
 
 
+def _diff_positions(a: list[str], b: list[str]) -> list[int]:
+    """Line indices where two equal-length line lists differ. Raises ValueError on a length
+    mismatch instead of silently truncating to the shorter list the way a bare zip(a, b)
+    would (gate-5 on PR2d: run_selftest's own Z-BLIND-vs-original check used a bare zip() the
+    pytest mirror had already grown a length assert past — the same comparison living in two
+    places had drifted). One function, called from both, so it cannot drift again."""
+    if len(a) != len(b):
+        raise ValueError(f"length mismatch: {len(a)} vs {len(b)} lines")
+    return [i for i, (x, y) in enumerate(zip(a, b)) if x != y]
+
+
 def _jury_survivors(kit: Path) -> list[str]:
     """Seats judge.md marked NOT disqualified, in judge.md's own row order. judge.md — not a
     recompute — is the SSOT for who survives (scar #2, "Esiste != Armato": never re-derive a
@@ -922,12 +934,24 @@ def _parse_jury_ballot(text: str, valid_letters: set[str]) -> dict[str, list[int
 
 
 def _tabulate_jury(mapping: dict[str, str],
-                    ballots: dict[str, dict[str, list[int]] | None]) -> dict[str, Any]:
+                    ballots: dict[str, dict[str, list[int]] | None],
+                    blind: bool = True) -> dict[str, Any]:
     """Borda + firsts, tabulated BY THE SCRIPT (mandate, verbatim) — never by a synthesizer
     LLM. Borda: per live ballot, rank formations by summed axis score (ties broken by letter
     for determinism), award (n-1-rank) points. Firsts: count of #1 rankings. Disagreement: any
-    formation where the SAME axis spans >=3 points (of a 1-5 scale) across live ballots."""
+    formation where the SAME axis spans >=3 points (of a 1-5 scale) across live ballots.
+
+    blind=True (default, cmd_jury's jury/tabulation.md) renders formations BY LETTER only —
+    the mandate's 'disagreements named' means named by letter, not by seat, and the only
+    letter->seat source before Z-DECISIONI.md exists is jury/mapping.json, chmod 600
+    (dw-gate-5 on PR2d: the original rendering embedded mapping[ltr] in the table, the
+    Disagreements line, and even the header's dead-ballot list, all before reveal). The
+    returned "dead" key always stays seat ids for programmatic callers (run_selftest,
+    pytest) regardless of blind — only the rendered markdown text changes shape.
+    blind=False (cmd_reveal's jury/tabulation.revealed.md, written only once
+    Z-DECISIONI.md exists) names seats."""
     letters = sorted(mapping)
+    inverse = {seat: ltr for ltr, seat in mapping.items()}
     borda: dict[str, int] = {ltr: 0 for ltr in letters}
     firsts: dict[str, int] = {ltr: 0 for ltr in letters}
     axis_scores: dict[str, dict[str, list[int]]] = {ltr: {a: [] for a in JURY_AXES} for ltr in letters}
@@ -952,21 +976,41 @@ def _tabulate_jury(mapping: dict[str, str],
         for axis in JURY_AXES:
             scores = axis_scores[ltr][axis]
             if len(scores) >= 2 and (max(scores) - min(scores)) >= 3:
-                disagreements.append(
-                    f"{ltr} ({mapping[ltr]}): {axis} spread {min(scores)}-{max(scores)}")
+                who = ltr if blind else f"{ltr} ({mapping[ltr]})"
+                disagreements.append(f"{who}: {axis} spread {min(scores)}-{max(scores)}")
 
     dead = sorted(j for j, b in ballots.items() if b is None)
-    rows = ["| formation | seat | borda | firsts |", "|---|---|---|---|"]
+    dead_shown = sorted(inverse[j] for j in dead) if blind else dead
+    if blind:
+        rows = ["| formation | borda | firsts |", "|---|---|---|"]
+    else:
+        rows = ["| formation | seat | borda | firsts |", "|---|---|---|---|"]
     for ltr in sorted(letters, key=lambda ltr: (-borda[ltr], ltr)):
-        rows.append(f"| {ltr} | {mapping[ltr]} | {borda[ltr]} | {firsts[ltr]} |")
+        if blind:
+            rows.append(f"| {ltr} | {borda[ltr]} | {firsts[ltr]} |")
+        else:
+            rows.append(f"| {ltr} | {mapping[ltr]} | {borda[ltr]} | {firsts[ltr]} |")
     lines = [f"# Jury tabulation — {live} live ballot(s), {len(dead)} dead: "
-             f"{', '.join(dead) or 'none'}", ""]
+             f"{', '.join(dead_shown) or 'none'}", ""]
     lines += rows
     lines.append("")
     lines.append("## Disagreements" if disagreements else "## Disagreements: none")
     lines += [f"- {d}" for d in disagreements]
     return {"borda": borda, "firsts": firsts, "dead": dead, "disagreements": disagreements,
             "rendered": "\n".join(lines) + "\n"}
+
+
+def _jury_prompt(kit: Path, mapping: dict[str, str], others: list[str]) -> str:
+    """The full prompt one juror receives: the candidate bodies for every OTHER formation,
+    identity-stripped via _strip_identity so the only names a juror ever sees are letters
+    (dw-gate-5 on PR2d: blind is letters-only until reveal). A named helper, not inlined in
+    cmd_jury, so a guilt test can grep the exact string a juror is sent for every answered
+    seat id without a real (or DW_FAKE_SEATS) seat launch in the way."""
+    bodies = "\n\n".join(
+        f"### Formation {ltr}\n"
+        + _strip_identity((kit / "r1" / f"{_file_slug(mapping[ltr])}.md").read_text())
+        for ltr in others)
+    return _JURY_PROMPT_PREFIX + bodies
 
 
 def cmd_jury(args: argparse.Namespace) -> dict[str, Any]:
@@ -984,11 +1028,7 @@ def cmd_jury(args: argparse.Namespace) -> dict[str, Any]:
         if fake:
             output = _fake_jury_output(juror, others)
         else:
-            bodies = "\n\n".join(
-                f"### Formation {ltr}\n"
-                + _strip_identity((kit / "r1" / f"{_file_slug(mapping[ltr])}.md").read_text())
-                for ltr in others)
-            prompt = _JURY_PROMPT_PREFIX + bodies
+            prompt = _jury_prompt(kit, mapping, others)
             kind = _seat_kind(juror) or "kimi"
             timeout = SEAT_TIMEOUTS.get(kind, 900)
             output = _launch_seat(juror, prompt, timeout, kit)
@@ -1027,11 +1067,32 @@ def cmd_anonymise(args: argparse.Namespace) -> dict[str, str]:
     return mapping
 
 
+def _reconstruct_jury_ballots(kit: Path, mapping: dict[str, str]
+                               ) -> dict[str, dict[str, list[int]] | None]:
+    """Rebuilds the ballots dict cmd_jury held only in memory, by re-reading the per-juror
+    jury/<slug>.md files cmd_jury persisted and re-parsing each with the SAME
+    _parse_jury_ballot cmd_jury used — so cmd_reveal's seat-annotated tabulation is
+    recomputed from that one source of truth, never a second independent judgment."""
+    ballots: dict[str, dict[str, list[int]] | None] = {}
+    for juror in mapping.values():
+        others = sorted(ltr for ltr, seat in mapping.items() if seat != juror)
+        if not others:
+            continue  # no peers to review — cmd_jury never wrote a ballot file for this one
+        ballot_path = kit / "jury" / f"{_file_slug(juror)}.md"
+        text = ballot_path.read_text() if ballot_path.exists() else ""
+        ballots[juror] = _parse_jury_ballot(text, set(others))
+    return ballots
+
+
 def cmd_reveal(args: argparse.Namespace) -> dict[str, str]:
     """Prints the letter->seat mapping jury/anonymise already wrote -- but only once
     Z-DECISIONI.md exists (mandate, verbatim: 'printed only by reveal --kit K after
     Z-DECISIONI.md exists'). Reveal never computes a mapping of its own; a command that could
-    conjure one from nothing would not be a seal on anything."""
+    conjure one from nothing would not be a seal on anything. Also writes
+    jury/tabulation.revealed.md — the same tabulation jury/tabulation.md already carries,
+    recomputed from the persisted per-juror ballots but with seats named. The blind
+    jury/tabulation.md is never rewritten here (dw-gate-5 on PR2d: blind is letters-only
+    until reveal, and reveal only ever ADDS the seat-annotated twin)."""
     kit = Path(args.kit)
     if not (kit / "Z-DECISIONI.md").exists():
         print("refused: Z-DECISIONI.md does not exist -- reveal stays sealed until Zero decides",
@@ -1045,6 +1106,9 @@ def cmd_reveal(args: argparse.Namespace) -> dict[str, str]:
     mapping: dict[str, str] = json.loads(mapping_path.read_text())
     for letter in sorted(mapping):
         print(f"{letter}: {mapping[letter]}")
+    ballots = _reconstruct_jury_ballots(kit, mapping)
+    tabulation = _tabulate_jury(mapping, ballots, blind=False)
+    (kit / "jury" / "tabulation.revealed.md").write_text(tabulation["rendered"])
     return mapping
 
 
@@ -1057,12 +1121,68 @@ def _outcome_missing_keys(text: str) -> list[str]:
     return [k for k in _OUTCOME_KEYS if not re.search(rf"^{re.escape(k)}:", text, re.MULTILINE)]
 
 
+def _capture_dest_for(kit: Path) -> Path:
+    """the addendum's canonical shape: research/operations/<YYYY-MM-DD>-dynamic-workflow-<slug>/,
+    relative to the repo root. Slug comes from the kit's own inputs.json (written once by
+    cmd_brief) rather than a new CLI flag; the date is capture time, matching this repo's
+    existing research/operations/<date>-<slug> convention (date = event time, not task-start)."""
+    slug = json.loads((kit / "inputs.json").read_text())["slug"]
+    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    return REPO_ROOT / "research" / "operations" / f"{today}-dynamic-workflow-{slug}"
+
+
+# brief.sha is a hex digest, not prose -- every OTHER required item is text a redactor can
+# meaningfully scan (r1/, r2/ walked file-by-file since they're per-seat directories).
+_CAPTURE_PII_SCAN = tuple(rel for rel in _CAPTURE_REQUIRED if rel != "brief.sha")
+
+
+_PII_SCAN_PAD_SENTENCE = "The quick brown fox jumps over the lazy dog near the riverbank at dawn. "
+
+
+def _capture_pii_gate(kit: Path) -> None:
+    """PII gate on the OUTPUT boundary (CLAUDE.md contract point 4, PR2f addendum): every text
+    file about to be captured is redacted with the SAME Redactor cmd_brief uses. One changed
+    span or a redactor error refuses fail-closed, naming the FILE and the COUNT only — never
+    the text. Runs before dest.mkdir() and before any copy, so a trip copies nothing.
+
+    Padding: the redactor's own gate.min_remaining_chars floor exists to catch bulk prose
+    over-redacted down to near-nothing — it cannot judge an input that STARTS shorter than the
+    floor (a one-line Z-DECISIONI.md always reads as 'too short', PII or not; confirmed empirically
+    against this exact fixture during PR2f). Short files are padded with a fixed, pattern-inert
+    sentence past the floor before scanning; the pad passes through every rule unchanged, so any
+    difference the redactor reports still traces to the file's own content, not the padding."""
+    redactor = Redactor.load_default()
+    floor = redactor.config.gate.min_remaining_chars
+    pad = _PII_SCAN_PAD_SENTENCE * (floor // len(_PII_SCAN_PAD_SENTENCE) + 2)
+    for rel in _CAPTURE_PII_SCAN:
+        target = kit / rel
+        for f in sorted(target.rglob("*")) if target.is_dir() else [target]:
+            if not f.is_file():
+                continue
+            original = f.read_text()
+            scan_input = original if len(original) >= floor else f"{pad}\n{original}"
+            try:
+                redacted = redactor.redact(scan_input)
+            except RedactionError as e:
+                print(f"PII gate: redactor raised on {f.relative_to(kit)} "
+                      f"({type(e).__name__}) — refusing fail-closed", file=sys.stderr)
+                sys.exit(3)
+            if redacted != scan_input:
+                n = _count_changed_spans(scan_input, redacted)
+                print(f"PII gate: {f.relative_to(kit)} changed by redaction ({n} span(s)) — "
+                      f"refusing fail-closed", file=sys.stderr)
+                sys.exit(3)
+
+
 def cmd_capture_check(args: argparse.Namespace) -> None:
     """mandate, verbatim: 'requires BRIEF.md, brief.sha, r1/, r2/, judge.md,
     jury/tabulation.md, Z-DECISIONI.md, OUTCOME.md (with rounds_used, dead_at_launch,
     wall_clock, bites keys); copies; exits non-zero naming what is missing.' A capture that
     silently skipped a stage must fail loud, one line per absence, not ship a partial
-    research/ artifact that looks complete (scar #2, 'Esiste != Armato')."""
+    research/ artifact that looks complete (scar #2, 'Esiste != Armato'). PR2f addendum: --dest
+    must resolve to the canonical research/operations/<date>-dynamic-workflow-<slug>/ path (no
+    '..', no arbitrary location) and must not already hold files; every captured file must also
+    clear the PII gate. All three refuse before anything is created or copied."""
     kit = Path(args.kit)
     dest = Path(args.dest)
     missing: list[str] = []
@@ -1075,6 +1195,16 @@ def cmd_capture_check(args: argparse.Namespace) -> None:
     if missing:
         print("FAIL: capture-check missing: " + "; ".join(missing))
         sys.exit(1)
+
+    expected_dest = _capture_dest_for(kit)
+    if dest.resolve() != expected_dest.resolve():
+        print(f"refused: --dest {dest} is not the canonical {expected_dest}", file=sys.stderr)
+        sys.exit(2)
+    if dest.exists() and any(dest.iterdir()):
+        print(f"refused: --dest {dest} already exists and is not empty", file=sys.stderr)
+        sys.exit(2)
+
+    _capture_pii_gate(kit)
 
     dest.mkdir(parents=True, exist_ok=True)
     for rel in _CAPTURE_REQUIRED:
@@ -1293,6 +1423,22 @@ def run_selftest() -> None:
         check("re-running jury on an unchanged mapping does not refuse",
               cmd_jury(argparse.Namespace(kit=str(kit_k))) is not None)
 
+        # blind: jury/tabulation.md and every jury prompt name letters only, never a seat,
+        # until reveal (dw-gate-5 on PR2d).
+        answered_seats_k = ["kimi-k3", "qwen3.8-max", "gemini-3.1-pro-high-fakejurydead"]
+        tabulation_text_k = (kit_k / "jury" / "tabulation.md").read_text()
+        check("guilt: jury/tabulation.md names no answered seat id before reveal",
+              not any(seat in tabulation_text_k for seat in answered_seats_k))
+        mapping_k = _jury_mapping(kit_k, _jury_survivors(kit_k))
+        prompts_leak_k = False
+        for juror in mapping_k.values():
+            others_k = sorted(ltr for ltr, seat in mapping_k.items() if seat != juror)
+            if not others_k:
+                continue
+            if any(seat in _jury_prompt(kit_k, mapping_k, others_k) for seat in answered_seats_k):
+                prompts_leak_k = True
+        check("guilt: no jury prompt names an answered seat id", not prompts_leak_k)
+
         # L. anonymise: chained r1 -> r2 -> judge -> jury -> anonymise exactly as a real round
         # runs (Bites, PR2d) -- Z-BLIND/ gets one A-F copy per survivor, mapping.json stays
         # chmod 600, and a copy differs from its r1 original on ONLY the two stripped lines.
@@ -1314,7 +1460,12 @@ def run_selftest() -> None:
         letter_l, seat_l = next(iter(mapping_l.items()))
         orig_lines_l = (kit_l / "r1" / f"{_file_slug(seat_l)}.md").read_text().splitlines()
         blind_lines_l = (kit_l / "Z-BLIND" / f"{letter_l}.md").read_text().splitlines()
-        changed_l = [i for i, (o, b) in enumerate(zip(orig_lines_l, blind_lines_l)) if o != b]
+        try:
+            changed_l = _diff_positions(orig_lines_l, blind_lines_l)
+            check("Z-BLIND copy is the same length as its original (no zip() truncation)", True)
+        except ValueError:
+            check("Z-BLIND copy is the same length as its original (no zip() truncation)", False)
+            changed_l = []
         check("Z-BLIND copy differs from its original on exactly the seat+sha lines",
               len(changed_l) == 2)
 
@@ -1327,8 +1478,16 @@ def run_selftest() -> None:
         (kit_l / "Z-DECISIONI.md").write_text("# Zero's decision\nA\n")
         check("innocence: reveal prints the jury mapping once Z-DECISIONI.md exists",
               cmd_reveal(argparse.Namespace(kit=str(kit_l))) == mapping_l)
+        revealed_path_l = kit_l / "jury" / "tabulation.revealed.md"
+        check("innocence: reveal writes jury/tabulation.revealed.md", revealed_path_l.exists())
+        revealed_text_l = revealed_path_l.read_text()
+        check("innocence: the revealed file names every surviving seat",
+              all(seat in revealed_text_l for seat in mapping_l.values()))
+        check("guilt: jury/tabulation.md itself is never rewritten by reveal",
+              not any(seat in (kit_l / "jury" / "tabulation.md").read_text()
+                      for seat in mapping_l.values()))
 
-        # N. capture-check: refuses naming what's missing, then copies the full artifact set.
+        # N. capture-check: refuses naming what's missing, then a bad --dest, then copies.
         dest_l = work / "capture-l"
         try:
             cmd_capture_check(argparse.Namespace(kit=str(kit_l), dest=str(dest_l)))
@@ -1338,10 +1497,46 @@ def run_selftest() -> None:
         check("capture-check wrote no dest on refusal", not dest_l.exists())
         (kit_l / "OUTCOME.md").write_text(
             "rounds_used: 1\ndead_at_launch: 0\nwall_clock: 4m\nbites: selftest green\n")
-        cmd_capture_check(argparse.Namespace(kit=str(kit_l), dest=str(dest_l)))
-        check("capture-check copied jury/tabulation.md to dest",
-              (dest_l / "jury" / "tabulation.md").exists())
-        check("capture-check copied Z-DECISIONI.md to dest", (dest_l / "Z-DECISIONI.md").exists())
+
+        try:
+            cmd_capture_check(argparse.Namespace(kit=str(kit_l), dest=str(dest_l)))
+            check("guilt: capture-check refuses a --dest outside research/operations/", False)
+        except SystemExit as e:
+            check("guilt: capture-check refuses a --dest outside research/operations/",
+                  e.code == 2)
+        check("capture-check wrote no dest on wrong-location refusal", not dest_l.exists())
+
+        real_dest_l = _capture_dest_for(kit_l)
+        try:
+            real_dest_l.mkdir(parents=True, exist_ok=True)
+            (real_dest_l / "stale.txt").write_text("pre-existing\n")
+            try:
+                cmd_capture_check(argparse.Namespace(kit=str(kit_l), dest=str(real_dest_l)))
+                check("guilt: capture-check refuses a non-empty existing --dest", False)
+            except SystemExit as e:
+                check("guilt: capture-check refuses a non-empty existing --dest", e.code == 2)
+            check("capture-check left the pre-existing file untouched",
+                  (real_dest_l / "stale.txt").read_text() == "pre-existing\n")
+            shutil.rmtree(real_dest_l)
+
+            clean_outcome_l = (kit_l / "OUTCOME.md").read_text()
+            (kit_l / "OUTCOME.md").write_text(clean_outcome_l.rstrip("\n") +
+                                               "\ncontact: +6281234567890\n")
+            try:
+                cmd_capture_check(argparse.Namespace(kit=str(kit_l), dest=str(real_dest_l)))
+                check("guilt: capture-check refuses a PII-dirty OUTCOME.md", False)
+            except SystemExit as e:
+                check("guilt: capture-check refuses a PII-dirty OUTCOME.md", e.code == 3)
+            check("capture-check wrote no dest on the PII refusal", not real_dest_l.exists())
+            (kit_l / "OUTCOME.md").write_text(clean_outcome_l)
+
+            cmd_capture_check(argparse.Namespace(kit=str(kit_l), dest=str(real_dest_l)))
+            check("capture-check copied jury/tabulation.md to dest",
+                  (real_dest_l / "jury" / "tabulation.md").exists())
+            check("capture-check copied Z-DECISIONI.md to dest",
+                  (real_dest_l / "Z-DECISIONI.md").exists())
+        finally:
+            shutil.rmtree(real_dest_l, ignore_errors=True)
 
     finally:
         shutil.rmtree(work, ignore_errors=True)

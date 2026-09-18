@@ -1,0 +1,110 @@
+task: >-
+  PR2f of the /dynamic-workflow coach-protocol build (MANDATE-builder.md, owner ruling Zero
+  2026-09-18), following PR1a (#6753), PR1b (#6756), PR2a (#6757) and PR2b. This PR carries five
+  commits, each its own concern. Commit 1: `_diff_positions` (the Z-BLIND identity-strip
+  comparator) used bare `zip()` over two strings of possibly-different length, which silently
+  truncates to the shorter one instead of reporting a mismatch — replaced with an explicit length
+  guard that refuses rather than under-reports. Commit 2: `jury`'s `tabulation.md` is now
+  letters-only (no seat id) until `reveal` runs, which prints jury/mapping.json only after
+  Z-DECISIONI.md exists and now ALSO writes a seat-annotated `tabulation.revealed.md` sibling,
+  leaving the original blind file untouched. Commits 3-4 are the addendum's "capture hardening":
+  `capture-check --dest` now (3) refuses a non-empty existing dest and any dest that does not
+  resolve to the canonical `research/operations/<date>-dynamic-workflow-<slug>/` under the repo
+  root (no `..`, no arbitrary location), and (4) runs a PII gate over every text file about to be
+  captured (BRIEF.md, r1/, r2/, judge.md, jury/tabulation.md, Z-DECISIONI.md, OUTCOME.md) via the
+  same `Redactor.load_default().redact()` cmd_brief already uses — one changed span or a redactor
+  error refuses fail-closed (exit 3, names the FILE and the COUNT, never the text), before
+  dest.mkdir() and before any copy. Building commit 4 surfaced a genuine bug in reusing the
+  Redactor here: its `gate.min_remaining_chars` floor (100) exists to catch bulk prose
+  over-redacted down to near-nothing, and cannot tell "started short" from "got shortened" — it
+  always fires on a short, legitimate, PII-free file (Z-DECISIONI.md, ~20 chars, used throughout
+  this file's own existing test suite). Fixed by padding any input under the floor with a fixed,
+  pattern-inert sentence before scanning and comparing the full padded strings, verified
+  empirically against the live Redactor before shipping (see assumptions). Commit 5 is a one-line
+  docs touch-up: the module docstring's `capture-check` summary was stale after PR2d and did not
+  mention the new dest/PII gates.
+lane: infra/dynamic-workflow-2f
+machine: M5
+date: 2026-09-18
+
+gear: 2
+gear_reason: >-
+  Deterministic floor 2, source `size`: `git diff --no-renames --numstat` against `origin/main`
+  measures churn 420 (218+23 scripts/dynamic_workflow.py, 167+12 scripts/tests/test_dynamic_workflow.py)
+  — above SIZE_GEAR2_THRESHOLD (400) and below SIZE_GEAR3_THRESHOLD (1828). No hot-zone path: only
+  `scripts/` is touched, no `.github/workflows/` file and no HOTZONE_PATTERNS match. Confirmed
+  locally via `python3 scripts/contract_verify.py --local --json` before this brief existed
+  (floor-needs-brief FAIL naming exactly this diff — output: "deterministic floor is 2 but this
+  diff carries no evidence/brief.yml"), and this brief is the fix. Per
+  `scripts/ci/evidence_paths.py --ref agent/air-m5/infra/dynamic-workflow-2f --json`, the root
+  `evidence/brief.yml` path is past its 2026-09-12 deprecation date (today 2026-09-18) and this
+  PR's diff does not touch it — this file lives at the tool's own resolved per-task path instead.
+
+appetite:
+  wall_clock_hours: 2
+  adversarial_rounds: 1
+
+acceptance:
+  A1: >-
+    `_diff_positions` refuses a length-mismatched pair rather than silently truncating to the
+    shorter string via `zip()`: guilt (two differing-length strings) raises/reports the mismatch
+    instead of comparing only the shared prefix; innocence (equal-length strings) reports every
+    differing index, not just the ones `zip()` would have reached.
+    probe: python3 -m pytest scripts/tests/test_dynamic_workflow.py -k "diff_positions" -q
+  A2: >-
+    `jury/tabulation.md` names no seat id before `reveal` runs (blind), the jury prompt itself
+    never names an answered seat id, a mapping.json that already exists and differs refuses rather
+    than silently overwriting, and `reveal` refuses before Z-DECISIONI.md exists, then writes a
+    seat-annotated `tabulation.revealed.md` without ever rewriting the original blind file.
+    probe: python3 -m pytest scripts/tests/test_dynamic_workflow.py -k "jury or reveal or parse_jury_ballot" -q
+  A3: >-
+    `capture-check --dest` refuses (exit 2, no dest created) a location outside
+    `research/operations/<date>-dynamic-workflow-<slug>/` including a `..` escape resolved via
+    `.resolve()` equality, and separately refuses (exit 2) a dest that already exists and is
+    non-empty, leaving any pre-existing file inside it untouched. Both checks run before
+    dest.mkdir() — nothing is created on a trip.
+    probe: python3 -m pytest scripts/tests/test_dynamic_workflow.py -k "capture_check_refuses_a_dest or capture_check_refuses_a_dotdot or capture_check_refuses_a_non_empty" -q
+  A4: >-
+    Guilt fixture per the addendum, verbatim — a fake phone in OUTCOME.md: capture-check refuses
+    (exit 3, names OUTCOME.md and a span count, never the phone number itself, on both stdout and
+    stderr) and copies nothing. Innocence: an identical kit shape with no PII clears the gate and
+    copies OUTCOME.md unchanged.
+    probe: python3 -m pytest scripts/tests/test_dynamic_workflow.py -k "capture_check_refuses_a_fake_phone or capture_check_copies_a_clean_outcome" -q
+  A5: >-
+    Nothing else moved: the full pytest file and the raw `--selftest` CLI sweep both run clean at
+    this head, and the repo tree carries zero stray `research/operations/` directories once either
+    finishes (every dest-touching test/selftest case cleans up its own kit and dest in a `finally`).
+    probe: python3 -m pytest scripts/tests/test_dynamic_workflow.py -q && python3 scripts/dynamic_workflow.py --selftest
+
+out_of_scope: >-
+  The SKILL.md rewrite, brief.template.md, and the two lints remain PR3 (PR3b, PR3c), per the
+  mandate's own pre-authorized split carried forward unchanged from PR2b's brief.
+
+assumptions:
+  - text: >-
+      Redactor.load_default().redact()'s `gate.min_remaining_chars` floor (100) judges the
+      POST-redaction output length with no way to distinguish "input started short" from "input
+      got shortened by redaction" — it fires on any input under the floor regardless of PII
+      presence. Padding a short input with a fixed, pattern-inert sentence
+      ("The quick brown fox jumps over the lazy dog near the riverbank at dawn. ", repeated past
+      the floor) before scanning avoids this without touching _redact_pii.py or reimplementing its
+      pattern logic: the pad passes through every rule unchanged, so any reported difference still
+      traces to the file's own content.
+    status: verified
+    probe: >-
+      python3 -c "from scripts._redact_pii import Redactor; r = Redactor.load_default();
+      pad = ('The quick brown fox jumps over the lazy dog near the riverbank at dawn. ' * 3);
+      print('pad unchanged:', r.redact(pad) == pad)"
+  - text: >-
+      The canonical capture destination is `research/operations/<YYYY-MM-DD>-dynamic-workflow-<slug>/`
+      relative to the repo root, matching this repo's existing `research/operations/<date>-<slug>`
+      convention — grounded by listing real existing directories under that path, not assumed by
+      analogy alone.
+    status: verified
+    probe: find research/operations -maxdepth 1 -name "*-dynamic-workflow-*" | head -5
+  - text: >-
+      As of this brief's date (2026-09-18), the root `evidence/brief.yml` path is past its
+      `EVIDENCE_ROOT_BRIEF_DEPRECATION_DATE` (2026-09-12) and PR2f's own diff resolves to a
+      per-task evidence path instead, via the same tool harness-floor.yml's own Step 2b invokes.
+    status: verified
+    probe: python3 scripts/ci/evidence_paths.py --ref agent/air-m5/infra/dynamic-workflow-2f --json
