@@ -56,7 +56,7 @@ lanes:
       apply_statutory_closures.py check(): sole-2020-ancestor named by the Perpres (11010
       11020), statute noun in the title (01287 92000), prefix 84 OR \bPemerintah\b (54, with
       87101/88101/88901 excluded as TERBUKA), international body (99000).
-    query_hash: 4e6e5702c8350f68 # sha256[:16] of scripts/kbli_filiera/cure_specs/statutory_closures_naso_2026_09_18.json
+    query_hash: 4e6e5702c8350f68 # pragma: allowlist secret — sha256[:16] of scripts/kbli_filiera/cure_specs/statutory_closures_naso_2026_09_18.json
   - lane: adversarial-review
     role: review
     seat: kimi-code/k3
