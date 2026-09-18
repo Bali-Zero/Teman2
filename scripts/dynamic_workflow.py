@@ -11,7 +11,7 @@ Subcommands (PR1a+PR1b+PR2a+PR2b+PR2c+PR2d):
     judge    --kit K            # mechanical C1/C5/C8 disqualification of every r1 answer
     jury     --kit K            # blind peer review of survivors, six axes, Borda + firsts
     anonymise --kit K           # Z-BLIND/ A-F copies (seat/objective_sha256 stripped only)
-    reveal    --kit K           # prints letter->seat mapping, sealed until Z-DECISIONI.md exists
+    reveal    --kit K           # prints+writes tabulation.revealed.md, sealed until Z-DECISIONI.md
     capture-check --kit K --dest D   # full artifact set incl. OUTCOME.md keys, copies to D
 
 PII gate is fail-closed, no --skip-pii flag exists: the objective is redacted with the SAME
@@ -933,12 +933,24 @@ def _parse_jury_ballot(text: str, valid_letters: set[str]) -> dict[str, list[int
 
 
 def _tabulate_jury(mapping: dict[str, str],
-                    ballots: dict[str, dict[str, list[int]] | None]) -> dict[str, Any]:
+                    ballots: dict[str, dict[str, list[int]] | None],
+                    blind: bool = True) -> dict[str, Any]:
     """Borda + firsts, tabulated BY THE SCRIPT (mandate, verbatim) — never by a synthesizer
     LLM. Borda: per live ballot, rank formations by summed axis score (ties broken by letter
     for determinism), award (n-1-rank) points. Firsts: count of #1 rankings. Disagreement: any
-    formation where the SAME axis spans >=3 points (of a 1-5 scale) across live ballots."""
+    formation where the SAME axis spans >=3 points (of a 1-5 scale) across live ballots.
+
+    blind=True (default, cmd_jury's jury/tabulation.md) renders formations BY LETTER only —
+    the mandate's 'disagreements named' means named by letter, not by seat, and the only
+    letter->seat source before Z-DECISIONI.md exists is jury/mapping.json, chmod 600
+    (dw-gate-5 on PR2d: the original rendering embedded mapping[ltr] in the table, the
+    Disagreements line, and even the header's dead-ballot list, all before reveal). The
+    returned "dead" key always stays seat ids for programmatic callers (run_selftest,
+    pytest) regardless of blind — only the rendered markdown text changes shape.
+    blind=False (cmd_reveal's jury/tabulation.revealed.md, written only once
+    Z-DECISIONI.md exists) names seats."""
     letters = sorted(mapping)
+    inverse = {seat: ltr for ltr, seat in mapping.items()}
     borda: dict[str, int] = {ltr: 0 for ltr in letters}
     firsts: dict[str, int] = {ltr: 0 for ltr in letters}
     axis_scores: dict[str, dict[str, list[int]]] = {ltr: {a: [] for a in JURY_AXES} for ltr in letters}
@@ -963,21 +975,41 @@ def _tabulate_jury(mapping: dict[str, str],
         for axis in JURY_AXES:
             scores = axis_scores[ltr][axis]
             if len(scores) >= 2 and (max(scores) - min(scores)) >= 3:
-                disagreements.append(
-                    f"{ltr} ({mapping[ltr]}): {axis} spread {min(scores)}-{max(scores)}")
+                who = ltr if blind else f"{ltr} ({mapping[ltr]})"
+                disagreements.append(f"{who}: {axis} spread {min(scores)}-{max(scores)}")
 
     dead = sorted(j for j, b in ballots.items() if b is None)
-    rows = ["| formation | seat | borda | firsts |", "|---|---|---|---|"]
+    dead_shown = sorted(inverse[j] for j in dead) if blind else dead
+    if blind:
+        rows = ["| formation | borda | firsts |", "|---|---|---|"]
+    else:
+        rows = ["| formation | seat | borda | firsts |", "|---|---|---|---|"]
     for ltr in sorted(letters, key=lambda ltr: (-borda[ltr], ltr)):
-        rows.append(f"| {ltr} | {mapping[ltr]} | {borda[ltr]} | {firsts[ltr]} |")
+        if blind:
+            rows.append(f"| {ltr} | {borda[ltr]} | {firsts[ltr]} |")
+        else:
+            rows.append(f"| {ltr} | {mapping[ltr]} | {borda[ltr]} | {firsts[ltr]} |")
     lines = [f"# Jury tabulation — {live} live ballot(s), {len(dead)} dead: "
-             f"{', '.join(dead) or 'none'}", ""]
+             f"{', '.join(dead_shown) or 'none'}", ""]
     lines += rows
     lines.append("")
     lines.append("## Disagreements" if disagreements else "## Disagreements: none")
     lines += [f"- {d}" for d in disagreements]
     return {"borda": borda, "firsts": firsts, "dead": dead, "disagreements": disagreements,
             "rendered": "\n".join(lines) + "\n"}
+
+
+def _jury_prompt(kit: Path, mapping: dict[str, str], others: list[str]) -> str:
+    """The full prompt one juror receives: the candidate bodies for every OTHER formation,
+    identity-stripped via _strip_identity so the only names a juror ever sees are letters
+    (dw-gate-5 on PR2d: blind is letters-only until reveal). A named helper, not inlined in
+    cmd_jury, so a guilt test can grep the exact string a juror is sent for every answered
+    seat id without a real (or DW_FAKE_SEATS) seat launch in the way."""
+    bodies = "\n\n".join(
+        f"### Formation {ltr}\n"
+        + _strip_identity((kit / "r1" / f"{_file_slug(mapping[ltr])}.md").read_text())
+        for ltr in others)
+    return _JURY_PROMPT_PREFIX + bodies
 
 
 def cmd_jury(args: argparse.Namespace) -> dict[str, Any]:
@@ -995,11 +1027,7 @@ def cmd_jury(args: argparse.Namespace) -> dict[str, Any]:
         if fake:
             output = _fake_jury_output(juror, others)
         else:
-            bodies = "\n\n".join(
-                f"### Formation {ltr}\n"
-                + _strip_identity((kit / "r1" / f"{_file_slug(mapping[ltr])}.md").read_text())
-                for ltr in others)
-            prompt = _JURY_PROMPT_PREFIX + bodies
+            prompt = _jury_prompt(kit, mapping, others)
             kind = _seat_kind(juror) or "kimi"
             timeout = SEAT_TIMEOUTS.get(kind, 900)
             output = _launch_seat(juror, prompt, timeout, kit)
@@ -1038,11 +1066,32 @@ def cmd_anonymise(args: argparse.Namespace) -> dict[str, str]:
     return mapping
 
 
+def _reconstruct_jury_ballots(kit: Path, mapping: dict[str, str]
+                               ) -> dict[str, dict[str, list[int]] | None]:
+    """Rebuilds the ballots dict cmd_jury held only in memory, by re-reading the per-juror
+    jury/<slug>.md files cmd_jury persisted and re-parsing each with the SAME
+    _parse_jury_ballot cmd_jury used — so cmd_reveal's seat-annotated tabulation is
+    recomputed from that one source of truth, never a second independent judgment."""
+    ballots: dict[str, dict[str, list[int]] | None] = {}
+    for juror in mapping.values():
+        others = sorted(ltr for ltr, seat in mapping.items() if seat != juror)
+        if not others:
+            continue  # no peers to review — cmd_jury never wrote a ballot file for this one
+        ballot_path = kit / "jury" / f"{_file_slug(juror)}.md"
+        text = ballot_path.read_text() if ballot_path.exists() else ""
+        ballots[juror] = _parse_jury_ballot(text, set(others))
+    return ballots
+
+
 def cmd_reveal(args: argparse.Namespace) -> dict[str, str]:
     """Prints the letter->seat mapping jury/anonymise already wrote -- but only once
     Z-DECISIONI.md exists (mandate, verbatim: 'printed only by reveal --kit K after
     Z-DECISIONI.md exists'). Reveal never computes a mapping of its own; a command that could
-    conjure one from nothing would not be a seal on anything."""
+    conjure one from nothing would not be a seal on anything. Also writes
+    jury/tabulation.revealed.md — the same tabulation jury/tabulation.md already carries,
+    recomputed from the persisted per-juror ballots but with seats named. The blind
+    jury/tabulation.md is never rewritten here (dw-gate-5 on PR2d: blind is letters-only
+    until reveal, and reveal only ever ADDS the seat-annotated twin)."""
     kit = Path(args.kit)
     if not (kit / "Z-DECISIONI.md").exists():
         print("refused: Z-DECISIONI.md does not exist -- reveal stays sealed until Zero decides",
@@ -1056,6 +1105,9 @@ def cmd_reveal(args: argparse.Namespace) -> dict[str, str]:
     mapping: dict[str, str] = json.loads(mapping_path.read_text())
     for letter in sorted(mapping):
         print(f"{letter}: {mapping[letter]}")
+    ballots = _reconstruct_jury_ballots(kit, mapping)
+    tabulation = _tabulate_jury(mapping, ballots, blind=False)
+    (kit / "jury" / "tabulation.revealed.md").write_text(tabulation["rendered"])
     return mapping
 
 
@@ -1304,6 +1356,22 @@ def run_selftest() -> None:
         check("re-running jury on an unchanged mapping does not refuse",
               cmd_jury(argparse.Namespace(kit=str(kit_k))) is not None)
 
+        # blind: jury/tabulation.md and every jury prompt name letters only, never a seat,
+        # until reveal (dw-gate-5 on PR2d).
+        answered_seats_k = ["kimi-k3", "qwen3.8-max", "gemini-3.1-pro-high-fakejurydead"]
+        tabulation_text_k = (kit_k / "jury" / "tabulation.md").read_text()
+        check("guilt: jury/tabulation.md names no answered seat id before reveal",
+              not any(seat in tabulation_text_k for seat in answered_seats_k))
+        mapping_k = _jury_mapping(kit_k, _jury_survivors(kit_k))
+        prompts_leak_k = False
+        for juror in mapping_k.values():
+            others_k = sorted(ltr for ltr, seat in mapping_k.items() if seat != juror)
+            if not others_k:
+                continue
+            if any(seat in _jury_prompt(kit_k, mapping_k, others_k) for seat in answered_seats_k):
+                prompts_leak_k = True
+        check("guilt: no jury prompt names an answered seat id", not prompts_leak_k)
+
         # L. anonymise: chained r1 -> r2 -> judge -> jury -> anonymise exactly as a real round
         # runs (Bites, PR2d) -- Z-BLIND/ gets one A-F copy per survivor, mapping.json stays
         # chmod 600, and a copy differs from its r1 original on ONLY the two stripped lines.
@@ -1343,6 +1411,14 @@ def run_selftest() -> None:
         (kit_l / "Z-DECISIONI.md").write_text("# Zero's decision\nA\n")
         check("innocence: reveal prints the jury mapping once Z-DECISIONI.md exists",
               cmd_reveal(argparse.Namespace(kit=str(kit_l))) == mapping_l)
+        revealed_path_l = kit_l / "jury" / "tabulation.revealed.md"
+        check("innocence: reveal writes jury/tabulation.revealed.md", revealed_path_l.exists())
+        revealed_text_l = revealed_path_l.read_text()
+        check("innocence: the revealed file names every surviving seat",
+              all(seat in revealed_text_l for seat in mapping_l.values()))
+        check("guilt: jury/tabulation.md itself is never rewritten by reveal",
+              not any(seat in (kit_l / "jury" / "tabulation.md").read_text()
+                      for seat in mapping_l.values()))
 
         # N. capture-check: refuses naming what's missing, then copies the full artifact set.
         dest_l = work / "capture-l"

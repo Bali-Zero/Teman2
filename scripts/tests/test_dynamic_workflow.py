@@ -721,6 +721,31 @@ def test_jury_scores_survivors_and_marks_a_malformed_ballot_dead(tmp_path, templ
     assert set(tabulation["firsts"]) == {"A", "B", "C"}
 
 
+def test_jury_tabulation_md_names_no_seat_id_before_reveal(tmp_path, template, clean_objective):
+    # guilt (dw-gate-5 on PR2d): the pre-fix rendering embedded mapping[ltr] in the table,
+    # the Disagreements line and the header's dead-ballot list -- all readable before reveal.
+    seats = "kimi-k3,qwen3.8-max,gemini-3.1-pro-high-fakejurydead"
+    kit = _judged_kit(tmp_path, template, clean_objective, seats)
+    dw.cmd_jury(argparse.Namespace(kit=str(kit)))
+    text = (kit / "jury" / "tabulation.md").read_text()
+    for seat in seats.split(","):
+        assert seat not in text, f"{seat} leaked into the blind jury/tabulation.md"
+
+
+def test_jury_prompt_never_names_an_answered_seat_id(tmp_path, template, clean_objective):
+    seats = "kimi-k3,qwen3.8-max,gemini-3.1-pro-high"
+    kit = _judged_kit(tmp_path, template, clean_objective, seats)
+    survivors = dw._jury_survivors(kit)
+    mapping = dw._jury_mapping(kit, survivors)
+    for juror in mapping.values():
+        others = sorted(ltr for ltr, seat in mapping.items() if seat != juror)
+        if not others:
+            continue
+        prompt = dw._jury_prompt(kit, mapping, others)
+        for seat in seats.split(","):
+            assert seat not in prompt, f"{seat} leaked into the prompt sent to {juror}"
+
+
 def test_jury_refuses_when_mapping_json_exists_and_differs(tmp_path, template, clean_objective):
     kit = _judged_kit(tmp_path, template, clean_objective, "kimi-k3,qwen3.8-max")
     (kit / "jury").mkdir(parents=True, exist_ok=True)
@@ -813,6 +838,29 @@ def test_reveal_prints_the_jury_mapping_once_z_decisioni_exists(tmp_path, templa
     (kit / "Z-DECISIONI.md").write_text("# Zero's decision\nA\n")
     revealed = dw.cmd_reveal(argparse.Namespace(kit=str(kit)))
     assert revealed == mapping
+
+
+def test_reveal_writes_a_seat_annotated_tabulation_revealed_md(tmp_path, template, clean_objective):
+    # innocence: the revealed file names them.
+    kit = _juried_kit(tmp_path, template, clean_objective, _THREE_FAMILY_SEATS)
+    mapping = dw.cmd_anonymise(argparse.Namespace(kit=str(kit)))
+    (kit / "Z-DECISIONI.md").write_text("# Zero's decision\nA\n")
+    dw.cmd_reveal(argparse.Namespace(kit=str(kit)))
+    revealed_path = kit / "jury" / "tabulation.revealed.md"
+    assert revealed_path.exists()
+    text = revealed_path.read_text()
+    for seat in mapping.values():
+        assert seat in text
+
+
+def test_reveal_never_rewrites_the_blind_tabulation_md(tmp_path, template, clean_objective):
+    kit = _juried_kit(tmp_path, template, clean_objective, _THREE_FAMILY_SEATS)
+    mapping = dw.cmd_anonymise(argparse.Namespace(kit=str(kit)))
+    (kit / "Z-DECISIONI.md").write_text("# Zero's decision\nA\n")
+    dw.cmd_reveal(argparse.Namespace(kit=str(kit)))
+    blind_text = (kit / "jury" / "tabulation.md").read_text()
+    for seat in mapping.values():
+        assert seat not in blind_text
 
 
 def _outcome_text() -> str:
