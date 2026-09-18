@@ -2,15 +2,17 @@
 """dynamic_workflow.py — the ONE launcher for /dynamic-workflow. Code, not prose; every
 verdict judged by CONTENT, never by exit code alone (scar #2, "Esiste != Armato").
 
-Subcommands (PR1a — r1 lands in PR1b, r2/judge/anonymise/capture-check in PR2):
+Subcommands (PR1a+PR1b — r2/judge/anonymise/capture-check land in PR2):
     brief    --slug S --objective-file F --colour BLUE|ORANGE [--floor X] [--template T] [--kit K]
     check    --kit K            # recompute BRIEF.md from template+inputs.json, byte-diff (W78)
+    r1       --kit K --seats a,b,c [--astra-fallback]   # one-shot per seat, ledger, relaunch<=1
     validate FILE --sha S       # frontmatter+skeleton+word-count gate
 
 PII gate is fail-closed, no --skip-pii flag exists: the objective is redacted with the SAME
 Redactor used before anything leaves this machine; any change, or any raise, refuses with a
-SPAN COUNT only, never the text. DW_FAKE_SEATS=1 makes the arsenal-liveness probe offline and
-deterministic — what --selftest runs on, never a real invocation.
+SPAN COUNT only, never the text. DW_FAKE_SEATS=1 makes the arsenal-liveness probe AND every
+r1 seat launch offline and deterministic — what --selftest runs on, never a real invocation
+and never a paid Anthropic endpoint.
 """
 
 from __future__ import annotations
@@ -33,6 +35,10 @@ if str(_SCRIPTS_DIR) not in sys.path:
 from _redact_pii import RedactionError, Redactor  # noqa: E402
 
 REPO_ROOT = _SCRIPTS_DIR.parent
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
+from scripts.lib.codex_seat import codex_seat_env  # noqa: E402
+
 DEFAULT_TEMPLATE = REPO_ROOT / ".claude" / "skills" / "dynamic-workflow" / "brief.template.md"
 
 PLACEHOLDERS = ("{{OBJECTIVE}}", "{{COLOUR}}", "{{FLOOR}}", "{{DATE}}", "{{ARSENAL_LIVENESS}}")
@@ -40,7 +46,7 @@ SEAT_LINE_RE = re.compile(r"^you_are:.*$", re.MULTILINE)
 SHA_LINE_RE = re.compile(r"^brief_sha256:.*$", re.MULTILINE)
 
 # ARSENAL_LIVENESS fallback when the probe fails/times out (F8): every seat "unknown", never
-# omitted. Informational only — PR1b's r1 launch shapes are the dispatch SSOT, not this list.
+# omitted. Informational only — the r1 launch shapes below are the dispatch SSOT, not this list.
 FALLBACK_SEATS = [
     "claude", "kimi", "agy", "codex", "ollama", "nlm", "qwen-cloud-code", "jules",
     "tp1-qwen3.8-max", "tp1-deepseek-v4-pro", "tp1-qwen3.7-plus", "tp1-glm-5.2",
@@ -51,8 +57,11 @@ REQUIRED_SECTIONS = [
     "Never", "First move", "Cost",
 ]
 
-# A coach's sealed answer shape, valid against REQUIRED_SECTIONS — test fixture only, reused
-# unmodified by PR1b's r1 launcher tests (fake-seat + relaunch).
+TP1_IDS = {"qwen3.8-max", "deepseek-v4-pro", "qwen3.7-plus", "glm-5.2"}
+SEAT_TIMEOUTS = {"kimi": 900, "tp1": 900, "agy": 1500, "astra": 1200}
+
+# A coach's sealed answer shape, valid against REQUIRED_SECTIONS — DW_FAKE_SEATS=1's canned
+# answer for both r1's fake-seat path and its own tests.
 _CANNED_VALID = """---
 seat: {seat}
 objective_sha256: {sha}
@@ -166,6 +175,26 @@ def ledger_verify(kit: Path) -> tuple[bool, str]:
     want = shapath.read_text().strip()
     got = hashlib.sha256(path.read_bytes()).hexdigest()
     return (got == want), f"expected {want[:16]} got {got[:16]}"
+
+
+def _ledger_rows(kit: Path) -> list[list[str]]:
+    path = _ledger_path(kit)
+    if not path.exists():
+        return []
+    rows = []
+    for line in path.read_text().splitlines():
+        parts = [p.strip() for p in line.split("|")]
+        if len(parts) >= 4:
+            rows.append(parts)
+    return rows
+
+
+def ledger_sent_count(kit: Path, seat: str) -> int:
+    return sum(1 for r in _ledger_rows(kit) if r[1] == seat and r[2] == "sent")
+
+
+def _ledger_has_seat(kit: Path, seat: str) -> bool:
+    return any(r[1] == seat for r in _ledger_rows(kit))
 
 
 # --------------------------------------------------------------------- validate
@@ -296,6 +325,129 @@ def cmd_check(args: argparse.Namespace) -> None:
     print("PASS")
 
 
+# --------------------------------------------------------------------- r1
+
+def _seat_kind(seat: str) -> str | None:
+    if seat == "astra":
+        return "astra"
+    if seat in TP1_IDS:
+        return "tp1"
+    if seat.startswith("gemini"):
+        return "agy"
+    if seat.startswith("kimi"):
+        return "kimi"
+    return None
+
+
+_PROMPT_PREFIX = ("You are a coach in a sealed brainstorm. Use ONLY the brief below and the "
+                   "exact skeleton in §4. No tools, no browsing, no file reads. Output "
+                   "only the answer.\n\n")
+
+
+def _fake_seat_output(seat: str, sha: str, attempt: int) -> str:
+    if seat.endswith("fakeinvalid"):
+        return ""
+    if seat.endswith("fakeflaky"):
+        return "" if attempt < 2 else _CANNED_VALID.format(seat=seat, sha=sha)
+    return _CANNED_VALID.format(seat=seat, sha=sha)
+
+
+def _launch_seat(seat: str, prompt: str, timeout: int, kit: Path) -> str:
+    kind = _seat_kind(seat)
+    try:
+        if kind == "kimi":
+            cmd = ["kimi", "-p", prompt, "-m", "kimi-code/k3", "--output-format", "text"]
+        elif kind == "tp1":
+            cmd = ["qwen", "--model", seat, "--approval-mode", "plan", prompt]
+        elif kind == "agy":
+            cmd = ["agy", "-p", prompt, "--model", seat, "--output-format", "text"]
+        elif kind == "astra":
+            out_file = kit / "r1" / "astra.md"
+            with tempfile.TemporaryDirectory() as tmp:
+                cmd = ["codex", "exec", "-m", "gpt-6-astra", "-C", tmp, "-s", "read-only",
+                       "--skip-git-repo-check", "-o", str(out_file), prompt]
+                subprocess.run(cmd, stdin=subprocess.DEVNULL, capture_output=True,
+                                text=True, timeout=timeout, env=codex_seat_env())
+            return out_file.read_text() if out_file.exists() else ""
+        else:
+            return ""
+        r = subprocess.run(cmd, stdin=subprocess.DEVNULL, capture_output=True, text=True, timeout=timeout)
+        return r.stdout
+    except Exception:
+        return ""
+
+
+def _run_one_seat(kit: Path, seat: str, brief_master: str, brief_sha: str, attempt: int) -> str:
+    seat_copy = _set_seat_line(brief_master, seat)
+    reconstructed = _set_sha_line(_set_seat_line(seat_copy, ""), "")
+    if hashlib.sha256(reconstructed.encode()).hexdigest() != brief_sha:
+        print(f"{seat}: per-seat brief hash mismatch — refusing to send", file=sys.stderr)
+        return "refused-hash-mismatch"
+    prompt = _PROMPT_PREFIX + seat_copy
+    prompt_hash16 = hashlib.sha256(prompt.encode()).hexdigest()[:16]
+    ledger_append(kit, seat, "sent", prompt_hash16)
+
+    fake = os.environ.get("DW_FAKE_SEATS") == "1"
+    if fake:
+        output = _fake_seat_output(seat, brief_sha, attempt)
+    else:
+        kind = _seat_kind(seat) or "kimi"
+        timeout = SEAT_TIMEOUTS.get(kind, 900)
+        output = _launch_seat(seat, prompt, timeout, kit)
+
+    out_path = kit / "r1" / f"{seat}.md"
+    out_path.write_text(output or "")
+    if not output or not output.strip():
+        ledger_append(kit, seat, "dead", prompt_hash16)
+        return "dead"
+    ok = validate_answer(output, brief_sha)[0]
+    ans_hash16 = hashlib.sha256(output.encode()).hexdigest()[:16]
+    if ok:
+        ledger_append(kit, seat, "answered", ans_hash16)
+        return "answered"
+    ledger_append(kit, seat, "dead", ans_hash16)
+    return "dead"
+
+
+def cmd_r1(args: argparse.Namespace) -> dict[str, str]:
+    kit = Path(args.kit)
+    brief_sha = (kit / "brief.sha").read_text().strip()
+    fable = kit / "r1" / "fable-5-1.md"
+    if not fable.exists():
+        print("refused: r1/fable-5-1.md (convener) missing — it answers first", file=sys.stderr)
+        sys.exit(2)
+    ok, reason = validate_answer(fable.read_text(), brief_sha)
+    if not ok:
+        print(f"refused: convener answer invalid: {reason}", file=sys.stderr)
+        sys.exit(2)
+    if not _ledger_has_seat(kit, "fable-5-1"):
+        fable_mtime = datetime.fromtimestamp(fable.stat().st_mtime, tz=timezone.utc)
+        ledger_append(kit, "fable-5-1", "answered", brief_sha[:16],
+                      when=fable_mtime.strftime("%Y-%m-%dT%H:%M:%SZ"))
+
+    brief_master = (kit / "BRIEF.md").read_text()
+    seats = [s.strip() for s in args.seats.split(",") if s.strip()]
+    summary: dict[str, str] = {}
+    for seat in seats:
+        if seat in ("fable-5-1", "fable"):
+            continue
+        if seat == "astra" and not args.astra_fallback:
+            ledger_append(kit, "astra", "awaiting-window", "-")
+            summary[seat] = "awaiting-window"
+            continue
+        sent = ledger_sent_count(kit, seat)
+        if sent >= 2:
+            summary[seat] = "refused-max-relaunch"
+            continue
+        result = _run_one_seat(kit, seat, brief_master, brief_sha, sent + 1)
+        if result == "dead" and sent + 1 == 1:
+            result = _run_one_seat(kit, seat, brief_master, brief_sha, 2)
+        summary[seat] = result
+    for seat, status in summary.items():
+        print(f"{seat}: {status}")
+    return summary
+
+
 def cmd_validate(args: argparse.Namespace) -> None:
     text = Path(args.file).read_text()
     ok, reason = validate_answer(text, args.sha)
@@ -360,7 +512,7 @@ def run_selftest() -> None:
         except SystemExit as e:
             check("check fails on hand-edited BRIEF.md", e.code == 1)
 
-        # D. ledger tamper is detected by check (ledger_append is the only writer here; PR1b's r1 is the other).
+        # D. ledger tamper is detected by check.
         kit_d = work / "kit-d"
         cmd_brief(argparse.Namespace(slug="d", objective_file=str(clean_obj), colour="BLUE",
                                       floor=None, template=str(_fixture_template()), kit=str(kit_d)))
@@ -372,6 +524,30 @@ def run_selftest() -> None:
             check("check detects ledger tamper", False)
         except SystemExit as e:
             check("check detects ledger tamper", e.code == 1)
+
+        # E. r1 refuses without the convener file.
+        kit_e = work / "kit-e"
+        cmd_brief(argparse.Namespace(slug="e", objective_file=str(clean_obj), colour="BLUE",
+                                      floor=None, template=str(_fixture_template()), kit=str(kit_e)))
+        try:
+            cmd_r1(argparse.Namespace(kit=str(kit_e), seats="kimi-k3", astra_fallback=False))
+            check("r1 refuses without convener file", False)
+        except SystemExit as e:
+            check("r1 refuses without convener file", e.code == 2)
+        check("r1 wrote no seat files without convener", not (kit_e / "r1" / "kimi-k3.md").exists())
+
+        # F. invalid answer -> dead -> one relaunch -> refusal on third sent row.
+        kit_f = work / "kit-f"
+        cmd_brief(argparse.Namespace(slug="f", objective_file=str(clean_obj), colour="BLUE",
+                                      floor=None, template=str(_fixture_template()), kit=str(kit_f)))
+        sha_f = (kit_f / "brief.sha").read_text().strip()
+        (kit_f / "r1" / "fable-5-1.md").write_text(_CANNED_VALID.format(seat="fable-5-1", sha=sha_f))
+        summary_f1 = cmd_r1(argparse.Namespace(kit=str(kit_f), seats="x-fakeinvalid", astra_fallback=False))
+        check("first r1 call: seat dead after auto-relaunch", summary_f1["x-fakeinvalid"] == "dead")
+        check("two sent rows recorded after one r1 call", ledger_sent_count(kit_f, "x-fakeinvalid") == 2)
+        summary_f2 = cmd_r1(argparse.Namespace(kit=str(kit_f), seats="x-fakeinvalid", astra_fallback=False))
+        check("third attempt refused", summary_f2["x-fakeinvalid"] == "refused-max-relaunch")
+        check("refusal added no third sent row", ledger_sent_count(kit_f, "x-fakeinvalid") == 2)
     finally:
         shutil.rmtree(work, ignore_errors=True)
         os.environ.pop("DW_FAKE_SEATS", None)
@@ -422,6 +598,12 @@ def main() -> None:
     p_check = sub.add_parser("check")
     p_check.add_argument("--kit", required=True)
     p_check.set_defaults(func=cmd_check)
+
+    p_r1 = sub.add_parser("r1")
+    p_r1.add_argument("--kit", required=True)
+    p_r1.add_argument("--seats", required=True)
+    p_r1.add_argument("--astra-fallback", action="store_true", dest="astra_fallback")
+    p_r1.set_defaults(func=cmd_r1)
 
     p_val = sub.add_parser("validate")
     p_val.add_argument("file")

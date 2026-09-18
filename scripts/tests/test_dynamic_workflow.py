@@ -1,9 +1,9 @@
 """Tests for scripts/dynamic_workflow.py — the /dynamic-workflow launcher (PR1a core:
-brief/check/validate/ledger/selftest; the r1 launcher lands in PR1b).
+brief/check/validate/ledger/selftest; PR1b: the r1 seat-dispatch launcher).
 
 Loaded via importlib.util.spec_from_file_location (scripts/ is a flat bag, not a package,
-mirrors scripts/tests/test_arsenal_probe.py). DW_FAKE_SEATS=1 (autouse) replaces the real
-arsenal_probe.py subprocess with canned output.
+mirrors scripts/tests/test_arsenal_probe.py). DW_FAKE_SEATS=1 (autouse) replaces every real
+CLI launch and the real arsenal_probe.py subprocess with canned output.
 
 The refusal/guilt scenarios below deliberately do NOT re-derive what dw.run_selftest()
 already proves case-by-case (test_run_selftest_end_to_end drives that path) — they add the
@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import argparse
 import importlib.util
+import os
 import sys
 from pathlib import Path
 from types import ModuleType
@@ -67,6 +68,13 @@ def _dummy_objective(tmp_path) -> Path:
     return p
 
 
+def _seed_convener(kit: Path, text: str | None = None) -> str:
+    sha = (kit / "brief.sha").read_text().strip()
+    (kit / "r1" / "fable-5-1.md").write_text(text if text is not None
+                                              else dw._CANNED_VALID.format(seat="fable-5-1", sha=sha))
+    return sha
+
+
 # --------------------------------------------------------------- guilt: refusals (SystemExit)
 
 def _dirty_objective(tmp_path, template, kit):
@@ -95,11 +103,24 @@ def _check_tamper(tmp_path, template, kit):
     return lambda: dw.cmd_check(argparse.Namespace(kit=str(kit)))
 
 
+def _r1_no_convener(tmp_path, template, kit):
+    dw.cmd_brief(_brief_ns(_dummy_objective(tmp_path), template, kit))
+    return lambda: dw.cmd_r1(argparse.Namespace(kit=str(kit), seats="kimi-k3", astra_fallback=False))
+
+
+def _r1_invalid_convener(tmp_path, template, kit):
+    dw.cmd_brief(_brief_ns(_dummy_objective(tmp_path), template, kit))
+    (kit / "r1" / "fable-5-1.md").write_text("not a valid answer")
+    return lambda: dw.cmd_r1(argparse.Namespace(kit=str(kit), seats="kimi-k3", astra_fallback=False))
+
+
 REFUSALS = [
     ("dirty objective -> PII gate", _dirty_objective, 3),
     ("kit inside repo", _kit_inside_repo, 2),
     ("check on a hand-edited BRIEF.md (W78)", _check_hand_edited, 1),
     ("check on a tampered ledger", _check_tamper, 1),
+    ("r1 with no convener file", _r1_no_convener, 2),
+    ("r1 with an invalid convener answer", _r1_invalid_convener, 2),
 ]
 
 
@@ -144,6 +165,95 @@ def test_ledger_append_is_hashed_and_verify_passes(tmp_path, template, clean_obj
     ok, _ = dw.ledger_verify(kit)
     assert ok
     assert len(dw._ledger_path(kit).read_text().splitlines()) == 2
+
+
+def test_r1_flaky_seat_succeeds_on_relaunch_and_ledger_stays_hashed(tmp_path, template, clean_objective):
+    kit = tmp_path / "k"
+    dw.cmd_brief(_brief_ns(clean_objective, template, kit))
+    _seed_convener(kit)
+    summary = dw.cmd_r1(argparse.Namespace(kit=str(kit), seats="z-fakeflaky", astra_fallback=False))
+    assert summary["z-fakeflaky"] == "answered"
+    assert dw.ledger_sent_count(kit, "z-fakeflaky") == 2
+    ok, _ = dw.ledger_verify(kit)
+    assert ok
+
+
+def test_r1_invalid_seat_dies_then_refuses_a_third_sent_row(tmp_path, template, clean_objective):
+    kit = tmp_path / "k"
+    dw.cmd_brief(_brief_ns(clean_objective, template, kit))
+    _seed_convener(kit)
+    summary1 = dw.cmd_r1(argparse.Namespace(kit=str(kit), seats="x-fakeinvalid", astra_fallback=False))
+    assert summary1["x-fakeinvalid"] == "dead"
+    assert dw.ledger_sent_count(kit, "x-fakeinvalid") == 2
+    summary2 = dw.cmd_r1(argparse.Namespace(kit=str(kit), seats="x-fakeinvalid", astra_fallback=False))
+    assert summary2["x-fakeinvalid"] == "refused-max-relaunch"
+    assert dw.ledger_sent_count(kit, "x-fakeinvalid") == 2  # refusal adds no third sent row
+
+
+def test_r1_astra_defaults_to_awaiting_window(tmp_path, template, clean_objective):
+    kit = tmp_path / "k"
+    dw.cmd_brief(_brief_ns(clean_objective, template, kit))
+    _seed_convener(kit)
+    summary = dw.cmd_r1(argparse.Namespace(kit=str(kit), seats="astra", astra_fallback=False))
+    assert summary["astra"] == "awaiting-window"
+    assert not (kit / "r1" / "astra.md").exists()
+
+
+def test_launch_seat_astra_resolves_a_seat_before_invoking_codex(tmp_path, monkeypatch):
+    """DW_FAKE_SEATS=1 (the autouse fixture, and --selftest) short-circuits _run_one_seat
+    before it ever reaches _launch_seat, so the astra branch's real `codex exec` call has no
+    coverage from the fake-seat path. This calls _launch_seat directly and proves the corpus
+    rule (scripts/tests/test_codex_seat_lib.py::test_no_call_site_invokes_codex_without_choosing_a_seat)
+    is actually satisfied in substance, not just in import: codex_seat_env() is called and its
+    result is threaded into subprocess.run's env=, not a hand-rolled/omitted one."""
+    kit = tmp_path / "k"
+    (kit / "r1").mkdir(parents=True)
+    sentinel_env = {"CODEX_HOME": "/fake/seat/dir"}
+    calls = []
+
+    def _fake_env(env=None):
+        return sentinel_env
+
+    def _fake_run(cmd, **kwargs):
+        calls.append(kwargs)
+        (kit / "r1" / "astra.md").write_text("stub output")
+        return None
+
+    monkeypatch.setattr(dw, "codex_seat_env", _fake_env)
+    monkeypatch.setattr(dw.subprocess, "run", _fake_run)
+
+    output = dw._launch_seat("astra", "prompt text", 5, kit)
+
+    assert output == "stub output"
+    assert len(calls) == 1
+    assert calls[0].get("env") is sentinel_env
+    assert calls[0].get("stdin") == dw.subprocess.DEVNULL
+
+
+def test_launch_seat_astra_degrades_silently_when_no_seat_resolves(tmp_path, monkeypatch):
+    """Innocence twin: codex_seat_env() with no logged-in seat returns the env unchanged
+    (never raises, never adds an empty CODEX_HOME — see scripts/lib/codex_seat.py). The
+    astra branch must still call it and still invoke codex, not treat "no seat" as a reason
+    to skip resolution."""
+    kit = tmp_path / "k"
+    (kit / "r1").mkdir(parents=True)
+    calls = []
+
+    def _fake_env(env=None):
+        return dict(os.environ)
+
+    def _fake_run(cmd, **kwargs):
+        calls.append(kwargs)
+        return None
+
+    monkeypatch.setattr(dw, "codex_seat_env", _fake_env)
+    monkeypatch.setattr(dw.subprocess, "run", _fake_run)
+
+    output = dw._launch_seat("astra", "prompt text", 5, kit)
+
+    assert output == ""  # out_file never written, "no seat" is not a crash
+    assert len(calls) == 1
+    assert calls[0].get("env") == dict(os.environ)
 
 
 # --------------------------------------------------------------- validate_answer (guilt + innocence)
