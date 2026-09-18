@@ -1,0 +1,283 @@
+task_id: kbli-pma-naso-statutory-located
+brief_ref: evidence/brief.yml # canonical staged name — harness-floor.yml stages this PR's dated brief there before linting
+gear: 3
+colour: BLUE
+base_sha: 71f01e508ca072b193cd50c0c7ab68672eb54573 # pragma: allowlist secret
+spend:
+  wall_clock_hours: 7
+  adversarial_rounds: 3
+  children: 1
+  child_depth: 1
+appetite_exceeded: >-
+  Brief appetite was 6 h / 1 adversarial round; observed 7 h / 3 rounds. The extra round is
+  the council itself: Codex round 1 ended without a verdict (checkpoint on 50113), round 2
+  needed two seat retries (usage-limited seats) and returned a BLOCKED that had to be
+  dispositioned against the owner's ruling on the record, and the third titolare had to be
+  dispatched from Pro because M5 holds no TP1 credential. The hour went to the same thing.
+result: >-
+  The 59 statutory closures (already TERTUTUP / 0% foreign) are `located` on the canonical and
+  its two consumer copies, each with a pma_official_basis naming its instrument, by a compiler
+  that refuses to flip a verdict; the mouth withholds the generator-era moratorium-test note at
+  the raw->public seam so the newly disclosed Bali layer does not print "not blocked by
+  moratorium" under a closed badge; every census pin moved with its reason in-line; the
+  registry, batch reports and llms-kbli are re-emitted. Six commits, the last a council fold.
+gear_floor_note: >-
+  Declared 3 because the deterministic floor IS 3, source `size` (evidence_pack_lint
+  --print-floor on the merge-base numstat+patch: 33 files, +2276/-477, churn 2,753 >=
+  SIZE_GEAR3_THRESHOLD 1828). 1,251 of that churn is one 59-record relabel written three times
+  (canonical + two consumer copies) and 118 is the regenerated llms-kbli.txt; not split because
+  the compiler without its application has no consumer and the data without the mouth guards
+  renders the note on 51 pages.
+pii_scan: clean
+diff:
+  summary: >-
+    scripts/kbli_filiera (compiler + spec + tests), the three dataset copies and their sidecars,
+    apps/mouth/src/lib (kbli-bali-block.ts, kbli-pma-disclosure.ts + tests), census pins in
+    mouth/backend/navigator/filiera tests, registry + batch reports + llms-kbli re-emits. Counts
+    are derived by the linter from numstat, not narrated here.
+  commits:
+    - "fix(kbli): locate the 59 statutory closures — declared_gap to located, verdicts unchanged"
+    - "chore(kbli): re-emit the certification registry, batch reports and llms-kbli after the statutory relabel"
+    - "fix(mouth): withhold the moratorium-test note and the Bali-list caveat on located statutory closures"
+    - "test(kbli): move census pins for the 59 statutory closures"
+    - "fix(mouth): admit the moratorium-note NOTE tail only under the two openings the generator emits"
+lanes:
+  - lane: naso-statutory-located
+    role: build
+    seat: claude-opus-5
+  - lane: statutory-basis-ground-truth
+    role: ground_truth
+    seat: claude-opus-5 (session, M5)
+    nb: >-
+      research/kbli/2026-09-18-kbli-codes-closed-to-pma-tier1-tier2-dossier.md §7 (origin/main
+      d79d694b72, sha256 a0c3c5bf…) read back to the instruments it cites — Perpres 10/2021
+      Pasal 2(1)(b), 2(1a), 2(2)(a)/(b), 2(3) as amended by Perpres 49/2021; UU 25/2007 Pasal
+      12(2) as replaced by UU 6/2023 — and re-derived mechanically per class by
+      apply_statutory_closures.py check(): sole-2020-ancestor named by the Perpres (11010
+      11020), statute noun in the title (01287 92000), prefix 84 OR \bPemerintah\b (54, with
+      87101/88101/88901 excluded as TERBUKA), international body (99000).
+    query_hash: 4e6e5702c8350f68 # sha256[:16] of scripts/kbli_filiera/cure_specs/statutory_closures_naso_2026_09_18.json
+  - lane: adversarial-review
+    role: review
+    seat: kimi-code/k3
+  - lane: adversarial-review
+    role: review
+    seat: codex-gpt-5.6-sol
+  - lane: adversarial-review
+    role: review
+    seat: tp1-qwen3.8-max
+council_run: council-journal.jsonl
+bites:
+  consumer: >-
+    balizero.com/kbli/<code> for the 59 codes (the PMA panel, the Bali status badge, the FAQ
+    JSON-LD) and inspect_kbli / chat_kbli after the Pro runtime sync on the same 59.
+  observation: >-
+    After merge + vercel_prod_deploy: `curl -s https://balizero.com/kbli/11010 | grep -oE 'Not
+    Yet Verified|Pasal 2\(2\)\(b\)|not blocked by moratorium|Closed to Foreign Investment' | sort
+    | uniq -c` shows the Pasal citation and the closure, zero "Not Yet Verified", zero "not
+    blocked by moratorium"; /kbli/84111 cites Pasal 2(1)(b); /kbli/60311's panel row carries no
+    "Bali's list" caveat; `inspect_kbli 11010` reads TERTUTUP 0 located after the Qdrant/KG/
+    kbli_documents sync; kbli_surface_conformance.py conformant. Not yet observed — this PR is
+    not merged; the pre-merge observation is the receipts below.
+receipts:
+  - claim: >-
+      Filiera suite green on the branch, including test_apply_statutory_closures (12) and the
+      two naso tests in test_pma_zero_cap_basis: 1559 passed, 1 skipped.
+    cmd: "python3 -m pytest scripts/kbli_filiera/tests/ -p no:cacheprovider"
+    exit: 0
+    ts: "2026-09-18T06:50:02Z"
+    seat: claude-opus-5
+  - claim: >-
+      Backend kbli sweep 807 passed with STATUTORY_CLOSURES_59 in the certification partition
+      and the eye pins 1428/131/96.
+    cmd: "cd apps/backend-rag && .venv/bin/python -m pytest $(git ls-files 'backend/tests/**/test_*kbli*.py') -p no:cacheprovider"
+    exit: 0
+    ts: "2026-09-18T06:50:34Z"
+    seat: claude-opus-5
+  - claim: >-
+      Navigator quarantine-transform checks pass on the canonical copy (1559 records, 1428 gaps
+      / 131 located).
+    cmd: "cd apps/kbli-navigator && npx tsx lib/__tests__/kbli-data.test.ts"
+    exit: 0
+    ts: "2026-09-18T06:50:35Z"
+    seat: claude-opus-5
+  - claim: >-
+      The three dataset copies are byte-identical to the canonical; coverage ratchet OK;
+      body-default locators match the instrument (1559); slice artifact fresh (12 disclosed);
+      foreign-cap STRICT PASS; editorial_record_conformance exit 0; dataset lint at main's
+      counts (L10 5 / L11 12 / 39 pre-existing non-L2/L7); cure_gold_pma_line "nothing to
+      patch".
+    cmd: "bash scripts/sync_kbli_dataset.sh --check; python3 scripts/kbli_filiera/kbli_coverage_scoreboard.py --check; python3 scripts/kbli_filiera/perpres_body_default_relation.py --check-artifact; python3 scripts/kbli_filiera/perpres_slice_disclosure_relation.py --check-artifact; python3 scripts/kbli_filiera/perpres_foreign_cap_relation.py --strict; python3 scripts/kbli_filiera/editorial_record_conformance.py; python3 scripts/kbli_dataset_lint.py --repo .; python3 scripts/kbli_filiera/cure_gold_pma_line.py"
+    exit: 0
+    ts: "2026-09-18T06:50:39Z"
+    seat: claude-opus-5
+  - claim: >-
+      The full mouth suite and typecheck are green on HEAD 49aabee2ae after the council fold:
+      519 files / 6481 tests passed; tsc --noEmit exit 0.
+    cmd: "cd apps/mouth && ../../node_modules/.bin/vitest run; ../../node_modules/.bin/tsc --noEmit -p ."
+    exit: 0
+    ts: "2026-09-18T07:06:00Z"
+    seat: claude-opus-5
+  - claim: >-
+      The council fold (49aabee2ae) is behaviour-neutral on the shipped data: the old and the
+      anchored MORATORIUM_TEST_NOTE match the same 999 records (diff []), the two NOTE openings
+      are the only ones the dataset carries (44 + 54), and the two targeted mouth files pass
+      96 tests; tsc --noEmit clean; prettier clean.
+    cmd: "python3 -c '<old/new regex over data/source_documents/KBLI_2025_FINAL_CLEAN.json l4_bali.reason>'; cd apps/mouth && ../../node_modules/.bin/vitest run src/lib/kbli-bali-block.test.ts src/lib/kbli-pma-disclosure.test.ts && ../../node_modules/.bin/tsc --noEmit -p . && ../../node_modules/.bin/prettier --check src/lib/kbli-bali-block.ts src/lib/kbli-bali-block.test.ts"
+    exit: 0
+    ts: "2026-09-18T07:01:40Z"
+    seat: claude-opus-5
+  - claim: >-
+      The seam withholding and the status-aware qualifier change nothing on main's 16
+      located+blocked codes: shouldShowReason true and baliClosureQualifier identical to the old
+      semantics on 16/16 (10214 16221 47111 47222 95220 95299 47249 55105 55106 55201 55203
+      79903 95291 96100 96210 96220), measured on the real dataset.
+    cmd: "cd apps/mouth && npx tsx <scratchpad>/main72.ts"
+    exit: 0
+    ts: "2026-09-18T06:20:00Z"
+    seat: claude-opus-5
+  - claim: >-
+      Codex round 1's only open item is closed on read: 50113 is blocked:false /
+      OK_or_HIGHER_RISK / TERBATAS 49 located, every shouldShowReason caller is gated by
+      baliBlocked / isSourcedBaliClosure (requires blocked===true) / nationallyClosed, and 50113
+      is absent from NATIONAL_CLOSURE_CODES — the predicate-level difference is never rendered.
+    cmd: 'python3 -c ''<d["50113"]["l4_bali"]>''; grep -rn ''shouldShowReason('' apps/mouth/src; grep -c ''"50113"'' apps/mouth/src/lib/kbli-bali-block.ts'
+    exit: 0
+    ts: "2026-09-18T06:58:30Z"
+    seat: claude-opus-5
+adversarial:
+  - {
+      seat: kimi-code/k3,
+      round: 1,
+      verdict: "BLOCKING no",
+      findings: 7,
+      block: 0,
+      low: 7,
+      cured: 2,
+      accepted_as_residual: 5,
+    }
+  - {
+      seat: codex-gpt-5.6-sol,
+      round: 1,
+      verdict: "no verdict line (turn ended at a checkpoint: 50113 rendering path unverified)",
+      findings: 1,
+      block: 0,
+      cured: 1,
+    }
+  - {
+      seat: codex-gpt-5.6-sol,
+      round: 2,
+      verdict: "BLOCKED — government_activity: title deduction promoted to whole-code statutory certification",
+      findings: 3,
+      block: 1,
+      cured: 0,
+      accepted_as_residual: 0,
+      overruled_by_owner_ruling: 1,
+    }
+  - {
+      seat: tp1-qwen3.8-max,
+      round: 1,
+      verdict: OK,
+      findings: 5,
+      block: 0,
+      low: 5,
+      cured: 0,
+      accepted_as_residual: 5,
+    }
+dissent:
+  - seat: "kimi-code/k3 (refuter) vs claude-opus-5 (author)"
+    status: CONFIRMED
+    objection: >-
+      The widened anchor's tail `(?:\s*—\s*NOTE:[\s\S]*)?` accepted ANY "— NOTE:" suffix, so a
+      note that carried a real cause after the phrase would have been withheld. Harmless on the
+      shipped data (98 NOTE records, two boilerplate openings, the only blocked+located one is
+      60311) but a latent over-match. CONFIRMED; folded in 49aabee2ae — the tail is admitted
+      only under the two generator openings, with a guilt test for the second opening and an
+      innocence test for a NOTE naming a statute; old and new regex match the same 999 records.
+  - seat: "kimi-code/k3 (refuter) vs claude-opus-5 (author)"
+    status: CONFIRMED
+    objection: >-
+      Comment count drift: "on 50 pages" where 51 records carry the two new shapes (50 "(verify
+      per address)" + 60311). CONFIRMED, folded in the same commit. The pre-existing "68
+      TERTUTUP" census at kbli-bali-block.ts:93 (live count 72) is a dated census of an earlier
+      catalogue and is left as archaeology — not this PR's concern.
+  - seat: "kimi-code/k3 (refuter) vs claude-opus-5 (author)"
+    status: PLAUSIBLE
+    objection: >-
+      Compiler defense-in-depth, three LOWs: (1) the spec's per-item `judul` is documentation
+      only — never compared to the record's title (the population bisection catches a wrong
+      CODE, not a wrong judul on a right code); (2) the idempotent re-run validates only
+      pma_official_basis on already-located records, not kondisi/vintage/cap_verified; (3) the
+      dry-run `already` counter subtracts population refusals and can go negative. None can
+      write a wrong basis today. Accepted as residual: declared follow-ups for the compiler's
+      next spec (the residual Pasal 3(1)(d) lots), not folded into a data PR under council.
+  - seat: "kimi-code/k3 (refuter) vs claude-opus-5 (author)"
+    status: PLAUSIBLE
+    objection: >-
+      Legal substance, not a defect: the Pasal 2(1)(b)/2(3) attribution for the 21 title-leg
+      codes (86101/86104 government hospitals, 91211 museums, 59111 film production …) is a
+      reading — Pasal 2(3)'s enumeration is narrower than "anything the state runs". The basis
+      strings say "title-derived: no instrument maps the 5-digit code" and the spec's
+      what_this_rests_on_and_does_not_prove says it is a reading. Kept PLAUSIBLE so the owner
+      sees the reading stands behind all 54, not only the prefix-84 block; verdicts on these
+      codes were TERTUTUP/0 before this PR and are unchanged by it.
+  - seat: "codex-gpt-5.6-sol (refuter, round 2) vs claude-opus-5 (author)"
+    status: CONFIRMED
+    objection: >-
+      BLOCKER: "government_activity promotes a title deduction to a whole-code statutory
+      certification without proving applicability — Pasal 2(1)(b)/2(3) concerns activities
+      exclusive to the central government; the compiler checks prefix/title only; 'title-derived'
+      honestly declares the missing mapping but does not justify cap_verified=true; 86101 moves
+      publicly from unverified to closed/0/verified. The finding is about certification, not a
+      claim that these codes are open." CONFIRMED as a description of what the diff does — and
+      that is exactly the Legge 5 question put to the owner before the build (2026-09-18: "per
+      1b e classe 2 (57 codici) propongo `located` con basis che dichiara esplicitamente la
+      derivazione per titolo … l'alternativa è continuare a dire al cliente che un ospedale
+      pubblico è «not yet verified» … Dimmi «located» o «solo 1a»"), answered «located». The
+      remedy Codex proposes ("keep the uncertainty in the disclosure") is the «solo 1a» option
+      the owner declined. Business decisions stay with the human (Builder Contract §5); the
+      diff implements the ruling with the derivation disclosed in every basis string, verdicts
+      TERTUTUP/0 unchanged, and the three TERBUKA "Pemerintah" codes excluded. Disposition:
+      not folded, not silently dropped — recorded here and in the PR body; tp1-qwen3.8-max,
+      asked to adjudicate the same objection independently, called it a product-ruling
+      disagreement and not a diff defect. Codex's other two round-2 items (50113 resolution
+      correct; 49aabee2ae no regression on 999/999) concur with the author's measurements.
+  - seat: "tp1-qwen3.8-max (refuter) vs claude-opus-5 (author)"
+    status: PLAUSIBLE
+    objection: >-
+      Five LOWs, none blocking: (1) the government basis template says "activities of the
+      Pemerintah Pusat" while the mechanical leg proves only the title token — the same string
+      carries the "title-derived" caveat, so it is never shown without it; (2) pma_kondisi on
+      the title-derived classes carries no caveat — checked: the mouth renders `pma.condition`
+      only in the TERBATAS answer (conditionClause) and on Perpres slice rows, neither of which
+      a TERTUTUP code reaches; (3) the NOTE tail is open-ended after the two openings — by
+      design, the openings are the generator's fingerprint; (4) the seam decides on rawReason
+      before humanizeInternalEnums — the anchor carries no enum token, declared; (5)
+      idempotence checks basis only — same as Kimi's (2), follow-up. Accepted as residual.
+  - seat: "codex-gpt-5.6-sol (refuter, round 1) vs claude-opus-5 (author)"
+    status: RETRACTED
+    objection: >-
+      "Direct old/new shouldShowReason comparison over the 72 pre-located codes differs on
+      50113." Codex's own checkpoint said not to assert a regression until the callers were
+      checked; checked (receipt above): 50113 is not blocked, every caller is gated on a blocked
+      / sourced-closure / national-closure predicate, and it is not in NATIONAL_CLOSURE_CODES —
+      nothing renders. Recorded so nobody "fixes" it.
+residuals:
+  - >-
+    Council roster tonight: codex .codex-o2 and .codex-acct2 seats usage-limited until
+    2026-09-19 17:47 (two ERROR lines, transcripts 070225Z/070510Z); round 2 ran on .codex.
+    tp1-qwen3.8-max has no credential on M5 (arsenal CRED_UNAVAILABLE) and was dispatched from
+    Pro via scripts/tp1_call.py with a 52 KB prompt file (no tool access). Quorum: three
+    titolari journaled, two without a block.
+  - >-
+    Verdict flips are the owner's (Legge 5) and stay out: 87101/88101/88901 (TERBUKA 100% under
+    "Pemerintah" titles) and 11030 (TERBUKA heir of Perpres-named 11031); the 20119 over-claim;
+    Lampiran III 0% establishment-only (58130 60102 60202); sector-law closures (58120 60101
+    60201 69104); 79110.
+  - >-
+    Legacy l4_bali.rule/reason/confidence on the 59 (60311 LOW/needs_review; 6 with a
+    per-scala-Besar rule) belong to the W-J/B1 overlay lane; the mouth withholds at the seam
+    instead of curing data it does not own.
+  - >-
+    recert_pma_editorial_registry.py --apply needs --base HEAD after a data commit (gold-unchanged
+    guard compares against the base) — same workaround as PR-2, declared, not fixed here.
