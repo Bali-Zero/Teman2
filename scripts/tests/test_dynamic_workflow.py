@@ -316,15 +316,27 @@ def test_r2_filter_keeps_only_objections_with_an_fc_ref_and_a_test_line(tmp_path
         assert dw._FC_REF_RE.search((kit / "r2" / f"{seat}.md").read_text())
 
 
-def test_r2_filter_drops_a_referenceless_no_test_objection_entirely(tmp_path, template, clean_objective):
+def test_r2_filter_drops_a_referenceless_no_test_objection_entirely(tmp_path, template,
+                                                                      clean_objective, monkeypatch):
+    # "gemini-3.1-pro-high" is a REAL FAMILY_MAP seat (r2's fail-closed family check now refuses
+    # any answered seat outside FAMILY_MAP, so the old "<seat>-fakenoobject" synthetic identity
+    # can no longer stand in as a reviewer); force ITS fake r2 reply to be a no-objection one.
+    real_fake_r2_output = dw._fake_r2_output
+
+    def _forced_no_objection(seat: str) -> str:
+        if seat == "gemini-3.1-pro-high":
+            return "No objections. Everything checks out fine here."
+        return real_fake_r2_output(seat)
+
+    monkeypatch.setattr(dw, "_fake_r2_output", _forced_no_objection)
     kit = tmp_path / "k"
     dw.cmd_brief(_brief_ns(clean_objective, template, kit))
     _seed_convener(kit)
-    dw.cmd_r1(argparse.Namespace(kit=str(kit), seats="kimi-k3,qwen3.8-max,gemini-3.1-pro-high-fakenoobject",
+    dw.cmd_r1(argparse.Namespace(kit=str(kit), seats="kimi-k3,qwen3.8-max,gemini-3.1-pro-high",
                                   astra_fallback=False))
     summary = dw.cmd_r2(argparse.Namespace(kit=str(kit)))
-    assert summary["gemini-3.1-pro-high-fakenoobject"] == {"kept": 0, "rejected": 1}
-    assert not (kit / "r2" / "gemini-3.1-pro-high-fakenoobject.md").read_text().strip()
+    assert summary["gemini-3.1-pro-high"] == {"kept": 0, "rejected": 1}
+    assert not (kit / "r2" / "gemini-3.1-pro-high.md").read_text().strip()
 
 
 # --------------------------------------------------------------- judge (guilt + innocence)
@@ -373,6 +385,117 @@ def test_judge_disqualifies_a_never_bullet_with_no_fc_ref(tmp_path, template, cl
     verdicts = dw.cmd_judge(argparse.Namespace(kit=str(kit)))
     assert verdicts["kimi-k3"]["c8"] is False
     assert verdicts["kimi-k3"]["disqualified"] is True
+
+
+# --------------------------------------------------------------- r1 convener mtime (guilt + innocence)
+# REWORK-BUILD gate verdict on 8ffb9bc278/PR1b: the convener's mtime was recorded into the
+# ledger but never compared against anything, so "the convener answers first" was theatre.
+
+def test_r1_proceeds_when_convener_mtime_precedes_the_first_dispatch(tmp_path, template, clean_objective):
+    kit = tmp_path / "k"
+    dw.cmd_brief(_brief_ns(clean_objective, template, kit))
+    _seed_convener(kit)
+    dw.cmd_r1(argparse.Namespace(kit=str(kit), seats="kimi-k3", astra_fallback=False))
+    assert (kit / "r1" / "kimi-k3.md").exists()
+
+
+def test_r1_refuses_a_convener_rewritten_after_the_first_dispatch(tmp_path, template, clean_objective):
+    import time
+
+    kit = tmp_path / "k"
+    dw.cmd_brief(_brief_ns(clean_objective, template, kit))
+    _seed_convener(kit)
+    dw.cmd_r1(argparse.Namespace(kit=str(kit), seats="kimi-k3", astra_fallback=False))
+    time.sleep(1.1)  # cross a whole-second boundary — the ledger's "when" has second precision
+    _seed_convener(kit)  # touch/rewrite the convener file AFTER kimi-k3 was already dispatched
+    with pytest.raises(SystemExit) as e:
+        dw.cmd_r1(argparse.Namespace(kit=str(kit), seats="qwen3.8-max", astra_fallback=False))
+    assert e.value.code == 2
+    assert not (kit / "r1" / "qwen3.8-max.md").exists()
+    assert not dw._ledger_has_seat(kit, "qwen3.8-max")
+
+
+# --------------------------------------------------------------- r2 family (guilt + innocence)
+# REWORK-BUILD gate verdict on 4c062d2e09/PR2a: an `answered` seat absent from FAMILY_MAP has
+# _seat_family return None, and None was treated as a family — pairing a seat with its own
+# vendor whenever both were unrecognised, or pairing a known seat with an unrecognised one.
+
+def test_r2_refuses_a_seat_absent_from_family_map(tmp_path, template, clean_objective):
+    kit = tmp_path / "k"
+    dw.cmd_brief(_brief_ns(clean_objective, template, kit))
+    _seed_convener(kit)
+    dw.cmd_r1(argparse.Namespace(kit=str(kit), seats="kimi-k3,totally-unknown-seat",
+                                  astra_fallback=False))
+    with pytest.raises(SystemExit) as e:
+        dw.cmd_r2(argparse.Namespace(kit=str(kit)))
+    assert e.value.code == 2
+    assert not (kit / "pairing.md").exists()
+
+
+@pytest.mark.parametrize("alias,family", [
+    ("kimi-2.7", "moonshot"),
+    ("kimi-code/k3", "moonshot"),
+])
+def test_seat_family_resolves_the_mandate_aliases(alias, family):
+    assert dw._seat_family(alias) == family
+
+
+# --------------------------------------------------------------- jury (guilt + innocence)
+
+def _judged_kit(tmp_path, template, clean_objective, seats: str) -> Path:
+    kit = tmp_path / "k"
+    dw.cmd_brief(_brief_ns(clean_objective, template, kit))
+    _seed_convener(kit)
+    dw.cmd_r1(argparse.Namespace(kit=str(kit), seats=seats, astra_fallback=False))
+    dw.cmd_judge(argparse.Namespace(kit=str(kit)))
+    return kit
+
+
+def test_jury_refuses_before_judge_has_run(tmp_path, template, clean_objective):
+    kit = tmp_path / "k"
+    dw.cmd_brief(_brief_ns(clean_objective, template, kit))
+    _seed_convener(kit)
+    dw.cmd_r1(argparse.Namespace(kit=str(kit), seats="kimi-k3", astra_fallback=False))
+    with pytest.raises(SystemExit) as e:
+        dw.cmd_jury(argparse.Namespace(kit=str(kit)))
+    assert e.value.code == 2
+    assert not (kit / "jury").exists()
+
+
+def test_jury_scores_survivors_and_marks_a_malformed_ballot_dead(tmp_path, template, clean_objective):
+    kit = _judged_kit(tmp_path, template, clean_objective,
+                       "kimi-k3,qwen3.8-max,gemini-3.1-pro-high-fakejurydead")
+    tabulation = dw.cmd_jury(argparse.Namespace(kit=str(kit)))
+    mapping_path = kit / "jury" / "mapping.json"
+    assert mapping_path.exists()
+    assert oct(mapping_path.stat().st_mode)[-3:] == "600"
+    assert (kit / "jury" / "tabulation.md").exists()
+    assert tabulation["dead"] == ["gemini-3.1-pro-high-fakejurydead"]
+    assert set(tabulation["borda"]) == {"A", "B", "C"}
+    assert set(tabulation["firsts"]) == {"A", "B", "C"}
+
+
+def test_jury_refuses_when_mapping_json_exists_and_differs(tmp_path, template, clean_objective):
+    kit = _judged_kit(tmp_path, template, clean_objective, "kimi-k3,qwen3.8-max")
+    (kit / "jury").mkdir(parents=True, exist_ok=True)
+    (kit / "jury" / "mapping.json").write_text('{"A": "not-the-real-seat"}\n')
+    with pytest.raises(SystemExit) as e:
+        dw.cmd_jury(argparse.Namespace(kit=str(kit)))
+    assert e.value.code == 2
+
+
+def test_parse_jury_ballot_rejects_a_partial_table():
+    text = "| A | 3 | 3 | 3 | 3 | 3 | 3 |\n"  # missing letter B entirely
+    assert dw._parse_jury_ballot(text, {"A", "B"}) is None
+
+
+def test_parse_jury_ballot_accepts_a_complete_table():
+    text = ("| formation | termination | cost | robustness | evidence | implementability | fit |\n"
+            "|---|---|---|---|---|---|---|\n"
+            "| A | 3 | 3 | 3 | 3 | 3 | 3 |\n"
+            "| B | 5 | 1 | 5 | 1 | 5 | 1 |\n")
+    ballot = dw._parse_jury_ballot(text, {"A", "B"})
+    assert ballot == {"A": [3, 3, 3, 3, 3, 3], "B": [5, 1, 5, 1, 5, 1]}
 
 
 # --------------------------------------------------------------- validate_answer (guilt + innocence)

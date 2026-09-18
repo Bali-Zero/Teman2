@@ -2,13 +2,14 @@
 """dynamic_workflow.py — the ONE launcher for /dynamic-workflow. Code, not prose; every
 verdict judged by CONTENT, never by exit code alone (scar #2, "Esiste != Armato").
 
-Subcommands (PR1a+PR1b+PR2a — jury/anonymise/reveal/capture-check land in PR2b):
+Subcommands (PR1a+PR1b+PR2a+PR2b — anonymise/reveal/capture-check land in PR2c):
     brief    --slug S --objective-file F --colour BLUE|ORANGE [--floor X] [--template T] [--kit K]
     check    --kit K            # recompute BRIEF.md from template+inputs.json, byte-diff (W78)
     r1       --kit K --seats a,b,c [--astra-fallback]   # one-shot per seat, ledger, relaunch<=1
     validate FILE --sha S       # frontmatter+skeleton+word-count gate
     r2       --kit K            # deterministic cross-family pairing, one shot, F/C+Test filter
     judge    --kit K            # mechanical C1/C5/C8 disqualification of every r1 answer
+    jury     --kit K            # blind peer review of survivors, six axes, Borda + firsts
 
 PII gate is fail-closed, no --skip-pii flag exists: the objective is redacted with the SAME
 Redactor used before anything leaves this machine; any change, or any raise, refuses with a
@@ -29,7 +30,9 @@ import re
 import subprocess
 import sys
 import tempfile
+import time
 from datetime import datetime, timezone
+from typing import Any
 from pathlib import Path
 
 _SCRIPTS_DIR = Path(__file__).resolve().parent
@@ -199,6 +202,26 @@ def ledger_sent_count(kit: Path, seat: str) -> int:
 
 def _ledger_has_seat(kit: Path, seat: str) -> bool:
     return any(r[1] == seat for r in _ledger_rows(kit))
+
+
+def _parse_ledger_when(when: str) -> datetime:
+    return datetime.strptime(when, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc)
+
+
+def _earliest_sent_when(kit: Path) -> datetime | None:
+    """Earliest `sent` row in the ledger, or None if no seat has been dispatched yet.
+    `sent` rows are written right before a non-convener seat is launched (see
+    `_run_one_seat`), so this is the moment the round actually started."""
+    whens = [r[0] for r in _ledger_rows(kit) if r[2] == "sent"]
+    return min((_parse_ledger_when(w) for w in whens), default=None)
+
+
+def _ledger_when(kit: Path, seat: str) -> datetime | None:
+    """Timestamp recorded on `seat`'s own ledger row (first one), or None if absent."""
+    for r in _ledger_rows(kit):
+        if r[1] == seat:
+            return _parse_ledger_when(r[0])
+    return None
 
 
 # --------------------------------------------------------------------- validate
@@ -424,8 +447,25 @@ def cmd_r1(args: argparse.Namespace) -> dict[str, str]:
     if not ok:
         print(f"refused: convener answer invalid: {reason}", file=sys.stderr)
         sys.exit(2)
-    if not _ledger_has_seat(kit, "fable-5-1"):
-        fable_mtime = datetime.fromtimestamp(fable.stat().st_mtime, tz=timezone.utc)
+    # REWORK-BUILD fix (gate verdict on 8ffb9bc278/PR1b): "the convener answers first" was
+    # recorded (mtime into the ledger) but never COMPARED against anything, so a convener
+    # file rewritten after other seats had already been dispatched went undetected — theatre,
+    # not enforcement. Both checks below run before any seat is launched, so a refusal here
+    # writes no ledger row for anyone else.
+    # Floored to whole seconds: the ledger's own "when" column carries second precision
+    # (strftime "%Y-%m-%dT%H:%M:%SZ"), so comparing a sub-second mtime against a floored
+    # ledger timestamp would spuriously call a same-second write "later" in either direction.
+    fable_mtime = datetime.fromtimestamp(fable.stat().st_mtime, tz=timezone.utc).replace(microsecond=0)
+    earliest_sent = _earliest_sent_when(kit)
+    if earliest_sent is not None and fable_mtime > earliest_sent:
+        print("refused: convener answer written after the first dispatch", file=sys.stderr)
+        sys.exit(2)
+    if _ledger_has_seat(kit, "fable-5-1"):
+        recorded = _ledger_when(kit, "fable-5-1")
+        if recorded is not None and fable_mtime > recorded:
+            print("refused: convener answer rewritten after its own ledger row", file=sys.stderr)
+            sys.exit(2)
+    else:
         ledger_append(kit, "fable-5-1", "answered", brief_sha[:16],
                       when=fable_mtime.strftime("%Y-%m-%dT%H:%M:%SZ"))
 
@@ -474,11 +514,40 @@ FAMILY_MAP: dict[str, frozenset[str]] = {
 }
 
 
+# Short/alternate spellings the mandate itself uses for a seat that's already in FAMILY_MAP
+# under a different spelling — e.g. MANDATE-builder.md §family list writes "kimi-2.7 =
+# kimi-code/kimi-for-coding-highspeed", and its CLI section invokes the k3 seat as
+# "kimi-code/k3" while FAMILY_MAP (and the ledger, historically) call it "kimi-k3". Resolved
+# once here, at the single point `_seat_family` turns a seat id into a family — never by
+# renaming ledger rows or r1/r2 output files, which keep whatever spelling was actually used
+# to dispatch them.
+_SEAT_ALIASES: dict[str, str] = {
+    "kimi-2.7": "kimi-code/kimi-for-coding-highspeed",
+    "kimi-code/k3": "kimi-k3",
+}
+
+
+def _canonical_seat(seat: str) -> str:
+    return _SEAT_ALIASES.get(seat, seat)
+
+
 def _seat_family(seat: str) -> str | None:
+    canonical = _canonical_seat(seat)
     for family, seats in FAMILY_MAP.items():
-        if seat in seats:
+        if canonical in seats:
             return family
     return None
+
+
+def _require_known_family(seat: str) -> str:
+    """Fail closed (REWORK-BUILD gate verdict on PR2a/4c062d2e09): a seat absent from
+    FAMILY_MAP must never silently pair/review within its own (unrecognised) vendor. Every
+    call site that needs a family — r2 pairing today, jury tomorrow — goes through this."""
+    fam = _seat_family(seat)
+    if fam is None:
+        print(f"refused: seat {seat} not in FAMILY_MAP", file=sys.stderr)
+        sys.exit(2)
+    return fam
 
 
 def _answered_r1_seats(kit: Path) -> list[str]:
@@ -492,6 +561,8 @@ def compute_pairing(kit: Path, brief_sha: str) -> dict[str, list[str]]:
     brief_sha, so recomputing against the same ledger state reproduces the identical
     pairing byte-for-byte (that reproducibility IS the refusal check in cmd_r2)."""
     answered = _answered_r1_seats(kit)
+    for seat in answered:
+        _require_known_family(seat)  # fail closed BEFORE pairing.md is ever written
     rng = random.Random(brief_sha)
     pairing: dict[str, list[str]] = {}
     for seat in answered:
@@ -579,8 +650,7 @@ def cmd_r2(args: argparse.Namespace) -> dict[str, dict[str, int]]:
     return summary
 
 
-# --------------------------------------------------------------------- judge (mechanical only;
-# jury + Borda tabulation lands in PR2b)
+# --------------------------------------------------------------------- judge (mechanical only)
 
 _C1_BANNED_RE = re.compile(
     r"ANTHROPIC_API_KEY|api_key\s*=|from\s+anthropic\s+import|\bbedrock\b|\bvertex\b|agy\s+.*claude-",
@@ -647,6 +717,198 @@ def cmd_judge(args: argparse.Namespace) -> dict[str, dict[str, object]]:
     for seat, v in verdicts.items():
         print(f"{seat}: disqualified={v['disqualified']}")
     return verdicts
+
+
+# --------------------------------------------------------------------- jury (blind peer review;
+# anonymise/reveal/capture-check land in PR2c)
+
+JURY_AXES = ("termination", "cost", "robustness", "evidence", "implementability", "fit")
+_JURY_LETTERS = "ABCDEF"
+_JURY_PROMPT_PREFIX = (
+    "You are a juror in a sealed brainstorm. Score each OTHER formation below on six axes, "
+    "integer 1-5 each. Output ONLY a markdown table, one row per formation letter, columns "
+    "exactly: formation, " + ", ".join(JURY_AXES) + ". No prose outside the table.\n\n")
+
+
+def _strip_identity(text: str) -> str:
+    """The two frontmatter lines that would deanonymise a formation to its reviewer — shared
+    by cmd_jury's blinding and cmd_anonymise's Z-BLIND artifact (PR2c) so the stripped fields
+    never drift between the two (mandate: 'seat: and objective_sha256 lines stripped,
+    nothing else')."""
+    text = re.sub(r"^seat:.*$", "seat: [REDACTED]", text, count=1, flags=re.MULTILINE)
+    text = re.sub(r"^objective_sha256:.*$", "objective_sha256: [REDACTED]", text, count=1,
+                   flags=re.MULTILINE)
+    return text
+
+
+def _jury_survivors(kit: Path) -> list[str]:
+    """Seats judge.md marked NOT disqualified, in judge.md's own row order. judge.md — not a
+    recompute — is the SSOT for who survives (scar #2, "Esiste != Armato": never re-derive a
+    verdict already written to disk)."""
+    judge_path = kit / "judge.md"
+    if not judge_path.exists():
+        print("refused: judge.md does not exist — run judge before jury", file=sys.stderr)
+        sys.exit(2)
+    survivors = []
+    for line in judge_path.read_text().splitlines():
+        stripped = line.strip()
+        if not stripped.startswith("|") or stripped.startswith("| seat") or set(stripped) <= {"|", "-"}:
+            continue
+        cells = [c.strip() for c in stripped.strip("|").split("|")]
+        if len(cells) < 5:
+            continue
+        seat, disqualified = cells[0], cells[-1]
+        if disqualified == "no":
+            survivors.append(seat)
+    return survivors
+
+
+def _jury_mapping(kit: Path, survivors: list[str]) -> dict[str, str]:
+    """One global letter->seat map for the whole round (max 6, A-F), persisted to
+    jury/mapping.json chmod 600 so cmd_anonymise's Z-BLIND artifact (PR2c) reuses the SAME
+    letters jury/tabulation.md already named, instead of assigning a second, inconsistent
+    mapping later. Refuses like pairing.md/mapping.json do elsewhere: exists-and-differs is
+    a refusal, not a silent overwrite."""
+    if len(survivors) > len(_JURY_LETTERS):
+        print(f"refused: {len(survivors)} surviving formations, jury supports at most "
+              f"{len(_JURY_LETTERS)} (A-F)", file=sys.stderr)
+        sys.exit(2)
+    mapping = dict(zip(_JURY_LETTERS, survivors))
+    mapping_path = kit / "jury" / "mapping.json"
+    mapping_path.parent.mkdir(parents=True, exist_ok=True)
+    rendered = json.dumps(mapping, indent=2, sort_keys=True) + "\n"
+    if mapping_path.exists():
+        if mapping_path.read_text() != rendered:
+            print("refused: jury/mapping.json exists and differs from a fresh recompute",
+                  file=sys.stderr)
+            sys.exit(2)
+    else:
+        mapping_path.write_text(rendered)
+        os.chmod(mapping_path, 0o600)
+    return mapping
+
+
+def _fake_jury_output(juror: str, letters: list[str]) -> str:
+    if not letters:
+        return ""
+    if juror.endswith("fakejurydead"):
+        return "not a table"
+    lines = ["| formation | " + " | ".join(JURY_AXES) + " |",
+              "|---|" + "---|" * len(JURY_AXES)]
+    for i, letter in enumerate(letters):
+        base = 3 + (i % 2)
+        lines.append(f"| {letter} | " + " | ".join(str(base) for _ in JURY_AXES) + " |")
+    return "\n".join(lines) + "\n"
+
+
+def _parse_jury_ballot(text: str, valid_letters: set[str]) -> dict[str, list[int]] | None:
+    """A parseable table or it is dead for the jury (mandate, verbatim): every letter this
+    juror was shown must appear EXACTLY once with six 1-5 integer scores, or the whole
+    ballot is dead — a partial table is not a partial credit."""
+    rows: dict[str, list[int]] = {}
+    for line in text.splitlines():
+        stripped = line.strip()
+        if not stripped.startswith("|") or not stripped.endswith("|"):
+            continue
+        cells = [c.strip() for c in stripped.strip("|").split("|")]
+        if len(cells) != 1 + len(JURY_AXES):
+            continue
+        letter = cells[0].upper()
+        if letter not in valid_letters or letter in rows:
+            continue
+        scores = []
+        for c in cells[1:]:
+            if not re.fullmatch(r"[1-5]", c):
+                scores = None
+                break
+            scores.append(int(c))
+        if scores is not None:
+            rows[letter] = scores
+    if set(rows) != valid_letters:
+        return None
+    return rows
+
+
+def _tabulate_jury(mapping: dict[str, str],
+                    ballots: dict[str, dict[str, list[int]] | None]) -> dict[str, Any]:
+    """Borda + firsts, tabulated BY THE SCRIPT (mandate, verbatim) — never by a synthesizer
+    LLM. Borda: per live ballot, rank formations by summed axis score (ties broken by letter
+    for determinism), award (n-1-rank) points. Firsts: count of #1 rankings. Disagreement: any
+    formation where the SAME axis spans >=3 points (of a 1-5 scale) across live ballots."""
+    letters = sorted(mapping)
+    borda: dict[str, int] = {ltr: 0 for ltr in letters}
+    firsts: dict[str, int] = {ltr: 0 for ltr in letters}
+    axis_scores: dict[str, dict[str, list[int]]] = {ltr: {a: [] for a in JURY_AXES} for ltr in letters}
+    live = 0
+    for ballot in ballots.values():
+        if ballot is None:
+            continue
+        live += 1
+        totals = {ltr: sum(scores) for ltr, scores in ballot.items()}
+        ranked = sorted(totals, key=lambda ltr: (-totals[ltr], ltr))
+        n = len(ranked)
+        for idx, ltr in enumerate(ranked):
+            borda[ltr] += (n - 1 - idx)
+        if ranked:
+            firsts[ranked[0]] += 1
+        for ltr, scores in ballot.items():
+            for axis, score in zip(JURY_AXES, scores):
+                axis_scores[ltr][axis].append(score)
+
+    disagreements = []
+    for ltr in letters:
+        for axis in JURY_AXES:
+            scores = axis_scores[ltr][axis]
+            if len(scores) >= 2 and (max(scores) - min(scores)) >= 3:
+                disagreements.append(
+                    f"{ltr} ({mapping[ltr]}): {axis} spread {min(scores)}-{max(scores)}")
+
+    dead = sorted(j for j, b in ballots.items() if b is None)
+    rows = ["| formation | seat | borda | firsts |", "|---|---|---|---|"]
+    for ltr in sorted(letters, key=lambda ltr: (-borda[ltr], ltr)):
+        rows.append(f"| {ltr} | {mapping[ltr]} | {borda[ltr]} | {firsts[ltr]} |")
+    lines = [f"# Jury tabulation — {live} live ballot(s), {len(dead)} dead: "
+             f"{', '.join(dead) or 'none'}", ""]
+    lines += rows
+    lines.append("")
+    lines.append("## Disagreements" if disagreements else "## Disagreements: none")
+    lines += [f"- {d}" for d in disagreements]
+    return {"borda": borda, "firsts": firsts, "dead": dead, "disagreements": disagreements,
+            "rendered": "\n".join(lines) + "\n"}
+
+
+def cmd_jury(args: argparse.Namespace) -> dict[str, Any]:
+    kit = Path(args.kit)
+    survivors = _jury_survivors(kit)
+    mapping = _jury_mapping(kit, survivors)
+    (kit / "jury").mkdir(parents=True, exist_ok=True)
+
+    fake = os.environ.get("DW_FAKE_SEATS") == "1"
+    ballots: dict[str, dict[str, list[int]] | None] = {}
+    for juror in survivors:
+        others = sorted(ltr for ltr, seat in mapping.items() if seat != juror)
+        if not others:
+            continue  # no peers to review — never sent, never scored, never dead
+        if fake:
+            output = _fake_jury_output(juror, others)
+        else:
+            bodies = "\n\n".join(
+                f"### Formation {ltr}\n" + _strip_identity((kit / "r1" / f"{mapping[ltr]}.md").read_text())
+                for ltr in others)
+            prompt = _JURY_PROMPT_PREFIX + bodies
+            kind = _seat_kind(juror) or "kimi"
+            timeout = SEAT_TIMEOUTS.get(kind, 900)
+            output = _launch_seat(juror, prompt, timeout, kit)
+        (kit / "jury" / f"{juror}.md").write_text(output or "")
+        ballot = _parse_jury_ballot(output or "", set(others))
+        ballots[juror] = ballot
+        ledger_append(kit, juror, "jury-dead" if ballot is None else "jury-scored", "0" * 16)
+
+    tabulation = _tabulate_jury(mapping, ballots)
+    (kit / "jury" / "tabulation.md").write_text(tabulation["rendered"])
+    for juror, ballot in ballots.items():
+        print(f"{juror}: {'dead' if ballot is None else 'scored'}")
+    return tabulation
 
 
 def cmd_validate(args: argparse.Namespace) -> None:
@@ -792,6 +1054,69 @@ def run_selftest() -> None:
         check("judge.md written", (kit_h / "judge.md").exists())
         check("judge passes a clean canned answer", verdicts_h["kimi-k3"]["disqualified"] is False)
         check("judge disqualifies a C1-dirty answer", verdicts_h["qwen3.8-max"]["disqualified"] is True)
+
+        # I. r1 refuses when the convener file is rewritten after the round's first dispatch
+        # (REWORK-BUILD verdict on 8ffb9bc278/PR1b: mtime was recorded, never compared).
+        kit_i = work / "kit-i"
+        cmd_brief(argparse.Namespace(slug="i", objective_file=str(clean_obj), colour="BLUE",
+                                      floor=None, template=str(_fixture_template()), kit=str(kit_i)))
+        sha_i = (kit_i / "brief.sha").read_text().strip()
+        (kit_i / "r1" / "fable-5-1.md").write_text(_CANNED_VALID.format(seat="fable-5-1", sha=sha_i))
+        cmd_r1(argparse.Namespace(kit=str(kit_i), seats="kimi-k3", astra_fallback=False))
+        check("innocence: first r1 call proceeds (mtime precedes any dispatch)",
+              (kit_i / "r1" / "kimi-k3.md").exists())
+        time.sleep(1.1)  # cross a whole-second boundary — ledger "when" has second precision
+        (kit_i / "r1" / "fable-5-1.md").write_text(_CANNED_VALID.format(seat="fable-5-1", sha=sha_i))
+        try:
+            cmd_r1(argparse.Namespace(kit=str(kit_i), seats="qwen3.8-max", astra_fallback=False))
+            check("guilt: r1 refuses convener rewritten after the first dispatch", False)
+        except SystemExit as e:
+            check("guilt: r1 refuses convener rewritten after the first dispatch", e.code == 2)
+        check("refusal launched no new seat", not (kit_i / "r1" / "qwen3.8-max.md").exists())
+        check("refusal wrote no new ledger row for the new seat",
+              not _ledger_has_seat(kit_i, "qwen3.8-max"))
+
+        # J. r2 fails closed on a seat absent from FAMILY_MAP, and an alias resolves correctly
+        # (REWORK-BUILD verdict on 4c062d2e09/PR2a: unknown seat paired within its own vendor).
+        kit_j = work / "kit-j"
+        cmd_brief(argparse.Namespace(slug="j", objective_file=str(clean_obj), colour="BLUE",
+                                      floor=None, template=str(_fixture_template()), kit=str(kit_j)))
+        sha_j = (kit_j / "brief.sha").read_text().strip()
+        (kit_j / "r1" / "fable-5-1.md").write_text(_CANNED_VALID.format(seat="fable-5-1", sha=sha_j))
+        cmd_r1(argparse.Namespace(kit=str(kit_j), seats="kimi-k3,totally-unknown-seat",
+                                   astra_fallback=False))
+        try:
+            cmd_r2(argparse.Namespace(kit=str(kit_j)))
+            check("guilt: r2 refuses a seat absent from FAMILY_MAP", False)
+        except SystemExit as e:
+            check("guilt: r2 refuses a seat absent from FAMILY_MAP", e.code == 2)
+        check("refusal wrote no pairing.md", not (kit_j / "pairing.md").exists())
+        check("kimi-2.7 alias resolves to the moonshot family",
+              _seat_family("kimi-2.7") == "moonshot")
+        check("kimi-code/k3 alias resolves to the moonshot family",
+              _seat_family("kimi-code/k3") == "moonshot")
+
+        # K. jury: blind peer review, Borda + firsts, a malformed ballot is dead not partial.
+        kit_k = work / "kit-k"
+        cmd_brief(argparse.Namespace(slug="k", objective_file=str(clean_obj), colour="BLUE",
+                                      floor=None, template=str(_fixture_template()), kit=str(kit_k)))
+        sha_k = (kit_k / "brief.sha").read_text().strip()
+        (kit_k / "r1" / "fable-5-1.md").write_text(_CANNED_VALID.format(seat="fable-5-1", sha=sha_k))
+        cmd_r1(argparse.Namespace(
+            kit=str(kit_k), seats="kimi-k3,qwen3.8-max,gemini-3.1-pro-high-fakejurydead",
+            astra_fallback=False))
+        cmd_judge(argparse.Namespace(kit=str(kit_k)))
+        tab_k = cmd_jury(argparse.Namespace(kit=str(kit_k)))
+        mapping_path = kit_k / "jury" / "mapping.json"
+        check("jury/mapping.json written", mapping_path.exists())
+        check("jury/mapping.json is chmod 600", oct(mapping_path.stat().st_mode)[-3:] == "600")
+        check("jury/tabulation.md written", (kit_k / "jury" / "tabulation.md").exists())
+        check("one dead ballot named (the malformed-table seat)",
+              tab_k["dead"] == ["gemini-3.1-pro-high-fakejurydead"])
+        check("borda tabulated for every surviving formation letter",
+              set(tab_k["borda"]) == {"A", "B", "C"})
+        check("re-running jury on an unchanged mapping does not refuse",
+              cmd_jury(argparse.Namespace(kit=str(kit_k))) is not None)
     finally:
         shutil.rmtree(work, ignore_errors=True)
         os.environ.pop("DW_FAKE_SEATS", None)
@@ -861,6 +1186,10 @@ def main() -> None:
     p_judge = sub.add_parser("judge")
     p_judge.add_argument("--kit", required=True)
     p_judge.set_defaults(func=cmd_judge)
+
+    p_jury = sub.add_parser("jury")
+    p_jury.add_argument("--kit", required=True)
+    p_jury.set_defaults(func=cmd_jury)
 
     args = parser.parse_args()
     if args.selftest:
