@@ -280,10 +280,13 @@ export function isMoratoriumBasis(
 // blocked by an ownership restriction — and disclosing them would have put
 // "closed … by an ownership restriction on the activity itself — not by the Bali
 // moratorium — medium-high/high risk → not blocked by moratorium (verify per
-// address)" on 50 pages. Still anchored: the optional tails are the generator's
-// own suffixes, so "not blocked by moratorium but by UU 18/2003" is NOT matched.
+// address)" on 51 pages. Still anchored: the optional tails are the generator's
+// own suffixes — the NOTE tail is admitted only under the two openings it
+// actually emits (measured 2026-09-18: 44 "the licensing rows …", 54 "no
+// KBLI-2025 risk scope …", no third) — so "not blocked by moratorium but by UU
+// 18/2003" is NOT matched, and neither is a NOTE that carries a real cause.
 const MORATORIUM_TEST_NOTE =
-  /not\s+blocked\s+by\s+moratorium(?:\s*\(verify per address\))?(?:\s*—\s*NOTE:[\s\S]*)?\s*\.?\s*$/i;
+  /not\s+blocked\s+by\s+moratorium(?:\s*\(verify per address\))?(?:\s*—\s*NOTE:\s*(?:the licensing rows|no KBLI-2025 risk scope)\b[\s\S]*)?\s*\.?\s*$/i;
 
 const MORATORIUM_STATUSES = new Set([
   "BLOCCATO_CLASSE_RISCHIO",

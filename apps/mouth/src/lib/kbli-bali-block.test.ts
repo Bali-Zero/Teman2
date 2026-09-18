@@ -298,6 +298,24 @@ describe("shouldShowReason — a cause and its denial must not share a sentence"
     ).toBe(true);
   });
 
+  it("INNOCENCE: a NOTE tail that carries a real cause is not the generator's note", () => {
+    expect(
+      shouldShowReason(
+        "TERTUTUP",
+        "medium-high/high risk → not blocked by moratorium (verify per address) — NOTE: closed nationally by UU 25/2007 Pasal 12(2).",
+      ),
+    ).toBe(true);
+  });
+
+  it("GUILT: the second generator NOTE opening ('no KBLI-2025 risk scope') is the same note", () => {
+    expect(
+      shouldShowReason(
+        "TERTUTUP",
+        "medium-high/high risk → not blocked by moratorium (verify per address) — NOTE: no KBLI-2025 risk scope for this code could be verified; verdict pending re-derivation (GARUDA-FILIERA).",
+      ),
+    ).toBe(false);
+  });
+
   it("INNOCENCE: both extra shapes are kept when the cause IS the moratorium", () => {
     expect(
       shouldShowReason(
