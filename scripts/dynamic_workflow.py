@@ -434,6 +434,19 @@ def _file_slug(seat: str) -> str:
     return seat.replace("/", "__")
 
 
+def _read_text_or_refuse(path: Path) -> str:
+    """read_text() with a named refusal (exit 2), never a bare traceback, when the file is not
+    valid UTF-8 (PR2h addendum obs 3+4: seat output under r1/ and r2/ is untrusted bytes, and a
+    crash mid-batch — r2 pairing, judge, jury, anonymise, the capture-check PII gate — used to
+    name nothing). Every read of a seat's own r1/r2 file in this module goes through this ONE
+    function so the refusal message can never drift between call sites."""
+    try:
+        return path.read_text()
+    except UnicodeDecodeError as e:
+        print(f"refused: {path} is not valid UTF-8 ({e})", file=sys.stderr)
+        sys.exit(2)
+
+
 def _claim_slug(kit: Path, seat: str) -> None:
     """Kit-level slug -> seat map (gate-4 finding, PR2e addendum; hardened gate-7, PR2g
     addendum, dw-gate-7 REWORK-BUILD on PR2e #6772): _file_slug collapses '/' to '__', so
@@ -767,7 +780,8 @@ def cmd_r2(args: argparse.Namespace) -> dict[str, dict[str, int]]:
         if fake:
             output = _fake_r2_output(seat)
         else:
-            answers = "\n\n".join((kit / "r1" / f"{_file_slug(t)}.md").read_text() for t in targets)
+            answers = "\n\n".join(_read_text_or_refuse(kit / "r1" / f"{_file_slug(t)}.md")
+                                   for t in targets)
             prompt = _R2_PROMPT_PREFIX + answers
             kind = _seat_kind(seat) or "kimi"
             timeout = SEAT_TIMEOUTS.get(kind, 900)
@@ -837,7 +851,7 @@ def cmd_judge(args: argparse.Namespace) -> dict[str, dict[str, object]]:
     verdicts: dict[str, dict[str, object]] = {}
     rows = ["| seat | C1 | C5 | C8 | disqualified |", "|---|---|---|---|---|"]
     for seat in _answered_r1_seats(kit):
-        text = (kit / "r1" / f"{_file_slug(seat)}.md").read_text()
+        text = _read_text_or_refuse(kit / "r1" / f"{_file_slug(seat)}.md")
         m = _FM_RE.match(text)
         body = text[m.end():] if m else text
         c1_ok, c1_msg = _check_c1(text)
@@ -1049,7 +1063,7 @@ def _jury_prompt(kit: Path, mapping: dict[str, str], others: list[str]) -> str:
     seat id without a real (or DW_FAKE_SEATS) seat launch in the way."""
     bodies = "\n\n".join(
         f"### Formation {ltr}\n"
-        + _strip_identity((kit / "r1" / f"{_file_slug(mapping[ltr])}.md").read_text())
+        + _strip_identity(_read_text_or_refuse(kit / "r1" / f"{_file_slug(mapping[ltr])}.md"))
         for ltr in others)
     return _JURY_PROMPT_PREFIX + bodies
 
@@ -1111,7 +1125,7 @@ def cmd_anonymise(args: argparse.Namespace) -> dict[str, str]:
     blind_dir = kit / "Z-BLIND"
     blind_dir.mkdir(parents=True, exist_ok=True)
     for letter, seat in mapping.items():
-        original = (kit / "r1" / f"{_file_slug(seat)}.md").read_text()
+        original = _read_text_or_refuse(kit / "r1" / f"{_file_slug(seat)}.md")
         (blind_dir / f"{letter}.md").write_text(_strip_identity(original))
     print(f"Z-BLIND/ written for {len(mapping)} formation(s): {', '.join(sorted(mapping))}")
     return mapping
@@ -1176,8 +1190,15 @@ def _capture_dest_for(kit: Path) -> Path:
     """the addendum's canonical shape: research/operations/<YYYY-MM-DD>-dynamic-workflow-<slug>/,
     relative to the repo root. Slug comes from the kit's own inputs.json (written once by
     cmd_brief) rather than a new CLI flag; the date is capture time, matching this repo's
-    existing research/operations/<date>-<slug> convention (date = event time, not task-start)."""
-    slug = json.loads((kit / "inputs.json").read_text())["slug"]
+    existing research/operations/<date>-<slug> convention (date = event time, not task-start).
+    A kit missing inputs.json (PR2h addendum obs 3+4) refuses here naming the file, exit 2,
+    instead of a bare FileNotFoundError traceback out of json.loads()."""
+    inputs_path = kit / "inputs.json"
+    if not inputs_path.exists():
+        print(f"refused: {inputs_path} does not exist — cannot compute the capture dest",
+              file=sys.stderr)
+        sys.exit(2)
+    slug = json.loads(inputs_path.read_text())["slug"]
     today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
     return REPO_ROOT / "research" / "operations" / f"{today}-dynamic-workflow-{slug}"
 
@@ -1210,7 +1231,7 @@ def _capture_pii_gate(kit: Path) -> None:
         for f in sorted(target.rglob("*")) if target.is_dir() else [target]:
             if not f.is_file():
                 continue
-            original = f.read_text()
+            original = _read_text_or_refuse(f)
             scan_input = original if len(original) >= floor else f"{pad}\n{original}"
             try:
                 redacted = redactor.redact(scan_input)

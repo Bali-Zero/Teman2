@@ -1182,6 +1182,41 @@ def test_capture_check_copies_a_clean_outcome_md_once_the_pii_gate_clears(
         shutil.rmtree(dest, ignore_errors=True)
 
 
+# --------------------------------------------------------------- PR2h named refusals (obs 3+4)
+
+def test_judge_refuses_a_non_utf8_r1_file_naming_it_instead_of_a_traceback(
+        tmp_path, template, clean_objective, capsys):
+    # guilt (PR2h addendum obs 3+4): a non-UTF8 file under r1/ used to raise a bare
+    # UnicodeDecodeError out of .read_text() -- a traceback naming a line number, not a file.
+    kit = tmp_path / "k"
+    dw.cmd_brief(_brief_ns(clean_objective, template, kit))
+    _seed_convener(kit)
+    dw.cmd_r1(argparse.Namespace(kit=str(kit), seats="kimi-k3", astra_fallback=False))
+    bad_path = kit / "r1" / f"{dw._file_slug('kimi-k3')}.md"
+    bad_path.write_bytes(b"\xff\xfe not valid utf-8 \x80\x81")
+    with pytest.raises(SystemExit) as e:
+        dw.cmd_judge(argparse.Namespace(kit=str(kit)))
+    assert e.value.code == 2
+    assert str(bad_path) in capsys.readouterr().err
+
+
+def test_capture_check_refuses_a_kit_missing_inputs_json_naming_the_file(
+        tmp_path, template, clean_objective, capsys):
+    # guilt (PR2h addendum obs 3+4): inputs.json is absent from _CAPTURE_REQUIRED (it is an
+    # internal input, not a captured artifact), so a kit missing it used to crash
+    # _capture_dest_for with a bare FileNotFoundError out of json.loads() instead of a named
+    # refusal.
+    kit = _capture_ready_kit(tmp_path, template, clean_objective)
+    inputs_path = kit / "inputs.json"
+    inputs_path.unlink()
+    dest = tmp_path / "dest"
+    with pytest.raises(SystemExit) as e:
+        dw.cmd_capture_check(argparse.Namespace(kit=str(kit), dest=str(dest)))
+    assert e.value.code == 2
+    assert not dest.exists()
+    assert str(inputs_path) in capsys.readouterr().err
+
+
 # --------------------------------------------------------------- validate_answer (guilt + innocence)
 
 def _valid_text(sha="abc123"):
