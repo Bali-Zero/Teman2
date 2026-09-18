@@ -1,6 +1,6 @@
 version: 1
 checksum_algo: sha256
-checksum: 3751329edd9ad778dd8fd5a866cb2364c53e5cfa4e41ce7de2003781dcafbf9b # pragma: allowlist secret
+checksum: 0c522fbd51de19405a03841470c7334d586f01a05f1bf9f4bafa1121712c804c # pragma: allowlist secret
 organs:
 - id: infra.postgres
   runtime: fly_machine
@@ -3003,5 +3003,71 @@ organs:
   bridge_source:
     type: state_file
     path: ~/.organism/last_seen/pro.meta_one_steward.json
+    timestamp_field: ts
+    status_field: status
+- id: m5.mailbox_janitor
+  runtime: air_launchd
+  type: cron
+  expected_hb_seconds: 172800
+  owner_module: scripts/mailbox_janitor_cron.sh
+  dependencies: []
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: m5
+    label: com.nuzantara.mailbox-janitor.daily
+  severity_on_silence: warning
+  notes: The ONLY deleter of ~/.nuzantara-mailbox (born 2026-09-18). Daily 04:47 WITA
+    via scripts/mailbox_janitor.py --apply; prunes hook-marked dead mail after 14 days,
+    stale .broadcast_seen markers after 3 days when no live broadcast references them,
+    and session dirs left empty. Receipt line per run in
+    ~/logs/mailbox-janitor.receipts.jsonl. Kill switch MAILBOX_JANITOR_ENABLED=false.
+  cicatrix_refs: []
+  bridge_source:
+    type: state_file
+    path: ~/.organism/last_seen/m5.mailbox_janitor.json
+    timestamp_field: ts
+    status_field: status
+- id: pro.mailbox_janitor
+  runtime: pro_launchd
+  type: cron
+  expected_hb_seconds: 172800
+  owner_module: scripts/mailbox_janitor_cron.sh
+  dependencies: []
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: pro
+    label: com.nuzantara.mailbox-janitor.daily
+  severity_on_silence: warning
+  notes: The ONLY deleter of ~/.nuzantara-mailbox (born 2026-09-18). Daily 04:47 WITA
+    via scripts/mailbox_janitor.py --apply; prunes hook-marked dead mail after 14 days,
+    stale .broadcast_seen markers after 3 days when no live broadcast references them,
+    and session dirs left empty. Receipt line per run in
+    ~/logs/mailbox-janitor.receipts.jsonl. Kill switch MAILBOX_JANITOR_ENABLED=false.
+  cicatrix_refs: []
+  bridge_source:
+    type: state_file
+    path: ~/.organism/last_seen/pro.mailbox_janitor.json
+    timestamp_field: ts
+    status_field: status
+- id: mini.mailbox_janitor
+  runtime: mini_launchd
+  type: cron
+  expected_hb_seconds: 172800
+  owner_module: scripts/mailbox_janitor_cron.sh
+  dependencies: []
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: mini
+    label: com.nuzantara.mailbox-janitor.daily
+  severity_on_silence: warning
+  notes: The ONLY deleter of ~/.nuzantara-mailbox (born 2026-09-18). Daily 04:47 WITA
+    via scripts/mailbox_janitor.py --apply; prunes hook-marked dead mail after 14 days,
+    stale .broadcast_seen markers after 3 days when no live broadcast references them,
+    and session dirs left empty. Receipt line per run in
+    ~/logs/mailbox-janitor.receipts.jsonl. Kill switch MAILBOX_JANITOR_ENABLED=false.
+  cicatrix_refs: []
+  bridge_source:
+    type: state_file
+    path: ~/.organism/last_seen/mini.mailbox_janitor.json
     timestamp_field: ts
     status_field: status

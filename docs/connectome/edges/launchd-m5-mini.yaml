@@ -21,6 +21,28 @@ edges:
         type: cmd,
         cmd: "launchctl list | grep -F com.nuzantara.agent-worktree-cleanup.daily",
       }
+  - id: com.nuzantara.mailbox-janitor.daily-m5
+    kind: launchd
+    machine: m5
+    status: ALIVE
+    consumer: "scripts/mailbox_janitor_cron.sh (daily 04:47 WITA; the ONLY deleter of ~/.nuzantara-mailbox; receipts ~/logs/mailbox-janitor.receipts.jsonl; heartbeat m5.mailbox_janitor)"
+    notes: "Born 2026-09-18. Label greps literally: keep it stable across cadence changes."
+    probe:
+      {
+        type: cmd,
+        cmd: "launchctl list | grep -F com.nuzantara.mailbox-janitor.daily",
+      }
+  - id: com.nuzantara.mailbox-janitor.daily-mini
+    kind: launchd
+    machine: mini
+    status: ALIVE
+    consumer: "scripts/mailbox_janitor_cron.sh (daily 04:47 WITA; the ONLY deleter of ~/.nuzantara-mailbox; receipts ~/logs/mailbox-janitor.receipts.jsonl; heartbeat mini.mailbox_janitor)"
+    notes: "Born 2026-09-18. Label greps literally: keep it stable across cadence changes."
+    probe:
+      {
+        type: cmd,
+        cmd: "launchctl list | grep -F com.nuzantara.mailbox-janitor.daily",
+      }
   - id: com.balizero.nlm-autodownload
     kind: launchd
     machine: m5

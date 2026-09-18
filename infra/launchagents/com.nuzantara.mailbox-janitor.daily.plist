@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+Fleet mailbox janitor: once a day at 04:47 WITA (LOCAL time, launchd reads
+StartCalendarInterval in the machine's zone, not UTC).
+
+Runs scripts/mailbox_janitor_cron.sh, which applies scripts/mailbox_janitor.py
+to ~/.nuzantara-mailbox: dead mail the reader hook renamed to
+<name>.<tag>-<ts> is unlinked after 14 days, .broadcast_seen markers whose
+broadcasts are no longer live go after 3 days, and session dirs left empty
+are removed. Live *.md messages, symlinks, nested dirs and broadcast/ itself
+are never touched. Each run appends one JSON receipt line to
+~/logs/mailbox-janitor.receipts.jsonl and writes the heartbeat
+~/.organism/last_seen/<machine>.mailbox_janitor.json.
+
+This file is tracked as a REAL plist (not .plist.example) on purpose: the
+organ conformance gate scans only literal *.plist, so this is what makes the
+janitor visible to genes G1..G10. Paths below are Pro/Mini shaped
+(/Users/nuzantara/nuzantara). install_mailbox_janitor.sh renders HOME and the
+repo root for the machine it runs on (M5 is /Users/balizero), lints the result
+with plutil AND plistlib, then bootstraps it.
+
+XML comments must not contain two consecutive hyphens and must not end on
+one; plutil accepts such a file but plistlib (what audit_launchd_crons.py
+uses) raises ExpatError and the audit layer goes blind.
+
+Install (any machine):
+    bash infra/launchagents/install_mailbox_janitor.sh
+Uninstall:
+    bash infra/launchagents/install_mailbox_janitor.sh uninstall
+Kill switch (without removing the plist; the job inherits the launchd user
+environment because this plist deliberately does NOT pin the variable, which
+would override setenv):
+    launchctl setenv MAILBOX_JANITOR_ENABLED false
+    (next run writes heartbeat status=disabled; `launchctl unsetenv` re-arms;
+    setenv does not survive a reboot, uninstall does)
+Dry run by hand:
+    python3 scripts/mailbox_janitor.py
+-->
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.nuzantara.mailbox-janitor.daily</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/bash</string>
+        <string>/Users/nuzantara/nuzantara/scripts/mailbox_janitor_cron.sh</string>
+    </array>
+
+    <key>StartCalendarInterval</key>
+    <dict>
+        <key>Hour</key>
+        <integer>4</integer>
+        <key>Minute</key>
+        <integer>47</integer>
+    </dict>
+
+    <key>WorkingDirectory</key>
+    <string>/Users/nuzantara/nuzantara</string>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>HOME</key>
+        <string>/Users/nuzantara</string>
+        <key>PATH</key>
+        <string>/opt/homebrew/bin:/usr/bin:/bin</string>
+    </dict>
+
+    <key>StandardOutPath</key>
+    <string>/Users/nuzantara/logs/mailbox-janitor.launchd.log</string>
+
+    <key>StandardErrorPath</key>
+    <string>/Users/nuzantara/logs/mailbox-janitor.error.log</string>
+
+    <key>RunAtLoad</key>
+    <false/>
+
+    <key>KeepAlive</key>
+    <false/>
+</dict>
+</plist>
