@@ -8,13 +8,18 @@ For every workflow-harness script under infra/workflows/*.js:
   RULE 1 (model pin) — every `agent(` call's options object carries a literal `model:`
     property. infra/claude-hooks/model_routing_gate.py enforces the analogous rule for
     THIS session's own Agent tool dispatches; it never sees infra/workflows/*.js, whose
-    `agent()` is a different, workflow-harness-local function. A third, RUNTIME guard
-    sits under this static one for that same file family:
+    `agent()` is a different, workflow-harness-local function. A RUNTIME backstop exists
+    for exactly ONE file in this family, not all of it (corrected 2026-09-18, DEFECT
+    :11, PR3d — the prior wording claimed it covered "that same file family"):
     infra/workflows/run-second-army.mjs:121's `assertModelPinned` throws when a lane's
-    `opts.model` is missing, which is what actually catches the wrapper-indirection
-    shape RULE 1's own exemption below cannot see lexically (see CONDITION 3,
-    documented_bypass.js). Same failure mode either way: an unpinned call silently
-    inherits whatever model the harness defaults to.
+    `opts.model` is missing, but that runner only ever loads second-army.js
+    (run-second-army.mjs:26's own DEFAULT_SCRIPT_PATH) — the other five live files
+    (kbli-batch-a-lot.js, kbli-pilot-a1.js, modus-bench.js, saetta.js, verify-template.js)
+    are native Workflow DSL with no such runner, so a missing `model:` there silently
+    inherits the session model instead (.claude/skills/workflow/SKILL.md:38). This
+    static lint is the only guard those five have. The wrapper-indirection exemption
+    below stays for the same reason either way: all three live callSeat(...) sites pin
+    `model: "sonnet"` themselves (see CONDITION 3, documented_bypass.js).
 
   RULE 2 (no self-styled gate) — no `agent(` call's `label:` may contain "gate"
     (case-insensitive). A workflow script that labels one of its own steps a gate is
