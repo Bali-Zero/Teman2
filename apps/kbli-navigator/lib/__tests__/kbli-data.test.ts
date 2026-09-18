@@ -139,11 +139,17 @@ function pmaDisclosureContract() {
   // 2026-09-18 naso PR-3: the 59 statutory closures (TERTUTUP/0 unchanged)
   // relabelled declared_gap→located by apply_statutory_closures.py,
   // 1487→1428 / 72→131.
-  assert.equal(gaps.length, 1428, "dataset must contain 1,428 PMA gaps");
+  // 2026-09-18 naso PR-4 (residual lot 1): 330 codes relabelled
+  // declared_gap→located by apply_residual_open.py under the RESIDUAL locator
+  // Perpres 10/2021 Pasal 3(1)(d) + 3(2) — a field named by no Lampiran row and
+  // no body article «dapat diusahakan oleh semua Penanam Modal». Verdicts are
+  // untouched (TERBUKA/100 before and after); only the provenance moves.
+  // 1428→1098 / 131→461.
+  assert.equal(gaps.length, 1098, "dataset must contain 1,098 PMA gaps");
   assert.equal(
     locatedCodes.length,
-    131,
-    "dataset must contain 131 located PMA verdicts",
+    461,
+    "dataset must contain 461 located PMA verdicts",
   );
   for (const code of gaps) {
     assert.equal(code.pma.status, "unknown", `${code.code}: PMA status`);
