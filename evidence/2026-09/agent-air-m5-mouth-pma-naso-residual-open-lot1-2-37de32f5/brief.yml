@@ -1,0 +1,34 @@
+task_id: kbli-pma-naso-residual-open-lot1
+gear: 3
+base_sha: e5e0624d90
+# Floor 3, source `size` (25 files, +6261/-1358, churn 7,619 >= SIZE_GEAR3_THRESHOLD 1828).
+# 4,950 of that churn is the same 330-record relabel written three times (canonical + the two
+# tracked consumer copies) and 660 is the regenerated llms-kbli.txt; the reviewable surface is
+# the 660-line compiler, its 442-line spec, 661 lines of compiler tests and the census pins.
+# Gear 3 declared to match the floor, not split: the compiler without its application has no
+# consumer. PR-4 of the naso plan that followed the 2026-09-18 PMA dossier
+# (research/kbli/2026-09-18-kbli-codes-closed-to-pma-tier1-tier2-dossier.md §8.5), after PR-2
+# (13133, 71f01e508c) and PR-3 (59 statutory closures, 6189cd821d). Owner: «go» on the residual
+# lane «in lotti con un gate» (2026-09-18).
+objective: "Relabel the RESIDUAL-open codes from pma_verification_status declared_gap to located and give them a locator: Perpres 10/2021 Pasal 3(1)(d) + 3(2) as amended by Perpres 49/2021 — «Bidang Usaha yang tidak termasuk dalam huruf a, huruf b, dan huruf c» «dapat diusahakan oleh semua Penanam Modal». Lot 1 is the 330 codes where the relabel changes ONE client-facing thing and nothing else: bucket residual-besar-observed, published TERBUKA/100/declared_gap, Bali overlay OK_or_HIGHER_RISK and not blocked, no legacy PMA prose, no adjudicated 4-digit sibling, no hand-excluded body-stated category, no Pasal 11(2) sector referral and no unswept-sector-statute division. Verdicts are untouched: TERBUKA/100 before and after — only the provenance moves. Census 1,428 gaps / 131 located becomes 1,098 / 461."
+constraints:
+  - "The population is RE-DERIVED from the instrument on every run by perpres_body_default_relation.report(), never read from the spec: the spec may choose WHICH codes it lists, never the predicates that decide eligibility. REQUIRED_RULE pins every load-bearing predicate in the compiler, so widening the class is a code change under review and not a JSON edit. check() refuses in BOTH directions — a listed code the rule does not reach, and a reached code the spec omits."
+  - "A closure the annexes cannot see is withheld, never published open by absence. Three legs: Pasal 11(2) routes the WHOLE finance/banking sector out of the Perpres (divisions 64/65/66, 61 codes withheld); eight divisions carry sector statutes this lane never read (09 35 49 50 51 52 53 61, 68 codes withheld); Pasal 2(2) closes four items by ACTIVITY and names no code, tested by the state's own per-code marker (category_closure_probe)."
+  - "Legge 5: no verdict, no cap and no Bali status is flipped anywhere in this PR. The declared follow-ups stay out — 87101/88101/88901/11030 flips, Lampiran III 0% on 58130/60102/60202, sector-law closures on 58120/60101/60201/69104, 79110, 20119."
+  - "Deferred in lots, each with its own reason in the spec and NOT silently shipped: 272 ATTENZIONE_FASCIA_BALI, 31 BLOCCATO_DIPENDE_SCOPE, 22 CHIUSO_BALI, 6 other Bali, 36 legacy-prose records, 29 adjudicated-sibling, 19 body-stated categories, 61 Pasal 11(2) finance, 68 unswept-statute, 12 residual-besar-absent, 158 residual-besar-unobserved (Zero: «il residuo non ha i 217»)."
+appetite: { wall_clock_hours: 6, adversarial_rounds: 1 }
+acceptance:
+  - text: "Filiera pytest green with the 47 tests of test_apply_residual_open; backend kbli sweep green with the eye pins at 1098/461; navigator tsx checks pass (1,098 gaps / 461 located); mouth vitest 519 files passed with the six moved census pins; tsc --noEmit clean."
+    probe: "python3 -m pytest scripts/kbli_filiera/tests; cd apps/backend-rag && python3 -m pytest backend/tests -k kbli; cd apps/kbli-navigator && npx tsx lib/__tests__/kbli-data.test.ts; cd apps/mouth && npx vitest run && npx tsc --noEmit"
+  - text: "sync_kbli_dataset.sh --check all five consumers in sync; coverage ratchet OK; body-default and slice artifacts fresh; foreign-cap STRICT PASS; editorial_record_conformance 0 stale / 0 needing an author; kbli_dataset_lint blocking lines byte-identical to origin/main's; the compiler re-run on the shipped canonical is a clean no-op (applicable 0, already applied 330, refused 0)."
+    probe: "bash scripts/sync_kbli_dataset.sh --check; python3 scripts/kbli_dataset_lint.py; python3 scripts/kbli_filiera/apply_residual_open.py --spec scripts/kbli_filiera/cure_specs/residual_open_naso_2026_09_18_lot1.json"
+  - text: "Prove-live after merge + scripts/vercel_prod_deploy.py: balizero.com/kbli/56101 stops saying 'Not Yet Verified' and cites Pasal 3(1)(d); then the Pro runtime sync on the 330 codes only (kbli_qdrant_pma_sync.py --layer pma --codes, kg_kbli_resync.py --only, kbli_documents_cure.py --pma-only --only, cache bust) and inspect_kbli 56101 reads TERBUKA 100 located; kbli_surface_conformance.py conformant."
+    probe: "curl -s https://balizero.com/kbli/56101 | grep -oE 'Not Yet Verified|Pasal 3\\(1\\)\\(d\\)' | sort | uniq -c; inspect_kbli 56101"
+assumptions:
+  - text: "The three annex parsers and the BPS 2020->2025 crosswalk are complete, so a code absent from every Lampiran row really is residual. This is the dossier's own declared gap (§7): a code wrongly missing from a Lampiran II/III row would be relabelled open here. The basis string says so."
+    status: unverified # a DECLARED gap, published verbatim in the basis string — not an unknown
+    probe: "Re-parse Lampiran I/II/III from the BPK gazette PDF independently of the three existing parsers and diff the row sets code by code; any code the re-parse places in an annex but the relation calls residual is a wrongly-published openness. NOT run in this lane — it is the dossier's own §7 declared gap, and it is the single way this basis can be wrong."
+  - text: "Perpres 10/2021 Pasal 2(2) closes four items by ACTIVITY and names no KBLI code, so no annex leg and no sibling leg can see them. The state marks the (e)/(f) chemical category per code in its own PP 28/2025 licensing rows; measured on the canonical it lands on exactly 20115, 20116, 20119, 20121 — none of which the residual rule can reach, because the Perpres partition already owns all four (20115 named-in-annex, the other three priority-lampiran-i)."
+    status: verified
+  - text: "The lot publishes no verdict change: every one of the 330 is TERBUKA/100 on the merge-base and TERBUKA/100 on HEAD, and the whole canonical delta is pma_verification_status, pma_official_basis, pma_source_vintage and pma_cap_verified."
+    status: verified

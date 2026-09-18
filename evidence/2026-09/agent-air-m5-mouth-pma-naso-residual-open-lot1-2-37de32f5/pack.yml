@@ -1,0 +1,313 @@
+task_id: kbli-pma-naso-residual-open-lot1
+brief_ref: evidence/brief.yml # canonical staged name — harness-floor.yml stages this PR's dated brief there before linting
+gear: 3
+colour: BLUE
+base_sha: e5e0624d90ac998855b2fd9631d3df51ace643ff # pragma: allowlist secret
+spend:
+  wall_clock_hours: 8
+  adversarial_rounds: 1
+  children: 4
+  child_depth: 1
+appetite_exceeded: >-
+  Brief appetite was 6 h / 1 adversarial round; observed 8 h / 1 round. The round count held —
+  both titolari ran once, in parallel — and the two extra hours went to the fold, not to more
+  review: the council returned two BLOCKED verdicts whose remedies changed the POPULATION (459
+  items to 330) and the compiler's shape (four new mechanisms), so the lot had to be recompiled
+  from the merge-base canonical, the three consumer copies and the four artifact emitters
+  re-run, and every census pin re-derived. A second round on the folded diff was not spent: the
+  folds are each covered by guilt-and-innocence tests in the 47-test compiler suite, which is a
+  cheaper and more durable grader than a second sandbox read of a patch that no longer exists.
+result: >-
+  330 residual-open KBLI codes move from pma_verification_status declared_gap to located under
+  Perpres 10/2021 Pasal 3(1)(d) + 3(2) as amended by Perpres 49/2021, on the canonical and its
+  four consumer copies, by a compiler that re-derives the population from the instrument on
+  every run and flips no verdict: all 330 are TERBUKA/100 before and after, only the provenance
+  moves. Census 1,428 gaps / 131 located becomes 1,098 / 461. The rule reaches 507; 177 are
+  WITHHELD because absence is evidence of openness only where the Perpres owns the ownership
+  question — 61 finance/banking codes Pasal 11(2) hands to their own legislation, 68 in eight
+  divisions whose sector statutes this lane never read, 29 with an adjudicated 4-digit sibling,
+  19 categories the body states in prose. Five commits, the last two a council fold.
+gear_floor_note: >-
+  Declared 3 because the deterministic floor IS 3, source `size` (numstat on the merge-base:
+  25 files, +6261/-1358, churn 7,619 >= SIZE_GEAR3_THRESHOLD 1828). 4,950 of that churn is the
+  same 330-record relabel written three times (canonical + the two tracked consumer copies) and
+  660 is the regenerated llms-kbli.txt; the reviewable surface is the 660-line compiler, its
+  442-line spec, 661 lines of compiler tests and the census pins. Not split because the
+  compiler without its application has no consumer.
+pii_scan: clean
+diff:
+  summary: >-
+    scripts/kbli_filiera (apply_residual_open.py compiler + its cure spec + 47 tests), the
+    canonical and the two tracked consumer copies with the dataset-version sidecar, the
+    regenerated llms-kbli.txt, the re-emitted certification registry / batch reports /
+    membership artifacts, and the census pins in the mouth, backend and navigator suites.
+    Counts are derived by the linter from numstat, not narrated here.
+  commits:
+    - "feat(kbli): locate 330 residual-open codes under Perpres Pasal 3(1)(d)"
+    - "chore(kbli): re-emit the artifacts pinned to the canonical after the residual lot"
+    - "test(kbli): move the navigator census pin to the residual lot's 1,098/461"
+    - "fix(kbli): bound the Pasal 2(2) claim with an enforced category probe"
+    - "chore(kbli): re-pin the filiera artifacts to the re-emitted canonical"
+lanes:
+  - lane: naso-residual-open-lot1
+    role: build
+    seat: claude-opus-5
+  - lane: residual-population-ground-truth
+    role: ground_truth
+    seat: claude-opus-5 (session, M5)
+    nb: >-
+      research/kbli/2026-09-18-kbli-codes-closed-to-pma-tier1-tier2-dossier.md §8.5 read back to
+      the instrument — Perpres 10/2021 Pasal 3(1)(d) + 3(2), Pasal 11(2) and Pasal 2(2) as
+      amended by Perpres 49/2021 — and re-derived mechanically on every run by
+      perpres_body_default_relation.report(): a code is RESIDUAL only if no Lampiran I/II/III
+      row and no body article reaches it. The spec chooses WHICH of the reached codes it lists;
+      it never chooses the predicates, which REQUIRED_RULE pins in the compiler. check() refuses
+      in both directions — a listed code the rule does not reach, and a reached code the spec
+      neither lists nor withholds with a reason.
+    query_hash: b38a1282ba89a6d4 # pragma: allowlist secret — sha256[:16] of scripts/kbli_filiera/cure_specs/residual_open_naso_2026_09_18_lot1.json
+  - lane: adversarial-review
+    role: review
+    seat: codex-gpt-5.6-sol
+  - lane: adversarial-review
+    role: review
+    seat: kimi-code/k3
+council_run: council-journal.jsonl
+bites:
+  consumer: >-
+    balizero.com/kbli/<code> for the 330 codes (the PMA provenance panel and the FAQ JSON-LD,
+    which today print "Not Yet Verified" on every one of them) and inspect_kbli / chat_kbli
+    after the Pro runtime sync on the same 330.
+  observation: >-
+    After merge + scripts/vercel_prod_deploy.py: `curl -s https://balizero.com/kbli/56101 |
+    grep -oE 'Not Yet Verified|Pasal 3\(1\)\(d\)' | sort | uniq -c` shows the Pasal citation and
+    zero "Not Yet Verified"; /kbli/64121 still shows "Not Yet Verified" (the withheld finance
+    block is not silently published); then the Pro runtime sync on the 330 only
+    (kbli_qdrant_pma_sync.py --layer pma --codes, kg_kbli_resync.py --only, kbli_documents_cure.py
+    --pma-only --only, kbli_inspect_cache_bust.py) and `inspect_kbli 56101` reads TERBUKA 100
+    located citing Pasal 3(1)(d); kbli_surface_conformance.py conformant. Not yet observed —
+    this PR is not merged; the pre-merge observation is the receipts below.
+receipts:
+  - claim: >-
+      Filiera suite green at HEAD 18cc9e62ba, including the 47 tests of
+      test_apply_residual_open (11 of them new, covering the category probe with guilt and
+      innocence corpora): 1606 passed, 1 skipped.
+    cmd: "python3 -m pytest scripts/kbli_filiera/tests/ -p no:cacheprovider"
+    exit: 0
+    ts: "2026-09-18T15:14:55Z"
+    seat: claude-opus-5
+  - claim: >-
+      Backend kbli sweep green with the eye pins moved to 1,098 gaps / 461 located: 807 passed.
+    cmd: "cd apps/backend-rag && .venv/bin/python -m pytest $(git ls-files 'backend/tests/**/test_*kbli*.py') -p no:cacheprovider"
+    exit: 0
+    ts: "2026-09-18T15:11:00Z"
+    seat: claude-opus-5
+  - claim: >-
+      The full mouth suite and typecheck are green at HEAD 18cc9e62ba, with the six moved census
+      pins (provenance 461/1,098; meta; perpres-locator; pma-editorial; data; data.server):
+      519 test files / 6481 tests passed; tsc --noEmit exit 0.
+    cmd: "cd apps/mouth && ../../node_modules/.bin/vitest run; ../../node_modules/.bin/tsc --noEmit -p ."
+    exit: 0
+    ts: "2026-09-18T15:42:43Z"
+    seat: claude-opus-5
+  - claim: >-
+      The five dataset copies are in sync with the canonical; coverage ratchet OK (pma honest
+      1559/1559, locator-bearing 461); body-default locators match the instrument (1559); slice
+      artifact fresh (12 disclosed); foreign-cap STRICT PASS; editorial_record_conformance 0
+      stale / 0 needing an author; cure_gold_pma_line "nothing to patch"; navigator
+      quarantine-transform checks pass (1,098 gaps withheld, 36/461 located editorial blocks
+      certified); the compiler re-run on the shipped canonical is a clean no-op (spec items 330,
+      applicable 0, already applied 330, refused 0, withheld 177).
+    cmd: "bash scripts/sync_kbli_dataset.sh --check; python3 scripts/kbli_filiera/kbli_coverage_scoreboard.py --check; python3 scripts/kbli_filiera/perpres_body_default_relation.py --check-artifact; python3 scripts/kbli_filiera/perpres_slice_disclosure_relation.py --check-artifact; python3 scripts/kbli_filiera/perpres_foreign_cap_relation.py --strict; python3 scripts/kbli_filiera/editorial_record_conformance.py; python3 scripts/kbli_filiera/cure_gold_pma_line.py; (cd apps/kbli-navigator && npx tsx lib/__tests__/kbli-data.test.ts); python3 scripts/kbli_filiera/apply_residual_open.py --spec scripts/kbli_filiera/cure_specs/residual_open_naso_2026_09_18_lot1.json"
+    exit: 0
+    ts: "2026-09-18T15:12:49Z"
+    seat: claude-opus-5
+  - claim: >-
+      kbli_dataset_lint's BLOCKING output is byte-identical between the merge-base canonical and
+      HEAD's (L10 5 / L11 12 / L3 9 / L4 9 / L6 2 / L9 2, 39 blocking non-L2/L7 findings, exit 1
+      on both). The only diff line is the base run's `L2: 1559` ("no curated English title"),
+      an artifact of the scratch tree used to hold the merge-base dataset — it carries no
+      apps/mouth/src/lib/kbli-english.ts — and L2 is excluded from the blocking set.
+    cmd: "git show e5e0624d90:apps/mouth/data/KBLI_2025_FINAL_CLEAN.json > $T/apps/mouth/data/...; python3 scripts/kbli_dataset_lint.py --repo $T > base.log; python3 scripts/kbli_dataset_lint.py --repo . > head.log; diff base.log head.log"
+    exit: 1
+    ts: "2026-09-18T15:16:20Z"
+    seat: claude-opus-5
+  - claim: >-
+      Codex BLOCK #1 is closed on the shipped data: 64121 is pma_verification_status
+      declared_gap with no pma_official_basis, and the lot carries zero members in divisions
+      64/65/66 and zero in the eight unswept-statute divisions (09 35 49 50 51 52 53 61).
+    cmd: "python3 -c '<census over data/source_documents/KBLI_2025_FINAL_CLEAN.json and the spec items>'"
+    exit: 0
+    ts: "2026-09-18T15:15:40Z"
+    seat: claude-opus-5
+  - claim: >-
+      Kimi HIGH #3 is bounded by measurement, not by assertion: the state's own per-code marker
+      for the Pasal 2(2)(e)/(f) category (the PP 28/2025 «Surat Pernyataan tidak memproduksi
+      senjata kimia … Bahan Perusak Ozon/BPO» requirement) lands on exactly four codes —
+      20115, 20116, 20119, 20121 — and the residual rule cannot reach any of them, because the
+      Perpres partition already owns all four (20115 named-in-annex; 20116/20119/20121
+      priority-lampiran-i). All 13 division-20 codes this lot ships are residual-besar-observed
+      and not one carries the marker. Enforced by check(), which refuses when the catalogue's
+      marked set drifts from the spec's pinned census.
+    cmd: "python3 -m pytest scripts/kbli_filiera/tests/test_apply_residual_open.py -p no:cacheprovider -k 'category or marker or probe'"
+    exit: 0
+    ts: "2026-09-18T15:14:55Z"
+    seat: claude-opus-5
+  - claim: >-
+      Kimi HIGH #4 is refuted at HEAD: the provenance census pin's title and its assertions read
+      the same partition — `it("pins the canonical honesty partition: 461 located, 1,098 gaps")`
+      over `expect(located).toHaveLength(461); expect(gaps).toHaveLength(1098)`. Nothing
+      promotes a withheld code to located through deriveProvenance.
+    cmd: "grep -n 'honesty partition' -A 40 apps/mouth/src/lib/kbli-provenance.test.ts"
+    exit: 0
+    ts: "2026-09-18T15:13:30Z"
+    seat: claude-opus-5
+  - claim: >-
+      Kimi LOW #7 is refuted: 330/330 shipped records carry pma_source_vintage "2021-05-25",
+      pma_cap_verified true and pma_verification_status located; no record in the catalogue has
+      a `pma_vintage` key at all. The reviewer's sample was a curated excerpt of the review
+      materials, not the shipped state. Vintage census: 455 located at 2021-05-25 (330 this lot
+      + 125 earlier Perpres-49 locations) and 6 at 2020-01-20.
+    cmd: "python3 -c '<vintage census over the canonical and the spec items>'"
+    exit: 0
+    ts: "2026-09-18T15:07:40Z"
+    seat: claude-opus-5
+  - claim: >-
+      PII/secret scan over the full 15,399-line patch: 0 key-shaped tokens, 0 +62 phone numbers,
+      0 16-digit NIK, 0 email addresses.
+    cmd: "git diff e5e0624d90..HEAD > FULL.patch; grep -cE '(sk-|ghp_|AIza|xox[baprs]-|BEGIN .*PRIVATE KEY)' FULL.patch; grep -cE '\\+62[0-9]{8,}' FULL.patch; grep -cE '\\b[0-9]{16}\\b' FULL.patch"
+    exit: 0
+    ts: "2026-09-18T15:17:10Z"
+    seat: claude-opus-5
+adversarial:
+  - {
+      seat: codex-gpt-5.6-sol,
+      round: 1,
+      verdict: "BLOCKED — the lot includes banking despite claiming no Pasal 11(2) referral applies",
+      findings: 4,
+      block: 1,
+      high: 3,
+      cured: 4,
+      accepted_as_residual: 0,
+    }
+  - {
+      seat: kimi-code/k3,
+      round: 1,
+      verdict: "BLOCKED — sector-statute-capped codes shipped as located/100% with cap_verified true",
+      findings: 8,
+      block: 1,
+      high: 3,
+      low: 4,
+      cured: 4,
+      refuted: 4,
+    }
+dissent:
+  - seat: "codex-gpt-5.6-sol (refuter) vs claude-opus-5 (author)"
+    status: CONFIRMED
+    objection: >-
+      BLOCKER: "the lot includes 64121, conventional commercial banking, and 61 codes across
+      prefixes 64-66. Pasal 11(2) expressly refers finance and banking to their sector
+      legislation. Neither the four-digit sibling heuristic nor the 19 exclusions establishes
+      coverage of this category. A client receives pma_cap_verified=true and «max foreign 100%»
+      without the applicable ownership regime being established." CONFIRMED and FOLDED, with a
+      wider remedy than the one proposed: `sector_referral()` now withholds by INSTRUMENT, not
+      by hand — leg 1 routes divisions 64/65/66 out under Pasal 11(2) (61 codes), leg 2 withholds
+      eight divisions whose own statutes this lane never read (09 35 49 50 51 52 53 61, 68
+      codes), and the spec must carry a reason string per leg or check() refuses. The lot went
+      from 459 items to 330 and 64121 is declared_gap on the shipped canonical. The measurable
+      proof the second leg is not theoretical: 23 codes in divisions 50/51/53 are ALREADY located
+      at TERBATAS/49% under Lampiran III.
+  - seat: "codex-gpt-5.6-sol (refuter) vs claude-opus-5 (author)"
+    status: CONFIRMED
+    objection: >-
+      Three HIGHs against the compiler, each reproduced by the reviewer in isolated execution,
+      each CONFIRMED and FOLDED: (2) the "already applied" branch was a one-way door — a record
+      already located under this basis was never re-judged, so a newly capped sibling, a flipped
+      verdict, a Bali block or new legacy prose could not un-publish it; `still_qualifies()` now
+      re-judges every shipped record on every leg AND against the full expected patch, refusing
+      on drift. (3) a failed consumer propagation could not be retried, because the canonical was
+      written first and the rerun found nothing to relabel and exited 0; `propagation_verdict()`
+      makes the no-op rerun re-check and re-propagate. (4) the spec could disable the safeguards
+      it supposedly cannot override; `REQUIRED_RULE` pins every load-bearing predicate in the
+      compiler and check() refuses any spec whose rule diverges, so widening the class is a code
+      change under review and not a JSON edit. None of these mechanisms existed in the reviewed
+      patch.
+  - seat: "kimi-code/k3 (refuter) vs claude-opus-5 (author)"
+    status: CONFIRMED
+    objection: >-
+      BLOCK: "BPR shares legally 0% foreign (UU 10/1998), domestic sea transport 49% (UU
+      17/2008), scheduled aviation 49% (UU 1/2009), insurance brokers 80% (PP 14/2018 jo PP
+      3/2020), pension funds Indonesian-only (UU 11/1992) — the page/RAG will now answer
+      «verified, 100% foreign OK» for these"; and HIGH #2, the insurance chain half-excluded
+      (65131/65132 hand-excluded and 65203/65204 sibling-withheld on PP 14/2018 grounds, while
+      66212-66291 and the 653xx/663xx pension codes shipped under the same regime). Both
+      CONFIRMED and closed by the same `sector_referral()` rework: every code Kimi named is now
+      withheld, and by an instrument-level rule rather than by a longer hand list.
+  - seat: "kimi-code/k3 (refuter) vs claude-opus-5 (author)"
+    status: CONFIRMED
+    objection: >-
+      HIGH #3: "Perpres 10/2021 Pasal 2(2) closes by category, with no codes named, not only
+      alcohol and CITES but also (e) «industri senjata kimia» and (f) «industri bahan kimia
+      industri dan bahan perusak ozon». The lot ships the 201xx/202xx chemical-manufacturing
+      block with no exclusion and no adjudication. This is exactly the 11030 failure shape the
+      PR itself cites as proof the danger is real, and the 4-digit sibling rule cannot see it."
+      CONFIRMED and folded in 66321c62b0 — as an ENFORCED probe, not a hand exclusion, because
+      excluding codes the rule never reaches is a stale exclusion this compiler already refuses.
+      `category_closure_probe` reads the state's OWN per-code marker for the category (the PP
+      28/2025 «Surat Pernyataan tidak memproduksi senjata kimia … Bahan Perusak Ozon/BPO»
+      licensing requirement), and it lands on exactly four codes, all in division 20: 20115,
+      20116, 20119, 20121. Not one is in the lot, and not because this spec excluded them — the
+      Perpres partition already owns all four (20115 named-in-annex; 20116/20119/20121
+      priority-lampiran-i), so the residual rule cannot reach them. check() refuses if the
+      catalogue's marked set ever drifts from the spec's pinned census, and the probe is blind
+      to the four fields this compiler writes (PROBE_BLIND_FIELDS) with a guard that refuses if
+      patch_for() ever writes a field the probe still reads — measured, not feared: the first run
+      after the basis was extended withheld all 330 by matching its own prose. The basis string
+      now states how the four Pasal 2(2) activity-closures were tested, and states what the test
+      does NOT prove: the marker is a licensing condition, not a statutory enumeration, so a code
+      without it could still host the closed activity.
+  - seat: "kimi-code/k3 (refuter) vs claude-opus-5 (author)"
+    status: RETRACTED
+    objection: >-
+      Four findings that did not survive measurement, recorded so nobody "fixes" them. HIGH #4:
+      the provenance test title (638/921) contradicted its body (590/969), with the dangerous
+      second reading that deriveProvenance promotes the 48 withheld codes to located — at HEAD
+      the title and the assertions both read 461/1,098, and the reviewer had read a draft whose
+      title had been advanced by the rule's reach instead of the shipped count. LOW #5: the
+      '12001-12009' range in the tobacco exclusion text — the seven listed codes are the seven
+      that exist and are reached; text corrected. LOW #6: '217 unobserved-scale codes' against a
+      158-code pin — the 217 is Zero's ruling on the whole unobserved class, the 158 is the
+      subset this lot's rule would otherwise have reached; text corrected. LOW #7: the sample
+      record lacked pma_source_vintage — 330/330 shipped records carry it, and no record in the
+      catalogue has the `pma_vintage` key the sample showed. LOW #8: `already` could go negative
+      — it is a sum() over records (line 637), not a subtraction.
+residuals:
+  - >-
+    Council roster tonight: two titolari, both BLOCKED, both folded — codex-gpt-5.6-sol (seat
+    .codex, 11:58Z) and kimi-code/k3 (12:12Z). tp1 seats are CRED_UNAVAILABLE on M5 and the
+    arsenal probe reported the agy and kimi cascade seats TIMEOUT at session start; the kimi
+    review ran from the local k3 seat. Quorum: two review seats journaled ok, zero standing
+    dissent. No second round on the folded diff — the folds are graded by the 47-test compiler
+    suite, each with a guilt and an innocence case.
+  - >-
+    Verdict flips are the owner's (Legge 5) and stay out of this lane: 87101/88101/88901 and
+    11030 (TERBUKA where the naso reads closed), the 20119 over-claim, Lampiran III 0%
+    establishment-only (58130 60102 60202), sector-law closures (58120 60101 60201 69104), 79110.
+  - >-
+    Deferred lots, each with its reason in the spec and none silently shipped: 272
+    ATTENZIONE_FASCIA_BALI, 31 BLOCCATO_DIPENDE_SCOPE, 22 CHIUSO_BALI and 6 other Bali-axis
+    codes (lot 2/3); 36 legacy-prose records whose generator-era pma_kondisi/nota/prioritas
+    contradicts the locator on 31 of 36; 29 adjudicated-sibling and 19 body-stated categories
+    (withheld from the reach, not deferred); 61 Pasal 11(2) finance and 68 unswept-statute codes
+    (own lanes, per statute); 12 residual-besar-absent (l4_bali carries the WITHDRAWN no-Besar
+    inference — cure l4_bali first); 158 residual-besar-unobserved (Zero: «il residuo non ha i
+    217»).
+  - >-
+    The declared gap this lot rests on, restated because it is the one way the basis can be
+    wrong: the three annex parsers and the BPS 2020->2025 crosswalk are assumed complete, so a
+    code absent from every Lampiran row really is residual. A code wrongly missing from a
+    Lampiran II/III row would be relabelled open here. The basis string published to the client
+    says exactly this.
+  - >-
+    recert_pma_editorial_registry.py --apply needs --base HEAD after a data commit (the
+    gold-unchanged guard compares against the base) — same workaround as PR-2 and PR-3,
+    declared, not fixed here.
