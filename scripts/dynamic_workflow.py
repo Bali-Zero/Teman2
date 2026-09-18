@@ -29,6 +29,7 @@ import re
 import subprocess
 import sys
 import tempfile
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -199,6 +200,26 @@ def ledger_sent_count(kit: Path, seat: str) -> int:
 
 def _ledger_has_seat(kit: Path, seat: str) -> bool:
     return any(r[1] == seat for r in _ledger_rows(kit))
+
+
+def _parse_ledger_when(when: str) -> datetime:
+    return datetime.strptime(when, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc)
+
+
+def _earliest_sent_when(kit: Path) -> datetime | None:
+    """Earliest `sent` row in the ledger, or None if no seat has been dispatched yet.
+    `sent` rows are written right before a non-convener seat is launched (see
+    `_run_one_seat`), so this is the moment the round actually started."""
+    whens = [r[0] for r in _ledger_rows(kit) if r[2] == "sent"]
+    return min((_parse_ledger_when(w) for w in whens), default=None)
+
+
+def _ledger_when(kit: Path, seat: str) -> datetime | None:
+    """Timestamp recorded on `seat`'s own ledger row (first one), or None if absent."""
+    for r in _ledger_rows(kit):
+        if r[1] == seat:
+            return _parse_ledger_when(r[0])
+    return None
 
 
 # --------------------------------------------------------------------- validate
@@ -424,8 +445,25 @@ def cmd_r1(args: argparse.Namespace) -> dict[str, str]:
     if not ok:
         print(f"refused: convener answer invalid: {reason}", file=sys.stderr)
         sys.exit(2)
-    if not _ledger_has_seat(kit, "fable-5-1"):
-        fable_mtime = datetime.fromtimestamp(fable.stat().st_mtime, tz=timezone.utc)
+    # REWORK-BUILD fix (gate verdict on 8ffb9bc278/PR1b): "the convener answers first" was
+    # recorded (mtime into the ledger) but never COMPARED against anything, so a convener
+    # file rewritten after other seats had already been dispatched went undetected — theatre,
+    # not enforcement. Both checks below run before any seat is launched, so a refusal here
+    # writes no ledger row for anyone else.
+    # Floored to whole seconds: the ledger's own "when" column carries second precision
+    # (strftime "%Y-%m-%dT%H:%M:%SZ"), so comparing a sub-second mtime against a floored
+    # ledger timestamp would spuriously call a same-second write "later" in either direction.
+    fable_mtime = datetime.fromtimestamp(fable.stat().st_mtime, tz=timezone.utc).replace(microsecond=0)
+    earliest_sent = _earliest_sent_when(kit)
+    if earliest_sent is not None and fable_mtime > earliest_sent:
+        print("refused: convener answer written after the first dispatch", file=sys.stderr)
+        sys.exit(2)
+    if _ledger_has_seat(kit, "fable-5-1"):
+        recorded = _ledger_when(kit, "fable-5-1")
+        if recorded is not None and fable_mtime > recorded:
+            print("refused: convener answer rewritten after its own ledger row", file=sys.stderr)
+            sys.exit(2)
+    else:
         ledger_append(kit, "fable-5-1", "answered", brief_sha[:16],
                       when=fable_mtime.strftime("%Y-%m-%dT%H:%M:%SZ"))
 
@@ -792,6 +830,27 @@ def run_selftest() -> None:
         check("judge.md written", (kit_h / "judge.md").exists())
         check("judge passes a clean canned answer", verdicts_h["kimi-k3"]["disqualified"] is False)
         check("judge disqualifies a C1-dirty answer", verdicts_h["qwen3.8-max"]["disqualified"] is True)
+
+        # I. r1 refuses when the convener file is rewritten after the round's first dispatch
+        # (REWORK-BUILD verdict on 8ffb9bc278/PR1b: mtime was recorded, never compared).
+        kit_i = work / "kit-i"
+        cmd_brief(argparse.Namespace(slug="i", objective_file=str(clean_obj), colour="BLUE",
+                                      floor=None, template=str(_fixture_template()), kit=str(kit_i)))
+        sha_i = (kit_i / "brief.sha").read_text().strip()
+        (kit_i / "r1" / "fable-5-1.md").write_text(_CANNED_VALID.format(seat="fable-5-1", sha=sha_i))
+        cmd_r1(argparse.Namespace(kit=str(kit_i), seats="kimi-k3", astra_fallback=False))
+        check("innocence: first r1 call proceeds (mtime precedes any dispatch)",
+              (kit_i / "r1" / "kimi-k3.md").exists())
+        time.sleep(1.1)  # cross a whole-second boundary — ledger "when" has second precision
+        (kit_i / "r1" / "fable-5-1.md").write_text(_CANNED_VALID.format(seat="fable-5-1", sha=sha_i))
+        try:
+            cmd_r1(argparse.Namespace(kit=str(kit_i), seats="qwen3.8-max", astra_fallback=False))
+            check("guilt: r1 refuses convener rewritten after the first dispatch", False)
+        except SystemExit as e:
+            check("guilt: r1 refuses convener rewritten after the first dispatch", e.code == 2)
+        check("refusal launched no new seat", not (kit_i / "r1" / "qwen3.8-max.md").exists())
+        check("refusal wrote no new ledger row for the new seat",
+              not _ledger_has_seat(kit_i, "qwen3.8-max"))
     finally:
         shutil.rmtree(work, ignore_errors=True)
         os.environ.pop("DW_FAKE_SEATS", None)

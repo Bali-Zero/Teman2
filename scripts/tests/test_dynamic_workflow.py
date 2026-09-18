@@ -316,12 +316,14 @@ def test_r2_filter_keeps_only_objections_with_an_fc_ref_and_a_test_line(tmp_path
         assert dw._FC_REF_RE.search((kit / "r2" / f"{seat}.md").read_text())
 
 
-def test_r2_filter_drops_a_referenceless_no_test_objection_entirely(tmp_path, template, clean_objective):
+def test_r2_filter_drops_a_referenceless_no_test_objection_entirely(tmp_path, template,
+                                                                      clean_objective):
     kit = tmp_path / "k"
     dw.cmd_brief(_brief_ns(clean_objective, template, kit))
     _seed_convener(kit)
-    dw.cmd_r1(argparse.Namespace(kit=str(kit), seats="kimi-k3,qwen3.8-max,gemini-3.1-pro-high-fakenoobject",
-                                  astra_fallback=False))
+    dw.cmd_r1(argparse.Namespace(
+        kit=str(kit), seats="kimi-k3,qwen3.8-max,gemini-3.1-pro-high-fakenoobject",
+        astra_fallback=False))
     summary = dw.cmd_r2(argparse.Namespace(kit=str(kit)))
     assert summary["gemini-3.1-pro-high-fakenoobject"] == {"kept": 0, "rejected": 1}
     assert not (kit / "r2" / "gemini-3.1-pro-high-fakenoobject.md").read_text().strip()
@@ -373,6 +375,34 @@ def test_judge_disqualifies_a_never_bullet_with_no_fc_ref(tmp_path, template, cl
     verdicts = dw.cmd_judge(argparse.Namespace(kit=str(kit)))
     assert verdicts["kimi-k3"]["c8"] is False
     assert verdicts["kimi-k3"]["disqualified"] is True
+
+
+# --------------------------------------------------------------- r1 convener mtime (guilt + innocence)
+# REWORK-BUILD gate verdict on 8ffb9bc278/PR1b: the convener's mtime was recorded into the
+# ledger but never compared against anything, so "the convener answers first" was theatre.
+
+def test_r1_proceeds_when_convener_mtime_precedes_the_first_dispatch(tmp_path, template, clean_objective):
+    kit = tmp_path / "k"
+    dw.cmd_brief(_brief_ns(clean_objective, template, kit))
+    _seed_convener(kit)
+    dw.cmd_r1(argparse.Namespace(kit=str(kit), seats="kimi-k3", astra_fallback=False))
+    assert (kit / "r1" / "kimi-k3.md").exists()
+
+
+def test_r1_refuses_a_convener_rewritten_after_the_first_dispatch(tmp_path, template, clean_objective):
+    import time
+
+    kit = tmp_path / "k"
+    dw.cmd_brief(_brief_ns(clean_objective, template, kit))
+    _seed_convener(kit)
+    dw.cmd_r1(argparse.Namespace(kit=str(kit), seats="kimi-k3", astra_fallback=False))
+    time.sleep(1.1)  # cross a whole-second boundary — the ledger's "when" has second precision
+    _seed_convener(kit)  # touch/rewrite the convener file AFTER kimi-k3 was already dispatched
+    with pytest.raises(SystemExit) as e:
+        dw.cmd_r1(argparse.Namespace(kit=str(kit), seats="qwen3.8-max", astra_fallback=False))
+    assert e.value.code == 2
+    assert not (kit / "r1" / "qwen3.8-max.md").exists()
+    assert not dw._ledger_has_seat(kit, "qwen3.8-max")
 
 
 # --------------------------------------------------------------- validate_answer (guilt + innocence)
