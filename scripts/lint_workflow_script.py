@@ -250,7 +250,13 @@ def find_violations(path: Path) -> list[tuple[int, str]]:
             if _is_bounded_for_of_in(loop_m.group(1), header_neutral[1:-1]):
                 continue  # bounded by its own finite collection — not a round-cap risk
             has_int = bool(INT_LITERAL_RE.search(header_neutral))
-            has_cap_name = bool(CAP_NAME_RE.search(src[start:end]))
+            # DEFECT :253 (PR3d, 2026-09-18): this used to search src[start:end] — the
+            # UN-neutralized source — so a cap name mentioned only in a comment or a
+            # prompt string above an actually-uncapped loop silenced the rule
+            # (cicatrix #3: substring/text match, not a real code entity). Search the
+            # already-neutralized span instead: a comment or string mention is blanked
+            # there, so only a REAL cap-name token in code can satisfy the rule.
+            has_cap_name = bool(CAP_NAME_RE.search(span_neutral))
             if not has_int and not has_cap_name:
                 line_no = src[:loop_open].count("\n") + 1
                 violations.append(

@@ -88,6 +88,20 @@ def test_single_argument_agent_object_literal_is_checked(lint):
     assert "model:" in violations[0][1]
 
 
+def test_cap_name_only_in_comment_is_violation(lint):
+    """DEFECT :253 (PR3d, 2026-09-18): a cap name mentioned only in a comment must not
+    silence RULE 3 — the loop below it is genuinely uncapped."""
+    violations = lint.find_violations(FIXTURES_DIR / "cap_name_only_in_comment.js")
+    assert len(violations) == 1
+    assert "cap" in violations[0][1]
+
+
+def test_cap_name_in_code_stays_clean(lint):
+    """Twin of the guilt fixture above: a REAL maxRounds constant must still satisfy
+    RULE 3 once the search moves to the neutralized span."""
+    assert lint.find_violations(FIXTURES_DIR / "cap_name_in_code.js") == []
+
+
 def test_for_await_loop_is_recognised(lint):
     """OBSERVATION 5 (PR3a', 2026-09-18): `for await (` must be recognised as a loop.
     The declared for-await...of stays exempt (bounded, same as plain for...of); the
