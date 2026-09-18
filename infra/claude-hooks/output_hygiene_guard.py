@@ -1,16 +1,16 @@
 #!/usr/bin/env python3
-"""output_hygiene_guard.py — PreToolUse(Bash) hook, v2.
+"""output_hygiene_guard.py — PreToolUse(Bash/Read/Skill) hook, v2.
 
 Re-implementation against docs/specs/2026-09-18-output-hygiene-guard-shapes-spec.md
 after the v1 guard (PR #6724) was SUSPENDED at three on-disk gate rounds, each
 finding a NEW over-match on an everyday command (cicatrix superscar #3). This
-file is graded against that spec's case corpus (its §6, C01-C61), not against
+file is graded against that spec's case corpus (its §6, C01-C80), not against
 its own improvisation — where this file and v1 differ, the spec wins.
 
 DECISION, not detection (spec §1): DENY (exit 2 + one-line stderr reason,
 never rewrites, never runs the command) or ALLOW (exit 0). Fails OPEN on any
-exception, malformed/non-dict stdin, a non-Bash tool, or a missing/non-string
-`command`. No subprocess calls anywhere (os.listdir/os.stat only). Kill
+exception, malformed/non-dict stdin, an unrelated tool, or malformed tool
+input. No subprocess calls anywhere (filesystem APIs only). Kill
 switch: NUZ_OUTPUT_HYGIENE_OFF=1. Latency budget: <50ms/call on M5.
 
 Segmentation (spec §2): quoted strings ('...', "...", $'...') and heredoc
@@ -33,6 +33,10 @@ table verbatim; nothing outside that table is a guilt shape. Visible-entry
 counting for S1 (spec §5) counts dotfiles only with -a/-A/--all/--almost-all,
 threshold 150, the max across every listed target, message names the count.
 
+S9 applies the same 24 KiB ceiling to the line slice requested through the
+Read tool, exempting image/PDF/notebook suffixes. S10 denies only the explicit
+skill-name set. Together the three matchers implement ten shapes.
+
 S5 literal -name/-iname/-path bound per spec §3, C61.
 """
 from __future__ import annotations
@@ -44,6 +48,17 @@ import sys
 
 THRESHOLD_ENTRIES = 150
 MAX_FILE_BYTES = 24 * 1024
+READ_DEFAULT_LIMIT = 2000
+READ_EXEMPT_SUFFIXES = {
+    ".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp", ".ico", ".tif",
+    ".tiff", ".heic", ".svg", ".pdf", ".ipynb",
+}
+DENIED_SKILLS = {
+    "claude-api": (
+        "84 KiB manual for the paid per-token Anthropic endpoint the Builder "
+        "Contract §3 bans"
+    ),
+}
 
 RUNNER_NAMES = {"pytest", "vitest", "jest", "mocha", "ava", "tap", "jasmine", "karma"}
 
@@ -679,6 +694,90 @@ def _downstream_bound(
 # Driver
 # ---------------------------------------------------------------------------
 
+def _check_s9(tool_input: dict, cwd: str) -> tuple[str, str] | None:
+    file_path = tool_input.get("file_path")
+    if not isinstance(file_path, str) or not file_path:
+        return None
+    resolved = os.path.expanduser(file_path)
+    if not os.path.isabs(resolved):
+        resolved = os.path.abspath(os.path.join(cwd, resolved))
+    try:
+        if not os.path.isfile(resolved):
+            return None
+        if os.path.splitext(resolved)[1].lower() in READ_EXEMPT_SUFFIXES:
+            return None
+    except Exception:
+        return None
+
+    offset = tool_input.get("offset", 1)
+    limit = tool_input.get("limit", READ_DEFAULT_LIMIT)
+    if (
+        isinstance(offset, bool)
+        or not isinstance(offset, int)
+        or isinstance(limit, bool)
+        or not isinstance(limit, int)
+    ):
+        return None
+
+    first_line = max(offset, 1)
+    skip = first_line - 1
+    slice_bytes = 0
+    slice_lines = 0
+    try:
+        with open(resolved, "rb") as handle:
+            for _ in range(skip):
+                if not handle.readline():
+                    return None
+            for _ in range(max(limit, 0)):
+                line = handle.readline()
+                if not line:
+                    break
+                slice_bytes += len(line)
+                slice_lines += 1
+    except Exception:
+        return None
+
+    if slice_bytes <= MAX_FILE_BYTES:
+        return None
+
+    total_lines = 0
+    capped = False
+    try:
+        with open(resolved, "rb") as handle:
+            for _line in handle:
+                total_lines += 1
+                if total_lines >= 100_000:
+                    capped = True
+                    break
+    except Exception:
+        return None
+    total = f"{total_lines}+" if capped else str(total_lines)
+    last_line = first_line + slice_lines - 1
+    kib = slice_bytes // 1024
+    short = _short(file_path)
+    return (
+        "S9",
+        f"`Read` of {short} would return {kib} KiB "
+        f"(lines {first_line}-{last_line} of {total}); pass offset/limit for a "
+        "slice <= 24 KiB, or grep -n the heading you need first",
+    )
+
+
+def _check_s10(tool_input: dict) -> tuple[str, str] | None:
+    skill = tool_input.get("skill")
+    if not isinstance(skill, str) or not skill:
+        return None
+    name = skill.rsplit(":", 1)[-1]
+    reason = DENIED_SKILLS.get(name)
+    if reason is None:
+        return None
+    return (
+        "S10",
+        f"skill `{name}` is denied here: {reason}; use the claude-code-guide "
+        "agent or context7 for Claude API docs",
+    )
+
+
 def _evaluate(cmd: str, cwd: str, depth: int = 0) -> tuple[str, str] | None:
     if not cmd or not cmd.strip() or depth > MAX_SUB_DEPTH:
         return None
@@ -737,29 +836,40 @@ def main() -> int:
         data = json.load(sys.stdin)
     except Exception:
         return 0
-    if not isinstance(data, dict) or data.get("tool_name") != "Bash":
+    if not isinstance(data, dict):
         return 0
     tool_input = data.get("tool_input")
     if not isinstance(tool_input, dict):
-        return 0
-    cmd = tool_input.get("command")
-    if not isinstance(cmd, str) or not cmd.strip():
         return 0
     cwd = data.get("cwd")
     if not isinstance(cwd, str) or not cwd:
         cwd = os.getcwd()
     try:
-        verdict = _evaluate(cmd, cwd)
+        tool_name = data.get("tool_name")
+        if tool_name == "Bash":
+            cmd = tool_input.get("command")
+            if not isinstance(cmd, str) or not cmd.strip():
+                return 0
+            verdict = _evaluate(cmd, cwd)
+        elif tool_name == "Read":
+            verdict = _check_s9(tool_input, cwd)
+        elif tool_name == "Skill":
+            verdict = _check_s10(tool_input)
+        else:
+            return 0
     except Exception:
         return 0
     if not verdict:
         return 0
     shape_id, message = verdict
-    sys.stderr.write(
-        f"BLOCKED (output-hygiene) [{shape_id}]: {message} — can flood the session "
-        f"context. Bound it: head/tail/wc/grep -c/--stat/-maxdepth/-q, a redirect, "
-        f"or run it in the background.\n"
-    )
+    if shape_id in ("S9", "S10"):
+        sys.stderr.write(f"BLOCKED (output-hygiene) [{shape_id}]: {message}\n")
+    else:
+        sys.stderr.write(
+            f"BLOCKED (output-hygiene) [{shape_id}]: {message} — can flood the session "
+            f"context. Bound it: head/tail/wc/grep -c/--stat/-maxdepth/-q, a redirect, "
+            f"or run it in the background.\n"
+        )
     return 2
 
 

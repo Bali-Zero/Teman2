@@ -52,7 +52,8 @@ _SYN = pathlib.Path(REPO_ROOT)
 # a registered worktree under the synthetic root's .worktrees/ for allow-list cases
 (_SYN / ".worktrees" / "lane-x" / "apps").mkdir(parents=True, exist_ok=True)
 # output_hygiene_guard.py fixtures (spec §6): a >150-entry dir, a 100-entry
-# dir (a repo root's size), a small dir, a >24KB file, a small file.
+# dir (a repo root's size), a small dir, a >24KB file, a 100 KiB/1,600-line
+# file, and a small file.
 (_SYN / "bigdir").mkdir(parents=True, exist_ok=True)
 for _i in range(151):
     (_SYN / "bigdir" / f"f{_i}.txt").write_text("x")
@@ -63,6 +64,7 @@ for _i in range(100):
 for _i in range(3):
     (_SYN / "smalldir" / f"f{_i}.txt").write_text("x")
 (_SYN / "big.log").write_text("x" * (25 * 1024))
+(_SYN / "huge.md").write_bytes((b"x" * 63 + b"\n") * 1600)
 (_SYN / "small.py").write_text("print(1)\n")
 
 
@@ -97,6 +99,14 @@ def _hook_path(name: str) -> pathlib.Path:
 
 def bash(cmd: str) -> dict:
     return {"tool_name": "Bash", "tool_input": {"command": cmd}, "cwd": REPO_ROOT}
+
+
+def read_(path: str, **kw) -> dict:
+    return {"tool_name": "Read", "tool_input": {"file_path": path, **kw}, "cwd": REPO_ROOT}
+
+
+def skill(name: str) -> dict:
+    return {"tool_name": "Skill", "tool_input": {"skill": name}, "cwd": REPO_ROOT}
 
 
 def edit(path: str) -> dict:
@@ -202,8 +212,9 @@ CASES: dict[str, list[tuple[dict, str, str]]] = {
         (edit(REPO_ROOT + "/apps/backend-rag/backend/app/main.py"), "BLOCK", "edit a main-checkout file"),
     ],
     # ---- output_hygiene_guard.py (Bash) — deny an unbounded ls/cat/git-log/
-    # git-diff/find/grep/test-runner/tail-f call, spec's vaccine minimum set
-    # (§7): C01, C03, C04, C07, C16, C17, C24, C25, C33, C39, C41, C46, C52, C55.
+    # git-diff/find/grep/test-runner/tail-f/Read/Skill call, spec's vaccine minimum set
+    # (§7): C01, C03, C04, C07, C16, C17, C24, C25, C33, C39, C41, C46,
+    # C52, C55, C67, C68, C71, C76, C78.
     "output_hygiene_guard.py": [
         # GUILT
         (bash("ls bigdir"), "BLOCK", "C03 counterpart: S1 151 visible (cwd-relative, HOME not fixtured here)"),
@@ -214,6 +225,9 @@ CASES: dict[str, list[tuple[dict, str, str]]] = {
         (bash("git status\ngit log"), "BLOCK", "C52: newline split"),
         (bash("npx vitest run"), "BLOCK", "C46 counterpart: npx-prefixed runner unbounded"),
         (bash("find . -delete -print"), "BLOCK", "C66: -print re-opens the walk's output"),
+        (read_(str(_SYN / "huge.md")), "BLOCK", "C67: default Read slice exceeds 24 KiB"),
+        (read_(str(_SYN / "big.log")), "BLOCK", "C71: one-line Read exceeds 24 KiB"),
+        (skill("claude-api"), "BLOCK", "C76: denied skill name"),
         # INNOCENCE
         (bash("ls"), "ALLOW", "C01: S1 under threshold"),
         (bash("git log --oneline origin/main..HEAD"), "ALLOW", "C17: range-bounded git log"),
@@ -226,6 +240,8 @@ CASES: dict[str, list[tuple[dict, str, str]]] = {
         (bash("cat big.log | sed -n '1,40p'"), "ALLOW", "C62: quoted sed -n range still bounds"),
         (bash("cat big.log | awk 'NR<=20'"), "ALLOW", "C63: quoted awk NR still bounds"),
         (bash("find /tmp/x -depth -delete"), "ALLOW", "C64: S5 own-bound, -delete prints nothing"),
+        (read_(str(_SYN / "huge.md"), limit=200), "ALLOW", "C68: bounded Read slice"),
+        (skill("modus"), "ALLOW", "C78: non-denied skill"),
     ],
     # ---- orchestrate_gate.py (Bash/Edit/Write) — never blocks short/dispatched sessions
     # Without a long transcript on stdin it cannot reach the block branch → ALLOW.
