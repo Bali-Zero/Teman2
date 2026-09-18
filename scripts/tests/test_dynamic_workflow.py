@@ -16,6 +16,7 @@ from __future__ import annotations
 import argparse
 import importlib.util
 import os
+import shutil
 import sys
 from pathlib import Path
 from types import ModuleType
@@ -583,6 +584,117 @@ def test_parse_jury_ballot_accepts_a_complete_table():
             "| B | 5 | 1 | 5 | 1 | 5 | 1 |\n")
     ballot = dw._parse_jury_ballot(text, {"A", "B"})
     assert ballot == {"A": [3, 3, 3, 3, 3, 3], "B": [5, 1, 5, 1, 5, 1]}
+
+
+# --------------------------------------------------------------- anonymise / reveal / capture-check
+
+def _juried_kit(tmp_path, template, clean_objective, seats: str) -> Path:
+    kit = _judged_kit(tmp_path, template, clean_objective, seats)
+    dw.cmd_jury(argparse.Namespace(kit=str(kit)))
+    return kit
+
+
+_THREE_FAMILY_SEATS = "kimi-k3,qwen3.8-max,gemini-3.1-pro-high"
+
+
+def test_anonymise_z_blind_copy_differs_from_the_original_only_on_seat_and_sha_lines(
+        tmp_path, template, clean_objective):
+    kit = _juried_kit(tmp_path, template, clean_objective, _THREE_FAMILY_SEATS)
+    mapping = dw.cmd_anonymise(argparse.Namespace(kit=str(kit)))
+    letter, seat = next(iter(mapping.items()))
+    original = (kit / "r1" / f"{dw._file_slug(seat)}.md").read_text().splitlines()
+    blind = (kit / "Z-BLIND" / f"{letter}.md").read_text().splitlines()
+    assert len(original) == len(blind)
+    changed = [i for i, (o, b) in enumerate(zip(original, blind)) if o != b]
+    assert len(changed) == 2
+    for i in changed:
+        key = original[i].split(":", 1)[0].strip()
+        assert key in ("seat", "objective_sha256")
+
+
+def test_anonymise_writes_one_z_blind_copy_per_surviving_letter(tmp_path, template, clean_objective):
+    kit = _juried_kit(tmp_path, template, clean_objective, _THREE_FAMILY_SEATS)
+    mapping = dw.cmd_anonymise(argparse.Namespace(kit=str(kit)))
+    assert {p.stem for p in (kit / "Z-BLIND").glob("*.md")} == set(mapping)
+
+
+def test_anonymise_keeps_jury_mapping_json_chmod_600(tmp_path, template, clean_objective):
+    kit = _juried_kit(tmp_path, template, clean_objective, _THREE_FAMILY_SEATS)
+    dw.cmd_anonymise(argparse.Namespace(kit=str(kit)))
+    mapping_path = kit / "jury" / "mapping.json"
+    assert oct(mapping_path.stat().st_mode)[-3:] == "600"
+
+
+def test_reveal_refuses_before_z_decisioni_exists_and_prints_nothing(
+        tmp_path, template, clean_objective, capsys):
+    kit = _juried_kit(tmp_path, template, clean_objective, _THREE_FAMILY_SEATS)
+    dw.cmd_anonymise(argparse.Namespace(kit=str(kit)))
+    capsys.readouterr()  # discard anonymise's own stdout
+    with pytest.raises(SystemExit) as e:
+        dw.cmd_reveal(argparse.Namespace(kit=str(kit)))
+    assert e.value.code == 2
+    assert capsys.readouterr().out == ""
+
+
+def test_reveal_prints_the_jury_mapping_once_z_decisioni_exists(tmp_path, template, clean_objective):
+    kit = _juried_kit(tmp_path, template, clean_objective, _THREE_FAMILY_SEATS)
+    mapping = dw.cmd_anonymise(argparse.Namespace(kit=str(kit)))
+    (kit / "Z-DECISIONI.md").write_text("# Zero's decision\nA\n")
+    revealed = dw.cmd_reveal(argparse.Namespace(kit=str(kit)))
+    assert revealed == mapping
+
+
+def _outcome_text() -> str:
+    return "rounds_used: 1\ndead_at_launch: 0\nwall_clock: 4m\nbites: selftest green\n"
+
+
+def _capture_ready_kit(tmp_path, template, clean_objective) -> Path:
+    kit = _juried_kit(tmp_path, template, clean_objective, _THREE_FAMILY_SEATS)
+    dw.cmd_anonymise(argparse.Namespace(kit=str(kit)))
+    (kit / "Z-DECISIONI.md").write_text("# Zero's decision\nA\n")
+    (kit / "OUTCOME.md").write_text(_outcome_text())
+    return kit
+
+
+@pytest.mark.parametrize("missing_rel", ["BRIEF.md", "judge.md", "jury/tabulation.md",
+                                          "Z-DECISIONI.md", "OUTCOME.md", "r1", "r2"])
+def test_capture_check_refuses_naming_one_missing_item(tmp_path, template, clean_objective, missing_rel):
+    kit = _capture_ready_kit(tmp_path, template, clean_objective)
+    target = kit / missing_rel
+    if target.is_dir():
+        shutil.rmtree(target)
+    else:
+        target.unlink()
+    dest = tmp_path / "dest"
+    with pytest.raises(SystemExit) as e:
+        dw.cmd_capture_check(argparse.Namespace(kit=str(kit), dest=str(dest)))
+    assert e.value.code == 1
+    assert not dest.exists()
+
+
+def test_capture_check_refuses_naming_a_missing_outcome_key(tmp_path, template, clean_objective):
+    kit = _capture_ready_kit(tmp_path, template, clean_objective)
+    (kit / "OUTCOME.md").write_text("rounds_used: 1\ndead_at_launch: 0\n")  # wall_clock, bites missing
+    dest = tmp_path / "dest"
+    with pytest.raises(SystemExit) as e:
+        dw.cmd_capture_check(argparse.Namespace(kit=str(kit), dest=str(dest)))
+    assert e.value.code == 1
+    assert not dest.exists()
+
+
+def test_capture_check_copies_the_full_artifact_set_when_everything_is_present(
+        tmp_path, template, clean_objective):
+    kit = _capture_ready_kit(tmp_path, template, clean_objective)
+    dest = tmp_path / "dest"
+    dw.cmd_capture_check(argparse.Namespace(kit=str(kit), dest=str(dest)))
+    assert (dest / "BRIEF.md").exists()
+    assert (dest / "brief.sha").exists()
+    assert (dest / "judge.md").exists()
+    assert (dest / "jury" / "tabulation.md").exists()
+    assert (dest / "Z-DECISIONI.md").exists()
+    assert (dest / "OUTCOME.md").exists()
+    assert (dest / "r1").is_dir()
+    assert (dest / "r2").is_dir()
 
 
 # --------------------------------------------------------------- validate_answer (guilt + innocence)
