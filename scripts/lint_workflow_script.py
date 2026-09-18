@@ -36,6 +36,22 @@ For every workflow-harness script under infra/workflows/*.js:
     round runs at once, not how many rounds a while-loop may run, and conflating the two
     would hide exactly the silent-spin defect this rule exists to catch).
 
+Regex literals are neutralized too (item 1, PR3e, 2026-09-18, gate-10 obs 1, HIGH): a
+`/` opens a regex literal only immediately after one of `(`, `,`, `=`, `:`, `[`, `!`,
+`&`, `|`, `?`, `{`, `}`, `;`, the keyword `return`/`typeof`, or start-of-line (skipping
+whitespace) — see `_regex_may_open`. This is tokenizer-level, not the "second JS
+parser" this docstring otherwise forbids: it is one more prefix-token rule alongside
+the quote/backtick/comment openers already handled above, not a grammar-aware parse.
+Before this rule existed, no branch handled `/` as a regex opener at all:
+`.replace(/'/g, "")` was misread as opening a STRING (blanking the rest of the FILE);
+`/https:\\/\\//` was misread as opening a LINE COMMENT (blanking the rest of the LINE) —
+either way, every `agent(`/loop after the mistake went invisible and the file falsely
+reported CLEAN. Where the rule cannot decide (a `/` after `)`, `]`, an identifier or a
+digit — all four stay division, not a regex open), it is left as code. Safety net: if
+the paren/brace balance of the neutralized file is non-zero, `_assert_balanced` REFUSES
+the file with exit 2 naming file+line rather than trust a desynced count (cicatrix #2:
+never report CLEAN on text you could not read).
+
 Two deliberate exemptions, both found necessary against the live repo (2026-09-18), not
 speculative:
 
@@ -52,19 +68,48 @@ speculative:
     second-army.js's `for (const seat of builderRoster)`). Only a classic
     `for (init; cond; step)` or a condition-based `while (cond)` needs a nearby cap.
 
+Known accusing-side limits (documented, not behavior changes):
+
+  * RULE 1 does not recognise a QUOTED `model` key (`"model": "sonnet"`) as a pin (item
+    2, PR3e, 2026-09-18, gate-10 obs 2): `_neutralize_js` blanks a quoted string's OWN
+    delimiting quote characters along with its contents, so a quoted key is lexically
+    invisible by the time RULE 1 inspects the object's entries — reported unpinned BY
+    DESIGN (false accusation, fail-safe). Every live `agent(` call already uses a
+    bareword `model:` key (see clean.js); use one.
+  * RULE 1 accuses shorthand (`{ model }`), computed (`{ ["model"]: m }`), and spread
+    (`{ ...opts }`) keys the same as a genuinely-missing `model:` (item 4, PR3e,
+    2026-09-18, gate-10 obs 4/5/6) — none of the three is a `model\\s*:` match, so the
+    lint cannot prove a pin through any of them lexically. To avoid the false
+    accusation, route through the same opaque-identifier indirection
+    `documented_bypass.js` already uses (the module docstring's first exemption) —
+    that is the honest, documented way to keep one of these shapes off this lint's
+    radar, not a fix to the accusation itself.
+  * RULE 3 accuses `for (;;)` with a break-on-cap, `while (i++ < CAP)`, and
+    `do { ... } while (n < CAP)` the same as a genuinely-uncapped loop, whenever `CAP`
+    is not itself a literal integer or a CAP_NAME_RE name — same false-accusation
+    shape as RULE 1's three key forms above. The workaround today is the one RULE 3
+    already rewards: name the cap constant per CAP_NAME_RE (or use a literal int)
+    anywhere in the phase(...) span. The span-wide search itself is not narrowed to
+    the flagged loop's own header/body in this PR; that narrowing is deferred — see
+    this PR's own body.
+
 Known, accepted limit (same spirit as infra/guard-conformance's own C4 note — a
 documented bound, not a second JS parser): `_neutralize_js` does not recurse into a
-quoted string that itself sits inside a `${...}` template interpolation — a stray `{` or
-`}` character inside such a nested string could misalign interpolation-depth tracking.
-None of the infra/workflows/*.js files in this repo do that today (verified 2026-09-18,
-each interpolation is a bare property access, a ternary, or a JSON.stringify(...) call
-with no nested template/string containing a brace). A future file that needs one would
-need a real JS parser, not a regex-based lint — do not "fix" this file by writing one.
+quoted string OR a regex literal that itself sits inside a `${...}` template
+interpolation — a stray `{` or `}` character inside such a nested construct could
+misalign interpolation-depth tracking. None of the infra/workflows/*.js files in this
+repo do that today (verified 2026-09-19, each interpolation is a bare property access, a
+ternary, or a JSON.stringify(...) call with no nested template/string/regex containing a
+brace — second-army.js:612's `"(n/a)"` is a nested STRING inside a `${...}`, not a
+regex, and has no brace either way). A future file that needs one would need a real JS
+parser, not a regex-based lint — do not "fix" this file by writing one.
 
     python3 scripts/lint_workflow_script.py [path ...]
 
 Default sweep (no argv): infra/workflows/*.js. Exit 0 clean, 1 violations found,
-2 blind scan (default sweep traversed zero files — cicatrix #2/#4, "exists != armed").
+2 blind scan (default sweep traversed zero files — cicatrix #2/#4, "exists != armed")
+OR a file's paren/brace count is unbalanced after neutralization (item 1, PR3e,
+2026-09-18 — refuses rather than risk a false CLEAN; see _assert_balanced).
 """
 from __future__ import annotations
 
@@ -92,14 +137,48 @@ FOR_OF_IN_RE = re.compile(r"^(?:const|let|var)\s+[^;]+?\s(?:of|in)\s")
 DEFAULT_GLOB_DIR = "infra/workflows"
 DEFAULT_GLOB_PATTERN = "*.js"
 
+# Prefix-token rule (item 1, PR3e, 2026-09-18, gate-10 obs 1, HIGH): a `/` opens a
+# regex literal only immediately after one of these characters, the keyword
+# return/typeof, or start-of-line -- never after `)`, `]`, an identifier or a digit
+# (all four stay division; JS grammar itself cannot always disambiguate this without a
+# full parser, and neither can we, so those four are left undecided -> code).
+_REGEX_OPENER_CHARS = frozenset("(,=:[!&|?{};")
+_REGEX_OPENER_KEYWORDS = frozenset({"return", "typeof"})
+
+
+def _regex_may_open(out: list[str], i: int) -> bool:
+    """True when position `i` in `out` (the in-progress neutralization buffer) sits
+    where JS grammar allows a regex literal to open. Scans BACKWARD over `out`, not
+    `src`: every position before `i` has already been visited by _neutralize_js's own
+    loop this call, so string/comment/regex content there is already blanked to
+    spaces -- this reads exactly the "previous token" a real tokenizer would see."""
+    j = i - 1
+    while j >= 0 and out[j] in (" ", "\t"):
+        j -= 1
+    if j < 0 or out[j] == "\n":
+        return True
+    c = out[j]
+    if c in _REGEX_OPENER_CHARS:
+        return True
+    if c.isalnum() or c in "_$":
+        k = j
+        while k >= 0 and (out[k].isalnum() or out[k] in "_$"):
+            k -= 1
+        word = "".join(out[k + 1 : j + 1])
+        return word in _REGEX_OPENER_KEYWORDS
+    return False
+
 
 def _neutralize_js(src: str) -> str:
-    """Same-length copy of `src` with comment/string/template-literal CONTENTS blanked
-    to spaces, so a naive paren-depth counter over the result cannot be desynced by a
-    stray bracket character inside prose or code-as-text (a prompt string ending
-    "...even the refuter hallucinates)" is exactly the failure mode this exists to
-    prevent). `${...}` template interpolations are real code and are left live so their
-    own parens/braces still count -- see the module docstring's documented limit."""
+    """Same-length copy of `src` with comment/string/template-literal/regex-literal
+    CONTENTS blanked to spaces, so a naive paren-depth counter over the result cannot
+    be desynced by a stray bracket character inside prose or code-as-text (a prompt
+    string ending "...even the refuter hallucinates)" is exactly the failure mode this
+    exists to prevent). A `/` opens a regex literal only where JS grammar allows one --
+    see _regex_may_open -- so a division like `a / b` is never misread as a comment or
+    string opener (item 1, PR3e, 2026-09-18, gate-10 obs 1). `${...}` template
+    interpolations are real code and are left live so their own parens/braces still
+    count -- see the module docstring's documented limit."""
     out = list(src)
     i, n = 0, len(src)
     while i < n:
@@ -159,6 +238,39 @@ def _neutralize_js(src: str) -> str:
                 j += 1
             i = j
             continue
+        if c == "/" and _regex_may_open(out, i):
+            j = i + 1
+            in_class = False
+            closed = False
+            while j < n:
+                ch = src[j]
+                if ch == "\\":
+                    j += 2
+                    continue
+                if ch == "\n":
+                    break
+                if ch == "[":
+                    in_class = True
+                    j += 1
+                    continue
+                if ch == "]":
+                    in_class = False
+                    j += 1
+                    continue
+                if ch == "/" and not in_class:
+                    j += 1
+                    closed = True
+                    break
+                j += 1
+            if closed:
+                while j < n and src[j].isalpha():
+                    j += 1
+                for k in range(i, j):
+                    if src[k] != "\n":
+                        out[k] = " "
+                i = j
+                continue
+            # not closed before EOL/EOF -- not actually a regex; leave as code (division)
         i += 1
     return "".join(out)
 
@@ -246,13 +358,18 @@ def _top_level_entries(obj_inner: str) -> list[str]:
 
 def _entry_key_is_model(entry: str) -> bool:
     """entry is one top-level `key: value` slice from _top_level_entries. True only
-    when a `model\\s*:` match is the entry's OWN key — nothing but whitespace/quotes
-    precedes it in this entry's own text — never a `model:` occurring deeper inside
-    that same entry's value (the exact shape DEFECT :229 missed)."""
+    when a `model\\s*:` match is the entry's OWN key — nothing but whitespace precedes
+    it in this entry's own text — never a `model:` occurring deeper inside that same
+    entry's value (the exact shape DEFECT :229 missed). DOCUMENTED LIMIT (item 2,
+    PR3e, 2026-09-18, gate-10 obs 2): a QUOTED key (`"model": ...`) is NOT recognised
+    here -- _neutralize_js already blanked the quote characters along with the
+    string's contents, so plain whitespace is all that is left to strip; stripping
+    quote characters too would (wrongly) also accept a quoted key. Reported unpinned
+    BY DESIGN -- see the module docstring's "Known accusing-side limits"."""
     m = MODEL_KEY_RE.search(entry)
     if not m:
         return False
-    return not entry[: m.start()].strip(" \t\n'\"")
+    return not entry[: m.start()].strip()
 
 
 def _is_bounded_for_of_in(loop_keyword: str, header_inner: str) -> bool:
@@ -283,12 +400,55 @@ def _find_matching_paren(text: str, open_idx: int) -> int:
     return n - 1
 
 
+class _UnbalancedAfterNeutralization(Exception):
+    """Raised by _assert_balanced when neutralized text has a non-zero paren/brace
+    count -- proof _neutralize_js could not fully read the file (e.g. a phantom regex
+    span swallowed one side of a real pair). find_violations refuses to report CLEAN
+    on this rather than trust a desynced count (cicatrix #2: never report CLEAN on
+    text you could not read); main() catches this and exits 2 -- see item 1, PR3e,
+    2026-09-18."""
+
+    def __init__(self, line_no: int):
+        self.line_no = line_no
+        super().__init__(
+            f"unbalanced paren/brace count after neutralization at line {line_no}"
+        )
+
+
+def _assert_balanced(src: str, neutral: str) -> None:
+    """Two INDEPENDENT scalar counters (paren, brace) over the neutralized text --
+    same paren-only idiom as _find_matching_paren, not a combined type-matching stack.
+    Raises at the first negative-going index (an extra close), or -- if the file ends
+    with either counter still non-zero (a dangling open) -- at the last line."""
+    paren = 0
+    brace = 0
+    last_line = 1
+    for idx, ch in enumerate(neutral):
+        if ch == "\n":
+            last_line += 1
+        elif ch == "(":
+            paren += 1
+        elif ch == ")":
+            paren -= 1
+            if paren < 0:
+                raise _UnbalancedAfterNeutralization(src[:idx].count("\n") + 1)
+        elif ch == "{":
+            brace += 1
+        elif ch == "}":
+            brace -= 1
+            if brace < 0:
+                raise _UnbalancedAfterNeutralization(src[:idx].count("\n") + 1)
+    if paren != 0 or brace != 0:
+        raise _UnbalancedAfterNeutralization(last_line)
+
+
 def find_violations(path: Path) -> list[tuple[int, str]]:
     try:
         src = path.read_text(encoding="utf-8")
     except (OSError, UnicodeDecodeError):
         return []
     neutral = _neutralize_js(src)
+    _assert_balanced(src, neutral)
     violations: list[tuple[int, str]] = []
 
     for m in AGENT_CALL_RE.finditer(neutral):
@@ -339,7 +499,15 @@ def find_violations(path: Path) -> list[tuple[int, str]]:
             has_cap_name = bool(CAP_NAME_RE.search(span_neutral))
             if not has_int and not has_cap_name:
                 line_no = src[:loop_open].count("\n") + 1
-                where = f'phase("{name}")' if name is not None else "no phase("
+                # ITEM 3 (PR3e, 2026-09-18, gate-10 obs 7): a file that HAS phase(
+                # calls, just not before THIS loop, is not the same as a file with no
+                # phase( call anywhere -- the wording must say which.
+                if name is not None:
+                    where = f'phase("{name}")'
+                elif phase_calls:
+                    where = "before first phase("
+                else:
+                    where = "no phase("
                 violations.append(
                     (
                         line_no,
@@ -364,7 +532,17 @@ def main(argv: list[str]) -> int:
         if not path.is_file() or path.suffix != ".js":
             continue
         scanned += 1
-        for line_no, msg in find_violations(path):
+        try:
+            file_violations = find_violations(path)
+        except _UnbalancedAfterNeutralization as exc:
+            print(
+                f"❌ lint_workflow_script: {path}:{exc.line_no}: refusing to report "
+                "CLEAN -- neutralization left an unbalanced paren/brace count "
+                "(cicatrix #2: never report CLEAN on text you could not read).",
+                file=sys.stderr,
+            )
+            return 2
+        for line_no, msg in file_violations:
             bad.append((path, line_no, msg))
 
     if not explicit and scanned == 0:

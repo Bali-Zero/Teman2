@@ -12,6 +12,11 @@ Verifies the linter correctly:
   see test_lint_asyncpg_except_completeness.py's test_main_exit_0_on_clean)
 - Refuses to report clean on a blind (zero-file) sweep, and does not over-match that
   guard onto an explicit non-.js argv or a single clean in-scope file
+- Recognises a regex literal as a regex literal (PR3e item 1, 2026-09-18) instead of
+  misreading it as a string/comment opener, and refuses (exit 2) rather than report
+  CLEAN if neutralization ever leaves the paren/brace balance non-zero
+- Reports a QUOTED `"model"` key as unpinned BY DESIGN (PR3e item 2, 2026-09-18) — a
+  documented fail-safe false accusation, not a missed real one
 """
 from __future__ import annotations
 
@@ -104,10 +109,14 @@ def test_cap_name_in_code_stays_clean(lint):
 
 def test_loop_before_first_phase_is_violation(lint):
     """DEFECT :245 (PR3d, 2026-09-18): a loop above the file's first phase( call must
-    still be scanned — only the pre-phase, genuinely-uncapped loop fires."""
+    still be scanned — only the pre-phase, genuinely-uncapped loop fires. Wording per
+    item 3 (PR3e, 2026-09-18, gate-10 obs 7): this file DOES have a phase( call later
+    on, just not before this loop — that must read "before first phase(", not the
+    "no phase(" wording reserved for a file with no phase( call anywhere (see
+    test_no_phase_uncapped_loop_is_violation)."""
     violations = lint.find_violations(FIXTURES_DIR / "loop_before_first_phase.js")
     assert len(violations) == 1
-    assert "no phase(" in violations[0][1]
+    assert "before first phase(" in violations[0][1]
 
 
 def test_no_phase_uncapped_loop_is_violation(lint):
@@ -168,6 +177,56 @@ def test_for_await_loop_is_recognised(lint):
     assert "cap" in violations[0][1]
 
 
+# --------------------------------------------------------------------------
+# ITEM 1 (PR3e, 2026-09-18, gate-10 obs 1, HIGH) -- regex literals must not blind the
+# tokenizer to the rest of the file/line.
+# --------------------------------------------------------------------------
+
+
+def test_guilt_regex_with_quote_no_longer_blinds_the_scan(lint):
+    """b01: pre-fix, a regex containing a quote (`.replace(/'/g, "")`) was read as a
+    string opener and blanked the REST OF THE FILE -- both violations below must now
+    be visible."""
+    violations = lint.find_violations(FIXTURES_DIR / "regex_quote_b01.js")
+    assert len(violations) == 2
+    messages = [msg for _, msg in violations]
+    assert any("model:" in m for m in messages)
+    assert any("cap" in m for m in messages)
+
+
+def test_guilt_regex_with_double_slash_no_longer_blinds_the_line(lint):
+    """b02: pre-fix, a regex containing `//` (`/https:\\/\\//`) was read as a line
+    comment and blanked the rest of the LINE -- the unpinned agent( call sharing that
+    line must still be reported."""
+    violations = lint.find_violations(FIXTURES_DIR / "regex_double_slash_b02.js")
+    assert len(violations) == 1
+    assert "model:" in violations[0][1]
+
+
+def test_innocence_division_chain_is_not_misread_as_regex(lint):
+    """A chain of divisions (`a / b / c`) must stay clean -- neither `/` follows an
+    opener character, so neither opens a phantom regex literal."""
+    assert lint.find_violations(FIXTURES_DIR / "division_not_regex.js") == []
+
+
+def test_innocence_live_repo_regex_literals_still_clean_and_balanced(lint):
+    """The six live infra/workflows/*.js files carry 11 real regex literals today
+    (kbli-batch-a-lot.js: 2, modus-bench.js: 1, saetta.js: 8 -- verified 2026-09-19 by
+    direct execution; the module docstring's own worked example, `/https:\\/\\//`, is
+    the same escaped-slash shape as saetta.js's `/\\/$/`). This is a regression guard:
+    find_violations must not raise _UnbalancedAfterNeutralization on any of them."""
+    for name in (
+        "kbli-batch-a-lot.js",
+        "kbli-pilot-a1.js",
+        "modus-bench.js",
+        "saetta.js",
+        "second-army.js",
+        "verify-template.js",
+    ):
+        path = REPO_ROOT / "infra" / "workflows" / name
+        assert lint.find_violations(path) == [], f"{name} must stay clean under the new tokenizer"
+
+
 def test_main_exit_0_on_clean(capsys):
     """Run on the live codebase's infra/workflows/*.js — must be green."""
     mod = _load_lint_module()
@@ -222,6 +281,40 @@ def test_guilt_explicit_nonexistent_target_is_a_blind_scan(lint, tmp_path, capsy
     assert "BLIND SCAN" in captured.err
     assert str(ghost) in captured.err
     assert "no violations" not in captured.out
+
+
+# --------------------------------------------------------------------------
+# SAFETY NET (item 1, PR3e, 2026-09-18, gate-10 obs 1) -- a non-zero paren/brace
+# balance after neutralization must refuse the file, not guess.
+# --------------------------------------------------------------------------
+
+
+def test_guilt_unbalanced_after_neutralization_raises_from_find_violations(lint):
+    with pytest.raises(lint._UnbalancedAfterNeutralization):
+        lint.find_violations(FIXTURES_DIR / "regex_false_open_desyncs_balance.js")
+
+
+def test_guilt_unbalanced_after_neutralization_main_exits_2(lint, capsys):
+    rc = lint.main([str(FIXTURES_DIR / "regex_false_open_desyncs_balance.js")])
+    captured = capsys.readouterr()
+    assert rc == 2, "an unbalanced neutralization must not exit 0 or 1 -- it proves nothing"
+    assert "regex_false_open_desyncs_balance.js" in captured.err
+    assert "no violations" not in captured.out
+
+
+def test_guilt_quoted_model_key_is_reported_unpinned_by_design(lint):
+    """DOCUMENTED LIMIT (item 2, PR3e, 2026-09-18, gate-10 obs 2): _neutralize_js blanks
+    a quoted string's own delimiting quotes along with its contents, so a QUOTED
+    `"model"` key is lexically invisible to _entry_key_is_model by the time RULE 1
+    inspects the object -- this is a fail-safe FALSE ACCUSATION, not a missed real one,
+    and is asserted here rather than only documented so the behaviour cannot drift
+    silently. See the module docstring's "Known accusing-side limits" and
+    _entry_key_is_model's own docstring."""
+    violations = lint.find_violations(FIXTURES_DIR / "quoted_model_key.js")
+    assert len(violations) == 1
+    line_no, msg = violations[0]
+    assert line_no == 10
+    assert "no literal `model:`" in msg
 
 
 # --------------------------------------------------------------------------
