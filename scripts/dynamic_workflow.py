@@ -1055,9 +1055,17 @@ def _jury_prompt(kit: Path, mapping: dict[str, str], others: list[str]) -> str:
 
 
 def cmd_jury(args: argparse.Namespace) -> dict[str, Any]:
+    """Each juror's ballot is persisted at jury/ballot-<letter>.md — the JUROR'S OWN letter,
+    never its seat id or file-slug (PR2h addendum obs 1, gate-9 MEDIUM: the old
+    jury/<seat-slug>.md filename named the juror in the clear, and since a juror never ranks
+    itself, the set difference between the global letter set and each ballot's ranked letters
+    reconstructed jury/mapping.json from world-readable files without ever opening it — gate-9
+    reproduced it exactly). Letters only, in the filename and the body both; the only place a
+    seat id lives before reveal stays jury/mapping.json, chmod 600."""
     kit = Path(args.kit)
     survivors = _jury_survivors(kit)
     mapping = _jury_mapping(kit, survivors)
+    inverse = {seat: ltr for ltr, seat in mapping.items()}
     (kit / "jury").mkdir(parents=True, exist_ok=True)
 
     fake = os.environ.get("DW_FAKE_SEATS") == "1"
@@ -1074,7 +1082,7 @@ def cmd_jury(args: argparse.Namespace) -> dict[str, Any]:
             kind = _seat_kind(juror) or "kimi"
             timeout = SEAT_TIMEOUTS.get(kind, 900)
             output = _launch_seat(juror, prompt, timeout, kit)
-        (kit / "jury" / f"{_file_slug(juror)}.md").write_text(output or "")
+        (kit / "jury" / f"ballot-{inverse[juror]}.md").write_text(output or "")
         ballot = _parse_jury_ballot(output or "", set(others))
         ballots[juror] = ballot
         ledger_append(kit, juror, "jury-dead" if ballot is None else "jury-scored", "0" * 16)
@@ -1112,15 +1120,15 @@ def cmd_anonymise(args: argparse.Namespace) -> dict[str, str]:
 def _reconstruct_jury_ballots(kit: Path, mapping: dict[str, str]
                                ) -> dict[str, dict[str, list[int]] | None]:
     """Rebuilds the ballots dict cmd_jury held only in memory, by re-reading the per-juror
-    jury/<slug>.md files cmd_jury persisted and re-parsing each with the SAME
+    jury/ballot-<letter>.md files cmd_jury persisted and re-parsing each with the SAME
     _parse_jury_ballot cmd_jury used — so cmd_reveal's seat-annotated tabulation is
     recomputed from that one source of truth, never a second independent judgment."""
     ballots: dict[str, dict[str, list[int]] | None] = {}
-    for juror in mapping.values():
-        others = sorted(ltr for ltr, seat in mapping.items() if seat != juror)
+    for letter, juror in mapping.items():
+        others = sorted(ltr for ltr in mapping if ltr != letter)
         if not others:
             continue  # no peers to review — cmd_jury never wrote a ballot file for this one
-        ballot_path = kit / "jury" / f"{_file_slug(juror)}.md"
+        ballot_path = kit / "jury" / f"ballot-{letter}.md"
         text = ballot_path.read_text() if ballot_path.exists() else ""
         ballots[juror] = _parse_jury_ballot(text, set(others))
     return ballots

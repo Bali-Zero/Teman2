@@ -879,15 +879,24 @@ def test_jury_scores_survivors_and_marks_a_malformed_ballot_dead(tmp_path, templ
     assert set(tabulation["firsts"]) == {"A", "B", "C"}
 
 
-def test_jury_tabulation_md_names_no_seat_id_before_reveal(tmp_path, template, clean_objective):
-    # guilt (dw-gate-5 on PR2d): the pre-fix rendering embedded mapping[ltr] in the table,
-    # the Disagreements line and the header's dead-ballot list -- all readable before reveal.
+def test_jury_dir_names_no_seat_id_in_any_filename_or_content_before_reveal(
+        tmp_path, template, clean_objective):
+    # guilt (dw-gate-5 on PR2d; broadened PR2h addendum obs 1, gate-9 MEDIUM): the pre-fix
+    # rendering embedded mapping[ltr] in the table, the Disagreements line and the header's
+    # dead-ballot list; separately, jury/<seat-slug>.md ballot FILENAMES named the juror
+    # directly, and the set difference over each ballot's ranked letters reconstructed
+    # jury/mapping.json from world-readable files without ever opening it (gate-9 reproduced
+    # it exactly). Every file under jury/ except mapping.json (0600, the one sanctioned place)
+    # must carry no seat id in EITHER its filename or its content.
     seats = "kimi-k3,qwen3.8-max,gemini-3.1-pro-high-fakejurydead"
     kit = _judged_kit(tmp_path, template, clean_objective, seats)
     dw.cmd_jury(argparse.Namespace(kit=str(kit)))
-    text = (kit / "jury" / "tabulation.md").read_text()
-    for seat in seats.split(","):
-        assert seat not in text, f"{seat} leaked into the blind jury/tabulation.md"
+    for f in (kit / "jury").iterdir():
+        if f.name == "mapping.json":
+            continue
+        for seat in seats.split(","):
+            assert seat not in f.name, f"{seat} leaked into filename {f.name}"
+            assert seat not in f.read_text(), f"{seat} leaked into {f.name}'s content"
 
 
 def test_jury_prompt_never_names_an_answered_seat_id(tmp_path, template, clean_objective):
