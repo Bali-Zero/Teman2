@@ -26,6 +26,7 @@ from __future__ import annotations
 
 import argparse
 import difflib
+import fcntl
 import hashlib
 import json
 import os
@@ -434,22 +435,56 @@ def _file_slug(seat: str) -> str:
 
 
 def _claim_slug(kit: Path, seat: str) -> None:
-    """Kit-level slug -> seat map (gate-4 finding, PR2e addendum, scripts/dynamic_workflow.py:420):
-    _file_slug collapses '/' to '__', so 'vendor/x' and a literal 'vendor__x' seat id both
-    produce r1/vendor__x.md — the second claimant used to overwrite the first silently (exit
-    0). kit/slugs.json is the single source of which seat already owns a slug; called once per
-    dispatch (_run_one_seat), so a relaunch of the SAME seat re-claims its own slug (no-op) but
-    a second, DIFFERENT seat claiming an existing slug refuses here, before dispatch."""
-    slug = _file_slug(seat)
+    """Kit-level slug -> seat map (gate-4 finding, PR2e addendum; hardened gate-7, PR2g
+    addendum, dw-gate-7 REWORK-BUILD on PR2e #6772): _file_slug collapses '/' to '__', so
+    'vendor/x' and a literal 'vendor__x' seat id both produce r1/vendor__x.md — the second
+    claimant used to overwrite the first silently (exit 0). kit/slugs.json is the single
+    source of which seat already owns a slug; called once per dispatch (_run_one_seat), so a
+    relaunch of the SAME seat re-claims its own slug (no-op) but a second, DIFFERENT seat
+    claiming an existing slug refuses here, before dispatch.
+
+    Claimed on _canonical_seat(seat) (item 3, gate-7 obs :442): the slug used to be claimed on
+    the RAW seat id, so 'kimi-2.7' and its canonical spelling
+    'kimi-code/kimi-for-coding-highspeed' occupied TWO slugs for the model KIMI_MODEL_MAP
+    resolves both to — the same seat could answer twice and count twice in family diversity.
+
+    Locked (item 2, gate-7 obs: 14 concurrent r1 on one kit, distinct seats, wrote 14 r1/*.md
+    files but only 12 slugs.json entries — a plain read-modify-write lost updates under
+    concurrent dispatch): an exclusive fcntl.flock on a sidecar slugs.json.lock serializes the
+    whole read-check-write, and the write itself goes tmp+os.replace so a crash mid-write
+    never leaves a truncated file. A corrupt/empty/truncated slugs.json refuses here naming
+    the file, never a traceback — this function is the ONLY writer, so corruption is always a
+    prior crash, not an external edit."""
+    slug = _file_slug(_canonical_seat(seat))
     slugs_path = kit / "slugs.json"
-    slugs: dict[str, str] = json.loads(slugs_path.read_text()) if slugs_path.exists() else {}
-    existing = slugs.get(slug)
-    if existing is not None and existing != seat:
-        print(f"refused: slug {slug!r} already claimed by seat {existing!r}, "
-              f"seat {seat!r} collides", file=sys.stderr)
-        sys.exit(2)
-    slugs[slug] = seat
-    slugs_path.write_text(json.dumps(slugs, indent=2, sort_keys=True) + "\n")
+    lock_path = kit / "slugs.json.lock"
+    lock_path.touch(exist_ok=True)
+    with open(lock_path, "r+") as lock_f:
+        fcntl.flock(lock_f, fcntl.LOCK_EX)
+        try:
+            if slugs_path.exists():
+                try:
+                    slugs: dict[str, str] = json.loads(slugs_path.read_text())
+                except json.JSONDecodeError:
+                    print(f"refused: {slugs_path} is corrupt/empty/truncated (invalid JSON) — "
+                          "refusing to claim a slug against unreadable state", file=sys.stderr)
+                    sys.exit(2)
+                if not isinstance(slugs, dict):
+                    print(f"refused: {slugs_path} does not contain a JSON object", file=sys.stderr)
+                    sys.exit(2)
+            else:
+                slugs = {}
+            existing = slugs.get(slug)
+            if existing is not None and existing != seat:
+                print(f"refused: slug {slug!r} already claimed by seat {existing!r}, "
+                      f"seat {seat!r} collides", file=sys.stderr)
+                sys.exit(2)
+            slugs[slug] = seat
+            tmp_path = slugs_path.with_name(slugs_path.name + ".tmp")
+            tmp_path.write_text(json.dumps(slugs, indent=2, sort_keys=True) + "\n")
+            os.replace(tmp_path, slugs_path)
+        finally:
+            fcntl.flock(lock_f, fcntl.LOCK_UN)
 
 
 def _run_one_seat(kit: Path, seat: str, brief_master: str, brief_sha: str, attempt: int) -> str:

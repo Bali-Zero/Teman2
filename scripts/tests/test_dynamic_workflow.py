@@ -14,7 +14,9 @@ surface, table-driven.
 from __future__ import annotations
 
 import argparse
+import concurrent.futures
 import importlib.util
+import json
 import os
 import shutil
 import sys
@@ -647,6 +649,60 @@ def test_r1_relaunching_the_same_seat_across_two_cmd_r1_calls_is_not_a_slug_coll
     summary2 = dw.cmd_r1(argparse.Namespace(kit=str(kit), seats="kimi-k3", astra_fallback=False))
     assert summary2["kimi-k3"] == "answered"  # the SAME seat re-claims its own slug, no refusal
     assert dw.ledger_sent_count(kit, "kimi-k3") == 2
+
+
+def test_r1_refuses_a_slug_collision_between_the_kimi_2_7_alias_and_its_canonical_spelling(
+        tmp_path, template, clean_objective):
+    """Item 3 (PR2g, gate-7 obs :442): the slug used to be claimed on the RAW seat id, so
+    'kimi-2.7' and its canonical spelling 'kimi-code/kimi-for-coding-highspeed' claimed TWO
+    different slugs for the ONE model KIMI_MODEL_MAP resolves both to — the same seat could
+    answer twice and count twice in family diversity. Claiming on _canonical_seat(seat) makes
+    the second claim collide, mirrors test_r1_refuses_a_slug_collision_between_two_different_
+    seat_ids exactly, just with an alias pair instead of a literal '__' collision."""
+    kit = tmp_path / "k"
+    dw.cmd_brief(_brief_ns(clean_objective, template, kit))
+    _seed_convener(kit)
+    dw.cmd_r1(argparse.Namespace(kit=str(kit), seats="kimi-2.7", astra_fallback=False))
+    with pytest.raises(SystemExit) as e:
+        dw.cmd_r1(argparse.Namespace(kit=str(kit), seats="kimi-code/kimi-for-coding-highspeed",
+                                      astra_fallback=False))
+    assert e.value.code == 2
+    assert not dw._ledger_has_seat(kit, "kimi-code/kimi-for-coding-highspeed")
+    assert dw._ledger_has_seat(kit, "kimi-2.7")
+    slugs = json.loads((kit / "slugs.json").read_text())
+    assert len(slugs) == 1  # one slug, not two — the alias and its canonical spelling collided
+
+
+def test_guilt_claim_slug_refuses_a_corrupt_slugs_json_naming_the_file(tmp_path, capsys):
+    """Item 2 (PR2g, gate-7 obs): a corrupt/empty/truncated slugs.json must refuse exit 2
+    naming the file, never a traceback — _claim_slug is the ONLY writer, so corruption always
+    means a prior crash mid-write, not an external edit."""
+    kit = tmp_path / "k"
+    kit.mkdir()
+    (kit / "slugs.json").write_text("")  # truncated/empty — invalid JSON
+    with pytest.raises(SystemExit) as e:
+        dw._claim_slug(kit, "kimi-k3")
+    assert e.value.code == 2
+    assert str(kit / "slugs.json") in capsys.readouterr().err
+
+
+def test_claim_slug_holds_up_under_concurrent_claimants_no_lost_updates(tmp_path):
+    """Item 2 (PR2g, gate-7 obs: 14 concurrent r1 on one kit, distinct seats, wrote 14
+    r1/*.md files but only 12 slugs.json entries — a plain read-modify-write lost updates).
+    Serialized in-process equivalent of the N-process scenario (mandate's own permitted
+    alternative): fcntl.flock locks are held per OPEN FILE DESCRIPTION, so N threads each
+    opening the sidecar .lock genuinely serialize at the OS level, not just cooperatively —
+    this is real contention, not an artifact of the GIL. Without the lock, N threads racing
+    the old read-modify-write would lose some fraction of these N distinct-seat claims;
+    with it, all N land."""
+    kit = tmp_path / "k"
+    kit.mkdir()
+    seats = [f"vendor/seat-{i}" for i in range(20)]
+    with concurrent.futures.ThreadPoolExecutor(max_workers=len(seats)) as pool:
+        list(pool.map(lambda s: dw._claim_slug(kit, s), seats))
+    slugs = json.loads((kit / "slugs.json").read_text())
+    assert len(slugs) == len(seats)
+    assert set(slugs.values()) == set(seats)
 
 
 # --------------------------------------------------------------- empty --seats (guilt + innocence)
