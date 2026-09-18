@@ -4,7 +4,7 @@
 Re-implementation against docs/specs/2026-09-18-output-hygiene-guard-shapes-spec.md
 after the v1 guard (PR #6724) was SUSPENDED at three on-disk gate rounds, each
 finding a NEW over-match on an everyday command (cicatrix superscar #3). This
-file is graded against that spec's case corpus (its §6, C01-C80), not against
+file is graded against that spec's case corpus (its §6, C01-C82), not against
 its own improvisation — where this file and v1 differ, the spec wins.
 
 DECISION, not detection (spec §1): DENY (exit 2 + one-line stderr reason,
@@ -49,6 +49,7 @@ import sys
 THRESHOLD_ENTRIES = 150
 MAX_FILE_BYTES = 24 * 1024
 READ_DEFAULT_LIMIT = 2000
+_READ_CHUNK = MAX_FILE_BYTES + 1
 READ_EXEMPT_SUFFIXES = {
     ".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp", ".ico", ".tif",
     ".tiff", ".heic", ".svg", ".pdf", ".ipynb",
@@ -694,6 +695,20 @@ def _downstream_bound(
 # Driver
 # ---------------------------------------------------------------------------
 
+def _line_bytes(handle) -> int:
+    """Length of the next line, newline included, read in chunks of at most
+    MAX_FILE_BYTES + 1 so a newline-free multi-MB file never lands in memory
+    whole (spalla review of #6747). 0 at EOF."""
+    total = 0
+    while True:
+        chunk = handle.readline(_READ_CHUNK)
+        if not chunk:
+            return total
+        total += len(chunk)
+        if chunk.endswith(b"\n"):
+            return total
+
+
 def _check_s9(tool_input: dict, cwd: str) -> tuple[str, str] | None:
     file_path = tool_input.get("file_path")
     if not isinstance(file_path, str) or not file_path:
@@ -726,13 +741,13 @@ def _check_s9(tool_input: dict, cwd: str) -> tuple[str, str] | None:
     try:
         with open(resolved, "rb") as handle:
             for _ in range(skip):
-                if not handle.readline():
+                if not _line_bytes(handle):
                     return None
             for _ in range(max(limit, 0)):
-                line = handle.readline()
-                if not line:
+                n = _line_bytes(handle)
+                if not n:
                     break
-                slice_bytes += len(line)
+                slice_bytes += n
                 slice_lines += 1
     except Exception:
         return None
@@ -744,7 +759,7 @@ def _check_s9(tool_input: dict, cwd: str) -> tuple[str, str] | None:
     capped = False
     try:
         with open(resolved, "rb") as handle:
-            for _line in handle:
+            while _line_bytes(handle):
                 total_lines += 1
                 if total_lines >= 100_000:
                     capped = True

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""test_output_hygiene_guard.py — the spec's §6 case corpus (C01-C80), run
+"""test_output_hygiene_guard.py — the spec's §6 case corpus (C01-C82), run
 against the real hook as a subprocess exactly as Claude Code would (JSON on
 stdin, exit 2 = DENY, exit 0 = ALLOW).
 
@@ -7,8 +7,8 @@ Spec: docs/specs/2026-09-18-output-hygiene-guard-shapes-spec.md
 Fixtures (§6 preamble): bigdir/ (151 visible), middir/ (100 visible, proxy
 for "a repo root's size"), smalldir/ (3), dotdir/ (30 visible + 160
 dotfiles), small.py (1 KiB), big.log (25 KiB), huge.md (100 KiB in 1,600
-lines), photo.png (200 KiB); HOME is a fixture with a 957-entry
-mailbox/broadcast.
+lines), photo.png (200 KiB), oneline.txt (1 MiB, no newline); HOME is a
+fixture with a 957-entry mailbox/broadcast and its own huge.md.
 
 Run: python3 infra/claude-hooks/test_output_hygiene_guard.py
 Also: pytest infra/claude-hooks/test_output_hygiene_guard.py -q
@@ -45,6 +45,7 @@ for _i in range(160):
 (_TMP / "small.py").write_text("print(1)\n")
 (_TMP / "huge.md").write_bytes((b"x" * 63 + b"\n") * 1600)
 (_TMP / "photo.png").write_bytes(b"\x89PNG" + b"\0" * (200 * 1024 - 4))
+(_TMP / "oneline.txt").write_bytes(b"z" * (1024 * 1024))
 CWD = str(_TMP)
 
 _HOME = pathlib.Path(tempfile.mkdtemp(prefix="output_hygiene_v2_home_"))
@@ -57,6 +58,7 @@ for _i in range(29):
     (_HOME / f"v{_i}.txt").write_text("x")
 for _i in range(160):
     (_HOME / f".h{_i}").write_text("x")
+(_HOME / "huge.md").write_bytes((b"x" * 63 + b"\n") * 1600)
 
 # (id, command, expect "DENY"/"ALLOW", why)
 CASES: list[tuple[str, str, str, str]] = [
@@ -162,6 +164,8 @@ TOOL_CASES: list[tuple[str, str, dict, str, str]] = [
     ("C80a", "Read", {}, "ALLOW", "S9 missing file_path fail-open"),
     ("C80b", "Skill", {}, "ALLOW", "S10 missing skill fail-open"),
     ("C80c", "Skill", {"skill": 7}, "ALLOW", "S10 non-string skill fail-open"),
+    ("C81", "Read", {"file_path": "~/huge.md"}, "DENY", "S9 tilde expanded against the fixture HOME"),
+    ("C82", "Read", {"file_path": "oneline.txt"}, "DENY", "S9 1 MiB in ONE line, read in bounded chunks"),
 ]
 
 
@@ -227,11 +231,15 @@ def evaluate() -> list[str]:
             )
         if cid == "C67" and denied and ("KiB" not in err or "of 1600" not in err):
             failures.append(f"C67: denial message lacks KiB figure or total line count: {err[:200]}")
+        if cid == "C81" and denied and "of 1600" not in err:
+            failures.append(f"C81: denial message lacks the fixture HOME file's total line count: {err[:200]}")
+        if cid == "C82" and denied and "1024 KiB (lines 1-1 of 1)" not in err:
+            failures.append(f"C82: single-line denial must name 1024 KiB, lines 1-1 of 1: {err[:200]}")
         if cid == "C76" and denied and "claude-api" not in err:
             failures.append(f"C76: denial message lacks skill name: {err[:200]}")
 
-    # completeness: every C01..C80 present (allow split row labels such as C58a/C80c)
-    required = {f"C{n:02d}" for n in range(1, 81)}
+    # completeness: every C01..C82 present (allow split row labels such as C58a/C80c)
+    required = {f"C{n:02d}" for n in range(1, 83)}
     missing = required - seen_ids
     if missing:
         failures.append(f"INCOMPLETE-CORPUS: missing case IDs: {sorted(missing)}")
@@ -286,6 +294,6 @@ if __name__ == "__main__":
     t0 = time.perf_counter()
     run("git log")
     deny_ms = (time.perf_counter() - t0) * 1000
-    print(f"=== ALL {total} OK (C01..C80 present, no innocent bitten, no guilt missed) ===")
+    print(f"=== ALL {total} OK (C01..C82 present, no innocent bitten, no guilt missed) ===")
     print(f"latency: allow-case subprocess {allow_ms:.1f}ms, deny-case subprocess {deny_ms:.1f}ms")
     sys.exit(0)
