@@ -1,0 +1,105 @@
+task_id: kbli-pma-naso-residual-open-lot1
+gear: 3
+l_level: L2
+gate_class: opus
+# Floor for this diff is 3, reached via the SIZE term alone — measured, not
+# guessed: `evidence_pack_lint.py --print-floor-source` says `size`, and
+# `--print-floor` says 3. No hot-zone path, no migration, no new dependency.
+# The size is GENERATED and not written: one canonical dataset, its four
+# consumer copies and six emitted artifacts all move together when 329 records
+# change one field. The hand-written surface is three files.
+objective: >-
+  Perpres 10/2021 Pasal 3(1)(d) + 3(2) says a bidang usaha the instrument places in no annex and
+  names in no body article is open to 100% foreign ownership by default. The catalogue never
+  claimed that: 1,428 of 1,559 KBLI codes answered a client `NOT_VERIFIED` on PMA because the
+  15/8 fail-closed disclosure gate withholds any tuple without a locator, and the residual
+  article was a locator nobody had compiled. This lot compiles it for the 329 codes where the
+  residual reading is the whole answer, and withholds the other 178 of the 507 the rule reaches
+  — each behind a named leg that says which claim it is declining to make. No `pma_status` or
+  `pma_max_asing` value in the canonical changes; what changes is whether we can back them, and
+  therefore whether the client is told `TERBUKA / 100%` instead of "Not verified".
+constraints:
+  - >-
+    Legge 5 — a client-facing VERDICT change is Zero's call, not this lane's. Every code here
+    already reads TERBUKA/100 in the canonical and keeps reading it; the lot moves
+    `pma_verification_status` only. The declared follow-ups that WOULD flip a verdict
+    (87101/88101/88901/11030, the Lampiran III 0% reads on 58130/60102/60202, the sector-law
+    adjudication on 58120/60101/60201/69104) are named in the spec and deliberately not here.
+  - >-
+    Withholding at the honest gap is not a verdict flip and stays in lane. 178 codes the rule
+    reaches are NOT shipped, and the reason is the leg, not a count: absence of an annex row is
+    evidence of openness only where the Perpres owns the ownership question. Where its own text
+    hands the sector elsewhere (Pasal 11(2), finance), where we never read the sector's statute,
+    where a sibling is already adjudicated, where the body states the category in prose, or where
+    the 2025 judul IS an activity a Lampiran III row caps under a different number — the honest
+    answer stays NOT_VERIFIED.
+  - >-
+    No Anthropic per-token door, no new dependency, no migration, no PII. The canonical carries
+    no client data at all; every artifact in this diff is derived from the Perpres annexes, the
+    BPS crosswalk and PP 28/2025, all already in-tree.
+  - >-
+    The compiler has NO revocation path by design — it refuses a code "already located under this
+    basis but now WITHHELD; revoke it, do not re-affirm it". Narrowing the lot therefore means
+    restoring the four data files to their pre-lot blobs and re-applying, never patching forward.
+    That refusal is why a shrunken lot cannot be laundered as an edit.
+acceptance:
+  - text: >-
+      A1 THE LOT IS EXACTLY THE SPEC AND THE RUN IS IDEMPOTENT: WHEN the compiler is re-run on the
+      canonical it already wrote SHALL report `spec items 329 · applicable 0 · already applied 329
+      · refused 0` and write nothing — a second apply that changes a byte would mean the basis is
+      not a function of the instrument.
+    probe: "python3 scripts/kbli_filiera/apply_residual_open.py"
+  - text: >-
+      A2 THE PARTITION MOVES BY EXACTLY THE LOT: WHEN the canonical is counted by
+      `pma_verification_status` SHALL be 460 located / 1,099 declared_gap over 1,559 records —
+      131 + 329 and 1,428 - 329, re-derived from the file rather than pinned by hand.
+    probe: "python3 -c 'count pma_verification_status over data/source_documents/KBLI_2025_FINAL_CLEAN.json'"
+  - text: >-
+      A3 THE WITHHELD ARE WITHHELD WHERE THE CLIENT LOOKS: WHILE the run report names 2 title
+      collisions, the published file SHALL NOT move either line — `grep -cE '^[+-](58120|50143) '`
+      over the llms-kbli.txt diff returns 0. A withholding nobody can observe rots into a no-op
+      (superscar #2), so the absence is the check.
+    probe: "git diff origin/main -- apps/mouth/public/llms-kbli.txt | grep -cE '^[+-](58120|50143) '"
+  - text: >-
+      A4 THE SPACECRAFT ADJUDICATION IS LOAD-BEARING AND COUPLED: WHERE 30303 ships at 100%
+      although its KBLI-2020 ancestor 30300 is capped 49% by Lampiran III entry #7, the lot SHALL
+      rest on the explicit hand adjudication `ADJACENT_NOT_CONTAINED["30303"]` and a test SHALL go
+      red if that entry is deleted or reworded.
+    probe: "python3 -m pytest scripts/kbli_filiera/tests/test_apply_residual_open.py -k spacecraft"
+  - text: >-
+      A5 THE SIBLING CLASS IS MEASURED, NOT ASSUMED: WHEN the 135 shipped codes with an
+      instrument-reached 4-digit sibling are examined SHALL be 0 true positives of the 3 that
+      carry a CAP — 10762's 2020 ancestor is 10763 and 30112's is itself, so a shared 4-digit
+      prefix is not a lineage relation. A guard built on that heuristic would have been 0-for-3.
+    probe: "python3 -m pytest scripts/kbli_filiera/tests/test_apply_residual_open.py -k sibling_class"
+  - text: >-
+      A6 NOTHING ELSE MOVED: WHEN the filiera suite, the mouth suite and the two backend KBLI
+      census suites run on this tree SHALL be 1622 passed / 1 skipped, 6481 passed with tsc clean,
+      and 32 passed respectively.
+    probe: "python3 -m pytest scripts/kbli_filiera/tests ; (cd apps/mouth && npx vitest run && npx tsc --noEmit) ; (cd apps/backend-rag && ./.venv/bin/python -m pytest backend/tests/unit/services/test_kbli_eye.py backend/tests/unit/services/test_kbli_editorial_certification.py)"
+assumptions:
+  - text: >-
+      The five filiera relation probes are green on THIS tree, not on the tree they were last run
+      against — the coverage ratchet, the body-default artifact, the slice-disclosure artifact,
+      the foreign-cap strict pass and the editorial-record conformance.
+    status: verified
+    probe: "kbli_coverage_scoreboard.py --check; perpres_body_default_relation.py --check-artifact; perpres_slice_disclosure_relation.py --check-artifact; perpres_foreign_cap_relation.py --strict; editorial_record_conformance.py — all exit 0"
+  - text: >-
+      The 547 errors and 26 of the 28 failures in the full backend suite on this machine are
+      environmental, not caused by this diff: 547 + 25 are `OSError [Errno 61] Connect call failed
+      ('::1', 5432)` — no local Postgres — and one is a google-genai version drift. The remaining
+      two were this diff's own stale census pins and are now green.
+    status: verified
+    probe: "bucket every FAILED/ERROR line of the backend log by its cause string; then re-run the two named files -> 32 passed"
+  - text: >-
+      UU 21/2013 Keantariksaan is UNREAD for 30303, exactly as the sector statutes of divisions
+      09 35 49 50 51 52 53 61 are unread for the 67 codes the `unswept_sector_statute` leg
+      withholds. 30303 ships anyway because withholding one code on a statute nobody read would be
+      an unprincipled exception to a boundary this lot states in its own spec.
+    status: unverified
+    probe: "read UU 21/2013's foreign-ownership provisions, in the own lane the spec declares for it"
+  - text: >-
+      #6783 — the predecessor this branch supersedes — is CLOSED, unmerged and unarmed, so
+      superseding it breaks no arming freeze.
+    status: verified
+    probe: "gh pr view 6783 --json state,mergedAt,autoMergeRequest"
