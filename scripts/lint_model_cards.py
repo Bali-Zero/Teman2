@@ -185,7 +185,12 @@ def main(argv: list[str]) -> int:
 
     print(f"❌ lint_model_cards: {len(bad)} violation(s) in {scanned} file(s) scanned.\n")
     for path, line_no, msg in bad:
-        rel = path.relative_to(REPO_ROOT)
+        try:
+            rel = path.relative_to(REPO_ROOT)
+        except ValueError:
+            # an explicit target outside REPO_ROOT has no relative form — fall back to
+            # the absolute path rather than traceback (same cure as lint_workflow_script.py).
+            rel = path
         print(f"  {rel}:{line_no}: {msg}")
     return 1
 

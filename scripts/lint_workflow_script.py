@@ -285,7 +285,12 @@ def main(argv: list[str]) -> int:
 
     print(f"❌ lint_workflow_script: {len(bad)} violation(s) in {scanned} file(s) scanned.\n")
     for path, line_no, msg in bad:
-        rel = path.relative_to(repo_root)
+        try:
+            rel = path.relative_to(repo_root)
+        except ValueError:
+            # an explicit target outside repo_root (e.g. a gate's /tmp reproduction) has
+            # no relative form — fall back to the absolute path rather than traceback.
+            rel = path
         print(f"  {rel}:{line_no}: {msg}")
     return 1
 

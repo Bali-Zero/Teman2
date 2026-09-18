@@ -26,6 +26,7 @@ import pytest
 
 
 SCRIPT_PATH = Path(__file__).resolve().parents[1] / "lint_model_cards.py"
+REPO_ROOT = SCRIPT_PATH.parents[1]
 FIXTURES_DIR = (
     Path(__file__).resolve().parent
     / "fixtures" / "lint_model_cards" / "repo" / "docs" / "arsenal" / "cards"
@@ -173,3 +174,35 @@ def test_innocence_one_clean_in_scope_file_is_enough(lint, capsys):
     captured = capsys.readouterr()
     assert rc == 0
     assert "BLIND SCAN" not in captured.err
+
+
+# --------------------------------------------------------------------------
+# DEFECT 1 (PR3a', 2026-09-18) — relative_to(REPO_ROOT) must not traceback on an
+# out-of-root explicit target.
+# --------------------------------------------------------------------------
+
+
+def test_guilt_out_of_root_violation_prints_absolute_path_no_traceback(lint, tmp_path, capsys):
+    guilty = tmp_path / "guilty.md"
+    guilty.write_text(
+        "seat: kimi-code/kimi-for-coding-highspeed\n"
+        "date: 2026-09-18\n"
+        "roles_allowed: grunt\n\n"
+        "# guilty\n\n"
+        "- this bullet has no SELF/MEASURED/PUBLIC tag, triggering RULE 1\n",
+        encoding="utf-8",
+    )
+    rc = lint.main([str(guilty)])
+    captured = capsys.readouterr()
+    assert rc == 1
+    assert "tagged" in captured.out
+    assert str(guilty) in captured.out
+    assert "Traceback" not in captured.err
+    assert "Traceback" not in captured.out
+
+
+def test_innocence_in_root_violation_still_prints_relative_path(lint, capsys):
+    rc = lint.main([str(FIXTURES_DIR / "untagged_bullet.md")])
+    captured = capsys.readouterr()
+    assert rc == 1
+    assert str(REPO_ROOT) not in captured.out

@@ -22,6 +22,7 @@ import pytest
 
 
 SCRIPT_PATH = Path(__file__).resolve().parents[1] / "lint_workflow_script.py"
+REPO_ROOT = SCRIPT_PATH.parents[1]
 FIXTURES_DIR = (
     Path(__file__).resolve().parent
     / "fixtures" / "lint_workflow_script" / "repo" / "infra" / "workflows"
@@ -111,3 +112,30 @@ def test_innocence_one_clean_in_scope_file_is_enough(lint, capsys):
     captured = capsys.readouterr()
     assert rc == 0
     assert "BLIND SCAN" not in captured.err
+
+
+# --------------------------------------------------------------------------
+# DEFECT 1 (PR3a', 2026-09-18) — relative_to(repo_root) must not traceback on an
+# out-of-root explicit target (gate reproduction: a /tmp copy of a live .js file).
+# --------------------------------------------------------------------------
+
+
+def test_guilt_out_of_root_violation_prints_absolute_path_no_traceback(lint, tmp_path, capsys):
+    guilty = tmp_path / "guilty.js"
+    guilty.write_text(
+        (FIXTURES_DIR / "no_model.js").read_text(encoding="utf-8"), encoding="utf-8"
+    )
+    rc = lint.main([str(guilty)])
+    captured = capsys.readouterr()
+    assert rc == 1
+    assert "model:" in captured.out
+    assert str(guilty) in captured.out
+    assert "Traceback" not in captured.err
+    assert "Traceback" not in captured.out
+
+
+def test_innocence_in_root_violation_still_prints_relative_path(lint, capsys):
+    rc = lint.main([str(FIXTURES_DIR / "no_model.js")])
+    captured = capsys.readouterr()
+    assert rc == 1
+    assert str(REPO_ROOT) not in captured.out
