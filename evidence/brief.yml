@@ -1,95 +1,106 @@
-task_id: b2-5-2-wa-human-handoff
+task: >-
+  PR3a of the /dynamic-workflow coach-protocol build (MANDATE-builder.md, owner ruling Zero
+  2026-09-18), following PR1a (#6753), PR1b (#6756), PR2a (#6757), PR2c (#6762) and PR2d
+  (#6766). Team-lead's 2026-09-18 addendum split the original PR3 scope three ways: this PR
+  (3a) ships the two lints only — `scripts/lint_workflow_script.py` (RULE 1 model pin, RULE 2
+  no self-styled `gate` label, RULE 3 bounded rounds, two documented exemptions for a
+  provenance-wrapper call and a bounded for-of/for-in loop) and `scripts/lint_model_cards.py`
+  (5 rules: tagged claim bullets, checkable MEASURED: paths, freshness, roles_allowed subset,
+  seat resolves via dynamic_workflow.py's own FAMILY_MAP/_SEAT_ALIASES, imported read-only).
+  Per this repo's own convention (test_lint_asyncpg_except_completeness.py's
+  test_main_exit_0_on_clean) a new lint must leave the live repo GREEN, not just pin known
+  violations — running lint_workflow_script.py against the live infra/workflows/*.js
+  surfaced two real findings in saetta.js, both fixed here: a self-styled `gate:${task.key}`
+  label renamed to `signoff:` (7 matching occurrences in its own test mock,
+  infra/workflows/tests/test-saetta.mjs, updated alongside it), and an uncapped Run-phase
+  scheduler while-loop, now bounded by ROUNDS_CAP plus a zero-progress guard. Also adds the
+  first real example card (docs/arsenal/cards/kimi-code__kimi-for-coding-highspeed.md),
+  guilt+innocence fixtures under scripts/tests/fixtures/{lint_workflow_script,lint_model_cards}/
+  (one violation per file, following the docs_audit/ fixture convention — standalone
+  scripts/lint_*.py scripts are not registered in infra/guard-conformance/), and pytest
+  wrappers that run each lint against its own fixtures AND the live repo paths. Does not touch
+  scripts/dynamic_workflow.py or its own tests (read-only import only, per this mandate's
+  explicit constraint).
+lane: infra/dynamic-workflow-3a
+machine: M5
+date: 2026-09-18
+
 gear: 2
-l_level: L2
-gate_class: opus
-# Floor for this diff is 2, reached via the SIZE term alone (1018 added / 32 deleted across 10
-# files) — no hot-zone path, no migration, no new dependency. Measured WITH this brief staged:
-# the brief's own churn (~90 lines) leaves the total well under the floor-3 threshold, which is
-# the mistake that sank PR #6602.
-objective: >-
-  A client who asks to speak to a person is the highest-intent message this bot ever receives —
-  it is a lead. Today nothing on the Meta Inbox channel detects it: the message falls through to
-  retrieval, abstains, and reaches no human being. Measured 2026-09: 32 of 40 conversations end
-  in an abstain, 4 were picked up by a person. This PR detects the ask in five languages, answers
-  the client in their own language, and notifies a human on two channels — the kita notification
-  bell for the assigned consultant, and email for everyone including a number no client row
-  matches yet.
-constraints:
-  - >-
-    No Anthropic per-token door in any form, no new dependency, no migration. The notification
-    table (notification_alerts, migration 071) and the email adapter
-    (/api/notifications/send-email, from=zantara@balizero.com) both already exist on main.
-  - >-
-    PII is an OUTPUT boundary. The phone number is used ONLY in-process to resolve the consultant.
-    It never appears in the email subject, the email body, the in-app row, or any log line; the
-    client's own words are never transcribed anywhere. The in-app message is a fixed English
-    sentence and the email body a fixed Bahasa Indonesia one, deliberately — a robust
-    "free of identifiers" classifier is out of scope for this size, so when in doubt this omits.
-  - >-
-    The client's confirmation must survive any notification failure. Both channels are best-effort
-    at their own layer, and the call site in wa_codex_leg.py wraps the whole call again, because
-    the outer attempt() turns an unhandled exception into a text=None fall-off — which would
-    silently swallow the very confirmation this leg exists to send.
-  - >-
-    meta_inbox_threads.human_handling is NOT set. A client who ASKS for a human is not a human who
-    HAS TAKEN the thread; setting it aborts every later generation (aborted_human_takeover,
-    wa_outbox_worker.py:930) and, if nobody arrives, leaves the client in total silence.
+gear_reason: >-
+  Deterministic floor 2, source `size`: `python3 scripts/evidence_pack_lint.py --print-floor`
+  with CI's own three inputs (changed-files, numstat, workflow-patch over
+  origin/main...HEAD) returns 2. Churn (963 added / 8 deleted across 20 files) sits above
+  SIZE_GEAR2_THRESHOLD (400) and well below SIZE_GEAR3_THRESHOLD (1828). No hot-zone path: the
+  diff touches only scripts/, infra/workflows/, docs/arsenal/cards/ and
+  scripts/tests/fixtures/ — no .github/workflows/ file and no HOTZONE_PATTERNS match. Most of
+  the size is the requested deliverable itself (two full lints with docstrings + two full
+  fixture trees + two pytest wrappers, all explicitly asked for in one PR); the only
+  unplanned growth is the saetta.js rename + round-cap (~34 net lines), forced by this repo's
+  own "a new lint leaves the live repo green" convention.
+
+appetite:
+  wall_clock_hours: 2.5
+  adversarial_rounds: 1
+
 acceptance:
-  - text: >-
-      A1 GUILT: WHEN a client writes any of 23 real phrasings across it/en/id/ru/uk — including
-      "I want to talk to a human", "voglio parlare con una persona riguardo alla mia PT PMA" and
-      "saya mau bicara dengan orang" — SHALL match and return a confirmation in that language.
-      The domain veto is INVERTED relative to wa_identity: naming your own case while asking for a
-      human is the most valuable lead there is, and must match rather than be vetoed.
-    probe: "cd apps/backend-rag && .venv/bin/python -m pytest backend/tests/unit/services/test_wa_human_handoff.py -k TestGuilt"
-  - text: >-
-      A2 INNOCENCE: WHEN the message is "humanitarian visa", "how long does PT PMA take?",
-      "sei un umano?" or a third-person question about staff SHALL NOT match. The guard judges
-      whole TOKENS over a normalized window, never a substring — "humanitarian" cannot reach any
-      phrase in the table.
-    probe: "cd apps/backend-rag && .venv/bin/python -m pytest backend/tests/unit/services/test_wa_human_handoff.py -k TestInnocence"
-  - text: >-
-      A3 THE ROW IS ALSO RENDERED: WHEN the module writes a notification_alerts row SHALL be a
-      type the kita bell actually shows. /api/crm/notifications filters on a fixed allow-list, so a
-      new alert_type would otherwise be written and never seen — for a lead, the same outcome as
-      not writing it. The allow-list is now one constant read by both the list and the count query,
-      and the test binds the two constants by ENTITY, not by grepping a SQL literal.
-    probe: "cd apps/backend-rag && .venv/bin/python -m pytest backend/tests/unit/services/test_wa_human_handoff.py -k TestInAppAlert"
-  - text: >-
-      A4 THE PROMISE IS KEPT: WHEN any of the five wa_identity presentations offers the client a
-      human SHALL use wording that match_human_request recognises. Before this PR that line was a
-      promise no code kept; the test walks every presentation and requires the detector to find a
-      request inside the exact sentence it suggests.
-    probe: "cd apps/backend-rag && .venv/bin/python -m pytest backend/tests/unit/services/test_wa_human_handoff.py -k TestPresentationKeepsItsPromise"
-  - text: >-
-      A5 NOTHING ELSE MOVED: WHEN the backend unit suite runs SHALL be 8534 passed with exactly one
-      pre-existing unrelated failure (autonomous_lab/test_consul_native_broker.py,
-      ModuleNotFoundError scripts.conductor), reproduced identically on a clean main checkout.
-    probe: "cd apps/backend-rag && .venv/bin/python -m pytest backend/tests/unit/services/autonomous_lab/test_consul_native_broker.py  # same red on main"
+  A1: >-
+    `lint_workflow_script.py` flags each of its 3 rules in isolation (missing `model:`,
+    self-styled `gate` label, uncapped while/for in a phase() span) against a dedicated
+    fixture, and stays clean on a fixture satisfying all three PLUS a regression-guard
+    fixture for both documented exemptions (provenance-wrapper indirection, bounded
+    for-of/for-in) — the two false positives found against the live repo (kbli-batch-a-lot.js,
+    second-army.js) on 2026-09-18.
+    probe: python3 -m pytest scripts/tests/test_lint_workflow_script.py -k "no_model or gate_label or uncapped_loop or clean_fixture or exemptions_fixture" -q
+  A2: >-
+    `lint_workflow_script.py` is green against the live infra/workflows/*.js tree, post-fix
+    (saetta.js's `signoff:` rename and ROUNDS_CAP guard).
+    probe: python3 scripts/lint_workflow_script.py
+  A3: >-
+    `lint_model_cards.py` flags each of its 5 rules in isolation (untagged bullet, unverifiable
+    MEASURED: path, expired date, out-of-set roles_allowed, unresolvable seat), including the
+    exact 30-vs-31-day freshness boundary computed against real wall-clock "today" (not a
+    pinned calendar date), and stays clean on a fixture satisfying all five.
+    probe: python3 -m pytest scripts/tests/test_lint_model_cards.py -k "untagged_bullet or measured_bad_path or expired or bad_roles or bad_seat or clean_fixture or freshness" -q
+  A4: >-
+    `lint_model_cards.py` is green against the live docs/arsenal/cards/*.md tree (the new
+    kimi-code example card).
+    probe: python3 scripts/lint_model_cards.py
+  A5: >-
+    infra/workflows/tests/test-saetta.mjs's real execution path (its own AsyncFunction-wrapping
+    harness over saetta.js's actual source) stays green through both fixes: 50 pass, 0 fail,
+    1 skip.
+    probe: node --test infra/workflows/tests/test-saetta.mjs
+
+out_of_scope: >-
+  SKILL.md rewrite and brief.template.md (PR3b, independent of this PR's two lints, buildable
+  in parallel now that PR2d is merged) and the CI wiring that makes both lints a required
+  check (PR3c, blocked on PR3a AND PR3b both merged) — per team-lead's 2026-09-18 addendum
+  splitting the original PR3 scope three ways. This PR's own Bites line names PR3c as the CI
+  consumer explicitly.
+
 assumptions:
   - text: >-
-      notification_alerts.client_id is NOT NULL with an FK to clients, and the bell's own query
-      JOINs clients to resolve the assignee — so an unrecognised number structurally CANNOT have an
-      in-app row. This is why the email is unconditional rather than a fallback: the newest lead is
-      exactly the one no client row matches.
+      This repo's established convention is that a new lint must leave the live repo GREEN,
+      not merely pin a list of known violations — confirmed by direct precedent inspection of
+      test_lint_asyncpg_except_completeness.py's test_main_exit_0_on_clean, which asserts
+      rc == 0 against the live codebase. Both new lints and their pytest wrappers follow this:
+      real findings in saetta.js are fixed, not just documented.
     status: verified
-    probe: "scripts/pg.sh -c '\\d notification_alerts' — client_id integer not null, FK to clients(id)"
+    probe: sed -n '122,129p' scripts/tests/test_lint_asyncpg_except_completeness.py
   - text: >-
-      The table carries UNIQUE (client_id, alert_type, created_date), so a client asking twice in
-      one day would raise without ON CONFLICT. DO UPDATE rather than DO NOTHING because a second
-      ask means the first went unanswered: the alert returns to unread and rises in the bell.
+      Standalone scripts/lint_*.py scripts are not registered in infra/guard-conformance/ —
+      that directory's own convention is for guards wired into a different call path. The
+      correct fixture convention for this shape of lint is scripts/tests/fixtures/<name>/ with
+      a repo/ mirror subtree and a README.md documenting one triggered rule per file, matching
+      scripts/tests/fixtures/docs_audit/.
     status: verified
-    probe: "scripts/pg.sh -c '\\d notification_alerts' — uq_notification_alert_daily UNIQUE (client_id, alert_type, created_date)"
+    probe: cat scripts/tests/fixtures/docs_audit/README.md
   - text: >-
-      PackageUnbuildable("human_handoff_domain") cannot violate the wa_outbox CHECK constraint on
-      generation_fall_off_reason: unknown sub-reasons fall through to the generic
-      "package_unbuildable" bucket, which the constraint allows. wa_codex_leg short-circuits before
-      the builder is ever reached on this path anyway — the raise is a second line of defense.
+      saetta.js's `gate:${task.key}` label is NOT dead/unread code — a prior-turn claim to the
+      contrary was wrong and was caught by re-verification this session.
+      infra/workflows/tests/test-saetta.mjs pattern-matches this exact label prefix in its own
+      mock (options.label.startsWith("gate:"), options.label === "gate:upstream"), and actually
+      EXECUTES saetta.js's real source via an AsyncFunction wrapper — so the rename required
+      updating both files together, confirmed green via node --test before and after.
     status: verified
-    probe: "wa_codex_leg.py:268 _UNBUILDABLE_SUB_REASON_MAP has 3 keys; anything else falls to _FALL_OFF_REASON_PREFIX_MAP['unbuildable']"
-  - text: >-
-      The live proof must come from a real phone. /webhook/whatsapp is fail-closed on the
-      X-Hub-Signature-256 HMAC and WHATSAPP_APP_SECRET is a Fly secret, absent on Pro (presence
-      probe only, value never read) — so no test inbound can be injected from this machine.
-    status: verified
-    probe: "presence probe over ~/.nuzantara-secrets.env and apps/backend-rag/.env: absent_local for all four WhatsApp vars"
+    probe: grep -n '"gate:\|signoff:' infra/workflows/tests/test-saetta.mjs
