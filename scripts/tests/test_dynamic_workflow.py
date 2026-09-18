@@ -591,6 +591,27 @@ def test_r1_relaunching_the_same_seat_across_two_cmd_r1_calls_is_not_a_slug_coll
     assert dw.ledger_sent_count(kit, "kimi-k3") == 2
 
 
+# --------------------------------------------------------------- empty --seats (guilt + innocence)
+# Gate-4 finding, PR2e addendum (scripts/dynamic_workflow.py:497): "" or whitespace-only
+# --seats filtered down to an empty list and cmd_r1 returned an empty summary — exit 0,
+# nothing dispatched, no error at all.
+
+@pytest.mark.parametrize("bad_seats", ["", "   ", ",,,", " , "])
+def test_r1_refuses_empty_or_whitespace_only_seats_before_touching_the_kit(tmp_path, bad_seats):
+    kit = tmp_path / "nonexistent-kit"  # no cmd_brief, no convener — proves fail-fast
+    with pytest.raises(SystemExit) as e:
+        dw.cmd_r1(argparse.Namespace(kit=str(kit), seats=bad_seats, astra_fallback=False))
+    assert e.value.code == 2
+
+
+def test_r1_accepts_a_normal_non_empty_seats_string(tmp_path, template, clean_objective):
+    kit = tmp_path / "k"
+    dw.cmd_brief(_brief_ns(clean_objective, template, kit))
+    _seed_convener(kit)
+    summary = dw.cmd_r1(argparse.Namespace(kit=str(kit), seats="kimi-k3", astra_fallback=False))
+    assert "kimi-k3" in summary
+
+
 # --------------------------------------------------------------- r2 pairing "exactly two" (guilt + innocence)
 # Gate finding 3, inherited from PR2a's merge: compute_pairing silently accepted 0 or 1
 # cross-family partner as "good enough"; the mandate requires EXACTLY two.

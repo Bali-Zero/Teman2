@@ -487,6 +487,15 @@ def _run_one_seat(kit: Path, seat: str, brief_master: str, brief_sha: str, attem
 
 
 def cmd_r1(args: argparse.Namespace) -> dict[str, str]:
+    # Gate-4 finding (PR2e addendum, scripts/dynamic_workflow.py:497): "" or whitespace-only
+    # --seats used to filter down to an empty list and exit 0 silently (nothing dispatched,
+    # no error). Checked before any kit access at all, so this refuses even against a kit
+    # path that doesn't exist yet.
+    seats = [s.strip() for s in args.seats.split(",") if s.strip()]
+    if not seats:
+        print("refused: --seats is empty or whitespace-only — nothing to dispatch",
+              file=sys.stderr)
+        sys.exit(2)
     kit = Path(args.kit)
     brief_sha = (kit / "brief.sha").read_text().strip()
     fable = kit / "r1" / "fable-5-1.md"
@@ -520,7 +529,6 @@ def cmd_r1(args: argparse.Namespace) -> dict[str, str]:
                       when=fable_mtime.strftime("%Y-%m-%dT%H:%M:%SZ"))
 
     brief_master = (kit / "BRIEF.md").read_text()
-    seats = [s.strip() for s in args.seats.split(",") if s.strip()]
     summary: dict[str, str] = {}
     for seat in seats:
         if seat in ("fable-5-1", "fable"):
