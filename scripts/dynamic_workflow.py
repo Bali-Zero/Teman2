@@ -603,15 +603,25 @@ def compute_pairing(kit: Path, brief_sha: str) -> dict[str, list[str]]:
             seen_families.add(fam)
             if len(picked) == 2:
                 break
+        # Gate finding 3 (inherited from PR2a's merge): the mandate requires EXACTLY two
+        # cross-family reviewers per seat, not "up to two" — a seat that can only find one
+        # (or zero) other family in this round is insufficient diversity, and must refuse
+        # BEFORE pairing.md exists rather than render a lopsided row that looks like a verdict.
+        if len(picked) != 2:
+            print(f"refused: seat {seat} found {len(picked)} other-family partner(s), "
+                  "need exactly 2 (insufficient family diversity this round)", file=sys.stderr)
+            sys.exit(2)
         pairing[seat] = picked
     return pairing
 
 
 def _render_pairing_md(pairing: dict[str, list[str]]) -> str:
+    # compute_pairing() now refuses (exit 2) before returning if any seat has fewer than two
+    # partners, so every value here is always exactly 2 — no "insufficient diversity" fallback
+    # branch is reachable, and none is rendered.
     lines = ["| seat | reviews |", "|---|---|"]
     for seat in sorted(pairing):
-        targets = ", ".join(pairing[seat]) or "(none — insufficient family diversity)"
-        lines.append(f"| {seat} | {targets} |")
+        lines.append(f"| {seat} | {', '.join(pairing[seat])} |")
     return "\n".join(lines) + "\n"
 
 

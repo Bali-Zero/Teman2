@@ -471,6 +471,38 @@ def test_validate_seat_id_refuses_empty_or_dot_components(bad_seat):
     assert e.value.code == 2
 
 
+# --------------------------------------------------------------- r2 pairing "exactly two" (guilt + innocence)
+# Gate finding 3, inherited from PR2a's merge: compute_pairing silently accepted 0 or 1
+# cross-family partner as "good enough"; the mandate requires EXACTLY two.
+
+def test_r2_refuses_when_a_seat_cannot_get_two_cross_family_partners(tmp_path, template, clean_objective):
+    kit = tmp_path / "k"
+    dw.cmd_brief(_brief_ns(clean_objective, template, kit))
+    _seed_convener(kit)
+    dw.cmd_r1(argparse.Namespace(
+        kit=str(kit),
+        seats="kimi-k3,kimi-code/kimi-for-coding-highspeed,qwen3.8-max",
+        astra_fallback=False))
+    with pytest.raises(SystemExit) as e:
+        dw.cmd_r2(argparse.Namespace(kit=str(kit)))
+    assert e.value.code == 2
+    assert not (kit / "pairing.md").exists()
+
+
+def test_r2_pairs_every_seat_with_exactly_two_partners_across_four_families(tmp_path, template,
+                                                                             clean_objective):
+    kit = tmp_path / "k"
+    dw.cmd_brief(_brief_ns(clean_objective, template, kit))
+    _seed_convener(kit)
+    dw.cmd_r1(argparse.Namespace(
+        kit=str(kit),
+        seats="kimi-k3,qwen3.8-max,gemini-3.1-pro-high,deepseek-v4-pro",
+        astra_fallback=False))
+    dw.cmd_r2(argparse.Namespace(kit=str(kit)))
+    pairing = dw.compute_pairing(kit, (kit / "brief.sha").read_text().strip())
+    assert all(len(targets) == 2 for targets in pairing.values())
+
+
 # --------------------------------------------------------------- jury (guilt + innocence)
 
 def _judged_kit(tmp_path, template, clean_objective, seats: str) -> Path:
