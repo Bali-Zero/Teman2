@@ -95,5 +95,10 @@ contexts:
     checks:
       - id: actionlint
         governs: [".github/workflows/**"]
-        argv: ["actionlint"]
+        # Same flags as the REQUIRED check (.github/workflows/actionlint.yml: `actionlint
+        # -color -shellcheck=`): CI disables the shellcheck pass, so a bare `actionlint` on a
+        # machine that has shellcheck installed reds on style findings CI never sees — 44 of
+        # them across 8 untouched workflows, measured 2026-09-18 — a deterministic false red
+        # on ANY workflow diff pushed from M5. Parity with CI, not a looser lint.
+        argv: ["actionlint", "-shellcheck="]
         files: none
