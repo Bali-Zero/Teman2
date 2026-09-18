@@ -503,6 +503,26 @@ def test_r2_pairs_every_seat_with_exactly_two_partners_across_four_families(tmp_
     assert all(len(targets) == 2 for targets in pairing.values())
 
 
+def test_r2_pairing_md_resolves_the_kimi_2_7_alias_to_moonshot_for_diversity(tmp_path, template,
+                                                                              clean_objective):
+    # Gate finding 5: kimi-2.7 is an ALIAS for a moonshot seat (see _SEAT_ALIASES); the unit
+    # test above (test_seat_family_resolves_the_mandate_aliases) proves _seat_family resolves
+    # it in isolation, but this proves the resolution actually reaches compute_pairing/pairing.md
+    # end-to-end through cmd_r1 -> cmd_r2, not just the lookup function on its own.
+    kit = tmp_path / "k"
+    dw.cmd_brief(_brief_ns(clean_objective, template, kit))
+    _seed_convener(kit)
+    dw.cmd_r1(argparse.Namespace(
+        kit=str(kit),
+        seats="kimi-2.7,qwen3.8-max,gemini-3.1-pro-high,deepseek-v4-pro",
+        astra_fallback=False))
+    dw.cmd_r2(argparse.Namespace(kit=str(kit)))
+    pairing = dw.compute_pairing(kit, (kit / "brief.sha").read_text().strip())
+    partners = pairing["kimi-2.7"]
+    assert len(partners) == 2
+    assert all(dw._seat_family(p) != "moonshot" for p in partners)
+
+
 # --------------------------------------------------------------- jury (guilt + innocence)
 
 def _judged_kit(tmp_path, template, clean_objective, seats: str) -> Path:
