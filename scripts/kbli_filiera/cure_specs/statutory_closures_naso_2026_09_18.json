@@ -1,0 +1,346 @@
+{
+  "spec_id": "statutory-closures-naso-2026-09-18",
+  "instrument": "UU 25/2007 Pasal 12(2) (as replaced by UU 6/2023 Pasal 77 item 2) reached through Perpres 10/2021 Pasal 2(2)(a); Perpres 10/2021 Pasal 2(1)(b), 2(1a), 2(2)(b), 2(3) as amended by Perpres 49/2021",
+  "population": "The 59 canonical records already published TERTUTUP/0 under declared_gap whose closure the 2026-09-18 dossier (research/kbli/2026-09-18-kbli-codes-closed-to-pma-tier1-tier2-dossier.md §3.1-3.2) traces to a statute or to the Perpres partition. This spec relabels declared_gap -> located and names the instrument; it changes NO verdict and NO cap.",
+  "adjudicated": "2026-09-18 — dossier classes closed_all (4), government_activity (54), non_commercial_institutional (1); label ruling by Zero the same day: «located» for every class, the title-derived ones included, with the derivation stated in pma_official_basis.",
+  "decisive_test": "Per class, one mechanical leg the compiler re-derives from the canonical and refuses on: instrument_names_code — the record's sole 2020 ancestor is the code the Perpres names and the inheritance is whole (sebagian false); statute_item_by_title — the statute item's operative noun is in the record's title; government_activity — the code sits under 84 or the title carries «Pemerintah» as a word, AND the rule's whole canonical population is either an item or a named exclusion; non_commercial_institutional — the title names the international-body class. Every item must ALREADY read TERTUTUP/0.",
+  "what_this_rests_on_and_does_not_prove": "Only 11010 and 11020 are named 5-digit by an instrument. 01287, 92000, the 54 government codes and 99000 are TITLE-DERIVED: no instrument maps them to 5-digit codes, and the basis string says so. The dossier's Pasal 2(1a) reading (the open list is commercial fields, so state activities and international bodies are not investable fields) is a reading, recorded as such.",
+  "vintage": "2021-05-25",
+  "classes": {
+    "instrument_names_code": {
+      "instrument": "Perpres 10/2021 Pasal 2(2)(b) as amended by Perpres 49/2021",
+      "kondisi": "Bidang usaha tertutup untuk semua Penanaman Modal — Perpres 10/2021 Pasal 2(2)(b) (as amended by Perpres 49/2021) names the KBLI code — foreign ownership 0%",
+      "items": [
+        {
+          "code": "11010",
+          "named_2020_code": "11010",
+          "named_as": "Industri Minuman Keras Mengandung Alkohol (KBLI 11010)"
+        },
+        {
+          "code": "11020",
+          "named_2020_code": "11020",
+          "named_as": "Industri Minuman Mengandung Alkohol: Anggur (KBLI 11020)"
+        }
+      ],
+      "excluded": {
+        "11030": "Pasal 2(2)(b) also names «Industri Minuman Mengandung Malt (KBLI 11031)»; 11031 does not exist in KBLI-2025 and the canonical's 2025 heir 11030 (sole ancestor 11031, sebagian false) is published TERBUKA 100% declared_gap — closing it is a verdict flip; Legge 5, needs Zero's explicit go; NOT touched here"
+      }
+    },
+    "statute_item_by_title": {
+      "instrument": "UU 25/2007 Pasal 12(2) as replaced by UU 6/2023 Pasal 77 item 2, incorporated by Perpres 10/2021 Pasal 2(2)(a)",
+      "kondisi": "Bidang usaha tertutup untuk semua Penanaman Modal — UU 25/2007 Pasal 12(2) (as amended) via Perpres 10/2021 Pasal 2(2)(a) — foreign ownership 0%",
+      "items": [
+        {
+          "code": "01287",
+          "statute_item": "Pasal 12(2)(a) «budi daya dan industri narkotika golongan I»",
+          "title_terms": ["Narkotika"]
+        },
+        {
+          "code": "92000",
+          "statute_item": "Pasal 12(2)(b) «segala bentuk kegiatan perjudian dan/atau kasino»",
+          "title_terms": ["Perjudian"]
+        }
+      ],
+      "excluded": {
+        "20119": "Pasal 12(2)(e)/(f) close chemical-weapon and ozone-depleting-chemical manufacturing, which are SEGMENTS of 201xx, not this whole code (dossier §6: over-claim); stays declared_gap pending its own adjudication",
+        "unmapped_statutory_closures": "items (c) CITES fish, (d) coral, (e) chemical weapons, (f) industrial/ozone-depleting chemicals close a product inside 031xx/03xxx/201xx — no 5-digit code carries them whole"
+      }
+    },
+    "government_activity": {
+      "instrument": "Perpres 10/2021 Pasal 2(1)(b) + 2(3) (government-only activities) and 2(1a) (open fields are commercial fields), as amended by Perpres 49/2021",
+      "kondisi": "Kegiatan Pemerintah — bukan Bidang Usaha yang bersifat komersial (Perpres 10/2021 Pasal 2(1)(b), 2(1a), 2(3), as amended by Perpres 49/2021) — not an investable field, foreign ownership 0%",
+      "rule": {
+        "prefix": "84",
+        "title_regex": "\\bPemerintah\\b"
+      },
+      "items": [
+        {
+          "code": "59111",
+          "leg": "title_pemerintah",
+          "judul": "Aktivitas Produksi Film, Video, dan Program Televisi oleh Pemerintah"
+        },
+        {
+          "code": "59121",
+          "leg": "title_pemerintah",
+          "judul": "Aktivitas Pascaproduksi Film, Video, dan Program Televisi oleh Pemerintah"
+        },
+        {
+          "code": "59131",
+          "leg": "title_pemerintah",
+          "judul": "Aktivitas Distribusi Film, Video, dan Program Televisi oleh Pemerintah"
+        },
+        {
+          "code": "60311",
+          "leg": "title_pemerintah",
+          "judul": "Aktivitas Kantor Berita oleh Pemerintah"
+        },
+        {
+          "code": "84111",
+          "leg": "prefix_84",
+          "judul": "Lembaga Legislatif"
+        },
+        {
+          "code": "84112",
+          "leg": "prefix_84",
+          "judul": "Penyelenggaraan Pemerintahan Negara dan Kesekretariatan Negara"
+        },
+        {
+          "code": "84113",
+          "leg": "prefix_84",
+          "judul": "Lembaga Eksekutif Keuangan, Perpajakan, dan Bea Cukai"
+        },
+        {
+          "code": "84114",
+          "leg": "prefix_84",
+          "judul": "Lembaga Eksekutif Perencanaan"
+        },
+        {
+          "code": "84115",
+          "leg": "prefix_84",
+          "judul": "Lembaga Pemerintah Nonkementerian dengan Tugas Khusus"
+        },
+        {
+          "code": "84119",
+          "leg": "prefix_84",
+          "judul": "Kegiatan Administrasi Pemerintahan Lainnya"
+        },
+        {
+          "code": "84121",
+          "leg": "prefix_84",
+          "judul": "Administrasi Pelayanan Pemerintah Bidang Pendidikan"
+        },
+        {
+          "code": "84122",
+          "leg": "prefix_84",
+          "judul": "Administrasi Pelayanan Pemerintah Bidang Kesehatan"
+        },
+        {
+          "code": "84123",
+          "leg": "prefix_84",
+          "judul": "Administrasi Pelayanan Pemerintah Bidang Perumahan"
+        },
+        {
+          "code": "84124",
+          "leg": "prefix_84",
+          "judul": "Administrasi Pelayanan Pemerintah Bidang Kesejahteraan Sosial"
+        },
+        {
+          "code": "84125",
+          "leg": "prefix_84",
+          "judul": "Administrasi Pelayanan Pemerintah Bidang Keagamaan"
+        },
+        {
+          "code": "84126",
+          "leg": "prefix_84",
+          "judul": "Administrasi Pelayanan Pemerintah Bidang Kebudayaan/Kesenian/Rekreasi/Olahraga"
+        },
+        {
+          "code": "84129",
+          "leg": "prefix_84",
+          "judul": "Administrasi Pelayanan Pemerintah Bidang Sosial Lainnya Bukan Kesehatan, Pendidikan, Keagamaan, dan Kebudayaan"
+        },
+        {
+          "code": "84130",
+          "leg": "prefix_84",
+          "judul": "Administrasi Pelayanan Pemerintah Bidang Lingkungan Hidup"
+        },
+        {
+          "code": "84141",
+          "leg": "prefix_84",
+          "judul": "Kegiatan Lembaga Pemerintahan Bidang Pertanian"
+        },
+        {
+          "code": "84142",
+          "leg": "prefix_84",
+          "judul": "Kegiatan Lembaga Pemerintahan Bidang Pertambangan dan Penggalian, Listrik, Air, dan Gas"
+        },
+        {
+          "code": "84143",
+          "leg": "prefix_84",
+          "judul": "Kegiatan Lembaga Pemerintahan Bidang Perindustrian"
+        },
+        {
+          "code": "84144",
+          "leg": "prefix_84",
+          "judul": "Kegiatan Lembaga Pemerintahan Bidang Komunikasi dan Informatika"
+        },
+        {
+          "code": "84145",
+          "leg": "prefix_84",
+          "judul": "Kegiatan Lembaga Pemerintahan Bidang Konstruksi"
+        },
+        {
+          "code": "84146",
+          "leg": "prefix_84",
+          "judul": "Kegiatan Lembaga Pemerintahan Bidang Perdagangan dan Pariwisata"
+        },
+        {
+          "code": "84147",
+          "leg": "prefix_84",
+          "judul": "Kegiatan Lembaga Pemerintahan Bidang Perhubungan"
+        },
+        {
+          "code": "84148",
+          "leg": "prefix_84",
+          "judul": "Kegiatan Lembaga Pemerintahan Bidang Ketenagakerjaan"
+        },
+        {
+          "code": "84149",
+          "leg": "prefix_84",
+          "judul": "Kegiatan Lembaga Pemerintahan untuk Menciptakan Efisiensi Produksi dan Bisnis Lainnya"
+        },
+        {
+          "code": "84210",
+          "leg": "prefix_84",
+          "judul": "Hubungan Luar Negeri"
+        },
+        {
+          "code": "84221",
+          "leg": "prefix_84",
+          "judul": "Lembaga Pertahanan dan Angkatan Bersenjata"
+        },
+        {
+          "code": "84222",
+          "leg": "prefix_84",
+          "judul": "Angkatan Darat"
+        },
+        {
+          "code": "84223",
+          "leg": "prefix_84",
+          "judul": "Angkatan Udara"
+        },
+        {
+          "code": "84224",
+          "leg": "prefix_84",
+          "judul": "Angkatan Laut"
+        },
+        {
+          "code": "84231",
+          "leg": "prefix_84",
+          "judul": "Kepolisian"
+        },
+        {
+          "code": "84232",
+          "leg": "prefix_84",
+          "judul": "Pertahanan Sipil"
+        },
+        {
+          "code": "84233",
+          "leg": "prefix_84",
+          "judul": "Aktivitas Lembaga Peradilan"
+        },
+        {
+          "code": "84234",
+          "leg": "prefix_84",
+          "judul": "Kegiatan Lembaga Pemerintahan Bidang Penanggulangan Bencana dan Pemadam Kebakaran"
+        },
+        {
+          "code": "84300",
+          "leg": "prefix_84",
+          "judul": "Aktivitas Jaminan Sosial Wajib"
+        },
+        {
+          "code": "85101",
+          "leg": "title_pemerintah",
+          "judul": "Pendidikan Taman Kanak-Kanak Umum Pemerintah"
+        },
+        {
+          "code": "85201",
+          "leg": "title_pemerintah",
+          "judul": "Pendidikan Dasar Umum Pemerintah"
+        },
+        {
+          "code": "85311",
+          "leg": "title_pemerintah",
+          "judul": "Pendidikan Menengah Pertama Umum Pemerintah"
+        },
+        {
+          "code": "85315",
+          "leg": "title_pemerintah",
+          "judul": "Pendidikan Menengah Atas Umum Pemerintah"
+        },
+        {
+          "code": "85321",
+          "leg": "title_pemerintah",
+          "judul": "Pendidikan Menengah Kejuruan Umum Pemerintah"
+        },
+        {
+          "code": "85401",
+          "leg": "title_pemerintah",
+          "judul": "Pendidikan Tinggi Umum Pemerintah"
+        },
+        {
+          "code": "85403",
+          "leg": "title_pemerintah",
+          "judul": "Pendidikan Tinggi Keagamaan Pemerintah"
+        },
+        {
+          "code": "85550",
+          "leg": "title_pemerintah",
+          "judul": "Pendidikan Lainnya Pemerintah"
+        },
+        {
+          "code": "85560",
+          "leg": "title_pemerintah",
+          "judul": "Pelatihan Kerja Pemerintah"
+        },
+        {
+          "code": "86101",
+          "leg": "title_pemerintah",
+          "judul": "Aktivitas Rumah Sakit Pemerintah"
+        },
+        {
+          "code": "86104",
+          "leg": "title_pemerintah",
+          "judul": "Aktivitas Klinik Pemerintah"
+        },
+        {
+          "code": "87201",
+          "leg": "title_pemerintah",
+          "judul": "Aktivitas Perawatanuntuk Orang yang Hidup dengan atau Memiliki Diagnosis Penyandang Disabilitas Mental atau Penyalahgunaan Obat Terlarang Berbasis Residensial oleh Pemerintah"
+        },
+        {
+          "code": "87301",
+          "leg": "title_pemerintah",
+          "judul": "Aktivitas Perawatan untuk Lanjut Usia atau Penyandang Disabilitas Fisik Berbasis Residensial oleh Pemerintah"
+        },
+        {
+          "code": "91111",
+          "leg": "title_pemerintah",
+          "judul": "Aktivitas Perpustakaan Pemerintah"
+        },
+        {
+          "code": "91121",
+          "leg": "title_pemerintah",
+          "judul": "Aktivitas Kearsipan Pemerintah"
+        },
+        {
+          "code": "91211",
+          "leg": "title_pemerintah",
+          "judul": "Museum yang Dikelola Pemerintah"
+        },
+        {
+          "code": "91221",
+          "leg": "title_pemerintah",
+          "judul": "Aktivitas Situs Bersejarah dan Monumen yang Dikelola Pemerintah"
+        }
+      ],
+      "excluded": {
+        "87101": "title rule matches («Aktivitas Perawatan dan Pemulihan kesehatan Berbasis Residensial oleh Pemerintah») but the record is published TERBUKA 100% — relabelling it would flip a client-facing verdict; Legge 5, needs Zero's explicit go; left declared_gap",
+        "88101": "title rule matches («Aktivitas Sosial Pemerintah Tanpa Akomodasi untuk Orang Lanjut Usia atau Penyandang Disabilitas») but the record is published TERBUKA 100% — relabelling it would flip a client-facing verdict; Legge 5, needs Zero's explicit go; left declared_gap",
+        "88901": "title rule matches («Aktivitas Sosial Pemerintah Tanpa Akomodasi Lainnya») but the record is published TERBUKA 100% — relabelling it would flip a client-facing verdict; Legge 5, needs Zero's explicit go; left declared_gap"
+      }
+    },
+    "non_commercial_institutional": {
+      "instrument": "Perpres 10/2021 Pasal 2(1a) as amended by Perpres 49/2021",
+      "kondisi": "Aktivitas badan internasional — bukan Bidang Usaha yang bersifat komersial (Perpres 10/2021 Pasal 2(1a), as amended by Perpres 49/2021) — not an investable field, foreign ownership 0%",
+      "items": [
+        {
+          "code": "99000",
+          "title_terms": ["Badan Internasional"]
+        }
+      ],
+      "excluded": {}
+    }
+  }
+}
