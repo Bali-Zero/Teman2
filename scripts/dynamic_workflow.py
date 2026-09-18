@@ -1120,12 +1120,25 @@ def _outcome_missing_keys(text: str) -> list[str]:
     return [k for k in _OUTCOME_KEYS if not re.search(rf"^{re.escape(k)}:", text, re.MULTILINE)]
 
 
+def _capture_dest_for(kit: Path) -> Path:
+    """the addendum's canonical shape: research/operations/<YYYY-MM-DD>-dynamic-workflow-<slug>/,
+    relative to the repo root. Slug comes from the kit's own inputs.json (written once by
+    cmd_brief) rather than a new CLI flag; the date is capture time, matching this repo's
+    existing research/operations/<date>-<slug> convention (date = event time, not task-start)."""
+    slug = json.loads((kit / "inputs.json").read_text())["slug"]
+    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    return REPO_ROOT / "research" / "operations" / f"{today}-dynamic-workflow-{slug}"
+
+
 def cmd_capture_check(args: argparse.Namespace) -> None:
     """mandate, verbatim: 'requires BRIEF.md, brief.sha, r1/, r2/, judge.md,
     jury/tabulation.md, Z-DECISIONI.md, OUTCOME.md (with rounds_used, dead_at_launch,
     wall_clock, bites keys); copies; exits non-zero naming what is missing.' A capture that
     silently skipped a stage must fail loud, one line per absence, not ship a partial
-    research/ artifact that looks complete (scar #2, 'Esiste != Armato')."""
+    research/ artifact that looks complete (scar #2, 'Esiste != Armato'). PR2f addendum: --dest
+    must resolve to the canonical research/operations/<date>-dynamic-workflow-<slug>/ path (no
+    '..', no arbitrary location) and must not already hold files — both refused at exit 2,
+    before anything is created or copied."""
     kit = Path(args.kit)
     dest = Path(args.dest)
     missing: list[str] = []
@@ -1138,6 +1151,14 @@ def cmd_capture_check(args: argparse.Namespace) -> None:
     if missing:
         print("FAIL: capture-check missing: " + "; ".join(missing))
         sys.exit(1)
+
+    expected_dest = _capture_dest_for(kit)
+    if dest.resolve() != expected_dest.resolve():
+        print(f"refused: --dest {dest} is not the canonical {expected_dest}", file=sys.stderr)
+        sys.exit(2)
+    if dest.exists() and any(dest.iterdir()):
+        print(f"refused: --dest {dest} already exists and is not empty", file=sys.stderr)
+        sys.exit(2)
 
     dest.mkdir(parents=True, exist_ok=True)
     for rel in _CAPTURE_REQUIRED:
@@ -1420,7 +1441,7 @@ def run_selftest() -> None:
               not any(seat in (kit_l / "jury" / "tabulation.md").read_text()
                       for seat in mapping_l.values()))
 
-        # N. capture-check: refuses naming what's missing, then copies the full artifact set.
+        # N. capture-check: refuses naming what's missing, then a bad --dest, then copies.
         dest_l = work / "capture-l"
         try:
             cmd_capture_check(argparse.Namespace(kit=str(kit_l), dest=str(dest_l)))
@@ -1430,10 +1451,35 @@ def run_selftest() -> None:
         check("capture-check wrote no dest on refusal", not dest_l.exists())
         (kit_l / "OUTCOME.md").write_text(
             "rounds_used: 1\ndead_at_launch: 0\nwall_clock: 4m\nbites: selftest green\n")
-        cmd_capture_check(argparse.Namespace(kit=str(kit_l), dest=str(dest_l)))
-        check("capture-check copied jury/tabulation.md to dest",
-              (dest_l / "jury" / "tabulation.md").exists())
-        check("capture-check copied Z-DECISIONI.md to dest", (dest_l / "Z-DECISIONI.md").exists())
+
+        try:
+            cmd_capture_check(argparse.Namespace(kit=str(kit_l), dest=str(dest_l)))
+            check("guilt: capture-check refuses a --dest outside research/operations/", False)
+        except SystemExit as e:
+            check("guilt: capture-check refuses a --dest outside research/operations/",
+                  e.code == 2)
+        check("capture-check wrote no dest on wrong-location refusal", not dest_l.exists())
+
+        real_dest_l = _capture_dest_for(kit_l)
+        try:
+            real_dest_l.mkdir(parents=True, exist_ok=True)
+            (real_dest_l / "stale.txt").write_text("pre-existing\n")
+            try:
+                cmd_capture_check(argparse.Namespace(kit=str(kit_l), dest=str(real_dest_l)))
+                check("guilt: capture-check refuses a non-empty existing --dest", False)
+            except SystemExit as e:
+                check("guilt: capture-check refuses a non-empty existing --dest", e.code == 2)
+            check("capture-check left the pre-existing file untouched",
+                  (real_dest_l / "stale.txt").read_text() == "pre-existing\n")
+            shutil.rmtree(real_dest_l)
+
+            cmd_capture_check(argparse.Namespace(kit=str(kit_l), dest=str(real_dest_l)))
+            check("capture-check copied jury/tabulation.md to dest",
+                  (real_dest_l / "jury" / "tabulation.md").exists())
+            check("capture-check copied Z-DECISIONI.md to dest",
+                  (real_dest_l / "Z-DECISIONI.md").exists())
+        finally:
+            shutil.rmtree(real_dest_l, ignore_errors=True)
 
     finally:
         shutil.rmtree(work, ignore_errors=True)

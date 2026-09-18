@@ -875,6 +875,23 @@ def _capture_ready_kit(tmp_path, template, clean_objective) -> Path:
     return kit
 
 
+def _capture_ready_kit_with_slug(tmp_path, template, clean_objective, slug: str) -> Path:
+    # own slug (not the shared "s" every other fixture in this file carries) so the two
+    # real-canonical-dest tests below each own a distinct research/operations/ path and
+    # can never collide, in this process or under any future parallel test run.
+    kit = tmp_path / "k"
+    dw.cmd_brief(argparse.Namespace(slug=slug, objective_file=str(clean_objective), colour="BLUE",
+                                     floor=None, template=str(template), kit=str(kit)))
+    _seed_convener(kit)
+    dw.cmd_r1(argparse.Namespace(kit=str(kit), seats=_THREE_FAMILY_SEATS, astra_fallback=False))
+    dw.cmd_judge(argparse.Namespace(kit=str(kit)))
+    dw.cmd_jury(argparse.Namespace(kit=str(kit)))
+    dw.cmd_anonymise(argparse.Namespace(kit=str(kit)))
+    (kit / "Z-DECISIONI.md").write_text("# Zero's decision\nA\n")
+    (kit / "OUTCOME.md").write_text(_outcome_text())
+    return kit
+
+
 @pytest.mark.parametrize("missing_rel", ["BRIEF.md", "judge.md", "jury/tabulation.md",
                                           "Z-DECISIONI.md", "OUTCOME.md", "r1", "r2"])
 def test_capture_check_refuses_naming_one_missing_item(tmp_path, template, clean_objective, missing_rel):
@@ -901,19 +918,61 @@ def test_capture_check_refuses_naming_a_missing_outcome_key(tmp_path, template, 
     assert not dest.exists()
 
 
-def test_capture_check_copies_the_full_artifact_set_when_everything_is_present(
+def test_capture_check_refuses_a_dest_outside_research_operations(
         tmp_path, template, clean_objective):
+    # guilt: right shape in every way except location -- must name it and create nothing.
     kit = _capture_ready_kit(tmp_path, template, clean_objective)
     dest = tmp_path / "dest"
-    dw.cmd_capture_check(argparse.Namespace(kit=str(kit), dest=str(dest)))
-    assert (dest / "BRIEF.md").exists()
-    assert (dest / "brief.sha").exists()
-    assert (dest / "judge.md").exists()
-    assert (dest / "jury" / "tabulation.md").exists()
-    assert (dest / "Z-DECISIONI.md").exists()
-    assert (dest / "OUTCOME.md").exists()
-    assert (dest / "r1").is_dir()
-    assert (dest / "r2").is_dir()
+    with pytest.raises(SystemExit) as e:
+        dw.cmd_capture_check(argparse.Namespace(kit=str(kit), dest=str(dest)))
+    assert e.value.code == 2
+    assert not dest.exists()
+
+
+def test_capture_check_refuses_a_dotdot_escape_from_research_operations(
+        tmp_path, template, clean_objective):
+    # guilt: resolve()-then-compare must catch a '..' escape, not just a literal string check.
+    kit = _capture_ready_kit(tmp_path, template, clean_objective)
+    escaped = dw.REPO_ROOT / "research" / "operations" / ".." / ".." / "tmp-capture-escape"
+    with pytest.raises(SystemExit) as e:
+        dw.cmd_capture_check(argparse.Namespace(kit=str(kit), dest=str(escaped)))
+    assert e.value.code == 2
+    assert not escaped.resolve().exists()
+
+
+def test_capture_check_refuses_a_non_empty_existing_dest(tmp_path, template, clean_objective):
+    kit = _capture_ready_kit_with_slug(tmp_path, template, clean_objective,
+                                        "pytest-capture-nonempty")
+    dest = dw._capture_dest_for(kit)
+    try:
+        dest.mkdir(parents=True, exist_ok=True)
+        sentinel = dest / "already-here.txt"
+        sentinel.write_text("pre-existing, must survive untouched\n")
+        with pytest.raises(SystemExit) as e:
+            dw.cmd_capture_check(argparse.Namespace(kit=str(kit), dest=str(dest)))
+        assert e.value.code == 2
+        assert sentinel.read_text() == "pre-existing, must survive untouched\n"
+    finally:
+        shutil.rmtree(dest, ignore_errors=True)
+
+
+def test_capture_check_copies_the_full_artifact_set_when_everything_is_present(
+        tmp_path, template, clean_objective):
+    kit = _capture_ready_kit_with_slug(tmp_path, template, clean_objective,
+                                        "pytest-capture-success")
+    dest = dw._capture_dest_for(kit)
+    try:
+        dw.cmd_capture_check(argparse.Namespace(kit=str(kit), dest=str(dest)))
+        assert (dest / "BRIEF.md").exists()
+        assert (dest / "brief.sha").exists()
+        assert (dest / "judge.md").exists()
+        assert (dest / "jury" / "tabulation.md").exists()
+        assert (dest / "Z-DECISIONI.md").exists()
+        assert (dest / "OUTCOME.md").exists()
+        assert (dest / "r1").is_dir()
+        assert (dest / "r2").is_dir()
+    finally:
+        shutil.rmtree(dest, ignore_errors=True)
 
 
 # --------------------------------------------------------------- validate_answer (guilt + innocence)
