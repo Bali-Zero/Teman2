@@ -109,10 +109,14 @@ def test_cap_name_in_code_stays_clean(lint):
 
 def test_loop_before_first_phase_is_violation(lint):
     """DEFECT :245 (PR3d, 2026-09-18): a loop above the file's first phase( call must
-    still be scanned — only the pre-phase, genuinely-uncapped loop fires."""
+    still be scanned — only the pre-phase, genuinely-uncapped loop fires. Wording per
+    item 3 (PR3e, 2026-09-18, gate-10 obs 7): this file DOES have a phase( call later
+    on, just not before this loop — that must read "before first phase(", not the
+    "no phase(" wording reserved for a file with no phase( call anywhere (see
+    test_no_phase_uncapped_loop_is_violation)."""
     violations = lint.find_violations(FIXTURES_DIR / "loop_before_first_phase.js")
     assert len(violations) == 1
-    assert "no phase(" in violations[0][1]
+    assert "before first phase(" in violations[0][1]
 
 
 def test_no_phase_uncapped_loop_is_violation(lint):

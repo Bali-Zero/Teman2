@@ -483,7 +483,15 @@ def find_violations(path: Path) -> list[tuple[int, str]]:
             has_cap_name = bool(CAP_NAME_RE.search(span_neutral))
             if not has_int and not has_cap_name:
                 line_no = src[:loop_open].count("\n") + 1
-                where = f'phase("{name}")' if name is not None else "no phase("
+                # ITEM 3 (PR3e, 2026-09-18, gate-10 obs 7): a file that HAS phase(
+                # calls, just not before THIS loop, is not the same as a file with no
+                # phase( call anywhere -- the wording must say which.
+                if name is not None:
+                    where = f'phase("{name}")'
+                elif phase_calls:
+                    where = "before first phase("
+                else:
+                    where = "no phase("
                 violations.append(
                     (
                         line_no,
