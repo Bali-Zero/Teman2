@@ -23,43 +23,43 @@
 # Citation: Source must be attributed to Bali Zero KBLI Navigator (balizero.com/kbli)
 
 01111 | Pertanian Jagung | NOT_VERIFIED | Not verified | Menengah Rendah / Menengah Tinggi / Rendah
-01112 | Pertanian Serealia Selain Padi dan Jagung | NOT_VERIFIED | Not verified | Menengah Rendah / Menengah Tinggi / Rendah
+01112 | Pertanian Serealia Selain Padi dan Jagung | TERBUKA | 100% | Menengah Rendah / Menengah Tinggi / Rendah
 01113 | Pertanian Kedelai | NOT_VERIFIED | Not verified | Menengah Rendah / Menengah Tinggi / Rendah
 01114 | Pertanian Kacang Tanah | NOT_VERIFIED | Not verified | Menengah Rendah / Menengah Tinggi / Rendah
 01115 | Pertanian Kacang Hijau | NOT_VERIFIED | Not verified | Rendah / Menengah Tinggi / Menengah Rendah
-01116 | Pertanian Aneka Kacang Selain Kedelai, Kacang Tanah, dan Kacang Hijau | NOT_VERIFIED | Not verified | Menengah Rendah / Menengah Tinggi
+01116 | Pertanian Aneka Kacang Selain Kedelai, Kacang Tanah, dan Kacang Hijau | TERBUKA | 100% | Menengah Rendah / Menengah Tinggi
 01117 | Pertanian Biji-bijian Penghasil Minyak Makan | NOT_VERIFIED | Not verified | Menengah Rendah / Menengah Tinggi / Rendah
-01118 | Pertanian Biji-bijian Penghasil Minyak Selain Minyak Makan | NOT_VERIFIED | Not verified | Menengah Rendah / Menengah Tinggi / Rendah
+01118 | Pertanian Biji-bijian Penghasil Minyak Selain Minyak Makan | TERBUKA | 100% | Menengah Rendah / Menengah Tinggi / Rendah
 01121 | Pertanian Padi Hibrida | NOT_VERIFIED | Not verified | Menengah Rendah / Menengah Tinggi / Rendah
 01122 | Pertanian Padi Inbrida | NOT_VERIFIED | Not verified | Menengah Rendah / Menengah Tinggi / Rendah
 01131 | Pertanian Sayuran Daun | NOT_VERIFIED | Not verified | Rendah / Menengah Tinggi / Menengah Rendah
 01132 | Pertanian Buah Semusim | NOT_VERIFIED | Not verified | Rendah / Menengah Rendah / Menengah Tinggi
-01133 | Pertanian Sayuran Buah | NOT_VERIFIED | Not verified | Menengah Rendah / Menengah Tinggi
-01134 | Pertanian Sayuran Umbi | NOT_VERIFIED | Not verified | Menengah Rendah / Menengah Tinggi
+01133 | Pertanian Sayuran Buah | TERBUKA | 100% | Menengah Rendah / Menengah Tinggi
+01134 | Pertanian Sayuran Umbi | TERBUKA | 100% | Menengah Rendah / Menengah Tinggi
 01135 | Pertanian Ubi Kayu | NOT_VERIFIED | Not verified | Menengah Rendah / Menengah Tinggi / Rendah
-01136 | Pertanian Jamur | NOT_VERIFIED | Not verified | Menengah Rendah / Menengah Tinggi
-01137 | Pertanian Bit Gula dan Tanaman Pemanis Selain Tebu | NOT_VERIFIED | Not verified | Menengah Rendah / Menengah Tinggi / Rendah
-01138 | Pertanian Cabai | NOT_VERIFIED | Not verified | Menengah Rendah / Menengah Tinggi
-01139 | Pertanian Umbi Lainnya | NOT_VERIFIED | Not verified | Menengah Rendah / Menengah Tinggi
+01136 | Pertanian Jamur | TERBUKA | 100% | Menengah Rendah / Menengah Tinggi
+01137 | Pertanian Bit Gula dan Tanaman Pemanis Selain Tebu | TERBUKA | 100% | Menengah Rendah / Menengah Tinggi / Rendah
+01138 | Pertanian Cabai | TERBUKA | 100% | Menengah Rendah / Menengah Tinggi
+01139 | Pertanian Umbi Lainnya | TERBUKA | 100% | Menengah Rendah / Menengah Tinggi
 01140 | Pertanian Tebu | NOT_VERIFIED | Not verified | Menengah Rendah / Menengah Tinggi / Rendah / Tinggi
 01150 | Pertanian Tembakau | NOT_VERIFIED | Not verified | Rendah / Menengah Rendah / Menengah Tinggi
 01160 | Pertanian Tanaman Berserat | NOT_VERIFIED | Not verified | Rendah / Menengah Rendah / Menengah Tinggi
 01191 | Pertanian Tanaman Pakan Ternak | NOT_VERIFIED | Not verified | Menengah Rendah / Menengah Tinggi / Rendah
 01192 | Pembenihan Tanaman Pakan Ternak dan Pembenihan Bit (Bukan Bit Gula) | NOT_VERIFIED | Not verified | Menengah Rendah
-01193 | Pertanian Tanaman Bunga | NOT_VERIFIED | Not verified | Rendah / Menengah Rendah / Menengah Tinggi
-01194 | Pertanian Pembenihan Tanaman Bunga | NOT_VERIFIED | Not verified | Menengah Rendah / Menengah Tinggi
+01193 | Pertanian Tanaman Bunga | TERBUKA | 100% | Rendah / Menengah Rendah / Menengah Tinggi
+01194 | Pertanian Pembenihan Tanaman Bunga | TERBUKA | 100% | Menengah Rendah / Menengah Tinggi
 01199 | Pertanian Tanaman Semusim Lainnya YTDL | NOT_VERIFIED | Not verified | Rendah / Menengah Rendah / Menengah Tinggi
-01210 | Pertanian Buah Anggur | NOT_VERIFIED | Not verified | Menengah Rendah / Menengah Tinggi / Rendah
-01220 | Pertanian Buah-buahan Tropis dan Subtropis | NOT_VERIFIED | Not verified | Menengah Rendah / Menengah Tinggi / Rendah
-01230 | Pertanian Buah Jeruk | NOT_VERIFIED | Not verified | Menengah Rendah / Menengah Tinggi / Rendah
+01210 | Pertanian Buah Anggur | TERBUKA | 100% | Menengah Rendah / Menengah Tinggi / Rendah
+01220 | Pertanian Buah-buahan Tropis dan Subtropis | TERBUKA | 100% | Menengah Rendah / Menengah Tinggi / Rendah
+01230 | Pertanian Buah Jeruk | TERBUKA | 100% | Menengah Rendah / Menengah Tinggi / Rendah
 01240 | Pertanian Buah Apel dan Buah Batu (Pome and Stone Fruits) | NOT_VERIFIED | Not verified | Menengah Rendah / Menengah Tinggi / Rendah
-01251 | Pertanian Buah Beri | NOT_VERIFIED | Not verified | Menengah Rendah / Menengah Tinggi / Rendah
-01252 | Pertanian Buah Biji Kacang-kacangan | NOT_VERIFIED | Not verified | Menengah Rendah / Menengah Tinggi / Rendah
-01253 | Pertanian Sayuran Tahunan | NOT_VERIFIED | Not verified | Menengah Rendah / Menengah Tinggi
-01259 | Pertanian Buah Semak Lainnya | NOT_VERIFIED | Not verified | Menengah Rendah / Menengah Tinggi / Rendah
-01261 | Pertanian Kelapa | NOT_VERIFIED | Not verified | Menengah Rendah / Menengah Tinggi / Rendah
-01262 | Pertanian Kelapa Sawit | NOT_VERIFIED | Not verified | Menengah Rendah / Menengah Tinggi / Rendah / Tinggi
-01269 | Pertanian Buah Oleagin Lainnya | NOT_VERIFIED | Not verified | Menengah Rendah / Menengah Tinggi
+01251 | Pertanian Buah Beri | TERBUKA | 100% | Menengah Rendah / Menengah Tinggi / Rendah
+01252 | Pertanian Buah Biji Kacang-kacangan | TERBUKA | 100% | Menengah Rendah / Menengah Tinggi / Rendah
+01253 | Pertanian Sayuran Tahunan | TERBUKA | 100% | Menengah Rendah / Menengah Tinggi
+01259 | Pertanian Buah Semak Lainnya | TERBUKA | 100% | Menengah Rendah / Menengah Tinggi / Rendah
+01261 | Pertanian Kelapa | TERBUKA | 100% | Menengah Rendah / Menengah Tinggi / Rendah
+01262 | Pertanian Kelapa Sawit | TERBUKA | 100% | Menengah Rendah / Menengah Tinggi / Rendah / Tinggi
+01269 | Pertanian Buah Oleagin Lainnya | TERBUKA | 100% | Menengah Rendah / Menengah Tinggi
 01271 | Pertanian Kopi | NOT_VERIFIED | Not verified | Menengah Rendah / Menengah Tinggi / Rendah / Tinggi
 01272 | Pertanian Tanaman Teh | NOT_VERIFIED | Not verified | Menengah Rendah / Menengah Tinggi / Rendah / Tinggi
 01273 | Pertanian Kakao | NOT_VERIFIED | Not verified | Menengah Rendah / Menengah Tinggi / Rendah / Tinggi
@@ -72,53 +72,53 @@
 01286 | Pertanian Tanaman Obat Nonrimpang | NOT_VERIFIED | Not verified | Menengah Rendah / Menengah Tinggi / Rendah
 01287 | Pertanian Tanaman Narkotika dan Tanaman Obat Terlarang | TERTUTUP | 0% | Not classified
 01289 | Pertanian Tanaman Rempah-rempah dan Aromatik/Penyegar Lainnya | NOT_VERIFIED | Not verified | Rendah / Menengah Rendah / Menengah Tinggi
-01291 | Pertanian Pohon Karet dan Tanaman Penghasil Getah Lainnya | NOT_VERIFIED | Not verified | Menengah Rendah / Menengah Tinggi / Rendah
-01299 | Pertanian Tanaman Tahunan Lainnya YTDL | NOT_VERIFIED | Not verified | Menengah Rendah / Menengah Tinggi / Rendah
+01291 | Pertanian Pohon Karet dan Tanaman Penghasil Getah Lainnya | TERBUKA | 100% | Menengah Rendah / Menengah Tinggi / Rendah
+01299 | Pertanian Tanaman Tahunan Lainnya YTDL | TERBUKA | 100% | Menengah Rendah / Menengah Tinggi / Rendah
 01301 | Pertanian Tanaman Hias | NOT_VERIFIED | Not verified | Rendah / Menengah Rendah / Menengah Tinggi
-01302 | Penangkaran Tumbuhan Liar | NOT_VERIFIED | Not verified | Menengah Tinggi
-01309 | Pembiakan Tanaman Lainnya | NOT_VERIFIED | Not verified | Menengah Rendah / Menengah Tinggi
+01302 | Penangkaran Tumbuhan Liar | TERBUKA | 100% | Menengah Tinggi
+01309 | Pembiakan Tanaman Lainnya | TERBUKA | 100% | Menengah Rendah / Menengah Tinggi
 01411 | Budi Daya dan Pembibitan Sapi Potong | NOT_VERIFIED | Not verified | Rendah / Menengah Tinggi
 01412 | Budi Daya dan Pembibitan Sapi Perah | NOT_VERIFIED | Not verified | Rendah / Menengah Tinggi
-01413 | Budi Daya dan Pembibitan Kerbau Potong | NOT_VERIFIED | Not verified | Rendah / Menengah Tinggi
-01414 | Budi Daya dan Pembibitan Kerbau Perah | NOT_VERIFIED | Not verified | Rendah / Menengah Tinggi
-01420 | Peternakan Kuda dan Sejenisnya | NOT_VERIFIED | Not verified | Rendah / Menengah Tinggi
-01430 | Peternakan Unta dan Sejenisnya | NOT_VERIFIED | Not verified | Rendah / Menengah Tinggi
-01441 | Budi Daya dan Pembibitan Domba Potong | NOT_VERIFIED | Not verified | Rendah / Menengah Tinggi
-01442 | Budi Daya dan Pembibitan Kambing Potong | NOT_VERIFIED | Not verified | Rendah / Menengah Tinggi
-01443 | Budi Daya dan Pembibitan Kambing Perah | NOT_VERIFIED | Not verified | Rendah / Menengah Tinggi
-01444 | Budi Daya dan Pembibitan Domba Perah | NOT_VERIFIED | Not verified | Rendah / Menengah Tinggi
-01445 | Produksi Bulu Domba Mentah/Raw Wool | NOT_VERIFIED | Not verified | Menengah Tinggi
-01450 | Peternakan Babi | NOT_VERIFIED | Not verified | Menengah Rendah / Tinggi
+01413 | Budi Daya dan Pembibitan Kerbau Potong | TERBUKA | 100% | Rendah / Menengah Tinggi
+01414 | Budi Daya dan Pembibitan Kerbau Perah | TERBUKA | 100% | Rendah / Menengah Tinggi
+01420 | Peternakan Kuda dan Sejenisnya | TERBUKA | 100% | Rendah / Menengah Tinggi
+01430 | Peternakan Unta dan Sejenisnya | TERBUKA | 100% | Rendah / Menengah Tinggi
+01441 | Budi Daya dan Pembibitan Domba Potong | TERBUKA | 100% | Rendah / Menengah Tinggi
+01442 | Budi Daya dan Pembibitan Kambing Potong | TERBUKA | 100% | Rendah / Menengah Tinggi
+01443 | Budi Daya dan Pembibitan Kambing Perah | TERBUKA | 100% | Rendah / Menengah Tinggi
+01444 | Budi Daya dan Pembibitan Domba Perah | TERBUKA | 100% | Rendah / Menengah Tinggi
+01445 | Produksi Bulu Domba Mentah/Raw Wool | TERBUKA | 100% | Menengah Tinggi
+01450 | Peternakan Babi | TERBUKA | 100% | Menengah Rendah / Tinggi
 01461 | Budi Daya Ayam Ras Pedaging | NOT_VERIFIED | Not verified | Menengah Rendah / Tinggi
-01462 | Budi Daya Ayam Ras Petelur | NOT_VERIFIED | Not verified | Menengah Rendah / Tinggi
-01463 | Pembibitan Ayam Lokal dan Persilangannya | NOT_VERIFIED | Not verified | Rendah / Tinggi
-01464 | Budi Daya Ayam Lokal dan Persilangannya | NOT_VERIFIED | Not verified | Rendah / Menengah Tinggi
-01465 | Budi Daya dan Pembibitan Itik dan Bebek | NOT_VERIFIED | Not verified | Rendah / Menengah Tinggi / Tinggi
-01466 | Budi Daya dan Pembibitan Burung Puyuh | NOT_VERIFIED | Not verified | Rendah / Menengah Tinggi
-01467 | Budi Daya dan Pembibitan Burung Merpati | NOT_VERIFIED | Not verified | Rendah / Menengah Tinggi
-01468 | Pembibitan Ayam Ras | NOT_VERIFIED | Not verified | Rendah / Tinggi
-01469 | Budi Daya dan Pembibitan Unggas Lainnya | NOT_VERIFIED | Not verified | Menengah Rendah / Menengah Tinggi
-01491 | Budi Daya dan Pembibitan Burung Unta | NOT_VERIFIED | Not verified | Rendah / Menengah Tinggi
+01462 | Budi Daya Ayam Ras Petelur | TERBUKA | 100% | Menengah Rendah / Tinggi
+01463 | Pembibitan Ayam Lokal dan Persilangannya | TERBUKA | 100% | Rendah / Tinggi
+01464 | Budi Daya Ayam Lokal dan Persilangannya | TERBUKA | 100% | Rendah / Menengah Tinggi
+01465 | Budi Daya dan Pembibitan Itik dan Bebek | TERBUKA | 100% | Rendah / Menengah Tinggi / Tinggi
+01466 | Budi Daya dan Pembibitan Burung Puyuh | TERBUKA | 100% | Rendah / Menengah Tinggi
+01467 | Budi Daya dan Pembibitan Burung Merpati | TERBUKA | 100% | Rendah / Menengah Tinggi
+01468 | Pembibitan Ayam Ras | TERBUKA | 100% | Rendah / Tinggi
+01469 | Budi Daya dan Pembibitan Unggas Lainnya | TERBUKA | 100% | Menengah Rendah / Menengah Tinggi
+01491 | Budi Daya dan Pembibitan Burung Unta | TERBUKA | 100% | Rendah / Menengah Tinggi
 01492 | Budi Daya dan Pembibitan Ulat Sutra | NOT_VERIFIED | Not verified | Menengah Rendah
-01493 | Budi Daya dan Pembibitan Lebah | NOT_VERIFIED | Not verified | Menengah Rendah / Menengah Tinggi
-01494 | Budi Daya dan Pembibitan Rusa | NOT_VERIFIED | Not verified | Rendah / Menengah Tinggi
-01495 | Budi Daya dan Pembibitan Kelinci | NOT_VERIFIED | Not verified | Rendah / Menengah Tinggi
-01496 | Budi Daya dan Pembibitan Cacing | NOT_VERIFIED | Not verified | Rendah / Menengah Tinggi
-01497 | Budi Daya dan Pembibitan Burung Walet | NOT_VERIFIED | Not verified | Menengah Tinggi
-01498 | Penangkaran Satwa Liar | NOT_VERIFIED | Not verified | Menengah Tinggi
-01499 | Budi Daya dan Pembibitan Hewan Lainnya | NOT_VERIFIED | Not verified | Rendah / Menengah Tinggi
-01611 | Jasa Pengolahan Lahan | NOT_VERIFIED | Not verified | Menengah Rendah / Menengah Tinggi
-01612 | Jasa Pemupukan | NOT_VERIFIED | Not verified | Menengah Rendah / Menengah Tinggi
-01613 | Jasa Pemanenan | NOT_VERIFIED | Not verified | Menengah Rendah / Menengah Tinggi
-01614 | Jasa Penyemprotan dan Penyerbukan Melalui Udara | NOT_VERIFIED | Not verified | Menengah Rendah / Menengah Tinggi
-01615 | Jasa Pengendalian Organisme Pengganggu Tumbuhan (OPT) | NOT_VERIFIED | Not verified | Menengah Rendah / Menengah Tinggi
-01616 | Jasa Penanaman Benih | NOT_VERIFIED | Not verified | Menengah Rendah / Menengah Tinggi
-01619 | Jasa Penunjang Pertanian Lainnya | NOT_VERIFIED | Not verified | Menengah Rendah / Menengah Tinggi
-01621 | Jasa Perkawinan Ternak | NOT_VERIFIED | Not verified | Menengah Rendah / Menengah Tinggi
-01622 | Jasa Penetasan Telur | NOT_VERIFIED | Not verified | Menengah Rendah / Tinggi
-01629 | Jasa Penunjang Peternakan Lainnya | NOT_VERIFIED | Not verified | Rendah / Menengah Tinggi
-01630 | Jasa Pascapanen | NOT_VERIFIED | Not verified | Rendah / Menengah Rendah / Menengah Tinggi
-01640 | Pemilihan Benih Tanaman untuk Pembiakan | NOT_VERIFIED | Not verified | Menengah Rendah / Menengah Tinggi
+01493 | Budi Daya dan Pembibitan Lebah | TERBUKA | 100% | Menengah Rendah / Menengah Tinggi
+01494 | Budi Daya dan Pembibitan Rusa | TERBUKA | 100% | Rendah / Menengah Tinggi
+01495 | Budi Daya dan Pembibitan Kelinci | TERBUKA | 100% | Rendah / Menengah Tinggi
+01496 | Budi Daya dan Pembibitan Cacing | TERBUKA | 100% | Rendah / Menengah Tinggi
+01497 | Budi Daya dan Pembibitan Burung Walet | TERBUKA | 100% | Menengah Tinggi
+01498 | Penangkaran Satwa Liar | TERBUKA | 100% | Menengah Tinggi
+01499 | Budi Daya dan Pembibitan Hewan Lainnya | TERBUKA | 100% | Rendah / Menengah Tinggi
+01611 | Jasa Pengolahan Lahan | TERBUKA | 100% | Menengah Rendah / Menengah Tinggi
+01612 | Jasa Pemupukan | TERBUKA | 100% | Menengah Rendah / Menengah Tinggi
+01613 | Jasa Pemanenan | TERBUKA | 100% | Menengah Rendah / Menengah Tinggi
+01614 | Jasa Penyemprotan dan Penyerbukan Melalui Udara | TERBUKA | 100% | Menengah Rendah / Menengah Tinggi
+01615 | Jasa Pengendalian Organisme Pengganggu Tumbuhan (OPT) | TERBUKA | 100% | Menengah Rendah / Menengah Tinggi
+01616 | Jasa Penanaman Benih | TERBUKA | 100% | Menengah Rendah / Menengah Tinggi
+01619 | Jasa Penunjang Pertanian Lainnya | TERBUKA | 100% | Menengah Rendah / Menengah Tinggi
+01621 | Jasa Perkawinan Ternak | TERBUKA | 100% | Menengah Rendah / Menengah Tinggi
+01622 | Jasa Penetasan Telur | TERBUKA | 100% | Menengah Rendah / Tinggi
+01629 | Jasa Penunjang Peternakan Lainnya | TERBUKA | 100% | Rendah / Menengah Tinggi
+01630 | Jasa Pascapanen | TERBUKA | 100% | Rendah / Menengah Rendah / Menengah Tinggi
+01640 | Pemilihan Benih Tanaman untuk Pembiakan | TERBUKA | 100% | Menengah Rendah / Menengah Tinggi
 01700 | Perburuan, Penangkapan, dan Kegiatan Jasa Terkait | NOT_VERIFIED | Not verified | Not classified
 02101 | Pengelolaan Hutan | NOT_VERIFIED | Not verified | Menengah Tinggi / Tinggi
 02102 | Pemanfaatan Kayu Hutan | TERBUKA | 100% | Tinggi
@@ -133,7 +133,7 @@
 03120 | Penangkapan Ikan dan Biota Air Lainnya di Perairan Air Tawar | NOT_VERIFIED | Not verified | Menengah Rendah / Tinggi
 03211 | Pembudidayaan Ikan Bersirip (Selain Ikan Hias) dan Biota Air Laut Lainnya yang Tidak Dilindungi | NOT_VERIFIED | Not verified | Menengah Rendah / Menengah Tinggi
 03212 | Pembudidayaan Ikan Hias Air Laut yang Tidak Dilindungi | NOT_VERIFIED | Not verified | Menengah Rendah / Menengah Tinggi
-03213 | Pembudidayaan Tumbuhan Air Laut yang Tidak Dilindungi | NOT_VERIFIED | Not verified | Menengah Rendah / Menengah Tinggi
+03213 | Pembudidayaan Tumbuhan Air Laut yang Tidak Dilindungi | TERBUKA | 100% | Menengah Rendah / Menengah Tinggi
 03214 | Pengembangbiakan Ikan dan Biota Air Laut yang Dilindungi | NOT_VERIFIED | Not verified | Tinggi
 03221 | Pembudidayaan Ikan Bersirip (Selain Ikan Hias) dan Biota Air Tawar Lainnya yang Tidak Dilindungi | NOT_VERIFIED | Not verified | Menengah Rendah / Menengah Tinggi
 03222 | Pembudidayaan Ikan Hias Air Tawar yang Tidak Dilindungi | NOT_VERIFIED | Not verified | Menengah Rendah / Menengah Tinggi
@@ -141,7 +141,7 @@
 03224 | Pengembangbiakan Biota Air Tawar yang Dilindungi | NOT_VERIFIED | Not verified | Tinggi
 03231 | Pembudidayaan Ikan Bersirip (Selain Ikan Hias) dan Biota Air Payau Lainnya yang Tidak Dilindungi | NOT_VERIFIED | Not verified | Menengah Rendah / Menengah Tinggi
 03232 | Pembudidayaan Ikan Hias Air Payau yang Tidak Dilindungi | NOT_VERIFIED | Not verified | Menengah Rendah / Menengah Tinggi
-03233 | Pembudidayaan Tumbuhan Air Payau yang Tidak Dilindungi | NOT_VERIFIED | Not verified | Menengah Rendah / Menengah Tinggi
+03233 | Pembudidayaan Tumbuhan Air Payau yang Tidak Dilindungi | TERBUKA | 100% | Menengah Rendah / Menengah Tinggi
 03234 | Pengembangbiakan Biota Air Payau yang Dilindungi | NOT_VERIFIED | Not verified | Tinggi
 03300 | Jasa Penunjang Kegiatan Penangkapan dan Pembudidayaan Ikan | NOT_VERIFIED | Not verified | Rendah / Menengah Rendah / Menengah Tinggi
 05101 | Pertambangan Batu Bara | NOT_VERIFIED | Not verified | Tinggi
@@ -188,11 +188,11 @@
 08999 | Pertambangan dan Penggalian Lainnya YTDL | NOT_VERIFIED | Not verified | Tinggi
 09100 | Aktivitas Penunjang Pertambangan Minyak Bumi dan Gas Alam | NOT_VERIFIED | Not verified | Menengah Tinggi
 09900 | Aktivitas Penunjang Pertambangan dan Penggalian Lainnya | NOT_VERIFIED | Not verified | Tinggi
-10111 | Kegiatan Rumah Potong Hewan Ruminansia | NOT_VERIFIED | Not verified | Menengah Tinggi
-10112 | Kegiatan Rumah Potong Babi | NOT_VERIFIED | Not verified | Menengah Tinggi
-10113 | Kegiatan Rumah Potong Unggas | NOT_VERIFIED | Not verified | Menengah Tinggi
-10119 | Kegiatan Rumah Potong Hewan Lainnya | NOT_VERIFIED | Not verified | Menengah Tinggi
-10120 | Pengolahan dan Pengawetan Daging dan Produk Daging | NOT_VERIFIED | Not verified | Menengah Rendah / Tinggi
+10111 | Kegiatan Rumah Potong Hewan Ruminansia | TERBUKA | 100% | Menengah Tinggi
+10112 | Kegiatan Rumah Potong Babi | TERBUKA | 100% | Menengah Tinggi
+10113 | Kegiatan Rumah Potong Unggas | TERBUKA | 100% | Menengah Tinggi
+10119 | Kegiatan Rumah Potong Hewan Lainnya | TERBUKA | 100% | Menengah Tinggi
+10120 | Pengolahan dan Pengawetan Daging dan Produk Daging | TERBUKA | 100% | Menengah Rendah / Tinggi
 10211 | Pengolahan dan Pengawetan Ikan dengan Penggaraman atau Pengeringan | NOT_VERIFIED | Not verified | Menengah Rendah
 10212 | Pengolahan dan Pengawetan Ikan dengan Pengasapan atau Pemanggangan | NOT_VERIFIED | Not verified | Menengah Rendah
 10213 | Pengolahan dan Pengawetan Ikan dengan Pembekuan | NOT_VERIFIED | Not verified | Menengah Rendah / Menengah Tinggi
@@ -206,8 +206,8 @@
 10292 | Pengolahan dan Pengawetan Biota Air Lainnya dengan Pengasapan atau Pemanggangan | NOT_VERIFIED | Not verified | Menengah Rendah
 10293 | Pengolahan dan Pengawetan Biota Air Lainnya dengan Pembekuan | NOT_VERIFIED | Not verified | Menengah Rendah / Menengah Tinggi
 10294 | Pengolahan dan Pengawetan Biota Air Lainnya dengan Pemindangan | NOT_VERIFIED | Not verified | Menengah Rendah
-10295 | Pengolahan dan Pengawetan Biota Air Lainnya dengan Fermentasi | NOT_VERIFIED | Not verified | Rendah / Tinggi
-10296 | Pengolahan dan Pengawetan Biota Air Lainnya dengan Pelumatan | NOT_VERIFIED | Not verified | Menengah Rendah / Tinggi
+10295 | Pengolahan dan Pengawetan Biota Air Lainnya dengan Fermentasi | TERBUKA | 100% | Rendah / Tinggi
+10296 | Pengolahan dan Pengawetan Biota Air Lainnya dengan Pelumatan | TERBUKA | 100% | Menengah Rendah / Tinggi
 10297 | Pengolahan dan Pengawetan Biota Air Lainnya dengan Pengalengan | NOT_VERIFIED | Not verified | Menengah Tinggi / Tinggi
 10298 | Pengolahan dan Pengawetan Rumput Laut | NOT_VERIFIED | Not verified | Rendah / Menengah Rendah / Menengah Tinggi
 10299 | Pengolahan dan Pengawetan Biota Air Lainnya dengan Metode Lainnya | NOT_VERIFIED | Not verified | Menengah Rendah / Tinggi
@@ -220,88 +220,88 @@
 10307 | Pembuatan Tempe Kedelai | TERBATAS | 0% | Rendah / Menengah Rendah
 10308 | Pembuatan Tahu Kedelai | TERBATAS | 0% | Rendah / Menengah Rendah
 10309 | Pengolahan dan Pengawetan Lainnya untuk Buah-buahan dan Sayuran | NOT_VERIFIED | Not verified | Rendah / Tinggi / Menengah Tinggi
-10411 | Industri Minyak Mentah dan Lemak Nabati Bukan Kelapa dan Kelapa Sawit | NOT_VERIFIED | Not verified | Tinggi
+10411 | Industri Minyak Mentah dan Lemak Nabati Bukan Kelapa dan Kelapa Sawit | TERBUKA | 100% | Tinggi
 10412 | Industri Margarin | NOT_VERIFIED | Not verified | Tinggi
-10413 | Industri Minyak Mentah dan Lemak dari Hewan Selain Ikan | NOT_VERIFIED | Not verified | Menengah Rendah / Tinggi / Rendah
-10414 | Industri Minyak Ikan | NOT_VERIFIED | Not verified | Menengah Rendah / Tinggi
-10415 | Industri Minyak Goreng dan Minyak Makan Bukan Minyak Kelapa dan Minyak Kelapa Sawit | NOT_VERIFIED | Not verified | Menengah Rendah / Tinggi
+10413 | Industri Minyak Mentah dan Lemak dari Hewan Selain Ikan | TERBUKA | 100% | Menengah Rendah / Tinggi / Rendah
+10414 | Industri Minyak Ikan | TERBUKA | 100% | Menengah Rendah / Tinggi
+10415 | Industri Minyak Goreng dan Minyak Makan Bukan Minyak Kelapa dan Minyak Kelapa Sawit | TERBUKA | 100% | Menengah Rendah / Tinggi
 10419 | Industri Minyak Mentah dan Lemak Nabati dan Hewani Bukan Kelapa dan Kelapa Sawit Lainnya | NOT_VERIFIED | Not verified | Rendah / Tinggi
 10421 | Industri Kopra | NOT_VERIFIED | Not verified | Rendah / Menengah Rendah
 10422 | Industri Minyak Mentah Kelapa | NOT_VERIFIED | Not verified | Rendah / Tinggi
 10423 | Industri Minyak Goreng Kelapa | NOT_VERIFIED | Not verified | Rendah / Tinggi
-10431 | Industri Minyak Mentah Kelapa Sawit (Crude Palm Oil) | NOT_VERIFIED | Not verified | Menengah Tinggi
-10432 | Industri Minyak Mentah Inti Kelapa Sawit (Crude Palm Kernel Oil) | NOT_VERIFIED | Not verified | Menengah Rendah / Menengah Tinggi
-10433 | Industri Pemisahan/Fraksinasi Minyak Mentah Kelapa Sawit dan Minyak Mentah Inti Kelapa Sawit | NOT_VERIFIED | Not verified | Menengah Tinggi
-10434 | Industri Pemurnian Minyak Mentah Kelapa Sawit dan Minyak Mentah Inti Kelapa Sawit | NOT_VERIFIED | Not verified | Menengah Rendah / Tinggi
+10431 | Industri Minyak Mentah Kelapa Sawit (Crude Palm Oil) | TERBUKA | 100% | Menengah Tinggi
+10432 | Industri Minyak Mentah Inti Kelapa Sawit (Crude Palm Kernel Oil) | TERBUKA | 100% | Menengah Rendah / Menengah Tinggi
+10433 | Industri Pemisahan/Fraksinasi Minyak Mentah Kelapa Sawit dan Minyak Mentah Inti Kelapa Sawit | TERBUKA | 100% | Menengah Tinggi
+10434 | Industri Pemurnian Minyak Mentah Kelapa Sawit dan Minyak Mentah Inti Kelapa Sawit | TERBUKA | 100% | Menengah Rendah / Tinggi
 10435 | Industri Pemisahan/Fraksinasi Minyak Murni Kelapa Sawit | NOT_VERIFIED | Not verified | Rendah / Tinggi
 10436 | Industri Pemisahan/Fraksinasi Minyak Murni Inti Kelapa Sawit | NOT_VERIFIED | Not verified | Rendah / Tinggi
 10437 | Industri Minyak Goreng Kelapa Sawit | NOT_VERIFIED | Not verified | Tinggi
 10501 | Industri Susu Segar dan Krim | NOT_VERIFIED | Not verified | Menengah Tinggi / Tinggi
 10502 | Industri Susu Bubuk dan Susu Kental | NOT_VERIFIED | Not verified | Menengah Tinggi / Tinggi
-10503 | Industri Es Krim | NOT_VERIFIED | Not verified | Rendah / Tinggi / Menengah Rendah
-10504 | Industri Es yang Dapat Dimakan dan Es Pencuci Mulut | NOT_VERIFIED | Not verified | Rendah / Menengah Tinggi
-10509 | Industri Produk Susu Lainnya | NOT_VERIFIED | Not verified | Menengah Rendah / Tinggi
-10611 | Industri Produk Gilingan Gandum (Selain Tepung Terigu) dan Serelia Selain Beras dan Jagung | NOT_VERIFIED | Not verified | Rendah / Tinggi
-10612 | Industri Produk Gilingan Aneka Kacang | NOT_VERIFIED | Not verified | Rendah / Tinggi
-10613 | Industri Produk Gilingan Aneka Umbi, Tanaman Rimpang, dan Sayuran | NOT_VERIFIED | Not verified | Rendah / Tinggi
-10614 | Industri Tepung Campuran dan Adonan Tepung | NOT_VERIFIED | Not verified | Rendah / Tinggi
+10503 | Industri Es Krim | TERBUKA | 100% | Rendah / Tinggi / Menengah Rendah
+10504 | Industri Es yang Dapat Dimakan dan Es Pencuci Mulut | TERBUKA | 100% | Rendah / Menengah Tinggi
+10509 | Industri Produk Susu Lainnya | TERBUKA | 100% | Menengah Rendah / Tinggi
+10611 | Industri Produk Gilingan Gandum (Selain Tepung Terigu) dan Serelia Selain Beras dan Jagung | TERBUKA | 100% | Rendah / Tinggi
+10612 | Industri Produk Gilingan Aneka Kacang | TERBUKA | 100% | Rendah / Tinggi
+10613 | Industri Produk Gilingan Aneka Umbi, Tanaman Rimpang, dan Sayuran | TERBUKA | 100% | Rendah / Tinggi
+10614 | Industri Tepung Campuran dan Adonan Tepung | TERBUKA | 100% | Rendah / Tinggi
 10615 | Industri Makanan Sereal | NOT_VERIFIED | Not verified | Rendah / Tinggi
-10616 | Industri Tepung Terigu | NOT_VERIFIED | Not verified | Tinggi
+10616 | Industri Tepung Terigu | TERBUKA | 100% | Tinggi
 10621 | Industri Pati Ubi Kayu | NOT_VERIFIED | Not verified | Rendah / Tinggi
 10622 | Industri Berbagai Macam Pati Palem | NOT_VERIFIED | Not verified | Rendah / Tinggi
 10623 | Industri Glukosa dan Sejenisnya | NOT_VERIFIED | Not verified | Tinggi
-10629 | Industri Pati dan Produk Pati Lainnya | NOT_VERIFIED | Not verified | Rendah / Tinggi
-10631 | Industri Penggilingan Padi dan Penyosohan Beras | NOT_VERIFIED | Not verified | Rendah / Menengah Rendah / Menengah Tinggi
-10632 | Industri Pemipilan Jagung | NOT_VERIFIED | Not verified | Rendah / Menengah Rendah / Menengah Tinggi
-10633 | Industri Tepung Beras dan Tepung Jagung | NOT_VERIFIED | Not verified | Rendah / Tinggi
-10634 | Industri Pati Beras dan Jagung | NOT_VERIFIED | Not verified | Rendah / Tinggi
-10635 | Industri Pemanis dari Beras dan Jagung | NOT_VERIFIED | Not verified | Tinggi
-10636 | Industri Minyak dari Beras dan Jagung | NOT_VERIFIED | Not verified | Menengah Rendah / Tinggi
+10629 | Industri Pati dan Produk Pati Lainnya | TERBUKA | 100% | Rendah / Tinggi
+10631 | Industri Penggilingan Padi dan Penyosohan Beras | TERBUKA | 100% | Rendah / Menengah Rendah / Menengah Tinggi
+10632 | Industri Pemipilan Jagung | TERBUKA | 100% | Rendah / Menengah Rendah / Menengah Tinggi
+10633 | Industri Tepung Beras dan Tepung Jagung | TERBUKA | 100% | Rendah / Tinggi
+10634 | Industri Pati Beras dan Jagung | TERBUKA | 100% | Rendah / Tinggi
+10635 | Industri Pemanis dari Beras dan Jagung | TERBUKA | 100% | Tinggi
+10636 | Industri Minyak dari Beras dan Jagung | TERBUKA | 100% | Menengah Rendah / Tinggi
 10710 | Industri Produk Bakeri | NOT_VERIFIED | Not verified | Rendah / Tinggi
 10721 | Industri Gula Pasir | NOT_VERIFIED | Not verified | Tinggi
 10722 | Industri Gula Merah | TERBATAS | 0% | Rendah / Tinggi
 10723 | Industri Sirop | NOT_VERIFIED | Not verified | Menengah Tinggi
 10729 | Industri Gula Lainnya | NOT_VERIFIED | Not verified | Rendah / Tinggi
-10731 | Industri Pengolahan Kakao | NOT_VERIFIED | Not verified | Tinggi
+10731 | Industri Pengolahan Kakao | TERBUKA | 100% | Tinggi
 10732 | Industri Cokelat dan Kembang Gula dari Cokelat | NOT_VERIFIED | Not verified | Menengah Rendah / Tinggi
-10733 | Industri Manisan Buah-buahan dan Sayuran Kering | NOT_VERIFIED | Not verified | Rendah / Menengah Tinggi
-10739 | Industri Kembang Gula Lainnya | NOT_VERIFIED | Not verified | Rendah / Tinggi
-10740 | Industri Makaroni, Mi, Couscous, dan Produk Sejenisnya | NOT_VERIFIED | Not verified | Menengah Rendah / Tinggi
+10733 | Industri Manisan Buah-buahan dan Sayuran Kering | TERBUKA | 100% | Rendah / Menengah Tinggi
+10739 | Industri Kembang Gula Lainnya | TERBUKA | 100% | Rendah / Tinggi
+10740 | Industri Makaroni, Mi, Couscous, dan Produk Sejenisnya | TERBUKA | 100% | Menengah Rendah / Tinggi
 10750 | Industri Makanan dan Masakan Olahan | NOT_VERIFIED | Not verified | Menengah Rendah / Tinggi
 10761 | Pengolahan Kopi | NOT_VERIFIED | Not verified | Rendah / Tinggi
-10762 | Pengolahan Teh | NOT_VERIFIED | Not verified | Rendah / Tinggi
+10762 | Pengolahan Teh | TERBUKA | 100% | Rendah / Tinggi
 10771 | Industri Kecap | NOT_VERIFIED | Not verified | Menengah Rendah / Tinggi
 10772 | Industri Garam Konsumsi Beryodium | NOT_VERIFIED | Not verified | Rendah / Menengah Rendah
 10773 | Industri Garam Industri Aneka Pangan | NOT_VERIFIED | Not verified | Rendah / Menengah Rendah / Menengah Tinggi
-10779 | Industri Bumbu Masakan Lainnya | NOT_VERIFIED | Not verified | Rendah / Tinggi
+10779 | Industri Bumbu Masakan Lainnya | TERBUKA | 100% | Rendah / Tinggi
 10791 | Industri Makanan Bayi dan Makanan Khusus | NOT_VERIFIED | Not verified | Tinggi / Rendah / Menengah Tinggi
 10792 | Industri Kue Basah | NOT_VERIFIED | Not verified | Rendah / Menengah Rendah
 10793 | Industri Produk Makanan dari Kelapa | NOT_VERIFIED | Not verified | Menengah Rendah / Tinggi
 10794 | Industri Kerupuk, Keripik, Peyek, dan Sejenisnya | NOT_VERIFIED | Not verified | Rendah / Tinggi / Menengah Tinggi
 10795 | Industri Sari Nabati dan Krimer Nabati | NOT_VERIFIED | Not verified | Rendah / Tinggi / Menengah Tinggi
-10796 | Industri Dodol | NOT_VERIFIED | Not verified | Rendah / Menengah Tinggi
-10797 | Industri Infusi Herbal/Herb Infusion | NOT_VERIFIED | Not verified | Rendah / Menengah Tinggi
+10796 | Industri Dodol | TERBUKA | 100% | Rendah / Menengah Tinggi
+10797 | Industri Infusi Herbal/Herb Infusion | TERBUKA | 100% | Rendah / Menengah Tinggi
 10798 | Industri Bahan Makanan dari Rumput Laut | NOT_VERIFIED | Not verified | Rendah / Menengah Rendah
 10799 | Industri Produk Makanan Lainnya YTDL | NOT_VERIFIED | Not verified | Rendah / Tinggi / Menengah Tinggi
-10801 | Industri Ransum Pakan Hewan | NOT_VERIFIED | Not verified | Rendah / Tinggi
-10802 | Industri Konsentrat Pakan Hewan | NOT_VERIFIED | Not verified | Rendah / Tinggi
+10801 | Industri Ransum Pakan Hewan | TERBUKA | 100% | Rendah / Tinggi
+10802 | Industri Konsentrat Pakan Hewan | TERBUKA | 100% | Rendah / Tinggi
 11010 | Industri Penyulingan, Pemurnian, dan Pencampuran Minuman Beralkohol | TERTUTUP | 0% | Tinggi
 11020 | Industri Minuman Beralkohol Hasil Fermentasi Anggur dan Hasil Pertanian Lainnya | TERTUTUP | 0% | Tinggi
 11030 | Industri Minuman Beralkohol Hasil Fermentasi Malt | NOT_VERIFIED | Not verified | Tinggi
 11040 | Industri Malt | NOT_VERIFIED | Not verified | Tinggi
-11051 | Industri Air Kemasan | NOT_VERIFIED | Not verified | Tinggi
-11052 | Industri Air Minum Isi Ulang | NOT_VERIFIED | Not verified | Menengah Tinggi
-11053 | Industri Minuman Ringan | NOT_VERIFIED | Not verified | Rendah / Tinggi
-11059 | Industri Minuman Lainnya | NOT_VERIFIED | Not verified | Rendah / Menengah Tinggi
+11051 | Industri Air Kemasan | TERBUKA | 100% | Tinggi
+11052 | Industri Air Minum Isi Ulang | TERBUKA | 100% | Menengah Tinggi
+11053 | Industri Minuman Ringan | TERBUKA | 100% | Rendah / Tinggi
+11059 | Industri Minuman Lainnya | TERBUKA | 100% | Rendah / Menengah Tinggi
 12001 | Industri Sigaret Kretek Tangan | NOT_VERIFIED | Not verified | Tinggi
 12002 | Industri Sigaret Kretek Mesin | NOT_VERIFIED | Not verified | Tinggi
 12003 | Industri Rokok Putih | NOT_VERIFIED | Not verified | Tinggi
 12004 | Industri Pengeringan dan Pengolahan Tembakau | NOT_VERIFIED | Not verified | Menengah Rendah / Tinggi
 12005 | Industri Bumbu Rokok | NOT_VERIFIED | Not verified | Tinggi
 12009 | Industri Produk Tembakau Lainnya | NOT_VERIFIED | Not verified | Tinggi
-13111 | Persiapan Serat Tekstil | NOT_VERIFIED | Not verified | Rendah / Menengah Rendah / Menengah Tinggi
+13111 | Persiapan Serat Tekstil | TERBUKA | 100% | Rendah / Menengah Rendah / Menengah Tinggi
 13112 | Pemintalan Benang Selain Benang Jahit | NOT_VERIFIED | Not verified | Rendah / Menengah Rendah / Menengah Tinggi
-13113 | Pemintalan Benang Jahit | NOT_VERIFIED | Not verified | Rendah / Menengah Rendah / Menengah Tinggi
+13113 | Pemintalan Benang Jahit | TERBUKA | 100% | Rendah / Menengah Rendah / Menengah Tinggi
 13121 | Pertenunan Tekstil dengan Mesin | NOT_VERIFIED | Not verified | Rendah / Menengah Rendah / Menengah Tinggi
 13122 | Pertenunan Tekstil Bukan dengan Mesin | NOT_VERIFIED | Not verified | Rendah / Menengah Rendah / Menengah Tinggi
 13131 | Penyempurnaan Benang | NOT_VERIFIED | Not verified | Rendah / Menengah Tinggi / Tinggi
@@ -310,41 +310,41 @@
 13139 | Penyempurnaan Tekstil Lainnya | NOT_VERIFIED | Not verified | Rendah / Menengah Tinggi / Tinggi / Menengah Rendah
 13911 | Industri Kain Rajutan | NOT_VERIFIED | Not verified | Rendah / Menengah Rendah / Menengah Tinggi
 13912 | Industri Kain Crocheted | NOT_VERIFIED | Not verified | Rendah / Menengah Rendah
-13913 | Industri Bulu Tiruan Rajutan | NOT_VERIFIED | Not verified | Rendah / Menengah Rendah / Menengah Tinggi
-13921 | Industri Barang Tekstil untuk Keperluan Rumah Tangga | NOT_VERIFIED | Not verified | Rendah / Menengah Rendah / Menengah Tinggi
-13922 | Industri Barang Tekstil dengan Bahan Pengisi | NOT_VERIFIED | Not verified | Rendah / Menengah Rendah / Menengah Tinggi
-13923 | Industri Karung Goni | NOT_VERIFIED | Not verified | Rendah / Menengah Rendah / Menengah Tinggi
-13924 | Industri Karung Selain Karung Goni | NOT_VERIFIED | Not verified | Rendah / Menengah Rendah / Menengah Tinggi
-13929 | Industri Barang Tekstil Bukan Pakaian Jadi Lainnya | NOT_VERIFIED | Not verified | Rendah / Menengah Rendah / Menengah Tinggi
+13913 | Industri Bulu Tiruan Rajutan | TERBUKA | 100% | Rendah / Menengah Rendah / Menengah Tinggi
+13921 | Industri Barang Tekstil untuk Keperluan Rumah Tangga | TERBUKA | 100% | Rendah / Menengah Rendah / Menengah Tinggi
+13922 | Industri Barang Tekstil dengan Bahan Pengisi | TERBUKA | 100% | Rendah / Menengah Rendah / Menengah Tinggi
+13923 | Industri Karung Goni | TERBUKA | 100% | Rendah / Menengah Rendah / Menengah Tinggi
+13924 | Industri Karung Selain Karung Goni | TERBUKA | 100% | Rendah / Menengah Rendah / Menengah Tinggi
+13929 | Industri Barang Tekstil Bukan Pakaian Jadi Lainnya | TERBUKA | 100% | Rendah / Menengah Rendah / Menengah Tinggi
 13930 | Industri Karpet dan Permadani | NOT_VERIFIED | Not verified | Rendah / Menengah Rendah / Menengah Tinggi
-13941 | Industri Tali | NOT_VERIFIED | Not verified | Rendah / Menengah Tinggi
-13942 | Industri Barang dari Tali | NOT_VERIFIED | Not verified | Rendah / Menengah Rendah / Menengah Tinggi
-13991 | Industri Kain Narrow | NOT_VERIFIED | Not verified | Menengah Tinggi
+13941 | Industri Tali | TERBUKA | 100% | Rendah / Menengah Tinggi
+13942 | Industri Barang dari Tali | TERBUKA | 100% | Rendah / Menengah Rendah / Menengah Tinggi
+13991 | Industri Kain Narrow | TERBUKA | 100% | Menengah Tinggi
 13992 | Industri Kain yang Dilapisi dan Sejenisnya | NOT_VERIFIED | Not verified | Tinggi
 13993 | Industri Kain Nirtenun/Nonwoven | NOT_VERIFIED | Not verified | Menengah Tinggi
-13994 | Industri Kain Ban | NOT_VERIFIED | Not verified | Menengah Tinggi
+13994 | Industri Kain Ban | TERBUKA | 100% | Menengah Tinggi
 13995 | Industri Kapuk | NOT_VERIFIED | Not verified | Rendah / Menengah Rendah
-13996 | Industri Kain Tule, Kain Jaring, dan Kain Bordir | NOT_VERIFIED | Not verified | Rendah / Menengah Rendah / Menengah Tinggi
-13999 | Industri Tekstil Lainnya YTDL | NOT_VERIFIED | Not verified | Rendah / Menengah Rendah / Menengah Tinggi
+13996 | Industri Kain Tule, Kain Jaring, dan Kain Bordir | TERBUKA | 100% | Rendah / Menengah Rendah / Menengah Tinggi
+13999 | Industri Tekstil Lainnya YTDL | TERBUKA | 100% | Rendah / Menengah Rendah / Menengah Tinggi
 14111 | Industri Pakaian Jadi (Konfeksi) dari Tekstil | NOT_VERIFIED | Not verified | Rendah / Menengah Rendah / Menengah Tinggi
 14112 | Industri Pakaian Jadi (Konfeksi) dari Kulit dan Tiruan Kulit | NOT_VERIFIED | Not verified | Rendah / Menengah Rendah / Menengah Tinggi
 14120 | Industri Penjahitan dan Pembuatan (Bukan Konfeksi) Pakaian Sesuai Pesanan/Kustomisasi | NOT_VERIFIED | Not verified | Rendah / Menengah Rendah
 14131 | Industri Perlengkapan Pakaian dari Tekstil | NOT_VERIFIED | Not verified | Rendah / Menengah Rendah / Menengah Tinggi
 14132 | Industri Perlengkapan Pakaian dari Kulit dan Tiruan Kulit | NOT_VERIFIED | Not verified | Rendah / Menengah Rendah / Menengah Tinggi
-14200 | Industri Barang dari Kulit Berbulu | NOT_VERIFIED | Not verified | Rendah / Menengah Rendah / Menengah Tinggi
+14200 | Industri Barang dari Kulit Berbulu | TERBUKA | 100% | Rendah / Menengah Rendah / Menengah Tinggi
 14301 | Industri Pakaian Jadi dan Perlengkapannya dari Rajutan dan Crocheted | NOT_VERIFIED | Not verified | Rendah / Menengah Rendah / Menengah Tinggi
-14302 | Industri Hosiery Rajutan dan Crocheted | NOT_VERIFIED | Not verified | Rendah / Menengah Rendah / Menengah Tinggi
-15111 | Pengawetan Kulit | NOT_VERIFIED | Not verified | Menengah Rendah / Menengah Tinggi / Tinggi
+14302 | Industri Hosiery Rajutan dan Crocheted | TERBUKA | 100% | Rendah / Menengah Rendah / Menengah Tinggi
+15111 | Pengawetan Kulit | TERBUKA | 100% | Menengah Rendah / Menengah Tinggi / Tinggi
 15112 | Penyamakan Kulit | NOT_VERIFIED | Not verified | Menengah Rendah / Menengah Tinggi / Tinggi
-15113 | Pewarnaan Kulit Berbulu | NOT_VERIFIED | Not verified | Menengah Rendah / Menengah Tinggi / Tinggi
-15114 | Industri Kulit Komposisi | NOT_VERIFIED | Not verified | Rendah / Menengah Rendah / Menengah Tinggi
+15113 | Pewarnaan Kulit Berbulu | TERBUKA | 100% | Menengah Rendah / Menengah Tinggi / Tinggi
+15114 | Industri Kulit Komposisi | TERBUKA | 100% | Rendah / Menengah Rendah / Menengah Tinggi
 15121 | Industri Koper, Tas Tangan, dan Sejenisnya | NOT_VERIFIED | Not verified | Rendah / Menengah Rendah / Menengah Tinggi
 15122 | Industri Pelana, Alat Pengekang/Harness, dan Barang Lainnya untuk Hewan | NOT_VERIFIED | Not verified | Rendah / Menengah Rendah / Menengah Tinggi
 15129 | Industri Barang Lainnya dari Kulit dan Kulit Komposisi | NOT_VERIFIED | Not verified | Rendah / Menengah Rendah / Menengah Tinggi
 15201 | Industri Alas Kaki untuk Keperluan Sehari-hari | NOT_VERIFIED | Not verified | Rendah / Menengah Rendah / Menengah Tinggi
 15202 | Industri Sepatu Olahraga | NOT_VERIFIED | Not verified | Rendah / Menengah Rendah / Menengah Tinggi
 15203 | Industri Sepatu Teknik Lapangan/Keperluan Industri | NOT_VERIFIED | Not verified | Rendah / Menengah Rendah / Menengah Tinggi
-15209 | Industri Alas Kaki Lainnya | NOT_VERIFIED | Not verified | Rendah / Menengah Rendah / Menengah Tinggi
+15209 | Industri Alas Kaki Lainnya | TERBUKA | 100% | Rendah / Menengah Rendah / Menengah Tinggi
 16101 | Penggergajian dan Penghalusan Kayu | NOT_VERIFIED | Not verified | Rendah / Menengah Rendah
 16102 | Pengawetan Kayu | NOT_VERIFIED | Not verified | Rendah / Menengah Rendah
 16103 | Pengawetan Rotan, Bambu, dan Sejenisnya | NOT_VERIFIED | Not verified | Rendah
@@ -365,29 +365,29 @@
 16299 | Industri Barang Lainnya dari Kayu; Industri Barang dari Gabus, Jerami, Rotan, Bambu, dan Sejenisnya YTDL | NOT_VERIFIED | Not verified | Menengah Rendah
 17011 | Industri Bubur Kertas (Pulp) | NOT_VERIFIED | Not verified | Menengah Tinggi / Tinggi
 17012 | Industri Kertas Budaya | NOT_VERIFIED | Not verified | Menengah Rendah / Tinggi
-17013 | Industri Kertas Berharga | NOT_VERIFIED | Not verified | Tinggi
-17014 | Industri Kertas Khusus | NOT_VERIFIED | Not verified | Tinggi
+17013 | Industri Kertas Berharga | TERBUKA | 100% | Tinggi
+17014 | Industri Kertas Khusus | TERBUKA | 100% | Tinggi
 17019 | Industri Kertas Lainnya | NOT_VERIFIED | Not verified | Menengah Rendah / Tinggi
 17021 | Industri Kertas dan Papan Kertas Bergelombang | NOT_VERIFIED | Not verified | Menengah Rendah / Tinggi
 17022 | Industri Kemasan dan Kotak dari Kertas dan Karton | NOT_VERIFIED | Not verified | Menengah Rendah / Menengah Tinggi
 17091 | Industri Kertas Tisu | NOT_VERIFIED | Not verified | Rendah / Menengah Rendah / Menengah Tinggi / Tinggi
-17099 | Industri Barang dari Kertas dan Papan Kertas Lainnya YTDL | NOT_VERIFIED | Not verified | Tinggi / Menengah Rendah
+17099 | Industri Barang dari Kertas dan Papan Kertas Lainnya YTDL | TERBUKA | 100% | Tinggi / Menengah Rendah
 18111 | Pencetakan Umum | NOT_VERIFIED | Not verified | Menengah Rendah / Menengah Tinggi / Tinggi / Rendah
-18112 | Pencetakan Khusus | NOT_VERIFIED | Not verified | Tinggi
-18113 | Pencetakan Tiga Dimensi (3D) | NOT_VERIFIED | Not verified | Menengah Rendah / Menengah Tinggi
-18120 | Kegiatan Jasa Penunjang Pencetakan | NOT_VERIFIED | Not verified | Rendah / Menengah Tinggi
-18201 | Reproduksi Media Rekaman Suara dan Perangkat Lunak | NOT_VERIFIED | Not verified | Menengah Tinggi
-18202 | Reproduksi Media Rekaman Film dan Video | NOT_VERIFIED | Not verified | Rendah / Menengah Tinggi
+18112 | Pencetakan Khusus | TERBUKA | 100% | Tinggi
+18113 | Pencetakan Tiga Dimensi (3D) | TERBUKA | 100% | Menengah Rendah / Menengah Tinggi
+18120 | Kegiatan Jasa Penunjang Pencetakan | TERBUKA | 100% | Rendah / Menengah Tinggi
+18201 | Reproduksi Media Rekaman Suara dan Perangkat Lunak | TERBUKA | 100% | Menengah Tinggi
+18202 | Reproduksi Media Rekaman Film dan Video | TERBUKA | 100% | Rendah / Menengah Tinggi
 19100 | Industri Produk Tanur Kokas | NOT_VERIFIED | Not verified | Menengah Rendah / Menengah Tinggi
 19201 | Industri Bahan Bakar dari Pemurnian dan Pengilangan Minyak Bumi | NOT_VERIFIED | Not verified | Tinggi
 19202 | Industri Minyak Pelumas | NOT_VERIFIED | Not verified | Menengah Tinggi
-19203 | Industri Produk dari Bahan Limbah Minyak Pelumas | NOT_VERIFIED | Not verified | Menengah Tinggi / Tinggi
+19203 | Industri Produk dari Bahan Limbah Minyak Pelumas | TERBUKA | 100% | Menengah Tinggi / Tinggi
 19204 | Industri Minyak Pelumas Dasar (Bahan Baku Pelumas) | NOT_VERIFIED | Not verified | Menengah Tinggi
 19205 | Industri Briket | NOT_VERIFIED | Not verified | Menengah Rendah / Tinggi / Rendah
 19206 | Industri Produk dari Pencampuran Hasil Kilang Minyak Bumi dengan Biofuel | NOT_VERIFIED | Not verified | Not classified
-19209 | Industri Produk Lainnya dari Hasil Kilang Minyak Bumi | NOT_VERIFIED | Not verified | Menengah Rendah / Tinggi / Rendah
+19209 | Industri Produk Lainnya dari Hasil Kilang Minyak Bumi | TERBUKA | 100% | Menengah Rendah / Tinggi / Rendah
 20111 | Industri Asam, Basa, dan Garam Anorganik | NOT_VERIFIED | Not verified | Not classified
-20112 | Industri Gas Industri | NOT_VERIFIED | Not verified | Menengah Rendah / Menengah Tinggi
+20112 | Industri Gas Industri | TERBUKA | 100% | Menengah Rendah / Menengah Tinggi
 20113 | Industri Kimia Dasar Zat Warna dan Pigmen | NOT_VERIFIED | Not verified | Menengah Rendah / Rendah / Menengah Tinggi
 20114 | Industri Kimia Dasar Radioaktif | NOT_VERIFIED | Not verified | Tinggi
 20115 | Industri Kimia Dasar Organik dari Sumber Daya Alam Hayati | NOT_VERIFIED | Not verified | Menengah Rendah / Menengah Tinggi / Rendah / Tinggi
@@ -397,69 +397,69 @@
 20122 | Industri Pupuk Hara Makro Primer Lainnya | NOT_VERIFIED | Not verified | Menengah Rendah / Menengah Tinggi
 20123 | Industri Pupuk Hara Mikro | NOT_VERIFIED | Not verified | Menengah Rendah
 20124 | Industri Pupuk Organik, Pupuk Hayati, dan Media Tanam | NOT_VERIFIED | Not verified | Menengah Rendah / Rendah / Menengah Tinggi
-20125 | Industri Biostimulan | NOT_VERIFIED | Not verified | Menengah Rendah / Menengah Tinggi
+20125 | Industri Biostimulan | TERBUKA | 100% | Menengah Rendah / Menengah Tinggi
 20131 | Industri Damar Buatan (Resin Sintetis) dan Bahan Baku Plastik | NOT_VERIFIED | Not verified | Menengah Rendah / Menengah Tinggi
-20132 | Industri Karet Buatan | NOT_VERIFIED | Not verified | Tinggi
-20211 | Industri Bahan Baku Pemberantas Hama (Bahan Aktif) | NOT_VERIFIED | Not verified | Menengah Rendah / Menengah Tinggi
-20212 | Industri Pemberantas Hama (Formulasi) | NOT_VERIFIED | Not verified | Menengah Rendah / Menengah Tinggi
+20132 | Industri Karet Buatan | TERBUKA | 100% | Tinggi
+20211 | Industri Bahan Baku Pemberantas Hama (Bahan Aktif) | TERBUKA | 100% | Menengah Rendah / Menengah Tinggi
+20212 | Industri Pemberantas Hama (Formulasi) | TERBUKA | 100% | Menengah Rendah / Menengah Tinggi
 20213 | Industri Zat Pengatur Tumbuh | NOT_VERIFIED | Not verified | Menengah Rendah
-20221 | Industri Cat | NOT_VERIFIED | Not verified | Menengah Rendah / Menengah Tinggi
-20222 | Industri Pernis | NOT_VERIFIED | Not verified | Menengah Rendah / Menengah Tinggi
-20223 | Industri Dempul | NOT_VERIFIED | Not verified | Menengah Rendah / Menengah Tinggi
+20221 | Industri Cat | TERBUKA | 100% | Menengah Rendah / Menengah Tinggi
+20222 | Industri Pernis | TERBUKA | 100% | Menengah Rendah / Menengah Tinggi
+20223 | Industri Dempul | TERBUKA | 100% | Menengah Rendah / Menengah Tinggi
 20229 | Industri Sediaan Pewarna dan Pelapis Lainnya | NOT_VERIFIED | Not verified | Menengah Rendah / Menengah Tinggi
 20231 | Industri Bahan dan Produk Pembersih | NOT_VERIFIED | Not verified | Rendah / Tinggi / Menengah Rendah
 20232 | Industri Kosmetik untuk Manusia, Cairan Lensa Kontak | NOT_VERIFIED | Not verified | Tinggi
 20233 | Industri Kosmetik untuk Hewan | NOT_VERIFIED | Not verified | Menengah Rendah
 20234 | Industri Perekat Gigi | NOT_VERIFIED | Not verified | Menengah Rendah
 20235 | Industri Parfum Sesuai Pesanan | NOT_VERIFIED | Not verified | Tinggi
-20291 | Industri Perekat/Lem | NOT_VERIFIED | Not verified | Menengah Rendah / Menengah Tinggi
+20291 | Industri Perekat/Lem | TERBUKA | 100% | Menengah Rendah / Menengah Tinggi
 20292 | Industri Bahan Peledak | NOT_VERIFIED | Not verified | Tinggi
-20293 | Industri Tinta | NOT_VERIFIED | Not verified | Menengah Rendah / Menengah Tinggi
+20293 | Industri Tinta | TERBUKA | 100% | Menengah Rendah / Menengah Tinggi
 20294 | Industri Minyak Asiri Hulu | NOT_VERIFIED | Not verified | Rendah / Menengah Rendah / Menengah Tinggi
-20295 | Industri Korek Api | NOT_VERIFIED | Not verified | Menengah Rendah / Menengah Tinggi
-20296 | Industri Minyak Asiri Rantai Tengah | NOT_VERIFIED | Not verified | Menengah Rendah / Menengah Tinggi
+20295 | Industri Korek Api | TERBUKA | 100% | Menengah Rendah / Menengah Tinggi
+20296 | Industri Minyak Asiri Rantai Tengah | TERBUKA | 100% | Menengah Rendah / Menengah Tinggi
 20297 | Industri Biofuel Cair | NOT_VERIFIED | Not verified | Tinggi / Menengah Rendah / Menengah Tinggi
 20298 | Industri Cairan Rokok Elektrik | NOT_VERIFIED | Not verified | Tinggi
-20299 | Industri Barang Kimia Lainnya YTDL | NOT_VERIFIED | Not verified | Rendah / Tinggi / Menengah Rendah / Menengah Tinggi
+20299 | Industri Barang Kimia Lainnya YTDL | TERBUKA | 100% | Rendah / Tinggi / Menengah Rendah / Menengah Tinggi
 20301 | Industri Serat Filamen dan Strip Buatan | NOT_VERIFIED | Not verified | Tinggi
 20302 | Industri Serat Stapel Buatan | NOT_VERIFIED | Not verified | Tinggi
 21011 | Industri Bahan Baku Farmasi untuk Manusia | NOT_VERIFIED | Not verified | Tinggi
 21012 | Industri Produk Farmasi untuk Manusia | NOT_VERIFIED | Not verified | Tinggi
 21013 | Industri Produk Farmasi untuk Hewan | NOT_VERIFIED | Not verified | Menengah Rendah
-21014 | Industri Bahan Baku Farmasi untuk Hewan | NOT_VERIFIED | Not verified | Menengah Tinggi
+21014 | Industri Bahan Baku Farmasi untuk Hewan | TERBUKA | 100% | Menengah Tinggi
 21015 | Industri Alat Diagnosis Medis, Perban, Kasa, dan Penunjang Kesehatan Lainnya | NOT_VERIFIED | Not verified | Tinggi
 21021 | Industri Bahan Baku Obat Bahan Alam untuk Manusia | TERBATAS | 0% | Tinggi
 21022 | Industri Produk Obat Bahan Alam untuk Manusia | TERBATAS | 0% | Tinggi
 21023 | Industri Produk Obat Bahan Alam Untuk Hewan | NOT_VERIFIED | Not verified | Menengah Rendah
 21024 | Industri Bahan Baku Obat Bahan Alam untuk Hewan | NOT_VERIFIED | Not verified | Tinggi
 22111 | Industri Ban Luar dan Ban Dalam | NOT_VERIFIED | Not verified | Menengah Tinggi
-22112 | Industri Pembentukan Kembali Ban dan Vulkanisasi Ban | NOT_VERIFIED | Not verified | Menengah Rendah / Menengah Tinggi
+22112 | Industri Pembentukan Kembali Ban dan Vulkanisasi Ban | TERBUKA | 100% | Menengah Rendah / Menengah Tinggi
 22121 | Industri Karet Asap | TERBATAS | 0% | Rendah / Tinggi
 22122 | Industri Karet Lembaran dan Crepe Rubber | NOT_VERIFIED | Not verified | Rendah / Tinggi
 22123 | Industri Karet Remah (Crumb Rubber) | NOT_VERIFIED | Not verified | Rendah / Tinggi
 22129 | Industri Karet Setengah Jadi Lainnya | NOT_VERIFIED | Not verified | Rendah / Tinggi
-22191 | Industri Barang dari Karet untuk Keperluan Rumah Tangga | NOT_VERIFIED | Not verified | Rendah / Menengah Tinggi
-22192 | Industri Barang dari Karet untuk Keperluan Industri | NOT_VERIFIED | Not verified | Rendah / Menengah Tinggi
-22193 | Industri Barang dari Karet untuk Keperluan Infrastruktur | NOT_VERIFIED | Not verified | Menengah Rendah / Menengah Tinggi
-22194 | Industri Barang dari Karet untuk Kesehatan | NOT_VERIFIED | Not verified | Tinggi
+22191 | Industri Barang dari Karet untuk Keperluan Rumah Tangga | TERBUKA | 100% | Rendah / Menengah Tinggi
+22192 | Industri Barang dari Karet untuk Keperluan Industri | TERBUKA | 100% | Rendah / Menengah Tinggi
+22193 | Industri Barang dari Karet untuk Keperluan Infrastruktur | TERBUKA | 100% | Menengah Rendah / Menengah Tinggi
+22194 | Industri Barang dari Karet untuk Kesehatan | TERBUKA | 100% | Tinggi
 22199 | Industri Barang Lainnya dari Karet YTDL | NOT_VERIFIED | Not verified | Rendah / Menengah Tinggi
 22201 | Industri Barang dari Plastik untuk Bangunan | NOT_VERIFIED | Not verified | Menengah Tinggi
-22202 | Industri Barang dari Plastik dan Bioplastik untuk Pengemasan | NOT_VERIFIED | Not verified | Rendah / Menengah Tinggi
-22203 | Industri Pipa Plastik dan Perlengkapannya | NOT_VERIFIED | Not verified | Menengah Tinggi
+22202 | Industri Barang dari Plastik dan Bioplastik untuk Pengemasan | TERBUKA | 100% | Rendah / Menengah Tinggi
+22203 | Industri Pipa Plastik dan Perlengkapannya | TERBUKA | 100% | Menengah Tinggi
 22204 | Industri Plastik Lembaran | NOT_VERIFIED | Not verified | Menengah Tinggi
-22205 | Industri Perlengkapan dan Peralatan Rumah Tangga dari Plastik (Tidak Termasuk Furnitur) | NOT_VERIFIED | Not verified | Rendah / Menengah Tinggi
-22206 | Industri Barang dan Peralatan Teknik/Industri dari Plastik | NOT_VERIFIED | Not verified | Rendah / Menengah Tinggi
-22209 | Industri Barang Lainnya dari Plastik | NOT_VERIFIED | Not verified | Rendah / Menengah Tinggi
+22205 | Industri Perlengkapan dan Peralatan Rumah Tangga dari Plastik (Tidak Termasuk Furnitur) | TERBUKA | 100% | Rendah / Menengah Tinggi
+22206 | Industri Barang dan Peralatan Teknik/Industri dari Plastik | TERBUKA | 100% | Rendah / Menengah Tinggi
+22209 | Industri Barang Lainnya dari Plastik | TERBUKA | 100% | Rendah / Menengah Tinggi
 23111 | Industri Kaca Lembaran | NOT_VERIFIED | Not verified | Menengah Tinggi
 23112 | Industri Kaca Pengaman | NOT_VERIFIED | Not verified | Menengah Tinggi
-23119 | Industri Kaca Lainnya | NOT_VERIFIED | Not verified | Menengah Tinggi
-23121 | Industri Perlengkapan dan Peralatan Rumah Tangga dari Kaca | NOT_VERIFIED | Not verified | Rendah / Menengah Tinggi
-23122 | Industri Peralatan Laboratorium dan Kesehatan dari Kaca | NOT_VERIFIED | Not verified | Rendah / Menengah Tinggi / Tinggi
-23129 | Industri Produk Lainnya dari Kaca | NOT_VERIFIED | Not verified | Rendah / Menengah Tinggi
-23911 | Industri Bata, Mortar, Semen, dan Sejenisnya yang Tahan Api | NOT_VERIFIED | Not verified | Menengah Rendah / Menengah Tinggi
-23919 | Industri Produk Refraktori (Tahan Api) Lainnya | NOT_VERIFIED | Not verified | Menengah Rendah / Menengah Tinggi
+23119 | Industri Kaca Lainnya | TERBUKA | 100% | Menengah Tinggi
+23121 | Industri Perlengkapan dan Peralatan Rumah Tangga dari Kaca | TERBUKA | 100% | Rendah / Menengah Tinggi
+23122 | Industri Peralatan Laboratorium dan Kesehatan dari Kaca | TERBUKA | 100% | Rendah / Menengah Tinggi / Tinggi
+23129 | Industri Produk Lainnya dari Kaca | TERBUKA | 100% | Rendah / Menengah Tinggi
+23911 | Industri Bata, Mortar, Semen, dan Sejenisnya yang Tahan Api | TERBUKA | 100% | Menengah Rendah / Menengah Tinggi
+23919 | Industri Produk Refraktori (Tahan Api) Lainnya | TERBUKA | 100% | Menengah Rendah / Menengah Tinggi
 23921 | Industri Batu Bata dari Tanah Liat atau Keramik | NOT_VERIFIED | Not verified | Rendah / Menengah Tinggi
-23922 | Industri Genteng dari Tanah Liat atau Keramik | NOT_VERIFIED | Not verified | Rendah / Menengah Tinggi
+23922 | Industri Genteng dari Tanah Liat atau Keramik | TERBUKA | 100% | Rendah / Menengah Tinggi
 23929 | Industri Bahan Bangunan Lainnya dari Tanah Liat atau Keramik | NOT_VERIFIED | Not verified | Rendah / Menengah Tinggi
 23931 | Industri Perlengkapan Rumah Tangga dari Porselen | NOT_VERIFIED | Not verified | Menengah Rendah / Menengah Tinggi
 23932 | Industri Perlengkapan Rumah Tangga dari Tanah Liat atau Keramik | NOT_VERIFIED | Not verified | Menengah Rendah / Menengah Tinggi
@@ -467,60 +467,60 @@
 23934 | Industri Peralatan Sanitasi dari Porselen | NOT_VERIFIED | Not verified | Rendah / Menengah Tinggi
 23935 | Industri Peralatan Sanitasi dari Tanah Liat atau Keramik | NOT_VERIFIED | Not verified | Rendah / Menengah Tinggi
 23939 | Industri Produk Bukan Bahan Bangunan Lainnya dari Tanah Liat atau Keramik dan Porselen | NOT_VERIFIED | Not verified | Menengah Rendah / Menengah Tinggi
-23941 | Industri Semen | NOT_VERIFIED | Not verified | Menengah Tinggi
+23941 | Industri Semen | TERBUKA | 100% | Menengah Tinggi
 23942 | Industri Kapur | NOT_VERIFIED | Not verified | Rendah / Menengah Tinggi
-23943 | Industri Gips | NOT_VERIFIED | Not verified | Rendah / Menengah Tinggi
+23943 | Industri Gips | TERBUKA | 100% | Rendah / Menengah Tinggi
 23951 | Industri Barang dari Semen | NOT_VERIFIED | Not verified | Rendah / Menengah Tinggi
 23952 | Industri Barang dari Kapur | NOT_VERIFIED | Not verified | Rendah / Menengah Tinggi
 23953 | Industri Barang dari Gips | NOT_VERIFIED | Not verified | Rendah / Menengah Tinggi
 23954 | Industri Barang dari Asbes | NOT_VERIFIED | Not verified | Menengah Tinggi / Rendah
 23955 | Industri Mortar, Acian, dan Beton Siap Pakai | NOT_VERIFIED | Not verified | Menengah Rendah / Menengah Tinggi / Rendah
-23961 | Industri Barang dari Batu Marmer | NOT_VERIFIED | Not verified | Menengah Rendah / Menengah Tinggi / Rendah
-23962 | Industri Barang dari Batu Granit | NOT_VERIFIED | Not verified | Menengah Rendah / Menengah Tinggi / Rendah
-23969 | Industri Barang dari Batu Lainnya | NOT_VERIFIED | Not verified | Rendah / Menengah Tinggi
+23961 | Industri Barang dari Batu Marmer | TERBUKA | 100% | Menengah Rendah / Menengah Tinggi / Rendah
+23962 | Industri Barang dari Batu Granit | TERBUKA | 100% | Menengah Rendah / Menengah Tinggi / Rendah
+23969 | Industri Barang dari Batu Lainnya | TERBUKA | 100% | Rendah / Menengah Tinggi
 23991 | Industri Produk Abrasif | NOT_VERIFIED | Not verified | Rendah / Tinggi
 23992 | Industri Batuan Aspal dan Barang dari Aspal atau Material Sejenis | NOT_VERIFIED | Not verified | Rendah / Tinggi
 23993 | Industri Produk Hasil Pemurnian Mineral Nonlogam | NOT_VERIFIED | Not verified | Rendah / Tinggi
 23999 | Industri Produk Mineral Nonlogam Lainnya YTDL | NOT_VERIFIED | Not verified | Rendah / Tinggi
 24101 | Industri Besi dan Baja Dasar | NOT_VERIFIED | Not verified | Tinggi
 24102 | Penggilingan Baja | NOT_VERIFIED | Not verified | Tinggi
-24103 | Industri Pipa dan Sambungan Pipa dari Besi dan Baja | NOT_VERIFIED | Not verified | Menengah Tinggi / Tinggi
+24103 | Industri Pipa dan Sambungan Pipa dari Besi dan Baja | TERBUKA | 100% | Menengah Tinggi / Tinggi
 24201 | Industri Logam Dasar Mulia | NOT_VERIFIED | Not verified | Tinggi
 24202 | Industri Logam Dasar Bukan Besi Lainnya | NOT_VERIFIED | Not verified | Rendah / Menengah Rendah / Tinggi / Menengah Tinggi
-24203 | Penggilingan Logam Bukan Besi | NOT_VERIFIED | Not verified | Menengah Rendah / Tinggi
-24204 | Ekstrusi Logam Bukan Besi | NOT_VERIFIED | Not verified | Rendah / Tinggi
-24205 | Industri Pipa dan Sambungan Pipa dari Logam Bukan Besi dan Baja | NOT_VERIFIED | Not verified | Rendah / Menengah Rendah / Menengah Tinggi
-24206 | Industri Bahan Bakar Nuklir | NOT_VERIFIED | Not verified | Tinggi
-24310 | Pengecoran Besi dan Baja | NOT_VERIFIED | Not verified | Rendah / Menengah Rendah / Tinggi
-24320 | Pengecoran Logam Bukan Besi dan Baja | NOT_VERIFIED | Not verified | Rendah / Menengah Rendah / Tinggi
-25111 | Industri Produk Logam Struktural Bukan Aluminium untuk Konstruksi Ringan | NOT_VERIFIED | Not verified | Rendah / Menengah Tinggi
-25112 | Industri Produk Logam Struktural Aluminium untuk Konstruksi Ringan | NOT_VERIFIED | Not verified | Rendah / Tinggi
-25113 | Industri Produk Logam Struktural Baja untuk Konstruksi Berat | NOT_VERIFIED | Not verified | Menengah Tinggi
-25119 | Industri Produk Logam Struktural Lainnya | NOT_VERIFIED | Not verified | Rendah / Tinggi
-25120 | Industri Tangki, Tandon Air, dan Wadah Sejenisnya dari Logam | NOT_VERIFIED | Not verified | Rendah / Menengah Rendah / Menengah Tinggi
+24203 | Penggilingan Logam Bukan Besi | TERBUKA | 100% | Menengah Rendah / Tinggi
+24204 | Ekstrusi Logam Bukan Besi | TERBUKA | 100% | Rendah / Tinggi
+24205 | Industri Pipa dan Sambungan Pipa dari Logam Bukan Besi dan Baja | TERBUKA | 100% | Rendah / Menengah Rendah / Menengah Tinggi
+24206 | Industri Bahan Bakar Nuklir | TERBUKA | 100% | Tinggi
+24310 | Pengecoran Besi dan Baja | TERBUKA | 100% | Rendah / Menengah Rendah / Tinggi
+24320 | Pengecoran Logam Bukan Besi dan Baja | TERBUKA | 100% | Rendah / Menengah Rendah / Tinggi
+25111 | Industri Produk Logam Struktural Bukan Aluminium untuk Konstruksi Ringan | TERBUKA | 100% | Rendah / Menengah Tinggi
+25112 | Industri Produk Logam Struktural Aluminium untuk Konstruksi Ringan | TERBUKA | 100% | Rendah / Tinggi
+25113 | Industri Produk Logam Struktural Baja untuk Konstruksi Berat | TERBUKA | 100% | Menengah Tinggi
+25119 | Industri Produk Logam Struktural Lainnya | TERBUKA | 100% | Rendah / Tinggi
+25120 | Industri Tangki, Tandon Air, dan Wadah Sejenisnya dari Logam | TERBUKA | 100% | Rendah / Menengah Rendah / Menengah Tinggi
 25130 | Industri Generator Uap Bukan Ketel Pemanas | NOT_VERIFIED | Not verified | Rendah / Menengah Rendah / Menengah Tinggi
 25200 | Industri Senjata dan Amunisi | TERBATAS | 49% | Tinggi
-25910 | Penempaan, Pengepresan, Pencetakan, dan Pembentukan Logam; Metalurgi Bubuk | NOT_VERIFIED | Not verified | Rendah / Menengah Rendah / Menengah Tinggi
-25920 | Pengerjaan dan Pelapisan Logam | NOT_VERIFIED | Not verified | Menengah Rendah / Menengah Tinggi / Tinggi
+25910 | Penempaan, Pengepresan, Pencetakan, dan Pembentukan Logam; Metalurgi Bubuk | TERBUKA | 100% | Rendah / Menengah Rendah / Menengah Tinggi
+25920 | Pengerjaan dan Pelapisan Logam | TERBUKA | 100% | Menengah Rendah / Menengah Tinggi / Tinggi
 25931 | Industri Perkakas Tangan | NOT_VERIFIED | Not verified | Rendah / Menengah Rendah
 25932 | Industri Alat Potong | NOT_VERIFIED | Not verified | Rendah / Tinggi
 25933 | Industri Alat Makan dari Logam | NOT_VERIFIED | Not verified | Rendah / Tinggi
 25934 | Industri Peralatan Umum | NOT_VERIFIED | Not verified | Rendah / Tinggi
-25940 | Industri Ember, Kaleng, Drum dan Wadah Sejenisnya dari Logam | NOT_VERIFIED | Not verified | Rendah / Tinggi
+25940 | Industri Ember, Kaleng, Drum dan Wadah Sejenisnya dari Logam | TERBUKA | 100% | Rendah / Tinggi
 25951 | Industri Barang dari Kawat Logam Bukan Kabel | NOT_VERIFIED | Not verified | Rendah / Tinggi
 25952 | Industri Paku, Mur, dan Baut Logam | NOT_VERIFIED | Not verified | Rendah / Tinggi / Menengah Rendah / Menengah Tinggi
-25991 | Industri Brankas, Filling Kantor, dan Sejenisnya | NOT_VERIFIED | Not verified | Rendah / Menengah Tinggi
+25991 | Industri Brankas, Filling Kantor, dan Sejenisnya | TERBUKA | 100% | Rendah / Menengah Tinggi
 25992 | Industri Peralatan Dapur dan Peralatan Meja dari Logam | NOT_VERIFIED | Not verified | Rendah / Tinggi
-25993 | Industri Produk Rumah Tangga dari Logam Bukan Peralatan Dapur dan Peralatan Meja | NOT_VERIFIED | Not verified | Rendah / Menengah Tinggi
-25994 | Industri Profil Logam | NOT_VERIFIED | Not verified | Menengah Rendah / Menengah Tinggi
-25995 | Industri Lampu dari Logam | NOT_VERIFIED | Not verified | Menengah Tinggi
+25993 | Industri Produk Rumah Tangga dari Logam Bukan Peralatan Dapur dan Peralatan Meja | TERBUKA | 100% | Rendah / Menengah Tinggi
+25994 | Industri Profil Logam | TERBUKA | 100% | Menengah Rendah / Menengah Tinggi
+25995 | Industri Lampu dari Logam | TERBUKA | 100% | Menengah Tinggi
 25999 | Industri Produk Logam Lainnya YTDL | NOT_VERIFIED | Not verified | Menengah Rendah / Menengah Tinggi
 26110 | Industri Sel Surya, Panel Surya, dan Inverter Fotovoltaik | NOT_VERIFIED | Not verified | Menengah Tinggi / Menengah Rendah
-26191 | Industri Tabung Elektron dan Konektor Elektronik | NOT_VERIFIED | Not verified | Menengah Tinggi
+26191 | Industri Tabung Elektron dan Konektor Elektronik | TERBUKA | 100% | Menengah Tinggi
 26199 | Industri Komponen dan Papan Elektronik Lainnya YTDL | NOT_VERIFIED | Not verified | Menengah Tinggi
 26210 | Industri Komputer dan Perakitan Komputer | NOT_VERIFIED | Not verified | Menengah Rendah / Menengah Tinggi
 26220 | Industri Perlengkapan Komputer | NOT_VERIFIED | Not verified | Menengah Rendah
-26310 | Industri Peralatan Telepon dan Faksimili | NOT_VERIFIED | Not verified | Menengah Tinggi
+26310 | Industri Peralatan Telepon dan Faksimili | TERBUKA | 100% | Menengah Tinggi
 26320 | Industri Peralatan Komunikasi Tanpa Kabel (Wireless) | NOT_VERIFIED | Not verified | Menengah Tinggi / Menengah Rendah
 26391 | Industri Kartu Cerdas (Smart Card) | NOT_VERIFIED | Not verified | Rendah
 26399 | Industri Peralatan Komunikasi Lainnya | NOT_VERIFIED | Not verified | Menengah Rendah / Menengah Tinggi
@@ -532,12 +532,12 @@
 26513 | Industri Alat Ukur dan Alat Uji Elektronik | NOT_VERIFIED | Not verified | Menengah Rendah / Menengah Tinggi
 26519 | Industri Alat Ukur, Alat Uji, dan Peralatan Navigasi dan Kontrol Lainnya | NOT_VERIFIED | Not verified | Menengah Rendah / Menengah Tinggi
 26520 | Industri Alat Ukur Waktu | NOT_VERIFIED | Not verified | Menengah Rendah
-26601 | Industri Peralatan Iradiasi, Perlengkapan, dan Sejenisnya | NOT_VERIFIED | Not verified | Tinggi
-26602 | Industri Peralatan Elektromedik dan Elektroterapi | NOT_VERIFIED | Not verified | Menengah Tinggi / Tinggi
+26601 | Industri Peralatan Iradiasi, Perlengkapan, dan Sejenisnya | TERBUKA | 100% | Tinggi
+26602 | Industri Peralatan Elektromedik dan Elektroterapi | TERBUKA | 100% | Menengah Tinggi / Tinggi
 26701 | Industri Peralatan Fotografi | NOT_VERIFIED | Not verified | Menengah Tinggi
-26702 | Industri Peralatan Sinematografi | NOT_VERIFIED | Not verified | Menengah Tinggi
-26703 | Industri Lensa Bukan Kacamata | NOT_VERIFIED | Not verified | Menengah Tinggi
-26709 | Industri Peralatan Fotografi dan Instrumen Optik Bukan Kacamata Lainnya | NOT_VERIFIED | Not verified | Menengah Tinggi
+26702 | Industri Peralatan Sinematografi | TERBUKA | 100% | Menengah Tinggi
+26703 | Industri Lensa Bukan Kacamata | TERBUKA | 100% | Menengah Tinggi
+26709 | Industri Peralatan Fotografi dan Instrumen Optik Bukan Kacamata Lainnya | TERBUKA | 100% | Menengah Tinggi
 26800 | Industri Media Magnetik dan Media Optik | NOT_VERIFIED | Not verified | Rendah
 27111 | Industri Motor Listrik | NOT_VERIFIED | Not verified | Menengah Rendah
 27112 | Industri Generator Pembangkit Listrik | NOT_VERIFIED | Not verified | Menengah Rendah
@@ -545,17 +545,17 @@
 27120 | Industri Peralatan Pengontrol dan Pendistribusian Listrik | NOT_VERIFIED | Not verified | Menengah Rendah
 27201 | Industri Batu Baterai | NOT_VERIFIED | Not verified | Menengah Tinggi / Menengah Rendah
 27202 | Industri Akumulator Listrik | NOT_VERIFIED | Not verified | Menengah Rendah
-27203 | Industri Baterai Kendaraan Listrik | NOT_VERIFIED | Not verified | Menengah Tinggi
+27203 | Industri Baterai Kendaraan Listrik | TERBUKA | 100% | Menengah Tinggi
 27310 | Industri Kabel Serat Optik | NOT_VERIFIED | Not verified | Menengah Tinggi
 27320 | Industri Kabel dan Kawat Listrik dan Elektronik Lainnya | NOT_VERIFIED | Not verified | Tinggi
-27330 | Industri Perlengkapan Kabel | NOT_VERIFIED | Not verified | Menengah Rendah / Menengah Tinggi
+27330 | Industri Perlengkapan Kabel | TERBUKA | 100% | Menengah Rendah / Menengah Tinggi
 27401 | Industri Bola Lampu Pijar, Lampu Sorot, dan Lampu Ultraviolet | NOT_VERIFIED | Not verified | Menengah Rendah
 27402 | Industri Lampu Gas dan Discharge | NOT_VERIFIED | Not verified | Menengah Rendah
 27403 | Industri Peralatan Penerangan untuk Kendaraan | NOT_VERIFIED | Not verified | Menengah Rendah / Menengah Tinggi
 27404 | Industri Lampu LED | NOT_VERIFIED | Not verified | Menengah Rendah / Menengah Tinggi
-27409 | Industri Peralatan Penerangan Lainnya | NOT_VERIFIED | Not verified | Menengah Rendah / Menengah Tinggi
+27409 | Industri Peralatan Penerangan Lainnya | TERBUKA | 100% | Menengah Rendah / Menengah Tinggi
 27510 | Industri Peralatan Listrik Rumah Tangga | NOT_VERIFIED | Not verified | Menengah Tinggi
-27520 | Industri Peralatan Elektrotermal Rumah Tangga | NOT_VERIFIED | Not verified | Menengah Tinggi
+27520 | Industri Peralatan Elektrotermal Rumah Tangga | TERBUKA | 100% | Menengah Tinggi
 27530 | Industri Peralatan Rumah Tangga Bukan Listrik | NOT_VERIFIED | Not verified | Rendah / Tinggi
 27900 | Industri Peralatan Listrik Lainnya | NOT_VERIFIED | Not verified | Menengah Rendah
 28111 | Industri Mesin Uap, Turbin, dan Kincir | NOT_VERIFIED | Not verified | Menengah Rendah
@@ -564,13 +564,13 @@
 28120 | Industri Peralatan Tenaga Zat Cair dan Gas | NOT_VERIFIED | Not verified | Rendah / Menengah Rendah
 28130 | Industri Pompa Lainnya, Kompresor, Keran, dan Klep/Katup | NOT_VERIFIED | Not verified | Menengah Rendah / Menengah Tinggi
 28140 | Industri Bearing, Roda Gigi, dan Elemen Penggerak Mesin | NOT_VERIFIED | Not verified | Rendah / Menengah Rendah
-28151 | Industri Oven, Perapian dan Tungku Pembakar Sejenis yang Tidak Menggunakan Arus Listrik | NOT_VERIFIED | Not verified | Rendah / Menengah Rendah / Menengah Tinggi
-28152 | Industri Oven, Perapian dan Tungku Pembakar Sejenis yang Menggunakan Arus Listrik | NOT_VERIFIED | Not verified | Menengah Rendah / Menengah Tinggi
+28151 | Industri Oven, Perapian dan Tungku Pembakar Sejenis yang Tidak Menggunakan Arus Listrik | TERBUKA | 100% | Rendah / Menengah Rendah / Menengah Tinggi
+28152 | Industri Oven, Perapian dan Tungku Pembakar Sejenis yang Menggunakan Arus Listrik | TERBUKA | 100% | Menengah Rendah / Menengah Tinggi
 28160 | Industri Alat Pengangkat dan Pemindah | NOT_VERIFIED | Not verified | Menengah Rendah / Menengah Tinggi
 28171 | Industri Mesin Kantor dan Akuntansi Manual | NOT_VERIFIED | Not verified | Rendah / Menengah Rendah
 28172 | Industri Mesin Kantor dan Akuntansi Elektrik | NOT_VERIFIED | Not verified | Menengah Tinggi
 28173 | Industri Mesin Kantor dan Akuntansi Elektronik | NOT_VERIFIED | Not verified | Menengah Tinggi
-28179 | Industri Peralatan Kantor | NOT_VERIFIED | Not verified | Menengah Rendah / Menengah Tinggi
+28179 | Industri Peralatan Kantor | TERBUKA | 100% | Menengah Rendah / Menengah Tinggi
 28180 | Industri Perkakas Tangan yang Digerakkan Tenaga | NOT_VERIFIED | Not verified | Rendah / Menengah Rendah
 28191 | Industri Mesin untuk Pembungkus, Pembotolan, dan Pengalengan | NOT_VERIFIED | Not verified | Menengah Rendah
 28192 | Industri Mesin Timbangan | NOT_VERIFIED | Not verified | Rendah / Menengah Rendah
@@ -578,7 +578,7 @@
 28199 | Industri Mesin untuk Keperluan Umum Lainnya YTDL | NOT_VERIFIED | Not verified | Rendah / Menengah Rendah / Menengah Tinggi
 28210 | Industri Mesin Pertanian dan Kehutanan | NOT_VERIFIED | Not verified | Rendah / Menengah Rendah
 28220 | Industri Mesin dan Perkakas Mesin Untuk Pengerjaan Logam dan Bahan Lainnya | NOT_VERIFIED | Not verified | Rendah / Menengah Rendah
-28230 | Industri Mesin Metalurgi | NOT_VERIFIED | Not verified | Rendah / Menengah Rendah / Menengah Tinggi
+28230 | Industri Mesin Metalurgi | TERBUKA | 100% | Rendah / Menengah Rendah / Menengah Tinggi
 28240 | Industri Mesin Penambangan, Penggalian dan Konstruksi | NOT_VERIFIED | Not verified | Menengah Rendah / Menengah Tinggi
 28250 | Industri Mesin Pengolahan Makanan, Minuman dan Tembakau | NOT_VERIFIED | Not verified | Rendah / Menengah Rendah
 28261 | Industri Mesin Jahit, Mesin Cuci, dan Mesin Pengering untuk Keperluan Niaga | NOT_VERIFIED | Not verified | Rendah / Menengah Rendah
@@ -591,22 +591,22 @@
 29200 | Industri Karoseri Kendaraan Bermotor Roda Empat Atau Lebih; Industri Trailer dan Semitrailer | NOT_VERIFIED | Not verified | Menengah Rendah / Menengah Tinggi
 29300 | Industri Suku Cadang dan Aksesori Kendaraan Bermotor Roda Empat atau Lebih | NOT_VERIFIED | Not verified | Menengah Rendah / Menengah Tinggi
 30111 | Industri Kendaraan Air dan Bawah Air Berawak | NOT_VERIFIED | Not verified | Menengah Rendah / Menengah Tinggi
-30112 | Industri Bangunan Lepas Pantai Dan Bangunan Terapung | NOT_VERIFIED | Not verified | Menengah Rendah / Menengah Tinggi
+30112 | Industri Bangunan Lepas Pantai Dan Bangunan Terapung | TERBUKA | 100% | Menengah Rendah / Menengah Tinggi
 30113 | Industri Kendaraan Air dan Bawah Air Tanpa Awak | NOT_VERIFIED | Not verified | Menengah Rendah / Menengah Tinggi
-30120 | Industri Kapal dan Perahu Untuk Tujuan Wisata atau Rekreasi dan Olahraga | NOT_VERIFIED | Not verified | Menengah Tinggi / Menengah Rendah
-30200 | Industri Lokomotif dan Gerbong Kereta | NOT_VERIFIED | Not verified | Menengah Rendah / Menengah Tinggi
+30120 | Industri Kapal dan Perahu Untuk Tujuan Wisata atau Rekreasi dan Olahraga | TERBUKA | 100% | Menengah Tinggi / Menengah Rendah
+30200 | Industri Lokomotif dan Gerbong Kereta | TERBUKA | 100% | Menengah Rendah / Menengah Tinggi
 30301 | Industri Pesawat Udara Berawak dan Mesin Terkait | NOT_VERIFIED | Not verified | Menengah Tinggi
 30302 | Industri Pesawat Udara Tanpa Awak dan Mesin Terkait | NOT_VERIFIED | Not verified | Menengah Tinggi
-30303 | Industri Wahana Antariksa dan Mesin Terkait | NOT_VERIFIED | Not verified | Menengah Tinggi
+30303 | Industri Wahana Antariksa dan Mesin Terkait | TERBUKA | 100% | Menengah Tinggi
 30400 | Industri Kendaraan Tempur Militer | TERBATAS | 49% | Tinggi
 30911 | Industri Sepeda Motor Roda Dua dan Tiga | NOT_VERIFIED | Not verified | Menengah Tinggi
 30912 | Industri Komponen dan Perlengkapan Sepeda Motor Roda Dua dan Tiga | NOT_VERIFIED | Not verified | Menengah Rendah / Menengah Tinggi
 30921 | Industri Sepeda dan Kursi Roda Termasuk Becak | NOT_VERIFIED | Not verified | Menengah Rendah / Menengah Tinggi
 30922 | Industri Perlengkapan Sepeda dan Kursi Roda Termasuk Becak | NOT_VERIFIED | Not verified | Rendah / Menengah Rendah
-30990 | Industri Alat Angkutan Lainnya YTDL | NOT_VERIFIED | Not verified | Rendah / Menengah Tinggi
+30990 | Industri Alat Angkutan Lainnya YTDL | TERBUKA | 100% | Rendah / Menengah Tinggi
 31011 | Industri Furnitur Dari Kayu | NOT_VERIFIED | Not verified | Rendah / Menengah Rendah
 31012 | Industri Furnitur dari Rotan dan Bambu | NOT_VERIFIED | Not verified | Rendah / Menengah Rendah
-31021 | Industri Furnitur dari Plastik | NOT_VERIFIED | Not verified | Rendah / Menengah Tinggi
+31021 | Industri Furnitur dari Plastik | TERBUKA | 100% | Rendah / Menengah Tinggi
 31022 | Industri Furnitur dari Logam | NOT_VERIFIED | Not verified | Rendah / Menengah Tinggi
 31029 | Industri Furnitur dari Bahan Lainnya YTDL | NOT_VERIFIED | Not verified | Rendah / Menengah Rendah
 32111 | Industri Permata | NOT_VERIFIED | Not verified | Menengah Rendah / Menengah Tinggi
@@ -621,13 +621,13 @@
 32401 | Industri Alat Permainan | NOT_VERIFIED | Not verified | Menengah Rendah
 32402 | Industri Mainan Termasuk Drone Rekreasi | NOT_VERIFIED | Not verified | Menengah Rendah
 32501 | Industri Furnitur untuk Operasi, Perawatan Kedokteran, dan Kedokteran Gigi | NOT_VERIFIED | Not verified | Menengah Tinggi
-32502 | Industri Peralatan Kedokteran dan Kedokteran Gigi, serta Perlengkapan Ortopedi dan Prostetik | NOT_VERIFIED | Not verified | Rendah / Menengah Rendah / Menengah Tinggi
+32502 | Industri Peralatan Kedokteran dan Kedokteran Gigi, serta Perlengkapan Ortopedi dan Prostetik | TERBUKA | 100% | Rendah / Menengah Rendah / Menengah Tinggi
 32503 | Industri Kacamata | NOT_VERIFIED | Not verified | Menengah Rendah
-32509 | Industri Peralatan Kedokteran dan Kedokteran Gigi, serta Perlengkapan Lainnya | NOT_VERIFIED | Not verified | Tinggi
+32509 | Industri Peralatan Kedokteran dan Kedokteran Gigi, serta Perlengkapan Lainnya | TERBUKA | 100% | Tinggi
 32901 | Industri Alat Tulis dan Gambar Termasuk Perlengkapannya | NOT_VERIFIED | Not verified | Menengah Rendah
 32902 | Industri Pita Mesin Tulis atau Gambar | NOT_VERIFIED | Not verified | Menengah Rendah
 32903 | Industri Kerajinan YTDL | NOT_VERIFIED | Not verified | Rendah
-32904 | Industri Peralatan untuk Pelindung Keselamatan | NOT_VERIFIED | Not verified | Menengah Rendah / Menengah Tinggi
+32904 | Industri Peralatan untuk Pelindung Keselamatan | TERBUKA | 100% | Menengah Rendah / Menengah Tinggi
 32905 | Industri Serat Sabut Kelapa | NOT_VERIFIED | Not verified | Rendah / Menengah Rendah
 32906 | Industri Rambut, Janggut, dan Bulu Mata Palsu | NOT_VERIFIED | Not verified | Rendah
 32907 | Industri Kancing dan Ritsleting | NOT_VERIFIED | Not verified | Rendah
@@ -636,8 +636,8 @@
 33111 | Reparasi dan Pemeliharaan Produk Logam Struktural, Tangki, Tandon Air, dan Generator Uap | NOT_VERIFIED | Not verified | Rendah / Menengah Rendah
 33112 | Reparasi dan Pemeliharaan Produk Senjata dan Amunisi | NOT_VERIFIED | Not verified | Tinggi
 33119 | Reparasi dan Pemeliharaan Produk Logam Pabrikasi Lainnya | NOT_VERIFIED | Not verified | Rendah
-33121 | Reparasi dan Pemeliharaan Mesin untuk Keperluan Umum | NOT_VERIFIED | Not verified | Menengah Rendah / Menengah Tinggi
-33122 | Reparasi dan Pemeliharaan Mesin untuk Keperluan Khusus | NOT_VERIFIED | Not verified | Menengah Rendah / Menengah Tinggi
+33121 | Reparasi dan Pemeliharaan Mesin untuk Keperluan Umum | TERBUKA | 100% | Menengah Rendah / Menengah Tinggi
+33122 | Reparasi dan Pemeliharaan Mesin untuk Keperluan Khusus | TERBUKA | 100% | Menengah Rendah / Menengah Tinggi
 33131 | Reparasi dan Pemeliharaan Alat Ukur, Alat Uji, serta Peralatan Navigasi dan Pengontrol | NOT_VERIFIED | Not verified | Rendah / Menengah Rendah
 33132 | Reparasi dan Pemeliharaan Peralatan Iradiasi, Elektromedik, dan Elektroterapi | NOT_VERIFIED | Not verified | Rendah / Menengah Rendah
 33133 | Reparasi dan Pemeliharaan Peralatan Fotografi dan Optik | NOT_VERIFIED | Not verified | Menengah Rendah
@@ -645,13 +645,13 @@
 33142 | Reparasi dan Pemeliharaan Baterai dan Akumulator Listrik | NOT_VERIFIED | Not verified | Rendah / Menengah Rendah
 33149 | Reparasi dan Pemeliharaan Peralatan Listrik Lainnya | NOT_VERIFIED | Not verified | Menengah Rendah
 33151 | Reparasi dan Pemeliharaan Kapal, Perahu, dan Bangunan Terapung | NOT_VERIFIED | Not verified | Menengah Rendah / Menengah Tinggi
-33152 | Reparasi dan Pemeliharaan Lokomotif dan Gerbong Kereta | NOT_VERIFIED | Not verified | Menengah Tinggi
-33153 | Reparasi dan Pemeliharaan Pesawat Udara | NOT_VERIFIED | Not verified | Menengah Tinggi
+33152 | Reparasi dan Pemeliharaan Lokomotif dan Gerbong Kereta | TERBUKA | 100% | Menengah Tinggi
+33153 | Reparasi dan Pemeliharaan Pesawat Udara | TERBUKA | 100% | Menengah Tinggi
 33159 | Reparasi dan Pemeliharaan Alat Angkutan Lainnya, Bukan Kendaraan Bermotor | NOT_VERIFIED | Not verified | Rendah / Menengah Rendah / Menengah Tinggi
 33190 | Reparasi dan Pemeliharaan Peralatan Lainnya | NOT_VERIFIED | Not verified | Rendah
 33201 | Instalasi/Pemasangan dan Perangkaian/Integrasi Mesin, Peralatan, dan Sistem Industri | NOT_VERIFIED | Not verified | Rendah / Menengah Rendah
 33202 | Pembongkaran Mesin, Peralatan, dan Sistem Industri | NOT_VERIFIED | Not verified | Rendah / Menengah Rendah
-33203 | Pemasangan Perlengkapan Meteorologi, Klimatologi, dan Geofisika | NOT_VERIFIED | Not verified | Menengah Tinggi
+33203 | Pemasangan Perlengkapan Meteorologi, Klimatologi, dan Geofisika | TERBUKA | 100% | Menengah Tinggi
 35111 | Pembangkitan Tenaga Listrik dari Sumber Energi Tidak Terbarukan yang Menghasilkan Emisi | NOT_VERIFIED | Not verified | Tinggi
 35112 | Pembangkitan Tenaga Listrik dari Sumber Energi Tidak Terbarukan yang Tidak Menghasilkan Emisi | NOT_VERIFIED | Not verified | Tinggi
 35120 | Pembangkitan Tenaga Listrik dari Sumber Energi Terbarukan | NOT_VERIFIED | Not verified | Tinggi
@@ -671,7 +671,7 @@
 36001 | Pengolahan dan Penyediaan Air Minum | NOT_VERIFIED | Not verified | Rendah / Menengah Tinggi
 36002 | Penampungan dan Penyediaan Air Baku | NOT_VERIFIED | Not verified | Rendah / Tinggi / Menengah Rendah
 36003 | Aktivitas Penunjang Penyediaan Air | NOT_VERIFIED | Not verified | Not classified
-37001 | Pengumpulan Air Limbah | NOT_VERIFIED | Not verified | Menengah Tinggi
+37001 | Pengumpulan Air Limbah | TERBUKA | 100% | Menengah Tinggi
 37002 | Pengolahan dan Pembuangan Air Limbah | NOT_VERIFIED | Not verified | Menengah Tinggi
 38110 | Pengumpulan Limbah atau Sampah Tidak Berbahaya | NOT_VERIFIED | Not verified | Menengah Rendah
 38121 | Pengumpulan Limbah Berbahaya Selain Limbah Radiokatif | NOT_VERIFIED | Not verified | Menengah Rendah / Tinggi
@@ -681,7 +681,7 @@
 38219 | Pengolahan dan Pembuangan Limbah atau Sampah Tidak Berbahaya Lainnya | NOT_VERIFIED | Not verified | Menengah Tinggi
 38221 | Pengolahan dan Pembuangan Limbah atau Sampah Berbahaya Selain Limbah Radioaktif | NOT_VERIFIED | Not verified | Tinggi
 38222 | Pengolahan dan Pembuangan Limbah Radioaktif | NOT_VERIFIED | Not verified | Not classified
-38301 | Pemulihan Material Barang Logam | NOT_VERIFIED | Not verified | Menengah Rendah / Tinggi
+38301 | Pemulihan Material Barang Logam | TERBUKA | 100% | Menengah Rendah / Tinggi
 38302 | Pemulihan Material Barang Plastik | NOT_VERIFIED | Not verified | Rendah / Menengah Tinggi
 38309 | Pemulihan Material Lainnya | NOT_VERIFIED | Not verified | Rendah / Menengah Tinggi
 39001 | Aktivitas Penangkapan Karbon | NOT_VERIFIED | Not verified | Not classified
@@ -699,8 +699,8 @@
 41020 | Konstruksi Prapabrikasi Bangunan Gedung | TERBATAS | 0% | Menengah Tinggi
 42101 | Konstruksi Jalan pada Permukaan Tanah | NOT_VERIFIED | Not verified | Menengah Tinggi
 42102 | Konstruksi Bangunan Sipil Jembatan, Jalan Layang, Fly Over, dan Underpass | NOT_VERIFIED | Not verified | Menengah Tinggi
-42103 | Konstruksi Jalan Rel | NOT_VERIFIED | Not verified | Menengah Tinggi
-42104 | Konstruksi Terowongan | NOT_VERIFIED | Not verified | Menengah Tinggi
+42103 | Konstruksi Jalan Rel | TERBUKA | 100% | Menengah Tinggi
+42104 | Konstruksi Terowongan | TERBUKA | 100% | Menengah Tinggi
 42201 | Konstruksi Jaringan Irigasi dan Drainase | NOT_VERIFIED | Not verified | Menengah Tinggi
 42202 | Konstruksi Bangunan Sipil Pengolahan Air Bersih | NOT_VERIFIED | Not verified | Menengah Tinggi
 42203 | Konstruksi Bangunan Sipil Sistem Pengolahan Limbah | NOT_VERIFIED | Not verified | Menengah Tinggi
@@ -712,24 +712,24 @@
 42911 | Konstruksi Bangunan Prasarana Sumber Daya Air | NOT_VERIFIED | Not verified | Menengah Tinggi
 42912 | Konstruksi Bangunan Pelabuhan Bukan Perikanan | NOT_VERIFIED | Not verified | Menengah Tinggi
 42913 | Konstruksi Bangunan Pelabuhan Perikanan | NOT_VERIFIED | Not verified | Menengah Tinggi
-42914 | Konstruksi Reservoir Pembangkit Listrik Tenaga Air | NOT_VERIFIED | Not verified | Menengah Tinggi
-42915 | Konstruksi Bangunan Sipil Pelindung Pantai | NOT_VERIFIED | Not verified | Menengah Tinggi
+42914 | Konstruksi Reservoir Pembangkit Listrik Tenaga Air | TERBUKA | 100% | Menengah Tinggi
+42915 | Konstruksi Bangunan Sipil Pelindung Pantai | TERBUKA | 100% | Menengah Tinggi
 42919 | Konstruksi Bangunan Sipil Prasarana Perairan dan Sejenis Lainnya | NOT_VERIFIED | Not verified | Menengah Tinggi
 42991 | Konstruksi Bangunan Sipil Minyak dan Gas Bumi | NOT_VERIFIED | Not verified | Menengah Tinggi
-42992 | Konstruksi Bangunan Sipil Pertambangan | NOT_VERIFIED | Not verified | Menengah Tinggi
-42993 | Konstruksi Bangunan Sipil Panas Bumi | NOT_VERIFIED | Not verified | Menengah Tinggi
-42994 | Konstruksi Bangunan Sipil Fasilitas Olahraga | NOT_VERIFIED | Not verified | Menengah Tinggi
-42995 | Konstruksi Bangunan Sipil Fasilitas Pengolahan | NOT_VERIFIED | Not verified | Menengah Tinggi
-42996 | Konstruksi Bangunan Sipil Fasilitas Militer dan Bandar Antariksa | NOT_VERIFIED | Not verified | Menengah Tinggi
-42997 | Konstruksi Bangunan Sipil Fasilitas Sumber Radiasi Pengion | NOT_VERIFIED | Not verified | Menengah Tinggi
-42998 | Konstruksi Bangunan Sipil Reaktor Nuklir | NOT_VERIFIED | Not verified | Tinggi
+42992 | Konstruksi Bangunan Sipil Pertambangan | TERBUKA | 100% | Menengah Tinggi
+42993 | Konstruksi Bangunan Sipil Panas Bumi | TERBUKA | 100% | Menengah Tinggi
+42994 | Konstruksi Bangunan Sipil Fasilitas Olahraga | TERBUKA | 100% | Menengah Tinggi
+42995 | Konstruksi Bangunan Sipil Fasilitas Pengolahan | TERBUKA | 100% | Menengah Tinggi
+42996 | Konstruksi Bangunan Sipil Fasilitas Militer dan Bandar Antariksa | TERBUKA | 100% | Menengah Tinggi
+42997 | Konstruksi Bangunan Sipil Fasilitas Sumber Radiasi Pengion | TERBUKA | 100% | Menengah Tinggi
+42998 | Konstruksi Bangunan Sipil Reaktor Nuklir | TERBUKA | 100% | Tinggi
 42999 | Konstruksi Bangunan Sipil Lainnya YTDL | NOT_VERIFIED | Not verified | Not classified
 43110 | Pembongkaran | NOT_VERIFIED | Not verified | Menengah Tinggi / Menengah Rendah
 43120 | Penyiapan Lahan | NOT_VERIFIED | Not verified | Menengah Tinggi
 43211 | Pemasangan Jaringan Listrik | NOT_VERIFIED | Not verified | Tinggi
 43212 | Pemasangan Jaringan Telekomunikasi | NOT_VERIFIED | Not verified | Menengah Tinggi
 43213 | Pemasangan Sistem Elektronika | NOT_VERIFIED | Not verified | Menengah Tinggi
-43214 | Pemasangan Sistem Navigasi Laut, Sungai, dan Udara | NOT_VERIFIED | Not verified | Menengah Tinggi
+43214 | Pemasangan Sistem Navigasi Laut, Sungai, dan Udara | TERBUKA | 100% | Menengah Tinggi
 43215 | Pemasangan Sistem Persinyalan dan Telekomunikasi Kereta Api | NOT_VERIFIED | Not verified | Menengah Tinggi
 43216 | Pemasangan Perlengkapan Jalan Berbasis Listrik | NOT_VERIFIED | Not verified | Menengah Tinggi
 43221 | Pemasangan Saluran Air (Plumbing) | NOT_VERIFIED | Not verified | Menengah Tinggi
@@ -768,7 +768,7 @@
 46321 | Perdagangan Besar Daging Sapi dan Daging Sapi Olahan | NOT_VERIFIED | Not verified | Rendah
 46322 | Perdagangan Besar Daging Ayam dan Daging Ayam Olahan | NOT_VERIFIED | Not verified | Rendah
 46323 | Perdagangan Besar Daging dan Daging Olahan Lainnya | NOT_VERIFIED | Not verified | Rendah
-46324 | Perdagangan Besar Hasil Perikanan dan Olahan Terkait | NOT_VERIFIED | Not verified | Menengah Tinggi
+46324 | Perdagangan Besar Hasil Perikanan dan Olahan Terkait | TERBUKA | 100% | Menengah Tinggi
 46325 | Perdagangan Besar Telur dan Hasil Olahan Telur | NOT_VERIFIED | Not verified | Rendah
 46326 | Perdagangan Besar Susu dan Produk Susu | NOT_VERIFIED | Not verified | Rendah
 46327 | Perdagangan Besar Minyak dan Lemak Hewani | NOT_VERIFIED | Not verified | Rendah
@@ -786,8 +786,8 @@
 46415 | Perdagangan Besar Perlengkapan Jahit | NOT_VERIFIED | Not verified | Rendah
 46420 | Perdagangan Besar Furnitur, Karpet, Perlengkapan Pencahayaan untuk Rumah Tangga, Perkantoran, dan Pertokoan | NOT_VERIFIED | Not verified | Rendah
 46430 | Perdagangan Besar Alat Fotografi dan Barang Optik | NOT_VERIFIED | Not verified | Rendah
-46441 | Perdagangan Besar Sediaan Farmasi untuk Manusia | NOT_VERIFIED | Not verified | Tinggi / Menengah Tinggi
-46442 | Perdagangan Besar Sediaan Farmasi untuk Hewan | NOT_VERIFIED | Not verified | Tinggi / Menengah Tinggi
+46441 | Perdagangan Besar Sediaan Farmasi untuk Manusia | TERBUKA | 100% | Tinggi / Menengah Tinggi
+46442 | Perdagangan Besar Sediaan Farmasi untuk Hewan | TERBUKA | 100% | Tinggi / Menengah Tinggi
 46451 | Perdagangan Besar Alat Tulis dan Gambar | NOT_VERIFIED | Not verified | Rendah
 46452 | Perdagangan Besar Barang Percetakan dan Penerbitan dalam Berbagai Bentuk | NOT_VERIFIED | Not verified | Rendah
 46491 | Perdagangan Besar Peralatan Masak, Peralatan Dapur, dan Elektronik Rumah Tangga | NOT_VERIFIED | Not verified | Rendah
@@ -815,7 +815,7 @@
 46632 | Perdagangan Besar Sepeda Motor Bekas | NOT_VERIFIED | Not verified | Rendah
 46633 | Perdagangan Besar Suku Cadang Sepeda Motor dan Aksesorinya | NOT_VERIFIED | Not verified | Rendah
 46710 | Perdagangan Besar Bahan Bakar Padat, Cair, dan Gas beserta Produk Terkait | NOT_VERIFIED | Not verified | Rendah / Tinggi
-46721 | Perdagangan Besar Bijih dan Konsentrat Logam | NOT_VERIFIED | Not verified | Tinggi
+46721 | Perdagangan Besar Bijih dan Konsentrat Logam | TERBUKA | 100% | Tinggi
 46722 | Perdagangan Besar Produk Logam Setengah Jadi | NOT_VERIFIED | Not verified | Rendah
 46731 | Perdagangan Besar Bahan Konstruksi dari Logam | NOT_VERIFIED | Not verified | Rendah
 46732 | Perdagangan Besar Kaca Lembaran | NOT_VERIFIED | Not verified | Rendah
@@ -826,14 +826,14 @@
 46737 | Perdagangan Besar Cat | NOT_VERIFIED | Not verified | Rendah
 46738 | Perdagangan Besar Berbagai Macam Material Bangunan | NOT_VERIFIED | Not verified | Rendah
 46739 | Perdagangan Besar Bahan Konstruksi, Perkakas, Perlengkapan Perpipaan, dan Peralatan Pemanas Lainnya | NOT_VERIFIED | Not verified | Rendah
-46741 | Perdagangan Besar Mineral Bukan Logam | NOT_VERIFIED | Not verified | Tinggi
-46742 | Perdagangan Besar Mineral Radioaktif | NOT_VERIFIED | Not verified | Tinggi
-46743 | Perdagangan Besar Zat Radioaktif dan Pembangkit Radiasi Pengion | NOT_VERIFIED | Not verified | Tinggi
+46741 | Perdagangan Besar Mineral Bukan Logam | TERBUKA | 100% | Tinggi
+46742 | Perdagangan Besar Mineral Radioaktif | TERBUKA | 100% | Tinggi
+46743 | Perdagangan Besar Zat Radioaktif dan Pembangkit Radiasi Pengion | TERBUKA | 100% | Tinggi
 46751 | Perdagangan Besar Bahan dan Barang Kimia | NOT_VERIFIED | Not verified | Rendah
 46752 | Perdagangan Besar Pupuk dan Produk Agrokimia | NOT_VERIFIED | Not verified | Rendah
-46753 | Perdagangan Besar Bahan Berbahaya (B2) | NOT_VERIFIED | Not verified | Tinggi
-46791 | Perdagangan Besar Alat Kesehatan dan Laboratorium untuk Manusia | NOT_VERIFIED | Not verified | Menengah Tinggi / Tinggi
-46792 | Perdagangan Besar Alat Kesehatan untuk Hewan | NOT_VERIFIED | Not verified | Tinggi
+46753 | Perdagangan Besar Bahan Berbahaya (B2) | TERBUKA | 100% | Tinggi
+46791 | Perdagangan Besar Alat Kesehatan dan Laboratorium untuk Manusia | TERBUKA | 100% | Menengah Tinggi / Tinggi
+46792 | Perdagangan Besar Alat Kesehatan untuk Hewan | TERBUKA | 100% | Tinggi
 46793 | Perdagangan Besar Karet dan Plastik dalam Bentuk Dasar | NOT_VERIFIED | Not verified | Rendah
 46794 | Perdagangan Besar Kertas dan Karton | NOT_VERIFIED | Not verified | Rendah
 46795 | Perdagangan Besar Barang dari Kertas dan Karton | NOT_VERIFIED | Not verified | Rendah
@@ -862,8 +862,8 @@
 47245 | Perdagangan Eceran Daging Olahan | TERBATAS | 0% | Rendah
 47246 | Perdagangan Eceran Ikan Olahan | TERBATAS | 0% | Rendah
 47249 | Perdagangan Eceran Makanan Lainnya | TERBATAS | 0% | Rendah
-47301 | Perdagangan Eceran Bahan Bakar di Sarana Pengisian Bahan Bakar | NOT_VERIFIED | Not verified | Menengah Tinggi
-47302 | Perdagangan Eceran Bahan Bakar Selain di Sarana Pengisian Bahan Bakar | NOT_VERIFIED | Not verified | Menengah Tinggi
+47301 | Perdagangan Eceran Bahan Bakar di Sarana Pengisian Bahan Bakar | TERBUKA | 100% | Menengah Tinggi
+47302 | Perdagangan Eceran Bahan Bakar Selain di Sarana Pengisian Bahan Bakar | TERBUKA | 100% | Menengah Tinggi
 47303 | Perdagangan Eceran Minyak Pelumas | NOT_VERIFIED | Not verified | Rendah
 47401 | Perdagangan Eceran Komputer dan Perlengkapannya | NOT_VERIFIED | Not verified | Rendah
 47402 | Perdagangan Eceran Peralatan dan Produk Gim Video serta Sejenisnya | NOT_VERIFIED | Not verified | Rendah
@@ -1066,10 +1066,10 @@
 55400 | Aktivitas Jasa Intermediasi Akomodasi | NOT_VERIFIED | Not verified | Rendah / Tinggi
 55901 | Aktivitas Jasa Manajemen Akomodasi | NOT_VERIFIED | Not verified | Menengah Rendah
 55909 | Penyediaan Akomodasi Lainnya YTDL | NOT_VERIFIED | Not verified | Rendah
-56101 | Aktivitas Penyediaan Makanan di Bangunan Tetap | NOT_VERIFIED | Not verified | Menengah Rendah / Menengah Tinggi
+56101 | Aktivitas Penyediaan Makanan di Bangunan Tetap | TERBUKA | 100% | Menengah Rendah / Menengah Tinggi
 56102 | Aktivitas Penyediaan Makanan di Bangunan Tidak Tetap | NOT_VERIFIED | Not verified | Menengah Rendah
-56210 | Aktivitas Jasa Boga untuk Acara Tertentu (Event Catering) | NOT_VERIFIED | Not verified | Menengah Rendah / Menengah Tinggi
-56290 | Aktivitas Penyediaan Jasa Boga Lainnya | NOT_VERIFIED | Not verified | Menengah Rendah / Menengah Tinggi
+56210 | Aktivitas Jasa Boga untuk Acara Tertentu (Event Catering) | TERBUKA | 100% | Menengah Rendah / Menengah Tinggi
+56290 | Aktivitas Penyediaan Jasa Boga Lainnya | TERBUKA | 100% | Menengah Rendah / Menengah Tinggi
 56301 | Aktivitas Bar | NOT_VERIFIED | Not verified | Menengah Tinggi
 56302 | Aktivitas Kelab Malam atau Diskotek yang Utamanya Menyediakan Minuman | NOT_VERIFIED | Not verified | Menengah Tinggi
 56303 | Aktivitas Rumah Minum/Kafe | NOT_VERIFIED | Not verified | Menengah Rendah
@@ -1078,12 +1078,12 @@
 56306 | Aktivitas Penyediaan Minuman Keliling/Tempat Tidak Tetap | NOT_VERIFIED | Not verified | Menengah Rendah
 56400 | Aktivitas Jasa Intermediasi Penyediaan Makanan dan Minuman | NOT_VERIFIED | Not verified | Menengah Rendah / Menengah Tinggi
 58110 | Penerbitan Buku | NOT_VERIFIED | Not verified | Menengah Rendah / Menengah Tinggi
-58120 | Penerbitan Surat Kabar | NOT_VERIFIED | Not verified | Menengah Rendah / Menengah Tinggi
+58120 | Penerbitan Surat Kabar | TERBUKA | 100% | Menengah Rendah / Menengah Tinggi
 58130 | Penerbitan Jurnal dan Terbitan Berkala | NOT_VERIFIED | Not verified | Menengah Rendah / Menengah Tinggi
 58190 | Aktivitas Penerbitan Lainnya | NOT_VERIFIED | Not verified | Menengah Rendah / Menengah Tinggi
-58211 | Penerbitan Perangkat Lunak Video Gim dalam Jaringan (Game Online) | NOT_VERIFIED | Not verified | Rendah / Tinggi
-58219 | Penerbitan Perangkat Lunak Video Gim Lainnya | NOT_VERIFIED | Not verified | Rendah / Tinggi
-58290 | Penerbitan Perangkat Lunak (Software) Lainnya | NOT_VERIFIED | Not verified | Menengah Rendah / Menengah Tinggi / Rendah / Tinggi
+58211 | Penerbitan Perangkat Lunak Video Gim dalam Jaringan (Game Online) | TERBUKA | 100% | Rendah / Tinggi
+58219 | Penerbitan Perangkat Lunak Video Gim Lainnya | TERBUKA | 100% | Rendah / Tinggi
+58290 | Penerbitan Perangkat Lunak (Software) Lainnya | TERBUKA | 100% | Menengah Rendah / Menengah Tinggi / Rendah / Tinggi
 59111 | Aktivitas Produksi Film, Video, dan Program Televisi oleh Pemerintah | TERTUTUP | 0% | Rendah / Menengah Tinggi
 59112 | Aktivitas Produksi Film, Video, dan Program Televisi oleh Swasta | NOT_VERIFIED | Not verified | Menengah Rendah / Menengah Tinggi / Rendah
 59121 | Aktivitas Pascaproduksi Film, Video, dan Program Televisi oleh Pemerintah | TERTUTUP | 0% | Rendah / Menengah Tinggi
@@ -1120,19 +1120,19 @@
 61909 | Aktivitas Telekomunikasi Lainnya YTDL | NOT_VERIFIED | Not verified | Not classified
 62110 | Pengembangan Video Gim, Perangkat Lunak Video Gim, dan Perangkat Lunak Pendukungnya | NOT_VERIFIED | Not verified | Menengah Rendah / Menengah Tinggi
 62191 | Aktivitas Pengembangan Aplikasi Perdagangan melalui Internet (E-Commerce) | NOT_VERIFIED | Not verified | Menengah Rendah / Menengah Tinggi
-62192 | Aktivitas Pengembangan Aplikasi dan Produksi Konten Berbasis Media Imersif | NOT_VERIFIED | Not verified | Menengah Rendah / Menengah Tinggi
+62192 | Aktivitas Pengembangan Aplikasi dan Produksi Konten Berbasis Media Imersif | TERBUKA | 100% | Menengah Rendah / Menengah Tinggi
 62193 | Aktivitas Pengembangan Aplikasi Berbasis Teknologi Blockchain | NOT_VERIFIED | Not verified | Menengah Rendah
 62194 | Aktivitas Pengembangan Komponen Dasar Kecerdasan Buatan | NOT_VERIFIED | Not verified | Menengah Rendah
 62199 | Aktivitas Pemrograman Komputer Lainnya YTDL | NOT_VERIFIED | Not verified | Menengah Rendah / Menengah Tinggi
-62201 | Aktivitas Konsultansi dan Manajemen Keamanan Siber | NOT_VERIFIED | Not verified | Menengah Tinggi
-62202 | Aktivitas Penyediaan dan Pengelolaan Identitas Digital | NOT_VERIFIED | Not verified | Menengah Tinggi
-62203 | Aktivitas Penyediaan Sertifikat Elektronik dan Jasa Terkait | NOT_VERIFIED | Not verified | Menengah Tinggi
+62201 | Aktivitas Konsultansi dan Manajemen Keamanan Siber | TERBUKA | 100% | Menengah Tinggi
+62202 | Aktivitas Penyediaan dan Pengelolaan Identitas Digital | TERBUKA | 100% | Menengah Tinggi
+62203 | Aktivitas Penyediaan Sertifikat Elektronik dan Jasa Terkait | TERBUKA | 100% | Menengah Tinggi
 62204 | Aktivitas Konsultansi dan Perancangan Internet of Things (IoT) | NOT_VERIFIED | Not verified | Menengah Rendah
 62209 | Aktivitas Konsultansi Komputer dan Manajemen Fasilitas Komputer Lainnya | NOT_VERIFIED | Not verified | Menengah Tinggi
 62900 | Aktivitas Jasa Teknologi Informasi dan Komputer Lainnya | NOT_VERIFIED | Not verified | Rendah / Menengah Rendah
-63101 | Aktivitas Pengolahan Data | NOT_VERIFIED | Not verified | Menengah Rendah / Menengah Tinggi
+63101 | Aktivitas Pengolahan Data | TERBUKA | 100% | Menengah Rendah / Menengah Tinggi
 63102 | Aktivitas Penyediaan Infrastruktur Komputasi, Hosting, dan Aktivitas Terkait | NOT_VERIFIED | Not verified | Menengah Tinggi
-63900 | Aktivitas Jasa Portal Pencarian Web dan Informasi Lainnya | NOT_VERIFIED | Not verified | Rendah / Menengah Tinggi / Menengah Rendah
+63900 | Aktivitas Jasa Portal Pencarian Web dan Informasi Lainnya | TERBUKA | 100% | Rendah / Menengah Tinggi / Menengah Rendah
 64110 | Aktivitas Bank Sentral | NOT_VERIFIED | Not verified | Not classified
 64121 | Perbankan Umum Konvensional | NOT_VERIFIED | Not verified | Tinggi
 64122 | Perbankan Umum Syariah | NOT_VERIFIED | Not verified | Tinggi
@@ -1238,23 +1238,23 @@
 68111 | Aktivitas Pengembangan Bangunan dan Lahan Hunian | NOT_VERIFIED | Not verified | Menengah Rendah
 68112 | Aktivitas Penyewaan Bangunan dan Lahan Hunian Milik Sendiri atau Sewa | NOT_VERIFIED | Not verified | Not classified
 68121 | Pengelolaan Kawasan Pariwisata | NOT_VERIFIED | Not verified | Tinggi
-68122 | Pengelolaan Kawasan Industri | NOT_VERIFIED | Not verified | Tinggi
+68122 | Pengelolaan Kawasan Industri | TERBUKA | 100% | Tinggi
 68123 | Pengelolaan Kawasan Ekonomi Khusus | NOT_VERIFIED | Not verified | Not classified
 68124 | Penyewaan Tempat Penyelenggaraan Aktivitas Pertemuan, Perjalanan Insentif, Konvensi, dan Pameran, serta Acara Khusus | NOT_VERIFIED | Not verified | Menengah Rendah
 68125 | Pengelolaan Pusat Perbelanjaan | NOT_VERIFIED | Not verified | Not classified
 68126 | Penyewaan Gudang dan Fasilitas Penyimpanan Mandiri | NOT_VERIFIED | Not verified | Not classified
 68127 | Pengelolaan Gedung Perkantoran | NOT_VERIFIED | Not verified | Not classified
 68129 | Aktivitas Real Estat (Bangunan dan Lahan) Nonhunian Lainnya Milik Sendiri atau Sewa | NOT_VERIFIED | Not verified | Not classified
-68210 | Aktivitas Jasa Intermediasi Real Estat | NOT_VERIFIED | Not verified | Rendah / Tinggi / Menengah Tinggi
-68291 | Jasa Penaksir Real Estat | NOT_VERIFIED | Not verified | Menengah Tinggi
-68292 | Pengelolaan Real Estat Hunian Atas Dasar Balas Jasa (Fee) atau Kontrak | NOT_VERIFIED | Not verified | Menengah Tinggi
-68299 | Aktivitas Real Estat Atas Dasar Balas Jasa (Fee) atau Kontrak Lainnya YTDL | NOT_VERIFIED | Not verified | Menengah Tinggi
+68210 | Aktivitas Jasa Intermediasi Real Estat | TERBUKA | 100% | Rendah / Tinggi / Menengah Tinggi
+68291 | Jasa Penaksir Real Estat | TERBUKA | 100% | Menengah Tinggi
+68292 | Pengelolaan Real Estat Hunian Atas Dasar Balas Jasa (Fee) atau Kontrak | TERBUKA | 100% | Menengah Tinggi
+68299 | Aktivitas Real Estat Atas Dasar Balas Jasa (Fee) atau Kontrak Lainnya YTDL | TERBUKA | 100% | Menengah Tinggi
 69101 | Aktivitas Pengacara | NOT_VERIFIED | Not verified | Rendah
 69102 | Aktivitas Konsultan Hukum | NOT_VERIFIED | Not verified | Rendah
 69103 | Aktivitas Konsultan Kekayaan Intelektual | NOT_VERIFIED | Not verified | Rendah
 69104 | Aktivitas Notaris dan Pejabat Pembuat Akta Tanah | NOT_VERIFIED | Not verified | Rendah
 69201 | Aktivitas Akuntansi, Pembukuan, dan Pemeriksa | NOT_VERIFIED | Not verified | Tinggi
-69202 | Aktivitas Konsultansi Pajak | NOT_VERIFIED | Not verified | Tinggi
+69202 | Aktivitas Konsultansi Pajak | TERBUKA | 100% | Tinggi
 70100 | Aktivitas Kantor Pusat | NOT_VERIFIED | Not verified | Not classified
 70201 | Aktivitas Konsultansi Manajemen dan Bisnis Pariwisata | NOT_VERIFIED | Not verified | Rendah
 70202 | Aktivitas Konsultansi Manajemen dan Bisnis Industri | NOT_VERIFIED | Not verified | Menengah Rendah
@@ -1263,15 +1263,15 @@
 71101 | Aktivitas Arsitektural | NOT_VERIFIED | Not verified | Menengah Tinggi
 71102 | Aktivitas Perancangan dan Konsultansi Teknis Pabrik | NOT_VERIFIED | Not verified | Menengah Tinggi
 71109 | Aktivitas Enjinering dan Konsultansi Teknis Terkait Lainnya | NOT_VERIFIED | Not verified | Menengah Tinggi / Tinggi
-71201 | Jasa Sertifikasi Teknis | NOT_VERIFIED | Not verified | Menengah Tinggi / Tinggi
+71201 | Jasa Sertifikasi Teknis | TERBUKA | 100% | Menengah Tinggi / Tinggi
 71202 | Jasa Inspeksi Teknis | NOT_VERIFIED | Not verified | Menengah Tinggi / Tinggi
-71203 | Jasa Verifikasi dan Validasi Teknis | NOT_VERIFIED | Not verified | Menengah Tinggi
+71203 | Jasa Verifikasi dan Validasi Teknis | TERBUKA | 100% | Menengah Tinggi
 71204 | Jasa Pengujian Teknis | NOT_VERIFIED | Not verified | Menengah Tinggi / Tinggi
-71209 | Pengujian dan Analisis Teknis Lainnya | NOT_VERIFIED | Not verified | Menengah Tinggi
+71209 | Pengujian dan Analisis Teknis Lainnya | TERBUKA | 100% | Menengah Tinggi
 72101 | Penelitian dan Pengembangan Ilmu Alam | NOT_VERIFIED | Not verified | Not classified
 72102 | Penelitian dan Pengembangan Enjinering dan Teknologi | NOT_VERIFIED | Not verified | Menengah Tinggi / Rendah
 72103 | Penelitian dan Pengembangan Ilmu Kedokteran dan Kesehatan | NOT_VERIFIED | Not verified | Not classified
-72104 | Penelitian dan Pengembangan Bioteknologi | NOT_VERIFIED | Not verified | Menengah Tinggi
+72104 | Penelitian dan Pengembangan Bioteknologi | TERBUKA | 100% | Menengah Tinggi
 72105 | Penelitian dan Pengembangan Ilmu Pertanian dan Kedokteran Hewan | NOT_VERIFIED | Not verified | Not classified
 72106 | Penelitian dan Pengembangan Ketenaganukliran | NOT_VERIFIED | Not verified | Rendah / Tinggi
 72109 | Penelitian dan Pengembangan Eksperimental Ilmu Alam dan Enjinering Lainnya | NOT_VERIFIED | Not verified | Rendah
@@ -1290,7 +1290,7 @@
 74117 | Aktivitas Desain Produk Kesehatan, Kosmetik, dan Perlengkapan Laboratorium | NOT_VERIFIED | Not verified | Menengah Rendah
 74118 | Aktivitas Desain Pengemasan | NOT_VERIFIED | Not verified | Menengah Rendah
 74119 | Aktivitas Desain Industri Lainnya | NOT_VERIFIED | Not verified | Menengah Rendah
-74191 | Aktivitas Desain Interior | NOT_VERIFIED | Not verified | Menengah Tinggi
+74191 | Aktivitas Desain Interior | TERBUKA | 100% | Menengah Tinggi
 74192 | Aktivitas Desain Grafis/Komunikasi Visual | NOT_VERIFIED | Not verified | Rendah
 74193 | Aktivitas Desain Khusus Film, Video, Program Televisi, Animasi dan Komik | NOT_VERIFIED | Not verified | Rendah
 74194 | Aktivitas Desain Konten Gim | NOT_VERIFIED | Not verified | Rendah
@@ -1300,7 +1300,7 @@
 74300 | Aktivitas Penerjemah Atau Interpreter | NOT_VERIFIED | Not verified | Rendah
 74910 | Aktivitas Broker dan Layanan Pemasaran Paten | NOT_VERIFIED | Not verified | Rendah
 74991 | Jasa Meteorologi dan Prakiraan Cuaca | NOT_VERIFIED | Not verified | Rendah
-74999 | Semua Aktivitas Profesional, Ilmiah dan Teknis YTDL Lainnya | NOT_VERIFIED | Not verified | Menengah Tinggi
+74999 | Semua Aktivitas Profesional, Ilmiah dan Teknis YTDL Lainnya | TERBUKA | 100% | Menengah Tinggi
 75001 | Aktivitas Personel Kesehatan Hewan Mandiri | NOT_VERIFIED | Not verified | Not classified
 75002 | Aktivitas Pengelolaan Sarana Kesehatan Hewan | NOT_VERIFIED | Not verified | Not classified
 75009 | Aktivitas Pengelolaan Kesehatan Hewan Lainnya | NOT_VERIFIED | Not verified | Not classified
@@ -1325,11 +1325,11 @@
 77400 | Sewa Guna Usaha Kekayaan Intelektual dan Produk Sejenis, Bukan Karya Berhak Cipta | NOT_VERIFIED | Not verified | Rendah
 77510 | Aktivitas Jasa Intermediasi untuk Penyewaan dan Sewa Guna Usaha Mobil | NOT_VERIFIED | Not verified | Rendah / Tinggi
 77520 | Aktivitas Jasa Intermediasi untuk Penyewaan dan Sewa Guna Usaha Barang Berwujud dan Aset Tak Berwujud Nonfinansial Lainnya | NOT_VERIFIED | Not verified | Rendah / Tinggi
-78101 | Aktivitas Penempatan Tenaga Kerja untuk Usaha di Dalam Negeri | NOT_VERIFIED | Not verified | Menengah Tinggi
-78102 | Aktivitas Penempatan Tenaga Kerja Luar Negeri | NOT_VERIFIED | Not verified | Tinggi
-78103 | Aktivitas Penempatan Tenaga Kerja untuk Rumah Tangga Sebagai Pemberi Kerja di Dalam Negeri | NOT_VERIFIED | Not verified | Menengah Tinggi
-78104 | Aktivitas Penempatan Awak Kapal | NOT_VERIFIED | Not verified | Tinggi
-78105 | Aktivitas Penyediaan Informasi Lowongan Kerja | NOT_VERIFIED | Not verified | Menengah Tinggi
+78101 | Aktivitas Penempatan Tenaga Kerja untuk Usaha di Dalam Negeri | TERBUKA | 100% | Menengah Tinggi
+78102 | Aktivitas Penempatan Tenaga Kerja Luar Negeri | TERBUKA | 100% | Tinggi
+78103 | Aktivitas Penempatan Tenaga Kerja untuk Rumah Tangga Sebagai Pemberi Kerja di Dalam Negeri | TERBUKA | 100% | Menengah Tinggi
+78104 | Aktivitas Penempatan Awak Kapal | TERBUKA | 100% | Tinggi
+78105 | Aktivitas Penyediaan Informasi Lowongan Kerja | TERBUKA | 100% | Menengah Tinggi
 78109 | Aktivitas Penempatan Tenaga Kerja Lainnya | NOT_VERIFIED | Not verified | Not classified
 78200 | Aktivitas Penyediaan Tenaga Kerja Sementara dan Penyediaan Sumber Daya Manusia Lainnya | NOT_VERIFIED | Not verified | Rendah
 79110 | Aktivitas Agen Perjalanan | NOT_VERIFIED | Not verified | Rendah
@@ -1340,25 +1340,25 @@
 79902 | Jasa Informasi Daya Tarik Wisata | NOT_VERIFIED | Not verified | Rendah
 79903 | Jasa Pramuwisata | TERBATAS | 0% | Rendah
 79909 | Aktivitas Terkait Perjalanan Lainnya YTDL | NOT_VERIFIED | Not verified | Not classified
-80110 | Aktivitas Investigasi dan Keamanan Swasta | NOT_VERIFIED | Not verified | Tinggi
+80110 | Aktivitas Investigasi dan Keamanan Swasta | TERBUKA | 100% | Tinggi
 80190 | Aktivitas Keamanan YTDL | NOT_VERIFIED | Not verified | Not classified
 81100 | Aktivitas Penyediaan Gabungan Jasa Penunjang Fasilitas | NOT_VERIFIED | Not verified | Rendah
 81210 | Aktivitas Kebersihan Umum Bangunan | NOT_VERIFIED | Not verified | Rendah
-81290 | Aktivitas Kebersihan Lainnya | NOT_VERIFIED | Not verified | Menengah Tinggi
+81290 | Aktivitas Kebersihan Lainnya | TERBUKA | 100% | Menengah Tinggi
 81300 | Aktivitas Jasa Lanskap | NOT_VERIFIED | Not verified | Rendah
 82100 | Aktivitas Administrasi Kantor dan Penunjang Kantor | NOT_VERIFIED | Not verified | Rendah
-82200 | Aktivitas Pusat Panggilan (Call Center) | NOT_VERIFIED | Not verified | Tinggi
+82200 | Aktivitas Pusat Panggilan (Call Center) | TERBUKA | 100% | Tinggi
 82300 | Penyelenggaraan Konvensi dan Pameran Bisnis | NOT_VERIFIED | Not verified | Menengah Rendah
-82400 | Jasa Intermediasi untuk Aktivitas Penunjang Usaha YTDL Selain Intermediasi Finansial | NOT_VERIFIED | Not verified | Rendah / Tinggi
+82400 | Jasa Intermediasi untuk Aktivitas Penunjang Usaha YTDL Selain Intermediasi Finansial | TERBUKA | 100% | Rendah / Tinggi
 82911 | Aktivitas Agen Penagihan | NOT_VERIFIED | Not verified | Not classified
-82912 | Aktivitas Biro Kredit | NOT_VERIFIED | Not verified | Tinggi
-82921 | Aktivitas Pengepakan Bahan dan Produk Hasil Pertanian, Perkebunan, Kehutanan, dan Perikanan | NOT_VERIFIED | Not verified | Menengah Rendah / Menengah Tinggi / Tinggi
-82922 | Aktivitas Pengepakan Bahan dan Produk Makanan dan Minuman Olahan | NOT_VERIFIED | Not verified | Menengah Rendah / Menengah Tinggi / Tinggi
-82923 | Aktivitas Pengepakan Tekstil dan Produk Tekstil | NOT_VERIFIED | Not verified | Menengah Rendah / Menengah Tinggi / Tinggi
-82924 | Aktivitas Pengepakan Bahan dan Produk Kimia | NOT_VERIFIED | Not verified | Menengah Rendah / Menengah Tinggi / Tinggi
-82925 | Aktivitas Pengepakan Bahan dan Produk Farmasi | NOT_VERIFIED | Not verified | Menengah Rendah / Menengah Tinggi / Tinggi
-82929 | Aktivitas Pengepakan Lainnya | NOT_VERIFIED | Not verified | Menengah Rendah / Menengah Tinggi / Tinggi
-82990 | Aktivitas Jasa Penunjang Usaha Lainnya YTDL | NOT_VERIFIED | Not verified | Tinggi
+82912 | Aktivitas Biro Kredit | TERBUKA | 100% | Tinggi
+82921 | Aktivitas Pengepakan Bahan dan Produk Hasil Pertanian, Perkebunan, Kehutanan, dan Perikanan | TERBUKA | 100% | Menengah Rendah / Menengah Tinggi / Tinggi
+82922 | Aktivitas Pengepakan Bahan dan Produk Makanan dan Minuman Olahan | TERBUKA | 100% | Menengah Rendah / Menengah Tinggi / Tinggi
+82923 | Aktivitas Pengepakan Tekstil dan Produk Tekstil | TERBUKA | 100% | Menengah Rendah / Menengah Tinggi / Tinggi
+82924 | Aktivitas Pengepakan Bahan dan Produk Kimia | TERBUKA | 100% | Menengah Rendah / Menengah Tinggi / Tinggi
+82925 | Aktivitas Pengepakan Bahan dan Produk Farmasi | TERBUKA | 100% | Menengah Rendah / Menengah Tinggi / Tinggi
+82929 | Aktivitas Pengepakan Lainnya | TERBUKA | 100% | Menengah Rendah / Menengah Tinggi / Tinggi
+82990 | Aktivitas Jasa Penunjang Usaha Lainnya YTDL | TERBUKA | 100% | Tinggi
 84111 | Lembaga Legislatif | TERTUTUP | 0% | Not classified
 84112 | Penyelenggaraan Pemerintahan Negara dan Kesekretariatan Negara | TERTUTUP | 0% | Not classified
 84113 | Lembaga Eksekutif Keuangan, Perpajakan, dan Bea Cukai | TERTUTUP | 0% | Not classified
@@ -1417,23 +1417,23 @@
 85402 | Pendidikan Tinggi Umum Swasta | NOT_VERIFIED | Not verified | Tinggi
 85403 | Pendidikan Tinggi Keagamaan Pemerintah | TERTUTUP | 0% | Not classified
 85404 | Pendidikan Tinggi Keagamaan Swasta | NOT_VERIFIED | Not verified | Not classified
-85510 | Pendidikan Olahraga dan Rekreasi | NOT_VERIFIED | Not verified | Tinggi
-85520 | Pendidikan Kebudayaan | NOT_VERIFIED | Not verified | Tinggi
-85530 | Kegiatan Sekolah Mengemudi | NOT_VERIFIED | Not verified | Tinggi
-85541 | Pendidikan Pesantren Lainnya | NOT_VERIFIED | Not verified | Tinggi
-85542 | Pendidikan Keagamaan Islam Nonformal | NOT_VERIFIED | Not verified | Tinggi
-85549 | Pendidikan Keagamaan Lainnya YTDL | NOT_VERIFIED | Not verified | Tinggi
+85510 | Pendidikan Olahraga dan Rekreasi | TERBUKA | 100% | Tinggi
+85520 | Pendidikan Kebudayaan | TERBUKA | 100% | Tinggi
+85530 | Kegiatan Sekolah Mengemudi | TERBUKA | 100% | Tinggi
+85541 | Pendidikan Pesantren Lainnya | TERBUKA | 100% | Tinggi
+85542 | Pendidikan Keagamaan Islam Nonformal | TERBUKA | 100% | Tinggi
+85549 | Pendidikan Keagamaan Lainnya YTDL | TERBUKA | 100% | Tinggi
 85550 | Pendidikan Lainnya Pemerintah | TERTUTUP | 0% | Not classified
 85560 | Pelatihan Kerja Pemerintah | TERTUTUP | 0% | Not classified
-85571 | Pelatihan Kerja Teknik Swasta | NOT_VERIFIED | Not verified | Menengah Tinggi
-85572 | Pelatihan Kerja Teknologi Informasi dan Komunikasi Swasta | NOT_VERIFIED | Not verified | Menengah Tinggi
-85573 | Pelatihan Kerja Industri Kreatif Swasta | NOT_VERIFIED | Not verified | Menengah Tinggi
-85574 | Pelatihan Kerja Pariwisata dan Perhotelan Swasta | NOT_VERIFIED | Not verified | Menengah Tinggi
-85575 | Pelatihan Kerja Bisnis dan Manajemen Swasta | NOT_VERIFIED | Not verified | Menengah Tinggi
-85576 | Pelatihan Kerja Pekerjaan Domestik Swasta | NOT_VERIFIED | Not verified | Menengah Tinggi
-85577 | Pelatihan Kerja Pertanian dan Perikanan Swasta | NOT_VERIFIED | Not verified | Menengah Tinggi
-85578 | Pendidikan dan Pelatihan Personel Penerbangan | NOT_VERIFIED | Not verified | Menengah Tinggi
-85579 | Pelatihan Kerja Swasta Lainnya | NOT_VERIFIED | Not verified | Menengah Tinggi
+85571 | Pelatihan Kerja Teknik Swasta | TERBUKA | 100% | Menengah Tinggi
+85572 | Pelatihan Kerja Teknologi Informasi dan Komunikasi Swasta | TERBUKA | 100% | Menengah Tinggi
+85573 | Pelatihan Kerja Industri Kreatif Swasta | TERBUKA | 100% | Menengah Tinggi
+85574 | Pelatihan Kerja Pariwisata dan Perhotelan Swasta | TERBUKA | 100% | Menengah Tinggi
+85575 | Pelatihan Kerja Bisnis dan Manajemen Swasta | TERBUKA | 100% | Menengah Tinggi
+85576 | Pelatihan Kerja Pekerjaan Domestik Swasta | TERBUKA | 100% | Menengah Tinggi
+85577 | Pelatihan Kerja Pertanian dan Perikanan Swasta | TERBUKA | 100% | Menengah Tinggi
+85578 | Pendidikan dan Pelatihan Personel Penerbangan | TERBUKA | 100% | Menengah Tinggi
+85579 | Pelatihan Kerja Swasta Lainnya | TERBUKA | 100% | Menengah Tinggi
 85581 | Pelatihan Kerja Teknik Perusahaan | NOT_VERIFIED | Not verified | Not classified
 85582 | Pelatihan Kerja Teknologi Informasi dan Komunikasi Perusahaan | NOT_VERIFIED | Not verified | Not classified
 85583 | Pelatihan Kerja Industri Kreatif Perusahaan | NOT_VERIFIED | Not verified | Not classified
@@ -1442,19 +1442,19 @@
 85586 | Pelatihan Kerja Pekerjaan Domestik Perusahaan | NOT_VERIFIED | Not verified | Not classified
 85587 | Pelatihan Kerja Pertanian dan Perikanan Perusahaan | NOT_VERIFIED | Not verified | Not classified
 85589 | Pelatihan Kerja Perusahaan Lainnya | NOT_VERIFIED | Not verified | Not classified
-85591 | Pendidikan Manajemen dan Perbankan | NOT_VERIFIED | Not verified | Tinggi
-85592 | Pendidikan Komputer (Teknologi Informasi dan Komunikasi) Swasta | NOT_VERIFIED | Not verified | Tinggi
-85593 | Pendidikan Bahasa Swasta | NOT_VERIFIED | Not verified | Tinggi
-85594 | Pendidikan Kesehatan Swasta | NOT_VERIFIED | Not verified | Tinggi
-85595 | Pendidikan Bimbingan Belajar Dan Konseling Swasta | NOT_VERIFIED | Not verified | Tinggi
-85596 | Pendidikan Teknik Swasta | NOT_VERIFIED | Not verified | Menengah Tinggi / Tinggi
-85597 | Pendidikan Kerajinan dan Industri | NOT_VERIFIED | Not verified | Tinggi
-85599 | Pendidikan Lainnya Swasta | NOT_VERIFIED | Not verified | Tinggi / Menengah Tinggi
-85610 | Jasa Perantara Kursus dan Tutor | NOT_VERIFIED | Not verified | Rendah / Tinggi
+85591 | Pendidikan Manajemen dan Perbankan | TERBUKA | 100% | Tinggi
+85592 | Pendidikan Komputer (Teknologi Informasi dan Komunikasi) Swasta | TERBUKA | 100% | Tinggi
+85593 | Pendidikan Bahasa Swasta | TERBUKA | 100% | Tinggi
+85594 | Pendidikan Kesehatan Swasta | TERBUKA | 100% | Tinggi
+85595 | Pendidikan Bimbingan Belajar Dan Konseling Swasta | TERBUKA | 100% | Tinggi
+85596 | Pendidikan Teknik Swasta | TERBUKA | 100% | Menengah Tinggi / Tinggi
+85597 | Pendidikan Kerajinan dan Industri | TERBUKA | 100% | Tinggi
+85599 | Pendidikan Lainnya Swasta | TERBUKA | 100% | Tinggi / Menengah Tinggi
+85610 | Jasa Perantara Kursus dan Tutor | TERBUKA | 100% | Rendah / Tinggi
 85691 | Aktivitas Sertifikasi Profesi Hasil Pendidikan dan Pelatihan Sendiri | NOT_VERIFIED | Not verified | Not classified
 85692 | Aktivitas Sertifikasi Profesi Hasil Pendidikan dan Pelatihan Mitra | NOT_VERIFIED | Not verified | Not classified
-85693 | Aktivitas Sertifikasi Profesi oleh Asosiasi | NOT_VERIFIED | Not verified | Menengah Tinggi
-85694 | Aktivitas Sertifikasi Profesi Independen | NOT_VERIFIED | Not verified | Menengah Tinggi
+85693 | Aktivitas Sertifikasi Profesi oleh Asosiasi | TERBUKA | 100% | Menengah Tinggi
+85694 | Aktivitas Sertifikasi Profesi Independen | TERBUKA | 100% | Menengah Tinggi
 85699 | Kegiatan Penunjang Pendidikan Lainnya | NOT_VERIFIED | Not verified | Tinggi / Rendah
 86101 | Aktivitas Rumah Sakit Pemerintah | TERTUTUP | 0% | Tinggi
 86102 | Aktivitas Puskesmas | NOT_VERIFIED | Not verified | Not classified
@@ -1466,10 +1466,10 @@
 86202 | Aktivitas Praktik Dokter Spesialis | NOT_VERIFIED | Not verified | Not classified
 86203 | Aktivitas Praktik Dokter Gigi | NOT_VERIFIED | Not verified | Not classified
 86910 | Aktivitas Jasa Intermediasi untuk Kesehatan Medis, Kedokteran Gigi, dan Pelayanan Kesehatan Manusia Lainnya | NOT_VERIFIED | Not verified | Rendah / Tinggi / Menengah Rendah / Menengah Tinggi
-86991 | Aktivitas Pelayanan Kesehatan yang Dilakukan oleh Tenaga Kesehatan Selain Dokter dan Dokter Gigi | NOT_VERIFIED | Not verified | Menengah Tinggi
-86992 | Aktivitas Pelayanan Kesehatan Tradisional | NOT_VERIFIED | Not verified | Menengah Tinggi
+86991 | Aktivitas Pelayanan Kesehatan yang Dilakukan oleh Tenaga Kesehatan Selain Dokter dan Dokter Gigi | TERBUKA | 100% | Menengah Tinggi
+86992 | Aktivitas Pelayanan Kesehatan Tradisional | TERBUKA | 100% | Menengah Tinggi
 86993 | Aktivitas Pelayanan Penunjang Kesehatan | NOT_VERIFIED | Not verified | Menengah Rendah / Tinggi / Menengah Tinggi
-86994 | Aktivitas Angkutan Khusus Pengangkutan Orang Sakit (Medical Evacuation) | NOT_VERIFIED | Not verified | Menengah Tinggi
+86994 | Aktivitas Angkutan Khusus Pengangkutan Orang Sakit (Medical Evacuation) | TERBUKA | 100% | Menengah Tinggi
 86995 | Aktivitas Rumah Pijat | NOT_VERIFIED | Not verified | Menengah Rendah
 87101 | Aktivitas Perawatan dan Pemulihan kesehatan Berbasis Residensial oleh Pemerintah | NOT_VERIFIED | Not verified | Not classified
 87102 | Aktivitas Perawatan dan Pemulihan Kesehatan Berbasis Residensial oleh Lembaga Kesejahteraan Sosial | NOT_VERIFIED | Not verified | Not classified
@@ -1478,7 +1478,7 @@
 87301 | Aktivitas Perawatan untuk Lanjut Usia atau Penyandang Disabilitas Fisik Berbasis Residensial oleh Pemerintah | TERTUTUP | 0% | Not classified
 87302 | Aktivitas Sosial untuk Lanjut Usia atau Penyandang Disabilitas Fisik oleh Lembaga Kesejahteraan Sosial (LKS) | NOT_VERIFIED | Not verified | Not classified
 87303 | Aktivitas Pengelolaan Akomodasi Warga Lanjut Usia (Senior Living) | NOT_VERIFIED | Not verified | Menengah Rendah
-87910 | Jasa Intermediasi untuk Aktivitas Perawatan Berbasis Residensial | NOT_VERIFIED | Not verified | Rendah / Tinggi
+87910 | Jasa Intermediasi untuk Aktivitas Perawatan Berbasis Residensial | TERBUKA | 100% | Rendah / Tinggi
 87991 | Aktivitas Lembaga Kesejahteraan Sosial Anak Berbasis Residensial | NOT_VERIFIED | Not verified | Not classified
 87992 | Aktivitas Perawatanuntuk Anak yang Berhadapan dengan Hukum Berbasis Residensial | NOT_VERIFIED | Not verified | Not classified
 87993 | Aktivitas Tunasosial Berbasis Residensial | NOT_VERIFIED | Not verified | Not classified
@@ -1489,8 +1489,8 @@
 88903 | Aktivitas Sosial Pengumpulan Dana Keislaman | NOT_VERIFIED | Not verified | Not classified
 88904 | Aktivitas Sosial Pengumpulan Dana Nonislam | NOT_VERIFIED | Not verified | Not classified
 88905 | Aktivitas Sosial Pengumpulan Dana Lainnya | NOT_VERIFIED | Not verified | Not classified
-88906 | Pendidikan Kelompok Bermain | NOT_VERIFIED | Not verified | Tinggi
-88907 | Pendidikan Taman Penitipan Anak | NOT_VERIFIED | Not verified | Tinggi
+88906 | Pendidikan Kelompok Bermain | TERBUKA | 100% | Tinggi
+88907 | Pendidikan Taman Penitipan Anak | TERBUKA | 100% | Tinggi
 90111 | Aktivitas Penciptaan Karya Sastra | NOT_VERIFIED | Not verified | Not classified
 90112 | Aktivitas Penciptaan Komposisi Musik | NOT_VERIFIED | Not verified | Rendah
 90113 | Aktivitas Jurnalis Berita Independen | NOT_VERIFIED | Not verified | Not classified
@@ -1509,14 +1509,14 @@
 91221 | Aktivitas Situs Bersejarah dan Monumen yang Dikelola Pemerintah | TERTUTUP | 0% | Not classified
 91222 | Aktivitas Situs Bersejarah dan Monumen yang Dikelola Swasta | NOT_VERIFIED | Not verified | Not classified
 91300 | Konservasi, Restorasi, dan Aktivitas Penunjang Lainnya untuk Warisan Budaya | NOT_VERIFIED | Not verified | Not classified
-91410 | Aktivitas Taman Botani dan Kebun Binatang | NOT_VERIFIED | Not verified | Menengah Tinggi / Tinggi
+91410 | Aktivitas Taman Botani dan Kebun Binatang | TERBUKA | 100% | Menengah Tinggi / Tinggi
 91421 | Suaka Margasatwa | NOT_VERIFIED | Not verified | Not classified
 91422 | Taman Nasional | NOT_VERIFIED | Not verified | Not classified
 91423 | Hutan Lindung | NOT_VERIFIED | Not verified | Not classified
 91424 | Taman Wisata Alam | NOT_VERIFIED | Not verified | Not classified
 91425 | Taman Hutan Raya | NOT_VERIFIED | Not verified | Not classified
 91426 | Taman Laut | NOT_VERIFIED | Not verified | Not classified
-91429 | Aktivitas Cagar Alam Lainnya | NOT_VERIFIED | Not verified | Tinggi
+91429 | Aktivitas Cagar Alam Lainnya | TERBUKA | 100% | Tinggi
 92000 | Aktivitas Perjudian dan Pertaruhan | TERTUTUP | 0% | Not classified
 93111 | Fasilitas Stadion | NOT_VERIFIED | Not verified | Menengah Rendah
 93112 | Fasilitas Sirkuit | NOT_VERIFIED | Not verified | Menengah Tinggi
@@ -1539,17 +1539,17 @@
 93193 | Aktivitas Perburuan di Kawasan Buru | NOT_VERIFIED | Not verified | Not classified
 93194 | Badan Regulasi dan Liga Olahraga | NOT_VERIFIED | Not verified | Not classified
 93195 | Aktivitas Olahraga Tradisional | NOT_VERIFIED | Not verified | Not classified
-93196 | Pengelolaan Fasilitas Pemancingan | NOT_VERIFIED | Not verified | Rendah / Menengah Tinggi
+93196 | Pengelolaan Fasilitas Pemancingan | TERBUKA | 100% | Rendah / Menengah Tinggi
 93197 | Aktivitas Olaharagawan/Atlet Independen | NOT_VERIFIED | Not verified | Not classified
 93199 | Aktivitas Lainnya yang Berkaitan dengan Olahraga YTDL | NOT_VERIFIED | Not verified | Not classified
 93210 | Aktivitas Taman Bertema dan Taman Hiburan | NOT_VERIFIED | Not verified | Tinggi / Menengah Rendah
-93291 | Aktivitas Lantai Dansa | NOT_VERIFIED | Not verified | Menengah Tinggi
+93291 | Aktivitas Lantai Dansa | TERBUKA | 100% | Menengah Tinggi
 93292 | Pengelolaan Fasilitas Karaoke | NOT_VERIFIED | Not verified | Menengah Rendah
-93293 | Pengelolaan Arena Permainan | NOT_VERIFIED | Not verified | Menengah Tinggi
+93293 | Pengelolaan Arena Permainan | TERBUKA | 100% | Menengah Tinggi
 93294 | Wisata Gua, Pemandian, dan Petualangan Alam | NOT_VERIFIED | Not verified | Menengah Rendah / Menengah Tinggi
 93295 | Wisata Pantai | NOT_VERIFIED | Not verified | Menengah Rendah
 93296 | Wisata Agro | NOT_VERIFIED | Not verified | Menengah Rendah
-93297 | Wisata Tirta | NOT_VERIFIED | Not verified | Menengah Tinggi / Menengah Rendah / Tinggi
+93297 | Wisata Tirta | TERBUKA | 100% | Menengah Tinggi / Menengah Rendah / Tinggi
 93299 | Aktivitas Hiburan dan Rekreasi Lainnya YTDL | NOT_VERIFIED | Not verified | Rendah
 94110 | Aktivitas Organisasi Bisnis dan Pengusaha | NOT_VERIFIED | Not verified | Not classified
 94121 | Aktivitas Organisasi Ilmu Pengetahuan Sosial dan Masyarakat | NOT_VERIFIED | Not verified | Not classified
@@ -1573,7 +1573,7 @@
 96100 | Aktivitas Pencucian dan Pembersihan Produk Tekstil dan Bulu | TERBATAS | 0% | Rendah
 96210 | Aktivitas Penataan dan Pangkas Rambut | TERBATAS | 0% | Rendah
 96220 | Aktivitas Perawatan Kecantikan dan Perawatan Kecantikan Lainnya | TERBATAS | 0% | Rendah
-96230 | Aktivitas Sante Par Aqua (SPA) Harian, Sauna, dan Pemandian Uap | NOT_VERIFIED | Not verified | Tinggi / Menengah Tinggi
+96230 | Aktivitas Sante Par Aqua (SPA) Harian, Sauna, dan Pemandian Uap | TERBUKA | 100% | Tinggi / Menengah Tinggi
 96300 | Aktivitas Pemakaman dan Kegiatan Terkait | NOT_VERIFIED | Not verified | Rendah
 96400 | Aktivitas Jasa Intermediasi untuk Jasa Perorangan | NOT_VERIFIED | Not verified | Rendah / Tinggi
 96900 | Aktivitas Jasa Perorangan Lainnya YTDL | NOT_VERIFIED | Not verified | Rendah

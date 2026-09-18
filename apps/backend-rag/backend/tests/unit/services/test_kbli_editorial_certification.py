@@ -30,6 +30,11 @@ STATUTORY_CLOSURES_59 = frozenset(
 )  # fmt: skip
 assert len(STATUTORY_CLOSURES_59) == 59
 
+# The opening of the basis `scripts/kbli_filiera/apply_residual_open.py` writes.
+# Matching on the prefix, not the whole string, keeps this test from pinning the
+# basis PROSE — that is the compiler's own suite's job.
+RESIDUAL_BASIS_PREFIX = "Perpres 10/2021 Pasal 3(1)(d) + 3(2)"
+
 
 @pytest.fixture(scope="module")
 def registry() -> dict:
@@ -90,11 +95,35 @@ def test_canonical_certification_partition_is_exact(
     # relabelled declared_gap -> located by apply_statutory_closures.py; none
     # is a certified canonicalIntel entry (86101's gold spec certifies
     # mouthGold, not canonicalIntel).
+    # 2026-09-18 naso PR-4 (residual lot 1): 330 codes relabelled
+    # declared_gap -> located by apply_residual_open.py under the RESIDUAL
+    # article. Enumerating them here would be a second copy of the lot; they
+    # are identified by the basis the compiler writes, which is the property
+    # that matters — a located code arriving WITHOUT that basis still has to be
+    # named below, and a 331st code carrying it breaks the count.
+    residual_lot = {
+        code
+        for code, record in records.items()
+        if str(record.get("pma_official_basis") or "").startswith(RESIDUAL_BASIS_PREFIX)
+    }
+    assert len(residual_lot) == 330
+    assert residual_lot.isdisjoint(certified)
+    assert all(
+        records[code].get("pma_verification_status") == "located"
+        for code in residual_lot
+    )
+    # No member of the lot is in a division the Perpres hands to sector law
+    # (Pasal 11(2): 64/65/66) or in one whose own statute this lane never read
+    # (09 35 49-53 61) — the withholding legs, asserted where a client-facing
+    # suite can see them and not only inside the compiler's own tests.
+    assert not {code[:2] for code in residual_lot} & {
+        "64", "65", "66", "09", "35", "49", "50", "51", "52", "53", "61",
+    }  # fmt: skip
     assert {
         code
         for code, record in records.items()
         if record.get("pma_verification_status") == "located"
-    } - certified == STATUTORY_CLOSURES_59 | {
+    } - certified - residual_lot == STATUTORY_CLOSURES_59 | {
         "10722",
         "47222",
         "50134",
