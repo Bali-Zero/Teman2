@@ -18,8 +18,10 @@ lanes:
     seat: kimi-code/k3
 
 what_changed: |
-  ONE workflow file, .github/workflows/preflight-pack-tests.yml (+ this
-  evidence pack). Triggers: pull_request and push:main, paths-filtered on
+  ONE new workflow file, .github/workflows/preflight-pack-tests.yml, plus
+  one line in .github/workflows/main-push-failure-watch.yml registering its
+  name in the watcher's workflows list (the watcher-conformance check red on
+  the first PR head without it), plus this evidence pack. Triggers: pull_request and push:main, paths-filtered on
   the measured closure the suite binds (contract_verify, preflight_pack,
   contract_checks.yml, evidence_paths, stage_council_journal, bites_parse,
   evidence_pack_lint, conductor/review_eligibility,
@@ -217,6 +219,27 @@ receipts:
     result: 13 passed, 0 failed | step rc=0
     exit: 0
     ts: "2026-09-18T15:10:39Z"
+    seat: claude-fable-5-1
+
+  - claim: >-
+      CI red on the first PR head 0cb3f3c783: the watcher-conformance check
+      (check_watcher_coverage.py, run 35363334496) reported the new workflow
+      "is not covered by main-push-failure-watch.yml" — a deterministic red,
+      folded at depth 1 by adding the workflow name to the watcher list
+    cmd: "gh run view 35363334496 --repo Bali-Zero/Teman2 --log-failed | grep -E 'watcher-coverage|not covered'"
+    result: "watcher-coverage: 1 violation(s) | `Preflight pack tests` (preflight-pack-tests.yml) is not covered by main-push-failure-watch.yml"
+    exit: 1
+    ts: "2026-09-18T15:36:40Z"
+    seat: claude-fable-5-1
+  - claim: >-
+      after registering the name, the watcher self-conformance check passes
+      locally (all live workflows covered; the pre-existing stale-entry
+      warning about "AI PR review (advisory)" is a warning, not a violation)
+      and both workflow files parse under CI's actionlint flags
+    cmd: "python3 scripts/check_watcher_coverage.py; actionlint -shellcheck= .github/workflows/main-push-failure-watch.yml .github/workflows/preflight-pack-tests.yml"
+    result: "watcher-coverage: all 120 live workflow(s) covered by main-push-failure-watch.yml | actionlint rc=0"
+    exit: 0
+    ts: "2026-09-18T15:38:41Z"
     seat: claude-fable-5-1
 
 pii_scan: clean

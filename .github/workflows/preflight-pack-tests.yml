@@ -16,9 +16,11 @@ name: Preflight pack tests
 # This is the job that runs it.
 #
 # Same shape as `fleet-burst-tests.yml`: one small workflow named by the suite it proves,
-# `paths:`-filtered so it starts on exactly the diffs that can break it. Deliberately NOT
-# added to branch-protection required contexts — that is a repo-settings action, operator
-# gated, and a required check that goes permanently red blocks the whole merge queue.
+# `paths:`-filtered so it starts on exactly the diffs that can break it. Registered in
+# main-push-failure-watch.yml's `workflows:` list (watcher-conformance reds otherwise), so
+# a red on main pages instead of rotting. Deliberately NOT added to branch-protection
+# required contexts — that is a repo-settings action, operator gated, and a required
+# check that goes permanently red blocks the whole merge queue.
 #
 # THE PATH FILTER IS THE ARMING SURFACE, so it lists the MEASURED closure of what the suite
 # binds — not just the two files it is named after. Derived from
