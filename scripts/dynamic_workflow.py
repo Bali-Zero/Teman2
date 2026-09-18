@@ -1163,7 +1163,8 @@ def cmd_reveal(args: argparse.Namespace) -> dict[str, str]:
 
 
 _CAPTURE_REQUIRED = ("BRIEF.md", "brief.sha", "r1", "r2", "judge.md",
-                      "jury/tabulation.md", "Z-DECISIONI.md", "OUTCOME.md")
+                      "jury/tabulation.md", "jury/tabulation.revealed.md",
+                      "Z-DECISIONI.md", "OUTCOME.md")
 _OUTCOME_KEYS = ("rounds_used", "dead_at_launch", "wall_clock", "bites")
 
 
@@ -1232,7 +1233,9 @@ def cmd_capture_check(args: argparse.Namespace) -> None:
     research/ artifact that looks complete (scar #2, 'Esiste != Armato'). PR2f addendum: --dest
     must resolve to the canonical research/operations/<date>-dynamic-workflow-<slug>/ path (no
     '..', no arbitrary location) and must not already hold files; every captured file must also
-    clear the PII gate. All three refuse before anything is created or copied."""
+    clear the PII gate. All three refuse before anything is created or copied. PR2h addendum
+    obs 2: jury/tabulation.revealed.md is ALSO required — an unrevealed kit is not decided —
+    and jury/mapping.json is never in _CAPTURE_REQUIRED, so it is never captured."""
     kit = Path(args.kit)
     dest = Path(args.dest)
     missing: list[str] = []
@@ -1583,6 +1586,10 @@ def run_selftest() -> None:
             cmd_capture_check(argparse.Namespace(kit=str(kit_l), dest=str(real_dest_l)))
             check("capture-check copied jury/tabulation.md to dest",
                   (real_dest_l / "jury" / "tabulation.md").exists())
+            check("capture-check copied jury/tabulation.revealed.md to dest",
+                  (real_dest_l / "jury" / "tabulation.revealed.md").exists())
+            check("capture-check never copies jury/mapping.json",
+                  not (real_dest_l / "jury" / "mapping.json").exists())
             check("capture-check copied Z-DECISIONI.md to dest",
                   (real_dest_l / "Z-DECISIONI.md").exists())
         finally:

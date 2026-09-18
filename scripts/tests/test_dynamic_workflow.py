@@ -1038,6 +1038,7 @@ def _capture_ready_kit(tmp_path, template, clean_objective) -> Path:
     kit = _juried_kit(tmp_path, template, clean_objective, _THREE_FAMILY_SEATS)
     dw.cmd_anonymise(argparse.Namespace(kit=str(kit)))
     (kit / "Z-DECISIONI.md").write_text("# Zero's decision\nA\n")
+    dw.cmd_reveal(argparse.Namespace(kit=str(kit)))  # PR2h obs 2: revealed twin now required
     (kit / "OUTCOME.md").write_text(_outcome_text())
     return kit
 
@@ -1055,11 +1056,13 @@ def _capture_ready_kit_with_slug(tmp_path, template, clean_objective, slug: str)
     dw.cmd_jury(argparse.Namespace(kit=str(kit)))
     dw.cmd_anonymise(argparse.Namespace(kit=str(kit)))
     (kit / "Z-DECISIONI.md").write_text("# Zero's decision\nA\n")
+    dw.cmd_reveal(argparse.Namespace(kit=str(kit)))  # PR2h obs 2: revealed twin now required
     (kit / "OUTCOME.md").write_text(_outcome_text())
     return kit
 
 
 @pytest.mark.parametrize("missing_rel", ["BRIEF.md", "judge.md", "jury/tabulation.md",
+                                          "jury/tabulation.revealed.md",
                                           "Z-DECISIONI.md", "OUTCOME.md", "r1", "r2"])
 def test_capture_check_refuses_naming_one_missing_item(tmp_path, template, clean_objective, missing_rel):
     kit = _capture_ready_kit(tmp_path, template, clean_objective)
@@ -1134,6 +1137,8 @@ def test_capture_check_copies_the_full_artifact_set_when_everything_is_present(
         assert (dest / "brief.sha").exists()
         assert (dest / "judge.md").exists()
         assert (dest / "jury" / "tabulation.md").exists()
+        assert (dest / "jury" / "tabulation.revealed.md").exists()
+        assert not (dest / "jury" / "mapping.json").exists()
         assert (dest / "Z-DECISIONI.md").exists()
         assert (dest / "OUTCOME.md").exists()
         assert (dest / "r1").is_dir()
