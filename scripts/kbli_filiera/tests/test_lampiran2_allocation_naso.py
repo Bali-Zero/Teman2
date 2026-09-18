@@ -108,7 +108,9 @@ def test_kondisi_and_cells_state_zero(code, by_code):
     for cell in cells:
         blob = json.dumps(cell, ensure_ascii=False)
         if "foreign" in blob.lower() or "pma" in blob.lower():
-            assert "100" not in blob, f"{code}: a byTheNumbers cell still says 100: {blob}"
+            assert "100" not in blob, (
+                f"{code}: a byTheNumbers cell still says 100: {blob}"
+            )
 
 
 @pytest.mark.parametrize("code", SIX)
@@ -119,7 +121,9 @@ def test_canonical_prose_no_longer_promises_a_pma_route(code, by_code):
     for t in texts:
         for phrase in OPENNESS:
             assert phrase.lower() not in t.lower(), f"{code}: {phrase!r} in {t[:120]!r}"
-    assert "Lampiran II" in intel.get("whatYouNeed", ""), f"{code}: whatYouNeed lacks the basis"
+    assert "Lampiran II" in intel.get("whatYouNeed", ""), (
+        f"{code}: whatYouNeed lacks the basis"
+    )
 
 
 @pytest.mark.parametrize("code", ["16291", "16293", "32201", "55106"])
@@ -130,7 +134,9 @@ def test_gold_override_agrees_with_canonical(code, gold):
     for field in ("zantaraOpener", "whatYouNeed", "baliContext"):
         text = rec.get(field) or ""
         for phrase in OPENNESS:
-            assert phrase.lower() not in text.lower(), f"gold {code}.{field}: {phrase!r}"
+            assert phrase.lower() not in text.lower(), (
+                f"gold {code}.{field}: {phrase!r}"
+            )
     assert "Lampiran II" in rec["whatYouNeed"]
     assert "**PMA:** Closed to foreign investment" in rec["whatYouNeed"]
 
@@ -149,8 +155,22 @@ def test_l4_bali_untouched(by_code):
 def test_out_of_scope_codes_untouched(by_code):
     """13133 (deferred), 55209/79110 (in review), the whole-row-unresolved set
     and the SEGMENT codes must not carry a naso verdict."""
-    for code in ["13133", "55209", "79110", "02300", "10794", "13122", "16292",
-                 "16294", "23932", "47192", "47243", "47721", "26513", "30301"]:
+    for code in [
+        "13133",
+        "55209",
+        "79110",
+        "02300",
+        "10794",
+        "13122",
+        "16292",
+        "16294",
+        "23932",
+        "47192",
+        "47243",
+        "47721",
+        "26513",
+        "30301",
+    ]:
         rec = by_code.get(code)
         if rec is None:
             continue
