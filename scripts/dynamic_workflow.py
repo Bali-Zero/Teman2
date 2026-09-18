@@ -512,11 +512,40 @@ FAMILY_MAP: dict[str, frozenset[str]] = {
 }
 
 
+# Short/alternate spellings the mandate itself uses for a seat that's already in FAMILY_MAP
+# under a different spelling — e.g. MANDATE-builder.md §family list writes "kimi-2.7 =
+# kimi-code/kimi-for-coding-highspeed", and its CLI section invokes the k3 seat as
+# "kimi-code/k3" while FAMILY_MAP (and the ledger, historically) call it "kimi-k3". Resolved
+# once here, at the single point `_seat_family` turns a seat id into a family — never by
+# renaming ledger rows or r1/r2 output files, which keep whatever spelling was actually used
+# to dispatch them.
+_SEAT_ALIASES: dict[str, str] = {
+    "kimi-2.7": "kimi-code/kimi-for-coding-highspeed",
+    "kimi-code/k3": "kimi-k3",
+}
+
+
+def _canonical_seat(seat: str) -> str:
+    return _SEAT_ALIASES.get(seat, seat)
+
+
 def _seat_family(seat: str) -> str | None:
+    canonical = _canonical_seat(seat)
     for family, seats in FAMILY_MAP.items():
-        if seat in seats:
+        if canonical in seats:
             return family
     return None
+
+
+def _require_known_family(seat: str) -> str:
+    """Fail closed (REWORK-BUILD gate verdict on PR2a/4c062d2e09): a seat absent from
+    FAMILY_MAP must never silently pair/review within its own (unrecognised) vendor. Every
+    call site that needs a family — r2 pairing today, jury tomorrow — goes through this."""
+    fam = _seat_family(seat)
+    if fam is None:
+        print(f"refused: seat {seat} not in FAMILY_MAP", file=sys.stderr)
+        sys.exit(2)
+    return fam
 
 
 def _answered_r1_seats(kit: Path) -> list[str]:
@@ -530,6 +559,8 @@ def compute_pairing(kit: Path, brief_sha: str) -> dict[str, list[str]]:
     brief_sha, so recomputing against the same ledger state reproduces the identical
     pairing byte-for-byte (that reproducibility IS the refusal check in cmd_r2)."""
     answered = _answered_r1_seats(kit)
+    for seat in answered:
+        _require_known_family(seat)  # fail closed BEFORE pairing.md is ever written
     rng = random.Random(brief_sha)
     pairing: dict[str, list[str]] = {}
     for seat in answered:
@@ -851,6 +882,26 @@ def run_selftest() -> None:
         check("refusal launched no new seat", not (kit_i / "r1" / "qwen3.8-max.md").exists())
         check("refusal wrote no new ledger row for the new seat",
               not _ledger_has_seat(kit_i, "qwen3.8-max"))
+
+        # J. r2 fails closed on a seat absent from FAMILY_MAP, and an alias resolves correctly
+        # (REWORK-BUILD verdict on 4c062d2e09/PR2a: unknown seat paired within its own vendor).
+        kit_j = work / "kit-j"
+        cmd_brief(argparse.Namespace(slug="j", objective_file=str(clean_obj), colour="BLUE",
+                                      floor=None, template=str(_fixture_template()), kit=str(kit_j)))
+        sha_j = (kit_j / "brief.sha").read_text().strip()
+        (kit_j / "r1" / "fable-5-1.md").write_text(_CANNED_VALID.format(seat="fable-5-1", sha=sha_j))
+        cmd_r1(argparse.Namespace(kit=str(kit_j), seats="kimi-k3,totally-unknown-seat",
+                                   astra_fallback=False))
+        try:
+            cmd_r2(argparse.Namespace(kit=str(kit_j)))
+            check("guilt: r2 refuses a seat absent from FAMILY_MAP", False)
+        except SystemExit as e:
+            check("guilt: r2 refuses a seat absent from FAMILY_MAP", e.code == 2)
+        check("refusal wrote no pairing.md", not (kit_j / "pairing.md").exists())
+        check("kimi-2.7 alias resolves to the moonshot family",
+              _seat_family("kimi-2.7") == "moonshot")
+        check("kimi-code/k3 alias resolves to the moonshot family",
+              _seat_family("kimi-code/k3") == "moonshot")
     finally:
         shutil.rmtree(work, ignore_errors=True)
         os.environ.pop("DW_FAKE_SEATS", None)

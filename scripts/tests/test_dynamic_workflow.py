@@ -317,16 +317,26 @@ def test_r2_filter_keeps_only_objections_with_an_fc_ref_and_a_test_line(tmp_path
 
 
 def test_r2_filter_drops_a_referenceless_no_test_objection_entirely(tmp_path, template,
-                                                                      clean_objective):
+                                                                      clean_objective, monkeypatch):
+    # "gemini-3.1-pro-high" is a REAL FAMILY_MAP seat (r2's fail-closed family check now refuses
+    # any answered seat outside FAMILY_MAP, so the old "<seat>-fakenoobject" synthetic identity
+    # can no longer stand in as a reviewer); force ITS fake r2 reply to be a no-objection one.
+    real_fake_r2_output = dw._fake_r2_output
+
+    def _forced_no_objection(seat: str) -> str:
+        if seat == "gemini-3.1-pro-high":
+            return "No objections. Everything checks out fine here."
+        return real_fake_r2_output(seat)
+
+    monkeypatch.setattr(dw, "_fake_r2_output", _forced_no_objection)
     kit = tmp_path / "k"
     dw.cmd_brief(_brief_ns(clean_objective, template, kit))
     _seed_convener(kit)
-    dw.cmd_r1(argparse.Namespace(
-        kit=str(kit), seats="kimi-k3,qwen3.8-max,gemini-3.1-pro-high-fakenoobject",
-        astra_fallback=False))
+    dw.cmd_r1(argparse.Namespace(kit=str(kit), seats="kimi-k3,qwen3.8-max,gemini-3.1-pro-high",
+                                  astra_fallback=False))
     summary = dw.cmd_r2(argparse.Namespace(kit=str(kit)))
-    assert summary["gemini-3.1-pro-high-fakenoobject"] == {"kept": 0, "rejected": 1}
-    assert not (kit / "r2" / "gemini-3.1-pro-high-fakenoobject.md").read_text().strip()
+    assert summary["gemini-3.1-pro-high"] == {"kept": 0, "rejected": 1}
+    assert not (kit / "r2" / "gemini-3.1-pro-high.md").read_text().strip()
 
 
 # --------------------------------------------------------------- judge (guilt + innocence)
@@ -403,6 +413,31 @@ def test_r1_refuses_a_convener_rewritten_after_the_first_dispatch(tmp_path, temp
     assert e.value.code == 2
     assert not (kit / "r1" / "qwen3.8-max.md").exists()
     assert not dw._ledger_has_seat(kit, "qwen3.8-max")
+
+
+# --------------------------------------------------------------- r2 family (guilt + innocence)
+# REWORK-BUILD gate verdict on 4c062d2e09/PR2a: an `answered` seat absent from FAMILY_MAP has
+# _seat_family return None, and None was treated as a family — pairing a seat with its own
+# vendor whenever both were unrecognised, or pairing a known seat with an unrecognised one.
+
+def test_r2_refuses_a_seat_absent_from_family_map(tmp_path, template, clean_objective):
+    kit = tmp_path / "k"
+    dw.cmd_brief(_brief_ns(clean_objective, template, kit))
+    _seed_convener(kit)
+    dw.cmd_r1(argparse.Namespace(kit=str(kit), seats="kimi-k3,totally-unknown-seat",
+                                  astra_fallback=False))
+    with pytest.raises(SystemExit) as e:
+        dw.cmd_r2(argparse.Namespace(kit=str(kit)))
+    assert e.value.code == 2
+    assert not (kit / "pairing.md").exists()
+
+
+@pytest.mark.parametrize("alias,family", [
+    ("kimi-2.7", "moonshot"),
+    ("kimi-code/k3", "moonshot"),
+])
+def test_seat_family_resolves_the_mandate_aliases(alias, family):
+    assert dw._seat_family(alias) == family
 
 
 # --------------------------------------------------------------- validate_answer (guilt + innocence)
