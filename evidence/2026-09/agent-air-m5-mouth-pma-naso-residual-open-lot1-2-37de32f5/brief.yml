@@ -1,7 +1,9 @@
 task_id: kbli-pma-naso-residual-open-lot1
 gear: 3
 base_sha: e5e0624d90
-# Floor 3, source `size` (25 files, +6261/-1358, churn 7,619 >= SIZE_GEAR3_THRESHOLD 1828).
+# Floor 3, source `size` — 25 files, +6261/-1358, churn 7,619 at brief time; 29 files,
+# +6621/-1369, churn 7,990 on the final diff once this evidence directory and the
+# regenerated scripts-coupling census are counted. Either way >= SIZE_GEAR3_THRESHOLD 1828.
 # 4,950 of that churn is the same 330-record relabel written three times (canonical + the two
 # tracked consumer copies) and 660 is the regenerated llms-kbli.txt; the reviewable surface is
 # the 660-line compiler, its 442-line spec, 661 lines of compiler tests and the census pins.

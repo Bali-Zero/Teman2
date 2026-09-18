@@ -28,8 +28,11 @@ result: >-
   divisions whose sector statutes this lane never read, 29 with an adjudicated 4-digit sibling,
   19 categories the body states in prose. Five commits, the last two a council fold.
 gear_floor_note: >-
-  Declared 3 because the deterministic floor IS 3, source `size` (numstat on the merge-base:
-  25 files, +6261/-1358, churn 7,619 >= SIZE_GEAR3_THRESHOLD 1828). 4,950 of that churn is the
+  Declared 3 because the deterministic floor IS 3, source `size` — re-measured on the FINAL
+  diff with --print-floor/--print-floor-source (numstat on the merge-base: 29 files,
+  +6621/-1369, churn 7,990 >= SIZE_GEAR3_THRESHOLD 1828). 25 files / +6261/-1358 / churn 7,619
+  of that is the work; the rest is this PR's own evidence directory and the regenerated
+  scripts-coupling census. 4,950 of the work's churn is the
   same 330-record relabel written three times (canonical + the two tracked consumer copies) and
   660 is the regenerated llms-kbli.txt; the reviewable surface is the 660-line compiler, its
   442-line spec, 661 lines of compiler tests and the census pins. Not split because the
