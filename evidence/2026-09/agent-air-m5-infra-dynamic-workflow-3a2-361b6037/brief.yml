@@ -1,0 +1,87 @@
+task: >-
+  PR3a' — full-replacement rework of #6769 after dw-gate-6's REWORK-BUILD verdict
+  (2026-09-18T12:14:59Z). Same base as #6769 (scripts/lint_workflow_script.py +
+  scripts/lint_model_cards.py, their fixtures, and one worked arsenal card example),
+  cherry-picked from #6769's own content commit, plus six fix commits closing the
+  gate's addendum: 2 DEFECTS (a relative_to ValueError traceback on out-of-root
+  targets in both lint scripts; the deprecated root evidence/brief.yml write target,
+  cured by writing THIS brief at its merge-base-anchored resolved path instead),
+  1 CONDITION (the wrapper-exemption bypass named in the RULE 1 docstring and pinned
+  by a documented-exemption fixture, not hidden), and 4 OBSERVATIONS (a single-argument
+  agent({...}) call was skipped instead of checked; `for await (` was not recognised as
+  a loop; lint_model_cards.py's explicit mode had no blind-scan guard for a nonexistent
+  target; the kimi-highspeed arsenal card was missing the launch line PR2e's per-seat
+  map emits for it).
+lane: infra/dynamic-workflow-3a2
+machine: air-m5
+date: 2026-09-18
+
+gear: 2
+gear_reason: >-
+  Floor is 2, SIZE-sourced, not path-sourced: compute_floor_source() on this diff's
+  merge-base-anchored file set (origin/main...HEAD, 22 files) returns "size", and
+  compute_floor() independently returns 2 — confirmed identically by
+  `contract_verify.py --local --json`'s own floor-needs-brief FAIL message before this
+  brief existed. Per evidence_pack_lint.py's compute_floor() docstring, the PATH term
+  alone can only ever return 1 or 3 (hot-zone hit or not) — floor==2 is only reachable
+  through the SIZE term crossing SIZE_GEAR2_THRESHOLD (400 net lines) while staying
+  under SIZE_GEAR3_THRESHOLD (1828). This diff's numstat sums to 1191 added / 8 deleted
+  = 1199 net lines, which clears the gear-2 floor and sits well clear of the gear-3
+  one. The size is inherited mostly from the cherry-picked base commit (new scripts +
+  fixtures + tests carried over from #6769 unchanged) rather than from this PR's own
+  six fix commits, which are individually small — the PR-size guidance in this repo's
+  CLAUDE.md ("~400 net lines where the work allows") does not apply cleanly to a
+  full-replacement PR that supersedes a closed PR's entire content by design.
+
+appetite:
+  wall_clock_hours: 3
+  adversarial_rounds: 2
+
+acceptance:
+  A1: >-
+    An out-of-root guilty target (e.g. a file passed by absolute path outside
+    repo_root) is listed with an absolute path and exit 1 — no traceback — in both
+    lint scripts; an in-root guilty target still prints a relative path (DEFECT 1).
+    probe: pytest scripts/tests/test_lint_workflow_script.py::test_guilt_out_of_root_violation_prints_absolute_path_no_traceback scripts/tests/test_lint_workflow_script.py::test_innocence_in_root_violation_still_prints_relative_path scripts/tests/test_lint_model_cards.py::test_guilt_out_of_root_violation_prints_absolute_path_no_traceback scripts/tests/test_lint_model_cards.py::test_innocence_in_root_violation_still_prints_relative_path
+  A2: >-
+    This diff writes no root evidence/brief.yml (so it cannot repeat #6769's overwrite
+    of #6645's brief) and instead carries a brief at its own merge-base-anchored
+    resolved path, so the harness-floor recompute's floor-needs-brief check reads PASS
+    on this head (DEFECT 2).
+    probe: python3 scripts/contract_verify.py --local --json
+  A3: >-
+    The wrapper-exemption bypass (a bare-identifier options object passed through a
+    helper like callSeat, invisible to the static lint) is pinned by a fixture and
+    named in the RULE 1 docstring next to model_routing_gate.py, citing the runtime
+    guard (run-second-army.mjs's assertModelPinned) that actually closes it (CONDITION 3).
+    probe: pytest scripts/tests/test_lint_workflow_script.py::test_documented_bypass_fixture_is_lexically_invisible
+  A4: >-
+    A single-argument agent({...}) call is scanned like any other call's last
+    argument — a guilty one (no model:) is flagged, an innocent one (model: present)
+    is not (OBSERVATION 4).
+    probe: pytest scripts/tests/test_lint_workflow_script.py::test_single_argument_agent_object_literal_is_checked
+  A5: >-
+    `for await (` is recognised by LOOP_RE as a loop; an already-declared for-await
+    target with no numeric cap is flagged the same as any other uncapped loop
+    (OBSERVATION 5).
+    probe: pytest scripts/tests/test_lint_workflow_script.py::test_for_await_loop_is_recognised
+  A6: >-
+    An explicit target that does not exist on disk exits 2 ("blind scan") instead of
+    printing a false-green "0 file(s) scanned" in both lint scripts, without breaking
+    the pre-existing, unmodified innocence case of an explicit, existing, off-suffix
+    file (OBSERVATION 6).
+    probe: pytest scripts/tests/test_lint_workflow_script.py::test_guilt_explicit_nonexistent_target_is_a_blind_scan scripts/tests/test_lint_model_cards.py::test_guilt_explicit_nonexistent_target_is_a_blind_scan scripts/tests/test_lint_workflow_script.py::test_innocence_explicit_non_js_file_is_still_green scripts/tests/test_lint_model_cards.py::test_innocence_explicit_non_md_file_is_still_green
+  A7: >-
+    The kimi-highspeed arsenal card carries the launch line PR2e's per-seat
+    KIMI_MODEL_MAP emits for this seat, and the card still lints clean (OBSERVATION 7).
+    probe: python3 scripts/lint_model_cards.py docs/arsenal/cards/kimi-code__kimi-for-coding-highspeed.md
+  A8: >-
+    No regression across the full lint battery for both scripts.
+    probe: pytest scripts/tests/test_lint_workflow_script.py scripts/tests/test_lint_model_cards.py -q
+
+out_of_scope: >-
+  PR3b and PR3c (deferred behind this PR and PR2f in the mandate's stated order).
+  PR2f's capture hardening (blind-jury letters-only, capture-check destination/PII
+  hardening) — gated on PR2e MERGED, tracked separately. The 803-line deroga is
+  declared elsewhere in this diff's body and is not re-litigated by this brief. The
+  root evidence/brief.yml file itself — deliberately untouched, see DEFECT 2 above.
