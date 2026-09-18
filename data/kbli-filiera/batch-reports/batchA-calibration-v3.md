@@ -13,9 +13,9 @@
 
 | Artifact | Pin |
 | --- | --- |
-| canonical (`data/source_documents/KBLI_2025_FINAL_CLEAN.json`) | git revision `bd82da22da611e6213a6c11895d3b4f7f14e4a8e` |
+| canonical (`data/source_documents/KBLI_2025_FINAL_CLEAN.json`) | git revision `0e86e8b00e506920120e942f0bb1fff7b4b6ae60` |
 | vault manifest (`data/kbli-filiera/manifest/vault-manifest-batch0-2026-07-18.json`) | sha256 `e7d25a377b717ed76efd1c7c806fe74b45067321629c5ed77655aeea9375db9d` |
-| membership (`data/kbli-filiera/membership/batch-a-members.json`) | sha256 `e660428d0b8a29830d185bd59cc3074f2358c561ffdc236cf23712f5e877fc6f` |
+| membership (`data/kbli-filiera/membership/batch-a-members.json`) | sha256 `392f537881c5d06e3f420899c109ada2c7c70777ca9344636f38a47682eb0398` |
 
 ## Control limits m1-m5 (v3 — three-lot registry)
 
