@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import argparse
 import importlib.util
+import os
 import sys
 from pathlib import Path
 from types import ModuleType
@@ -196,6 +197,63 @@ def test_r1_astra_defaults_to_awaiting_window(tmp_path, template, clean_objectiv
     summary = dw.cmd_r1(argparse.Namespace(kit=str(kit), seats="astra", astra_fallback=False))
     assert summary["astra"] == "awaiting-window"
     assert not (kit / "r1" / "astra.md").exists()
+
+
+def test_launch_seat_astra_resolves_a_seat_before_invoking_codex(tmp_path, monkeypatch):
+    """DW_FAKE_SEATS=1 (the autouse fixture, and --selftest) short-circuits _run_one_seat
+    before it ever reaches _launch_seat, so the astra branch's real `codex exec` call has no
+    coverage from the fake-seat path. This calls _launch_seat directly and proves the corpus
+    rule (scripts/tests/test_codex_seat_lib.py::test_no_call_site_invokes_codex_without_choosing_a_seat)
+    is actually satisfied in substance, not just in import: codex_seat_env() is called and its
+    result is threaded into subprocess.run's env=, not a hand-rolled/omitted one."""
+    kit = tmp_path / "k"
+    (kit / "r1").mkdir(parents=True)
+    sentinel_env = {"CODEX_HOME": "/fake/seat/dir"}
+    calls = []
+
+    def _fake_env(env=None):
+        return sentinel_env
+
+    def _fake_run(cmd, **kwargs):
+        calls.append(kwargs)
+        (kit / "r1" / "astra.md").write_text("stub output")
+        return None
+
+    monkeypatch.setattr(dw, "codex_seat_env", _fake_env)
+    monkeypatch.setattr(dw.subprocess, "run", _fake_run)
+
+    output = dw._launch_seat("astra", "prompt text", 5, kit)
+
+    assert output == "stub output"
+    assert len(calls) == 1
+    assert calls[0].get("env") is sentinel_env
+    assert calls[0].get("stdin") == dw.subprocess.DEVNULL
+
+
+def test_launch_seat_astra_degrades_silently_when_no_seat_resolves(tmp_path, monkeypatch):
+    """Innocence twin: codex_seat_env() with no logged-in seat returns the env unchanged
+    (never raises, never adds an empty CODEX_HOME — see scripts/lib/codex_seat.py). The
+    astra branch must still call it and still invoke codex, not treat "no seat" as a reason
+    to skip resolution."""
+    kit = tmp_path / "k"
+    (kit / "r1").mkdir(parents=True)
+    calls = []
+
+    def _fake_env(env=None):
+        return dict(os.environ)
+
+    def _fake_run(cmd, **kwargs):
+        calls.append(kwargs)
+        return None
+
+    monkeypatch.setattr(dw, "codex_seat_env", _fake_env)
+    monkeypatch.setattr(dw.subprocess, "run", _fake_run)
+
+    output = dw._launch_seat("astra", "prompt text", 5, kit)
+
+    assert output == ""  # out_file never written, "no seat" is not a crash
+    assert len(calls) == 1
+    assert calls[0].get("env") == dict(os.environ)
 
 
 # --------------------------------------------------------------- validate_answer (guilt + innocence)

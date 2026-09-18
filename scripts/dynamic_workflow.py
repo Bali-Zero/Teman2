@@ -35,6 +35,10 @@ if str(_SCRIPTS_DIR) not in sys.path:
 from _redact_pii import RedactionError, Redactor  # noqa: E402
 
 REPO_ROOT = _SCRIPTS_DIR.parent
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
+from scripts.lib.codex_seat import codex_seat_env  # noqa: E402
+
 DEFAULT_TEMPLATE = REPO_ROOT / ".claude" / "skills" / "dynamic-workflow" / "brief.template.md"
 
 PLACEHOLDERS = ("{{OBJECTIVE}}", "{{COLOUR}}", "{{FLOOR}}", "{{DATE}}", "{{ARSENAL_LIVENESS}}")
@@ -363,7 +367,7 @@ def _launch_seat(seat: str, prompt: str, timeout: int, kit: Path) -> str:
                 cmd = ["codex", "exec", "-m", "gpt-6-astra", "-C", tmp, "-s", "read-only",
                        "--skip-git-repo-check", "-o", str(out_file), prompt]
                 subprocess.run(cmd, stdin=subprocess.DEVNULL, capture_output=True,
-                                text=True, timeout=timeout)
+                                text=True, timeout=timeout, env=codex_seat_env())
             return out_file.read_text() if out_file.exists() else ""
         else:
             return ""
