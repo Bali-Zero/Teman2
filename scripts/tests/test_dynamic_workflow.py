@@ -558,6 +558,39 @@ def test_launch_seat_kimi_2_7_alias_resolves_to_the_highspeed_id_end_to_end(tmp_
     assert calls[0][calls[0].index("-m") + 1] == "kimi-code/kimi-for-coding-highspeed"
 
 
+# --------------------------------------------------------------- slug collision (guilt + innocence)
+# Gate-4 finding, PR2e addendum (scripts/dynamic_workflow.py:420): _file_slug collapses '/' to
+# '__', so 'vendor/x' and a literal 'vendor__x' seat id both produce r1/vendor__x.md — the
+# second claimant used to overwrite the first silently (exit 0, no error). kit/slugs.json now
+# refuses a second, DIFFERENT claimant before dispatch.
+
+def test_r1_refuses_a_slug_collision_between_two_different_seat_ids(tmp_path, template,
+                                                                     clean_objective):
+    kit = tmp_path / "k"
+    dw.cmd_brief(_brief_ns(clean_objective, template, kit))
+    _seed_convener(kit)
+    dw.cmd_r1(argparse.Namespace(kit=str(kit), seats="vendor/x", astra_fallback=False))
+    first_answer = (kit / "r1" / "vendor__x.md").read_text()
+    with pytest.raises(SystemExit) as e:
+        dw.cmd_r1(argparse.Namespace(kit=str(kit), seats="vendor__x", astra_fallback=False))
+    assert e.value.code == 2
+    assert not dw._ledger_has_seat(kit, "vendor__x")  # the SECOND seat id, never dispatched
+    assert dw._ledger_has_seat(kit, "vendor/x")  # the FIRST seat id, untouched by the refusal
+    assert (kit / "r1" / "vendor__x.md").read_text() == first_answer  # first claimant's file intact
+
+
+def test_r1_relaunching_the_same_seat_across_two_cmd_r1_calls_is_not_a_slug_collision(
+        tmp_path, template, clean_objective):
+    kit = tmp_path / "k"
+    dw.cmd_brief(_brief_ns(clean_objective, template, kit))
+    _seed_convener(kit)
+    dw.cmd_r1(argparse.Namespace(kit=str(kit), seats="kimi-k3", astra_fallback=False))
+    assert dw.ledger_sent_count(kit, "kimi-k3") == 1
+    summary2 = dw.cmd_r1(argparse.Namespace(kit=str(kit), seats="kimi-k3", astra_fallback=False))
+    assert summary2["kimi-k3"] == "answered"  # the SAME seat re-claims its own slug, no refusal
+    assert dw.ledger_sent_count(kit, "kimi-k3") == 2
+
+
 # --------------------------------------------------------------- r2 pairing "exactly two" (guilt + innocence)
 # Gate finding 3, inherited from PR2a's merge: compute_pairing silently accepted 0 or 1
 # cross-family partner as "good enough"; the mandate requires EXACTLY two.

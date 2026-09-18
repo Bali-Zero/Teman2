@@ -432,9 +432,29 @@ def _file_slug(seat: str) -> str:
     return seat.replace("/", "__")
 
 
+def _claim_slug(kit: Path, seat: str) -> None:
+    """Kit-level slug -> seat map (gate-4 finding, PR2e addendum, scripts/dynamic_workflow.py:420):
+    _file_slug collapses '/' to '__', so 'vendor/x' and a literal 'vendor__x' seat id both
+    produce r1/vendor__x.md — the second claimant used to overwrite the first silently (exit
+    0). kit/slugs.json is the single source of which seat already owns a slug; called once per
+    dispatch (_run_one_seat), so a relaunch of the SAME seat re-claims its own slug (no-op) but
+    a second, DIFFERENT seat claiming an existing slug refuses here, before dispatch."""
+    slug = _file_slug(seat)
+    slugs_path = kit / "slugs.json"
+    slugs: dict[str, str] = json.loads(slugs_path.read_text()) if slugs_path.exists() else {}
+    existing = slugs.get(slug)
+    if existing is not None and existing != seat:
+        print(f"refused: slug {slug!r} already claimed by seat {existing!r}, "
+              f"seat {seat!r} collides", file=sys.stderr)
+        sys.exit(2)
+    slugs[slug] = seat
+    slugs_path.write_text(json.dumps(slugs, indent=2, sort_keys=True) + "\n")
+
+
 def _run_one_seat(kit: Path, seat: str, brief_master: str, brief_sha: str, attempt: int) -> str:
     _validate_seat_id(seat)  # before the first ledger_append — an invalid id gets no row at all
     _validate_kimi_model(seat)  # ditto — an unresolvable kimi* id gets no row either
+    _claim_slug(kit, seat)  # ditto — a slug collision with a DIFFERENT seat gets no row either
     seat_copy = _set_seat_line(brief_master, seat)
     reconstructed = _set_sha_line(_set_seat_line(seat_copy, ""), "")
     if hashlib.sha256(reconstructed.encode()).hexdigest() != brief_sha:
