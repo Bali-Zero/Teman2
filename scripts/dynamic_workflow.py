@@ -2,13 +2,14 @@
 """dynamic_workflow.py — the ONE launcher for /dynamic-workflow. Code, not prose; every
 verdict judged by CONTENT, never by exit code alone (scar #2, "Esiste != Armato").
 
-Subcommands (PR1a+PR1b+PR2a — jury/anonymise/reveal/capture-check land in PR2b):
+Subcommands (PR1a+PR1b+PR2a+PR2b — anonymise/reveal/capture-check land in PR2c):
     brief    --slug S --objective-file F --colour BLUE|ORANGE [--floor X] [--template T] [--kit K]
     check    --kit K            # recompute BRIEF.md from template+inputs.json, byte-diff (W78)
     r1       --kit K --seats a,b,c [--astra-fallback]   # one-shot per seat, ledger, relaunch<=1
     validate FILE --sha S       # frontmatter+skeleton+word-count gate
     r2       --kit K            # deterministic cross-family pairing, one shot, F/C+Test filter
     judge    --kit K            # mechanical C1/C5/C8 disqualification of every r1 answer
+    jury     --kit K            # blind peer review of survivors, six axes, Borda + firsts
 
 PII gate is fail-closed, no --skip-pii flag exists: the objective is redacted with the SAME
 Redactor used before anything leaves this machine; any change, or any raise, refuses with a
@@ -31,6 +32,7 @@ import sys
 import tempfile
 import time
 from datetime import datetime, timezone
+from typing import Any
 from pathlib import Path
 
 _SCRIPTS_DIR = Path(__file__).resolve().parent
@@ -648,8 +650,7 @@ def cmd_r2(args: argparse.Namespace) -> dict[str, dict[str, int]]:
     return summary
 
 
-# --------------------------------------------------------------------- judge (mechanical only;
-# jury + Borda tabulation lands in PR2b)
+# --------------------------------------------------------------------- judge (mechanical only)
 
 _C1_BANNED_RE = re.compile(
     r"ANTHROPIC_API_KEY|api_key\s*=|from\s+anthropic\s+import|\bbedrock\b|\bvertex\b|agy\s+.*claude-",
@@ -716,6 +717,198 @@ def cmd_judge(args: argparse.Namespace) -> dict[str, dict[str, object]]:
     for seat, v in verdicts.items():
         print(f"{seat}: disqualified={v['disqualified']}")
     return verdicts
+
+
+# --------------------------------------------------------------------- jury (blind peer review;
+# anonymise/reveal/capture-check land in PR2c)
+
+JURY_AXES = ("termination", "cost", "robustness", "evidence", "implementability", "fit")
+_JURY_LETTERS = "ABCDEF"
+_JURY_PROMPT_PREFIX = (
+    "You are a juror in a sealed brainstorm. Score each OTHER formation below on six axes, "
+    "integer 1-5 each. Output ONLY a markdown table, one row per formation letter, columns "
+    "exactly: formation, " + ", ".join(JURY_AXES) + ". No prose outside the table.\n\n")
+
+
+def _strip_identity(text: str) -> str:
+    """The two frontmatter lines that would deanonymise a formation to its reviewer — shared
+    by cmd_jury's blinding and cmd_anonymise's Z-BLIND artifact (PR2c) so the stripped fields
+    never drift between the two (mandate: 'seat: and objective_sha256 lines stripped,
+    nothing else')."""
+    text = re.sub(r"^seat:.*$", "seat: [REDACTED]", text, count=1, flags=re.MULTILINE)
+    text = re.sub(r"^objective_sha256:.*$", "objective_sha256: [REDACTED]", text, count=1,
+                   flags=re.MULTILINE)
+    return text
+
+
+def _jury_survivors(kit: Path) -> list[str]:
+    """Seats judge.md marked NOT disqualified, in judge.md's own row order. judge.md — not a
+    recompute — is the SSOT for who survives (scar #2, "Esiste != Armato": never re-derive a
+    verdict already written to disk)."""
+    judge_path = kit / "judge.md"
+    if not judge_path.exists():
+        print("refused: judge.md does not exist — run judge before jury", file=sys.stderr)
+        sys.exit(2)
+    survivors = []
+    for line in judge_path.read_text().splitlines():
+        stripped = line.strip()
+        if not stripped.startswith("|") or stripped.startswith("| seat") or set(stripped) <= {"|", "-"}:
+            continue
+        cells = [c.strip() for c in stripped.strip("|").split("|")]
+        if len(cells) < 5:
+            continue
+        seat, disqualified = cells[0], cells[-1]
+        if disqualified == "no":
+            survivors.append(seat)
+    return survivors
+
+
+def _jury_mapping(kit: Path, survivors: list[str]) -> dict[str, str]:
+    """One global letter->seat map for the whole round (max 6, A-F), persisted to
+    jury/mapping.json chmod 600 so cmd_anonymise's Z-BLIND artifact (PR2c) reuses the SAME
+    letters jury/tabulation.md already named, instead of assigning a second, inconsistent
+    mapping later. Refuses like pairing.md/mapping.json do elsewhere: exists-and-differs is
+    a refusal, not a silent overwrite."""
+    if len(survivors) > len(_JURY_LETTERS):
+        print(f"refused: {len(survivors)} surviving formations, jury supports at most "
+              f"{len(_JURY_LETTERS)} (A-F)", file=sys.stderr)
+        sys.exit(2)
+    mapping = dict(zip(_JURY_LETTERS, survivors))
+    mapping_path = kit / "jury" / "mapping.json"
+    mapping_path.parent.mkdir(parents=True, exist_ok=True)
+    rendered = json.dumps(mapping, indent=2, sort_keys=True) + "\n"
+    if mapping_path.exists():
+        if mapping_path.read_text() != rendered:
+            print("refused: jury/mapping.json exists and differs from a fresh recompute",
+                  file=sys.stderr)
+            sys.exit(2)
+    else:
+        mapping_path.write_text(rendered)
+        os.chmod(mapping_path, 0o600)
+    return mapping
+
+
+def _fake_jury_output(juror: str, letters: list[str]) -> str:
+    if not letters:
+        return ""
+    if juror.endswith("fakejurydead"):
+        return "not a table"
+    lines = ["| formation | " + " | ".join(JURY_AXES) + " |",
+              "|---|" + "---|" * len(JURY_AXES)]
+    for i, letter in enumerate(letters):
+        base = 3 + (i % 2)
+        lines.append(f"| {letter} | " + " | ".join(str(base) for _ in JURY_AXES) + " |")
+    return "\n".join(lines) + "\n"
+
+
+def _parse_jury_ballot(text: str, valid_letters: set[str]) -> dict[str, list[int]] | None:
+    """A parseable table or it is dead for the jury (mandate, verbatim): every letter this
+    juror was shown must appear EXACTLY once with six 1-5 integer scores, or the whole
+    ballot is dead — a partial table is not a partial credit."""
+    rows: dict[str, list[int]] = {}
+    for line in text.splitlines():
+        stripped = line.strip()
+        if not stripped.startswith("|") or not stripped.endswith("|"):
+            continue
+        cells = [c.strip() for c in stripped.strip("|").split("|")]
+        if len(cells) != 1 + len(JURY_AXES):
+            continue
+        letter = cells[0].upper()
+        if letter not in valid_letters or letter in rows:
+            continue
+        scores = []
+        for c in cells[1:]:
+            if not re.fullmatch(r"[1-5]", c):
+                scores = None
+                break
+            scores.append(int(c))
+        if scores is not None:
+            rows[letter] = scores
+    if set(rows) != valid_letters:
+        return None
+    return rows
+
+
+def _tabulate_jury(mapping: dict[str, str],
+                    ballots: dict[str, dict[str, list[int]] | None]) -> dict[str, Any]:
+    """Borda + firsts, tabulated BY THE SCRIPT (mandate, verbatim) — never by a synthesizer
+    LLM. Borda: per live ballot, rank formations by summed axis score (ties broken by letter
+    for determinism), award (n-1-rank) points. Firsts: count of #1 rankings. Disagreement: any
+    formation where the SAME axis spans >=3 points (of a 1-5 scale) across live ballots."""
+    letters = sorted(mapping)
+    borda: dict[str, int] = {ltr: 0 for ltr in letters}
+    firsts: dict[str, int] = {ltr: 0 for ltr in letters}
+    axis_scores: dict[str, dict[str, list[int]]] = {ltr: {a: [] for a in JURY_AXES} for ltr in letters}
+    live = 0
+    for ballot in ballots.values():
+        if ballot is None:
+            continue
+        live += 1
+        totals = {ltr: sum(scores) for ltr, scores in ballot.items()}
+        ranked = sorted(totals, key=lambda ltr: (-totals[ltr], ltr))
+        n = len(ranked)
+        for idx, ltr in enumerate(ranked):
+            borda[ltr] += (n - 1 - idx)
+        if ranked:
+            firsts[ranked[0]] += 1
+        for ltr, scores in ballot.items():
+            for axis, score in zip(JURY_AXES, scores):
+                axis_scores[ltr][axis].append(score)
+
+    disagreements = []
+    for ltr in letters:
+        for axis in JURY_AXES:
+            scores = axis_scores[ltr][axis]
+            if len(scores) >= 2 and (max(scores) - min(scores)) >= 3:
+                disagreements.append(
+                    f"{ltr} ({mapping[ltr]}): {axis} spread {min(scores)}-{max(scores)}")
+
+    dead = sorted(j for j, b in ballots.items() if b is None)
+    rows = ["| formation | seat | borda | firsts |", "|---|---|---|---|"]
+    for ltr in sorted(letters, key=lambda ltr: (-borda[ltr], ltr)):
+        rows.append(f"| {ltr} | {mapping[ltr]} | {borda[ltr]} | {firsts[ltr]} |")
+    lines = [f"# Jury tabulation — {live} live ballot(s), {len(dead)} dead: "
+             f"{', '.join(dead) or 'none'}", ""]
+    lines += rows
+    lines.append("")
+    lines.append("## Disagreements" if disagreements else "## Disagreements: none")
+    lines += [f"- {d}" for d in disagreements]
+    return {"borda": borda, "firsts": firsts, "dead": dead, "disagreements": disagreements,
+            "rendered": "\n".join(lines) + "\n"}
+
+
+def cmd_jury(args: argparse.Namespace) -> dict[str, Any]:
+    kit = Path(args.kit)
+    survivors = _jury_survivors(kit)
+    mapping = _jury_mapping(kit, survivors)
+    (kit / "jury").mkdir(parents=True, exist_ok=True)
+
+    fake = os.environ.get("DW_FAKE_SEATS") == "1"
+    ballots: dict[str, dict[str, list[int]] | None] = {}
+    for juror in survivors:
+        others = sorted(ltr for ltr, seat in mapping.items() if seat != juror)
+        if not others:
+            continue  # no peers to review — never sent, never scored, never dead
+        if fake:
+            output = _fake_jury_output(juror, others)
+        else:
+            bodies = "\n\n".join(
+                f"### Formation {ltr}\n" + _strip_identity((kit / "r1" / f"{mapping[ltr]}.md").read_text())
+                for ltr in others)
+            prompt = _JURY_PROMPT_PREFIX + bodies
+            kind = _seat_kind(juror) or "kimi"
+            timeout = SEAT_TIMEOUTS.get(kind, 900)
+            output = _launch_seat(juror, prompt, timeout, kit)
+        (kit / "jury" / f"{juror}.md").write_text(output or "")
+        ballot = _parse_jury_ballot(output or "", set(others))
+        ballots[juror] = ballot
+        ledger_append(kit, juror, "jury-dead" if ballot is None else "jury-scored", "0" * 16)
+
+    tabulation = _tabulate_jury(mapping, ballots)
+    (kit / "jury" / "tabulation.md").write_text(tabulation["rendered"])
+    for juror, ballot in ballots.items():
+        print(f"{juror}: {'dead' if ballot is None else 'scored'}")
+    return tabulation
 
 
 def cmd_validate(args: argparse.Namespace) -> None:
@@ -902,6 +1095,28 @@ def run_selftest() -> None:
               _seat_family("kimi-2.7") == "moonshot")
         check("kimi-code/k3 alias resolves to the moonshot family",
               _seat_family("kimi-code/k3") == "moonshot")
+
+        # K. jury: blind peer review, Borda + firsts, a malformed ballot is dead not partial.
+        kit_k = work / "kit-k"
+        cmd_brief(argparse.Namespace(slug="k", objective_file=str(clean_obj), colour="BLUE",
+                                      floor=None, template=str(_fixture_template()), kit=str(kit_k)))
+        sha_k = (kit_k / "brief.sha").read_text().strip()
+        (kit_k / "r1" / "fable-5-1.md").write_text(_CANNED_VALID.format(seat="fable-5-1", sha=sha_k))
+        cmd_r1(argparse.Namespace(
+            kit=str(kit_k), seats="kimi-k3,qwen3.8-max,gemini-3.1-pro-high-fakejurydead",
+            astra_fallback=False))
+        cmd_judge(argparse.Namespace(kit=str(kit_k)))
+        tab_k = cmd_jury(argparse.Namespace(kit=str(kit_k)))
+        mapping_path = kit_k / "jury" / "mapping.json"
+        check("jury/mapping.json written", mapping_path.exists())
+        check("jury/mapping.json is chmod 600", oct(mapping_path.stat().st_mode)[-3:] == "600")
+        check("jury/tabulation.md written", (kit_k / "jury" / "tabulation.md").exists())
+        check("one dead ballot named (the malformed-table seat)",
+              tab_k["dead"] == ["gemini-3.1-pro-high-fakejurydead"])
+        check("borda tabulated for every surviving formation letter",
+              set(tab_k["borda"]) == {"A", "B", "C"})
+        check("re-running jury on an unchanged mapping does not refuse",
+              cmd_jury(argparse.Namespace(kit=str(kit_k))) is not None)
     finally:
         shutil.rmtree(work, ignore_errors=True)
         os.environ.pop("DW_FAKE_SEATS", None)
@@ -971,6 +1186,10 @@ def main() -> None:
     p_judge = sub.add_parser("judge")
     p_judge.add_argument("--kit", required=True)
     p_judge.set_defaults(func=cmd_judge)
+
+    p_jury = sub.add_parser("jury")
+    p_jury.add_argument("--kit", required=True)
+    p_jury.set_defaults(func=cmd_jury)
 
     args = parser.parse_args()
     if args.selftest:

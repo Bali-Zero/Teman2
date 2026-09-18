@@ -440,6 +440,64 @@ def test_seat_family_resolves_the_mandate_aliases(alias, family):
     assert dw._seat_family(alias) == family
 
 
+# --------------------------------------------------------------- jury (guilt + innocence)
+
+def _judged_kit(tmp_path, template, clean_objective, seats: str) -> Path:
+    kit = tmp_path / "k"
+    dw.cmd_brief(_brief_ns(clean_objective, template, kit))
+    _seed_convener(kit)
+    dw.cmd_r1(argparse.Namespace(kit=str(kit), seats=seats, astra_fallback=False))
+    dw.cmd_judge(argparse.Namespace(kit=str(kit)))
+    return kit
+
+
+def test_jury_refuses_before_judge_has_run(tmp_path, template, clean_objective):
+    kit = tmp_path / "k"
+    dw.cmd_brief(_brief_ns(clean_objective, template, kit))
+    _seed_convener(kit)
+    dw.cmd_r1(argparse.Namespace(kit=str(kit), seats="kimi-k3", astra_fallback=False))
+    with pytest.raises(SystemExit) as e:
+        dw.cmd_jury(argparse.Namespace(kit=str(kit)))
+    assert e.value.code == 2
+    assert not (kit / "jury").exists()
+
+
+def test_jury_scores_survivors_and_marks_a_malformed_ballot_dead(tmp_path, template, clean_objective):
+    kit = _judged_kit(tmp_path, template, clean_objective,
+                       "kimi-k3,qwen3.8-max,gemini-3.1-pro-high-fakejurydead")
+    tabulation = dw.cmd_jury(argparse.Namespace(kit=str(kit)))
+    mapping_path = kit / "jury" / "mapping.json"
+    assert mapping_path.exists()
+    assert oct(mapping_path.stat().st_mode)[-3:] == "600"
+    assert (kit / "jury" / "tabulation.md").exists()
+    assert tabulation["dead"] == ["gemini-3.1-pro-high-fakejurydead"]
+    assert set(tabulation["borda"]) == {"A", "B", "C"}
+    assert set(tabulation["firsts"]) == {"A", "B", "C"}
+
+
+def test_jury_refuses_when_mapping_json_exists_and_differs(tmp_path, template, clean_objective):
+    kit = _judged_kit(tmp_path, template, clean_objective, "kimi-k3,qwen3.8-max")
+    (kit / "jury").mkdir(parents=True, exist_ok=True)
+    (kit / "jury" / "mapping.json").write_text('{"A": "not-the-real-seat"}\n')
+    with pytest.raises(SystemExit) as e:
+        dw.cmd_jury(argparse.Namespace(kit=str(kit)))
+    assert e.value.code == 2
+
+
+def test_parse_jury_ballot_rejects_a_partial_table():
+    text = "| A | 3 | 3 | 3 | 3 | 3 | 3 |\n"  # missing letter B entirely
+    assert dw._parse_jury_ballot(text, {"A", "B"}) is None
+
+
+def test_parse_jury_ballot_accepts_a_complete_table():
+    text = ("| formation | termination | cost | robustness | evidence | implementability | fit |\n"
+            "|---|---|---|---|---|---|---|\n"
+            "| A | 3 | 3 | 3 | 3 | 3 | 3 |\n"
+            "| B | 5 | 1 | 5 | 1 | 5 | 1 |\n")
+    ballot = dw._parse_jury_ballot(text, {"A", "B"})
+    assert ballot == {"A": [3, 3, 3, 3, 3, 3], "B": [5, 1, 5, 1, 5, 1]}
+
+
 # --------------------------------------------------------------- validate_answer (guilt + innocence)
 
 def _valid_text(sha="abc123"):
