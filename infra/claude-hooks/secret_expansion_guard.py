@@ -87,6 +87,10 @@ PEELABLE = {"env", "sudo", "time", "nice", "command", "exec", "nohup", "stdbuf"}
 # A heredoc fed to one of these is CODE the consumer will run (locally or, for
 # ssh, remotely) and its output comes back to the transcript — judge the body.
 SHELL_HEADS = {"bash", "sh", "zsh", "dash", "ksh", "ssh"}
+# The same shells when they take their CODE as a `-c` STRING ARGUMENT. `ssh` is
+# deliberately absent: its `-c` is the CIPHER flag, and a remote command needs the
+# read/write distinction of W94 before it can be judged (see the spec's E64 note).
+LOCAL_SHELL_HEADS = SHELL_HEADS - {"ssh"}
 _HEREDOC_RE = re.compile(r"<<-?\s*(['\"]?)(\w+)\1")
 _ASSIGN_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*=")
 _REDIRECT_RE = re.compile(r"^\d*(?:>>|<<<|<<-?|&>>|&>|>&\d*|<|>)")
@@ -599,6 +603,26 @@ def _mask_substitutions(text: str) -> tuple[str, list[str]]:
     return "".join(chars), subs
 
 
+def _shell_c_payloads(toks: list[str], head: str) -> list[str]:
+    """Code a local shell runs from a STRING ARGUMENT rather than a heredoc body.
+
+    `bash -c 'cat STORE'` is the entity of E58 — code the child runs, whose output
+    lands in the transcript — one spelling apart from the heredoc the gate had
+    already fixed, and the MORE idiomatic of the two. Judging only the heredoc left
+    it open (found by independent probe at the gate, 2026-09-19: superscar #3 in the
+    UNDER-match direction). `eval` is the same entity in the CURRENT shell.
+    """
+    if head == "eval":
+        return [" ".join(_unquote(t) for t in toks[1:])] if len(toks) > 1 else []
+    if head not in LOCAL_SHELL_HEADS:
+        return []
+    for i in range(1, len(toks)):
+        t = _unquote(toks[i])
+        if (t in ("-c", "--command") or re.match(r"^-[A-Za-z]*c[A-Za-z]*$", t)) and i + 1 < len(toks):
+            return [_unquote(toks[i + 1])]
+    return []
+
+
 def _judge_command(command: str, cwd: str, reg: dict) -> str | None:
     text = _strip_comments(_blank_literal_heredocs(command))
     return _judge_text(text, cwd, _secret_names(reg), _store_patterns(reg), 0)
@@ -631,6 +655,8 @@ def _judge_text(text: str, cwd: str, secrets, stores: list[str], depth: int) -> 
             for reason in candidates:
                 if reason:
                     return reason
+            if head:
+                subs.extend(_shell_c_payloads(peeled, head))
     if depth < MAX_SUBSTITUTION_DEPTH:
         for body in subs:
             reason = _judge_text(body, cwd, secrets, stores, depth + 1)

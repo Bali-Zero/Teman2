@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""test_secret_expansion_guard.py — the spec's §5 case corpus (E01-E59), run
+"""test_secret_expansion_guard.py — the spec's §5 case corpus (E01-E64), run
 against the real hook as a subprocess exactly as the harness would (JSON on
 stdin, exit 2 = DENY, exit 0 = ALLOW).
 
@@ -161,6 +161,21 @@ CORPUS: list[tuple[str, object, bool, str]] = [
      "quoted or not, a heredoc to bash is code the child runs"),
     ("E59", lambda: bash(f"ssh pro <<'EOF'\ncat {STORE}\nEOF"), True,
      "ssh runs a remote shell and its output comes back to the transcript"),
+    # --- gate 2026-09-19: the SAME entity as E58, given as a `-c` string argument.
+    # The heredoc spelling was judged and the idiomatic one was not (superscar #3,
+    # UNDER-match), found by probing the guard independently of this corpus.
+    ("E60", lambda: bash(f"bash -c 'cat {STORE}'"), True,
+     "`bash -c` runs code the child runs — E58's entity, one spelling apart"),
+    ("E61", lambda: bash(f"sh -lc 'printenv {N}'"), True,
+     "combined flag string carries c; the payload is still code"),
+    ("E62", lambda: bash("bash -c 'echo hello'"), False,
+     "innocence: a -c payload with nothing guilty in it"),
+    ("E63", lambda: bash(f"eval 'cat {STORE}'"), True,
+     "eval runs its argument as code in the CURRENT shell"),
+    ("E64", lambda: bash(f"ssh pro 'cat {STORE}'"), False,
+     "KNOWN BOUNDARY, not an endorsement: judging a remote inline command needs the "
+     "read-vs-write distinction of W94 (a remote WRITE stays remote) and that spec "
+     "row is not written yet. Pinned so the gap is visible and flips when it is."),
 ]
 
 

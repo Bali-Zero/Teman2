@@ -90,7 +90,10 @@ wants to print the literal form can write it without the `$`. **Heredocs**: a qu
 (`<<'EOF'`) fed to a non-shell consumer (`python3 -`, `cat > file`) is literal data and is not judged
 (E57) — the outer shell expands nothing in it and the consumer does not run it as shell; a heredoc to
 `bash`/`sh`/`zsh`/`ssh` is code the child runs and is judged quoted or not (E33, E58, E59); an unquoted
-heredoc to anything is expanded by the outer shell and is judged too.
+heredoc to anything is expanded by the outer shell and is judged too. **The same entity as a string
+argument**: `bash -c '…'`, a combined `-lc`, and `eval '…'` are judged identically (E60, E61, E63) — a
+heredoc and a `-c` differ in spelling, not in what the child executes, and judging only the first left
+the more idiomatic second wide open. `ssh host '…'` is the one deliberate exception (E64, note below).
 
 Explicitly **out of scope**, stated so nobody assumes coverage:
 
@@ -176,6 +179,21 @@ print-access-token`, `flyctl auth token` — are not shapes yet (gate finding 20
 | E57 | `python3 - <<'PY'\nprint("cat STORE")\nPY`                                | ALLOW   | a quoted heredoc to a non-shell is literal data — the repo's own editing idiom; found DENIED the moment the guard went live |
 | E58 | `bash <<'EOF'\ncat STORE\nEOF`                                            | DENY    | X4 — quoted or not, a heredoc to `bash` is code the child runs                                                              |
 | E59 | `ssh pro <<'EOF'\ncat STORE\nEOF`                                         | DENY    | X4 — `ssh` runs a remote shell and its output comes back to the transcript                                                  |
+| E60 | `bash -c 'cat STORE'`                                                     | DENY    | X4 — E58's entity as a `-c` string argument; found ALLOWED at the gate                                                      |
+| E61 | `sh -lc 'printenv NAME'`                                                  | DENY    | X2 — a combined flag string carries `c`; the payload is still code                                                          |
+| E62 | `bash -c 'echo hello'`                                                    | ALLOW   | innocence for E60/E61 — a `-c` payload with nothing guilty in it                                                            |
+| E63 | `eval 'cat STORE'`                                                        | DENY    | X4 — `eval` runs its argument as code in the CURRENT shell                                                                  |
+| E64 | `ssh pro 'cat STORE'`                                                     | ALLOW   | **KNOWN BOUNDARY**, not an endorsement — see the note below                                                                 |
+
+**E64, the one deliberate hole.** A remote INLINE command cannot be judged by this guard until the
+read-vs-write distinction of W94 is written down: a remote WRITE stays remote and never reaches the
+transcript — that is precisely why `data_plane_guard` skips ssh segments — while a remote READ returns
+its output to the transcript and is exactly what X4 exists to stop. A blanket DENY on `ssh host '…'`
+would over-match the first to catch the second, which is superscar #3 in the direction this spec keeps
+warning about. `ssh` is also excluded from the E60 rule by construction, because `ssh -c` is the CIPHER
+flag and not a command. E64 pins the current ALLOW so the gap is VISIBLE, testable and greppable rather
+than silently believed covered; write the W94 row and the verdict flips with it. The heredoc form
+(E59) is judged today because it needs no such distinction.
 
 ## 6. Wiring
 
