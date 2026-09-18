@@ -1,0 +1,135 @@
+name: Preflight pack tests
+
+# Executor for `scripts/tests/test_preflight_pack.sh` — the guilt+innocence corpus that
+# proves the pre-push preflight (`.husky/pre-push` → `scripts/preflight_pack.sh` →
+# `scripts/contract_verify.py --local`, table `scripts/ci/contract_checks.yml`).
+#
+# WHY THIS FILE EXISTS
+# --------------------
+# Measured before writing it: `grep -rn 'test_preflight_pack' .github/workflows/` returned
+# nothing. The suite was green and unexecuted — a corpus with no executor that can go red is
+# superscar #2 (exists != armed). `scripts-tests-sweep.yml` does not count: its sweep step
+# runs `python -m pytest scripts/tests/`, which collects `test_*.py` and never SEES a `.sh`
+# suite, and the step is `continue-on-error: true` besides. PR #6767 (stage the Gear-3
+# council journal beside the staged pack, like CI's harness-floor Step 7b) added four arms to
+# the suite and shipped with the note that the suite runs only on the developer's machine.
+# This is the job that runs it.
+#
+# Same shape as `fleet-burst-tests.yml`: one small workflow named by the suite it proves,
+# `paths:`-filtered so it starts on exactly the diffs that can break it. Registered in
+# main-push-failure-watch.yml's `workflows:` list (watcher-conformance reds otherwise), so
+# a red on main pages instead of rotting. Deliberately NOT added to branch-protection
+# required contexts — that is a repo-settings action, operator gated, and a required
+# check that goes permanently red blocks the whole merge queue.
+#
+# THE PATH FILTER IS THE ARMING SURFACE, so it lists the MEASURED closure of what the suite
+# binds — not just the two files it is named after. Derived from
+# `grep -ohE 'scripts/[A-Za-z0-9_./-]+' scripts/contract_verify.py scripts/preflight_pack.sh
+# scripts/ci/contract_checks.yml` plus the imports of `scripts/evidence_pack_lint.py`
+# (`scripts/conductor/review_eligibility.py`) and the fixture the innocence arms read
+# (the merged mailbox-janitor evidence pack, Gear 3, journal committed). Rows of the
+# table that the arms never execute (`--replay` fixture, the pending-arms pytest row) are
+# left out on purpose: a filter that starts the job on diffs it does not test is noise,
+# and a filter that omits a bound file is a job that stays green by never starting.
+#
+# `fetch-depth: 0` is load-bearing: the span arm replays the janitor squash
+# (`e0722cbb24^..e0722cbb24`) through `contract_verify.py --local --span`, which is the
+# mode the pre-push hook actually uses. On a shallow clone the suite SKIPS that arm with a
+# `⏭ span arm skipped` line and still reports green — so the last step below fails the job
+# if that line appears. A skipped arm is not a passed arm.
+
+on:
+  pull_request:
+    paths:
+      - "scripts/tests/test_preflight_pack.sh"
+      - "scripts/preflight_pack.sh"
+      - "scripts/contract_verify.py"
+      - "scripts/ci/contract_checks.yml"
+      - "scripts/ci/evidence_paths.py"
+      - "scripts/ci/stage_council_journal.py"
+      - "scripts/ci/bites_parse.py"
+      - "scripts/evidence_pack_lint.py"
+      - "scripts/conductor/review_eligibility.py"
+      - "scripts/conductor/__init__.py"
+      - "scripts/check_adversarial_review.py"
+      - "scripts/lint_retracted_claims.py"
+      - "evidence/2026-09/agent-air-m5-infra-mailbox-janitor-ad139989/brief.yml"
+      - "evidence/2026-09/agent-air-m5-infra-mailbox-janitor-ad139989/journal.jsonl"
+      - "evidence/2026-09/agent-air-m5-infra-mailbox-janitor-ad139989/pack.yml"
+      - ".github/workflows/preflight-pack-tests.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "scripts/tests/test_preflight_pack.sh"
+      - "scripts/preflight_pack.sh"
+      - "scripts/contract_verify.py"
+      - "scripts/ci/contract_checks.yml"
+      - "scripts/ci/evidence_paths.py"
+      - "scripts/ci/stage_council_journal.py"
+      - "scripts/ci/bites_parse.py"
+      - "scripts/evidence_pack_lint.py"
+      - "scripts/conductor/review_eligibility.py"
+      - "scripts/conductor/__init__.py"
+      - "scripts/check_adversarial_review.py"
+      - "scripts/lint_retracted_claims.py"
+      - "evidence/2026-09/agent-air-m5-infra-mailbox-janitor-ad139989/brief.yml"
+      - "evidence/2026-09/agent-air-m5-infra-mailbox-janitor-ad139989/journal.jsonl"
+      - "evidence/2026-09/agent-air-m5-infra-mailbox-janitor-ad139989/pack.yml"
+      - ".github/workflows/preflight-pack-tests.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: preflight-pack-tests-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name != 'merge_group' }}
+
+jobs:
+  preflight-pack-tests:
+    name: Preflight pack tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
+        with:
+          python-version: "3.12"
+
+      # The only non-stdlib import in the chain (`contract_verify.py`, `evidence_pack_lint.py`,
+      # `stage_council_journal.py`), installed the same way harness-floor.yml installs it.
+      - name: Install PyYAML
+        run: python3 -m pip install --quiet pyyaml
+
+      # A syntax error in the preflight is a silent dead organ on every developer's machine:
+      # the pre-push hook would fail closed and every push would need PREFLIGHT_PACK_SKIP=1.
+      - name: preflight_pack.sh and its suite parse
+        run: |
+          bash -n scripts/preflight_pack.sh
+          bash -n scripts/tests/test_preflight_pack.sh
+
+      # `set -o pipefail` so a failing suite fails this step even through `tee`; the log is
+      # kept for the two assertions below, which read it in the SAME step — a floor that read
+      # a file written by an earlier step would go green on a missing file.
+      - name: Run test_preflight_pack.sh (guilt + innocence, span arm must execute)
+        run: |
+          set -o pipefail
+          bash scripts/tests/test_preflight_pack.sh 2>&1 | tee /tmp/preflight-pack-tests.log
+          if grep -q 'span arm skipped' /tmp/preflight-pack-tests.log; then
+            echo "::error::the span arm was SKIPPED — the janitor squash is not in this clone, so the --span mode the pre-push hook uses went unproven"
+            exit 1
+          fi
+          if grep -q 'journal arms skipped' /tmp/preflight-pack-tests.log; then
+            echo "::error::the journal arms were SKIPPED — the innocence fixture is not in this tree"
+            exit 1
+          fi
+          summary="$(grep -E '^[[:space:]]*[0-9]+ passed, [0-9]+ failed$' /tmp/preflight-pack-tests.log | tail -1 || true)"
+          passed="$(printf '%s' "$summary" | sed -E 's/^[[:space:]]*([0-9]+) passed.*/\1/')"
+          if [ -z "$summary" ] || [ "${passed:-0}" -lt 13 ]; then
+            echo "::error::expected at least 13 passed arms, got: '${summary:-no summary line}' — an arm that vanished is a guard that stopped being proven"
+            exit 1
+          fi
+          echo "$summary"

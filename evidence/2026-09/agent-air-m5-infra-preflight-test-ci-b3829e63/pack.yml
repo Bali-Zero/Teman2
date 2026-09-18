@@ -1,0 +1,256 @@
+brief_ref: evidence/brief.yml
+council_run: council-journal.jsonl
+plan_ref: >-
+  Zero, 2026-09-18 ("go" on the follow-up reported after #6767): wire
+  scripts/tests/test_preflight_pack.sh into a workflow so the pre-push
+  preflight's guilt+innocence corpus has an executor that can go red;
+  ship it end to end under the ship-lifecycle rule.
+
+lanes:
+  - lane: build
+    role: build
+    seat: claude-fable-5-1
+  - lane: review-cross-family-codex
+    role: review
+    seat: codex-gpt-5.6-sol
+  - lane: review-cross-family-kimi
+    role: review
+    seat: kimi-code/k3
+
+what_changed: |
+  ONE new workflow file, .github/workflows/preflight-pack-tests.yml, plus
+  one line in .github/workflows/main-push-failure-watch.yml registering its
+  name in the watcher's workflows list (the watcher-conformance check red on
+  the first PR head without it), plus this evidence pack. Triggers: pull_request and push:main, paths-filtered on
+  the measured closure the suite binds (contract_verify, preflight_pack,
+  contract_checks.yml, evidence_paths, stage_council_journal, bites_parse,
+  evidence_pack_lint, conductor/review_eligibility,
+  check_adversarial_review, lint_retracted_claims, the merged mailbox-
+  janitor evidence pack the innocence arms read, the suite itself, and the
+  workflow under pull_request). Job: pinned checkout v7 with fetch-depth 0,
+  pinned setup-python v7 (3.12), pip install pyyaml inline, bash -n on
+  preflight_pack.sh and the suite, then the suite under pipefail | tee with
+  three assertions read in the SAME step: no "span arm skipped" line, no
+  "journal arms skipped" line, at least 13 arms passed. Not added to
+  required contexts (repo-settings, operator-gated, sibling posture).
+
+proof: |
+  See receipts. Deterministic floor 3 / path. actionlint under CI's own
+  flags clean; bash -n clean on both scripts; the assertion step extracted
+  verbatim from the workflow and run locally against the real suite exits
+  0 with "13 passed, 0 failed"; the same step fails on a log carrying the
+  skip line (guilt); the janitor squash the span arm replays is an ancestor
+  of origin/main so fetch-depth 0 makes the arm execute. Two cross-family
+  council seats reviewed the diff; every finding is fixed or recorded as
+  dissent below. The live proof is the check itself on this PR: the
+  workflow lists itself under pull_request.paths, so it runs on this diff
+  and its log is read before the work is reported done.
+
+dissent:
+  - seat: codex-gpt-5.6-sol
+    objection:
+      "scripts/conductor/__init__.py is missing from both path filters: evidence_pack_lint.py
+      imports conductor.review_eligibility, which executes the package initializer, so a change
+      there can break the suite without starting this workflow (kimi-code/k3 raised the same,
+      naming it green-by-never-starting)."
+    status: CONFIRMED
+    resolution:
+      scripts/conductor/__init__.py added to both pull_request.paths and push.paths
+      (16 entries each, identical).
+  - seat: codex-gpt-5.6-sol
+    objection:
+      "The fixture glob evidence/.../mailbox-janitor-ad139989/** is broader than the
+      bound surface: today it matches the three consumed files, but any future unrelated file
+      in that directory creates trigger noise."
+    status: CONFIRMED
+    resolution:
+      brief.yml, journal.jsonl and pack.yml of the janitor pack are listed explicitly
+      in both filters; the glob is gone.
+  - seat: kimi-code/k3
+    objection:
+      "The push paths list omitted .github/workflows/preflight-pack-tests.yml itself
+      while the pull_request list included it: merging this very PR would fire no push-to-main
+      run, so the workflow's first main execution would wait for an unrelated matching diff."
+    status: CONFIRMED
+    resolution:
+      "The workflow file is now in the push list too; the two lists are byte-identical
+      (receipt: symmetric difference empty)."
+  - seat: kimi-code/k3
+    objection:
+      'summary="$(grep ... | tail -1)" runs under the runner''s bash -e with pipefail:
+      when the summary line is absent grep exits 1, the assignment fails and the step aborts BEFORE
+      the custom ::error line prints. The job still reds, but the diagnostic is lost.'
+    status: CONFIRMED
+    resolution:
+      "|| true inside the substitution; guilt+innocence receipt shows the old shape
+      losing the diagnostic and the folded shape printing it before exit 1. Same defect family
+      as the janitor wrapper's SUMMARY substitution (pack ad139989, dissent 1)."
+  - seat: kimi-code/k3
+    objection:
+      "The header comment's chain description slightly oversells .husky/pre-push: the
+      suite sources preflight_pack.sh with PREFLIGHT_PACK_LIB=1 and never executes the hook, so
+      listing the hook in paths would be noise (correctly omitted)."
+    status: PLAUSIBLE
+    resolution:
+      "No change: the header names the hook as the production caller of the same library,
+      not as an executed path; the omission from paths is by design and the seat agrees with the
+      omission."
+
+receipts:
+  - claim:
+      this diff's deterministic Gear floor is 3, sourced from PATH (.github/workflows/**
+      is a hotzone)
+    cmd:
+      python3 scripts/evidence_pack_lint.py --print-floor --changed-files-file /private/tmp/claude-501/-Users-balizero-nuzantara/c12903e4-388f-468e-9eaa-5ce82cf409bb/scratchpad/ci_changed.txt;
+      python3 scripts/evidence_pack_lint.py --print-floor-source --changed-files-file /private/tmp/claude-501/-Users-balizero-nuzantara/c12903e4-388f-468e-9eaa-5ce82cf409bb/scratchpad/ci_changed.txt
+    result: 3 | path
+    exit: 0
+    ts: "2026-09-18T15:05:18Z"
+    seat: claude-fable-5-1
+  - claim:
+      the workflow parses under CI's own actionlint flags (-shellcheck=) and both scripts
+      it runs parse under bash -n
+    cmd:
+      actionlint -shellcheck= .github/workflows/preflight-pack-tests.yml && bash -n scripts/preflight_pack.sh
+      && bash -n scripts/tests/test_preflight_pack.sh && echo actionlint-and-bash-n-clean
+    result: actionlint-and-bash-n-clean
+    exit: 0
+    ts: "2026-09-18T15:05:18Z"
+    seat: claude-fable-5-1
+  - claim:
+      the janitor squash the span arm replays is an ancestor of origin/main, so with fetch-depth
+      0 the arm never legitimately skips
+    cmd:
+      git merge-base --is-ancestor e0722cbb243a60c3a37780311fd90ec794e9ff91 origin/main &&
+      echo ancestor-of-main
+    result: ancestor-of-main
+    exit: 0
+    ts: "2026-09-18T15:05:18Z"
+    seat: claude-fable-5-1
+  - claim: the suite's skip and summary lines are the exact strings the assertion step greps for
+    cmd:
+      grep -n 'span arm skipped\|journal arms skipped\|passed, ' scripts/tests/test_preflight_pack.sh
+      | cut -c1-80
+    result:
+      '152:    echo "  ⏭  journal arms skipped: $JANITOR_PACK_DIR/journal.jsonl not in |
+      187:echo "  $PASS passed, $FAIL failed"'
+    exit: 0
+    ts: "2026-09-18T15:05:18Z"
+    seat: claude-fable-5-1
+  - claim:
+      the assertion step, extracted verbatim from the workflow and run locally against the
+      real suite, exits 0 with 13 passed
+    cmd:
+      python3 -c "import yaml;print(yaml.safe_load(open('.github/workflows/preflight-pack-tests.yml'))['jobs']['preflight-pack-tests']['steps'][-1]['run'])"
+      > /tmp/claude-501-pf-step.sh && bash /tmp/claude-501-pf-step.sh 2>&1 | tail -1; rm -f /tmp/claude-501-pf-step.sh
+      /tmp/preflight-pack-tests.log
+    result: 13 passed, 0 failed
+    exit: 0
+    ts: "2026-09-18T15:05:22Z"
+    seat: claude-fable-5-1
+  - claim:
+      "the same assertion step FAILS on a log that carries the skip line even with 13 passed
+      (guilt: a skipped arm is not a passed arm)"
+    cmd:
+      'printf ''  ⏭  span arm skipped: x not in this clone\n  13 passed, 0 failed\n'' > /tmp/claude-501-l
+      && (grep -q ''span arm skipped'' /tmp/claude-501-l && echo would-fail-the-job); rm -f /tmp/claude-501-l'
+    result: would-fail-the-job
+    exit: 0
+    ts: "2026-09-18T15:05:22Z"
+    seat: claude-fable-5-1
+  - claim:
+      "cross-family council seat 1 (codex gpt-5.6-sol, read-only sandbox) reviewed the workflow
+      diff (git show HEAD -- the workflow, 134 lines, 0 secret-shaped strings) and returned VERDICT:
+      NO-GO, FINDINGS: 2 (P2 conductor/__init__.py missing from paths; P3 fixture glob broader
+      than bound surface); Q2-Q5 none"
+    cmd:
+      codex exec -m gpt-5.6-sol -c model_reasoning_effort="medium" --sandbox read-only --skip-git-repo-check
+      "$(cat /private/tmp/claude-501/-Users-balizero-nuzantara/c12903e4-388f-468e-9eaa-5ce82cf409bb/scratchpad/ci_review_prompt.txt)"
+      < /dev/null
+    result: "VERDICT: NO-GO | FINDINGS: 2 | 89,652 tokens"
+    exit: 0
+    ts: "2026-09-18T15:08:19Z"
+    seat: codex-gpt-5.6-sol
+  - claim:
+      "cross-family council seat 2 (kimi-code/k3) reviewed the same diff and returned VERDICT:
+      GO-WITH-NITS, FINDINGS: 3 (P2 conductor/__init__.py; P3 push paths omit the workflow itself;
+      P3 summary substitution aborts under bash -e before the ::error line); seat ran actionlint
+      -color -shellcheck= on the workflow itself, rc=0"
+    cmd:
+      kimi -p "$(cat /private/tmp/claude-501/-Users-balizero-nuzantara/c12903e4-388f-468e-9eaa-5ce82cf409bb/scratchpad/ci_review_prompt.txt)"
+      --output-format text < /dev/null
+    result: "VERDICT: GO-WITH-NITS | FINDINGS: 3"
+    exit: 0
+    ts: "2026-09-18T15:08:59Z"
+    seat: kimi-code/k3
+  - claim:
+      after folding the four council findings the workflow still parses under CI's actionlint
+      flags, and both trigger path lists are identical (16 entries each, symmetric difference
+      empty)
+    cmd:
+      actionlint -shellcheck= .github/workflows/preflight-pack-tests.yml; python3 -c "import
+      yaml; d=yaml.safe_load(open('.github/workflows/preflight-pack-tests.yml')); on=d[True];
+      pr=on['pull_request']['paths']; pu=on['push']['paths']; print(len(pr), len(pu), sorted(set(pr)^set(pu)))"
+    result: actionlint rc=0 | 16 16 []
+    exit: 0
+    ts: "2026-09-18T15:09:40Z"
+    seat: claude-fable-5-1
+  - claim:
+      "kimi P3 guilt+innocence: with the summary line ABSENT the old substitution (no ||
+      true) aborts under bash -e -o pipefail before any diagnostic (no 'reached' line, rc=1);
+      the folded shape prints '::error::expected at least 13 passed arms, got: no summary line'
+      and exits 1"
+    cmd:
+      printf 'garbage\n' > $SP/ci_nosummary.log; bash -e -o pipefail -c '<the workflow summary/passed/if
+      block, folded shape>' _ $SP/ci_nosummary.log; bash -e -o pipefail -c '<same block, old shape,
+      then echo reached>' _ $SP/ci_nosummary.log
+    result: "folded: ::error line printed, rc=1 | old: no reached line, rc=1"
+    exit: 0
+    ts: "2026-09-18T15:09:40Z"
+    seat: claude-fable-5-1
+  - claim:
+      the FOLDED assertion step, extracted verbatim from the workflow YAML and run under
+      bash -e -o pipefail against the real suite in this worktree, exits 0 with 13 passed, 0 failed
+    cmd:
+      python3 -c "import yaml; d=yaml.safe_load(open('.github/workflows/preflight-pack-tests.yml'));
+      s=[x for x in d['jobs']['preflight-pack-tests']['steps'] if 'run' in x and 'test_preflight_pack.sh
+      2>&1' in x['run']][0]['run']; open('$SP/ci_step_v2.sh','w').write(s)"; bash -e -o pipefail
+      $SP/ci_step_v2.sh; echo rc=$?
+    result: 13 passed, 0 failed | step rc=0
+    exit: 0
+    ts: "2026-09-18T15:10:39Z"
+    seat: claude-fable-5-1
+
+  - claim: >-
+      CI red on the first PR head 0cb3f3c783: the watcher-conformance check
+      (check_watcher_coverage.py, run 35363334496) reported the new workflow
+      "is not covered by main-push-failure-watch.yml" — a deterministic red,
+      folded at depth 1 by adding the workflow name to the watcher list
+    cmd: "gh run view 35363334496 --repo Bali-Zero/Teman2 --log-failed | grep -E 'watcher-coverage|not covered'"
+    result: "watcher-coverage: 1 violation(s) | `Preflight pack tests` (preflight-pack-tests.yml) is not covered by main-push-failure-watch.yml"
+    exit: 1
+    ts: "2026-09-18T15:36:40Z"
+    seat: claude-fable-5-1
+  - claim: >-
+      after registering the name, the watcher self-conformance check passes
+      locally (all live workflows covered; the pre-existing stale-entry
+      warning about "AI PR review (advisory)" is a warning, not a violation)
+      and both workflow files parse under CI's actionlint flags
+    cmd: "python3 scripts/check_watcher_coverage.py; actionlint -shellcheck= .github/workflows/main-push-failure-watch.yml .github/workflows/preflight-pack-tests.yml"
+    result: "watcher-coverage: all 120 live workflow(s) covered by main-push-failure-watch.yml | actionlint rc=0"
+    exit: 0
+    ts: "2026-09-18T15:38:41Z"
+    seat: claude-fable-5-1
+
+pii_scan: clean
+pii_scan_note: >-
+  The diff is a CI workflow that runs a repo-local test suite on synthetic
+  fixtures; no client data, OSINT or credential is read, written or quoted.
+  Receipts carry command output only.
+
+spend:
+  wall_clock_hours: 1.5
+  adversarial_rounds: 1
+
+diff:
+  net_lines: "measured by CI from git numstat at merge-base..HEAD; the CI-computed value governs"

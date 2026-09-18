@@ -182,6 +182,7 @@ on:
       # than appended: PR #3295 is adding its own entry at the END of this list,
       # and two PRs appending to the same line would conflict for no reason.
       - prepush-guards
+      - Preflight pack tests
       - Nuz Status Control
       - Organ conformance (DNA genome — genes at birth)
       - P1 STRATO-2 incremental mutation gate
