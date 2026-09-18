@@ -2,7 +2,7 @@
 """dynamic_workflow.py — the ONE launcher for /dynamic-workflow. Code, not prose; every
 verdict judged by CONTENT, never by exit code alone (scar #2, "Esiste != Armato").
 
-Subcommands (PR1a+PR1b+PR2a+PR2b — anonymise/reveal/capture-check land in PR2c):
+Subcommands (PR1a+PR1b+PR2a+PR2b+PR2c — anonymise/reveal/capture-check land in PR2d):
     brief    --slug S --objective-file F --colour BLUE|ORANGE [--floor X] [--template T] [--kit K]
     check    --kit K            # recompute BRIEF.md from template+inputs.json, byte-diff (W78)
     r1       --kit K --seats a,b,c [--astra-fallback]   # one-shot per seat, ledger, relaunch<=1
@@ -404,7 +404,31 @@ def _launch_seat(seat: str, prompt: str, timeout: int, kit: Path) -> str:
         return ""
 
 
+def _validate_seat_id(seat: str) -> None:
+    """Fail closed BEFORE any ledger row or filesystem write (gate finding 2 on PR2a's merge):
+    a seat id is free to contain '/' (the mandate itself spells some seats that way, e.g.
+    'kimi-code/kimi-for-coding-highspeed'), but an empty, '.' or '..' path component could
+    escape kit/r1 (or kit/r2, kit/jury) via traversal, or simply crash on a missing parent
+    dir — either way this refuses before the caller does anything else with the id."""
+    parts = seat.split("/")
+    if not seat or any(p in ("", ".", "..") for p in parts):
+        print(f"refused: seat id {seat!r} invalid (empty or path-traversal component)",
+              file=sys.stderr)
+        sys.exit(2)
+
+
+def _file_slug(seat: str) -> str:
+    """Canonical file-safe name for a seat id that may itself contain '/' — the single point
+    every kit/r1, kit/r2 and kit/jury path goes through, so a slash-bearing seat never needs
+    (and never silently gets) a real subdirectory. The ledger keeps the RAW seat id; only
+    paths use the slug, so ledger rows and CLI output stay in whatever spelling dispatched
+    them."""
+    _validate_seat_id(seat)
+    return seat.replace("/", "__")
+
+
 def _run_one_seat(kit: Path, seat: str, brief_master: str, brief_sha: str, attempt: int) -> str:
+    _validate_seat_id(seat)  # before the first ledger_append — an invalid id gets no row at all
     seat_copy = _set_seat_line(brief_master, seat)
     reconstructed = _set_sha_line(_set_seat_line(seat_copy, ""), "")
     if hashlib.sha256(reconstructed.encode()).hexdigest() != brief_sha:
@@ -422,7 +446,7 @@ def _run_one_seat(kit: Path, seat: str, brief_master: str, brief_sha: str, attem
         timeout = SEAT_TIMEOUTS.get(kind, 900)
         output = _launch_seat(seat, prompt, timeout, kit)
 
-    out_path = kit / "r1" / f"{seat}.md"
+    out_path = kit / "r1" / f"{_file_slug(seat)}.md"
     out_path.write_text(output or "")
     if not output or not output.strip():
         ledger_append(kit, seat, "dead", prompt_hash16)
@@ -579,15 +603,25 @@ def compute_pairing(kit: Path, brief_sha: str) -> dict[str, list[str]]:
             seen_families.add(fam)
             if len(picked) == 2:
                 break
+        # Gate finding 3 (inherited from PR2a's merge): the mandate requires EXACTLY two
+        # cross-family reviewers per seat, not "up to two" — a seat that can only find one
+        # (or zero) other family in this round is insufficient diversity, and must refuse
+        # BEFORE pairing.md exists rather than render a lopsided row that looks like a verdict.
+        if len(picked) != 2:
+            print(f"refused: seat {seat} found {len(picked)} other-family partner(s), "
+                  "need exactly 2 (insufficient family diversity this round)", file=sys.stderr)
+            sys.exit(2)
         pairing[seat] = picked
     return pairing
 
 
 def _render_pairing_md(pairing: dict[str, list[str]]) -> str:
+    # compute_pairing() now refuses (exit 2) before returning if any seat has fewer than two
+    # partners, so every value here is always exactly 2 — no "insufficient diversity" fallback
+    # branch is reachable, and none is rendered.
     lines = ["| seat | reviews |", "|---|---|"]
     for seat in sorted(pairing):
-        targets = ", ".join(pairing[seat]) or "(none — insufficient family diversity)"
-        lines.append(f"| {seat} | {targets} |")
+        lines.append(f"| {seat} | {', '.join(pairing[seat])} |")
     return "\n".join(lines) + "\n"
 
 
@@ -632,7 +666,7 @@ def cmd_r2(args: argparse.Namespace) -> dict[str, dict[str, int]]:
         if fake:
             output = _fake_r2_output(seat)
         else:
-            answers = "\n\n".join((kit / "r1" / f"{t}.md").read_text() for t in targets)
+            answers = "\n\n".join((kit / "r1" / f"{_file_slug(t)}.md").read_text() for t in targets)
             prompt = _R2_PROMPT_PREFIX + answers
             kind = _seat_kind(seat) or "kimi"
             timeout = SEAT_TIMEOUTS.get(kind, 900)
@@ -640,9 +674,9 @@ def cmd_r2(args: argparse.Namespace) -> dict[str, dict[str, int]]:
         paragraphs = _split_objections(output)
         kept = [p for p in paragraphs if _objection_ok(p)]
         rejected = [p for p in paragraphs if not _objection_ok(p)]
-        (kit / "r2" / f"{seat}.md").write_text("\n\n".join(kept) + ("\n" if kept else ""))
+        (kit / "r2" / f"{_file_slug(seat)}.md").write_text("\n\n".join(kept) + ("\n" if kept else ""))
         if rejected:
-            (kit / "r2" / f"{seat}.rejected.md").write_text("\n\n".join(rejected) + "\n")
+            (kit / "r2" / f"{_file_slug(seat)}.rejected.md").write_text("\n\n".join(rejected) + "\n")
         ledger_append(kit, seat, f"r2-kept={len(kept)}-rejected={len(rejected)}", brief_sha[:16])
         summary[seat] = {"kept": len(kept), "rejected": len(rejected)}
     for seat, counts in summary.items():
@@ -702,7 +736,7 @@ def cmd_judge(args: argparse.Namespace) -> dict[str, dict[str, object]]:
     verdicts: dict[str, dict[str, object]] = {}
     rows = ["| seat | C1 | C5 | C8 | disqualified |", "|---|---|---|---|---|"]
     for seat in _answered_r1_seats(kit):
-        text = (kit / "r1" / f"{seat}.md").read_text()
+        text = (kit / "r1" / f"{_file_slug(seat)}.md").read_text()
         m = _FM_RE.match(text)
         body = text[m.end():] if m else text
         c1_ok, c1_msg = _check_c1(text)
@@ -720,7 +754,7 @@ def cmd_judge(args: argparse.Namespace) -> dict[str, dict[str, object]]:
 
 
 # --------------------------------------------------------------------- jury (blind peer review;
-# anonymise/reveal/capture-check land in PR2c)
+# anonymise/reveal/capture-check land in PR2d)
 
 JURY_AXES = ("termination", "cost", "robustness", "evidence", "implementability", "fit")
 _JURY_LETTERS = "ABCDEF"
@@ -732,7 +766,7 @@ _JURY_PROMPT_PREFIX = (
 
 def _strip_identity(text: str) -> str:
     """The two frontmatter lines that would deanonymise a formation to its reviewer — shared
-    by cmd_jury's blinding and cmd_anonymise's Z-BLIND artifact (PR2c) so the stripped fields
+    by cmd_jury's blinding and cmd_anonymise's Z-BLIND artifact (PR2d) so the stripped fields
     never drift between the two (mandate: 'seat: and objective_sha256 lines stripped,
     nothing else')."""
     text = re.sub(r"^seat:.*$", "seat: [REDACTED]", text, count=1, flags=re.MULTILINE)
@@ -765,7 +799,7 @@ def _jury_survivors(kit: Path) -> list[str]:
 
 def _jury_mapping(kit: Path, survivors: list[str]) -> dict[str, str]:
     """One global letter->seat map for the whole round (max 6, A-F), persisted to
-    jury/mapping.json chmod 600 so cmd_anonymise's Z-BLIND artifact (PR2c) reuses the SAME
+    jury/mapping.json chmod 600 so cmd_anonymise's Z-BLIND artifact (PR2d) reuses the SAME
     letters jury/tabulation.md already named, instead of assigning a second, inconsistent
     mapping later. Refuses like pairing.md/mapping.json do elsewhere: exists-and-differs is
     a refusal, not a silent overwrite."""
@@ -893,13 +927,14 @@ def cmd_jury(args: argparse.Namespace) -> dict[str, Any]:
             output = _fake_jury_output(juror, others)
         else:
             bodies = "\n\n".join(
-                f"### Formation {ltr}\n" + _strip_identity((kit / "r1" / f"{mapping[ltr]}.md").read_text())
+                f"### Formation {ltr}\n"
+                + _strip_identity((kit / "r1" / f"{_file_slug(mapping[ltr])}.md").read_text())
                 for ltr in others)
             prompt = _JURY_PROMPT_PREFIX + bodies
             kind = _seat_kind(juror) or "kimi"
             timeout = SEAT_TIMEOUTS.get(kind, 900)
             output = _launch_seat(juror, prompt, timeout, kit)
-        (kit / "jury" / f"{juror}.md").write_text(output or "")
+        (kit / "jury" / f"{_file_slug(juror)}.md").write_text(output or "")
         ballot = _parse_jury_ballot(output or "", set(others))
         ballots[juror] = ballot
         ledger_append(kit, juror, "jury-dead" if ballot is None else "jury-scored", "0" * 16)
