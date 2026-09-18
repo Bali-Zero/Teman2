@@ -570,6 +570,61 @@ def load_tp1_vault_key(
     return None, note
 
 
+def audit_tp1_secret_store_modes(
+    vault_path: str = TP1_SECRETS_VAULT,
+    settings_path: str = "~/.qwen/settings.json",
+) -> list[str]:
+    """One warning per secret store that HOLDS the credential while being
+    group/other-readable. Empty list when every store is owner-only.
+
+    This exists because the mode gate in load_tp1_vault_key() was SILENT. Refusing an
+    exposed vault is the right call for the resolver — but it refused, fell through to
+    the next source, and returned success with note=None, so a world-readable secret
+    file produced no signal anywhere. That is the disease PENDING-ARMS names: "a check
+    that exists, carries the right name, and enforces nothing". Found reviewing #6765.
+
+    It is also the regression detector for the bug that started all this: the qwen CLI
+    rewrites ~/.qwen/settings.json to 0644 on every flush, so a host that still keeps
+    the credential there goes world-readable by itself, repeatedly (measured on Air-M5
+    2026-09-18: 0600 -> 0644 -> 0600 -> 0644 inside one session). Nothing noticed for
+    the ~5 weeks between the 2026-08-10 chmod and that measurement.
+
+    Two properties that matter:
+    - The audit is INDEPENDENT of which source won. When the env var is set the
+      resolver used to return before ever stat-ing the vault, so the most common path
+      was blind. Callers get the warnings regardless.
+    - A store is only READ when its mode is already bad, so the healthy path costs one
+      stat per store and no file read. And a 0644 settings.json that holds NO
+      credential must NOT warn — that is Air-M5's correct post-migration state, and
+      crying wolf there would train every reader to skip the line.
+
+    Never raises; never includes the value in a warning (W106 class).
+    """
+    stores = (
+        # mode-agnostic readers on purpose: load_tp1_vault_key() would refuse the very
+        # file we are auditing, so it cannot be the thing that tells us it holds a key.
+        ("vault", vault_path, lambda p: load_env_master_key(TP1_CRED_ENV_VAR, path=p)[0]),
+        ("settings.json", settings_path, lambda p: load_tp1_settings_key(path=p)[0]),
+    )
+    warnings: list[str] = []
+    for label, path, read in stores:
+        p = Path(os.path.expanduser(path))
+        try:
+            if not p.exists():
+                continue
+            mode = stat.S_IMODE(p.stat().st_mode)
+        except OSError:
+            continue
+        if not mode & 0o077:
+            continue
+        if read(str(p)):
+            warnings.append(
+                f"SECURITY {label} {p} holds {TP1_CRED_ENV_VAR} at mode {mode:04o} "
+                f"(group/other-readable) — chmod 0600 it and treat the secret as leaked"
+            )
+    return warnings
+
+
 def resolve_tp1_key(
     vault_path: str = TP1_SECRETS_VAULT,
     settings_path: str = "~/.qwen/settings.json",
@@ -1233,6 +1288,12 @@ def render_table(report: dict) -> str:
         lines.append(f"  {s['seat']:<9} {s['status']:<16} {s['latency_ms']:>6}ms  {s['evidence']}{req}")
     for t in report.get("transitions", []):
         lines.append(f"  TRANSITION {t['seat']}: {t['from']} -> {t['to']}")
+    # Printed BEFORE the summary, not after it: the summary line is what a reader
+    # skims to, and a secret store sitting world-readable must not be the last thing
+    # on the screen where it reads as an afterthought. This is the whole point of the
+    # audit — the mode gate used to refuse an exposed vault and then say nothing.
+    for w in report.get("security_warnings") or []:
+        lines.append(f"  !! {w}")
     summ = report["summary"]
     lines.append(
         f"summary: live={summ['live']} dead_strict={summ['dead_strict']} "
@@ -1248,10 +1309,12 @@ def render_table(report: dict) -> str:
 def summary_line(report: dict) -> str:
     summ = report["summary"]
     total = len(report.get("seats", []))
+    warn_n = len(report.get("security_warnings") or [])
+    tail = f" !! {warn_n} SECURITY" if warn_n else ""
     return (
         f"arsenal_probe {report['machine']}: {summ['live']} of {total} seats OK "
         f"({summ['dead_strict']} dead_strict, {summ['context_limited']} context_limited, "
-        f"{summ['transient']} transient)"
+        f"{summ['transient']} transient){tail}"
     )
 
 
@@ -1306,6 +1369,7 @@ def run(seats: list[str], timeout_mult: float, live_gen: bool, machine: str) -> 
         "machine": machine,
         "ts": ts,
         "context": context_info(),
+        "security_warnings": audit_tp1_secret_store_modes(),
         "seats": seat_results,
         "transitions": transitions,
         "summary": {

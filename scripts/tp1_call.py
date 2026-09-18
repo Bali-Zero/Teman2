@@ -94,6 +94,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from arsenal_probe import (  # noqa: E402  (sibling import, see module docstring)
     TP1_CHAT_COMPLETIONS_URL,
     TP1_SEAT_MODELS,
+    audit_tp1_secret_store_modes,
     resolve_tp1_key,
     scrub,
 )
@@ -621,6 +622,12 @@ def main(argv: Optional[list[str]] = None) -> int:
     # certifying its OWN credential instead of the seat's, so which one answered is
     # exactly the fact worth printing.
     sys.stderr.write(f"tp1_call: credential source: {cred_source}\n")
+    # Second channel for the secret-store audit, alongside the board's
+    # `security_warnings`. A working credential is not a clean machine: whoever is
+    # driving this seat interactively should hear about an exposed store now, not on
+    # the next probe tick.
+    for warn in audit_tp1_secret_store_modes():
+        sys.stderr.write(f"tp1_call: {warn}\n")
 
     # An explicit --effort always wins; the table only fills a silence that
     # would otherwise cost the caller 4.2x the wall time for a worse answer.

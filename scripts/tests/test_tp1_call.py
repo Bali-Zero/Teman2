@@ -578,6 +578,12 @@ def test_secret_value_never_reaches_stdout_or_stderr(monkeypatch, capsys):
     monkeypatch.setattr(
         tp1_call, "resolve_tp1_key", lambda: (SECRET, "vault", None)
     )
+    # Stubbed, not left to the real ~/.qwen and ~/.nuzantara-secrets.env: main() now
+    # also runs the secret-store audit, and a verdict that depends on the mode of the
+    # real files on whichever machine runs the suite is not a verdict (W96). It happens
+    # to be silent on both Air-M5 and Pro today, which is exactly the kind of
+    # coincidence that rots.
+    monkeypatch.setattr(tp1_call, "audit_tp1_secret_store_modes", lambda *a, **k: [])
     monkeypatch.setattr(
         tp1_call.urllib.request,
         "urlopen",
@@ -594,3 +600,36 @@ def test_secret_value_never_reaches_stdout_or_stderr(monkeypatch, capsys):
     assert SECRET not in captured.err
     assert "credential source: vault" in captured.err
     assert "the task is done" in captured.out
+
+
+def test_secret_store_warning_reaches_stderr_on_a_successful_call(monkeypatch, capsys):
+    """GUILT for the second audit channel. The board report is read on a cadence; this
+    is the one a human sees in the terminal while driving the seat. It must fire on a
+    SUCCESSFUL call — an exposed store does not stop the credential working, and a
+    warning that only appears on failure would never appear at all.
+
+    Also innocence in the same breath: the warning names the path and the mode, never
+    the credential value.
+    """
+    import tp1_call
+
+    SECRET = "sk-totally-fake-secret-value-1234567890"  # pragma: allowlist secret
+    WARN = (
+        "SECURITY vault /x/secrets.env holds BAILIAN_TOKEN_PLAN_API_KEY "
+        "at mode 0644 (group/other-readable) — chmod 0600 it and treat the secret as leaked"
+    )
+    monkeypatch.setattr(tp1_call, "resolve_tp1_key", lambda: (SECRET, "vault", None))
+    monkeypatch.setattr(tp1_call, "audit_tp1_secret_store_modes", lambda *a, **k: [WARN])
+    monkeypatch.setattr(
+        tp1_call.urllib.request,
+        "urlopen",
+        lambda req, timeout=None: _FakeResponse([_frame(content="done"), _DONE]),
+    )
+    exit_code = tp1_call.main(
+        ["--model", "qwen3.8-max", "-p", "hi", "--effort", "low"]
+    )
+    captured = capsys.readouterr()
+    assert exit_code == 0
+    assert WARN in captured.err
+    assert SECRET not in captured.err
+    assert SECRET not in captured.out
