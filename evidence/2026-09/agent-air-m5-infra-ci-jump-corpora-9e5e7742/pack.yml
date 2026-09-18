@@ -1,0 +1,224 @@
+brief_ref: evidence/brief.yml
+council_run: council-journal.jsonl
+plan_ref: >-
+  Zero, 2026-09-18 ("go" after the #6784/#6785 report): close the one item
+  still open from the window-jump audit that a session can close alone, the
+  CI wiring of the jump, watcher and probe-log-cap corpora, under the
+  ship-lifecycle rule (review, merge, arm, deploy, prove-live in this session).
+
+lanes:
+  - lane: build
+    role: build
+    seat: claude-fable-5-1
+  - lane: review-cross-family-codex
+    role: review
+    seat: codex-gpt-5.6-sol
+  - lane: review-cross-family-kimi
+    role: review
+    seat: kimi-code/k3
+
+what_changed: |
+  ONE existing workflow, .github/workflows/guard-conformance.yml: push.paths
+  gains five surfaces (scripts/wa_army_watcher.sh and the four corpora
+  test_wa_army_watcher_shell.py, test_window_jump_shell.py,
+  test_tmux_jump_shell.py, test_nz_jump_model_alias.py); the relevant-paths
+  sentinel regex gains the same five, so a PR touching any of them runs the
+  job instead of ending green as a sentinel; the existing "Context-window
+  guard + window jump corpora" step gains a pytest line over the three jump
+  corpora plus infra/claude-hooks/test_probe_log_cap.py; a NEW step installs
+  tmux with apt, refuses to continue if the binary is still missing
+  (command -v tmux under set -euo pipefail, then tmux -V so the version lands
+  in the log) and runs scripts/tests/test_wa_army_watcher_shell.py against a
+  real tmux on a private socket. Council folds: tmux -V in the step (kimi
+  P2/P3) and a 10 s timeout on the corpus teardown's kill-server (codex P3).
+  infra/claude-hooks/test_probe_log_cap.py's docstring stops claiming that no
+  workflow runs it. Plus this evidence pack. No new workflow file, so the
+  watcher-conformance list is untouched.
+
+proof: |
+  See receipts. Deterministic floor 3 / path. Every one of the five new
+  surfaces is matched by the sentinel regex (guilt+innocence receipt: the
+  regex extracted from the workflow file itself, each path tested). The four
+  portable corpora plus the watcher corpus pass locally, 36 tests, none
+  skipped (-rs). With tmux removed from PATH the step body exits 1 at
+  command -v before pytest is reached, so the corpus cannot skip green in
+  CI. actionlint under CI's own flags, the timeout-floor linter and the
+  errexit-decap linter are clean after the folds. Two cross-family seats
+  reviewed the diff, both GO-WITH-NITS; every finding is folded or recorded
+  as dissent below. The live proof is the check itself: the workflow lists
+  itself in the sentinel regex, so this PR's own guard-conformance run
+  executes both steps, and its log is read before the work is reported done.
+
+dissent:
+  - seat: codex-gpt-5.6-sol
+    objection:
+      "test_wa_army_watcher_shell.py:98 the teardown kill-server call has no timeout, so a
+      wedged tmux server could consume the remainder of the 10-minute job despite the bounded
+      test waits."
+    status: CONFIRMED
+    resolution:
+      "timeout=10 on the kill-server call, subprocess.TimeoutExpired tolerated; the corpus
+      re-run after the fold passes 3/3 (receipt)."
+  - seat: kimi-code/k3
+    objection:
+      "The pipe-pane -o toggle the corpus pins was measured on tmux 3.7b (macOS) while apt on
+      ubuntu-latest yields an older tmux, so a version-semantics failure would be opaque; add a
+      tmux -V assertion or pin the version."
+    status: PLAUSIBLE
+    resolution:
+      "No pin: #{pane_pipe} and the -o toggle predate tmux 3.x and the watcher only pipes panes
+      reporting pane_pipe 0. The step now prints tmux -V right after command -v so any version
+      drift is readable in the log next to the corpus result."
+  - seat: kimi-code/k3
+    objection:
+      "apt-get update -qq >/dev/null hides the diagnostic you would want when the install
+      itself breaks."
+    status: PLAUSIBLE
+    resolution:
+      "Only stdout is redirected; apt's errors go to stderr and set -e stops the step on them.
+      The tmux -V line covers the 'what got installed' half of the request."
+  - seat: kimi-code/k3
+    objection:
+      "Q2 asserted that tmux is preinstalled on the ubuntu-latest runner image, which would make
+      the install a no-op."
+    status: PLAUSIBLE
+    resolution:
+      "Refuted on the manifest: actions/runner-images Ubuntu2404-Readme.md (333 lines, fetched
+      2026-09-18T17:31Z) lists no tmux. The install step stays load-bearing; the brief's first
+      assumption stands."
+
+receipts:
+  - claim:
+      this diff's deterministic Gear floor is 3, sourced from PATH (.github/workflows/**
+      is a hotzone)
+    cmd:
+      python3 scripts/evidence_pack_lint.py --print-floor --changed-files-file /private/tmp/claude-501/-Users-balizero-nuzantara/dc3f06e8-6f31-4486-8d1c-2ba94f146042/scratchpad/ci_changed.txt;
+      python3 scripts/evidence_pack_lint.py --print-floor-source --changed-files-file /private/tmp/claude-501/-Users-balizero-nuzantara/dc3f06e8-6f31-4486-8d1c-2ba94f146042/scratchpad/ci_changed.txt
+    result: "3 | path"
+    exit: 0
+    ts: "2026-09-18T17:34:13Z"
+    seat: claude-fable-5-1
+  - claim:
+      "trigger symmetry, tested with the sentinel regex extracted from the workflow file: each of
+      the five new surfaces matches (guilt side: a MISS line would print for an unmatched path)"
+    cmd:
+      "rx=$(grep -A1 -F 'grep -qE \\' .github/workflows/guard-conformance.yml | tail -1 | sed ...);
+      for f in <the five paths>; do echo $f | grep -qE \"$rx\" && echo match $f || echo MISS $f; done"
+    result: "match x5, MISS x0"
+    exit: 0
+    ts: "2026-09-18T17:29:26Z"
+    seat: claude-fable-5-1
+  - claim:
+      "every push path is matched by the sentinel regex (no green-by-never-starting surface in
+      one list only)"
+    cmd:
+      'python3 -c "<load push.paths from the YAML, extract the sentinel regex, print the paths the
+      regex misses>"'
+    result: "35 push paths; 0 not matched by the sentinel regex: []"
+    exit: 0
+    ts: "2026-09-18T17:34:13Z"
+    seat: claude-fable-5-1
+  - claim:
+      the four portable corpora plus the watcher corpus pass locally under pytest -rs with no
+      skip reported (33 + 3)
+    cmd:
+      python3 -m pytest -q -rs scripts/tests/test_window_jump_shell.py scripts/tests/test_tmux_jump_shell.py
+      scripts/tests/test_nz_jump_model_alias.py infra/claude-hooks/test_probe_log_cap.py
+      scripts/tests/test_wa_army_watcher_shell.py 2>&1 | tail -1
+    result: "36 passed in 78.37s (0:01:18)"
+    exit: 0
+    ts: "2026-09-18T17:29:26Z"
+    seat: claude-fable-5-1
+  - claim:
+      "guilt: with tmux absent from PATH the step body exits non-zero at command -v tmux and never
+      reaches pytest (no 'reached-pytest' line)"
+    cmd: "env PATH=/usr/bin:/bin bash -c 'set -euo pipefail; command -v tmux; echo reached-pytest'; echo rc=$?"
+    result: "rc=1"
+    exit: 0
+    ts: "2026-09-18T17:30:45Z"
+    seat: claude-fable-5-1
+  - claim:
+      the workflow parses under CI's own actionlint flags and both repo workflow linters stay
+      clean (pre-fold)
+    cmd:
+      actionlint -shellcheck= .github/workflows/guard-conformance.yml && echo actionlint-clean;
+      python3 scripts/lint_workflow_timeout_floor.py --root .github/workflows | tail -1;
+      python3 scripts/lint_workflow_errexit_decap.py --path .github/workflows | tail -1
+    result:
+      "actionlint-clean | workflow timeout floor: clean (159 jobs scanned, floor 10m) | clean —
+      every status-reading capture is errexit-immune"
+    exit: 0
+    ts: "2026-09-18T17:30:45Z"
+    seat: claude-fable-5-1
+  - claim:
+      "the watcher corpus skips itself without tmux (pytestmark skipif TMUX is None), which is why
+      the step must refuse the skip"
+    cmd: grep -n 'skipif\|which("tmux")' scripts/tests/test_wa_army_watcher_shell.py
+    result: '30: TMUX = shutil.which("tmux") or ... | 40: pytestmark = pytest.mark.skipif(TMUX is None, reason="needs a real tmux")'
+    exit: 0
+    ts: "2026-09-18T17:30:45Z"
+    seat: claude-fable-5-1
+  - claim:
+      the conformance job's last three runs on main all succeeded (budget headroom against
+      timeout-minutes 10)
+    cmd: gh run list --workflow=guard-conformance.yml --limit 3 --json databaseId,conclusion --jq '.[]|"\(.databaseId) \(.conclusion)"'
+    result: "35374289687 success | 35373076846 success | 35372475009 success"
+    exit: 0
+    ts: "2026-09-18T17:30:45Z"
+    seat: claude-fable-5-1
+  - claim:
+      "cross-family council seat 1 (codex gpt-5.6-sol, read-only sandbox) reviewed the diff and
+      returned VERDICT: GO-WITH-NITS, FINDINGS: 1 (P3 teardown kill-server without timeout); Q2-Q5
+      none/OK. Its stdout carried only the Stop-hook checkpoint line; the verdict was read from the
+      stderr transcript (/private/tmp/claude-501/-Users-balizero-nuzantara/dc3f06e8-6f31-4486-8d1c-2ba94f146042/scratchpad/ci_codex.err lines 2263-2271)"
+    cmd:
+      codex exec -m gpt-5.6-sol -c model_reasoning_effort="medium" --sandbox read-only --skip-git-repo-check
+      "$(cat /private/tmp/claude-501/-Users-balizero-nuzantara/dc3f06e8-6f31-4486-8d1c-2ba94f146042/scratchpad/ci_review_prompt.txt)" < /dev/null
+    result: "VERDICT: GO-WITH-NITS | FINDINGS: 1 | 89,022 tokens"
+    exit: 0
+    ts: "2026-09-19T01:28:30Z"
+    seat: codex-gpt-5.6-sol
+  - claim:
+      "cross-family council seat 2 (kimi-code/k3) reviewed the same diff and returned VERDICT:
+      GO-WITH-NITS, FINDINGS: 2 (P2 tmux version drift, P3 apt update output hidden); trigger
+      symmetry confirmed co-extensive; Q4/Q5 none"
+    cmd: kimi -p "$(cat /private/tmp/claude-501/-Users-balizero-nuzantara/dc3f06e8-6f31-4486-8d1c-2ba94f146042/scratchpad/ci_review_prompt.txt)" --output-format text < /dev/null
+    result: "VERDICT: GO-WITH-NITS | FINDINGS: 2"
+    exit: 0
+    ts: "2026-09-19T01:26:54Z"
+    seat: kimi-code/k3
+  - claim:
+      "kimi's Q2 claim that tmux is preinstalled on ubuntu-latest is refuted by the runner image
+      manifest, so the install step is load-bearing"
+    cmd:
+      "curl -sfL https://raw.githubusercontent.com/actions/runner-images/main/images/ubuntu/Ubuntu2404-Readme.md
+      -o /private/tmp/claude-501/-Users-balizero-nuzantara/dc3f06e8-6f31-4486-8d1c-2ba94f146042/scratchpad/ubuntu2404.md; wc -l < /private/tmp/claude-501/-Users-balizero-nuzantara/dc3f06e8-6f31-4486-8d1c-2ba94f146042/scratchpad/ubuntu2404.md; grep -n -i tmux /private/tmp/claude-501/-Users-balizero-nuzantara/dc3f06e8-6f31-4486-8d1c-2ba94f146042/scratchpad/ubuntu2404.md"
+    result: "curl rc=0, 333 lines, grep: no tmux line"
+    exit: 0
+    ts: "2026-09-18T17:31:00Z"
+    seat: claude-fable-5-1
+  - claim:
+      after folding the two council nits the workflow still parses under CI's actionlint flags
+      and the watcher corpus passes 3/3 against a real tmux, leaving no tmux server behind
+    cmd:
+      actionlint -shellcheck= .github/workflows/guard-conformance.yml && echo actionlint-clean;
+      python3 -m pytest -q -rs scripts/tests/test_wa_army_watcher_shell.py 2>&1 | tail -1;
+      pgrep -fl "tmux -L nzwt" | wc -l
+    result: "actionlint-clean | 3 passed in 12.89s | 0"
+    exit: 0
+    ts: "2026-09-18T17:32:12Z"
+    seat: claude-fable-5-1
+
+pii_scan: clean
+pii_scan_note: >-
+  The diff is a CI workflow edit plus a test teardown timeout; the corpora run
+  on synthetic fixtures with a fake bot token literal and a curl shim. No
+  client data, OSINT or credential is read, written or quoted. Receipts carry
+  command output only.
+
+spend:
+  wall_clock_hours: 1.5
+  adversarial_rounds: 1
+
+diff:
+  net_lines: "measured by CI from git numstat at merge-base..HEAD; the CI-computed value governs"
