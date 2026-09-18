@@ -16,7 +16,7 @@ control the prose was not.
 
 GRADED, NOT IMPROVISED. The shapes and the verdicts live in
 docs/specs/2026-09-18-secret-expansion-guard-shapes-spec.md (§4 shapes, §5 corpus
-E01-E46) and infra/claude-hooks/test_secret_expansion_guard.py asserts the corpus
+E01-E59) and infra/claude-hooks/test_secret_expansion_guard.py asserts the corpus
 row by row. Where this file and the spec disagree, THE SPEC WINS. Precedent:
 output_hygiene_guard v1 was suspended at three gate rounds, each finding a new
 over-match on an everyday command (cicatrix superscar #3). The over-match trap
@@ -40,11 +40,21 @@ right for "how many bytes will this print" and wrong for "does this text contain
 a secret expansion" — a `bash <<EOF\\necho $KEY\\nEOF` must deny (E33) and the
 leaking forms live INSIDE quotes, exactly what a quote-blanker erases. So the
 parser here is small, quote-AWARE but quote-PRESERVING, and trades precision for
-never missing the shape that actually leaked.
+never missing the shape that actually leaked. One idea IS borrowed from that
+segmenter: `$(...)` and backtick bodies are masked in the outer text and judged
+on their own (E52-E56), because `echo "$(cat STORE)"` must deny and
+`echo "$(curl -H "Bearer $KEY" ...)"` must not.
+
+GATE 2026-09-19 (Opus 5, SHIP-WITH-FIXES): store matching is by PATTERN, never by
+a disk walk — the first cut glob.glob'd `~/.config/**` on every Bash call (~100 ms
+on a real ~/.config, spec budget 5 ms) and could only deny a store that existed
+at that instant. `set -o pipefail`, `set +x` and `declare -x` were over-matched
+(E47-E49); `declare -p` and command substitutions were under-matched (E51-E53);
+quoted heredocs to a non-shell consumer are literal data, not shell (E57).
 """
 from __future__ import annotations
 
-import glob
+import fnmatch
 import json
 import os
 import re
@@ -74,6 +84,10 @@ METADATA_VERBS = {
     "basename", "dirname", "md5", "shasum", "cksum", "touch", "mkdir", "mv", "cp",
 }
 PEELABLE = {"env", "sudo", "time", "nice", "command", "exec", "nohup", "stdbuf"}
+# A heredoc fed to one of these is CODE the consumer will run (locally or, for
+# ssh, remotely) and its output comes back to the transcript — judge the body.
+SHELL_HEADS = {"bash", "sh", "zsh", "dash", "ksh", "ssh"}
+_HEREDOC_RE = re.compile(r"<<-?\s*(['\"]?)(\w+)\1")
 _ASSIGN_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*=")
 _REDIRECT_RE = re.compile(r"^\d*(?:>>|<<<|<<-?|&>>|&>|>&\d*|<|>)")
 # A redirect glued to its target (`cat store>/tmp/x`, `2>&1`) — the operand before
@@ -123,27 +137,37 @@ def _is_secret(name: str, names: set[str], pats: list[re.Pattern[str]]) -> bool:
     return name in names or any(p.search(name) for p in pats)
 
 
-def _store_paths(reg: dict) -> set[str]:
-    """Expand the registry's globs ONCE per invocation into normalized paths.
+def _store_patterns(reg: dict) -> list[str]:
+    """The registry's `secret_files`, ~-expanded and normalized — NOT expanded on disk.
 
-    Non-glob entries are kept even when the file does not exist, so a referenced
-    store is denied rather than allowed just because it is absent right now.
+    Matching happens per candidate token in _matches_store with fnmatch, so the
+    guard never walks the filesystem. Both the literal and the realpath-resolved
+    form of each pattern are kept, so a symlinked $HOME matches either way. A
+    referenced store is denied whether or not the file exists right now.
     """
-    out: set[str] = set()
+    out: list[str] = []
     for pat in reg.get("secret_files") or []:
         if not isinstance(pat, str) or not pat:
             continue
-        expanded = os.path.expanduser(pat)
-        if any(ch in expanded for ch in "*?["):
-            try:
-                hits = glob.glob(expanded, recursive="**" in expanded)
-            except Exception:
-                hits = []
-            for h in hits[:512]:
-                out.add(os.path.normpath(h))
-        else:
-            out.add(os.path.normpath(expanded))
+        expanded = os.path.normpath(os.path.expanduser(pat))
+        out.append(expanded)
+        try:
+            resolved = os.path.normpath(os.path.realpath(expanded))
+        except Exception:
+            resolved = expanded
+        if resolved != expanded:
+            out.append(resolved)
     return out
+
+
+def _path_matches(candidate: str, pattern: str) -> bool:
+    if not any(ch in pattern for ch in "*?["):
+        return candidate == pattern
+    if fnmatch.fnmatchcase(candidate, pattern):
+        return True
+    # `a/**/b` also names `a/b` (zero intermediate dirs); fnmatch's `*` spans
+    # separators but the literal `/` on each side of `**` still has to be there.
+    return "/**/" in pattern and fnmatch.fnmatchcase(candidate, pattern.replace("/**/", "/"))
 
 
 # --------------------------------------------------------------- tokenizing
@@ -193,6 +217,37 @@ def _split_quoted(text: str, seps: list[str]) -> list[str]:
         i += 1
     out.append("".join(buf))
     return out
+
+
+def _blank_literal_heredocs(text: str) -> str:
+    """Blank the body of a QUOTED-delimiter heredoc whose consumer is not a shell.
+
+    `python3 - <<'PY' … PY` and `cat > f <<'EOF' … EOF` carry literal DATA: the
+    shell expands nothing in a quoted heredoc and the consumer is not going to
+    run it as shell. Judging that body as shell over-matched the repo's own
+    editing idiom the moment this guard went live (E57: a Python heredoc whose
+    string literals mention a store). A heredoc to bash/sh/zsh/ssh is code the
+    child runs, quoted or not, and stays judged (E33, E58, E59); an UNQUOTED
+    heredoc to anything is expanded by the outer shell and stays judged too.
+    """
+    out = list(text)
+    for m in _HEREDOC_RE.finditer(text):
+        if not m.group(1):
+            continue  # unquoted: expansions happen — keep judging
+        line_start = text.rfind("\n", 0, m.start()) + 1
+        stage = _split_quoted(text[line_start:m.start()], ["&&", "||", ";", "|"])[-1]
+        if _head_of(_peel(_tokenize(stage))) in SHELL_HEADS:
+            continue
+        nl = text.find("\n", m.end())
+        if nl < 0:
+            continue
+        end = re.compile(r"^[ \t]*" + re.escape(m.group(2)) + r"[ \t]*$", re.MULTILINE).search(
+            text, nl + 1
+        )
+        for i in range(nl + 1, end.start() if end else len(text)):
+            if out[i] != "\n":
+                out[i] = " "
+    return "".join(out)
 
 
 def _strip_comments(text: str) -> str:
@@ -361,6 +416,18 @@ def _check_x1(stage: str, head: str, secrets) -> str | None:
     )
 
 
+def _set_enables_xtrace(rest: list[str]) -> bool:
+    """`set -x`, `set -euxo pipefail`, `set -o xtrace` turn tracing ON. `set +x`,
+    `set -e`, `set -o pipefail`, `set -a` do not — everyday commands (E47/E48),
+    and the first cut denied them (superscar #3, found at the gate)."""
+    for i, t in enumerate(rest):
+        if re.match(r"^-[A-Za-z]*x[A-Za-z]*$", t):
+            return True
+        if t == "-o" and i + 1 < len(rest) and rest[i + 1] == "xtrace":
+            return True
+    return False
+
+
 def _check_x2(toks: list[str], head: str) -> str | None:
     """X2 — an environment dump."""
     if head not in ENV_DUMP_VERBS:
@@ -371,11 +438,16 @@ def _check_x2(toks: list[str], head: str) -> str | None:
     if head in ("set", "declare", "typeset"):
         if not rest:
             return f"X2 environment dump: bare `{head}` prints every variable and its value."
-        if any(t in ("-x", "-o", "+x") or t == "xtrace" for t in rest):
-            return (
-                f"X2 command echo: `{head} -x` traces EXPANDED commands, so any secret "
-                f"in them reaches the transcript."
-            )
+        if head == "set":
+            if _set_enables_xtrace(rest):
+                return (
+                    "X2 command echo: `set -x` / `set -o xtrace` traces EXPANDED commands, "
+                    "so any secret in them reaches the transcript."
+                )
+            return None
+        # declare/typeset: only -p PRINTS (name and value). -x exports, -a/-f/-r declare.
+        if any(re.match(r"^-[A-Za-z]*p[A-Za-z]*$", t) for t in rest):
+            return f"X2 environment dump: `{head} -p` prints variables with their values."
         return None
     if head == "export":
         if not rest or "-p" in rest or "--print" in rest:
@@ -421,7 +493,7 @@ def _json_tool_dump(toks: list[str]) -> bool:
     return len(toks) >= 3 and toks[1] == "-m" and _unquote(toks[2]) in ("json.tool", "json")
 
 
-def _check_x4(toks: list[str], head: str, cwd: str, stores: set[str]) -> str | None:
+def _check_x4(toks: list[str], head: str, cwd: str, stores: list[str]) -> str | None:
     """X4 — a content-dumping verb pointed at a registered credential store."""
     is_json_tool = head in ("python", "python3") and _json_tool_dump(toks)
     if head not in DUMP_VERBS or (head in ("python", "python3") and not is_json_tool):
@@ -446,7 +518,7 @@ def _check_x4(toks: list[str], head: str, cwd: str, stores: set[str]) -> str | N
     return None
 
 
-def _matches_store(token: str, cwd: str, stores: set[str]) -> bool:
+def _matches_store(token: str, cwd: str, stores: list[str]) -> bool:
     if not stores:
         return False
     candidates = {os.path.normpath(token)}
@@ -458,10 +530,10 @@ def _matches_store(token: str, cwd: str, stores: set[str]) -> bool:
         candidates.add(os.path.normpath(os.path.realpath(exp)))
     except Exception:
         pass
-    return bool(candidates & stores)
+    return any(_path_matches(c, p) for c in candidates for p in stores)
 
 
-def _check_x5(tool: str, tool_input: dict, stores: set[str]) -> str | None:
+def _check_x5(tool: str, tool_input: dict, stores: list[str]) -> str | None:
     """X5 — the Read tool on a registered credential store."""
     if tool not in ("Read", "read_file", "NotebookRead", "notebook_read"):
         return None
@@ -481,12 +553,60 @@ def _check_x5(tool: str, tool_input: dict, stores: set[str]) -> str | None:
 
 # --------------------------------------------------------------- dispatch
 
+MAX_SUBSTITUTION_DEPTH = 3
+
+
+def _mask_substitutions(text: str) -> tuple[str, list[str]]:
+    """Blank `$(...)` and backtick spans in `text` and return their bodies.
+
+    The OUTER command is judged on the blanked text, each body on its own
+    (recursively, bounded). Without this, `echo "$(cat STORE)"` is an echo of a
+    quoted string (under-match, E52) and `echo "$(curl -H "Bearer $KEY" ...)"`
+    is an X1 hit (over-match, E56) — one blind spot, both directions.
+    """
+    chars = list(text)
+    subs: list[str] = []
+    i, n = 0, len(text)
+    while i < n:
+        escaped = i > 0 and text[i - 1] == "\\"
+        if text[i] == "$" and i + 1 < n and text[i + 1] == "(" and not escaped:
+            depth, j = 1, i + 2
+            while j < n and depth > 0:
+                if text[j] == "(":
+                    depth += 1
+                elif text[j] == ")":
+                    depth -= 1
+                j += 1
+            inner_end = j - 1 if depth == 0 else j
+            subs.append(text[i + 2:inner_end])
+            for k in range(i, j):
+                if chars[k] != "\n":
+                    chars[k] = " "
+            i = j
+            continue
+        if text[i] == "`" and not escaped:
+            j = text.find("`", i + 1)
+            if j == -1:
+                i += 1
+                continue
+            subs.append(text[i + 1:j])
+            for k in range(i, j + 1):
+                if chars[k] != "\n":
+                    chars[k] = " "
+            i = j + 1
+            continue
+        i += 1
+    return "".join(chars), subs
+
 
 def _judge_command(command: str, cwd: str, reg: dict) -> str | None:
-    secrets = _secret_names(reg)
-    stores = _store_paths(reg)
-    text = _strip_comments(command)
-    for statement in _split_quoted(text, ["&&", "||", ";", "&", "\n"]):
+    text = _strip_comments(_blank_literal_heredocs(command))
+    return _judge_text(text, cwd, _secret_names(reg), _store_patterns(reg), 0)
+
+
+def _judge_text(text: str, cwd: str, secrets, stores: list[str], depth: int) -> str | None:
+    outer, subs = _mask_substitutions(text)
+    for statement in _split_quoted(outer, ["&&", "||", ";", "&", "\n"]):
         if not statement.strip():
             continue
         for stage in _split_quoted(statement, ["|"]):
@@ -511,6 +631,11 @@ def _judge_command(command: str, cwd: str, reg: dict) -> str | None:
             for reason in candidates:
                 if reason:
                     return reason
+    if depth < MAX_SUBSTITUTION_DEPTH:
+        for body in subs:
+            reason = _judge_text(body, cwd, secrets, stores, depth + 1)
+            if reason:
+                return reason
     return None
 
 
@@ -539,7 +664,7 @@ def main() -> int:
         if isinstance(command, str) and command.strip():
             reason = _judge_command(command, cwd, reg)
     else:
-        reason = _check_x5(tool, {**tool_input, "cwd": cwd}, _store_paths(reg))
+        reason = _check_x5(tool, {**tool_input, "cwd": cwd}, _store_patterns(reg))
 
     if reason:
         print(f"[secret-expansion-guard] DENY {reason}", file=sys.stderr)
