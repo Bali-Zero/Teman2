@@ -1,0 +1,266 @@
+brief_ref: evidence/brief.yml
+council_run: journal.jsonl
+plan_ref: >-
+  Zero, 2026-09-18 ("e riguardo a mailbox fleet?" -> "certo, go"): give
+  ~/.nuzantara-mailbox its first deleter as a proper organ (janitor +
+  launchd wrapper + tracked plist + installer + registry + connectome) and
+  ship it end to end on M5, Pro and Mini under the ship-lifecycle rule.
+
+lanes:
+  - lane: build
+    role: build
+    seat: claude-fable-5-1
+  - lane: review-cross-family-codex
+    role: review
+    seat: codex-gpt-5.6-sol
+  - lane: review-cross-family-kimi
+    role: review
+    seat: kimi-code/k3
+
+what_changed: |
+  12 files, +1,500-ish / -1 (CI measures the exact number at merge-base).
+  NEW scripts/mailbox_janitor.py (dry-run default, --apply, tag-timestamp
+  retention 14 d, .broadcast_seen removal only when dir AND marker are older
+  than 3 d AND no listed name is live -- re-checked right before the unlink
+  -- empty session dir rmdir, symlink/fifo/nested-dir kept, root refusal,
+  realpath containment, JSON receipts, NUZ_MAILBOX_DIR honoured); NEW
+  scripts/mailbox_janitor_cron.sh (heartbeat ok|warning|error|disabled on
+  every path, kill switch, dry-run env, exit map 0/1/2/3, SUMMARY capture
+  guarded against pipefail); NEW tracked plist
+  infra/launchagents/com.nuzantara.mailbox-janitor.daily.plist (04:47 daily,
+  StartCalendarInterval dict, KeepAlive false, pins only HOME+PATH); NEW
+  infra/launchagents/install_mailbox_janitor.sh (render|install|uninstall,
+  sed HOME + repo root, plutil AND plistlib gates, bootstrap checked, post-
+  bootstrap launchctl print verified); 25 tests in two files; 3 organs
+  (m5|pro|mini.mailbox_janitor) in organs_registry.yaml with the checksum
+  line patched via compute_checksum (the --update-checksum re-dump drops
+  comments); connectome edges on launchd-m5-mini.yaml and launchd-pro.yaml;
+  this evidence pack.
+
+proof: |
+  See receipts. Deterministic floor 3 / path; 25 tests green after the
+  council cures; organ conformance 0 non-conformant births; registry valid;
+  keepalive lint clean; plist parses under plutil and plistlib with only
+  HOME+PATH pinned; installer render on an M5-shaped HOME has zero
+  /Users/nuzantara paths; live M5 dry-run touches nothing and reports 0
+  errors with the 13 live messages kept; ruff + shellcheck clean. Two
+  cross-family council seats (codex gpt-5.6-sol, kimi-code/k3) both NO-GO on
+  the pre-cure diff with overlapping findings; every finding is either fixed
+  with a test or documented as a partial with the reason (dissent).
+
+dissent:
+  - seat: codex-gpt-5.6-sol
+    objection: >-
+      scripts/mailbox_janitor_cron.sh: SUMMARY="$(echo "$OUTPUT" | grep -m1
+      '^mailbox-janitor:' | cut -c1-200)" runs after `set -e` is restored,
+      under pipefail. A janitor that crashes with a traceback prints no
+      summary line, grep exits 1, the assignment fails, and the wrapper dies
+      BEFORE the heartbeat -- a silently dead cron (superscar #2).
+    status: CONFIRMED
+    resolution: >-
+      `|| true` inside the substitution; the case/heartbeat is now reached on
+      every rc. Wrapper test suite re-run green (6 tests).
+  - seat: codex-gpt-5.6-sol
+    objection: >-
+      install_mailbox_janitor.sh runs `set -uo pipefail` without -e and never
+      checks `launchctl bootstrap`; a failed bootstrap still prints "done" and
+      exits 0, leaving the plist on disk and the job unloaded (kimi-code/k3
+      raised the same, adding that bootout's `grep -v` hides its own errors).
+    status: CONFIRMED
+    resolution: >-
+      bootstrap is guarded (FATAL + exit 1 on failure) and the installer now
+      requires `launchctl print gui/$UID/<label>` to succeed before reporting
+      done. bootout's filter is kept: a bootout that silently fails makes the
+      next bootstrap fail "already loaded", which the new guard catches.
+  - seat: codex-gpt-5.6-sol
+    objection: >-
+      The plist pinned MAILBOX_JANITOR_ENABLED=true in EnvironmentVariables,
+      which overrides the launchd user environment, so the documented kill
+      switch `launchctl setenv MAILBOX_JANITOR_ENABLED false` could never
+      reach the wrapper (kimi-code/k3 raised the same: the G5 off-switch was
+      dead on all three machines).
+    status: CONFIRMED
+    resolution: >-
+      Key removed from the plist (the wrapper defaults to enabled); the plist
+      comment now says why the variable is deliberately NOT pinned, that
+      setenv does not survive a reboot, and that uninstall is the persistent
+      form. A render test asserts the key is absent; G5 conformance is
+      checked on the wrapper text and stays green.
+  - seat: codex-gpt-5.6-sol
+    objection: >-
+      TOCTOU on .broadcast_seen: live broadcast names are snapshotted once at
+      run start, the marker is read and unlinked later; a reader hook can
+      append a name (or a new broadcast can appear) in between, and the
+      janitor unlinks a marker still needed for dedup. Proposed a shared
+      mailbox lock in both the reader hook and the janitor plus a
+      barrier-controlled concurrent test (kimi-code/k3 raised the same two
+      windows and proposed re-resolving liveness right before the unlink).
+    status: CONFIRMED
+    resolution: >-
+      Resolved without a shared lock: (1) the marker's OWN mtime must also be
+      older than --seen-days -- the hook appends without touching the dir
+      mtime, so a session that saw a broadcast yesterday keeps its marker
+      even inside a dir born weeks ago; (2) liveness is re-resolved against
+      broadcast/ immediately before the unlink. Two tests cover both. The
+      shared lock is rejected for this PR: the reader hook is out of scope
+      (one PR, one concern), and the residual window -- an append that lands
+      in the microseconds between the final stat and the unlink -- costs one
+      duplicate injection of one broadcast, never data loss.
+  - seat: codex-gpt-5.6-sol
+    objection: >-
+      Dry-run counters are incremented without attempting the syscall while
+      apply counts only successes, so under EACCES/races the two differ
+      despite the "exactly what apply would do" claim; proposed renaming the
+      dry-run counters to eligible_*/would_attempt_*.
+    status: CONFIRMED
+    resolution: >-
+      No rename: the summary line and receipt keys are what the wrapper,
+      the heartbeat note and the ledger read. The module docstring and the
+      brief now state the semantics explicitly -- eligible without --apply,
+      performed with --apply, equal iff errors=0 -- and every failed attempt
+      lands in `errors`, which the wrapper maps to exit 3 / heartbeat
+      warning (now covered by a wrapper test).
+  - seat: kimi-code/k3
+    objection: >-
+      A non-regular, non-dir child (fifo/socket/device) hit `if not
+      child.is_file(): continue` without counting as remaining, so its
+      session dir looked empty, rmdir failed ENOTEMPTY every night, errors
+      incremented and the wrapper heartbeated "warning" forever, masking real
+      warnings.
+    status: CONFIRMED
+    resolution: >-
+      Such a child now counts as kept_unknown AND remaining; the dir is
+      never rmdir'd and errors stays 0. Test added (mkfifo fixture).
+  - seat: kimi-code/k3
+    objection: >-
+      The wrapper suite never drove janitor rc=2 -> wrapper exit 3 ->
+      heartbeat warning, and the installer's sed order on an M5-shaped HOME
+      was verified only by reading; also the wrapper header still named a
+      `.plist.example` this PR does not ship.
+    status: CONFIRMED
+    resolution: >-
+      Two tests added: a chmod-locked session dir drives exit 3 + warning
+      with the marked file still present; `render` on HOME=<tmp>/Users/balizero
+      is parsed with plistlib and asserted (no /Users/nuzantara, payload
+      under HOME/nuzantara, no pinned kill-switch var, StartCalendarInterval
+      dict, KeepAlive/RunAtLoad false). Header comment corrected.
+
+  - seat: claude-sonnet-5
+    objection: >-
+      spalla-review (same-family second look, GO-WITH-NITS): `echo "$OUTPUT"
+      | tee -a "$LOG"` and the `log()` helper run under pipefail without the
+      `|| true` the SUMMARY line got; a full disk or unwritable log dir --
+      the very pressure this janitor exists to relieve -- kills the wrapper
+      before the heartbeat. Also: the installer checked only the wrapper
+      payload, not mailbox_janitor.py.
+    status: CONFIRMED
+    resolution: >-
+      `|| true` on both tee pipelines; the installer now requires both
+      payload files. Wrapper suite re-run green; shellcheck clean.
+
+receipts:
+  - claim: "this diff's deterministic Gear floor is 3, sourced from PATH (infra/launchagents/*)"
+    cmd: "python3 scripts/evidence_pack_lint.py --print-floor --changed-files-file /private/tmp/claude-501/-Users-balizero-nuzantara/c12903e4-388f-468e-9eaa-5ce82cf409bb/scratchpad/jan_changed.txt --numstat-file /private/tmp/claude-501/-Users-balizero-nuzantara/c12903e4-388f-468e-9eaa-5ce82cf409bb/scratchpad/jan_numstat.txt; python3 scripts/evidence_pack_lint.py --print-floor-source --changed-files-file /private/tmp/claude-501/-Users-balizero-nuzantara/c12903e4-388f-468e-9eaa-5ce82cf409bb/scratchpad/jan_changed.txt --numstat-file /private/tmp/claude-501/-Users-balizero-nuzantara/c12903e4-388f-468e-9eaa-5ce82cf409bb/scratchpad/jan_numstat.txt"
+    result: "3 | path"
+    exit: 0
+    ts: "2026-09-18T06:28:34Z"
+    seat: claude-fable-5-1
+  - claim: "janitor + wrapper test suites green after the council cures (25 tests: 19 janitor incl. dir-mtime snapshot, marker-mtime guard, pre-unlink live re-check, fifo child; 6 wrapper incl. exit-3/warning path and M5-shaped installer render)"
+    cmd: "python3 -m pytest scripts/tests/test_mailbox_janitor.py scripts/tests/test_mailbox_janitor_cron.py -q 2>&1 | tail -1"
+    result: "25 passed in 0.28s"
+    exit: 0
+    ts: "2026-09-18T06:28:34Z"
+    seat: claude-fable-5-1
+  - claim: "the tracked plist is a conformant birth (G1 registry label, G2 heartbeat, G3 repo payload, G5 kill switch, G8 no KeepAlive, G9 set -u + log fn)"
+    cmd: "python3 infra/organ-conformance/check_organ_conformance.py 2>&1 | tail -1"
+    result: "\u2713 organ conformance: 167 plists scanned, 106 grandfathered (report-only), 0 regressions, 0 non-conformant births"
+    exit: 0
+    ts: "2026-09-18T06:28:35Z"
+    seat: claude-fable-5-1
+  - claim: "organs_registry.yaml stays valid with the three new organs and the recomputed checksum"
+    cmd: "PYTHONPATH=apps/organism python3 -m organism.tools.validate_organs_registry apps/organism/organism/organs_registry.yaml 2>&1 | tail -1"
+    result: "\u2713 organs_registry.yaml valid (apps/organism/organism/organs_registry.yaml)"
+    exit: 0
+    ts: "2026-09-18T06:28:36Z"
+    seat: claude-fable-5-1
+  - claim: "superscar #7 lint: the new plist has no KeepAlive one-shot smell"
+    cmd: "python3 scripts/lint_plist_keepalive.py 2>&1 | tail -1"
+    result: "clean \u2014 no KeepAlive=true wrapper shows a one-shot smell"
+    exit: 0
+    ts: "2026-09-18T06:28:36Z"
+    seat: claude-fable-5-1
+  - claim: "the tracked plist parses under BOTH plutil and plistlib, and pins only HOME and PATH (no MAILBOX_JANITOR_ENABLED, so launchctl setenv reaches the wrapper)"
+    cmd: 'plutil -lint infra/launchagents/com.nuzantara.mailbox-janitor.daily.plist && python3 -c ''import plistlib,sys; d=plistlib.load(open(sys.argv[1],"rb")); print(sorted(d["EnvironmentVariables"]), d["KeepAlive"], d["StartCalendarInterval"])'' infra/launchagents/com.nuzantara.mailbox-janitor.daily.plist'
+    result: "infra/launchagents/com.nuzantara.mailbox-janitor.daily.plist: OK | ['HOME', 'PATH'] False {'Hour': 4, 'Minute': 47}"
+    exit: 0
+    ts: "2026-09-18T06:28:36Z"
+    seat: claude-fable-5-1
+  - claim: "installer render on M5 (HOME=/Users/balizero) leaves zero /Users/nuzantara paths (grep -c prints 0 and exits 1 by design)"
+    cmd: "bash infra/launchagents/install_mailbox_janitor.sh render | grep -c '/Users/nuzantara'"
+    result: "0"
+    exit: 1
+    ts: "2026-09-18T06:28:36Z"
+    seat: claude-fable-5-1
+  - claim: "M5 live dry-run (read-only, the real ~/.nuzantara-mailbox): 957 root entries, 13 live messages kept, 0 errors; would prune 60 marked files, 597 seen markers (346 kept as recently appended), 581 empty dirs"
+    cmd: 'python3 scripts/mailbox_janitor.py --json | python3 -c ''import json,sys; d=json.load(sys.stdin); print({k:d[k] for k in ("root_entries_before","pruned_marked","seen_removed","seen_kept_recent","dirs_removed","kept_live_md","errors")})'''
+    result: "{'root_entries_before': 957, 'pruned_marked': 60, 'seen_removed': 598, 'seen_kept_recent': 345, 'dirs_removed': 582, 'kept_live_md': 13, 'errors': 0}"
+    exit: 0
+    ts: "2026-09-18T06:28:36Z"
+    seat: claude-fable-5-1
+  - claim: "ruff + shellcheck clean on the four executables"
+    cmd: "ruff check scripts/mailbox_janitor.py scripts/tests/test_mailbox_janitor.py scripts/tests/test_mailbox_janitor_cron.py 2>&1 | tail -1; shellcheck scripts/mailbox_janitor_cron.sh infra/launchagents/install_mailbox_janitor.sh && echo shellcheck-clean"
+    result: "All checks passed! | shellcheck-clean"
+    exit: 0
+    ts: "2026-09-18T06:28:36Z"
+    seat: claude-fable-5-1
+  - claim: "cross-family review, codex gpt-5.6-sol (titolare): NO-GO, 5 findings against the pre-cure diff -- wrapper SUMMARY under pipefail (P1), installer bootstrap unchecked (P1), plist pins the kill-switch var (P2), .broadcast_seen TOCTOU (P2), dry-run vs apply counter semantics (P2); all addressed, see dissent"
+    cmd: 'codex exec -m gpt-5.6-sol -c model_reasoning_effort="medium" --sandbox read-only --skip-git-repo-check "$(cat $S/jan_review_prompt_full.txt)" < /dev/null'
+    result: "VERDICT: NO-GO / FINDINGS: 5 (2xP1, 3xP2)"
+    exit: 0
+    ts: "2026-09-18T06:22:53Z"
+    seat: codex-gpt-5.6-sol
+  - claim: "cross-family review, kimi-code/k3 (titolare): NO-GO, 8 lines of which 6 findings (TOCTOU P2, plist kill-switch P2, installer bootstrap/bootout P2, fifo child P3, stale .plist.example comment P3, missing exit-3 + render tests P2) and 2 explicit 'none' (dir-mtime snapshot, registry); all addressed, see dissent"
+    cmd: 'kimi -p "$(cat $S/jan_review_prompt_full.txt)" --output-format text < /dev/null'
+    result: "VERDICT: NO-GO / FINDINGS: 8 (6 real: 4xP2, 2xP3; 2 explicit none)"
+    exit: 0
+    ts: "2026-09-18T06:24:27Z"
+    seat: kimi-code/k3
+  - claim: "acceptance probe run verbatim: WHEN scripts/mailbox_janitor.py runs WITHOUT --apply against a root, it SHALL touch nothing (root entry count before == after) and SHALL rep"
+    cmd: 'python3 -m pytest scripts/tests/test_mailbox_janitor.py -q -k "dry_run or one_pass"'
+    result: "..                                                                       [100%] | 2 passed, 17 deselected in 0.13s"
+    exit: 0
+    ts: "2026-09-18T08:06:50Z"
+    seat: claude-fable-5-1
+  - claim: "acceptance probe run verbatim: WHILE --apply runs, no live message (an unmarked *.md anywhere under the root), no file inside broadcast/, no symlink, no nested directory a"
+    cmd: "python3 -m pytest scripts/tests/test_mailbox_janitor.py -q"
+    result: "...................                                                      [100%] | 19 passed in 0.05s"
+    exit: 0
+    ts: "2026-09-18T08:06:50Z"
+    seat: claude-fable-5-1
+  - claim: "acceptance probe run verbatim: WHEN the launchd wrapper exits on any path (ok, refused, deletion errors, kill switch, missing payload) it SHALL have written the ~/.organis"
+    cmd: "python3 -m pytest scripts/tests/test_mailbox_janitor_cron.py -q"
+    result: "......                                                                   [100%] | 6 passed in 0.27s"
+    exit: 0
+    ts: "2026-09-18T08:06:50Z"
+    seat: claude-fable-5-1
+  - claim: "acceptance probe run verbatim: WHEN infra/launchagents/install_mailbox_janitor.sh render runs on M5 (HOME=/Users/balizero) the rendered plist SHALL contain zero /Users/nuz"
+    cmd: "bash infra/launchagents/install_mailbox_janitor.sh render | grep -c '/Users/nuzantara'; python3 infra/organ-conformance/check_organ_conformance.py"
+    result: "0 | \u2713 organ conformance: 167 plists scanned, 106 grandfathered (report-only), 0 regressions, 0 non-conformant births"
+    exit: 0
+    ts: "2026-09-18T08:06:51Z"
+    seat: claude-fable-5-1
+
+pii_scan: clean
+pii_scan_note: >-
+  The diff is a deleter for a machine-local mailbox of agent-to-agent notes
+  plus its organ plumbing; no client data, OSINT or credential is read,
+  written or quoted. The only mailbox content that appears anywhere is
+  aggregate counters (entries, bytes) in receipts and the PR body. Test
+  fixtures use synthetic names.
+
+spend:
+  wall_clock_hours: 2.5
+  adversarial_rounds: 1
+
+diff:
+  net_lines: "measured by CI from git numstat at merge-base..HEAD; the local count is in the receipts' floor run and is not narrated here (superscar family nine shape, two-dot vs merge ref) — the CI-computed value governs"

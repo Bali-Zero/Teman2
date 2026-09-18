@@ -1,0 +1,110 @@
+task_id: mailbox-janitor
+gear: 3
+l_level: L1
+gate_class: opus
+objective: |
+  Give ~/.nuzantara-mailbox its first and only deleter. The mailbox is a
+  per-machine file drop: broadcast/ plus one directory per Claude session.
+  The reader hook (infra/claude-hooks/mailbox_inject.py) never deletes: dead
+  mail is renamed <name>.<tag>-<YYYYMMDDTHHMMSS> (delivered, expired,
+  superseded, skipped-oversize, unaddressed; retracted from fleet_mail.sh;
+  muted from a manual pass) and every session dir keeps a .broadcast_seen
+  marker forever. Measured before this PR: 957 root entries on M5, 5,734 on
+  Pro, 13 live messages -- the reader's `ls` grows without bound and the
+  directory becomes a graveyard the next session must page through.
+
+  This PR adds scripts/mailbox_janitor.py (dry-run by default, --apply to
+  delete): prune marker-suffixed files older than --marked-days 14 by the
+  timestamp in their tag (mtime fallback when the tag does not parse), remove
+  a .broadcast_seen only when its session dir is older than --seen-days 3
+  AND none of the names it lists is still a live *.md in broadcast/ (the
+  30-day broadcast TTL ceiling therefore cannot be re-delivered), and rmdir
+  a session dir that is empty after the pass and older than --seen-days.
+  Never broadcast/, never an unmarked *.md, never a symlink, never a nested
+  directory; refuses a missing, symlinked or foreign-owned root; realpath
+  containment before every unlink; one JSON receipt line per run.
+
+  The organ around it: scripts/mailbox_janitor_cron.sh (heartbeat on every
+  exit path via scripts/lib/heartbeat.sh, kill switch
+  MAILBOX_JANITOR_ENABLED=false, MAILBOX_JANITOR_DRY_RUN=1 escape, exit map
+  0 ok / 1 refused / 2 precondition / 3 deletion errors), a REAL tracked
+  plist infra/launchagents/com.nuzantara.mailbox-janitor.daily.plist (daily
+  04:47 local, StartCalendarInterval, no KeepAlive, Pro/Mini absolute paths)
+  so check_organ_conformance.py sees the birth, an installer that renders
+  HOME and repo root per machine and lints the result with BOTH plutil and
+  plistlib, three organs_registry.yaml entries (m5/pro/mini) with the
+  checksum recomputed, and connectome edges on the two launchd censuses.
+
+  Gear is 3 DETERMINISTICALLY, sourced from PATH: infra/launchagents/* is a
+  hardcoded entry in scripts/evidence_pack_lint.py's HOTZONE_PATTERNS.
+  Measured against this branch's own merge-base diff
+  (71f01e508c, see receipts).
+
+acceptance:
+  - text: >-
+      WHEN scripts/mailbox_janitor.py runs WITHOUT --apply against a root, it
+      SHALL touch nothing (root entry count before == after) and SHALL report
+      exactly the counters an --apply run on the same tree would act on
+      (pruned_marked, seen_removed, dirs_removed) when errors=0, so the dry-run receipt is
+      a faithful preview of the deletion.
+    probe: python3 -m pytest scripts/tests/test_mailbox_janitor.py -q -k "dry_run or one_pass"
+  - text: >-
+      WHILE --apply runs, no live message (an unmarked *.md anywhere under the
+      root), no file inside broadcast/, no symlink, no nested directory and no
+      .broadcast_seen that still names a live broadcast SHALL be removed, and a
+      root that is missing, a symlink or owned by another uid SHALL be refused
+      with exit 1 before any walk.
+    probe: python3 -m pytest scripts/tests/test_mailbox_janitor.py -q
+  - text: >-
+      WHEN the launchd wrapper exits on any path (ok, refused, deletion
+      errors, kill switch, missing payload) it SHALL have written the
+      ~/.organism/last_seen/<machine>.mailbox_janitor.json sidecar with a
+      status from the heartbeat lib vocabulary (ok | warning | error |
+      disabled), so a silent death is a stale heartbeat and not a green cron.
+    probe: python3 -m pytest scripts/tests/test_mailbox_janitor_cron.py -q
+  - text: >-
+      WHEN infra/launchagents/install_mailbox_janitor.sh render runs on M5
+      (HOME=/Users/balizero) the rendered plist SHALL contain zero
+      /Users/nuzantara paths and SHALL point at
+      /Users/balizero/nuzantara/scripts/mailbox_janitor_cron.sh, and the
+      tracked plist SHALL pass check_organ_conformance.py with 0
+      non-conformant births and lint_plist_keepalive.py clean.
+    probe: bash infra/launchagents/install_mailbox_janitor.sh render | grep -c '/Users/nuzantara'; python3 infra/organ-conformance/check_organ_conformance.py
+  - text: >-
+      AFTER merge, on each of M5, Pro and Mini the installer SHALL bootstrap
+      com.nuzantara.mailbox-janitor.daily under gui/$UID, a kickstarted run
+      SHALL append one receipt line to ~/logs/mailbox-janitor.receipts.jsonl
+      with apply=true and errors=0, the root entry count SHALL drop, and the
+      heartbeat sidecar SHALL read status ok.
+    probe: launchctl kickstart -k gui/$UID/com.nuzantara.mailbox-janitor.daily; tail -1 ~/logs/mailbox-janitor.receipts.jsonl; cat ~/.organism/last_seen/*.mailbox_janitor.json
+
+assumptions:
+  - text: >-
+      The marker tag grammar is closed: the reader hook writes delivered,
+      expired, superseded, skipped-oversize, unaddressed; fleet_mail.sh writes
+      retracted; one manual pass wrote muted with a trailing Z. Any other
+      suffix is counted as kept_unknown and never deleted.
+    status: verified
+    probe: grep -n "delivered\|expired\|superseded\|skipped-oversize\|unaddressed\|retracted" infra/claude-hooks/mailbox_inject.py scripts/fleet_mail.sh
+  - text: >-
+      A broadcast can be live for at most 30 days (MAX_EXPIRES_EXTENSION_SECONDS
+      in the reader hook), so a .broadcast_seen whose listed names are all
+      absent from broadcast/ can never be needed again for dedup.
+    status: verified
+    probe: grep -n "MAX_EXPIRES_EXTENSION_SECONDS" infra/claude-hooks/mailbox_inject.py
+  - text: >-
+      The payload path in the plist is a repo path (/Users/<user>/nuzantara/
+      scripts/...), which RE_HOME_PAYLOAD excludes, so gene G3 needs no
+      declared home-fork pair for this organ.
+    status: verified
+    probe: python3 infra/organ-conformance/check_organ_conformance.py
+  - text: >-
+      The heartbeat lib whitelists ok | error | warning | starting | degraded |
+      disabled and rewrites anything else; the wrapper therefore reports
+      "error" (not "fail") on refusal and missing-payload paths.
+    status: verified
+    probe: grep -n "one of" scripts/lib/heartbeat.sh; grep -c '"error"' scripts/mailbox_janitor_cron.sh
+
+appetite:
+  wall_clock_hours: 3
+  adversarial_rounds: 1
