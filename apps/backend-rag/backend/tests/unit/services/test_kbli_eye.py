@@ -243,7 +243,15 @@ def test_every_unlocated_record_withholds_cap_and_condition(records: list[dict])
     # Lampiran III entry #2, 1488→1487.
     # 2026-09-18 naso PR-3: 59 statutory closures (TERTUTUP/0 unchanged)
     # relabelled declared_gap→located, 1487→1428.
-    assert len(unlocated) == 1428
+    # 2026-09-18 naso PR-4 (residual lot 1): 330 codes the Perpres partition
+    # leaves RESIDUAL — no Lampiran I/II/III row, no body article, no Pasal
+    # 11(2) carve-out — relabelled declared_gap→located under Pasal 3(1)(d) +
+    # 3(2), TERBUKA/100 unchanged. The rule reaches 507; 177 are withheld (61
+    # finance/banking under Pasal 11(2), 68 in sectors whose own statute this
+    # lane never read, 29 with an adjudicated 4-digit sibling, 19 body-stated
+    # categories).
+    # 1428→1098 unlocated.
+    assert len(unlocated) == 1098
     for record in unlocated:
         cap, basis, verified = KBLIEye._foreign_cap(record)
         assert (cap, basis, verified) == (None, None, False)
@@ -260,9 +268,20 @@ def test_umkm_reserved_is_tri_state_and_provenance_gated(records: list[dict]) ->
     # Koperasi/UMKM allocation), 71→72 / 32→33 / 1524→1523.
     verdicts = [KBLIEye._umkm_reserved(r) for r in records]
     # W-H PR-3a: the 3 Lampiran II allocations are named by pma_official_basis, 15→18 / 1541→1538.
+    # 2026-09-18 naso PR-4 (residual lot 1): 330 codes the Perpres partition
+    # leaves RESIDUAL — no Lampiran I/II/III row, no body article, no Pasal
+    # 11(2) carve-out — relabelled declared_gap→located under Pasal 3(1)(d) +
+    # 3(2), TERBUKA/100 unchanged. The rule reaches 507; 177 are withheld (61
+    # finance/banking under Pasal 11(2), 68 in sectors whose own statute this
+    # lane never read, 29 with an adjudicated 4-digit sibling, 19 body-stated
+    # categories).
+    # Each of the 330 is located + TERBUKA and named by no Lampiran II row, so
+    # the tri-state moves from "unknown" to an explicit NOT-reserved verdict —
+    # which is exactly what the residual basis asserts: 3→333 False / 1523→1193
+    # None. True stays 33: no new record is UMKM-reserved.
     assert verdicts.count(True) == 33
-    assert verdicts.count(False) == 3
-    assert verdicts.count(None) == 1523
+    assert verdicts.count(False) == 333
+    assert verdicts.count(None) == 1193
     named = {r["kode_kbli_2025"] for r in records if KBLIEye._umkm_reserved(r) is True}
     terbuka = {
         r["kode_kbli_2025"] for r in records if _located(r) and r.get("pma_status") == "TERBUKA"
@@ -290,7 +309,16 @@ def test_only_located_zero_caps_enter_the_rejected_bucket(records: list[dict]) -
     # 2026-09-18 naso lot: +6 located 0% tuples, 65→71 / 30→36.
     # 2026-09-18 naso PR-2: 13133 located 0% (union), 71→72 / 36→37.
     # 2026-09-18 naso PR-3: 59 TERTUTUP/0 statutory closures located, 72→131 / 37→96.
-    assert len(located) == 131
+    # 2026-09-18 naso PR-4 (residual lot 1): 330 codes the Perpres partition
+    # leaves RESIDUAL — no Lampiran I/II/III row, no body article, no Pasal
+    # 11(2) carve-out — relabelled declared_gap→located under Pasal 3(1)(d) +
+    # 3(2), TERBUKA/100 unchanged. The rule reaches 507; 177 are withheld (61
+    # finance/banking under Pasal 11(2), 68 in sectors whose own statute this
+    # lane never read, 29 with an adjudicated 4-digit sibling, 19 body-stated
+    # categories).
+    # The 330 are all 100%, so the rejected (cap == 0) bucket is untouched:
+    # 131→461 located / 96 rejected unchanged.
+    assert len(located) == 461
     assert len(new_rejected) == 96
     assert new_rejected <= located
 
