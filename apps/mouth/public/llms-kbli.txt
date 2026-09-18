@@ -1078,7 +1078,7 @@
 56306 | Aktivitas Penyediaan Minuman Keliling/Tempat Tidak Tetap | NOT_VERIFIED | Not verified | Menengah Rendah
 56400 | Aktivitas Jasa Intermediasi Penyediaan Makanan dan Minuman | NOT_VERIFIED | Not verified | Menengah Rendah / Menengah Tinggi
 58110 | Penerbitan Buku | NOT_VERIFIED | Not verified | Menengah Rendah / Menengah Tinggi
-58120 | Penerbitan Surat Kabar | TERBUKA | 100% | Menengah Rendah / Menengah Tinggi
+58120 | Penerbitan Surat Kabar | NOT_VERIFIED | Not verified | Menengah Rendah / Menengah Tinggi
 58130 | Penerbitan Jurnal dan Terbitan Berkala | NOT_VERIFIED | Not verified | Menengah Rendah / Menengah Tinggi
 58190 | Aktivitas Penerbitan Lainnya | NOT_VERIFIED | Not verified | Menengah Rendah / Menengah Tinggi
 58211 | Penerbitan Perangkat Lunak Video Gim dalam Jaringan (Game Online) | TERBUKA | 100% | Rendah / Tinggi
