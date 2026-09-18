@@ -268,6 +268,7 @@ def run_pack_lint(ctx: str, chk: Dict[str, Any], root: Path, files: List[str], s
         if not src.is_file():
             return Result(ctx, chk["id"], "FAIL", f"{path} is named by this diff but absent from the tree", files)
         shutil.copy(src, stage / "evidence" / f"{kind}.yml")
+    journal_note = _stage_council_journal(root, stage / "evidence" / "pack.yml", paths["pack"], span)
     argv = ["python3", "scripts/evidence_pack_lint.py", str(stage / "evidence/pack.yml"), "--repo-root", str(stage),
             "--changed-files-file", str(cf), "--source-path", paths["pack"], "--brief-source-path", paths["brief"]]
     if ns is not None:
@@ -275,8 +276,49 @@ def run_pack_lint(ctx: str, chk: Dict[str, Any], root: Path, files: List[str], s
     rc, out = _run(argv, root)
     if rc is None:
         return Result(ctx, chk["id"], "INCONCLUSIVE", out, files)
-    return Result(ctx, chk["id"], "PASS" if rc == 0 else "FAIL", out, files)
+    return Result(ctx, chk["id"], "PASS" if rc == 0 else "FAIL", f"{journal_note}\n{out}" if journal_note else out, files)
 
+
+def _stage_council_journal(root: Path, staged_pack: Path, pack_path: str, span: Optional[Tuple[str, str]]) -> str:
+    """harness-floor.yml Step 7b also stages the Gear-3 council journal beside the staged pack
+    (scripts/ci/stage_council_journal.py). Without it R9 reds EVERY Gear-3 pack that committed
+    its journal — a deterministic false red the preflight used to raise on its own (PR #6761).
+    Returns a one-line note for the Result output, or "" when the pack declares no council_run
+    (Gear 1/2): nothing to stage, nothing to say, output byte-identical to before."""
+    stager = root / "scripts/ci/stage_council_journal.py"
+    if not stager.is_file():
+        return "council journal not staged: scripts/ci/stage_council_journal.py is not in this tree"
+    sys.path.insert(0, str(stager.parent))
+    try:
+        import stage_council_journal as scj  # type: ignore[import-not-found]
+    finally:
+        sys.path.pop(0)
+    declared = scj.read_council_run(staged_pack.read_text(encoding="utf-8"))
+    if declared is None:
+        return ""
+    if span:
+        rc, out = _run(["python3", "scripts/ci/stage_council_journal.py", "--staged-pack", str(staged_pack),
+                        "--source-path", pack_path, "--head-sha", span[1], "--repo", str(root)], root)
+        return (out.strip().splitlines() or [f"stage_council_journal: rc={rc}"])[-1]
+    # No span: the pack and brief above came from the WORKING TREE, so the journal does too — the
+    # stager's own reader and sanitizer, its `..`-prefix rule (an EXISTING non-directory prefix
+    # makes lexical and resolved paths disagree), then only a regular file inside the pack dir.
+    rel = scj.sanitize_relpath(declared)
+    if rel is None:
+        return f"stage_council_journal: council_run: '{declared}' is not stageable — staging nothing"
+    pack_dir = (root / pack_path).parent
+    for prefix in scj.dotdot_cancelled_prefixes(declared):
+        cancelled = pack_dir / prefix
+        if cancelled.is_symlink() or (cancelled.exists() and not cancelled.is_dir()):
+            return (f"stage_council_journal: council_run: '{declared}' cancels '{prefix}', which exists "
+                    "but is not a directory — staging nothing")
+    src = pack_dir / rel
+    if src.is_symlink() or not src.is_file() or pack_dir.resolve() not in src.resolve().parents:
+        return f"stage_council_journal: council_run: '{declared}' is not a regular file inside the pack dir — staging nothing"
+    dst = staged_pack.parent / rel
+    dst.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copy(src, dst)
+    return f"stage_council_journal: staged working-tree '{rel}' beside the staged pack"
 
 def verify_tree(table: Dict[str, Any], root: Path, files: List[str], span: Optional[Tuple[str, str]] = None) -> List[Result]:
     """Run every applicable check of every local row against `root`. Rows whose governed
