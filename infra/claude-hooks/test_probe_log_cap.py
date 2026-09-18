@@ -14,9 +14,9 @@ worktree_file_write_check.py, no reader, no rotation.
             nothing — `_probe_log` stays a no-throw call for the hook's verdict.
 
     python3 infra/claude-hooks/test_probe_log_cap.py
-Runnable standalone or under pytest. Not wired into a CI workflow step (the
-same standing as test_mailbox_inject.py: editing .github/workflows/ is a
-separate hot-zone surface).
+Runnable standalone or under pytest; executed on every PR that touches
+infra/claude-hooks/ by .github/workflows/guard-conformance.yml (since
+2026-09-19, alongside the window-jump corpora).
 """
 from __future__ import annotations
 
