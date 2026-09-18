@@ -136,9 +136,11 @@ def test_open_code_unchanged(eye: KBLIEye, records: list[dict]) -> None:
 def test_unverified_closed_code_is_not_published_as_rejected(
     eye: KBLIEye, records: list[dict]
 ) -> None:
-    closed = next(r for r in records if r.get("pma_status") == "TERTUTUP")
+    # 2026-09-18 naso PR-3 located 59 of the 60 TERTUTUP records; 20119 (a
+    # segment over-claim, dossier §6) is the one still unverified.
+    closed = next(r for r in records if r.get("pma_status") == "TERTUTUP" and not _located(r))
+    assert closed["kode_kbli_2025"] == "20119"
     out = eye.get_decision(closed["kode_kbli_2025"], is_pma=True)
-    assert not _located(closed)
     assert out["pma_logic"]["max_foreign_ownership"] is None
     assert out["pma_logic"]["pma_status"] == "NOT_VERIFIED"
     assert out["audit"]["state"] == "WARNING"
@@ -229,7 +231,7 @@ def test_cap_is_always_a_percentage_or_a_declared_gap(records: list[dict]) -> No
 
 
 def test_every_unlocated_record_withholds_cap_and_condition(records: list[dict]) -> None:
-    """All 1,487 declared gaps fail closed, not just a hand-picked sample."""
+    """All 1,428 declared gaps fail closed, not just a hand-picked sample."""
     unlocated = [r for r in records if not _located(r)]
     # SAETTA-20260915 W-H PR-3a: 55201/55203/79903 moved declared_gap→located (Perpres 49/2021 Lampiran II allocation), 1505→1502.
     # W-H PR-3b: 8 more codes (47241 47242 47244 47245 47246 47249 47712
@@ -239,7 +241,9 @@ def test_every_unlocated_record_withholds_cap_and_condition(records: list[dict])
     # 55106) moved declared_gap→located under Lampiran II, 1494→1488.
     # 2026-09-18 naso PR-2: 13133 closed by the union of Lampiran II item 11 +
     # Lampiran III entry #2, 1488→1487.
-    assert len(unlocated) == 1487
+    # 2026-09-18 naso PR-3: 59 statutory closures (TERTUTUP/0 unchanged)
+    # relabelled declared_gap→located, 1487→1428.
+    assert len(unlocated) == 1428
     for record in unlocated:
         cap, basis, verified = KBLIEye._foreign_cap(record)
         assert (cap, basis, verified) == (None, None, False)
@@ -247,7 +251,7 @@ def test_every_unlocated_record_withholds_cap_and_condition(records: list[dict])
 
 
 def test_umkm_reserved_is_tri_state_and_provenance_gated(records: list[dict]) -> None:
-    """Only the 72 located tuples may emit either a positive or negative claim."""
+    """Only the 131 located tuples may emit either a positive or negative claim."""
     # W-H PR-3b: 8 more codes (47241 47242 47244 47245 47246 47249 47712
     # 47722) are all located and UMKM-reserved (Perpres 49/2021 Lampiran II
     # entry 46), 57→65 located / 18→26 True / 1538→1530 None.
@@ -285,8 +289,9 @@ def test_only_located_zero_caps_enter_the_rejected_bucket(records: list[dict]) -
     # W-H PR-3a: +3 located 0% tuples (55201/55203/79903), 54→57 / 19→22.
     # 2026-09-18 naso lot: +6 located 0% tuples, 65→71 / 30→36.
     # 2026-09-18 naso PR-2: 13133 located 0% (union), 71→72 / 36→37.
-    assert len(located) == 72
-    assert len(new_rejected) == 37
+    # 2026-09-18 naso PR-3: 59 TERTUTUP/0 statutory closures located, 72→131 / 37→96.
+    assert len(located) == 131
+    assert len(new_rejected) == 96
     assert new_rejected <= located
 
 

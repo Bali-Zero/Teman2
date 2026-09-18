@@ -409,7 +409,7 @@ describe("deriveProvenance — PMA traceability on the real dataset", () => {
   // (Perpres 49/2021 Lampiran II allocation), 54→57 / 1505→1502.
   // W-H PR-3b: 8 more codes (47241 47242 47244 47245 47246 47249 47712
   // 47722) move declared_gap→located, 57→65 / 1502→1494.
-  it("pins the canonical honesty partition: 72 located, 1,487 gaps", () => {
+  it("pins the canonical honesty partition: 131 located, 1,428 gaps", () => {
     const located = parsed.data.filter(
       (r) => deriveProvenance(r).pma.status === "located",
     );
@@ -421,8 +421,12 @@ describe("deriveProvenance — PMA traceability on the real dataset", () => {
     // via 1:1 BPS crosswalk), 65→71 / 1494→1488.
     // 2026-09-18 naso PR-2: 13133 closed by the union of Lampiran II item 11 +
     // Lampiran III entry #2, declared_gap→located, 1488→1487 / 71→72.
-    expect(located).toHaveLength(72);
-    expect(gaps).toHaveLength(1487);
+    // 2026-09-18 naso PR-3: 59 statutory closures (2 named by Perpres 10/2021
+    // Pasal 2(2)(b), 2 UU 25/2007 Pasal 12(2) items, 54 government activities
+    // under Pasal 2(1)(b)/2(3), 99000 under Pasal 2(1a)) relabelled
+    // declared_gap→located, TERTUTUP/0 unchanged: 1487→1428 / 72→131.
+    expect(located).toHaveLength(131);
+    expect(gaps).toHaveLength(1428);
     for (const r of located) {
       const prov = deriveProvenance(r).pma;
       expect(prov.locator, `code ${r.kode_kbli_2025}`).toBeTruthy();

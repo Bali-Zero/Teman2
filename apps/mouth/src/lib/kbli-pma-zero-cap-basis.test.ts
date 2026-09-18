@@ -24,8 +24,10 @@ const DATA_PATH = path.join(
 // Mirrors scripts/kbli_filiera/tests/test_pma_zero_cap_basis.py exactly — see that file
 // for the full "why" behind every alternative, including the 2026-09-15 review findings
 // 1-4 (finding 5, the cure_specs/ sweep, is Python-only: TS has no spec files to sweep).
+// Naso PR-3 (2026-09-18) added the three statutory exits from openness the 59 relabelled
+// closures cite — UU 25/2007 Pasal 12(2), Perpres Pasal 2(1)(b)/2(3), Pasal 2(1a).
 const ANNEX_LOCATOR =
-  /lampiran\s*ii\b|lampiran\s*iii\b|dialokasikan|pasal\s*2\b[^.\n]{0,80}?tertutup|tertutup[^.\n]{0,80}?pasal\s*2\b|daftar\s+bidang\s+usaha\s+(?:yang\s+)?tertutup/i;
+  /lampiran\s*ii\b|lampiran\s*iii\b|dialokasikan|pasal\s*2\b[^.\n]{0,80}?tertutup|tertutup[^.\n]{0,80}?pasal\s*2\b|daftar\s+bidang\s+usaha\s+(?:yang\s+)?tertutup|uu\s*25\/2007\s+pasal\s*12\(2\)|pasal\s*2\(1\)\(b\)|pasal\s*2\(3\)|pasal\s*2\(1a\)/i;
 
 const SCALE_ABSENCE_BASIS =
   /PMA_CLOSED_NO_BESAR_SCALE|no\s+Usaha\s+Besar\s+scale|(?:tidak\s+ada|tanpa)\s+skala(?:\s+Usaha)?\s+Besar|skala(?:\s+Usaha)?\s+Besar\s+tidak\s+tersedia|no-Besar|no\s+(?:\*\*)?(?:Usaha Besar|large-scale)(?:\*\*)?[^.\n]{0,40}?\b(?:row|slot)\b|(?:non\s+offre\s+alcun[ao]|non\s+ha\s+un[ao]|nessun[ao]?)\s+(?:riga|fila|voce|slot)[^.\n]{0,60}?(?:larga scala|Usaha Besar)|tidak\s+(?:ada|memiliki|menawarkan|menyediakan)\s+(?:baris|slot)[^.\n]{0,60}?(?:skala besar|Usaha Besar)|only\s+(?:at\s+)?(?:Mikro|Micro)(?:\s*(?:\/|,|and|dan)\s*)?(?:Kecil|Small)?\s*(?:-\s*)?scale|hanya\s+(?:tersedia\s+)?(?:pada\s+)?skala\s+Mikro(?:\s*(?:\/|,|dan)\s*Kecil)?/i;
@@ -42,6 +44,7 @@ type Record = {
   pma_nota?: string | null;
   pma_source?: string | null;
   pma_official_basis?: string | null;
+  pma_verification_status?: string | null;
 };
 
 function basisText(rec: Record): string {
@@ -147,14 +150,41 @@ describe("no 0% PMA verdict in the mouth dataset copy cites a missing scale row"
     }
   });
 
-  it("INNOCENCE — a TERTUTUP code with a bare Perpres citation passes (01287)", () => {
+  it("INNOCENCE — a TERTUTUP code with a bare Perpres citation passes (20119)", () => {
+    // 01287 was the exemplar until naso PR-3 located it under UU 25/2007
+    // Pasal 12(2)(a); 20119 is the one TERTUTUP record still on the bare citation.
     const byCode = new Map(loadRows().map((r) => [r.kode_kbli_2025, r]));
-    const rec = byCode.get("01287")!;
+    const rec = byCode.get("20119")!;
     expect(rec.pma_status).toBe("TERTUTUP");
+    expect(rec.pma_official_basis ?? "").toBe("");
     const { ok, reason } = judge(rec);
-    expect(ok, `01287: TERTUTUP closure wrongly refused (${reason})`).toBe(
+    expect(ok, `20119: TERTUTUP closure wrongly refused (${reason})`).toBe(
       true,
     );
+  });
+
+  it("naso PR-3 INNOCENCE — the three statutory exits are locators (01287, 84111, 99000)", () => {
+    const byCode = new Map(loadRows().map((r) => [r.kode_kbli_2025, r]));
+    for (const code of ["01287", "84111", "99000"]) {
+      const rec = byCode.get(code)!;
+      expect(rec.pma_verification_status).toBe("located");
+      const { ok, reason } = judge(rec);
+      expect(ok, `${code}: statutory exit wrongly refused (${reason})`).toBe(
+        true,
+      );
+    }
+  });
+
+  it("naso PR-3 GUILT — a Pasal 2(3) mention does not launder scale absence", () => {
+    const { ok } = judge({
+      kode_kbli_2025: "99003",
+      pma_status: "TERTUTUP",
+      pma_max_asing: 0,
+      pma_official_basis:
+        "Perpres 10/2021 Pasal 2(3) names government activities; this code is closed because OSS lists no Usaha Besar scale for it.",
+      pma_source: "Perpres 10/2021, 49/2021",
+    });
+    expect(ok).toBe(false);
   });
 
   it("INNOCENCE — a Lampiran III code passes (16221)", () => {

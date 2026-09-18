@@ -507,7 +507,10 @@ describe("real dataset: the gate binds, and v3 actually differentiates", () => {
     // 1470 - 1 = 1469 on 2026-09-18 (naso PR-2): 13133 leaves declared_gap for
     // located by the union of Lampiran II item 11 and Lampiran III entry #2;
     // it is OK_or_HIGHER_RISK in Bali, so it was a plain neutral code too.
-    expect(pmaGaps).toBe(1469);
+    // 1469 - 59 = 1410 on 2026-09-18 (naso PR-3): the 59 statutory closures
+    // (TERTUTUP/0, l4 TERTUTUP but undisclosed while unlocated) leave
+    // declared_gap for located; all were plain neutral codes in this count.
+    expect(pmaGaps).toBe(1410);
     expect(suffixes).toHaveLength(1559);
   });
 

@@ -45,11 +45,19 @@ CURE_SPECS_DIR = REPO / "scripts/kbli_filiera/cure_specs"
 # EXPLICIT Pasal 2 closed-list citation (review finding 3, 2026-09-15): a record that
 # names "Pasal 2 ... tertutup" or "daftar bidang usaha tertutup" directly is a MORE
 # specific locator than the bare-citation bypass below and must not be rejected for
-# lacking a Lampiran number it does not need.
+# lacking a Lampiran number it does not need. Naso PR-3 (2026-09-18) added the other
+# three Pasal 2 exits from openness the statute names — UU 25/2007 Pasal 12(2) (the
+# closed list itself, reached by Perpres Pasal 2(2)(a)), Pasal 2(1)(b)/2(3) (activities
+# of the Pemerintah Pusat) and Pasal 2(1a) (the open fields are commercial fields) —
+# because `apply_statutory_closures.py` now writes a per-code `pma_official_basis` on
+# the 59 TERTUTUP records that used to pass through the bare-citation bypass. None of
+# these is a scale argument, and the scale-absence check still runs FIRST.
 ANNEX_LOCATOR = re.compile(
     r"lampiran\s*ii\b|lampiran\s*iii\b|dialokasikan"
     r"|pasal\s*2\b[^.\n]{0,80}?tertutup|tertutup[^.\n]{0,80}?pasal\s*2\b"
-    r"|daftar\s+bidang\s+usaha\s+(?:yang\s+)?tertutup",
+    r"|daftar\s+bidang\s+usaha\s+(?:yang\s+)?tertutup"
+    r"|uu\s*25/2007\s+pasal\s*12\(2\)"
+    r"|pasal\s*2\(1\)\(b\)|pasal\s*2\(3\)|pasal\s*2\(1a\)",
     re.IGNORECASE,
 )
 
@@ -324,6 +332,42 @@ def test_finding3_guilt_a_stray_pasal2_mention_does_not_launder_scale_absence():
     }
     ok, reason = judge(rec)
     assert not ok, f"stray Pasal 2 mention wrongly laundered a scale-absence argument ({reason})"
+
+
+def test_naso_pr3_innocence_the_three_statutory_exits_are_locators():
+    """The 59 relabelled closures cite UU 25/2007 Pasal 12(2), Perpres Pasal 2(1)(b)/2(3)
+    or Pasal 2(1a) — activity-type exits from openness, never a scale argument."""
+    for basis in (
+        "UU 25/2007 Pasal 12(2) as replaced by UU 6/2023 Pasal 77 item 2, Pasal 12(2)(a) "
+        "«budi daya dan industri narkotika golongan I», incorporated by Perpres 10/2021 "
+        "Pasal 2(2)(a) — matched by the record's title; closed to all Penanaman Modal.",
+        "Perpres 10/2021 Pasal 2(1)(b) + 2(3) (as amended by Perpres 49/2021): activities of "
+        "the Pemerintah Pusat are outside the open fields — the code sits under KBLI 84.",
+        "Perpres 10/2021 Pasal 2(1a) (as amended by Perpres 49/2021): the open fields are "
+        "Bidang Usaha yang bersifat komersial; not an investable field, max foreign 0%.",
+    ):
+        rec = {
+            "pma_status": "TERTUTUP",
+            "pma_max_asing": 0,
+            "pma_official_basis": basis,
+            "pma_source": "Perpres 10/2021, 49/2021",
+        }
+        ok, reason = judge(rec)
+        assert ok, f"statutory exit wrongly refused ({reason})"
+
+
+def test_naso_pr3_guilt_a_government_locator_does_not_launder_scale_absence():
+    rec = {
+        "pma_status": "TERTUTUP",
+        "pma_max_asing": 0,
+        "pma_official_basis": (
+            "Perpres 10/2021 Pasal 2(3) names government activities; this code is closed "
+            "because OSS lists no Usaha Besar scale for it."
+        ),
+        "pma_source": "Perpres 10/2021, 49/2021",
+    }
+    ok, reason = judge(rec)
+    assert not ok, f"Pasal 2(3) mention wrongly laundered a scale-absence argument ({reason})"
 
 
 def test_finding4_innocence_a_pasal26_legal_fact_note_beside_a_real_locator_passes():

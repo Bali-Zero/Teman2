@@ -115,8 +115,13 @@ describe("PMA editorial disclosure boundary", () => {
     // via 1:1 BPS crosswalk), 65→71 / 1494→1488.
     // 2026-09-18 naso PR-2: 13133 closed by the union of Lampiran II item 11 +
     // Lampiran III entry #2, declared_gap→located, 1488→1487 / 71→72.
-    expect(located).toHaveLength(72);
-    expect(gaps).toHaveLength(1487);
+    // 2026-09-18 naso PR-3: 59 statutory closures (2 named by Perpres 10/2021
+    // Pasal 2(2)(b), 2 UU 25/2007 Pasal 12(2) items, 54 government activities
+    // under Pasal 2(1)(b)/2(3), 99000 under Pasal 2(1a)) relabelled
+    // declared_gap→located, TERTUTUP/0 unchanged: 1487→1428 / 72→131. None of the 59 is
+    // registered in canonicalIntel, so the certified-intel count stays 36.
+    expect(located).toHaveLength(131);
+    expect(gaps).toHaveLength(1428);
     expect(located.filter((record) => record.intel_2026)).toHaveLength(36);
 
     for (const record of gaps) {

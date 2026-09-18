@@ -354,13 +354,16 @@ describe("buildKbliFaq — BPS-authoritative transition populations", () => {
     expect(answer).not.toContain("previous code");
   });
 
-  it("guilt: 01287 cites its BPS ancestor while PMA remains an explicit gap", () => {
-    const code = getCode("01287") as KBLICode;
+  // 2026-09-18 naso PR-3: 01287 moved declared_gap→located (UU 25/2007
+  // Pasal 12(2) item, statutory closure); 20119 (TERTUTUP, declared_gap,
+  // BPS ancestors 20111/20114) is the exemplar now.
+  it("guilt: 20119 cites its BPS ancestors while PMA remains an explicit gap", () => {
+    const code = getCode("20119") as KBLICode;
     expect(code.provenance?.pma.status).toBe("declared_gap");
     expect(code.provenance?.pma.vintage).toBeNull();
     const faq = buildKbliFaq(code);
-    expect(transitionAnswer("01287")).toContain(
-      "According to the official BPS 2020 → 2025 crosswalk, KBLI 01287 has recorded KBLI 2020 ancestor(s) 01287.",
+    expect(transitionAnswer("20119")).toContain(
+      "According to the official BPS 2020 → 2025 crosswalk, KBLI 20119 has recorded KBLI 2020 ancestor(s) 20111, 20114.",
     );
     expect(JSON.stringify(faq)).not.toContain(
       "No official BPS 2020 → 2025 crosswalk ancestor is recorded",

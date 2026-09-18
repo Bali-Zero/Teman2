@@ -14,6 +14,22 @@ from backend.services.kbli_editorial_certification import (
     validate_editorial_registry,
 )
 
+STATUTORY_CLOSURES_59 = frozenset(
+    ["01287", "11010", "11020", "92000", "99000"]
+    + [
+        "84111", "84112", "84113", "84114", "84115", "84119", "84121", "84122", "84123",
+        "84124", "84125", "84126", "84129", "84130", "84141", "84142", "84143", "84144",
+        "84145", "84146", "84147", "84148", "84149", "84210", "84221", "84222", "84223",
+        "84224", "84231", "84232", "84233", "84234", "84300",
+    ]
+    + [
+        "59111", "59121", "59131", "60311", "85101", "85201", "85311", "85315", "85321",
+        "85401", "85403", "85550", "85560", "86101", "86104", "87201", "87301", "91111",
+        "91121", "91211", "91221",
+    ]
+)  # fmt: skip
+assert len(STATUTORY_CLOSURES_59) == 59
+
 
 @pytest.fixture(scope="module")
 def registry() -> dict:
@@ -70,11 +86,15 @@ def test_canonical_certification_partition_is_exact(
     # the Lampiran II allocation, prose not certified.
     # 2026-09-18 naso PR-2: 13133 located by the union of Lampiran II item 11
     # and Lampiran III entry #2, prose re-authored by spec, not certified.
+    # 2026-09-18 naso PR-3: the 59 statutory closures (TERTUTUP/0 unchanged)
+    # relabelled declared_gap -> located by apply_statutory_closures.py; none
+    # is a certified canonicalIntel entry (86101's gold spec certifies
+    # mouthGold, not canonicalIntel).
     assert {
         code
         for code, record in records.items()
         if record.get("pma_verification_status") == "located"
-    } - certified == {
+    } - certified == STATUTORY_CLOSURES_59 | {
         "10722",
         "47222",
         "50134",
