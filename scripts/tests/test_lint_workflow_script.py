@@ -80,6 +80,14 @@ def test_documented_bypass_fixture_is_lexically_invisible(lint):
     assert lint.find_violations(FIXTURES_DIR / "documented_bypass.js") == []
 
 
+def test_single_argument_agent_object_literal_is_checked(lint):
+    """OBSERVATION 4 (PR3a', 2026-09-18): agent({...}) with ONE argument must be scanned
+    like any other call's last argument — only the guilty (no model:) function fires."""
+    violations = lint.find_violations(FIXTURES_DIR / "single_arg_object_literal.js")
+    assert len(violations) == 1
+    assert "model:" in violations[0][1]
+
+
 def test_main_exit_0_on_clean(capsys):
     """Run on the live codebase's infra/workflows/*.js — must be green."""
     mod = _load_lint_module()

@@ -176,9 +176,11 @@ def _options_arg_is_object_literal(call_neutral: str) -> bool:
             depth -= 1
         elif ch == "," and depth == 0:
             top_commas.append(idx)
-    if not top_commas:
-        return False
-    last_arg = inner[top_commas[-1] + 1 :].strip()
+    # OBSERVATION 4 (PR3a', 2026-09-18): zero top-level commas means a SINGLE argument,
+    # not "nothing to check" — if that lone argument is itself an object literal, it IS
+    # the last (and only) argument, same as a multi-arg call's tail. Previously this
+    # returned False unconditionally here, silently skipping `agent({...})` calls.
+    last_arg = inner[top_commas[-1] + 1 :].strip() if top_commas else inner.strip()
     return last_arg.startswith("{")
 
 
