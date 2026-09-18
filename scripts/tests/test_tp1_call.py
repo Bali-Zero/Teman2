@@ -564,11 +564,20 @@ def test_secret_value_never_reaches_stdout_or_stderr(monkeypatch, capsys):
     here the loaded credential itself, echoed back into the answer, the
     single most damaging leak this script could produce — must never survive
     to stdout or stderr, even though full_body is now RAW through the parse.
-    Assert on what actually leaves the process, not on an internal variable."""
+    Assert on what actually leaves the process, not on an internal variable.
+
+    The credential now arrives via resolve_tp1_key() (env > vault >
+    settings.json) instead of load_tp1_settings_key(); the injected source name
+    is asserted to be printed, because "which credential answered" is the fact
+    whose absence caused the 2026-08-26 scar (a probe certifying its OWN
+    credential). A source NAME is not a secret — the value still must not leak.
+    """
     import tp1_call
 
     SECRET = "sk-totally-fake-secret-value-1234567890"  # pragma: allowlist secret
-    monkeypatch.setattr(tp1_call, "load_tp1_settings_key", lambda: (SECRET, None))
+    monkeypatch.setattr(
+        tp1_call, "resolve_tp1_key", lambda: (SECRET, "vault", None)
+    )
     monkeypatch.setattr(
         tp1_call.urllib.request,
         "urlopen",
@@ -583,4 +592,5 @@ def test_secret_value_never_reaches_stdout_or_stderr(monkeypatch, capsys):
     assert exit_code == 0
     assert SECRET not in captured.out
     assert SECRET not in captured.err
+    assert "credential source: vault" in captured.err
     assert "the task is done" in captured.out

@@ -228,32 +228,47 @@ def test_402_maps_to_balance_dead(monkeypatch):
 
 
 def test_api_key_env_wins_without_touching_qwen_settings_file(monkeypatch):
-    """Innocence: BAILIAN_TOKEN_PLAN_API_KEY set -> load_tp1_settings_key is
-    never consulted (W96 — a test must never depend on ~/.qwen/settings.json
-    existing or not on the machine that runs it)."""
+    """Innocence: BAILIAN_TOKEN_PLAN_API_KEY set -> NEITHER on-disk loader is
+    consulted (W96 — a test must never depend on ~/.qwen/settings.json or
+    ~/.nuzantara-secrets.env existing or not on the machine that runs it)."""
 
     def _tripwire():
-        raise AssertionError("env var present — load_tp1_settings_key must not run")
+        raise AssertionError("env var present — an on-disk loader must not run")
 
     monkeypatch.setattr(dc, "load_tp1_settings_key", _tripwire)
+    monkeypatch.setattr(dc, "load_tp1_vault_key", _tripwire)
     assert dc.api_key() == "test-key-not-real"  # set by the _isolate fixture
 
 
-def test_api_key_falls_back_to_qwen_settings_when_env_absent(monkeypatch):
-    """Innocence: no env var -> the TP1 settings-file loader is consulted
+def test_api_key_falls_back_to_vault_then_settings_when_env_absent(monkeypatch):
+    """Innocence: no env var -> the 0600 vault is consulted BEFORE settings.json,
+    and settings.json is still reached when the vault has nothing. Both loaders
+    are stubbed so the test stays hermetic on a machine that really has a vault
     (mirrors scripts/tp1_call.py's own precedence, not re-derived here)."""
     monkeypatch.delenv("BAILIAN_TOKEN_PLAN_API_KEY", raising=False)
+    monkeypatch.setattr(dc, "load_tp1_vault_key", lambda: ("from-vault", None))
+    monkeypatch.setattr(
+        dc,
+        "load_tp1_settings_key",
+        lambda: (_ for _ in ()).throw(AssertionError("vault answered first")),
+    )
+    assert dc.api_key() == "from-vault"
+
+    monkeypatch.setattr(dc, "load_tp1_vault_key", lambda: (None, "vault not found"))
     monkeypatch.setattr(dc, "load_tp1_settings_key", lambda: ("from-settings-file", None))
     assert dc.api_key() == "from-settings-file"
 
 
-def test_api_key_raises_when_both_sources_absent(monkeypatch):
-    """Guilt: neither env nor settings file -> DeepSeekError, not a silent
-    empty-string Authorization header."""
+def test_api_key_raises_when_all_three_sources_absent(monkeypatch):
+    """Guilt: no env, no vault, no settings file -> DeepSeekError naming every
+    source that failed, not a silent empty-string Authorization header."""
     monkeypatch.delenv("BAILIAN_TOKEN_PLAN_API_KEY", raising=False)
+    monkeypatch.setattr(dc, "load_tp1_vault_key", lambda: (None, "vault not found"))
     monkeypatch.setattr(dc, "load_tp1_settings_key", lambda: (None, "settings.json not found"))
-    with pytest.raises(dc.DeepSeekError, match="BAILIAN_TOKEN_PLAN_API_KEY"):
+    with pytest.raises(dc.DeepSeekError, match="BAILIAN_TOKEN_PLAN_API_KEY") as exc:
         dc.api_key()
+    assert "vault" in str(exc.value)
+    assert "settings.json" in str(exc.value)
 
 
 def test_verdict_cache_ttl(monkeypatch):
