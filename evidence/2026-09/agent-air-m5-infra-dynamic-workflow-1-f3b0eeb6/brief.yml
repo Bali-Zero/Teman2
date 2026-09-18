@@ -1,0 +1,73 @@
+task: >-
+  PR1a of the /dynamic-workflow coach-protocol build (MANDATE-builder.md, owner ruling Zero
+  2026-09-18): the coach protocol drafted in BRIEF.md/SKILL.md is ~80% theatre unless a script
+  enforces it. This PR ships the launcher's core: `scripts/dynamic_workflow.py` with `brief`
+  (fail-closed PII gate via `Redactor.load_default().redact()`, arsenal-liveness block,
+  line-anchored placeholder fill, sha256-locked BRIEF.md), `check` (byte-diff tamper detection
+  against a recompute from template+inputs.json, W78), `validate` (frontmatter + seven-section
+  skeleton + word-count gate for a coach's sealed answer), an append-only sha-tracked ledger,
+  and `--selftest` covering all of the above offline via `DW_FAKE_SEATS=1`. The r1 seat-dispatch
+  launcher (originally scoped into this same PR) is split out to PR1b to keep this PR under the
+  size contract without gutting guilt+innocence test pairing (cicatrix-superscar.md #3); CI
+  wiring for the pytest mirror is deferred to PR3, which already touches
+  `.github/workflows/` for its two lints, so a 3rd hot-zone touch here would floor at Gear 3
+  for a diff that does not need a quorum pack.
+lane: infra/dynamic-workflow-1
+machine: M5
+date: 2026-09-18
+
+gear: 2
+gear_reason: >-
+  Deterministic floor 2, source `size`: `git diff --no-renames --numstat` against
+  `origin/main` measures churn 621, all additions (442 scripts/dynamic_workflow.py, 179
+  scripts/tests/test_dynamic_workflow.py) — above SIZE_GEAR2_THRESHOLD (400) and below
+  SIZE_GEAR3_THRESHOLD (1828). No hot-zone path: the `.github/workflows/` file originally
+  scoped into this PR was dropped per steer, so `scripts/` is the only touched area and is not
+  a HOTZONE_PATTERNS match. Confirmed locally via `scripts/evidence_pack_lint.py --print-floor
+  --print-floor-source` (`2`, `size`) against a numstat/changed-files snapshot of this branch
+  vs `origin/main`.
+
+appetite:
+  wall_clock_hours: 1
+  adversarial_rounds: 1
+
+acceptance:
+  A1: >-
+    The PII gate is fail-closed and count-only: a `brief` objective containing a phone number
+    or email refuses with exit 3 and a span count, never the text, and writes no kit directory
+    at all (no partial state on refusal).
+    probe: python3 -m pytest scripts/tests/test_dynamic_workflow.py -k "dirty_objective or PII" -q
+  A2: >-
+    `check` recomputes BRIEF.md from template+inputs.json and fails (exit 1) on a single
+    hand-edited byte (W78), and independently fails on a ledger whose last row was removed
+    without updating `ledger.md.sha` (tamper detection, C4/append-only contract).
+    probe: python3 -m pytest scripts/tests/test_dynamic_workflow.py -k "hand_edited or tamper" -q
+  A3: >-
+    `validate_answer` enforces the seven-section skeleton in order, the objective_sha256 match,
+    non-empty Formation/Tactics tables, and the 1,500-word ceiling — both the guilt (six
+    refusal shapes) and innocence (canned-valid) directions pass.
+    probe: python3 -m pytest scripts/tests/test_dynamic_workflow.py -k "validate_answer" -q
+  A4: >-
+    `--selftest` runs the whole loop offline (DW_FAKE_SEATS=1) with no real seat launch or
+    Anthropic endpoint touched, and reports SELFTEST OK with zero FAIL lines; the pytest file
+    mirrors the same cases through the public CLI surface, both green.
+    probe: python3 scripts/dynamic_workflow.py --selftest
+
+out_of_scope: >-
+  The r1 seat-dispatch launcher (`r1` subcommand, per-seat launch shapes, relaunch-once via the
+  ledger's sent-row counter, astra fallback) — split to PR1b, built in a fresh worktree from
+  fresh origin/main after this PR merges, reusing this PR's brief/check/validate/ledger code
+  unmodified. r2/judge/anonymise/capture-check (PR2). The SKILL.md rewrite, brief.template.md,
+  and the two lints (PR3). CI wiring of the pytest mirror into a workflow file — deferred to
+  PR3 to avoid a second Gear-3 hot-zone touch in this PR for no quorum-worthy reason; until
+  then the Bites observation is local `pytest`/`--selftest`/`brief` runs on M5, stated as such.
+
+assumptions:
+  - text: >-
+      No existing CI job collects `scripts/tests/**` on `pull_request`.
+      `.github/workflows/scripts-tests-sweep.yml` does run `pytest scripts/tests/` but is
+      `schedule:`/`workflow_dispatch:` only (by design, to avoid queue starvation) and runs
+      with `continue-on-error: true`, so it is report-only and never fires on a PR — it does
+      not qualify as this PR's Bites consumer.
+    status: verified
+    probe: grep -n "^on:\|continue-on-error\|pytest scripts/tests" .github/workflows/scripts-tests-sweep.yml
