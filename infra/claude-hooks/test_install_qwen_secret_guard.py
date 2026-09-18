@@ -15,6 +15,7 @@ from __future__ import annotations
 import json
 import os
 import pathlib
+import re
 import stat
 import subprocess
 import sys
@@ -22,6 +23,13 @@ import sys
 HERE = pathlib.Path(__file__).resolve().parent
 INSTALLER = HERE / "install_qwen_secret_guard.py"
 REAL_HOOKS = HERE                      # the shipped guard + registry live here
+
+# Imported as a module as well as run as a subprocess: MATCHER and the verification
+# payloads have to be pinned by value, and no payload-based test can reach the
+# matcher (invoking the guard directly bypasses it) — which is the whole reason
+# test_matcher_covers_the_canonical_qwen_tool_names exists.
+sys.path.insert(0, str(HERE))
+import install_qwen_secret_guard as inst  # noqa: E402
 
 
 def _run(tmp: pathlib.Path, *extra: str, settings: pathlib.Path | None = None,
@@ -65,7 +73,7 @@ def test_installs_registers_and_verifies(tmp_path):
     s = json.loads((tmp_path / "settings.json").read_text())
     pre = s["hooks"]["PreToolUse"]
     assert len(pre) == 1
-    assert pre[0]["matcher"] == "Bash|Monitor|Read"
+    assert pre[0]["matcher"] == inst.MATCHER
     cmd = pre[0]["hooks"][0]["command"]
     assert cmd.endswith("hooks/secret_expansion_guard.py")
     assert str(tmp_path) in cmd, "must point at the installed $HOME copy, not the repo"
@@ -186,16 +194,81 @@ def test_dry_run_writes_nothing(tmp_path):
 
 def test_never_prints_a_credential_value(tmp_path):
     """The installer runs against the real registry, whose names are real. Its own
-    output must carry variable NAMES and paths, never a value (W106 class)."""
+    output must carry variable NAMES and paths, never a value (W106 class).
+
+    Written as a name-collecting loop rather than `assert value not in blob`:
+    pytest renders BOTH operands of a failed assertion, so the obvious form would
+    print the very secret this test exists to catch. A test that leaks on failure
+    is worse than no test.
+    """
     _write_settings(tmp_path / "settings.json")
     r = _run(tmp_path)
     vault = pathlib.Path(os.path.expanduser("~/.nuzantara-secrets.env"))
-    if vault.is_file():
-        import re
-        for line in vault.read_text(errors="replace").splitlines():
-            m = re.match(r"^\s*export\s+[A-Za-z_][A-Za-z0-9_]*='([^']{12,})'", line)
-            if m:
-                assert m.group(1) not in r.stdout + r.stderr, "installer printed a secret value"
+    if not vault.is_file():
+        return
+    blob = r.stdout + r.stderr
+    leaked = []
+    for line in vault.read_text(errors="replace").splitlines():
+        m = re.match(r"^\s*export\s+([A-Za-z_][A-Za-z0-9_]*)='([^']{12,})'", line)
+        if m and m.group(2) in blob:
+            leaked.append(m.group(1))          # the NAME, never the value
+    assert not leaked, f"installer printed the value of: {leaked}"
+
+
+def test_matcher_covers_the_canonical_qwen_tool_names():
+    """THE regression this rework exists for. The first cut shipped
+    `matcher: "Bash|Monitor|Read"` — Claude's tool names. Qwen passes canonical
+    snake_case names and matches against that tool's alias set, so the hook was
+    registered and completely INERT on exactly the two tools that leaked. Measured
+    with a recorder hook on Air-M5 2026-09-19: that matcher produced ZERO events
+    while `run_shell_command|read_file` produced tool_name=read_file.
+
+    No payload-based verification can catch this — the installer invokes the guard
+    directly, which bypasses the matcher entirely. So the matcher is pinned here.
+    """
+    parts = set(inst.MATCHER.split("|"))
+    for name in inst.REQUIRED_CANONICAL_TOOLS:
+        assert name in parts, (
+            f"matcher is inert for Qwen tool {name!r}: {inst.MATCHER!r}. "
+            f"The hook would be registered and never called (superscar #2)."
+        )
+    assert inst.MATCHER != "Bash|Monitor|Read", "the inert Claude-names matcher is back"
+
+
+def test_replaces_a_stale_inert_registration(tmp_path):
+    """The exact state Air-M5 was left in by the first cut: a registered entry whose
+    matcher never fires. A filename-only idempotency check reports
+    'already registered' and leaves the machine silently unprotected — the failure
+    made permanent by its own idempotency guard. Current means command AND matcher.
+    """
+    p = tmp_path / "settings.json"
+    _write_settings(p)
+    d = json.loads(p.read_text())
+    d["hooks"] = {"PreToolUse": [{
+        "matcher": "Bash|Monitor|Read",
+        "hooks": [{"type": "command",
+                   "command": "python3 /stale/path/secret_expansion_guard.py"}],
+    }]}
+    p.write_text(json.dumps(d, indent=2))
+
+    r = _run(tmp_path)
+    assert r.returncode == 0, r.stderr
+    assert "replaced stale registration" in r.stdout
+    assert "Bash|Monitor|Read" in r.stdout, "should name the matcher it replaced"
+    s = json.loads(p.read_text())
+    pre = s["hooks"]["PreToolUse"]
+    assert len(pre) == 1, "stale entry left alongside the new one"
+    assert pre[0]["matcher"] == inst.MATCHER
+    assert pre[0]["hooks"][0]["command"].endswith("hooks/secret_expansion_guard.py")
+    assert "/stale/path/" not in json.dumps(pre)
+
+
+def test_verify_uses_canonical_tool_names_not_claude_names(tmp_path):
+    """The installer's own verification must speak the harness's vocabulary, or it
+    proves the guard works on a tool name Qwen never sends."""
+    assert inst.GUILT_PAYLOAD["tool_name"] == "run_shell_command"
+    assert inst.GUILT_READ_PAYLOAD["tool_name"] == "read_file"
+    assert inst.INNOCENCE_PAYLOAD["tool_name"] == "run_shell_command"
 
 
 def _main() -> int:

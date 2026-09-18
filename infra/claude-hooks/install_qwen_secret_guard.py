@@ -48,6 +48,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -56,16 +57,58 @@ from pathlib import Path
 
 GUARD_NAME = "secret_expansion_guard.py"
 REGISTRY_NAME = "secret-expansion-registry.json"
-MATCHER = "Bash|Monitor|Read"
+
+# The Qwen harness passes the CANONICAL tool name and evaluates `matcher` against
+# that tool's alias set — NOT against Claude's tool names. Measured two ways on
+# Air-M5 2026-09-19:
+#
+#   (a) empirically. A recorder hook (always exit 0, logs only names) registered
+#       under three matchers, then a fresh `qwen -p` session ran a read_file:
+#           "Bash|Monitor|Read"          -> 0 events   (never fires)
+#           "run_shell_command|read_file"-> tool_name=read_file
+#           ""                           -> tool_name=read_file, tool_search
+#       So `Bash` and `Read` are NOT Qwen tool names; the payload carries
+#       `tool_name` in canonical snake_case, with keys
+#       cwd/hook_event_name/permission_mode/session_id/timestamp/tool_call_id/
+#       tool_input/tool_name.
+#   (b) in the 0.24.0 bundle: `TOOL_ALIAS_MAP` is built as canonical +
+#       `ToolDisplayNames[key]` + `${displayName}Tool` (+ legacy migrations), and
+#       `ToolDisplayNames` gives SHELL->"Shell", READ_FILE->"ReadFile",
+#       MONITOR->"Monitor". `SHELL_TOOL_NAMES = ["run_shell_command","ShellTool"]`.
+#
+# The first attempt shipped `MATCHER = "Bash|Monitor|Read"` — Claude's names — so
+# the hook was registered and completely INERT on exactly the two tools that
+# leaked (`run_shell_command`, `read_file`). That is superscar #2 in pure form: a
+# check that exists, carries the right name, and enforces nothing. Claude-style
+# `Bash`/`Read` are kept only as harmless portability extras; an alternative that
+# never matches costs nothing.
+MATCHER = (
+    "run_shell_command|Shell|ShellTool|Bash"
+    "|read_file|ReadFile|ReadFileTool|Read"
+    "|monitor|Monitor|MonitorTool"
+)
+# The canonical names Qwen actually emits. A matcher missing any of these is inert
+# for that tool, and nothing else in the install path can detect it — which is why
+# it is pinned by a test rather than left to review.
+REQUIRED_CANONICAL_TOOLS = ("run_shell_command", "read_file", "monitor")
 # Guilt and innocence are BOTH mandatory. See the module docstring: the guilt
 # half alone cannot tell a working guard from one that denies everything.
+#
+# tool_name uses the CANONICAL names the Qwen harness actually emits
+# (`run_shell_command`, `read_file`), not Claude's — verifying through a name the
+# harness never sends would prove nothing about the wiring.
 GUILT_PAYLOAD = {
-    "tool_name": "Bash",
+    "tool_name": "run_shell_command",
     "tool_input": {"command": "printenv BAILIAN_TOKEN_PLAN_API_KEY"},
     "cwd": "/tmp",
 }
+GUILT_READ_PAYLOAD = {
+    "tool_name": "read_file",
+    "tool_input": {"file_path": "~/.nuzantara-secrets.env"},
+    "cwd": "/tmp",
+}
 INNOCENCE_PAYLOAD = {
-    "tool_name": "Bash",
+    "tool_name": "run_shell_command",
     "tool_input": {"command": 'echo "${BAILIAN_TOKEN_PLAN_API_KEY:+SET}"'},
     "cwd": "/tmp",
 }
@@ -112,14 +155,25 @@ def _probe(guard: Path, payload: dict, env: dict | None = None) -> tuple[int, st
 
 
 def _verify(guard: Path) -> tuple[bool, str]:
-    """Guilt must DENY (rc 2) with a shape id; innocence must ALLOW (rc 0)."""
+    """Guilt must DENY (rc 2) with a shape id; innocence must ALLOW (rc 0).
+
+    What this proves and what it does NOT: it proves the installed file runs and
+    judges the canonical Qwen tool names correctly. It does NOT prove the harness
+    will call it — that depends on `MATCHER`, which no payload can exercise from
+    here. The matcher is pinned by test instead; see REQUIRED_CANONICAL_TOOLS.
+    """
     if not guard.is_file():
         return False, f"installed guard is not a file: {guard}"
-    rc, err = _probe(guard, GUILT_PAYLOAD)
-    if rc != 2:
-        return False, f"guilt payload returned rc={rc}, expected 2 (guard is not denying)"
-    if not err.startswith("[secret-expansion-guard] DENY"):
-        return False, f"guilt payload denied without a contract-conform reason: {err[:120]!r}"
+    shapes = []
+    for label, payload in (("shell guilt", GUILT_PAYLOAD),
+                           ("read guilt", GUILT_READ_PAYLOAD)):
+        rc, err = _probe(guard, payload)
+        if rc != 2:
+            return False, f"{label} payload returned rc={rc}, expected 2 (guard is not denying)"
+        if not err.startswith("[secret-expansion-guard] DENY"):
+            return False, f"{label} payload denied without a contract-conform reason: {err[:120]!r}"
+        m = re.search(r"\bX\d\b", err)
+        shapes.append(m.group(0) if m else "X?")
     rc2, err2 = _probe(guard, INNOCENCE_PAYLOAD)
     if rc2 != 0:
         # The exact failure this installer exists to prevent: a missing/unreadable
@@ -127,19 +181,35 @@ def _verify(guard: Path) -> tuple[bool, str]:
         hint = " (rc=2 with no DENY reason = the interpreter could not run the file)" \
             if rc2 == 2 and not err2.startswith("[secret-expansion-guard]") else ""
         return False, f"innocence payload returned rc={rc2}, expected 0{hint}: {err2[:120]!r}"
-    return True, "guilt DENY (X2) + innocence ALLOW"
+    return True, "guilt DENY (%s shell, %s read) + innocence ALLOW" % (shapes[0], shapes[1])
 
 
 def _add_hook(settings: dict, command: str) -> tuple[bool, str]:
-    """Idempotently register the PreToolUse entry. Returns (changed, note)."""
+    """Register the PreToolUse entry, REPLACING a stale one. Returns (changed, note).
+
+    Matching on the guard's filename alone is not enough: the first version of this
+    installer registered `matcher: "Bash|Monitor|Read"`, which never fires on Qwen
+    (see MATCHER). A filename-only check would have found that inert entry on M5 and
+    reported "already registered", leaving the machine silently unprotected — the
+    failure made permanent by its own idempotency check. So an entry is current only
+    if BOTH its command and its matcher match; otherwise it is replaced in place.
+    """
     hooks = settings.setdefault("hooks", {})
     pre = hooks.setdefault("PreToolUse", [])
-    for entry in pre:
+    for i, entry in enumerate(pre):
         if not isinstance(entry, dict):
             continue
-        for h in entry.get("hooks", []) or []:
-            if isinstance(h, dict) and GUARD_NAME in str(h.get("command", "")):
-                return False, "already registered"
+        inner = entry.get("hooks") or []
+        if not any(isinstance(h, dict) and GUARD_NAME in str(h.get("command", ""))
+                   for h in inner):
+            continue
+        if entry.get("matcher") == MATCHER and any(
+            isinstance(h, dict) and h.get("command") == command for h in inner
+        ):
+            return False, "already registered"
+        stale_matcher = entry.get("matcher")
+        pre[i] = {"matcher": MATCHER, "hooks": [{"type": "command", "command": command}]}
+        return True, f"replaced stale registration (matcher was {stale_matcher!r})"
     pre.append({"matcher": MATCHER,
                 "hooks": [{"type": "command", "command": command}]})
     return True, "registered"
