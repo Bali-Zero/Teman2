@@ -8,8 +8,13 @@ For every workflow-harness script under infra/workflows/*.js:
   RULE 1 (model pin) — every `agent(` call's options object carries a literal `model:`
     property. infra/claude-hooks/model_routing_gate.py enforces the analogous rule for
     THIS session's own Agent tool dispatches; it never sees infra/workflows/*.js, whose
-    `agent()` is a different, workflow-harness-local function. Same failure mode either
-    way: an unpinned call silently inherits whatever model the harness defaults to.
+    `agent()` is a different, workflow-harness-local function. A third, RUNTIME guard
+    sits under this static one for that same file family:
+    infra/workflows/run-second-army.mjs:121's `assertModelPinned` throws when a lane's
+    `opts.model` is missing, which is what actually catches the wrapper-indirection
+    shape RULE 1's own exemption below cannot see lexically (see CONDITION 3,
+    documented_bypass.js). Same failure mode either way: an unpinned call silently
+    inherits whatever model the harness defaults to.
 
   RULE 2 (no self-styled gate) — no `agent(` call's `label:` may contain "gate"
     (case-insensitive). A workflow script that labels one of its own steps a gate is

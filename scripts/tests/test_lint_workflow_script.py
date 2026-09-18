@@ -70,6 +70,16 @@ def test_exemptions_fixture_is_clean(lint):
     assert lint.find_violations(FIXTURES_DIR / "exemptions.js") == []
 
 
+def test_documented_bypass_fixture_is_lexically_invisible(lint):
+    """CONDITION 3 (PR3a', dw-gate-6, 2026-09-18): the wrapper exemption is bypassable —
+    callSeat(prompt, {no model}) stays green here BY DESIGN, because the static lint
+    cannot read opts.model through the callSeat indirection either way (legitimate or
+    not). This is the hole named in the RULE 1 docstring, not a silent gap: the
+    compensating control is infra/workflows/run-second-army.mjs:121's assertModelPinned,
+    a RUNTIME guard this static lint does not (and structurally cannot) replace."""
+    assert lint.find_violations(FIXTURES_DIR / "documented_bypass.js") == []
+
+
 def test_main_exit_0_on_clean(capsys):
     """Run on the live codebase's infra/workflows/*.js — must be green."""
     mod = _load_lint_module()
