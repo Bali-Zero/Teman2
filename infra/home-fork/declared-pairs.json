@@ -401,6 +401,18 @@
       "machines": ["m5", "pro", "mini"]
     },
     {
+      "live": "~/.claude/hooks/secret_expansion_guard.py",
+      "repo": "infra/claude-hooks/secret_expansion_guard.py",
+      "_note": "Declared 2026-09-19 by install_qwen_secret_guard.py, which copies guard + registry from the repo so sha256(live) == sha256(repo twin) and --check stays green. The Claude harness reaches this guard through the git-TRACKED .claude/settings.json registration (PR #6787), so its copy travels with the checkout; this $HOME twin exists for the QWEN harness, whose ~/.qwen/settings.json is gitignored and therefore cannot be wired from the repo — and whose first hand-wired attempt pointed at a shared checkout that was 2 commits behind origin/main, so python3 exited 2 on a missing file, which in the hook contract IS DENY and would have blocked every Bash and Read call in every Qwen session. Scoped to m5 only, where the installer has actually been run and verified; the first pair in this file was corrected from 'all' to 'm5' for exactly this reason. Running the installer on pro/mini must widen this list in the same change.",
+      "machines": ["m5"]
+    },
+    {
+      "live": "~/.claude/hooks/secret-expansion-registry.json",
+      "repo": "infra/claude-hooks/secret-expansion-registry.json",
+      "_note": "DATA read by secret_expansion_guard.py from its own directory (REGISTRY_PATH = Path(__file__).parent / 'secret-expansion-registry.json'), so the twin above is inert without it and both must be declared. Same precedent as runtime_state_allowlist.json, which is declared as the data file worktree_isolation.py reads. A missing or corrupt registry makes the guard PASS THROUGH with a WARN rather than deny everything — so drift here degrades toward permissive, which is why the pair is watched rather than assumed.",
+      "machines": ["m5"]
+    },
+    {
       "live": "~/.claude/hooks/worktree_file_write_check.py",
       "repo": "infra/claude-hooks/worktree_file_write_check.py",
       "machines": ["all"]
