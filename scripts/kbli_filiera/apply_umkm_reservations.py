@@ -58,6 +58,24 @@ A spec row judged on a KBLI-2020 number that is not a 2025 code records
 refuses if either disagrees — the vintage trap has bitten this catalogue twice
 in one day and a written-down mapping is a proxy, not the fact.
 
+A spec row may also close a code by the UNION of two annexes (`closure_basis:
+"union"` + `union_with_lampiran_iii`). First and so far only member: `13133`
+(Industri Kain Batik, 2026-09-18 dossier §3.3). Lampiran II item 11 allocates
+batik tulis and batik kombinasi tulis/cap to Koperasi/UMKM; Lampiran III
+entry #2 puts batik cap at 100% domestic capital; the code's own `uraian`
+names exactly those three methods, so a PT PMA can do none of it — yet neither
+annex alone covers the code, which is why `apply_perpres_foreign_caps` keeps
+it BROADER under Lampiran III and this compiler's ordinary row-is-the-code
+reading does not reach it. The union gate re-derives every leg it can: the
+Lampiran III entry is looked up in `perpres_foreign_cap_relation.RELATION`
+(same number, same 2020 code, cap 0, same text), the Lampiran II row in the
+compiled annex rows, every method the spec names is found in the record's
+`uraian` AND in one of the two annex texts with BOTH annexes contributing,
+and two independent lanes are named in `agreed_by` — "the union covers the
+uraian" is a reading, and a reading is made twice or not at all. The written
+`pma_kondisi` names both annexes; the ordinary one-annex sentence would be
+half the truth.
+
 REFUSES RATHER THAN GUESSES
 ----------------------------
 `--apply` aborts, writing nothing, if: a spec code is absent from the dataset;
@@ -84,12 +102,20 @@ import argparse
 import hashlib
 import json
 import subprocess
+import sys
 from pathlib import Path
 from typing import Any
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 CANONICAL = REPO_ROOT / "data" / "source_documents" / "KBLI_2025_FINAL_CLEAN.json"
 CURE_SPECS = Path(__file__).resolve().parent / "cure_specs"
+LAMPIRAN_II_ROWS = REPO_ROOT / "data" / "kbli-filiera" / "perpres-umkm-reservation.json"
+
+_FILIERA_DIR = Path(__file__).resolve().parent
+if str(_FILIERA_DIR) not in sys.path:
+    sys.path.insert(0, str(_FILIERA_DIR))
+
+from perpres_foreign_cap_relation import RELATION as LAMPIRAN_III_RELATION  # noqa: E402
 
 # The cure currently pointed at by `--spec`'s default. Each spec is a distinct
 # adjudication over a distinct POPULATION, and they are applied in sequence; a
@@ -114,6 +140,13 @@ VINTAGE = "2021-05-25"
 KONDISI = (
     "Bidang usaha dialokasikan untuk Koperasi dan UMKM (Perpres 49/2021 "
     "Lampiran II) — foreign ownership 0%"
+)
+# The union sentence names BOTH annexes: a client reading only the Lampiran II
+# half would believe the batik-cap remainder is open to a PT PMA.
+KONDISI_UNION = (
+    "Bidang usaha dialokasikan untuk Koperasi dan UMKM (Perpres 49/2021 "
+    "Lampiran II: {lampiran_ii}) dan modal dalam negeri 100% (Lampiran III "
+    "entry #{entry}: {lampiran_iii}) — foreign ownership 0%"
 )
 
 EXIT_OK = 0
@@ -140,6 +173,17 @@ def heirs_of(records: list[dict[str, Any]]) -> dict[str, list[str]]:
     return out
 
 
+def kondisi_for(item: dict[str, Any]) -> str:
+    union = item.get("union_with_lampiran_iii")
+    if not union:
+        return KONDISI
+    return KONDISI_UNION.format(
+        lampiran_ii=union["lampiran_ii_segments"],
+        entry=union["entry"],
+        lampiran_iii=union["bidang_usaha"],
+    )
+
+
 def patch_for(item: dict[str, Any]) -> dict[str, Any]:
     """Pure — the field-level patch for one adjudicated code."""
     return {
@@ -149,12 +193,105 @@ def patch_for(item: dict[str, Any]) -> dict[str, Any]:
         "pma_verification_status": "located",
         "pma_cap_verified": True,
         "pma_source_vintage": VINTAGE,
-        "pma_kondisi": KONDISI,
+        "pma_kondisi": kondisi_for(item),
     }
 
 
+def lanes_of(item: dict[str, Any]) -> set[str]:
+    """The SEATS named in `agreed_by` — everything before " (" — so one model
+    wearing two role labels counts once."""
+    return {
+        str(a).strip().split(" (")[0].strip().lower()
+        for a in (item.get("agreed_by") or [])
+        if str(a).strip()
+    }
+
+
+def load_lampiran_ii_rows(path: Path = LAMPIRAN_II_ROWS) -> list[dict[str, Any]]:
+    return json.loads(path.read_text(encoding="utf-8"))["rows"]
+
+
+def union_refusal(
+    item: dict[str, Any],
+    record: dict[str, Any],
+    lampiran_ii_rows: list[dict[str, Any]],
+    relation: list[tuple],
+) -> str | None:
+    """Every leg of a two-annex closure that can be re-derived, re-derived.
+
+    Returns the refusal text, or None when the item passes. Runs AFTER the
+    1:1 `judged_as` gate, which it requires: a union closure is still a
+    whole-code claim and inherits the same "one 2020 ancestor, one 2025 heir"
+    guard.
+    """
+    union = item.get("union_with_lampiran_iii")
+    basis = item.get("closure_basis")
+    if bool(union) != (basis == "union"):
+        return "closure_basis 'union' and union_with_lampiran_iii come together or not at all"
+    if not union:
+        return None
+    judged = item.get("judged_as")
+    if not judged:
+        return "a union closure is judged on a 2020 row and needs judged_as"
+
+    entry = union.get("entry")
+    hit = [row for row in relation if row[0] == entry]
+    if len(hit) != 1:
+        return f"Lampiran III entry #{entry!r} is not in the transcribed relation"
+    _, bidang, kbli_2020, cap, _cond = hit[0]
+    if kbli_2020 != judged:
+        return f"Lampiran III entry #{entry} is KBLI-2020 {kbli_2020}, not {judged}"
+    if cap != 0:
+        return f"Lampiran III entry #{entry} caps foreign share at {cap}%, not 0 — not a closure"
+    if bidang != union.get("bidang_usaha"):
+        return f"Lampiran III entry #{entry} reads {bidang!r}, spec says {union.get('bidang_usaha')!r}"
+
+    l2 = [
+        row
+        for row in lampiran_ii_rows
+        if row.get("code") == judged and row.get("column") == "dialokasikan"
+    ]
+    if not l2:
+        return f"no Lampiran II dialokasikan row for KBLI-2020 {judged}"
+    l2_text = " ".join(row.get("text") or "" for row in l2).casefold()
+    segments = [s.strip() for s in str(union.get("lampiran_ii_segments") or "").split(",")]
+    if not any(segments):
+        return "union names no lampiran_ii_segments"
+    for seg in segments:
+        if seg.casefold() not in l2_text:
+            return f"Lampiran II row for {judged} does not name {seg!r}"
+
+    uraian = (record.get("uraian") or "").casefold()
+    methods = [str(m) for m in union.get("uraian_methods") or []]
+    if not methods:
+        return "union names no uraian_methods to cover"
+    l3_text = bidang.casefold()
+    in_l2 = in_l3 = 0
+    for m in methods:
+        if m.casefold() not in uraian:
+            return f"uraian does not mention {m!r} — the union covers less than the spec says"
+        if m.casefold() in l3_text:
+            in_l3 += 1
+        elif m.casefold() in l2_text:
+            in_l2 += 1
+        else:
+            return f"neither annex names {m!r} — the union leaves it open"
+    if not (in_l2 and in_l3):
+        return "the closure rests on one annex only — not a union, use the ordinary gate"
+
+    if len(lanes_of(item)) < 2:
+        return (
+            "a union closure is a reading and needs two independent lanes in "
+            f"`agreed_by`, found {sorted(lanes_of(item)) or 'none'}"
+        )
+    return None
+
+
 def check(
-    spec: dict[str, Any], records: list[dict[str, Any]]
+    spec: dict[str, Any],
+    records: list[dict[str, Any]],
+    lampiran_ii_rows: list[dict[str, Any]] | None = None,
+    relation: list[tuple] | None = None,
 ) -> tuple[list[dict[str, Any]], list[str]]:
     """Returns (applicable items, refusals). A refusal aborts the whole run:
     a spec that is wrong about one code is not trustworthy about the rest."""
@@ -162,6 +299,14 @@ def check(
     heirs = heirs_of(records)
     refusals: list[str] = []
     todo: list[dict[str, Any]] = []
+    needs_union = any(
+        i.get("union_with_lampiran_iii") or i.get("closure_basis") == "union"
+        for i in spec["items"]
+    )
+    if needs_union and lampiran_ii_rows is None:
+        lampiran_ii_rows = load_lampiran_ii_rows()
+    if relation is None:
+        relation = LAMPIRAN_III_RELATION
 
     for item in spec["items"]:
         code = item["code"]
@@ -209,6 +354,15 @@ def check(
                     f"{code}: judged on 2020 {judged}, but this 2025 code also "
                     f"absorbs {others} — broader than the reserved activity"
                 )
+                continue
+
+        if item.get("union_with_lampiran_iii") or item.get("closure_basis") == "union":
+            if item.get("judged_as_split_heir"):
+                refusals.append(f"{code}: a union closure cannot also be a split heir")
+                continue
+            problem = union_refusal(item, record, lampiran_ii_rows or [], relation)
+            if problem:
+                refusals.append(f"{code}: {problem}")
                 continue
 
         split = item.get("judged_as_split_heir")
@@ -333,11 +487,7 @@ def check(
             #    thing this check exists to forbid. A second review found that
             #    the first version attested independence instead of enforcing
             #    it. The seat is everything before " (".
-            lanes = {
-                str(a).strip().split(" (")[0].strip().lower()
-                for a in (item.get("agreed_by") or [])
-                if str(a).strip()
-            }
+            lanes = lanes_of(item)
             if len(lanes) < 2:
                 refusals.append(
                     f"{code}: split-heir identity is a judgment and needs two "
@@ -461,6 +611,9 @@ def main(argv: list[str] | None = None) -> int:
 
     for item in todo:
         via = f" (judged as {item['judged_as']})" if item.get("judged_as") else ""
+        union = item.get("union_with_lampiran_iii")
+        if union:
+            via += f" (union with Lampiran III entry #{union['entry']})"
         print(f"  {item['code']}{via}: {item['was']} -> TERBATAS/0")
 
     if not args.apply:
