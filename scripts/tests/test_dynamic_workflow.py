@@ -14,7 +14,9 @@ surface, table-driven.
 from __future__ import annotations
 
 import argparse
+import concurrent.futures
 import importlib.util
+import json
 import os
 import shutil
 import sys
@@ -290,6 +292,64 @@ def test_r2_pairing_is_deterministic_and_cross_family(tmp_path, template, clean_
         assert len(target_families) == len(targets)  # two DIFFERENT other families, not the same twice
 
 
+def _parse_pairing_md_reviewers(text: str) -> dict[str, list[str]]:
+    """Parses the `| seat | reviews |` table _render_pairing_md writes back into
+    seat -> [reviewer, ...], splitting the reviews cell exactly the way the renderer joined
+    it (', '.join). Shared by the two tests below."""
+    rows: dict[str, list[str]] = {}
+    for line in text.splitlines():
+        if not line.startswith("| ") or line.startswith("| seat") or line.startswith("|---"):
+            continue
+        cells = [c.strip() for c in line.strip().strip("|").split("|")]
+        seat, reviews = cells[0], cells[1]
+        rows[seat] = [r.strip() for r in reviews.split(",")] if reviews else []
+    return rows
+
+
+def test_r2_pairing_md_content_matches_in_memory_pairing_exactly(tmp_path, template,
+                                                                   clean_objective):
+    """Item 1 (PR2g, dw-gate-7 REWORK-BUILD on PR2e #6772, sha 76f0580b): mutating the
+    renderer to `', '.join(pairing[seat][:1])` — one of the two mandated cross-family
+    reviewers silently dropped from every WRITTEN row — left the suite at 79/79 green,
+    because every existing pairing test only ever inspected the in-memory `pairing` dict or
+    pairing.md's byte-identity across two recomputes, never the WRITTEN table's own per-seat
+    content against that dict. This parses pairing.md back and asserts, per seat, the WRITTEN
+    reviewers equal the in-memory ones exactly. Reopens and closes gate-4 obs (b)."""
+    kit = tmp_path / "k"
+    dw.cmd_brief(_brief_ns(clean_objective, template, kit))
+    _seed_convener(kit)
+    dw.cmd_r1(argparse.Namespace(kit=str(kit), seats="kimi-k3,qwen3.8-max,gemini-3.1-pro-high",
+                                  astra_fallback=False))
+    dw.cmd_r2(argparse.Namespace(kit=str(kit)))
+    pairing = dw.compute_pairing(kit, (kit / "brief.sha").read_text().strip())
+    written = _parse_pairing_md_reviewers((kit / "pairing.md").read_text())
+    assert set(written) == set(pairing)
+    for seat, reviewers in pairing.items():
+        assert written[seat] == reviewers  # exact two, exact identity, exact order
+        assert len(written[seat]) == 2
+        assert len({dw._seat_family(r) for r in written[seat]}) == 2
+
+
+def test_r2_pairing_md_parse_would_catch_the_dropped_reviewer_mutation(tmp_path, template,
+                                                                        clean_objective):
+    """Proves the assertion above is not vacuous: re-rendering the SAME pairing dict with
+    gate-7's exact mutated join (`pairing[seat][:1]`, one reviewer dropped) produces a
+    pairing.md whose parsed content the equality check above would reject — the mutation that
+    left the OLD suite green now fails here."""
+    kit = tmp_path / "k"
+    dw.cmd_brief(_brief_ns(clean_objective, template, kit))
+    _seed_convener(kit)
+    dw.cmd_r1(argparse.Namespace(kit=str(kit), seats="kimi-k3,qwen3.8-max,gemini-3.1-pro-high",
+                                  astra_fallback=False))
+    pairing = dw.compute_pairing(kit, (kit / "brief.sha").read_text().strip())
+    mutated_lines = ["| seat | reviews |", "|---|---|"]
+    for seat in sorted(pairing):
+        mutated_lines.append(f"| {seat} | {', '.join(pairing[seat][:1])} |")  # gate-7's mutation
+    written = _parse_pairing_md_reviewers("\n".join(mutated_lines) + "\n")
+    for seat, reviewers in pairing.items():
+        assert written[seat] != reviewers  # the drop is now visible: 1 reviewer, not 2
+
+
 def test_r2_refuses_a_mutated_pairing_md(tmp_path, template, clean_objective):
     kit = tmp_path / "k"
     dw.cmd_brief(_brief_ns(clean_objective, template, kit))
@@ -511,6 +571,50 @@ def test_r1_refuses_an_unresolvable_kimi_model_id_before_ledger_append(tmp_path,
     assert not dw._ledger_has_seat(kit, bad_seat)
 
 
+def test_guilt_r2_validates_kimi_model_before_launch(tmp_path, monkeypatch):
+    """Item 4 (PR2g, gate-7 obs :390/:732): _launch_seat's kimi branch reads
+    KIMI_MODEL_MAP[_canonical_seat(seat)] inside a bare `except Exception: return ""` — an
+    unresolvable kimi* id used to degrade cmd_r2 to an EMPTY objection file (exit 0) instead
+    of a fail-closed refusal. compute_pairing can never hand cmd_r2 an unvalidated kimi seat
+    via the normal r1->r2 pipeline (r1 already refuses one before it can answer and be
+    paired), so this monkeypatches compute_pairing directly to exercise cmd_r2's OWN call
+    site — defense in depth, not a reachable end-to-end bug today. DW_FAKE_SEATS=1 is
+    autouse for this whole file, which is exactly why the validation must run BEFORE the
+    fake-output branch (mirrors _run_one_seat's own ordering): otherwise no test in fake mode
+    could ever prove this call site refuses at all."""
+    kit = tmp_path / "k"
+    kit.mkdir()
+    (kit / "brief.sha").write_text("deadbeef" * 8)
+    monkeypatch.setattr(
+        dw, "compute_pairing",
+        lambda kit, sha: {"kimi-nonexistent-model": ["qwen3.8-max", "gemini-3.1-pro-high"]},
+    )
+    with pytest.raises(SystemExit) as e:
+        dw.cmd_r2(argparse.Namespace(kit=str(kit)))
+    assert e.value.code == 2
+    assert not any((kit / "r2").glob("*"))
+
+
+def test_guilt_jury_validates_kimi_model_before_launch(tmp_path, monkeypatch):
+    """Item 4 (PR2g, gate-7 obs :390/:994): cmd_jury's launch call site had the same gap as
+    cmd_r2's — an unresolvable kimi* juror degraded to an empty ballot (jury-dead, exit 0)
+    instead of refusing. judge.md/_jury_survivors already gate real disqualification
+    upstream, so this monkeypatches _jury_survivors/_jury_mapping directly to exercise
+    cmd_jury's OWN call site, same defense-in-depth rationale as the r2 test above."""
+    kit = tmp_path / "k"
+    kit.mkdir()
+    monkeypatch.setattr(dw, "_jury_survivors",
+                         lambda kit: ["kimi-nonexistent-model", "qwen3.8-max"])
+    monkeypatch.setattr(
+        dw, "_jury_mapping",
+        lambda kit, survivors: {"A": "kimi-nonexistent-model", "B": "qwen3.8-max"},
+    )
+    with pytest.raises(SystemExit) as e:
+        dw.cmd_jury(argparse.Namespace(kit=str(kit)))
+    assert e.value.code == 2
+    assert not (kit / "jury" / f"{dw._file_slug('kimi-nonexistent-model')}.md").exists()
+
+
 def test_launch_seat_kimi_uses_the_per_seat_model_id(tmp_path, monkeypatch):
     """Launcher-intercept per the addendum: proves the '-m' argument _launch_seat actually
     threads to subprocess.run is per-seat, not the old hardcoded 'kimi-code/k3' for every
@@ -589,6 +693,60 @@ def test_r1_relaunching_the_same_seat_across_two_cmd_r1_calls_is_not_a_slug_coll
     summary2 = dw.cmd_r1(argparse.Namespace(kit=str(kit), seats="kimi-k3", astra_fallback=False))
     assert summary2["kimi-k3"] == "answered"  # the SAME seat re-claims its own slug, no refusal
     assert dw.ledger_sent_count(kit, "kimi-k3") == 2
+
+
+def test_r1_refuses_a_slug_collision_between_the_kimi_2_7_alias_and_its_canonical_spelling(
+        tmp_path, template, clean_objective):
+    """Item 3 (PR2g, gate-7 obs :442): the slug used to be claimed on the RAW seat id, so
+    'kimi-2.7' and its canonical spelling 'kimi-code/kimi-for-coding-highspeed' claimed TWO
+    different slugs for the ONE model KIMI_MODEL_MAP resolves both to — the same seat could
+    answer twice and count twice in family diversity. Claiming on _canonical_seat(seat) makes
+    the second claim collide, mirrors test_r1_refuses_a_slug_collision_between_two_different_
+    seat_ids exactly, just with an alias pair instead of a literal '__' collision."""
+    kit = tmp_path / "k"
+    dw.cmd_brief(_brief_ns(clean_objective, template, kit))
+    _seed_convener(kit)
+    dw.cmd_r1(argparse.Namespace(kit=str(kit), seats="kimi-2.7", astra_fallback=False))
+    with pytest.raises(SystemExit) as e:
+        dw.cmd_r1(argparse.Namespace(kit=str(kit), seats="kimi-code/kimi-for-coding-highspeed",
+                                      astra_fallback=False))
+    assert e.value.code == 2
+    assert not dw._ledger_has_seat(kit, "kimi-code/kimi-for-coding-highspeed")
+    assert dw._ledger_has_seat(kit, "kimi-2.7")
+    slugs = json.loads((kit / "slugs.json").read_text())
+    assert len(slugs) == 1  # one slug, not two — the alias and its canonical spelling collided
+
+
+def test_guilt_claim_slug_refuses_a_corrupt_slugs_json_naming_the_file(tmp_path, capsys):
+    """Item 2 (PR2g, gate-7 obs): a corrupt/empty/truncated slugs.json must refuse exit 2
+    naming the file, never a traceback — _claim_slug is the ONLY writer, so corruption always
+    means a prior crash mid-write, not an external edit."""
+    kit = tmp_path / "k"
+    kit.mkdir()
+    (kit / "slugs.json").write_text("")  # truncated/empty — invalid JSON
+    with pytest.raises(SystemExit) as e:
+        dw._claim_slug(kit, "kimi-k3")
+    assert e.value.code == 2
+    assert str(kit / "slugs.json") in capsys.readouterr().err
+
+
+def test_claim_slug_holds_up_under_concurrent_claimants_no_lost_updates(tmp_path):
+    """Item 2 (PR2g, gate-7 obs: 14 concurrent r1 on one kit, distinct seats, wrote 14
+    r1/*.md files but only 12 slugs.json entries — a plain read-modify-write lost updates).
+    Serialized in-process equivalent of the N-process scenario (mandate's own permitted
+    alternative): fcntl.flock locks are held per OPEN FILE DESCRIPTION, so N threads each
+    opening the sidecar .lock genuinely serialize at the OS level, not just cooperatively —
+    this is real contention, not an artifact of the GIL. Without the lock, N threads racing
+    the old read-modify-write would lose some fraction of these N distinct-seat claims;
+    with it, all N land."""
+    kit = tmp_path / "k"
+    kit.mkdir()
+    seats = [f"vendor/seat-{i}" for i in range(20)]
+    with concurrent.futures.ThreadPoolExecutor(max_workers=len(seats)) as pool:
+        list(pool.map(lambda s: dw._claim_slug(kit, s), seats))
+    slugs = json.loads((kit / "slugs.json").read_text())
+    assert len(slugs) == len(seats)
+    assert set(slugs.values()) == set(seats)
 
 
 # --------------------------------------------------------------- empty --seats (guilt + innocence)
