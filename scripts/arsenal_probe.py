@@ -1074,7 +1074,18 @@ def _tp1_model_mismatch_note(requested_model: str, full_body: str) -> Optional[s
 def probe_tp1_model(model: str, timeout: float) -> tuple[str, str, int]:
     """Probe one TP1 text model; credentials and failures are model-local."""
     t0 = time.monotonic()
-    token, cred_note = load_tp1_settings_key()
+    # env > 0600 vault > settings.json, the SAME resolver tp1_call.py and
+    # deepseek_client.py use. This is probe_qwen_cloud_code's 2026-08-26 rule applied
+    # to its sibling: "a probe measures the path PRODUCTION uses". Reading only
+    # settings.json here would re-commit that exact scar in the other direction —
+    # once a host moves the credential into the vault (Air-M5 did, 2026-09-18), a
+    # settings.json-only probe reports CRED_UNAVAILABLE for all seven TP1 seats while
+    # tp1_call.py answers PONG through the vault. Measured on M5 2026-09-18, env
+    # stripped: probe said CRED_UNAVAILABLE, tp1_call said PONG, same seat, same
+    # minute. Superscar #2 inverted, and this file's own TP1_PROBE_MAX_TOKENS note
+    # already names the cost: "a board that marks live models dead is worse than no
+    # board".
+    token, _cred_source, cred_note = resolve_tp1_key()
     if token is None:
         return (
             CRED_UNAVAILABLE,
