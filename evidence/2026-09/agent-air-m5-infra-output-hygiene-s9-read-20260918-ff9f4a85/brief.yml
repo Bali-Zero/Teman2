@@ -1,0 +1,73 @@
+task_id: output-hygiene-guard-s9s10-0918
+gear: 2
+l_level: L1
+gate_class: sonnet
+objective: |
+  Zero, 2026-09-18, after reading a per-component context-cost table of one M5 session: the
+  bundled `claude-api` skill cost ~27K tokens on a "mandatory trigger" and five whole-file
+  reads (MODEL_ROSTER.md, army-map, FLEET_TOPOLOGY.json, a kit file, memories) cost ~40K more
+  in ONE turn — none of them through Bash, so the output-hygiene guard (v2 #6730, S4 #6736,
+  S5 #6738, all live) never saw them. Measured the same day: the Read tool has NO line-length
+  cap (a 5,005-char line came back whole) and caps only lines per call (2,000), and
+  `enabledPlugins` cannot disable a skill bundled inside the CLI.
+
+  This PR opens two more doors of the same guard, against the spec revision committed first
+  in this branch (docs/specs/2026-09-18-output-hygiene-guard-shapes-spec.md, rows S9/S10,
+  cases C67-C80): S9 denies a `Read` whose requested slice (offset/limit, default 2,000
+  lines) exceeds the same 24 KiB ceiling as S2, naming the slice's KiB, its line span and
+  the file's total; S10 denies an enumerated set of skill NAMES, today exactly `claude-api`.
+  The Bash door and its denial line are byte-identical to v2.
+constraints:
+  - "One PR, one concern: the guard's two new doors, the spec rows and cases that define
+    them, the C-ID-labelled suite, the vaccine fixtures and the registry note. Nothing in
+    the Bash path changes."
+  - "S10 is a deny-list of names, NEVER a size rule: this repo's own modus (79 KB) and
+    intake (57 KB) skills load whole by design; a size threshold would re-create the v1
+    over-match on the Skill door."
+  - "S9 counts the RAW bytes of the slice the harness would actually return, exempts what
+    the harness renders through its own path (images, PDF, notebooks), and fails open on a
+    missing path, a directory or a non-integer bound — the harness reports those itself."
+  - "No subprocess, fail-open on any exception or malformed stdin, kill switch
+    NUZ_OUTPUT_HYGIENE_OFF=1, a 50 MB file judged well under one second."
+acceptance:
+  - text: >
+      WHEN a `Read` tool call names a regular non-exempt file AND the slice its offset/limit
+      selects (default: the first 2,000 lines) exceeds 24 KiB of raw bytes, the hook SHALL
+      deny with exit 2 and a one-line reason naming S9, the slice's KiB, the lines it spans
+      and the file's total line count.
+    status: verified
+    probe: "local: python3 infra/claude-hooks/test_output_hygiene_guard.py -> ALL 87 OK (C01..C80 present); C67 message `would return 100 KiB (lines 1-1600 of 1600)`; a 50 MB one-line-per-25KB file judged in 0.11 s"
+  - text: >
+      WHEN a `Skill` tool call names `claude-api` (bare, or as the last segment of a
+      `plugin:skill` form), the hook SHALL deny with exit 2 naming S10 and the skill; every
+      other skill name SHALL be allowed unchanged.
+    status: verified
+    probe: "local: same suite, C76/C77 DENY, C78 ALLOW; kill switch C79 and malformed inputs C80 exit 0"
+  - text: >
+      The Bash door SHALL be unchanged: every Bash row of the corpus C01..C66 keeps its
+      verdict and the Bash denial line is byte-identical to v2; the shared vaccine SHALL not
+      regress any registered guard.
+    status: verified
+    probe: "local: python3 infra/claude-hooks/test_hook_innocence.py -> ALL 146 OK; python3 infra/guard-conformance/check_guard_conformance.py -> every censused guard has guilt+innocence proofs, no phantoms, all armed in CI"
+risks:
+  - "Single build lane (a Codex gpt-5.6 seat, tier sol, dispatched because the routing gate
+    refused a fourth consecutive Anthropic build seat) plus the shipping session's review and
+    one correction (the S9 byte count no longer stops at the ceiling, so the denial names the
+    slice's TRUE size); the independent grader is the fresh Opus 5 on-disk gate that signs
+    harness/fable-gate, which this pack does not pre-empt."
+  - "The live hook is NOT re-armed by this PR: the shipping session refreshes
+    ~/.claude/hooks/output_hygiene_guard.py from origin/main and adds the PreToolUse `Read`
+    and `Skill` entries to ~/.claude/settings.json on M5 and Pro after merge, then proves it
+    from a live session (the Bites line)."
+  - "A user-typed `/claude-api` bypasses PreToolUse (UserPromptExpansion path); S10 binds
+    the model's own Skill calls. The listing-line cost is removed separately by
+    `skillOverrides: claude-api: off` (PR #6744, merged)."
+instruction_to_the_grader: |
+  Probe the spec's case table FIRST (docs/specs/2026-09-18-output-hygiene-guard-shapes-spec.md
+  §6, C67..C80 for the new doors, plus a sample of the Bash rows to prove that door is
+  untouched): every row is a stdin-JSON probe with a stated expected verdict. Then look for an
+  over-match on an everyday Read OUTSIDE the corpus (a small source file, a bounded slice of a
+  big one, an image, a missing path) and an under-match on an obvious flood (a 42 KB markdown
+  whole, a one-line 25 KB log). A disagreement between the guard and the spec is REWORK-BUILD
+  on the guard; a disagreement between two parts of the spec is a finding on the spec. Verify
+  no subprocess, fail-open on malformed stdin, and that the receipts below match what you run.

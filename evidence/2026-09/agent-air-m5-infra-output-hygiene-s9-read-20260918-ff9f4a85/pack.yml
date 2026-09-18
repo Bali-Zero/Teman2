@@ -1,0 +1,118 @@
+brief_ref: evidence/brief.yml
+plan_ref: >-
+  One concern: two new doors of infra/claude-hooks/output_hygiene_guard.py, built against the
+  spec revision committed first in this branch (rows S9/S10, cases C67-C80). The hook now
+  answers three PreToolUse matchers — Bash (unchanged, S1-S8), Read (S9: deny a slice over
+  24 KiB of raw bytes, exempt image/PDF/notebook suffixes, fail open on missing path,
+  directory or non-integer bound) and Skill (S10: deny the enumerated name set, today exactly
+  `claude-api`, never by size). Every new case carries its spec C-ID and the suite asserts the
+  whole corpus C01..C80 is present.
+
+  Consumer: `~/.claude/hooks/output_hygiene_guard.py` registered under the PreToolUse `Read`
+  and `Skill` matchers of `~/.claude/settings.json` on M5 and Pro by the shipping session after
+  this PR merges — this diff prepares the doors and their tests, it does not itself arm them.
+  Observation once armed: from a live session, `Read MODEL_ROSTER.md` (42 KB) is refused with
+  the slice's KiB and line span named; the same Read with `limit=120` passes; `Skill claude-api`
+  is refused naming the skill.
+
+lanes:
+  - lane: output-hygiene-guard-s9s10
+    role: build
+    seat: >-
+      codex gpt-5.6 (tier sol, effort high) dispatched through scripts/seat_build.sh by the
+      shipping session (air-m5) after model_routing_gate refused a fourth consecutive Anthropic
+      build seat. Worked only from the spec revision and a task brief; wrote _check_s9/_check_s10
+      and the per-tool dispatch in the guard, the TOOL_CASES table C67-C80 with a corpus
+      completeness assertion in the dedicated suite, the huge.md fixture plus Read/Skill helpers
+      and five vaccine rows, and the registry note. Did not commit. The shipping session reviewed
+      the diff and made one correction: the S9 byte count no longer stops at the 24 KiB ceiling,
+      so the denial names the slice's true size (C67: 100 KiB, lines 1-1600 of 1600).
+
+seat_diversity: EXEMPT
+seat_diversity_note: >-
+  Single build lane (OpenAI, gpt-5.6-sol) reviewed by the shipping session (Anthropic,
+  claude-fable); D3's cross-family floor is exempt below two build lanes. The independent
+  grader is the fresh Opus 5 on-disk gate that signs harness/fable-gate after this pack is
+  finalised; this pack does not claim that verdict.
+
+diff:
+  files:
+    [
+      "docs/specs/2026-09-18-output-hygiene-guard-shapes-spec.md",
+      "evidence/2026-09/agent-air-m5-infra-output-hygiene-s9-read-20260918-ff9f4a85/brief.yml",
+      "evidence/2026-09/agent-air-m5-infra-output-hygiene-s9-read-20260918-ff9f4a85/pack.yml",
+      "infra/claude-hooks/output_hygiene_guard.py",
+      "infra/claude-hooks/test_hook_innocence.py",
+      "infra/claude-hooks/test_output_hygiene_guard.py",
+      "infra/guard-conformance/registry.json",
+    ]
+  net_lines: 416
+  measured_at: >-
+    `scripts/evidence_pack_lint.py --print-measured` against `git diff --numstat`/`--name-only`
+    from origin/main to the index holding this pack's final content, run LAST as its own
+    invocation after every other edit including this evidence directory — see the matching
+    receipt below.
+
+residual_risks:
+  - >-
+    THE SPEC, NOT THE GUARD, IS THE GRADER'S TABLE. The Read corpus is finite (C67-C75) and an
+    everyday Read outside it can still be bitten — the ceiling is the same 24 KiB as S2, so the
+    files it refuses are exactly the ones `cat` already refuses; a session that needs a section
+    of a big file greps the heading and passes offset/limit, which the denial message says.
+  - >-
+    S10 binds only the model's own `Skill` tool calls: a user who types `/claude-api` goes
+    through UserPromptExpansion, not PreToolUse. The listing-line cost of that skill is removed
+    by `skillOverrides` (PR #6744), a separate mechanism this pack does not measure.
+  - >-
+    THE LIVE HOOK IS NOT RE-ARMED BY THIS PR. The Read and Skill matcher entries in
+    `~/.claude/settings.json` on M5 and Pro are added by the shipping session after merge —
+    everything in this pack is local test evidence, not a live-session observation of a real
+    S9/S10 denial yet.
+  - >-
+    Latency figures (28.2 ms allow / 30.1 ms deny per subprocess; 0.11 s for a 50 MB Read
+    probe) are single-machine (M5), single-run, no-concurrent-load — not repeated and not
+    measured on Pro.
+
+pii_scan: clean
+
+receipts:
+  - claim: "the guard's dedicated C-ID-labelled suite is green and the corpus C01..C80 is complete"
+    cmd: "python3 infra/claude-hooks/test_output_hygiene_guard.py"
+    result: "=== ALL 87 OK (C01..C80 present, no innocent bitten, no guilt missed) === ; latency: allow-case subprocess 28.2ms, deny-case subprocess 30.1ms"
+    exit: 0
+    ts: "2026-09-18T00:51:02Z"
+    seat: session (air-m5)
+  - claim: "the shared vaccine, which also carries this guard's Read/Skill fixtures, is green with no regression to any pre-existing guard"
+    cmd: "python3 infra/claude-hooks/test_hook_innocence.py"
+    result: "=== ALL 146 OK (no innocent bitten, no guilt missed) ==="
+    exit: 0
+    ts: "2026-09-18T00:51:02Z"
+    seat: session (air-m5)
+  - claim: "the guard-conformance census shows every registered guard, including this one, with guilt and innocence proofs and armed in CI"
+    cmd: "python3 infra/guard-conformance/check_guard_conformance.py"
+    result: "every censused guard has guilt+innocence proofs, no phantoms, all armed in CI"
+    exit: 0
+    ts: "2026-09-18T00:51:02Z"
+    seat: session (air-m5)
+  - claim: "the guard, its suite and the vaccine are lint-clean"
+    cmd: "ruff check infra/claude-hooks/output_hygiene_guard.py infra/claude-hooks/test_output_hygiene_guard.py infra/claude-hooks/test_hook_innocence.py"
+    result: "All checks passed!"
+    exit: 0
+    ts: "2026-09-18T00:51:02Z"
+    seat: session (air-m5)
+  - claim: "a 50 MB file (2,048 lines of 25 KB) fed to the Read door is denied naming its true size, in well under one second; malformed stdin exits 0"
+    cmd: "python3 <scratch: PreToolUse Read stdin JSON on a mktemp 50 MB fixture, timed around a subprocess of the guard>; echo nope | python3 infra/claude-hooks/output_hygiene_guard.py"
+    result: "rc=2 0.11s :: BLOCKED (output-hygiene) [S9]: `Read` of <tmp>/fifty.log would return 50000 KiB (lines 1-2000 of 2048); malformed rc=0"
+    exit: 0
+    ts: "2026-09-18T00:51:02Z"
+    seat: session (air-m5)
+  - claim: "this pack's own diff.files/diff.net_lines match the measured origin/main diff, run LAST as its own step"
+    cmd: >-
+      python3 scripts/evidence_pack_lint.py --repo-root . --numstat-file <scratch>/s9_numstat.txt
+      --changed-files-file <scratch>/s9_changed.txt --print-measured
+    result: "7 files, +532/-116, commit count unmeasured (no --commit-count, no pull_request payload)"
+    exit: 0
+    ts: "2026-09-18T00:51:40Z"
+    seat: session (air-m5)
+
+dissent: []
