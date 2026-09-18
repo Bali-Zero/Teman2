@@ -879,15 +879,24 @@ def test_jury_scores_survivors_and_marks_a_malformed_ballot_dead(tmp_path, templ
     assert set(tabulation["firsts"]) == {"A", "B", "C"}
 
 
-def test_jury_tabulation_md_names_no_seat_id_before_reveal(tmp_path, template, clean_objective):
-    # guilt (dw-gate-5 on PR2d): the pre-fix rendering embedded mapping[ltr] in the table,
-    # the Disagreements line and the header's dead-ballot list -- all readable before reveal.
+def test_jury_dir_names_no_seat_id_in_any_filename_or_content_before_reveal(
+        tmp_path, template, clean_objective):
+    # guilt (dw-gate-5 on PR2d; broadened PR2h addendum obs 1, gate-9 MEDIUM): the pre-fix
+    # rendering embedded mapping[ltr] in the table, the Disagreements line and the header's
+    # dead-ballot list; separately, jury/<seat-slug>.md ballot FILENAMES named the juror
+    # directly, and the set difference over each ballot's ranked letters reconstructed
+    # jury/mapping.json from world-readable files without ever opening it (gate-9 reproduced
+    # it exactly). Every file under jury/ except mapping.json (0600, the one sanctioned place)
+    # must carry no seat id in EITHER its filename or its content.
     seats = "kimi-k3,qwen3.8-max,gemini-3.1-pro-high-fakejurydead"
     kit = _judged_kit(tmp_path, template, clean_objective, seats)
     dw.cmd_jury(argparse.Namespace(kit=str(kit)))
-    text = (kit / "jury" / "tabulation.md").read_text()
-    for seat in seats.split(","):
-        assert seat not in text, f"{seat} leaked into the blind jury/tabulation.md"
+    for f in (kit / "jury").iterdir():
+        if f.name == "mapping.json":
+            continue
+        for seat in seats.split(","):
+            assert seat not in f.name, f"{seat} leaked into filename {f.name}"
+            assert seat not in f.read_text(), f"{seat} leaked into {f.name}'s content"
 
 
 def test_jury_prompt_never_names_an_answered_seat_id(tmp_path, template, clean_objective):
@@ -1029,6 +1038,7 @@ def _capture_ready_kit(tmp_path, template, clean_objective) -> Path:
     kit = _juried_kit(tmp_path, template, clean_objective, _THREE_FAMILY_SEATS)
     dw.cmd_anonymise(argparse.Namespace(kit=str(kit)))
     (kit / "Z-DECISIONI.md").write_text("# Zero's decision\nA\n")
+    dw.cmd_reveal(argparse.Namespace(kit=str(kit)))  # PR2h obs 2: revealed twin now required
     (kit / "OUTCOME.md").write_text(_outcome_text())
     return kit
 
@@ -1046,11 +1056,13 @@ def _capture_ready_kit_with_slug(tmp_path, template, clean_objective, slug: str)
     dw.cmd_jury(argparse.Namespace(kit=str(kit)))
     dw.cmd_anonymise(argparse.Namespace(kit=str(kit)))
     (kit / "Z-DECISIONI.md").write_text("# Zero's decision\nA\n")
+    dw.cmd_reveal(argparse.Namespace(kit=str(kit)))  # PR2h obs 2: revealed twin now required
     (kit / "OUTCOME.md").write_text(_outcome_text())
     return kit
 
 
 @pytest.mark.parametrize("missing_rel", ["BRIEF.md", "judge.md", "jury/tabulation.md",
+                                          "jury/tabulation.revealed.md",
                                           "Z-DECISIONI.md", "OUTCOME.md", "r1", "r2"])
 def test_capture_check_refuses_naming_one_missing_item(tmp_path, template, clean_objective, missing_rel):
     kit = _capture_ready_kit(tmp_path, template, clean_objective)
@@ -1098,9 +1110,11 @@ def test_capture_check_refuses_a_dotdot_escape_from_research_operations(
     assert not escaped.resolve().exists()
 
 
-def test_capture_check_refuses_a_non_empty_existing_dest(tmp_path, template, clean_objective):
+def test_capture_check_refuses_a_non_empty_existing_dest(tmp_path, template, clean_objective,
+                                                           monkeypatch):
     kit = _capture_ready_kit_with_slug(tmp_path, template, clean_objective,
                                         "pytest-capture-nonempty")
+    monkeypatch.setattr(dw, "REPO_ROOT", tmp_path)  # PR2h obs 10: never the real tree
     dest = dw._capture_dest_for(kit)
     try:
         dest.mkdir(parents=True, exist_ok=True)
@@ -1115,9 +1129,10 @@ def test_capture_check_refuses_a_non_empty_existing_dest(tmp_path, template, cle
 
 
 def test_capture_check_copies_the_full_artifact_set_when_everything_is_present(
-        tmp_path, template, clean_objective):
+        tmp_path, template, clean_objective, monkeypatch):
     kit = _capture_ready_kit_with_slug(tmp_path, template, clean_objective,
                                         "pytest-capture-success")
+    monkeypatch.setattr(dw, "REPO_ROOT", tmp_path)  # PR2h obs 10: never the real tree
     dest = dw._capture_dest_for(kit)
     try:
         dw.cmd_capture_check(argparse.Namespace(kit=str(kit), dest=str(dest)))
@@ -1125,6 +1140,8 @@ def test_capture_check_copies_the_full_artifact_set_when_everything_is_present(
         assert (dest / "brief.sha").exists()
         assert (dest / "judge.md").exists()
         assert (dest / "jury" / "tabulation.md").exists()
+        assert (dest / "jury" / "tabulation.revealed.md").exists()
+        assert not (dest / "jury" / "mapping.json").exists()
         assert (dest / "Z-DECISIONI.md").exists()
         assert (dest / "OUTCOME.md").exists()
         assert (dest / "r1").is_dir()
@@ -1134,12 +1151,13 @@ def test_capture_check_copies_the_full_artifact_set_when_everything_is_present(
 
 
 def test_capture_check_refuses_a_fake_phone_in_outcome_md(
-        tmp_path, template, clean_objective, capsys):
+        tmp_path, template, clean_objective, capsys, monkeypatch):
     # guilt fixture per the addendum, verbatim: 'a fake phone in OUTCOME.md'. Same phone
     # literal _dirty_objective already uses elsewhere in this file to trip the redactor.
     kit = _capture_ready_kit_with_slug(tmp_path, template, clean_objective, "pytest-capture-pii")
     phone = "+6281234567890"
     (kit / "OUTCOME.md").write_text(_outcome_text().rstrip("\n") + f"\ncontact: {phone}\n")
+    monkeypatch.setattr(dw, "REPO_ROOT", tmp_path)  # PR2h obs 10: never the real tree
     dest = dw._capture_dest_for(kit)
     capsys.readouterr()
     try:
@@ -1156,16 +1174,52 @@ def test_capture_check_refuses_a_fake_phone_in_outcome_md(
 
 
 def test_capture_check_copies_a_clean_outcome_md_once_the_pii_gate_clears(
-        tmp_path, template, clean_objective):
+        tmp_path, template, clean_objective, monkeypatch):
     # innocence: identical kit shape, no PII -- the gate lets it straight through.
     kit = _capture_ready_kit_with_slug(tmp_path, template, clean_objective,
                                         "pytest-capture-pii-clean")
+    monkeypatch.setattr(dw, "REPO_ROOT", tmp_path)  # PR2h obs 10: never the real tree
     dest = dw._capture_dest_for(kit)
     try:
         dw.cmd_capture_check(argparse.Namespace(kit=str(kit), dest=str(dest)))
         assert (dest / "OUTCOME.md").read_text() == _outcome_text()
     finally:
         shutil.rmtree(dest, ignore_errors=True)
+
+
+# --------------------------------------------------------------- PR2h named refusals (obs 3+4)
+
+def test_judge_refuses_a_non_utf8_r1_file_naming_it_instead_of_a_traceback(
+        tmp_path, template, clean_objective, capsys):
+    # guilt (PR2h addendum obs 3+4): a non-UTF8 file under r1/ used to raise a bare
+    # UnicodeDecodeError out of .read_text() -- a traceback naming a line number, not a file.
+    kit = tmp_path / "k"
+    dw.cmd_brief(_brief_ns(clean_objective, template, kit))
+    _seed_convener(kit)
+    dw.cmd_r1(argparse.Namespace(kit=str(kit), seats="kimi-k3", astra_fallback=False))
+    bad_path = kit / "r1" / f"{dw._file_slug('kimi-k3')}.md"
+    bad_path.write_bytes(b"\xff\xfe not valid utf-8 \x80\x81")
+    with pytest.raises(SystemExit) as e:
+        dw.cmd_judge(argparse.Namespace(kit=str(kit)))
+    assert e.value.code == 2
+    assert str(bad_path) in capsys.readouterr().err
+
+
+def test_capture_check_refuses_a_kit_missing_inputs_json_naming_the_file(
+        tmp_path, template, clean_objective, capsys):
+    # guilt (PR2h addendum obs 3+4): inputs.json is absent from _CAPTURE_REQUIRED (it is an
+    # internal input, not a captured artifact), so a kit missing it used to crash
+    # _capture_dest_for with a bare FileNotFoundError out of json.loads() instead of a named
+    # refusal.
+    kit = _capture_ready_kit(tmp_path, template, clean_objective)
+    inputs_path = kit / "inputs.json"
+    inputs_path.unlink()
+    dest = tmp_path / "dest"
+    with pytest.raises(SystemExit) as e:
+        dw.cmd_capture_check(argparse.Namespace(kit=str(kit), dest=str(dest)))
+    assert e.value.code == 2
+    assert not dest.exists()
+    assert str(inputs_path) in capsys.readouterr().err
 
 
 # --------------------------------------------------------------- validate_answer (guilt + innocence)
