@@ -961,8 +961,8 @@ def _tp1_live_body(model: str, content: str = "PONG") -> str:
 def test_probe_tp1_missing_credential_is_cred_unavailable(monkeypatch):
     monkeypatch.setattr(
         ap,
-        "load_tp1_settings_key",
-        lambda: (None, "env.BAILIAN_TOKEN_PLAN_API_KEY not set"),
+        "resolve_tp1_key",
+        lambda: (None, None, "env.BAILIAN_TOKEN_PLAN_API_KEY not set"),
     )
     status, ev, latency = ap.probe_tp1_model("qwen3.8-max", timeout=5)
     assert status == ap.CRED_UNAVAILABLE
@@ -973,8 +973,8 @@ def test_probe_tp1_missing_credential_is_cred_unavailable(monkeypatch):
 def test_probe_tp1_http_error_does_not_abort_remaining_models(monkeypatch):
     monkeypatch.setattr(
         ap,
-        "load_tp1_settings_key",
-        lambda: ("test-only-placeholder", None),
+        "resolve_tp1_key",
+        lambda: ("test-only-placeholder", "vault", None),
     )
     called = []
 
@@ -1000,8 +1000,8 @@ def test_probe_tp1_http_error_does_not_abort_remaining_models(monkeypatch):
 def test_probe_tp1_401_is_auth_dead(monkeypatch):
     monkeypatch.setattr(
         ap,
-        "load_tp1_settings_key",
-        lambda: ("test-only-placeholder", None),
+        "resolve_tp1_key",
+        lambda: ("test-only-placeholder", "vault", None),
     )
     body = '{"error":{"message":"unauthorized"}}'
     monkeypatch.setattr(ap, "http_post_json", lambda *a, **kw: (401, body, body))
@@ -1016,8 +1016,8 @@ def test_probe_tp1_429_quota_wording_is_quota_dead_not_unknown_err(monkeypatch):
     generic error): pin it so a regression here is caught the same way."""
     monkeypatch.setattr(
         ap,
-        "load_tp1_settings_key",
-        lambda: ("test-only-placeholder", None),
+        "resolve_tp1_key",
+        lambda: ("test-only-placeholder", "vault", None),
     )
     body = '{"error":{"message":"Requests rate limit exceeded, please try again later.","code":"Throttling.RateQuota"}}'
     monkeypatch.setattr(ap, "http_post_json", lambda *a, **kw: (429, body, body))
@@ -1032,8 +1032,8 @@ def test_probe_tp1_402_insufficient_balance_is_balance_dead(monkeypatch):
     BALANCE_DEAD through the same "tp1" classify_generic path."""
     monkeypatch.setattr(
         ap,
-        "load_tp1_settings_key",
-        lambda: ("test-only-placeholder", None),
+        "resolve_tp1_key",
+        lambda: ("test-only-placeholder", "vault", None),
     )
     body = '{"error":{"message":"insufficient balance","code":"402"}}'
     monkeypatch.setattr(ap, "http_post_json", lambda *a, **kw: (402, body, body))
@@ -1048,8 +1048,8 @@ def test_probe_tp1_model_mismatch_is_noted_but_not_fatal(monkeypatch):
     normalize the echoed model field)."""
     monkeypatch.setattr(
         ap,
-        "load_tp1_settings_key",
-        lambda: ("test-only-placeholder", None),
+        "resolve_tp1_key",
+        lambda: ("test-only-placeholder", "vault", None),
     )
     body = _tp1_live_body("qwen3.8-max-fallback-v2", "PONG")
     monkeypatch.setattr(ap, "http_post_json", lambda *a, **kw: (200, body, body))
@@ -1066,13 +1066,43 @@ def test_probe_tp1_content_mentioning_api_key_phrase_stays_live(monkeypatch):
     credential (see test_probe_tp1_never_leaks_token_in_evidence for that)."""
     monkeypatch.setattr(
         ap,
-        "load_tp1_settings_key",
-        lambda: ("test-only-placeholder", None),
+        "resolve_tp1_key",
+        lambda: ("test-only-placeholder", "vault", None),
     )
     body = _tp1_live_body("qwen3.7-plus", "PONG — api key hygiene is enabled")
     monkeypatch.setattr(ap, "http_post_json", lambda *a, **kw: (200, body, body))
     status, ev, latency = ap.probe_tp1_model("qwen3.7-plus", timeout=5)
     assert status == ap.LIVE
+
+
+def test_probe_tp1_model_resolves_through_the_vault_not_settings_json(monkeypatch):
+    """The probe must measure the path PRODUCTION uses (probe_qwen_cloud_code's
+    2026-08-26 rule). Once a host moves the credential into the 0600 vault, a
+    probe that still read only ~/.qwen/settings.json would report
+    CRED_UNAVAILABLE for all seven TP1 seats while tp1_call.py answers PONG
+    through the vault — superscar #2 inverted, a board marking live seats dead.
+    Measured on M5 2026-09-18 before this was wired: probe CRED_UNAVAILABLE,
+    tp1_call PONG, same seat, same minute.
+
+    settings.json is a TRIPWIRE here: the vault answers, so the resolver must
+    never fall through to it.
+    """
+    monkeypatch.delenv("BAILIAN_TOKEN_PLAN_API_KEY", raising=False)
+
+    def _tripwire(*a, **kw):
+        raise AssertionError(
+            "settings.json was consulted even though the vault answered"
+        )
+
+    monkeypatch.setattr(ap, "load_tp1_settings_key", _tripwire)
+    monkeypatch.setattr(
+        ap, "load_tp1_vault_key", lambda *a, **kw: ("test-only-placeholder", None)
+    )
+    body = _tp1_live_body("deepseek-v4-flash-0731", "PONG")
+    monkeypatch.setattr(ap, "http_post_json", lambda *a, **kw: (200, body, body))
+    status, ev, latency = ap.probe_tp1_model("deepseek-v4-flash-0731", timeout=5)
+    assert status == ap.LIVE
+    assert status != ap.CRED_UNAVAILABLE
 
 
 def test_probe_tp1_never_leaks_token_in_evidence(monkeypatch):
@@ -1082,8 +1112,8 @@ def test_probe_tp1_never_leaks_token_in_evidence(monkeypatch):
     token = "tp1-leaktoken1234567890123456"
     monkeypatch.setattr(
         ap,
-        "load_tp1_settings_key",
-        lambda: (token, None),
+        "resolve_tp1_key",
+        lambda: (token, "vault", None),
     )
 
     def fake_http(url, headers, body, timeout, secret_values):
@@ -1127,8 +1157,8 @@ def test_probe_tp1_thinking_model_empty_content_with_reasoning_is_live(monkeypat
     """
     monkeypatch.setattr(
         ap,
-        "load_tp1_settings_key",
-        lambda: ("test-only-placeholder", None),
+        "resolve_tp1_key",
+        lambda: ("test-only-placeholder", "vault", None),
     )
     body = _tp1_reasoning_only_body("deepseek-v4-pro", reasoning_tokens=8)
     monkeypatch.setattr(ap, "http_post_json", lambda *a, **kw: (200, body, body))
@@ -1142,8 +1172,8 @@ def test_probe_tp1_empty_content_no_reasoning_stays_unknown_err(monkeypatch):
     reasoning_content has no positive proof of life — stays UNKNOWN_ERR."""
     monkeypatch.setattr(
         ap,
-        "load_tp1_settings_key",
-        lambda: ("test-only-placeholder", None),
+        "resolve_tp1_key",
+        lambda: ("test-only-placeholder", "vault", None),
     )
     body = json.dumps(
         {
@@ -1165,8 +1195,8 @@ def test_probe_tp1_reasoning_only_truncated_by_length_is_not_live(monkeypatch):
     because reasoning_content happened to be non-empty."""
     monkeypatch.setattr(
         ap,
-        "load_tp1_settings_key",
-        lambda: ("test-only-placeholder", None),
+        "resolve_tp1_key",
+        lambda: ("test-only-placeholder", "vault", None),
     )
     body = _tp1_reasoning_only_body(
         "deepseek-v4-pro", reasoning_tokens=256, finish_reason="length"
@@ -1183,8 +1213,8 @@ def test_probe_tp1_reasoning_only_with_finish_reason_stop_stays_live(monkeypatch
     (some thinking models do this) — that is still a live, working seat."""
     monkeypatch.setattr(
         ap,
-        "load_tp1_settings_key",
-        lambda: ("test-only-placeholder", None),
+        "resolve_tp1_key",
+        lambda: ("test-only-placeholder", "vault", None),
     )
     body = _tp1_reasoning_only_body(
         "deepseek-v4-pro", reasoning_tokens=40, finish_reason="stop"
@@ -1199,8 +1229,8 @@ def test_probe_tp1_pong_content_stays_live_already_covered(monkeypatch):
     above, checked here explicitly for the plain PONG case)."""
     monkeypatch.setattr(
         ap,
-        "load_tp1_settings_key",
-        lambda: ("test-only-placeholder", None),
+        "resolve_tp1_key",
+        lambda: ("test-only-placeholder", "vault", None),
     )
     body = _tp1_live_body("qwen3.8-max", "PONG")
     monkeypatch.setattr(ap, "http_post_json", lambda *a, **kw: (200, body, body))
