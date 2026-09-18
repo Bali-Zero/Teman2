@@ -1,7 +1,9 @@
 "use client";
 
 import React, { useState, useCallback, useEffect } from "react";
+import { createPortal } from "react-dom";
 import {
+  AlertTriangle,
   Building2,
   CreditCard,
   MapPin,
@@ -15,8 +17,10 @@ import {
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { api } from "@/lib/api";
+import { ApiError } from "@/lib/api/error-handler";
 import { logger } from "@/lib/logger";
 import { fileToBase64 } from "@/lib/utils";
+import { COMPANY_TYPE_OPTIONS } from "../company/companyType";
 
 // ============================================
 // ADD COMPANY MODAL - TYPES
@@ -86,6 +90,10 @@ function useCompanyForm(clientId: number, onSuccess: () => void) {
   const [errors, setErrors] = useState<FormErrors>({});
   const [documents, setDocuments] = useState<CompanyDocuments>({});
   const [formData, setFormData] = useState<CompanyFormData>(INITIAL_FORM_DATA);
+  const [saveError, setSaveError] = useState<{
+    message: string;
+    correlationId?: string;
+  } | null>(null);
 
   const updateField = useCallback(
     <K extends keyof CompanyFormData>(field: K, value: CompanyFormData[K]) => {
@@ -236,6 +244,7 @@ function useCompanyForm(clientId: number, onSuccess: () => void) {
   }, [documents.nib, clientId]);
 
   const submit = useCallback(async (): Promise<boolean> => {
+    setSaveError(null);
     if (!validateForm()) {
       toast.error("Please fix form errors");
       return false;
@@ -308,8 +317,13 @@ function useCompanyForm(clientId: number, onSuccess: () => void) {
       return true;
     } catch (err) {
       logger.error("Failed to create company:", {}, err as Error);
+      const apiErr = err instanceof ApiError ? err : null;
+      setSaveError({
+        message: apiErr?.detail || (err as Error).message,
+        correlationId: apiErr?.correlationId,
+      });
       toast.error("Failed to create company", {
-        description: (err as Error).message,
+        description: apiErr?.detail || (err as Error).message,
       });
       return false;
     } finally {
@@ -322,6 +336,7 @@ function useCompanyForm(clientId: number, onSuccess: () => void) {
     setDocuments({});
     setErrors({});
     setUploadErrors({});
+    setSaveError(null);
   }, []);
 
   return {
@@ -329,6 +344,7 @@ function useCompanyForm(clientId: number, onSuccess: () => void) {
     documents,
     errors,
     uploadErrors,
+    saveError,
     isSubmitting,
     isExtractingNpwp,
     isExtractingNib,
@@ -361,6 +377,7 @@ export function AddCompanyModal({
     documents,
     errors,
     uploadErrors,
+    saveError,
     isSubmitting,
     isExtractingNpwp,
     isExtractingNib,
@@ -389,7 +406,7 @@ export function AddCompanyModal({
   const inputClass =
     "w-full px-3 py-2 rounded-lg border border-[var(--bz-border)] bg-[var(--bz-surface)] text-[var(--bz-text-1)] focus:outline-none focus:ring-2 focus:ring-[var(--line-control)] text-sm";
 
-  return (
+  return createPortal(
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
       role="dialog"
@@ -415,6 +432,23 @@ export function AddCompanyModal({
             <X className="w-5 h-5" />
           </Button>
         </div>
+
+        {saveError && (
+          <div
+            role="alert"
+            className="flex items-start gap-2 rounded-lg border border-[var(--state-warning)]/30 bg-[var(--state-warning)]/10 px-3 py-2 mb-4 text-sm text-[var(--state-warning)]"
+          >
+            <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" />
+            <div>
+              <p>{saveError.message}</p>
+              {saveError.correlationId && (
+                <p className="mt-0.5 text-xs text-[var(--bz-text-2)]">
+                  Request ID: {saveError.correlationId}
+                </p>
+              )}
+            </div>
+          </div>
+        )}
 
         <form
           onSubmit={(e) => {
@@ -451,10 +485,11 @@ export function AddCompanyModal({
                   onChange={(e) => updateField("company_type", e.target.value)}
                   className={inputClass}
                 >
-                  <option value="PT PMA">PT PMA</option>
-                  <option value="PT Perorangan">PT Perorangan</option>
-                  <option value="CV">CV</option>
-                  <option value="Other">Other</option>
+                  {COMPANY_TYPE_OPTIONS.map((opt) => (
+                    <option key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </option>
+                  ))}
                 </select>
               </div>
               <div>
@@ -847,6 +882,7 @@ export function AddCompanyModal({
           </div>
         </form>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

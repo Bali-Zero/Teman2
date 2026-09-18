@@ -451,7 +451,7 @@ export function ClientDetailClient({
           )}
         </div>
         <Masthead
-          className="flex-1"
+          className="flex-1 min-w-0"
           eyebrow={clientRefEyebrow}
           title={client.full_name}
           subtitle={clientMastheadSubtitle}

@@ -22,6 +22,8 @@ export class ApiError extends Error {
    */
   readonly detail?: string;
   readonly code?: string;
+  /** `correlation_id` FastAPI's exception handlers attach to every error body. */
+  readonly correlationId?: string;
 
   constructor(
     message: string,
@@ -30,9 +32,13 @@ export class ApiError extends Error {
   ) {
     super(message);
     this.name = "ApiError";
-    const body = data as { detail?: unknown; code?: unknown } | undefined;
+    const body = data as
+      | { detail?: unknown; code?: unknown; correlation_id?: unknown }
+      | undefined;
     if (typeof body?.detail === "string") this.detail = body.detail;
     if (typeof body?.code === "string") this.code = body.code;
+    if (typeof body?.correlation_id === "string")
+      this.correlationId = body.correlation_id;
   }
 }
 
