@@ -168,6 +168,56 @@ def test_for_await_loop_is_recognised(lint):
     assert "cap" in violations[0][1]
 
 
+# --------------------------------------------------------------------------
+# ITEM 1 (PR3e, 2026-09-18, gate-10 obs 1, HIGH) -- regex literals must not blind the
+# tokenizer to the rest of the file/line.
+# --------------------------------------------------------------------------
+
+
+def test_guilt_regex_with_quote_no_longer_blinds_the_scan(lint):
+    """b01: pre-fix, a regex containing a quote (`.replace(/'/g, "")`) was read as a
+    string opener and blanked the REST OF THE FILE -- both violations below must now
+    be visible."""
+    violations = lint.find_violations(FIXTURES_DIR / "regex_quote_b01.js")
+    assert len(violations) == 2
+    messages = [msg for _, msg in violations]
+    assert any("model:" in m for m in messages)
+    assert any("cap" in m for m in messages)
+
+
+def test_guilt_regex_with_double_slash_no_longer_blinds_the_line(lint):
+    """b02: pre-fix, a regex containing `//` (`/https:\\/\\//`) was read as a line
+    comment and blanked the rest of the LINE -- the unpinned agent( call sharing that
+    line must still be reported."""
+    violations = lint.find_violations(FIXTURES_DIR / "regex_double_slash_b02.js")
+    assert len(violations) == 1
+    assert "model:" in violations[0][1]
+
+
+def test_innocence_division_chain_is_not_misread_as_regex(lint):
+    """A chain of divisions (`a / b / c`) must stay clean -- neither `/` follows an
+    opener character, so neither opens a phantom regex literal."""
+    assert lint.find_violations(FIXTURES_DIR / "division_not_regex.js") == []
+
+
+def test_innocence_live_repo_regex_literals_still_clean_and_balanced(lint):
+    """The six live infra/workflows/*.js files carry 11 real regex literals today
+    (kbli-batch-a-lot.js: 2, modus-bench.js: 1, saetta.js: 8 -- verified 2026-09-19 by
+    direct execution; the module docstring's own worked example, `/https:\\/\\//`, is
+    the same escaped-slash shape as saetta.js's `/\\/$/`). This is a regression guard:
+    find_violations must not raise _UnbalancedAfterNeutralization on any of them."""
+    for name in (
+        "kbli-batch-a-lot.js",
+        "kbli-pilot-a1.js",
+        "modus-bench.js",
+        "saetta.js",
+        "second-army.js",
+        "verify-template.js",
+    ):
+        path = REPO_ROOT / "infra" / "workflows" / name
+        assert lint.find_violations(path) == [], f"{name} must stay clean under the new tokenizer"
+
+
 def test_main_exit_0_on_clean(capsys):
     """Run on the live codebase's infra/workflows/*.js — must be green."""
     mod = _load_lint_module()
@@ -221,6 +271,25 @@ def test_guilt_explicit_nonexistent_target_is_a_blind_scan(lint, tmp_path, capsy
     assert rc == 2, "a nonexistent explicit target must not exit 0 — it proves nothing"
     assert "BLIND SCAN" in captured.err
     assert str(ghost) in captured.err
+    assert "no violations" not in captured.out
+
+
+# --------------------------------------------------------------------------
+# SAFETY NET (item 1, PR3e, 2026-09-18, gate-10 obs 1) -- a non-zero paren/brace
+# balance after neutralization must refuse the file, not guess.
+# --------------------------------------------------------------------------
+
+
+def test_guilt_unbalanced_after_neutralization_raises_from_find_violations(lint):
+    with pytest.raises(lint._UnbalancedAfterNeutralization):
+        lint.find_violations(FIXTURES_DIR / "regex_false_open_desyncs_balance.js")
+
+
+def test_guilt_unbalanced_after_neutralization_main_exits_2(lint, capsys):
+    rc = lint.main([str(FIXTURES_DIR / "regex_false_open_desyncs_balance.js")])
+    captured = capsys.readouterr()
+    assert rc == 2, "an unbalanced neutralization must not exit 0 or 1 -- it proves nothing"
+    assert "regex_false_open_desyncs_balance.js" in captured.err
     assert "no violations" not in captured.out
 
 
