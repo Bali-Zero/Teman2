@@ -1,0 +1,88 @@
+task_id: ci-jump-corpora
+gear: 3
+l_level: L1
+gate_class: opus
+objective: |
+  Give the window-jump family's shell corpora, the probe-log cap and the army
+  watcher's corpus an executor that can go red on a PR. Measured before this
+  PR: scripts/tests/test_window_jump_shell.py, test_tmux_jump_shell.py and
+  test_nz_jump_model_alias.py were collected only by scripts-tests-sweep.yml
+  (schedule + workflow_dispatch, continue-on-error, report-only: it never runs
+  on a PR and cannot block one); infra/claude-hooks/test_probe_log_cap.py said
+  in its own docstring that no workflow ran it, and grep over
+  .github/workflows/ confirmed it; scripts/tests/test_wa_army_watcher_shell.py
+  (#6785, merged 2026-09-18) had no executor and its docstring skips the whole
+  file without tmux, which ubuntu-latest does not ship. Green and unexecuted:
+  superscar #2 (exists != armed), W81 theater.
+
+  This PR edits ONE workflow, .github/workflows/guard-conformance.yml: the
+  existing "Context-window guard + window jump corpora" step gains the four
+  portable pytest files; a new step installs tmux on the runner, refuses to
+  continue if the binary is still missing (command -v tmux under set -e, so
+  the corpus can never skip in CI) and runs the watcher corpus against a real
+  tmux on a private socket; push.paths and the relevant-paths sentinel regex
+  learn the five new surfaces. The probe-log cap's docstring stops saying it
+  is unwired.
+
+  Gear is 3 DETERMINISTICALLY, sourced from PATH: .github/workflows/** is a
+  hotzone in scripts/evidence_pack_lint.py. Measured against this branch's
+  own diff (see receipts).
+acceptance:
+  - text: >-
+      WHEN a PR touches any of the five new surfaces (scripts/wa_army_watcher.sh, the
+      watcher corpus, the three jump corpora) the sentinel step SHALL answer run=true,
+      so the two steps below execute instead of the job ending green as a sentinel.
+    probe: |
+      rx=$(grep -A1 -F 'grep -qE \' .github/workflows/guard-conformance.yml | tail -1 | sed "s/^ *'//; s/'; then\$//")
+      for f in scripts/wa_army_watcher.sh scripts/tests/test_wa_army_watcher_shell.py scripts/tests/test_window_jump_shell.py scripts/tests/test_tmux_jump_shell.py scripts/tests/test_nz_jump_model_alias.py; do
+        echo "$f" | grep -qE "$rx" && echo "match $f" || echo "MISS $f"
+      done
+  - text: >-
+      WHEN the context-window step runs, the four portable files SHALL be collected and
+      pass under pytest (33 tests), and WHEN the new tmux step runs on a host with tmux,
+      the watcher corpus SHALL run 3 tests and pass with none skipped.
+    probe: |
+      python3 -m pytest -q -rs scripts/tests/test_window_jump_shell.py scripts/tests/test_tmux_jump_shell.py scripts/tests/test_nz_jump_model_alias.py infra/claude-hooks/test_probe_log_cap.py scripts/tests/test_wa_army_watcher_shell.py 2>&1 | tail -1
+  - text: >-
+      WHEN tmux is absent from PATH the new step SHALL fail before pytest is invoked
+      (exit non-zero at command -v tmux), so a skipped corpus is never reported as a
+      passed one.
+    probe: |
+      env PATH=/usr/bin:/bin bash -c 'set -euo pipefail; command -v tmux; echo reached-pytest'; echo "rc=$?"
+  - text: >-
+      WHEN the workflow file is linted the way CI lints it (actionlint -shellcheck=) it
+      SHALL report nothing, and the repo's own workflow linters (timeout floor, errexit
+      decap) SHALL stay clean.
+    probe: |
+      actionlint -shellcheck= .github/workflows/guard-conformance.yml && echo actionlint-clean
+      python3 scripts/lint_workflow_timeout_floor.py --root .github/workflows | tail -1
+      python3 scripts/lint_workflow_errexit_decap.py --path .github/workflows | tail -1
+assumptions:
+  - text: >-
+      ubuntu-latest does not ship tmux, so without the install step the watcher corpus
+      would skip (its pytestmark skips the file when shutil.which("tmux") is None); the
+      apt package name is "tmux" and installs in well under a minute.
+    status: verified
+    probe: grep -n 'skipif\|which("tmux")' scripts/tests/test_wa_army_watcher_shell.py
+  - text: >-
+      The four portable corpora need nothing from the runner beyond python3, bash and
+      pytest. The osascript and tmux they exercise are shimmed on PATH or through the
+      TMUX_BIN/OSASCRIPT seams, and the darwin-only cases skip themselves off macOS.
+    status: verified
+    probe: grep -ln 'OSASCRIPT\|TMUX_BIN\|NZ_JUMP_DRY' scripts/tests/test_window_jump_shell.py scripts/tests/test_tmux_jump_shell.py scripts/tests/test_nz_jump_model_alias.py
+  - text: >-
+      The conformance job has room. Its last three successful runs took under 2 minutes
+      each against timeout-minutes 10, and the added work measured locally is about 80 s
+      plus the apt install.
+    status: verified
+    probe: gh run list --workflow=guard-conformance.yml --limit 3 --json databaseId,conclusion --jq '.[]|"\(.databaseId) \(.conclusion)"'
+  - text: >-
+      The registry's prose for window_jump.sh, tmux_jump.sh and nz-jump.sh says their
+      corpora are "collected by scripts-tests-sweep.yml". That stays true, this PR adds
+      a PR-time executor beside it rather than replacing it, so the registry needs no
+      edit.
+    status: verified
+    probe: grep -c 'scripts-tests-sweep.yml' infra/guard-conformance/registry.json
+appetite:
+  wall_clock_hours: 2
+  adversarial_rounds: 1

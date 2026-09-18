@@ -95,7 +95,10 @@ class Army:
     def close(self):
         if self.proc and self.proc.poll() is None:
             self.proc.kill()
-        subprocess.run([TMUX, "-L", self.sock, "kill-server"], capture_output=True)
+        try:
+            subprocess.run([TMUX, "-L", self.sock, "kill-server"], capture_output=True, timeout=10)
+        except subprocess.TimeoutExpired:
+            pass
 
 
 @pytest.fixture
