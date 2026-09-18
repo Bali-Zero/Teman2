@@ -1003,6 +1003,24 @@ CONTENT_KEYED_RULES: list[tuple[re.Pattern[str], re.Pattern[str], str]] = [
         "integrity anchors for detecting HOME-fork drift, never "
         "credentials (PR #6554)",
     ),
+    # secret_expansion_guard's registry (PR #6787): the `_*_doc` fields are
+    # PROSE explaining which variable NAMES and which store PATHS the guard
+    # treats as secret — `_API_KEY$`, `^ANTHROPIC_`, `~/.nuzantara-secrets.env`.
+    # The Secret Keyword detector fires on the field name plus its quoted
+    # value; the value is documentation, never a credential. Same reasoning as
+    # the pii_scan `claim:` rule above: a pattern NAMING a secret shape is not
+    # the secret — and this registry exists precisely so no value is ever
+    # written down next to the name.
+    #
+    # Content-keyed to the two `_doc` fields by name, so a real credential
+    # added to any OTHER line of the same registry stays unaudited.
+    (
+        re.compile(r"(^|/)infra/claude-hooks/secret-expansion-registry\.json$"),
+        re.compile(r'^\s*"_(?:secret_env_var_patterns|secret_files)_doc"\s*:\s*".*"\s*,?\s*$'),
+        "secret_expansion_guard registry `_doc` fields: prose describing which "
+        "variable names and store paths the guard judges, never a credential "
+        "value (PR #6787)",
+    ),
 ]
 
 # Each rule is (pattern, reason). The pattern matches the file path
