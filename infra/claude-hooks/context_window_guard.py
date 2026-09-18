@@ -188,8 +188,13 @@ def _handoff_path(session_id: str) -> Path:
 # jump-automatic-handoff-it.md): the first trip of this gate must not end with
 # "apri una finestra nuova" addressed to a human. It writes pending-jump.json
 # and — on a Ghostty interactive seat — spawns window_jump.sh (⌘N, `nz-jump`,
-# then `/exit` into the old window once the new session reports in). Headless
-# seats get only the file: the cascade wrapper re-invokes `claude -p` on it.
+# then `/exit` into the old window once the new session reports in). A claude
+# that sits in a tmux PANE (scripts/wa_army_launcher.sh, or a hand-made tmux
+# session inside any terminal) is seat "tmux" and gets tmux_jump.sh instead:
+# `tmux new-window` + `nz-jump`, then `/exit` into the old pane BY ID. Measured
+# 2026-09-16 on M5: five army sessions were classified headless (TERM_PROGRAM
+# was not ghostty), got no gesture, and died at the 400K deny. Headless seats
+# get only the file: the cascade wrapper re-invokes `claude -p` on it.
 # The new session's SessionStart hook (context_jump_resume.py) injects the
 # handoff and stamps `to_session`. Cap: JUMP_MAX_HOPS per chain — a mandate
 # that never converges must stop and escalate, not hop forever.
@@ -230,6 +235,28 @@ def _chain_link(from_session: str) -> dict | None:
 
 def _window_jump_script() -> Path:
     return _home() / ".claude" / "hooks" / "window_jump.sh"
+
+
+def _tmux_jump_script() -> Path:
+    return _home() / ".claude" / "hooks" / "tmux_jump.sh"
+
+
+def _seat() -> str:
+    """Where does this claude sit? TMUX is asked FIRST: inside a tmux pane the
+    terminal underneath still names itself (TERM_PROGRAM=tmux, or the outer
+    terminal's name carried in by update-environment), and the AppleScript
+    gesture would then open a Ghostty window while the OLD session lives in a
+    pane no window name can resolve. The pane id is the one address that ends
+    it, so the pane decides the seat."""
+    if os.environ.get("TMUX"):
+        return "tmux"
+    if os.environ.get("TERM_PROGRAM") == "ghostty":
+        return "ghostty"
+    return "headless"
+
+
+def _gesture_script(seat: str) -> Path:
+    return _tmux_jump_script() if seat == "tmux" else _window_jump_script()
 
 
 def _first_user_mandate(transcript_path: str) -> str:
@@ -321,17 +348,26 @@ def _gesture_available(jump: dict) -> bool:
 
     The capability question is `osascript`, the same one window_jump.sh asks of
     itself — not sys.platform: a Mac with no GUI seat is darwin and cannot make
-    the gesture, and the two must not disagree about who can."""
-    return (jump.get("seat") == "ghostty" and bool(shutil.which("osascript"))
-            and _window_jump_script().exists()
-            and os.environ.get("CONTEXT_JUMP_NO_SPAWN") != "1")
+    the gesture, and the two must not disagree about who can. On a tmux seat
+    the same question is the `tmux` binary plus a live server (TMUX set), as
+    tmux_jump.sh asks of itself."""
+    if os.environ.get("CONTEXT_JUMP_NO_SPAWN") == "1":
+        return False
+    seat = jump.get("seat")
+    if seat == "ghostty":
+        return bool(shutil.which("osascript")) and _window_jump_script().exists()
+    if seat == "tmux":
+        return (bool(shutil.which("tmux")) and bool(os.environ.get("TMUX"))
+                and _tmux_jump_script().exists())
+    return False
 
 
-def _spawn_gesture(from_session: str) -> int | None:
-    """Spawn the detached gesture; return its PID (recorded in the jump file so
-    a later trip can tell a FINISHED gesture from one still running)."""
+def _spawn_gesture(from_session: str, seat: str) -> int | None:
+    """Spawn the detached gesture OF THIS SEAT; return its PID (recorded in the
+    jump file so a later trip can tell a FINISHED gesture from one still
+    running)."""
     try:
-        proc = subprocess.Popen(["bash", str(_window_jump_script()), from_session],
+        proc = subprocess.Popen(["bash", str(_gesture_script(seat)), from_session],
                                 stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
                                 stderr=subprocess.DEVNULL, start_new_session=True)
         return proc.pid
@@ -440,7 +476,7 @@ def _retry_gesture(path: Path, from_session: str):
         return None
     if not _gesture_available(jump):
         return None
-    pid = _spawn_gesture(from_session)
+    pid = _spawn_gesture(from_session, str(jump.get("seat") or ""))
     if pid is None:
         return None
     n = _stamp_gesture_attempt(path, pid)
@@ -450,8 +486,8 @@ def _retry_gesture(path: Path, from_session: str):
 
 
 def _write_pending_jump(payload: dict, model: str, handoff_path: Path, mandate: str):
-    """Write pending-jump-<session>.json and, on a Ghostty seat, spawn
-    window_jump.sh detached. Returns what was actually done, so the deny text
+    """Write pending-jump-<session>.json and, on a Ghostty or tmux seat, spawn
+    that seat's gesture script detached. Returns what was actually done, so the deny text
     can say it honestly: "spawned" (the window gesture was STARTED — its
     outcome is only in jump.log, the hook does not wait for it), "recorded"
     (file written, no gesture: headless seat or no script), "retried:<n>" (the
@@ -486,7 +522,7 @@ def _write_pending_jump(payload: dict, model: str, handoff_path: Path, mandate: 
         "mandate": mandate,
         "hops": hops,
         "ts": time.time(),
-        "seat": "ghostty" if os.environ.get("TERM_PROGRAM") == "ghostty" else "headless",
+        "seat": _seat(),
         "gesture_attempts": 0,
         "gesture_pid": None,
     }
@@ -497,9 +533,9 @@ def _write_pending_jump(payload: dict, model: str, handoff_path: Path, mandate: 
         tmp.replace(path)
     except OSError:
         return None
-    # The file must exist BEFORE the gesture: window_jump.sh reads it.
+    # The file must exist BEFORE the gesture: the gesture script reads it.
     if _gesture_available(jump):
-        pid = _spawn_gesture(from_session)
+        pid = _spawn_gesture(from_session, jump["seat"])
         if pid is not None:
             _stamp_gesture_attempt(path, pid)
             return "spawned"
@@ -795,12 +831,12 @@ def main() -> int:
         f"[context_window_guard] Contesto ≈{tokens_k}K token = {pct_i}% della finestra "
         f"(soglia {role} {threshold_i}%). Modello: {model}; finestra assunta {window_k}K ({reason}). "
         f"Handoff: {handoff_str}.\n"
-        + (f"Salto di finestra TENTATO (window_jump.sh in background, esito SOLO in "
+        + (f"Salto di finestra TENTATO ({_gesture_script(_seat()).name} in background, esito SOLO in "
            f"{_jump_dir() / 'jump.log'}): se entro ~15s non compare una finestra nuova con il "
            f"mandato, aprine una tu e scrivi: nz-jump {session_id}. Chiudi il turno.\n"
            if jumped == "spawned" else
            f"Salto: gesto ritentato ({str(jumped).split(':')[1]}/{JUMP_MAX_GESTURES}) — la finestra "
-           f"precedente non era arrivata (window_jump.sh in background, esito SOLO in "
+           f"precedente non era arrivata ({_gesture_script(_seat()).name} in background, esito SOLO in "
            f"{_jump_dir() / 'jump.log'}): se non compare, aprine una tu e scrivi: "
            f"nz-jump {session_id}. Chiudi il turno.\n"
            if str(jumped).startswith("retried:") else
@@ -809,7 +845,7 @@ def main() -> int:
            f"{_jump_dir() / 'jump.log'}; a mano: nz-jump {session_id}. Chiudi il turno.\n"
            if jumped == "retried-unrecorded" else
            f"Salto REGISTRATO ({_pending_jump_path(session_id).name}), nessun gesto di finestra "
-           f"(seat headless: il wrapper claude-cascade fa l'hop; a mano: nz-jump {session_id}). "
+           f"(seat {_seat()}, gesto non disponibile: il wrapper claude-cascade fa l'hop; a mano: nz-jump {session_id}). "
            "Chiudi il turno.\n"
            if jumped == "recorded" else
            f"Salto non avviato (kill switch, cap salti o già in corso: esito in {_jump_dir() / 'jump.log'}).\n")

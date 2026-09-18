@@ -1,0 +1,100 @@
+task_id: cc-tmux-jump-seat
+gear: 2
+l_level: L2
+gate_class: opus
+# Floor for this diff is 2, reached via the SIZE term alone (475 added / 26 deleted across 7
+# files before this brief and the one test fix) — no hot-zone path, no migration, no new
+# dependency. Measured WITH this brief staged: total stays far under the floor-3 threshold.
+objective: >-
+  The context guard's window jump only knew one seat: Ghostty, driven by AppleScript. A session
+  running inside a tmux pane — every wa_army_launcher.sh session, and any operator who works in
+  tmux — tripped the guard and got "Salto REGISTRATO" with no gesture, so the handoff sat in
+  pending-jump until a human noticed. This PR gives the guard a seat model (tmux > ghostty >
+  headless, TMUX in the env decides) and a tmux gesture: new window after the old one, the
+  nz-jump launcher typed in, the successor awaited by its to_session stamp, then /exit typed into
+  the old pane by its own pane id, SIGINT×2 as the fallback. The same retry ledger, the same
+  jump.log grammar, the same kill switches as the Ghostty gesture.
+constraints:
+  - >-
+    No new dependency: tmux is optional. Pro has no tmux binary (verified over ssh), so on Pro the
+    file is installed for parity only and a tmux-less seat is headless — the guard records the
+    jump and never spawns, exactly as before this PR.
+  - >-
+    The gesture never claims what it did not do. Every early exit logs "nothing typed" and never
+    types /exit; an unclaimed successor (no to_session within JUMP_WAIT_S) leaves the old pane
+    open with rc 2. The retry logic reads those exact log lines, so a false "opened, typed" line
+    would silently stop the retries — the shell corpus pins each line.
+  - >-
+    argv is never spliced: from-session, cwd and launcher path travel as separate send-keys -l
+    arguments, never through a shell string. A cwd containing "; $tricks" reaches tmux verbatim.
+  - >-
+    No secret, no PII: the gesture handles session ids, pane ids and paths only; jump.log carries
+    the same fields it carried before.
+acceptance:
+  - text: >-
+      A1 GUILT: WHEN the guard trips inside a tmux pane (TMUX and TMUX_PANE set, tmux on PATH,
+      tmux_jump.sh installed) SHALL spawn tmux_jump.sh and never window_jump.sh, even when
+      TERM_PROGRAM still says ghostty; a missed gesture SHALL be retried with the tmux gesture.
+    probe: "python3 -m pytest -q infra/claude-hooks/test_context_window_jump.py -k 'tmux_seat_spawns or tmux_pane_is_seat or missed_tmux'"
+  - text: >-
+      A2 INNOCENCE: WHEN a tmux binary is on PATH but TMUX is unset SHALL be the headless seat;
+      WHEN the seat is tmux but the script or the binary is missing SHALL record the jump with
+      zero gesture attempts. The capability question is answered on a PATH the test owns alone
+      — a runner's own /usr/bin/tmux must not answer it (the first CI run of this corpus).
+    probe: "python3 -m pytest -q infra/claude-hooks/test_context_window_jump.py -k 'binary_alone or without_its_script'"
+  - text: >-
+      A3 THE GESTURE: WHEN run with a pending jump SHALL call tmux in this order — display-message
+      for the old window, new-window -a after it, send-keys -l with the launcher then Enter, poll
+      to_session, send-keys -l /exit then Enter into the old pane — SHALL fall back to
+      SIGINT×2 on the from_pid only when /exit did not end it, and SHALL log the old
+      session's outcome line in every case, including a pid already gone when it looked
+      (the first live run ended with no outcome line: fixed in the rework commit).
+    probe: "python3 -m pytest -q scripts/tests/test_tmux_jump_shell.py -k 'next_to_own_window or dead_from_pid or never_spliced'"
+  - text: >-
+      A4 NEVER A FALSE CLAIM: WHEN the old pane is not on the server, new-window fails, or
+      send-keys is refused SHALL exit 1 with "nothing typed" and no /exit; WHEN the successor never
+      stamps to_session SHALL exit 2 and leave the old pane open; WHEN TMUX/TMUX_PANE are unset or
+      tmux is absent SHALL make no tmux call at all.
+    probe: "python3 -m pytest -q scripts/tests/test_tmux_jump_shell.py -k 'never_claims or no_new_window or send_keys_refused or outside_tmux or not_on_the_server or kill_switch or no_tmux_binary'"
+  - text: >-
+      A5 INSTALL PARITY: WHEN install_window_jump.sh --check runs SHALL enumerate five declared
+      pairs (guard, two gestures, launcher, resume) from infra/home-fork/declared-pairs.json.
+      Before the live install (every pre-merge run of this probe) --check exits 1 naming the two
+      pairs that differ, guard and tmux_jump.sh — that exit is the HOME-fork discipline, not a
+      defect; after `bash infra/claude-hooks/install_window_jump.sh` on a machine it exits 0 and
+      the installer (not --check) self-verifies both corpora on the installed copies.
+    probe: "bash infra/claude-hooks/install_window_jump.sh --check 2>&1 | grep -q '5 declared pairs'"
+  - text: >-
+      A6 NOTHING ELSE MOVED: WHEN the hook innocence vaccine and the guard-conformance checker run
+      SHALL report no new deny and zero violations; the guard corpus SHALL stay green.
+    probe: "python3 infra/claude-hooks/test_hook_innocence.py && python3 infra/guard-conformance/check_guard_conformance.py && python3 -m pytest -q infra/claude-hooks/test_context_window_guard.py"
+assumptions:
+  - text: >-
+      THE GESTURE OBSERVED FOR REAL, pre-merge, with this branch's tmux_jump.sh on a real tmux
+      server (`tmux -L nzprobe`), a scratch HOME, a stand-in old session (a bash loop that exits
+      on a typed /exit, its pid as from_pid) and a stand-in nz-jump on NZ_JUMP_BIN that stamps
+      to_session: rc 0; scratch jump.log = "tmux: new window %1 opened, 'nz-jump live-probe'
+      typed" → "new session succ-live-probe is up" → "/exit typed into old pane %0"; a second
+      window on the server; the stand-in pid gone. The live ~/.organism jump.log was not touched.
+      The live install on M5 and Pro follows the merge, by the HOME-fork discipline, and its own
+      observation is posted as a PR comment by the shipping session.
+    status: verified
+    probe: "HOME=<scratch> TMUX=<socket>,<pid>,0 TMUX_PANE=<old pane> NZ_JUMP_BIN=<stand-in> JUMP_WAIT_S=30 bash infra/claude-hooks/tmux_jump.sh live-probe; cat <scratch>/.organism/context-guard/jump.log"
+  - text: >-
+      window_jump.sh (the Ghostty twin) has the same silent branch when the old pid is already
+      gone at the alive check; this PR fixes only the tmux gesture it introduces. Parity fix on
+      the twin is a follow-up, one concern per PR.
+    status: open
+    probe: "grep -n 'ended by /exit' infra/claude-hooks/window_jump.sh"
+  - text: >-
+      An army session's watcher reads ARMY_DONE from the OLD pane's pipe-pane log only; the
+      successor pane opened by this gesture is not piped, so a jump inside an army session moves
+      the work but not the watcher's eyes. Documented in the PR body; a follow-up on
+      wa_army_launcher.sh, not this PR.
+    status: open
+    probe: "grep -n 'pipe-pane\\|ARMY_DONE' scripts/wa_army_launcher.sh"
+  - text: >-
+      Pro has no tmux on PATH, so the tmux seat can only be exercised on M5 today; the Pro install
+      is a parity copy that the home-fork lint keeps in step.
+    status: verified
+    probe: "ssh pro 'command -v tmux || echo none'"

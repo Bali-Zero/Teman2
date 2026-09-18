@@ -430,6 +430,12 @@
       "machines": ["all"]
     },
     {
+      "live": "~/.claude/hooks/tmux_jump.sh",
+      "repo": "infra/claude-hooks/tmux_jump.sh",
+      "_note": "Window jump, tmux seat (2026-09-18: five army sessions in tmux on M5 — scripts/wa_army_launcher.sh — were classified headless, got no gesture and died at the 400K deny). The GESTURE for a claude that sits in a tmux pane: tmux new-window in the same session + nz-jump, then /exit into the old PANE by id. Any OS with tmux; Pro/Mini carry the file for parity and the guard only spawns it when TMUX is set.",
+      "machines": ["all"]
+    },
+    {
       "live": "~/.claude/scripts/nz-jump",
       "repo": "infra/claude-hooks/nz-jump.sh",
       "_note": "Window jump (Ruling Zero 2026-09-09, research/operations/2026-09-09-window-jump-automatic-handoff-it.md). Declared at birth; armed by the shipping session on the seats where it applies. The one word typed into the new window; starts a FRESH claude with the continuation prompt (never --resume/--continue/--fork-session).",

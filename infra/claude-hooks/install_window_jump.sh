@@ -1,12 +1,13 @@
 #!/bin/bash
-# install_window_jump.sh — install the WINDOW JUMP quartet into $HOME on a seat.
+# install_window_jump.sh — install the WINDOW JUMP quintet into $HOME on a seat.
 #
-# The four DECLARED pairs of the jump, in the order the chain uses them:
+# The five DECLARED pairs of the jump, in the order the chain uses them:
 #   context_window_guard.py  the PreToolUse gate that decides to jump — and where
 #                            the gesture RETRY and the from_pid chain-walk live,
 #                            so a seat installed without it gets v1 behaviour
 #                            from a v2 checkout;
-#   window_jump.sh           the AppleScript gesture;
+#   window_jump.sh           the AppleScript gesture (Ghostty seat);
+#   tmux_jump.sh             the tmux gesture (a claude that sits in a tmux pane);
 #   nz-jump                  the one word typed into the new window;
 #   context_jump_resume.py   the SessionStart injector that stamps to_session.
 #
@@ -22,7 +23,7 @@
 #
 # Registers NOTHING in settings.json: the guard's own PreToolUse registration is
 # a separate, deliberate act (see PENDING-ARMS.md) — this script only makes the
-# four live copies match the checkout, which is cicatrix #1's cure, not #2's.
+# five live copies match the checkout, which is cicatrix #1's cure, not #2's.
 #
 #   bash infra/claude-hooks/install_window_jump.sh          # install + self-verify
 #   bash infra/claude-hooks/install_window_jump.sh --check   # report only, write nothing
@@ -45,6 +46,7 @@ PY_PAIRS='
 import json, os, sys
 want = {"infra/claude-hooks/context_window_guard.py",
         "infra/claude-hooks/window_jump.sh",
+        "infra/claude-hooks/tmux_jump.sh",
         "infra/claude-hooks/nz-jump.sh",
         "infra/claude-hooks/context_jump_resume.py"}
 pairs = json.load(open(sys.argv[1]))["pairs"]
@@ -67,9 +69,9 @@ done < <(python3 -c "$PY_PAIRS" "$PAIRS")
 for row in "${ROWS[@]}"; do
     [ "${row%%	*}" = "MISSING" ] && { echo "FATAL: not declared in declared-pairs.json: ${row#*	}"; exit 2; }
 done
-[ "${#ROWS[@]}" -eq 4 ] || { echo "FATAL: expected 4 declared pairs, got ${#ROWS[@]}"; exit 2; }
+[ "${#ROWS[@]}" -eq 5 ] || { echo "FATAL: expected 5 declared pairs, got ${#ROWS[@]}"; exit 2; }
 
-echo "== window jump: ${#ROWS[@]} declared pairs (guard + gesture + launcher + resume) =="
+echo "== window jump: ${#ROWS[@]} declared pairs (guard + 2 gestures + launcher + resume) =="
 CHANGED=0
 for row in "${ROWS[@]}"; do
     rel="${row%%	*}"; live="${row#*	}"
@@ -102,7 +104,19 @@ INSTALLED_GESTURE="$(for row in "${ROWS[@]}"; do
 if WINDOW_JUMP_SH="$INSTALLED_GESTURE" bash "$SRC/test_window_jump_gesture.sh"; then
     echo "== GREEN — the installed gesture types into the NEW window (osascript shimmed). =="
     echo "   The guard spawns it: nothing to register. Kill switch: CONTEXT_JUMP_OFF=1"
-    exit 0
+    echo "== self-verify: the tmux gesture corpus against the INSTALLED tmux_jump.sh =="
+    INSTALLED_TMUX="$(for row in "${ROWS[@]}"; do
+        [ "${row%%	*}" = "infra/claude-hooks/tmux_jump.sh" ] && echo "${row#*	}"; done)"
+    if ! python3 -c "import pytest" >/dev/null 2>&1; then
+        echo "   (pytest not available on this seat: tmux corpus not run here — CI runs it)"
+        exit 0
+    fi
+    if TMUX_JUMP_SH="$INSTALLED_TMUX" python3 -m pytest -q "$REPO/scripts/tests/test_tmux_jump_shell.py"; then
+        echo "== GREEN — the installed tmux gesture types into the NEW pane and /exit into the OLD one (tmux shimmed). =="
+        exit 0
+    fi
+    echo "== RED — the INSTALLED tmux_jump.sh fails its own corpus. CONTEXT_JUMP_OFF=1 disarms the jump meanwhile."
+    exit 1
 fi
 echo "== RED — the INSTALLED copy fails its own corpus. Do not trust the jump on this seat:"
 echo "   read infra/claude-hooks/test_window_jump_gesture.sh output above, fix the repo copy,"
