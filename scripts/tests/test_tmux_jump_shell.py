@@ -126,6 +126,9 @@ def test_a_dead_from_pid_is_reported_as_ended_by_exit_not_signalled(tmp_path):
     rc, calls, log = _run(home, "s-dead")
     assert rc == 0 and dead.returncode == 0
     assert "SIGINT" not in log and "/exit typed into old pane %1" in log
+    # the outcome line is owed even when the pid was gone before the gesture looked:
+    # the first live run (scratch tmux server, 2026-09-18) ended with no outcome line at all
+    assert "ended by /exit" in log
 
 
 def test_launcher_path_and_cwd_reach_tmux_as_argv_never_spliced(tmp_path):

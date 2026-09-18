@@ -84,5 +84,8 @@ if alive "$FROM_PID"; then
     else
         log "old session pid $FROM_PID ended by /exit"
     fi
+else
+    # already gone when we looked: the outcome line is owed to the log either way
+    log "old session pid $FROM_PID ended by /exit"
 fi
 exit 0
