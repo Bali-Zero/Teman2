@@ -6,6 +6,13 @@
 # Telegram e termina. Se la sessione tmux muore senza ARMY_DONE entro il timeout, manda
 # un alert di "armata terminata senza PR" (probabile crash/halt).
 #
+# La sessione cambia pane: il context guard (tmux_jump.sh) sposta claude in una NUOVA
+# finestra della stessa sessione e chiude la vecchia. pipe-pane è per-pane, la finestra
+# nuova nasce senza pipe e ARMY_DONE non arriva più nel log (2026-09-18: armate finite
+# segnalate come "scaduto"/"terminata SENZA PR"). Ogni giro il watcher aggancia i pane
+# ancora senza pipe — SOLO quelli: `pipe-pane -o` su un pane già agganciato lo SGANCIA
+# (toggle, misurato su tmux 3.7b) e spegnerebbe il log del launcher.
+#
 # Uso: wa_army_watcher.sh <tmux-session> <army-name> <log-file>
 
 set -euo pipefail
@@ -18,6 +25,9 @@ LOG_FILE="${3:?manca log-file}"
 TG_CHAT_ID="${WA_ARMY_TG_CHAT_ID:-8865544795}"
 # Timeout massimo di sorveglianza (default 6h). Oltre, smette di seguire.
 MAX_WATCH_S="${WA_ARMY_MAX_WATCH_S:-21600}"
+# Intervallo di polling (default 15s); il tmux da usare (seam per i test).
+POLL_S="${WA_ARMY_POLL_S:-15}"
+TMUX_BIN="${TMUX_BIN:-tmux}"
 
 # Recupera il bot token dallo stesso modo del resto dell'organismo: dai LaunchAgent plist
 # che lo hanno valorizzato (NON in chiaro qui — Law: secret non hardcoded).
@@ -45,10 +55,20 @@ tg_send() {
     -d "disable_web_page_preview=true" >/dev/null 2>&1 || true
 }
 
+repipe_unpiped_panes() {
+  local pane piped
+  while read -r pane piped; do
+    [ -n "$pane" ] && [ "$piped" = "0" ] || continue
+    "$TMUX_BIN" pipe-pane -t "$pane" -o "cat >> '$LOG_FILE'" 2>/dev/null || true
+  done < <("$TMUX_BIN" list-panes -s -t "$SESSION" -F '#{pane_id} #{pane_pipe}' 2>/dev/null || true)
+}
+
 START_TS=$(date +%s)
 
 # Segui il log finché: (a) troviamo ARMY_DONE, (b) la sessione tmux muore, (c) timeout.
 while true; do
+  repipe_unpiped_panes
+
   # (c) timeout
   now=$(date +%s)
   if [ $(( now - START_TS )) -ge "$MAX_WATCH_S" ]; then
@@ -68,7 +88,7 @@ Attach: tmux attach -t ${SESSION}"
   fi
 
   # (b) sessione morta senza ARMY_DONE?
-  if ! tmux has-session -t "$SESSION" 2>/dev/null; then
+  if ! "$TMUX_BIN" has-session -t "$SESSION" 2>/dev/null; then
     # piccola grazia: l'ARMY_DONE potrebbe essere appena stato scritto prima del kill
     sleep 2
     if [ -f "$LOG_FILE" ] && grep -qE "ARMY_DONE ${ARMY}\b" "$LOG_FILE" 2>/dev/null; then
@@ -85,5 +105,5 @@ Log: ${LOG_FILE}"
     exit 0
   fi
 
-  sleep 15
+  sleep "$POLL_S"
 done
