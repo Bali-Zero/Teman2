@@ -84,9 +84,15 @@ describe("the page's own reader gates the citation with the whole-code PMA tuple
     // The locator artifact still carries these narrower source facts, tested
     // above. Both whole-code records are declared gaps, however, so the public
     // PMA object must not use that artifact to manufacture a verified verdict.
+    // 56101 no longer serves as the residual exemplar: the 2026-09-18 naso
+    // lot relabelled it `located`, which is the artifact's fact ARRIVING in
+    // the canonical rather than the reader promoting it. 79121 replaces it —
+    // the same `residual-besar-observed` locator, still a declared gap because
+    // the lot WITHHELD it (79122 is adjudicated TERBATAS/0 in the same 4-digit
+    // subgolongan), so the gate is still under load.
     const { getCode } = await import("./kbli-data");
-    const restaurant = getCode("56101");
-    expect(restaurant?.pma.citation).toBeNull();
+    const travelAgency = getCode("79121");
+    expect(travelAgency?.pma.citation).toBeNull();
     const guestHouse = getCode("55209");
     expect(guestHouse?.pma.citation).toBeNull();
   });
