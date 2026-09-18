@@ -8,13 +8,18 @@ For every workflow-harness script under infra/workflows/*.js:
   RULE 1 (model pin) — every `agent(` call's options object carries a literal `model:`
     property. infra/claude-hooks/model_routing_gate.py enforces the analogous rule for
     THIS session's own Agent tool dispatches; it never sees infra/workflows/*.js, whose
-    `agent()` is a different, workflow-harness-local function. A third, RUNTIME guard
-    sits under this static one for that same file family:
+    `agent()` is a different, workflow-harness-local function. A RUNTIME backstop exists
+    for exactly ONE file in this family, not all of it (corrected 2026-09-18, DEFECT
+    :11, PR3d — the prior wording claimed it covered "that same file family"):
     infra/workflows/run-second-army.mjs:121's `assertModelPinned` throws when a lane's
-    `opts.model` is missing, which is what actually catches the wrapper-indirection
-    shape RULE 1's own exemption below cannot see lexically (see CONDITION 3,
-    documented_bypass.js). Same failure mode either way: an unpinned call silently
-    inherits whatever model the harness defaults to.
+    `opts.model` is missing, but that runner only ever loads second-army.js
+    (run-second-army.mjs:26's own DEFAULT_SCRIPT_PATH) — the other five live files
+    (kbli-batch-a-lot.js, kbli-pilot-a1.js, modus-bench.js, saetta.js, verify-template.js)
+    are native Workflow DSL with no such runner, so a missing `model:` there silently
+    inherits the session model instead (.claude/skills/workflow/SKILL.md:38). This
+    static lint is the only guard those five have. The wrapper-indirection exemption
+    below stays for the same reason either way: all three live callSeat(...) sites pin
+    `model: "sonnet"` themselves (see CONDITION 3, documented_bypass.js).
 
   RULE 2 (no self-styled gate) — no `agent(` call's `label:` may contain "gate"
     (case-insensitive). A workflow script that labels one of its own steps a gate is
@@ -158,11 +163,35 @@ def _neutralize_js(src: str) -> str:
     return "".join(out)
 
 
-def _options_arg_is_object_literal(call_neutral: str) -> bool:
+def _unwrap_parens(text: str) -> str:
+    """Strips matched wrapping parens (`((x))` -> `x`), but leaves an expression like
+    `(a)+(b)` alone: a wrapping pair only counts when its OWN matching close is the
+    LAST character of `text` -- depth returns to zero exactly once, at the very end.
+    DEFECT :184 (PR3d, 2026-09-18): a parenthesized object literal such as
+    `agent(p, ({ label: "x" }))` was skipped entirely as unreadable indirection; it is
+    exactly as readable as the unwrapped form once this strips the wrapping paren."""
+    text = text.strip()
+    while text.startswith("(") and text.endswith(")"):
+        depth = 0
+        close_idx = -1
+        for idx, ch in enumerate(text):
+            if ch == "(":
+                depth += 1
+            elif ch == ")":
+                depth -= 1
+                if depth == 0:
+                    close_idx = idx
+                    break
+        if close_idx != len(text) - 1:
+            break  # the first "(" closes before the end -- not a wrapping pair
+        text = text[1:-1].strip()
+    return text
+
+
+def _last_top_level_arg(call_neutral: str) -> str:
     """call_neutral is the full, neutralized `agent(...)` call text (outer parens
-    included). True only when the LAST top-level argument looks like an object
-    literal (`{...}`) — see the module docstring's first exemption. False for a
-    bare identifier/expression there (nothing to lexically check; not accused)."""
+    included). Returns the LAST top-level argument's own neutralized text, with any
+    wrapping indirection parens stripped (see _unwrap_parens)."""
     inner = call_neutral[1:-1].rstrip()
     if inner.endswith(","):
         # a JS trailing comma before the closing `)` (Prettier's own style) — not a
@@ -184,7 +213,46 @@ def _options_arg_is_object_literal(call_neutral: str) -> bool:
     # the last (and only) argument, same as a multi-arg call's tail. Previously this
     # returned False unconditionally here, silently skipping `agent({...})` calls.
     last_arg = inner[top_commas[-1] + 1 :].strip() if top_commas else inner.strip()
-    return last_arg.startswith("{")
+    return _unwrap_parens(last_arg)
+
+
+def _options_arg_is_object_literal(call_neutral: str) -> bool:
+    """True only when the LAST top-level argument (see _last_top_level_arg) looks like
+    an object literal (`{...}`) — see the module docstring's first exemption. False for
+    a bare identifier/expression there (nothing to lexically check; not accused)."""
+    return _last_top_level_arg(call_neutral).startswith("{")
+
+
+def _top_level_entries(obj_inner: str) -> list[str]:
+    """obj_inner is a neutralized object literal's content WITHOUT its outer braces.
+    Splits on top-level commas only (same depth-tracking idiom as
+    _last_top_level_arg) so a `model:` key inside a NESTED value (e.g.
+    `schema: { properties: { model: {...} } }`) is never mistaken for one of THIS
+    object's own top-level entries — DEFECT :229, PR3d, 2026-09-18."""
+    depth = 0
+    start = 0
+    entries: list[str] = []
+    for idx, ch in enumerate(obj_inner):
+        if ch in "([{":
+            depth += 1
+        elif ch in ")]}":
+            depth -= 1
+        elif ch == "," and depth == 0:
+            entries.append(obj_inner[start:idx])
+            start = idx + 1
+    entries.append(obj_inner[start:])
+    return entries
+
+
+def _entry_key_is_model(entry: str) -> bool:
+    """entry is one top-level `key: value` slice from _top_level_entries. True only
+    when a `model\\s*:` match is the entry's OWN key — nothing but whitespace/quotes
+    precedes it in this entry's own text — never a `model:` occurring deeper inside
+    that same entry's value (the exact shape DEFECT :229 missed)."""
+    m = MODEL_KEY_RE.search(entry)
+    if not m:
+        return False
+    return not entry[: m.start()].strip(" \t\n'\"")
 
 
 def _is_bounded_for_of_in(loop_keyword: str, header_inner: str) -> bool:
@@ -231,7 +299,14 @@ def find_violations(path: Path) -> list[tuple[int, str]]:
         line_no = src[: m.start()].count("\n") + 1
         if not _options_arg_is_object_literal(call_neutral):
             continue  # indirection (e.g. a provenance wrapper) — not lexically checkable
-        if not MODEL_KEY_RE.search(call_neutral):
+        obj_literal = _last_top_level_arg(call_neutral)
+        # DEFECT :229 (PR3d, 2026-09-18): MODEL_KEY_RE.search(call_neutral) used to match
+        # `model:` at ANY nesting depth, so a `model:` buried inside a nested `schema:
+        # { properties: { model: {...} } }` value passed this check unpinned. Require
+        # `model:` as a genuine TOP-LEVEL key of the options object literal itself.
+        if not any(
+            _entry_key_is_model(entry) for entry in _top_level_entries(obj_literal[1:-1])
+        ):
             violations.append((line_no, "agent( call has no literal `model:`"))
         label_m = LABEL_VALUE_RE.search(call_original)
         if label_m and "gate" in label_m.group(1).lower():
@@ -240,8 +315,13 @@ def find_violations(path: Path) -> list[tuple[int, str]]:
             )
 
     phase_calls = [(m.start(), m.group(2)) for m in PHASE_CALL_RE.finditer(src)]
-    for idx, (start, name) in enumerate(phase_calls):
-        end = phase_calls[idx + 1][0] if idx + 1 < len(phase_calls) else len(src)
+    # DEFECT :245 (PR3d, 2026-09-18): spans used to start at the FIRST phase( call, so
+    # any loop above it — and every loop in a file with no phase( at all — sat outside
+    # every span and was never scanned. An implicit leading span (name=None) covers
+    # exactly that gap; it stands in for the WHOLE file when phase_calls is empty.
+    spans = [(0, None)] + phase_calls
+    for idx, (start, name) in enumerate(spans):
+        end = spans[idx + 1][0] if idx + 1 < len(spans) else len(src)
         span_neutral = neutral[start:end]
         for loop_m in LOOP_RE.finditer(span_neutral):
             loop_open = start + loop_m.end() - 1
@@ -250,13 +330,20 @@ def find_violations(path: Path) -> list[tuple[int, str]]:
             if _is_bounded_for_of_in(loop_m.group(1), header_neutral[1:-1]):
                 continue  # bounded by its own finite collection — not a round-cap risk
             has_int = bool(INT_LITERAL_RE.search(header_neutral))
-            has_cap_name = bool(CAP_NAME_RE.search(src[start:end]))
+            # DEFECT :253 (PR3d, 2026-09-18): this used to search src[start:end] — the
+            # UN-neutralized source — so a cap name mentioned only in a comment or a
+            # prompt string above an actually-uncapped loop silenced the rule
+            # (cicatrix #3: substring/text match, not a real code entity). Search the
+            # already-neutralized span instead: a comment or string mention is blanked
+            # there, so only a REAL cap-name token in code can satisfy the rule.
+            has_cap_name = bool(CAP_NAME_RE.search(span_neutral))
             if not has_int and not has_cap_name:
                 line_no = src[:loop_open].count("\n") + 1
+                where = f'phase("{name}")' if name is not None else "no phase("
                 violations.append(
                     (
                         line_no,
-                        f'phase("{name}") has a {loop_m.group(1)}( loop with no numeric '
+                        f"{where} has a {loop_m.group(1)}( loop with no numeric "
                         "cap or maxRounds-style constant in its span",
                     )
                 )

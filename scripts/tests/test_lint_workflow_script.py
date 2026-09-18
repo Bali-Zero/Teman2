@@ -88,6 +88,75 @@ def test_single_argument_agent_object_literal_is_checked(lint):
     assert "model:" in violations[0][1]
 
 
+def test_cap_name_only_in_comment_is_violation(lint):
+    """DEFECT :253 (PR3d, 2026-09-18): a cap name mentioned only in a comment must not
+    silence RULE 3 — the loop below it is genuinely uncapped."""
+    violations = lint.find_violations(FIXTURES_DIR / "cap_name_only_in_comment.js")
+    assert len(violations) == 1
+    assert "cap" in violations[0][1]
+
+
+def test_cap_name_in_code_stays_clean(lint):
+    """Twin of the guilt fixture above: a REAL maxRounds constant must still satisfy
+    RULE 3 once the search moves to the neutralized span."""
+    assert lint.find_violations(FIXTURES_DIR / "cap_name_in_code.js") == []
+
+
+def test_loop_before_first_phase_is_violation(lint):
+    """DEFECT :245 (PR3d, 2026-09-18): a loop above the file's first phase( call must
+    still be scanned — only the pre-phase, genuinely-uncapped loop fires."""
+    violations = lint.find_violations(FIXTURES_DIR / "loop_before_first_phase.js")
+    assert len(violations) == 1
+    assert "no phase(" in violations[0][1]
+
+
+def test_no_phase_uncapped_loop_is_violation(lint):
+    """DEFECT :245 (PR3d, 2026-09-18): a file with NO phase( call at all must still be
+    scanned — an empty phase_calls list must not mean an empty spans list."""
+    violations = lint.find_violations(FIXTURES_DIR / "no_phase_uncapped_loop.js")
+    assert len(violations) == 1
+    assert "no phase(" in violations[0][1]
+
+
+def test_no_phase_capped_loop_stays_clean(lint):
+    """Twin of the fixture above: the new implicit leading span must not over-fire on
+    a phase(-less file whose loop genuinely IS capped."""
+    assert lint.find_violations(FIXTURES_DIR / "no_phase_capped_loop.js") == []
+
+
+def test_nested_model_key_is_violation(lint):
+    """DEFECT :229 (PR3d, 2026-09-18): a `model:` key nested inside
+    schema.properties.model must not satisfy RULE 1 — only a genuine top-level
+    `model:` on the options object literal counts."""
+    violations = lint.find_violations(FIXTURES_DIR / "nested_model_key.js")
+    assert len(violations) == 1
+    assert "model:" in violations[0][1]
+
+
+def test_nested_schema_with_top_level_model_stays_clean(lint):
+    """Twin of the fixture above: the SAME nested schema.properties.model shape is
+    still clean once a real top-level model: is also present."""
+    assert lint.find_violations(FIXTURES_DIR / "nested_schema_with_top_level_model.js") == []
+
+
+def test_parenthesized_object_literal_is_checked(lint):
+    """DEFECT :184 (PR3d, 2026-09-18): a parenthesized object literal
+    (`agent(p, ({ label: "x" }))`) used to be skipped as unreadable indirection --
+    it must be read exactly like the unwrapped form."""
+    violations = lint.find_violations(FIXTURES_DIR / "parenthesized_object_literal.js")
+    assert len(violations) == 1
+    assert "model:" in violations[0][1]
+
+
+def test_parenthesized_object_literal_with_model_stays_clean(lint):
+    """Twin of the fixture above: the same wrapping-paren shape stays clean once a
+    real top-level model: is present."""
+    assert (
+        lint.find_violations(FIXTURES_DIR / "parenthesized_object_literal_with_model.js")
+        == []
+    )
+
+
 def test_for_await_loop_is_recognised(lint):
     """OBSERVATION 5 (PR3a', 2026-09-18): `for await (` must be recognised as a loop.
     The declared for-await...of stays exempt (bounded, same as plain for...of); the
