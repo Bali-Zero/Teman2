@@ -19,12 +19,18 @@ AFTER the new session claimed the jump, by an OSC title stamped on the tty of
 `from_pid` (seam: JUMP_TTY=<file>) — only the old claude's own terminal can show
 it — and `/exit` goes to the ONE window whose name carries the session id, or
 nowhere. On 2026-09-17 01:35 the front window was Zero's fresh Sonnet session.
+
+Portable since 2026-09-19: the script gates on the OSASCRIPT binary, not on
+uname, and this corpus supplies that binary, so it runs on ubuntu CI too. It
+used to carry a file-level Darwin-only skip written when the script still
+exited 0 off macOS; after #6788 wired it into guard-conformance.yml the runner
+collected 11 skips and the corpus could never go red on a PR (gate notice on
+#6788). Every macOS-only call (ps -o tty=, osascript) is behind a seam here.
 """
 from __future__ import annotations
 
 import json
 import os
-import platform
 import stat
 import subprocess
 import sys
@@ -35,9 +41,6 @@ import pytest
 
 SCRIPT = Path(os.environ.get("WINDOW_JUMP_SH")
               or Path(__file__).resolve().parents[2] / "infra" / "claude-hooks" / "window_jump.sh")
-
-pytestmark = pytest.mark.skipif(platform.system() != "Darwin",
-                                reason="window_jump.sh exits 0 before any gesture off macOS")
 
 STUB = r'''#!/bin/bash
 # osascript stub: $1 = script path, $2 = action, rest = args. MODE from env.
