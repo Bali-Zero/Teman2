@@ -2,7 +2,7 @@
 """dynamic_workflow.py — the ONE launcher for /dynamic-workflow. Code, not prose; every
 verdict judged by CONTENT, never by exit code alone (scar #2, "Esiste != Armato").
 
-Subcommands (PR1a+PR1b+PR2a+PR2b+PR2c — anonymise/reveal/capture-check land in PR2d):
+Subcommands (PR1a+PR1b+PR2a+PR2b+PR2c+PR2d):
     brief    --slug S --objective-file F --colour BLUE|ORANGE [--floor X] [--template T] [--kit K]
     check    --kit K            # recompute BRIEF.md from template+inputs.json, byte-diff (W78)
     r1       --kit K --seats a,b,c [--astra-fallback]   # one-shot per seat, ledger, relaunch<=1
@@ -10,6 +10,9 @@ Subcommands (PR1a+PR1b+PR2a+PR2b+PR2c — anonymise/reveal/capture-check land in
     r2       --kit K            # deterministic cross-family pairing, one shot, F/C+Test filter
     judge    --kit K            # mechanical C1/C5/C8 disqualification of every r1 answer
     jury     --kit K            # blind peer review of survivors, six axes, Borda + firsts
+    anonymise --kit K           # Z-BLIND/ A-F copies (seat/objective_sha256 stripped only)
+    reveal    --kit K           # prints letter->seat mapping, sealed until Z-DECISIONI.md exists
+    capture-check --kit K --dest D   # full artifact set incl. OUTCOME.md keys, copies to D
 
 PII gate is fail-closed, no --skip-pii flag exists: the objective is redacted with the SAME
 Redactor used before anything leaves this machine; any change, or any raise, refuses with a
@@ -27,6 +30,7 @@ import json
 import os
 import random
 import re
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -753,8 +757,7 @@ def cmd_judge(args: argparse.Namespace) -> dict[str, dict[str, object]]:
     return verdicts
 
 
-# --------------------------------------------------------------------- jury (blind peer review;
-# anonymise/reveal/capture-check land in PR2d)
+# --------------------------------------------------------------------- jury (blind peer review)
 
 JURY_AXES = ("termination", "cost", "robustness", "evidence", "implementability", "fit")
 _JURY_LETTERS = "ABCDEF"
@@ -766,7 +769,7 @@ _JURY_PROMPT_PREFIX = (
 
 def _strip_identity(text: str) -> str:
     """The two frontmatter lines that would deanonymise a formation to its reviewer — shared
-    by cmd_jury's blinding and cmd_anonymise's Z-BLIND artifact (PR2d) so the stripped fields
+    by cmd_jury's blinding and cmd_anonymise's Z-BLIND artifact so the stripped fields
     never drift between the two (mandate: 'seat: and objective_sha256 lines stripped,
     nothing else')."""
     text = re.sub(r"^seat:.*$", "seat: [REDACTED]", text, count=1, flags=re.MULTILINE)
@@ -799,7 +802,7 @@ def _jury_survivors(kit: Path) -> list[str]:
 
 def _jury_mapping(kit: Path, survivors: list[str]) -> dict[str, str]:
     """One global letter->seat map for the whole round (max 6, A-F), persisted to
-    jury/mapping.json chmod 600 so cmd_anonymise's Z-BLIND artifact (PR2d) reuses the SAME
+    jury/mapping.json chmod 600 so cmd_anonymise's Z-BLIND artifact reuses the SAME
     letters jury/tabulation.md already named, instead of assigning a second, inconsistent
     mapping later. Refuses like pairing.md/mapping.json do elsewhere: exists-and-differs is
     a refusal, not a silent overwrite."""
@@ -946,6 +949,89 @@ def cmd_jury(args: argparse.Namespace) -> dict[str, Any]:
     return tabulation
 
 
+# --------------------------------------------------------------------- anonymise / reveal / capture-check
+
+def cmd_anonymise(args: argparse.Namespace) -> dict[str, str]:
+    """Z-BLIND/<letter>.md for every jury survivor: the SAME _strip_identity + _jury_mapping
+    cmd_jury already uses, so the letters and the two stripped fields never drift between the
+    blind ballots jurors saw and the blind artifact this writes (mandate: 'seat: and
+    objective_sha256 lines stripped, nothing else'). jury/mapping.json is re-chmod 600 here
+    too, not just on first write, in case anything touched its mode after jury ran."""
+    kit = Path(args.kit)
+    survivors = _jury_survivors(kit)
+    mapping = _jury_mapping(kit, survivors)
+    mapping_path = kit / "jury" / "mapping.json"
+    os.chmod(mapping_path, 0o600)
+
+    blind_dir = kit / "Z-BLIND"
+    blind_dir.mkdir(parents=True, exist_ok=True)
+    for letter, seat in mapping.items():
+        original = (kit / "r1" / f"{_file_slug(seat)}.md").read_text()
+        (blind_dir / f"{letter}.md").write_text(_strip_identity(original))
+    print(f"Z-BLIND/ written for {len(mapping)} formation(s): {', '.join(sorted(mapping))}")
+    return mapping
+
+
+def cmd_reveal(args: argparse.Namespace) -> dict[str, str]:
+    """Prints the letter->seat mapping jury/anonymise already wrote -- but only once
+    Z-DECISIONI.md exists (mandate, verbatim: 'printed only by reveal --kit K after
+    Z-DECISIONI.md exists'). Reveal never computes a mapping of its own; a command that could
+    conjure one from nothing would not be a seal on anything."""
+    kit = Path(args.kit)
+    if not (kit / "Z-DECISIONI.md").exists():
+        print("refused: Z-DECISIONI.md does not exist -- reveal stays sealed until Zero decides",
+              file=sys.stderr)
+        sys.exit(2)
+    mapping_path = kit / "jury" / "mapping.json"
+    if not mapping_path.exists():
+        print("refused: jury/mapping.json does not exist -- run jury or anonymise first",
+              file=sys.stderr)
+        sys.exit(2)
+    mapping: dict[str, str] = json.loads(mapping_path.read_text())
+    for letter in sorted(mapping):
+        print(f"{letter}: {mapping[letter]}")
+    return mapping
+
+
+_CAPTURE_REQUIRED = ("BRIEF.md", "brief.sha", "r1", "r2", "judge.md",
+                      "jury/tabulation.md", "Z-DECISIONI.md", "OUTCOME.md")
+_OUTCOME_KEYS = ("rounds_used", "dead_at_launch", "wall_clock", "bites")
+
+
+def _outcome_missing_keys(text: str) -> list[str]:
+    return [k for k in _OUTCOME_KEYS if not re.search(rf"^{re.escape(k)}:", text, re.MULTILINE)]
+
+
+def cmd_capture_check(args: argparse.Namespace) -> None:
+    """mandate, verbatim: 'requires BRIEF.md, brief.sha, r1/, r2/, judge.md,
+    jury/tabulation.md, Z-DECISIONI.md, OUTCOME.md (with rounds_used, dead_at_launch,
+    wall_clock, bites keys); copies; exits non-zero naming what is missing.' A capture that
+    silently skipped a stage must fail loud, one line per absence, not ship a partial
+    research/ artifact that looks complete (scar #2, 'Esiste != Armato')."""
+    kit = Path(args.kit)
+    dest = Path(args.dest)
+    missing: list[str] = []
+    for rel in _CAPTURE_REQUIRED:
+        if not (kit / rel).exists():
+            missing.append(rel)
+    outcome_path = kit / "OUTCOME.md"
+    if outcome_path.exists():
+        missing += [f"OUTCOME.md:{k}" for k in _outcome_missing_keys(outcome_path.read_text())]
+    if missing:
+        print("FAIL: capture-check missing: " + "; ".join(missing))
+        sys.exit(1)
+
+    dest.mkdir(parents=True, exist_ok=True)
+    for rel in _CAPTURE_REQUIRED:
+        src, dst = kit / rel, dest / rel
+        dst.parent.mkdir(parents=True, exist_ok=True)
+        if src.is_dir():
+            shutil.copytree(src, dst, dirs_exist_ok=True)
+        else:
+            shutil.copy2(src, dst)
+    print(f"PASS: capture-check copied {len(_CAPTURE_REQUIRED)} item(s) to {dest}")
+
+
 def cmd_validate(args: argparse.Namespace) -> None:
     text = Path(args.file).read_text()
     ok, reason = validate_answer(text, args.sha)
@@ -956,7 +1042,6 @@ def cmd_validate(args: argparse.Namespace) -> None:
 # --------------------------------------------------------------------- selftest
 
 def run_selftest() -> None:
-    import shutil
     os.environ["DW_FAKE_SEATS"] = "1"
     failures: list[str] = []
 
@@ -1152,6 +1237,57 @@ def run_selftest() -> None:
               set(tab_k["borda"]) == {"A", "B", "C"})
         check("re-running jury on an unchanged mapping does not refuse",
               cmd_jury(argparse.Namespace(kit=str(kit_k))) is not None)
+
+        # L. anonymise: chained r1 -> r2 -> judge -> jury -> anonymise exactly as a real round
+        # runs (Bites, PR2d) -- Z-BLIND/ gets one A-F copy per survivor, mapping.json stays
+        # chmod 600, and a copy differs from its r1 original on ONLY the two stripped lines.
+        kit_l = work / "kit-l"
+        cmd_brief(argparse.Namespace(slug="l", objective_file=str(clean_obj), colour="BLUE",
+                                      floor=None, template=str(_fixture_template()), kit=str(kit_l)))
+        sha_l = (kit_l / "brief.sha").read_text().strip()
+        (kit_l / "r1" / "fable-5-1.md").write_text(_CANNED_VALID.format(seat="fable-5-1", sha=sha_l))
+        cmd_r1(argparse.Namespace(kit=str(kit_l), seats="kimi-k3,qwen3.8-max,gemini-3.1-pro-high",
+                                   astra_fallback=False))
+        cmd_r2(argparse.Namespace(kit=str(kit_l)))
+        cmd_judge(argparse.Namespace(kit=str(kit_l)))
+        cmd_jury(argparse.Namespace(kit=str(kit_l)))
+        mapping_l = cmd_anonymise(argparse.Namespace(kit=str(kit_l)))
+        check("anonymise wrote one Z-BLIND copy per surviving letter",
+              {p.stem for p in (kit_l / "Z-BLIND").glob("*.md")} == set(mapping_l))
+        check("jury/mapping.json stays chmod 600 after anonymise",
+              oct((kit_l / "jury" / "mapping.json").stat().st_mode)[-3:] == "600")
+        letter_l, seat_l = next(iter(mapping_l.items()))
+        orig_lines_l = (kit_l / "r1" / f"{_file_slug(seat_l)}.md").read_text().splitlines()
+        blind_lines_l = (kit_l / "Z-BLIND" / f"{letter_l}.md").read_text().splitlines()
+        changed_l = [i for i, (o, b) in enumerate(zip(orig_lines_l, blind_lines_l)) if o != b]
+        check("Z-BLIND copy differs from its original on exactly the seat+sha lines",
+              len(changed_l) == 2)
+
+        # M. reveal: sealed (exit 2) until Z-DECISIONI.md exists, then prints the same mapping.
+        try:
+            cmd_reveal(argparse.Namespace(kit=str(kit_l)))
+            check("guilt: reveal refuses before Z-DECISIONI.md exists", False)
+        except SystemExit as e:
+            check("guilt: reveal refuses before Z-DECISIONI.md exists", e.code == 2)
+        (kit_l / "Z-DECISIONI.md").write_text("# Zero's decision\nA\n")
+        check("innocence: reveal prints the jury mapping once Z-DECISIONI.md exists",
+              cmd_reveal(argparse.Namespace(kit=str(kit_l))) == mapping_l)
+
+        # N. capture-check: refuses naming what's missing, then copies the full artifact set.
+        dest_l = work / "capture-l"
+        try:
+            cmd_capture_check(argparse.Namespace(kit=str(kit_l), dest=str(dest_l)))
+            check("guilt: capture-check refuses with OUTCOME.md missing", False)
+        except SystemExit as e:
+            check("guilt: capture-check refuses with OUTCOME.md missing", e.code == 1)
+        check("capture-check wrote no dest on refusal", not dest_l.exists())
+        (kit_l / "OUTCOME.md").write_text(
+            "rounds_used: 1\ndead_at_launch: 0\nwall_clock: 4m\nbites: selftest green\n")
+        cmd_capture_check(argparse.Namespace(kit=str(kit_l), dest=str(dest_l)))
+        check("capture-check copied jury/tabulation.md to dest",
+              (dest_l / "jury" / "tabulation.md").exists())
+        check("capture-check copied Z-DECISIONI.md to dest", (dest_l / "Z-DECISIONI.md").exists())
+
     finally:
         shutil.rmtree(work, ignore_errors=True)
         os.environ.pop("DW_FAKE_SEATS", None)
@@ -1225,6 +1361,19 @@ def main() -> None:
     p_jury = sub.add_parser("jury")
     p_jury.add_argument("--kit", required=True)
     p_jury.set_defaults(func=cmd_jury)
+
+    p_anon = sub.add_parser("anonymise")
+    p_anon.add_argument("--kit", required=True)
+    p_anon.set_defaults(func=cmd_anonymise)
+
+    p_reveal = sub.add_parser("reveal")
+    p_reveal.add_argument("--kit", required=True)
+    p_reveal.set_defaults(func=cmd_reveal)
+
+    p_capture = sub.add_parser("capture-check")
+    p_capture.add_argument("--kit", required=True)
+    p_capture.add_argument("--dest", required=True)
+    p_capture.set_defaults(func=cmd_capture_check)
 
     args = parser.parse_args()
     if args.selftest:
