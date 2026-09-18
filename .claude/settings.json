@@ -67,6 +67,15 @@
             "command": "python3 \"${CLAUDE_PROJECT_DIR}/infra/claude-hooks/data_plane_guard.py\""
           }
         ]
+      },
+      {
+        "matcher": "Bash|Monitor|Read",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"${CLAUDE_PROJECT_DIR}/infra/claude-hooks/secret_expansion_guard.py\""
+          }
+        ]
       }
     ],
     "ConfigChange": [

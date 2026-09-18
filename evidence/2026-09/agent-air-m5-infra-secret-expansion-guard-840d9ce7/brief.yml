@@ -1,0 +1,222 @@
+task_id: secret-expansion-guard
+gear: 2
+l_level: L2
+gate_class: opus
+objective: |
+  A mechanical guard that denies the shell and Read-tool forms which put a
+  CREDENTIAL VALUE into a tool result — which is the same thing as putting it into
+  the transcript and therefore into the model provider's conversation log.
+
+  Measured trigger, not a hypothetical. On 2026-09-18 three agent sessions on
+  Air-M5 leaked the live Alibaba Token-Plan key:
+    1. a Qwen builder session, by `read_file`-ing ~/.qwen/settings.json — the whole
+       file lands in the tool result, including the `env` block;
+    2. a Claude gate session, by using `${VAR:-UNSET}` in a diagnostic instead of
+       the sanctioned `${VAR:+SET}` — the `:-` default form expands to the value;
+    3. a second Claude gate session, with `${VAR:+SET}${VAR:-UNSET}`, in a handoff
+       brief whose FIRST SECTION forbade exactly that and named the correct form.
+  Prose failed twice out of three. A full-disk scan that evening (97,401 files
+  across ~/.qwen, ~/.claude*, ~/.organism, comparing the exact value, never
+  printing it) found 12 files on M5 holding the key in cleartext, 5 of them mode
+  0644 inside a ~/.qwen that is 0755, plus two Claude subagent transcripts dated
+  2026-08-26/28 — so the exposure predates this incident by ~3 weeks.
+
+  This PR is the mechanical control the prose was not: a PreToolUse guard, a
+  registry of what counts as a secret, and a case corpus written BEFORE the code
+  (46 rows by the builder, 59 after the gate) so the implementation is graded
+  against a specification rather than against its own improvisation.
+
+  Why spec-first: output_hygiene_guard v1 (PR #6724) was SUSPENDED at three
+  on-disk gate rounds, each finding a NEW over-match on an everyday command
+  (cicatrix superscar #3), and v2 was re-implemented against a written corpus. The
+  over-match trap here is one character wide — `${V:+SET}` is sanctioned and
+  `${V:-UNSET}` leaks — and the shapes easiest to write are the ones that deny
+  correct work: `curl -H "Authorization: Bearer $KEY"` is the RIGHT way to use a
+  key and must stay allowed.
+
+  Deliberately NOT a reuse of output_hygiene_guard's segmenter, even though reuse
+  is this repo's default: its _strip_heredoc_bodies()/_strip_quotes() BLANK content
+  before judgement, which is right for "how many bytes will this print" and wrong
+  for "does this text contain a secret expansion". A `bash <<EOF\necho $KEY\nEOF`
+  must deny, and the leaking forms live INSIDE quotes — exactly what a
+  quote-blanker erases. The parser here is small, quote-AWARE but quote-PRESERVING.
+constraints:
+  - "No paid per-token Anthropic endpoint (Builder Contract 3). Implementation ran
+    on the Alibaba Token-Plan subscription via qwen-code; the independent gate runs
+    on the claude-zero-team lane (CLAUDE_CODE_OAUTH_TOKEN from Keychain)."
+  - "No PII. This PR touches only guard code, its registry, its spec, its test
+    suite, and one hook registration in .claude/settings.json — plus, at the gate,
+    two CI-registration files (the guard-conformance registry entry and a vaccine
+    block). It processes no client data, and the guard's own DENY reason is
+    asserted never to contain a credential value (W106 class)."
+  - "Fails OPEN on every error path — malformed stdin, non-dict payload, unrelated
+    tool, missing or corrupt registry, any unexpected exception. An infra failure
+    must never brick Bash. sys.exit(2) is the only thing that propagates through
+    the wrapper, per data_plane_guard's precedent."
+  - "Invoked from ${CLAUDE_PROJECT_DIR}/infra/claude-hooks/ rather than installed
+    to ~/.claude/hooks/, so it stays version-controlled and reviewable and does NOT
+    add a 191st pair to infra/home-fork/declared-pairs.json — whose whole failure
+    mode (superscar #1) is a $HOME copy silently diverging from its repo twin."
+  - "The existing data_plane_guard PreToolUse entry is left byte-identical; this
+    guard is registered as a SEPARATE entry with its own matcher (Bash|Monitor|Read,
+    because X5 needs Read and data_plane_guard does not cover it)."
+  - "No credential file is read by the test suite. Fixtures use HOME=<tmpdir> and
+    the literal string 'fixture-not-a-real-key'; the corpus asserts that string
+    never appears in any DENY reason."
+acceptance:
+  - "python3 infra/claude-hooks/test_secret_expansion_guard.py — 59/59 corpus rows
+    (E01-E59) exactly as specified in docs/specs/2026-09-18-secret-expansion-guard-shapes-spec.md §5."
+  - "pytest infra/claude-hooks/test_secret_expansion_guard.py — 14 passed
+    (corpus-as-one-test, fail-open paths, corrupt registry, DENY-reason content,
+    glued-redirect under-match, every registered content verb, the second store,
+    Monitor and run_shell_command tool names, multi-statement, .claude/settings.json
+    wiring, no-filesystem-walk pin with a populated HOME, latency budget)."
+  - 'Added at the gate 2026-09-19, each found LIVE first. Innocence (was DENIED):
+    E47 `set -o pipefail`, E48 `set +x`, E49 `declare -x FOO=1`, E54 `echo "$(date)"`,
+    E56 `echo "$(curl -H "Bearer $V" …)"`, E57 a quoted Python heredoc whose string
+    literal mentions a store. Guilt (was ALLOWED): E50 `set -euxo pipefail`, E51
+    `declare -p`, E52 `echo "$(cat STORE)"`, E53 backticks, E55 an ABSENT glob-store
+    path, E58/E59 heredocs to bash and ssh.'
+  - "python3 infra/claude-hooks/test_hook_innocence.py — ALL OK including the new
+    secret_expansion_guard.py block (7 guilt + 11 innocence). python3
+    infra/guard-conformance/check_guard_conformance.py — 0 violations; the builder's
+    cut was a C1 violation (hook neither registered nor exempted) and CI would have
+    been red."
+  - "ruff check on guard + tests — clean."
+  - 'Guilt, the three incidents verbatim: E01 `echo "${V:-UNSET}"` DENY,
+    E02 `printf … "${V:+SET}${V:-UNSET}"` DENY (the :+ half does not launder the
+    :- half), E36/E37 Read on a store DENY including with a limit slice.'
+  - "Innocence, the over-match traps: E06 `${V:+SET}` ALLOW, E09
+    `curl -H \"Authorization: Bearer $V\"` ALLOW, E11 `grep -rn V scripts/` ALLOW,
+    E18 `env -u V cmd` ALLOW, E27/E28 `stat`/`chmod 600` on a store ALLOW (the cure
+    must not be blocked), E30 `grep -c` ALLOW, E39 Read on ~/.qwen/settings.json
+    ALLOW, E41 `$PATH` ALLOW, E42 a comment naming a secret ALLOW, E43 escaped \\$
+    ALLOW."
+  - "ALLOW rows are asserted as rc == 0 EXACTLY, not rc != 2. A crashing guard
+    exits 1, and `rc != 2` scores that as a pass on every innocence row — the first
+    version of this file shipped with an f-string SyntaxError and 21 of 25 innocence
+    rows 'passed' on a hook that never ran. The test comment records that."
+consumer_map:
+  - ".claude/settings.json hooks.PreToolUse[1] (matcher Bash|Monitor|Read) ->
+    infra/claude-hooks/secret_expansion_guard.py. Registered in the repo-tracked
+    project settings, so it binds every Claude session in this checkout and every
+    worktree of it, on any host that pulls main."
+  - "infra/claude-hooks/secret-expansion-registry.json — the extension point.
+    Adding a protected env var or credential store means editing the registry plus
+    one C-row in the spec; the guard code does not change. Mirrors
+    data-plane-registry.json's contract, including that a corrupt registry passes
+    through with a WARN rather than protecting everything or nothing."
+  - "infra/claude-hooks/test_secret_expansion_guard.py — runs the real hook as a
+    subprocess exactly as the harness would (JSON on stdin, exit 2 = DENY), so the
+    corpus grades the shipped artefact and not a reimplementation of it."
+  - "docs/specs/2026-09-18-secret-expansion-guard-shapes-spec.md — the oracle.
+    Where spec and implementation disagree, the spec wins; a failing corpus row is
+    a bug in one of them and the expected verdict is never edited to make it pass."
+  - "infra/guard-conformance/registry.json command_hooks.entries — the superscar #3
+    census. check_guard_conformance.py (guard-conformance.yml, required) refuses a
+    command hook that is neither registered nor exempted-with-reason; the first cut
+    was exactly that violation."
+  - "infra/claude-hooks/test_hook_innocence.py CASES['secret_expansion_guard.py'] —
+    7 guilt + 11 innocence, EXECUTED by hook-innocence-gate.yml (required) on every
+    hooks change; the vaccine now also stages `*-registry.json` sidecars so a
+    registry-driven hook does not fail open in the synthetic repo. The dedicated
+    E01-E59 corpus is reachable by that workflow's path filter, which C4 accepts,
+    but reachable is not armed (W81): this block is what actually runs in CI."
+risks:
+  - "OVER-MATCH IS THE LIVE RISK AND IT IS THE ONE THAT KILLED v1 OF THE SIBLING
+    GUARD. 46 corpus rows is a floor, not a ceiling. The mitigation is structural:
+    DENY is keyed on a verb being a PRINT verb plus a value-emitting expansion, not
+    on the secret name appearing anywhere, so passing a key to a program (E09/E10)
+    and grepping for its name (E11) are allowed by construction. If a gate round
+    finds a new over-match, the cure is a corpus row plus a shape narrowing — never
+    deleting the row."
+  - 'UNDER-MATCH, stated rather than hidden. Interpreter one-liners
+    (`python3 -c ''print(os.environ["V"])''`) are NOT caught: detecting them means
+    parsing the embedded program, and a name-plus-print heuristic would deny the
+    SANCTIONED fingerprint workaround (`print(hashlib.sha256(K.encode()).hexdigest()[:12])`)
+    used throughout this repo''s own diagnostics. A guard that denies the correct
+    workaround is worse than no guard. Spec §4 records this as out of scope.'
+  - "~/.qwen/settings.json is NOT registered in this PR. Qwen's `.qwen/` directory
+    is gitignored, so the Qwen harness wiring cannot ship through git; and wiring it
+    locally before the guard file exists on main would register a hook pointing at a
+    missing path. The exact JSON snippet is in the PR body as a per-host post-merge
+    step. Until it is applied, the Qwen harness is unprotected — which is where
+    incident 1 happened."
+  - "A DENYING hook on every Bash/Read call has a latency cost. The builder's cut
+    expanded the registry's `~/.config/**` globs ON DISK on every call: measured at
+    the gate, 99 ms of 146 ms per call on a real ~/.config (6,373 files), against
+    the spec's 5 ms budget — invisible to the test's 250 ms ceiling under an EMPTY
+    temp HOME. Stores are now matched by pattern (fnmatch), no filesystem walk;
+    measured after the fix ~42 ms per call of which ~31 ms is interpreter startup.
+    test_store_match_never_walks_the_filesystem pins it with a populated HOME."
+  - "The gate seat's own fixes are not graded by a third party — SHIP-WITH-FIXES is
+    the handoff's sanctioned path, and the builder seat was CRED_UNAVAILABLE at the
+    time. Bound: every fix is a corpus row (E47-E59); the substitution recursion is
+    depth-limited (3) and masks `$(...)` in the outer text so E56 stays ALLOW; the
+    heredoc rule is crisp — quoted delimiter AND non-shell consumer, otherwise
+    judged (E33/E58/E59); and the vaccine + conformance checks execute in required
+    CI."
+  - "The registry's secret_env_var_patterns are suffix-anchored (_API_KEY$,
+    _TOKEN$, _SECRET$, _PASSWORD$) plus two whole vendor prefixes. An unanchored
+    TOKEN would catch TOKEN_BUDGET and similar. A future secret whose name matches
+    none of these is silently unprotected until someone adds it — the registry is
+    the extension point and it needs an owner, not a cron."
+grader: |
+  generator != grader. This brief was written by the builder seat (Qwen 3.8 Max on
+  Air-M5, external builder per AGENTS.md/GEMINI.md/QWEN.md doors), which per Builder
+  Contract 5 prepares and never ships: it does not merge, arm or deploy its own work.
+
+  PERFORMED 2026-09-19 by the BLUE gate seat (fresh Claude session, Opus 5 xhigh,
+  claude-zero-team lane, outside the contribution chain; AGENTS.md §17.1).
+  Verdict: SHIP-WITH-FIXES.
+
+  Reproduced by the gate itself, not accepted from above: on the builder's cut,
+  corpus 46/46, pytest 12 passed, ruff clean, floor 2 (evidence_pack_lint
+  --print-floor on the real numstat), and the live proof against the real machine
+  paths (18 rows, 0 mismatches, no credential read or printed). The consumer was
+  observed IN FORCE, not inferred: the hook, wired through .claude/settings.json,
+  denied the gate's own `security find-generic-password -s <absent> -w` probe in
+  this very session and, once the substitution recursion was live, denied the
+  gate's own Python heredoc edit scripts (which became E57).
+
+  Found at the gate and FIXED in this PR, each pinned as a corpus row: three
+  over-matches on everyday commands (set -o pipefail, set +x, declare -x — the
+  exact failure class that suspended the sibling guard's v1); three under-matches
+  (declare -p; $(...) and backtick bodies never judged; a glob store denied only
+  if it existed on disk); ~100 ms of glob.glob over ~/.config on EVERY Bash call
+  against the spec's 5 ms budget (stores are now matched by pattern, no walk);
+  the standalone runner still scoring ALLOW as `rc != 2` after the pytest path
+  had been fixed (one shared oracle now); and two CI reds the builder had not
+  declared — guard-conformance C1 (hook unregistered) and prettier on the spec
+  and this brief. Two files beyond the builder's six were touched, for the CI
+  reds only: infra/guard-conformance/registry.json and
+  infra/claude-hooks/test_hook_innocence.py (a workflow edit would have been a
+  hot zone, floor 3).
+
+  Design judged, not only run. Spec-before-code is proportionate here, not
+  ceremony: the corpus caught two real bugs before the gate and the gate found
+  six more shapes it had not covered — a floor, as the risks say. The non-reuse
+  of output_hygiene_guard's blanking segmenter holds on inspection of both
+  files (its _strip_quotes/_strip_heredoc_bodies erase exactly what X1/E33 must
+  see), but its substitution masking should have been borrowed and now is.
+  Excluding interpreter one-liners is a real limitation (the sanctioned
+  sha256[:12] fingerprint would be denied by any print+name heuristic).
+  Excluding ~/.qwen/settings.json is a reasoned decision with a stated cure
+  (migrate Pro), though the sentence "its secret is still covered by X1/X2"
+  overstates: incident 1 was a whole-file read, X5-shaped, and X5 is exactly
+  what is excluded for that path on an unmigrated host. Left as follow-up,
+  stated in spec §4: vendor CLIs that print a credential on purpose (gh auth
+  token, gcloud auth print-access-token) are ALLOW today.
+
+  The builder's own verification is recorded above and is reproducible, but it is
+  the generator's word and carries no grading weight. The gate seat's fixes are
+  its own word too, and are bound by the corpus rows it added, by the vaccine
+  block hook-innocence-gate.yml executes, and by guard-conformance C1-C4.
+budget: |
+  One interactive builder session on the Alibaba Token-Plan subscription
+  (qwen3.8-max via qwen-code), no metered Anthropic spend: the gate lane runs on
+  CLAUDE_CODE_OAUTH_TOKEN from the Keychain, which is the sole sanctioned path per
+  Builder Contract 3. The credential-exposure scan that produced the incident count
+  read ~97,400 files locally and made no API calls. The live DENY proof costs one
+  blocked tool call and no tokens.
+pii: none
