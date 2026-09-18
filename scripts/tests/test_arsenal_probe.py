@@ -586,7 +586,21 @@ def test_tp1_vault_loader_key_absent_from_present_file(tmp_path):
 # ---------------------------------------------------------------------------
 
 
-def _write_pair(tmp_path, vault_val=None, vault_mode=0o600, settings_val=None):
+def _write_pair(
+    tmp_path,
+    vault_val=None,
+    vault_mode=0o600,
+    settings_val=None,
+    settings_mode=0o600,
+):
+    """Write a (vault, settings.json) pair and return both paths.
+
+    Both modes are chmod'd EXPLICITLY. settings.json used to inherit the umask,
+    which was harmless while nothing read its mode — but audit_tp1_secret_store_modes()
+    does, so a suite whose verdict depends on the umask of the machine running it is
+    not a suite. 0600 is the healthy default; pass settings_mode=0o644 to model an
+    exposed store.
+    """
     vault = tmp_path / "secrets.env"
     vault.write_text(
         f"export BAILIAN_TOKEN_PLAN_API_KEY='{vault_val}'\n" if vault_val else "OTHER=x\n"
@@ -598,6 +612,7 @@ def _write_pair(tmp_path, vault_val=None, vault_mode=0o600, settings_val=None):
         if settings_val
         else json.dumps({"env": {}})
     )
+    settings.chmod(settings_mode)
     return str(vault), str(settings)
 
 
@@ -636,7 +651,15 @@ def test_resolve_tp1_key_settings_still_works_on_unmigrated_host(monkeypatch, tm
 def test_resolve_tp1_key_vault_mode_gate_falls_through_to_settings(monkeypatch, tmp_path):
     """A world-readable vault is refused, but that must DEGRADE to the next
     source rather than fail the seat — same non-strict direction as the
-    UnicodeDecodeError case above."""
+    UnicodeDecodeError case above.
+
+    The resolver itself stays SILENT here, and that is deliberate: it resolves, it
+    does not audit. Refusing-and-degrading is the right behaviour for a credential
+    lookup; the signal that a secret file was found exposed belongs to
+    audit_tp1_secret_store_modes(), which the board and tp1_call.py surface. Keeping
+    the two apart is also what keeps this function's contract — note is non-None only
+    on failure — from turning into a channel every caller must know to check.
+    """
     vault, settings = _write_pair(
         tmp_path, vault_val="vault-value", vault_mode=0o644, settings_val="settings-value"
     )
@@ -645,6 +668,9 @@ def test_resolve_tp1_key_vault_mode_gate_falls_through_to_settings(monkeypatch, 
     assert value == "settings-value"
     assert source == "settings.json"
     assert note is None
+    # ...and the audit, asked separately about the same two files, DOES speak.
+    warns = ap.audit_tp1_secret_store_modes(vault_path=vault, settings_path=settings)
+    assert len(warns) == 1 and "0644" in warns[0]
 
 
 def test_resolve_tp1_key_all_absent_names_every_source_without_leaking(monkeypatch, tmp_path):
@@ -675,6 +701,150 @@ def test_resolve_tp1_key_never_consults_the_keychain(monkeypatch, tmp_path):
     value, source, note = ap.resolve_tp1_key(vault_path=vault, settings_path=settings)
     assert value == "vault-value"
     assert source == "vault"
+
+
+# ---------------------------------------------------------------------------
+# audit_tp1_secret_store_modes() — the mode gate used to be SILENT. An exposed
+# vault was refused, resolution fell through to the next source, and note came
+# back None: a world-readable secret file produced no signal anywhere. That is
+# the disease PENDING-ARMS names ("a check that exists, carries the right name,
+# and enforces nothing").
+#
+# INNOCENCE matters as much as guilt here. Air-M5's CORRECT post-migration state
+# is settings.json at 0644 holding no credential, because the qwen CLI owns that
+# file and resets its mode on every flush. Warning there would be permanent noise
+# and would train every reader to skip the line.
+# ---------------------------------------------------------------------------
+
+
+def test_audit_flags_world_readable_vault_holding_the_credential(tmp_path):
+    vault, settings = _write_pair(tmp_path, vault_val="vault-value", vault_mode=0o644)
+    warns = ap.audit_tp1_secret_store_modes(vault_path=vault, settings_path=settings)
+    assert len(warns) == 1
+    assert "SECURITY" in warns[0]
+    assert "vault" in warns[0]
+    assert "0644" in warns[0]
+    assert "vault-value" not in warns[0]
+
+
+def test_audit_flags_group_readable_settings_holding_the_credential(tmp_path):
+    """The regression detector for the bug that started all of this: the qwen CLI
+    rewrites ~/.qwen/settings.json to 0644 on every flush, so a host that still
+    keeps the credential there goes world-readable by itself, repeatedly — and
+    nothing noticed for the ~5 weeks between the 2026-08-10 chmod and the
+    2026-09-18 measurement."""
+    vault, settings = _write_pair(
+        tmp_path, vault_val=None, settings_val="settings-value", settings_mode=0o640
+    )
+    warns = ap.audit_tp1_secret_store_modes(vault_path=vault, settings_path=settings)
+    assert len(warns) == 1
+    assert "settings.json" in warns[0]
+    assert "0640" in warns[0]
+    assert "settings-value" not in warns[0]
+
+
+def test_audit_flags_both_stores_when_both_are_exposed(tmp_path):
+    vault, settings = _write_pair(
+        tmp_path,
+        vault_val="vault-value",
+        vault_mode=0o644,
+        settings_val="settings-value",
+        settings_mode=0o666,
+    )
+    warns = ap.audit_tp1_secret_store_modes(vault_path=vault, settings_path=settings)
+    assert len(warns) == 2
+    assert all(w.startswith("SECURITY") for w in warns)
+    assert not any("vault-value" in w or "settings-value" in w for w in warns)
+
+
+def test_audit_is_silent_when_every_store_is_owner_only(tmp_path):
+    vault, settings = _write_pair(
+        tmp_path, vault_val="vault-value", settings_val="settings-value"
+    )
+    assert ap.audit_tp1_secret_store_modes(vault_path=vault, settings_path=settings) == []
+
+
+def test_audit_does_not_flag_an_exposed_file_holding_no_credential(tmp_path):
+    """INNOCENCE, and the one that matters most: 0644 alone is not the finding.
+    The finding is a credential AT 0644. Air-M5's settings.json is 0644 and empty
+    of secrets by design, and must stay quiet."""
+    vault, settings = _write_pair(tmp_path, vault_val=None, settings_mode=0o644)
+    assert ap.audit_tp1_secret_store_modes(vault_path=vault, settings_path=settings) == []
+
+    # Same, for the vault side: wide open but holding nothing.
+    vault, settings = _write_pair(tmp_path, vault_val=None, vault_mode=0o666)
+    assert ap.audit_tp1_secret_store_modes(vault_path=vault, settings_path=settings) == []
+
+
+def test_audit_is_silent_when_stores_are_absent(tmp_path):
+    assert ap.audit_tp1_secret_store_modes(
+        vault_path=str(tmp_path / "no" / "secrets.env"),
+        settings_path=str(tmp_path / "no" / "settings.json"),
+    ) == []
+
+
+# ---------------------------------------------------------------------------
+# The audit has to REACH A HUMAN. A finding that only exists as a return value is
+# the disease PENDING-ARMS names — "a check that exists, carries the right name,
+# and enforces nothing" — so these pin both channels: the board report (read by
+# healer ticks, feeds transitions) and the tp1_call stderr line.
+# ---------------------------------------------------------------------------
+
+
+def _report_with_warnings(warnings):
+    return {
+        "schema": ap.SCHEMA_VERSION,
+        "machine": "m5",
+        "ts": "2026-09-18T12:00:00Z",
+        "security_warnings": warnings,
+        "seats": [{"seat": "tp1-glm-5.2", "status": ap.LIVE, "latency_ms": 5,
+                   "evidence": "glm-5.2: HTTP 200", "required": False}],
+        "transitions": [],
+        "summary": {"live": 1, "dead_strict": 0, "context_limited": 0, "transient": 0},
+    }
+
+
+def test_render_table_prints_security_warning_before_the_summary():
+    """Guilt. Positioned before the summary on purpose: the summary is what a reader
+    skims to, and an exposed secret store must not be the last line on the screen
+    where it reads as an afterthought."""
+    warn = "SECURITY vault /x/secrets.env holds BAILIAN_TOKEN_PLAN_API_KEY at mode 0644"
+    out = ap.render_table(_report_with_warnings([warn]))
+    lines = out.splitlines()
+    assert any(line.strip() == f"!! {warn}" for line in lines)
+    warn_i = next(i for i, ln in enumerate(lines) if warn in ln)
+    summary_i = next(i for i, ln in enumerate(lines) if ln.startswith("summary:"))
+    assert warn_i < summary_i
+    # The seat is still LIVE — a working seat with an exposed store is a red finding,
+    # not a dead seat. The warning must not masquerade as a failure.
+    assert "1 of 1 seats OK" in out
+
+
+def test_render_table_is_unchanged_when_there_is_no_warning():
+    """Innocence: the healthy board must not grow a prefix or a stray line, or every
+    reader learns to skip the field that carries it."""
+    out = ap.render_table(_report_with_warnings([]))
+    assert "SECURITY" not in out
+    assert "!!" not in out
+
+
+def test_summary_line_counts_security_warnings():
+    """The --quiet one-liner is what a cron log actually keeps, so the count has to
+    survive the loss of the table."""
+    warn = "SECURITY settings.json /x/settings.json holds BAILIAN_TOKEN_PLAN_API_KEY at mode 0640"
+    line = ap.summary_line(_report_with_warnings([warn]))
+    assert "!! 1 SECURITY" in line
+    assert warn not in line  # the count, not the text — the table carries the text
+    assert "SECURITY" not in ap.summary_line(_report_with_warnings([]))
+
+
+def test_summary_line_tolerates_reports_without_the_key():
+    """Back-compat: reports written before this field existed (and the selftest's
+    canned fixtures) must still render rather than KeyError."""
+    r = _report_with_warnings([])
+    del r["security_warnings"]
+    assert "SECURITY" not in ap.summary_line(r)
+    assert "1 of 1 seats OK" in ap.render_table(r)
 
 
 # ---------------------------------------------------------------------------
@@ -968,6 +1138,42 @@ def test_probe_tp1_missing_credential_is_cred_unavailable(monkeypatch):
     assert status == ap.CRED_UNAVAILABLE
     assert status != ap.UNKNOWN_ERR
     assert ap.is_strict_fail(status) is False
+
+
+def test_run_wires_the_audit_into_the_report(monkeypatch):
+    """Guilt, at the wiring level rather than the printer level: run() must actually
+    CALL the audit and put its findings in the report. A printer test alone would
+    pass on a report nobody ever populates — which is the exact failure mode this PR
+    exists to stop.
+
+    The audit is stubbed so this stays hermetic (W96): with real default paths the
+    verdict would depend on the mode of the real ~/.qwen/settings.json, which is 0644
+    on Air-M5 and 0600 on Pro.
+    """
+    warn = "SECURITY vault /real/secrets.env holds BAILIAN_TOKEN_PLAN_API_KEY at mode 0644"
+    monkeypatch.setattr(ap, "audit_tp1_secret_store_modes", lambda *a, **k: [warn])
+    monkeypatch.setattr(ap, "resolve_tp1_key", lambda: ("test-only-placeholder", "vault", None))
+    body = _tp1_live_body("qwen3.8-max")
+    monkeypatch.setattr(ap, "http_post_json", lambda *a, **kw: (200, body, body))
+    monkeypatch.setattr(ap, "load_last_report", lambda: None)
+    report = ap.run(["tp1-qwen3.8-max"], timeout_mult=1.0, live_gen=False, machine="m5")
+    assert report["security_warnings"] == [warn]
+    # the seat is unaffected: a security finding is not a seat failure
+    assert report["seats"][0]["status"] == ap.LIVE
+    assert warn in ap.render_table(report)
+
+
+def test_run_reports_no_warnings_on_a_clean_machine(monkeypatch):
+    """Innocence for the same wiring: a clean machine must produce an empty list, not
+    a missing key, so consumers can read it unconditionally."""
+    monkeypatch.setattr(ap, "audit_tp1_secret_store_modes", lambda *a, **k: [])
+    monkeypatch.setattr(ap, "resolve_tp1_key", lambda: ("test-only-placeholder", "vault", None))
+    body = _tp1_live_body("qwen3.8-max")
+    monkeypatch.setattr(ap, "http_post_json", lambda *a, **kw: (200, body, body))
+    monkeypatch.setattr(ap, "load_last_report", lambda: None)
+    report = ap.run(["tp1-qwen3.8-max"], timeout_mult=1.0, live_gen=False, machine="m5")
+    assert report["security_warnings"] == []
+    assert "SECURITY" not in ap.render_table(report)
 
 
 def test_probe_tp1_http_error_does_not_abort_remaining_models(monkeypatch):
