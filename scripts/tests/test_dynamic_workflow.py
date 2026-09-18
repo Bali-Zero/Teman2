@@ -83,7 +83,11 @@ def _dirty_objective(tmp_path, template, kit):
     return lambda: dw.cmd_brief(_brief_ns(dirty, template, kit))
 
 
-def _kit_inside_repo(tmp_path, template, *_unused):
+def _kit_inside_repo(tmp_path, template, _kit):
+    # REFUSALS calls every `build` uniformly as build(tmp_path, template, kit); this one needs
+    # its OWN kit path (must resolve inside REPO_ROOT), so the caller's `kit` is intentionally
+    # unused — the leading underscore reads as "accepted, deliberately ignored" to every
+    # linter in this repo without the varargs indirection an earlier branch needed.
     inside = dw.REPO_ROOT / "tmp-dw-kit-should-not-exist"
     return lambda: dw.cmd_brief(_brief_ns(_dummy_objective(tmp_path), template, inside))
 
@@ -211,10 +215,10 @@ def test_launch_seat_astra_resolves_a_seat_before_invoking_codex(tmp_path, monke
     sentinel_env = {"CODEX_HOME": "/fake/seat/dir"}
     calls = []
 
-    def _fake_env(env=None):
+    def _fake_env(_env=None):
         return sentinel_env
 
-    def _fake_run(cmd, **kwargs):
+    def _fake_run(_cmd, **kwargs):
         calls.append(kwargs)
         (kit / "r1" / "astra.md").write_text("stub output")
         return None
@@ -239,10 +243,10 @@ def test_launch_seat_astra_degrades_silently_when_no_seat_resolves(tmp_path, mon
     (kit / "r1").mkdir(parents=True)
     calls = []
 
-    def _fake_env(env=None):
+    def _fake_env(_env=None):
         return dict(os.environ)
 
-    def _fake_run(cmd, **kwargs):
+    def _fake_run(_cmd, **kwargs):
         calls.append(kwargs)
         return None
 
