@@ -742,3 +742,175 @@ def test_guilt_a_non_canonical_dataset_does_not_trigger_a_fleet_sync(
     assert "skipping consumer propagation" in capsys.readouterr().out
     # …and the write itself still happened, so this is a scope guard, not a no-op.
     assert json.loads(d.read_text())["data"][0]["pma_max_asing"] == 0
+
+
+# --------------------------------------------------------------------------
+# UNION closures — a whole-code claim built from two annexes (13133: Lampiran
+# II item 11 covers batik tulis + kombinasi, Lampiran III entry #2 covers batik
+# cap). Every leg is re-derived; the fixtures are synthetic so that each test
+# attacks exactly one leg.
+# --------------------------------------------------------------------------
+
+L2_ROWS = [
+    {
+        "code": "13134",
+        "column": "dialokasikan",
+        "text": "Industri batik: Industri batik tulis Industri batik kombinasi tulis dan cap",
+    }
+]
+L3_RELATION = [
+    (2, "Industri batik cap", "13134", 0, None),
+    (9, "Industri kosmetik", "20232", 0, None),
+]
+URAIAN = "Pembuatan kain batik dapat dilakukan dengan metode tulis, cap, maupun kombinasi keduanya."
+
+
+def union_item(**overrides):
+    it = item("13133", judged_as="13134")
+    it["closure_basis"] = "union"
+    it["union_with_lampiran_iii"] = {
+        "entry": 2,
+        "bidang_usaha": "Industri batik cap",
+        "lampiran_ii_segments": "Industri batik tulis, Industri batik kombinasi tulis dan cap",
+        "uraian_methods": ["tulis", "cap", "kombinasi"],
+    }
+    it["agreed_by"] = ["lane-a (proposer)", "lane-b (blind re-derivation)"]
+    for k, v in overrides.items():
+        if k == "union":
+            it["union_with_lampiran_iii"].update(v)
+        else:
+            it[k] = v
+    return it
+
+
+def union_rec(uraian=URAIAN):
+    r = rec("13133", ancestors=["13134"])
+    r["uraian"] = uraian
+    return r
+
+
+def run_union(items, records, l2=None, l3=None):
+    return A.check(
+        {"items": items},
+        records,
+        lampiran_ii_rows=L2_ROWS if l2 is None else l2,
+        relation=L3_RELATION if l3 is None else l3,
+    )
+
+
+def test_union_innocence_the_real_shape_applies():
+    todo, refusals = run_union([union_item()], [union_rec()])
+    assert refusals == []
+    assert [i["code"] for i in todo] == ["13133"]
+
+
+def test_union_innocence_patch_names_both_annexes():
+    patch = A.patch_for(union_item())
+    assert patch["pma_status"] == "TERBATAS" and patch["pma_max_asing"] == 0
+    assert (
+        "Lampiran II" in patch["pma_kondisi"] and "Lampiran III" in patch["pma_kondisi"]
+    )
+    assert "entry #2" in patch["pma_kondisi"]
+    plain = A.patch_for(item("01111"))
+    assert "Lampiran III" not in plain["pma_kondisi"]
+
+
+def test_union_guilt_basis_and_block_come_together():
+    it = union_item()
+    del it["union_with_lampiran_iii"]
+    _, refusals = run_union([it], [union_rec()])
+    assert refusals and "come together" in refusals[0]
+    it = union_item()
+    del it["closure_basis"]
+    _, refusals = run_union([it], [union_rec()])
+    assert refusals and "come together" in refusals[0]
+
+
+def test_union_guilt_needs_judged_as():
+    it = union_item()
+    it["judged_as"] = None
+    _, refusals = run_union([it], [union_rec()])
+    assert refusals and "needs judged_as" in refusals[0]
+
+
+def test_union_guilt_cannot_be_a_split_heir():
+    it = union_item(judged_as=None)
+    it["judged_as_split_heir"] = "13134"
+    it["siblings_left_open"] = []
+    _, refusals = run_union([it], [union_rec()])
+    assert refusals and "cannot also be a split heir" in refusals[0]
+
+
+def test_union_guilt_unknown_lampiran_iii_entry():
+    _, refusals = run_union([union_item(union={"entry": 99})], [union_rec()])
+    assert refusals and "not in the transcribed relation" in refusals[0]
+
+
+def test_union_guilt_lampiran_iii_entry_on_another_2020_code():
+    _, refusals = run_union([union_item(union={"entry": 9})], [union_rec()])
+    assert refusals and "is KBLI-2020 20232, not 13134" in refusals[0]
+
+
+def test_union_guilt_lampiran_iii_cap_above_zero_is_not_a_closure():
+    l3 = [(2, "Industri batik cap", "13134", 49, None)]
+    _, refusals = run_union([union_item()], [union_rec()], l3=l3)
+    assert refusals and "not 0 — not a closure" in refusals[0]
+
+
+def test_union_guilt_lampiran_iii_text_drift():
+    _, refusals = run_union(
+        [union_item(union={"bidang_usaha": "Industri batik"})], [union_rec()]
+    )
+    assert refusals and "spec says" in refusals[0]
+
+
+def test_union_guilt_no_lampiran_ii_row_for_the_2020_code():
+    _, refusals = run_union([union_item()], [union_rec()], l2=[])
+    assert refusals and "no Lampiran II dialokasikan row" in refusals[0]
+
+
+def test_union_guilt_lampiran_ii_row_does_not_name_a_segment():
+    l2 = [
+        {
+            "code": "13134",
+            "column": "dialokasikan",
+            "text": "Industri batik: Industri batik tulis",
+        }
+    ]
+    _, refusals = run_union([union_item()], [union_rec()], l2=l2)
+    assert (
+        refusals
+        and "does not name 'Industri batik kombinasi tulis dan cap'" in refusals[0]
+    )
+
+
+def test_union_guilt_uraian_does_not_mention_a_method():
+    _, refusals = run_union(
+        [union_item()], [union_rec("Pembuatan kain batik dengan metode tulis dan cap.")]
+    )
+    assert refusals and "uraian does not mention 'kombinasi'" in refusals[0]
+
+
+def test_union_guilt_a_method_neither_annex_names_stays_open():
+    it = union_item(union={"uraian_methods": ["tulis", "cap", "kombinasi", "printing"]})
+    _, refusals = run_union([it], [union_rec(URAIAN + " Juga batik printing.")])
+    assert refusals and "neither annex names 'printing'" in refusals[0]
+
+
+def test_union_guilt_one_annex_only_is_not_a_union():
+    it = union_item(union={"uraian_methods": ["cap"]})
+    _, refusals = run_union([it], [union_rec()])
+    assert refusals and "rests on one annex only" in refusals[0]
+
+
+def test_union_guilt_needs_two_lanes():
+    it = union_item(agreed_by=["lane-a (proposer)", "lane-a (re-reading its own work)"])
+    _, refusals = run_union([it], [union_rec()])
+    assert refusals and "two independent lanes" in refusals[0]
+
+
+def test_union_guilt_still_subject_to_the_one_to_one_gate():
+    r = union_rec()
+    r["bps_2020_ancestors"] = {"codes": ["13134", "13139"]}
+    _, refusals = run_union([union_item()], [r])
+    assert refusals and "absorbs ['13139']" in refusals[0]

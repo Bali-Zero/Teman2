@@ -1,0 +1,58 @@
+{
+  "compiler": "cure_prose_national_openness",
+  "_meta": {
+    "spec": "prose_lampiran2_union_13133_naso_2026_09_18",
+    "population": "The one code the 2026-09-18 PMA closed-list research moved to TERBATAS/0 by the UNION of Perpres 49/2021 Lampiran II item 11 (batik tulis, kombinasi → Koperasi/UMKM) and Lampiran III entry #2 (batik cap → domestic capital): 13133 Industri Kain Batik (spec lampiran2_union_13133_naso_2026_09_18.json, PR-2 of the naso plan after PR #6752). New backlog created by that canonical write.",
+    "replacement_is_whole_field_not_sentence": "editorial.body keeps paragraphs 1-2 verbatim (scope and scale) and replaces the two ownership paragraphs with a two-annex reading plus the Bali sentence. zantaraOpener/whoThisIsFor/whatYouNeed are replaced where they promised a PT PMA route or 'PMA status: Open'. baliContext is null and stays null.",
+    "bali_sentence": "13133 carries l4_bali OK_or_HIGHER_RISK (blocked false, Besar risk class above the moratorium band); the replacement says the risk-class reading only matters for a code a PT PMA could register, and the national allocation decides first.",
+    "percentages": "Only 0% is stated anywhere in the new text — cure_prose_national_openness refuses any percentage that differs from pma_max_asing, and 'modal dalam negeri 100%' is therefore paraphrased as 'domestic capital' in prose (the exact annex wording lives in pma_kondisi and pma_official_basis).",
+    "boilerplate": "Every sentence names batik, the annex item or the code, so nothing repeats across ≥5 records (kbli_dataset_lint L11 stays at main's 12; L10 returns from 9 to main's 5)."
+  },
+  "codes": {
+    "13133": {
+      "judul": "Industri Kain Batik",
+      "expect": {
+        "pma_max_asing": 0,
+        "pma_status": "TERBATAS",
+        "pma_kondisi_contains": "dialokasikan untuk Koperasi dan UMKM"
+      },
+      "fields": {
+        "whatYouNeed": {
+          "old_sha256": "d0e47a44a73c21d1d94d4b62534593975dae1f325cbce4be8b8b8c01379e05f8",
+          "old_excerpt": "Nationally, this KBLI is 100% open to foreign ownership (PMA). In Bali, the island-wide mo",
+          "new": "The national foreign-ownership ceiling for this activity is 0%. Perpres 10/2021, as amended by Perpres 49/2021, closes batik cloth manufacturing to a PT PMA on both of its annexes: Lampiran II (p.3, item 11 \"Industri batik\") allocates hand-drawn batik (tulis) and combined tulis-and-cap batik to Koperasi and UMKM, and Lampiran III entry #2 reserves stamped batik (cap) to domestic capital. The code's own scope names exactly those three methods, so there is no batik production a foreign-owned company can register under 13133 anywhere in Indonesia — the Bali risk-class reading never comes into play."
+        },
+        "zantaraOpener": {
+          "old_sha256": "d15ffbc2e8edcf46ec2224ae8a934aece519a656f36d8e63856eebf9225b7968",
+          "old_excerpt": "Looking into Industri Kain Batik (13133)? Nationally this carries PMA status: Open. Let me",
+          "new": "Looking into Industri Kain Batik (13133)? Every batik method the code covers — tulis, cap, kombinasi — is reserved to Koperasi/UMKM or to domestic capital under Perpres 49/2021 Lampiran II and III, so it is not a PT PMA code. Let me walk you through what the record says."
+        },
+        "whoThisIsFor": {
+          "old_sha256": "691a70033ac8242a1cf42b6c4ceaab1e009fe0db51323827defe1f6a71d6e679",
+          "old_excerpt": "A foreign entrepreneur with deep appreciation for textile heritage who wants to produce au",
+          "new": "Indonesian cooperatives, micro, small and medium enterprises, and wholly domestic-owned producers making batik cloth by hand-drawing, stamping or both. A foreign investor cannot hold this code through a PT PMA: the tulis and kombinasi methods are allocated to Koperasi and UMKM and the cap method is reserved to domestic capital under Perpres 49/2021."
+        },
+        "editorial.headline": {
+          "old_sha256": "f44b4e5141b06abf451f01ba9f1834ca05dc6796d7720d2c051d3af0ba9dbc52",
+          "old_excerpt": "Batik Cloth Manufacturing, Open Nationally and Workable in Bali",
+          "new": "Batik Cloth Manufacturing Is Closed to PT PMA on Both Perpres Annexes — Koperasi, UMKM and Domestic Capital Only"
+        },
+        "editorial.standfirst": {
+          "old_sha256": "0b097d4b657cc57ed8a5e58e4de9e2cb8c8eb7718b48f82dad0d461bdad6967c",
+          "old_excerpt": "This activity covers batik cloth made with wax-resist techniques, open across all business",
+          "new": "KBLI 13133 covers batik cloth made with wax-resist techniques by hand-drawing, stamping or a combination of both; Perpres 49/2021 Lampiran II allocates the tulis and kombinasi methods to Koperasi and UMKM and Lampiran III reserves the cap method to domestic capital, so a foreign-owned company cannot register the code anywhere in Indonesia."
+        },
+        "editorial.body": {
+          "old_sha256": "1a5b59261163a9e4f75ff74e106c9e72061958bdadbe33aedc1ec0044e484e1a",
+          "old_excerpt": "KBLI 13133 is the industrial activity of making batik cloth. The defining process is not s",
+          "new": "KBLI 13133 is the industrial activity of making batik cloth. The defining process is not simply printing a pattern, but using *malam* or wax as a resist medium so colour can be held back and motifs can be formed on fabric. The record recognises batik made by the written method, the stamped method, or a combination of both. In plain English, this is the code for producing batik fabric through the classic wax-resist logic that gives the cloth its pattern and identity.\n\nThe scale picture is unusually broad. The record opens this activity to Mikro, Kecil, Menengah, and Besar businesses, which means it can describe a small producer as well as a larger industrial operation, provided the registered activity is still the manufacture of batik cloth. That breadth matters because batik production often sits across different business realities: workshop, craft-led production, scaled manufacturing, or a larger textile operation. The code is anchored by the activity itself, not by a single business size.\n\nThe ownership position is set by Perpres 10/2021, as amended by Perpres 49/2021, and it takes both annexes to read it. Lampiran II (p.3, item 11 \"Industri batik\") allocates hand-drawn batik (\"Industri batik tulis\") and combined batik (\"Industri batik kombinasi tulis dan cap\") to Koperasi and UMKM; Lampiran III entry #2 (\"Industri batik cap\") requires wholly domestic capital for stamped batik. Neither row alone covers the whole code — which is why the record once carried a slice notice for batik cap under an open code — but the code's own description names exactly those three methods and no other. A foreign investor can be neither a cooperative nor a UMKM and cannot supply domestic capital, so the national foreign-ownership ceiling recorded for batik cloth manufacturing is 0% and a PT PMA cannot register 13133 anywhere in Indonesia. That is a national reservation, not a Bali cap and not a negotiable limit.\n\nThe Bali overlay does not change that answer. The record marks 13133 as OK_or_HIGHER_RISK and not blocked, because the moratorium reaches only Low and Medium-Low risk lines and this code's large-scale risk class sits higher — but that reading only matters for an activity a PT PMA could register in the first place. Here the national allocation already decides the PMA question before any provincial rule is reached."
+        },
+        "editorial.pullQuote": {
+          "old_sha256": "f5fcf21268a802eaed3bf13562ae655712b9d06bec68c83abd283864f8efbcc1",
+          "old_excerpt": "For this record, batik cloth manufacturing is nationally open to foreign ownership up to 1",
+          "new": "Batik cloth manufacturing is reserved to Koperasi, UMKM and domestic capital under Perpres 49/2021 Lampiran II and III: the PT PMA route is closed nationwide, for every batik method the code names."
+        }
+      }
+    }
+  }
+}

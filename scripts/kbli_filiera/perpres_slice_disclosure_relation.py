@@ -22,9 +22,19 @@ actually inside the code (bespoke perfume is not traditional cosmetics; a
 spacecraft is not a military aircraft; space transport is not air transport;
 on-demand streaming is not an institutional broadcaster). Publishing a slice
 notice on those pages would assert a containment the adjudication itself denies.
-That leaves 10 codes reached by the general derivation
-(17 BROADER codes − 2 `MANUAL_SLICE_ROWS` codes − 5 `ADJACENT_NOT_CONTAINED`
-codes). The emitted artifact therefore carries 10 + 2 = 12 codes.
+One more — `13133` — is excluded the OTHER way round (see `CLOSED_BY_UNION`):
+its Lampiran III slice (batik cap, entry #2) is real and inside the code, but
+Lampiran II item 11 allocates the REST of the code (batik tulis, batik
+kombinasi) to Koperasi/UMKM, so the union of the two annexes closes the whole
+code and canonical carries TERBATAS/0 on it (2026-09-18 dossier §3.3,
+`apply_umkm_reservations.py` union gate). A slice notice on a code that is
+already closed whole would double-speak — the same rule the `pma_status`
+refusal below enforces — while the BROADER verdict stays true of Lampiran III
+ALONE and stays where it is. That leaves 9 codes reached by the general
+derivation (17 BROADER codes − 2 `MANUAL_SLICE_ROWS` codes − 5
+`ADJACENT_NOT_CONTAINED` codes − 1 `CLOSED_BY_UNION` code). The emitted
+artifact therefore carries 9 + 2 = 11 Lampiran III codes, plus the Lampiran II
+hand-authored rows below.
 
 Plus the two hand-adjudicated `30111`/`30113` rows (see `MANUAL_SLICE_ROWS`):
 these two are `AMBIGUOUS`, not `DISAGREE`, in `perpres_foreign_cap_relation`'s
@@ -68,6 +78,10 @@ REFUSES, LOUDLY (never guesses, never silently drops a row)
   IS the restriction). This is what keeps `21021`/`21022` out of this artifact
   once their ADJUDICATION verdict flips `RENAMED -> PLAIN` and their whole
   code is patched to TERBATAS: they simply never reach the BROADER filter.
+* a `CLOSED_BY_UNION` code is STILL `TERBUKA` in canonical, or its
+  `pma_official_basis` no longer names both annexes — the union closure that
+  justified retiring its slice is gone, so the slice must come back; the
+  inverse of the rule above, and equally loud.
 
 IT REPORTS AND EMITS; IT DOES NOT DECIDE. `--check` exits 0 (the population is
 the designed disclosure, not a failure). `--check-artifact` exits 1 when the
@@ -182,6 +196,21 @@ LAMPIRAN_II_MANUAL_SLICE_ROWS: dict[str, list[tuple[int, str, int, str | None]]]
 }
 
 
+# BROADER under Lampiran III ALONE — the verdict `ADJUDICATION` records and
+# keeps — but closed WHOLE by the union of Lampiran III with a Lampiran II
+# row that allocates the remainder of the code to Koperasi/UMKM. The slice is
+# real (batik cap IS inside Industri Kain Batik); it is retired because the
+# whole code is already TERBATAS/0 and a slice notice under a whole-code
+# closure is the double-speak the `pma_status` refusal below exists for.
+# Reason pulled from `ADJUDICATION` at import time, same contract as
+# `ADJACENT_NOT_CONTAINED`: if the adjudication moves, the exclusion is
+# re-derived by a human, not carried.
+CLOSED_BY_UNION: dict[str, str] = {
+    "13133": ADJUDICATION["13133"][1],
+}
+CLOSED_BY_UNION_INSTRUMENTS = ("Lampiran II", "Lampiran III")
+
+
 class SliceDisclosureError(RuntimeError):
     """A refusal. Never downgraded to a warning, never silently dropped."""
 
@@ -218,7 +247,12 @@ def general_rows(
     BROADER-adjudicated code (outside both exclusion sets) has no row here —
     the derivation that explains WHY it is BROADER found nothing.
     """
-    targets = broader_codes(adjudication) - set(MANUAL_SLICE_ROWS) - set(ADJACENT_NOT_CONTAINED)
+    targets = (
+        broader_codes(adjudication)
+        - set(MANUAL_SLICE_ROWS)
+        - set(ADJACENT_NOT_CONTAINED)
+        - set(CLOSED_BY_UNION)
+    )
     by_code = caps_by_code(RELATION)
     reverse: dict[str, list[dict[str, Any]]] = defaultdict(list)
     for rec in canonical:
@@ -317,10 +351,50 @@ def compute_disclosures(
                 f"before trusting the exclusion still holds"
             )
 
+    # CLOSED_BY_UNION's exclusion holds only while (a) the adjudication still
+    # calls the code BROADER for the same reason and (b) canonical still
+    # carries the whole-code closure on BOTH annexes. If the code is open
+    # again, the retired slice is a client told "100% open" about an activity
+    # the annex reserves — refuse, do not silently keep the exclusion.
+    for code, reason in CLOSED_BY_UNION.items():
+        verdict, live_reason = adjudication.get(code, (None, ""))
+        if verdict != BROADER:
+            raise SliceDisclosureError(
+                f"{code}: excluded as closed-by-union but ADJUDICATION no "
+                f"longer marks it BROADER (found {verdict!r}) — re-derive "
+                f"whether the exclusion still applies"
+            )
+        if live_reason != reason:
+            raise SliceDisclosureError(
+                f"{code}: ADJUDICATION's reason changed since the union "
+                f"exclusion was written ({live_reason!r} != {reason!r})"
+            )
+        record = records_by_code.get(code)
+        if record is None:
+            raise SliceDisclosureError(
+                f"{code}: not in canonical — cannot verify the union closure"
+            )
+        status, cap = record.get("pma_status"), record.get("pma_max_asing")
+        if status != "TERBATAS" or cap != 0:
+            raise SliceDisclosureError(
+                f"{code}: excluded as closed-by-union but canonical carries "
+                f"{status!r}/{cap!r}, not TERBATAS/0 — the slice must be "
+                f"disclosed again, not silently retired"
+            )
+        basis = record.get("pma_official_basis") or ""
+        missing = [i for i in CLOSED_BY_UNION_INSTRUMENTS if i not in basis]
+        if missing:
+            raise SliceDisclosureError(
+                f"{code}: closed-by-union but pma_official_basis does not name "
+                f"{missing} — a one-annex basis is not a union"
+            )
+
     for code, rows in sorted(disclosures.items()):
         record = records_by_code.get(code)
         if record is None:
-            raise SliceDisclosureError(f"{code}: not in canonical — cannot verify pma_status")
+            raise SliceDisclosureError(
+                f"{code}: not in canonical — cannot verify pma_status"
+            )
         status = record.get("pma_status")
         if status != "TERBUKA":
             raise SliceDisclosureError(
@@ -357,10 +431,17 @@ def build_artifact(disclosures: dict[str, list[dict[str, Any]]]) -> dict[str, An
                 "left OUT of `disclosures` because their own ADJUDICATION reason "
                 "says the annex activity is a neighbour, not something inside the "
                 "code — publishing a slice notice there would assert a containment "
-                "the adjudication itself denies."
+                "the adjudication itself denies. excluded_closed_by_union lists "
+                "BROADER codes whose slice is real but whose WHOLE code canonical "
+                "already closes (TERBATAS/0) by the union of Lampiran II and "
+                "Lampiran III — a slice notice under a whole-code closure would "
+                "double-speak."
             ),
             "count": len(disclosures),
-            "excluded_adjacent_not_contained": dict(sorted(ADJACENT_NOT_CONTAINED.items())),
+            "excluded_adjacent_not_contained": dict(
+                sorted(ADJACENT_NOT_CONTAINED.items())
+            ),
+            "excluded_closed_by_union": dict(sorted(CLOSED_BY_UNION.items())),
         },
         "disclosures": disclosures,
     }

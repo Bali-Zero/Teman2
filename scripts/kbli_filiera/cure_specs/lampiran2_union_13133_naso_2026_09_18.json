@@ -1,0 +1,50 @@
+{
+  "instrument": "Perpres 10/2021 as amended by 49/2021, Lampiran II + Lampiran III (union)",
+  "population": "PMA closed-list research 2026-09-18 (research/kbli/2026-09-18-kbli-codes-closed-to-pma-tier1-tier2-dossier.md §3.3, relation class `umkm_reserved_coextensive`, `closure_basis: union`, `canonical_agrees: false`): the ONE code in the coextensive class closed by the UNION of two annexes rather than by one row. KBLI 2025 13133 (Industri Kain Batik) descends from KBLI 2020 13134 (Industri Batik) alone and absorbs nothing else; its uraian names three production methods — tulis, cap, kombinasi keduanya. Lampiran II item 11 (p.3) allocates 'Industri batik tulis' and 'Industri batik kombinasi tulis dan cap' to Koperasi/UMKM; Lampiran III entry #2 puts 'Industri batik cap' at 100% domestic capital. Neither annex alone covers the code — which is why apply_perpres_foreign_caps.ADJUDICATION keeps 13133 BROADER under Lampiran III and the page carried a batik-cap slice disclosure — but together they leave a PT PMA no method to file under. PR-1 (#6752) shipped the six one-row members of the class and deferred this one by name because its live Lampiran III slice disclosure would double-speak once the whole code reads TERBATAS; perpres_slice_disclosure_relation.py now retires that slice under CLOSED_BY_UNION in the same change.",
+  "adjudicated": "2026-09-18, owner's go («segui il nostro naso e aggiorna app e web», then «procedi» on the PR-2 → PR-3 → residual order). Annex rows re-read on the layout dump of the BPK gazette PDFs (Perpres 49/2021 Lampiran II, peraturan.bpk.go.id/Download/161564, p.3 item 11; Lampiran III, peraturan.bpk.go.id/Download/161565, entry #2 = scripts/kbli_filiera/perpres_foreign_cap_relation.py RELATION). Refuter Codex GPT-5.6 sol, three rounds on the relation: r1 #15 named 13133 as a closure on the adopted mappings (union of L-II + L-III); r2 #2 moved it from 'candidate' to closed; r3 #8 corrected the class label to `union_with_lampiran_iii` and accepted the aggregate closure.",
+  "supersedes": null,
+  "excluded": {
+    "shipped_in_pr1": {
+      "codes": ["10307", "10308", "16291", "16293", "32201", "55106"],
+      "why": "The six one-row coextensive members — cure_specs/lampiran2_coextensive_naso_2026_09_18.json, PR #6752."
+    },
+    "whole_row_unresolved": {
+      "codes": [
+        "02300",
+        "10794",
+        "13122",
+        "16292",
+        "16294",
+        "23932",
+        "47192",
+        "47243",
+        "47721",
+        "79110"
+      ],
+      "why": "Lampiran II row names the code without a qualifier but coverage of the 2025 code is UNRESOLVED — dossier §3.3 `umkm_reserved_whole_row`; per-row reading owed, nothing applied."
+    },
+    "lampiran_iii_segment_only": {
+      "codes": ["10761", "20232", "20235", "90200"],
+      "why": "Lampiran III 0% on a SEGMENT with no Lampiran II row covering the remainder — the code stays TERBUKA and keeps its slice disclosure (Pasal 6(3)); a union needs both annexes."
+    }
+  },
+  "items": [
+    {
+      "code": "13133",
+      "judged_as": "13134",
+      "closure_basis": "union",
+      "union_with_lampiran_iii": {
+        "entry": 2,
+        "bidang_usaha": "Industri batik cap",
+        "lampiran_ii_segments": "Industri batik tulis, Industri batik kombinasi tulis dan cap",
+        "uraian_methods": ["tulis", "cap", "kombinasi"]
+      },
+      "locator": "Perpres 49/2021 Lampiran II (DIALOKASIKAN untuk Koperasi dan UMKM), p.3, item 11 \"Industri batik\", sub-rows \"Industri batik tulis\" and \"Industri batik kombinasi tulis dan cap\" (KBLI 2020 13134, sole ancestor of 13133) — allocated to Koperasi/UMKM per Pasal 3(1)(b) + Pasal 5; together with Perpres 49/2021 Lampiran III (Daftar Bidang Usaha dengan Persyaratan Tertentu) entry #2 \"Industri batik cap\" (KBLI 2020 13134, modal dalam negeri 100%, Pasal 6(3)) the two annexes cover every method the code's uraian names (tulis, cap, kombinasi keduanya), so the whole 2025 code is unavailable to a PT PMA; max foreign 0%.",
+      "was": { "pma_status": "TERBUKA", "pma_max_asing": 100 },
+      "agreed_by": [
+        "claude-opus-5 (relation build 2026-09-18, both annexes re-read on the layout text)",
+        "codex-gpt-5.6 sol (refuter r1 #15, r2 #2, r3 #8)"
+      ]
+    }
+  ]
+}

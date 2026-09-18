@@ -21,6 +21,7 @@ from perpres_slice_disclosure_relation import (  # noqa: E402
     ADJACENT_NOT_CONTAINED,
     ARTIFACT,
     CANONICAL,
+    CLOSED_BY_UNION,
     MANUAL_SLICE_ROWS,
     SliceDisclosureError,
     build_artifact,
@@ -39,21 +40,35 @@ def _record(code: str, pma_status: str = "TERBUKA", ancestors: list[str] | None 
     return rec
 
 
+def _union_closed_record(code: str = "13133") -> dict:
+    # The shape CLOSED_BY_UNION's inverse guard demands: TERBATAS/0 and a
+    # basis naming BOTH annexes.
+    return {
+        "kode_kbli_2025": code,
+        "pma_status": "TERBATAS",
+        "pma_max_asing": 0,
+        "pma_official_basis": (
+            "Perpres 49/2021 Lampiran II item 11; Perpres 49/2021 Lampiran III entry #2"
+        ),
+    }
+
+
 def _with_real_manual_codes(
     canonical: list[dict], adjudication: dict[str, tuple[str, str]]
 ) -> tuple[list[dict], dict[str, tuple[str, str]]]:
     """`compute_disclosures` always walks the REAL (unpatched) module-global
     `MANUAL_SLICE_ROWS` for its ADJUDICATION-membership check, the REAL
-    `ADJACENT_NOT_CONTAINED` for its own drift check, and the REAL
-    `LAMPIRAN_II_MANUAL_SLICE_ROWS` (43110) — which needs no ADJUDICATION
-    entry at all, since it is a Lampiran II population, never derived from
-    the Lampiran III `ADJUDICATION` dict. Every synthetic scenario that does
-    not itself replace one of those dicts (via `monkeypatch.setattr(pm, ...)`,
-    see `TestInvalidCap` / `TestNonTerbukaCode`) must therefore also supply a
-    valid canonical entry for 43110, or an unrelated check (its own
-    `pma_status` lookup) fires before the scenario under test is ever
-    reached."""
+    `ADJACENT_NOT_CONTAINED` and `CLOSED_BY_UNION` for their own drift
+    checks, and the REAL `LAMPIRAN_II_MANUAL_SLICE_ROWS` (43110) — which
+    needs no ADJUDICATION entry at all, since it is a Lampiran II population,
+    never derived from the Lampiran III `ADJUDICATION` dict. Every synthetic
+    scenario that does not itself replace one of those dicts (via
+    `monkeypatch.setattr(pm, ...)`, see `TestInvalidCap` /
+    `TestNonTerbukaCode`) must therefore also supply a valid canonical entry
+    for 43110 and 13133, or an unrelated check (its own `pma_status` lookup)
+    fires before the scenario under test is ever reached."""
     base_canonical = [
+        _union_closed_record("13133"),
         _record("30111"),
         _record("30113"),
         _record("20235"),
@@ -71,6 +86,7 @@ def _with_real_manual_codes(
         "51103": (BROADER, ADJACENT_NOT_CONTAINED["51103"]),
         "60103": (BROADER, ADJACENT_NOT_CONTAINED["60103"]),
         "60203": (BROADER, ADJACENT_NOT_CONTAINED["60203"]),
+        "13133": (BROADER, CLOSED_BY_UNION["13133"]),
     }
     return base_canonical + canonical, {**base_adjudication, **adjudication}
 
@@ -127,6 +143,7 @@ class TestInvalidCap:
             pm, "MANUAL_SLICE_ROWS", {"99997": [(1, "Industri uji coba", 30, None)]}
         )
         monkeypatch.setattr(pm, "ADJACENT_NOT_CONTAINED", {})
+        monkeypatch.setattr(pm, "CLOSED_BY_UNION", {})
         monkeypatch.setattr(pm, "LAMPIRAN_II_MANUAL_SLICE_ROWS", {})
         canonical = [_record("99997")]
         adjudication = {"99997": (BROADER, "test-only")}
@@ -138,6 +155,7 @@ class TestInvalidCap:
             pm, "MANUAL_SLICE_ROWS", {"99996": [(1, "Industri uji coba", 49, None)]}
         )
         monkeypatch.setattr(pm, "ADJACENT_NOT_CONTAINED", {})
+        monkeypatch.setattr(pm, "CLOSED_BY_UNION", {})
         monkeypatch.setattr(pm, "LAMPIRAN_II_MANUAL_SLICE_ROWS", {})
         canonical = [_record("99996")]
         adjudication = {"99996": (BROADER, "test-only")}
@@ -159,6 +177,7 @@ class TestNonTerbukaCode:
             pm, "MANUAL_SLICE_ROWS", {"99995": [(1, "Industri uji coba", 49, None)]}
         )
         monkeypatch.setattr(pm, "ADJACENT_NOT_CONTAINED", {})
+        monkeypatch.setattr(pm, "CLOSED_BY_UNION", {})
         monkeypatch.setattr(pm, "LAMPIRAN_II_MANUAL_SLICE_ROWS", {})
         canonical = [_record("99995", pma_status="TERBATAS")]
         adjudication = {"99995": (BROADER, "test-only")}
@@ -170,6 +189,7 @@ class TestNonTerbukaCode:
             pm, "MANUAL_SLICE_ROWS", {"99994": [(1, "Industri uji coba", 49, None)]}
         )
         monkeypatch.setattr(pm, "ADJACENT_NOT_CONTAINED", {})
+        monkeypatch.setattr(pm, "CLOSED_BY_UNION", {})
         monkeypatch.setattr(pm, "LAMPIRAN_II_MANUAL_SLICE_ROWS", {})
         canonical = [_record("99994", pma_status="TERBUKA")]
         adjudication = {"99994": (BROADER, "test-only")}
@@ -275,10 +295,10 @@ class TestAdjacentNotContained:
         # INNOCENCE: the map is not empty — a genuinely-contained BROADER code
         # still carries its slice row, so this pin cannot be satisfied by
         # silently dropping every disclosure.
-        assert "13133" in real_disclosures
-        rows = real_disclosures["13133"]
+        assert "20232" in real_disclosures
+        rows = real_disclosures["20232"]
         assert len(rows) == 1
-        assert rows[0]["bidangUsaha"] == "Industri batik cap"
+        assert rows[0]["bidangUsaha"] == "Industri kosmetik tradisional"
         assert rows[0]["foreignCapPct"] == 0
 
 
@@ -310,6 +330,86 @@ class TestManualRowsExcludedFromGeneralLoop:
 
 
 # ---------------------------------------------------------------------------
+# Closed-by-union exclusion — 13133 left the population the OTHER way round:
+# the whole code closed, so a partial slice would contradict the record. The
+# exclusion holds only while canonical still carries that closure on both
+# annexes; the moment the code reopens, the slice must come back.
+# ---------------------------------------------------------------------------
+
+
+class TestClosedByUnion:
+    def test_innocence_union_closed_code_is_excluded_and_the_rest_survives(self):
+        canonical, adjudication = _with_real_manual_codes(
+            [_record("20232", ancestors=["20232"])],
+            {"20232": (BROADER, "real")},
+        )
+        rows = compute_disclosures(canonical, adjudication)
+        assert "13133" not in rows
+        assert "20232" in rows
+
+    def test_guilt_reopened_code_must_disclose_the_slice_again(self):
+        # Canonical says TERBUKA again: the retired slice would now hide a real
+        # annex restriction from a client filing under the open code.
+        canonical, adjudication = _with_real_manual_codes([], {})
+        for rec in canonical:
+            if rec["kode_kbli_2025"] == "13133":
+                rec["pma_status"] = "TERBUKA"
+                rec["pma_max_asing"] = 100
+        with pytest.raises(SliceDisclosureError, match="must be disclosed again"):
+            compute_disclosures(canonical, adjudication)
+
+    def test_guilt_one_annex_basis_is_not_a_union(self):
+        canonical, adjudication = _with_real_manual_codes([], {})
+        for rec in canonical:
+            if rec["kode_kbli_2025"] == "13133":
+                rec["pma_official_basis"] = "Perpres 49/2021 Lampiran II item 11"
+        with pytest.raises(SliceDisclosureError, match="does not name"):
+            compute_disclosures(canonical, adjudication)
+
+    def test_guilt_verdict_drift_raises(self):
+        canonical, adjudication = _with_real_manual_codes(
+            [], {"13133": (PLAIN, CLOSED_BY_UNION["13133"])}
+        )
+        with pytest.raises(
+            SliceDisclosureError, match="closed-by-union but ADJUDICATION"
+        ):
+            compute_disclosures(canonical, adjudication)
+
+    def test_guilt_reason_drift_raises(self):
+        canonical, adjudication = _with_real_manual_codes(
+            [], {"13133": (BROADER, "somebody re-read the annex differently")}
+        )
+        with pytest.raises(
+            SliceDisclosureError, match="reason changed since the union"
+        ):
+            compute_disclosures(canonical, adjudication)
+
+    def test_guilt_code_missing_from_canonical_raises(self):
+        canonical, adjudication = _with_real_manual_codes([], {})
+        canonical = [r for r in canonical if r["kode_kbli_2025"] != "13133"]
+        with pytest.raises(
+            SliceDisclosureError, match="cannot verify the union closure"
+        ):
+            compute_disclosures(canonical, adjudication)
+
+    def test_innocence_real_canonical_still_carries_the_union_closure(self):
+        from apply_perpres_foreign_caps import ADJUDICATION
+
+        by_code = {str(r["kode_kbli_2025"]): r for r in load_canonical()}
+        for code, reason in CLOSED_BY_UNION.items():
+            assert ADJUDICATION[code] == (BROADER, reason), code
+            rec = by_code[code]
+            assert (rec["pma_status"], rec["pma_max_asing"]) == ("TERBATAS", 0), code
+            assert "Lampiran II" in rec["pma_official_basis"], code
+            assert "Lampiran III" in rec["pma_official_basis"], code
+
+    def test_innocence_artifact_names_the_exclusion(self):
+        artifact = json.loads(ARTIFACT.read_text(encoding="utf-8"))
+        assert artifact["_meta"]["excluded_closed_by_union"] == CLOSED_BY_UNION
+        assert "13133" not in artifact["disclosures"]
+
+
+# ---------------------------------------------------------------------------
 # The real catalogue — pins on adjudicated membership
 # ---------------------------------------------------------------------------
 
@@ -323,13 +423,14 @@ def real_disclosures():
 
 class TestRealCatalogue:
     def test_population_count(self, real_disclosures):
-        # 7 general BROADER codes (12 BROADER-adjudicated minus 20235/30303/
-        # 51103/60103/60203, excluded as adjacent-not-contained) + 30111
-        # (2 rows) + 30113 (1 row) + 43110 (1 Lampiran II row, SAETTA-20260915
-        # W-H PR-2 — a separate hand-authored population, never derived from
-        # ADJUDICATION).
-        assert len(real_disclosures) == 13
-        assert sum(len(rows) for rows in real_disclosures.values()) == 14
+        # 6 general BROADER codes (12 BROADER-adjudicated minus 20235/30303/
+        # 51103/60103/60203, excluded as adjacent-not-contained, minus 13133,
+        # closed as a whole by the union of Lampiran II item 11 and Lampiran
+        # III entry #2 on 2026-09-18) + 30111 (2 rows) + 30113 (1 row) + 43110
+        # (1 Lampiran II row, SAETTA-20260915 W-H PR-2 — a separate
+        # hand-authored population, never derived from ADJUDICATION).
+        assert len(real_disclosures) == 12
+        assert sum(len(rows) for rows in real_disclosures.values()) == 13
 
     def test_43110_lampiran_ii_demolition_slice(self, real_disclosures):
         rows = real_disclosures["43110"]
@@ -353,11 +454,18 @@ class TestRealCatalogue:
         assert "30301" in real_disclosures
         assert "30302" in real_disclosures
 
-    def test_13133_batik_cap_slice(self, real_disclosures):
-        rows = real_disclosures["13133"]
+    def test_20232_traditional_cosmetics_slice(self, real_disclosures):
+        rows = real_disclosures["20232"]
         assert len(rows) == 1
-        assert rows[0]["bidangUsaha"] == "Industri batik cap"
+        assert rows[0]["bidangUsaha"] == "Industri kosmetik tradisional"
         assert rows[0]["foreignCapPct"] == 0
+
+    def test_13133_closed_by_union_carries_no_slice(self, real_disclosures):
+        # Lampiran III entry #2 (batik cap) still names 13133's ancestor and
+        # ADJUDICATION still says BROADER — but Lampiran II item 11 allocates
+        # batik tulis + kombinasi to Koperasi/UMKM, so the canonical is
+        # TERBATAS/0 and a partial disclosure would contradict the record.
+        assert "13133" not in real_disclosures
 
     def test_30111_manned_vessel_two_rows(self, real_disclosures):
         rows = real_disclosures["30111"]
