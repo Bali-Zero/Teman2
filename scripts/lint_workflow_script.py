@@ -240,8 +240,13 @@ def find_violations(path: Path) -> list[tuple[int, str]]:
             )
 
     phase_calls = [(m.start(), m.group(2)) for m in PHASE_CALL_RE.finditer(src)]
-    for idx, (start, name) in enumerate(phase_calls):
-        end = phase_calls[idx + 1][0] if idx + 1 < len(phase_calls) else len(src)
+    # DEFECT :245 (PR3d, 2026-09-18): spans used to start at the FIRST phase( call, so
+    # any loop above it — and every loop in a file with no phase( at all — sat outside
+    # every span and was never scanned. An implicit leading span (name=None) covers
+    # exactly that gap; it stands in for the WHOLE file when phase_calls is empty.
+    spans = [(0, None)] + phase_calls
+    for idx, (start, name) in enumerate(spans):
+        end = spans[idx + 1][0] if idx + 1 < len(spans) else len(src)
         span_neutral = neutral[start:end]
         for loop_m in LOOP_RE.finditer(span_neutral):
             loop_open = start + loop_m.end() - 1
@@ -259,10 +264,11 @@ def find_violations(path: Path) -> list[tuple[int, str]]:
             has_cap_name = bool(CAP_NAME_RE.search(span_neutral))
             if not has_int and not has_cap_name:
                 line_no = src[:loop_open].count("\n") + 1
+                where = f'phase("{name}")' if name is not None else "no phase("
                 violations.append(
                     (
                         line_no,
-                        f'phase("{name}") has a {loop_m.group(1)}( loop with no numeric '
+                        f"{where} has a {loop_m.group(1)}( loop with no numeric "
                         "cap or maxRounds-style constant in its span",
                     )
                 )

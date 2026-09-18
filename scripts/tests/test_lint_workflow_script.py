@@ -102,6 +102,28 @@ def test_cap_name_in_code_stays_clean(lint):
     assert lint.find_violations(FIXTURES_DIR / "cap_name_in_code.js") == []
 
 
+def test_loop_before_first_phase_is_violation(lint):
+    """DEFECT :245 (PR3d, 2026-09-18): a loop above the file's first phase( call must
+    still be scanned — only the pre-phase, genuinely-uncapped loop fires."""
+    violations = lint.find_violations(FIXTURES_DIR / "loop_before_first_phase.js")
+    assert len(violations) == 1
+    assert "no phase(" in violations[0][1]
+
+
+def test_no_phase_uncapped_loop_is_violation(lint):
+    """DEFECT :245 (PR3d, 2026-09-18): a file with NO phase( call at all must still be
+    scanned — an empty phase_calls list must not mean an empty spans list."""
+    violations = lint.find_violations(FIXTURES_DIR / "no_phase_uncapped_loop.js")
+    assert len(violations) == 1
+    assert "no phase(" in violations[0][1]
+
+
+def test_no_phase_capped_loop_stays_clean(lint):
+    """Twin of the fixture above: the new implicit leading span must not over-fire on
+    a phase(-less file whose loop genuinely IS capped."""
+    assert lint.find_violations(FIXTURES_DIR / "no_phase_capped_loop.js") == []
+
+
 def test_for_await_loop_is_recognised(lint):
     """OBSERVATION 5 (PR3a', 2026-09-18): `for await (` must be recognised as a loop.
     The declared for-await...of stays exempt (bounded, same as plain for...of); the
