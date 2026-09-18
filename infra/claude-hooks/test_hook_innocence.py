@@ -76,6 +76,11 @@ def _copy_hook(name: str) -> pathlib.Path:
         if src.exists():
             dst = dst_dir / name
             shutil.copy2(src, dst)
+            # Registry-driven hooks (data_plane_guard, secret_expansion_guard) read a
+            # `*-registry.json` sidecar next to themselves and fail OPEN without it —
+            # every guilt case would then score as blindness. Stage the sidecars too.
+            for sidecar in src_dir.glob("*-registry.json"):
+                shutil.copy2(sidecar, dst_dir / sidecar.name)
             return dst
     return HERE / name  # missing — report canonical location
 
@@ -215,6 +220,32 @@ CASES: dict[str, list[tuple[dict, str, str]]] = {
     # git-diff/find/grep/test-runner/tail-f/Read/Skill call, spec's vaccine minimum set
     # (§7): C01, C03, C04, C07, C16, C17, C24, C25, C33, C39, C41, C46,
     # C52, C55, C67, C68, C71, C76, C78.
+    # ---- secret_expansion_guard.py (Bash/Monitor/Read) — a credential VALUE must
+    # never reach a tool result. Spec: docs/specs/2026-09-18-secret-expansion-guard-shapes-spec.md
+    "secret_expansion_guard.py": [
+        # GUILT
+        (bash('echo "${BAILIAN_TOKEN_PLAN_API_KEY:-UNSET}"'), "BLOCK", "E01 X1: incident 2 verbatim — :- prints the value"),
+        (bash('printf "[%s]\n" "${BAILIAN_TOKEN_PLAN_API_KEY:+SET}${BAILIAN_TOKEN_PLAN_API_KEY:-UNSET}"'), "BLOCK",
+         "E02 X1: incident 3 verbatim — :+ does not launder :-"),
+        (bash("printenv BAILIAN_TOKEN_PLAN_API_KEY"), "BLOCK", "E13 X2: printenv names a secret"),
+        (bash("security find-generic-password -s svc -w"), "BLOCK", "E21 X3: -w prints the Keychain value"),
+        (bash("cat ~/.nuzantara-secrets.env"), "BLOCK", "E24 X4: content dump of a registered store"),
+        (read_("~/.codex/auth.json"), "BLOCK", "E36 X5: Read on a registered store"),
+        (bash('echo "$(cat ~/.nuzantara-secrets.env)"'), "BLOCK", "E52 X4 inside a command substitution"),
+        # INNOCENCE
+        (bash('echo "${BAILIAN_TOKEN_PLAN_API_KEY:+SET}"'), "ALLOW", "E06: the sanctioned presence check — one character from E01"),
+        (bash('curl -H "Authorization: Bearer $BAILIAN_TOKEN_PLAN_API_KEY" https://api/'), "ALLOW", "E09: THE correct way to use a key"),
+        (bash('grep -rn "BAILIAN_TOKEN_PLAN_API_KEY" scripts/'), "ALLOW", "E11: bare name, no $"),
+        (bash("env -u BAILIAN_TOKEN_PLAN_API_KEY python3 x.py"), "ALLOW", "E18: strips, does not print"),
+        (bash("chmod 600 ~/.nuzantara-secrets.env"), "ALLOW", "E28: the cure must not be blocked"),
+        (bash("grep -c BAILIAN_TOKEN_PLAN_API_KEY ~/.nuzantara-secrets.env"), "ALLOW", "E30: count only"),
+        (bash("set -o pipefail; ls | head"), "ALLOW", "E47: -o without xtrace — found DENIED at the gate"),
+        (bash("set +x; ls"), "ALLOW", "E48: +x turns tracing OFF — found DENIED at the gate"),
+        (bash("python3 - <<'PY'\nprint(\"cat ~/.nuzantara-secrets.env\")\nPY"), "ALLOW",
+         "E57: quoted heredoc to a non-shell is literal data — the repo's editing idiom"),
+        (read_("~/.qwen/settings.json"), "ALLOW", "E39: config, not a registered store (spec §4)"),
+        (bash("git diff --stat origin/main...HEAD"), "ALLOW", "everyday command, no secret anywhere"),
+    ],
     "output_hygiene_guard.py": [
         # GUILT
         (bash("ls bigdir"), "BLOCK", "C03 counterpart: S1 151 visible (cwd-relative, HOME not fixtured here)"),

@@ -271,6 +271,16 @@
       "hooks_dirs": ["infra/claude-hooks", "scripts/hooks", ".claude/hooks"],
       "vaccine": "infra/claude-hooks/test_hook_innocence.py",
       "entries": {
+        "infra/claude-hooks/secret_expansion_guard.py": {
+          "scar": [
+            "superscar-4-secret-in-the-clear",
+            "W-secret-expansion-2026-09-18"
+          ],
+          "symbols": {},
+          "tests": ["infra/claude-hooks/test_secret_expansion_guard.py"],
+          "also_covered_by": ["vaccine"],
+          "note": "PreToolUse(Bash|Monitor|Read) guard, 2026-09-18, gated 2026-09-19 (SHIP-WITH-FIXES). DENIES (never rewrites) the five shapes of docs/specs/2026-09-18-secret-expansion-guard-shapes-spec.md that put a credential VALUE into a tool result: X1 value expansion in a print stage (${V:-UNSET} vs the sanctioned ${V:+SET} — one character apart, the three 2026-09-18 leaks), X2 environment dumps, X3 Keychain -w, X4 content dump of a registered store, X5 Read on a store. Registry-driven (secret-expansion-registry.json), fail-open on every error path, kill switch NUZ_SECRET_EXPANSION_GUARD_OFF=1, no filesystem walk (stores matched by pattern). Dedicated corpus E01-E59 in test_secret_expansion_guard.py (the spec wins over the code); the vaccine block is what hook-innocence-gate.yml executes. Gate 2026-09-19 found and pinned three over-matches (set -o pipefail, set +x, declare -x), two under-matches (declare -p, $(...) bodies) and the heredoc-as-data case."
+        },
         "infra/claude-hooks/output_hygiene_guard.py": {
           "scar": ["W-output-hygiene-2026-09-18"],
           "symbols": {},
