@@ -5,8 +5,10 @@ found seven KBLI 2025 codes whose whole scope is a Perpres 49/2021 Lampiran II
 row (DIALOKASIKAN untuk Koperasi dan UMKM) through a 1:1 BPS crosswalk. Six ship
 here — 10307 10308 16291 16293 32201 55106 — through `apply_umkm_reservations.py
 --spec cure_specs/lampiran2_coextensive_naso_2026_09_18.json --apply`. 13133
-(batik) is deferred: its live Lampiran III slice disclosure would become
-double-speak once the whole code reads TERBATAS, so it needs its own PR.
+(batik) shipped separately (PR-2, `lampiran2_union_13133_naso_2026_09_18.json`):
+its live Lampiran III slice disclosure would have become double-speak once the
+whole code read TERBATAS, so it is closed by the UNION of both annexes and
+pinned by `test_perpres_slice_disclosure.py`, not here.
 
 Each of the six must carry the SAME field tuple the certified template
 (95291 96100 96210 96220, then the W-H lots) already carries: TERBATAS / 0 /
@@ -153,10 +155,11 @@ def test_l4_bali_untouched(by_code):
 
 
 def test_out_of_scope_codes_untouched(by_code):
-    """13133 (deferred), 55209/79110 (in review), the whole-row-unresolved set
-    and the SEGMENT codes must not carry a naso verdict."""
+    """55209/79110 (in review), the whole-row-unresolved set and the SEGMENT
+    codes must not carry a naso verdict. 13133 left this list on 2026-09-18
+    (PR-2): it is closed by the union of Lampiran II item 11 and Lampiran III
+    entry #2 — see `test_perpres_slice_disclosure.py::TestClosedByUnion`."""
     for code in [
-        "13133",
         "55209",
         "79110",
         "02300",
