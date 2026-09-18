@@ -109,7 +109,8 @@ Each case is a full command as a session would type it, judged with `cwd` = the 
 checkout at `origin/main`, `HOME` a fixture with a 957-entry `mailbox/broadcast`, and fixtures
 `bigdir/` (151 visible), `middir/` (100 visible), `dotdir/` (30 visible + 160 dotfiles),
 `small.py` (1 KiB), `big.log` (25 KiB, one line), `huge.md` (100 KiB: 1,600 lines of 64 bytes),
-`photo.png` (200 KiB of bytes; only the suffix matters). Every case from rounds 1-3 is here; a new round may ADD
+`photo.png` (200 KiB of bytes; only the suffix matters), `oneline.txt` (1 MiB, no newline), and a
+`huge.md` twin inside the fixture HOME. Every case from rounds 1-3 is here; a new round may ADD
 cases, and an added case that flips the verdict of an existing one is a spec change, not a patch.
 Rows written as `Read(path[, offset=N][, limit=N])` or `Skill(name)` are probed with `tool_name`
 `Read`/`Skill` and exactly that `tool_input` (relative paths against the fixture `cwd`), never as
@@ -197,6 +198,8 @@ a Bash command.
 | C78 | `Skill(modus)`                                                    | ALLOW   | S10 is names, not size — 79 KiB whole by design        |
 | C79 | `NUZ_OUTPUT_HYGIENE_OFF=1` in env, C67 / C76                      | ALLOW   | kill switch (C57 twin)                                 |
 | C80 | `Read` without `file_path` / `Skill` without `skill` / `skill: 7` | exit 0  | fail-open (C58 twin)                                   |
+| C81 | `Read(~/huge.md)`                                                 | DENY    | S9: `~` expanded (§3 row), same slice as C67           |
+| C82 | `Read(oneline.txt)`                                               | DENY    | S9: 1 MiB in ONE line, chunked read (C71 twin)         |
 
 ## 7. Tests and gate contract for the re-implementation
 
