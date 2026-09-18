@@ -75,9 +75,9 @@ async function simulate({
       if (options.label === "dux:upstream")
         return { ...built(), ...patchBuild };
       if (options.label.startsWith("dux:")) return built();
-      if (options.label === "gate:upstream")
+      if (options.label === "signoff:upstream")
         return { ...gated(), ...patchGate };
-      if (options.label.startsWith("gate:")) return gated();
+      if (options.label.startsWith("signoff:")) return gated();
       if (options.label.startsWith("release:"))
         return {
           verdict: "PASS",
@@ -114,7 +114,7 @@ test("a signed unmerged gate hands the frozen target to the release owner", asyn
   const { result, calls } = await simulate({ patchGate: { merged: false } });
   assert.equal(result.verdict, "PASS");
   assert.ok(calls.includes("release:upstream"));
-  assert.ok(calls.indexOf("release:upstream") > calls.indexOf("gate:upstream"));
+  assert.ok(calls.indexOf("release:upstream") > calls.indexOf("signoff:upstream"));
 });
 
 test("missing-gate CI recovery belongs to release before merge and consumers", async () => {
@@ -125,7 +125,7 @@ test("missing-gate CI recovery belongs to release before merge and consumers", a
     live = false;
   const { result, calls } = await simulate({
     seat: async (prompt, options) => {
-      if (options.label === "gate:upstream") {
+      if (options.label === "signoff:upstream") {
         assert.ok(options.schema.required.includes("posted"));
         assert.ok(!options.schema.required.includes("merged"));
         assert.match(prompt, /Do not merge, re-arm, or rerun CI/);
@@ -188,12 +188,12 @@ for (const status of ["needs_input", "failed"])
   test(`Dux ${status} cannot trigger a gate or consumer`, async () => {
     const { result, calls } = await simulate({ patchBuild: { status } });
     assert.equal(result.verdict, "BLOCK");
-    assert.ok(!calls.includes("gate:upstream"));
+    assert.ok(!calls.includes("signoff:upstream"));
     assert.ok(!calls.includes("dux:consumer"));
   });
 
 test("a thrown child failure remains visible although native parallel swallows throws", async () => {
-  const { result, calls } = await simulate({ fail: "gate:upstream" });
+  const { result, calls } = await simulate({ fail: "signoff:upstream" });
   assert.equal(result.verdict, "BLOCK");
   assert.ok(!calls.includes("dux:consumer"));
   assert.ok(calls.includes("dux:independent"));
@@ -249,7 +249,7 @@ for (const patchClose of [
 
 for (const stage of [
   "dux:upstream",
-  "gate:upstream",
+  "signoff:upstream",
   "release:upstream",
   "close:SAETTA-TEST",
 ])

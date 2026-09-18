@@ -217,7 +217,7 @@ handles queue admission after your exact-head verdict and receipt are posted.
 posted=true only if every required comment and status was read back on its exact SHA.
 Return binary verdict plus those same targets, posted, receipt path and reasons.`,
       {
-        label: `gate:${task.key}`,
+        label: `signoff:${task.key}`,
         phase: "Run",
         model: "opus",
         effort: "xhigh",
@@ -282,11 +282,29 @@ that receipt and proving every target's consumer. No live proof means BLOCK, nev
 }
 
 phase("Run");
+// A valid dependsOn DAG resolves at least one task per round, so it always finishes
+// within A.tasks.length rounds; ROUNDS_CAP is a generous +1 over that bound. Exceeding
+// it, or a round with zero ready tasks while some remain unresolved, proves dependsOn
+// is not actually acyclic (or points at a key that never resolves) -- fail loud instead
+// of spinning forever (lint_workflow_script.py RULE 3; this loop had no cap before).
+const ROUNDS_CAP = A.tasks.length + 1;
+let round = 0;
 while (Object.keys(results).length < A.tasks.length) {
+  round += 1;
+  if (round > ROUNDS_CAP) {
+    throw new Error(
+      `saetta Run phase exceeded ROUNDS_CAP=${ROUNDS_CAP} rounds without resolving all tasks -- likely a cycle in dependsOn`,
+    );
+  }
   const ready = A.tasks.filter(
     (t) => !results[t.key] && t.dependsOn.every((d) => results[d]),
   );
   const batch = ready.slice(0, A.maxParallel);
+  if (batch.length === 0) {
+    throw new Error(
+      `saetta Run phase round ${round}: no ready task but ${A.tasks.length - Object.keys(results).length} task(s) unresolved -- a dependsOn edge will never resolve`,
+    );
+  }
   const outcomes = await parallel(batch.map((task) => () => run(task)));
   batch.forEach((task, i) => {
     results[task.key] =
