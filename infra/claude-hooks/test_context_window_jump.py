@@ -512,3 +512,61 @@ def test_a_tmux_binary_alone_does_not_make_a_tmux_seat():
     rc, _, err, _ = run_gate("Bash", {"command": "ls"}, tokens=TRIP, session_id="s-notm", home=home, env_extra=env)
     assert rc == 2 and _jump(home, "s-notm")["seat"] == "headless"
     assert "Salto REGISTRATO" in err and _spawns(spawn_log, 1, timeout=1.0) == 0
+
+
+# ---------------- pending-file GC ----------------
+def _plant_pending(home: pathlib.Path, name: str, *, age_s: float, to_session=None, raw: str | None = None):
+    d = home / ".organism" / "context-guard"
+    d.mkdir(parents=True, exist_ok=True)
+    f = d / f"pending-jump-{name}.json"
+    f.write_text(raw if raw is not None else json.dumps(
+        {"from_session": name, "to_session": to_session, "hops": 1, "mandate": "M", "ts": time.time() - age_s}))
+    t = time.time() - age_s
+    os.utime(f, (t, t))
+    return f
+
+
+def test_a_new_jump_sweeps_stale_pending_files_and_keeps_the_live_ones():
+    # 2026-09-19: 53 files on M5, the oldest 227 h, none ever removed.
+    home = pathlib.Path(tempfile.mkdtemp())
+    H = 3600
+    gone = [_plant_pending(home, "old-claimed", age_s=25 * H, to_session="x"),
+            _plant_pending(home, "old-unclaimed", age_s=3 * H),
+            _plant_pending(home, "corrupt", age_s=3 * H, raw="{not json")]
+    kept = [_plant_pending(home, "fresh-claimed", age_s=1 * H, to_session="y"),
+            _plant_pending(home, "fresh-unclaimed", age_s=600),          # a sibling mid-jump
+            _plant_pending(home, "young-corrupt", age_s=600, raw="{not json")]
+    _plant_link(home, produced="s-gc", hops=1)                           # our own producer
+    link = home / ".organism" / "context-guard" / "pending-jump-prev-s-gc.json"
+    t = time.time() - 48 * H
+    os.utime(link, (t, t))                                              # old, but it is OUR chain
+    rc, _, _, _ = run_gate("Bash", {"command": "ls"}, tokens=TRIP, session_id="s-gc", home=home)
+    assert rc == 2
+    assert not any(f.exists() for f in gone), [f.name for f in gone if f.exists()]
+    assert all(f.exists() for f in kept), [f.name for f in kept if not f.exists()]
+    assert link.exists(), "the file that produced this session is read on every trip"
+    assert _jump(home, "s-gc")["hops"] == 2, "the link was still there to be read"
+    log = (home / ".organism" / "context-guard" / "jump.log").read_text()
+    assert "[s-gc] gc: removed 3 stale pending-jump file(s), kept 4" in log
+
+
+def test_a_jump_with_nothing_stale_writes_no_gc_line():
+    home = pathlib.Path(tempfile.mkdtemp())
+    _plant_pending(home, "fresh-claimed", age_s=3600, to_session="y")
+    run_gate("Bash", {"command": "ls"}, tokens=TRIP, session_id="s-quiet", home=home)
+    p = home / ".organism" / "context-guard" / "jump.log"
+    assert (not p.exists()) or "gc:" not in p.read_text()
+    assert (home / ".organism" / "context-guard" / "pending-jump-fresh-claimed.json").exists()
+
+
+def test_gc_pending_flag_sweeps_by_hand_and_reports_counts():
+    home = pathlib.Path(tempfile.mkdtemp())
+    _plant_pending(home, "old-claimed", age_s=25 * 3600, to_session="x")
+    _plant_pending(home, "fresh-unclaimed", age_s=60)
+    r = subprocess.run([sys.executable, str(HOOK), "--gc-pending"], capture_output=True, text=True,
+                       env={"HOME": str(home), "PATH": "/usr/bin:/bin"})
+    assert r.returncode == 0
+    assert r.stdout.strip() == "pending-jump gc: removed 1, kept 1", r.stdout + r.stderr
+    d = home / ".organism" / "context-guard"
+    assert not (d / "pending-jump-old-claimed.json").exists()
+    assert (d / "pending-jump-fresh-unclaimed.json").exists()
