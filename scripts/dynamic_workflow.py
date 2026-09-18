@@ -12,7 +12,8 @@ Subcommands (PR1a+PR1b+PR2a+PR2b+PR2c+PR2d):
     jury     --kit K            # blind peer review of survivors, six axes, Borda + firsts
     anonymise --kit K           # Z-BLIND/ A-F copies (seat/objective_sha256 stripped only)
     reveal    --kit K           # prints+writes tabulation.revealed.md, sealed until Z-DECISIONI.md
-    capture-check --kit K --dest D   # full artifact set incl. OUTCOME.md keys, copies to D
+    capture-check --kit K --dest D   # full artifact set incl. OUTCOME.md keys, canonical/empty
+                                      # --dest only, every file PII-gated, then copies to D
 
 PII gate is fail-closed, no --skip-pii flag exists: the objective is redacted with the SAME
 Redactor used before anything leaves this machine; any change, or any raise, refuses with a
