@@ -139,6 +139,24 @@ def test_nested_schema_with_top_level_model_stays_clean(lint):
     assert lint.find_violations(FIXTURES_DIR / "nested_schema_with_top_level_model.js") == []
 
 
+def test_parenthesized_object_literal_is_checked(lint):
+    """DEFECT :184 (PR3d, 2026-09-18): a parenthesized object literal
+    (`agent(p, ({ label: "x" }))`) used to be skipped as unreadable indirection --
+    it must be read exactly like the unwrapped form."""
+    violations = lint.find_violations(FIXTURES_DIR / "parenthesized_object_literal.js")
+    assert len(violations) == 1
+    assert "model:" in violations[0][1]
+
+
+def test_parenthesized_object_literal_with_model_stays_clean(lint):
+    """Twin of the fixture above: the same wrapping-paren shape stays clean once a
+    real top-level model: is present."""
+    assert (
+        lint.find_violations(FIXTURES_DIR / "parenthesized_object_literal_with_model.js")
+        == []
+    )
+
+
 def test_for_await_loop_is_recognised(lint):
     """OBSERVATION 5 (PR3a', 2026-09-18): `for await (` must be recognised as a loop.
     The declared for-await...of stays exempt (bounded, same as plain for...of); the

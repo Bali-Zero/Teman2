@@ -158,9 +158,35 @@ def _neutralize_js(src: str) -> str:
     return "".join(out)
 
 
+def _unwrap_parens(text: str) -> str:
+    """Strips matched wrapping parens (`((x))` -> `x`), but leaves an expression like
+    `(a)+(b)` alone: a wrapping pair only counts when its OWN matching close is the
+    LAST character of `text` -- depth returns to zero exactly once, at the very end.
+    DEFECT :184 (PR3d, 2026-09-18): a parenthesized object literal such as
+    `agent(p, ({ label: "x" }))` was skipped entirely as unreadable indirection; it is
+    exactly as readable as the unwrapped form once this strips the wrapping paren."""
+    text = text.strip()
+    while text.startswith("(") and text.endswith(")"):
+        depth = 0
+        close_idx = -1
+        for idx, ch in enumerate(text):
+            if ch == "(":
+                depth += 1
+            elif ch == ")":
+                depth -= 1
+                if depth == 0:
+                    close_idx = idx
+                    break
+        if close_idx != len(text) - 1:
+            break  # the first "(" closes before the end -- not a wrapping pair
+        text = text[1:-1].strip()
+    return text
+
+
 def _last_top_level_arg(call_neutral: str) -> str:
     """call_neutral is the full, neutralized `agent(...)` call text (outer parens
-    included). Returns the LAST top-level argument's own neutralized text."""
+    included). Returns the LAST top-level argument's own neutralized text, with any
+    wrapping indirection parens stripped (see _unwrap_parens)."""
     inner = call_neutral[1:-1].rstrip()
     if inner.endswith(","):
         # a JS trailing comma before the closing `)` (Prettier's own style) — not a
@@ -181,7 +207,8 @@ def _last_top_level_arg(call_neutral: str) -> str:
     # not "nothing to check" — if that lone argument is itself an object literal, it IS
     # the last (and only) argument, same as a multi-arg call's tail. Previously this
     # returned False unconditionally here, silently skipping `agent({...})` calls.
-    return inner[top_commas[-1] + 1 :].strip() if top_commas else inner.strip()
+    last_arg = inner[top_commas[-1] + 1 :].strip() if top_commas else inner.strip()
+    return _unwrap_parens(last_arg)
 
 
 def _options_arg_is_object_literal(call_neutral: str) -> bool:
