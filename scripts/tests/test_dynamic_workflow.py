@@ -476,6 +476,142 @@ def test_validate_seat_id_refuses_empty_or_dot_components(bad_seat):
     assert e.value.code == 2
 
 
+# --------------------------------------------------------------- kimi model id (guilt + innocence)
+# Gate-4 finding, PR2e addendum (scripts/dynamic_workflow.py:382): every kimi* seat launched
+# with the same hardcoded '-m kimi-code/k3', so the kimi-2.7 alias would really be answered by
+# K3. KIMI_MODEL_MAP is now the single source for the '-m' id, read by both _launch_seat and
+# _validate_kimi_model (the latter refuses BEFORE any ledger row, from _run_one_seat).
+
+def test_validate_kimi_model_accepts_both_real_kimi_seats_and_the_alias():
+    assert dw._validate_kimi_model("kimi-k3") is None  # returns cleanly, no SystemExit
+    assert dw._validate_kimi_model("kimi-code/kimi-for-coding-highspeed") is None
+    assert dw._validate_kimi_model("kimi-2.7") is None  # alias, canonicalises to the highspeed seat
+
+
+def test_validate_kimi_model_is_a_noop_for_a_non_kimi_seat():
+    # _seat_kind != "kimi" — nothing to check, returns cleanly rather than raising
+    assert dw._validate_kimi_model("qwen3.8-max") is None
+
+
+def test_validate_kimi_model_refuses_an_unresolvable_kimi_seat():
+    with pytest.raises(SystemExit) as e:
+        dw._validate_kimi_model("kimi-nonexistent-model")
+    assert e.value.code == 2
+
+
+def test_r1_refuses_an_unresolvable_kimi_model_id_before_ledger_append(tmp_path, template,
+                                                                        clean_objective):
+    kit = tmp_path / "k"
+    dw.cmd_brief(_brief_ns(clean_objective, template, kit))
+    _seed_convener(kit)
+    bad_seat = "kimi-nonexistent-model"
+    with pytest.raises(SystemExit) as e:
+        dw.cmd_r1(argparse.Namespace(kit=str(kit), seats=bad_seat, astra_fallback=False))
+    assert e.value.code == 2
+    assert not dw._ledger_has_seat(kit, bad_seat)
+
+
+def test_launch_seat_kimi_uses_the_per_seat_model_id(tmp_path, monkeypatch):
+    """Launcher-intercept per the addendum: proves the '-m' argument _launch_seat actually
+    threads to subprocess.run is per-seat, not the old hardcoded 'kimi-code/k3' for every
+    kimi* seat. DW_FAKE_SEATS never reaches _launch_seat (see _run_one_seat), so this calls
+    it directly, same pattern as test_launch_seat_astra_resolves_a_seat_before_invoking_codex."""
+    kit = tmp_path / "k"
+    calls = []
+
+    class _FakeResult:
+        stdout = "stub output"
+
+    def _fake_run(cmd, **kwargs):
+        calls.append(cmd)
+        return _FakeResult()
+
+    monkeypatch.setattr(dw.subprocess, "run", _fake_run)
+
+    dw._launch_seat("kimi-k3", "prompt text", 5, kit)
+    dw._launch_seat("kimi-code/kimi-for-coding-highspeed", "prompt text", 5, kit)
+
+    assert len(calls) == 2
+    assert calls[0][calls[0].index("-m") + 1] == "kimi-code/k3"
+    assert calls[1][calls[1].index("-m") + 1] == "kimi-code/kimi-for-coding-highspeed"
+
+
+def test_launch_seat_kimi_2_7_alias_resolves_to_the_highspeed_id_end_to_end(tmp_path, monkeypatch):
+    """The addendum's other half: 'kimi-2.7 resolves to the highspeed id end to end (r1 launch
+    args, not _seat_family)' — calls _launch_seat with the ALIAS spelling itself, proving
+    _canonical_seat is consulted at dispatch time, not just by the family lookup."""
+    kit = tmp_path / "k"
+    calls = []
+
+    class _FakeResult:
+        stdout = "stub output"
+
+    def _fake_run(cmd, **kwargs):
+        calls.append(cmd)
+        return _FakeResult()
+
+    monkeypatch.setattr(dw.subprocess, "run", _fake_run)
+
+    dw._launch_seat("kimi-2.7", "prompt text", 5, kit)
+
+    assert len(calls) == 1
+    assert calls[0][calls[0].index("-m") + 1] == "kimi-code/kimi-for-coding-highspeed"
+
+
+# --------------------------------------------------------------- slug collision (guilt + innocence)
+# Gate-4 finding, PR2e addendum (scripts/dynamic_workflow.py:420): _file_slug collapses '/' to
+# '__', so 'vendor/x' and a literal 'vendor__x' seat id both produce r1/vendor__x.md — the
+# second claimant used to overwrite the first silently (exit 0, no error). kit/slugs.json now
+# refuses a second, DIFFERENT claimant before dispatch.
+
+def test_r1_refuses_a_slug_collision_between_two_different_seat_ids(tmp_path, template,
+                                                                     clean_objective):
+    kit = tmp_path / "k"
+    dw.cmd_brief(_brief_ns(clean_objective, template, kit))
+    _seed_convener(kit)
+    dw.cmd_r1(argparse.Namespace(kit=str(kit), seats="vendor/x", astra_fallback=False))
+    first_answer = (kit / "r1" / "vendor__x.md").read_text()
+    with pytest.raises(SystemExit) as e:
+        dw.cmd_r1(argparse.Namespace(kit=str(kit), seats="vendor__x", astra_fallback=False))
+    assert e.value.code == 2
+    assert not dw._ledger_has_seat(kit, "vendor__x")  # the SECOND seat id, never dispatched
+    assert dw._ledger_has_seat(kit, "vendor/x")  # the FIRST seat id, untouched by the refusal
+    assert (kit / "r1" / "vendor__x.md").read_text() == first_answer  # first claimant's file intact
+
+
+def test_r1_relaunching_the_same_seat_across_two_cmd_r1_calls_is_not_a_slug_collision(
+        tmp_path, template, clean_objective):
+    kit = tmp_path / "k"
+    dw.cmd_brief(_brief_ns(clean_objective, template, kit))
+    _seed_convener(kit)
+    dw.cmd_r1(argparse.Namespace(kit=str(kit), seats="kimi-k3", astra_fallback=False))
+    assert dw.ledger_sent_count(kit, "kimi-k3") == 1
+    summary2 = dw.cmd_r1(argparse.Namespace(kit=str(kit), seats="kimi-k3", astra_fallback=False))
+    assert summary2["kimi-k3"] == "answered"  # the SAME seat re-claims its own slug, no refusal
+    assert dw.ledger_sent_count(kit, "kimi-k3") == 2
+
+
+# --------------------------------------------------------------- empty --seats (guilt + innocence)
+# Gate-4 finding, PR2e addendum (scripts/dynamic_workflow.py:497): "" or whitespace-only
+# --seats filtered down to an empty list and cmd_r1 returned an empty summary — exit 0,
+# nothing dispatched, no error at all.
+
+@pytest.mark.parametrize("bad_seats", ["", "   ", ",,,", " , "])
+def test_r1_refuses_empty_or_whitespace_only_seats_before_touching_the_kit(tmp_path, bad_seats):
+    kit = tmp_path / "nonexistent-kit"  # no cmd_brief, no convener — proves fail-fast
+    with pytest.raises(SystemExit) as e:
+        dw.cmd_r1(argparse.Namespace(kit=str(kit), seats=bad_seats, astra_fallback=False))
+    assert e.value.code == 2
+
+
+def test_r1_accepts_a_normal_non_empty_seats_string(tmp_path, template, clean_objective):
+    kit = tmp_path / "k"
+    dw.cmd_brief(_brief_ns(clean_objective, template, kit))
+    _seed_convener(kit)
+    summary = dw.cmd_r1(argparse.Namespace(kit=str(kit), seats="kimi-k3", astra_fallback=False))
+    assert "kimi-k3" in summary
+
+
 # --------------------------------------------------------------- r2 pairing "exactly two" (guilt + innocence)
 # Gate finding 3, inherited from PR2a's merge: compute_pairing silently accepted 0 or 1
 # cross-family partner as "good enough"; the mandate requires EXACTLY two.
@@ -514,18 +650,40 @@ def test_r2_pairing_md_resolves_the_kimi_2_7_alias_to_moonshot_for_diversity(tmp
     # test above (test_seat_family_resolves_the_mandate_aliases) proves _seat_family resolves
     # it in isolation, but this proves the resolution actually reaches compute_pairing/pairing.md
     # end-to-end through cmd_r1 -> cmd_r2, not just the lookup function on its own.
+    #
+    # PR2e gate-4 addendum: the ORIGINAL seat list here had only ONE moonshot-family seat
+    # (kimi-2.7 itself), so a broken alias resolution had no second moonshot seat to wrongly
+    # pair it with, and only the in-memory compute_pairing() dict was ever checked, never the
+    # WRITTEN pairing.md text cmd_r2 actually produces. With EXACTLY these four seats (kimi-2.7,
+    # kimi-k3 = 2 moonshot; gemini-3.1-pro-high = 1 google; qwen3.8-max = 1 alibaba), both
+    # kimi-2.7's and kimi-k3's candidate pool is FORCED to exactly {gemini, qwen} — no RNG
+    # ambiguity in which two partners get picked, so a mis-resolved alias is guaranteed to be
+    # visible here, not just possible.
+    #
+    # Verified by local mutation (not committed, see PR body): pointing
+    # _SEAT_ALIASES["kimi-2.7"] at "gemini-3.1-pro-high" makes _seat_kind("kimi-2.7") still
+    # report "kimi" (a raw-string check, unaffected by the alias), so _validate_kimi_model
+    # refuses the mutated alias exit 2 from inside cmd_r1 itself, before cmd_r2/pairing.md is
+    # ever reached — the earliest of this PR's fail-closed gates catches it first. This test
+    # and _validate_kimi_model both key off the exact same single alias-resolution point
+    # (_SEAT_ALIASES -> _canonical_seat), so there is no way to break one without the other.
     kit = tmp_path / "k"
     dw.cmd_brief(_brief_ns(clean_objective, template, kit))
     _seed_convener(kit)
     dw.cmd_r1(argparse.Namespace(
         kit=str(kit),
-        seats="kimi-2.7,qwen3.8-max,gemini-3.1-pro-high,deepseek-v4-pro",
+        seats="kimi-2.7,kimi-k3,gemini-3.1-pro-high,qwen3.8-max",
         astra_fallback=False))
     dw.cmd_r2(argparse.Namespace(kit=str(kit)))
     pairing = dw.compute_pairing(kit, (kit / "brief.sha").read_text().strip())
-    partners = pairing["kimi-2.7"]
-    assert len(partners) == 2
-    assert all(dw._seat_family(p) != "moonshot" for p in partners)
+    assert set(pairing["kimi-2.7"]) == {"gemini-3.1-pro-high", "qwen3.8-max"}
+    assert set(pairing["kimi-k3"]) == {"gemini-3.1-pro-high", "qwen3.8-max"}
+
+    pairing_text = (kit / "pairing.md").read_text()
+    kimi27_row = next(l for l in pairing_text.splitlines() if l.startswith("| kimi-2.7 |"))
+    kimik3_row = next(l for l in pairing_text.splitlines() if l.startswith("| kimi-k3 |"))
+    assert "kimi-k3" not in kimi27_row, kimi27_row
+    assert "kimi-2.7" not in kimik3_row, kimik3_row
 
 
 # --------------------------------------------------------------- jury (guilt + innocence)

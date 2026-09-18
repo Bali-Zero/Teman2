@@ -387,7 +387,8 @@ def _launch_seat(seat: str, prompt: str, timeout: int, kit: Path) -> str:
     kind = _seat_kind(seat)
     try:
         if kind == "kimi":
-            cmd = ["kimi", "-p", prompt, "-m", "kimi-code/k3", "--output-format", "text"]
+            model_id = KIMI_MODEL_MAP[_canonical_seat(seat)]
+            cmd = ["kimi", "-p", prompt, "-m", model_id, "--output-format", "text"]
         elif kind == "tp1":
             cmd = ["qwen", "--model", seat, "--approval-mode", "plan", prompt]
         elif kind == "agy":
@@ -431,8 +432,29 @@ def _file_slug(seat: str) -> str:
     return seat.replace("/", "__")
 
 
+def _claim_slug(kit: Path, seat: str) -> None:
+    """Kit-level slug -> seat map (gate-4 finding, PR2e addendum, scripts/dynamic_workflow.py:420):
+    _file_slug collapses '/' to '__', so 'vendor/x' and a literal 'vendor__x' seat id both
+    produce r1/vendor__x.md — the second claimant used to overwrite the first silently (exit
+    0). kit/slugs.json is the single source of which seat already owns a slug; called once per
+    dispatch (_run_one_seat), so a relaunch of the SAME seat re-claims its own slug (no-op) but
+    a second, DIFFERENT seat claiming an existing slug refuses here, before dispatch."""
+    slug = _file_slug(seat)
+    slugs_path = kit / "slugs.json"
+    slugs: dict[str, str] = json.loads(slugs_path.read_text()) if slugs_path.exists() else {}
+    existing = slugs.get(slug)
+    if existing is not None and existing != seat:
+        print(f"refused: slug {slug!r} already claimed by seat {existing!r}, "
+              f"seat {seat!r} collides", file=sys.stderr)
+        sys.exit(2)
+    slugs[slug] = seat
+    slugs_path.write_text(json.dumps(slugs, indent=2, sort_keys=True) + "\n")
+
+
 def _run_one_seat(kit: Path, seat: str, brief_master: str, brief_sha: str, attempt: int) -> str:
     _validate_seat_id(seat)  # before the first ledger_append — an invalid id gets no row at all
+    _validate_kimi_model(seat)  # ditto — an unresolvable kimi* id gets no row either
+    _claim_slug(kit, seat)  # ditto — a slug collision with a DIFFERENT seat gets no row either
     seat_copy = _set_seat_line(brief_master, seat)
     reconstructed = _set_sha_line(_set_seat_line(seat_copy, ""), "")
     if hashlib.sha256(reconstructed.encode()).hexdigest() != brief_sha:
@@ -465,6 +487,15 @@ def _run_one_seat(kit: Path, seat: str, brief_master: str, brief_sha: str, attem
 
 
 def cmd_r1(args: argparse.Namespace) -> dict[str, str]:
+    # Gate-4 finding (PR2e addendum, scripts/dynamic_workflow.py:497): "" or whitespace-only
+    # --seats used to filter down to an empty list and exit 0 silently (nothing dispatched,
+    # no error). Checked before any kit access at all, so this refuses even against a kit
+    # path that doesn't exist yet.
+    seats = [s.strip() for s in args.seats.split(",") if s.strip()]
+    if not seats:
+        print("refused: --seats is empty or whitespace-only — nothing to dispatch",
+              file=sys.stderr)
+        sys.exit(2)
     kit = Path(args.kit)
     brief_sha = (kit / "brief.sha").read_text().strip()
     fable = kit / "r1" / "fable-5-1.md"
@@ -498,7 +529,6 @@ def cmd_r1(args: argparse.Namespace) -> dict[str, str]:
                       when=fable_mtime.strftime("%Y-%m-%dT%H:%M:%SZ"))
 
     brief_master = (kit / "BRIEF.md").read_text()
-    seats = [s.strip() for s in args.seats.split(",") if s.strip()]
     summary: dict[str, str] = {}
     for seat in seats:
         if seat in ("fable-5-1", "fable"):
@@ -557,6 +587,31 @@ _SEAT_ALIASES: dict[str, str] = {
 
 def _canonical_seat(seat: str) -> str:
     return _SEAT_ALIASES.get(seat, seat)
+
+
+# The kimi launcher's '-m' id, keyed by CANONICAL seat (gate-4 finding, PR2e addendum,
+# scripts/dynamic_workflow.py:382): every kimi* seat used to launch with the same hardcoded
+# '-m kimi-code/k3', so the kimi-2.7 alias would really be answered by K3. This map is the
+# single source _launch_seat and _validate_kimi_model both read — a kimi-shaped seat absent
+# from it (after alias resolution) refuses at validation, before dispatch, rather than
+# silently launching against the wrong model.
+KIMI_MODEL_MAP: dict[str, str] = {
+    "kimi-k3": "kimi-code/k3",
+    "kimi-code/kimi-for-coding-highspeed": "kimi-code/kimi-for-coding-highspeed",
+}
+
+
+def _validate_kimi_model(seat: str) -> None:
+    """Fail closed BEFORE any ledger row (gate-4 finding on PR2c, PR2e addendum): a kimi-shaped
+    seat id (_seat_kind(seat) == "kimi") whose canonical form is absent from KIMI_MODEL_MAP
+    refuses here rather than falling through to _launch_seat's old one-size-fits-all id."""
+    if _seat_kind(seat) != "kimi":
+        return
+    canonical = _canonical_seat(seat)
+    if canonical not in KIMI_MODEL_MAP:
+        print(f"refused: kimi seat {seat!r} (canonical {canonical!r}) has no entry in "
+              "KIMI_MODEL_MAP", file=sys.stderr)
+        sys.exit(2)
 
 
 def _seat_family(seat: str) -> str | None:
