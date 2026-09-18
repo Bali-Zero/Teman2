@@ -33,7 +33,8 @@ from pathlib import Path
 
 import pytest
 
-SCRIPT = Path(__file__).resolve().parents[2] / "infra" / "claude-hooks" / "window_jump.sh"
+SCRIPT = Path(os.environ.get("WINDOW_JUMP_SH")
+              or Path(__file__).resolve().parents[2] / "infra" / "claude-hooks" / "window_jump.sh")
 
 pytestmark = pytest.mark.skipif(platform.system() != "Darwin",
                                 reason="window_jump.sh exits 0 before any gesture off macOS")
@@ -264,3 +265,34 @@ def test_values_reach_applescript_as_argv_never_spliced(tmp_path):
     rc, calls, _ = _run(home, "native-ok")
     assert rc == 0
     assert "window_jump_native.applescript new-window /tmp/it's \"here\" " in calls
+
+
+def _leaves_once_stamped(stamp: Path) -> subprocess.Popen:
+    # A stand-in for an old claude that is ALREADY gone when the exit-wait looks:
+    # it leaves the moment its tty carries the stamp, long before /exit is typed.
+    return subprocess.Popen([sys.executable, "-c",
+                             "import os, sys, time\n"
+                             "while True:\n"
+                             "    try:\n"
+                             "        if os.path.getsize(sys.argv[1]) > 0: break\n"
+                             "    except OSError:\n"
+                             "        pass\n"
+                             "    time.sleep(0.02)\n", str(stamp)])
+
+
+def test_an_old_claude_already_gone_is_reported_ended_by_exit_not_signalled(tmp_path):
+    # 2026-09-18, twin of the tmux seat defect: a from_pid that had already left
+    # when the exit-wait looked produced NO outcome line at all, so the log read
+    # as if the gesture had stopped after typing /exit.
+    old = _leaves_once_stamped(tmp_path / "home" / "stamp.tty")
+    try:
+        home, _ = _home(tmp_path, old.pid)
+        rc, calls, log = _run(home, "native-ok")
+        old.wait(timeout=5)
+    finally:
+        old.kill()
+    assert rc == 0, log
+    assert "/exit typed into old window id=win-OLD (proven ours by stamp)" in log
+    assert "SIGINT" not in log, "a pid already gone is never signalled"
+    assert f"old session pid {old.pid} ended by /exit" in log, "the outcome line is owed even when the pid was already gone"
+    assert "old window id=win-OLD closed" in log
