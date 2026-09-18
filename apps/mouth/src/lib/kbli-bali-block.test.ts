@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url";
 import { describe, it, expect } from "vitest";
 import {
   baliBlockClause,
+  baliClosureQualifier,
   shouldShowReason,
   containsItalian,
   isProposalOnly,
@@ -266,6 +267,86 @@ describe("shouldShowReason — a cause and its denial must not share a sentence"
     expect(shouldShowReason("TERTUTUP", null)).toBe(false);
     expect(shouldShowReason("TERTUTUP", undefined)).toBe(false);
   });
+
+  // naso PR-3 (2026-09-18): the generator emits the note in three shapes and
+  // the first anchor caught only the bare one. The 59 statutory closures that
+  // PR locates carry the other two on 51 records.
+  it("GUILT: the '(verify per address)' shape is the same note (50 of the 59)", () => {
+    expect(
+      shouldShowReason(
+        "TERTUTUP",
+        "medium-high/high risk → not blocked by moratorium (verify per address)",
+      ),
+    ).toBe(false);
+  });
+
+  it("GUILT: the '[derivation under review] … — NOTE: …' shape is the same note (60311)", () => {
+    expect(
+      shouldShowReason(
+        "TERTUTUP",
+        "[derivation under review] medium-high/high risk → not blocked by moratorium (verify per address) — NOTE: the licensing rows this verdict's risk tier was read from have since been set aside as unverifiable for KBLI 2025, so the verdict cannot currently be re-derived; verdict pending re-derivation from the true risk tier (GARUDA-FILIERA).",
+      ),
+    ).toBe(false);
+  });
+
+  it("INNOCENCE: the anchor is still an anchor — a real cause after the phrase is kept", () => {
+    expect(
+      shouldShowReason(
+        "TERTUTUP",
+        "Legal services: not blocked by moratorium but by UU 18/2003 on Advocates.",
+      ),
+    ).toBe(true);
+  });
+
+  it("INNOCENCE: both extra shapes are kept when the cause IS the moratorium", () => {
+    expect(
+      shouldShowReason(
+        "CHIUSO_MORATORIA_BALI",
+        "medium-high/high risk → not blocked by moratorium (verify per address)",
+      ),
+    ).toBe(true);
+  });
+});
+
+describe("baliClosureQualifier — the list caveat is only true of a Bali closure", () => {
+  const LIST_CAVEAT =
+    "(conservative reading: this 2025 code also covers activities not on Bali's list)";
+
+  it("GUILT: a LOW-confidence TERTUTUP record (60311) gets no 'Bali's list' caveat", () => {
+    expect(
+      baliClosureQualifier({
+        status: "TERTUTUP",
+        confidence: "LOW",
+        needsReview: true,
+      }),
+    ).toBe("");
+  });
+
+  it("INNOCENCE: a MEDIUM CHIUSO_BALI record keeps it", () => {
+    expect(
+      baliClosureQualifier({
+        status: "CHIUSO_BALI",
+        confidence: "MEDIUM",
+        needsReview: false,
+      }),
+    ).toBe(` ${LIST_CAVEAT}`);
+  });
+
+  it("INNOCENCE: a caller already inside a closure branch may omit the status", () => {
+    expect(
+      baliClosureQualifier({ confidence: "MEDIUM", needsReview: false }),
+    ).toBe(` ${LIST_CAVEAT}`);
+  });
+
+  it("INNOCENCE: a scope is the record's own fact and is never withheld", () => {
+    expect(
+      baliClosureQualifier({
+        status: "TERTUTUP",
+        confidence: "LOW",
+        closure: { scopeQualifier: "buildings under 6,000 m²" },
+      }),
+    ).toBe(" for buildings under 6,000 m²");
+  });
 });
 
 describe("the real dataset — the invariant that was broken on prod", () => {
@@ -297,6 +378,24 @@ describe("the real dataset — the invariant that was broken on prod", () => {
       );
     });
     expect(contradictions.map((r) => r.kode_kbli_2025)).toEqual([]);
+  });
+
+  it("no blocked non-moratorium record can show the moratorium-test note (naso PR-3)", () => {
+    // The inverse of the pairing above: clause names a non-moratorium cause,
+    // spliced reason answers the moratorium test. 51 TERTUTUP records carried
+    // the note in its '(verify per address)' / '[derivation under review]'
+    // shapes and the first anchor let every one of them through; they were
+    // invisible only because none was located yet.
+    const leaks = BLOCKED.filter((r) => {
+      const status = r.l4_bali?.status;
+      const reason = r.l4_bali?.reason ?? "";
+      return (
+        !baliBlockClause(status).includes(MORATORIUM_SENTENCE) &&
+        /not\s+blocked\s+by\s+moratorium/i.test(reason) &&
+        shouldShowReason(status, reason)
+      );
+    });
+    expect(leaks.map((r) => r.kode_kbli_2025)).toEqual([]);
   });
 
   it("no Italian reaches a rendered reason on any blocked code", () => {
@@ -984,7 +1083,7 @@ describe("baliBlockedHint(codes, census) — the canonical census, not the serve
         "40 by Bali's own 2026 closure of specific business fields, " +
         "12 held under Bali Zero's conservative reading of the 2026 Bali risk-tier request pending verification, " +
         "and 83 for other reasons. " +
-        "53 of them state the closure and its cause on the code's own page; the others are marked " +
+        "112 of them state the closure and its cause on the code's own page; the others are marked " +
         '"PMA status not yet verified" there until the national record is adjudicated. A working assessment, ' +
         "not a certified legal determination.",
     );

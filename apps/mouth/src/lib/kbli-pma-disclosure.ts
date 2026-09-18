@@ -5,6 +5,7 @@ import type {
   KBLIProvenance,
   KBLIRawCode,
 } from "./kbli-types";
+import { shouldShowReason } from "./kbli-bali-block";
 import { knownPmaRawStatus } from "./kbli-provenance";
 import { humanizeInternalEnums } from "./kbli-status-labels";
 
@@ -312,9 +313,24 @@ export function discloseBaliL4(
         }
       : undefined;
 
+  // A BLOCKED code whose `reason` is the generator's moratorium-test note
+  // ("medium-high/high risk → not blocked by moratorium (verify per address)")
+  // or Italian has no client-facing reason: `shouldShowReason` already
+  // withholds it after the block clause in the licensing frame and the FAQ,
+  // but the Bali badge (`discloseKbliBaliReason`) and the gold baliContext
+  // swap in kbli-data.server.ts read `reason` unfiltered. Withheld HERE, at
+  // the one raw→public seam, so no consumer can print it beneath a "closed"
+  // pill. Non-blocked codes are untouched — there the note is coherent
+  // ("the moratorium test cleared it"). Added 2026-09-18 (naso PR-3): the 59
+  // statutory closures it locates carry the note on 57 records; 0 of the 72
+  // codes located before it are affected (asserted on the real dataset).
+  const rawReason = publicText(l4.reason) ?? "";
+  const reason =
+    l4.blocked && !shouldShowReason(l4.status, rawReason) ? "" : rawReason;
+
   const disclosed: KBLIBaliL4 = {
     status: l4.status,
-    reason: humanizeInternalEnums(publicText(l4.reason) ?? ""),
+    reason: humanizeInternalEnums(reason),
     confidence: confidence ?? "MEDIUM",
     needsReview: l4.needs_review,
     blocked: l4.blocked,
