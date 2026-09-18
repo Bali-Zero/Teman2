@@ -158,11 +158,9 @@ def _neutralize_js(src: str) -> str:
     return "".join(out)
 
 
-def _options_arg_is_object_literal(call_neutral: str) -> bool:
+def _last_top_level_arg(call_neutral: str) -> str:
     """call_neutral is the full, neutralized `agent(...)` call text (outer parens
-    included). True only when the LAST top-level argument looks like an object
-    literal (`{...}`) — see the module docstring's first exemption. False for a
-    bare identifier/expression there (nothing to lexically check; not accused)."""
+    included). Returns the LAST top-level argument's own neutralized text."""
     inner = call_neutral[1:-1].rstrip()
     if inner.endswith(","):
         # a JS trailing comma before the closing `)` (Prettier's own style) — not a
@@ -183,8 +181,46 @@ def _options_arg_is_object_literal(call_neutral: str) -> bool:
     # not "nothing to check" — if that lone argument is itself an object literal, it IS
     # the last (and only) argument, same as a multi-arg call's tail. Previously this
     # returned False unconditionally here, silently skipping `agent({...})` calls.
-    last_arg = inner[top_commas[-1] + 1 :].strip() if top_commas else inner.strip()
-    return last_arg.startswith("{")
+    return inner[top_commas[-1] + 1 :].strip() if top_commas else inner.strip()
+
+
+def _options_arg_is_object_literal(call_neutral: str) -> bool:
+    """True only when the LAST top-level argument (see _last_top_level_arg) looks like
+    an object literal (`{...}`) — see the module docstring's first exemption. False for
+    a bare identifier/expression there (nothing to lexically check; not accused)."""
+    return _last_top_level_arg(call_neutral).startswith("{")
+
+
+def _top_level_entries(obj_inner: str) -> list[str]:
+    """obj_inner is a neutralized object literal's content WITHOUT its outer braces.
+    Splits on top-level commas only (same depth-tracking idiom as
+    _last_top_level_arg) so a `model:` key inside a NESTED value (e.g.
+    `schema: { properties: { model: {...} } }`) is never mistaken for one of THIS
+    object's own top-level entries — DEFECT :229, PR3d, 2026-09-18."""
+    depth = 0
+    start = 0
+    entries: list[str] = []
+    for idx, ch in enumerate(obj_inner):
+        if ch in "([{":
+            depth += 1
+        elif ch in ")]}":
+            depth -= 1
+        elif ch == "," and depth == 0:
+            entries.append(obj_inner[start:idx])
+            start = idx + 1
+    entries.append(obj_inner[start:])
+    return entries
+
+
+def _entry_key_is_model(entry: str) -> bool:
+    """entry is one top-level `key: value` slice from _top_level_entries. True only
+    when a `model\\s*:` match is the entry's OWN key — nothing but whitespace/quotes
+    precedes it in this entry's own text — never a `model:` occurring deeper inside
+    that same entry's value (the exact shape DEFECT :229 missed)."""
+    m = MODEL_KEY_RE.search(entry)
+    if not m:
+        return False
+    return not entry[: m.start()].strip(" \t\n'\"")
 
 
 def _is_bounded_for_of_in(loop_keyword: str, header_inner: str) -> bool:
@@ -231,7 +267,14 @@ def find_violations(path: Path) -> list[tuple[int, str]]:
         line_no = src[: m.start()].count("\n") + 1
         if not _options_arg_is_object_literal(call_neutral):
             continue  # indirection (e.g. a provenance wrapper) — not lexically checkable
-        if not MODEL_KEY_RE.search(call_neutral):
+        obj_literal = _last_top_level_arg(call_neutral)
+        # DEFECT :229 (PR3d, 2026-09-18): MODEL_KEY_RE.search(call_neutral) used to match
+        # `model:` at ANY nesting depth, so a `model:` buried inside a nested `schema:
+        # { properties: { model: {...} } }` value passed this check unpinned. Require
+        # `model:` as a genuine TOP-LEVEL key of the options object literal itself.
+        if not any(
+            _entry_key_is_model(entry) for entry in _top_level_entries(obj_literal[1:-1])
+        ):
             violations.append((line_no, "agent( call has no literal `model:`"))
         label_m = LABEL_VALUE_RE.search(call_original)
         if label_m and "gate" in label_m.group(1).lower():

@@ -124,6 +124,21 @@ def test_no_phase_capped_loop_stays_clean(lint):
     assert lint.find_violations(FIXTURES_DIR / "no_phase_capped_loop.js") == []
 
 
+def test_nested_model_key_is_violation(lint):
+    """DEFECT :229 (PR3d, 2026-09-18): a `model:` key nested inside
+    schema.properties.model must not satisfy RULE 1 — only a genuine top-level
+    `model:` on the options object literal counts."""
+    violations = lint.find_violations(FIXTURES_DIR / "nested_model_key.js")
+    assert len(violations) == 1
+    assert "model:" in violations[0][1]
+
+
+def test_nested_schema_with_top_level_model_stays_clean(lint):
+    """Twin of the fixture above: the SAME nested schema.properties.model shape is
+    still clean once a real top-level model: is also present."""
+    assert lint.find_violations(FIXTURES_DIR / "nested_schema_with_top_level_model.js") == []
+
+
 def test_for_await_loop_is_recognised(lint):
     """OBSERVATION 5 (PR3a', 2026-09-18): `for await (` must be recognised as a loop.
     The declared for-await...of stays exempt (bounded, same as plain for...of); the
