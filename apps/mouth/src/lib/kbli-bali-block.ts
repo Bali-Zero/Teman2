@@ -188,6 +188,8 @@ export function baliBlockClause(status?: string | null): string {
   }
 }
 
+const BALI_CLOSURE_STATUSES = new Set(["CHIUSO_BALI", "CHIUSO_BALI_PROPOSTO"]);
+
 /**
  * The caveat that follows `baliBlockClause` for a CHIUSO_BALI closure
  * disclosed on its own sourced evidence (review F1, added 2026-09-16). A
@@ -206,9 +208,22 @@ export function baliBlockClause(status?: string | null): string {
  *    say so.
  *
  * Scope wins when both apply — it is the more specific, actionable fact.
+ *
+ * The caveat is ABOUT Bali's list, so it is only true of a Bali closure. The
+ * provenance panel calls this for every non-moratorium blocked status, and
+ * until naso PR-3 (2026-09-18) no disclosed TERTUTUP record was below HIGH
+ * confidence; 60311 (a government news agency, closed by Perpres 10/2021
+ * Pasal 2(1)(b), LOW confidence on its legacy tier derivation) would have
+ * read "closed … by an ownership restriction on the activity itself — not by
+ * the Bali moratorium (conservative reading: this 2025 code also covers
+ * activities not on Bali's list)". When the caller names a status that is
+ * not a Bali closure, the list caveat is withheld; a scope is never withheld
+ * (it is the record's own fact, not a reading). Callers already inside a
+ * CHIUSO_BALI branch may omit `status` and are unchanged.
  */
 export function baliClosureQualifier(
   l4?: {
+    status?: string | null;
     confidence?: string | null;
     needsReview?: boolean | null;
     closure?: { scopeQualifier?: string | null } | null;
@@ -216,6 +231,7 @@ export function baliClosureQualifier(
 ): string {
   const scope = l4?.closure?.scopeQualifier;
   if (scope) return ` for ${scope}`;
+  if (l4?.status && !BALI_CLOSURE_STATUSES.has(l4.status)) return "";
   if (l4?.confidence !== "HIGH" || l4?.needsReview) {
     return " (conservative reading: this 2025 code also covers activities not on Bali's list)";
   }
@@ -251,7 +267,26 @@ export function isMoratoriumBasis(
 // loosely. Splicing it after a NON-moratorium clause is what produced the
 // self-contradiction above; after a moratorium clause it is coherent, so the
 // suppression is conditional on the cause, never unconditional.
-const MORATORIUM_TEST_NOTE = /not\s+blocked\s+by\s+moratorium\s*\.?\s*$/i;
+//
+// The generator emits the note in THREE shapes, measured on the whole dataset
+// (2026-09-18, 999 records carry the phrase, no fourth shape exists):
+//   "… → not blocked by moratorium"
+//   "… → not blocked by moratorium (verify per address)"
+//   "[derivation under review] … → not blocked by moratorium (verify per
+//    address) — NOTE: the licensing rows this verdict's risk tier was read from
+//    have since been set aside …"
+// The first anchor caught only the first. The 59 statutory closures located by
+// naso PR-3 (2026-09-18) carry the other two on 51 records — all TERTUTUP, all
+// blocked by an ownership restriction — and disclosing them would have put
+// "closed … by an ownership restriction on the activity itself — not by the Bali
+// moratorium — medium-high/high risk → not blocked by moratorium (verify per
+// address)" on 51 pages. Still anchored: the optional tails are the generator's
+// own suffixes — the NOTE tail is admitted only under the two openings it
+// actually emits (measured 2026-09-18: 44 "the licensing rows …", 54 "no
+// KBLI-2025 risk scope …", no third) — so "not blocked by moratorium but by UU
+// 18/2003" is NOT matched, and neither is a NOTE that carries a real cause.
+const MORATORIUM_TEST_NOTE =
+  /not\s+blocked\s+by\s+moratorium(?:\s*\(verify per address\))?(?:\s*—\s*NOTE:\s*(?:the licensing rows|no KBLI-2025 risk scope)\b[\s\S]*)?\s*\.?\s*$/i;
 
 const MORATORIUM_STATUSES = new Set([
   "BLOCCATO_CLASSE_RISCHIO",

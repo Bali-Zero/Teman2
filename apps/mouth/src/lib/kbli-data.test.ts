@@ -91,8 +91,12 @@ describe("kbli-data", () => {
     // via 1:1 BPS crosswalk), 1494→1488 / 65→71.
     // 2026-09-18 naso PR-2: 13133 closed by the union of Lampiran II item 11 +
     // Lampiran III entry #2, declared_gap→located, 1488→1487 / 71→72.
-    expect(gaps).toHaveLength(1487);
-    expect(locatedCodes).toHaveLength(72);
+    // 2026-09-18 naso PR-3: 59 statutory closures (2 named by Perpres 10/2021
+    // Pasal 2(2)(b), 2 UU 25/2007 Pasal 12(2) items, 54 government activities
+    // under Pasal 2(1)(b)/2(3), 99000 under Pasal 2(1a)) relabelled
+    // declared_gap→located, TERTUTUP/0 unchanged: 1487→1428 / 72→131.
+    expect(gaps).toHaveLength(1428);
+    expect(locatedCodes).toHaveLength(131);
     for (const code of gaps) {
       expect(code.pma, code.code).toMatchObject({
         status: "unknown",
@@ -376,9 +380,16 @@ describe("W-J B1 disclose — real-data population", () => {
     expect(kbli?.baliL4).toBeUndefined();
   });
 
-  it("53 served codes now disclose baliL4.blocked (up from 14 pre-disclosure)", () => {
+  it("112 served codes now disclose baliL4.blocked (14 pre-disclosure → 53 → 112 with naso PR-3)", () => {
+    // 2026-09-18 naso PR-3: the 59 statutory closures are TERTUTUP/blocked in
+    // `l4_bali` and become disclosed once located: 53 → 112. Their legacy
+    // moratorium-test `reason` is withheld at the seam (discloseBaliL4).
     const blocked = getAllCodes().filter((c) => c.baliL4?.blocked === true);
-    expect(blocked).toHaveLength(53);
+    expect(blocked).toHaveLength(112);
+    const noteLeaks = blocked.filter((c) =>
+      /not\s+blocked\s+by\s+moratorium/i.test(c.baliL4?.reason ?? ""),
+    );
+    expect(noteLeaks.map((c) => c.code)).toEqual([]);
   });
 
   it("40 served codes disclose CHIUSO_BALI (39 newly-disclosed declared_gap + 1 already-located)", () => {

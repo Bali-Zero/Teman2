@@ -512,3 +512,88 @@ describe("isSourcedBaliClosure", () => {
     ).toBe(false);
   });
 });
+
+// =============================================================================
+// discloseBaliL4 — a BLOCKED code's `reason` is withheld at the seam when it is
+// the generator's moratorium-test note (naso PR-3, 2026-09-18). The 59
+// statutory closures that PR locates carry "medium-high/high risk → not
+// blocked by moratorium (verify per address)" as their reason; the Bali badge
+// and the gold baliContext swap read `reason` unfiltered, so without this
+// gate 50 pages would have printed that note beneath a "closed" pill.
+// =============================================================================
+describe("discloseBaliL4 — the moratorium-test note is not a reason on a blocked code", () => {
+  const NOTE =
+    "medium-high/high risk → not blocked by moratorium (verify per address)";
+  const tertutup = (reason: string, extra: Record<string, unknown> = {}) =>
+    located({
+      pma_status: "TERTUTUP",
+      pma_max_asing: 0,
+      l4_bali: {
+        status: "TERTUTUP",
+        blocked: true,
+        needs_review: false,
+        confidence: "HIGH",
+        reason,
+        ...extra,
+      },
+    });
+
+  it("GUILT: the '(verify per address)' shape is blanked on a TERTUTUP block", () => {
+    expect(discloseBaliL4(tertutup(NOTE), true)).toMatchObject({
+      status: "TERTUTUP",
+      blocked: true,
+      reason: "",
+    });
+  });
+
+  it("GUILT: the '[derivation under review] … — NOTE: …' shape is blanked too (60311)", () => {
+    const long =
+      "[derivation under review] medium-high/high risk → not blocked by moratorium (verify per address) — NOTE: the licensing rows this verdict's risk tier was read from have since been set aside as unverifiable for KBLI 2025, so the verdict cannot currently be re-derived; verdict pending re-derivation from the true risk tier (GARUDA-FILIERA).";
+    expect(
+      discloseBaliL4(
+        tertutup(long, { confidence: "LOW", needs_review: true }),
+        true,
+      ),
+    ).toMatchObject({ status: "TERTUTUP", blocked: true, reason: "" });
+  });
+
+  it("INNOCENCE: a reason that explains the bar survives on the same block", () => {
+    const why =
+      "Not a Bali-specific rule: nationally TERBATAS (0% max foreign ownership), per Perpres 10/2021, 49/2021.";
+    expect(discloseBaliL4(tertutup(why), true)).toMatchObject({ reason: why });
+  });
+
+  it("INNOCENCE: a NON-blocked code keeps the note — there it is coherent", () => {
+    const raw = located({
+      l4_bali: {
+        status: "OK_or_HIGHER_RISK",
+        blocked: false,
+        needs_review: false,
+        confidence: "HIGH",
+        reason:
+          "OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium",
+      },
+    });
+    expect(discloseBaliL4(raw, true)).toMatchObject({
+      blocked: false,
+      reason:
+        "OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium",
+    });
+  });
+
+  it("INNOCENCE: a moratorium-status block keeps the note — the cause IS the moratorium", () => {
+    const raw = located({
+      l4_bali: {
+        status: "BLOCCATO_CLASSE_RISCHIO",
+        blocked: true,
+        needs_review: false,
+        confidence: "HIGH",
+        reason: NOTE,
+      },
+    });
+    expect(discloseBaliL4(raw, true)).toMatchObject({
+      blocked: true,
+      reason: NOTE,
+    });
+  });
+});

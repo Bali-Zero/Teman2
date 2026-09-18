@@ -101,7 +101,9 @@ describe("the Bali provenance row attributes the verdict to what produced it", (
   });
 
   it("withholds the Bali row for every checked declared-gap example", () => {
-    for (const code of ["38122", "11010"]) {
+    // 2026-09-18 naso PR-3: 11010 moved declared_gap→located (named by
+    // Perpres 10/2021 Pasal 2(2)(b)); 20119 (TERTUTUP, declared_gap) replaces it.
+    for (const code of ["38122", "20119"]) {
       const c = getCode(code) as KBLICode;
       expect(c.provenance?.pma.status, `code ${code}`).toBe("declared_gap");
       expect(c.baliL4, `code ${code}`).toBeUndefined();
@@ -214,7 +216,11 @@ describe("the Bali provenance row attributes the verdict to what produced it", (
     // "located" does not add it a second time. The other 7 PR-3b codes also
     // move to located, but their l4_bali.status is ATTENZIONE_FASCIA_BALI
     // (blocked: false) — they never qualified and still do not.
-    expect(misattributed).toHaveLength(53);
+    // 2026-09-18 naso PR-3 (53 -> 112): the 59 statutory closures move
+    // declared_gap -> located; all are TERTUTUP/0 with l4_bali.status
+    // TERTUTUP (blocked: true), so `discloseBaliL4` now discloses them and
+    // every one names an ownership restriction, never the moratorium.
+    expect(misattributed).toHaveLength(112);
     // Every one of them must now name its own cause, never the risk tier.
     // `baliRow` asserts a LOCATED national PMA tuple, which no longer holds
     // for the 39 newly-disclosed `declared_gap` CHIUSO_BALI members — the
@@ -400,8 +406,11 @@ describe("the Bali provenance row — an unlocated sourced closure discloses on 
 });
 
 describe("the PMA provenance row follows the canonical verification state", () => {
-  it("guilt: 01287 renders a declared gap, not a crosswalk promise", () => {
-    const row = pmaRow("01287");
+  // 2026-09-18 naso PR-3: 01287 moved declared_gap→located (UU 25/2007
+  // Pasal 12(2) item, statutory closure); 20119 (TERTUTUP, declared_gap,
+  // BPS ancestors 20111/20114) is the exemplar now.
+  it("guilt: 20119 renders a declared gap, not a crosswalk promise", () => {
+    const row = pmaRow("20119");
     expect(row.verdict).toBe("gap");
     expect(row.vintage).toBe("—");
     expect(row.detail).toContain("declares a verification gap");

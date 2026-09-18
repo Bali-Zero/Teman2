@@ -60,14 +60,17 @@ describe("KBLICodeJsonLd — pmaAttribution is source-aware (item E)", () => {
 });
 
 describe("structured data — whole-verdict PMA gate", () => {
-  it("guilt: 01287 emits the declared gap and no 100% ownership promise", () => {
-    const code = getCode("01287") as KBLICode;
+  // 2026-09-18 naso PR-3: 01287 moved declared_gap→located (UU 25/2007
+  // Pasal 12(2) item, statutory closure); 20119 (TERTUTUP, declared_gap,
+  // BPS ancestors 20111/20114) is the exemplar now.
+  it("guilt: 20119 emits the declared gap and no 100% ownership promise", () => {
+    const code = getCode("20119") as KBLICode;
     expect(code.provenance?.pma.status).toBe("declared_gap");
 
     const article = JSON.stringify(jsonLdOf(code));
     const faq = JSON.stringify(faqJsonLdOf(code));
     expect(article).toContain("not yet verified");
-    expect(faq).toContain("recorded KBLI 2020 ancestor(s) 01287");
+    expect(faq).toContain("recorded KBLI 2020 ancestor(s) 20111, 20114");
     expect(article).not.toContain("100% foreign ownership allowed");
     expect(faq).not.toContain("open to 100% foreign ownership");
   });

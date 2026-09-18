@@ -70,7 +70,7 @@
 01284 | Pertanian Tanaman Aromatik/Penyegar | NOT_VERIFIED | Not verified | Menengah Rendah / Menengah Tinggi / Rendah
 01285 | Pertanian Tanaman Obat Rimpang | NOT_VERIFIED | Not verified | Menengah Rendah / Menengah Tinggi / Rendah
 01286 | Pertanian Tanaman Obat Nonrimpang | NOT_VERIFIED | Not verified | Menengah Rendah / Menengah Tinggi / Rendah
-01287 | Pertanian Tanaman Narkotika dan Tanaman Obat Terlarang | NOT_VERIFIED | Not verified | Not classified
+01287 | Pertanian Tanaman Narkotika dan Tanaman Obat Terlarang | TERTUTUP | 0% | Not classified
 01289 | Pertanian Tanaman Rempah-rempah dan Aromatik/Penyegar Lainnya | NOT_VERIFIED | Not verified | Rendah / Menengah Rendah / Menengah Tinggi
 01291 | Pertanian Pohon Karet dan Tanaman Penghasil Getah Lainnya | NOT_VERIFIED | Not verified | Menengah Rendah / Menengah Tinggi / Rendah
 01299 | Pertanian Tanaman Tahunan Lainnya YTDL | NOT_VERIFIED | Not verified | Menengah Rendah / Menengah Tinggi / Rendah
@@ -285,8 +285,8 @@
 10799 | Industri Produk Makanan Lainnya YTDL | NOT_VERIFIED | Not verified | Rendah / Tinggi / Menengah Tinggi
 10801 | Industri Ransum Pakan Hewan | NOT_VERIFIED | Not verified | Rendah / Tinggi
 10802 | Industri Konsentrat Pakan Hewan | NOT_VERIFIED | Not verified | Rendah / Tinggi
-11010 | Industri Penyulingan, Pemurnian, dan Pencampuran Minuman Beralkohol | NOT_VERIFIED | Not verified | Tinggi
-11020 | Industri Minuman Beralkohol Hasil Fermentasi Anggur dan Hasil Pertanian Lainnya | NOT_VERIFIED | Not verified | Tinggi
+11010 | Industri Penyulingan, Pemurnian, dan Pencampuran Minuman Beralkohol | TERTUTUP | 0% | Tinggi
+11020 | Industri Minuman Beralkohol Hasil Fermentasi Anggur dan Hasil Pertanian Lainnya | TERTUTUP | 0% | Tinggi
 11030 | Industri Minuman Beralkohol Hasil Fermentasi Malt | NOT_VERIFIED | Not verified | Tinggi
 11040 | Industri Malt | NOT_VERIFIED | Not verified | Tinggi
 11051 | Industri Air Kemasan | NOT_VERIFIED | Not verified | Tinggi
@@ -1084,11 +1084,11 @@
 58211 | Penerbitan Perangkat Lunak Video Gim dalam Jaringan (Game Online) | NOT_VERIFIED | Not verified | Rendah / Tinggi
 58219 | Penerbitan Perangkat Lunak Video Gim Lainnya | NOT_VERIFIED | Not verified | Rendah / Tinggi
 58290 | Penerbitan Perangkat Lunak (Software) Lainnya | NOT_VERIFIED | Not verified | Menengah Rendah / Menengah Tinggi / Rendah / Tinggi
-59111 | Aktivitas Produksi Film, Video, dan Program Televisi oleh Pemerintah | NOT_VERIFIED | Not verified | Rendah / Menengah Tinggi
+59111 | Aktivitas Produksi Film, Video, dan Program Televisi oleh Pemerintah | TERTUTUP | 0% | Rendah / Menengah Tinggi
 59112 | Aktivitas Produksi Film, Video, dan Program Televisi oleh Swasta | NOT_VERIFIED | Not verified | Menengah Rendah / Menengah Tinggi / Rendah
-59121 | Aktivitas Pascaproduksi Film, Video, dan Program Televisi oleh Pemerintah | NOT_VERIFIED | Not verified | Rendah / Menengah Tinggi
+59121 | Aktivitas Pascaproduksi Film, Video, dan Program Televisi oleh Pemerintah | TERTUTUP | 0% | Rendah / Menengah Tinggi
 59122 | Aktivitas Pascaproduksi Film, Video, dan Program Televisi oleh Swasta | NOT_VERIFIED | Not verified | Menengah Rendah / Menengah Tinggi / Rendah
-59131 | Aktivitas Distribusi Film, Video, dan Program Televisi oleh Pemerintah | NOT_VERIFIED | Not verified | Not classified
+59131 | Aktivitas Distribusi Film, Video, dan Program Televisi oleh Pemerintah | TERTUTUP | 0% | Not classified
 59132 | Aktivitas Distribusi Film, Video. dan Program Televisi oleh Swasta | NOT_VERIFIED | Not verified | Rendah
 59140 | Aktivitas Pemutaran Film | NOT_VERIFIED | Not verified | Rendah
 59201 | Aktivitas Perekaman Suara | NOT_VERIFIED | Not verified | Rendah
@@ -1099,7 +1099,7 @@
 60201 | Aktivitas Penyiaran dan Pemrograman Televisi Analog | NOT_VERIFIED | Not verified | Not classified
 60202 | Aktivitas Pemrograman dan Penyiaran Televisi Digital | NOT_VERIFIED | Not verified | Tinggi
 60203 | Aktivitas Distribusi dan Streaming Video Atas Permintaan | NOT_VERIFIED | Not verified | Not classified
-60311 | Aktivitas Kantor Berita oleh Pemerintah | NOT_VERIFIED | Not verified | Not classified
+60311 | Aktivitas Kantor Berita oleh Pemerintah | TERTUTUP | 0% | Not classified
 60312 | Aktivitas Kantor Berita oleh Swasta | NOT_VERIFIED | Not verified | Not classified
 60390 | Aktivitas Situs Jejaring Sosial dan Distribusi Konten Lainnya | NOT_VERIFIED | Not verified | Rendah
 61101 | Aktivitas Telekomunikasi dengan Kabel | NOT_VERIFIED | Not verified | Tinggi
@@ -1359,63 +1359,63 @@
 82925 | Aktivitas Pengepakan Bahan dan Produk Farmasi | NOT_VERIFIED | Not verified | Menengah Rendah / Menengah Tinggi / Tinggi
 82929 | Aktivitas Pengepakan Lainnya | NOT_VERIFIED | Not verified | Menengah Rendah / Menengah Tinggi / Tinggi
 82990 | Aktivitas Jasa Penunjang Usaha Lainnya YTDL | NOT_VERIFIED | Not verified | Tinggi
-84111 | Lembaga Legislatif | NOT_VERIFIED | Not verified | Not classified
-84112 | Penyelenggaraan Pemerintahan Negara dan Kesekretariatan Negara | NOT_VERIFIED | Not verified | Not classified
-84113 | Lembaga Eksekutif Keuangan, Perpajakan, dan Bea Cukai | NOT_VERIFIED | Not verified | Not classified
-84114 | Lembaga Eksekutif Perencanaan | NOT_VERIFIED | Not verified | Not classified
-84115 | Lembaga Pemerintah Nonkementerian dengan Tugas Khusus | NOT_VERIFIED | Not verified | Not classified
-84119 | Kegiatan Administrasi Pemerintahan Lainnya | NOT_VERIFIED | Not verified | Not classified
-84121 | Administrasi Pelayanan Pemerintah Bidang Pendidikan | NOT_VERIFIED | Not verified | Not classified
-84122 | Administrasi Pelayanan Pemerintah Bidang Kesehatan | NOT_VERIFIED | Not verified | Not classified
-84123 | Administrasi Pelayanan Pemerintah Bidang Perumahan | NOT_VERIFIED | Not verified | Not classified
-84124 | Administrasi Pelayanan Pemerintah Bidang Kesejahteraan Sosial | NOT_VERIFIED | Not verified | Not classified
-84125 | Administrasi Pelayanan Pemerintah Bidang Keagamaan | NOT_VERIFIED | Not verified | Not classified
-84126 | Administrasi Pelayanan Pemerintah Bidang Kebudayaan/Kesenian/Rekreasi/Olahraga | NOT_VERIFIED | Not verified | Not classified
-84129 | Administrasi Pelayanan Pemerintah Bidang Sosial Lainnya Bukan Kesehatan, Pendidikan, Keagamaan, dan Kebudayaan | NOT_VERIFIED | Not verified | Not classified
-84130 | Administrasi Pelayanan Pemerintah Bidang Lingkungan Hidup | NOT_VERIFIED | Not verified | Not classified
-84141 | Kegiatan Lembaga Pemerintahan Bidang Pertanian | NOT_VERIFIED | Not verified | Not classified
-84142 | Kegiatan Lembaga Pemerintahan Bidang Pertambangan dan Penggalian, Listrik, Air, dan Gas | NOT_VERIFIED | Not verified | Not classified
-84143 | Kegiatan Lembaga Pemerintahan Bidang Perindustrian | NOT_VERIFIED | Not verified | Not classified
-84144 | Kegiatan Lembaga Pemerintahan Bidang Komunikasi dan Informatika | NOT_VERIFIED | Not verified | Not classified
-84145 | Kegiatan Lembaga Pemerintahan Bidang Konstruksi | NOT_VERIFIED | Not verified | Not classified
-84146 | Kegiatan Lembaga Pemerintahan Bidang Perdagangan dan Pariwisata | NOT_VERIFIED | Not verified | Not classified
-84147 | Kegiatan Lembaga Pemerintahan Bidang Perhubungan | NOT_VERIFIED | Not verified | Not classified
-84148 | Kegiatan Lembaga Pemerintahan Bidang Ketenagakerjaan | NOT_VERIFIED | Not verified | Not classified
-84149 | Kegiatan Lembaga Pemerintahan untuk Menciptakan Efisiensi Produksi dan Bisnis Lainnya | NOT_VERIFIED | Not verified | Not classified
-84210 | Hubungan Luar Negeri | NOT_VERIFIED | Not verified | Not classified
-84221 | Lembaga Pertahanan dan Angkatan Bersenjata | NOT_VERIFIED | Not verified | Not classified
-84222 | Angkatan Darat | NOT_VERIFIED | Not verified | Not classified
-84223 | Angkatan Udara | NOT_VERIFIED | Not verified | Not classified
-84224 | Angkatan Laut | NOT_VERIFIED | Not verified | Not classified
-84231 | Kepolisian | NOT_VERIFIED | Not verified | Not classified
-84232 | Pertahanan Sipil | NOT_VERIFIED | Not verified | Not classified
-84233 | Aktivitas Lembaga Peradilan | NOT_VERIFIED | Not verified | Not classified
-84234 | Kegiatan Lembaga Pemerintahan Bidang Penanggulangan Bencana dan Pemadam Kebakaran | NOT_VERIFIED | Not verified | Not classified
-84300 | Aktivitas Jaminan Sosial Wajib | NOT_VERIFIED | Not verified | Not classified
-85101 | Pendidikan Taman Kanak-Kanak Umum Pemerintah | NOT_VERIFIED | Not verified | Not classified
+84111 | Lembaga Legislatif | TERTUTUP | 0% | Not classified
+84112 | Penyelenggaraan Pemerintahan Negara dan Kesekretariatan Negara | TERTUTUP | 0% | Not classified
+84113 | Lembaga Eksekutif Keuangan, Perpajakan, dan Bea Cukai | TERTUTUP | 0% | Not classified
+84114 | Lembaga Eksekutif Perencanaan | TERTUTUP | 0% | Not classified
+84115 | Lembaga Pemerintah Nonkementerian dengan Tugas Khusus | TERTUTUP | 0% | Not classified
+84119 | Kegiatan Administrasi Pemerintahan Lainnya | TERTUTUP | 0% | Not classified
+84121 | Administrasi Pelayanan Pemerintah Bidang Pendidikan | TERTUTUP | 0% | Not classified
+84122 | Administrasi Pelayanan Pemerintah Bidang Kesehatan | TERTUTUP | 0% | Not classified
+84123 | Administrasi Pelayanan Pemerintah Bidang Perumahan | TERTUTUP | 0% | Not classified
+84124 | Administrasi Pelayanan Pemerintah Bidang Kesejahteraan Sosial | TERTUTUP | 0% | Not classified
+84125 | Administrasi Pelayanan Pemerintah Bidang Keagamaan | TERTUTUP | 0% | Not classified
+84126 | Administrasi Pelayanan Pemerintah Bidang Kebudayaan/Kesenian/Rekreasi/Olahraga | TERTUTUP | 0% | Not classified
+84129 | Administrasi Pelayanan Pemerintah Bidang Sosial Lainnya Bukan Kesehatan, Pendidikan, Keagamaan, dan Kebudayaan | TERTUTUP | 0% | Not classified
+84130 | Administrasi Pelayanan Pemerintah Bidang Lingkungan Hidup | TERTUTUP | 0% | Not classified
+84141 | Kegiatan Lembaga Pemerintahan Bidang Pertanian | TERTUTUP | 0% | Not classified
+84142 | Kegiatan Lembaga Pemerintahan Bidang Pertambangan dan Penggalian, Listrik, Air, dan Gas | TERTUTUP | 0% | Not classified
+84143 | Kegiatan Lembaga Pemerintahan Bidang Perindustrian | TERTUTUP | 0% | Not classified
+84144 | Kegiatan Lembaga Pemerintahan Bidang Komunikasi dan Informatika | TERTUTUP | 0% | Not classified
+84145 | Kegiatan Lembaga Pemerintahan Bidang Konstruksi | TERTUTUP | 0% | Not classified
+84146 | Kegiatan Lembaga Pemerintahan Bidang Perdagangan dan Pariwisata | TERTUTUP | 0% | Not classified
+84147 | Kegiatan Lembaga Pemerintahan Bidang Perhubungan | TERTUTUP | 0% | Not classified
+84148 | Kegiatan Lembaga Pemerintahan Bidang Ketenagakerjaan | TERTUTUP | 0% | Not classified
+84149 | Kegiatan Lembaga Pemerintahan untuk Menciptakan Efisiensi Produksi dan Bisnis Lainnya | TERTUTUP | 0% | Not classified
+84210 | Hubungan Luar Negeri | TERTUTUP | 0% | Not classified
+84221 | Lembaga Pertahanan dan Angkatan Bersenjata | TERTUTUP | 0% | Not classified
+84222 | Angkatan Darat | TERTUTUP | 0% | Not classified
+84223 | Angkatan Udara | TERTUTUP | 0% | Not classified
+84224 | Angkatan Laut | TERTUTUP | 0% | Not classified
+84231 | Kepolisian | TERTUTUP | 0% | Not classified
+84232 | Pertahanan Sipil | TERTUTUP | 0% | Not classified
+84233 | Aktivitas Lembaga Peradilan | TERTUTUP | 0% | Not classified
+84234 | Kegiatan Lembaga Pemerintahan Bidang Penanggulangan Bencana dan Pemadam Kebakaran | TERTUTUP | 0% | Not classified
+84300 | Aktivitas Jaminan Sosial Wajib | TERTUTUP | 0% | Not classified
+85101 | Pendidikan Taman Kanak-Kanak Umum Pemerintah | TERTUTUP | 0% | Not classified
 85102 | Pendidikan Taman Kanak-Kanak Umum Swasta | NOT_VERIFIED | Not verified | Tinggi
 85103 | Pendidikan Prasekolah Keagamaan Islam | NOT_VERIFIED | Not verified | Not classified
 85104 | Pendidikan Prasekolah Keagamaan Protestan, Katolik, Hindu, Buddha, atau Konghucu | NOT_VERIFIED | Not verified | Not classified
-85201 | Pendidikan Dasar Umum Pemerintah | NOT_VERIFIED | Not verified | Not classified
+85201 | Pendidikan Dasar Umum Pemerintah | TERTUTUP | 0% | Not classified
 85202 | Pendidikan Dasar Umum Swasta | NOT_VERIFIED | Not verified | Tinggi
 85203 | Pendidikan Dasar Keagamaan Islam | NOT_VERIFIED | Not verified | Not classified
 85204 | Pendidikan Dasar Keagamaan Protestan, Katolik, Hindu, Buddha, atau Konghucu | NOT_VERIFIED | Not verified | Not classified
-85311 | Pendidikan Menengah Pertama Umum Pemerintah | NOT_VERIFIED | Not verified | Not classified
+85311 | Pendidikan Menengah Pertama Umum Pemerintah | TERTUTUP | 0% | Not classified
 85312 | Pendidikan Menengah Pertama Umum Swasta | NOT_VERIFIED | Not verified | Tinggi
 85313 | Pendidikan Menengah Pertama Keagamaan Islam | NOT_VERIFIED | Not verified | Not classified
 85314 | Pendidikan Menengah Pertama Keagamaan Protestan, Katolik, Hindu, Buddha, atau Konghucu | NOT_VERIFIED | Not verified | Not classified
-85315 | Pendidikan Menengah Atas Umum Pemerintah | NOT_VERIFIED | Not verified | Not classified
+85315 | Pendidikan Menengah Atas Umum Pemerintah | TERTUTUP | 0% | Not classified
 85316 | Pendidikan Menengah Atas Umum Swasta | NOT_VERIFIED | Not verified | Tinggi
 85317 | Pendidikan Menengah Atas Keagamaan Islam | NOT_VERIFIED | Not verified | Not classified
 85318 | Pendidikan Menengah Atas Keagamaan Protestan, Katolik, Hindu, Buddha, atau Konghucu | NOT_VERIFIED | Not verified | Not classified
-85321 | Pendidikan Menengah Kejuruan Umum Pemerintah | NOT_VERIFIED | Not verified | Not classified
+85321 | Pendidikan Menengah Kejuruan Umum Pemerintah | TERTUTUP | 0% | Not classified
 85322 | Pendidikan Menengah Kejuruan Umum Swasta | NOT_VERIFIED | Not verified | Tinggi
 85323 | Pendidikan Menengah Kejuruan Keagamaan Islam | NOT_VERIFIED | Not verified | Not classified
 85324 | Pendidikan Menengah Kejuruan Keagamaan Protestan, Katolik, Hindu, Buddha, atau Konghucu | NOT_VERIFIED | Not verified | Not classified
 85330 | Pendidikan Pascamenengah Nontersier | NOT_VERIFIED | Not verified | Not classified
-85401 | Pendidikan Tinggi Umum Pemerintah | NOT_VERIFIED | Not verified | Not classified
+85401 | Pendidikan Tinggi Umum Pemerintah | TERTUTUP | 0% | Not classified
 85402 | Pendidikan Tinggi Umum Swasta | NOT_VERIFIED | Not verified | Tinggi
-85403 | Pendidikan Tinggi Keagamaan Pemerintah | NOT_VERIFIED | Not verified | Not classified
+85403 | Pendidikan Tinggi Keagamaan Pemerintah | TERTUTUP | 0% | Not classified
 85404 | Pendidikan Tinggi Keagamaan Swasta | NOT_VERIFIED | Not verified | Not classified
 85510 | Pendidikan Olahraga dan Rekreasi | NOT_VERIFIED | Not verified | Tinggi
 85520 | Pendidikan Kebudayaan | NOT_VERIFIED | Not verified | Tinggi
@@ -1423,8 +1423,8 @@
 85541 | Pendidikan Pesantren Lainnya | NOT_VERIFIED | Not verified | Tinggi
 85542 | Pendidikan Keagamaan Islam Nonformal | NOT_VERIFIED | Not verified | Tinggi
 85549 | Pendidikan Keagamaan Lainnya YTDL | NOT_VERIFIED | Not verified | Tinggi
-85550 | Pendidikan Lainnya Pemerintah | NOT_VERIFIED | Not verified | Not classified
-85560 | Pelatihan Kerja Pemerintah | NOT_VERIFIED | Not verified | Not classified
+85550 | Pendidikan Lainnya Pemerintah | TERTUTUP | 0% | Not classified
+85560 | Pelatihan Kerja Pemerintah | TERTUTUP | 0% | Not classified
 85571 | Pelatihan Kerja Teknik Swasta | NOT_VERIFIED | Not verified | Menengah Tinggi
 85572 | Pelatihan Kerja Teknologi Informasi dan Komunikasi Swasta | NOT_VERIFIED | Not verified | Menengah Tinggi
 85573 | Pelatihan Kerja Industri Kreatif Swasta | NOT_VERIFIED | Not verified | Menengah Tinggi
@@ -1456,10 +1456,10 @@
 85693 | Aktivitas Sertifikasi Profesi oleh Asosiasi | NOT_VERIFIED | Not verified | Menengah Tinggi
 85694 | Aktivitas Sertifikasi Profesi Independen | NOT_VERIFIED | Not verified | Menengah Tinggi
 85699 | Kegiatan Penunjang Pendidikan Lainnya | NOT_VERIFIED | Not verified | Tinggi / Rendah
-86101 | Aktivitas Rumah Sakit Pemerintah | NOT_VERIFIED | Not verified | Tinggi
+86101 | Aktivitas Rumah Sakit Pemerintah | TERTUTUP | 0% | Tinggi
 86102 | Aktivitas Puskesmas | NOT_VERIFIED | Not verified | Not classified
 86103 | Aktivitas Rumah Sakit Swasta | NOT_VERIFIED | Not verified | Tinggi
-86104 | Aktivitas Klinik Pemerintah | NOT_VERIFIED | Not verified | Menengah Tinggi
+86104 | Aktivitas Klinik Pemerintah | TERTUTUP | 0% | Menengah Tinggi
 86105 | Aktivitas Klinik Swasta | NOT_VERIFIED | Not verified | Menengah Tinggi
 86109 | Aktivitas Rumah Sakit Lainnya | NOT_VERIFIED | Not verified | Not classified
 86201 | Aktivitas Praktik Dokter | NOT_VERIFIED | Not verified | Not classified
@@ -1473,9 +1473,9 @@
 86995 | Aktivitas Rumah Pijat | NOT_VERIFIED | Not verified | Menengah Rendah
 87101 | Aktivitas Perawatan dan Pemulihan kesehatan Berbasis Residensial oleh Pemerintah | NOT_VERIFIED | Not verified | Not classified
 87102 | Aktivitas Perawatan dan Pemulihan Kesehatan Berbasis Residensial oleh Lembaga Kesejahteraan Sosial | NOT_VERIFIED | Not verified | Not classified
-87201 | Aktivitas Perawatanuntuk Orang yang Hidup dengan atau Memiliki Diagnosis Penyandang Disabilitas Mental atau Penyalahgunaan Obat Terlarang Berbasis Residensial oleh Pemerintah | NOT_VERIFIED | Not verified | Not classified
+87201 | Aktivitas Perawatanuntuk Orang yang Hidup dengan atau Memiliki Diagnosis Penyandang Disabilitas Mental atau Penyalahgunaan Obat Terlarang Berbasis Residensial oleh Pemerintah | TERTUTUP | 0% | Not classified
 87202 | Aktivitas Perawatan untuk Orang yang Hidup dengan atau Memiliki Diagnosis Penyandang Disabilitas Mental atau Penyalahgunaan Obat Terlarang Berbasis Residensial oleh Lembaga Kesejahteraan Sosial (LKS) | NOT_VERIFIED | Not verified | Not classified
-87301 | Aktivitas Perawatan untuk Lanjut Usia atau Penyandang Disabilitas Fisik Berbasis Residensial oleh Pemerintah | NOT_VERIFIED | Not verified | Not classified
+87301 | Aktivitas Perawatan untuk Lanjut Usia atau Penyandang Disabilitas Fisik Berbasis Residensial oleh Pemerintah | TERTUTUP | 0% | Not classified
 87302 | Aktivitas Sosial untuk Lanjut Usia atau Penyandang Disabilitas Fisik oleh Lembaga Kesejahteraan Sosial (LKS) | NOT_VERIFIED | Not verified | Not classified
 87303 | Aktivitas Pengelolaan Akomodasi Warga Lanjut Usia (Senior Living) | NOT_VERIFIED | Not verified | Menengah Rendah
 87910 | Jasa Intermediasi untuk Aktivitas Perawatan Berbasis Residensial | NOT_VERIFIED | Not verified | Rendah / Tinggi
@@ -1500,13 +1500,13 @@
 90310 | Aktivitas Operasional Tempat dan Fasilitas Kesenian | NOT_VERIFIED | Not verified | Rendah
 90391 | Penyelenggaraan Kegiatan Kesenian dan Kebudayaan | NOT_VERIFIED | Not verified | Not classified
 90399 | Aktivitas Penunjang Penciptaan Karya Seni dan Seni Pertunjukan Lainnya | NOT_VERIFIED | Not verified | Rendah
-91111 | Aktivitas Perpustakaan Pemerintah | NOT_VERIFIED | Not verified | Not classified
+91111 | Aktivitas Perpustakaan Pemerintah | TERTUTUP | 0% | Not classified
 91112 | Aktivitas Perpustakaan Swasta | NOT_VERIFIED | Not verified | Rendah
-91121 | Aktivitas Kearsipan Pemerintah | NOT_VERIFIED | Not verified | Not classified
+91121 | Aktivitas Kearsipan Pemerintah | TERTUTUP | 0% | Not classified
 91122 | Aktivitas Kearsipan Swasta | NOT_VERIFIED | Not verified | Rendah
-91211 | Museum yang Dikelola Pemerintah | NOT_VERIFIED | Not verified | Not classified
+91211 | Museum yang Dikelola Pemerintah | TERTUTUP | 0% | Not classified
 91212 | Museum yang Dikelola Swasta | NOT_VERIFIED | Not verified | Not classified
-91221 | Aktivitas Situs Bersejarah dan Monumen yang Dikelola Pemerintah | NOT_VERIFIED | Not verified | Not classified
+91221 | Aktivitas Situs Bersejarah dan Monumen yang Dikelola Pemerintah | TERTUTUP | 0% | Not classified
 91222 | Aktivitas Situs Bersejarah dan Monumen yang Dikelola Swasta | NOT_VERIFIED | Not verified | Not classified
 91300 | Konservasi, Restorasi, dan Aktivitas Penunjang Lainnya untuk Warisan Budaya | NOT_VERIFIED | Not verified | Not classified
 91410 | Aktivitas Taman Botani dan Kebun Binatang | NOT_VERIFIED | Not verified | Menengah Tinggi / Tinggi
@@ -1517,7 +1517,7 @@
 91425 | Taman Hutan Raya | NOT_VERIFIED | Not verified | Not classified
 91426 | Taman Laut | NOT_VERIFIED | Not verified | Not classified
 91429 | Aktivitas Cagar Alam Lainnya | NOT_VERIFIED | Not verified | Tinggi
-92000 | Aktivitas Perjudian dan Pertaruhan | NOT_VERIFIED | Not verified | Not classified
+92000 | Aktivitas Perjudian dan Pertaruhan | TERTUTUP | 0% | Not classified
 93111 | Fasilitas Stadion | NOT_VERIFIED | Not verified | Menengah Rendah
 93112 | Fasilitas Sirkuit | NOT_VERIFIED | Not verified | Menengah Tinggi
 93113 | Fasilitas Gelanggang/Arena | NOT_VERIFIED | Not verified | Not classified
@@ -1580,4 +1580,4 @@
 97000 | Aktivitas Rumah Tangga sebagai Pemberi Kerja bagi Pekerja Rumah Tangga (PRT) | NOT_VERIFIED | Not verified | Not classified
 98100 | Aktivitas Produksi Barang oleh Rumah Tangga untuk Keperluan Sendiri | NOT_VERIFIED | Not verified | Not classified
 98200 | Aktivitas Produksi Beragam Jasa oleh Rumah Tangga untuk Keperluan Sendiri | NOT_VERIFIED | Not verified | Not classified
-99000 | Aktivitas Badan Internasional dan Badan Ekstra Internasional Lainnya | NOT_VERIFIED | Not verified | Not classified
+99000 | Aktivitas Badan Internasional dan Badan Ekstra Internasional Lainnya | TERTUTUP | 0% | Not classified
