@@ -1,0 +1,66 @@
+task: >-
+  PR3b' — replacement of #6777, closed before any gate verdict once the root-brief
+  write defect was caught (same defect class that earned #6769 a REWORK-BUILD from
+  dw-gate-6: evidence/brief.yml at the repo root has been a deprecated WRITE target
+  since 2026-09-12, scripts/evidence_pack_lint.py:781). #6777 rewrote SKILL.md,
+  turned BRIEF.md into brief.template.md with a sourced-or-unverified pointer on
+  every F1-F15 fact, added scripts/tests/test_dynamic_workflow_skill.py, and
+  registered dynamic-workflow in KNOWN_CLAUDE_ONLY_NAMES — that content commit
+  (a9ca5ec4c9) is cherry-picked forward unchanged; its second commit (50f6de418a,
+  which overwrote the root evidence/brief.yml) is deliberately left behind. This
+  brief is written only at this PR's own resolved per-task path; the root file is
+  untouched.
+lane: infra/dynamic-workflow-3b2
+machine: air-m5
+date: 2026-09-18
+
+gear: 2
+gear_reason: >-
+  Floor is 2, SIZE-sourced: scripts/evidence_pack_lint.py --print-floor /
+  --print-floor-source on this diff (origin/main...HEAD, 4 files, +418/-0) return
+  "2" / "size" — measured this session with the brief not yet staged. The PATH
+  term alone can only return 1 or 3 (no hot-zone path is touched — no
+  .github/workflows/, no migration, no apps/backend-rag/), so gear 2 is reached
+  purely through SIZE crossing SIZE_GEAR2_THRESHOLD (400 net lines) while staying
+  well under SIZE_GEAR3_THRESHOLD (1828). Same four files, same shape as #6777 —
+  only the evidence brief's own write target changed.
+
+appetite:
+  wall_clock_hours: 1
+  adversarial_rounds: 1
+
+acceptance:
+  A1: >-
+    Every dynamic_workflow.py <subcommand> named in SKILL.md is a real subcommand
+    of the shipped CLI's --help output, and judge is documented strictly before
+    jury.
+    probe: "python3 -m pytest scripts/tests/test_dynamic_workflow_skill.py -k 'subcommand_is_real or judge_and_jury' -q"
+  A2: >-
+    Every F1-F15 line in brief.template.md carries a "(source: ...)" pointer, and
+    every unverified mark uses the mandate's exact literal "(source: session
+    2026-09-18, unverified)" rather than a paraphrase.
+    probe: "python3 -m pytest scripts/tests/test_dynamic_workflow_skill.py -k 'source_pointer or unverified' -q"
+  A3: >-
+    Registering dynamic-workflow in KNOWN_CLAUDE_ONLY_NAMES does not break
+    skill-canonicity.
+    probe: "python3 -m pytest scripts/tests/test_skills_canonical.py -q"
+  A4: >-
+    This diff writes no root evidence/brief.yml and instead carries a brief at its
+    own resolved per-task path, so the harness-floor recompute's floor-needs-brief
+    check reads PASS on this head — verified locally both ways: evidence_pack_lint
+    --brief-source-path evidence/brief.yml on this diff reports
+    evidence_root_brief_deprecated, the same call against this brief's own path
+    reports clean.
+    probe: "python3 scripts/contract_verify.py --local --json"
+  A5: >-
+    The pre-existing 79-case offline selftest mirror is unaffected by this PR.
+    probe: "python3 -m pytest scripts/tests/test_dynamic_workflow.py -q"
+
+out_of_scope: >-
+  CI wiring for .github/workflows/dynamic-workflow-selftest.yml — PR3c's job,
+  named as such in SKILL.md's own Selftest section, and unstarted until this PR
+  merges. PR2g (launcher-hardening addendum from gate-7's REWORK-BUILD on the
+  already-merged PR2e) — deferred until PR2f (#6775) lands on origin/main.
+  scripts/lint_model_cards.py — shipped separately in PR3a' (#6773). The root
+  evidence/brief.yml file itself — deliberately untouched; it still carries
+  #6645's content.
