@@ -1,0 +1,89 @@
+task: >-
+  PR2b of the /dynamic-workflow coach-protocol build (MANDATE-builder.md, owner ruling Zero
+  2026-09-18), following PR1a (#6753), PR1b (#6756) and PR2a (#6757). This PR carries three
+  commits: two team-lead REWORK-BUILD gate verdicts on already-merged code, each its own
+  depth-1 commit named to the verdict (Agent PR Contract §1), plus the `jury` subcommand.
+  Verdict 1 (on PR1b, 8ffb9bc278): `r1`'s convener-mtime clause was recorded into the ledger
+  but never compared — fixed by refusing (exit 2, no launch, no new ledger row) when the
+  convener file's mtime is later than either the earliest `sent` row or its own prior ledger
+  row, both floored to whole seconds to match the ledger's own strftime precision. Verdict 2
+  (on PR2a, 4c062d2e09): `r2` pairing treated an unrecognised seat's family (None) as a real
+  family, silently pairing it within its own vendor — fixed with a shared
+  `_require_known_family` fail-closed helper (reused by jury) plus a `_SEAT_ALIASES` table
+  resolving the mandate's own short seat spellings. `jury --kit K` is new: every judge.md
+  survivor blind-reviews the OTHER survivors (never its own answer) as anonymised letters
+  A-F via a persisted `jury/mapping.json` (chmod 600), six 1-5 integer axes per formation, a
+  malformed/partial table going dead rather than partial-credit, and Borda + firsts tabulated
+  BY THE SCRIPT into `jury/tabulation.md` with per-axis disagreements named. This closes PR2b
+  at ~460 net lines (two verdict fixes + jury); `anonymise`/`reveal`/`capture-check` move to
+  PR2c per team-lead's own pre-authorized split for a PR this size.
+lane: infra/dynamic-workflow-2b
+machine: M5
+date: 2026-09-18
+
+gear: 2
+gear_reason: >-
+  Deterministic floor 2, source `size`: `git diff --no-renames --numstat` against
+  `origin/main` measures churn 472 (335+6 scripts/dynamic_workflow.py, 127+4
+  scripts/tests/test_dynamic_workflow.py) — above SIZE_GEAR2_THRESHOLD (400) and below
+  SIZE_GEAR3_THRESHOLD (1828). No hot-zone path: only `scripts/` is touched, no
+  `.github/workflows/` file and no HOTZONE_PATTERNS match. Confirmed locally via
+  `python3 scripts/contract_verify.py --local --json` before this brief existed (floor-needs-brief
+  FAIL naming exactly this diff), and this brief is the fix.
+
+appetite:
+  wall_clock_hours: 1.5
+  adversarial_rounds: 1
+
+acceptance:
+  A1: >-
+    `r1` refuses a convener answer rewritten after the round's first dispatch: guilt (touch
+    `r1/fable-5-1.md` after a `sent` row exists elsewhere in the ledger, or after its own prior
+    `answered` row, both across a real whole-second boundary) refuses exit 2, launches no new
+    seat, writes no new ledger row for it; innocence (mtime precedes any dispatch) proceeds.
+    probe: python3 -m pytest scripts/tests/test_dynamic_workflow.py -k "convener_mtime or convener_rewritten" -q
+  A2: >-
+    `r2` fails closed on any `answered` seat absent from FAMILY_MAP before `pairing.md` is ever
+    written (guilt, exit 2, no pairing.md), and the mandate's own short seat spellings
+    (`kimi-2.7`, `kimi-code/k3`) resolve to their existing FAMILY_MAP entry rather than reading
+    as unrecognised.
+    probe: python3 -m pytest scripts/tests/test_dynamic_workflow.py -k "family_map or mandate_aliases" -q
+  A3: >-
+    `jury` reads judge.md's survivors (refusing exit 2 before judge has run), blind-reviews
+    them pairwise-excluding-self via a persisted, chmod-600 `jury/mapping.json`, marks a
+    malformed ballot dead rather than partial credit, and tabulates Borda + firsts into
+    `jury/tabulation.md` by the script itself.
+    probe: python3 -m pytest scripts/tests/test_dynamic_workflow.py -k "jury or parse_jury_ballot" -q
+  A4: >-
+    `--selftest` runs the whole loop offline (DW_FAKE_SEATS=1, no real seat launch, no
+    Anthropic endpoint touched) through cases A-K with zero FAIL lines; the pytest file mirrors
+    every guilt/innocence pair through the public CLI surface, both green.
+    probe: python3 scripts/dynamic_workflow.py --selftest
+
+out_of_scope: >-
+  `anonymise --kit K` (Z-BLIND/ formation copies, seat:/objective_sha256 lines stripped via the
+  `_strip_identity` helper this PR already factors out for reuse), `reveal --kit K` (prints
+  jury/mapping.json only after Z-DECISIONI.md exists), `capture-check --kit K --dest ...`
+  (required-file manifest + copy) — PR2c, built from a fresh worktree off fresh `origin/main`
+  once this PR merges, per team-lead's own pre-authorized split for a PR this size. The
+  SKILL.md rewrite, brief.template.md, and the two lints remain PR3.
+
+assumptions:
+  - text: >-
+      The ledger's `when` column has whole-second precision
+      (`strftime("%Y-%m-%dT%H:%M:%SZ")`), while `Path.stat().st_mtime` retains microseconds —
+      comparing the two without flooring both sides to whole seconds produces spurious
+      same-second orderings in either direction. Both new mtime checks and their selftest/pytest
+      cases floor via `.replace(microsecond=0)` and force a real second-boundary crossing with
+      `time.sleep(1.1)` rather than asserting sub-second ordering the ledger cannot represent.
+    status: verified
+    probe: grep -n "strftime\|replace(microsecond=0)" scripts/dynamic_workflow.py
+  - text: >-
+      jury/mapping.json's letter assignment must be GLOBAL for the whole round (one letter per
+      surviving seat, fixed for every juror), not per-juror — otherwise a script tabulating
+      Borda/firsts across different jurors' ballots would have no stable way to know two
+      different letters, shown to two different jurors, named the SAME formation. Confirmed by
+      re-reading the mandate's `anonymise` bullet, which describes ONE `jury/mapping.json` per
+      kit, not one per reviewer.
+    status: verified
+    probe: sed -n '99,106p' /Users/balizero/BATTAGLIA-20260911/DYNAMIC-WORKFLOW-20260918/MANDATE-builder.md
