@@ -1130,6 +1130,49 @@ def _capture_dest_for(kit: Path) -> Path:
     return REPO_ROOT / "research" / "operations" / f"{today}-dynamic-workflow-{slug}"
 
 
+# brief.sha is a hex digest, not prose -- every OTHER required item is text a redactor can
+# meaningfully scan (r1/, r2/ walked file-by-file since they're per-seat directories).
+_CAPTURE_PII_SCAN = tuple(rel for rel in _CAPTURE_REQUIRED if rel != "brief.sha")
+
+
+_PII_SCAN_PAD_SENTENCE = "The quick brown fox jumps over the lazy dog near the riverbank at dawn. "
+
+
+def _capture_pii_gate(kit: Path) -> None:
+    """PII gate on the OUTPUT boundary (CLAUDE.md contract point 4, PR2f addendum): every text
+    file about to be captured is redacted with the SAME Redactor cmd_brief uses. One changed
+    span or a redactor error refuses fail-closed, naming the FILE and the COUNT only — never
+    the text. Runs before dest.mkdir() and before any copy, so a trip copies nothing.
+
+    Padding: the redactor's own gate.min_remaining_chars floor exists to catch bulk prose
+    over-redacted down to near-nothing — it cannot judge an input that STARTS shorter than the
+    floor (a one-line Z-DECISIONI.md always reads as 'too short', PII or not; confirmed empirically
+    against this exact fixture during PR2f). Short files are padded with a fixed, pattern-inert
+    sentence past the floor before scanning; the pad passes through every rule unchanged, so any
+    difference the redactor reports still traces to the file's own content, not the padding."""
+    redactor = Redactor.load_default()
+    floor = redactor.config.gate.min_remaining_chars
+    pad = _PII_SCAN_PAD_SENTENCE * (floor // len(_PII_SCAN_PAD_SENTENCE) + 2)
+    for rel in _CAPTURE_PII_SCAN:
+        target = kit / rel
+        for f in sorted(target.rglob("*")) if target.is_dir() else [target]:
+            if not f.is_file():
+                continue
+            original = f.read_text()
+            scan_input = original if len(original) >= floor else f"{pad}\n{original}"
+            try:
+                redacted = redactor.redact(scan_input)
+            except RedactionError as e:
+                print(f"PII gate: redactor raised on {f.relative_to(kit)} "
+                      f"({type(e).__name__}) — refusing fail-closed", file=sys.stderr)
+                sys.exit(3)
+            if redacted != scan_input:
+                n = _count_changed_spans(scan_input, redacted)
+                print(f"PII gate: {f.relative_to(kit)} changed by redaction ({n} span(s)) — "
+                      f"refusing fail-closed", file=sys.stderr)
+                sys.exit(3)
+
+
 def cmd_capture_check(args: argparse.Namespace) -> None:
     """mandate, verbatim: 'requires BRIEF.md, brief.sha, r1/, r2/, judge.md,
     jury/tabulation.md, Z-DECISIONI.md, OUTCOME.md (with rounds_used, dead_at_launch,
@@ -1137,8 +1180,8 @@ def cmd_capture_check(args: argparse.Namespace) -> None:
     silently skipped a stage must fail loud, one line per absence, not ship a partial
     research/ artifact that looks complete (scar #2, 'Esiste != Armato'). PR2f addendum: --dest
     must resolve to the canonical research/operations/<date>-dynamic-workflow-<slug>/ path (no
-    '..', no arbitrary location) and must not already hold files — both refused at exit 2,
-    before anything is created or copied."""
+    '..', no arbitrary location) and must not already hold files; every captured file must also
+    clear the PII gate. All three refuse before anything is created or copied."""
     kit = Path(args.kit)
     dest = Path(args.dest)
     missing: list[str] = []
@@ -1159,6 +1202,8 @@ def cmd_capture_check(args: argparse.Namespace) -> None:
     if dest.exists() and any(dest.iterdir()):
         print(f"refused: --dest {dest} already exists and is not empty", file=sys.stderr)
         sys.exit(2)
+
+    _capture_pii_gate(kit)
 
     dest.mkdir(parents=True, exist_ok=True)
     for rel in _CAPTURE_REQUIRED:
@@ -1472,6 +1517,17 @@ def run_selftest() -> None:
             check("capture-check left the pre-existing file untouched",
                   (real_dest_l / "stale.txt").read_text() == "pre-existing\n")
             shutil.rmtree(real_dest_l)
+
+            clean_outcome_l = (kit_l / "OUTCOME.md").read_text()
+            (kit_l / "OUTCOME.md").write_text(clean_outcome_l.rstrip("\n") +
+                                               "\ncontact: +6281234567890\n")
+            try:
+                cmd_capture_check(argparse.Namespace(kit=str(kit_l), dest=str(real_dest_l)))
+                check("guilt: capture-check refuses a PII-dirty OUTCOME.md", False)
+            except SystemExit as e:
+                check("guilt: capture-check refuses a PII-dirty OUTCOME.md", e.code == 3)
+            check("capture-check wrote no dest on the PII refusal", not real_dest_l.exists())
+            (kit_l / "OUTCOME.md").write_text(clean_outcome_l)
 
             cmd_capture_check(argparse.Namespace(kit=str(kit_l), dest=str(real_dest_l)))
             check("capture-check copied jury/tabulation.md to dest",

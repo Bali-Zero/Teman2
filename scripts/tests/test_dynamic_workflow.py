@@ -975,6 +975,41 @@ def test_capture_check_copies_the_full_artifact_set_when_everything_is_present(
         shutil.rmtree(dest, ignore_errors=True)
 
 
+def test_capture_check_refuses_a_fake_phone_in_outcome_md(
+        tmp_path, template, clean_objective, capsys):
+    # guilt fixture per the addendum, verbatim: 'a fake phone in OUTCOME.md'. Same phone
+    # literal _dirty_objective already uses elsewhere in this file to trip the redactor.
+    kit = _capture_ready_kit_with_slug(tmp_path, template, clean_objective, "pytest-capture-pii")
+    phone = "+6281234567890"
+    (kit / "OUTCOME.md").write_text(_outcome_text().rstrip("\n") + f"\ncontact: {phone}\n")
+    dest = dw._capture_dest_for(kit)
+    capsys.readouterr()
+    try:
+        with pytest.raises(SystemExit) as e:
+            dw.cmd_capture_check(argparse.Namespace(kit=str(kit), dest=str(dest)))
+        assert e.value.code == 3
+        assert not dest.exists()
+        captured = capsys.readouterr()
+        assert phone not in captured.out
+        assert phone not in captured.err
+        assert "OUTCOME.md" in captured.err
+    finally:
+        shutil.rmtree(dest, ignore_errors=True)
+
+
+def test_capture_check_copies_a_clean_outcome_md_once_the_pii_gate_clears(
+        tmp_path, template, clean_objective):
+    # innocence: identical kit shape, no PII -- the gate lets it straight through.
+    kit = _capture_ready_kit_with_slug(tmp_path, template, clean_objective,
+                                        "pytest-capture-pii-clean")
+    dest = dw._capture_dest_for(kit)
+    try:
+        dw.cmd_capture_check(argparse.Namespace(kit=str(kit), dest=str(dest)))
+        assert (dest / "OUTCOME.md").read_text() == _outcome_text()
+    finally:
+        shutil.rmtree(dest, ignore_errors=True)
+
+
 # --------------------------------------------------------------- validate_answer (guilt + innocence)
 
 def _valid_text(sha="abc123"):
