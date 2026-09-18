@@ -64,7 +64,8 @@ cost a wrong inference during the investigation:
 Exit codes:
   0 = got a usable answer (written to stdout, newline-terminated)
   1 = HTTP/network/transport error, unknown model, or unparseable response
-  2 = TP1 credential unavailable (see load_tp1_settings_key in arsenal_probe.py)
+  2 = TP1 credential unavailable (see resolve_tp1_key in arsenal_probe.py —
+      env > 0600 vault > ~/.qwen/settings.json)
   3 = HTTP 200 but no usable content (thinking budget exhausted before an
       answer, or the answer never arrived — never SILENTLY treated as success)
   4 = the seat was ALIVE and still generating when the budget ran out. Split
@@ -93,7 +94,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from arsenal_probe import (  # noqa: E402  (sibling import, see module docstring)
     TP1_CHAT_COMPLETIONS_URL,
     TP1_SEAT_MODELS,
-    load_tp1_settings_key,
+    resolve_tp1_key,
     scrub,
 )
 
@@ -609,10 +610,17 @@ def main(argv: Optional[list[str]] = None) -> int:
         )
         return 1
 
-    token, cred_note = load_tp1_settings_key()
+    # env > 0600 vault > settings.json (arsenal_probe.resolve_tp1_key). The vault leg
+    # is what lets this seat run from a launchd context — which has no shell env — on a
+    # host that no longer keeps the credential in ~/.qwen/settings.json.
+    token, cred_source, cred_note = resolve_tp1_key()
     if token is None:
         sys.stderr.write(f"tp1_call: credential unavailable: {cred_note}\n")
         return 2
+    # Name the source, never the value (W106 class) — the 2026-08-26 scar was a probe
+    # certifying its OWN credential instead of the seat's, so which one answered is
+    # exactly the fact worth printing.
+    sys.stderr.write(f"tp1_call: credential source: {cred_source}\n")
 
     # An explicit --effort always wins; the table only fills a silence that
     # would otherwise cost the caller 4.2x the wall time for a worse answer.

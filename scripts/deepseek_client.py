@@ -97,6 +97,7 @@ import cost_breaker  # noqa: E402
 from arsenal_probe import (  # noqa: E402  (sibling import, see module docstring — reuse not duplication)
     TP1_CHAT_COMPLETIONS_URL,
     load_tp1_settings_key,
+    load_tp1_vault_key,
 )
 
 API_URL = TP1_CHAT_COMPLETIONS_URL
@@ -154,19 +155,32 @@ def resolve_model(model: str | None = None) -> str:
 
 
 def api_key() -> str:
-    """BAILIAN_TOKEN_PLAN_API_KEY from env, else Qwen's settings.json (the
-    TP1 credential loader ``scripts/tp1_call.py`` already trusts — a launchd
-    context has no env, same reasoning the old ``DEEPSEEK_API_KEY``/
-    ``_SECRET_FILES`` fallback existed for). NOT ``DEEPSEEK_API_KEY`` — that
-    name only ever names the retired direct door now (see module docstring)
-    and this client will not read it even if set."""
+    """BAILIAN_TOKEN_PLAN_API_KEY from env, else the 0600 vault, else Qwen's
+    settings.json — the same precedence ``arsenal_probe.resolve_tp1_key()``
+    encodes for the sibling ``tp1_call.py`` seat.
+
+    A launchd context has no env, which is why a fallback exists at all (same
+    reasoning the old ``DEEPSEEK_API_KEY``/``_SECRET_FILES`` fallback existed
+    for). The vault leg was added 2026-09-18 because ``~/.qwen/settings.json``
+    is rewritten by the qwen CLI itself and every flush resets its mode to
+    0644, so it cannot durably hold a secret; see ``load_tp1_vault_key``.
+
+    NOT ``DEEPSEEK_API_KEY`` — that name only ever names the retired direct
+    door now (see module docstring) and this client will not read it even if
+    set."""
     env_key = os.environ.get("BAILIAN_TOKEN_PLAN_API_KEY")
     if env_key and env_key.strip():
         return env_key.strip()
-    value, note = load_tp1_settings_key()
+    value, vault_note = load_tp1_vault_key()
     if value:
         return value
-    raise DeepSeekError(f"no BAILIAN_TOKEN_PLAN_API_KEY: {note}")
+    value, settings_note = load_tp1_settings_key()
+    if value:
+        return value
+    raise DeepSeekError(
+        f"no BAILIAN_TOKEN_PLAN_API_KEY: vault: {vault_note}; "
+        f"settings.json: {settings_note}"
+    )
 
 
 def ledger_root(root: str | Path | None = None) -> Path:

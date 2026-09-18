@@ -485,6 +485,199 @@ def test_tp1_settings_loader_undecodable_bytes_is_cred_unavailable_not_raised(tm
 
 
 # ---------------------------------------------------------------------------
+# load_env_master_key() widening — an `export ` prefix must parse too, because
+# ~/.zshenv has to re-export the value to children while the loader also reads
+# plain `.env` lines. Strictly a widening: the three tests above still pin the
+# original bare `VAR=value` shape.
+# ---------------------------------------------------------------------------
+
+
+def test_env_master_loader_tolerates_export_prefix(tmp_path):
+    envfile = tmp_path / ".env.master"
+    envfile.write_text(
+        "OTHER=irrelevant\nexport DEEPSEEK_API_KEY='test-only-value'\nMORE=stuff\n"
+    )
+    key, note = ap.load_env_master_key("DEEPSEEK_API_KEY", path=str(envfile))
+    assert key == "test-only-value"
+    assert note is None
+
+
+def test_env_master_loader_ignores_commented_out_export(tmp_path):
+    """A DISARMED line (the ~/.zshenv CLAUDE_CODE_OAUTH_TOKEN scar shape) must
+    not resurrect itself: a leading `#` is not an `export`."""
+    envfile = tmp_path / ".env.master"
+    envfile.write_text("# export DEEPSEEK_API_KEY='revoked-do-not-use'\n")
+    key, note = ap.load_env_master_key("DEEPSEEK_API_KEY", path=str(envfile))
+    assert key is None
+    assert "not set" in (note or "")
+
+
+# ---------------------------------------------------------------------------
+# load_tp1_vault_key() — the 0600 vault leg. Every test passes an explicit
+# tmp_path: the real ~/.nuzantara-secrets.env exists on the workstations and
+# holds the live credential, so a default-path test would be non-hermetic (W96).
+# ---------------------------------------------------------------------------
+
+
+def test_tp1_vault_loader_reads_owner_only_file(tmp_path):
+    vault = tmp_path / "secrets.env"
+    vault.write_text("OTHER=x\nexport BAILIAN_TOKEN_PLAN_API_KEY='vault-value'\n")
+    vault.chmod(0o600)
+    key, note = ap.load_tp1_vault_key(path=str(vault))
+    assert key == "vault-value"
+    assert note is None
+
+
+def test_tp1_vault_loader_refuses_world_readable_file(tmp_path):
+    """GUILT: the whole reason this leg exists is that ~/.qwen/settings.json keeps
+    getting rewritten to 0644 by the qwen CLI. A vault left world/group readable
+    has an untrusted disclosure history (superscar family #4) and hardening it
+    afterwards does not un-leak it — so refuse it, mirroring the
+    SETTINGS_FOUND_MODE="600" gate in qwen-cloud-code.sh."""
+    vault = tmp_path / "secrets.env"
+    vault.write_text("export BAILIAN_TOKEN_PLAN_API_KEY='vault-value'\n")
+    vault.chmod(0o644)
+    key, note = ap.load_tp1_vault_key(path=str(vault))
+    assert key is None
+    assert note is not None
+    assert "0644" in note
+    # W106 class: the refusal must name the mode and the reason, never the value.
+    assert "vault-value" not in note
+
+
+def test_tp1_vault_loader_refuses_group_readable_file(tmp_path):
+    vault = tmp_path / "secrets.env"
+    vault.write_text("export BAILIAN_TOKEN_PLAN_API_KEY='vault-value'\n")
+    vault.chmod(0o640)
+    key, note = ap.load_tp1_vault_key(path=str(vault))
+    assert key is None
+    assert "0640" in (note or "")
+
+
+def test_tp1_vault_loader_accepts_read_only_owner_mode(tmp_path):
+    vault = tmp_path / "secrets.env"
+    vault.write_text("export BAILIAN_TOKEN_PLAN_API_KEY='vault-value'\n")
+    vault.chmod(0o400)
+    key, note = ap.load_tp1_vault_key(path=str(vault))
+    assert key == "vault-value"
+    assert note is None
+
+
+def test_tp1_vault_loader_missing_file_is_cred_unavailable_not_raised(tmp_path):
+    missing = tmp_path / "nope" / "secrets.env"
+    key, note = ap.load_tp1_vault_key(path=str(missing))
+    assert key is None
+    assert "not found" in (note or "")
+
+
+def test_tp1_vault_loader_key_absent_from_present_file(tmp_path):
+    vault = tmp_path / "secrets.env"
+    vault.write_text("OTHER=x\n")
+    vault.chmod(0o600)
+    key, note = ap.load_tp1_vault_key(path=str(vault))
+    assert key is None
+    assert "not set" in (note or "")
+
+
+# ---------------------------------------------------------------------------
+# resolve_tp1_key() — precedence env > vault > settings.json. Both file paths
+# are always passed explicitly, and the env var is always cleared first, so the
+# result never depends on the machine running the suite (W96).
+# ---------------------------------------------------------------------------
+
+
+def _write_pair(tmp_path, vault_val=None, vault_mode=0o600, settings_val=None):
+    vault = tmp_path / "secrets.env"
+    vault.write_text(
+        f"export BAILIAN_TOKEN_PLAN_API_KEY='{vault_val}'\n" if vault_val else "OTHER=x\n"
+    )
+    vault.chmod(vault_mode)
+    settings = tmp_path / "settings.json"
+    settings.write_text(
+        json.dumps({"env": {"BAILIAN_TOKEN_PLAN_API_KEY": settings_val}})
+        if settings_val
+        else json.dumps({"env": {}})
+    )
+    return str(vault), str(settings)
+
+
+def test_resolve_tp1_key_env_wins_over_both_files(monkeypatch, tmp_path):
+    vault, settings = _write_pair(tmp_path, vault_val="vault-value", settings_val="settings-value")
+    monkeypatch.setenv("BAILIAN_TOKEN_PLAN_API_KEY", " env-value ")
+    value, source, note = ap.resolve_tp1_key(vault_path=vault, settings_path=settings)
+    assert value == "env-value"  # stripped
+    assert source == "env"
+    assert note is None
+
+
+def test_resolve_tp1_key_vault_beats_settings(monkeypatch, tmp_path):
+    """The vault is a 0600 file the qwen CLI does not own; settings.json is
+    rewritten to 0644 on every CLI flush. Protected-before-unprotected."""
+    vault, settings = _write_pair(tmp_path, vault_val="vault-value", settings_val="settings-value")
+    monkeypatch.delenv("BAILIAN_TOKEN_PLAN_API_KEY", raising=False)
+    value, source, note = ap.resolve_tp1_key(vault_path=vault, settings_path=settings)
+    assert value == "vault-value"
+    assert source == "vault"
+    assert note is None
+
+
+def test_resolve_tp1_key_settings_still_works_on_unmigrated_host(monkeypatch, tmp_path):
+    """Back-compat: a host that has NOT moved the credential out of
+    ~/.qwen/settings.json (Pro, as of 2026-09-18) must keep working unchanged —
+    which is also what makes this change safe to land before any migration."""
+    vault, settings = _write_pair(tmp_path, vault_val=None, settings_val="settings-value")
+    monkeypatch.delenv("BAILIAN_TOKEN_PLAN_API_KEY", raising=False)
+    value, source, note = ap.resolve_tp1_key(vault_path=vault, settings_path=settings)
+    assert value == "settings-value"
+    assert source == "settings.json"
+    assert note is None
+
+
+def test_resolve_tp1_key_vault_mode_gate_falls_through_to_settings(monkeypatch, tmp_path):
+    """A world-readable vault is refused, but that must DEGRADE to the next
+    source rather than fail the seat — same non-strict direction as the
+    UnicodeDecodeError case above."""
+    vault, settings = _write_pair(
+        tmp_path, vault_val="vault-value", vault_mode=0o644, settings_val="settings-value"
+    )
+    monkeypatch.delenv("BAILIAN_TOKEN_PLAN_API_KEY", raising=False)
+    value, source, note = ap.resolve_tp1_key(vault_path=vault, settings_path=settings)
+    assert value == "settings-value"
+    assert source == "settings.json"
+    assert note is None
+
+
+def test_resolve_tp1_key_all_absent_names_every_source_without_leaking(monkeypatch, tmp_path):
+    vault, settings = _write_pair(tmp_path)
+    monkeypatch.delenv("BAILIAN_TOKEN_PLAN_API_KEY", raising=False)
+    value, source, note = ap.resolve_tp1_key(vault_path=vault, settings_path=settings)
+    assert value is None
+    assert source is None
+    assert note is not None
+    assert "vault" in note
+    assert "settings.json" in note
+
+
+def test_resolve_tp1_key_never_consults_the_keychain(monkeypatch, tmp_path):
+    """GUILT, and the point of the whole design: the Keychain is deliberately NOT
+    a credential source. probe_qwen_cloud_code's 2026-08-26 correction measured a
+    Keychain copy answering `401 Invalid API-key provided` on Pro while
+    settings.json answered PONG — two copies that drift, where the stale one
+    silently kills a live seat. It is also unreadable (rc=36) over non-interactive
+    ssh, i.e. exactly in the launchd/ssh contexts this fallback exists for."""
+    vault, settings = _write_pair(tmp_path, vault_val="vault-value")
+
+    def _tripwire(*a, **k):
+        raise AssertionError("resolve_tp1_key must never read the Keychain")
+
+    monkeypatch.setattr(ap, "load_keychain_token", _tripwire)
+    monkeypatch.delenv("BAILIAN_TOKEN_PLAN_API_KEY", raising=False)
+    value, source, note = ap.resolve_tp1_key(vault_path=vault, settings_path=settings)
+    assert value == "vault-value"
+    assert source == "vault"
+
+
+# ---------------------------------------------------------------------------
 # HTTP layer — monkeypatched urlopen, exceptions never leak Authorization header
 # ---------------------------------------------------------------------------
 

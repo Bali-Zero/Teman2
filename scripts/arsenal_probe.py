@@ -48,6 +48,7 @@ import os
 import re
 import shutil
 import socket
+import stat
 import subprocess
 import sys
 import tempfile
@@ -151,6 +152,23 @@ OLLAMA_LIVE_GEN_TIMEOUT = 120
 
 TP1_BASE_URL = "https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1"
 TP1_CHAT_COMPLETIONS_URL = f"{TP1_BASE_URL}/chat/completions"
+
+# 0600 env-file vault sourced by ~/.zshenv on the workstations. It is the credential
+# source that survives BOTH failure modes of the other two: a launchd context has no
+# shell env (so the env var is empty there), and ~/.qwen/settings.json is rewritten by
+# the qwen CLI itself, which drops its mode to 0644 on every flush — so a secret kept
+# there becomes world-readable again (measured on Air-M5 2026-09-18: 0600 -> 0644 ->
+# 0600 -> 0644 inside one session, three times).
+#
+# The Keychain is deliberately NOT a credential source here, for two measured reasons:
+# (1) probe_qwen_cloud_code's 2026-08-26 correction — the Keychain copy answered
+# `401 Invalid API-key provided` on Pro while settings.json answered PONG, i.e. the two
+# copies drift and the stale one silently kills a live seat; (2) `security
+# find-generic-password` returns rc=36 (errSecInteractionNotAllowed) over non-interactive
+# ssh, verified again on Pro 2026-09-18 — it is unreadable in exactly the launchd/ssh
+# contexts this fallback exists for.
+TP1_SECRETS_VAULT = "~/.nuzantara-secrets.env"
+TP1_CRED_ENV_VAR = "BAILIAN_TOKEN_PLAN_API_KEY"
 
 # NOT 8. Three of the seven TP1 models (deepseek-v4-pro, deepseek-v4-flash-0731,
 # glm-5.2) are THINKING models: max_tokens caps reasoning + answer TOGETHER
@@ -464,7 +482,14 @@ def load_env_master_key(var_name: str, path: str = "~/.openclaw/workspace/.env.m
         text = p.read_text(encoding="utf-8", errors="replace")
     except OSError as e:
         return None, f"{p} unreadable: {type(e).__name__}"
-    for line in text.splitlines():
+    for raw_line in text.splitlines():
+        # Tolerate a leading `export ` and leading whitespace: the same file shape is
+        # written both as a sourced shell fragment (`export VAR='v'`, what ~/.zshenv
+        # needs to re-export it to children) and as a plain `.env` line (`VAR=v`).
+        # Strictly a widening — a line that matched before still matches identically.
+        line = raw_line.strip()
+        if line.startswith("export "):
+            line = line[len("export "):].lstrip()
         if line.startswith(f"{var_name}="):
             value = line.split("=", 1)[1].strip().strip('"').strip("'")
             if value:
@@ -504,6 +529,87 @@ def load_tp1_settings_key(
     if not isinstance(value, str) or not value.strip():
         return None, f"env.BAILIAN_TOKEN_PLAN_API_KEY not set in {p}"
     return value.strip(), None
+
+
+def load_tp1_vault_key(
+    path: str = TP1_SECRETS_VAULT,
+) -> tuple[Optional[str], Optional[str]]:
+    """Load BAILIAN_TOKEN_PLAN_API_KEY from the 0600 env-file vault.
+
+    This is the leg that lets a host STOP keeping the credential in
+    ~/.qwen/settings.json: that file is rewritten by the qwen CLI itself, and every
+    flush resets its mode to 0644 (measured on Air-M5 2026-09-18), so a secret stored
+    there is world-readable again within minutes of any `chmod 0600`. A vault file the
+    CLI does not own keeps its mode.
+
+    Mode gate: the file is REFUSED unless it is owner-only readable (no group/other
+    bits at all). This mirrors the `SETTINGS_FOUND_MODE = "600"` gate in
+    qwen-cloud-code.sh and its stated reason — a secret file found world/group
+    readable has an untrusted disclosure history (superscar family #4, "secret in the
+    clear") and hardening it afterwards does not un-leak it. The gate is judged on the
+    mode as found; this function never chmods.
+
+    Never raises; never puts the value in the returned note (W106 class: name the
+    source and the reason, never the secret).
+    """
+    p = Path(os.path.expanduser(path))
+    if not p.exists():
+        return None, f"{p} not found"
+    try:
+        mode = stat.S_IMODE(p.stat().st_mode)
+    except OSError as e:
+        return None, f"{p} unstatable: {type(e).__name__}"
+    if mode & 0o077:
+        return None, (
+            f"{p} mode {mode:04o} is group/other-readable — refused "
+            f"(a vault must be owner-only; chmod 0600 it)"
+        )
+    value, note = load_env_master_key(TP1_CRED_ENV_VAR, path=str(p))
+    if value:
+        return value, None
+    return None, note
+
+
+def resolve_tp1_key(
+    vault_path: str = TP1_SECRETS_VAULT,
+    settings_path: str = "~/.qwen/settings.json",
+) -> tuple[Optional[str], Optional[str], Optional[str]]:
+    """Resolve the TP1 credential: process env > 0600 vault > Qwen settings.json.
+
+    Returns (value, source, note). `source` is one of "env" / "vault" /
+    "settings.json" / None — log THAT, never the value. `note` is non-None only when
+    every source failed, and concatenates why each one did.
+
+    Why this order. Env first is the existing, CI-asserted contract
+    (test_api_key_env_wins_without_touching_qwen_settings_file) and keeps an explicit
+    injection authoritative. Vault before settings.json because the vault is the only
+    one of the three that is BOTH protected by its mode and readable without a shell
+    and without an unlocked Keychain — i.e. the only one that works in a launchd
+    context, which is the whole reason a fallback exists (deepseek_client's docstring:
+    "a launchd context has no env"). Settings.json stays last rather than being
+    removed so a host that has not migrated yet keeps working unchanged.
+
+    The Keychain is NOT consulted — see TP1_SECRETS_VAULT's comment for the two
+    measured reasons (stale-copy 401 on Pro 2026-08-26; rc=36 over non-interactive ssh).
+
+    Never raises.
+    """
+    env_val = os.environ.get(TP1_CRED_ENV_VAR)
+    if env_val and env_val.strip():
+        return env_val.strip(), "env", None
+
+    notes = []
+    value, note = load_tp1_vault_key(path=vault_path)
+    if value:
+        return value, "vault", None
+    notes.append(f"vault: {note}")
+
+    value, note = load_tp1_settings_key(path=settings_path)
+    if value:
+        return value, "settings.json", None
+    notes.append(f"settings.json: {note}")
+
+    return None, None, "; ".join(notes)
 
 
 # ---------------------------------------------------------------- HTTP helper
