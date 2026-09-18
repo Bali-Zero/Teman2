@@ -833,6 +833,17 @@ def _strip_identity(text: str) -> str:
     return text
 
 
+def _diff_positions(a: list[str], b: list[str]) -> list[int]:
+    """Line indices where two equal-length line lists differ. Raises ValueError on a length
+    mismatch instead of silently truncating to the shorter list the way a bare zip(a, b)
+    would (gate-5 on PR2d: run_selftest's own Z-BLIND-vs-original check used a bare zip() the
+    pytest mirror had already grown a length assert past — the same comparison living in two
+    places had drifted). One function, called from both, so it cannot drift again."""
+    if len(a) != len(b):
+        raise ValueError(f"length mismatch: {len(a)} vs {len(b)} lines")
+    return [i for i, (x, y) in enumerate(zip(a, b)) if x != y]
+
+
 def _jury_survivors(kit: Path) -> list[str]:
     """Seats judge.md marked NOT disqualified, in judge.md's own row order. judge.md — not a
     recompute — is the SSOT for who survives (scar #2, "Esiste != Armato": never re-derive a
@@ -1314,7 +1325,12 @@ def run_selftest() -> None:
         letter_l, seat_l = next(iter(mapping_l.items()))
         orig_lines_l = (kit_l / "r1" / f"{_file_slug(seat_l)}.md").read_text().splitlines()
         blind_lines_l = (kit_l / "Z-BLIND" / f"{letter_l}.md").read_text().splitlines()
-        changed_l = [i for i, (o, b) in enumerate(zip(orig_lines_l, blind_lines_l)) if o != b]
+        try:
+            changed_l = _diff_positions(orig_lines_l, blind_lines_l)
+            check("Z-BLIND copy is the same length as its original (no zip() truncation)", True)
+        except ValueError:
+            check("Z-BLIND copy is the same length as its original (no zip() truncation)", False)
+            changed_l = []
         check("Z-BLIND copy differs from its original on exactly the seat+sha lines",
               len(changed_l) == 2)
 

@@ -762,12 +762,25 @@ def test_anonymise_z_blind_copy_differs_from_the_original_only_on_seat_and_sha_l
     letter, seat = next(iter(mapping.items()))
     original = (kit / "r1" / f"{dw._file_slug(seat)}.md").read_text().splitlines()
     blind = (kit / "Z-BLIND" / f"{letter}.md").read_text().splitlines()
-    assert len(original) == len(blind)
-    changed = [i for i, (o, b) in enumerate(zip(original, blind)) if o != b]
+    changed = dw._diff_positions(original, blind)
     assert len(changed) == 2
     for i in changed:
         key = original[i].split(":", 1)[0].strip()
         assert key in ("seat", "objective_sha256")
+
+
+def test_diff_positions_refuses_a_length_mismatch_instead_of_a_silent_zip_truncation():
+    # guilt: a bare zip(a, b) would stop at the shorter list and miss the extra trailing
+    # line entirely -- _diff_positions must raise instead of returning a partial answer.
+    with pytest.raises(ValueError):
+        dw._diff_positions(["a", "b", "c"], ["a", "b"])
+
+
+def test_diff_positions_reports_every_differing_index_on_equal_length_input():
+    # innocence: same-length input still returns every differing position, unaffected by
+    # the added length guard.
+    assert dw._diff_positions(["a", "x", "c"], ["a", "b", "c"]) == [1]
+    assert dw._diff_positions(["a", "b", "c"], ["a", "b", "c"]) == []
 
 
 def test_anonymise_writes_one_z_blind_copy_per_surviving_letter(tmp_path, template, clean_objective):
