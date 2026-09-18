@@ -1,95 +1,66 @@
-task_id: b2-5-2-wa-human-handoff
+task_id: infra-dynamic-workflow-3b
 gear: 2
 l_level: L2
 gate_class: opus
-# Floor for this diff is 2, reached via the SIZE term alone (1018 added / 32 deleted across 10
-# files) — no hot-zone path, no migration, no new dependency. Measured WITH this brief staged:
-# the brief's own churn (~90 lines) leaves the total well under the floor-3 threshold, which is
-# the mistake that sank PR #6602.
+# Floor for this diff is 2, reached via the SIZE term alone (418 added / 0 deleted across 4
+# files) — no hot-zone path (no .github/workflows/, no migration, no apps/backend-rag/), no new
+# dependency. Measured WITH this brief staged.
 objective: >-
-  A client who asks to speak to a person is the highest-intent message this bot ever receives —
-  it is a lead. Today nothing on the Meta Inbox channel detects it: the message falls through to
-  retrieval, abstains, and reaches no human being. Measured 2026-09: 32 of 40 conversations end
-  in an abstain, 4 were picked up by a person. This PR detects the ask in five languages, answers
-  the client in their own language, and notifies a human on two channels — the kita notification
-  bell for the assigned consultant, and email for everyone including a number no client row
-  matches yet.
+  PR3b of the dynamic-workflow mandate (docs/dynamic-workflow kit, owner ruling Zero
+  2026-09-18). The draft .claude/skills/dynamic-workflow/SKILL.md and BRIEF.md kit predate
+  scripts/dynamic_workflow.py (PR2, already shipped) and had drifted from what it actually
+  ships — most visibly, the draft implied a single "judge" step covered both mechanical
+  disqualification and jury tabulation, where the real CLI splits them into two separate
+  subcommands (judge, jury). This PR rewrites SKILL.md against the shipped --help surface and
+  turns BRIEF.md into brief.template.md with a grep-found source pointer (or an explicit
+  unverified mark) on every one of its 15 scouting-report facts, per the mandate's own
+  anti-hallucination discipline.
 constraints:
   - >-
-    No Anthropic per-token door in any form, no new dependency, no migration. The notification
-    table (notification_alerts, migration 071) and the email adapter
-    (/api/notifications/send-email, from=zantara@balizero.com) both already exist on main.
+    No Anthropic per-token door, no new dependency, no migration, no workflow file — CI wiring
+    for .github/workflows/dynamic-workflow-selftest.yml is PR3c's job, explicitly out of scope
+    here and named as such in SKILL.md's own Selftest section.
   - >-
-    PII is an OUTPUT boundary. The phone number is used ONLY in-process to resolve the consultant.
-    It never appears in the email subject, the email body, the in-app row, or any log line; the
-    client's own words are never transcribed anywhere. The in-app message is a fixed English
-    sentence and the email body a fixed Bahasa Indonesia one, deliberately — a robust
-    "free of identifiers" classifier is out of scope for this size, so when in doubt this omits.
+    brief.template.md must reproduce BRIEF.md's F1-F15 text verbatim — this PR sources
+    citations for the existing facts, it does not re-derive or correct the facts themselves.
   - >-
-    The client's confirmation must survive any notification failure. Both channels are best-effort
-    at their own layer, and the call site in wa_codex_leg.py wraps the whole call again, because
-    the outer attempt() turns an unhandled exception into a text=None fall-off — which would
-    silently swallow the very confirmation this leg exists to send.
-  - >-
-    meta_inbox_threads.human_handling is NOT set. A client who ASKS for a human is not a human who
-    HAS TAKEN the thread; setting it aborts every later generation (aborted_human_takeover,
-    wa_outbox_worker.py:930) and, if nobody arrives, leaves the client in total silence.
+    Every F-line source pointer is either a real grep-found path/line or the mandate's exact
+    literal "(source: session 2026-09-18, unverified)" — never an invented citation.
 acceptance:
   - text: >-
-      A1 GUILT: WHEN a client writes any of 23 real phrasings across it/en/id/ru/uk — including
-      "I want to talk to a human", "voglio parlare con una persona riguardo alla mia PT PMA" and
-      "saya mau bicara dengan orang" — SHALL match and return a confirmation in that language.
-      The domain veto is INVERTED relative to wa_identity: naming your own case while asking for a
-      human is the most valuable lead there is, and must match rather than be vetoed.
-    probe: "cd apps/backend-rag && .venv/bin/python -m pytest backend/tests/unit/services/test_wa_human_handoff.py -k TestGuilt"
+      Every dynamic_workflow.py <subcommand> named in SKILL.md is a real subcommand of the
+      shipped CLI's --help output, and judge is documented strictly before jury.
+    probe: "python3 -m pytest scripts/tests/test_dynamic_workflow_skill.py -k 'subcommand_is_real or judge_and_jury' -q"
   - text: >-
-      A2 INNOCENCE: WHEN the message is "humanitarian visa", "how long does PT PMA take?",
-      "sei un umano?" or a third-person question about staff SHALL NOT match. The guard judges
-      whole TOKENS over a normalized window, never a substring — "humanitarian" cannot reach any
-      phrase in the table.
-    probe: "cd apps/backend-rag && .venv/bin/python -m pytest backend/tests/unit/services/test_wa_human_handoff.py -k TestInnocence"
-  - text: >-
-      A3 THE ROW IS ALSO RENDERED: WHEN the module writes a notification_alerts row SHALL be a
-      type the kita bell actually shows. /api/crm/notifications filters on a fixed allow-list, so a
-      new alert_type would otherwise be written and never seen — for a lead, the same outcome as
-      not writing it. The allow-list is now one constant read by both the list and the count query,
-      and the test binds the two constants by ENTITY, not by grepping a SQL literal.
-    probe: "cd apps/backend-rag && .venv/bin/python -m pytest backend/tests/unit/services/test_wa_human_handoff.py -k TestInAppAlert"
-  - text: >-
-      A4 THE PROMISE IS KEPT: WHEN any of the five wa_identity presentations offers the client a
-      human SHALL use wording that match_human_request recognises. Before this PR that line was a
-      promise no code kept; the test walks every presentation and requires the detector to find a
-      request inside the exact sentence it suggests.
-    probe: "cd apps/backend-rag && .venv/bin/python -m pytest backend/tests/unit/services/test_wa_human_handoff.py -k TestPresentationKeepsItsPromise"
-  - text: >-
-      A5 NOTHING ELSE MOVED: WHEN the backend unit suite runs SHALL be 8534 passed with exactly one
-      pre-existing unrelated failure (autonomous_lab/test_consul_native_broker.py,
-      ModuleNotFoundError scripts.conductor), reproduced identically on a clean main checkout.
-    probe: "cd apps/backend-rag && .venv/bin/python -m pytest backend/tests/unit/services/autonomous_lab/test_consul_native_broker.py  # same red on main"
+      Every F1-F15 line in brief.template.md carries a "(source: ...)" pointer, and every
+      unverified mark uses the mandate's exact literal rather than a paraphrase.
+    probe: "python3 -m pytest scripts/tests/test_dynamic_workflow_skill.py -k 'source_pointer or unverified' -q"
+  - text: Registering dynamic-workflow in KNOWN_CLAUDE_ONLY_NAMES does not break skill-canonicity.
+    probe: "python3 -m pytest scripts/tests/test_skills_canonical.py -q"
+  - text: The pre-existing 79-case offline selftest mirror is unaffected by this PR.
+    probe: "python3 -m pytest scripts/tests/test_dynamic_workflow.py -q"
 assumptions:
   - text: >-
-      notification_alerts.client_id is NOT NULL with an FK to clients, and the bell's own query
-      JOINs clients to resolve the assignee — so an unrecognised number structurally CANNOT have an
-      in-app row. This is why the email is unconditional rather than a fallback: the newest lead is
-      exactly the one no client row matches.
+      "Register it wherever skill-catalog expects" (original PR3 spec) maps to two concrete,
+      low-risk actions rather than one uniquely-correct one: adding dynamic-workflow to
+      KNOWN_CLAUDE_ONLY_NAMES (in-repo, testable — this is a Tier-B, .claude-only skill, same
+      class as modus/workflow) and an `mem save pattern "SKILL-CATALOG: dynamic-workflow —
+      ..."` MOS entry (global, per skill-catalog/SKILL.md's own documented convention for
+      catalogued skills). Both done; neither confirmed as the singularly intended one.
     status: verified
-    probe: "scripts/pg.sh -c '\\d notification_alerts' — client_id integer not null, FK to clients(id)"
+    probe: "mem save pattern ... exit 0 (ran this session, importance 6); scripts/tests/test_skills_canonical.py 11 passed"
   - text: >-
-      The table carries UNIQUE (client_id, alert_type, created_date), so a client asking twice in
-      one day would raise without ON CONFLICT. DO UPDATE rather than DO NOTHING because a second
-      ask means the first went unanswered: the alert returns to unread and rises in the bell.
+      scripts/lint_model_cards.py, named in the ORIGINAL (pre-split) PR3 spec, was not seen
+      assigned to PR3a/3b/3c/3d anywhere in the addendum read so far — left out of this PR
+      rather than guessed into scope; flagged to the team-lead as an open question, not
+      silently dropped.
     status: verified
-    probe: "scripts/pg.sh -c '\\d notification_alerts' — uq_notification_alert_daily UNIQUE (client_id, alert_type, created_date)"
+    probe: "grep -rn lint_model_cards ~/BATTAGLIA-20260911/DYNAMIC-WORKFLOW-20260918/ — only the original PR3 section names it"
   - text: >-
-      PackageUnbuildable("human_handoff_domain") cannot violate the wa_outbox CHECK constraint on
-      generation_fall_off_reason: unknown sub-reasons fall through to the generic
-      "package_unbuildable" bucket, which the constraint allows. wa_codex_leg short-circuits before
-      the builder is ever reached on this path anyway — the raise is a second line of defense.
+      evidence/brief.yml at repo root is a rolling per-PR slot, not a fixed artifact of a prior
+      PR: git log shows it was last written by #6645 (an unrelated WA human-handoff PR) and the
+      trigger-symmetry evidence pack's own brief_ref comment documents CI's harness-floor.yml
+      copying THIS PR's brief to that canonical relative path for linting. Overwritten here with
+      this PR's own content rather than left as inherited cruft from another lane.
     status: verified
-    probe: "wa_codex_leg.py:268 _UNBUILDABLE_SUB_REASON_MAP has 3 keys; anything else falls to _FALL_OFF_REASON_PREFIX_MAP['unbuildable']"
-  - text: >-
-      The live proof must come from a real phone. /webhook/whatsapp is fail-closed on the
-      X-Hub-Signature-256 HMAC and WHATSAPP_APP_SECRET is a Fly secret, absent on Pro (presence
-      probe only, value never read) — so no test inbound can be injected from this machine.
-    status: verified
-    probe: "presence probe over ~/.nuzantara-secrets.env and apps/backend-rag/.env: absent_local for all four WhatsApp vars"
+    probe: "git log --oneline -3 -- evidence/brief.yml; git ls-files evidence/brief.yml"
