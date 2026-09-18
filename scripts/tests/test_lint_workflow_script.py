@@ -143,6 +143,18 @@ def test_innocence_one_clean_in_scope_file_is_enough(lint, capsys):
     assert "BLIND SCAN" not in captured.err
 
 
+def test_guilt_explicit_nonexistent_target_is_a_blind_scan(lint, tmp_path, capsys):
+    """OBSERVATION 6 (PR3a', 2026-09-18): a nonexistent explicit path must refuse, not
+    silently report '0 file(s) scanned, no violations, exit 0'."""
+    ghost = tmp_path / "does_not_exist.js"
+    rc = lint.main([str(ghost)])
+    captured = capsys.readouterr()
+    assert rc == 2, "a nonexistent explicit target must not exit 0 — it proves nothing"
+    assert "BLIND SCAN" in captured.err
+    assert str(ghost) in captured.err
+    assert "no violations" not in captured.out
+
+
 # --------------------------------------------------------------------------
 # DEFECT 1 (PR3a', 2026-09-18) — relative_to(repo_root) must not traceback on an
 # out-of-root explicit target (gate reproduction: a /tmp copy of a live .js file).

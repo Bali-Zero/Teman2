@@ -289,6 +289,22 @@ def main(argv: list[str]) -> int:
         )
         return 2
 
+    # OBSERVATION 6 (PR3a', 2026-09-18): explicit mode with a target that does not exist
+    # on disk at all is a blind scan too — distinct from an explicit EXISTING file that
+    # is legitimately off-scope by suffix (test_innocence_explicit_non_js_file_is_still_
+    # green's case, which must stay green unchanged).
+    if explicit and scanned == 0:
+        missing = [p for p in targets if not p.exists()]
+        if missing:
+            names = ", ".join(str(p) for p in missing)
+            print(
+                f"❌ lint_workflow_script: BLIND SCAN — target(s) do not exist: {names}.\n"
+                "Refusing to report 'clean': a scan that sees nothing proves nothing "
+                "(cicatrix #2, \"exists != armed\").",
+                file=sys.stderr,
+            )
+            return 2
+
     if not bad:
         print(f"✅ lint_workflow_script: no violations ({scanned} file(s) scanned)")
         return 0
