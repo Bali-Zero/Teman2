@@ -28,21 +28,29 @@ SPEC = json.loads(R.SPEC.read_text(encoding="utf-8"))
 
 # The lot's deferred groups, as the spec declares them. Pinned here because the
 # arithmetic is the honest half of the claim, and it has two axes: the rule
-# REACHES 507 codes, of which 330 ship and 177 are withheld (61 + 68 + 29 + 19);
-# the other 537 never enter the reach at all (Bali 331, legacy prose 36, no
-# Besar row 12, no PP 28 rows 158). A lot that quietly grew breaks this first.
+# REACHES 507 codes, of which 329 ship and 178 are withheld (61 + 67 + 29 + 19
+# + 2); the other 537 never enter the reach at all (Bali 331, legacy prose 36,
+# no Besar row 12, no PP 28 rows 158). A lot that quietly grew breaks this
+# first. The 2 and the 67 (not 68) are one change, not two: `50143` moved from
+# the unswept-statute leg to the title-collision leg, which claims it earlier
+# and hands the reader the capped row instead of the unread-statute caution.
+# `instrument_reached_sibling` withholds nothing at all — it is a 135-code class
+# measured and found EMPTY of true positives, declared here so the next lane
+# inherits the negative result instead of re-running the same search.
 DEFERRED = {
     "adjudicated_sibling": 29,
+    "annex_title_collision": 2,
     "bali_attenzione_fascia": 272,
     "bali_bloccato_dipende_scope": 31,
     "bali_chiuso_bali": 22,
     "bali_other": 6,
     "body_stated_category": 19,
+    "instrument_reached_sibling": 135,
     "legacy_pma_prose": 36,
     "residual_besar_absent": 12,
     "residual_besar_unobserved": 158,
     "sector_law_referral_pasal_11_2": 61,
-    "sector_statute_unswept": 68,
+    "sector_statute_unswept": 67,
 }
 
 # The sector legs, pinned by DIVISION and by count. Two different claims, kept
@@ -58,6 +66,11 @@ SECTOR_LEGS = {
     "unswept_sector_statute": ({"09", "35", "49", "50", "51", "52", "53", "61"}, 70),
 }
 SECTOR_DIVISIONS = {d for divs, _ in SECTOR_LEGS.values() for d in divs}
+
+# The reach's title collisions. 50143 is in the sector divisions too and would
+# be withheld either way; 58120 is the one code NO other leg sees, which is why
+# it is named here and not folded into a count.
+COLLISION_WITHHELD = {"50143", "58120"}
 
 # The codes the rule REACHES and the lot withholds anyway, because absence is
 # only evidence of openness where no instrument is in the neighbourhood.
@@ -82,15 +95,19 @@ def by_code(records) -> dict[str, dict]:
 # ---------------------------------------------------------------- dataset state
 
 
-def test_the_lot_is_330_codes_and_the_deferred_arithmetic_is_declared():
+def test_the_lot_is_329_codes_and_the_deferred_arithmetic_is_declared():
     codes = [str(c) for c in SPEC["items"]]
-    assert len(codes) == 330 and len(set(codes)) == 330
+    assert len(codes) == 329 and len(set(codes)) == 329
     assert {k: v["codes"] for k, v in SPEC["deferred"].items()} == DEFERRED
     assert SPEC["lot"] == 1 and SPEC["vintage"] == "2021-05-25"
-    # 330 shipped + 61 Pasal 11(2) + 68 unswept statute + 29 sibling
-    # + 19 hand-excluded = the 507 the rule reaches.
+    # 329 shipped + 61 Pasal 11(2) + 67 unswept statute + 29 sibling
+    # + 19 hand-excluded + 2 title collision = the 507 the rule reaches.
+    # `instrument_reached_sibling` is deliberately NOT a term: it withholds
+    # nothing, so adding it would double-count 135 shipped codes.
     withheld_count = (
-        DEFERRED["sector_law_referral_pasal_11_2"] + DEFERRED["sector_statute_unswept"]
+        DEFERRED["sector_law_referral_pasal_11_2"]
+        + DEFERRED["sector_statute_unswept"]
+        + DEFERRED["annex_title_collision"]
     )
     assert (
         len(codes) + withheld_count + len(SIBLING_WITHHELD) + len(SPEC["excluded_codes"])
@@ -132,7 +149,10 @@ def test_the_withheld_are_withheld_and_still_say_not_verified(records, by_code):
     reach = R.reached(SPEC, records)
     held = R.withheld(SPEC, records, reach)
     sector = {c for c in reach if c[:2] in SECTOR_DIVISIONS}
-    assert set(held) == SIBLING_WITHHELD | set(SPEC["excluded_codes"]) | sector
+    assert (
+        set(held)
+        == SIBLING_WITHHELD | set(SPEC["excluded_codes"]) | sector | COLLISION_WITHHELD
+    )
     for kind, (divisions, in_reach) in SECTOR_LEGS.items():
         assert len({c for c in reach if c[:2] in divisions}) == in_reach, kind
     for code in held:
@@ -266,6 +286,13 @@ def mini_spec(items):
     # `test_a_code_carrying_a_category_marker_is_withheld…` pins.
     for block in spec.get("category_closure_probe", []):
         block["marked_codes"] = []
+    # Same again for the title-collision census. Emptying it keeps the probe
+    # ARMED — a synthetic record whose title is a capped row's activity is still
+    # withheld, which `test_a_title_that_is_a_capped_rows_activity…` pins.
+    # `sector_law_closures` is NOT touched: its staleness is checked against the
+    # catalogue on disk, so the real four codes stay meaningful in the sandbox.
+    for block in spec.get("annex_title_collision_probe", []):
+        block["collided_codes"] = []
     return spec
 
 
@@ -659,3 +686,188 @@ def test_a_patch_field_the_probe_still_reads_is_refused():
     finally:
         R.PROBE_BLIND_FIELDS = original
     assert any("PROBE_BLIND_FIELDS does not list it" in r for r in refusals)
+
+
+# --- the annex title collision leg -------------------------------------------
+# Why it exists: every other leg reasons about the code NUMBER, and BPS re-scopes
+# numbers between vintages while a Perpres cap attaches to the ACTIVITY the annex
+# names. 2020-58120 was «Penerbitan Direktori dan Mailing List»; in 2025 it IS
+# «Penerbitan Surat Kabar», the activity Lampiran III entry #33 caps at 0% at
+# establishment under the number 58130. The first candidate shipped it TERBUKA
+# with a VERIFIED 100% — caught on disk by the gate, not by any suite.
+
+PRESS_ROW_ACTIVITY = "Penerbitan surat kabar, majalah, dan buletin (pers)"
+
+
+def test_the_press_code_is_out_of_the_lot_and_the_capped_row_is_why(records):
+    reach = R.reached(SPEC, records)
+    held = R.withheld(SPEC, records, reach)
+    assert "58120" in reach, "the rule still reaches it — this leg is what holds it"
+    assert "58120" not in SPEC["items"]
+    why = held["58120"]
+    assert why.startswith("annex title collision: Lampiran III entry #33")
+    assert "0%" in why and "58130" in why
+
+
+def test_the_collision_census_is_pinned_and_reads_only_the_capped_annex(by_code):
+    (block,) = SPEC["annex_title_collision_probe"]
+    assert block["artifact"] == "data/kbli-filiera/perpres-foreign-caps.json"
+    measured = {c for c, r in by_code.items() if R.annex_title_collision(c, r)}
+    assert measured == set(block["collided_codes"])
+    # Eight of the nine are the division 50/53 sea-transport renumbering, which
+    # the unswept-statute leg already covers by division: the probe corroborates
+    # a class the compiler knew, and adds exactly one code nothing else saw.
+    assert {c for c in measured if c[:2] in {"50", "53"}} == measured - {"58120"}
+
+
+def test_a_title_that_is_a_capped_rows_activity_is_withheld_and_names_the_row():
+    spec = mini_spec([])
+    spec["annex_title_collision_probe"][0]["collided_codes"] = [RESIDUAL]
+    r = rec(RESIDUAL)
+    r["judul"] = PRESS_ROW_ACTIVITY.upper()
+    held = R.withheld(spec, [r], {RESIDUAL})
+    assert "annex title collision: Lampiran III entry #33" in held[RESIDUAL]
+    assert "58130" in held[RESIDUAL] and "0%" in held[RESIDUAL]
+    # Case and punctuation are the only things that differ between the two
+    # vintages of this name, so the match must survive both.
+    assert R.check(spec, [r]) == ([], [])
+
+
+def test_listing_a_collided_code_refuses_instead_of_shipping_it():
+    spec = mini_spec([RESIDUAL])
+    spec["annex_title_collision_probe"][0]["collided_codes"] = [RESIDUAL]
+    r = rec(RESIDUAL)
+    r["judul"] = PRESS_ROW_ACTIVITY
+    todo, refusals = R.check(spec, [r])
+    assert todo == [] and refusals
+
+
+def test_the_probe_ignores_the_row_filed_under_the_code_itself(by_code):
+    # 58130's own Lampiran III row must not withhold 58130: being NAMED by an
+    # annex is what `named-in-annex` is for, and reading it as a collision would
+    # turn every correctly-capped code into a refusal.
+    assert R.annex_title_collision("58130", {"judul": PRESS_ROW_ACTIVITY}) is None
+    assert R.annex_title_collision(RESIDUAL, {"judul": "Sintetico"}) is None
+    assert R.annex_title_collision(RESIDUAL, {"judul": ""}) is None
+
+
+def test_a_moved_collision_census_refuses_instead_of_writing():
+    spec = mini_spec([RESIDUAL])
+    spec["annex_title_collision_probe"][0]["collided_codes"] = ["00000"]
+    _, refusals = R.check(spec, [rec(RESIDUAL)])
+    assert any("the catalogue collides on" in x for x in refusals), refusals
+
+
+def test_a_probe_pointed_at_another_annex_refuses():
+    spec = mini_spec([RESIDUAL])
+    spec["annex_title_collision_probe"][0]["artifact"] = (
+        "data/kbli-filiera/perpres-umkm-reservation.json"
+    )
+    _, refusals = R.check(spec, [rec(RESIDUAL)])
+    assert any("this probe reads the foreign-cap annex" in x for x in refusals), refusals
+
+
+def test_removing_the_probe_refuses_rather_than_shipping_the_class():
+    spec = mini_spec([RESIDUAL])
+    spec.pop("annex_title_collision_probe")
+    _, refusals = R.check(spec, [rec(RESIDUAL)])
+    assert any("no annex_title_collision_probe block" in x for x in refusals), refusals
+
+
+# --- the sector-law closure guard --------------------------------------------
+# Not a subtraction: an INVARIANT over whatever leg is doing the subtracting.
+# 58120 is held by the probe above and 60101/60201/69104 are out of reach on the
+# Bali and eligibility filters — i.e. by accident. Lot 2 lifts the Bali filter.
+
+
+def test_the_closure_guard_names_the_four_codes_and_their_statutes():
+    (block,) = SPEC["sector_law_closures"]
+    assert block["codes"] == ["58120", "60101", "60201", "69104"]
+    for statute in ("UU 40/1999", "UU 32/2002", "UU 30/2004"):
+        assert statute in block["instrument"]
+    assert not set(block["codes"]) & {str(c) for c in SPEC["items"]}
+
+
+def test_a_closure_code_listed_as_a_lot_member_refuses(records):
+    spec = json.loads(json.dumps(SPEC))
+    spec["items"] = [*spec["items"], "58120"]
+    _, refusals = R.check(spec, records)
+    assert any("58120: sector_law_closures[0] names it" in x for x in refusals), refusals
+
+
+def test_a_closure_code_reached_with_nothing_holding_it_refuses():
+    # The gate's standing finding, made executable: when a later lot lifts the
+    # Bali cut, 60101 becomes eligible and no leg covers division 60.
+    spec = mini_spec([RESIDUAL])
+    records = [rec(RESIDUAL), rec("60101")]
+    _, refusals = R.check(spec, records)
+    assert any(
+        "60101: sector_law_closures[0] names it and the rule now REACHES it" in x
+        for x in refusals
+    ), refusals
+
+
+def test_the_closure_guard_is_silent_while_something_else_holds_the_code(records):
+    # Innocence, and the reason the guard is an invariant and not a leg: today
+    # 58120 IS reached, and the run is clean because the probe holds it.
+    todo, refusals = R.check(SPEC, records)
+    assert refusals == []
+    assert "58120" not in todo
+
+
+def test_a_closure_naming_a_code_kbli_2025_does_not_have_is_stale():
+    spec = mini_spec([RESIDUAL])
+    spec["sector_law_closures"][0]["codes"] = ["99999"]
+    _, refusals = R.check(spec, [rec(RESIDUAL)])
+    assert any("99999 is not in KBLI 2025" in x for x in refusals), refusals
+
+
+def test_removing_the_closure_guard_refuses():
+    spec = mini_spec([RESIDUAL])
+    spec.pop("sector_law_closures")
+    _, refusals = R.check(spec, [rec(RESIDUAL)])
+    assert any("no sector_law_closures block" in x for x in refusals), refusals
+
+
+
+def test_the_spacecraft_code_ships_because_an_adjudication_says_the_annex_misses_it():
+    """The on-disk gate's HIGH on PR #6783, answered in the NEGATIVE.
+
+    30303 «Industri Wahana Antariksa» descends from KBLI-2020 30300, which
+    Lampiran III entry #7 caps at 49%. It ships here at TERBUKA/100 anyway, and
+    the licence for that is not absence — it is a hand adjudication in the tree
+    saying the annex activity is a NEIGHBOUR of this code, not inside it. That
+    is a load-bearing dependency of this lot, so it is pinned: delete the
+    adjudication or reword its reason and this test goes red BEFORE the lot
+    silently starts resting on nothing.
+    """
+    from perpres_slice_disclosure_relation import ADJACENT_NOT_CONTAINED
+
+    assert "30303" in SPEC["items"]
+    assert "30303" in ADJACENT_NOT_CONTAINED
+    reason = ADJACENT_NOT_CONTAINED["30303"]
+    assert "spacecraft" in reason and "military aircraft" in reason
+    # The ancestor link is real — the exclusion is a reading of the annex TEXT,
+    # not a missing crosswalk row. If the ancestry were absent the adjudication
+    # would be answering a question nobody asked.
+    caps = {str(r["kbli_2020"]) for r in json.loads(R.CAPS.read_text(encoding="utf-8"))["rows"]}
+    assert "30300" in caps
+
+
+def test_the_sibling_class_is_declared_and_measured_empty(by_code):
+    """`instrument_reached_sibling`: 135 codes, 3 cap-linked, 0 true positives.
+
+    A negative result is worth shipping only if it says how it was measured,
+    so the block names all three and this test re-derives the discriminator:
+    a 4-digit PREFIX sibling is not a lineage relation, and only the lineage
+    one can carry an annex row down.
+    """
+    block = SPEC["deferred"]["instrument_reached_sibling"]
+    assert block["codes"] == 135
+    for code in ("10762", "30112", "30303"):
+        assert code in block["why"] and code in SPEC["items"]
+    # 10762 and 30112 do not descend from the capped code that shares their
+    # first four digits; 30303 does, which is why only it needed adjudicating.
+    assert by_code["10762"]["bps_2020_ancestors"]["codes"] == ["10763"]
+    assert by_code["30112"]["bps_2020_ancestors"]["codes"] == ["30112"]
+    assert by_code["30303"]["bps_2020_ancestors"]["codes"] == ["30300"]

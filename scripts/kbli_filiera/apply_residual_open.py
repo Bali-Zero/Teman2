@@ -103,6 +103,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
@@ -119,6 +120,7 @@ from apply_umkm_reservations import (  # noqa: E402
     propagate,
 )
 from perpres_body_default_relation import (  # noqa: E402
+    CAPS,
     CannotVerify,
     annex_codes,
     priority_codes,
@@ -154,7 +156,10 @@ BASIS = (
     "instrument by ABSENCE, not from a row that names this code: over the BPS "
     "2020→2025 crosswalk the code is on no Lampiran I (prioritas), Lampiran II "
     "(dialokasikan/kemitraan Koperasi-UMKM) or Lampiran III (persyaratan tertentu, "
-    "foreign-ownership caps included) row, no body article names it (Pasal 2(2) "
+    "foreign-ownership caps included) row — tested against Lampiran III BOTH by "
+    "code through the crosswalk AND by activity title, because BPS re-scopes "
+    "numbers between vintages while a cap attaches to the ACTIVITY the annex "
+    "names — no body article names it (Pasal 2(2) "
     "closed list, Pasal 6(3a) alcohol trade) and no Pasal 11(2) sector-law "
     "referral reaches its SECTOR — the article's unit is «Bidang Usaha keuangan "
     "dan Bidang Usaha perbankan», so the whole of KBLI divisions 64, 65 and 66 "
@@ -327,6 +332,85 @@ def sector_referral(code: str, spec: dict[str, Any]) -> str | None:
     return None
 
 
+def _norm(text: str) -> str:
+    """Lowercase, punctuation to space, whitespace collapsed.
+
+    The shape in which two vintages of the SAME activity name stay comparable:
+    «Penerbitan surat kabar, majalah, dan buletin (pers)» and «Penerbitan Surat
+    Kabar» differ in case, comma and parenthesis, not in what they name.
+    """
+    spaced = "".join(c if c.isalnum() or c.isspace() else " " for c in text)
+    return " ".join(spaced.lower().split())
+
+
+@lru_cache(maxsize=1)
+def _catalogue_codes() -> frozenset[str]:
+    """KBLI 2025 as it is ON DISK, not as a caller's record list describes it.
+
+    `sector_law_closures` names codes in the catalogue, so its staleness is a
+    property of the catalogue — reading it from whatever `records` a caller
+    passed would make a synthetic fixture able to declare the real guard stale.
+    """
+    payload = json.loads(CANONICAL.read_text(encoding="utf-8"))
+    rows = payload["data"] if isinstance(payload, dict) else payload
+    return frozenset(str(r["kode_kbli_2025"]) for r in rows)
+
+
+@lru_cache(maxsize=1)
+def _cap_rows() -> tuple[tuple[str, str, int, int], ...]:
+    """Lampiran III as (kbli_2020, normalised bidang_usaha, entry, cap%)."""
+    rows = json.loads(CAPS.read_text(encoding="utf-8"))["rows"]
+    return tuple(
+        (
+            str(row["kbli_2020"]),
+            _norm(str(row["bidang_usaha"])),
+            int(row["entry"]),
+            int(row["foreign_cap_pct"]),
+        )
+        for row in rows
+    )
+
+
+def annex_title_collision(code: str, record: dict[str, Any]) -> str | None:
+    """Whether this code's 2025 title is the ACTIVITY of a capped annex row
+    filed under a DIFFERENT code.
+
+    Absence from Lampiran III is matched by CODE, through the BPS 2020->2025
+    crosswalk. But BPS also re-scopes numbers between vintages: 2020-58120 was
+    «Penerbitan Direktori dan Mailing List» and 2020-58130 was the press row, and
+    in 2025 the two swapped — 58120 IS «Penerbitan Surat Kabar». The cap follows
+    the ACTIVITY the annex names; the crosswalk follows the NUMBER. Where they
+    disagree the code passes an absence test it should have failed, and this lane
+    publishes a verified 100% over a row that reads 0% at establishment.
+
+    Restricted to Lampiran III on purpose: it is the only annex carrying a
+    `foreign_cap_pct`, so a hit here is a cap we would be contradicting rather
+    than a partnership condition. Lampiran I's artifact holds no titles at all,
+    and Lampiran II carries an OCR row whose whole text is «Industri» — it
+    matches every industrial title in the catalogue and produced 82% of the raw
+    noise when the probe was measured across all three.
+
+    Like `category_markers` this is COARSE and fail-CLOSED, and
+    `collided_codes` pins what it matches catalogue-wide so the over-match is
+    measured rather than hypothetical.
+    """
+    title = _norm(str(record.get("judul") or ""))
+    if not title:
+        return None
+    for annex_code, bidang, entry, cap in _cap_rows():
+        if annex_code == code:
+            continue
+        if title in bidang or bidang in title:
+            return (
+                f"annex title collision: Lampiran III entry #{entry} caps "
+                f"«{bidang}» at {cap}% and files it under {annex_code}, but this "
+                f"code's 2025 judul IS that activity — the crosswalk matched the "
+                "NUMBER where the annex names the ACTIVITY, so absence here is a "
+                "re-scoped code, not an open one; adjudicate the cap per vintage"
+            )
+    return None
+
+
 # The fields THIS compiler writes, which the probe below must be BLIND to. The
 # basis string quotes the closed category verbatim («senjata kimia», «bahan
 # perusak lapisan ozon») — so a probe reading the whole record matches every
@@ -403,11 +487,23 @@ def withheld(
                 )
     for code, why in sorted(spec.get("excluded_codes", {}).items()):
         out.setdefault(code, why)
+    by_code = {str(r["kode_kbli_2025"]): r for r in records}
+    # Before the division-wide referrals on purpose: a code this probe names is
+    # contradicted by a SPECIFIC capped row, and a reader must be handed that row
+    # rather than the broader "we did not read the sector statute" caution. It is
+    # also the only leg that bites inside divisions the referrals do not cover.
+    if spec.get("annex_title_collision_probe"):
+        for code in sorted(judged):
+            record = by_code.get(code)
+            if record is None:
+                continue
+            why = annex_title_collision(code, record)
+            if why:
+                out.setdefault(code, why)
     for code in sorted(judged):
         why = sector_referral(code, spec)
         if why:
             out.setdefault(code, why)
-    by_code = {str(r["kode_kbli_2025"]): r for r in records}
     for block in spec.get("category_closure_probe", []):
         for code in sorted(judged):
             record = by_code.get(code)
@@ -514,6 +610,69 @@ def check(
                 "entered or left the closed category since the finding was "
                 "written; re-adjudicate it before writing"
             )
+    if not spec.get("annex_title_collision_probe"):
+        refusals.append(
+            "rule: no annex_title_collision_probe block — Lampiran III is matched "
+            "by CODE through the BPS crosswalk while the annex names an ACTIVITY, "
+            "and where a number was re-scoped between vintages the lot would "
+            "publish a verified 100% over a capped row"
+        )
+    for i, block in enumerate(spec.get("annex_title_collision_probe", [])):
+        for field in ("annex", "artifact", "why", "finding"):
+            if not block.get(field):
+                refusals.append(f"annex_title_collision_probe[{i}]: empty {field}")
+        want_artifact = str(CAPS.relative_to(CAPS.parents[2]))
+        if block.get("artifact") != want_artifact:
+            refusals.append(
+                f"annex_title_collision_probe[{i}]: artifact "
+                f"{block.get('artifact')!r} is not {want_artifact!r} — this probe "
+                "reads the foreign-cap annex and nothing else; pointing it "
+                "elsewhere would change what a hit MEANS without changing the text"
+            )
+        pinned = block.get("collided_codes")
+        if not isinstance(pinned, list):
+            refusals.append(
+                f"annex_title_collision_probe[{i}]: collided_codes must be a list "
+                "(possibly empty) — it is the census the probe is pinned to"
+            )
+            continue
+        collided = {
+            code
+            for code, record in by_code.items()
+            if annex_title_collision(code, record)
+        }
+        if collided != set(pinned):
+            refusals.append(
+                f"annex_title_collision_probe[{i}]: the catalogue collides on "
+                f"{sorted(collided)} but the spec pins {sorted(pinned)} — a title "
+                "or a capped row moved since the finding was written; re-read the "
+                "annex against the new vintage before writing"
+            )
+    if not spec.get("sector_law_closures"):
+        refusals.append(
+            "rule: no sector_law_closures block — the codes a sector statute "
+            "closes outright are held out of this lane today by the Bali and "
+            "eligibility filters, i.e. BY ACCIDENT, and nothing would notice when "
+            "a later lot lifts those filters"
+        )
+    for i, block in enumerate(spec.get("sector_law_closures", [])):
+        for field in ("instrument", "why"):
+            if not block.get(field):
+                refusals.append(f"sector_law_closures[{i}]: empty {field}")
+        codes = block.get("codes")
+        if not codes or not isinstance(codes, list):
+            refusals.append(
+                f"sector_law_closures[{i}]: codes must be a non-empty list — a "
+                "closure that names nobody guards nobody and says it did"
+            )
+            continue
+        for code in codes:
+            if code not in _catalogue_codes():
+                refusals.append(
+                    f"sector_law_closures[{i}]: {code} is not in KBLI 2025 — "
+                    "stale guard, remove it or fix the code"
+                )
+
     if refusals:
         return [], refusals
 
@@ -525,6 +684,26 @@ def check(
     # without this a relabelled record could never be withheld again.
     held = withheld(spec, records, reach | set(listed))
     derived = reach - set(held)
+
+    # The invariant behind the guard, not the guard itself: these codes must
+    # never be SHIPPED, whatever leg happens to be holding them. Today 58120 is
+    # held by the title-collision probe and the other three are simply out of
+    # reach; if either of those stops being true the run REFUSES rather than
+    # withholding quietly, because a statute closure is an adjudication a human
+    # owes, not a subtraction a compiler may make on its own.
+    for i, block in enumerate(spec.get("sector_law_closures", [])):
+        for code in block["codes"]:
+            if code in listed:
+                refusals.append(
+                    f"{code}: sector_law_closures[{i}] names it — "
+                    f"{block['instrument']} closes it, it cannot be a lot member"
+                )
+            elif code in reach and code not in held:
+                refusals.append(
+                    f"{code}: sector_law_closures[{i}] names it and the rule now "
+                    f"REACHES it with nothing holding it — {block['instrument']}; "
+                    "the filters that kept it out are gone, adjudicate it"
+                )
 
     # A hand-written exclusion the rule does not reach anyway is STALE: it looks
     # like protection and protects nothing, and the next reader trusts it.
@@ -652,6 +831,15 @@ def main(argv: list[str] | None = None) -> int:
         held = {}
     if held:
         print(f"  withheld from the reach: {len(held)} code(s)")
+    # Named, not merely counted: this leg withholds a HANDFUL where every other
+    # leg withholds a class, so it is exactly the guard that can rot into a
+    # no-op without moving any number a reader watches (superscar #2).
+    collided = sorted(c for c, why in held.items() if why.startswith("annex title collision"))
+    if spec.get("annex_title_collision_probe"):
+        print(
+            f"  annex title collision: {len(collided)} of the reach — "
+            f"{', '.join(collided) if collided else 'NONE, and the probe is therefore proving nothing'}"
+        )
     for group, block in sorted(spec.get("deferred", {}).items()):
         print(f"  deferred {group}: {block['codes']} code(s) — {block['why']}")
     for r in refusals:

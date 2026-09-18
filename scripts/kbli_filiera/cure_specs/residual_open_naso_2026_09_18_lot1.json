@@ -2,10 +2,10 @@
   "spec_id": "residual-open-naso-2026-09-18-lot1",
   "lot": 1,
   "instrument": "Perpres 10/2021 Pasal 3 ayat (1) huruf d + ayat (2), as amended by Perpres 49/2021",
-  "population": "The canonical records the Perpres partition leaves RESIDUAL — bucket `residual-besar-observed` of scripts/kbli_filiera/perpres_body_default_relation.py, i.e. on no Lampiran I/II/III row over the BPS 2020->2025 crosswalk, named by no body article, reached by no Pasal 11(2) sector-law carve-out, and carrying an observed Usaha Besar row in the PP 28/2025 licensing annex — that are published TERBUKA/100 under `declared_gap`. Lot 1 narrows that to the records that change ONE client-facing thing: Bali overlay OK_or_HIGHER_RISK and not blocked, so no provincial claim is unveiled; no legacy PMA prose (`pma_kondisi`, `pma_nota`, `pma_prioritas`, `pma_cap_note` all empty), so nothing generator-era is published under the basis line; no ADJUDICATED 4-digit sibling and no hand-excluded body-stated category, so the lot never publishes openness-by-absence where an instrument is demonstrably in the neighbourhood. Arithmetic: bucket 879 = 874 published TERBUKA/100/declared_gap + 5 already adjudicated (4 TERTUTUP/0/located, 1 TERBUKA/100/located); 874 = 543 Bali-OK + 331 deferred on the Bali axis; 543 = 507 rule-reached + 36 deferred on legacy prose; 507 = 459 shipped here + 29 withheld on an adjudicated sibling + 19 withheld on a body-stated category.",
+  "population": "The canonical records the Perpres partition leaves RESIDUAL — bucket `residual-besar-observed` of scripts/kbli_filiera/perpres_body_default_relation.py, i.e. on no Lampiran I/II/III row over the BPS 2020->2025 crosswalk, named by no body article, reached by no Pasal 11(2) sector-law carve-out, and carrying an observed Usaha Besar row in the PP 28/2025 licensing annex — that are published TERBUKA/100 under `declared_gap`. Lot 1 narrows that to the records that change ONE client-facing thing: Bali overlay OK_or_HIGHER_RISK and not blocked, so no provincial claim is unveiled; no legacy PMA prose (`pma_kondisi`, `pma_nota`, `pma_prioritas`, `pma_cap_note` all empty), so nothing generator-era is published under the basis line; no ADJUDICATED 4-digit sibling and no hand-excluded body-stated category, so the lot never publishes openness-by-absence where an instrument is demonstrably in the neighbourhood. Arithmetic: bucket 879 = 874 published TERBUKA/100/declared_gap + 5 already adjudicated (4 TERTUTUP/0/located, 1 TERBUKA/100/located); 874 = 543 Bali-OK + 331 deferred on the Bali axis; 543 = 507 rule-reached + 36 deferred on legacy prose; 507 = 329 shipped here + 178 withheld, and the 178 are 67 on an unswept sector statute + 61 on the Pasal 11(2) instrument referral + 29 on an adjudicated 4-digit sibling + 19 on a body-stated category + 2 on an annex title collision. Every one of those figures is re-derived on each run and refused on any drift; none is a stored count.",
   "adjudicated": "2026-09-18 — dossier research/kbli/2026-09-18-kbli-codes-closed-to-pma-tier1-tier2-dossier.md SS2.2 (the four-way partition, read verbatim) and SS8.5 (whole-catalogue residual-open relabel, owner decision); Zero's go the same day, in lots with a gate.",
   "decisive_test": "Absence, re-derived from the instrument on every run by perpres_body_default_relation.report() and refused on any set difference in EITHER direction. Pasal 3(1)(d) is residual to 3(1)(a)-(c), so membership is exactly 'no annex row, no body article, no sector-law carve-out'; Pasal 3(2) supplies the verdict ('dapat diusahakan oleh semua Penanam Modal') and the canonical already publishes it (TERBUKA/100) -- this spec relabels the VERIFICATION state, it never flips a verdict or a cap.",
-  "what_this_rests_on_and_does_not_prove": "It rests on the three annex parsers and the BPS 2020->2025 crosswalk being complete: a code wrongly missing from a Lampiran II/III row would be relabelled open here. The crosswalk gap is the dossier's own declared gap (SS7). It does NOT prove the absence of a SECTOR statute outside the Perpres -- the sectoral sweep covered the carve-out list and the dossier's named classes, not all 1,559 codes -- and the basis string says so. It says nothing about OSS licensing (risk tier, scale, zoning) nor about the Pasal 7(1) >Rp10bn Usaha Besar test a particular PMA must meet. The Pasal 2(2) category legs rest on a COARSE, fail-closed substring probe over the whole record (`category_closure_probe`), pinned to the four codes it marks today: it withholds on a match and refuses the whole run if that census moves, but a category closure is about the ACTIVITY, and no probe over a code record can clear an activity carried on under an open code.",
+  "what_this_rests_on_and_does_not_prove": "It rests on the three annex parsers and the BPS 2020->2025 crosswalk being complete: a code wrongly missing from a Lampiran II/III row would be relabelled open here. The crosswalk gap is the dossier's own declared gap (SS7), and it is not hypothetical -- `annex_title_collision_probe` is the measured half of it, covering the one shape we can test without re-reading the annexes by hand (a NUMBER re-scoped between vintages while the annex names the ACTIVITY). It covers that shape only: a code missing from an annex for any other reason still passes. It does NOT prove the absence of a SECTOR statute outside the Perpres -- the sectoral sweep covered the carve-out list and the dossier's named classes, not all 1,559 codes -- and the basis string says so. It says nothing about OSS licensing (risk tier, scale, zoning) nor about the Pasal 7(1) >Rp10bn Usaha Besar test a particular PMA must meet. The Pasal 2(2) category legs rest on a COARSE, fail-closed substring probe over the whole record (`category_closure_probe`), pinned to the four codes it marks today: it withholds on a match and refuses the whole run if that census moves, but a category closure is about the ACTIVITY, and no probe over a code record can clear an activity carried on under an open code.",
   "vintage": "2021-05-25",
   "rule": {
     "bucket": "residual-besar-observed",
@@ -41,6 +41,14 @@
     }
   ],
   "deferred": {
+    "adjudicated_sibling": {
+      "codes": 29,
+      "why": "another code in the same 4-digit subgolongan is already adjudicated TERTUTUP/TERBATAS and `located` — an instrument demonstrably reaches this neighbourhood, so membership by ABSENCE is the claim least likely to survive (superscar #3 UNDER-match). Re-derived from the canonical by `adjudicated_siblings()`, so it tightens by itself as later lots adjudicate more codes; own lot, per subgolongan"
+    },
+    "annex_title_collision": {
+      "codes": 2,
+      "why": "50143 and 58120 — the two codes in the reach whose 2025 `judul` IS the activity a Lampiran III row caps under a different number (entries #22 at 49% and #33 at 0% at establishment). The BPS 2020->2025 crosswalk matched the NUMBER and let them through an absence test they should have failed. Not deferred to a lot: deferred to a per-vintage reading of the annex row itself, which is a legal question about which activity the cap attaches to and not a filter this lane can widen. See `annex_title_collision_probe`"
+    },
     "bali_attenzione_fascia": {
       "codes": 272,
       "why": "l4_bali ATTENZIONE_FASCIA_BALI (needs_review true) — relabelling unveils a provincial warning band; own lot"
@@ -57,6 +65,18 @@
       "codes": 6,
       "why": "l4_bali TERTUTUP/TERBATAS/NON_CLASSIFICABILE on a nationally TERBUKA/100 record — the provincial row disagrees with the national one; adjudicate before unveiling"
     },
+    "body_stated_category": {
+      "codes": 19,
+      "why": "`excluded_codes` — the categories the Perpres body states in PROSE, which the 4-digit rule cannot see: alcohol/malt (11030 11040 56301 56302), the tobacco chain (01150 20298 and the six 120xx codes KBLI 2025 actually carries — 12001 12002 12003 12004 12005 12009; 12006 12007 12008 do not exist in this catalogue, measured, so the set is an enumeration and not a range), explosives and weapons repair (20292 33112), CITES-protected aquatic breeding (03214 03224 03234), and the two penjaminan codes the PP 14/2018 cure pins untouched (65131 65132). One entry per code with its reason; a code the rule no longer reaches refuses as a stale exclusion"
+    },
+    "instrument_reached_sibling": {
+      "codes": 135,
+      "why": "135 shipped codes have a 4-digit-prefix sibling the instrument reaches. NOT withheld, and the measurement is why: only a Lampiran III sibling carries a CAP, that is 3 of the 135 — 10762, 30112, 30303 — and all 3 are correctly residual. Two because a 4-digit prefix is not a lineage relation at all: 10762's 2020 ancestor is 10763 and 30112's is itself, so the capped 10761 and 30111 are neighbours in the numbering and nothing more. The third, 30303 «Industri Wahana Antariksa», DOES descend from the capped 30300 — and `perpres_slice_disclosure_relation.ADJACENT_NOT_CONTAINED` already adjudicates it by hand, with its reason in the tree: «spacecraft; the annex restricts military aircraft». Lampiran III entry #7 names «Industri pesawat terbang militer», and the same reading licenses 51103 (space transport is not air transport) and 60103/60203 (on-demand streaming is not penyiaran). Raised as a HIGH by the on-disk gate on PR #6783 and answered in the negative: 0 true positives of 3, so there is no leg to build here and re-opening the question needs a refutation of that adjudication, not a re-measurement. What genuinely stays unread for 30303 is UU 21/2013 Keantariksaan — the same shape as `unswept_sector_statute`, whose declared boundary is divisions 09 35 49 50 51 52 53 61 and does not include 30; withholding this one code alone on a statute nobody read would be an unprincipled exception to a boundary this lot states. Own lane, per statute"
+    },
+    "legacy_pma_prose": {
+      "codes": 36,
+      "why": "carries `pma_kondisi`/`pma_nota`/`pma_prioritas`/`pma_cap_note` — fields the disclosure gate publishes directly under `- Official basis:` on the chat, document and Qdrant surfaces. The prose is generator-era (git log -S puts 'Kemitraan dengan masyarakat setempat' in f63d86ed19, 2026-02-21 LLM batch enrichment) and on 31 of the 36 it contradicts the locator: 6 claim «Sektor prioritas …»/`pma_prioritas` on a code the relation places outside Lampiran I, 25 assert «Tunduk pada ketentuan divestasi dan IUP», a mining divestiture regime this basis never swept. Adjudicate each field per code — deleting it is an assertion too; own lot"
+    },
     "residual_besar_absent": {
       "codes": 12,
       "why": "bucket residual-besar-absent (no Usaha Besar row): all 12 carry l4_bali CHIUSO_MORATORIA_BALI/blocked on the no-Besar inference the dossier SS4 WITHDRAWS — relabelling would publish a withdrawn closure; cure l4_bali first"
@@ -65,25 +85,13 @@
       "codes": 158,
       "why": "bucket residual-besar-unobserved (no PP 28/2025 rows at all): Zero ruled the residual lane does not carry the unobserved-scale class («il residuo non ha i 217»). 217 is the WHOLE class across every bucket; 158 is its intersection with this lane's residual population — the two numbers count different sets and neither is a typo for the other; own lane"
     },
-    "legacy_pma_prose": {
-      "codes": 36,
-      "why": "carries `pma_kondisi`/`pma_nota`/`pma_prioritas`/`pma_cap_note` — fields the disclosure gate publishes directly under `- Official basis:` on the chat, document and Qdrant surfaces. The prose is generator-era (git log -S puts 'Kemitraan dengan masyarakat setempat' in f63d86ed19, 2026-02-21 LLM batch enrichment) and on 31 of the 36 it contradicts the locator: 6 claim «Sektor prioritas …»/`pma_prioritas` on a code the relation places outside Lampiran I, 25 assert «Tunduk pada ketentuan divestasi dan IUP», a mining divestiture regime this basis never swept. Adjudicate each field per code — deleting it is an assertion too; own lot"
-    },
-    "adjudicated_sibling": {
-      "codes": 29,
-      "why": "another code in the same 4-digit subgolongan is already adjudicated TERTUTUP/TERBATAS and `located` — an instrument demonstrably reaches this neighbourhood, so membership by ABSENCE is the claim least likely to survive (superscar #3 UNDER-match). Re-derived from the canonical by `adjudicated_siblings()`, so it tightens by itself as later lots adjudicate more codes; own lot, per subgolongan"
-    },
-    "body_stated_category": {
-      "codes": 19,
-      "why": "`excluded_codes` — the categories the Perpres body states in PROSE, which the 4-digit rule cannot see: alcohol/malt (11030 11040 56301 56302), the tobacco chain (01150 20298 and the six 120xx codes KBLI 2025 actually carries — 12001 12002 12003 12004 12005 12009; 12006 12007 12008 do not exist in this catalogue, measured, so the set is an enumeration and not a range), explosives and weapons repair (20292 33112), CITES-protected aquatic breeding (03214 03224 03234), and the two penjaminan codes the PP 14/2018 cure pins untouched (65131 65132). One entry per code with its reason; a code the rule no longer reaches refuses as a stale exclusion"
-    },
     "sector_law_referral_pasal_11_2": {
       "codes": 61,
       "why": "KBLI divisions 64/65/66 (jasa keuangan, asuransi & dana pensiun, jasa penunjang keuangan) — Perpres 10/2021 Pasal 11 ayat (2) routes the whole finance/banking sector to its own legislation, so the annexes cannot answer the ownership question here at all. See `sector_referral[0]`; adjudicate per sector statute (UU 4/2023 P2SK, UU 40/2014 Perasuransian, POJK caps), not per annex absence; own lane"
     },
     "sector_statute_unswept": {
-      "codes": 68,
-      "why": "KBLI divisions 09 35 49 50 51 52 53 61 — the Perpres governs these sectors, but their own statutes carry foreign-ownership provisions this lane never read, and a verified 100% cap over an unread statute is a claim we cannot back. 23 codes in divisions 50/51/53 are ALREADY located at TERBATAS/49% under Lampiran III, which is what makes the blindness measurable rather than theoretical. See `sector_referral[1]`; own lane, per statute"
+      "codes": 67,
+      "why": "KBLI divisions 09 35 49 50 51 52 53 61 (67, not 68: 50143 is now claimed one leg earlier by `annex_title_collision_probe`, which hands the reader the capped row it contradicts instead of the broader unread-statute caution) — the Perpres governs these sectors, but their own statutes carry foreign-ownership provisions this lane never read, and a verified 100% cap over an unread statute is a claim we cannot back. 23 codes in divisions 50/51/53 are ALREADY located at TERBATAS/49% under Lampiran III, which is what makes the blindness measurable rather than theoretical. See `sector_referral[1]`; own lane, per statute"
     }
   },
   "items": [
@@ -339,7 +347,6 @@
     "56101",
     "56210",
     "56290",
-    "58120",
     "58211",
     "58219",
     "58290",
@@ -419,24 +426,51 @@
     "96230"
   ],
   "excluded_codes": {
+    "01150": "tobacco chain: the Perpres treats «industri rokok» in prose (kemitraan/persyaratan) and the annex parsers matched no row for it — absence here is more likely an UNDER-match than an opening. Adjudicate the tobacco chain as one class",
+    "03214": "Pasal 2(2) closes activities on CITES Appendix I; the closure is written for the CATCH («penangkapan»), this code is the BREEDING of the same protected species. Neighbouring, not identical — adjudicate rather than publish open",
+    "03224": "Pasal 2(2) closes activities on CITES Appendix I; the closure is written for the CATCH («penangkapan»), this code is the BREEDING of the same protected species. Neighbouring, not identical — adjudicate rather than publish open",
+    "03234": "Pasal 2(2) closes activities on CITES Appendix I; the closure is written for the CATCH («penangkapan»), this code is the BREEDING of the same protected species. Neighbouring, not identical — adjudicate rather than publish open",
     "11030": "Perpres 10/2021 Pasal 2(2) closes «industri minuman keras mengandung alkohol» by CATEGORY and names no code — the 4-digit rule cannot see it (11010/11020 are TERTUTUP under 1101, this code is 1103/1104/5630). Adjudicate the alcohol chain as one class",
     "11040": "Perpres 10/2021 Pasal 2(2) closes «industri minuman keras mengandung alkohol» by CATEGORY and names no code — the 4-digit rule cannot see it (11010/11020 are TERTUTUP under 1101, this code is 1103/1104/5630). Adjudicate the alcohol chain as one class",
-    "56301": "Perpres 10/2021 Pasal 2(2) closes «industri minuman keras mengandung alkohol» by CATEGORY and names no code — the 4-digit rule cannot see it (11010/11020 are TERTUTUP under 1101, this code is 1103/1104/5630). Adjudicate the alcohol chain as one class",
-    "56302": "Perpres 10/2021 Pasal 2(2) closes «industri minuman keras mengandung alkohol» by CATEGORY and names no code — the 4-digit rule cannot see it (11010/11020 are TERTUTUP under 1101, this code is 1103/1104/5630). Adjudicate the alcohol chain as one class",
-    "01150": "tobacco chain: the Perpres treats «industri rokok» in prose (kemitraan/persyaratan) and the annex parsers matched no row for it — absence here is more likely an UNDER-match than an opening. Adjudicate the tobacco chain as one class",
     "12001": "tobacco chain: the Perpres treats «industri rokok» in prose (kemitraan/persyaratan) and the annex parsers matched no row for it — absence here is more likely an UNDER-match than an opening. Adjudicate the tobacco chain as one class",
     "12002": "tobacco chain: the Perpres treats «industri rokok» in prose (kemitraan/persyaratan) and the annex parsers matched no row for it — absence here is more likely an UNDER-match than an opening. Adjudicate the tobacco chain as one class",
     "12003": "tobacco chain: the Perpres treats «industri rokok» in prose (kemitraan/persyaratan) and the annex parsers matched no row for it — absence here is more likely an UNDER-match than an opening. Adjudicate the tobacco chain as one class",
     "12004": "tobacco chain: the Perpres treats «industri rokok» in prose (kemitraan/persyaratan) and the annex parsers matched no row for it — absence here is more likely an UNDER-match than an opening. Adjudicate the tobacco chain as one class",
     "12005": "tobacco chain: the Perpres treats «industri rokok» in prose (kemitraan/persyaratan) and the annex parsers matched no row for it — absence here is more likely an UNDER-match than an opening. Adjudicate the tobacco chain as one class",
     "12009": "tobacco chain: the Perpres treats «industri rokok» in prose (kemitraan/persyaratan) and the annex parsers matched no row for it — absence here is more likely an UNDER-match than an opening. Adjudicate the tobacco chain as one class",
-    "20298": "tobacco chain: the Perpres treats «industri rokok» in prose (kemitraan/persyaratan) and the annex parsers matched no row for it — absence here is more likely an UNDER-match than an opening. Adjudicate the tobacco chain as one class",
     "20292": "weapons/explosives: 25200 «Industri Senjata dan Amunisi» is TERBATAS/49 under Perpres 49/2021 Lampiran III with a Menhan condition; this code is the same chain at a different 4-digit prefix. Adjudicate with the Menhan regime, not by absence",
+    "20298": "tobacco chain: the Perpres treats «industri rokok» in prose (kemitraan/persyaratan) and the annex parsers matched no row for it — absence here is more likely an UNDER-match than an opening. Adjudicate the tobacco chain as one class",
     "33112": "weapons/explosives: 25200 «Industri Senjata dan Amunisi» is TERBATAS/49 under Perpres 49/2021 Lampiran III with a Menhan condition; this code is the same chain at a different 4-digit prefix. Adjudicate with the Menhan regime, not by absence",
-    "03214": "Pasal 2(2) closes activities on CITES Appendix I; the closure is written for the CATCH («penangkapan»), this code is the BREEDING of the same protected species. Neighbouring, not identical — adjudicate rather than publish open",
-    "03224": "Pasal 2(2) closes activities on CITES Appendix I; the closure is written for the CATCH («penangkapan»), this code is the BREEDING of the same protected species. Neighbouring, not identical — adjudicate rather than publish open",
-    "03234": "Pasal 2(2) closes activities on CITES Appendix I; the closure is written for the CATCH («penangkapan»), this code is the BREEDING of the same protected species. Neighbouring, not identical — adjudicate rather than publish open",
+    "56301": "Perpres 10/2021 Pasal 2(2) closes «industri minuman keras mengandung alkohol» by CATEGORY and names no code — the 4-digit rule cannot see it (11010/11020 are TERTUTUP under 1101, this code is 1103/1104/5630). Adjudicate the alcohol chain as one class",
+    "56302": "Perpres 10/2021 Pasal 2(2) closes «industri minuman keras mengandung alkohol» by CATEGORY and names no code — the 4-digit rule cannot see it (11010/11020 are TERTUTUP under 1101, this code is 1103/1104/5630). Adjudicate the alcohol chain as one class",
     "65131": "the PP 14/2018 asuransi cure deliberately left `pma_cap_verified` unset on the penjaminan codes and pins them byte-untouched (`test_excluded_neighbors_are_byte_untouched`); a declared non-adjudication is not an absence",
     "65132": "the PP 14/2018 asuransi cure deliberately left `pma_cap_verified` unset on the penjaminan codes and pins them byte-untouched (`test_excluded_neighbors_are_byte_untouched`); a declared non-adjudication is not an absence"
-  }
+  },
+  "annex_title_collision_probe": [
+    {
+      "annex": "Perpres 10/2021 Lampiran III — persyaratan tertentu, the foreign-ownership caps",
+      "artifact": "data/kbli-filiera/perpres-foreign-caps.json",
+      "why": "Absence from Lampiran III is matched by CODE, through the BPS 2020->2025 crosswalk. BPS also RE-SCOPES numbers between vintages, and where it does, the two matchings disagree: the cap follows the activity the annex names, the crosswalk follows the number. 2020-58120 was «Penerbitan Direktori dan Mailing List» and 2020-58130 was the press row; in 2025 the two swapped and 58120 IS «Penerbitan Surat Kabar». The code therefore passed an absence test it should have failed, and lot 1 shipped it TERBUKA with a VERIFIED 100% cap over Lampiran III entry #33, which reads 0% at establishment (49% via the capital market for expansion only). Found by the on-disk gate on the first candidate (PR #6783, REWORK-BUILD) — the class was invisible to every leg the compiler had, because each of them reasons about the code NUMBER.",
+      "scope": "Lampiran III only. It is the one annex carrying a `foreign_cap_pct`, so a hit is a cap this lane would be contradicting rather than a partnership condition. Lampiran I's artifact (perpres-priority-codes.json) holds codes and no titles, so the test cannot run there at all; Lampiran II (perpres-umkm-reservation.json) carries an OCR-uncorroborated row whose entire text is «Industri» (10721, title_corroborated false), which matches every industrial title in the catalogue and produced 82% of the raw hits when the probe was measured across all three annexes.",
+      "collided_codes": [
+        "50112",
+        "50122",
+        "50123",
+        "50124",
+        "50126",
+        "50133",
+        "50143",
+        "53200",
+        "58120"
+      ],
+      "finding": "Measured on the canonical 2026-09-19: normalised containment in either direction between a code's 2025 `judul` and the `bidang_usaha` of a Lampiran III row filed under a DIFFERENT code fires on 9 of 1,559. Eight are the sea-transport renumbering inside divisions 50 and 53 (entries #11 #13 #14 #15 #17 #22 #32, all 49%), which the `unswept_sector_statute` referral already withholds by division — an independent corroboration that the probe finds the class it is aimed at rather than noise. The ninth is 58120 -> entry #33, and it is the only one this lot had shipped. Cost of the leg to lot 1: one member, 330 -> 329."
+    }
+  ],
+  "sector_law_closures": [
+    {
+      "codes": ["58120", "60101", "60201", "69104"],
+      "instrument": "UU 40/1999 Pers · UU 32/2002 Penyiaran · UU 30/2004 Jabatan Notaris",
+      "why": "Four codes whose own sector statute closes or hard-caps foreign ownership, none of which any Perpres leg can see: 58120 «Penerbitan Surat Kabar» (press, UU 40/1999 — and Lampiran III #33 prices the same activity at 0% at establishment); 60101 «Aktivitas Penyiaran Radio Analog» and 60201 the television twin (UU 32/2002 Penyiaran, whose foreign-capital regime is its own); 69104 Notaris/PPAT, an entity-form closure rather than a cap at all — a notaris is a *pejabat umum* appointed by the state, a role no PT PMA can hold. THIS BLOCK IS NOT A SUBTRACTION. The codes are out of the lot today for reasons unrelated to any of that — 58120 by the title-collision probe, the other three by the Bali overlay and eligibility filters — i.e. BY ACCIDENT, and an accident stops being protection the moment a later lot lifts the filter (lot 2 carries the ATTENZIONE_FASCIA_BALI class, lot 3 the BLOCCATO_DIPENDE_SCOPE one). So the compiler REFUSES the whole run if any of these is ever listed, or is ever reached with no leg holding it. A statute closure is an adjudication a human owes; it is deliberately not something this compiler may absorb silently. Raised by the on-disk gate on PR #6783 as the standing half of its BLOCK: «when the Bali cut is lifted the same rule reaches 69104 with nothing to stop it»."
+    }
+  ]
 }
