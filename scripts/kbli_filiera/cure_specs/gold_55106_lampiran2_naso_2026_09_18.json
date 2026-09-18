@@ -1,0 +1,22 @@
+{
+  "adjudicated": "2026-09-18 PMA closed-list research (research/kbli/2026-09-18-kbli-codes-closed-to-pma-tier1-tier2-dossier.md): the canonical moved to TERBATAS/0/located under Perpres 49/2021 Lampiran II (spec lampiran2_coextensive_naso_2026_09_18.json) and gold OVERRIDES canonical on the rendered page for zantaraOpener/whatYouNeed/baliContext. cure_gold_pma_line.py --apply already re-derived the closing **PMA:** sentence; this sweep replaces the PT-PMA route promised in the other fields with the Koperasi/UMKM route (same shape as 55203's gold) and appends the Lampiran II locator to the PMA sentence (47222's authored shape). No new claims beyond the allocation; the local colour and licensing lines stay.",
+  "code": "55106",
+  "old_sha256": "847999deada530b1a0eb02efa8618e33f42af7b3d84cc9dda3e013197786cf13",
+  "edits": [
+    {
+      "field": "whatYouNeed",
+      "old": "1. **PT PMA incorporation** — notary deed, AHU registration, TDP (~2–4 weeks)\n2. **NIB via OSS** — register on oss.go.id, select this code, issued automatically (1–3 days)\n3. **NIB + Standard Certificate** (Micro / Small / Medium, Medium-Low risk) — Authority: Bupati/Walikota — automatic\n4. **NIB + Standard Certificate** (Small / Medium / Large, Medium-Low risk) — Authority: Bupati/Walikota — automatic\n5. **NIB + Standard Certificate** (Small / Medium / Large, Medium-High risk) — Authority: Gubernur — 14 Hari\n6. **Obtain Laik Sehat (SLS) health-ready certificate** — post-license obligation\n7. **Submit periodic activity reports** — post-license obligation\n8. **Comply with applicable standards** — post-license obligation\n\n**Authority by scale:**\nMicro / Small / Medium: **Bupati/Walikota** (Otomatis) · Small / Medium / Large: **Bupati/Walikota** (Otomatis) · Small / Medium / Large: **Gubernur** (14 Hari)\n\n**PMA:** Closed to foreign investment — domestic entities only.",
+      "new": "This bidang usaha is allocated to Koperasi and UMKM under Perpres 49/2021's Lampiran II (p.15, entry 48, sub-row \"Hotel Melati\", ex-KBLI 2020 55120), so a PT PMA cannot register it. The steps below are the Koperasi/UMKM registration route, not a PMA one.\n1. **NIB via OSS** — register on oss.go.id as a Koperasi/UMKM entity, select this code, issued automatically (1–3 days)\n2. **NIB + Standard Certificate** (Micro / Small / Medium, Medium-Low risk) — Authority: Bupati/Walikota — automatic\n3. **NIB + Standard Certificate** (Small / Medium / Large, Medium-Low risk) — Authority: Bupati/Walikota — automatic\n4. **NIB + Standard Certificate** (Small / Medium / Large, Medium-High risk) — Authority: Gubernur — 14 Hari\n5. **Obtain Laik Sehat (SLS) health-ready certificate** — post-license obligation\n6. **Submit periodic activity reports** — post-license obligation\n7. **Comply with applicable standards** — post-license obligation\n\n**Authority by scale:**\nMicro / Small / Medium: **Bupati/Walikota** (Otomatis) · Small / Medium / Large: **Bupati/Walikota** (Otomatis) · Small / Medium / Large: **Gubernur** (14 Hari)\n\n**PMA:** Closed to foreign investment — domestic entities only. Perpres 10/2021 Lampiran II (as replaced by 49/2021) allocates non-star hotel operation (the Hotel Melati class) to Koperasi and UMKM; a PT PMA cannot hold equity in this activity."
+    },
+    {
+      "field": "zantaraOpener",
+      "old": "Planning to run a boutique guesthouse or non-star hotel in Bali? We can help secure the right commercial permits and verify zoning.",
+      "new": "Planning to run a boutique guesthouse or non-star hotel in Bali? 55106 is allocated to Koperasi and UMKM under Perpres 49/2021 Lampiran II and Bali lists it among the 18 fields closed to new PMA licensing — here is what that means for the permits and zoning."
+    },
+    {
+      "field": "baliContext",
+      "old": "Non-star hotels are incredibly common in areas like Canggu and Kuta, often operating as small guesthouses. Even without a star rating, you still need",
+      "new": "Non-star hotels are incredibly common in areas like Canggu and Kuta, often operating as small guesthouses. The code is allocated to Koperasi and UMKM under Perpres 49/2021 Lampiran II (the Hotel Melati row), so a PT PMA cannot register 55106 anywhere in Indonesia — and Bali lists the non-star hotel among the 18 business fields it closed to new PMA licensing in 2026. Even without a star rating, the operator still needs"
+    }
+  ]
+}

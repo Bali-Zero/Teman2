@@ -1,0 +1,22 @@
+{
+  "adjudicated": "2026-09-18 PMA closed-list research (research/kbli/2026-09-18-kbli-codes-closed-to-pma-tier1-tier2-dossier.md): the canonical moved to TERBATAS/0/located under Perpres 49/2021 Lampiran II (spec lampiran2_coextensive_naso_2026_09_18.json) and gold OVERRIDES canonical on the rendered page for zantaraOpener/whatYouNeed/baliContext. cure_gold_pma_line.py --apply already re-derived the closing **PMA:** sentence; this sweep replaces the PT-PMA route promised in the other fields with the Koperasi/UMKM route (same shape as 55203's gold) and appends the Lampiran II locator to the PMA sentence (47222's authored shape). No new claims beyond the allocation; the local colour and licensing lines stay.",
+  "code": "16293",
+  "old_sha256": "8e54d547031b7e643d38071655df660a1fbf7413a6f1e3d34e747c550dee7d8d",
+  "edits": [
+    {
+      "field": "whatYouNeed",
+      "old": "1. **PT PMA incorporation** — notary deed, AHU registration, TDP (~2–4 weeks)\n2. **NIB via OSS** — register on oss.go.id, select this code, issued automatically (1–3 days)\n3. **Submit industrial data report every 6 months (Kemenperin)** — post-license obligation\n4. **Menjamin keamanan dan keselamatan alat, proses, hasil produksi, penyimpanan, serta pengangkutan, ses...** — post-license obligation\n5. **Memiliki dokumen legalitas bahan baku, berupa: a) Surat Keterangan Sahnya Hasil Hutan (SKSHH); b) Su...** — post-license obligation\n\n**Authority by scale:**\nSmall: **Bupati/Walikota** (Otomatis) · Medium: **Bupati/Walikota Gubernur** (Otomatis) · Large: **Gubernur Menteri/ Kepala Badan** (Otomatis)\n\n**PMA:** Closed to foreign investment — domestic entities only.",
+      "new": "This bidang usaha is allocated to Koperasi and UMKM under Perpres 49/2021's Lampiran II (p.4, entry 15 \"Industri kerajinan ukiran dari kayu bukan mebeller\"), so a PT PMA cannot register it. The steps below are the Koperasi/UMKM registration route, not a PMA one.\n1. **NIB via OSS** — register on oss.go.id as a Koperasi/UMKM entity, select this code, issued automatically (1–3 days)\n2. **Submit industrial data report every 6 months (Kemenperin)** — post-license obligation\n3. **Menjamin keamanan dan keselamatan alat, proses, hasil produksi, penyimpanan, serta pengangkutan, ses...** — post-license obligation\n4. **Memiliki dokumen legalitas bahan baku, berupa: a) Surat Keterangan Sahnya Hasil Hutan (SKSHH); b) Su...** — post-license obligation\n\n**Authority by scale:**\nSmall: **Bupati/Walikota** (Otomatis) · Medium: **Bupati/Walikota Gubernur** (Otomatis) · Large: **Gubernur Menteri/ Kepala Badan** (Otomatis)\n\n**PMA:** Closed to foreign investment — domestic entities only. Perpres 10/2021 Lampiran II (as replaced by 49/2021) allocates non-furniture wood carving to Koperasi and UMKM; a PT PMA cannot hold equity in this activity."
+    },
+    {
+      "field": "zantaraOpener",
+      "old": "Starting a wood carving and souvenir business in Bali? We can handle your PT PMA and V-Legal export requirements.",
+      "new": "Starting a wood carving and souvenir business in Bali? 16293 is allocated to Koperasi and UMKM under Perpres 49/2021 Lampiran II, so it is not a PT PMA code — here is the Koperasi/UMKM route and the V-Legal export requirements."
+    },
+    {
+      "field": "baliContext",
+      "old": "While 100% foreign ownership is allowed, foreign investors usually partner with local master carvers. You will need an IUI",
+      "new": "The activity is allocated to Koperasi and UMKM under Perpres 49/2021 Lampiran II, so a PT PMA cannot register 16293 — the workshops in Mas and around Ubud are Indonesian producers. Whoever operates one needs an IUI"
+    }
+  ]
+}

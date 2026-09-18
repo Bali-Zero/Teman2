@@ -66,6 +66,8 @@ def test_canonical_certification_partition_is_exact(
     # located and keeps its mouthGold certification untouched.
     # W-H PR-3b: 8 specialised-retail codes located under the Lampiran II
     # allocation, prose not certified.
+    # 2026-09-18 naso lot: 10307 10308 16291 16293 32201 55106 located under
+    # the Lampiran II allocation, prose not certified.
     assert {
         code
         for code, record in records.items()
@@ -100,6 +102,12 @@ def test_canonical_certification_partition_is_exact(
         "47249",
         "47712",
         "47722",
+        "10307",
+        "10308",
+        "16291",
+        "16293",
+        "32201",
+        "55106",
     }
 
 

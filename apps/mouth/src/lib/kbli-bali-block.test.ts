@@ -526,11 +526,16 @@ describe("the PMA verdict banner — the SECOND render site", () => {
     // now reads 0, so `nationallyClosed` catches it and it moves to
     // `excluded` instead. It did not carry CHIUSO_PMA_NO_BESAR, so msme is
     // unchanged at 0.
-    expect(notice.length).toBe(60);
+    // 60 -> 59 on 2026-09-18 (naso lot): 55106 (Hotel Nonbintang, CHIUSO_BALI,
+    // ex-Hotel Melati on the 18 list) was TERBUKA/100 and in `notice`; its cap
+    // now reads 0 under Lampiran II, so `nationallyClosed` moves it to
+    // `excluded`. The other five naso codes read ATTENZIONE_FASCIA_BALI and
+    // were never in `blocked`. No CHIUSO_PMA_NO_BESAR, msme unchanged at 0.
+    expect(notice.length).toBe(59);
     expect(msme.length).toBe(0);
-    // 60 pages carry the notice for a cause other than an MSME reservation —
+    // 59 pages carry the notice for a cause other than an MSME reservation —
     // which as of this cure is all of them (msme is still empty).
-    expect(notice.length - msme.length).toBe(60);
+    expect(notice.length - msme.length).toBe(59);
   });
 
   it("the count above is a SUBTRACTION, and names what it subtracted", () => {
@@ -647,7 +652,9 @@ describe("the PMA verdict banner — the SECOND render site", () => {
     // 61 → 60. The other seven PR-3b codes are not in `blocked` (see the
     // comment above `excluded`'s toContain check) and so cannot move this
     // difference at all.
-    expect(blocked.length - excluded.length).toBe(60);
+    // 60 → 59 on 2026-09-18 (naso lot, 55106 above): `blocked` unchanged,
+    // `excluded` grows by one (75 → 76).
+    expect(blocked.length - excluded.length).toBe(59);
     // and it left by CAP, not by status — the status is TERBATAS, which the
     // banner's guard does not look at
     const woodBuilding = RECORDS.find((r) => r.kode_kbli_2025 === "16221");
@@ -766,12 +773,14 @@ describe("the FAQ + FAQPage JSON-LD — the THIRD render site in this file, FIFT
     // in `BLOCKED` at all (l4_bali.status ATTENZIONE_FASCIA_BALI), so they
     // were never in `answers` to move. 47249 did not carry CHIUSO_PMA_NO_BESAR,
     // so msme is unchanged at 0.
-    expect(answers.length).toBe(59);
+    // 59 -> 58 on 2026-09-18 (naso lot): the SAME 55106 as the banner site
+    // above — its status became TERBATAS, so openNationally no longer matches.
+    expect(answers.length).toBe(58);
     expect(msme.length).toBe(0);
-    // 59 answers carry the block for a cause other than an MSME reservation —
+    // 58 answers carry the block for a cause other than an MSME reservation —
     // in the visible Q&A and in the FAQPage JSON-LD, the copy that leaves the
     // site — which as of this cure is all of them (msme is still empty).
-    expect(answers.length - msme.length).toBe(59);
+    expect(answers.length - msme.length).toBe(58);
   });
 
   it("this site is a SUBSET of the banner's — a cure for one is not a cure for the other", () => {

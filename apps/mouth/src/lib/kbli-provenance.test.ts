@@ -409,15 +409,18 @@ describe("deriveProvenance — PMA traceability on the real dataset", () => {
   // (Perpres 49/2021 Lampiran II allocation), 54→57 / 1505→1502.
   // W-H PR-3b: 8 more codes (47241 47242 47244 47245 47246 47249 47712
   // 47722) move declared_gap→located, 57→65 / 1502→1494.
-  it("pins the canonical honesty partition: 65 located, 1,494 gaps", () => {
+  it("pins the canonical honesty partition: 71 located, 1,488 gaps", () => {
     const located = parsed.data.filter(
       (r) => deriveProvenance(r).pma.status === "located",
     );
     const gaps = parsed.data.filter(
       (r) => deriveProvenance(r).pma.status === "declared_gap",
     );
-    expect(located).toHaveLength(65);
-    expect(gaps).toHaveLength(1494);
+    // 2026-09-18 naso lot: 10307 10308 16291 16293 32201 55106 moved
+    // declared_gap→located under Perpres 49/2021 Lampiran II (whole-code rows
+    // via 1:1 BPS crosswalk), 65→71 / 1494→1488.
+    expect(located).toHaveLength(71);
+    expect(gaps).toHaveLength(1488);
     for (const r of located) {
       const prov = deriveProvenance(r).pma;
       expect(prov.locator, `code ${r.kode_kbli_2025}`).toBeTruthy();

@@ -59,7 +59,10 @@ describe("kbli-data.server — section derivation (Mandate 12 fix)", () => {
     const gaps = getAllCodes().filter(
       (code) => code.pma.verificationStatus === "declared_gap",
     );
-    expect(gaps).toHaveLength(1494);
+    // 2026-09-18 naso lot: 10307 10308 16291 16293 32201 55106 moved
+    // declared_gap→located under Perpres 49/2021 Lampiran II (whole-code rows
+    // via 1:1 BPS crosswalk), 1494→1488.
+    expect(gaps).toHaveLength(1488);
     for (const code of gaps) {
       expect(code.intel, `${code.code} intel`).toBeUndefined();
     }
@@ -100,7 +103,10 @@ describe("kbli-data.server — section derivation (Mandate 12 fix)", () => {
     // own `!== "located"` guard and leaves BOTH the raw-JSON-derived set and
     // `gaps` (it is no longer declared_gap at all) — not a disclosure bug,
     // the code is simply no longer a gap.
-    expect(disclosedOnAGap).toHaveLength(38);
+    // 38 -> 37 on 2026-09-18 (naso lot): 55106 (CHIUSO_BALI, ex-Hotel Melati)
+    // moved to located under Lampiran II, so it leaves this set the same way
+    // 47249 did — the other five naso codes are ATTENZIONE_FASCIA_BALI.
+    expect(disclosedOnAGap).toHaveLength(37);
     for (const code of gaps) {
       if (code.baliL4 !== undefined) {
         expect(code.baliL4.status, code.code).toBe("CHIUSO_BALI");
@@ -113,15 +119,17 @@ describe("kbli-data.server — section derivation (Mandate 12 fix)", () => {
   });
 
   it("does not advertise generated gold content for a declared PMA gap", () => {
-    expect(getCode("16291")?.pma.verificationStatus).toBe("declared_gap");
-    expect(getCode("16291")?.tier).not.toBe("gold");
-    expect(hasGoldContent("16291")).toBe(false);
+    // 16291 → 16292 on 2026-09-18: 16291 is now located (Lampiran II, naso
+    // lot) and its gold renders; 16292 is the declared-gap sibling with gold.
+    expect(getCode("16292")?.pma.verificationStatus).toBe("declared_gap");
+    expect(getCode("16292")?.tier).not.toBe("gold");
+    expect(hasGoldContent("16292")).toBe(false);
 
     expect(getCode("47221")?.pma.verificationStatus).toBe("located");
     expect(getCode("47221")?.tier).toBe("gold");
     expect(hasGoldContent("47221")).toBe(true);
     expect(getGoldCodes()).toContain("47221");
-    expect(getGoldCodes()).not.toContain("16291");
+    expect(getGoldCodes()).not.toContain("16292");
     // 15 -> 14: 47111 was de-certified from mouthGold by W-H PR-3c (its gold
     // prose named 47191/47192 as "fully open to 100% PMA" while both are
     // declared_gap; withdrawn rather than hand-edited, no compiler exists
