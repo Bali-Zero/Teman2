@@ -650,18 +650,40 @@ def test_r2_pairing_md_resolves_the_kimi_2_7_alias_to_moonshot_for_diversity(tmp
     # test above (test_seat_family_resolves_the_mandate_aliases) proves _seat_family resolves
     # it in isolation, but this proves the resolution actually reaches compute_pairing/pairing.md
     # end-to-end through cmd_r1 -> cmd_r2, not just the lookup function on its own.
+    #
+    # PR2e gate-4 addendum: the ORIGINAL seat list here had only ONE moonshot-family seat
+    # (kimi-2.7 itself), so a broken alias resolution had no second moonshot seat to wrongly
+    # pair it with, and only the in-memory compute_pairing() dict was ever checked, never the
+    # WRITTEN pairing.md text cmd_r2 actually produces. With EXACTLY these four seats (kimi-2.7,
+    # kimi-k3 = 2 moonshot; gemini-3.1-pro-high = 1 google; qwen3.8-max = 1 alibaba), both
+    # kimi-2.7's and kimi-k3's candidate pool is FORCED to exactly {gemini, qwen} — no RNG
+    # ambiguity in which two partners get picked, so a mis-resolved alias is guaranteed to be
+    # visible here, not just possible.
+    #
+    # Verified by local mutation (not committed, see PR body): pointing
+    # _SEAT_ALIASES["kimi-2.7"] at "gemini-3.1-pro-high" makes _seat_kind("kimi-2.7") still
+    # report "kimi" (a raw-string check, unaffected by the alias), so _validate_kimi_model
+    # refuses the mutated alias exit 2 from inside cmd_r1 itself, before cmd_r2/pairing.md is
+    # ever reached — the earliest of this PR's fail-closed gates catches it first. This test
+    # and _validate_kimi_model both key off the exact same single alias-resolution point
+    # (_SEAT_ALIASES -> _canonical_seat), so there is no way to break one without the other.
     kit = tmp_path / "k"
     dw.cmd_brief(_brief_ns(clean_objective, template, kit))
     _seed_convener(kit)
     dw.cmd_r1(argparse.Namespace(
         kit=str(kit),
-        seats="kimi-2.7,qwen3.8-max,gemini-3.1-pro-high,deepseek-v4-pro",
+        seats="kimi-2.7,kimi-k3,gemini-3.1-pro-high,qwen3.8-max",
         astra_fallback=False))
     dw.cmd_r2(argparse.Namespace(kit=str(kit)))
     pairing = dw.compute_pairing(kit, (kit / "brief.sha").read_text().strip())
-    partners = pairing["kimi-2.7"]
-    assert len(partners) == 2
-    assert all(dw._seat_family(p) != "moonshot" for p in partners)
+    assert set(pairing["kimi-2.7"]) == {"gemini-3.1-pro-high", "qwen3.8-max"}
+    assert set(pairing["kimi-k3"]) == {"gemini-3.1-pro-high", "qwen3.8-max"}
+
+    pairing_text = (kit / "pairing.md").read_text()
+    kimi27_row = next(l for l in pairing_text.splitlines() if l.startswith("| kimi-2.7 |"))
+    kimik3_row = next(l for l in pairing_text.splitlines() if l.startswith("| kimi-k3 |"))
+    assert "kimi-k3" not in kimi27_row, kimi27_row
+    assert "kimi-2.7" not in kimik3_row, kimik3_row
 
 
 # --------------------------------------------------------------- jury (guilt + innocence)
