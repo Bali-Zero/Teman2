@@ -571,6 +571,50 @@ def test_r1_refuses_an_unresolvable_kimi_model_id_before_ledger_append(tmp_path,
     assert not dw._ledger_has_seat(kit, bad_seat)
 
 
+def test_guilt_r2_validates_kimi_model_before_launch(tmp_path, monkeypatch):
+    """Item 4 (PR2g, gate-7 obs :390/:732): _launch_seat's kimi branch reads
+    KIMI_MODEL_MAP[_canonical_seat(seat)] inside a bare `except Exception: return ""` — an
+    unresolvable kimi* id used to degrade cmd_r2 to an EMPTY objection file (exit 0) instead
+    of a fail-closed refusal. compute_pairing can never hand cmd_r2 an unvalidated kimi seat
+    via the normal r1->r2 pipeline (r1 already refuses one before it can answer and be
+    paired), so this monkeypatches compute_pairing directly to exercise cmd_r2's OWN call
+    site — defense in depth, not a reachable end-to-end bug today. DW_FAKE_SEATS=1 is
+    autouse for this whole file, which is exactly why the validation must run BEFORE the
+    fake-output branch (mirrors _run_one_seat's own ordering): otherwise no test in fake mode
+    could ever prove this call site refuses at all."""
+    kit = tmp_path / "k"
+    kit.mkdir()
+    (kit / "brief.sha").write_text("deadbeef" * 8)
+    monkeypatch.setattr(
+        dw, "compute_pairing",
+        lambda kit, sha: {"kimi-nonexistent-model": ["qwen3.8-max", "gemini-3.1-pro-high"]},
+    )
+    with pytest.raises(SystemExit) as e:
+        dw.cmd_r2(argparse.Namespace(kit=str(kit)))
+    assert e.value.code == 2
+    assert not any((kit / "r2").glob("*"))
+
+
+def test_guilt_jury_validates_kimi_model_before_launch(tmp_path, monkeypatch):
+    """Item 4 (PR2g, gate-7 obs :390/:994): cmd_jury's launch call site had the same gap as
+    cmd_r2's — an unresolvable kimi* juror degraded to an empty ballot (jury-dead, exit 0)
+    instead of refusing. judge.md/_jury_survivors already gate real disqualification
+    upstream, so this monkeypatches _jury_survivors/_jury_mapping directly to exercise
+    cmd_jury's OWN call site, same defense-in-depth rationale as the r2 test above."""
+    kit = tmp_path / "k"
+    kit.mkdir()
+    monkeypatch.setattr(dw, "_jury_survivors",
+                         lambda kit: ["kimi-nonexistent-model", "qwen3.8-max"])
+    monkeypatch.setattr(
+        dw, "_jury_mapping",
+        lambda kit, survivors: {"A": "kimi-nonexistent-model", "B": "qwen3.8-max"},
+    )
+    with pytest.raises(SystemExit) as e:
+        dw.cmd_jury(argparse.Namespace(kit=str(kit)))
+    assert e.value.code == 2
+    assert not (kit / "jury" / f"{dw._file_slug('kimi-nonexistent-model')}.md").exists()
+
+
 def test_launch_seat_kimi_uses_the_per_seat_model_id(tmp_path, monkeypatch):
     """Launcher-intercept per the addendum: proves the '-m' argument _launch_seat actually
     threads to subprocess.run is per-seat, not the old hardcoded 'kimi-code/k3' for every

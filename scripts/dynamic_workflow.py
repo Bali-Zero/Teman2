@@ -758,6 +758,12 @@ def cmd_r2(args: argparse.Namespace) -> dict[str, dict[str, int]]:
     fake = os.environ.get("DW_FAKE_SEATS") == "1"
     summary: dict[str, dict[str, int]] = {}
     for seat, targets in pairing.items():
+        # Item 4 (PR2g, gate-7 obs :390/:732): before EVERY launch, real or fake — mirrors
+        # _run_one_seat's own ordering (validate before the fake check), because pairing is
+        # normally built only from seats that already passed this in r1, so the only way to
+        # prove this call site itself refuses is a test that feeds it an unvalidated seat
+        # directly (defense in depth, not a reachable end-to-end bug via the normal pipeline).
+        _validate_kimi_model(seat)
         if fake:
             output = _fake_r2_output(seat)
         else:
@@ -1060,6 +1066,7 @@ def cmd_jury(args: argparse.Namespace) -> dict[str, Any]:
         others = sorted(ltr for ltr, seat in mapping.items() if seat != juror)
         if not others:
             continue  # no peers to review — never sent, never scored, never dead
+        _validate_kimi_model(juror)  # item 4 (PR2g, gate-7 obs :390/:994) — see cmd_r2's copy
         if fake:
             output = _fake_jury_output(juror, others)
         else:
