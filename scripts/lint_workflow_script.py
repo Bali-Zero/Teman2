@@ -68,6 +68,15 @@ speculative:
     second-army.js's `for (const seat of builderRoster)`). Only a classic
     `for (init; cond; step)` or a condition-based `while (cond)` needs a nearby cap.
 
+Known accusing-side limits (documented, not behavior changes):
+
+  * RULE 1 does not recognise a QUOTED `model` key (`"model": "sonnet"`) as a pin (item
+    2, PR3e, 2026-09-18, gate-10 obs 2): `_neutralize_js` blanks a quoted string's OWN
+    delimiting quote characters along with its contents, so a quoted key is lexically
+    invisible by the time RULE 1 inspects the object's entries — reported unpinned BY
+    DESIGN (false accusation, fail-safe). Every live `agent(` call already uses a
+    bareword `model:` key (see clean.js); use one.
+
 Known, accepted limit (same spirit as infra/guard-conformance's own C4 note — a
 documented bound, not a second JS parser): `_neutralize_js` does not recurse into a
 quoted string OR a regex literal that itself sits inside a `${...}` template
@@ -333,13 +342,18 @@ def _top_level_entries(obj_inner: str) -> list[str]:
 
 def _entry_key_is_model(entry: str) -> bool:
     """entry is one top-level `key: value` slice from _top_level_entries. True only
-    when a `model\\s*:` match is the entry's OWN key — nothing but whitespace/quotes
-    precedes it in this entry's own text — never a `model:` occurring deeper inside
-    that same entry's value (the exact shape DEFECT :229 missed)."""
+    when a `model\\s*:` match is the entry's OWN key — nothing but whitespace precedes
+    it in this entry's own text — never a `model:` occurring deeper inside that same
+    entry's value (the exact shape DEFECT :229 missed). DOCUMENTED LIMIT (item 2,
+    PR3e, 2026-09-18, gate-10 obs 2): a QUOTED key (`"model": ...`) is NOT recognised
+    here -- _neutralize_js already blanked the quote characters along with the
+    string's contents, so plain whitespace is all that is left to strip; stripping
+    quote characters too would (wrongly) also accept a quoted key. Reported unpinned
+    BY DESIGN -- see the module docstring's "Known accusing-side limits"."""
     m = MODEL_KEY_RE.search(entry)
     if not m:
         return False
-    return not entry[: m.start()].strip(" \t\n'\"")
+    return not entry[: m.start()].strip()
 
 
 def _is_bounded_for_of_in(loop_keyword: str, header_inner: str) -> bool:

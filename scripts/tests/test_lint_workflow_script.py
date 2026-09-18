@@ -12,6 +12,11 @@ Verifies the linter correctly:
   see test_lint_asyncpg_except_completeness.py's test_main_exit_0_on_clean)
 - Refuses to report clean on a blind (zero-file) sweep, and does not over-match that
   guard onto an explicit non-.js argv or a single clean in-scope file
+- Recognises a regex literal as a regex literal (PR3e item 1, 2026-09-18) instead of
+  misreading it as a string/comment opener, and refuses (exit 2) rather than report
+  CLEAN if neutralization ever leaves the paren/brace balance non-zero
+- Reports a QUOTED `"model"` key as unpinned BY DESIGN (PR3e item 2, 2026-09-18) — a
+  documented fail-safe false accusation, not a missed real one
 """
 from __future__ import annotations
 
@@ -291,6 +296,21 @@ def test_guilt_unbalanced_after_neutralization_main_exits_2(lint, capsys):
     assert rc == 2, "an unbalanced neutralization must not exit 0 or 1 -- it proves nothing"
     assert "regex_false_open_desyncs_balance.js" in captured.err
     assert "no violations" not in captured.out
+
+
+def test_guilt_quoted_model_key_is_reported_unpinned_by_design(lint):
+    """DOCUMENTED LIMIT (item 2, PR3e, 2026-09-18, gate-10 obs 2): _neutralize_js blanks
+    a quoted string's own delimiting quotes along with its contents, so a QUOTED
+    `"model"` key is lexically invisible to _entry_key_is_model by the time RULE 1
+    inspects the object -- this is a fail-safe FALSE ACCUSATION, not a missed real one,
+    and is asserted here rather than only documented so the behaviour cannot drift
+    silently. See the module docstring's "Known accusing-side limits" and
+    _entry_key_is_model's own docstring."""
+    violations = lint.find_violations(FIXTURES_DIR / "quoted_model_key.js")
+    assert len(violations) == 1
+    line_no, msg = violations[0]
+    assert line_no == 10
+    assert "no literal `model:`" in msg
 
 
 # --------------------------------------------------------------------------
