@@ -260,6 +260,12 @@ def mini_spec(items):
     spec = json.loads(json.dumps(SPEC))
     spec["items"] = items
     spec["excluded_codes"] = {}
+    # Same reason as the exclusions: `marked_codes` is a census of the REAL
+    # catalogue, and the sandbox is not it. Emptying it keeps the probe armed —
+    # a synthetic record carrying a marker is still withheld, which is what
+    # `test_a_code_carrying_a_category_marker_is_withheld…` pins.
+    for block in spec.get("category_closure_probe", []):
+        block["marked_codes"] = []
     return spec
 
 
@@ -534,3 +540,122 @@ def test_apply_writes_the_patch_and_leaves_the_verdict_alone(tmp_path):
     # Idempotent: the rule no longer reaches the record, and the already-applied
     # branch recognises its own basis instead of refusing.
     assert R.main(["--apply", "--dataset", str(dataset), "--spec", str(spec_path)]) == 0
+
+
+# --- Pasal 2(2): the closure that names no code -------------------------------
+# Raised by kimi-code/k3 HIGH (3), council round 1: the lot ships 13 chemical
+# manufacturing codes, and Pasal 2(2)(e)/(f) close «industri pembuatan senjata
+# kimia» and «industri bahan kimia industri dan industri bahan perusak lapisan
+# ozon» by CATEGORY, naming no code — so no annex leg and no sibling leg can
+# see them. Folded as an ENFORCED probe on the state's own per-code marker
+# rather than as a hand exclusion, because excluding codes the rule never
+# reaches would have been a claim about nothing (a stale exclusion).
+CATEGORY_MARKED = {"20115", "20116", "20119", "20121"}
+PERSYARATAN = (
+    "Melampirkan Surat Pernyataan tidak memproduksi senjata kimia dan industri "
+    "yang menghasilkan Bahan Perusak Ozon/BPO"
+)
+
+
+def test_the_category_probe_is_pinned_to_the_codes_the_state_actually_marks(by_code):
+    block = SPEC["category_closure_probe"][0]
+    assert set(block["marked_codes"]) == CATEGORY_MARKED
+    marked = {
+        code
+        for code, record in by_code.items()
+        if R.category_markers(record, block["markers"])
+    }
+    assert marked == CATEGORY_MARKED
+
+
+def test_not_one_marked_code_is_in_the_lot_and_the_rule_cannot_reach_them(by_code):
+    # And not because this spec excluded them: the Perpres partition already
+    # owns all four — 20115 is named in an annex, 20116/20119/20121 are
+    # Lampiran I priority — so they are outside the residual bucket entirely.
+    assert CATEGORY_MARKED.isdisjoint(set(SPEC["items"]))
+    assert CATEGORY_MARKED.isdisjoint(set(SPEC["excluded_codes"]))
+    for code in sorted(CATEGORY_MARKED):
+        assert by_code[code]["pma_verification_status"] == "declared_gap"
+
+
+def test_no_lot_member_carries_a_category_marker(by_code):
+    markers = SPEC["category_closure_probe"][0]["markers"]
+    offenders = {
+        code: R.category_markers(by_code[code], markers)
+        for code in SPEC["items"]
+        if R.category_markers(by_code[code], markers)
+    }
+    assert offenders == {}
+
+
+def test_the_probe_is_blind_to_the_basis_the_compiler_writes_itself(by_code):
+    # The basis quotes the closed category verbatim, so a probe reading the
+    # whole record matches every member it has already shipped, against itself.
+    # Measured: the first run after the basis was extended withheld all 330.
+    shipped = by_code[SPEC["items"][0]]
+    assert "senjata kimia" in shipped["pma_official_basis"].lower()
+    assert R.category_markers(shipped, ["senjata kimia", "perusak ozon"]) == []
+    assert "pma_official_basis" in R.PROBE_BLIND_FIELDS
+
+
+def test_the_basis_says_how_the_category_items_were_tested():
+    assert "Pasal 2(2) items close an ACTIVITY and name no code" in R.BASIS
+    assert "Bahan Perusak Ozon/BPO" in R.BASIS
+    assert "does not clear a closed ACTIVITY carried on under an open code" in R.BASIS
+
+
+def test_a_code_carrying_a_category_marker_is_withheld_not_published():
+    spec = mini_spec([RESIDUAL])
+    # The census must AGREE first — a marked code is pinned and then withheld;
+    # pinning it is not permission to publish it.
+    spec["category_closure_probe"][0]["marked_codes"] = [RESIDUAL]
+    marked = rec(RESIDUAL)
+    marked["per_skala"] = [
+        {"skala_usaha": ["Besar"], "persyaratan": [PERSYARATAN]},
+    ]
+    _, refusals = R.check(spec, [marked])
+    assert refusals and "category-closure probe" in refusals[0]
+    assert "never publish it open by absence" in refusals[0]
+
+
+def test_a_spec_with_no_category_probe_refuses():
+    spec = mini_spec([RESIDUAL])
+    del spec["category_closure_probe"]
+    _, refusals = R.check(spec, [rec(RESIDUAL)])
+    assert any("no category_closure_probe block" in r for r in refusals)
+
+
+def test_an_empty_marker_list_refuses_instead_of_probing_nothing():
+    spec = mini_spec([RESIDUAL])
+    spec["category_closure_probe"][0]["markers"] = []
+    _, refusals = R.check(spec, [rec(RESIDUAL)])
+    assert any("markers must be a non-empty list" in r for r in refusals)
+
+
+def test_an_empty_probe_field_refuses_instead_of_looking_documented():
+    spec = mini_spec([RESIDUAL])
+    spec["category_closure_probe"][0]["finding"] = ""
+    _, refusals = R.check(spec, [rec(RESIDUAL)])
+    assert any("empty finding" in r for r in refusals)
+
+
+def test_the_category_census_refuses_when_the_catalogue_drifts():
+    # A code that ENTERS the closed category after the finding was written must
+    # stop the run, not be published under a finding that predates it.
+    spec = mini_spec([RESIDUAL])
+    spec["category_closure_probe"][0]["marked_codes"] = [SIBLING]
+    _, refusals = R.check(spec, [rec(RESIDUAL)])
+    assert any("the catalogue marks [] but the spec pins" in r for r in refusals)
+
+
+def test_a_patch_field_the_probe_still_reads_is_refused():
+    # The blindness list and the patch must move together: a new written field
+    # the probe still reads would let our own prose count as government evidence.
+    spec = mini_spec([RESIDUAL])
+    original = R.PROBE_BLIND_FIELDS
+    R.PROBE_BLIND_FIELDS = tuple(f for f in original if f != "pma_official_basis")
+    try:
+        _, refusals = R.check(spec, [rec(RESIDUAL)])
+    finally:
+        R.PROBE_BLIND_FIELDS = original
+    assert any("PROBE_BLIND_FIELDS does not list it" in r for r in refusals)
