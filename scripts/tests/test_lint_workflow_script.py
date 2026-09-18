@@ -88,6 +88,17 @@ def test_single_argument_agent_object_literal_is_checked(lint):
     assert "model:" in violations[0][1]
 
 
+def test_for_await_loop_is_recognised(lint):
+    """OBSERVATION 5 (PR3a', 2026-09-18): `for await (` must be recognised as a loop.
+    The declared for-await...of stays exempt (bounded, same as plain for...of); the
+    for-await onto a pre-declared variable has no declaration keyword, so it is NOT
+    exempt and needs a cap like any other for(...) — only that one fires."""
+    violations = lint.find_violations(FIXTURES_DIR / "for_await_loop.js")
+    assert len(violations) == 1
+    assert "for(" in violations[0][1]
+    assert "cap" in violations[0][1]
+
+
 def test_main_exit_0_on_clean(capsys):
     """Run on the live codebase's infra/workflows/*.js — must be green."""
     mod = _load_lint_module()

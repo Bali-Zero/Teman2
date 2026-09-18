@@ -71,7 +71,10 @@ AGENT_CALL_RE = re.compile(r"\bagent\s*\(")
 PHASE_CALL_RE = re.compile(r"""\bphase\(\s*(['"`])([^'"`]+)\1\s*\)""")
 MODEL_KEY_RE = re.compile(r"\bmodel\s*:")
 LABEL_VALUE_RE = re.compile(r"""\blabel\s*:\s*(`[^`]*`|'[^']*'|"[^"]*")""")
-LOOP_RE = re.compile(r"\b(while|for)\s*\(")
+# OBSERVATION 5 (PR3a', 2026-09-18): `for await (` is valid JS (async iteration) and
+# must be recognised as a loop like plain `for (` — the optional `await` sits between
+# the keyword and the paren. group(1) still captures only "for"/"while".
+LOOP_RE = re.compile(r"\b(while|for)\b(?:\s+await)?\s*\(")
 INT_LITERAL_RE = re.compile(r"\d+")
 # Explicit, documented vocabulary (see RULE 3 docstring above) rather than a loose
 # "contains max/cap" substring match, which "capture"/"capacity"/"escape" would trip.
