@@ -476,6 +476,88 @@ def test_validate_seat_id_refuses_empty_or_dot_components(bad_seat):
     assert e.value.code == 2
 
 
+# --------------------------------------------------------------- kimi model id (guilt + innocence)
+# Gate-4 finding, PR2e addendum (scripts/dynamic_workflow.py:382): every kimi* seat launched
+# with the same hardcoded '-m kimi-code/k3', so the kimi-2.7 alias would really be answered by
+# K3. KIMI_MODEL_MAP is now the single source for the '-m' id, read by both _launch_seat and
+# _validate_kimi_model (the latter refuses BEFORE any ledger row, from _run_one_seat).
+
+def test_validate_kimi_model_accepts_both_real_kimi_seats_and_the_alias():
+    assert dw._validate_kimi_model("kimi-k3") is None  # returns cleanly, no SystemExit
+    assert dw._validate_kimi_model("kimi-code/kimi-for-coding-highspeed") is None
+    assert dw._validate_kimi_model("kimi-2.7") is None  # alias, canonicalises to the highspeed seat
+
+
+def test_validate_kimi_model_is_a_noop_for_a_non_kimi_seat():
+    # _seat_kind != "kimi" — nothing to check, returns cleanly rather than raising
+    assert dw._validate_kimi_model("qwen3.8-max") is None
+
+
+def test_validate_kimi_model_refuses_an_unresolvable_kimi_seat():
+    with pytest.raises(SystemExit) as e:
+        dw._validate_kimi_model("kimi-nonexistent-model")
+    assert e.value.code == 2
+
+
+def test_r1_refuses_an_unresolvable_kimi_model_id_before_ledger_append(tmp_path, template,
+                                                                        clean_objective):
+    kit = tmp_path / "k"
+    dw.cmd_brief(_brief_ns(clean_objective, template, kit))
+    _seed_convener(kit)
+    bad_seat = "kimi-nonexistent-model"
+    with pytest.raises(SystemExit) as e:
+        dw.cmd_r1(argparse.Namespace(kit=str(kit), seats=bad_seat, astra_fallback=False))
+    assert e.value.code == 2
+    assert not dw._ledger_has_seat(kit, bad_seat)
+
+
+def test_launch_seat_kimi_uses_the_per_seat_model_id(tmp_path, monkeypatch):
+    """Launcher-intercept per the addendum: proves the '-m' argument _launch_seat actually
+    threads to subprocess.run is per-seat, not the old hardcoded 'kimi-code/k3' for every
+    kimi* seat. DW_FAKE_SEATS never reaches _launch_seat (see _run_one_seat), so this calls
+    it directly, same pattern as test_launch_seat_astra_resolves_a_seat_before_invoking_codex."""
+    kit = tmp_path / "k"
+    calls = []
+
+    class _FakeResult:
+        stdout = "stub output"
+
+    def _fake_run(cmd, **kwargs):
+        calls.append(cmd)
+        return _FakeResult()
+
+    monkeypatch.setattr(dw.subprocess, "run", _fake_run)
+
+    dw._launch_seat("kimi-k3", "prompt text", 5, kit)
+    dw._launch_seat("kimi-code/kimi-for-coding-highspeed", "prompt text", 5, kit)
+
+    assert len(calls) == 2
+    assert calls[0][calls[0].index("-m") + 1] == "kimi-code/k3"
+    assert calls[1][calls[1].index("-m") + 1] == "kimi-code/kimi-for-coding-highspeed"
+
+
+def test_launch_seat_kimi_2_7_alias_resolves_to_the_highspeed_id_end_to_end(tmp_path, monkeypatch):
+    """The addendum's other half: 'kimi-2.7 resolves to the highspeed id end to end (r1 launch
+    args, not _seat_family)' — calls _launch_seat with the ALIAS spelling itself, proving
+    _canonical_seat is consulted at dispatch time, not just by the family lookup."""
+    kit = tmp_path / "k"
+    calls = []
+
+    class _FakeResult:
+        stdout = "stub output"
+
+    def _fake_run(cmd, **kwargs):
+        calls.append(cmd)
+        return _FakeResult()
+
+    monkeypatch.setattr(dw.subprocess, "run", _fake_run)
+
+    dw._launch_seat("kimi-2.7", "prompt text", 5, kit)
+
+    assert len(calls) == 1
+    assert calls[0][calls[0].index("-m") + 1] == "kimi-code/kimi-for-coding-highspeed"
+
+
 # --------------------------------------------------------------- r2 pairing "exactly two" (guilt + innocence)
 # Gate finding 3, inherited from PR2a's merge: compute_pairing silently accepted 0 or 1
 # cross-family partner as "good enough"; the mandate requires EXACTLY two.
