@@ -1,0 +1,97 @@
+task_id: preflight-test-ci
+gear: 3
+l_level: L1
+gate_class: opus
+objective:
+  'Give scripts/tests/test_preflight_pack.sh an executor. The suite is the
+
+  13-arm guilt+innocence corpus for the pre-push preflight (.husky/pre-push
+
+  -> scripts/preflight_pack.sh -> scripts/contract_verify.py --local, table
+
+  scripts/ci/contract_checks.yml). Measured before this PR: no workflow
+
+  names it (grep -rn test_preflight_pack .github/workflows/ -> nothing), and
+
+  scripts-tests-sweep.yml collects test_*.py through pytest, continue-on-
+
+  error, so a .sh suite is invisible to it. Green and unexecuted: superscar
+
+  #2 (exists != armed). PR #6767 added four arms (council-journal staging,
+
+  CI parity) and shipped with this gap noted as the follow-up.
+
+
+  This PR adds ONE file, .github/workflows/preflight-pack-tests.yml, same
+
+  shape as fleet-burst-tests.yml: paths-filtered on the MEASURED closure the
+
+  suite binds, fetch-depth 0 so the span arm (the janitor squash
+
+  e0722cbb24^..e0722cbb24 replayed through --span, the mode the hook uses)
+
+  executes instead of being skipped, PyYAML installed inline like
+
+  harness-floor.yml, bash -n on both scripts, then the suite under pipefail
+
+  with three assertions read from the same step''s log: no "span arm
+
+  skipped" line, no "journal arms skipped" line, at least 13 arms passed.
+
+
+  Gear is 3 DETERMINISTICALLY, sourced from PATH: .github/workflows/** is a
+
+  hotzone in scripts/evidence_pack_lint.py. Measured against this branch''s
+
+  own diff (see receipts).
+
+  '
+acceptance:
+  - text:
+      WHEN a PR touches any path in the workflow's filter, the check "Preflight pack tests" SHALL start,
+      run the suite, and its log SHALL end with "13 passed, 0 failed" with the span arm executed (no "span
+      arm skipped" line), so the --span mode the pre-push hook uses is proven on every diff that can break
+      it.
+    probe: gh run view <run-id> --log | grep -E 'passed, [0-9]+ failed|span arm skipped'
+  - text:
+      WHEN the suite prints its skip line (shallow clone, fixture missing) or fewer than 13 arms pass,
+      the job SHALL fail even if the suite's own exit code is 0, so a skipped arm is never reported as a
+      passed arm.
+    probe:
+      'printf ''  ⏭  span arm skipped: x not in this clone\n  13 passed, 0 failed\n'' > /tmp/claude-501-l
+      && (grep -q ''span arm skipped'' /tmp/claude-501-l && echo would-fail-the-job); rm -f /tmp/claude-501-l'
+  - text:
+      WHEN the workflow file is linted the way CI lints it (actionlint -shellcheck=) it SHALL report
+      nothing, and the assertion step run locally against the real suite SHALL exit 0 with "13 passed, 0
+      failed".
+    probe: actionlint -shellcheck= .github/workflows/preflight-pack-tests.yml
+assumptions:
+  - text:
+      With fetch-depth 0 the janitor squash e0722cbb24 and its parent are reachable from the PR's merge
+      ref and from main, so the span arm never legitimately skips in this job; a skip is therefore always
+      a defect.
+    status: verified
+    probe:
+      git -C . merge-base --is-ancestor e0722cbb243a60c3a37780311fd90ec794e9ff91 origin/main && echo
+      ancestor-of-main
+  - text:
+      'The suite''s summary line is exactly "  N passed, M failed" and it exits non-zero when M>0; the
+      skip lines are "⏭  span arm skipped: ..." and "⏭  journal arms skipped: ...".'
+    status: verified
+    probe: grep -n 'passed, \|skipped' scripts/tests/test_preflight_pack.sh
+  - text:
+      PyYAML is the only non-stdlib import in the chain (contract_verify, evidence_pack_lint, stage_council_journal);
+      conductor.review_eligibility is a repo package resolved from scripts/.
+    status: verified
+    probe:
+      grep -hn '^import yaml\|^from conductor' scripts/contract_verify.py scripts/evidence_pack_lint.py
+      scripts/ci/stage_council_journal.py
+  - text:
+      "Not adding the check to branch-protection required contexts is the established posture for these
+      sibling workflows (fleet-burst-tests, vercel-autopromote-tests, intake-review-reader-liveness): a
+      repo- settings action, operator-gated."
+    status: verified
+    probe: grep -n 'required contexts' .github/workflows/fleet-burst-tests.yml
+appetite:
+  wall_clock_hours: 2
+  adversarial_rounds: 1
