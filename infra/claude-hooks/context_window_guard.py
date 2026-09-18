@@ -204,6 +204,13 @@ JUMP_MAX_HOPS = 3
 JUMP_MAX_GESTURES = 3   # window gestures per session before it is a human problem
 JUMP_STALE_S = 60       # a jump file this old with no to_session never landed
 MANDATE_MAX_CHARS = 6000
+# Pending files nobody will read again are swept when the NEXT jump is written
+# (2026-09-19: 53 on M5, 56 on Pro, 14 on Mini, the oldest 227 h — nothing had
+# ever deleted one). A claimed file is history once its successor has run for
+# a day; an unclaimed one stopped being claimable at context_jump_resume's
+# MAX_AGE_S (15 min), so two hours is already generous. Ages are file mtimes.
+PENDING_GC_CLAIMED_S = 24 * 3600
+PENDING_GC_UNCLAIMED_S = 2 * 3600
 
 
 def _jump_dir() -> Path:
@@ -485,6 +492,55 @@ def _retry_gesture(path: Path, from_session: str):
     return f"retried:{n}" if n else "retried-unrecorded"
 
 
+def _jump_log_write(from_session: str, text: str) -> None:
+    """Append one line to jump.log in the gesture scripts' own grammar."""
+    try:
+        stamp = time.strftime("%Y-%m-%d %H:%M:%S")
+        with (_jump_dir() / "jump.log").open("a", encoding="utf-8") as fh:
+            fh.write(f"[{stamp}] [{from_session}] {text}\n")
+    except OSError:
+        pass
+
+
+def _gc_pending_jumps(keep_for: str, now: float | None = None) -> tuple[int, int]:
+    """Remove pending-jump files nobody will read again; returns (removed, kept).
+
+    Kept whatever their age: the file of `keep_for` itself and the one that
+    PRODUCED it (to_session == keep_for), which _chain_link reads on every trip
+    for the hop count and the original mandate. Everything else goes once older
+    than PENDING_GC_CLAIMED_S (claimed) or PENDING_GC_UNCLAIMED_S (unclaimed or
+    unreadable). Best effort: a file that cannot be read or removed is kept."""
+    now = time.time() if now is None else now
+    removed = kept = 0
+    try:
+        files = list(_jump_dir().glob("pending-jump-*.json"))
+    except OSError:
+        return 0, 0
+    own = _pending_jump_path(keep_for)
+    for f in files:
+        try:
+            if f == own:
+                kept += 1
+                continue
+            age = now - f.stat().st_mtime
+            try:
+                j = json.loads(f.read_text(encoding="utf-8"))
+            except ValueError:
+                j = None
+            if isinstance(j, dict) and j.get("to_session") == keep_for:
+                kept += 1
+                continue
+            claimed = isinstance(j, dict) and bool(j.get("to_session"))
+            if age > (PENDING_GC_CLAIMED_S if claimed else PENDING_GC_UNCLAIMED_S):
+                f.unlink()
+                removed += 1
+            else:
+                kept += 1
+        except OSError:
+            kept += 1
+    return removed, kept
+
+
 def _write_pending_jump(payload: dict, model: str, handoff_path: Path, mandate: str):
     """Write pending-jump-<session>.json and, on a Ghostty or tmux seat, spawn
     that seat's gesture script detached. Returns what was actually done, so the deny text
@@ -511,6 +567,9 @@ def _write_pending_jump(payload: dict, model: str, handoff_path: Path, mandate: 
         hops = 1
     if hops > JUMP_MAX_HOPS:
         return None
+    removed, kept = _gc_pending_jumps(keep_for=from_session)
+    if removed:
+        _jump_log_write(from_session, f"gc: removed {removed} stale pending-jump file(s), kept {kept}")
     jump = {
         "from_session": from_session,
         "from_pid": _claude_pid(),  # the claude process this hook runs under
@@ -767,6 +826,11 @@ def _is_allowed_call(tool_name: str, tool_input: dict, handoff_path: Path) -> bo
 
 
 def main() -> int:
+    if len(sys.argv) > 1 and sys.argv[1] == "--gc-pending":
+        # operator sweep, same rule as the writer's (no session to keep for)
+        removed, kept = _gc_pending_jumps(keep_for="")
+        print(f"pending-jump gc: removed {removed}, kept {kept}")
+        return 0
     try:
         payload = json.load(sys.stdin)
     except (json.JSONDecodeError, ValueError):
