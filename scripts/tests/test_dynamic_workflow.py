@@ -84,10 +84,6 @@ def _dirty_objective(tmp_path, template, kit):
 
 
 def _kit_inside_repo(tmp_path, template, *_unused):
-    # REFUSALS calls every `build` uniformly as build(tmp_path, template, kit); this one needs
-    # its OWN kit path (must resolve inside REPO_ROOT), so the caller's `kit` is intentionally
-    # not used — a bare varargs tail reads as "accepted, deliberately ignored" to Pyright,
-    # where a plain named parameter reads as "bound but dead" (flagged on the PR1b branch).
     inside = dw.REPO_ROOT / "tmp-dw-kit-should-not-exist"
     return lambda: dw.cmd_brief(_brief_ns(_dummy_objective(tmp_path), template, inside))
 
@@ -438,6 +434,41 @@ def test_r2_refuses_a_seat_absent_from_family_map(tmp_path, template, clean_obje
 ])
 def test_seat_family_resolves_the_mandate_aliases(alias, family):
     assert dw._seat_family(alias) == family
+
+
+# --------------------------------------------------------------- file-safe slug (guilt + innocence)
+# Gate finding 2 on PR2b's merge: a slash-bearing seat id (the mandate itself spells some seats
+# that way, e.g. "kimi-code/k3") crashed r1 with an uncaught FileNotFoundError on r1/kimi-code/k3.md
+# AFTER a "sent" row had already been appended. Fixed by routing every seat-to-path build through
+# _file_slug(), and by validating the seat id BEFORE the first ledger_append.
+
+def test_r1_seat_id_with_a_slash_writes_under_a_file_safe_slug(tmp_path, template, clean_objective):
+    kit = tmp_path / "k"
+    dw.cmd_brief(_brief_ns(clean_objective, template, kit))
+    _seed_convener(kit)
+    dw.cmd_r1(argparse.Namespace(kit=str(kit), seats="kimi-code/k3", astra_fallback=False))
+    assert (kit / "r1" / "kimi-code__k3.md").exists()
+    assert not (kit / "r1" / "kimi-code").exists()
+    assert dw._ledger_has_seat(kit, "kimi-code/k3")  # ledger keeps the RAW seat id, not the slug
+
+
+@pytest.mark.parametrize("bad_seat", ["../x", "a//b", "x/..", "/leading", "trailing/"])
+def test_r1_refuses_a_seat_id_with_a_path_traversal_or_empty_component(tmp_path, template,
+                                                                        clean_objective, bad_seat):
+    kit = tmp_path / "k"
+    dw.cmd_brief(_brief_ns(clean_objective, template, kit))
+    _seed_convener(kit)
+    with pytest.raises(SystemExit) as e:
+        dw.cmd_r1(argparse.Namespace(kit=str(kit), seats=bad_seat, astra_fallback=False))
+    assert e.value.code == 2
+    assert not dw._ledger_has_seat(kit, bad_seat)
+
+
+@pytest.mark.parametrize("bad_seat", ["", ".", "..", "a/../b"])
+def test_validate_seat_id_refuses_empty_or_dot_components(bad_seat):
+    with pytest.raises(SystemExit) as e:
+        dw._validate_seat_id(bad_seat)
+    assert e.value.code == 2
 
 
 # --------------------------------------------------------------- jury (guilt + innocence)
