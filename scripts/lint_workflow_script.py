@@ -76,6 +76,22 @@ Known accusing-side limits (documented, not behavior changes):
     invisible by the time RULE 1 inspects the object's entries — reported unpinned BY
     DESIGN (false accusation, fail-safe). Every live `agent(` call already uses a
     bareword `model:` key (see clean.js); use one.
+  * RULE 1 accuses shorthand (`{ model }`), computed (`{ ["model"]: m }`), and spread
+    (`{ ...opts }`) keys the same as a genuinely-missing `model:` (item 4, PR3e,
+    2026-09-18, gate-10 obs 4/5/6) — none of the three is a `model\\s*:` match, so the
+    lint cannot prove a pin through any of them lexically. To avoid the false
+    accusation, route through the same opaque-identifier indirection
+    `documented_bypass.js` already uses (the module docstring's first exemption) —
+    that is the honest, documented way to keep one of these shapes off this lint's
+    radar, not a fix to the accusation itself.
+  * RULE 3 accuses `for (;;)` with a break-on-cap, `while (i++ < CAP)`, and
+    `do { ... } while (n < CAP)` the same as a genuinely-uncapped loop, whenever `CAP`
+    is not itself a literal integer or a CAP_NAME_RE name — same false-accusation
+    shape as RULE 1's three key forms above. The workaround today is the one RULE 3
+    already rewards: name the cap constant per CAP_NAME_RE (or use a literal int)
+    anywhere in the phase(...) span. The span-wide search itself is not narrowed to
+    the flagged loop's own header/body in this PR; that narrowing is deferred — see
+    this PR's own body.
 
 Known, accepted limit (same spirit as infra/guard-conformance's own C4 note — a
 documented bound, not a second JS parser): `_neutralize_js` does not recurse into a
