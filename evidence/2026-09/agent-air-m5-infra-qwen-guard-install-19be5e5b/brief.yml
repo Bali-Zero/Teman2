@@ -73,20 +73,36 @@ acceptance:
     test_installs_registers_and_verifies asserting every pre-existing settings key
     survives byte-identical, test_refuses_to_create_a_missing_settings_file,
     test_refuses_invalid_settings_json."
-  - "Executed for real on Air-M5 2026-09-19: installer exit 0, 'verified: guilt DENY (X2)
-    + innocence ALLOW', hook registered, backup written, settings mode 0600, second run
-    'already registered; settings.json untouched' with exactly 1 backup. Then the exact
-    command line stored in ~/.qwen/settings.json was invoked directly: 3/3 guilt DENY
-    with the right shape ids (printenv->X2, cat vault->X4, Read auth.json->X5) and 3/3
-    innocence ALLOW (: +SET form, git status, Read ~/.qwen/settings.json)."
+  - "Executed for real on Air-M5 2026-09-19, AFTER the rework: installer exit 0,
+    'verified: guilt DENY (X2 shell, X5 read) + innocence ALLOW', hook registered on the
+    canonical-name matcher, backup written, settings mode 0600. Re-run against the
+    machine's OWN inert entry reported 'replaced stale registration (matcher was
+    Bash|Monitor|Read)' — the replacement path exercised on the real state, not a fixture."
+  - "END-TO-END A/B THROUGH THE REAL QWEN HARNESS, which is the evidence the first round
+    lacked. Same prompt, same fixture file holding a FAKE value, only the kill switch
+    differs: guard ACTIVE -> fixture value appears 0 times, guard DENY message appears
+    1 time; guard DISABLED (NUZ_SECRET_EXPANSION_GUARD_OFF=1) -> fixture value appears
+    1 time, DENY message 0 times. A fixture rather than a real store because if the guard
+    fails to fire the file content reaches the transcript, and the real stores hold the
+    live TP1 key and six Claude tokens. The session's reply quoted the X5 reason back
+    verbatim, so the DENY text reached it as a tool result rather than being inferred."
+  - "MATCHER MEASURED, NOT ASSUMED. A recorder hook (always exit 0, logs names only)
+    registered under three matchers, then a fresh `qwen -p` session:
+    'Bash|Monitor|Read' -> 0 events; 'run_shell_command|read_file' -> tool_name=read_file;
+    '' -> read_file, tool_search. Corroborated in the 0.24.0 bundle: TOOL_ALIAS_MAP =
+    canonical + ToolDisplayNames[key] + `${displayName}Tool`; SHELL->'Shell',
+    READ_FILE->'ReadFile', MONITOR->'Monitor'; SHELL_TOOL_NAMES = ['run_shell_command',
+    'ShellTool']."
 consumer_map:
   - "Operator, once per machine: `python3 infra/claude-hooks/install_qwen_secret_guard.py`
     (run on m5 2026-09-19; pro and mini still to run, and each must widen the
     machines list in declared-pairs.json in the same change)."
-  - "~/.qwen/settings.json hooks.PreToolUse (matcher Bash|Monitor|Read) ->
-    ~/.claude/hooks/secret_expansion_guard.py. A $HOME path on purpose: it does not
-    depend on any shared checkout being current, which is the exact failure this PR
-    exists to make unreachable."
+  - "~/.qwen/settings.json hooks.PreToolUse, matcher
+    'run_shell_command|Shell|ShellTool|Bash|read_file|ReadFile|ReadFileTool|Read|monitor|Monitor|MonitorTool'
+    -> ~/.claude/hooks/secret_expansion_guard.py. Canonical Qwen names first; the
+    Claude-style Bash/Read alternatives are harmless portability extras. A $HOME path on
+    purpose: it does not depend on any shared checkout being current, which is the exact
+    failure this PR exists to make unreachable."
   - "scripts/lint_home_fork.py --check via .github/workflows/immune-enforcement.yml —
     the two new declared pairs are what keep the $HOME twins from silently diverging
     (superscar #1, ~30% of the scar corpus)."
@@ -103,11 +119,26 @@ risks:
   - "A running Qwen session loaded its hooks at startup, so the wiring takes effect for
     NEW sessions only. The installer prints that. There is no way to hot-load it, and the
     builder's own current session is therefore still unprotected."
-  - "The installer verifies by invoking the guard with two fixed payloads. That proves the
-    file runs and judges correctly at install time; it does not prove the harness will
-    call it, which depends on Qwen's hook support for the PreToolUse event and the
-    matcher syntax. Verified here by invoking the stored command line directly, not by
-    observing a live Qwen tool call — a real gap, and the honest limit of this evidence."
+  - "THIS RISK MATERIALIZED AS THE BLOCKING DEFECT, and the first round shipped anyway.
+    The original text read: install-time verification 'proves the file runs and judges
+    correctly at install time; it does not prove the harness will call it'. That gap was
+    not hypothetical — the shipped matcher was 'Bash|Monitor|Read', Claude's names, so
+    the hook was registered and INERT on exactly the two tools that leaked. Declaring a
+    limit is not the same as closing it, and a limitation named in a brief still lets the
+    PR merge with the defect in it. Cured three ways: the matcher is built from measured
+    canonical names, test_matcher_covers_the_canonical_qwen_tool_names pins it (no
+    payload-based test can reach the matcher, since invoking the guard directly bypasses
+    it — that blind spot is why round 1 passed its own suite), and the A/B live proof
+    above observes the harness actually calling it."
+  - "The CI wiring is SPLIT OUT of this PR and sits unshipped at
+    ~/.qwen/tmp/ci-wiring-secret-guard.patch. Neither test_secret_expansion_guard.py nor
+    test_install_qwen_secret_guard.py is executed by any workflow, so a future PR can
+    break the corpus and land green — check_guard_conformance.py's own rule calls that a
+    FAIL. It is not folded in here because .github/workflows is a HOT ZONE: touching it
+    sets floor 3 before the size term runs (measured: floor 3 with the workflow, 2
+    without), and floor 3 requires a full Evidence Pack. Fixing a P2 gap therefore costs
+    a gear-3 pack of its own, which is a decision for the owner, not something to bury in
+    this diff."
   - "The qwen CLI rewrites ~/.qwen/settings.json on every flush and resets its mode to
     0644. Harmless now that the file holds no credential (PR #6765), but it means a
     future flush could in principle drop the hooks block. Not observed across many flushes
@@ -116,21 +147,34 @@ grader: |
   generator != grader. Written by the builder seat (Qwen 3.8 Max on Air-M5, external
   builder), which per Builder Contract 5 prepares and never ships.
 
-  Grading is ASSIGNED, NOT YET PERFORMED at the time of writing. The mission is
-  undeclared, therefore BLUE, so the gate seat per AGENTS.md §17.1 is a fresh Claude
-  session on Opus 5 xhigh outside this contribution chain.
+  ROUND 1 = REJECT (REWORK-BUILD), and the rejection was correct. A fresh Claude Opus 5
+  xhigh session outside the contribution chain found the blocking defect the builder's
+  own 11 passing tests could not see: `MATCHER = "Bash|Monitor|Read"` are Claude's tool
+  names, and Qwen passes canonical snake_case names matched against the tool's alias set,
+  so the hook was registered and INERT on exactly the two tools that leaked. Its verdict
+  is committed alongside this brief at gate-verdict-2026-09-19.md, which is the repo's
+  convention (21 such verdicts are already tracked under evidence/). It also found two P2
+  items — the installer test runs in no CI workflow, and
+  `test_never_prints_a_credential_value` used `assert value not in blob`, which pytest
+  renders by printing BOTH operands, so the test would have leaked the secret it exists
+  to catch. Both cured or explicitly split out; see risks.
 
-  Specific things the gate should judge rather than merely run:
-  (a) Is refusing-to-wire the right failure mode, or should the installer wire anyway and
-      let a missing guard fail open? The builder chose refuse, because a hook that exits 2
-      on a missing file DENIES — fail-open is not available at the hook layer.
-  (b) Is installing into ~/.claude/hooks/ (Claude's directory) for a QWEN hook the right
-      home, or does it belong in ~/.qwen/hooks/? The builder chose the former to reuse the
-      190-pair drift detection that already watches that directory.
-  (c) Are the two fixed verification payloads enough, or should the installer run the
-      full 64-row corpus against the installed copy?
-  (d) machines:[m5] — correct honesty, or should it be all three with the installer run
-      everywhere in this same PR?
+  The gate answered its own four questions: (a) refusing is correct, fail-open is not
+  available at the hook layer; (b) ~/.claude/hooks/ is fine, it reuses the drift
+  detection; (c) two payloads suffice for the file but NO payload can prove the matcher,
+  which is why the matcher needed a test of its own; (d) machines:[m5] is correct honesty.
+
+  ROUND 2 grading is ASSIGNED, NOT YET PERFORMED at the time of writing. Same seat
+  requirement: a fresh Claude session on Opus 5 xhigh outside this contribution chain.
+  The rework is in commit 675940925c. A round-2 gate should judge, not merely run:
+  (a) Is the matcher right, and is pinning it by test enough — or does the harness's
+      alias table need to be read at install time rather than hardcoded?
+  (b) Is the A/B live proof (kill switch on vs off, fixture value) sufficient evidence
+      that the harness calls the hook, or is one observation on one machine too thin?
+  (c) Is splitting the CI wiring out to avoid a hot-zone floor-3 pack the right call, or
+      does shipping a guard whose tests no workflow runs repeat the defect being fixed?
+  (d) If the gate writes fixes, it must NOT also sign the verdict — round 1 did both and
+      thereby joined the contribution chain, which §17.1 forbids for the final gate.
 budget: |
   One builder session on the Alibaba Token-Plan subscription (qwen3.8-max via qwen-code),
   no metered Anthropic spend. The installer makes no network calls; its verification
