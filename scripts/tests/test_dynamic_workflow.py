@@ -1110,9 +1110,11 @@ def test_capture_check_refuses_a_dotdot_escape_from_research_operations(
     assert not escaped.resolve().exists()
 
 
-def test_capture_check_refuses_a_non_empty_existing_dest(tmp_path, template, clean_objective):
+def test_capture_check_refuses_a_non_empty_existing_dest(tmp_path, template, clean_objective,
+                                                           monkeypatch):
     kit = _capture_ready_kit_with_slug(tmp_path, template, clean_objective,
                                         "pytest-capture-nonempty")
+    monkeypatch.setattr(dw, "REPO_ROOT", tmp_path)  # PR2h obs 10: never the real tree
     dest = dw._capture_dest_for(kit)
     try:
         dest.mkdir(parents=True, exist_ok=True)
@@ -1127,9 +1129,10 @@ def test_capture_check_refuses_a_non_empty_existing_dest(tmp_path, template, cle
 
 
 def test_capture_check_copies_the_full_artifact_set_when_everything_is_present(
-        tmp_path, template, clean_objective):
+        tmp_path, template, clean_objective, monkeypatch):
     kit = _capture_ready_kit_with_slug(tmp_path, template, clean_objective,
                                         "pytest-capture-success")
+    monkeypatch.setattr(dw, "REPO_ROOT", tmp_path)  # PR2h obs 10: never the real tree
     dest = dw._capture_dest_for(kit)
     try:
         dw.cmd_capture_check(argparse.Namespace(kit=str(kit), dest=str(dest)))
@@ -1148,12 +1151,13 @@ def test_capture_check_copies_the_full_artifact_set_when_everything_is_present(
 
 
 def test_capture_check_refuses_a_fake_phone_in_outcome_md(
-        tmp_path, template, clean_objective, capsys):
+        tmp_path, template, clean_objective, capsys, monkeypatch):
     # guilt fixture per the addendum, verbatim: 'a fake phone in OUTCOME.md'. Same phone
     # literal _dirty_objective already uses elsewhere in this file to trip the redactor.
     kit = _capture_ready_kit_with_slug(tmp_path, template, clean_objective, "pytest-capture-pii")
     phone = "+6281234567890"
     (kit / "OUTCOME.md").write_text(_outcome_text().rstrip("\n") + f"\ncontact: {phone}\n")
+    monkeypatch.setattr(dw, "REPO_ROOT", tmp_path)  # PR2h obs 10: never the real tree
     dest = dw._capture_dest_for(kit)
     capsys.readouterr()
     try:
@@ -1170,10 +1174,11 @@ def test_capture_check_refuses_a_fake_phone_in_outcome_md(
 
 
 def test_capture_check_copies_a_clean_outcome_md_once_the_pii_gate_clears(
-        tmp_path, template, clean_objective):
+        tmp_path, template, clean_objective, monkeypatch):
     # innocence: identical kit shape, no PII -- the gate lets it straight through.
     kit = _capture_ready_kit_with_slug(tmp_path, template, clean_objective,
                                         "pytest-capture-pii-clean")
+    monkeypatch.setattr(dw, "REPO_ROOT", tmp_path)  # PR2h obs 10: never the real tree
     dest = dw._capture_dest_for(kit)
     try:
         dw.cmd_capture_check(argparse.Namespace(kit=str(kit), dest=str(dest)))
