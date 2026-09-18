@@ -165,7 +165,15 @@ BASIS = (
     "not swept per code, and where that gap is load-bearing (divisions 09, 35, "
     "49-53, 61: migas, ketenagalistrikan, pelayaran, penerbangan, pos, "
     "telekomunikasi) the codes are withheld from this lane rather than published "
-    "under it. The OSS licensing gate (risk tier, scale, zoning, and for a PMA "
+    "under it. Four Pasal 2(2) items close an ACTIVITY and name no code "
+    "(narkotika golongan I; perjudian/kasino; CITES species and koral; industri "
+    "senjata kimia and bahan perusak lapisan ozon): they are tested here by the "
+    "state's OWN per-code markers — the licensing requirement for a «Surat "
+    "Pernyataan tidak memproduksi senjata kimia … Bahan Perusak Ozon/BPO», plus "
+    "the hand-held exclusions for the alcohol, tobacco, explosives and CITES "
+    "chains — and none of them reaches a code in this lot. This basis does not "
+    "clear a closed ACTIVITY carried on under an open code. "
+    "The OSS licensing gate (risk tier, scale, zoning, and for a PMA "
     "the Pasal 7(1) >Rp10bn Usaha Besar test) is a separate question this basis "
     "does not answer."
 )
@@ -319,6 +327,40 @@ def sector_referral(code: str, spec: dict[str, Any]) -> str | None:
     return None
 
 
+# The fields THIS compiler writes, which the probe below must be BLIND to. The
+# basis string quotes the closed category verbatim («senjata kimia», «bahan
+# perusak lapisan ozon») — so a probe reading the whole record matches every
+# member it has already shipped, against itself. Measured, not feared: the first
+# run after the basis was extended withheld all 330 and refused the census.
+PROBE_BLIND_FIELDS = (
+    "pma_official_basis",
+    "pma_source_vintage",
+    "pma_cap_verified",
+    "pma_verification_status",
+)
+
+
+def category_markers(record: dict[str, Any], markers: list[str]) -> list[str]:
+    """Which Pasal 2(2) category markers this record carries, if any.
+
+    Pasal 2 ayat (2) closes four items by ACTIVITY and names no KBLI code, so no
+    annex leg can see them — there is no row to be absent from — and neither can
+    the 4-digit sibling leg. What CAN see them is the state's own per-code
+    marker: the licensing rows demand a «Surat Pernyataan tidak memproduksi
+    senjata kimia dan industri yang menghasilkan Bahan Perusak Ozon/BPO» exactly
+    where the closed category is a live risk. That string is the probe.
+
+    It is deliberately COARSE — it matches anywhere in the record, not only in
+    `persyaratan` — and deliberately fail-CLOSED: over-matching costs a lot
+    member, under-matching costs a client the 11030 mistake (council round 1,
+    kimi-code/k3 HIGH (3)). `marked_codes` in the spec pins what it matches
+    catalogue-wide, so an over-match is measured rather than hypothetical.
+    """
+    government = {k: v for k, v in record.items() if k not in PROBE_BLIND_FIELDS}
+    blob = json.dumps(government, ensure_ascii=False).lower()
+    return [m for m in markers if m.lower() in blob]
+
+
 def still_qualifies(record: dict[str, Any], rule: dict[str, Any]) -> list[str]:
     """What a LOCATED record fails TODAY, ignoring its verification state.
 
@@ -365,6 +407,21 @@ def withheld(
         why = sector_referral(code, spec)
         if why:
             out.setdefault(code, why)
+    by_code = {str(r["kode_kbli_2025"]): r for r in records}
+    for block in spec.get("category_closure_probe", []):
+        for code in sorted(judged):
+            record = by_code.get(code)
+            if record is None:
+                continue
+            hits = category_markers(record, block.get("markers") or [])
+            if hits:
+                out.setdefault(
+                    code,
+                    f"category-closure probe: {block['article']} — the record "
+                    f"carries {', '.join(sorted(hits))}, the state's own per-code "
+                    "marker for a category the Perpres closes by activity without "
+                    "naming a code; adjudicate it, never publish it open by absence",
+                )
     return out
 
 
@@ -387,6 +444,12 @@ def check(
     refusals += [f"{c}: listed twice" for c in dupes]
 
     want = patch_for(spec)
+    for field in sorted(set(want) - set(PROBE_BLIND_FIELDS)):
+        refusals.append(
+            f"patch writes {field!r} but PROBE_BLIND_FIELDS does not list it — "
+            "the category probe would read our own prose back as government "
+            "evidence; add it there or stop writing it"
+        )
     rule = spec["rule"]
     for key, value in sorted(REQUIRED_RULE.items()):
         if rule.get(key) != value:
@@ -415,6 +478,42 @@ def check(
                     f"sector_referral[{i}]: division {div!r} is not a 2-digit "
                     "string — the unit of a sector referral is the KBLI division"
                 )
+    if not spec.get("category_closure_probe"):
+        refusals.append(
+            "rule: no category_closure_probe block — Pasal 2(2) closes four items "
+            "by ACTIVITY and names no code, so absence from every annex cannot "
+            "see them and the lot would publish openness it never tested"
+        )
+    for i, block in enumerate(spec.get("category_closure_probe", [])):
+        for field in ("article", "category", "finding"):
+            if not block.get(field):
+                refusals.append(f"category_closure_probe[{i}]: empty {field}")
+        markers = block.get("markers")
+        pinned = block.get("marked_codes")
+        if not markers or not isinstance(markers, list):
+            refusals.append(
+                f"category_closure_probe[{i}]: markers must be a non-empty list — "
+                "a probe with nothing to look for withholds nothing and says it did"
+            )
+            continue
+        if not isinstance(pinned, list):
+            refusals.append(
+                f"category_closure_probe[{i}]: marked_codes must be a list "
+                "(possibly empty) — it is the census the probe is pinned to"
+            )
+            continue
+        marked = {
+            code
+            for code, record in by_code.items()
+            if category_markers(record, markers)
+        }
+        if marked != set(pinned):
+            refusals.append(
+                f"category_closure_probe[{i}]: the catalogue marks "
+                f"{sorted(marked)} but the spec pins {sorted(pinned)} — a code "
+                "entered or left the closed category since the finding was "
+                "written; re-adjudicate it before writing"
+            )
     if refusals:
         return [], refusals
 
