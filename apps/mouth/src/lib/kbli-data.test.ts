@@ -86,8 +86,11 @@ describe("kbli-data", () => {
     // W-H PR-3b moves 8 more codes (47241 47242 47244 47245 47246 47249
     // 47712 47722) from declared_gap to located under Perpres 49/2021
     // Lampiran II entry 46: 1502 -> 1494, 57 -> 65.
-    expect(gaps).toHaveLength(1494);
-    expect(locatedCodes).toHaveLength(65);
+    // 2026-09-18 naso lot: 10307 10308 16291 16293 32201 55106 moved
+    // declared_gap→located under Perpres 49/2021 Lampiran II (whole-code rows
+    // via 1:1 BPS crosswalk), 1494→1488 / 65→71.
+    expect(gaps).toHaveLength(1488);
+    expect(locatedCodes).toHaveLength(71);
     for (const code of gaps) {
       expect(code.pma, code.code).toMatchObject({
         status: "unknown",
@@ -139,7 +142,10 @@ describe("kbli-data", () => {
     // own `!== "located"` guard and leaves BOTH the raw-JSON-derived set and
     // `gaps` (it is no longer declared_gap at all) — not a disclosure bug,
     // the code is simply no longer a gap.
-    expect(disclosedOnAGap).toHaveLength(38);
+    // 38 -> 37 on 2026-09-18 (naso lot): 55106 (CHIUSO_BALI, ex-Hotel Melati)
+    // moved to located under Lampiran II, so it leaves this set the same way
+    // 47249 did — the other five naso codes are ATTENZIONE_FASCIA_BALI.
+    expect(disclosedOnAGap).toHaveLength(37);
     for (const code of gaps) {
       if (code.baliL4 !== undefined) {
         expect(code.baliL4.status, code.code).toBe("CHIUSO_BALI");

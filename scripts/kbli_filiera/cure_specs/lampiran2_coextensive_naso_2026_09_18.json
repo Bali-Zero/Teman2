@@ -1,0 +1,93 @@
+{
+  "instrument": "Perpres 10/2021 as amended by 49/2021, Lampiran II",
+  "population": "PMA closed-list research 2026-09-18 (research/kbli/2026-09-18-kbli-codes-closed-to-pma-tier1-tier2-dossier.md §3.3, relation class `umkm_reserved_coextensive`, `canonical_agrees: false`): the six codes whose Lampiran II DIALOKASIKAN row is coextensive with the KBLI-2025 code on the annex's own text — no qualifying parent row, no in-row qualifier, single reserved ancestry, title ≈ row text — and which the catalogue still published TERBUKA/100 as a declared gap. Each 2020 ancestor has exactly one 2025 heir and each heir absorbs nothing else (re-derived by `apply_umkm_reservations.check()`'s own two-direction ancestor gate), so the EXISTING `judged_as` path applies unmodified. 13133 (Industri Kain Batik) is the seventh member of that class but is closed only by the UNION of Lampiran II item 11 and Lampiran III entry #2, and it carries a live Lampiran III slice disclosure on /kbli/13133 — it is excluded here and ships in its own PR.",
+  "adjudicated": "2026-09-18, owner's go («segui il nostro naso e aggiorna app e web»). Annex rows re-read on the layout dump of the BPK gazette PDF (Perpres 49/2021 Lampiran II, peraturan.bpk.go.id/Download/161564): p.2 entry 4 (10391, 10392), p.4 entries 14-15 (16291, 16293), p.6 entry 23 (32201), p.15 entry 48 (55120). Refuter Codex GPT-5.6 sol, three rounds on the relation: r1 #15 named 10307/10308 as closures on the adopted mappings; r2 #17 and r3 #11 re-sampled the rows against the primary text; r3 #7 resolved 16291's cell («Industri barang anyaman — Rotan dan bambu», ticked allocated); r3 #8 accepted the class as counted.",
+  "supersedes": null,
+  "excluded": {
+    "closed_by_union_own_pr": {
+      "codes": ["13133"],
+      "why": "Lampiran II item 11 reserves batik tulis + kombinasi tulis/cap; Lampiran III entry #2 caps batik cap at 0%; the union covers the code's uraian but neither annex alone does, and the page carries a Lampiran III slice disclosure that must be retired in the same change (perpres_slice_disclosure_relation.py refuses a slice on a non-TERBUKA code). Own PR."
+    },
+    "whole_row_unresolved": {
+      "codes": [
+        "02300",
+        "10794",
+        "13122",
+        "16292",
+        "16294",
+        "23932",
+        "47192",
+        "47243",
+        "47721",
+        "79110"
+      ],
+      "why": "Lampiran II row names the code without a qualifier but coverage of the 2025 code is UNRESOLVED (merged non-reserved ancestry, enumerated products under a generic title, or an OCR-damaged cell) — dossier §3.3 `umkm_reserved_whole_row`; per-row reading owed, nothing applied."
+    },
+    "in_review_since_wh_pr3": {
+      "codes": ["55209", "79110"],
+      "why": "IN REVISIONE since SAETTA W-H PR-3 (dossier 2026-09-15 §2/§6.1); 79110 also absorbs 79111/79112/79119 and the gate refuses it by construction. Never touch."
+    }
+  },
+  "items": [
+    {
+      "code": "10307",
+      "judged_as": "10391",
+      "locator": "Perpres 49/2021 Lampiran II (DIALOKASIKAN untuk Koperasi dan UMKM), p.2, entry 4 \"Industri pengolahan kedelai\", sub-row \"Industri tempe kedelai\" (ex-KBLI 2020 10391) — allocated to Koperasi/UMKM per Pasal 3(1)(b) + Pasal 5; the whole 2025 code is the reserved bidang usaha (Pasal 5(5)); max foreign 0%.",
+      "was": { "pma_status": "TERBUKA", "pma_max_asing": 100 },
+      "agreed_by": [
+        "claude-opus-5 (relation build 2026-09-18, annex layout text re-read)",
+        "codex-gpt-5.6 sol (refuter r1 #15, r2 #17, r3 #11)"
+      ]
+    },
+    {
+      "code": "10308",
+      "judged_as": "10392",
+      "locator": "Perpres 49/2021 Lampiran II (DIALOKASIKAN untuk Koperasi dan UMKM), p.2, entry 4 \"Industri pengolahan kedelai\", sub-row \"Industri tahu kedelai\" (ex-KBLI 2020 10392) — allocated to Koperasi/UMKM per Pasal 3(1)(b) + Pasal 5; the whole 2025 code is the reserved bidang usaha (Pasal 5(5)); max foreign 0%.",
+      "was": { "pma_status": "TERBUKA", "pma_max_asing": 100 },
+      "agreed_by": [
+        "claude-opus-5 (relation build 2026-09-18, annex layout text re-read)",
+        "codex-gpt-5.6 sol (refuter r1 #15, r2 #17, r3 #11)"
+      ]
+    },
+    {
+      "code": "16291",
+      "judged_as": "16291",
+      "locator": "Perpres 49/2021 Lampiran II (DIALOKASIKAN untuk Koperasi dan UMKM), p.4, entry 14 \"Industri barang anyaman\", sub-row \"Rotan dan bambu\" (KBLI 2020 16291, same number in KBLI 2025) — allocated to Koperasi/UMKM per Pasal 3(1)(b) + Pasal 5; the whole 2025 code is the reserved bidang usaha (Pasal 5(5)); max foreign 0%.",
+      "was": { "pma_status": "TERBUKA", "pma_max_asing": 100 },
+      "agreed_by": [
+        "claude-opus-5 (relation build 2026-09-18, annex layout text re-read)",
+        "codex-gpt-5.6 sol (refuter r3 #7, r3 #11)"
+      ]
+    },
+    {
+      "code": "16293",
+      "judged_as": "16293",
+      "locator": "Perpres 49/2021 Lampiran II (DIALOKASIKAN untuk Koperasi dan UMKM), p.4, entry 15 \"Industri kerajinan ukiran dari kayu bukan mebeller: ukiran kayu, relief, topeng, patung, wayang\" (KBLI 2020 16293, same number in KBLI 2025) — allocated to Koperasi/UMKM per Pasal 3(1)(b) + Pasal 5; the whole 2025 code is the reserved bidang usaha (Pasal 5(5)); max foreign 0%.",
+      "was": { "pma_status": "TERBUKA", "pma_max_asing": 100 },
+      "agreed_by": [
+        "claude-opus-5 (relation build 2026-09-18, annex layout text re-read)",
+        "codex-gpt-5.6 sol (refuter r3 #11)"
+      ]
+    },
+    {
+      "code": "32201",
+      "judged_as": "32201",
+      "locator": "Perpres 49/2021 Lampiran II (DIALOKASIKAN untuk Koperasi dan UMKM), p.6, entry 23 \"Industri alat musik tradisional antara lain: Angklung, Gordang Sembilan, Dambus, Kolintang, Gendang Beleq, Sasando, Tifa\" (KBLI 2020 32201, same number in KBLI 2025; the list is by example, not a restriction) — allocated to Koperasi/UMKM per Pasal 3(1)(b) + Pasal 5; the whole 2025 code is the reserved bidang usaha (Pasal 5(5)); max foreign 0%.",
+      "was": { "pma_status": "TERBUKA", "pma_max_asing": 100 },
+      "agreed_by": [
+        "claude-opus-5 (relation build 2026-09-18, annex layout text re-read)",
+        "codex-gpt-5.6 sol (refuter r3 #11)"
+      ]
+    },
+    {
+      "code": "55106",
+      "judged_as": "55120",
+      "locator": "Perpres 49/2021 Lampiran II (DIALOKASIKAN untuk Koperasi dan UMKM), p.15, entry 48, sub-row \"Hotel Melati\" (ex-KBLI 2020 55120, the non-star hotel class) — allocated to Koperasi/UMKM per Pasal 3(1)(b) + Pasal 5; the whole 2025 code is the reserved bidang usaha (Pasal 5(5)); max foreign 0%.",
+      "was": { "pma_status": "TERBUKA", "pma_max_asing": 100 },
+      "agreed_by": [
+        "claude-opus-5 (relation build 2026-09-18, annex layout text re-read)",
+        "codex-gpt-5.6 sol (refuter r3 #11)"
+      ]
+    }
+  ]
+}

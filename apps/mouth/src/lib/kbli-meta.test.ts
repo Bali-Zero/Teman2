@@ -500,7 +500,11 @@ describe("real dataset: the gate binds, and v3 actually differentiates", () => {
     // ATTENZIONE_FASCIA_BALI, not CHIUSO_BALI) but were already counted as
     // plain neutral declared_gap codes, so they also leave the count.
     // 1484 - 8 = 1476.
-    expect(pmaGaps).toBe(1476);
+    // 1476 - 6 = 1470 on 2026-09-18 (naso lot): 10307 10308 16291 16293 32201
+    // 55106 leave declared_gap for located under Lampiran II; 55106 is
+    // CHIUSO_BALI, the other five ATTENZIONE_FASCIA_BALI — all six were plain
+    // neutral declared_gap codes and simply leave the count.
+    expect(pmaGaps).toBe(1470);
     expect(suffixes).toHaveLength(1559);
   });
 

@@ -131,11 +131,14 @@ function pmaDisclosureContract() {
   // W-H PR-3b: 8 more codes (47241 47242 47244 47245 47246 47249 47712
   // 47722) move declared_gap→located under Perpres 49/2021 Lampiran II
   // entry 46 (Koperasi/UMKM reservation), 1502→1494 / 57→65.
-  assert.equal(gaps.length, 1494, "dataset must contain 1,494 PMA gaps");
+  // 2026-09-18 naso lot: 10307 10308 16291 16293 32201 55106 move
+  // declared_gap→located under Perpres 49/2021 Lampiran II (whole-code rows
+  // via 1:1 BPS crosswalk), 1494→1488 / 65→71.
+  assert.equal(gaps.length, 1488, "dataset must contain 1,488 PMA gaps");
   assert.equal(
     locatedCodes.length,
-    65,
-    "dataset must contain 65 located PMA verdicts",
+    71,
+    "dataset must contain 71 located PMA verdicts",
   );
   for (const code of gaps) {
     assert.equal(code.pma.status, "unknown", `${code.code}: PMA status`);

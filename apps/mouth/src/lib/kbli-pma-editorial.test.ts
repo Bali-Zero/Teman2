@@ -11,7 +11,9 @@ import { isPmaVerdictVerified } from "./kbli-provenance";
 import { isSourcedBaliClosure } from "./kbli-pma-disclosure";
 
 describe("PMA editorial disclosure boundary", () => {
-  it.each(["16291", "10793"])(
+  // 16291 → 16292 on 2026-09-18: 16291 is now located (Lampiran II, naso lot);
+  // 16292 is its declared-gap sibling with gold + intel, same shape.
+  it.each(["16292", "10793"])(
     "withholds real generated ownership prose for declared-gap code %s",
     (code) => {
       const record = getCode(code);
@@ -108,8 +110,11 @@ describe("PMA editorial disclosure boundary", () => {
     // (47241 47242 47244 47245 47246 47249 47712 47722) from declared_gap to
     // located under Perpres 49/2021 Lampiran II entry 46. None of the 8 is
     // registered in canonicalIntel, so the certified-intel count stays 36.
-    expect(located).toHaveLength(65);
-    expect(gaps).toHaveLength(1494);
+    // 2026-09-18 naso lot: 10307 10308 16291 16293 32201 55106 moved
+    // declared_gap→located under Perpres 49/2021 Lampiran II (whole-code rows
+    // via 1:1 BPS crosswalk), 65→71 / 1494→1488.
+    expect(located).toHaveLength(71);
+    expect(gaps).toHaveLength(1488);
     expect(located.filter((record) => record.intel_2026)).toHaveLength(36);
 
     for (const record of gaps) {

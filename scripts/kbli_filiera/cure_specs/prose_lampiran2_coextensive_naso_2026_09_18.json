@@ -1,0 +1,297 @@
+{
+  "compiler": "cure_prose_national_openness",
+  "_meta": {
+    "spec": "prose_lampiran2_coextensive_naso_2026_09_18",
+    "population": "The 6 codes the 2026-09-18 PMA closed-list research moved to TERBATAS/0 under Perpres 49/2021 Lampiran II (10307 10308 16291 16293 32201 55106; spec lampiran2_coextensive_naso_2026_09_18.json). New backlog created by that canonical write, not carried over from an earlier lot.",
+    "replacement_is_whole_field_not_sentence": "editorial.body keeps every paragraph that does not itself assert a PMA/national-openness or Bali-moratorium claim (the true product/scope and scale-range descriptions, kept verbatim) and replaces the ownership paragraphs with one corrected closing paragraph. zantaraOpener/whoThisIsFor/baliContext are replaced where they promised a PT PMA route (the template 'PMA status: Open' the detector does not see — same residual class PR #6589 cured by hand). 55106's whatYouNeed keeps its PP 28 licensing lines verbatim and replaces only the PMA line.",
+    "bali_sentence": "10307 10308 16291 16293 32201 carry l4_bali ATTENZIONE_FASCIA_BALI (not among the 18, needs_review); the replacement says exactly that and lets the national reservation decide. 55106 carries CHIUSO_BALI (ex-Hotel Melati on the 18 list) and the replacement names both closures.",
+    "boilerplate": "The closing and Bali sentences name the activity / the code so no sentence repeats across ≥5 records (kbli_dataset_lint L11 stays at the main count)."
+  },
+  "codes": {
+    "10307": {
+      "judul": "Pembuatan Tempe Kedelai",
+      "expect": {
+        "pma_max_asing": 0,
+        "pma_status": "TERBATAS",
+        "pma_kondisi_contains": "dialokasikan untuk Koperasi dan UMKM"
+      },
+      "fields": {
+        "whatYouNeed": {
+          "old_sha256": "fd26889928847d78a7d37ed6f29316751c666c1aeb3a5dcfdc7c034693bdc17b",
+          "old_excerpt": "Nationally, this KBLI is 100% open to foreign ownership. However, in Bali a PMA company ca",
+          "new": "The national foreign-ownership ceiling for this activity is 0%. Perpres 10/2021, as amended by Perpres 49/2021, allocates soybean tempe manufacturing to Koperasi and UMKM (Lampiran II p.2, entry 4, sub-row \"Industri tempe kedelai\", ex-KBLI 2020 10391), so a PT PMA cannot register this code anywhere in Indonesia — not only in Bali."
+        },
+        "zantaraOpener": {
+          "old_sha256": "54b6eb20d22a71e333b6434c15e24c9d9d790495e6afe59bc02835b5ddbd4fa6",
+          "old_excerpt": "Looking into Pembuatan Tempe Kedelai (10307)? This is classified as Medium-High risk with ",
+          "new": "Looking into Pembuatan Tempe Kedelai (10307)? This activity is allocated to Koperasi and UMKM under Perpres 49/2021 Lampiran II, so a PT PMA cannot register it anywhere in Indonesia. Let me walk you through what the record says."
+        },
+        "whoThisIsFor": {
+          "old_sha256": "dec453c4ecd180a774d31ef688e68ce08ea010da51af3de2e57f7919f6b26582",
+          "old_excerpt": "A foreign entrepreneur aiming to build a soybean tempe factory at scale, but who must be p",
+          "new": "Indonesian cooperatives and micro, small and medium enterprises making tempe from soybeans. A foreign investor cannot hold this code through a PT PMA: the activity is reserved nationwide under Perpres 49/2021 Lampiran II."
+        },
+        "baliContext": {
+          "old_sha256": "6f30395af5dc7d3c608576dda9875e7b3620ebb6abfbf4ef6a571ce3d6a386df",
+          "old_excerpt": "Food processing in Bali is a growing sector, particularly for: coconut products (VCO, coco",
+          "new": "Food processing in Bali is a growing sector, particularly for: coconut products (VCO, coconut sugar), coffee processing (Kintamani), chocolate/cacao, and seafood processing. Tempe making sits outside the foreign-investment map: the activity is reserved for Koperasi and UMKM nationwide, so the producers under this code in the Badung and Gianyar industrial zones are Indonesian cooperatives and MSMEs."
+        },
+        "editorial.headline": {
+          "old_sha256": "7fec835d26f7643010d18015210460b6036e62b1daa7f6449dd67ca8fc934210",
+          "old_excerpt": "Soybean Tempe Production Is Open Nationally, But Blocked in Bali",
+          "new": "Soybean Tempe Production Is Reserved for Koperasi and UMKM — Closed to PT PMA Nationwide"
+        },
+        "editorial.standfirst": {
+          "old_sha256": "f5b264f2e79599d22079ccde9761a64ca54d51a7d19e76421a09122b0e3f68bb",
+          "old_excerpt": "This activity covers the making of soybean tempe, open across business scales and foreign-",
+          "new": "KBLI 10307 covers the making of tempe from soybeans; Perpres 49/2021 Lampiran II allocates it to Indonesian cooperatives and MSMEs, so a foreign-owned company cannot register it anywhere in Indonesia."
+        },
+        "editorial.body": {
+          "old_sha256": "20e358d53c22ce9353052536fc421c1ad834f2ef4f843b9bb7d9f9384743718d",
+          "old_excerpt": "**This KBLI activity is deliberately narrow: it covers the making of tempe from soybeans.*",
+          "new": "**This KBLI activity is deliberately narrow: it covers the making of tempe from soybeans.** The record does not frame it as a broad fermented-food category, a general protein-manufacturing activity, or a catch-all for every product called tempe. Its scope is the production activity itself, anchored in one raw material: kedelai, or soybeans. That precision matters because the commercial identity of the product may feel familiar, even domestic, but the registration question is still technical. The code is about what is being made, from what input, and under which registered industrial activity.\n\nFor operators, the scale picture is unusually straightforward. The record opens this activity to Mikro, Kecil, Menengah, and Besar businesses. In practical registration language, that means the activity is not reserved only for cottage producers or only for large industry; it can sit across the full scale ladder recorded here. A founder setting up a small production unit, a growing local processor, or a larger manufacturing operation would all read the same scale field before moving on to the ownership and location question.\n\nThe ownership position is set by Perpres 10/2021, as amended by Perpres 49/2021, Lampiran II: soybean tempe manufacturing is allocated to Koperasi and UMKM (p.2, entry 4, sub-row \"Industri tempe kedelai\", ex-KBLI 2020 10391). A foreign investor can be neither a cooperative nor a UMKM, so the national foreign-ownership ceiling recorded for tempe making is 0% and a PT PMA cannot register this code anywhere in Indonesia. Bali's provincial overlay does not change that answer: the record lists 10307 outside the 18 business fields Bali closed to new PMA licensing in 2026, but the national reservation already decides the PMA question."
+        },
+        "editorial.pullQuote": {
+          "old_sha256": "d61afdbda80ba24dc21c6e54b12ae854a533df6a991aeca4be5c872c8dcaa8e7",
+          "old_excerpt": "This is nationally open soybean tempe production, but the Bali record turns that openness ",
+          "new": "Soybean tempe is a Koperasi-and-UMKM activity under Perpres 49/2021 Lampiran II: the PT PMA route is closed nationwide, not just in Bali."
+        }
+      }
+    },
+    "10308": {
+      "judul": "Pembuatan Tahu Kedelai",
+      "expect": {
+        "pma_max_asing": 0,
+        "pma_status": "TERBATAS",
+        "pma_kondisi_contains": "dialokasikan untuk Koperasi dan UMKM"
+      },
+      "fields": {
+        "whatYouNeed": {
+          "old_sha256": "d7d93f95b6a0081dd26cd427208ddc4ad6a3b9dccb3a42f05de550ccc5b3fa27",
+          "old_excerpt": "Nationally, this KBLI is 100% open to foreign ownership, but in Bali it is currently block",
+          "new": "The national foreign-ownership ceiling for this activity is 0%. Perpres 10/2021, as amended by Perpres 49/2021, allocates soybean tofu manufacturing to Koperasi and UMKM (Lampiran II p.2, entry 4, sub-row \"Industri tahu kedelai\", ex-KBLI 2020 10392), so a PT PMA cannot register this code anywhere in Indonesia — not only in Bali."
+        },
+        "zantaraOpener": {
+          "old_sha256": "a50e81a8f36576d6ed6306f879550b029062f7490a0aaf5f1fdee14949a62082",
+          "old_excerpt": "Looking into Pembuatan Tahu Kedelai (10308)? This is classified as Low risk with PMA statu",
+          "new": "Looking into Pembuatan Tahu Kedelai (10308)? This activity is allocated to Koperasi and UMKM under Perpres 49/2021 Lampiran II, so a PT PMA cannot register it anywhere in Indonesia. Let me walk you through what the record says."
+        },
+        "whoThisIsFor": {
+          "old_sha256": "356d465d6a257cd34203d1ec54f6061a5b4ca773db848266693f35cb6c310878",
+          "old_excerpt": "Foreign entrepreneurs who want to manufacture soybean-based tofu at scale, typically for a",
+          "new": "Indonesian cooperatives and micro, small and medium enterprises making tofu from soybeans. A foreign investor cannot hold this code through a PT PMA: the activity is reserved nationwide under Perpres 49/2021 Lampiran II."
+        },
+        "baliContext": {
+          "old_sha256": "6f30395af5dc7d3c608576dda9875e7b3620ebb6abfbf4ef6a571ce3d6a386df",
+          "old_excerpt": "Food processing in Bali is a growing sector, particularly for: coconut products (VCO, coco",
+          "new": "Food processing in Bali is a growing sector, particularly for: coconut products (VCO, coconut sugar), coffee processing (Kintamani), chocolate/cacao, and seafood processing. Tofu making sits outside the foreign-investment map: the activity is reserved for Koperasi and UMKM nationwide, so the producers under this code in the Badung and Gianyar industrial zones are Indonesian cooperatives and MSMEs."
+        },
+        "editorial.headline": {
+          "old_sha256": "6efaf4d234bd89b80bfc61ba52678846a0491249b139dbacec658d53fa24a38d",
+          "old_excerpt": "Soybean Tofu Is Open Nationally, but Blocked for PMA in Bali",
+          "new": "Soybean Tofu Is Reserved for Koperasi and UMKM — Closed to PT PMA Nationwide"
+        },
+        "editorial.standfirst": {
+          "old_sha256": "35acd4ea912ad297fc6cfde8757604d0e1bf751bc4c8921dce83979ee49f0a1e",
+          "old_excerpt": "KBLI 10308 covers soybean tofu manufacturing across every business scale, yet Bali’s PMA m",
+          "new": "KBLI 10308 covers soybean tofu manufacturing across every business scale; Perpres 49/2021 Lampiran II allocates it to Indonesian cooperatives and MSMEs, so a foreign-owned company cannot register it anywhere in Indonesia."
+        },
+        "editorial.body": {
+          "old_sha256": "8f407de8a3ce41a343b372200ce68dc950929b0a04d14177fc5cb0e219c0256e",
+          "old_excerpt": "KBLI 10308 is a precise manufacturing category: the making of tofu from soybeans. The reco",
+          "new": "KBLI 10308 is a precise manufacturing category: the making of tofu from soybeans. The record’s scope is narrow and material-led. What matters is not a broad food-processing ambition, a general plant-protein concept, or a retail-facing tofu brand, but the production activity itself: soybean tofu manufacturing. That clarity is useful because the code is built around the input and the process, not around how the finished product is later sold.\n\nOn the national register, the activity is open across the full scale range recorded for it. Mikro, Kecil, Menengah, and Besar are all listed as available scales, so the code is not confined to one size of operator.\n\nThe ownership position is set by Perpres 10/2021, as amended by Perpres 49/2021, Lampiran II: soybean tofu manufacturing is allocated to Koperasi and UMKM (p.2, entry 4, sub-row \"Industri tahu kedelai\", ex-KBLI 2020 10392). A foreign investor can be neither a cooperative nor a UMKM, so the national foreign-ownership ceiling recorded for tofu making is 0% and a PT PMA cannot register this code anywhere in Indonesia. Bali's provincial overlay does not change that answer: the record lists 10308 outside the 18 business fields Bali closed to new PMA licensing in 2026, but the national reservation already decides the PMA question."
+        },
+        "editorial.pullQuote": {
+          "old_sha256": "dcc559c6b8495d460769f260d8486c86f6389567da90654cfbd35446f7cf1b5a",
+          "old_excerpt": "KBLI 10308 is nationally open, but for Bali PMA registration the record does not support a",
+          "new": "Soybean tofu is a Koperasi-and-UMKM activity under Perpres 49/2021 Lampiran II: the PT PMA route is closed nationwide, not just in Bali."
+        }
+      }
+    },
+    "16291": {
+      "judul": "Industri Barang Anyaman dari Rotan dan Bambu",
+      "expect": {
+        "pma_max_asing": 0,
+        "pma_status": "TERBATAS",
+        "pma_kondisi_contains": "dialokasikan untuk Koperasi dan UMKM"
+      },
+      "fields": {
+        "whatYouNeed": {
+          "old_sha256": "442b73be2dc0fe9e5f3643f932d8cd9e34cc9744d2ab33262f82aa27f1a71550",
+          "old_excerpt": "Nationally, this activity is 100% open to foreign ownership, but in Bali it is currently b",
+          "new": "The national foreign-ownership ceiling for this activity is 0%. Perpres 10/2021, as amended by Perpres 49/2021, allocates rattan and bamboo weaving to Koperasi and UMKM (Lampiran II p.4, entry 14 \"Industri barang anyaman\", sub-row \"Rotan dan bambu\", KBLI 16291), so a PT PMA cannot register this code anywhere in Indonesia — not only in Bali."
+        },
+        "zantaraOpener": {
+          "old_sha256": "f9c2d5383755d984e0e8493f5f630332521fa656b5f150a3a98370bc3dc809f3",
+          "old_excerpt": "Planning a rattan and bamboo weaving business in Bali? Let me help you with the licensing ",
+          "new": "Planning a rattan and bamboo weaving business in Bali? 16291 is allocated to Koperasi and UMKM under Perpres 49/2021 Lampiran II, so it is not a PT PMA code. Let me walk you through what the record says."
+        },
+        "whoThisIsFor": {
+          "old_sha256": "2787928fec024b91cf4ccf57bda5cc94045f3711dbdc9ec1bddebb382b73e8ac",
+          "old_excerpt": "Foreign artisans, sustainable material producers, or design-driven brands who want to hand",
+          "new": "Indonesian cooperatives and micro, small and medium enterprises handcrafting woven rattan and bamboo products. A foreign investor cannot hold this code through a PT PMA: the activity is reserved nationwide under Perpres 49/2021 Lampiran II."
+        },
+        "editorial.headline": {
+          "old_sha256": "a1535ab7354462ee9623b1a32479f9669cd8e9c2548a4ca3c90362bdc7c5bc58",
+          "old_excerpt": "Rattan and Bamboo Weaving Meets a Bali PMA Block",
+          "new": "Rattan and Bamboo Weaving Is Reserved for Koperasi and UMKM — Closed to PT PMA Nationwide"
+        },
+        "editorial.standfirst": {
+          "old_sha256": "4dd82ec75d239f51188bb6f2626b9ed46ed63f667f876b7ddc0603bbd84709e9",
+          "old_excerpt": "This activity is nationally open to foreign ownership, but the Bali record marks it blocke",
+          "new": "KBLI 16291 covers woven goods made from rattan or bamboo; Perpres 49/2021 Lampiran II allocates the activity to Indonesian cooperatives and MSMEs, so a foreign-owned company cannot register it anywhere in Indonesia."
+        },
+        "editorial.body": {
+          "old_sha256": "90cbde7830cacad1cfb38160c5d7f894163cf9ea1cc49dc93f3c75b42d19ab01",
+          "old_excerpt": "This KBLI activity is for making woven goods whose main material is rattan or bamboo. The ",
+          "new": "This KBLI activity is for making woven goods whose main material is rattan or bamboo. The record’s scope is practical and material-led: mats, webbing, lampit, hand fans, woven wall panels, and woven bags, including women’s bags and laptop bags. Its centre of gravity is not general craft trading or a broad lifestyle label; it is manufacturing, where the defining feature is the woven article and the principal input is rattan or bamboo.\n\nThat makes the registration question more specific than it first appears. The code is available across the full range of business scales listed in the record: Mikro, Kecil, Menengah, and Besar. A small workshop producing hand fans and woven panels, a growing bag producer, and a larger woven-goods manufacturer can all sit inside the same activity description if the actual production remains within the stated scope. The record also draws a boundary away from footwear and woven headwear, so the clean reading is to keep this code for rattan-and-bamboo woven goods themselves, not every product that happens to use a woven element.\n\nThe ownership position is set by Perpres 10/2021, as amended by Perpres 49/2021, Lampiran II: rattan and bamboo weaving is allocated to Koperasi and UMKM (p.4, entry 14 \"Industri barang anyaman\", sub-row \"Rotan dan bambu\", KBLI 16291). A foreign investor can be neither a cooperative nor a UMKM, so the national foreign-ownership ceiling recorded for rattan and bamboo weaving is 0% and a PT PMA cannot register this code anywhere in Indonesia. That is not a Bali percentage cap and not a negotiable limit; it is a national reservation. Bali's provincial overlay does not change that answer: the record lists 16291 outside the 18 business fields Bali closed to new PMA licensing in 2026, but the national reservation already decides the PMA question."
+        },
+        "editorial.pullQuote": {
+          "old_sha256": "eb3b832b8f706b4701c28cc561320492de1e0597efeb9b7e02075212881a1e38",
+          "old_excerpt": "The activity is nationally open to full foreign ownership, but the Bali-side record turns ",
+          "new": "Woven rattan and bamboo goods are a Koperasi-and-UMKM activity under Perpres 49/2021 Lampiran II: the PT PMA route is closed nationwide, not just in Bali."
+        }
+      }
+    },
+    "16293": {
+      "judul": "Industri Kerajinan Ukiran dari Kayu Bukan Furnitur",
+      "expect": {
+        "pma_max_asing": 0,
+        "pma_status": "TERBATAS",
+        "pma_kondisi_contains": "dialokasikan untuk Koperasi dan UMKM"
+      },
+      "fields": {
+        "whatYouNeed": {
+          "old_sha256": "80990682a634607e63a9c84b4f75d65470d05f0d1929b497df0466351e2caac1",
+          "old_excerpt": "Despite being 100% open to foreign ownership nationally, a PMA company cannot be registere",
+          "new": "The national foreign-ownership ceiling for this activity is 0%. Perpres 10/2021, as amended by Perpres 49/2021, allocates non-furniture wood carving to Koperasi and UMKM (Lampiran II p.4, entry 15 \"Industri kerajinan ukiran dari kayu bukan mebeller\", KBLI 16293), so a PT PMA cannot register this code anywhere in Indonesia — not only in Bali. Exporting carved goods still needs SVLK timber-legality certification, whoever the producer is."
+        },
+        "zantaraOpener": {
+          "old_sha256": "7850fdd1d719df89f93e02f83056bfe54b51da708fa67ec10cfa89ade93bbb60",
+          "old_excerpt": "Starting a wood carving business in Bali? 16293 is open to PMA with IDR 10B investment — b",
+          "new": "Starting a wood carving business in Bali? 16293 is allocated to Koperasi and UMKM under Perpres 49/2021 Lampiran II, so it is not a PT PMA code — and SVLK timber legality certification is mandatory for exports whoever the producer is."
+        },
+        "whoThisIsFor": {
+          "old_sha256": "92af6a7cd78e237b763152f02e0dcc9f20b42f2c04993078a922bdf54aebf74a",
+          "old_excerpt": "This is for foreign entrepreneurs who want to manufacture wooden handicrafts and carvings ",
+          "new": "Indonesian cooperatives and micro, small and medium enterprises producing wooden handicrafts and carvings, for export or local sale. A foreign investor cannot hold this code through a PT PMA: the activity is reserved nationwide under Perpres 49/2021 Lampiran II."
+        },
+        "baliContext": {
+          "old_sha256": "d3a3d42221095cf88c7b59f02473ed846af7cbae527c4778dca5ffa7bfc7892c",
+          "old_excerpt": "Mas village in Gianyar is THE wood carving center of Bali — generations of master carvers,",
+          "new": "Mas village in Gianyar is THE wood carving center of Bali — generations of master carvers, workshop clusters, and a deep supply chain. Ubud surroundings are full of smaller workshops. The critical compliance requirement is SVLK — without timber legality verification, your products get stuck at customs. V-Legal documents take 2-4 weeks to process. Production under this code is reserved for Koperasi and UMKM nationwide, so a foreign-owned company cannot register 16293: the workshops in Mas and around Ubud are Indonesian producers."
+        },
+        "editorial.headline": {
+          "old_sha256": "8cbaeacf70119a2939f1737c797383eb996fbb121d1ecfc35a3bb75e8c656cf0",
+          "old_excerpt": "Wood Carving That Is Nationally Open, But Not Registerable in Bali",
+          "new": "Wood Carving Is Reserved for Koperasi and UMKM — Closed to PT PMA Nationwide"
+        },
+        "editorial.standfirst": {
+          "old_sha256": "0d4e4571a32c5bffa9135d0018f528df8f2e16835e7c9a6f751ee97327f8fc8d",
+          "old_excerpt": "KBLI 16293 covers non-furniture wooden craft and carving production, open nationally to fo",
+          "new": "KBLI 16293 covers non-furniture wooden craft and carving production; Perpres 49/2021 Lampiran II allocates it to Indonesian cooperatives and MSMEs, so a foreign-owned company cannot register it anywhere in Indonesia."
+        },
+        "editorial.body": {
+          "old_sha256": "729307a6d9a564f434ed79c049d6da596ea00725f04f23bb731dc73014952e81",
+          "old_excerpt": "KBLI 16293 is a manufacturing activity for wooden craft and carved objects that are not fu",
+          "new": "KBLI 16293 is a manufacturing activity for wooden craft and carved objects that are not furniture. The record describes the activity through its products: reliefs, masks, statues, wayang, flower vases, frames, lampshades, souvenirs, ashtrays, tissue boxes, jewelry boxes, wall-decoration products, and name boards. In practical terms, this is the code for makers whose output is decorative, cultural, gift-oriented, or object-based rather than furniture-based. The centre of gravity is the making of crafted and carved wooden goods, not a retail shop, not a gallery, and not a furniture line.\n\nThe scale picture is unusually broad. The record opens the activity to Mikro, Kecil, Menengah, and Besar scales, so it can describe anything from a very small producer to a large manufacturing operation, provided the activity remains within this non-furniture wooden craft and carving scope. That matters because this code is not limited to one size of enterprise in the national classification record. A founder reading the scope should therefore focus less on the aesthetic style of the goods and more on whether the business is actually producing the listed kinds of wooden craft or carving products.\n\nThe ownership position is set by Perpres 10/2021, as amended by Perpres 49/2021, Lampiran II: non-furniture wood carving is allocated to Koperasi and UMKM (p.4, entry 15 \"Industri kerajinan ukiran dari kayu bukan mebeller: ukiran kayu, relief, topeng, patung, wayang\", KBLI 16293). A foreign investor can be neither a cooperative nor a UMKM, so the national foreign-ownership ceiling recorded for wood carving is 0% and a PT PMA cannot register this code anywhere in Indonesia. Bali's provincial overlay does not change that answer: the record lists 16293 outside the 18 business fields Bali closed to new PMA licensing in 2026, but the national reservation already decides the PMA question."
+        },
+        "editorial.pullQuote": {
+          "old_sha256": "feb5395878efdd4d8932bcad44164cfee5b8cb57ea0e338ad056bafe66a58f8f",
+          "old_excerpt": "This activity is nationally open to full foreign ownership, but the Bali-side record block",
+          "new": "Carved wooden goods are a Koperasi-and-UMKM activity under Perpres 49/2021 Lampiran II: the PT PMA route is closed nationwide, not just in Bali."
+        }
+      }
+    },
+    "32201": {
+      "judul": "Industri Alat Musik Tradisional",
+      "expect": {
+        "pma_max_asing": 0,
+        "pma_status": "TERBATAS",
+        "pma_kondisi_contains": "dialokasikan untuk Koperasi dan UMKM"
+      },
+      "fields": {
+        "whatYouNeed": {
+          "old_sha256": "5d1a9a6673bd9821dda7fee2b635f47f8467f3c47cf0874cd9e10e7c19185686",
+          "old_excerpt": "Nationally, this KBLI is fully open to 100% foreign ownership. In Bali, however, an island",
+          "new": "The national foreign-ownership ceiling for this activity is 0%. Perpres 10/2021, as amended by Perpres 49/2021, allocates the making of traditional musical instruments to Koperasi and UMKM (Lampiran II p.6, entry 23 \"Industri alat musik tradisional\", KBLI 32201), so a PT PMA cannot register this code anywhere in Indonesia — not only in Bali."
+        },
+        "zantaraOpener": {
+          "old_sha256": "618837c74a7aa31dbad7324c720c6fcca3ce8a962ecc45be6345a8b37091772f",
+          "old_excerpt": "Looking into Industri Alat Musik Tradisional (32201)? Nationally this carries PMA status: ",
+          "new": "Looking into Industri Alat Musik Tradisional (32201)? This activity is allocated to Koperasi and UMKM under Perpres 49/2021 Lampiran II, so a PT PMA cannot register it anywhere in Indonesia. Let me walk you through what the record says."
+        },
+        "whoThisIsFor": {
+          "old_sha256": "0a9073354beb94793ad5761f95e70393c862bb0fa0f3029f091565246ff0fe12",
+          "old_excerpt": "Foreign entrepreneurs passionate about preserving and commercializing authentic Indonesian",
+          "new": "Indonesian cooperatives and micro, small and medium enterprises making traditional musical instruments. A foreign investor cannot hold this code through a PT PMA: the activity is reserved nationwide under Perpres 49/2021 Lampiran II."
+        },
+        "editorial.headline": {
+          "old_sha256": "702aca2c1c0f2351acb2c8ca1796393181f85091895d7da0b3e601c662e8b4f2",
+          "old_excerpt": "Traditional Instruments, Nationally Open but Bali-Blocked",
+          "new": "Traditional Instruments Are Reserved for Koperasi and UMKM — Closed to PT PMA Nationwide"
+        },
+        "editorial.standfirst": {
+          "old_sha256": "ea88799c24ad98d4b83d350330675458f32291c1707b3668ad519b15af5ffa2f",
+          "old_excerpt": "KBLI 32201 covers the making of Indonesian traditional musical instruments, open across bu",
+          "new": "KBLI 32201 covers the making of Indonesian traditional musical instruments; Perpres 49/2021 Lampiran II allocates it to Indonesian cooperatives and MSMEs, so a foreign-owned company cannot register it anywhere in Indonesia."
+        },
+        "editorial.body": {
+          "old_sha256": "0b7fb4729c3a35bdb7740b7c6e70eadc653643588923a565a6ee7e5b36cbac56",
+          "old_excerpt": "KBLI 32201 is about craft, sound, and cultural manufacture rather than performance or reta",
+          "new": "KBLI 32201 is about craft, sound, and cultural manufacture rather than performance or retail. The record defines it as the making of traditional musical instruments with roots in Indonesian cultural history or customary practice. These are instruments played by plucking, bowing, blowing, or striking: angklung, calung, kecapi, bamboo flute, kolintang, gong, traditional trumpet, gambang, rebab, and tifa are all within the recorded scope. The same record also brings in whistles, call horns, and other blown sound-signalling instruments, so the code is not limited to ceremonial instruments alone. Its centre of gravity, however, is clear: physical production of traditional sound-making objects.\n\nThe registration picture is broad at the national scale. The activity is open to Mikro, Kecil, Menengah, and Besar businesses, meaning the record does not reserve this manufacturing activity for only one size of operator. A small workshop making bamboo flutes and a larger facility producing gongs or other traditional instruments would both sit inside the scale range named in the record, as long as the activity remains the making of the instruments covered by the scope.\n\nThe ownership position is set by Perpres 10/2021, as amended by Perpres 49/2021, Lampiran II: the making of traditional musical instruments is allocated to Koperasi and UMKM (p.6, entry 23 \"Industri alat musik tradisional antara lain: Angklung, Gordang Sembilan, Dambus, Kolintang, Gendang Beleq, Sasando, Tifa\", KBLI 32201 — the list is by example, not a restriction). A foreign investor can be neither a cooperative nor a UMKM, so the national foreign-ownership ceiling recorded for instrument making is 0% and a PT PMA cannot register this code anywhere in Indonesia. No separate Bali percentage applies and none should be read into it. Bali's provincial overlay does not change that answer: the record lists 32201 outside the 18 business fields Bali closed to new PMA licensing in 2026, but the national reservation already decides the PMA question."
+        },
+        "editorial.pullQuote": {
+          "old_sha256": "b38e0bb9144488151c35c1eb7ec417974d484cf7fccfa2f3b14cfb0c570d7062",
+          "old_excerpt": "Nationally, KBLI 32201 is open up to 100 percent foreign ownership, but the Bali record sa",
+          "new": "Traditional instrument making is a Koperasi-and-UMKM activity under Perpres 49/2021 Lampiran II: the PT PMA route is closed nationwide, not just in Bali."
+        }
+      }
+    },
+    "55106": {
+      "judul": "Aktivitas Hotel Nonbintang",
+      "expect": {
+        "pma_max_asing": 0,
+        "pma_status": "TERBATAS",
+        "pma_kondisi_contains": "dialokasikan untuk Koperasi dan UMKM"
+      },
+      "fields": {
+        "whatYouNeed": {
+          "old_sha256": "203d5e77944235cf679f3384044ba24d8848e34464a5bd7081ebd22e35df02ef",
+          "old_excerpt": "Multiple licensing paths inherited from merged PP28 sources (KBLI 2020 codes 55199, 55110,",
+          "new": "Multiple licensing paths inherited from merged PP28 sources (KBLI 2020 codes 55199, 55110, and 55130):\n\n**Micro + Small + Medium**: Medium-Low risk, NIB + Standard Certificate **automatically**. Health cert and periodic reports required.\n\n**Small / Medium / Large**: Two tiers — automatic (Medium-Low with Self-Assessment + health cert) or 14-day (Medium-High with LSPr certification).\n\n**PMA:** Closed — allocated to Koperasi and UMKM (Perpres 49/2021 Lampiran II p.15, entry 48, sub-row \"Hotel Melati\", ex-KBLI 2020 55120); foreign ownership 0% nationwide. Bali also lists the non-star hotel among the 18 business fields it closed to new PMA licensing in 2026."
+        },
+        "zantaraOpener": {
+          "old_sha256": "af0c7fe536f1f1969be98355e67acbfaa7fae0fa1d26041e967cd9802e069458",
+          "old_excerpt": "Running a budget hotel or guesthouse in Bali? 55106 covers non-star hotels — and the licen",
+          "new": "Running a budget hotel or guesthouse in Bali? 55106 covers non-star hotels — a Koperasi-and-UMKM activity under Perpres 49/2021 Lampiran II, so it is not a PT PMA code. Here is what the record says."
+        },
+        "baliContext": {
+          "old_sha256": "a5edf8192f2dc3e49f0d43e2e9cfa8164a8f00d1948a7681825d6df43e7a2de8",
+          "old_excerpt": "Non-star hotels are everywhere in Bali — the backbone of budget tourism. Kuta's gang (alle",
+          "new": "Non-star hotels are everywhere in Bali — the backbone of budget tourism. Kuta's gang (alley) guesthouses, Ubud's family-run places, Amed's beachfront losmen. This code is for smaller operators who want hotel-level licensing without the investment of star classification — and, under Perpres 49/2021 Lampiran II, for Indonesian cooperatives and MSMEs only: a foreign-owned company cannot register 55106, in Bali or anywhere else, and Bali also lists the non-star hotel (ex-Hotel Melati) among the 18 fields it closed to new PMA licensing in 2026. If you're running a 5-15 room place in a quieter area like Sidemen, Munduk, or Lovina, this is likely your code."
+        },
+        "editorial.headline": {
+          "old_sha256": "d4af4b4b48b5d2b878be9df8a350c571cca7d79070a4db7f33152b354b2415b7",
+          "old_excerpt": "Non-Star Hotels: Nationally Open, Bali Depends on the Declared Scope",
+          "new": "Non-Star Hotels Are Reserved for Koperasi and UMKM — Closed to PT PMA Nationwide"
+        },
+        "editorial.standfirst": {
+          "old_sha256": "3eeca73393a195c8a4d34dda0c96ce24ad0a0610d21357405b1abcb66916508b",
+          "old_excerpt": "KBLI 55106 covers commercially managed non-star accommodation for daily or weekly stays, b",
+          "new": "KBLI 55106 covers commercially managed non-star accommodation for daily or weekly stays; Perpres 49/2021 Lampiran II allocates the Hotel Melati class to Indonesian cooperatives and MSMEs, so a foreign-owned company cannot register it anywhere in Indonesia."
+        },
+        "editorial.body": {
+          "old_sha256": "c79a3baa02ca0cd0789e12ee941462c579f4473d45578442b534fba28359cf20",
+          "old_excerpt": "KBLI 55106 is the commercial provision of non-star hotel accommodation, ordinarily offered",
+          "new": "KBLI 55106 is the commercial provision of non-star hotel accommodation, ordinarily offered on a daily or weekly basis. It applies where an operator manages all or part of a building that meets the requirements for a non-star hotel. The scope expressly accommodates both building-area bands: premises above 6,000 m² and premises at or below 6,000 m². The point is not a particular style of hospitality, but commercially managed short-stay accommodation within that non-star hotel framework.\n\nThe activity is open to small, medium and large businesses. That matters because the code does not reserve the field for a single operating scale: a modest accommodation business and a larger hotel operation can each sit within the stated scope, provided the actual activity fits it.\n\nThe ownership position is set by Perpres 10/2021, as amended by Perpres 49/2021, Lampiran II (p.15, entry 48, sub-row \"Hotel Melati\", ex-KBLI 2020 55120): non-star hotel operation is allocated to Koperasi and UMKM. A foreign investor can be neither a cooperative nor a UMKM, so the national foreign-ownership ceiling recorded for non-star hotels is 0% and a PT PMA cannot register this code anywhere in Indonesia.\n\nBali adds a second, independent closure: the provincial government lists the non-star hotel among the 18 business fields it closed to new foreign-owned licensing on OSS from May 2026. For a founder the conclusion is precise rather than scope-dependent: this is not a question to be resolved by the declared scope in OSS; the code is not available to a foreign-owned company at either level."
+        },
+        "editorial.pullQuote": {
+          "old_sha256": "1af0c2af5eb1665d710d7ecc8c2271d7810514ee3612fcdf6fbf6a18c05f6701",
+          "old_excerpt": "The true question in Bali is not whether the activity is nationally open, but what the exa",
+          "new": "Non-star hotels belong to Koperasi and UMKM under Perpres 49/2021 Lampiran II — the PT PMA route is closed nationwide, and Bali closes it a second time."
+        }
+      }
+    }
+  }
+}

@@ -217,8 +217,8 @@
 10304 | Pembekuan Buah-buahan dan Sayuran | NOT_VERIFIED | Not verified | Rendah / Menengah Tinggi
 10305 | Pengalengan Buah-buahan dan Sayuran | NOT_VERIFIED | Not verified | Rendah / Menengah Tinggi
 10306 | Pengolahan Sari Buah-buahan dan Sayuran | NOT_VERIFIED | Not verified | Rendah / Menengah Tinggi
-10307 | Pembuatan Tempe Kedelai | NOT_VERIFIED | Not verified | Rendah / Menengah Rendah
-10308 | Pembuatan Tahu Kedelai | NOT_VERIFIED | Not verified | Rendah / Menengah Rendah
+10307 | Pembuatan Tempe Kedelai | TERBATAS | 0% | Rendah / Menengah Rendah
+10308 | Pembuatan Tahu Kedelai | TERBATAS | 0% | Rendah / Menengah Rendah
 10309 | Pengolahan dan Pengawetan Lainnya untuk Buah-buahan dan Sayuran | NOT_VERIFIED | Not verified | Rendah / Tinggi / Menengah Tinggi
 10411 | Industri Minyak Mentah dan Lemak Nabati Bukan Kelapa dan Kelapa Sawit | NOT_VERIFIED | Not verified | Tinggi
 10412 | Industri Margarin | NOT_VERIFIED | Not verified | Tinggi
@@ -357,9 +357,9 @@
 16221 | Industri Barang Bangunan dari Kayu | TERBATAS | 0% | Rendah / Menengah Rendah
 16222 | Industri Bangunan Prafabrikasi dari Kayu dan Sejenisnya | NOT_VERIFIED | Not verified | Rendah / Menengah Rendah
 16230 | Industri Wadah dari Kayu | NOT_VERIFIED | Not verified | Rendah / Menengah Rendah
-16291 | Industri Barang Anyaman dari Rotan dan Bambu | NOT_VERIFIED | Not verified | Rendah
+16291 | Industri Barang Anyaman dari Rotan dan Bambu | TERBATAS | 0% | Rendah
 16292 | Industri Barang Anyaman dari Tanaman Selain Rotan dan Bambu | NOT_VERIFIED | Not verified | Rendah
-16293 | Industri Kerajinan Ukiran dari Kayu Bukan Furnitur | NOT_VERIFIED | Not verified | Rendah
+16293 | Industri Kerajinan Ukiran dari Kayu Bukan Furnitur | TERBATAS | 0% | Rendah
 16294 | Industri Alat Dapur dan Alat Makan dari Kayu, Rotan, dan Bambu | NOT_VERIFIED | Not verified | Rendah
 16295 | Industri Kayu Bakar dan Pelet dari Kayu dan Biomassa lainnya | NOT_VERIFIED | Not verified | Rendah / Tinggi / Menengah Rendah
 16299 | Industri Barang Lainnya dari Kayu; Industri Barang dari Gabus, Jerami, Rotan, Bambu, dan Sejenisnya YTDL | NOT_VERIFIED | Not verified | Menengah Rendah
@@ -615,7 +615,7 @@
 32114 | Industri Perhiasan dari Mutiara | NOT_VERIFIED | Not verified | Menengah Rendah
 32119 | Industri Barang Berharga Lainnya dari Logam Mulia | NOT_VERIFIED | Not verified | Menengah Rendah
 32120 | Industri Perhiasan Imitasi dan Barang Sejenis | NOT_VERIFIED | Not verified | Menengah Rendah
-32201 | Industri Alat Musik Tradisional | NOT_VERIFIED | Not verified | Rendah
+32201 | Industri Alat Musik Tradisional | TERBATAS | 0% | Rendah
 32202 | Industri Alat Musik Nontradisional | NOT_VERIFIED | Not verified | Menengah Rendah
 32300 | Industri Peralatan dan Perlengkapan Olahraga | NOT_VERIFIED | Not verified | Menengah Rendah
 32401 | Industri Alat Permainan | NOT_VERIFIED | Not verified | Menengah Rendah
@@ -1056,7 +1056,7 @@
 55103 | Aktivitas Hotel Bintang Tiga | NOT_VERIFIED | Not verified | Menengah Rendah / Menengah Tinggi
 55104 | Aktivitas Hotel Bintang Dua | NOT_VERIFIED | Not verified | Menengah Rendah / Menengah Tinggi
 55105 | Aktivitas Hotel Bintang Satu | TERBATAS | 0% | Menengah Rendah / Menengah Tinggi
-55106 | Aktivitas Hotel Nonbintang | NOT_VERIFIED | Not verified | Menengah Tinggi / Menengah Rendah
+55106 | Aktivitas Hotel Nonbintang | TERBATAS | 0% | Menengah Tinggi / Menengah Rendah
 55201 | Aktivitas Rumah Tinggal Sewa (Homestay) | TERBATAS | 0% | Menengah Rendah
 55202 | Aktivitas Hostel Remaja (Youth Hostel) | NOT_VERIFIED | Not verified | Menengah Rendah
 55203 | Aktivitas Vila | TERBATAS | 0% | Menengah Rendah

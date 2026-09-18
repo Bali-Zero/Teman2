@@ -1,0 +1,22 @@
+{
+  "adjudicated": "2026-09-18 PMA closed-list research (research/kbli/2026-09-18-kbli-codes-closed-to-pma-tier1-tier2-dossier.md): the canonical moved to TERBATAS/0/located under Perpres 49/2021 Lampiran II (spec lampiran2_coextensive_naso_2026_09_18.json) and gold OVERRIDES canonical on the rendered page for zantaraOpener/whatYouNeed/baliContext. cure_gold_pma_line.py --apply already re-derived the closing **PMA:** sentence; this sweep replaces the PT-PMA route promised in the other fields with the Koperasi/UMKM route (same shape as 55203's gold) and appends the Lampiran II locator to the PMA sentence (47222's authored shape). No new claims beyond the allocation; the local colour and licensing lines stay.",
+  "code": "32201",
+  "old_sha256": "1685389e1b3f92f5e3ed65cb39e4bab684496c819060f61677b21c0693b475be",
+  "edits": [
+    {
+      "field": "whatYouNeed",
+      "old": "1. **PT PMA incorporation** — notary deed, AHU registration, TDP (~2–4 weeks)\n2. **NIB via OSS** — register on oss.go.id, select this code, issued automatically (1–3 days)\n3. **Submit industrial data report every 6 months (Kemenperin)** — post-license obligation\n4. **Menjamin keamanan dan keselamatan alat, proses, hasil produksi, penyimpan-an, serta pengangkutan, se...** — post-license obligation\n5. **Memiliki: a) Dokumen panduan penggunaan barang hasil produksi (meliputi perawatan, penanganan troubl...** — post-license obligation\n\n**Authority by scale:**\nSmall: **Bupati/Walikota** (Otomatis) · Medium: **Bupati/Walikota Gubernur** (Otomatis) · Large: **OSS** (Otomatis)\n\n**PMA:** Closed to foreign investment — domestic entities only.",
+      "new": "This bidang usaha is allocated to Koperasi and UMKM under Perpres 49/2021's Lampiran II (p.6, entry 23 \"Industri alat musik tradisional\"), so a PT PMA cannot register it. The steps below are the Koperasi/UMKM registration route, not a PMA one.\n1. **NIB via OSS** — register on oss.go.id as a Koperasi/UMKM entity, select this code, issued automatically (1–3 days)\n2. **Submit industrial data report every 6 months (Kemenperin)** — post-license obligation\n3. **Menjamin keamanan dan keselamatan alat, proses, hasil produksi, penyimpan-an, serta pengangkutan, se...** — post-license obligation\n4. **Memiliki: a) Dokumen panduan penggunaan barang hasil produksi (meliputi perawatan, penanganan troubl...** — post-license obligation\n\n**Authority by scale:**\nSmall: **Bupati/Walikota** (Otomatis) · Medium: **Bupati/Walikota Gubernur** (Otomatis) · Large: **OSS** (Otomatis)\n\n**PMA:** Closed to foreign investment — domestic entities only. Perpres 10/2021 Lampiran II (as replaced by 49/2021) allocates the making of traditional musical instruments to Koperasi and UMKM; a PT PMA cannot hold equity in this activity."
+    },
+    {
+      "field": "zantaraOpener",
+      "old": "Producing traditional Balinese Gamelan or bamboo instruments? Let's register your PT PMA and get your workshop export-ready.",
+      "new": "Producing traditional Balinese Gamelan or bamboo instruments? 32201 is allocated to Koperasi and UMKM under Perpres 49/2021 Lampiran II, so it is not a PT PMA code — here is the Koperasi/UMKM route to get the workshop export-ready."
+    },
+    {
+      "field": "baliContext",
+      "old": "Operating a traditional instrument workshop as a PT PMA is 100% open to foreign investors. However, sourcing",
+      "new": "The activity is allocated to Koperasi and UMKM under Perpres 49/2021 Lampiran II, so a PT PMA cannot register 32201 — the workshops are Indonesian cooperatives and MSMEs. Sourcing"
+    }
+  ]
+}
