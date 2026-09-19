@@ -35,8 +35,8 @@ type BusinessStoryPanelProps = {
   isLoading: boolean;
   error: Error | null;
   /** Section ordinal in the Overview "ledger" stack. Defaults to 2 — ordinal
-   * 1 is the "Needs attention" ledger (#6844, merged to main 2026-09-19);
-   * pass an explicit value if the mount order changes. */
+   * 1 is the "Needs attention" ledger that opens the Overview tab; pass an
+   * explicit value if the mount order changes. */
   n?: number;
 };
 
