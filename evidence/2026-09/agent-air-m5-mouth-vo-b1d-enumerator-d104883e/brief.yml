@@ -1,0 +1,129 @@
+task_id: vo-b1d-enumerator
+mandate_id: B1
+gear: 2
+l_level: L2
+gate_class: opus
+base_sha: 31cfc1d4dc763d0bcbc571575b5376c413f3a926 # pragma: allowlist secret - public Git commit ID
+objective: >-
+  MANDATE-vo.md "Slice B1'': the memo recount that CAN fail". The interview-space
+  enumerator's exact-count algorithm (`countExactWalks`) memoizes a subtree by
+  a key built from (next question id, a projected subset of facts). The key's
+  projection decides correctness: two states that share the projected facts
+  but diverge on an UN-projected fact get merged into one cached subtree,
+  silently under- or over-counting `walksTotalExact`. This PR makes the
+  projection an explicit, injectable parameter of `countExactWalks` (default
+  unchanged) and adds a guilt/innocence test pair that drives the REAL
+  production `computeNextNode`, bounded to a small business-branch sub-space
+  where the projection genuinely decides the count, so a future under-
+  projection bug turns a test red instead of moving a headline number nobody
+  is watching.
+constraints:
+  - >-
+    T1: `countExactWalks` takes a third `options.memoProjection` field
+    (alongside `start`/`memoStats`); default is `BRANCH_RELEVANT_FACT_KEYS`,
+    identical to the pre-existing behavior. A guilt/innocence pair on a
+    bounded real sub-space inside the BUSINESS branch — where
+    `category === "business" && business_activity === "exploring"` selects a
+    different downstream question sequence than every other
+    `business_activity` value, and both sequences pass through a node named
+    `stay_days` — asserts: (innocence) with the full projection, the memoized
+    count equals an independent unmemoized recursion over the SAME wrapped
+    `computeNextNode`, with at least one real memo hit; (guilt) with
+    `business_activity` dropped from the projection, the memoized count
+    diverges from that same independent recursion.
+  - >-
+    T2: the same corruption class the guilt test targets — dropping one key
+    from `memoKey`'s projection — is reproduced as a manual mutation on a
+    `cp`-backed COPY of the script (never `git checkout --`) and the full
+    suite is run under it, to prove the new pair (not only the isolated unit
+    test) turns red on this exact defect shape; the file is restored
+    byte-identical afterward (verified by `cmp` and a sha256 match).
+  - >-
+    Production output is unaffected by the injection point: `--dry-run` and a
+    full `--out` write reproduce byte-identical to a manifest rendered from
+    the pre-existing script — verified with `cmp` on this head.
+  - >-
+    Every docstring sentence about "how many typed questions branch" states
+    the invariant qualitatively (see the completeness guard) instead of
+    committing a specific count as prose; the interview-space size headline
+    is read from `--dry-run`/the manifest, never committed as a number in a
+    comment, so a future graph edit cannot leave a stale figure uncorrected.
+  - >-
+    Only the two pre-existing files change (script + its test); no
+    dependency, no lockfile touch, no production module (`tree.ts`,
+    `flow.ts`, `fact-mapper.ts`, `generate-walk-corpus.ts`) touched. Nothing
+    run by installing anything: tsx/vitest resolve from the existing shared
+    node_modules.
+acceptance:
+  - text: >-
+      WHEN `countExactWalks` runs with the default (omitted) `memoProjection`
+      SHALL produce a manifest byte-identical (via `cmp`) to one rendered by
+      the script without the `memoProjection` parameter at all.
+    probe: >-
+      tsx scripts/visa-oracle/enumerate-interview-space.ts --out a.json (on
+      each head) && cmp a.json b.json
+  - text: >-
+      WHEN the bounded business-branch sub-space is counted with the FULL
+      projection SHALL equal an independent unmemoized recursion over the
+      same wrapped `computeNextNode`, with the memo hit counter greater than
+      zero.
+    probe: >-
+      vitest -k "innocence: with the FULL (default) projection"
+  - text: >-
+      WHEN the same sub-space is counted with `business_activity` removed
+      from the projection SHALL diverge from that same independent
+      recursion.
+    probe: >-
+      vitest -k "guilt: dropping business_activity from the projection"
+  - text: >-
+      WHEN `memoKey`'s projection is corrupted the same way as the guilt test
+      (`BRANCH_RELEVANT_FACT_KEYS.slice(1)`, applied as the DEFAULT on a copy
+      of the script) SHALL turn at least one test in the full suite red.
+    probe: >-
+      cp the script, edit the default projection line, run the full vitest
+      file, observe a failure, restore with cp, verify with cmp
+  - text: >-
+      WHEN `REPRESENTATIVE_VALUES` is missing a typed AND branch-relevant
+      question id SHALL fail naming that id (unchanged from the prior head,
+      re-verified here).
+    probe: >-
+      vitest -k "covers every typed (options: []) question that is also
+      branch-relevant"
+consumer_map:
+  - >-
+    B2 (the live runner, apps/backend-rag/backend/scripts/visa_engine/enumerate_live.py,
+    not yet built) consumes this script's default-mode manifest output; this
+    PR does not change what B2 would receive, only makes the exact-count
+    algorithm's correctness independently checkable.
+  - >-
+    apps/mouth vitest run collects enumerate-interview-space.test.ts under
+    src/**/*.test.{ts,tsx} — a CI job that runs the mouth test suite executes
+    it on every push to this PR; the `Bites:` line in the PR body names that
+    job and quotes its log.
+risks:
+  - >-
+    The guilt/innocence pair bounds its sub-space by excluding
+    `sponsor_category` (the investor-route continuation) and `review_gate`
+    (the 13-item leaf multiplier) from the reachable id set, to keep the
+    hand-checkable numbers small and the runtime in milliseconds. It does not
+    exhaustively fuzz every possible key omission — it targets the ONE
+    discriminating class a fresh gate measured and specified.
+  - >-
+    `memoKey` still does not include the traversal path (`pathSoFar`), so a
+    memo HIT returns a cached subtree without re-running the repeated-node
+    cycle check; unreachable on the current acyclic graph and already stated
+    as a deliberate, recorded design choice in the module docstring.
+grader: >-
+  This session (Sonnet 5) curing after GATE-B1C-REPORT-6848.md's
+  REWORK-BUILD: read the mandate's discriminator spec and the gate's own
+  measured business-branch example, implemented the injectable projection,
+  derived the bounded sub-space from `flow.ts`'s actual branching logic
+  (read, not guessed), and independently reproduced the gate's exact
+  corruption on a `cp`-backed copy before restoring it. A fresh Opus 5 gate
+  follows this PR, per the Builder Contract; this session does not grade its
+  own work.
+budget: Existing subscription seat only (claude-sonnet-5); no paid per-token API calls.
+pii: >-
+  none — synthetic personas only, the same placeholder identity
+  generate-walk-corpus.ts uses (ASSESSMENT_ID="x", fixed birth date
+  2000-11-11); no realistic name/passport/email field is ever populated.
