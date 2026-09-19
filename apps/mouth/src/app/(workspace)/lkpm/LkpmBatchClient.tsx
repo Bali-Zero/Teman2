@@ -1,5 +1,6 @@
 "use client";
 
+import { normalizeTaxConsultant } from "@/lib/workspace/tax-consultant-alias";
 import React, { useCallback, useEffect, useState } from "react";
 import {
   Loader2,
@@ -468,7 +469,7 @@ export default function LkpmBatchClient({
                       </td>
                       <td className="px-4 py-3">
                         <select
-                          value={item.lkpm_assigned_to ?? ""}
+                          value={normalizeTaxConsultant(item.lkpm_assigned_to)}
                           onChange={(e) =>
                             handleAssign(item.id, e.target.value)
                           }

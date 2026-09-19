@@ -140,3 +140,63 @@ describe("TaxTab tax-consultant options", () => {
     await waitFor(() => expect(onSaved).toHaveBeenCalled());
   });
 });
+
+describe("TaxTab renders an assignment written before migration 319", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockUpdateClient.mockResolvedValue({});
+  });
+
+  // THE REGRESSION THIS PREVENTS, in business terms: after the backend moved
+  // the allowlist onto the real staff addresses, a client whose row still
+  // carries a retired alias — one written before the deploy, or served from a
+  // cached response — would hit a <select> with no matching <option>. The
+  // browser then shows the placeholder, so the tax department opens an ASSIGNED
+  // client and reads "— not assigned —". The consultant is not gone; the screen
+  // just cannot say her name.
+  it("shows the consultant, not the placeholder, for a retired alias", async () => {
+    const { TaxTab } = await import("./TaxTab");
+    render(
+      <TaxTab
+        clientId={7}
+        formatDate={(d: string) => d}
+        client={{ tax_consultant: "veronika.tax@balizero.com" } as never}
+        taxConsultants={[
+          { value: "tax@balizero.com", label: "Veronika" },
+          { value: "faysha.tax@balizero.com", label: "Faisha" },
+        ]}
+      />,
+    );
+
+    const select = (await waitFor(() =>
+      screen.getByLabelText("Tax Consultant"),
+    )) as HTMLSelectElement;
+
+    expect(select.value).toBe("tax@balizero.com");
+    expect(
+      select.options[select.selectedIndex]?.textContent,
+      'an assigned client must not read as "— not assigned —"',
+    ).toBe("Veronika");
+  });
+
+  it("still shows the placeholder when nobody is assigned", async () => {
+    const { TaxTab } = await import("./TaxTab");
+    render(
+      <TaxTab
+        clientId={7}
+        formatDate={(d: string) => d}
+        client={{ tax_consultant: null } as never}
+        taxConsultants={[{ value: "tax@balizero.com", label: "Veronika" }]}
+      />,
+    );
+
+    const select = (await waitFor(() =>
+      screen.getByLabelText("Tax Consultant"),
+    )) as HTMLSelectElement;
+
+    expect(select.value).toBe("");
+    expect(select.options[select.selectedIndex]?.textContent).toContain(
+      "not assigned",
+    );
+  });
+});

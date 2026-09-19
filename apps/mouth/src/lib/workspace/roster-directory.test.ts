@@ -1,9 +1,11 @@
 import { describe, it, expect } from "vitest";
 import { TEAM_ROSTER } from "@/data/team-roster";
+import { normalizeTaxConsultant } from "./tax-consultant-alias";
 import {
   teamPhotoMap,
   taxConsultants,
   TAX_CONSULTANTS,
+  LKPM_ASSIGNEES,
 } from "./roster-directory";
 
 /**
@@ -81,29 +83,83 @@ describe("workspace roster directory", () => {
     }
   });
 
-  it("does NOT derive the tax-consultant values — the backend constrains them", () => {
-    // Migration 093 carries a CHECK over exactly these five addresses and the form
-    // submits the value verbatim. The ROSTER DISAGREES with two of them, so
-    // deriving would have changed what gets written:
-    //   roster faysha.tax@…  vs  constraint faisha.tax@…
-    //   roster tax@…         vs  constraint veronika.tax@…
-    // This test exists to keep someone from "tidying" the list into a derivation.
+  it("now AGREES with the roster — the disagreement was settled, not tidied away", () => {
+    // Until migration 319 this list carried two addresses that matched no staff
+    // record, and this test pinned the disagreement on purpose: deriving the
+    // list would have changed what the form writes and broken the CHECK.
+    // `team_members` has since been made canonical, the production rows and both
+    // CHECK lists were moved onto the real addresses, and so this list moved
+    // too. It is still NOT derived — the backend constrains these values and a
+    // derivation would silently follow a roster edit into a 422 — but it must
+    // now match the roster, because the form reads back what the API returns.
     expect(TAX_CONSULTANTS.map((c) => c.value)).toEqual([
-      "veronika.tax@balizero.com",
+      "tax@balizero.com",
       "kadek.tax@balizero.com",
       "dewaayu.tax@balizero.com",
       "angel.tax@balizero.com",
-      "faisha.tax@balizero.com",
+      "faysha.tax@balizero.com",
     ]);
     const rosterEmail = (slug: string) =>
       TEAM_ROSTER.find((m) => m.slug === slug)?.email;
-    expect(rosterEmail("faisha")).toBe("faysha.tax@balizero.com");
-    expect(rosterEmail("veronika")).toBe("tax@balizero.com");
-    // …and those two are NOT what the dropdown submits. The disagreement is real
-    // and is reported as a finding, not resolved here.
-    expect(TAX_CONSULTANTS.map((c) => c.value)).not.toContain(
+    expect(TAX_CONSULTANTS.map((c) => c.value)).toContain(
       rosterEmail("faisha"),
     );
+    expect(TAX_CONSULTANTS.map((c) => c.value)).toContain(
+      rosterEmail("veronika"),
+    );
+  });
+
+  it("offers Krisna on the LKPM screen and only there", () => {
+    // He owns four PTs in the Q1 2026 handover and the backend whitelists his
+    // main inbox for LKPM assignment only (110_lkpm_allowlist_krisna.sql). The
+    // batch screen used to offer the five tax addresses, so the one person the
+    // backend added for that screen could not be selected on it.
+    expect(LKPM_ASSIGNEES.map((c) => c.value)).toContain("krisna@balizero.com");
+    expect(TAX_CONSULTANTS.map((c) => c.value)).not.toContain(
+      "krisna@balizero.com",
+    );
+    expect(LKPM_ASSIGNEES.length).toBe(TAX_CONSULTANTS.length + 1);
+  });
+
+  describe("normalizeTaxConsultant", () => {
+    // READ side. The write side is already strict: the backend normalizes and
+    // then refuses anything unknown. What this protects is the opposite risk —
+    // a <select> whose value matches no <option> renders as the placeholder, so
+    // a row still carrying a retired alias would show an ASSIGNED client as
+    // "— not assigned —": a consultant erased from the screen.
+    it("maps a retired alias onto the address the dropdown offers", () => {
+      const values = TAX_CONSULTANTS.map((c) => c.value);
+      expect(values).toContain(
+        normalizeTaxConsultant("veronika.tax@balizero.com"),
+      );
+      expect(values).toContain(
+        normalizeTaxConsultant("faisha.tax@balizero.com"),
+      );
+    });
+
+    it("ignores case and surrounding whitespace, like the backend does", () => {
+      expect(normalizeTaxConsultant("  VERONIKA.Tax@BaliZero.com ")).toBe(
+        "tax@balizero.com",
+      );
+    });
+
+    it("leaves a current address untouched", () => {
+      for (const c of LKPM_ASSIGNEES) {
+        expect(normalizeTaxConsultant(c.value)).toBe(c.value);
+      }
+    });
+
+    it("keeps an unknown value visible as itself rather than mapping it onto someone", () => {
+      expect(normalizeTaxConsultant("someone.else@balizero.com")).toBe(
+        "someone.else@balizero.com",
+      );
+    });
+
+    it("treats null, undefined and blank as unassigned", () => {
+      expect(normalizeTaxConsultant(null)).toBe("");
+      expect(normalizeTaxConsultant(undefined)).toBe("");
+      expect(normalizeTaxConsultant("   ")).toBe("");
+    });
   });
 
   it("hands the client a copy, not the module's own array", () => {
