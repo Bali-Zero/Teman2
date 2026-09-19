@@ -108,11 +108,13 @@ vi.mock("./components/TaxTab", () => ({
     return <div data-testid="TaxTab" />;
   },
 }));
-vi.mock("./components/TimelineTab", () => ({
-  TimelineTab: () => <div data-testid="TimelineTab" />,
-}));
-vi.mock("./components/WaTimelineTab", () => ({
-  WaTimelineTab: () => <div data-testid="WaTimelineTab" />,
+vi.mock("./components/ActivityTab", () => ({
+  ActivityTab: (props: Record<string, unknown>) => (
+    <div
+      data-testid="ActivityTab"
+      data-section={props.initialSection as string}
+    />
+  ),
 }));
 vi.mock("./components/PortalMessages", () => ({
   PortalMessages: () => <div data-testid="PortalMessages" />,
@@ -298,6 +300,30 @@ describe("ClientDetailClient", () => {
     expect(overviewTab).not.toHaveAttribute("aria-current");
   });
 
+  // R8: one "Activity" button folds the old separate Timeline/WhatsApp
+  // buttons. GUILT: before R8 the deep link table had two buttons named
+  // "Timeline (…)" and "WhatsApp"; a straight `visibleTab === key` compare
+  // on a single merged button would only light up for "timeline" and leave
+  // a `?tab=whatsapp` visitor looking at a tab bar with nothing current.
+  it.each(["timeline", "whatsapp"])(
+    "gives the single Activity button aria-current=page for ?tab=%s",
+    async (tab) => {
+      stableSearchParams.get.mockImplementation((key: string) =>
+        key === "tab" ? tab : null,
+      );
+      const { ClientDetailClient } = await import("./ClientDetailClient");
+      render(<ClientDetailClient taxConsultants={CONSULTANTS} />);
+
+      const activityButton = await screen.findByRole("button", {
+        name: /^Activity/,
+      });
+      expect(activityButton).toHaveAttribute("aria-current", "page");
+      expect(
+        screen.getByRole("button", { name: "Overview" }),
+      ).not.toHaveAttribute("aria-current");
+    },
+  );
+
   /**
    * Both refuter seats reached this independently, and they were right.
    *
@@ -333,8 +359,8 @@ describe("ClientDetailClient", () => {
     ["visas", "ImmigrationTab"],
     ["company", "CompanyTab"],
     ["tax", "TaxTab"],
-    ["timeline", "TimelineTab"],
-    ["whatsapp", "WaTimelineTab"],
+    ["timeline", "ActivityTab"],
+    ["whatsapp", "ActivityTab"],
   ])("opens the %s tab from the ?tab= deep link", async (tab, testId) => {
     stableSearchParams.get.mockImplementation((key: string) =>
       key === "tab" ? tab : null,
@@ -345,6 +371,28 @@ describe("ClientDetailClient", () => {
     expect(await screen.findByTestId(testId)).toBeInTheDocument();
   });
 
+  // R8: both legacy deep-link keys fold into the same ActivityTab mount,
+  // seeded with the section that matches the key that opened it — a
+  // bookmark to `?tab=whatsapp` must not land on the Timeline section.
+  it.each([
+    ["timeline", "timeline"],
+    ["whatsapp", "whatsapp"],
+  ])(
+    "?tab=%s seeds ActivityTab's initialSection with %s",
+    async (tab, section) => {
+      stableSearchParams.get.mockImplementation((key: string) =>
+        key === "tab" ? tab : null,
+      );
+      const { ClientDetailClient } = await import("./ClientDetailClient");
+      render(<ClientDetailClient taxConsultants={CONSULTANTS} />);
+
+      expect(await screen.findByTestId("ActivityTab")).toHaveAttribute(
+        "data-section",
+        section,
+      );
+    },
+  );
+
   it("ignores a ?tab= value that is not a tab and stays on Overview", async () => {
     stableSearchParams.get.mockImplementation((key: string) =>
       key === "tab" ? "constructor" : null,
@@ -353,7 +401,7 @@ describe("ClientDetailClient", () => {
     render(<ClientDetailClient taxConsultants={CONSULTANTS} />);
 
     expect(await screen.findByTestId("OverviewTab")).toBeInTheDocument();
-    expect(screen.queryByTestId("WaTimelineTab")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("ActivityTab")).not.toBeInTheDocument();
   });
 
   // R7a (kita client-profile redesign): a client with ZERO company links

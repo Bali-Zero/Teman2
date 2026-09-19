@@ -71,8 +71,7 @@ import { FamilyTab } from "./components/FamilyTab";
 import { ImmigrationTab } from "./components/ImmigrationTab";
 import { CompanyTab } from "./components/CompanyTab";
 import { TaxTab } from "./components/TaxTab";
-import { TimelineTab } from "./components/TimelineTab";
-import { WaTimelineTab } from "./components/WaTimelineTab";
+import { ActivityTab } from "./components/ActivityTab";
 import { PortalAccess } from "./components/PortalAccess";
 import { PortalMessages } from "./components/PortalMessages";
 import { BusinessStoryPanel } from "./components/BusinessStoryPanel";
@@ -983,9 +982,12 @@ export function ClientDetailClient({
           same attribute the mock's own `.tab[aria-current="page"]` rule
           reads; TAB_KEYS itself is untouched, so every existing `?tab=`
           deep link still opens the same panel. Only the "process" label
-          moves to the mock's "Practices" — the mock's single "Activity" tab
-          folds Timeline + WhatsApp together, which is R8's job, not R5's, so
-          those two stay separate and unrenamed here. */}
+          moves to the mock's "Practices". R8 folds Timeline + WhatsApp into
+          the mock's single "Activity" button: TAB_KEYS keeps both
+          "timeline" and "whatsapp" as valid deep-link keys (`?tab=whatsapp`
+          bookmarks still work), so this one button matches on EITHER key —
+          `activeKeys` below, not a straight `visibleTab === key` — and its
+          onClick always writes the canonical "timeline" key. */}
           <nav
             ref={tabsRef}
             className={styles.tabBar}
@@ -1014,13 +1016,9 @@ export function ClientDetailClient({
               { key: "tax", label: "Tax", icon: DollarSign },
               {
                 key: "timeline",
-                label: `Timeline (${interactions.length})`,
+                label: `Activity (${interactions.length})`,
                 icon: Activity,
-              },
-              {
-                key: "whatsapp",
-                label: "WhatsApp",
-                icon: MessageCircle,
+                activeKeys: ["timeline", "whatsapp"] as TabType[],
               },
             ]
               .filter(({ key }) => {
@@ -1028,18 +1026,23 @@ export function ClientDetailClient({
                 if (key === "tax") return showTaxTab;
                 return true;
               })
-              .map(({ key, label, icon: Icon }) => (
-                <button
-                  key={key}
-                  type="button"
-                  onClick={() => handleTabChange(key as TabType)}
-                  aria-current={visibleTab === key ? "page" : undefined}
-                  className={`${styles.tab} ${visibleTab === key ? styles.tabActive : ""}`}
-                >
-                  <Icon className="w-4 h-4" />
-                  {label}
-                </button>
-              ))}
+              .map(({ key, label, icon: Icon, activeKeys }) => {
+                const isActive = activeKeys
+                  ? activeKeys.includes(visibleTab)
+                  : visibleTab === key;
+                return (
+                  <button
+                    key={key}
+                    type="button"
+                    onClick={() => handleTabChange(key as TabType)}
+                    aria-current={isActive ? "page" : undefined}
+                    className={`${styles.tab} ${isActive ? styles.tabActive : ""}`}
+                  >
+                    <Icon className="w-4 h-4" />
+                    {label}
+                  </button>
+                );
+              })}
           </nav>
 
           {/* Tab Content */}
@@ -1210,18 +1213,25 @@ export function ClientDetailClient({
             />
           )}
 
-          {activeTab === "timeline" && (
-            <TimelineTab
+          {(visibleTab === "timeline" || visibleTab === "whatsapp") && (
+            <ActivityTab
+              clientId={clientId}
               interactions={interactions}
               formatDate={formatDate}
               formatTime={formatTime}
               clientCreatedAt={client.created_at}
               clientFirstContact={client.first_contact_date}
-              clientId={clientId}
+              initialSection={
+                visibleTab === "whatsapp" ? "whatsapp" : "timeline"
+              }
+              onInteractionCreated={(interaction) =>
+                setInteractions((prev) => [interaction, ...prev])
+              }
+              onInteractionRemoved={(id) =>
+                setInteractions((prev) => prev.filter((i) => i.id !== id))
+              }
             />
           )}
-
-          {activeTab === "whatsapp" && <WaTimelineTab clientId={clientId} />}
         </div>
       </div>
 
