@@ -491,7 +491,7 @@ TEAM_AGENTS: dict[str, AgentRole] = {
     "angel.tax@balizero.com": ROLE_TAX_SPECIALIST,
     "kadek.tax@balizero.com": ROLE_TAX_SPECIALIST,
     "dewaayu.tax@balizero.com": ROLE_TAX_SPECIALIST,
-    "faysha.tax@balizero.com": ROLE_TAX_SPECIALIST,
+    # faysha.tax@balizero.com removed 2026-09-19 — offboarded, no agent role.
 }
 
 

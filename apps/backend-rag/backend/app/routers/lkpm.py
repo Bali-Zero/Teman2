@@ -55,7 +55,10 @@ LKPM_ASSIGNEES: set[str] = {
     "kadek.tax@balizero.com",
     "dewaayu.tax@balizero.com",
     "angel.tax@balizero.com",
-    "faisha.tax@balizero.com",
+    # faisha.tax@balizero.com removed 2026-09-19 — offboarded, no longer
+    # assignable to new LKPM reports. Her 12 existing lkpm_assigned_to rows
+    # are untouched (DB CHECK constraint from migration 093 still permits
+    # the value) pending the owner's reassignment decision.
     # Krisna is the Executive Consultant who owns 4 PTs in the PDF Q1 2026
     # handover ("Handle BY: Krisna"). He doesn't have a .tax@ sub-alias,
     # so we whitelist his main inbox.

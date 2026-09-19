@@ -330,7 +330,9 @@ TAX_CONSULTANT_VALUES: set[str] = {
     "kadek.tax@balizero.com",
     "dewaayu.tax@balizero.com",
     "angel.tax@balizero.com",
-    "faisha.tax@balizero.com",
+    # faisha.tax@balizero.com removed 2026-09-19 — offboarded, no longer
+    # assignable to new clients. The DB CHECK constraint from migration 093
+    # still permits the value on rows already carrying it.
 }
 
 

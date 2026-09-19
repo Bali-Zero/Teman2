@@ -82,25 +82,29 @@ describe("workspace roster directory", () => {
   });
 
   it("does NOT derive the tax-consultant values — the backend constrains them", () => {
-    // Migration 093 carries a CHECK over exactly these five addresses and the form
-    // submits the value verbatim. The ROSTER DISAGREES with two of them, so
-    // deriving would have changed what gets written:
-    //   roster faysha.tax@…  vs  constraint faisha.tax@…
-    //   roster tax@…         vs  constraint veronika.tax@…
+    // Migration 093 carries a CHECK that (still) permits five addresses — the
+    // form submits the value verbatim, so deriving from the roster would have
+    // changed what gets written. Faisha (faisha.tax@… vs the roster's
+    // faysha.tax@…) was offboarded 2026-09-19 and removed from this dropdown
+    // entirely (no longer an assignable option); the CHECK constraint itself
+    // is untouched so her 12 existing lkpm_assigned_to rows stay valid.
+    //   roster tax@…  vs  constraint veronika.tax@…
     // This test exists to keep someone from "tidying" the list into a derivation.
     expect(TAX_CONSULTANTS.map((c) => c.value)).toEqual([
       "veronika.tax@balizero.com",
       "kadek.tax@balizero.com",
       "dewaayu.tax@balizero.com",
       "angel.tax@balizero.com",
-      "faisha.tax@balizero.com",
     ]);
     const rosterEmail = (slug: string) =>
       TEAM_ROSTER.find((m) => m.slug === slug)?.email;
-    expect(rosterEmail("faisha")).toBe("faysha.tax@balizero.com");
     expect(rosterEmail("veronika")).toBe("tax@balizero.com");
-    // …and those two are NOT what the dropdown submits. The disagreement is real
-    // and is reported as a finding, not resolved here.
+    // …which is NOT what the dropdown submits. The disagreement is real and is
+    // reported as a finding, not resolved here.
+    expect(TAX_CONSULTANTS.map((c) => c.value)).not.toContain(
+      rosterEmail("veronika"),
+    );
+    // Faisha stays off the dropdown regardless of the roster's own email spelling.
     expect(TAX_CONSULTANTS.map((c) => c.value)).not.toContain(
       rosterEmail("faisha"),
     );

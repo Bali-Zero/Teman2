@@ -35,7 +35,9 @@ TAX_CONSULTANTS_NON_MANAGER: tuple[str, ...] = (
     "kadek.tax@balizero.com",
     "dewaayu.tax@balizero.com",
     "angel.tax@balizero.com",
-    "faisha.tax@balizero.com",
+    # faisha.tax@balizero.com removed 2026-09-19 — offboarded, must not keep
+    # receiving LKPM deadline notifications. Her 12 existing lkpm_assigned_to
+    # rows still need a human reassignment decision (see PLAN.md).
 )
 TELEGRAM_URGENCY_DAYS: int = 3
 LKPM_DASHBOARD_URL: str = "https://kita.balizero.com/lkpm"
