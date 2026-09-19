@@ -26,6 +26,14 @@ from backend.app.dependencies import (
     get_search_service,
 )
 from backend.core.collection_registry import resolve_collection_name
+from backend.services.kbli_catalogue_membership import (
+    CATALOGUE_MEMBERSHIP_QUERY,
+    PHANTOM_LICENSING_STATUS,
+    TOMBSTONE_DESCRIPTION,
+    TOMBSTONE_RISK_PROFILE,
+    TOMBSTONE_TITLE_SUFFIX,
+    is_absent_from_catalogue,
+)
 from backend.services.kbli_pma_disclosure import (
     disclose_bali,
     disclose_pma,
@@ -542,6 +550,61 @@ def related_codes_from_rows(rows: Iterable[str], code: str) -> list[str]:
     return out
 
 
+_SECTOR_QUERY = """
+    SELECT target_entity_id
+    FROM kg_edges
+    WHERE source_entity_id = $1 AND relationship_type = 'BELONGS_TO'
+    LIMIT 1
+"""
+
+# Siblings within the same 2-digit sector, phantoms excluded IN THE QUERY.
+#
+# The exclusion cannot live after the fetch. `LIMIT 6` is applied by Postgres, so a row
+# dropped in Python SILENTLY COSTS A SLOT instead of being replaced by the next real
+# sibling — the same trap the DISTINCT in this query was written to escape (the graph
+# carries 1,341 duplicated BELONGS_TO rows, and the pre-2026-07 version spent six slots
+# on three codes shown twice). Measured on prod 2026-09-19: 38 REAL codes were offering a
+# phantom among their related codes, so this is not only the tombstone's concern — a
+# client on a perfectly valid code was being pointed at a number that does not exist.
+_CANONICAL_SIBLING_QUERY = """
+    SELECT DISTINCT e.source_entity_id
+    FROM kg_edges e
+    WHERE e.target_entity_id = $1
+      AND e.relationship_type = 'BELONGS_TO'
+      AND e.source_entity_id LIKE $2
+      AND e.source_entity_id <> $3
+      AND EXISTS (
+          SELECT 1 FROM kbli_documents d
+          WHERE d.kode_kbli = replace(e.source_entity_id, 'kbli:', '')
+            AND coalesce(d.metadata->>'licensing_status', '') <> $4
+      )
+    ORDER BY e.source_entity_id
+    LIMIT 6
+"""
+
+
+async def _canonical_siblings(conn: Any, code: str, sector_id: str | None = None) -> list[str]:
+    """Related KBLI codes in the same sector, guaranteed to exist in KBLI 2025.
+
+    Fails towards silence, and that is the right direction here: if the catalogue table
+    were unreadable the `EXISTS` would match nothing and this returns `[]`. An empty
+    related list omits a convenience; a populated one containing a dead code sends a
+    client to a page for an activity they cannot register. Only the second is a claim.
+    """
+    if sector_id is None:
+        sector_id = await conn.fetchval(_SECTOR_QUERY, f"kbli:{code}")
+    if not sector_id:
+        return []
+    rows = await conn.fetch(
+        _CANONICAL_SIBLING_QUERY,
+        sector_id,
+        f"kbli:{code[:2]}%",
+        f"kbli:{code}",
+        PHANTOM_LICENSING_STATUS,
+    )
+    return related_codes_from_rows((r["source_entity_id"] for r in rows), code)
+
+
 def _resolve_risk_profile(qdrant_risk: str | None, licenses: list["KBLILicense"]) -> str:
     """Risk label surfaced to the client for a KBLI code.
 
@@ -632,7 +695,15 @@ async def inspect_kbli(code: str, pool=Depends(get_optional_database_pool)) -> A
     # v4 -> v5: PMA values are now an evidence tuple.  Old cache entries carry
     # raw status/cap without the required locator and vintage, so they must be
     # re-read through the fail-closed response contract immediately.
-    cache_key = f"kbli_inspect_v6_{code}"
+    # v6 -> v7 (2026-09-19): the tombstone. Ten codes that KBLI 2025 does not contain
+    # were served as ordinary 200s — `74100` as `REGULATED` with a licence, `26120` with
+    # a full semiconductor description. Their cached payloads are not incomplete, they
+    # are WRONG about whether the code exists at all, and nothing in the response betrays
+    # it. Per the rule two paragraphs up — bump whenever the MEANING of an existing field
+    # changes — `title`, `description`, `risk_profile` and `licensing_status` all change
+    # meaning on those codes, so the bump evicts them at deploy instead of leaving a
+    # month of stale answers behind a per-code cache-bust somebody has to remember.
+    cache_key = f"kbli_inspect_v7_{code}"
     ttl = get_kbli_ttl(code)
 
     # Try manual cache check
@@ -662,6 +733,45 @@ async def inspect_kbli(code: str, pool=Depends(get_optional_database_pool)) -> A
             if not node:
                 logger.warning("⚠️ KBLI %s not found in Knowledge Graph", code)
                 raise HTTPException(status_code=404, detail=f"KBLI code {code} not found")
+
+            # 1b. A node in the graph is not proof the code exists. Ten `kbli:<code>`
+            # nodes are KBLI-2020 numbers KBLI 2025 does not carry, and until
+            # 2026-09-19 each was answered like any other code. A 404 was considered
+            # and rejected: it leaves the client believing the code exists and that we
+            # simply have no data. The tombstone says the code is gone, which is the
+            # fact, and sends them to search — which already returns the right 2025
+            # code for these activities. Absence is only convicting when the catalogue
+            # is evidently present; see `kbli_catalogue_membership`.
+            membership = await conn.fetch(
+                CATALOGUE_MEMBERSHIP_QUERY, code, PHANTOM_LICENSING_STATUS
+            )
+            if is_absent_from_catalogue(membership):
+                logger.info("🪦 KBLI %s is absent from the KBLI 2025 catalogue", code)
+                result = KBLIDetail(
+                    code=code,
+                    title=f"{node['name']}{TOMBSTONE_TITLE_SUFFIX}",
+                    description=TOMBSTONE_DESCRIPTION,
+                    licensing_status=PHANTOM_LICENSING_STATUS,
+                    sector="N/A",
+                    risk_profile=TOMBSTONE_RISK_PROFILE,
+                    # A code that does not exist has no licences and no requirements to
+                    # state. Whatever edges the graph still hangs off it describe an
+                    # activity under the OLD numbering; rendering them here would be
+                    # the same error one layer down.
+                    licenses=[],
+                    related_requirements={},
+                    # The one thing worth keeping: real neighbours to go look at. Any
+                    # phantom among them is excluded IN SQL — see `_canonical_siblings`
+                    # for why filtering after the LIMIT is not equivalent.
+                    related_codes=await _canonical_siblings(conn, code),
+                    expert_legal=None,
+                    # PMA fields are left at their withheld defaults on purpose: we
+                    # assert nothing about foreign ownership of an activity that has no
+                    # current code.
+                )
+                if cache_manager:
+                    await cache_manager.set(cache_key, result.model_dump(), ttl=ttl)
+                return result
 
             # 2. Extract Properties
             props = (
@@ -733,42 +843,11 @@ async def inspect_kbli(code: str, pool=Depends(get_optional_database_pool)) -> A
                 bucket: sorted(set(names)) for bucket, names in sorted(related_requirements.items())
             }
 
-            # 4. Fetch Related KBLI
-            sector_query = """
-                SELECT target_entity_id
-                FROM kg_edges
-                WHERE source_entity_id = $1 AND relationship_type = 'BELONGS_TO'
-                LIMIT 1
-            """
-            sector_id = await conn.fetchval(sector_query, f"kbli:{code}")
-
-            related_codes = []
-            if sector_id:
-                # Filter by same 2-digit sector prefix to prevent cross-sector contamination
-                # e.g. 56210 (catering, sector I) should only relate to 56xxx codes
-                #
-                # DISTINCT and the self-exclusion both belong in SQL, not after the
-                # fetch: `LIMIT 6` is applied by Postgres, so anything filtered out
-                # afterwards silently COSTS A SLOT instead of being replaced. The
-                # graph carries 1,341 duplicated (source, sector) BELONGS_TO rows —
-                # every duplicated pair appears exactly twice — so the old query
-                # spent its six rows on three codes and then showed each twice.
-                # Measured on prod: 79122 returned ['79110','79110','79121','79121']
-                # and now returns six distinct siblings; 56101 likewise.
-                sector_prefix = code[:2]
-                others = await conn.fetch(
-                    "SELECT DISTINCT source_entity_id FROM kg_edges "
-                    "WHERE target_entity_id = $1 AND relationship_type = 'BELONGS_TO' "
-                    "AND source_entity_id LIKE $2 "
-                    "AND source_entity_id <> $3 "
-                    "ORDER BY source_entity_id LIMIT 6",
-                    sector_id,
-                    f"kbli:{sector_prefix}%",
-                    f"kbli:{code}",
-                )
-                related_codes = related_codes_from_rows(
-                    (r["source_entity_id"] for r in others), code
-                )
+            # 4. Fetch Related KBLI. Same-sector, same 2-digit prefix, canonical only —
+            # see `_canonical_siblings` and `_CANONICAL_SIBLING_QUERY` for why every one
+            # of those filters is in the SQL and not applied afterwards.
+            sector_id = await conn.fetchval(_SECTOR_QUERY, f"kbli:{code}")
+            related_codes = await _canonical_siblings(conn, code, sector_id)
 
             # 5. Enrich with Qdrant payload (pma_status, risk category)
             qdrant_payload = await _get_kbli_payload_from_qdrant(code)
