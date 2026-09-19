@@ -1,0 +1,119 @@
+task_id: vo-b1-enumerator
+mandate_id: B1
+gear: 2
+l_level: L2
+gate_class: opus
+base_sha: 4e0c3f880eaeaaf925120beb94931d777b46f9d6 # pragma: allowlist secret - public Git commit ID
+objective: >-
+  Visa Oracle PLAN §3 row B1, criterion G2-a: a committed, re-runnable enumerator
+  that derives the interview walk SET, and its exact SIZE, from the REAL
+  interview graph (the production computeNextNode, which itself calls
+  getCategoryQuestionIds, both imported from flow.ts, never re-implemented or
+  copied) instead of a hand list. A brute-force DFS over the real graph
+  exceeded 50,000,000 branches before finishing a few of 11 categories, so the
+  enumerator instead proves the exact count via memoized DAG-reduction
+  (countExactWalks) and separately builds a small, deterministic edge-covering
+  walk subset for B2 (the live runner) to actually post within its rate budget.
+constraints:
+  - >-
+    computeNextNode and getCategoryQuestionIds are IMPORTED from flow.ts, never
+    re-implemented; the walk set comes from the real graph, not a hand list (E1).
+  - >-
+    The bound is proven, not assumed: a cycle (node repeated past the declared
+    question count) throws naming it; bound: "PROVEN" only when every declared
+    question was reached (E2).
+  - >-
+    Size control without lying: the full 71,825,497,368,768-walk product space
+    is counted exactly (not sampled), and a separate deterministic covering
+    subset — every node, every option, every (node, option) edge — is emitted
+    with its seed and coverage numbers (E3).
+  - >-
+    --dry-run prints walks=<N> maxDepth=<D> bound=PROVEN|UNPROVEN and exits
+    non-zero on UNPROVEN; two runs are byte-identical; the default run writes
+    the manifest and renders the covering walks as engine-ready fact payloads
+    via the production fact-mapper (E4). Synthetic personas only — no
+    realistic name/passport/email field is ever populated.
+  - >-
+    Only ONE package.json script line added, no dependency, no lockfile touch
+    (verified: apps/mouth/package.json diff is +3/-1, one script key added).
+  - >-
+    Nothing run by installing anything: tsx and vitest resolve from the
+    existing shared node_modules; never npm install/ci from a worktree.
+acceptance:
+  - text: >-
+      WHEN run as `npm run visa-oracle:enumerate -w apps/mouth -- --dry-run`
+      from the repo root SHALL print walks=71825497368768 maxDepth=26
+      bound=PROVEN and exit 0.
+    probe: npm run visa-oracle:enumerate -w apps/mouth -- --dry-run
+  - text: >-
+      WHEN the real production graph is walked, every one of the 67 declared
+      questions in QUESTIONS SHALL be reached (innocence) and a synthetic
+      dead-on-arrival graph SHALL report zero nodes reached and every declared
+      id unreachable (guilt).
+    probe: >-
+      vitest -k "the real production graph reaches every declared question" or
+      -k "reaches nothing reports zero nodes"
+  - text: >-
+      WHEN a synthetic graph ping-pongs between two real question ids forever
+      SHALL throw naming the cycle.
+    probe: vitest -k "throws naming the depth when a synthetic graph loops"
+  - text: >-
+      The manifest's walksTotalExact SHALL equal a hand-computable independent
+      recount on a real two-level reduction of the graph (3 options ×
+      3 options = 9), not merely a re-run of the function under test.
+    probe: >-
+      vitest -k "countExactWalks itself reproduces a hand-computed count on a
+      real two-level reduction"
+  - text: >-
+      Two renders of the full manifest SHALL be byte-identical.
+    probe: vitest -k "two renders of the full manifest are byte-identical"
+consumer_map:
+  - >-
+    B2 (the live runner, apps/backend-rag/backend/scripts/visa_engine/enumerate_live.py,
+    not yet built) consumes this script's default-mode manifest output
+    (coveringSubset.walks, already rendered as engine-ready fact payloads via
+    fact-mapper) to post within its rate budget instead of a hand-written
+    walk list.
+  - >-
+    apps/mouth vitest run collects enumerate-interview-space.test.ts under
+    src/**/*.test.{ts,tsx} (relocated from scripts/visa-oracle/, which the
+    vitest config does not collect at all) — a CI job that runs `npm run test
+    -w apps/mouth` (or vitest directly) executes it on every push to this PR.
+risks:
+  - >-
+    Known, documented gap (module docstring, "Known gap"): E3 also asks for
+    "every pair the tree's own branching conditions read together" — the two
+    joint reads in flow.ts (wants_onshore_conversion/stay_days>360, and
+    investment_vehicle/sponsor_category=GOVERNMENT) are covered as a SIDE
+    EFFECT of answerFor's defaults today, not asserted on purpose. A follow-up
+    slice should name and assert them explicitly.
+  - >-
+    unreachable[] currently carries only ids, no per-id reason (PLAN's E2 asks
+    for "or is listed in unreachable[] with the reason"). Moot on the real
+    graph today (unreachable is empty, bound=PROVEN); would need a shape
+    change if a future graph edit left a node genuinely unreachable.
+  - >-
+    PLAN §1.2's "57 questions" (measured earlier in the mission from tree.ts)
+    is stale against this session's live count of 67 (Object.keys(QUESTIONS).length,
+    reproduced by --dry-run and by the manifest's nodesDeclared/nodesReached).
+    The code's number is the live, direct measurement; the plan's is not
+    re-derived here.
+grader: >-
+  vo-builder-b1b (Sonnet 5), reviewing a previous builder's local commit before
+  shipping: read PLAN.md/MANDATE-vo.md's B1 section, then the diff, then ran
+  --dry-run and the full default (non-dry-run) write mode and the vitest suite
+  directly. Found and fixed one real gap before shipping: the prior "manifest
+  numbers match an independent recount" test never actually drove
+  countExactWalks (the function under test) — it asserted a disconnected,
+  self-standing brute-force loop equals 6 and, separately, re-ran
+  countExactWalks/buildManifest against themselves (self-consistency, not an
+  independent check). Added a test that drives countExactWalks itself through
+  a two-level topology built from two real question ids and checks its output
+  against hand arithmetic (3*3=9). Generator (the previous builder's commit)
+  is not this session's own grade of itself — flagged the gap rather than
+  asserting the inherited work was clean.
+budget: Existing subscription seat only (claude-sonnet-5); no paid per-token API calls.
+pii: >-
+  none — synthetic personas only, the same placeholder identity
+  generate-walk-corpus.ts uses (ASSESSMENT_ID="x", fixed birth date
+  2000-11-11); no realistic name/passport/email field is ever populated.
