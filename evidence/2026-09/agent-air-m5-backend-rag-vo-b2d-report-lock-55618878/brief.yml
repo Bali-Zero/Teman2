@@ -4,12 +4,13 @@ machine: air-m5
 base_sha: e64cea35e42cc7576a1d11f345a99fc4c0e713b4 # pragma: allowlist secret - public Git commit ID, not a credential
 date: 2026-09-20
 
-gear: 1
+gear: 2
 gear_reason: >-
-  Floor 1 (`python3 scripts/contract_verify.py --head 922b708c81 --json` -> "floor 1, brief
-  not required"). Net churn over the two new files is 391 insertions / 0 deletions, below
-  SIZE_GEAR2_THRESHOLD (400) and far below SIZE_GEAR3_THRESHOLD (1828). This brief is written
-  anyway per the mandate's own ship instructions for this slice.
+  Floor 2 (`python3 scripts/contract_verify.py --head <final-head> --json` -> "floor 2, brief
+  present"). Net churn over the two code files alone is 391 insertions / 0 deletions (below
+  SIZE_GEAR2_THRESHOLD, 400); adding this brief itself brings the diff to 421, above the
+  threshold, which is what actually requires and is satisfied by this file. Far below
+  SIZE_GEAR3_THRESHOLD (1828) either way.
 
 objective: >-
   Slice B2''-a of R-SPLIT-B2 (MANDATE-vo.md): extract the exclusive per-report lock and
