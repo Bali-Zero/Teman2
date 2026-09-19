@@ -20,7 +20,12 @@ task: >-
   parenthetical qualifiers, and legal-form tokens (PT, PT., PMA, PMDN, CV, TBK) as
   whole words — closing the substring hole while still matching the CRM/pilot
   spelling drift a bare exact match would have missed (PT leading vs. trailing,
-  "PT PMA", a trailing dot, a parenthetical branch qualifier). Reviewer per the
+  "PT PMA", a trailing dot, a parenthetical branch qualifier). Stripping alone
+  would also make "PT Alpha" and "CV Alpha" normalise to the same string and
+  match — a PT and a CV are different legal entities that can share a trade
+  name — so the stripped comparison is gated by each name's own legal family
+  (PT-flavoured vs. CV vs. silent/unstated): a match only counts when neither
+  side's declared family contradicts the other's. Reviewer per the
   2026-09-17 CRM pact is Subhi (design is Zero's call, code is Subhi's); this PR
   is prepared not armed at open, per that pact. Confined to
   `apps/mouth/src/app/(workspace)/clients/[id]/components/BusinessStoryPanel.tsx`
@@ -51,7 +56,7 @@ appetite:
 
 acceptance:
   A1: >-
-    `BusinessStoryPanel.test.tsx`'s 12 cases pass, including the GUILT cases that
+    `BusinessStoryPanel.test.tsx`'s 15 cases pass, including the GUILT cases that
     fail against the pre-repair component: opening the section shows the backend's
     real `readiness.score` (a fixture value of 76) as a plain number next to
     "Needs a check", never as "76%" or any other `%` text, alongside the tax owner,
@@ -62,12 +67,17 @@ acceptance:
     Alpha" (empty-state renders instead); and six CRM spelling variants from the
     audit's §5.3 table ("Alpha Beta" with no PT token, PT leading, an extra "PMA",
     a dot after PT, a parenthetical qualifier, an alias minus its PT) all match the
-    same pilot entity again once punctuation and legal-form tokens are stripped.
-    And the INNOCENCE cases: an exact company match survives case-fold and
-    internal whitespace-collapse; "PT Alpha" still does not match "PT Alpha Beta
-    Indonesia"; an empty string left after stripping never matches anything; a
-    person name that merely contains another does not match (no substring rule on
-    the person path); `aria-controls` resolves to a real element whether the
+    same pilot entity again once punctuation and legal-form tokens are stripped;
+    and "PT Alpha" does NOT match "CV Alpha" — a stripped-equal pair whose own
+    legal families disagree — nor does a "mixed" name (both PT and CV tokens,
+    not a real company form) match anything via stripping, only via plain
+    equality. And the INNOCENCE cases: an exact company match survives
+    case-fold and internal whitespace-collapse; "PT Alpha" still does not match
+    "PT Alpha Beta Indonesia"; an empty string left after stripping never
+    matches anything; "Alpha" (no legal form) still matches "CV Alpha" — one
+    side silent is fine; a person name that merely contains another does not
+    match (no substring rule on the person path); `aria-controls` resolves to
+    a real element whether the
     section is open or closed; the section is closed by default and toggles
     `aria-expanded` correctly on click; the loading, empty-data, and error states
     render without crashing.
