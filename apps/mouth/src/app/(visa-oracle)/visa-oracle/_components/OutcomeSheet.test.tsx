@@ -12,6 +12,7 @@ import {
   SECOND_HOME_STUDIO_URL,
 } from "../_lib/engine-adapter";
 import { mapDisclosedReviewFlags } from "../_lib/fact-mapper";
+import { translate } from "../_lib/i18n";
 import type { Language } from "../_lib/flow";
 import type {
   HumanReviewOutcome,
@@ -918,5 +919,25 @@ describe("OutcomeSheet — conditions on the verdict", () => {
     expect(
       container.querySelector(".oracle-outcome__conditions"),
     ).not.toBeInTheDocument();
+  });
+
+  // V6 (GATE-A2B-REPORT-6857.md OBS-A2b-6): S6's `aria-labelledby` was
+  // structurally correct but pinned by no test — this asserts the section's
+  // `aria-labelledby` actually resolves to the rendered title's own `id`,
+  // not just that both attributes are present somewhere in the markup.
+  it("names the conditions section via aria-labelledby, resolving to the rendered title's id (S6, V6)", () => {
+    const outcome = outcomeFor("SUPPORTED_CANDIDATES", [CONDITION_ONE]);
+    const { container } = renderSheet("SUPPORTED_CANDIDATES", "en", {
+      outcome,
+    });
+    const section = container.querySelector(".oracle-outcome__conditions");
+    expect(section).toBeInTheDocument();
+    const labelledBy = section!.getAttribute("aria-labelledby");
+    expect(labelledBy).toBeTruthy();
+    const title = container.querySelector(`#${labelledBy}`);
+    expect(title).toBeInTheDocument();
+    expect(title).toHaveTextContent(
+      translate("en", "outcome.conditions.title"),
+    );
   });
 });

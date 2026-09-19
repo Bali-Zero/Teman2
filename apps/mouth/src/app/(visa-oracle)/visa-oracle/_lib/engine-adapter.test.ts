@@ -1586,51 +1586,114 @@ describe("notices render as named conditions (slice A2)", () => {
     }
   });
 
-  // S2 (GATE-A2-REPORT-6849 MEDIUM-2): the guard must see EVERY string the
-  // conditions block can render — every `NOTICE_CONDITION_COPY` entry, the
-  // generic fallback, AND the two `outcome.conditions.*` i18n keys — and
-  // must not be evadable by inflection or an affixed form. Stems, matched
-  // case-insensitively as SUBSTRINGS (never whole-word regexes): the old
-  // `\bcleared\b`/`\bdisetujui\b` word-boundary list let "clearance",
-  // "approval" and the mandate's own example, "aman", straight through
-  // (all three demonstrated in the gate report, check 3).
-  const BANNED_STEMS = [
-    "clear",
-    "approv",
-    "guarantee",
-    "no issue",
-    "no problem",
-    "does not change",
-    "aman",
-    "lulus",
-    "lolos",
-    "diterima",
-    "setuju",
-    "jamin",
-    "tanpa masalah",
-    "tidak ada kendala",
-    "tidak mengubah",
+  // S2 (GATE-A2-REPORT-6849 MEDIUM-2), hardened (GATE-A2B-REPORT-6857.md
+  // OBS-A2b-1): the guard must see EVERY string the conditions block can
+  // render — every `NOTICE_CONDITION_COPY` entry, the generic fallback, AND
+  // the two `outcome.conditions.*` i18n keys — and must not be evadable by
+  // inflection or an affixed form. The FIRST attempt at this (an inflected-
+  // literal stem list) itself missed one: the list carried "does not
+  // change" but not "do not change", so the exact EN sentence #6849 shipped
+  // and S1 ordered removed — "These do not change the result above" — sailed
+  // through GREEN. V1: the guard is therefore PATTERN FAMILIES (case-
+  // insensitive regexes), not inflected literals — a family is what catches
+  // every inflection of a shape at once, which is exactly what a literal
+  // list, however long, cannot do.
+  //
+  // V4 — the declared ceiling: no finite pattern list forecloses every
+  // reassuring synonym in two languages (GATE-A2B-REPORT-6857.md OBS-A2b-7
+  // named four real ones outside these families: "no bearing", "tidak
+  // berpengaruh", "will not affect your result", "no concern" — the
+  // families below now cover exactly those). What this file pins is these
+  // families PLUS the historical fixtures in GUILT_FIXTURES below; a new
+  // reassuring phrasing found in review is added there as a fixture, never
+  // patched by narrowing a family.
+  interface BannedPattern {
+    name: string;
+    re: RegExp;
+  }
+
+  const BANNED_PATTERNS: BannedPattern[] = [
+    {
+      name: "EN negated effect (spaced 'not'): aux + not + up to two words + verb of effect",
+      re: /\b(?:do|does|did|will|would|can|could|shall|should|may|might)\s+not\b(?:\s+\S+){0,2}\s+(?:change|affect|alter|impact|influence|matter)s?\b/gi,
+    },
+    {
+      name: "EN negated effect (contracted auxn't): up to two words + verb of effect",
+      re: /\b(?:does|did|would|could|should|may|might)n['’]t\b(?:\s+\S+){0,2}\s+(?:change|affect|alter|impact|influence|matter)s?\b/gi,
+    },
+    {
+      name: "EN negated effect, irregular contractions won't/cannot/can't: up to two words + verb of effect",
+      re: /\b(?:won['’]t|cannot|can['’]t)\b(?:\s+\S+){0,2}\s+(?:change|affect|alter|impact|influence|matter)s?\b/gi,
+    },
+    {
+      name: "EN 'no issue/problem/concern/bearing/effect/impact/risk(s)'",
+      re: /\bno\s+(?:issue|problem|concern|bearing|effect|impact|risk)s?\b/gi,
+    },
+    { name: "EN stem: clear (unclear allowlisted below)", re: /clear/gi },
+    { name: "EN stem: approv", re: /approv/gi },
+    { name: "EN stem: guarantee", re: /guarantee/gi },
+    { name: "EN 'eligible regardless'", re: /eligible\s+regardless/gi },
+    {
+      name: "ID negated effect: tidak (akan)? + mengubah/berpengaruh/memengaruhi/mempengaruhi/berdampak/menjadi masalah",
+      re: /\btidak\s+(?:akan\s+)?(?:mengubah|berpengaruh|memengaruhi|mempengaruhi|berdampak|menjadi\s+masalah)\b/gi,
+    },
+    {
+      name: "ID 'tanpa masalah/kendala/hambatan'",
+      re: /\btanpa\s+(?:masalah|kendala|hambatan)\b/gi,
+    },
+    {
+      name: "ID 'tidak ada masalah/kendala/hambatan'",
+      re: /\btidak\s+ada\s+(?:masalah|kendala|hambatan)\b/gi,
+    },
+    { name: "ID stem: aman", re: /aman/gi },
+    { name: "ID stem: lulus", re: /lulus/gi },
+    { name: "ID stem: lolos", re: /lolos/gi },
+    { name: "ID stem: diterima", re: /diterima/gi },
+    { name: "ID stem: setuju", re: /setuju/gi },
+    { name: "ID stem: jamin", re: /jamin/gi },
+    { name: "ID stem: pasti", re: /pasti/gi },
   ];
 
   // Exact words that legitimately contain a banned stem WITHOUT carrying its
   // reassuring sense — the fix for a false positive is always an allowlist
-  // entry here, NEVER narrowing the stem (that would also let a real evasion
-  // sharing the same stem through). "unclear" is the OPPOSITE of "cleared":
-  // `DISCLOSED_SOURCE_OF_FUNDS_CONDITION.en` reads "an unclear source of
-  // funds", which is the defect this whole condition exists to flag.
-  const BANNED_STEM_ALLOWLIST = [/\bunclear\b/gi];
+  // entry here, NEVER narrowing the family (that would also let a real
+  // evasion sharing the same shape through).
+  const BANNED_PATTERN_ALLOWLIST = [
+    // "unclear" is the OPPOSITE of "cleared":
+    // `DISCLOSED_SOURCE_OF_FUNDS_CONDITION.en` reads "an unclear source of
+    // funds", which is the defect this whole condition exists to flag.
+    /\bunclear\b/gi,
+    // "dipastikan" ("cannot yet be confirmed" / "will be confirmed") is a
+    // HEDGE, not a reassurance of certainty — the "pasti" family exists to
+    // catch reassuring certainty ("sudah pasti", "pasti aman"), not this.
+    // Shipped in `DISCLOSED_UNCERTAINTY_CONDITION.id` and
+    // `DISCLOSED_AMBIGUOUS_SPONSOR_CONDITION.id`. "memastikan"/
+    // "memastikannya" never trip the "pasti" family in the first place:
+    // Indonesian me-+p- nasal assimilation (peluluhan) drops the "p" (the
+    // same phenomenon that turns "setuju" into "menyetujui" — di- prefixes
+    // do not assimilate, so "disetujui"/"dipastikan" keep the literal
+    // stem and "menyetujui"/"memastikan" do not), so only "dipastikan"
+    // needs an entry here.
+    /\bdipastikan\b/gi,
+  ];
 
   function stripAllowlisted(text: string): string {
     let stripped = text;
-    for (const allowed of BANNED_STEM_ALLOWLIST) {
+    for (const allowed of BANNED_PATTERN_ALLOWLIST) {
       stripped = stripped.replace(allowed, "");
     }
     return stripped;
   }
 
-  function findBannedStem(text: string): string | undefined {
-    const lower = stripAllowlisted(text).toLowerCase();
-    return BANNED_STEMS.find((stem) => lower.includes(stem));
+  function findBannedPattern(text: string): string | undefined {
+    const stripped = stripAllowlisted(text);
+    for (const pattern of BANNED_PATTERNS) {
+      pattern.re.lastIndex = 0;
+      if (pattern.re.test(stripped)) {
+        return pattern.name;
+      }
+    }
+    return undefined;
   }
 
   interface ConditionsBlockEntry {
@@ -1639,68 +1702,244 @@ describe("notices render as named conditions (slice A2)", () => {
     text: string;
   }
 
-  function conditionsBlockEntries(): ConditionsBlockEntry[] {
+  // V3 (OBS-A2b-3): the iteration's source tables are PARAMETERS, defaulted
+  // to the real production tables — the guilt tests below inject a table
+  // carrying a plant instead of hardcoding a string past the matcher, so a
+  // plant that never reached the iteration (e.g. a key silently dropped
+  // from it) cannot pass by accident.
+  interface ConditionsBlockSourceTables {
+    noticeConditionCopy: Record<string, { en: string; id: string }>;
+    genericNoticeCondition: { en: string; id: string };
+    translate: (
+      language: "en" | "id",
+      key: "outcome.conditions.title" | "outcome.conditions.intro",
+    ) => string;
+  }
+
+  const DEFAULT_SOURCE_TABLES: ConditionsBlockSourceTables = {
+    noticeConditionCopy: NOTICE_CONDITION_COPY,
+    genericNoticeCondition: GENERIC_NOTICE_CONDITION,
+    translate,
+  };
+
+  function conditionsBlockEntries(
+    tables: ConditionsBlockSourceTables = DEFAULT_SOURCE_TABLES,
+  ): ConditionsBlockEntry[] {
     const entries: ConditionsBlockEntry[] = [];
-    for (const [code, message] of Object.entries(NOTICE_CONDITION_COPY)) {
+    for (const [code, message] of Object.entries(tables.noticeConditionCopy)) {
       entries.push({ key: code, language: "en", text: message.en });
       entries.push({ key: code, language: "id", text: message.id });
     }
     entries.push({
       key: "GENERIC_NOTICE_CONDITION",
       language: "en",
-      text: GENERIC_NOTICE_CONDITION.en,
+      text: tables.genericNoticeCondition.en,
     });
     entries.push({
       key: "GENERIC_NOTICE_CONDITION",
       language: "id",
-      text: GENERIC_NOTICE_CONDITION.id,
+      text: tables.genericNoticeCondition.id,
     });
     for (const key of [
       "outcome.conditions.title",
       "outcome.conditions.intro",
     ] as const) {
-      entries.push({ key, language: "en", text: translate("en", key) });
-      entries.push({ key, language: "id", text: translate("id", key) });
+      entries.push({ key, language: "en", text: tables.translate("en", key) });
+      entries.push({ key, language: "id", text: tables.translate("id", key) });
     }
     return entries;
   }
 
-  it("innocence: every string the conditions block renders, both languages, is clean", () => {
-    for (const entry of conditionsBlockEntries()) {
-      const hit = findBannedStem(entry.text);
+  function scanConditionsBlock(
+    tables?: ConditionsBlockSourceTables,
+  ): Array<ConditionsBlockEntry & { matchedFamily: string }> {
+    const hits: Array<ConditionsBlockEntry & { matchedFamily: string }> = [];
+    for (const entry of conditionsBlockEntries(tables)) {
+      const matchedFamily = findBannedPattern(entry.text);
+      if (matchedFamily !== undefined) {
+        hits.push({ ...entry, matchedFamily });
+      }
+    }
+    return hits;
+  }
+
+  const EXPECTED_CONDITIONS_BLOCK_KEYS = [
+    ...Object.keys(NOTICE_CONDITION_COPY),
+    "GENERIC_NOTICE_CONDITION",
+    "outcome.conditions.title",
+    "outcome.conditions.intro",
+  ].sort();
+
+  it("pins the scan's own iteration: exactly the title, intro, generic fallback and eleven codes, both languages (V3)", () => {
+    const entries = conditionsBlockEntries();
+    expect(entries).toHaveLength(28);
+    expect(Array.from(new Set(entries.map((e) => e.key))).sort()).toEqual(
+      EXPECTED_CONDITIONS_BLOCK_KEYS,
+    );
+    for (const key of EXPECTED_CONDITIONS_BLOCK_KEYS) {
       expect(
-        hit,
-        `${entry.key}.${entry.language} matched stem "${hit}": "${entry.text}"`,
-      ).toBeUndefined();
+        entries
+          .filter((e) => e.key === key)
+          .map((e) => e.language)
+          .sort(),
+        key,
+      ).toEqual(["en", "id"]);
     }
   });
 
-  it.each([
+  it("innocence: all 28 shipped strings pass the scan clean", () => {
+    const hits = scanConditionsBlock();
+    expect(hits, JSON.stringify(hits)).toEqual([]);
+  });
+
+  // V2: the guard's guilt table is the real history, not invented cases.
+  // Rows 1-2 are the exact EN/ID intro #6849 shipped — copied by command
+  // (`git show 6ff563eb23:.../i18n.ts`), never retyped — the single
+  // sentence this whole slice exists to keep off the surface. Rows 3-13 are
+  // ALL ELEVEN plants from GATE-A2B-REPORT-6857.md's check-3 table
+  // (P1-P11), copied from the report, INCLUDING P3/P5/P6/P9, which slipped
+  // last time as "unlisted synonyms" — the families in BANNED_PATTERNS are
+  // what closes them. P10/P11 duplicate rows 1-2's text (the report itself
+  // notes P10 is "the EXACT string S1 ordered removed") — both are kept as
+  // distinct rows for traceability to their source.
+  interface GuiltFixture {
+    label: string;
+    key: string;
+    language: "en" | "id";
+    text: string;
+  }
+
+  const GUILT_FIXTURES: GuiltFixture[] = [
     {
-      label: "EN inflection",
-      key: "DISCLOSED_HEALTH_CONCERN_CONDITION",
-      language: "en" as const,
-      text: "Our team reviews the details and grants clearance before submission.",
-    },
-    {
-      label: "ID affixed form",
-      key: "DISCLOSED_PEP_OR_SANCTIONS_CONDITION",
-      language: "id" as const,
-      text: "Tim kami akan memastikan bahwa dokumen Anda disetujui sebelum pengajuan.",
-    },
-    {
-      label: "intro key phrase",
+      label:
+        "#6849 shipped EN intro (the sentence this slice exists to remove)",
       key: "outcome.conditions.intro",
-      language: "id" as const,
-      text: "Kondisi ini tidak mengubah hasil di atas.",
+      language: "en",
+      text: "These do not change the result above — they name what our team checks with you before submission.",
     },
-  ])(
-    "guilt: a planted $label evasion in $key ($language) goes red",
-    ({ key, language, text }) => {
-      const hit = findBannedStem(text);
+    {
+      label:
+        "#6849 shipped ID intro (the sentence this slice exists to remove)",
+      key: "outcome.conditions.intro",
+      language: "id",
+      text: "Kondisi ini tidak mengubah hasil di atas — kondisi ini menyebutkan apa yang akan diperiksa tim kami bersama Anda sebelum pengajuan.",
+    },
+    {
+      label: "P1: inflection of the listed 'does not change'",
+      key: "outcome.conditions.intro",
+      language: "en",
+      text: "These conditions do not change the result above. Our team checks each one with you before submission.",
+    },
+    {
+      label: "P2: listed stem 'aman'",
+      key: "outcome.conditions.title",
+      language: "id",
+      text: "Kondisi pada hasil ini yang sudah aman",
+    },
+    {
+      label: "P3: 'no bearing' — unlisted synonym last time",
+      key: "GENERIC_NOTICE_CONDITION",
+      language: "en",
+      text: "An additional condition applies to this result — it has no bearing on your eligibility, and our team will confirm it with you before submission.",
+    },
+    {
+      label: "P4: listed stem 'lolos'",
+      key: "DISCLOSED_PEP_OR_SANCTIONS_CONDITION",
+      language: "id",
+      text: "Anda telah lolos pemeriksaan awal. Tim kami akan memberi tahu dokumen yang perlu disiapkan.",
+    },
+    {
+      label: "P5: 'tidak berpengaruh' — unlisted synonym last time",
+      key: "DISCLOSED_HEALTH_CONCERN_CONDITION",
+      language: "id",
+      text: "Anda menandai adanya masalah kesehatan dalam pengungkapan Anda. Kondisi ini tidak berpengaruh terhadap hasil Anda.",
+    },
+    {
+      label:
+        "P6: 'this will not affect your result' — unlisted synonym last time",
+      key: "DISCLOSED_SOURCE_OF_FUNDS_CONDITION",
+      language: "en",
+      text: "You flagged an unclear source of funds in your disclosures. This will not affect your result.",
+    },
+    {
+      label: "P7: listed stem 'jamin'",
+      key: "GENERIC_NOTICE_CONDITION",
+      language: "id",
+      text: "Kondisi tambahan berlaku untuk hasil ini — Hasil Anda sudah dijamin.",
+    },
+    {
+      label: "P8: allowlist probe — 'unclear' and 'cleared' in the same string",
+      key: "DISCLOSED_SOURCE_OF_FUNDS_CONDITION",
+      language: "en",
+      text: "You flagged an unclear source of funds in your disclosures. You are cleared for submission. A source-of-funds compliance check runs at submission.",
+    },
+    {
+      label: "P9: 'no concern' — unlisted synonym last time",
+      key: "DISCLOSED_HEALTH_CONCERN_CONDITION",
+      language: "en",
+      text: "You flagged a health concern in your disclosures. There is no concern about your eligibility.",
+    },
+    {
+      label: "P10: the EXACT EN string S1 ordered removed",
+      key: "outcome.conditions.intro",
+      language: "en",
+      text: "These do not change the result above — they name what our team checks with you before submission.",
+    },
+    {
+      label: "P11: the EXACT ID string S1 ordered removed",
+      key: "outcome.conditions.intro",
+      language: "id",
+      text: "Kondisi ini tidak mengubah hasil di atas — kondisi ini menyebutkan apa yang akan diperiksa tim kami bersama Anda sebelum pengajuan.",
+    },
+  ];
+
+  function buildInjectedTables(
+    fixture: GuiltFixture,
+  ): ConditionsBlockSourceTables {
+    if (
+      fixture.key === "outcome.conditions.title" ||
+      fixture.key === "outcome.conditions.intro"
+    ) {
+      return {
+        ...DEFAULT_SOURCE_TABLES,
+        translate: (language, key) =>
+          language === fixture.language && key === fixture.key
+            ? fixture.text
+            : translate(language, key),
+      };
+    }
+    if (fixture.key === "GENERIC_NOTICE_CONDITION") {
+      return {
+        ...DEFAULT_SOURCE_TABLES,
+        genericNoticeCondition: {
+          ...GENERIC_NOTICE_CONDITION,
+          [fixture.language]: fixture.text,
+        },
+      };
+    }
+    return {
+      ...DEFAULT_SOURCE_TABLES,
+      noticeConditionCopy: {
+        ...NOTICE_CONDITION_COPY,
+        [fixture.key]: {
+          ...NOTICE_CONDITION_COPY[fixture.key],
+          [fixture.language]: fixture.text,
+        },
+      },
+    };
+  }
+
+  it.each(GUILT_FIXTURES)(
+    "guilt: $label — $key ($language) is reported by the scan",
+    (fixture) => {
+      const tables = buildInjectedTables(fixture);
+      const hits = scanConditionsBlock(tables);
+      const hit = hits.find(
+        (h) => h.key === fixture.key && h.language === fixture.language,
+      );
       expect(
         hit,
-        `expected ${key} (${language}) to trip a banned stem`,
+        `expected ${fixture.key} (${fixture.language}) to be reported by the scan for: "${fixture.text}"`,
       ).toBeDefined();
     },
   );
