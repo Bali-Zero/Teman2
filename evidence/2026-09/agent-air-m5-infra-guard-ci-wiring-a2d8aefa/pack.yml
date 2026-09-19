@@ -28,7 +28,10 @@ result: >-
   parameter on `_run()` and a rewritten test_never_prints_a_credential_value that injects a fixture
   secret instead of reading the host vault, so it no longer early-returns on a machine that has none.
   Before this, neither suite was run by any workflow while check_guard_conformance.py reported "all
-  armed in CI". Three commits: the step, the cure of round 1's BLOCKING, the cure of round 2's.
+  armed in CI". Commit sequence described by CONTENT, not by count — every evidence commit changes
+  the total, so a number written here would be stale by the time it was committed, which is the same
+  countable-claims rule `diff.summary` obeys: the step, then the cure of round 1's BLOCKING, then the
+  cure of round 2's, then this pack's own conformance pass.
 gear_floor_note: >-
   Declared 3 because the deterministic floor IS 3, source `path`: .github/workflows is a hot zone
   and compute_floor returns 3 on a path hit before the size term runs. Re-measured three ways on the
@@ -65,6 +68,7 @@ diff:
     - "ci(guard-conformance): execute the secret_expansion_guard suites, which no workflow ran"
     - "fix(ci): the corpus file needs BOTH invocations, and the spec must trigger the step"
     - "fix(ci,tests): the wiring file must trigger the step, and the credential test must not be vacuous on a runner"
+    - "docs(evidence): acceptance criteria as {text, probe} mappings, and the filter probe is a committed script"
 lanes:
   - lane: guard-ci-wiring
     role: build
