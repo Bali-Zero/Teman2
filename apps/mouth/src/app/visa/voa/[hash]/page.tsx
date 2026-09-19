@@ -18,6 +18,7 @@ import {
   type EligibilitySubmission,
 } from "@/components/garuda/declineEducation";
 import { VOA_PRIMARY_ACTION_STYLE } from "../voa-action-style";
+import { SafeClockHero } from "../SafeClock";
 
 /**
  * GARUDA VOA — public result page (owner decision 5, constraints 5a/5b).
@@ -283,11 +284,20 @@ export default function VoaResultPage({
       title="Visa on Arrival — you're eligible"
       subtitle={
         data.published_filing_deadline
-          ? `File by ${data.published_filing_deadline} at Ngurah Rai — the counter's published deadline.`
+          ? "Your filing window, your price, and what happens next."
           : "We'll confirm your exact filing deadline before you pay."
       }
       footer="One all-inclusive price. Government fees, where they apply, are never billed separately from this figure."
     >
+      {data.published_filing_deadline ? (
+        <SafeClockHero
+          deadline={data.published_filing_deadline}
+          handoffHref={buildWhatsAppLink(
+            "visa",
+            "Hi Bali Zero, I'd like to check my Visa on Arrival filing deadline.",
+          )}
+        />
+      ) : null}
       <div
         ref={stampRef}
         style={{
