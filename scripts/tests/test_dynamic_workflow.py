@@ -15,17 +15,21 @@ from __future__ import annotations
 
 import argparse
 import concurrent.futures
+import difflib
 import importlib.util
 import json
 import os
+import re
 import shutil
 import sys
+from datetime import datetime, timezone
 from pathlib import Path
 from types import ModuleType
 
 import pytest
 
 MODULE_PATH = Path(__file__).resolve().parent.parent / "dynamic_workflow.py"
+FIXTURES_DIR = Path(__file__).resolve().parent / "fixtures" / "dynamic_workflow"
 
 
 def _load_module() -> ModuleType:
@@ -1481,3 +1485,229 @@ def test_seat_key_consolidation_guards_the_full_chain_for_an_aliased_seat(
 
     dw.cmd_anonymise(argparse.Namespace(kit=str(kit)))
     assert (kit / "Z-BLIND" / f"{inverse['kimi-2.7']}.md").exists()  # site :1161
+
+
+# --------------------------------------------------------------- PR3g: seat output normalisation
+
+_WRAPPER_LINE_RE = re.compile(r"^```\w*$")
+
+
+def _dewrap_one_line(line: str) -> str:
+    if line.startswith("• "):
+        return line[2:]
+    if line.startswith("  "):
+        return line[2:]
+    return line
+
+
+@pytest.mark.parametrize("fixture_name", ["kimi-decorated.md", "gemini-fenced.md"])
+def test_normalise_seat_output_fixture_fails_raw_passes_normalised(fixture_name):
+    """G4: each fixture is a real coach answer copied from the live VISA-ORACLE-DW-20260919
+    kit (PII-checked before commit — no '@', phone shape or passport token). Raw bytes fail
+    validate_answer (the wrapper hides byte 0's '---'); the normalised text passes, against
+    the fixture's OWN objective_sha256 line."""
+    raw = (FIXTURES_DIR / fixture_name).read_text()
+    m = re.search(r"objective_sha256:\s*(\S+)", raw)
+    assert m, f"{fixture_name} carries no objective_sha256 line to anchor the expected sha"
+    expected_sha = m.group(1)
+
+    raw_ok, raw_reason = dw.validate_answer(raw, expected_sha)
+    assert raw_ok is False, f"{fixture_name} raw unexpectedly validated: {raw_reason}"
+
+    normalised = dw._normalise_seat_output(raw)
+    norm_ok, norm_reason = dw.validate_answer(normalised, expected_sha)
+    assert norm_ok is True, f"{fixture_name} normalised still fails: {norm_reason}"
+
+
+@pytest.mark.parametrize("fixture_name", ["kimi-decorated.md", "gemini-fenced.md"])
+def test_normalise_seat_output_is_idempotent_on_both_fixtures(fixture_name):
+    raw = (FIXTURES_DIR / fixture_name).read_text()
+    once = dw._normalise_seat_output(raw)
+    twice = dw._normalise_seat_output(once)
+    assert once == twice
+
+
+@pytest.mark.parametrize("fixture_name", ["kimi-decorated.md", "gemini-fenced.md"])
+def test_f11_guard_wrapper_removal_touches_only_wrapper_bytes(fixture_name):
+    """F11 (G1): the launcher must never re-author a seat's content. The line-diff between
+    raw and normalised, on both fixtures, contains only fence lines, '• ' prefixes,
+    two-space indents and the resume trailer -- nothing else changes. Every 'replace' opcode
+    must reduce to a pure de-wrap (removing only the recognised prefix leaves the line
+    byte-identical to its normalised counterpart); every 'delete' opcode must consist only of
+    fence-marker or resume-trailer lines."""
+    raw = (FIXTURES_DIR / fixture_name).read_text()
+    normalised = dw._normalise_seat_output(raw)
+    raw_lines = raw.strip("\n").splitlines()
+    norm_lines = normalised.splitlines()
+
+    sm = difflib.SequenceMatcher(None, raw_lines, norm_lines)
+    for tag, i1, i2, j1, j2 in sm.get_opcodes():
+        if tag == "equal":
+            continue
+        if tag == "delete":
+            for line in raw_lines[i1:i2]:
+                stripped = line.strip()
+                is_fence = bool(_WRAPPER_LINE_RE.match(stripped))
+                is_trailer = _dewrap_one_line(line).lstrip().startswith("To resume this session:")
+                assert is_fence or is_trailer, (
+                    f"{fixture_name}: deleted line is neither a fence nor the resume "
+                    f"trailer: {line!r}")
+        elif tag == "replace":
+            assert (i2 - i1) == (j2 - j1), (
+                f"{fixture_name}: replace opcode changes line COUNT ({i2-i1} -> {j2-j1}), "
+                f"not just wrapper bytes")
+            for ri, nj in zip(range(i1, i2), range(j1, j2)):
+                assert _dewrap_one_line(raw_lines[ri]) == norm_lines[nj], (
+                    f"{fixture_name}: line {ri} changed by more than its own wrapper prefix: "
+                    f"{raw_lines[ri]!r} -> {norm_lines[nj]!r}")
+        else:  # pragma: no cover - insert never fires: normalisation only ever removes bytes
+            pytest.fail(f"{fixture_name}: unexpected '{tag}' opcode — normalisation added a line")
+
+
+def test_normalise_seat_output_is_a_noop_on_already_clean_text(tmp_path):
+    clean = dw._CANNED_VALID.format(seat="clean-seat", sha="1" * 64).strip()
+    assert dw._normalise_seat_output(clean) == clean
+    assert dw._normalise_seat_output(dw._normalise_seat_output(clean)) == clean
+
+
+def test_normalise_seat_output_empty_string_is_a_noop():
+    assert dw._normalise_seat_output("") == ""
+    assert dw._normalise_seat_output("   \n  \n") == ""
+
+
+def test_r1_writes_a_raw_copy_beside_the_normalised_answer(tmp_path, template, clean_objective):
+    kit = tmp_path / "k"
+    dw.cmd_brief(_brief_ns(clean_objective, template, kit))
+    _seed_convener(kit)
+    dw.cmd_r1(argparse.Namespace(kit=str(kit), seats="kimi-k3", astra_fallback=False))
+    raw_path = kit / "r1" / "kimi-k3.raw.md"
+    assert raw_path.exists()
+    assert raw_path.read_text() == dw._fake_seat_output("kimi-k3", (kit / "brief.sha").read_text().strip(), 1)
+
+
+def test_r1_attempt_files_never_overwrite_each_other(tmp_path, template, clean_objective):
+    """G2: the second defect the addendum named — attempt 2 used to overwrite attempt 1's
+    only copy via a plain `out_path.write_text`. z-fakeflaky is dead on attempt 1 (empty
+    output), answered on attempt 2 (auto-relaunch inside cmd_r1); both attempt files must
+    survive, distinct, and r1/<seat>.md must hold the LAST attempt."""
+    kit = tmp_path / "k"
+    dw.cmd_brief(_brief_ns(clean_objective, template, kit))
+    _seed_convener(kit)
+    dw.cmd_r1(argparse.Namespace(kit=str(kit), seats="z-fakeflaky", astra_fallback=False))
+    key = dw._seat_key("z-fakeflaky")
+    attempt1 = (kit / "r1" / f"{key}.attempt1.md").read_text()
+    attempt2 = (kit / "r1" / f"{key}.attempt2.md").read_text()
+    assert attempt1 == ""
+    assert attempt2.strip() != ""
+    assert attempt1 != attempt2
+    assert (kit / "r1" / f"{key}.md").read_text() == attempt2
+
+
+def test_r2_writes_a_raw_copy_beside_the_normalised_objections(tmp_path, template, clean_objective):
+    kit = tmp_path / "k"
+    dw.cmd_brief(_brief_ns(clean_objective, template, kit))
+    _seed_convener(kit)
+    dw.cmd_r1(argparse.Namespace(kit=str(kit), seats="kimi-k3,qwen3.8-max,gemini-3.1-pro-high",
+                                  astra_fallback=False))
+    dw.cmd_r2(argparse.Namespace(kit=str(kit)))
+    key = dw._seat_key("kimi-k3")
+    raw_path = kit / "r2" / f"{key}.raw.md"
+    assert raw_path.exists()
+    assert raw_path.read_text() == dw._fake_r2_output("kimi-k3")
+
+
+def test_jury_writes_a_raw_ballot_beside_the_normalised_one(tmp_path, template, clean_objective):
+    kit = tmp_path / "k"
+    dw.cmd_brief(_brief_ns(clean_objective, template, kit))
+    _seed_convener(kit)
+    dw.cmd_r1(argparse.Namespace(kit=str(kit), seats="kimi-k3,qwen3.8-max,gemini-3.1-pro-high",
+                                  astra_fallback=False))
+    dw.cmd_judge(argparse.Namespace(kit=str(kit)))
+    dw.cmd_jury(argparse.Namespace(kit=str(kit)))
+    survivors = dw._jury_survivors(kit)
+    mapping = dw._jury_mapping(kit, survivors)
+    inverse = {seat: ltr for ltr, seat in mapping.items()}
+    letter = inverse["kimi-k3"]
+    raw_path = kit / "jury" / f"ballot-{letter}.raw.md"
+    assert raw_path.exists()
+    others = sorted(ltr for ltr in mapping if ltr != letter)
+    assert raw_path.read_text() == dw._fake_jury_output("kimi-k3", others)
+
+
+# --------------------------------------------------------------- PR3g: r1 --register
+
+def _seed_awaiting_window(kit: Path, seat: str) -> None:
+    dw.ledger_append(kit, seat, "awaiting-window", "-")
+
+
+def _window_path(kit: Path, seat: str) -> Path:
+    return kit / "r1" / f"{dw._seat_key(seat)}-window.md"
+
+
+def test_register_requires_seats_to_name_exactly_the_registered_seat(tmp_path, template, clean_objective):
+    kit = tmp_path / "k"
+    dw.cmd_brief(_brief_ns(clean_objective, template, kit))
+    _seed_convener(kit)
+    with pytest.raises(SystemExit) as exc:
+        dw.cmd_r1(argparse.Namespace(kit=str(kit), seats="hand-seat,other-seat",
+                                      astra_fallback=False, register="hand-seat"))
+    assert exc.value.code == 2
+
+
+def test_register_refuses_a_seat_with_no_awaiting_window_row(tmp_path, template, clean_objective):
+    kit = tmp_path / "k"
+    dw.cmd_brief(_brief_ns(clean_objective, template, kit))
+    _seed_convener(kit)
+    with pytest.raises(SystemExit) as exc:
+        dw.cmd_r1(argparse.Namespace(kit=str(kit), seats="never-seen", astra_fallback=False,
+                                      register="never-seen"))
+    assert exc.value.code == 2
+
+
+def test_register_fails_closed_on_an_invalid_window_file(tmp_path, template, clean_objective):
+    kit = tmp_path / "k"
+    dw.cmd_brief(_brief_ns(clean_objective, template, kit))
+    _seed_convener(kit)
+    _seed_awaiting_window(kit, "hand-seat")
+    _window_path(kit, "hand-seat").write_text("not a valid answer, no frontmatter\n")
+    with pytest.raises(SystemExit) as exc:
+        dw.cmd_r1(argparse.Namespace(kit=str(kit), seats="hand-seat", astra_fallback=False,
+                                      register="hand-seat"))
+    assert exc.value.code == 1
+    assert dw._ledger_seat_has_status(kit, "hand-seat", "window-invalid")
+    assert not (kit / "r1" / f"{dw._seat_key('hand-seat')}.md").exists()
+
+
+def test_register_passes_a_normalised_window_file_and_stamps_its_own_mtime(
+        tmp_path, template, clean_objective):
+    kit = tmp_path / "k"
+    dw.cmd_brief(_brief_ns(clean_objective, template, kit))
+    sha = _seed_convener(kit)
+    _seed_awaiting_window(kit, "hand-seat")
+
+    clean = dw._CANNED_VALID.format(seat="hand-seat", sha=sha).strip()
+    fenced = "```markdown\n" + clean + "\n```\n"  # a human pastes exactly what the CLI gave them
+    window_path = _window_path(kit, "hand-seat")
+    window_path.write_text(fenced)
+
+    result = dw.cmd_r1(argparse.Namespace(kit=str(kit), seats="hand-seat", astra_fallback=False,
+                                           register="hand-seat"))
+    assert result == {"hand-seat": "answered"}
+    assert (kit / "r1" / f"{dw._seat_key('hand-seat')}.md").read_text() == clean
+
+    want_when = datetime.fromtimestamp(window_path.stat().st_mtime, tz=timezone.utc).replace(microsecond=0)
+    assert dw._ledger_when(kit, "hand-seat") == want_when
+
+
+def test_register_refuses_a_seat_already_answered(tmp_path, template, clean_objective):
+    kit = tmp_path / "k"
+    dw.cmd_brief(_brief_ns(clean_objective, template, kit))
+    sha = _seed_convener(kit)
+    _seed_awaiting_window(kit, "hand-seat")
+    _window_path(kit, "hand-seat").write_text(dw._CANNED_VALID.format(seat="hand-seat", sha=sha))
+    dw.cmd_r1(argparse.Namespace(kit=str(kit), seats="hand-seat", astra_fallback=False,
+                                  register="hand-seat"))
+    with pytest.raises(SystemExit) as exc:
+        dw.cmd_r1(argparse.Namespace(kit=str(kit), seats="hand-seat", astra_fallback=False,
+                                      register="hand-seat"))
+    assert exc.value.code == 2

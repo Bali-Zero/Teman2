@@ -29,6 +29,12 @@ vendor/evoskill/uv.lock
 # Logs
 *.log
 
+# scripts/tests/fixtures/dynamic_workflow: byte-exact copies of real coach CLI transcripts
+# (kimi's own bullet/indent decoration, agy's own ```markdown``` fence) — the PR3g F11 guard
+# test asserts the raw bytes are UNTOUCHED wrapper artifacts; Prettier reformatting the table
+# alignment or inserting blank lines would corrupt the exact fixture the test depends on.
+scripts/tests/fixtures/dynamic_workflow/*.md
+
 # Environment files
 .env
 .env.local

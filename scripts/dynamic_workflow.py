@@ -6,6 +6,7 @@ Subcommands (PR1a+PR1b+PR2a+PR2b+PR2c+PR2d):
     brief    --slug S --objective-file F --colour BLUE|ORANGE [--floor X] [--template T] [--kit K]
     check    --kit K            # recompute BRIEF.md from template+inputs.json, byte-diff (W78)
     r1       --kit K --seats a,b,c [--astra-fallback]   # one-shot per seat, ledger, relaunch<=1
+    r1       --kit K --seats S --register S             # register a hand-pasted r1/S-window.md
     validate FILE --sha S       # frontmatter+skeleton+word-count gate
     r2       --kit K            # deterministic cross-family pairing, one shot, F/C+Test filter
     judge    --kit K            # mechanical C1/C5/C8 disqualification of every r1 answer
@@ -216,6 +217,10 @@ def _ledger_has_seat(kit: Path, seat: str) -> bool:
     return any(r[1] == seat for r in _ledger_rows(kit))
 
 
+def _ledger_seat_has_status(kit: Path, seat: str, status: str) -> bool:
+    return any(r[1] == seat and r[2] == status for r in _ledger_rows(kit))
+
+
 def _parse_ledger_when(when: str) -> datetime:
     return datetime.strptime(when, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc)
 
@@ -282,6 +287,50 @@ def validate_answer(text: str, expected_sha: str) -> tuple[bool, str]:
     if wc > 1500:
         return False, f"word count {wc} > 1500"
     return True, "ok"
+
+
+# --------------------------------------------------------------------- seat output normalisation
+
+_FENCE_LINE_RE = re.compile(r"```\w*")
+
+
+def _normalise_seat_output(text: str) -> str:
+    """Strip a coach CLI's own transport wrapper before validate_answer/_split_objections/
+    _parse_jury_ballot ever see the text (PR3g addendum: the first real r1 registered ZERO
+    external answers — kimi and gemini both answered substantively, both ledgered `dead`,
+    because validate_answer wants `---` at byte 0 and the guard judged bytes, not the entity,
+    scar #3). Two wrappers only, applied in order:
+      (a) leading/trailing whitespace, always stripped;
+      (b) a fenced whole-answer (```markdown ... ``` or bare ```): drop the opener and the bare
+          closer line only, nothing else in the fence;
+      (c) `kimi --output-format text`'s own decoration: when EVERY non-blank line starts with
+          '• ' (bullet, space) or with two spaces, de-indent every line and drop a trailing
+          "To resume this session:" paragraph, kimi's own resume trailer.
+    Idempotent: normalising output that carries neither wrapper is a no-op, so a second pass
+    over an already-normalised answer returns it unchanged."""
+    text = text.strip()
+    if not text:
+        return text
+    lines = text.split("\n")
+    if len(lines) >= 2 and _FENCE_LINE_RE.fullmatch(lines[0].strip()) and lines[-1].strip() == "```":
+        lines = lines[1:-1]
+        text = "\n".join(lines).strip()
+        lines = text.split("\n") if text else []
+    non_blank = [ln for ln in lines if ln.strip()]
+    if non_blank and all(ln.startswith("• ") or ln.startswith("  ") for ln in non_blank):
+        dewrapped = []
+        for ln in lines:
+            if not ln.strip():
+                dewrapped.append(ln)
+            elif ln.startswith("• "):
+                dewrapped.append(ln[2:])
+            else:  # startswith("  "), the only other case admitted by the `all()` check above
+                dewrapped.append(ln[2:])
+        text = "\n".join(dewrapped).strip()
+        paragraphs = re.split(r"\n\s*\n", text)
+        if paragraphs and paragraphs[-1].lstrip().startswith("To resume this session:"):
+            text = "\n\n".join(paragraphs[:-1]).strip()
+    return text
 
 
 # --------------------------------------------------------------------- brief / check
@@ -548,14 +597,24 @@ def _run_one_seat(kit: Path, seat: str, brief_master: str, brief_sha: str, attem
 
     fake = os.environ.get("DW_FAKE_SEATS") == "1"
     if fake:
-        output = _fake_seat_output(seat, brief_sha, attempt)
+        raw_output = _fake_seat_output(seat, brief_sha, attempt)
     else:
         kind = _seat_kind(seat) or "kimi"
         timeout = SEAT_TIMEOUTS.get(kind, 900)
-        output = _launch_seat(seat, prompt, timeout, kit)
+        raw_output = _launch_seat(seat, prompt, timeout, kit)
+
+    # Raw bytes ALWAYS survive, unnormalised, beside the normalised answer (G1): a coach's
+    # answer is judged as an entity, never as the bytes its CLI wrapped it in, but the bytes
+    # themselves are never thrown away either.
+    (kit / "r1" / f"{_seat_key(seat)}.raw.md").write_text(raw_output or "")
+    output = _normalise_seat_output(raw_output or "")
+
+    # Attempt N's normalised answer, kept forever (G2): the flaky-then-answered relaunch used
+    # to overwrite attempt 1's file with attempt 2's before anyone could compare them.
+    (kit / "r1" / f"{_seat_key(seat)}.attempt{attempt}.md").write_text(output)
 
     out_path = kit / "r1" / f"{_seat_key(seat)}.md"
-    out_path.write_text(output or "")
+    out_path.write_text(output)
     if not output or not output.strip():
         ledger_append(kit, seat, "dead", prompt_hash16)
         return "dead"
@@ -568,6 +627,40 @@ def _run_one_seat(kit: Path, seat: str, brief_master: str, brief_sha: str, attem
     return "dead"
 
 
+def _cmd_r1_register(kit: Path, seat: str, brief_sha: str) -> str:
+    """G3: registers a hand-pasted window answer for `seat` — the third defect the addendum
+    named (`awaiting-window` was a dead end: no subcommand could ever register a hand-pasted
+    r1/astra.md, only _run_one_seat wrote an `answered` row). Refuses (exit 2) before touching
+    the window file at all if the seat is already answered or was never marked
+    awaiting-window; otherwise reads r1/<seat>-window.md (missing = empty text, which fails
+    validate_answer's own frontmatter check rather than crashing here), normalises it exactly
+    like a dispatched seat's own output, and validates against brief_sha. PASS writes
+    r1/<seat>.md and an `answered` row timestamped at the WINDOW FILE's own mtime (the human
+    pasted it then, not at register-time); FAIL writes a `window-invalid` row and exits 1."""
+    _validate_seat_id(seat)
+    if _ledger_seat_has_status(kit, seat, "answered"):
+        print(f"refused: {seat} already has an answered row", file=sys.stderr)
+        sys.exit(2)
+    if not _ledger_seat_has_status(kit, seat, "awaiting-window"):
+        print(f"refused: {seat} has no awaiting-window row — nothing to register", file=sys.stderr)
+        sys.exit(2)
+
+    window_path = kit / "r1" / f"{_seat_key(seat)}-window.md"
+    window_text = window_path.read_text() if window_path.exists() else ""
+    normalised = _normalise_seat_output(window_text)
+    ok, reason = validate_answer(normalised, brief_sha)
+    ans_hash16 = hashlib.sha256(normalised.encode()).hexdigest()[:16]
+    if not ok:
+        print(f"{seat}: window-invalid ({reason})", file=sys.stderr)
+        ledger_append(kit, seat, "window-invalid", ans_hash16)
+        sys.exit(1)
+
+    (kit / "r1" / f"{_seat_key(seat)}.md").write_text(normalised)
+    when = datetime.fromtimestamp(window_path.stat().st_mtime, tz=timezone.utc)
+    ledger_append(kit, seat, "answered", ans_hash16, when=when.strftime("%Y-%m-%dT%H:%M:%SZ"))
+    return "answered"
+
+
 def cmd_r1(args: argparse.Namespace) -> dict[str, str]:
     # Gate-4 finding (PR2e addendum, scripts/dynamic_workflow.py:497): "" or whitespace-only
     # --seats used to filter down to an empty list and exit 0 silently (nothing dispatched,
@@ -577,6 +670,11 @@ def cmd_r1(args: argparse.Namespace) -> dict[str, str]:
     if not seats:
         print("refused: --seats is empty or whitespace-only — nothing to dispatch",
               file=sys.stderr)
+        sys.exit(2)
+    register = getattr(args, "register", None)
+    if register and seats != [register]:
+        print(f"refused: --register {register!r} requires --seats to name exactly that "
+              f"seat, got {seats}", file=sys.stderr)
         sys.exit(2)
     kit = Path(args.kit)
     brief_sha = (kit / "brief.sha").read_text().strip()
@@ -609,6 +707,9 @@ def cmd_r1(args: argparse.Namespace) -> dict[str, str]:
     else:
         ledger_append(kit, "fable-5-1", "answered", brief_sha[:16],
                       when=fable_mtime.strftime("%Y-%m-%dT%H:%M:%SZ"))
+
+    if register:
+        return {register: _cmd_r1_register(kit, register, brief_sha)}
 
     brief_master = (kit / "BRIEF.md").read_text()
     summary: dict[str, str] = {}
@@ -811,14 +912,16 @@ def cmd_r2(args: argparse.Namespace) -> dict[str, dict[str, int]]:
         # directly (defense in depth, not a reachable end-to-end bug via the normal pipeline).
         _validate_kimi_model(seat)
         if fake:
-            output = _fake_r2_output(seat)
+            raw_output = _fake_r2_output(seat)
         else:
             answers = "\n\n".join(_read_text_or_refuse(kit / "r1" / f"{_seat_key(t)}.md")
                                    for t in targets)
             prompt = _R2_PROMPT_PREFIX + answers
             kind = _seat_kind(seat) or "kimi"
             timeout = SEAT_TIMEOUTS.get(kind, 900)
-            output = _launch_seat(seat, prompt, timeout, kit)
+            raw_output = _launch_seat(seat, prompt, timeout, kit)
+        (kit / "r2" / f"{_seat_key(seat)}.raw.md").write_text(raw_output or "")
+        output = _normalise_seat_output(raw_output or "")
         paragraphs = _split_objections(output)
         kept = [p for p in paragraphs if _objection_ok(p)]
         rejected = [p for p in paragraphs if not _objection_ok(p)]
@@ -1123,14 +1226,16 @@ def cmd_jury(args: argparse.Namespace) -> dict[str, Any]:
             continue  # no peers to review — never sent, never scored, never dead
         _validate_kimi_model(juror)  # item 4 (PR2g, gate-7 obs :390/:994) — see cmd_r2's copy
         if fake:
-            output = _fake_jury_output(juror, others)
+            raw_output = _fake_jury_output(juror, others)
         else:
             prompt = _jury_prompt(kit, mapping, others)
             kind = _seat_kind(juror) or "kimi"
             timeout = SEAT_TIMEOUTS.get(kind, 900)
-            output = _launch_seat(juror, prompt, timeout, kit)
-        (kit / "jury" / f"ballot-{inverse[juror]}.md").write_text(output or "")
-        ballot = _parse_jury_ballot(output or "", set(others))
+            raw_output = _launch_seat(juror, prompt, timeout, kit)
+        (kit / "jury" / f"ballot-{inverse[juror]}.raw.md").write_text(raw_output or "")
+        output = _normalise_seat_output(raw_output or "")
+        (kit / "jury" / f"ballot-{inverse[juror]}.md").write_text(output)
+        ballot = _parse_jury_ballot(output, set(others))
         ballots[juror] = ballot
         ledger_append(kit, juror, "jury-dead" if ballot is None else "jury-scored", "0" * 16)
 
@@ -1667,6 +1772,117 @@ def run_selftest() -> None:
             REPO_ROOT = real_repo_root
             shutil.rmtree(selftest_root_dir, ignore_errors=True)
 
+        # O. _normalise_seat_output: a fenced wrapper and kimi's bullet/resume-trailer
+        # decoration both recover the exact clean answer underneath, and normalising twice
+        # equals normalising once (G1, PR3g addendum).
+        clean_o = _CANNED_VALID.format(seat="check-seat", sha="0" * 64).strip()
+        fence_wrapped_o = "```markdown\n" + clean_o + "\n```\n"
+        norm_fence_o = _normalise_seat_output(fence_wrapped_o)
+        check("G1: a fenced wrapper is stripped to the clean answer", norm_fence_o == clean_o)
+
+        # kimi's own CLI decorates every line uniformly, trailer included (the trailer is
+        # appended before decoration runs, not after) -- so the wrapped fixture below bullets
+        # the whole text, trailer paragraph and all, exactly like the real `kimi
+        # --output-format text` transcript the addendum quotes.
+        full_with_trailer_o = clean_o + "\n\nTo resume this session: kimi -r abc123"
+        kimi_lines_o = []
+        for i, ln in enumerate(full_with_trailer_o.splitlines()):
+            if not ln.strip():
+                kimi_lines_o.append(ln)
+            elif i == 0:
+                kimi_lines_o.append("• " + ln)
+            else:
+                kimi_lines_o.append("  " + ln)
+        kimi_wrapped_o = "\n".join(kimi_lines_o) + "\n"
+        norm_kimi_o = _normalise_seat_output(kimi_wrapped_o)
+        check("G1: kimi bullet decoration + resume trailer stripped to the clean answer",
+              norm_kimi_o == clean_o)
+        check("G1: normalisation is idempotent (twice == once)",
+              _normalise_seat_output(norm_kimi_o) == norm_kimi_o)
+
+        # P. attempt preservation: a dead attempt 1 does not overwrite a later answered
+        # attempt 2's file — both survive on disk, distinct (G2, the second defect the
+        # addendum named: attempt 2 used to overwrite attempt 1's only copy).
+        kit_p = work / "kit-p"
+        cmd_brief(argparse.Namespace(slug="p", objective_file=str(clean_obj), colour="BLUE",
+                                      floor=None, template=str(_fixture_template()), kit=str(kit_p)))
+        sha_p = (kit_p / "brief.sha").read_text().strip()
+        (kit_p / "r1" / "fable-5-1.md").write_text(_CANNED_VALID.format(seat="fable-5-1", sha=sha_p))
+        cmd_r1(argparse.Namespace(kit=str(kit_p), seats="y-fakeflaky", astra_fallback=False))
+        key_p = _seat_key("y-fakeflaky")
+        attempt1_p = (kit_p / "r1" / f"{key_p}.attempt1.md")
+        attempt2_p = (kit_p / "r1" / f"{key_p}.attempt2.md")
+        check("G2: attempt 1's file survives a relaunch", attempt1_p.exists())
+        check("G2: attempt 1 (dead) is empty", attempt1_p.read_text() == "")
+        check("G2: attempt 2's file exists and carries the answered text",
+              attempt2_p.exists() and attempt2_p.read_text().strip() != "")
+        check("G2: attempt 1 and attempt 2 are distinct files",
+              attempt1_p.read_text() != attempt2_p.read_text())
+        check("G2: r1/<seat>.md holds the LAST attempt (attempt 2)",
+              (kit_p / "r1" / f"{key_p}.md").read_text() == attempt2_p.read_text())
+        check("G2: r1/<seat>.raw.md carries the last attempt's unnormalised bytes",
+              (kit_p / "r1" / f"{key_p}.raw.md").read_text() ==
+              _fake_seat_output("y-fakeflaky", sha_p, 2))
+
+        # Q. r1 --register: a hand-pasted window file becomes an `answered` row timestamped
+        # at the window file's OWN mtime, normalised and validated exactly like a dispatched
+        # seat's own output (G3, the third defect: awaiting-window used to be a dead end).
+        kit_q = work / "kit-q"
+        cmd_brief(argparse.Namespace(slug="q", objective_file=str(clean_obj), colour="BLUE",
+                                      floor=None, template=str(_fixture_template()), kit=str(kit_q)))
+        sha_q = (kit_q / "brief.sha").read_text().strip()
+        (kit_q / "r1" / "fable-5-1.md").write_text(_CANNED_VALID.format(seat="fable-5-1", sha=sha_q))
+
+        try:
+            cmd_r1(argparse.Namespace(kit=str(kit_q), seats="never-seen", astra_fallback=False,
+                                       register="never-seen"))
+            check("guilt: --register refuses a seat with no awaiting-window row", False)
+        except SystemExit as e:
+            check("guilt: --register refuses a seat with no awaiting-window row", e.code == 2)
+
+        ledger_append(kit_q, "hand-seat", "awaiting-window", "-")
+        window_path_q = kit_q / "r1" / f"{_seat_key('hand-seat')}-window.md"
+        window_path_q.write_text("not a valid answer, no frontmatter at all\n")
+        try:
+            cmd_r1(argparse.Namespace(kit=str(kit_q), seats="hand-seat", astra_fallback=False,
+                                       register="hand-seat"))
+            check("guilt: --register refuses an invalid window file", False)
+        except SystemExit as e:
+            check("guilt: --register refuses an invalid window file", e.code == 1)
+        check("--register FAIL wrote a window-invalid ledger row",
+              _ledger_seat_has_status(kit_q, "hand-seat", "window-invalid"))
+        check("--register FAIL wrote no r1/<seat>.md",
+              not (kit_q / "r1" / f"{_seat_key('hand-seat')}.md").exists())
+
+        window_body_q = _CANNED_VALID.format(seat="hand-seat", sha=sha_q).strip()
+        window_lines_q = []
+        for i, ln in enumerate(window_body_q.splitlines()):
+            window_lines_q.append(ln if not ln.strip() else ("• " if i == 0 else "  ") + ln)
+        window_path_q.write_text("\n".join(window_lines_q) + "\n")
+        result_q = cmd_r1(argparse.Namespace(kit=str(kit_q), seats="hand-seat", astra_fallback=False,
+                                              register="hand-seat"))
+        check("innocence: --register PASS returns answered", result_q["hand-seat"] == "answered")
+        check("innocence: --register PASS writes the normalised answer to r1/<seat>.md",
+              (kit_q / "r1" / f"{_seat_key('hand-seat')}.md").read_text() == window_body_q)
+        window_mtime_q = datetime.fromtimestamp(
+            window_path_q.stat().st_mtime, tz=timezone.utc).replace(microsecond=0)
+        check("innocence: the answered ledger row's `when` is the window file's own mtime",
+              _ledger_when(kit_q, "hand-seat") == window_mtime_q)
+
+        try:
+            cmd_r1(argparse.Namespace(kit=str(kit_q), seats="hand-seat", astra_fallback=False,
+                                       register="hand-seat"))
+            check("guilt: --register refuses a seat already answered", False)
+        except SystemExit as e:
+            check("guilt: --register refuses a seat already answered", e.code == 2)
+
+        try:
+            cmd_r1(argparse.Namespace(kit=str(kit_q), seats="hand-seat,other-seat",
+                                       astra_fallback=False, register="hand-seat"))
+            check("guilt: --register refuses when --seats names more than just it", False)
+        except SystemExit as e:
+            check("guilt: --register refuses when --seats names more than just it", e.code == 2)
+
     finally:
         shutil.rmtree(work, ignore_errors=True)
         os.environ.pop("DW_FAKE_SEATS", None)
@@ -1722,6 +1938,7 @@ def main() -> None:
     p_r1.add_argument("--kit", required=True)
     p_r1.add_argument("--seats", required=True)
     p_r1.add_argument("--astra-fallback", action="store_true", dest="astra_fallback")
+    p_r1.add_argument("--register")
     p_r1.set_defaults(func=cmd_r1)
 
     p_val = sub.add_parser("validate")
