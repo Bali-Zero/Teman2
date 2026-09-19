@@ -23,6 +23,7 @@ import {
   Phone,
   Calendar,
   X,
+  UserCheck,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { AvatarWithFallback } from "@/components/ui/avatar-with-fallback";
@@ -77,6 +78,7 @@ import { AddFamilyMemberModal } from "./components/modals/AddFamilyMemberModal";
 import { EditFamilyMemberModal } from "./components/modals/EditFamilyMemberModal";
 import { AddDocumentModal } from "./components/modals/AddDocumentModal";
 import { EditDocumentModal } from "./components/modals/EditDocumentModal";
+import { AddCompanyModal } from "./components/modals/AddCompanyModal";
 
 /**
  * The client-status trigger (below) is a menu TRIGGER, not a report — it
@@ -198,6 +200,42 @@ export function ClientDetailClient({
   const [logSummary, setLogSummary] = useState("");
   const [isLogging, setIsLogging] = useState(false);
   const [logSaved, setLogSaved] = useState(false);
+  // R7a: the two controls the hidden Company/Tax tabs used to own for a
+  // company-less client — linking the first company and assigning the tax
+  // consultant. Kept on Overview so hiding the tabs orphans no action.
+  const [isAddingCompany, setIsAddingCompany] = useState(false);
+  const [taxConsultantValue, setTaxConsultantValue] = useState("");
+  const [isSavingTaxConsultant, setIsSavingTaxConsultant] = useState(false);
+  useEffect(() => {
+    setTaxConsultantValue(profile?.client.tax_consultant ?? "");
+  }, [profile?.client.tax_consultant]);
+
+  const saveTaxConsultant = async (newValue: string) => {
+    const previous = taxConsultantValue;
+    setTaxConsultantValue(newValue);
+    setIsSavingTaxConsultant(true);
+    try {
+      const user = await api.getProfile();
+      await api.crm.updateClient(
+        clientId,
+        { tax_consultant: newValue || null },
+        user.email,
+      );
+      toast.success(
+        newValue
+          ? `Tax consultant: ${taxConsultants.find((c) => c.value === newValue)?.label ?? newValue}`
+          : "Tax consultant cleared",
+      );
+      void invalidateClient();
+    } catch (err) {
+      setTaxConsultantValue(previous); // revert on error, same as TaxTab
+      toast.error("Failed to update tax consultant", {
+        description: (err as Error).message,
+      });
+    } finally {
+      setIsSavingTaxConsultant(false);
+    }
+  };
   const logTextareaRef = useRef<HTMLTextAreaElement>(null);
   const tabsRef = useRef<HTMLElement>(null);
   const statusMenuRef = useRef<HTMLDivElement>(null);
@@ -381,6 +419,24 @@ export function ClientDetailClient({
       : businessStoryQuery.error
         ? new Error("Business story request failed")
         : null;
+
+  // R7a: hide the Company and Tax tabs for a client with no company links.
+  // The decision is made only on the LOADED profile — while `useClientDetail`
+  // is unresolved the page returns the spinner before the tab bar exists,
+  // so there is no window in which an `undefined`/empty `company_links` could
+  // flicker the tabs out. A client whose record still names a company keeps
+  // the tabs even with an empty link list: CompanyTab's name-search fallback
+  // then surfaces real company data (and its Sync Drive / edit / vault
+  // actions) that hiding would orphan.
+  const hasCompanyLinks = (company_links?.length ?? 0) > 0;
+  const showCompanyTaxTabs = hasCompanyLinks || Boolean(client.company_name);
+  // Render-time fallback, NOT a URL-effect reset: the effect runs while the
+  // profile is still loading, so bouncing there would discard a ?tab=company
+  // deep link before the data can prove whether the tab exists.
+  const visibleTab: TabType =
+    !showCompanyTaxTabs && (activeTab === "company" || activeTab === "tax")
+      ? "overview"
+      : activeTab;
 
   // Get country flag for fallback
   const countryFlag = getCountryFlag(client.nationality);
@@ -955,22 +1011,27 @@ export function ClientDetailClient({
                 label: "WhatsApp",
                 icon: MessageCircle,
               },
-            ].map(({ key, label, icon: Icon }) => (
-              <button
-                key={key}
-                type="button"
-                onClick={() => handleTabChange(key as TabType)}
-                aria-current={activeTab === key ? "page" : undefined}
-                className={`${styles.tab} ${activeTab === key ? styles.tabActive : ""}`}
-              >
-                <Icon className="w-4 h-4" />
-                {label}
-              </button>
-            ))}
+            ]
+              .filter(
+                ({ key }) =>
+                  showCompanyTaxTabs || (key !== "company" && key !== "tax"),
+              )
+              .map(({ key, label, icon: Icon }) => (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => handleTabChange(key as TabType)}
+                  aria-current={visibleTab === key ? "page" : undefined}
+                  className={`${styles.tab} ${visibleTab === key ? styles.tabActive : ""}`}
+                >
+                  <Icon className="w-4 h-4" />
+                  {label}
+                </button>
+              ))}
           </nav>
 
           {/* Tab Content */}
-          {activeTab === "overview" && (
+          {visibleTab === "overview" && (
             <>
               <OverviewTab
                 client={client}
@@ -1002,6 +1063,66 @@ export function ClientDetailClient({
                 clientId={clientId}
                 clientName={client.full_name}
               />
+              {/* R7a: for a client with no company links (and no company name
+                  on record) the Company/Tax tabs are hidden — so the two
+                  actions they carried move here, to the Overview the deep
+                  links fall back to: linking the first company, and the tax
+                  consultant assignment TaxTab renders for every client. */}
+              {!showCompanyTaxTabs && (
+                <section
+                  aria-label="Company and tax"
+                  className="rounded-xl border border-[var(--bz-border)] bg-[var(--bz-surface)] p-4 space-y-4"
+                >
+                  <div className="flex items-center justify-between gap-3 flex-wrap">
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-[var(--bz-text-1)]">
+                        No company linked
+                      </p>
+                      <p className="text-xs text-[var(--bz-text-2)] max-w-sm">
+                        This client has no associated company. Create a new one
+                        or link an existing one — the Company and Tax sections
+                        appear once a link exists.
+                      </p>
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setIsAddingCompany(true)}
+                    >
+                      <Building2 className="w-4 h-4" />
+                      Add Company
+                    </Button>
+                  </div>
+                  <div className="flex items-center gap-3 border-t border-[var(--bz-border)] pt-4">
+                    <UserCheck className="w-4 h-4 text-[var(--tx-secondary)] shrink-0" />
+                    <label
+                      htmlFor="tax-consultant-inline"
+                      className="text-sm font-medium text-[var(--bz-text-1)]"
+                    >
+                      Tax Consultant
+                    </label>
+                    <select
+                      id="tax-consultant-inline"
+                      value={taxConsultantValue}
+                      onChange={(e) => void saveTaxConsultant(e.target.value)}
+                      disabled={isSavingTaxConsultant}
+                      className="flex-1 max-w-[220px] px-3 py-1.5 rounded-lg border border-[var(--bz-border)] bg-[var(--bz-base)] text-sm text-[var(--bz-text-1)] focus:outline-none focus:border-[var(--line-control)] transition-colors disabled:opacity-60"
+                    >
+                      <option value="">— not assigned —</option>
+                      {taxConsultants.map((c) => (
+                        <option key={c.value} value={c.value}>
+                          {c.label}
+                        </option>
+                      ))}
+                    </select>
+                    {isSavingTaxConsultant && (
+                      <span className="text-xs text-[var(--bz-text-2)]">
+                        Saving…
+                      </span>
+                    )}
+                  </div>
+                </section>
+              )}
             </>
           )}
 
@@ -1057,7 +1178,7 @@ export function ClientDetailClient({
             />
           )}
 
-          {activeTab === "company" && (
+          {visibleTab === "company" && (
             <CompanyTab
               clientId={clientId}
               client={client}
@@ -1067,7 +1188,7 @@ export function ClientDetailClient({
             />
           )}
 
-          {activeTab === "tax" && (
+          {visibleTab === "tax" && (
             <TaxTab
               clientId={clientId}
               formatDate={formatDate}
@@ -1144,6 +1265,17 @@ export function ClientDetailClient({
             setEditingDocument(null);
           }}
           onSave={invalidateClient}
+        />
+      )}
+
+      {isAddingCompany && (
+        <AddCompanyModal
+          clientId={clientId}
+          onClose={() => setIsAddingCompany(false)}
+          onSuccess={() => {
+            setIsAddingCompany(false);
+            void invalidateClient();
+          }}
         />
       )}
     </div>
