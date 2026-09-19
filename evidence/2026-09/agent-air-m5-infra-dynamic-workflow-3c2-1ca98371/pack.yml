@@ -1,0 +1,291 @@
+task_id: infra-dynamic-workflow-3c2
+brief_ref: evidence/brief.yml # canonical staged name — harness-floor.yml stages this PR's dated brief there before linting
+gear: 3
+base_sha: c7aca7d392efe14a8eefa966b8cbdb640184afb3 # pragma: allowlist secret
+prior_gate: >-
+  dw-gate-19 returned REWORK-BUILD on #6811 (sha 072901e618, 2026-09-19 08:41:10Z,
+  GATE-19-REPORT-6811.md): body and this pack's diff.summary asserted "757 insertions ...
+  measured on the final head", the named command on that head gave 758 — the count was taken
+  before the last line was added to pack.yml, a self-inclusive count of a diff that includes
+  itself. #6811 is CLOSED (frozen, cannot be pushed to again). This is the same tree on a fresh
+  branch (agent/air-m5/infra/dynamic-workflow-3c2), cured per the "PR3c'" addendum (C1-C7,
+  2026-09-19 08:50Z): C1 moves diff.summary to a CODE-ONLY diffstat that excludes `evidence/`
+  entirely, so no edit inside the pack can ever move the number it reports again; the all-files
+  total (which DOES include the pack) lives only in the PR body, taken server-side after the
+  push (C2). No council re-run: the diff under review is unchanged.
+council_run: council-journal.jsonl
+council_note: >-
+  Both journal rows carry the identical `ts` 2026-09-19T08:07:15Z — that is
+  `council_journal.py append`'s own append-clock stamp, the moment the row was recorded, not
+  either seat's real dispatch time (both dispatches preceded it, in the first builder's session,
+  2026-09-19 morning). Noted per gate-19 obs 5; the journal is carried byte-identical from
+  072901e618 in this PR, so the stamp is unchanged and correctly still describes that recording
+  moment, not a new one.
+pii_scan: clean
+result: >-
+  `.github/workflows/dynamic-workflow-selftest.yml` is armed: a non-required PR check running
+  `dynamic_workflow.py --selftest`, pytest by name on `test_dynamic_workflow.py` and the two lint
+  wrapper test files, and both lint scripts' default sweep from the repo root. The pre-existing
+  blind-scan gap in `scripts/lint_workflow_script.py` / `scripts/lint_model_cards.py` (an explicit
+  target that exists but yields zero in-scope files reported clean instead of refusing) is closed
+  with per-target accounting, so one productive sibling target can no longer mask a blind one in
+  the same invocation. Two live council rounds (codex-gpt-5.6-sol, kimi-code/k3) ran against the
+  staged diff; every MEDIUM finding that named a real defect is cured in this PR's cure commit,
+  and the three findings that describe intentional, pre-existing or mandate-overridden behaviour
+  are recorded below as dissent rather than silently dropped.
+diff:
+  summary: >-
+    CODE-ONLY (gate-19 C1 — `evidence/` entirely excluded, so no edit inside the pack can ever
+    move this number again; deliberately NOT phrased as "N files", which the countable-claims
+    rule verifies against the FULL numstat CI wires in, `evidence/` included, and would
+    therefore always mismatch): eight non-evidence files touched, 335 insertions / 25 deletions —
+    `git diff --shortstat $(git merge-base origin/main HEAD) HEAD -- . ':(exclude)evidence/'`,
+    re-measured as the last act before this commit and again against HEAD after it, both
+    agreeing. The eight: the workflow file itself, one watcher-coverage registration row in
+    `main-push-failure-watch.yml`, the two lint scripts' blind-scan closure, their two wrapper
+    test files, one fixture README the lint_model_cards wrapper tests reference, and one
+    `.prettierignore` entry scoping the new pack's `reviews/**` out of prettier. The all-files
+    total (which DOES include the evidence pack) is reported only in the PR body, taken
+    server-side after the push (C2) — never in this pack.
+  commits:
+    - "fix(dynamic-workflow): PR3c' — same tree as 072901e618, CODE-ONLY diffstat per gate-19 C1-C7"
+lanes:
+  - { lane: dynamic-workflow-3c, role: build, seat: claude-sonnet-5 }
+  - { lane: council-round-1, role: review, seat: codex-gpt-5.6-sol }
+  - { lane: council-round-1, role: review, seat: kimi-code/k3 }
+bites:
+  consumer: >-
+    Every future PR touching the 10 paths in the workflow's `paths:` filter (the harness script,
+    either lint script or its tests, the model-card corpus, the workflow-harness JS family, the
+    dynamic-workflow skill, or this workflow file itself) — the check is their real CI consumer,
+    closing `dw-selftest-unarmed`.
+  observation: >-
+    The `dynamic-workflow-selftest` check ran green on this PR itself (this PR IS the first
+    consumer, by construction — the workflow's own `paths:` entry means editing it re-triggers
+    it); its log names `test_dynamic_workflow.py`, `test_lint_workflow_script.py` and
+    `test_lint_model_cards.py` by name in the pytest step output. Run URL pasted in the PR body
+    against the FINAL head. Per gate-19 obs 3 / mandate C3: brief.yml's A5 probe is now the
+    branch-keyed `gh run list --repo Bali-Zero/Teman2 --workflow dynamic-workflow-selftest.yml
+    --branch agent/air-m5/infra/dynamic-workflow-3c2 --json databaseId,conclusion,headSha`, which
+    needs no substitution — its outcome cannot exist before this commit lands, so
+    `evidence_pack_lint`'s "outcome is unrecorded" NOTICE on this receipt gap is expected, same
+    as it was on #6811.
+receipts:
+  - claim: >-
+      `python3 scripts/dynamic_workflow.py --selftest` prints SELFTEST OK and exits 0 on this
+      head (fresh worktree from origin/main c7aca7d392, code files byte-identical from 072901e618).
+    cmd: "python3 scripts/dynamic_workflow.py --selftest"
+    exit: 0
+    ts: "2026-09-19T08:50:12Z"
+    seat: claude-sonnet-5
+  - claim: >-
+      `scripts/tests/test_dynamic_workflow.py` passes in full: 112 passed.
+    cmd: "python3 -m pytest scripts/tests/test_dynamic_workflow.py -q"
+    exit: 0
+    ts: "2026-09-19T08:50:18Z"
+    seat: claude-sonnet-5
+  - claim: >-
+      The two lint wrapper test files pass in full, including the per-target blind-scan
+      regression (Kimi finding 2 cure) and the structural YAML-parse of the workflow's lint
+      steps (Codex finding 2 cure): 53 passed.
+    cmd: "python3 -m pytest scripts/tests/test_lint_workflow_script.py scripts/tests/test_lint_model_cards.py -q"
+    exit: 0
+    ts: "2026-09-19T08:50:24Z"
+    seat: claude-sonnet-5
+  - claim: >-
+      `lint_workflow_script.py`'s default sweep (no positional target, as the armed workflow
+      step invokes it) is clean: 6 file(s) scanned, no violations.
+    cmd: "python3 scripts/lint_workflow_script.py"
+    exit: 0
+    ts: "2026-09-19T08:50:28Z"
+    seat: claude-sonnet-5
+  - claim: >-
+      `lint_model_cards.py`'s default sweep is clean: 1 file(s) scanned, no violations.
+    cmd: "python3 scripts/lint_model_cards.py"
+    exit: 0
+    ts: "2026-09-19T08:50:30Z"
+    seat: claude-sonnet-5
+  - claim: >-
+      actionlint runs clean against the final workflow YAML in this environment — the mandate's
+      sanctioned `-shellcheck=` false positive was NOT reproduced, so PREFLIGHT_PACK_SKIP=1 is
+      not invoked.
+    cmd: "actionlint .github/workflows/dynamic-workflow-selftest.yml"
+    exit: 0
+    ts: "2026-09-19T08:50:33Z"
+    seat: claude-sonnet-5
+  - claim: >-
+      Watcher coverage holds: all 121 live workflow(s), including this PR's new one, are covered
+      by main-push-failure-watch.yml (one pre-existing, unrelated stale-entry warning for a
+      renamed workflow, not opened by this PR).
+    cmd: "python3 scripts/check_watcher_coverage.py"
+    exit: 0
+    ts: "2026-09-19T08:50:36Z"
+    seat: claude-sonnet-5
+  - claim: >-
+      detect-secrets against a SCRATCH copy of the real `.secrets.baseline` (never the tracked
+      file itself) introduces zero NEW secret findings scanning the three files this diff adds
+      under the new per-PR path: brief.yml (the pragma already covers its `base_sha`) and both
+      `reviews/*.md`. Compared by result-key set, not a whole-file diff (a single-line JSON dump
+      makes a whole-file diff misleading the moment the real baseline has any entry the scratch
+      copy's scan scope did not revisit): 0 keys present only in the scratch copy.
+    cmd: 'cp .secrets.baseline /tmp/scratch3.secrets.baseline && detect-secrets scan --baseline /tmp/scratch3.secrets.baseline evidence/2026-09/agent-air-m5-infra-dynamic-workflow-3c2-1ca98371/brief.yml evidence/2026-09/agent-air-m5-infra-dynamic-workflow-3c2-1ca98371/reviews/council-codex-gpt-5.6-sol.md evidence/2026-09/agent-air-m5-infra-dynamic-workflow-3c2-1ca98371/reviews/council-kimi-code-k3.md; python3 -c "import json; a=json.load(open(''.secrets.baseline''))[''results'']; b=json.load(open(''/tmp/scratch3.secrets.baseline''))[''results'']; print(''only in scratch (new):'', sorted(set(b)-set(a)))"'
+    exit: 0
+    ts: "2026-09-19T08:56:10Z"
+    seat: claude-sonnet-5
+  - claim: >-
+      `.github/workflows/dynamic-workflow-selftest.yml`'s `paths:` filter carries exactly 10
+      entries after the R1/R2 cure (wildcard replaced by the two named test files; the workflow's
+      own path restored).
+    cmd: "grep -A15 '^\\s*paths:' .github/workflows/dynamic-workflow-selftest.yml | grep -c '^\\s*- \"'"
+    exit: 0
+    ts: "2026-09-19T08:56:20Z"
+    seat: claude-sonnet-5
+  - claim: >-
+      gate-19 C1: the CODE-ONLY diffstat (`evidence/` excluded) is 8 files, 335 insertions, 25
+      deletions, measured against the working tree as the last act before this commit.
+    cmd: "git diff --shortstat $(git merge-base origin/main HEAD) -- . ':(exclude)evidence/'"
+    exit: 0
+    ts: "2026-09-19T08:57:00Z"
+    seat: claude-sonnet-5
+adversarial:
+  - {
+      seat: codex-gpt-5.6-sol,
+      round: 1,
+      verdict: REWORK,
+      findings: 4,
+      block: 0,
+      rework: 4,
+      note: 0,
+      cured: 2,
+      accepted_as_residual: 2,
+    }
+  - {
+      seat: kimi-code/k3,
+      round: 1,
+      verdict: REWORK,
+      findings: 7,
+      block: 0,
+      rework: 7,
+      note: 0,
+      cured: 4,
+      accepted_as_residual: 3,
+    }
+dissent:
+  - seat: "codex-gpt-5.6-sol (round 1) vs dw-builder-2, kimi-code/k3 (round 1, finding 4) vs dw-builder-2"
+    status: PLAUSIBLE
+    objection: >-
+      MEDIUM/LOW: the `paths:` filter carries a 9th/10th entry beyond the mandate's literal list
+      — `.github/workflows/dynamic-workflow-selftest.yml` names itself. Both titolari independently
+      flagged this in round 1, reviewing a staged diff that had ALREADY dropped the entry
+      (briefed from a stale 8-item sentence in brief.yml at review time). CONDUCTOR RULING R2
+      (2026-09-19 08:10Z addendum): mandate line 513 (the "PR3c: answers to the builder's two
+      questions" addendum, Q2) explicitly directs adding this path — an edit to the workflow
+      alone must re-run it, or that edit is scar #2 (Esiste≠Armato) one level up. The finding's
+      factual premise (the entry deviates from the earlier literal-8 reading) is accurate; the
+      ruling overrides it rather than curing toward the objection's ask. Restored in this cure
+      commit; brief.yml's constraint sentence corrected from "8 entries" to "10 entries" in the
+      same commit.
+  - seat: "codex-gpt-5.6-sol (round 1) vs dw-builder-2"
+    status: CONFIRMED
+    objection: >-
+      MEDIUM: `test_workflow_yaml_lint_steps_use_default_sweep_via_cli` (as reviewed) checked
+      stripped TEXT LINES for the lint `run:` commands rather than parsing the workflow YAML — a
+      decoy job or a reflowed block-scalar carrying the same string would satisfy the assertion
+      without a real step ever running the command. CONFIRMED and cured before this builder took
+      over (present on HEAD): the test now `yaml.safe_load`s the workflow, walks
+      `doc["jobs"]["dynamic-workflow-selftest"]["steps"]`, and asserts the exact `run:` values —
+      scoped to the named job so a decoy elsewhere in the file cannot satisfy it.
+  - seat: "codex-gpt-5.6-sol (round 1, finding 3) vs kimi-code/k3 (round 1, finding 1) vs dw-builder-2"
+    status: CONFIRMED
+    objection: >-
+      MEDIUM: the new model-card innocence tests pointed `lint_model_cards.main()` straight at
+      `clean.md`, whose frontmatter `date:` is a static fixture value (`2026-09-18`); `main()`
+      takes no `today=` override, so the test would start failing on wall-clock 2026-10-19 when
+      `FRESHNESS_DAYS = 30` expires the fixture — a lint-arming PR shipping a CI job that goes
+      stale-red in 30 days. Both seats demonstrated the mechanism independently. CONFIRMED and
+      cured before this builder took over (present on HEAD): both innocence tests
+      (`test_innocence_one_clean_in_scope_file_is_enough`,
+      `test_innocence_explicit_dir_with_one_clean_file_exits_0`) now write a tmp-path copy of
+      `clean.md` with `date: {date.today().isoformat()}` interpolated, same cure pattern the
+      file's own pre-existing `find_violations`-level tests already used.
+  - seat: "codex-gpt-5.6-sol (round 1, finding 4) vs kimi-code/k3 (round 1, finding 5) vs dw-builder-2"
+    status: PLAUSIBLE
+    objection: >-
+      MEDIUM/LOW: the blind-scan closure retains an exception for an explicit EXISTING FILE of
+      the wrong suffix (`.txt` for the JS lint, non-`.md` for the model-card lint) — it still
+      exits 0 with "no violations (0 file(s) scanned)" rather than refusing under the quoted
+      universal rule "ANY invocation that scans zero files exits 2". Accurate as read. NOT cured:
+      this is pre-existing, tested behaviour
+      (`test_innocence_explicit_non_js_file_is_still_green` /
+      `test_innocence_explicit_non_md_file_is_still_green`, both predating this PR), the new
+      docstring in each lint script's `main()` states the carve-out explicitly, and it is an
+      informed, deliberate scope decision — a file of the wrong suffix was never in scope to
+      begin with, unlike a directory that yields zero IN-SCOPE files. Declined; stated here
+      rather than left for the gate to discover.
+  - seat: "kimi-code/k3 (round 1, finding 2) vs dw-builder-2"
+    status: CONFIRMED
+    objection: >-
+      MEDIUM: the original blind-scan guard was gated on a GLOBAL `scanned == 0` across all
+      explicit targets in one invocation, so a productive sibling target could mask a blind one
+      in the same call (`lint empty_dir real.js` went green, silently ignoring `empty_dir`) —
+      cicatrix #2 one level deeper than the single-target case the mandate named. Demonstrated by
+      the seat directly. CONFIRMED and cured before this builder took over (present on HEAD):
+      both lint scripts now track `dir_contributions` per raw target and judge each explicit
+      target (missing path or zero-yield directory) independently of whether siblings scanned
+      cleanly; guilt test
+      `test_guilt_mixed_targets_empty_dir_not_masked_by_productive_sibling` in both wrapper test
+      files.
+  - seat: "kimi-code/k3 (round 1, finding 3) vs dw-builder-2"
+    status: CONFIRMED
+    objection: >-
+      MEDIUM: the `paths:` filter (as reviewed) matched all 27 `scripts/tests/test_lint_*.py`
+      files on disk, but the pytest step ran only 2 of them by name — a PR touching any of the
+      other 25 would trigger this check, which would go green without ever running the changed
+      file. CONFIRMED and cured in this commit (R1, mandate Q1): the wildcard is replaced with
+      the two explicit entries `scripts/tests/test_lint_workflow_script.py` and
+      `scripts/tests/test_lint_model_cards.py` — the filter now names exactly what the pytest
+      step runs.
+  - seat: "kimi-code/k3 (round 1, finding 6) vs dw-builder-2"
+    status: CONFIRMED
+    objection: >-
+      LOW: `timeout-minutes: 10` (as reviewed) passed the repo's own timeout-floor lint
+      (`scripts/lint_workflow_timeout_floor.py`, `FLOOR_MINUTES = 10`) by exactly zero margin,
+      and that lint's own header records a worst-observed checkout of 599s — essentially the
+      entire budget for one step. CONFIRMED and cured before this builder took over (present on
+      HEAD): `timeout-minutes: 15` — conductor ruling R3 (2026-09-19 08:10Z addendum) accepts 15
+      as superseding the mandate's earlier stated "10", citing the same lint as evidence.
+  - seat: "kimi-code/k3 (round 1, finding 7) vs dw-builder-2"
+    status: PLAUSIBLE
+    objection: >-
+      LOW: `raw.glob(DEFAULT_GLOB_PATTERN)` is non-recursive, so an explicit directory whose
+      in-scope files live only in subdirectories would blind-scan (report zero, now correctly
+      refusing per the finding-2 cure, but arguably a false blind-scan rather than a real one).
+      Accurate as read; the seat itself called it "a documentation nit at most". NOT cured: the
+      armed CI usage is the DEFAULT sweep (no positional target) which is flat by convention and
+      by this mandate's own text, matches the two lint scripts' existing established convention,
+      and is not a behaviour this mandate asked to change. Declined.
+residuals:
+  - >-
+    The three PLAUSIBLE dissent entries above (own-workflow-path restoration, wrong-suffix
+    carve-out, non-recursive glob) are intentional and stated, not silently dropped — none blocks
+    the mandate's stated acceptance criteria (A1-A5 in the sibling brief.yml).
+  - >-
+    R4 (conductor addendum, 2026-09-19 08:10Z) authorized three files beyond the strict
+    hot-zone/lint/test/pack set present in this diff: `.github/workflows/main-push-failure-watch.yml`
+    (one row, closing the watcher-coverage gap this PR's own new check opened), `.prettierignore`
+    (scoping `reviews/**` out of prettier — the council reviews are verbatim seat output, never
+    reformatted), and `scripts/tests/fixtures/lint_model_cards/README.md` (documents the fixture
+    the two `test_lint_model_cards.py` wrapper tests read).
+  - >-
+    Codex's own dispatch banner (`review-sol.err`, recovered in the #6811 session) reports
+    `model: gpt-6-astra`, not the roster name `codex-gpt-5.6-sol` the council journal and this
+    pack declare the seat under. Recorded here rather than hidden — see the council journal note
+    for the full recovered command and banner text; the seat identity used throughout this pack
+    is the COUNCIL_REVIEW_SEATS_TITOLARI roster name the mandate names, per its own convention of
+    naming seats by role/kit rather than by exact underlying model string.
+  - >-
+    gate-19 obs 2 (blind-scan wrong-suffix carve-out) is the recorded dissent above, unchanged.
+    obs 5 (journal `ts` is the append clock) is the `council_note:` field above. obs 6
+    (`.prettierignore`'s 9 comment lines vs R4's "reviews/** only" text) and obs 7 (thin default
+    sweeps are correct, not a defect) are both INFO, need no action per mandate C6, and are
+    unchanged by this branch.

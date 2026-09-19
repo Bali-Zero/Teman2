@@ -109,7 +109,10 @@ parser, not a regex-based lint — do not "fix" this file by writing one.
 Default sweep (no argv): infra/workflows/*.js. Exit 0 clean, 1 violations found,
 2 blind scan (default sweep traversed zero files — cicatrix #2/#4, "exists != armed")
 OR a file's paren/brace count is unbalanced after neutralization (item 1, PR3e,
-2026-09-18 — refuses rather than risk a false CLEAN; see _assert_balanced).
+2026-09-18 — refuses rather than risk a false CLEAN; see _assert_balanced). The same
+zero-scan rule binds an EXPLICIT target too (PR3c, 2026-09-19): a nonexistent path or
+an existing directory that yields zero .js files both blind-scan at exit 2; only an
+explicit FILE of the wrong suffix stays legitimately off-scope and exits 0.
 """
 from __future__ import annotations
 
@@ -521,9 +524,19 @@ def find_violations(path: Path) -> list[tuple[int, str]]:
 def main(argv: list[str]) -> int:
     repo_root = Path(__file__).resolve().parents[1]
     explicit = bool(argv)
+    dir_contributions: dict[Path, int] = {}
     if explicit:
-        targets = [repo_root / p for p in argv]
+        raw_targets = [repo_root / p for p in argv]
+        targets: list[Path] = []
+        for raw in raw_targets:
+            if raw.is_dir():
+                expanded = sorted(raw.glob(DEFAULT_GLOB_PATTERN))
+                dir_contributions[raw] = len(expanded)
+                targets.extend(expanded)
+            else:
+                targets.append(raw)
     else:
+        raw_targets = []
         targets = sorted((repo_root / DEFAULT_GLOB_DIR).glob(DEFAULT_GLOB_PATTERN))
 
     bad: list[tuple[Path, int, str]] = []
@@ -554,16 +567,24 @@ def main(argv: list[str]) -> int:
         )
         return 2
 
-    # OBSERVATION 6 (PR3a', 2026-09-18): explicit mode with a target that does not exist
-    # on disk at all is a blind scan too — distinct from an explicit EXISTING file that
-    # is legitimately off-scope by suffix (test_innocence_explicit_non_js_file_is_still_
-    # green's case, which must stay green unchanged).
-    if explicit and scanned == 0:
-        missing = [p for p in targets if not p.exists()]
-        if missing:
-            names = ", ".join(str(p) for p in missing)
+    # OBSERVATION 6 (PR3a', 2026-09-18) + PR3c blind-scan closure widened after
+    # independent adversarial review (2026-09-19, Sol and Kimi both reproduced): each
+    # explicit raw target is judged ON ITS OWN — missing from disk, or an existing
+    # directory that glob-expanded to zero in-scope files — INDEPENDENT of whether
+    # other targets in the same invocation scanned something. A global `scanned == 0`
+    # gate let one productive target mask a sibling blind one (`lint empty_dir
+    # real.js` went green, silently ignoring empty_dir) — cicatrix #2 one level
+    # deeper than the single-target case. An explicit EXISTING FILE of the wrong
+    # suffix stays legitimately off-scope (never glob-expanded, never expected to
+    # be) — test_innocence_explicit_non_js_file_is_still_green's case, unchanged.
+    if explicit:
+        missing = [p for p in raw_targets if not p.exists()]
+        empty_dirs = [p for p, n in dir_contributions.items() if n == 0]
+        guilty = missing + empty_dirs
+        if guilty:
+            names = ", ".join(str(p) for p in guilty)
             print(
-                f"❌ lint_workflow_script: BLIND SCAN — target(s) do not exist: {names}.\n"
+                f"❌ lint_workflow_script: BLIND SCAN — target(s) yielded zero .js files: {names}.\n"
                 "Refusing to report 'clean': a scan that sees nothing proves nothing "
                 "(cicatrix #2, \"exists != armed\").",
                 file=sys.stderr,

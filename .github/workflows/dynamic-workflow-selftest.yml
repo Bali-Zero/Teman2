@@ -1,0 +1,86 @@
+# Guards the /dynamic-workflow harness script + its lint pair, and the CI
+# hot-zone lint scripts themselves (scripts/lint_workflow_script.py,
+# scripts/lint_model_cards.py) — see MANDATE-builder.md (BATTAGLIA-20260911/
+# DYNAMIC-WORKFLOW-20260918), PR3c: the harness's own --selftest plus the two
+# lint scripts' pytest suites, run BY NAME, plus both lints' default sweep as
+# CI actually runs them (no positional target — scripts/tests/
+# test_lint_workflow_script.py's
+# test_workflow_yaml_lint_steps_use_default_sweep_via_cli holds that shape as
+# a fact, not a convention).
+#
+# scripts/tests/test_dynamic_workflow.py, scripts/tests/
+# test_lint_workflow_script.py and scripts/tests/test_lint_model_cards.py hold
+# the guilt/innocence corpus this workflow exists to run. NON-REQUIRED by
+# design (same posture as check-skills-canonical.yml): a brand-new signal
+# observes for a review cycle before it can block; promoting to a required
+# branch-protection check is a separate, later, operator-only action
+# (repo/branch-protection settings, CLAUDE.md §13).
+#
+# Path-scoped: only runs when the harness, either lint script, their tests,
+# the model-card corpus, the workflow-harness JS family, the dynamic-workflow
+# skill, or this workflow file itself changes — 10 entries (conductor ruling
+# R1/R2, 2026-09-19 PR3c cure round, superseding the prior 8-entry draft):
+# - R1 (mandate Q1): the two named test files replace the `test_lint_*.py`
+#   wildcard — the filter must name exactly what the pytest step runs (26
+#   other scripts/tests/test_lint_*.py files exist and are NOT run here).
+# - R2 (mandate Q2, RECORDED DISSENT): this file's own path IS in the filter.
+#   Both council titolari (codex-gpt-5.6-sol, kimi-code/k3) flagged it as
+#   beyond the mandate's literal list, briefed from a stale 8-item sentence
+#   in brief.yml; the mandate's actual controlling text (line 513, Q1/Q2
+#   answers addendum) says to add it — an edit to the workflow alone must
+#   re-run it, or that edit is scar #2, Esiste≠Armato, one level up. Restored;
+#   see evidence pack pack.yml `dissent:` for the objection and this ruling.
+name: dynamic-workflow-selftest
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths:
+      - "scripts/dynamic_workflow.py"
+      - "scripts/tests/test_dynamic_workflow*.py"
+      - "scripts/lint_workflow_script.py"
+      - "scripts/lint_model_cards.py"
+      - "scripts/tests/test_lint_workflow_script.py"
+      - "scripts/tests/test_lint_model_cards.py"
+      - "docs/arsenal/cards/**"
+      - "infra/workflows/*.js"
+      - ".claude/skills/dynamic-workflow/**"
+      - ".github/workflows/dynamic-workflow-selftest.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: dynamic-workflow-selftest-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  dynamic-workflow-selftest:
+    name: dynamic-workflow-selftest
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+
+      - name: Install pytest + pyyaml
+        run: python -m pip install --quiet pytest pyyaml
+
+      - name: dynamic_workflow --selftest
+        run: python3 scripts/dynamic_workflow.py --selftest
+
+      - name: pytest test_dynamic_workflow.py
+        run: python -m pytest scripts/tests/test_dynamic_workflow.py -v
+
+      - name: pytest lint wrapper tests
+        run: python -m pytest scripts/tests/test_lint_workflow_script.py scripts/tests/test_lint_model_cards.py -v
+
+      - name: lint_workflow_script (default sweep)
+        run: python3 scripts/lint_workflow_script.py
+
+      - name: lint_model_cards (default sweep)
+        run: python3 scripts/lint_model_cards.py
