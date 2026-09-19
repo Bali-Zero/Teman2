@@ -332,6 +332,7 @@ export function ProcessTab({
                                   toast.error("Error", {
                                     description: (err as Error).message,
                                   });
+                                } finally {
                                   setDeletingIds((prev) => {
                                     const next = new Set(prev);
                                     next.delete(practice.id);
