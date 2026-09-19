@@ -105,3 +105,31 @@
     flex: 0 0 320px;
   }
 }
+
+/* Edge fade cues that the tab bar's own scroll (line 55's overflow-x, always
+   on) is real, not a rendering accident — two narrow bands only. 1024-1360px:
+   the two-column split above kicks in at 1100.02px and gives the main column
+   (and this bar) less than the full viewport, so nine tabs can overflow it.
+   Below 700px (K3a idiom, this module's own docstring): single column again,
+   but the viewport itself is narrow. 700.02-1024px is left alone: single
+   column at full viewport width, room enough that the row already fits.
+   `mask-image` paints no colour of its own — black/transparent here are pure
+   alpha stops, not a token the R3b guard would ever need to see. */
+@media (max-width: 1360px) and (min-width: 1024px), (max-width: 700px) {
+  .tabBar {
+    -webkit-mask-image: linear-gradient(
+      to right,
+      transparent,
+      black 20px,
+      black calc(100% - 20px),
+      transparent
+    );
+    mask-image: linear-gradient(
+      to right,
+      transparent,
+      black 20px,
+      black calc(100% - 20px),
+      transparent
+    );
+  }
+}

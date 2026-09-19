@@ -234,8 +234,41 @@ describe("ClientDetailClient", () => {
     render(<ClientDetailClient taxConsultants={CONSULTANTS} />);
 
     expect(
-      screen.getByRole("button", { name: "Process (0)" }),
+      screen.getByRole("button", { name: "Practices (0)" }),
     ).toBeInTheDocument();
+  });
+
+  // R5 (kita client-profile redesign): the tab bar becomes a `<nav>` with its
+  // own accessible name, matching v3 mock's `aria-label="Client sections"`.
+  // GUILT: before R5 this was a bare `<div>` with no navigation landmark at
+  // all, so this query found nothing.
+  it("wraps the tab bar in a nav landmark named 'Client sections' (R5)", async () => {
+    const { ClientDetailClient } = await import("./ClientDetailClient");
+    render(<ClientDetailClient taxConsultants={CONSULTANTS} />);
+
+    expect(
+      screen.getByRole("navigation", { name: "Client sections" }),
+    ).toBeInTheDocument();
+  });
+
+  // R5: aria-current="page" tracks whichever tab is active and only that
+  // one — mirrors the mock's `.tab[aria-current="page"]` rule. GUILT: before
+  // R5 no tab button carried aria-current at all. INNOCENCE: clicking a
+  // different tab moves the attribute rather than leaving it on both.
+  it("moves aria-current to the tab the viewer picks, and only that one (R5)", async () => {
+    const user = userEvent.setup();
+    const { ClientDetailClient } = await import("./ClientDetailClient");
+    render(<ClientDetailClient taxConsultants={CONSULTANTS} />);
+
+    const overviewTab = screen.getByRole("button", { name: "Overview" });
+    const documentsTab = screen.getByRole("button", { name: /^Documents/ });
+    expect(overviewTab).toHaveAttribute("aria-current", "page");
+    expect(documentsTab).not.toHaveAttribute("aria-current");
+
+    await user.click(documentsTab);
+
+    expect(documentsTab).toHaveAttribute("aria-current", "page");
+    expect(overviewTab).not.toHaveAttribute("aria-current");
   });
 
   /**

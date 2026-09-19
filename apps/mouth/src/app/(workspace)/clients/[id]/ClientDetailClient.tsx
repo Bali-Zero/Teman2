@@ -199,7 +199,7 @@ export function ClientDetailClient({
   const [isLogging, setIsLogging] = useState(false);
   const [logSaved, setLogSaved] = useState(false);
   const logTextareaRef = useRef<HTMLTextAreaElement>(null);
-  const tabsRef = useRef<HTMLDivElement>(null);
+  const tabsRef = useRef<HTMLElement>(null);
   const statusMenuRef = useRef<HTMLDivElement>(null);
   useClickOutside(
     statusMenuRef,
@@ -909,8 +909,22 @@ export function ClientDetailClient({
           underline on the active tab. No role="tab"/aria-selected here: K3a
           dropped role="menu" for the same reason (decision D6) — this bar
           does not implement the arrow-key pattern a tab role promises, so it
-          keeps native buttons with the browser's own Tab/Enter/Space. */}
-          <div ref={tabsRef} className={styles.tabBar} data-testid="tab-bar">
+          keeps native buttons with the browser's own Tab/Enter/Space. R5
+          (kita client-profile redesign) wraps the row in a `<nav>` with its
+          own accessible name — matching v3 mock's `aria-label="Client
+          sections"` — and gives the active button `aria-current="page"`,
+          same attribute the mock's own `.tab[aria-current="page"]` rule
+          reads; TAB_KEYS itself is untouched, so every existing `?tab=`
+          deep link still opens the same panel. Only the "process" label
+          moves to the mock's "Practices" — the mock's single "Activity" tab
+          folds Timeline + WhatsApp together, which is R8's job, not R5's, so
+          those two stay separate and unrenamed here. */}
+          <nav
+            ref={tabsRef}
+            className={styles.tabBar}
+            data-testid="tab-bar"
+            aria-label="Client sections"
+          >
             {[
               { key: "overview", label: "Overview", icon: User },
               {
@@ -920,7 +934,7 @@ export function ClientDetailClient({
               },
               {
                 key: "process",
-                label: `Process (${activePractices.length + completedPractices.length})`,
+                label: `Practices (${activePractices.length + completedPractices.length})`,
                 icon: FolderOpen,
               },
               {
@@ -946,13 +960,14 @@ export function ClientDetailClient({
                 key={key}
                 type="button"
                 onClick={() => handleTabChange(key as TabType)}
+                aria-current={activeTab === key ? "page" : undefined}
                 className={`${styles.tab} ${activeTab === key ? styles.tabActive : ""}`}
               >
                 <Icon className="w-4 h-4" />
                 {label}
               </button>
             ))}
-          </div>
+          </nav>
 
           {/* Tab Content */}
           {activeTab === "overview" && (
