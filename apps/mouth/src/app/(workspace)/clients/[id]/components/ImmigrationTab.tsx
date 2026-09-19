@@ -20,6 +20,23 @@ import { ALERT_COLORS } from "./constants";
 import { extractDriveFileId, getDriveProxyUrl } from "./utils";
 import { AiSummaryCard } from "./AiSummaryCard";
 
+// A document belongs to the "visa family" (current + previous-visa buckets):
+// kitas, kitap, any visa (incl. e-visa), or a Visa on Arrival (incl. e-VOA).
+// Single source of truth so the "current" and "history" matchers below
+// cannot drift apart again — that drift is exactly what hid an unexpired
+// VOA from "Actual Visa" while still surfacing it once expired.
+export const isVisaFamilyDocument = (
+  d: Pick<ClientDocument, "document_type">,
+) => {
+  const t = d.document_type?.toLowerCase() ?? "";
+  return (
+    t.includes("kitas") ||
+    t.includes("kitap") ||
+    t.includes("visa") || // also matches "e-visa" / "evisa"
+    t.includes("voa") // also matches "e-voa" / "evoa"
+  );
+};
+
 export function ImmigrationTab({
   clientId,
   documents,
@@ -82,27 +99,19 @@ export function ImmigrationTab({
     return 1;
   });
 
-  // Actual visa = most recent non-expired kitas/kitap/visa
+  // Actual visa = most recent non-expired document in the visa family
+  // (kitas/kitap/visa/e-visa/VOA/e-VOA — see isVisaFamilyDocument above)
   const now = new Date();
   const actualVisa = sortedDocs.find(
     (d) =>
-      (d.document_type?.toLowerCase().includes("kitas") ||
-        d.document_type?.toLowerCase().includes("kitap") ||
-        d.document_type?.toLowerCase().includes("visa") ||
-        d.document_type?.toLowerCase().includes("evisa")) &&
+      isVisaFamilyDocument(d) &&
       (!d.expiry_date ||
         new Date(d.expiry_date) > new Date(now.getTime() - 30 * 86400000)), // allow 30 days grace
   );
 
-  // Previous visas = expired kitas/kitap/visa (not the actual one)
+  // Previous visas = expired (or superseded) visa-family documents
   const previousVisas = sortedDocs.filter(
-    (d) =>
-      d !== actualVisa &&
-      (d.document_type?.toLowerCase().includes("kitas") ||
-        d.document_type?.toLowerCase().includes("kitap") ||
-        d.document_type?.toLowerCase().includes("visa") ||
-        d.document_type?.toLowerCase().includes("evisa") ||
-        d.document_type?.toLowerCase().includes("voa")),
+    (d) => d !== actualVisa && isVisaFamilyDocument(d),
   );
 
   // Working permits
