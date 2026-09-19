@@ -16,6 +16,7 @@ from backend.services.payments.port import (
     NormalizedFailureEvent,
     NormalizedPaidEvent,
     NormalizedRefundEvent,
+    RefundFailed,
 )
 from backend.services.payments.terminal_taxonomy import CustomerAction, FailureOutcome
 from backend.services.payments.xendit import XenditFeeConfig, XenditPaymentProvider
@@ -155,3 +156,40 @@ async def test_the_refund_the_paid_callback_makes_possible_is_spendable() -> Non
         "the refund was issued against something other than the invoice id — "
         "Xendit answers 404 and the money never goes back"
     )
+
+
+# --- a refund with no charge id must not reach the network ---------------------
+#
+# `resolve_late_order` passes `row["late_case_charge_id"]`, and an OP-08 case
+# writes that column as NULL on purpose (`_open_late_case(charge_id=None)`).
+# Before the guard, "nothing gets refunded" held only because Xendit rejects a
+# null `invoice_id` — a safety property owned by someone else's validator, and
+# one the OP-08 staff page states as settled fact.
+
+
+@pytest.mark.asyncio
+async def test_a_refund_without_a_charge_id_never_reaches_the_provider() -> None:
+    calls: list[httpx.Request] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        calls.append(request)
+        return httpx.Response(200, json={"id": "rfd-should-not-happen"})
+
+    client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
+    provider = XenditPaymentProvider(
+        secret_key="xnd_development_fake_key_for_tests",
+        callback_verification_token="fake-token",
+        public_base_url="https://example.com",
+        fee_config=XenditFeeConfig(percentage_bps=350, fixed_idr=6000),
+        client=client,
+    )
+    try:
+        with pytest.raises(RefundFailed) as raised:
+            await provider.refund(provider_charge_id=None, idempotency_key="idem-null-1")
+        with pytest.raises(RefundFailed):
+            await provider.refund(provider_charge_id="", idempotency_key="idem-empty-1")
+    finally:
+        await client.aclose()
+
+    assert "no charge id" in str(raised.value)
+    assert calls == [], "a refund with no charge id was sent to the provider anyway"
