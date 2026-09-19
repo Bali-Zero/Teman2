@@ -105,3 +105,34 @@
     flex: 0 0 320px;
   }
 }
+
+/* Edge fade cues that .tabBar's own scroll (its overflow-x, always on) is
+   real, not a rendering accident — two narrow bands only. 1024-1360px: the
+   two-column split above kicks in at 1100.02px and gives the main column
+   (and this bar) less than the full viewport, so nine tabs can overflow it.
+   Below 700px (K3a idiom, this module's own docstring): single column again,
+   but the viewport itself is narrow. 700.02-1024px is left alone: single
+   column at full viewport width, room enough that the row already fits.
+   This is a STICKY OVERLAY, not a mask: .tabBar is itself `position: sticky`
+   with an opaque background, so making the bar translucent at its edges (a
+   mask) would bleed the page scrolling underneath through both the bar and
+   its bottom hairline, and would permanently dim the first tab at rest
+   (scroll 0), where nothing is hidden. `::after` is a flex item of the same
+   scroller, `right: 0` sticky within it — it overlays whatever tab is
+   passing underneath while more content remains offscreen, and at scroll
+   end it settles into its own slot AFTER the last tab, so the last tab is
+   never dimmed. Right edge only, matching that asymmetry; no left fade.
+   `var(--bz-base)` is the existing paper token, the same one .tabBar already
+   uses as its own opaque background — `transparent` is an alpha stop, not a
+   colour, so this stays inside the R3b guard's no-raw-colour rule. */
+@media (max-width: 1360px) and (min-width: 1024px), (max-width: 700px) {
+  .tabBar::after {
+    content: "";
+    position: sticky;
+    right: 0;
+    flex: 0 0 24px;
+    align-self: stretch;
+    pointer-events: none;
+    background: linear-gradient(to right, transparent, var(--bz-base));
+  }
+}
