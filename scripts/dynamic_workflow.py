@@ -452,8 +452,10 @@ def _seat_kind(seat: str) -> str | None:
     return None
 
 
+_SEALED_SENTENCE = "No tools, no browsing, no file reads."
+
 _PROMPT_PREFIX = ("You are a coach in a sealed brainstorm. Use ONLY the brief below and the "
-                   "exact skeleton in §4. No tools, no browsing, no file reads. Output "
+                   "exact skeleton in §4. " + _SEALED_SENTENCE + " Output "
                    "only the answer.\n\n")
 
 
@@ -493,8 +495,15 @@ def _launch_seat(seat: str, prompt: str, timeout: int, kit: Path) -> str:
                 return out_file.read_text() if out_file.exists() else ""
         else:
             return ""
-        r = subprocess.run(cmd, stdin=subprocess.DEVNULL, capture_output=True, text=True, timeout=timeout)
-        return r.stdout
+        # First real run (2026-09-19): the kimi seat, launched from THIS process's own cwd
+        # (the repo worktree), used its tools to read the launcher's source during r2 instead
+        # of answering blind. A sealed seat must start somewhere that has nothing to read —
+        # verified by real launches that kimi and agy both answer correctly from an empty temp
+        # dir (the qwen/tp1 kind could not be smoke-tested that week, its quota was exhausted).
+        with tempfile.TemporaryDirectory() as tmp:
+            r = subprocess.run(cmd, stdin=subprocess.DEVNULL, capture_output=True, text=True,
+                                timeout=timeout, cwd=tmp)
+            return r.stdout
     except Exception:
         return ""
 
@@ -910,7 +919,8 @@ def _render_pairing_md(pairing: dict[str, list[str]]) -> str:
 
 
 _R2_PROMPT_PREFIX = ("Object only where you can name an F/C and a test that would settle it. "
-                      "No test, no objection.\n\n")
+                      "No test, no objection. " + _SEALED_SENTENCE + " Use ONLY the answers "
+                      "below.\n\n")
 _FC_REF_RE = re.compile(r"\b[FC]\d+\b")
 
 
@@ -1052,7 +1062,8 @@ def cmd_judge(args: argparse.Namespace) -> dict[str, dict[str, object]]:
 JURY_AXES = ("termination", "cost", "robustness", "evidence", "implementability", "fit")
 _JURY_LETTERS = "ABCDEF"
 _JURY_PROMPT_PREFIX = (
-    "You are a juror in a sealed brainstorm. Score each OTHER formation below on six axes, "
+    "You are a juror in a sealed brainstorm. " + _SEALED_SENTENCE + " Use ONLY the formations "
+    "below. Score each OTHER formation below on six axes, "
     "integer 1-5 each. Output ONLY a markdown table, one row per formation letter, columns "
     "exactly: formation, " + ", ".join(JURY_AXES) + ". No prose outside the table.\n\n")
 
