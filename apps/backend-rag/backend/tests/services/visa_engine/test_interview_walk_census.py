@@ -238,23 +238,38 @@ HUMAN_REVIEW_REQUIRED ×2: the sponsor_unsure walk is answered at engine
 level there, and its flag still rewrote it — PRE-A1.)
 
 **PLAN VISA-ORACLE-DW-20260919 slice A1 (owner ruling 2026-09-13), landed
-2026-09-19: neither ``ACTIVITY_BOUNDARY`` nor ``NOT_CERTAIN`` "rewrites" a
-walk any more.** ``_apply_disclosed_review_flags`` now holds ONLY a flag in
-``evaluate_path.HOLDING_DISCLOSED_FLAGS`` (``CRIMINAL_RECORD``, today) —
-every other flag, including both this corpus raises, adds a named
-``notices`` condition and keeps the pack's own state and candidates. On
-signed seq-22 (94/14/1/3 ENGINE, W-VO-Q's 111-walk corpus, re-measured
-2026-09-19), the FUNNEL census is now IDENTICAL to the ENGINE census —
-94/14/1/3 — because zero of this corpus's flagged walks raise
-``CRIMINAL_RECORD``. The two rows in the table above read "rewrites" for
-the historical (pre-A1) run only; ``test_every_disclosure_flag_reports_the_
-walks_it_rewrites`` now asserts the opposite property — that engine state
-and candidates survive untouched and only a ``*_CONDITION`` notice is
-added — against ``EXPECTED_CONDITION_REASON_FOR_FLAG``, not
-``EXPECTED_REVIEW_REASON_FOR_FLAG`` (retired). The fleet-wide kill switch
-``VISA_ORACLE_HOLDING_FLAGS`` can restore any flag's pre-A1 hold without a
-redeploy — see ``test_guilt_the_holding_env_var_restores_a_deleted_
-verdict``.
+2026-09-19 as PR #6839: neither ``ACTIVITY_BOUNDARY`` nor ``NOT_CERTAIN``
+"rewrites" a walk any more.** ``_apply_disclosed_review_flags`` held ONLY
+``CRIMINAL_RECORD`` — every other flag, including both this corpus raises,
+added a named ``notices`` condition and kept the pack's own state and
+candidates. A fresh gate (vo-gate-a1) returned REWORK-BUILD on that PR
+(OBS-1, HIGH): ``ACTIVITY_BOUNDARY`` is the flag `fact-mapper.ts` raises
+for what the signed pack CANNOT decide at all (the seven undecidable
+``other_purpose`` values and ``diaspora_connection = dual``), and PLAN's
+own OD-2/OD-3 defaults name a dead end for exactly that case, not a
+condition — releasing it to ``SUPPORTED_CANDIDATES`` ahead of the UI that
+renders the condition was a legal-exposure regression.
+
+**Slice A1' (this PR) cures it: ``HOLDING_DISCLOSED_FLAGS`` now holds
+``ACTIVITY_BOUNDARY`` alongside ``CRIMINAL_RECORD``; only the other nine
+flags condition.** On signed seq-22 (94/14/1/3 ENGINE, W-VO-Q's 111-walk
+corpus), the FUNNEL census is 88/14/1/9: SUPPORTED_CANDIDATES drops by the
+six ``ACTIVITY_BOUNDARY`` walks (94 -> 88) and HUMAN_REVIEW_REQUIRED gains
+exactly those six on top of the engine's own 3 (1 minor-privacy + 2 Studio;
+3 + 6 = 9 — see ``test_the_flagged_census_is_the_funnel_the_applicant_
+meets`` for the walk-by-walk accounting). ``NOT_CERTAIN``'s two walks still
+condition exactly as A1 shipped them.
+``test_every_disclosure_flag_reports_the_walks_it_rewrites`` asserts BOTH
+halves now: the holding half (``ACTIVITY_BOUNDARY``) against
+``EXPECTED_REVIEW_REASON_FOR_HOLDING_FLAG``, and the conditioning half
+(``NOT_CERTAIN``) against ``EXPECTED_CONDITION_REASON_FOR_FLAG`` — the
+retired ``EXPECTED_REVIEW_REASON_FOR_FLAG`` this comment used to name was a
+different, pre-A1 table, not either of these. The fleet-wide kill switch
+``VISA_ORACLE_HOLDING_FLAGS`` can still restore ANY flag's pre-A1 hold
+without a redeploy — see ``test_guilt_the_holding_env_var_restores_a_
+deleted_verdict`` — and it now fails CLOSED (all eleven) on every malformed
+shape, including a value that recognizes zero tokens or mixes a recognized
+token with an unrecognized one (gate vo-gate-a1, OBS-2, HIGH).
 
 The other nine flags in ``DisclosedReviewFlag`` rewrite ZERO walks: no
 corpus walk answers ``trip_scope = "multiple"`` (``MULTI_PURPOSE_TRIP``),
@@ -1227,17 +1242,41 @@ EXPECTED_FLAGGED_STATE_CENSUS: dict[str, int] = dict(
 
 #: The condition reason code `_apply_disclosed_review_flags` emits per
 #: NON-holding flag (`_DISCLOSED_CONDITION_REASON_CODES`, evaluate_path.py,
-#: PLAN slice A1) — restated here so the census names the CAUSE and not just
+#: PLAN slice A1') — restated here so the census names the CAUSE and not just
 #: the count. Checked against `notice_codes`, not `review_reason_codes`:
-#: these ten flags no longer force a review, they name a kept candidate's
+#: these flags no longer force a review, they name a kept candidate's
 #: condition. Only the flags this corpus actually raises are listed; a flag
 #: that starts firing without a row here fails
 #: `test_every_disclosure_flag_reports_the_walks_it_rewrites` loudly rather
-#: than being silently summed into the total. Empty for any flag this corpus
-#: raises that HOLDS instead (none today — see EXPECTED_DISCLOSED_REVIEW_FLAGS).
+#: than being silently summed into the total. `ACTIVITY_BOUNDARY` is
+#: deliberately ABSENT (gate vo-gate-a1, OBS-1 HIGH): it moved back to
+#: `HOLDING_DISCLOSED_FLAGS` in A1', so it holds, it never conditions — see
+#: `EXPECTED_REVIEW_REASON_FOR_HOLDING_FLAG` below for its review code.
 EXPECTED_CONDITION_REASON_FOR_FLAG: dict[str, str] = {
-    "ACTIVITY_BOUNDARY": "DISCLOSED_ACTIVITY_BOUNDARY_CONDITION",
     "NOT_CERTAIN": "DISCLOSED_UNCERTAINTY_CONDITION",
+}
+
+#: Every flag NAME this corpus actually raises, across every walk — the
+#: set `EXPECTED_DISCLOSED_REVIEW_FLAGS`'s values union to. Used below to
+#: scope `EXPECTED_REVIEW_REASON_FOR_HOLDING_FLAG` to flags this corpus
+#: exercises: `CRIMINAL_RECORD` is in `HOLDING_DISCLOSED_FLAGS` too, but no
+#: walk here raises it, so it must not appear in a per-corpus expectation
+#: table.
+_CORPUS_DISCLOSED_FLAG_NAMES: frozenset[str] = frozenset(
+    flag for flags in EXPECTED_DISCLOSED_REVIEW_FLAGS.values() for flag in flags
+)
+
+#: The review reason code `_apply_disclosed_review_flags` emits per HOLDING
+#: flag this corpus raises (`_DISCLOSED_REVIEW_REASON_CODES`,
+#: evaluate_path.py) — the mirror of `EXPECTED_CONDITION_REASON_FOR_FLAG`
+#: above, for the flags that still force `HUMAN_REVIEW_REQUIRED`. Derived
+#: from `evaluate_path._DISCLOSED_REVIEW_REASON_CODES`, never hand-copied,
+#: so a code renamed there cannot drift silently from what this census
+#: expects.
+EXPECTED_REVIEW_REASON_FOR_HOLDING_FLAG: dict[str, str] = {
+    flag.value: code
+    for flag, code in evaluate_path._DISCLOSED_REVIEW_REASON_CODES.items()
+    if flag.value in _HOLDING_DISCLOSED_FLAG_NAMES and flag.value in _CORPUS_DISCLOSED_FLAG_NAMES
 }
 
 
@@ -2702,11 +2741,14 @@ def test_the_flagged_census_is_the_funnel_the_applicant_meets(
     outcomes: dict[str, dict[str, Any]],
     flagged_outcomes: dict[str, dict[str, Any]],
 ) -> None:
-    """The two censuses, side by side — and the headline PLAN slice A1
-    changed: **zero of the funnel's holds come from the disclosure layer on
-    this corpus** (it raises only `ACTIVITY_BOUNDARY`/`NOT_CERTAIN`, and
-    neither holds since the 2026-09-13 ruling); the funnel's 3 holds are the
-    same 3 the engine already carried — 1 minor-privacy + 2 Studio.
+    """The two censuses, side by side — and the headline gate vo-gate-a1's
+    OBS-1 HIGH restored: **6 of the funnel's holds come from the disclosure
+    layer on this corpus again**, the `ACTIVITY_BOUNDARY` walks — PLAN
+    slice A1 had briefly released them, but the gate named that release a
+    legal-exposure regression contra PLAN OD-2's own default, and A1' put
+    `ACTIVITY_BOUNDARY` back in `HOLDING_DISCLOSED_FLAGS`. `NOT_CERTAIN`'s
+    two walks still condition, not hold. The funnel's 9 holds are the
+    engine's 3 (1 minor-privacy + 2 Studio) plus those 6.
 
     `EXPECTED_FLAGGED_STATE_CENSUS` is derived, not pinned, so this asserts
     the split property itself: a flagged walk ends HUMAN_REVIEW_REQUIRED only
@@ -2750,13 +2792,27 @@ def test_the_flagged_census_is_the_funnel_the_applicant_meets(
     # The Studio walks raise no disclosure flag either, or the sum below would
     # count them twice.
     assert not (STUDIO_HELD_WALKS & set(EXPECTED_DISCLOSED_REVIEW_FLAGS))
-    # No flag this corpus raises is in HOLDING_DISCLOSED_FLAGS (A1), so the
-    # disclosure layer contributes zero holds here: the funnel's total is
-    # exactly the two non-flag holds. A new corpus walk raising
-    # CRIMINAL_RECORD, or a future PR widening the holding set, must grow
-    # this sum in the same PR that re-pins EXPECTED_FLAGGED_STATE_CENSUS.
-    assert funnel_census["HUMAN_REVIEW_REQUIRED"] == len(PRIVACY_HELD_WALKS) + len(
-        STUDIO_HELD_WALKS
+    # The walks whose OWN flags intersect HOLDING_DISCLOSED_FLAGS — the
+    # disclosure layer's live contribution to the funnel's holds, walk by
+    # walk rather than assumed. Today that is the 6 ACTIVITY_BOUNDARY walks;
+    # zero of this corpus's walks raise CRIMINAL_RECORD. A future PR
+    # widening or narrowing HOLDING_DISCLOSED_FLAGS moves this set, and the
+    # sum below, in the same PR that re-pins EXPECTED_FLAGGED_STATE_CENSUS.
+    disclosure_held = {
+        label
+        for label, flags in EXPECTED_DISCLOSED_REVIEW_FLAGS.items()
+        if set(flags) & _HOLDING_DISCLOSED_FLAG_NAMES
+    }
+    assert disclosure_held == {
+        "offshore/invest/family",
+        "offshore/invest/merit",
+        "offshore/invest/merit/currency_usd",
+        "offshore/invest/undecided",
+        "offshore/invest/undecided/currency_still_unsure",
+        "offshore/other/no_paid_activity/medical",
+    }
+    assert funnel_census["HUMAN_REVIEW_REQUIRED"] == (
+        len(PRIVACY_HELD_WALKS) + len(STUDIO_HELD_WALKS) + len(disclosure_held)
     )
 
 
@@ -2788,10 +2844,13 @@ def test_every_disclosure_flag_reports_the_walks_it_rewrites(
     """The table Zero needs to rule on `MULTI_PURPOSE_TRIP` and the rest:
     per flag, how many walks it touches, and whether it holds or conditions.
 
-    Since PLAN slice A1, neither flag this corpus raises holds — the pack's
-    own state and candidates survive untouched, and a `*_CONDITION` notice
-    is the only visible change. Printed on every run (`pytest -s`) and
-    asserted, so the number in a PR body is the number the test measured.
+    Since PLAN slice A1' (gate vo-gate-a1, OBS-1 HIGH), one of the two flags
+    this corpus raises HOLDS again (`ACTIVITY_BOUNDARY`, per
+    `evaluate_path.HOLDING_DISCLOSED_FLAGS`) and the other still only
+    conditions (`NOT_CERTAIN`): the guilt/innocence split below asserts each
+    half by its own rule instead of one rule for all flags. Printed on
+    every run (`pytest -s`) and asserted, so the number in a PR body is the
+    number the test measured.
     """
 
     per_flag: dict[str, list[tuple[str, str, str]]] = {}
@@ -2812,32 +2871,50 @@ def test_every_disclosure_flag_reports_the_walks_it_rewrites(
         print(f"{flag} | {len(rows)} | {rendered}")
 
     for flag, rows in sorted(per_flag.items()):
-        condition_code = EXPECTED_CONDITION_REASON_FOR_FLAG[flag]
+        holds = flag in _HOLDING_DISCLOSED_FLAG_NAMES
         for label, before, after in rows:
-            assert after == before, (
-                f"{label}: raises {flag}, a non-holding flag, but the funnel "
-                f"state ({after}) diverged from the engine state ({before}) — "
-                "a conditioning flag may only ADD a notice"
-            )
-            assert outcomes[label]["candidates"] == flagged_outcomes[label]["candidates"], (
+            assert outcomes[label]["candidates"] == flagged_outcomes[label]["candidates"] or holds, (
                 f"{label}: {flag} changed the candidate set — a conditioning "
                 "flag can never create, reorder or remove a candidate"
             )
-            assert flagged_outcomes[label]["review_reason_codes"] == [], (
-                f"{label}: {flag} is not in HOLDING_DISCLOSED_FLAGS but still "
-                "populated review_reason_codes"
-            )
-            assert condition_code in flagged_outcomes[label]["notice_codes"], (
-                f"{label}: rewritten by {flag} without emitting {condition_code}"
-            )
+            if holds:
+                review_code = EXPECTED_REVIEW_REASON_FOR_HOLDING_FLAG[flag]
+                assert after == "HUMAN_REVIEW_REQUIRED", (
+                    f"{label}: raises {flag}, a holding flag, but the funnel "
+                    f"state ({after}) never moved to HUMAN_REVIEW_REQUIRED"
+                )
+                assert flagged_outcomes[label]["candidates"] == [], (
+                    f"{label}: {flag} holds but candidates were not emptied"
+                )
+                assert flagged_outcomes[label]["review_reason_codes"] == [review_code], (
+                    f"{label}: {flag} holds but review_reason_codes does not "
+                    f"name {review_code}"
+                )
+            else:
+                condition_code = EXPECTED_CONDITION_REASON_FOR_FLAG[flag]
+                assert after == before, (
+                    f"{label}: raises {flag}, a non-holding flag, but the funnel "
+                    f"state ({after}) diverged from the engine state ({before}) — "
+                    "a conditioning flag may only ADD a notice"
+                )
+                assert flagged_outcomes[label]["review_reason_codes"] == [], (
+                    f"{label}: {flag} is not in HOLDING_DISCLOSED_FLAGS but still "
+                    "populated review_reason_codes"
+                )
+                assert condition_code in flagged_outcomes[label]["notice_codes"], (
+                    f"{label}: rewritten by {flag} without emitting {condition_code}"
+                )
 
     assert {flag: len(rows) for flag, rows in per_flag.items()} == {
         "ACTIVITY_BOUNDARY": 6,
         "NOT_CERTAIN": 2,
     }
-    assert sorted(EXPECTED_CONDITION_REASON_FOR_FLAG) == sorted(per_flag), (
+    assert sorted(set(EXPECTED_CONDITION_REASON_FOR_FLAG) | set(EXPECTED_REVIEW_REASON_FOR_HOLDING_FLAG)) == sorted(
+        set(per_flag)
+    ), (
         "a flag started (or stopped) firing on this corpus — add or remove its "
-        "row in EXPECTED_CONDITION_REASON_FOR_FLAG in the same PR"
+        "row in EXPECTED_CONDITION_REASON_FOR_FLAG or "
+        "EXPECTED_REVIEW_REASON_FOR_HOLDING_FLAG in the same PR"
     )
 
 
@@ -2929,19 +3006,20 @@ def test_the_products_the_applicant_is_never_shown_are_pinned_by_cause(
     proves the nine seq-21 products reach the applicant only while seq-21 is
     a candidate, and skips once it is signed. This keeps that property after
     the signature: a product the engine names on some walk but the applicant
-    is never shown may only be E31E, held by the minor-privacy adapter.
-    Before PLAN slice A1, C6 belonged here too — its one witness
-    (``offshore/other/no_paid_activity/medical``) raises ACTIVITY_BOUNDARY,
-    which used to rewrite the decision to a hold with candidates emptied. A1
-    (owner ruling 2026-09-13) makes ACTIVITY_BOUNDARY a named condition
-    instead: C6 now survives at funnel level, with a
-    ``DISCLOSED_ACTIVITY_BOUNDARY_CONDITION`` notice attached, so C6 is no
-    longer in the gap this test guards. Measured 2026-09-19 (A1) on signed
-    seq-22; measured 2026-09-14 on signed seq-20/seq-21 pre-A1."""
+    is never shown may only be E31E (minor-privacy adapter) or C6 (its one
+    witness, ``offshore/other/no_paid_activity/medical``, raises
+    ``ACTIVITY_BOUNDARY``). PLAN slice A1 (owner ruling 2026-09-13) briefly
+    released ACTIVITY_BOUNDARY to a named condition, letting C6 survive at
+    funnel level — but gate vo-gate-a1's OBS-1 HIGH (PR #6839) named that a
+    legal-exposure release contra PLAN OD-2's own default (a named dead end,
+    not a condition, for exactly this undecidable-purpose case): slice A1'
+    put ACTIVITY_BOUNDARY back in ``HOLDING_DISCLOSED_FLAGS``, so C6 is back
+    in the gap this test guards, same as pre-A1. Measured 2026-09-19 (A1')
+    on signed seq-22."""
 
-    assert sorted(set(engine_named) - set(funnel_named)) == ["E31E"]
+    assert sorted(set(engine_named) - set(funnel_named)) == ["C6", "E31E"]
     assert engine_named["C6"] == ("offshore/other/no_paid_activity/medical",)
-    assert "C6" in funnel_named
+    assert "C6" not in funnel_named
     assert set(engine_named["E31E"]) <= PRIVACY_HELD_WALKS
 
 
