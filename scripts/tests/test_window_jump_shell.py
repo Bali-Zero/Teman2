@@ -96,14 +96,15 @@ def _stamp(home: Path) -> str:
     return (home / "stamp.tty").read_bytes().decode("utf-8")
 
 
-def _run(home: Path, mode: str, *, claim_after: float | None = 0.5, from_pid: int | None = None):
+def _run(home: Path, mode: str, *, claim_after: float | None = 0.5, from_pid: int | None = None,
+         tty_seam: bool = True):
     """Run the script; optionally stamp to_session after `claim_after` seconds
     (the SessionStart hook of the new window would)."""
     pending = home / ".organism" / "context-guard" / "pending-jump-sess-1234-abcd.json"
     env = {"HOME": str(home), "PATH": "/usr/bin:/bin", "OSASCRIPT": str(home.parent / "osascript"),
            "STUB_MODE": mode, "STUB_LOG": str(home / "calls.log"),
            "JUMP_WAIT_S": "6", "EXIT_WAIT_S": "1", "JUMP_POLL_MAX_S": "2",
-           "JUMP_TTY": str(home / "stamp.tty")}
+           **({"JUMP_TTY": str(home / "stamp.tty")} if tty_seam else {})}
     p = subprocess.Popen(["bash", str(SCRIPT), "sess-1234-abcd"], env=env,
                          stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     if claim_after is not None:
@@ -171,6 +172,26 @@ def test_native_old_window_not_closed_while_old_claude_alive(tmp_path):
     assert rc == 0
     assert not any("close-window" in c for c in calls)
     assert "STILL alive" in log and "NOT closed" in log
+
+
+def test_native_from_pid_without_a_tty_leaves_the_window_open_on_both_ps_dialects(tmp_path):
+    # No JUMP_TTY seam: the script asks ps for the tty of from_pid, started in
+    # its own session so it has no controlling terminal. BSD ps prints "??",
+    # Linux procps "?": both mean "no tty". Until 2026-09-19 only the macOS
+    # literal was recognised and on Linux the script went on to "/dev/? not
+    # writable" -- the same refusal for the wrong reason.
+    old = subprocess.Popen([sys.executable, "-c", "import time\nwhile True: time.sleep(0.2)"],
+                           start_new_session=True, stdin=subprocess.DEVNULL)
+    try:
+        home, _ = _home(tmp_path, old.pid)
+        rc, calls, log = _run(home, "native-ok", tty_seam=False)
+    finally:
+        old.kill()
+    assert rc == 0, log
+    assert f"pid {old.pid} has no tty (window left open)" in log
+    assert "not writable" not in log
+    assert _stamp(home) == "", "no tty proven ours: nothing is stamped anywhere"
+    assert not any("type-into win-OLD" in c or "close-window" in c for c in calls)
 
 
 # ---------------- fallback route ----------------
