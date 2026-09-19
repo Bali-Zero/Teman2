@@ -1,95 +1,111 @@
-task_id: b2-5-2-wa-human-handoff
+task_id: kbli-tombstone-phantom-codes
 gear: 2
 l_level: L2
 gate_class: opus
-# Floor for this diff is 2, reached via the SIZE term alone (1018 added / 32 deleted across 10
-# files) — no hot-zone path, no migration, no new dependency. Measured WITH this brief staged:
-# the brief's own churn (~90 lines) leaves the total well under the floor-3 threshold, which is
-# the mistake that sank PR #6602.
+# Floor for this diff is 2, reached via the SIZE term ALONE — the code alone is churn 801 (759
+# added / 42 deleted across 7 files), over SIZE_GEAR2_THRESHOLD 400. No hot-zone path (none of the
+# touched paths is in HOTZONE_PATTERNS), no migration, no new dependency. MEASURED WITH THIS BRIEF
+# STAGED, from the merge-base and not from origin/main's moved tip: 846 added / 113 deleted =
+# churn 959, floor 2, source "size" — still far under SIZE_GEAR3_THRESHOLD 1828. That measurement
+# is the one PR #6602 skipped and #6645's brief warns about; taking it against origin/main with a
+# two-dot diff instead reads 2540/floor 3, because it reverse-counts everything main landed since
+# this branch point.
 objective: >-
-  A client who asks to speak to a person is the highest-intent message this bot ever receives —
-  it is a lead. Today nothing on the Meta Inbox channel detects it: the message falls through to
-  retrieval, abstains, and reaches no human being. Measured 2026-09: 32 of 40 conversations end
-  in an abstain, 4 were picked up by a person. This PR detects the ask in five languages, answers
-  the client in their own language, and notifies a human on two channels — the kita notification
-  bell for the assigned consultant, and email for everyone including a number no client row
-  matches yet.
+  `inspect_kbli` resolves a code against `kg_nodes.entity_id = 'kbli:<code>'`, and the graph holds
+  MORE codes than KBLI 2025 does: 1,568 nodes, 1,558 canonical, TEN phantoms — KBLI-2020 numbers
+  the 2025 revision does not carry. Every one of them is answered with an ordinary 200. Live today:
+  `74100` returns `licensing_status: REGULATED` with `related_requirements.entity_forms: [PT PMA]`
+  for an activity that cannot be registered on OSS at all, and `26120` returns a full semiconductor
+  description plus six related codes. Four of the ten already carry
+  `licensing_status = NOT_IN_KBLI_2025` in `kbli_documents`, written by an earlier cure script — but
+  the router never interprets that label (0 hits for the string in `kbli_notebook.py` before this
+  PR); it reaches the client only because `licensing_status` is passed through verbatim, as an
+  undocumented enum on a page that otherwise reads like a live activity. This PR makes the endpoint
+  say, in plain language and in both English and Bahasa Indonesia, that the code is not in KBLI 2025
+  — and stops 38 real codes from offering a phantom under `related_codes`.
 constraints:
   - >-
-    No Anthropic per-token door in any form, no new dependency, no migration. The notification
-    table (notification_alerts, migration 071) and the email adapter
-    (/api/notifications/send-email, from=zantara@balizero.com) both already exist on main.
+    A tombstone, not a 404. Zero ruled this directly ("lapide"): a 404 says "we have no data about
+    this code", which leaves the client believing the code exists. The fact is the opposite. The
+    response asserts the absence, asserts nothing else, and sends the client to search by activity.
   - >-
-    PII is an OUTPUT boundary. The phone number is used ONLY in-process to resolve the consultant.
-    It never appears in the email subject, the email body, the in-app row, or any log line; the
-    client's own words are never transcribed anywhere. The in-app message is a fixed English
-    sentence and the email body a fixed Bahasa Indonesia one, deliberately — a robust
-    "free of identifiers" classifier is out of scope for this size, so when in doubt this omits.
+    We do NOT name a successor code. The 2020→2025 crosswalk is not in our data, and inventing one
+    would be a plausible-but-wrong assertion on a licensing decision — the exact class of harm this
+    corner exists to prevent. Semantic search already is the crosswalk we have: "hotel bintang lima"
+    returns 55101, the real 2025 code, not the phantom 55111.
   - >-
-    The client's confirmation must survive any notification failure. Both channels are best-effort
-    at their own layer, and the call site in wa_codex_leg.py wraps the whole call again, because
-    the outer attempt() turns an unhandled exception into a text=None fall-off — which would
-    silently swallow the very confirmation this leg exists to send.
+    The membership test is a DATABASE question answered on the connection the router already holds,
+    never a JSON file shipped into the container. `kbli_documents` minus the already-labelled rows
+    is EXACTLY the canonical 1,559, verified in both directions on prod with zero elements on either
+    side of the difference. A shipped file would be a second source of truth free to drift from the
+    first, plus a request-time file read.
   - >-
-    meta_inbox_threads.human_handling is NOT set. A client who ASKS for a human is not a human who
-    HAS TAKEN the thread; setting it aborts every later generation (aborted_human_takeover,
-    wa_outbox_worker.py:930) and, if nobody arrives, leaves the client in total silence.
+    Fail-closed in the direction that matters. A naive membership test turns every code into a
+    tombstone the moment `kbli_documents` is unreadable — 1,559 wrong answers from one bad deploy,
+    far worse than the ten this fixes. Absence is evidence ONLY when the catalogue is evidently
+    present: the size returns in the same round trip and below CATALOGUE_FLOOR (1,000; the live
+    table holds 1,563) the verdict is UNKNOWN and the endpoint behaves exactly as before.
+  - >-
+    No PII: the whole surface is public KBLI classification data, no client identifiers anywhere.
+    No new dependency, no migration, no Anthropic per-token door.
 acceptance:
   - text: >-
-      A1 GUILT: WHEN a client writes any of 23 real phrasings across it/en/id/ru/uk — including
-      "I want to talk to a human", "voglio parlare con una persona riguardo alla mia PT PMA" and
-      "saya mau bicara dengan orang" — SHALL match and return a confirmation in that language.
-      The domain veto is INVERTED relative to wa_identity: naming your own case while asking for a
-      human is the most valuable lead there is, and must match rather than be vetoed.
-    probe: "cd apps/backend-rag && .venv/bin/python -m pytest backend/tests/unit/services/test_wa_human_handoff.py -k TestGuilt"
+      A1 GUILT — a phantom is tombstoned. WHEN a code has no canonical row in `kbli_documents` and
+      the catalogue is evidently present, `inspect_kbli` SHALL return the tombstone description, the
+      `[KBLI 2020 — tidak ada dalam KBLI 2025]` title suffix, `licensing_status: NOT_IN_KBLI_2025`,
+      an empty `licenses` list and the not-applicable risk profile — instead of REGULATED.
+    probe: "cd apps/backend-rag && PYTHONPATH=. python -m pytest backend/tests/unit/routers/test_kbli_phantom_code_tombstone.py --tb=short"
   - text: >-
-      A2 INNOCENCE: WHEN the message is "humanitarian visa", "how long does PT PMA take?",
-      "sei un umano?" or a third-person question about staff SHALL NOT match. The guard judges
-      whole TOKENS over a normalized window, never a substring — "humanitarian" cannot reach any
-      phrase in the table.
-    probe: "cd apps/backend-rag && .venv/bin/python -m pytest backend/tests/unit/services/test_wa_human_handoff.py -k TestInnocence"
+      A2 INNOCENCE — nothing else moves. WHEN the code IS canonical, or the catalogue answer is
+      illegible (no rows, missing key, non-integer count, size below the floor), the response SHALL
+      be byte-identical to today's. This is the expensive direction: the cure is worth ten codes and
+      getting it wrong costs 1,559. The service tests state the CATALOGUE_FLOOR boundary from both
+      sides.
+    probe: "cd apps/backend-rag && PYTHONPATH=. python -m pytest backend/tests/unit/services/test_kbli_catalogue_membership.py --tb=short"
   - text: >-
-      A3 THE ROW IS ALSO RENDERED: WHEN the module writes a notification_alerts row SHALL be a
-      type the kita bell actually shows. /api/crm/notifications filters on a fixed allow-list, so a
-      new alert_type would otherwise be written and never seen — for a lead, the same outcome as
-      not writing it. The allow-list is now one constant read by both the list and the count query,
-      and the test binds the two constants by ENTITY, not by grepping a SQL literal.
-    probe: "cd apps/backend-rag && .venv/bin/python -m pytest backend/tests/unit/services/test_wa_human_handoff.py -k TestInAppAlert"
+      A3 THE TESTS ACTUALLY BITE — proven by mutation, not assumed. Disabling the new branch with
+      `if False and is_absent_from_catalogue(...)` SHALL fail 4 tombstone tests while every
+      innocence test still passes. A first draft of these tests survived that same mutation with
+      only 1 failure, because the fake connection answered `[]` to everything: the fixture was
+      rebuilt so the phantom node and the canonical node carry the SAME licence, cost and located
+      PMA tuple, and every assertion therefore discriminates.
+    probe: "apply `if False and` to kbli_notebook.py's tombstone branch, run the tombstone suite, restore from a cp backup and confirm with cmp -s"
   - text: >-
-      A4 THE PROMISE IS KEPT: WHEN any of the five wa_identity presentations offers the client a
-      human SHALL use wording that match_human_request recognises. Before this PR that line was a
-      promise no code kept; the test walks every presentation and requires the detector to find a
-      request inside the exact sentence it suggests.
-    probe: "cd apps/backend-rag && .venv/bin/python -m pytest backend/tests/unit/services/test_wa_human_handoff.py -k TestPresentationKeepsItsPromise"
+      A4 THE SIBLING LEAK IS CLOSED IN SQL, NOT AFTER IT. WHEN a real code's related codes are
+      built, a phantom SHALL NOT appear. The exclusion is an `AND EXISTS (...)` INSIDE the query
+      because Postgres spends the `LIMIT 6` first — filtering afterwards costs a slot instead of
+      yielding a real sibling. A query-shape test asserts EXISTS precedes LIMIT and that the phantom
+      status is a bound parameter.
+    probe: "cd apps/backend-rag && PYTHONPATH=. python -m pytest backend/tests/unit/routers/test_kbli_phantom_code_tombstone.py -k sibling --tb=short"
   - text: >-
-      A5 NOTHING ELSE MOVED: WHEN the backend unit suite runs SHALL be 8534 passed with exactly one
-      pre-existing unrelated failure (autonomous_lab/test_consul_native_broker.py,
-      ModuleNotFoundError scripts.conductor), reproduced identically on a clean main checkout.
-    probe: "cd apps/backend-rag && .venv/bin/python -m pytest backend/tests/unit/services/autonomous_lab/test_consul_native_broker.py  # same red on main"
+      A5 NOTHING ELSE MOVED. WHEN every KBLI test file in the suite runs SHALL be 837 passed, with
+      ZERO edits to any pre-existing test — a property of the design, not a coincidence: the
+      existing fakes answer `[]` to an unrecognised query, `[]` is UNKNOWN, and UNKNOWN changes
+      nothing.
+    probe: "cd apps/backend-rag && PYTHONPATH=. python -m pytest $(find backend/tests -name '*kbli*' -maxdepth 6) --tb=line"
 assumptions:
   - text: >-
-      notification_alerts.client_id is NOT NULL with an FK to clients, and the bell's own query
-      JOINs clients to resolve the assignee — so an unrecognised number structurally CANNOT have an
-      in-app row. This is why the email is unconditional rather than a fallback: the newest lead is
-      exactly the one no client row matches.
+      `kbli_documents` minus the rows labelled `NOT_IN_KBLI_2025` is EXACTLY the canonical 1,559 —
+      so the table is a sound membership oracle for this question. Verified in both directions on
+      prod: zero elements on either side of the set difference.
     status: verified
-    probe: "scripts/pg.sh -c '\\d notification_alerts' — client_id integer not null, FK to clients(id)"
+    probe: "read-only set-difference query against kbli_documents on prod, both directions, 2026-09-19"
   - text: >-
-      The table carries UNIQUE (client_id, alert_type, created_date), so a client asking twice in
-      one day would raise without ON CONFLICT. DO UPDATE rather than DO NOTHING because a second
-      ask means the first went unanswered: the alert returns to unread and rises in the bell.
+      The ten phantoms really are answered 200 today, and the label really does reach the wire
+      uninterpreted on the four already-labelled ones. Measured through the MCP tool, which carries
+      auth (plain curl over this endpoint returns 401).
     status: verified
-    probe: "scripts/pg.sh -c '\\d notification_alerts' — uq_notification_alert_daily UNIQUE (client_id, alert_type, created_date)"
+    probe: "inspect_kbli 74100 -> REGULATED + PT PMA/KITAS; inspect_kbli 26120 -> NOT_IN_KBLI_2025 with six related_codes"
   - text: >-
-      PackageUnbuildable("human_handoff_domain") cannot violate the wa_outbox CHECK constraint on
-      generation_fall_off_reason: unknown sub-reasons fall through to the generic
-      "package_unbuildable" bucket, which the constraint allows. wa_codex_leg short-circuits before
-      the builder is ever reached on this path anyway — the raise is a second line of defense.
+      The KG holds 1,558 canonical nodes against the table's 1,559, so at least one canonical code
+      has no node. That gap cannot reach this cure: a code with no node still 404s at
+      kbli_notebook.py:735, eleven lines before the membership query is issued at :746.
     status: verified
-    probe: "wa_codex_leg.py:268 _UNBUILDABLE_SUB_REASON_MAP has 3 keys; anything else falls to _FALL_OFF_REASON_PREFIX_MAP['unbuildable']"
+    probe: "inspect_kbli 01122 -> HTTP 404, measured 2026-09-19; grep -n on kbli_notebook.py for the two line numbers"
   - text: >-
-      The live proof must come from a real phone. /webhook/whatsapp is fail-closed on the
-      X-Hub-Signature-256 HMAC and WHATSAPP_APP_SECRET is a Fly secret, absent on Pro (presence
-      probe only, value never read) — so no test inbound can be injected from this machine.
+      The v6 -> v7 cache-key bump is what makes this cure LIVE rather than merely merged. `title`,
+      `description`, `risk_profile` and `licensing_status` all change meaning on the ten codes, and
+      the inspect cache holds 30 days — without the bump the fix would sit behind stale payloads for
+      a month. The bump evicts them at deploy, so no manual cache-bust step is needed.
     status: verified
-    probe: "presence probe over ~/.nuzantara-secrets.env and apps/backend-rag/.env: absent_local for all four WhatsApp vars"
+    probe: "kbli_inspect_cache_bust.py's CACHE_KEY_TEMPLATE is pinned to the router's key by a CI test; both move in this diff"

@@ -95,7 +95,7 @@ disclosure gate.  Direct Fly execution therefore keeps working without a
 allowlist and boolean validation.
 
 AFTER APPLYING, EVICT THE CACHE: `inspect_kbli` caches its assembled payload
-under `kbli_inspect_v6_<code>` for up to 30 days, so a cured Qdrant payload is
+under `kbli_inspect_v7_<code>` for up to 30 days, so a cured Qdrant payload is
 invisible on the channel until `kbli_inspect_cache_bust.py --only <codes>
 --apply` has run.
 """
