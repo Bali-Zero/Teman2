@@ -956,6 +956,7 @@ def cmd_r2(args: argparse.Namespace) -> dict[str, dict[str, int]]:
     (kit / "r2").mkdir(parents=True, exist_ok=True)
     fake = os.environ.get("DW_FAKE_SEATS") == "1"
     summary: dict[str, dict[str, int]] = {}
+    dead_seats: set[str] = set()
     for seat, targets in pairing.items():
         # Item 4 (PR2g, gate-7 obs :390/:732): before EVERY launch, real or fake — mirrors
         # _run_one_seat's own ordering (validate before the fake check), because pairing is
@@ -980,10 +981,17 @@ def cmd_r2(args: argparse.Namespace) -> dict[str, dict[str, int]]:
         (kit / "r2" / f"{_seat_key(seat)}.md").write_text("\n\n".join(kept) + ("\n" if kept else ""))
         if rejected:
             (kit / "r2" / f"{_seat_key(seat)}.rejected.md").write_text("\n\n".join(rejected) + "\n")
-        ledger_append(kit, seat, f"r2-kept={len(kept)}-rejected={len(rejected)}", brief_sha[:16])
+        dead = not (raw_output or "").strip()
+        if dead:
+            dead_seats.add(seat)
+        status = "r2-dead" if dead else f"r2-kept={len(kept)}-rejected={len(rejected)}"
+        ledger_append(kit, seat, status, brief_sha[:16])
         summary[seat] = {"kept": len(kept), "rejected": len(rejected)}
     for seat, counts in summary.items():
-        print(f"{seat}: kept={counts['kept']} rejected={counts['rejected']}")
+        if seat in dead_seats:
+            print(f"{seat}: dead (empty output)")
+        else:
+            print(f"{seat}: kept={counts['kept']} rejected={counts['rejected']}")
     return summary
 
 
@@ -1268,6 +1276,13 @@ def cmd_jury(args: argparse.Namespace) -> dict[str, Any]:
     seat id lives before reveal stays jury/mapping.json, chmod 600."""
     kit = Path(args.kit)
     survivors = _jury_survivors(kit)
+    # PR3l (first real run, 2026-09-19): the judge disqualified 3 of 3 real coaches and this
+    # command still exited 0 with a tabulation of "0 live ballot(s)" — a green exit on an
+    # empty outcome (scar #2). No survivor means no round to score: refuse before any file.
+    if not survivors:
+        print("refused: 0 surviving formations — judge.md disqualified every answered seat, "
+              "nothing to score", file=sys.stderr)
+        sys.exit(2)
     mapping = _jury_mapping(kit, survivors)
     inverse = {seat: ltr for ltr, seat in mapping.items()}
     (kit / "jury").mkdir(parents=True, exist_ok=True)
@@ -1310,6 +1325,9 @@ def cmd_anonymise(args: argparse.Namespace) -> dict[str, str]:
     too, not just on first write, in case anything touched its mode after jury ran."""
     kit = Path(args.kit)
     survivors = _jury_survivors(kit)
+    if not survivors:
+        print("refused: 0 surviving formations — nothing to anonymise", file=sys.stderr)
+        sys.exit(2)
     mapping = _jury_mapping(kit, survivors)
     mapping_path = kit / "jury" / "mapping.json"
     os.chmod(mapping_path, 0o600)

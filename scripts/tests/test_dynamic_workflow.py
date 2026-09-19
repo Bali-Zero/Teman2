@@ -483,6 +483,57 @@ def test_r2_filter_drops_a_referenceless_no_test_objection_entirely(tmp_path, te
     assert not (kit / "r2" / "gemini-3.1-pro-high.md").read_text().strip()
 
 
+def test_r2_marks_a_seat_that_returned_nothing_as_dead_not_as_no_objections(
+        tmp_path, template, clean_objective, monkeypatch, capsys):
+    """First real run (2026-09-19): one r2 seat returned 0 bytes and its ledger row read
+    `r2-kept=0-rejected=0` — byte-identical to a seat that answered and simply had no
+    objections (scar family #2, 'exists != armed'). This exercises cmd_r2's NON-fake branch
+    (mirrors test_r2_with_a_real_astra_launch_keeps_its_r1_answer_and_pairs_on_the_formation),
+    because DW_FAKE_SEATS never returns an empty string."""
+    kit = tmp_path / "k"
+    dw.cmd_brief(_brief_ns(clean_objective, template, kit))
+    _seed_convener(kit)
+    dw.cmd_r1(argparse.Namespace(kit=str(kit), seats="kimi-k3,qwen3.8-max,gemini-3.1-pro-high",
+                                  astra_fallback=False))
+    objection = "C1 something.\nTest: run it."
+    monkeypatch.delenv("DW_FAKE_SEATS", raising=False)
+    monkeypatch.setattr(
+        dw, "_launch_seat",
+        lambda seat, prompt, timeout, kit: "" if seat == "kimi-k3" else objection)
+
+    dw.cmd_r2(argparse.Namespace(kit=str(kit)))
+
+    rows = {r[1]: r[2] for r in dw._ledger_rows(kit) if r[2].startswith("r2-")}
+    assert rows["kimi-k3"] == "r2-dead"
+    assert rows["qwen3.8-max"].startswith("r2-kept=")
+    assert rows["gemini-3.1-pro-high"].startswith("r2-kept=")
+    assert "kimi-k3: dead (empty output)" in capsys.readouterr().out
+
+
+def test_r2_keeps_the_kept_rejected_row_for_a_seat_whose_objections_were_all_filtered(
+        tmp_path, template, clean_objective, monkeypatch):
+    """A real answer with every objection filtered by _objection_ok stays
+    r2-kept=0-rejected=N — it is NOT dead, unlike an empty raw_output. Same real-launch shape
+    as the GUILT twin above, proving the two are told apart."""
+    kit = tmp_path / "k"
+    dw.cmd_brief(_brief_ns(clean_objective, template, kit))
+    _seed_convener(kit)
+    dw.cmd_r1(argparse.Namespace(kit=str(kit), seats="kimi-k3,qwen3.8-max,gemini-3.1-pro-high",
+                                  astra_fallback=False))
+    objection = "C1 something.\nTest: run it."
+    no_ref_no_test = "Just a vague worry, no F/C reference and no Test line at all."
+    monkeypatch.delenv("DW_FAKE_SEATS", raising=False)
+    monkeypatch.setattr(
+        dw, "_launch_seat",
+        lambda seat, prompt, timeout, kit: no_ref_no_test if seat == "kimi-k3" else objection)
+
+    summary = dw.cmd_r2(argparse.Namespace(kit=str(kit)))
+
+    assert summary["kimi-k3"] == {"kept": 0, "rejected": 1}
+    rows = {r[1]: r[2] for r in dw._ledger_rows(kit) if r[2].startswith("r2-")}
+    assert rows["kimi-k3"] == "r2-kept=0-rejected=1"
+
+
 # --------------------------------------------------------------- judge (guilt + innocence)
 
 def test_judge_passes_a_clean_canned_answer(tmp_path, template, clean_objective):
@@ -1167,6 +1218,39 @@ def test_jury_refuses_before_judge_has_run(tmp_path, template, clean_objective):
     assert not (kit / "jury").exists()
 
 
+def _all_disqualified_kit(tmp_path, template, clean_objective) -> Path:
+    """judge.md marking every answered seat disqualified — the shape the first real run
+    (2026-09-19) produced when judge disqualified 3 of 3 seats: the SAME defect
+    (test_judge_disqualifies_a_never_bullet_with_no_fc_ref's own no-C1-ref mutation) applied
+    to three different-family seats, so C8 fails for every one of them."""
+    kit = tmp_path / "k"
+    dw.cmd_brief(_brief_ns(clean_objective, template, kit))
+    sha = (kit / "brief.sha").read_text().strip()
+    for seat in ("kimi-k3", "qwen3.8-max", "gemini-3.1-pro-high"):
+        dirty = dw._CANNED_VALID.format(seat=seat, sha=sha).replace(
+            "- No paid Anthropic per-token endpoint (C1)", "- No paid Anthropic per-token endpoint")
+        _seed_answered(kit, seat, dirty)
+    verdicts = dw.cmd_judge(argparse.Namespace(kit=str(kit)))
+    assert all(v["disqualified"] for v in verdicts.values())
+    return kit
+
+
+def test_jury_refuses_when_judge_disqualified_every_seat(tmp_path, template, clean_objective,
+                                                           capsys):
+    """First real run (2026-09-19): judge.md disqualified 3 of 3 seats and cmd_jury still
+    exited 0, writing jury/tabulation.md reading '0 live ballot(s), 0 dead: none' — a green
+    exit on an empty outcome (scar family #2, 'exists != armed': monitor the OUTCOME, never
+    the exit code). cmd_jury must refuse BEFORE _jury_mapping runs, so neither jury/mapping.json
+    nor jury/tabulation.md ever gets written."""
+    kit = _all_disqualified_kit(tmp_path, template, clean_objective)
+    with pytest.raises(SystemExit) as e:
+        dw.cmd_jury(argparse.Namespace(kit=str(kit)))
+    assert e.value.code == 2
+    assert "0 surviving formations" in capsys.readouterr().err
+    assert not (kit / "jury" / "mapping.json").exists()
+    assert not (kit / "jury" / "tabulation.md").exists()
+
+
 def test_jury_scores_survivors_and_marks_a_malformed_ballot_dead(tmp_path, template, clean_objective):
     kit = _judged_kit(tmp_path, template, clean_objective,
                        "kimi-k3,qwen3.8-max,gemini-3.1-pro-high-fakejurydead")
@@ -1246,6 +1330,30 @@ def _juried_kit(tmp_path, template, clean_objective, seats: str) -> Path:
 
 
 _THREE_FAMILY_SEATS = "kimi-k3,qwen3.8-max,gemini-3.1-pro-high"
+
+
+def test_anonymise_refuses_when_there_is_no_survivor(tmp_path, template, clean_objective,
+                                                        capsys):
+    """cmd_anonymise obtains its own mapping via _jury_survivors/_jury_mapping independently of
+    cmd_jury having run at all, so this exercises a judged-but-never-juried kit directly. Same
+    scar family #2 as cmd_jury's twin above: 'Z-BLIND/ written for 0 formation(s): ' was a
+    green exit on nothing to anonymise."""
+    kit = _all_disqualified_kit(tmp_path, template, clean_objective)
+    with pytest.raises(SystemExit) as e:
+        dw.cmd_anonymise(argparse.Namespace(kit=str(kit)))
+    assert e.value.code == 2
+    assert "0 surviving formations" in capsys.readouterr().err
+    assert not (kit / "Z-BLIND").exists()
+
+
+def test_jury_and_anonymise_still_run_with_survivors(tmp_path, template, clean_objective):
+    """Innocence twin: a normal judged kit with clean survivors passes through cmd_jury and
+    cmd_anonymise exactly as before the empty-outcome refusal was added."""
+    kit = _judged_kit(tmp_path, template, clean_objective, _THREE_FAMILY_SEATS)
+    dw.cmd_jury(argparse.Namespace(kit=str(kit)))
+    mapping = dw.cmd_anonymise(argparse.Namespace(kit=str(kit)))
+    assert (kit / "jury" / "tabulation.md").exists()
+    assert {p.stem for p in (kit / "Z-BLIND").glob("*.md")} == set(mapping)
 
 
 def test_anonymise_z_blind_copy_differs_from_the_original_only_on_seat_and_sha_lines(
