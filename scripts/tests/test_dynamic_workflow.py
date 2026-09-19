@@ -784,17 +784,36 @@ def test_claim_slug_refuses_an_aliased_collision_for_a_non_kimi_seat_pair(tmp_pa
     assert slugs == {"acme-vendor-canonical": "acme-vendor-canonical"}
 
 
-def test_guilt_claim_slug_refuses_a_corrupt_slugs_json_naming_the_file(tmp_path, capsys):
-    """Item 2 (PR2g, gate-7 obs): a corrupt/empty/truncated slugs.json must refuse exit 2
-    naming the file, never a traceback — _claim_slug is the ONLY writer, so corruption always
-    means a prior crash mid-write, not an external edit."""
+@pytest.mark.parametrize("payload,failure_class", [
+    pytest.param(b"\x00\xff\xfe", "UnicodeDecodeError", id="non-utf8-bytes"),
+    pytest.param(b"{", "JSONDecodeError", id="truncated-json"),
+    pytest.param(b"[]", "shape error", id="json-array-not-object"),
+    pytest.param(b'{"a": 1}', "shape error", id="object-with-a-non-string-value"),
+    pytest.param(b"not json", "JSONDecodeError", id="not-json-at-all"),
+])
+def test_guilt_claim_slug_refuses_a_corrupt_or_malshaped_slugs_json_naming_file_and_class(
+        tmp_path, capsys, payload, failure_class):
+    """PR2g' S4 (gate-13 obs 1 HIGH REWORK trigger): _claim_slug used to read slugs.json via
+    Path.read_text(), which raises an UNCAUGHT UnicodeDecodeError on non-UTF8 bytes — a bare
+    traceback naming a line number, exit 1, never the file. Reading as bytes and decoding
+    explicitly closes that hole. A wrong-shape payload — valid JSON, but not a str -> str
+    object (a bare list, or a dict holding a non-string value) — used to pass the old
+    `isinstance(slugs, dict)` check and get silently adopted, later breaking an `existing !=
+    seat` comparison against a non-string value; it must refuse here too, naming which of the
+    three failure classes (UnicodeDecodeError / JSONDecodeError / shape error) fired. Every
+    payload: exit 2, the file byte-for-byte UNCHANGED (this function is the ONLY writer and
+    every one of these paths exits before its own write step), message names the file AND
+    the failure class."""
     kit = tmp_path / "k"
     kit.mkdir()
-    (kit / "slugs.json").write_text("")  # truncated/empty — invalid JSON
+    (kit / "slugs.json").write_bytes(payload)
     with pytest.raises(SystemExit) as e:
         dw._claim_slug(kit, "kimi-k3")
     assert e.value.code == 2
-    assert str(kit / "slugs.json") in capsys.readouterr().err
+    err = capsys.readouterr().err
+    assert str(kit / "slugs.json") in err
+    assert failure_class in err
+    assert (kit / "slugs.json").read_bytes() == payload  # byte-for-byte unchanged
 
 
 def test_claim_slug_holds_up_under_concurrent_claimants_no_lost_updates(tmp_path):

@@ -20,6 +20,12 @@ Redactor used before anything leaves this machine; any change, or any raise, ref
 SPAN COUNT only, never the text. DW_FAKE_SEATS=1 makes the arsenal-liveness probe AND every
 r1/r2 seat launch offline and deterministic — what --selftest runs on, never a real invocation
 and never a paid Anthropic endpoint.
+
+kit/slugs.json.lock (and its transient kit/slugs.json.<pid>.tmp) are kit-internal bookkeeping
+for _claim_slug's fcntl lock and atomic write (PR2g' S6, gate-13 obs 4): neither is a required
+artifact, so both are already excluded from capture by _CAPTURE_REQUIRED's allow-list — no
+separate exclude-list entry is needed, and the <pid> suffix means two crashed concurrent
+writers never collide on the same stale .tmp name.
 """
 
 from __future__ import annotations
@@ -493,15 +499,25 @@ def _claim_slug(kit: Path, seat: str) -> None:
         fcntl.flock(lock_f, fcntl.LOCK_EX)
         try:
             if slugs_path.exists():
+                raw_bytes = slugs_path.read_bytes()
                 try:
-                    slugs: dict[str, str] = json.loads(slugs_path.read_text())
-                except json.JSONDecodeError:
-                    print(f"refused: {slugs_path} is corrupt/empty/truncated (invalid JSON) — "
-                          "refusing to claim a slug against unreadable state", file=sys.stderr)
+                    decoded = raw_bytes.decode("utf-8")
+                except UnicodeDecodeError as e:
+                    print(f"refused: {slugs_path} is not valid UTF-8 (UnicodeDecodeError: {e})",
+                          file=sys.stderr)
                     sys.exit(2)
-                if not isinstance(slugs, dict):
-                    print(f"refused: {slugs_path} does not contain a JSON object", file=sys.stderr)
+                try:
+                    parsed: object = json.loads(decoded)
+                except json.JSONDecodeError as e:
+                    print(f"refused: {slugs_path} is corrupt/empty/truncated "
+                          f"(JSONDecodeError: {e})", file=sys.stderr)
                     sys.exit(2)
+                if not isinstance(parsed, dict) or not all(
+                        isinstance(k, str) and isinstance(v, str) for k, v in parsed.items()):
+                    print(f"refused: {slugs_path} does not contain a JSON object of the form "
+                          '{"slug": "seat"} (str -> str) (shape error)', file=sys.stderr)
+                    sys.exit(2)
+                slugs: dict[str, str] = parsed
             else:
                 slugs = {}
             existing = slugs.get(slug)
@@ -510,7 +526,7 @@ def _claim_slug(kit: Path, seat: str) -> None:
                       f"seat {seat!r} collides", file=sys.stderr)
                 sys.exit(2)
             slugs[slug] = seat
-            tmp_path = slugs_path.with_name(slugs_path.name + ".tmp")
+            tmp_path = slugs_path.with_name(slugs_path.name + f".{os.getpid()}.tmp")
             tmp_path.write_text(json.dumps(slugs, indent=2, sort_keys=True) + "\n")
             os.replace(tmp_path, slugs_path)
         finally:
