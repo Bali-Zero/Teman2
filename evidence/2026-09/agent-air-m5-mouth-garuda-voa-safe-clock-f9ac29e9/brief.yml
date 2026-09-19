@@ -1,0 +1,118 @@
+task: >-
+  GARUDA VOA FRONT B (design), slice 1 of the TIME accent: the published filing
+  deadline — the ONE date this product may show a client — was a clause inside
+  an AppFrame subtitle rendered as a raw ISO string ("File by 2026-09-08 at
+  Ngurah Rai — the counter's published deadline",
+  `visa/voa/[hash]/page.tsx:286` on origin/main). This PR makes it the hero of
+  the ACCEPT screen. New `SafeClock.tsx` (logic + view) computes the count in
+  Asia/Makassar CIVIL days via `Intl` with an explicit timeZone, which is the
+  defect `openapi.yaml` writes down for clients in the
+  `published_filing_deadline` description ("a client that derives this from a
+  local `Date` in another zone reintroduces it here" — the server-side guard is
+  `civil_clock.py::garuda_today`), and formats the date with `timeZone: "UTC"`
+  because `@balizero/core/utils`'s shared `formatDate` renders a date-only ISO
+  in the runtime's zone and would slide Bali's 8 September to 7 September for
+  every visitor west of Greenwich. Four states carry four distinct visual
+  identities (mandate accent 4, "never two states in one colour"): the number
+  keeps `--bz-data` throughout — that token's declared job in globals.css is
+  dates and prices at 11.60:1 — while the left rule and the word change,
+  `--state-info` / `--state-warning` / `--bz-status-mark`. `--state-danger` is
+  deliberately NOT one of them: on this theme it resolves to the same #c46a52
+  as `--bz-copper-text`, and copper on this surface means ownership, not
+  status. `--bz-status-mark` is used strictly inside its own globals.css
+  contract (non-text, a rule never a fill, never text, one per viewport) and
+  renders only in the `today` state, which is exclusive with the other three,
+  so the one-per-viewport clause holds by construction. A deadline already
+  passed renders NO countdown — it is not "zero days left", it is a different
+  situation, and the same doctrine already governs the overstay branch of
+  `/visa/clock/[hash]`, reused rather than re-decided; it states no consequence
+  of its own and hands over to a person. The office is named on every branch
+  that shows a date, which is the contract's own precondition for showing it at
+  all ("a surface may display this date only when the filing office is known to
+  be Ngurah Rai; otherwise it suppresses the date and routes to WhatsApp")
+  while the intake still collects no office.
+lane: mouth/garuda-voa-safe-clock
+machine: air-m5
+date: 2026-09-20
+
+gear: 2
+gear_reason: >-
+  Deterministic floor 2, source `size`: `git diff --no-renames --numstat
+  origin/main...HEAD` measures SafeClock.test.tsx +183/-0, SafeClock.tsx
+  +284/-0, `[hash]/page.tsx` +11/-1, voa-copy.guard.test.ts +1/-0 and
+  voa-r19.css +147/-0 — churn 627 by add+delete count, above
+  `SIZE_GEAR2_THRESHOLD` (400) and below `SIZE_GEAR3_THRESHOLD`. Confirmed with
+  `python3 scripts/evidence_pack_lint.py --print-floor --print-floor-source
+  --changed-files-file <name-only> --numstat-file <numstat>` -> `2`. No changed
+  file matches `HOTZONE_PATTERNS` (all five are plain files under
+  `apps/mouth/src/app/visa/voa/`; no workflow, secret or migration path), so
+  the path term does not independently raise the floor. Stated plainly: the
+  raw net is 625, above the ~400 the Builder Contract asks for; 400 of those
+  lines are code and 209 are comment, measured at the density of the files
+  around them (`voa-r19.css` on main is 151 lines of which ~40% docblock).
+
+appetite:
+  wall_clock_hours: 1
+  adversarial_rounds: 1
+
+acceptance:
+  A1: >-
+    `SafeClock.test.tsx`'s 19 cases pass, GUILT and INNOCENCE controls among
+    them. GUILT: `witaCivilDay(new Date("2026-09-07T17:30:00Z"))` is
+    "2026-09-08" while the same instant's `toISOString().slice(0,10)` — the
+    naive shape this replaces — is "2026-09-07", so dropping the explicit
+    timeZone fails the assertion; `formatCivilDay("2026-09-08")` contains
+    "8 September 2026" and NOT "7 September"; the four bands map to four
+    DIFFERENT rendered class suffixes (`new Set(...).size === 4`), so
+    collapsing any two states into one colour reds this; the DOM the component
+    produced carries no internal checkpoint name (`/Safe Clock|D-14|D-10|D-7|
+    D-3\b|D-1\b/i`) on any branch — the half a source scan cannot see once a
+    string is composed. INNOCENCE: WITA and UTC agree for the other sixteen
+    hours of the day; an unreadable deadline renders NOTHING rather than a
+    number the component invented; `formatCivilDay` passes a string it cannot
+    parse through untouched.
+    probe: >-
+      cd apps/mouth && npx --no-install vitest run
+      src/app/visa/voa/SafeClock.test.tsx
+  A2: >-
+    The whole `visa/voa/` suite stays green — 22 files / 313 tests — including
+    `voa-r19.contract.test.ts` (no colour literal anywhere in voa-r19.css,
+    comments included; every `var(--x)` it references is declared in
+    globals.css) and `voa-copy.guard.test.ts`, whose SCREEN_FILES corpus this
+    PR extends with `SafeClock.tsx` in the same change that creates it, so the
+    banned-claims list, the Safe Clock leak rule, the Bahasa term set, the
+    no-emoji rule and the no-price-literal rule all bind the new file from its
+    first commit rather than from a follow-up.
+    probe: cd apps/mouth && npx --no-install vitest run src/app/visa/voa
+  A3: >-
+    `tsc --noEmit` exits 0 and `eslint` reports zero errors and zero warnings
+    on the two new files — the three `react/no-unescaped-entities` warnings the
+    first draft produced are fixed in the copy, not suppressed.
+    probe: >-
+      cd apps/mouth && npx --no-install tsc --noEmit && npx --no-install eslint
+      src/app/visa/voa/SafeClock.tsx src/app/visa/voa/SafeClock.test.tsx
+  A4: >-
+    PROVE-LIVE, after the merge lands STAGED on mouth and `vercel promote
+    <dpl>` runs: an ACCEPT screen reached from a SYNTHETIC wizard walk on
+    balizero.com renders the day count as the first element of the page, with
+    the office named and the day in full — not the ISO string it renders today.
+    A merged diff is not a live one; this row is not signed until that
+    observation exists.
+    probe: >-
+      curl -s https://balizero.com/visa/voa/<synthetic-hash> and a 390px
+      browser screenshot of the ACCEPT screen
+
+out_of_scope: >-
+  The MONEY accent (PNBP / Bali Zero fee on separate lines). It is not
+  deferred for convenience: it contradicts a RATIFIED owner ruling —
+  decision-packet 02, Zero verbatim 2026-08-25, "il prezzo include il PNBP" —
+  pinned by `products/garuda-voa/contracts/tests/test_contract_invariants.py`
+  which bans the tokens fee/pnbp/subtotal/discount/surcharge/breakdown/
+  component from the contract, by GROUND.md F19 and by SM-G04. It needs Zero's
+  re-ruling and a backend breakdown field before any pixel moves, and the
+  backend is FRONT A's perimeter, not this lane's. EN/ID parity: `page.tsx`'s
+  constraint 5a declares this surface English-only with no locale switcher;
+  lifting that is its own slice and its own decision. The DECLINE screen, the
+  upload, checkout and tracker screens: this PR touches the ACCEPT branch only.
+  Arming, merging, promoting and proving live: the session that owns the
+  mandate does those, not this brief.
