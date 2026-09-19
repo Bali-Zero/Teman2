@@ -16,6 +16,7 @@ from collections.abc import Iterable
 from inspect import isawaitable
 from typing import Annotated, Any
 
+import asyncpg
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field, model_validator
@@ -27,11 +28,11 @@ from backend.app.dependencies import (
 )
 from backend.core.collection_registry import resolve_collection_name
 from backend.services.kbli_catalogue_membership import (
-    CATALOGUE_MEMBERSHIP_QUERY,
     PHANTOM_LICENSING_STATUS,
     TOMBSTONE_DESCRIPTION,
     TOMBSTONE_RISK_PROFILE,
     TOMBSTONE_TITLE_SUFFIX,
+    fetch_catalogue_membership,
     is_absent_from_catalogue,
 )
 from backend.services.kbli_pma_disclosure import (
@@ -586,22 +587,40 @@ _CANONICAL_SIBLING_QUERY = """
 async def _canonical_siblings(conn: Any, code: str, sector_id: str | None = None) -> list[str]:
     """Related KBLI codes in the same sector, guaranteed to exist in KBLI 2025.
 
-    Fails towards silence, and that is the right direction here: if the catalogue table
-    were unreadable the `EXISTS` would match nothing and this returns `[]`. An empty
-    related list omits a convenience; a populated one containing a dead code sends a
-    client to a page for an activity they cannot register. Only the second is a claim.
+    Fails towards silence, and that is the right direction here: an empty related list
+    omits a convenience, while a populated one containing a dead code sends a client to a
+    page for an activity they cannot register. Only the second is a claim.
+
+    CORRECTED 2026-09-19. This docstring used to say silence was automatic — "if the
+    catalogue table were unreadable the `EXISTS` would match nothing and this returns
+    `[]`". That is true only of an EMPTY table. An UNREADABLE one makes the query RAISE,
+    which reached the endpoint's catch-all and became a 500 for the whole page. The
+    degradation is now real rather than assumed: a server-side `asyncpg.PostgresError`
+    returns `[]` and is logged. Connection-shaped failures are deliberately left to
+    propagate, so a stale pool still earns its 503 with `Retry-After` instead of a page
+    rendered from a degraded read — the same asymmetry `fetch_catalogue_membership`
+    documents.
     """
-    if sector_id is None:
-        sector_id = await conn.fetchval(_SECTOR_QUERY, f"kbli:{code}")
-    if not sector_id:
+    try:
+        if sector_id is None:
+            sector_id = await conn.fetchval(_SECTOR_QUERY, f"kbli:{code}")
+        if not sector_id:
+            return []
+        rows = await conn.fetch(
+            _CANONICAL_SIBLING_QUERY,
+            sector_id,
+            f"kbli:{code[:2]}%",
+            f"kbli:{code}",
+            PHANTOM_LICENSING_STATUS,
+        )
+    except asyncpg.PostgresError as e:
+        logger.warning(
+            "⚠️ KBLI related codes unreadable for %s (%s: %s) — omitting the related list",
+            code,
+            type(e).__name__,
+            e,
+        )
         return []
-    rows = await conn.fetch(
-        _CANONICAL_SIBLING_QUERY,
-        sector_id,
-        f"kbli:{code[:2]}%",
-        f"kbli:{code}",
-        PHANTOM_LICENSING_STATUS,
-    )
     return related_codes_from_rows((r["source_entity_id"] for r in rows), code)
 
 
@@ -742,9 +761,7 @@ async def inspect_kbli(code: str, pool=Depends(get_optional_database_pool)) -> A
             # fact, and sends them to search — which already returns the right 2025
             # code for these activities. Absence is only convicting when the catalogue
             # is evidently present; see `kbli_catalogue_membership`.
-            membership = await conn.fetch(
-                CATALOGUE_MEMBERSHIP_QUERY, code, PHANTOM_LICENSING_STATUS
-            )
+            membership = await fetch_catalogue_membership(conn, code)
             if is_absent_from_catalogue(membership):
                 logger.info("🪦 KBLI %s is absent from the KBLI 2025 catalogue", code)
                 result = KBLIDetail(
