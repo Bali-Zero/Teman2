@@ -1,0 +1,105 @@
+task: >-
+  PR3b''' — skill rework of #6802 (closed unmerged) after dw-gate-17's
+  REWORK-BUILD verdict (sha f56cb4d78b, 04:35:21Z 2026-09-19,
+  GATE-17-REPORT-6802.md; #6802 CLOSED 04:36:53Z) flagged 8 observations: the
+  PR2g'/PR2i seat-identity item-5 extension landed in the mandate mid-build
+  and was never incorporated — SKILL.md and brief.template.md had zero hits
+  for `_seat_key`, `slugs.json`, `kimi-2.7`, `RAW`, `already-claimed` (obs 1,
+  MEDIUM, the table's own "Primary trigger for REWORK-BUILD"); the size
+  deroga was argued from a number that does not reproduce against #6779's
+  own measured doc-only total, while calling this PR's own doc pair
+  "leaner" than it — the PR body and this file's own gear_reason both
+  carried the false number (obs 2, MEDIUM, the verdict's second blocking
+  observation); the
+  floor paste used --local instead of the required --head <sha> --json (obs
+  3, LOW); the test-shape sentence said "2 new" when the true split of
+  #6802's 7 tests is 4 carried from #6779 + 3 new (obs 4, LOW); F1's date
+  label conflated the PARABELLUM ruling date with its measured window (obs
+  5, LOW); F10 and F12 were file-only pointers with no line number, so
+  POINTER_RE never matched them and no test ever opened them — 11 of 13
+  repo pointers were covered, not "every" (obs 6, LOW); F12 said
+  "grep-confirmed there" for prose spellings ("Gemini 3.1 Pro", "Kimi K3")
+  the roster does not literally contain — it spells them gemini-3.1-pro/k3
+  (obs 7, INFO); and a worktree was reaped by an external actor mid-gate,
+  fleet cicatrix #5, not a PR defect (obs 8, INFO, not addressed here). This
+  third attempt is built from a frozen, line-by-line specification
+  (MANDATE-builder.md addendum "PR3b''' skill, specified line by line")
+  rather than interpreted prose, per the depth-1 fix-of-a-fix rule: a wrong
+  correction means the surface was under-specified, so the addendum IS the
+  specification. Gate-17 closure map: obs 1 → A1; obs 2 → A5; obs 3 → the
+  --head floor paste; obs 4 → the A3 test-shape sentence; obs 5 → A2 F1;
+  obs 6 → A2 F10/F12 + A3 (i)/(ii); obs 7 → A2 F12; obs 8 → fleet, not this
+  PR.
+lane: infra/dynamic-workflow-3b5
+machine: air-m5
+date: 2026-09-19
+colour: BLUE
+
+gear: 2
+gear_reason: >-
+  Floor is 2, SIZE-sourced per scripts/evidence_pack_lint.py's compute_floor
+  / compute_floor_source. The overage past CLAUDE.md's "~400 net lines where
+  the work allows" soft guidance is real and disclosed in the PR body, not
+  hidden: it is the A1 seat-identity extension in SKILL.md, the A2 pointer
+  corrections in brief.template.md, the A3 test file with its two new
+  bidirectional pointer-coverage assertions, and the one-line
+  test_skills_canonical.py placement pin — none of it decorative prose cut
+  to force a number under the soft budget. No comparison to #6779's or
+  #6802's own totals is made here or in the PR body: dw-gate-17 obs 2 found
+  the prior comparison was argued from a number that does not reproduce
+  against #6779's own measured total, and that falsehood was frozen into
+  this same file as well as the PR body. The only
+  size statement anywhere in this file or the PR body is the measured `git
+  diff --stat origin/main...HEAD` pasted at arming (A5).
+
+appetite:
+  wall_clock_hours: 2
+  adversarial_rounds: 1
+
+acceptance:
+  A1: >-
+    SKILL.md states the PR2g'/PR2i seat-identity contract: canonical
+    `_seat_key` naming for seat files vs the RAW spelling kept in
+    ledger.md/pairing.md/judge.md rows and stdout, the shared-key refusal at
+    r1 (exit 2 naming both spellings), the corrupt/empty/truncated
+    slugs.json refusal (exit 2 naming the file and the error class), the
+    nine-item §8 capture list, and the temporary-REPO_ROOT selftest hygiene
+    fact — closing dw-gate-17 obs 1, the primary REWORK-BUILD trigger.
+    probe: grep -n "_seat_key\|slugs.json\|already claimed\|REPO_ROOT" .claude/skills/dynamic-workflow/SKILL.md
+  A2: >-
+    brief.template.md's F1, F10 and F12 source pointers are corrected: F1's
+    date label no longer conflates the PARABELLUM ruling date with its
+    measured window, F10 and F12 carry line numbers instead of file-only
+    mentions, and F12's roster-id spelling is literal — closing dw-gate-17
+    obs 5, 6 and 7.
+    probe: grep -n "RULINGS.md:85\|astra-operative-workflow-audit.md:25\|MODEL_ROSTER.md:70\|MODEL_ROSTER.md:90" .claude/skills/dynamic-workflow/brief.template.md
+  A3: >-
+    Two new tests make obs 6 a standing rule instead of a one-time fix:
+    every repo pointer inside a (source: …) block carries a line number, and
+    the curated keyword map covers every (path, line) pointer POINTER_RE
+    finds in the template, in both directions. Demonstrated red under a
+    four-row mutation table in the PR body and green on restore, with
+    `git status --porcelain` empty.
+    probe: python3 -m pytest scripts/tests/test_dynamic_workflow_skill.py scripts/tests/test_skills_canonical.py -q
+  A4: >-
+    This brief lives at the A0-resolved per-PR path with no size-comparison
+    clause anywhere in gear_reason — closing the second half of dw-gate-17
+    obs 2 (the false number was frozen into this file, not just the PR
+    body).
+  A5: >-
+    The floor is pasted with --head <sha> --json, never --local — closing
+    dw-gate-17 obs 3 — and the PR body's test-shape sentence states the true
+    split of #6802's tests ("4 carried from #6779 + 3 from #6802 + 2 new")
+    — closing obs 4.
+    probe: python3 scripts/contract_verify.py --head <pushed sha> --json
+
+out_of_scope: >-
+  PR3c (the CI consumer that wires dynamic-workflow-selftest.yml — deferred
+  explicitly by SKILL.md's own Selftest section and by this task's
+  mandate). PR2j (DROPPED by Zero 2026-09-19 04:40Z; the seat-identity
+  extension in A1 stops at what PR2g'/PR2i already merged, not PR2j's
+  further items — see the A1 "Do NOT describe" line in MANDATE-builder.md).
+  dw-gate-17 obs 8 (a worktree reaped mid-gate by an external actor, fleet
+  cicatrix #5) — not a PR defect, nothing to fix here. The root
+  evidence/brief.yml file itself — deliberately untouched, this brief lives
+  at its own per-PR path instead.
