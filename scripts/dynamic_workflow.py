@@ -255,6 +255,19 @@ def _section_text(body: str, name: str) -> str:
     return rest[:nxt.start()] if nxt else rest
 
 
+_MD_SEPARATOR_CELL_RE = re.compile(r":?-{3,}:?")
+
+
+def _is_md_separator_row(line: str) -> bool:
+    """A markdown separator row (`|---|---|`, `| :--- | :---: | ---: |`) after a table header
+    is not a data row. First real r1 run, 2026-09-19: 3 of 3 real coaches emitted one, and
+    `_md_table_rows` read it as data — C8 then disqualified all three for a Tactics round cap
+    of `['---', ...]`. `_jury_survivors` in this same file already skips this shape for
+    judge.md's own table."""
+    cells = [c.strip() for c in line.strip().strip("|").split("|")]
+    return bool(cells) and all(_MD_SEPARATOR_CELL_RE.fullmatch(c) for c in cells)
+
+
 def validate_answer(text: str, expected_sha: str) -> tuple[bool, str]:
     m = _FM_RE.match(text)
     if not m:
@@ -278,10 +291,11 @@ def validate_answer(text: str, expected_sha: str) -> tuple[bool, str]:
     if idx != len(REQUIRED_SECTIONS):
         return False, f"sections missing/out of order: matched {idx}/{len(REQUIRED_SECTIONS)}"
     for name in ("Formation", "Tactics"):
-        # header row + >=1 data row: the SKILL.md/BRIEF.md §4 skeleton carries no markdown
-        # separator line, so "non-empty" means a data row beyond the header.
+        # header row + >=1 data row: a real coach's table carries a markdown separator line
+        # right after the header, so "non-empty" excludes both the header and that separator.
         rows = [ln for ln in _section_text(body, name).splitlines() if ln.strip().startswith("|")]
-        if len(rows) < 2:
+        data_rows = [ln for ln in rows[1:] if not _is_md_separator_row(ln)]
+        if not data_rows:
             return False, f"{name} table empty or missing a data row"
     wc = len(text.split())
     if wc > 1500:
@@ -978,7 +992,8 @@ def _check_c1(full_text: str) -> tuple[bool, str]:
 
 def _md_table_rows(body: str, section: str) -> list[list[str]]:
     lines = [ln for ln in _section_text(body, section).splitlines() if ln.strip().startswith("|")]
-    return [[c.strip() for c in ln.strip().strip("|").split("|")] for ln in lines[1:]]  # skip header
+    data_lines = [ln for ln in lines[1:] if not _is_md_separator_row(ln)]  # skip header + separator
+    return [[c.strip() for c in ln.strip().strip("|").split("|")] for ln in data_lines]
 
 
 def _check_c5(body: str) -> tuple[bool, str]:
