@@ -221,7 +221,7 @@ describe("DocumentsTab — urgency lives on the Expires cell, never the pill", (
       }),
     ]);
     expect(container.innerHTML).not.toMatch(
-      /state-danger|neon-purple|#ff0000/i,
+      /state-danger|neon-purple|#ff0000/i, // token-lint-ok: negative assertion — the hex is what must NOT render
     );
   });
 });
