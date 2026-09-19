@@ -82,10 +82,22 @@ function getBackendBaseUrl(): string {
   return normalizeBackendBaseUrl(raw);
 }
 
+// Next's trailingSlash normalisation 308s the slash form of these paths down to
+// the no-slash form before this handler ever runs. The backend's rag-proxy
+// catch-all (rag_proxy.py:327) FULL-matches the de-slashed path and answers 404
+// instead of letting Starlette's redirect_slashes issue a 307, because these
+// backend routes are registered ONLY as "/" under a router prefix that is NOT
+// in HEAVY_PREFIXES. The slash has to be put back on upstream, exactly here.
+// Exact pathname match — not a prefix, not a substring (cicatrix #3 shape).
+const SLASH_ONLY_UPSTREAM_PATHS = new Set(["/api/crm/interactions"]);
+
 async function proxy(req: NextRequest): Promise<Response> {
   const backendBase = getBackendBaseUrl();
   const url = new URL(req.url);
-  const targetUrl = `${backendBase}${url.pathname}${url.search}`;
+  const upstreamPath = SLASH_ONLY_UPSTREAM_PATHS.has(url.pathname)
+    ? `${url.pathname}/`
+    : url.pathname;
+  const targetUrl = `${backendBase}${upstreamPath}${url.search}`;
   const isPublicVisaEvaluation =
     url.pathname === VISA_ORACLE_EVALUATE_PATH && req.method === "POST";
   // Never put Visa Oracle's semantic request_category query in logs or error

@@ -90,6 +90,17 @@ function capturedTargetUrl(fetchMock: ReturnType<typeof vi.fn>): string {
   return targetUrl;
 }
 
+// `new TextEncoder().encode(str).buffer` in this jsdom test environment
+// produces an ArrayBuffer from a different realm than the one MockNextRequest's
+// `instanceof ArrayBuffer` check runs against, so the body silently vanishes.
+// Build the buffer from the environment's own Uint8Array/ArrayBuffer instead
+// (ASCII-only text, as all bodies here are JSON).
+function bodyArrayBuffer(text: string): ArrayBuffer {
+  const bytes = new Uint8Array(text.length);
+  for (let i = 0; i < text.length; i++) bytes[i] = text.charCodeAt(i);
+  return bytes.buffer;
+}
+
 // ---------------------------------------------------------------------------
 // Import the handlers AFTER mocking next/server
 // ---------------------------------------------------------------------------
@@ -562,6 +573,86 @@ describe("proxy catch-all route — public Visa Oracle boundary", () => {
     expect(global.fetch).toHaveBeenCalledOnce();
     expect(capturedTargetUrl(vi.mocked(global.fetch))).toBe(
       "https://nuzantara-rag.fly.dev/api/visa-oracle/evaluate",
+    );
+  });
+});
+
+describe("proxy catch-all route — trailing-slash upstream repair (PROD-BUG-activity-logging-404)", () => {
+  beforeEach(() => {
+    vi.mocked(global.fetch).mockResolvedValue(
+      new Response(JSON.stringify({ ok: true }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+    process.env.NUZANTARA_API_URL = "https://nuzantara-rag.fly.dev";
+  });
+
+  afterEach(() => {
+    vi.clearAllMocks();
+  });
+
+  // GUILT: the two call sites the diagnosis found broken — both hit
+  // /api/crm/interactions, whose backend routes exist only as "/" and are
+  // NOT in HEAVY_PREFIXES, so the de-slashed form 404s at the rag-proxy
+  // catch-all instead of getting Starlette's redirect_slashes 307.
+  it("re-appends the trailing slash for POST /api/crm/interactions (create)", async () => {
+    const requestBody = JSON.stringify({ note: "called" });
+    const req = new MockNextRequest("http://localhost/api/crm/interactions", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: bodyArrayBuffer(requestBody),
+    });
+
+    await POST(req as never);
+
+    expect(capturedTargetUrl(vi.mocked(global.fetch))).toBe(
+      "https://nuzantara-rag.fly.dev/api/crm/interactions/",
+    );
+    const [, init] = vi.mocked(global.fetch).mock.calls[0] as [
+      string,
+      RequestInit,
+    ];
+    expect(init.method).toBe("POST");
+    expect(new TextDecoder().decode(init.body as ArrayBuffer)).toBe(
+      requestBody,
+    );
+  });
+
+  it("re-appends the trailing slash for GET /api/crm/interactions?limit=5 (list), query preserved", async () => {
+    const req = new MockNextRequest(
+      "http://localhost/api/crm/interactions?limit=5",
+      { method: "GET" },
+    );
+
+    await GET(req as never);
+
+    expect(capturedTargetUrl(vi.mocked(global.fetch))).toBe(
+      "https://nuzantara-rag.fly.dev/api/crm/interactions/?limit=5",
+    );
+    const [, init] = vi.mocked(global.fetch).mock.calls[0] as [
+      string,
+      RequestInit,
+    ];
+    expect(init.method).toBe("GET");
+  });
+
+  // INNOCENCE: entity match, not prefix/substring — these must all be
+  // forwarded byte-identical to before the fix.
+  it.each([
+    ["/api/crm/interactions/client/7/timeline", "GET"],
+    ["/api/crm/interactions/123", "GET"],
+    ["/api/crm/clients", "GET"],
+    ["/api/crm/interactionsx", "GET"], // near-miss: same prefix, not the entity
+  ])("forwards %s unchanged (no slash appended)", async (pathname, method) => {
+    const req = new MockNextRequest(`http://localhost${pathname}`, {
+      method,
+    });
+
+    await (method === "GET" ? GET : POST)(req as never);
+
+    expect(capturedTargetUrl(vi.mocked(global.fetch))).toBe(
+      `https://nuzantara-rag.fly.dev${pathname}`,
     );
   });
 });
