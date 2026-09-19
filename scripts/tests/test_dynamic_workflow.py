@@ -531,6 +531,77 @@ def test_judge_disqualifies_a_never_bullet_with_no_fc_ref(tmp_path, template, cl
     assert verdicts["kimi-k3"]["disqualified"] is True
 
 
+# --------------------------------------------------------------- judge vs the markdown separator row
+# First real r1 run, 2026-09-19: 3 of 3 real coaches wrote a standard markdown table with a
+# separator line after the header. _md_table_rows read that line as a data row (['---', ...])
+# and C8 disqualified every one of them for a non-integer round cap.
+
+_FORMATION_HEADER = "| role | seat | why (F ref) | substitute if dead (F8) |"
+_TACTICS_HEADER = ("| stage | seat(s) | in-script or window | parallel/serial | round cap | "
+                    "exit command | hands to next stage |")
+
+SEPARATOR_VARIANTS = [
+    ("plain dashes", "|---|---|---|---|", "|---|---|---|---|---|---|---|"),
+    ("colons and spaces", "| :--- | :---: | ---: | :--- |",
+     "| :--- | :---: | ---: | :--- | :---: | ---: | :--- |"),
+]
+
+
+def _with_separators(text: str, formation_sep: str, tactics_sep: str) -> str:
+    text2 = text.replace(_FORMATION_HEADER, _FORMATION_HEADER + "\n" + formation_sep, 1)
+    assert text2 != text  # replacement must actually have happened
+    text3 = text2.replace(_TACTICS_HEADER, _TACTICS_HEADER + "\n" + tactics_sep, 1)
+    assert text3 != text2
+    return text3
+
+
+@pytest.mark.parametrize("style_name,formation_sep,tactics_sep", SEPARATOR_VARIANTS,
+                          ids=[v[0] for v in SEPARATOR_VARIANTS])
+def test_judge_does_not_read_a_markdown_separator_row_as_data(
+        tmp_path, template, clean_objective, style_name, formation_sep, tactics_sep):
+    kit = tmp_path / "k"
+    dw.cmd_brief(_brief_ns(clean_objective, template, kit))
+    sha = (kit / "brief.sha").read_text().strip()
+    text = _with_separators(dw._CANNED_VALID.format(seat="kimi-k3", sha=sha), formation_sep, tactics_sep)
+    _seed_answered(kit, "kimi-k3", text)
+    verdicts = dw.cmd_judge(argparse.Namespace(kit=str(kit)))
+    assert verdicts["kimi-k3"] == {"c1": True, "c5": True, "c8": True, "disqualified": False}
+
+
+def test_judge_still_disqualifies_a_prose_round_cap_beside_a_separator_row(tmp_path, template,
+                                                                             clean_objective):
+    """Innocence twin of the test above: guards against the cure becoming 'skip any row that
+    fails' instead of 'skip only the separator row'. A separator row next to a genuinely broken
+    round cap must still disqualify on C8 — must pass both before and after the fix."""
+    kit = tmp_path / "k"
+    dw.cmd_brief(_brief_ns(clean_objective, template, kit))
+    sha = (kit / "brief.sha").read_text().strip()
+    text = _with_separators(dw._CANNED_VALID.format(seat="kimi-k3", sha=sha),
+                             "|---|---|---|---|", "|---|---|---|---|---|---|---|")
+    broken = text.replace("| serial | 1 | validate |", "| serial | one round | validate |")
+    assert broken != text
+    _seed_answered(kit, "kimi-k3", broken)
+    verdicts = dw.cmd_judge(argparse.Namespace(kit=str(kit)))
+    assert verdicts["kimi-k3"]["c8"] is False
+    assert verdicts["kimi-k3"]["disqualified"] is True
+
+
+IS_SEPARATOR_CASES = [
+    ("|---|---|", True),
+    ("| --- | :---: | ---: |", True),
+    ("| r1 | --- | x |", False),
+    ("| -- | -- |", False),
+    ("| role | seat |", False),
+    ("||", False),
+    ("|", False),
+]
+
+
+@pytest.mark.parametrize("line,expected", IS_SEPARATOR_CASES, ids=[repr(c[0]) for c in IS_SEPARATOR_CASES])
+def test_is_md_separator_row_judges_the_whole_row_not_a_substring(line, expected):
+    assert dw._is_md_separator_row(line) is expected
+
+
 # --------------------------------------------------------------- r1 convener mtime (guilt + innocence)
 # REWORK-BUILD gate verdict on 8ffb9bc278/PR1b: the convener's mtime was recorded into the
 # ledger but never compared against anything, so "the convener answers first" was theatre.
@@ -1412,6 +1483,17 @@ VALIDATE_CASES = [
 def test_validate_answer(label, text, sha, expected_ok):
     ok, reason = dw.validate_answer(text, sha)
     assert ok == expected_ok, f"{label}: {reason}"
+
+
+def test_validate_answer_refuses_a_table_that_is_only_header_and_separator():
+    """Twin of the judge fix: validate_answer's own Formation/Tactics non-empty check must not
+    count a separator row as the required data row. Must fail on the unmodified launcher,
+    which returns (True, "ok") here."""
+    sha = "3" * 64
+    text = dw._CANNED_VALID.format(seat="kimi-k3", sha=sha).replace(
+        "| build | sonnet-5 | F1 | haiku-4-5 |", "|---|---|---|---|")
+    ok, reason = dw.validate_answer(text, sha)
+    assert (ok, reason) == (False, "Formation table empty or missing a data row")
 
 
 # --------------------------------------------------------------- selftest wrapper
