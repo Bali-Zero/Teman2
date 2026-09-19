@@ -55,7 +55,7 @@ export async function generateMetadata({
     company: {
       title: "Business License in Indonesia (2026 Guide) | Bali Zero",
       description:
-        "Need a business license in Indonesia? We handle PT PMA setup, OSS licensing, and NIB permits end-to-end. 5,000+ businesses registered since 2019.",
+        "Need a business license in Indonesia? We handle PT PMA setup, OSS licensing, and NIB permits end-to-end. 5,000+ businesses registered.",
       keywords: [
         "company registration bali",
         "business license indonesia",

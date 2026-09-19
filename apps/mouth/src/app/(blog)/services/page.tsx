@@ -101,7 +101,7 @@ const SERVICES: Service[] = [
 ];
 
 const TRUST_STRIP = [
-  { value: "5,000+", label: "Cases handled since 2019" },
+  { value: "5,000+", label: "Cases handled" },
   { value: ratingBadge(), label: reviewsLabel() },
   { value: "18+", label: "Licensed specialists" },
   { value: "2006", label: "Year founded" },
