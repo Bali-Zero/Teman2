@@ -1,0 +1,87 @@
+task: >-
+  R7a of the kita client-profile redesign (PLAN-redesign.md row R7, first half;
+  design v3 approved by the owner 2026-09-19): on the client page the Company and
+  Tax tab buttons are not rendered for a client who has no company. The rule is
+  per tab — Company shows when the loaded profile carries at least one company
+  link OR a `company_name`; Tax shows when Company shows OR the client has a
+  personal `npwp`, `tax_id` or `nib`, because TaxTab is the only place on the page
+  that renders those identifiers. A `?tab=company` / `?tab=tax` deep link to a
+  client whose tab is hidden opens Overview through a render-time `visibleTab`;
+  the URL is never rewritten and `TAB_KEYS` is untouched. So that hiding orphans
+  no action, Overview gains an r19 `LedgerSection` "Company & tax" whenever the
+  Company tab is hidden: **Add company** (the same `AddCompanyModal`) in the
+  always-visible actions slot and, only while the Tax tab is hidden too, the
+  tax-consultant select. Built by an external builder seat in two rounds — the
+  grading session rejected round 1 on two findings (a stored personal NPWP became
+  invisible; the Overview block was a legacy boxed card) and wrote the spec of the
+  rework — then judged by an independent parity audit, whose two conditions (this
+  brief, and behaviour pins for the copied save logic) are closed here.
+lane: frontend/kita-r7a-hide-company-tax-tabs
+machine: air-m5
+date: 2026-09-20
+
+gear: 2
+gear_reason: >-
+  Deterministic floor 2, source `size`: `ClientDetailClient.tsx` and its test,
+  plus this brief, churn above `SIZE_GEAR2_THRESHOLD` (400) and far below
+  `SIZE_GEAR3_THRESHOLD`. Neither file matches `HOTZONE_PATTERNS` — no workflow,
+  secret, migration or backend path.
+
+appetite:
+  wall_clock_hours: 1
+  adversarial_rounds: 1
+
+acceptance:
+  A1: >-
+    Zero links, no `company_name`, no personal tax id: neither button renders,
+    both deep links land on Overview with `aria-current="page"` on Overview, and
+    the "Company & tax" section shows Add company and the tax-consultant select.
+    A personal `npwp`, `tax_id` or `nib` keeps the Tax button and its deep link
+    while Company stays hidden and no second select appears. One company link,
+    or a `company_name` alone, keeps both tabs. Each rule was removed in turn at
+    the audit and turned the file red.
+    probe: >-
+      cd apps/mouth && npx --no-install vitest run
+      'src/app/(workspace)/clients/[id]/ClientDetailClient.test.tsx'
+  A2: >-
+    The Overview select saves through `api.crm.updateClient(clientId,
+    {tax_consultant}, user.email)`, confirms with the consultant's label and
+    invalidates the client cache; a failed save reverts the select and reports
+    the error. Removing the revert or the invalidation turns these cases red
+    (mutation run on this branch).
+    probe: >-
+      cd apps/mouth && npx --no-install vitest run
+      'src/app/(workspace)/clients/[id]/ClientDetailClient.test.tsx'
+  A3: >-
+    The tab decision is never taken on an unresolved profile: the loading case
+    passes, and moving the fallback into the URL effect turns the file red
+    (audit mutation g).
+    probe: >-
+      cd apps/mouth && npx --no-install vitest run
+      'src/app/(workspace)/clients/[id]/ClientDetailClient.test.tsx'
+  A4: >-
+    The full `clients/[id]/` folder suite passes — 18 files / 211 tests —
+    including the AST colour/copper guard; `tsc --noEmit -p .` exits 0 with no
+    output; `token_lint` reports no new hardcoded colour.
+    probe: >-
+      cd apps/mouth && npx --no-install vitest run
+      'src/app/(workspace)/clients/[id]/' && npx --no-install tsc --noEmit -p .
+      && cd ../.. && python3 -I scripts/token_lint.py --base origin/main
+
+out_of_scope: >-
+  Disclosed for the company-less client shape: the company and tax
+  `AiSummaryCard` panels, the Tax tab's static header, year selector, empty
+  Q1-Q4 LKPM placeholders and "not registered" placeholder badges are no longer
+  reachable — no stored value sits behind any of them (LKPM history and receipts
+  resolve server-side through active `client_company_links`, a subset of the link
+  list the page receives). One informational signal is lost: a client with
+  `pma`-category documents but no link and no company name used to see their
+  COUNT in the Company tab's fact boxes; the files were already not listed there
+  and still count in the Overview total — letting them fall into the Documents
+  tab is a separate slice. Not fixed here because `TaxTab.tsx` belongs to slice
+  R7c: TaxTab reads `npwp ?? tax_id`, so an empty-string `npwp` hides a real
+  `tax_id`; this slice's `||` errs toward keeping the tab. The Overview select
+  copies TaxTab's selector logic because that component is not exported and its
+  file is being restyled in parallel; the ordinal `n={2}` is a literal because
+  the other Overview ledger lives in another component. The kv-grid restyles of
+  the two tabs are slices R7b and R7c.
