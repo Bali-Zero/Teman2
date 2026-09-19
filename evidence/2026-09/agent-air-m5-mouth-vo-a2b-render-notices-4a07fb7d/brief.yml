@@ -1,0 +1,112 @@
+base_sha: 31cfc1d4dc # pragma: allowlist secret - public Git commit ID
+task_id: vo-a2b-render-notices
+mandate_id: VISA-ORACLE-DW-20260919/A2'
+gear: 2
+gear_reason: >-
+  Frontend-only, no rule pack, no migration, no CODEOWNERS-TIER1 path — same
+  concern and same file set as #6849 (measured floor 2 there), cured per
+  GATE-A2-REPORT-6849.md rather than re-derived. `contract_verify.py
+  --print-floor` reproduced against this diff below.
+l_level: L1
+gate_class: opus
+objective: >-
+  Cure PR #6849 (REWORK-BUILD, 0 HIGH / 2 MEDIUM / 4 LOW,
+  GATE-A2-REPORT-6849.md) per MANDATE-vo.md "Slice A2'" (S1-S8). The report's
+  "What holds" section verified the render, the eleven-code list, the N3
+  throw and the telemetry boundary as correct and NOT to be re-derived; this
+  PR touches only what the report named: the reassuring intro sentence
+  (MEDIUM-2), the evadable banned-word scan (MEDIUM-2), the fabricated
+  Builder-Contract quotation in the prior PR's Size section (MEDIUM-1, this
+  brief's own Size section below), and four LOW findings (e2e's EN-only
+  assertion under an "EN and ID" title, a renderer/adapter disagreement on a
+  repeated code, an unnamed accessible region, and two unstated dependencies
+  behind "monitored"/"throws in dev").
+scope:
+  - >-
+    apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/i18n.ts — S1, the
+    outcome.conditions.intro EN/ID reword
+  - >-
+    apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter.test.ts
+    — S2, the widened stem-based banned-word scan with its allowlist and
+    three guilt tests; S5, the de-duplication test
+  - >-
+    apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter.ts —
+    S5, de-duplicate a repeated notices[] code by code, first wins
+  - >-
+    apps/mouth/src/app/(visa-oracle)/visa-oracle/_components/OutcomeSheet.tsx
+    — S6, aria-labelledby on the conditions section
+  - apps/mouth/e2e/visa-oracle-v2.spec.ts — S4, the ID assertion
+  - >-
+    apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/outcome-view-model.ts,
+    outcome-fallbacks.ts, preview-adapter.ts,
+    _components/OutcomeSheet.test.tsx, _lib/telemetry.ts,
+    _lib/telemetry.test.ts — unchanged raw material from #6849's head
+    (6ff563eb23), ported verbatim per file (`git show 6ff563eb23:<path> >
+    <path>`); GATE-A2-REPORT-6849.md verified these correct and named them
+    NOT to be re-derived
+  - this brief
+constraints:
+  - >-
+    No change to `oracle.css` state tokens, `LivingTree.tsx`,
+    `OracleShell.tsx`, `package.json`, or any lockfile (Builder Contract for
+    this slice, unchanged from #6849).
+  - >-
+    No paid per-token translation API — the reworded EN/ID intro is written
+    natively, formal-neutral register, matching the surface's existing
+    voice, not a re-translation of the old sentence.
+  - >-
+    S2's stem list is never narrowed to fix a false positive — the one
+    legitimate collision ("unclear" vs the banned "clear" stem) is named in
+    an explicit, commented allowlist instead.
+  - No client PII in any file added or edited; all test fixtures synthetic.
+acceptance:
+  - text: >-
+      WHEN the outcome.conditions.intro copy is read in EN and ID, THEN
+      neither sentence SHALL say or imply that a disclosed condition has no
+      bearing on the result.
+    status: verified
+    probe: >-
+      cd apps/mouth && ../../node_modules/.bin/vitest run engine-adapter
+      --root . -t "innocence: every string the conditions block renders"
+  - text: >-
+      WHEN the banned-word scan runs over every string the conditions block
+      renders (NOTICE_CONDITION_COPY, GENERIC_NOTICE_CONDITION,
+      outcome.conditions.title/.intro, both languages), THEN it SHALL find
+      zero matches on the shipped copy, AND WHEN an inflection, an ID
+      affixed form, or an intro-key phrase evasion is planted, THEN the
+      scan SHALL flag it, naming the key and the language.
+    status: verified
+    probe: >-
+      cd apps/mouth && ../../node_modules/.bin/vitest run engine-adapter
+      --root . -t "banned stem"
+  - text: >-
+      WHEN a decision's notices[] carries the same code twice, THEN the
+      adapter SHALL keep only the first occurrence's condition (and its
+      source_refs), so the renderer's per-code key never collides.
+    status: verified
+    probe: >-
+      cd apps/mouth && ../../node_modules/.bin/vitest run engine-adapter
+      --root . -t "de-duplicates a repeated code"
+  - text: >-
+      WHEN the e2e test titled "... EN and ID" runs, THEN it SHALL assert
+      both the EN and the ID condition text are visible.
+    status: verified
+    probe: >-
+      cd apps/mouth && ../../node_modules/.bin/playwright test -c
+      playwright.config.ts -g "renders every notices" --project=chromium
+  - text: >-
+      WHEN the mouth typechecks and the full visa-oracle vitest suite runs,
+      THEN both SHALL succeed with zero regressions from this cure.
+    status: verified
+    probe: >-
+      cd apps/mouth && ../../node_modules/.bin/tsc --noEmit &&
+      ../../node_modules/.bin/vitest run --root .
+      'src/app/(visa-oracle)/visa-oracle'
+pii: none
+self_report:
+  note: >-
+    This brief and its acceptance probes were each run against this PR's
+    own final head in this session; the PR body pastes their tails as the
+    observation. `## Size` in the PR body argues the ceiling on the
+    Builder Contract's actual wording only — never a quotation the contract
+    does not contain (S3, the cure for GATE-A2-REPORT-6849 MEDIUM-1).
