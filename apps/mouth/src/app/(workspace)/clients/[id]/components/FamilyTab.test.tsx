@@ -1,37 +1,15 @@
-/**
- * FamilyTab — round-4 Q6 render proof.
- *
- * client-detail-desk.test.tsx's GLOB guards prove the SOURCE never has an
- * icon-only Trash2/X control without an aria-label; this file proves that
- * promise survives rendering — the delete-member control actually carries
- * an accessible name in the DOM, on a real (non-mocked) FamilyTab.
- *
- * Fixture is synthetic only: "Family Member A", no real name/passport/email
- * (K3b spec §1 / CLAUDE.md builder contract #4).
- */
+/** Family ledger behaviour — synthetic fixtures only, no client data. */
 import { render, screen } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { FamilyTab } from "./FamilyTab";
-import type { FamilyMember } from "@/lib/api/crm/crm.types";
+import type { ClientDocument, FamilyMember } from "@/lib/api/crm/crm.types";
 
 vi.mock("@/lib/api", () => ({
-  api: {
-    crm: {
-      deleteFamilyMember: vi.fn(),
-      getClientAiSummary: vi
-        .fn()
-        .mockResolvedValue({ status: "not_generated" }),
-    },
-    post: vi.fn(),
-  },
+  api: { crm: { deleteFamilyMember: vi.fn() }, post: vi.fn() },
 }));
 
 vi.mock("sonner", () => ({
   toast: Object.assign(vi.fn(), { success: vi.fn(), error: vi.fn() }),
-}));
-
-vi.mock("@/lib/logger", () => ({
-  logger: { error: vi.fn(), info: vi.fn(), warn: vi.fn(), debug: vi.fn() },
 }));
 
 vi.mock("@/hooks/useOcrPolling", () => ({
@@ -40,27 +18,162 @@ vi.mock("@/hooks/useOcrPolling", () => ({
 
 const MEMBER: FamilyMember = {
   id: 1,
+  client_id: 412,
   full_name: "Family Member A",
   relationship: "spouse",
+  nationality: "Indonesian",
+  current_visa_type: "D12",
+  visa_expiry: "2027-09-15",
+  visa_alert: "green",
 } as FamilyMember;
 
-describe("FamilyTab — delete-member control (round-4 Q6)", () => {
-  it("the icon-only delete control renders with a real aria-label naming the action and target", () => {
-    render(
-      <FamilyTab
-        clientId={412}
-        familyMembers={[MEMBER]}
-        documents={[]}
-        formatDate={(d) => d}
-        onAddClick={() => {}}
-        onEditClick={() => {}}
-        onRefresh={() => {}}
-      />,
+const renderTab = (
+  familyMembers: FamilyMember[] = [MEMBER],
+  documents: ClientDocument[] = [],
+) =>
+  render(
+    <FamilyTab
+      clientId={412}
+      familyMembers={familyMembers}
+      documents={documents}
+      formatDate={(date) => `formatted:${date}`}
+      onAddClick={() => {}}
+      onEditClick={() => {}}
+      onRefresh={() => {}}
+    />,
+  );
+
+afterEach(() => vi.useRealTimers());
+
+describe("FamilyTab — r19 family ledger", () => {
+  it("GUILT: the visa pill is sourced from visa_alert, not from the expiry date — the enum wins", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-09-19T12:00:00Z"));
+
+    // The expiry is a decade out — date math would call this "Valid" — but
+    // the server already flagged it expired, and that is what must render.
+    renderTab([
+      { ...MEMBER, visa_alert: "expired", visa_expiry: "2036-01-01" },
+    ]);
+
+    expect(screen.getByText("Expired")).toBeInTheDocument();
+    expect(screen.queryByText("Valid")).not.toBeInTheDocument();
+  });
+
+  it("GUILT: passport_alert urgency shows the countdown wording on the date cell", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-09-19T12:00:00Z"));
+
+    renderTab([
+      {
+        ...MEMBER,
+        passport_number: "X1234567",
+        passport_expiry: "2026-10-19",
+        passport_alert: "red",
+      },
+    ]);
+
+    expect(screen.getByText(/⏰ 30d left/)).toBeInTheDocument();
+  });
+
+  it("GUILT: a visa document with nothing extracted shows the OCR note and an em-dash, never the literal 'visa' as a type", () => {
+    renderTab(
+      [{ ...MEMBER, current_visa_type: undefined }],
+      [
+        {
+          id: 20,
+          client_id: 412,
+          family_member_id: 1,
+          document_type: "visa",
+          google_drive_file_url:
+            "https://drive.google.com/file/d/synthetic-visa/view",
+        } as ClientDocument,
+      ],
     );
-    const deleteButton = screen.getByRole("button", {
-      name: "Remove family member",
-    });
-    expect(deleteButton).toBeInTheDocument();
-    expect(deleteButton).toHaveAttribute("title", "Remove family member");
+
+    expect(
+      screen.getByText("Document on file — upload to extract data via OCR"),
+    ).toBeInTheDocument();
+    expect(screen.getByText("—")).toBeInTheDocument();
+    expect(screen.queryByText("visa")).not.toBeInTheDocument();
+  });
+
+  it("GUILT: no row ever renders the copper 'you' tone", () => {
+    const { container } = renderTab([
+      { ...MEMBER, visa_alert: "expired" },
+      { ...MEMBER, id: 2, visa_alert: "red" },
+      { ...MEMBER, id: 3, visa_alert: undefined, current_visa_type: undefined },
+    ]);
+
+    expect(container.querySelector('[class*="--bz-copper-text"]')).toBeNull();
+  });
+
+  it("INNOCENCE: a member the server marks green renders the ok tone as 'Valid'", () => {
+    renderTab([{ ...MEMBER, visa_alert: "green" }]);
+
+    expect(screen.getByText("Valid")).toBeInTheDocument();
+  });
+
+  it("INNOCENCE: renders the r19 empty state when there are no family members", () => {
+    renderTab([]);
+
+    expect(screen.getByText("No family members on file.")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Add family member" }),
+    ).toBeInTheDocument();
+  });
+
+  it("INNOCENCE: keeps each pre-existing member action reachable by accessible name", () => {
+    renderTab(
+      [MEMBER],
+      [
+        {
+          id: 10,
+          client_id: 412,
+          family_member_id: 1,
+          document_type: "passport",
+          google_drive_file_url:
+            "https://drive.google.com/file/d/synthetic-id/view",
+        } as ClientDocument,
+        {
+          id: 11,
+          client_id: 412,
+          family_member_id: 1,
+          document_type: "visa",
+          google_drive_file_url:
+            "https://drive.google.com/file/d/synthetic-visa/view",
+        } as ClientDocument,
+      ],
+    );
+
+    for (const name of [
+      "Add family member",
+      "Edit Family Member A",
+      "Remove Family Member A",
+      "Upload passport for Family Member A",
+      "Upload visa for Family Member A",
+      "View passport for Family Member A",
+      "Download passport for Family Member A",
+      "View visa for Family Member A",
+      "Download visa for Family Member A",
+    ]) {
+      expect(screen.getByRole("button", { name })).toBeInTheDocument();
+    }
+  });
+
+  it("INNOCENCE: falls back to wait/No visa when a member has no visa data at all", () => {
+    renderTab([
+      {
+        ...MEMBER,
+        id: 4,
+        full_name: "Family Member D",
+        current_visa_type: undefined,
+        visa_expiry: undefined,
+        visa_alert: undefined,
+      },
+    ]);
+
+    expect(screen.getByText("No visa")).toBeInTheDocument();
+    expect(screen.queryByText(/formatted:undefined/)).not.toBeInTheDocument();
   });
 });
