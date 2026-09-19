@@ -2,9 +2,15 @@
 # wa_army_watcher.sh — sorveglia il log di una sessione-armata e notifica via Telegram.
 #
 # Lanciato in background da wa_army_launcher.sh. Tail-segue il log della sessione tmux;
-# quando vede "ARMY_DONE <NAME> <pr>" (l'armata ha aperto la PR draft) manda un alert
-# Telegram e termina. Se la sessione tmux muore senza ARMY_DONE entro il timeout, manda
-# un alert di "armata terminata senza PR" (probabile crash/halt).
+# quando vede una riga GENUINA "ARMY_DONE <NAME> <pr>" (l'armata ha aperto la PR draft)
+# manda un alert Telegram e termina. Se la sessione tmux muore senza ARMY_DONE entro il
+# timeout, manda un alert di "armata terminata senza PR" (probabile crash/halt).
+#
+# Genuina: il TUI di claude ridisegna nel pane anche il PROMPT iniziale, che contiene la
+# frase «ARMY_DONE <NAME> <numero-PR-o-url>» (e, nei prompt di prova, `echo "ARMY_DONE …"`).
+# Un grep secco scattava al lancio (2026-09-19, TESTJUMP: «HA FINITO» a vuoto e watcher
+# già uscito prima del salto di finestra, quindi nessun re-pipe del pane nuovo). Vedi
+# scan_army_done.
 #
 # La sessione cambia pane: il context guard (tmux_jump.sh) sposta claude in una NUOVA
 # finestra della stessa sessione e chiude la vecchia. pipe-pane è per-pane, la finestra
@@ -63,6 +69,31 @@ repipe_unpiped_panes() {
   done < <("$TMUX_BIN" list-panes -s -t "$SESSION" -F '#{pane_id} #{pane_pipe}' 2>/dev/null || true)
 }
 
+# Cerca nel log l'ULTIMA occorrenza genuina di "ARMY_DONE <ARMY> <payload>" e stampa il
+# payload; exit 1 se non c'è. Il log è tty grezzo: le sequenze ANSI diventano separatori,
+# CR diventa a-capo. Un'occorrenza NON vale se: il payload è un `<segnaposto>` (la riga del
+# prompt), è vuoto (riga spezzata dal wrap), o è preceduta da `echo` (istruzione del prompt
+# o comando ridisegnato dal TUI — l'OUTPUT del comando arriva su una riga propria).
+scan_army_done() {
+  [ -f "$LOG_FILE" ] || return 1
+  python3 - "$LOG_FILE" "$ARMY" <<'PY'
+import re, sys
+path, army = sys.argv[1], sys.argv[2]
+raw = open(path, 'rb').read().decode('utf-8', 'replace')
+tty = re.compile(r'\x1b\[[0-9;?<=>]*[ -/]*[@-~]|\x1b\][^\x07\x1b]*(?:\x07|\x1b\\)|\x1b[()][A-Za-z0-9]|\x1b[=>78]')
+text = tty.sub(' ', raw).replace('\r', '\n')
+pat = re.compile(r'(echo[ \t]+["\']?)?ARMY_DONE ' + re.escape(army) + r'(?![^\s])[ \t]*(\S*)')
+pr = None
+for m in pat.finditer(text):
+    if m.group(1) or not m.group(2) or m.group(2).startswith('<'):
+        continue
+    pr = m.group(2)
+if pr is None:
+    sys.exit(1)
+print(pr)
+PY
+}
+
 START_TS=$(date +%s)
 
 # Segui il log finché: (a) troviamo ARMY_DONE, (b) la sessione tmux muore, (c) timeout.
@@ -76,11 +107,9 @@ while true; do
     exit 0
   fi
 
-  # (a) ARMY_DONE nel log?
-  if [ -f "$LOG_FILE" ] && grep -qE "ARMY_DONE ${ARMY}\b" "$LOG_FILE" 2>/dev/null; then
-    line="$(grep -E "ARMY_DONE ${ARMY}\b" "$LOG_FILE" | tail -1)"
-    pr="$(echo "$line" | sed -E "s/.*ARMY_DONE ${ARMY}[[:space:]]*//" | tr -d '\r')"
-    tg_send "🎖️ Armata ${ARMY} HA FINITO — PR draft pronta: ${pr:-(vedi log)}
+  # (a) ARMY_DONE genuino nel log?
+  if pr="$(scan_army_done)"; then
+    tg_send "🎖️ Armata ${ARMY} HA FINITO — PR draft pronta: ${pr}
 Mergio? Rispondi a mano dopo review.
 Log: ${LOG_FILE}
 Attach: tmux attach -t ${SESSION}"
@@ -91,10 +120,8 @@ Attach: tmux attach -t ${SESSION}"
   if ! "$TMUX_BIN" has-session -t "$SESSION" 2>/dev/null; then
     # piccola grazia: l'ARMY_DONE potrebbe essere appena stato scritto prima del kill
     sleep 2
-    if [ -f "$LOG_FILE" ] && grep -qE "ARMY_DONE ${ARMY}\b" "$LOG_FILE" 2>/dev/null; then
-      line="$(grep -E "ARMY_DONE ${ARMY}\b" "$LOG_FILE" | tail -1)"
-      pr="$(echo "$line" | sed -E "s/.*ARMY_DONE ${ARMY}[[:space:]]*//" | tr -d '\r')"
-      tg_send "🎖️ Armata ${ARMY} HA FINITO — PR draft: ${pr:-(vedi log)}"
+    if pr="$(scan_army_done)"; then
+      tg_send "🎖️ Armata ${ARMY} HA FINITO — PR draft: ${pr}"
     else
       tail_excerpt="$(tail -8 "$LOG_FILE" 2>/dev/null | tr -d '\r' | cut -c1-400 || true)"
       tg_send "⚠️ Armata ${ARMY}: sessione terminata SENZA PR (probabile halt/crash).
