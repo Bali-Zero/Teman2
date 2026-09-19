@@ -92,6 +92,13 @@ acceptance:
     probe: >-
       pytest backend/tests/unit/routers/test_kbli_hardcoded_fallback_matches_catalogue.py::test_the_router_carries_no_hand_written_answer_table backend/tests/unit/routers/test_kbli_notebook_chat.py::test_the_keyword_map_routes_without_asserting_facts
   - text: >-
+      DEGRADATION IS NOT A REGRESSION: WHEN there is no database pool, the
+      typed-code path SHALL still ask Qdrant. `get_optional_database_pool` is
+      optional by design and Qdrant was the branch NOT gated on it; an early
+      return here would cut the whole path the moment Postgres blinks.
+    probe: >-
+      pytest backend/tests/unit/routers/test_kbli_chat_risk_has_one_derivation.py -k dead_pool
+  - text: >-
       BURIAL ORDER: the tombstone call SHALL sit after BOTH paths that set
       `direct_kbli_match`. It used to sit between them, so a keyword-injected
       match skipped the tombstone entirely.

@@ -102,7 +102,7 @@ KBLI_MASTER_PROMPT = (
     # it as part of a licensing verdict. This is CONSULTING GUIDANCE — which
     # question to ask before naming a code — not a claim about any code's regime,
     # so it belongs beside the other accuracy rules and not in a fallback record.
-    "6. ONLINE SELLING IS A FORK, NOT A CODE. 47901 (PLATFORM DIGITAL INTERMEDIASI PERDAGANGAN ECERAN) "
+    "7. ONLINE SELLING IS A FORK, NOT A CODE. 47901 (PLATFORM DIGITAL INTERMEDIASI PERDAGANGAN ECERAN) "
     "covers OPERATING a marketplace that intermediates OTHER sellers. A business selling its OWN goods "
     "online takes the PRODUCT CATEGORY code instead, and carries that category's own restrictions — "
     "e.g. alcoholic beverages 47221. Ask which of the two the client is doing before naming a single code; "
@@ -691,6 +691,15 @@ def _suggested_queries(results) -> list[str]:
     return suggested_queries
 
 
+class _NoPool(Exception):
+    """Internal signal: there is no database to ask, so skip to the next store.
+
+    A sentinel rather than a branch so the no-pool case and the failed-query
+    case leave by the same door — the Qdrant attempt below is the degradation
+    path for both, and two doors is how one of them stops being taken.
+    """
+
+
 _RISK_UNRESOLVED = "Verify at OSS"
 
 
@@ -735,15 +744,22 @@ async def _resolve_code_from_stores(pool: Any, code: str) -> "KBLISearchResult |
     still comes from whichever store answered, because a disclosure tuple is only
     meaningful beside the record that certifies it.
 
-    WHICH WAY IT FAILS. A dead pool or a raising query yields `None`, never a
-    half-built match: the caller then behaves exactly as it does for a code no
-    store knows, which is to say it falls through to semantic search.
-    """
-    if not pool:
-        return None
+    WHICH WAY IT FAILS. A raising query yields no half-built match — both
+    constructions sit inside the `try`, so an exception during decode or
+    construction is caught before any `return` and the code falls through.
 
+    A DEAD POOL IS NOT A DEAD LOOKUP, and this is the one line to read twice.
+    `get_optional_database_pool` exists for graceful degradation, and the branch
+    order this function replaced encoded that: the Postgres branches were gated
+    on `pool`, the Qdrant one was NOT. Returning early here would cut the whole
+    typed-code path the moment Postgres blinks, for every code, silently — a
+    regression nobody asked for wearing the shape of a guard clause. So a
+    missing pool skips the DB block and Qdrant still gets asked.
+    """
     kg_props: dict[str, Any] = {}
     try:
+        if pool is None:
+            raise _NoPool
         async with pool.acquire() as conn:
             kg_row = await conn.fetchrow(
                 "SELECT entity_id, name, properties FROM kg_nodes WHERE entity_id = $1",
@@ -791,6 +807,8 @@ async def _resolve_code_from_stores(pool: Any, code: str) -> "KBLISearchResult |
                     risk_category=_channel_risk(kg_props.get("kategori_risiko")),
                     **_pma_disclosure_fields(kg_props),
                 )
+    except _NoPool:
+        logger.info("No database pool — resolving %s from Qdrant alone", code)
     except Exception as lookup_err:
         logger.warning("Direct lookup failed for %s: %s", code, lookup_err)
 

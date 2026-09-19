@@ -142,8 +142,28 @@ async def test_no_store_carries_the_code_means_no_match(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_a_dead_pool_still_reaches_qdrant(monkeypatch):
-    monkeypatch.setattr(chat, "_get_kbli_payload_from_qdrant", AsyncMock(return_value=None))
+    """`get_optional_database_pool` is optional ON PURPOSE, and Qdrant is the
+    degradation path. The first version of this test asserted only that the
+    result was `None` — which it also is when Qdrant is never asked at all, so
+    the test passed while the behaviour its own name claims was absent. Assert
+    the CALL, not the shape of the answer.
+    """
+    qdrant = AsyncMock(
+        return_value={"kode_kbli": "56301", "judul": "AKTIVITAS BAR", "kategori_risiko": KG_TIER}
+    )
+    monkeypatch.setattr(chat, "_get_kbli_payload_from_qdrant", qdrant)
+    match = await _resolve_code_from_stores(None, "56301")
+    qdrant.assert_awaited_once_with("56301")
+    assert match is not None, "a dead pool must not cut the typed-code path"
+    assert match.risk_category == KG_TIER
+
+
+@pytest.mark.asyncio
+async def test_a_dead_pool_with_nothing_in_qdrant_still_abstains(monkeypatch):
+    qdrant = AsyncMock(return_value=None)
+    monkeypatch.setattr(chat, "_get_kbli_payload_from_qdrant", qdrant)
     assert await _resolve_code_from_stores(None, "56301") is None
+    qdrant.assert_awaited_once_with("56301")
 
 
 @pytest.mark.asyncio
