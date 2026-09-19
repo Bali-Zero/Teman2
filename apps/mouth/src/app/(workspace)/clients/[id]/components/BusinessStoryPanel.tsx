@@ -34,9 +34,9 @@ type BusinessStoryPanelProps = {
   maps: TaxCompanyPilotMap[];
   isLoading: boolean;
   error: Error | null;
-  /** Section ordinal in the Overview "ledger" stack. Defaults to 2 to sit
-   * under the not-yet-built "Needs attention" ledger (ordinal 1); pass an
-   * explicit value once that section lands. */
+  /** Section ordinal in the Overview "ledger" stack. Defaults to 2 — ordinal
+   * 1 is the "Needs attention" ledger (#6844, merged to main 2026-09-19);
+   * pass an explicit value if the mount order changes. */
   n?: number;
 };
 
@@ -44,20 +44,60 @@ function normalize(value: string | null | undefined): string {
   return (value ?? "").toLowerCase().replace(/\s+/g, " ").trim();
 }
 
+const LEGAL_FORM_TOKENS = new Set(["pt", "pt.", "pma", "pmdn", "cv", "tbk"]);
+
+/**
+ * Company-name normalization: case-fold, collapse whitespace, strip
+ * punctuation (periods, commas, and parenthetical qualifiers with their
+ * content), then drop legal-form tokens wherever they sit as whole words
+ * (PT, PT., PMA, PMDN, CV, TBK). "PT PMA" needs no separate pairing rule —
+ * both words are legal-form tokens on their own, so the pair is dropped
+ * token-by-token. `pt.` stays in the set defensively: the punctuation strip
+ * above already leaves a bare "pt" by the time tokens are split, so `pt.`
+ * as a literal token is normally unreachable, but keeping it costs nothing.
+ */
+function normalizeCompanyName(value: string | null | undefined): string {
+  const withoutParens = (value ?? "").replace(/\([^)]*\)/g, " ");
+  const withoutPunctuation = withoutParens.replace(/[.,]/g, " ");
+  return normalize(withoutPunctuation)
+    .split(" ")
+    .filter((token) => token.length > 0 && !LEGAL_FORM_TOKENS.has(token))
+    .join(" ");
+}
+
 /**
  * Exact match only, after case-fold and whitespace-collapse normalization.
  * The previous bidirectional SUBSTRING check matched "PT Alpha" against
  * "PT Alpha Beta Indonesia" (and vice versa), attaching one company's
- * evidence dossier to an unrelated client's profile. `company.aliases` is
- * the mechanism the data already provides for "the same company, spelled
- * differently" (e.g. the person-first key "BIMALA / Bimala Investments Bali
- * PT" next to the CRM's own "Bimala Investments Bali PT") — matching against
- * aliases in addition to the company name covers that case without any
- * fuzzy matching.
+ * evidence dossier to an unrelated client's profile. Person names get no
+ * further normalization: a legal-form word inside a person's name would be
+ * a real part of it, not noise.
  */
-function namesMatch(value: string | null | undefined, other: string): boolean {
+function personNamesMatch(
+  value: string | null | undefined,
+  other: string,
+): boolean {
   const a = normalize(value);
   const b = normalize(other);
+  return a.length > 0 && b.length > 0 && a === b;
+}
+
+/**
+ * Company match: exact after `normalizeCompanyName`. `company.aliases` is
+ * the mechanism the data already provides for "the same company, spelled
+ * differently" (e.g. the person-first key "BIMALA / Bimala Investments Bali
+ * PT" next to the CRM's own "Bimala Investments Bali PT") — matching
+ * against aliases in addition to the company name covers that case without
+ * any fuzzy matching. Legal-form stripping covers the CRM/pilot spelling
+ * drift the plain exact match did not (PT leading vs. trailing, "PT PMA",
+ * a trailing dot, a parenthetical branch qualifier).
+ */
+function companyNamesMatch(
+  value: string | null | undefined,
+  other: string,
+): boolean {
+  const a = normalizeCompanyName(value);
+  const b = normalizeCompanyName(other);
   return a.length > 0 && b.length > 0 && a === b;
 }
 
@@ -67,18 +107,20 @@ function mapMatchesClient(
   companyNames: string[],
 ): boolean {
   const personMatch =
-    map.persons.some((person) => namesMatch(person.name, clientName)) ||
+    map.persons.some((person) => personNamesMatch(person.name, clientName)) ||
     map.person_dossiers.some((dossier) =>
-      namesMatch(dossier.person_name, clientName),
+      personNamesMatch(dossier.person_name, clientName),
     ) ||
     (map.evidence_stories ?? []).some((story) =>
-      namesMatch(story.person_name, clientName),
+      personNamesMatch(story.person_name, clientName),
     );
 
   const companyMatch = companyNames.some(
     (companyName) =>
-      namesMatch(map.company.name, companyName) ||
-      map.company.aliases.some((alias) => namesMatch(alias, companyName)),
+      companyNamesMatch(map.company.name, companyName) ||
+      map.company.aliases.some((alias) =>
+        companyNamesMatch(alias, companyName),
+      ),
   );
 
   return personMatch || companyMatch;
@@ -88,14 +130,14 @@ function storyMatchesClient(
   story: TaxCompanyPilotEvidenceStory,
   clientName: string,
 ): boolean {
-  return namesMatch(story.person_name, clientName);
+  return personNamesMatch(story.person_name, clientName);
 }
 
 function dossierMatchesClient(
   dossier: TaxCompanyPilotPersonDossier,
   clientName: string,
 ): boolean {
-  return namesMatch(dossier.person_name, clientName);
+  return personNamesMatch(dossier.person_name, clientName);
 }
 
 function getPrimaryDossier(
@@ -173,16 +215,22 @@ function humanizeOperationalText(value: string): string {
 }
 
 /**
- * The categorical readiness state, WITHOUT the numeric score. When
- * `map.readiness` is absent, the backend has not computed one; the previous
- * fallback invented a score (35/70/100) to go with a heuristic derived from
- * real `gaps` data. The status/label pairing below is still derived from
- * real fields (`map.gaps`), so it stays; the fabricated number does not.
+ * The readiness state shown in the panel. The backend always computes one
+ * (`map.readiness`, per `tax_company_pilot.py:145-155`'s `model_post_init`),
+ * so this is normally just that object passed through — status, label,
+ * reasons AND its numeric `score`, a real heuristic the backend computes as
+ * `100 − Σ gap penalties` (`tax_company_pilot.py:377-400`), not a
+ * measurement and not invented either. The branch below is a fallback for
+ * the case the backend genuinely never scored — `map.readiness` absent —
+ * and it derives status/label/reasons from real `map.gaps` data but offers
+ * no score of its own, so `score` stays unset here (unlike the fallback
+ * this replaced, which invented a number — 35/70/100 — and showed it as if
+ * measured).
  */
 type ReadinessDisplay = Pick<
   TaxCompanyPilotReadiness,
   "status" | "label" | "reasons"
->;
+> & { score?: number };
 
 function getReadiness(map: TaxCompanyPilotMap): ReadinessDisplay {
   if (map.readiness) return map.readiness;
@@ -267,6 +315,7 @@ export function BusinessStoryPanel({
   const detailId = useId();
 
   let toggle: React.ReactNode = null;
+  let subtitle: React.ReactNode = null;
   let body: React.ReactNode;
 
   if (isLoading) {
@@ -280,9 +329,15 @@ export function BusinessStoryPanel({
     body = (
       <div className="flex items-start gap-3 px-4 py-4">
         <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-[var(--state-warning)]" />
-        <p className="text-sm text-[var(--tx-secondary)]">
-          The client profile is available, but the evidence layer did not load.
-        </p>
+        <div>
+          <h3 className="text-sm font-semibold text-[var(--tx-pure)]">
+            Business story unavailable
+          </h3>
+          <p className="mt-1 text-sm text-[var(--tx-secondary)]">
+            The client profile is available, but the evidence layer did not
+            load.
+          </p>
+        </div>
       </div>
     );
   } else {
@@ -293,11 +348,16 @@ export function BusinessStoryPanel({
     if (relevantMaps.length === 0) {
       const hasCompanyLinks = companyNames.length > 0;
       body = (
-        <EmptyState className="px-4">
-          {hasCompanyLinks
-            ? "This person has a company, but the CRM has not read the documents yet."
-            : "Connect this person to a company, then the CRM can build the tax story."}
-        </EmptyState>
+        <div className="px-4">
+          <h3 className="pt-4 text-sm font-semibold text-[var(--tx-pure)]">
+            {hasCompanyLinks ? "Story not built yet" : "No company linked yet"}
+          </h3>
+          <EmptyState>
+            {hasCompanyLinks
+              ? "This person has a company, but the CRM has not read the documents yet."
+              : "Connect this person to a company, then the CRM can build the tax story."}
+          </EmptyState>
+        </div>
       );
     } else {
       const primaryMap = relevantMaps[0];
@@ -317,7 +377,7 @@ export function BusinessStoryPanel({
           aria-controls={detailId}
           onClick={() => setIsOpen((open) => !open)}
           className={cn(
-            "text-xs font-medium text-[var(--tx-secondary)] hover:text-[var(--tx-pure)]",
+            "inline-flex h-6 items-center rounded px-2 text-xs font-medium text-[var(--tx-secondary)] hover:text-[var(--tx-pure)]",
             FOCUS,
           )}
         >
@@ -325,13 +385,24 @@ export function BusinessStoryPanel({
         </button>
       );
 
+      subtitle = (
+        <p className="px-4 pt-3 text-xs text-[var(--tx-secondary)]">
+          Person -&gt; company -&gt; tax -&gt; documents -&gt; next step
+        </p>
+      );
+
       // Closed: one paragraph, real recap/headline text only. The mock also
       // shows a "Last WhatsApp signal … 2 days ago" line, but no field on
       // `TaxCompanyPilotMap` carries a last-contact timestamp today — left
       // out rather than invented (see PLAN-redesign.md "Deferred").
-      // Open: the full per-company breakdown, in place of the summary.
+      // Open: the full per-company breakdown, in place of the summary. Both
+      // branches carry `id={detailId}` — the toggle's `aria-controls` must
+      // resolve to an element whether the section is open or closed.
       body = !isOpen ? (
-        <p className="px-4 py-3 text-sm leading-6 text-[var(--tx-pure)]">
+        <p
+          id={detailId}
+          className="px-4 py-3 text-sm leading-6 text-[var(--tx-pure)]"
+        >
           {summary}
         </p>
       ) : (
@@ -403,10 +474,17 @@ export function BusinessStoryPanel({
 
                   <aside className="space-y-2 rounded-lg border border-white/[0.06] bg-black/10 p-3">
                     <div className="rounded-md border border-white/[0.06] bg-white/[0.03] p-2">
-                      <StatePill
-                        tone={readinessTone(readiness.status)}
-                        label={humanReadinessLabel(readiness)}
-                      />
+                      <div className="flex items-center justify-between gap-2">
+                        <StatePill
+                          tone={readinessTone(readiness.status)}
+                          label={humanReadinessLabel(readiness)}
+                        />
+                        {typeof readiness.score === "number" && (
+                          <span className="text-[11px] font-medium text-[var(--bz-text-2)]">
+                            {readiness.score}
+                          </span>
+                        )}
+                      </div>
                       {readiness.reasons.length > 0 && (
                         <p className="mt-1 text-[11px] leading-4 text-[var(--bz-text-2)]">
                           {humanizeOperationalText(readiness.reasons[0])}
@@ -420,7 +498,7 @@ export function BusinessStoryPanel({
                     <p className="text-xs text-[var(--bz-text-2)]">
                       Tax owner: {map.tax_member.name}
                     </p>
-                    <p className="text-xs leading-5 text-[var(--state-success)]">
+                    <p className="text-xs leading-5 text-[var(--tx-secondary)]">
                       {nextAction}
                     </p>
                     {map.next_best_actions.length > 0 && (
@@ -491,6 +569,7 @@ export function BusinessStoryPanel({
 
   return (
     <LedgerSection n={n} tone="wait" title="Case notes" actions={toggle}>
+      {subtitle}
       {body}
     </LedgerSection>
   );
