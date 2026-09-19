@@ -298,6 +298,31 @@ jobs:
           # until 2026-09-19: a PR could break a gesture and land green.
           python3 -m pytest -q scripts/tests/test_window_jump_shell.py scripts/tests/test_tmux_jump_shell.py scripts/tests/test_nz_jump_model_alias.py infra/claude-hooks/test_probe_log_cap.py
 
+      # secret_expansion_guard.py (#6787) and its Qwen-harness installer landed with
+      # NO workflow executing either suite — the exact W81 theater this file exists
+      # to catch, and check_guard_conformance.py's own rule says it plainly: "a
+      # test no CI workflow runs = FAIL". Both matter more than most: the 64-row
+      # corpus is the spec's oracle (docs/specs/2026-09-18-secret-expansion-guard-
+      # shapes-spec.md §5), and the installer's refusal paths are the only thing
+      # between a matcher typo and a harness that silently denies every Bash call —
+      # which is what `matcher: "Bash|Monitor|Read"` did on the Qwen harness, where
+      # the canonical tool names are run_shell_command/read_file. Measured with a
+      # recorder hook on Air-M5 2026-09-19: that matcher fired ZERO times.
+      #
+      # test_hook_innocence.py is deliberately NOT run here: hook-innocence-gate.yml
+      # already executes it (its "THE VACCINE" group), and running the same suite in
+      # two workflows buys nothing and doubles the required-check runtime. The corpus
+      # is likewise run ONCE, as a script rather than under pytest, because its own
+      # _main() prints one line per E-id and exits 1 on any mismatch — better CI
+      # output for the same assertions, and `set -euo pipefail` makes it a gate.
+      - name: Secret-expansion guard corpus + Qwen installer refusal paths
+        if: steps.relevant.outputs.run == 'true'
+        run: |
+          set -euo pipefail
+          python3 -m pip install --quiet pytest
+          python3 infra/claude-hooks/test_secret_expansion_guard.py
+          python3 -m pytest -q infra/claude-hooks/test_install_qwen_secret_guard.py
+
       # The army watcher must follow a session across a window jump (#6785):
       # its corpus drives a REAL tmux on a private socket because the defect
       # it pins is tmux's own `pipe-pane -o` toggle, which no stub reproduces.
