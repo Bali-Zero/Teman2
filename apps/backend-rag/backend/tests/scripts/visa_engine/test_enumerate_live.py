@@ -343,7 +343,10 @@ def test_engine_verdict_resets_the_consecutive_counter(tmp_path: Path, monkeypat
         )
     )
 
-    assert enumerate_live.run(args) == 0  # never trips: run reaches "completed"
+    # exit is still non-zero (the pre-existing rule: 0 requires ZERO harness
+    # reds too, unchanged from #6861) -- what this test proves is the BREAKER
+    # never trips and every walk gets attempted, which stopped_reason pins.
+    assert enumerate_live.run(args) == 1
     saved = json.loads(report.read_text())
     assert len(saved["walks"]) == 5
     assert saved["stopped_reason"] == "completed"
@@ -635,7 +638,9 @@ def test_requests_used_total_accumulates_across_resumes_while_this_run_is_per_ru
 
     monkeypatch.setattr(enumerate_live, "_post_evaluate", fake_post)
 
-    args1 = enumerate_live._parse_args(_args(tmp_path, manifest, report, max_requests=1, rate_per_minute=25))
+    args1 = enumerate_live._parse_args(
+        _args(tmp_path, manifest, report, max_requests=1, rate_per_minute=25, max_consecutive_harness_reds=1)
+    )
     assert enumerate_live.run(args1) == 1
     first = json.loads(report.read_text())
     assert first["requests_used_this_run"] == 1
@@ -658,7 +663,9 @@ def test_health_probes_declared_outside_budget_everywhere(tmp_path: Path, monkey
         return _engine_response()
 
     monkeypatch.setattr(enumerate_live, "_post_evaluate", fake_post)
-    args = enumerate_live._parse_args(_args(tmp_path, manifest, report, max_requests=1, rate_per_minute=25))
+    args = enumerate_live._parse_args(
+        _args(tmp_path, manifest, report, max_requests=1, rate_per_minute=25, max_consecutive_harness_reds=1)
+    )
 
     assert enumerate_live.run(args) == 0
     saved = json.loads(report.read_text())
