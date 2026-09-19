@@ -115,7 +115,8 @@ stamp_own_window() {
     if [ -z "$dev" ]; then
         local tty
         tty=$(ps -o tty= -p "$FROM_PID" 2>/dev/null | tr -d ' ')
-        [ -n "$tty" ] && [ "$tty" != "??" ] || { log "own window not stamped: pid $FROM_PID has no tty (window left open)"; return 1; }
+        # No controlling terminal: BSD ps prints "??", Linux procps "?".
+        case "$tty" in ""|\?*) log "own window not stamped: pid $FROM_PID has no tty (window left open)"; return 1 ;; esac
         dev="/dev/$tty"
     fi
     [ -w "$dev" ] || { log "own window not stamped: $dev not writable (window left open)"; return 1; }
