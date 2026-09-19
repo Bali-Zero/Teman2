@@ -47,7 +47,45 @@ session reads this corner; it does not browse `research/`.
 Also stale in `20-the-honest-map-blocked-bali-codes.md` and its `_INDEX.md` row: the blocked count
 is **518 / 33.2%**, not 465 / 29.8%, and `CHIUSO_PMA_NO_BESAR` is **7**, not 20.
 
-## 1. LIVE STATE (last update 2026-09-02 — keep current)
+## 1. LIVE STATE (last update 2026-09-19 — keep current)
+
+**🟢 2026-09-19 — RESIDUAL-OPEN LOT 1 IS SHIPPED AND LIVE ON BOTH CONSUMERS: 329 CODES MOVE FROM
+`NOT_VERIFIED` TO `TERBUKA / 100%` UNDER PERPRES 10/2021 PASAL 3(1)(d), AND THE CANONICAL IS NOW
+`located` ON 460 OF 1,559.** PR #6795 (`ce660dde01`, merged 02:05:16Z) — 28 files, ZERO backend
+runtime code (two backend test files only), so no backend deploy was required and none was run.
+The mouth deploy was PROVEN, not assumed: production deployment `mouth-9ewnghrsz` created 02:05:19Z,
+three seconds after the merge, and `vercel inspect balizero.com` resolves the apex alias to it —
+the `mini.vercel_autopromote` organ promoted it, so the "merge ≠ live, needs `vercel promote`"
+memory did not bite this time, but it was checked rather than trusted.
+**The four runtime stores were synced CODE-SCOPED, never as a catalog sweep** (a `kg_kbli_resync.py`
+without `--only` would relabel ~1,500 answers — the standing Legge-5 hazard from 2026-09-01):
+Qdrant `pma` layer `APPLIED [pma]: 329/329 code(s) found | 13 already agreed | 316 point(s) written`;
+`kg_nodes` 329/329 (328 in the loop + 85579 recovered, see the residual below); `kbli_documents`
+`APPLIED: 329 of 329 code(s) asked cured | 0 skipped | 0 narrowed out by the scope gate`;
+inspect cache `3/329 had a cache entry | 3 evicted | 0 survived`. Integrity was MEASURED, not
+claimed: md5(judul)/md5(content) captured before and after on a 9-row sample → byte-identical 9/9;
+329 archive snapshots under cure-run `kbli_cure:2026-09-19-residual-open-lot1`; exactly 329 rows
+carry the residual basis; 0 withheld codes carry a `pma_verification_status`.
+**Prove-live on both consumers, both directions:** `inspect_kbli 30303` → `TERBUKA / 100 / located /
+cap_verified true` with the full Pasal 3(1)(d) basis; `inspect_kbli 58120` → `NOT_VERIFIED / null /
+declared_gap / basis null / cap_verified false`. On balizero.com the basis renders on 30303 and
+87910 and is ABSENT on 58120, whose `<title>` reads `PMA Eligibility Requires Verification`;
+`/llms-kbli.txt` carries `TERBUKA | 100%` against `NOT_VERIFIED | Not verified`.
+**The near-miss worth carrying forward:** the sync list inherited from BLOCKED PR #6783 held 330
+codes — the extra was **58120**, a code deliberately withheld at the honest gap. Running it would
+have published `TERBUKA/100` into four stores and made the runtime contradict the repo. The list was
+regenerated from the shipped `spec["items"]` (329) and the runner got a fail-closed guard that
+refuses unless the count is exactly 329 and both 58120/50143 are provably absent; it ran before all
+eight writes. **Two residuals declared in the PR's `Bites:` comment** (5739096997): (1) 61 Qdrant
+`doc_type=kbli_gold` points refuse the prose rewrite and the class GROWS per lot (9 points over 54
+codes on 2026-09-01 → 61 now) — ledgered, PR #6800; (2) one of the 329 KG iterations died on
+`asyncpg ConnectionDoesNotExistError` (cicatrix #8) while the loop still exited 0 (superscar #2) —
+the log names no code per iteration, so the victim was derived by counting iteration-start lines
+against `APPLIED:` lines (305th code = **85579**) and re-run alone → `APPLIED: 1 to update`.
+Next lots unchanged: **Lot 2** 272 `ATTENZIONE_FASCIA_BALI`; **Lot 3** 31 `BLOCCATO_DIPENDE_SCOPE`,
+22 `CHIUSO_BALI` and 6 odd; then the 36 legacy-prose records, 29 sibling-withheld, 19 body-stated
+categories, 61 Pasal 11(2) finance codes, 67/68 unswept-statute codes, the 135-code
+`instrument_reached_sibling` class and the proposed Lot 4 (175 `priority-lampiran-i`).
 
 **🔴 2026-09-03 — THE KG LICENSING SPEC IS REOPENED AT REVISION r4: THE SIX ROUND-3 FINDINGS ARE
 FOLDED, AND RE-MEASURING THEM FOUND A SEVENTH DEFECT NOBODY HAD SEEN — NINE CODES SERVE `KITAS`, A
