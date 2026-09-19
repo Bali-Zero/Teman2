@@ -1610,10 +1610,25 @@ function buildValidatedOutcome(
   // VISA-ORACLE-DW-20260919 §1.6) — it can be non-empty on any of the four
   // identity-required states, so it is built once here and shared via
   // `...base` rather than duplicated per discriminated branch below.
-  const conditions = response.decision.notices.map((item) => {
-    requireReviewHoldRefs(item.source_refs);
-    return condition(item.code, item.source_refs, trustedIds);
-  });
+  //
+  // S5 (GATE-A2-REPORT-6849 LOW-2): `ReasonList` keys each item on
+  // `reason.code` (`OutcomeSheet.tsx`), so two conditions sharing a code
+  // would collide as React keys. No producer emits a repeated code today
+  // (`_build_notices` returns at most one; the ten `_CONDITION` codes are
+  // flag→code one-to-one), but the adapter — not the renderer — is the
+  // right layer to make that a guarantee rather than an assumption:
+  // de-duplicate by code, first occurrence wins.
+  const seenConditionCodes = new Set<string>();
+  const conditions = response.decision.notices
+    .filter((item) => {
+      if (seenConditionCodes.has(item.code)) return false;
+      seenConditionCodes.add(item.code);
+      return true;
+    })
+    .map((item) => {
+      requireReviewHoldRefs(item.source_refs);
+      return condition(item.code, item.source_refs, trustedIds);
+    });
 
   const base = {
     provenance: "ENGINE" as const,

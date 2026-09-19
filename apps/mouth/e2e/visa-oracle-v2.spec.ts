@@ -253,6 +253,21 @@ test.describe("Visa Oracle v2 integration — page Page", () => {
         NOTICE_CONDITION_COPY.DISCLOSED_HEALTH_CONCERN_CONDITION.en,
       ),
     ).toBeVisible();
+
+    // S4 (GATE-A2-REPORT-6849 LOW-1): the title claims EN AND ID — the
+    // original test only ever asserted `.en`. Switch language client-side
+    // (no re-fetch — same mocked response) and read both ID texts too.
+    await page
+      .getByRole("button", { name: /switch to bahasa indonesia/i })
+      .click();
+    await expect(
+      page.getByText(NOTICE_CONDITION_COPY.OBSOLETE_PRODUCT_CODE.id),
+    ).toBeVisible();
+    await expect(
+      page.getByText(
+        NOTICE_CONDITION_COPY.DISCLOSED_HEALTH_CONCERN_CONDITION.id,
+      ),
+    ).toBeVisible();
   });
 
   test("CURATED and malformed JSON fail closed with zero candidates", async ({

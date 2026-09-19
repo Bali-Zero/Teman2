@@ -757,8 +757,19 @@ export function OutcomeSheet({
           section shared by every state that can carry a condition, since
           the backend places no state constraint on this channel. */}
       {outcome.conditions.length > 0 && (
-        <section className="oracle-outcome__conditions">
-          <h2 className="oracle-outcome__section-title">
+        // S6 (GATE-A2-REPORT-6849 LOW-4): `aria-labelledby` names this
+        // region, matching the `oracle-supported-paths-title` pattern below
+        // — `oracle-outcome__conditions` itself carries no CSS rule by
+        // design (Track C owns `oracle.css`; this class is a query hook
+        // for tests only).
+        <section
+          className="oracle-outcome__conditions"
+          aria-labelledby="oracle-conditions-title"
+        >
+          <h2
+            id="oracle-conditions-title"
+            className="oracle-outcome__section-title"
+          >
             {translate(language, "outcome.conditions.title")}
           </h2>
           <p>{translate(language, "outcome.conditions.intro")}</p>
