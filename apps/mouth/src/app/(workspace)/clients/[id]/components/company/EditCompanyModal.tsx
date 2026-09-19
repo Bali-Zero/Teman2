@@ -1,9 +1,77 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Loader2, X } from "lucide-react";
+import { createPortal } from "react-dom";
+import { AlertTriangle, Loader2, X } from "lucide-react";
 import { toast } from "sonner";
 import { api } from "@/lib/api";
+import { ApiError } from "@/lib/api/error-handler";
+import {
+  companyTypeOptionsWithCurrent,
+  normalizeCompanyType,
+} from "./companyType";
+
+type CompanyForm = {
+  company_name: string;
+  company_type: string;
+  kbli_code: string;
+  nib: string;
+  npwp_company: string;
+  registered_address: string;
+  city: string;
+  province: string;
+  akta_pendirian_no: string;
+  akta_pendirian_date: string;
+  akta_perubahan_no: string;
+  akta_perubahan_date: string;
+  sk_menhumkam_no: string;
+  sk_menhumkam_date: string;
+  status: string;
+};
+
+const DATE_FIELDS = new Set<keyof CompanyForm>([
+  "akta_pendirian_date",
+  "akta_perubahan_date",
+  "sk_menhumkam_date",
+]);
+
+function buildForm(initialData: {
+  company_name?: string;
+  company_type?: string;
+  kbli_code?: string;
+  nib?: string;
+  npwp_company?: string;
+  registered_address?: string;
+  office_address?: string;
+  city?: string;
+  province?: string;
+  akta_pendirian_no?: string;
+  akta_pendirian_date?: string;
+  akta_perubahan_no?: string;
+  akta_perubahan_date?: string;
+  sk_menhumkam_no?: string;
+  sk_menhumkam_date?: string;
+  company_status?: string;
+}): CompanyForm {
+  return {
+    company_name: initialData.company_name || "",
+    company_type: normalizeCompanyType(initialData.company_type),
+    kbli_code: initialData.kbli_code || "",
+    nib: initialData.nib || "",
+    npwp_company: initialData.npwp_company || "",
+    registered_address:
+      initialData.registered_address || initialData.office_address || "",
+    city: initialData.city || "",
+    province: initialData.province || "",
+    akta_pendirian_no: initialData.akta_pendirian_no || "",
+    akta_pendirian_date: initialData.akta_pendirian_date?.split("T")[0] || "",
+    akta_perubahan_no: initialData.akta_perubahan_no || "",
+    akta_perubahan_date: initialData.akta_perubahan_date?.split("T")[0] || "",
+    sk_menhumkam_no: initialData.sk_menhumkam_no || "",
+    sk_menhumkam_date: initialData.sk_menhumkam_date?.split("T")[0] || "",
+    status: initialData.company_status || "active",
+  };
+}
 
 export function EditCompanyModal({
   companyId,
@@ -42,48 +110,58 @@ export function EditCompanyModal({
   }, [onClose]);
 
   const [isSaving, setIsSaving] = useState(false);
-  const [form, setForm] = useState({
-    company_name: initialData.company_name || "",
-    company_type: initialData.company_type || "PT PMA",
-    kbli_code: initialData.kbli_code || "",
-    nib: initialData.nib || "",
-    npwp_company: initialData.npwp_company || "",
-    registered_address:
-      initialData.registered_address || initialData.office_address || "",
-    city: initialData.city || "",
-    province: initialData.province || "",
-    akta_pendirian_no: initialData.akta_pendirian_no || "",
-    akta_pendirian_date: initialData.akta_pendirian_date?.split("T")[0] || "",
-    akta_perubahan_no: initialData.akta_perubahan_no || "",
-    akta_perubahan_date: initialData.akta_perubahan_date?.split("T")[0] || "",
-    sk_menhumkam_no: initialData.sk_menhumkam_no || "",
-    sk_menhumkam_date: initialData.sk_menhumkam_date?.split("T")[0] || "",
-    status: initialData.company_status || "active",
-  });
+  const [saveError, setSaveError] = useState<{
+    message: string;
+    correlationId?: string;
+  } | null>(null);
+  const [initialForm] = useState<CompanyForm>(() => buildForm(initialData));
+  const [form, setForm] = useState<CompanyForm>(initialForm);
+
+  const typeOptions = companyTypeOptionsWithCurrent(form.company_type);
 
   const inputClass =
     "w-full px-3 py-2 rounded-lg border border-[var(--kbli-border)] bg-[var(--kbli-bg-surface)] text-[var(--kbli-text-primary)] text-sm focus:outline-none focus:ring-2 focus:ring-[var(--kbli-accent)]/50";
 
   const handleSave = async () => {
+    setSaveError(null);
+
+    // Dirty-fields only: never resend a field the user didn't touch, and
+    // clear a date with `null` (not "") rather than dropping it silently.
+    const updates: Record<string, string | null> = {};
+    (Object.keys(form) as (keyof CompanyForm)[]).forEach((key) => {
+      if (form[key] === initialForm[key]) return;
+      if (DATE_FIELDS.has(key)) {
+        updates[key] = form[key] === "" ? null : form[key];
+      } else {
+        updates[key] = form[key];
+      }
+    });
+
+    if (Object.keys(updates).length === 0) {
+      onClose();
+      return;
+    }
+
     setIsSaving(true);
     try {
-      const updates: Record<string, string> = {};
-      Object.entries(form).forEach(([k, v]) => {
-        if (v !== "") updates[k] = v;
-      });
       await api.crm.updateCompany(companyId, updates);
       toast.success("Company updated");
       onSave();
     } catch (err) {
+      const apiErr = err instanceof ApiError ? err : null;
+      setSaveError({
+        message: apiErr?.detail || (err as Error).message,
+        correlationId: apiErr?.correlationId,
+      });
       toast.error("Failed to update company", {
-        description: (err as Error).message,
+        description: apiErr?.detail || (err as Error).message,
       });
     } finally {
       setIsSaving(false);
     }
   };
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
       <div
         className="w-full max-w-2xl rounded-2xl overflow-hidden shadow-2xl max-h-[90vh] flex flex-col"
@@ -111,6 +189,22 @@ export function EditCompanyModal({
         </div>
 
         <div className="overflow-y-auto flex-1 px-6 py-5 space-y-4">
+          {saveError && (
+            <div
+              role="alert"
+              className="flex items-start gap-2 rounded-lg border border-[var(--state-warning)]/30 bg-[var(--state-warning)]/10 px-3 py-2 text-sm text-[var(--state-warning)]"
+            >
+              <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" />
+              <div>
+                <p>{saveError.message}</p>
+                {saveError.correlationId && (
+                  <p className="mt-0.5 text-xs text-[var(--kbli-text-muted)]">
+                    Request ID: {saveError.correlationId}
+                  </p>
+                )}
+              </div>
+            </div>
+          )}
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="text-[10px] uppercase tracking-wider text-[var(--kbli-text-muted)] mb-1 block">
@@ -135,10 +229,11 @@ export function EditCompanyModal({
                   setForm((f) => ({ ...f, company_type: e.target.value }))
                 }
               >
-                <option value="PT PMA">PT PMA</option>
-                <option value="PT Perorangan">PT Perorangan</option>
-                <option value="CV">CV</option>
-                <option value="Other">Other</option>
+                {typeOptions.map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
               </select>
             </div>
           </div>
@@ -339,7 +434,8 @@ export function EditCompanyModal({
         >
           <button
             onClick={onClose}
-            className="px-4 py-2 text-sm rounded-lg border border-[var(--kbli-border)] text-[var(--kbli-text-secondary)] hover:text-[var(--kbli-text-primary)] hover:border-[var(--kbli-text-secondary)] transition-colors"
+            disabled={isSaving}
+            className="px-4 py-2 text-sm rounded-lg border border-[var(--kbli-border)] text-[var(--kbli-text-secondary)] hover:text-[var(--kbli-text-primary)] hover:border-[var(--kbli-text-secondary)] transition-colors disabled:opacity-50"
           >
             Cancel
           </button>
@@ -353,6 +449,7 @@ export function EditCompanyModal({
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

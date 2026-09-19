@@ -1,0 +1,94 @@
+task: >-
+  PR #6763 (external seat, Subhi): cure the Add/Edit Company modals on the kita CRM
+  `/clients/[id]?tab=company`. Both modals render through `createPortal(..., document.body)`
+  so an ancestor stacking context can no longer trap their `z-50` below the workspace
+  sidebar's `z-40`; a stored legacy `company_type` ("PMA", "PT_PMA", ...) is normalised to its
+  canonical option and an unrecognised value is shown as its own labelled option instead of
+  silently falling back to the first `<option>` and being rewritten on save; `EditCompanyModal`
+  sends only the fields the operator changed (a cleared date goes as `null`, an untouched form
+  closes without a PATCH); a failed save shows an inline `role="alert"` banner with the
+  backend message and the request/correlation id; the client masthead gains `min-w-0` so a
+  long name shrinks against the WhatsApp/Telegram cluster. Confined to `apps/mouth` (zone
+  VERDE) — no backend, no token, no data, no migration touched.
+lane: frontend/clients-company-modal
+machine: external-sancho
+date: 2026-09-19
+
+gear: 2
+gear_reason: >-
+  Deterministic floor 2, source `size`: `git diff --no-renames --numstat` against the
+  merge-base 6189cd821d with origin/main measures churn 499 (1+1 ClientDetailClient.tsx, 158
+  EditCompanyModal.test.tsx, 128+31 EditCompanyModal.tsx, 60 companyType.ts, 43+7
+  AddCompanyModal.tsx, 3+3 crm.api.ts, 42 error-handler.test.ts, 21+1 error-handler.ts) —
+  above SIZE_GEAR2_THRESHOLD (400), below SIZE_GEAR3_THRESHOLD. No hot-zone path (all 8 files
+  are under apps/mouth/). Confirmed on this head (b1a56f1203) via
+  `scripts/evidence_pack_lint.py --print-floor --print-floor-source` = 2, matching the
+  `Harness floor recompute` red (run 35326184013: "floor is 2, reached via the SIZE term
+  alone, and carries no evidence/brief.yml"). This brief is written retroactively by a Claude
+  session (M5), not by the PR's external author — its absence at PR-open is what floored the
+  check red — and adds no functional change to the diff it documents.
+
+appetite:
+  wall_clock_hours: 1
+  adversarial_rounds: 1
+
+acceptance:
+  A1: >-
+    The `clients/[id]` Vitest suite, including the directory's own AST-based CSS-token lint
+    and the 8 new dirty-field / type-mapping cases in `EditCompanyModal.test.tsx`, and the 4
+    new `error-handler.test.ts` cases (`request_id` first, `correlation_id` fallback,
+    precedence, neither) pass in CI on head b1a56f1203 — `Frontend Tests (Next.js) (mouth,
+    true)` green in run 35326183592. NOT independently re-run on this machine (vitest cannot
+    resolve the `@/` alias from a worktree here, and `npm ci` from a worktree is banned).
+    probe: >-
+      gh pr checks 6763 | grep -E 'Frontend Tests \(Next.js\) \(mouth|E2E Tests'
+  A2: >-
+    An untouched legacy type is never rewritten: `buildForm()` normalises "PMA" to "PT PMA"
+    into BOTH `initialForm` and `form`, so `company_type` is absent from the PATCH unless the
+    operator changes the select. Read in the diff and pinned by the test "does not resend an
+    untouched legacy company_type".
+    probe: >-
+      npx vitest run "apps/mouth/src/app/(workspace)/clients/[id]/components/company/EditCompanyModal.test.tsx"
+  A3: >-
+    Live, after promotion: `https://kita.balizero.com/api/health` serves a commit that is
+    the merge commit or a descendant of it, and the promoted build's client chunk for
+    `/clients/[id]` carries the new "(unrecognized)" option label — the string exists
+    nowhere on origin/main before this PR.
+    probe: >-
+      curl -fsS https://kita.balizero.com/api/health && git merge-base --is-ancestor
+      <merge-sha> <served-sha>
+
+out_of_scope: >-
+  The backend half, named by the PR itself and NOT shipped here: `update_company`
+  (`apps/backend-rag/backend/app/modules/crm/company_router.py:384`, `value is not None`)
+  skips `null`, so a cleared date is sent but not persisted, and a PATCH whose only change is
+  a cleared date answers 400 "no fields" — now visible in the banner instead of silent.
+  Reconciling the 5xx body shape (`request_id` observed in production by the author vs
+  `correlation_id` emitted by `app/setup/exception_handlers.py` on origin/main) — the
+  frontend reads both. Any production 500 on company create/update: not reproduced by this
+  session. Migrating the two modals to the Radix `Dialog` primitive. The 375/830/1440px
+  visual check of the authenticated page, which needs an operator login.
+
+assumptions:
+  - text: >-
+      This brief was authored by a Claude session after PR-open, on behalf of the external
+      author (Subhi), solely to satisfy the `Harness floor recompute` SIZE-floor
+      requirement. The session read the full non-test diff as grader (Builder Contract 5:
+      the external seat prepares, a Claude session verifies and ships); test results are
+      CI's, not re-run locally.
+    status: verified
+    probe: gh pr checks 6763
+  - text: >-
+      The modals are only ever mounted client-side after an operator click (both files are
+      `"use client"` and conditionally rendered from `CompanyTab` state), so
+      `document.body` is defined whenever `createPortal` runs. Read on this head:
+      `CompanyTab.tsx` mounts them only under `{isAddingCompany && ...}` (lines 367, 717) and
+      `{isEditingCompany && co?.company_id && ...}` (line 704); no SSR path renders either.
+    status: verified
+    probe: >-
+      grep -n "AddCompanyModal\|EditCompanyModal" "apps/mouth/src/app/(workspace)/clients/[id]/components/CompanyTab.tsx"
+  - text: >-
+      `machine: external-sancho` follows the naming the #5608 brief chose for this author;
+      evidence_pack_lint.py does not validate `machine`/`lane` against a fixed set.
+    status: verified
+    probe: n/a — a documentation choice, not a factual claim requiring a probe.

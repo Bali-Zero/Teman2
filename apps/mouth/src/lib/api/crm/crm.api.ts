@@ -1053,11 +1053,11 @@ export class CrmApi {
       nib: string;
       npwp_company: string;
       akta_pendirian_no: string;
-      akta_pendirian_date: string;
+      akta_pendirian_date: string | null;
       akta_perubahan_no: string;
-      akta_perubahan_date: string;
+      akta_perubahan_date: string | null;
       sk_menhumkam_no: string;
-      sk_menhumkam_date: string;
+      sk_menhumkam_date: string | null;
       registered_address: string;
       office_address: string;
       city: string;
