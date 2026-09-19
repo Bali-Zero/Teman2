@@ -1,0 +1,96 @@
+task: >-
+  R6 of the kita client-profile redesign (PLAN-redesign.md, design v3 approved by
+  the owner 2026-09-19 ~19:00 WITA): the Immigration tab's current visa-family
+  document becomes an ink permit panel (plaque, `Numeral` KPIs, new
+  `ValidityTrack.tsx`) and the previous visas become an r19 `HairlineGrid`, while
+  the Working Permit / Other sections keep the legacy `renderDocCard` path
+  verbatim. This branch is the REPAIRED round: an independent read-only OLD-vs-NEW
+  parity audit rejected the first commit (`b67ee138d0`) on two counts, both closed
+  here. (1) BEHAVIOURAL DROP: the "Start Renewal" CTA only lived inside
+  `renderDocCard`, which after the restyle only ever receives Working Permit /
+  Other docs, so the action was unreachable for every visa-family document;
+  restored on the permit panel and per-row on Visa history with the unchanged
+  `isRenewable()` predicate (90-day / `<0`) and the unchanged
+  `/process/new?client_id=…&type=visa_renewal` target. (2) WRONG READING OF A REAL
+  FIELD: the "Days to expiry" KPI applied `Math.abs()`, so a permit inside the
+  pre-existing 30-day grace window (already expired) rendered a positive number
+  under a label that reads as "remaining"; the label now flips to "Days past
+  expiry" when `daysUntil(expiry) < 0`. The audit's P1 list is closed in the same
+  round: the expired history date carries its word (`{date} · {expiryLabel}`, r19
+  law 3), and the drops it flagged as undisclosed are restored — the panel's
+  `file_name` sub-line, `family_member_name` on history rows, the `alert_color`
+  signal (via `isUrgent()`, which ORs the server flag with the date threshold and
+  still routes to the single `--state-warning` tone, never the old per-bucket
+  yellow/red hues), the `(n)` count on the Visa history head, and
+  `.replace(/_/g, " ")` normalisation on the plaque and the grid's type column.
+  Reviewer per the 2026-09-17 CRM pact is Subhi (design is Zero's call, code is
+  Subhi's); this PR is prepared NOT ARMED at open, per that pact.
+lane: frontend/kita-r6-immigration-permit-panel
+machine: air-m5
+date: 2026-09-20
+
+gear: 2
+gear_reason: >-
+  Deterministic floor 2, source `size`: `git diff --no-renames --numstat
+  origin/main...HEAD` measures ImmigrationTab.test.tsx +234/-13,
+  ImmigrationTab.tsx +389/-53 and ValidityTrack.tsx +52/-0 — 3 files, +675/-66,
+  churn 741 by add+delete count, above `SIZE_GEAR2_THRESHOLD` (400) and below
+  `SIZE_GEAR3_THRESHOLD`. None of the three matches `HOTZONE_PATTERNS` (all plain
+  files under `apps/mouth/src/app/(workspace)/clients/[id]/components/`, no
+  workflow/secret/migration path), so the path term does not independently raise
+  the floor. Confirmed with `python3 scripts/evidence_pack_lint.py --print-floor
+  --print-floor-source --changed-files-file <3-file list> --numstat-file
+  <numstat>` → `2` / `size`.
+
+appetite:
+  wall_clock_hours: 1
+  adversarial_rounds: 1
+
+acceptance:
+  A1: >-
+    The GUILT/INNOCENCE pins for "Start Renewal" pass and can fail: a KITAS
+    expiring in +45d renders a `Start Renewal` control on the permit panel; a
+    +200d fixture does not (the 90-day boundary is pinned at exactly 90 and 91
+    days under `vi.setSystemTime`); an expired visa renders the same control
+    inside its Visa-history row's `actions`. All three fail against the rejected
+    commit `b67ee138d0`.
+    probe: >-
+      cd apps/mouth && npx --no-install vitest run
+      'src/app/(workspace)/clients/[id]/components/ImmigrationTab.test.tsx'
+  A2: >-
+    The KPI never states a real field with the wrong sign: a fixture expiring
+    −10d (inside the 30-day grace, so it still renders in the panel) asserts the
+    label reads "Days past expiry" and not "Days to expiry" over a positive
+    count; the +/−1d pair around day 0 is pinned too, as is the 30-day grace
+    boundary (−29d panel vs −31d history).
+    probe: >-
+      cd apps/mouth && npx --no-install vitest run
+      'src/app/(workspace)/clients/[id]/components/ImmigrationTab.test.tsx'
+  A3: >-
+    The full `clients/[id]/` folder suite passes — 18 files / 211 tests —
+    including `__tests__/client-detail-desk.test.tsx`'s AST colour/copper guard,
+    proving the restyle introduces no raw colour literal, no red/rose/orange/
+    amber utility (the restored `alert_color` signal routes to the single
+    `--state-warning` token, not the old per-bucket hues) and no ungated copper.
+    probe: >-
+      cd apps/mouth && npx --no-install vitest run
+      'src/app/(workspace)/clients/[id]/'
+  A4: >-
+    `tsc --noEmit -p .` exits 0 with no output — `ValidityTrack.tsx`'s props and
+    the panel's narrowed document type typecheck against the shared
+    `crm.types.ts` contract, which this PR does not modify.
+    probe: cd apps/mouth && npx --no-install tsc --noEmit -p .
+
+out_of_scope: >-
+  The audit's P2 notes, deliberately not widening this PR: the dead
+  `vi.mock("./AiSummaryCard")` in the test file, the KPI/track rounding
+  reconciliation on one helper, and the legacy `renderDocCard` path's
+  `yellow-500`/`blue-500`/`purple-500` utilities plus its dashed, shadowed
+  empty-state box — all three belong to a future R6b. The net +609 is past the
+  plan's ~400-line lot budget because the repair round is itself +229 of pinned
+  tests; the natural split (R6a permit panel vs R6b history grid) is reported to
+  the orchestrator rather than applied retroactively to a branch whose first
+  round is already audited. Arming, merging and deploying this PR — per the
+  2026-09-17 CRM pact that waits for Subhi's code review, and per the
+  ship-lifecycle contract the session that owns the mandate executes, not this
+  brief.
