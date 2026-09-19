@@ -43,6 +43,7 @@ function unavailablePreviewOutcome(): TemporarilyUnavailableOutcome {
     assumptions: [],
     sources: [],
     nextSteps: NEXT_STEPS,
+    conditions: [],
     outage: {
       code: "PREVIEW_FIXTURE_ONLY",
       message: {
@@ -93,6 +94,7 @@ function buildGoldOraclePreviewOutcome(
     // Real engine copy, not the developer-preview NEXT_STEPS above — see the
     // export site's doc comment in engine-adapter.ts for why this must match.
     nextSteps: ENGINE_NEXT_STEPS,
+    conditions: [],
     reviewReasons: [GOLD_ORACLE_REVIEW_REASON],
   };
 }

@@ -1,8 +1,14 @@
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
+
+const emitVisaOracleTelemetry = vi.hoisted(() => vi.fn());
+vi.mock("./telemetry", () => ({ emitVisaOracleTelemetry }));
+
 import {
+  GENERIC_NOTICE_CONDITION,
+  NOTICE_CONDITION_COPY,
   REVIEW_REASON_COPY,
   SECOND_HOME_DEPOSIT_THRESHOLD_USD,
   SECOND_HOME_PROPERTY_THRESHOLD_USD,
@@ -11,7 +17,11 @@ import {
   buildEngineOutcome,
   isSecondHomeStudioOnly,
 } from "./engine-adapter";
-import { TEST_NOW, makeVisaOracleResponse } from "./visa-oracle-test-fixture";
+import {
+  TEST_NOW,
+  TEST_SOURCE_ID,
+  makeVisaOracleResponse,
+} from "./visa-oracle-test-fixture";
 import { translate, type I18nKey } from "./i18n";
 import { QUESTIONS, type OracleFacts } from "./tree";
 
@@ -1474,5 +1484,179 @@ describe("isSecondHomeStudioOnly (D23 B-STUDIO)", () => {
         buildEngineOutcome(makeVisaOracleResponse("SUPPORTED_CANDIDATES")),
       ),
     ).toBe(false);
+  });
+});
+
+// Slice A2 (PLAN VISA-ORACLE-DW-20260919 §1.6, N1-N3): `notices[]` was wired
+// to the wire and dark in the UI — this pins the render.
+describe("notices render as named conditions (slice A2)", () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    emitVisaOracleTelemetry.mockReset();
+  });
+
+  it("maps a single OBSOLETE_PRODUCT_CODE notice — the one code the engine already emits", () => {
+    const response = makeVisaOracleResponse("SUPPORTED_CANDIDATES");
+    response.decision.notices = [
+      {
+        code: "OBSOLETE_PRODUCT_CODE",
+        rule_ids: [],
+        source_refs: [TEST_SOURCE_ID],
+      },
+    ];
+    const outcome = buildEngineOutcome(response);
+    expect(outcome.conditions).toEqual([
+      {
+        code: "OBSOLETE_PRODUCT_CODE",
+        message: NOTICE_CONDITION_COPY.OBSOLETE_PRODUCT_CODE,
+        sourceIds: [TEST_SOURCE_ID],
+      },
+    ]);
+  });
+
+  it("maps many notices in order, each with its own copy", () => {
+    const response = makeVisaOracleResponse("SUPPORTED_CANDIDATES");
+    response.decision.notices = [
+      {
+        code: "DISCLOSED_HEALTH_CONCERN_CONDITION",
+        rule_ids: [],
+        source_refs: [],
+      },
+      {
+        code: "DISCLOSED_PEP_OR_SANCTIONS_CONDITION",
+        rule_ids: [],
+        source_refs: [],
+      },
+    ];
+    const outcome = buildEngineOutcome(response);
+    expect(outcome.conditions.map((item) => item.code)).toEqual([
+      "DISCLOSED_HEALTH_CONCERN_CONDITION",
+      "DISCLOSED_PEP_OR_SANCTIONS_CONDITION",
+    ]);
+    expect(outcome.conditions[0].message).toEqual(
+      NOTICE_CONDITION_COPY.DISCLOSED_HEALTH_CONCERN_CONDITION,
+    );
+    expect(outcome.conditions[1].message).toEqual(
+      NOTICE_CONDITION_COPY.DISCLOSED_PEP_OR_SANCTIONS_CONDITION,
+    );
+  });
+
+  it.each([
+    "SUPPORTED_CANDIDATES",
+    "NEEDS_INPUT",
+    "HUMAN_REVIEW_REQUIRED",
+    "NO_SUPPORTED_PATH",
+  ] as const)(
+    "carries a condition on %s — notices has no backend state constraint",
+    (state) => {
+      const response = makeVisaOracleResponse(state);
+      response.decision.notices = [
+        {
+          code: "DISCLOSED_UNCERTAINTY_CONDITION",
+          rule_ids: [],
+          source_refs: [],
+        },
+      ];
+      const outcome = buildEngineOutcome(response);
+      expect(outcome.conditions).toHaveLength(1);
+      expect(outcome.conditions[0].code).toBe(
+        "DISCLOSED_UNCERTAINTY_CONDITION",
+      );
+    },
+  );
+
+  it("has all eleven codes N1 names, and no other code, EN and ID both non-empty", () => {
+    const EXPECTED_CODES = [
+      "OBSOLETE_PRODUCT_CODE",
+      "DISCLOSED_HEALTH_CONCERN_CONDITION",
+      "DISCLOSED_PRIOR_VISA_REFUSAL_CONDITION",
+      "DISCLOSED_UNCERTAINTY_CONDITION",
+      "DISCLOSED_PEP_OR_SANCTIONS_CONDITION",
+      "DISCLOSED_SOURCE_OF_FUNDS_CONDITION",
+      "DISCLOSED_DIPLOMATIC_PASSPORT_CONDITION",
+      "DISCLOSED_AMBIGUOUS_SPONSOR_CONDITION",
+      "DISCLOSED_ACTIVITY_BOUNDARY_CONDITION",
+      "DISCLOSED_MULTI_PURPOSE_TRIP_CONDITION",
+      "CONFLICTING_IMMIGRATION_STATUS_CONDITION",
+    ].sort();
+    expect(Object.keys(NOTICE_CONDITION_COPY).sort()).toEqual(EXPECTED_CODES);
+    for (const message of Object.values(NOTICE_CONDITION_COPY)) {
+      expect(message.en.length).toBeGreaterThan(0);
+      expect(message.id.length).toBeGreaterThan(0);
+    }
+  });
+
+  it("never says or implies cleared/approved/no issue/guaranteed, EN or ID", () => {
+    // N2's legal-exposure rule: a condition may never read as clearance.
+    const BANNED = [
+      /\bcleared\b/i,
+      /\bapprove[ds]?\b/i,
+      /\bno issue\b/i,
+      /\bguarantee[ds]?\b/i,
+      /\bdisetujui\b/i,
+      /\btidak ada masalah\b/i,
+      /\bdijamin\b/i,
+      /\bterjamin\b/i,
+      /\blolos\b/i,
+    ];
+    for (const [code, message] of Object.entries(NOTICE_CONDITION_COPY)) {
+      for (const banned of BANNED) {
+        expect(message.en, `${code}.en matched ${banned}`).not.toMatch(banned);
+        expect(message.id, `${code}.id matched ${banned}`).not.toMatch(banned);
+      }
+    }
+  });
+
+  it("PEP/sanctions and source-of-funds conditions say the check runs at submission", () => {
+    // N2: these two specifically must not imply the check already happened.
+    expect(
+      NOTICE_CONDITION_COPY.DISCLOSED_PEP_OR_SANCTIONS_CONDITION.en,
+    ).toMatch(/at submission/i);
+    expect(
+      NOTICE_CONDITION_COPY.DISCLOSED_SOURCE_OF_FUNDS_CONDITION.en,
+    ).toMatch(/at submission/i);
+    expect(
+      NOTICE_CONDITION_COPY.DISCLOSED_PEP_OR_SANCTIONS_CONDITION.id,
+    ).toMatch(/pada saat pengajuan/i);
+    expect(
+      NOTICE_CONDITION_COPY.DISCLOSED_SOURCE_OF_FUNDS_CONDITION.id,
+    ).toMatch(/pada saat pengajuan/i);
+  });
+
+  it("throws on an unmapped notice code outside production (N3)", () => {
+    const response = makeVisaOracleResponse("SUPPORTED_CANDIDATES");
+    response.decision.notices = [
+      { code: "SOME_FUTURE_CONDITION_CODE", rule_ids: [], source_refs: [] },
+    ];
+    expect(() => buildEngineOutcome(response)).toThrow();
+  });
+
+  it("falls back to a neutral sentence and reports the gap once in production (N3)", () => {
+    vi.stubEnv("NODE_ENV", "production");
+    const response = makeVisaOracleResponse("SUPPORTED_CANDIDATES");
+    response.decision.notices = [
+      { code: "ANOTHER_FUTURE_CONDITION_CODE", rule_ids: [], source_refs: [] },
+      { code: "ANOTHER_FUTURE_CONDITION_CODE", rule_ids: [], source_refs: [] },
+    ];
+    const outcome = buildEngineOutcome(response);
+    expect(outcome.conditions).toEqual([
+      {
+        code: "ANOTHER_FUTURE_CONDITION_CODE",
+        message: GENERIC_NOTICE_CONDITION,
+        sourceIds: [],
+      },
+      {
+        code: "ANOTHER_FUTURE_CONDITION_CODE",
+        message: GENERIC_NOTICE_CONDITION,
+        sourceIds: [],
+      },
+    ]);
+    // Once per code, not once per occurrence — the gap is in the copy
+    // table, not in this one decision.
+    expect(emitVisaOracleTelemetry).toHaveBeenCalledTimes(1);
+    expect(emitVisaOracleTelemetry).toHaveBeenCalledWith({
+      event: "visa_oracle_v2_notice_unmapped_code",
+      code: "ANOTHER_FUTURE_CONDITION_CODE",
+    });
   });
 });
