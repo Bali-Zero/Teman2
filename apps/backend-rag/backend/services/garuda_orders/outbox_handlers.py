@@ -698,10 +698,12 @@ class LateRefundConfirmationEmailHandler:
 
     NOT A COPY OF `RefundEmailHandler`, and the difference is the guard.
     `RefundEmailHandler` keys on `state == 'refunded'`. `resolve_late_order`
-    sets `late_case_open = FALSE` and `late_case_resolution` and leaves `state`
-    UNCHANGED, so the order behind this job may be `refunded`, `failed` or
-    `expired` — a state guard would be reading a column this transition never
-    writes.
+    sets `late_case_open = FALSE` and `late_case_resolution`, and writes `state`
+    ONLY on the `refunded_in_full` branch of an order still in
+    `awaiting_payment` (the OP-F08 case) — so the order behind this job may be
+    `refunded`, `failed` or `expired`, and on the `honoured` branch the state is
+    whatever the case was opened on. A state guard would still be reading a
+    column that does not identify this transition.
 
     WHAT THIS MAIL MAY AND MAY NOT SAY. Three transitions open a late-payment
     case, and they are not the same story: OP-08 (a real duplicate charge on an
@@ -1810,9 +1812,13 @@ class StaffPageDuplicateChargeHandler(_StaffPageHandler):
             "paid. Refund the charge named above.\n\n"
             "DO NOT close this one with resolveLateOrder's refund resolution. "
             "It refunds the order's `late_case_charge_id`, and OP-08 never "
-            "writes that column — it is either empty or still holds an "
-            "already-refunded charge from an earlier case. Refunding through it "
-            "would target the wrong money.\n\n"
+            "writes that column — it is either empty or holds a charge from an "
+            "EARLIER case on this order. That used to mean an already-refunded "
+            "charge; since OP-F08 it can also be the customer's LIVE payment, "
+            "the one that bought the service, because a case opened while the "
+            "order was still awaiting payment can be closed as honoured by the "
+            "webhook that finally arrives. Refunding through it would target "
+            "the wrong money, and now possibly the RIGHT money.\n\n"
             f"Order: {self._tracker_link(facts.order_id)}"
         )
 

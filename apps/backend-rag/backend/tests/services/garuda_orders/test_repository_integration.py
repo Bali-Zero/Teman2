@@ -1187,9 +1187,22 @@ async def test_op_f08_does_not_reopen_a_case_staff_already_resolved(pool, reposi
     )
     assert late_open_after is False
     assert resolution_col == "honoured"
+    # GUILT for the `refunded_in_full` guard, and it belongs HERE rather than in
+    # the refund test: this is the only place that resolves an OP-F08 case as
+    # `honoured`, so it is the only place where writing `refunded`
+    # unconditionally would be wrong. A gate session measured that without this
+    # line the whole suite stays green under exactly that mutation -- and the
+    # order would then sit in `refunded`, which the DB trigger makes terminal,
+    # with `refund_calls == []`: money never returned, order frozen as if it
+    # had been.
+    assert (
+        await pool.fetchval("SELECT state FROM garuda_orders WHERE order_id = $1", order_id)
+        == "awaiting_payment"
+    )
 
-    # The order is STILL awaiting_payment (resolve_late_order never writes
-    # `state`) and the provider is STILL answering "there is a charge" --
+    # The order is STILL awaiting_payment (resolve_late_order writes `state`
+    # only on the `refunded_in_full` branch) and the provider is STILL
+    # answering "there is a charge" --
     # exactly the shape that would retrigger the tick forever without the
     # resolution predicate. This must raise no exception.
     summary = await reconcile_expired_checkouts(pool, repository, limit=10)

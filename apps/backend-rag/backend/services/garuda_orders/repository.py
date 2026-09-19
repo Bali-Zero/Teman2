@@ -1082,8 +1082,23 @@ class GarudaOrderRepository:
                             aggregate_type="order",
                             aggregate_id=order_id,
                             transition_id="OP-05",
-                            customer_visible=True,
-                            detail={"staff_reference": staff_reference},
+                            # NOT customer-visible, and the detail carries no
+                            # staff free text. `staff_reference` is a string a
+                            # human types into `resolveLateOrder` and the router
+                            # validates only that it IS a string
+                            # (`garuda_orders_router.py`): no length, no
+                            # charset, and a gate probe showed what staff
+                            # actually write there — a ticket id followed by a
+                            # customer name and phone number. Copying that into
+                            # a journal row flagged "may be shown to the
+                            # customer" would have made this the first
+                            # customer-visible event in the file whose detail is
+                            # free text; it stays on the order row, where the
+                            # existing writer already put it. The customer's own
+                            # notice of this resolution is `order.late_resolved`
+                            # and already exists.
+                            customer_visible=False,
+                            detail={"resolution": resolution},
                         )
 
             response_body = {

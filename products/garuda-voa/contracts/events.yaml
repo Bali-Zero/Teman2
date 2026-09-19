@@ -291,6 +291,11 @@ $defs:
       product's state machine; the event name is separate from
       `payment.refunded_out_of_order` because nothing arrived out of order — staff called
       the provider, and the record should say so.
+      NOT customer-visible, deliberately: `order.late_resolved` is the customer's notice
+      of this resolution and already carries it. This row records the STATE move, and its
+      detail carries the resolution enum only — never `staff_reference`, which is free
+      text a human types into `resolveLateOrder` and which the router validates only as a
+      string.
     allOf:
       - $ref: "#/$defs/EventEnvelope"
       - type: object
@@ -298,7 +303,7 @@ $defs:
           event_name: { const: payment.refunded_after_late_case }
           aggregate_type: { const: order }
           transition_id: { const: OP-05 }
-          customer_visible: { const: true }
+          customer_visible: { const: false }
     unevaluatedProperties: false
 
   LateOrderResolved:
