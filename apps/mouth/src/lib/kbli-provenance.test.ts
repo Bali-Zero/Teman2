@@ -409,7 +409,7 @@ describe("deriveProvenance — PMA traceability on the real dataset", () => {
   // (Perpres 49/2021 Lampiran II allocation), 54→57 / 1505→1502.
   // W-H PR-3b: 8 more codes (47241 47242 47244 47245 47246 47249 47712
   // 47722) move declared_gap→located, 57→65 / 1502→1494.
-  it("pins the canonical honesty partition: 131 located, 1,428 gaps", () => {
+  it("pins the canonical honesty partition: 460 located, 1,099 gaps", () => {
     const located = parsed.data.filter(
       (r) => deriveProvenance(r).pma.status === "located",
     );
@@ -425,8 +425,21 @@ describe("deriveProvenance — PMA traceability on the real dataset", () => {
     // Pasal 2(2)(b), 2 UU 25/2007 Pasal 12(2) items, 54 government activities
     // under Pasal 2(1)(b)/2(3), 99000 under Pasal 2(1a)) relabelled
     // declared_gap→located, TERTUTUP/0 unchanged: 1487→1428 / 72→131.
-    expect(located).toHaveLength(131);
-    expect(gaps).toHaveLength(1428);
+    // 2026-09-18 naso PR-4 (residual lot 1): 329 codes the Perpres partition
+    // leaves RESIDUAL (no Lampiran I/II/III row, no body article, no Pasal
+    // 11(2) carve-out, Usaha Besar row observed, Bali OK_or_HIGHER_RISK, no
+    // legacy PMA prose) relabelled declared_gap→located under Pasal 3(1)(d) +
+    // 3(2). The rule reaches 507; 178 are WITHHELD because absence is evidence
+    // of openness only where the Perpres owns the ownership question — 61
+    // finance/banking codes Pasal 11(2) hands to their own legislation, 67 in
+    // sectors (09 35 49-53 61) whose statute this lane never read, 29 with an
+    // adjudicated 4-digit sibling, 19 categories the body states in prose
+    // (alcohol, tobacco, explosives and weapons repair, CITES breeding,
+    // penjaminan), and 2 whose 2025 judul IS the activity a Lampiran III row
+    // caps under a different number.
+    // TERBUKA/100 unchanged: 1428→1099 gaps / 131→460 located.
+    expect(located).toHaveLength(460);
+    expect(gaps).toHaveLength(1099);
     for (const r of located) {
       const prov = deriveProvenance(r).pma;
       expect(prov.locator, `code ${r.kode_kbli_2025}`).toBeTruthy();

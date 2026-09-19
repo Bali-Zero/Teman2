@@ -1,0 +1,297 @@
+brief_ref: evidence/brief.yml # the literal staging contract — CI lints a staged copy
+plan_ref: >-
+  research/kbli/2026-09-18-kbli-codes-closed-to-pma-tier1-tier2-dossier.md §8.5 — the residual
+  Pasal 3(1)(d) lane, authorized by Zero to ship "in lotti con un gate". Lot 1 of that lane.
+  Supersedes PR #6783, which the on-disk gate BLOCKED and which is closed unmerged and unarmed.
+lanes:
+  - lane: residual-open-lot1
+    role: build
+    seat: >-
+      claude-opus-5 (conducting session on M5 — authored the lot spec, the compiler's
+      annex-title-collision probe and its sector_law_closures refusal, the coupling test, and
+      this pack; also the author of the error recorded in dissent[1])
+  - lane: residual-open-suites
+    role: review
+    seat: >-
+      claude-sonnet-5 (subagents, dispatched to run the mouth/filiera/backend suites and to sweep
+      the census pins on an isolated tree — the stale 330-lot pins in test_kbli_eye.py and
+      test_kbli_editorial_certification.py were found by that sweep, not by the build lane)
+seat_diversity: not_applicable
+seat_diversity_note: >-
+  One build lane, so rule 8's seat-diversity floor does not bind; declared rather than left to
+  read as satisfied. The substantive reason it would add nothing here: every load-bearing question
+  in this lot is settled by a probe against the Perpres artifacts in-tree or by a linter's exit
+  code, not by an opinion. The one question that WAS a judgement — does Lampiran III entry #7's
+  cap on military aircraft reach spacecraft — is already adjudicated by hand in the tree and is
+  now coupled to the lot by a test; a second seat's paraphrase of the same annex row is not a
+  second measurement.
+seat_override: >-
+  TWO rules read this field, so it answers both.
+  (1) R8 asks for a {role: ground_truth, seat, nb, query_hash} lane because this diff touches the
+  KBLI dataset. There is no retrieval lane to declare, and inventing an `nb`/`query_hash` to
+  satisfy the shape would be exactly the defect the rule exists to catch. The ground truth here is
+  PRIMARY and IN-TREE: Perpres 10/2021's own annex artifacts and the BPS 2020->2025 crosswalk, read
+  by `perpres_body_default_relation.py` and `perpres_slice_disclosure_relation.py`, whose
+  `--check-artifact` probes are receipts in this pack. A retrieval seat would insert a paraphrase
+  between the instrument and the claim, not a check.
+  (2) The council_run rule asks for a journal with >=2 non-Anthropic review seats marked ok:true.
+  Every seat on that list is unreachable from this machine — this session's injected arsenal probe
+  (6h old, not re-run here) reports codex-spark MODEL_ERR, kimi TIMEOUT, agy TIMEOUT, ollama
+  NOT_INSTALLED and all six tp1-* seats CRED_UNAVAILABLE — so the honest options are to declare the
+  absence or to write a
+  journal for reviews that never happened. This declares the absence. What stands in its place is
+  NOT nothing and is named so the gate can weigh it: an earlier round of this same work WAS graded
+  by a fresh out-of-chain on-disk gate, which BLOCKED it, and that blocker is dissent[0] of this
+  pack, answered on the instrument. The replacement for a missing council is the on-disk gate this
+  PR requests at open — never this session's own sign-off.
+diff:
+  net_lines: "28 files, +7101/-1363 — 14 hand-written (the compiler, its lot spec, its 63-test suite, 9 consumer suites, this brief and this pack), 13 generated (3 tracked canonical copies, llms-kbli.txt, the version pin, 8 batch artifacts), 1 recomputed coupling census"
+  behaviour_change: >-
+    No code path changes. 329 canonical records move `pma_verification_status` declared_gap ->
+    located and gain `pma_official_basis` / `pma_source_vintage` / `pma_cap_verified`; no
+    `pma_status` and no `pma_max_asing` value changes anywhere. The observable effect is the 15/8
+    fail-closed disclosure gate: a located tuple is published, so 329 rows of
+    `apps/mouth/public/llms-kbli.txt` stop reading `NOT_VERIFIED | Not verified` and start reading
+    `TERBUKA | 100%`. Two reached codes (50143, 58120) are deliberately NOT published and their
+    lines do not move.
+receipts:
+  - claim: >-
+      The deterministic gear floor for THIS diff is 3, and it comes from the SIZE term, not from a
+      hot-zone path — so the declared gear 3 matches the floor rather than over-declaring
+    cmd: >-
+      git diff --name-only origin/main HEAD > changed.txt && git diff --numstat origin/main HEAD >
+      numstat.txt && python3 scripts/evidence_pack_lint.py --print-floor --numstat-file numstat.txt
+      --changed-files-file changed.txt (and --print-floor-source)
+    result: "3 · floor source: size"
+    exit: 0
+    ts: 2026-09-19T04:09Z
+    seat: session (M5)
+  - claim: >-
+      THE CENTRAL RECEIPT — the compiler re-run on the canonical it already wrote is a clean no-op,
+      so the basis is a function of the instrument and not of run order
+    cmd: python3 scripts/kbli_filiera/apply_residual_open.py
+    result: >-
+      "lot 1 · spec items 329 · applicable 0 · already applied 329 · refused 0" with "withheld from
+      the reach: 178 code(s)" and "annex title collision: 2 of the reach — 50143, 58120". Nothing
+      written; `git status --porcelain` empty after the run.
+    exit: 0
+    ts: 2026-09-19T04:12Z
+    seat: session (M5)
+  - claim: >-
+      The canonical partition moved by exactly the lot and by nothing else — re-derived from the
+      file on disk, not read off a pin
+    cmd: >-
+      python3 -c 'count pma_verification_status over data/source_documents/KBLI_2025_FINAL_CLEAN.json'
+      — run as a heredoc: json.load the canonical, Counter() every record's pma_verification_status
+    result: "records 1559 · {'declared_gap': 1099, 'located': 460}. 131 + 329 = 460; 1428 - 329 = 1099."
+    exit: 0
+    ts: 2026-09-19T04:13Z
+    seat: session (M5)
+  - claim: >-
+      The client-facing delta against origin/main is 329 rows and every one has the same shape —
+      this is what the lot DOES, and the PR body says so rather than claiming the lot is invisible
+    cmd: git diff --stat origin/main -- apps/mouth/public/llms-kbli.txt
+    result: >-
+      "1 file changed, 329 insertions(+), 329 deletions(-)". Sampled line — "-30303 | Industri
+      Wahana Antariksa dan Mesin Terkait | NOT_VERIFIED | Not verified | Menengah Tinggi" becomes
+      "+30303 | ... | TERBUKA | 100% | Menengah Tinggi".
+    exit: 0
+    ts: 2026-09-19T04:13Z
+    seat: session (M5)
+  - claim: >-
+      The withholding is observable in the published file as an ABSENCE — a guard whose bite
+      nobody can see rots into a no-op (superscar #2), so the absence is measured, not asserted
+    cmd: >-
+      git diff origin/main -- apps/mouth/public/llms-kbli.txt | grep -cE '^[+-](58120|50143) ' — run
+      unpiped against a file instead, because a pipeline reports the LAST stage's status and the
+      thing under test here is the count
+    result: >-
+      count 0 — neither withheld line moves, while the run report names both by code. grep's own
+      exit is 1, which is what "zero matches" MEANS: the 1 below is the pass, not a failure, and
+      recording it as 0 would be the quieter lie.
+    exit: 1
+    ts: 2026-09-19T04:13Z
+    seat: session (M5)
+  - claim: >-
+      Against the BLOCKED predecessor #6783 the published delta is ONE line — that PR shipped 330,
+      this one ships 329, and the difference is 58120 returning to NOT_VERIFIED
+    cmd: git diff --stat c2cfb17ae6 HEAD -- apps/mouth/public/llms-kbli.txt
+    result: "1 file changed, 1 insertion(+), 1 deletion(-)"
+    exit: 0
+    ts: 2026-09-18T20:20Z
+    seat: session (M5)
+  - claim: >-
+      #6783 is CLOSED, unmerged and carries no auto-merge request, so superseding it with this
+      branch breaks no arming freeze
+    cmd: gh pr view 6783 --json number,state,mergedAt,autoMergeRequest,headRefName
+    result: '{"autoMergeRequest":null,"mergedAt":null,"number":6783,"state":"CLOSED"}'
+    exit: 0
+    ts: 2026-09-18T20:40Z
+    seat: session (M5)
+  - claim: >-
+      The 30303 adjudication is COUPLED to the lot — deleting or rewording ADJACENT_NOT_CONTAINED
+      goes red here instead of leaving the lot silently resting on nothing (the cure for the
+      dissent[0] finding)
+    cmd: python3 -m pytest scripts/kbli_filiera/tests/test_apply_residual_open.py -k spacecraft
+    result: "1 passed, 62 deselected in 0.11s"
+    exit: 0
+    ts: 2026-09-19T04:21Z
+    seat: session (M5)
+  - claim: >-
+      The instrument-reached-sibling class is declared and its three cap-linked ancestries are
+      asserted BY VALUE, so the 0-for-3 measurement cannot rot into a comment (the cure for the
+      dissent[1] fabrication)
+    cmd: python3 -m pytest scripts/kbli_filiera/tests/test_apply_residual_open.py -k sibling_class
+    result: "1 passed, 62 deselected in 0.25s"
+    exit: 0
+    ts: 2026-09-19T04:21Z
+    seat: session (M5)
+  - claim: >-
+      All three suites are green on the final tree — including the two backend census files that
+      were RED before the re-pin (`assert 329 == 330`, `assert 332 == 333`)
+    cmd: >-
+      python3 -m pytest scripts/kbli_filiera/tests ; (cd apps/mouth && npx vitest run && npx tsc
+      --noEmit) ; (cd apps/backend-rag && ./.venv/bin/python -m pytest
+      backend/tests/unit/services/test_kbli_eye.py
+      backend/tests/unit/services/test_kbli_editorial_certification.py)
+    result: >-
+      filiera "1622 passed, 1 skipped in 238.26s" rc=0 · mouth "Test Files 519 passed (519) · Tests
+      6481 passed (6481)" rc=0 with tsc rc=0 · backend "32 passed in 0.95s" rc=0. Run as three
+      separate commands with their own $?, not as the one-line sequence above, because `;` reports
+      only the last stage. The backend venv is invoked as ./.venv/bin/python and WITHOUT an extra
+      -q: pytest.ini already lowers verbosity, and a second -q makes the run print no tally at all
+      — a log that cannot be read as evidence that anything ran.
+    exit: 0
+    ts: 2026-09-18T20:24Z
+    seat: session (M5)
+  - claim: >-
+      The coverage ratchet lost no honest coverage and the PMA axis reads the new partition —
+      this is the probe that would catch a lot that bought coverage with a bare fact
+    cmd: python3 scripts/kbli_filiera/kbli_coverage_scoreboard.py --check
+    result: >-
+      "pma honest 1559/1559 (100.0%) locator-bearing: 460 · declared_unverified 1099 · located 460"
+      then "ratchet OK — no axis lost honest coverage, no new bare facts"
+    exit: 0
+    ts: 2026-09-19T04:11Z
+    seat: session (M5)
+  - claim: >-
+      The four relation artifacts the lot rests on are fresh against the instrument on THIS tree —
+      exit codes captured unpiped, because a pipe reports the tail's status and not the probe's
+    cmd: >-
+      perpres_body_default_relation.py --check-artifact ; perpres_slice_disclosure_relation.py
+      --check-artifact ; perpres_foreign_cap_relation.py --strict ;
+      editorial_record_conformance.py — each run separately with its own $?
+    result: >-
+      "perpres-locators.json matches the instrument (1559 codes)" rc=0 · "artifact fresh: 12 codes
+      disclosed" rc=0 · "STRICT: every DISAGREE/AMBIGUOUS row is adjudicated, NO_DESCENDANT is
+      empty — PASS" rc=0 · "stale copies of a field we own: 0 codes · bodies that need an author:
+      0 codes" rc=0
+    exit: 0
+    ts: 2026-09-19T04:11Z
+    seat: session (M5)
+  - claim: >-
+      The full backend suite's 547 errors and 26 of its 28 failures are environmental on this
+      machine and not caused by this diff — bucketed by cause string rather than waved away
+    cmd: >-
+      strip ANSI from the backend log, then bucket every `^ERROR ` and `FAILED` line by the text
+      after " - "
+    result: >-
+      "547 of 547 errors and 24 failures: OSError Multiple exceptions [Errno 61] Connect call
+      failed ('::1', 5432) — no local Postgres. 1 failure: EventBus did not open a PostgreSQL
+      listener (same cause). 1 failure: google-genai drift, this environment has 2.7.0. 2
+      failures: this diff's own stale census pins, fixed in this PR and now green."
+    exit: 0
+    ts: 2026-09-18T20:00Z
+    seat: session (M5)
+  - claim: >-
+      The scripts-coupling census was STALE for the new compiler and is refreshed in this same PR,
+      so no later PR re-buys all six heavy suites
+    cmd: python3 scripts/ci/scripts_coupling_census.py --write
+    result: >-
+      "wrote 152 paths to scripts/ci/change_map.py" — three additions
+      (kbli_filiera/apply_residual_open.py, kbli_filiera/cure_l4bali_hold_review.py,
+      kbli_filiera/tests/test_pma_zero_cap_basis.py), zero removals; the rest of the diff is
+      re-wrapping
+    exit: 0
+    ts: 2026-09-18T20:45Z
+    seat: session (M5)
+  - claim: >-
+      origin/main advanced by one commit while this branch was being prepared, and the advance
+      does not touch a single file of this lot — so the rebase is clean and the measurements above
+      are re-derived from the rebased tree, not carried over
+    cmd: >-
+      git ls-remote origin refs/heads/main ; git rebase 9f863cd745 ; comm -12 <(files of
+      9f863cd745) <(files of this branch)
+    result: >-
+      remote main = 9f863cd745 "fix(scripts): PR2g — launcher hardening (#6790)", which touches
+      scripts/dynamic_workflow.py and scripts/tests/test_dynamic_workflow.py only; overlap with
+      this branch EMPTY; rebase of 10 commits applied with no conflict; the coupling census
+      re-run after the rebase rewrote change_map.py byte-identically
+    exit: 0
+    ts: 2026-09-19T04:08Z
+    seat: session (M5)
+pii_scan: clean
+pii_scan_note: >-
+  Nothing in this diff, brief or pack transcribes client data. The canonical is a public
+  classification catalogue: KBLI codes, Indonesian activity titles, ownership caps and the annex
+  rows that set them. The receipts quote counts, exit codes, code numbers and instrument citations
+  only. No client_id, no OSINT, no credential — and no environment variable value is printed
+  anywhere in this lot's scripts.
+dissent:
+  - seat: on-disk gate session on PR #6783 (fresh, outside the contribution chain)
+    objection: >-
+      HIGH — 30303 "Industri Wahana Antariksa dan Mesin Terkait" descends from KBLI-2020 30300,
+      which Lampiran III entry #7 caps at 49%, and the lot ships it at 100% on the strength of the
+      instrument not naming the 2025 number. If the instrument reaches the ancestor, absence at
+      the descendant is not evidence of openness.
+    status: RETRACTED
+    resolution: >-
+      Re-read and answered in the NEGATIVE, which is why it is RETRACTED rather than fixed. The
+      licence is not absence: it is an explicit hand adjudication already in the tree,
+      `perpres_slice_disclosure_relation.ADJACENT_NOT_CONTAINED["30303"]` = "spacecraft; the annex
+      restricts military aircraft", against entry #7's own text "Industri pesawat terbang militer"
+      — the same reading that licenses 51103 (space transport is not air transport) and
+      60103/60203 (on-demand streaming is not penyiaran). The class the question was found inside
+      is now declared and measured: 135 shipped codes have an instrument-reached 4-digit sibling,
+      3 of those siblings carry a CAP, and 0 are true positives. A test now couples the lot to the
+      adjudication, so deleting or rewording it goes red here before the lot silently rests on
+      nothing.
+  - seat: session (self-refutation mid-build)
+    objection: >-
+      The build lane excluded 30303 by hand on a mechanism it had NOT measured — "the crosswalk
+      handed the Lampiran III entry #7 cap to 30301/30302 and dropped it at 30303" — and committed
+      that exclusion before verifying it. The mechanism is false: all three siblings share the
+      same 2020 ancestor 30300 with identical `bps_2020_ancestors` (same locator, same parser
+      digest). Re-measuring the other two cap-linked siblings with real ancestry instead of a
+      4-digit prefix showed 10762's ancestor is 10763 and 30112's is itself — so the class is
+      0-for-3, not 1-of-3, and the "fix" was a fabricated cause dressed as caution.
+    status: CONFIRMED
+    resolution: >-
+      Stated to the owner plainly, the two commits reset (unpushed), 30303 put back in the lot,
+      and the finding converted into a pinned NEGATIVE result plus a test — the spec's
+      `deferred.instrument_reached_sibling` now carries the measurement and the citation, and
+      `test_the_sibling_class_is_declared_and_measured_empty` asserts the three ancestries by
+      value. The scar is #6 (anti-hallucination blindness): a plausible mechanism was built on
+      before a single `ls`/`cat` was run against it.
+  - seat: session (declared limit, unresolved)
+    objection: >-
+      UU 21/2013 Keantariksaan is unread, and it is the statute that would actually settle 30303's
+      ownership regime. The lot ships the code anyway.
+    status: PLAUSIBLE
+    resolution: >-
+      Left standing and labelled rather than quietly cured. The boundary this lot declares for the
+      `unswept_sector_statute` leg is divisions 09 35 49 50 51 52 53 61, and 30 is not in it;
+      withholding one code alone on a statute nobody read would be an unprincipled exception to a
+      boundary the spec states in writing. Named in the spec, left to its own lane.
+  - seat: session (declared limit)
+    objection: >-
+      The claim that the backend suite's 547 errors are environmental rests on bucketing their
+      cause strings, NOT on a clean-`origin/main` baseline run. A baseline was requested and never
+      reported back.
+    status: PLAUSIBLE
+    resolution: >-
+      Left standing and labelled. The bucketing is strong — 547 of 547 errors carry the identical
+      "Connect call failed ('::1', 5432)" string and no local Postgres is running — but it is an
+      inference from the message, not a differential measurement, and it is recorded as such
+      rather than upgraded. It does not touch this diff: the only two failures this PR owned were
+      named, fixed and re-run green.

@@ -120,8 +120,21 @@ describe("PMA editorial disclosure boundary", () => {
     // under Pasal 2(1)(b)/2(3), 99000 under Pasal 2(1a)) relabelled
     // declared_gap→located, TERTUTUP/0 unchanged: 1487→1428 / 72→131. None of the 59 is
     // registered in canonicalIntel, so the certified-intel count stays 36.
-    expect(located).toHaveLength(131);
-    expect(gaps).toHaveLength(1428);
+    // 2026-09-18 naso PR-4 (residual lot 1): 329 codes the Perpres partition
+    // leaves RESIDUAL (no Lampiran I/II/III row, no body article, no Pasal
+    // 11(2) carve-out, Usaha Besar row observed, Bali OK_or_HIGHER_RISK, no
+    // legacy PMA prose) relabelled declared_gap→located under Pasal 3(1)(d) +
+    // 3(2). The rule reaches 507; 178 are WITHHELD because absence is evidence
+    // of openness only where the Perpres owns the ownership question — 61
+    // finance/banking codes Pasal 11(2) hands to their own legislation, 67 in
+    // sectors (09 35 49-53 61) whose statute this lane never read, 29 with an
+    // adjudicated 4-digit sibling, 19 categories the body states in prose
+    // (alcohol, tobacco, explosives and weapons repair, CITES breeding,
+    // penjaminan), and 2 whose 2025 judul IS the activity a Lampiran III row
+    // caps under a different number.
+    // TERBUKA/100 unchanged: 1428→1099 gaps / 131→460 located.
+    expect(located).toHaveLength(460);
+    expect(gaps).toHaveLength(1099);
     expect(located.filter((record) => record.intel_2026)).toHaveLength(36);
 
     for (const record of gaps) {

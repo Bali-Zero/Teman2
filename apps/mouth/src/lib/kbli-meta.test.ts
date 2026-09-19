@@ -510,7 +510,15 @@ describe("real dataset: the gate binds, and v3 actually differentiates", () => {
     // 1469 - 59 = 1410 on 2026-09-18 (naso PR-3): the 59 statutory closures
     // (TERTUTUP/0, l4 TERTUTUP but undisclosed while unlocated) leave
     // declared_gap for located; all were plain neutral codes in this count.
-    expect(pmaGaps).toBe(1410);
+    // 1410 - 329 = 1081 on 2026-09-19 (naso PR-4, residual lot 1): the codes
+    // the Perpres partition leaves RESIDUAL leave declared_gap for located
+    // under Pasal 3(1)(d) + 3(2); all are OK_or_HIGHER_RISK in Bali and were
+    // plain neutral codes in this count. The rule reaches 507; 178 are
+    // withheld — 61 under Pasal 11(2) (finance/banking), 67 in sectors whose
+    // own statute this lane never read, 29 with an adjudicated 4-digit
+    // sibling, 19 body-stated categories, and 2 whose 2025 judul IS the
+    // activity a Lampiran III row caps under a different number.
+    expect(pmaGaps).toBe(1081);
     expect(suffixes).toHaveLength(1559);
   });
 
