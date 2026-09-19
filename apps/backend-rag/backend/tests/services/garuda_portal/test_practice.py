@@ -31,7 +31,11 @@ from backend.services.garuda_orders.models import Applicant
 from backend.services.garuda_orders.ports import ReviewedCheckSnapshot
 from backend.services.garuda_orders.repository import GarudaOrderRepository
 from backend.services.garuda_portal.practice import PracticeRepository
-from backend.services.payments.port import CheckoutSession, NormalizedPaidEvent
+from backend.services.payments.port import (
+    ChargeConfirmation,
+    CheckoutSession,
+    NormalizedPaidEvent,
+)
 
 _DSN = (
     os.environ.get("GARUDA_L3_TEST_DSN")
@@ -61,8 +65,10 @@ class _FakeProvider:
     def parse_event(self, *, raw_body, headers):
         raise NotImplementedError
 
-    async def confirm_no_successful_charge(self, *, provider_session_id: str) -> bool:
-        return True
+    async def confirm_no_successful_charge(
+        self, *, provider_session_id: str
+    ) -> ChargeConfirmation:
+        return ChargeConfirmation(confirmed_unpaid=True)
 
     async def refund(self, *, provider_charge_id: str, idempotency_key: str) -> str:
         raise NotImplementedError

@@ -1,4 +1,4 @@
-"""Tests for the five `staff_page_*` outbox handlers.
+"""Tests for the six `staff_page_*` outbox handlers.
 
 Companion to `test_outbox_handlers.py`. Same DSN/pool conventions, same
 `_seed_order`-style helpers, deliberately not shared across files because a
@@ -32,6 +32,7 @@ from backend.services.garuda_orders import journal
 from backend.services.garuda_orders.outbox_consumer import KILL_SWITCH_ENV, OutboxJob, drain_once
 from backend.services.garuda_orders.outbox_handlers import (
     BrevoEmailSender,
+    StaffPageChargeWithoutWebhookHandler,
     StaffPageDuplicateChargeHandler,
     StaffPageLatePaidAfterRefundHandler,
     StaffPageLatePaidAfterTerminalHandler,
@@ -412,6 +413,113 @@ async def test_late_paid_after_terminal_is_resolved_without_paging_once_closed(p
     assert rec.requests == []
 
 
+async def test_charge_without_webhook_pages_when_open_and_silent_when_closed_or_resolved(pool):
+    """OP-F08. `StaffPageChargeWithoutWebhookHandler` exists SEPARATELY from
+    `StaffPageLatePaidAfterTerminalHandler` specifically because that page's
+    copy says "this order was already failed/expired when a payment for it
+    succeeded" — false here, where the order is still `awaiting_payment` and
+    only the webhook never arrived (see the class docstring). This is the
+    guilt test for that: the composed text must never contain "failed" or
+    "expired". It also covers the same guard every other staff_page_* handler
+    has — silent once `late_case_open` is false, and silent when THIS case
+    was already resolved even if a later case reopened the flag.
+    """
+
+    # 1) late_case_open=True, untouched -> pages, and the copy is truthful.
+    order_open = await _seed_order(
+        pool, state="awaiting_payment", late_case_open=True, late_case_charge_id="ch_f08_open"
+    )
+    _row_open, event_open = await _enqueue_staff_page(
+        pool,
+        order_open,
+        job_type="staff_page_charge_without_webhook",
+        event_name="payment.charge_detected_without_webhook",
+        transition_id="OP-F08",
+        detail={"charge_id": "ch_f08_open", "provider_status": "SETTLED"},
+    )
+    rec = _TgRecorder()
+    sender, client = _tg_sender(rec)
+    try:
+        await StaffPageChargeWithoutWebhookHandler(pool, sender)(
+            _job(order_open, event_open, "staff_page_charge_without_webhook")
+        )
+    finally:
+        await client.aclose()
+    assert len(rec.requests) == 1
+    text = _last_text(rec)
+    assert "ch_f08_open" in text
+    assert "CHARGE FOUND WITH NO WEBHOOK" in text
+    assert "SETTLED" in text
+    lowered = text.lower()
+    assert "failed" not in lowered
+    assert "expired" not in lowered
+
+    # 2) late_case_open=False -> resolved without paging (never opened, or
+    # already closed by the time this job drains).
+    order_closed = await _seed_order(pool, state="awaiting_payment", late_case_open=False)
+    _row_closed, event_closed = await _enqueue_staff_page(
+        pool,
+        order_closed,
+        job_type="staff_page_charge_without_webhook",
+        event_name="payment.charge_detected_without_webhook",
+        transition_id="OP-F08",
+        detail={"charge_id": "ch_f08_closed", "provider_status": "SETTLED"},
+    )
+    rec_closed = _TgRecorder()
+    sender_closed, client_closed = _tg_sender(rec_closed)
+    try:
+        await StaffPageChargeWithoutWebhookHandler(pool, sender_closed)(
+            _job(order_closed, event_closed, "staff_page_charge_without_webhook")
+        )
+    finally:
+        await client_closed.aclose()
+    assert rec_closed.requests == []
+
+    # 3) THIS case (A) was resolved, then a SECOND case (B) reopened the flag
+    # -- same scenario as test_a_page_is_withheld_once_ITS_OWN_case_was_resolved
+    # above, exercised here because this handler reads the same
+    # `case_resolved_since_trigger` guard and must honour it too.
+    order_resolved = await _seed_order(
+        pool, state="awaiting_payment", late_case_open=True, late_case_charge_id="ch_f08_case_a"
+    )
+    _row_a, event_a = await _enqueue_staff_page(
+        pool,
+        order_resolved,
+        job_type="staff_page_charge_without_webhook",
+        event_name="payment.charge_detected_without_webhook",
+        transition_id="OP-F08",
+        detail={"charge_id": "ch_f08_case_a", "provider_status": "SETTLED"},
+    )
+    async with pool.acquire() as conn, conn.transaction():
+        await journal.append_event(
+            conn,
+            event_name="order.late_resolved",
+            aggregate_type="order",
+            aggregate_id=order_resolved,
+            transition_id="OP-F05",
+            customer_visible=True,
+            detail={"resolution": "honoured"},
+        )
+        await conn.execute(
+            "UPDATE garuda_orders SET late_case_open = TRUE, late_case_charge_id = $2 "
+            "WHERE order_id = $1",
+            order_resolved,
+            "ch_f08_case_b",
+        )
+    rec_resolved = _TgRecorder()
+    sender_resolved, client_resolved = _tg_sender(rec_resolved)
+    try:
+        await StaffPageChargeWithoutWebhookHandler(pool, sender_resolved)(
+            _job(order_resolved, event_a, "staff_page_charge_without_webhook")
+        )
+    finally:
+        await client_resolved.aclose()
+    assert rec_resolved.requests == [], (
+        "case A's page went out after A was resolved -- and it would have "
+        f"carried case B's charge id: {_last_text(rec_resolved)!r}"
+    )
+
+
 async def test_payment_failure_always_pages(pool):
     order_id = await _seed_order(pool, state="failed", late_case_open=False)
     row_id, event_id = await _enqueue_staff_page(
@@ -647,7 +755,7 @@ def test_build_handlers_does_not_route_staff_pages_without_a_sender() -> None:
     assert "staff_page_duplicate_charge" not in handlers
 
 
-def test_build_handlers_routes_all_five_when_given_a_staff_page_sender() -> None:
+def test_build_handlers_routes_all_six_when_given_a_staff_page_sender() -> None:
     rec = _TgRecorder()
     staff_sender, client = _tg_sender(rec)
     try:
@@ -684,7 +792,8 @@ def test_build_handlers_routes_all_five_when_given_a_staff_page_sender() -> None
         "practice_rejected_email",
         "practice_resumed_email",
         "practice_delivered_email",
-        # five, routed only because a staff_page_sender was passed
+        # six, routed only because a staff_page_sender was passed
+        "staff_page_charge_without_webhook",
         "staff_page_duplicate_charge",
         "staff_page_late_paid_after_refund",
         "staff_page_late_paid_after_terminal",
@@ -692,7 +801,7 @@ def test_build_handlers_routes_all_five_when_given_a_staff_page_sender() -> None
         "staff_page_refund_out_of_order",
     }
     assert set(handlers) == expected
-    assert len(expected) == 21
+    assert len(expected) == 22
 
     # The type that made the count wrong three times, pinned by name. It is
     # computed at repository.py:799-805 — `"practice_release" if resolution ==

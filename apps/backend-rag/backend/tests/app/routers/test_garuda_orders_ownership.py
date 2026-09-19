@@ -51,6 +51,13 @@ from backend.services.garuda_orders.ports import ReviewedCheckSnapshot
 from backend.services.garuda_orders.repository import GarudaOrderRepository
 from backend.services.garuda_portal.magic_link_store import PostgresMagicLinkStore
 
+# Module level, NOT inside `create_checkout_session` where these two names used
+# to be imported: `_FakeProvider.confirm_no_successful_charge` CONSTRUCTS a
+# `ChargeConfirmation` at runtime, and a name bound inside a sibling method is
+# not in scope there — the fake raised `NameError` the first time
+# reconciliation touched it (Codex `gpt-5.6-sol`, cross-family review).
+from backend.services.payments.port import ChargeConfirmation, CheckoutSession
+
 _DSN = (
     os.environ.get("GARUDA_L3_TEST_DSN")
     or os.environ.get("INTAKE_TEST_DSN")
@@ -74,8 +81,6 @@ class _FakeLookup:
 
 class _FakeProvider:
     async def create_checkout_session(self, *, order_id, price_idr, idempotency_key):
-        from backend.services.payments.port import CheckoutSession
-
         return CheckoutSession(
             provider_session_id=f"sess-{order_id}",
             checkout_url="https://sandbox.xendit.co/checkout/fake",
@@ -88,8 +93,8 @@ class _FakeProvider:
     def parse_event(self, *, raw_body, headers):
         raise NotImplementedError
 
-    async def confirm_no_successful_charge(self, *, provider_session_id: str) -> bool:
-        return True
+    async def confirm_no_successful_charge(self, *, provider_session_id: str) -> ChargeConfirmation:
+        return ChargeConfirmation(confirmed_unpaid=True)
 
     async def refund(self, *, provider_charge_id: str, idempotency_key: str) -> str:
         return "refund-fake-1"

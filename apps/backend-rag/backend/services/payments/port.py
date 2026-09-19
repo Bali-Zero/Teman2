@@ -50,6 +50,27 @@ class NormalizedRefundEvent:
     provider_session_id: str
 
 
+@dataclass(frozen=True, slots=True)
+class ChargeConfirmation:
+    """What OP-04 reconciliation learned from the PROVIDER about one session.
+
+    `confirmed_unpaid` is deliberately not the negation of "paid": it is true
+    only when the provider names a status this adapter positively recognises
+    as carrying no accepted charge. A status the adapter does not recognise
+    yields `False` — OP-04 then declines to expire the order, because an
+    unknown status is not evidence of absence and expiring a paid order is
+    the one outcome that costs the customer money.
+
+    `provider_charge_id` matters for the same reason it does on the OP-F05
+    webhook path: `resolveLateOrder` has nothing to refund without it, so a
+    late case opened from reconciliation must carry it too.
+    """
+
+    confirmed_unpaid: bool
+    provider_charge_id: str | None = None
+    provider_status: str | None = None
+
+
 class WebhookSignatureInvalid(Exception):
     """Raised by `verify_signature` — maps to OP-F02 (reject before inbox)."""
 
@@ -108,11 +129,18 @@ class PaymentProvider(Protocol):
         `WebhookUnparseable` for a signed body this adapter cannot map."""
         ...
 
-    async def confirm_no_successful_charge(self, *, provider_session_id: str) -> bool:
-        """OP-04 reconciliation: true only when the provider itself confirms
-        no accepted charge exists for this session. Never inferred from our
-        own clock alone — STATE-MACHINE.md OP-04 requires "reconciliation
-        confirms no accepted payment", not just "time passed"."""
+    async def confirm_no_successful_charge(self, *, provider_session_id: str) -> ChargeConfirmation:
+        """OP-04 reconciliation: `confirmed_unpaid` is true only when the
+        provider itself confirms no accepted charge exists for this session.
+        Never inferred from our own clock alone — STATE-MACHINE.md OP-04
+        requires "reconciliation confirms no accepted payment", not just
+        "time passed".
+
+        An implementation MUST answer from a positive allow-list of statuses
+        it recognises as unpaid, never from `status != "PAID"`: the provider
+        owns that vocabulary and can extend it, and the failure mode of the
+        negated form is to expire an order the customer really paid.
+        """
         ...
 
     async def refund(self, *, provider_charge_id: str, idempotency_key: str) -> str:
@@ -123,6 +151,7 @@ class PaymentProvider(Protocol):
 
 
 __all__ = [
+    "ChargeConfirmation",
     "CheckoutSession",
     "NormalizedFailureEvent",
     "NormalizedPaidEvent",

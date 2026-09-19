@@ -4,9 +4,31 @@ STATE-MACHINE.md OP-04 requires "reconciliation confirms no accepted
 payment", not "our clock says the checkout window passed". This job finds
 orders whose checkout window has elapsed and are still `awaiting_payment`,
 asks the PROVIDER (never our own clock alone) to confirm no charge landed,
-and only then commits OP-04. An order the provider says WAS paid is left
-alone — the webhook either already reconciled it (rare race) or will
-shortly; forcing it here would race a real payment.
+and only then commits OP-04. An order the provider says WAS paid keeps its
+state — forcing `paid` here would race a real payment, and OP-F01 forbids
+any non-webhook writer from making that transition anyway.
+
+CORRECTED 2026-09-19. This paragraph used to end "the webhook either
+already reconciled it (rare race) or will shortly", and on that premise the
+paid branch did nothing but log. The premise is false, measured in
+production: an order paid on 2026-09-16 was still `awaiting_payment` on
+2026-09-19 with `garuda_payment_inbox` empty — no webhook had EVER arrived,
+because a callback URL that is not registered with the provider looks
+exactly like a customer who never paid. "Will shortly" has no deadline and
+nothing was watching it, so the wait was unbounded and silent. The paid
+branch now opens a late case and pages (OP-F08, `repository.py::
+_open_late_case_from_reconciliation`); it still does not touch `state`.
+
+An order whose late case is OPEN, or that staff have already RESOLVED, is
+no longer a candidate: it keeps `awaiting_payment` by design (OP-F01), its
+checkout window stays elapsed forever, and without this filter every tick
+would re-ask the provider about it for the rest of its life — an unbounded
+stream of provider calls, and with `limit` rows ordered oldest-first,
+enough resolved orders would eventually crowd out real candidates. The
+same three predicates guard the WRITE in
+`repository.py::_open_late_case_from_reconciliation`; this one keeps the
+sweep from paying to rediscover what it already knows (Kimi `k3`,
+cross-family review).
 
 Intended cadence: a scheduled job, not a request-path call. Bounded by
 `limit` so a large backlog cannot make one run unbounded.
@@ -29,6 +51,7 @@ logger = logging.getLogger(__name__)
 class ReconciliationSummary:
     candidates: int
     expired: int
+    late_cases_opened: int
     left_for_webhook: int
 
 
@@ -50,6 +73,8 @@ async def reconcile_expired_checkouts(
                AND checkout_expires_at IS NOT NULL
                AND checkout_expires_at < $1
                AND provider_session_id IS NOT NULL
+               AND late_case_open = FALSE
+               AND late_case_resolution IS NULL
              ORDER BY checkout_expires_at
              LIMIT $2
             """,
@@ -58,10 +83,11 @@ async def reconcile_expired_checkouts(
         )
 
     expired = 0
+    late_cases_opened = 0
     left_for_webhook = 0
     for row in rows:
         try:
-            did_expire = await repository.expire_if_unpaid(
+            outcome = await repository.expire_if_unpaid(
                 order_id=row["order_id"], provider_session_id=row["provider_session_id"]
             )
         except Exception:
@@ -69,13 +95,18 @@ async def reconcile_expired_checkouts(
                 "garuda_orders reconciliation: failed to check order %s", row["order_id"]
             )
             continue
-        if did_expire:
+        if outcome.expired:
             expired += 1
+        elif outcome.late_case_opened:
+            late_cases_opened += 1
         else:
             left_for_webhook += 1
 
     return ReconciliationSummary(
-        candidates=len(rows), expired=expired, left_for_webhook=left_for_webhook
+        candidates=len(rows),
+        expired=expired,
+        late_cases_opened=late_cases_opened,
+        left_for_webhook=left_for_webhook,
     )
 
 

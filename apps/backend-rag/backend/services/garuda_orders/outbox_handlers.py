@@ -768,9 +768,7 @@ class LateRefundConfirmationEmailHandler:
             subject="Your Bali Zero Visa on Arrival — a payment has been returned",
             html_body=self._body(facts),
         )
-        logger.info(
-            "outbox late_refund_confirmation_email sent for order %s", facts.order_id
-        )
+        logger.info("outbox late_refund_confirmation_email sent for order %s", facts.order_id)
 
     async def _load(self, order_id: str, journal_event_id: str) -> LateRefundFacts | None:
         async with self._pool.acquire() as conn:
@@ -909,9 +907,7 @@ class PracticeReleaseHandler:
                 f"no garuda_practices row for journal event {job.journal_event_id}"
             )
 
-        result = await self._handoff.handle_practice_received(
-            self._envelope(job, practice_id)
-        )
+        result = await self._handoff.handle_practice_received(self._envelope(job, practice_id))
 
         if result.outcome is HandoffOutcome.ORDER_SNAPSHOT_MISSING:
             # The provider already logged WHY (missing order, or an eligibility
@@ -1084,9 +1080,7 @@ class PortalInviteHandler:
         client_id = int(row["client_id"])
         email = (row["email"] or "").strip()
         if not email:
-            raise PortalInviteUndeliverable(
-                f"clients row {client_id} has no email; cannot invite"
-            )
+            raise PortalInviteUndeliverable(f"clients row {client_id} has no email; cannot invite")
 
         member_id = await self._profiles.ensure_portal_profile(
             client_id=client_id,
@@ -1300,8 +1294,7 @@ class PracticeTransitionEmailHandler:
         facts = await self._load(job.order_id)
         if facts is None:
             raise EmailSendFailed(
-                f"order {job.order_id} (or its practice) not found for a queued "
-                f"{self._job_type}"
+                f"order {job.order_id} (or its practice) not found for a queued {self._job_type}"
             )
         await self._sender.send(to=facts.email, subject=self._subject, html_body=self._body(facts))
         # order id only — never the address, the name or the passport number.
@@ -1464,8 +1457,12 @@ class TelegramStaffPageSender:
         chat_id: str | None = None,
     ) -> None:
         self._client = client
-        self._bot_token = bot_token if bot_token is not None else os.getenv(TELEGRAM_BOT_TOKEN_ENV, "")
-        self._chat_id = chat_id if chat_id is not None else os.getenv(TELEGRAM_OWNER_CHAT_ID_ENV, "")
+        self._bot_token = (
+            bot_token if bot_token is not None else os.getenv(TELEGRAM_BOT_TOKEN_ENV, "")
+        )
+        self._chat_id = (
+            chat_id if chat_id is not None else os.getenv(TELEGRAM_OWNER_CHAT_ID_ENV, "")
+        )
 
     async def send(self, *, text: str) -> None:
         if not self._bot_token or not self._chat_id:
@@ -1714,8 +1711,8 @@ class _StaffPageHandler:
                     f"{self.job_type} page on order {order_id}"
                 )
             resolved_since = bool(
-                    await conn.fetchval(
-                        """
+                await conn.fetchval(
+                    """
                         SELECT EXISTS (
                             SELECT 1 FROM garuda_order_journal
                              WHERE aggregate_type = 'order'
@@ -1735,10 +1732,10 @@ class _StaffPageHandler:
                                AND occurred_at > $2
                         )
                         """,
-                        order_id,
-                        event_row["occurred_at"],
-                    )
+                    order_id,
+                    event_row["occurred_at"],
                 )
+            )
         raw_detail = event_row["detail"] if event_row is not None else None
         detail = json.loads(raw_detail) if isinstance(raw_detail, str) else (raw_detail or {})
         return OrderAnomalyFacts(
@@ -1927,6 +1924,71 @@ class StaffPageLatePaidAfterTerminalHandler(_StaffPageHandler):
         )
 
 
+class StaffPageChargeWithoutWebhookHandler(_StaffPageHandler):
+    """OP-F08: OP-04 reconciliation asked the provider and it reported a
+    charge, while no signed webhook for this order has ever arrived.
+
+    A SEPARATE handler from `StaffPageLatePaidAfterTerminalHandler` on
+    purpose, and the reason is the prose, not the plumbing: that page tells
+    staff "this order was already failed/expired when a payment for it
+    succeeded". Here the order is still `awaiting_payment` and the system has
+    NOT given up on it — what failed is the delivery of the webhook, which is
+    a different problem with a different first move (check the provider's
+    callback configuration and replay the callback). Reusing the other page
+    would have staff read a sentence that is false about the case in front of
+    them.
+
+    THE COPY DOES NOT OFFER "honour" AS A MANUAL ACTION, and that is a
+    finding, not a style choice. `resolve_late_order`'s `honoured` branch
+    enqueues `practice_release` against the RESOLUTION journal event, while
+    `PracticeReleaseHandler` looks a practice up by
+    `source_paid_journal_event_id` — which only ever holds a `payment.paid`
+    event id. Honouring a case by hand therefore closes it and raises
+    `PracticeNotMinted` on every drain: case shut, service never started.
+    That weld predates OP-F08 (it is reachable from OP-F04/F05 too) and is
+    logged for its own PR; what this page can do is not send staff down it.
+    The replayed webhook is the route that both closes the case (OP-02 now
+    resolves an open case as honoured in the paying transaction) and mints
+    the practice.
+
+    GUARD: `late_case_open`, identical reasoning to the handlers above.
+    """
+
+    job_type = "staff_page_charge_without_webhook"
+
+    def _should_page(self, facts: OrderAnomalyFacts) -> bool:
+        # BOTH halves, not just the flag — see `case_resolved_since_trigger`.
+        return facts.late_case_open and not facts.case_resolved_since_trigger
+
+    def _compose(self, facts: OrderAnomalyFacts) -> str:
+        provider_status = _escape_markdown(_detail_scalar(facts.detail, "provider_status"))
+        return (
+            "CHARGE FOUND WITH NO WEBHOOK\n\n"
+            f"Order: `{facts.order_id}`\n"
+            f"Case: {_escape_markdown(facts.case_type)}\n"
+            f"Order state: {_escape_markdown(facts.state)}\n"
+            f"Amount: {_amount(facts.price_idr)}\n"
+            f"Provider status: {provider_status}\n"
+            f"{_late_charge_lines(facts)}\n\n"
+            "Reconciliation asked the provider directly and it did NOT "
+            "confirm this order as unpaid, while no signed webhook for it has "
+            "ever reached us. Read the provider status above before acting: a "
+            "paid/settled status means the customer's money is with the "
+            "provider while the order reads unpaid on our side; a status we "
+            "do not recognise means we genuinely do not know, which is why "
+            "this pages instead of expiring the order.\n\n"
+            "FIRST MOVE: check the provider's callback configuration — a "
+            "callback URL that is not registered looks exactly like a "
+            "customer who never paid — and replay the signed callback. A "
+            "replayed webhook reconciles the order itself and closes this "
+            "case as honoured, which is the only route that also starts the "
+            "practice. Resolving it as honoured BY HAND does not: it closes "
+            "the case and the customer is left paid with nothing running. "
+            "Use resolveLateOrder here only to refund.\n\n"
+            f"Order: {self._tracker_link(facts.order_id)}"
+        )
+
+
 class StaffPagePaymentFailureHandler(_StaffPageHandler):
     """OP-03: `repository.py` pages only when `event.failure.should_page` is
     true (a subset of failures worth a human's attention, decided upstream in
@@ -2104,9 +2166,7 @@ def build_handlers(
         "payment_failed_email": PaymentFailedEmailHandler(pool, sender),
         "payment_expired_email": PaymentExpiredEmailHandler(pool, sender),
         "refund_email": RefundEmailHandler(pool, sender),
-        "late_refund_confirmation_email": LateRefundConfirmationEmailHandler(
-            pool, sender
-        ),
+        "late_refund_confirmation_email": LateRefundConfirmationEmailHandler(pool, sender),
         "practice_release": PracticeReleaseHandler(pool, handoff),
         "practice_received_email": PracticeReceivedEmailHandler(pool, sender),
         "portal_invite": PortalInviteHandler(
@@ -2128,6 +2188,9 @@ def build_handlers(
     if staff_page_sender is not None:
         handlers.update(
             {
+                "staff_page_charge_without_webhook": StaffPageChargeWithoutWebhookHandler(
+                    pool, staff_page_sender
+                ),
                 "staff_page_duplicate_charge": StaffPageDuplicateChargeHandler(
                     pool, staff_page_sender
                 ),
@@ -2170,6 +2233,7 @@ __all__ = [
     "PracticeTransitionEmailFacts",
     "PracticeTransitionEmailHandler",
     "RefundEmailHandler",
+    "StaffPageChargeWithoutWebhookHandler",
     "StaffPageDuplicateChargeHandler",
     "StaffPageLatePaidAfterRefundHandler",
     "StaffPageLatePaidAfterTerminalHandler",
