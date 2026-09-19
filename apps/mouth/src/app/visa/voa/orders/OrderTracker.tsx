@@ -107,6 +107,19 @@ function OrderTrackerReady({ order }: { order: OrderView }) {
         </span>
       </div>
 
+      {/*
+       * The outcome, or the thing the customer has to DO, comes BEFORE the
+       * seven-row rail — it used to come after it. A Blocked practice means we
+       * are waiting on them, and burying that under seven progress rows is the
+       * difference between a tracker they can read in five seconds and one
+       * they have to work through. `PracticePanel` renders null in every state
+       * that has neither an outcome nor an action, so this position costs
+       * nothing in the ordinary case.
+       */}
+      {order.order_state === "paid" && order.practice ? (
+        <PracticePanel practice={order.practice} />
+      ) : null}
+
       <ParcelSteps order={order} />
 
       {order.order_state === "awaiting_payment" ||
@@ -116,6 +129,7 @@ function OrderTrackerReady({ order }: { order: OrderView }) {
 
       {order.order_state === "failed" || order.order_state === "expired" ? (
         <ExceptionPanel
+          tone="retry"
           heading={
             order.order_state === "failed"
               ? "This checkout couldn't be completed."
@@ -127,6 +141,7 @@ function OrderTrackerReady({ order }: { order: OrderView }) {
 
       {order.order_state === "refunded" ? (
         <ExceptionPanel
+          tone="closed"
           heading="This order was refunded."
           body="If you still need a Visa on Arrival, a consultant can start a new application with you."
         />
@@ -139,10 +154,6 @@ function OrderTrackerReady({ order }: { order: OrderView }) {
         >
           Payment confirmed — setting up your application now.
         </p>
-      ) : null}
-
-      {order.order_state === "paid" && order.practice ? (
-        <PracticePanel practice={order.practice} />
       ) : null}
     </AppFrame>
   );
@@ -235,16 +246,8 @@ function ParcelSteps({ order }: { order: OrderView }) {
       {steps.map((step) => (
         <li
           key={step.label}
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: "0.6rem",
-            color:
-              step.done || step.current
-                ? "var(--text-primary, rgba(255,255,255,0.96))"
-                : "var(--color-text-muted)",
-            fontWeight: step.current ? 600 : 400,
-          }}
+          aria-current={step.current ? "step" : undefined}
+          style={stepStyle(step)}
         >
           <span aria-hidden="true">
             {step.done ? "✓" : step.current ? "●" : "○"}
@@ -254,6 +257,50 @@ function ParcelSteps({ order }: { order: OrderView }) {
       ))}
     </ol>
   );
+}
+
+/**
+ * Three tiers, three identities. `done` and `current` used to share
+ * `--text-primary` — the glyph and the font weight were the only difference,
+ * which is two states in one colour on the element whose entire job is telling
+ * a customer which one of seven rows they are on.
+ *
+ * The order is deliberate and it is not "brighter as you progress": a finished
+ * step RECEDES to `--tx-tertiary`, because it is no longer information anyone
+ * is looking for. The current step is the only peak — `--bz-data` (this
+ * theme's declared token for the one value on screen that matters) plus the
+ * rule that makes it findable without reading. Future steps stay muted. So the
+ * eye lands on one row out of seven, which is what "readable in five seconds"
+ * has to mean on a list this long.
+ *
+ * `aria-current="step"` carries the same fact to a screen reader, which the
+ * old font-weight never did.
+ */
+function stepStyle(step: {
+  done: boolean;
+  current: boolean;
+}): React.CSSProperties {
+  const base: React.CSSProperties = {
+    display: "flex",
+    alignItems: "center",
+    gap: "0.6rem",
+    padding: "0.3rem 0.5rem",
+    borderLeft: "3px solid transparent",
+    borderRadius: "0 4px 4px 0",
+  };
+  if (step.current) {
+    return {
+      ...base,
+      color: "var(--bz-data)",
+      fontWeight: 600,
+      borderLeftColor: "var(--bz-data)",
+      background: "var(--surface-raised)",
+    };
+  }
+  if (step.done) {
+    return { ...base, color: "var(--tx-tertiary)", fontWeight: 400 };
+  }
+  return { ...base, color: "var(--color-text-muted)", fontWeight: 400 };
 }
 
 /**
@@ -295,6 +342,7 @@ function PracticePanel({
   if (practice.state === "Blocked") {
     return (
       <ExceptionPanel
+        tone="needs-you"
         heading="We need something from you before we can continue."
         body={
           practice.required_action_key
@@ -307,6 +355,7 @@ function PracticePanel({
   if (practice.state === "Rejected") {
     return (
       <ExceptionPanel
+        tone="refused"
         heading="Your application couldn't be approved as submitted."
         body={
           practice.customer_reason_key
@@ -361,8 +410,8 @@ function DeliveredPanel({
           width: "fit-content",
           padding: "0.7rem 1.1rem",
           borderRadius: 8,
-          background: "#25D366",
-          color: "#0a0a0a",
+          background: "var(--bz-green)",
+          color: "var(--bz-base)",
           textDecoration: "none",
           fontWeight: 600,
         }}
@@ -373,15 +422,58 @@ function DeliveredPanel({
   );
 }
 
-function ExceptionPanel({ heading, body }: { heading: string; body: string }) {
+/**
+ * Five situations a customer can land in — checkout failed, checkout expired,
+ * order refunded, practice Blocked, practice Rejected — used to render behind
+ * ONE `1px solid var(--color-border-subtle)`. Identical boxes, and the only
+ * way to tell "we need a document from you" from "this was refunded" was to
+ * read two paragraphs. The mandate's fourth accent is that every state has its
+ * own visual identity; five states in one border is its exact inverse.
+ *
+ * The tones map to what the customer must DO, not to how bad the news is:
+ *
+ *   needs-you  copper --bz-accent      this theme's declared "needs you" tone;
+ *                                      Blocked is the one state whose next
+ *                                      move belongs to the customer
+ *   refused    --bz-status-mark        Rejected. The one red on this surface,
+ *                                      used as a rule and never as a fill or
+ *                                      as text, per its globals.css contract
+ *   retry      --state-warning         failed / expired: nothing is lost, the
+ *                                      payment step simply has to happen again
+ *   closed     --state-info            refunded: terminal, not an alarm
+ *
+ * `--state-danger` is unused here for the reason `SafeClock.tsx` records: on
+ * this theme it resolves to the same value as `--bz-copper-text`, so it would
+ * be indistinguishable from `needs-you`.
+ */
+export type ExceptionTone = "needs-you" | "refused" | "retry" | "closed";
+
+export const EXCEPTION_RULE: Record<ExceptionTone, string> = {
+  "needs-you": "var(--bz-accent)",
+  refused: "var(--bz-status-mark)",
+  retry: "var(--state-warning)",
+  closed: "var(--state-info)",
+};
+
+function ExceptionPanel({
+  heading,
+  body,
+  tone,
+}: {
+  heading: string;
+  body: string;
+  tone: ExceptionTone;
+}) {
   return (
     <section
+      data-exception-tone={tone}
       style={{
         display: "grid",
         gap: "var(--space-2, 0.6rem)",
         padding: "var(--space-3, 1rem)",
-        borderRadius: 12,
+        borderRadius: "0 12px 12px 0",
         border: "1px solid var(--color-border-subtle)",
+        borderLeft: `4px solid ${EXCEPTION_RULE[tone]}`,
       }}
     >
       <p style={{ margin: 0, fontWeight: 600 }}>{heading}</p>
@@ -405,8 +497,8 @@ function WhatsAppHelp() {
         width: "fit-content",
         padding: "0.7rem 1.1rem",
         borderRadius: 8,
-        background: "#25D366",
-        color: "#0a0a0a",
+        background: "var(--bz-green)",
+        color: "var(--bz-base)",
         textDecoration: "none",
         fontWeight: 600,
       }}

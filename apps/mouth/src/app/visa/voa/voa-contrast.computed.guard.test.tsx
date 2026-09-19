@@ -9,7 +9,7 @@ import { messageFor, COPY_UNREADABLE_INSTRUCTION } from "./upload/messages";
 import VoaEligibilityPage from "./page";
 import VoaResultPage from "./[hash]/page";
 import { CheckoutFlow } from "./checkout/[resultId]/CheckoutFlow";
-import { OrderTracker } from "./orders/OrderTracker";
+import { EXCEPTION_RULE, OrderTracker } from "./orders/OrderTracker";
 
 /**
  * GARUDA VOA DELIBERA (d) / design-A-claude.md §8 guard 2: an error message
@@ -520,6 +520,57 @@ describe("Safe Clock — four states, four identities (mandate accent 4)", () =>
       1.5,
     );
     expect(rules.ample.widthPx).not.toBe(rules.soon.widthPx);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Tracker exception tones. Same discipline as the Safe Clock table above, on
+// the other surface where a customer reads a state: five situations that all
+// rendered behind one `1px solid var(--color-border-subtle)` until this table
+// existed.
+// ---------------------------------------------------------------------------
+
+describe("order tracker — four exception tones, four identities", () => {
+  const tones = Object.entries(EXCEPTION_RULE) as [string, string][];
+
+  it("has a tone for every branch the tracker can render", () => {
+    expect(tones.map(([k]) => k).sort()).toEqual([
+      "closed",
+      "needs-you",
+      "refused",
+      "retry",
+    ]);
+  });
+
+  it.each(tones)("%s: the rule clears the 3:1 non-text floor", (_k, token) => {
+    expect(
+      contrastRatio(
+        resolveColor(token, SURFACE_TOKENS),
+        SURFACE_TOKENS["--bz-base"],
+      ),
+    ).toBeGreaterThanOrEqual(3);
+  });
+
+  /**
+   * Distinctness measured on the RESOLVED colours, not on the token spellings.
+   * Four different `var()` names that resolve to one value is the trap
+   * `--state-danger` / `--bz-copper-text` sets on this theme, and a name-level
+   * check walks straight into it.
+   */
+  it.each(
+    tones.flatMap(([ka, a], i) =>
+      tones.slice(i + 1).map(([kb, b]) => [ka, kb, a, b] as const),
+    ),
+  )("%s and %s do not resolve to the same colour", (_ka, _kb, a, b) => {
+    expect(resolveColor(a, SURFACE_TOKENS)).not.toBe(
+      resolveColor(b, SURFACE_TOKENS),
+    );
+  });
+
+  it("GUILTY: --state-danger would collide with the needs-you copper", () => {
+    expect(resolveColor("var(--state-danger)", SURFACE_TOKENS)).toBe(
+      resolveColor(EXCEPTION_RULE["needs-you"], SURFACE_TOKENS),
+    );
   });
 });
 
