@@ -344,6 +344,31 @@ def _official_scope(payload: dict[str, Any], code: str) -> str:
     return f"Official BPS description unavailable for KBLI {code}."
 
 
+def _tombstone_result(found: "KBLISearchResult") -> "KBLISearchResult":
+    """Replace a resolved search result with the finding that its code is gone.
+
+    The counterpart of `inspect_kbli`'s tombstone, for the channels that answer
+    with a `KBLISearchResult` instead of a `KBLIDetail`. It is a REPLACEMENT and
+    not an annotation on purpose: every field the original carried — the title,
+    the scope prose, the risk tier, the whole PMA tuple — describes an activity
+    under the KBLI 2020 numbering, so passing any of them through to an LLM would
+    keep the false answer alive one layer down, wearing a warning label.
+
+    Only the code and the original title survive, the latter suffixed so it cannot
+    be mistaken for a live activity. `pma_status` is deliberately NOT carried over:
+    an ownership verdict about a number nobody can register is not a cautious
+    answer, it is a meaningless one, and the disclosure layer's own rule is that a
+    missing verdict must produce silence rather than a claim.
+    """
+    return KBLISearchResult(
+        code=found.code,
+        title=f"{found.title}{TOMBSTONE_TITLE_SUFFIX}",
+        description=TOMBSTONE_DESCRIPTION,
+        score=found.score,
+        risk_category=PHANTOM_LICENSING_STATUS,
+    )
+
+
 def _result_from_payload(payload: dict[str, Any], score: float) -> "KBLISearchResult":
     """Build a KBLISearchResult from a flat/legacy Qdrant KBLI payload."""
     code = _payload_value(payload, "kode_kbli", "kode", "kode_kbli_2025", default="N/A")
