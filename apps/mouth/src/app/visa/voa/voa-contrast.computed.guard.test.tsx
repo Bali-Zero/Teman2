@@ -433,6 +433,97 @@ describe("resolver + contrast math — guilt and innocence (cicatrix #3)", () =>
 });
 
 // ---------------------------------------------------------------------------
+// Safe Clock state identities. Lives here rather than in a new file because
+// this is the file that already owns the token resolver, the color-mix and
+// alpha compositing, and the WCAG arithmetic — a second copy of that maths is
+// the drift `voa-copy.guard.test.ts` refuses for its comment stripper, for the
+// same reason.
+// ---------------------------------------------------------------------------
+
+const VOA_R19_CSS = readFileSync(join(__dirname, "voa-r19.css"), "utf-8");
+
+interface StateRule {
+  colour: string;
+  widthPx: number;
+}
+
+/** Reads the four `.voa-clock--X` rules out of the stylesheet, not a table. */
+function stateRule(state: string): StateRule {
+  const re = new RegExp(`\\.voa-clock--${state}\\s*\\{([^}]*)\\}`, "i");
+  const m = re.exec(VOA_R19_CSS);
+  if (!m) throw new Error(`no rule for .voa-clock--${state}`);
+  const colour = /border-left-color:\s*([^;]+);/i.exec(m[1]);
+  const width = /border-left-width:\s*(\d+)px;/i.exec(m[1]);
+  if (!colour || !width) {
+    throw new Error(`.voa-clock--${state} must declare colour AND width`);
+  }
+  return {
+    colour: resolveColor(colour[1].trim(), SURFACE_TOKENS),
+    widthPx: Number(width[1]),
+  };
+}
+
+const CLOCK_STATES = ["ample", "soon", "today", "passed"] as const;
+
+describe("Safe Clock — four states, four identities (mandate accent 4)", () => {
+  const rules = Object.fromEntries(
+    CLOCK_STATES.map((s) => [s, stateRule(s)]),
+  ) as Record<(typeof CLOCK_STATES)[number], StateRule>;
+
+  /**
+   * The shipped `passed` rule was `--bz-border-hover` at 1.78:1 — an absence
+   * presented as the fourth colour. 1.4.11's floor for a non-text indicator
+   * is 3:1.
+   */
+  it.each(CLOCK_STATES)("%s: the rule clears the 3:1 non-text floor", (st) => {
+    expect(
+      contrastRatio(rules[st].colour, SURFACE_TOKENS["--bz-base"]),
+    ).toBeGreaterThanOrEqual(3);
+  });
+
+  it("GUILTY: the retired --bz-border-hover would fail that floor", () => {
+    expect(
+      contrastRatio(
+        resolveColor("var(--bz-border-hover)", SURFACE_TOKENS),
+        SURFACE_TOKENS["--bz-base"],
+      ),
+    ).toBeLessThan(2);
+  });
+
+  /**
+   * The claim this pins is NOT "four different tokens" — the version that
+   * shipped had four different tokens and two of them were 1.11:1 apart. Each
+   * PAIR must be separable on a real axis: either the rule colours are far
+   * enough apart to read as different, or their widths differ.
+   */
+  it.each(
+    CLOCK_STATES.flatMap((a, i) =>
+      CLOCK_STATES.slice(i + 1).map((b) => [a, b] as const),
+    ),
+  )("%s vs %s is separable by colour or by width", (a, b) => {
+    const byColour = contrastRatio(rules[a].colour, rules[b].colour);
+    const byWidth = rules[a].widthPx !== rules[b].widthPx;
+    expect(
+      byColour >= 1.5 || byWidth,
+      `${a}/${b}: ${byColour.toFixed(2)}:1 apart and both ${rules[a].widthPx}px`,
+    ).toBe(true);
+  });
+
+  /**
+   * Named explicitly rather than left implicit in the loop above: these two
+   * are the pair that colour cannot separate, and the design leans on width
+   * and on the word for them. If someone equalises the widths "for
+   * consistency", this is the row that says why they cannot.
+   */
+  it("ample vs soon is the pair colour cannot separate — width carries it", () => {
+    expect(contrastRatio(rules.ample.colour, rules.soon.colour)).toBeLessThan(
+      1.5,
+    );
+    expect(rules.ample.widthPx).not.toBe(rules.soon.widthPx);
+  });
+});
+
+// ---------------------------------------------------------------------------
 // The seven real sites, rendered through the actual production components.
 // ---------------------------------------------------------------------------
 

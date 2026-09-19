@@ -284,7 +284,12 @@ export default function VoaResultPage({
       title="Visa on Arrival — you're eligible"
       subtitle={
         data.published_filing_deadline
-          ? "Your filing window, your price, and what happens next."
+          ? // Deliberately NOT "your filing window": the clock below has a
+            // `passed` branch, reachable because this result page is a
+            // shareable URL over a stored check, and a header promising a live
+            // window above a hero saying the day is gone is a page arguing
+            // with itself. This sentence is true in every branch.
+            "What we found, what it costs, and what happens next."
           : "We'll confirm your exact filing deadline before you pay."
       }
       footer="One all-inclusive price. Government fees, where they apply, are never billed separately from this figure."

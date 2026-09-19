@@ -180,18 +180,30 @@
 
 [data-theme="operative-dark"][data-garuda-voa="r19"] .voa-clock--ample {
   border-left-color: var(--state-info);
+  border-left-width: 3px;
 }
 
 [data-theme="operative-dark"][data-garuda-voa="r19"] .voa-clock--soon {
   border-left-color: var(--state-warning);
+  border-left-width: 7px;
 }
 
 [data-theme="operative-dark"][data-garuda-voa="r19"] .voa-clock--today {
   border-left-color: var(--bz-status-mark);
+  border-left-width: 7px;
 }
 
+/*
+ * `--bz-border-hover` used to carry this state. Composited over the ground it
+ * measures 1.78:1 — that is not a fourth colour, it is an absence, and the
+ * PR that shipped it claimed four distinct state identities. `--tx-tertiary`
+ * measures 4.19:1, clear of 1.4.11's 3:1 non-text floor with room, and reads
+ * as "retired" rather than as "broken". (No literal here on purpose: this
+ * file's contract test bans one anywhere, comments included.)
+ */
 [data-theme="operative-dark"][data-garuda-voa="r19"] .voa-clock--passed {
-  border-left-color: var(--bz-border-hover);
+  border-left-color: var(--tx-tertiary);
+  border-left-width: 3px;
 }
 
 [data-theme="operative-dark"][data-garuda-voa="r19"] .voa-clock__count {
@@ -254,23 +266,47 @@
 }
 
 /*
- * 48px of tap height on a link that sits inside a paragraph, without turning
- * it into a button: inline-flex plus the min-height reaches the thumb floor
- * while the sentence still reads as a sentence.
+ * The handoff is a control on its own row, not a link inside a sentence.
+ *
+ * Its predecessor was an `<a>` with `display: inline-flex; min-height: 48px`
+ * sitting mid-paragraph, which is how you reach the thumb floor without
+ * "turning it into a button" — except that on the promoted build at 390px it
+ * broke the note into three fragments, because a 48px box does not fit a
+ * 1.35-line-height text line. The unit tests could not see it; the rendered
+ * page could. A tap target and a sentence want different boxes.
+ *
+ * Copper is the ground's own "needs you" tone and this IS a request directed
+ * at the reader, so the text takes --bz-accent (4.57:1 on the card) rather
+ * than the ink the body uses. It is an outline, never a fill: a filled copper
+ * control on this surface would read as the primary purchase action, which
+ * lives on the checkout screen and is green.
  */
-[data-theme="operative-dark"][data-garuda-voa="r19"] .voa-clock__link {
+[data-theme="operative-dark"][data-garuda-voa="r19"] .voa-clock__handoff {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
+  align-self: flex-start;
   min-height: 48px;
+  margin-top: 0.5rem;
+  padding: 0 1.1rem;
+  border: 1px solid var(--bz-border-hover);
+  border-radius: 999px;
+  background: transparent;
   color: var(--bz-accent);
-  text-decoration: underline;
-  text-underline-offset: 3px;
+  font-family: var(--font-sans);
+  font-size: 0.9rem;
+  font-weight: 600;
+  line-height: 1.2;
+  text-decoration: none;
+  transition: border-color 160ms ease;
 }
 
-[data-theme="operative-dark"][data-garuda-voa="r19"] .voa-clock__link:hover,
+[data-theme="operative-dark"][data-garuda-voa="r19"] .voa-clock__handoff:hover,
 [data-theme="operative-dark"][data-garuda-voa="r19"]
-  .voa-clock__link:focus-visible {
-  color: var(--bz-copper-text);
+  .voa-clock__handoff:focus-visible {
+  border-color: var(--bz-accent);
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 
 /*
