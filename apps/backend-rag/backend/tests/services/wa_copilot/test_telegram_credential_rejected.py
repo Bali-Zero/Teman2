@@ -46,8 +46,20 @@ def _client(status: int, body: str) -> httpx.AsyncClient:
 # ---------------------------------------------------------------------------
 
 
+def test_the_entity_is_exactly_these_two_codes() -> None:
+    """Pin the membership with LITERALS, because the tests below use literals.
+
+    Found by mutation, not by design: the guilt test used to parametrize over
+    `CREDENTIAL_REJECTED_STATUSES` itself, so deleting 401 from the set
+    deleted the case that proved 401 — 9 tests ran instead of 10 and the
+    suite stayed green on the very change it existed to catch. A test may
+    never draw its expectations from the thing it is testing.
+    """
+    assert CREDENTIAL_REJECTED_STATUSES == frozenset({401, 403})
+
+
 @pytest.mark.asyncio
-@pytest.mark.parametrize("status", sorted(CREDENTIAL_REJECTED_STATUSES))
+@pytest.mark.parametrize("status", [401, 403])
 async def test_rejected_credential_is_flagged_as_such(status: int) -> None:
     async with _client(status, '{"ok":false,"description":"Unauthorized"}') as client:
         ok, err = await send_telegram_message(client, TOKEN, CHAT_ID, "hi")
