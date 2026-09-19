@@ -41,6 +41,7 @@ from backend.services.garuda_orders.outbox_handlers import (
     StaffPageRefundOutOfOrderHandler,
     StaffPageSendFailed,
     TelegramStaffPageSender,
+    _StaffPageHandler,
     build_handlers,
 )
 from backend.tests.fixtures.prod_shaped_pool import create_prod_shaped_pool
@@ -577,6 +578,7 @@ async def test_a_missing_order_raises_for_every_handler(pool):
     rec = _TgRecorder()
     sender, client = _tg_sender(rec)
     handler_classes = [
+        StaffPageChargeWithoutWebhookHandler,
         StaffPageDuplicateChargeHandler,
         StaffPageLatePaidAfterRefundHandler,
         StaffPageLatePaidAfterTerminalHandler,
@@ -969,6 +971,19 @@ async def test_a_poisoned_journal_detail_does_not_reach_a_page(pool):
             "OP-F05",
             {"charge_id": "ch_poison_late_2", **poison},
         ),
+        # OP-F08, and it was NOT here when the handler shipped — this list is
+        # the whole point of the test, so a page missing from it is a page
+        # nobody is pinning. The closing assertion below now compares this
+        # enumeration against every `_StaffPageHandler` subclass that exists,
+        # so the NEXT new page fails here by name instead of being quietly
+        # unpinned.
+        (
+            StaffPageChargeWithoutWebhookHandler,
+            "staff_page_charge_without_webhook",
+            "payment.charge_detected_without_webhook",
+            "OP-F08",
+            {"charge_id": "ch_poison_f08", "provider_status": "SETTLED", **poison},
+        ),
     ]
     for cls, job_type, event_name, transition_id, detail in cases:
         _row_id, event_id = await _enqueue_staff_page(
@@ -1000,6 +1015,18 @@ async def test_a_poisoned_journal_detail_does_not_reach_a_page(pool):
         # key it is supposed to read — otherwise a handler that composed an
         # empty string would satisfy the assertions above.
         assert order_id in text, f"{cls.__name__} paged without naming the order"
+
+    # The enumeration cannot go stale silently. `StaffPageChargeWithoutWebhookHandler`
+    # shipped with five entries in this list and was not one of them; the count
+    # was correct for the pages that existed when it was written and wrong the
+    # day after. Comparing against the live subclass set is the only form of
+    # this check that a new handler cannot walk past.
+    covered = {job_type for _cls, job_type, *_rest in cases}
+    every_page = {cls.job_type for cls in _StaffPageHandler.__subclasses__()}
+    assert covered == every_page, (
+        "this test's enumeration drifted from the staff pages that exist — "
+        f"unpinned: {sorted(every_page - covered)}; stale: {sorted(covered - every_page)}"
+    )
 
 
 # --- a page must belong to the case it is about --------------------------------
