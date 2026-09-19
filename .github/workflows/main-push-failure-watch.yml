@@ -148,6 +148,7 @@ on:
       - cron - docs-inventory-refresh liveness (every 6h)
       - Docs Inventory Refresh
       - Docs Sync Check
+      - dynamic-workflow-selftest
       - manual - fly api diagnostics
       - manual - garuda voa arm
       - Deploy Backend to Fly.io

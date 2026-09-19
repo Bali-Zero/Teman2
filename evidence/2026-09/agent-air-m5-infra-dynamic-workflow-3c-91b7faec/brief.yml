@@ -2,7 +2,7 @@ task_id: infra-dynamic-workflow-3c
 gear: 3
 l_level: L3
 gate_class: opus
-base_sha: 2d20035eadab8fe4acb9594e9dac382c9257de21
+base_sha: 2d20035eadab8fe4acb9594e9dac382c9257de21 # pragma: allowlist secret
 # MANDATE-builder.md (BATTAGLIA-20260911/DYNAMIC-WORKFLOW-20260918), PR3c section (line 172) +
 # the "PR3c blind-scan closure" addendum (2026-09-18, conductor prove-live of PR3e 16:40Z):
 # the single hot-zone CI PR, opened after PR3a and PR3b MERGED. Gear-3 declared per the mandate's
