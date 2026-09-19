@@ -1,0 +1,95 @@
+task: >-
+  R4 of the kita client-profile redesign (`PLAN-redesign.md`): FamilyTab.tsx moves from the
+  bz-product-panel cards to the r19 primitives (LedgerSection head, one HairlineGrid,
+  EmptyState, real `<button>` row actions). Design approved by the owner (Zero) on
+  2026-09-19; per the 2026-09-17 CRM pact, Zero's OK covers the design and Subhi reviews the
+  code — this PR is NOT armed at open. Built by an external (codex) seat via
+  `scripts/seat_build.sh`; an independent parity review against the pre-restyle file
+  returned DO-NOT-SHIP over six regressions (missing server-computed passport_alert/
+  visa_alert as the status source, a missing OCR-pending note, missing passport expiry
+  urgency, a silently-changed visa threshold, an invented visa-type fallback, and a `you`
+  tone the review vocabulary forbids here). This commit is the parity repair: the restyle
+  stays, the six regressions are fixed, tests rewritten GUILT-first against the pre-repair
+  file, and two inert HairlineGrid props plus a Fraunces-on-avatar nit are cleaned up.
+lane: frontend/kita-r4-family-grid
+machine: air-m5
+date: 2026-09-19
+
+gear: 2
+gear_reason: >-
+  Deterministic floor 2, source `size`: `git diff --numstat origin/main...HEAD` measures
+  churn 1089 (156+43 FamilyTab.test.tsx, 377+513 FamilyTab.tsx) — above SIZE_GEAR2_THRESHOLD
+  (400) and below SIZE_GEAR3_THRESHOLD (1828). No hot-zone path hit (both files are under
+  `apps/mouth/`, not a HOTZONE_PATTERNS match). Confirmed locally via
+  `scripts/evidence_pack_lint.py --print-floor --print-floor-source
+  --changed-files-file <list> --numstat-file <numstat> --commit-count 1`, which printed `2`
+  / `size`.
+
+appetite:
+  wall_clock_hours: 1
+  adversarial_rounds: 1
+
+acceptance:
+  A1: >-
+    The whole `clients/[id]` vitest folder (including the `client-detail-desk.test.tsx`
+    guard) passes, and `FamilyTab.test.tsx`'s 4 new GUILT cases were red against the
+    pre-repair file and are green against the repair: visa_alert="expired" with a
+    decade-out visa_expiry still renders "Expired" (enum wins over date math); a
+    passport_alert="red" member with a near passport_expiry renders the "⏰ 30d left"
+    countdown on the date cell; a visa document with no extracted current_visa_type
+    renders the OCR-pending note and an em-dash, never the literal string "visa"; no row
+    ever renders the copper `you` tone anywhere (asserted via the absence of any
+    `[class*="--bz-copper-text"]` node).
+    probe: >-
+      npx --no-install vitest run 'src/app/(workspace)/clients/[id]/'
+  A2: >-
+    `tsc --noEmit -p .` exits clean and `eslint` reports zero errors on the two changed
+    files (one ignore-pattern warning on the test file itself is expected and unrelated to
+    this change — the folder's other test files carry the same warning).
+    probe: >-
+      npx --no-install tsc --noEmit -p . && npx --no-install eslint
+      "src/app/(workspace)/clients/[id]/components/FamilyTab.tsx"
+      "src/app/(workspace)/clients/[id]/components/FamilyTab.test.tsx"
+  A3: >-
+    `prettier --write` on both changed files leaves FamilyTab.tsx byte-identical (already
+    formatted) and only reformats FamilyTab.test.tsx's own new content — no unrelated
+    reflow — then a second `vitest run` on the single file stays green (8/8) after the
+    prettier pass.
+    probe: >-
+      npx --no-install prettier --write
+      "src/app/(workspace)/clients/[id]/components/FamilyTab.tsx"
+      "src/app/(workspace)/clients/[id]/components/FamilyTab.test.tsx" && npx --no-install
+      vitest run "src/app/(workspace)/clients/[id]/components/FamilyTab.test.tsx"
+
+out_of_scope: >-
+  Every other R1-R8 lane of `PLAN-redesign.md` (Overview case-notes/needs-attention,
+  Documents grid, tab bar, Immigration, Company/Tax, Activity) — each is its own PR. Adding
+  a passport StatePill (the grid has none; passport urgency stays a date-cell property per
+  the r19 rule "urgency lives on the date cell, never ownership", `ObligationsTable.tsx`
+  ~20-31). Changing the yellow/red alert distinction beyond the "Expiring" word the task
+  specified — both collapse to the same tone/word here. Arming, merging, deploying or
+  proving this PR live — the ship sequence starts after Subhi's code review per the CRM
+  pact, and this session only prepares.
+
+assumptions:
+  - text: >-
+      The passport_alert enum informs the date cell's URGENCY (colour weight) when present,
+      falling back to a 180-day client-side threshold only when passport_alert is absent —
+      unlike the visa pill, which has zero client-side fallback threshold left per the task's
+      explicit "delete the client-side threshold entirely" instruction. This asymmetry is a
+      reasonable reading of the task brief (passport has no pill to be the enum's target,
+      so the enum's job there is narrower: gate the date cell's weight, not choose its word),
+      not a literal restore of the pre-restyle file's exact structure.
+    status: verified
+    probe: >-
+      Read FamilyTab.tsx's `passportUrgency()` and `visaPill()` side by side; the GUILT
+      test suite pins both behaviours (enum wins outright for visa; enum gates urgency,
+      date supplies the countdown wording, for passport).
+  - text: >-
+      "Renewal recommended" (the old file's wording for a `yellow` alert with no expiry
+      date) is dropped in favour of the single word "Expiring" for both `yellow` and `red`,
+      per the task's own example word set ("Expired", "Expiring", "Valid").
+    status: verified
+    probe: >-
+      grep -n '"Expiring"' FamilyTab.tsx — the two alert values map to the one word,
+      matching the task instruction's own set literally.
