@@ -347,6 +347,21 @@ class XenditPaymentProvider:
         )
 
     async def refund(self, *, provider_charge_id: str, idempotency_key: str) -> str:
+        # A REFUND WITH NO CHARGE ID NEVER REACHES THE NETWORK. The type says
+        # `str`, and the one caller that can violate it is the one that matters:
+        # `resolve_late_order` passes `row["late_case_charge_id"]`, which an
+        # OP-08 case deliberately writes as NULL (`_open_late_case(charge_id=
+        # None)` — there is no single duplicate charge the order can name). Until
+        # this guard, "nothing gets refunded" held only because Xendit rejects a
+        # null `invoice_id` and `raise_for_status()` turned that into
+        # `RefundFailed`: a safety property owned by someone else's validator,
+        # asserted in a staff page as settled fact. It is now local, and provable
+        # without a network call.
+        if not provider_charge_id:
+            raise RefundFailed(
+                "refund requested with no charge id — this order's remediation "
+                "case names no charge to give back"
+            )
         try:
             response = await self._client.post(
                 f"{self._base_url}/refunds",
