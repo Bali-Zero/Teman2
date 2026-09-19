@@ -146,13 +146,29 @@ async def _open_late_case(
     `late_case_open = FALSE` in the predicate keeps the write idempotent: a
     case already open is never re-opened, and its charge id is never
     overwritten by a later event.
+
+    `charge_id` is written UNCONDITIONALLY, NULL included, and that is the
+    money-safety half of this helper. OP-08 is the one caller that has no
+    charge id to give: the duplicate's id lives in the journal `detail`, and
+    the column names what `resolve_late_order` would refund. Leaving the
+    previous case's id in place (a `COALESCE`, which is what this function
+    did for one commit) means an OP-08 case opened after an OP-F08 case that
+    OP-02 closed as `honoured` carries the customer's LIVE payment — the
+    charge that bought the service — and a staff refund through
+    `resolveLateOrder` gives back the RIGHT money for the wrong reason.
+    Measured by a gate probe: `REFUND CALLS = ['ch-LEGIT']` while the
+    duplicate was `ch-DUPLICATE`. With NULL the refund raises
+    `RefundFailed -> PaymentProviderUnavailable` instead: a 503 a human sees,
+    not a silent wrong refund. Failing loudly is the correct default while
+    the product question underneath — what OP-08's closure SHOULD be — stays
+    open in the ledger.
     """
 
     await conn.execute(
         """
         UPDATE garuda_orders
            SET late_case_open = TRUE,
-               late_case_charge_id = COALESCE($2, late_case_charge_id),
+               late_case_charge_id = $2,
                late_case_resolution = NULL,
                late_case_staff_reference = NULL
          WHERE order_id = $1 AND late_case_open = FALSE

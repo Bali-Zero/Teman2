@@ -304,6 +304,10 @@ $defs:
           aggregate_type: { const: order }
           transition_id: { const: OP-05 }
           customer_visible: { const: false }
+          resolution:
+            type: string
+            enum: [refunded_in_full]
+        required: [resolution]
     unevaluatedProperties: false
 
   LateOrderResolved:

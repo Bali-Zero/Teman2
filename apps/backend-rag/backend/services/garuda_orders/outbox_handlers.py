@@ -1998,6 +1998,12 @@ class StaffPageChargeWithoutWebhookHandler(_StaffPageHandler):
             "practice. Resolving it as honoured BY HAND does not: it closes "
             "the case and the customer is left paid with nothing running. "
             "Use resolveLateOrder here only to refund.\n\n"
+            "REPLAY ONLY IF YOU HAVE NOT REFUNDED. The two moves on this page "
+            "are alternatives, not a sequence. Once this case is refunded the "
+            "order is `refunded` and a replayed callback opens a SECOND page "
+            "— LATE PAYMENT AFTER REFUND — naming the very charge you just "
+            "gave back. That page is correct about the webhook and wrong "
+            "about the money: there is nothing further to refund.\n\n"
             f"Order: {self._tracker_link(facts.order_id)}"
         )
 
