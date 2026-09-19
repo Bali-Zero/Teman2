@@ -137,13 +137,42 @@ interesting points spawn round N+1 research. No round limit. Opus 5 orchestrates
 hook-enforced — RULED 2026-08-20: Fable is out of the workflow, CLAUDE.md §5); Sonnet implements; research outputs persisted under `research/visa/` in the worktree
 as `2026-07-17-visa-oracle-v2-round<N>-<lane>.md`.
 
-## LIVE STATE — CURRENT POSITION (updated 2026-09-11; update on every state change)
+## LIVE STATE — CURRENT POSITION (updated 2026-09-19; update on every state change)
 
-- **Active production pack: seq-20**, version `2026.9.6`, `rule_pack_id ac0a792d-a38d-512e-9ead-54a5d008fb68`,
+- **This entry was stale by construction, not wrong-by-lying** (VISA-ORACLE-DW-20260919 PLAN
+  §1.1): the seq-20 bullet immediately below was last updated 2026-09-11; seq-22 landed
+  2026-09-16 (`44b9b36d32`, PR #6675, "land the signed seq-22 bundle, v3") and is now the
+  **highest SIGNED production pack on disk** — measured this session via slice A0's own
+  `load_highest_signed_pack()`: `rulepack-prod-022.signed.json`, version `2026.9.16`,
+  `rule_pack_id 916915d8-1c58-508d-aff7-742a3c012df7`. **What PROD actually serves is
+  UNVERIFIED FROM THIS SEAT**, two independent attempts, both inconclusive: (1)
+  `curl -s https://nuzantara-rag.fly.dev/api/visa-oracle/rule-pack` → `401`; (2)
+  `probe_evaluate.py --full-body` against `/api/visa-oracle/evaluate` with the provisioned
+  `~/.config/nuzantara/visa-signing/driver-token` (synthetic auth) passed the auth gate but the
+  strict route rejected the current-schema `ApplicantFacts` payload with a sanitized `422`
+  (41 `missing` + 56 `extra_forbidden` field errors, `loc` deliberately redacted to a generic
+  `"field"` by `_sanitized_validation_detail` in `app/routers/visa_oracle_evaluate.py` — by
+  design, not a bug, so this probe cannot see which fields diverged). A third route,
+  `scripts/pg.sh` against `visa_ruleset_activations`, was blocked because the `fly` CLI had no
+  access token in this session (`fly proxy` → "no access token available… flyctl auth login") —
+  a login/credential act reserved for the human, not attempted further. **Do not plan a pack
+  change (A8/A9) until a future session closes this with a fresh probe or an authenticated
+  `fly`/`pg.sh` session.**
+- **Slice A0 landed**: `apps/backend-rag/backend/scripts/visa_engine/review_hold_inventory.py`
+  derives every `HUMAN_REVIEW` producer from the signed pack AST plus the backend adapters —
+  the missing PR-O1 keystone (PLAN §1.7). Measured against seq-22: **9** pack
+  `HUMAN_REVIEW`-stage rules, **7** `on_unknown=HUMAN_REVIEW` escalations (3 overlapping the 9
+  plus 4 HARD_FILTER-only), **11** disclosed review flags, **1** engine-level minor-privacy
+  hold — **25 total distinct hold producers**, matching PLAN §1.3's hand count exactly. Also
+  reports the 3 orphan `REVIEW_GATE_ITEMS` (`overstay`, `blacklist`,
+  `immigration_investigation`) `tree.ts` offers a visitor that `fact-mapper.ts`'s
+  `REVIEW_FLAG_MAP` silently drops — unresolved, slice A3's job.
+- **Active production pack (per this bullet's own last verification, 2026-09-11): seq-20**, version `2026.9.6`, `rule_pack_id ac0a792d-a38d-512e-9ead-54a5d008fb68`,
   109 rules, signed on M5 (`sign_pack.py`, kid `prod-2026-07-1`, `signed_at 2026-09-06T14:59:27Z`)
   and activated (`activation_id e08ebea9-d50f-48a6-989e-b7e4698f96ad`). Prod answers
   `sequence=20 version=2026.9.6`, re-proven by synthetic API + public-browser probes on
-  2026-09-11 (Mini). The **21 dead ends / 22 answers over 43 walks is historical**.
+  2026-09-11 (Mini). The **21 dead ends / 22 answers over 43 walks is historical**. **Superseded
+  by the seq-22-on-disk finding above — this number is no longer re-provable from this seat.**
 - **Fresh walk census (2026-09-11, 67 scenarios, current repo + signed seq-20, offline):**
   without disclosure flags, **55 SUPPORTED / 10 NO_SUPPORTED_PATH / 2 NEEDS_INPUT**;
   with the actual frontend flags, **31 SUPPORTED / 7 NO_SUPPORTED_PATH / 29 HUMAN_REVIEW**.
