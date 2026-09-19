@@ -220,3 +220,53 @@ describe("DocumentsTab (INNOCENCE)", () => {
     }
   });
 });
+
+describe("DocumentsTab — urgency tone follows viewer ownership (r19 law 1)", () => {
+  const expiredDoc = doc({
+    id: 5,
+    document_category: "immigration",
+    file_name: "expired-visa.pdf",
+    expiry_date: "2000-01-01",
+  });
+
+  it("GUILT: stays wait — the WORD 'Expired' never turns copper on its own", () => {
+    renderTab([expiredDoc]);
+
+    for (const pill of screen.getAllByText("Expired")) {
+      expect(pill.className).toContain("--tx-secondary");
+      expect(pill.className).not.toContain("--bz-copper-text");
+    }
+  });
+
+  it("INNOCENCE: turns copper only when the caller says the viewer is next", () => {
+    render(
+      <DocumentsTab
+        clientId={1}
+        documents={[expiredDoc]}
+        documentsByCategory={{ immigration: [expiredDoc] }}
+        formatDate={(d) => d}
+        onAddClick={vi.fn()}
+        onEditClick={vi.fn()}
+        viewerIsNext
+      />,
+    );
+
+    for (const pill of screen.getAllByText("Expired")) {
+      expect(pill.className).toContain("--bz-copper-text");
+    }
+  });
+
+  it("a Valid document stays ok regardless of viewerIsNext", () => {
+    const validDoc = doc({
+      id: 6,
+      document_category: "personal",
+      file_name: "valid.pdf",
+      status: "verified",
+    });
+
+    renderTab([validDoc]);
+    for (const pill of screen.getAllByText("Valid")) {
+      expect(pill.className).toContain("--state-success");
+    }
+  });
+});

@@ -53,8 +53,17 @@ const COLS = "minmax(180px,1.7fr) 104px 100px 92px";
  * Real-fields-only status: `deleted_at` (client removed it), `expiry_date`
  * (a date, checked before status), then `status` itself. No field is
  * invented — a document with none of these renders `wait`/"Missing".
+ *
+ * Urgency (an expiry date) is never copper on its own — r19 README law 1:
+ * copper means "the viewer is the next actor", derived from the viewer and
+ * the record together, "where ownership is not derivable, use wait". The
+ * WORD ("Expired"/"Expiring") always speaks the date; the TONE only turns
+ * copper when the caller's own `viewerIsNext` says so.
  */
-function documentPillState(d: ClientDocument): {
+function documentPillState(
+  d: ClientDocument,
+  viewerIsNext: boolean,
+): {
   tone: PillTone;
   label: string;
 } {
@@ -63,8 +72,9 @@ function documentPillState(d: ClientDocument): {
     const daysLeft = Math.ceil(
       (new Date(d.expiry_date).getTime() - Date.now()) / 86400000,
     );
-    if (daysLeft < 0) return { tone: "you", label: "Expired" };
-    if (daysLeft <= 30) return { tone: "you", label: "Expiring" };
+    const urgentTone: PillTone = viewerIsNext ? "you" : "wait";
+    if (daysLeft < 0) return { tone: urgentTone, label: "Expired" };
+    if (daysLeft <= 30) return { tone: urgentTone, label: "Expiring" };
   }
   if (d.status === "verified") return { tone: "ok", label: "Valid" };
   if (d.status === "received") return { tone: "ours", label: "Processing" };
@@ -88,6 +98,7 @@ export function DocumentsTab({
   formatDate,
   onAddClick,
   onEditClick,
+  viewerIsNext = false,
 }: {
   clientId: number;
   documents: ClientDocument[];
@@ -95,6 +106,8 @@ export function DocumentsTab({
   formatDate: (d: string) => string;
   onAddClick: () => void;
   onEditClick: (doc: ClientDocument) => void;
+  /** True when the viewer is the next actor on this record (r19 law 1). */
+  viewerIsNext?: boolean;
 }) {
   const [activeCategory, setActiveCategory] = useState<string>("all");
 
@@ -201,7 +214,7 @@ export function DocumentsTab({
             const catLabel = CATEGORY_LABELS[cat] || cat;
             const displayName = d.file_name || d.document_type;
             const openUrl = getDocumentOpenUrl(d);
-            const { tone, label } = documentPillState(d);
+            const { tone, label } = documentPillState(d, viewerIsNext);
             const expiresLabel = d.expiry_date
               ? formatDate(d.expiry_date)
               : "—";
