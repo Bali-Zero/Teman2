@@ -12,13 +12,49 @@ import {
   Check,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import type { ClientProfile, ClientDocument } from "@/lib/api/crm/crm.types";
+import type {
+  ClientProfile,
+  ClientDocument,
+  ExpiryAlert,
+} from "@/lib/api/crm/crm.types";
 import { formatPhoneNumber, isBirthdayToday } from "./utils";
 import { PassportCard } from "./PassportCard";
 import { VisaCard } from "./VisaCard";
 import { AiSummaryCard } from "./AiSummaryCard";
 import { OracleChat } from "./OracleChat";
 import { WaCaseIntelligencePanel } from "./WaCaseIntelligencePanel";
+import {
+  LedgerSection,
+  NumberedList,
+  StatePill,
+} from "@/components/workspace/r19";
+import { passportLabel } from "../../client-row-model";
+
+/** "kitas_card" -> "Kitas Card" — formatting only, never invents a value. */
+function documentTypeLabel(documentType: string): string {
+  return documentType
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+/**
+ * Expired-vs-expiring wording mirrors the strip this ledger sits above
+ * (ClientDetailClient.tsx ~682-760): only `expired`/`red` alerts are urgent
+ * enough to need attention, expired sorts first, then soonest expiry.
+ */
+function urgentAlerts(alerts: ExpiryAlert[]): ExpiryAlert[] {
+  return alerts
+    .filter((a) => a.alert_color === "expired" || a.alert_color === "red")
+    .slice()
+    .sort((a, b) => {
+      if (a.alert_color !== b.alert_color) {
+        return a.alert_color === "expired" ? -1 : 1;
+      }
+      return a.days_until_expiry - b.days_until_expiry;
+    });
+}
+
+const ATTENTION_ROW_CAP = 5;
 
 export function OverviewTab({
   client,
@@ -26,6 +62,8 @@ export function OverviewTab({
   documents,
   activePractices,
   completedPractices,
+  expiryAlerts,
+  needsViewerAction,
   formatDate,
   formatCurrency,
   onEditClick,
@@ -37,6 +75,14 @@ export function OverviewTab({
   documents: ClientDocument[];
   activePractices: ClientProfile["practices"];
   completedPractices: ClientProfile["practices"];
+  /** Real `expiry_alerts` from the profile — the only source for the
+   *  "Needs attention" ledger. Practices carry no waiting-on/next-actor
+   *  field today, so this ledger cannot include them (2026-09-19). */
+  expiryAlerts: ClientProfile["expiry_alerts"];
+  /** Same ownership predicate the masthead subtitle already uses
+   *  (ClientDetailClient.tsx `needsViewerAction`) — copper is never
+   *  derived a second way. */
+  needsViewerAction: boolean;
   formatDate: (d: string) => string;
   formatCurrency: (n: number) => string;
   onEditClick: () => void;
@@ -45,6 +91,12 @@ export function OverviewTab({
 }) {
   const isClientBirthday = isBirthdayToday(client.date_of_birth);
   const [copiedField, setCopiedField] = useState<string | null>(null);
+  const [showAllAttention, setShowAllAttention] = useState(false);
+
+  const attentionRows = urgentAlerts(expiryAlerts);
+  const visibleAttentionRows = showAllAttention
+    ? attentionRows
+    : attentionRows.slice(0, ATTENTION_ROW_CAP);
 
   const copyToClipboard = (value: string, field: string) => {
     void navigator.clipboard.writeText(value).then(() => {
@@ -55,6 +107,45 @@ export function OverviewTab({
 
   return (
     <div className="space-y-6">
+      {/* Needs attention — real expiry_alerts only, zero rows renders nothing */}
+      {attentionRows.length > 0 && (
+        <LedgerSection
+          n={1}
+          tone={needsViewerAction ? "you" : "wait"}
+          title="Needs attention"
+        >
+          <div className="py-3">
+            <NumberedList
+              owned={needsViewerAction}
+              items={visibleAttentionRows.map((alert) => ({
+                id: `${alert.entity_type}-${alert.entity_id}-${alert.document_type}`,
+                title: `${documentTypeLabel(alert.document_type)} ${
+                  alert.alert_color === "expired" ? "expired" : "expires soon"
+                }`,
+                detail:
+                  alert.entity_type === "family_member"
+                    ? `${passportLabel(alert.days_until_expiry)} · ${alert.entity_name}`
+                    : passportLabel(alert.days_until_expiry),
+                right: (
+                  <StatePill
+                    tone={needsViewerAction ? "you" : "wait"}
+                    label={needsViewerAction ? "You" : "Wait"}
+                  />
+                ),
+              }))}
+            />
+            {attentionRows.length > ATTENTION_ROW_CAP && !showAllAttention && (
+              <button
+                type="button"
+                onClick={() => setShowAllAttention(true)}
+                className="mt-2 min-h-6 text-xs text-[var(--tx-secondary)] underline decoration-dotted hover:text-[var(--tx-pure)]"
+              >
+                Show all ({attentionRows.length})
+              </button>
+            )}
+          </div>
+        </LedgerSection>
+      )}
       {/* AI Summary (CRM-Guardian Phase 1 cross-folder L1) */}
       <AiSummaryCard clientId={clientId} section="overview" />
       {/* Oracle Chat — NLM-powered Q&A */}

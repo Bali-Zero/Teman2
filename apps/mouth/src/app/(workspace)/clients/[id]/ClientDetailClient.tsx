@@ -963,6 +963,8 @@ export function ClientDetailClient({
                 documents={documents}
                 activePractices={activePractices}
                 completedPractices={completedPractices}
+                expiryAlerts={expiry_alerts}
+                needsViewerAction={needsViewerAction}
                 formatDate={formatDate}
                 formatCurrency={formatCurrency}
                 onEditClick={() => setActiveModal("edit_client")}
