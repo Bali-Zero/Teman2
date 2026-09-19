@@ -133,8 +133,12 @@ cmd_launch() {
   tmux pipe-pane -t "$session" -o "cat >> '$log_file'"
 
   # claude interattivo in autonomia piena col prompt-armata come messaggio iniziale.
+  # CLAUDE_CONFIG_DIR resta quello di default del CLI (~/.claude.json + keychain): forzarlo a
+  # $HOME/.claude puntava su M5 a una sessione OAuth scaduta (2026-09-19: armata ferma sulla
+  # schermata onboarding+login), e un valore ereditato dall'env del bridge non è più
+  # affidabile — stessa logica dei path non env-overridabili qui sopra.
   tmux send-keys -t "$session" \
-    "export ORCHESTRATE_GATE_OFF=1 AGENT_BROKER_ENABLED=true CLAUDE_CONFIG_DIR=\$HOME/.claude; '$CLAUDE_BIN' --model '$CLAUDE_MODEL' --dangerously-skip-permissions \"\$(cat '$prompt_tmp')\"" \
+    "export ORCHESTRATE_GATE_OFF=1 AGENT_BROKER_ENABLED=true; unset CLAUDE_CONFIG_DIR; '$CLAUDE_BIN' --model '$CLAUDE_MODEL' --dangerously-skip-permissions \"\$(cat '$prompt_tmp')\"" \
     Enter
 
   # watcher → Telegram su ARMY_DONE.
