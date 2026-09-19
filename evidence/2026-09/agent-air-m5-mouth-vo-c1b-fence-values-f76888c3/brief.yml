@@ -1,0 +1,90 @@
+task_id: vo-c1b-fence-values
+gear: 2
+l_level: L1
+gate_class: opus
+objective: |
+  Visa Oracle mission, slice C1b (MANDATE-vo.md). vo-gate-c1 passed PR #6820's
+  four-state outcome-colour fence (GATE-C1-REPORT-6820.md) but found it real
+  and bounded: it compared raw declaration TEXT so a repaint that writes the
+  same colour in a different notation slips through (OBS-1, MEDIUM), and it
+  found theme blocks by anchoring on one token, so a rendering context that
+  overrides only a SUBSET of the four is invisible to it (OBS-2, MEDIUM), plus
+  two LOW findings — block identity pinned by absolute line number (OBS-5)
+  and no CSS-comment awareness (OBS-6).
+
+  This slice closes all four without touching `oracle.css`: the fence now
+  resolves colours to a canonical value before comparing (hex case, 3/4-digit
+  shorthand, rgb()/rgba() comma-vs-space syntax, rgb()<->hex equivalence,
+  alpha 1 vs 100%, one level of var() resolution), finds every context that
+  declares ANY of the eight tokens and judges it on its EFFECTIVE values
+  (its own overrides layered over the nearest preceding same-theme block),
+  identifies blocks by selector/at-rule instead of line number, and strips
+  CSS comments before parsing.
+constraints:
+  - "Base is fresh origin/main AFTER #6820 merged — this branch never opened
+    while #6820 was open (per MANDATE-vo.md)."
+  - "`oracle.css` stays untouched. No package.json/lockfile change, no new
+    dependency: the parsing/normalisation mechanism is a pure-function
+    sibling helper (`oracle-state-tokens.helpers.ts`), not a new package."
+  - "The helper is NOT placed inside `_lib/` — the R19 design-reuse map
+    (§4.5) freezes that directory for design PRs and it is unrelated to
+    this fence."
+  - "Mutations for guilt fixtures are made on a COPY of the shipped CSS
+    (string mutation) or with `cp` backup + `cmp -s` restore when touching
+    the file on disk — never `git checkout --`."
+  - "The gate's own proven pairs (M4 hex case, M5 rgba whitespace, M6
+    partial-override) are reproduced as permanent regression fixtures
+    against a copy of the shipped oracle.css, not just synthetic CSS."
+acceptance:
+  - text: "WHEN two `--oracle-state-*` tokens in the same effective context
+      resolve to the same colour VALUE regardless of notation (hex case,
+      shorthand, rgb() vs hex, rgba() whitespace, alpha 1 vs 100%, or one
+      level of var() indirection), the fence SHALL throw naming both tokens
+      and the colour."
+    probe: "npx vitest run oracle-state-tokens -t 'B1 colour normalisation'"
+  - text: "WHEN a context declares only a SUBSET of the eight tokens
+      (overriding a base it inherits from), the fence SHALL judge it on its
+      EFFECTIVE (own-declared + inherited) four foreground and four
+      background values, not skip it."
+    probe: "npx vitest run oracle-state-tokens -t 'B2 partial-override'"
+  - text: "WHEN a CSS comment contains what looks like a `--oracle-state-*`
+      declaration, it SHALL NOT be read as real — neither as a false
+      duplicate nor as satisfying a missing token."
+    probe: "npx vitest run oracle-state-tokens -t 'B4 comment-aware'"
+  - text: "WHEN the gate's own M4 (hex case), M5 (rgba whitespace) and M6
+      (partial-override) mutations are reproduced against a copy of the
+      shipped oracle.css, each SHALL turn the fence red naming the
+      colliding block and tokens; the unmutated file SHALL stay green."
+    probe: "npx vitest run oracle-state-tokens -t 'gate-proven fixtures'"
+  - text: "The shipped oracle.css SHALL still resolve to exactly four
+      contexts, identified by selector/at-rule (not line number), and a
+      comment prepended to a COPY of the file SHALL leave that identity and
+      every value unchanged."
+    probe: "npx vitest run oracle-state-tokens -t 'shipped oracle.css'"
+consumer_map:
+  - '`frontend-tests` CI job (`Frontend Tests (Next.js)`, matrix `app:
+    mouth`) — runs `cd apps/mouth && npx vitest --run --coverage`, which
+    collects this test file (`include: ["src/**/*.test.{ts,tsx}"]`) on
+    every PR touching `apps/mouth`.'
+  - "Any future design PR that repaints `oracle.css` (C2-C5, OD-1 the R19
+    atlas port) — this is the anti-regression fence PLAN.md G3-a requires
+    to land BEFORE that work, now judging colours and effective contexts
+    instead of text and a fixed block count."
+risks:
+  - "The scope-chain 'up the cascade' model is syntactic (matched by the
+    selector's `data-oracle-theme` attribute value), not a full CSS
+    specificity/cascade engine — deliberate, since a real CSS parser would
+    be a new dependency and this file's actual structure (four blocks, one
+    level of @media nesting, no CSS nesting syntax) doesn't need one. A
+    selector shape this file has never used (e.g. genuine multi-level
+    nesting) fails loud rather than silently mis-parsing."
+  - "Net diff is ~530 lines, over the Builder Contract's ~400-line
+    guidance — 'where the work allows' applies: the spec named six
+    required behaviours (B1-B6), each needing its own guilt+innocence
+    coverage plus the three gate-fixture reproductions the team lead
+    explicitly asked for."
+grader: |
+  A fresh Opus 5 gate follows, per MANDATE-vo.md ("a fresh Opus 5 gate
+  follows"), generator != grader — same discipline as vo-gate-c1 on #6820.
+budget: 1 build lane (this session), no council gate.
+pii: none
