@@ -10,6 +10,7 @@ import type { LKPMBatchItem, LKPMReceipt } from "@/lib/api/portal/portal.types";
 import {
   CellStack,
   EYEBROW,
+  FOCUS,
   HairlineBody,
   HairlineGrid,
   HairlineHead,
@@ -147,7 +148,7 @@ const TaxConsultantSelector = memo(function TaxConsultantSelector({
           value={value}
           onChange={handleChange}
           disabled={isSaving}
-          className="min-h-9 w-full max-w-[240px] border border-[var(--line-control)] bg-transparent px-2.5 text-[13px] text-[var(--bz-text-1)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--line-control)] disabled:opacity-60"
+          className={`min-h-9 w-full max-w-[240px] border border-[var(--line-control)] bg-transparent px-2.5 text-[13px] text-[var(--bz-text-1)] ${FOCUS} disabled:opacity-60`}
         >
           <option value="">— not assigned —</option>
           {consultants.map((c) => (
@@ -301,7 +302,10 @@ function LkpmQuarterRow({
     return (
       <HairlineRow data-testid={`lkpm-row-${quarter}-empty`}>
         <div className="min-w-0 px-2.5 py-3">
-          <CellStack primary={quarter} secondary="No report" />
+          <CellStack
+            primary={quarter}
+            secondary={`${QUARTER_MONTHS[quarter]} · No report`}
+          />
         </div>
         <div className="px-2.5 py-3 text-[13px] text-[var(--tx-secondary)]">
           —
@@ -637,8 +641,11 @@ export function TaxTab({
           {(() => {
             const primaryCompany =
               companyLinks?.find((l) => l.is_primary) ?? companyLinks?.[0];
-            const npwpValue = client?.npwp ?? client?.tax_id ?? undefined;
-            const nibValue = client?.nib ?? undefined;
+            // `||`, not `??`: an empty-string npwp must fall through to
+            // tax_id — with `??` the empty string hides the real tax_id and
+            // the row wrongly reads "Not registered".
+            const npwpValue = client?.npwp || client?.tax_id || undefined;
+            const nibValue = client?.nib || undefined;
             return (
               <>
                 <TaxIdItem

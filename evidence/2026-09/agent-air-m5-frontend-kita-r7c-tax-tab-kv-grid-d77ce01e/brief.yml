@@ -1,0 +1,131 @@
+task: >-
+  R7c of the kita client-profile redesign (`PLAN-redesign.md`): TaxTab.tsx
+  moved from the bz-product-panel cards to the r19 primitives (LedgerSection,
+  HairlineGrid / CellStack, StatePill) and is committed on
+  `agent/air-m5/frontend/kita-r7c-tax-tab-kv-grid` at HEAD aa1669d936. An
+  independent OLD-vs-NEW parity audit
+  (`/Users/balizero/kita-renders/2026-09-19-client-profile/audits/R7c-audit.md`)
+  judged it SHIP-WITH-CONDITIONS — "the strongest restyle of the lot" — with
+  five BLOCKING items: B1 a silently dropped quarter month range on the empty
+  row, B2/B3/B4 missing pins on the visible health word, the year filter and
+  the assignee humanisation + "Unassigned" fallback, and B5 a displayed receipt
+  date silently reformatted through `formatDate` without a pin or disclosure.
+  This round is the audit's executable repair: B1 restores the month range on
+  the empty quarter row (TaxTab.tsx:307), B2–B5 add six new can-fail test cases
+  (TaxTab.test.tsx:315, :320, :350, :528, :571, plus the two A1 cases at :191
+  and :221) that each fail against the corresponding mutation, A1 fixes a
+  pre-existing tax-identifier defect (empty-string `npwp` hid a real `tax_id`
+  because the fallback used `??`; TaxTab.tsx:647-648 now use `||`), A2 gives
+  the consultant `<select>` the site's designed focus ring by importing the r19
+  `FOCUS` constant (TaxTab.tsx:151) instead of a ring the same colour as its
+  border, and A3 discloses the audit's non-blocking tone changes and the newly
+  visible assignee email below. The two pre-existing suites
+  (TaxTab.consultants, TaxTab.healthPip) stay byte-identical and green. Changes
+  are left UNCOMMITTED in the worktree; this seat prepares only — no commit,
+  push, PR, merge or deploy. By the owner's decision of 2026-09-19 the redesign
+  does not wait for a human code review before arming.
+lane: frontend/kita-r7c-tax-tab-kv-grid
+machine: air-m5
+date: 2026-09-20
+
+gear: 2
+gear_reason: >-
+  Deterministic floor 2, source `size`. The committed round at HEAD measures
+  churn 1281 (474+0 TaxTab.test.tsx, 422+385 TaxTab.tsx per the audit's
+  `git diff --no-renames --numstat origin/main...HEAD`), and this repair round
+  adds 237 more churn lines unstaged (198+24 TaxTab.test.tsx, 11+4
+  TaxTab.tsx, measured with `git diff --numstat` in the worktree on
+  2026-09-20) — combined 1518, above SIZE_GEAR2_THRESHOLD (400) and below
+  SIZE_GEAR3_THRESHOLD (1828). No hot-zone path is hit (both files are under
+  `apps/mouth/`). Net is +691 combined.
+
+appetite:
+  wall_clock_hours: 1
+  adversarial_rounds: 1
+
+acceptance:
+  A1: >-
+    The whole `clients/[id]` vitest folder passes: 19 files / 234 tests (was
+    19 / 228 before this round), including the `client-detail-desk.test.tsx`
+    guard and the two byte-identical pre-existing TaxTab suites. The TaxTab
+    suites alone are 3 files / 32 tests (was 26): six new cases — the empty
+    quarter row carries its month range ("Apr-Jun", TaxTab.test.tsx:315), the
+    health verdict is a visible word and not only an aria-label (:320), the
+    assignee is humanised from the email and an empty one reads "Unassigned"
+    (:350), the year filter excludes other years' reports and receipts and
+    switching year swaps the rows (:528), the receipt date renders through the
+    `formatDate` prop and never raw (:571), an empty-string npwp falls through
+    to tax_id and a real npwp still wins over tax_id (:191, :221).
+    probe: >-
+      npx --no-install vitest run 'src/app/(workspace)/clients/[id]/'
+  A2: >-
+    Each of the seven mutations the audit/orchestrator named was applied to a
+    copy of TaxTab.tsx outside the repo, patched into the working file, run
+    against the TaxTab suites, and the file restored with `cmp -s` byte-equal
+    to the pristine copy: drop the empty-row month range (fails the 'No
+    report' placeholder case), reduce the health word to aria-label only
+    (fails the health-word case), remove both year filters (fails the
+    year-filter case), drop the assignee capitalisation (fails the humanisation
+    case), replace "Unassigned" with an em-dash (fails the same case), bypass
+    `formatDate` on `tanggal_diterima` (fails the formatDate case), revert `||`
+    to `??` on the npwp fallback (fails the empty-npwp case). Every mutation
+    left the suite at exactly 1 failed / 31 passed — all seven pins can fail.
+    probe: >-
+      cp TaxTab.tsx /tmp/r7c-mutations/ && apply one mutation, npx --no-install
+      vitest run 'src/app/(workspace)/clients/[id]/components/TaxTab', restore
+      with cp and confirm with cmp -s
+  A3: >-
+    `tsc --noEmit -p .` exits 0 with no output; `eslint` reports zero errors on
+    TaxTab.tsx and only the expected ignore-pattern warning on TaxTab.test.tsx
+    (the folder's test files carry the same warning on every other suite);
+    `prettier --write` leaves both changed files unchanged (already formatted);
+    `python3 -I scripts/token_lint.py --base origin/main` prints clean (exit 0)
+    — the repair introduces no raw hex, no palette-hue utility and no copper
+    literal (the focus ring comes from the imported r19 `FOCUS` constant, so
+    the desk guard's empty allow-list is untouched).
+    probe: >-
+      npx --no-install tsc --noEmit -p . && npx --no-install eslint
+      "src/app/(workspace)/clients/[id]/components/TaxTab.tsx"
+      "src/app/(workspace)/clients/[id]/components/TaxTab.test.tsx" && npx
+      --no-install prettier --write
+      "src/app/(workspace)/clients/[id]/components/TaxTab.tsx"
+      "src/app/(workspace)/clients/[id]/components/TaxTab.test.tsx" && python3
+      -I scripts/token_lint.py --base origin/main
+
+out_of_scope: >-
+  Every other R1-R8 lane of `PLAN-redesign.md` — each is its own PR. N1/N2 of
+  the audit (receipt-count arithmetic and the client-approval word pair pins)
+  and N6/N7/N8 (backend statuses collapsed to "Draft", the double-guarded NPWP
+  fallback, the health pip's double announcement) are the audit's own
+  non-blocking/follow-up items and are deliberately not taken in this round.
+  Arming, merging, deploying or proving live — this seat prepares uncommitted;
+  the ship sequence belongs to the release owner, and per the owner's decision
+  of 2026-09-19 the redesign does not wait for a human code review before
+  arming.
+
+disclosed_product_visible_changes: >-
+  Removals (unchanged from the committed round, restated so the disclosure is
+  complete in one place): the per-tab AI summary card is gone from the Tax tab
+  (design v3 drops it from every tab); the emoji/glyph status markers are gone
+  (the check mark after a submitted quarter, the check mark after an approved
+  OSS receipt, the tick/cross before the client-approval words — the words
+  themselves all stay); the tinted badge boxes around NPWP / NIB (green when
+  present, amber when inherited, dashed when absent) are gone — the same three
+  facts are carried by the words in the key/value grid (the value, `via company
+  · <company name>`, or `Not registered`); three decorative icons with no
+  accessible name are gone (person icon beside the tax consultant,
+  building/check/alert icons on the NPWP-NIB badges, document icon tile in the
+  LKPM header); the "not registered" line reads `Not registered` under the
+  field's own NPWP / NIB label instead of repeating the label. Changes: receipt
+  dates are now formatted (`9 Jul 2026`) instead of printed as the raw ISO
+  string (`2026-07-09`), through the same `formatDate` prop as every other tab
+  (kept per the lot's date law; pinned by the formatted:<raw> pattern and
+  disclosed here — B5); deadlines gained a word (`5 days` now reads `Due in 5
+  days`, `Due today`, or `Overdue by 5 days` — the number and both old urgency
+  thresholds at 3 and 7 days are unchanged); two status colours moved —
+  `Approved` was blue and is now green, `Draft` was amber and is now neutral
+  grey, every status word unchanged (A3); the OSS "Nomor Kegiatan Usaha" and the
+  LKPM health verdict were previously tooltips only and are now readable text;
+  the assignee cell now shows the assigned consultant's email under their first
+  name (A3); and the empty quarter row once again shows its month range
+  (`Apr-Jun · No report`), restoring what the old file rendered (B1).

@@ -86,6 +86,26 @@ const COMPANY_LINK: ClientCompanyLink = {
   nib: "9120107642219",
 };
 
+// Hoisted to module scope: the year-filter and formatDate pins both need it.
+const RECEIPT_FIXTURE: LKPMReceipt = {
+  id: 5,
+  lkpm_report_id: 1,
+  nomor_laporan: "LAP-0001",
+  nomor_kegiatan_usaha: "NU-901",
+  kbli_code: "56101",
+  kegiatan_usaha_desc: "Restaurant",
+  stage: "PRODUKSI",
+  oss_status: "Disetujui",
+  lokasi: "Badung",
+  tanggal_diterima: "2026-07-09",
+  nama_perusahaan_oss: null,
+  file_drive_url: "https://drive.example.test/receipt-5",
+  file_name: "receipt-5.pdf",
+  quarter: "Q2",
+  year: YEAR,
+  company_name: "Acme Test PT",
+};
+
 beforeEach(() => {
   vi.clearAllMocks();
   mockGetClientHistory.mockResolvedValue({ items: [] });
@@ -168,6 +188,55 @@ describe("Tax identity — NPWP/NIB provenance", () => {
     expect(screen.queryByText("9120107642219")).not.toBeInTheDocument();
   });
 
+  it("an empty-string npwp falls through to tax_id instead of hiding it", async () => {
+    const { TaxTab } = await import("./TaxTab");
+    // GUILT: npwp "" must not win over a real tax_id (a `??` regression
+    // prints "Not registered"). INNOCENCE inside the same render: a real
+    // npwp still wins over tax_id.
+    const client = {
+      npwp: "",
+      tax_id: "88.777.666.5-444.000",
+      nib: "9120107000111",
+    } as unknown as Client;
+    render(
+      <TaxTab
+        clientId={7}
+        formatDate={(d: string) => d}
+        client={client}
+        companyLinks={[COMPANY_LINK]}
+        taxConsultants={[]}
+      />,
+    );
+
+    // The empty npwp falls through: the real tax_id is the value shown, and
+    // the company fallback stays suppressed.
+    expect(await screen.findByText("88.777.666.5-444.000")).toBeInTheDocument();
+    expect(screen.queryByText("11.222.333.4-555.000")).not.toBeInTheDocument();
+    expect(screen.queryByText("Not registered")).not.toBeInTheDocument();
+    // The own NIB still wins over the company's.
+    expect(screen.getByText("9120107000111")).toBeInTheDocument();
+    expect(screen.queryByText("9120107642219")).not.toBeInTheDocument();
+  });
+
+  it("a real npwp wins over tax_id", async () => {
+    const { TaxTab } = await import("./TaxTab");
+    const client = {
+      npwp: "99.888.777.6-555.000",
+      tax_id: "88.777.666.5-444.000",
+    } as unknown as Client;
+    render(
+      <TaxTab
+        clientId={7}
+        formatDate={(d: string) => d}
+        client={client}
+        taxConsultants={[]}
+      />,
+    );
+
+    expect(await screen.findByText("99.888.777.6-555.000")).toBeInTheDocument();
+    expect(screen.queryByText("88.777.666.5-444.000")).not.toBeInTheDocument();
+  });
+
   it("neither value nor fallback renders the words 'Not registered'", async () => {
     const { TaxTab } = await import("./TaxTab");
     render(
@@ -239,11 +308,73 @@ describe("LKPM quarter rows", () => {
       />,
     );
 
-    expect(await screen.findByTestId("lkpm-row-Q2-empty")).toHaveTextContent(
-      "No report",
-    );
+    const q2 = await screen.findByTestId("lkpm-row-Q2-empty");
+    expect(q2).toHaveTextContent("No report");
+    // OLD (HEAD~:273) also rendered the quarter's month range on the empty
+    // row — that word is part of the fact, not decoration.
+    expect(q2).toHaveTextContent("Apr-Jun");
     // Quarters with a report never show the placeholder.
     expect(screen.queryByTestId("lkpm-row-Q1-empty")).not.toBeInTheDocument();
+  });
+
+  it("the health verdict is a visible word, not only an aria-label", async () => {
+    mockGetClientHistory.mockResolvedValue({
+      items: [
+        mkReport({ id: 1, quarter: "Q1", red_alerts: 2 }),
+        mkReport({ id: 2, quarter: "Q2", yellow_alerts: 1 }),
+        mkReport({ id: 3, quarter: "Q3" }),
+      ],
+    });
+    const { TaxTab } = await import("./TaxTab");
+    render(
+      <TaxTab
+        clientId={7}
+        formatDate={(d: string) => d}
+        client={null}
+        taxConsultants={[]}
+      />,
+    );
+
+    // getByText only matches rendered text nodes — an aria-label alone
+    // cannot satisfy it (the failure shape that rejected two earlier slices).
+    const q1 = await screen.findByTestId("lkpm-row-Q1");
+    expect(within(q1).getByText("2 alerts need attention")).toBeInTheDocument();
+    expect(
+      within(screen.getByTestId("lkpm-row-Q2")).getByText("1 warning"),
+    ).toBeInTheDocument();
+    expect(
+      within(screen.getByTestId("lkpm-row-Q3")).getByText("No alerts"),
+    ).toBeInTheDocument();
+  });
+
+  it("the assignee is humanised from the email, and an empty one reads Unassigned", async () => {
+    mockGetClientHistory.mockResolvedValue({
+      items: [
+        mkReport({
+          id: 1,
+          quarter: "Q1",
+          lkpm_assigned_to: "dewi.consultant@example.test",
+        }),
+        mkReport({ id: 2, quarter: "Q2", lkpm_assigned_to: null }),
+      ],
+    });
+    const { TaxTab } = await import("./TaxTab");
+    render(
+      <TaxTab
+        clientId={7}
+        formatDate={(d: string) => d}
+        client={null}
+        taxConsultants={[]}
+      />,
+    );
+
+    // "dewi.consultant@example.test" -> "Dewi": split on ".", capitalised.
+    expect(
+      within(await screen.findByTestId("lkpm-row-Q1")).getByText("Dewi"),
+    ).toBeInTheDocument();
+    expect(
+      within(screen.getByTestId("lkpm-row-Q2")).getByText("Unassigned"),
+    ).toBeInTheDocument();
   });
 
   it("no LKPM data at all still renders the static Q1-Q4 placeholders", async () => {
@@ -331,27 +462,8 @@ describe("LKPM quarter rows", () => {
 });
 
 describe("OSS tanda terima receipts", () => {
-  const RECEIPT: LKPMReceipt = {
-    id: 5,
-    lkpm_report_id: 1,
-    nomor_laporan: "LAP-0001",
-    nomor_kegiatan_usaha: "NU-901",
-    kbli_code: "56101",
-    kegiatan_usaha_desc: "Restaurant",
-    stage: "PRODUKSI",
-    oss_status: "Disetujui",
-    lokasi: "Badung",
-    tanggal_diterima: "2026-07-09",
-    nama_perusahaan_oss: null,
-    file_drive_url: "https://drive.example.test/receipt-5",
-    file_name: "receipt-5.pdf",
-    quarter: "Q2",
-    year: YEAR,
-    company_name: "Acme Test PT",
-  };
-
   it("the receipt Open link is reachable and not inside a hover-gated container", async () => {
-    mockGetClientReceipts.mockResolvedValue({ items: [RECEIPT] });
+    mockGetClientReceipts.mockResolvedValue({ items: [RECEIPT_FIXTURE] });
     const { TaxTab } = await import("./TaxTab");
     render(
       <TaxTab
@@ -379,7 +491,7 @@ describe("OSS tanda terima receipts", () => {
   });
 
   it("the OSS receipt carries the perusahaan-usaha number visibly, not as a tooltip", async () => {
-    mockGetClientReceipts.mockResolvedValue({ items: [RECEIPT] });
+    mockGetClientReceipts.mockResolvedValue({ items: [RECEIPT_FIXTURE] });
     const { TaxTab } = await import("./TaxTab");
     const { container } = render(
       <TaxTab
@@ -411,6 +523,68 @@ describe("OSS tanda terima receipts", () => {
     expect(
       screen.queryByRole("heading", { name: /OSS tanda terima/ }),
     ).not.toBeInTheDocument();
+  });
+
+  it("the year filter excludes reports and receipts from another year, and switching year swaps them", async () => {
+    const user = userEvent.setup();
+    mockGetClientHistory.mockResolvedValue({
+      items: [
+        mkReport({ id: 1, quarter: "Q1", status: "validated" }),
+        mkReport({ id: 2, quarter: "Q2", status: "approved", year: YEAR - 1 }),
+      ],
+    });
+    mockGetClientReceipts.mockResolvedValue({
+      items: [{ ...RECEIPT_FIXTURE, id: 6, year: YEAR - 1 }],
+    });
+    const { TaxTab } = await import("./TaxTab");
+    render(
+      <TaxTab
+        clientId={7}
+        formatDate={(d: string) => d}
+        client={null}
+        taxConsultants={[]}
+      />,
+    );
+
+    // This year's Q1 renders; last year's Q2 must not leak into this year's
+    // grid, and last year's receipt must not open the receipts section.
+    expect(
+      within(await screen.findByTestId("lkpm-row-Q1")).getByText("Validated"),
+    ).toBeInTheDocument();
+    expect(screen.getByTestId("lkpm-row-Q2-empty")).toBeInTheDocument();
+    expect(screen.queryByText("Approved")).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("heading", { name: /OSS tanda terima/ }),
+    ).not.toBeInTheDocument();
+
+    // Switch to last year: the rows swap.
+    await user.click(screen.getByRole("button", { name: String(YEAR - 1) }));
+    expect(
+      within(await screen.findByTestId("lkpm-row-Q2")).getByText("Approved"),
+    ).toBeInTheDocument();
+    expect(screen.getByTestId("lkpm-row-Q1-empty")).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: /OSS tanda terima/ }),
+    ).toBeInTheDocument();
+  });
+
+  it("the receipt date is rendered through the formatDate prop, never raw", async () => {
+    // This case needs its own formatDate spy: every other case passes the
+    // identity function, which is exactly why reverting to the raw ISO value
+    // used to be invisible to the suite.
+    mockGetClientReceipts.mockResolvedValue({ items: [RECEIPT_FIXTURE] });
+    const { TaxTab } = await import("./TaxTab");
+    render(
+      <TaxTab
+        clientId={7}
+        formatDate={(d: string) => `fmt(${d})`}
+        client={null}
+        taxConsultants={[]}
+      />,
+    );
+
+    expect(await screen.findByText("fmt(2026-07-09)")).toBeInTheDocument();
+    expect(screen.queryByText("2026-07-09")).not.toBeInTheDocument();
   });
 });
 
