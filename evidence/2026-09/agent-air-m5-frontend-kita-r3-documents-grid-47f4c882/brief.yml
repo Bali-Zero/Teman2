@@ -57,23 +57,32 @@ appetite:
 acceptance:
   A1: >-
     WHEN `apps/mouth`'s `DocumentsTab.test.tsx` runs, the suite SHALL pass
-    all 20 cases: the status-pill-is-strictly-real-fields group (Removed/
-    Valid/Processing/Rejected words; a status-less document is never
-    labelled "Missing"; the pill never carries the Expired/Expiring word or
-    the copper tone), the Expires-cell-urgency group (GUILT — a document
-    expiring within 90 days shows the `--state-warning` treatment + "Nd
-    left"/"Expired Nd ago" countdown; verified+expiring renders BOTH the
-    Valid pill and the countdown; INNOCENCE — a document expiring in 200
-    days has a plain date cell, no red/danger token ever), the aggregate
-    "N expiring soon" count, the removed-document restore-window line, and
-    the kept grid/filter/action-reachability/EmptyState cases.
+    all 27 cases: the status-pill-is-strictly-real-fields group (Removed/
+    Valid/Processing/Rejected words, proven copper-free on the one fixture
+    that actually renders a pill, plus a sanity case proving the copper
+    detector string can match a synthetic copper sample; a status-less
+    document is never labelled "Missing"; the pill never carries the
+    Expired/Expiring word), the Expires-cell-urgency group (GUILT — a
+    document expiring within 90 days shows the `--state-warning` treatment
+    + "Nd left"/"Expired Nd ago" countdown; verified+expiring renders BOTH
+    the Valid pill and the countdown; INNOCENCE — a document expiring in
+    200 days has a plain date cell, no red/danger token ever; plus four
+    fake-timer boundary cases pinning day 90 vs day 91 on both the row cell
+    and the aggregate — R3-audit.md §3), the aggregate "N expiring soon"
+    count, the per-category doc-count + expiring-count on the filter pill
+    (R3-audit.md §2.2/§2.3), the removed-document restore-window line, and
+    the kept grid/filter/action-reachability/EmptyState cases (including the
+    restored file-name/document_type secondary line — R3-audit.md §2.1 —
+    the restored old empty-state hint — §2.4 — and the restored innocence
+    check that a row WITH a file never shows the "unavailable" fallback —
+    §5).
     probe: >-
       npx --no-install vitest run "src/app/(workspace)/clients/[id]/components/DocumentsTab.test.tsx"
   A2: >-
     WHILE the full `clients/[id]` folder suite runs — including the
     `client-detail-desk` folder guard (no `--state-danger`, no raw colours,
     no palette-hue utilities, `<Button variant>` a static literal) — it
-    SHALL report all 12 files / 117 tests green.
+    SHALL report all 12 files / 124 tests green.
     probe: >-
       npx --no-install vitest run "src/app/(workspace)/clients/[id]/"
   A3: >-
