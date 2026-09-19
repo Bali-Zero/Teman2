@@ -1,20 +1,25 @@
 "use client";
 
 import React, { useState, useCallback, memo, useEffect } from "react";
-import {
-  Building2,
-  FileText,
-  CheckCircle,
-  AlertCircle,
-  UserCheck,
-} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { api } from "@/lib/api";
 import type { Client, ClientCompanyLink } from "@/lib/api/crm/crm.types";
 import { lkpmApi } from "@/lib/api/workspace/lkpm.api";
 import type { LKPMBatchItem, LKPMReceipt } from "@/lib/api/portal/portal.types";
-import { AiSummaryCard } from "./AiSummaryCard";
+import {
+  CellStack,
+  EYEBROW,
+  FOCUS,
+  HairlineBody,
+  HairlineGrid,
+  HairlineHead,
+  HairlineRow,
+  LedgerSection,
+  MICRO_LABEL,
+  StatePill,
+  type PillTone,
+} from "@/components/workspace/r19";
 
 // ============================================
 // TAX CONSULTANT DROPDOWN (Bali Zero tax team)
@@ -133,39 +138,44 @@ const TaxConsultantSelector = memo(function TaxConsultantSelector({
   );
 
   return (
-    <div className="flex items-center gap-3 px-4 py-3 rounded-xl border border-[var(--bz-border)] bg-[var(--bz-surface)]">
-      <UserCheck className="w-4 h-4 text-[var(--tx-secondary)] shrink-0" />
-      <label
-        htmlFor={`tax-consultant-${clientId}`}
-        className="text-sm font-medium text-[var(--bz-text-1)]"
-      >
+    <div className="min-w-0">
+      <label htmlFor={`tax-consultant-${clientId}`} className={EYEBROW}>
         Tax Consultant
       </label>
-      <select
-        id={`tax-consultant-${clientId}`}
-        value={value}
-        onChange={handleChange}
-        disabled={isSaving}
-        className="flex-1 max-w-[220px] px-3 py-1.5 rounded-lg border border-[var(--bz-border)] bg-[var(--bz-base)] text-sm text-[var(--bz-text-1)] focus:outline-none focus:border-[var(--line-control)] transition-colors disabled:opacity-60"
-      >
-        <option value="">— not assigned —</option>
-        {consultants.map((c) => (
-          <option key={c.value} value={c.value}>
-            {c.label}
-          </option>
-        ))}
-      </select>
-      {isSaving && (
-        <span className="text-xs text-[var(--bz-text-2)]">Saving…</span>
-      )}
+      <div className="mt-1.5 flex items-center gap-2">
+        <select
+          id={`tax-consultant-${clientId}`}
+          value={value}
+          onChange={handleChange}
+          disabled={isSaving}
+          className={`min-h-9 w-full max-w-[240px] border border-[var(--line-control)] bg-transparent px-2.5 text-[13px] text-[var(--bz-text-1)] ${FOCUS} disabled:opacity-60`}
+        >
+          <option value="">— not assigned —</option>
+          {consultants.map((c) => (
+            <option key={c.value} value={c.value}>
+              {c.label}
+            </option>
+          ))}
+        </select>
+        {isSaving && (
+          <span className="text-[12px] text-[var(--tx-secondary)]">
+            Saving…
+          </span>
+        )}
+      </div>
     </div>
   );
 });
 
 // ============================================
-// TAX ID BADGE
+// TAX IDENTITY KV ITEM
 // ============================================
-function TaxIdBadge({
+// OLD TaxIdBadge (HEAD~:168-220) had three branches: the client's own value,
+// a company fallback ("via company" + value + company name), and
+// "not registered". All three words survive in the kv grid — the old tinted
+// boxes (emerald/warning fills) are gone per the r19 no-fill law; the facts
+// are carried by the words alone.
+function TaxIdItem({
   label,
   value,
   fallbackValue,
@@ -176,45 +186,27 @@ function TaxIdBadge({
   fallbackValue?: string;
   fallbackLabel?: string;
 }) {
-  if (!value && fallbackValue) {
-    return (
-      <div className="flex items-center gap-2 px-3 py-2 rounded-lg border border-[var(--state-warning)]/30 bg-[var(--state-warning)]/10">
-        <Building2 className="w-3.5 h-3.5 text-[var(--state-warning)] shrink-0" />
-        <div className="min-w-0">
-          <p className="text-[10px] text-[var(--state-warning)]/70 font-medium uppercase tracking-wide">
-            {label} <span className="normal-case font-normal">via company</span>
-          </p>
-          <p className="text-xs font-mono text-[var(--state-warning)] truncate">
+  return (
+    <div className="min-w-0">
+      <p className={EYEBROW}>{label}</p>
+      {value ? (
+        <p className="mt-1.5 truncate font-mono text-[13px] text-[var(--tx-pure)]">
+          {value}
+        </p>
+      ) : fallbackValue ? (
+        <>
+          <p className="mt-1.5 truncate font-mono text-[13px] text-[var(--tx-pure)]">
             {fallbackValue}
           </p>
-          {fallbackLabel && (
-            <p className="text-[10px] text-[var(--state-warning)]/50 truncate">
-              {fallbackLabel}
-            </p>
-          )}
-        </div>
-      </div>
-    );
-  }
-  if (!value) {
-    return (
-      <div className="flex items-center gap-2 px-3 py-2 rounded-lg border border-dashed border-[var(--bz-border)] bg-[var(--bz-surface)]">
-        <AlertCircle className="w-3.5 h-3.5 text-[var(--bz-text-2)]" />
-        <span className="text-xs text-[var(--bz-text-2)]">
-          {label}: not registered
-        </span>
-      </div>
-    );
-  }
-  return (
-    <div className="flex items-center gap-2 px-3 py-2 rounded-lg border border-emerald-500/30 bg-emerald-500/10">
-      <CheckCircle className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-      <div className="min-w-0">
-        <p className="text-[10px] text-emerald-400/70 font-medium uppercase tracking-wide">
-          {label}
+          <p className="mt-1 truncate text-[12px] text-[var(--tx-secondary)]">
+            via company{fallbackLabel ? ` · ${fallbackLabel}` : ""}
+          </p>
+        </>
+      ) : (
+        <p className="mt-1.5 text-[13px] text-[var(--tx-secondary)]">
+          Not registered
         </p>
-        <p className="text-xs font-mono text-emerald-300 truncate">{value}</p>
-      </div>
+      )}
     </div>
   );
 }
@@ -226,10 +218,9 @@ function TaxIdBadge({
 // defects: kita's written rule is "no red on kita" — every alert badge in
 // this directory already renders urgency as --state-warning, never
 // --state-danger (see ClientDetailClient.tsx: "Alert badges — urgency (a
-// date), never ownership: warning, never danger"; that file's `red_alerts`
-// badge itself reads "urgent", not "danger") — and an emoji carries no
+// date), never ownership: warning, never danger") — and an emoji carries no
 // accessible name for a screen reader. Extracted so the tone/label decision
-// is testable without mounting the whole quarter-card tree.
+// is testable without mounting the whole quarter-row tree.
 export function lkpmHealth(
   report: Pick<LKPMBatchItem, "red_alerts" | "yellow_alerts">,
 ): { tone: "critical" | "warning" | "success"; label: string } {
@@ -249,263 +240,281 @@ export function lkpmHealth(
 }
 
 // ============================================
-// LKPM QUARTER CARD — 5 tokens per card
+// LKPM QUARTER ROWS — one hairline row per quarter
 // ============================================
-function LkpmQuarterCard({
+const QUARTER_MONTHS: Record<string, string> = {
+  Q1: "Jan-Mar",
+  Q2: "Apr-Jun",
+  Q3: "Jul-Sep",
+  Q4: "Oct-Dec",
+};
+
+const LKPM_COLS =
+  "3.75rem minmax(6.5rem,0.8fr) minmax(9rem,1.1fr) minmax(8.5rem,1fr) minmax(9rem,1fr) minmax(7.5rem,0.8fr) 3.25rem";
+
+// The OLD status word ladder (HEAD~:283-289): oss_submitted wins, then
+// approved / validated, everything else reads "Draft". The ✅ suffix is
+// gone — r19 law: no emoji as a status marker; the StatePill's diamond pip
+// plus the WORD is the marker now. Tones carry no ownership signal on this
+// tab, so nothing here is ever `you` (copper).
+function lkpmStatus(report: LKPMBatchItem): { tone: PillTone; label: string } {
+  if (report.oss_submitted) return { tone: "ok", label: "Submitted" };
+  if (report.status === "approved") return { tone: "ok", label: "Approved" };
+  if (report.status === "validated")
+    return { tone: "ours", label: "Validated" };
+  return { tone: "wait", label: "Draft" };
+}
+
+// OLD deadline colouring (HEAD~:300-305): --state-warning at <= 3 and at
+// <= 7, calm above. r19 law: a due countdown is never a pill tone — urgency
+// lives on the date cell as wording + weight + --state-warning. Both old
+// thresholds survive: <= 3 is semibold, 4-7 keeps the warning colour,
+// < 0 gains the word "Overdue" (the old raw "-N days" had no word at all).
+function lkpmDeadline(report: LKPMBatchItem) {
+  if (report.oss_submitted || report.days_to_deadline == null) return null;
+  const days = report.days_to_deadline;
+  if (days < 0)
+    return {
+      label: `Overdue by ${Math.abs(days)} day${days === -1 ? "" : "s"}`,
+      urgent: true,
+      strong: true,
+    };
+  if (days === 0) return { label: "Due today", urgent: true, strong: true };
+  if (days <= 3)
+    return {
+      label: `Due in ${days} day${days === 1 ? "" : "s"}`,
+      urgent: true,
+      strong: true,
+    };
+  if (days <= 7)
+    return { label: `Due in ${days} days`, urgent: true, strong: false };
+  return { label: `Due in ${days} days`, urgent: false, strong: false };
+}
+
+function LkpmQuarterRow({
   quarter,
   report,
 }: {
   quarter: string;
   report: LKPMBatchItem | null;
 }) {
-  const qLabels: Record<string, string> = {
-    Q1: "Jan-Mar",
-    Q2: "Apr-Jun",
-    Q3: "Jul-Sep",
-    Q4: "Oct-Dec",
-  };
-
   if (!report) {
     return (
-      <div className="text-center p-3 rounded-lg border border-[var(--bz-border)]">
-        <p className="text-lg font-bold text-[var(--bz-text-1)]">{quarter}</p>
-        <p className="text-[10px] text-[var(--bz-text-2)]">
-          {qLabels[quarter]}
-        </p>
-        <p className="text-[10px] text-[var(--bz-text-2)] mt-1 italic">
-          No report
-        </p>
-      </div>
+      <HairlineRow data-testid={`lkpm-row-${quarter}-empty`}>
+        <div className="min-w-0 px-2.5 py-3">
+          <CellStack
+            primary={quarter}
+            secondary={`${QUARTER_MONTHS[quarter]} · No report`}
+          />
+        </div>
+        <div className="px-2.5 py-3 text-[13px] text-[var(--tx-secondary)]">
+          —
+        </div>
+        <div className="px-2.5 py-3 text-[13px] text-[var(--tx-secondary)]">
+          —
+        </div>
+        <div className="px-2.5 py-3 text-[13px] text-[var(--tx-secondary)]">
+          —
+        </div>
+        <div className="px-2.5 py-3 text-[13px] text-[var(--tx-secondary)]">
+          —
+        </div>
+        <div className="px-2.5 py-3 text-[13px] text-[var(--tx-secondary)]">
+          —
+        </div>
+        <div className="px-2.5 py-3 text-[13px] text-[var(--tx-secondary)]">
+          —
+        </div>
+      </HairlineRow>
     );
   }
 
-  // 1. Status+OSS badge
-  const statusLabel = report.oss_submitted
-    ? "Submitted"
-    : report.status === "approved"
-      ? "Approved"
-      : report.status === "validated"
-        ? "Validated"
-        : "Draft";
-  const statusColor = report.oss_submitted
-    ? "text-emerald-400"
-    : report.status === "approved"
-      ? "text-blue-400"
-      : report.status === "validated"
-        ? "text-blue-300"
-        : "text-[var(--state-warning)]";
-  const statusIcon = report.oss_submitted ? " \u2705" : "";
-
-  // 2. Days to deadline — hide if submitted
-  const daysColor =
-    report.days_to_deadline != null && report.days_to_deadline <= 3
-      ? "text-[var(--state-warning)]"
-      : report.days_to_deadline != null && report.days_to_deadline <= 7
-        ? "text-[var(--state-warning)]"
-        : "text-emerald-400";
-
-  // 3. Assigned consultant — extract first name from email
-  const assignedName = report.lkpm_assigned_to
-    ? report.lkpm_assigned_to
-        .split(".")[0]
-        .replace(/^\w/, (c) => c.toUpperCase())
-    : null;
-
-  // 5. Alert health pip \u2014 tokenized tone, accessible name (no red-on-kita emoji).
+  const status = lkpmStatus(report);
+  const health = lkpmHealth(report);
   // Both severities render --state-warning (never --state-danger, per this
   // directory's rule); "critical" is only a stronger opacity of the same hue.
-  const health = lkpmHealth(report);
   const healthPipColor =
     health.tone === "critical"
       ? "bg-[var(--state-warning)]"
       : health.tone === "warning"
         ? "bg-[var(--state-warning)]/50"
         : "bg-[var(--state-success)]";
+  const deadline = lkpmDeadline(report);
+  const assignedName = report.lkpm_assigned_to
+    ? report.lkpm_assigned_to
+        .split(".")[0]
+        .replace(/^\w/, (c) => c.toUpperCase())
+    : null;
 
   return (
-    <div className="p-3 rounded-lg border border-[var(--bz-border)] bg-[var(--bz-surface)] space-y-1">
-      {/* Quarter header */}
-      <div className="flex items-center justify-between">
-        <p className="text-sm font-bold text-[var(--bz-text-1)]">{quarter}</p>
-        <span
-          role="img"
-          aria-label={health.label}
-          title={health.label}
-          className={`inline-block w-[7px] h-[7px] rotate-45 rounded-[1px] ${healthPipColor}`}
-        />
+    <HairlineRow data-testid={`lkpm-row-${quarter}`}>
+      <div className="min-w-0 px-2.5 py-3">
+        <CellStack primary={quarter} secondary={QUARTER_MONTHS[quarter]} />
       </div>
-
-      {/* 1. Status badge */}
-      <p className={`text-[10px] font-semibold ${statusColor}`}>
-        {statusLabel}
-        {statusIcon}
-      </p>
-
-      {/* 2. Days to deadline */}
-      {!report.oss_submitted && report.days_to_deadline != null && (
-        <p className={`text-[10px] ${daysColor}`}>
-          {report.days_to_deadline} days
-        </p>
-      )}
-
-      {/* 3. Assigned consultant */}
-      {assignedName ? (
-        <p className="text-[10px] text-[var(--bz-text-2)]">{assignedName}</p>
-      ) : (
-        <p className="text-[10px] text-[var(--state-warning)]">Unassigned</p>
-      )}
-
-      {/* 4. Client approved */}
-      <p className="text-[10px]">
-        {report.client_approved ? (
-          <span className="text-emerald-400">{"\u2713"} Approved</span>
-        ) : (
-          <span className="text-[var(--state-warning)]">
-            {"\u2717"} Not approved
+      <div className="px-2.5 py-3">
+        <StatePill tone={status.tone} label={status.label} />
+      </div>
+      <div className="min-w-0 px-2.5 py-3">
+        <span className="flex min-w-0 items-center gap-1.5">
+          <span
+            role="img"
+            aria-label={health.label}
+            className={`inline-block h-[7px] w-[7px] shrink-0 rotate-45 rounded-[1px] ${healthPipColor}`}
+          />
+          <span className="truncate text-[12px] text-[var(--tx-secondary)]">
+            {health.label}
           </span>
+        </span>
+      </div>
+      <div className="px-2.5 py-3">
+        {deadline ? (
+          <p
+            className={`text-[13px]${deadline.strong ? " font-semibold" : ""}`}
+            style={{
+              color: deadline.urgent
+                ? "var(--state-warning)"
+                : "var(--tx-secondary)",
+            }}
+          >
+            {deadline.label}
+          </p>
+        ) : (
+          <p className="text-[13px] text-[var(--tx-secondary)]">—</p>
         )}
-      </p>
+      </div>
+      <div className="min-w-0 px-2.5 py-3">
+        {assignedName ? (
+          <CellStack
+            primary={assignedName}
+            secondary={report.lkpm_assigned_to}
+          />
+        ) : (
+          <p className="text-[13px] text-[var(--state-warning)]">Unassigned</p>
+        )}
+      </div>
+      <div className="px-2.5 py-3">
+        <p
+          className="text-[13px]"
+          style={{
+            color: report.client_approved
+              ? "var(--state-success)"
+              : "var(--state-warning)",
+          }}
+        >
+          {report.client_approved ? "Approved" : "Not approved"}
+        </p>
+      </div>
+      <div className="px-2.5 py-3">
+        {/* Row controls live in a plain always-rendered cell, never in
+            HairlineRow's `actions` slot — that slot is hover-gated and
+            hidden under (hover:none) (the defect that rejected R6). */}
+        <a
+          href={`/lkpm/${report.id}`}
+          className="inline-flex min-h-6 items-center text-[13px] text-[var(--tx-pure)] underline-offset-4 hover:underline"
+        >
+          Open
+        </a>
+      </div>
+    </HairlineRow>
+  );
+}
 
-      {/* Open link */}
-      <a
-        href={`/lkpm/${report.id}`}
-        className="text-[10px] text-[var(--tx-pure)] hover:underline block mt-1"
-      >
-        Open
-      </a>
-    </div>
+function LkpmQuarterGrid({ items }: { items: LKPMBatchItem[] }) {
+  return (
+    <HairlineGrid
+      cols={LKPM_COLS}
+      // Same collapse override as FamilyTab (#6520): the scoped collapse
+      // stylesheet cannot beat an inline `--cols`, so override on the rows.
+      className="max-[640px]:[&_.grid]:!grid-cols-[minmax(0,1fr)]"
+    >
+      <HairlineHead className="max-[640px]:hidden">
+        <span>Quarter</span>
+        <span>Status</span>
+        <span>Health</span>
+        <span>Deadline</span>
+        <span>Assigned</span>
+        <span>Approval</span>
+        <span />
+      </HairlineHead>
+      <HairlineBody>
+        {(["Q1", "Q2", "Q3", "Q4"] as const).map((q) => (
+          <LkpmQuarterRow
+            key={q}
+            quarter={q}
+            report={items.find((r) => r.quarter === q) ?? null}
+          />
+        ))}
+      </HairlineBody>
+    </HairlineGrid>
   );
 }
 
 // ============================================
-// LKPM RECEIPTS PANEL — OSS tanda terima per kegiatan usaha
+// LKPM RECEIPTS — OSS tanda terima per kegiatan usaha
 // ============================================
-function LkpmReceiptsPanel({
-  loading,
-  receiptsByCompany,
-  selectedYear,
+const RECEIPT_COLS =
+  "3.5rem minmax(5.5rem,0.6fr) minmax(12rem,1.4fr) minmax(7rem,0.8fr) minmax(8rem,0.9fr) minmax(7.5rem,0.8fr) 3.25rem";
+
+const OPEN_LINK_CLASS =
+  "inline-flex min-h-6 items-center text-[13px] text-[var(--tx-pure)] underline-offset-4 hover:underline";
+
+function LkpmReceiptRow({
+  receipt: r,
+  formatDate,
 }: {
-  loading: boolean;
-  receiptsByCompany: Record<string, LKPMReceipt[]>;
-  selectedYear: number;
+  receipt: LKPMReceipt;
+  formatDate: (d: string) => string;
 }) {
-  const companies = Object.entries(receiptsByCompany);
-  if (loading) {
-    return (
-      <div className="mt-4 border-t border-[var(--bz-border)] pt-4 text-xs text-[var(--bz-text-2)]">
-        Loading OSS tanda terima…
-      </div>
-    );
-  }
-  if (companies.length === 0) {
-    return null; // hide section if no receipts — quarter cards already show "No report"
-  }
-
-  const totalReceipts = companies.reduce((n, [, list]) => n + list.length, 0);
-  const approvedCount = companies.reduce(
-    (n, [, list]) =>
-      n + list.filter((r) => r.oss_status === "Disetujui").length,
-    0,
-  );
-
+  const approved = r.oss_status === "Disetujui";
   return (
-    <div className="mt-5 border-t border-[var(--bz-border)] pt-4 space-y-3">
-      <div className="flex items-center justify-between">
-        <p className="text-xs font-semibold text-[var(--bz-text-1)]">
-          OSS Tanda Terima — {selectedYear}
-        </p>
-        <p className="text-[10px] text-[var(--bz-text-2)]">
-          {totalReceipts} receipt{totalReceipts === 1 ? "" : "s"}
-          {approvedCount > 0 && (
-            <>
-              {" · "}
-              <span className="text-emerald-400">{approvedCount} approved</span>
-            </>
-          )}
+    <HairlineRow>
+      <div className="px-2.5 py-3 text-[13px]">{r.quarter ?? "—"}</div>
+      <div className="truncate px-2.5 py-3 font-mono text-[13px]">
+        {r.kbli_code ?? "—"}
+      </div>
+      <div className="min-w-0 px-2.5 py-3">
+        {/* OLD carried `nomor_kegiatan_usaha` as title= only — invisible on
+            touch; it is a readable sub-line now. */}
+        <CellStack
+          primary={<span className="font-mono">{r.nomor_laporan}</span>}
+          secondary={r.nomor_kegiatan_usaha}
+        />
+      </div>
+      <div className="px-2.5 py-3 text-[13px] text-[var(--tx-secondary)]">
+        {r.stage ?? "—"}
+      </div>
+      <div className="px-2.5 py-3">
+        <p
+          className="text-[13px]"
+          style={{
+            color: r.oss_status
+              ? approved
+                ? "var(--state-success)"
+                : "var(--state-warning)"
+              : undefined,
+          }}
+        >
+          {r.oss_status ?? "—"}
         </p>
       </div>
-
-      {companies.map(([companyName, list]) => (
-        <div key={companyName} className="space-y-1.5">
-          <p className="text-[11px] font-medium text-[var(--bz-text-2)]">
-            {companyName}
-          </p>
-          <div className="rounded-lg border border-[var(--bz-border)] overflow-hidden">
-            <table className="w-full text-[11px]">
-              <thead className="bg-[var(--bz-surface-2)] text-[var(--bz-text-2)]">
-                <tr>
-                  <th className="text-left px-2 py-1.5 font-normal">Qtr</th>
-                  <th className="text-left px-2 py-1.5 font-normal">KBLI</th>
-                  <th className="text-left px-2 py-1.5 font-normal">
-                    Nomor Laporan
-                  </th>
-                  <th className="text-left px-2 py-1.5 font-normal">Stage</th>
-                  <th className="text-left px-2 py-1.5 font-normal">Status</th>
-                  <th className="text-left px-2 py-1.5 font-normal">Date</th>
-                  <th className="text-left px-2 py-1.5 font-normal">PDF</th>
-                </tr>
-              </thead>
-              <tbody>
-                {list.map((r) => {
-                  const approved = r.oss_status === "Disetujui";
-                  return (
-                    <tr
-                      key={r.id}
-                      className="border-t border-[var(--bz-border)] hover:bg-[var(--bz-surface-2)]"
-                    >
-                      <td className="px-2 py-1.5 text-[var(--bz-text-1)]">
-                        {r.quarter ?? "—"}
-                      </td>
-                      <td className="px-2 py-1.5 font-mono text-[var(--bz-text-1)]">
-                        {r.kbli_code ?? "—"}
-                      </td>
-                      <td
-                        className="px-2 py-1.5 font-mono text-[var(--bz-text-2)]"
-                        title={r.nomor_kegiatan_usaha}
-                      >
-                        {r.nomor_laporan}
-                      </td>
-                      <td className="px-2 py-1.5 text-[var(--bz-text-2)]">
-                        {r.stage ?? "—"}
-                      </td>
-                      <td className="px-2 py-1.5">
-                        <span
-                          className={
-                            approved
-                              ? "text-emerald-400"
-                              : "text-[var(--state-warning)]"
-                          }
-                        >
-                          {r.oss_status ?? "—"}
-                          {approved ? " \u2705" : ""}
-                        </span>
-                      </td>
-                      <td className="px-2 py-1.5 text-[var(--bz-text-2)]">
-                        {r.tanggal_diterima ?? "—"}
-                      </td>
-                      <td className="px-2 py-1.5">
-                        {r.file_drive_url ? (
-                          <a
-                            href={r.file_drive_url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-[var(--tx-pure)] hover:underline"
-                          >
-                            Open
-                          </a>
-                        ) : (
-                          <span className="text-[var(--bz-text-2)]">—</span>
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      ))}
-    </div>
+      <div className="px-2.5 py-3 text-[13px] text-[var(--tx-secondary)]">
+        {r.tanggal_diterima ? formatDate(r.tanggal_diterima) : "—"}
+      </div>
+      <div className="px-2.5 py-3">
+        {r.file_drive_url ? (
+          <a
+            href={r.file_drive_url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={OPEN_LINK_CLASS}
+          >
+            Open
+          </a>
+        ) : (
+          <span className="text-[13px] text-[var(--tx-secondary)]">—</span>
+        )}
+      </div>
+    </HairlineRow>
   );
 }
 
@@ -589,11 +598,21 @@ export function TaxTab({
       return acc;
     }, {});
 
+  const receiptCompanies = Object.entries(receiptsByCompany);
+  const totalReceipts = receiptCompanies.reduce(
+    (n, [, list]) => n + list.length,
+    0,
+  );
+  const approvedReceipts = receiptCompanies.reduce(
+    (n, [, list]) =>
+      n + list.filter((r) => r.oss_status === "Disetujui").length,
+    0,
+  );
+
   return (
     <div className="space-y-6">
-      {/* AI Summary (CRM-Guardian L1 cross-folder, tax slice) */}
-      <AiSummaryCard clientId={clientId} section="tax" />
-      {/* Header with year selector */}
+      {/* Header with year selector — layout pinned by the round-6 overflow
+          guard in __tests__/client-detail-desk.test.tsx; do not unwrap. */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="min-w-0">
           <h3 className="text-lg font-semibold text-[var(--bz-text-1)]">
@@ -609,107 +628,132 @@ export function TaxTab({
         />
       </div>
 
-      {/* Tax Consultant selector (Bali Zero team assignment) */}
-      <TaxConsultantSelector
-        clientId={clientId}
-        initialValue={client?.tax_consultant}
-        onSaved={onRefresh}
-        consultants={taxConsultants}
-      />
-
-      {/* Tax identifiers from CRM */}
-      {(() => {
-        const primaryCompany =
-          companyLinks?.find((l) => l.is_primary) ?? companyLinks?.[0];
-        const npwpValue = client?.npwp ?? client?.tax_id ?? undefined;
-        const nibValue = client?.nib ?? undefined;
-        const companyNpwp = !npwpValue
-          ? primaryCompany?.npwp_company
-          : undefined;
-        const companyNib = !nibValue ? primaryCompany?.nib : undefined;
-        return (
-          <div className="flex flex-wrap gap-2">
-            <TaxIdBadge
-              label="NPWP"
-              value={npwpValue}
-              fallbackValue={companyNpwp}
-              fallbackLabel={primaryCompany?.company_name}
-            />
-            <TaxIdBadge
-              label="NIB"
-              value={nibValue}
-              fallbackValue={companyNib}
-              fallbackLabel={primaryCompany?.company_name}
-            />
-          </div>
-        );
-      })()}
-
-      {/* LKPM with live quarter cards */}
-      <div className="rounded-xl border border-[var(--bz-border)] bg-[var(--bz-surface)] p-5">
-        <div className="flex items-center gap-3 mb-4">
-          <div className="w-12 h-12 rounded-xl bg-[var(--bz-card)] border border-[var(--bz-border)] flex items-center justify-center">
-            <FileText className="w-6 h-6 text-[var(--tx-secondary)]" />
-          </div>
-          <div>
-            <h4 className="font-semibold text-[var(--bz-text-1)]">LKPM</h4>
-            <p className="text-xs text-[var(--bz-text-2)]">
-              Laporan Kegiatan Penanaman Modal
-            </p>
-          </div>
+      {/* Tax identity — consultant assignment + NPWP/NIB (client's own value
+          wins; company fallback stays visible with its provenance). */}
+      <LedgerSection n={1} title="Tax identity">
+        <div className="grid gap-x-6 gap-y-5 py-4 sm:grid-cols-2 xl:grid-cols-3">
+          <TaxConsultantSelector
+            clientId={clientId}
+            initialValue={client?.tax_consultant}
+            onSaved={onRefresh}
+            consultants={taxConsultants}
+          />
+          {(() => {
+            const primaryCompany =
+              companyLinks?.find((l) => l.is_primary) ?? companyLinks?.[0];
+            // `||`, not `??`: an empty-string npwp must fall through to
+            // tax_id — with `??` the empty string hides the real tax_id and
+            // the row wrongly reads "Not registered".
+            const npwpValue = client?.npwp || client?.tax_id || undefined;
+            const nibValue = client?.nib || undefined;
+            return (
+              <>
+                <TaxIdItem
+                  label="NPWP"
+                  value={npwpValue}
+                  fallbackValue={
+                    !npwpValue ? primaryCompany?.npwp_company : undefined
+                  }
+                  fallbackLabel={primaryCompany?.company_name}
+                />
+                <TaxIdItem
+                  label="NIB"
+                  value={nibValue}
+                  fallbackValue={!nibValue ? primaryCompany?.nib : undefined}
+                  fallbackLabel={primaryCompany?.company_name}
+                />
+              </>
+            );
+          })()}
         </div>
+      </LedgerSection>
 
+      {/* LKPM — one hairline row per quarter, per company. */}
+      <LedgerSection
+        n={2}
+        title={
+          <span className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+            LKPM {selectedYear}
+            <span className="font-sans text-[12px] font-normal tracking-normal text-[var(--tx-secondary)]">
+              Laporan Kegiatan Penanaman Modal
+            </span>
+          </span>
+        }
+      >
         {lkpmLoading ? (
-          <div className="text-center py-4 text-xs text-[var(--bz-text-2)]">
+          <p className="py-4 text-[13px] text-[var(--tx-secondary)]">
             Loading LKPM data...
-          </div>
-        ) : Object.keys(lkpmByCompany).length === 0 ? (
-          /* No LKPM data — show static Q1-Q4 placeholders */
-          <div className="grid grid-cols-4 gap-2">
-            {[1, 2, 3, 4].map((q) => (
-              <div
-                key={q}
-                className="text-center p-3 rounded-lg border border-[var(--bz-border)]"
-              >
-                <p className="text-lg font-bold text-[var(--bz-text-1)]">
-                  Q{q}
-                </p>
-                <p className="text-xs text-[var(--bz-text-2)]">No report</p>
-              </div>
-            ))}
-          </div>
+          </p>
         ) : (
-          /* Live LKPM data grouped by company */
-          <div className="space-y-4">
+          <div className="space-y-5 py-4">
             {Object.entries(lkpmByCompany).map(([companyName, items]) => (
               <div key={companyName}>
-                <p className="text-xs font-medium text-[var(--bz-text-2)] mb-2">
-                  {companyName}
-                </p>
-                <div className="grid grid-cols-4 gap-2">
-                  {(["Q1", "Q2", "Q3", "Q4"] as const).map((q) => {
-                    const report = items.find((r) => r.quarter === q);
-                    return (
-                      <LkpmQuarterCard
-                        key={q}
-                        quarter={q}
-                        report={report ?? null}
+                <p className={MICRO_LABEL}>{companyName}</p>
+                <LkpmQuarterGrid items={items} />
+              </div>
+            ))}
+            {Object.keys(lkpmByCompany).length === 0 ? (
+              // No LKPM data — the static Q1-Q4 placeholders, one row each.
+              <LkpmQuarterGrid items={[]} />
+            ) : null}
+          </div>
+        )}
+      </LedgerSection>
+
+      {/* OSS Tanda Terima (receipts per kegiatan usaha) — shareholder cascade.
+          Hidden entirely when there are none, as before. */}
+      {lkpmReceiptsLoading ? (
+        <p className="text-[13px] text-[var(--tx-secondary)]">
+          Loading OSS tanda terima…
+        </p>
+      ) : receiptCompanies.length > 0 ? (
+        <LedgerSection n={3} title={`OSS tanda terima — ${selectedYear}`}>
+          <div className="space-y-5 py-4">
+            <p className="text-[12px] text-[var(--tx-secondary)]">
+              {totalReceipts} receipt{totalReceipts === 1 ? "" : "s"}
+              {approvedReceipts > 0 && (
+                <>
+                  {" · "}
+                  <span className="text-[var(--state-success)]">
+                    {approvedReceipts} approved
+                  </span>
+                </>
+              )}
+            </p>
+            {receiptCompanies.map(([companyName, list]) => (
+              <div key={companyName}>
+                <p className={MICRO_LABEL}>{companyName}</p>
+                <HairlineGrid
+                  cols={RECEIPT_COLS}
+                  className="max-[640px]:[&_.grid]:!grid-cols-[minmax(0,1fr)]"
+                >
+                  <HairlineHead className="max-[640px]:hidden">
+                    <span>Qtr</span>
+                    <span>KBLI</span>
+                    <span>Nomor Laporan</span>
+                    <span>Stage</span>
+                    <span>Status</span>
+                    <span>Date</span>
+                    <span>PDF</span>
+                  </HairlineHead>
+                  <HairlineBody>
+                    {list.map((r) => (
+                      <LkpmReceiptRow
+                        key={r.id}
+                        receipt={r}
+                        formatDate={formatDate}
                       />
-                    );
-                  })}
-                </div>
+                    ))}
+                  </HairlineBody>
+                </HairlineGrid>
               </div>
             ))}
           </div>
-        )}
+        </LedgerSection>
+      ) : null}
 
-        {/* OSS Tanda Terima (receipts per kegiatan usaha) — shareholder cascade */}
-        <LkpmReceiptsPanel
-          loading={lkpmReceiptsLoading}
-          receiptsByCompany={receiptsByCompany}
-          selectedYear={selectedYear}
-        />
-      </div>
+      {/* The per-tab AiSummaryCard is gone: v3 drops it from every tab
+          (product-visible removal, disclosed in the PR body). */}
     </div>
   );
 }
