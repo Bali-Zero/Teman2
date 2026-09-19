@@ -3,21 +3,33 @@ task: >-
   (`apps/mouth/src/app/(workspace)/clients/[id]/components/`) moves from the
   collapsible-cards-per-category layout to the r19 "TEPAT FORTE" idiom — one
   `DeskStrip` (Fraunces count, category `FILTER` pills, Add document) over one
-  `HairlineGrid` (Document/Status/Expires/Actions) — keeping every prior action
-  (Open/View link to the proxy URL, Edit, Add document, the "File tidak
-  tersedia" fallback) reachable by accessible name. Status pills are derived
-  ONLY from real `ClientDocument` fields (`deleted_at`, `expiry_date`,
-  `status`) — no invented data. A second commit corrects the copper law: the
-  urgency WORD ("Expired"/"Expiring") no longer forces the copper TONE
-  unconditionally — tone is `you` only when the caller's new `viewerIsNext`
-  prop says the viewer is the next actor (r19 README law 1), else `wait`;
-  `ClientDetailClient.tsx` wires `viewerIsNext={needsViewerAction}` at the
-  DocumentsTab mount only. The per-tab `AiSummaryCard` mount is removed from
-  this tab per the approved v3 design, and a dead duplicate branch in the old
-  expiry-badge logic (daysLeft<=30 and daysLeft<=90 returning the identical
-  label/class shape) is deleted. Design approved by the owner (Zero)
-  2026-09-19; reviewer is Subhi per the 2026-09-17 CRM pact (Zero's OK covers
-  the design, Subhi reviews the code); this PR is not armed at open.
+  `HairlineGrid` (Document/Status/Expires/Actions) — keeping every prior
+  action (Open/View link to the proxy URL, Edit, Add document, the "File
+  tidak tersedia" fallback) reachable by accessible name. An independent
+  old-vs-new parity audit then found three undisclosed capability losses
+  against the pre-restyle component, all one cause: a due DATE was being
+  read as a STATUS. Per r19's own rule (`ObligationsTable.tsx` ~20-31/
+  ~299-305 — "a due date is never a tone; urgency lives on the date cell,
+  never in the ownership pill"), a repair commit makes the Status pill
+  derive STRICTLY from `deleted_at`/`status` (Removed/Valid/Processing/
+  Rejected, or no pill for a document that exists but carries no
+  recognised status — never "Missing"), moves ALL urgency onto the Expires
+  cell (`expiryCountdown()`, the old `getExpiryBadge` thresholds: expired /
+  today / <=90d, `--state-warning`, never `--state-danger`), restores the
+  aggregate "N expiring soon" line, and restores the "Removed by client"
+  30-day restore-window text as a readable Document-cell sub-line (the old
+  component carried it only in a `title=` tooltip, invisible on touch).
+  The `viewerIsNext` prop from the first repair round is removed entirely
+  (a due date is never a tone, so it had no job) and
+  `ClientDetailClient.tsx` is back to byte-identical with origin/main. The
+  per-tab `AiSummaryCard` mount is removed from this tab per the approved
+  v3 design, and a dead duplicate branch in the old expiry-badge logic
+  (`daysLeft<=30` and `daysLeft<=90` returning byte-identical output for
+  every value in 1..90) is deleted, not reintroduced — the restored
+  `expiryCountdown()` covers the same 1..90 range with one `<= 90` check.
+  Design approved by the owner (Zero) 2026-09-19; reviewer is Subhi per the
+  2026-09-17 CRM pact (Zero's OK covers the design, Subhi reviews the
+  code); this PR is not armed at open.
 lane: frontend/kita-r3-documents-grid
 machine: air-m5
 date: 2026-09-19
@@ -25,34 +37,43 @@ date: 2026-09-19
 gear: 2
 gear_reason: >-
   Deterministic floor 2, source `size`: `git diff --no-renames --numstat
-  origin/main...HEAD` measures churn (added+deleted per file, summed) of 1
-  (`ClientDetailClient.tsx`, +1/-0) + 226 (`DocumentsTab.test.tsx`, +192/-34)
-  + 577 (`DocumentsTab.tsx`, +263/-314) = 804 — above SIZE_GEAR2_THRESHOLD
-  (400) and below SIZE_GEAR3_THRESHOLD (1828). No hot-zone path hit (all 3
-  files are under `apps/mouth/`, none matching `HOTZONE_PATTERNS`). Confirmed
-  locally via `python3 scripts/evidence_pack_lint.py --print-floor
+  origin/main...HEAD` (3 commits: the r19 restyle, the since-reverted
+  `viewerIsNext` round, and the parity repair) measures churn (added+deleted
+  per file, summed) of 313 (`DocumentsTab.test.tsx`, +279/-34) + 634
+  (`DocumentsTab.tsx`, +322/-312) + 87 (this `brief.yml`, +87/-0) = 1034 —
+  above SIZE_GEAR2_THRESHOLD (400) and below SIZE_GEAR3_THRESHOLD (1828).
+  `ClientDetailClient.tsx` carries zero net diff against `origin/main` (the
+  repair reverted the one line the viewerIsNext round had added) and so does
+  not appear in the numstat at all. No hot-zone path hit (every changed file
+  is under `apps/mouth/` or `evidence/`, none matching `HOTZONE_PATTERNS`).
+  Confirmed locally via `python3 scripts/evidence_pack_lint.py --print-floor
   --print-floor-source --changed-files-file <changed> --numstat-file
   <numstat>`, printing `2` then `size`.
 
 appetite:
-  wall_clock_hours: 1
-  adversarial_rounds: 1
+  wall_clock_hours: 2
+  adversarial_rounds: 2
 
 acceptance:
   A1: >-
-    WHEN `apps/mouth`'s `DocumentsTab.test.tsx` runs, the suite SHALL pass all
-    15 cases, including the GUILT case (an expired fixture with
-    `viewerIsNext={false}` renders the `wait` tone, never `you`) and its
-    INNOCENCE pair (`viewerIsNext` true renders `you`; a Valid document stays
-    `ok` in both cases), plus the grid/filter/action-reachability cases from
-    the first commit.
+    WHEN `apps/mouth`'s `DocumentsTab.test.tsx` runs, the suite SHALL pass
+    all 20 cases: the status-pill-is-strictly-real-fields group (Removed/
+    Valid/Processing/Rejected words; a status-less document is never
+    labelled "Missing"; the pill never carries the Expired/Expiring word or
+    the copper tone), the Expires-cell-urgency group (GUILT — a document
+    expiring within 90 days shows the `--state-warning` treatment + "Nd
+    left"/"Expired Nd ago" countdown; verified+expiring renders BOTH the
+    Valid pill and the countdown; INNOCENCE — a document expiring in 200
+    days has a plain date cell, no red/danger token ever), the aggregate
+    "N expiring soon" count, the removed-document restore-window line, and
+    the kept grid/filter/action-reachability/EmptyState cases.
     probe: >-
       npx --no-install vitest run "src/app/(workspace)/clients/[id]/components/DocumentsTab.test.tsx"
   A2: >-
     WHILE the full `clients/[id]` folder suite runs — including the
-    `client-detail-desk` folder guard (no `--state-danger`, no raw colours, no
-    palette-hue utilities, `<Button variant>` a static literal) — it SHALL
-    report all 12 files / 112 tests green.
+    `client-detail-desk` folder guard (no `--state-danger`, no raw colours,
+    no palette-hue utilities, `<Button variant>` a static literal) — it
+    SHALL report all 12 files / 117 tests green.
     probe: >-
       npx --no-install vitest run "src/app/(workspace)/clients/[id]/"
   A3: >-
@@ -61,27 +82,32 @@ acceptance:
     probe: >-
       npx --no-install tsc --noEmit -p .
   A4: >-
-    WHERE the two changed source files are linted, `eslint` SHALL report 0
-    errors (a single pre-existing, unrelated `<img>` warning elsewhere in
-    `ClientDetailClient.tsx` is not introduced by this diff).
+    WHERE `DocumentsTab.tsx` is linted, `eslint` SHALL report 0 errors (a
+    single pre-existing, unrelated `<img>` warning elsewhere in
+    `ClientDetailClient.tsx` predates this PR and is not introduced by it —
+    that file is byte-identical to `origin/main`).
     probe: >-
-      npx --no-install eslint "src/app/(workspace)/clients/[id]/components/DocumentsTab.tsx" "src/app/(workspace)/clients/[id]/ClientDetailClient.tsx"
+      npx --no-install eslint "src/app/(workspace)/clients/[id]/components/DocumentsTab.tsx"
 
 out_of_scope: >-
   The mock's search input (`client-profile-v3.html` panel-documents) — the
-  task assignment's `DeskStrip` spec named only count/FILTER/Add-document, no
-  search, so none was added. The old aggregate "N expiring soon" summary line
-  — dropped; the same information now lives per-row in the Status pill and
-  Expires column. The duplicate Open/View links (filename link + separate
-  View icon button, both opening the same proxy URL) — kept on purpose rather
-  than collapsed to one, so no prior action's accessible name disappears.
+  task assignment's `DeskStrip` spec named only count/FILTER/Add-document,
+  no search, so none was added. The duplicate Open/View links (filename
+  link + separate View icon button, both opening the same proxy URL) — kept
+  on purpose rather than collapsed to one, so no prior action's accessible
+  name disappears. The old component's muted, non-urgent >90-day/>365-day
+  countdown tiers ("Nd left"/"Nmo left" with no warning weight) — the
+  restored 90-day window covers every tier that ever carried an urgency
+  signal; a document further out than that renders a plain date, which is
+  what the parity repair's own acceptance criteria pins.
 
 assumptions:
   - text: >-
       No client PII or OSINT appears in this diff — `DocumentsTab.test.tsx`
       uses only synthetic fixtures (`doc-<n>.pdf`, `IMG_0001.jpeg`,
-      `photo.jpg`, `visa.pdf`, `expired-visa.pdf`), never a real client name,
-      email, phone or document number.
+      `photo.jpg`, `visa.pdf`, `soon.pdf`, `lapsed.pdf`, `far.pdf`,
+      `removed.pdf`), never a real client name, email, phone or document
+      number.
     status: verified
     probe: >-
       grep -riE "@gmail|@balizero|\+62[0-9]{6,}" apps/mouth/src/app/(workspace)/clients/[id]/components/DocumentsTab.test.tsx
