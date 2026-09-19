@@ -7,6 +7,7 @@ import {
   clientDetailQueryKey,
   useInvalidateClient,
   useSetClientCache,
+  clientTimelineQueryKey,
 } from "./useClientDetail";
 import type {
   Client,
@@ -138,10 +139,27 @@ describe("client detail cache transitions", () => {
     );
   });
 
-  it("does not invalidate a synthetic client zero cache key", async () => {
+  it("invalidates the profile and timeline without touching other client caches", async () => {
     const queryClient = new QueryClient();
     const invalidateSpy = vi.spyOn(queryClient, "invalidateQueries");
-    const { result } = renderHook(() => useInvalidateClient(undefined), {
+    const profileKey = clientDetailQueryKey(7);
+    const timelineKey = clientTimelineQueryKey(7);
+    const businessStoryKey = [
+      "client",
+      "7",
+      "business-story",
+      ["Synthetic Cache Client"],
+    ] as const;
+    const otherClientKey = clientDetailQueryKey(8);
+    const otherClientTimelineKey = clientTimelineQueryKey(8);
+
+    queryClient.setQueryData(profileKey, makeProfile("active"));
+    queryClient.setQueryData(timelineKey, []);
+    queryClient.setQueryData(businessStoryKey, []);
+    queryClient.setQueryData(otherClientKey, makeProfile("active"));
+    queryClient.setQueryData(otherClientTimelineKey, []);
+
+    const { result } = renderHook(() => useInvalidateClient(7), {
       wrapper: wrapperFor(queryClient),
     });
 
@@ -149,7 +167,48 @@ describe("client detail cache transitions", () => {
       await result.current();
     });
 
-    expect(invalidateSpy).not.toHaveBeenCalled();
-    expect(queryClient.getQueryData(clientDetailQueryKey(0))).toBeUndefined();
+    expect(invalidateSpy).toHaveBeenCalledWith({
+      queryKey: profileKey,
+      exact: true,
+      refetchType: "all",
+    });
+    expect(invalidateSpy).toHaveBeenCalledWith({
+      queryKey: timelineKey,
+      exact: true,
+      refetchType: "all",
+    });
+    expect(invalidateSpy).not.toHaveBeenCalledWith({
+      queryKey: businessStoryKey,
+      exact: true,
+      refetchType: "all",
+    });
+    expect(invalidateSpy).not.toHaveBeenCalledWith({
+      queryKey: otherClientKey,
+      exact: true,
+      refetchType: "all",
+    });
+    expect(invalidateSpy).not.toHaveBeenCalledWith({
+      queryKey: otherClientTimelineKey,
+      exact: true,
+      refetchType: "all",
+    });
   });
+
+  it.each([0, Number.NaN])(
+    "does not invalidate an invalid client id %s",
+    async (clientId) => {
+      const queryClient = new QueryClient();
+      const invalidateSpy = vi.spyOn(queryClient, "invalidateQueries");
+      const { result } = renderHook(() => useInvalidateClient(clientId), {
+        wrapper: wrapperFor(queryClient),
+      });
+
+      await act(async () => {
+        await result.current();
+      });
+
+      expect(invalidateSpy).not.toHaveBeenCalled();
+      expect(queryClient.getQueryData(clientDetailQueryKey(0))).toBeUndefined();
+    },
+  );
 });
