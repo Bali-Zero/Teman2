@@ -69,7 +69,10 @@ from backend.services.garuda_ops.ports import EventEnvelope, IdempotencyIdentity
 from backend.services.garuda_orders.outbox_consumer import OutboxJob
 from backend.services.portal.invite_service import InviteService
 from backend.services.portal.portal_profile_service import PortalProfileService
-from backend.services.wa_copilot.telegram_notifier import send_telegram_message
+from backend.services.wa_copilot.telegram_notifier import (
+    is_credential_rejected,
+    send_telegram_message,
+)
 
 logger = logging.getLogger("garuda.orders.outbox_handlers")
 
@@ -1484,6 +1487,19 @@ class TelegramStaffPageSender:
             )
         ok, err = await send_telegram_message(self._client, self._bot_token, self._chat_id, text)
         if not ok:
+            if is_credential_rejected(err):
+                # The job still fails and still burns an attempt — the retry
+                # budget is deliberately NOT special-cased here, because a job
+                # that stops retrying stops being visible as work owed. What
+                # changes is that the exception SAYS which of the two it is:
+                # measured on 2026-09-19, row 36 (`staff_page_charge_without_
+                # webhook`) spent all five attempts against a token Telegram
+                # had already revoked, and every one of those five failures
+                # read as an ordinary send failure.
+                raise StaffPageSendFailed(
+                    "telegram REFUSES this bot token (rotate it with BotFather); "
+                    f"no staff page can be delivered until then: {self._scrub(err)}"
+                )
             raise StaffPageSendFailed(f"telegram send failed: {self._scrub(err)}")
 
     def _scrub(self, err: str | None) -> str:

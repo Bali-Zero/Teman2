@@ -74,6 +74,36 @@ HTTP_TIMEOUT_SEC = 10
 RETRY_BACKOFFS_SEC = (1, 3, 7)  # W55 pattern: 3 attempts total
 MAX_ATTEMPTS = 3
 
+#: HTTP statuses that mean THE CREDENTIAL IS DEAD, not that this one message
+#: failed. Telegram answers 401 for a revoked/regenerated token and 403 for a
+#: bot blocked or removed from the destination: in both cases every later send
+#: through this token fails identically until a human rotates it, so they are a
+#: different ENTITY from the other 4xx (400 malformed payload, 429 rate limit),
+#: which are about the message in hand.
+#:
+#: Read as a set of CODES, never as a substring of the response body: the body
+#: is free text Telegram may reword (superscar #3 — match the entity, not a
+#: spelling). Membership is decided here and nowhere else.
+CREDENTIAL_REJECTED_STATUSES = frozenset({401, 403})
+
+#: Prefix that marks a returned error as "the credential is dead". It is a
+#: FIELD at the head of a string this module builds, not a phrase searched for
+#: inside borrowed text — `is_credential_rejected` matches it with `startswith`
+#: so a 400 whose body happens to quote the word can never be read as one.
+#: The `(bool, str | None)` return shape is kept on purpose: widening it to a
+#: third member would touch every caller in the repo for no gain here.
+CREDENTIAL_REJECTED_PREFIX = "credential_rejected:"
+
+
+def is_credential_rejected(err: str | None) -> bool:
+    """True when `err` came back from a send that Telegram refused to
+    authenticate.
+
+    The one sanctioned way to ask the question — callers must not re-derive it
+    by reading status codes out of the message text.
+    """
+    return bool(err) and err.startswith(CREDENTIAL_REJECTED_PREFIX)  # type: ignore[union-attr]
+
 
 # ---------------------------------------------------------------------------
 # Metrics
@@ -196,6 +226,24 @@ async def send_telegram_message(
             if 400 <= resp.status_code < 500:
                 # 4xx: payload/auth/rate-limit; do NOT retry.
                 body_excerpt = resp.text[:200]
+                if resp.status_code in CREDENTIAL_REJECTED_STATUSES:
+                    # A dead credential is not a failed delivery: nothing will
+                    # go out through this token again until a human rotates it.
+                    # It gets ERROR, not WARNING — the same volume an UNSET
+                    # token already gets at every call site — because the two
+                    # are the same entity ("no way to send") wearing different
+                    # clothes, and only one of them used to be audible.
+                    last_err = (
+                        f"{CREDENTIAL_REJECTED_PREFIX} HTTP {resp.status_code} "
+                        f"— Telegram refuses this bot token until it is rotated: {body_excerpt}"
+                    )
+                    logger.error(
+                        "TELEGRAM CREDENTIAL REJECTED (HTTP %d): every send through this "
+                        "token fails until a human rotates it with BotFather. %s",
+                        resp.status_code,
+                        body_excerpt,
+                    )
+                    return False, last_err
                 last_err = f"HTTP {resp.status_code} non-retryable: {body_excerpt}"
                 logger.warning(
                     "telegram send action_id=? HTTP %d (non-retryable): %s",

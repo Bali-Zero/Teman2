@@ -240,7 +240,10 @@ async def _send_outbox_alarm(client: "httpx.AsyncClient", text: str) -> bool:  #
     `*_http.py`, and a module-level import here would be a new violation.
     """
 
-    from backend.services.wa_copilot.telegram_notifier import send_telegram_message
+    from backend.services.wa_copilot.telegram_notifier import (
+        is_credential_rejected,
+        send_telegram_message,
+    )
 
     token = os.getenv("TELEGRAM_BOT_TOKEN", "")
     chat_id = os.getenv("TELEGRAM_OWNER_CHAT_ID", "")
@@ -253,6 +256,19 @@ async def _send_outbox_alarm(client: "httpx.AsyncClient", text: str) -> bool:  #
         return False
     ok, err = await send_telegram_message(client, token, chat_id, text)
     if not ok:
+        if is_credential_rejected(err):
+            # Same sentence as the unset branch above, on purpose: a token
+            # Telegram REFUSES leaves this alarm exactly as mute as no token
+            # at all, and a reader scanning for "NO WAY TO SEND IT" must find
+            # both. Until 2026-09-20 this branch said only "could not be
+            # delivered", which reads like one lost message.
+            logger.error(
+                "GARUDA outbox alarm has something to report and NO WAY TO SEND IT: "
+                "TELEGRAM_BOT_TOKEN is SET and Telegram REJECTS it (%s). Rotate it "
+                "with BotFather — until then the log line above is the only record.",
+                err,
+            )
+            return False
         logger.error("GARUDA outbox alarm could not be delivered: %s", err)
         return False
     return True
@@ -288,7 +304,10 @@ async def _send_quarantine_alarm(client: "httpx.AsyncClient", text: str) -> bool
     importing `REALERT_SECONDS` in `quarantine_alarm.py`.
     """
 
-    from backend.services.wa_copilot.telegram_notifier import send_telegram_message
+    from backend.services.wa_copilot.telegram_notifier import (
+        is_credential_rejected,
+        send_telegram_message,
+    )
 
     token = os.getenv("TELEGRAM_BOT_TOKEN", "")
     chat_id = os.getenv("TELEGRAM_OWNER_CHAT_ID", "")
@@ -301,6 +320,19 @@ async def _send_quarantine_alarm(client: "httpx.AsyncClient", text: str) -> bool
         return False
     ok, err = await send_telegram_message(client, token, chat_id, text)
     if not ok:
+        if is_credential_rejected(err):
+            # See `_send_outbox_alarm`: a REFUSED token is the same entity as
+            # an unset one, and this alarm gates `confirm_sent`, so a caller
+            # reading the log must be able to tell "nothing will ever send"
+            # from "this one page bounced".
+            logger.error(
+                "GARUDA payment quarantine alarm has something to report and NO WAY "
+                "TO SEND IT: TELEGRAM_BOT_TOKEN is SET and Telegram REJECTS it (%s). "
+                "Rotate it with BotFather — until then the log line above is the only "
+                "record.",
+                err,
+            )
+            return False
         logger.error("GARUDA payment quarantine alarm could not be delivered: %s", err)
         return False
     return True
