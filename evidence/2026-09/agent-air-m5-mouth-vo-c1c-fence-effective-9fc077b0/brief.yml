@@ -1,0 +1,95 @@
+task_id: vo-c1c-fence-effective
+gear: 2
+base_sha: 038a571f84 # pragma: allowlist secret - public Git commit ID
+objective: |
+  Visa Oracle mission, MANDATE-vo.md slice "C1b'". vo-gate-c1b
+  (GATE-C1B-REPORT-6833.md, PR #6833) sent the effective-block model back
+  REWORK-BUILD: `themeKeyOf()` keyed a block's theme off the first
+  `data-oracle-theme="…"` string in its selector, so the two pre-hydration
+  blocks (oracle.css:114, :143) — which carry `data-oracle-theme="light"`
+  in their selector but declare DARK values — were handed out as the
+  inheritance base for any new light-theme override. A real two-state
+  collapse in the default light theme shipped GREEN (the gate's D3b), and
+  its innocent mirror shipped RED (D4). The Bites observation was also left
+  as a placeholder on an armed PR (OBS-C1b-2).
+
+  This slice replaces theme-string keying with a signature model: a
+  block's signature is the set of {attribute: value} constraints its
+  selector/at-rule context actually imposes, and a block may inherit only
+  from a preceding STATE-BEARING block whose signature is a provable
+  SUBSET of its own (a real-CSS generalisation), picking the largest such
+  subset and failing loud naming every candidate when two tie with
+  different signatures. Reproduces the gate's D3b and D4 as fixtures
+  against the REAL shipped oracle.css plus an appended override, adds a
+  guilt fixture for the genuine ambiguous-base case, clamps channel/alpha
+  ranges the way a browser paints them before comparing (Q4, OBS-C1b-4),
+  and records the Bites observation before arming (Q2, OBS-C1b-2).
+constraints:
+  - "Same two files as #6833: `oracle-state-tokens.helpers.ts` (sibling
+    helper, not `_lib/` — that directory is frozen for design PRs, R19 map
+    §4.5) and `oracle-state-tokens.test.ts`. `oracle.css` stays untouched
+    (sha256 unchanged from GATE-C1-REPORT-6820.md)."
+  - "No package.json/lockfile change, no new dependency — the parser
+    remains a hand-rolled pure-function pair, unchanged in shape from
+    #6833 (OBS-C1b-5 stays a recorded limit: one stylesheet shape, fails
+    loud naming the construct and line on anything deeper)."
+  - "Candidate inheritance bases are restricted to blocks that themselves
+    declare at least one `--oracle-state-*` token — an unrelated
+    `.oracle-root` layout rule sharing a signature has nothing to
+    contribute to the chain (found while reproducing D3b: the naive
+    nearest-signature match latched onto an unrelated rule and reported
+    every token as missing rather than inheriting the wrong theme)."
+  - "The gate's M6 fixture (a `@media (prefers-contrast: more)` override on
+    the real shipped CSS) is re-calibrated: under the corrected model its
+    inherited base is genuinely the light block (not the dark block the
+    buggy model produced), so the mutation's two literal override values
+    were changed to a colour the light palette never uses, isolating the
+    B2 (subset-override) collision it exists to test from the Q1 fix."
+  - "Mutations for guilt fixtures are made on a COPY of the shipped CSS
+    (string concatenation) or with `cp` backup + `cmp -s` restore when
+    touching the file on disk — never `git checkout --`."
+acceptance:
+  - text: 'WHEN a light-theme context overrides a SUBSET of the eight
+      tokens, the fence SHALL derive its effective values by inheriting
+      from the LIGHT base (never a pre-hydration dark block that merely
+      mentions `data-oracle-theme="light"` in its selector), so a
+      genuine collapse in the default light theme turns the fence RED
+      naming that context, and the mirror override that only collides
+      with the dark palette stays GREEN.'
+    probe: "./node_modules/.bin/vitest --run --root apps/mouth 'src/app/(visa-oracle)/visa-oracle/oracle-state-tokens.test.ts' -t 'Q1 theme inheritance'"
+  - text: "WHEN two preceding state-bearing blocks tie for the largest
+      qualifying signature but declare DIFFERENT signatures, the fence
+      SHALL fail loud naming both candidate contexts rather than picking
+      one silently."
+    probe: "./node_modules/.bin/vitest --run --root apps/mouth 'src/app/(visa-oracle)/visa-oracle/oracle-state-tokens.test.ts' -t 'LOUD: two equally-specific'"
+  - text: "WHEN an out-of-gamut rgb() channel or an alpha above 1 is
+      compared against the value a browser clamps it to, the two SHALL
+      resolve to the same colour and the fence SHALL treat them as a
+      collision, not silently distinct."
+    probe: "./node_modules/.bin/vitest --run --root apps/mouth 'src/app/(visa-oracle)/visa-oracle/oracle-state-tokens.test.ts' -t 'Q4 clamp'"
+  - text: "The full suite stays green on the shipped file and `tsc --noEmit`
+      stays clean."
+    probe: "./node_modules/.bin/vitest --run --root apps/mouth 'src/app/(visa-oracle)/visa-oracle/oracle-state-tokens.test.ts'; cd apps/mouth && ../../node_modules/.bin/tsc --noEmit"
+consumer_map:
+  - '`Frontend Tests (Next.js)` CI job (matrix `app: mouth`) — runs `cd
+    apps/mouth && npx vitest --run --coverage`, which collects this test
+    file (`include: ["src/**/*.test.{ts,tsx}"]`) on every PR touching
+    apps/mouth.'
+  - "Any future design PR that repaints oracle.css (PLAN.md Slice C2-C5) —
+    this is the anti-regression fence G3-a requires to land first, now
+    judging colours in the theme a context actually renders in."
+risks:
+  - "The signature model still approximates CSS specificity/cascade with a
+    subset relation on attribute constraints, not a full cascade engine —
+    deliberate, matching this file's actual shape (four themed blocks, one
+    level of @media nesting). A selector shape this file has never used
+    still fails loud rather than mis-parsing (OBS-C1b-5, unchanged)."
+  - "The rework touches the same two files as #6833 end to end rather than
+    a minimal patch, because the theme-keying replacement is structural
+    (a new signature type, a new inheritance search) and the gate's own
+    fixture needed re-deriving under the corrected model to stay honest."
+grader: |
+  A fresh Opus 5 gate follows, generator != grader, per MANDATE-vo.md and
+  the same discipline as vo-gate-c1 (#6820) and vo-gate-c1b (#6833).
+budget: 1 build lane (this session), no council gate.
+pii: none
