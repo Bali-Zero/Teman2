@@ -16,6 +16,7 @@ LaunchAgents so the token comes from TELEGRAM_BOT_TOKEN. Skips without tmux.
 from __future__ import annotations
 
 import os
+import shlex
 import shutil
 import stat
 import subprocess
@@ -30,6 +31,11 @@ SCRIPT = Path(os.environ.get("WA_ARMY_WATCHER_SH")
 TMUX = shutil.which("tmux") or ("/opt/homebrew/bin/tmux" if Path("/opt/homebrew/bin/tmux").exists() else None)
 ARMY = "ARMYX"
 DONE_LINE = f"ARMY_DONE {ARMY} https://github.com/x/y/pull/1"
+# What the TUI redraws in the pane BEFORE the army has done anything: the prompt's own
+# sentinel line (docs/army-prompts/*.txt, placeholder and all) and the test-army shape
+# (an `echo "ARMY_DONE …"` instruction, later redrawn again as the running command).
+PROMPT_LINES = (f"ARMY_DONE {ARMY} <numero-PR-o-url>",
+                f'echo "ARMY_DONE {ARMY} https://github.com/x/y/pull/1"')
 
 CURL_SHIM = r'''#!/bin/bash
 # curl shim: records the Telegram text= argument, sends nothing.
@@ -132,6 +138,23 @@ def test_the_launchers_own_pipe_is_never_toggled_off_by_the_watcher(army: Army):
     army.tmux("send-keys", "-t", old, f"echo {DONE_LINE}", "Enter")
     assert army.wait_exit() == 0
     assert f"Armata {ARMY} HA FINITO" in army.alerts()
+
+
+def test_the_sentinel_redrawn_from_the_prompt_is_not_army_done(army: Army):
+    # 2026-09-19 TESTJUMP: the watcher fired on the prompt text at launch ("HA FINITO" with
+    # no PR) and was gone before the window jump, so the new pane was never re-piped.
+    army.launch()
+    (pane,) = army.panes()
+    for line in PROMPT_LINES:                          # typed command AND its output land in the log
+        army.tmux("send-keys", "-t", pane, "printf '%s\\n' " + shlex.quote(line), "Enter")
+    time.sleep(3.5)                                    # three polls over the redrawn prompt
+    assert army.proc is not None and army.proc.poll() is None, "the watcher exited on the prompt text"
+    assert army.alerts() == "", army.alerts()
+    army.tmux("send-keys", "-t", pane, f"echo {DONE_LINE}", "Enter")
+    assert army.wait_exit() == 0
+    text = army.alerts()
+    assert f"Armata {ARMY} HA FINITO" in text and "https://github.com/x/y/pull/1" in text, text
+    assert "<numero-PR-o-url>" not in text and text.count("---") == 1, text
 
 
 def test_a_session_that_dies_without_army_done_is_still_reported_as_ended_without_pr(army: Army):
