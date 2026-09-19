@@ -67,7 +67,7 @@ def _client_user() -> dict[str, object]:
 def _tax_user() -> dict[str, object]:
     return {
         "user_id": "synthetic-tax-user",
-        "email": "Veronika.Tax@balizero.com",
+        "email": "Tax@balizero.com",
         "role": "team",
     }
 
@@ -581,7 +581,7 @@ async def test_mark_submitted_uses_authenticated_actor_not_query_attribution(
     )
 
     assert response["success"] is True
-    service.mark_submitted.assert_awaited_once_with(902, "veronika.tax@balizero.com")
+    service.mark_submitted.assert_awaited_once_with(902, "tax@balizero.com")
 
 
 @pytest.mark.parametrize("mutation", ["mark_submitted", "upload_receipt"])
@@ -596,7 +596,7 @@ async def test_service_mutations_are_atomic_and_missing_targets_are_not_successf
 
     with pytest.raises(LookupError, match="LKPM draft not found"):
         if mutation == "mark_submitted":
-            await service.mark_submitted(902, "veronika.tax@balizero.com")
+            await service.mark_submitted(902, "tax@balizero.com")
         else:
             await service.upload_receipt(902, "SYNTHETIC-RECEIPT", None)
 

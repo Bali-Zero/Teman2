@@ -16,6 +16,7 @@ from backend.app.core.constants import (
     MemoryConstants,
     RoutingConstants,
     SearchConstants,
+    TaxConsultantConstants,
 )
 
 
@@ -99,3 +100,114 @@ class TestDatabaseConstants:
         assert DatabaseConstants.POOL_MIN_SIZE == 2
         assert DatabaseConstants.POOL_MAX_SIZE == 10
         assert DatabaseConstants.COMMAND_TIMEOUT == 60
+
+
+class TestTaxConsultantConstants:
+    """Tests for TaxConsultantConstants — the team_members-derived roster
+    (migration 319 keeps the DB CHECK constraints in sync with this)."""
+
+    def test_canonical_is_the_five_real_addresses(self):
+        assert TaxConsultantConstants.CANONICAL == (
+            "tax@balizero.com",
+            "angel.tax@balizero.com",
+            "kadek.tax@balizero.com",
+            "dewaayu.tax@balizero.com",
+            "faysha.tax@balizero.com",
+        )
+        assert len(TaxConsultantConstants.CANONICAL) == 5
+
+    def test_lkpm_assignees_is_canonical_plus_krisna(self):
+        assert TaxConsultantConstants.LKPM_ASSIGNEES == (
+            *TaxConsultantConstants.CANONICAL,
+            "krisna@balizero.com",
+        )
+        assert len(TaxConsultantConstants.LKPM_ASSIGNEES) == 6
+
+    def test_manager_is_in_canonical(self):
+        assert TaxConsultantConstants.MANAGER in TaxConsultantConstants.CANONICAL
+
+    def test_non_manager_derived_by_filter_matches_canonical_minus_manager(self):
+        """Mirrors how lkpm_deadline_notifier.py derives NON_MANAGER — by
+        filtering out MANAGER, not by slicing CANONICAL[1:] — so the result
+        holds regardless of MANAGER's position in the tuple."""
+        non_manager = tuple(
+            e for e in TaxConsultantConstants.CANONICAL if e != TaxConsultantConstants.MANAGER
+        )
+        reordered_canonical = tuple(reversed(TaxConsultantConstants.CANONICAL))
+        non_manager_from_reordered = tuple(
+            e for e in reordered_canonical if e != TaxConsultantConstants.MANAGER
+        )
+        assert set(non_manager) == set(TaxConsultantConstants.CANONICAL) - {
+            TaxConsultantConstants.MANAGER
+        }
+        assert set(non_manager) == set(non_manager_from_reordered)
+
+    def test_legacy_aliases_maps_both_ghosts_to_their_real_replacement(self):
+        """Deliberately does not restate the two ghost strings as literals —
+        `test_tax_consultant_ghost_address_guard.py` sweeps backend/ for
+        them and only constants.py itself is on its exclusion list. Checks
+        structural properties instead: exactly 2 legacy aliases, each
+        mapping to a distinct, real (canonical) address that is not itself
+        a retired alias."""
+        aliases = TaxConsultantConstants.LEGACY_ALIASES
+        assert len(aliases) == 2
+        for ghost, real in aliases.items():
+            assert real in TaxConsultantConstants.CANONICAL
+            assert ghost not in TaxConsultantConstants.CANONICAL
+            assert ghost != real
+
+    def test_normalize_maps_ghost_1_to_real_1(self):
+        """Ghost/real strings deliberately come from LEGACY_ALIASES rather
+        than being restated as literals here — see the guard-exclusion
+        reasoning on the test above."""
+        ghost, real = list(TaxConsultantConstants.LEGACY_ALIASES.items())[0]
+        assert TaxConsultantConstants.normalize(ghost) == real
+
+    def test_normalize_maps_mixed_case_whitespace_ghost_2_to_real_2(self):
+        ghost, real = list(TaxConsultantConstants.LEGACY_ALIASES.items())[1]
+        mixed_case_padded = f"  {ghost.title()}  "
+        assert TaxConsultantConstants.normalize(mixed_case_padded) == real
+
+    def test_normalize_leaves_a_real_address_unchanged(self):
+        assert TaxConsultantConstants.normalize("tax@balizero.com") == "tax@balizero.com"
+
+    def test_normalize_leaves_an_unknown_address_unchanged(self):
+        assert TaxConsultantConstants.normalize("random@email.com") == "random@email.com"
+
+    def test_normalize_none_stays_none(self):
+        assert TaxConsultantConstants.normalize(None) is None
+
+
+class TestTaxConsultantSpellingNormalization:
+    """Round 2 (adversarial review, 2026-09-16): normalize() used to rewrite
+    ONLY the two retired aliases, so a REAL, active consultant submitted with
+    different case or stray whitespace — `" Tax@BaliZero.com "` — fell through
+    to an allowlist that compares exact bytes and came back as a 422. The
+    mandate for this slice is "no consultant excluded from the portal over a
+    spelling"; that was one.
+    """
+
+    def test_canonical_address_with_case_and_padding_resolves(self):
+        from backend.app.core.constants import TaxConsultantConstants
+
+        assert (
+            TaxConsultantConstants.normalize("  TAX@BaliZero.com  ") == "tax@balizero.com"
+        )
+
+    def test_lkpm_only_assignee_also_resolves(self):
+        """Krisna is in LKPM_ASSIGNEES but not in CANONICAL — the loop must
+        cover the wider set, or LKPM assignment keeps the defect the CRM path
+        just lost."""
+        from backend.app.core.constants import TaxConsultantConstants
+
+        assert (
+            TaxConsultantConstants.normalize(" Krisna@Balizero.com ") == "krisna@balizero.com"
+        )
+
+    def test_an_unknown_address_is_still_returned_verbatim(self):
+        """Including its original case and padding: the allowlist check
+        downstream must judge it, and the error message must quote back what
+        the caller actually sent."""
+        from backend.app.core.constants import TaxConsultantConstants
+
+        assert TaxConsultantConstants.normalize("  Stranger@Balizero.com  ") == "  Stranger@Balizero.com  "

@@ -183,8 +183,8 @@ def test_client_update_normalize_gender():
 def test_client_update_tax_consultant_valid():
     from backend.app.routers.crm_clients import ClientUpdate
 
-    u = ClientUpdate(tax_consultant="veronika.tax@balizero.com")
-    assert u.tax_consultant == "veronika.tax@balizero.com"
+    u = ClientUpdate(tax_consultant="tax@balizero.com")
+    assert u.tax_consultant == "tax@balizero.com"
 
 
 def test_client_update_tax_consultant_invalid():
@@ -199,6 +199,28 @@ def test_client_update_tax_consultant_empty_string_becomes_none():
 
     u = ClientUpdate(tax_consultant="")
     assert u.tax_consultant is None
+
+
+def test_client_update_tax_consultant_legacy_alias_normalizes_to_real():
+    """The kita dropdown still SENDS the retired address (migration 319) —
+    a create/update carrying it must be ACCEPTED and the value actually
+    stored (what `update_client` reads via `.dict(exclude_unset=True)`)
+    must be the real replacement, not the ghost."""
+    from backend.app.core.constants import TaxConsultantConstants
+    from backend.app.routers.crm_clients import ClientUpdate
+
+    ghost, real = next(iter(TaxConsultantConstants.LEGACY_ALIASES.items()))
+    u = ClientUpdate(tax_consultant=ghost)
+    assert u.tax_consultant == real
+
+
+def test_client_update_tax_consultant_unknown_address_still_rejected():
+    """An address outside both the real allowlist and the legacy-alias map
+    must still be rejected exactly as before normalize() existed."""
+    from backend.app.routers.crm_clients import ClientUpdate
+
+    with pytest.raises(ValueError, match="tax_consultant must be one of"):
+        ClientUpdate(tax_consultant="unknown.consultant@balizero.com")
 
 
 def test_client_update_full_name_empty_rejected():
@@ -866,3 +888,15 @@ async def test_create_client_allows_duplicate_phone_override(
 
     assert result.id == 1
     mock_service.create_client.assert_called_once()  # insert DID happen
+
+
+def test_client_update_tax_consultant_mixed_case_padded_legacy_alias_normalizes():
+    """Acceptance (b) of the R-C mandate, on the ROUTER path rather than on
+    `normalize()` alone: a legacy alias that arrives upper-cased and padded
+    must still land on the real address, not be rejected as unknown."""
+    from backend.app.core.constants import TaxConsultantConstants
+    from backend.app.routers.crm_clients import ClientUpdate
+
+    ghost, real = next(iter(TaxConsultantConstants.LEGACY_ALIASES.items()))
+    u = ClientUpdate(tax_consultant=f"  {ghost.upper()}  ")
+    assert u.tax_consultant == real

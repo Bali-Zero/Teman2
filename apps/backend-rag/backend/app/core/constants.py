@@ -174,6 +174,109 @@ class IntelConstants:
 
 
 # ============================================================================
+# Tax Consultant Roster (CRM / LKPM)
+# ============================================================================
+
+
+class TaxConsultantConstants:
+    """The tax team's @balizero.com addresses.
+
+    Source of truth is `team_members` (Postgres) -- these tuples exist
+    because the two DB CHECK constraints that gate `clients.tax_consultant`
+    and `lkpm_reports.lkpm_assigned_to` cannot be queried from Python at
+    validation time, so the allowed set is mirrored here. The mirror MUST
+    agree with migration `319_align_tax_consultant_allowlist_to_team_members.sql`
+    (`backend/tests/migrations/test_migration_319_tax_consultant_allowlist_parity.py`
+    parses that file's CHECK clauses and asserts equality against
+    `CANONICAL` / `LKPM_ASSIGNEES` below -- it does not restate the list by
+    hand, so drift between the SQL and this module fails a test instead of
+    silently reintroducing a ghost address, which is exactly the defect
+    migration 319 cured).
+
+    Two of the addresses this replaces were never real -- a historical
+    typo/staff-turnover drift (see migration 319's header for the exact
+    spelling) that the old CHECK constraints and four independent Python
+    copies of this list (crm_clients.py, lkpm.py, lkpm_deadline_notifier.py,
+    and the legacy migration_093 module) all carried, none of them noticing
+    the other three had it wrong the same way. This module is the ONE place
+    the list lives now; the next staff change is one edit here. (The exact
+    ghost strings are deliberately not repeated here --
+    `test_tax_consultant_ghost_address_guard.py` sweeps backend/ for them
+    and this file is not on its exclusion list.)
+
+    Adding or removing a consultant requires, in the same PR:
+      1. this tuple (and LKPM_ASSIGNEES if the person handles LKPM),
+      2. a new migration ALTERing both CHECK constraints,
+      3. `team_members` itself.
+    """
+
+    # The five real tax-team addresses, live in team_members as of 2026-09-15.
+    CANONICAL: tuple[str, ...] = (
+        "tax@balizero.com",  # Veronika
+        "angel.tax@balizero.com",  # Angel
+        "kadek.tax@balizero.com",  # Kadek
+        "dewaayu.tax@balizero.com",  # Dewa Ayu
+        "faysha.tax@balizero.com",  # Faisha -- note the Y
+    )
+
+    # LKPM assignment additionally allows Krisna (Executive Consultant, no
+    # .tax@ sub-alias -- 110_lkpm_allowlist_krisna.sql).
+    LKPM_ASSIGNEES: tuple[str, ...] = (*CANONICAL, "krisna@balizero.com")
+
+    # Veronika is the tax team's point of contact for LKPM deadline
+    # escalations (CC'd, not assigned reports herself). An explicit named
+    # member, not CANONICAL[0] -- a reorder of the tuple above must not
+    # silently change who gets escalation CC.
+    MANAGER: str = "tax@balizero.com"
+
+    # The two retired addresses migration 319 moved production rows off of,
+    # mapped to their real replacement. The kita frontend dropdown
+    # (apps/mouth/src/lib/workspace/roster-directory.ts) still SENDS these
+    # as of 2026-09-15 and will until a later mouth PR retires them there
+    # too -- `normalize()` below is the write-path cure that keeps those
+    # submissions landing on the real address instead of bouncing. This is
+    # the ONE place besides the migration itself allowed to hold these
+    # literal strings: `test_tax_consultant_ghost_address_guard.py`
+    # excludes this file by name for exactly that reason.
+    LEGACY_ALIASES: dict[str, str] = {
+        "veronika.tax@balizero.com": "tax@balizero.com",
+        "faisha.tax@balizero.com": "faysha.tax@balizero.com",
+    }
+
+    @classmethod
+    def normalize(cls, email: str | None) -> str | None:
+        """Resolve a submitted address to its canonical spelling.
+
+        Two rewrites, both of SPELLING and never of identity:
+          1. a retired alias -> its real replacement (the kita dropdown still
+             sends both retired addresses);
+          2. a real address that differs only in case or surrounding
+             whitespace -> the canonical form stored in this module.
+
+        Matching is casefolded and whitespace-stripped in both cases. The
+        second rule is why the mandate for this change says "no consultant
+        excluded from the portal over a legacy SPELLING": before it,
+        `" Tax@BaliZero.com "` -- a plausible hand-typed or integration
+        submission for a real, active consultant -- was refused with a 422 by
+        an allowlist that only ever compared exact bytes.
+
+        Anything that matches neither is returned EXACTLY as received, so the
+        allowlist check downstream still judges it on its own terms and the
+        error message quotes back what the caller actually sent.
+        """
+        if email is None:
+            return None
+        candidate = email.strip().casefold()
+        for legacy, real in cls.LEGACY_ALIASES.items():
+            if candidate == legacy.casefold():
+                return real
+        for canonical in cls.LKPM_ASSIGNEES:
+            if candidate == canonical.casefold():
+                return canonical
+        return email
+
+
+# ============================================================================
 # HTTP Client Constants
 # ============================================================================
 

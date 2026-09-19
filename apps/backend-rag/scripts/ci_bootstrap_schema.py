@@ -383,6 +383,9 @@ def main() -> int:
             "ALTER TABLE clients ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ",
             "ALTER TABLE clients ADD COLUMN IF NOT EXISTS date_of_birth DATE",
             "ALTER TABLE clients ADD COLUMN IF NOT EXISTS passport_expiry DATE",
+            # Added by legacy Python migration 093 (CHECK constraint); not in
+            # SQLModel Client model, so create_all() does not emit this column.
+            "ALTER TABLE clients ADD COLUMN IF NOT EXISTS tax_consultant VARCHAR(64)",
             # SQLModel's Client declares created_at/updated_at with a
             # Python-side default_factory=datetime.utcnow but no DB
             # server_default, so create_all() emits NOT NULL columns with
@@ -397,7 +400,7 @@ def main() -> int:
             conn.execute(text(stmt))
     print(
         "[bootstrap] clients prod-only columns ensured "
-        "(drive + deleted_at + identity dates + timestamp defaults)"
+        "(drive + deleted_at + identity dates + tax_consultant + timestamp defaults)"
     )
 
     # documents: prod-only legacy table, hand-created (no SQLModel class, no

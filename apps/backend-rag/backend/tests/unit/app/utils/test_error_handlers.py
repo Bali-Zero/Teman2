@@ -99,3 +99,63 @@ class TestHandleDatabaseError:
 
         assert isinstance(result, HTTPException)
         assert result.status_code == 503
+
+
+class TestDatabaseErrorLogsNoRowData:
+    """A rejected row must not reach the log.
+
+    Measured on a live Postgres 17 (2026-09-16, SAETTA R5): asyncpg puts the
+    server's DETAIL into `str(e)`, and the DETAIL of a constraint violation is
+    `Failing row contains (...)` — on `clients` that is the client's name,
+    phone, passport number and NPWP. `handle_database_error` used to log the
+    exception itself with `%s`, writing all of it into the application log.
+    Builder Contract §4 makes that an output-boundary violation.
+
+    GUILT: a sentinel value that is only present in the row data must not
+    appear in what gets logged. INNOCENCE: the operator must still learn the
+    error class, the SQLSTATE and the constraint name, or the cure would have
+    traded a leak for a blind spot.
+    """
+
+    SENTINEL = "SENTINEL-CLIENT-NAME-9x7"
+
+    def _violation(self):
+        import asyncpg
+
+        e = asyncpg.exceptions.CheckViolationError(
+            f'new row for relation "clients" violates check constraint '
+            f'"clients_tax_consultant_check"\nDETAIL:  Failing row contains '
+            f"(11, {self.SENTINEL}, +62811234567, A1234567, ghost@nowhere.example)."
+        )
+        e.sqlstate = "23514"
+        e.constraint_name = "clients_tax_consultant_check"
+        e.table_name = "clients"
+        return e
+
+    def test_row_data_is_not_logged(self, caplog):
+        import logging
+
+        from backend.app.utils.error_handlers import handle_database_error
+
+        with caplog.at_level(logging.WARNING):
+            handle_database_error(self._violation())
+        assert self.SENTINEL not in caplog.text
+        assert "Failing row contains" not in caplog.text
+
+    def test_the_operator_still_gets_a_usable_signature(self, caplog):
+        import logging
+
+        from backend.app.utils.error_handlers import handle_database_error
+
+        with caplog.at_level(logging.WARNING):
+            handle_database_error(self._violation())
+        assert "CheckViolationError" in caplog.text
+        assert "23514" in caplog.text
+        assert "clients_tax_consultant_check" in caplog.text
+
+    def test_the_client_facing_message_is_unchanged(self):
+        from backend.app.utils.error_handlers import handle_database_error
+
+        exc = handle_database_error(self._violation())
+        assert exc.status_code == 400
+        assert exc.detail == "Invalid data provided"

@@ -46,6 +46,31 @@ def api_error(
     return HTTPException(status_code=status_code, detail=detail)
 
 
+def _pg_error_signature(e: Exception) -> str:
+    """What a database error is allowed to say in a log line.
+
+    Measured 2026-09-16 on a live Postgres 17: `str(asyncpg.CheckViolationError)`
+    carries the server's DETAIL, and the DETAIL of a constraint violation is
+    `Failing row contains (...)` — the ENTIRE rejected row. On `clients` that
+    is the client's name, phone, passport number and NPWP, written verbatim
+    into the application log by a `%s` that looks completely harmless. A
+    sentinel row proved it: the synthetic client name appeared in both
+    `str(e)` and `e.detail`.
+
+    Builder Contract §4 / SYMBIOSIS Legge 2 make that an OUTPUT boundary
+    violation, and a log is an output. So nothing derived from the ROW may be
+    logged: what is kept is the error class, the SQLSTATE and the constraint
+    or column name — exactly what an operator needs to find the cause, and
+    nothing that identifies a person.
+    """
+    parts = [type(e).__name__]
+    for attr in ("sqlstate", "constraint_name", "column_name", "table_name"):
+        value = getattr(e, attr, None)
+        if value:
+            parts.append(f"{attr}={value}")
+    return " ".join(parts)
+
+
 def handle_database_error(e: Exception) -> HTTPException:
     """
     Handle database errors consistently across all routers.
@@ -57,22 +82,22 @@ def handle_database_error(e: Exception) -> HTTPException:
         HTTPException: Appropriate HTTP exception with user-friendly message
     """
     if isinstance(e, asyncpg.UniqueViolationError):
-        logger.warning("Unique constraint violation: %s", e)
+        logger.warning("Unique constraint violation: %s", _pg_error_signature(e))
         return HTTPException(
             status_code=400,
             detail="A record with this information already exists",
         )
 
     if isinstance(e, asyncpg.ForeignKeyViolationError):
-        logger.warning("Foreign key violation: %s", e)
+        logger.warning("Foreign key violation: %s", _pg_error_signature(e))
         return HTTPException(status_code=400, detail="Referenced record does not exist")
 
     if isinstance(e, asyncpg.CheckViolationError):
-        logger.warning("Check constraint violation: %s", e)
+        logger.warning("Check constraint violation: %s", _pg_error_signature(e))
         return HTTPException(status_code=400, detail="Invalid data provided")
 
     if isinstance(e, asyncpg.PostgresError):
-        logger.error("Database error: %s", e)
+        logger.error("Database error: %s", _pg_error_signature(e))
         return HTTPException(status_code=503, detail="Database service temporarily unavailable")
 
     # asyncpg.InterfaceError: "connection was closed in the middle of operation"
