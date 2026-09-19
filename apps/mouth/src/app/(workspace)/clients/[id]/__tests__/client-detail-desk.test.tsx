@@ -111,11 +111,8 @@ vi.mock("../components/CompanyTab", () => ({
 vi.mock("../components/TaxTab", () => ({
   TaxTab: () => <div data-testid="TaxTab" />,
 }));
-vi.mock("../components/TimelineTab", () => ({
-  TimelineTab: () => <div data-testid="TimelineTab" />,
-}));
-vi.mock("../components/WaTimelineTab", () => ({
-  WaTimelineTab: () => <div data-testid="WaTimelineTab" />,
+vi.mock("../components/ActivityTab", () => ({
+  ActivityTab: () => <div data-testid="ActivityTab" />,
 }));
 vi.mock("../components/PortalMessages", () => ({
   PortalMessages: () => <div data-testid="PortalMessages" />,

@@ -1,0 +1,154 @@
+task: >-
+  R8 of the kita client-profile redesign (PLAN-redesign.md): the old separate Timeline and
+  WhatsApp tabs fold into one Activity tab. New `ActivityTab.tsx` composes a Timeline/WhatsApp
+  toggle: `WaTimelineTab.tsx` stays mounted unchanged (its own lazy-on-open fetch, pagination,
+  empty/loading/error words untouched), while the old `TimelineTab.tsx`'s content is MOVED into
+  `ActivityTab.tsx` and rebuilt on r19 primitives (`HairlineGrid`/`HairlineRow`, `EmptyState`,
+  `StatePill`, `DeskStrip`) — `TimelineTab.tsx` is deleted. A new composer (r19 `Field` + four
+  quick-log presets from the approved mock) posts through `api.crm.createInteraction`; success
+  shows an r19 `Slip` with Undo (real delete via `api.crm.deleteInteraction`, confirmed present
+  at `crm_interactions.py:740`); failure shows a persistent r19 `Notice`, keeps the typed text,
+  and never shows the success Slip — deliberately honest about the still-open PROD defect in
+  `DIAG-activity-logging-404.md` (a separate fix owns the URL). `TAB_KEYS` keeps both legacy
+  `timeline`/`whatsapp` keys valid; the tab bar shows one "Activity" button carrying
+  `aria-current="page"` for either key.
+lane: frontend/kita-r8-activity-tab
+machine: air-m5
+date: 2026-09-20
+
+gear: 2
+gear_reason: >-
+  Deterministic floor 2, source `size`. `git diff --no-renames --numstat origin/main...HEAD`
+  measures churn 1670 over the six code files (220+21, 65+29, 2+5, 452+0, 531+0, 0+345) and
+  1824 including this brief — the number the lint actually reads — against
+  SIZE_GEAR2_THRESHOLD 400 and SIZE_GEAR3_THRESHOLD 1828. No hot-zone path hit: every code
+  file is under `apps/mouth/`. This brief is kept SHORT on purpose: its own lines count toward
+  that churn, and at 165 lines it floored the pack at 3.
+
+review_policy: >-
+  By the owner's decision of 2026-09-19, the kita client-profile redesign does not wait for a
+  human code review before auto-merge is armed; an independent LLM parity audit plus the
+  on-disk gate stand in its place. This repair round applies the R8 parity audit of commit
+  f35f3040d2 — its four BLOCKING items and two of its NON-BLOCKING items, verbatim.
+
+appetite:
+  wall_clock_hours: 1
+  adversarial_rounds: 1
+
+acceptance:
+  A1: >-
+    The whole `clients/[id]` vitest folder (including the `client-detail-desk.test.tsx` guard)
+    passes: 273/273 across 20 files, including the R8-audit-repaired `ActivityTab.test.tsx` (25
+    cases, now with real `ApiError` statusCode fixtures per gate condition C5) and the
+    gate-hardened `ClientDetailClient.test.tsx` (34 cases): the deep-link table (both
+    `?tab=timeline` and `?tab=whatsapp` resolve to a single mocked `ActivityTab`, seeded with
+    the matching `initialSection`, and the merged "Activity" tab button carries
+    `aria-current="page"` for either key), plus C3 (an in-place `?tab=whatsapp` ->
+    `?tab=timeline` re-navigation remounts `<ActivityTab>` via its `key=`, not just its
+    `initialSection` prop), C6 (clicking "Activity" while already on `?tab=whatsapp` is a
+    no-op: no router call, no remount) and B1 (clicking Overview while `?tab=company` on a
+    company-less client — R7a's fallback — still normalises `activeTab` and the URL; the C6
+    no-op guard must not swallow that click too).
+    probe: >-
+      npx --no-install vitest run 'src/app/(workspace)/clients/[id]/'
+  A2: >-
+    `tsc --noEmit -p .` exits clean and `eslint` reports zero errors on every changed non-test
+    file. The one `@next/next/no-img-element` warning in ClientDetailClient.tsx is pre-existing
+    on origin/main; no line number is named, because it has already gone stale twice.
+    probe: >-
+      npx --no-install tsc --noEmit -p . && npx --no-install eslint
+      "src/app/(workspace)/clients/[id]/components/ActivityTab.tsx"
+      "src/app/(workspace)/clients/[id]/ClientDetailClient.tsx"
+  A3: >-
+    Seventeen independent mutations, each applied alone to a `cp`-backed-up original, drive the
+    matching pinned test(s) RED, then are reverted and confirmed byte-identical to the original
+    with `cmp -s`: (1) hard-coding `initialSection={"timeline"}` in ClientDetailClient.tsx fails
+    the "?tab=whatsapp seeds ActivityTab's initialSection with whatsapp" test; (2) gating the
+    composer's error Notice behind `false &&` fails the failed-save test (no visible alert); (3)
+    an early `return` in `handleUndo` before the delete call fails the Undo test (delete never
+    called, entry never removed); (4) `UNDO_WINDOW_MS` 6000→6001 fails the timer-boundary test
+    (Undo still present at the old, now-wrong, 6000ms mark); (5) the "Sent documents" preset's
+    `type` changed from `note` to `email` fails that preset's exact-payload assertion; (6)
+    re-importing and re-mounting `AiSummaryCard` fails the "never mounts AiSummaryCard" test;
+    (7) moving the "Show more" toggle from the row body into `HairlineRow`'s `actions` prop
+    fails the ancestor-walk test (`className` now matches `/group-hover\/row/`). R8-audit
+    repair round, six more: (8) reverting `handleUndo` to remove the row before the DELETE
+    resolves fails "a refused DELETE keeps the entry and says so"; (9) restoring the raw
+    `` `Could not save — ${composerError}.` `` interpolation fails all three
+    "a %s rejection shows operator copy" cases (the alert reads the raw "Not found" detail
+    again); (10) dropping `h-8`/`min-h-6` from either the quick-log presets or the "Show more"
+    toggle fails the "24px height class" test; (11) removing `aria-label="Saving"` from the
+    Save button fails "Save keeps an accessible name while submitting"; (12) hard-coding
+    `useState("timeline")` (no corrective effect left to mask it) fails the pre-existing
+    "initialSection=whatsapp mounts the real WaTimelineTab" test; (13) dropping the
+    `onSaved?.()` call fails "calls onInteractionCreated and onSaved exactly once". Gate-
+    conditions round, three more: (14) removing the `key=` on `<ActivityTab>` (R5b) fails the
+    C3 remount test (`activityTabMounts` stays `["whatsapp"]` after the in-place navigation
+    even though `data-section` still flips to "timeline"); (15) freezing that `key` to the
+    constant `"activity"` (R5c) fails the same C3 test the same way; (16) removing the whole
+    `if (alreadyActive && activeTab === visibleTab) return;` guard in `handleTabChange` fails
+    the C6 no-op test (`mockRouterReplace` gets called with `/clients/7?tab=timeline`). Gate
+    sign-off B1, one more: (17) dropping the `&& activeTab === visibleTab` clause from that
+    guard fails the new R7a-fallback test — zero `mockRouterReplace` calls where
+    `/clients/7?tab=overview` is expected.
+    probe: >-
+      Per mutation: apply, `npx --no-install vitest run <the file holding the named case>`,
+      observe RED, `cp` the backup back, `cmp -s` to confirm an exact restore.
+
+out_of_scope: >-
+  Every other R1-R8 lane of PLAN-redesign.md not already merged (CompanyTab/TaxTab kv-grid,
+  Documents, Immigration). The PROD activity-logging 404
+  (DIAG-activity-logging-404.md/PROD-BUG-activity-logging-404.md) — this slice does not touch
+  `apps/mouth/src/app/api/[...path]/route.ts` or any `lib/api/**` URL; the composer's honesty
+  under that failure is the only overlap, by design. The page-header global "Log" panel in
+  ClientDetailClient.tsx (its own separate composer, its own separate swallowed-failure bug) —
+  untouched, out of scope for this wiring-only slice. A full interleaved single-feed merge of
+  Interaction records and raw WaMirrorMessage rows — the two remain separate real components
+  behind a Timeline/WhatsApp toggle (see assumptions below for why). Arming, merging, deploying
+  or proving this PR live — this session only prepares.
+
+assumptions:
+  - text: >-
+      "Activity = Timeline + WhatsApp in one tab" is satisfied by COMPOSING the two real
+      components behind an internal toggle rather than interleaving `Interaction` records and
+      raw `WaMirrorMessage` rows into one literal merged feed. The approved mock's Activity
+      panel shows a demo list where a "WhatsApp" row is just one `interaction_type` among
+      others — but `useClientTimeline`'s `Interaction[]` and `api.whatsapp.getMirrorMessages`'s
+      `WaMirrorMessage[]` are genuinely different backend data sources with different shapes,
+      different pagination models (`WaTimelineTab`'s own offset/`hasMore`/"Load older messages"
+      vs. the Timeline's already-loaded array) and — critically — a lazy-on-open fetch on the
+      WhatsApp side that a true interleaved merge could not honestly preserve without either
+      eagerly fetching WhatsApp messages on every Activity-tab open (an extra, disclosed
+      network request the task explicitly asked to avoid or justify) or building bespoke
+      merged-pagination logic outside this slice's ~400-line budget and outside the R1/R3/R4
+      failure shape this lot has already been burned by (an action or a fetch pattern silently
+      changing behind a rewritten test). The composed toggle keeps both real components'
+      existing behavior byte-for-byte; only the container and the Timeline section's visual
+      shell change.
+    status: verified
+    probe: >-
+      `ActivityTab.test.tsx` "initialSection=whatsapp mounts the real WaTimelineTab for this
+      client, lazily" and "clicking the WhatsApp filter pill unmounts the Timeline rows and
+      mounts WaTimelineTab" together pin: WaTimelineTab (and therefore its fetch) is absent
+      while section=timeline, present only once section=whatsapp — exactly the old
+      `{activeTab === "whatsapp" && <WaTimelineTab .../>}` conditional-mount behavior,
+      preserved through one more layer of composition.
+  - text: >-
+      Of the four quick-log presets in the approved mock (`client-profile-v3.html`
+      `.preset-row`), only "Called — no answer" names a channel unambiguously in its own label
+      (→ `interaction_type: "call"`). "Sent documents", "Follow-up scheduled" and "Payment
+      reminder sent" carry no stated channel in the mock, so they post as `note` rather than
+      guessing an unstated one (email? WhatsApp? in-person?) — consistent with the
+      IMPLEMENTER-RULES "NO INVENTED DATA" law, applied here to an invented CHANNEL rather than
+      an invented VALUE. This is a NEW composer (the mock's, not a restyle of the old
+      page-header "Log interaction" panel's four different presets, which stays untouched and
+      out of scope), so there is no OLD payload to match verbatim for the three note-typed
+      presets; "the same payload OLD posted" is satisfied at the shape level (client_id,
+      interaction_type, summary, team_member, direction: outbound — identical to every existing
+      `createInteraction` call site in this file).
+    status: verified
+    probe: >-
+      `ActivityTab.test.tsx`'s `it.each` "quick-log presets post the same payload shape" pins
+      the exact `createInteraction` argument object per preset, including the `call`/`note`
+      split; mutating "Sent documents" from `note` to `email` (Gear-2 mutation proof 5, above)
+      turns it RED.

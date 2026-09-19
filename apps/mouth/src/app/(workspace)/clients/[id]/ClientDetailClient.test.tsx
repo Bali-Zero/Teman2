@@ -15,27 +15,52 @@ const {
   mockUseClientDetail,
   stableTimeline,
   stableSearchParams,
+  mockUseSearchParams,
+  mockRouterPush,
+  mockRouterReplace,
   taxTabProps,
-} = vi.hoisted(() => ({
-  taxTabProps: [] as Record<string, unknown>[],
-  mockUpdateClient: vi.fn(),
-  mockSetClientCache: vi.fn(),
-  mockInvalidateClient: vi.fn(),
-  mockUseClientDetail: vi.fn(),
-  stableTimeline: [],
-  stableSearchParams: {
+  activityTabMounts,
+} = vi.hoisted(() => {
+  const stableSearchParams = {
     get: vi.fn((_key: string): string | null => null),
-  },
-}));
+  };
+  return {
+    taxTabProps: [] as Record<string, unknown>[],
+    // R8 gate C3: one entry per REAL ActivityTab mount (see the stub below)
+    // — the only way to tell "the `key=` forced a remount" from "the
+    // `initialSection` prop just changed on the same instance".
+    activityTabMounts: [] as string[],
+    mockUpdateClient: vi.fn(),
+    mockSetClientCache: vi.fn(),
+    mockInvalidateClient: vi.fn(),
+    mockUseClientDetail: vi.fn(),
+    stableTimeline: [],
+    stableSearchParams,
+    // Indirection so ONE test (R8 gate C3) can simulate an in-place URL
+    // change (a new `searchParams` reference, as real Next.js gives on
+    // navigation) without touching the reference-stable default every
+    // other test in this file relies on. Return type widened to a plain
+    // `get` function (not `stableSearchParams`'s literal `Mock` type) so
+    // that one test can swap in a plain closure.
+    mockUseSearchParams: vi.fn(
+      (): { get: (key: string) => string | null } => stableSearchParams,
+    ),
+    // R8 gate C6: stable across renders (unlike an inline `vi.fn()` in the
+    // mock factory below, which would be a fresh instance every render) so
+    // a test can assert "no navigation happened" after a click.
+    mockRouterPush: vi.fn(),
+    mockRouterReplace: vi.fn(),
+  };
+});
 
 vi.mock("next/navigation", () => ({
   useParams: () => ({ id: "7" }),
   useRouter: () => ({
     back: vi.fn(),
-    push: vi.fn(),
-    replace: vi.fn(),
+    push: mockRouterPush,
+    replace: mockRouterReplace,
   }),
-  useSearchParams: () => stableSearchParams,
+  useSearchParams: () => mockUseSearchParams(),
 }));
 
 vi.mock("@/lib/api", () => ({
@@ -108,11 +133,21 @@ vi.mock("./components/TaxTab", () => ({
     return <div data-testid="TaxTab" />;
   },
 }));
-vi.mock("./components/TimelineTab", () => ({
-  TimelineTab: () => <div data-testid="TimelineTab" />,
-}));
-vi.mock("./components/WaTimelineTab", () => ({
-  WaTimelineTab: () => <div data-testid="WaTimelineTab" />,
+vi.mock("./components/ActivityTab", () => ({
+  ActivityTab: (props: Record<string, unknown>) => {
+    // Empty deps: fires once per REAL mount, never on a same-instance
+    // prop update — the mount-vs-rerender distinction R8 gate C3 needs.
+    React.useEffect(() => {
+      activityTabMounts.push(props.initialSection as string);
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+    return (
+      <div
+        data-testid="ActivityTab"
+        data-section={props.initialSection as string}
+      />
+    );
+  },
 }));
 vi.mock("./components/PortalMessages", () => ({
   PortalMessages: () => <div data-testid="PortalMessages" />,
@@ -216,7 +251,9 @@ describe("ClientDetailClient", () => {
     // clearAllMocks keeps implementations: without this a deep-link test would
     // leak its ?tab= into every test that runs after it.
     stableSearchParams.get.mockImplementation(() => null);
+    mockUseSearchParams.mockImplementation(() => stableSearchParams);
     taxTabProps.length = 0;
+    activityTabMounts.length = 0;
     mockUseClientDetail.mockReturnValue({
       data: makeProfile(),
       isLoading: false,
@@ -298,6 +335,30 @@ describe("ClientDetailClient", () => {
     expect(overviewTab).not.toHaveAttribute("aria-current");
   });
 
+  // R8: one "Activity" button folds the old separate Timeline/WhatsApp
+  // buttons. GUILT: before R8 the deep link table had two buttons named
+  // "Timeline (…)" and "WhatsApp"; a straight `visibleTab === key` compare
+  // on a single merged button would only light up for "timeline" and leave
+  // a `?tab=whatsapp` visitor looking at a tab bar with nothing current.
+  it.each(["timeline", "whatsapp"])(
+    "gives the single Activity button aria-current=page for ?tab=%s",
+    async (tab) => {
+      stableSearchParams.get.mockImplementation((key: string) =>
+        key === "tab" ? tab : null,
+      );
+      const { ClientDetailClient } = await import("./ClientDetailClient");
+      render(<ClientDetailClient taxConsultants={CONSULTANTS} />);
+
+      const activityButton = await screen.findByRole("button", {
+        name: /^Activity/,
+      });
+      expect(activityButton).toHaveAttribute("aria-current", "page");
+      expect(
+        screen.getByRole("button", { name: "Overview" }),
+      ).not.toHaveAttribute("aria-current");
+    },
+  );
+
   /**
    * Both refuter seats reached this independently, and they were right.
    *
@@ -333,8 +394,8 @@ describe("ClientDetailClient", () => {
     ["visas", "ImmigrationTab"],
     ["company", "CompanyTab"],
     ["tax", "TaxTab"],
-    ["timeline", "TimelineTab"],
-    ["whatsapp", "WaTimelineTab"],
+    ["timeline", "ActivityTab"],
+    ["whatsapp", "ActivityTab"],
   ])("opens the %s tab from the ?tab= deep link", async (tab, testId) => {
     stableSearchParams.get.mockImplementation((key: string) =>
       key === "tab" ? tab : null,
@@ -345,6 +406,144 @@ describe("ClientDetailClient", () => {
     expect(await screen.findByTestId(testId)).toBeInTheDocument();
   });
 
+  // R8: both legacy deep-link keys fold into the same ActivityTab mount,
+  // seeded with the section that matches the key that opened it — a
+  // bookmark to `?tab=whatsapp` must not land on the Timeline section.
+  it.each([
+    ["timeline", "timeline"],
+    ["whatsapp", "whatsapp"],
+  ])(
+    "?tab=%s seeds ActivityTab's initialSection with %s",
+    async (tab, section) => {
+      stableSearchParams.get.mockImplementation((key: string) =>
+        key === "tab" ? tab : null,
+      );
+      const { ClientDetailClient } = await import("./ClientDetailClient");
+      render(<ClientDetailClient taxConsultants={CONSULTANTS} />);
+
+      expect(await screen.findByTestId("ActivityTab")).toHaveAttribute(
+        "data-section",
+        section,
+      );
+    },
+  );
+
+  // R8 gate C3: an in-place URL change (browser back/forward, or any
+  // navigation that keeps ClientDetailClient mounted) must force a fresh
+  // ActivityTab instance, not just flip its `initialSection` prop on the
+  // SAME instance — the real component only reads `initialSection` on
+  // mount, so a same-instance prop flip would silently restore "back to
+  // ?tab=whatsapp lands on Timeline". `data-section` alone cannot prove
+  // this (a re-rendered stub reflects the new prop either way); the
+  // `activityTabMounts` mount-effect array is the only observable that
+  // tells "remounted" from "re-rendered".
+  it("re-navigating ?tab=whatsapp -> ?tab=timeline in place remounts ActivityTab, not just its section prop", async () => {
+    let tab = "whatsapp";
+    mockUseSearchParams.mockImplementation(() => ({
+      get: (key: string) => (key === "tab" ? tab : null),
+    }));
+    const { ClientDetailClient } = await import("./ClientDetailClient");
+    const { rerender } = render(
+      <ClientDetailClient taxConsultants={CONSULTANTS} />,
+    );
+
+    expect(await screen.findByTestId("ActivityTab")).toHaveAttribute(
+      "data-section",
+      "whatsapp",
+    );
+    expect(activityTabMounts).toEqual(["whatsapp"]);
+
+    tab = "timeline";
+    rerender(<ClientDetailClient taxConsultants={CONSULTANTS} />);
+
+    await waitFor(() =>
+      expect(screen.getByTestId("ActivityTab")).toHaveAttribute(
+        "data-section",
+        "timeline",
+      ),
+    );
+    // GUILT: remove the `key=` on <ActivityTab> (R5b) or freeze it to a
+    // constant (R5c) and this stays `["whatsapp"]` — the prop above still
+    // flips correctly, but no second mount ever fires.
+    expect(activityTabMounts).toEqual(["whatsapp", "timeline"]);
+  });
+
+  // R8 gate C6: the merged "Activity" tab button carries
+  // `activeKeys: ["timeline", "whatsapp"]`, but its own `key` is hardcoded
+  // "timeline" — so clicking it while already on `?tab=whatsapp` used to
+  // call `handleTabChange("timeline")` unconditionally: a real navigation
+  // that snapped `visibleTab` back to "timeline", remounted `<ActivityTab>`
+  // (see the C3 test above for why that matters) and discarded a typed
+  // draft, a pending Undo Slip/timer and an error Notice. An ordinary tab
+  // whose own key already equals `visibleTab` was already a harmless
+  // no-op before this guard (same state, same URL, just a redundant
+  // `router.replace` call) — it stays a no-op now, just without that
+  // redundant call either.
+  it("clicking the Activity tab while already on ?tab=whatsapp is a no-op (R8 gate C6)", async () => {
+    const user = userEvent.setup();
+    stableSearchParams.get.mockImplementation((key: string) =>
+      key === "tab" ? "whatsapp" : null,
+    );
+    const { ClientDetailClient } = await import("./ClientDetailClient");
+    render(<ClientDetailClient taxConsultants={CONSULTANTS} />);
+
+    expect(await screen.findByTestId("ActivityTab")).toHaveAttribute(
+      "data-section",
+      "whatsapp",
+    );
+    expect(activityTabMounts).toEqual(["whatsapp"]);
+
+    const activityButton = screen.getByRole("button", { name: /Activity/ });
+    expect(activityButton).toHaveAttribute("aria-current", "page");
+    await user.click(activityButton);
+
+    expect(mockRouterReplace).not.toHaveBeenCalled();
+    expect(mockRouterPush).not.toHaveBeenCalled();
+    // Still the SAME mount, still on the WhatsApp section — not bounced
+    // back to Timeline.
+    expect(activityTabMounts).toEqual(["whatsapp"]);
+    expect(screen.getByTestId("ActivityTab")).toHaveAttribute(
+      "data-section",
+      "whatsapp",
+    );
+  });
+
+  // R8 gate B1: R7a's render-time fallback (`visibleTab`) can force
+  // `activeTab` and `visibleTab` apart — a deep link to a hidden Company
+  // tab renders Overview while `activeTab` and the URL still say
+  // "company". The bare `if (alreadyActive) return;` (R8 gate C6) treated
+  // that click as a no-op too, because `isActive` is computed against
+  // `visibleTab` (agrees with the visible Overview button) — so the URL
+  // kept lying and `activeTab` stayed stuck on "company", ready to jump
+  // the panel back to Company the instant `showCompanyTab` turned true
+  // (e.g. after "Add company" + `invalidateClient`). Clicking Overview is
+  // the one reachable gesture that must still normalise both.
+  it("R7a fallback: clicking Overview while ?tab=company still normalises the URL (R8 gate B1)", async () => {
+    const user = userEvent.setup();
+    mockUseClientDetail.mockReturnValue({
+      data: companyLessProfile(),
+      isLoading: false,
+      error: null,
+    });
+    stableSearchParams.get.mockImplementation((key: string) =>
+      key === "tab" ? "company" : null,
+    );
+    const { ClientDetailClient } = await import("./ClientDetailClient");
+    render(<ClientDetailClient taxConsultants={CONSULTANTS} />);
+
+    expect(await screen.findByTestId("OverviewTab")).toBeInTheDocument();
+    const overview = screen.getByRole("button", { name: "Overview" });
+    expect(overview).toHaveAttribute("aria-current", "page");
+
+    await user.click(overview);
+
+    // GUILT: with the bare `if (alreadyActive) return;` this is 0 calls —
+    // the click that should normalise `activeTab`/the URL is swallowed.
+    expect(mockRouterReplace).toHaveBeenCalledWith("/clients/7?tab=overview", {
+      scroll: false,
+    });
+  });
+
   it("ignores a ?tab= value that is not a tab and stays on Overview", async () => {
     stableSearchParams.get.mockImplementation((key: string) =>
       key === "tab" ? "constructor" : null,
@@ -353,7 +552,7 @@ describe("ClientDetailClient", () => {
     render(<ClientDetailClient taxConsultants={CONSULTANTS} />);
 
     expect(await screen.findByTestId("OverviewTab")).toBeInTheDocument();
-    expect(screen.queryByTestId("WaTimelineTab")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("ActivityTab")).not.toBeInTheDocument();
   });
 
   // R7a (kita client-profile redesign): a client with ZERO company links
