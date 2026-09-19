@@ -50,6 +50,42 @@ export interface UploadFlowProps {
   onConfirmed?: (values: Record<string, string>) => void;
 }
 
+/**
+ * This screen is mounted inside `visa/voa/layout.tsx`'s
+ * `data-theme="operative-dark"` wrapper, ground `--bz-base` #121016 — and it
+ * was the only one of the six purchase screens still painting itself with
+ * light-theme Tailwind grays. Measured on the PROMOTED build at 390px, by
+ * sampling the painted pixels rather than parsing the CSS (Tailwind v4 emits
+ * `oklch()`, which a naive rgb regex reads as a different colour entirely):
+ *
+ *   <h1> "Upload your passport"        rgb(16,24,40) on rgb(18,16,22)  1.06:1
+ *   "Can't upload a photo now? ..."    rgb(54,65,83) on rgb(18,16,22)  1.83:1
+ *
+ * The title of the screen was invisible, and so was the escape hatch for a
+ * customer who cannot produce a photo. `bg-gray-900` buttons were near-black
+ * fills on a near-black ground for the same reason.
+ *
+ * Why the existing guards did not catch it: `voa-contrast.computed.guard`
+ * resolved against `operative-light` until #6869, and it still only judges the
+ * ERROR-TONE element of each screen — which on this one is inline-styled and
+ * was already correct. The failing nodes were the ordinary ones.
+ */
+const PRIMARY: React.CSSProperties = {
+  background: "var(--tx-pure)",
+  color: "var(--bz-base)",
+};
+
+const SECONDARY: React.CSSProperties = {
+  borderColor: "var(--bz-border-hover)",
+  color: "var(--tx-pure)",
+};
+
+const FIELD: React.CSSProperties = {
+  borderColor: "var(--bz-border-hover)",
+  background: "var(--bz-elevated)",
+  color: "var(--tx-pure)",
+};
+
 export function UploadFlow({ resultId, onConfirmed }: UploadFlowProps) {
   const { state, selectFile, retryUpload, reset } = useDocumentUpload(resultId);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -86,7 +122,7 @@ export function UploadFlow({ resultId, onConfirmed }: UploadFlowProps) {
 
   return (
     <main className="mx-auto flex min-h-screen max-w-md flex-col gap-6 p-6">
-      <h1 className="text-xl font-semibold text-gray-900">
+      <h1 className="text-xl font-semibold" style={{ color: "var(--tx-pure)" }}>
         Upload your passport
       </h1>
 
@@ -102,7 +138,8 @@ export function UploadFlow({ resultId, onConfirmed }: UploadFlowProps) {
         <img
           src={previewUrl}
           alt="Selected passport photo preview"
-          className="w-full rounded-lg border border-gray-200 object-contain"
+          className="w-full rounded-lg border object-contain"
+          style={{ borderColor: "var(--bz-border)" }}
         />
       )}
 
@@ -149,8 +186,8 @@ function ManualEntryLink({
       href={`/visa/voa/checkout/${resultId}`}
       className={
         prominent
-          ? "rounded-md bg-gray-900 px-4 py-3 text-center text-sm font-medium text-white"
-          : "text-sm font-medium text-gray-700 underline"
+          ? "rounded-md px-4 py-3 text-center text-sm font-medium"
+          : "text-sm font-medium underline"
       }
     >
       Can&apos;t upload a photo now? Type your passport details instead →
@@ -160,7 +197,14 @@ function ManualEntryLink({
 
 function Checklist() {
   return (
-    <ul className="flex flex-col gap-2 rounded-lg border border-gray-200 bg-gray-50 p-4 text-sm text-gray-700">
+    <ul
+      className="flex flex-col gap-2 rounded-lg border p-4 text-sm"
+      style={{
+        borderColor: "var(--bz-border)",
+        background: "var(--bz-elevated)",
+        color: "var(--tx-secondary)",
+      }}
+    >
       {CHECKLIST_ITEMS.map((item) => (
         <li key={item} className="flex gap-2">
           <span aria-hidden="true">•</span>
@@ -206,7 +250,11 @@ function StateView({
 
     case "uploading":
       return (
-        <p aria-live="polite" className="text-sm text-gray-600">
+        <p
+          aria-live="polite"
+          className="text-sm"
+          style={{ color: "var(--tx-secondary)" }}
+        >
           Reading your passport…
         </p>
       );
@@ -260,7 +308,8 @@ function StateView({
             <button
               type="button"
               onClick={onRetry}
-              className="rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white"
+              className="rounded-md px-4 py-2 text-sm font-medium"
+              style={PRIMARY}
             >
               Try again
             </button>
@@ -284,7 +333,8 @@ function PickButton({
     <button
       type="button"
       onClick={onClick}
-      className="rounded-md bg-gray-900 px-4 py-3 text-sm font-medium text-white"
+      className="rounded-md px-4 py-3 text-sm font-medium"
+      style={PRIMARY}
     >
       {label}
     </button>
@@ -330,12 +380,12 @@ function ReadyReview({
         if (allFilled) onConfirmed?.(values);
       }}
     >
-      <p className="text-sm text-gray-700">
+      <p className="text-sm" style={{ color: "var(--tx-secondary)" }}>
         Please confirm these details match your passport:
       </p>
       {fields.map((field) => (
         <label key={field.field_path} className="flex flex-col gap-1 text-sm">
-          <span className="font-medium text-gray-900">
+          <span className="font-medium" style={{ color: "var(--tx-pure)" }}>
             {fieldLabel(field.field_path)}
           </span>
           <input
@@ -349,7 +399,8 @@ function ReadyReview({
             onChange={(e) =>
               setValues((v) => ({ ...v, [field.field_path]: e.target.value }))
             }
-            className="rounded-md border border-gray-300 px-3 py-2"
+            className="rounded-md border px-3 py-2"
+            style={FIELD}
           />
         </label>
       ))}
@@ -357,14 +408,16 @@ function ReadyReview({
         <button
           type="submit"
           disabled={!allFilled}
-          className="rounded-md bg-gray-900 px-4 py-3 text-sm font-medium text-white disabled:opacity-50"
+          className="rounded-md px-4 py-3 text-sm font-medium disabled:opacity-50"
+          style={PRIMARY}
         >
           Confirm and continue
         </button>
         <button
           type="button"
           onClick={onRetake}
-          className="rounded-md border border-gray-300 px-4 py-3 text-sm font-medium text-gray-700"
+          className="rounded-md border px-4 py-3 text-sm font-medium"
+          style={SECONDARY}
         >
           Retake photo instead
         </button>
@@ -404,7 +457,7 @@ function LowConfidenceReview({
       </p>
       {uncertainFields.map((field) => (
         <label key={field.field_path} className="flex flex-col gap-1 text-sm">
-          <span className="font-medium text-gray-900">
+          <span className="font-medium" style={{ color: "var(--tx-pure)" }}>
             {fieldLabel(field.field_path)}
           </span>
           <input
@@ -426,14 +479,16 @@ function LowConfidenceReview({
         <button
           type="submit"
           disabled={!allFilled}
-          className="rounded-md bg-gray-900 px-4 py-3 text-sm font-medium text-white disabled:opacity-50"
+          className="rounded-md px-4 py-3 text-sm font-medium disabled:opacity-50"
+          style={PRIMARY}
         >
           Confirm and continue
         </button>
         <button
           type="button"
           onClick={onRetake}
-          className="rounded-md border border-gray-300 px-4 py-3 text-sm font-medium text-gray-700"
+          className="rounded-md border px-4 py-3 text-sm font-medium"
+          style={SECONDARY}
         >
           Retake photo instead
         </button>
