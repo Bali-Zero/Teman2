@@ -29,8 +29,13 @@ from backend.app.routers.kbli_notebook import (
     _resolve_embedding,
     _result_from_payload,
     _search_kbli_qdrant,
+    _tombstone_result,
 )
 from backend.core.cache import cached
+from backend.services.kbli_catalogue_membership import (
+    fetch_catalogue_membership,
+    is_absent_from_catalogue,
+)
 from backend.services.kbli_pma_disclosure import disclose_bali, is_sourced_bali_closure
 from backend.services.rag.agentic.kg_orchestrator import KGAgenticOrchestrator
 
@@ -627,6 +632,55 @@ _TRANSLATE_SYSTEM = (
     "   travel agency/agen perjalanan/tour operator → agen perjalanan wisata\n"
     "   coffee shop/café/kafe/kedai kopi → restoran dan kafe\n"
 )
+
+
+async def _bury_if_phantom(
+    pool: Any, match: "KBLISearchResult | None"
+) -> "KBLISearchResult | None":
+    """Replace a resolved chat match with a tombstone when its code is gone.
+
+    WHY THIS EXISTS. PR #6810 taught `inspect_kbli` that ten of the codes in the
+    graph are KBLI-2020 numbers KBLI 2025 does not carry, and to bury them instead
+    of answering them. This channel never learned it, so the bot could still
+    describe 74100 as a live regulated activity the day after the page buried it —
+    and this is the surface clients actually talk to.
+
+    WHY ONE CALL AND NOT FOUR. Four independent branches in the caller can produce
+    a match: the `kbli_documents` row, the `kg_nodes` fallback, the Qdrant payload
+    filter, and the hardcoded `KNOWN_KBLI_CODES` table — and two of them never
+    touch the database at all. Curing each would be four copies of one predicate
+    plus a fifth branch tomorrow that nobody remembers to cure (superscar #9).
+    They converge on one variable, so the verdict is applied once, where they meet.
+
+    WHICH WAY IT FAILS. No pool, no match, an unreadable catalogue, or a lookup
+    that raises — all mean `UNKNOWN`, and `UNKNOWN` returns the match untouched.
+    Absence convicts only when the catalogue is evidently present, which
+    `fetch_catalogue_membership` owns and logs. The asymmetry is deliberate: we
+    would rather keep answering ten phantom codes than bury a live catalogue.
+    """
+    if match is None or not pool:
+        return match
+
+    try:
+        async with pool.acquire() as conn:
+            membership = await fetch_catalogue_membership(conn, match.code)
+    except Exception as membership_err:
+        # Same shape as the direct-lookup arm: a failed check must not take the
+        # chat turn down, and must not silently convict a code either.
+        logger.warning(
+            "Catalogue membership check failed for %s: %s", match.code, membership_err
+        )
+        return match
+
+    if not is_absent_from_catalogue(membership):
+        return match
+
+    logger.info(
+        "🪦 KBLI %s is absent from the KBLI 2025 catalogue — serving a tombstone "
+        "to the chat channel",
+        match.code,
+    )
+    return _tombstone_result(match)
 
 
 @cached(
@@ -1238,6 +1292,26 @@ async def chat_kbli(
                 logger.info(
                     f"📖 Found KBLI {code} via hardcoded KNOWN_KBLI_CODES: {known['title']}",
                 )
+
+        # A code the client typed may be a KBLI-2020 number KBLI 2025 does not
+        # carry. PR #6810 taught `inspect_kbli` to bury those; this channel never
+        # learned it, so until today the bot could still describe 74100 as a live
+        # regulated activity the day after the page buried it.
+        #
+        # WHY HERE AND NOT IN EACH BRANCH. Four independent branches above can set
+        # `direct_kbli_match` — the `kbli_documents` row, the `kg_nodes` fallback,
+        # the Qdrant payload filter and the hardcoded `KNOWN_KBLI_CODES` table —
+        # and two of them never touch the database at all. Curing each one would
+        # be four copies of the same predicate and a fifth branch tomorrow that
+        # nobody remembers to cure (superscar #9). They all converge on ONE
+        # variable, so the verdict is applied once, where they meet.
+        #
+        # SILENCE WHEN WE CANNOT ASK. No pool, or an unreadable catalogue, means
+        # `UNKNOWN` — the match is returned untouched and this channel behaves
+        # exactly as it did before. Absence is only convicting when the catalogue
+        # is evidently present; `fetch_catalogue_membership` owns that asymmetry
+        # and logs what it swallowed.
+        direct_kbli_match = await _bury_if_phantom(pool, direct_kbli_match)
 
         # P2 FIX: Keyword-to-code injection for activities not in Qdrant
         # Detects activity keywords in query and injects a direct match BEFORE semantic search
