@@ -7,6 +7,9 @@
  * plain `<select>` bound to that raw value silently falls back to its first
  * `<option>` whenever the value doesn't match one exactly — which looks like
  * a no-op edit but actually overwrites the stored type on save.
+ *
+ * Canonical options: `PT PMA`, `PT` (local/PMDN — an ordinary Indonesian
+ * limited company, not foreign-invested), `PT Perorangan`, `CV`, `Other`.
  */
 export interface CompanyTypeOption {
   value: string;
@@ -15,6 +18,7 @@ export interface CompanyTypeOption {
 
 export const COMPANY_TYPE_OPTIONS: CompanyTypeOption[] = [
   { value: "PT PMA", label: "PT PMA" },
+  { value: "PT", label: "PT (local / PMDN)" },
   { value: "PT Perorangan", label: "PT Perorangan" },
   { value: "CV", label: "CV" },
   { value: "Other", label: "Other" },
@@ -26,6 +30,9 @@ const LEGACY_ALIASES: Record<string, string> = {
   PT_PMA: "PT PMA",
   PERORANGAN: "PT Perorangan",
   PT_PERORANGAN: "PT Perorangan",
+  PMDN: "PT",
+  PT_PMDN: "PT",
+  "PT PMDN": "PT",
 };
 
 /**
