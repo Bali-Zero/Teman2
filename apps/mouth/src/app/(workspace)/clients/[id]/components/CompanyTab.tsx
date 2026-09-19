@@ -28,6 +28,7 @@ import {
   type PillTone,
 } from "@/components/workspace/r19";
 import {
+  companyTypeSubtitles,
   computeAge,
   formatCapital,
   formatCapitalFull,
@@ -93,18 +94,24 @@ function parseCustomFields(
   }
 }
 
+/** Ownership % is a share of the COMPANY: the record's `shares_count` is the
+ * denominator whenever it exists, and the sum of the OCR'd rows only stands
+ * in when it does not — same priority the old `PeopleColumn` applied. */
 function parseOcrShareholders(
   cf: Record<string, unknown>,
+  totalShares?: number,
 ): Array<{ name?: string; role: string; shares?: number; pct?: number }> {
   try {
     const sh = cf.shareholders;
     if (!sh) return [];
     const parsed = typeof sh === "string" ? JSON.parse(sh) : sh;
     if (!Array.isArray(parsed) || parsed.length === 0) return [];
-    const total = parsed.reduce(
-      (sum: number, s: { shares?: number }) => sum + (s.shares || 0),
-      0,
-    );
+    const total =
+      totalShares ||
+      parsed.reduce(
+        (sum: number, s: { shares?: number }) => sum + (s.shares || 0),
+        0,
+      );
     return parsed.map(
       (s: { name?: string; role?: string; shares?: number }) => ({
         name: s.name,
@@ -156,7 +163,7 @@ function CopyButton({ value, field }: { value: string; field: string }) {
         toast.success("Copied");
       }}
       className={cn(
-        "inline-flex h-5 w-5 items-center justify-center text-[var(--tx-secondary)] hover:text-[var(--tx-pure)]",
+        "inline-flex h-6 w-6 items-center justify-center text-[var(--tx-secondary)] hover:text-[var(--tx-pure)]",
         FOCUS,
       )}
     >
@@ -527,6 +534,12 @@ export function CompanyTab({
   const companyTypeLabel = companyTypeRaw
     ? companyTypeOption?.label || companyTypeRaw
     : "—";
+  // Indonesian expansion of the entity type, keyed on the stored value first
+  // and on its canonical form second, so a legacy `PT_PMA` row keeps its gloss.
+  const companyTypeSubtitle = companyTypeRaw
+    ? companyTypeSubtitles[companyTypeRaw] ||
+      companyTypeSubtitles[normalizedType]
+    : undefined;
   const isPMA = companyTypeRaw === "PT PMA" || companyTypeRaw === "PMA";
   const capital = formatCapital(co?.shares_count, co?.share_nominal_value);
 
@@ -542,7 +555,7 @@ export function CompanyTab({
       return null;
     })();
 
-  const ocrShareholders = parseOcrShareholders(customFields);
+  const ocrShareholders = parseOcrShareholders(customFields, co?.shares_count);
   const people =
     ocrShareholders.length > associates.length
       ? ocrShareholders.map((s) => ({
@@ -739,16 +752,25 @@ export function CompanyTab({
       >
         <div className={KV_GRID}>
           <KvItem label="Legal name" value={companyName} />
-          <KvItem label="Company type" value={companyTypeLabel} />
+          <KvItem
+            label="Company type"
+            value={companyTypeLabel}
+            sub={companyTypeSubtitle}
+          />
           <KvItem
             label="NIB"
             value={co?.nib || "—"}
-            sub={co?.nib ? "OSS registered" : undefined}
+            sub={
+              co?.nib
+                ? "Nomor Induk Berusaha · OSS registered"
+                : "Nomor Induk Berusaha"
+            }
             action={co?.nib ? <CopyButton value={co.nib} field="NIB" /> : null}
           />
           <KvItem
             label="NPWP"
             value={co?.npwp_company || "—"}
+            sub="Tax Identification Number"
             action={
               co?.npwp_company ? (
                 <CopyButton value={co.npwp_company} field="NPWP" />

@@ -34,6 +34,12 @@ vi.mock("sonner", () => ({
   toast: Object.assign(vi.fn(), { success: vi.fn(), error: vi.fn() }),
 }));
 
+// Stubbed so the "no per-tab AI card" assertions can fail: the real card
+// carries no test id, so without this a restored card would stay invisible.
+vi.mock("./AiSummaryCard", () => ({
+  AiSummaryCard: () => <div data-testid="AiSummaryCard" />,
+}));
+
 vi.mock("@/hooks/useOcrPolling", () => ({
   useOcrPolling: () => ({ ocrPolling: false, pollOcrStatus: vi.fn() }),
 }));
@@ -135,6 +141,29 @@ describe("CompanyTab — r19 kv-grid ledger", () => {
       screen.getAllByText("Other Management Consulting Activities").length,
     ).toBeGreaterThan(0);
     expect(screen.getByText("Jl. Synthetic No. 1")).toBeInTheDocument();
+    expect(screen.queryByTestId("AiSummaryCard")).not.toBeInTheDocument();
+  });
+
+  it("identity glosses survive the restyle: NIB and NPWP expansions, and the Indonesian entity-type expansion on a legacy spelling", async () => {
+    mockGetClientCompanies.mockResolvedValueOnce([
+      link({ company_type: "PT_PMA" }),
+    ]);
+    renderTab();
+    expect(
+      await screen.findByText("Nomor Induk Berusaha · OSS registered"),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Tax Identification Number")).toBeInTheDocument();
+    expect(screen.getByText("PT PMA")).toBeInTheDocument();
+    expect(screen.getByText("Penanaman Modal Asing")).toBeInTheDocument();
+  });
+
+  it("INNOCENCE: an entity type with no known expansion shows no gloss", async () => {
+    mockGetClientCompanies.mockResolvedValueOnce([
+      link({ company_type: "PT" }),
+    ]);
+    renderTab();
+    await screen.findByText("PT (local / PMDN)");
+    expect(screen.queryByText("Penanaman Modal Asing")).not.toBeInTheDocument();
   });
 
   it("INNOCENCE: 'Edit company' icon button is reachable when a company is linked", async () => {
@@ -212,6 +241,67 @@ describe("CompanyTab — r19 kv-grid ledger", () => {
     expect(screen.getByText("40%")).toBeInTheDocument();
   });
 
+  it("GUILT: OCR shareholders' ownership is a share of the company's shares_count, not of the OCR'd rows", async () => {
+    mockGetClientCompanies.mockResolvedValueOnce([
+      link({
+        shares_count: 10000,
+        custom_fields: {
+          shareholders: [
+            { name: "Holder A", role: "Director", shares: 4000 },
+            { name: "Holder B", role: "Commissioner", shares: 4000 },
+          ],
+        },
+      }),
+    ]);
+    renderTab();
+    expect(await screen.findByText("Holder A")).toBeInTheDocument();
+    expect(screen.getAllByText("40%")).toHaveLength(2);
+    // 50% is what the rows' own sum (8000) would give.
+    expect(screen.queryByText("50%")).not.toBeInTheDocument();
+  });
+
+  it("INNOCENCE: with no shares_count the OCR rows' own sum is the denominator", async () => {
+    mockGetClientCompanies.mockResolvedValueOnce([
+      link({
+        custom_fields: {
+          shareholders: [
+            { name: "Holder A", shares: 4000 },
+            { name: "Holder B", shares: 4000 },
+          ],
+        },
+      }),
+    ]);
+    renderTab();
+    expect(await screen.findByText("Holder A")).toBeInTheDocument();
+    expect(screen.getAllByText("50%")).toHaveLength(2);
+  });
+
+  it("boundary: the OCR list replaces the linked associates only when it is LONGER (1 vs 1 keeps the associate, 2 vs 1 switches)", async () => {
+    mockGetClientCompanies.mockResolvedValueOnce([
+      link({
+        custom_fields: { shareholders: [{ name: "Ocr Only", shares: 100 }] },
+      }),
+    ]);
+    const first = renderTab();
+    expect(await screen.findByText("Client A")).toBeInTheDocument();
+    expect(screen.queryByText("Ocr Only")).not.toBeInTheDocument();
+    first.unmount();
+
+    mockGetClientCompanies.mockResolvedValueOnce([
+      link({
+        custom_fields: {
+          shareholders: [
+            { name: "Ocr Only", shares: 100 },
+            { name: "Ocr Second", shares: 100 },
+          ],
+        },
+      }),
+    ]);
+    renderTab();
+    expect(await screen.findByText("Ocr Only")).toBeInTheDocument();
+    expect(screen.queryByText("Client A")).not.toBeInTheDocument();
+  });
+
   it("legal timeline: incorporation date renders only through the formatDate prop, never a raw locale format", async () => {
     mockGetClientCompanies.mockResolvedValueOnce([
       link({
@@ -250,7 +340,7 @@ describe("CompanyTab — r19 kv-grid ledger", () => {
     expect(screen.queryByText("2021")).not.toBeInTheDocument();
   });
 
-  it("document vault renders the 9 fixed slots with a real doc count when a company is linked", async () => {
+  it("document vault renders its fixed slots when a company is linked", async () => {
     mockGetClientCompanies.mockResolvedValueOnce([link()]);
     renderTab();
     expect(await screen.findByText("Akta Pendirian")).toBeInTheDocument();
