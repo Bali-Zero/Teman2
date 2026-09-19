@@ -1,0 +1,504 @@
+/**
+ * Tests for the Slice B1' enumerator (PLAN §3 row B1, criterion G2-a; cured
+ * after GATE-B1-REPORT-6842.md's REWORK-BUILD on #6842).
+ *
+ * Ground-truth strategy: `test_manifest_numbers_match_an_independent_recount`
+ * re-derives `walksTotalExact` with a SECOND, differently-written recursion
+ * (no memoization, small synthetic sub-graph) rather than re-running the
+ * function under test — a test that reimplements the thing it tests in
+ * slightly different words only proves self-consistency (cicatrix family
+ * #6). Guilt-and-innocence pairs (cicatrix family #3) cover the cycle guard
+ * and the blind-scan floor. The memo-recount test further down drives the
+ * REAL production `computeNextNode` (wrapped only to bound its scope) over
+ * a small sub-space where the memo is proven to actually fire, rather than
+ * a fully synthetic topology (GATE-B1-REPORT-6842.md Check 5).
+ */
+
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+
+import { describe, expect, it } from "vitest";
+
+import {
+  answersFor,
+  BRANCH_RELEVANT_FACT_KEYS,
+  buildCoveringSubset,
+  buildManifest,
+  countExactWalks,
+  dryRunSummary,
+  edgeCoverageReport,
+  type Manifest,
+  REPRESENTATIVE_VALUES,
+  renderManifest,
+  typedBranchRelevantQuestionIds,
+} from "../../../../../scripts/visa-oracle/enumerate-interview-space";
+import { computeNextNode, type OracleNode } from "./flow";
+import { QUESTIONS } from "./tree";
+
+/**
+ * `countExactWalks()`/`buildManifest()` over the REAL 67-node graph are each
+ * "measured under two seconds" (module docstring), but several tests below
+ * only need to READ the result, not recompute it — computed once here and
+ * shared, instead of once per `it()`, so the suite's wall time stays close
+ * to a small constant multiple of that single traversal rather than growing
+ * with the number of read-only assertions on it. The determinism test below
+ * deliberately builds TWICE, fresh — that comparison IS its point.
+ */
+const REAL_SPACE = countExactWalks();
+const REAL_SUBSET = buildCoveringSubset(REAL_SPACE);
+const REAL_MANIFEST = buildManifest();
+
+describe("countExactWalks — determinism", () => {
+  it("two renders of the full manifest are byte-identical", async () => {
+    const first = await renderManifest(buildManifest());
+    const second = await renderManifest(buildManifest());
+    expect(second).toBe(first);
+  }, 30_000);
+});
+
+describe("countExactWalks — the cycle guard names the repeated node (guilt)", () => {
+  it("throws naming the repeated question when a synthetic graph loops", () => {
+    // Two REAL question ids (so `answersFor` resolves them against the real
+    // `QUESTIONS` table) that ping-pong forever: `in_indonesia` ->
+    // `holds_stay_permit` -> `in_indonesia` -> ... — the loop is synthetic
+    // (`flow.ts`'s real `computeNextNode` is acyclic), the ids are not.
+    const loopingComputeNext = (current: OracleNode): OracleNode => {
+      if (current.kind !== "question")
+        return { kind: "question", questionId: "in_indonesia" };
+      return current.questionId === "in_indonesia"
+        ? { kind: "question", questionId: "holds_stay_permit" }
+        : { kind: "question", questionId: "in_indonesia" };
+    };
+    expect(() => countExactWalks(loopingComputeNext, 5)).toThrow(
+      /"in_indonesia" repeats within a single walk/,
+    );
+  });
+
+  it("the depth ceiling is a second fence, distinct from the repeated-node check", () => {
+    // A synthetic transition that walks a fixed CHAIN of 15 distinct REAL
+    // question ids (each id used at most once, so `answersFor` resolves
+    // every one against the live QUESTIONS table and the path check never
+    // fires) longer than `declaredCount + 5` — only the depth ceiling can
+    // stop it, and its message must not claim a repeat it never found.
+    const chain = Object.keys(QUESTIONS).slice(0, 15);
+    const linearChain = (current: OracleNode): OracleNode => {
+      if (current.kind !== "question")
+        return { kind: "question", questionId: chain[0] };
+      const index = chain.indexOf(current.questionId);
+      if (index === -1 || index === chain.length - 1)
+        return { kind: "verdict" };
+      return { kind: "question", questionId: chain[index + 1] };
+    };
+    expect(() => countExactWalks(linearChain, 3)).toThrow(
+      /depth \d+ exceeds the declared question count \(3\)/,
+    );
+  });
+});
+
+describe("countExactWalks — the blind-scan floor (innocence + guilt)", () => {
+  it("a synthetic graph that reaches nothing reports zero nodes and every declared id unreachable", () => {
+    const deadOnArrival = (): OracleNode => ({ kind: "verdict" });
+    const space = countExactWalks(deadOnArrival, 5);
+    expect(space.walksTotalExact).toBe(1);
+    expect(space.nodesReached.size).toBe(0);
+    const declared = Object.keys(QUESTIONS);
+    const unreachable = declared.filter((id) => !space.nodesReached.has(id));
+    expect(unreachable).toEqual(declared);
+  });
+
+  it("the real production graph reaches every declared question (innocence)", () => {
+    const declared = Object.keys(QUESTIONS);
+    const unreachable = declared.filter(
+      (id) => !REAL_SPACE.nodesReached.has(id),
+    );
+    expect(unreachable).toEqual([]);
+    expect(REAL_SPACE.nodesReached.size).toBe(declared.length);
+  });
+});
+
+describe("BRANCH_RELEVANT_FACT_KEYS covers every fact flow.ts actually reads", () => {
+  it("matches a fresh grep of the live source (guilt if the table under-declares)", () => {
+    const flowSource = readFileSync(join(__dirname, "flow.ts"), "utf8");
+    const dotReads = new Set(
+      [...flowSource.matchAll(/facts\.([a-zA-Z_]+)/g)].map((m) => m[1]),
+    );
+    // The one dynamic bracket read this file is known to have
+    // (`investmentRouteQuestionIds`'s `routes.some((id) => facts[id] ===
+    // "yes")`) is not statically greppable by key name, so it is asserted
+    // by name instead of re-derived.
+    const dynamicReads = [
+      "investment_foreign_branch",
+      "investment_ikn_subsidiary",
+    ];
+    const allReads = new Set([...dotReads, ...dynamicReads]);
+    const declaredSet = new Set(BRANCH_RELEVANT_FACT_KEYS);
+    const missing = [...allReads].filter((key) => !declaredSet.has(key));
+    expect(missing).toEqual([]);
+  });
+});
+
+describe("REPRESENTATIVE_VALUES is complete (GATE-B1-REPORT-6842.md Check 2, MEDIUM-1)", () => {
+  it("covers every typed (options: []) question that is also branch-relevant, naming any it is missing", () => {
+    const required = typedBranchRelevantQuestionIds();
+    const declared = new Set(Object.keys(REPRESENTATIVE_VALUES));
+    const missing = required.filter((id) => !declared.has(id));
+    expect(missing).toEqual([]);
+  });
+
+  it("typedBranchRelevantQuestionIds finds the three known thresholds (not a stale hardcoded pair)", () => {
+    expect(typedBranchRelevantQuestionIds()).toEqual(
+      ["family_sponsor_nationalities", "permit_expiry", "stay_days"].sort(),
+    );
+  });
+
+  it('family_sponsor_nationalities brackets flow.ts\'s !sponsorCodes.includes("ID") threshold', () => {
+    const values = REPRESENTATIVE_VALUES.family_sponsor_nationalities;
+    expect(values).toContain("IT"); // definite non-Indonesian sponsor (true arm)
+    expect(values).toContain("ID"); // definite Indonesian (WNI) sponsor (false arm)
+    expect(values).toContain("ID,IT"); // the comma-split multi-code shape
+  });
+});
+
+describe("answersFor — every declared option and unsure", () => {
+  it("a question with declared options and notSure returns every option plus unsure", () => {
+    const values = answersFor("in_indonesia");
+    expect(values).toEqual(["yes", "no", "unsure"]);
+  });
+
+  it("review_gate returns its real wire domain (REVIEW_GATE_ITEMS), not its own two-option UI gate", () => {
+    const values = answersFor("review_gate");
+    expect(values).toContain("none");
+    expect(values).toContain("criminal_record");
+    expect(values.length).toBe(13);
+  });
+});
+
+describe("buildCoveringSubset — a certain WNI sponsor walk exists (GATE-B1-REPORT-6842.md Check 2)", () => {
+  it("emits at least one walk with a CERTAIN Indonesian (WNI) sponsor and no unsure anywhere in its facts", () => {
+    const hasCertainWniSponsorWalk = REAL_SUBSET.walks.some((walk) => {
+      const sponsor = walk.facts.family_sponsor_nationalities;
+      if (sponsor === undefined || sponsor === "unsure") return false;
+      const codes = sponsor.split(",");
+      if (!codes.includes("ID")) return false;
+      return !Object.values(walk.facts).includes("unsure");
+    });
+    expect(hasCertainWniSponsorWalk).toBe(true);
+  });
+});
+
+describe("buildCoveringSubset — total edge coverage", () => {
+  it("covers every declared option of a known branching node (holds_stay_permit) in at least one walk", () => {
+    const seen = new Set<string>();
+    for (const walk of REAL_SUBSET.walks) {
+      const value = walk.facts.holds_stay_permit;
+      if (value !== undefined) seen.add(value);
+    }
+    for (const option of answersFor("holds_stay_permit")) {
+      expect(seen.has(option)).toBe(true);
+    }
+  });
+
+  it("required minus actual is empty — zero missing edges (GATE-B1-REPORT-6842.md Check 4, MEDIUM-2)", () => {
+    // A SET comparison, not a size comparison: the old test asserted
+    // `edgesCovered >= edgesTotal` over two DIFFERENT id sets, which could
+    // not go red on a real miss. `edgesMissing` is `required \ actual`.
+    expect(REAL_SUBSET.edgesMissing).toEqual([]);
+    expect(REAL_SUBSET.edgesExtra).toEqual([]);
+    expect(REAL_SUBSET.edgesCovered).toBe(REAL_SUBSET.edgesRequired);
+  });
+
+  it("guilt: dropping the sole walk carrying family_sponsor_nationalities=ID turns edgesMissing red, naming it", () => {
+    const targetLabel = "edge/family_sponsor_nationalities=ID";
+    const target = REAL_SUBSET.walks.find((walk) => walk.label === targetLabel);
+    expect(target).toBeDefined();
+    const withoutIt = REAL_SUBSET.walks.filter(
+      (walk) => walk.label !== targetLabel,
+    );
+    const report = edgeCoverageReport(REAL_SPACE.nodesReached, withoutIt);
+    expect(report.edgesMissing).toEqual(["family_sponsor_nationalities=ID"]);
+  });
+
+  it("is not empty (blind-scan floor: zero walks is a defect, not a valid output)", () => {
+    expect(REAL_SUBSET.walks.length).toBeGreaterThan(0);
+  });
+});
+
+describe("dryRunSummary — exits non-zero when an edge is missing (GATE-B1-REPORT-6842.md Check 4)", () => {
+  it("a fully covered, PROVEN manifest is ok", () => {
+    const { ok } = dryRunSummary(REAL_MANIFEST);
+    expect(ok).toBe(true);
+  });
+
+  it("a manifest with a missing edge is NOT ok, even if bound is PROVEN", () => {
+    const broken: Manifest = {
+      ...REAL_MANIFEST,
+      coveringSubset: {
+        ...REAL_MANIFEST.coveringSubset,
+        edgesMissing: ["fake_id=fake_value"],
+      },
+    };
+    const { ok } = dryRunSummary(broken);
+    expect(ok).toBe(false);
+  });
+
+  it("an UNPROVEN manifest is NOT ok, even with zero missing edges", () => {
+    const broken: Manifest = {
+      ...REAL_MANIFEST,
+      bound: "UNPROVEN",
+      unreachable: ["some_id"],
+    };
+    const { ok } = dryRunSummary(broken);
+    expect(ok).toBe(false);
+  });
+});
+
+describe("manifest numbers match an independent recount", () => {
+  it("re-derives walksTotalExact with a SEPARATE, unmemoized recursion over a SYNTHETIC 2-level topology", () => {
+    // Independent of `countExactWalks`'s own memoized implementation: a
+    // plain, brute-force recursive count over a 2-level synthetic graph
+    // (3 options at the first question, 2 at the second = 6 total walks),
+    // proving the COUNTING LOGIC itself (sum over every child) is sound,
+    // not re-running the function under test on the same input. Neither the
+    // transition function nor the question ids are real.
+    const synthetic = (current: OracleNode): OracleNode => {
+      if (current.kind !== "question")
+        return { kind: "question", questionId: "first" };
+      if (current.questionId === "first")
+        return { kind: "question", questionId: "second" };
+      return { kind: "verdict" };
+    };
+    const optionsFor: Record<string, string[]> = {
+      first: ["a", "b", "c"],
+      second: ["x", "y"],
+    };
+    function bruteForceCount(node: OracleNode, depth: number): number {
+      if (depth > 10) throw new Error("cycle");
+      const next = synthetic(node);
+      if (next.kind !== "question") return 1;
+      let total = 0;
+      for (const _value of optionsFor[next.questionId]) {
+        total += bruteForceCount(next, depth + 1);
+      }
+      return total;
+    }
+    const independentCount = bruteForceCount({ kind: "framing" }, 0);
+    expect(independentCount).toBe(6);
+  });
+
+  it("the manifest's walksTotalExact matches countExactWalks's own return value (self-consistency, not independence)", () => {
+    expect(REAL_MANIFEST.walksTotalExact).toBe(REAL_SPACE.walksTotalExact);
+    expect(REAL_MANIFEST.nodesReached).toBe(REAL_SPACE.nodesReached.size);
+    expect(REAL_MANIFEST.maxDepth).toBe(REAL_SPACE.maxDepth);
+  });
+
+  it("countExactWalks reproduces a hand-computed count on a SYNTHETIC two-level topology built from two real question ids", () => {
+    // Unlike the two cases above (a self-standing brute force that never
+    // touches countExactWalks, and a re-run of the function under test on
+    // the same input), THIS drives countExactWalks itself — the memoized
+    // DAG-reduction under test — through a controlled two-level topology.
+    // The TRANSITION FUNCTION is synthetic (it ignores every answer and
+    // always walks framing -> in_indonesia -> holds_stay_permit -> verdict);
+    // only the two question ids (in_indonesia, holds_stay_permit) are real,
+    // used so `answersFor` resolves them against the live QUESTIONS table.
+    // in_indonesia and holds_stay_permit each declare 2 options plus
+    // notSure (asserted above: ["yes","no","unsure"]), so this topology has
+    // EXACTLY 3 * 3 = 9 walks, independent of countExactWalks's own
+    // memoization or summation logic.
+    const twoLevelSynthetic = (current: OracleNode): OracleNode => {
+      if (current.kind !== "question")
+        return { kind: "question", questionId: "in_indonesia" };
+      if (current.questionId === "in_indonesia")
+        return { kind: "question", questionId: "holds_stay_permit" };
+      return { kind: "verdict" };
+    };
+    const expected =
+      answersFor("in_indonesia").length *
+      answersFor("holds_stay_permit").length;
+    expect(expected).toBe(9);
+    const space = countExactWalks(twoLevelSynthetic, 5);
+    expect(space.walksTotalExact).toBe(expected);
+  });
+
+  describe("the memo actually fires on a BOUNDED REAL sub-space (GATE-B1-REPORT-6842.md Check 5, MEDIUM-3)", () => {
+    // Unlike the three cases above (two fully synthetic transition
+    // functions, one self-consistency check), this wraps the REAL
+    // production `computeNextNode` — its branching decisions are not
+    // reimplemented — and only bounds WHERE it is allowed to go, so the
+    // sub-space stays small enough to recount by hand and run in
+    // milliseconds. `marital_status` is not in `BRANCH_RELEVANT_FACT_KEYS`
+    // (flow.ts never branches on it), so all 6 of its answers converge on
+    // the IDENTICAL next state (same node, same relevant facts) reached
+    // right after it — a REAL memo-reuse opportunity, not a contrived one.
+    const REAL_SUBGRAPH_IDS = new Set([
+      "marital_status",
+      "family_sponsor_nationalities",
+    ]);
+    const boundedReal = (
+      node: OracleNode,
+      facts: Record<string, string>,
+      today?: Date,
+    ): OracleNode => {
+      const next = computeNextNode(node, facts, today);
+      if (next.kind === "question" && !REAL_SUBGRAPH_IDS.has(next.questionId)) {
+        return { kind: "verdict" };
+      }
+      return next;
+    };
+    const START = {
+      node: { kind: "question" as const, questionId: "family_relation" },
+      facts: { category: "family" },
+    };
+    const TODAY = new Date("2026-09-06T00:00:00Z");
+
+    it("counts 6 (marital_status) x 4 (family_sponsor_nationalities) = 24 walks, with the memo reused at least once", () => {
+      const memoStats = { hits: 0 };
+      const space = countExactWalks(boundedReal, 10, {
+        start: START,
+        memoStats,
+      });
+      expect(answersFor("marital_status").length).toBe(6);
+      expect(answersFor("family_sponsor_nationalities").length).toBe(4);
+      expect(space.walksTotalExact).toBe(24);
+      // The reuse is not incidental: all 6 marital_status branches reach
+      // the SAME memoized family_sponsor_nationalities state, so exactly
+      // 5 of the 6 are cache hits (the topology cannot pass this on a
+      // memo-degenerate case, since a broken/never-reused memo key would
+      // report 0 hits here).
+      expect(memoStats.hits).toBe(5);
+    }, 5_000);
+
+    it("an UNMEMOIZED plain recursion over the SAME wrapped production computeNextNode agrees exactly", () => {
+      function bruteForceReal(
+        node: OracleNode,
+        facts: Record<string, string>,
+        depth: number,
+      ): number {
+        if (depth > 10) throw new Error("cycle");
+        const next = boundedReal(node, facts, TODAY);
+        if (next.kind !== "question") return 1;
+        let total = 0;
+        for (const value of answersFor(next.questionId)) {
+          total += bruteForceReal(
+            next,
+            { ...facts, [next.questionId]: value },
+            depth + 1,
+          );
+        }
+        return total;
+      }
+      const independent = bruteForceReal(START.node, START.facts, 0);
+      const memoized = countExactWalks(boundedReal, 10, { start: START });
+      expect(independent).toBe(24);
+      expect(memoized.walksTotalExact).toBe(independent);
+    }, 5_000);
+  });
+});
+
+describe("the memo-key projection is injectable, and a guilt/innocence PAIR proves it matters (GATE-B1C-REPORT-6848.md Check 4, MEDIUM-1)", () => {
+  // GATE-B1C-REPORT-6848.md measured that R3's own sub-space (marital_status
+  // x family_sponsor_nationalities) proves reuse HAPPENED but can never prove
+  // reuse was CORRECT: dropping `business_activity` from `memoKey`'s
+  // projection on a COPY moved `walksTotalExact` by 16,055,337,168 while
+  // every existing test stayed green, because `family_sponsor_nationalities`
+  // branches at its OWN immediate successor — two states that would collide
+  // under a corrupted key already differ in node identity, so no single key
+  // drop there can ever go undetected. This pair targets the class the gate
+  // named: `flow.ts:1087`'s `category === "business" && facts.
+  // business_activity === "exploring"` selects a whole different downstream
+  // question SEQUENCE (`businessExplorerQuestionIds` vs
+  // `FIXED_CATEGORY_QUESTIONS.business`), and BOTH sequences pass through a
+  // node named "stay_days" — the SAME node identity, reached by genuinely
+  // different futures. Only `business_activity` (answered well before
+  // "stay_days" is reached) tells those futures apart, so dropping it from
+  // the projection is exactly the under-projection bug class this pair
+  // exists to catch.
+  //
+  // Bounded via the same wrapped-`computeNextNode` idiom as the R3 pair
+  // above: real ids, real branching logic, real `answersFor` domains — only
+  // the REACHABLE SET is capped, to `review_gate`'s leaf multiplier
+  // deliberately excluded (kept small enough to hand-verify: the two
+  // sequences already disagree well before it).
+  const REAL_SUBGRAPH_IDS = new Set([
+    "business_activity",
+    "business_sponsor_confirmed",
+    "work_indonesia_compensation",
+    "stay_days",
+    "entry_pattern",
+  ]);
+  const boundedReal = (
+    node: OracleNode,
+    facts: Record<string, string>,
+    today?: Date,
+  ): OracleNode => {
+    const next = computeNextNode(node, facts, today);
+    if (next.kind === "question" && !REAL_SUBGRAPH_IDS.has(next.questionId)) {
+      return { kind: "verdict" };
+    }
+    return next;
+  };
+  // Start one node BEFORE `business_activity` (real production entry into a
+  // BUSINESS-category interview: `trip_scope` -> `getCategoryQuestionIds`'s
+  // first id, `business_activity`, for either sequence) with `in_indonesia:
+  // "yes"` so the offshore-only `wants_onshore_conversion` branch never
+  // enters this sub-space, keeping it to exactly the divergence under test.
+  const START = {
+    node: { kind: "question" as const, questionId: "trip_scope" },
+    facts: { in_indonesia: "yes", category: "business" },
+  };
+  const TODAY = new Date("2026-09-06T00:00:00Z");
+
+  function bruteForceReal(
+    node: OracleNode,
+    facts: Record<string, string>,
+    depth: number,
+  ): number {
+    if (depth > 15) throw new Error("cycle");
+    const next = boundedReal(node, facts, TODAY);
+    if (next.kind !== "question") return 1;
+    let total = 0;
+    for (const value of answersFor(next.questionId)) {
+      total += bruteForceReal(
+        next,
+        { ...facts, [next.questionId]: value },
+        depth + 1,
+      );
+    }
+    return total;
+  }
+
+  it("innocence: with the FULL (default) projection, memoised equals an independent unmemoised recursion, and the memo actually fires", () => {
+    const memoStats = { hits: 0 };
+    const memoised = countExactWalks(boundedReal, 15, {
+      start: START,
+      memoStats,
+    });
+    const unmemoised = bruteForceReal(START.node, START.facts, 0);
+    expect(memoStats.hits).toBeGreaterThan(0);
+    expect(memoised.walksTotalExact).toBe(unmemoised);
+  }, 5_000);
+
+  it("guilt: dropping business_activity from the projection makes memoised diverge from the SAME unmemoised recursion", () => {
+    const corruptedProjection = BRANCH_RELEVANT_FACT_KEYS.filter(
+      (key) => key !== "business_activity",
+    );
+    expect(corruptedProjection.length).toBe(
+      BRANCH_RELEVANT_FACT_KEYS.length - 1,
+    );
+    const memoised = countExactWalks(boundedReal, 15, {
+      start: START,
+      memoProjection: corruptedProjection,
+    });
+    const unmemoised = bruteForceReal(START.node, START.facts, 0);
+    expect(memoised.walksTotalExact).not.toBe(unmemoised);
+  }, 5_000);
+
+  it("the full graph's memoProjection defaults to BRANCH_RELEVANT_FACT_KEYS — production numbers are unaffected by this injection point", () => {
+    const withDefault = countExactWalks();
+    const withExplicitDefault = countExactWalks(computeNextNode, undefined, {
+      memoProjection: BRANCH_RELEVANT_FACT_KEYS,
+    });
+    expect(withExplicitDefault.walksTotalExact).toBe(
+      withDefault.walksTotalExact,
+    );
+  }, 30_000);
+});
