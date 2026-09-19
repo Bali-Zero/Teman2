@@ -822,6 +822,67 @@ def test_launch_seat_kimi_2_7_alias_resolves_to_the_highspeed_id_end_to_end(tmp_
     assert calls[0][calls[0].index("-m") + 1] == "kimi-code/kimi-for-coding-highspeed"
 
 
+def test_every_stage_prefix_carries_the_sealed_sentence():
+    """PR3k, first real run (2026-09-19): the kimi seat, mid-r2, read the launcher's own
+    source instead of answering blind — only r1's prefix told a seat not to. This pins the
+    shared constant into all three stage prefixes, and pins _PROMPT_PREFIX's exact
+    pre-existing bytes so the refactor that introduced the constant cannot also have
+    changed the r1 prompt (its hash goes into a ledger)."""
+    assert dw._SEALED_SENTENCE == "No tools, no browsing, no file reads."
+    assert dw._SEALED_SENTENCE in dw._PROMPT_PREFIX
+    assert dw._SEALED_SENTENCE in dw._R2_PROMPT_PREFIX
+    assert dw._SEALED_SENTENCE in dw._JURY_PROMPT_PREFIX
+    assert dw._PROMPT_PREFIX == (
+        "You are a coach in a sealed brainstorm. Use ONLY the brief below and the "
+        "exact skeleton in §4. No tools, no browsing, no file reads. Output "
+        "only the answer.\n\n")
+
+
+@pytest.mark.parametrize("seat", ["kimi-k3", "gemini-3.1-pro-high", "qwen3.8-max"])
+def test_launch_seat_runs_every_cli_seat_from_an_empty_dir_outside_the_repo(
+        tmp_path, monkeypatch, seat):
+    """PR3k, GUILT (first real run 2026-09-19): the kimi seat, launched with no cwd=, inherited
+    the caller's cwd (the repo worktree) and used its tools to read dynamic_workflow.py during
+    r2 instead of answering blind — verified by real launches that kimi and agy both answer
+    correctly from an empty temp dir (the qwen/tp1 kind could not be smoke-tested that week,
+    its quota was exhausted). One param per non-astra kind (kimi, agy, tp1)."""
+    kit = tmp_path / "k"
+    seen: dict = {}
+
+    def _fake_run(_cmd, **kwargs):
+        cwd = kwargs.get("cwd")
+        seen["cwd"] = cwd
+        seen["existed_during_call"] = cwd is not None and os.path.isdir(cwd)
+        seen["was_empty_during_call"] = cwd is not None and os.listdir(cwd) == []
+        return argparse.Namespace(stdout="ok")
+
+    monkeypatch.setattr(dw.subprocess, "run", _fake_run)
+
+    output = dw._launch_seat(seat, "prompt text", 5, kit)
+
+    assert output == "ok"
+    assert seen["cwd"] is not None
+    assert seen["existed_during_call"]
+    assert seen["was_empty_during_call"]
+    launch_dir = Path(seen["cwd"]).resolve()
+    assert launch_dir != dw.REPO_ROOT
+    assert dw.REPO_ROOT not in launch_dir.parents
+    assert not launch_dir.exists()  # cleaned up once _launch_seat returns
+
+
+def test_launch_seat_still_returns_empty_when_the_cli_raises(tmp_path, monkeypatch):
+    """Innocence twin: the new `with tempfile.TemporaryDirectory()` block must not break the
+    existing degrade-to-empty-string path when the CLI itself times out."""
+    kit = tmp_path / "k"
+
+    def _fake_run(_cmd, **_kwargs):
+        raise dw.subprocess.TimeoutExpired(cmd="x", timeout=1)
+
+    monkeypatch.setattr(dw.subprocess, "run", _fake_run)
+
+    assert dw._launch_seat("kimi-k3", "prompt text", 5, kit) == ""
+
+
 # --------------------------------------------------------------- slug collision (guilt + innocence)
 # Gate-4 finding, PR2e addendum (scripts/dynamic_workflow.py:420): _file_slug collapses '/' to
 # '__', so 'vendor/x' and a literal 'vendor__x' seat id both produce r1/vendor__x.md — the
