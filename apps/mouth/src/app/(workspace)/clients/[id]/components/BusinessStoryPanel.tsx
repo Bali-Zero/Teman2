@@ -44,25 +44,60 @@ function normalize(value: string | null | undefined): string {
   return (value ?? "").toLowerCase().replace(/\s+/g, " ").trim();
 }
 
-const LEGAL_FORM_TOKENS = new Set(["pt", "pt.", "pma", "pmdn", "cv", "tbk"]);
+const PT_FAMILY_TOKENS = new Set(["pt", "pt.", "pma", "pmdn", "tbk"]);
+const CV_FAMILY_TOKENS = new Set(["cv"]);
+const LEGAL_FORM_TOKENS = new Set([...PT_FAMILY_TOKENS, ...CV_FAMILY_TOKENS]);
+
+type CompanyLegalFamily = "pt" | "cv" | "mixed" | null;
 
 /**
- * Company-name normalization: case-fold, collapse whitespace, strip
- * punctuation (periods, commas, and parenthetical qualifiers with their
- * content), then drop legal-form tokens wherever they sit as whole words
- * (PT, PT., PMA, PMDN, CV, TBK). "PT PMA" needs no separate pairing rule —
- * both words are legal-form tokens on their own, so the pair is dropped
- * token-by-token. `pt.` stays in the set defensively: the punctuation strip
- * above already leaves a bare "pt" by the time tokens are split, so `pt.`
- * as a literal token is normally unreachable, but keeping it costs nothing.
+ * Tokens of a company name after case-fold, whitespace-collapse, and
+ * stripping punctuation (periods, commas) and parenthetical qualifiers with
+ * their content — but WITHOUT dropping legal-form tokens yet. Shared by
+ * `normalizeCompanyName` (which does drop them) and `companyLegalFamily`
+ * (which needs to see them first).
  */
-function normalizeCompanyName(value: string | null | undefined): string {
+function companyNameTokens(value: string | null | undefined): string[] {
   const withoutParens = (value ?? "").replace(/\([^)]*\)/g, " ");
   const withoutPunctuation = withoutParens.replace(/[.,]/g, " ");
   return normalize(withoutPunctuation)
     .split(" ")
-    .filter((token) => token.length > 0 && !LEGAL_FORM_TOKENS.has(token))
+    .filter((token) => token.length > 0);
+}
+
+/**
+ * Company-name normalization: `companyNameTokens` with legal-form tokens
+ * (PT, PT., PMA, PMDN, CV, TBK) dropped wherever they sit as whole words.
+ * "PT PMA" needs no separate pairing rule — both words are legal-form
+ * tokens on their own, so the pair is dropped token-by-token. `pt.` stays
+ * in the set defensively: the punctuation strip already leaves a bare "pt"
+ * by the time tokens are split, so `pt.` as a literal token is normally
+ * unreachable, but keeping it costs nothing.
+ */
+function normalizeCompanyName(value: string | null | undefined): string {
+  return companyNameTokens(value)
+    .filter((token) => !LEGAL_FORM_TOKENS.has(token))
     .join(" ");
+}
+
+/**
+ * Which legal-entity family a name's OWN legal-form tokens declare: "pt"
+ * for any PT flavour (PT, PT PMA, PT PMDN, PT Tbk — all the same entity
+ * type under Indonesian company law), "cv" for CV, `null` if the name
+ * carries no legal-form token at all (silent — could be either), or
+ * "mixed" if it carries tokens from both families (a name that shouldn't
+ * exist; see `companyNamesMatch`).
+ */
+function companyLegalFamily(
+  value: string | null | undefined,
+): CompanyLegalFamily {
+  const tokens = companyNameTokens(value);
+  const hasPt = tokens.some((token) => PT_FAMILY_TOKENS.has(token));
+  const hasCv = tokens.some((token) => CV_FAMILY_TOKENS.has(token));
+  if (hasPt && hasCv) return "mixed";
+  if (hasCv) return "cv";
+  if (hasPt) return "pt";
+  return null;
 }
 
 /**
@@ -83,22 +118,41 @@ function personNamesMatch(
 }
 
 /**
- * Company match: exact after `normalizeCompanyName`. `company.aliases` is
- * the mechanism the data already provides for "the same company, spelled
- * differently" (e.g. the person-first key "BIMALA / Bimala Investments Bali
- * PT" next to the CRM's own "Bimala Investments Bali PT") — matching
- * against aliases in addition to the company name covers that case without
- * any fuzzy matching. Legal-form stripping covers the CRM/pilot spelling
- * drift the plain exact match did not (PT leading vs. trailing, "PT PMA",
- * a trailing dot, a parenthetical branch qualifier).
+ * Company match: exact after `normalizeCompanyName`, GATED by legal family.
+ * `company.aliases` is the mechanism the data already provides for "the
+ * same company, spelled differently" (e.g. the person-first key "BIMALA /
+ * Bimala Investments Bali PT" next to the CRM's own "Bimala Investments
+ * Bali PT") — matching against aliases in addition to the company name
+ * covers that case without any fuzzy matching. Legal-form stripping covers
+ * the CRM/pilot spelling drift a plain exact match would miss (PT leading
+ * vs. trailing, "PT PMA", a trailing dot, a parenthetical branch
+ * qualifier) — but stripping alone would also make "PT Alpha" and
+ * "CV Alpha" both normalise to "alpha" and match, and a PT and a CV are
+ * DIFFERENT legal entities that can share a trade name. So a stripped
+ * match only counts when neither side's own family contradicts the other's
+ * (one or both silent is fine; both declared and different is not). A name
+ * that is itself "mixed" (both PT and CV tokens — not a real company form)
+ * trusts neither family and falls back to plain normalised equality.
  */
 function companyNamesMatch(
   value: string | null | undefined,
   other: string,
 ): boolean {
+  const familyA = companyLegalFamily(value);
+  const familyB = companyLegalFamily(other);
+  if (familyA === "mixed" || familyB === "mixed") {
+    const rawA = normalize(value);
+    const rawB = normalize(other);
+    return rawA.length > 0 && rawB.length > 0 && rawA === rawB;
+  }
   const a = normalizeCompanyName(value);
   const b = normalizeCompanyName(other);
-  return a.length > 0 && b.length > 0 && a === b;
+  return (
+    a.length > 0 &&
+    b.length > 0 &&
+    a === b &&
+    (familyA === null || familyB === null || familyA === familyB)
+  );
 }
 
 function mapMatchesClient(

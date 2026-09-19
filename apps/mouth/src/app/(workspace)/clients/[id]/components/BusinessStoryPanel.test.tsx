@@ -401,6 +401,84 @@ describe("BusinessStoryPanel", () => {
     }
   });
 
+  it("GUILT: 'PT Alpha' does not match 'CV Alpha' — different legal families sharing a trade name", () => {
+    const map: TaxCompanyPilotMap = {
+      ...giuliaMap,
+      key: "pt-vs-cv",
+      company: { name: "CV Alpha", aliases: [] },
+      persons: [],
+      person_dossiers: [],
+      evidence_stories: [],
+    };
+    render(
+      <BusinessStoryPanel
+        clientName="Nobody Relevant"
+        companyNames={["PT Alpha"]}
+        maps={[map]}
+        isLoading={false}
+        error={null}
+      />,
+    );
+    expect(
+      screen.getByText(
+        "This person has a company, but the CRM has not read the documents yet.",
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("INNOCENCE: 'Alpha' (no legal form) still matches 'CV Alpha' — one side silent is fine", async () => {
+    const user = userEvent.setup();
+    const map: TaxCompanyPilotMap = {
+      ...giuliaMap,
+      key: "silent-vs-cv",
+      company: { name: "CV Alpha", aliases: [] },
+      persons: [],
+      person_dossiers: [],
+      evidence_stories: [],
+    };
+    render(
+      <BusinessStoryPanel
+        clientName="Nobody Relevant"
+        companyNames={["Alpha"]}
+        maps={[map]}
+        isLoading={false}
+        error={null}
+      />,
+    );
+    const toggle = screen.getByRole("button", { name: "Open" });
+    await user.click(toggle);
+    expect(screen.getByText("CV Alpha")).toBeInTheDocument();
+  });
+
+  it("GUILT: a name mixing PT and CV tokens falls back to plain equality, not family-gated stripping", () => {
+    const map: TaxCompanyPilotMap = {
+      ...giuliaMap,
+      key: "mixed-family",
+      // Not a real company form — exercises the "mixed" fallback. Stripping
+      // legal-form tokens from this name alone would yield "alpha", which
+      // would wrongly match a bare "Alpha" if the mixed guard did not force
+      // plain equality instead.
+      company: { name: "PT Alpha CV", aliases: [] },
+      persons: [],
+      person_dossiers: [],
+      evidence_stories: [],
+    };
+    render(
+      <BusinessStoryPanel
+        clientName="Nobody Relevant"
+        companyNames={["Alpha"]}
+        maps={[map]}
+        isLoading={false}
+        error={null}
+      />,
+    );
+    expect(
+      screen.getByText(
+        "This person has a company, but the CRM has not read the documents yet.",
+      ),
+    ).toBeInTheDocument();
+  });
+
   it("INNOCENCE: 'PT Alpha' does not match 'PT Alpha Beta Indonesia' even after legal-form stripping", () => {
     const map: TaxCompanyPilotMap = {
       ...giuliaMap,
