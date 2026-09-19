@@ -1643,3 +1643,95 @@ async def test_a_paid_order_that_never_had_a_late_case_records_no_resolution(poo
     assert state == "paid"
     assert late_open is False
     assert resolution is None
+
+
+@pytest.mark.asyncio
+async def test_refunding_an_op_f05_case_never_moves_the_order_out_of_failed(pool, repository):
+    """The guilt half the suite was missing (ledger row
+    `garuda-resolve-late-order-state-guard-is-half-unpinned`).
+
+    `resolve_late_order` writes `refunded` only when the resolution is
+    `refunded_in_full` AND the order is still `awaiting_payment` — the OP-F08
+    shape, the only late case that sits on a LIVE order. Both halves of that
+    guard could be deleted with the whole suite still green (measured:
+    `19 passed`, the untouched baseline), and the consequence is not cosmetic:
+    an OP-F05 case has a real charge id, so `provider.refund` SUCCEEDS, and the
+    state write that would follow is one the DB trigger forbids
+    (`guard_garuda_order_state_transition` raises on `failed -> refunded`) —
+    a 500 on a staff action AFTER the money left.
+    """
+
+    key_digest = scoped_key_sha256(
+        actor="actor-f05-guard", operation="createOrderFromCheck", raw_key="idem-key-f05g-0001"
+    )
+    payload_digest = canonical_payload_sha256(
+        {"result_id": "result-f05g-000000", "applicant": {"e": 21}}
+    )
+    body, _ = await repository.create_order_and_checkout(
+        result_id="result-f05g-000000",
+        applicant=_applicant(),
+        review_confirmed=True,
+        idempotency_key_sha256=key_digest,
+        canonical_payload_sha256=payload_digest,
+    )
+    order_id = body["order_id"]
+
+    transition = await repository.handle_failure_event(
+        NormalizedFailureEvent(
+            provider_event_id="evt-fail-f05g",
+            provider_session_id=f"sess-{order_id}",
+            failure=classify(FailureOutcome.DECLINED_BY_ISSUER),
+        ),
+        canonical_payload_sha256=b"\x21" * 32,
+    )
+    assert transition == "OP-03"
+
+    transition2 = await repository.handle_paid_event(
+        NormalizedPaidEvent(
+            provider_event_id="evt-late-paid-f05g",
+            provider_charge_id="charge-late-f05g",
+            provider_session_id=f"sess-{order_id}",
+            amount_idr=body["price_idr"],
+            currency="IDR",
+        ),
+        canonical_payload_sha256=b"\x22" * 32,
+    )
+    assert transition2 == "OP-F05"
+
+    resolve_key = scoped_key_sha256(
+        actor="staff-f05-guard", operation="resolveLateOrder", raw_key="idem-key-resolve-f05g"
+    )
+    resolve_payload = canonical_payload_sha256(
+        {"order_id": order_id, "resolution": "refunded_in_full", "staff_reference": "case-f05g"}
+    )
+    # No exception escapes: with either half of the guard removed this call
+    # reaches the forbidden state write and the trigger raises through it.
+    resolution_body, replayed = await repository.resolve_late_order(
+        order_id=order_id,
+        resolution="refunded_in_full",
+        staff_reference="case-f05g",
+        idempotency_key_sha256=resolve_key,
+        canonical_payload_sha256=resolve_payload,
+    )
+    assert replayed is False
+    assert resolution_body["resolution"] == "refunded_in_full"
+    # The money DID leave — this is not a test about refusing to refund.
+    assert repository._provider.refund_calls == ["charge-late-f05g"]
+
+    state_after, late_open_after = await pool.fetchrow(
+        "SELECT state, late_case_open FROM garuda_orders WHERE order_id = $1", order_id
+    )
+    assert state_after == "failed", (
+        "an OP-F05 order left its terminal state on a refund — the state write "
+        "is for OP-F08 (`awaiting_payment`) only"
+    )
+    assert late_open_after is False
+
+    # ...and the OP-F08-only journal row is absent, which is the same guard
+    # read from the append-only side rather than from the row.
+    moved_events = await pool.fetchval(
+        "SELECT count(*) FROM garuda_order_journal WHERE aggregate_id = $1 "
+        "AND event_name = 'payment.refunded_after_late_case'",
+        order_id,
+    )
+    assert moved_events == 0
