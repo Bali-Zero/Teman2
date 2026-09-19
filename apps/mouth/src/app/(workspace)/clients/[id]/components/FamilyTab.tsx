@@ -51,6 +51,16 @@ function FamilyMemberUploadButton({
     onDone: onRefresh,
   });
   const label = `${documentType === "passport" ? "Passport" : "Visa"}`;
+  // The old button's visible word changed with the request state (OLD:126-129
+  // — "Uploading..." / "OCR in corso...") and the icon-only rebuild dropped
+  // it silently, leaving a spinner with a static accessible name (r19 law:
+  // a state never travels without a word). Restored here on the name itself
+  // rather than as new visible copy, so the control stays icon-only.
+  const statusLabel = isUploading
+    ? `Uploading ${documentType} for ${memberName}`
+    : ocrPolling
+      ? `OCR in corso for ${memberName}`
+      : `Upload ${documentType} for ${memberName}`;
 
   const handleUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -113,8 +123,8 @@ function FamilyMemberUploadButton({
         variant="ghost"
         size="icon"
         className="h-8 w-8 text-[var(--tx-secondary)] hover:text-[var(--tx-pure)]"
-        aria-label={`Upload ${documentType} for ${memberName}`}
-        title={`Upload ${documentType} for ${memberName}`}
+        aria-label={statusLabel}
+        title={statusLabel}
         onClick={() => fileInputRef.current?.click()}
         disabled={isUploading || ocrPolling}
       >

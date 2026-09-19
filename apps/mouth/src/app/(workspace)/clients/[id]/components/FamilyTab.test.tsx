@@ -1,7 +1,8 @@
 /** Family ledger behaviour — synthetic fixtures only, no client data. */
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { FamilyTab } from "./FamilyTab";
+import { api } from "@/lib/api";
 import type { ClientDocument, FamilyMember } from "@/lib/api/crm/crm.types";
 
 vi.mock("@/lib/api", () => ({
@@ -12,8 +13,17 @@ vi.mock("sonner", () => ({
   toast: Object.assign(vi.fn(), { success: vi.fn(), error: vi.fn() }),
 }));
 
+// A vi.fn() wrapper (not a static factory) so individual tests can flip
+// `ocrPolling` to true for one render via `mockReturnValueOnce`.
+const { mockUseOcrPolling } = vi.hoisted(() => ({
+  mockUseOcrPolling: vi.fn(() => ({
+    ocrPolling: false,
+    pollOcrStatus: vi.fn(),
+  })),
+}));
+
 vi.mock("@/hooks/useOcrPolling", () => ({
-  useOcrPolling: () => ({ ocrPolling: false, pollOcrStatus: vi.fn() }),
+  useOcrPolling: mockUseOcrPolling,
 }));
 
 const MEMBER: FamilyMember = {
@@ -191,6 +201,132 @@ describe("FamilyTab — r19 family ledger", () => {
     ]) {
       expect(screen.getByRole("button", { name })).toBeInTheDocument();
     }
+  });
+
+  it("GUILT: the passport urgency fallback threshold is 180 days, with no alert to lean on", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-09-19T12:00:00Z"));
+
+    renderTab([
+      // 170 days out — inside the fallback window, must be urgent
+      {
+        ...MEMBER,
+        id: 7,
+        passport_number: "X1111111",
+        passport_expiry: "2027-03-08",
+        passport_alert: undefined,
+      },
+      // 190 days out — outside it, must stay quiet
+      {
+        ...MEMBER,
+        id: 8,
+        passport_number: "X2222222",
+        passport_expiry: "2027-03-28",
+        passport_alert: undefined,
+      },
+    ]);
+
+    expect(screen.getByText(/Passport: ⏰ 170d left/)).toHaveAttribute(
+      "style",
+      "color: var(--state-warning);",
+    );
+    expect(screen.getByText(/Passport: ⏰ 190d left/)).toHaveAttribute(
+      "style",
+      "color: var(--tx-secondary);",
+    );
+  });
+
+  it("GUILT: a passport more than a year out renders 'Nmo left' with the 30-day divisor", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-09-19T12:00:00Z"));
+
+    renderTab([
+      {
+        ...MEMBER,
+        id: 30,
+        passport_number: "X3333333",
+        passport_expiry: "2028-01-01",
+        passport_alert: undefined,
+      },
+    ]);
+
+    expect(screen.getByText(/Passport: 15mo left/)).toBeInTheDocument();
+  });
+
+  it("GUILT: a passport expiring on the current instant renders 'Expires today'", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-09-19T12:00:00Z"));
+
+    renderTab([
+      {
+        ...MEMBER,
+        id: 31,
+        passport_number: "X4444444",
+        passport_expiry: "2026-09-19",
+        passport_alert: undefined,
+      },
+    ]);
+
+    expect(screen.getByText(/Passport: Expires today/)).toBeInTheDocument();
+  });
+
+  it("GUILT: an already-expired passport renders 'Expired Nd ago'", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-09-19T12:00:00Z"));
+
+    renderTab([
+      {
+        ...MEMBER,
+        id: 32,
+        passport_number: "X5555555",
+        passport_expiry: "2026-09-14",
+        passport_alert: undefined,
+      },
+    ]);
+
+    expect(screen.getByText(/Passport: Expired 5d ago/)).toBeInTheDocument();
+  });
+
+  it("INNOCENCE: the delete control's title mirrors its accessible name (replaces the vanished OLD-TEST title assertion)", () => {
+    renderTab([MEMBER]);
+
+    expect(
+      screen.getByRole("button", { name: "Remove Family Member A" }),
+    ).toHaveAttribute("title", "Remove Family Member A");
+  });
+
+  it("INNOCENCE: the upload control's accessible name announces the in-flight upload instead of staying static", () => {
+    vi.mocked(api.post).mockReturnValueOnce(new Promise(() => {}));
+
+    renderTab([MEMBER]);
+
+    const uploadButton = screen.getByRole("button", {
+      name: "Upload passport for Family Member A",
+    });
+    const input = uploadButton.previousElementSibling as HTMLInputElement;
+    const file = new File(["x"], "passport.jpg", { type: "image/jpeg" });
+    fireEvent.change(input, { target: { files: [file] } });
+
+    expect(
+      screen.getByRole("button", {
+        name: "Uploading passport for Family Member A",
+      }),
+    ).toBeInTheDocument();
+  });
+
+  it("INNOCENCE: the upload control's accessible name announces OCR polling too", () => {
+    mockUseOcrPolling.mockReturnValueOnce({
+      ocrPolling: true,
+      pollOcrStatus: vi.fn(),
+    });
+
+    renderTab([MEMBER]);
+
+    expect(
+      screen.getByRole("button", {
+        name: "OCR in corso for Family Member A",
+      }),
+    ).toBeInTheDocument();
   });
 
   it("INNOCENCE: falls back to wait/No visa when a member has no visa data at all", () => {
