@@ -1,0 +1,139 @@
+task_id: vo-b1c-enumerator
+mandate_id: B1
+gear: 2
+l_level: L2
+gate_class: opus
+base_sha: 038a571f84846e5a918c3894e71f9f734d320c27 # pragma: allowlist secret - public Git commit ID
+objective: >-
+  Visa Oracle MANDATE-vo.md "Slice B1': the enumerator, cured" — GATE-B1-REPORT-6842.md
+  returned REWORK-BUILD (0 HIGH, 3 MEDIUM, 4 LOW) on #6842. Re-uses the raw
+  material the gate verified SOUND (production imports, the review_gate leaf
+  fold and its REVIEW_GATE_ITEMS substitution, determinism, the fact-mapper
+  payload rendering, the synthetic personas, the test's location) and cures
+  the three MEDIUM findings plus the four LOW findings named in that report.
+constraints:
+  - >-
+    R1 (Check 2, MEDIUM-1): family_sponsor_nationalities (typed, branch-relevant
+    via flow.ts's `!sponsorCodes.includes("ID")`) joins REPRESENTATIVE_VALUES
+    with IT/ID/ID,IT, so a covering walk carries a CERTAIN Indonesian (WNI)
+    sponsor. typedBranchRelevantQuestionIds() derives the required set live
+    from QUESTIONS/BRANCH_RELEVANT_FACT_KEYS; a completeness test fails naming
+    any id REPRESENTATIVE_VALUES is missing.
+  - >-
+    R2 (Check 4, MEDIUM-2): edge coverage is a SET comparison — edgeCoverageReport
+    computes required (every (id, value) over every reached id including
+    review_gate) and actual (read back from the emitted walks' asked lists),
+    reporting edgesRequired/edgesCovered/edgesMissing/edgesExtra — replacing
+    `edgesCovered >= edgesTotal` over two different id sets, which could not
+    go red on a real miss. withRepresentativeDefaults seeds every walk within
+    its declared domain, removing the permit_expiry=2026-12-31 extra at its
+    source. --dry-run exits non-zero when edgesMissing is non-empty.
+  - >-
+    R3 (Check 5, MEDIUM-3): one test drives the REAL production computeNextNode
+    (wrapped only to bound its reachable ids to a small real sub-graph, never
+    reimplemented) starting mid-graph via countExactWalks's new optional
+    start/memoStats parameters, on a sub-space (marital_status x
+    family_sponsor_nationalities = 24 walks) where the memo is PROVEN to fire
+    (exposed hit counter, asserted exactly 5), replacing three recount tests
+    that were all memo-degenerate synthetic topologies.
+  - >-
+    R4 (LOW-6): the cycle guard tracks the per-walk path (a Set of question
+    ids already asked on THIS walk) and throws naming the REPEATED question,
+    with the depth ceiling kept as an independent second fence.
+  - >-
+    R5 (LOW-7): review_gate's unwalked multi-item CONFLICTING shapes
+    (fact-mapper.ts's duplicate-item and "none"-plus-another-item branches)
+    are a declared Manifest.knownGaps entry, never silent.
+  - >-
+    R6 (LOW-4, LOW-5): no diff line-count claim anywhere in this brief or the
+    PR body; one sentence in the body on size vs the PLAN's ~380-line estimate.
+  - >-
+    Only ONE package.json script line, no dependency, no lockfile touch.
+    Nothing run by installing anything: tsx/vitest resolve from the existing
+    shared node_modules; never npm install/ci from a worktree.
+acceptance:
+  - text: >-
+      WHEN run as `npm run visa-oracle:enumerate -w apps/mouth -- --dry-run`
+      from the repo root SHALL print bound=PROVEN and edgesMissing=0, and
+      exit 0.
+    probe: npm run visa-oracle:enumerate -w apps/mouth -- --dry-run
+  - text: >-
+      WHEN the covering subset is built from the real graph, REQUIRED minus
+      ACTUAL SHALL be empty (edgesMissing=[]), and dropping the sole walk
+      that carries family_sponsor_nationalities=ID SHALL turn edgesMissing
+      red, naming that exact edge.
+    probe: >-
+      vitest -k "required minus actual is empty" or -k "dropping the sole
+      walk carrying family_sponsor_nationalities=ID"
+  - text: >-
+      WHEN the real graph is walked SHALL emit at least one covering walk
+      with a CERTAIN Indonesian (WNI) sponsor (family_sponsor_nationalities
+      containing "ID") and no "unsure" anywhere in its facts.
+    probe: >-
+      vitest -k "emits at least one walk with a CERTAIN Indonesian (WNI)
+      sponsor"
+  - text: >-
+      WHEN a synthetic graph ping-pongs between two real question ids forever
+      SHALL throw naming the repeated question ("in_indonesia"), and a
+      synthetic linear chain of 15 distinct real ids longer than the depth
+      ceiling SHALL throw the depth-ceiling message instead (the two fences
+      are independently exercised).
+    probe: >-
+      vitest -k "throws naming the repeated question" or -k "the depth
+      ceiling is a second fence"
+  - text: >-
+      WHEN countExactWalks is driven, wrapped around the REAL production
+      computeNextNode, over the bounded marital_status/family_sponsor_nationalities
+      sub-space SHALL count exactly 24 walks with the memo hit counter at
+      exactly 5, and an unmemoized plain recursion over the SAME wrapped
+      function SHALL agree exactly.
+    probe: >-
+      vitest -k "counts 6 (marital_status) x 4" or -k "an UNMEMOIZED plain
+      recursion"
+  - text: >-
+      Two renders of the full manifest SHALL be byte-identical.
+    probe: vitest -k "two renders of the full manifest are byte-identical"
+consumer_map:
+  - >-
+    B2 (the live runner, apps/backend-rag/backend/scripts/visa_engine/enumerate_live.py,
+    not yet built) consumes this script's default-mode manifest output
+    (coveringSubset.walks, already rendered as engine-ready fact payloads via
+    fact-mapper) to post within its rate budget instead of a hand-written
+    walk list — R1 means B2 will now be able to post a certain-WNI-sponsor
+    family/diaspora walk, which #6842's set never carried.
+  - >-
+    apps/mouth vitest run collects enumerate-interview-space.test.ts under
+    src/**/*.test.{ts,tsx} — a CI job that runs the mouth test suite executes
+    it on every push to this PR; the Bites line below names that job and
+    quotes its log.
+risks:
+  - >-
+    Known, documented gap (Manifest.knownGaps, module docstring "Known gaps"):
+    review_gate is only ever answered with a single item in every covering
+    walk; fact-mapper.ts's CONFLICTING branches (a duplicate item, or "none"
+    combined with another item) are not walked. A follow-up slice should
+    name and assert them explicitly.
+  - >-
+    Also documented (module docstring): E3's "every pair the tree's own
+    branching conditions read together" — wants_onshore_conversion/stay_days>360
+    and investment_vehicle/sponsor_category=GOVERNMENT — are covered as a
+    SIDE EFFECT of answerFor's defaults today, not asserted on purpose.
+  - >-
+    countExactWalks's new optional `start`/`memoStats` parameters are
+    test-only instrumentation; every production call site (buildManifest,
+    main, the innocence test) omits `options` and gets the unchanged
+    full-graph behavior — verified by the determinism and self-consistency
+    tests still passing against the real 67-node graph.
+grader: >-
+  This session (Sonnet 5) curing after GATE-B1-REPORT-6842.md's REWORK-BUILD:
+  read the mandate and the full gate report, restored the raw material the
+  gate verified sound from 08ce6148ca, then addressed each MEDIUM/LOW finding
+  by file:line, re-running --dry-run, a byte-identical double-write, and the
+  full vitest suite after every change. Generator is not this session's own
+  grade of itself — a fresh Opus 5 gate follows this PR, per the Builder
+  Contract.
+budget: Existing subscription seat only (claude-sonnet-5); no paid per-token API calls.
+pii: >-
+  none — synthetic personas only, the same placeholder identity
+  generate-walk-corpus.ts uses (ASSESSMENT_ID="x", fixed birth date
+  2000-11-11); no realistic name/passport/email field is ever populated.
