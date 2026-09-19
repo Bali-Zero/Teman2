@@ -653,6 +653,7 @@ def test_the_facts_a_page_is_built_from_carry_no_applicant_field():
         "late_case_open",
         "late_case_charge_id",
         "case_resolved_since_trigger",
+        "late_charge_already_refunded",
         "detail",
     }, f"OrderAnomalyFacts changed shape: {sorted(fields)}"
     for field_name in fields:
@@ -1576,3 +1577,147 @@ async def test_a_backtick_in_a_rendered_id_cannot_break_the_code_span(pool):
     # to a span the composer opened, so they come in pairs. An odd count is what
     # a breakout looks like, and it is what Telegram rejects.
     assert text.count("`") % 2 == 0
+
+
+# --- refund-then-replay must not ask for the same charge back twice ------------
+#
+# PR #6852 made this sequence routine: staff refund an OP-F08 case
+# (`payment.refunded_after_late_case`), the OP-F08 page's own first move is
+# "replay the callback", and that replayed webhook lands on a now-`refunded`
+# order — OP-F04, naming the charge just given back. The page's only copy used
+# to say, unconditionally, "refund this late charge too". The ROW cannot tell
+# the two apart: OP-F04's UPDATE overwrites `late_case_charge_id` with the
+# replayed charge. The journal can, and does.
+
+
+async def _seed_refunded_f08_case(pool, *, refunded_charge: str) -> str:
+    """An order whose OP-F08 case was opened for `refunded_charge` and then
+    refunded by staff — the state a callback replay walks into."""
+
+    order_id = await _seed_order(pool, state="awaiting_payment")
+    async with pool.acquire() as conn, conn.transaction():
+        await journal.append_event(
+            conn,
+            event_name="payment.charge_detected_without_webhook",
+            aggregate_type="order",
+            aggregate_id=order_id,
+            transition_id="OP-F08",
+            customer_visible=False,
+            detail={"charge_id": refunded_charge, "provider_status": "SUCCEEDED"},
+        )
+        await journal.append_event(
+            conn,
+            event_name="payment.refunded_after_late_case",
+            aggregate_type="order",
+            aggregate_id=order_id,
+            transition_id="OP-05",
+            customer_visible=False,
+            detail={"resolution": "refunded_in_full"},
+        )
+        await conn.execute(
+            "UPDATE garuda_orders SET state = 'refunded' WHERE order_id = $1",
+            order_id,
+        )
+    return order_id
+
+
+async def _replay_lands_as_op_f04(pool, order_id: str, *, charge_id: str) -> str:
+    """The replayed webhook: OP-F04 reopens a case naming the charge it
+    carried, and the row's `late_case_charge_id` becomes that charge."""
+
+    async with pool.acquire() as conn:
+        await conn.execute(
+            "UPDATE garuda_orders SET late_case_open = TRUE, late_case_charge_id = $2 "
+            "WHERE order_id = $1",
+            order_id,
+            charge_id,
+        )
+    _row, event_id = await _enqueue_staff_page(
+        pool,
+        order_id,
+        job_type="staff_page_late_paid_after_refund",
+        event_name="payment.late_paid_after_refund",
+        transition_id="OP-F04",
+        detail={"charge_id": charge_id},
+    )
+    return event_id
+
+
+async def _render_f04(pool, order_id: str, event_id: str) -> str:
+    rec = _TgRecorder()
+    sender, client = _tg_sender(rec)
+    try:
+        await StaffPageLatePaidAfterRefundHandler(pool, sender)(
+            _job(order_id, event_id, "staff_page_late_paid_after_refund")
+        )
+    finally:
+        await client.aclose()
+    assert len(rec.requests) == 1, "the money anomaly was not paged at all"
+    return _last_text(rec)
+
+
+async def test_a_replayed_charge_already_refunded_is_not_asked_for_twice(pool):
+    """Guilt. The replay carries the charge the OP-F08 case was refunded for:
+    the page must say not to refund it, and must not offer either
+    resolveLateOrder outcome — `refunded_in_full` calls
+    `provider.refund(late_case_charge_id)`, which by now IS this charge."""
+
+    order_id = await _seed_refunded_f08_case(pool, refunded_charge="ch_f08_given_back")
+    event_id = await _replay_lands_as_op_f04(pool, order_id, charge_id="ch_f08_given_back")
+
+    text = await _render_f04(pool, order_id, event_id)
+
+    assert "DO NOT REFUND THIS CHARGE" in text
+    assert "refund this late charge too" not in text
+    assert "ch_f08_given_back" in text
+    assert "Leave the case OPEN and escalate" in text
+
+
+async def test_a_genuine_second_payment_after_a_refund_still_says_refund_it(pool):
+    """Innocence, and the case this page was written for: the same refunded
+    OP-F08 order, but the late charge is a DIFFERENT one — real money we are
+    holding. The original instruction must survive intact."""
+
+    order_id = await _seed_refunded_f08_case(pool, refunded_charge="ch_f08_given_back")
+    event_id = await _replay_lands_as_op_f04(pool, order_id, charge_id="ch_brand_new")
+
+    text = await _render_f04(pool, order_id, event_id)
+
+    assert "refund this late charge too" in text
+    assert "DO NOT REFUND THIS CHARGE" not in text
+    assert "ch_brand_new" in text
+
+
+async def test_a_refund_recorded_after_the_trigger_does_not_silence_the_refund_ask(pool):
+    """Ordering, the half a bare EXISTS would get wrong: the OP-F08 case is
+    open and NOT yet refunded when this page is composed. A refund that lands
+    afterwards cannot make the page's own instruction retroactively false, and
+    withholding the ask here would strand money nobody is told about."""
+
+    order_id = await _seed_order(pool, state="refunded")
+    async with pool.acquire() as conn, conn.transaction():
+        await journal.append_event(
+            conn,
+            event_name="payment.charge_detected_without_webhook",
+            aggregate_type="order",
+            aggregate_id=order_id,
+            transition_id="OP-F08",
+            customer_visible=False,
+            detail={"charge_id": "ch_not_yet_refunded", "provider_status": "SUCCEEDED"},
+        )
+    event_id = await _replay_lands_as_op_f04(pool, order_id, charge_id="ch_not_yet_refunded")
+    async with pool.acquire() as conn:
+        await journal.append_event(
+            conn,
+            event_name="payment.refunded_after_late_case",
+            aggregate_type="order",
+            aggregate_id=order_id,
+            transition_id="OP-05",
+            customer_visible=False,
+            detail={"resolution": "refunded_in_full"},
+        )
+
+    text = await _render_f04(pool, order_id, event_id)
+
+    assert "refund this late charge too" in text
+    assert "DO NOT REFUND THIS CHARGE" not in text
