@@ -1030,6 +1030,14 @@ _DISCLOSED_REVIEW_REASON_CODES: MappingProxyType[DisclosedReviewFlag, str] = Map
 )
 
 
+#: The minor-privacy hold's review code, lifted out of
+#: `_apply_minor_privacy_hold`'s body (PLAN VISA-ORACLE-DW-20260919 slice A0)
+#: so `review_hold_inventory.py` can import the code the adapter actually
+#: emits instead of duplicating the string literal — the inventory would
+#: otherwise drift the moment this string changed here and not there.
+MINOR_GUARDIAN_PRIVACY_REVIEW_CODE = "MINOR_GUARDIAN_PRIVACY_REVIEW"
+
+
 def _apply_minor_privacy_hold(decision: Decision, facts: ApplicantFacts) -> Decision:
     """Apply Privacy Policy V1's non-eligibility guardian safety boundary.
 
@@ -1071,7 +1079,7 @@ def _apply_minor_privacy_hold(decision: Decision, facts: ApplicantFacts) -> Deci
         return decision
 
     reason = Reason(
-        code="MINOR_GUARDIAN_PRIVACY_REVIEW",
+        code=MINOR_GUARDIAN_PRIVACY_REVIEW_CODE,
         rule_ids=("system.privacy.minor-guardian-review",),
         source_refs=(),
     )
