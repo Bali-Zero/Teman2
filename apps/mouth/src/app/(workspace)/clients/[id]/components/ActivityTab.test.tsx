@@ -5,6 +5,7 @@ import { act, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ActivityTab } from "./ActivityTab";
 import { api } from "@/lib/api";
+import { ApiError } from "@/lib/api/error-handler";
 import type { Interaction } from "@/lib/api/crm/crm.types";
 
 vi.mock("@/lib/api", () => ({
@@ -270,9 +271,9 @@ describe("ActivityTab — failed save is honest (PROD defect DIAG-activity-loggi
   ])(
     "a %s rejection shows operator copy, never the backend detail",
     async (status, re) => {
-      const err = Object.assign(new Error("Not found"), {
-        statusCode: status,
-      });
+      // R8 gate C5: the real `ApiError` class, not a plain `Error` with a
+      // bolted-on `statusCode` — dies if the class ever renames the field.
+      const err = new ApiError("Not found", status, { detail: "Not found" });
       vi.mocked(api.crm.createInteraction).mockRejectedValue(err);
       renderTab();
       const field = screen.getByLabelText("Log an update");

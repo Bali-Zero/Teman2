@@ -315,7 +315,17 @@ export function ClientDetailClient({
     }
   }, [searchParams]);
 
-  const handleTabChange = (tab: TabType) => {
+  const handleTabChange = (tab: TabType, alreadyActive?: boolean) => {
+    // R8 gate C6: a tab entry whose `activeKeys` already cover `visibleTab`
+    // (only "Activity" today, `activeKeys: ["timeline", "whatsapp"]`) is a
+    // no-op when clicked from either of its own keys — clicking "Activity"
+    // while `?tab=whatsapp` used to force `visibleTab` back to "timeline",
+    // remounting `<ActivityTab key={...}>` and discarding a typed draft, a
+    // pending Undo Slip/timer and an error Notice. An ordinary tab whose own
+    // key is already `visibleTab` was already a harmless no-op before this
+    // guard (same state, same URL); it stays a no-op now, just without the
+    // redundant `router.replace` call.
+    if (alreadyActive) return;
     const scrollY = window.scrollY;
     setActiveTab(tab);
     router.replace(`/clients/${params.id}?tab=${tab}`, { scroll: false });
@@ -1034,7 +1044,7 @@ export function ClientDetailClient({
                   <button
                     key={key}
                     type="button"
-                    onClick={() => handleTabChange(key as TabType)}
+                    onClick={() => handleTabChange(key as TabType, isActive)}
                     aria-current={isActive ? "page" : undefined}
                     className={`${styles.tab} ${isActive ? styles.tabActive : ""}`}
                   >
