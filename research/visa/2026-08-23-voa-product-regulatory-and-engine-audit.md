@@ -332,6 +332,47 @@ have in front of it on 2026-07-27. Whether it changes the ruling is **Zero's cal
 document's** — this addendum exists so that call can be made with the citation in hand, not so the
 document pre-empts it.
 
+
+### 4.2 Verification addendum (2026-09-20) — §4.1's challenge is no longer UNVERIFIED
+
+§4.1 recorded the D-14 challenge as *sourced but here-UNVERIFIED*, and that label stayed accurate
+for 28 days. It is now spent. What follows verifies the challenge; it does **not** settle the
+ruling, which remains Zero's.
+
+**Read from the primary national authority** — `imigrasi.go.id/wna/izin-tinggal-keimigrasian`
+(Ditjen Imigrasi, not a kanim page):
+
+- the extension is filed **«paling cepat 14 hari»** … **«paling lambat sebelum ITK-nya berakhir»**
+- completion **max 3 working days** from payment (5 for calling-visa nationalities)
+- overstay attaches to the **PAYMENT**, not the filing: *«Orang Asing tidak terhitung overstay
+  apabila pembayaran biaya perpanjangan ITK dilakukan sebelum ITK-nya berakhir»*
+
+So §4.1's two checkable claims hold: the national window is **D-14 → up to before expiry**, not
+D-7; and Permenkumham 22/2023 did repeal Permenkumham 29/2021 (confirmed on
+`peraturan.bpk.go.id`), so Yogyakarta's *"D-1 hari kerja"* rests on a dead instrument.
+
+**A fact neither earlier pass could have had.** `Permen Imipas No. 3 Tahun 2025` repeals
+**Pasal 43, 45, 52, 53, 54 and 55** of 22/2023 — Pass 2 reasoned from "22/2023 as amended by
+11/2024" and stopped there. It matters here for one reason and it cuts the reassuring way:
+**Pasal 97 is not among the repealed articles.** The repealed six sit in BAB II (Visa); Izin
+Tinggal is BAB III, opening at Pasal 77. Both 22/2023 and 11/2024 read `Berlaku` on
+`peraturan.bpk.go.id`. The article §4.1 reasons from is therefore still standing — but any future
+pass must check 2025 too, because "22/2023 as amended by 11/2024" is no longer the whole chain.
+
+**Limit of this verification, stated so nobody inherits it as more than it is.** The Pasal number
+and the clause **from the statute's own text** were NOT extracted: the PDF on `peraturan.go.id`
+serves compressed streams that resist text extraction, and a mirror presents an unverifiable
+certificate. The verbatim above is the **authority's website**, not the instrument. Anyone
+reopening this starts there, not from this paragraph.
+
+**Why D-7 may still be the right operating number**, and why nothing here touches the engine:
+completion takes up to 3 working days and the overstay shield attaches to payment. Accepting at
+D-1 is *lawful* and leaves the client one late payment away from overstay. D-7 may be a deliberate
+operating margin rather than a misreading of statute — which is exactly the trade-off that belongs
+to Zero. `PUBLISHED_FILING_DEADLINE_DAYS` is untouched by this addendum.
+
+Status: **verified, NOT decided.**
+
 ---
 
 ## 5. Competitors and funnel UX (G2)
@@ -409,7 +450,7 @@ Patterns 1, 2, 6 address document rework; patterns 3, 4, 5 address deadline anxi
   own words; F's CONFIRMED verdict on Afghanistan-ineligibility is preserved because V1's
   conductor-layer explicitly recorded it before the transcript ended, not because R2's own file
   shows a completed sign-off.
-- §4.1 (added 2026-08-23, post-merge) records a **sourced but here-UNVERIFIED** challenge to D-7
+- §4.1 (added 2026-08-23, post-merge) records a challenge to D-7 that was here-UNVERIFIED until **§4.2 (2026-09-20) verified it** against the primary authority — verified, still not decided
   itself (a reported D-14 statutory floor, no D-7 closing date, per Permenkumham 22/2023 as amended
   by 11/2024 Pasal 97) — this document does not resolve it, and it bears on Ruling Zero 2026-07-27
   (b), which only Zero may revisit.
@@ -434,7 +475,7 @@ transcript is the source for every line below; nothing here is paraphrased optim
    (D-1 working day, not D-7 calendar days), and an engine relying on a Sunday/holiday deadline
    with no shift is, in Kimi's judgment, the wrong default. This capture does **not** side with
    Codex over Kimi (or vice versa) — §4 states both arguments and names what would settle it.
-   Objection stands. (See also §4.1, added in Pass 2 below — a more fundamental, still-unverified
+   Objection stands. (See also §4.1, added in Pass 2 below, and §4.2 which verified it on 2026-09-20 — a more fundamental,
    challenge to whether D-7 is the right number at all.)
 2. **6-month passport validity measured "from filing" (§3, Finding 5).** Kimi's claim C could not
    find any 6-month passport-validity condition in the official Yogyakarta kanim extension
