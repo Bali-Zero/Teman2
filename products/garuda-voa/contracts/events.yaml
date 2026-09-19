@@ -40,6 +40,7 @@ $defs:
       # where the state machine said it could not.
       - OP-F04
       - OP-F05
+      - OP-F08
 
   IdempotencyIdentity:
     type: object
@@ -242,6 +243,32 @@ $defs:
           event_name: { const: payment.late_paid_after_terminal }
           aggregate_type: { const: order }
           transition_id: { const: OP-F05 }
+          customer_visible: { const: false }
+    unevaluatedProperties: false
+
+  PaymentChargeDetectedWithoutWebhook:
+    x-event-name: payment.charge_detected_without_webhook
+    x-idempotency-source: one per order, guarded by `late_case_open` flipping false to true
+    x-grounded-by: STATE-MACHINE.md OP-F08.
+    description: >-
+      OP-04 reconciliation asked the provider whether an accepted charge exists for an
+      order whose checkout window had elapsed, and the provider said YES while no signed
+      webhook had ever arrived (STATE-MACHINE.md OP-F08). This is the silent twin of
+      OP-F05: there, a late event arrives and we can see it; here, the event never comes
+      at all and only our own poll knows. The order KEEPS `awaiting_payment` — OP-F01
+      forbids any non-webhook writer from setting `paid`, reconciliation included — so
+      this event carries no state transition. What it does is open exactly one staff
+      remediation case (`late_case_open`, with the provider's charge id so
+      `resolveLateOrder` has something to refund) and page. `provider_status` is recorded
+      verbatim because the provider owns that vocabulary: a status we do not recognise is
+      precisely the case this event must not silently swallow.
+    allOf:
+      - $ref: "#/$defs/EventEnvelope"
+      - type: object
+        properties:
+          event_name: { const: payment.charge_detected_without_webhook }
+          aggregate_type: { const: order }
+          transition_id: { const: OP-F08 }
           customer_visible: { const: false }
     unevaluatedProperties: false
 

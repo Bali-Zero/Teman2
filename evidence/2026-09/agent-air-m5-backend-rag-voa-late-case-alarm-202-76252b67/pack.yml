@@ -1,0 +1,468 @@
+task_id: voa-late-case-alarm-20260919
+gear: 3
+gate_class: opus
+brief_ref: evidence/brief.yml
+date: 2026-09-19
+machine: air-m5 (M5)
+lanes:
+  - lane: voa-late-case-build
+    role: build
+    seat: claude-opus-5 (Dux, this worktree session)
+  - lane: voa-late-case-tests
+    role: build
+    seat: claude-sonnet-5 (subagent `e1-tests`, guilt/innocence suites + scratch Postgres)
+  - lane: voa-late-case-refute-r1
+    role: review
+    seat: codex-gpt-5.6-sol (read-only, outside the contribution chain)
+  - lane: voa-late-case-refute-r2
+    role: review
+    seat: codex-gpt-5.6-sol (round 2, read-only, on the diff cured of round 1)
+  - lane: voa-late-case-refute-kimi
+    role: review
+    seat: kimi-code/k3 (read-only, fresh eyes — never saw the earlier rounds)
+  - lane: voa-sweep-truth-build
+    role: build
+    seat: kimi-code/k3 (authored the ExpiryOutcome / late_cases_opened slice
+      from a fixed design; ran read-only and returned 13 replacement blocks,
+      which this session applied, corrected and tested)
+seat_diversity: satisfied
+seat_substitution: >-
+  The builder slice was offered to agy-gemini-3.1-pro FIRST and twice: both
+  runs died on `jetski: no output produced — a tool required the "command"
+  permission that headless mode cannot prompt for`, and the only unblock it
+  names is `--dangerously-skip-permissions`, which the Builder Contract
+  forbids outright. qwen was second and answered `insufficient_quota: 429 Your
+  token-plan 1-week quota has been exhausted… resets 09-25 10:19 UTC`. The
+  slice then went to kimi-code/k3, which also sat on the review bench for the
+  OP-F08 diff — recorded rather than hidden, because it is a real weakening:
+  the seat that raised this defect as a MINOR is the seat that then built the
+  cure. Generator is still not grader, in the direction that matters here —
+  the grading, the correction and the tests are this session's, a different
+  family, and nothing kimi wrote was taken on trust.
+seat_diversity_note: >-
+  The reviewing seat is a different family from both building seats (OpenAI vs
+  Anthropic). Generator is not grader in either direction: the Codex seat ran
+  read-only and changed nothing, and the Sonnet lane wrote tests against a spec
+  it did not author and reported back where that spec was wrong.
+council_run: council-journal.jsonl
+council_note: >-
+  Two seats, both outside the contribution chain and both non-Anthropic:
+  Codex `gpt-5.6-sol` (round 2, on the diff already cured of its round-1
+  findings) and Kimi `k3` (fresh eyes, never saw the earlier rounds). They
+  ran independently and converged, without seeing each other's output, on the
+  same top finding: `confirm_no_successful_charge` returned Xendit's
+  `payment_id` while this adapter's own `refund()` posts what it is handed as
+  `{"invoice_id": ...}` — so the late case this PR exists to OPEN could not
+  have been refunded. One agreement between two families is worth more here
+  than either verdict alone, and it is the reason the charge id changed to
+  the invoice id rather than being argued about.
+  Both returned REJECT. Every finding was re-read on disk before it was
+  accepted: a refuter is a lead, not a verdict. Two were refused as
+  out-of-scope and written down instead of half-fixed (the `parse_event`
+  twin of the id defect, and the `practice_release`-on-a-resolution-event
+  weld) — both predate this branch and both need their own guilt test.
+outcome: >-
+  A production order paid on 2026-09-16 has been reported as paid by the
+  provider on every scheduler tick since, and the code answered with one
+  `logger.warning`. This PR turns that branch into an OP-F08 late case — flag,
+  charge id, journal event, staff page — reusing remediation machinery that has
+  existed since migration 284 with no writer on this path (superscar #2). It
+  also replaces a negated status test with a positive allow-list, because the
+  negation classified Xendit's `SETTLED` as unpaid and would have EXPIRED an
+  order whose money we were holding. Migration 320 widens the journal's
+  `transition_id` CHECK, without which the writer raises inside a transaction
+  whose caller swallows exceptions — a cure that reports success and changes
+  nothing.
+diff:
+  hot_zone: true
+  hot_zone_note: >-
+    `apps/backend-rag/backend/db/migrations_v2/*` — the floor is Gear 3 by
+    construction (`scripts/evidence_pack_lint.py:449`), not by the author's
+    choice.
+pii_scan: clean
+pii_scan_note: >-
+  `garuda_orders` carries four PII columns (`applicant_full_name`,
+  `applicant_email`, `applicant_phone`, `applicant_passport_number`). Every
+  production read this session was column-scoped to exclude them; the code added
+  reads none of them, and the red-team seat independently confirmed no applicant
+  field is reachable by the new staff page. The one order id named throughout is
+  synthetic, from the 2026-09-16 sandbox purchase proof. Fly secrets were read
+  by NAME only, never a value.
+receipts:
+  - claim: >-
+      a production order is paid, past its checkout expiry, and still
+      `awaiting_payment` — the motivating fact of the whole PR
+    cmd: >-
+      scripts/pg.sh -c "select order_id, case_type, price_idr, state, provider,
+      late_case_open, created_at from garuda_orders order by created_at desc;"
+    result: >-
+      3 rows. ord_TTDU0UI0WeLJ1_KJP5-6Gw expired; ord_ujg4nDYSN4w9-jkJQsi7Tg
+      awaiting_payment with checkout_expires_at 2026-09-16 15:20 and updated_at
+      still equal to its creation minute — never expired, because
+      expire_if_unpaid took the `not confirmed_unpaid` branch; ord_PqCCn…
+      created. All three late_case_open = f.
+    ts: "2026-09-19T09:20:00Z"
+    seat: claude-opus-5 (this worktree session)
+    exit: 0
+  - claim: no webhook has ever reached the backend
+    cmd: scripts/pg.sh -c "select count(*) from garuda_payment_inbox;"
+    result: "0"
+    ts: "2026-09-19T09:21:00Z"
+    seat: claude-opus-5 (this worktree session)
+    exit: 0
+  - claim: no practice exists, so nothing downstream compensated for it either
+    cmd: scripts/pg.sh -c "select count(*) from garuda_practices;"
+    result: "0"
+    ts: "2026-09-19T09:21:30Z"
+    seat: claude-opus-5 (this worktree session)
+    exit: 0
+  - claim: >-
+      the journal CHECK does not admit OP-F08 — this is what makes migration
+      320 a precondition rather than an addition
+    cmd: >-
+      scripts/pg.sh -c "select conname, pg_get_constraintdef(oid) from
+      pg_constraint where conrelid = 'garuda_order_journal'::regclass and
+      contype = 'c';"
+    result: >-
+      garuda_order_journal_transition_id_check admits OP-00..OP-09, OP-F04,
+      OP-F05, PR-01..PR-12. OP-F08 absent.
+    ts: "2026-09-19T09:46:00Z"
+    seat: claude-opus-5 (this worktree session)
+    exit: 0
+  - claim: the outbox has no job_type CHECK, so the new job type needs no DDL
+    cmd: >-
+      scripts/pg.sh -c "select conname, pg_get_constraintdef(oid) from
+      pg_constraint where conrelid = 'garuda_order_outbox'::regclass and contype
+      = 'c';"
+    result: 0 rows
+    ts: "2026-09-19T09:49:00Z"
+    seat: claude-opus-5 (this worktree session)
+    exit: 0
+  - claim: >-
+      all three tables are owned by backend_rag_v2, so migration 320 needs none
+      of the cross-owner bracketing migration 304 required
+    cmd: >-
+      scripts/pg.sh -c "select relname, pg_get_userbyid(relowner) from pg_class
+      where relname in ('garuda_order_journal','garuda_order_outbox',
+      'garuda_orders');"
+    result: garuda_order_journal, garuda_order_outbox, garuda_orders — all backend_rag_v2
+    ts: "2026-09-19T09:49:30Z"
+    seat: claude-opus-5 (this worktree session)
+    exit: 0
+  - claim: migration number 320 is free against production, main, and the open queue
+    cmd: >-
+      scripts/pg.sh -c "select migration_number from _schema_versions order by
+      migration_number desc limit 5;" ; gh pr list --state open --json
+      number,files --jq '... migrations_v2 ...'
+    result: >-
+      prod max applied 318; highest file on branch 318; PR #6679 claims 319;
+      nothing claims 320.
+    ts: "2026-09-19T09:52:00Z"
+    seat: claude-opus-5 (this worktree session)
+    exit: 0
+  - claim: >-
+      the alarm's destination is armed in production, so this is not a page into
+      the void (the `Bites:` consumer)
+    cmd: fly secrets list -a nuzantara-rag # NAMES only, no values
+    result: TELEGRAM_BOT_TOKEN and TELEGRAM_OWNER_CHAT_ID both Deployed
+    ts: "2026-09-19T09:41:00Z"
+    seat: claude-opus-5 (this worktree session)
+    exit: 0
+  - claim: >-
+      the frozen contract stays green and the AST-derived job-type walker finds
+      a handler for the new job
+    cmd: >-
+      cd apps/backend-rag && PYTHONPATH=. python -m pytest
+      ../../products/garuda-voa/contracts/tests/test_contract_invariants.py
+      backend/tests/services/garuda_orders/test_outbox_job_type_coverage.py
+    result: 27 passed
+    ts: "2026-09-19T10:05:00Z"
+    seat: claude-opus-5 (this worktree session)
+    exit: 0
+  - claim: >-
+      the staff-page suite is green, including the handler-count pin corrected
+      from five to six by name
+    cmd: >-
+      cd apps/backend-rag && PYTHONPATH=. python -m pytest
+      backend/tests/services/garuda_orders/test_staff_page_handlers.py
+    result: 32 passed (23 DB-dependent tests error on a bare local Postgres; CI supplies the schema)
+    ts: "2026-09-19T09:44:00Z"
+    seat: claude-opus-5 (this worktree session)
+    exit: 0
+  - claim: lint clean on every production file touched
+    cmd: ruff check backend/services/garuda_orders/ backend/services/payments/
+    result: All checks passed!
+    ts: "2026-09-19T10:05:30Z"
+    seat: claude-opus-5 (this worktree session)
+    exit: 0
+  - claim: >-
+      the OP-F08 tests FAIL against a database whose journal CHECK predates
+      migration 320 — the migration is a precondition, proven rather than argued
+    cmd: >-
+      INTAKE_TEST_DSN=postgresql://localhost:5432/garuda_outbox_test_0826
+      PYTHONPATH=. python -m pytest
+      backend/tests/services/garuda_orders/test_repository_integration.py
+    result: >-
+      4 failed, 11 passed. That database carries the SAME constraint production
+      does (OP-00..OP-09, OP-F04, OP-F05, PR-01..PR-12 — read with
+      pg_get_constraintdef); the three OP-F08 failures are the check_violation
+      swallowed by the caller's `except`, i.e. the cure reporting success and
+      changing nothing.
+    ts: "2026-09-19T10:12:00Z"
+    seat: claude-opus-5 (this worktree session)
+    exit: 1
+  - claim: >-
+      with migration 320's forward section applied to that same database the
+      chain is green — the closest thing to a live proof available before deploy
+    cmd: >-
+      psql -d garuda_outbox_test_0826 -f <320 forward section>, then the same
+      pytest invocation
+    result: >-
+      1 failed, 16 passed. The single failure is
+      test_paid_event_with_wrong_amount_is_quarantined_never_marks_paid,
+      UndefinedColumnError `quarantine_reason` — a column production HAS
+      (information_schema, read this session) and this 2026-08-26 test database
+      does not. Fixture vintage, untouched by this PR.
+    ts: "2026-09-19T10:24:00Z"
+    seat: claude-opus-5 (this worktree session)
+    exit: 1
+  - claim: >-
+      the two new tests for the OP-02 late-case close pass against that live
+      Postgres, guilt and innocence
+    cmd: >-
+      same invocation;
+      test_a_late_case_is_closed_as_honoured_by_the_webhook_that_finally_arrives
+      and test_a_paid_order_that_never_had_a_late_case_records_no_resolution
+    result: both passed, inside the 16
+    ts: "2026-09-19T10:26:00Z"
+    seat: claude-opus-5 (this worktree session)
+    exit: 0
+  - claim: lint clean on every file this PR touches, after the round-2 cures
+    cmd: >-
+      ruff check backend/services/garuda_orders/ backend/services/payments/
+      backend/app/main_api.py plus the four touched test files
+    result: All checks passed!
+    ts: "2026-09-19T10:20:00Z"
+    seat: claude-opus-5 (this worktree session)
+    exit: 0
+  - claim: >-
+      the builder seat's slice was applied and then CORRECTED — the grading
+      was not a formality
+    cmd: >-
+      13 replacement blocks parsed from the seat's output, each asserted to
+      match its file exactly once before applying; then
+      PYTHONPATH=. python -c "import backend.services.garuda_orders.repository"
+    result: >-
+      All 13 matched 1x and applied. Two defects in the delivered slice, both
+      fixed here: `ExpiryOutcome` was written as a class NESTED in the
+      repository and decorated `@dataclass` while `repository.py` imports no
+      `dataclasses` — the module would not have imported at all; and the
+      nesting contradicts the package's own convention (`ReconciliationSummary`,
+      `ChargeConfirmation` are module-level). Hoisted, `from dataclasses import
+      dataclass` added, exported in `__all__`. A 14th call site the seat never
+      saw (`test_op_f08_does_not_open_a_case_on_an_order_the_webhook_already_paid`)
+      still asserted `is False` against the new type and was updated here.
+    ts: "2026-09-19T10:40:00Z"
+    seat: claude-opus-5 (this worktree session, grading kimi-code/k3's slice)
+    exit: 0
+  - claim: >-
+      after the builder slice, the sweep counts three mutually exclusive
+      outcomes and the scheduler log stops calling a paged case "left for the
+      webhook"
+    cmd: >-
+      PYTHONPATH=. python -m pytest
+      backend/tests/unit/services/test_garuda_outbox_scheduler.py ; then the
+      integration suite against the live local Postgres
+    result: "32 passed; 16 passed, 1 failed (the `quarantine_reason` fixture-vintage red)"
+    ts: "2026-09-19T10:41:00Z"
+    seat: claude-opus-5 (this worktree session)
+    exit: 0
+  - claim: >-
+      the broad garuda sweep is green apart from reds this branch cannot
+      cause, and the app still imports
+    cmd: >-
+      pytest backend/tests/services/garuda_orders/ backend/tests/services/payments/
+      backend/tests/db/test_migration_320… ../../products/garuda-voa/contracts/tests/
+      ; python -c "import backend.app.main_api"
+    result: >-
+      363 passed, 18 failed — every failure an asyncpg schema error on the
+      2026-08-26 local database (`practice_type` NOT NULL, `quarantine_reason`
+      missing). `git diff <merge-base> -- apps/backend-rag | grep -c
+      "practice_type\|quarantine_reason"` returns 0: this branch never names
+      either column. Import chain OK.
+    ts: "2026-09-19T10:42:00Z"
+    seat: claude-opus-5 (this worktree session)
+    exit: 1
+dissent:
+  - seat: codex-gpt-5.6-sol
+    status: CONFIRMED
+    objection: >-
+      BLOCKING — the late-case UPDATE checked only `late_case_open`. The real
+      webhook can land between reconciliation's SELECT and this write, so a tick
+      opened a late case on an order that had meanwhile reached `paid`, and
+      `resolve_late_order` does not re-check state before refunding: a
+      legitimate, fully reconciled payment became refundable.
+    resolution: >-
+      Accepted and cured in this head. `AND state = 'awaiting_payment'` added —
+      the compare-and-set SM-G07 already demands of every write in this file and
+      which this one was missing. Re-verified on disk before acting.
+  - seat: codex-gpt-5.6-sol
+    status: CONFIRMED
+    objection: >-
+      MAJOR — after staff resolve a case as `honoured` the order keeps
+      `awaiting_payment` and the provider keeps answering paid, so the next tick
+      tried to reopen it. Migration 284's CHECK forbids
+      (late_case_open = TRUE, late_case_resolution IS NOT NULL): not a duplicate
+      page but a check_violation every tick, forever, swallowed by the caller.
+    resolution: >-
+      Accepted and cured. `AND late_case_resolution IS NULL` added. The CHECK was
+      re-read at 284_garuda_orders.sql:92 before accepting the claim.
+  - seat: codex-gpt-5.6-sol
+    status: CONFIRMED
+    objection: >-
+      MAJOR — the new event was unsatisfiable: it pins
+      `transition_id: {const: OP-F08}` while inheriting `$defs.TransitionId`,
+      whose enum did not contain OP-F08.
+    resolution: >-
+      Accepted and cured. OP-F08 added to the shared enum; membership re-checked
+      by loading the YAML after the edit.
+  - seat: codex-gpt-5.6-sol
+    status: CONFIRMED
+    objection: >-
+      MAJOR — the migration's lock comment was false. `BaseMigration.apply` runs
+      the whole file in one `conn.transaction()` (migration_base.py:478), so the
+      ACCESS EXCLUSIVE taken by the DROP is held through the VALIDATE and the
+      NOT VALID split bought nothing.
+    resolution: >-
+      Accepted. The split was REMOVED rather than the comment merely reworded —
+      ceremony that makes a false promise is worse than no ceremony. The comment
+      now states what the runner actually does.
+  - seat: codex-gpt-5.6-sol
+    status: CONFIRMED
+    objection: >-
+      MINOR — the staff page asserted "the customer's money is with the
+      provider" even when the status is one the adapter does not recognise,
+      overclaiming exactly where the code is honest about not knowing.
+    resolution: >-
+      Accepted and cured. The copy now distinguishes a paid/settled status from
+      an unrecognised one, matching what the code actually knows.
+  - seat: claude-opus-5 (this session, self-raised before the review)
+    status: CONFIRMED
+    objection: >-
+      Reusing `staff_page_late_paid_after_terminal` would have sent staff a page
+      reading "this order was already failed/expired when a payment for it
+      succeeded" — false for an order still in `awaiting_payment`, where nothing
+      was given up on and what failed was the delivery of the webhook.
+    resolution: >-
+      A dedicated `StaffPageChargeWithoutWebhookHandler` was written instead,
+      with its own truthful copy and its own job type.
+  - seat: codex-gpt-5.6-sol (round 2)
+    status: CONFIRMED
+    objection: >-
+      BLOCKING — the mirror image of the round-1 race. OP-F08 is the first
+      writer to open a late case on a LIVE order, so the webhook it is
+      complaining about can still arrive: OP-02 then marks the order `paid`
+      and mints the practice while the case stays OPEN, and
+      `resolve_late_order` does not re-check `state` before calling
+      `provider.refund`. Staff working that page would refund a payment that
+      had already bought the service.
+    resolution: >-
+      Accepted and cured. OP-02's own UPDATE now closes an open case as
+      `honoured` in the paying transaction (`CASE WHEN late_case_open`, which
+      reads the OLD row, so an order that never had a case keeps a NULL
+      resolution). Guilt and innocence tests added and run against a live
+      Postgres.
+  - seat: codex-gpt-5.6-sol (round 2) + kimi-code/k3, INDEPENDENTLY
+    status: CONFIRMED
+    objection: >-
+      MAJOR/BLOCKING — `confirm_no_successful_charge` returned Xendit's
+      `payment_id` in preference to the invoice `id`, while this adapter's own
+      `refund()` posts whatever it is handed as `{"invoice_id": ...}`. A
+      PAID/SETTLED invoice carries both ids, which is exactly the body OP-F08
+      reads, so `late_case_charge_id` would hold an id the refund endpoint
+      rejects: the late case this PR exists to open would not have been
+      refundable.
+    resolution: >-
+      Accepted and cured — read on disk at `xendit.py::refund` before acting.
+      The confirmation now returns `body.get("id")`, and the test that pinned
+      the old preference was flipped into the guilt test for the new one, on a
+      `PAID` body rather than a `PENDING` one so it exercises the reachable
+      case. Two seats of different families converged on this without seeing
+      each other's output.
+  - seat: kimi-code/k3
+    status: CONFIRMED
+    objection: >-
+      MAJOR — the sweep's SELECT had no late-case filter, so an order whose
+      case is open or already resolved stays a candidate forever: one provider
+      call per tick for the rest of its life, and with `limit` rows taken
+      oldest-first, enough of them crowd out real candidates.
+    resolution: >-
+      Accepted and cured. `AND late_case_open = FALSE AND late_case_resolution
+      IS NULL` added to the sweep SELECT. The no-reopen test's assertion moved
+      from `left_for_webhook == 1` to the stronger `candidates == 0`, and the
+      idempotence test now also calls `expire_if_unpaid` directly so the
+      repository CAS keeps being exercised rather than retired behind the new
+      filter.
+  - seat: codex-gpt-5.6-sol (round 2)
+    status: CONFIRMED
+    objection: >-
+      MINOR — `ChargeConfirmation` was imported inside `create_checkout_session`
+      while `confirm_no_successful_charge` of the same ownership-test fake
+      CONSTRUCTS one: `NameError` the first time reconciliation touches it.
+    resolution: Accepted and cured — the import moved to module level.
+  - seat: codex-gpt-5.6-sol (round 2)
+    status: CONFIRMED
+    objection: >-
+      MAJOR — `resolve_late_order`'s `honoured` branch enqueues
+      `practice_release` against the RESOLUTION journal event, while
+      `PracticeReleaseHandler` looks a practice up by
+      `source_paid_journal_event_id`, which only ever holds a `payment.paid`
+      event id. Honouring a case by hand closes it and raises
+      `PracticeNotMinted` on every drain: case shut, service never started.
+    resolution: >-
+      Confirmed on disk (`outbox_handlers.py::PracticeReleaseHandler.
+      _practice_id_for`) and REFUSED AS OUT OF SCOPE, deliberately. The weld
+      predates this branch — it is equally reachable from OP-F04/F05 — and
+      curing it means deciding what `honoured` should mint, which is a
+      different concern with a different guilt test. What this PR does instead
+      is stop sending staff down it: the OP-F08 page no longer offers "honour"
+      as a manual action and names the replayed webhook as the route that both
+      closes the case and mints the practice. Named in the PR body and the
+      ledger rather than half-fixed here.
+  - seat: kimi-code/k3
+    status: PLAUSIBLE
+    objection: >-
+      MAJOR — the CAS writes `late_case_charge_id = $2` including NULL, so a
+      case could be opened that `resolve_late_order` cannot refund.
+    resolution: >-
+      Real in shape, but its reachability collapsed with the cure above: the
+      charge id is now the invoice `id`, and a Xendit invoice body without an
+      `id` does not exist (the adapter already raises `WebhookUnparseable` on
+      that shape elsewhere). A refund attempt on a NULL id degrades to
+      `RefundFailed -> PaymentProviderUnavailable`, which is a visible 503 and
+      not a wrong refund. Left as written, recorded rather than cured.
+  - seat: codex-gpt-5.6-sol (round 2)
+    status: CONFIRMED
+    objection: >-
+      MINOR — three sequential sweeps do not prove concurrent ticks; a real
+      concurrency test would use two connections.
+    resolution: >-
+      True, and not cured here. The CAS is a single-statement conditional
+      UPDATE, so PostgreSQL re-evaluates its predicate after the row lock is
+      released — the property is a database guarantee rather than one this
+      test could establish. What was added instead is the direct
+      `expire_if_unpaid` call after the sweep, which is the path a concurrent
+      tick actually takes.
+  - seat: claude-opus-5 (this session, before the review)
+    status: CONFIRMED
+    objection: >-
+      `reconciliation.py` counts an order that got an OP-F08 case as
+      `left_for_webhook`, and `main_api.py` logs it as "left for the webhook" —
+      every 5 minutes, about the one order we have just concluded no webhook is
+      coming for. Kimi raised the same thing as a MINOR.
+    resolution: >-
+      Accepted. Specified by this session and BUILT by `agy-gemini-3.1-pro`
+      (the non-Anthropic builder lane): `ExpiryOutcome` replaces the bare bool,
+      `ReconciliationSummary` gains `late_cases_opened`, and the log line
+      reports all four numbers. Applied, re-read and tested by this session.
+appetite_exceeded: ""

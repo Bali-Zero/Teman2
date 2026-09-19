@@ -27,7 +27,9 @@ import pytest
 from backend.services.payments.xendit import XenditFeeConfig, XenditPaymentProvider
 
 
-def _provider(captured: dict, *, base_url: str = "https://www.balizero.com") -> XenditPaymentProvider:
+def _provider(
+    captured: dict, *, base_url: str = "https://www.balizero.com"
+) -> XenditPaymentProvider:
     def handler(request: httpx.Request) -> httpx.Response:
         captured["body"] = request
 

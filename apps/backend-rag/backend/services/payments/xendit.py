@@ -31,6 +31,7 @@ from urllib.parse import quote
 import httpx
 
 from backend.services.payments.port import (
+    ChargeConfirmation,
     CheckoutSession,
     NormalizedFailureEvent,
     NormalizedPaidEvent,
@@ -51,6 +52,15 @@ logger = logging.getLogger(__name__)
 # serves both modes.
 _BASE_URL = "https://api.xendit.co"
 _CHECKOUT_TTL_MINUTES = 60
+
+# The ONLY invoice statuses this adapter reads as "the customer has not
+# paid". Same discipline as `_FAILURE_CODE_MAP` above and the opposite of
+# the `status != "PAID"` test this replaced: Xendit owns this vocabulary
+# and publishes at least one further paid status, `SETTLED`, which the
+# negated form classified as unpaid — so OP-04 would have expired an order
+# whose money we were already holding. Anything not listed here is not
+# evidence of absence: it leaves the order alone and opens a late case.
+_INVOICE_STATUSES_WITH_NO_ACCEPTED_CHARGE = frozenset({"PENDING", "EXPIRED", "FAILED"})
 
 # Xendit Invoices `failure_code` -> our closed vocabulary. Deliberately
 # NOT exhaustive of Xendit's real catalog: any code not listed here (and
@@ -295,14 +305,34 @@ class XenditPaymentProvider:
             )
         raise WebhookUnparseable(f"unrecognised Xendit invoice status: {status!r}")
 
-    async def confirm_no_successful_charge(self, *, provider_session_id: str) -> bool:
+    async def confirm_no_successful_charge(self, *, provider_session_id: str) -> ChargeConfirmation:
         response = await self._client.get(
             f"{self._base_url}/v2/invoices/{provider_session_id}",
             auth=(self._secret_key, ""),
         )
         response.raise_for_status()
         body: dict[str, Any] = response.json()
-        return body.get("status") != "PAID"
+        raw_status = body.get("status")
+        status = str(raw_status) if raw_status is not None else None
+        # The INVOICE id, deliberately NOT `payment_id`. Two cross-family
+        # reviewers (Codex `gpt-5.6-sol`, Kimi `k3`) independently caught the
+        # first draft preferring `payment_id`: `refund()` below posts whatever
+        # it is handed as `{"invoice_id": ...}`, so a `payment_id` parked in
+        # `late_case_charge_id` would make the late case this path exists to
+        # open UNREFUNDABLE — the refund would 404 into `RefundFailed`. The id
+        # that travels must be the id its consumer expects.
+        #
+        # The two `parse_event` branches above still prefer `payment_id` and
+        # feed the SAME refund contract on the OP-F04/F05 path. That is the
+        # identical defect, older than this branch and pinned by webhook
+        # fixtures; it needs its own guilt test and its own PR, and it is
+        # written down rather than silently half-fixed here.
+        charge_id = body.get("id")
+        return ChargeConfirmation(
+            confirmed_unpaid=status in _INVOICE_STATUSES_WITH_NO_ACCEPTED_CHARGE,
+            provider_charge_id=str(charge_id) if charge_id else None,
+            provider_status=status,
+        )
 
     async def refund(self, *, provider_charge_id: str, idempotency_key: str) -> str:
         try:

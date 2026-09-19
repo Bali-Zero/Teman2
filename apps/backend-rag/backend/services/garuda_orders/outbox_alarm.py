@@ -168,7 +168,9 @@ class OutboxAlarm:
 
     @staticmethod
     def _compose(exhausted: int, types: frozenset[str], *, repeat: bool) -> str:
-        lines = ["GARUDA outbox needs a human." if not repeat else "GARUDA outbox STILL needs a human."]
+        lines = [
+            "GARUDA outbox needs a human." if not repeat else "GARUDA outbox STILL needs a human."
+        ]
         if exhausted:
             lines.append(
                 f"{_plural(exhausted, 'job')} exhausted every retry and will never be "

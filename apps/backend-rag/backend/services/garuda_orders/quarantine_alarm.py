@@ -170,9 +170,7 @@ class QuarantineAlarm:
             # Sorted so the same condition always renders identically — an alarm
             # whose text wobbles between identical states defeats every
             # downstream dedup, including a human's.
-            lines.append(
-                "Reason(s): " + ", ".join(_escape_markdown(r) for r in sorted(reasons))
-            )
+            lines.append("Reason(s): " + ", ".join(_escape_markdown(r) for r in sorted(reasons)))
         listed = snapshot.sample[:_MAX_LISTED]
         for event in listed:
             # NO SQUARE BRACKETS around the order any more: `[` is reserved by
@@ -187,11 +185,7 @@ class QuarantineAlarm:
             # alert, which is the defect this PR was opened to cure. Until the
             # writer records it (ledgered, REQUIRED), the page says only what
             # is true: this row does not carry one.
-            order = (
-                _code_span(event.order_id)
-                if event.order_id
-                else "no order id on the inbox row"
-            )
+            order = _code_span(event.order_id) if event.order_id else "no order id on the inbox row"
             lines.append(
                 f"  {_code_span(event.provider_event_id)} order {order} "
                 f"— {_escape_markdown(event.reason)}"
