@@ -89,11 +89,61 @@ function parseTokens(block: string): Record<string, string> {
   return tokens;
 }
 
-// The surface's actual wrapper today (layout.tsx:54) — not the operative-dark
-// block S1 may flip to later; this guard measures what is LIVE.
-const LIGHT_TOKENS = parseTokens(
-  extractBlock(globalsCss, '[data-theme="operative-light"][data-product="my"]'),
-);
+/**
+ * The theme block to resolve against is DERIVED from the layout that mounts
+ * this surface, never named here.
+ *
+ * It used to be named here, and the comment that named it said "the surface's
+ * actual wrapper today (layout.tsx:54) — not the operative-dark block S1 may
+ * flip to later; this guard measures what is LIVE". S1 flipped it.
+ * `layout.tsx` has declared `data-theme="operative-dark"` since the DELIBERA
+ * fase 2 (a) change, and this file kept resolving every colour against
+ * `operative-light` — so a required check computed real WCAG arithmetic on a
+ * palette the funnel does not ship, and its green said nothing about the
+ * surface. Cicatrix family #2: the check existed, it was armed, and it was
+ * measuring a corpse.
+ *
+ * A constant cannot be kept in sync by intention; it can only be kept in sync
+ * by being read from the thing it must match. `mountedSelector` parses the
+ * wrapper's own attributes out of `layout.tsx`, so the next flip carries the
+ * guard with it and a theme `globals.css` does not declare throws instead of
+ * silently resolving to nothing.
+ */
+const LAYOUT_PATH = join(__dirname, "layout.tsx");
+const layoutSrc = readFileSync(LAYOUT_PATH, "utf-8");
+
+/**
+ * Comments are stripped first, and the match is anchored on the ELEMENT's own
+ * attribute pair rather than on the two attribute names appearing anywhere.
+ *
+ * Both halves are load-bearing and the first was found by running the guilt
+ * mutation rather than by reading: `layout.tsx`'s docblock explains the
+ * DELIBERA fase 2 (a) flip and contains the literal string
+ * `[data-theme="operative-dark"]` sixteen lines ABOVE the wrapper. A bare
+ * `/data-theme="(...)"/ ` therefore read the PROSE, returned the right answer
+ * by coincidence, and kept returning it when the wrapper was flipped
+ * underneath it — a derivation that cannot fail is not a derivation, it is
+ * the hardcoded constant this change exists to remove, wearing a function.
+ */
+function mountedSelector(src: string): string {
+  const code = src
+    .replace(/\/\*[\s\S]*?\*\//g, "")
+    .replace(/^[ \t]*\/\/.*$/gm, "");
+  const el =
+    /<[a-z][a-z0-9]*\s[^>]*?data-theme="([a-z0-9-]+)"[^>]*?data-product="([a-z0-9-]+)"/i.exec(
+      code,
+    );
+  if (!el) {
+    throw new Error(
+      "layout.tsx declares no data-theme/data-product element — this guard " +
+        "cannot know what ground to measure against",
+    );
+  }
+  return `[data-theme="${el[1]}"][data-product="${el[2]}"]`;
+}
+
+const SURFACE_SELECTOR = mountedSelector(layoutSrc);
+const SURFACE_TOKENS = parseTokens(extractBlock(globalsCss, SURFACE_SELECTOR));
 
 function resolveColor(
   raw: string,
@@ -114,22 +164,91 @@ function resolveColor(
   return resolveColor(resolved, tokens, depth + 1);
 }
 
-function toRgb(color: string): [number, number, number] {
-  const hex = color.match(/^#([0-9a-f]{6}|[0-9a-f]{3})$/i);
-  if (hex) {
-    let h = hex[1];
-    if (h.length === 3) {
-      h = h
-        .split("")
-        .map((c) => c + c)
-        .join("");
-    }
-    const num = parseInt(h, 16);
-    return [(num >> 16) & 255, (num >> 8) & 255, num & 255];
+/** `[r, g, b, alpha]`. Alpha is 1 unless the source says otherwise. */
+type Rgba = [number, number, number, number];
+
+function hexToRgb(hex: string): [number, number, number] {
+  let h = hex.slice(1);
+  if (h.length === 3) {
+    h = h
+      .split("")
+      .map((c) => c + c)
+      .join("");
   }
-  const rgb = color.match(/rgba?\(\s*([\d.]+)[,\s]+([\d.]+)[,\s]+([\d.]+)/i);
-  if (rgb) return [Number(rgb[1]), Number(rgb[2]), Number(rgb[3])];
+  const num = parseInt(h, 16);
+  return [(num >> 16) & 255, (num >> 8) & 255, num & 255];
+}
+
+/**
+ * Two shapes the operative-dark block uses that the light block never did,
+ * and that the previous parser would have read as a different colour rather
+ * than failing:
+ *
+ *  - `color-mix(in srgb, #253e33 40%, #f7f4ee)` — four of this block's state
+ *    tokens are declared this way. The old `toRgb` threw on them, so flipping
+ *    the selector alone would have turned the guard red on parse rather than
+ *    on contrast; worse, a lenient parser would have read the first hex it
+ *    found and reported the UNMIXED colour, which is a darker green than the
+ *    surface renders.
+ *  - `rgba(247, 244, 238, 0.12)` — `--bz-border` and both muted text tokens
+ *    carry alpha here. The old parser dropped the alpha channel silently and
+ *    would have judged a 12%-opacity hairline as near-white paper. Alpha is
+ *    composited over the ground instead, which is what the browser does and
+ *    what the eye sees.
+ */
+function toRgba(color: string): Rgba {
+  const trimmed = color.trim();
+
+  const mix = trimmed.match(
+    /^color-mix\(\s*in\s+srgb\s*,\s*(#[0-9a-f]{3,8})\s+([\d.]+)%\s*,\s*(#[0-9a-f]{3,8})\s*\)$/i,
+  );
+  if (mix) {
+    const [ar, ag, ab] = hexToRgb(mix[1]);
+    const [br, bg, bb] = hexToRgb(mix[3]);
+    const w = Number(mix[2]) / 100;
+    return [
+      ar * w + br * (1 - w),
+      ag * w + bg * (1 - w),
+      ab * w + bb * (1 - w),
+      1,
+    ];
+  }
+
+  if (/^#([0-9a-f]{6}|[0-9a-f]{3})$/i.test(trimmed)) {
+    const [r, g, b] = hexToRgb(trimmed);
+    return [r, g, b, 1];
+  }
+
+  const rgb = trimmed.match(
+    /rgba?\(\s*([\d.]+)[,\s]+([\d.]+)[,\s]+([\d.]+)(?:[,\s/]+([\d.]+))?/i,
+  );
+  if (rgb) {
+    return [
+      Number(rgb[1]),
+      Number(rgb[2]),
+      Number(rgb[3]),
+      rgb[4] === undefined ? 1 : Number(rgb[4]),
+    ];
+  }
   throw new Error(`cannot parse colour: ${color}`);
+}
+
+/** Source-over composite of a possibly-translucent colour onto an opaque one. */
+function over(
+  fg: Rgba,
+  ground: [number, number, number],
+): [number, number, number] {
+  const a = fg[3];
+  return [
+    fg[0] * a + ground[0] * (1 - a),
+    fg[1] * a + ground[1] * (1 - a),
+    fg[2] * a + ground[2] * (1 - a),
+  ];
+}
+
+function toRgb(color: string): [number, number, number] {
+  const c = toRgba(color);
+  return [c[0], c[1], c[2]];
 }
 
 function relativeLuminance([r, g, b]: [number, number, number]): number {
@@ -142,8 +261,13 @@ function relativeLuminance([r, g, b]: [number, number, number]): number {
 
 /** WCAG 2.1 contrast ratio, §1.4.3's own formula — verified below (M1 cross-check). */
 function contrastRatio(fg: string, bg: string): number {
-  const l1 = relativeLuminance(toRgb(fg));
-  const l2 = relativeLuminance(toRgb(bg));
+  // The background is flattened first and then serves as the ground the
+  // foreground's own alpha composites onto — the order the browser paints in.
+  // Without this a translucent token is judged against the colour it would
+  // have if it were opaque, which is not a colour anyone sees.
+  const bgRgb = over(toRgba(bg), [255, 255, 255]);
+  const l1 = relativeLuminance(over(toRgba(fg), bgRgb));
+  const l2 = relativeLuminance(bgRgb);
   const [lighter, darker] = l1 > l2 ? [l1, l2] : [l2, l1];
   return (lighter + 0.05) / (darker + 0.05);
 }
@@ -170,32 +294,118 @@ function assertErrorTone(el: Element, tokens: Record<string, string>) {
 }
 
 describe("resolver + contrast math — guilt and innocence (cicatrix #3)", () => {
-  it("parses real hex tokens out of globals.css, not a hand-copied guess", () => {
-    expect(LIGHT_TOKENS["--tx-pure"]).toBe("#1d2c3b");
-    expect(LIGHT_TOKENS["--bz-base"]).toBe("#f7f4ee");
-    expect(LIGHT_TOKENS["--bz-border"]).toBe("#dad8d1");
+  /**
+   * The regression pin for the drift this file was curing. It asserts the
+   * derived selector AGAINST `layout.tsx`'s own declaration rather than
+   * against a second literal — a hardcoded expectation here would reintroduce
+   * exactly the two-constants-drifting-apart shape that put the guard on the
+   * wrong palette in the first place.
+   */
+  it("resolves against the theme layout.tsx actually mounts", () => {
+    expect(layoutSrc).toContain(`data-theme="operative-dark"`);
+    expect(SURFACE_SELECTOR).toBe(
+      '[data-theme="operative-dark"][data-product="my"]',
+    );
   });
 
-  it("INNOCENT: the cured tone (ink on paper) clears 4.5:1", () => {
-    const fg = resolveColor("var(--tx-pure)", LIGHT_TOKENS);
-    const bg = LIGHT_TOKENS["--bz-base"];
+  it("GUILTY: the derivation reads the source, it does not return a constant", () => {
+    expect(
+      mountedSelector('<div data-theme="operative-light" data-product="my">'),
+    ).toBe('[data-theme="operative-light"][data-product="my"]');
+    expect(() => mountedSelector("<div>no wrapper here</div>")).toThrow(
+      /no data-theme/,
+    );
+  });
+
+  /**
+   * The exact shape that made the first version of this cure pass its own
+   * guilt mutation: `layout.tsx` names one theme in its docblock and mounts
+   * another. The element wins, and a `toThrow` here would not be enough —
+   * the wrong ANSWER is the defect, not the absence of one.
+   */
+  it("GUILTY: prose that names a theme never outranks the element that mounts one", () => {
+    const misleading = [
+      '/* re-keyed to [data-theme="operative-dark"] in the same PR */',
+      '// see the [data-theme="operative-dark"] block',
+      'return <div data-theme="operative-light" data-product="my">{x}</div>;',
+    ].join("\n");
+    expect(mountedSelector(misleading)).toBe(
+      '[data-theme="operative-light"][data-product="my"]',
+    );
+  });
+
+  it("GUILTY: a theme globals.css does not declare throws, it never resolves to nothing", () => {
+    expect(() =>
+      extractBlock(
+        globalsCss,
+        '[data-theme="no-such-theme"][data-product="my"]',
+      ),
+    ).toThrow(/selector not found/);
+  });
+
+  it("parses real hex tokens out of globals.css, not a hand-copied guess", () => {
+    expect(SURFACE_TOKENS["--tx-pure"]).toBe("#f7f4ee");
+    expect(SURFACE_TOKENS["--bz-base"]).toBe("#121016");
+    expect(SURFACE_TOKENS["--bz-border"]).toBe("rgba(247, 244, 238, 0.12)");
+  });
+
+  /**
+   * The two shapes the light block never contained. Both are checked as
+   * VALUES, not as "parses without throwing": a lenient parser that returned
+   * the first hex of a `color-mix` or dropped an alpha channel would also not
+   * throw, and would report a colour the surface does not render.
+   */
+  it("mixes a color-mix token instead of reading one side of it", () => {
+    // 40% #253e33 + 60% #f7f4ee — the unmixed first hex would be (37, 62, 51).
+    expect(toRgb(SURFACE_TOKENS["--state-info"])).toEqual([
+      0.4 * 0x23 + 0.6 * 0xf7,
+      0.4 * 0x3d + 0.6 * 0xf4,
+      0.4 * 0x52 + 0.6 * 0xee,
+    ]);
+    expect(toRgb(SURFACE_TOKENS["--state-success"])[0]).not.toBe(0x25);
+  });
+
+  it("composites alpha over the ground instead of dropping it", () => {
+    // --bz-border is paper at 12% on near-black. Dropping the alpha would
+    // read it as paper itself and call a hairline a 17:1 surface.
+    const asPainted = contrastRatio(
+      SURFACE_TOKENS["--bz-border"],
+      SURFACE_TOKENS["--bz-base"],
+    );
+    expect(asPainted).toBeLessThan(1.6);
+    expect(
+      contrastRatio("#f7f4ee", SURFACE_TOKENS["--bz-base"]),
+    ).toBeGreaterThan(15);
+  });
+
+  it("INNOCENT: the cured tone (paper on ink) clears 4.5:1", () => {
+    const fg = resolveColor("var(--tx-pure)", SURFACE_TOKENS);
+    const bg = SURFACE_TOKENS["--bz-base"];
     expect(contrastRatio(fg, bg)).toBeGreaterThanOrEqual(4.5);
   });
 
+  /**
+   * A FORMULA cross-check, deliberately on paper literals rather than on
+   * `--bz-base`: M1's 4.40:1 was measured on the paper ground this surface
+   * used to have, and the point of the row is that `contrastRatio` reproduces
+   * a number someone else computed independently. Pointing it at whatever the
+   * current theme's ground happens to be would turn a formula proof into a
+   * theme fact and lose the cross-check.
+   */
   it("GUILTY: the ORIGINAL text-red-600 hex (#DC2626) on paper measures 4.40:1 — an AA fail, matching design-A-claude.md M1's own number", () => {
-    const ratio = contrastRatio("#DC2626", LIGHT_TOKENS["--bz-base"]);
+    const ratio = contrastRatio("#DC2626", "#f7f4ee");
     expect(ratio).toBeCloseTo(4.4, 1);
     expect(ratio).toBeLessThan(4.5);
   });
 
   it("GUILTY: copper (--color-error's resolved value on this surface) is a real colour but the wrong ONE — the guard demands ink specifically, not merely 'passes contrast'", () => {
-    const copper = LIGHT_TOKENS["--state-danger"];
-    expect(copper).toBe("#a44b36");
+    const copper = SURFACE_TOKENS["--state-danger"];
+    expect(copper).toBe("#c46a52");
     // Copper-on-paper actually clears AA (it is the sanctioned "needs you"
     // tone) — proving a bare contrast check would NOT catch M2's finding
     // that role="alert" read the wrong meaning, only the identity check does.
     expect(
-      contrastRatio(copper, LIGHT_TOKENS["--bz-base"]),
+      contrastRatio(copper, SURFACE_TOKENS["--bz-base"]),
     ).toBeGreaterThanOrEqual(4.5);
   });
 
@@ -283,7 +493,7 @@ describe("upload — three error-tone states (M1's own site)", () => {
 
     const alert = await screen.findByRole("alert");
     const p = alert.querySelector("p")!;
-    assertErrorTone(p, LIGHT_TOKENS);
+    assertErrorTone(p, SURFACE_TOKENS);
   });
 
   it("unreadable: server returns UNREADABLE_DOCUMENT", async () => {
@@ -302,7 +512,7 @@ describe("upload — three error-tone states (M1's own site)", () => {
     await userEvent.upload(input, goodFile);
 
     const p = await screen.findByText(COPY_UNREADABLE_INSTRUCTION);
-    assertErrorTone(p, LIGHT_TOKENS);
+    assertErrorTone(p, SURFACE_TOKENS);
   });
 
   it("error: a retryable 503 (document store unavailable)", async () => {
@@ -323,7 +533,7 @@ describe("upload — three error-tone states (M1's own site)", () => {
     const p = await screen.findByText(
       messageFor("DOCUMENT_PROCESSING_UNAVAILABLE"),
     );
-    assertErrorTone(p, LIGHT_TOKENS);
+    assertErrorTone(p, SURFACE_TOKENS);
   });
 });
 
@@ -354,7 +564,7 @@ describe("wizard — eligibility-check submit failure (page.tsx:541)", () => {
     fireEvent.click(screen.getByRole("button", { name: "See result" }));
 
     const alert = await waitFor(() => screen.getByRole("alert"));
-    assertErrorTone(alert, LIGHT_TOKENS);
+    assertErrorTone(alert, SURFACE_TOKENS);
   });
 });
 
@@ -382,7 +592,7 @@ describe("verdict — magic-link resend failure ([hash]/page.tsx:404)", () => {
     await user.click(screen.getByRole("button", { name: /email me a link/i }));
 
     const alert = await screen.findByRole("alert");
-    assertErrorTone(alert, LIGHT_TOKENS);
+    assertErrorTone(alert, SURFACE_TOKENS);
   });
 });
 
@@ -404,7 +614,7 @@ describe("checkout — order-creation failure (CheckoutFlow.tsx:201)", () => {
     );
 
     const alert = await screen.findByRole("alert");
-    assertErrorTone(alert, LIGHT_TOKENS);
+    assertErrorTone(alert, SURFACE_TOKENS);
   });
 });
 
@@ -414,6 +624,6 @@ describe("tracker — order load failure (OrderTracker.tsx:49)", () => {
     render(<OrderTracker orderId="guard-order-1" />);
 
     const alert = await screen.findByRole("alert");
-    assertErrorTone(alert, LIGHT_TOKENS);
+    assertErrorTone(alert, SURFACE_TOKENS);
   });
 });
