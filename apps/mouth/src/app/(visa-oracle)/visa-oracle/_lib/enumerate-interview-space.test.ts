@@ -172,4 +172,32 @@ describe("manifest numbers match an independent recount", () => {
     expect(manifest.nodesReached).toBe(space.nodesReached.size);
     expect(manifest.maxDepth).toBe(space.maxDepth);
   });
+
+  it("countExactWalks itself reproduces a hand-computed count on a real two-level reduction", () => {
+    // Unlike the two cases above (a self-standing brute force that never
+    // touches countExactWalks, and a re-run of the function under test on
+    // the same input), THIS drives countExactWalks itself — the memoized
+    // DAG-reduction under test — through a controlled two-level topology
+    // built from two REAL question ids (answersFor requires ids present in
+    // QUESTIONS, the same constraint the cycle-guard guilt test above works
+    // under) and checks its output against arithmetic anyone can verify by
+    // hand: in_indonesia and holds_stay_permit each declare 2 options plus
+    // notSure (asserted above: ["yes","no","unsure"]), so a computeNext that
+    // ignores every answer and always walks framing -> in_indonesia ->
+    // holds_stay_permit -> verdict has EXACTLY 3 * 3 = 9 walks, independent
+    // of countExactWalks's own memoization or summation logic.
+    const twoLevelReal = (current: OracleNode): OracleNode => {
+      if (current.kind !== "question")
+        return { kind: "question", questionId: "in_indonesia" };
+      if (current.questionId === "in_indonesia")
+        return { kind: "question", questionId: "holds_stay_permit" };
+      return { kind: "verdict" };
+    };
+    const expected =
+      answersFor("in_indonesia").length *
+      answersFor("holds_stay_permit").length;
+    expect(expected).toBe(9);
+    const space = countExactWalks(twoLevelReal, 5);
+    expect(space.walksTotalExact).toBe(expected);
+  });
 });
