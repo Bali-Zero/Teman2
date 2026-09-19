@@ -9,11 +9,14 @@ import { useEffect, useState } from "react";
  * WHAT THIS DATE IS, and the two rules that shape every line below.
  *
  * 1. It is a CIVIL CALENDAR DAY in Asia/Makassar, never a UTC instant
- *    (`contracts/openapi.yaml` `AcceptedEligibilityResult.published_filing_deadline`,
- *    `x-civil-timezone: Asia/Makassar`). The contract states the trap in
- *    writing: "A client that derives this from a local `Date` in another zone
- *    reintroduces it here" — the defect `civil_clock.py::garuda_today` exists
- *    to prevent on the server. So "today" here is WITA's today, resolved
+ *    (`contracts/openapi.yaml`
+ *    `AcceptedEligibilityResult.published_filing_deadline`, `x-civil-timezone:
+ *    Asia/Makassar`). The contract states the trap in writing at
+ *    `openapi.yaml:1227` — in `entry_date`'s description, which is where the
+ *    sentence lives and NOT in the deadline's own, as the first version of
+ *    this docblock claimed: "A client that derives this from a local `Date` in
+ *    another zone reintroduces it here" — the defect
+ *    `civil_clock.py::garuda_today` exists to prevent on the server. So "today" here is WITA's today, resolved
  *    through `Intl` with an explicit `timeZone`, and the deadline string is
  *    formatted with `timeZone: "UTC"` so a date-only ISO renders as the day
  *    it was written rather than sliding a day west. A visitor reading this
@@ -189,9 +192,18 @@ export function useWitaCivilDay(frozen?: Date): string {
  * and states no consequence of its own.
  */
 
+/**
+ * `ample` and `soon` used to share this string, which left the 3px rule as
+ * their only differentiator — and `--state-info` and `--state-warning`
+ * composite to rgb(162,171,176) and rgb(198,175,150), **1.11:1** apart. Two
+ * states in one identity, which is the exact thing accent 4 forbids, shipped
+ * under a test that only compared class NAMES. The words differ now, the rule
+ * widths differ, and `voa-clock-states.guard.test.ts` measures all three on
+ * the CSS and the DOM rather than on the class suffix.
+ */
 const STATE_WORD: Record<Exclude<SafeClockState, "passed">, string> = {
   ample: "days to file",
-  soon: "days to file",
+  soon: "days left to file",
   today: "Today",
 };
 
@@ -231,21 +243,14 @@ export function SafeClockHero({
         <p className="voa-clock__date">It was {day}.</p>
         <p className="voa-clock__note">
           A consultant can tell you what your options are from here — it depends
-          on details this form never asked for.{" "}
-          <a
-            className="voa-clock__link"
-            href={handoffHref}
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Message the visa desk
-          </a>
+          on details this form never asked for.
         </p>
+        <ClockHandoff href={handoffHref} label="Message the visa desk" />
       </section>
     );
   }
 
-  const plural = daysLeft === 1 ? "day to file" : STATE_WORD[state];
+  const plural = daysLeft === 1 ? "day left to file" : STATE_WORD[state];
 
   return (
     <section
@@ -267,18 +272,35 @@ export function SafeClockHero({
       </p>
       <p className="voa-clock__note">
         {
-          "This is the one date we publish, and it is the one Ngurah Rai publishes. Filing at another office runs on that office's own deadline — "
+          "This is the one date we publish, and it is the one Ngurah Rai publishes. Filing at another office runs on that office's own deadline."
         }
-        <a
-          className="voa-clock__link"
-          href={handoffHref}
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          {"tell us where you're filing"}
-        </a>
-        {" and we'll confirm yours."}
       </p>
+      <ClockHandoff href={handoffHref} label="Filing somewhere else?" />
     </section>
+  );
+}
+
+/**
+ * The handoff is its OWN control, below the prose, never a link inside it.
+ *
+ * The first version reached the 48px thumb floor with
+ * `display: inline-flex; min-height: 48px` on an `<a>` sitting mid-sentence.
+ * Measured on the promoted build at 390px, that broke the paragraph into three
+ * fragments — "…runs on that office's own" / "deadline — tell us where you're
+ * filing and" / "we'll confirm yours." — because a 48px-tall inline-flex box
+ * cannot sit on a 1.5-line-height text line. Every unit test passed; only the
+ * rendered page showed it. A tap target and a sentence want different boxes,
+ * and the honest resolution is to stop asking one element to be both.
+ */
+function ClockHandoff({ href, label }: { href: string; label: string }) {
+  return (
+    <a
+      className="voa-clock__handoff"
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+    >
+      {label}
+    </a>
   );
 }

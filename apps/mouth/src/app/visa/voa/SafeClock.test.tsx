@@ -1,5 +1,5 @@
-import { describe, expect, it } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { act, render, screen } from "@testing-library/react";
 
 import {
   SafeClockHero,
@@ -115,8 +115,53 @@ describe("SafeClockHero — rendered states", () => {
   it("soon: a single day reads 'day', not 'days'", () => {
     const { container } = renderAt("2026-09-09", "2026-09-08T03:00:00Z");
     expect(screen.getByText("1")).toBeInTheDocument();
-    expect(screen.getByText("day to file")).toBeInTheDocument();
+    expect(screen.getByText("day left to file")).toBeInTheDocument();
     expect(container.querySelector(".voa-clock--soon")).not.toBeNull();
+  });
+
+  /**
+   * The word is the second of the two axes that separate `ample` from `soon`
+   * (the first is the rule width; their colours are 1.11:1 apart and cannot
+   * carry it — see the pairwise separability rows in
+   * `voa-contrast.computed.guard.test.tsx`). Sharing one string here is what
+   * collapsed the two states in the first shipped version, so the guard is an
+   * inequality, not a pair of literals: rewording either one keeps passing,
+   * making them equal does not.
+   */
+  it("ample and soon never share their word", () => {
+    const wordAt = (deadline: string) => {
+      const { container, unmount } = renderAt(deadline, "2026-09-08T03:00:00Z");
+      const w = container.querySelector(".voa-clock__unit")?.textContent;
+      unmount();
+      return w;
+    };
+    const ample = wordAt("2026-09-20");
+    const soon = wordAt("2026-09-10");
+    expect(ample).toBeTruthy();
+    expect(soon).toBeTruthy();
+    expect(soon).not.toBe(ample);
+  });
+
+  /**
+   * The handoff is a control on its own row. Its predecessor was an inline
+   * `<a>` carrying `min-height: 48px`, which broke the note into three
+   * fragments on the promoted build at 390px while every unit test stayed
+   * green. jsdom cannot reproduce that layout, so what is pinned instead is
+   * the structural property that made it possible: the anchor is a SIBLING of
+   * the note, never a descendant of it.
+   */
+  it("the handoff is a sibling of the prose, never inside it", () => {
+    for (const d of ["2026-09-20", "2026-09-08", "2026-09-01"]) {
+      const { container, unmount } = renderAt(d, "2026-09-08T03:00:00Z");
+      const link = container.querySelector("a")!;
+      expect(link, d).not.toBeNull();
+      expect(
+        link.closest("p"),
+        `${d}: handoff must not live inside a <p>`,
+      ).toBeNull();
+      expect(link.className).toContain("voa-clock__handoff");
+      unmount();
+    }
   });
 
   it("today: no count, the word leads, and the status identity is its own", () => {
@@ -179,5 +224,84 @@ describe("SafeClockHero — rendered states", () => {
       expect(container.textContent).toContain("Ngurah Rai");
       unmount();
     }
+  });
+});
+
+/**
+ * The live path — no `now` prop, so the poll, the `visibilitychange` listener
+ * and the cleanup are the ones production runs.
+ *
+ * Until this block existed nothing rendered the component without the frozen
+ * seam, so the claim that the count stops being stale across WITA midnight was
+ * argued in a docblock and proved nowhere. The seam being well-behaved is not
+ * evidence about the path it bypasses.
+ */
+describe("SafeClockHero — the unfrozen clock", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("crosses WITA midnight without a reload", () => {
+    vi.useFakeTimers();
+    // 03:00Z on the 8th: the same civil day in Bali and in UTC.
+    vi.setSystemTime(new Date("2026-09-08T03:00:00Z"));
+    render(<SafeClockHero deadline="2026-09-20" handoffHref={HANDOFF} />);
+    expect(screen.getByText("12")).toBeInTheDocument();
+
+    // 16:30Z is 00:30 on the 9th in Denpasar — still the 8th in UTC, which is
+    // why a naive clock would sit here showing 12 for another seven and a half
+    // hours.
+    vi.setSystemTime(new Date("2026-09-08T16:30:00Z"));
+    act(() => {
+      vi.advanceTimersByTime(60_000);
+    });
+    expect(screen.getByText("11")).toBeInTheDocument();
+  });
+
+  it("re-reads when a backgrounded tab comes back, without waiting for the tick", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-09-08T03:00:00Z"));
+    render(<SafeClockHero deadline="2026-09-20" handoffHref={HANDOFF} />);
+    expect(screen.getByText("12")).toBeInTheDocument();
+
+    vi.setSystemTime(new Date("2026-09-09T03:00:00Z"));
+    act(() => {
+      document.dispatchEvent(new Event("visibilitychange"));
+    });
+    expect(screen.getByText("11")).toBeInTheDocument();
+  });
+
+  it("GUILT CONTROL: the interval is torn down on unmount", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-09-08T03:00:00Z"));
+    const clearSpy = vi.spyOn(window, "clearInterval");
+    const removeSpy = vi.spyOn(document, "removeEventListener");
+    const { unmount } = render(
+      <SafeClockHero deadline="2026-09-20" handoffHref={HANDOFF} />,
+    );
+    const pending = vi.getTimerCount();
+    expect(pending).toBeGreaterThan(0);
+    unmount();
+    expect(clearSpy).toHaveBeenCalled();
+    expect(removeSpy).toHaveBeenCalledWith(
+      "visibilitychange",
+      expect.any(Function),
+    );
+    expect(vi.getTimerCount()).toBeLessThan(pending);
+    clearSpy.mockRestore();
+    removeSpy.mockRestore();
+  });
+
+  it("GUILT CONTROL: a frozen clock installs no timer at all", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-09-08T03:00:00Z"));
+    render(
+      <SafeClockHero
+        deadline="2026-09-20"
+        now={new Date("2026-09-08T03:00:00Z")}
+        handoffHref={HANDOFF}
+      />,
+    );
+    expect(vi.getTimerCount()).toBe(0);
   });
 });
