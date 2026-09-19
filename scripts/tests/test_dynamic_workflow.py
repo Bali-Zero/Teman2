@@ -505,14 +505,20 @@ def test_seat_family_resolves_the_mandate_aliases(alias, family):
 # Gate finding 2 on PR2b's merge: a slash-bearing seat id (the mandate itself spells some seats
 # that way, e.g. "kimi-code/k3") crashed r1 with an uncaught FileNotFoundError on r1/kimi-code/k3.md
 # AFTER a "sent" row had already been appended. Fixed by routing every seat-to-path build through
-# _file_slug(), and by validating the seat id BEFORE the first ledger_append.
+# _seat_key(), and by validating the seat id BEFORE the first ledger_append.
 
 def test_r1_seat_id_with_a_slash_writes_under_a_file_safe_slug(tmp_path, template, clean_objective):
+    """"kimi-code/k3" is ALSO a _SEAT_ALIASES key (-> "kimi-k3"), so post-PR2g' S1 its slug is
+    its alias TARGET's slug (_seat_key consolidation), not a literal slash-collapse of its own
+    spelling — the old raw-_file_slug expectation ("kimi-code__k3.md") is exactly the stale
+    write-path this fix retires; "kimi-k3.md" is what _seat_key("kimi-code/k3") now computes,
+    matching what _claim_slug has claimed since PR2g item 3."""
     kit = tmp_path / "k"
     dw.cmd_brief(_brief_ns(clean_objective, template, kit))
     _seed_convener(kit)
     dw.cmd_r1(argparse.Namespace(kit=str(kit), seats="kimi-code/k3", astra_fallback=False))
-    assert (kit / "r1" / "kimi-code__k3.md").exists()
+    assert (kit / "r1" / "kimi-k3.md").exists()
+    assert not (kit / "r1" / "kimi-code__k3.md").exists()  # the pre-S1 raw-slug path, retired
     assert not (kit / "r1" / "kimi-code").exists()
     assert dw._ledger_has_seat(kit, "kimi-code/k3")  # ledger keeps the RAW seat id, not the slug
 
@@ -612,7 +618,7 @@ def test_guilt_jury_validates_kimi_model_before_launch(tmp_path, monkeypatch):
     with pytest.raises(SystemExit) as e:
         dw.cmd_jury(argparse.Namespace(kit=str(kit)))
     assert e.value.code == 2
-    assert not (kit / "jury" / f"{dw._file_slug('kimi-nonexistent-model')}.md").exists()
+    assert not (kit / "jury" / f"{dw._seat_key('kimi-nonexistent-model')}.md").exists()
 
 
 def test_launch_seat_kimi_uses_the_per_seat_model_id(tmp_path, monkeypatch):
@@ -697,12 +703,19 @@ def test_r1_relaunching_the_same_seat_across_two_cmd_r1_calls_is_not_a_slug_coll
 
 def test_r1_refuses_a_slug_collision_between_the_kimi_2_7_alias_and_its_canonical_spelling(
         tmp_path, template, clean_objective):
-    """Item 3 (PR2g, gate-7 obs :442): the slug used to be claimed on the RAW seat id, so
-    'kimi-2.7' and its canonical spelling 'kimi-code/kimi-for-coding-highspeed' claimed TWO
-    different slugs for the ONE model KIMI_MODEL_MAP resolves both to — the same seat could
-    answer twice and count twice in family diversity. Claiming on _canonical_seat(seat) makes
-    the second claim collide, mirrors test_r1_refuses_a_slug_collision_between_two_different_
-    seat_ids exactly, just with an alias pair instead of a literal '__' collision."""
+    """Item 3 (PR2g, gate-7 obs :442) + PR2g' S1/S3 Guilt (gate-13 obs 2 on PR2g #6772): the
+    slug used to be claimed on the RAW seat id, so 'kimi-2.7' and its canonical spelling
+    'kimi-code/kimi-for-coding-highspeed' claimed TWO different slugs for the ONE model
+    KIMI_MODEL_MAP resolves both to — the same seat could answer twice and count twice in
+    family diversity. Claiming on _canonical_seat(seat) makes the second claim collide,
+    mirrors test_r1_refuses_a_slug_collision_between_two_different_seat_ids exactly, just
+    with an alias pair instead of a literal '__' collision.
+
+    Strengthened for S1: gate-13 found _claim_slug already claimed the CANONICAL key (PR2g)
+    while _run_one_seat still wrote to the RAW, uncanonicalized _file_slug(seat) path — so
+    the winning seat's claim key and its actual r1 filename could name two different strings
+    even though nothing here ever raised. Post-_seat_key-consolidation they are the same
+    computation, so the winner's r1 path now provably equals its own claim key."""
     kit = tmp_path / "k"
     dw.cmd_brief(_brief_ns(clean_objective, template, kit))
     _seed_convener(kit)
@@ -715,6 +728,60 @@ def test_r1_refuses_a_slug_collision_between_the_kimi_2_7_alias_and_its_canonica
     assert dw._ledger_has_seat(kit, "kimi-2.7")
     slugs = json.loads((kit / "slugs.json").read_text())
     assert len(slugs) == 1  # one slug, not two — the alias and its canonical spelling collided
+    assert slugs == {"kimi-code__kimi-for-coding-highspeed": "kimi-2.7"}  # claim key == write stem
+    assert (kit / "r1" / "kimi-code__kimi-for-coding-highspeed.md").exists()  # winner's r1 path
+    assert dw._seat_key("kimi-2.7") == "kimi-code__kimi-for-coding-highspeed"
+
+
+def test_r1_an_aliased_seat_and_its_slash_collapse_lookalike_are_innocent_of_each_other(
+        tmp_path, template, clean_objective, monkeypatch):
+    """PR2g' S3 Innocence — and the concrete regression proof for gate-13 obs 2's "latent
+    overwrite hole". The mandate's own literal example pair ('kimi-code/k3' vs 'kimi-code__k3')
+    does not actually reach this code path through cmd_r1: the second spelling is kimi-shaped
+    but unregistered, so _validate_kimi_model refuses it before _claim_slug ever runs — proving
+    nothing about _seat_key (empirically verified; the mandate's own Bites-line correction
+    licenses grounding fixes in actual call sites over stale prose). A monkeypatched, non-kimi
+    alias reproduces the identical structural hazard without that interference: 'vendor/aliased'
+    canonicalizes (via the alias) to 'vendor-canonical'; 'vendor__aliased' is not itself an alias
+    key, so it canonicalizes to itself. _claim_slug already claims on the canonical key even
+    pre-PR2g' (item 3), so the two seats claimed two DIFFERENT slugs even before this fix
+    ('vendor-canonical' vs 'vendor__aliased') — no ledger collision, ever. But pre-fix,
+    _run_one_seat wrote to the RAW, uncanonicalized _file_slug(seat): _file_slug('vendor/aliased')
+    == _file_slug('vendor__aliased') == 'vendor__aliased' (plain slash-collapse, same string) —
+    so the SECOND seat's write silently overwrote the FIRST's r1 file, exit 0, no error, even
+    though slugs.json showed two distinct claims. Once every write goes through _seat_key (this
+    fix), the write key equals the claim key for both, so two distinct claims now structurally
+    guarantee two distinct files."""
+    monkeypatch.setitem(dw._SEAT_ALIASES, "vendor/aliased", "vendor-canonical")
+    kit = tmp_path / "k"
+    dw.cmd_brief(_brief_ns(clean_objective, template, kit))
+    _seed_convener(kit)
+    dw.cmd_r1(argparse.Namespace(kit=str(kit), seats="vendor/aliased", astra_fallback=False))
+    dw.cmd_r1(argparse.Namespace(kit=str(kit), seats="vendor__aliased", astra_fallback=False))
+    assert dw._ledger_has_seat(kit, "vendor/aliased")
+    assert dw._ledger_has_seat(kit, "vendor__aliased")
+    assert (kit / "r1" / "vendor-canonical.md").exists()
+    assert (kit / "r1" / "vendor__aliased.md").exists()
+    slugs = json.loads((kit / "slugs.json").read_text())
+    assert slugs == {"vendor-canonical": "vendor/aliased", "vendor__aliased": "vendor__aliased"}
+
+
+def test_claim_slug_refuses_an_aliased_collision_for_a_non_kimi_seat_pair(tmp_path, monkeypatch):
+    """PR2g' S3 Latency: the kimi-2.7 Guilt test above could in principle pass for the WRONG
+    reason if some kimi-specific check (_validate_kimi_model, only reachable via cmd_r1 /
+    _run_one_seat) were doing the refusing instead of _seat_key's own consolidation. Calling
+    _claim_slug directly on a monkeypatched, non-kimi alias pair never goes near
+    _validate_kimi_model at all, isolating _claim_slug itself as the true cause of the
+    refusal."""
+    monkeypatch.setitem(dw._SEAT_ALIASES, "acme/v1", "acme-vendor-canonical")
+    kit = tmp_path / "k"
+    kit.mkdir()
+    dw._claim_slug(kit, "acme-vendor-canonical")
+    with pytest.raises(SystemExit) as e:
+        dw._claim_slug(kit, "acme/v1")
+    assert e.value.code == 2
+    slugs = json.loads((kit / "slugs.json").read_text())
+    assert slugs == {"acme-vendor-canonical": "acme-vendor-canonical"}
 
 
 def test_guilt_claim_slug_refuses_a_corrupt_slugs_json_naming_the_file(tmp_path, capsys):
@@ -952,7 +1019,7 @@ def test_anonymise_z_blind_copy_differs_from_the_original_only_on_seat_and_sha_l
     kit = _juried_kit(tmp_path, template, clean_objective, _THREE_FAMILY_SEATS)
     mapping = dw.cmd_anonymise(argparse.Namespace(kit=str(kit)))
     letter, seat = next(iter(mapping.items()))
-    original = (kit / "r1" / f"{dw._file_slug(seat)}.md").read_text().splitlines()
+    original = (kit / "r1" / f"{dw._seat_key(seat)}.md").read_text().splitlines()
     blind = (kit / "Z-BLIND" / f"{letter}.md").read_text().splitlines()
     changed = dw._diff_positions(original, blind)
     assert len(changed) == 2
@@ -1197,7 +1264,7 @@ def test_judge_refuses_a_non_utf8_r1_file_naming_it_instead_of_a_traceback(
     dw.cmd_brief(_brief_ns(clean_objective, template, kit))
     _seed_convener(kit)
     dw.cmd_r1(argparse.Namespace(kit=str(kit), seats="kimi-k3", astra_fallback=False))
-    bad_path = kit / "r1" / f"{dw._file_slug('kimi-k3')}.md"
+    bad_path = kit / "r1" / f"{dw._seat_key('kimi-k3')}.md"
     bad_path.write_bytes(b"\xff\xfe not valid utf-8 \x80\x81")
     with pytest.raises(SystemExit) as e:
         dw.cmd_judge(argparse.Namespace(kit=str(kit)))

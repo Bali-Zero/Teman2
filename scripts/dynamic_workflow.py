@@ -434,6 +434,18 @@ def _file_slug(seat: str) -> str:
     return seat.replace("/", "__")
 
 
+def _seat_key(seat: str) -> str:
+    """The ONE identity a seat resolves to on disk (PR2g' S1, gate-13 obs 2 on PR2g #6772):
+    _file_slug alone slugifies the RAW spelling, so an aliased seat (_SEAT_ALIASES, e.g.
+    'kimi-2.7') and its canonical spelling slugify to the same string, but every caller used
+    to recompute that fact its own way — _claim_slug canonicalized (PR2g item 3), every
+    reader/writer of an r1/r2 path did not. Two formulas for one identity agree only by
+    accident of which raw spelling happens to flow through; this is the single point both
+    the claim and every path go through, so "same canonical seat" and "same file on disk"
+    are one fact, never two that can drift apart."""
+    return _file_slug(_canonical_seat(seat))
+
+
 def _read_text_or_refuse(path: Path) -> str:
     """read_text() with a named refusal (exit 2), never a bare traceback, when the file is not
     valid UTF-8 (PR2h addendum obs 3+4: seat output under r1/ and r2/ is untrusted bytes, and a
@@ -466,9 +478,14 @@ def _claim_slug(kit: Path, seat: str) -> None:
     concurrent dispatch): an exclusive fcntl.flock on a sidecar slugs.json.lock serializes the
     whole read-check-write, and the write itself goes tmp+os.replace so a crash mid-write
     never leaves a truncated file. A corrupt/empty/truncated slugs.json refuses here naming
-    the file, never a traceback — this function is the ONLY writer, so corruption is always a
-    prior crash, not an external edit."""
-    slug = _file_slug(_canonical_seat(seat))
+    the file and the failure class, never a traceback — this function is the ONLY writer, so
+    corruption is always a prior crash, not an external edit.
+
+    Claimed on _seat_key(seat), not a fresh _file_slug/_canonical_seat pair recomputed here (PR2g' S1,
+    gate-13 obs 2): every other r1/r2/jury path now goes through the same function, so the
+    slug this claims and the filename a writer/reader later computes for the same seat can
+    no longer be two different formulas that happen to agree."""
+    slug = _seat_key(seat)
     slugs_path = kit / "slugs.json"
     lock_path = kit / "slugs.json.lock"
     lock_path.touch(exist_ok=True)
@@ -521,7 +538,7 @@ def _run_one_seat(kit: Path, seat: str, brief_master: str, brief_sha: str, attem
         timeout = SEAT_TIMEOUTS.get(kind, 900)
         output = _launch_seat(seat, prompt, timeout, kit)
 
-    out_path = kit / "r1" / f"{_file_slug(seat)}.md"
+    out_path = kit / "r1" / f"{_seat_key(seat)}.md"
     out_path.write_text(output or "")
     if not output or not output.strip():
         ledger_append(kit, seat, "dead", prompt_hash16)
@@ -780,7 +797,7 @@ def cmd_r2(args: argparse.Namespace) -> dict[str, dict[str, int]]:
         if fake:
             output = _fake_r2_output(seat)
         else:
-            answers = "\n\n".join(_read_text_or_refuse(kit / "r1" / f"{_file_slug(t)}.md")
+            answers = "\n\n".join(_read_text_or_refuse(kit / "r1" / f"{_seat_key(t)}.md")
                                    for t in targets)
             prompt = _R2_PROMPT_PREFIX + answers
             kind = _seat_kind(seat) or "kimi"
@@ -789,9 +806,9 @@ def cmd_r2(args: argparse.Namespace) -> dict[str, dict[str, int]]:
         paragraphs = _split_objections(output)
         kept = [p for p in paragraphs if _objection_ok(p)]
         rejected = [p for p in paragraphs if not _objection_ok(p)]
-        (kit / "r2" / f"{_file_slug(seat)}.md").write_text("\n\n".join(kept) + ("\n" if kept else ""))
+        (kit / "r2" / f"{_seat_key(seat)}.md").write_text("\n\n".join(kept) + ("\n" if kept else ""))
         if rejected:
-            (kit / "r2" / f"{_file_slug(seat)}.rejected.md").write_text("\n\n".join(rejected) + "\n")
+            (kit / "r2" / f"{_seat_key(seat)}.rejected.md").write_text("\n\n".join(rejected) + "\n")
         ledger_append(kit, seat, f"r2-kept={len(kept)}-rejected={len(rejected)}", brief_sha[:16])
         summary[seat] = {"kept": len(kept), "rejected": len(rejected)}
     for seat, counts in summary.items():
@@ -851,7 +868,7 @@ def cmd_judge(args: argparse.Namespace) -> dict[str, dict[str, object]]:
     verdicts: dict[str, dict[str, object]] = {}
     rows = ["| seat | C1 | C5 | C8 | disqualified |", "|---|---|---|---|---|"]
     for seat in _answered_r1_seats(kit):
-        text = _read_text_or_refuse(kit / "r1" / f"{_file_slug(seat)}.md")
+        text = _read_text_or_refuse(kit / "r1" / f"{_seat_key(seat)}.md")
         m = _FM_RE.match(text)
         body = text[m.end():] if m else text
         c1_ok, c1_msg = _check_c1(text)
@@ -1063,7 +1080,7 @@ def _jury_prompt(kit: Path, mapping: dict[str, str], others: list[str]) -> str:
     seat id without a real (or DW_FAKE_SEATS) seat launch in the way."""
     bodies = "\n\n".join(
         f"### Formation {ltr}\n"
-        + _strip_identity(_read_text_or_refuse(kit / "r1" / f"{_file_slug(mapping[ltr])}.md"))
+        + _strip_identity(_read_text_or_refuse(kit / "r1" / f"{_seat_key(mapping[ltr])}.md"))
         for ltr in others)
     return _JURY_PROMPT_PREFIX + bodies
 
@@ -1125,7 +1142,7 @@ def cmd_anonymise(args: argparse.Namespace) -> dict[str, str]:
     blind_dir = kit / "Z-BLIND"
     blind_dir.mkdir(parents=True, exist_ok=True)
     for letter, seat in mapping.items():
-        original = _read_text_or_refuse(kit / "r1" / f"{_file_slug(seat)}.md")
+        original = _read_text_or_refuse(kit / "r1" / f"{_seat_key(seat)}.md")
         (blind_dir / f"{letter}.md").write_text(_strip_identity(original))
     print(f"Z-BLIND/ written for {len(mapping)} formation(s): {', '.join(sorted(mapping))}")
     return mapping
@@ -1532,7 +1549,7 @@ def run_selftest() -> None:
         check("jury/mapping.json stays chmod 600 after anonymise",
               oct((kit_l / "jury" / "mapping.json").stat().st_mode)[-3:] == "600")
         letter_l, seat_l = next(iter(mapping_l.items()))
-        orig_lines_l = (kit_l / "r1" / f"{_file_slug(seat_l)}.md").read_text().splitlines()
+        orig_lines_l = (kit_l / "r1" / f"{_seat_key(seat_l)}.md").read_text().splitlines()
         blind_lines_l = (kit_l / "Z-BLIND" / f"{letter_l}.md").read_text().splitlines()
         try:
             changed_l = _diff_positions(orig_lines_l, blind_lines_l)
