@@ -171,6 +171,17 @@ interface OutcomeBase {
   assumptions: readonly InterviewAssumption[];
   sources: readonly OutcomeSource[];
   nextSteps: OutcomeNextSteps;
+  /**
+   * `Decision.notices` (backend `models.py:1471`) rendered as named
+   * conditions attached to whatever verdict this outcome already carries.
+   * Unlike `reviewReasons`/`noPathReasons`, `notices` carries no backend
+   * state constraint (PLAN VISA-ORACLE-DW-20260919 §1.6) — it can be
+   * non-empty on any of the four identity-required states, so it lives here
+   * rather than on one discriminated member below. Always `[]` for the
+   * non-ENGINE origins and for `TEMPORARILY_UNAVAILABLE`, since no
+   * evaluation occurs on either path.
+   */
+  conditions: readonly OutcomeReason[];
 }
 
 export type SupportedCandidatesOutcome = OutcomeBase &

@@ -70,6 +70,28 @@ describe("Visa Oracle PII-free telemetry boundary", () => {
     );
   });
 
+  it("carries a valid reason code on the unmapped-notice event", () => {
+    emitVisaOracleTelemetry({
+      event: "visa_oracle_v2_notice_unmapped_code",
+      code: "SOME_NEW_CONDITION_CODE",
+    });
+    expect(trackPiiFreeEvent).toHaveBeenCalledWith(
+      "visa_oracle_v2_notice_unmapped_code",
+      { code: "SOME_NEW_CONDITION_CODE" },
+    );
+  });
+
+  it("drops a malformed code instead of forwarding it", () => {
+    emitVisaOracleTelemetry({
+      event: "visa_oracle_v2_notice_unmapped_code",
+      code: "not-a-valid-code",
+    });
+    expect(trackPiiFreeEvent).toHaveBeenCalledWith(
+      "visa_oracle_v2_notice_unmapped_code",
+      {},
+    );
+  });
+
   it("resolveFrontendVersion falls back to 'unknown' when unset", () => {
     expect(resolveFrontendVersion(undefined)).toBe("unknown");
     expect(resolveFrontendVersion("")).toBe("unknown");

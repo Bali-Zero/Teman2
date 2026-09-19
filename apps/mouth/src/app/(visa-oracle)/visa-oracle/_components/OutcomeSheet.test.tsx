@@ -110,10 +110,14 @@ function common() {
     assumptions: [],
     sources: [source],
     nextSteps,
+    conditions: [] as readonly OutcomeReason[],
   };
 }
 
-function outcomeFor(state: OutcomeState): OutcomeViewModel {
+function outcomeFor(
+  state: OutcomeState,
+  conditions: readonly OutcomeReason[] = [],
+): OutcomeViewModel {
   switch (state) {
     case "SUPPORTED_CANDIDATES":
       return {
@@ -121,6 +125,7 @@ function outcomeFor(state: OutcomeState): OutcomeViewModel {
         state,
         pathsRemaining: 1,
         candidates: [CANDIDATE],
+        conditions,
       };
     case "NEEDS_INPUT":
       return {
@@ -130,6 +135,7 @@ function outcomeFor(state: OutcomeState): OutcomeViewModel {
         missingInputs: [
           { ...reason, code: "missing.stay", questionId: "stay_days" },
         ],
+        conditions,
       };
     case "HUMAN_REVIEW_REQUIRED":
       return {
@@ -137,6 +143,7 @@ function outcomeFor(state: OutcomeState): OutcomeViewModel {
         state,
         candidates: [],
         reviewReasons: [reason],
+        conditions,
       };
     case "NO_SUPPORTED_PATH":
       return {
@@ -145,6 +152,7 @@ function outcomeFor(state: OutcomeState): OutcomeViewModel {
         candidates: [],
         noPathReasons: [reason],
         alternatives: [{ category: "remote" }],
+        conditions,
       };
     case "TEMPORARILY_UNAVAILABLE":
       return {
@@ -156,6 +164,7 @@ function outcomeFor(state: OutcomeState): OutcomeViewModel {
           message: text("Decision service unavailable"),
           retryable: true,
         },
+        conditions,
       };
   }
 }
@@ -851,5 +860,63 @@ describe("OutcomeSheet — D23 Second Home Studio", () => {
     await waitFor(() => expect(writeText).toHaveBeenCalledTimes(1));
     const summary = writeText.mock.calls[0]?.[0] as string;
     expect(summary).toContain("This needs a human, not an algorithm");
+  });
+});
+
+// Slice A2 (PLAN VISA-ORACLE-DW-20260919 §1.6, N4-N5): `notices[]` renders
+// with the verdict, never behind a disclosure glyph.
+describe("OutcomeSheet — conditions on the verdict", () => {
+  const CONDITION_ONE: OutcomeReason = {
+    code: "DISCLOSED_HEALTH_CONCERN_CONDITION",
+    message: text(
+      "Health concern condition fixture",
+      "Fixture kondisi kesehatan",
+    ),
+    sourceIds: [],
+  };
+  const CONDITION_TWO: OutcomeReason = {
+    code: "DISCLOSED_PEP_OR_SANCTIONS_CONDITION",
+    message: text("PEP condition fixture", "Fixture kondisi PEP"),
+    sourceIds: [],
+  };
+
+  it.each<Language>(["en", "id"])(
+    "renders a single condition with the verdict in %s",
+    (language) => {
+      const outcome = outcomeFor("SUPPORTED_CANDIDATES", [CONDITION_ONE]);
+      renderSheet("SUPPORTED_CANDIDATES", language, { outcome });
+      expect(
+        screen.getByText(CONDITION_ONE.message[language]),
+      ).toBeInTheDocument();
+    },
+  );
+
+  it("renders many conditions, in order, on the same outcome", () => {
+    const outcome = outcomeFor("SUPPORTED_CANDIDATES", [
+      CONDITION_ONE,
+      CONDITION_TWO,
+    ]);
+    const { container } = renderSheet("SUPPORTED_CANDIDATES", "en", {
+      outcome,
+    });
+    const items = container.querySelectorAll(
+      ".oracle-outcome__conditions .oracle-reason-list > li",
+    );
+    expect(items).toHaveLength(2);
+    expect(items[0]).toHaveTextContent(CONDITION_ONE.message.en);
+    expect(items[1]).toHaveTextContent(CONDITION_TWO.message.en);
+  });
+
+  it("renders a condition next to a HUMAN_REVIEW_REQUIRED verdict too — notices has no state constraint", () => {
+    const outcome = outcomeFor("HUMAN_REVIEW_REQUIRED", [CONDITION_ONE]);
+    renderSheet("HUMAN_REVIEW_REQUIRED", "en", { outcome });
+    expect(screen.getByText(CONDITION_ONE.message.en)).toBeInTheDocument();
+  });
+
+  it("renders no conditions section when there are none", () => {
+    const { container } = renderSheet("SUPPORTED_CANDIDATES");
+    expect(
+      container.querySelector(".oracle-outcome__conditions"),
+    ).not.toBeInTheDocument();
   });
 });
