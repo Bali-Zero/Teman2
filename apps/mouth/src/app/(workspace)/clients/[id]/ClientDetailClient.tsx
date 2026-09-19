@@ -1215,6 +1215,11 @@ export function ClientDetailClient({
 
           {(visibleTab === "timeline" || visibleTab === "whatsapp") && (
             <ActivityTab
+              // R8 audit item 5: ActivityTab only reads `initialSection` on
+              // mount (no corrective effect) — a `key` forces the remount a
+              // live `?tab=timeline` <-> `?tab=whatsapp` switch needs while
+              // this guard keeps both under the same branch.
+              key={visibleTab === "whatsapp" ? "whatsapp" : "timeline"}
               clientId={clientId}
               interactions={interactions}
               formatDate={formatDate}
@@ -1230,6 +1235,7 @@ export function ClientDetailClient({
               onInteractionRemoved={(id) =>
                 setInteractions((prev) => prev.filter((i) => i.id !== id))
               }
+              onSaved={invalidateClient}
             />
           )}
         </div>

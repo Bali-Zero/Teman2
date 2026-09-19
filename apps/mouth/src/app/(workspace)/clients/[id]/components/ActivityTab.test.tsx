@@ -259,6 +259,34 @@ describe("ActivityTab — failed save is honest (PROD defect DIAG-activity-loggi
     expect(screen.queryByText(/^Logged:/)).not.toBeInTheDocument();
     expect(onInteractionCreated).not.toHaveBeenCalled();
   });
+
+  // R8 audit item 2: the copy is chosen by `ApiError.statusCode`, never by
+  // interpolating the raw backend `detail` — a 404 in PROD today reads
+  // "Not found" and must never reach the operator verbatim.
+  it.each([
+    [404, /did not accept/],
+    [403, /permission/],
+    [401, /session expired/i],
+  ])(
+    "a %s rejection shows operator copy, never the backend detail",
+    async (status, re) => {
+      const err = Object.assign(new Error("Not found"), {
+        statusCode: status,
+      });
+      vi.mocked(api.crm.createInteraction).mockRejectedValue(err);
+      renderTab();
+      const field = screen.getByLabelText("Log an update");
+      fireEvent.change(field, {
+        target: { value: "Synthetic unsaved note" },
+      });
+      fireEvent.click(screen.getByRole("button", { name: "Save" }));
+      await flush();
+
+      expect(screen.getByRole("alert")).toHaveTextContent(re);
+      expect(screen.getByRole("alert")).not.toHaveTextContent("Not found");
+      expect(field).toHaveValue("Synthetic unsaved note");
+    },
+  );
 });
 
 describe("ActivityTab — Undo (real delete exists: crm_interactions.py DELETE /{interaction_id})", () => {
@@ -317,5 +345,107 @@ describe("ActivityTab — Undo (real delete exists: crm_interactions.py DELETE /
       screen.queryByRole("button", { name: "Undo" }),
     ).not.toBeInTheDocument();
     expect(screen.queryByText(/^Logged:/)).not.toBeInTheDocument();
+  });
+
+  // R8 audit item 1a: `POST /api/crm/interactions/` never writes
+  // `created_by` (`crm_interactions.py:167-175`), so `DELETE` 403s for
+  // every non-admin (`crm_utils.py::is_crm_admin`). The row must not
+  // silently vanish only for a later window-focus refetch to bring it back
+  // unexplained — a refused delete keeps the entry and says so.
+  it("a refused DELETE keeps the entry and says so", async () => {
+    vi.mocked(api.crm.createInteraction).mockResolvedValue({
+      ...SHORT_NOTE,
+      id: 557,
+      summary: "Synthetic refused-undo event",
+    });
+    vi.mocked(api.crm.deleteInteraction).mockRejectedValue(
+      new Error("You can only delete interactions you created"),
+    );
+    const { onInteractionRemoved } = renderTab();
+    fireEvent.change(screen.getByLabelText("Log an update"), {
+      target: { value: "Synthetic refused-undo event" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    await flush();
+    fireEvent.click(screen.getByRole("button", { name: "Undo" }));
+    await flush();
+
+    expect(api.crm.deleteInteraction).toHaveBeenCalledWith(557, EMAIL);
+    expect(onInteractionRemoved).not.toHaveBeenCalled();
+    expect(screen.getByRole("alert")).toHaveTextContent(/Could not undo/);
+    expect(screen.getByRole("alert")).not.toHaveTextContent(
+      /only delete interactions/,
+    );
+  });
+});
+
+describe("ActivityTab — 24px target floor (R8 audit item 3)", () => {
+  // jsdom does no layout, so this pins a CLASS CONTRACT, not a measured
+  // pixel height — the mock's `.preset-btn{ height:32px }` -> `h-8`, and
+  // OverviewTab.tsx:141's identical inline text button -> `min-h-6`.
+  it("every new control carries a >=24px height class (jsdom cannot measure; this pins the contract)", () => {
+    renderTab();
+    for (const name of [
+      "Called — no answer",
+      "Sent documents",
+      "Follow-up scheduled",
+      "Payment reminder sent",
+    ]) {
+      expect(screen.getByRole("button", { name })).toHaveClass(
+        /h-8|min-h-6|min-h-11/,
+      );
+    }
+    fireEvent.click(screen.getByRole("button", { name: "Show more" }));
+    expect(screen.getByRole("button", { name: "Show less" })).toHaveClass(
+      /min-h-6|min-h-11/,
+    );
+  });
+
+  it("Save keeps an accessible name while submitting", async () => {
+    vi.mocked(api.crm.createInteraction).mockImplementation(
+      () => new Promise(() => {}), // never resolves — hold isSubmitting=true
+    );
+    renderTab();
+    fireEvent.change(screen.getByLabelText("Log an update"), {
+      target: { value: "Synthetic in-flight note" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    await flush();
+    expect(screen.getByRole("button", { name: /sav/i })).toBeInTheDocument();
+  });
+});
+
+describe("ActivityTab — invalidates the client query after a successful save (R8 audit item 6)", () => {
+  it("calls onInteractionCreated and onSaved exactly once each on a successful save", async () => {
+    vi.mocked(api.crm.createInteraction).mockResolvedValue({
+      ...SHORT_NOTE,
+      id: 558,
+      summary: "Synthetic invalidate-on-save event",
+    });
+    const onSaved = vi.fn();
+    const { onInteractionCreated } = renderTab({ onSaved });
+    fireEvent.change(screen.getByLabelText("Log an update"), {
+      target: { value: "Synthetic invalidate-on-save event" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    await flush();
+
+    expect(onInteractionCreated).toHaveBeenCalledTimes(1);
+    expect(onSaved).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not call onSaved on a failed save", async () => {
+    vi.mocked(api.crm.createInteraction).mockRejectedValue(
+      new Error("404 Not Found"),
+    );
+    const onSaved = vi.fn();
+    renderTab({ onSaved });
+    fireEvent.change(screen.getByLabelText("Log an update"), {
+      target: { value: "Synthetic unsaved event" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    await flush();
+
+    expect(onSaved).not.toHaveBeenCalled();
   });
 });

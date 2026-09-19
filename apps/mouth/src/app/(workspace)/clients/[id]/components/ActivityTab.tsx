@@ -1,12 +1,6 @@
 "use client";
 
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import React, { useCallback, useMemo, useRef, useState } from "react";
 import {
   Calendar,
   FileText,
@@ -86,6 +80,23 @@ function ageLabel(dateStr: string): string {
   if (ageDays >= 30) return `${Math.floor(ageDays / 30)}mo ago`;
   if (ageDays >= 7) return `${Math.floor(ageDays / 7)}w ago`;
   return `${ageDays}d ago`;
+}
+
+/** Maps a failed save/undo to operator-readable copy — never the raw backend
+ * `detail` (R8 audit item 2). `err` is whatever `createInteraction`/
+ * `deleteInteraction` rejected with; `ApiError` (`lib/api/error-handler.ts`)
+ * carries `statusCode`, a plain `Error` (network failure, no response) does
+ * not, and falls into the last bucket below. */
+function saveFailureMessage(err: unknown): string {
+  const statusCode = (err as { statusCode?: number } | null | undefined)
+    ?.statusCode;
+  if (statusCode === 401)
+    return "Your session expired. Sign in again, then press Save — your text is still here.";
+  if (statusCode === 403)
+    return "You do not have permission to log an interaction for this client. Your text is still here.";
+  if (statusCode === 404 || statusCode === 0)
+    return "The server did not accept the note. Nothing was saved — your text is still here. Try again in a minute.";
+  return "Could not save. Nothing was lost — your text is still here. Try again.";
 }
 
 function TimelineList({
@@ -263,7 +274,7 @@ function TimelineList({
                         <button
                           type="button"
                           onClick={() => toggleExpand(interaction.id)}
-                          className="mt-0.5 text-[11px] text-[var(--tx-secondary)] underline"
+                          className="mt-0.5 inline-flex min-h-6 items-center text-[11px] text-[var(--tx-secondary)] underline"
                         >
                           {isExpanded ? "Show less" : "Show more"}
                         </button>
@@ -296,6 +307,7 @@ export function ActivityTab({
   initialSection,
   onInteractionCreated,
   onInteractionRemoved,
+  onSaved,
 }: {
   clientId: number;
   interactions: Interaction[];
@@ -309,11 +321,20 @@ export function ActivityTab({
   initialSection: "timeline" | "whatsapp";
   onInteractionCreated: (interaction: Interaction) => void;
   onInteractionRemoved: (id: number) => void;
+  /** R8 audit item 6: fired (in addition to `onInteractionCreated`) after a
+   * successful save, so the caller can also invalidate the client query —
+   * every other create path on this page does (`ClientDetailClient.tsx`
+   * `submitLog`/header preset), because the server bumps
+   * `clients.last_interaction_date` and the header reads it. */
+  onSaved?: () => void;
 }) {
+  // `initialSection` only seeds this state on MOUNT; a parent that wants a
+  // live prop change to take effect (e.g. `?tab=timeline` -> `?tab=whatsapp`
+  // without the tab bar unmounting ActivityTab) must remount with a
+  // `key={initialSection}`, as `ClientDetailClient.tsx` does.
   const [section, setSection] = useState<"timeline" | "whatsapp">(
     initialSection,
   );
-  useEffect(() => setSection(initialSection), [initialSection]);
 
   const [draft, setDraft] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -355,6 +376,7 @@ export function ActivityTab({
           direction: "outbound",
         });
         onInteractionCreated(created);
+        onSaved?.();
         setDraft("");
         showUndoSlip(created.id, trimmed);
       } catch (err) {
@@ -363,28 +385,37 @@ export function ActivityTab({
         // that fix — it must never swallow the failure the way the
         // page-header "Log" panel still does (ClientDetailClient.tsx,
         // separate follow-up, not this slice): visible words, the typed
-        // text stays, and the success Slip never renders.
-        setComposerError(
-          (err as Error)?.message || "Could not save. Try again.",
-        );
+        // text stays, and the success Slip never renders. The message is
+        // always product copy (`saveFailureMessage`) — never the raw
+        // backend `detail` (R8 audit item 2).
+        logger.error("ActivityTab save failed: " + String(err));
+        setComposerError(saveFailureMessage(err));
       } finally {
         setIsSubmitting(false);
       }
     },
-    [clientId, isSubmitting, onInteractionCreated, showUndoSlip],
+    [clientId, isSubmitting, onInteractionCreated, onSaved, showUndoSlip],
   );
 
   const handleUndo = useCallback(() => {
     if (!slip) return;
     const { interactionId } = slip;
+    // The Undo window is over either way — dismiss the slip immediately.
+    // But the row itself only comes off the list once the DELETE actually
+    // resolves (R8 audit item 1a): a 403 (non-admin, `created_by` unset on
+    // create — see `crm_interactions.py`) must not silently vanish the row
+    // only for `refetchOnWindowFocus` to bring it back later, unexplained.
     dismissSlip();
-    onInteractionRemoved(interactionId);
     void (async () => {
       try {
         const user = await api.getProfile();
         await api.crm.deleteInteraction(interactionId, user.email);
+        onInteractionRemoved(interactionId);
       } catch (err) {
         logger.error("ActivityTab undo-delete failed: " + String(err));
+        setComposerError(
+          "Could not undo — the entry is still saved. Ask an admin to remove it.",
+        );
       }
     })();
   }, [dismissSlip, onInteractionRemoved, slip]);
@@ -399,7 +430,7 @@ export function ActivityTab({
               type="button"
               disabled={isSubmitting}
               onClick={() => void submit(preset.summary, preset.type)}
-              className="rounded-[2px] border border-[var(--bz-border)] px-2.5 py-1 text-[11px] text-[var(--tx-secondary)] hover:border-[var(--line-control)] hover:text-[var(--tx-pure)] disabled:opacity-50"
+              className="inline-flex h-8 items-center rounded-[2px] border border-[var(--bz-border)] px-2.5 text-[11px] text-[var(--tx-secondary)] hover:border-[var(--line-control)] hover:text-[var(--tx-pure)] disabled:opacity-50"
             >
               {preset.label}
             </button>
@@ -433,6 +464,7 @@ export function ActivityTab({
             disabled={!draft.trim() || isSubmitting}
             onClick={() => void submit(draft, "note")}
             className="mb-1 gap-2"
+            aria-label={isSubmitting ? "Saving" : undefined}
           >
             {isSubmitting ? (
               <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
@@ -444,8 +476,7 @@ export function ActivityTab({
 
         {composerError && (
           <Notice tone="you" role="alert">
-            Could not save — {composerError}. Your text is still here; try
-            again.
+            {composerError}
           </Notice>
         )}
       </div>
