@@ -108,6 +108,33 @@ function byExpiryUrgency(a: ClientDocument, b: ClientDocument): number {
   return rank(a) - rank(b);
 }
 
+/**
+ * `snake_case` → `Title Case`, matching the old component's own
+ * normalisation (`OLD:279`: `.replace(/_/g, " ")` + a CSS `capitalize`
+ * utility) so the restored type label reads exactly as it used to.
+ */
+function formatDocumentType(type: string): string {
+  return type.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+/**
+ * The old component's per-category header carried its own doc count and
+ * urgent-count simultaneously for every category (`OLD:211-213`,
+ * `:214-219`); collapsing the headers into filter pills (this restyle) took
+ * both readings with it. Restored onto the pill's own label, using the same
+ * `expiryCountdown` the aggregate above uses — so a category never disagrees
+ * with the total.
+ */
+function categoryPillLabel(
+  label: string,
+  total: number,
+  expiringSoon: number,
+): string {
+  return expiringSoon > 0
+    ? `${label} · ${total} · ${expiringSoon} soon`
+    : `${label} · ${total}`;
+}
+
 export function DocumentsTab({
   clientId,
   documents,
@@ -160,19 +187,38 @@ export function DocumentsTab({
     [documents],
   );
 
+  // Per-category total + expiring-soon, for the filter pill label — same
+  // `expiryCountdown` function as `totalExpiringSoon` above.
+  const categoryStats = useMemo(() => {
+    const stats = new Map<string, { total: number; expiringSoon: number }>();
+    for (const [cat, docs] of Object.entries(documentsByCategory)) {
+      stats.set(cat, {
+        total: docs.length,
+        expiringSoon: docs.filter((d) => expiryCountdown(d.expiry_date).urgent)
+          .length,
+      });
+    }
+    return stats;
+  }, [documentsByCategory]);
+
   if (documents.length === 0) {
     return (
       <EmptyState
         action={
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={onAddClick}
-            className="gap-2"
-          >
-            <Plus className="h-4 w-4" aria-hidden="true" />
-            Add document
-          </Button>
+          <div className="flex flex-col items-start gap-3">
+            <p className="text-sm text-[var(--tx-secondary)]">
+              Upload passport, visa, or company documents
+            </p>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={onAddClick}
+              className="gap-2"
+            >
+              <Plus className="h-4 w-4" aria-hidden="true" />
+              Add document
+            </Button>
+          </div>
         }
       >
         No documents on file yet.
@@ -189,19 +235,33 @@ export function DocumentsTab({
           <>
             <StatePill
               tone="wait"
-              label="All"
+              label={categoryPillLabel(
+                "All",
+                documents.length,
+                totalExpiringSoon,
+              )}
               pressed={activeCategory === "all"}
               onClick={() => setActiveCategory("all")}
             />
-            {sortedCategories.map((cat) => (
-              <StatePill
-                key={cat}
-                tone="wait"
-                label={CATEGORY_LABELS[cat] || cat}
-                pressed={activeCategory === cat}
-                onClick={() => setActiveCategory(cat)}
-              />
-            ))}
+            {sortedCategories.map((cat) => {
+              const stats = categoryStats.get(cat) ?? {
+                total: 0,
+                expiringSoon: 0,
+              };
+              return (
+                <StatePill
+                  key={cat}
+                  tone="wait"
+                  label={categoryPillLabel(
+                    CATEGORY_LABELS[cat] || cat,
+                    stats.total,
+                    stats.expiringSoon,
+                  )}
+                  pressed={activeCategory === cat}
+                  onClick={() => setActiveCategory(cat)}
+                />
+              );
+            })}
           </>
         }
         right={
@@ -243,6 +303,7 @@ export function DocumentsTab({
               categoryByDocId.get(d.id) ?? d.document_category ?? "other";
             const catLabel = CATEGORY_LABELS[cat] || cat;
             const displayName = d.file_name || d.document_type;
+            const typeLabel = formatDocumentType(d.document_type);
             const openUrl = getDocumentOpenUrl(d);
             const pillState = documentStatusPill(d);
             const countdown = expiryCountdown(d.expiry_date);
@@ -277,8 +338,8 @@ export function DocumentsTab({
                     }
                     secondary={
                       uploadedLabel
-                        ? `${catLabel} · ${uploadedLabel}`
-                        : catLabel
+                        ? `${typeLabel} · ${catLabel} · ${uploadedLabel}`
+                        : `${typeLabel} · ${catLabel}`
                     }
                   />
                   {d.deleted_at && (

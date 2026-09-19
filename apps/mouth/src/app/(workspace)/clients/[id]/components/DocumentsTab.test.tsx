@@ -1,5 +1,5 @@
 import { fireEvent, render, screen } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ClientDocument } from "@/lib/api/crm/crm.types";
 import { DocumentsTab } from "./DocumentsTab";
 import { getDocumentOpenUrl } from "./utils";
@@ -95,7 +95,7 @@ const renderTab = (
   );
 
 describe("DocumentsTab — status pill is strictly deleted_at/status (GUILT)", () => {
-  it("pill words come only from deleted_at/status — Removed/Valid/Processing/Rejected", () => {
+  it("pill words come only from deleted_at/status — Removed/Valid/Processing/Rejected — and none of them is copper", () => {
     const documents = [
       doc({ id: 1, status: "verified", document_category: "personal" }),
       doc({
@@ -121,12 +121,17 @@ describe("DocumentsTab — status pill is strictly deleted_at/status (GUILT)", (
       personal: [documents[0], documents[3]],
       immigration: [documents[1], documents[2]],
     };
-    renderTab(documents, documentsByCategory);
+    const { container } = renderTab(documents, documentsByCategory);
 
     expect(screen.getAllByText("Valid").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Processing").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Rejected").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Removed").length).toBeGreaterThan(0);
+    // This fixture is the one that actually renders all four pills — the
+    // "no copper" claim only means something proven against a row that
+    // HAS a pill (R3-audit.md §6: the old fixture had none, so the
+    // assertion passed vacuously).
+    expect(container.innerHTML).not.toContain("--bz-copper-text");
   });
 
   it("a document that EXISTS but has no status is never labelled 'Missing'", () => {
@@ -136,8 +141,8 @@ describe("DocumentsTab — status pill is strictly deleted_at/status (GUILT)", (
     expect(screen.queryByText("Missing")).not.toBeInTheDocument();
   });
 
-  it("the status pill never carries the Expired/Expiring word or the copper tone", () => {
-    const { container } = renderTab([
+  it("the status pill never carries the Expired/Expiring word", () => {
+    renderTab([
       doc({
         id: 6,
         document_category: "immigration",
@@ -147,9 +152,23 @@ describe("DocumentsTab — status pill is strictly deleted_at/status (GUILT)", (
     ]);
     // Exact match: post-fix, "Expired"/"Expiring" only ever appear as PART of
     // the Expires-cell countdown ("⏰ 10d left"), never as a pill's whole text.
+    // This fixture has no `status`/`deleted_at`, so it renders NO pill at
+    // all (`documentStatusPill` → `null`) — the copper claim belongs on the
+    // multi-pill fixture above, where a pill actually exists to check
+    // (R3-audit.md §6).
     expect(screen.queryByText("Expired")).not.toBeInTheDocument();
     expect(screen.queryByText("Expiring")).not.toBeInTheDocument();
-    expect(container.innerHTML).not.toContain("--bz-copper-text");
+  });
+
+  it("sanity: the copper-detector pattern actually catches copper — proves the assertion above is not vacuous", () => {
+    // R3-audit.md §6: the previous version of this suite asserted
+    // `container.innerHTML).not.toContain("--bz-copper-text")` against a
+    // fixture with no pill at all, so it would have passed even if every
+    // pill in the product turned copper. This proves the string the real
+    // test searches for is exactly what a copper render would contain.
+    const syntheticCopperRow =
+      '<span class="text-[var(--bz-copper-text)]">You</span>';
+    expect(syntheticCopperRow).toContain("--bz-copper-text");
   });
 });
 
@@ -211,6 +230,73 @@ describe("DocumentsTab — urgency lives on the Expires cell, never the pill", (
     expect(container.innerHTML).not.toContain("--state-warning");
   });
 
+  describe("the 90-day window is pinned at the exact boundary (R3-audit.md §3)", () => {
+    // Fake timers freeze "now" so `Math.ceil` on the day arithmetic lands on
+    // an exact integer — with a real clock the previous fixtures (80 in,
+    // 200 out) left the 91–199 band unsampled, so a drift to 90→180 or
+    // 90→85 passed with every test green. These two fail on EITHER move.
+    beforeEach(() => {
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date("2026-01-01T00:00:00.000Z"));
+    });
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    it("GUILT: exactly 90 days out still carries the countdown, in warning", () => {
+      renderTab([
+        doc({
+          id: 20,
+          document_category: "immigration",
+          file_name: "edge-in.pdf",
+          expiry_date: daysFromNow(90),
+        }),
+      ]);
+      const countdowns = screen.getAllByText(/left/);
+      expect(countdowns.length).toBeGreaterThan(0);
+      for (const el of countdowns) {
+        expect(el.getAttribute("style") ?? "").toContain("--state-warning");
+      }
+    });
+
+    it("INNOCENCE: 91 days out is a plain date — no countdown, no warning token", () => {
+      const { container } = renderTab([
+        doc({
+          id: 21,
+          document_category: "immigration",
+          file_name: "edge-out.pdf",
+          expiry_date: daysFromNow(91),
+        }),
+      ]);
+      expect(screen.queryByText(/left/)).not.toBeInTheDocument();
+      expect(container.innerHTML).not.toContain("--state-warning");
+    });
+
+    it("GUILT: the aggregate counts an exactly-90-day document — same expiryCountdown fn", () => {
+      renderTab([
+        doc({
+          id: 22,
+          document_category: "immigration",
+          file_name: "agg-in.pdf",
+          expiry_date: daysFromNow(90),
+        }),
+      ]);
+      expect(screen.getByText("1 expiring soon")).toBeInTheDocument();
+    });
+
+    it("INNOCENCE: the aggregate excludes a 91-day document", () => {
+      renderTab([
+        doc({
+          id: 23,
+          document_category: "immigration",
+          file_name: "agg-out.pdf",
+          expiry_date: daysFromNow(91),
+        }),
+      ]);
+      expect(screen.queryByText(/expiring soon/)).not.toBeInTheDocument();
+    });
+  });
+
   it("never gives an expiring/expired document a red/danger token", () => {
     const { container } = renderTab([
       doc({
@@ -257,6 +343,42 @@ describe("DocumentsTab — aggregate expiring-soon summary", () => {
   });
 });
 
+describe("DocumentsTab — per-category doc count + expiring count (R3-audit.md §2.2/§2.3)", () => {
+  it("GUILT: the category filter pill carries its own doc count and expiring-soon count, computed with expiryCountdown", () => {
+    const documents = [
+      doc({
+        id: 24,
+        document_category: "immigration",
+        file_name: "a.pdf",
+        expiry_date: daysFromNow(10),
+      }),
+      doc({
+        id: 25,
+        document_category: "immigration",
+        file_name: "b.pdf",
+        expiry_date: daysFromNow(200),
+      }),
+      doc({ id: 26, document_category: "personal", file_name: "c.pdf" }),
+    ];
+    const documentsByCategory = {
+      immigration: [documents[0], documents[1]],
+      personal: [documents[2]],
+    };
+    renderTab(documents, documentsByCategory);
+
+    // 2 docs total in "immigration", 1 of them expiring within 90 days —
+    // readable off the pill without clicking it (old grouped-header view,
+    // origin/main before this restyle, showed both simultaneously per group).
+    expect(
+      screen.getByRole("button", { name: "Immigration · 2 · 1 soon" }),
+    ).toBeInTheDocument();
+    // "personal" has 1 doc, none expiring — no "soon" suffix.
+    expect(
+      screen.getByRole("button", { name: "Personal · 1" }),
+    ).toBeInTheDocument();
+  });
+});
+
 describe("DocumentsTab — removed-document restore window", () => {
   it("GUILT: shows the restore-window line with the real deleted_at date", () => {
     renderTab([
@@ -290,7 +412,9 @@ describe("DocumentsTab — grid/filter/actions (kept)", () => {
     expect(screen.getByText("photo.jpg")).toBeInTheDocument();
     expect(screen.getByText("visa.pdf")).toBeInTheDocument();
 
-    const immigrationPill = screen.getByRole("button", { name: "Immigration" });
+    const immigrationPill = screen.getByRole("button", {
+      name: "Immigration · 1",
+    });
     expect(immigrationPill).toHaveAttribute("aria-pressed", "false");
     fireEvent.click(immigrationPill);
 
@@ -332,6 +456,30 @@ describe("DocumentsTab — grid/filter/actions (kept)", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Add document" }));
     expect(onAddClick).toHaveBeenCalled();
+
+    // INNOCENCE (R3-audit.md §5, restoring T-OLD:96): a row that HAS a file
+    // must never show the "unavailable" fallback — the symmetric side of
+    // the guilt case below, which only proved the fallback appears when
+    // the file is missing, never that it stays away when it isn't.
+    expect(screen.queryByText("File tidak tersedia")).not.toBeInTheDocument();
+  });
+
+  it("shows the document type on the secondary line even when file_name is present (R3-audit.md §2.1)", () => {
+    renderTab([
+      doc({
+        id: 27,
+        document_type: "id_card",
+        document_category: "personal",
+        file_name: "IMG_0001.jpeg",
+      }),
+    ]);
+    // GUILT: the old component read `document_type` on every row regardless
+    // of `file_name`; the name alone ("IMG_0001.jpeg") does not say what the
+    // document IS. Category ("Personal") does not substitute for type
+    // either — it covers passport, visa, KITAS, sponsor letter, ERP alike.
+    expect(screen.getByText("IMG_0001.jpeg")).toBeInTheDocument();
+    expect(screen.getAllByText(/Id Card/).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Personal/).length).toBeGreaterThan(0);
   });
 
   it("says the file is unavailable when the row has nothing to open", () => {
@@ -348,10 +496,15 @@ describe("DocumentsTab — grid/filter/actions (kept)", () => {
     ).toBeInTheDocument();
   });
 
-  it("shows the EmptyState sentence and a single action when there are no documents", () => {
+  it("shows the EmptyState sentence, its old hint (R3-audit.md §2.4), and a single action when there are no documents", () => {
     renderTab([], {});
 
     expect(screen.getByText("No documents on file yet.")).toBeInTheDocument();
+    // Verbatim from the old component (`OLD:128-130`) — the only line that
+    // told a new operator WHAT to upload.
+    expect(
+      screen.getByText("Upload passport, visa, or company documents"),
+    ).toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: "Add document" }),
     ).toBeInTheDocument();
