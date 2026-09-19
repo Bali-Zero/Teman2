@@ -12,7 +12,11 @@ import json
 import httpx
 import pytest
 
-from backend.services.payments.port import NormalizedFailureEvent, NormalizedPaidEvent
+from backend.services.payments.port import (
+    NormalizedFailureEvent,
+    NormalizedPaidEvent,
+    NormalizedRefundEvent,
+)
 from backend.services.payments.terminal_taxonomy import CustomerAction, FailureOutcome
 from backend.services.payments.xendit import XenditFeeConfig, XenditPaymentProvider
 
@@ -62,3 +66,92 @@ def test_paid_status_is_unaffected_by_the_expired_fix(provider: XenditPaymentPro
     event = provider.parse_event(raw_body=json.dumps(body).encode(), headers={})
     assert isinstance(event, NormalizedPaidEvent)
     assert event.amount_idr == 790_000
+
+
+# --- the id a callback yields must be the id `refund()` can spend ---------------
+#
+# `provider_charge_id` is not a free-form label: it is stored on the order, an
+# OP-F04/F05 late case carries it into `late_case_charge_id`, and
+# `resolve_late_order` hands it to `refund()`, which posts it as
+# `{"invoice_id": ...}`. Both webhook branches used to prefer `payment_id`, so a
+# real staff refund on that path was issued with a payment id in the invoice-id
+# field: 404 -> RefundFailed -> PaymentProviderUnavailable, money kept, case
+# stuck open. Found by Codex `gpt-5.6-sol` and Kimi `k3` on the OP-F08 diff.
+
+
+def test_a_paid_callback_carrying_both_ids_yields_the_invoice_id(
+    provider: XenditPaymentProvider,
+) -> None:
+    body = {
+        "id": "inv-both-ids-1",
+        "status": "PAID",
+        # the shape that made the two indistinguishable: BOTH keys present
+        "payment_id": "pay-both-ids-1",
+        "paid_amount": 790000,
+        "currency": "IDR",
+    }
+    event = provider.parse_event(raw_body=json.dumps(body).encode(), headers={})
+    assert isinstance(event, NormalizedPaidEvent)
+    assert event.provider_charge_id == "inv-both-ids-1"
+    assert event.provider_charge_id != "pay-both-ids-1"
+
+
+def test_a_refunded_callback_carrying_both_ids_yields_the_invoice_id(
+    provider: XenditPaymentProvider,
+) -> None:
+    body = {
+        "id": "inv-both-ids-2",
+        "status": "REFUNDED",
+        "payment_id": "pay-both-ids-2",
+        "refund_id": "rfd-both-ids-2",
+    }
+    event = provider.parse_event(raw_body=json.dumps(body).encode(), headers={})
+    assert isinstance(event, NormalizedRefundEvent)
+    assert event.provider_charge_id == "inv-both-ids-2"
+    assert event.provider_refund_id == "rfd-both-ids-2"
+
+
+@pytest.mark.asyncio
+async def test_the_refund_the_paid_callback_makes_possible_is_spendable() -> None:
+    """The end the two tests above exist for: parse a PAID callback carrying
+    both ids, then spend the id it yielded through `refund()` and read what
+    actually goes on the wire. `invoice_id` must be the INVOICE id — Xendit
+    404s on anything else, and `RefundFailed` is raised after the staff action
+    has already been taken."""
+
+    sent: list[dict] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        sent.append(json.loads(request.content))
+        return httpx.Response(200, json={"id": "rfd-spent-1"})
+
+    client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
+    provider = XenditPaymentProvider(
+        secret_key="xnd_development_fake_key_for_tests",
+        callback_verification_token="fake-token",
+        public_base_url="https://example.com",
+        fee_config=XenditFeeConfig(percentage_bps=350, fixed_idr=6000),
+        client=client,
+    )
+    try:
+        body = {
+            "id": "inv-spendable-1",
+            "status": "PAID",
+            "payment_id": "pay-spendable-1",
+            "paid_amount": 790000,
+            "currency": "IDR",
+        }
+        event = provider.parse_event(raw_body=json.dumps(body).encode(), headers={})
+        assert isinstance(event, NormalizedPaidEvent)
+        refund_id = await provider.refund(
+            provider_charge_id=event.provider_charge_id,
+            idempotency_key="idem-spendable-1",
+        )
+    finally:
+        await client.aclose()
+
+    assert refund_id == "rfd-spent-1"
+    assert sent == [{"invoice_id": "inv-spendable-1", "reason": "OTHERS"}], (
+        "the refund was issued against something other than the invoice id — "
+        "Xendit answers 404 and the money never goes back"
+    )

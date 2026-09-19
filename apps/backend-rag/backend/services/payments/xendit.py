@@ -262,7 +262,16 @@ class XenditPaymentProvider:
             raise WebhookUnparseable("callback body missing invoice id")
 
         if status == "PAID":
-            charge_id = body.get("payment_id") or body.get("id")
+            # THE INVOICE ID, NOT THE PAYMENT ID, and the difference is a money
+            # path. `provider_charge_id` is what `garuda_orders` stores, what an
+            # OP-F04/F05 late case carries into `late_case_charge_id`, and what
+            # `resolve_late_order` hands to `refund()` — which posts it as
+            # `{"invoice_id": ...}`. Preferring `payment_id` therefore issued a
+            # real refund with a payment id in the invoice-id field: 404 ->
+            # `RefundFailed` -> `PaymentProviderUnavailable`, money kept, case
+            # stuck open. `confirm_charge`'s own branch was already cured to
+            # `body.get("id")`; these two webhook branches are the rest of it.
+            charge_id = body.get("id")
             amount = body.get("paid_amount") or body.get("amount")
             currency = body.get("currency", "IDR")
             if not isinstance(amount, int | float):
@@ -296,7 +305,10 @@ class XenditPaymentProvider:
             )
         if status == "REFUNDED" or "refund" in body:
             refund_id = body.get("refund_id") or f"{event_id}-refund"
-            charge_id = body.get("payment_id") or body.get("id")
+            # Same identity as the PAID branch above, for the same reason: the
+            # refunded charge must be nameable to `refund()`, which speaks
+            # invoice ids.
+            charge_id = body.get("id")
             return NormalizedRefundEvent(
                 provider_event_id=str(event_id),
                 provider_refund_id=str(refund_id),
