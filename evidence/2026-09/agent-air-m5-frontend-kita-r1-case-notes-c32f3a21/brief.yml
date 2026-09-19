@@ -1,0 +1,127 @@
+task: >-
+  R1 of the kita client-profile redesign (PLAN-redesign.md, design approved by the
+  owner 2026-09-19 ~19:00 WITA): restyles the Overview "Client Story" panel into one
+  r19 `LedgerSection` titled "Case notes" (`BusinessStoryPanel.tsx`), closed by
+  default with a real `<button aria-expanded aria-controls>` Open/Close toggle, and
+  fixes two defects found while doing it. (1) DEAD FALLBACK, REAL SCORE KEPT: an
+  independent old-vs-new audit (R1-audit.md) showed the backend always computes
+  `readiness` (`tax_company_pilot.py:145-155`'s `model_post_init`), so
+  `getReadiness`'s old fallback branch — which invented a score (35/70/100) to pair
+  with a gaps-derived status — was dead code on the live page; what the UI actually
+  showed was the backend's own `100 − Σ gap penalties` heuristic
+  (`tax_company_pilot.py:377-400`). This round deletes the dead fallback's invented
+  numbers but keeps showing the backend's real score, as a plain number next to the
+  `StatePill` (no "%", no percentage box — that decoration is what overstated it as
+  measured). (2) WRONG-CLIENT RISK: `textContains` matched company/person names by
+  bidirectional substring ("PT Alpha" matched "PT Alpha Beta Indonesia"), which
+  could attach one company's evidence dossier to an unrelated client's profile.
+  Person names now match exactly after case-fold/whitespace-collapse only; company
+  names match exactly after that same normalization PLUS stripping punctuation,
+  parenthetical qualifiers, and legal-form tokens (PT, PT., PMA, PMDN, CV, TBK) as
+  whole words — closing the substring hole while still matching the CRM/pilot
+  spelling drift a bare exact match would have missed (PT leading vs. trailing,
+  "PT PMA", a trailing dot, a parenthetical branch qualifier). Stripping alone
+  would also make "PT Alpha" and "CV Alpha" normalise to the same string and
+  match — a PT and a CV are different legal entities that can share a trade
+  name — so the stripped comparison is gated by each name's own legal family
+  (PT-flavoured vs. CV vs. silent/unstated): a match only counts when neither
+  side's declared family contradicts the other's. Reviewer per the
+  2026-09-17 CRM pact is Subhi (design is Zero's call, code is Subhi's); this PR
+  is prepared not armed at open, per that pact. Confined to
+  `apps/mouth/src/app/(workspace)/clients/[id]/components/BusinessStoryPanel.tsx`
+  and its test file — `ClientDetailClient.tsx`'s mount (~983-989) was read but not
+  edited, since the new `n` prop's default (2) already matches the design.
+lane: frontend/kita-r1-case-notes
+machine: air-m5
+date: 2026-09-19
+
+gear: 2
+gear_reason: >-
+  Deterministic floor 2, source `size`: `git diff --no-renames --numstat
+  origin/main...HEAD` measures BusinessStoryPanel.test.tsx +155/-36 and
+  BusinessStoryPanel.tsx +303/-263 — `scripts/evidence_pack_lint.py
+  --print-measured` reports "2 files, +458/-299" (churn 757 by add+delete count),
+  above `SIZE_GEAR2_THRESHOLD` (400) and below `SIZE_GEAR3_THRESHOLD` (1828, per
+  the script's own constant comment). Neither changed file matches
+  `HOTZONE_PATTERNS` (both are plain files under `apps/mouth/`, no workflow/secret/
+  migration path), so the path term does not independently raise the floor.
+  Confirmed via `python3 scripts/evidence_pack_lint.py --print-floor
+  --print-floor-source --changed-files-file <2-file list> --numstat-file <numstat>`
+  → `2` / `size`, and cross-checked by running `bash scripts/preflight_pack.sh`
+  before and after adding this brief (red → green, see A4).
+
+appetite:
+  wall_clock_hours: 1
+  adversarial_rounds: 1
+
+acceptance:
+  A1: >-
+    `BusinessStoryPanel.test.tsx`'s 15 cases pass, including the GUILT cases that
+    fail against the pre-repair component: opening the section shows the backend's
+    real `readiness.score` (a fixture value of 76) as a plain number next to
+    "Needs a check", never as "76%" or any other `%` text, alongside the tax owner,
+    the evidence link's `href`, the "What to do next" actions, and the Reviewed
+    Workspace AI facts — restoring the assertions the rejected PR had dropped
+    without replacement (R1-audit.md §3); a story for company "PT Synthetic Alpha
+    Beta" is NOT attached to a client whose only company link is "PT Synthetic
+    Alpha" (empty-state renders instead); and six CRM spelling variants from the
+    audit's §5.3 table ("Alpha Beta" with no PT token, PT leading, an extra "PMA",
+    a dot after PT, a parenthetical qualifier, an alias minus its PT) all match the
+    same pilot entity again once punctuation and legal-form tokens are stripped;
+    and "PT Alpha" does NOT match "CV Alpha" — a stripped-equal pair whose own
+    legal families disagree — nor does a "mixed" name (both PT and CV tokens,
+    not a real company form) match anything via stripping, only via plain
+    equality. And the INNOCENCE cases: an exact company match survives
+    case-fold and internal whitespace-collapse; "PT Alpha" still does not match
+    "PT Alpha Beta Indonesia"; an empty string left after stripping never
+    matches anything; "Alpha" (no legal form) still matches "CV Alpha" — one
+    side silent is fine; a person name that merely contains another does not
+    match (no substring rule on the person path); `aria-controls` resolves to
+    a real element whether the
+    section is open or closed; the section is closed by default and toggles
+    `aria-expanded` correctly on click; the loading, empty-data, and error states
+    render without crashing.
+    probe: >-
+      cd apps/mouth && npx --no-install vitest run
+      'src/app/(workspace)/clients/[id]/components/BusinessStoryPanel.test.tsx'
+  A2: >-
+    The full `clients/[id]/` folder suite passes (12 files / 110 tests),
+    including `__tests__/client-detail-desk.test.tsx`'s AST-based colour/copper
+    guard — proving this diff introduces no raw colour literal, no red/rose/
+    orange/amber Tailwind utility, and no ownership-ungated `--bz-copper` literal
+    (the toggle's focus ring imports r19's `FOCUS` constant rather than spelling
+    `var(--bz-copper)` inline, which the guard caught on a first attempt and is
+    why the fix looks the way it does).
+    probe: >-
+      cd apps/mouth && npx --no-install vitest run
+      'src/app/(workspace)/clients/[id]/'
+  A3: >-
+    `tsc --noEmit -p .` exits 0 with no output — the local `ReadinessDisplay` type
+    (a `Pick` over `TaxCompanyPilotReadiness` for `status`/`label`/`reasons`, plus
+    an optional `score` carried through from the backend when `map.readiness` is
+    present) and the new `n?: number` prop on `BusinessStoryPanelProps` typecheck
+    cleanly against the shared `crm.types.ts` contract, which this PR does not
+    modify.
+    probe: cd apps/mouth && npx --no-install tsc --noEmit -p .
+  A4: >-
+    `bash scripts/preflight_pack.sh` exits non-zero with `[floor-needs-brief]`
+    before this brief exists in the diff, and exits 0 once this file is
+    committed alongside the code change.
+    probe: bash scripts/preflight_pack.sh
+
+out_of_scope: >-
+  The mock's "Last WhatsApp signal · 2 days ago" line — no field on
+  `TaxCompanyPilotMap` carries a last-contact timestamp today, so it is left out
+  rather than invented (noted in the R1 report and as a code comment). Dynamic
+  section-ordinal renumbering — this PR's `n` prop defaults to 2 and stays static;
+  ordinal 1 ("Needs attention") landed on main via #6844 after this branch's base
+  commit, so it is not visible from this worktree, but the default already matches
+  it. `ClientDetailClient.tsx` beyond reading it: its BusinessStoryPanel mount
+  needed no edit. Restyling the per-map detail markup beyond what this round
+  touches: the readiness score display (backend score kept, invented fallback
+  numbers dropped), the `emerald-*` → `--state-success` / r19 `Notice` token swap
+  (done because it was already being touched, not as a separate restyle pass),
+  the L1/L2/L3 accessibility and colour-law fixes from the R1 audit, and the
+  restored strings/assertions the rejected PR had dropped. Arming, merging, or
+  deploying this PR — per the ship-lifecycle contract the session that owns the
+  mandate does that, not this brief.
