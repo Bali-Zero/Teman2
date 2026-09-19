@@ -1,0 +1,104 @@
+task_id: vo-c1d-fence-closed-world
+gear: 2
+base_sha: 7b72829efb # pragma: allowlist secret - public Git commit ID
+objective: |
+  Visa Oracle mission, MANDATE-vo.md slice "C1b''". vo-gate-c1c
+  (GATE-C1C-REPORT-6845.md, PR #6845) sent the effective-block model back
+  REWORK-BUILD for the SECOND time on the same cause: a light-theme context
+  judged on the dark palette, letting a real two-state collapse ship green.
+  `findInheritanceBase` read only `branchSignatures[0]` (a multi-branch
+  selector list was judged on its first alternative alone, called "out of
+  scope" instead of failing loud), and `attrPairs` ran a regex over raw
+  branch text INCLUDING inside `:not(...)`, so a valued
+  `:not([data-oracle-theme="dark"])` — the LIGHT theme — was read as a
+  positive dark constraint.
+
+  Per the Builder Contract, a second red on the same cause stops a
+  fix-of-a-fix at depth 1: this slice does not patch a third shape, it
+  replaces the model's textual shortcuts with a closed-world RULE. Every
+  token of every selector branch for a state-bearing rule must be consumed
+  by an explicit, exported, documented grammar (`SELECTOR_GRAMMAR`) — a
+  leading TYPE/CLASS selector, `[name="value"]`/`[name]` attribute
+  selectors, a VALUELESS `:not([name])`, and the descendant combinator,
+  under `@media`/`@supports` only. Anything else throws `unmodelled
+  selector construct "<text>" in <identity>` naming the exact offending
+  text. A comma-separated selector is now N independent contexts (U2, not
+  the first alternative only); inheritance composes the FULL chain (U5)
+  instead of stopping at one hop; a leading statement at-rule is consumed
+  as a no-op instead of swallowing the rule that follows it (U6); "at line
+  N" now names where the construct itself starts (U7).
+constraints:
+  - "Raw material = e0c71817f8 (PR #6845, closed/frozen by the conductor).
+    Same two files: `oracle-state-tokens.helpers.ts` (sibling helper, not
+    `_lib/` — R19 map §4.5) and `oracle-state-tokens.test.ts`. `oracle.css`
+    stays untouched (sha256 unchanged from GATE-C1-REPORT-6820.md)."
+  - "No package.json/lockfile change, no new dependency — the parser
+    remains a hand-rolled pure-function pair; one level of `@media`/
+    `@supports` nesting only (OBS-C1b-5, unchanged, now also gated by the
+    at-rule keyword allowlist)."
+  - "A rule declaring no `--oracle-state-*` token never has its selector
+    parsed at all — the file has hundreds of unrelated layout/typography
+    rules using constructs (`:hover`, child combinators, other at-rules)
+    this grammar does not model; they stay invisible to the fence exactly
+    as before, so the closed-world grammar cannot false-positive on them."
+  - "Guilt/innocence proven on the REAL shipped oracle.css plus an appended
+    override for the gate's exact H1/H2/H3 fixtures (Check 2), never
+    single-block synthetic CSS for those three."
+  - "Mutations for guilt fixtures are made on a COPY of the shipped CSS
+    (string concatenation) or with `cp` backup + `cmp -s` restore when
+    touching the file on disk — never `git checkout --`."
+acceptance:
+  - text: "WHEN a rule's selector list has N comma-branches, each branch
+      SHALL be parsed, keyed and judged on its OWN signature — a real
+      collapse reachable only through one branch of a multi-branch override
+      SHALL turn that branch red while an unrelated branch of the same rule
+      stays green."
+    probe: "./node_modules/.bin/vitest --run --root apps/mouth 'src/app/(visa-oracle)/visa-oracle/oracle-state-tokens.test.ts' -t 'H1'"
+  - text: "WHEN a selector branch contains any construct outside the closed-
+      world grammar (a valued `:not()`, `:is()`, `:where()`, `:has()`, `&`
+      nesting, an at-rule keyword other than `@media`/`@supports`, or a
+      child/sibling combinator), the fence SHALL throw naming the exact
+      construct — never silently parse it into a wrongly-keyed context."
+    probe: "./node_modules/.bin/vitest --run --root apps/mouth 'src/app/(visa-oracle)/visa-oracle/oracle-state-tokens.test.ts' -t 'U4 closed-world'"
+  - text: "WHEN a subset override's best inheritance base is itself a
+      subset override, the fence SHALL compose the full chain (recursing
+      until every token is covered or no further base exists) rather than
+      reporting a token missing that a deeper ancestor actually declares."
+    probe: "./node_modules/.bin/vitest --run --root apps/mouth 'src/app/(visa-oracle)/visa-oracle/oracle-state-tokens.test.ts' -t 'U5 chain composition'"
+  - text: "The full suite stays green on the shipped file, the shipped file
+      itself parses with zero throws and the expected five-branch identity
+      list, and `tsc --noEmit` stays clean."
+    probe: "./node_modules/.bin/vitest --run --root apps/mouth 'src/app/(visa-oracle)/visa-oracle/oracle-state-tokens.test.ts'; cd apps/mouth && ../../node_modules/.bin/tsc --noEmit"
+consumer_map:
+  - '`Frontend Tests (Next.js)` CI job (matrix `app: mouth`) — runs `cd
+    apps/mouth && npx vitest --run --coverage`, which collects this test
+    file (`include: ["src/**/*.test.{ts,tsx}"]`) on every PR touching
+    apps/mouth.'
+  - "Any future design PR that repaints oracle.css (PLAN.md Slice C2-C5) —
+    this is the anti-regression fence G3-a requires to land first, now
+    judging every selector branch against an explicit, closed-world grammar
+    instead of a textual shortcut."
+risks:
+  - "The grammar is closed-world by construction: a selector shape not
+    listed in `SELECTOR_GRAMMAR` throws rather than parses, even when a
+    human would read it as harmless (e.g. an `:is()` used only for brevity
+    with no theme implication). This is the correct failure direction per
+    Q1/U1 (never derive from a partially-read selector) but means a future
+    repaint that reaches for `:is()`/`:has()` on a state-bearing rule will
+    need the grammar extended deliberately, not silently accepted."
+  - "One length-1 vs length-&gt;1 'missing token' message distinction exists
+    in the chain-walk code for a genuinely unresolvable chain; by
+    construction (every state-bearing context is evaluated independently,
+    earliest first) the shallowest broken ancestor in any such chain always
+    surfaces its own length-1 message first — documented in a code comment
+    rather than hidden, and the actually-reachable positive case (a chain
+    that DOES fully resolve across three hops) is proven by a dedicated
+    test."
+grader: |
+  A fresh Opus 5 gate follows, generator != grader, per MANDATE-vo.md and
+  the same discipline as vo-gate-c1 (#6820), vo-gate-c1b (#6833) and
+  vo-gate-c1c (#6845). Depth warning: this is the second cure of the same
+  named cause; a third red for it suspends the slice per the Builder
+  Contract.
+budget: 1 build lane (this session), no council gate.
+pii: none
