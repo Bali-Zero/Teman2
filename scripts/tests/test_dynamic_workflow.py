@@ -1339,3 +1339,25 @@ def test_run_selftest_end_to_end(capsys):
     assert "SELFTEST OK" in out
     assert "SELFTEST FAILED" not in out
     assert not [ln for ln in out.splitlines() if ln.startswith("FAIL - ")]
+
+
+def test_run_selftest_never_touches_the_real_research_operations_tree(capsys):
+    """PR2i obs 2/3 (gate-14 LOW-MEDIUM + LOW, GATE-14-REPORT-6791.md): run_selftest's capture
+    block used to mkdir the canonical dest under the REAL REPO_ROOT/research/operations/ and
+    clean up only in a `finally` -- a crash or SIGKILL between mkdir and rmtree left a stray
+    dated directory in the actual working tree. Proof per obs 3: a date grep on the dest name
+    cannot catch this (_capture_dest_for dates in UTC; PR2h's own proof line missed a whole
+    day for exactly this reason, since the run landed on 2026-09-18 UTC while the local date
+    was already 2026-09-19) -- an entry count plus every mtime, the parent directory included,
+    is what "nothing written" actually has to mean.
+    """
+    real_ops = dw.REPO_ROOT / "research" / "operations"
+    before_names = sorted(p.name for p in real_ops.iterdir())
+    watched = [real_ops, *real_ops.iterdir()]
+    before_mtimes = {p: p.stat().st_mtime_ns for p in watched}
+    dw.run_selftest()
+    capsys.readouterr()
+    after_names = sorted(p.name for p in real_ops.iterdir())
+    assert after_names == before_names
+    after_mtimes = {p: p.stat().st_mtime_ns for p in watched}
+    assert after_mtimes == before_mtimes

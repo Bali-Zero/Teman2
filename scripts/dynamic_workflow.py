@@ -1613,41 +1613,59 @@ def run_selftest() -> None:
                   e.code == 2)
         check("capture-check wrote no dest on wrong-location refusal", not dest_l.exists())
 
-        real_dest_l = _capture_dest_for(kit_l)
+        # PR2i obs 2 (gate-14 LOW-MEDIUM, GATE-14-REPORT-6791.md): this block used to mkdir
+        # the canonical dest straight under the REAL REPO_ROOT/research/operations/ and clean
+        # up only in the inner `finally` below -- a crash or SIGKILL between mkdir and rmtree
+        # left a stray dated directory in the actual working tree. REPO_ROOT is swapped for a
+        # throwaway temp root for exactly this block's duration -- the same technique PR2h item
+        # 4 used from OUTSIDE the module (monkeypatch.setattr(dw, "REPO_ROOT", tmp_path)); this
+        # call site has no monkeypatch fixture, so the swap is manual and restored in the
+        # outer finally below. cmd_capture_check's own --dest-location guard reads this same
+        # global too, so the swap has to cover the whole block, not just _capture_dest_for().
+        global REPO_ROOT
+        selftest_root_dir = tempfile.mkdtemp(prefix="dw-selftest-root-")
+        selftest_root = Path(selftest_root_dir)
+        (selftest_root / "research" / "operations").mkdir(parents=True)
+        real_repo_root, REPO_ROOT = REPO_ROOT, selftest_root
         try:
-            real_dest_l.mkdir(parents=True, exist_ok=True)
-            (real_dest_l / "stale.txt").write_text("pre-existing\n")
+            real_dest_l = _capture_dest_for(kit_l)
             try:
-                cmd_capture_check(argparse.Namespace(kit=str(kit_l), dest=str(real_dest_l)))
-                check("guilt: capture-check refuses a non-empty existing --dest", False)
-            except SystemExit as e:
-                check("guilt: capture-check refuses a non-empty existing --dest", e.code == 2)
-            check("capture-check left the pre-existing file untouched",
-                  (real_dest_l / "stale.txt").read_text() == "pre-existing\n")
-            shutil.rmtree(real_dest_l)
+                real_dest_l.mkdir(parents=True, exist_ok=True)
+                (real_dest_l / "stale.txt").write_text("pre-existing\n")
+                try:
+                    cmd_capture_check(argparse.Namespace(kit=str(kit_l), dest=str(real_dest_l)))
+                    check("guilt: capture-check refuses a non-empty existing --dest", False)
+                except SystemExit as e:
+                    check("guilt: capture-check refuses a non-empty existing --dest", e.code == 2)
+                check("capture-check left the pre-existing file untouched",
+                      (real_dest_l / "stale.txt").read_text() == "pre-existing\n")
+                shutil.rmtree(real_dest_l)
 
-            clean_outcome_l = (kit_l / "OUTCOME.md").read_text()
-            (kit_l / "OUTCOME.md").write_text(clean_outcome_l.rstrip("\n") +
-                                               "\ncontact: +6281234567890\n")
-            try:
-                cmd_capture_check(argparse.Namespace(kit=str(kit_l), dest=str(real_dest_l)))
-                check("guilt: capture-check refuses a PII-dirty OUTCOME.md", False)
-            except SystemExit as e:
-                check("guilt: capture-check refuses a PII-dirty OUTCOME.md", e.code == 3)
-            check("capture-check wrote no dest on the PII refusal", not real_dest_l.exists())
-            (kit_l / "OUTCOME.md").write_text(clean_outcome_l)
+                clean_outcome_l = (kit_l / "OUTCOME.md").read_text()
+                (kit_l / "OUTCOME.md").write_text(clean_outcome_l.rstrip("\n") +
+                                                   "\ncontact: +6281234567890\n")
+                try:
+                    cmd_capture_check(argparse.Namespace(kit=str(kit_l), dest=str(real_dest_l)))
+                    check("guilt: capture-check refuses a PII-dirty OUTCOME.md", False)
+                except SystemExit as e:
+                    check("guilt: capture-check refuses a PII-dirty OUTCOME.md", e.code == 3)
+                check("capture-check wrote no dest on the PII refusal", not real_dest_l.exists())
+                (kit_l / "OUTCOME.md").write_text(clean_outcome_l)
 
-            cmd_capture_check(argparse.Namespace(kit=str(kit_l), dest=str(real_dest_l)))
-            check("capture-check copied jury/tabulation.md to dest",
-                  (real_dest_l / "jury" / "tabulation.md").exists())
-            check("capture-check copied jury/tabulation.revealed.md to dest",
-                  (real_dest_l / "jury" / "tabulation.revealed.md").exists())
-            check("capture-check never copies jury/mapping.json",
-                  not (real_dest_l / "jury" / "mapping.json").exists())
-            check("capture-check copied Z-DECISIONI.md to dest",
-                  (real_dest_l / "Z-DECISIONI.md").exists())
+                cmd_capture_check(argparse.Namespace(kit=str(kit_l), dest=str(real_dest_l)))
+                check("capture-check copied jury/tabulation.md to dest",
+                      (real_dest_l / "jury" / "tabulation.md").exists())
+                check("capture-check copied jury/tabulation.revealed.md to dest",
+                      (real_dest_l / "jury" / "tabulation.revealed.md").exists())
+                check("capture-check never copies jury/mapping.json",
+                      not (real_dest_l / "jury" / "mapping.json").exists())
+                check("capture-check copied Z-DECISIONI.md to dest",
+                      (real_dest_l / "Z-DECISIONI.md").exists())
+            finally:
+                shutil.rmtree(real_dest_l, ignore_errors=True)
         finally:
-            shutil.rmtree(real_dest_l, ignore_errors=True)
+            REPO_ROOT = real_repo_root
+            shutil.rmtree(selftest_root_dir, ignore_errors=True)
 
     finally:
         shutil.rmtree(work, ignore_errors=True)
