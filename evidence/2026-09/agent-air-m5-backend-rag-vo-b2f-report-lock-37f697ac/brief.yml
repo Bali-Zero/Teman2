@@ -1,0 +1,65 @@
+task_id: vo-b2f-report-lock
+lane: backend-rag
+machine: air-m5
+base_sha: 1be2c0995d688e9a1d040e4f26c5614a122b8b84 # pragma: allowlist secret - public Git commit ID, not a credential
+date: 2026-09-20
+
+gear: 2
+gear_reason: >-
+  Floor 2 (`python3 scripts/contract_verify.py --head <final-head> --json` -> "floor 2, brief
+  present"). Net churn over the two CODE files alone -- report_lock.py + test_report_lock.py,
+  which do not change size once this brief is edited -- is 591 insertions / 0 deletions
+  (`git diff --stat <base_sha>..<final-head> -- report_lock.py test_report_lock.py`), already
+  above SIZE_GEAR2_THRESHOLD (400) on its own; unlike the closed #6884 attempt, where the
+  brief itself was what pushed the diff past that line, here the code alone decides it. This
+  brief does not count its own size (a committed file cannot count itself, gate OBS-1 of
+  GATE-B2D-REPORT-6884.md) and stays far below SIZE_GEAR3_THRESHOLD (1828) either way.
+
+objective: >-
+  R-FLOCK (MANDATE-vo.md, ruling 2026-09-19T20:31Z, after GATE-B2D-REPORT-6884.md): the
+  report lock stops being a pid-file PROTOCOL and becomes a KERNEL-HELD lock. The prior
+  attempt (#6884) is CLOSED: its `acquire()` created the lockfile with O_EXCL and wrote the
+  pid payload in a separate syscall, and a concurrent `break_stale=True` acquire landing in
+  that gap read an empty file, concluded the owner was dead, and unlinked a LIVE holder's
+  lock (OBS-A, HIGH, 3 double-holds in 105 real races). Slice B2''-a' rewrites the lock class
+  on `fcntl.flock(LOCK_EX | LOCK_NB)`, which has no such gap and no stale state at all: the
+  kernel arbitrates end to end and releases on any death of the holder. `atomic_write_json`
+  is reused unchanged in method (per-process temp + `os.replace`) from #6884's raw material
+  (head b9ca4047ac), but its guilt test is rewritten per gate finding OBS-D: the prior test
+  killed the holder BETWEEN two writes, not INSIDE one, so a plain `write_text` regression
+  would have left all 8 tests green.
+
+scope:
+  - "apps/backend-rag/backend/scripts/visa_engine/report_lock.py — new module: ReportLockError, ReportLock (context manager, no break_stale param), atomic_write_json."
+  - "apps/backend-rag/backend/tests/scripts/visa_engine/test_report_lock.py — new guilt-test suite, real subprocesses, every wait bounded."
+  - "This brief."
+
+constraints:
+  - >-
+    No decision in ReportLock is ever derived from the lockfile's content -- only from
+    flock's own result. The lockfile is never unlinked, by anyone: unlink + flock is the
+    classic two-holder race (a waiter on the old inode and a newcomer on a new inode both
+    "hold"). A leftover `<report>.lock` means nothing.
+  - >-
+    New files only. No runner, no httpx, no argparse, no change to any existing file.
+    Nothing in this repo imports this module yet -- Slice B2''-b (the runner) is the next
+    consumer, from a fresh `origin/main` that contains this module's merge.
+  - >-
+    Merging this deploys the backend (apps/backend-rag/**), but the deployed image never
+    runs this module (nothing imports it yet) -- there is no live-traffic observation to
+    make; the observation this PR ships is its own CI test job.
+
+acceptance:
+  - "WHEN N=2 and N=4 processes are released together by a barrier file and race for the same report's lock over 20 rounds each THEN exactly one holder ever holds at a time (no two acquire windows overlap) and the winner's file is intact. probe: pytest backend/tests/scripts/visa_engine/test_report_lock.py::test_n_processes_released_by_a_barrier_race_and_exactly_one_holds_at_a_time"
+  - "WHEN the locked section exits normally THEN the lock is released and a fresh acquire succeeds at once. probe: pytest backend/tests/scripts/visa_engine/test_report_lock.py::test_lock_is_released_on_normal_exit"
+  - "WHEN an exception is raised inside the locked section THEN the lock is still released. probe: pytest backend/tests/scripts/visa_engine/test_report_lock.py::test_lock_is_released_on_an_exception_inside_the_locked_section"
+  - "WHEN the holder is SIGKILLed THEN the next acquire succeeds at once, with no flag and no stale-check. probe: pytest backend/tests/scripts/visa_engine/test_report_lock.py::test_sigkill_of_the_holder_releases_the_lock_at_once_no_flag"
+  - "WHEN the holder is SIGTERMed THEN the next acquire succeeds at once, with no flag and no stale-check. probe: pytest backend/tests/scripts/visa_engine/test_report_lock.py::test_sigterm_of_the_holder_releases_the_lock_at_once_no_flag"
+  - "WHEN a leftover lockfile carries EMPTY content, GARBAGE content, or the pid of a LIVE unrelated process THEN acquire SUCCEEDS every time -- content is never consulted for a decision. probe: pytest backend/tests/scripts/visa_engine/test_report_lock.py::test_leftover_lockfile_content_is_never_consulted"
+  - "WHEN a second ReportLock on the same path is acquired in the SAME process THEN it refuses. probe: pytest backend/tests/scripts/visa_engine/test_report_lock.py::test_second_reportlock_in_the_same_process_refuses"
+  - "WHERE the lockfile persists across acquire/release cycles THEN its inode is unchanged (it is never recreated). probe: pytest backend/tests/scripts/visa_engine/test_report_lock.py::test_lockfile_persists_and_its_inode_is_unchanged_across_cycles"
+  - "WHEN release() is called after a REFUSED acquire THEN it is a no-op and the live owner's hold is untouched (gate OBS-E). probe: pytest backend/tests/scripts/visa_engine/test_report_lock.py::test_release_after_a_refused_acquire_leaves_the_live_owner_intact"
+  - "WHEN the writer is SIGKILLed INSIDE atomic_write_json's write (polled for the temp file, never a sleep) THEN the target still parses and equals the PREVIOUS content -- os.replace never ran. probe: pytest backend/tests/scripts/visa_engine/test_report_lock.py::test_sigkill_inside_atomic_write_never_corrupts_the_target"
+  - "WHILE a concurrent reader loops during repeated multi-MB atomic_write_json rewrites THEN every read parses -- the property gate OBS-D found untested (the prior test killed BETWEEN writes, not inside one). probe: pytest backend/tests/scripts/visa_engine/test_report_lock.py::test_concurrent_reader_always_parses_during_repeated_large_rewrites"
+
+pii_scan: clean
