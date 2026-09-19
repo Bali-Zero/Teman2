@@ -226,10 +226,28 @@ receipts:
       .claude/settings.json all True/True) and 3 NEGATIVE controls all False/False: an unrelated
       docs/specs file, apps/mouth/src/lib/x.ts, and `.claude/settings.local.json` (the near-miss,
       since the regex is unanchored at the tail and a settings-local edit must NOT be treated as the
-      hook wiring). ALL_EXPECTED True, and the same parse reports 28 steps.
-    cmd: "python3 /tmp/probe_filters.py  (yaml.safe_load the workflow; fnmatch the paths list; re.search the extracted regex; 7 paths)"
+      hook wiring). ALL_EXPECTED True, and the same parse reports 28 steps. The probe is COMMITTED
+      beside this pack rather than left in /tmp, so the brief's `probe:` field names a command the
+      ship gate can actually re-run; first measured from /tmp at 05:11:24Z, re-run from its committed
+      path at 05:30:53Z with identical results.
+    cmd: "python3 evidence/2026-09/agent-air-m5-infra-guard-ci-wiring-a2d8aefa/probe_filters.py"
     exit: 0
-    ts: "2026-09-19T05:11:24Z"
+    ts: "2026-09-19T05:30:53Z"
+    seat: tp1-qwen3.8-max
+  - claim: >-
+      The committed probe script is itself lint-clean ("All checks passed!") — it ships in this diff,
+      so it is held to the same standard as the code it checks.
+    cmd: "ruff check evidence/2026-09/agent-air-m5-infra-guard-ci-wiring-a2d8aefa/probe_filters.py"
+    exit: 0
+    ts: "2026-09-19T05:30:53Z"
+    seat: tp1-qwen3.8-max
+  - claim: >-
+      The credential test, run alone on the REAL (unmutated) tree with the host vault present, passes:
+      "1 passed, 13 deselected in 0.21s", rc=0. This is the control half of the mutant pair below and
+      the probe the brief's criterion 5 declares. First measured at 05:12:28Z, re-run at 05:33:54Z.
+    cmd: "python3 -m pytest -q infra/claude-hooks/test_install_qwen_secret_guard.py -k never_prints -p no:cacheprovider"
+    exit: 0
+    ts: "2026-09-19T05:33:54Z"
     seat: tp1-qwen3.8-max
   - claim: >-
       kimi's LOW 2 REPRODUCED, not just accepted: with a deliberately leaking mutant installer (one

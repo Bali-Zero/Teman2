@@ -55,53 +55,55 @@ constraints:
     and stays documented as an accepted limit by its own author; this PR removes the
     one live instance of it rather than re-architecting the detector."
 acceptance:
-  - "WHEN the new step's two lines are executed on the branch, THE SYSTEM SHALL print
-    the full corpus result and pass every collected test.
-    probe: `python3 infra/claude-hooks/test_secret_expansion_guard.py` -> '64/64
-    corpus rows as specified', rc=0; and `python3 -m pytest -q
-    infra/claude-hooks/test_secret_expansion_guard.py
-    infra/claude-hooks/test_install_qwen_secret_guard.py` -> 28 passed, rc=0.
-    28 and not 14 is the point: pytest collects all 14 guard test functions while the
-    script form runs only the corpus, so both invocations are required (see the BLOCK
-    this cured)."
-  - 'WHEN the modified workflow is parsed, THE SYSTEM SHALL yield valid YAML with the
-    new step present exactly once.
-    probe: `python3 -c "import yaml;d=yaml.safe_load(open(''.github/workflows/guard-conformance.yml''));print(len([s for j in d[''jobs''].values() for s in j[''steps'']]))"`
-    -> 28; and the step name ''Secret-expansion guard corpus + Qwen installer refusal
-    paths'' occurs once.'
-  - "WHEN a path under infra/claude-hooks/ OR the corpus's oracle spec OR the hook's own wiring file
-    changes, THE SYSTEM SHALL set the job's relevance gate true so the step runs — on push AND on a
-    pull request, because the two filters are independent and a path missing from either one is a
-    silent skip.
-    probe: extract BOTH filters from the workflow file itself (do not retype them) — the
-    push/pull_request `paths:` list via yaml.safe_load and the `relevant` step's grep regex from its
-    own source line — then match 7 paths. Positives, each True in BOTH filters:
-    docs/specs/2026-09-18-secret-expansion-guard-shapes-spec.md,
-    infra/claude-hooks/secret_expansion_guard.py,
-    infra/claude-hooks/install_qwen_secret_guard.py, .claude/settings.json. Negatives, each False in
-    BOTH: an unrelated docs/specs file, apps/mouth/src/lib/x.ts, and .claude/settings.local.json
-    (the near-miss — the regex is unanchored at the tail, so a settings-LOCAL edit must not be
-    mistaken for the hook wiring)."
-  - 'WHEN the installer''s credential test runs on a machine with no ~/.nuzantara-secrets.env — which
-    is every CI runner — THE SYSTEM SHALL still execute its assertion rather than skip it, and SHALL
-    fail if the installer prints a value taken from its environment.
-    probe: the test injects a fixture secret through `_run(..., env_extra={...})` instead of reading
-    the host vault, so there is no early return to take. Prove it bites with a mutant: insert
-    `_say(f"  key: {os.environ.get(''BAILIAN_TOKEN_PLAN_API_KEY'', ...)}")` into the installer''s
-    success path and run with HOME set to a vault-less directory -> the PRE-CURE shape passes (rc=0,
-    the vacuity this criterion exists to remove) and the shipped shape FAILS on `assert not leaked`
-    (rc=1). Delete the mutant afterwards.'
-  - "WHEN this change is present, THE SYSTEM SHALL NOT turn any existing gate red.
-    probe: `python3 infra/guard-conformance/check_guard_conformance.py` -> rc=0,
-    0 violations; `python3 scripts/lint_home_fork.py --check` -> rc=0;
-    `ruff check` on the two hook Python files -> All checks passed."
-  - "WHEN the step is read, THE SYSTEM SHALL NOT duplicate a suite another workflow
-    already executes.
-    probe: `grep -rn test_hook_innocence .github/workflows/` -> the only execution line
-    is hook-innocence-gate.yml:108, not this step; and `grep -c
-    'python3 infra/claude-hooks/test_secret_expansion_guard.py' .github/workflows/guard-conformance.yml`
-    -> 1 (the script form; the pytest form is a separate line covering the 13 tests
-    the script form cannot reach)."
+  # Written as `{text, probe}` mappings, not as prose with the word "probe:" inside it.
+  # evidence_pack_lint.py rule 12 reads the FIELD, so the prose form parses as a bare
+  # string and the rule reports "6 of 6 acceptance bullets carry no probe" — true of the
+  # machine's view and false of the author's intent, which is the same gap this PR exists
+  # to close in CI. Each probe below names a command a reader can run, and the filter one
+  # points at a script committed beside this brief rather than a /tmp path.
+  - text: |
+      WHEN the corpus file is invoked as a script, THE SYSTEM SHALL print one line per corpus row
+      and report the full count, exiting 0.
+    probe: "python3 infra/claude-hooks/test_secret_expansion_guard.py"
+  - text: |
+      WHEN the new step's pytest line is executed over both suites, THE SYSTEM SHALL pass every
+      collected test — 28 and not 14. The count is the point: pytest collects all 14 guard test
+      functions while the script form above runs only the 64-row corpus, so BOTH invocations are
+      required and dropping either one silently un-runs half the suite (round 1's BLOCKING).
+    probe: "python3 -m pytest -q infra/claude-hooks/test_secret_expansion_guard.py infra/claude-hooks/test_install_qwen_secret_guard.py -p no:cacheprovider"
+  - text: |
+      WHEN the modified workflow is parsed, THE SYSTEM SHALL yield valid YAML whose jobs contain the
+      new step exactly once, named 'Secret-expansion guard corpus + Qwen installer refusal paths'.
+    probe: 'python3 -c "import yaml;d=yaml.safe_load(open(''.github/workflows/guard-conformance.yml''));print(len([s for j in d[''jobs''].values() for s in j[''steps'']]),''steps'')"'
+  - text: |
+      WHEN a path under infra/claude-hooks/ OR the corpus's oracle spec OR the hook's own wiring file
+      .claude/settings.json changes, THE SYSTEM SHALL set the job's relevance gate true so the step
+      runs — on push AND on a pull request, because the two filters are independent and a path
+      missing from either one is a silent skip. WHERE the path is an unrelated docs/specs file,
+      apps/mouth/src/lib/x.ts, or .claude/settings.local.json, THE SYSTEM SHALL NOT trigger it: the
+      grep regex is unanchored at the tail, so the settings-LOCAL near-miss is the one that would
+      pass by accident.
+    probe: "python3 evidence/2026-09/agent-air-m5-infra-guard-ci-wiring-a2d8aefa/probe_filters.py"
+  - text: |
+      WHEN the installer's credential test runs on a machine with no ~/.nuzantara-secrets.env — which
+      is every CI runner — THE SYSTEM SHALL still execute its assertion rather than skip it, and
+      SHALL fail if the installer prints a value taken from its environment. The test injects a
+      fixture secret through a new `env_extra` parameter on `_run()` so there is no early return to
+      take; the host-vault check survives but is demoted to secondary and non-gating.
+    probe: "python3 -m pytest -q infra/claude-hooks/test_install_qwen_secret_guard.py -k never_prints -p no:cacheprovider"
+  - text: |
+      IF the installer is mutated to print a credential from its environment, THE mutated tree SHALL
+      fail that test under a vault-less HOME while the pre-cure shape of the same test passes — which
+      is what makes the criterion above a cure and not a rename. Reproduced: pre-cure shape rc=0,
+      shipped shape rc=1 on `assert not leaked`. `$T` below is a mktemp tree that held the mutant; it
+      and the mutant were deleted after measurement, so this probe is a record of what was run, not a
+      command that can be re-run without rebuilding the mutant first.
+    probe: "HOME=$T/nohome python3 -m pytest -q $T/b/test_install_qwen_secret_guard.py -k never_prints -p no:cacheprovider"
+  - text: |
+      WHEN this change is present, THE SYSTEM SHALL NOT turn any existing gate red, and SHALL NOT
+      duplicate a suite another workflow already executes — `test_hook_innocence.py` is deliberately
+      excluded from this step because hook-innocence-gate.yml:108 already runs it.
+    probe: "python3 infra/guard-conformance/check_guard_conformance.py"
 consumer_map:
   - ".github/workflows/guard-conformance.yml -> the 'guard-conformance' required check.
     A future regression in the 64-row corpus or in the installer's refusal paths now
