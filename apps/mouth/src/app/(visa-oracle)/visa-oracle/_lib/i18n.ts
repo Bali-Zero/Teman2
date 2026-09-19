@@ -989,6 +989,11 @@ const en = {
     "The decision service cannot verify this case right now. No fallback path has been fabricated.",
   "outcome.human_review_body":
     "Your case needs a person’s judgment — nothing here was guessed on your behalf.",
+  // Slice A2 (PLAN VISA-ORACLE-DW-20260919 §1.6): `notices[]` rendered next
+  // to whatever verdict is already shown, on every state that can carry one.
+  "outcome.conditions.title": "Conditions on this result",
+  "outcome.conditions.intro":
+    "These do not change the result above — they name what our team checks with you before submission.",
   "outcome.review_group_case.title": "What a person will check about your case",
   "outcome.review_group_system.title":
     "Checks on our side, not on your answers",
@@ -1985,6 +1990,9 @@ const id: Record<Keys, string> = {
     "Layanan keputusan belum dapat memverifikasi kasus ini. Tidak ada jalur cadangan yang dibuat-buat.",
   "outcome.human_review_body":
     "Kasus Anda butuh penilaian manusia — tidak ada yang ditebak atas nama Anda.",
+  "outcome.conditions.title": "Kondisi pada hasil ini",
+  "outcome.conditions.intro":
+    "Kondisi ini tidak mengubah hasil di atas — kondisi ini menyebutkan apa yang akan diperiksa tim kami bersama Anda sebelum pengajuan.",
   "outcome.review_group_case.title":
     "Yang akan diperiksa seseorang pada kasus Anda",
   "outcome.review_group_system.title":

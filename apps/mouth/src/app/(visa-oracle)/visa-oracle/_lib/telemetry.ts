@@ -13,6 +13,12 @@ export const VISA_ORACLE_TELEMETRY_EVENTS = [
   // WhatsApp number never reached ConsentHandoff. Carries the terminal state
   // at most — no number, no facts.
   "visa_oracle_v2_handoff_unconfigured",
+  // Slice A2 (PLAN VISA-ORACLE-DW-20260919 N3): a `notices[]` code with no
+  // dedicated copy in `engine-adapter.ts`'s `NOTICE_CONDITION_COPY`. Should
+  // never fire once every code the backend can emit has copy — the code
+  // itself is a fixed system identifier (the engine's `ReasonCode` open
+  // pattern, `models.py:95-96`), never applicant-supplied text.
+  "visa_oracle_v2_notice_unmapped_code",
 ] as const;
 
 export type VisaOracleTelemetryEvent =
@@ -46,9 +52,17 @@ export interface VisaOracleTelemetry {
    * request-derived value).
    */
   frontendVersion?: string;
+  /**
+   * `visa_oracle_v2_notice_unmapped_code` only. A fixed system reason code
+   * (never applicant-supplied text) — validated against the engine's own
+   * `ReasonCode` pattern (`models.py:95-96`) before it leaves the closed
+   * boundary below.
+   */
+  code?: string;
 }
 
 const SHA256_HEX = /^[a-f0-9]{64}$/;
+const REASON_CODE = /^[A-Z][A-Z0-9_]{0,127}$/;
 
 export async function nonReversibleHash(value: string): Promise<string> {
   const encoded = new TextEncoder().encode(value);
@@ -84,5 +98,6 @@ export function emitVisaOracleTelemetry(input: VisaOracleTelemetry): void {
   if (input.packHash) properties.pack_hash = input.packHash;
   if (input.frontendVersion)
     properties.frontend_version = input.frontendVersion;
+  if (input.code && REASON_CODE.test(input.code)) properties.code = input.code;
   trackPiiFreeEvent(input.event, properties);
 }

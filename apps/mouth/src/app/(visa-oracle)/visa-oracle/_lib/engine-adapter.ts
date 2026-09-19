@@ -6,6 +6,7 @@ import { QUESTIONS, type OracleFacts } from "./tree";
 import { followUpPrerequisitesMet, walkQuestionIds } from "./flow";
 import { translate, type I18nKey } from "./i18n";
 import { trustedPrimarySourceUrl } from "./trusted-source-url";
+import { emitVisaOracleTelemetry } from "./telemetry";
 import type {
   InterviewAssumption,
   LocalizedText,
@@ -1154,6 +1155,119 @@ function reviewReason(
   };
 }
 
+// Curated, human-readable copy for `notices[]` (PLAN VISA-ORACLE-DW-20260919
+// §1.6, slice A2, R-SEQ) — the channel every disclosure the ruling wants
+// KEPT ON A CANDIDATE lands on instead of a hold. Unlike REVIEW_REASON_COPY
+// a notice never changes state or candidates: it names a fact to check
+// before submission on whatever verdict the pack already reached. D2-bis's
+// legal-exposure rule for review copy binds identically here — never
+// "cleared"/"approved"/"no issue"/"guaranteed" (`engine-adapter.test.ts`'s
+// banned-word test enforces this on this table specifically), and the
+// PEP/sanctions and source-of-funds entries say the compliance check runs
+// AT SUBMISSION rather than implying it already happened.
+//
+// `OBSOLETE_PRODUCT_CODE` is the one code the engine already emits today
+// (`evaluator.py::_build_notices`, origin/main). The other ten are what A1'
+// (`evaluate_path.py::_DISCLOSED_CONDITION_REASON_CODES`, closed branch
+// `6c6941e15b`) will emit once R-SEQ clears it to merge — this table ships
+// first so the channel is never dark on the day that PR opens.
+export const NOTICE_CONDITION_COPY: Record<string, LocalizedText> = {
+  OBSOLETE_PRODUCT_CODE: text(
+    "The visa code you referenced has been retired and reclassified. Your result reflects the current, equivalent product in our verified catalogue.",
+    "Kode visa yang Anda referensikan sudah tidak berlaku dan telah diklasifikasikan ulang. Hasil Anda mencerminkan produk setara yang berlaku saat ini dalam katalog terverifikasi kami.",
+  ),
+  DISCLOSED_HEALTH_CONCERN_CONDITION: text(
+    "You flagged a health concern in your disclosures. Our team reviews the details with you before submission and lets you know what supporting documentation, if any, to prepare.",
+    "Anda menandai adanya masalah kesehatan dalam pengungkapan Anda. Tim kami akan meninjau detailnya bersama Anda sebelum pengajuan dan memberi tahu dokumen pendukung, jika ada, yang perlu disiapkan.",
+  ),
+  DISCLOSED_PRIOR_VISA_REFUSAL_CONDITION: text(
+    "You flagged a prior visa refusal in your disclosures. Our team reviews the refusal details with you before submission and tells you what documentation to prepare.",
+    "Anda menandai adanya penolakan visa sebelumnya dalam pengungkapan Anda. Tim kami akan meninjau detail penolakan tersebut bersama Anda sebelum pengajuan dan memberi tahu dokumen yang perlu disiapkan.",
+  ),
+  DISCLOSED_UNCERTAINTY_CONDITION: text(
+    'One of your answers was marked "unsure." Our team confirms that answer with you before submission and tells you what to prepare once it is settled.',
+    'Salah satu jawaban Anda ditandai "tidak yakin." Tim kami akan memastikan jawaban tersebut bersama Anda sebelum pengajuan dan memberi tahu apa yang perlu disiapkan setelah dipastikan.',
+  ),
+  DISCLOSED_PEP_OR_SANCTIONS_CONDITION: text(
+    "You flagged a politically-exposed-person or sanctions-list concern in your disclosures. A compliance check against PEP and sanctions records runs at submission, and our team tells you what documentation to prepare for it.",
+    "Anda menandai adanya masalah terkait status politically exposed person atau daftar sanksi dalam pengungkapan Anda. Pemeriksaan kepatuhan terhadap data PEP dan daftar sanksi dilakukan pada saat pengajuan, dan tim kami akan memberi tahu dokumen yang perlu disiapkan untuk itu.",
+  ),
+  DISCLOSED_SOURCE_OF_FUNDS_CONDITION: text(
+    "You flagged an unclear source of funds in your disclosures. A source-of-funds compliance check runs at submission, and our team tells you what supporting documentation to prepare for it.",
+    "Anda menandai sumber dana yang tidak jelas dalam pengungkapan Anda. Pemeriksaan kepatuhan atas sumber dana dilakukan pada saat pengajuan, dan tim kami akan memberi tahu dokumen pendukung yang perlu disiapkan untuk itu.",
+  ),
+  DISCLOSED_DIPLOMATIC_PASSPORT_CONDITION: text(
+    "You flagged holding a diplomatic passport in your disclosures. Our team reviews the diplomatic-passport details with you before submission and tells you what documentation to prepare.",
+    "Anda menandai kepemilikan paspor diplomatik dalam pengungkapan Anda. Tim kami akan meninjau detail paspor diplomatik tersebut bersama Anda sebelum pengajuan dan memberi tahu dokumen yang perlu disiapkan.",
+  ),
+  DISCLOSED_AMBIGUOUS_SPONSOR_CONDITION: text(
+    "Whether your sponsor holds a stay permit of their own has not been established here. Our team confirms the sponsor's own stay permit with you before submission and tells you what to prepare.",
+    "Belum dapat dipastikan di sini apakah sponsor Anda memiliki izin tinggal sendiri. Tim kami akan memastikan izin tinggal sponsor tersebut bersama Anda sebelum pengajuan dan memberi tahu apa yang perlu disiapkan.",
+  ),
+  DISCLOSED_ACTIVITY_BOUNDARY_CONDITION: text(
+    "One of your answers about your planned activity, investment vehicle, retirement basis, or diaspora connection is not one the signed rules can decide on their own. Our team confirms it with you before submission and tells you what to prepare.",
+    "Salah satu jawaban Anda mengenai aktivitas yang direncanakan, kendaraan investasi, dasar pensiun, atau hubungan diaspora bukan jawaban yang dapat diputuskan sendiri oleh aturan yang telah disahkan. Tim kami akan memastikannya bersama Anda sebelum pengajuan dan memberi tahu apa yang perlu disiapkan.",
+  ),
+  DISCLOSED_MULTI_PURPOSE_TRIP_CONDITION: text(
+    "You said your trip serves more than one purpose. Our team reviews how those purposes combine with you before submission and tells you what to prepare.",
+    "Anda menyatakan bahwa perjalanan Anda memiliki lebih dari satu tujuan. Tim kami akan meninjau bagaimana tujuan-tujuan tersebut digabungkan bersama Anda sebelum pengajuan dan memberi tahu apa yang perlu disiapkan.",
+  ),
+  CONFLICTING_IMMIGRATION_STATUS_CONDITION: text(
+    "Your answers about your current immigration status conflict with each other. Our team confirms which status is correct with you before submission and tells you what to prepare.",
+    "Jawaban Anda tentang status keimigrasian Anda saat ini saling bertentangan. Tim kami akan memastikan status mana yang benar bersama Anda sebelum pengajuan dan memberi tahu apa yang perlu disiapkan.",
+  ),
+};
+
+export const GENERIC_NOTICE_CONDITION: LocalizedText = text(
+  "An additional condition applies to this result — our team will confirm it with you before submission.",
+  "Kondisi tambahan berlaku untuk hasil ini — tim kami akan memastikannya bersama Anda sebelum pengajuan.",
+);
+
+/** Codes already reported this session (N3): a monitored event fires once
+ * per unmapped code, never once per render. Module-scoped by design — the
+ * gap is in this table, not in one particular decision. */
+const reportedUnmappedNoticeCodes = new Set<string>();
+
+/**
+ * `notices[]` → a named condition (N1-N3). A code missing from
+ * `NOTICE_CONDITION_COPY` is a defect in THIS table, never a value safe to
+ * show verbatim: in development/test it throws immediately so the gap is
+ * caught before ship; in production it falls back to a neutral sentence and
+ * reports the gap once via `emitVisaOracleTelemetry` (the surface's existing
+ * closed telemetry boundary, `_lib/telemetry.ts`) naming the code — itself a
+ * fixed system identifier under the engine's `ReasonCode` pattern
+ * (`models.py:95-96`), never applicant-supplied text.
+ */
+function condition(
+  code: string,
+  sourceIds: readonly string[],
+  trustedIds: ReadonlySet<string>,
+): OutcomeReason {
+  const message = NOTICE_CONDITION_COPY[code];
+  if (message === undefined) {
+    if (process.env.NODE_ENV !== "production") {
+      throw new VisaOracleResponseError("RESPONSE_INVARIANT");
+    }
+    if (!reportedUnmappedNoticeCodes.has(code)) {
+      reportedUnmappedNoticeCodes.add(code);
+      emitVisaOracleTelemetry({
+        event: "visa_oracle_v2_notice_unmapped_code",
+        code,
+      });
+    }
+    return {
+      code,
+      message: GENERIC_NOTICE_CONDITION,
+      sourceIds: sourceIds.filter((id) => trustedIds.has(id)),
+    };
+  }
+  return {
+    code,
+    message,
+    sourceIds: sourceIds.filter((id) => trustedIds.has(id)),
+  };
+}
+
 function outcomeSource(source: VisaOracleSourceRecord): OutcomeSource | null {
   const url = trustedPrimarySourceUrl(source.canonical_url);
   if (!url) return null;
@@ -1492,12 +1606,22 @@ function buildValidatedOutcome(
         }
       : {}),
   };
+  // `notices[]` has no state constraint on the backend (PLAN
+  // VISA-ORACLE-DW-20260919 §1.6) — it can be non-empty on any of the four
+  // identity-required states, so it is built once here and shared via
+  // `...base` rather than duplicated per discriminated branch below.
+  const conditions = response.decision.notices.map((item) => {
+    requireReviewHoldRefs(item.source_refs);
+    return condition(item.code, item.source_refs, trustedIds);
+  });
+
   const base = {
     provenance: "ENGINE" as const,
     assessment,
     assumptions: options.assumptions ?? [],
     sources,
     nextSteps: NEXT_STEPS,
+    conditions,
   };
 
   switch (response.decision.state) {

@@ -4,7 +4,11 @@ import AxeBuilder from "@axe-core/playwright";
 import { mkdirSync } from "node:fs";
 import path from "node:path";
 import { translate } from "../src/app/(visa-oracle)/visa-oracle/_lib/i18n";
-import { makeVisaOracleResponse } from "../src/app/(visa-oracle)/visa-oracle/_lib/visa-oracle-test-fixture";
+import { NOTICE_CONDITION_COPY } from "../src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter";
+import {
+  makeVisaOracleResponse,
+  TEST_SOURCE_ID,
+} from "../src/app/(visa-oracle)/visa-oracle/_lib/visa-oracle-test-fixture";
 
 const RESUME_KEY = "visa-oracle:v2:resume:v1";
 const SCREENSHOT_DIR = path.resolve(
@@ -213,6 +217,43 @@ test.describe("Visa Oracle v2 integration — page Page", () => {
       }
     });
   }
+
+  // Slice A2 (PLAN VISA-ORACLE-DW-20260919 §1.6, N5): the `notices` channel
+  // was wired to the wire and dark in the UI. Two notices — one code the
+  // engine already emits today, one of the ten A1' will add — prove both
+  // render as named conditions, not just the first.
+  test("renders every notices[] Reason as a named condition, EN and ID", async ({
+    page,
+  }) => {
+    await seedVerdictResume(page);
+    const response = makeVisaOracleResponse("SUPPORTED_CANDIDATES");
+    response.decision.notices = [
+      {
+        code: "OBSOLETE_PRODUCT_CODE",
+        rule_ids: [],
+        source_refs: [TEST_SOURCE_ID],
+      },
+      {
+        code: "DISCLOSED_HEALTH_CONCERN_CONDITION",
+        rule_ids: [],
+        source_refs: [],
+      },
+    ];
+    await page.route("**/api/visa-oracle/evaluate**", (route) =>
+      fulfillJson(route, response),
+    );
+
+    await page.goto("/visa-oracle");
+    await expectEngineState(page, "SUPPORTED_CANDIDATES");
+    await expect(
+      page.getByText(NOTICE_CONDITION_COPY.OBSOLETE_PRODUCT_CODE.en),
+    ).toBeVisible();
+    await expect(
+      page.getByText(
+        NOTICE_CONDITION_COPY.DISCLOSED_HEALTH_CONCERN_CONDITION.en,
+      ),
+    ).toBeVisible();
+  });
 
   test("CURATED and malformed JSON fail closed with zero candidates", async ({
     page,
