@@ -210,7 +210,10 @@ describe("ImmigrationTab — current permit panel vs visa history (R6 restyle)",
       },
     ]);
 
-    expect(screen.getByText("verified")).toBeInTheDocument();
+    // R6c: the phone step (below 640px) relocates the same status node onto
+    // the row's first cell too, so "verified" now renders twice — desktop
+    // Status cell + phone block, jsdom evaluates no media queries.
+    expect(screen.getAllByText("verified")).toHaveLength(2);
     expect(screen.getAllByText("—").length).toBeGreaterThan(0);
   });
 });
@@ -510,6 +513,154 @@ describe("ImmigrationTab — Visa-history row controls are reachable on touch (R
   });
 });
 
+describe("ImmigrationTab — visa-history grid gets a phone step below 640px (R6c)", () => {
+  it("PIN A: a max-sm override sized to the phone-visible head cells sits alongside the untouched R6b 1360 override", () => {
+    const currentDate = new Date(Date.now() + 500 * 86400000)
+      .toISOString()
+      .slice(0, 10);
+    const historyDate = new Date(Date.now() - 5 * 86400000)
+      .toISOString()
+      .slice(0, 10);
+    renderTab([
+      { ...baseDoc, id: 100, document_type: "kitas", expiry_date: currentDate },
+      { ...baseDoc, id: 101, document_type: "kitap", expiry_date: historyDate },
+    ]);
+
+    const grid = document.querySelector(
+      '[data-hgrid="immigration-visa-history"]',
+    );
+    expect(grid).not.toBeNull();
+    const head = grid!.querySelector('[role="row"]');
+    expect(head).not.toBeNull();
+
+    const phoneVisibleHeadCells = Array.from(head!.children).filter(
+      (cell) =>
+        !cell.hasAttribute("data-collapse") &&
+        !cell.className.includes("max-sm:hidden"),
+    );
+    // Visa type + the sr-only Actions head — Status and Expires leave below
+    // 640px, same as Issued already does below 1360px.
+    expect(phoneVisibleHeadCells.length).toBe(2);
+
+    const phoneOverride = grid!.className.match(
+      /max-sm:\[&_\.grid\]:!grid-cols-\[([^\]]+)\]/,
+    );
+    expect(phoneOverride).not.toBeNull();
+    expect(phoneOverride![1].split("_").length).toBe(
+      phoneVisibleHeadCells.length,
+    );
+
+    // R6b's 1360px override must stay green and unmodified in meaning: 4
+    // tracks (Visa type, Status, Expires, Actions — Issued carries
+    // data-collapse and already leaves the flow there).
+    const desktopOverride = grid!.className.match(
+      /max-\[1360px\]:\[&_\.grid\]:!grid-cols-\[([^\]]+)\]/,
+    );
+    expect(desktopOverride).not.toBeNull();
+    expect(desktopOverride![1].split("_").length).toBe(4);
+  });
+
+  it("PIN B: every history row keeps 5 direct children, and its Status and Expires cells carry max-sm:hidden", () => {
+    const currentDate = new Date(Date.now() + 500 * 86400000)
+      .toISOString()
+      .slice(0, 10);
+    const historyDate1 = new Date(Date.now() - 5 * 86400000)
+      .toISOString()
+      .slice(0, 10);
+    const historyDate2 = new Date(Date.now() - 15 * 86400000)
+      .toISOString()
+      .slice(0, 10);
+    renderTab([
+      { ...baseDoc, id: 102, document_type: "kitas", expiry_date: currentDate },
+      {
+        ...baseDoc,
+        id: 103,
+        document_type: "kitap",
+        expiry_date: historyDate1,
+      },
+      { ...baseDoc, id: 104, document_type: "visa", expiry_date: historyDate2 },
+    ]);
+
+    const grid = document.querySelector(
+      '[data-hgrid="immigration-visa-history"]',
+    );
+    const head = grid!.querySelector('[role="row"]');
+    const body = head!.nextElementSibling;
+    const rows = Array.from(body!.children) as HTMLElement[];
+    expect(rows.length).toBe(2);
+
+    for (const row of rows) {
+      expect(row.children.length).toBe(head!.children.length);
+      expect(row.children.length).toBe(5);
+      const statusCell = row.children[1] as HTMLElement;
+      const expiresCell = row.children[3] as HTMLElement;
+      expect(statusCell.className).toContain("max-sm:hidden");
+      expect(expiresCell.className).toContain("max-sm:hidden");
+    }
+  });
+
+  it("PIN C: the phone block in the row's first cell carries the same status label (or —) and the exact Expires string, honouring the urgent class", () => {
+    vi.setSystemTime(new Date("2026-01-01T00:00:00.000Z"));
+    const currentDate = "2027-05-16"; // +500d, becomes the current permit
+    const notUrgentDate = "2026-07-19"; // +200d, future but not the actualVisa
+    const expiredDate = "2025-12-22"; // -10d
+
+    renderTab([
+      { ...baseDoc, id: 110, document_type: "kitas", expiry_date: currentDate },
+      {
+        ...baseDoc,
+        id: 111,
+        document_type: "kitap",
+        expiry_date: notUrgentDate,
+        status: "pending",
+      },
+      { ...baseDoc, id: 112, document_type: "voa", expiry_date: expiredDate },
+    ]);
+
+    const grid = document.querySelector(
+      '[data-hgrid="immigration-visa-history"]',
+    );
+    const head = grid!.querySelector('[role="row"]');
+    const body = head!.nextElementSibling;
+    const rows = Array.from(body!.children) as HTMLElement[];
+    expect(rows.length).toBe(2);
+
+    for (const row of rows) {
+      const wrapper = row.children[0] as HTMLElement;
+      const phoneBlock = wrapper.querySelector(".sm\\:hidden") as HTMLElement;
+      expect(phoneBlock).not.toBeNull();
+      const desktopExpires = row.children[3] as HTMLElement;
+      expect(phoneBlock.textContent).toContain(desktopExpires.textContent);
+    }
+
+    // The expired, status-less row (voa, id 112): dash where there is no
+    // status, and the urgent warning class on the phone Expires line.
+    const noStatusRow = rows.find((r) =>
+      r.children[3].textContent?.includes("Expired 10d ago"),
+    )!;
+    const noStatusWrapper = noStatusRow.children[0] as HTMLElement;
+    const noStatusPhoneBlock = noStatusWrapper.querySelector(
+      ".sm\\:hidden",
+    ) as HTMLElement;
+    expect(noStatusPhoneBlock.textContent).toContain("—");
+    const urgentLine = Array.from(
+      noStatusPhoneBlock.querySelectorAll("span"),
+    ).find((s) => s.textContent?.includes("Expired 10d ago"))!;
+    expect(urgentLine.className).toContain("text-[var(--state-warning)]");
+
+    // The kitap row (id 111) carries a real status: the phone block shows
+    // the same tone/label, not a dash.
+    const statusRow = rows.find(
+      (r) => r.children[1].textContent === "pending",
+    )!;
+    const statusWrapper = statusRow.children[0] as HTMLElement;
+    const statusPhoneBlock = statusWrapper.querySelector(
+      ".sm\\:hidden",
+    ) as HTMLElement;
+    expect(statusPhoneBlock.textContent).toContain("pending");
+  });
+});
+
 describe("ImmigrationTab — the six unpinned repairs from R6-reaudit.md §3 (M6-M11)", () => {
   it("GUILT: alert_color 'yellow' warns a history row's date cell even 300 days out (M6)", () => {
     vi.setSystemTime(new Date("2026-01-01T00:00:00.000Z"));
@@ -526,8 +677,14 @@ describe("ImmigrationTab — the six unpinned repairs from R6-reaudit.md §3 (M6
       },
     ]);
 
-    const expiryCell = screen.getByText(new RegExp(yellowDate));
-    expect(expiryCell.className).toContain("text-[var(--state-warning)]");
+    // R6c: the phone step duplicates the same Expires string onto the row's
+    // first cell — scope with getAllByText + an explicit length rather than
+    // weakening the assertion.
+    const expiryCells = screen.getAllByText(new RegExp(yellowDate));
+    expect(expiryCells).toHaveLength(2);
+    for (const cell of expiryCells) {
+      expect(cell.className).toContain("text-[var(--state-warning)]");
+    }
   });
 
   it("INNOCENCE: alert_color 'green' 300 days out stays a plain history date (M6)", () => {
@@ -545,8 +702,12 @@ describe("ImmigrationTab — the six unpinned repairs from R6-reaudit.md §3 (M6
       },
     ]);
 
-    const expiryCell = screen.getByText(new RegExp(greenDate));
-    expect(expiryCell.className).not.toContain("text-[var(--state-warning)]");
+    // R6c: same duplication as the yellow case above.
+    const expiryCells = screen.getAllByText(new RegExp(greenDate));
+    expect(expiryCells).toHaveLength(2);
+    for (const cell of expiryCells) {
+      expect(cell.className).not.toContain("text-[var(--state-warning)]");
+    }
   });
 
   it("PIN: formatDocType strips underscores on both the panel plaque and the history grid (M7)", () => {
@@ -587,7 +748,8 @@ describe("ImmigrationTab — the six unpinned repairs from R6-reaudit.md §3 (M6
       { ...baseDoc, id: 57, document_type: "kitap", expiry_date: expiredDate },
     ]);
 
-    expect(screen.getByText(/Expired 10d ago/)).toBeInTheDocument();
+    // R6c: same duplication — desktop Expires cell + phone block line.
+    expect(screen.getAllByText(/Expired 10d ago/)).toHaveLength(2);
   });
 
   it("PIN: the current-permit panel shows the document's file_name (M9)", () => {
