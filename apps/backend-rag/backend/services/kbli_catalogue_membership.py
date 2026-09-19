@@ -32,8 +32,13 @@ asymmetry is deliberate — we would rather keep serving ten phantoms than erase
 
 from __future__ import annotations
 
+import logging
 from collections.abc import Sequence
 from typing import Any, Final
+
+import asyncpg
+
+logger = logging.getLogger(__name__)
 
 # The value `kbli_documents_phantom_cure.py` writes for a code it has proven absent.
 # Duplicated rather than imported: this is a request-time service and that is a one-shot
@@ -88,6 +93,43 @@ def catalogue_verdict(rows: Sequence[Any] | None) -> str:
 def is_absent_from_catalogue(rows: Sequence[Any] | None) -> bool:
     """True only on a positive finding of absence. `UNKNOWN` is not absence."""
     return catalogue_verdict(rows) == ABSENT
+
+
+async def fetch_catalogue_membership(conn: Any, code: str) -> Sequence[Any] | None:
+    """Ask the catalogue whether it holds `code`, degrading to `UNKNOWN` if it cannot answer.
+
+    WHY THIS EXISTS. Before the tombstone cure, `inspect_kbli` never read
+    `kbli_documents` at all — it answered from `kg_nodes` and Qdrant. Adding this query
+    to the request path also added the table's availability to the endpoint's own: a
+    catalogue that is unreadable for ANY reason would take down the answer for all 1,559
+    codes, not just the ten the cure is about. Caller correctness was never at risk — an
+    exception cannot reach `catalogue_verdict`, so it cannot manufacture an `ABSENT` —
+    but AVAILABILITY was, and a cure worth ten codes must not cost the other 1,549.
+
+    WHICH EXCEPTIONS ARE SWALLOWED, AND WHICH ARE DELIBERATELY NOT. `asyncpg.PostgresError`
+    is the SERVER's answer: undefined table, permission denied, statement timeout, a bad
+    search_path. The catalogue cannot answer, `None` is `UNKNOWN`, and the endpoint
+    behaves exactly as it did before the cure existed. Connection-shaped failures —
+    `asyncpg.InterfaceError`, `ConnectionResetError`, `OSError` — are NOT caught here and
+    must not be: the router turns those into a 503 with `Retry-After`, which is the
+    correct answer to a stale pool on a Fly.io cold start, and swallowing them here would
+    silently convert a retryable outage into a full page rendered from a degraded read.
+
+    The exception is LOGGED at warning, never swallowed silently: a catalogue that has
+    stopped answering is an operational fact somebody has to see, and a tombstone cure
+    that quietly stopped tombstoning would otherwise look exactly like a healthy day.
+    """
+    try:
+        return await conn.fetch(CATALOGUE_MEMBERSHIP_QUERY, code, PHANTOM_LICENSING_STATUS)
+    except asyncpg.PostgresError as e:
+        logger.warning(
+            "⚠️ KBLI catalogue membership unreadable for %s (%s: %s) — verdict UNKNOWN, "
+            "serving the pre-tombstone answer",
+            code,
+            type(e).__name__,
+            e,
+        )
+        return None
 
 
 # What the client reads instead of a licensing answer. Stated as OUR catalogue's finding:
