@@ -533,7 +533,7 @@ export function ImmigrationTab({
             <Button
               variant="outline"
               size="sm"
-              className="mt-3 gap-1.5"
+              className="mt-3 gap-1.5 shadow-none"
               onClick={(e) => {
                 e.stopPropagation();
                 router.push(
@@ -559,8 +559,8 @@ export function ImmigrationTab({
           }
         >
           <HairlineGrid
-            cols="1.6fr 1fr 1fr 1fr 92px"
-            colsCollapsed="1.6fr 1fr 92px"
+            cols="1.6fr 1fr 1fr 1fr 140px"
+            colsCollapsed="1.6fr 1fr 1fr 140px"
             id="immigration-visa-history"
           >
             <HairlineHead>
@@ -568,7 +568,7 @@ export function ImmigrationTab({
               <span>Status</span>
               <span data-collapse>Issued</span>
               <span>Expires</span>
-              <span aria-hidden="true" />
+              <span className="sr-only">Actions</span>
             </HairlineHead>
             <HairlineBody>
               {previousVisas.map((doc) => {
@@ -577,36 +577,7 @@ export function ImmigrationTab({
                   .filter(Boolean)
                   .join(" · ");
                 return (
-                  <HairlineRow
-                    key={doc.id}
-                    actions={
-                      <>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-7 w-7"
-                          onClick={() => onEditClick(doc)}
-                          aria-label={`Edit ${doc.document_type}`}
-                        >
-                          <Edit2 className="w-3 h-3" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-7 w-7"
-                          onClick={() =>
-                            handleDelete(
-                              doc.id,
-                              doc.file_name || doc.document_type,
-                            )
-                          }
-                          aria-label={`Remove ${doc.document_type}`}
-                        >
-                          <Trash2 className="w-3 h-3" />
-                        </Button>
-                      </>
-                    }
-                  >
+                  <HairlineRow key={doc.id}>
                     <CellStack
                       primary={formatDocType(doc.document_type)}
                       secondary={secondary || undefined}
@@ -640,7 +611,7 @@ export function ImmigrationTab({
                           )}`
                         : "—"}
                     </span>
-                    <div className="flex items-center justify-end gap-1 px-2.5">
+                    <div className="flex items-center justify-end gap-0.5 px-2.5">
                       {isRenewable(doc) && (
                         <Button
                           variant="ghost"
@@ -668,6 +639,29 @@ export function ImmigrationTab({
                           <Download className="w-3 h-3" />
                         </Button>
                       )}
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7"
+                        onClick={() => onEditClick(doc)}
+                        aria-label={`Edit ${doc.document_type}`}
+                      >
+                        <Edit2 className="w-3 h-3" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7"
+                        onClick={() =>
+                          handleDelete(
+                            doc.id,
+                            doc.file_name || doc.document_type,
+                          )
+                        }
+                        aria-label={`Remove ${doc.document_type}`}
+                      >
+                        <Trash2 className="w-3 h-3" />
+                      </Button>
                     </div>
                   </HairlineRow>
                 );

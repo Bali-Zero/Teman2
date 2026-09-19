@@ -1,13 +1,23 @@
-import { render, screen } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { fireEvent, render, screen } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ClientDocument } from "@/lib/api/crm/crm.types";
 import { ImmigrationTab, isVisaFamilyDocument } from "./ImmigrationTab";
 
 vi.mock("./AiSummaryCard", () => ({ AiSummaryCard: () => null }));
 
+// Hoisted so the SAME `push` spy backs every `useRouter()` call across the
+// file — a fresh `vi.fn()` per call (the round-2 shape) can never observe an
+// argument, which is exactly what let a wrong navigation target through
+// unpinned (R6-gate.md §4b, mutation k).
+const { push } = vi.hoisted(() => ({ push: vi.fn() }));
+
 vi.mock("next/navigation", () => ({
-  useRouter: () => ({ push: vi.fn() }),
+  useRouter: () => ({ push }),
 }));
+
+beforeEach(() => {
+  push.mockClear();
+});
 
 // A few cases below freeze the clock (vi.setSystemTime) to pin exact-day
 // boundaries. Always restore real time afterwards — a leaked fake clock
@@ -394,7 +404,7 @@ describe("ImmigrationTab — Visa-history row controls are reachable on touch (R
     );
   });
 
-  it("INNOCENCE: Edit and Remove on the same row stay inside the hover-gated actions slot (unchanged)", () => {
+  it("GUILT (round 3 — B1 inverts the round-2 pin): Edit and Remove on the same row also carry no hover/focus-only ancestor", () => {
     const currentDate = new Date(Date.now() + 500 * 86400000)
       .toISOString()
       .slice(0, 10);
@@ -406,13 +416,47 @@ describe("ImmigrationTab — Visa-history row controls are reachable on touch (R
       { ...baseDoc, id: 73, document_type: "kitas", expiry_date: historyDate },
     ]);
 
-    const editButton = screen.getByRole("button", {
-      name: /edit kitas/i,
-    });
-    const gatedAncestor = editButton.closest(
-      '[class*="opacity-0"][class*="hover:none"]',
+    assertReachableOnTouch(screen.getByRole("button", { name: /edit kitas/i }));
+    assertReachableOnTouch(
+      screen.getByRole("button", { name: /remove kitas/i }),
     );
-    expect(gatedAncestor).not.toBeNull();
+  });
+
+  it("PIN (B1 — the defect that would have caught the missing column in round 1): every Visa-history row renders the same number of grid children as the head", () => {
+    const currentDate = new Date(Date.now() + 500 * 86400000)
+      .toISOString()
+      .slice(0, 10);
+    const withMember = new Date(Date.now() - 5 * 86400000)
+      .toISOString()
+      .slice(0, 10);
+    const withoutMember = new Date(Date.now() - 15 * 86400000)
+      .toISOString()
+      .slice(0, 10);
+    renderTab([
+      { ...baseDoc, id: 74, document_type: "kitas", expiry_date: currentDate },
+      {
+        ...baseDoc,
+        id: 75,
+        document_type: "kitap",
+        expiry_date: withMember,
+        family_member_name: "Synthetic Dependent",
+      },
+      { ...baseDoc, id: 76, document_type: "visa", expiry_date: withoutMember },
+    ]);
+
+    const grid = document.querySelector(
+      '[data-hgrid="immigration-visa-history"]',
+    );
+    expect(grid).not.toBeNull();
+    const head = grid!.querySelector('[role="row"]');
+    expect(head).not.toBeNull();
+    const body = head!.nextElementSibling;
+    expect(body).not.toBeNull();
+    const rows = Array.from(body!.children);
+    expect(rows.length).toBe(2); // withMember + withoutMember
+    for (const row of rows) {
+      expect(row.children.length).toBe(head!.children.length);
+    }
   });
 });
 
@@ -548,5 +592,78 @@ describe("ImmigrationTab — the six unpinned repairs from R6-reaudit.md §3 (M6
     ]);
 
     expect(screen.getByText(/Synthetic Dependent/)).toBeInTheDocument();
+  });
+});
+
+describe("ImmigrationTab — days KPI numeral never carries a sign (R6 round 3, C1)", () => {
+  it("PIN: the expiry KPI numeral renders the unsigned day count for a −10d fixture", () => {
+    const pastExpiry = new Date(Date.now() - 10 * 86400000)
+      .toISOString()
+      .slice(0, 10);
+    renderTab([
+      { ...baseDoc, id: 80, document_type: "kitas", expiry_date: pastExpiry },
+    ]);
+
+    const caption = screen.getByText("Days past expiry");
+    expect(caption.previousElementSibling?.textContent).toBe("10");
+  });
+
+  it("PIN: the elapsed-days KPI clamps to zero rather than a negative for a future issue_date", () => {
+    const futureIssue = new Date(Date.now() + 5 * 86400000)
+      .toISOString()
+      .slice(0, 10);
+    const expiry = new Date(Date.now() + 60 * 86400000)
+      .toISOString()
+      .slice(0, 10);
+    renderTab([
+      {
+        ...baseDoc,
+        id: 81,
+        document_type: "kitas",
+        issue_date: futureIssue,
+        expiry_date: expiry,
+      },
+    ]);
+
+    const caption = screen.getByText("Days on this permit");
+    expect(caption.previousElementSibling?.textContent).toBe("00");
+  });
+});
+
+describe("ImmigrationTab — Start Renewal navigates to the real target (R6 round 3, C2)", () => {
+  it("PIN: the panel CTA calls router.push with the visa_renewal target for this client", () => {
+    const soon = new Date(Date.now() + 45 * 86400000)
+      .toISOString()
+      .slice(0, 10);
+    renderTab([
+      { ...baseDoc, id: 90, document_type: "kitas", expiry_date: soon },
+    ]);
+
+    fireEvent.click(screen.getByRole("button", { name: /start renewal/i }));
+
+    expect(push).toHaveBeenCalledWith(
+      "/process/new?client_id=1&type=visa_renewal",
+    );
+  });
+
+  it("PIN: a history row's CTA calls router.push with the same target", () => {
+    const current = new Date(Date.now() + 400 * 86400000)
+      .toISOString()
+      .slice(0, 10);
+    const expired = new Date(Date.now() - 10 * 86400000)
+      .toISOString()
+      .slice(0, 10);
+    renderTab([
+      { ...baseDoc, id: 91, document_type: "kitas", expiry_date: current },
+      { ...baseDoc, id: 92, document_type: "kitas", expiry_date: expired },
+    ]);
+
+    fireEvent.click(
+      screen.getByRole("button", { name: /start renewal for kitas/i }),
+    );
+
+    expect(push).toHaveBeenCalledWith(
+      "/process/new?client_id=1&type=visa_renewal",
+    );
   });
 });

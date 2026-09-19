@@ -23,8 +23,17 @@ task: >-
   still routes to the single `--state-warning` tone, never the old per-bucket
   yellow/red hues), the `(n)` count on the Visa history head, and
   `.replace(/_/g, " ")` normalisation on the plaque and the grid's type column.
-  Reviewer per the 2026-09-17 CRM pact is Subhi (design is Zero's call, code is
-  Subhi's); this PR is prepared NOT ARMED at open, per that pact.
+  Round 3 (this commit) closes the one defect neither audit caught: the
+  visa-history `HairlineGrid` declared 5 columns but rendered 6 grid items per
+  row (5 named cells plus the primitive's own `actions` slot, which is a
+  direct grid child with no track reserved for it) — introduced by the
+  branch's first commit and carried unchanged through both repair rounds. The
+  `actions` prop is now removed entirely; Edit and Remove move into the
+  existing always-rendered action cell alongside Start Renewal and Download,
+  so head and row both render exactly 5 children and every control is
+  touch-reachable. By the owner's decision of 2026-09-19 the client-page
+  redesign no longer waits for a human code review before arming — the gates
+  are CI, the independent parity audit and the final on-disk gate.
 lane: frontend/kita-r6-immigration-permit-panel
 machine: air-m5
 date: 2026-09-20
@@ -32,14 +41,14 @@ date: 2026-09-20
 gear: 2
 gear_reason: >-
   Deterministic floor 2, source `size`: `git diff --no-renames --numstat
-  origin/main` (working tree, second repair round included) measures
-  ImmigrationTab.test.tsx +436/-13, ImmigrationTab.tsx +401/-53 and
-  ValidityTrack.tsx +52/-0 — 3 files, +889/-66, churn 955 by add+delete count,
-  above `SIZE_GEAR2_THRESHOLD` (400) and below `SIZE_GEAR3_THRESHOLD` (1828).
-  None of the three matches `HOTZONE_PATTERNS` (all plain files under
+  origin/main` (working tree, third round included) measures
+  ImmigrationTab.test.tsx +555/-15, ImmigrationTab.tsx +395/-53 and
+  ValidityTrack.tsx +52/-0 — 3 files, +1002/-68, churn 1070 by add+delete
+  count, above `SIZE_GEAR2_THRESHOLD` (400) and below `SIZE_GEAR3_THRESHOLD`
+  (1828). None of the three matches `HOTZONE_PATTERNS` (all plain files under
   `apps/mouth/src/app/(workspace)/clients/[id]/components/`, no
   workflow/secret/migration path), so the path term does not independently raise
-  the floor. Gear stays 2 across both repair rounds — churn grew but stayed well
+  the floor. Gear stays 2 across all three rounds — churn grew but stayed well
   inside the [400, 1828) band.
 
 appetite:
@@ -58,8 +67,13 @@ acceptance:
     (`queryByRole` is null) — corrected here, since it also passes against
     `b67ee138d0`, which had no CTA anywhere: at most two of the three pins are
     regression-sensitive to that commit, not all three. The 90-day boundary is
-    pinned at exactly 90 and 91 days under `vi.setSystemTime`. Single-file suite:
-    28 tests.
+    pinned at exactly 90 and 91 days under `vi.setSystemTime`. Round 3 removes
+    the `HairlineRow actions` prop entirely (the grid was rendering 6 items
+    into 5 declared columns — the gate's blocking defect) and moves Edit /
+    Remove into the same always-rendered cell as Start Renewal / Download, so
+    all four history-row controls are now touch-reachable; a child-count pin
+    (`head.children.length === row.children.length`) guards the column/cell
+    parity directly. Single-file suite: 33 tests.
     probe: >-
       cd apps/mouth && npx --no-install vitest run
       'src/app/(workspace)/clients/[id]/components/ImmigrationTab.test.tsx'
@@ -74,13 +88,15 @@ acceptance:
       cd apps/mouth && npx --no-install vitest run
       'src/app/(workspace)/clients/[id]/components/ImmigrationTab.test.tsx'
   A3: >-
-    The full `clients/[id]/` folder suite passes — 18 files / 220 tests (real
-    count after the second repair round's 9 new pins: touch-reachability × 2,
-    M6-M11 × 7) — including `__tests__/client-detail-desk.test.tsx`'s AST
-    colour/copper guard, proving the restyle introduces no raw colour literal, no
-    red/rose/orange/amber utility (the restored `alert_color` signal — now
-    including `yellow` — routes to the single `--state-warning` token, not the
-    old per-bucket hues) and no ungated copper.
+    The full `clients/[id]/` folder suite passes — 18 files / 225 tests (real
+    count after round 3's 5 new/changed pins: the inverted touch-reachability
+    case for Edit/Remove, the head/row child-count pin, two days-KPI numeral
+    sign pins, and two navigation-target pins now that `useRouter`'s `push` is
+    hoisted and observable) — including `__tests__/client-detail-desk.test.tsx`'s
+    AST colour/copper guard, proving the restyle introduces no raw colour
+    literal, no red/rose/orange/amber utility (the restored `alert_color`
+    signal — now including `yellow` — routes to the single `--state-warning`
+    token, not the old per-bucket hues) and no ungated copper.
     probe: >-
       cd apps/mouth && npx --no-install vitest run
       'src/app/(workspace)/clients/[id]/'
@@ -102,6 +118,8 @@ out_of_scope: >-
   whose first round is already audited. Orchestrator's decision (recorded here,
   not applied silently): this slice ships as ONE PR past the ~400-line budget,
   because it is one component plus its parity pins — no R6a/R6b split. Arming,
-  merging and deploying this PR — per the 2026-09-17 CRM pact that waits for
-  Subhi's code review, and per the ship-lifecycle contract the session that owns
-  the mandate executes, not this brief.
+  merging and deploying this PR is per the ship-lifecycle contract the session
+  that owns the mandate executes, not this brief — the 2026-09-17 CRM pact's
+  wait for a human code review is superseded by the owner's 2026-09-19
+  decision (gates are now CI, the independent parity audit, and the final
+  on-disk gate).
