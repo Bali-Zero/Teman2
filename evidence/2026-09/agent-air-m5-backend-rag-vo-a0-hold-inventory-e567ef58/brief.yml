@@ -1,0 +1,107 @@
+task_id: vo-a0-hold-inventory
+gear: 2
+l_level: L1
+gate_class: sonnet
+base_sha: 7479496537c5e2525a2bb97401f7fd0f16cb16e3 # pragma: allowlist secret - public Git commit ID
+mandate: VISA-ORACLE-DW-20260919
+colour: BLUE
+# Floor measured this session: `python3 scripts/contract_verify.py --head HEAD --json`
+# reported `deterministic floor is 2` (size term — no path under
+# apps/backend-rag/backend/db/migrations_v2/, fly.toml, .env*, or zantara_core.py is
+# touched, so this is not a hot-zone hit).
+objective: >-
+  Slice A0 of VISA-ORACLE-DW-20260919/PLAN.md: the missing PR-O1 keystone.
+  apps/backend-rag/backend/scripts/visa_engine/review_hold_inventory.py is a
+  read-only script that derives every HUMAN_REVIEW hold producer from the highest
+  SIGNED production pack's AST (reusing the interview-walk census's own
+  select_highest_repository_pack resolver, never a hand glob) plus the two backend
+  adapter constants that raise the rest (_DISCLOSED_REVIEW_REASON_CODES and the
+  minor-privacy hold's code), replacing the hand-counted lists PLAN §1.3 warned
+  would go stale the moment any of the four source files moved independently.
+  Lifts MINOR_GUARDIAN_PRIVACY_REVIEW_CODE out of _apply_minor_privacy_hold's
+  hard-coded string literal into a module constant in evaluate_path.py — the one
+  production-code line this slice touches, so the inventory imports the code the
+  adapter actually emits rather than duplicating it. Also attempted, per PLAN §1.1,
+  to resolve PROD's actually-active pack sequence as A0's first act: both
+  `/api/visa-oracle/rule-pack` (401) and `probe_evaluate.py --full-body` against
+  `/api/visa-oracle/evaluate` (passes the driver-token auth gate, then a sanitized
+  422 that deliberately redacts which fields diverged) were inconclusive, and the
+  `scripts/pg.sh` DB route was blocked because the `fly` CLI held no access token in
+  this session (a login/credential act reserved for the human). Recorded as
+  UNVERIFIED FROM THIS SEAT, with what was tried, in the visaoracle SKILL.md LIVE
+  STATE and in this brief, per PLAN §7 item 1's explicit fallback instruction — not
+  guessed. Bites: backend/tests/scripts/visa_engine/test_review_hold_inventory.py
+  imports the production _DISCLOSED_REVIEW_REASON_CODES and the highest signed pack
+  directly, so a twelfth disclosure flag or a tenth HUMAN_REVIEW rule turns it red
+  in the same run; observed green on the candidate this session.
+constraints:
+  - >-
+    No file under apps/backend-rag/backend/db/migrations_v2/ changes; no touch to
+    fly.toml, .env*, or zantara_core.py.
+  - >-
+    Exactly one production-code line-group touched outside the two new files: the
+    MINOR_GUARDIAN_PRIVACY_REVIEW_CODE constant lift in evaluate_path.py — no other
+    engine behaviour changes in this PR.
+  - No client PII anywhere; synthetic data only; no secret echoed, printed, or committed.
+acceptance:
+  - text: >-
+      A1 (INNOCENCE, real pack): WHEN pack_review_rules/pack_unknown_escalations run
+      against the highest signed production pack on disk THE counts SHALL be exactly
+      9 and 7 (PLAN §1.3c/d for seq-22), with the sequence number in the assertion
+      message so a later sequence that changes the count fails loudly, naming it.
+    probe: >-
+      cd apps/backend-rag && PYTHONPATH=. .venv/bin/pytest
+      backend/tests/scripts/visa_engine/test_review_hold_inventory.py::test_inventory_counts_match_the_signed_pack
+  - text: >-
+      A2 (closed vocabulary): WHEN adapter_review_codes runs THE result SHALL have
+      exactly 11 entries whose key set equals set(DisclosedReviewFlag) — a twelfth
+      flag added to the enum without a code, or vice versa, fails this test.
+    probe: >-
+      cd apps/backend-rag && PYTHONPATH=. .venv/bin/pytest
+      backend/tests/scripts/visa_engine/test_review_hold_inventory.py::test_every_disclosed_flag_has_exactly_one_code
+  - text: >-
+      A3 (named orphans): WHEN orphan_review_gate_items runs against the live
+      tree.ts/fact-mapper.ts THE result SHALL be exactly {overstay, blacklist,
+      immigration_investigation} — slice A3 fixing them turns this red on purpose.
+    probe: >-
+      cd apps/backend-rag && PYTHONPATH=. .venv/bin/pytest
+      backend/tests/scripts/visa_engine/test_review_hold_inventory.py::test_orphan_review_gate_items_are_named
+  - text: >-
+      A4 (GUILT, derivation not a hand list): WHEN a synthetic pack gains a second
+      HUMAN_REVIEW rule THE pack_review_rules count SHALL move from 1 to 2 — proof
+      this is read off the pack's own AST, not a hardcoded number.
+    probe: >-
+      cd apps/backend-rag && PYTHONPATH=. .venv/bin/pytest
+      backend/tests/scripts/visa_engine/test_review_hold_inventory.py::test_inventory_is_a_derivation_not_a_hand_list
+  - text: >-
+      A5: THE full new test module SHALL pass end to end, ruff SHALL report zero
+      findings on both new files, and the existing evaluate_path.py consumers
+      (disclosed-flag and minor-privacy-hold suites) SHALL remain green after the
+      constant lift.
+    probe: >-
+      cd apps/backend-rag && PYTHONPATH=. .venv/bin/pytest
+      backend/tests/scripts/visa_engine/test_review_hold_inventory.py
+      backend/tests/services/visa_engine/ -k "disclos or minor_privacy" &&
+      .venv/bin/ruff check backend/scripts/visa_engine/review_hold_inventory.py
+      backend/tests/scripts/visa_engine/test_review_hold_inventory.py
+assumptions:
+  - text: >-
+      PROD's actually-active rule-pack sequence could not be established from this
+      seat (see objective above) — B2/live-B-track work must not assume seq-22 is
+      live until a future session with fly/pg credentials closes this.
+    status: unresolved
+    probe: >-
+      curl -s -o /dev/null -w '%{http_code}' https://nuzantara-rag.fly.dev/api/visa-oracle/rule-pack
+  - text: >-
+      This diff's net code size (439 lines across the two new files plus the
+      9-line constant lift) is above the PLAN's own ~280-line estimate for A0 but
+      within the Builder Contract's "≤ ~400 net lines where the work allows" —
+      the repo's own comparable script (reachability_report.py) carries a similarly
+      dense docstring for a similarly-scoped read-only inventory CLI, so this
+      matches established house density rather than being unusually verbose.
+    status: verified
+    probe: >-
+      wc -l apps/backend-rag/backend/scripts/visa_engine/reachability_report.py
+      apps/backend-rag/backend/scripts/visa_engine/review_hold_inventory.py
+appetite:
+  wall_clock_hours: 1
