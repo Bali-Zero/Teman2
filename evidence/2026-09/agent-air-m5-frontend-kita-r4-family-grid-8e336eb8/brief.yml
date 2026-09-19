@@ -81,7 +81,13 @@ assumptions:
       entirely" instruction. When passport_expiry is NOT known but the member has passport
       data (a number or a document) and a non-green alert, the date cell falls back to the
       alert's own word (alertWord()), mirroring the old file's dateMath-else-alertWord
-      structure at FamilyTab.tsx@HEAD~2 lines 396-417.
+      structure at FamilyTab.tsx@HEAD~2 lines 396-417. Corrected after the R4 gate's third
+      review round (2026-09-20): the visa expiry cell also shows the old relative wording
+      (`Expired Nd ago` / `Expires today` / `⏰ Nd left` / `Nmo left`, via a
+      `relativeDateLabel()` helper shared with the passport cell, `visaUrgency()`) — only
+      its client-side day THRESHOLD stays deleted, per the same explicit instruction;
+      urgency weight comes solely from `visa_alert` being present and non-green, never
+      from a day count.
     status: verified
     probe: >-
       Read FamilyTab.tsx's `passportUrgency()` and `visaPill()` side by side; the GUILT

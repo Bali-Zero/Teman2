@@ -193,6 +193,23 @@ function visaPill(alert: FamilyMember["visa_alert"], hasType: boolean) {
 }
 
 /**
+ * Shared relative-date wording ladder (OLD:365-370 passport / 520-527 visa,
+ * identical wording both fields): `Expired Nd ago` / `Expires today` /
+ * `⏰ Nd left` (<= 365) / `Nmo left` (> 365). Pure date math, no threshold —
+ * whether that wording is URGENT is a decision each caller makes on its own
+ * (passport falls back to a day-count, visa never does — see `visaUrgency`).
+ */
+function relativeDateLabel(expiry: string): string {
+  const daysLeft = Math.ceil(
+    (new Date(expiry).getTime() - Date.now()) / 86400000,
+  );
+  if (daysLeft < 0) return `Expired ${Math.abs(daysLeft)}d ago`;
+  if (daysLeft === 0) return "Expires today";
+  if (daysLeft <= 365) return `⏰ ${daysLeft}d left`;
+  return `${Math.floor(daysLeft / 30)}mo left`;
+}
+
+/**
  * Passport has no pill in this grid, so its urgency lives on the date cell
  * itself (word + weight, never a copper tone) — same mechanism as
  * `ObligationsTable`'s `isDueSoon`. When the expiry date is known the
@@ -209,21 +226,32 @@ function passportUrgency(
     const daysLeft = Math.ceil(
       (new Date(expiry).getTime() - Date.now()) / 86400000,
     );
-    const label =
-      daysLeft < 0
-        ? `Expired ${Math.abs(daysLeft)}d ago`
-        : daysLeft === 0
-          ? "Expires today"
-          : daysLeft <= 365
-            ? `⏰ ${daysLeft}d left`
-            : `${Math.floor(daysLeft / 30)}mo left`;
     const urgent = alert ? alert !== "green" : daysLeft <= 180;
-    return { label, urgent };
+    return { label: relativeDateLabel(expiry), urgent };
   }
   if (hasData && alert && alert !== "green") {
     return { label: alertWord(alert), urgent: true };
   }
   return undefined;
+}
+
+/**
+ * Visa keeps the same relative wording on its date cell (restored — see the
+ * R4 audit §3.1 gate correction), but its urgency weight comes ONLY from the
+ * server-computed `visa_alert` enum — never from a client-side day count.
+ * The old `<= 90` colour switch stays deleted, on the task's own explicit
+ * instruction; wording is not a threshold, weight is, and only the weight
+ * was ordered gone.
+ */
+function visaUrgency(
+  expiry: string | undefined,
+  alert: FamilyMember["visa_alert"],
+) {
+  if (!expiry) return undefined;
+  return {
+    label: relativeDateLabel(expiry),
+    urgent: Boolean(alert) && alert !== "green",
+  };
 }
 
 function DocumentActionButton({
@@ -448,6 +476,10 @@ export function FamilyTab({
               // OCR pending — see the note rendered below.
               const visaType = member.current_visa_type;
               const pill = visaPill(member.visa_alert, Boolean(visaType));
+              const visaUrgencyInfo = visaUrgency(
+                visaExpiry,
+                member.visa_alert,
+              );
               const passportUrgencyInfo = passportUrgency(
                 passportExpiry,
                 member.passport_alert,
@@ -512,6 +544,18 @@ export function FamilyTab({
                   </div>
                   <div className="space-y-1 px-2.5 py-3 text-[13px] text-[var(--tx-pure)]">
                     {visaExpiry ? <p>{formatDate(visaExpiry)}</p> : <p>—</p>}
+                    {visaUrgencyInfo ? (
+                      <p
+                        className="text-xs"
+                        style={{
+                          color: visaUrgencyInfo.urgent
+                            ? "var(--state-warning)"
+                            : "var(--tx-secondary)",
+                        }}
+                      >
+                        {visaUrgencyInfo.label}
+                      </p>
+                    ) : null}
                     {passportUrgencyInfo ? (
                       <p
                         className="text-xs"

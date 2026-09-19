@@ -70,6 +70,59 @@ describe("FamilyTab — r19 family ledger", () => {
     expect(screen.queryByText("Valid")).not.toBeInTheDocument();
   });
 
+  it("GUILT: an expired visa shows the relative wording on the date cell with warning weight (R4 §3.1 gate correction — parity beats disclosure)", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-09-19T12:00:00Z"));
+
+    renderTab([
+      { ...MEMBER, visa_alert: "expired", visa_expiry: "2026-09-10" },
+    ]);
+
+    expect(screen.getByText("Expired 9d ago")).toHaveAttribute(
+      "style",
+      "color: var(--state-warning);",
+    );
+  });
+
+  it("GUILT: a red visa shows the countdown wording with warning weight, driven by the enum not a day threshold", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-09-19T12:00:00Z"));
+
+    renderTab([{ ...MEMBER, visa_alert: "red", visa_expiry: "2026-10-19" }]);
+
+    expect(screen.getByText("⏰ 30d left")).toHaveAttribute(
+      "style",
+      "color: var(--state-warning);",
+    );
+  });
+
+  it("INNOCENCE: a green visa shows the same wording with NO warning weight — the enum, not the day count, drives it", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-09-19T12:00:00Z"));
+
+    // 10 days left would have been urgent under the old <= 90 client-side
+    // threshold; the server says green, so the weight must stay quiet.
+    renderTab([{ ...MEMBER, visa_alert: "green", visa_expiry: "2026-09-29" }]);
+
+    expect(screen.getByText("⏰ 10d left")).toHaveAttribute(
+      "style",
+      "color: var(--tx-secondary);",
+    );
+  });
+
+  it("INNOCENCE: a member with no visa_expiry shows the em-dash, no stray wording line", () => {
+    renderTab([
+      {
+        ...MEMBER,
+        visa_expiry: undefined,
+        visa_alert: undefined,
+        current_visa_type: undefined,
+      },
+    ]);
+
+    expect(screen.getByText("—")).toBeInTheDocument();
+  });
+
   it("GUILT: a yellow visa_alert and a red visa_alert render different words", () => {
     renderTab([
       { ...MEMBER, id: 5, visa_alert: "yellow" },
