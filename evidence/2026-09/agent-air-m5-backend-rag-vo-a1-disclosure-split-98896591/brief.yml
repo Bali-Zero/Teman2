@@ -1,0 +1,161 @@
+task_id: vo-a1-disclosure-split
+gear: 2
+l_level: L1
+gate_class: sonnet
+base_sha: 6d6ad4db44e7e7b76a5d60077c0f8187b0c1d5a9 # pragma: allowlist secret - public Git commit ID
+mandate: VISA-ORACLE-DW-20260919
+colour: BLUE
+# Floor measured this session:
+# `python3 scripts/evidence_pack_lint.py --print-floor --changed-files-file <(git status --short | awk '{print $2}')`
+# reported `1` (path-only floor — no migrations_v2/, fly.toml, .env*, or
+# zantara_core.py touched).
+objective: >-
+  Slice A1 of VISA-ORACLE-DW-20260919/PLAN.md: split the disclosure adapter.
+  _apply_disclosed_review_flags (evaluate_path.py) previously rewrote the
+  decision to HUMAN_REVIEW_REQUIRED for ANY of the 11 DisclosedReviewFlag
+  members, unconditionally. After this PR: CRIMINAL_RECORD alone keeps the
+  hold (HOLDING_DISCLOSED_FLAGS); the other ten emit a named
+  *_CONDITION Reason into decision.notices and leave state/candidates/
+  missing_facts/no_path_reasons/quotes exactly as the signed pack decided —
+  per Zero's 2026-09-13 ruling (memory
+  decision-oracle-human-review-only-for-criminal-matters-ceremony-roles-
+  authorized-2026-09-13). Adds a fail-closed kill switch,
+  VISA_ORACLE_HOLDING_FLAGS (env, read fresh per evaluation via
+  _resolve_holding_flags — never memoised at import time), that can widen
+  the holding set fleet-wide with `fly secrets set` + restart, no redeploy;
+  an unparseable value (malformed comma list) holds all eleven flags, an
+  unknown flag name holds the recognized subset, and CRIMINAL_RECORD is
+  unioned into every return path so no env value can ever release it.
+  This PR ALSO re-pins test_interview_walk_census.py: the census is this
+  change's own consumer (PLAN's own instruction), and its prior derivation
+  ("_apply_disclosed_review_flags is... unconditional... ANY flag ends
+  HUMAN_REVIEW_REQUIRED") is exactly the premise A1 overturns. Measured
+  delta on signed seq-22 (111-walk W-VO-Q corpus): FUNNEL 11 -> 3
+  HUMAN_REVIEW_REQUIRED, now identical to ENGINE (94/14/1/3) because this
+  corpus raises only ACTIVITY_BOUNDARY (6 walks) and NOT_CERTAIN (2 walks),
+  neither holding — exactly the plan's own predicted 11 -> 3, confirmed by
+  measurement, not assumed. One reachability-guard test
+  (test_the_products_the_applicant_is_never_shown_are_pinned_by_cause) and
+  one production-facts scenario
+  (test_offshore_positive_overstay_conflict_forces_human_review, renamed
+  ..._names_a_condition) also needed re-pinning for the same reason. OD-2
+  and OD-3 (undecidable other_purpose sub-values; dual-citizenship status)
+  do NOT land in this slice: A1's engine adapter sees only the
+  DisclosedReviewFlag enum member, never which frontend answer raised it,
+  so distinguishing "undecidable ACTIVITY_BOUNDARY" from any other
+  ACTIVITY_BOUNDARY raise, or giving dual-citizenship its own flag instead
+  of falling through NOT_CERTAIN/AMBIGUOUS_SPONSOR, needs a fact-mapper.ts
+  change on the mouth side — PLAN's own A3 slice ("map the three orphan
+  REVIEW_GATE_ITEMS... or a new flag"). A1 ships exactly PLAN §4's literal
+  spec: ACTIVITY_BOUNDARY -> DISCLOSED_ACTIVITY_BOUNDARY_CONDITION for
+  every raise, with no sub-classification. Bites:
+  test_interview_walk_census.py's FUNNEL column (measured, re-pinned, green
+  in this PR) plus 31 new/updated unit tests in test_evaluate_endpoint.py
+  (guilt+innocence per non-criminal flag, the criminal hold, the co-
+  disclosure case, the kill switch's 5 branches) — both suites run green in
+  this PR's own CI job.
+constraints:
+  - No file under apps/backend-rag/backend/db/migrations_v2/ changes; no
+    touch to fly.toml, .env*, or zantara_core.py.
+  - No pack file change (contracts/packs/**) — no fold/compile/sign/activate.
+  - No apps/mouth/** change — notices rendering is slice A2.
+  - _apply_minor_privacy_hold and the _PUBLIC_POLICY_ADAPTERS ordering
+    tuple at evaluate_path.py:~1403 (pre-PR line) are untouched.
+  - No client PII anywhere; synthetic personas/facts only (gold_loader
+    fixtures, the walk corpus); no secret echoed, printed, or committed —
+    the kill switch's fail-closed log lines carry a token COUNT, never the
+    raw env value.
+acceptance:
+  - text: >-
+      G1-b GUILT+INNOCENCE per non-criminal flag: for each of the ten
+      released flags, applying it alone to a SUPPORTED_CANDIDATES baseline
+      leaves state/candidates/missing_facts/no_path_reasons/quotes/
+      decision_id/public_id identical and adds exactly one notice with the
+      flag's *_CONDITION code (innocence); listing that same flag in
+      VISA_ORACLE_HOLDING_FLAGS restores HUMAN_REVIEW_REQUIRED with
+      candidates=() and the flag's *_REVIEW code (guilt).
+    probe: >-
+      cd apps/backend-rag && PYTHONPATH=. .venv/bin/pytest
+      backend/tests/services/visa_engine/test_evaluate_endpoint.py -k
+      "each_non_criminal_flag_keeps_the_pack_verdict or
+      regressing_a_flag_via_holding_env"
+  - text: >-
+      CRIMINAL_RECORD alone still holds; a co-disclosed criminal + health
+      flag pair holds AND names the health condition in the same decision;
+      HOLDING_DISCLOSED_FLAGS is exactly {CRIMINAL_RECORD}.
+    probe: >-
+      cd apps/backend-rag && PYTHONPATH=. .venv/bin/pytest
+      backend/tests/services/visa_engine/test_evaluate_endpoint.py -k
+      "test_criminal_disclosure_still_holds or
+      test_criminal_plus_health_names_both or
+      test_holding_set_is_exactly_the_ruling"
+  - text: >-
+      Kill switch fail-closed on both malformed and unknown-flag-name env
+      values, and CRIMINAL_RECORD is unioned in even when the env omits it.
+    probe: >-
+      cd apps/backend-rag && PYTHONPATH=. .venv/bin/pytest
+      backend/tests/services/visa_engine/test_evaluate_endpoint.py -k
+      resolve_holding_flags
+  - text: >-
+      The census (this change's own consumer, per PLAN §4): FUNNEL moves
+      11 -> 3 HUMAN_REVIEW_REQUIRED on signed seq-22, now identical to
+      ENGINE (94/14/1/3); every non-holding flag this corpus raises keeps
+      the engine's state/candidates and adds its *_CONDITION notice; the
+      kill switch restores a real corpus walk's pre-A1 hold.
+    probe: >-
+      cd apps/backend-rag && PYTHONPATH=. .venv/bin/pytest
+      backend/tests/services/visa_engine/test_interview_walk_census.py
+  - text: >-
+      PLAN's own literal acceptance probe (as written, `-k disclos`) stays
+      green — narrower than the full suite above since several new test
+      names don't literally contain "disclos".
+    probe: >-
+      cd apps/backend-rag && PYTHONPATH=. .venv/bin/pytest
+      backend/tests/services/visa_engine/ -k disclos
+  - text: >-
+      ruff check and ruff format --check report zero findings on every file
+      this PR touches.
+    probe: >-
+      ruff check apps/backend-rag/backend/services/visa_engine/evaluate_path.py
+      apps/backend-rag/backend/tests/services/visa_engine/test_evaluate_endpoint.py
+      apps/backend-rag/backend/tests/services/visa_engine/test_interview_walk_census.py
+      apps/backend-rag/backend/scripts/visa_engine/gold_coverage_eval.py &&
+      ruff format --check <the same paths>
+assumptions:
+  - text: >-
+      31 pre-existing DB-integration tests in test_evaluate_endpoint.py
+      (idempotency/retention/DSR suites) error at fixture SETUP with
+      asyncpg.exceptions.UndefinedTableError: relation
+      "public.visa_evaluate_idempotency" does not exist — verified this
+      session's local nuzantara_test Postgres carries only 9 of the
+      expected visa_* tables (migration 262 onward never applied here).
+      These errors are unrelated to this PR: they fire at fixture setup
+      before any test body (including tests this PR never touches, e.g.
+      test_no_active_pack_persists_nothing) and this PR changes no
+      migration, no fly.toml, no DB-facing code. Almost certainly local
+      test-DB state drift from a concurrent session sharing this machine's
+      Postgres (other visa_engine builders are active in the same team
+      session) — not chased further, since fixing a shared DB mid-flight
+      risks colliding with a sibling agent's own in-progress run (cicatrix
+      family #5).
+    status: unresolved
+    probe: >-
+      psql "postgresql://localhost/nuzantara_test" -c "\dt public.visa_*"
+  - text: >-
+      Net diff size is above the PLAN's own ~340-line estimate for A1 and
+      above the Builder Contract's "≤ ~400 net lines where the work
+      allows" ceiling — see `git diff --stat` for the exact, current
+      figure. Reason: A1's behaviour change inverts the premise
+      test_interview_walk_census.py's disclosure-flag section was written
+      against ("_apply_disclosed_review_flags is... unconditional"), and
+      the PLAN itself requires re-pinning that census IN this PR ("a red
+      census is not a separate concern, it is this change's own
+      consumer") rather than deferring it. Most of the excess is measured
+      test/docstring rework inside that one census file, not new
+      production logic — evaluate_path.py's own net addition is the
+      partition constant, the two condition-code maps, the fail-closed
+      kill switch, and the split adapter body only.
+    status: verified
+    probe: git diff --stat
+appetite:
+  wall_clock_hours: 2
