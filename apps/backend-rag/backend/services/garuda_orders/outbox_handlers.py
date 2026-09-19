@@ -1609,6 +1609,16 @@ class OrderAnomalyFacts:
     #: `late_case_charge_id`. This is derived from the append-only journal, so
     #: it needs no new column and cannot drift from what actually happened.
     case_resolved_since_trigger: bool
+    #: TRUE when the charge named by THIS job's triggering event is the charge
+    #: an OP-F08 case on this order was already refunded for. The journal holds
+    #: both halves: `payment.charge_detected_without_webhook` records the
+    #: provider's charge id in its own `detail`, and
+    #: `payment.refunded_after_late_case` records that staff refunded that case
+    #: (it is the only event that can follow an OP-F08 refund, per the contract).
+    #: The order ROW cannot answer this — OP-F04's UPDATE overwrites
+    #: `late_case_charge_id` with the replayed charge, erasing the id that was
+    #: refunded. Derived from the append-only journal, so it needs no column.
+    late_charge_already_refunded: bool = False
     detail: dict[str, Any] = field(default_factory=dict)
 
 
@@ -1761,8 +1771,52 @@ class _StaffPageHandler:
                     event_row["occurred_at"],
                 )
             )
-        raw_detail = event_row["detail"] if event_row is not None else None
-        detail = json.loads(raw_detail) if isinstance(raw_detail, str) else (raw_detail or {})
+            raw_detail = event_row["detail"]
+            detail = json.loads(raw_detail) if isinstance(raw_detail, str) else (raw_detail or {})
+            # Is the charge this page is about the one already given back? The
+            # sequence PR #6852 made routine is: OP-F08 case -> staff refund
+            # (`payment.refunded_after_late_case`) -> the OP-F08 page's own
+            # instruction, replay the callback -> that webhook lands on a
+            # `refunded` order -> OP-F04, naming the charge just refunded. Both
+            # ids are compared from the JOURNAL because the row's
+            # `late_case_charge_id` has by then been overwritten by the replay.
+            trigger_charge = detail.get("charge_id")
+            already_refunded = False
+            if isinstance(trigger_charge, str) and trigger_charge:
+                already_refunded = bool(
+                    await conn.fetchval(
+                        """
+                        SELECT EXISTS (
+                            SELECT 1
+                              FROM garuda_order_journal f08
+                             WHERE f08.aggregate_type = 'order'
+                               AND f08.aggregate_id = $1
+                               AND f08.event_name = 'payment.charge_detected_without_webhook'
+                               AND f08.detail->>'charge_id' = $3
+                               AND EXISTS (
+                                   SELECT 1
+                                     FROM garuda_order_journal refunded
+                                    WHERE refunded.aggregate_type = 'order'
+                                      AND refunded.aggregate_id = $1
+                                      AND refunded.event_name = 'payment.refunded_after_late_case'
+                                      -- the refund must sit BETWEEN the case
+                                      -- that named the charge and the event
+                                      -- this page is about: '>=' at the open
+                                      -- end (a tie there is still a refund of
+                                      -- that case), strict '<' at the trigger
+                                      -- end, because a refund recorded at or
+                                      -- after the trigger has not yet happened
+                                      -- when the page is composed.
+                                      AND refunded.occurred_at >= f08.occurred_at
+                                      AND refunded.occurred_at < $2
+                               )
+                        )
+                        """,
+                        order_id,
+                        event_row["occurred_at"],
+                        trigger_charge,
+                    )
+                )
         return OrderAnomalyFacts(
             order_id=order_row["order_id"],
             case_type=order_row["case_type"],
@@ -1772,6 +1826,7 @@ class _StaffPageHandler:
             late_case_charge_id=order_row["late_case_charge_id"],
             detail=detail,
             case_resolved_since_trigger=resolved_since,
+            late_charge_already_refunded=already_refunded,
         )
 
     @staticmethod
@@ -1901,6 +1956,21 @@ class StaffPageLatePaidAfterRefundHandler(_StaffPageHandler):
     the second charge is recorded) and, when that differs from the order row,
     says so and names the consequence — because `resolveLateOrder` refunds the
     ROW's id, so a divergence means its automated refund will miss this charge.
+
+    WHY THE PAGE HAS TWO INSTRUCTIONS (2026-09-20). "Refund this late charge
+    too" is correct for the case this page was written for — a genuine second
+    payment landing on a refunded order — and WRONG for the sequence PR #6852
+    made routine: staff refund an OP-F08 case, the OP-F08 page's own first move
+    is "replay the callback", and the replayed webhook opens THIS page naming
+    the charge just given back. `late_charge_already_refunded` separates the
+    two from the journal, and the second branch says the one thing that costs
+    money if left unsaid: do not refund it again. It also refuses to name a
+    closing move, because both are wrong here — `resolveLateOrder`'s
+    `refunded_in_full` calls `provider.refund(late_case_charge_id)`
+    (`repository.py`, and by then the ROW holds the replayed charge, i.e. the
+    refunded one), while `honoured` walks into the practice weld described in
+    `StaffPageChargeWithoutWebhookHandler`'s docstring. A page that cannot
+    offer a safe close says so rather than inventing one.
     """
 
     job_type = "staff_page_late_paid_after_refund"
@@ -1910,15 +1980,34 @@ class StaffPageLatePaidAfterRefundHandler(_StaffPageHandler):
         return facts.late_case_open and not facts.case_resolved_since_trigger
 
     def _compose(self, facts: OrderAnomalyFacts) -> str:
+        if facts.late_charge_already_refunded:
+            instruction = (
+                "DO NOT REFUND THIS CHARGE — it is the one you already gave "
+                "back. The OP-F08 case on this order was closed by that "
+                "refund, and the callback replay the OP-F08 page asks for "
+                "delivered the SAME charge as a late payment. The money is "
+                "already with the customer; there is nothing further to "
+                "return.\n\n"
+                "Neither resolveLateOrder outcome is safe on this case: "
+                "`refunded_in_full` asks the provider to refund this same "
+                "charge a SECOND time, and `honoured` closes the case and "
+                "then fails on every drain (PracticeNotMinted), delivering "
+                "nothing. Leave the case OPEN and escalate."
+            )
+        else:
+            instruction = (
+                "This order was already refunded when a payment for it "
+                "succeeded. The customer paid for something already refunded "
+                "— refund this late charge too, then close via "
+                "resolveLateOrder."
+            )
         return (
             "LATE PAYMENT AFTER REFUND\n\n"
             f"Order: `{facts.order_id}`\n"
             f"Case: {_escape_markdown(facts.case_type)}\n"
             f"Amount: {_amount(facts.price_idr)}\n"
             f"{_late_charge_lines(facts)}\n\n"
-            "This order was already refunded when a payment for it succeeded. "
-            "The customer paid for something already refunded — refund this "
-            "late charge too, then close via resolveLateOrder.\n\n"
+            f"{instruction}\n\n"
             f"Order: {self._tracker_link(facts.order_id)}"
         )
 
