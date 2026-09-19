@@ -1,4 +1,4 @@
-brief_ref: evidence/brief.yml  # the literal staging contract — CI lints a staged copy
+brief_ref: evidence/brief.yml # the literal staging contract — CI lints a staged copy
 plan_ref: >-
   research/kbli/2026-09-18-kbli-codes-closed-to-pma-tier1-tier2-dossier.md §8.5 — the residual
   Pasal 3(1)(d) lane, authorized by Zero to ship "in lotti con un gate". Lot 1 of that lane.
