@@ -566,6 +566,72 @@ describe("ClientDetailClient", () => {
     expect(screen.getByLabelText("Tax consultant")).toBeInTheDocument();
   });
 
+  // The Overview select is a COPY of TaxTab's selector logic (TaxTab is owned
+  // by another slice), so its behaviour is pinned here as the original's is in
+  // TaxTab.consultants.test.tsx. Dies without the `updateClient` call, the
+  // success toast, or the cache invalidation in `saveTaxConsultant`.
+  it("Overview tax-consultant select saves through updateClient, confirms with the consultant's label and refreshes (R7a)", async () => {
+    mockUpdateClient.mockClear();
+    mockInvalidateClient.mockClear();
+    mockUpdateClient.mockResolvedValueOnce({});
+    mockUseClientDetail.mockReturnValue({
+      data: companyLessProfile(),
+      isLoading: false,
+      error: null,
+    });
+    const { toast } = await import("sonner");
+    vi.mocked(toast.success).mockClear();
+    const { ClientDetailClient } = await import("./ClientDetailClient");
+    render(<ClientDetailClient taxConsultants={CONSULTANTS} />);
+
+    const select = screen.getByLabelText("Tax consultant") as HTMLSelectElement;
+    expect(select.value).toBe("");
+    await userEvent.selectOptions(select, "consultant.one@example.test");
+
+    await waitFor(() =>
+      expect(mockUpdateClient).toHaveBeenCalledWith(
+        7,
+        { tax_consultant: "consultant.one@example.test" },
+        "synthetic.team@example.test",
+      ),
+    );
+    await waitFor(() =>
+      expect(toast.success).toHaveBeenCalledWith(
+        "Tax consultant: Consultant One",
+      ),
+    );
+    expect(mockInvalidateClient).toHaveBeenCalled();
+    expect(select.value).toBe("consultant.one@example.test");
+  });
+
+  // GUILT: a failed save must not leave the select showing a consultant the
+  // server never stored. Dies without the `setTaxConsultantValue(previous)`
+  // revert in the catch branch.
+  it("Overview tax-consultant select reverts and reports when the save fails (R7a)", async () => {
+    mockUpdateClient.mockClear();
+    mockUpdateClient.mockRejectedValueOnce(new Error("synthetic failure"));
+    mockUseClientDetail.mockReturnValue({
+      data: companyLessProfile(),
+      isLoading: false,
+      error: null,
+    });
+    const { toast } = await import("sonner");
+    vi.mocked(toast.error).mockClear();
+    const { ClientDetailClient } = await import("./ClientDetailClient");
+    render(<ClientDetailClient taxConsultants={CONSULTANTS} />);
+
+    const select = screen.getByLabelText("Tax consultant") as HTMLSelectElement;
+    await userEvent.selectOptions(select, "consultant.two@example.test");
+
+    await waitFor(() =>
+      expect(toast.error).toHaveBeenCalledWith(
+        "Failed to update tax consultant",
+        { description: "synthetic failure" },
+      ),
+    );
+    await waitFor(() => expect(select.value).toBe(""));
+  });
+
   // INNOCENCE (round-1 judgement call, pinned): `company_name` set with zero
   // links keeps BOTH tabs — CompanyTab's name-search fallback surfaces real
   // data that hiding would orphan. Dies if `showCompanyTab` stops reading
