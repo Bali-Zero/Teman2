@@ -237,3 +237,113 @@ describe("PortalMessages scroll guards", () => {
     expect(scrollSpy).toHaveBeenCalled();
   });
 });
+
+/**
+ * PortalMessages — load-error state.
+ *
+ * loadMessages() used to swallow every fetch failure silently (`catch {}`),
+ * so a network error, an expired session or a 500 rendered the exact same
+ * "No portal messages yet" empty state a client with zero real messages
+ * would produce. An operator reading that copy has no way to tell "this
+ * client never wrote" from "the fetch just failed" — the fix (PortalMessages.tsx
+ * loadError state) must make the two visually distinct, and a poll failure
+ * after a successful load must never wipe messages already on screen.
+ *
+ *   (a) guilt      first-load rejection -> error state + Retry, NOT the empty state
+ *   (b) innocence  first-load resolves with [] -> the empty state, NOT the error state
+ *   (c)            clicking Retry after a rejection, once the mock recovers -> message
+ *                  renders and the error clears
+ *   (d)            a poll rejection AFTER a successful load keeps the prior message on
+ *                  screen and surfaces only the small "may be out of date" notice
+ */
+describe("PortalMessages load error state", () => {
+  let scrollSpy: Mock;
+
+  beforeEach(() => {
+    if (!vi.isMockFunction(Element.prototype.scrollIntoView)) {
+      throw new Error(
+        "premise broken: Element.prototype.scrollIntoView is not a vi.fn(). " +
+          "Expected the global stub at apps/mouth/src/test/setup.tsx:133.",
+      );
+    }
+    scrollSpy = Element.prototype.scrollIntoView as unknown as Mock;
+
+    vi.clearAllMocks();
+    scrollSpy.mockClear();
+
+    vi.mocked(api.crm.getPortalMessages).mockReset();
+    vi.mocked(api.crm.sendPortalMessage).mockReset();
+    vi.mocked(api.crm.markPortalMessageRead).mockReset();
+    vi.mocked(api.crm.markPortalMessageRead).mockResolvedValue(undefined);
+
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("a failed first load shows the error state, not the empty state", async () => {
+    vi.mocked(api.crm.getPortalMessages).mockRejectedValue(
+      new Error("network down"),
+    );
+
+    renderComponent();
+    await advance(100);
+
+    expect(screen.getByRole("alert")).toHaveTextContent(/could not be loaded/i);
+    expect(screen.getByRole("button", { name: /retry/i })).toBeInTheDocument();
+    expect(
+      screen.queryByText(/no portal messages yet/i),
+    ).not.toBeInTheDocument();
+  });
+
+  it("a successful load with zero messages shows the empty state, not the error state", async () => {
+    respondWith([]);
+
+    renderComponent();
+    await advance(100);
+
+    expect(screen.getByText(/no portal messages yet/i)).toBeInTheDocument();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
+  it("retry after a failed load recovers once the next call succeeds", async () => {
+    let call = 0;
+    vi.mocked(api.crm.getPortalMessages).mockImplementation(async () => {
+      call += 1;
+      if (call === 1) throw new Error("network down");
+      return { messages: [makeMessage(1)], total: 1 };
+    });
+
+    renderComponent();
+    await advance(100);
+
+    expect(screen.getByRole("alert")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: /retry/i }));
+    await advance(100);
+
+    expect(renderedMessageCount()).toBe(1);
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
+  it("a poll failure after a successful load keeps the prior message and does not wipe it", async () => {
+    let call = 0;
+    vi.mocked(api.crm.getPortalMessages).mockImplementation(async () => {
+      call += 1;
+      if (call === 1) return { messages: [makeMessage(1)], total: 1 };
+      throw new Error("network down");
+    });
+
+    renderComponent();
+    await advance(100);
+
+    expect(renderedMessageCount()).toBe(1);
+
+    await advance(POLL_INTERVAL_MS);
+
+    expect(renderedMessageCount()).toBe(1);
+    expect(screen.getByText(/out of date/i)).toBeInTheDocument();
+  });
+});
