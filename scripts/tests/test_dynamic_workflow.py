@@ -703,7 +703,7 @@ def test_r1_relaunching_the_same_seat_across_two_cmd_r1_calls_is_not_a_slug_coll
 
 def test_r1_refuses_a_slug_collision_between_the_kimi_2_7_alias_and_its_canonical_spelling(
         tmp_path, template, clean_objective):
-    """Item 3 (PR2g, gate-7 obs :442) + PR2g' S1/S3 Guilt (gate-13 obs 2 on PR2g #6772): the
+    """Item 3 (PR2g, gate-7 obs :442) + PR2g' S1/S3 Guilt (gate-13 obs 2 on PR2g #6790): the
     slug used to be claimed on the RAW seat id, so 'kimi-2.7' and its canonical spelling
     'kimi-code/kimi-for-coding-highspeed' claimed TWO different slugs for the ONE model
     KIMI_MODEL_MAP resolves both to — the same seat could answer twice and count twice in
@@ -1440,3 +1440,44 @@ def test_capture_pii_gate_refuses_a_non_utf8_scan_target_before_any_dest_write(
     assert e.value.code == 2
     assert str(bad_path) in capsys.readouterr().err
     assert not dest.exists()
+
+
+def test_seat_key_consolidation_guards_the_full_chain_for_an_aliased_seat(
+        monkeypatch, tmp_path, template, clean_objective):
+    """gate-15 obs 1 (MEDIUM, GATE-15-REPORT-6796.md): reverting cmd_r2's partner read
+    (:816), own write (:825), rejected write (:827), cmd_judge's read (:887),
+    _jury_prompt's read (:1099) or cmd_anonymise's read (:1161) back to raw _file_slug(seat)
+    left the shipped suite green at 106/106 -- only _claim_slug and the r1 writer were
+    guarded. kimi-2.7 canonicalizes to a DIFFERENT spelling, so each site reads/writes the
+    wrong path once _seat_key stops being the one formula in force. The seventh site
+    (run_selftest's own capture-check exercise, :1568) is proven separately by the
+    temp-REPO_ROOT test above -- the selftest dispatches no aliased seat, so this chain
+    cannot cover it.
+    """
+    seats = "kimi-2.7,qwen3.8-max,gemini-3.1-pro-high"
+    key = dw._seat_key("kimi-2.7")
+    kit = tmp_path / "k"
+    dw.cmd_brief(_brief_ns(clean_objective, template, kit))
+    _seed_convener(kit)
+    dw.cmd_r1(argparse.Namespace(kit=str(kit), seats=seats, astra_fallback=False))
+    assert (kit / "r1" / f"{key}.md").exists()  # site :557 (already guarded), sanity anchor
+
+    monkeypatch.delenv("DW_FAKE_SEATS", raising=False)
+    monkeypatch.setattr(dw, "_launch_seat", lambda seat, prompt, timeout, kit: dw._fake_r2_output(seat))
+    dw.cmd_r2(argparse.Namespace(kit=str(kit)))
+    assert (kit / "r2" / f"{key}.md").exists()  # site :825
+    assert (kit / "r2" / f"{key}.rejected.md").exists()  # site :827
+    monkeypatch.setenv("DW_FAKE_SEATS", "1")  # back to fake: judge/jury's own ballots need no launch
+
+    dw.cmd_judge(argparse.Namespace(kit=str(kit)))  # also exercises :816 (both other seats targeted kimi-2.7)
+    assert "| kimi-2.7 |" in (kit / "judge.md").read_text()  # site :887
+
+    dw.cmd_jury(argparse.Namespace(kit=str(kit)))
+    survivors = dw._jury_survivors(kit)
+    mapping = dw._jury_mapping(kit, survivors)
+    inverse = {seat: ltr for ltr, seat in mapping.items()}
+    prompt = dw._jury_prompt(kit, mapping, [inverse["kimi-2.7"]])  # direct call, fake-mode path
+    assert dw._strip_identity((kit / "r1" / f"{key}.md").read_text()) in prompt  # site :1099
+
+    dw.cmd_anonymise(argparse.Namespace(kit=str(kit)))
+    assert (kit / "Z-BLIND" / f"{inverse['kimi-2.7']}.md").exists()  # site :1161

@@ -441,7 +441,7 @@ def _file_slug(seat: str) -> str:
 
 
 def _seat_key(seat: str) -> str:
-    """The ONE identity a seat resolves to on disk (PR2g' S1, gate-13 obs 2 on PR2g #6772):
+    """The ONE identity a seat resolves to on disk (PR2g' S1, gate-13 obs 2 on PR2g #6790):
     _file_slug alone slugifies the RAW spelling, so an aliased seat (_SEAT_ALIASES, e.g.
     'kimi-2.7') and its canonical spelling slugify to the same string, but every caller used
     to recompute that fact its own way — _claim_slug canonicalized (PR2g item 3), every
