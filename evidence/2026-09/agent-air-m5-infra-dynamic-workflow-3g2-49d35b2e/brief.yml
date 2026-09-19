@@ -1,0 +1,119 @@
+task: >-
+  PR3g of the /dynamic-workflow launcher (MANDATE-builder.md, "Addendum 2026-09-19 06:58Z —
+  PR3g: seat output normalisation + window registration", queue PR3c -> gate-19 -> PR3g ->
+  gate-20 -> docs(ledger)). Ground truth, measured on the live VISA-ORACLE-DW-20260919 kit,
+  ledger rows 06:49-06:56Z: the first real r1 round registered ZERO external answers. kimi-k3
+  answered twice and gemini-3.1-pro-high answered twice, all four substantive, all four
+  ledgered `dead` by validate_answer because of WRAPPER BYTES: `kimi --output-format text`
+  prefixes every line with `• ` (bullet, space) or two spaces and appends a "To resume
+  this session: kimi -r ..." trailer; `agy --output-format text` wrapped its whole answer in a
+  ```markdown``` fence. validate_answer wants `---` at byte 0; the guard judged the bytes a
+  CLI wrapped the answer in, not the answer itself (scar #3, guard-over-match).
+
+  Three fixes, one concern ("a coach's answer is judged as an entity, not as the bytes its CLI
+  wrapped it in"): (1) `_normalise_seat_output` strips the fence wrapper and kimi's own bullet
+  decoration + resume trailer, applied before validate_answer (r1), _split_objections (r2) and
+  _parse_jury_ballot (jury) — the raw bytes are never discarded, they survive beside the
+  normalised answer at r1/<seat>.raw.md, r2/<seat>.raw.md and jury/ballot-<letter>.raw.md; (2)
+  `_run_one_seat` now also writes r1/<seat>.attemptN.md for every attempt, so a relaunch's
+  answer no longer overwrites attempt 1's only copy (the second defect the addendum named);
+  (3) a new `r1 --register <seat>` subcommand reads a hand-pasted r1/<seat>-window.md,
+  normalises and validates it, and on PASS writes r1/<seat>.md plus an `answered` ledger row
+  stamped at the window file's OWN mtime — closing the dead end where `awaiting-window` had no
+  subcommand able to ever resolve it (the third defect). Two fixtures copied byte-for-byte from
+  the real kit (grepped for PII before commit — none found) prove this against genuine CLI
+  wrapper bytes: both FAIL validate_answer raw and PASS once normalised.
+lane: infra/dynamic-workflow-3g2
+machine: M5
+date: 2026-09-19
+
+gear: 2
+gear_reason: >-
+  `python3 scripts/contract_verify.py --local --json` on this branch before this brief existed
+  returned floor-needs-brief FAIL naming exactly this diff: "deterministic floor is 2 but this
+  diff carries no evidence/brief.yml". Source `size`: code-only diffstat (evidence/ excluded,
+  `git diff --shortstat $(git merge-base origin/main HEAD) HEAD -- . ':(exclude)evidence/'`)
+  measures 580 insertions(+), 9 deletions(-) — above SIZE_GEAR2_THRESHOLD (400) and below
+  SIZE_GEAR3_THRESHOLD (1828). No hot-zone path: only `scripts/` and `.prettierignore` are
+  touched, no `.github/workflows/` file and no HOTZONE_PATTERNS match. The size is honestly
+  above the ~400 net-line PR-contract guideline: the two fixtures are real, byte-exact CLI
+  transcripts (118 lines total) that cannot be shortened without losing their evidentiary value
+  — they must be genuine wrapped output to prove the guard now judges the entity, not the
+  bytes — and the normalisation fix is one concern wired into three call sites (r1/r2/jury)
+  because all three shared the same defect, each needing a raw-file sibling and, for r1, an
+  attempt-file mechanism and a new --register path with its own selftest+pytest coverage.
+
+appetite:
+  wall_clock_hours: 3
+  adversarial_rounds: 1
+
+acceptance:
+  A1: >-
+    Both fixtures (byte-exact copies of a real kimi-k3 and a real gemini-3.1-pro-high coach
+    answer) FAIL validate_answer on their raw bytes and PASS once run through
+    _normalise_seat_output, against the fixture's own objective_sha256 line; normalisation is
+    idempotent on both.
+    probe: python3 -m pytest scripts/tests/test_dynamic_workflow.py -k "normalise_seat_output" -q
+  A2: >-
+    F11 guard: the line-diff between each fixture's raw and normalised text contains only fence
+    lines, bullet prefixes, two-space indents and the resume trailer — every other line is
+    byte-identical, proving the launcher never re-authors a seat's content.
+    probe: python3 -m pytest scripts/tests/test_dynamic_workflow.py -k "test_f11_guard_wrapper_removal_touches_only_wrapper_bytes" -q
+  A3: >-
+    r1/<seat>.raw.md, r2/<seat>.raw.md and jury/ballot-<letter>.raw.md are written with the
+    UNNORMALISED bytes beside the normalised r1/<seat>.md, r2/<seat>.md and
+    jury/ballot-<letter>.md, through the real _run_one_seat/cmd_r2/cmd_jury code paths under
+    DW_FAKE_SEATS=1 (no seat launch or probe).
+    probe: python3 -m pytest scripts/tests/test_dynamic_workflow.py -k "writes_a_raw_copy or writes_a_raw_ballot" -q
+  A4: >-
+    A dead attempt 1 does not overwrite an answered attempt 2: r1/<seat>.attempt1.md and
+    r1/<seat>.attempt2.md both survive on disk, distinct, and r1/<seat>.md holds the LAST
+    attempt.
+    probe: python3 -m pytest scripts/tests/test_dynamic_workflow.py -k "attempt_files_never_overwrite" -q
+  A5: >-
+    `r1 --register <seat>` (requiring --seats to name exactly that seat, else exit 2): PASS on a
+    valid hand-pasted (and fence-wrapped) window file writes the normalised r1/<seat>.md and an
+    `answered` row stamped at the window file's own mtime; FAIL on an invalid window file writes
+    a `window-invalid` row and exits 1; refuses (exit 2) a seat already answered or never marked
+    awaiting-window.
+    probe: python3 -m pytest scripts/tests/test_dynamic_workflow.py -k "test_register" -q
+  A6: >-
+    Nothing else moved: the full pytest file, the two required lints (bare and via pytest), and
+    the raw `--selftest` CLI sweep all run clean at the final head — --selftest's own new
+    sections O/P/Q re-prove G1/G2/G3 end to end.
+    probe: >-
+      python3 -m pytest scripts/tests/test_dynamic_workflow.py -q &&
+      python3 -m pytest scripts/tests/test_lint_workflow_script.py scripts/tests/test_lint_model_cards.py -q &&
+      python3 scripts/lint_workflow_script.py && python3 scripts/lint_model_cards.py &&
+      python3 scripts/dynamic_workflow.py --selftest
+
+out_of_scope: >-
+  SKILL.md is not touched (suspended, per the addendum's G5). The `dw-selftest-unarmed` ledger
+  row's own second half (PENDING-ARMS.md) is a docs(ledger) PR by mandate, not this one; this
+  PR's body carries the guilt-mutation proof as evidence instead. PR3c/PR3c'/gate-19's own
+  findings are a separate lineage, already merged to origin/main before this branch was cut.
+
+assumptions:
+  - text: >-
+      The trailing "To resume this session:" paragraph rule is scoped INSIDE the kimi-decoration
+      branch (fires only once every non-blank line already carries the bullet/two-space prefix),
+      matching the addendum's own sentence structure ("kimi decoration: ... remove ... ; then
+      drop a trailing paragraph ...") and the real kimi CLI's behaviour of decorating its whole
+      text output uniformly, trailer included — not a standalone rule that fires on an
+      undecorated answer.
+    status: verified
+    probe: python3 -m pytest scripts/tests/test_dynamic_workflow.py -k "normalise_seat_output_fixture" -q
+  - text: >-
+      `r1 --register <seat>` reads a MISSING window file as empty text rather than a distinct
+      refusal: an empty string always fails validate_answer's frontmatter check (no traceback),
+      so it falls out naturally as `window-invalid`/exit 1 rather than needing a third named
+      exit-2 case beyond the addendum's two ("already answered" / "no awaiting-window row").
+    status: verified
+    probe: python3 -m pytest scripts/tests/test_dynamic_workflow.py -k "test_register_fails_closed_on_an_invalid_window_file" -q
+  - text: >-
+      The two fixtures carry no client PII or OSINT — greped for '@', E.164-shaped phone
+      numbers and 'passport' before being committed, on both the source kit files and the
+      committed copies (sha256-identical).
+    status: verified
+    probe: >-
+      grep -nE '@|\+62[0-9]|passport' scripts/tests/fixtures/dynamic_workflow/*.md; echo "exit=$?"
