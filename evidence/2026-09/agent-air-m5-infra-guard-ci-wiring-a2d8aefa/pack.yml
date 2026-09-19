@@ -1,0 +1,499 @@
+task_id: guard-ci-wiring
+brief_ref: evidence/brief.yml # canonical staged name — harness-floor.yml stages this PR's dated brief there before linting
+gear: 3
+colour: BLUE
+base_sha: a4d9da1cdda665a8da171e277a4446395f73c31b # pragma: allowlist secret
+spend:
+  wall_clock_hours: 2
+  adversarial_rounds: 2
+  children: 2
+  child_depth: 1
+appetite_exceeded: >-
+  Not exceeded, but nearly all of it went to the council rather than to the change: TWO refuter
+  rounds, both BLOCKING, on a diff whose code half is small. Round 1 (codex gpt-5.6-sol) caught a
+  defect the builder had introduced one commit earlier while "de-duplicating" the step; curing it
+  needed an AST count, a pytest --collect-only and a re-run of both invocations. Round 2
+  (kimi-code/k3) caught a different defect the builder had not seen at all — the guard's own wiring
+  file was missing from both relevance filters — and its second finding needed a leaking mutant plus
+  a vault-less HOME to turn from PLAUSIBLE into CONFIRMED. Measured from the receipt timestamps
+  (04:21:43Z first, 05:22:19Z last) plus dispatch overhead; the ship gate dispatch is still pending
+  and is not counted here. Worth it: without the second round this PR would have armed a suite that
+  is green and blind on the runner it was armed for.
+result: >-
+  .github/workflows/guard-conformance.yml gains one step that EXECUTES
+  infra/claude-hooks/test_secret_expansion_guard.py (64-row corpus, as a script for per-E-id output)
+  and both it and infra/claude-hooks/test_install_qwen_secret_guard.py under pytest (14+14 = 28
+  tests), plus THREE paths added to both relevance filters (the corpus's oracle spec, and
+  .claude/settings.json). infra/claude-hooks/test_install_qwen_secret_guard.py gains an `env_extra`
+  parameter on `_run()` and a rewritten test_never_prints_a_credential_value that injects a fixture
+  secret instead of reading the host vault, so it no longer early-returns on a machine that has none.
+  Before this, neither suite was run by any workflow while check_guard_conformance.py reported "all
+  armed in CI". Commit sequence described by CONTENT, not by count — every evidence commit changes
+  the total, so a number written here would be stale by the time it was committed, which is the same
+  countable-claims rule `diff.summary` obeys: the step, then the cure of round 1's BLOCKING, then the
+  cure of round 2's, then this pack's own conformance pass.
+gear_floor_note: >-
+  Declared 3 because the deterministic floor IS 3, source `path`: .github/workflows is a hot zone
+  and compute_floor returns 3 on a path hit before the size term runs. Re-measured three ways on the
+  FINAL diff (05:22:09Z / 05:22:19Z): whole diff -> 3; the same diff with the workflow file excluded
+  -> 2; the test file alone -> 1. So the hot zone is the whole reason this needs a pack at all — the
+  code churn is small and the evidence YAML is most of the byte count. Not split further: the step,
+  the filters and the test cure are one concern (make the suites run, make the right paths trigger
+  them, and make the suite actually assert something on a runner).
+pii_scan: clean
+# Measured on the FINAL diff, not the first one (05:17:47Z + 05:18Z): `git diff origin/main |
+# grep '^+'` -> 637 added lines. Strict patterns sk-[A-Za-z0-9]{16,} / ghp_[A-Za-z0-9]{36} /
+# AKIA[0-9A-Z]{16} / xox[baprs]- -> 0 each. TWO hits, both self-referential and both in THIS file's
+# own comment block: the literal `-----BEGIN` (one of the patterns being listed) and the literal
+# `BAILIAN_TOKEN_PLAN_API_KEY=<value>` (the sentence saying there are 0 occurrences of it). Documenting
+# a scanner trips the scanner; left as-is rather than reworded to dodge it. A direct substring test of
+# the REAL key read from ~/.nuzantara-secrets.env against the diff bytes returns False, and the
+# fixture literal in the test file is not the real key. 0 of the 5 changed FILENAMES match
+# client|ktp|npwp|paspor|crm|pii.
+diff:
+  summary: >-
+    Two code files: the workflow (.github/workflows/guard-conformance.yml — the new step, its comment
+    block, and three paths added to both the push/pull_request `paths:` list and the `relevant` step's
+    grep regex) and one hook test file (infra/claude-hooks/test_install_qwen_secret_guard.py — an
+    `env_extra` parameter and a credential test that no longer depends on host state). Plus this
+    evidence directory (brief.yml, pack.yml, council-journal.jsonl). No guard code and no registry
+    change: the guard itself and its 64-row corpus are untouched. Counts are deliberately NOT
+    narrated here — the linter derives them from numstat, and an earlier draft that quoted a figure
+    was caught stating a number true of the workflow alone and false of the PR once the evidence
+    files were staged. That is the countable-claims rule earning its keep, so the narration is
+    removed rather than corrected. The ORIGINAL scope was "one workflow file, no test code"; the
+    council widened it, and constraint 1 in brief.yml says so explicitly rather than quietly
+    restating the old scope.
+  commits:
+    - "ci(guard-conformance): execute the secret_expansion_guard suites, which no workflow ran"
+    - "fix(ci): the corpus file needs BOTH invocations, and the spec must trigger the step"
+    - "fix(ci,tests): the wiring file must trigger the step, and the credential test must not be vacuous on a runner"
+    - "docs(evidence): acceptance criteria as {text, probe} mappings, and the filter probe is a committed script"
+lanes:
+  - lane: guard-ci-wiring
+    role: build
+    seat: tp1-qwen3.8-max
+    nb: >-
+      Non-Anthropic builder seat (Alibaba Token-Plan subscription via qwen-code), which satisfies
+      rule 8's seat-diversity floor on its own since there is only one build lane.
+  - lane: adversarial-review-1
+    role: review
+    seat: codex-gpt-5.6-sol
+    nb: >-
+      Different family from the builder, read-only sandbox, dispatched with seven named attack
+      surfaces rather than a general "review this". Returned BLOCKING. Transcript
+      ~/.qwen/tmp/refuter-codex-ci-wiring.log (~831 KB). It could not execute the suites itself
+      (read-only sandbox has no writable temp dir) and said so rather than claiming a pass.
+  - lane: adversarial-review-2
+    role: review
+    seat: kimi-code/k3
+    nb: >-
+      Third family, and a TITOLARI seat for council rule R9 (the builder is the third titolare by
+      roster but counting it would be generator=grader). Run in a DETACHED TEMP WORKTREE at
+      /tmp/kimi-review-1789793379, not in the candidate, because its config sets
+      default_permission_mode="yolo" and an autonomous reviewer must not be able to write into the
+      branch it is judging. Given the same neutral brief with round 1's findings WITHHELD. It
+      executed the suites (the sandbox allowed it, unlike round 1), ran its own AST scan of the
+      step's comment claims, and added a negative control the builder had not: a syntax-error copy of
+      the hook makes the step exit 1. Returned BLOCKING on a defect round 1 missed. Transcript
+      ~/.qwen/tmp/refuter-kimi-ci-wiring.log (~55 KB). Its worktree was verified to hold 0
+      modifications and then removed with `git worktree remove --force` + `prune`.
+  - lane: ship-gate
+    role: review
+    seat: claude-opus-5 (claude-zero-team lane, xhigh)
+    nb: >-
+      ASSIGNED, NOT YET RUN at the time of writing. Fourth distinct family, and the BLUE gate seat
+      per AGENTS.md §17.1. Must not also write fixes — the #6787 gate did both and thereby joined the
+      contribution chain it was supposed to be outside.
+council_run: council-journal.jsonl
+# Two TITOLARI seats, no reserves (so no seat_fallback_reason is owed). Both returned
+# BLOCKING and both blocks were real and are cured in this branch. tp1-qwen3.8-max is
+# the third titolare but is the BUILDER here, so counting it would be generator=grader;
+# kimi-code/k3 was dispatched instead, in a detached temp worktree because its config
+# sets default_permission_mode="yolo" and an autonomous agent must not write into the
+# candidate branch. It received the same neutral brief as codex with codex's findings
+# withheld — a council is only worth its cost if the seats are independent. That
+# independence paid: the two BLOCKINGs are different defects, and the second one is in
+# the file that WIRES the guard, which the first round did not look at.
+bites:
+  consumer: >-
+    The `guard-conformance` required check, on any PR whose diff touches infra/claude-hooks/,
+    infra/guard-conformance/, the corpus's oracle spec, or .claude/settings.json (the file that
+    registers the hook — added by round 2's BLOCKING, because without it a PR could unregister the
+    guard and every required check would stay green).
+  observation: >-
+    PRE-MERGE observation only, and stated as such: the step's exact two lines were executed
+    locally on the branch — `python3 infra/claude-hooks/test_secret_expansion_guard.py` -> "64/64
+    corpus rows as specified" rc=0, and `python3 -m pytest -q` over both files -> "28 passed" rc=0
+    (pytest --collect-only confirms 14+14), re-measured AFTER the last cure at 05:10:10Z/05:10:23Z.
+    BOTH relevance filters were extracted from the workflow file itself, not retyped, and probed
+    against 7 paths: the spec, the guard, the installer and .claude/settings.json match in both; an
+    unrelated docs/specs file, apps/mouth/src/lib/x.ts and .claude/settings.local.json do not match
+    in either. The credential test's assertion was shown to BITE by a leaking mutant under a
+    vault-less HOME (fails on `assert not leaked`, rc=1) where the pre-cure shape passed. The
+    POST-MERGE observation — the required check actually running these on a real PR — cannot be made
+    before merge and is left to the shipping session; claiming it now would be the exact
+    distance-between-merged-and-live this repo keeps paying for.
+receipts:
+  - claim: >-
+      check_guard_conformance.py exits 0 with 0 violations both before and after this change — the
+      PR must not turn the checker red, and it does not.
+    cmd: "python3 infra/guard-conformance/check_guard_conformance.py"
+    exit: 0
+    ts: "2026-09-19T04:21:43Z"
+    seat: tp1-qwen3.8-max
+  - claim: "ruff clean on the installer and its tests (unchanged by this PR, re-checked anyway)."
+    cmd: "ruff check infra/claude-hooks/install_qwen_secret_guard.py infra/claude-hooks/test_install_qwen_secret_guard.py"
+    exit: 0
+    ts: "2026-09-19T04:21:44Z"
+    seat: tp1-qwen3.8-max
+  - claim: "The modified workflow still parses, and contains exactly one step with this name."
+    cmd: 'python3 -c "import yaml;d=yaml.safe_load(open(''.github/workflows/guard-conformance.yml''));print(len([s for j in d[''jobs''].values() for s in j[''steps'']]),''steps'')"'
+    exit: 0
+    ts: "2026-09-19T04:21:44Z"
+    seat: tp1-qwen3.8-max
+  - claim: >-
+      The step's pytest line, at the three-file width it had BEFORE the refuter's finding: 29 passed
+      in 11.65s. Recorded because it is the measurement that made the BLOCKING finding checkable —
+      29 = 14 guard + 14 installer + 1 hook_innocence, and the guard's 14 only appear when pytest
+      collects the file rather than running it as a script.
+    cmd: "python3 -m pytest -q infra/claude-hooks/test_secret_expansion_guard.py infra/claude-hooks/test_install_qwen_secret_guard.py infra/claude-hooks/test_hook_innocence.py -p no:cacheprovider"
+    exit: 0
+    ts: "2026-09-19T04:22:30Z"
+    seat: tp1-qwen3.8-max
+  - claim: "The corpus as a script: 64/64 rows, one line per E-id, rc=0."
+    cmd: "python3 infra/claude-hooks/test_secret_expansion_guard.py"
+    exit: 0
+    ts: "2026-09-19T04:23:44Z"
+    seat: tp1-qwen3.8-max
+  - claim: "The installer suite alone: 14 passed in 1.37s."
+    cmd: "python3 -m pytest -q infra/claude-hooks/test_install_qwen_secret_guard.py -p no:cacheprovider"
+    exit: 0
+    ts: "2026-09-19T04:23:46Z"
+    seat: tp1-qwen3.8-max
+  - claim: >-
+      The workflow's own relevance regex, extracted from the file rather than retyped, matched 9/9
+      expected outcomes BEFORE the spec was added — including the negative result that became the
+      refuter's LOW 2: docs/specs/2026-09-18-secret-expansion-guard-shapes-spec.md -> False.
+    cmd: "python3 (extract regex from guard-conformance.yml; probe 9 candidate paths)"
+    exit: 0
+    ts: "2026-09-19T04:29:35Z"
+    seat: tp1-qwen3.8-max
+  - claim: "AST scan proving the BLOCKING finding: 14 test functions, _main() iterates CORPUS and calls none of them."
+    cmd: "python3 (ast.walk test_secret_expansion_guard.py -> test_defs=14; regex _main body -> CORPUS present, test names absent)"
+    exit: 0
+    ts: "2026-09-19T04:32:10Z"
+    seat: tp1-qwen3.8-max
+  - claim: "pytest --collect-only on the corpus file collects 14, confirming the script form leaves 13 unexecuted."
+    cmd: "python3 -m pytest --collect-only -q infra/claude-hooks/test_secret_expansion_guard.py -p no:cacheprovider"
+    exit: 0
+    ts: "2026-09-19T04:32:40Z"
+    seat: tp1-qwen3.8-max
+  - claim: "POST-FIX: the corpus script line still gives 64/64 rc=0."
+    cmd: "python3 infra/claude-hooks/test_secret_expansion_guard.py"
+    exit: 0
+    ts: "2026-09-19T04:33:50Z"
+    seat: tp1-qwen3.8-max
+  - claim: "POST-FIX: the step's pytest line over both files gives 28 passed (14+14) rc=0."
+    cmd: "python3 -m pytest -q infra/claude-hooks/test_secret_expansion_guard.py infra/claude-hooks/test_install_qwen_secret_guard.py -p no:cacheprovider"
+    exit: 0
+    ts: "2026-09-19T04:33:52Z"
+    seat: tp1-qwen3.8-max
+  - claim: >-
+      POST-FIX: the relevance regex now matches the spec, the guard and the installer, and still
+      rejects both negative controls (an unrelated docs/specs file, apps/mouth) — 5/5.
+    cmd: "python3 (re-extract regex from guard-conformance.yml; probe 5 paths incl. 2 negatives)"
+    exit: 0
+    ts: "2026-09-19T04:33:20Z"
+    seat: tp1-qwen3.8-max
+  # --- receipts for the SECOND council seat's cures (kimi-code/k3, BLOCKING + LOW 2) ---
+  - claim: >-
+      POST-KIMI-CURE re-run of the corpus as a script: "64/64 corpus rows as specified", rc=0. The
+      cure touched only the installer's test file, but the corpus shares the directory and the step
+      runs both, so both were re-measured rather than assumed.
+    cmd: "python3 infra/claude-hooks/test_secret_expansion_guard.py"
+    exit: 0
+    ts: "2026-09-19T05:10:10Z"
+    seat: tp1-qwen3.8-max
+  - claim: >-
+      POST-KIMI-CURE re-run of the step's pytest line: "28 passed in 12.82s", rc=0 — the count the
+      first refuter's BLOCKING finding turned on, still 14+14 after the test file was edited.
+    cmd: "python3 -m pytest -q infra/claude-hooks/test_secret_expansion_guard.py infra/claude-hooks/test_install_qwen_secret_guard.py -p no:cacheprovider"
+    exit: 0
+    ts: "2026-09-19T05:10:23Z"
+    seat: tp1-qwen3.8-max
+  - claim: >-
+      BOTH relevance filters now cover `.claude/settings.json` (kimi's BLOCKING). Both were extracted
+      from the workflow file rather than retyped: the push/pull_request `paths:` list parses to 37
+      entries and contains the literal `.claude/settings.json`; the `relevant` step's grep regex is
+      1562 chars and matches it. Probed over 7 paths — 4 positive (spec, guard, installer,
+      .claude/settings.json all True/True) and 3 NEGATIVE controls all False/False: an unrelated
+      docs/specs file, apps/mouth/src/lib/x.ts, and `.claude/settings.local.json` (the near-miss,
+      since the regex is unanchored at the tail and a settings-local edit must NOT be treated as the
+      hook wiring). ALL_EXPECTED True, and the same parse reports 28 steps. The probe is COMMITTED
+      beside this pack rather than left in /tmp, so the brief's `probe:` field names a command the
+      ship gate can actually re-run; first measured from /tmp at 05:11:24Z, re-run from its committed
+      path at 05:30:53Z with identical results.
+    cmd: "python3 evidence/2026-09/agent-air-m5-infra-guard-ci-wiring-a2d8aefa/probe_filters.py"
+    exit: 0
+    ts: "2026-09-19T05:30:53Z"
+    seat: tp1-qwen3.8-max
+  - claim: >-
+      The committed probe script is itself lint-clean ("All checks passed!") — it ships in this diff,
+      so it is held to the same standard as the code it checks.
+    cmd: "ruff check evidence/2026-09/agent-air-m5-infra-guard-ci-wiring-a2d8aefa/probe_filters.py"
+    exit: 0
+    ts: "2026-09-19T05:30:53Z"
+    seat: tp1-qwen3.8-max
+  - claim: >-
+      The credential test, run alone on the REAL (unmutated) tree with the host vault present, passes:
+      "1 passed, 13 deselected in 0.21s", rc=0. This is the control half of the mutant pair below and
+      the probe the brief's criterion 5 declares. First measured at 05:12:28Z, re-run at 05:33:54Z.
+    cmd: "python3 -m pytest -q infra/claude-hooks/test_install_qwen_secret_guard.py -k never_prints -p no:cacheprovider"
+    exit: 0
+    ts: "2026-09-19T05:33:54Z"
+    seat: tp1-qwen3.8-max
+  - claim: >-
+      kimi's LOW 2 REPRODUCED, not just accepted: with a deliberately leaking mutant installer (one
+      `_say(f"  key: {os.environ.get('BAILIAN_TOKEN_PLAN_API_KEY', ...)}")` inserted in the success
+      path after line 310) and HOME pointed at a directory with NO ~/.nuzantara-secrets.env — i.e. the
+      CI runner condition — the PRE-CURE shape of test_never_prints_a_credential_value (early `return`
+      when the host vault is absent) PASSES: 1 passed, rc=0. The strongest-named assertion in the suite
+      was green while a credential was being printed. This is the measurement that makes the finding
+      CONFIRMED rather than PLAUSIBLE.
+    cmd: "HOME=$T/nohome python3 -m pytest -q $T/vacuous/test_install_qwen_secret_guard.py -k never_prints -p no:cacheprovider"
+    exit: 0
+    ts: "2026-09-19T05:12:57Z"
+    seat: tp1-qwen3.8-max
+  - claim: >-
+      THE CURE BITES: the same leaking mutant, the same vault-less HOME, the shipped (injected-fixture)
+      form of the test -> FAILED, rc=1, failing exactly on `> assert not leaked, "installer printed a
+      credential value from its environment"` / `E assert not True`. Control without the mutant passes
+      (1 passed, rc=0, 05:12:28Z). Mutant and control trees were deleted from /tmp afterwards; nothing
+      that prints a credential was left on disk.
+    cmd: "HOME=$T/nohome python3 -m pytest -q $T/b/test_install_qwen_secret_guard.py -k never_prints -p no:cacheprovider"
+    exit: 1
+    ts: "2026-09-19T05:13:23Z"
+    seat: tp1-qwen3.8-max
+  - claim: >-
+      The boolean-assert shape is load-bearing, measured on a self-contained pair rather than asserted
+      in a comment: a failing test that computes `leaked = FAKE in blob` then `assert not leaked` puts
+      the value in its output ZERO times (844 bytes), while the obvious `assert FAKE not in blob` puts
+      it there TWICE (956 bytes) because pytest renders both operands. A leak-detector that prints the
+      leak on failure is worse than no detector, and this is why the shipped test is not written the
+      obvious way.
+    cmd: "python3 -m pytest -q on a throwaway two-function file (boolean shape vs naive shape), then count occurrences of the fixture literal in each captured output"
+    exit: 0
+    ts: "2026-09-19T05:15:40Z"
+    seat: tp1-qwen3.8-max
+  - claim: >-
+      POST-KIMI-CURE: check_guard_conformance.py still exits 0 with 0 violations — "10 bridge guards,
+      29 hook entries, 7 wr2-pregate checks, 18 evidence-pack-lint checks, 6
+      required-workflow-conformance checks, 9 bites-parse guards, 0 violation(s)" and "every censused
+      guard has guilt+innocence proofs, no phantoms, all armed in CI".
+    cmd: "python3 infra/guard-conformance/check_guard_conformance.py"
+    exit: 0
+    ts: "2026-09-19T05:13:47Z"
+    seat: tp1-qwen3.8-max
+  - claim: >-
+      ruff clean on the installer and the test file that this PR DOES edit ("All checks passed!") — the
+      test gained an `env_extra` parameter and a rewritten credential test.
+    cmd: "ruff check infra/claude-hooks/install_qwen_secret_guard.py infra/claude-hooks/test_install_qwen_secret_guard.py"
+    exit: 0
+    ts: "2026-09-19T05:13:47Z"
+    seat: tp1-qwen3.8-max
+  - claim: >-
+      lint_home_fork --check exits 0, and the drift question this PR raises is answered by measurement
+      rather than by assumption: of the 192 declared pairs, ZERO name install_qwen_secret_guard.py or
+      its test file and neither has a live twin, while the two files that ARE declared
+      (~/.claude/hooks/secret_expansion_guard.py, secret-expansion-registry.json) are untouched here and
+      still sha256-match their repo twins. NOTE: the first draft of this receipt claimed the edited test
+      file "IS a declared home-fork pair for m5" — it is not, and the claim was checked before it went
+      into the brief. Recorded because a false safety claim in an Evidence Pack is the same defect class
+      as the false green this PR exists to remove.
+    cmd: "python3 scripts/lint_home_fork.py --check; python3 (parse infra/home-fork/declared-pairs.json; sha256 live vs repo for the 4 guard-family files)"
+    exit: 0
+    ts: "2026-09-19T05:13:47Z"
+    seat: tp1-qwen3.8-max
+  - claim: >-
+      The declared gear floor is 3 and it comes from the PATH term, not the size term — re-measured on
+      the FINAL diff (after both cures), not on the first one. `--print-floor` prints 3.
+    cmd: "PYTHONPATH=scripts/ci python3 scripts/evidence_pack_lint.py --print-floor --numstat-file <git diff --numstat origin/main> --changed-files-file <git diff --name-only origin/main>"
+    exit: 0
+    ts: "2026-09-19T05:22:09Z"
+    seat: tp1-qwen3.8-max
+  - claim: >-
+      The counterfactual halves of gear_floor_note: the same diff with .github/workflows/ excluded
+      prints 2, and the test file alone prints 1. So the hot zone is what forces gear 3 here — the
+      code churn by itself would not have.
+    cmd: "PYTHONPATH=scripts/ci python3 scripts/evidence_pack_lint.py --print-floor (twice: workflow-excluded fileset; test-file-only fileset)"
+    exit: 0
+    ts: "2026-09-19T05:22:19Z"
+    seat: tp1-qwen3.8-max
+  - claim: >-
+      POST-REBASE re-verification, because base_sha moved from 6985de48ae to a4d9da1cdd (origin/main
+      advanced by one docs-only commit, #6803, with no overlap with any file in this diff) and a
+      receipt measured against the old base is not a receipt about the branch that will be merged.
+      All six acceptance-relevant commands re-run on the rebased tree, all rc=0: corpus script "64/64
+      corpus rows as specified"; pytest over both files "28 passed in 13.42s"; the committed filter
+      probe "ALL_EXPECTED: True" with 28 steps; check_guard_conformance.py "every censused guard has
+      guilt+innocence proofs, no phantoms, all armed in CI"; ruff "All checks passed!" on all three
+      Python files in the diff; scripts/lint_home_fork.py --check.
+    cmd: "python3 infra/claude-hooks/test_secret_expansion_guard.py; python3 -m pytest -q <both suites> -p no:cacheprovider; python3 evidence/2026-09/agent-air-m5-infra-guard-ci-wiring-a2d8aefa/probe_filters.py; python3 infra/guard-conformance/check_guard_conformance.py; ruff check <3 files>; python3 scripts/lint_home_fork.py --check"
+    exit: 0
+    ts: "2026-09-19T05:38:09Z"
+    seat: tp1-qwen3.8-max
+adversarial:
+  - {
+      seat: codex-gpt-5.6-sol,
+      round: 1,
+      verdict: "BLOCKING",
+      findings: 3,
+      block: 1,
+      low: 2,
+      cured: 2,
+      accepted_as_residual: 1,
+    }
+  - {
+      seat: kimi-code/k3,
+      round: 1,
+      verdict: "BLOCKING",
+      findings: 3,
+      block: 1,
+      low: 2,
+      cured: 2,
+      accepted_as_residual: 1,
+    }
+dissent:
+  - seat: "codex-gpt-5.6-sol (refuter) vs tp1-qwen3.8-max (author)"
+    status: CONFIRMED
+    objection: >-
+      BLOCK. "The plain-script invocation executes only E01-E64, leaving 13 additional pytest tests
+      in the same file unexecuted, including malformed-input, corrupt-registry, wiring,
+      filesystem-walk, and latency checks. The comment's 'same assertions' claim is false. _main()
+      iterates only CORPUS; pytest discovers 14 test functions." CONFIRMED by independent
+      measurement before acting: AST scan gives test_defs=14 with _main() calling no test function,
+      and `pytest --collect-only` collects 14. This is the more embarrassing half — the dropped
+      pytest line was removed by the AUTHOR one commit earlier as a "duplication", and the comment
+      asserting they were equivalent was also the author's. Cured in 8d2d61d9fb: both invocations
+      present, 28 passed, and the comment now states what each covers and names this very commit as
+      the counterexample so it is not "simplified" again.
+  - seat: "codex-gpt-5.6-sol (refuter) vs tp1-qwen3.8-max (author)"
+    status: CONFIRMED
+    objection: >-
+      LOW. "The specification is absent from both relevance filters. Guard and installer changes set
+      run=true, but a change only to docs/specs/2026-09-18-secret-expansion-guard-shapes-spec.md
+      skips the suite on PRs and does not trigger this workflow on push." CONFIRMED, and found
+      independently by the builder first via a regex probe over the workflow's own filter (spec ->
+      False) — two seats, same result, same day. It is worse than a missing trigger: §5 of that spec
+      IS the corpus's oracle, so without it the suite can be made to pass by editing the thing it is
+      measured against. Cured in 8d2d61d9fb by adding the path to both the push/pull_request `paths:`
+      list and the `relevant` grep regex, verified 5/5 with two negative controls.
+  - seat: "codex-gpt-5.6-sol (refuter) vs tp1-qwen3.8-max (author)"
+    status: CONFIRMED
+    objection: >-
+      LOW. "This arms only these explicit commands; it does not cure C4's generic false green. A
+      synthetic unexecuted infra/claude-hooks/test_new_unexecuted_guard.py still returns armed
+      because is_armed() accepts an ancestor substring." CONFIRMED — the refuter probed it
+      (base=True, current_all_workflows=True). ACCEPTED AS RESIDUAL, NOT CURED, and the reason is
+      the checker's own docstring: "do not 'fix' this by parsing YAML into a second execution model".
+      A linter that reimplements CI's execution semantics is a second model and drifts from the
+      first. So the false green stays for any FUTURE test file added under infra/claude-hooks/; this
+      PR removes the one live instance. Needs an owner decision, not a patch.
+  - seat: "codex-gpt-5.6-sol (refuter) vs tp1-qwen3.8-max (author)"
+    status: PLAUSIBLE
+    objection: >-
+      LOW, from the refuter's MEASURED section rather than its findings: "`python3 -m pip install
+      --quiet pytest` is redundant here because the preceding same-conditioned step already installs
+      pytest at line 291; it is consistent with neighbouring steps and any nonzero exit would stop
+      the step under `set -e`." Factually correct and left in place anyway: five neighbouring steps
+      in this same workflow do the same, removing it would couple this step's correctness to another
+      step's condition staying identical, and under `set -e` a failure there is loud rather than
+      silent. Recorded as PLAUSIBLE-not-cured so the next reader sees it was considered.
+  - seat: "kimi-code/k3 (refuter) vs tp1-qwen3.8-max (author)"
+    status: CONFIRMED
+    objection: >-
+      BLOCK. "test_settings_json_wires_the_hook ... `.claude/settings.json` is in NEITHER the push
+      `paths:` filter NOR the PR `relevant` regex ... a PR that edits only `.claude/settings.json`
+      and deletes/renames the secret_expansion_guard hook block or its matcher
+      sentinel-passes guard-conformance and lands green on every required check." CONFIRMED and
+      strictly WORSE than the first refuter's spec-filter finding, because the missing path is the
+      one file that actually WIRES the guard: the suite would stay green while the hook was
+      unregistered, which is the inert-matcher regression this whole lane exists to prevent, and the
+      test that asserts the wiring would be the only thing failing — in a workflow that never ran it.
+      Cured by adding `.claude/settings.json` to both the push/pull_request `paths:` list and the
+      `relevant` grep regex, following the precedent already in hook-innocence-gate.yml (lines 41
+      and 90, which name the same file for the same reason). Verified 7/7 by extracting BOTH filters
+      from the workflow rather than retyping them, with three negative controls — including
+      `.claude/settings.local.json`, the near-miss, which must stay False because the regex is
+      unanchored at the tail.
+  - seat: "kimi-code/k3 (refuter) vs tp1-qwen3.8-max (author)"
+    status: CONFIRMED
+    objection: >-
+      LOW. "test_never_prints_a_credential_value ... early-returns when ~/.nuzantara-secrets.env is
+      absent. On a CI runner it is always absent." CONFIRMED BY REPRODUCTION, which is more than
+      accepting it: a leaking mutant installer plus a vault-less HOME made the PRE-CURE shape PASS
+      (rc=0, 05:12:57Z) and the cured shape FAIL on `assert not leaked` (rc=1, 05:13:23Z). The
+      finding's real weight is that it lands on the one PR whose purpose is to run these suites in
+      CI: the suite would have been armed, green, and blind on the runner it was armed for, while
+      still counting as one of the 14 tests. Cured by injecting a fixture secret through a new
+      `env_extra` parameter on `_run()` so the assertion no longer depends on host state; the
+      host-vault check is kept but demoted to secondary and non-gating.
+  - seat: "kimi-code/k3 (refuter) vs tp1-qwen3.8-max (author)"
+    status: CONFIRMED
+    objection: >-
+      LOW, a STATEMENT rather than a request: "the false green is cured for these two files only ...
+      is_armed(\"infra/claude-hooks/test_totally_new_future_guard.py\") returns True TODAY."
+      CONFIRMED — two independent seats reached the same residual by different probes (codex used a
+      synthetic test_new_unexecuted_guard.py, kimi named a future file). ACCEPTED AS RESIDUAL for the
+      same reason recorded in the codex dissent: the cure is forbidden by check_guard_conformance.py's
+      own docstring, "do not 'fix' this by parsing YAML into a second execution model". Both refuters
+      agree the instance is removed and the detector is not repaired; that agreement is exactly why
+      this needs an owner ruling and not a third patch attempt.
+  - seat: "kimi-code/k3 (refuter) corroborating tp1-qwen3.8-max (author)"
+    status: RETRACTED
+    objection: >-
+      No objection — recorded because a dissent section that lists only disagreements overstates how
+      much was contested. kimi independently VERIFIED the step's own comment block by its own AST
+      scan (both claims TRUE), and ran a negative control the author had not: a syntax-error copy of
+      the hook makes the corpus step exit 1 with the 64/64 line turning to FAIL, which proves the
+      script invocation propagates its exit code — the open question in the dispatch brief. It also
+      measured 28 passed in 2.94s + 1.12s against the author's 12.82s; the spread is machine load,
+      not a discrepancy in count, and the count is what the step asserts.
+residuals:
+  - >-
+    is_armed()'s ancestor-substring false green is UNFIXED by design (dissent 3). Any new test file
+    under infra/claude-hooks/ that no step executes will still be reported "armed". The cure is
+    forbidden by the checker's docstring, so this needs an owner ruling on whether to change that
+    doctrine or add a positive-list of executed test paths to the registry.
+  - >-
+    ROUND 1's refuter could not execute the suites: its read-only sandbox provides no writable temp
+    directory, so its own direct runs returned rc=1 before collection. It declared this instead of
+    claiming a pass. Round 2 (kimi-code/k3) DID execute them, which is why this pack can report an
+    independent execution at all — but every execution receipt written into `receipts:` is still the
+    builder's own command and output, so the ship gate is instructed to reproduce the counts rather
+    than accept them.
+  - >-
+    Added wall time to a required check: round 1 microbenchmarked 64 guard subprocess spawns at
+    2.586s / 3.445s / 2.742s and concluded "several seconds, acceptable inside the existing
+    10-minute required job — no separate job is justified"; round 2 measured 2.94s + 1.12s and the
+    builder 12.82s. Accepted on those measurements, with the spread attributed to machine load.
+  - >-
+    THE PACK'S OWN CLAIMS WENT STALE UNDER THE CURES, and one of them was FALSE rather than merely
+    out of date. Six statements written before round 2 were invalidated by it: brief constraint 1
+    ("one file, 25 net lines, no test code"), the 5-path acceptance probe, the grader naming one
+    refuter, pack `result` ("two commits"), `diff.summary` ("no test code") and `spend`. All were
+    re-measured and rewritten. Separately, a drafted risk asserted the edited test file "IS a
+    declared home-fork pair for m5" — checking declared-pairs.json showed ZERO pairs naming it and no
+    live twin, so the claim was deleted rather than shipped. Recorded as a residual because it is the
+    same defect class this PR exists to remove: an assertion that is true of the author's
+    implementation and false of the world, sitting behind a green light.
+  - >-
+    The PENDING-ARMS row `qwen-guard-ci-wiring` (deadline 2026-09-26, opened as the condition of
+    #6792's PASS-WITH-CONDITIONS verdict) is SATISFIED but deliberately NOT closed by this PR: the
+    repo's closure convention rewrites the row prefix to cite the PR's merge SHA, which a PR cannot
+    know about itself. Closure belongs to the next ledger reconciliation.
+  - >-
+    Post-merge observation not yet made: that the `guard-conformance` required check actually
+    executes these suites on a real PR. Only the local execution of the step's own lines is
+    evidenced here.
