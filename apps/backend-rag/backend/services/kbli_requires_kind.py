@@ -53,15 +53,16 @@ import re
 #   izin_usaha  → "Akreditasi Rumah Sakit", "addendum Perizinan Berusaha"
 #   license     → "Izin", "NIB", "NPWP", "Sertifikat Standar"
 #   nib         → "NIB", "Nomor Induk Berusaha", "SERTIFIKAT STANDAR"
-#   permit_type → permit taxonomy nodes
 #   penetapan   → "Penetapan Pusat Penyedia" (a formal designation)
+# `permit_type` was on this list until 2026-09-19 on the belief that it held a
+# permit taxonomy. Measured on prod, it holds THREE nodes — KITAS, ITAS, ITAP —
+# and all three are personal immigration permits, so it is bucketed below.
 PERMIT_TYPES: frozenset[str] = frozenset(
     {
         "perizinan",
         "izin_usaha",
         "license",
         "nib",
-        "permit_type",
         "penetapan",
     },
 )
@@ -96,10 +97,14 @@ _BUCKETS: dict[str, str] = {
     "pt_pmdn": "entity_forms",
     "perusahaan": "entity_forms",
     "organisasi": "entity_forms",
-    # Immigration artefacts travel their own path in this product.
+    # Immigration artefacts travel their own path in this product. A residence
+    # permit is something a PERSON holds, never a licence a COMPANY obtains —
+    # `permit_type` is here and not above because its three live nodes (KITAS,
+    # ITAS, ITAP) are all personal permits; it reached 8 KBLI codes as a licence.
     "immigration_doc": "immigration",
     "vitas": "immigration",
     "kitas": "immigration",
+    "permit_type": "immigration",
     # Systems and channels ("Online Single Submission", "NOT_APPLICABLE_OSS").
     "oss": "systems",
     "sistem": "systems",

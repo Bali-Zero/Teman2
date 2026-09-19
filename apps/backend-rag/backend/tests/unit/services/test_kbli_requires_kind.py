@@ -77,6 +77,7 @@ PROD_TARGET_TYPES: dict[str, int] = {
         ("dokumen", "documents"),  # "Akta Pendirian"
         ("oss", "systems"),  # "Online Single Submission"
         ("sanksi", "obligations"),
+        ("permit_type", "immigration"),  # "KITAS", "ITAS", "ITAP"
     ],
 )
 def test_non_permit_types_are_never_licences(entity_type: str, expected_bucket: str) -> None:
@@ -90,11 +91,37 @@ def test_the_capital_threshold_defect_specifically() -> None:
     assert "biaya" not in PERMIT_TYPES
 
 
+def test_a_residence_permit_is_not_a_company_licence() -> None:
+    """Pin the second shape that reached a client on 56101 — and on 70201.
+
+    `permit_type` sat in PERMIT_TYPES because the type NAME suggested a permit
+    taxonomy. Measured on prod 2026-09-19 it holds exactly three nodes — KITAS,
+    ITAS, ITAP — and each is a permit a PERSON holds in order to reside, never a
+    licence a COMPANY obtains. `permit:kitas` was a REQUIRES target of 8 KBLI
+    codes, so `inspect_kbli 70201` answered "TOURISM MANAGEMENT CONSULTING" with
+    licences NIB, Sertifikat Standar and **KITAS**, at `scale: ["All"]`.
+
+    This is the same family as the capital-threshold defect above: the type was
+    trusted over what the nodes are. It is pinned separately because the cure is
+    the opposite gesture — a DEMOTION, not an exclusion. The edges stay and the
+    node surfaces under `related_requirements.immigration`, next to where
+    `PT PMA` already sits correctly as `entity_forms`. Deleting a true
+    relational fact would be the second defect wearing the shape of a fix,
+    which rule 1 of this module forbids.
+    """
+    assert classify_requires_target("permit_type") == "immigration"
+    assert "permit_type" not in PERMIT_TYPES
+    assert not is_permit_type("permit_type")
+    # one bucket for every immigration artefact, however the graph types it
+    for entity_type in ("permit_type", "kitas", "vitas", "immigration_doc"):
+        assert classify_requires_target(entity_type) == "immigration"
+
+
 # --- INNOCENCE: real permits must still reach licenses[] -------------------
 
 @pytest.mark.parametrize(
     "entity_type",
-    ["perizinan", "izin_usaha", "license", "nib", "permit_type", "penetapan"],
+    ["perizinan", "izin_usaha", "license", "nib", "penetapan"],
 )
 def test_permit_types_still_pass(entity_type: str) -> None:
     """The three biggest permit buckets carry 6,910 of the edges between them.
@@ -150,9 +177,9 @@ def test_every_prod_target_type_is_classified() -> None:
 def test_the_permit_set_is_a_minority_of_types_but_the_majority_of_edges() -> None:
     """Sanity on the shape of the fix: it must not gut the licence list.
 
-    Of the 35 observed types only 6 are permits — but they carry **7,029 of the
-    15,055** edges (46.7%), so nearly half of what the endpoint used to call a
-    licence really was one. The other 8,026 were not, and `dokumen` alone
+    Of the 35 observed types only 5 are permits — but they carry **7,020 of the
+    15,055** edges (46.6%), so nearly half of what the endpoint used to call a
+    licence really was one. The other 8,035 were not, and `dokumen` alone
     (7,369) is the single largest non-permit bucket — which is why those go to
     `documents` rather than being dropped.
 
@@ -162,7 +189,7 @@ def test_the_permit_set_is_a_minority_of_types_but_the_majority_of_edges() -> No
     """
     permit_edges = sum(n for t, n in PROD_TARGET_TYPES.items() if is_permit_type(t))
     total_edges = sum(PROD_TARGET_TYPES.values())
-    assert permit_edges == 7029
+    assert permit_edges == 7020
     assert total_edges == 15055
-    assert total_edges - permit_edges == 8026
+    assert total_edges - permit_edges == 8035
     assert permit_edges > total_edges / 3
