@@ -1,0 +1,122 @@
+task_id: guard-ci-wiring
+gear: 3
+l_level: L2
+gate_class: opus
+colour: BLUE
+objective: |
+  Make the two secret_expansion_guard suites actually EXECUTE in CI. They are the
+  only enforcement behind a credential-leak guard, and no workflow ran either of
+  them.
+
+  #6787 shipped infra/claude-hooks/secret_expansion_guard.py with a 64-row case
+  corpus (docs/specs/2026-09-18-secret-expansion-guard-shapes-spec.md §5) and #6792
+  shipped infra/claude-hooks/install_qwen_secret_guard.py with 14 refusal-path
+  tests. Both merged with their suites unexecuted. Meanwhile
+  infra/guard-conformance/check_guard_conformance.py — the checker whose whole
+  purpose is to catch exactly this, and whose own rule reads "a test no CI workflow
+  runs = FAIL" — reported "every censused guard has guilt+innocence proofs, no
+  phantoms, all armed in CI", exit 0, on every run.
+
+  It was telling the truth about its own implementation and a lie about the world.
+  is_armed() returns True when the test path OR ANY ANCESTOR DIRECTORY SUFFIX
+  appears anywhere in the concatenated text of all .github/workflows/*.yml, and
+  `infra/claude-hooks/` appears ~24 times in guard-conformance.yml's own `paths:`
+  filter. So every test file in that directory has been "armed" since the filter
+  was written, regardless of whether any step executes it.
+
+  Measured, not inferred: `grep -rn test_secret_expansion_guard .github/workflows/`
+  returned ZERO execution lines before this change, while `check_guard_conformance.py`
+  returned exit 0. That is W81 theater with a green light on it — "esiste != armato",
+  the scar this repo already has a checker for.
+
+  The cure makes the claim TRUE rather than making the checker smarter, because the
+  checker's own docstring forbids the alternative: "do not 'fix' this by parsing
+  YAML into a second execution model". A linter that reimplements CI's execution
+  semantics is a second model, and the second model drifts from the first — which is
+  scar #3's own wording about a duplicated-not-shared checker.
+constraints:
+  - "One file, 25 net lines. No guard code, no test code, no registry change: the
+    suites already exist and already pass, they were simply never run."
+  - "No paid per-token Anthropic endpoint (Builder Contract 3). Built on the Alibaba
+    Token-Plan subscription via qwen-code; the adversarial refuter is codex
+    gpt-5.6-sol and the ship gate is the claude-zero-team lane on
+    CLAUDE_CODE_OAUTH_TOKEN."
+  - "No PII. The change touches only a CI workflow. The guard it arms is itself a
+    credential-hygiene control, and neither the guard's registry nor its tests
+    contain a real secret (the installer suite asserts that no value from
+    ~/.nuzantara-secrets.env appears in its own output)."
+  - "The step reuses the job's existing `steps.relevant.outputs.run == 'true'` gate
+    and the neighbouring steps' existing `python3 -m pip install --quiet pytest`
+    idiom, so it adds no new trigger surface and no new dependency mechanism."
+  - "Does NOT modify check_guard_conformance.py. The is_armed() false green remains
+    and stays documented as an accepted limit by its own author; this PR removes the
+    one live instance of it rather than re-architecting the detector."
+acceptance:
+  - "The step's two lines, executed locally on the branch, reproduce the counts:
+    `python3 infra/claude-hooks/test_secret_expansion_guard.py` -> 64/64 corpus rows,
+    rc=0; `python3 -m pytest -q infra/claude-hooks/test_install_qwen_secret_guard.py`
+    -> 14 passed, rc=0."
+  - "The workflow still parses: yaml.safe_load -> 28 steps, and the new step's name
+    is present exactly once."
+  - "check_guard_conformance.py still exits 0 (it was already green; this PR must not
+    turn it red), ruff clean, lint_home_fork --check exit 0."
+  - "grep confirms EXECUTION lines now exist:
+    `grep -rn 'python3 infra/claude-hooks/test_secret_expansion_guard.py' .github/workflows/`
+    and the pytest line for the installer, both inside a `run:` block."
+  - "No duplicated execution: test_hook_innocence.py stays out (hook-innocence-gate.yml:108
+    already runs it) and the corpus appears once, not twice."
+consumer_map:
+  - ".github/workflows/guard-conformance.yml -> the 'guard-conformance' required check.
+    A future regression in the 64-row corpus or in the installer's refusal paths now
+    fails a required check instead of merging green."
+  - "infra/guard-conformance/check_guard_conformance.py -> its C4 claim becomes true
+    for these two files by execution rather than by substring. The checker is not
+    modified and its is_armed() limit is unchanged."
+  - ".claude/skills/modus/PENDING-ARMS.md -> SATISFIES the `qwen-guard-ci-wiring`
+    ledger row (opened 2026-09-19 as the condition of #6792's PASS-WITH-CONDITIONS
+    verdict, deadline 2026-09-26). It does NOT close it, and deliberately so: the
+    repo's closure convention rewrites the row prefix to `- closed <date> (<proof
+    citing the PR and its merge SHA>)`, and a PR cannot cite its own merge SHA.
+    Closure belongs to the next ledger reconciliation, which is why this diff touches
+    one file and not two."
+risks:
+  - "THE FALSE GREEN IS NOT FIXED, ONLY THIS INSTANCE OF IT. A NEW test file added
+    under infra/claude-hooks/ that no step executes will still be reported 'armed' by
+    is_armed(), because the ancestor-suffix match still hits the paths: filter. This
+    PR arms two files; it does not repair the detector. Repairing it is forbidden by
+    the checker's own docstring, so the residual is structural and needs an owner
+    decision, not a patch."
+  - "Added wall time to a REQUIRED check: the corpus spawns one subprocess per row
+    (64) and the installer suite spawns more. Measured locally: corpus ~11s for the
+    three-file pytest run, installer 1.4s. Small against a workflow that already runs
+    ~20 suites, but it is on the critical path of every PR that touches
+    infra/claude-hooks/."
+  - "`python3 -m pip install --quiet pytest` can fail on a runner without network,
+    which would fail the required check for an infra reason. Mitigated only by
+    consistency: five neighbouring steps in this same workflow already do it, so if
+    it breaks, it breaks them all at once rather than singling this step out."
+  - "Hot-zone floor 3 for a 25-line change is the rule working as designed, not an
+    accident: CI changes are expensive to get wrong. The cost is a full Evidence Pack
+    including a real adversarial dissent, which is disproportionate to the diff but
+    proportionate to the blast radius."
+grader: |
+  generator != grader. Written by the builder seat (Qwen 3.8 Max on Air-M5, external
+  builder), which per Builder Contract 5 prepares and never ships.
+
+  Adversarial dissent was dispatched to a DIFFERENT family — codex gpt-5.6-sol,
+  read-only sandbox — with seven named attack surfaces (path-filter coverage, whether
+  the script form propagates its exit code, the pip install line, runtime cost, the
+  factual accuracy of the step's own comment block, W81 theater, and whether the
+  false green is genuinely cured). Its findings are recorded verbatim in pack.yml
+  `dissent:` with dispositions; none are paraphrased away.
+
+  Ship grading is ASSIGNED, NOT YET PERFORMED at the time of writing: a fresh Claude
+  session on Opus 5 xhigh outside this contribution chain, per AGENTS.md §17.1 for an
+  undeclared BLUE mission. If that gate writes fixes it must NOT also sign the verdict
+  — the #6787 gate did both and thereby joined the chain it was supposed to be outside.
+budget: |
+  One builder session on the Alibaba Token-Plan subscription (qwen3.8-max via
+  qwen-code), plus one codex gpt-5.6-sol refuter dispatch and one pending Claude gate
+  dispatch, both on already-paid subscriptions. No metered Anthropic spend. No network
+  calls beyond the gate lanes' own.
+pii: none
