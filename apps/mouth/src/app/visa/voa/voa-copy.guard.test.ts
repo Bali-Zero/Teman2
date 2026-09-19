@@ -34,6 +34,7 @@ const VOA_DIR = join(__dirname); // apps/mouth/src/app/visa/voa
 /** The six purchase screens plus their copy tables, per DELIBERA (d). */
 const SCREEN_FILES = [
   "page.tsx", // wizard
+  "SafeClock.tsx", // the published-deadline hero the verdict screen renders
   "[hash]/page.tsx", // verdict ACCEPT/DECLINE
   "upload/[resultId]/page.tsx",
   "upload/UploadFlow.tsx",
