@@ -159,3 +159,65 @@ it.each([
     expect(findForbidden(augmented)).toEqual([]);
   },
 );
+
+// ---------------------------------------------------------------------------
+// The advertised code count is pinned to the DATASET, never to a literal.
+//
+// llms.txt advertised "1,563 codes" while the navigator served 1,559: 1,563 is the
+// backend catalogue row count, phantoms included, and it is legitimate there — it is
+// the floor `kbli_catalogue_membership` checks against. What was wrong was publishing
+// an internal row count as the number of codes a reader can look up. A hand-typed
+// correction to 1,559 would drift again at the next lot, so the assertion below reads
+// the dataset and refuses to hold a second copy of the truth.
+// ---------------------------------------------------------------------------
+describe("the advertised KBLI code count equals the dataset's own", () => {
+  const canonicalCount = (
+    JSON.parse(
+      readFileSync(join(app, "data/KBLI_2025_FINAL_CLEAN.json"), "utf8"),
+    ) as {
+      data: unknown[];
+    }
+  ).data.length;
+
+  const advertised = () =>
+    [
+      ...readFileSync(llmsTxtPath, "utf8").matchAll(
+        /\b(\d{1,3},\d{3}) codes\b/g,
+      ),
+    ].map((m) => ({
+      raw: m[1],
+      value: Number(m[1].replace(/,/g, "")),
+    }));
+
+  it("every 'N codes' claim in llms.txt names the number the navigator serves", () => {
+    const wrong = advertised().filter((c) => c.value !== canonicalCount);
+    expect(wrong.map((c) => c.raw)).toEqual([]);
+  });
+
+  it("there is at least one such claim, so the test above cannot pass by finding none", () => {
+    expect(advertised().length).toBeGreaterThan(0);
+  });
+
+  it("convicts a mutated copy that advertises the catalogue row count instead", () => {
+    const mutated = readFileSync(llmsTxtPath, "utf8").replace(
+      /\b\d{1,3},\d{3} codes\b/,
+      "1,563 codes",
+    );
+    const wrong = [...mutated.matchAll(/\b(\d{1,3},\d{3}) codes\b/g)]
+      .map((m) => Number(m[1].replace(/,/g, "")))
+      .filter((v) => v !== canonicalCount);
+    expect(wrong).toContain(1563);
+  });
+
+  // Scoped to the subset lines ALONE, deliberately: reading the whole file here would
+  // make this test fail whenever the corpus claim is wrong, which is the other test's
+  // job. An innocence test that also convicts on guilt proves nothing about over-match.
+  it("a subset enumeration is invisible to the guard: '(14 codes)' is not a corpus claim", () => {
+    const subsetLines = [
+      "- **100% foreign ownership (TERBUKA)**: consulting, real estate (14 codes)",
+      "- marine logistics (7 codes), mining support (28 codes)",
+      "- a single code (1 codes) and a round hundred (100 codes)",
+    ].join("\n");
+    expect([...subsetLines.matchAll(/\b(\d{1,3},\d{3}) codes\b/g)]).toEqual([]);
+  });
+});
