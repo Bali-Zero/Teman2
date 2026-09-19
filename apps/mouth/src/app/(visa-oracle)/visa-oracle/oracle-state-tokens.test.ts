@@ -24,20 +24,26 @@ import { describe, expect, it } from "vitest";
 import {
   assertDistinct,
   parseEffectiveBlocks,
+  SELECTOR_GRAMMAR,
   type StateValues,
 } from "./oracle-state-tokens.helpers";
 
 const CSS_PATH = join(__dirname, "oracle.css");
 const CSS = readFileSync(CSS_PATH, "utf8");
 
-const LIGHT_IDENTITY = '.oracle-root, .oracle-root[data-oracle-theme="light"]';
+// U2: the shipped light base is a two-branch selector list
+// (`.oracle-root, .oracle-root[data-oracle-theme="light"]`) — it is now TWO
+// independent contexts, never judged on the first alternative only.
+const LIGHT_BARE_IDENTITY = ".oracle-root";
+const LIGHT_ATTR_IDENTITY = '.oracle-root[data-oracle-theme="light"]';
 const DARK_IDENTITY = '.oracle-root[data-oracle-theme="dark"]';
 const BOOTSTRAP_IDENTITY =
   'html[data-oracle-theme-bootstrap="dark"] .oracle-root[data-oracle-theme="light"]:not([data-oracle-theme-ready])';
 const PREFERS_DARK_IDENTITY =
   '@media (prefers-color-scheme: dark) :: html:not([data-oracle-theme-bootstrap]) .oracle-root[data-oracle-theme="light"]:not([data-oracle-theme-ready])';
 const EXPECTED_IDENTITIES = [
-  LIGHT_IDENTITY,
+  LIGHT_BARE_IDENTITY,
+  LIGHT_ATTR_IDENTITY,
   DARK_IDENTITY,
   BOOTSTRAP_IDENTITY,
   PREFERS_DARK_IDENTITY,
@@ -266,9 +272,9 @@ describe("Visa Oracle outcome-state colour fence — gate-proven fixtures (GATE-
     // itself, isolating the B2 (subset-override) assertion from Q1 (correct
     // theme inheritance): a `.oracle-root` rule with no `data-oracle-theme`
     // condition, appended after every themed block, inherits its unset
-    // tokens (eligible, likely-not) from the LIGHT block's bare `.oracle-root`
-    // alternative — the only branch that is a provable generalisation of a
-    // selector carrying no theme attribute at all.
+    // tokens (eligible, likely-not) from the LIGHT base's bare `.oracle-root`
+    // branch context (U2) — the only one that is a provable generalisation
+    // of a selector carrying no theme attribute at all.
     const mutated = `${CSS}\n@media (prefers-contrast: more){.oracle-root{--oracle-state-likely:#001122;--oracle-state-conditional:#001122}}\n`;
     const blocks = parseEffectiveBlocks(mutated);
     const contrastBlock = blocks.find((b) =>
@@ -303,19 +309,21 @@ describe("Visa Oracle outcome-state colour fence — Q1 theme inheritance is pro
   it("GUILT (D3b): a light-theme override that collapses two states in the DEFAULT light theme is RED, naming the light context — not silently absorbed by the pre-hydration dark base", () => {
     const mutated = `${CSS}\n.oracle-root[data-oracle-theme="light"]{--oracle-state-likely:#16683f}\n`;
     const blocks = parseEffectiveBlocks(mutated);
-    const overrideBlock = blocks.find(
+    // The appended override shares its selector text with the shipped
+    // LIGHT_ATTR branch, so `identity` is the same for both (B3/U2) — the
+    // shipped one (fully declared, no collision) is first, the appended
+    // override (one token, must inherit the rest) is last.
+    const contexts = blocks.filter(
       (b) => b.identity === LIGHT_OVERRIDE_IDENTITY,
     );
-    expect(overrideBlock).toBeDefined();
+    expect(contexts).toHaveLength(2);
+    const overrideBlock = contexts[contexts.length - 1];
     // The base it inherited from must be the LIGHT block (eligible
     // #16683f), never the pre-hydration dark blocks (eligible #4ade80) —
     // pin the inherited value directly, not just the resulting error.
-    expect(overrideBlock!.fg.eligible).toBe("rgba(22, 104, 63, 1)");
+    expect(overrideBlock.fg.eligible).toBe("rgba(22, 104, 63, 1)");
     expect(() =>
-      assertDistinct(
-        overrideBlock!.fg,
-        `${overrideBlock!.identity} foreground`,
-      ),
+      assertDistinct(overrideBlock.fg, `${overrideBlock.identity} foreground`),
     ).toThrow(
       `${LIGHT_OVERRIDE_IDENTITY} foreground: --oracle-state-eligible and --oracle-state-likely both resolve to rgba(22, 104, 63, 1)`,
     );
@@ -324,9 +332,11 @@ describe("Visa Oracle outcome-state colour fence — Q1 theme inheritance is pro
   it("INNOCENCE (D4): the mirror override — a colour that only collides with the DARK palette — is GREEN in the light context it actually renders in", () => {
     const mutated = `${CSS}\n.oracle-root[data-oracle-theme="light"]{--oracle-state-likely:#4ade80}\n`;
     const blocks = parseEffectiveBlocks(mutated);
-    const overrideBlock = blocks.find(
+    const contexts = blocks.filter(
       (b) => b.identity === LIGHT_OVERRIDE_IDENTITY,
-    )!;
+    );
+    expect(contexts).toHaveLength(2);
+    const overrideBlock = contexts[contexts.length - 1];
     expect(overrideBlock.fg).toEqual({
       eligible: "rgba(22, 104, 63, 1)",
       likely: "rgba(74, 222, 128, 1)",
@@ -408,6 +418,287 @@ describe("Visa Oracle outcome-state colour fence — Q1 theme inheritance is pro
     expect(thrown!.message).toContain(
       "@media (prefers-contrast: more) :: .tree-b",
     );
+  });
+});
+
+// ─── U1: the exported grammar names exactly what this fence models ────────
+
+describe("Visa Oracle outcome-state colour fence — U1 the exported grammar", () => {
+  it("allows only @media and @supports as at-rule wrappers", () => {
+    expect(SELECTOR_GRAMMAR.atRules).toEqual(["media", "supports"]);
+  });
+});
+
+// ─── U1-U3 (OBS-C1c-1/2, GATE-C1C-REPORT-6845.md Check 2): H1/H2/H3, on the
+// REAL shipped oracle.css plus an appended override, never fixture-local
+// synthetic CSS — reproducing the gate's exact hostile contexts. ──────────
+
+describe("Visa Oracle outcome-state colour fence — U1-U3 closed-world hostile contexts (real oracle.css)", () => {
+  const FORCED_COLORS_DARK_ID =
+    '@media (forced-colors: active) :: .oracle-root[data-oracle-theme="dark"]';
+  const FORCED_COLORS_LIGHT_ID =
+    '@media (forced-colors: active) :: .oracle-root[data-oracle-theme="light"]';
+
+  it("GUILT (H1): a two-branch dark+light override collapsing two states in light is RED naming the LIGHT branch; the DARK branch of the SAME rule stays GREEN", () => {
+    const mutated = `${CSS}\n@media (forced-colors: active) {\n  .oracle-root[data-oracle-theme="dark"],\n  .oracle-root[data-oracle-theme="light"] {\n    --oracle-state-likely: #16683f;\n  }\n}\n`;
+    const blocks = parseEffectiveBlocks(mutated);
+    const dark = blocks.find((b) => b.identity === FORCED_COLORS_DARK_ID)!;
+    const light = blocks.find((b) => b.identity === FORCED_COLORS_LIGHT_ID)!;
+    expect(dark).toBeDefined();
+    expect(light).toBeDefined();
+    // U2: branchSignatures[0] disappears — each comma-branch is judged on
+    // its OWN palette, never both on whichever branch happened to be first.
+    expect(() =>
+      assertDistinct(dark.fg, `${dark.identity} foreground`),
+    ).not.toThrow();
+    expect(() =>
+      assertDistinct(light.fg, `${light.identity} foreground`),
+    ).toThrow(
+      `${FORCED_COLORS_LIGHT_ID} foreground: --oracle-state-eligible and --oracle-state-likely both resolve to rgba(22, 104, 63, 1)`,
+    );
+  });
+
+  it("INNOCENCE (H1 mirror): the same two-branch override with a colour neither palette uses is GREEN on both branches", () => {
+    const mutated = `${CSS}\n@media (forced-colors: active) {\n  .oracle-root[data-oracle-theme="dark"],\n  .oracle-root[data-oracle-theme="light"] {\n    --oracle-state-likely: #001122;\n  }\n}\n`;
+    const blocks = parseEffectiveBlocks(mutated);
+    const dark = blocks.find((b) => b.identity === FORCED_COLORS_DARK_ID)!;
+    const light = blocks.find((b) => b.identity === FORCED_COLORS_LIGHT_ID)!;
+    expect(() =>
+      assertDistinct(dark.fg, `${dark.identity} foreground`),
+    ).not.toThrow();
+    expect(() =>
+      assertDistinct(light.fg, `${light.identity} foreground`),
+    ).not.toThrow();
+  });
+
+  it('GUILT (H2): a VALUED :not([data-oracle-theme="dark"]) — the light theme, read as a positive dark constraint by a raw-text regex — throws unmodelled, naming the construct, rather than shipping a silent green', () => {
+    const mutated = `${CSS}\n@media (forced-colors: active) {\n  .oracle-root:not([data-oracle-theme="dark"]) {\n    --oracle-state-likely: #16683f;\n  }\n}\n`;
+    expect(() => parseEffectiveBlocks(mutated)).toThrow(
+      /unmodelled selector construct ":not\(\[data-oracle-theme="dark"\]\)" in @media \(forced-colors: active\) :: \.oracle-root:not\(\[data-oracle-theme="dark"\]\)/,
+    );
+  });
+
+  it("H2 mirror: the SAME throw for an innocent colour — a valued :not() is unmodelled independent of the declared value, so there is no green case for it, only loud", () => {
+    const mutated = `${CSS}\n@media (forced-colors: active) {\n  .oracle-root:not([data-oracle-theme="dark"]) {\n    --oracle-state-likely: #001122;\n  }\n}\n`;
+    expect(() => parseEffectiveBlocks(mutated)).toThrow(
+      /unmodelled selector construct ":not\(\[data-oracle-theme="dark"\]\)"/,
+    );
+  });
+
+  it("CONTROL (H3): a single-branch light override still turns the suite RED exactly as before — no fixture cross-talk with H1/H2 above", () => {
+    const mutated = `${CSS}\n@media (forced-colors: active) {\n  .oracle-root[data-oracle-theme="light"] {\n    --oracle-state-likely: #16683f;\n  }\n}\n`;
+    const blocks = parseEffectiveBlocks(mutated);
+    const light = blocks.find((b) => b.identity === FORCED_COLORS_LIGHT_ID)!;
+    expect(() =>
+      assertDistinct(light.fg, `${light.identity} foreground`),
+    ).toThrow(
+      `${FORCED_COLORS_LIGHT_ID} foreground: --oracle-state-eligible and --oracle-state-likely both resolve to rgba(22, 104, 63, 1)`,
+    );
+  });
+
+  it("further regression: a descendant of the bootstrap-dark pre-hydration block still keys dark, and a [dark] subset override still keys dark", () => {
+    const descendantOfBootstrap = `${CSS}\nhtml[data-oracle-theme-bootstrap="dark"] .oracle-root[data-oracle-theme="light"]:not([data-oracle-theme-ready]) .some-child {\n  --oracle-state-likely: #4ade80;\n}\n`;
+    const blocksA = parseEffectiveBlocks(descendantOfBootstrap);
+    const descendant = blocksA.find((b) => b.identity.endsWith(".some-child"))!;
+    expect(descendant).toBeDefined();
+    // Inherits the DARK palette (eligible #4ade80) — colliding with its own
+    // likely override of the SAME value.
+    expect(() =>
+      assertDistinct(descendant.fg, `${descendant.identity} foreground`),
+    ).toThrow(
+      /eligible and --oracle-state-likely both resolve to rgba\(74, 222, 128, 1\)/,
+    );
+
+    const darkSubsetOverride = `${CSS}\n.oracle-root[data-oracle-theme="dark"] {\n  --oracle-state-likely: #001122;\n}\n`;
+    const blocksB = parseEffectiveBlocks(darkSubsetOverride);
+    const darkContexts = blocksB.filter((b) => b.identity === DARK_IDENTITY);
+    expect(darkContexts).toHaveLength(2);
+    const override = darkContexts[darkContexts.length - 1];
+    expect(override.fg.eligible).toBe("rgba(74, 222, 128, 1)"); // DARK's own eligible
+    expect(() =>
+      assertDistinct(override.fg, `${override.identity} foreground`),
+    ).not.toThrow();
+  });
+});
+
+// ─── U4: closed-world proof — every construct OUTSIDE the grammar throws,
+// naming it; the shipped file itself parses with ZERO throws (proven by
+// every describe block above, which all read `parseEffectiveBlocks(CSS)`
+// or a mutation of it, and by the five-identity pin below). ───────────────
+
+describe("Visa Oracle outcome-state colour fence — U4 closed-world: constructs outside the grammar throw", () => {
+  const EIGHT_TOKENS = [
+    "--oracle-state-eligible:#111111",
+    "--oracle-state-likely:#222222",
+    "--oracle-state-conditional:#333333",
+    "--oracle-state-likely-not:#444444",
+    "--oracle-state-eligible-bg:rgba(1,1,1,0.1)",
+    "--oracle-state-likely-bg:rgba(2,2,2,0.1)",
+    "--oracle-state-conditional-bg:rgba(3,3,3,0.1)",
+    "--oracle-state-likely-not-bg:rgba(4,4,4,0.1)",
+  ].join(";");
+
+  const cases: Array<[string, string]> = [
+    [
+      "valued :not()",
+      `.oracle-root:not([data-oracle-theme="dark"]){${EIGHT_TOKENS}}`,
+    ],
+    [":is()", `.oracle-root:is([data-oracle-theme="light"]){${EIGHT_TOKENS}}`],
+    [
+      ":where()",
+      `.oracle-root:where([data-oracle-theme="light"]){${EIGHT_TOKENS}}`,
+    ],
+    [":has()", `.oracle-root:has([data-oracle-theme-ready]){${EIGHT_TOKENS}}`],
+    ["& nesting", `&.oracle-root{${EIGHT_TOKENS}}`],
+    ["@layer", `@layer test{.oracle-root{${EIGHT_TOKENS}}}`],
+    [
+      "@container",
+      `@container (min-width: 200px){.oracle-root{${EIGHT_TOKENS}}}`,
+    ],
+    [
+      "child combinator >",
+      `.oracle-root>.oracle-root[data-oracle-theme="light"]{${EIGHT_TOKENS}}`,
+    ],
+    [
+      "sibling combinator +",
+      `.oracle-root+.oracle-root[data-oracle-theme="light"]{${EIGHT_TOKENS}}`,
+    ],
+  ];
+
+  it.each(cases)(
+    "GUILT: %s on a state-bearing override THROWS naming it — never zero blocks, never a keyed context",
+    (_name, css) => {
+      expect(() => parseEffectiveBlocks(css)).toThrow(
+        /unmodelled selector construct/,
+      );
+    },
+  );
+
+  it("the shipped file parses with ZERO throws and the expected five-identity list", () => {
+    expect(() => parseEffectiveBlocks(CSS)).not.toThrow();
+    expect(parseEffectiveBlocks(CSS).map((b) => b.identity)).toEqual(
+      EXPECTED_IDENTITIES,
+    );
+  });
+});
+
+// ─── U5 (OBS-C1c-3): a subset override whose base is itself a subset
+// override composes the chain, or throws naming the whole chain — never a
+// bare "missing token" that hides where the search actually stopped. ──────
+
+describe("Visa Oracle outcome-state colour fence — U5 chain composition", () => {
+  it("composes a THREE-level chain: LEAF's untouched tokens come from MID, MID's untouched tokens come from BASE", () => {
+    const css = [
+      '.oracle-root[data-oracle-theme="light"] {', // BASE — declares all eight
+      "  --oracle-state-eligible: #111111;",
+      "  --oracle-state-likely: #222222;",
+      "  --oracle-state-conditional: #333333;",
+      "  --oracle-state-likely-not: #444444;",
+      "  --oracle-state-eligible-bg: rgba(1, 1, 1, 0.1);",
+      "  --oracle-state-likely-bg: rgba(2, 2, 2, 0.1);",
+      "  --oracle-state-conditional-bg: rgba(3, 3, 3, 0.1);",
+      "  --oracle-state-likely-not-bg: rgba(4, 4, 4, 0.1);",
+      "}",
+      '.oracle-root[data-oracle-theme="light"] {', // MID — overrides only "likely"
+      "  --oracle-state-likely: #555555;",
+      "}",
+      '.oracle-root[data-oracle-theme="light"] {', // LEAF — overrides only "conditional"
+      "  --oracle-state-conditional: #666666;",
+      "}",
+    ].join("\n");
+    const blocks = parseEffectiveBlocks(css);
+    expect(blocks).toHaveLength(3);
+    const leaf = blocks[2];
+    expect(leaf.fg).toEqual({
+      eligible: "rgba(17, 17, 17, 1)", // from BASE (MID never touched it)
+      likely: "rgba(85, 85, 85, 1)", // from MID's OWN override, not BASE's
+      conditional: "rgba(102, 102, 102, 1)", // LEAF's own
+      "likely-not": "rgba(68, 68, 68, 1)", // from BASE
+    });
+  });
+
+  it("GUILT: a context whose ONLY candidate base is itself unresolvable throws on that root cause directly, naming it — never composing past a base that cannot resolve itself", () => {
+    // MID is the FIRST rule (no candidate can precede it) and itself only
+    // covers one of the eight tokens: every reachable context downstream of
+    // it (LEAF) shares its exact fate, but `parseEffectiveBlocks` evaluates
+    // every state-bearing context independently, in document order — MID's
+    // OWN failure is necessarily the first one surfaced (a length-1 chain,
+    // reported at the TRUE root of the problem), before LEAF's is ever
+    // reached. This is the correct, sharper failure mode the chain-walk
+    // produces: not a symptom two levels downstream, but the cause itself.
+    const css = [
+      '.oracle-root[data-oracle-theme="light"] {', // MID — no base of its own
+      "  --oracle-state-eligible: #111111;",
+      "}",
+      '.oracle-root[data-oracle-theme="light"] {', // LEAF — would inherit from MID
+      "  --oracle-state-likely: #222222;",
+      "}",
+    ].join("\n");
+    expect(() => parseEffectiveBlocks(css)).toThrow(
+      '.oracle-root[data-oracle-theme="light"]: missing --oracle-state-likely (not declared here or in a provable inherited base)',
+    );
+  });
+});
+
+// ─── U6 (OBS-C1c-4): a leading statement at-rule doesn't swallow the rule
+// that follows it — it used to return ZERO blocks, silently, contradicting
+// the module's own "fails loud rather than silently mis-parsing". ─────────
+
+describe("Visa Oracle outcome-state colour fence — U6 statement at-rules are consumed as no-ops", () => {
+  const EIGHT_TOKENS_BLOCK = [
+    "--oracle-state-eligible: #111111;",
+    "--oracle-state-likely: #222222;",
+    "--oracle-state-conditional: #333333;",
+    "--oracle-state-likely-not: #444444;",
+    "--oracle-state-eligible-bg: rgba(1, 1, 1, 0.1);",
+    "--oracle-state-likely-bg: rgba(2, 2, 2, 0.1);",
+    "--oracle-state-conditional-bg: rgba(3, 3, 3, 0.1);",
+    "--oracle-state-likely-not-bg: rgba(4, 4, 4, 0.1);",
+  ].join("\n");
+
+  it('@import "reset.css"; before a state-bearing rule still finds it', () => {
+    const css = `@import "reset.css";\n.oracle-root {\n${EIGHT_TOKENS_BLOCK}\n}`;
+    const blocks = parseEffectiveBlocks(css);
+    expect(blocks).toHaveLength(1);
+    expect(blocks[0].identity).toBe(".oracle-root");
+  });
+
+  it('@charset "utf-8"; is consumed the same way', () => {
+    const css = `@charset "utf-8";\n.oracle-root {\n${EIGHT_TOKENS_BLOCK}\n}`;
+    const blocks = parseEffectiveBlocks(css);
+    expect(blocks).toHaveLength(1);
+  });
+});
+
+// ─── U7 (OBS-C1c-5): "at line N" names where the construct STARTS, not
+// where the scanner last resumed — blank lines and stripped comments
+// between rules used to shift the reported line away from the real one. ──
+
+describe('Visa Oracle outcome-state colour fence — U7 "at line N" points at the construct itself', () => {
+  it("a nested rule several blank lines after the previous rule is reported at ITS OWN line", () => {
+    const css = [
+      ".a { color: red; }", // line 1
+      "", // line 2
+      "", // line 3
+      "", // line 4
+      ".b {", // line 5
+      "  &:hover { color: blue; }", // line 6 — the nested rule
+      "}", // line 7
+    ].join("\n");
+    expect(() => parseEffectiveBlocks(css)).toThrow("at line 6");
+  });
+
+  it("a nested at-rule after blank lines AND a stripped comment is reported at ITS OWN line", () => {
+    const css = [
+      "@media (min-width: 1px) {", // line 1
+      "  .a { color: red; }", // line 2
+      "", // line 3
+      "", // line 4
+      "  /* comment */", // line 5 — stripped to blank before line-counting
+      "  @supports (display: grid) { .b { color: blue; } }", // line 6
+      "}", // line 7
+    ].join("\n");
+    expect(() => parseEffectiveBlocks(css)).toThrow("at line 6");
   });
 });
 
@@ -520,8 +811,12 @@ describe("Visa Oracle outcome-state colour fence (shipped oracle.css)", () => {
   };
 
   it("pins the shipped light-mode (default) foreground values", () => {
-    const lightBlock = BLOCKS.find((b) => b.identity === LIGHT_IDENTITY)!;
+    const lightBlock = BLOCKS.find((b) => b.identity === LIGHT_ATTR_IDENTITY)!;
     expect(lightBlock.fgRaw).toEqual(LIGHT_BASELINE);
+    // Both light branches (U2) declare the SAME values — the bare
+    // `.oracle-root` alternative is not a second, different theme.
+    const bareBlock = BLOCKS.find((b) => b.identity === LIGHT_BARE_IDENTITY)!;
+    expect(bareBlock.fgRaw).toEqual(LIGHT_BASELINE);
   });
 
   // TODO(C3): add a contrast-ratio assertion once a WCAG contrast helper
