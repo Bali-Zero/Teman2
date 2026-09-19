@@ -1,145 +1,116 @@
-gear: 3
-task_id: voa-late-case-alarm-20260919
+gear: 2
+task_id: kbli-chat-risk-one-derivation-20260920
 lane: backend-rag
 host: air-m5 (M5)
-branch: agent/air-m5/backend-rag/voa-late-case-alarm-20260919
+branch: agent/air-m5/backend-rag/kbli-chat-risk-one-derivation-20260920
 gate_class: opus
 l_level: L2
 objective: >-
-  GARUDA VOA slice E1. Measured on PRODUCTION on 2026-09-19, not recalled:
-  order `ord_ujg4nDYSN4w9-jkJQsi7Tg` is paid and we know it. Its checkout
-  window elapsed on 2026-09-16 15:20, so `reconcile_expired_checkouts` has
-  picked it up on every scheduler tick since; its sibling `ord_TTDU0…`
-  expired one minute past its own window while this one never did. The
-  difference is `repository.py::expire_if_unpaid`: `confirm_no_successful_charge`
-  asks Xendit, Xendit answers "there is a charge", and the
-  `if not confirmed_unpaid` branch emitted ONE `logger.warning` and returned
-  False. `garuda_payment_inbox` holds 0 rows and has always held 0 —
-  no webhook has ever arrived, because an Invoice callback URL that is not
-  registered with the provider looks exactly like a customer who never paid.
-  Two defects sit behind that. (1) The answer had nowhere to go:
-  `late_case_open` / `late_case_charge_id` / `late_case_resolution` have
-  existed since migration 284, the mail path branches on `late_case_open`
-  (outbox_handlers.py:425) and `resolveLateOrder` (repository.py:771) closes
-  the case — a complete consumer chain with ZERO writers on this path,
-  superscar #2 in its money-losing form. (2) `confirmed_unpaid` was a
-  NEGATION of a vocabulary we do not own: `body.get("status") != "PAID"`.
-  Xendit documents a further paid invoice status, SETTLED, which appears
-  nowhere in this repository — under the negated form it read as unpaid and
-  OP-04 would have EXPIRED an order whose money we were already holding.
+  Ledger row `kbli-chat-asserts-licensing-facts-with-no-government-source`
+  (PENDING-ARMS, opened 2026-09-19 from the 3-seat KBLI audit). Five places in
+  `kbli_notebook_chat.py` produced `risk_category` for the same code and
+  disagreed even about what ignorance is called: the `kbli_documents` branch
+  hardcoded `"Verify at OSS"` and stopped looking, the `kg_nodes` branch
+  defaulted to it, the Qdrant payload builder and the ILIKE fallback defaulted
+  to `"Unknown"`, and a hand-written answer table served tiers nobody sourced.
+  Which answer a client got depended on which store held the code, not on the
+  law. MEASURED READ-ONLY INSIDE THE RUNNING IMAGE on 2026-09-20, not recalled:
+  `kbli_documents` carries no `kategori_risiko` key on ANY of its 1,563 rows,
+  while `kg_nodes` carries a value on 1,383 of its 1,562 `kbli:` nodes — so the
+  branch that wins for almost every code was the one structurally incapable of
+  answering, and it declined to ask the store that could. The same probe killed
+  the hand-written table's premise: its own comment declared 47901 "absent by
+  construction from PostgreSQL and Qdrant — this dict was its ONLY possible
+  answer", and all nine of its codes are present in BOTH stores. The typed-code
+  path never reached it; its one live route was the activity-keyword map, which
+  bypassed the stores entirely. That measurement also dissolves the product
+  question the row put to the codeowner ("may the channel answer at all when
+  the canonical has no PMA verdict?"): there is no code here the stores cannot
+  answer, so deleting the table costs zero coverage.
 scope:
   - >-
-    apps/backend-rag/backend/services/payments/port.py — new frozen
-    `ChargeConfirmation(confirmed_unpaid, provider_charge_id,
-    provider_status)`; `confirm_no_successful_charge` returns it instead of a
-    bare bool, and the Protocol docstring now REQUIRES a positive allow-list.
+    apps/backend-rag/backend/app/routers/kbli_notebook_chat.py — new
+    `_resolve_code_from_stores(pool, code)` carrying the ONE derivation with its
+    precedence written down (`kbli_documents` -> `kg_nodes` -> Qdrant), used by
+    both the typed-code path and the activity-keyword route; new
+    `_channel_risk(*candidates)` giving this channel one word for not knowing;
+    the hand-written `KNOWN_KBLI_CODES` table deleted; `_bury_if_phantom` moved
+    BELOW the keyword route, which until now ran past it unburied; the deleted
+    table's e-commerce fork moved into the master prompt as accuracy rule 6.
   - >-
-    apps/backend-rag/backend/services/payments/xendit.py — new
-    `_INVOICE_STATUSES_WITH_NO_ACCEPTED_CHARGE = {PENDING, EXPIRED, FAILED}`;
-    anything else, known or future, is not evidence of absence.
-  - >-
-    apps/backend-rag/backend/services/garuda_orders/repository.py — new
-    `_open_late_case_from_reconciliation` (OP-F08): conditional UPDATE on
-    `late_case_open = FALSE`, and only the tick that flips it journals and
-    enqueues. State stays `awaiting_payment`.
-  - >-
-    apps/backend-rag/backend/services/garuda_orders/outbox_handlers.py — new
-    `StaffPageChargeWithoutWebhookHandler` + registration + `__all__`.
-  - >-
-    apps/backend-rag/backend/db/migrations_v2/320_garuda_journal_admits_op_f08.sql
-    — widen the `transition_id` CHECK. Without it the writer raises
-    `check_violation` inside the reconciliation transaction, where the
-    per-row `except Exception` swallows it: the cure would report success and
-    change nothing.
-  - >-
-    products/garuda-voa/contracts/events.yaml and journeys/STATE-MACHINE.md —
-    the contract learns OP-F08 and
-    `payment.charge_detected_without_webhook`.
-  - >-
-    apps/backend-rag/backend/services/garuda_orders/reconciliation.py —
-    module docstring corrected; its stated premise was falsified by three
-    days of production.
-  - Tests — five existing fakes retyped, plus the new guilt/innocence suites.
+    Tests — new guilt/innocence suite for the derivation; the structural
+    fallback guard re-aimed from the deleted table onto the two hand-written
+    copies that survive it (the keyword map and the prompt); the burial-order
+    test re-pinned on the two paths that now exist.
 constraints:
   - >-
-    The order MUST keep `awaiting_payment`. OP-F01 forbids any non-webhook
-    writer from reaching `paid`, and reconciliation is one of those writers.
-    This change makes a case VISIBLE; it never moves payment state.
+    `_result_from_payload` is NOT touched. It floors at `"Unknown"` and is
+    shared with the public `search_kbli` surface; this channel normalises its
+    output instead of changing a function two consumers read. Aligning
+    `search_kbli` is its own lane, declared rather than swept in.
   - >-
-    NO refund is placed automatically. Honour-or-refund stays a human
-    decision through `resolveLateOrder`; that is Zero's boundary, not a
-    session's.
+    The floor stays `"Verify at OSS"`, not the inspect side's `"Not
+    classified"`. The master prompt carries an accuracy rule keyed on that
+    exact string; changing the word would silently break the rule that handles
+    it.
   - >-
-    NO new alarm channel. The page rides the `staff_page_*` family already
-    wired in production at main_api.py:389. D3 (Zero, 2026-09-15) puts alarms
-    on in-app kita plus Brevo rather than Telegram, but that binds all six
-    handlers and migrating the family is its own concern and its own PR.
+    No editorial knowledge is deleted silently. The table's 47901 fork was
+    pinned by an existing test, so it moves to the prompt WITH its guard rather
+    than disappearing.
   - >-
-    A dedicated handler, NOT a reuse of `staff_page_late_paid_after_terminal`:
-    that page's text says "this order was already failed/expired when a
-    payment for it succeeded", which is false here. Reusing it would hand
-    staff a sentence untrue about the case in front of them.
-  - >-
-    The allow-list must be POSITIVE. I cannot measure Xendit's full status
-    vocabulary from this worktree, so the design is made robust to that
-    ignorance rather than resting on a guess about it.
+    Merging this deploys it (apps/backend-rag/**). The live observation in
+    `Bites:` is taken after the deploy, never inferred from the merge.
 acceptance:
   - text: >-
-      GUILT, the whole reason for the change: WHEN the provider returns a
-      `SETTLED` invoice, `confirm_no_successful_charge` SHALL report
-      `confirmed_unpaid is False`. Under the replaced `status != "PAID"` it
-      reported True and OP-04 expired an order whose money we were holding.
+      GUILT, the whole reason for the change: WHEN `kbli_documents` answers for
+      a code AND `kg_nodes` carries a tier for it, the match SHALL carry that
+      tier. The replaced code hardcoded `"Verify at OSS"` and `break`ed.
     probe: >-
-      pytest backend/tests/services/payments/test_xendit_charge_confirmation.py::test_settled_status_yields_confirmed_unpaid_false
+      pytest backend/tests/unit/routers/test_kbli_chat_risk_has_one_derivation.py::test_documents_row_no_longer_hardcodes_ignorance_over_a_known_tier
   - text: >-
-      GUILT: WHEN the provider returns a status the adapter does not
-      recognise, `confirmed_unpaid` SHALL be False — an unknown status is
-      never evidence of absence.
+      GUILT: WHEN the Qdrant path answers with the shared builder's
+      `"Unknown"`, this channel SHALL report `"Verify at OSS"` — one dialect of
+      ignorance, not two.
     probe: >-
-      pytest backend/tests/services/payments/test_xendit_charge_confirmation.py::test_unknown_status_yields_confirmed_unpaid_false
+      pytest backend/tests/unit/routers/test_kbli_chat_risk_has_one_derivation.py::test_qdrant_unknown_is_folded_into_the_one_dialect
   - text: >-
-      GUILT: WHEN reconciliation finds a charge for an order no webhook ever
-      reported, the order SHALL gain `late_case_open = TRUE` and its
-      `late_case_charge_id`, exactly one `payment.charge_detected_without_webhook`
-      journal row SHALL exist, WHILE `state` stays `awaiting_payment` (OP-F01).
+      INNOCENCE: WHERE no store carries the code, or the pool is dead, or the
+      query raises, or the store holds the code but not the tier, the channel
+      SHALL abstain rather than invent — no match, or the floor.
     probe: >-
-      pytest backend/tests/services/garuda_orders/test_repository_integration.py::test_op_f08_opens_a_late_case_when_reconciliation_finds_a_charge_and_no_webhook_ever_came
+      pytest backend/tests/unit/routers/test_kbli_chat_risk_has_one_derivation.py -k "no_store_carries or dead_pool or raising_query or not_the_tier or empty_tier"
   - text: >-
-      IDEMPOTENCE: WHILE three consecutive `reconcile_expired_checkouts` ticks
-      run against the same order, exactly one journal row and exactly one
-      outbox row SHALL exist and `late_case_open` SHALL stay TRUE.
+      ASYMMETRY PINNED: WHILE a partial PMA tuple SHALL be withheld by
+      `_PMADisclosure`, an unsourced risk string SHALL pass through it verbatim
+      — which is why the risk derivation is made single at the source.
     probe: >-
-      pytest backend/tests/services/garuda_orders/test_repository_integration.py::test_op_f08_pages_once_per_case_not_once_per_scheduler_tick
+      pytest backend/tests/unit/routers/test_kbli_chat_risk_has_one_derivation.py::test_a_partial_pma_tuple_is_withheld_while_the_risk_tier_is_not
   - text: >-
-      RACE AND RESOLUTION: IF the real webhook has already moved the order to
-      `paid`, no case SHALL open; IF staff have already resolved a case, the
-      next tick SHALL NOT reopen it.
+      THE TABLE IS GONE AND STAYS GONE: `grep -c KNOWN_KBLI_CODES` on the chat
+      router SHALL return 0, WHILE the keyword map SHALL still route and resolve
+      through the stores.
     probe: >-
-      pytest backend/tests/services/garuda_orders/test_repository_integration.py::test_op_f08_does_not_open_a_case_on_an_order_the_webhook_already_paid backend/tests/services/garuda_orders/test_repository_integration.py::test_op_f08_does_not_reopen_a_case_staff_already_resolved
+      pytest backend/tests/unit/routers/test_kbli_hardcoded_fallback_matches_catalogue.py::test_the_router_carries_no_hand_written_answer_table backend/tests/unit/routers/test_kbli_notebook_chat.py::test_the_keyword_map_routes_without_asserting_facts
   - text: >-
-      INNOCENCE: WHEN the provider confirms no charge, the order SHALL still
-      expire, `late_case_open` SHALL stay FALSE and no
-      `payment.charge_detected_without_webhook` row SHALL exist.
+      BURIAL ORDER: the tombstone call SHALL sit after BOTH paths that set
+      `direct_kbli_match`. It used to sit between them, so a keyword-injected
+      match skipped the tombstone entirely.
     probe: >-
-      pytest backend/tests/services/garuda_orders/test_repository_integration.py::test_reconciliation_still_expires_an_order_the_provider_confirms_unpaid
+      pytest backend/tests/unit/routers/test_kbli_chat_buries_phantom_codes.py::test_the_endpoint_actually_calls_the_burial
   - text: >-
-      CONSTRAINT, both directions: WHERE migration 320 has been applied, an
-      `OP-F08` journal insert SHALL be admitted WHILE an invented `OP-F99`
-      SHALL still raise — without the second half the test would pass just as
-      happily against a constraint dropped rather than widened.
+      THE SURVIVING HAND-WRITTEN COPIES STAY HONEST: no keyword target and no
+      prompt line SHALL name a code the catalogue lacks, and no prompt line
+      SHALL promise foreign openness on a code the catalogue caps below 100%.
     probe: >-
-      pytest backend/tests/db/test_migration_320_garuda_journal_admits_op_f08.py
+      pytest backend/tests/unit/routers/test_kbli_hardcoded_fallback_matches_catalogue.py
   - text: >-
-      CONTRACT: WHEN the AST-derived job-type walker runs it SHALL find a
-      handler for the new `job_type`, and the frozen-contract invariants SHALL
-      stay green.
-    probe: >-
-      pytest ../../products/garuda-voa/contracts/tests/test_contract_invariants.py backend/tests/services/garuda_orders/test_outbox_job_type_coverage.py
+      NO REGRESSION ACROSS THE KBLI SURFACE.
+    probe: pytest backend/tests -k kbli
 pii: none
 local_evidence: >-
-  Production reads this session were column-scoped to exclude the four PII
-  columns `garuda_orders` carries (`applicant_full_name`, `applicant_email`,
-  `applicant_phone`, `applicant_passport_number`) — order ids, states and
-  amounts only. The one order id named throughout is synthetic, created by the
-  2026-09-16 sandbox purchase proof; it is the reproducer, not a client. Fly
-  secret presence was read by NAME only (`fly secrets list`), never a value.
+  The two production reads this session were column-scoped and carried no client
+  data: counts and `kategori_risiko`/`pma_status` values from `kbli_documents`
+  and `kg_nodes` for nine KBLI codes, plus two aggregate counts over those
+  tables. KBLI codes are a public government classification, not client data.
+  Fly access was through `scripts/lib/fly_credential.sh`; no credential value was
+  echoed, printed or committed.
