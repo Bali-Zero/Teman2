@@ -1011,6 +1011,124 @@ def _attach_price_quotes(
     return Decision.model_validate(payload)
 
 
+#: The disclosures that still force a human hold (owner ruling 2026-09-13 —
+#: memory `decision-oracle-human-review-only-for-criminal-matters-ceremony-
+#: roles-authorized-2026-09-13`: "human review survives for a disclosed
+#: criminal matter and nothing else; every other disclosure becomes a named
+#: condition on a kept candidate or a named dead end"). This is the floor
+#: value ``_resolve_holding_flags`` falls back to when
+#: ``VISA_ORACLE_HOLDING_FLAGS`` is unset — see that function for the
+#: fleet-wide kill switch that can widen this set without a redeploy.
+#:
+#: ``ACTIVITY_BOUNDARY`` STAYS here (gate vo-gate-a1, PR #6839, OBS-1 HIGH):
+#: it is the flag `fact-mapper.ts` raises for what the signed pack CANNOT
+#: decide — the seven undecidable `other_purpose` values (OD-2) and
+#: `diaspora_connection = dual` (OD-3) — and PLAN's own OD-2/OD-3 defaults
+#: name a dead end, not a condition, for exactly this reason. It is released
+#: only once slice A3 sub-classifies the raise in `fact-mapper.ts` into named
+#: dead ends. Until then this adapter cannot tell "undecidable by design"
+#: apart from "decided but disclosed", so it holds the whole flag.
+HOLDING_DISCLOSED_FLAGS: frozenset[DisclosedReviewFlag] = frozenset(
+    {DisclosedReviewFlag.CRIMINAL_RECORD, DisclosedReviewFlag.ACTIVITY_BOUNDARY}
+)
+
+#: Env override for ``HOLDING_DISCLOSED_FLAGS`` — a comma-separated list of
+#: ``DisclosedReviewFlag`` names, read fresh on every evaluation (never
+#: memoised at import time) so ``fly secrets set`` takes effect on the next
+#: request, no redeploy needed. See ``_resolve_holding_flags``.
+_HOLDING_FLAGS_ENV_VAR = "VISA_ORACLE_HOLDING_FLAGS"
+
+_ALL_DISCLOSED_REVIEW_FLAGS: frozenset[DisclosedReviewFlag] = frozenset(DisclosedReviewFlag)
+
+#: Cap on the raw ``VISA_ORACLE_HOLDING_FLAGS`` value's length, checked
+#: BEFORE any parsing (gate vo-gate-a1, OBS-2 HIGH). The longest legal value
+#: — all eleven flag names, comma-joined, no padding — is 341 characters
+#: (``CONFLICTING_IMMIGRATION_STATUS`` is the longest single name at 31);
+#: 512 leaves headroom for padding/quoting without letting an oversized or
+#: flood-style operator typo (thousands of unknown names) reach the parser.
+_HOLDING_FLAGS_ENV_MAX_LEN = 512
+
+
+def _resolve_holding_flags() -> frozenset[DisclosedReviewFlag]:
+    """Resolve the set of disclosures that still force a human hold.
+
+    Fail-CLOSED kill switch (gate vo-gate-a1, OBS-2 HIGH — cured): every
+    malformed shape holds ALL eleven flags, never a silent subset or a
+    silent no-op:
+
+    - unset or blank -> the shipped default, ``HOLDING_DISCLOSED_FLAGS``.
+    - oversized (over ``_HOLDING_FLAGS_ENV_MAX_LEN`` chars, checked before
+      the value is even split) -> all eleven.
+    - an empty entry from a stray/trailing/doubled comma -> all eleven.
+    - every comma-separated token is ``.strip().upper()``-normalised before
+      matching, so ``health_concern``/``Health_Concern`` DO resolve (that
+      flag holds) — but a value with a separator other than a comma
+      (``;``, whitespace), quotes, ``*``, ``ALL``, JSON-ish brackets, or any
+      other shape that normalises to zero recognised tokens -> all eleven.
+    - one or more tokens recognised alongside one or more NOT recognised
+      -> all eleven (an operator typo must never silently become a partial
+      kill switch — this is intentionally stricter than "keep what parsed").
+    - every token recognised -> exactly that set.
+
+    ``CRIMINAL_RECORD`` and ``ACTIVITY_BOUNDARY`` are unioned into every
+    return path below — no env value, malformed or not, can ever release
+    either of the two disclosures ``HOLDING_DISCLOSED_FLAGS`` never
+    releases. The raw env value is never logged (only a count), even though
+    it is operator-controlled and not applicant data, to keep this adapter's
+    "nothing sensitive in a log line" posture uniform — at most one WARNING
+    per evaluation.
+    """
+
+    raw = os.environ.get(_HOLDING_FLAGS_ENV_VAR)
+    if raw is None or raw.strip() == "":
+        return HOLDING_DISCLOSED_FLAGS
+
+    fail_closed = _ALL_DISCLOSED_REVIEW_FLAGS | HOLDING_DISCLOSED_FLAGS
+
+    if len(raw) > _HOLDING_FLAGS_ENV_MAX_LEN:
+        logger.warning(
+            "%s exceeds %d characters; failing closed to every disclosure flag",
+            _HOLDING_FLAGS_ENV_VAR,
+            _HOLDING_FLAGS_ENV_MAX_LEN,
+        )
+        return fail_closed
+
+    tokens = [token.strip().upper() for token in raw.split(",")]
+    if any(token == "" for token in tokens):
+        logger.warning(
+            "%s is malformed (empty entry in the comma-separated list); "
+            "failing closed to every disclosure flag",
+            _HOLDING_FLAGS_ENV_VAR,
+        )
+        return fail_closed
+
+    known_values = {flag.value for flag in DisclosedReviewFlag}
+    unknown = [token for token in tokens if token not in known_values]
+    recognized = frozenset(DisclosedReviewFlag(token) for token in tokens if token in known_values)
+
+    if not recognized:
+        logger.warning(
+            "%s names zero recognized flags (%d token(s) given); failing "
+            "closed to every disclosure flag",
+            _HOLDING_FLAGS_ENV_VAR,
+            len(tokens),
+        )
+        return fail_closed
+
+    if unknown:
+        logger.warning(
+            "%s names %d unrecognized flag(s) alongside %d recognized "
+            "one(s); failing closed to every disclosure flag rather than a "
+            "silent partial",
+            _HOLDING_FLAGS_ENV_VAR,
+            len(unknown),
+            len(recognized),
+        )
+        return fail_closed
+
+    return recognized | HOLDING_DISCLOSED_FLAGS
+
+
 _DISCLOSED_REVIEW_REASON_CODES: MappingProxyType[DisclosedReviewFlag, str] = MappingProxyType(
     {
         DisclosedReviewFlag.CRIMINAL_RECORD: "DISCLOSED_CRIMINAL_RECORD_REVIEW",
@@ -1027,6 +1145,39 @@ _DISCLOSED_REVIEW_REASON_CODES: MappingProxyType[DisclosedReviewFlag, str] = Map
             "CONFLICTING_IMMIGRATION_STATUS_REVIEW"
         ),
     }
+)
+
+#: The nine disclosures that become a named ``notices`` condition on the
+#: pack's own kept candidate instead of a hold (owner ruling 2026-09-13,
+#: OD-5 of `VISA-ORACLE-DW-20260919/PLAN.md`; narrowed from ten to nine by
+#: gate vo-gate-a1's OBS-1 HIGH — see ``HOLDING_DISCLOSED_FLAGS`` above).
+#: Every code matches ``ReasonCode``'s open pattern (``models.py:95``), so
+#: this needs no schema bump and no pack re-sign. ``CRIMINAL_RECORD`` and
+#: ``ACTIVITY_BOUNDARY`` are deliberately absent — both only hold, never
+#: condition, while they remain in ``HOLDING_DISCLOSED_FLAGS``.
+_DISCLOSED_CONDITION_REASON_CODES: MappingProxyType[DisclosedReviewFlag, str] = MappingProxyType(
+    {
+        DisclosedReviewFlag.HEALTH_CONCERN: "DISCLOSED_HEALTH_CONCERN_CONDITION",
+        DisclosedReviewFlag.PRIOR_VISA_REFUSAL: "DISCLOSED_PRIOR_VISA_REFUSAL_CONDITION",
+        DisclosedReviewFlag.NOT_CERTAIN: "DISCLOSED_UNCERTAINTY_CONDITION",
+        DisclosedReviewFlag.PEP_OR_SANCTIONS: "DISCLOSED_PEP_OR_SANCTIONS_CONDITION",
+        DisclosedReviewFlag.SOURCE_OF_FUNDS_UNCLEAR: "DISCLOSED_SOURCE_OF_FUNDS_CONDITION",
+        DisclosedReviewFlag.DIPLOMATIC_PASSPORT: "DISCLOSED_DIPLOMATIC_PASSPORT_CONDITION",
+        DisclosedReviewFlag.AMBIGUOUS_SPONSOR: "DISCLOSED_AMBIGUOUS_SPONSOR_CONDITION",
+        DisclosedReviewFlag.MULTI_PURPOSE_TRIP: "DISCLOSED_MULTI_PURPOSE_TRIP_CONDITION",
+        DisclosedReviewFlag.CONFLICTING_IMMIGRATION_STATUS: (
+            "CONFLICTING_IMMIGRATION_STATUS_CONDITION"
+        ),
+    }
+)
+
+#: Declaration order of ``DisclosedReviewFlag`` — the canonical sort key
+#: for ``notices`` (gate vo-gate-a1, OBS-5 LOW): two requests differing only
+#: in ``disclosed_review_flags`` order must yield an identical ``notices``
+#: tuple, since they share the same ``decision_id``/``public_id`` on the
+#: released path (neither is re-seeded there).
+_DISCLOSED_FLAG_DECLARATION_ORDER: MappingProxyType[DisclosedReviewFlag, int] = MappingProxyType(
+    {flag: index for index, flag in enumerate(DisclosedReviewFlag)}
 )
 
 
@@ -1313,12 +1464,25 @@ def _apply_disclosed_review_flags(
     decision: Decision,
     flags: tuple[DisclosedReviewFlag, ...],
 ) -> Decision:
-    """Monotone abstention adapter for review disclosures outside the pack.
+    """Split disclosures into a hold and named conditions.
 
-    This adapter cannot create or retain candidates.  Empty ``source_refs``
-    is intentional: these codes describe an applicant disclosure requiring
-    a human workflow, not a legal eligibility claim.  They must not borrow a
-    regulatory citation that the signed RulePack did not declare.
+    Monotone abstention adapter for review disclosures outside the pack:
+    it cannot create or retain candidates for a flag that holds, and a
+    conditioning flag may only ADD a notice — it can never create, reorder
+    or remove a candidate, and never lowers the state. Empty ``source_refs``
+    is intentional throughout: these codes describe an applicant disclosure,
+    not a legal eligibility claim, so they must not borrow a regulatory
+    citation that the signed RulePack did not declare.
+
+    Only the flags in ``_resolve_holding_flags()`` (``CRIMINAL_RECORD`` and
+    ``ACTIVITY_BOUNDARY`` always, plus whatever ``VISA_ORACLE_HOLDING_FLAGS``
+    restores) rewrite the decision to a hold; every other disclosed flag
+    becomes a named ``notices`` condition on the decision the pack already
+    reached, per the 2026-09-13 ruling — see ``HOLDING_DISCLOSED_FLAGS``
+    above. Conditioning flags are sorted into ``DisclosedReviewFlag``'s own
+    declaration order before their notices are built (gate vo-gate-a1,
+    OBS-5 LOW), so two requests naming the same flags in a different order
+    produce byte-identical ``notices``.
     """
 
     if not flags:
@@ -1326,7 +1490,42 @@ def _apply_disclosed_review_flags(
     if decision.decision_id is None or decision.public_id is None:
         return decision
 
-    flag_seed = ",".join(flag.value for flag in flags)
+    holding_flags = _resolve_holding_flags()
+    holding = tuple(flag for flag in flags if flag in holding_flags)
+    conditioning = tuple(
+        sorted(
+            (flag for flag in flags if flag not in holding_flags),
+            key=lambda flag: _DISCLOSED_FLAG_DECLARATION_ORDER[flag],
+        )
+    )
+
+    condition_notices = tuple(
+        Reason(
+            code=_DISCLOSED_CONDITION_REASON_CODES[flag],
+            rule_ids=(f"system.disclosed-condition.{flag.value.lower().replace('_', '-')}",),
+            source_refs=(),
+        )
+        for flag in conditioning
+    )
+
+    if not holding:
+        # No holding flag survived the split: the pack's own decision is
+        # kept verbatim — state, candidates, missing_facts, no_path_reasons
+        # and quotes all as the pack decided — with only the condition
+        # notices appended. decision_id/public_id are NOT re-seeded here:
+        # this decision did not change, so re-seeding would break the
+        # idempotency binding for an identical decision. ``decision_integrity``
+        # is nulled defensively (gate vo-gate-a1, OBS-6 LOW): this adapter is
+        # documented to run strictly before ``seal_decision``, so the
+        # incoming value is always already ``None`` — nulling it here closes
+        # the latent trap if that ordering is ever changed upstream, rather
+        # than relying on a contract this function cannot itself enforce.
+        payload = decision.model_dump(mode="python")
+        payload["notices"] = (*decision.notices, *condition_notices)
+        payload["decision_integrity"] = None
+        return Decision.model_validate(payload)
+
+    flag_seed = ",".join(flag.value for flag in holding)
     decision_id = uuid.uuid5(decision.decision_id, flag_seed)
     public_id = hashlib.sha256(f"{decision.public_id}:{flag_seed}".encode()).hexdigest()[:20]
     disclosed_reasons = tuple(
@@ -1335,7 +1534,7 @@ def _apply_disclosed_review_flags(
             rule_ids=(f"system.disclosed-review.{flag.value.lower().replace('_', '-')}",),
             source_refs=(),
         )
-        for flag in flags
+        for flag in holding
     )
     existing_reasons = (
         decision.review_reasons if decision.state.value == "HUMAN_REVIEW_REQUIRED" else ()
@@ -1352,6 +1551,9 @@ def _apply_disclosed_review_flags(
             "no_path_reasons": (),
             "outage": None,
             "quotes": (),
+            # A holding flag still carries any co-disclosed conditioning
+            # flag's notice (e.g. criminal + health): naming both causes.
+            "notices": (*decision.notices, *condition_notices),
             "trace_sha256": decision.trace_sha256,
             "decision_integrity": None,
         }
@@ -1467,10 +1669,7 @@ def _collapse_reader_reasons(decision: Decision) -> Decision:
 
     merged_no_path = merge_reasons_by_code(decision.no_path_reasons)
     merged_review = merge_reasons_by_code(decision.review_reasons)
-    if (
-        merged_no_path == decision.no_path_reasons
-        and merged_review == decision.review_reasons
-    ):
+    if merged_no_path == decision.no_path_reasons and merged_review == decision.review_reasons:
         return decision
     payload = decision.model_dump(mode="python")
     payload.update({"no_path_reasons": merged_no_path, "review_reasons": merged_review})

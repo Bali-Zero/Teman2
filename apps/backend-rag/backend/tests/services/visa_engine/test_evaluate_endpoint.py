@@ -2064,6 +2064,210 @@ async def test_disclosed_review_flag_can_only_replace_support_with_review(
     assert reviewed.review_reasons[0].source_refs == ()
 
 
+#: The ten non-criminal disclosures (PLAN VISA-ORACLE-DW-20260919 slice A1,
+#: OD-5): every member of the closed enum except the one the 2026-09-13
+#: ruling still holds.
+_NON_CRIMINAL_DISCLOSED_FLAGS: tuple[DisclosedReviewFlag, ...] = tuple(
+    flag for flag in DisclosedReviewFlag if flag is not DisclosedReviewFlag.CRIMINAL_RECORD
+)
+
+
+def _supported_baseline() -> Decision:
+    compiled = gold_loader.load_and_compile_rule_pack()
+    facts = gold_loader.load_persona(gold_loader.PERSONAS_DIR / "02_business_c2.json").facts
+    decision = evaluate(
+        facts,
+        compiled,
+        effective_at=gold_loader.GOLD_EFFECTIVE_AT,
+        observed_at=gold_loader.GOLD_EFFECTIVE_AT,
+    )
+    assert decision.state.value == "SUPPORTED_CANDIDATES"
+    assert decision.candidates
+    return decision
+
+
+def test_holding_set_is_exactly_the_ruling() -> None:
+    """2026-09-13 ruling: human review survives for ONE disclosure only.
+
+    If a future PR widens ``HOLDING_DISCLOSED_FLAGS``, this test names the
+    ruling it is breaking.
+    """
+
+    assert evaluate_path.HOLDING_DISCLOSED_FLAGS == frozenset({DisclosedReviewFlag.CRIMINAL_RECORD})
+
+
+def test_resolve_holding_flags_defaults_to_the_ruling(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.delenv(evaluate_path._HOLDING_FLAGS_ENV_VAR, raising=False)
+    assert evaluate_path._resolve_holding_flags() == evaluate_path.HOLDING_DISCLOSED_FLAGS
+
+
+def test_resolve_holding_flags_reads_a_valid_override(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv(evaluate_path._HOLDING_FLAGS_ENV_VAR, "HEALTH_CONCERN, NOT_CERTAIN")
+    assert evaluate_path._resolve_holding_flags() == frozenset(
+        {
+            DisclosedReviewFlag.CRIMINAL_RECORD,
+            DisclosedReviewFlag.HEALTH_CONCERN,
+            DisclosedReviewFlag.NOT_CERTAIN,
+        }
+    )
+
+
+def test_resolve_holding_flags_omitting_criminal_record_still_holds_it(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """CRIMINAL_RECORD holds ALWAYS, whatever the env says."""
+
+    monkeypatch.setenv(evaluate_path._HOLDING_FLAGS_ENV_VAR, "HEALTH_CONCERN")
+    assert DisclosedReviewFlag.CRIMINAL_RECORD in evaluate_path._resolve_holding_flags()
+
+
+def test_resolve_holding_flags_fails_closed_on_a_malformed_value(
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """An empty entry (stray/trailing comma) is unparseable: hold all eleven."""
+
+    monkeypatch.setenv(evaluate_path._HOLDING_FLAGS_ENV_VAR, "HEALTH_CONCERN,,NOT_CERTAIN")
+    with caplog.at_level(logging.WARNING, logger=evaluate_path.__name__):
+        resolved = evaluate_path._resolve_holding_flags()
+    assert resolved == frozenset(DisclosedReviewFlag)
+    assert "malformed" in caplog.text
+    assert "HEALTH_CONCERN,,NOT_CERTAIN" not in caplog.text
+
+
+def test_resolve_holding_flags_fails_closed_on_an_unknown_flag_name(
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """An unrecognized token holds every flag that WAS recognized in the
+    list — never fewer than a correct value would have held."""
+
+    monkeypatch.setenv(evaluate_path._HOLDING_FLAGS_ENV_VAR, "HEALTH_CONCERN,NOT_A_REAL_FLAG")
+    with caplog.at_level(logging.WARNING, logger=evaluate_path.__name__):
+        resolved = evaluate_path._resolve_holding_flags()
+    assert resolved == frozenset(
+        {DisclosedReviewFlag.CRIMINAL_RECORD, DisclosedReviewFlag.HEALTH_CONCERN}
+    )
+    assert "unrecognized" in caplog.text
+    assert "NOT_A_REAL_FLAG" not in caplog.text
+
+
+def test_criminal_disclosure_still_holds() -> None:
+    baseline = _supported_baseline()
+
+    reviewed = evaluate_path._apply_disclosed_review_flags(
+        baseline,
+        (DisclosedReviewFlag.CRIMINAL_RECORD,),
+    )
+    assert reviewed.state.value == "HUMAN_REVIEW_REQUIRED"
+    assert reviewed.candidates == ()
+    assert [reason.code for reason in reviewed.review_reasons] == [
+        "DISCLOSED_CRIMINAL_RECORD_REVIEW"
+    ]
+
+
+@pytest.mark.parametrize("flag", _NON_CRIMINAL_DISCLOSED_FLAGS)
+def test_each_non_criminal_flag_keeps_the_pack_verdict(
+    flag: DisclosedReviewFlag,
+) -> None:
+    """G1-b innocence half: the pack's own verdict survives untouched, plus
+    exactly one notice carrying the flag's dedicated ``*_CONDITION`` code."""
+
+    baseline = _supported_baseline()
+
+    conditioned = evaluate_path._apply_disclosed_review_flags(baseline, (flag,))
+
+    assert conditioned.state == baseline.state
+    assert conditioned.candidates == baseline.candidates
+    assert conditioned.missing_facts == baseline.missing_facts
+    assert conditioned.no_path_reasons == baseline.no_path_reasons
+    assert conditioned.quotes == baseline.quotes
+    assert conditioned.decision_id == baseline.decision_id
+    assert conditioned.public_id == baseline.public_id
+    new_notices = conditioned.notices[len(baseline.notices) :]
+    assert len(new_notices) == 1
+    assert new_notices[0].code == evaluate_path._DISCLOSED_CONDITION_REASON_CODES[flag]
+    assert new_notices[0].source_refs == ()
+
+
+@pytest.mark.parametrize("flag", _NON_CRIMINAL_DISCLOSED_FLAGS)
+def test_regressing_a_flag_via_holding_env_restores_the_hold(
+    monkeypatch: pytest.MonkeyPatch,
+    flag: DisclosedReviewFlag,
+) -> None:
+    """G1-b guilt half: ``VISA_ORACLE_HOLDING_FLAGS`` is the fleet-wide kill
+    switch — listing a flag there restores its hold with no redeploy."""
+
+    baseline = _supported_baseline()
+    monkeypatch.setenv(evaluate_path._HOLDING_FLAGS_ENV_VAR, flag.value)
+
+    regressed = evaluate_path._apply_disclosed_review_flags(baseline, (flag,))
+
+    assert regressed.state.value == "HUMAN_REVIEW_REQUIRED"
+    assert regressed.candidates == ()
+    assert [reason.code for reason in regressed.review_reasons] == [
+        evaluate_path._DISCLOSED_REVIEW_REASON_CODES[flag]
+    ]
+
+
+def test_a_conditioning_flag_never_empties_candidates() -> None:
+    """The guilt test on ordering, not just the count: product codes stay
+    an identical ordered tuple — order is rank."""
+
+    before = _supported_baseline()
+
+    after = evaluate_path._apply_disclosed_review_flags(
+        before,
+        (DisclosedReviewFlag.NOT_CERTAIN,),
+    )
+    assert len(after.candidates) == len(before.candidates)
+    assert tuple(c.product_code for c in after.candidates) == tuple(
+        c.product_code for c in before.candidates
+    )
+
+
+def test_criminal_plus_health_names_both() -> None:
+    """A criminal disclosure that also raises a conditioning flag still
+    names both causes: the hold, and the co-disclosed notice."""
+
+    baseline = _supported_baseline()
+
+    reviewed = evaluate_path._apply_disclosed_review_flags(
+        baseline,
+        (DisclosedReviewFlag.CRIMINAL_RECORD, DisclosedReviewFlag.HEALTH_CONCERN),
+    )
+
+    assert reviewed.state.value == "HUMAN_REVIEW_REQUIRED"
+    assert reviewed.candidates == ()
+    assert [reason.code for reason in reviewed.review_reasons] == [
+        "DISCLOSED_CRIMINAL_RECORD_REVIEW"
+    ]
+    new_notices = reviewed.notices[len(baseline.notices) :]
+    assert [notice.code for notice in new_notices] == ["DISCLOSED_HEALTH_CONCERN_CONDITION"]
+
+
+def test_notice_source_refs_are_empty() -> None:
+    """Projection-integrity guard, asserted directly: a future author who
+    lends a citation to a condition notice fails here, not in a 500 on the
+    wire (``api_models.py:484-495`` requires every notice's ``source_refs``
+    to resolve in ``sources`` — an empty tuple satisfies that vacuously)."""
+
+    baseline = _supported_baseline()
+
+    conditioned = evaluate_path._apply_disclosed_review_flags(
+        baseline,
+        (DisclosedReviewFlag.NOT_CERTAIN,),
+    )
+    new_notices = conditioned.notices[len(baseline.notices) :]
+    assert new_notices
+    for notice in new_notices:
+        assert notice.source_refs == ()
+
+
 def test_minor_privacy_hold_is_global_monotone_and_uncited() -> None:
     """A minor cannot inherit an automated supported outcome from any path."""
 
@@ -2270,9 +2474,19 @@ async def test_http_offshore_unknown_overstay_remains_needs_input(
     assert "immigration.overstay_days" in decision["missing_facts"]
 
 
-async def test_offshore_positive_overstay_conflict_forces_human_review(
+async def test_offshore_positive_overstay_conflict_names_a_condition(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    """CONFLICTING_IMMIGRATION_STATUS is one of A1's ten non-holding flags: it
+    no longer forces review on its own (pre-A1 this test's name was accurate
+    — the flag alone rewrote the decision). The scenario still ends
+    HUMAN_REVIEW_REQUIRED here, but for a different, engine-level reason —
+    ``_facts_with_purposes``'s fixed identity is a minor, so
+    `review.minor-without-guardian` (the PACK's own rule, §1.3c) holds
+    regardless of any disclosure. The conflict flag now only adds its
+    condition notice alongside that hold, per A1's "carry both causes" rule.
+    """
+
     monkeypatch.setenv(evaluate_path.EVALUATE_MODE_ENV, "SHADOW")
     _patch_engine_chain(monkeypatch)
     wire = _wire_payload(_facts_with_purposes(["TOURISM"]))
@@ -2291,8 +2505,11 @@ async def test_offshore_positive_overstay_conflict_forces_human_review(
         idempotency_key=None,
     )
     assert response.decision.state is DecisionState.HUMAN_REVIEW_REQUIRED
-    assert "CONFLICTING_IMMIGRATION_STATUS_REVIEW" in {
+    assert "CONFLICTING_IMMIGRATION_STATUS_REVIEW" not in {
         reason.code for reason in response.decision.review_reasons
+    }
+    assert "CONFLICTING_IMMIGRATION_STATUS_CONDITION" in {
+        notice.code for notice in response.decision.notices
     }
 
 
@@ -2789,9 +3006,14 @@ def test_final_decision_trace_and_integrity_are_deterministic_and_cover_disclosu
     assert first.decision_integrity is not None
     assert verify_decision_seal(first, key=key, trace=evaluation.trace)
 
+    # CRIMINAL_RECORD, not NOT_CERTAIN: since PLAN VISA-ORACLE-DW-20260919
+    # slice A1, only a holding flag rewrites the decision (and nulls
+    # decision_integrity, forcing the reseal this test exercises below); a
+    # conditioning flag like NOT_CERTAIN only appends a notice and leaves
+    # decision_integrity untouched — see test_notice_source_refs_are_empty.
     disclosed = evaluate_path._apply_disclosed_review_flags(
         first,
-        (DisclosedReviewFlag.NOT_CERTAIN,),
+        (DisclosedReviewFlag.CRIMINAL_RECORD,),
     )
     assert disclosed.trace_sha256 == first.trace_sha256
     assert disclosed.decision_integrity is None
