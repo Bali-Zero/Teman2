@@ -508,6 +508,42 @@ describe("ClientDetailClient", () => {
     );
   });
 
+  // R8 gate B1: R7a's render-time fallback (`visibleTab`) can force
+  // `activeTab` and `visibleTab` apart — a deep link to a hidden Company
+  // tab renders Overview while `activeTab` and the URL still say
+  // "company". The bare `if (alreadyActive) return;` (R8 gate C6) treated
+  // that click as a no-op too, because `isActive` is computed against
+  // `visibleTab` (agrees with the visible Overview button) — so the URL
+  // kept lying and `activeTab` stayed stuck on "company", ready to jump
+  // the panel back to Company the instant `showCompanyTab` turned true
+  // (e.g. after "Add company" + `invalidateClient`). Clicking Overview is
+  // the one reachable gesture that must still normalise both.
+  it("R7a fallback: clicking Overview while ?tab=company still normalises the URL (R8 gate B1)", async () => {
+    const user = userEvent.setup();
+    mockUseClientDetail.mockReturnValue({
+      data: companyLessProfile(),
+      isLoading: false,
+      error: null,
+    });
+    stableSearchParams.get.mockImplementation((key: string) =>
+      key === "tab" ? "company" : null,
+    );
+    const { ClientDetailClient } = await import("./ClientDetailClient");
+    render(<ClientDetailClient taxConsultants={CONSULTANTS} />);
+
+    expect(await screen.findByTestId("OverviewTab")).toBeInTheDocument();
+    const overview = screen.getByRole("button", { name: "Overview" });
+    expect(overview).toHaveAttribute("aria-current", "page");
+
+    await user.click(overview);
+
+    // GUILT: with the bare `if (alreadyActive) return;` this is 0 calls —
+    // the click that should normalise `activeTab`/the URL is swallowed.
+    expect(mockRouterReplace).toHaveBeenCalledWith("/clients/7?tab=overview", {
+      scroll: false,
+    });
+  });
+
   it("ignores a ?tab= value that is not a tab and stays on Overview", async () => {
     stableSearchParams.get.mockImplementation((key: string) =>
       key === "tab" ? "constructor" : null,

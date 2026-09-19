@@ -325,7 +325,17 @@ export function ClientDetailClient({
     // key is already `visibleTab` was already a harmless no-op before this
     // guard (same state, same URL); it stays a no-op now, just without the
     // redundant `router.replace` call.
-    if (alreadyActive) return;
+    //
+    // R8 gate B1: a click is only a true no-op when `activeTab` and
+    // `visibleTab` AGREE. R7a's render-time fallback (`visibleTab`, below)
+    // can force them apart — a deep link to a hidden Company/Tax tab shows
+    // Overview (`visibleTab`) while `activeTab` and the URL still say
+    // "company". There, clicking the visible (and therefore "active")
+    // Overview button is the one gesture that normalises both; skipping it
+    // would leave the URL lying and `activeTab` stuck, so the next render
+    // that flips `showCompanyTab`/`showTaxTab` true (e.g. Add company) would
+    // jump the panel to Company with no user action.
+    if (alreadyActive && activeTab === visibleTab) return;
     const scrollY = window.scrollY;
     setActiveTab(tab);
     router.replace(`/clients/${params.id}?tab=${tab}`, { scroll: false });

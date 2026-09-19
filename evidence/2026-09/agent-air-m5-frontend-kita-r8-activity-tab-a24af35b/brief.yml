@@ -18,14 +18,16 @@ date: 2026-09-20
 
 gear: 2
 gear_reason: >-
-  Deterministic floor 2, source `size`: `git diff --numstat origin/main` measures churn 1620
-  across six files (180+21 ClientDetailClient.test.tsx, 55+29 ClientDetailClient.tsx, 2+5
-  client-detail-desk.test.tsx, 452+0 ActivityTab.test.tsx, 531+0 ActivityTab.tsx, 0+345
+  Deterministic floor 2, source `size`: `git diff --no-renames --numstat origin/main` measures
+  churn 1670 across six files (220+21 ClientDetailClient.test.tsx, 65+29 ClientDetailClient.tsx,
+  2+5 client-detail-desk.test.tsx, 452+0 ActivityTab.test.tsx, 531+0 ActivityTab.tsx, 0+345
   TimelineTab.tsx deleted) — above SIZE_GEAR2_THRESHOLD (400) and below SIZE_GEAR3_THRESHOLD
   (1828). No hot-zone path hit (every file is under `apps/mouth/`, not a HOTZONE_PATTERNS
-  match). Confirmed locally via `scripts/evidence_pack_lint.py --print-floor
-  --print-floor-source --changed-files-file <list> --numstat-file <numstat> --commit-count 1`,
-  which printed `2` (source `size`).
+  match). This is the third round's number (two prior rounds' `1303`/`1620` both went stale the
+  moment a later round added more lines to these same files) — measured at THIS round's final
+  HEAD, after staging, immediately before commit. Confirmed locally via
+  `scripts/evidence_pack_lint.py --print-floor --print-floor-source --changed-files-file <list>
+  --numstat-file <numstat> --commit-count 1`, which printed `2` (source `size`).
 
 review_policy: >-
   By the owner's decision of 2026-09-19, the kita client-profile redesign does not wait for a
@@ -40,27 +42,31 @@ appetite:
 acceptance:
   A1: >-
     The whole `clients/[id]` vitest folder (including the `client-detail-desk.test.tsx` guard)
-    passes: 272/272 across 20 files, including the R8-audit-repaired `ActivityTab.test.tsx` (25
+    passes: 273/273 across 20 files, including the R8-audit-repaired `ActivityTab.test.tsx` (25
     cases, now with real `ApiError` statusCode fixtures per gate condition C5) and the
-    gate-hardened `ClientDetailClient.test.tsx` (33 cases): the deep-link table (both
+    gate-hardened `ClientDetailClient.test.tsx` (34 cases): the deep-link table (both
     `?tab=timeline` and `?tab=whatsapp` resolve to a single mocked `ActivityTab`, seeded with
     the matching `initialSection`, and the merged "Activity" tab button carries
     `aria-current="page"` for either key), plus C3 (an in-place `?tab=whatsapp` ->
     `?tab=timeline` re-navigation remounts `<ActivityTab>` via its `key=`, not just its
-    `initialSection` prop) and C6 (clicking "Activity" while already on `?tab=whatsapp` is a
-    no-op: no router call, no remount).
+    `initialSection` prop), C6 (clicking "Activity" while already on `?tab=whatsapp` is a
+    no-op: no router call, no remount) and B1 (clicking Overview while `?tab=company` on a
+    company-less client — R7a's fallback — still normalises `activeTab` and the URL; the C6
+    no-op guard must not swallow that click too).
     probe: >-
       npx --no-install vitest run 'src/app/(workspace)/clients/[id]/'
   A2: >-
     `tsc --noEmit -p .` exits clean and `eslint` reports zero errors on every changed non-test
-    file (the one pre-existing `<img>` LCP warning on ClientDetailClient.tsx:492 is unrelated
-    to this change — the same warning appears on origin/main).
+    file (the one pre-existing `@next/next/no-img-element` warning in ClientDetailClient.tsx is
+    unrelated to this change — the same warning appears on origin/main; no line number named
+    here on purpose, since this file's growing comment count has already made that number stale
+    twice in three rounds).
     probe: >-
       npx --no-install tsc --noEmit -p . && npx --no-install eslint
       "src/app/(workspace)/clients/[id]/components/ActivityTab.tsx"
       "src/app/(workspace)/clients/[id]/ClientDetailClient.tsx"
   A3: >-
-    Sixteen independent mutations, each applied alone to a `cp`-backed-up original, drive the
+    Seventeen independent mutations, each applied alone to a `cp`-backed-up original, drive the
     matching pinned test(s) RED, then are reverted and confirmed byte-identical to the original
     with `cmp -s`: (1) hard-coding `initialSection={"timeline"}` in ClientDetailClient.tsx fails
     the "?tab=whatsapp seeds ActivityTab's initialSection with whatsapp" test; (2) gating the
@@ -85,15 +91,20 @@ acceptance:
     conditions round, three more: (14) removing the `key=` on `<ActivityTab>` (R5b) fails the
     C3 remount test (`activityTabMounts` stays `["whatsapp"]` after the in-place navigation
     even though `data-section` still flips to "timeline"); (15) freezing that `key` to the
-    constant `"activity"` (R5c) fails the same C3 test the same way; (16) removing the
-    `if (alreadyActive) return;` guard in `handleTabChange` fails the C6 no-op test
-    (`mockRouterReplace` gets called with `/clients/7?tab=timeline`).
+    constant `"activity"` (R5c) fails the same C3 test the same way; (16) removing the whole
+    `if (alreadyActive && activeTab === visibleTab) return;` guard in `handleTabChange` fails
+    the C6 no-op test (`mockRouterReplace` gets called with `/clients/7?tab=timeline`). Gate
+    sign-off B1, one more: (17) reverting that guard to the bare `if (alreadyActive) return;`
+    (dropping the `&& activeTab === visibleTab` clause) fails the new R7a-fallback-normalises
+    test — `mockRouterReplace` gets zero calls where `/clients/7?tab=overview` is expected,
+    because R7a's render-time fallback (`?tab=company` on a company-less client shows Overview)
+    makes `isActive` true against `visibleTab` even though `activeTab` still says "company".
     probe: >-
       For each mutation: apply, run `npx --no-install vitest run
       "src/app/(workspace)/clients/[id]/components/ActivityTab.test.tsx"` (or
-      `ClientDetailClient.test.tsx` for mutations 1, 14, 15, 16) scoped with `-t "<case name>"`,
-      observe RED, `cp` the backed-up original back over the mutated file, `cmp -s` the two to
-      confirm an exact restore.
+      `ClientDetailClient.test.tsx` for mutations 1, 14, 15, 16, 17) scoped with
+      `-t "<case name>"`, observe RED, `cp` the backed-up original back over the mutated file,
+      `cmp -s` the two to confirm an exact restore.
 
 out_of_scope: >-
   Every other R1-R8 lane of PLAN-redesign.md not already merged (CompanyTab/TaxTab kv-grid,
