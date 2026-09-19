@@ -562,6 +562,18 @@ export function ImmigrationTab({
             cols="1.6fr 1fr 1fr 1fr 140px"
             colsCollapsed="1.6fr 1fr 1fr 140px"
             id="immigration-visa-history"
+            // `colsCollapsed`'s own scoped style sets `--cols` under a media
+            // query, but an inline `--cols` on the very same element already
+            // wins over it (PR 6520, not this window's to fix — see
+            // DocumentsTab.tsx:41-49, FamilyTab.tsx:444 and
+            // ObligationsTable.tsx ~475-493, which document and route around
+            // the same defect). Its `[data-collapse]{display:none}` half
+            // does apply, so the "Issued" cells still leave the flow; only
+            // the track count needed the same technique those three
+            // siblings use: override `grid-template-columns` directly on
+            // the `.grid` descendant, scoped and `!important`, at the same
+            // 1360px breakpoint `colsCollapsed` was already targeting.
+            className="max-[1360px]:[&_.grid]:!grid-cols-[1.6fr_1fr_1fr_140px]"
           >
             <HairlineHead>
               <span>Visa type</span>

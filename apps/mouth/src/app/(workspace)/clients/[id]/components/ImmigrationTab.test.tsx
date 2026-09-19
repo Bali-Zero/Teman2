@@ -458,6 +458,56 @@ describe("ImmigrationTab — Visa-history row controls are reachable on touch (R
       expect(row.children.length).toBe(head!.children.length);
     }
   });
+
+  it("PIN (R6b — the PR 6520 inert-collapse trap): the collapsed override carries as many tracks as non-collapse head cells, and the expanded template keeps all of them", () => {
+    const currentDate = new Date(Date.now() + 500 * 86400000)
+      .toISOString()
+      .slice(0, 10);
+    const historyDate = new Date(Date.now() - 5 * 86400000)
+      .toISOString()
+      .slice(0, 10);
+    renderTab([
+      { ...baseDoc, id: 80, document_type: "kitas", expiry_date: currentDate },
+      { ...baseDoc, id: 81, document_type: "kitap", expiry_date: historyDate },
+    ]);
+
+    const grid = document.querySelector(
+      '[data-hgrid="immigration-visa-history"]',
+    );
+    expect(grid).not.toBeNull();
+    const head = grid!.querySelector('[role="row"]');
+    expect(head).not.toBeNull();
+
+    // `HairlineGrid`'s own `colsCollapsed` API only ever emits a `--cols`
+    // media rule, and an inline `--cols` on the same element beats it
+    // (PR 6520) — so the fix cannot rely on `--cols` at all below the
+    // breakpoint. This pin fails if the fix goes back to relying on that
+    // inert API: it requires a SEPARATE override that sets
+    // `grid-template-columns` directly (the same technique DocumentsTab,
+    // FamilyTab and ObligationsTable use), and checks its track count
+    // against the DOM rather than trusting the prop.
+    const overrideMatch = grid!.className.match(
+      /\[&_\.grid\]:!grid-cols-\[([^\]]+)\]/,
+    );
+    expect(overrideMatch).not.toBeNull();
+    const collapsedTracks = overrideMatch![1].split("_");
+
+    const nonCollapseHeadCells = Array.from(head!.children).filter(
+      (cell) => !cell.hasAttribute("data-collapse"),
+    );
+    // 4: Visa type, Status, Expires, Actions — "Issued" carries
+    // `data-collapse` and leaves the flow below the breakpoint.
+    expect(collapsedTracks.length).toBe(nonCollapseHeadCells.length);
+    expect(collapsedTracks.length).toBe(4);
+
+    const expandedTracks = grid!
+      .getAttribute("style")!
+      .match(/--cols:\s*([^;]+);/)![1]
+      .trim()
+      .split(/\s+/);
+    expect(expandedTracks.length).toBe(head!.children.length);
+    expect(expandedTracks.length).toBe(5);
+  });
 });
 
 describe("ImmigrationTab — the six unpinned repairs from R6-reaudit.md §3 (M6-M11)", () => {
