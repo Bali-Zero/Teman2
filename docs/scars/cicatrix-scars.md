@@ -1541,3 +1541,41 @@ _Discovered 2026-09-13 in mission SHWEB-20260911, lane W-ORACLE. Family **#3 (Gu
 **Pointer.** `BATTAGLIA-20260911/3-VISA-ORACLE/kit-w-oracle-launch-20260911/15-IMPERATOR-HANDOFF-20260912.md` (entries 2026-09-13 08:20–09:15 WITA), `GATE-6396-VERDICT.md`.
 
 **Family: #3 (Guard-over-match / UNDER-match)**, with a #2 (Esiste≠Armato) flavor: the guard's green is a construction-time green, not a live-correctness one, because the generated contract it reads can silently go stale.
+
+## W133 — il test parametrizzato sul set che testa non fallisce: si CANCELLA, e il run piu' corto si legge come verde — 2026-09-20
+
+**TRAUMA:** PR #6874 (GARUDA VOA, `credential_rejected`) introduceva
+`CREDENTIAL_REJECTED_STATUSES = frozenset({401, 403})` in `telegram_notifier.py` e un corpus di
+dieci test. Il caso di colpa era scritto cosi':
+
+```python
+@pytest.mark.parametrize("status", sorted(CREDENTIAL_REJECTED_STATUSES))
+async def test_rejected_credential_is_flagged_as_such(status): ...
+```
+
+Prima mutazione — togliere `401` dal set — e il risultato **non e' stato un rosso**: il caso
+`[401]` e' semplicemente sparito dalla raccolta. `9 passed` invece di `10 passed`, exit 0, suite
+verde sulla modifica esatta che quel test esisteva per cogliere. Un secondo test (che usava 401
+letterale per misurare il livello di log) l'ha presa per caso — senza di lui la mutazione
+sarebbe passata pulita, e undici test sarebbero atterrati su `main` con uno decorativo per
+costruzione, invisibile a qualsiasi review perche' **il codice del test si legge bene**.
+
+E' la famiglia #3 nella sua forma piu' insidiosa: non una guardia che over-matcha o
+under-matcha, ma una guardia che **si adegua**. Un test che pesca le aspettative dal soggetto non
+ha un oracolo, ha uno specchio: qualunque mutazione del soggetto si propaga all'oracolo, che
+quindi non puo' mai contraddirla.
+
+**ANTIBODY:** (1) I casi di un test di colpa sono **letterali**, mai derivati dal simbolo sotto
+test — `[401, 403]`, non `sorted(CREDENTIAL_REJECTED_STATUSES)`. (2) La membership si fissa in un
+test SUO: `assert CREDENTIAL_REJECTED_STATUSES == frozenset({401, 403})`, cosi' aggiungere o
+togliere un membro e' un rosso esplicito e non un cambio di conteggio. (3) **La tally fa parte
+del verdetto**: quando si misura una mutazione si confronta il numero COMPLETO di test con la
+baseline, perche' `9 passed` contro un baseline di `10 passed` e' un rosso travestito. La regola
+vale per ogni `parametrize`, per i `params` di una fixture e per ogni `for x in MODULE.CONST`
+dentro un corpus.
+
+**GOTCHA:** la stessa forma e' invece CORRETTA quando la sorgente non e' il soggetto — p.es. il
+corpus di `_alert.sh` (W-famiglia allarmi) che parametrizza su tutti e venti i chiamanti reali
+anziche' su un rappresentante: li' la lista e' l'INVENTARIO da coprire, non l'oracolo da
+verificare. La domanda che separa i due casi: *se muto il codice, questa lista cambia?* Se si',
+non e' un oracolo.
