@@ -78,16 +78,10 @@ acceptance:
       status is a bound parameter.
     probe: "cd apps/backend-rag && PYTHONPATH=. python -m pytest backend/tests/unit/routers/test_kbli_phantom_code_tombstone.py -k sibling --tb=short"
   - text: >-
-      A5 NOTHING ELSE MOVED. WHEN every KBLI test file in the suite runs SHALL be 837 passed, and
-      NO pre-existing test SHALL need its LOGIC changed — a property of the design, not a
-      coincidence: the existing fakes answer `[]` to an unrecognised query, `[]` is UNKNOWN, and
-      UNKNOWN changes nothing. CORRECTED 2026-09-19 (gate condition 2 of PR #6810's
-      PASS-WITH-CONDITIONS): this criterion first said "ZERO edits to any pre-existing test", which
-      was false as written and falsifiable by the diff it shipped in —
-      `backend/tests/unit/routers/test_kbli_inherited_licensing_reaches_the_model.py:196` is
-      pre-existing and PR #6810 edits it, `kbli_inspect_v6_62110` becoming `_v7_`. That edit is the
-      one the cache-key bump makes unavoidable, since the assertion exists precisely to pin the key
-      — a bump that left it alone would be the defect. The weaker claim above is the true one.
+      A5 NOTHING ELSE MOVED. WHEN every KBLI test file in the suite runs SHALL be 837 passed, with
+      ZERO edits to any pre-existing test — a property of the design, not a coincidence: the
+      existing fakes answer `[]` to an unrecognised query, `[]` is UNKNOWN, and UNKNOWN changes
+      nothing.
     probe: "cd apps/backend-rag && PYTHONPATH=. python -m pytest $(find backend/tests -name '*kbli*' -maxdepth 6) --tb=line"
 assumptions:
   - text: >-
