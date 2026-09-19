@@ -81,7 +81,10 @@ export const TAX_CONSULTANTS: readonly TaxConsultantOption[] = [
   { value: "kadek.tax@balizero.com", label: "Kadek" },
   { value: "dewaayu.tax@balizero.com", label: "Dewa Ayu" },
   { value: "angel.tax@balizero.com", label: "Angel" },
-  { value: "faisha.tax@balizero.com", label: "Faisha" },
+  // Faisha (faisha.tax@ / faysha.tax@) offboarded 2026-09-19 — no longer an
+  // assignable option. Existing clients/LKPM reports she is already on keep
+  // that value (DB CHECK constraint from migration 093 is untouched), so
+  // this list only gates NEW assignments.
 ];
 
 /** A copy the client can hold: plain rows, no roster type crosses over. */
