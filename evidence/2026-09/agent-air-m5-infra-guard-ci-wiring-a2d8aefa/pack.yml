@@ -2,7 +2,7 @@ task_id: guard-ci-wiring
 brief_ref: evidence/brief.yml # canonical staged name — harness-floor.yml stages this PR's dated brief there before linting
 gear: 3
 colour: BLUE
-base_sha: 6985de48aef24340ae014f2b107425b7714e7e55 # pragma: allowlist secret
+base_sha: a4d9da1cdda665a8da171e277a4446395f73c31b # pragma: allowlist secret
 spend:
   wall_clock_hours: 2
   adversarial_rounds: 2
@@ -329,6 +329,19 @@ receipts:
     cmd: "PYTHONPATH=scripts/ci python3 scripts/evidence_pack_lint.py --print-floor (twice: workflow-excluded fileset; test-file-only fileset)"
     exit: 0
     ts: "2026-09-19T05:22:19Z"
+    seat: tp1-qwen3.8-max
+  - claim: >-
+      POST-REBASE re-verification, because base_sha moved from 6985de48ae to a4d9da1cdd (origin/main
+      advanced by one docs-only commit, #6803, with no overlap with any file in this diff) and a
+      receipt measured against the old base is not a receipt about the branch that will be merged.
+      All six acceptance-relevant commands re-run on the rebased tree, all rc=0: corpus script "64/64
+      corpus rows as specified"; pytest over both files "28 passed in 13.42s"; the committed filter
+      probe "ALL_EXPECTED: True" with 28 steps; check_guard_conformance.py "every censused guard has
+      guilt+innocence proofs, no phantoms, all armed in CI"; ruff "All checks passed!" on all three
+      Python files in the diff; scripts/lint_home_fork.py --check.
+    cmd: "python3 infra/claude-hooks/test_secret_expansion_guard.py; python3 -m pytest -q <both suites> -p no:cacheprovider; python3 evidence/2026-09/agent-air-m5-infra-guard-ci-wiring-a2d8aefa/probe_filters.py; python3 infra/guard-conformance/check_guard_conformance.py; ruff check <3 files>; python3 scripts/lint_home_fork.py --check"
+    exit: 0
+    ts: "2026-09-19T05:38:09Z"
     seat: tp1-qwen3.8-max
 adversarial:
   - {
