@@ -1,0 +1,144 @@
+base_sha: d9fca87351 # pragma: allowlist secret - public Git commit ID
+task_id: vo-a2c-render-notices
+mandate_id: VISA-ORACLE-DW-20260919/A2''
+gear: 2
+gear_reason: >-
+  Frontend-only, no rule pack, no migration, no CODEOWNERS-TIER1 path.
+  `scripts/evidence_pack_lint.py --print-floor` on the changed-files list
+  alone is 1; folding in the numstat size term (`--numstat-file`) it is 2 —
+  measured below, matching the declared gear, not exceeding it.
+l_level: L1
+gate_class: opus
+objective: >-
+  Cure PR #6857 (REWORK-BUILD, 0 HIGH / 2 MEDIUM / 6 LOW,
+  GATE-A2B-REPORT-6857.md) per MANDATE-vo.md "Slice A2''" (V1-V8). The
+  report's "What holds" section verified the render, the eleven-code copy
+  table, the new S1 intro, the S5 de-duplication, the S4 e2e, the S6
+  accessible name's STRUCTURE, the scan's COVERAGE of all 28 strings and
+  the `unclear` allowlist's tightness as correct on `18e4d86309` — none of
+  that is re-derived here. This PR touches only what the report named:
+  OBS-A2b-1 (MEDIUM, in the head — the guard's inflected-literal stem list
+  missed "do not change", the exact sentence #6849 shipped and S1 ordered
+  removed), OBS-A2b-3 (LOW — the guilt tests exercised the matcher, not the
+  scan), OBS-A2b-4 (LOW — a brief.yml probe that selected zero tests) and
+  OBS-A2b-6 (LOW — S6's aria-labelledby was structurally correct but pinned
+  by no test). OBS-A2b-2 and OBS-A2b-5 are body-only and cured in the PR
+  body, not the head.
+scope:
+  - >-
+    apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter.test.ts
+    — V1 the BANNED_PATTERNS regex families replacing the inflected-literal
+    stem list; V2 the 13-row GUILT_FIXTURES table (the #6849 EN/ID intro
+    plus all eleven of the gate's P1-P11 plants); V3 conditionsBlockEntries/
+    scanConditionsBlock taking injectable source tables, plus a dedicated
+    test pinning the 28-entry iteration; V4 the declared-ceiling comment
+  - >-
+    apps/mouth/src/app/(visa-oracle)/visa-oracle/_components/OutcomeSheet.test.tsx
+    — V6, a test pinning that the conditions section's aria-labelledby
+    resolves to the rendered title's own id
+  - >-
+    apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter.ts,
+    _components/OutcomeSheet.tsx, _lib/i18n.ts, _lib/outcome-view-model.ts,
+    _lib/outcome-fallbacks.ts, _lib/preview-adapter.ts, _lib/telemetry.ts,
+    _lib/telemetry.test.ts, e2e/visa-oracle-v2.spec.ts — unchanged raw
+    material from #6857's head (18e4d86309), ported verbatim per file
+    (`git show 18e4d86309:<path> > <path>`); GATE-A2B-REPORT-6857.md's
+    "What holds" section verified these correct and named them NOT to be
+    re-derived
+  - this brief
+constraints:
+  - >-
+    No change to `oracle.css` state tokens, `LivingTree.tsx`,
+    `OracleShell.tsx`, `package.json`, or any lockfile (Builder Contract for
+    this slice, unchanged since #6849/#6857).
+  - >-
+    No paid per-token translation API — no copy text changes in this PR;
+    V1's family comments and V2's fixture labels are written natively.
+  - >-
+    A family is never narrowed to fix a false positive — the two real
+    collisions found (the existing `unclear` entry and the new `dipastikan`
+    entry, both against the shipped ID copy) are each an exact, commented
+    allowlist entry instead.
+  - No client PII in any file added or edited; all test fixtures synthetic.
+acceptance:
+  - text: >-
+      WHEN the EN sentence #6849 shipped and S1 ordered removed ("These do
+      not change the result above...") or its ID twin is scanned, THEN the
+      guard SHALL report it — the exact hole OBS-A2b-1 named.
+    status: verified
+    probe: >-
+      cd apps/mouth && ../../node_modules/.bin/vitest run
+      'src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter.test.ts'
+      --root . -t "is reported by the scan"
+    probe_result: "Tests  13 passed | 75 skipped (88)"
+  - text: >-
+      WHEN all thirteen guilt fixtures (the #6849 EN/ID intro plus P1-P11)
+      are scanned, THEN every one SHALL be reported, naming its key and
+      language, INCLUDING P3/P5/P6/P9 which slipped last time as unlisted
+      synonyms.
+    status: verified
+    probe: >-
+      cd apps/mouth && ../../node_modules/.bin/vitest run
+      'src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter.test.ts'
+      --root . -t "is reported by the scan"
+    probe_result: "Tests  13 passed | 75 skipped (88)"
+  - text: >-
+      WHEN all 28 shipped strings the conditions block can render are
+      scanned, THEN none SHALL be reported.
+    status: verified
+    probe: >-
+      cd apps/mouth && ../../node_modules/.bin/vitest run
+      'src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter.test.ts'
+      --root . -t "innocence: all 28"
+    probe_result: "Tests  1 passed | 87 skipped (88)"
+  - text: >-
+      WHEN the scan's own source-table iteration is inspected, THEN it
+      SHALL yield exactly the title, intro, generic fallback and eleven
+      codes, both languages (28 entries) — dropping a source from the
+      iteration SHALL fail this test (V3, OBS-A2b-3).
+    status: verified
+    probe: >-
+      cd apps/mouth && ../../node_modules/.bin/vitest run
+      'src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter.test.ts'
+      --root . -t "pins the scan"
+    probe_result: "Tests  1 passed | 87 skipped (88)"
+  - text: >-
+      WHEN the conditions section renders, THEN its aria-labelledby SHALL
+      resolve to the id of the title actually rendered inside it (V6,
+      OBS-A2b-6).
+    status: verified
+    probe: >-
+      cd apps/mouth && ../../node_modules/.bin/vitest run
+      'src/app/(visa-oracle)/visa-oracle/_components/OutcomeSheet.test.tsx'
+      --root . -t "aria-labelledby"
+    probe_result: "Tests  1 passed | 55 skipped (56)"
+  - text: >-
+      WHEN the mouth typechecks and the full visa-oracle vitest suite runs,
+      THEN both SHALL succeed with zero regressions from this cure.
+    status: verified
+    probe: >-
+      cd apps/mouth && ../../node_modules/.bin/tsc --noEmit &&
+      ../../node_modules/.bin/vitest run --root .
+      'src/app/(visa-oracle)/visa-oracle'
+    probe_result: "tsc: exit 0; Test Files 43 passed (43) / Tests 1063 passed (1063)"
+  - text: >-
+      WHEN the full visa-oracle-v2 e2e spec runs, THEN all 20 tests SHALL
+      pass, unchanged from #6857 (S4 is not re-derived here).
+    status: verified
+    probe: >-
+      cd apps/mouth && ../../node_modules/.bin/playwright test -c
+      playwright.config.ts e2e/visa-oracle-v2.spec.ts --project=chromium
+    probe_result: "20 passed (3.2m)"
+pii: none
+self_report:
+  note: >-
+    This brief and its acceptance probes were each run against this PR's
+    own final head in this session, with the exact selected-test count
+    pasted next to each probe (V5, OBS-A2b-4 — the prior brief's second
+    probe selected zero tests and was recorded verified anyway; every probe
+    here is checked to select at least one test before being marked
+    verified). The PR body's `## Size` section argues the ceiling on the
+    Builder Contract's actual wording only, and contains nothing in
+    quotation marks that is not copied by command from the file named
+    beside it (V7, the cure for GATE-A2B-REPORT-6857.md OBS-A2b-2 and
+    OBS-A2b-5).
