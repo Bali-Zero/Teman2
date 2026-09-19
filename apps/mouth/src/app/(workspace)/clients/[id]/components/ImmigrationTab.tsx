@@ -8,17 +8,112 @@ import {
   Edit2,
   Trash2,
   Download,
-  FileText,
   RefreshCw,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { api } from "@/lib/api";
+import { cn } from "@/lib/utils";
 import type { ClientDocument } from "@/lib/api/crm/crm.types";
 import { ALERT_COLORS } from "./constants";
 import { extractDriveFileId, getDriveProxyUrl } from "./utils";
-import { AiSummaryCard } from "./AiSummaryCard";
+import {
+  CellStack,
+  HairlineBody,
+  HairlineGrid,
+  HairlineHead,
+  HairlineRow,
+  LedgerSection,
+  Numeral,
+  StatePill,
+  type PillTone,
+} from "@/components/workspace/r19";
+import { ValidityTrack } from "./ValidityTrack";
+
+// Real `ClientDocument.status` -> the one status vocabulary. Not every
+// document carries this field (intake vs. lifecycle status are different
+// things), so an absent status renders a plain dash rather than a guess.
+// "rejected" reads `wait` (muted, terminal) the same way ObligationsTable's
+// STATUS_TONE does for its own `rejected` — no danger tone in this module.
+const DOC_STATUS_TONE: Record<string, PillTone> = {
+  verified: "ok",
+  pending: "wait",
+  received: "wait",
+  rejected: "wait",
+  expired: "wait",
+};
+
+/**
+ * "Expired Xd ago" / "Expires today" / "⏰ Xd left" / "Xmo left" — the exact
+ * wording the old per-card expiry chip used, extracted so the permit panel
+ * and the legacy doc cards (Working Permit / Other, untouched by this PR)
+ * share one label instead of drifting apart.
+ */
+function daysUntil(dateStr: string): number {
+  return Math.ceil((new Date(dateStr).getTime() - Date.now()) / 86400000);
+}
+
+function expiryLabel(daysLeft: number): string {
+  if (daysLeft < 0) return `Expired ${Math.abs(daysLeft)}d ago`;
+  if (daysLeft === 0) return "Expires today";
+  if (daysLeft <= 365) return `⏰ ${daysLeft}d left`;
+  return `${Math.floor(daysLeft / 30)}mo left`;
+}
+
+/** Same eligibility check the old renewal button used — unchanged threshold. */
+function isRenewable(doc: ClientDocument): boolean {
+  if (!doc.expiry_date) return false;
+  const daysLeft = daysUntil(doc.expiry_date);
+  return (
+    (daysLeft < 0 || daysLeft <= 90) &&
+    (doc.document_type?.toLowerCase().includes("kitas") ||
+      doc.document_type?.toLowerCase().includes("kitap") ||
+      doc.document_type?.toLowerCase().includes("visa"))
+  );
+}
+
+/**
+ * Whether a visa-family document's expiry deserves the one kita warning
+ * treatment. Restores the OLD chip's `alert_color` signal (server-driven,
+ * independent of the date) alongside the date-math threshold, instead of
+ * dropping it the way the first version of this panel silently did — a
+ * "red"/"expired"/"yellow" `alert_color` is urgent even 91+ days out. The
+ * server's `yellow` is a live signal same as `red`/`expired` (D-5's other
+ * half; `constants.ts:20-22` routed it to a warning tone before this panel
+ * existed). All three still route to the ONE `--state-warning` tone, never
+ * the old per-bucket yellow/red hues (there is no fifth hue in this module).
+ */
+function isUrgent(doc: ClientDocument): boolean {
+  if (
+    doc.alert_color === "red" ||
+    doc.alert_color === "expired" ||
+    doc.alert_color === "yellow"
+  )
+    return true;
+  if (!doc.expiry_date) return false;
+  return daysUntil(doc.expiry_date) <= 90;
+}
+
+/** `.replace(/_/g, " ")` — the OLD card's normalisation, reused so the
+ * permit panel and the history grid don't show a raw `e_voa`/`kitas_c317`. */
+function formatDocType(type: string): string {
+  return type.replace(/_/g, " ");
+}
+
+/** Shared download handler — same proxy-download logic renderDocCard used. */
+function downloadDocument(doc: ClientDocument) {
+  const fileId = doc.google_drive_file_url
+    ? extractDriveFileId(doc.google_drive_file_url)
+    : null;
+  if (!fileId) return;
+  const link = document.createElement("a");
+  link.href = `/api/documents/proxy/${fileId}`;
+  link.download = doc.file_name || `${doc.document_type}.pdf`;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+}
 
 // A document belongs to the "visa family" (current + previous-visa buckets):
 // kitas, kitap, any visa (incl. e-visa), or a Visa on Arrival (incl. e-VOA).
@@ -182,17 +277,7 @@ export function ImmigrationTab({
                 variant="ghost"
                 size="icon"
                 className="h-7 w-7"
-                onClick={() => {
-                  const fileId = extractDriveFileId(doc.google_drive_file_url!);
-                  if (fileId) {
-                    const link = document.createElement("a");
-                    link.href = `/api/documents/proxy/${fileId}`;
-                    link.download = doc.file_name || `${doc.document_type}.pdf`;
-                    document.body.appendChild(link);
-                    link.click();
-                    document.body.removeChild(link);
-                  }
-                }}
+                onClick={() => downloadDocument(doc)}
               >
                 <Download className="w-3 h-3" />
               </Button>
@@ -229,9 +314,7 @@ export function ImmigrationTab({
         )}
         {doc.expiry_date &&
           (() => {
-            const daysLeft = Math.ceil(
-              (new Date(doc.expiry_date).getTime() - Date.now()) / 86400000,
-            );
+            const daysLeft = daysUntil(doc.expiry_date);
             const isExpired = daysLeft < 0;
             const isCritical = !isExpired && daysLeft <= 30;
             const isWarning = !isExpired && daysLeft > 30 && daysLeft <= 90;
@@ -242,13 +325,6 @@ export function ImmigrationTab({
                 : isWarning
                   ? "bg-yellow-500/15 text-yellow-400"
                   : ALERT_COLORS[doc.alert_color || "green"];
-            const label = isExpired
-              ? `Expired ${Math.abs(daysLeft)}d ago`
-              : daysLeft === 0
-                ? "Expires today"
-                : daysLeft <= 365
-                  ? `⏰ ${daysLeft}d left`
-                  : `${Math.floor(daysLeft / 30)}mo left`;
             return (
               <div className="flex items-center gap-1.5 mt-1 flex-wrap">
                 <div
@@ -256,25 +332,22 @@ export function ImmigrationTab({
                   title={`Expires: ${formatDate(doc.expiry_date)}`}
                 >
                   <Calendar className="w-3 h-3" />
-                  {label}
+                  {expiryLabel(daysLeft)}
                 </div>
-                {(isExpired || daysLeft <= 90) &&
-                  (doc.document_type?.toLowerCase().includes("kitas") ||
-                    doc.document_type?.toLowerCase().includes("kitap") ||
-                    doc.document_type?.toLowerCase().includes("visa")) && (
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        router.push(
-                          `/process/new?client_id=${clientId}&type=visa_renewal`,
-                        );
-                      }}
-                      className="text-xs bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 px-2 py-1 rounded inline-flex items-center gap-1 transition-colors"
-                    >
-                      <RefreshCw className="w-3 h-3" />
-                      Start Renewal
-                    </button>
-                  )}
+                {isRenewable(doc) && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      router.push(
+                        `/process/new?client_id=${clientId}&type=visa_renewal`,
+                      );
+                    }}
+                    className="text-xs bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 px-2 py-1 rounded inline-flex items-center gap-1 transition-colors"
+                  >
+                    <RefreshCw className="w-3 h-3" />
+                    Start Renewal
+                  </button>
+                )}
               </div>
             );
           })()}
@@ -287,17 +360,10 @@ export function ImmigrationTab({
     </div>
   );
 
+  // Working Permit / Other keep the pre-R6 card grid unchanged — the current
+  // permit and visa history got the restyle below; these two are out of this
+  // PR's scope (see PR body).
   const sections = [
-    {
-      title: "Actual Visa",
-      docs: actualVisa ? [actualVisa] : [],
-      color: "bg-blue-500/20 text-blue-400",
-    },
-    {
-      title: "Previous Visas",
-      docs: previousVisas,
-      color: "bg-[var(--bz-surface)] text-[var(--bz-text-2)]",
-    },
     {
       title: "Working Permit",
       docs: workingPermits,
@@ -310,10 +376,14 @@ export function ImmigrationTab({
     },
   ];
 
+  const expiryTone = actualVisa
+    ? isUrgent(actualVisa)
+      ? "text-[var(--state-warning)]"
+      : "text-[var(--tx-pure)]"
+    : "text-[var(--tx-secondary)]";
+
   return (
     <div className="space-y-6">
-      {/* AI Summary (CRM-Guardian L1 cross-folder, visa slice) */}
-      <AiSummaryCard clientId={clientId} section="immigration" />
       <div className="flex items-center justify-between">
         <h3 className="text-lg font-semibold text-[var(--bz-text-1)]">
           Immigration
@@ -328,6 +398,278 @@ export function ImmigrationTab({
           Add Document
         </Button>
       </div>
+
+      {actualVisa && (
+        <div className="rounded-lg border border-[var(--bz-border)] bg-[var(--bz-card)] p-5">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <p className="mb-2 text-[10px] font-[650] uppercase tracking-[0.14em] text-[var(--tx-secondary)]">
+                Current permit
+              </p>
+              <span
+                className="inline-flex items-center rounded-[6px] bg-[var(--tx-pure)] px-3 py-1.5 text-[19px] font-medium capitalize text-[var(--bz-base)]"
+                style={{ fontFamily: "var(--font-serif)" }}
+              >
+                {formatDocType(actualVisa.document_type)}
+              </span>
+              {actualVisa.file_name && (
+                <p
+                  className="mt-1.5 max-w-[240px] truncate text-[12px] text-[var(--tx-secondary)]"
+                  title={actualVisa.file_name}
+                >
+                  {actualVisa.file_name}
+                </p>
+              )}
+            </div>
+            <div className="flex items-center gap-1">
+              {actualVisa.google_drive_file_url && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7"
+                  onClick={() => downloadDocument(actualVisa)}
+                  aria-label="Download current permit"
+                >
+                  <Download className="w-3 h-3" />
+                </Button>
+              )}
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7"
+                onClick={() => onEditClick(actualVisa)}
+                aria-label="Edit current permit"
+              >
+                <Edit2 className="w-3 h-3" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7 text-[var(--tx-secondary)] hover:text-[var(--tx-pure)]"
+                onClick={() =>
+                  handleDelete(
+                    actualVisa.id,
+                    actualVisa.file_name || actualVisa.document_type,
+                  )
+                }
+                aria-label="Remove current permit"
+                title="Remove current permit"
+              >
+                <Trash2 className="w-3 h-3" />
+              </Button>
+            </div>
+          </div>
+
+          <div className="mt-4 flex flex-wrap items-end gap-7">
+            {actualVisa.issue_date && (
+              <div>
+                <Numeral
+                  n={Math.max(0, -daysUntil(actualVisa.issue_date))}
+                  size="kpi"
+                  tone="wait"
+                  className="text-[var(--tx-pure)]"
+                />
+                <p className="mt-1.5 text-[11px] font-[650] uppercase tracking-[0.06em] text-[var(--tx-secondary)]">
+                  Days on this permit
+                </p>
+              </div>
+            )}
+            {actualVisa.expiry_date &&
+              (() => {
+                const daysLeft = daysUntil(actualVisa.expiry_date);
+                const pastExpiry = daysLeft < 0;
+                return (
+                  <div>
+                    <Numeral
+                      n={Math.abs(daysLeft)}
+                      size="kpi"
+                      tone="wait"
+                      className={expiryTone}
+                    />
+                    <p className="mt-1.5 text-[11px] font-[650] uppercase tracking-[0.06em] text-[var(--tx-secondary)]">
+                      {pastExpiry ? "Days past expiry" : "Days to expiry"}
+                    </p>
+                  </div>
+                );
+              })()}
+          </div>
+
+          {actualVisa.issue_date && actualVisa.expiry_date && (
+            <ValidityTrack
+              issueDate={actualVisa.issue_date}
+              expiryDate={actualVisa.expiry_date}
+            />
+          )}
+
+          <div className="mt-1 flex flex-wrap gap-5 text-[12.5px] text-[var(--tx-secondary)]">
+            {actualVisa.issue_date && (
+              <span>
+                Issued{" "}
+                <b className="font-semibold text-[var(--tx-pure)]">
+                  {formatDate(actualVisa.issue_date)}
+                </b>
+              </span>
+            )}
+            {actualVisa.expiry_date && (
+              <span>
+                Expires{" "}
+                <b className={cn("font-semibold", expiryTone)}>
+                  {formatDate(actualVisa.expiry_date)} ·{" "}
+                  {expiryLabel(daysUntil(actualVisa.expiry_date))}
+                </b>
+              </span>
+            )}
+            {actualVisa.family_member_name && (
+              <span>
+                For{" "}
+                <b className="font-semibold text-[var(--tx-pure)]">
+                  {actualVisa.family_member_name}
+                </b>
+              </span>
+            )}
+          </div>
+
+          {isRenewable(actualVisa) && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="mt-3 gap-1.5 shadow-none"
+              onClick={(e) => {
+                e.stopPropagation();
+                router.push(
+                  `/process/new?client_id=${clientId}&type=visa_renewal`,
+                );
+              }}
+            >
+              <RefreshCw className="w-3 h-3" />
+              Start Renewal
+            </Button>
+          )}
+        </div>
+      )}
+
+      {previousVisas.length > 0 && (
+        <LedgerSection
+          n={1}
+          title="Visa history"
+          actions={
+            <span className="text-[13px] text-[var(--tx-secondary)]">
+              ({previousVisas.length})
+            </span>
+          }
+        >
+          <HairlineGrid
+            cols="1.6fr 1fr 1fr 1fr 140px"
+            colsCollapsed="1.6fr 1fr 1fr 140px"
+            id="immigration-visa-history"
+          >
+            <HairlineHead>
+              <span>Visa type</span>
+              <span>Status</span>
+              <span data-collapse>Issued</span>
+              <span>Expires</span>
+              <span className="sr-only">Actions</span>
+            </HairlineHead>
+            <HairlineBody>
+              {previousVisas.map((doc) => {
+                const urgent = isUrgent(doc);
+                const secondary = [doc.file_name, doc.family_member_name]
+                  .filter(Boolean)
+                  .join(" · ");
+                return (
+                  <HairlineRow key={doc.id}>
+                    <CellStack
+                      primary={formatDocType(doc.document_type)}
+                      secondary={secondary || undefined}
+                      collapsed={
+                        doc.issue_date
+                          ? `Issued ${formatDate(doc.issue_date)}`
+                          : undefined
+                      }
+                    />
+                    <span>
+                      {doc.status ? (
+                        <StatePill
+                          tone={DOC_STATUS_TONE[doc.status] ?? "wait"}
+                          label={doc.status}
+                        />
+                      ) : (
+                        "—"
+                      )}
+                    </span>
+                    <span data-collapse>
+                      {doc.issue_date ? formatDate(doc.issue_date) : "—"}
+                    </span>
+                    <span
+                      className={cn(
+                        urgent && "font-semibold text-[var(--state-warning)]",
+                      )}
+                    >
+                      {doc.expiry_date
+                        ? `${formatDate(doc.expiry_date)} · ${expiryLabel(
+                            daysUntil(doc.expiry_date),
+                          )}`
+                        : "—"}
+                    </span>
+                    <div className="flex items-center justify-end gap-0.5 px-2.5">
+                      {isRenewable(doc) && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7"
+                          onClick={() =>
+                            router.push(
+                              `/process/new?client_id=${clientId}&type=visa_renewal`,
+                            )
+                          }
+                          aria-label={`Start renewal for ${doc.document_type}`}
+                          title="Start Renewal"
+                        >
+                          <RefreshCw className="w-3 h-3" />
+                        </Button>
+                      )}
+                      {doc.google_drive_file_url && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7"
+                          onClick={() => downloadDocument(doc)}
+                          aria-label={`Download ${doc.document_type}`}
+                        >
+                          <Download className="w-3 h-3" />
+                        </Button>
+                      )}
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7"
+                        onClick={() => onEditClick(doc)}
+                        aria-label={`Edit ${doc.document_type}`}
+                      >
+                        <Edit2 className="w-3 h-3" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7"
+                        onClick={() =>
+                          handleDelete(
+                            doc.id,
+                            doc.file_name || doc.document_type,
+                          )
+                        }
+                        aria-label={`Remove ${doc.document_type}`}
+                      >
+                        <Trash2 className="w-3 h-3" />
+                      </Button>
+                    </div>
+                  </HairlineRow>
+                );
+              })}
+            </HairlineBody>
+          </HairlineGrid>
+        </LedgerSection>
+      )}
 
       {immigrationDocs.length === 0 ? (
         <div className="rounded-xl border border-dashed border-[var(--bz-border)] bg-[var(--bz-card)] p-12 text-center shadow-[var(--bz-shadow-card)]">

@@ -1,0 +1,125 @@
+task: >-
+  R6 of the kita client-profile redesign (PLAN-redesign.md, design v3 approved by
+  the owner 2026-09-19 ~19:00 WITA): the Immigration tab's current visa-family
+  document becomes an ink permit panel (plaque, `Numeral` KPIs, new
+  `ValidityTrack.tsx`) and the previous visas become an r19 `HairlineGrid`, while
+  the Working Permit / Other sections keep the legacy `renderDocCard` path
+  verbatim. This branch is the REPAIRED round: an independent read-only OLD-vs-NEW
+  parity audit rejected the first commit (`b67ee138d0`) on two counts, both closed
+  here. (1) BEHAVIOURAL DROP: the "Start Renewal" CTA only lived inside
+  `renderDocCard`, which after the restyle only ever receives Working Permit /
+  Other docs, so the action was unreachable for every visa-family document;
+  restored on the permit panel and per-row on Visa history with the unchanged
+  `isRenewable()` predicate (90-day / `<0`) and the unchanged
+  `/process/new?client_id=…&type=visa_renewal` target. (2) WRONG READING OF A REAL
+  FIELD: the "Days to expiry" KPI applied `Math.abs()`, so a permit inside the
+  pre-existing 30-day grace window (already expired) rendered a positive number
+  under a label that reads as "remaining"; the label now flips to "Days past
+  expiry" when `daysUntil(expiry) < 0`. The audit's P1 list is closed in the same
+  round: the expired history date carries its word (`{date} · {expiryLabel}`, r19
+  law 3), and the drops it flagged as undisclosed are restored — the panel's
+  `file_name` sub-line, `family_member_name` on history rows, the `alert_color`
+  signal (via `isUrgent()`, which ORs the server flag with the date threshold and
+  still routes to the single `--state-warning` tone, never the old per-bucket
+  yellow/red hues), the `(n)` count on the Visa history head, and
+  `.replace(/_/g, " ")` normalisation on the plaque and the grid's type column.
+  Round 3 (this commit) closes the one defect neither audit caught: the
+  visa-history `HairlineGrid` declared 5 columns but rendered 6 grid items per
+  row (5 named cells plus the primitive's own `actions` slot, which is a
+  direct grid child with no track reserved for it) — introduced by the
+  branch's first commit and carried unchanged through both repair rounds. The
+  `actions` prop is now removed entirely; Edit and Remove move into the
+  existing always-rendered action cell alongside Start Renewal and Download,
+  so head and row both render exactly 5 children and every control is
+  touch-reachable. By the owner's decision of 2026-09-19 the client-page
+  redesign no longer waits for a human code review before arming — the gates
+  are CI, the independent parity audit and the final on-disk gate.
+lane: frontend/kita-r6-immigration-permit-panel
+machine: air-m5
+date: 2026-09-20
+
+gear: 2
+gear_reason: >-
+  Deterministic floor 2, source `size`: `git diff --no-renames --numstat
+  origin/main` (working tree, third round included) measures
+  ImmigrationTab.test.tsx +555/-15, ImmigrationTab.tsx +395/-53 and
+  ValidityTrack.tsx +52/-0 — 3 files, +1002/-68, churn 1070 by add+delete
+  count, above `SIZE_GEAR2_THRESHOLD` (400) and below `SIZE_GEAR3_THRESHOLD`
+  (1828). None of the three matches `HOTZONE_PATTERNS` (all plain files under
+  `apps/mouth/src/app/(workspace)/clients/[id]/components/`, no
+  workflow/secret/migration path), so the path term does not independently raise
+  the floor. Gear stays 2 across all three rounds — churn grew but stayed well
+  inside the [400, 1828) band.
+
+appetite:
+  wall_clock_hours: 1
+  adversarial_rounds: 1
+
+acceptance:
+  A1: >-
+    The GUILT/INNOCENCE pins for "Start Renewal" pass and can fail: a KITAS
+    expiring in +45d renders a `Start Renewal` control on the permit panel; an
+    expired visa renders the same control inside its Visa-history row, now a
+    plain, always-rendered grid cell rather than the hover/focus-gated `actions`
+    slot (R6 second repair, closing the re-audit's touch-reachability blocker).
+    Both of those are GUILT cases and both fail against the rejected commit
+    `b67ee138d0`. The third fixture (+200d) is an INNOCENCE assertion
+    (`queryByRole` is null) — corrected here, since it also passes against
+    `b67ee138d0`, which had no CTA anywhere: at most two of the three pins are
+    regression-sensitive to that commit, not all three. The 90-day boundary is
+    pinned at exactly 90 and 91 days under `vi.setSystemTime`. Round 3 removes
+    the `HairlineRow actions` prop entirely (the grid was rendering 6 items
+    into 5 declared columns — the gate's blocking defect) and moves Edit /
+    Remove into the same always-rendered cell as Start Renewal / Download, so
+    all four history-row controls are now touch-reachable; a child-count pin
+    (`head.children.length === row.children.length`) guards the column/cell
+    parity directly. Single-file suite: 33 tests.
+    probe: >-
+      cd apps/mouth && npx --no-install vitest run
+      'src/app/(workspace)/clients/[id]/components/ImmigrationTab.test.tsx'
+  A2: >-
+    The KPI never states a real field with the wrong sign: a fixture expiring
+    −10d (inside the 30-day grace, so it still renders in the panel) asserts the
+    label reads "Days past expiry" and not "Days to expiry" over a positive
+    count; a +10d fixture asserts the converse. Corrected here: day 0 itself is
+    NOT separately fixtured (no ±1d pair), only −10d/+10d; the 30-day grace
+    boundary is pinned at exactly −29d (panel) and −31d (history).
+    probe: >-
+      cd apps/mouth && npx --no-install vitest run
+      'src/app/(workspace)/clients/[id]/components/ImmigrationTab.test.tsx'
+  A3: >-
+    The full `clients/[id]/` folder suite passes — 18 files / 225 tests (real
+    count after round 3's 5 new/changed pins: the inverted touch-reachability
+    case for Edit/Remove, the head/row child-count pin, two days-KPI numeral
+    sign pins, and two navigation-target pins now that `useRouter`'s `push` is
+    hoisted and observable) — including `__tests__/client-detail-desk.test.tsx`'s
+    AST colour/copper guard, proving the restyle introduces no raw colour
+    literal, no red/rose/orange/amber utility (the restored `alert_color`
+    signal — now including `yellow` — routes to the single `--state-warning`
+    token, not the old per-bucket hues) and no ungated copper.
+    probe: >-
+      cd apps/mouth && npx --no-install vitest run
+      'src/app/(workspace)/clients/[id]/'
+  A4: >-
+    `tsc --noEmit -p .` exits 0 with no output — `ValidityTrack.tsx`'s props and
+    the panel's narrowed document type typecheck against the shared
+    `crm.types.ts` contract, which this PR does not modify.
+    probe: cd apps/mouth && npx --no-install tsc --noEmit -p .
+
+out_of_scope: >-
+  The audit's P2 notes, deliberately not widening this PR: the dead
+  `vi.mock("./AiSummaryCard")` in the test file, the KPI/track rounding
+  reconciliation on one helper, and the legacy `renderDocCard` path's
+  `yellow-500`/`blue-500`/`purple-500` utilities plus its dashed, shadowed
+  empty-state box — all three belong to a future R6b. The net is past the
+  plan's ~400-line lot budget because the repair rounds are themselves mostly
+  pinned tests; the natural split (R6a permit panel vs R6b history grid) is
+  reported to the orchestrator rather than applied retroactively to a branch
+  whose first round is already audited. Orchestrator's decision (recorded here,
+  not applied silently): this slice ships as ONE PR past the ~400-line budget,
+  because it is one component plus its parity pins — no R6a/R6b split. Arming,
+  merging and deploying this PR is per the ship-lifecycle contract the session
+  that owns the mandate executes, not this brief — the 2026-09-17 CRM pact's
+  wait for a human code review is superseded by the owner's 2026-09-19
+  decision (gates are now CI, the independent parity audit, and the final
+  on-disk gate).
