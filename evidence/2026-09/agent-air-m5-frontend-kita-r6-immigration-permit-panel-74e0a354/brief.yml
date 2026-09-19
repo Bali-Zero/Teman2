@@ -32,15 +32,15 @@ date: 2026-09-20
 gear: 2
 gear_reason: >-
   Deterministic floor 2, source `size`: `git diff --no-renames --numstat
-  origin/main...HEAD` measures ImmigrationTab.test.tsx +234/-13,
-  ImmigrationTab.tsx +389/-53 and ValidityTrack.tsx +52/-0 — 3 files, +675/-66,
-  churn 741 by add+delete count, above `SIZE_GEAR2_THRESHOLD` (400) and below
-  `SIZE_GEAR3_THRESHOLD`. None of the three matches `HOTZONE_PATTERNS` (all plain
-  files under `apps/mouth/src/app/(workspace)/clients/[id]/components/`, no
+  origin/main` (working tree, second repair round included) measures
+  ImmigrationTab.test.tsx +436/-13, ImmigrationTab.tsx +401/-53 and
+  ValidityTrack.tsx +52/-0 — 3 files, +889/-66, churn 955 by add+delete count,
+  above `SIZE_GEAR2_THRESHOLD` (400) and below `SIZE_GEAR3_THRESHOLD` (1828).
+  None of the three matches `HOTZONE_PATTERNS` (all plain files under
+  `apps/mouth/src/app/(workspace)/clients/[id]/components/`, no
   workflow/secret/migration path), so the path term does not independently raise
-  the floor. Confirmed with `python3 scripts/evidence_pack_lint.py --print-floor
-  --print-floor-source --changed-files-file <3-file list> --numstat-file
-  <numstat>` → `2` / `size`.
+  the floor. Gear stays 2 across both repair rounds — churn grew but stayed well
+  inside the [400, 1828) band.
 
 appetite:
   wall_clock_hours: 1
@@ -49,11 +49,17 @@ appetite:
 acceptance:
   A1: >-
     The GUILT/INNOCENCE pins for "Start Renewal" pass and can fail: a KITAS
-    expiring in +45d renders a `Start Renewal` control on the permit panel; a
-    +200d fixture does not (the 90-day boundary is pinned at exactly 90 and 91
-    days under `vi.setSystemTime`); an expired visa renders the same control
-    inside its Visa-history row's `actions`. All three fail against the rejected
-    commit `b67ee138d0`.
+    expiring in +45d renders a `Start Renewal` control on the permit panel; an
+    expired visa renders the same control inside its Visa-history row, now a
+    plain, always-rendered grid cell rather than the hover/focus-gated `actions`
+    slot (R6 second repair, closing the re-audit's touch-reachability blocker).
+    Both of those are GUILT cases and both fail against the rejected commit
+    `b67ee138d0`. The third fixture (+200d) is an INNOCENCE assertion
+    (`queryByRole` is null) — corrected here, since it also passes against
+    `b67ee138d0`, which had no CTA anywhere: at most two of the three pins are
+    regression-sensitive to that commit, not all three. The 90-day boundary is
+    pinned at exactly 90 and 91 days under `vi.setSystemTime`. Single-file suite:
+    28 tests.
     probe: >-
       cd apps/mouth && npx --no-install vitest run
       'src/app/(workspace)/clients/[id]/components/ImmigrationTab.test.tsx'
@@ -61,17 +67,20 @@ acceptance:
     The KPI never states a real field with the wrong sign: a fixture expiring
     −10d (inside the 30-day grace, so it still renders in the panel) asserts the
     label reads "Days past expiry" and not "Days to expiry" over a positive
-    count; the +/−1d pair around day 0 is pinned too, as is the 30-day grace
-    boundary (−29d panel vs −31d history).
+    count; a +10d fixture asserts the converse. Corrected here: day 0 itself is
+    NOT separately fixtured (no ±1d pair), only −10d/+10d; the 30-day grace
+    boundary is pinned at exactly −29d (panel) and −31d (history).
     probe: >-
       cd apps/mouth && npx --no-install vitest run
       'src/app/(workspace)/clients/[id]/components/ImmigrationTab.test.tsx'
   A3: >-
-    The full `clients/[id]/` folder suite passes — 18 files / 211 tests —
-    including `__tests__/client-detail-desk.test.tsx`'s AST colour/copper guard,
-    proving the restyle introduces no raw colour literal, no red/rose/orange/
-    amber utility (the restored `alert_color` signal routes to the single
-    `--state-warning` token, not the old per-bucket hues) and no ungated copper.
+    The full `clients/[id]/` folder suite passes — 18 files / 220 tests (real
+    count after the second repair round's 9 new pins: touch-reachability × 2,
+    M6-M11 × 7) — including `__tests__/client-detail-desk.test.tsx`'s AST
+    colour/copper guard, proving the restyle introduces no raw colour literal, no
+    red/rose/orange/amber utility (the restored `alert_color` signal — now
+    including `yellow` — routes to the single `--state-warning` token, not the
+    old per-bucket hues) and no ungated copper.
     probe: >-
       cd apps/mouth && npx --no-install vitest run
       'src/app/(workspace)/clients/[id]/'
@@ -86,11 +95,13 @@ out_of_scope: >-
   `vi.mock("./AiSummaryCard")` in the test file, the KPI/track rounding
   reconciliation on one helper, and the legacy `renderDocCard` path's
   `yellow-500`/`blue-500`/`purple-500` utilities plus its dashed, shadowed
-  empty-state box — all three belong to a future R6b. The net +609 is past the
-  plan's ~400-line lot budget because the repair round is itself +229 of pinned
-  tests; the natural split (R6a permit panel vs R6b history grid) is reported to
-  the orchestrator rather than applied retroactively to a branch whose first
-  round is already audited. Arming, merging and deploying this PR — per the
-  2026-09-17 CRM pact that waits for Subhi's code review, and per the
-  ship-lifecycle contract the session that owns the mandate executes, not this
-  brief.
+  empty-state box — all three belong to a future R6b. The net is past the
+  plan's ~400-line lot budget because the repair rounds are themselves mostly
+  pinned tests; the natural split (R6a permit panel vs R6b history grid) is
+  reported to the orchestrator rather than applied retroactively to a branch
+  whose first round is already audited. Orchestrator's decision (recorded here,
+  not applied silently): this slice ships as ONE PR past the ~400-line budget,
+  because it is one component plus its parity pins — no R6a/R6b split. Arming,
+  merging and deploying this PR — per the 2026-09-17 CRM pact that waits for
+  Subhi's code review, and per the ship-lifecycle contract the session that owns
+  the mandate executes, not this brief.

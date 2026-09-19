@@ -348,3 +348,205 @@ describe("ImmigrationTab — 30-day grace boundary (R6 repair P1-6)", () => {
     expect(screen.getByText("Visa history")).toBeInTheDocument();
   });
 });
+
+/**
+ * jsdom does not evaluate `@media` queries, so a plain `getByRole` cannot
+ * see whether a control sits under the hover/focus-only `actions` slot
+ * (`opacity-0 … [@media(hover:none)]:hidden`, `HairlineGrid.tsx:198-202`) —
+ * on a touch device that slot is `display:none`. Walking the ancestor
+ * chain and asserting neither class is present on any of it is the
+ * structural proxy the re-audit asked for (§7 blocker 1).
+ */
+function assertReachableOnTouch(el: HTMLElement) {
+  let node: HTMLElement | null = el;
+  while (node) {
+    expect(node.className).not.toMatch(/(?:^|\s)opacity-0(?:\s|$)/);
+    expect(node.className).not.toMatch(/\[@media\(hover:none\)\]:hidden/);
+    node = node.parentElement;
+  }
+}
+
+describe("ImmigrationTab — Visa-history row controls are reachable on touch (R6 second repair, blocker 1)", () => {
+  it("GUILT: Start Renewal and Download on a history row carry no hover/focus-only ancestor", () => {
+    const currentDate = new Date(Date.now() + 500 * 86400000)
+      .toISOString()
+      .slice(0, 10);
+    const renewDate = new Date(Date.now() - 5 * 86400000)
+      .toISOString()
+      .slice(0, 10);
+    renderTab([
+      { ...baseDoc, id: 70, document_type: "kitas", expiry_date: currentDate },
+      {
+        ...baseDoc,
+        id: 71,
+        document_type: "kitas",
+        expiry_date: renewDate,
+        google_drive_file_url:
+          "https://drive.google.com/file/d/synthetic-fixture-id/view",
+      },
+    ]);
+
+    assertReachableOnTouch(
+      screen.getByRole("button", { name: /start renewal for kitas/i }),
+    );
+    assertReachableOnTouch(
+      screen.getByRole("button", { name: /download kitas/i }),
+    );
+  });
+
+  it("INNOCENCE: Edit and Remove on the same row stay inside the hover-gated actions slot (unchanged)", () => {
+    const currentDate = new Date(Date.now() + 500 * 86400000)
+      .toISOString()
+      .slice(0, 10);
+    const historyDate = new Date(Date.now() - 5 * 86400000)
+      .toISOString()
+      .slice(0, 10);
+    renderTab([
+      { ...baseDoc, id: 72, document_type: "kitas", expiry_date: currentDate },
+      { ...baseDoc, id: 73, document_type: "kitas", expiry_date: historyDate },
+    ]);
+
+    const editButton = screen.getByRole("button", {
+      name: /edit kitas/i,
+    });
+    const gatedAncestor = editButton.closest(
+      '[class*="opacity-0"][class*="hover:none"]',
+    );
+    expect(gatedAncestor).not.toBeNull();
+  });
+});
+
+describe("ImmigrationTab — the six unpinned repairs from R6-reaudit.md §3 (M6-M11)", () => {
+  it("GUILT: alert_color 'yellow' warns a history row's date cell even 300 days out (M6)", () => {
+    vi.setSystemTime(new Date("2026-01-01T00:00:00.000Z"));
+    const currentDate = "2027-05-16"; // +500d, becomes the current permit
+    const yellowDate = "2026-10-28"; // +300d — date math alone would not warn
+    renderTab([
+      { ...baseDoc, id: 50, document_type: "kitas", expiry_date: currentDate },
+      {
+        ...baseDoc,
+        id: 51,
+        document_type: "kitap",
+        expiry_date: yellowDate,
+        alert_color: "yellow",
+      },
+    ]);
+
+    const expiryCell = screen.getByText(new RegExp(yellowDate));
+    expect(expiryCell.className).toContain("text-[var(--state-warning)]");
+  });
+
+  it("INNOCENCE: alert_color 'green' 300 days out stays a plain history date (M6)", () => {
+    vi.setSystemTime(new Date("2026-01-01T00:00:00.000Z"));
+    const currentDate = "2027-05-16"; // +500d
+    const greenDate = "2026-10-28"; // +300d
+    renderTab([
+      { ...baseDoc, id: 52, document_type: "kitas", expiry_date: currentDate },
+      {
+        ...baseDoc,
+        id: 53,
+        document_type: "kitap",
+        expiry_date: greenDate,
+        alert_color: "green",
+      },
+    ]);
+
+    const expiryCell = screen.getByText(new RegExp(greenDate));
+    expect(expiryCell.className).not.toContain("text-[var(--state-warning)]");
+  });
+
+  it("PIN: formatDocType strips underscores on both the panel plaque and the history grid (M7)", () => {
+    const currentDate = new Date(Date.now() + 500 * 86400000)
+      .toISOString()
+      .slice(0, 10);
+    const historyDate = new Date(Date.now() - 5 * 86400000)
+      .toISOString()
+      .slice(0, 10);
+    renderTab([
+      {
+        ...baseDoc,
+        id: 54,
+        document_type: "kitas_c317",
+        expiry_date: currentDate,
+      },
+      {
+        ...baseDoc,
+        id: 55,
+        document_type: "kitap_dependent",
+        expiry_date: historyDate,
+      },
+    ]);
+
+    expect(screen.getByText("kitas c317")).toBeInTheDocument();
+    expect(screen.getByText("kitap dependent")).toBeInTheDocument();
+  });
+
+  it("PIN: an expired history row's date carries the expiry word, not just the date (M8)", () => {
+    const currentDate = new Date(Date.now() + 500 * 86400000)
+      .toISOString()
+      .slice(0, 10);
+    const expiredDate = new Date(Date.now() - 10 * 86400000)
+      .toISOString()
+      .slice(0, 10);
+    renderTab([
+      { ...baseDoc, id: 56, document_type: "kitas", expiry_date: currentDate },
+      { ...baseDoc, id: 57, document_type: "kitap", expiry_date: expiredDate },
+    ]);
+
+    expect(screen.getByText(/Expired 10d ago/)).toBeInTheDocument();
+  });
+
+  it("PIN: the current-permit panel shows the document's file_name (M9)", () => {
+    const currentDate = new Date(Date.now() + 60 * 86400000)
+      .toISOString()
+      .slice(0, 10);
+    renderTab([
+      {
+        ...baseDoc,
+        id: 58,
+        document_type: "kitas",
+        expiry_date: currentDate,
+        file_name: "synthetic-permit-scan.pdf",
+      },
+    ]);
+
+    expect(screen.getByText("synthetic-permit-scan.pdf")).toBeInTheDocument();
+  });
+
+  it("PIN: the Visa history heading shows the real row count (M10)", () => {
+    const currentDate = new Date(Date.now() + 500 * 86400000)
+      .toISOString()
+      .slice(0, 10);
+    const h1 = new Date(Date.now() - 5 * 86400000).toISOString().slice(0, 10);
+    const h2 = new Date(Date.now() - 15 * 86400000).toISOString().slice(0, 10);
+    renderTab([
+      { ...baseDoc, id: 59, document_type: "kitas", expiry_date: currentDate },
+      { ...baseDoc, id: 60, document_type: "kitap", expiry_date: h1 },
+      { ...baseDoc, id: 61, document_type: "visa", expiry_date: h2 },
+    ]);
+
+    expect(screen.getByText("Visa history")).toBeInTheDocument();
+    expect(screen.getByText("(2)")).toBeInTheDocument();
+  });
+
+  it("PIN: family_member_name appears on a history row (M11)", () => {
+    const currentDate = new Date(Date.now() + 500 * 86400000)
+      .toISOString()
+      .slice(0, 10);
+    const historyDate = new Date(Date.now() - 5 * 86400000)
+      .toISOString()
+      .slice(0, 10);
+    renderTab([
+      { ...baseDoc, id: 62, document_type: "kitas", expiry_date: currentDate },
+      {
+        ...baseDoc,
+        id: 63,
+        document_type: "kitap",
+        expiry_date: historyDate,
+        family_member_name: "Synthetic Dependent",
+      },
+    ]);
+
+    expect(screen.getByText(/Synthetic Dependent/)).toBeInTheDocument();
+  });
+});

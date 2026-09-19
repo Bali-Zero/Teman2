@@ -78,12 +78,19 @@ function isRenewable(doc: ClientDocument): boolean {
  * treatment. Restores the OLD chip's `alert_color` signal (server-driven,
  * independent of the date) alongside the date-math threshold, instead of
  * dropping it the way the first version of this panel silently did — a
- * "red"/"expired" `alert_color` is urgent even 91+ days out. `alert_color`
- * values still route to the ONE `--state-warning` tone, never the old
- * per-bucket yellow/red hues (there is no fifth hue in this module).
+ * "red"/"expired"/"yellow" `alert_color` is urgent even 91+ days out. The
+ * server's `yellow` is a live signal same as `red`/`expired` (D-5's other
+ * half; `constants.ts:20-22` routed it to a warning tone before this panel
+ * existed). All three still route to the ONE `--state-warning` tone, never
+ * the old per-bucket yellow/red hues (there is no fifth hue in this module).
  */
 function isUrgent(doc: ClientDocument): boolean {
-  if (doc.alert_color === "red" || doc.alert_color === "expired") return true;
+  if (
+    doc.alert_color === "red" ||
+    doc.alert_color === "expired" ||
+    doc.alert_color === "yellow"
+  )
+    return true;
   if (!doc.expiry_date) return false;
   return daysUntil(doc.expiry_date) <= 90;
 }
@@ -523,18 +530,20 @@ export function ImmigrationTab({
           </div>
 
           {isRenewable(actualVisa) && (
-            <button
+            <Button
+              variant="outline"
+              size="sm"
+              className="mt-3 gap-1.5"
               onClick={(e) => {
                 e.stopPropagation();
                 router.push(
                   `/process/new?client_id=${clientId}&type=visa_renewal`,
                 );
               }}
-              className="mt-3 inline-flex items-center gap-1 rounded bg-blue-500/20 px-2 py-1 text-xs text-blue-400 transition-colors hover:bg-blue-500/30"
             >
               <RefreshCw className="w-3 h-3" />
               Start Renewal
-            </button>
+            </Button>
           )}
         </div>
       )}
@@ -550,8 +559,8 @@ export function ImmigrationTab({
           }
         >
           <HairlineGrid
-            cols="1.6fr 1fr 1fr 1fr"
-            colsCollapsed="1.6fr 1fr"
+            cols="1.6fr 1fr 1fr 1fr 92px"
+            colsCollapsed="1.6fr 1fr 92px"
             id="immigration-visa-history"
           >
             <HairlineHead>
@@ -559,6 +568,7 @@ export function ImmigrationTab({
               <span>Status</span>
               <span data-collapse>Issued</span>
               <span>Expires</span>
+              <span aria-hidden="true" />
             </HairlineHead>
             <HairlineBody>
               {previousVisas.map((doc) => {
@@ -571,33 +581,6 @@ export function ImmigrationTab({
                     key={doc.id}
                     actions={
                       <>
-                        {isRenewable(doc) && (
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-7 w-7"
-                            onClick={() =>
-                              router.push(
-                                `/process/new?client_id=${clientId}&type=visa_renewal`,
-                              )
-                            }
-                            aria-label={`Start renewal for ${doc.document_type}`}
-                            title="Start Renewal"
-                          >
-                            <RefreshCw className="w-3 h-3" />
-                          </Button>
-                        )}
-                        {doc.google_drive_file_url && (
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-7 w-7"
-                            onClick={() => downloadDocument(doc)}
-                            aria-label={`Download ${doc.document_type}`}
-                          >
-                            <Download className="w-3 h-3" />
-                          </Button>
-                        )}
                         <Button
                           variant="ghost"
                           size="icon"
@@ -657,6 +640,35 @@ export function ImmigrationTab({
                           )}`
                         : "—"}
                     </span>
+                    <div className="flex items-center justify-end gap-1 px-2.5">
+                      {isRenewable(doc) && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7"
+                          onClick={() =>
+                            router.push(
+                              `/process/new?client_id=${clientId}&type=visa_renewal`,
+                            )
+                          }
+                          aria-label={`Start renewal for ${doc.document_type}`}
+                          title="Start Renewal"
+                        >
+                          <RefreshCw className="w-3 h-3" />
+                        </Button>
+                      )}
+                      {doc.google_drive_file_url && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7"
+                          onClick={() => downloadDocument(doc)}
+                          aria-label={`Download ${doc.document_type}`}
+                        >
+                          <Download className="w-3 h-3" />
+                        </Button>
+                      )}
+                    </div>
                   </HairlineRow>
                 );
               })}
