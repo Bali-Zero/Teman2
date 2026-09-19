@@ -19,7 +19,9 @@ const {
   mockInvalidateClient: vi.fn(),
   mockUseClientDetail: vi.fn(),
   stableTimeline: [],
-  stableSearchParams: { get: vi.fn(() => null) },
+  stableSearchParams: {
+    get: vi.fn((_key: string): string | null => null),
+  },
 }));
 
 vi.mock("next/navigation", () => ({
@@ -184,6 +186,9 @@ const CONSULTANTS = [
 describe("ClientDetailClient", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // clearAllMocks keeps implementations: without this a deep-link test would
+    // leak its ?tab= into every test that runs after it.
+    stableSearchParams.get.mockImplementation(() => null);
     taxTabProps.length = 0;
     mockUseClientDetail.mockReturnValue({
       data: makeProfile(),
@@ -255,5 +260,39 @@ describe("ClientDetailClient", () => {
     expect(taxTabProps[taxTabProps.length - 1].taxConsultants).toEqual(
       CONSULTANTS,
     );
+  });
+
+  // handleTabChange writes `?tab=<key>` for EVERY tab, so every key the page
+  // can write must be a key the page can read back — a reload or a shared link
+  // otherwise lands on Overview. The table is the whole TabType union.
+  it.each([
+    ["overview", "OverviewTab"],
+    ["documents", "DocumentsTab"],
+    ["process", "ProcessTab"],
+    ["family", "FamilyTab"],
+    ["visas", "ImmigrationTab"],
+    ["company", "CompanyTab"],
+    ["tax", "TaxTab"],
+    ["timeline", "TimelineTab"],
+    ["whatsapp", "WaTimelineTab"],
+  ])("opens the %s tab from the ?tab= deep link", async (tab, testId) => {
+    stableSearchParams.get.mockImplementation((key: string) =>
+      key === "tab" ? tab : null,
+    );
+    const { ClientDetailClient } = await import("./ClientDetailClient");
+    render(<ClientDetailClient taxConsultants={CONSULTANTS} />);
+
+    expect(await screen.findByTestId(testId)).toBeInTheDocument();
+  });
+
+  it("ignores a ?tab= value that is not a tab and stays on Overview", async () => {
+    stableSearchParams.get.mockImplementation((key: string) =>
+      key === "tab" ? "constructor" : null,
+    );
+    const { ClientDetailClient } = await import("./ClientDetailClient");
+    render(<ClientDetailClient taxConsultants={CONSULTANTS} />);
+
+    expect(await screen.findByTestId("OverviewTab")).toBeInTheDocument();
+    expect(screen.queryByTestId("WaTimelineTab")).not.toBeInTheDocument();
   });
 });
