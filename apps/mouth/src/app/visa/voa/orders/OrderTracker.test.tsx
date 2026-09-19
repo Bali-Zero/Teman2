@@ -257,4 +257,124 @@ describe("OrderTracker", () => {
     const [url] = fetchMock.mock.calls[0] as [string];
     expect(url).toBe("/api/visa/voa/orders/order-1");
   });
+
+  /**
+   * The five-second read. Before this block the rail painted `done` and
+   * `current` in the SAME `--text-primary`, separated only by a glyph and a
+   * font weight, and the panel that says "we need something from you" rendered
+   * BELOW all seven rows.
+   */
+  describe("the rail is readable in one glance", () => {
+    it("done, current and future are three different colours", async () => {
+      fetchMock.mockResolvedValue(
+        jsonResponse(
+          200,
+          order({
+            order_state: "paid",
+            practice: {
+              practice_id: "p-1",
+              state: "In review",
+              artifact_available: false,
+            },
+          }),
+        ),
+      );
+      render(<OrderTracker orderId="order-1" />);
+      const rail = await screen.findByRole("list", {
+        name: "Application progress",
+      });
+      const rows = [...rail.querySelectorAll("li")] as HTMLElement[];
+
+      const done = rows.find((r) => r.textContent?.startsWith("✓"))!;
+      const current = rows.find((r) => r.getAttribute("aria-current"))!;
+      const future = rows.find((r) => r.textContent?.startsWith("○"))!;
+      expect(done, "a done row must exist").toBeTruthy();
+      expect(current, "a current row must exist").toBeTruthy();
+      expect(future, "a future row must exist").toBeTruthy();
+
+      const colours = [done, current, future].map((r) => r.style.color);
+      expect(
+        new Set(colours).size,
+        `three tiers, got ${colours.join(" / ")}`,
+      ).toBe(3);
+    });
+
+    it("marks exactly one row as the current step, for assistive tech too", async () => {
+      fetchMock.mockResolvedValue(
+        jsonResponse(
+          200,
+          order({
+            order_state: "paid",
+            practice: {
+              practice_id: "p-1",
+              state: "Submitted",
+              artifact_available: false,
+            },
+          }),
+        ),
+      );
+      render(<OrderTracker orderId="order-1" />);
+      const rail = await screen.findByRole("list", {
+        name: "Application progress",
+      });
+      expect(rail.querySelectorAll('[aria-current="step"]')).toHaveLength(1);
+    });
+
+    it("puts what the customer must DO above the rail, not under it", async () => {
+      fetchMock.mockResolvedValue(
+        jsonResponse(
+          200,
+          order({
+            order_state: "paid",
+            practice: {
+              practice_id: "p-1",
+              state: "Blocked",
+              required_action_key: "garuda_voa.practice.passport_photo_retake",
+              artifact_available: false,
+            },
+          }),
+        ),
+      );
+      const { container } = render(<OrderTracker orderId="order-1" />);
+      const panel = await screen.findByText(
+        /We need something from you before we can continue/i,
+      );
+      const rail = screen.getByRole("list", { name: "Application progress" });
+      const order_ = panel.compareDocumentPosition(rail);
+      expect(
+        order_ & Node.DOCUMENT_POSITION_FOLLOWING,
+        "the action panel must precede the progress rail",
+      ).toBeTruthy();
+      expect(
+        container.querySelector('[data-exception-tone="needs-you"]'),
+      ).not.toBeNull();
+    });
+
+    it.each([
+      ["failed", "retry"],
+      ["expired", "retry"],
+      ["refunded", "closed"],
+    ] as const)(
+      "%s carries the %s tone, not a shared neutral box",
+      async (state, tone) => {
+        fetchMock.mockResolvedValue(
+          jsonResponse(200, order({ order_state: state })),
+        );
+        const { container } = render(<OrderTracker orderId="order-1" />);
+        await screen.findByText(/Rp/);
+        expect(
+          container.querySelector(`[data-exception-tone="${tone}"]`),
+        ).not.toBeNull();
+      },
+    );
+
+    it("never hardcodes the WhatsApp brand green on this surface", async () => {
+      fetchMock.mockResolvedValue(
+        jsonResponse(200, order({ order_state: "refunded" })),
+      );
+      const { container } = render(<OrderTracker orderId="order-1" />);
+      await screen.findByText(/Rp/);
+      expect(container.innerHTML).not.toMatch(/#25D366|#0a0a0a/i);
+    });
+  });
 });
