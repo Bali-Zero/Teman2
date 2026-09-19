@@ -220,6 +220,35 @@ function TaxIdBadge({
 }
 
 // ============================================
+// LKPM ALERT HEALTH — pure decision, no red-on-kita
+// ============================================
+// The quarter card used to render a literal red/yellow/green emoji here. Two
+// defects: kita's written rule is "no red on kita" — every alert badge in
+// this directory already renders urgency as --state-warning, never
+// --state-danger (see ClientDetailClient.tsx: "Alert badges — urgency (a
+// date), never ownership: warning, never danger"; that file's `red_alerts`
+// badge itself reads "urgent", not "danger") — and an emoji carries no
+// accessible name for a screen reader. Extracted so the tone/label decision
+// is testable without mounting the whole quarter-card tree.
+export function lkpmHealth(
+  report: Pick<LKPMBatchItem, "red_alerts" | "yellow_alerts">,
+): { tone: "critical" | "warning" | "success"; label: string } {
+  if (report.red_alerts > 0) {
+    return {
+      tone: "critical",
+      label: `${report.red_alerts} alert${report.red_alerts === 1 ? "" : "s"} need${report.red_alerts === 1 ? "s" : ""} attention`,
+    };
+  }
+  if (report.yellow_alerts > 0) {
+    return {
+      tone: "warning",
+      label: `${report.yellow_alerts} warning${report.yellow_alerts === 1 ? "" : "s"}`,
+    };
+  }
+  return { tone: "success", label: "No alerts" };
+}
+
+// ============================================
 // LKPM QUARTER CARD — 5 tokens per card
 // ============================================
 function LkpmQuarterCard({
@@ -282,20 +311,28 @@ function LkpmQuarterCard({
         .replace(/^\w/, (c) => c.toUpperCase())
     : null;
 
-  // 5. Alert health dot
-  const healthDot =
-    report.red_alerts > 0
-      ? "\uD83D\uDD34"
-      : report.yellow_alerts > 0
-        ? "\uD83D\uDFE1"
-        : "\uD83D\uDFE2";
+  // 5. Alert health pip \u2014 tokenized tone, accessible name (no red-on-kita emoji).
+  // Both severities render --state-warning (never --state-danger, per this
+  // directory's rule); "critical" is only a stronger opacity of the same hue.
+  const health = lkpmHealth(report);
+  const healthPipColor =
+    health.tone === "critical"
+      ? "bg-[var(--state-warning)]"
+      : health.tone === "warning"
+        ? "bg-[var(--state-warning)]/50"
+        : "bg-[var(--state-success)]";
 
   return (
     <div className="p-3 rounded-lg border border-[var(--bz-border)] bg-[var(--bz-surface)] space-y-1">
       {/* Quarter header */}
       <div className="flex items-center justify-between">
         <p className="text-sm font-bold text-[var(--bz-text-1)]">{quarter}</p>
-        <span className="text-[10px]">{healthDot}</span>
+        <span
+          role="img"
+          aria-label={health.label}
+          title={health.label}
+          className={`inline-block w-[7px] h-[7px] rotate-45 rounded-[1px] ${healthPipColor}`}
+        />
       </div>
 
       {/* 1. Status badge */}
