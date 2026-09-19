@@ -1,0 +1,30 @@
+task_id: vo-b2d-report-lock
+lane: backend-rag
+machine: air-m5
+base_sha: e64cea35e42cc7576a1d11f345a99fc4c0e713b4 # pragma: allowlist secret - public Git commit ID, not a credential
+date: 2026-09-20
+
+gear: 1
+gear_reason: >-
+  Floor 1 (`python3 scripts/contract_verify.py --head 922b708c81 --json` -> "floor 1, brief
+  not required"). Net churn over the two new files is 391 insertions / 0 deletions, below
+  SIZE_GEAR2_THRESHOLD (400) and far below SIZE_GEAR3_THRESHOLD (1828). This brief is written
+  anyway per the mandate's own ship instructions for this slice.
+
+objective: >-
+  Slice B2''-a of R-SPLIT-B2 (MANDATE-vo.md): extract the exclusive per-report lock and
+  atomic JSON write proven correct in the closed runner PR #6871 (GATE-B2B-REPORT-6871.md,
+  Check 5) into a standalone module with no runner/httpx/argparse dependency, behaviour
+  unchanged, so Slice B2''-b (the runner) can import it from a fresh main.
+
+acceptance:
+  - "WHEN two processes race for one report's lock THEN the loser refuses with ONE line naming the lock path and pid, never a traceback, and the winner's file is intact. probe: test_two_processes_race_the_loser_refuses_and_the_winners_file_is_intact"
+  - "WHEN the lock holder is SIGKILLed mid-write THEN the prior write on disk stays parseable and a fresh acquire takes the STALE path, never a deadlock. probe: test_sigkill_of_the_holder_mid_write_leaves_a_parseable_prior_file_and_the_stale_path"
+  - "WHEN the locked section exits normally THEN the lock file is released. probe: test_lock_is_released_on_normal_exit"
+  - "WHEN an exception is raised inside the locked section THEN the lock file is still released. probe: test_lock_is_released_on_an_exception_inside_the_locked_section"
+  - "WHEN a lock names a dead pid THEN acquire refuses, naming --break-stale-lock, without removing the lock. probe: test_stale_lock_is_refused_without_break_stale"
+  - "WHEN break_stale=True is passed against a dead-pid lock THEN it is removed and a fresh lock (this process's pid) is created. probe: test_break_stale_lock_removes_it_and_proceeds"
+  - "WHEN break_stale=True is passed against a LIVE-pid lock THEN it still refuses, naming the owning pid, and the lock is untouched. probe: test_break_stale_lock_is_refused_when_the_pid_is_alive"
+  - "WHERE atomic_write_json writes a report THEN the file is readable JSON and no temp file is left behind. probe: test_atomic_write_json_writes_readable_json_and_leaves_no_temp_file"
+
+pii_scan: clean
