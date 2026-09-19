@@ -66,7 +66,7 @@ const SCREENS: Array<{ name: string; file: string; bound: boolean }> = [
   {
     name: "upload",
     file: "upload/UploadFlow.tsx",
-    bound: false, // residual: text-red-600 (M1) — a different lane's mandate
+    bound: true, // M1 cured, and this PR's token pass removed the last gray
   },
   {
     name: "checkout",
@@ -130,6 +130,77 @@ export function colourLiteralViolation(line: string): string | null {
 function sourceOf(file: string): string {
   return readFileSync(join(VOA_DIR, file), "utf8");
 }
+
+/**
+ * LIGHT-THEME UTILITY BAN, and it is not a style preference.
+ *
+ * Every screen here mounts inside `visa/voa/layout.tsx`'s
+ * `data-theme="operative-dark"` wrapper, ground `--bz-base` #121016. A
+ * `text-gray-900` on that ground is not "slightly off palette", it is
+ * invisible — measured on the PROMOTED build at 390px by sampling the painted
+ * pixels (Tailwind v4 emits `oklch()`, so a naive rgb regex over the CSS reads
+ * a different colour entirely and reports nothing wrong):
+ *
+ *   <h1> "Upload your passport"     rgb(16,24,40) on rgb(18,16,22)  1.06:1
+ *   "Can't upload a photo now? ..." rgb(54,65,83) on rgb(18,16,22)  1.83:1
+ *
+ * Neither node was an error tone, which is why
+ * `voa-contrast.computed.guard.test.tsx` — which judges one error-tone element
+ * per screen — stayed green over both for as long as they existed. A source
+ * ban is the cheap half that catches the class the day it is typed; the
+ * computed guard remains the expensive half.
+ *
+ * Scoped to the LIGHT end of each neutral ramp (50-400). The dark end is not
+ * banned: it is legitimate on this ground, and convicting it would be the
+ * guard-over-match this file is written to avoid.
+ */
+const LIGHT_NEUTRAL_RE =
+  /\b(?:text|bg|border|placeholder|divide|ring|from|via|to)-(?:gray|slate|zinc|neutral|stone)-(?:50|100|200|300|400)\b/;
+
+function lightNeutralViolation(line: string): RegExpMatchArray | null {
+  return line.match(LIGHT_NEUTRAL_RE);
+}
+
+describe("no light-theme neutral utility on an ink-ground funnel", () => {
+  it("GUILTY: the exact class that made the upload title invisible", () => {
+    expect(
+      lightNeutralViolation(
+        '<h1 className="text-xl font-semibold text-gray-300">',
+      ),
+    ).not.toBeNull();
+    expect(
+      lightNeutralViolation('className="border border-gray-200 bg-gray-50"'),
+    ).not.toBeNull();
+  });
+
+  it("INNOCENT: the dark end of the ramp is legitimate on this ground", () => {
+    expect(
+      lightNeutralViolation('className="bg-gray-900 text-white"'),
+    ).toBeNull();
+    expect(lightNeutralViolation('className="text-slate-800"')).toBeNull();
+  });
+
+  it("INNOCENT: a token reference is never a utility", () => {
+    expect(
+      lightNeutralViolation('style={{ color: "var(--tx-secondary)" }}'),
+    ).toBeNull();
+  });
+
+  for (const { name, file, bound } of SCREENS) {
+    const path = join(VOA_DIR, file);
+    // Same ratchet as the literal scan below: a screen is judged only once the
+    // lane that cured it says it can be held.
+    (bound ? it : it.skip)(
+      `${name} (${file}) carries no light neutral utility`,
+      () => {
+        const hits = codeLines(readFileSync(path, "utf8"))
+          .filter(({ text }) => lightNeutralViolation(text))
+          .map(({ n, text }) => `${file}:${n} ${text.trim()}`);
+        expect(hits, hits.join("\n")).toEqual([]);
+      },
+    );
+  }
+});
 
 describe("colourLiteralViolation — the scanner itself", () => {
   it("is GUILTY on a hex, an rgb()/hsl() call and a red Tailwind utility", () => {
