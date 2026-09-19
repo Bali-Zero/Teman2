@@ -66,6 +66,13 @@ const doc = (
   ...overrides,
 });
 
+/** ISO date string `n` days from "now" — used only to land a fixture inside
+ * or outside the 90-day urgency window without pinning an exact day count
+ * (which `Math.ceil` against a bare date can round either side of `n`
+ * depending on the wall-clock time this test happens to run at). */
+const daysFromNow = (n: number): string =>
+  new Date(Date.now() + n * 86400000).toISOString().slice(0, 10);
+
 const renderTab = (
   documents: ClientDocument[],
   documentsByCategory: Record<string, ClientDocument[]> = {
@@ -87,8 +94,8 @@ const renderTab = (
     />,
   );
 
-describe("DocumentsTab — grid rows and status pills (GUILT)", () => {
-  it("maps each document's real fields to a status pill word", () => {
+describe("DocumentsTab — status pill is strictly deleted_at/status (GUILT)", () => {
+  it("pill words come only from deleted_at/status — Removed/Valid/Processing/Rejected", () => {
     const documents = [
       doc({ id: 1, status: "verified", document_category: "personal" }),
       doc({
@@ -99,9 +106,9 @@ describe("DocumentsTab — grid rows and status pills (GUILT)", () => {
       }),
       doc({
         id: 3,
+        status: "rejected",
         document_category: "immigration",
-        file_name: "old-visa.pdf",
-        expiry_date: "2000-01-01",
+        file_name: "rejected.pdf",
       }),
       doc({
         id: 4,
@@ -118,14 +125,161 @@ describe("DocumentsTab — grid rows and status pills (GUILT)", () => {
 
     expect(screen.getAllByText("Valid").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Processing").length).toBeGreaterThan(0);
-    expect(screen.getAllByText("Expired").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Rejected").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Removed").length).toBeGreaterThan(0);
   });
 
+  it("a document that EXISTS but has no status is never labelled 'Missing'", () => {
+    renderTab([
+      doc({ id: 5, document_category: "personal", file_name: "untyped.pdf" }),
+    ]);
+    expect(screen.queryByText("Missing")).not.toBeInTheDocument();
+  });
+
+  it("the status pill never carries the Expired/Expiring word or the copper tone", () => {
+    const { container } = renderTab([
+      doc({
+        id: 6,
+        document_category: "immigration",
+        file_name: "expiring-visa.pdf",
+        expiry_date: daysFromNow(10),
+      }),
+    ]);
+    // Exact match: post-fix, "Expired"/"Expiring" only ever appear as PART of
+    // the Expires-cell countdown ("⏰ 10d left"), never as a pill's whole text.
+    expect(screen.queryByText("Expired")).not.toBeInTheDocument();
+    expect(screen.queryByText("Expiring")).not.toBeInTheDocument();
+    expect(container.innerHTML).not.toContain("--bz-copper-text");
+  });
+});
+
+describe("DocumentsTab — urgency lives on the Expires cell, never the pill", () => {
+  it("GUILT: a document expiring within 90 days shows the warning treatment + countdown", () => {
+    renderTab([
+      doc({
+        id: 7,
+        document_category: "immigration",
+        file_name: "soon.pdf",
+        expiry_date: daysFromNow(60),
+      }),
+    ]);
+    const countdowns = screen.getAllByText(/left/);
+    expect(countdowns.length).toBeGreaterThan(0);
+    for (const el of countdowns) {
+      expect(el.getAttribute("style") ?? "").toContain("--state-warning");
+    }
+  });
+
+  it("GUILT: an already-expired document reads 'Expired Nd ago'", () => {
+    renderTab([
+      doc({
+        id: 8,
+        document_category: "immigration",
+        file_name: "lapsed.pdf",
+        expiry_date: "2000-01-01",
+      }),
+    ]);
+    expect(screen.getAllByText(/Expired \d+d ago/).length).toBeGreaterThan(0);
+  });
+
+  it("GUILT: verified AND expiring together show BOTH the Valid pill and the countdown", () => {
+    renderTab([
+      doc({
+        id: 9,
+        status: "verified",
+        document_category: "immigration",
+        file_name: "verified-soon.pdf",
+        expiry_date: daysFromNow(10),
+      }),
+    ]);
+    expect(screen.getAllByText("Valid").length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/left/).length).toBeGreaterThan(0);
+  });
+
+  it("INNOCENCE: a document expiring in 200 days has a plain date cell", () => {
+    const { container } = renderTab([
+      doc({
+        id: 10,
+        document_category: "immigration",
+        file_name: "far.pdf",
+        expiry_date: daysFromNow(200),
+      }),
+    ]);
+    expect(screen.queryByText(/left/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Expired/)).not.toBeInTheDocument();
+    expect(screen.queryByText("Expires today")).not.toBeInTheDocument();
+    expect(container.innerHTML).not.toContain("--state-warning");
+  });
+
+  it("never gives an expiring/expired document a red/danger token", () => {
+    const { container } = renderTab([
+      doc({
+        id: 11,
+        document_category: "immigration",
+        file_name: "expired.pdf",
+        expiry_date: "2000-01-01",
+      }),
+    ]);
+    expect(container.innerHTML).not.toMatch(
+      /state-danger|neon-purple|#ff0000/i,
+    );
+  });
+});
+
+describe("DocumentsTab — aggregate expiring-soon summary", () => {
+  it("GUILT: counts documents within the 90-day window across all categories", () => {
+    const documents = [
+      doc({
+        id: 12,
+        document_category: "personal",
+        file_name: "a.pdf",
+        expiry_date: daysFromNow(10),
+      }),
+      doc({
+        id: 13,
+        document_category: "immigration",
+        file_name: "b.pdf",
+        expiry_date: daysFromNow(80),
+      }),
+      doc({
+        id: 14,
+        document_category: "immigration",
+        file_name: "c.pdf",
+        expiry_date: daysFromNow(200),
+      }),
+    ];
+    const documentsByCategory = {
+      personal: [documents[0]],
+      immigration: [documents[1], documents[2]],
+    };
+    renderTab(documents, documentsByCategory);
+    expect(screen.getByText("2 expiring soon")).toBeInTheDocument();
+  });
+});
+
+describe("DocumentsTab — removed-document restore window", () => {
+  it("GUILT: shows the restore-window line with the real deleted_at date", () => {
+    renderTab([
+      doc({
+        id: 15,
+        document_category: "personal",
+        file_name: "removed.pdf",
+        deleted_at: "2026-09-01",
+      }),
+    ]);
+    expect(
+      screen.getByText(
+        "Removed by the client on 2026-09-01 — restorable by them for 30 days",
+      ),
+    ).toBeInTheDocument();
+  });
+});
+
+describe("DocumentsTab — grid/filter/actions (kept)", () => {
   it("the category filter narrows the rows and marks the pressed pill", () => {
     const documents = [
-      doc({ id: 1, document_category: "personal", file_name: "photo.jpg" }),
-      doc({ id: 2, document_category: "immigration", file_name: "visa.pdf" }),
+      doc({ id: 16, document_category: "personal", file_name: "photo.jpg" }),
+      doc({ id: 17, document_category: "immigration", file_name: "visa.pdf" }),
     ];
     const documentsByCategory = {
       personal: [documents[0]],
@@ -148,7 +302,7 @@ describe("DocumentsTab — grid rows and status pills (GUILT)", () => {
   it("keeps every existing action reachable by accessible name", () => {
     const documents = [
       doc({
-        id: 1,
+        id: 18,
         document_category: "personal",
         file_name: "IMG_0001.jpeg",
         file_id: "portal-file-1",
@@ -182,7 +336,7 @@ describe("DocumentsTab — grid rows and status pills (GUILT)", () => {
 
   it("says the file is unavailable when the row has nothing to open", () => {
     renderTab([
-      doc({ id: 2, document_category: "personal", file_name: "missing.pdf" }),
+      doc({ id: 19, document_category: "personal", file_name: "missing.pdf" }),
     ]);
 
     expect(screen.queryByRole("link")).not.toBeInTheDocument();
@@ -193,9 +347,7 @@ describe("DocumentsTab — grid rows and status pills (GUILT)", () => {
       screen.getByRole("button", { name: "Edit missing.pdf" }),
     ).toBeInTheDocument();
   });
-});
 
-describe("DocumentsTab (INNOCENCE)", () => {
   it("shows the EmptyState sentence and a single action when there are no documents", () => {
     renderTab([], {});
 
@@ -203,70 +355,5 @@ describe("DocumentsTab (INNOCENCE)", () => {
     expect(
       screen.getByRole("button", { name: "Add document" }),
     ).toBeInTheDocument();
-  });
-
-  it("never gives an expired document a red/danger token", () => {
-    renderTab([
-      doc({
-        id: 5,
-        document_category: "immigration",
-        file_name: "expired-visa.pdf",
-        expiry_date: "2000-01-01",
-      }),
-    ]);
-
-    for (const pill of screen.getAllByText("Expired")) {
-      expect(pill.closest("span")?.className ?? "").not.toMatch(/red|danger/i);
-    }
-  });
-});
-
-describe("DocumentsTab — urgency tone follows viewer ownership (r19 law 1)", () => {
-  const expiredDoc = doc({
-    id: 5,
-    document_category: "immigration",
-    file_name: "expired-visa.pdf",
-    expiry_date: "2000-01-01",
-  });
-
-  it("GUILT: stays wait — the WORD 'Expired' never turns copper on its own", () => {
-    renderTab([expiredDoc]);
-
-    for (const pill of screen.getAllByText("Expired")) {
-      expect(pill.className).toContain("--tx-secondary");
-      expect(pill.className).not.toContain("--bz-copper-text");
-    }
-  });
-
-  it("INNOCENCE: turns copper only when the caller says the viewer is next", () => {
-    render(
-      <DocumentsTab
-        clientId={1}
-        documents={[expiredDoc]}
-        documentsByCategory={{ immigration: [expiredDoc] }}
-        formatDate={(d) => d}
-        onAddClick={vi.fn()}
-        onEditClick={vi.fn()}
-        viewerIsNext
-      />,
-    );
-
-    for (const pill of screen.getAllByText("Expired")) {
-      expect(pill.className).toContain("--bz-copper-text");
-    }
-  });
-
-  it("a Valid document stays ok regardless of viewerIsNext", () => {
-    const validDoc = doc({
-      id: 6,
-      document_category: "personal",
-      file_name: "valid.pdf",
-      status: "verified",
-    });
-
-    renderTab([validDoc]);
-    for (const pill of screen.getAllByText("Valid")) {
-      expect(pill.className).toContain("--state-success");
-    }
   });
 });

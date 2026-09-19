@@ -50,36 +50,53 @@ const CATEGORY_LABELS: Record<string, string> = {
 const COLS = "minmax(180px,1.7fr) 104px 100px 92px";
 
 /**
- * Real-fields-only status: `deleted_at` (client removed it), `expiry_date`
- * (a date, checked before status), then `status` itself. No field is
- * invented — a document with none of these renders `wait`/"Missing".
+ * Status pill = strictly `deleted_at` and `status` — a due DATE is never a
+ * tone (r19: ObligationsTable.tsx ~20-31/~299-305, README law 1 — "where
+ * ownership is not derivable, use wait"; this component derives no
+ * ownership signal at all, so `you` is never reachable here). Urgency lives
+ * on the Expires cell instead, see `expiryCountdown` below.
  *
- * Urgency (an expiry date) is never copper on its own — r19 README law 1:
- * copper means "the viewer is the next actor", derived from the viewer and
- * the record together, "where ownership is not derivable, use wait". The
- * WORD ("Expired"/"Expiring") always speaks the date; the TONE only turns
- * copper when the caller's own `viewerIsNext` says so.
+ * A document that EXISTS but carries no recognised status (`pending`, or no
+ * `status` at all) renders no pill — the old component's own behaviour: it
+ * only ever rendered a word for `deleted_at` or `status === "verified"`,
+ * nothing otherwise, and never the word "Missing" for a document that is
+ * plainly on file.
  */
-function documentPillState(
+function documentStatusPill(
   d: ClientDocument,
-  viewerIsNext: boolean,
-): {
-  tone: PillTone;
-  label: string;
-} {
+): { tone: PillTone; label: string } | null {
   if (d.deleted_at) return { tone: "wait", label: "Removed" };
-  if (d.expiry_date) {
-    const daysLeft = Math.ceil(
-      (new Date(d.expiry_date).getTime() - Date.now()) / 86400000,
-    );
-    const urgentTone: PillTone = viewerIsNext ? "you" : "wait";
-    if (daysLeft < 0) return { tone: urgentTone, label: "Expired" };
-    if (daysLeft <= 30) return { tone: urgentTone, label: "Expiring" };
-  }
   if (d.status === "verified") return { tone: "ok", label: "Valid" };
   if (d.status === "received") return { tone: "ours", label: "Processing" };
   if (d.status === "rejected") return { tone: "wait", label: "Rejected" };
-  return { tone: "wait", label: "Missing" };
+  return null;
+}
+
+/**
+ * The old component's expiry countdown (`getExpiryBadge`, origin/main
+ * before this restyle) restored onto the DATE CELL rather than the status
+ * pill. Its own `daysLeft <= 30` and `daysLeft <= 90` branches produced
+ * byte-identical output (same label shape, same class) for every
+ * `daysLeft` in 1..90 — that redundant pair collapses into one `<= 90`
+ * check with no change in what was ever rendered for any input. Beyond 90
+ * days the cell stays plain — the boundary this restyle's acceptance
+ * criteria pins, not a further loss of the old >90/>365 muted tiers (which
+ * carried no urgency signal to begin with).
+ */
+function expiryCountdown(expiryDate?: string): {
+  label?: string;
+  urgent: boolean;
+} {
+  if (!expiryDate) return { urgent: false };
+  const daysLeft = Math.ceil(
+    (new Date(expiryDate).getTime() - Date.now()) / 86400000,
+  );
+  if (daysLeft < 0) {
+    return { label: `Expired ${Math.abs(daysLeft)}d ago`, urgent: true };
+  }
+  if (daysLeft === 0) return { label: "Expires today", urgent: true };
+  if (daysLeft <= 90) return { label: `⏰ ${daysLeft}d left`, urgent: true };
+  return { urgent: false };
 }
 
 /** Nearest expiry first; documents without one sort last. */
@@ -98,7 +115,6 @@ export function DocumentsTab({
   formatDate,
   onAddClick,
   onEditClick,
-  viewerIsNext = false,
 }: {
   clientId: number;
   documents: ClientDocument[];
@@ -106,8 +122,6 @@ export function DocumentsTab({
   formatDate: (d: string) => string;
   onAddClick: () => void;
   onEditClick: (doc: ClientDocument) => void;
-  /** True when the viewer is the next actor on this record (r19 law 1). */
-  viewerIsNext?: boolean;
 }) {
   const [activeCategory, setActiveCategory] = useState<string>("all");
 
@@ -138,6 +152,13 @@ export function DocumentsTab({
         : (documentsByCategory[activeCategory] ?? []);
     return [...base].sort(byExpiryUrgency);
   }, [activeCategory, documents, documentsByCategory]);
+
+  // Aggregate across ALL documents regardless of the active filter — same
+  // scope the old `totalUrgent` used (origin/main before this restyle).
+  const totalExpiringSoon = useMemo(
+    () => documents.filter((d) => expiryCountdown(d.expiry_date).urgent).length,
+    [documents],
+  );
 
   if (documents.length === 0) {
     return (
@@ -197,6 +218,15 @@ export function DocumentsTab({
         className="mb-2"
       />
 
+      {totalExpiringSoon > 0 && (
+        <p
+          className="mb-2 px-0.5 text-[11px]"
+          style={{ color: "var(--state-warning)" }}
+        >
+          {totalExpiringSoon} expiring soon
+        </p>
+      )}
+
       <HairlineGrid
         cols={COLS}
         className="max-sm:[&_.grid]:!grid-cols-[minmax(0,1fr)_auto]"
@@ -214,10 +244,14 @@ export function DocumentsTab({
             const catLabel = CATEGORY_LABELS[cat] || cat;
             const displayName = d.file_name || d.document_type;
             const openUrl = getDocumentOpenUrl(d);
-            const { tone, label } = documentPillState(d, viewerIsNext);
+            const pillState = documentStatusPill(d);
+            const countdown = expiryCountdown(d.expiry_date);
             const expiresLabel = d.expiry_date
               ? formatDate(d.expiry_date)
               : "—";
+            const expiresColor = countdown.urgent
+              ? "var(--state-warning)"
+              : "var(--tx-pure)";
             const uploadedLabel = d.created_at
               ? formatDate(d.created_at)
               : undefined;
@@ -247,22 +281,49 @@ export function DocumentsTab({
                         : catLabel
                     }
                   />
+                  {d.deleted_at && (
+                    <span className="mt-0.5 block text-[11px] text-[var(--tx-secondary)]">
+                      Removed by the client on {formatDate(d.deleted_at)} —
+                      restorable by them for 30 days
+                    </span>
+                  )}
                   <span className="mt-1 flex flex-col gap-0.5 text-[11px] text-[var(--tx-secondary)] sm:hidden">
-                    <StatePill tone={tone} label={label} />
-                    <span style={TABULAR}>Expires {expiresLabel}</span>
+                    {pillState ? (
+                      <StatePill
+                        tone={pillState.tone}
+                        label={pillState.label}
+                      />
+                    ) : (
+                      <span>—</span>
+                    )}
+                    <span style={{ color: expiresColor, ...TABULAR }}>
+                      {expiresLabel}
+                      {countdown.label ? ` · ${countdown.label}` : ""}
+                    </span>
                   </span>
                 </div>
 
                 <span className="max-sm:hidden">
-                  <StatePill tone={tone} label={label} />
+                  {pillState ? (
+                    <StatePill tone={pillState.tone} label={pillState.label} />
+                  ) : (
+                    <span className="text-[var(--tx-secondary)]">—</span>
+                  )}
                 </span>
 
-                <span
-                  className="max-sm:hidden text-[var(--tx-pure)]"
-                  style={TABULAR}
-                >
-                  {expiresLabel}
-                </span>
+                <div className="max-sm:hidden flex flex-col justify-center gap-px">
+                  <span style={{ color: expiresColor, ...TABULAR }}>
+                    {expiresLabel}
+                  </span>
+                  {countdown.label && (
+                    <span
+                      className="text-[11px]"
+                      style={{ color: expiresColor }}
+                    >
+                      {countdown.label}
+                    </span>
+                  )}
+                </div>
 
                 <div className="flex items-center justify-end gap-1 px-2.5">
                   {openUrl ? (

@@ -1005,7 +1005,6 @@ export function ClientDetailClient({
               documents={generalDocuments}
               documentsByCategory={documentsByCategory}
               formatDate={formatDate}
-              viewerIsNext={needsViewerAction}
               onAddClick={() => setActiveModal("add_document")}
               onEditClick={(doc) => {
                 setEditingDocument(doc);
