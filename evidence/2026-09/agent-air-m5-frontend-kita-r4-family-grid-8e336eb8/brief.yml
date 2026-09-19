@@ -18,11 +18,12 @@ date: 2026-09-19
 gear: 2
 gear_reason: >-
   Deterministic floor 2, source `size`: `git diff --numstat origin/main...HEAD` measures
-  churn 1089 (156+43 FamilyTab.test.tsx, 377+513 FamilyTab.tsx) — above SIZE_GEAR2_THRESHOLD
-  (400) and below SIZE_GEAR3_THRESHOLD (1828). No hot-zone path hit (both files are under
+  churn 1138 across the two component files (188+43 FamilyTab.test.tsx, 394+513
+  FamilyTab.tsx, after the alert-wording repair commit) — above SIZE_GEAR2_THRESHOLD (400)
+  and below SIZE_GEAR3_THRESHOLD (1828). No hot-zone path hit (both files are under
   `apps/mouth/`, not a HOTZONE_PATTERNS match). Confirmed locally via
   `scripts/evidence_pack_lint.py --print-floor --print-floor-source
-  --changed-files-file <list> --numstat-file <numstat> --commit-count 1`, which printed `2`
+  --changed-files-file <list> --numstat-file <numstat> --commit-count 3`, which printed `2`
   / `size`.
 
 appetite:
@@ -73,23 +74,32 @@ out_of_scope: >-
 
 assumptions:
   - text: >-
-      The passport_alert enum informs the date cell's URGENCY (colour weight) when present,
-      falling back to a 180-day client-side threshold only when passport_alert is absent —
-      unlike the visa pill, which has zero client-side fallback threshold left per the task's
-      explicit "delete the client-side threshold entirely" instruction. This asymmetry is a
-      reasonable reading of the task brief (passport has no pill to be the enum's target,
-      so the enum's job there is narrower: gate the date cell's weight, not choose its word),
-      not a literal restore of the pre-restyle file's exact structure.
+      The passport_alert enum informs the date cell's URGENCY (colour weight) when a
+      passport_expiry is known, falling back to a 180-day client-side threshold only when
+      passport_alert itself is absent — unlike the visa pill, which has zero client-side
+      fallback threshold left per the task's explicit "delete the client-side threshold
+      entirely" instruction. When passport_expiry is NOT known but the member has passport
+      data (a number or a document) and a non-green alert, the date cell falls back to the
+      alert's own word (alertWord()), mirroring the old file's dateMath-else-alertWord
+      structure at FamilyTab.tsx@HEAD~2 lines 396-417.
     status: verified
     probe: >-
       Read FamilyTab.tsx's `passportUrgency()` and `visaPill()` side by side; the GUILT
-      test suite pins both behaviours (enum wins outright for visa; enum gates urgency,
-      date supplies the countdown wording, for passport).
+      test suite pins both behaviours (enum wins outright for visa; enum gates urgency and
+      supplies the fallback word when no expiry is known, date supplies the countdown
+      wording otherwise, for passport).
   - text: >-
-      "Renewal recommended" (the old file's wording for a `yellow` alert with no expiry
-      date) is dropped in favour of the single word "Expiring" for both `yellow` and `red`,
-      per the task's own example word set ("Expired", "Expiring", "Valid").
+      Corrected after review (2026-09-19, same day): the first commit had merged `yellow`
+      and `red` into one shared pill word "Expiring", losing a distinction the old file
+      rendered with two different words. A second commit (`fix(kita): Family grid keeps a
+      distinct word for every server alert level`) restored the old file's exact wording
+      per enum value via a shared `alertWord()` helper — `green`→"Valid" (kept, as before),
+      `yellow`→"Renewal recommended", `red`→"Expiring soon", `expired`→"Expired" — for both
+      visa_alert (the pill) and passport_alert (the date-cell fallback above). Tone stays
+      `ok` for green and `wait` for every other value, never `you`.
     status: verified
     probe: >-
-      grep -n '"Expiring"' FamilyTab.tsx — the two alert values map to the one word,
-      matching the task instruction's own set literally.
+      npx --no-install vitest run
+      "src/app/(workspace)/clients/[id]/components/FamilyTab.test.tsx" — the two GUILT
+      cases "a yellow visa_alert and a red visa_alert render different words" and the
+      matching passport_alert case pin both distinct words simultaneously in one render.
