@@ -1721,3 +1721,49 @@ async def test_a_refund_recorded_after_the_trigger_does_not_silence_the_refund_a
 
     assert "refund this late charge too" in text
     assert "DO NOT REFUND THIS CHARGE" not in text
+
+
+# --- the OP-08 page's reason must describe the column as it actually is --------
+#
+# PR #6852's money cure made `_open_late_case` write `late_case_charge_id`
+# unconditionally, and OP-08 passes None — so the column is EMPTY at page time,
+# not "never written" and never the customer's live payment. The instruction
+# (do not close through resolveLateOrder) was right before and is right now;
+# only its justification had gone stale, in the safe direction.
+
+
+async def test_the_duplicate_charge_page_justifies_itself_with_the_empty_column(pool):
+    """The page renders for exactly the state OP-08 produces — case open,
+    `late_case_charge_id` NULL — and its reason names that, with no claim that
+    the column could hold the live payment."""
+
+    order_id = await _seed_order(
+        pool, state="paid", late_case_open=True, late_case_charge_id=None
+    )
+    _row, event_id = await _enqueue_staff_page(
+        pool,
+        order_id,
+        job_type="staff_page_duplicate_charge",
+        event_name="payment.duplicate_charge_detected",
+        transition_id="OP-08",
+        detail={"second_charge_id": "ch_duplicate_1"},
+    )
+    rec = _TgRecorder()
+    sender, client = _tg_sender(rec)
+    try:
+        await StaffPageDuplicateChargeHandler(pool, sender)(
+            _job(order_id, event_id, "staff_page_duplicate_charge")
+        )
+    finally:
+        await client.aclose()
+
+    text = _last_text(rec)
+    # the instruction, unchanged
+    assert "DO NOT close this case with resolveLateOrder" in text
+    assert "ch_duplicate_1" in text
+    # the reason, now true
+    assert "writes that column as NULL" in text
+    assert "leave the case OPEN and escalate" in text
+    # and the two stale clauses are gone
+    assert "never writes that column" not in text
+    assert "LIVE payment" not in text

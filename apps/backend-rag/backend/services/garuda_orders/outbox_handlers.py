@@ -1841,6 +1841,18 @@ class _StaffPageHandler:
 class StaffPageDuplicateChargeHandler(_StaffPageHandler):
     """OP-08: a SECOND successful charge landed on an order already `paid`.
 
+    WHY THE "DO NOT CLOSE" PARAGRAPH WAS REWRITTEN (2026-09-20). The previous
+    version justified a still-correct instruction with two claims that PR
+    #6852's own money cure had made false: that OP-08 "never writes"
+    `late_case_charge_id`, and that the column may therefore hold the
+    customer's LIVE payment. `_open_late_case` writes
+    `late_case_charge_id = $2` UNCONDITIONALLY and OP-08 passes `None`, so at
+    page time the column is always EMPTY — it cannot name the live payment or
+    anything else. The instruction stands on the true reason instead: a refund
+    through `resolveLateOrder` has nothing to target, and `honoured` walks into
+    the practice weld. A justification that is false in the safe direction is
+    still false, and staff calibrate on reasons, not only on orders.
+
     GUARD: `late_case_open`. `repository.py`'s OP-08 branch sets it TRUE the
     same transaction this job is enqueued in; `resolveLateOrder` is the only
     thing that ever sets it back to FALSE. If it is already FALSE by the time
@@ -1888,15 +1900,15 @@ class StaffPageDuplicateChargeHandler(_StaffPageHandler):
             f"Second (duplicate) charge id: `{second_charge}`\n\n"
             "A second successful payment landed on an order already marked "
             "paid. Refund the charge named above.\n\n"
-            "DO NOT close this one with resolveLateOrder's refund resolution. "
-            "It refunds the order's `late_case_charge_id`, and OP-08 never "
-            "writes that column — it is either empty or holds a charge from an "
-            "EARLIER case on this order. That used to mean an already-refunded "
-            "charge; since OP-F08 it can also be the customer's LIVE payment, "
-            "the one that bought the service, because a case opened while the "
-            "order was still awaiting payment can be closed as honoured by the "
-            "webhook that finally arrives. Refunding through it would target "
-            "the wrong money, and now possibly the RIGHT money.\n\n"
+            "DO NOT close this case with resolveLateOrder. Its refund "
+            "resolution acts on the order's `late_case_charge_id`, and an "
+            "OP-08 case writes that column as NULL when it opens — so the "
+            "automated refund has nothing to target and raises instead, which "
+            "is the safe direction but leaves the case open. Its `honoured` "
+            "resolution closes the case and then fails on every drain "
+            "(PracticeNotMinted), delivering nothing. Refund the duplicate "
+            "through the provider, then leave the case OPEN and escalate: a "
+            "correct automated close for OP-08 does not exist yet.\n\n"
             f"Order: {self._tracker_link(facts.order_id)}"
         )
 
