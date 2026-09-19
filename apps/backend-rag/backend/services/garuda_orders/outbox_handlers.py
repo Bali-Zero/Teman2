@@ -125,7 +125,10 @@ class OrderEmailFacts:
     price_idr: int
     state: str
     # OP-F04/OP-F05: a late `paid` webhook on a terminal order raises this flag
-    # and leaves `state` UNCHANGED (migration 284, repository.py:487/517). So a
+    # and leaves `state` UNCHANGED (migration 284; the `OrderState.REFUNDED` and
+    # `OrderState.FAILED/EXPIRED` branches of `handle_paid_event`, named rather
+    # than numbered because the line numbers this comment used to carry,
+    # `repository.py:487/517`, had already drifted onto unrelated code). So a
     # `failed`/`expired` reading alone does NOT mean "no money was taken" — the
     # two handlers that say so in as many words must read this too. No default:
     # a `_load` that forgets the column must fail loudly, not send a lie.
@@ -701,9 +704,13 @@ class LateRefundConfirmationEmailHandler:
     sets `late_case_open = FALSE` and `late_case_resolution`, and writes `state`
     ONLY on the `refunded_in_full` branch of an order still in
     `awaiting_payment` (the OP-F08 case) — so the order behind this job may be
-    `refunded`, `failed` or `expired`, and on the `honoured` branch the state is
-    whatever the case was opened on. A state guard would still be reading a
-    column that does not identify this transition.
+    `paid` (OP-08 opens a case on an order already paid, and a gate probe
+    measured this mail queued for exactly that), `refunded`, `failed` or
+    `expired`, and on the `honoured` branch the state is whatever the case was
+    opened on. A state guard would still be reading a column that does not
+    identify this transition. The `paid` reading was missing from this list
+    before the branch that rewrote the sentence, and is named now because an
+    enumeration that is short by one is read as exhaustive.
 
     WHAT THIS MAIL MAY AND MAY NOT SAY. Three transitions open a late-payment
     case, and they are not the same story: OP-08 (a real duplicate charge on an
