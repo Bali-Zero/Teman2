@@ -1,0 +1,69 @@
+task_id: vo-b2-enumerate-live
+lane: backend-rag
+machine: air-m5
+base_sha: dddaf3e2d9d2591837d51af35ecec4e513a37475 # pragma: allowlist secret - public Git commit ID, not a credential
+date: 2026-09-19
+
+gear: 2
+gear_reason: >-
+  Deterministic floor 2, source `size`: `git diff --no-renames --numstat` against the
+  merge-base with origin/main measures churn 1148 (775 new
+  apps/backend-rag/backend/scripts/visa_engine/enumerate_live.py, 373 new
+  apps/backend-rag/backend/tests/scripts/visa_engine/test_enumerate_live.py) — above
+  SIZE_GEAR2_THRESHOLD (400) and below SIZE_GEAR3_THRESHOLD (1828). No hot-zone path (both
+  files are new, under backend/scripts and backend/tests, not a HOTZONE_PATTERNS match).
+  Confirmed locally via `scripts/evidence_pack_lint.py --print-floor --print-floor-source`,
+  matching the value the `Harness floor recompute` check will report.
+
+objective: >-
+  Slice B2 of the Visa Oracle interview-space enumeration plan
+  (VISA-ORACLE-DW-20260919/PLAN.md): a live runner that reads the B1'' manifest (every
+  covering walk, an engine-ready wire payload already built by the mouth's own
+  fact-mapper for synthetic personas) and posts each one to
+  `POST /api/visa-oracle/evaluate` as `traffic_source=synthetic_driver`, bounded by a
+  required `--max-requests` (fail-closed, no default), rate-limited below the router's own
+  30/min bucket, resumable via a report pinned to the manifest's sha256, and classifying
+  every terminal result as an engine verdict or a harness red (429/5xx/timeout/connection
+  error) — never conflating the two.
+
+acceptance:
+  - >-
+    WHEN --max-requests is omitted THEN main() returns exit code 2 and no network call is
+    made. probe: test_missing_max_requests_refuses_without_network_call
+  - >-
+    WHEN --rate-per-minute is at or above the router's 30/min bucket THEN validate_budget
+    raises EnumerateLiveError. probe: test_rate_per_minute_at_ceiling_refuses
+  - >-
+    WHEN --dry-run is passed THEN the plan is printed and no network call is made, no
+    report file is written. probe: test_dry_run_validates_and_prints_plan_without_network_call
+  - >-
+    WHEN the evaluate endpoint returns HTTP 200 with a decision THEN the report records an
+    engine_verdict row carrying only the walk id, state, reason codes and rule_pack — no
+    request facts. probe: test_successful_walk_is_recorded_as_engine_verdict
+  - >-
+    WHEN the endpoint returns HTTP 429 past the retry budget THEN the walk is recorded as a
+    harness_red (never an engine_verdict) and the run stops, leaving later walks unrecorded
+    for the next resume. probe: test_429_is_a_harness_red_never_an_engine_verdict_and_stops_the_run
+  - >-
+    WHEN a connection error occurs below the retry budget THEN the runner backs off and the
+    walk still resolves to an engine_verdict once the transport recovers. probe:
+    test_connection_error_retries_with_backoff_then_succeeds
+  - >-
+    WHEN a report already carries a terminal result for a walk THEN a second run does not
+    re-send that walk. probe: test_resume_skips_walks_already_recorded_with_a_terminal_result
+  - >-
+    WHEN an existing report's manifest_sha256 does not match the current manifest THEN the
+    run is refused before any network call. probe: test_manifest_report_hash_mismatch_refuses_to_resume
+  - >-
+    WHERE the driver token file is read THEN the token never appears in the written report
+    or in the log output. probe: test_driver_token_never_appears_in_report_or_log
+  - >-
+    WHEN both an engine verdict and a harness red are recorded THEN the report's summary
+    keeps two separate tallies and never sums them into one figure. probe:
+    test_summary_never_adds_engine_verdicts_and_harness_reds_together
+  - >-
+    WHEN --max-requests is exhausted mid-run THEN the remaining walks stay unrecorded and
+    stopped_reason names the budget exhaustion. probe:
+    test_max_requests_exhausted_leaves_remaining_walks_unrecorded
+
+pii_scan: clean
