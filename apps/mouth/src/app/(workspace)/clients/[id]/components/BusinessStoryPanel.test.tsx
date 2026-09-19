@@ -1,4 +1,5 @@
 import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 import { BusinessStoryPanel } from "./BusinessStoryPanel";
 import type { TaxCompanyPilotMap } from "@/lib/api/crm/crm.types";
@@ -170,8 +171,57 @@ const unrelatedMap: TaxCompanyPilotMap = {
   evidence_stories: [],
 };
 
+// Same company family as `giuliaMap`, but a DIFFERENT company: "PT Synthetic
+// Alpha Beta" merely CONTAINS "PT Synthetic Alpha" as a substring. The old
+// bidirectional substring match attached this map's story to a client whose
+// only company link is "PT Synthetic Alpha" (portal audit wrong-client risk).
+const alphaBetaMap: TaxCompanyPilotMap = {
+  ...giuliaMap,
+  key: "alpha-beta",
+  company: {
+    name: "PT Synthetic Alpha Beta",
+    aliases: [],
+  },
+  persons: [
+    {
+      name: "Synthetic Beta Person",
+      folder_url: null,
+      evidence: [],
+      role: null,
+      role_confidence: "unconfirmed",
+      relationship_confidence: "unconfirmed",
+    },
+  ],
+  person_dossiers: [],
+  evidence_stories: [],
+};
+
+// The exact same company as `alphaBetaMap`'s target, spelled with different
+// case and doubled internal whitespace — must still match after
+// normalization (trim + case-fold + whitespace collapse).
+const alphaMap: TaxCompanyPilotMap = {
+  ...giuliaMap,
+  key: "alpha",
+  company: {
+    name: "pt   synthetic alpha",
+    aliases: [],
+  },
+  persons: [
+    {
+      name: "Synthetic Alpha Person",
+      folder_url: null,
+      evidence: [],
+      role: null,
+      role_confidence: "unconfirmed",
+      relationship_confidence: "unconfirmed",
+    },
+  ],
+  person_dossiers: [],
+  evidence_stories: [],
+};
+
 describe("BusinessStoryPanel", () => {
-  it("renders a person-first business story with team Drive evidence and portal boundary", () => {
+  it("renders the closed 'Case notes' section with a one-paragraph summary and no readiness percentage", () => {
     render(
       <BusinessStoryPanel
         clientName="Giulia Del Giudice"
@@ -182,51 +232,106 @@ describe("BusinessStoryPanel", () => {
       />,
     );
 
-    expect(screen.getByText("Client Story")).toBeInTheDocument();
-    expect(
-      screen.getByText("Person -> company -> tax -> documents -> next step"),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText("BIMALA / Bimala Investments Bali PT"),
-    ).toBeInTheDocument();
-    expect(
-      screen.queryByText("OCEAN CLOTHES AND SHOES PT"),
-    ).not.toBeInTheDocument();
-    expect(screen.getByText("Giulia Del Giudice")).toBeInTheDocument();
-    expect(screen.getByText("Tax owner: Dewa Ayu")).toBeInTheDocument();
-    expect(screen.getByText("Needs a check")).toBeInTheDocument();
-    expect(screen.getByText("76%")).toBeInTheDocument();
+    expect(screen.getByText("Case notes")).toBeInTheDocument();
+    const toggle = screen.getByRole("button", { name: "Open" });
+    expect(toggle).toHaveAttribute("aria-expanded", "false");
     expect(
       screen.getByText(
         "Start from Giulia, then follow the Bimala company record, LKPM documents, and tax owner.",
       ),
     ).toBeInTheDocument();
-    expect(screen.getByText("LKPM Q1 2026")).toBeInTheDocument();
+    // Closed state shows only the summary paragraph — the fuller per-company
+    // detail (and its evidence links) is not in the DOM yet.
     expect(
-      screen.getAllByText(
-        "Confirm current company tax standing before the next LKPM cycle.",
-      ),
-    ).toHaveLength(3);
+      screen.queryByText("BIMALA / Bimala Investments Bali PT"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("GUILT: opening the section never renders a readiness percentage, even for a map whose fixture used to show one", async () => {
+    const user = userEvent.setup();
+    render(
+      <BusinessStoryPanel
+        clientName="Giulia Del Giudice"
+        companyNames={["Bimala Investments Bali PT"]}
+        maps={[giuliaMap]}
+        isLoading={false}
+        error={null}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Open" }));
+
+    expect(
+      screen.getByText("BIMALA / Bimala Investments Bali PT"),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Needs a check")).toBeInTheDocument();
+    expect(screen.queryByText(/76%/)).not.toBeInTheDocument();
+    expect(screen.queryByText("%", { exact: false })).not.toBeInTheDocument();
+    const section = screen.getByText("Case notes").closest("section");
+    expect(section?.textContent).not.toMatch(/%/);
+  });
+
+  it("GUILT: a story for 'PT Synthetic Alpha Beta' is NOT attached to a client whose company is 'PT Synthetic Alpha'", () => {
+    render(
+      <BusinessStoryPanel
+        clientName="Someone Else"
+        companyNames={["PT Synthetic Alpha"]}
+        maps={[alphaBetaMap]}
+        isLoading={false}
+        error={null}
+      />,
+    );
+
+    // No company matched → the empty-story state, not a case-notes summary.
     expect(
       screen.getByText(
-        "Team can open Drive here. Clients only see approved downloads in the portal.",
+        "This person has a company, but the CRM has not read the documents yet.",
       ),
     ).toBeInTheDocument();
-    expect(screen.getByText("What to do next")).toBeInTheDocument();
-    expect(screen.getByText("tax")).toBeInTheDocument();
     expect(
-      screen.getByText("Needed before the recap can be treated as current."),
-    ).toBeInTheDocument();
-    expect(screen.getByText("Reviewed Workspace AI")).toBeInTheDocument();
-    expect(
-      screen.getByText("Active PT PMA company profile confirmed."),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText("Tax and LKPM files are present."),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole("link", { name: /open lkpm q1 2026 evidence/i }),
-    ).toHaveAttribute("href", "https://drive.google.com/drive/folders/lkpm");
+      screen.queryByRole("button", { name: "Open" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("INNOCENCE: an exact company match survives case-folding and whitespace collapse", async () => {
+    const user = userEvent.setup();
+    render(
+      <BusinessStoryPanel
+        clientName="Someone Else"
+        companyNames={["PT Synthetic Alpha"]}
+        maps={[alphaMap]}
+        isLoading={false}
+        error={null}
+      />,
+    );
+
+    const toggle = screen.getByRole("button", { name: "Open" });
+    await user.click(toggle);
+    expect(toggle).toHaveAttribute("aria-expanded", "true");
+    // Testing-library's default text matcher collapses whitespace itself,
+    // so the fixture's doubled internal space reads back as single-spaced.
+    expect(screen.getByText("pt synthetic alpha")).toBeInTheDocument();
+  });
+
+  it("toggles aria-expanded and the Open/Close label on click", async () => {
+    const user = userEvent.setup();
+    render(
+      <BusinessStoryPanel
+        clientName="Giulia Del Giudice"
+        companyNames={["Bimala Investments Bali PT"]}
+        maps={[giuliaMap]}
+        isLoading={false}
+        error={null}
+      />,
+    );
+
+    const toggle = screen.getByRole("button", { name: "Open" });
+    expect(toggle).toHaveAttribute("aria-expanded", "false");
+    await user.click(toggle);
+    expect(screen.getByRole("button", { name: "Close" })).toHaveAttribute(
+      "aria-expanded",
+      "true",
+    );
   });
 
   it("shows an operating gap when no company story is linked yet", () => {
@@ -240,11 +345,25 @@ describe("BusinessStoryPanel", () => {
       />,
     );
 
-    expect(screen.getByText("No company linked yet")).toBeInTheDocument();
     expect(
       screen.getByText(
         "Connect this person to a company, then the CRM can build the tax story.",
       ),
     ).toBeInTheDocument();
+  });
+
+  it("renders the loading state without crashing", () => {
+    render(
+      <BusinessStoryPanel
+        clientName="Giulia Del Giudice"
+        companyNames={[]}
+        maps={[]}
+        isLoading={true}
+        error={null}
+      />,
+    );
+
+    expect(screen.getByText("Case notes")).toBeInTheDocument();
+    expect(screen.getByText("Loading business story")).toBeInTheDocument();
   });
 });
