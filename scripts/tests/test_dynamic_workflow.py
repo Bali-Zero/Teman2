@@ -227,7 +227,7 @@ def test_launch_seat_astra_resolves_a_seat_before_invoking_codex(tmp_path, monke
 
     def _fake_run(_cmd, **kwargs):
         calls.append(kwargs)
-        (kit / "r1" / "astra.md").write_text("stub output")
+        Path(_cmd[_cmd.index("-o") + 1]).write_text("stub output")
         return None
 
     monkeypatch.setattr(dw, "codex_seat_env", _fake_env)
@@ -265,6 +265,85 @@ def test_launch_seat_astra_degrades_silently_when_no_seat_resolves(tmp_path, mon
     assert output == ""  # out_file never written, "no seat" is not a crash
     assert len(calls) == 1
     assert calls[0].get("env") == dict(os.environ)
+
+
+def _codex_stub_writing(text: str | None, seen_cmds: list | None = None):
+    """A subprocess.run stand-in for the astra branch: writes `text` to whatever path the
+    command names after `-o` (None = codex wrote nothing), so the test follows the launcher's
+    real output path instead of assuming one."""
+    def _run(cmd, **_kwargs):
+        if seen_cmds is not None:
+            seen_cmds.append(cmd)
+        if text is not None and "-o" in cmd:
+            Path(cmd[cmd.index("-o") + 1]).write_text(text)
+        return argparse.Namespace(stdout="")
+    return _run
+
+
+def test_launch_seat_astra_never_writes_into_the_kit(tmp_path, monkeypatch):
+    """PR3i, GUILT (first real run 2026-09-19): the astra branch named kit/r1/astra.md as
+    codex's `-o` target for EVERY caller, so a launch made by r2 or jury overwrote the seat's
+    R1 answer. Seeds an R1 answer, launches astra again the way r2 does, and requires the R1
+    bytes to survive and the `-o` path to sit outside the kit."""
+    kit = tmp_path / "k"
+    (kit / "r1").mkdir(parents=True)
+    r1_answer = kit / "r1" / "astra.md"
+    r1_answer.write_text("R1 ANSWER")
+    seen: list = []
+    monkeypatch.setattr(dw, "codex_seat_env", lambda _env=None: {})
+    monkeypatch.setattr(dw.subprocess, "run", _codex_stub_writing("R2 OBJECTIONS", seen))
+
+    output = dw._launch_seat("astra", "prompt text", 5, kit)
+
+    assert output == "R2 OBJECTIONS"
+    assert r1_answer.read_text() == "R1 ANSWER"
+    out_target = Path(seen[0][seen[0].index("-o") + 1]).resolve()
+    assert kit.resolve() not in out_target.parents
+
+
+def test_launch_seat_astra_that_writes_nothing_returns_empty_not_stale_bytes(tmp_path, monkeypatch):
+    """PR3i: with the target inside the kit, a relaunch whose codex wrote nothing found
+    attempt 1's file still there and returned ITS bytes as attempt 2's answer."""
+    kit = tmp_path / "k"
+    (kit / "r1").mkdir(parents=True)
+    (kit / "r1" / "astra.md").write_text("ATTEMPT 1")
+    monkeypatch.setattr(dw, "codex_seat_env", lambda _env=None: {})
+    monkeypatch.setattr(dw.subprocess, "run", _codex_stub_writing(None))
+
+    assert dw._launch_seat("astra", "prompt text", 5, kit) == ""
+
+
+def test_r2_with_a_real_astra_launch_keeps_its_r1_answer_and_pairs_on_the_formation(
+        monkeypatch, tmp_path, template, clean_objective):
+    """PR3i, end to end through cmd_r2's NON-fake branch — the path DW_FAKE_SEATS=1 never
+    reaches, which is why only a real run found this. Pairing order is sorted, so astra
+    launches first and is a review target of both other seats: before the fix they were handed
+    astra's R2 objections in place of its R1 formation (the real kimi answered "Ruling on the
+    four objections…")."""
+    kit = tmp_path / "k"
+    dw.cmd_brief(_brief_ns(clean_objective, template, kit))
+    _seed_convener(kit)
+    dw.cmd_r1(argparse.Namespace(kit=str(kit), seats="astra,kimi-k3,gemini-3.1-pro-high",
+                                  astra_fallback=True))
+    r1_answer = kit / "r1" / "astra.md"
+    r1_bytes = r1_answer.read_bytes()
+    assert b"seat: astra" in r1_bytes
+
+    r2_stub = "C1 this is astra's R2 objection.\nTest: run it twice."
+    seen: list = []
+    monkeypatch.delenv("DW_FAKE_SEATS", raising=False)
+    monkeypatch.setattr(dw, "codex_seat_env", lambda _env=None: {})
+    monkeypatch.setattr(dw.subprocess, "run", _codex_stub_writing(r2_stub, seen))
+
+    dw.cmd_r2(argparse.Namespace(kit=str(kit)))
+
+    assert r1_answer.read_bytes() == r1_bytes
+    assert (kit / "r2" / "astra.raw.md").read_text() == r2_stub
+    partner_prompts = [" ".join(c) for c in seen if c[0] != "codex"]
+    assert len(partner_prompts) == 2
+    for prompt in partner_prompts:
+        assert "seat: astra" in prompt
+        assert "astra's R2 objection" not in prompt
 
 
 # --------------------------------------------------------------- r2 (guilt + innocence)

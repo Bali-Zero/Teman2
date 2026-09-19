@@ -462,13 +462,21 @@ def _launch_seat(seat: str, prompt: str, timeout: int, kit: Path) -> str:
         elif kind == "agy":
             cmd = ["agy", "-p", prompt, "--model", seat, "--output-format", "text"]
         elif kind == "astra":
-            out_file = kit / "r1" / "astra.md"
+            # PR3i (first real run, 2026-09-19): codex's `-o` target lives in THIS call's own
+            # temp dir, never in the kit. It used to be the hardcoded kit/r1/astra.md for every
+            # caller, and cmd_r2 and cmd_jury reuse this function — so astra's R2
+            # objections overwrote its R1 answer (cmp against the pre-r2 copy returned 1, the
+            # file was byte-identical to r2/astra.raw.md) and the seats paired with astra
+            # reviewed its objections instead of its formation. The caller persists the
+            # returned text wherever its own stage keeps it. A fresh dir per call also means a
+            # relaunch that writes nothing returns "", not attempt 1's stale bytes.
             with tempfile.TemporaryDirectory() as tmp:
+                out_file = Path(tmp) / "astra-last-message.md"
                 cmd = ["codex", "exec", "-m", "gpt-6-astra", "-C", tmp, "-s", "read-only",
                        "--skip-git-repo-check", "-o", str(out_file), prompt]
                 subprocess.run(cmd, stdin=subprocess.DEVNULL, capture_output=True,
                                 text=True, timeout=timeout, env=codex_seat_env())
-            return out_file.read_text() if out_file.exists() else ""
+                return out_file.read_text() if out_file.exists() else ""
         else:
             return ""
         r = subprocess.run(cmd, stdin=subprocess.DEVNULL, capture_output=True, text=True, timeout=timeout)
