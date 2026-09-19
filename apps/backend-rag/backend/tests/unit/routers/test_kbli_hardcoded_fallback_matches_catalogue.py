@@ -1,10 +1,21 @@
-"""The hardcoded KBLI fallback may not contradict the catalogue.
+"""No hand-written copy of a KBLI fact may contradict the catalogue.
 
-`kbli_notebook_chat.KNOWN_KBLI_CODES` is a hand-written dict used when a code
-lookup misses BOTH PostgreSQL and Qdrant, and it is also injected by an
-activity-keyword map. Whatever it says goes straight into the LLM context that
-answers on WhatsApp and web chat — so it is a second, unversioned source of
-truth sitting in front of the cured one.
+UPDATED 2026-09-20 — THE DICT THIS FILE WAS WRITTEN AGAINST IS GONE. It was a
+hand-written answer table consulted when a code lookup missed BOTH PostgreSQL
+and Qdrant, and injected by an activity-keyword map, so whatever it said went
+straight into the LLM context answering on WhatsApp and web chat. Measured
+read-only inside the running image that day, all nine of its codes were present
+in `kbli_documents` AND in `kg_nodes` — so the branch was unreachable for every
+one of them, while the keyword route still served its hand-written tiers. The
+facts now come from the stores through one derivation; the table is deleted.
+
+WHAT SURVIVES IT, AND WHY THIS FILE DOES TOO. Two hand-written copies remain and
+both reach the same client: the activity-keyword MAP (which codes a phrase routes
+to) and the MASTER PROMPT (which the LLM reads verbatim). The map is a routing
+hint and may not aim at a code the catalogue lacks; the prompt is prose and may
+not promise openness the catalogue denies. Same two failure shapes as the dict,
+one surface further out — which is the shape this file already names in its
+fourth test.
 
 It had drifted, in the two ways this shape always drifts:
 
@@ -47,31 +58,40 @@ def catalogue() -> dict[str, dict]:
     return {r["kode_kbli_2025"]: r for r in records}
 
 
-def test_every_hardcoded_code_exists_in_the_catalogue(catalogue: dict[str, dict]) -> None:
-    """A code the catalogue lacks can never be corrected by retrieval."""
-    unknown = sorted(c for c in kbli_notebook_chat.KNOWN_KBLI_CODES if c not in catalogue)
-    assert unknown == [], (
-        f"hardcoded fallback names code(s) absent from KBLI 2025: {unknown}. "
-        "Such a code misses PostgreSQL and Qdrant by construction, so this dict "
-        "becomes its only answer — check the crosswalk for the real successor."
+def test_the_router_carries_no_hand_written_answer_table() -> None:
+    """The deletion is the cure, so it is pinned rather than assumed.
+
+    A table of codes to verdicts, reachable from a chat turn, is a second
+    unversioned source of truth in front of the cured one — it cannot be
+    corrected by retrieval, and nothing ages it out. If one comes back it must
+    come back deliberately, with a reviewer reading this line.
+    """
+    source = ROUTER_SOURCE.read_text()
+    assert "KNOWN_KBLI_CODES" not in source, (
+        "a hand-written answer table is back in the chat router; facts belong in "
+        "the stores, reached through `_resolve_code_from_stores`"
     )
 
 
-def test_no_hardcoded_pma_status_contradicts_the_catalogue(catalogue: dict[str, dict]) -> None:
-    conflicts = [
-        (code, entry["pma_status"], catalogue[code].get("pma_status"))
-        for code, entry in kbli_notebook_chat.KNOWN_KBLI_CODES.items()
-        if code in catalogue and entry["pma_status"] != catalogue[code].get("pma_status")
-    ]
-    assert conflicts == [], f"hardcoded PMA status disagrees with the catalogue: {conflicts}"
-
-
 def test_the_retired_2020_ecommerce_code_is_gone(catalogue: dict[str, dict]) -> None:
-    """Pin the specific defect: 47911 must not come back."""
+    """Pin the specific defect: 47911 must not come back as an answer."""
     assert "47911" not in catalogue, "premise: 47911 is a 2020 code, absent from 2025"
-    assert "47911" not in kbli_notebook_chat.KNOWN_KBLI_CODES
-    assert "47901" in kbli_notebook_chat.KNOWN_KBLI_CODES, "the real successor must be present"
-    assert kbli_notebook_chat.KNOWN_KBLI_CODES["47901"]["pma_status"] == "TERBUKA"
+    assert "47901" in catalogue, "the real successor must exist in the catalogue"
+    source = ROUTER_SOURCE.read_text()
+    # Python comments are not read by the model, and this router deliberately
+    # keeps several that record why the code was repointed. Only PROMPT text —
+    # the string literals the LLM receives — can teach a client anything.
+    live_mentions = [
+        line.strip()[:90]
+        for line in source.splitlines()
+        if "47911" in line
+        and not line.lstrip().startswith("#")
+        and "does NOT exist" not in line
+        and "never cite it" not in line
+    ]
+    assert live_mentions == [], (
+        f"the router names the retired code 47911 without disowning it: {live_mentions}"
+    )
 
 
 def test_ecommerce_keywords_still_resolve(catalogue: dict[str, dict]) -> None:
@@ -89,9 +109,6 @@ def test_ecommerce_keywords_still_resolve(catalogue: dict[str, dict]) -> None:
     assert block, "the e-commerce keyword row disappeared"
     target = block.group(1)
     assert target in catalogue, f"e-commerce keywords point at {target}, absent from the catalogue"
-    assert target in kbli_notebook_chat.KNOWN_KBLI_CODES, (
-        f"{target} is not in KNOWN_KBLI_CODES, so the injection guard skips it silently"
-    )
 
 
 def test_every_keyword_target_is_a_real_code(catalogue: dict[str, dict]) -> None:
@@ -140,15 +157,21 @@ def test_no_prompt_constant_teaches_a_code_the_catalogue_lacks(catalogue: dict[s
     )
 
 
-def test_the_online_channel_answer_names_the_fork(catalogue: dict[str, dict]) -> None:
+def test_the_online_channel_answer_names_the_fork() -> None:
     """47901 is the marketplace OPERATOR; selling your own goods is the product code.
 
-    Replacing one false certainty with another would be the same mistake wearing
-    a correct code, so the description must carry the fork.
+    Replacing one false certainty with another would be the same mistake wearing a
+    correct code, so the fork must survive. It moved on 2026-09-20 out of the
+    deleted answer table and into the master prompt, which is where consulting
+    guidance belongs: it says which question to ask before naming a code, and
+    asserts nothing about any code's regime.
     """
-    description = kbli_notebook_chat.KNOWN_KBLI_CODES["47901"]["description"]
-    assert "47221" in description, "the restricted-category caveat must survive"
-    assert "PRODUCT CATEGORY" in description.upper()
+    source = ROUTER_SOURCE.read_text()
+    fork = [line for line in source.splitlines() if "ONLINE SELLING IS A FORK" in line]
+    assert fork, "the e-commerce fork disappeared from the prompt"
+    block = source[source.index(fork[0]) : source.index(fork[0]) + 800]
+    assert "47221" in block, "the restricted-category caveat must survive"
+    assert "PRODUCT CATEGORY" in block.upper()
 
 
 # --------------------------------------------------------------------------
@@ -156,8 +179,24 @@ def test_the_online_channel_answer_names_the_fork(catalogue: dict[str, dict]) ->
 # --------------------------------------------------------------------------
 
 
+def _prompt_code_lines(source: str) -> dict[str, str]:
+    """The prompt's own per-code prose, keyed by code.
+
+    The master prompt teaches codes in `- NNNNN = TITLE — prose.` lines. That
+    prose is read verbatim by the model answering a client, so it is the same
+    assertion the deleted table's `description` used to be, one surface further
+    out.
+    """
+    lines: dict[str, str] = {}
+    for line in source.splitlines():
+        hit = re.search(r'"-\s*(\d{5})\s*=\s*(.+?)\\n"', line)
+        if hit:
+            lines[hit.group(1)] = hit.group(2)
+    return lines
+
+
 def _openness_claims(description: str) -> list[str]:
-    """Sentences of a hardcoded description that assert foreign openness.
+    """Sentences of hand-written prose that assert foreign openness.
 
     Sentence-scoped and affirmative-only, for the reason the sibling detector
     in `scripts/kbli_filiera/editorial_record_conformance.py` learned the hard
@@ -175,34 +214,34 @@ def _openness_claims(description: str) -> list[str]:
     ]
 
 
-def test_no_hardcoded_description_asserts_openness_the_catalogue_denies(
+def test_no_prompt_line_asserts_openness_the_catalogue_denies(
     catalogue: dict[str, dict],
 ) -> None:
-    """The field and the prose are TWO assertions, and only one was guarded.
+    """The field and the prose are TWO assertions, and only one was ever guarded.
 
-    `test_no_hardcoded_pma_status_contradicts_the_catalogue` compares
-    `entry["pma_status"]` and stops there. But the whole entry — description
-    included — is injected verbatim into the LLM context that answers on
-    WhatsApp and web chat, so a description reading "PMA: TERBUKA (open to
-    foreigners, 100%)" reaches a client exactly as the field would.
+    The field copy died with the answer table on 2026-09-20; the prose copy did
+    not. The prompt's per-code lines are injected verbatim into the LLM context
+    that answers on WhatsApp and web chat, so a line reading "PMA: TERBUKA (open
+    to foreigners, 100%)" reaches a client exactly as a field would.
 
-    Found live: the UMKM split-heir cure moved `96100` (laundry) to TERBATAS at
-    a 0% ceiling, the field test went red and was fixed, and the description
-    kept its own sentence promising 100%. Correcting the field alone would have
-    left the guarded copy right and the unguarded copy wrong — the shape this
-    file's fourth test already names, one surface further out.
+    Found live on the table this guard used to cover: the UMKM split-heir cure
+    moved `96100` (laundry) to TERBATAS at a 0% ceiling, the field test went red
+    and was fixed, and the description kept its own sentence promising 100%.
+    Correcting the guarded copy alone leaves the unguarded one wrong.
     """
+    prompt_lines = _prompt_code_lines(ROUTER_SOURCE.read_text())
+    assert prompt_lines, "no per-code prompt lines parsed — the prompt's shape changed"
     offenders = [
         (code, claim)
-        for code, entry in kbli_notebook_chat.KNOWN_KBLI_CODES.items()
+        for code, prose in prompt_lines.items()
         if code in catalogue
         and isinstance(catalogue[code].get("pma_max_asing"), int)
         and catalogue[code]["pma_max_asing"] < 100
-        for claim in _openness_claims(str(entry.get("description") or ""))
+        for claim in _openness_claims(prose)
     ]
     assert offenders == [], (
-        "hardcoded description promises foreign openness on a code the catalogue "
-        f"caps below 100%: {offenders}"
+        "a prompt line promises foreign openness on a code the catalogue caps "
+        f"below 100%: {offenders}"
     )
 
 
@@ -227,11 +266,8 @@ def test_innocence_a_reservation_sentence_is_not_an_openness_claim() -> None:
 
 
 def test_innocence_an_open_code_may_still_say_it_is_open(catalogue: dict[str, dict]) -> None:
-    """A guard that forbade the words would force every honest page to lie by omission."""
+    """A guard that forbade the words would force every honest line to lie by omission."""
     assert _openness_claims("Sale of goods. PMA: TERBUKA (open to foreigners, 100%).") != []
-    open_codes = [
-        c
-        for c in kbli_notebook_chat.KNOWN_KBLI_CODES
-        if c in catalogue and catalogue[c].get("pma_max_asing") == 100
-    ]
-    assert open_codes, "premise: some hardcoded codes are genuinely 100% open"
+    taught = _prompt_code_lines(ROUTER_SOURCE.read_text())
+    open_codes = [c for c in taught if catalogue.get(c, {}).get("pma_max_asing") == 100]
+    assert open_codes, "premise: some codes the prompt teaches are genuinely 100% open"

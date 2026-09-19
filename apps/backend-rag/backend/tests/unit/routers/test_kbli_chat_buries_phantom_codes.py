@@ -7,10 +7,10 @@ actually talk to — kept answering `74100` as a live regulated activity, becaus
 lookup selects from `kbli_documents` with no `licensing_status` filter and falls
 back to `kg_nodes` when there is no row at all.
 
-Four independent branches in that endpoint can produce a match, and two of them
-never touch the database (the Qdrant payload filter and the hardcoded
-`KNOWN_KBLI_CODES` table). They converge on one variable, so the verdict is applied
-once where they meet — and these tests drive that junction directly rather than the
+Two paths in that endpoint can produce a match — a code the client typed and an
+activity keyword that routes to one — and since 2026-09-20 both resolve through
+`_resolve_code_from_stores`. They converge on one variable, so the verdict is
+applied once where they meet — and these tests drive that junction directly rather than the
 whole chat turn, which would need an LLM gateway and an orchestrator to say nothing
 more about the property under test.
 
@@ -207,9 +207,11 @@ def test_the_endpoint_actually_calls_the_burial():
     is not armed — so the call site is pinned by source, the same way this repo
     pins cache keys and duplicated constants.
 
-    It also pins the ORDER. The burial has to run after all four branches that can
-    set `direct_kbli_match` have had their say; if it moved above them it would
-    inspect a match that is still `None` and bury nothing at all, silently.
+    It also pins the ORDER, and that is not hypothetical: until 2026-09-20 the
+    call sat BETWEEN the two paths that set `direct_kbli_match`, so a match
+    injected by the activity-keyword route skipped the tombstone entirely. The
+    burial must run after BOTH, or a phantom reached by the later one is
+    described to a client as a live activity.
     """
     import inspect
 
@@ -223,7 +225,10 @@ def test_the_endpoint_actually_calls_the_burial():
     )
 
     burial = source.index("await _bury_if_phantom(pool, direct_kbli_match)")
-    for branch in ("KNOWN_KBLI_CODES[code]", "_get_kbli_payload_from_qdrant(code)"):
+    for branch in (
+        "_resolve_code_from_stores(pool, code)",
+        "_resolve_code_from_stores(pool, target_code)",
+    ):
         assert source.index(branch) < burial, (
             f"the {branch} branch now runs AFTER the burial, so a phantom resolved "
             "by it reaches the client unburied"

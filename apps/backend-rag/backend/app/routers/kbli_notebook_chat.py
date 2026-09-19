@@ -98,6 +98,15 @@ KBLI_MASTER_PROMPT = (
     "Never state Rp 10 Billion as the paid-up capital figure.\n"
     "4. If data is missing from context, say so clearly: 'This detail isn't in the official documents — please verify at oss.go.id'.\n"
     "5. When PMA status is NOT_VERIFIED or 'Verify at OSS', do not infer a verdict or cap; explain that the whole-code ownership claim lacks a located official basis/source vintage and should be checked with OSS/BKPM.\n"
+    # Moved here 2026-09-20 from the hand-written answer table that used to carry
+    # it as part of a licensing verdict. This is CONSULTING GUIDANCE — which
+    # question to ask before naming a code — not a claim about any code's regime,
+    # so it belongs beside the other accuracy rules and not in a fallback record.
+    "6. ONLINE SELLING IS A FORK, NOT A CODE. 47901 (PLATFORM DIGITAL INTERMEDIASI PERDAGANGAN ECERAN) "
+    "covers OPERATING a marketplace that intermediates OTHER sellers. A business selling its OWN goods "
+    "online takes the PRODUCT CATEGORY code instead, and carries that category's own restrictions — "
+    "e.g. alcoholic beverages 47221. Ask which of the two the client is doing before naming a single code; "
+    "the KBLI-2020 code 47911 does NOT exist in KBLI 2025 and is not an answer to either.\n"
     "6. NEVER estimate a licensing risk tier (Rendah/Menengah Rendah/Menengah Tinggi/Tinggi) for a KBLI code "
     "by analogy with other codes' risk levels. If risk_category for the code in context is 'Verify at OSS' "
     "or otherwise unverified/absent, say so honestly and point the user to oss.go.id or the Bali Zero team "
@@ -682,6 +691,121 @@ def _suggested_queries(results) -> list[str]:
     return suggested_queries
 
 
+_RISK_UNRESOLVED = "Verify at OSS"
+
+
+def _channel_risk(*candidates: Any) -> str:
+    """The ONE risk derivation this channel has, with its precedence declared.
+
+    Until today five places produced `risk_category` for the same code and they
+    disagreed about what ignorance is even called: the `kbli_documents` branch
+    hardcoded `"Verify at OSS"`, the `kg_nodes` branch defaulted to it, the Qdrant
+    payload builder and the ILIKE fallback defaulted to `"Unknown"`, and a
+    hardcoded table served hand-written tiers. Which answer a client got depended
+    on store availability, not on the law.
+
+    Precedence is the order the caller passes. The floor is ONE word for "we do
+    not know" and it is `"Verify at OSS"`, because the system prompt already
+    carries a rule keyed on that exact string; `"Unknown"` is folded into it
+    rather than kept as a second dialect of the same fact.
+    """
+    for candidate in candidates:
+        if isinstance(candidate, str):
+            value = candidate.strip()
+            if value and value != "Unknown":
+                return value
+    return _RISK_UNRESOLVED
+
+
+async def _resolve_code_from_stores(pool: Any, code: str) -> "KBLISearchResult | None":
+    """Resolve one KBLI code to a chat match through the stores, in one order.
+
+    WHY ONE FUNCTION AND NOT FOUR BRANCHES. The same argument `_bury_if_phantom`
+    already makes about the tombstone: a fact produced in four places is four
+    places to cure, plus a fifth branch tomorrow nobody remembers (superscar #9).
+    The precedence is `kbli_documents` -> `kg_nodes` -> Qdrant, and it is written
+    here once instead of being implied by the order of four `if` blocks.
+
+    WHY THE RISK IS READ FROM `kg_nodes` EVEN WHEN `kbli_documents` ANSWERS.
+    Measured read-only inside the running image on 2026-09-20: `kbli_documents`
+    carries no `kategori_risiko` key at all — 0 rows out of 1,563 — while
+    `kg_nodes` carries a value on 1,383 of its 1,562 `kbli:` nodes. The old code
+    let the first branch win and hardcode `"Verify at OSS"`, so the channel
+    withheld a government tier we hold, for as many as 1,383 codes. The PMA tuple
+    still comes from whichever store answered, because a disclosure tuple is only
+    meaningful beside the record that certifies it.
+
+    WHICH WAY IT FAILS. A dead pool or a raising query yields `None`, never a
+    half-built match: the caller then behaves exactly as it does for a code no
+    store knows, which is to say it falls through to semantic search.
+    """
+    if not pool:
+        return None
+
+    kg_props: dict[str, Any] = {}
+    try:
+        async with pool.acquire() as conn:
+            kg_row = await conn.fetchrow(
+                "SELECT entity_id, name, properties FROM kg_nodes WHERE entity_id = $1",
+                f"kbli:{code}",
+            )
+            if kg_row:
+                kg_props = (
+                    json.loads(kg_row["properties"])
+                    if isinstance(kg_row["properties"], str)
+                    else (kg_row["properties"] or {})
+                )
+
+            # The generated ``kbli_documents.content`` column is deliberately not
+            # selected: a PMA tuple cannot certify arbitrary prose stored beside it.
+            row = await conn.fetchrow(
+                "SELECT kode_kbli, judul, metadata FROM kbli_documents WHERE kode_kbli = $1",
+                code,
+            )
+            if row:
+                metadata = (
+                    row["metadata"]
+                    if isinstance(row["metadata"], dict)
+                    else json.loads(row["metadata"])
+                )
+                logger.info("✅ Direct structured lookup from kbli_documents: %s", code)
+                return KBLISearchResult(
+                    code=code,
+                    title=row["judul"],
+                    description=_official_scope(metadata, code),
+                    score=1.0,
+                    risk_category=_channel_risk(
+                        metadata.get("kategori_risiko"),
+                        kg_props.get("kategori_risiko"),
+                    ),
+                    **_pma_disclosure_fields(metadata),
+                )
+
+            if kg_row:
+                logger.info("⚠️ Direct lookup fallback to kg_nodes: %s", code)
+                return KBLISearchResult(
+                    code=code,
+                    title=kg_row["name"],
+                    description=_official_scope(kg_props, code),
+                    score=1.0,
+                    risk_category=_channel_risk(kg_props.get("kategori_risiko")),
+                    **_pma_disclosure_fields(kg_props),
+                )
+    except Exception as lookup_err:
+        logger.warning("Direct lookup failed for %s: %s", code, lookup_err)
+
+    qdrant_payload = await _get_kbli_payload_from_qdrant(code)
+    if qdrant_payload:
+        match = _result_from_payload(qdrant_payload, score=1.0)
+        # `_result_from_payload` is shared with the public search surface and
+        # floors at `"Unknown"`; this channel speaks one dialect of ignorance.
+        match.risk_category = _channel_risk(match.risk_category)
+        logger.info("✅ Found KBLI %s via Qdrant payload filter: %s", code, match.title)
+        return match
+
+    return None
+
+
 async def _bury_if_phantom(
     pool: Any, match: "KBLISearchResult | None"
 ) -> "KBLISearchResult | None":
@@ -693,12 +817,13 @@ async def _bury_if_phantom(
     describe 74100 as a live regulated activity the day after the page buried it —
     and this is the surface clients actually talk to.
 
-    WHY ONE CALL AND NOT FOUR. Four independent branches in the caller can produce
-    a match: the `kbli_documents` row, the `kg_nodes` fallback, the Qdrant payload
-    filter, and the hardcoded `KNOWN_KBLI_CODES` table — and two of them never
-    touch the database at all. Curing each would be four copies of one predicate
-    plus a fifth branch tomorrow that nobody remembers to cure (superscar #9).
-    They converge on one variable, so the verdict is applied once, where they meet.
+    WHY ONE CALL AND NOT ONE PER PATH. Two paths in the caller can set the match —
+    a code the client typed and an activity keyword that routes to one — and both
+    now resolve through `_resolve_code_from_stores`. Curing each would be two
+    copies of one predicate plus a third path tomorrow that nobody remembers to
+    cure (superscar #9). They converge on one variable, so the verdict is applied
+    once, where they meet — which is AFTER the keyword path, not before it: until
+    2026-09-20 that path ran past this call and could not be buried at all.
 
     WHICH WAY IT FAILS. No pool, no match, an unreadable catalogue, or a lookup
     that raises — all mean `UNKNOWN`, and `UNKNOWN` returns the match untouched.
@@ -1032,88 +1157,6 @@ async def _generate_kbli_explanation(
 # Tripwire test: TestChatAbstainThreshold (test_kbli_notebook.py).
 MIN_RELEVANCE_SCORE = 0.18
 
-# Hardcoded known KBLI codes not present in Qdrant collection
-# Used as synthetic fallback when code lookup fails via both PostgreSQL and Qdrant
-# NOTE: 56101 and 56210 removed — now present in Qdrant with correct BPS data (TERBUKA)
-KNOWN_KBLI_CODES: dict[str, dict] = {
-    # Was "47911" with pma_status TERBATAS — a KBLI **2020** code, retired in
-    # 2025 and absent from the catalogue, so both PostgreSQL and Qdrant miss it
-    # by construction and this dict was its ONLY possible answer. It is reached
-    # by the e-commerce keyword row below ("online shop", "toko online",
-    # "jual online", ...), i.e. one of the most common questions there is — and
-    # "TERBATAS" was invented: the 2025 activity is OPEN. Repointed to the real
-    # successor, whose values come from the catalogue, not from this file.
-    "47901": {
-        "title": "PLATFORM DIGITAL INTERMEDIASI PERDAGANGAN ECERAN",
-        "description": (
-            "Digital intermediation platform for retail trade: online marketplaces "
-            "that intermediate OTHER sellers' transactions. KBLI 2025 split the 2020 "
-            "code 47911 (PERDAGANGAN ECERAN MELALUI MEDIA UNTUK BERBAGAI MACAM "
-            "BARANG), which no longer exists, into two different things, and which "
-            "one applies depends on the business: (a) you OPERATE the marketplace "
-            "and intermediate other sellers -> 47901, TERBUKA, 100% foreign "
-            "ownership; (b) you SELL YOUR OWN goods online -> the code is the "
-            "PRODUCT CATEGORY you sell, not the online channel, and it carries that "
-            "category's own restrictions — e.g. alcoholic beverages 47221 is "
-            "TERBATAS and 47222 is TERTUTUP, while most categories are TERBUKA. Ask "
-            "which of the two the client is doing before naming a single code."
-        ),
-        "pma_status": "TERBUKA",
-        "risk_category": "Verify at OSS",
-    },
-    "56290": {
-        "title": "AKTIVITAS PENYEDIAAN JASA BOGA LAINNYA",
-        # Was "TERBATAS" — the catalogue says TERBUKA, max foreign 100%. A
-        # restriction asserted where none exists refuses a lawful investment,
-        # which is the costlier direction to be wrong in.
-        "description": "Other food service and catering activities not elsewhere classified. Includes canteen management, institutional catering, and similar food services.",
-        "pma_status": "TERBUKA",
-        "risk_category": "Verify at OSS",
-    },
-    "56301": {
-        "title": "AKTIVITAS BAR",
-        "description": "Bar activities serving alcoholic and non-alcoholic beverages for on-premises consumption. Includes cocktail bars, wine bars, and other licensed drinking establishments.",
-        "pma_status": "TERBUKA",
-        "risk_category": "Menengah Tinggi",
-    },
-    "47690": {
-        "title": "PERDAGANGAN ECERAN KHUSUS BARANG KESENIAN DAN REKREASI YTDL",
-        "description": "Retail trade of art, recreation and collectibles, including: recorded media, musical instruments and accessories, philately/numismatics/collectibles, commercial art gallery activities (selling paintings/sculptures). Also includes art supplies (beads, clay, canvas, oils, watercolors).",
-        "pma_status": "TERBUKA",
-        "risk_category": "Rendah",
-    },
-    "96210": {
-        "title": "AKTIVITAS PENATAAN DAN PANGKAS RAMBUT",
-        "description": "Hair salon and barbershop activities: hair washing, cutting, styling, coloring, perming, straightening; shaving and grooming beards/mustaches. PMA: reserved for Koperasi and UMKM (Perpres 49/2021 Lampiran II, p.16, row 'Pangkas rambut/ barber shop' — dialokasikan) — maximum foreign ownership 0%, a PT PMA cannot take this bidang usaha.",
-        "pma_status": "TERBATAS",
-        "risk_category": "Rendah",
-    },
-    "96220": {
-        "title": "AKTIVITAS PERAWATAN KECANTIKAN DAN PERAWATAN KECANTIKAN LAINNYA",
-        "description": "Beauty care activities not performed by doctors: nail studio (nail art, manicure/pedicure), eyelash studio (eyelash extension, lash lift), brow studio (sulam alis, brow lamination), wax studio, make-up artist (MUA), facial massage, skin tanning. PMA: reserved for Koperasi and UMKM (Perpres 49/2021 Lampiran II, p.16, row 'Salon kecantikan' — dialokasikan) — maximum foreign ownership 0%, a PT PMA cannot take this bidang usaha.",
-        "pma_status": "TERBATAS",
-        "risk_category": "Verify at OSS",
-    },
-    "96230": {
-        "title": "AKTIVITAS SANTE PAR AQUA (SPA) HARIAN, SAUNA, DAN PEMANDIAN UAP",
-        "description": "Day spa, sauna, steam bath activities providing wellness and beauty treatments combining traditional and modern holistic methods using water, massage with herbal preparations, aromatherapy, physical therapy. Turkish bath, solarium, slimming salon.",
-        "pma_status": "TERBUKA",
-        "risk_category": "Verify at OSS",
-    },
-    "96100": {
-        "title": "AKTIVITAS PENCUCIAN DAN PEMBERSIHAN PRODUK TEKSTIL DAN BULU",
-        "description": "Laundry and dry cleaning services: washing, ironing, dry cleaning of clothing and textiles including fur; pick-up and delivery; carpet and curtain cleaning; coin-operated laundromat; reusable diaper service. PMA: reserved for Koperasi and UMKM (Perpres 49/2021 Lampiran II, p.16, row 'Penatu' — dialokasikan) — maximum foreign ownership 0%, a PT PMA cannot take this bidang usaha. Risk level is SCALE-DEPENDENT: Mikro/Kecil/Menengah = Rendah (NIB only); Besar = Tinggi (NIB + Izin required).",
-        "pma_status": "TERBATAS",
-        "risk_category": "Rendah (Mikro/Kecil/Menengah) — Tinggi (Besar)",
-    },
-    "96900": {
-        "title": "AKTIVITAS JASA PERORANGAN LAINNYA YTDL",
-        "description": "Other personal service activities: astrology/spiritualism, social services (dating/matchmaking/escort), genealogy, pet care (boarding/grooming/training), shoe shiners/porters/valet parking, coin-operated personal service machines, photo booth. IMPORTANT: Also includes temporary henna/biological ink body decoration — BPS 2025 does NOT have a dedicated code for PERMANENT tattoo studios.",
-        "pma_status": "TERBUKA",
-        "risk_category": "Verify at OSS",
-    },
-}
-
 # Non-business keywords that should trigger helpful redirect
 NON_BUSINESS_KEYWORDS = [
     "kitas",
@@ -1260,106 +1303,19 @@ async def chat_kbli(
         codes_from_query = re.findall(r"\b\d{5}\b", kbli_request.query)
         direct_kbli_match = None
 
-        # Try direct KBLI lookup from structured metadata. The generated
-        # ``kbli_documents.content`` column is deliberately not selected: a PMA
-        # tuple cannot certify arbitrary prose stored beside it.
-        if codes_from_query and pool:
+        # Try direct KBLI lookup. One derivation, one declared precedence —
+        # see `_resolve_code_from_stores`. The hand-written answer table that used
+        # to sit at the end of this chain is gone: measured inside the running
+        # image on 2026-09-20, all nine of its codes are present in
+        # `kbli_documents` AND in `kg_nodes`, so the branch was unreachable for
+        # every one of them while still serving hand-written tiers through the
+        # keyword path below.
+        if codes_from_query:
             for code in codes_from_query:
-                try:
-                    async with pool.acquire() as conn:
-                        row = await conn.fetchrow(
-                            "SELECT kode_kbli, judul, metadata FROM kbli_documents WHERE kode_kbli = $1",
-                            code,
-                        )
+                direct_kbli_match = await _resolve_code_from_stores(pool, code)
+                if direct_kbli_match:
+                    break
 
-                        if row:
-                            metadata = (
-                                row["metadata"]
-                                if isinstance(row["metadata"], dict)
-                                else json.loads(row["metadata"])
-                            )
-                            direct_kbli_match = KBLISearchResult(
-                                code=code,
-                                title=row["judul"],
-                                description=_official_scope(metadata, code),
-                                score=1.0,
-                                risk_category="Verify at OSS",
-                                **_pma_disclosure_fields(metadata),
-                            )
-                            logger.info("✅ Direct structured lookup from kbli_documents: %s", code)
-                            break
-                        # Fallback to kg_nodes for backward compatibility
-                        entity_id = f"kbli:{code}"
-                        kg_row = await conn.fetchrow(
-                            "SELECT entity_id, name, properties FROM kg_nodes WHERE entity_id = $1",
-                            entity_id,
-                        )
-                        if kg_row:
-                            props = (
-                                json.loads(kg_row["properties"])
-                                if isinstance(kg_row["properties"], str)
-                                else kg_row["properties"]
-                            )
-                            direct_kbli_match = KBLISearchResult(
-                                code=code,
-                                title=kg_row["name"],
-                                description=_official_scope(props, code),
-                                score=1.0,
-                                risk_category=props.get("kategori_risiko", "Verify at OSS"),
-                                **_pma_disclosure_fields(props),
-                            )
-                            logger.info("⚠️ Direct lookup fallback to kg_nodes: %s", code)
-                            break
-                except Exception as lookup_err:
-                    logger.warning("Direct lookup failed for %s: %s", code, lookup_err)
-
-        # P0 FIX: If KBLI code in query but not found in PostgreSQL, try Qdrant payload filter
-        if codes_from_query and not direct_kbli_match:
-            code = codes_from_query[0]
-            logger.info("🔢 Code %s not in kg_nodes, trying Qdrant payload filter lookup", code)
-            qdrant_payload = await _get_kbli_payload_from_qdrant(code)
-            if qdrant_payload:
-                direct_kbli_match = _result_from_payload(qdrant_payload, score=1.0)
-                logger.info(
-                    f"✅ Found KBLI {code} via Qdrant payload filter: {direct_kbli_match.title}",
-                )
-
-        # P1 FIX: If still no direct match, check KNOWN_KBLI_CODES hardcoded fallback
-        if codes_from_query and not direct_kbli_match:
-            code = codes_from_query[0]
-            if code in KNOWN_KBLI_CODES:
-                known = KNOWN_KBLI_CODES[code]
-                direct_kbli_match = KBLISearchResult(
-                    code=code,
-                    title=known["title"],
-                    description=f"KBLI classification: {known['title']}.",
-                    score=1.0,
-                    pma_status=known["pma_status"],
-                    risk_category=known["risk_category"],
-                )
-                logger.info(
-                    f"📖 Found KBLI {code} via hardcoded KNOWN_KBLI_CODES: {known['title']}",
-                )
-
-        # A code the client typed may be a KBLI-2020 number KBLI 2025 does not
-        # carry. PR #6810 taught `inspect_kbli` to bury those; this channel never
-        # learned it, so until today the bot could still describe 74100 as a live
-        # regulated activity the day after the page buried it.
-        #
-        # WHY HERE AND NOT IN EACH BRANCH. Four independent branches above can set
-        # `direct_kbli_match` — the `kbli_documents` row, the `kg_nodes` fallback,
-        # the Qdrant payload filter and the hardcoded `KNOWN_KBLI_CODES` table —
-        # and two of them never touch the database at all. Curing each one would
-        # be four copies of the same predicate and a fifth branch tomorrow that
-        # nobody remembers to cure (superscar #9). They all converge on ONE
-        # variable, so the verdict is applied once, where they meet.
-        #
-        # SILENCE WHEN WE CANNOT ASK. No pool, or an unreadable catalogue, means
-        # `UNKNOWN` — the match is returned untouched and this channel behaves
-        # exactly as it did before. Absence is only convicting when the catalogue
-        # is evidently present; `fetch_catalogue_membership` owns that asymmetry
-        # and logs what it swallowed.
-        direct_kbli_match = await _bury_if_phantom(pool, direct_kbli_match)
 
         # P2 FIX: Keyword-to-code injection for activities not in Qdrant
         # Detects activity keywords in query and injects a direct match BEFORE semantic search
@@ -1368,8 +1324,8 @@ async def chat_kbli(
         # that belief is what put a retired 2020 code on the channel. 47911 does not
         # exist in the KBLI 2025 catalogue; 47901 does, and it is the code that cites
         # 47911 in its pp28_sources. Verify a target against the catalogue before
-        # adding a row here: a code this map names but the stores do not have will be
-        # answered by the hardcoded dict alone, with no retrieval to correct it.
+        # adding a row here: a code this map names but no store carries is answered
+        # by nobody — the route abstains and semantic search takes the turn.
         _activity_keyword_map: list[tuple[list[str], str]] = [
             # Online retail / e-commerce (handle spaced variants like "e comerce", "e commerce")
             (
@@ -1514,20 +1470,44 @@ async def chat_kbli(
         if not direct_kbli_match:
             query_lower_kw = kbli_request.query.lower()
             for keywords, target_code in _activity_keyword_map:
-                if any(kw in query_lower_kw for kw in keywords) and target_code in KNOWN_KBLI_CODES:
-                    known = KNOWN_KBLI_CODES[target_code]
-                    direct_kbli_match = KBLISearchResult(
-                        code=target_code,
-                        title=known["title"],
-                        description=f"KBLI classification: {known['title']}.",
-                        score=1.0,
-                        pma_status=known["pma_status"],
-                        risk_category=known["risk_category"],
-                    )
+                if not any(kw in query_lower_kw for kw in keywords):
+                    continue
+                # The map routes an activity phrase to a code. The FACTS about
+                # that code come from the stores, through the same derivation the
+                # typed-code path uses — a keyword match is a routing hint, never
+                # a licensing source. If no store knows the code we abstain and
+                # fall through to semantic search, which is the honest answer.
+                direct_kbli_match = await _resolve_code_from_stores(pool, target_code)
+                if direct_kbli_match:
                     logger.info(
                         f"🎯 Keyword injection: '{query_lower_kw[:40]}' → KBLI {target_code}",
                     )
                     break
+                logger.info(
+                    "🎯 Keyword hit on %s but no store carries it — abstaining",
+                    target_code,
+                )
+
+        # A code the client typed may be a KBLI-2020 number KBLI 2025 does not
+        # carry. PR #6810 taught `inspect_kbli` to bury those; this channel never
+        # learned it, so until today the bot could still describe 74100 as a live
+        # regulated activity the day after the page buried it.
+        #
+        # WHY HERE AND NOT IN EACH PATH. Two paths above can set
+        # `direct_kbli_match` — the code the client typed and the activity-keyword
+        # route above — and both resolve through `_resolve_code_from_stores`.
+        # Curing each would be two copies of one predicate and a third path
+        # tomorrow that nobody remembers (superscar #9). They converge on ONE
+        # variable, so the verdict is applied once, where they meet. It sits after
+        # the keyword route on purpose: while it sat before, a keyword-injected
+        # match skipped the tombstone entirely.
+        #
+        # SILENCE WHEN WE CANNOT ASK. No pool, or an unreadable catalogue, means
+        # `UNKNOWN` — the match is returned untouched and this channel behaves
+        # exactly as it did before. Absence is only convicting when the catalogue
+        # is evidently present; `fetch_catalogue_membership` owns that asymmetry
+        # and logs what it swallowed.
+        direct_kbli_match = await _bury_if_phantom(pool, direct_kbli_match)
 
         # Search semantic context with translated query
         results = []
@@ -1588,7 +1568,9 @@ async def chat_kbli(
                                     title=row["name"],
                                     description=_official_scope(props, code),
                                     score=0.8,  # Static score for fallback
-                                    risk_category=props.get("kategori_risiko", "Unknown"),
+                                    risk_category=_channel_risk(
+                                        props.get("kategori_risiko")
+                                    ),
                                     **_pma_disclosure_fields(props),
                                 ),
                             )

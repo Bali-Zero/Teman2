@@ -398,30 +398,28 @@ async def test_generate_kbli_explanation_indonesian_fallback():
 # ============================================================
 
 
-def test_known_kbli_codes_structure():
-    from backend.app.routers.kbli_notebook_chat import KNOWN_KBLI_CODES
+def test_the_keyword_map_routes_without_asserting_facts():
+    """The hand-written answer table behind these two tests was deleted 2026-09-20.
 
-    assert isinstance(KNOWN_KBLI_CODES, dict)
-    # 47901, not 47911: this assertion is a structural sample (a code the dict
-    # holds), not a claim that any particular code belongs here. 47911 was a
-    # KBLI 2020 code, retired in 2025 and absent from the catalogue; whether a
-    # code is legitimate is asserted by
-    # test_kbli_hardcoded_fallback_matches_catalogue.py, which checks the whole
-    # dict against canonical instead of sampling it.
-    assert "47901" in KNOWN_KBLI_CODES
-    assert "56301" in KNOWN_KBLI_CODES
-    for _, data in KNOWN_KBLI_CODES.items():
-        assert "title" in data
-        assert "description" in data
-        assert "pma_status" in data
-        assert "risk_category" in data
+    What it used to be sampled for — that a keyword route resolves 47901 and 56301
+    with a PMA status the catalogue agrees with — is now answered by the stores,
+    so the structural claim left to make here is that the ROUTE exists and that
+    nothing beside it carries a verdict. Whether a routed code is legitimate is
+    asserted against canonical by
+    test_kbli_hardcoded_fallback_matches_catalogue.py, which sweeps the whole map
+    instead of sampling it.
+    """
+    import inspect
 
+    from backend.app.routers import kbli_notebook_chat
 
-def test_known_kbli_56301_uses_canonical_pma_status():
-    from backend.app.routers.kbli_notebook_chat import KNOWN_KBLI_CODES
-
-    assert KNOWN_KBLI_CODES["56301"]["title"] == "AKTIVITAS BAR"
-    assert KNOWN_KBLI_CODES["56301"]["pma_status"] == "TERBUKA"
+    source = inspect.getsource(kbli_notebook_chat)
+    assert "_activity_keyword_map" in source
+    assert "KNOWN_KBLI_CODES" not in source
+    assert '"47901"' in source, "the e-commerce route must still name the live successor"
+    assert "_resolve_code_from_stores(pool, target_code)" in source, (
+        "the keyword route must resolve its facts through the stores"
+    )
 
 
 def test_master_prompt_does_not_override_56301_as_closed_to_pma():
