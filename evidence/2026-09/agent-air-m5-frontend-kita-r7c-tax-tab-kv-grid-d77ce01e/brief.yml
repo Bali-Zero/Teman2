@@ -1,8 +1,8 @@
 task: >-
   R7c of the kita client-profile redesign (`PLAN-redesign.md`): TaxTab.tsx
   moved from the bz-product-panel cards to the r19 primitives (LedgerSection,
-  HairlineGrid / CellStack, StatePill) and is committed on
-  `agent/air-m5/frontend/kita-r7c-tax-tab-kv-grid` at HEAD aa1669d936. An
+  HairlineGrid / CellStack, StatePill); that restyle is commit aa1669d936 on
+  `agent/air-m5/frontend/kita-r7c-tax-tab-kv-grid`. An
   independent OLD-vs-NEW parity audit
   (`/Users/balizero/kita-renders/2026-09-19-client-profile/audits/R7c-audit.md`)
   judged it SHIP-WITH-CONDITIONS — "the strongest restyle of the lot" — with
@@ -20,9 +20,9 @@ task: >-
   `FOCUS` constant (TaxTab.tsx:151) instead of a ring the same colour as its
   border, and A3 discloses the audit's non-blocking tone changes and the newly
   visible assignee email below. The two pre-existing suites
-  (TaxTab.consultants, TaxTab.healthPip) stay byte-identical and green. Changes
-  are left UNCOMMITTED in the worktree; this seat prepares only — no commit,
-  push, PR, merge or deploy. By the owner's decision of 2026-09-19 the redesign
+  (TaxTab.consultants, TaxTab.healthPip) stay byte-identical and green. The
+  repair round was prepared by an external builder seat and committed by the
+  grading session as c9e133ae67. By the owner's decision of 2026-09-19 the redesign
   does not wait for a human code review before arming.
 lane: frontend/kita-r7c-tax-tab-kv-grid
 machine: air-m5
@@ -30,14 +30,11 @@ date: 2026-09-20
 
 gear: 2
 gear_reason: >-
-  Deterministic floor 2, source `size`. The committed round at HEAD measures
-  churn 1281 (474+0 TaxTab.test.tsx, 422+385 TaxTab.tsx per the audit's
-  `git diff --no-renames --numstat origin/main...HEAD`), and this repair round
-  adds 237 more churn lines unstaged (198+24 TaxTab.test.tsx, 11+4
-  TaxTab.tsx, measured with `git diff --numstat` in the worktree on
-  2026-09-20) — combined 1518, above SIZE_GEAR2_THRESHOLD (400) and below
-  SIZE_GEAR3_THRESHOLD (1828). No hot-zone path is hit (both files are under
-  `apps/mouth/`). Net is +691 combined.
+  Deterministic floor 2, source `size`. `git diff --no-renames --numstat
+  origin/main...HEAD` measures TaxTab.test.tsx +648/-0 and TaxTab.tsx
+  +429/-385 — code churn 1462, plus this brief — above SIZE_GEAR2_THRESHOLD
+  (400) and, brief included, below SIZE_GEAR3_THRESHOLD (1828). No hot-zone
+  path is hit (both code files are under `apps/mouth/`).
 
 appetite:
   wall_clock_hours: 1
@@ -98,8 +95,8 @@ out_of_scope: >-
   and N6/N7/N8 (backend statuses collapsed to "Draft", the double-guarded NPWP
   fallback, the health pip's double announcement) are the audit's own
   non-blocking/follow-up items and are deliberately not taken in this round.
-  Arming, merging, deploying or proving live — this seat prepares uncommitted;
-  the ship sequence belongs to the release owner, and per the owner's decision
+  Arming, merging, deploying and proving live are not acceptance items of this
+  brief; the ship sequence belongs to the session that owns the mandate, and per the owner's decision
   of 2026-09-19 the redesign does not wait for a human code review before
   arming.
 
@@ -129,3 +126,8 @@ disclosed_product_visible_changes: >-
   the assignee cell now shows the assigned consultant's email under their first
   name (A3); and the empty quarter row once again shows its month range
   (`Apr-Jun · No report`), restoring what the old file rendered (B1).
+  One displayed value changes on purpose: where a client record carried an
+  EMPTY NPWP string next to a real tax_id, the old tab printed "not registered"
+  and never the tax_id; the fallback now uses `||`, so that tax_id is shown.
+  A client with a real NPWP sees no difference, and a real own NPWP still wins
+  over both tax_id and the company fallback.
