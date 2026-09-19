@@ -2690,6 +2690,79 @@ async def test_offshore_positive_overstay_conflict_names_a_condition(
     }
 
 
+async def test_http_free_run_public_evaluation_projects_a_supported_condition(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """gate vo-gate-a1c's OBS-I: the ONLY existing `run_public_evaluation`
+    test with a conditioning flag
+    (`test_offshore_positive_overstay_conflict_names_a_condition`, above)
+    starts from a `HUMAN_REVIEW_REQUIRED` baseline — the fixed identity is a
+    minor, so the pack's own `review.minor-without-guardian` rule holds
+    regardless of any disclosure. That proves a NOTICE survives the public
+    projection; it does not prove a KEPT CANDIDATE does, because there is no
+    candidate to lose. Every `SUPPORTED_CANDIDATES` + condition assertion
+    elsewhere in this repo calls `_apply_disclosed_review_flags` directly,
+    never through the full `run_public_evaluation` -> `run_evaluation` ->
+    `VisaOracleEvaluateResponse` projection this HTTP-facing wire actually
+    uses.
+
+    `_apply_decisive_source_authority_hold` and
+    `_apply_safety_critical_source_hold` are neutralised to identity for
+    THIS test only, isolating the layer under test the same way
+    `_patch_engine_chain` already isolates binding/verify/compile —
+    measured, not assumed: without this,
+    `run_public_evaluation`/`run_evaluation` against the gold TEST pack
+    ALWAYS end `HUMAN_REVIEW_REQUIRED` with `DECISIVE_PRIMARY_SOURCE_NOT_
+    APPLICABLE`, because those two adapters gate every `SUPPORTED_
+    CANDIDATES`/`NO_SUPPORTED_PATH` decision on the TEST pack's source
+    records being authoritative and fresh AT REAL WALL-CLOCK TIME —
+    `run_public_evaluation` has no parameter to pin `evaluation_time` (only
+    `run_evaluation` does, and `run_public_evaluation` never passes one
+    through). `test_source_projection_exposes_bitemporal_freshness_without_
+    invented_ttl` above independently documents this exact same hold on the
+    same persona through the same unpatched path. Neither adapter is
+    disclosure-related; neutralising them proves nothing about the
+    disclosure layer and everything is otherwise real: the pack, the
+    compiler, the disclosure adapter, and the response projection all run
+    unmodified. `_UntouchedPool` proves the projection needs no live
+    database on this path (`idempotency_key=None`, `_save_evaluate_decision`
+    patched to a recorder).
+    """
+
+    monkeypatch.setenv(evaluate_path.EVALUATE_MODE_ENV, "SHADOW")
+    _patch_engine_chain(monkeypatch)
+    monkeypatch.setattr(
+        evaluate_path,
+        "_apply_decisive_source_authority_hold",
+        lambda decision, compiled: decision,
+    )
+    monkeypatch.setattr(
+        evaluate_path,
+        "_apply_safety_critical_source_hold",
+        lambda decision, compiled: decision,
+    )
+    facts = gold_loader.load_persona(gold_loader.PERSONAS_DIR / "02_business_c2.json").facts
+    wire = _wire_payload(facts)
+    wire["disclosed_review_flags"] = ["HEALTH_CONCERN"]
+
+    response = await evaluate_path.run_public_evaluation(
+        _UntouchedPool(),
+        request=VisaOracleEvaluateRequest.model_validate(wire),
+        traffic_source="real",
+        request_category_hint=None,
+        request_trace="trace-supported-condition-projection",
+        canonical_request=b"{}",
+        idempotency_key=None,
+    )
+
+    assert response.decision.state is DecisionState.SUPPORTED_CANDIDATES
+    assert [candidate.product_code for candidate in response.decision.candidates] == ["C2"]
+    assert response.decision.review_reasons == ()
+    assert "DISCLOSED_HEALTH_CONCERN_CONDITION" in {
+        notice.code for notice in response.decision.notices
+    }
+
+
 async def test_source_projection_exposes_bitemporal_freshness_without_invented_ttl(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
