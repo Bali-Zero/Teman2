@@ -23,7 +23,6 @@ import {
   Phone,
   Calendar,
   X,
-  UserCheck,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { AvatarWithFallback } from "@/components/ui/avatar-with-fallback";
@@ -51,6 +50,10 @@ import {
   Stamp,
   PILL_TONE,
   PILL_SQUARE,
+  LedgerSection,
+  EmptyState,
+  EYEBROW,
+  FIELD,
 } from "@/components/workspace/r19";
 import { clientStatusTone, viewerIsNext } from "../client-row-model";
 import styles from "./client-detail-desk.module.css";
@@ -429,12 +432,20 @@ export function ClientDetailClient({
   // then surfaces real company data (and its Sync Drive / edit / vault
   // actions) that hiding would orphan.
   const hasCompanyLinks = (company_links?.length ?? 0) > 0;
-  const showCompanyTaxTabs = hasCompanyLinks || Boolean(client.company_name);
+  const showCompanyTab = hasCompanyLinks || Boolean(client.company_name);
+  // R7a rework: the Tax tab also stays when the CLIENT'S OWN tax identifiers
+  // are on record (TaxTab renders them — `client.npwp ?? client.tax_id` and
+  // `client.nib` — and nothing else on the page does), so hiding the tab for
+  // a company-less client with a personal NPWP would make a stored fact
+  // invisible.
+  const showTaxTab =
+    showCompanyTab || Boolean(client.npwp || client.tax_id || client.nib);
   // Render-time fallback, NOT a URL-effect reset: the effect runs while the
-  // profile is still loading, so bouncing there would discard a ?tab=company
-  // deep link before the data can prove whether the tab exists.
+  // profile is still loading, so bouncing there would discard a deep link
+  // before the data can prove whether the tab exists.
   const visibleTab: TabType =
-    !showCompanyTaxTabs && (activeTab === "company" || activeTab === "tax")
+    (activeTab === "company" && !showCompanyTab) ||
+    (activeTab === "tax" && !showTaxTab)
       ? "overview"
       : activeTab;
 
@@ -1012,10 +1023,11 @@ export function ClientDetailClient({
                 icon: MessageCircle,
               },
             ]
-              .filter(
-                ({ key }) =>
-                  showCompanyTaxTabs || (key !== "company" && key !== "tax"),
-              )
+              .filter(({ key }) => {
+                if (key === "company") return showCompanyTab;
+                if (key === "tax") return showTaxTab;
+                return true;
+              })
               .map(({ key, label, icon: Icon }) => (
                 <button
                   key={key}
@@ -1064,64 +1076,63 @@ export function ClientDetailClient({
                 clientName={client.full_name}
               />
               {/* R7a: for a client with no company links (and no company name
-                  on record) the Company/Tax tabs are hidden — so the two
-                  actions they carried move here, to the Overview the deep
-                  links fall back to: linking the first company, and the tax
-                  consultant assignment TaxTab renders for every client. */}
-              {!showCompanyTaxTabs && (
-                <section
-                  aria-label="Company and tax"
-                  className="rounded-xl border border-[var(--bz-border)] bg-[var(--bz-surface)] p-4 space-y-4"
-                >
-                  <div className="flex items-center justify-between gap-3 flex-wrap">
-                    <div className="min-w-0">
-                      <p className="text-sm font-medium text-[var(--bz-text-1)]">
-                        No company linked
-                      </p>
-                      <p className="text-xs text-[var(--bz-text-2)] max-w-sm">
-                        This client has no associated company. Create a new one
-                        or link an existing one — the Company and Tax sections
-                        appear once a link exists.
-                      </p>
-                    </div>
+                  on record) the Company/Tax tabs are hidden — so the actions
+                  they carried move here, to the Overview the deep links fall
+                  back to: linking the first company, and — only when the Tax
+                  tab is hidden too — the tax-consultant assignment TaxTab
+                  renders (two live copies of one control on one page would be
+                  a defect). An r19 LedgerSection, not a boxed card: the Add
+                  company control sits in the always-visible actions slot,
+                  never in a hover-only row action. */}
+              {!showCompanyTab && (
+                <LedgerSection
+                  n={2}
+                  tone="wait"
+                  title="Company & tax"
+                  actions={
                     <Button
                       variant="outline"
                       size="sm"
                       onClick={() => setIsAddingCompany(true)}
                     >
-                      <Building2 className="w-4 h-4" />
-                      Add Company
+                      Add company
                     </Button>
-                  </div>
-                  <div className="flex items-center gap-3 border-t border-[var(--bz-border)] pt-4">
-                    <UserCheck className="w-4 h-4 text-[var(--tx-secondary)] shrink-0" />
-                    <label
-                      htmlFor="tax-consultant-inline"
-                      className="text-sm font-medium text-[var(--bz-text-1)]"
-                    >
-                      Tax Consultant
-                    </label>
-                    <select
-                      id="tax-consultant-inline"
-                      value={taxConsultantValue}
-                      onChange={(e) => void saveTaxConsultant(e.target.value)}
-                      disabled={isSavingTaxConsultant}
-                      className="flex-1 max-w-[220px] px-3 py-1.5 rounded-lg border border-[var(--bz-border)] bg-[var(--bz-base)] text-sm text-[var(--bz-text-1)] focus:outline-none focus:border-[var(--line-control)] transition-colors disabled:opacity-60"
-                    >
-                      <option value="">— not assigned —</option>
-                      {taxConsultants.map((c) => (
-                        <option key={c.value} value={c.value}>
-                          {c.label}
-                        </option>
-                      ))}
-                    </select>
-                    {isSavingTaxConsultant && (
-                      <span className="text-xs text-[var(--bz-text-2)]">
-                        Saving…
-                      </span>
-                    )}
-                  </div>
-                </section>
+                  }
+                >
+                  <EmptyState>No company linked yet.</EmptyState>
+                  {!showTaxTab && (
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-2 py-3">
+                      <label
+                        htmlFor="tax-consultant-inline"
+                        className={EYEBROW}
+                      >
+                        Tax consultant
+                      </label>
+                      <select
+                        id="tax-consultant-inline"
+                        value={taxConsultantValue}
+                        onChange={(e) => void saveTaxConsultant(e.target.value)}
+                        disabled={isSavingTaxConsultant}
+                        className={
+                          FIELD +
+                          " max-w-[260px] cursor-pointer appearance-auto"
+                        }
+                      >
+                        <option value="">— not assigned —</option>
+                        {taxConsultants.map((c) => (
+                          <option key={c.value} value={c.value}>
+                            {c.label}
+                          </option>
+                        ))}
+                      </select>
+                      {isSavingTaxConsultant && (
+                        <span className="text-xs text-[var(--tx-secondary)]">
+                          Saving…
+                        </span>
+                      )}
+                    </div>
+                  )}
+                </LedgerSection>
               )}
             </>
           )}
