@@ -125,7 +125,10 @@ class OrderEmailFacts:
     price_idr: int
     state: str
     # OP-F04/OP-F05: a late `paid` webhook on a terminal order raises this flag
-    # and leaves `state` UNCHANGED (migration 284, repository.py:487/517). So a
+    # and leaves `state` UNCHANGED (migration 284; the `OrderState.REFUNDED` and
+    # `OrderState.FAILED/EXPIRED` branches of `handle_paid_event`, named rather
+    # than numbered because the line numbers this comment used to carry,
+    # `repository.py:487/517`, had already drifted onto unrelated code). So a
     # `failed`/`expired` reading alone does NOT mean "no money was taken" — the
     # two handlers that say so in as many words must read this too. No default:
     # a `_load` that forgets the column must fail loudly, not send a lie.
@@ -698,10 +701,16 @@ class LateRefundConfirmationEmailHandler:
 
     NOT A COPY OF `RefundEmailHandler`, and the difference is the guard.
     `RefundEmailHandler` keys on `state == 'refunded'`. `resolve_late_order`
-    sets `late_case_open = FALSE` and `late_case_resolution` and leaves `state`
-    UNCHANGED, so the order behind this job may be `refunded`, `failed` or
-    `expired` — a state guard would be reading a column this transition never
-    writes.
+    sets `late_case_open = FALSE` and `late_case_resolution`, and writes `state`
+    ONLY on the `refunded_in_full` branch of an order still in
+    `awaiting_payment` (the OP-F08 case) — so the order behind this job may be
+    `paid` (OP-08 opens a case on an order already paid, and a gate probe
+    measured this mail queued for exactly that), `refunded`, `failed` or
+    `expired`, and on the `honoured` branch the state is whatever the case was
+    opened on. A state guard would still be reading a column that does not
+    identify this transition. The `paid` reading was missing from this list
+    before the branch that rewrote the sentence, and is named now because an
+    enumeration that is short by one is read as exhaustive.
 
     WHAT THIS MAIL MAY AND MAY NOT SAY. Three transitions open a late-payment
     case, and they are not the same story: OP-08 (a real duplicate charge on an
@@ -1810,9 +1819,13 @@ class StaffPageDuplicateChargeHandler(_StaffPageHandler):
             "paid. Refund the charge named above.\n\n"
             "DO NOT close this one with resolveLateOrder's refund resolution. "
             "It refunds the order's `late_case_charge_id`, and OP-08 never "
-            "writes that column — it is either empty or still holds an "
-            "already-refunded charge from an earlier case. Refunding through it "
-            "would target the wrong money.\n\n"
+            "writes that column — it is either empty or holds a charge from an "
+            "EARLIER case on this order. That used to mean an already-refunded "
+            "charge; since OP-F08 it can also be the customer's LIVE payment, "
+            "the one that bought the service, because a case opened while the "
+            "order was still awaiting payment can be closed as honoured by the "
+            "webhook that finally arrives. Refunding through it would target "
+            "the wrong money, and now possibly the RIGHT money.\n\n"
             f"Order: {self._tracker_link(facts.order_id)}"
         )
 
@@ -1985,6 +1998,12 @@ class StaffPageChargeWithoutWebhookHandler(_StaffPageHandler):
             "practice. Resolving it as honoured BY HAND does not: it closes "
             "the case and the customer is left paid with nothing running. "
             "Use resolveLateOrder here only to refund.\n\n"
+            "REPLAY ONLY IF YOU HAVE NOT REFUNDED. The two moves on this page "
+            "are alternatives, not a sequence. Once this case is refunded the "
+            "order is `refunded` and a replayed callback opens a SECOND page "
+            "— LATE PAYMENT AFTER REFUND — naming the very charge you just "
+            "gave back. That page is correct about the webhook and wrong "
+            "about the money: there is nothing further to refund.\n\n"
             f"Order: {self._tracker_link(facts.order_id)}"
         )
 

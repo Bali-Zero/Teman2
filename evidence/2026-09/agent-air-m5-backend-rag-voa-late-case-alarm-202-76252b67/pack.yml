@@ -461,8 +461,16 @@ dissent:
       every 5 minutes, about the one order we have just concluded no webhook is
       coming for. Kimi raised the same thing as a MINOR.
     resolution: >-
-      Accepted. Specified by this session and BUILT by `agy-gemini-3.1-pro`
-      (the non-Anthropic builder lane): `ExpiryOutcome` replaces the bare bool,
+      Accepted. Specified by this session and BUILT by `kimi-code/k3` (the
+      non-Anthropic builder lane): `ExpiryOutcome` replaces the bare bool,
       `ReconciliationSummary` gains `late_cases_opened`, and the log line
       reports all four numbers. Applied, re-read and tested by this session.
+      CORRECTED after the merge of #6841 (in the follow-up PR, on the record
+      rather than silently): this line credited `agy-gemini-3.1-pro`, which is
+      the seat the slice was OFFERED to and which never produced one — both of
+      its runs died on the `jetski` permission error recorded in
+      `seat_substitution` above, and `lanes`, `seat_substitution` and the
+      evidence entry that grades the slice all name kimi. One artifact, one
+      builder; the wrong name in the dissent was a stale draft, not a second
+      account of what happened.
 appetite_exceeded: ""

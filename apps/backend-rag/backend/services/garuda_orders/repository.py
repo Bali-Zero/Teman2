@@ -119,6 +119,65 @@ async def _quarantine(conn: asyncpg.Connection, *, provider_event_id: str, reaso
     )
 
 
+async def _open_late_case(
+    conn: asyncpg.Connection, *, order_id: str, charge_id: str | None
+) -> None:
+    """Open a remediation case on an order — CLEARING whatever the previous
+    case left behind.
+
+    Migration 284's CHECK admits (open TRUE, resolution NULL) and
+    (open FALSE, resolution NOT NULL), never (open TRUE, resolution NOT
+    NULL): `late_case_resolution` describes the case the order carries NOW,
+    and the history lives in the journal, where `order.late_resolved` and
+    OP-02's `honoured` close are permanent. So an order whose case was closed
+    and which now earns a SECOND one must start it with an empty resolution,
+    or the UPDATE is a `check_violation` that aborts the whole webhook
+    transaction — the payment inbox row never commits and the provider
+    retries into the same wall.
+
+    That second case stopped being hypothetical when a refunded OP-F08 case
+    started leaving `awaiting_payment` for `refunded`: the staff page's first
+    instruction is to replay the webhook, the replay lands in OP-F04, and
+    OP-F04 opens a case on an order that has just been resolved. MEASURED as
+    `CheckViolationError ... garuda_orders_check` before this existed. OP-F05
+    and OP-08 carry the same write, reachable the same way from an
+    OP-F08 case that OP-02 closed as `honoured`, so all three call here.
+
+    `late_case_open = FALSE` in the predicate keeps the write idempotent: a
+    case already open is never re-opened, and its charge id is never
+    overwritten by a later event.
+
+    `charge_id` is written UNCONDITIONALLY, NULL included, and that is the
+    money-safety half of this helper. OP-08 is the one caller that has no
+    charge id to give: the duplicate's id lives in the journal `detail`, and
+    the column names what `resolve_late_order` would refund. Leaving the
+    previous case's id in place (a `COALESCE`, which is what this function
+    did for one commit) means an OP-08 case opened after an OP-F08 case that
+    OP-02 closed as `honoured` carries the customer's LIVE payment — the
+    charge that bought the service — and a staff refund through
+    `resolveLateOrder` gives back the RIGHT money for the wrong reason.
+    Measured by a gate probe: `REFUND CALLS = ['ch-LEGIT']` while the
+    duplicate was `ch-DUPLICATE`. With NULL the refund raises
+    `RefundFailed -> PaymentProviderUnavailable` instead: a 503 a human sees,
+    not a silent wrong refund. Failing loudly is the correct default while
+    the product question underneath — what OP-08's closure SHOULD be — stays
+    open in the ledger.
+    """
+
+    await conn.execute(
+        """
+        UPDATE garuda_orders
+           SET late_case_open = TRUE,
+               late_case_charge_id = $2,
+               late_case_resolution = NULL,
+               late_case_staff_reference = NULL
+         WHERE order_id = $1 AND late_case_open = FALSE
+        """,
+        order_id,
+        charge_id,
+    )
+
+
 class GarudaOrderRepository:
     def __init__(
         self,
@@ -557,10 +616,7 @@ class GarudaOrderRepository:
                     customer_visible=True,
                     detail={"second_charge_id": event.provider_charge_id},
                 )
-                await conn.execute(
-                    "UPDATE garuda_orders SET late_case_open = TRUE WHERE order_id = $1 AND late_case_open = FALSE",
-                    order_id,
-                )
+                await _open_late_case(conn, order_id=order_id, charge_id=None)
                 await journal.enqueue_outbox(
                     conn,
                     order_id=order_id,
@@ -576,15 +632,7 @@ class GarudaOrderRepository:
                 # which for a refunded order still names the ORIGINAL,
                 # already-refunded charge) so resolveLateOrder refunds the
                 # right money.
-                await conn.execute(
-                    """
-                    UPDATE garuda_orders
-                       SET late_case_open = TRUE, late_case_charge_id = $2
-                     WHERE order_id = $1 AND late_case_open = FALSE
-                    """,
-                    order_id,
-                    event.provider_charge_id,
-                )
+                await _open_late_case(conn, order_id=order_id, charge_id=event.provider_charge_id)
                 event_id = await journal.append_event(
                     conn,
                     event_name="payment.late_paid_after_refund",
@@ -606,15 +654,7 @@ class GarudaOrderRepository:
                 # here (a failed/expired order never reached OP-02) — the
                 # late charge id must be persisted on the order, not only in
                 # journal `detail`, or resolveLateOrder has nothing to refund.
-                await conn.execute(
-                    """
-                    UPDATE garuda_orders
-                       SET late_case_open = TRUE, late_case_charge_id = $2
-                     WHERE order_id = $1 AND late_case_open = FALSE
-                    """,
-                    order_id,
-                    event.provider_charge_id,
-                )
+                await _open_late_case(conn, order_id=order_id, charge_id=event.provider_charge_id)
                 event_id = await journal.append_event(
                     conn,
                     event_name="payment.late_paid_after_terminal",
@@ -1007,9 +1047,79 @@ class GarudaOrderRepository:
                     conn, order_id=order_id, journal_event_id=event_id, job_type=job_type
                 )
 
+                final_state = row["state"]
+                if resolution == "refunded_in_full" and final_state == (
+                    OrderState.AWAITING_PAYMENT.value
+                ):
+                    # THE ORDER MUST LEAVE `awaiting_payment` HERE, and this is
+                    # the whole point of the change. Until OP-F08 existed, every
+                    # late case sat on an order that had already reached a
+                    # terminal state, so a refund could not be followed by
+                    # anything. OP-F08 opens a case on a LIVE order — and the
+                    # page's own first move is "register the callback URL and
+                    # replay the webhook". A fresh Opus gate session measured
+                    # what that produces on the pre-cure code: refund, then
+                    # replay, and OP-02 welcomes the webhook because the state
+                    # it guards on is still `awaiting_payment` -> `paid`,
+                    # practice minted, "payment received" emailed, on money we
+                    # had just returned (`TRANSITION AFTER REFUND: OP-02 /
+                    # PRACTICES: 1`).
+                    #
+                    # Writing the terminal state the refund actually means
+                    # closes it WITHOUT a new guard: `handle_paid_event`'s
+                    # OP-F04 branch already knows what a paid webhook for a
+                    # refunded order is — keep `refunded`, open a remediation
+                    # case carrying the LATE charge id, page staff, never
+                    # release the practice. The cure is to let the existing
+                    # machinery see the truth, not to add a second rule beside
+                    # it.
+                    #
+                    # OP-05 is `awaiting_payment -> refunded` in this
+                    # repository's own state machine (`state_machine.py`), so
+                    # no new transition id and no migration: the journal CHECK
+                    # already admits it. The event NAME is new because the
+                    # existing OP-05 event (`payment.refunded_out_of_order`)
+                    # says a refund webhook arrived before its paid event, and
+                    # nothing arrived here — staff called the provider.
+                    moved = await conn.fetchrow(
+                        """
+                        UPDATE garuda_orders
+                           SET state = 'refunded'
+                         WHERE order_id = $1 AND state = 'awaiting_payment'
+                        RETURNING order_id
+                        """,
+                        order_id,
+                    )
+                    if moved is not None:
+                        final_state = OrderState.REFUNDED.value
+                        await journal.append_event(
+                            conn,
+                            event_name="payment.refunded_after_late_case",
+                            aggregate_type="order",
+                            aggregate_id=order_id,
+                            transition_id="OP-05",
+                            # NOT customer-visible, and the detail carries no
+                            # staff free text. `staff_reference` is a string a
+                            # human types into `resolveLateOrder` and the router
+                            # validates only that it IS a string
+                            # (`garuda_orders_router.py`): no length, no
+                            # charset, and a gate probe showed what staff
+                            # actually write there — a ticket id followed by a
+                            # customer name and phone number. Copying that into
+                            # a journal row flagged "may be shown to the
+                            # customer" would have made this the first
+                            # customer-visible event in the file whose detail is
+                            # free text; it stays on the order row, where the
+                            # existing writer already put it. The customer's own
+                            # notice of this resolution is `order.late_resolved`
+                            # and already exists.
+                            customer_visible=False,
+                            detail={"resolution": resolution},
+                        )
+
             response_body = {
                 "order_id": order_id,
-                "order_state": row["state"],
+                "order_state": final_state,
                 "resolution": resolution,
             }
             await idempotency.complete(

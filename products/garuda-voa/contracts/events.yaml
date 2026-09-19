@@ -272,6 +272,44 @@ $defs:
           customer_visible: { const: false }
     unevaluatedProperties: false
 
+  PaymentRefundedAfterLateCase:
+    x-event-name: payment.refunded_after_late_case
+    x-idempotency-source: one per order, guarded by the state CAS on `awaiting_payment`
+    x-grounded-by: STATE-MACHINE.md OP-05 (`awaiting_payment -> refunded`).
+    description: >-
+      Staff refunded a late case on an order that was still LIVE, and the order therefore
+      leaves `awaiting_payment` for the terminal `refunded`. Only an OP-F08 case can be in
+      this position: every other remediation case is opened on an order that already
+      reached a terminal state, so a refund could not be followed by anything. Here it
+      could — the OP-F08 staff page's own first move is "register the callback URL and
+      replay the webhook", and a replayed webhook against an order still reading
+      `awaiting_payment` walks into OP-02 and PAYS it: practice minted, "payment received"
+      emailed, on money already returned. Writing the state the refund actually means
+      hands that webhook to OP-F04 instead, which keeps `refunded`, pages staff and never
+      releases the practice.
+      The transition is OP-05 because that IS `awaiting_payment -> refunded` in this
+      product's state machine; the event name is separate from
+      `payment.refunded_out_of_order` because nothing arrived out of order — staff called
+      the provider, and the record should say so.
+      NOT customer-visible, deliberately: `order.late_resolved` is the customer's notice
+      of this resolution and already carries it. This row records the STATE move, and its
+      detail carries the resolution enum only — never `staff_reference`, which is free
+      text a human types into `resolveLateOrder` and which the router validates only as a
+      string.
+    allOf:
+      - $ref: "#/$defs/EventEnvelope"
+      - type: object
+        properties:
+          event_name: { const: payment.refunded_after_late_case }
+          aggregate_type: { const: order }
+          transition_id: { const: OP-05 }
+          customer_visible: { const: false }
+          resolution:
+            type: string
+            enum: [refunded_in_full]
+        required: [resolution]
+    unevaluatedProperties: false
+
   LateOrderResolved:
     x-event-name: order.late_resolved
     x-idempotency-source: staff resolution command identity

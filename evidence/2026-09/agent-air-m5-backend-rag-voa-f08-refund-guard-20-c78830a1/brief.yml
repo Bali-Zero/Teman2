@@ -1,0 +1,111 @@
+gear: 2
+task_id: voa-f08-refund-guard-20260919
+lane: backend-rag
+host: air-m5 (M5)
+branch: agent/air-m5/backend-rag/voa-f08-refund-guard-20260919
+gate_class: opus
+l_level: L2
+objective: >-
+  Close the two conditions the fresh-Opus final gate on #6841 left open, and
+  the defect that curing the first one makes reachable. (1) MEASURED on
+  #6841's head, by a session outside the contribution chain: refund an OP-F08
+  late case and the order stays `awaiting_payment`, because
+  `resolve_late_order` never writes `state`. The OP-F08 staff page's own
+  first instruction is "register the callback URL and replay the webhook";
+  the replay then walks into OP-02, which guards on exactly that state. Probe
+  output on the pre-cure code: `TRANSITION AFTER REFUND: OP-02 / PRACTICES:
+  1` — practice minted and "payment received" emailed on money just returned.
+  OP-F08 is the first writer in this lane to open a case on a LIVE order, so
+  this pair could not exist before #6841. (2) Writing the terminal state the
+  refund means makes a SECOND case on the same order routine, and migration
+  284's CHECK forbids (late_case_open TRUE, resolution NOT NULL): OP-F04,
+  OP-F05 and OP-08 all open a case with a bare `SET late_case_open = TRUE`,
+  which on a previously-resolved order is a `CheckViolationError` aborting
+  the whole webhook transaction. Measured, not predicted. The OP-08 path
+  needs no change of mine to reach it — since #6841 OP-02 closes an open case
+  as `honoured`. (3) The PII test that is the reason
+  `test_staff_page_handlers.py` exists enumerated FIVE handlers while six
+  exist: the OP-F08 page shipped unpinned by it.
+scope:
+  - >-
+    apps/backend-rag/backend/services/garuda_orders/repository.py —
+    `resolve_late_order` writes `refunded` (OP-05, CAS on
+    `awaiting_payment`) when the resolution is `refunded_in_full`, and
+    journals `payment.refunded_after_late_case`; new module-level
+    `_open_late_case` clears the previous case's resolution, called by the
+    OP-F04, OP-F05 and OP-08 branches. No migration: OP-05 is already
+    `awaiting_payment -> refunded` in `state_machine.py` and already admitted
+    by the journal CHECK.
+  - >-
+    products/garuda-voa/contracts/events.yaml — new
+    `PaymentRefundedAfterLateCase`; journeys/STATE-MACHINE.md — the OP-F08
+    row says how the refund branch ends.
+  - >-
+    Tests — two new integration guilt tests (refund->replay, and the OP-08
+    sibling); the poisoned-detail and missing-order enumerations gain the
+    sixth handler, and the poisoned test now compares its own enumeration
+    against every `_StaffPageHandler` subclass.
+  - >-
+    evidence/2026-09/agent-air-m5-backend-rag-voa-late-case-alarm-202-76252b67/pack.yml
+    — one dissent resolution credited the builder slice to
+    `agy-gemini-3.1-pro`, the seat it was offered to and which never produced
+    one. Corrected to `kimi-code/k3`, on the record.
+constraints:
+  - >-
+    NO new guard in OP-02. The cure is to let the existing machinery see the
+    truth: an order the refund has settled reads `refunded`, and OP-F04
+    already knows what a paid webhook for a refunded order is. A second rule
+    beside OP-02 would be a third place to keep in agreement.
+  - >-
+    NO migration. OP-05 already exists as this transition; inventing a new
+    transition id would widen a CHECK for a transition the state machine
+    already names.
+  - >-
+    The refund itself is unchanged — same provider call, same late charge id,
+    same customer email. The state write must not displace it, and the test
+    asserts the refund call before asserting the state.
+  - >-
+    `_open_late_case` keeps `late_case_open = FALSE` in its predicate: an
+    already-open case is never reopened and its charge id never overwritten.
+acceptance:
+  - text: >-
+      GUILT: WHEN staff refund an OP-F08 case, the order SHALL read `refunded`
+      with exactly one `payment.refunded_after_late_case`/OP-05 journal row,
+      AND a replayed paid webhook SHALL be admitted as OP-F04 only — state
+      stays `refunded`, zero `garuda_practices` rows, zero `payment.paid`
+      events, zero `payment_paid_email` jobs — WHILE the refund confirmation
+      and the OP-F04 staff page are each queued exactly once.
+    probe: >-
+      pytest backend/tests/services/garuda_orders/test_repository_integration.py::test_a_refunded_op_f08_case_leaves_awaiting_payment_so_a_replay_cannot_pay_it
+  - text: >-
+      GUILT on the sibling path, reachable without this change: WHEN a
+      duplicate charge lands on an order whose OP-F08 case OP-02 closed as
+      `honoured`, OP-08 SHALL open a second case with a NULL resolution
+      instead of raising `CheckViolationError`.
+    probe: >-
+      pytest backend/tests/services/garuda_orders/test_repository_integration.py::test_a_duplicate_charge_after_an_honoured_late_case_opens_a_second_case
+  - text: >-
+      MUTATION: WHEN the resolution clear is removed from `_open_late_case`,
+      exactly those two tests SHALL go red and the other seventeen SHALL stay
+      green — the guard is pinned by the tests that claim it, and by no
+      others.
+    probe: >-
+      pytest backend/tests/services/garuda_orders/test_repository_integration.py
+  - text: >-
+      COVERAGE: the poisoned-detail enumeration SHALL equal the set of
+      `_StaffPageHandler` subclasses, and removing the OP-F08 entry SHALL fail
+      by name rather than silently shrink the test.
+    probe: >-
+      pytest backend/tests/services/garuda_orders/test_staff_page_handlers.py
+  - text: >-
+      CONTRACT: the frozen-contract invariants SHALL stay green with the new
+      event in `events.yaml`.
+    probe: >-
+      pytest ../../products/garuda-voa/contracts/tests/test_contract_invariants.py
+pii: none
+local_evidence: >-
+  No production data read for this slice. Every test runs against a local
+  throwaway Postgres built from `migrations_v2` in this session; every
+  applicant field in the fixtures is the suite's existing synthetic
+  `Test User` / `t@example.com`, and the poisoned-detail test's payload is
+  deliberately fake by construction.

@@ -28,7 +28,7 @@ import pytest
 asyncpg = pytest.importorskip("asyncpg")
 
 from backend.services.garuda_flow.intake import CaseType
-from backend.services.garuda_orders.errors import NoOpenLateCase
+from backend.services.garuda_orders.errors import NoOpenLateCase, PaymentProviderUnavailable
 from backend.services.garuda_orders.idempotency import canonical_payload_sha256, scoped_key_sha256
 from backend.services.garuda_orders.models import Applicant
 from backend.services.garuda_orders.ports import ReviewedCheckSnapshot
@@ -38,6 +38,7 @@ from backend.services.payments.port import (
     NormalizedFailureEvent,
     NormalizedPaidEvent,
     NormalizedRefundEvent,
+    RefundFailed,
 )
 from backend.services.payments.terminal_taxonomy import FailureOutcome, classify
 from backend.tests.fixtures.prod_shaped_pool import create_prod_shaped_pool
@@ -89,6 +90,13 @@ class _FakeProvider:
 
     async def refund(self, *, provider_charge_id: str, idempotency_key: str) -> str:
         self.refund_calls.append(provider_charge_id)
+        # A refund with no charge id is not a refund. The real adapter posts
+        # `{"invoice_id": provider_charge_id}` and the provider answers 404,
+        # which `xendit.py::refund` turns into `RefundFailed`. The fake owes
+        # the same refusal, or a test could assert "no wrong refund happened"
+        # while the code under test quietly believed a refund succeeded.
+        if not provider_charge_id:
+            raise RefundFailed("no charge id to refund")
         return "refund-fake-1"
 
 
@@ -1187,9 +1195,22 @@ async def test_op_f08_does_not_reopen_a_case_staff_already_resolved(pool, reposi
     )
     assert late_open_after is False
     assert resolution_col == "honoured"
+    # GUILT for the `refunded_in_full` guard, and it belongs HERE rather than in
+    # the refund test: this is the only place that resolves an OP-F08 case as
+    # `honoured`, so it is the only place where writing `refunded`
+    # unconditionally would be wrong. A gate session measured that without this
+    # line the whole suite stays green under exactly that mutation -- and the
+    # order would then sit in `refunded`, which the DB trigger makes terminal,
+    # with `refund_calls == []`: money never returned, order frozen as if it
+    # had been.
+    assert (
+        await pool.fetchval("SELECT state FROM garuda_orders WHERE order_id = $1", order_id)
+        == "awaiting_payment"
+    )
 
-    # The order is STILL awaiting_payment (resolve_late_order never writes
-    # `state`) and the provider is STILL answering "there is a charge" --
+    # The order is STILL awaiting_payment (resolve_late_order writes `state`
+    # only on the `refunded_in_full` branch) and the provider is STILL
+    # answering "there is a charge" --
     # exactly the shape that would retrigger the tick forever without the
     # resolution predicate. This must raise no exception.
     summary = await reconcile_expired_checkouts(pool, repository, limit=10)
@@ -1216,6 +1237,295 @@ async def test_op_f08_does_not_reopen_a_case_staff_already_resolved(pool, reposi
         order_id,
     )
     assert journal_count == 1  # still exactly one -- the resolved tick added none
+
+
+@pytest.mark.asyncio
+async def test_a_refunded_op_f08_case_leaves_awaiting_payment_so_a_replay_cannot_pay_it(
+    pool, repository
+):
+    """GUILT for the pair the fresh-Opus final gate MEASURED on the head of
+    PR #6841, after three review rounds had passed over it.
+
+    `resolve_late_order` never wrote `state`, and OP-F08 is the first writer
+    in this lane to open a late case on an order that is still LIVE -- every
+    other case (OP-F04, OP-F05, OP-08) is opened on an order that already
+    reached a terminal state, so a refund could not be followed by anything.
+    Here it could: a refunded OP-F08 case left the order reading
+    `awaiting_payment`, and the staff page's own first instruction is
+    "register the callback URL and replay the webhook". The replay walks into
+    OP-02, which guards on exactly that state -- order `paid`, practice
+    minted, "payment received" emailed, on money we had just returned. Probe
+    on the pre-cure code: `TRANSITION AFTER REFUND: OP-02 / PRACTICES: 1`.
+
+    The cure writes the terminal state the refund already means (OP-05,
+    `awaiting_payment -> refunded`), and the replayed webhook then lands in
+    the OP-F04 branch, which has always known what a paid webhook for a
+    refunded order is: keep `refunded`, open a remediation case carrying the
+    LATE charge id, page staff, mint nothing.
+    """
+
+    key_digest = scoped_key_sha256(
+        actor="actor-16", operation="createOrderFromCheck", raw_key="idem-key-f08f-0001"
+    )
+    payload_digest = canonical_payload_sha256(
+        {"result_id": "result-16-0000000000", "applicant": {"e": 16}}
+    )
+    body, _ = await repository.create_order_and_checkout(
+        result_id="result-16-0000000000",
+        applicant=_applicant(),
+        review_confirmed=True,
+        idempotency_key_sha256=key_digest,
+        canonical_payload_sha256=payload_digest,
+    )
+    order_id = body["order_id"]
+    await pool.execute(
+        "UPDATE garuda_orders SET checkout_expires_at = now() - interval '1 hour' WHERE order_id = $1",
+        order_id,
+    )
+    repository._provider.charge_confirmation_override = ChargeConfirmation(
+        confirmed_unpaid=False, provider_charge_id="charge-f08-refunded", provider_status="SETTLED"
+    )
+
+    from backend.services.garuda_orders.reconciliation import reconcile_expired_checkouts
+
+    summary = await reconcile_expired_checkouts(pool, repository, limit=10)
+    assert summary.late_cases_opened == 1
+
+    resolve_key = scoped_key_sha256(
+        actor="staff-3", operation="resolveLateOrder", raw_key="idem-key-f08-refund-0001"
+    )
+    resolve_payload = canonical_payload_sha256(
+        {"order_id": order_id, "resolution": "refunded_in_full", "staff_reference": "case-f08-2"}
+    )
+    resolution_body, replayed = await repository.resolve_late_order(
+        order_id=order_id,
+        resolution="refunded_in_full",
+        staff_reference="case-f08-2",
+        idempotency_key_sha256=resolve_key,
+        canonical_payload_sha256=resolve_payload,
+    )
+    assert replayed is False
+    # Innocence, first half: the money actually went back, and it went back on
+    # the LATE charge id -- the state write must not have displaced the refund.
+    assert repository._provider.refund_calls == ["charge-f08-refunded"]
+    assert resolution_body["order_state"] == "refunded"
+
+    state_after_refund = await pool.fetchval(
+        "SELECT state FROM garuda_orders WHERE order_id = $1", order_id
+    )
+    assert state_after_refund == "refunded", (
+        "an order refunded out of an OP-F08 case stayed in `awaiting_payment` -- "
+        "the next replayed webhook will pay it"
+    )
+    # Name, transition, visibility AND detail -- `events.yaml` declares all
+    # four and NOTHING machine-compares an emitted row against it (ledgered),
+    # so the assertions that exist have to carry the contract themselves.
+    # `customer_visible` is FALSE on purpose: `order.late_resolved` is the
+    # customer's notice, and the detail here is the resolution enum, never the
+    # staff free text that `resolveLateOrder` accepts unbounded.
+    refund_event = await pool.fetchrow(
+        "SELECT customer_visible, detail FROM garuda_order_journal "
+        "WHERE aggregate_id = $1 AND event_name = 'payment.refunded_after_late_case' "
+        "AND transition_id = 'OP-05'",
+        order_id,
+    )
+    assert refund_event is not None, "the refund wrote no OP-05 journal row"
+    assert refund_event["customer_visible"] is False
+    assert refund_event["detail"] == {"resolution": "refunded_in_full"}
+
+    # THE REPLAY. This is not a hypothetical: it is the first action the
+    # OP-F08 staff page tells a human to take.
+    transition = await repository.handle_paid_event(
+        NormalizedPaidEvent(
+            provider_event_id="evt-f08-replayed-1",
+            provider_charge_id="charge-f08-refunded",
+            provider_session_id=f"sess-{order_id}",
+            amount_idr=body["price_idr"],
+            currency="IDR",
+        ),
+        canonical_payload_sha256=b"\x21" * 32,
+    )
+    assert transition == "OP-F04", (
+        f"the replayed webhook was admitted as {transition} -- on a refunded order"
+    )
+
+    state_final, late_open_final, late_charge_final, staff_ref_final = await pool.fetchrow(
+        "SELECT state, late_case_open, late_case_charge_id, late_case_staff_reference "
+        "FROM garuda_orders WHERE order_id = $1",
+        order_id,
+    )
+    assert state_final == "refunded"
+    # The NEW case starts empty: `case-f08-2` belonged to the case staff just
+    # closed, and migration 284's CHECK forbids an open case carrying the
+    # previous one's resolution. The staff reference travels with it -- a page
+    # about case B must not show the ticket number of case A.
+    assert staff_ref_final is None, (
+        f"the new case inherited the resolved case's staff reference: {staff_ref_final!r}"
+    )
+    # The replay opens a FRESH remediation case on the same order: money we
+    # refunded has arrived again, and a human has to send it back.
+    assert late_open_final is True
+    assert late_charge_final == "charge-f08-refunded"
+
+    practices = await pool.fetchval(
+        "SELECT count(*) FROM garuda_practices WHERE order_id = $1", order_id
+    )
+    assert practices == 0, "a practice was minted on refunded money"
+    paid_events = await pool.fetchval(
+        "SELECT count(*) FROM garuda_order_journal "
+        "WHERE aggregate_id = $1 AND event_name = 'payment.paid'",
+        order_id,
+    )
+    assert paid_events == 0
+    paid_emails = await pool.fetchval(
+        "SELECT count(*) FROM garuda_order_outbox WHERE order_id = $1 AND job_type = $2",
+        order_id,
+        "payment_paid_email",
+    )
+    assert paid_emails == 0, '"payment received" was queued for a refunded order'
+    # Innocence, second half: the staff page for the replay IS queued, and so
+    # was the refund confirmation the resolution owes the customer.
+    for job_type in ("late_refund_confirmation_email", "staff_page_late_paid_after_refund"):
+        queued = await pool.fetchval(
+            "SELECT count(*) FROM garuda_order_outbox WHERE order_id = $1 AND job_type = $2",
+            order_id,
+            job_type,
+        )
+        assert queued == 1, f"{job_type} was not queued exactly once"
+
+
+@pytest.mark.asyncio
+async def test_a_duplicate_charge_after_an_honoured_late_case_opens_a_second_case(pool, repository):
+    """The sibling path, and it needs no change of mine to be reachable: since
+    #6841 OP-02 closes an open late case as `honoured` in the paying
+    transaction, so the order carries `late_case_resolution = 'honoured'`
+    while reading `paid`. A second charge then lands on OP-08, which opens a
+    case — and (open TRUE, resolution NOT NULL) is precisely the shape
+    migration 284's CHECK forbids. Measured as `CheckViolationError` before
+    `_open_late_case` started clearing the resolution, on a path where the
+    money is real and the page is the only thing that tells a human.
+    """
+
+    key_digest = scoped_key_sha256(
+        actor="actor-17", operation="createOrderFromCheck", raw_key="idem-key-f08g-0001"
+    )
+    payload_digest = canonical_payload_sha256(
+        {"result_id": "result-17-0000000000", "applicant": {"e": 17}}
+    )
+    body, _ = await repository.create_order_and_checkout(
+        result_id="result-17-0000000000",
+        applicant=_applicant(),
+        review_confirmed=True,
+        idempotency_key_sha256=key_digest,
+        canonical_payload_sha256=payload_digest,
+    )
+    order_id = body["order_id"]
+    await pool.execute(
+        "UPDATE garuda_orders SET checkout_expires_at = now() - interval '1 hour' WHERE order_id = $1",
+        order_id,
+    )
+    repository._provider.charge_confirmation_override = ChargeConfirmation(
+        confirmed_unpaid=False, provider_charge_id="charge-f08-honoured", provider_status="SETTLED"
+    )
+
+    from backend.services.garuda_orders.reconciliation import reconcile_expired_checkouts
+
+    await reconcile_expired_checkouts(pool, repository, limit=10)
+
+    # The webhook finally arrives: OP-02 pays the order AND closes the case.
+    first = await repository.handle_paid_event(
+        NormalizedPaidEvent(
+            provider_event_id="evt-f08-honoured-1",
+            provider_charge_id="charge-f08-honoured",
+            provider_session_id=f"sess-{order_id}",
+            amount_idr=body["price_idr"],
+            currency="IDR",
+        ),
+        canonical_payload_sha256=b"\x22" * 32,
+    )
+    assert first == "OP-02"
+    state, late_open, resolution = await pool.fetchrow(
+        "SELECT state, late_case_open, late_case_resolution FROM garuda_orders WHERE order_id = $1",
+        order_id,
+    )
+    assert (state, late_open, resolution) == ("paid", False, "honoured")
+
+    # A SECOND charge for the same order. OP-08 must open a fresh case.
+    second = await repository.handle_paid_event(
+        NormalizedPaidEvent(
+            provider_event_id="evt-f08-honoured-2",
+            provider_charge_id="charge-f08-second",
+            provider_session_id=f"sess-{order_id}",
+            amount_idr=body["price_idr"],
+            currency="IDR",
+        ),
+        canonical_payload_sha256=b"\x23" * 32,
+    )
+    assert second == "OP-08"
+    state_final, late_open_final, resolution_final = await pool.fetchrow(
+        "SELECT state, late_case_open, late_case_resolution FROM garuda_orders WHERE order_id = $1",
+        order_id,
+    )
+    assert state_final == "paid"
+    assert late_open_final is True
+    assert resolution_final is None, (
+        "the new case inherited the previous case's resolution — the CHECK "
+        "forbids it and the whole webhook transaction aborts"
+    )
+    duplicate_events = await pool.fetchval(
+        "SELECT count(*) FROM garuda_order_journal "
+        "WHERE aggregate_id = $1 AND event_name = 'payment.duplicate_charge_detected'",
+        order_id,
+    )
+    assert duplicate_events == 1
+
+    # THE MONEY HALF, and it is why `_open_late_case` writes the charge id
+    # unconditionally instead of COALESCE-ing it. OP-08 has no charge id to
+    # give: the duplicate's id is in the journal detail, and this column is
+    # what `resolve_late_order` refunds. Inheriting the OP-F08 case's id would
+    # leave `ch-legit-f08` here -- the charge that PAID for the service -- and
+    # a staff refund would give back the customer's real payment. A gate probe
+    # measured exactly that (`REFUND CALLS = ['ch-LEGIT']`).
+    charge_id_after = await pool.fetchval(
+        "SELECT late_case_charge_id FROM garuda_orders WHERE order_id = $1",
+        order_id,
+    )
+    assert charge_id_after is None, (
+        f"the OP-08 case inherited an earlier case's charge id: {charge_id_after!r}"
+    )
+    # `staff_ref_after` is deliberately NOT asserted here: no staff resolution
+    # ran in this test, so the column was never written and NULL would prove
+    # nothing. It is pinned in the refund test, where a resolution DID set it.
+
+    # And the refusal is LOUD. Not "the wrong charge was skipped" -- the staff
+    # action fails with the error the router maps to a 503, so a human sees it
+    # instead of a receipt for a refund that returned the wrong money.
+    resolve_key = scoped_key_sha256(
+        actor="staff-4", operation="resolveLateOrder", raw_key="idem-key-op08-refund-0001"
+    )
+    resolve_payload = canonical_payload_sha256(
+        {"order_id": order_id, "resolution": "refunded_in_full", "staff_reference": "case-op08"}
+    )
+    with pytest.raises(PaymentProviderUnavailable):
+        await repository.resolve_late_order(
+            order_id=order_id,
+            resolution="refunded_in_full",
+            staff_reference="case-op08",
+            idempotency_key_sha256=resolve_key,
+            canonical_payload_sha256=resolve_payload,
+        )
+    assert "charge-f08-honoured" not in repository._provider.refund_calls, (
+        "resolveLateOrder refunded the charge that bought the service"
+    )
+
+    # The OTHER half of the new state guard, the one the `honoured` assertion
+    # above cannot reach: `resolve_late_order` writes `refunded` only for an
+    # order still in `awaiting_payment`. This order is `paid`, so even a
+    # refund resolution must leave the state alone.
+    state_unmoved = await pool.fetchval(
+        "SELECT state FROM garuda_orders WHERE order_id = $1", order_id
+    )
+    assert state_unmoved == "paid"
 
 
 @pytest.mark.asyncio
