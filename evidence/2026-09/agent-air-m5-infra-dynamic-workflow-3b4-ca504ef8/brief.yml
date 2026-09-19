@@ -1,0 +1,91 @@
+task: >-
+  PR3b'' — skill rework of #6779 (closed unmerged) after dw-gate-11's REWORK-BUILD
+  verdict (2026-09-18, GATE-11-REPORT-6779.md) flagged 14 observations: two false
+  source pointers (F1's RULINGS.md:106 misreads 60/300 harness-floor-red as "20% of
+  reds were false" when no clause there classifies any red as a false positive;
+  F14's second pointer named army-map.md:81-90, which is "(b) Direction of
+  verification", not the channel-doctrine text at :147-151), a nonexistent artefact
+  name (arsenal.json — the real file is ~/.organism/arsenal/last.json via
+  scripts/arsenal_probe.py --read-last), a wrong linter attribution ("first and
+  third" vs the real RULE 1 model-pin + RULE 3 bounded-rounds), four F-lines whose
+  cited numbers did not reproduce against the repo (F2, F6, F9, F10), post-PR2h/
+  PR2g'/PR2i CLI drift in the reveal/capture-check/validate/r2-ledger prose, and no
+  test that ever opened a single source pointer or caught a deleted subcommand
+  mention (obs 10, 11). Rewrites SKILL.md + brief.template.md from a fresh
+  origin/main and adds scripts/tests/test_dynamic_workflow_skill.py (7 tests) plus
+  a 1-line placement-pin in test_skills_canonical.py's KNOWN_CLAUDE_ONLY_NAMES.
+lane: infra/dynamic-workflow-3b4
+machine: air-m5
+date: 2026-09-19
+
+gear: 2
+gear_reason: >-
+  Floor is 2, SIZE-sourced per scripts/evidence_pack_lint.py's compute_floor /
+  compute_floor_source: this diff's merge-base-anchored numstat
+  (9ab6b75bb4c8d9ea8bc93705619857a9f38c75a6..HEAD, re-verified fresh this session)
+  sums to 523 net lines added, 0 deleted (SKILL.md 192, brief.template.md 163,
+  test_dynamic_workflow_skill.py 167, test_skills_canonical.py +1) — clearing
+  SIZE_GEAR2_THRESHOLD (400) and staying under SIZE_GEAR3_THRESHOLD (1828). The
+  overage past CLAUDE.md's "~400 net lines where the work allows" soft guidance is
+  real and disclosed in the PR body, not hidden: the two doc files combined (355
+  lines) are LEANER than #6779's rejected 418-line doc-only total, and the
+  remaining ~168 lines are exactly the test coverage dw-gate-11 obs 10/11 required
+  (pointer-existence, curated-keyword-at-currently-cited-line, bidirectional
+  subcommand coverage) — none of it is decorative prose cut to force a number
+  under the soft budget.
+
+appetite:
+  wall_clock_hours: 2
+  adversarial_rounds: 1
+
+acceptance:
+  A1: >-
+    Every dw-gate-11-flagged source pointer is re-verified by direct grep/read
+    against the current repo state this session, and a curated-keyword test
+    asserts each cited range still contains the keyword the fact declares — read
+    against what brief.template.md cites RIGHT NOW, not a fixed belief (obs 10a):
+    F1 RULINGS.md:106 ("60/300"), F6 SYNTHESIS.md:9 ("secs=848"), F9
+    BACKLOG.md:206 ("36,322") + :208 ("15,064"), F10 workflow/SKILL.md:36-42
+    ("25 s") + RULINGS.md:69 ("2-3 minutes") + army-map.md:276 ("2–3 minutes"),
+    F14 army-map.md:147-151 ("no native") + README.md:69 ("published, not
+    delivered").
+    probe: pytest scripts/tests/test_dynamic_workflow_skill.py::test_every_source_pointer_resolves_to_a_real_file scripts/tests/test_dynamic_workflow_skill.py::test_curated_source_pointers_contain_their_declared_keyword -v
+  A2: >-
+    The subcommand check is bidirectional (obs 11): deleting every "reveal"
+    mention from SKILL.md goes red on the new converse test while a
+    one-directional-only check would have stayed green — demonstrated live by
+    mutation in this session (evidence pasted in the PR body), then reverted via
+    cp (never git checkout --, per the standing lesson on that command wiping an
+    uncommitted cure) before this commit.
+    probe: pytest scripts/tests/test_dynamic_workflow_skill.py::test_every_real_subcommand_is_named_in_skill_md scripts/tests/test_dynamic_workflow_skill.py::test_every_skill_named_subcommand_is_real -v
+  A3: >-
+    arsenal.json (nonexistent) is replaced with the real
+    ~/.organism/arsenal/last.json + scripts/arsenal_probe.py --read-last, and the
+    linter attribution reads "first and second" (RULE 1 model-pin, RULE 3
+    bounded-rounds) — matching scripts/lint_workflow_script.py's own RULE
+    definitions and scripts/arsenal_probe.py's REPORT_DIR/--read-last, both
+    grep-confirmed this session (obs 3, 4).
+    probe: grep -n "RULE 1 (model pin)\|RULE 3 (bounded rounds)" scripts/lint_workflow_script.py; grep -n "read-last\|REPORT_DIR" scripts/arsenal_probe.py
+  A4: >-
+    reveal/capture-check/validate/r2 descriptions in SKILL.md match the CURRENT
+    launcher exactly: validate_answer's 7-section-in-order + table + word-count
+    rule, cmd_reveal's jury/tabulation.revealed.md write with the blind
+    tabulation.md never rewritten, cmd_capture_check's 9-item _CAPTURE_REQUIRED
+    list including the revealed twin, the PII gate's exit-3 message naming the
+    FILE and span COUNT only (never the text), and r2's ledger-row spelling
+    r2-kept=<n>-rejected=<m> vs the stdout kept=<n> rejected=<m> (obs 5-9, 13,
+    14) — all re-read from scripts/dynamic_workflow.py directly this session,
+    not carried over from #6779.
+    probe: python3 -m pytest scripts/tests/test_dynamic_workflow.py -q; python3 scripts/dynamic_workflow.py --selftest
+  A5: >-
+    No regression across the full combined suite (112 dynamic_workflow cases + 7
+    skill-doc cases + existing skills-canonical cases) and the launcher's own
+    --selftest, after the docstring trims and the FILE+COUNT wording tightening.
+    probe: python3 -m pytest scripts/tests/test_dynamic_workflow.py scripts/tests/test_dynamic_workflow_skill.py scripts/tests/test_skills_canonical.py -q
+
+out_of_scope: >-
+  PR3c (the CI consumer that wires dynamic-workflow-selftest.yml and arms these
+  lints in CI — explicitly deferred, "CI consumer arrives in PR3c" per SKILL.md's
+  own Selftest section and this task's mandate). PR2j (optional cleanup, deferred
+  to Zero's call per team-lead). The root evidence/brief.yml file itself —
+  deliberately untouched, this brief lives at its own per-PR path instead.
