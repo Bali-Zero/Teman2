@@ -33,13 +33,17 @@ import install_qwen_secret_guard as inst  # noqa: E402
 
 
 def _run(tmp: pathlib.Path, *extra: str, settings: pathlib.Path | None = None,
-         hooks: pathlib.Path | None = None, repo: pathlib.Path | None = None) -> subprocess.CompletedProcess:
+         hooks: pathlib.Path | None = None, repo: pathlib.Path | None = None,
+         env_extra: dict | None = None) -> subprocess.CompletedProcess:
     s = settings if settings is not None else tmp / "settings.json"
     h = hooks if hooks is not None else tmp / "hooks"
     r = repo if repo is not None else REAL_HOOKS
     cmd = [sys.executable, str(INSTALLER), "--settings", str(s),
            "--hooks-dir", str(h), "--repo-hooks-dir", str(r), *extra]
-    return subprocess.run(cmd, capture_output=True, text=True, timeout=120)
+    env = dict(os.environ)
+    if env_extra:
+        env.update(env_extra)
+    return subprocess.run(cmd, capture_output=True, text=True, timeout=120, env=env)
 
 
 def _write_settings(p: pathlib.Path, extra: dict | None = None) -> dict:
@@ -193,26 +197,42 @@ def test_dry_run_writes_nothing(tmp_path):
 
 
 def test_never_prints_a_credential_value(tmp_path):
-    """The installer runs against the real registry, whose names are real. Its own
-    output must carry variable NAMES and paths, never a value (W106 class).
+    """The installer's own output must carry variable NAMES and paths, never a value
+    (W106 class).
 
-    Written as a name-collecting loop rather than `assert value not in blob`:
-    pytest renders BOTH operands of a failed assertion, so the obvious form would
-    print the very secret this test exists to catch. A test that leaks on failure
-    is worse than no test.
+    The secret is INJECTED into the subprocess environment rather than read from the
+    host's ~/.nuzantara-secrets.env. The first cut of this test read the host vault
+    and early-returned when it was absent — which is ALWAYS true on a CI runner, so
+    the strongest-named assertion in this suite was a no-op exactly where it now runs,
+    while still counting as one of the 14 green tests (kimi-code/k3 council finding 2,
+    LOW). Injecting makes the test machine-independent and exercises the only path by
+    which a value could reach the output.
+
+    Written as a boolean rather than `assert fake not in blob`: pytest renders BOTH
+    operands of a failed assertion, so the obvious form would print the very secret
+    this test exists to catch. A test that leaks on failure is worse than no test.
     """
     _write_settings(tmp_path / "settings.json")
-    r = _run(tmp_path)
-    vault = pathlib.Path(os.path.expanduser("~/.nuzantara-secrets.env"))
-    if not vault.is_file():
-        return
+    fake = "fixture-secret-value-not-real-0123456789"
+    r = _run(tmp_path, env_extra={"BAILIAN_TOKEN_PLAN_API_KEY": fake})
+    assert r.returncode == 0, r.stderr
     blob = r.stdout + r.stderr
-    leaked = []
-    for line in vault.read_text(errors="replace").splitlines():
-        m = re.match(r"^\s*export\s+([A-Za-z_][A-Za-z0-9_]*)='([^']{12,})'", line)
-        if m and m.group(2) in blob:
-            leaked.append(m.group(1))          # the NAME, never the value
-    assert not leaked, f"installer printed the value of: {leaked}"
+    leaked = fake in blob
+    assert not leaked, "installer printed a credential value from its environment"
+    # The name is EXPECTED in the output (the guard's DENY reason names it) — that is
+    # the point of naming the source and not the value.
+    assert "BAILIAN_TOKEN_PLAN_API_KEY" in blob or "verified" in blob
+
+    # Secondary, host-dependent and therefore not the gate: if this machine really has
+    # a vault, none of its values may appear either.
+    vault = pathlib.Path(os.path.expanduser("~/.nuzantara-secrets.env"))
+    if vault.is_file():
+        names = []
+        for line in vault.read_text(errors="replace").splitlines():
+            m = re.match(r"^\s*export\s+([A-Za-z_][A-Za-z0-9_]*)='([^']{12,})'", line)
+            if m and m.group(2) in blob:
+                names.append(m.group(1))          # the NAME, never the value
+        assert not names, f"installer printed the value of: {names}"
 
 
 def test_matcher_covers_the_canonical_qwen_tool_names():
