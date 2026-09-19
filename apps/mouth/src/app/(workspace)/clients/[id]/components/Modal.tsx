@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect } from "react";
+import React, { useCallback, useEffect } from "react";
 import { X, Save, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -17,19 +17,23 @@ export function Modal({
   isSaving: boolean;
   onSave: (e: React.FormEvent) => void;
 }) {
+  const requestClose = useCallback(() => {
+    if (!isSaving) onClose();
+  }, [isSaving, onClose]);
+
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && !isSaving) onClose();
+      if (e.key === "Escape") requestClose();
     };
     document.addEventListener("keydown", handleEscape);
     return () => document.removeEventListener("keydown", handleEscape);
-  }, [onClose, isSaving]);
+  }, [requestClose]);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       <div
         className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-        onClick={onClose}
+        onClick={requestClose}
       />
       <div className="relative bg-[var(--bz-base)] border border-[var(--bz-border)] rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
         <div className="flex items-center justify-between p-6 border-b border-[var(--bz-border)]">
@@ -39,7 +43,9 @@ export function Modal({
           <Button
             variant="ghost"
             size="icon"
-            onClick={onClose}
+            onClick={requestClose}
+            disabled={isSaving}
+            aria-disabled={isSaving}
             aria-label="Close modal"
             title="Close"
           >
