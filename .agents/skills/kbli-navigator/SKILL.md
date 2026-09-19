@@ -49,6 +49,20 @@ is **518 / 33.2%**, not 465 / 29.8%, and `CHIUSO_PMA_NO_BESAR` is **7**, not 20.
 
 ## 1. LIVE STATE (last update 2026-09-19 — keep current)
 
+**🟡 2026-09-19 — MUSE PROPOSER LOTS: 154 CONFIRMED `whatChanged` / `pp28_sources` DEFECTS ON 85
+CODES, NONE CURED.** Three lots (124 of 124 `whatChanged`-bearing canonical entries), 161
+proposals, adjudicated 154/161 = 95.7% RIGHT — Muse Spark 1.3 proposer, Kimi K3 verifier, Claude
+adjudicator on disagreements only. **Nothing was written to the canonical or to any runtime
+store** — Qdrant/`kg_nodes`/`kbli_documents`/inspect cache all untouched. Hand-off files
+`kbli_lots_all_proposals.json` and `kbli_lots_confirmed_proposals.json` live outside the repo at
+`~/.agent/research/muse-spark-2026-09-19/`; dossier
+`research/operations/2026-09-19-muse-spark-1.3-arsenal-dossier.md` §6ter/§6quater. The cure
+belongs to a `scripts/kbli_filiera/` compiler and needs the owner's explicit ok before any
+write. **20 `pp28_sources` flags are per-code adjudication, never an auto-fix** — e.g. 55201
+carries 80100; 10120 carries 2020-10120 whose official heir is 10113; 46420 carries
+46421/46422 whose heirs are 46451/46452. `whatChanged` glosses of KBLI-2020 codes are a
+recurring defect shape: 56104, 60101/60102/60201/60202, 46444, 47620.
+
 **🟢 2026-09-19 — RESIDUAL-OPEN LOT 1 IS SHIPPED AND LIVE ON BOTH CONSUMERS: 329 CODES MOVE FROM
 `NOT_VERIFIED` TO `TERBUKA / 100%` UNDER PERPRES 10/2021 PASAL 3(1)(d), AND THE CANONICAL IS NOW
 `located` ON 460 OF 1,559.** PR #6795 (`ce660dde01`, merged 02:05:16Z) — 28 files, ZERO backend
