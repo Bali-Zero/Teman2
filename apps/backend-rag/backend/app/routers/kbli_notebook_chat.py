@@ -33,6 +33,7 @@ from backend.app.routers.kbli_notebook import (
 )
 from backend.core.cache import cached
 from backend.services.kbli_catalogue_membership import (
+    PHANTOM_LICENSING_STATUS,
     fetch_catalogue_membership,
     is_absent_from_catalogue,
 )
@@ -632,6 +633,53 @@ _TRANSLATE_SYSTEM = (
     "   travel agency/agen perjalanan/tour operator → agen perjalanan wisata\n"
     "   coffee shop/café/kafe/kedai kopi → restoran dan kafe\n"
 )
+
+
+def _is_buried(result) -> bool:
+    """A result the tombstone replaced, recognised by the field it WRITES.
+
+    Never by the title text: `TOMBSTONE_TITLE_SUFFIX` is prose, and a guard that
+    matched it would convict any record whose own title happened to quote it and
+    would miss the burial the day the wording changes.
+    """
+    return getattr(result, "risk_category", None) == PHANTOM_LICENSING_STATUS
+
+
+def _suggested_queries(results) -> list[str]:
+    """The follow-ups offered under an answer, which must not contradict it.
+
+    Extracted from the route body so the burial verdict can govern it and so it can
+    be tested without standing up the whole chat path. Behaviour for a live code is
+    unchanged, line for line.
+    """
+    if not results:
+        return []
+
+    top = results[0]
+
+    if _is_buried(top):
+        # The answer above just said this number cannot be registered. Offering
+        # "what licenses do I need for it" invites the question that answer refused,
+        # and interpolating `top.title` would paste the tombstone suffix into the
+        # middle of a sentence about an activity. Ask FORWARD instead: the reader's
+        # real question is which 2025 code carries their work now.
+        return [
+            f"Which KBLI 2025 code replaces {top.code}?",
+            "How do I find the right KBLI 2025 code for my activity?",
+        ]
+
+    suggested_queries = [f"What licenses do I need for KBLI {top.code}?"]
+    if top.pma_status in ("TERBUKA", "TERBATAS", "TERTUTUP"):
+        suggested_queries.append(f"Is {top.title} open to foreign investors?")
+    else:
+        suggested_queries.append(f"Can a foreigner own a {top.title} business?")
+    if len(results) > 1:
+        suggested_queries.append(
+            f"What's the difference between KBLI {top.code} and {results[1].code}?",
+        )
+    else:
+        suggested_queries.append(f"What are the risk requirements for KBLI {top.code}?")
+    return suggested_queries
 
 
 async def _bury_if_phantom(
@@ -1831,21 +1879,8 @@ async def chat_kbli(
             else:
                 answer = "I could not find relevant KBLI information. Please try rephrasing your question with more specific business activity terms."
 
-        # Generate template-based follow-up suggestions
-        suggested_queries = []
-        if results:
-            top = results[0]
-            suggested_queries.append(f"What licenses do I need for KBLI {top.code}?")
-            if top.pma_status in ("TERBUKA", "TERBATAS", "TERTUTUP"):
-                suggested_queries.append(f"Is {top.title} open to foreign investors?")
-            else:
-                suggested_queries.append(f"Can a foreigner own a {top.title} business?")
-            if len(results) > 1:
-                suggested_queries.append(
-                    f"What's the difference between KBLI {top.code} and {results[1].code}?",
-                )
-            else:
-                suggested_queries.append(f"What are the risk requirements for KBLI {top.code}?")
+        # Generate template-based follow-up suggestions, which the burial governs
+        suggested_queries = _suggested_queries(results)
 
         logger.info(
             f"✅ KBLI Chat Response: answer_length={len(answer)}, results={len(results)}, detected={detected_kbli}",
