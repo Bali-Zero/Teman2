@@ -1361,3 +1361,82 @@ def test_run_selftest_never_touches_the_real_research_operations_tree(capsys):
     assert after_names == before_names
     after_mtimes = {p: p.stat().st_mtime_ns for p in watched}
     assert after_mtimes == before_mtimes
+
+
+def _refuse_to_launch(seat, prompt, timeout, kit):
+    raise AssertionError("real seat launch attempted")
+
+
+def test_r2_refuses_a_non_utf8_r1_partner_file_before_launching_any_seat(
+        monkeypatch, tmp_path, template, clean_objective, capsys):
+    """PR2i obs 1 (gate-14 MEDIUM, GATE-14-REPORT-6791.md): the r2 read of a partner's r1
+    file lives in the non-fake branch, unreachable while the autouse fixture holds
+    DW_FAKE_SEATS=1 -- mutating this site's _read_text_or_refuse() to a bare .read_text()
+    left every other test green (mutation M6). DW_FAKE_SEATS is dropped and _launch_seat
+    stubbed to raise, so a real launch attempted after a missed refusal fails the test too.
+    """
+    kit = tmp_path / "k"
+    dw.cmd_brief(_brief_ns(clean_objective, template, kit))
+    _seed_convener(kit)
+    dw.cmd_r1(argparse.Namespace(kit=str(kit), seats=_THREE_FAMILY_SEATS, astra_fallback=False))
+    bad_path = kit / "r1" / f"{dw._seat_key('qwen3.8-max')}.md"
+    bad_path.write_bytes(b"\xff\xfe not valid utf-8 \x80\x81")
+    monkeypatch.delenv("DW_FAKE_SEATS", raising=False)
+    monkeypatch.setattr(dw, "_launch_seat", _refuse_to_launch)
+    with pytest.raises(SystemExit) as e:
+        dw.cmd_r2(argparse.Namespace(kit=str(kit)))
+    assert e.value.code == 2
+    assert str(bad_path) in capsys.readouterr().err
+
+
+def test_jury_prompt_refuses_a_non_utf8_r1_partner_file_before_launching_any_seat(
+        monkeypatch, tmp_path, template, clean_objective, capsys):
+    """PR2i obs 1 (gate-14 MEDIUM): _jury_prompt's read of a peer's r1 file lives in
+    cmd_jury's own non-fake branch, same structural gap as r2 (mutation M7 left every other
+    test green). DW_FAKE_SEATS dropped, _launch_seat stubbed to raise on any real attempt.
+    """
+    kit = _judged_kit(tmp_path, template, clean_objective, _THREE_FAMILY_SEATS)
+    bad_path = kit / "r1" / f"{dw._seat_key('qwen3.8-max')}.md"
+    bad_path.write_bytes(b"\xff\xfe not valid utf-8 \x80\x81")
+    monkeypatch.delenv("DW_FAKE_SEATS", raising=False)
+    monkeypatch.setattr(dw, "_launch_seat", _refuse_to_launch)
+    with pytest.raises(SystemExit) as e:
+        dw.cmd_jury(argparse.Namespace(kit=str(kit)))
+    assert e.value.code == 2
+    assert str(bad_path) in capsys.readouterr().err
+
+
+def test_anonymise_refuses_a_non_utf8_r1_mapped_file_naming_it_instead_of_a_traceback(
+        tmp_path, template, clean_objective, capsys):
+    """PR2i obs 1 (gate-14 MEDIUM): cmd_anonymise's own _read_text_or_refuse call (no
+    fake/not-fake gate at all -- it always reads real r1/ files) stayed green under every
+    other test's mutation too (M8): nothing in the suite fed it a bad file before this.
+    """
+    kit = _juried_kit(tmp_path, template, clean_objective, _THREE_FAMILY_SEATS)
+    bad_path = kit / "r1" / f"{dw._seat_key('qwen3.8-max')}.md"
+    bad_path.write_bytes(b"\xff\xfe not valid utf-8 \x80\x81")
+    with pytest.raises(SystemExit) as e:
+        dw.cmd_anonymise(argparse.Namespace(kit=str(kit)))
+    assert e.value.code == 2
+    assert str(bad_path) in capsys.readouterr().err
+
+
+def test_capture_pii_gate_refuses_a_non_utf8_scan_target_before_any_dest_write(
+        monkeypatch, tmp_path, template, clean_objective, capsys):
+    """PR2i obs 1 (gate-14 MEDIUM): _capture_pii_gate's own _read_text_or_refuse(f) call
+    stayed green under every other test's mutation too (M9): capture-check's missing-item
+    and dest-shape checks run first and never touch file bytes, so nothing upstream caught
+    it either. REPO_ROOT is swapped to a throwaway root first (same technique as the
+    selftest fix above), so a bug that reached dest.mkdir() before the refusal fired could
+    never write into the real tree.
+    """
+    kit = _capture_ready_kit(tmp_path, template, clean_objective)
+    bad_path = kit / "Z-DECISIONI.md"
+    bad_path.write_bytes(b"\xff\xfe not valid utf-8 \x80\x81")
+    monkeypatch.setattr(dw, "REPO_ROOT", tmp_path / "fake_repo_root")
+    dest = dw._capture_dest_for(kit)
+    with pytest.raises(SystemExit) as e:
+        dw.cmd_capture_check(argparse.Namespace(kit=str(kit), dest=str(dest)))
+    assert e.value.code == 2
+    assert str(bad_path) in capsys.readouterr().err
+    assert not dest.exists()
