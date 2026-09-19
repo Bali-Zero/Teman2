@@ -144,6 +144,15 @@ function ageAtPresent(dateOfBirth: string) {
   );
 }
 
+/** The old file's exact word for each alert level (FamilyTab.tsx@HEAD~2
+ * lines 411-415 passport / 565-569 visa, identical wording both fields) —
+ * every enum value the old file distinguished stays distinguishable. */
+function alertWord(alert: "yellow" | "red" | "expired") {
+  if (alert === "expired") return "Expired";
+  if (alert === "red") return "Expiring soon";
+  return "Renewal recommended";
+}
+
 /**
  * The visa pill is sourced from the server-computed `visa_alert` enum, not
  * from a client-side day-count — the enum already decides expiring-vs-valid
@@ -153,9 +162,8 @@ function ageAtPresent(dateOfBirth: string) {
  */
 function visaPill(alert: FamilyMember["visa_alert"], hasType: boolean) {
   if (alert === "green") return { tone: "ok" as const, label: "Valid" };
-  if (alert === "red" || alert === "yellow")
-    return { tone: "wait" as const, label: "Expiring" };
-  if (alert === "expired") return { tone: "wait" as const, label: "Expired" };
+  if (alert === "yellow" || alert === "red" || alert === "expired")
+    return { tone: "wait" as const, label: alertWord(alert) };
   return {
     tone: "wait" as const,
     label: hasType ? "Visa on file" : "No visa",
@@ -165,28 +173,35 @@ function visaPill(alert: FamilyMember["visa_alert"], hasType: boolean) {
 /**
  * Passport has no pill in this grid, so its urgency lives on the date cell
  * itself (word + weight, never a copper tone) — same mechanism as
- * `ObligationsTable`'s `isDueSoon`. The server `passport_alert` decides
- * whether the date is urgent when it is present; the countdown wording
- * itself can only come from the date.
+ * `ObligationsTable`'s `isDueSoon`. When the expiry date is known the
+ * countdown wording can only come from the date (the enum still gates
+ * whether it is urgent); when it is not known — mirroring the old file's
+ * own fallback — the enum's own word carries the state instead.
  */
 function passportUrgency(
   expiry: string | undefined,
   alert: FamilyMember["passport_alert"],
+  hasData: boolean,
 ) {
-  if (!expiry) return undefined;
-  const daysLeft = Math.ceil(
-    (new Date(expiry).getTime() - Date.now()) / 86400000,
-  );
-  const label =
-    daysLeft < 0
-      ? `Expired ${Math.abs(daysLeft)}d ago`
-      : daysLeft === 0
-        ? "Expires today"
-        : daysLeft <= 365
-          ? `⏰ ${daysLeft}d left`
-          : `${Math.floor(daysLeft / 30)}mo left`;
-  const urgent = alert ? alert !== "green" : daysLeft <= 180;
-  return { label, urgent };
+  if (expiry) {
+    const daysLeft = Math.ceil(
+      (new Date(expiry).getTime() - Date.now()) / 86400000,
+    );
+    const label =
+      daysLeft < 0
+        ? `Expired ${Math.abs(daysLeft)}d ago`
+        : daysLeft === 0
+          ? "Expires today"
+          : daysLeft <= 365
+            ? `⏰ ${daysLeft}d left`
+            : `${Math.floor(daysLeft / 30)}mo left`;
+    const urgent = alert ? alert !== "green" : daysLeft <= 180;
+    return { label, urgent };
+  }
+  if (hasData && alert && alert !== "green") {
+    return { label: alertWord(alert), urgent: true };
+  }
+  return undefined;
 }
 
 function DocumentActionButton({
@@ -414,6 +429,7 @@ export function FamilyTab({
               const passportUrgencyInfo = passportUrgency(
                 passportExpiry,
                 member.passport_alert,
+                Boolean(member.passport_number || passportDocument),
               );
               const personalDetails = [
                 member.date_of_birth
@@ -485,7 +501,8 @@ export function FamilyTab({
                       >
                         Passport: {passportUrgencyInfo.label}
                       </p>
-                    ) : passportDocument && !member.passport_number ? (
+                    ) : null}
+                    {passportDocument && !member.passport_number ? (
                       <p className="text-xs text-[var(--tx-secondary)]">
                         Document on file — upload to extract data via OCR
                       </p>

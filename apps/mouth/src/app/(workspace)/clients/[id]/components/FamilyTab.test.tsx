@@ -60,6 +60,38 @@ describe("FamilyTab — r19 family ledger", () => {
     expect(screen.queryByText("Valid")).not.toBeInTheDocument();
   });
 
+  it("GUILT: a yellow visa_alert and a red visa_alert render different words", () => {
+    renderTab([
+      { ...MEMBER, id: 5, visa_alert: "yellow" },
+      { ...MEMBER, id: 6, visa_alert: "red" },
+    ]);
+
+    expect(screen.getByText("Renewal recommended")).toBeInTheDocument();
+    expect(screen.getByText("Expiring soon")).toBeInTheDocument();
+  });
+
+  it("GUILT: a yellow passport_alert and a red passport_alert render different words on the date cell when no expiry is known", () => {
+    renderTab([
+      {
+        ...MEMBER,
+        id: 5,
+        passport_number: "X1111111",
+        passport_expiry: undefined,
+        passport_alert: "yellow",
+      },
+      {
+        ...MEMBER,
+        id: 6,
+        passport_number: "X2222222",
+        passport_expiry: undefined,
+        passport_alert: "red",
+      },
+    ]);
+
+    expect(screen.getByText(/Renewal recommended/)).toBeInTheDocument();
+    expect(screen.getByText(/Expiring soon/)).toBeInTheDocument();
+  });
+
   it("GUILT: passport_alert urgency shows the countdown wording on the date cell", () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-09-19T12:00:00Z"));
