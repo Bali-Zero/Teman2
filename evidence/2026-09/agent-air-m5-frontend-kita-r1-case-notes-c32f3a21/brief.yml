@@ -3,16 +3,24 @@ task: >-
   owner 2026-09-19 ~19:00 WITA): restyles the Overview "Client Story" panel into one
   r19 `LedgerSection` titled "Case notes" (`BusinessStoryPanel.tsx`), closed by
   default with a real `<button aria-expanded aria-controls>` Open/Close toggle, and
-  fixes two defects found while doing it. (1) FABRICATED DATA: `getReadiness`'s
-  fallback branch invented a score (35/70/100) to pair with a gaps-derived status,
-  presented in the UI as a measured percentage ("Blocked 35%"); the score is now
-  removed from the local `ReadinessDisplay` type entirely (not just hidden), the
-  categorical status stays because `map.gaps` genuinely derives it, and it renders
-  as a `StatePill` instead of a percentage box. (2) WRONG-CLIENT RISK:
-  `textContains` matched company/person names by bidirectional substring ("PT
-  Alpha" matched "PT Alpha Beta Indonesia"), which could attach one company's
-  evidence dossier to an unrelated client's profile; replaced with an exact,
-  normalized (trim/case-fold/whitespace-collapse) match. Reviewer per the
+  fixes two defects found while doing it. (1) DEAD FALLBACK, REAL SCORE KEPT: an
+  independent old-vs-new audit (R1-audit.md) showed the backend always computes
+  `readiness` (`tax_company_pilot.py:145-155`'s `model_post_init`), so
+  `getReadiness`'s old fallback branch — which invented a score (35/70/100) to pair
+  with a gaps-derived status — was dead code on the live page; what the UI actually
+  showed was the backend's own `100 − Σ gap penalties` heuristic
+  (`tax_company_pilot.py:377-400`). This round deletes the dead fallback's invented
+  numbers but keeps showing the backend's real score, as a plain number next to the
+  `StatePill` (no "%", no percentage box — that decoration is what overstated it as
+  measured). (2) WRONG-CLIENT RISK: `textContains` matched company/person names by
+  bidirectional substring ("PT Alpha" matched "PT Alpha Beta Indonesia"), which
+  could attach one company's evidence dossier to an unrelated client's profile.
+  Person names now match exactly after case-fold/whitespace-collapse only; company
+  names match exactly after that same normalization PLUS stripping punctuation,
+  parenthetical qualifiers, and legal-form tokens (PT, PT., PMA, PMDN, CV, TBK) as
+  whole words — closing the substring hole while still matching the CRM/pilot
+  spelling drift a bare exact match would have missed (PT leading vs. trailing,
+  "PT PMA", a trailing dot, a parenthetical branch qualifier). Reviewer per the
   2026-09-17 CRM pact is Subhi (design is Zero's call, code is Subhi's); this PR
   is prepared not armed at open, per that pact. Confined to
   `apps/mouth/src/app/(workspace)/clients/[id]/components/BusinessStoryPanel.tsx`
@@ -43,16 +51,26 @@ appetite:
 
 acceptance:
   A1: >-
-    `BusinessStoryPanel.test.tsx`'s 7 cases pass, including the GUILT cases that
-    fail against the pre-PR component: no readiness percentage renders anywhere
-    in the DOM even after opening the section (a fixture whose `readiness.score`
-    is 76 renders "Needs a check" but never "76%" or any other `%` text); a story
-    for company "PT Synthetic Alpha Beta" is NOT attached to a client whose only
-    company link is "PT Synthetic Alpha" (empty-state renders instead). And the
-    INNOCENCE cases: an exact company match survives case-fold and internal
-    whitespace-collapse; the section is closed by default and toggles
-    `aria-expanded` correctly on click; the loading and empty-data states render
-    without crashing.
+    `BusinessStoryPanel.test.tsx`'s 12 cases pass, including the GUILT cases that
+    fail against the pre-repair component: opening the section shows the backend's
+    real `readiness.score` (a fixture value of 76) as a plain number next to
+    "Needs a check", never as "76%" or any other `%` text, alongside the tax owner,
+    the evidence link's `href`, the "What to do next" actions, and the Reviewed
+    Workspace AI facts — restoring the assertions the rejected PR had dropped
+    without replacement (R1-audit.md §3); a story for company "PT Synthetic Alpha
+    Beta" is NOT attached to a client whose only company link is "PT Synthetic
+    Alpha" (empty-state renders instead); and six CRM spelling variants from the
+    audit's §5.3 table ("Alpha Beta" with no PT token, PT leading, an extra "PMA",
+    a dot after PT, a parenthetical qualifier, an alias minus its PT) all match the
+    same pilot entity again once punctuation and legal-form tokens are stripped.
+    And the INNOCENCE cases: an exact company match survives case-fold and
+    internal whitespace-collapse; "PT Alpha" still does not match "PT Alpha Beta
+    Indonesia"; an empty string left after stripping never matches anything; a
+    person name that merely contains another does not match (no substring rule on
+    the person path); `aria-controls` resolves to a real element whether the
+    section is open or closed; the section is closed by default and toggles
+    `aria-expanded` correctly on click; the loading, empty-data, and error states
+    render without crashing.
     probe: >-
       cd apps/mouth && npx --no-install vitest run
       'src/app/(workspace)/clients/[id]/components/BusinessStoryPanel.test.tsx'
@@ -68,9 +86,10 @@ acceptance:
       cd apps/mouth && npx --no-install vitest run
       'src/app/(workspace)/clients/[id]/'
   A3: >-
-    `tsc --noEmit -p .` exits 0 with no output — the narrowed local
-    `ReadinessDisplay` type (a `Pick` over `TaxCompanyPilotReadiness` dropping
-    `score`) and the new `n?: number` prop on `BusinessStoryPanelProps` typecheck
+    `tsc --noEmit -p .` exits 0 with no output — the local `ReadinessDisplay` type
+    (a `Pick` over `TaxCompanyPilotReadiness` for `status`/`label`/`reasons`, plus
+    an optional `score` carried through from the backend when `map.readiness` is
+    present) and the new `n?: number` prop on `BusinessStoryPanelProps` typecheck
     cleanly against the shared `crm.types.ts` contract, which this PR does not
     modify.
     probe: cd apps/mouth && npx --no-install tsc --noEmit -p .
@@ -84,11 +103,15 @@ out_of_scope: >-
   The mock's "Last WhatsApp signal · 2 days ago" line — no field on
   `TaxCompanyPilotMap` carries a last-contact timestamp today, so it is left out
   rather than invented (noted in the R1 report and as a code comment). Dynamic
-  section-ordinal renumbering once R2 ("Needs attention", ordinal 1) lands — this
-  PR's `n` prop defaults to 2 and stays static until that PR exists.
-  `ClientDetailClient.tsx` beyond reading it: its BusinessStoryPanel mount needed
-  no edit. Restyling the per-map detail markup beyond the readiness-score removal
-  and the `emerald-*` → `--state-success` / r19 `Notice` token swap (that swap
-  was done because it was already being touched, not as a separate restyle pass).
-  Arming, merging, or deploying this PR — per the ship-lifecycle contract the
-  session that owns the mandate does that, not this brief.
+  section-ordinal renumbering — this PR's `n` prop defaults to 2 and stays static;
+  ordinal 1 ("Needs attention") landed on main via #6844 after this branch's base
+  commit, so it is not visible from this worktree, but the default already matches
+  it. `ClientDetailClient.tsx` beyond reading it: its BusinessStoryPanel mount
+  needed no edit. Restyling the per-map detail markup beyond what this round
+  touches: the readiness score display (backend score kept, invented fallback
+  numbers dropped), the `emerald-*` → `--state-success` / r19 `Notice` token swap
+  (done because it was already being touched, not as a separate restyle pass),
+  the L1/L2/L3 accessibility and colour-law fixes from the R1 audit, and the
+  restored strings/assertions the rejected PR had dropped. Arming, merging, or
+  deploying this PR — per the ship-lifecycle contract the session that owns the
+  mandate does that, not this brief.
