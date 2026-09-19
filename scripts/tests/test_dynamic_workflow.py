@@ -703,7 +703,7 @@ def test_r1_relaunching_the_same_seat_across_two_cmd_r1_calls_is_not_a_slug_coll
 
 def test_r1_refuses_a_slug_collision_between_the_kimi_2_7_alias_and_its_canonical_spelling(
         tmp_path, template, clean_objective):
-    """Item 3 (PR2g, gate-7 obs :442) + PR2g' S1/S3 Guilt (gate-13 obs 2 on PR2g #6772): the
+    """Item 3 (PR2g, gate-7 obs :442) + PR2g' S1/S3 Guilt (gate-13 obs 2 on PR2g #6790): the
     slug used to be claimed on the RAW seat id, so 'kimi-2.7' and its canonical spelling
     'kimi-code/kimi-for-coding-highspeed' claimed TWO different slugs for the ONE model
     KIMI_MODEL_MAP resolves both to — the same seat could answer twice and count twice in
@@ -1339,3 +1339,145 @@ def test_run_selftest_end_to_end(capsys):
     assert "SELFTEST OK" in out
     assert "SELFTEST FAILED" not in out
     assert not [ln for ln in out.splitlines() if ln.startswith("FAIL - ")]
+
+
+def test_run_selftest_never_touches_the_real_research_operations_tree(capsys):
+    """PR2i obs 2/3 (gate-14 LOW-MEDIUM + LOW, GATE-14-REPORT-6791.md): run_selftest's capture
+    block used to mkdir the canonical dest under the REAL REPO_ROOT/research/operations/ and
+    clean up only in a `finally` -- a crash or SIGKILL between mkdir and rmtree left a stray
+    dated directory in the actual working tree. Proof per obs 3: a date grep on the dest name
+    cannot catch this (_capture_dest_for dates in UTC; PR2h's own proof line missed a whole
+    day for exactly this reason, since the run landed on 2026-09-18 UTC while the local date
+    was already 2026-09-19) -- an entry count plus every mtime, the parent directory included,
+    is what "nothing written" actually has to mean.
+    """
+    real_ops = dw.REPO_ROOT / "research" / "operations"
+    before_names = sorted(p.name for p in real_ops.iterdir())
+    watched = [real_ops, *real_ops.iterdir()]
+    before_mtimes = {p: p.stat().st_mtime_ns for p in watched}
+    dw.run_selftest()
+    capsys.readouterr()
+    after_names = sorted(p.name for p in real_ops.iterdir())
+    assert after_names == before_names
+    after_mtimes = {p: p.stat().st_mtime_ns for p in watched}
+    assert after_mtimes == before_mtimes
+
+
+def _refuse_to_launch(seat, prompt, timeout, kit):
+    raise AssertionError("real seat launch attempted")
+
+
+def test_r2_refuses_a_non_utf8_r1_partner_file_before_launching_any_seat(
+        monkeypatch, tmp_path, template, clean_objective, capsys):
+    """PR2i obs 1 (gate-14 MEDIUM, GATE-14-REPORT-6791.md): the r2 read of a partner's r1
+    file lives in the non-fake branch, unreachable while the autouse fixture holds
+    DW_FAKE_SEATS=1 -- mutating this site's _read_text_or_refuse() to a bare .read_text()
+    left every other test green (mutation M6). DW_FAKE_SEATS is dropped and _launch_seat
+    stubbed to raise, so a real launch attempted after a missed refusal fails the test too.
+    """
+    kit = tmp_path / "k"
+    dw.cmd_brief(_brief_ns(clean_objective, template, kit))
+    _seed_convener(kit)
+    dw.cmd_r1(argparse.Namespace(kit=str(kit), seats=_THREE_FAMILY_SEATS, astra_fallback=False))
+    bad_path = kit / "r1" / f"{dw._seat_key('qwen3.8-max')}.md"
+    bad_path.write_bytes(b"\xff\xfe not valid utf-8 \x80\x81")
+    monkeypatch.delenv("DW_FAKE_SEATS", raising=False)
+    monkeypatch.setattr(dw, "_launch_seat", _refuse_to_launch)
+    with pytest.raises(SystemExit) as e:
+        dw.cmd_r2(argparse.Namespace(kit=str(kit)))
+    assert e.value.code == 2
+    assert str(bad_path) in capsys.readouterr().err
+
+
+def test_jury_prompt_refuses_a_non_utf8_r1_partner_file_before_launching_any_seat(
+        monkeypatch, tmp_path, template, clean_objective, capsys):
+    """PR2i obs 1 (gate-14 MEDIUM): _jury_prompt's read of a peer's r1 file lives in
+    cmd_jury's own non-fake branch, same structural gap as r2 (mutation M7 left every other
+    test green). DW_FAKE_SEATS dropped, _launch_seat stubbed to raise on any real attempt.
+    """
+    kit = _judged_kit(tmp_path, template, clean_objective, _THREE_FAMILY_SEATS)
+    bad_path = kit / "r1" / f"{dw._seat_key('qwen3.8-max')}.md"
+    bad_path.write_bytes(b"\xff\xfe not valid utf-8 \x80\x81")
+    monkeypatch.delenv("DW_FAKE_SEATS", raising=False)
+    monkeypatch.setattr(dw, "_launch_seat", _refuse_to_launch)
+    with pytest.raises(SystemExit) as e:
+        dw.cmd_jury(argparse.Namespace(kit=str(kit)))
+    assert e.value.code == 2
+    assert str(bad_path) in capsys.readouterr().err
+
+
+def test_anonymise_refuses_a_non_utf8_r1_mapped_file_naming_it_instead_of_a_traceback(
+        tmp_path, template, clean_objective, capsys):
+    """PR2i obs 1 (gate-14 MEDIUM): cmd_anonymise's own _read_text_or_refuse call (no
+    fake/not-fake gate at all -- it always reads real r1/ files) stayed green under every
+    other test's mutation too (M8): nothing in the suite fed it a bad file before this.
+    """
+    kit = _juried_kit(tmp_path, template, clean_objective, _THREE_FAMILY_SEATS)
+    bad_path = kit / "r1" / f"{dw._seat_key('qwen3.8-max')}.md"
+    bad_path.write_bytes(b"\xff\xfe not valid utf-8 \x80\x81")
+    with pytest.raises(SystemExit) as e:
+        dw.cmd_anonymise(argparse.Namespace(kit=str(kit)))
+    assert e.value.code == 2
+    assert str(bad_path) in capsys.readouterr().err
+
+
+def test_capture_pii_gate_refuses_a_non_utf8_scan_target_before_any_dest_write(
+        monkeypatch, tmp_path, template, clean_objective, capsys):
+    """PR2i obs 1 (gate-14 MEDIUM): _capture_pii_gate's own _read_text_or_refuse(f) call
+    stayed green under every other test's mutation too (M9): capture-check's missing-item
+    and dest-shape checks run first and never touch file bytes, so nothing upstream caught
+    it either. REPO_ROOT is swapped to a throwaway root first (same technique as the
+    selftest fix above), so a bug that reached dest.mkdir() before the refusal fired could
+    never write into the real tree.
+    """
+    kit = _capture_ready_kit(tmp_path, template, clean_objective)
+    bad_path = kit / "Z-DECISIONI.md"
+    bad_path.write_bytes(b"\xff\xfe not valid utf-8 \x80\x81")
+    monkeypatch.setattr(dw, "REPO_ROOT", tmp_path / "fake_repo_root")
+    dest = dw._capture_dest_for(kit)
+    with pytest.raises(SystemExit) as e:
+        dw.cmd_capture_check(argparse.Namespace(kit=str(kit), dest=str(dest)))
+    assert e.value.code == 2
+    assert str(bad_path) in capsys.readouterr().err
+    assert not dest.exists()
+
+
+def test_seat_key_consolidation_guards_the_full_chain_for_an_aliased_seat(
+        monkeypatch, tmp_path, template, clean_objective):
+    """gate-15 obs 1 (MEDIUM, GATE-15-REPORT-6796.md): reverting cmd_r2's partner read
+    (:816), own write (:825), rejected write (:827), cmd_judge's read (:887),
+    _jury_prompt's read (:1099) or cmd_anonymise's read (:1161) back to raw _file_slug(seat)
+    left the shipped suite green at 106/106 -- only _claim_slug and the r1 writer were
+    guarded. kimi-2.7 canonicalizes to a DIFFERENT spelling, so each site reads/writes the
+    wrong path once _seat_key stops being the one formula in force. The seventh site
+    (run_selftest's own capture-check exercise, :1568) is proven separately by the
+    temp-REPO_ROOT test above -- the selftest dispatches no aliased seat, so this chain
+    cannot cover it.
+    """
+    seats = "kimi-2.7,qwen3.8-max,gemini-3.1-pro-high"
+    key = dw._seat_key("kimi-2.7")
+    kit = tmp_path / "k"
+    dw.cmd_brief(_brief_ns(clean_objective, template, kit))
+    _seed_convener(kit)
+    dw.cmd_r1(argparse.Namespace(kit=str(kit), seats=seats, astra_fallback=False))
+    assert (kit / "r1" / f"{key}.md").exists()  # site :557 (already guarded), sanity anchor
+
+    monkeypatch.delenv("DW_FAKE_SEATS", raising=False)
+    monkeypatch.setattr(dw, "_launch_seat", lambda seat, prompt, timeout, kit: dw._fake_r2_output(seat))
+    dw.cmd_r2(argparse.Namespace(kit=str(kit)))
+    assert (kit / "r2" / f"{key}.md").exists()  # site :825
+    assert (kit / "r2" / f"{key}.rejected.md").exists()  # site :827
+    monkeypatch.setenv("DW_FAKE_SEATS", "1")  # back to fake: judge/jury's own ballots need no launch
+
+    dw.cmd_judge(argparse.Namespace(kit=str(kit)))  # also exercises :816 (both other seats targeted kimi-2.7)
+    assert "| kimi-2.7 |" in (kit / "judge.md").read_text()  # site :887
+
+    dw.cmd_jury(argparse.Namespace(kit=str(kit)))
+    survivors = dw._jury_survivors(kit)
+    mapping = dw._jury_mapping(kit, survivors)
+    inverse = {seat: ltr for ltr, seat in mapping.items()}
+    prompt = dw._jury_prompt(kit, mapping, [inverse["kimi-2.7"]])  # direct call, fake-mode path
+    assert dw._strip_identity((kit / "r1" / f"{key}.md").read_text()) in prompt  # site :1099
+
+    dw.cmd_anonymise(argparse.Namespace(kit=str(kit)))
+    assert (kit / "Z-BLIND" / f"{inverse['kimi-2.7']}.md").exists()  # site :1161
