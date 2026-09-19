@@ -1,0 +1,95 @@
+task: >-
+  R7b of the kita client-profile redesign (PLAN-redesign.md, design v3 approved by
+  the owner 2026-09-19): the client page's Company tab stops composing the eight
+  editorial `components/portal/company/*` sub-components (crystal cards, role
+  colour wells, equity bar, serif hero) and renders the same record as six r19
+  `LedgerSection`s — Company identity kv grid, Capital & shares, Shareholders &
+  officers, Business activities, Legal timeline, Document vault. Data fetching,
+  the derived block, the three actions (Add company, Edit company, Sync Drive),
+  both modals and the nine vault slots are unchanged. This branch is the REPAIRED
+  round: an independent read-only OLD-vs-NEW parity audit returned
+  SHIP-WITH-CONDITIONS on the first commit (`573c95b31d`) with four blocking
+  findings, all closed here. (1) A NUMBER ON SCREEN HAD SILENTLY CHANGED: the OCR
+  shareholder fallback computed ownership % over the sum of the OCR'd rows, where
+  the old `PeopleColumn` preferred the company's `shares_count` — 10000 shares
+  with two 4000-share rows rendered 50% / 50% instead of 40% / 40%; the record's
+  `shares_count` is the denominator again. (2) UNDISCLOSED COPY DROPS: the
+  identity row's glosses "Nomor Induk Berusaha", "Tax Identification Number" and
+  the four Indonesian entity-type expansions are restored as kv sub-lines, the
+  last through the existing `companyTypeSubtitles` map, looked up on the stored
+  value and then on its canonical form. (3) A TEST THAT COULD NOT FAIL: the "no
+  per-tab AI card" assertion queried a test id the real card never carries; the
+  card module is now stubbed with that id. (4) The two copy buttons were 20px
+  targets; they are 24px.
+lane: frontend/kita-r7b-company-tab-kv-grid
+machine: air-m5
+date: 2026-09-20
+
+gear: 2
+gear_reason: >-
+  Deterministic floor 2, source `size`: two plain files under
+  `apps/mouth/src/app/(workspace)/clients/[id]/components/` (CompanyTab.tsx and
+  the new CompanyTab.test.tsx) plus this brief, churn above
+  `SIZE_GEAR2_THRESHOLD` (400) and below `SIZE_GEAR3_THRESHOLD` (1828). Neither
+  file matches `HOTZONE_PATTERNS` — no workflow, secret, migration or backend
+  path — so the path term does not raise the floor. Confirmed with `python3
+  scripts/evidence_pack_lint.py --print-floor --changed-files-file <list>
+  --numstat-file <numstat>` → `2`.
+
+appetite:
+  wall_clock_hours: 1
+  adversarial_rounds: 1
+
+acceptance:
+  A1: >-
+    OCR ownership is a share of the company: with `shares_count` 10000 and two
+    OCR'd 4000-share rows the tab renders `40%` twice and never `50%`; with no
+    `shares_count` the rows' own sum stands in and it renders `50%` twice. The
+    first case fails when the `totalShares ||` term is removed (mutation run on
+    this branch).
+    probe: >-
+      cd apps/mouth && npx --no-install vitest run
+      'src/app/(workspace)/clients/[id]/components/CompanyTab.test.tsx'
+  A2: >-
+    The identity glosses render: a company stored with the legacy spelling
+    `PT_PMA` shows `PT PMA`, `Penanaman Modal Asing`, `Nomor Induk Berusaha · OSS
+    registered` and `Tax Identification Number`; a plain `PT` shows no
+    expansion. Removing either sub-line turns the case red (mutation run).
+    probe: >-
+      cd apps/mouth && npx --no-install vitest run
+      'src/app/(workspace)/clients/[id]/components/CompanyTab.test.tsx'
+  A3: >-
+    The OCR-vs-associates switch is pinned on both sides of its boundary: one
+    OCR row against one linked associate keeps the associate, two OCR rows
+    replace it. Changing `>` to `>=` turns the case red (mutation run).
+    probe: >-
+      cd apps/mouth && npx --no-install vitest run
+      'src/app/(workspace)/clients/[id]/components/CompanyTab.test.tsx'
+  A4: >-
+    The full `clients/[id]/` folder suite passes — 19 files / 229 tests —
+    including `__tests__/client-detail-desk.test.tsx`'s AST colour/copper guard,
+    and re-mounting `AiSummaryCard` in the tab turns the identity case red.
+    probe: >-
+      cd apps/mouth && npx --no-install vitest run
+      'src/app/(workspace)/clients/[id]/'
+  A5: >-
+    `tsc --noEmit -p .` exits 0 with no output and `token_lint` reports no new
+    hardcoded colour in the scoped surfaces.
+    probe: >-
+      cd apps/mouth && npx --no-install tsc --noEmit -p . && cd ../.. &&
+      python3 -I scripts/token_lint.py --base origin/main
+
+out_of_scope: >-
+  Disclosed product-visible removals, all per design v3 and accepted by the
+  audit: the per-tab `AiSummaryCard`, the serif hero prose and eyebrow, the two
+  `DividerLabel`s, the role colour-coding and the equity bar (director = copper
+  broke r19 law 1) with its "Equal 50 / 50 split" line, the empty state's second
+  guidance sentence, the vault's "Documents on File" caption pair, and the
+  NIB/OSS timeline year — the audit verified against `company_models.py` that no
+  NIB issuance date exists anywhere in the backend, so the old `skDate year + 1`
+  was a frontend guess. Not widened into this PR: whether the shared
+  `ui/button.tsx` shows a visible focus ring under `operative-light` (lot-wide,
+  one browser check), the `components/portal/company/*` sub-components — left
+  untouched on disk because the client portal's own company page still mounts
+  them — and a vault-count assertion with a non-empty documents fixture. The net size is past the plan's ~400-line lot budget because
+  one 730-line component is replaced whole and ships with 17 pinned cases.

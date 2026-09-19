@@ -1,8 +1,10 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Building2, Loader2, Plus, RefreshCw } from "lucide-react";
+import { Copy, Edit2, Loader2, Plus, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import { api } from "@/lib/api";
 import { logger } from "@/lib/logger";
 import type {
@@ -10,20 +12,168 @@ import type {
   ClientDocument,
   CompanyDocument,
 } from "@/lib/api/crm/crm.types";
-
-import { AiSummaryCard } from "./AiSummaryCard";
-import { formatCapital } from "@/components/portal/company/editorial-tokens";
-import { EditorialHero } from "@/components/portal/company/EditorialHero";
-import { IdentityRow } from "@/components/portal/company/IdentityRow";
-import { FactBoxes } from "@/components/portal/company/FactBoxes";
-import { DividerLabel } from "@/components/portal/company/DividerLabel";
-import { KeyNumbersColumn } from "@/components/portal/company/KeyNumbersColumn";
-import { PeopleColumn } from "@/components/portal/company/PeopleColumn";
-import { KBLIEditorial } from "@/components/portal/company/KBLIEditorial";
-import { LegalTimeline } from "@/components/portal/company/LegalTimeline";
+import {
+  CellStack,
+  EmptyState,
+  EYEBROW,
+  FOCUS,
+  HairlineBody,
+  HairlineGrid,
+  HairlineHead,
+  HairlineRow,
+  LedgerSection,
+  Numeral,
+  StatePill,
+  TABULAR,
+  type PillTone,
+} from "@/components/workspace/r19";
+import {
+  companyTypeSubtitles,
+  computeAge,
+  formatCapital,
+  formatCapitalFull,
+  getInitials,
+} from "@/components/portal/company/editorial-tokens";
+import {
+  COMPANY_TYPE_OPTIONS,
+  normalizeCompanyType,
+} from "./company/companyType";
 import { CompanyDocUpload } from "./company/CompanyDocUpload";
 import { EditCompanyModal } from "./company/EditCompanyModal";
 import { AddCompanyModal } from "./modals/AddCompanyModal";
+
+/** 7 common KBLI codes' English titles — real static reference data, kept
+ * verbatim from the old `KBLIEditorial.tsx`, not a per-record fabrication. */
+const KBLI_ENGLISH: Record<string, string> = {
+  "68110": "Real Estate Activities — Own or Leased",
+  "70209": "Other Management Consulting Activities",
+  "56101": "Restaurant",
+  "47111": "Retail Trade in Mini Markets",
+  "46100": "Wholesale Trade on a Fee or Contract Basis",
+  "62011": "Computer Programming Activities",
+  "73100": "Advertising",
+};
+
+const DOC_VAULT_SLOTS = [
+  { docType: "akta_pendirian", label: "Akta Pendirian", hint: "PDF/JPG" },
+  { docType: "sk_decree", label: "SK Kemenkumham", hint: "PDF/JPG" },
+  { docType: "npwp", label: "NPWP Perusahaan", hint: "PDF/JPG" },
+  { docType: "nib", label: "NIB", hint: "PDF/JPG" },
+  { docType: "company_profile", label: "Company Profile", hint: "PDF" },
+  { docType: "wlkp", label: "WLKP", hint: "PDF" },
+  { docType: "bpjs", label: "BPJS Ketenagakerjaan", hint: "PDF" },
+  { docType: "organogram", label: "Bagan Organisasi", hint: "PDF/JPG" },
+  { docType: "rekening_koran", label: "Rekening Koran", hint: "PDF" },
+];
+
+/** Real `company_status` word for every value the field can carry — the old
+ * chip only covered active/in_setup/dormant and rendered NOTHING for
+ * "dissolved" (a gap, not a design choice); this closes it with the same
+ * field, never a guess. */
+function companyStatusPill(status: string): { tone: PillTone; label: string } {
+  if (status === "active") return { tone: "ok", label: "Active" };
+  if (status === "in_setup") return { tone: "wait", label: "In Setup" };
+  if (status === "dormant") return { tone: "wait", label: "Dormant" };
+  if (status === "dissolved") return { tone: "wait", label: "Dissolved" };
+  return { tone: "wait", label: status };
+}
+
+/** Same `custom_fields` shape three old sub-components each parsed on their
+ * own (authorized capital, shareholder count, OCR shareholder list) —
+ * consolidated into one parse, same try/catch-swallow behaviour. */
+function parseCustomFields(
+  raw: Record<string, unknown> | string | undefined,
+): Record<string, unknown> {
+  try {
+    const parsed = typeof raw === "string" ? JSON.parse(raw) : raw;
+    return parsed && typeof parsed === "object"
+      ? (parsed as Record<string, unknown>)
+      : {};
+  } catch {
+    return {};
+  }
+}
+
+/** Ownership % is a share of the COMPANY: the record's `shares_count` is the
+ * denominator whenever it exists, and the sum of the OCR'd rows only stands
+ * in when it does not — same priority the old `PeopleColumn` applied. */
+function parseOcrShareholders(
+  cf: Record<string, unknown>,
+  totalShares?: number,
+): Array<{ name?: string; role: string; shares?: number; pct?: number }> {
+  try {
+    const sh = cf.shareholders;
+    if (!sh) return [];
+    const parsed = typeof sh === "string" ? JSON.parse(sh) : sh;
+    if (!Array.isArray(parsed) || parsed.length === 0) return [];
+    const total =
+      totalShares ||
+      parsed.reduce(
+        (sum: number, s: { shares?: number }) => sum + (s.shares || 0),
+        0,
+      );
+    return parsed.map(
+      (s: { name?: string; role?: string; shares?: number }) => ({
+        name: s.name,
+        role: s.role?.toLowerCase() || "shareholder",
+        shares: s.shares,
+        pct:
+          total > 0 && s.shares
+            ? Math.round((s.shares / total) * 100 * 10) / 10
+            : undefined,
+      }),
+    );
+  } catch {
+    return [];
+  }
+}
+
+function KvItem({
+  label,
+  value,
+  sub,
+  action,
+}: {
+  label: string;
+  value: React.ReactNode;
+  sub?: React.ReactNode;
+  action?: React.ReactNode;
+}) {
+  return (
+    <div className="flex flex-col gap-1">
+      <span className={EYEBROW}>{label}</span>
+      <span className="flex items-center gap-1.5 text-[15px] font-semibold text-[var(--tx-pure)]">
+        <span style={TABULAR}>{value}</span>
+        {action}
+      </span>
+      {sub ? (
+        <span className="text-[12px] text-[var(--tx-secondary)]">{sub}</span>
+      ) : null}
+    </div>
+  );
+}
+
+function CopyButton({ value, field }: { value: string; field: string }) {
+  return (
+    <button
+      type="button"
+      aria-label={`Copy ${field}`}
+      onClick={() => {
+        void navigator.clipboard.writeText(value);
+        toast.success("Copied");
+      }}
+      className={cn(
+        "inline-flex h-6 w-6 items-center justify-center text-[var(--tx-secondary)] hover:text-[var(--tx-pure)]",
+        FOCUS,
+      )}
+    >
+      <Copy className="h-3 w-3" aria-hidden="true" />
+    </button>
+  );
+}
+
+const KV_GRID =
+  "grid grid-cols-1 gap-x-8 gap-y-5 py-5 sm:grid-cols-2 lg:grid-cols-3";
 
 // ============================================
 // COMPANY TAB (main export)
@@ -330,7 +480,7 @@ export function CompanyTab({
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-12">
-        <Loader2 className="w-6 h-6 animate-spin text-[var(--kbli-text-muted)]" />
+        <Loader2 className="w-6 h-6 animate-spin text-[var(--tx-secondary)]" />
       </div>
     );
   }
@@ -341,29 +491,23 @@ export function CompanyTab({
 
   if (!companyData && !hasCompanyName && !hasAnyDoc) {
     return (
-      <div className="space-y-4">
-        <AiSummaryCard clientId={clientId} section="company" />
-        <div className="rounded-xl border border-dashed border-[var(--bz-border)] bg-[var(--bz-surface)]/50 p-12 text-center space-y-4">
-          <Building2 className="w-12 h-12 mx-auto text-[var(--bz-text-2)] mb-3 opacity-40" />
-          <p className="text-sm font-medium text-[var(--bz-text-1)]">
-            No company linked
-          </p>
-          <p className="text-xs text-[var(--bz-text-2)] max-w-xs mx-auto">
-            This client has no associated company. Create a new company or link
-            an existing one.
-          </p>
-          <button
-            onClick={() => setIsAddingCompany(true)}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors"
-            style={{
-              background: "var(--state-success)",
-              color: "var(--bz-on-warm)",
-            }}
-          >
-            <Plus className="w-4 h-4" />
-            Add Company
-          </button>
-        </div>
+      <>
+        <EmptyState
+          action={
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="gap-2"
+              onClick={() => setIsAddingCompany(true)}
+            >
+              <Plus className="h-4 w-4" aria-hidden="true" />
+              Add company
+            </Button>
+          }
+        >
+          No company linked yet.
+        </EmptyState>
         {isAddingCompany && (
           <AddCompanyModal
             clientId={clientId}
@@ -375,15 +519,58 @@ export function CompanyTab({
             }}
           />
         )}
-      </div>
+      </>
     );
   }
 
   // ── DERIVED DATA ───────────────────────────────────────────────────────
   const co = companyData;
   const companyName = co?.company_name || client.company_name || "Company";
-  const companyType = co?.company_type || "";
+  const companyTypeRaw = co?.company_type || "";
+  const normalizedType = normalizeCompanyType(companyTypeRaw);
+  const companyTypeOption = COMPANY_TYPE_OPTIONS.find(
+    (o) => o.value === normalizedType,
+  );
+  const companyTypeLabel = companyTypeRaw
+    ? companyTypeOption?.label || companyTypeRaw
+    : "—";
+  // Indonesian expansion of the entity type, keyed on the stored value first
+  // and on its canonical form second, so a legacy `PT_PMA` row keeps its gloss.
+  const companyTypeSubtitle = companyTypeRaw
+    ? companyTypeSubtitles[companyTypeRaw] ||
+      companyTypeSubtitles[normalizedType]
+    : undefined;
+  const isPMA = companyTypeRaw === "PT PMA" || companyTypeRaw === "PMA";
   const capital = formatCapital(co?.shares_count, co?.share_nominal_value);
+
+  const customFields = parseCustomFields(co?.custom_fields);
+  const capitalFull =
+    formatCapitalFull(co?.shares_count, co?.share_nominal_value) ||
+    (() => {
+      const authCap = customFields.authorized_capital;
+      if (authCap) {
+        const num = Number(authCap);
+        if (!isNaN(num) && num > 0) return `Rp ${num.toLocaleString("id-ID")}`;
+      }
+      return null;
+    })();
+
+  const ocrShareholders = parseOcrShareholders(customFields, co?.shares_count);
+  const people =
+    ocrShareholders.length > associates.length
+      ? ocrShareholders.map((s) => ({
+          name: s.name,
+          role: s.role,
+          shares: s.shares,
+          pct: s.pct,
+        }))
+      : associates.map((a) => ({
+          name: a.client_name,
+          role: a.role,
+          shares: a.shares_count,
+          pct: a.ownership_percentage,
+        }));
+  const shareholderCount = people.length;
 
   // If pendirian fields are identical to perubahan, treat pendirian as absent
   const pendirianIsDuplicate =
@@ -397,21 +584,11 @@ export function CompanyTab({
     ? undefined
     : co?.akta_pendirian_date;
 
-  const foundingYear = effectivePendirianDate
-    ? new Date(effectivePendirianDate).getFullYear()
-    : co?.sk_menhumkam_date
-      ? new Date(co.sk_menhumkam_date).getFullYear()
-      : null;
-
   const foundingDate = effectivePendirianDate || co?.sk_menhumkam_date;
+  const age = computeAge(foundingDate);
 
-  const addressStr = [
-    co?.registered_address || co?.office_address,
-    co?.city,
-    co?.province,
-  ]
-    .filter(Boolean)
-    .join(", ");
+  const streetAddress = co?.registered_address || co?.office_address;
+  const cityProvince = [co?.city, co?.province].filter(Boolean).join(", ");
 
   // Merge docs for count
   const allDocs = [
@@ -430,222 +607,384 @@ export function CompanyTab({
   const hasLegalData =
     effectivePendirianNo || co?.akta_perubahan_no || co?.sk_menhumkam_no;
 
+  const hasCapitalFacts =
+    capitalFull || co?.shares_count || foundingDate || co?.akta_perubahan_no;
+
+  const kbliCodes = co?.kbli_code
+    ? co.kbli_code.split(",").map((c) => c.trim())
+    : [];
+  const kbliDescriptions = (co?.kbli_description || "")
+    .split(";")
+    .map((d) => d.trim());
+
+  // Legal timeline entries — same push order as the old component (amendment,
+  // NIB/OSS, incorporation), never re-sorted by date.
+  const legalEntries: Array<{
+    key: string;
+    kind: string;
+    title: string;
+    body: string;
+    refText?: string;
+    date?: string;
+  }> = [];
+  if (co?.akta_perubahan_no && co?.akta_perubahan_date) {
+    legalEntries.push({
+      key: "amendment",
+      kind: "Akta Perubahan · Corporate Amendment",
+      title: `Revision #${co.akta_perubahan_no}`,
+      body: `Amendment filed with Kemenkumham.${capital ? ` Authorized capital updated to ${capital}.` : ""}`,
+      refText: `Akta Perubahan #${co.akta_perubahan_no}`,
+      date: co.akta_perubahan_date,
+    });
+  }
+  if (co?.nib) {
+    legalEntries.push({
+      key: "nib",
+      kind: "Regulatory · OSS Compliance",
+      title: "NIB Issued & OSS Platform Verified",
+      body: `Registered on the Online Single Submission (OSS) platform.${co.npwp_company ? ` NPWP ${co.npwp_company} completed.` : ""}`,
+      refText: `NIB ${co.nib}${co.npwp_company ? ` · NPWP ${co.npwp_company}` : ""}`,
+    });
+  }
+  if (effectivePendirianNo && effectivePendirianDate) {
+    legalEntries.push({
+      key: "incorporation",
+      kind: "Incorporation · Company Formation",
+      title: `${companyName} Established`,
+      body: `Incorporated as a Perseroan Terbatas${isPMA ? " under the PMA regime (foreign direct investment)" : ""}.${co?.sk_menhumkam_no ? " Approved by the Ministry of Law and Human Rights." : ""}`,
+      refText: co?.sk_menhumkam_no,
+      date: effectivePendirianDate,
+    });
+  } else if (co?.sk_menhumkam_no && co?.sk_menhumkam_date) {
+    legalEntries.push({
+      key: "incorporation-sk",
+      kind: "Incorporation · Company Formation",
+      title: `${companyName} Established`,
+      body: "Incorporated and approved by Kemenkumham.",
+      refText: co.sk_menhumkam_no,
+      date: co.sk_menhumkam_date,
+    });
+  }
+
+  const editAction = co?.company_id ? (
+    <Button
+      type="button"
+      variant="ghost"
+      size="icon"
+      className="h-8 w-8 text-[var(--tx-secondary)] hover:text-[var(--tx-pure)]"
+      aria-label="Edit company"
+      title="Edit company"
+      onClick={() => setIsEditingCompany(true)}
+    >
+      <Edit2 className="h-4 w-4" />
+    </Button>
+  ) : null;
+
+  const syncDriveAction = co?.company_id ? (
+    <Button
+      type="button"
+      variant="outline"
+      size="sm"
+      className="gap-1.5"
+      disabled={isSyncingDrive}
+      onClick={async () => {
+        setIsSyncingDrive(true);
+        try {
+          const res = (await api.post(
+            `/api/crm/companies/${co.company_id}/sync-drive`,
+            {},
+          )) as { added: number; skipped: number; total_in_folder: number };
+          toast.success(
+            `Drive sync: ${res.added} added, ${res.skipped} skipped`,
+            {
+              description: `${res.total_in_folder} files in folder`,
+            },
+          );
+          if (res.added > 0) {
+            setReloadTrigger((t) => t + 1);
+            void onRefresh();
+          }
+        } catch (err) {
+          toast.error("Drive sync failed", {
+            description: (err as Error).message,
+          });
+        } finally {
+          setIsSyncingDrive(false);
+        }
+      }}
+    >
+      {isSyncingDrive ? (
+        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+      ) : (
+        <RefreshCw className="h-3.5 w-3.5" aria-hidden="true" />
+      )}
+      Sync Drive
+    </Button>
+  ) : null;
+
+  const addCompanyAction = (
+    <Button
+      type="button"
+      variant="outline"
+      size="sm"
+      className="gap-1.5"
+      onClick={() => setIsAddingCompany(true)}
+    >
+      <Plus className="h-3.5 w-3.5" aria-hidden="true" />
+      Add company
+    </Button>
+  );
+
   // ── RENDER ─────────────────────────────────────────────────────────────
   return (
-    <div className="max-w-[960px] mx-auto">
-      {/* AI Summary (CRM-Guardian L1 cross-folder) */}
-      <div className="mb-4">
-        <AiSummaryCard clientId={clientId} section="company" />
-      </div>
-      {/* ── TOOLBAR ────────────────────────────────────────────────────── */}
-      <div className="flex justify-end gap-2 mb-3">
-        {co?.company_id && (
-          <button
-            onClick={async () => {
-              setIsSyncingDrive(true);
-              try {
-                const res = (await api.post(
-                  `/api/crm/companies/${co.company_id}/sync-drive`,
-                  {},
-                )) as {
-                  added: number;
-                  skipped: number;
-                  total_in_folder: number;
-                };
-                toast.success(
-                  `Drive sync: ${res.added} added, ${res.skipped} skipped`,
-                  {
-                    description: `${res.total_in_folder} files in folder`,
-                  },
-                );
-                if (res.added > 0) {
-                  setReloadTrigger((t) => t + 1);
-                  void onRefresh();
-                }
-              } catch (err) {
-                toast.error("Drive sync failed", {
-                  description: (err as Error).message,
-                });
-              } finally {
-                setIsSyncingDrive(false);
-              }
-            }}
-            disabled={isSyncingDrive}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors border"
-            style={{
-              background: "var(--bz-surface)",
-              border: "1px solid var(--bz-border)",
-              color: "var(--bz-text-2)",
-            }}
-          >
-            {isSyncingDrive ? (
-              <Loader2 className="w-3.5 h-3.5 animate-spin" />
-            ) : (
-              <RefreshCw className="w-3.5 h-3.5" />
-            )}
-            Sync Drive
-          </button>
-        )}
-        <button
-          onClick={() => setIsAddingCompany(true)}
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors border"
-          style={{
-            background: "var(--bz-surface)",
-            border: "1px solid var(--bz-border)",
-            color: "var(--bz-text-2)",
-          }}
-        >
-          <Plus className="w-3.5 h-3.5" />
-          Add Company
-        </button>
-      </div>
-
-      {/* ── EDITORIAL HERO ─────────────────────────────────────────────── */}
-      <EditorialHero
-        companyName={companyName}
-        companyType={companyType}
-        companyStatus={co?.company_status}
-        nib={co?.nib}
-        kbliDescription={co?.kbli_description}
-        city={co?.city}
-        province={co?.province}
-        addressStr={addressStr}
-        capital={capital}
-        shareholderCount={(() => {
-          try {
-            const cf =
-              typeof co?.custom_fields === "string"
-                ? JSON.parse(co.custom_fields as string)
-                : co?.custom_fields;
-            const sh = cf?.shareholders;
-            if (sh) {
-              const parsed = typeof sh === "string" ? JSON.parse(sh) : sh;
-              if (Array.isArray(parsed) && parsed.length > 0)
-                return parsed.length;
+    <div className="flex flex-col gap-8">
+      <LedgerSection
+        n={1}
+        tone={co ? "done" : "wait"}
+        title="Company identity"
+        actions={
+          <>
+            {editAction}
+            {syncDriveAction}
+            {addCompanyAction}
+          </>
+        }
+      >
+        <div className={KV_GRID}>
+          <KvItem label="Legal name" value={companyName} />
+          <KvItem
+            label="Company type"
+            value={companyTypeLabel}
+            sub={companyTypeSubtitle}
+          />
+          <KvItem
+            label="NIB"
+            value={co?.nib || "—"}
+            sub={
+              co?.nib
+                ? "Nomor Induk Berusaha · OSS registered"
+                : "Nomor Induk Berusaha"
             }
-          } catch {
-            /* ignore */
-          }
-          return associates.length;
-        })()}
-        foundingYear={foundingYear}
-        companyId={co?.company_id}
-        onEdit={() => setIsEditingCompany(true)}
-      />
-
-      {/* ── IDENTITY ROW (NIB / NPWP / TYPE) ──────────────────────────── */}
-      <IdentityRow
-        nib={co?.nib}
-        npwp={co?.npwp_company}
-        companyType={companyType}
-      />
-
-      {/* ── FACT BOXES (CAPITAL / AGE / DOCS) ─────────────────────────── */}
-      <FactBoxes
-        capital={capital}
-        aktaPerubahanNo={co?.akta_perubahan_no}
-        aktaPerubahanDate={co?.akta_perubahan_date}
-        foundingDate={foundingDate}
-        documentCount={allDocs.length}
-      />
-
-      {/* ── KEY NUMBERS & PEOPLE ───────────────────────────────────────── */}
-      {(capital || associates.length > 0) && (
-        <>
-          <DividerLabel text="Key Numbers & People" />
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-10 md:gap-16">
-            <KeyNumbersColumn
-              sharesCount={co?.shares_count}
-              shareNominalValue={co?.share_nominal_value}
-              capital={capital}
-              aktaPerubahanNo={co?.akta_perubahan_no}
-              aktaPerubahanDate={co?.akta_perubahan_date}
-              foundingDate={foundingDate}
-              skNo={co?.sk_menhumkam_no}
-              addressStr={addressStr}
-              city={co?.city}
-              fullAddress={co?.registered_address || co?.office_address}
-              formatDate={formatDate}
-              customFields={co?.custom_fields}
-            />
-            <PeopleColumn
-              associates={associates}
-              fallbackName={client.full_name}
-              customFields={co?.custom_fields}
-              totalShares={co?.shares_count}
-            />
+            action={co?.nib ? <CopyButton value={co.nib} field="NIB" /> : null}
+          />
+          <KvItem
+            label="NPWP"
+            value={co?.npwp_company || "—"}
+            sub="Tax Identification Number"
+            action={
+              co?.npwp_company ? (
+                <CopyButton value={co.npwp_company} field="NPWP" />
+              ) : null
+            }
+          />
+          <KvItem
+            label="KBLI"
+            value={kbliCodes[0] || "—"}
+            sub={kbliDescriptions[0] || undefined}
+          />
+          <KvItem
+            label="Registered address"
+            value={streetAddress || cityProvince || "—"}
+            sub={streetAddress && cityProvince ? cityProvince : undefined}
+          />
+        </div>
+        {co ? (
+          <div className="pb-4">
+            <StatePill {...companyStatusPill(co.company_status || "active")} />
           </div>
-        </>
+        ) : null}
+      </LedgerSection>
+
+      {hasCapitalFacts && (
+        <LedgerSection n={2} title="Capital & shares">
+          <div className={KV_GRID}>
+            {capitalFull && (
+              <KvItem
+                label="Authorized capital"
+                value={capitalFull}
+                sub={
+                  co?.akta_perubahan_no
+                    ? `IDR · Increased via Akta #${co.akta_perubahan_no}${co.akta_perubahan_date ? ` · ${formatDate(co.akta_perubahan_date)}` : ""}`
+                    : "IDR"
+                }
+              />
+            )}
+            {co?.shares_count ? (
+              <KvItem
+                label="Share structure"
+                value={`${co.shares_count.toLocaleString()} shares`}
+                sub={
+                  co.share_nominal_value
+                    ? `Rp ${(co.share_nominal_value / 1e6).toFixed(0)},000,000 par value per share`
+                    : undefined
+                }
+              />
+            ) : null}
+            {foundingDate ? (
+              <KvItem
+                label="Incorporation date"
+                value={formatDate(foundingDate)}
+                sub={[co?.sk_menhumkam_no, age ? `${age.label} old` : undefined]
+                  .filter(Boolean)
+                  .join(" · ")}
+              />
+            ) : null}
+            {co?.akta_perubahan_no ? (
+              <KvItem
+                label="Last amendment"
+                value={`Akta #${co.akta_perubahan_no}`}
+                sub={
+                  co.akta_perubahan_date
+                    ? `${formatDate(co.akta_perubahan_date)} · Capital restructuring`
+                    : undefined
+                }
+              />
+            ) : null}
+          </div>
+        </LedgerSection>
       )}
 
-      {/* ── KBLI BUSINESS ACTIVITIES ───────────────────────────────────── */}
-      {co?.kbli_code && (
-        <>
-          <DividerLabel text="Business Activities" />
-          <KBLIEditorial
-            kbliCode={co.kbli_code}
-            kbliDescription={co.kbli_description}
-          />
-        </>
+      {shareholderCount > 0 && (
+        <LedgerSection
+          n={3}
+          title={
+            <span className="flex items-baseline gap-2">
+              Shareholders &amp; officers{" "}
+              <Numeral n={shareholderCount} size="count" />
+            </span>
+          }
+        >
+          <HairlineGrid cols="minmax(12rem,1.8fr) minmax(8rem,1fr) minmax(6rem,0.7fr) minmax(6rem,0.7fr)">
+            <HairlineHead>
+              <span>Person</span>
+              <span>Role</span>
+              <span>Shares</span>
+              <span>Ownership</span>
+            </HairlineHead>
+            <HairlineBody>
+              {people.map((person, i) => {
+                const name = person.name || client.full_name || "?";
+                return (
+                  <HairlineRow key={`${name}-${i}`}>
+                    <div className="min-w-0 px-2.5">
+                      <CellStack
+                        primary={
+                          <span className="flex min-w-0 items-center gap-3">
+                            <span
+                              aria-hidden="true"
+                              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[6px] bg-[var(--bz-card)] text-xs text-[var(--tx-pure)]"
+                            >
+                              {getInitials(name)}
+                            </span>
+                            <span className="truncate">{name}</span>
+                          </span>
+                        }
+                      />
+                    </div>
+                    <span className="truncate px-2.5 capitalize text-[var(--tx-pure)]">
+                      {person.role || "Shareholder"}
+                    </span>
+                    <span className="px-2.5" style={TABULAR}>
+                      {person.shares != null
+                        ? person.shares.toLocaleString()
+                        : "—"}
+                    </span>
+                    <span className="px-2.5" style={TABULAR}>
+                      {person.pct != null ? `${person.pct}%` : "—"}
+                    </span>
+                  </HairlineRow>
+                );
+              })}
+            </HairlineBody>
+          </HairlineGrid>
+        </LedgerSection>
       )}
 
-      {/* ── LEGAL TIMELINE ─────────────────────────────────────────────── */}
+      {kbliCodes.length > 0 && (
+        <LedgerSection n={4} title="Business activities">
+          <HairlineGrid cols="96px minmax(0,1fr) 110px">
+            <HairlineHead>
+              <span>Code</span>
+              <span>Activity</span>
+              <span>Tag</span>
+            </HairlineHead>
+            <HairlineBody>
+              {kbliCodes.map((code, i) => {
+                const desc = kbliDescriptions[i] || kbliDescriptions[0] || "";
+                const english = KBLI_ENGLISH[code];
+                return (
+                  <HairlineRow key={code}>
+                    <span className="px-2.5 font-semibold" style={TABULAR}>
+                      {code}
+                    </span>
+                    <div className="min-w-0 px-2.5">
+                      <CellStack
+                        primary={english || desc || `KBLI ${code}`}
+                        secondary={english ? desc : undefined}
+                      />
+                    </div>
+                    <span className="px-2.5">
+                      <StatePill
+                        tone={i === 0 ? "ink" : "wait"}
+                        label={i === 0 ? "Primary" : "Secondary"}
+                      />
+                    </span>
+                  </HairlineRow>
+                );
+              })}
+            </HairlineBody>
+          </HairlineGrid>
+        </LedgerSection>
+      )}
+
       {hasLegalData && (
-        <>
-          <DividerLabel text="Legal Timeline" />
-          <LegalTimeline
-            aktaPendirianNo={effectivePendirianNo}
-            aktaPendirianDate={effectivePendirianDate}
-            aktaPerubahanNo={co?.akta_perubahan_no}
-            aktaPerubahanDate={co?.akta_perubahan_date}
-            skNo={co?.sk_menhumkam_no}
-            skDate={co?.sk_menhumkam_date}
-            nib={co?.nib}
-            npwp={co?.npwp_company}
-            companyName={companyName}
-            companyType={companyType}
-            capital={capital}
-            formatDate={formatDate}
-          />
-        </>
+        <LedgerSection n={5} title="Legal timeline">
+          <HairlineGrid cols="minmax(10rem,1.2fr) minmax(14rem,2fr) 110px">
+            <HairlineHead>
+              <span>Event</span>
+              <span>Detail</span>
+              <span>Date</span>
+            </HairlineHead>
+            <HairlineBody>
+              {legalEntries.map((entry) => (
+                <HairlineRow key={entry.key}>
+                  <div className="min-w-0 px-2.5">
+                    <CellStack primary={entry.title} secondary={entry.kind} />
+                  </div>
+                  <div className="min-w-0 px-2.5 py-2">
+                    <p className="text-[12px] text-[var(--tx-secondary)]">
+                      {entry.body}
+                    </p>
+                    {entry.refText ? (
+                      <p
+                        className="mt-1 text-[11px] text-[var(--tx-secondary)]"
+                        style={TABULAR}
+                      >
+                        {entry.refText}
+                      </p>
+                    ) : null}
+                  </div>
+                  <span className="px-2.5" style={TABULAR}>
+                    {entry.date ? formatDate(entry.date) : "—"}
+                  </span>
+                </HairlineRow>
+              ))}
+            </HairlineBody>
+          </HairlineGrid>
+        </LedgerSection>
       )}
 
-      {/* ── UPLOAD DOCUMENTS ───────────────────────────────────────────── */}
       {co?.company_id && (
-        <>
-          <DividerLabel text="Document Vault" />
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-            {[
-              {
-                docType: "akta_pendirian",
-                label: "Akta Pendirian",
-                hint: "PDF/JPG",
-              },
-              {
-                docType: "sk_decree",
-                label: "SK Kemenkumham",
-                hint: "PDF/JPG",
-              },
-              { docType: "npwp", label: "NPWP Perusahaan", hint: "PDF/JPG" },
-              { docType: "nib", label: "NIB", hint: "PDF/JPG" },
-              {
-                docType: "company_profile",
-                label: "Company Profile",
-                hint: "PDF",
-              },
-              { docType: "wlkp", label: "WLKP", hint: "PDF" },
-              { docType: "bpjs", label: "BPJS Ketenagakerjaan", hint: "PDF" },
-              {
-                docType: "organogram",
-                label: "Bagan Organisasi",
-                hint: "PDF/JPG",
-              },
-              {
-                docType: "rekening_koran",
-                label: "Rekening Koran",
-                hint: "PDF",
-              },
-            ].map((item) => {
+        <LedgerSection
+          n={6}
+          title={
+            <span className="flex items-baseline gap-2">
+              Document vault <Numeral n={allDocs.length} size="count" />
+            </span>
+          }
+        >
+          <div className="grid grid-cols-1 gap-3 py-5 sm:grid-cols-2 lg:grid-cols-3">
+            {DOC_VAULT_SLOTS.map((item) => {
               // Search company docs first, then client docs with pma category
               const typeNorm = item.docType.toLowerCase().replace(/_/g, "");
               const matchType = (dt: string) => {
@@ -697,7 +1036,7 @@ export function CompanyTab({
               );
             })}
           </div>
-        </>
+        </LedgerSection>
       )}
 
       {/* ── EDIT MODAL ─────────────────────────────────────────────────── */}
