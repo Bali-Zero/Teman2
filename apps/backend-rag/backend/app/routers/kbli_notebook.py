@@ -979,8 +979,12 @@ async def inspect_kbli(code: str, pool=Depends(get_optional_database_pool)) -> A
                 detail="Database connection reset — please retry",
                 headers={"Retry-After": "5"},
             ) from e
+        # The whole string stays HERE, with the traceback. What the client gets is
+        # that we failed, not how: `err_msg` is the driver's own words, and on an
+        # unauthenticated route those words have carried table names, column names
+        # and host:port. Opacity in the response, never in the log.
         logger.error("❌ KBLI Inspection Error for %s: %s", code, err_msg, exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Internal processing error: {err_msg}") from e
+        raise HTTPException(status_code=500, detail="Internal processing error") from e
 
 
 # CHAT ENDPOINT & LLM HELPERS → kbli_notebook_chat.py
