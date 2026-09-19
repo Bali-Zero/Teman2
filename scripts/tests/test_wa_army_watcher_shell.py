@@ -12,6 +12,9 @@ OFF (measured on tmux 3.7b), which would silence the launcher's own pipe.
 Seams: TMUX_BIN (a wrapper adding `-L <socket>`), WA_ARMY_POLL_S, a `curl` shim
 on PATH that records the Telegram text instead of sending it, HOME with no
 LaunchAgents so the token comes from TELEGRAM_BOT_TOKEN. Skips without tmux.
+
+The last case drives wa_army_launcher.sh itself (same tmux socket, a `claude`
+shim under the fake HOME) and pins what the pane hands the CLI.
 """
 from __future__ import annotations
 
@@ -165,3 +168,34 @@ def test_a_session_that_dies_without_army_done_is_still_reported_as_ended_withou
     text = army.alerts()
     assert f"Armata {ARMY}: sessione terminata SENZA PR" in text, text
     assert "HA FINITO" not in text
+
+
+LAUNCHER = Path(os.environ.get("WA_ARMY_LAUNCHER_SH")
+                or Path(__file__).resolve().parents[2] / "scripts" / "wa_army_launcher.sh")
+
+
+def test_the_launcher_hands_claude_the_default_config_dir_even_when_the_bridge_env_sets_one(army: Army):
+    # 2026-09-19 (M5): the launcher exported CLAUDE_CONFIG_DIR=$HOME/.claude, whose
+    # .claude.json carried an expired OAuth session, and the army landed on the onboarding
+    # screen; the bridge's own environment is no better a place to pick a credential store.
+    home = Path(army.env["HOME"])
+    record = army.tmp / "claude-shim.log"
+    cli = home / ".local" / "bin" / "claude"
+    cli.parent.mkdir(parents=True)
+    cli.write_text("#!/bin/bash\n"
+                   f"printf 'CONFIG_DIR=%s\\nARGS=%s\\n' \"${{CLAUDE_CONFIG_DIR+SET}}\" \"$*\" > '{record}'\n")
+    cli.chmod(cli.stat().st_mode | stat.S_IXUSR)
+    prompts = home / "nuzantara" / "docs" / "army-prompts"
+    prompts.mkdir(parents=True)
+    (prompts / f"{ARMY}.txt").write_text(f"# DESC: test army\nARMY_DONE {ARMY} <numero-PR-o-url>\n")
+    env = {**army.env, "CLAUDE_CONFIG_DIR": str(army.tmp / "inherited"), "WA_ARMY_MODEL": "claude-sonnet-5"}
+    out = subprocess.run(["bash", str(LAUNCHER), "launch", ARMY], env=env,
+                         capture_output=True, text=True, timeout=30)
+    assert out.stdout.startswith(f"LAUNCHED army-{ARMY.lower()}-"), out.stdout + out.stderr
+    for _ in range(50):                                # the pane's shell types the command in
+        if record.exists() and "ARGS=" in record.read_text():
+            break
+        time.sleep(0.2)
+    rec = record.read_text() if record.exists() else "(claude shim never ran)"
+    assert "CONFIG_DIR=\n" in rec, rec                 # unset: the CLI reads its default store
+    assert "--model claude-sonnet-5 --dangerously-skip-permissions" in rec, rec
