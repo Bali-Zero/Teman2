@@ -35,6 +35,7 @@ const VOA_DIR = join(__dirname); // apps/mouth/src/app/visa/voa
 const SCREEN_FILES = [
   "page.tsx", // wizard
   "SafeClock.tsx", // the published-deadline hero the verdict screen renders
+  "NextSteps.tsx", // "what happens next" / "what we cannot promise"
   "[hash]/page.tsx", // verdict ACCEPT/DECLINE
   "upload/[resultId]/page.tsx",
   "upload/UploadFlow.tsx",

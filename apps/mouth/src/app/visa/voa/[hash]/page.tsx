@@ -18,6 +18,7 @@ import {
   type EligibilitySubmission,
 } from "@/components/garuda/declineEducation";
 import { VOA_PRIMARY_ACTION_STYLE } from "../voa-action-style";
+import { NextSteps } from "../NextSteps";
 import { SafeClockHero } from "../SafeClock";
 
 /**
@@ -334,6 +335,13 @@ export default function VoaResultPage({
         postScrollLabel="Continue on WhatsApp →"
         stampRef={stampRef}
         onCaptured={({ leadIntentId }) => tracker.whatsappHandoff(leadIntentId)}
+      />
+      <NextSteps
+        handoffHref={buildWhatsAppLink(
+          "visa",
+          "Hi Bali Zero, I have a question about my Visa on Arrival before I pay.",
+        )}
+        hasDeadline={Boolean(data.published_filing_deadline)}
       />
       <AppShareBar
         url={publicUrl}

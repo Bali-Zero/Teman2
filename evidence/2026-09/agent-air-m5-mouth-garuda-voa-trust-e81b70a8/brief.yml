@@ -1,0 +1,31 @@
+task_id: garuda-voa-trust
+mandate_id: GARUDA-VOA-20260919/FRONT-B/slice-trust
+colour: BLUE
+l_level: L2
+gate_class: opus
+gear: 2
+gear_reason: >-
+  Measured, not chosen: `evidence_pack_lint.py --print-floor --changed-files-file <f>
+  --numstat-file <n>` returns 2 and `--print-floor-source` returns `size`
+  (6 files, +428/-0, of which 170 are a new component test and a new section of
+  the existing computed-contrast guard). No hot-zone path; frontend only.
+objective: >-
+  The GARUDA VOA ACCEPT screen (/visa/voa/<hash>) shows a price, a deadline and a
+  CTA and then stops: a visitor about to pay has no statement of the sequence
+  they are buying and no statement of its boundary. `NextSteps.tsx` adds two
+  lists at the SAME weight — four steps, each derivable from a surface that
+  already exists in this repo, and three limits naming what the system cannot do
+  (the decision is Immigration's, no processing time is quoted, a published
+  deadline is scoped to one office). No duration, no approval likelihood, no
+  named consultant. The date-bearing sentences have a second form because
+  `SafeClockHero` renders only when the verdict carries a
+  `published_filing_deadline`.
+acceptance:
+  - "npx vitest run src/app/visa/voa (apps/mouth) green — 23 files, 385 tests; tsc --noEmit exit 0; prettier --check clean"
+  - "GUILTY/INNOCENT both pinned: the duration regex convicts 'usually about a week' / 'dijamin 24 jam' and acquits the prose the block actually ships"
+  - "contrast: every text rule in the block clears 4.5:1 on --bz-base; reverting the heading to --tx-tertiary reds that row at 4.23:1 (falsified by running it)"
+  - "rendered at 390px against a live dev server with a synthetic ACCEPT payload: 4 steps, 3 limits, both headings, no horizontal overflow, no console errors, 48px handoff target"
+  - "PROVE-LIVE after `vercel promote <dpl>`: the ACCEPT screen on balizero.com carries 'What we cannot promise'"
+appetite:
+  wall_clock_hours: 3
+  adversarial_rounds: 1
