@@ -86,8 +86,8 @@ risks:
     Q1/U1 (never derive from a partially-read selector) but means a future
     repaint that reaches for `:is()`/`:has()` on a state-bearing rule will
     need the grammar extended deliberately, not silently accepted."
-  - "One length-1 vs length-&gt;1 'missing token' message distinction exists
-    in the chain-walk code for a genuinely unresolvable chain; by
+  - "One length-1 vs longer-chain 'missing token' message distinction
+    exists in the chain-walk code for a genuinely unresolvable chain; by
     construction (every state-bearing context is evaluated independently,
     earliest first) the shallowest broken ancestor in any such chain always
     surfaces its own length-1 message first — documented in a code comment
