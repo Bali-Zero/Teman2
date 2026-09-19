@@ -48,8 +48,8 @@ const renderTab = (documents: ClientDocument[]) =>
     />,
   );
 
-describe("ImmigrationTab — Actual Visa vs Previous Visas", () => {
-  it("shows an unexpired VOA as the Actual Visa, not only in history (GUILT)", () => {
+describe("ImmigrationTab — current permit panel vs visa history (R6 restyle)", () => {
+  it("shows an unexpired VOA in the current-permit panel, not only in history (GUILT)", () => {
     const futureDate = new Date(Date.now() + 60 * 86400000)
       .toISOString()
       .slice(0, 10);
@@ -62,11 +62,11 @@ describe("ImmigrationTab — Actual Visa vs Previous Visas", () => {
       },
     ]);
 
-    expect(screen.getByText("Actual Visa")).toBeInTheDocument();
-    expect(screen.queryByText("Previous Visas")).not.toBeInTheDocument();
+    expect(screen.getByText("Current permit")).toBeInTheDocument();
+    expect(screen.queryByText("Visa history")).not.toBeInTheDocument();
   });
 
-  it("shows an expired VOA only in Previous Visas, not as the Actual Visa (INNOCENCE)", () => {
+  it("shows an expired VOA only in the Visa history grid, not the permit panel (INNOCENCE)", () => {
     const pastDate = new Date(Date.now() - 60 * 86400000)
       .toISOString()
       .slice(0, 10);
@@ -79,11 +79,11 @@ describe("ImmigrationTab — Actual Visa vs Previous Visas", () => {
       },
     ]);
 
-    expect(screen.queryByText("Actual Visa")).not.toBeInTheDocument();
-    expect(screen.getByText("Previous Visas")).toBeInTheDocument();
+    expect(screen.queryByText("Current permit")).not.toBeInTheDocument();
+    expect(screen.getByText("Visa history")).toBeInTheDocument();
   });
 
-  it("keeps an unexpired kitas as the Actual Visa when a VOA is also present (existing precedence unchanged)", () => {
+  it("keeps an unexpired kitas as the current permit when a VOA is also present (existing precedence unchanged)", () => {
     const futureDate = new Date(Date.now() + 400 * 86400000)
       .toISOString()
       .slice(0, 10);
@@ -105,10 +105,10 @@ describe("ImmigrationTab — Actual Visa vs Previous Visas", () => {
       },
     ]);
 
-    // Actual Visa picks the document with the furthest-out expiry first
+    // Current permit picks the document with the furthest-out expiry first
     // (existing sort order: descending expiry) — unchanged by this fix.
     expect(screen.getAllByText("kitas")).toHaveLength(1);
-    expect(screen.getByText("Previous Visas")).toBeInTheDocument();
+    expect(screen.getByText("Visa history")).toBeInTheDocument();
     expect(screen.getAllByText("voa")).toHaveLength(1);
   });
 
@@ -122,8 +122,78 @@ describe("ImmigrationTab — Actual Visa vs Previous Visas", () => {
       },
     ]);
 
-    expect(screen.queryByText("Actual Visa")).not.toBeInTheDocument();
-    expect(screen.queryByText("Previous Visas")).not.toBeInTheDocument();
+    expect(screen.queryByText("Current permit")).not.toBeInTheDocument();
+    expect(screen.queryByText("Visa history")).not.toBeInTheDocument();
     expect(screen.getByText("Working Permit")).toBeInTheDocument();
+  });
+
+  it("renders the elapsed/expiry KPIs from real issue_date + expiry_date (no invented data)", () => {
+    const issueDate = new Date(Date.now() - 20 * 86400000)
+      .toISOString()
+      .slice(0, 10);
+    const expiryDate = new Date(Date.now() + 40 * 86400000)
+      .toISOString()
+      .slice(0, 10);
+    renderTab([
+      {
+        ...baseDoc,
+        id: 6,
+        document_type: "kitas",
+        issue_date: issueDate,
+        expiry_date: expiryDate,
+      },
+    ]);
+
+    expect(screen.getByText("Days on this permit")).toBeInTheDocument();
+    expect(screen.getByText("Days to expiry")).toBeInTheDocument();
+    expect(
+      screen.getByRole("img", { name: /days elapsed/ }),
+    ).toBeInTheDocument();
+  });
+
+  it("GUILT: omits the elapsed-days KPI and the validity track when issue_date is missing, rather than guessing it", () => {
+    const futureDate = new Date(Date.now() + 60 * 86400000)
+      .toISOString()
+      .slice(0, 10);
+    renderTab([
+      {
+        ...baseDoc,
+        id: 7,
+        document_type: "kitas",
+        expiry_date: futureDate,
+      },
+    ]);
+
+    expect(screen.getByText("Current permit")).toBeInTheDocument();
+    expect(screen.queryByText("Days on this permit")).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("img", { name: /days elapsed/ }),
+    ).not.toBeInTheDocument();
+    // The countdown itself does not need issue_date — only elapsed/total do.
+    expect(screen.getByText("Days to expiry")).toBeInTheDocument();
+  });
+
+  it("Visa history shows a real document status when present, and a plain dash when it is not (no guessed status)", () => {
+    const pastDate = new Date(Date.now() - 60 * 86400000)
+      .toISOString()
+      .slice(0, 10);
+    renderTab([
+      {
+        ...baseDoc,
+        id: 8,
+        document_type: "kitas",
+        expiry_date: pastDate,
+        status: "verified",
+      },
+      {
+        ...baseDoc,
+        id: 9,
+        document_type: "voa",
+        expiry_date: pastDate,
+      },
+    ]);
+
+    expect(screen.getByText("verified")).toBeInTheDocument();
+    expect(screen.getAllByText("—").length).toBeGreaterThan(0);
   });
 });
