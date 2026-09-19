@@ -1,0 +1,96 @@
+task_id: infra-dynamic-workflow-3c2
+gear: 3
+l_level: L3
+gate_class: opus
+base_sha: c7aca7d392efe14a8eefa966b8cbdb640184afb3 # pragma: allowlist secret
+# MANDATE-builder.md (BATTAGLIA-20260911/DYNAMIC-WORKFLOW-20260918), PR3c section (line 172) +
+# the "PR3c blind-scan closure" addendum (2026-09-18, conductor prove-live of PR3e 16:40Z):
+# the single hot-zone CI PR, opened after PR3a and PR3b MERGED. Gear-3 declared per the mandate's
+# own text ("Gear-3 evidence pack"), not re-derived from a floor formula.
+objective: >-
+  Arm `.github/workflows/dynamic-workflow-selftest.yml`: a PR-triggered CI check that runs
+  `scripts/dynamic_workflow.py --selftest`, pytest on `test_dynamic_workflow.py` and the two
+  lint wrapper test files, and both lint scripts' default sweep — closing `dw-selftest-unarmed`.
+  Same concern, same PR (per the blind-scan closure addendum): close the pre-existing blind-scan
+  gap in `scripts/lint_workflow_script.py` / `scripts/lint_model_cards.py` where an explicit
+  target that exists but yields zero in-scope files was reported clean instead of exiting 2
+  (cicatrix #2, "exists != armed", one level up — a CI job pointed at a renamed/emptied directory
+  would go green forever).
+constraints:
+  - >-
+    Single hot-zone concern: nothing in the diff except the workflow file, the blind-scan
+    closure inside the two lint scripts + their wrapper tests (mandate-authorized in the same
+    PR), and the Gear-3 evidence pack under `evidence/2026-09/agent-air-m5-infra-dynamic-workflow-3c2-1ca98371/`
+    modeled on `evidence/2026-09/claude-i-tera-surface-analysis-d8zvu3-08e9bf9d/`.
+  - >-
+    `paths:` filter is the mandate's 10 entries (conductor ruling R1/R2, 2026-09-19 PR3c cure
+    round, superseding the earlier 8-item draft — R1/Q1 narrows the wildcard to the two named
+    test files, R2/Q2 restores the workflow's own path), no more, no fewer:
+    scripts/dynamic_workflow.py, scripts/tests/test_dynamic_workflow*.py,
+    scripts/lint_workflow_script.py, scripts/lint_model_cards.py,
+    scripts/tests/test_lint_workflow_script.py, scripts/tests/test_lint_model_cards.py,
+    docs/arsenal/cards/**, infra/workflows/*.js, .claude/skills/dynamic-workflow/**,
+    .github/workflows/dynamic-workflow-selftest.yml.
+  - >-
+    Jobs: `--selftest` + pytest on the named test files (test_dynamic_workflow.py,
+    test_lint_workflow_script.py, test_lint_model_cards.py); the two lints invoked as a CLI
+    default sweep (no positional target, never a Python import of find_violations) — gate-12
+    obs 4.
+  - >-
+    Blind-scan closure guard rule, quoted verbatim from the addendum: "ANY invocation that scans
+    zero files exits 2 with the blind-scan message naming the target(s) — default sweep and
+    explicit targets alike." Wrapper tests: explicit empty dir -> exit 2 (guilt); explicit dir
+    with one clean file -> exit 0 (innocence). A wrapper test parses the workflow YAML and
+    asserts the lint step's run: has no positional target after the script path.
+  - >-
+    council_run journal with >=2 DISTINCT TITOLARI (codex-gpt-5.6-sol via the codex seat,
+    kimi-code/k3 via kimi; both LIVE on M5, probed before writing any code), written with
+    scripts/council_journal.py; Gear-3 dissent non-empty (check_dissent_nonempty_on_gear3).
+  - >-
+    Local actionlint false positive (missing -shellcheck=) is the only sanctioned use of
+    PREFLIGHT_PACK_SKIP=1 — NOT invoked here: actionlint ran clean (exit 0) against the final
+    workflow YAML in this environment, so no false positive was reproduced.
+acceptance:
+  - text: >-
+      A1: WHEN `python3 scripts/dynamic_workflow.py --selftest` runs on this head SHALL print
+      SELFTEST OK and exit 0.
+    probe: python3 scripts/dynamic_workflow.py --selftest
+  - text: >-
+      A2: WHEN pytest runs `scripts/tests/test_dynamic_workflow.py` on this head SHALL pass
+      every test.
+    probe: python3 -m pytest scripts/tests/test_dynamic_workflow.py -q
+  - text: >-
+      A3: WHEN pytest runs `scripts/tests/test_lint_workflow_script.py` and
+      `scripts/tests/test_lint_model_cards.py` on this head SHALL pass every test, including the
+      new per-target blind-scan regression and the structural YAML-parse of the workflow's
+      lint steps.
+    probe: python3 -m pytest scripts/tests/test_lint_workflow_script.py scripts/tests/test_lint_model_cards.py -q
+  - text: >-
+      A4a: WHEN `scripts/lint_workflow_script.py` runs with no positional target (default
+      sweep) on this head SHALL exit 0 with no violations.
+    probe: python3 scripts/lint_workflow_script.py
+  - text: >-
+      A4b: WHEN `scripts/lint_model_cards.py` runs with no positional target (default sweep)
+      on this head SHALL exit 0 with no violations.
+    probe: python3 scripts/lint_model_cards.py
+  - text: >-
+      A5 Bites: WHEN this PR is opened THEN the new `dynamic-workflow-selftest` workflow run
+      SHALL execute on the PR itself and SHALL be green, naming test_dynamic_workflow.py and
+      both lint wrapper test files in its log.
+    probe: >-
+      gh run list --repo Bali-Zero/Teman2 --workflow dynamic-workflow-selftest.yml --branch
+      agent/air-m5/infra/dynamic-workflow-3c2 --json databaseId,conclusion,headSha
+assumptions:
+  - text: >-
+      Both council titolari (codex-gpt-5.6-sol via `codex exec`, kimi-code/k3 via
+      `kimi -m kimi-code/k3`) were reachable live at dispatch time and returned real adversarial
+      reviews of the pre-cure staged diff — no seat substitution, no seat_override needed.
+    status: verified
+    probe: "codex exec (exit 0, VERDICT: REWORK, 4 findings) + kimi -m kimi-code/k3 (exit 0, VERDICT: REWORK, 7 findings) — both captured verbatim in reviews/"
+  - text: >-
+      docs/runbooks/merge-queue-discipline.md §6septies and scripts/check_adversarial_review.py
+      were read before opening: the merge-queue red is an external commit-status shape, not a
+      code defect to chase; check_adversarial_review.py's scope is research/**/*.md only,
+      irrelevant to this PR's file set.
+    status: verified
+    probe: "grep -n on both, prior segment of this same session"
