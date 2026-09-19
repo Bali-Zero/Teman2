@@ -1527,6 +1527,42 @@ def test_normalise_seat_output_is_idempotent_on_both_fixtures(fixture_name):
     assert once == twice
 
 
+def test_normalise_seat_output_is_not_idempotent_on_a_doubly_fenced_input():
+    """PR3h/h4, gate-20 obs 3, PINNED not fixed: the launcher strips one fence layer per call
+    (rule (b)), so a doubly-fenced answer (a fence wrapping another fence) needs two calls to
+    fully unwrap. This is the accepted behaviour, not a bug — cmd_r1/_cmd_r1_register each call
+    _normalise_seat_output exactly once per stage, so a doubly-fenced input is unreachable in
+    practice from a real coach; a human pasting one by hand gets the outer layer stripped and
+    the inner ```-delimited block left as literal text in the answer body, same as any other
+    fence rule (b) does not recognise as a wrapper."""
+    inner = dw._CANNED_VALID.format(seat="doubly-fenced", sha="2" * 64).strip()
+    doubly_fenced = "```markdown\n```markdown\n" + inner + "\n```\n```\n"
+    once = dw._normalise_seat_output(doubly_fenced)
+    twice = dw._normalise_seat_output(once)
+    assert once != inner
+    assert twice == inner
+    assert once != twice
+
+
+@pytest.mark.parametrize("fixture_name", ["kimi-decorated.md", "gemini-fenced.md"])
+def test_normalise_seat_output_cures_a_crlf_copy_of_a_valid_fixture(fixture_name):
+    """PR3h/h1, gate-20 obs 4, GUILT proof: a CRLF-line-ending copy of an otherwise-clean
+    fixture fails `validate_answer` even AFTER the fence/bullet unwrap, because `_FM_RE` wants
+    `---\\n` and the line reads `---\\r\\n` — the exact failure class PR3g's addendum exists to
+    fix. Normalising the CRLF copy must both strip the `\\r` and still pass the fixture's own
+    objective_sha256."""
+    raw = (FIXTURES_DIR / fixture_name).read_text()
+    m = re.search(r"objective_sha256:\s*(\S+)", raw)
+    assert m, f"{fixture_name} carries no objective_sha256 line to anchor the expected sha"
+    expected_sha = m.group(1)
+    crlf_raw = raw.replace("\n", "\r\n")
+
+    normalised = dw._normalise_seat_output(crlf_raw)
+    assert "\r" not in normalised
+    ok, reason = dw.validate_answer(normalised, expected_sha)
+    assert ok is True, f"{fixture_name} CRLF copy still fails after normalisation: {reason}"
+
+
 @pytest.mark.parametrize("fixture_name", ["kimi-decorated.md", "gemini-fenced.md"])
 def test_f11_guard_wrapper_removal_touches_only_wrapper_bytes(fixture_name):
     """F11 (G1): the launcher must never re-author a seat's content. The line-diff between
@@ -1601,6 +1637,24 @@ def test_r1_attempt_files_never_overwrite_each_other(tmp_path, template, clean_o
     assert attempt2.strip() != ""
     assert attempt1 != attempt2
     assert (kit / "r1" / f"{key}.md").read_text() == attempt2
+
+
+def test_r1_raw_files_never_overwrite_each_other(tmp_path, template, clean_objective):
+    """PR3h/h3, gate-20 obs 5: attempt 2's raw bytes used to overwrite attempt 1's only raw
+    copy at r1/<seat>.raw.md — same defect G2 already fixed for the NORMALISED file (see
+    test_r1_attempt_files_never_overwrite_each_other above), now fixed for the raw one too.
+    z-fakeflaky is dead (empty raw) on attempt 1, answered on attempt 2."""
+    kit = tmp_path / "k"
+    dw.cmd_brief(_brief_ns(clean_objective, template, kit))
+    _seed_convener(kit)
+    dw.cmd_r1(argparse.Namespace(kit=str(kit), seats="z-fakeflaky", astra_fallback=False))
+    key = dw._seat_key("z-fakeflaky")
+    raw_attempt1 = (kit / "r1" / f"{key}.attempt1.raw.md").read_text()
+    raw_attempt2 = (kit / "r1" / f"{key}.attempt2.raw.md").read_text()
+    assert raw_attempt1 == ""
+    assert raw_attempt2.strip() != ""
+    assert raw_attempt1 != raw_attempt2
+    assert (kit / "r1" / f"{key}.raw.md").read_text() == raw_attempt2
 
 
 def test_r2_writes_a_raw_copy_beside_the_normalised_objections(tmp_path, template, clean_objective):
@@ -1711,3 +1765,43 @@ def test_register_refuses_a_seat_already_answered(tmp_path, template, clean_obje
         dw.cmd_r1(argparse.Namespace(kit=str(kit), seats="hand-seat", astra_fallback=False,
                                       register="hand-seat"))
     assert exc.value.code == 2
+
+
+def test_register_pass_prints_the_same_summary_line_every_other_r1_path_prints(
+        tmp_path, template, clean_objective, capsys):
+    """PR3h/h2, gate-20 obs 6: a successful --register used to return before cmd_r1's own
+    `for seat, status in summary.items(): print(...)` loop, so it was the one silent-success
+    path in the whole command — exactly the path a human is watching right after a hand
+    paste."""
+    kit = tmp_path / "k"
+    dw.cmd_brief(_brief_ns(clean_objective, template, kit))
+    sha = _seed_convener(kit)
+    _seed_awaiting_window(kit, "hand-seat")
+    _window_path(kit, "hand-seat").write_text(dw._CANNED_VALID.format(seat="hand-seat", sha=sha))
+    capsys.readouterr()  # discard cmd_brief's own stdout, if any
+
+    result = dw.cmd_r1(argparse.Namespace(kit=str(kit), seats="hand-seat", astra_fallback=False,
+                                           register="hand-seat"))
+    assert result == {"hand-seat": "answered"}
+    assert capsys.readouterr().out == "hand-seat: answered\n"
+
+
+def test_register_cures_a_crlf_hand_pasted_window_file(tmp_path, template, clean_objective):
+    """PR3h/h1 end-to-end: `r1 --register` is exactly the path a human hand-pastes into (a
+    terminal window that may carry CRLF line endings), so this is the addendum's headline
+    scenario. Without the CRLF fix in _normalise_seat_output, this window file would still
+    fail validate_answer's frontmatter check and register `window-invalid` (exit 1)."""
+    kit = tmp_path / "k"
+    dw.cmd_brief(_brief_ns(clean_objective, template, kit))
+    sha = _seed_convener(kit)
+    _seed_awaiting_window(kit, "hand-seat")
+
+    clean = dw._CANNED_VALID.format(seat="hand-seat", sha=sha).strip()
+    crlf = clean.replace("\n", "\r\n") + "\r\n"
+    window_path = _window_path(kit, "hand-seat")
+    window_path.write_text(crlf)
+
+    result = dw.cmd_r1(argparse.Namespace(kit=str(kit), seats="hand-seat", astra_fallback=False,
+                                           register="hand-seat"))
+    assert result == {"hand-seat": "answered"}
+    assert (kit / "r1" / f"{dw._seat_key('hand-seat')}.md").read_text() == clean

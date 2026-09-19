@@ -299,15 +299,26 @@ def _normalise_seat_output(text: str) -> str:
     _parse_jury_ballot ever see the text (PR3g addendum: the first real r1 registered ZERO
     external answers — kimi and gemini both answered substantively, both ledgered `dead`,
     because validate_answer wants `---` at byte 0 and the guard judged bytes, not the entity,
-    scar #3). Two wrappers only, applied in order:
+    scar #3). Applied in order:
+      (0) CRLF/CR line endings normalised to LF first (PR3h, gate-20 obs 4): a hand-pasted
+          Windows/terminal window (`r1 --register`) otherwise still fails `validate_answer`
+          after every other step, because `_FM_RE` wants `---\\n`, not `---\\r\\n`;
       (a) leading/trailing whitespace, always stripped;
       (b) a fenced whole-answer (```markdown ... ``` or bare ```): drop the opener and the bare
           closer line only, nothing else in the fence;
       (c) `kimi --output-format text`'s own decoration: when EVERY non-blank line starts with
           '• ' (bullet, space) or with two spaces, de-indent every line and drop a trailing
           "To resume this session:" paragraph, kimi's own resume trailer.
-    Idempotent: normalising output that carries neither wrapper is a no-op, so a second pass
-    over an already-normalised answer returns it unchanged."""
+    Idempotent on clean text and on both shipped fixtures: normalising output that carries
+    neither wrapper is a no-op. NOT idempotent in general — a doubly-fenced input loses one
+    fence layer per call (`f(f(x)) != f(x)`, gate-20 obs 3); the launcher only ever applies it
+    once per stage, so this is pinned as an accepted limit, not fixed.
+
+    Known limits, harmless because raw bytes always survive beside the normalised file:
+    (obs 1) the fence strip is POSITIONAL not balanced, can delete a real code-block delimiter.
+    (obs 2) an r2/jury answer that is already all bullets/two-space-indented loses its markers.
+    (obs 11) step (a)'s `.strip()` de-indents only the FIRST line, not lines 2..n."""
+    text = text.replace("\r\n", "\n").replace("\r", "\n")
     text = text.strip()
     if not text:
         return text
@@ -605,7 +616,10 @@ def _run_one_seat(kit: Path, seat: str, brief_master: str, brief_sha: str, attem
 
     # Raw bytes ALWAYS survive, unnormalised, beside the normalised answer (G1): a coach's
     # answer is judged as an entity, never as the bytes its CLI wrapped it in, but the bytes
-    # themselves are never thrown away either.
+    # themselves are never thrown away either. Per-attempt copy first (gate-20 obs 5: attempt
+    # 2's raw bytes used to overwrite attempt 1's only copy, same defect G2 fixed for the
+    # normalised file), then `.raw.md` — last write wins, so it always holds the LAST attempt.
+    (kit / "r1" / f"{_seat_key(seat)}.attempt{attempt}.raw.md").write_text(raw_output or "")
     (kit / "r1" / f"{_seat_key(seat)}.raw.md").write_text(raw_output or "")
     output = _normalise_seat_output(raw_output or "")
 
@@ -709,7 +723,13 @@ def cmd_r1(args: argparse.Namespace) -> dict[str, str]:
                       when=fable_mtime.strftime("%Y-%m-%dT%H:%M:%SZ"))
 
     if register:
-        return {register: _cmd_r1_register(kit, register, brief_sha)}
+        # gate-20 obs 6: a successful --register used to return before the print loop every
+        # other cmd_r1 path reaches (:731-732 below), so the ONLY silent-success path in the
+        # whole command was the one a human is watching after a hand paste.
+        result = {register: _cmd_r1_register(kit, register, brief_sha)}
+        for seat, status in result.items():
+            print(f"{seat}: {status}")
+        return result
 
     brief_master = (kit / "BRIEF.md").read_text()
     summary: dict[str, str] = {}
