@@ -573,13 +573,19 @@ export function ImmigrationTab({
             // siblings use: override `grid-template-columns` directly on
             // the `.grid` descendant, scoped and `!important`, at the same
             // 1360px breakpoint `colsCollapsed` was already targeting.
-            className="max-[1360px]:[&_.grid]:!grid-cols-[1.6fr_1fr_1fr_140px]"
+            //
+            // Below 640px (`max-sm`) Status and Expires leave the grid the
+            // same way, on top of the 1360px step above — their content
+            // relocates onto the first cell's own secondary block instead,
+            // the same technique DocumentsTab.tsx uses (PR 6889), narrowing
+            // the row to Visa type + Actions on a phone width.
+            className="max-[1360px]:[&_.grid]:!grid-cols-[1.6fr_1fr_1fr_140px] max-sm:[&_.grid]:!grid-cols-[minmax(0,1fr)_auto]"
           >
             <HairlineHead>
               <span>Visa type</span>
-              <span>Status</span>
+              <span className="max-sm:hidden">Status</span>
               <span data-collapse>Issued</span>
-              <span>Expires</span>
+              <span className="max-sm:hidden">Expires</span>
               <span className="sr-only">Actions</span>
             </HairlineHead>
             <HairlineBody>
@@ -588,40 +594,54 @@ export function ImmigrationTab({
                 const secondary = [doc.file_name, doc.family_member_name]
                   .filter(Boolean)
                   .join(" · ");
+                const statusNode = doc.status ? (
+                  <StatePill
+                    tone={DOC_STATUS_TONE[doc.status] ?? "wait"}
+                    label={doc.status}
+                  />
+                ) : (
+                  "—"
+                );
+                const expiresText = doc.expiry_date
+                  ? `${formatDate(doc.expiry_date)} · ${expiryLabel(
+                      daysUntil(doc.expiry_date),
+                    )}`
+                  : "—";
                 return (
                   <HairlineRow key={doc.id}>
-                    <CellStack
-                      primary={formatDocType(doc.document_type)}
-                      secondary={secondary || undefined}
-                      collapsed={
-                        doc.issue_date
-                          ? `Issued ${formatDate(doc.issue_date)}`
-                          : undefined
-                      }
-                    />
-                    <span>
-                      {doc.status ? (
-                        <StatePill
-                          tone={DOC_STATUS_TONE[doc.status] ?? "wait"}
-                          label={doc.status}
-                        />
-                      ) : (
-                        "—"
-                      )}
-                    </span>
+                    <div className="min-w-0 px-2.5">
+                      <CellStack
+                        primary={formatDocType(doc.document_type)}
+                        secondary={secondary || undefined}
+                        collapsed={
+                          doc.issue_date
+                            ? `Issued ${formatDate(doc.issue_date)}`
+                            : undefined
+                        }
+                      />
+                      <span className="mt-1 flex flex-col gap-0.5 text-[11px] text-[var(--tx-secondary)] sm:hidden">
+                        {statusNode}
+                        <span
+                          className={cn(
+                            urgent &&
+                              "font-semibold text-[var(--state-warning)]",
+                          )}
+                        >
+                          {expiresText}
+                        </span>
+                      </span>
+                    </div>
+                    <span className="max-sm:hidden">{statusNode}</span>
                     <span data-collapse>
                       {doc.issue_date ? formatDate(doc.issue_date) : "—"}
                     </span>
                     <span
                       className={cn(
                         urgent && "font-semibold text-[var(--state-warning)]",
+                        "max-sm:hidden",
                       )}
                     >
-                      {doc.expiry_date
-                        ? `${formatDate(doc.expiry_date)} · ${expiryLabel(
-                            daysUntil(doc.expiry_date),
-                          )}`
-                        : "—"}
+                      {expiresText}
                     </span>
                     <div className="flex items-center justify-end gap-0.5 px-2.5">
                       {isRenewable(doc) && (
