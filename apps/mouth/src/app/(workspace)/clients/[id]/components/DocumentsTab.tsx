@@ -1,23 +1,85 @@
 "use client";
 
-import React, { useState } from "react";
-import {
-  User,
-  Globe,
-  Building2,
-  DollarSign,
-  Users,
-  FileText,
-  Plus,
-  AlertTriangle,
-  ChevronDown,
-  ChevronRight,
-  Eye,
-} from "lucide-react";
+import React, { useMemo, useState } from "react";
+import { Eye, Pencil, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import type { ClientDocument } from "@/lib/api/crm/crm.types";
-import { AiSummaryCard } from "./AiSummaryCard";
+import {
+  CellStack,
+  DeskStrip,
+  EmptyState,
+  FOCUS,
+  HairlineBody,
+  HairlineGrid,
+  HairlineHead,
+  HairlineRow,
+  StatePill,
+  TABULAR,
+  type PillTone,
+} from "@/components/workspace/r19";
 import { getDocumentOpenUrl } from "./utils";
+
+const CATEGORY_ORDER = [
+  "immigration",
+  "pma",
+  "tax",
+  "personal",
+  "family",
+  "other",
+];
+
+const CATEGORY_LABELS: Record<string, string> = {
+  immigration: "Immigration",
+  pma: "Company",
+  tax: "Tax",
+  personal: "Personal",
+  family: "Family",
+  other: "Other",
+};
+
+/**
+ * The grid's column order, desktop width. Below 640px the two hidden columns
+ * (Status, Expires) leave the grid — their content relocates onto Document's
+ * own secondary line — and the row narrows to Document + Actions, mirroring
+ * the same override `ObligationsTable.tsx` uses: `HairlineGrid`'s native
+ * `colsCollapsed`+`id` scoped style is inert against the inline `--cols` it
+ * sets on the very element it targets (#6520, not this window's to fix), so
+ * the override targets the rows/head directly instead of the variable.
+ */
+const COLS = "minmax(180px,1.7fr) 104px 100px 92px";
+
+/**
+ * Real-fields-only status: `deleted_at` (client removed it), `expiry_date`
+ * (a date, checked before status), then `status` itself. No field is
+ * invented — a document with none of these renders `wait`/"Missing".
+ */
+function documentPillState(d: ClientDocument): {
+  tone: PillTone;
+  label: string;
+} {
+  if (d.deleted_at) return { tone: "wait", label: "Removed" };
+  if (d.expiry_date) {
+    const daysLeft = Math.ceil(
+      (new Date(d.expiry_date).getTime() - Date.now()) / 86400000,
+    );
+    if (daysLeft < 0) return { tone: "you", label: "Expired" };
+    if (daysLeft <= 30) return { tone: "you", label: "Expiring" };
+  }
+  if (d.status === "verified") return { tone: "ok", label: "Valid" };
+  if (d.status === "received") return { tone: "ours", label: "Processing" };
+  if (d.status === "rejected") return { tone: "wait", label: "Rejected" };
+  return { tone: "wait", label: "Missing" };
+}
+
+/** Nearest expiry first; documents without one sort last. */
+function byExpiryUrgency(a: ClientDocument, b: ClientDocument): number {
+  const rank = (d: ClientDocument) =>
+    d.expiry_date
+      ? new Date(d.expiry_date).getTime()
+      : Number.POSITIVE_INFINITY;
+  return rank(a) - rank(b);
+}
 
 export function DocumentsTab({
   clientId,
@@ -34,326 +96,200 @@ export function DocumentsTab({
   onAddClick: () => void;
   onEditClick: (doc: ClientDocument) => void;
 }) {
-  const categoryLabels: Record<string, string> = {
-    immigration: "Immigration",
-    pma: "Company",
-    tax: "Tax",
-    personal: "Personal",
-    family: "Family",
-    other: "Other",
-  };
+  const [activeCategory, setActiveCategory] = useState<string>("all");
 
-  const categoryIcons: Record<string, React.ElementType> = {
-    immigration: Globe,
-    pma: Building2,
-    tax: DollarSign,
-    personal: User,
-    family: Users,
-    other: FileText,
-  };
+  const sortedCategories = useMemo(
+    () =>
+      Object.keys(documentsByCategory).sort(
+        (a, b) => CATEGORY_ORDER.indexOf(a) - CATEGORY_ORDER.indexOf(b),
+      ),
+    [documentsByCategory],
+  );
 
-  const sortedCategories = Object.keys(documentsByCategory).sort((a, b) => {
-    const order = ["immigration", "pma", "tax", "personal", "family", "other"];
-    return order.indexOf(a) - order.indexOf(b);
-  });
+  // Reverse lookup so a flat ("All") row still knows its own category —
+  // `documentsByCategory` is the single source of truth for that grouping,
+  // never `doc.document_category` alone (a doc can be bucketed under "other"
+  // without that field set).
+  const categoryByDocId = useMemo(() => {
+    const map = new Map<number, string>();
+    for (const [cat, docs] of Object.entries(documentsByCategory)) {
+      for (const d of docs) map.set(d.id, cat);
+    }
+    return map;
+  }, [documentsByCategory]);
 
-  // Compute expiry urgency for a document
-  const getExpiryBadge = (doc: ClientDocument) => {
-    if (!doc.expiry_date) return null;
-    const daysLeft = Math.ceil(
-      (new Date(doc.expiry_date).getTime() - Date.now()) / 86400000,
-    );
-    if (daysLeft < 0)
-      return {
-        label: `Expired ${Math.abs(daysLeft)}d ago`,
-        cls: "bg-[var(--state-warning)]/10 text-[var(--state-warning)]",
-      };
-    if (daysLeft === 0)
-      return {
-        label: "Expires today",
-        cls: "bg-[var(--state-warning)]/10 text-[var(--state-warning)]",
-      };
-    if (daysLeft <= 30)
-      return {
-        label: `⏰ ${daysLeft}d left`,
-        cls: "bg-[var(--state-warning)]/10 text-[var(--state-warning)]",
-      };
-    if (daysLeft <= 90)
-      return {
-        label: `⏰ ${daysLeft}d left`,
-        cls: "bg-[var(--state-warning)]/10 text-[var(--state-warning)]",
-      };
-    if (daysLeft <= 365)
-      return {
-        label: `⏰ ${daysLeft}d left`,
-        cls: "bg-[var(--bz-base)] text-[var(--bz-text-2)]",
-      };
-    return {
-      label: `${Math.floor(daysLeft / 30)}mo left`,
-      cls: "bg-[var(--bz-base)] text-[var(--bz-text-2)]",
-    };
-  };
-
-  // Count expiring docs per category
-  const getUrgentCount = (docs: ClientDocument[]) =>
-    docs.filter((d) => {
-      if (!d.expiry_date) return false;
-      const days = Math.ceil(
-        (new Date(d.expiry_date).getTime() - Date.now()) / 86400000,
-      );
-      return days <= 90;
-    }).length;
-
-  const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
-
-  const toggleCollapse = (cat: string) =>
-    setCollapsed((prev) => ({ ...prev, [cat]: !prev[cat] }));
-
-  // Total urgent docs across all categories
-  const totalUrgent = documents.filter((d) => {
-    if (!d.expiry_date) return false;
-    return (
-      Math.ceil((new Date(d.expiry_date).getTime() - Date.now()) / 86400000) <=
-      90
-    );
-  }).length;
+  const filteredDocuments = useMemo(() => {
+    const base =
+      activeCategory === "all"
+        ? documents
+        : (documentsByCategory[activeCategory] ?? []);
+    return [...base].sort(byExpiryUrgency);
+  }, [activeCategory, documents, documentsByCategory]);
 
   if (documents.length === 0) {
     return (
-      <div className="space-y-4">
-        <AiSummaryCard clientId={clientId} section="documents" />
-        <div className="rounded-xl border border-dashed border-[var(--bz-border)] bg-[var(--bz-card)] p-12 text-center shadow-[var(--bz-shadow-card)]">
-          <FileText className="w-12 h-12 mx-auto text-[var(--bz-text-2)] mb-3 opacity-50" />
-          <p className="text-[var(--bz-text-2)]">No documents yet</p>
-          <p className="text-sm text-[var(--bz-text-2)] mt-1 mb-4">
-            Upload passport, visa, or company documents
-          </p>
+      <EmptyState
+        action={
           <Button
             size="sm"
             variant="outline"
             onClick={onAddClick}
-            className="gap-2 border-[var(--state-success)] bg-[var(--state-success)] text-white hover:bg-[var(--state-success)] hover:opacity-90"
+            className="gap-2"
           >
-            <Plus className="w-4 h-4" />
-            Add Document
+            <Plus className="h-4 w-4" aria-hidden="true" />
+            Add document
           </Button>
-        </div>
-      </div>
+        }
+      >
+        No documents on file yet.
+      </EmptyState>
     );
   }
 
   return (
-    <div className="space-y-4">
-      {/* AI Summary (CRM-Guardian L1 cross-folder, documents slice) */}
-      <AiSummaryCard clientId={clientId} section="documents" />
-      <div className="flex items-center justify-between">
-        <div>
-          <h3 className="text-lg font-semibold text-[var(--bz-text-1)]">
-            Documents
-          </h3>
-          <p className="text-sm text-[var(--bz-text-2)]">
-            {documents.length} docs · {sortedCategories.length} categories
-            {totalUrgent > 0 && (
-              <span className="ml-2 inline-flex items-center gap-1 text-[var(--state-warning)] font-medium">
-                <AlertTriangle className="w-3 h-3" />
-                {totalUrgent} expiring soon
-              </span>
-            )}
-          </p>
-        </div>
-        <Button
-          size="sm"
-          variant="outline"
-          onClick={onAddClick}
-          className="gap-2 border-[var(--state-success)] bg-[var(--state-success)] text-white hover:bg-[var(--state-success)] hover:opacity-90"
-        >
-          <Plus className="w-4 h-4" />
-          Add Document
-        </Button>
-      </div>
+    <div data-client-id={clientId}>
+      <DeskStrip
+        count={filteredDocuments.length}
+        countLabel="Documents"
+        filters={
+          <>
+            <StatePill
+              tone="wait"
+              label="All"
+              pressed={activeCategory === "all"}
+              onClick={() => setActiveCategory("all")}
+            />
+            {sortedCategories.map((cat) => (
+              <StatePill
+                key={cat}
+                tone="wait"
+                label={CATEGORY_LABELS[cat] || cat}
+                pressed={activeCategory === cat}
+                onClick={() => setActiveCategory(cat)}
+              />
+            ))}
+          </>
+        }
+        right={
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={onAddClick}
+            className="gap-2"
+          >
+            <Plus className="h-4 w-4" aria-hidden="true" />
+            Add document
+          </Button>
+        }
+        className="mb-2"
+      />
 
-      {sortedCategories.map((cat) => {
-        const catDocs = documentsByCategory[cat];
-        const Icon = categoryIcons[cat] || FileText;
-        const urgentCount = getUrgentCount(catDocs);
-        const isCollapsed = collapsed[cat];
+      <HairlineGrid
+        cols={COLS}
+        className="max-sm:[&_.grid]:!grid-cols-[minmax(0,1fr)_auto]"
+      >
+        <HairlineHead>
+          <span>Document</span>
+          <span className="max-sm:hidden">Status</span>
+          <span className="max-sm:hidden">Expires</span>
+          <span aria-hidden="true" />
+        </HairlineHead>
+        <HairlineBody>
+          {filteredDocuments.map((d) => {
+            const cat =
+              categoryByDocId.get(d.id) ?? d.document_category ?? "other";
+            const catLabel = CATEGORY_LABELS[cat] || cat;
+            const displayName = d.file_name || d.document_type;
+            const openUrl = getDocumentOpenUrl(d);
+            const { tone, label } = documentPillState(d);
+            const expiresLabel = d.expiry_date
+              ? formatDate(d.expiry_date)
+              : "—";
+            const uploadedLabel = d.created_at
+              ? formatDate(d.created_at)
+              : undefined;
 
-        // Sort: urgent first, then by expiry date
-        const sortedCatDocs = [...catDocs].sort((a, b) => {
-          const aUrgent = a.expiry_date
-            ? Math.ceil(
-                (new Date(a.expiry_date).getTime() - Date.now()) / 86400000,
-              )
-            : 9999;
-          const bUrgent = b.expiry_date
-            ? Math.ceil(
-                (new Date(b.expiry_date).getTime() - Date.now()) / 86400000,
-              )
-            : 9999;
-          return aUrgent - bUrgent;
-        });
-
-        return (
-          <div key={cat} className="space-y-1">
-            <button
-              onClick={() => toggleCollapse(cat)}
-              className="w-full flex items-center gap-2 pb-1.5 border-b border-[var(--bz-border)] hover:border-[var(--line-control)] transition-colors group"
-            >
-              {isCollapsed ? (
-                <ChevronRight className="w-3.5 h-3.5 text-[var(--bz-text-2)] group-hover:text-[var(--bz-text-1)]" />
-              ) : (
-                <ChevronDown className="w-3.5 h-3.5 text-[var(--bz-text-2)] group-hover:text-[var(--bz-text-1)]" />
-              )}
-              <Icon className="w-4 h-4 text-[var(--tx-secondary)]" />
-              <h4 className="text-sm font-semibold text-[var(--bz-text-1)] capitalize">
-                {categoryLabels[cat] || cat}
-              </h4>
-              <span className="text-xs text-[var(--bz-text-2)] bg-[var(--bz-surface)] px-2 py-0.5 rounded-full">
-                {catDocs.length}
-              </span>
-              {urgentCount > 0 && (
-                <span className="text-xs bg-[var(--state-warning)]/10 text-[var(--state-warning)] px-1.5 py-0.5 rounded-full flex items-center gap-0.5">
-                  <AlertTriangle className="w-2.5 h-2.5" />
-                  {urgentCount}
-                </span>
-              )}
-            </button>
-            {!isCollapsed && (
-              <div className="space-y-1 pt-1">
-                {sortedCatDocs.map((doc) => {
-                  const badge = getExpiryBadge(doc);
-                  const openUrl = getDocumentOpenUrl(doc);
-                  const displayName = doc.file_name || doc.document_type;
-                  const isUrgent =
-                    doc.expiry_date &&
-                    Math.ceil(
-                      (new Date(doc.expiry_date).getTime() - Date.now()) /
-                        86400000,
-                    ) <= 30;
-                  return (
-                    <div
-                      key={doc.id}
-                      className={`flex items-center justify-between rounded-lg border bg-[var(--bz-surface)] p-3 hover:bg-[var(--bz-surface)]/80 transition-colors ${
-                        isUrgent
-                          ? "border-[var(--state-warning)]/30"
-                          : "border-[var(--bz-border)]"
-                      }`}
-                    >
-                      <div className="flex items-center gap-3 min-w-0">
-                        {openUrl ? (
-                          <a
-                            href={openUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            tabIndex={-1}
-                            aria-hidden="true"
-                            className="shrink-0"
-                          >
-                            <FileText
-                              className={`w-4 h-4 ${isUrgent ? "text-[var(--state-warning)]" : "text-[var(--bz-text-2)]"}`}
-                            />
-                          </a>
-                        ) : (
-                          <FileText
-                            className={`w-4 h-4 shrink-0 ${isUrgent ? "text-[var(--state-warning)]" : "text-[var(--bz-text-2)]"}`}
-                          />
-                        )}
-                        <div className="min-w-0">
-                          <p className="text-sm font-medium text-[var(--bz-text-1)] truncate">
-                            {openUrl ? (
-                              <a
-                                href={openUrl}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                aria-label={`Open ${displayName}`}
-                                className="rounded hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--tx-pure)]"
-                              >
-                                {displayName}
-                              </a>
-                            ) : (
-                              displayName
-                            )}
-                          </p>
-                          <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                            <span className="text-xs text-[var(--bz-text-2)] capitalize">
-                              {doc.document_type?.replace(/_/g, " ")}
-                            </span>
-                            {badge && (
-                              <span
-                                className={`text-xs px-1.5 py-0.5 rounded ${badge.cls}`}
-                                title={
-                                  doc.expiry_date
-                                    ? `Expires: ${formatDate(doc.expiry_date)}`
-                                    : undefined
-                                }
-                              >
-                                {badge.label}
-                              </span>
-                            )}
-                            {doc.deleted_at ? (
-                              /* The client removed this from their vault.
-                                 It used to render identically to a live
-                                 document — status "received", alert_color
-                                 "green" — so the team could chase a file the
-                                 client had deliberately taken down, or count
-                                 it as still on file (portal audit F-02).
-                                 Flagged rather than hidden: it is restorable
-                                 for 30 days and the file is still in Drive,
-                                 so the team removing it from view would lose
-                                 information they may need. */
-                              <span
-                                className="text-xs px-1.5 py-0.5 rounded bg-[var(--state-warning)]/10 text-[var(--state-warning)]"
-                                title={`Removed by the client on ${formatDate(doc.deleted_at)} — restorable by them for 30 days`}
-                              >
-                                Removed by client
-                              </span>
-                            ) : (
-                              doc.status === "verified" && (
-                                <span className="text-xs text-green-500">
-                                  ✓ Verified
-                                </span>
-                              )
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2 shrink-0">
-                        {openUrl ? (
-                          <a
-                            href={openUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            aria-label={`View ${displayName}`}
-                            className="inline-flex items-center gap-1 text-xs text-[var(--tx-pure)] hover:underline px-2 py-1 rounded border border-[var(--bz-border)] hover:bg-[var(--bz-base)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--tx-pure)]"
-                          >
-                            <Eye className="w-3 h-3" aria-hidden="true" />
-                            View
-                          </a>
-                        ) : (
-                          <span
-                            className="text-xs text-[var(--bz-text-2)] px-2 py-1"
-                            title="File tidak tersedia"
-                          >
-                            File tidak tersedia
-                          </span>
-                        )}
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-7 px-2 text-xs"
-                          onClick={() => onEditClick(doc)}
+            return (
+              <HairlineRow key={d.id}>
+                <div className="min-w-0 px-2.5">
+                  <CellStack
+                    primary={
+                      openUrl ? (
+                        <a
+                          href={openUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          aria-label={`Open ${displayName}`}
+                          className={cn("rounded hover:underline", FOCUS)}
                         >
-                          Edit
-                        </Button>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        );
-      })}
+                          {displayName}
+                        </a>
+                      ) : (
+                        displayName
+                      )
+                    }
+                    secondary={
+                      uploadedLabel
+                        ? `${catLabel} · ${uploadedLabel}`
+                        : catLabel
+                    }
+                  />
+                  <span className="mt-1 flex flex-col gap-0.5 text-[11px] text-[var(--tx-secondary)] sm:hidden">
+                    <StatePill tone={tone} label={label} />
+                    <span style={TABULAR}>Expires {expiresLabel}</span>
+                  </span>
+                </div>
+
+                <span className="max-sm:hidden">
+                  <StatePill tone={tone} label={label} />
+                </span>
+
+                <span
+                  className="max-sm:hidden text-[var(--tx-pure)]"
+                  style={TABULAR}
+                >
+                  {expiresLabel}
+                </span>
+
+                <div className="flex items-center justify-end gap-1 px-2.5">
+                  {openUrl ? (
+                    <a
+                      href={openUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      aria-label={`View ${displayName}`}
+                      className={cn(
+                        "inline-flex h-7 w-7 items-center justify-center border border-transparent text-[var(--tx-secondary)] hover:border-[var(--line-control)] hover:text-[var(--tx-pure)]",
+                        FOCUS,
+                      )}
+                    >
+                      <Eye className="h-3.5 w-3.5" aria-hidden="true" />
+                    </a>
+                  ) : (
+                    <span
+                      className="text-[10px] leading-tight text-[var(--tx-secondary)]"
+                      title="File tidak tersedia"
+                    >
+                      File tidak tersedia
+                    </span>
+                  )}
+                  <button
+                    type="button"
+                    aria-label={`Edit ${displayName}`}
+                    onClick={() => onEditClick(d)}
+                    className={cn(
+                      "inline-flex h-7 w-7 items-center justify-center border border-transparent text-[var(--tx-secondary)] hover:border-[var(--line-control)] hover:text-[var(--tx-pure)]",
+                      FOCUS,
+                    )}
+                  >
+                    <Pencil className="h-3.5 w-3.5" aria-hidden="true" />
+                  </button>
+                </div>
+              </HairlineRow>
+            );
+          })}
+        </HairlineBody>
+      </HairlineGrid>
     </div>
   );
 }
