@@ -203,34 +203,39 @@ describe("FamilyTab — r19 family ledger", () => {
     }
   });
 
-  it("GUILT: the passport urgency fallback threshold is 180 days, with no alert to lean on", () => {
+  it("GUILT: the passport urgency fallback threshold is exactly 180 days, with no alert to lean on", () => {
     vi.useFakeTimers();
-    vi.setSystemTime(new Date("2026-09-19T12:00:00Z"));
+    // "Now" at 00:00:00Z + date-only expiries (also midnight UTC) make
+    // Math.ceil((expiry - now) / 86400000) land on an exact integer — no
+    // half-day rounding to hide an off-by-one behind. 2026-09-19 + 180 days
+    // = 2027-03-18 (day-of-year 262 + 180 = 442 = day 77 of 2027 = Mar 18);
+    // +181 = Mar 19. Verified with `node -e` before writing this fixture.
+    vi.setSystemTime(new Date("2026-09-19T00:00:00Z"));
 
     renderTab([
-      // 170 days out — inside the fallback window, must be urgent
+      // daysLeft === 180 exactly — must be urgent
       {
         ...MEMBER,
         id: 7,
         passport_number: "X1111111",
-        passport_expiry: "2027-03-08",
+        passport_expiry: "2027-03-18",
         passport_alert: undefined,
       },
-      // 190 days out — outside it, must stay quiet
+      // daysLeft === 181 exactly — must be quiet
       {
         ...MEMBER,
         id: 8,
         passport_number: "X2222222",
-        passport_expiry: "2027-03-28",
+        passport_expiry: "2027-03-19",
         passport_alert: undefined,
       },
     ]);
 
-    expect(screen.getByText(/Passport: ⏰ 170d left/)).toHaveAttribute(
+    expect(screen.getByText(/Passport: ⏰ 180d left/)).toHaveAttribute(
       "style",
       "color: var(--state-warning);",
     );
-    expect(screen.getByText(/Passport: ⏰ 190d left/)).toHaveAttribute(
+    expect(screen.getByText(/Passport: ⏰ 181d left/)).toHaveAttribute(
       "style",
       "color: var(--tx-secondary);",
     );
@@ -295,7 +300,7 @@ describe("FamilyTab — r19 family ledger", () => {
     ).toHaveAttribute("title", "Remove Family Member A");
   });
 
-  it("INNOCENCE: the upload control's accessible name announces the in-flight upload instead of staying static", () => {
+  it("INNOCENCE: the upload control announces the in-flight upload in its accessible name AND as a visible word next to the spinner", () => {
     vi.mocked(api.post).mockReturnValueOnce(new Promise(() => {}));
 
     renderTab([MEMBER]);
@@ -312,9 +317,10 @@ describe("FamilyTab — r19 family ledger", () => {
         name: "Uploading passport for Family Member A",
       }),
     ).toBeInTheDocument();
+    expect(screen.getByText("Uploading...")).toBeInTheDocument();
   });
 
-  it("INNOCENCE: the upload control's accessible name announces OCR polling too", () => {
+  it("INNOCENCE: the upload control announces OCR polling in its accessible name AND as a visible word", () => {
     mockUseOcrPolling.mockReturnValueOnce({
       ocrPolling: true,
       pollOcrStatus: vi.fn(),
@@ -327,6 +333,14 @@ describe("FamilyTab — r19 family ledger", () => {
         name: "OCR in corso for Family Member A",
       }),
     ).toBeInTheDocument();
+    expect(screen.getByText("OCR in corso...")).toBeInTheDocument();
+  });
+
+  it("INNOCENCE: an idle upload control shows no status word — it stays icon-only", () => {
+    renderTab([MEMBER]);
+
+    expect(screen.queryByText("Uploading...")).not.toBeInTheDocument();
+    expect(screen.queryByText("OCR in corso...")).not.toBeInTheDocument();
   });
 
   it("INNOCENCE: falls back to wait/No visa when a member has no visa data at all", () => {
