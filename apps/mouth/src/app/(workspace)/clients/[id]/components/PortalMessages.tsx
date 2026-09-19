@@ -8,6 +8,7 @@ import {
   Clock,
   User,
   Bot,
+  ShieldAlert,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -23,6 +24,7 @@ export function PortalMessages({
 }) {
   const [messages, setMessages] = useState<PortalMessageThread[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [newMessage, setNewMessage] = useState("");
   const [isSending, setIsSending] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -33,6 +35,7 @@ export function PortalMessages({
     try {
       const data = await api.crm.getPortalMessages(clientId);
       setMessages(data.messages || []);
+      setLoadError(false);
       // Mark unread client messages as read
       for (const msg of data.messages || []) {
         if (msg.direction === "client_to_team" && !msg.read_at) {
@@ -40,7 +43,11 @@ export function PortalMessages({
         }
       }
     } catch {
-      // Silently fail — portal messages are optional
+      // A failed load must not present as "no messages" — an operator reading
+      // that as "this client never wrote" when the fetch just failed is worse
+      // than a visible error. If messages are already on screen from a prior
+      // load, a poll failure keeps them and only flags them as possibly stale.
+      setLoadError(true);
     } finally {
       setIsLoading(false);
     }
@@ -127,6 +134,22 @@ export function PortalMessages({
           <div className="flex items-center justify-center py-8">
             <div className="w-5 h-5 border-2 border-[var(--line-control)] border-t-transparent rounded-full animate-spin" />
           </div>
+        ) : loadError && messages.length === 0 ? (
+          <div
+            role="alert"
+            className="text-center py-8 text-[var(--bz-text-2)] text-sm"
+          >
+            <ShieldAlert className="w-8 h-8 mx-auto mb-2 opacity-30" />
+            <p>Messages could not be loaded.</p>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={loadMessages}
+              className="mt-2"
+            >
+              Retry
+            </Button>
+          </div>
         ) : messages.length === 0 ? (
           <div className="text-center py-8 text-[var(--bz-text-2)] text-sm">
             <MessageSquare className="w-8 h-8 mx-auto mb-2 opacity-30" />
@@ -136,56 +159,71 @@ export function PortalMessages({
             </p>
           </div>
         ) : (
-          messages.map((msg) => {
-            const isTeam = msg.direction === "team_to_client";
-            return (
-              <div
-                key={msg.id}
-                className={`flex gap-2 ${isTeam ? "justify-end" : "justify-start"}`}
-              >
-                {!isTeam && (
-                  <div className="w-6 h-6 rounded-full bg-blue-500/20 flex items-center justify-center shrink-0 mt-1">
-                    <User className="w-3 h-3 text-blue-400" />
-                  </div>
-                )}
-                <div
-                  className={`max-w-[80%] rounded-lg px-3 py-2 text-sm ${
-                    isTeam
-                      ? "bg-[var(--bz-card)] text-[var(--bz-text-1)]"
-                      : "bg-blue-500/10 text-[var(--bz-text-1)]"
-                  }`}
+          <>
+            {loadError && (
+              <div className="flex items-center justify-between gap-2 rounded-lg border border-[var(--bz-border)] bg-[var(--bz-card)] px-3 py-2 text-xs text-[var(--bz-text-2)]">
+                <span>Message list may be out of date.</span>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={loadMessages}
+                  className="h-6 px-2 text-xs"
                 >
-                  {msg.subject && (
-                    <p className="text-xs font-semibold mb-1 opacity-70">
-                      {msg.subject}
-                    </p>
-                  )}
-                  <p className="whitespace-pre-wrap">{msg.content}</p>
-                  <div className="flex items-center gap-1 mt-1 text-[10px] text-[var(--bz-text-2)]">
-                    <span>{formatTime(msg.created_at)}</span>
-                    {isTeam && msg.sent_by && (
-                      <span>&middot; {msg.sent_by.split("@")[0]}</span>
-                    )}
-                    {isTeam && (
-                      <CheckCheck
-                        className={`w-3 h-3 ml-1 ${msg.read_at ? "text-blue-400" : "text-[var(--bz-text-2)]"}`}
-                      />
-                    )}
-                    {!isTeam && !msg.read_at && (
-                      <span className="text-[var(--state-warning)] font-semibold ml-1">
-                        NEW
-                      </span>
-                    )}
-                  </div>
-                </div>
-                {isTeam && (
-                  <div className="w-6 h-6 rounded-full bg-[var(--bz-card)] flex items-center justify-center shrink-0 mt-1">
-                    <Bot className="w-3 h-3 text-[var(--tx-secondary)]" />
-                  </div>
-                )}
+                  Retry
+                </Button>
               </div>
-            );
-          })
+            )}
+            {messages.map((msg) => {
+              const isTeam = msg.direction === "team_to_client";
+              return (
+                <div
+                  key={msg.id}
+                  className={`flex gap-2 ${isTeam ? "justify-end" : "justify-start"}`}
+                >
+                  {!isTeam && (
+                    <div className="w-6 h-6 rounded-full bg-blue-500/20 flex items-center justify-center shrink-0 mt-1">
+                      <User className="w-3 h-3 text-blue-400" />
+                    </div>
+                  )}
+                  <div
+                    className={`max-w-[80%] rounded-lg px-3 py-2 text-sm ${
+                      isTeam
+                        ? "bg-[var(--bz-card)] text-[var(--bz-text-1)]"
+                        : "bg-blue-500/10 text-[var(--bz-text-1)]"
+                    }`}
+                  >
+                    {msg.subject && (
+                      <p className="text-xs font-semibold mb-1 opacity-70">
+                        {msg.subject}
+                      </p>
+                    )}
+                    <p className="whitespace-pre-wrap">{msg.content}</p>
+                    <div className="flex items-center gap-1 mt-1 text-[10px] text-[var(--bz-text-2)]">
+                      <span>{formatTime(msg.created_at)}</span>
+                      {isTeam && msg.sent_by && (
+                        <span>&middot; {msg.sent_by.split("@")[0]}</span>
+                      )}
+                      {isTeam && (
+                        <CheckCheck
+                          className={`w-3 h-3 ml-1 ${msg.read_at ? "text-blue-400" : "text-[var(--bz-text-2)]"}`}
+                        />
+                      )}
+                      {!isTeam && !msg.read_at && (
+                        <span className="text-[var(--state-warning)] font-semibold ml-1">
+                          NEW
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  {isTeam && (
+                    <div className="w-6 h-6 rounded-full bg-[var(--bz-card)] flex items-center justify-center shrink-0 mt-1">
+                      <Bot className="w-3 h-3 text-[var(--tx-secondary)]" />
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </>
         )}
         <div ref={messagesEndRef} />
       </div>
