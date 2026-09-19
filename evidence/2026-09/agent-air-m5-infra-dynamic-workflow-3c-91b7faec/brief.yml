@@ -23,10 +23,14 @@ constraints:
     PR), and the Gear-3 evidence pack under `evidence/2026-09/agent-air-m5-infra-dynamic-workflow-3c-91b7faec/`
     modeled on `evidence/2026-09/claude-i-tera-surface-analysis-d8zvu3-08e9bf9d/`.
   - >-
-    `paths:` filter is the mandate's literal 8 entries, no more, no fewer:
+    `paths:` filter is the mandate's 10 entries (conductor ruling R1/R2, 2026-09-19 PR3c cure
+    round, superseding the earlier 8-item draft — R1/Q1 narrows the wildcard to the two named
+    test files, R2/Q2 restores the workflow's own path), no more, no fewer:
     scripts/dynamic_workflow.py, scripts/tests/test_dynamic_workflow*.py,
-    scripts/lint_workflow_script.py, scripts/lint_model_cards.py, scripts/tests/test_lint_*.py,
-    docs/arsenal/cards/**, infra/workflows/*.js, .claude/skills/dynamic-workflow/**.
+    scripts/lint_workflow_script.py, scripts/lint_model_cards.py,
+    scripts/tests/test_lint_workflow_script.py, scripts/tests/test_lint_model_cards.py,
+    docs/arsenal/cards/**, infra/workflows/*.js, .claude/skills/dynamic-workflow/**,
+    .github/workflows/dynamic-workflow-selftest.yml.
   - >-
     Jobs: `--selftest` + pytest on the named test files (test_dynamic_workflow.py,
     test_lint_workflow_script.py, test_lint_model_cards.py); the two lints invoked as a CLI
