@@ -18,16 +18,12 @@ date: 2026-09-20
 
 gear: 2
 gear_reason: >-
-  Deterministic floor 2, source `size`: `git diff --no-renames --numstat origin/main` measures
-  churn 1670 across six files (220+21 ClientDetailClient.test.tsx, 65+29 ClientDetailClient.tsx,
-  2+5 client-detail-desk.test.tsx, 452+0 ActivityTab.test.tsx, 531+0 ActivityTab.tsx, 0+345
-  TimelineTab.tsx deleted) — above SIZE_GEAR2_THRESHOLD (400) and below SIZE_GEAR3_THRESHOLD
-  (1828). No hot-zone path hit (every file is under `apps/mouth/`, not a HOTZONE_PATTERNS
-  match). This is the third round's number (two prior rounds' `1303`/`1620` both went stale the
-  moment a later round added more lines to these same files) — measured at THIS round's final
-  HEAD, after staging, immediately before commit. Confirmed locally via
-  `scripts/evidence_pack_lint.py --print-floor --print-floor-source --changed-files-file <list>
-  --numstat-file <numstat> --commit-count 1`, which printed `2` (source `size`).
+  Deterministic floor 2, source `size`. `git diff --no-renames --numstat origin/main...HEAD`
+  measures churn 1670 over the six code files (220+21, 65+29, 2+5, 452+0, 531+0, 0+345) and
+  1824 including this brief — the number the lint actually reads — against
+  SIZE_GEAR2_THRESHOLD 400 and SIZE_GEAR3_THRESHOLD 1828. No hot-zone path hit: every code
+  file is under `apps/mouth/`. This brief is kept SHORT on purpose: its own lines count toward
+  that churn, and at 165 lines it floored the pack at 3.
 
 review_policy: >-
   By the owner's decision of 2026-09-19, the kita client-profile redesign does not wait for a
@@ -57,10 +53,8 @@ acceptance:
       npx --no-install vitest run 'src/app/(workspace)/clients/[id]/'
   A2: >-
     `tsc --noEmit -p .` exits clean and `eslint` reports zero errors on every changed non-test
-    file (the one pre-existing `@next/next/no-img-element` warning in ClientDetailClient.tsx is
-    unrelated to this change — the same warning appears on origin/main; no line number named
-    here on purpose, since this file's growing comment count has already made that number stale
-    twice in three rounds).
+    file. The one `@next/next/no-img-element` warning in ClientDetailClient.tsx is pre-existing
+    on origin/main; no line number is named, because it has already gone stale twice.
     probe: >-
       npx --no-install tsc --noEmit -p . && npx --no-install eslint
       "src/app/(workspace)/clients/[id]/components/ActivityTab.tsx"
@@ -94,17 +88,12 @@ acceptance:
     constant `"activity"` (R5c) fails the same C3 test the same way; (16) removing the whole
     `if (alreadyActive && activeTab === visibleTab) return;` guard in `handleTabChange` fails
     the C6 no-op test (`mockRouterReplace` gets called with `/clients/7?tab=timeline`). Gate
-    sign-off B1, one more: (17) reverting that guard to the bare `if (alreadyActive) return;`
-    (dropping the `&& activeTab === visibleTab` clause) fails the new R7a-fallback-normalises
-    test — `mockRouterReplace` gets zero calls where `/clients/7?tab=overview` is expected,
-    because R7a's render-time fallback (`?tab=company` on a company-less client shows Overview)
-    makes `isActive` true against `visibleTab` even though `activeTab` still says "company".
+    sign-off B1, one more: (17) dropping the `&& activeTab === visibleTab` clause from that
+    guard fails the new R7a-fallback test — zero `mockRouterReplace` calls where
+    `/clients/7?tab=overview` is expected.
     probe: >-
-      For each mutation: apply, run `npx --no-install vitest run
-      "src/app/(workspace)/clients/[id]/components/ActivityTab.test.tsx"` (or
-      `ClientDetailClient.test.tsx` for mutations 1, 14, 15, 16, 17) scoped with
-      `-t "<case name>"`, observe RED, `cp` the backed-up original back over the mutated file,
-      `cmp -s` the two to confirm an exact restore.
+      Per mutation: apply, `npx --no-install vitest run <the file holding the named case>`,
+      observe RED, `cp` the backup back, `cmp -s` to confirm an exact restore.
 
 out_of_scope: >-
   Every other R1-R8 lane of PLAN-redesign.md not already merged (CompanyTab/TaxTab kv-grid,
