@@ -14,6 +14,11 @@ import type {
 export const clientDetailQueryKey = (clientId: string | number) =>
   ["client", String(clientId)] as const;
 
+// Shared by the timeline query and its invalidation, so the key that is
+// refreshed is always the key that is read.
+export const clientTimelineQueryKey = (clientId: string | number) =>
+  ["client", String(clientId), "timeline"] as const;
+
 export function buildBusinessStorySearchTerms(
   clientName: string,
   companyLinks: ClientCompanyLink[] | undefined,
@@ -69,7 +74,7 @@ export function useClientDetail(clientId: string | number) {
  */
 export function useClientTimeline(clientId: string | number) {
   return useQuery<Interaction[]>({
-    queryKey: ["client", String(clientId), "timeline"],
+    queryKey: clientTimelineQueryKey(clientId),
     queryFn: () => api.crm.getClientTimeline(Number(clientId), 50),
     staleTime: 2 * 60 * 1000,
     refetchOnWindowFocus: true,
@@ -111,8 +116,8 @@ export function useClientBusinessStory(
 }
 
 /**
- * Returns a function that invalidates the client profile query,
- * refetching it even when it is currently inactive.
+ * Returns a function that invalidates the client profile and timeline queries,
+ * refetching them even when they are currently inactive.
  */
 export function useInvalidateClient(clientId?: string | number | null) {
   const queryClient = useQueryClient();
@@ -120,11 +125,18 @@ export function useInvalidateClient(clientId?: string | number | null) {
     if (!clientId || Number(clientId) <= 0) {
       return Promise.resolve();
     }
-    return queryClient.invalidateQueries({
-      queryKey: clientDetailQueryKey(clientId),
-      exact: true,
-      refetchType: "all",
-    });
+    return Promise.all([
+      queryClient.invalidateQueries({
+        queryKey: clientDetailQueryKey(clientId),
+        exact: true,
+        refetchType: "all",
+      }),
+      queryClient.invalidateQueries({
+        queryKey: clientTimelineQueryKey(clientId),
+        exact: true,
+        refetchType: "all",
+      }),
+    ]).then(() => undefined);
   };
 }
 
