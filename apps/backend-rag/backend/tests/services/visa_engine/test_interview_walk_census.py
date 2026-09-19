@@ -766,14 +766,16 @@ _EXPECTED_OUTCOME_ON_SEQ20: dict[str, tuple[str, tuple[str, ...]]] = {
     # fixture is pinned in `EXPECTED_DISCLOSED_REVIEW_FLAGS` below, and the
     # claim it proves is narrower than the PR body's — `still_unsure` costs no
     # NOT_CERTAIN flag (its literal is not `unsure`), but the walk raises
-    # ACTIVITY_BOUNDARY anyway on `investment_vehicle = undecided`. Since PLAN
-    # slice A1 (owner ruling 2026-09-13) ACTIVITY_BOUNDARY conditions rather
-    # than holds, so at FUNNEL level this walk keeps C2 with a
-    # DISCLOSED_ACTIVITY_BOUNDARY_CONDITION notice, not a hold. Neither amount
-    # fact is ever populated
-    # (`still_unsure` asks no further question), and this branch's
-    # verdict is decided by `family.sponsor_confirmed` alone, unaffected:
-    # C2, same as its unmodified `undecided` sibling above.
+    # ACTIVITY_BOUNDARY anyway on `investment_vehicle = undecided`. Slice A1'
+    # (gate vo-gate-a1's OBS-1 HIGH, cured 2026-09-19) put ACTIVITY_BOUNDARY
+    # back in `HOLDING_DISCLOSED_FLAGS`, so at FUNNEL level this walk is one
+    # of the six ACTIVITY_BOUNDARY holds — HUMAN_REVIEW_REQUIRED with
+    # DISCLOSED_ACTIVITY_BOUNDARY_REVIEW, not a kept C2 with a condition. This
+    # ENGINE-level row (unaffected by any disclosure flag) still reads C2:
+    # neither amount fact is ever populated (`still_unsure` asks no further
+    # question), and this branch's verdict is decided by
+    # `family.sponsor_confirmed` alone, unaffected: C2, same as its
+    # unmodified `undecided` sibling above.
     "offshore/invest/undecided/currency_still_unsure": (
         "SUPPORTED_CANDIDATES",
         ("C2",),

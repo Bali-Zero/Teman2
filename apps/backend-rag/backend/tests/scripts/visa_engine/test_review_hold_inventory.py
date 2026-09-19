@@ -108,10 +108,20 @@ def test_every_disclosed_flag_has_exactly_one_code() -> None:
 def test_holding_split_matches_the_2026_09_13_ruling_floor() -> None:
     """PLAN VISA-ORACLE-DW-20260919 slice A1' (gate vo-gate-a1, OBS-3
     MEDIUM): the inventory must derive holding vs conditioning from
-    `HOLDING_DISCLOSED_FLAGS` itself, not hand-list the split — a future
-    widening of that frozenset moves this test's counts without editing it,
-    exactly as `test_inventory_is_a_derivation_not_a_hand_list` proves for
-    the pack rules below."""
+    `HOLDING_DISCLOSED_FLAGS` itself, not hand-list the split.
+
+    Unlike `test_inventory_is_a_derivation_not_a_hand_list` below, THIS test
+    hard-pins the membership (`set(holding) ==
+    {CRIMINAL_RECORD, ACTIVITY_BOUNDARY}`, `len(holding) == 2`,
+    `len(conditioning) == 9`) — on purpose: a widening or narrowing of the
+    ruling's floor SHOULD turn this test red, because
+    `split_disclosed_review_codes` deriving its answer from
+    `HOLDING_DISCLOSED_FLAGS` is what the previous gate's OBS-3 asked for,
+    not a promise that the counts float free. What this test proves instead
+    is that the split is a PARTITION of `adapter_review_codes()`'s 11 rows
+    (no code lost, none duplicated, none moved to the wrong side) rather
+    than an independent hand-list that could silently drift from the
+    production mapping — see the final two assertions below."""
 
     codes = adapter_review_codes()
     holding, conditioning = split_disclosed_review_codes(codes)
