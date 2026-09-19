@@ -175,3 +175,13 @@ docs/plans/mouth-final-20260911/evidence/**
 # B1.5: the embedding artifact is IMMUTABLE — its sha256 is committed to in
 # evidence/.../b1-5-precall.json, and reformatting it would break that receipt.
 apps/backend-rag/backend/tests/benchmarks/evidence_sufficiency/query_vectors_b1_5.json
+
+# PR3c: two council titolari' raw adversarial reviews, transcribed verbatim — the exact
+# bytes ARE the record (same discipline as the B2.2 harness reviews/** entry above).
+# Measured here, not assumed: Prettier's markdown formatter rewrote a bare "~22"/"~25"
+# (Kimi's size-question paragraph, "approximately N lines") into "~~22"/"~~25" — two
+# adjacent single tildes read as an unterminated strikethrough delimiter pair spanning
+# the sentence between them, which would silently strike through a chunk of the verbatim
+# review on render. Same failure class as the W104 corruption documented at the
+# cicatrix-superscar.md entry below, different token.
+evidence/2026-09/agent-air-m5-infra-dynamic-workflow-3c-91b7faec/reviews/**

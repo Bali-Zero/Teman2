@@ -15,6 +15,10 @@ Verifies the linter correctly:
   see test_lint_asyncpg_except_completeness.py's test_main_exit_0_on_clean)
 - Refuses to report clean on a blind (zero-file) sweep, and does not over-match that
   guard onto an explicit non-.md argv or a single clean in-scope file
+- Refuses to report clean when an explicit blind target (nonexistent path or
+  zero-yield directory) is masked by a SIBLING target that scans cleanly in the
+  same invocation (PR3c cure round, 2026-09-19) — judged per-target, not by a
+  global scanned-count gate
 """
 from __future__ import annotations
 
@@ -168,9 +172,24 @@ def test_innocence_explicit_non_md_file_is_still_green(lint, tmp_path, capsys):
     assert "BLIND SCAN" not in captured.err
 
 
-def test_innocence_one_clean_in_scope_file_is_enough(lint, capsys):
-    """The guard fires at EXACTLY zero — a single swept file must satisfy it."""
-    rc = lint.main([str(FIXTURES_DIR / "clean.md")])
+def test_innocence_one_clean_in_scope_file_is_enough(lint, tmp_path, capsys):
+    """The guard fires at EXACTLY zero — a single swept file must satisfy it.
+
+    PR3c cure round (2026-09-19, Kimi finding): clean.md's frontmatter `date:` is a
+    STATIC fixture value, and lint.main() (unlike find_violations) takes no `today=`
+    override to pin against — pointing main() straight at the fixture file would go
+    stale and start tripping RULE 3 the moment real wall-clock time passes it 30 days.
+    Interpolate today's date into a tmp_path copy instead, same cure as the sibling
+    directory-expansion test below.
+    """
+    fresh = tmp_path / "clean.md"
+    fresh.write_text(
+        FIXTURES_DIR.joinpath("clean.md").read_text(encoding="utf-8").replace(
+            "date: 2026-09-18", f"date: {date.today().isoformat()}"
+        ),
+        encoding="utf-8",
+    )
+    rc = lint.main([str(fresh)])
     captured = capsys.readouterr()
     assert rc == 0
     assert "BLIND SCAN" not in captured.err
@@ -185,6 +204,65 @@ def test_guilt_explicit_nonexistent_target_is_a_blind_scan(lint, tmp_path, capsy
     assert rc == 2, "a nonexistent explicit target must not exit 0 — it proves nothing"
     assert "BLIND SCAN" in captured.err
     assert str(ghost) in captured.err
+    assert "no violations" not in captured.out
+
+
+def test_guilt_explicit_empty_dir_is_a_blind_scan(lint, tmp_path, capsys):
+    """PR3c blind-scan closure (2026-09-19): an explicit directory that exists but
+    yields zero .md files is the same defect as a nonexistent path — must refuse,
+    not silently report '0 file(s) scanned, no violations, exit 0'."""
+    empty_dir = tmp_path / "renamed_or_emptied"
+    empty_dir.mkdir()
+    rc = lint.main([str(empty_dir)])
+    captured = capsys.readouterr()
+    assert rc == 2, "an explicit empty directory must not exit 0 — it proves nothing"
+    assert "BLIND SCAN" in captured.err
+    assert str(empty_dir) in captured.err
+    assert "no violations" not in captured.out
+
+
+def test_innocence_explicit_dir_with_one_clean_file_exits_0(lint, tmp_path, capsys):
+    """The directory-expansion guard fires at EXACTLY zero — a directory containing
+    one clean .md file must be swept and pass, not treated as another blind scan.
+
+    Interpolates today's date (see test_innocence_one_clean_in_scope_file_is_enough's
+    docstring) rather than copying clean.md's static frontmatter date verbatim.
+    """
+    scoped_dir = tmp_path / "one_clean_file"
+    scoped_dir.mkdir()
+    (scoped_dir / "clean.md").write_text(
+        FIXTURES_DIR.joinpath("clean.md").read_text(encoding="utf-8").replace(
+            "date: 2026-09-18", f"date: {date.today().isoformat()}"
+        ),
+        encoding="utf-8",
+    )
+    rc = lint.main([str(scoped_dir)])
+    captured = capsys.readouterr()
+    assert rc == 0
+    assert "no violations (1 file(s) scanned)" in captured.out
+    assert "BLIND SCAN" not in captured.err
+
+
+def test_guilt_mixed_targets_empty_dir_not_masked_by_productive_sibling(lint, tmp_path, capsys):
+    """PR3c cure round (2026-09-19, Kimi finding): a global scanned-count gate let one
+    productive target mask a SIBLING blind one in the same invocation. Each explicit
+    target must be judged on its own — an empty directory stays guilty even when
+    another argv target in the same invocation scans cleanly."""
+    empty_dir = tmp_path / "renamed_or_emptied"
+    empty_dir.mkdir()
+    productive_dir = tmp_path / "one_clean_file"
+    productive_dir.mkdir()
+    (productive_dir / "clean.md").write_text(
+        FIXTURES_DIR.joinpath("clean.md").read_text(encoding="utf-8").replace(
+            "date: 2026-09-18", f"date: {date.today().isoformat()}"
+        ),
+        encoding="utf-8",
+    )
+    rc = lint.main([str(empty_dir), str(productive_dir)])
+    captured = capsys.readouterr()
+    assert rc == 2, "a sibling target scanning cleanly must not mask a blind one"
+    assert "BLIND SCAN" in captured.err
+    assert str(empty_dir) in captured.err
     assert "no violations" not in captured.out
 
 

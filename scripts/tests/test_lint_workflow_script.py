@@ -12,6 +12,10 @@ Verifies the linter correctly:
   see test_lint_asyncpg_except_completeness.py's test_main_exit_0_on_clean)
 - Refuses to report clean on a blind (zero-file) sweep, and does not over-match that
   guard onto an explicit non-.js argv or a single clean in-scope file
+- Refuses to report clean when an explicit blind target (nonexistent path or
+  zero-yield directory) is masked by a SIBLING target that scans cleanly in the
+  same invocation (PR3c cure round, 2026-09-19) — judged per-target, not by a
+  global scanned-count gate
 - Recognises a regex literal as a regex literal (PR3e item 1, 2026-09-18) instead of
   misreading it as a string/comment opener, and refuses (exit 2) rather than report
   CLEAN if neutralization ever leaves the paren/brace balance non-zero
@@ -24,6 +28,7 @@ import importlib.util
 from pathlib import Path
 
 import pytest
+import yaml
 
 
 SCRIPT_PATH = Path(__file__).resolve().parents[1] / "lint_workflow_script.py"
@@ -281,6 +286,87 @@ def test_guilt_explicit_nonexistent_target_is_a_blind_scan(lint, tmp_path, capsy
     assert "BLIND SCAN" in captured.err
     assert str(ghost) in captured.err
     assert "no violations" not in captured.out
+
+
+def test_guilt_explicit_empty_dir_is_a_blind_scan(lint, tmp_path, capsys):
+    """PR3c blind-scan closure (2026-09-19): an explicit directory that exists but
+    yields zero .js files is the same defect as a nonexistent path — must refuse,
+    not silently report '0 file(s) scanned, no violations, exit 0'."""
+    empty_dir = tmp_path / "renamed_or_emptied"
+    empty_dir.mkdir()
+    rc = lint.main([str(empty_dir)])
+    captured = capsys.readouterr()
+    assert rc == 2, "an explicit empty directory must not exit 0 — it proves nothing"
+    assert "BLIND SCAN" in captured.err
+    assert str(empty_dir) in captured.err
+    assert "no violations" not in captured.out
+
+
+def test_innocence_explicit_dir_with_one_clean_file_exits_0(lint, tmp_path, capsys):
+    """The directory-expansion guard fires at EXACTLY zero — a directory containing
+    one clean .js file must be swept and pass, not treated as another blind scan."""
+    scoped_dir = tmp_path / "one_clean_file"
+    scoped_dir.mkdir()
+    (scoped_dir / "clean.js").write_text(
+        FIXTURES_DIR.joinpath("clean.js").read_text(encoding="utf-8"), encoding="utf-8"
+    )
+    rc = lint.main([str(scoped_dir)])
+    captured = capsys.readouterr()
+    assert rc == 0
+    assert "no violations (1 file(s) scanned)" in captured.out
+    assert "BLIND SCAN" not in captured.err
+
+
+def test_guilt_mixed_targets_empty_dir_not_masked_by_productive_sibling(lint, tmp_path, capsys):
+    """PR3c cure round (2026-09-19, Kimi finding): a global scanned-count gate let one
+    productive target mask a SIBLING blind one in the same invocation. Each explicit
+    target must be judged on its own — an empty directory stays guilty even when
+    another argv target in the same invocation scans cleanly."""
+    empty_dir = tmp_path / "renamed_or_emptied"
+    empty_dir.mkdir()
+    productive_dir = tmp_path / "one_clean_file"
+    productive_dir.mkdir()
+    (productive_dir / "clean.js").write_text(
+        FIXTURES_DIR.joinpath("clean.js").read_text(encoding="utf-8"), encoding="utf-8"
+    )
+    rc = lint.main([str(empty_dir), str(productive_dir)])
+    captured = capsys.readouterr()
+    assert rc == 2, "a sibling target scanning cleanly must not mask a blind one"
+    assert "BLIND SCAN" in captured.err
+    assert str(empty_dir) in captured.err
+    assert "no violations" not in captured.out
+
+
+def test_workflow_yaml_lint_steps_use_default_sweep_via_cli():
+    """Gate-12 item 3 + PR3c blind-scan closure item 2: CI must invoke each lint
+    script as a subprocess CLI call with the DEFAULT sweep (no positional target,
+    never a Python import of find_violations) — a target pinned into the YAML
+    would go stale (renamed/emptied) exactly like an explicit blind scan.
+
+    PR3c cure round (2026-09-19, Sol finding): a raw text-line match (`"run: ..."
+    in lines`) is gameable — the same string sitting in a YAML comment, in an
+    unrelated job, or reflowed onto a block-scalar continuation line would satisfy
+    it without a REAL step in the REAL job ever running the command. Parse the
+    YAML structurally and walk every job's steps' `run:` values instead.
+    """
+    workflow_path = REPO_ROOT / ".github" / "workflows" / "dynamic-workflow-selftest.yml"
+    raw = workflow_path.read_text(encoding="utf-8")
+    doc = yaml.safe_load(raw)
+
+    # Scoped to the NAMED job, not "any job in the file" — a decoy job carrying the
+    # same run: line (disabled, unrelated, or otherwise never the one CI actually
+    # gates on) must not satisfy this the way a raw text-line search would have.
+    job = doc["jobs"]["dynamic-workflow-selftest"]
+    run_values = [step["run"] for step in job.get("steps", []) if "run" in step]
+    assert "python3 scripts/lint_workflow_script.py" in run_values, (
+        "lint_workflow_script step must invoke the CLI with no positional target"
+    )
+    assert "python3 scripts/lint_model_cards.py" in run_values, (
+        "lint_model_cards step must invoke the CLI with no positional target"
+    )
+    assert "find_violations" not in raw, (
+        "the workflow must never import find_violations directly — CLI only"
+    )
 
 
 # --------------------------------------------------------------------------
