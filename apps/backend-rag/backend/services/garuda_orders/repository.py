@@ -34,6 +34,7 @@ double-create.
 from __future__ import annotations
 
 import logging
+from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
@@ -64,12 +65,28 @@ from backend.services.payments.port import (
 
 logger = logging.getLogger(__name__)
 
+
+@dataclass(frozen=True, slots=True)
+class ExpiryOutcome:
+    """What one OP-04 sweep candidate turned out to be.
+
+    Three outcomes, mutually exclusive, because the caller COUNTS them and a
+    counter that merges two of them lies in the log: the order was expired,
+    or an OP-F08 late case was opened on it, or the webhook won the race
+    while we were asking. Before this existed `expire_if_unpaid` returned a
+    bare bool and reconciliation counted every False as "left for the
+    webhook" -- including the orders it had just PAGED about, for which the
+    whole point is that no webhook is coming.
+    """
+
+    expired: bool
+    late_case_opened: bool
+
+
 _CHECKOUT_TTL_MINUTES = 60
 
 
-async def _quarantine(
-    conn: asyncpg.Connection, *, provider_event_id: str, reason: str
-) -> None:
+async def _quarantine(conn: asyncpg.Connection, *, provider_event_id: str, reason: str) -> None:
     """Refuse an authentic provider callback, ON THE RECORD and with the cause.
 
     A quarantined row is not an error we swallowed — it is a signature-valid
@@ -446,14 +463,55 @@ class GarudaOrderRepository:
                 return "OP-F03"
 
             if state == OrderState.AWAITING_PAYMENT.value:
-                await conn.execute(
+                # The OP-F08 late case, if one is open, closes HERE as
+                # `honoured` — in the same transaction that admits the
+                # payment. Without this the case opened by reconciliation
+                # survives the webhook that answers it: the order reads
+                # `paid` with a practice minted beside it AND an open,
+                # refundable late case, and `resolve_late_order` does not
+                # re-check state before calling the provider. A staff member
+                # acting on that page would refund a payment that had already
+                # bought the service. Found by Codex `gpt-5.6-sol` as the
+                # mirror image of the race cured on the OPENING side, and it
+                # is the same invariant read backwards: a case must not
+                # outlive the question it was asking.
+                #
+                # `CASE WHEN late_case_open` reads the OLD row (SET
+                # expressions always do), so an order that never had a case
+                # keeps `late_case_resolution` NULL rather than acquiring a
+                # resolution for a case that never existed — migration 284's
+                # CHECK admits (open FALSE, resolution NOT NULL) only as the
+                # shape of a CLOSED case.
+                closed_late_case = await conn.fetchval(
                     """
-                    UPDATE garuda_orders SET state = 'paid', provider_charge_id = $2
-                     WHERE order_id = $1 AND state = 'awaiting_payment'
+                    WITH before AS (
+                        SELECT order_id, late_case_open
+                          FROM garuda_orders
+                         WHERE order_id = $1
+                    )
+                    UPDATE garuda_orders o
+                       SET state = 'paid',
+                           provider_charge_id = $2,
+                           late_case_resolution = CASE
+                               WHEN o.late_case_open THEN 'honoured'
+                               ELSE o.late_case_resolution
+                           END,
+                           late_case_open = FALSE
+                      FROM before b
+                     WHERE o.order_id = b.order_id AND o.state = 'awaiting_payment'
+                    RETURNING b.late_case_open
                     """,
                     order_id,
                     event.provider_charge_id,
                 )
+                if closed_late_case:
+                    # Order id only: this line exists so the close is
+                    # searchable next to the page that opened it.
+                    logger.info(
+                        "garuda_orders %s: webhook paid an order with an open late case; "
+                        "closed as honoured in the same transaction (OP-F08 -> OP-02)",
+                        order_id,
+                    )
                 event_id = await journal.append_event(
                     conn,
                     event_name="payment.paid",
@@ -735,24 +793,33 @@ class GarudaOrderRepository:
 
     # ---- OP-04: reconciliation-driven expiry (see reconciliation.py) ---
 
-    async def expire_if_unpaid(self, *, order_id: str, provider_session_id: str) -> bool:
-        confirmed_unpaid = await self._provider.confirm_no_successful_charge(
+    async def expire_if_unpaid(
+        self,
+        *,
+        order_id: str,
+        provider_session_id: str,
+    ) -> ExpiryOutcome:
+        confirmation = await self._provider.confirm_no_successful_charge(
             provider_session_id=provider_session_id
         )
-        if not confirmed_unpaid:
-            logger.warning(
-                "garuda_orders: reconciliation found a possible drift for %s — provider reports a charge, "
-                "our webhook has not arrived; leaving state alone for the webhook to reconcile",
-                order_id,
+        if not confirmation.confirmed_unpaid:
+            late_case_opened = await self._open_late_case_from_reconciliation(
+                order_id=order_id,
+                provider_charge_id=confirmation.provider_charge_id,
+                provider_status=confirmation.provider_status,
             )
-            return False
+            return ExpiryOutcome(
+                expired=False,
+                late_case_opened=late_case_opened,
+            )
         async with self._pool.acquire() as conn, conn.transaction():
             updated = await conn.fetchrow(
                 "UPDATE garuda_orders SET state = 'expired' WHERE order_id = $1 AND state = 'awaiting_payment' RETURNING order_id",
                 order_id,
             )
             if updated is None:
-                return False  # already moved on (webhook won the race) — not an error
+                # already moved on (webhook won the race) — not an error
+                return ExpiryOutcome(expired=False, late_case_opened=False)
             event_id = await journal.append_event(
                 conn,
                 event_name="payment.expired",
@@ -764,6 +831,96 @@ class GarudaOrderRepository:
             await journal.enqueue_outbox(
                 conn, order_id=order_id, journal_event_id=event_id, job_type="payment_expired_email"
             )
+        return ExpiryOutcome(expired=True, late_case_opened=False)
+
+    async def _open_late_case_from_reconciliation(
+        self,
+        *,
+        order_id: str,
+        provider_charge_id: str | None,
+        provider_status: str | None,
+    ) -> bool:
+        """OP-F08 — reconciliation found a charge no webhook ever delivered.
+
+        OP-F04/OP-F05 reach a late case because a signed event arrived LATE.
+        This is the case where the event never arrives at all: OP-04 asks the
+        provider its own question and the provider answers "there is a
+        charge". Before this existed the answer went to a `logger.warning`
+        and nowhere else — the order stayed in `awaiting_payment` while the
+        provider held the customer's money, and no human was ever told.
+
+        The order KEEPS `awaiting_payment`: only a signed webhook may write
+        `paid`, and OP-F01 rejects every other writer, reconciliation
+        included. What changes is that the case becomes VISIBLE and
+        refundable — `late_case_open` is the field `resolveLateOrder` and the
+        staff page already read, and until now nothing ever wrote it from
+        this path.
+
+        One alarm per case, never one per scheduler tick: the UPDATE is a
+        compare-and-set, and only the tick that actually wins it appends the
+        journal event the outbox job hangs off (`UNIQUE(journal_event_id,
+        job_type)` does the rest).
+
+        ALL THREE predicates are load-bearing; a cross-family review (Codex
+        `gpt-5.6-sol`, read-only) found the first two missing and both were
+        reproducible on disk:
+
+        * `state = 'awaiting_payment'` — reconciliation selected this order a
+          moment ago, but the real webhook can land in between. Without this
+          the tick opens a late case on an order that has meanwhile reached
+          `paid`, and `resolve_late_order` does not re-check state before
+          refunding: a legitimate, fully reconciled payment becomes
+          refundable. SM-G07 already demands every write be a CAS against the
+          state it observed; this one was not.
+        * `late_case_resolution IS NULL` — after staff close a case as
+          `honoured`, the order KEEPS `awaiting_payment` and Xendit keeps
+          answering "paid", so the next tick tried to reopen it. Migration
+          284's CHECK forbids `(open = TRUE, resolution IS NOT NULL)`, so that
+          is not a duplicate page, it is a `check_violation` every tick,
+          forever, swallowed by the caller's `except`.
+        * `late_case_open = FALSE` — the idempotence this method was written
+          for.
+        """
+
+        async with self._pool.acquire() as conn, conn.transaction():
+            opened = await conn.fetchrow(
+                """
+                UPDATE garuda_orders
+                   SET late_case_open = TRUE, late_case_charge_id = $2
+                 WHERE order_id = $1
+                   AND state = 'awaiting_payment'
+                   AND late_case_open = FALSE
+                   AND late_case_resolution IS NULL
+                RETURNING order_id
+                """,
+                order_id,
+                provider_charge_id,
+            )
+            if opened is None:
+                return False
+
+            event_id = await journal.append_event(
+                conn,
+                event_name="payment.charge_detected_without_webhook",
+                aggregate_type="order",
+                aggregate_id=order_id,
+                transition_id="OP-F08",
+                customer_visible=False,
+                detail={"charge_id": provider_charge_id, "provider_status": provider_status},
+            )
+            await journal.enqueue_outbox(
+                conn,
+                order_id=order_id,
+                journal_event_id=event_id,
+                job_type="staff_page_charge_without_webhook",
+            )
+
+        logger.warning(
+            "garuda_orders: OP-F08 late case opened for %s — provider status %r reports a charge "
+            "and no webhook ever arrived; staff paged",
+            order_id,
+            provider_status,
+        )
         return True
 
     # ---- resolveLateOrder ------------------------------------------------
@@ -864,4 +1021,4 @@ class GarudaOrderRepository:
         return response_body, False
 
 
-__all__ = ["GarudaOrderRepository"]
+__all__ = ["ExpiryOutcome", "GarudaOrderRepository"]

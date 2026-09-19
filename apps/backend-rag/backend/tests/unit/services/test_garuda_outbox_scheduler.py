@@ -67,9 +67,7 @@ async def _drive(monkeypatch, results, *, poll="5") -> list[float]:
     async def fake_sleep(seconds):
         slept.append(seconds)
 
-    monkeypatch.setattr(
-        "backend.services.garuda_orders.outbox_consumer.drain_once", fake_drain
-    )
+    monkeypatch.setattr("backend.services.garuda_orders.outbox_consumer.drain_once", fake_drain)
     monkeypatch.setattr(main_api.asyncio, "sleep", fake_sleep)
     with pytest.raises(asyncio.CancelledError):
         await main_api._run_garuda_outbox_scheduler(_app())
@@ -123,9 +121,7 @@ async def test_the_lifespan_leaves_the_drain_disarmed_by_default(monkeypatch) ->
 
     monkeypatch.delenv("GARUDA_OUTBOX_CONSUMER_ENABLED", raising=False)
     started = []
-    monkeypatch.setattr(
-        main_api, "_run_garuda_outbox_scheduler", lambda app: started.append(app)
-    )
+    monkeypatch.setattr(main_api, "_run_garuda_outbox_scheduler", lambda app: started.append(app))
     task = await _spawn_via_lifespan(monkeypatch)
     assert started == []
     assert task is None
@@ -199,9 +195,7 @@ async def test_a_failing_tick_does_not_kill_the_loop(monkeypatch) -> None:
     async def fake_sleep(seconds):
         slept.append(seconds)
 
-    monkeypatch.setattr(
-        "backend.services.garuda_orders.outbox_consumer.drain_once", fake_drain
-    )
+    monkeypatch.setattr("backend.services.garuda_orders.outbox_consumer.drain_once", fake_drain)
     monkeypatch.setattr(main_api.asyncio, "sleep", fake_sleep)
     with pytest.raises(asyncio.CancelledError):
         await main_api._run_garuda_outbox_scheduler(_app())
@@ -360,9 +354,7 @@ async def _drive_one_tick(monkeypatch, *, repository, conn, sweep, quarantine=No
     async def fake_sleep(seconds):
         return None
 
-    monkeypatch.setattr(
-        "backend.services.garuda_orders.outbox_consumer.drain_once", fake_drain
-    )
+    monkeypatch.setattr("backend.services.garuda_orders.outbox_consumer.drain_once", fake_drain)
     monkeypatch.setattr(
         "backend.services.garuda_orders.outbox_consumer.count_undrained",
         fake_count_undrained,
@@ -912,9 +904,7 @@ async def test_a_lock_held_by_another_machine_skips_the_sweep(monkeypatch) -> No
     assert conn.calls == ["lock"], "no unlock: we never held it"
 
 
-async def test_a_hanging_sweep_is_cut_off_and_gives_the_drain_back(
-    monkeypatch, caplog
-) -> None:
+async def test_a_hanging_sweep_is_cut_off_and_gives_the_drain_back(monkeypatch, caplog) -> None:
     """THE BLOCKER an adversarial review found in the first draft of this
     wiring (2026-08-28).
 
@@ -960,11 +950,11 @@ async def test_a_pass_that_fills_its_own_limit_says_the_backlog_is_not_drained(
         # The limit is asserted here, not assumed: the warning compares against
         # `_OP04_SWEEP_LIMIT`, so the call must be the thing that used it.
         assert limit == main_api._OP04_SWEEP_LIMIT
-        return SimpleNamespace(candidates=limit, expired=limit, left_for_webhook=0)
+        return SimpleNamespace(
+            candidates=limit, expired=limit, late_cases_opened=0, left_for_webhook=0
+        )
 
     with caplog.at_level("WARNING"):
-        await _drive_one_tick(
-            monkeypatch, repository=object(), conn=_LockConn(), sweep=sweep
-        )
+        await _drive_one_tick(monkeypatch, repository=object(), conn=_LockConn(), sweep=sweep)
 
     assert any("backlog not drained" in r.getMessage() for r in caplog.records)

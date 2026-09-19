@@ -575,9 +575,10 @@ async def _run_garuda_outbox_scheduler(app: FastAPI) -> None:
                                     if summary is not None and summary.candidates:
                                         logger.info(
                                             "GARUDA OP-04 sweep: %d candidate(s), %d expired, "
-                                            "%d left for the webhook",
+                                            "%d late case(s) opened, %d left for the webhook",
                                             summary.candidates,
                                             summary.expired,
+                                            summary.late_cases_opened,
                                             summary.left_for_webhook,
                                         )
                                         if summary.candidates >= _OP04_SWEEP_LIMIT:
@@ -679,8 +680,7 @@ async def _run_visa_oracle_sessions_purge_scheduler(app: FastAPI) -> None:
         _VISA_ORACLE_PURGE_INITIAL_DELAY_MAX_SECONDS,
     )
     logger.info(
-        "✅ visa-oracle session purge scheduler started (first run in %.0fs, "
-        "then ~%.0fs ± %.0fs)",
+        "✅ visa-oracle session purge scheduler started (first run in %.0fs, then ~%.0fs ± %.0fs)",
         initial_delay,
         _VISA_ORACLE_PURGE_INTERVAL_SECONDS,
         _VISA_ORACLE_PURGE_JITTER_SECONDS,
@@ -827,9 +827,7 @@ async def lifespan_light(app: FastAPI):
             # the REAL production decision instead of a hand-copied mirror
             # of it (council finding F10, round 1: the mirror stayed green
             # even with the real spawn deleted).
-            app.state._visa_oracle_sessions_purge_task = _spawn_visa_oracle_sessions_purge_task(
-                app
-            )
+            app.state._visa_oracle_sessions_purge_task = _spawn_visa_oracle_sessions_purge_task(app)
 
     init_task = asyncio.create_task(_background_light_init())
     app.state._init_task = init_task
