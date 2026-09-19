@@ -194,7 +194,7 @@ describe("client detail cache transitions", () => {
     });
   });
 
-  it.each([0, Number.NaN])(
+  it.each([0, Number.NaN, undefined])(
     "does not invalidate an invalid client id %s",
     async (clientId) => {
       const queryClient = new QueryClient();
