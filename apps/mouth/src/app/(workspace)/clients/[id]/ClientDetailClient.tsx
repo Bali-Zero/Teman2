@@ -55,6 +55,7 @@ import { clientStatusTone, viewerIsNext } from "../client-row-model";
 import styles from "./client-detail-desk.module.css";
 
 // Local component imports
+import { isTabType } from "./components/types";
 import type { TabType, ModalType } from "./components/types";
 import type { TaxConsultantOption } from "@/lib/workspace/roster-directory";
 import { useTeamMemberOptions } from "@/hooks/useTeamMembers";
@@ -269,20 +270,8 @@ export function ClientDetailClient({
   // Read tab from URL params and set active tab
   useEffect(() => {
     const tabParam = searchParams?.get("tab");
-    if (
-      tabParam &&
-      [
-        "overview",
-        "documents",
-        "process",
-        "family",
-        "visas",
-        "company",
-        "tax",
-        "timeline",
-      ].includes(tabParam)
-    ) {
-      setActiveTab(tabParam as TabType);
+    if (isTabType(tabParam)) {
+      setActiveTab(tabParam);
     }
   }, [searchParams]);
 
