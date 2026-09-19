@@ -1,0 +1,114 @@
+base_sha: 038a571f84846e5a918c3894e71f9f734d320c27 # pragma: allowlist secret - public Git commit ID
+task_id: vo-a2-render-notices
+mandate_id: VISA-ORACLE-DW-20260919/A2
+gear: 2
+gear_reason: >-
+  Measured with `scripts/evidence_pack_lint.py --print-floor --changed-files-file
+  <changed> --numstat-file <numstat>` against this diff: floor 2. Frontend-only,
+  no rule pack, no migration, no CODEOWNERS-TIER1 path — the size sits above the
+  Builder Contract's ~360-line plan estimate because the mandate names two
+  channels the size counts against: an 11-entry bilingual (EN/ID) copy table
+  (N1/N2, honest size per the contract's own allowance) and the N5 test matrix
+  it explicitly requires (EN+ID, one and many notices, unknown code in both
+  dev-throw and prod-fallback shape, every applicable outcome state, a
+  banned-word scan, and one e2e reading two rendered condition texts).
+l_level: L1
+gate_class: opus
+objective: >-
+  Slice A2 (PLAN VISA-ORACLE-DW-20260919 §1.6, ruling R-SEQ): the engine's
+  `notices[]` channel is parsed and validated by the mouth but rendered by
+  nothing — `grep -n notices engine-adapter.ts` on origin/main has no match.
+  R-SEQ gates the coming A1' engine release (which moves ten disclosed-review
+  flags off `HUMAN_REVIEW_REQUIRED` and into named `notices` conditions on a
+  kept candidate) behind THIS render landing and being promoted first: a
+  disclosed condition nobody can see is an unqualified verdict. This PR adds
+  EN/ID copy for the one code the engine already emits today
+  (`OBSOLETE_PRODUCT_CODE`) and the ten `*_CONDITION` codes A1' will emit, and
+  renders every `notices[]` Reason next to the verdict, on any outcome state
+  that can carry one (the backend places no state constraint on this field).
+scope:
+  - >-
+    apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/outcome-view-model.ts —
+    `conditions` added to the shared `OutcomeBase` shape
+  - >-
+    apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter.ts —
+    `NOTICE_CONDITION_COPY`, the unmapped-code dev-throw/prod-fallback path
+  - >-
+    apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/telemetry.ts — the
+    `visa_oracle_v2_notice_unmapped_code` event
+  - >-
+    apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/i18n.ts — the section
+    title/intro copy
+  - >-
+    apps/mouth/src/app/(visa-oracle)/visa-oracle/_components/OutcomeSheet.tsx
+    — the render, next to the verdict
+  - >-
+    apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/outcome-fallbacks.ts
+    and preview-adapter.ts — `conditions: []` on the non-ENGINE literals the
+    type change now requires
+  - >-
+    the matching *.test.ts / *.test.tsx files and one new e2e case in
+    apps/mouth/e2e/visa-oracle-v2.spec.ts
+  - this brief
+constraints:
+  - >-
+    No change to `oracle.css` state tokens, `LivingTree.tsx`,
+    `OracleShell.tsx`, `package.json`, or any lockfile (Builder Contract for
+    this slice).
+  - >-
+    No paid per-token translation API — the Bahasa Indonesia copy is written
+    natively, formal-neutral register, matching the surface's existing voice.
+  - >-
+    No new legal citation, price, or processing-time claim in any condition
+    sentence; PEP/sanctions and source-of-funds specifically say the
+    compliance check runs AT SUBMISSION, never that it already happened.
+  - No client PII in any file added or edited; all test fixtures synthetic.
+acceptance:
+  - text: >-
+      WHEN a `Decision.notices[]` Reason carries a code with dedicated copy,
+      THEN the adapter SHALL map it to a named condition (code, localized
+      message, filtered source ids) on every outcome state that can carry
+      one, in the order the engine returned it.
+    status: verified
+    probe: "cd apps/mouth && ../../node_modules/.bin/vitest run engine-adapter --root ."
+  - text: >-
+      WHEN a `notices[]` code has no dedicated copy, THEN the adapter SHALL
+      throw in development/test and SHALL fall back to a neutral sentence
+      plus one `visa_oracle_v2_notice_unmapped_code` telemetry event per code
+      in production.
+    status: verified
+    probe: "cd apps/mouth && ../../node_modules/.bin/vitest run engine-adapter telemetry --root ."
+  - text: >-
+      WHEN the eleven condition codes' copy is scanned, THEN neither the EN
+      nor the ID sentence SHALL contain "cleared"/"approved"/"no issue"/
+      "guaranteed" or their Bahasa equivalents, and the PEP/sanctions and
+      source-of-funds sentences SHALL name the submission-time compliance
+      check explicitly.
+    status: verified
+    probe: "cd apps/mouth && ../../node_modules/.bin/vitest run engine-adapter --root ."
+  - text: >-
+      WHEN the OutcomeSheet renders an outcome carrying one or many
+      conditions, THEN every condition's localized text SHALL be visible with
+      the verdict, in order, in both EN and ID, and no conditions section
+      SHALL render when there are none.
+    status: verified
+    probe: "cd apps/mouth && ../../node_modules/.bin/vitest run OutcomeSheet --root ."
+  - text: >-
+      WHEN the mouth typechecks and the full visa-oracle vitest suite runs,
+      THEN both SHALL succeed with zero regressions from the `OutcomeBase`
+      shape change.
+    status: verified
+    probe: "cd apps/mouth && ../../node_modules/.bin/tsc --noEmit && ../../node_modules/.bin/vitest run --root . src/app/\\(visa-oracle\\)/visa-oracle"
+  - text: >-
+      WHEN a mocked engine response carries two notices and the page is
+      rendered end to end, THEN the e2e run SHALL read both rendered
+      condition texts, and the pre-existing 19 tests in this spec file
+      SHALL stay green.
+    status: verified
+    probe: "cd apps/mouth && ../../node_modules/.bin/playwright test -c playwright.config.ts e2e/visa-oracle-v2.spec.ts --project=chromium"
+pii: none
+self_report:
+  note: >-
+    This brief and its `gear_reason` are this session's own record. The
+    acceptance probes above were each run against this PR's own final head
+    in this session; the PR body pastes their tails as the observation.
