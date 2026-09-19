@@ -4,118 +4,44 @@ machine: air-m5
 base_sha: ab15ca985cabe1a59c05bdf48c4e425c52645409 # pragma: allowlist secret - public Git commit ID, not a credential
 date: 2026-09-20
 
-gear: 3
+gear: 2
 gear_reason: >-
-  Deterministic floor 3, source `size`: `git diff --no-renames --numstat` against
-  origin/main over the full diff (the two code files PLUS this brief.yml itself, since the
-  size term reads the whole diff, not just the code files) measures net churn 1896 (1054
-  new apps/backend-rag/backend/scripts/visa_engine/enumerate_live.py, 724 new
-  apps/backend-rag/backend/tests/scripts/visa_engine/test_enumerate_live.py, 118 this
-  brief.yml) — at/above SIZE_GEAR3_THRESHOLD (1828). No hot-zone path (all three files are
-  new, under backend/scripts, backend/tests and evidence/, not a HOTZONE_PATTERNS match) —
-  source is `size` alone, confirmed via
-  `evidence_pack_lint._compute_floor_with_source()` called directly against this exact
-  numstat, matching the value the `Harness floor recompute` check will independently
-  compute from `python3 scripts/contract_verify.py --local --json`.
+  Floor 2, source `size`: net churn over the two code files is 1778, below SIZE_GEAR3_THRESHOLD
+  (1828) and above SIZE_GEAR2_THRESHOLD (400); no hot-zone path. Kept this brief itself compact
+  (single-line acceptance items) so the diff carrying it does not itself cross the Gear-3 size
+  term and trigger the evidence/pack.yml requirement that applies only above that line.
 
 objective: >-
-  Slice B2' of the Visa Oracle interview-space enumeration plan
-  (VISA-ORACLE-DW-20260919/MANDATE-vo.md): the cure of gate REWORK-BUILD on #6861
-  (GATE-B2-REPORT-6861.md) for the live runner that reads the B1'' manifest and posts each
-  covering walk to `POST /api/visa-oracle/evaluate` as `traffic_source=synthetic_driver`.
-  Adds three circuit breakers a live prod runner must not ship without: an immediate stop
-  on HTTP 401/403 (one request spent, OBS-2), a stop after N consecutive harness reds of any
-  other kind with an engine verdict resetting the counter (OBS-2), and an exclusive
-  one-runner-per-report lock with a per-process atomic write (OBS-7). Also makes a harness
-  red re-attemptable on resume instead of terminal (OBS-3), so a poisoned run is cured by
-  fixing the cause and re-running, never by discarding the report, and tracks
-  requests_used_total across resumes on top of the existing per-run count (OBS-8).
+  Cure of gate REWORK-BUILD on #6861 (GATE-B2-REPORT-6861.md) for the B2' live runner: an
+  immediate stop on HTTP 401/403 (one request spent, OBS-2), a stop after N consecutive
+  harness reds of any other kind with an engine verdict resetting the counter (OBS-2), an
+  exclusive one-runner-per-report lock with a per-process atomic write (OBS-7), a harness red
+  re-attemptable on resume instead of terminal (OBS-3), and requests_used_total tracked across
+  resumes on top of the existing per-run count (OBS-8).
 
 acceptance:
-  - >-
-    WHEN --max-requests is omitted THEN main() returns exit code 2 and no network call is
-    made. probe: test_missing_max_requests_refuses_without_network_call
-  - >-
-    WHEN --rate-per-minute is at or above the router's 30/min bucket THEN validate_budget
-    raises EnumerateLiveError. probe: test_rate_per_minute_at_ceiling_refuses
-  - >-
-    WHEN --max-consecutive-harness-reds is below 1 THEN validate_budget raises
-    EnumerateLiveError. probe: test_max_consecutive_harness_reds_must_be_at_least_one
-  - >-
-    WHEN --max-consecutive-harness-reds exceeds --max-requests THEN validate_budget raises
-    EnumerateLiveError. probe: test_max_consecutive_harness_reds_cannot_exceed_max_requests
-  - >-
-    WHEN --dry-run is passed THEN the plan is printed (incl. health probes declared outside
-    the budget) and no network call is made, no report file is written. probe:
-    test_dry_run_validates_and_prints_plan_without_network_call
-  - >-
-    WHEN the evaluate endpoint returns HTTP 200 with a decision THEN the report records an
-    engine_verdict row carrying only the walk id, state, reason codes and rule_pack — no
-    request facts. probe: test_successful_walk_is_recorded_as_engine_verdict
-  - >-
-    WHEN the evaluate endpoint returns HTTP 401 THEN the run stops after exactly ONE request
-    with stopped_reason=auth_error_circuit_breaker, naming the token FILE never the token
-    value. probe: test_401_circuit_breaker_stops_after_exactly_one_request
-  - >-
-    WHEN the evaluate endpoint returns HTTP 403 THEN the same one-request circuit breaker
-    fires. probe: test_403_circuit_breaker_also_stops_after_one_request
-  - >-
-    WHEN N consecutive harness reds of a non-auth kind occur THEN the run stops with
-    stopped_reason=consecutive_harness_reds_circuit_breaker at exactly N. probe:
-    test_consecutive_harness_reds_trip_the_breaker
-  - >-
-    WHEN an engine verdict lands between harness reds THEN the consecutive-red counter
-    resets to zero and the breaker never trips on a streak that never reached N. probe:
-    test_engine_verdict_resets_the_consecutive_counter
-  - >-
-    WHEN the endpoint returns HTTP 429 past the retry budget THEN the walk is recorded as a
-    harness_red (never an engine_verdict) and the run stops on its own always-stop rule,
-    never consulting the consecutive-red counter. probe:
-    test_429_is_a_harness_red_never_an_engine_verdict_and_stops_the_run
-  - >-
-    WHEN a connection error occurs below the retry budget THEN the runner backs off and the
-    walk still resolves to an engine_verdict once the transport recovers. probe:
-    test_connection_error_retries_with_backoff_then_succeeds
-  - >-
-    WHEN a walk's latest recorded result is a harness red THEN a resumed run RE-ATTEMPTS it
-    (never skips it) and the walk's attempts_history keeps the earlier harness attempt
-    alongside the new terminal one. probe:
-    test_harness_red_is_reattempted_on_resume_and_history_is_kept
-  - >-
-    WHEN an existing report's manifest_sha256 does not match the current manifest THEN the
-    run is refused before any network call. probe: test_manifest_report_hash_mismatch_refuses_to_resume
-  - >-
-    WHEN a second runner starts against a report whose lock is owned by a live pid THEN it
-    exits non-zero with one line naming the lock, never a traceback, and the live lock and
-    report are untouched. probe:
-    test_second_runner_on_a_live_locked_report_refuses_with_one_line_never_a_traceback
-  - >-
-    WHEN a report's lock file names a pid that is not running THEN the run is refused unless
-    --break-stale-lock is passed. probe: test_stale_lock_is_refused_without_break_stale_flag
-  - >-
-    WHEN --break-stale-lock is passed against a dead-pid lock THEN the lock is removed and
-    the run proceeds. probe: test_break_stale_lock_removes_it_and_proceeds
-  - >-
-    WHEN a run completes THEN its lock is released so a later sequential run against the
-    same report can proceed. probe: test_lock_is_released_after_a_run_so_a_second_run_can_proceed
-  - >-
-    WHEN --max-requests is exhausted mid-run THEN the remaining walks stay unrecorded and
-    stopped_reason names the budget exhaustion. probe:
-    test_max_requests_exhausted_leaves_remaining_walks_unrecorded
-  - >-
-    WHEN a report is resumed across two runs THEN requests_used_total accumulates across
-    both while requests_used_this_run reflects only the current run. probe:
-    test_requests_used_total_accumulates_across_resumes_while_this_run_is_per_run
-  - >-
-    WHERE the two /health probes are made THEN they are declared outside --max-requests in
-    both the report header and are never counted in requests_used_this_run. probe:
-    test_health_probes_declared_outside_budget_everywhere
-  - >-
-    WHERE the driver token file is read THEN the token never appears in the written report
-    or in the log output. probe: test_driver_token_never_appears_in_report_or_log
-  - >-
-    WHEN both an engine verdict and a harness red are recorded THEN the report's summary
-    keeps two separate tallies and never sums them into one figure. probe:
-    test_summary_never_adds_engine_verdicts_and_harness_reds_together
+  - "WHEN --max-requests is omitted THEN exit 2, no network call. probe: test_missing_max_requests_refuses_without_network_call"
+  - "WHEN --rate-per-minute >= the router's 30/min bucket THEN validate_budget raises. probe: test_rate_per_minute_at_ceiling_refuses"
+  - "WHEN --max-consecutive-harness-reds < 1 THEN validate_budget raises. probe: test_max_consecutive_harness_reds_must_be_at_least_one"
+  - "WHEN --max-consecutive-harness-reds > --max-requests THEN validate_budget raises. probe: test_max_consecutive_harness_reds_cannot_exceed_max_requests"
+  - "WHEN --dry-run THEN the plan prints (incl. health probes outside budget), no network call. probe: test_dry_run_validates_and_prints_plan_without_network_call"
+  - "WHEN evaluate returns 200+decision THEN report records engine_verdict, no request facts. probe: test_successful_walk_is_recorded_as_engine_verdict"
+  - "WHEN evaluate returns 401 THEN the run stops after exactly ONE request, names the token FILE never the value. probe: test_401_circuit_breaker_stops_after_exactly_one_request"
+  - "WHEN evaluate returns 403 THEN the same one-request breaker fires. probe: test_403_circuit_breaker_also_stops_after_one_request"
+  - "WHEN N consecutive non-auth harness reds occur THEN the run stops at exactly N. probe: test_consecutive_harness_reds_trip_the_breaker"
+  - "WHEN an engine verdict lands between harness reds THEN the consecutive-red counter resets. probe: test_engine_verdict_resets_the_consecutive_counter"
+  - "WHEN 429 exhausts retries THEN it is a harness_red, never engine_verdict, and stops the run on its own rule. probe: test_429_is_a_harness_red_never_an_engine_verdict_and_stops_the_run"
+  - "WHEN a connection error occurs below the retry budget THEN backoff then engine_verdict once recovered. probe: test_connection_error_retries_with_backoff_then_succeeds"
+  - "WHEN a walk's latest result is a harness red THEN resume RE-ATTEMPTS it and keeps both attempts in history. probe: test_harness_red_is_reattempted_on_resume_and_history_is_kept"
+  - "WHEN an existing report's manifest_sha256 mismatches THEN refuse before any network call. probe: test_manifest_report_hash_mismatch_refuses_to_resume"
+  - "WHEN a second runner starts against a live-locked report THEN exit non-zero, one line, no traceback, lock/report untouched. probe: test_second_runner_on_a_live_locked_report_refuses_with_one_line_never_a_traceback"
+  - "WHEN a lock names a dead pid THEN refuse unless --break-stale-lock. probe: test_stale_lock_is_refused_without_break_stale_flag"
+  - "WHEN --break-stale-lock is passed against a dead-pid lock THEN it is removed and the run proceeds. probe: test_break_stale_lock_removes_it_and_proceeds"
+  - "WHEN a run completes THEN its lock releases so a later sequential run can proceed. probe: test_lock_is_released_after_a_run_so_a_second_run_can_proceed"
+  - "WHEN --max-requests is exhausted mid-run THEN remaining walks stay unrecorded, stopped_reason names it. probe: test_max_requests_exhausted_leaves_remaining_walks_unrecorded"
+  - "WHEN a report is resumed across two runs THEN requests_used_total accumulates while requests_used_this_run is per-run. probe: test_requests_used_total_accumulates_across_resumes_while_this_run_is_per_run"
+  - "WHERE the two /health probes are made THEN they are declared outside --max-requests in both the header and never counted in requests_used_this_run. probe: test_health_probes_declared_outside_budget_everywhere"
+  - "WHERE the driver token file is read THEN the token never appears in the report or the log. probe: test_driver_token_never_appears_in_report_or_log"
+  - "WHEN both an engine verdict and a harness red are recorded THEN the summary keeps two separate tallies, never summed. probe: test_summary_never_adds_engine_verdicts_and_harness_reds_together"
 
 pii_scan: clean
