@@ -769,3 +769,60 @@ describe("tracker — order load failure (OrderTracker.tsx:49)", () => {
     assertErrorTone(alert, SURFACE_TOKENS);
   });
 });
+
+// ---------------------------------------------------------------------------
+// "What happens next" / "What we cannot promise" — every TEXT colour in the
+// block clears 1.4.3's 4.5:1. Same reason the Safe Clock section lives here:
+// this is the file that owns the resolver and the WCAG arithmetic, and a
+// second copy of that maths is the drift it exists to prevent.
+//
+// This block is the one place on the surface where the honest half of the
+// message — the limits — could be quietly demoted by giving it a fainter
+// token than the promises. The floor is asserted per rule, so demoting ONE of
+// them is a red run, not a subtler page.
+// ---------------------------------------------------------------------------
+
+/** The four rules that carry text, named literally: a rule that disappears
+ *  from the stylesheet must fail here, not silently drop out of the loop
+ *  (W133 — a test parametrized over the set it tests deletes itself). */
+const NEXT_TEXT_RULES = [
+  ".voa-next__heading",
+  ".voa-next__step",
+  ".voa-next__limit",
+  ".voa-next__ask",
+] as const;
+
+function ruleColour(className: string): string {
+  const re = new RegExp(`\\${className}\\s*\\{([^}]*)\\}`, "i");
+  const m = re.exec(VOA_R19_CSS);
+  if (!m) throw new Error(`no rule for ${className}`);
+  const colour = /(?:^|\s)color:\s*([^;]+);/i.exec(m[1]);
+  if (!colour) throw new Error(`${className} declares no color`);
+  return resolveColor(colour[1].trim(), SURFACE_TOKENS);
+}
+
+describe("NextSteps — the limits are not small print (mandate accent 3)", () => {
+  it.each(NEXT_TEXT_RULES)("%s clears 4.5:1 on the surface ground", (cls) => {
+    const ratio = contrastRatio(ruleColour(cls), SURFACE_TOKENS["--bz-base"]);
+    expect(ratio, `${cls}: ${ratio.toFixed(2)}:1`).toBeGreaterThanOrEqual(4.5);
+  });
+
+  /**
+   * The value this rule shipped in its first draft. --tx-tertiary is a legal
+   * token and reads as "an eyebrow colour", which is exactly why the failure
+   * was invisible without the arithmetic: 4.23:1 at 0.72rem, and no large-text
+   * exemption at that size.
+   */
+  it("GUILTY: --tx-tertiary, the first draft's heading colour, fails that floor", () => {
+    expect(
+      contrastRatio(
+        resolveColor("var(--tx-tertiary)", SURFACE_TOKENS),
+        SURFACE_TOKENS["--bz-base"],
+      ),
+    ).toBeLessThan(4.5);
+  });
+
+  it("the limits are not fainter than the steps", () => {
+    expect(ruleColour(".voa-next__limit")).toBe(ruleColour(".voa-next__step"));
+  });
+});

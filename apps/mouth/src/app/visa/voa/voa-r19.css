@@ -332,3 +332,123 @@
     transform: none;
   }
 }
+
+/*
+ * "What happens next" / "What we cannot promise".
+ *
+ * Two lists at the SAME weight. The limits are not small print — the
+ * commitment and its boundary are the same kind of statement, and shrinking
+ * one of them is how a funnel turns an honest limit into a thing it hopes you
+ * skip. Same size, same colour, one rule apart.
+ *
+ * The numerals take --bz-data like every other figure on this surface, at a
+ * size that reads as a list marker rather than competing with the clock's
+ * count — R3 of the design corner: one peak per viewport, and the peak here is
+ * still the number of days.
+ */
+[data-theme="operative-dark"][data-garuda-voa="r19"] .voa-next {
+  margin: 2rem 0 0;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--bz-border);
+  display: grid;
+  gap: 0.75rem;
+}
+
+/*
+ * MEASURED, not chosen by eye. The first draft of this rule carried
+ * --tx-tertiary, which composites to 4.23:1 on --bz-base — under 1.4.3's
+ * 4.5:1 floor, and these headings are 0.72rem, so the large-text exemption
+ * does not apply. --tx-secondary composites to 7.04:1 and is what the rest of
+ * this stylesheet already uses for text (the only other --tx-tertiary here is
+ * a BORDER, where the floor is 3:1). The section's own guard pins both halves.
+ */
+[data-theme="operative-dark"][data-garuda-voa="r19"] .voa-next__heading {
+  margin: 0;
+  font-family: var(--font-sans);
+  font-size: 0.72rem;
+  font-weight: 650;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--tx-secondary);
+}
+
+[data-theme="operative-dark"][data-garuda-voa="r19"]
+  .voa-next__heading--limits {
+  margin-top: 1.25rem;
+}
+
+[data-theme="operative-dark"][data-garuda-voa="r19"] .voa-next__steps,
+[data-theme="operative-dark"][data-garuda-voa="r19"] .voa-next__limits {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 0.7rem;
+}
+
+[data-theme="operative-dark"][data-garuda-voa="r19"] .voa-next__step {
+  display: grid;
+  grid-template-columns: 1.4rem minmax(0, 1fr);
+  gap: 0.7rem;
+  font-family: var(--font-sans);
+  font-size: 0.95rem;
+  line-height: 1.5;
+  color: var(--tx-pure);
+}
+
+[data-theme="operative-dark"][data-garuda-voa="r19"] .voa-next__n {
+  font-family: var(--font-serif);
+  font-size: 1.05rem;
+  font-weight: 450;
+  line-height: 1.4;
+  font-variant-numeric: tabular-nums;
+  color: var(--bz-data);
+}
+
+[data-theme="operative-dark"][data-garuda-voa="r19"] .voa-next__limit {
+  padding-left: 0.85rem;
+  border-left: 2px solid var(--bz-accent);
+  font-family: var(--font-sans);
+  font-size: 0.95rem;
+  line-height: 1.5;
+  color: var(--tx-pure);
+}
+
+/*
+ * Full width on purpose. The handoff on the clock is a pill because it sits
+ * beside prose; this one closes a section and is the last thing before the
+ * visitor decides, so it takes the row. (It also avoids, by construction, the
+ * `align-self` slip recorded on the clock's own handoff: in a grid container
+ * the inline axis is governed by `justify-self`, not `align-self`, and
+ * stretching is what was wanted here anyway.)
+ *
+ * Note for whoever edits this file next: its contract test bans a colour
+ * literal in COMMENTS too, and a PR reference written as a hash followed by
+ * four digits is indistinguishable from a short hex. Spell PR numbers without
+ * the hash here — this rule cost one red run to learn.
+ */
+[data-theme="operative-dark"][data-garuda-voa="r19"] .voa-next__ask {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 48px;
+  margin-top: 1rem;
+  padding: 0 1.25rem;
+  border: 1px solid var(--bz-border-hover);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--bz-accent);
+  font-family: var(--font-sans);
+  font-size: 0.95rem;
+  font-weight: 600;
+  text-decoration: none;
+  transition: border-color 160ms ease;
+}
+
+[data-theme="operative-dark"][data-garuda-voa="r19"] .voa-next__ask:hover,
+[data-theme="operative-dark"][data-garuda-voa="r19"]
+  .voa-next__ask:focus-visible {
+  border-color: var(--bz-accent);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
