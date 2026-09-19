@@ -1,6 +1,7 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ClientDocument } from "@/lib/api/crm/crm.types";
+import { StatePill } from "@/components/workspace/r19";
 import { DocumentsTab } from "./DocumentsTab";
 import { getDocumentOpenUrl } from "./utils";
 
@@ -161,14 +162,15 @@ describe("DocumentsTab — status pill is strictly deleted_at/status (GUILT)", (
   });
 
   it("sanity: the copper-detector pattern actually catches copper — proves the assertion above is not vacuous", () => {
-    // R3-audit.md §6: the previous version of this suite asserted
-    // `container.innerHTML).not.toContain("--bz-copper-text")` against a
-    // fixture with no pill at all, so it would have passed even if every
-    // pill in the product turned copper. This proves the string the real
-    // test searches for is exactly what a copper render would contain.
-    const syntheticCopperRow =
-      '<span class="text-[var(--bz-copper-text)]">You</span>';
-    expect(syntheticCopperRow).toContain("--bz-copper-text");
+    // R3-audit.md §6, round 2: a string literal asserting it contains a
+    // substring of itself is a tautology and proves nothing about the
+    // product. This instead renders r19's OWN `you` tone (`tokens.ts:107`,
+    // `PILL_TONE.you`) — the structurally-unreachable copper case this
+    // component never emits (§6) — and proves the exact token the negative
+    // assertions above search for is what a REAL copper pill's className
+    // actually contains. Same constant, `--bz-copper-text`, in both tests.
+    const { container } = render(<StatePill tone="you" label="You" />);
+    expect(container.innerHTML).toContain("--bz-copper-text");
   });
 });
 
