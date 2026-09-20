@@ -57,6 +57,7 @@ import re
 import socket
 import subprocess
 import sys
+import time
 from pathlib import Path
 
 SCRIPTS_DIR = Path(__file__).resolve().parent
@@ -70,6 +71,8 @@ from sentinel_lib.escalations import (  # noqa: E402
 )
 
 _SAFE_JOB_NAME = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*$")
+#: a run-state clock may drift; a run-state FUTURE is a broken clock.
+_FUTURE_TOLERANCE_S = 300
 
 ROUTED_TYPE = "gateway_routed"
 SEAT_OWNER = "seat"
@@ -141,6 +144,15 @@ def cure_cron_fail(row: dict) -> tuple[str, str]:
         state = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, ValueError) as exc:
         return NOT_CURABLE, f"run-state unreadable: {exc}"
+    # The state file must be THIS job's, on THIS host. A file whose own `job`
+    # or `host` names someone else is a stranger's witness: it says nothing
+    # about the row being closed, and it reads `ok` just as convincingly.
+    state_job = state.get("job")
+    if state_job is not None and str(state_job) != name:
+        return NOT_CURABLE, f"{name}.last.json says job={state_job!r} — a stranger's witness"
+    state_host = state.get("host")
+    if state_host is not None and str(state_host) != socket.gethostname():
+        return NOT_CURABLE, f"{name}.last.json was written by {state_host!r}, not this host"
     status = str(state.get("status", "?"))
     raw_ts = state.get("ts")
     # ts_epoch parses ISO strings and assumes UTC for a naive one. Every runner
@@ -150,7 +162,19 @@ def cure_cron_fail(row: dict) -> tuple[str, str]:
     if isinstance(raw_ts, bool) or not isinstance(raw_ts, (int, float)):
         return NOT_CURABLE, f"{name}.last.json ts is {type(raw_ts).__name__}, not epoch seconds — refusing to compare"
     state_ts = ts_epoch(raw_ts)
-    row_ts = ts_epoch(row.get("ts"))
+    # A state run dated in the FUTURE is a clock, not a recovery: it beats every
+    # alert ts there will ever be, so it would close this row and each of its
+    # successors forever.
+    if state_ts > time.time() + _FUTURE_TOLERANCE_S:
+        return NOT_CURABLE, f"{name}.last.json ts={state_ts:.0f} is in the future — a clock, not a recovery"
+    # And the alert's OWN ts must be readable. ts_epoch orders junk as 0.0 —
+    # deliberately, so a bad ts hides a line's age and never the line — but 0.0
+    # is smaller than every state ts, which would turn "unreadable" into
+    # "recovered" for the entire class.
+    raw_row_ts = row.get("ts")
+    if isinstance(raw_row_ts, bool) or not isinstance(raw_row_ts, (int, float)):
+        return NOT_CURABLE, f"the alert's own ts is {type(raw_row_ts).__name__}, not epoch seconds — nothing to compare against"
+    row_ts = ts_epoch(raw_row_ts)
     if status == "ok" and state_ts > row_ts:
         return RESOLVED, (
             f"{name}.last.json status=ok ts={state_ts:.0f} > alert ts={row_ts:.0f} "
