@@ -1,0 +1,311 @@
+task_id: vo-b2j-enumerate-live
+gear: 3
+gate_class: opus
+brief_ref: evidence/brief.yml
+date: 2026-09-20
+machine: air-m5 (M5)
+lanes:
+  - lane: vo-b2j-enumerate-live-build
+    role: build
+    seat: "claude-sonnet-5 (this worktree session, vo-builder-b2j), worktree
+      backend-rag-vo-b2j-enumerate-live, branch agent/air-m5/backend-rag/vo-b2j-enumerate-live,
+      base origin/main efbce8059a. Seat-first build: codex/luna (scripts/seat_build.sh --seat
+      codex --tier luna --gear 2) prepared the raw material (import refactor onto report_lock,
+      V1-V4) as a task-file dispatch; this session verified every clause against the spec,
+      corrected a test-coverage regression the seat introduced (a resume test silently stopped
+      exercising the digest-mismatch path once the new version check fired first), and
+      performed the V1 mutation-red proof the seat had skipped. R-GEAR3-B2J then authorized a
+      real Gear-3 council on the resulting diff; this session cured the real findings and
+      re-tested."
+  - lane: vo-b2j-enumerate-live-review-codex
+    role: review
+    seat:
+      "codex-gpt-5.6-sol (`codex exec -m gpt-5.6-sol --sandbox read-only --skip-git-repo-check`,
+      scrubbed env, scratch cwd, 2026-09-20T14:46:02Z). SAME-FAMILY as the build seat (codex/luna
+      prepared the raw material) -- counts toward R9 quorum per the ruling but is not one of the
+      two independent judgements. 5 findings, 2 HIGH + 3 MEDIUM; see journal.jsonl and dissent
+      below for the verified disposition of each."
+  - lane: vo-b2j-enumerate-live-review-kimi
+    role: review
+    seat:
+      "kimi-code/k3 (`kimi -p <prompt+diff> -m kimi-code/k3`, scrubbed env, scratch cwd,
+      2026-09-20T14:55:59Z). INDEPENDENT judgement (titolare). 1 MEDIUM + 5 LOW; see
+      journal.jsonl and dissent below."
+  - lane: vo-b2j-enumerate-live-review-agy
+    role: review
+    seat:
+      "agy-gemini-3.1-pro (`agy -p <prompt+diff> --model gemini-3.1-pro --effort high
+      --print-timeout 8m`, scrubbed env, scratch cwd, 2026-09-20T14:46:03Z), RESERVE for the dead
+      titolare tp1-qwen3.8-max. INDEPENDENT judgement. No findings."
+seat_diversity: exempt
+seat_diversity_note: One build lane, so D3's seat-diversity requirement does not attach.
+seat_fallback_reason:
+  "tp1-qwen3.8-max (titolare) was QUOTA_DEAD per the conductor's live arsenal_probe.py run at
+  2026-09-20T14:37:57Z (codex OK, kimi OK, agy OK; tp1-qwen3.8-max/tp1-glm-5.2/tp1-deepseek-v4-pro
+  QUOTA_DEAD), recorded in ruling R-GEAR3-B2J. agy-gemini-3.1-pro (COUNCIL_REVIEW_SEATS_FALLBACK)
+  substituted for it; the two titolari that WERE alive (codex, kimi) both ran, so quorum holds on
+  codex+kimi alone even discounting the reserve -- agy's seat is a third, additional independent
+  judgement, not a quorum-of-necessity substitution."
+council_run: journal.jsonl
+outcome:
+  "R-GEAR3-B2J: the runner ships at Gear 3, declared, with a real 3-seat council (2 titolari +
+  1 reserve for a QUOTA_DEAD titolare). Dispatch hygiene: every seat received the diff as a file
+  (prompt + `git diff $(git merge-base origin/main HEAD) HEAD -- apps/backend-rag`) via stdin/CLI
+  prompt arg, in a scrubbed environment (`env -i HOME=$HOME PATH=$PATH LANG=en_US.UTF-8
+  TERM=xterm <cli> ...`) from a scratch cwd outside the repo, asked for findings only -- no tool
+  use, no env/launchctl/ps/plist/credential access requested of any seat. codex was launched
+  twice: the first run (before this pack existed) is unrelated to review dispatch. agy was
+  launched twice: the first call errored on a CLI usage mistake (missing --effort for
+  gemini-3.1-pro), a non-judgement, immediately corrected and relaunched -- never re-run with a
+  wider (non-scrubbed) environment, per the ruling's own rule. 6 findings total across the 3
+  seats collapse to 4 distinct issues after de-duplication (2 pairs independently corroborated):
+  retry-granularity counter accuracy (codex HIGH, kimi MEDIUM, same underlying gap), dry-run
+  precedence (codex MEDIUM), and duplicate walk labels (codex MEDIUM + kimi LOW, corroborated).
+  All 4 CURED and re-tested (42/42 green, up from 38; ruff clean). 2 findings REJECTED into
+  dissent: an invalid/empty decision body accepted as a terminal engine_verdict (codex HIGH) and
+  a hand-thinned report crashing with a raw KeyError on resume (kimi LOW) -- both are real but
+  live in code this diff does not modify (`run_walk` is byte-identical to the #6871 raw material,
+  verified by `diff`), out of the V1-V4 scope this slice was authorized to cure, and neither is
+  independently corroborated by a second seat. One more (codex MEDIUM, dry-run bypassing the
+  lock before the token) is REJECTED as a misapplied invariant: V2's guilt condition is about
+  NETWORK calls, and --dry-run makes none, ever, by construction."
+diff:
+  files: 4
+  net_lines:
+    "Deliberately NOT restated as a literal (same convention as the #6267/#6873-class packs
+    this repo already has). The linter measures it merge-base-anchored over the whole PR through
+    --numstat-file. Shape, in prose: enumerate_live.py (the runner, cured onto report_lock +
+    council findings), test_enumerate_live.py (the raw-material test file, cured + council
+    findings + 4 new tests), this pack, its brief, and its council journal."
+  behaviour_change:
+    "New: the runner imports report_lock instead of carrying its own lock; drops
+    --break-stale-lock; V1 counters accurate to within one in-flight request at ANY instant
+    (not just per-walk); V2 refuses a stale report_version before any network call; duplicate
+    walk labels refuse before any network call; dry-run checks version before token. No change to
+    the deployed image's served behaviour -- nothing imports this script yet (operator CLI
+    tooling only)."
+  shape:
+    One runner module cured onto an already-merged lock module, one test file cured and
+    extended, this evidence trio.
+pii_scan: clean
+pii_scan_note:
+  "Both changed files grepped for PII/OSINT markers (npwp, passport, nib, phone, whatsapp,
+  +62, names) and for the paid-Anthropic-endpoint shapes (ANTHROPIC_API_KEY, anthropic.Anthropic,
+  api_key=) -- zero hits. All fixtures are synthetic (test-driver-token-never-log, a/b/c/dup walk
+  labels)."
+receipts:
+  - claim: the deterministic gear floor for this changed-file set is 3, once the brief itself is counted
+    cmd: python3 scripts/contract_verify.py --head 71f4719184 --json
+    result:
+      "floor 3, brief present (churn 1862 > SIZE_GEAR3_THRESHOLD 1828; code alone was 1778,
+      under the line -- the brief pushed it over)"
+    ts: "2026-09-20T15:04:00Z"
+    seat: claude-sonnet-5 (this worktree session)
+    exit: 0
+  - claim: live arsenal probe at council-dispatch time -- 2 of 3 titolari alive, agy substitutes for the third
+    cmd: conductor's arsenal_probe.py (run by the conductor, reported in ruling R-GEAR3-B2J)
+    result: "codex OK, kimi OK, agy OK; tp1-qwen3.8-max, tp1-glm-5.2, tp1-deepseek-v4-pro QUOTA_DEAD"
+    ts: "2026-09-20T14:37:57Z"
+    seat: conductor (team-lead)
+    exit: 0
+  - claim: codex review dispatch, text-in/text-out, scrubbed env, scratch cwd
+    cmd: >-
+      cd <scratch>/dispatch-cwd && env -i HOME="$HOME" PATH="$PATH" LANG=en_US.UTF-8 TERM=xterm
+      /Users/balizero/.local/bin/codex exec -m gpt-5.6-sol --sandbox read-only
+      --skip-git-repo-check "$(cat <scratch>/review-full.txt)"
+    result:
+      "VERDICT: 5 findings (2 HIGH, 3 MEDIUM) -- see journal.jsonl for the full note; disposition
+      in dissent[] and the diff below."
+    ts: "2026-09-20T14:46:02Z"
+    seat: codex-gpt-5.6-sol
+    exit: 0
+  - claim: kimi review dispatch, text-in/text-out, scrubbed env, scratch cwd
+    cmd: >-
+      cd <scratch>/dispatch-cwd && env -i HOME="$HOME" PATH="$PATH" LANG=en_US.UTF-8 TERM=xterm
+      /Users/balizero/.kimi-code/bin/kimi -p "$(cat <scratch>/review-full.txt)" -m kimi-code/k3
+    result:
+      "VERDICT: 1 MEDIUM + 5 LOW -- see journal.jsonl for the full note; disposition in
+      dissent[] and the diff below."
+    ts: "2026-09-20T14:55:59Z"
+    seat: kimi-code/k3
+    exit: 0
+  - claim: agy review dispatch (reserve), first attempt a CLI usage non-judgement, relaunched
+    cmd: >-
+      cd <scratch>/dispatch-cwd && env -i HOME="$HOME" PATH="$PATH" LANG=en_US.UTF-8 TERM=xterm
+      /Users/balizero/.local/bin/agy -p "$(cat <scratch>/review-full.txt)" --model gemini-3.1-pro
+      --effort high --print-timeout 8m
+    result:
+      'First attempt (no --effort): ''error: invalid model selection (--model "gemini-3.1-pro"
+      --effort ""): --model gemini-3.1-pro requires --effort (available: low, high)'' -- a CLI
+      usage mistake, non-judgement, never counted. Relaunched with --effort high: VERDICT no
+      findings across V1-V4, import discipline, W1-W7, and the non-regression list.'
+    ts: "2026-09-20T14:46:03Z"
+    seat: agy-gemini-3.1-pro
+    exit: 0
+  - claim: retry-granularity cure verified live, mutation shown red on a scratch copy
+    cmd: >-
+      pytest backend/tests/scripts/visa_engine/test_enumerate_live.py::test_v1_counters_track_a_retry_still_inside_one_unresolved_walk
+      (real cure, x5 for flake) then the same scenario replayed against a SCRATCH copy of
+      enumerate_live.py with every on_reserve() call stripped from the retry continue-branches
+      (never the worktree file)
+    result:
+      "real cure: 5/5 passed. mutated scratch copy: RED -- 'expected 1, got 0 (server saw '1')'
+      -- requests_used_this_run stuck at 0 while the server had already answered the one failed
+      attempt, exactly the OBS-B-class defect this cure exists to close."
+    ts: "2026-09-20T15:00:00Z"
+    seat: claude-sonnet-5 (this worktree session)
+    exit: 0
+  - claim: full targeted suite + ruff, after all four cures
+    cmd: >-
+      cd apps/backend-rag && PYTHONPATH=. .venv/bin/pytest
+      backend/tests/scripts/visa_engine/test_enumerate_live.py
+      backend/tests/scripts/visa_engine/test_report_lock.py --color=no; .venv/bin/ruff check
+      backend/scripts/visa_engine/enumerate_live.py
+      backend/tests/scripts/visa_engine/test_enumerate_live.py
+    result: "42 passed in 9-10s (was 38 before the council round); ruff: All checks passed!"
+    ts: "2026-09-20T15:02:00Z"
+    seat: claude-sonnet-5 (this worktree session)
+    exit: 0
+  - claim: run_walk (the code the two rejected HIGH/LOW findings live in) is byte-identical to the #6871 raw material -- confirms out-of-scope, not a diff this PR touches
+    cmd: >-
+      diff <(sed -n '465,565p' <this-branch's enumerate_live.py>) <(sed -n
+      '/^async def run_walk/,/^# ---/p' <the raw-material copy, pre-cure>)
+    result: "empty diff -- run_walk is unmodified by this PR"
+    ts: "2026-09-20T14:20:00Z"
+    seat: claude-sonnet-5 (this worktree session)
+    exit: 0
+dissent:
+  - seat: codex-gpt-5.6-sol
+    status: CONFIRMED
+    objection:
+      "HIGH -- SIGKILL landing after a retry's outcome is known but before the caller's
+      per-walk flush leaves requests_used_this_run undercounting real server-side requests for a
+      walk that burned several attempts; the existing SIGKILL test only waits for two COMPLETED
+      walks and does not deterministically cover a mid-retry window."
+    resolution:
+      "CURED. run_walk gains an on_reserve hook called after every retry's outcome is known
+      (a pre-send flush was tried first and rejected on its own merits -- see the mutation-red
+      receipt above and the module docstring -- because it can leave a permanent phantom
+      over-count if the process dies before the request is actually dispatched). New real-
+      subprocess guilt test with a mutation-red proof; existing SIGKILL test re-verified 5x
+      green."
+  - seat: codex-gpt-5.6-sol
+    status: CONFIRMED
+    objection:
+      'HIGH -- an HTTP 200 body shaped {"decision": {}} (or a null/non-string state) is
+      accepted as a terminal engine_verdict with engine_state=None, and is never re-sent on
+      resume, arguably contrary to W1''s ''an invalid 200 body is a harness red'' framing.'
+    resolution:
+      "REJECTED for scope, not for correctness -- the finding is real. Verified by command:
+      `diff` between this PR's run_walk (lines 465-565 post-cure, 475-587 accounting for the
+      on_reserve addition) and the #6871 raw material's run_walk is EMPTY -- this function is
+      untouched by this PR. Two prior gates (#6861, #6871 REWORK-BUILD) already reviewed this
+      exact classification path in depth without flagging it. This slice's mandate (MANDATE-vo.md,
+      Slice B2''-b) is V1-V4 + the R-FLOCK import migration, explicitly 'a SMALL cure ... not a
+      rewrite'; introducing new decision-body validation is a genuine, separate concern that
+      deserves its own guilt tests and its own gate, not a rider on this PR. Not independently
+      corroborated by kimi or agy. Recommend a follow-up slice."
+  - seat: codex-gpt-5.6-sol
+    status: CONFIRMED
+    objection:
+      "MEDIUM -- the --dry-run branch reads the driver token from disk before acquiring
+      ReportLock, so a concurrent live run holding the lock does not block a dry-run's token
+      read, 'violating the explicit lock-before-token rule.'"
+    resolution:
+      "REJECTED. Re-read against the actual spec text (MANDATE-vo.md, V2): the guilt
+      condition is 'the server sees 0 evaluate AND 0 health' -- --dry-run makes ZERO network
+      calls of either kind, unconditionally, by construction, so this condition is satisfied
+      trivially regardless of lock ordering. The 'lock before token' precedence this finding
+      generalizes from was specified for the LIVE run path (so a lock refusal costs zero
+      requests), not as a blanket rule binding every code path in the module. Making --dry-run
+      acquire the SAME exclusive flock a live run holds would additionally block a harmless,
+      side-effect-free diagnostic peek against a real run in progress -- a UX regression not
+      requested anywhere in the mandate."
+  - seat: codex-gpt-5.6-sol
+    status: CONFIRMED
+    objection:
+      "MEDIUM -- in --dry-run, load_driver_token ran before the report_version/digest check,
+      so a report with BOTH a stale version and a missing/bad token file surfaced the token
+      error, masking V2's own refusal line."
+    resolution: "CURED. Reordered: dry-run now checks report_version/digest via
+      _load_existing_and_pending BEFORE load_driver_token, matching the live path's precedence.
+      New test (no token file written at all) proves the version-mismatch line appears and the
+      token-not-found message does not."
+  - seat: kimi-code/k3
+    status: CONFIRMED
+    objection:
+      "MEDIUM -- run_walk's docstring says None means 'the budget ran out before this walk
+      could even start its first attempt,' but the same reserve() check sits at the top of the
+      RETRY loop too, so a walk that burns its budget mid-retry is silently dropped with zero
+      trace of the attempts it already cost, contrary to W2's 'no attempt is silently
+      overwritten.'"
+    resolution:
+      "Same underlying gap as codex's retry-granularity HIGH above (the two seats converged
+      from different angles: codex on counter accuracy, kimi on attempt-history completeness).
+      The counter-accuracy half is CURED (on_reserve flushes counters on every settled retry, so
+      the SPENT requests are now visible in requests_used_this_run even when the walk itself
+      never resolves). The attempt-HISTORY half (recording the specific harness details of the
+      burned attempts against this walk's own attempts_history when the whole run aborts
+      mid-retry) is a real, separate enhancement kimi is right to want, but it touches the same
+      untouched run_walk/caller boundary as codex's rejected HIGH#2 and is likewise out of this
+      slice's V1-V4 scope -- REJECTED for scope, recommend the same follow-up slice."
+  - seat: kimi-code/k3
+    status: CONFIRMED
+    objection:
+      "LOW -- the V1 SIGKILL guilt test's final resume assertion demands EXACT equality
+      (final['requests_used_total'] == server count), which the test's own docstring says is
+      wrong given the declared one-request tolerance; a slow CI box could make it flake."
+    resolution:
+      "SUPERSEDED by the retry-granularity cure above, not directly changed. With counters
+      now flushed on every settled retry (not just once per resolved walk), the on-disk count
+      tracks the server far more closely at every instant, which is what actually eliminates the
+      flakiness risk kimi is naming -- re-run 5x green (see the mutation-red receipt). The exact-
+      equality assertion was left as written since it held cleanly 5/5 after the cure; loosening
+      it further was not needed."
+  - seat: kimi-code/k3
+    status: CONFIRMED
+    objection:
+      "LOW -- test_report_version_mismatch_refuses_before_any_network_call only proves the
+      'missing report_version key' branch; an explicit stale INTEGER version is a separate branch
+      through the same != comparison and was untested."
+    resolution:
+      "CURED. New test test_report_version_stale_integer_refuses_before_any_network_call
+      writes report_version: REPORT_VERSION - 1 explicitly and asserts the same refusal
+      shape (exit 2, one line naming both versions, zero evaluate/health)."
+  - seat: kimi-code/k3
+    status: CONFIRMED
+    objection:
+      "LOW -- resuming a hand-thinned report (missing the 'health' key, or a walk row missing
+      'attempts_history') passes both resume gates (version, digest) and then crashes with a raw
+      KeyError inside _probe_health's report['health']['start'] assignment or _merge_attempt,
+      never the module's clean one-line refusal."
+    resolution:
+      "REJECTED for scope. LOW severity, single-seat (not corroborated by codex or agy),
+      requires an operator to hand-edit a report this module only ever writes via
+      atomic_write_json -- not a realistic path the module's own write discipline produces.
+      Curing it properly needs a general schema-validation pass on resume, which is a broader
+      change than V1-V4 authorizes here. Recommend a follow-up slice alongside the two rejected
+      codex findings above (all three concern resume-path robustness against inputs this module
+      itself never writes)."
+  - seat: kimi-code/k3
+    status: CONFIRMED
+    objection:
+      "LOW -- the 401/403 circuit-breaker log line ('stopping after exactly one request')
+      reads as a claim about the whole run's requests_used_this_run, when it actually names only
+      the one request the breaker itself spent on THIS walk; an operator reconciling the log
+      against a report where earlier walks also spent requests could misread it as a bug."
+    resolution:
+      "CURED. Reworded to 'stopping the run after exactly one request spent on this walk.'
+      Cosmetic-only; the existing 401/403 tests assert a different, unaffected substring
+      ('the token FILE is the likely cause') and stayed green unmodified."
+  - seat: kimi-code/k3
+    status: CONFIRMED
+    objection:
+      "LOW -- extract_walks validates that every walk has a non-empty label but never checks
+      for DUPLICATE labels; walks_by_id is keyed on label, so two walks sharing one would collapse
+      into a single report row while the runner still POSTs both to production."
+    resolution:
+      "CURED, independently corroborated by codex's MEDIUM finding of the same defect.
+      extract_walks now raises EnumerateLiveError on a duplicate label, before any token load or
+      network call. New test with two walks sharing a label but different facts."
+appetite_exceeded: ""

@@ -4,16 +4,26 @@ machine: air-m5
 base_sha: efbce8059a577d1fb0a8f3c36d3d574fd74fb5c3 # pragma: allowlist secret - public Git commit ID, not a credential
 date: 2026-09-20
 
-gear: 2
+gear: 3
 gear_reason: >-
-  Floor 2 (`python3 scripts/contract_verify.py --head <final-head> --json` -> deterministic
-  floor 2, brief now present). Net churn over the two CODE files -- enumerate_live.py +
-  test_enumerate_live.py, both NEW files on this branch -- is 1778 insertions / 0 deletions
-  (`git diff --stat <base_sha>..<final-head> -- apps/backend-rag/backend/scripts/visa_engine/enumerate_live.py apps/backend-rag/backend/tests/scripts/visa_engine/test_enumerate_live.py`),
-  above SIZE_GEAR2_THRESHOLD (400, `scripts/evidence_pack_lint.py`) but below
-  SIZE_GEAR3_THRESHOLD (1828, same file) -- this is exactly the split R-SPLIT-B2 engineered:
-  the lock module landed separately (B2''-a, #6920) so this runner-only PR stays under the
-  Gear-3 line without shaving anything.
+  RULED R-GEAR3-B2J (2026-09-20 14:45Z, MANDATE-vo.md): floor 3, declared honestly, nothing
+  shaved. Net churn over the two CODE files -- enumerate_live.py + test_enumerate_live.py, both
+  NEW files on this branch -- is 2032 insertions / 0 deletions after the council cure round
+  (`git diff --numstat $(git merge-base origin/main HEAD) HEAD -- apps/backend-rag/backend/scripts/visa_engine/enumerate_live.py apps/backend-rag/backend/tests/scripts/visa_engine/test_enumerate_live.py`),
+  which alone already exceeds SIZE_GEAR3_THRESHOLD (1828, `scripts/evidence_pack_lint.py`) --
+  and this PR's OWN brief.yml/pack.yml/journal.jsonl add further, since `evidence/**` is not
+  in `_is_size_term_excluded`'s exemption tuples (checked by reading the function: only
+  fixtures/generated/vendor/lockfile/binary paths are excluded there). Unlike #6920's brief,
+  this sentence does NOT claim a brief doesn't count its own size -- it measurably does
+  (`python3 scripts/contract_verify.py --head <final-head> --json` -> "floor 3, brief present"
+  is the correct, expected outcome here, not a defect to work around). R-SPLIT-B2's own
+  reasoning still binds: the lock module already landed separately (B2''-a, #6920); W1<->W2
+  bind the breaker to re-attemptable resume so there is no further clean seam to split, and
+  trimming to fit under the line is gaming the floor, which the ruling explicitly forbids.
+  Gear 3's own requirement (a real `council_run`, rule R9) is satisfied: 3 distinct seats
+  (codex-gpt-5.6-sol, kimi-code/k3, agy-gemini-3.1-pro as the dead titolare tp1-qwen3.8-max's
+  reserve) journalled in `journal.jsonl`, `python3 scripts/council_journal.py check --pack-dir
+  <this dir>` reports quorum -- see `pack.yml` for the seats, findings and dissent.
 
 objective: >-
   Conductor ruling R-SPLIT-B2 + the owner decision of 2026-09-20 ("B2-1") authorize ONE more
@@ -33,6 +43,18 @@ objective: >-
   before any network call). V3/V4 restate the manifest's real provenance (the B1'' emitter's
   output, not a checked-in file) and report_lock's own declared limits in this module's
   docstring, since the runner now depends on that module's guarantees.
+
+  This diff crossed SIZE_GEAR3_THRESHOLD once its own brief was counted (see gear_reason), so
+  R-GEAR3-B2J authorized shipping it at Gear 3 with a real 3-seat council instead of shaving
+  anything or splitting further. codex-gpt-5.6-sol (same-family as the seat that prepared the
+  raw material), kimi-code/k3, and agy-gemini-3.1-pro (reserve for the dead titolare
+  tp1-qwen3.8-max) each reviewed the diff independently, text-in/text-out, scrubbed environment,
+  no tool access. Findings collapsed to 4 distinct issues after de-duplication; all 4 real ones
+  are cured here (retry-granularity counter accuracy -- codex HIGH + kimi MEDIUM on the same
+  gap; dry-run/version precedence -- codex MEDIUM; duplicate walk labels -- codex MEDIUM + kimi
+  LOW, corroborated); 3 more are rejected into `pack.yml`'s `dissent[]` with verified reasons
+  (two touch `run_walk`, byte-identical to the #6871 raw material and out of this slice's V1-V4
+  scope; one misapplies a live-path invariant to `--dry-run`, which never makes a network call).
 
 scope:
   - "apps/backend-rag/backend/scripts/visa_engine/enumerate_live.py (new file) -- imports ReportLock/ReportLockError/atomic_write_json from report_lock instead of carrying a local O_EXCL lock class, _pid_alive helper, and _write_report function; drops --break-stale-lock end to end; catches ReportLockError explicitly in run(); V1 moves the two requests_used_* assignments into _flush(); V2 reads report_version on resume and refuses a mismatch before any network call; V3/V4 docstring fixes."
@@ -80,5 +102,9 @@ acceptance:
   - "WHERE the driver token is used THEN it never appears in the report file or in any log line. probe: pytest backend/tests/scripts/visa_engine/test_enumerate_live.py::test_driver_token_never_appears_in_report_or_log"
   - "WHERE the summary is built THEN engine_verdicts and harness_reds stay two separate tallies, never added together. probe: pytest backend/tests/scripts/visa_engine/test_enumerate_live.py::test_summary_never_adds_engine_verdicts_and_harness_reds_together"
   - "NO REGRESSION: the full file plus report_lock's own suite are green, and ruff is clean. probe: pytest backend/tests/scripts/visa_engine/test_enumerate_live.py backend/tests/scripts/visa_engine/test_report_lock.py && ruff check backend/scripts/visa_engine/enumerate_live.py backend/tests/scripts/visa_engine/test_enumerate_live.py"
+  - "WHEN a walk burns a failed retry and the process is SIGKILLed during the backoff sleep BEFORE the retry, and the walk itself never resolves, THEN the on-disk requests_used_this_run reflects the ONE settled attempt (not 0) -- council guilt test with a mutation-red proof (codex HIGH finding, B2''-b council round). probe: pytest backend/tests/scripts/visa_engine/test_enumerate_live.py::test_v1_counters_track_a_retry_still_inside_one_unresolved_walk"
+  - "WHEN an existing report's report_version is an explicit STALE INTEGER (not merely missing) THEN resume refuses the same way, before any network call (kimi LOW finding, council round). probe: pytest backend/tests/scripts/visa_engine/test_enumerate_live.py::test_report_version_stale_integer_refuses_before_any_network_call"
+  - "WHEN a manifest has two walks sharing one label THEN extract_walks refuses fail-closed before any token load or network call (codex MEDIUM + kimi LOW, independently corroborated, council round). probe: pytest backend/tests/scripts/visa_engine/test_enumerate_live.py::test_duplicate_walk_labels_refuse_before_any_network_call"
+  - "WHEN --dry-run runs against a report with a stale report_version AND no driver-token file THEN the version-mismatch line is reported, never the unrelated token error (codex MEDIUM finding, council round: dry-run/version precedence now matches the live path). probe: pytest backend/tests/scripts/visa_engine/test_enumerate_live.py::test_dry_run_reports_version_mismatch_before_a_bad_token_file"
 
 pii_scan: clean
