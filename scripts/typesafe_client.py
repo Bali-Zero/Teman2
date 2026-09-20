@@ -25,7 +25,14 @@ import urllib.request
 from typing import Any
 
 ENDPOINT = "https://api.typesafe.ai/v1/systemone"
-MODEL = "jev-latest"
+# Pinned, not `jev-latest`. This client feeds a CI lint whose firing threshold
+# (0.80) was calibrated against THIS model version: 15/17 recall on the cases the
+# greps miss, 0/20 false alarms, reproduced from a seat outside the lane on
+# 2026-09-21. A moving alias lets TypeSafe reissue the model under our feet and
+# silently invalidate that calibration — the verdict would drift with nothing in
+# the diff to show it. The vendor's own docs recommend pinning for this reason.
+# Raising this version is therefore a bench re-run, not an edit.
+MODEL = "jev-1.13.0"
 ENV_VAR = "TYPESAFE_API_KEY"
 
 # 429/529 are the documented retryable pair. 5xx other than 529 are not retried:
