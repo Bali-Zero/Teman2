@@ -1,5 +1,5 @@
 {
-  "_doc": "Bench for lint_paid_llm_entity.py. GUILT cases reach a paid per-token Anthropic endpoint; INNOCENCE cases do not. `missed_by_grep` marks the guilt cases today's catE-sovereignty-lint greps do NOT catch — that subset is the entire reason the lint exists, so its recall is the number that matters. Authored by the lane (stated plainly: it is not an independent set; the honest next step is a refuter adding cases it thinks will fool the judge).",
+  "_doc": "Bench for lint_paid_llm_entity.py. GUILT cases reach a paid per-token Anthropic endpoint; INNOCENCE cases do not. `missed_by_grep` marks the guilt cases today's catE-sovereignty-lint greps do NOT catch — that subset is the entire reason the lint exists, so its recall is the number that matters. PROVENANCE, because a corpus that hides who wrote it cannot be read: the first 19 guilt and 20 innocence cases were authored by the lane that wrote the judge, which said so plainly and named the honest next step as a refuter adding cases it thinks will fool it. On 2026-09-21 a session outside that lane added 7 guilt and 9 innocence cases, aimed at the two seams the independent bench run exposed: the route-by-PROCESS class (a shell or a raw HTTP request reaching the endpoint with no SDK and no wrapper — `shell_curl` scored 0.43 and `httpx_async_raw` 0.58, the only case in the empty band), and the FALSE-ALARM surface, which is the half that decides whether this step is safe to arm: a miss costs nothing under OR-composition, a false red costs a real author's PR. WHAT IS MEASURED ABOUT THE NEW CASES AND WHAT IS NOT: every one had its `missed_by_grep` value produced by running grep_verdict() rather than asserted, and every innocence case was checked not to fire the incumbent greps and to pass the prefilter so that it actually reaches the judge. Their MODEL verdicts are UNMEASURED — the refuter had no key, and adding cases does not re-run the bench. The recall and false-alarm figures quoted anywhere for this corpus describe the first 39 cases only until a bench run covers all 55.",
   "guilt": [
     {
       "name": "aliased_import",
@@ -114,6 +114,48 @@
       "missed_by_grep": false,
       "suffix": ".sh",
       "content": "#!/usr/bin/env bash\nexport ANTHROPIC_API_KEY=$FROM_VAULT\npython3 run_batch.py\n"
+    },
+    {
+      "name": "openai_sdk_anthropic_base_url",
+      "missed_by_grep": true,
+      "suffix": ".py",
+      "content": "import os\nfrom openai import OpenAI\n\nclient = OpenAI(\n    base_url=\"https://api.anthropic.com/v1/\",\n    api_key=os.environ[\"UPSTREAM_LLM_TOKEN\"],\n)\nresp = client.chat.completions.create(\n    model=\"claude-sonnet-5\",\n    messages=[{\"role\": \"user\", \"content\": \"summarise this diff\"}],\n)\n"
+    },
+    {
+      "name": "requests_session_post",
+      "missed_by_grep": true,
+      "suffix": ".py",
+      "content": "import os\nimport requests\n\nsession = requests.Session()\nsession.headers.update({\n    \"x-api-key\": os.environ[\"LLM_UPSTREAM_TOKEN\"],\n    \"anthropic-version\": \"2023-06-01\",\n})\nr = session.post(\n    \"https://api.anthropic.com/v1/messages\",\n    json={\"model\": \"claude-sonnet-5\", \"max_tokens\": 64, \"messages\": []},\n)\n"
+    },
+    {
+      "name": "shell_wget_process",
+      "missed_by_grep": true,
+      "suffix": ".sh",
+      "content": "#!/bin/sh\nwget --quiet --output-document=- \\\n  --header=\"x-api-key: ${LLM_UPSTREAM_TOKEN}\" \\\n  --header=\"anthropic-version: 2023-06-01\" \\\n  --post-data='{\"model\":\"claude-sonnet-5\",\"max_tokens\":64,\"messages\":[]}' \\\n  https://api.anthropic.com/v1/messages\n"
+    },
+    {
+      "name": "workflow_step_curl",
+      "missed_by_grep": true,
+      "suffix": ".yml",
+      "content": "name: nightly-digest\non:\n  schedule:\n    - cron: \"0 3 * * *\"\njobs:\n  digest:\n    runs-on: ubuntu-latest\n    steps:\n      - name: Ask the model for a digest\n        env:\n          UPSTREAM_TOKEN: ${{ secrets.UPSTREAM_TOKEN }}\n        run: |\n          curl -sS https://api.anthropic.com/v1/messages \\\n            -H \"x-api-key: $UPSTREAM_TOKEN\" \\\n            -H \"anthropic-version: 2023-06-01\" \\\n            -d '{\"model\":\"claude-sonnet-5\",\"max_tokens\":256,\"messages\":[]}'\n"
+    },
+    {
+      "name": "node_fetch_endpoint",
+      "missed_by_grep": true,
+      "suffix": ".mjs",
+      "content": "const res = await fetch(\"https://api.anthropic.com/v1/messages\", {\n  method: \"POST\",\n  headers: {\n    \"x-api-key\": process.env.UPSTREAM_LLM_TOKEN,\n    \"anthropic-version\": \"2023-06-01\",\n    \"content-type\": \"application/json\",\n  },\n  body: JSON.stringify({ model: \"claude-sonnet-5\", max_tokens: 64, messages: [] }),\n});\n"
+    },
+    {
+      "name": "async_class_renamed_credential",
+      "missed_by_grep": false,
+      "suffix": ".py",
+      "content": "import os\nfrom anthropic import AsyncAnthropic\n\nclient = AsyncAnthropic(api_key=os.environ[\"LLM_UPSTREAM_TOKEN\"])\n\nasync def ask(prompt: str):\n    return await client.messages.create(\n        model=\"claude-sonnet-5\", max_tokens=64,\n        messages=[{\"role\": \"user\", \"content\": prompt}],\n    )\n"
+    },
+    {
+      "name": "httpx_custom_auth_class",
+      "missed_by_grep": true,
+      "suffix": ".py",
+      "content": "import os\nimport httpx\n\n\nclass UpstreamAuth(httpx.Auth):\n    def auth_flow(self, request):\n        request.headers[\"x-api-key\"] = os.environ[\"LLM_UPSTREAM_TOKEN\"]\n        request.headers[\"anthropic-version\"] = \"2023-06-01\"\n        yield request\n\n\nwith httpx.Client(auth=UpstreamAuth()) as c:\n    c.post(\"https://api.anthropic.com/v1/messages\",\n           json={\"model\": \"claude-sonnet-5\", \"max_tokens\": 64, \"messages\": []})\n"
     }
   ],
   "innocence": [
@@ -216,6 +258,51 @@
       "name": "openrouter_non_claude",
       "suffix": ".py",
       "content": "from openai import OpenAI\n\nclient = OpenAI(base_url='https://openrouter.ai/api/v1', api_key=KEYS['router'])\nclient.chat.completions.create(model='qwen/qwen3.8-max', messages=[])\n"
+    },
+    {
+      "name": "docstring_explains_why_we_refuse",
+      "suffix": ".py",
+      "content": "\"\"\"Why this module builds no vendor SDK client.\n\nCLAUDE.md bans reaching Claude through a paid per-token endpoint: the\nsubscription is already paid and a per-token credential duplicates it. The\nsanctioned path is the claude CLI with its OAuth token, so that is all this\nmodule does. Nothing here holds a vendor credential of any kind.\n\"\"\"\nimport subprocess\n\n\ndef ask(prompt: str) -> str:\n    out = subprocess.run([\"claude\", \"-p\", prompt], capture_output=True, text=True)\n    return out.stdout\n"
+    },
+    {
+      "name": "migration_away_from_the_paid_path",
+      "suffix": ".py",
+      "content": "\"\"\"Replaces the old per-token client with the CLI. Nothing paid remains.\n\nThe removed implementation constructed a vendor SDK client from a metered\ncredential. It is gone; this file is what took its place.\n\"\"\"\nimport subprocess\n\nMODEL = \"claude-sonnet-5\"\n\n\ndef complete(prompt: str) -> str:\n    return subprocess.run(\n        [\"claude\", \"--model\", MODEL, \"-p\", prompt],\n        capture_output=True, text=True,\n    ).stdout\n"
+    },
+    {
+      "name": "openai_sdk_pointed_at_ollama",
+      "suffix": ".py",
+      "content": "import os\nfrom openai import OpenAI\n\nclient = OpenAI(\n    base_url=\"http://127.0.0.1:11434/v1\",\n    api_key=os.environ.get(\"OLLAMA_API_KEY\", \"ollama\"),\n)\nresp = client.chat.completions.create(\n    model=\"qwen3:8b\",\n    messages=[{\"role\": \"user\", \"content\": \"summarise this diff\"}],\n)\n"
+    },
+    {
+      "name": "bedrock_non_claude_model",
+      "suffix": ".py",
+      "content": "import json\nimport boto3\n\nbedrock = boto3.client(\"bedrock-runtime\", region_name=\"ap-southeast-1\")\nresp = bedrock.invoke_model(\n    modelId=\"amazon.titan-text-express-v1\",\n    body=json.dumps({\"inputText\": \"summarise this diff\"}),\n)\n"
+    },
+    {
+      "name": "vertex_gemini_model",
+      "suffix": ".py",
+      "content": "from vertexai.generative_models import GenerativeModel\n\nmodel = GenerativeModel(\"gemini-2.5-pro\")\nresp = model.generate_content(\"summarise this diff\")\n"
+    },
+    {
+      "name": "refuses_to_start_if_the_key_is_set",
+      "suffix": ".py",
+      "content": "import os\nimport sys\n\nBANNED_ENV = \"ANTHROPIC_\" + \"API_KEY\"\n\nif os.environ.get(BANNED_ENV):\n    sys.exit(f\"{BANNED_ENV} is set: the metered route is banned, refusing to start.\")\nprint(\"OK: no metered credential in this environment.\")\n"
+    },
+    {
+      "name": "nulled_provider_credential",
+      "suffix": ".yml",
+      "content": "providers:\n  - name: anthropic\n    enabled: false\n    api_key: null\n    note: \"disabled on purpose — the CLI seat carries the subscription\"\n  - name: ollama\n    enabled: true\n    base_url: \"http://127.0.0.1:11434\"\n"
+    },
+    {
+      "name": "curl_to_our_own_backend",
+      "suffix": ".sh",
+      "content": "#!/bin/sh\n# Our own RAG service. No vendor endpoint, no vendor credential.\ncurl -sS https://nuzantara-rag.fly.dev/api/v1/kbli-notebook/inspect/56101 \\\n  -H \"x-api-key: ${NUZANTARA_INTERNAL_KEY}\" \\\n  -H \"content-type: application/json\"\n"
+    },
+    {
+      "name": "claude_cli_with_oauth_env",
+      "suffix": ".sh",
+      "content": "#!/bin/sh\n# The sanctioned path: the CLI, carrying the subscription OAuth token.\ntest -n \"${CLAUDE_CODE_OAUTH_TOKEN:+SET}\" || exit 1\nclaude -p \"summarise the changed files\" --model claude-sonnet-5\n"
     }
   ]
 }
