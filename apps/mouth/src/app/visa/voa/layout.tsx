@@ -43,15 +43,34 @@ export const metadata: Metadata = {
 };
 
 /**
- * GARUDA VOA DELIBERA FASE 2 (a): ground flipped to `operative-dark` — the
- * anthracite `--bz-base` #121016 the design-A/refutation pass measured, not a
- * cosmetic swap. `voa-r19.css`'s 15 selectors are re-keyed to
- * `[data-theme="operative-dark"]` in the same PR (design-A-refutation.md
- * finding 1, BLOCKING): flipping this attribute alone without that file would
- * make its `[data-funnel]` override never match, letting
- * `semantic.css`'s `--accent-funnel` fall back to its red default on the
- * primary purchase CTA. `layout.test.tsx` pins `operative-dark` here for the
- * same reason.
+ * Ground: `operative-light` — owner decision 2026-09-21, "voglio principale
+ * la versione day light e non la dark". This attribute is the ONLY place the
+ * funnel's ground is chosen; `voa-r19.css` no longer names a theme in any of
+ * its selectors (it is keyed on `[data-product="my"][data-garuda-voa="r19"]`,
+ * see that file's specificity note), so flipping this line moves the whole
+ * skin and nothing else needs re-keying. That was not true before: the skin
+ * used to be keyed on `[data-theme="operative-dark"]`, and the DELIBERA fase
+ * 2 (a) flip in the other direction had to rewrite all fifty of its selectors
+ * in the same PR or the `[data-funnel]` override would have stopped matching
+ * and `semantic.css`'s `--accent-funnel` would have fallen back to red on the
+ * primary purchase CTA.
+ *
+ * What makes the daylight ground safe for TEXT, measured rather than assumed
+ * (`voa-contrast.computed.guard.test.tsx` recomputes all of it from
+ * globals.css on every run): on `[data-theme="operative-light"][data-product="my"]`
+ * the accent the funnel paints text with — `--bz-accent`, at the clock's
+ * handoff link and at "Ask us anything before you pay" — is copper #a44b36,
+ * 5.26:1 on the #f7f4ee ground and 5.64:1 on the #fffcf7 card. Both clear AA.
+ * The naive flip, which is the one worth naming because it was the plan
+ * before the numbers came in, was to keep the DARK block's lifted copper
+ * #c46a52 and merely change the ground: that measures 3.37:1 on daylight and
+ * fails AA for body text. The light my-block already carried its own,
+ * darker copper — the flip did not need a new colour, it needed the check
+ * that says which copper is in force.
+ *
+ * `layout.test.tsx` pins `operative-light` here, and the contrast guard
+ * DERIVES its palette from this element rather than naming one, so neither
+ * can be left behind by the next flip.
  */
 export default function GarudaVoaLayout({
   children,
@@ -62,7 +81,7 @@ export default function GarudaVoaLayout({
     notFound();
   }
   return (
-    <div data-theme="operative-dark" data-product="my" data-garuda-voa="r19">
+    <div data-theme="operative-light" data-product="my" data-garuda-voa="r19">
       {children}
     </div>
   );

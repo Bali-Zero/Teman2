@@ -1,0 +1,119 @@
+task_id: voa-light-ground
+gear: 2
+l_level: L1
+gate_class: sonnet
+# Floor measured this session: `python3 scripts/evidence_pack_lint.py --print-floor
+# --print-floor-source --numstat-file <numstat> --changed-files-file <changed>` on this
+# branch's diff (origin/main...HEAD) returns `2` / `size`. Churn is 688 lines (529+159)
+# across seven files, above the deterministic size floor; no HOTZONE_PATTERNS path is
+# touched (mouth-only: app/visa/voa/**). No evidence/brief.yml existed for this branch
+# before this commit.
+objective: >-
+  Owner decision 2026-09-21 ("voglio principale la versione day light e non la dark"):
+  the public GARUDA VOA funnel's primary ground becomes operative-light. layout.tsx's
+  wrapper flips, voa-r19.css's 50 selectors are re-scoped OFF the theme entirely (to
+  [data-product="my"][data-garuda-voa="r19"], a pair so the rule keeps the 0-2-0 that
+  beats both core theme sheets' plain [data-theme="..."] 0-1-0 declarations of
+  --surface-base/--text-primary), and every guard pinned to the ink ground is
+  re-measured on paper. The arithmetic found four things the flip alone does not show:
+  --tx-tertiary is undeclared by the daylight my-block so the contrast guard's
+  single-block model threw; the Safe Clock's soon/today pair collapsed to 1.06:1 at the
+  same 7px width; the red-family detector was a lightness rule that convicts the
+  daylight copper #a44b36 while acquitting the ink copper #c46a52 1.2 degrees away in
+  hue; and auth/continue's two absolute Tailwind greys, unguarded on either ground,
+  leave one paragraph at 4.41:1 on paper.
+constraints:
+  - >-
+    Ground change is scoped to the VOA route only: the data-theme attribute in
+    apps/mouth/src/app/visa/voa/layout.tsx and the selectors in
+    apps/mouth/src/app/visa/voa/voa-r19.css. globals.css is NOT touched — the daylight
+    [data-theme="operative-light"][data-product="my"] block already declared everything
+    this funnel reads, including the --bz-data / --bz-status-mark pair mirrored there by
+    DELIBERA fase 2 (b) for exactly this move.
+  - >-
+    No colour literal (hex/rgb/hsl) is introduced in voa-r19.css — its own contract test
+    forbids one anywhere in the file, comments included.
+  - >-
+    The light-neutral utility ban in voa-no-colour-literal.guard.test.ts keeps its regex
+    and its rows unchanged; only its docblock is corrected. Extending it to convict both
+    ends of the ramp needs its own screen audit and is not attempted here.
+  - >-
+    No change outside apps/mouth/src/app/visa/voa/** — the seven files the diff touches.
+  - No npm install/ci run in this worktree at any point.
+acceptance:
+  - text: >-
+      A1 (INNOCENCE): THE GarudaVoaLayout wrapper SHALL carry data-theme="operative-light",
+      and that attribute SHALL be the only place the funnel's ground is declared.
+    probe: >-
+      npx vitest run src/app/visa/voa/layout.test.tsx (from apps/mouth/) — "wraps
+      children in the R19 wrapper (data-product=my, data-theme=operative-light)"
+  - text: >-
+      A2 (INNOCENCE): THE voa-r19.css selectors SHALL name no theme, and SHALL keep
+      0-2-0 specificity via [data-product="my"][data-garuda-voa="r19"].
+    probe: >-
+      grep -c 'data-theme="operative-dark"\]\[data-garuda-voa' apps/mouth/src/app/visa/voa/voa-r19.css
+      — 0; grep -c '\[data-product="my"\]\[data-garuda-voa="r19"\]' — 50
+  - text: >-
+      A3 (GUILT): THE contrast guard SHALL resolve against the cascade the browser
+      applies — the theme block UNDER the product block — and reversing that order SHALL
+      turn it red rather than resolve to a colour the page never paints.
+    probe: >-
+      npx vitest run src/app/visa/voa/voa-contrast.computed.guard.test.tsx — "cascades
+      the theme block UNDER the product block, not over it"; mutation run this session
+      (theme spread moved above product) = 3 failed | 76 passed
+  - text: >-
+      A4 (GUILT): THE Safe Clock's four states SHALL each be separable from every other
+      by colour or by width on the mounted ground; returning .voa-clock--today to 7px
+      SHALL turn the guard red.
+    probe: >-
+      npx vitest run src/app/visa/voa/voa-contrast.computed.guard.test.tsx — "soon vs
+      today is the pair colour cannot separate — width carries it"; mutation run this
+      session (10px -> 7px) = 2 failed | 77 passed
+  - text: >-
+      A5 (GUILT): THE red-family detector SHALL judge hue and saturation, acquitting
+      copper on BOTH grounds (#a44b36, #c46a52) and still convicting --bz-red #c2453f at
+      2.7 degrees; restoring the r>150/g<90/b<90 form SHALL turn it red.
+    probe: >-
+      npx vitest run src/app/visa/voa/voa-contrast.computed.guard.test.tsx — "INNOCENT:
+      copper on EITHER ground, and the surface ink, are neither" + "GUILTY: --bz-red, the
+      nearest miss, still trips the red detector"; mutation run this session (detector
+      reverted) = 3 failed | 76 passed
+  - text: >-
+      A6 (GUILT): THE guard SHALL pin the mounted ground by NAME, so returning layout.tsx
+      to operative-dark reds it by row instead of throwing on load.
+    probe: >-
+      mutation run this session (wrapper reverted to operative-dark, guard + layout.test
+      together) = 6 failed | 78 passed, named rows, no load-time throw
+  - text: >-
+      A7 (INNOCENCE): EVERY var() token voa-r19.css reads SHALL resolve to a colour on
+      the mounted ground — the row that turns a missing alias into a named failure
+      instead of a crash.
+    probe: >-
+      npx vitest run src/app/visa/voa/voa-contrast.computed.guard.test.tsx — "every token
+      voa-r19.css reads resolves on the mounted ground"
+  - text: >-
+      A8 (release lane): THE full apps/mouth unit suite and the type-check SHALL stay
+      green with this diff applied.
+    probe: >-
+      npx vitest run (from apps/mouth/) = 538 files / 7023 passed, 2 skipped;
+      npx tsc --noEmit = exit 0
+assumptions:
+  - text: >-
+      The funnel stays behind GARUDA_PUBLIC_ENABLED, so /visa/voa 404s in production
+      unless that env var is exactly "true". A post-deploy browser proof of the daylight
+      ground is therefore gated on the flag, not on this merge.
+    status: unverified
+    probe: >-
+      apps/mouth/src/app/visa/voa/layout.tsx — isGarudaVoaPublicEnabled() fails closed;
+      flag.ts pins the parsing. Not queried against the live Vercel env by this brief.
+  - text: >-
+      The Tailwind v4 neutral hexes used to measure the ban's polarity (gray-50 #f9fafb
+      through gray-900 #101828) match the values the prior lane sampled off the PROMOTED
+      build — its docblock cites rgb(16,24,40) and rgb(54,65,83), which are gray-900 and
+      gray-700 in that same ramp.
+    status: verified
+    probe: >-
+      apps/mouth/src/app/visa/voa/voa-no-colour-literal.guard.test.ts docblock — the two
+      measured nodes, cross-checked against the ramp this session
+appetite:
+  wall_clock_hours: 2

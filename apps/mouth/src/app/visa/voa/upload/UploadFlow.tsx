@@ -51,10 +51,13 @@ export interface UploadFlowProps {
 }
 
 /**
- * This screen is mounted inside `visa/voa/layout.tsx`'s
- * `data-theme="operative-dark"` wrapper, ground `--bz-base` #121016 — and it
- * was the only one of the six purchase screens still painting itself with
- * light-theme Tailwind grays. Measured on the PROMOTED build at 390px, by
+ * This screen paints from `--bz-base` / `--tx-*`, which is to say from
+ * whatever ground `visa/voa/layout.tsx` mounts — daylight #f7f4ee today, the
+ * ink #121016 below between 2026-08 and 2026-09-21. The history is kept
+ * because the defect it records is the reason the constants below are tokens
+ * at all: on the ink ground this was the only one of the six purchase screens
+ * still painting itself with light-theme Tailwind grays. Measured on the
+ * PROMOTED build at 390px, by
  * sampling the painted pixels rather than parsing the CSS (Tailwind v4 emits
  * `oklch()`, which a naive rgb regex reads as a different colour entirely):
  *
@@ -76,12 +79,17 @@ const PRIMARY: React.CSSProperties = {
 };
 
 /**
- * `--bz-border-hover` measured 1.83:1 against `--bz-elevated` — under SC
- * 1.4.11's 3:1, and `FIELD` is a real input in the manual-correction form, so
- * its boundary is load-bearing. `SECONDARY` ("Retake photo instead") carries a
- * white label that signals a control on its own, so it takes the same value
- * for CONSISTENCY rather than as a clear-cut failure: a secondary button with
- * a fainter edge than the field above it reads as disabled.
+ * `--bz-border-hover` is under SC 1.4.11's 3:1 against `--bz-elevated` on
+ * BOTH grounds — 1.83:1 on the ink one where this was found, 2.25:1 on the
+ * daylight one, where it is the opaque R19 line-strong rather than a
+ * translucent paper. `FIELD` is a real input in the manual-correction form,
+ * so its boundary is load-bearing, and `--tx-tertiary` clears the floor
+ * either way (4.19:1 then, 6.08:1 now, arriving as an alias of
+ * `--tx-secondary` on daylight). `SECONDARY` ("Retake photo instead")
+ * carries a `--tx-pure` label that signals a control on its own — paper on
+ * ink then, ink on paper now — so it takes the same value for CONSISTENCY
+ * rather than as a clear-cut failure: a secondary button with a fainter edge
+ * than the field above it reads as disabled.
  */
 const SECONDARY: React.CSSProperties = {
   borderColor: "var(--tx-tertiary)",

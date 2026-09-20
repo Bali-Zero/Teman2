@@ -1,36 +1,52 @@
 /**
  * GARUDA VOA — R19 skin, scoped to this funnel only.
  *
- * Reuses the [data-theme="operative-dark"][data-product="my"] tokens
- * declared in app/globals.css — no new colour is introduced here. That
- * block never declares the funnel-shell vocabulary AppFrame/AppWizard read
+ * Reuses the [data-product="my"] tokens declared in app/globals.css — no
+ * new colour is introduced here. The theme half of that pair is NOT named
+ * in this file's selectors (see the specificity note below): `layout.tsx`
+ * decides which ground the funnel wears, and this skin reads whatever
+ * --bz-* / --tx-* the winning theme block declares. Neither my-block
+ * declares the funnel-shell vocabulary AppFrame/AppWizard read
  * (--surface-base, --text-primary, --color-text-muted,
  * --color-border-subtle, --accent-funnel), so this file bridges those
  * names onto the my-block's --bz-* and --tx-* tokens. Primary CTA = ink
  * fill + paper text, never a copper fill (R19 law: copper is a person,
  * not an action).
  *
- * --text-on-accent is bound to --bz-base, not --bz-on-warm. --bz-on-warm's
+ * --text-on-accent is bound to --bz-base, not --bz-on-warm, and that
+ * binding is why this file survives a ground flip at all. --bz-on-warm's
  * job elsewhere is "text on a warm/copper fill", which is always paper —
  * correct in the light block, but in the dark block it resolves to the
  * SAME value as --tx-pure. Since --accent-funnel here is tx-pure (not a
  * copper fill), that identity made the dark-ground CTA paper-on-paper —
  * invisible text, measured empirically against the running dev server
- * before this fix (the computed foreground and background of the button
+ * before that fix (the computed foreground and background of the button
  * were byte-identical). --bz-base is tx-pure's actual opposite by
  * construction in BOTH themes (the ground a theme's ink text sits on), so
- * it renders the SAME ink-fill/paper-text contrast in light (near-paper
- * text, indistinguishable from the old --bz-on-warm there) and the correct
- * inverted paper-fill/ink-text contrast in dark (ink text on a paper
- * fill).
+ * the CTA renders ink-fill/paper-text on the daylight ground this funnel
+ * ships on today, and would render the inverted paper-fill/ink-text on an
+ * ink ground, with no edit here.
  *
- * Selector bumped to [data-theme="operative-dark"][data-garuda-voa="r19"]
- * (0-2-0) to unambiguously beat packages/core/tokens/themes/operative-dark.css's
- * plain [data-theme="operative-dark"] (0-1-0), which redeclares
- * --surface-base and --text-primary on the SAME element and would
- * otherwise tie on stylesheet import order.
+ * Selector is [data-product="my"][data-garuda-voa="r19"] — TWO attributes,
+ * and neither of them is the theme. Both halves are load-bearing:
+ *
+ *   - the theme is absent so a ground flip is one line in `layout.tsx` and
+ *     not a 50-selector rewrite in here. It used to be present
+ *     ([data-theme="operative-dark"]), which is exactly why moving this
+ *     funnel to daylight cost this file a full re-scope once already.
+ *   - the PAIR keeps the rule at 0-2-0, and that is what beats the core
+ *     theme sheets. Both packages/core/tokens/themes/operative-dark.css and
+ *     .../operative-light.css declare --surface-base and --text-primary
+ *     under a plain [data-theme="..."] (0-1-0) matching the SAME element
+ *     this rule matches. A bare [data-garuda-voa="r19"] would also be
+ *     0-1-0, would tie with them, and would leave the outcome to stylesheet
+ *     import order — the hazard the previous selector was bumped to escape.
+ *     Dropping the theme must not drop the specificity with it.
+ *
+ * The descendant rules below inherit that 0-2-0 base; see the [data-funnel]
+ * note for the 0-3-0 that one needs.
  */
-[data-theme="operative-dark"][data-garuda-voa="r19"] {
+[data-product="my"][data-garuda-voa="r19"] {
   min-height: 100vh;
   background: var(--bz-base);
   color: var(--tx-pure);
@@ -54,7 +70,7 @@
  * which an ancestor's inherited value can never out-cascade. Redeclared
  * here at 0-3-0 so the ink fill actually reaches it.
  */
-[data-theme="operative-dark"][data-garuda-voa="r19"] [data-funnel] {
+[data-product="my"][data-garuda-voa="r19"] [data-funnel] {
   --accent-funnel: var(--tx-pure);
   --accent-funnel-text: var(--tx-pure);
   --text-on-accent: var(--bz-base);
@@ -78,7 +94,7 @@
  * "STEP 1 OF 4" strip, so the two rules never stack into the collision the
  * first pass of this lane produced.
  */
-[data-theme="operative-dark"][data-garuda-voa="r19"] .voa-hero-wa {
+[data-product="my"][data-garuda-voa="r19"] .voa-hero-wa {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -89,7 +105,7 @@
   border-bottom: 1px solid var(--bz-border);
 }
 
-[data-theme="operative-dark"][data-garuda-voa="r19"] .voa-hero-wa__line {
+[data-product="my"][data-garuda-voa="r19"] .voa-hero-wa__line {
   margin: 0;
   flex: 1 1 14rem;
   font-family: var(--font-sans);
@@ -98,7 +114,7 @@
   color: var(--tx-secondary);
 }
 
-[data-theme="operative-dark"][data-garuda-voa="r19"] .voa-hero-wa__cta {
+[data-product="my"][data-garuda-voa="r19"] .voa-hero-wa__cta {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -121,7 +137,7 @@
 }
 
 /* The dot is the only ornament: a presence light, not a logo. */
-[data-theme="operative-dark"][data-garuda-voa="r19"] .voa-hero-wa__cta::before {
+[data-product="my"][data-garuda-voa="r19"] .voa-hero-wa__cta::before {
   content: "";
   width: 0.5rem;
   height: 0.5rem;
@@ -129,23 +145,21 @@
   background: var(--bz-green);
 }
 
-[data-theme="operative-dark"][data-garuda-voa="r19"] .voa-hero-wa__cta:hover,
-[data-theme="operative-dark"][data-garuda-voa="r19"]
-  .voa-hero-wa__cta:focus-visible {
+[data-product="my"][data-garuda-voa="r19"] .voa-hero-wa__cta:hover,
+[data-product="my"][data-garuda-voa="r19"] .voa-hero-wa__cta:focus-visible {
   background: var(--bz-green);
   color: var(--bz-elevated);
 }
 
-[data-theme="operative-dark"][data-garuda-voa="r19"]
-  .voa-hero-wa__cta:hover::before,
-[data-theme="operative-dark"][data-garuda-voa="r19"]
+[data-product="my"][data-garuda-voa="r19"] .voa-hero-wa__cta:hover::before,
+[data-product="my"][data-garuda-voa="r19"]
   .voa-hero-wa__cta:focus-visible::before {
   background: var(--bz-elevated);
 }
 
 /* Phone: the pill takes the full row rather than crowding the copy. */
 @media (max-width: 30rem) {
-  [data-theme="operative-dark"][data-garuda-voa="r19"] .voa-hero-wa__cta {
+  [data-product="my"][data-garuda-voa="r19"] .voa-hero-wa__cta {
     width: 100%;
   }
 }
@@ -168,7 +182,7 @@
  * exclusive with the other three, so the "one per viewport" half holds by
  * construction rather than by convention.
  */
-[data-theme="operative-dark"][data-garuda-voa="r19"] .voa-clock {
+[data-product="my"][data-garuda-voa="r19"] .voa-clock {
   margin: 0 0 1.75rem;
   padding: 1.25rem 1.25rem 1.25rem 1.5rem;
   border-left: 3px solid var(--bz-border);
@@ -178,35 +192,56 @@
   gap: 0.4rem;
 }
 
-[data-theme="operative-dark"][data-garuda-voa="r19"] .voa-clock--ample {
+[data-product="my"][data-garuda-voa="r19"] .voa-clock--ample {
   border-left-color: var(--state-info);
   border-left-width: 3px;
 }
 
-[data-theme="operative-dark"][data-garuda-voa="r19"] .voa-clock--soon {
+[data-product="my"][data-garuda-voa="r19"] .voa-clock--soon {
   border-left-color: var(--state-warning);
   border-left-width: 7px;
 }
 
-[data-theme="operative-dark"][data-garuda-voa="r19"] .voa-clock--today {
+/*
+ * D-day is the only state with a width of its own, and that is a daylight
+ * fact rather than a taste. On the ink ground `soon` and `today` were 2.4:1
+ * apart in luminance and 7px each: the colour carried the difference. On the
+ * paper ground the same two tokens measure 5.35:1 and 5.03:1 against it —
+ * 1.06:1 apart from EACH OTHER, which is not a difference a person reads,
+ * and is no difference at all to someone who does not separate a burnt
+ * warning brown from a mark red. Two of the four Safe Clock states collapsed
+ * into one the moment the funnel moved to daylight. Width is the axis that
+ * does not depend on hue perception, and 10px also puts the loudest rule on
+ * the most urgent day, which is the order the rest of this table already
+ * reads in (3 → 7 → 10, then back to 3 for a state that is over).
+ */
+[data-product="my"][data-garuda-voa="r19"] .voa-clock--today {
   border-left-color: var(--bz-status-mark);
-  border-left-width: 7px;
+  border-left-width: 10px;
 }
 
 /*
- * `--bz-border-hover` used to carry this state. Composited over the ground it
- * measures 1.78:1 — that is not a fourth colour, it is an absence, and the
- * PR that shipped it claimed four distinct state identities. `--tx-tertiary`
- * measures 4.19:1, clear of 1.4.11's 3:1 non-text floor with room, and reads
- * as "retired" rather than as "broken". (No literal here on purpose: this
- * file's contract test bans one anywhere, comments included.)
+ * `--bz-border-hover` used to carry this state. On the ink ground it
+ * composited to 1.78:1 — that is not a fourth colour, it is an absence, and
+ * the PR that shipped it claimed four distinct state identities. It is no
+ * better on paper, where it is the opaque R19 line-strong and measures
+ * 2.09:1: still under 1.4.11's 3:1 non-text floor, so the reason this rule
+ * does not use it survived the ground flip unchanged.
+ *
+ * `--tx-tertiary` carries it instead, and what that NAME resolves to is now
+ * ground-dependent in a way worth stating: the daylight my-block declares no
+ * `--tx-tertiary` of its own, so it arrives from the plain theme block as an
+ * alias of `--tx-secondary` and lands on the muted ink at 5.67:1 (it was
+ * 4.19:1 on the ink ground). Clear of the floor either way, and it still
+ * reads as "retired" rather than as "broken". (No literal here on purpose:
+ * this file's contract test bans one anywhere, comments included.)
  */
-[data-theme="operative-dark"][data-garuda-voa="r19"] .voa-clock--passed {
+[data-product="my"][data-garuda-voa="r19"] .voa-clock--passed {
   border-left-color: var(--tx-tertiary);
   border-left-width: 3px;
 }
 
-[data-theme="operative-dark"][data-garuda-voa="r19"] .voa-clock__count {
+[data-product="my"][data-garuda-voa="r19"] .voa-clock__count {
   margin: 0;
   display: flex;
   align-items: baseline;
@@ -220,7 +255,7 @@
  * Tabular figures so the count does not reflow sideways when it crosses from
  * two digits to one at WITA midnight.
  */
-[data-theme="operative-dark"][data-garuda-voa="r19"] .voa-clock__num {
+[data-product="my"][data-garuda-voa="r19"] .voa-clock__num {
   font-family: var(--font-serif);
   font-size: clamp(3rem, 14vw, 4.5rem);
   font-weight: 450;
@@ -230,8 +265,8 @@
   color: var(--bz-data);
 }
 
-[data-theme="operative-dark"][data-garuda-voa="r19"] .voa-clock__unit,
-[data-theme="operative-dark"][data-garuda-voa="r19"] .voa-clock__word {
+[data-product="my"][data-garuda-voa="r19"] .voa-clock__unit,
+[data-product="my"][data-garuda-voa="r19"] .voa-clock__word {
   margin: 0;
   font-family: var(--font-sans);
   font-size: 1.05rem;
@@ -240,7 +275,7 @@
   color: var(--tx-pure);
 }
 
-[data-theme="operative-dark"][data-garuda-voa="r19"] .voa-clock__word--lead {
+[data-product="my"][data-garuda-voa="r19"] .voa-clock__word--lead {
   font-family: var(--font-serif);
   font-size: clamp(2.5rem, 11vw, 3.75rem);
   font-weight: 450;
@@ -249,7 +284,7 @@
   color: var(--bz-data);
 }
 
-[data-theme="operative-dark"][data-garuda-voa="r19"] .voa-clock__date {
+[data-product="my"][data-garuda-voa="r19"] .voa-clock__date {
   margin: 0;
   font-family: var(--font-sans);
   font-size: 1rem;
@@ -257,7 +292,7 @@
   color: var(--tx-pure);
 }
 
-[data-theme="operative-dark"][data-garuda-voa="r19"] .voa-clock__note {
+[data-product="my"][data-garuda-voa="r19"] .voa-clock__note {
   margin: 0.35rem 0 0;
   font-family: var(--font-sans);
   font-size: 0.9rem;
@@ -281,7 +316,7 @@
  * control on this surface would read as the primary purchase action, which
  * lives on the checkout screen and is green.
  */
-[data-theme="operative-dark"][data-garuda-voa="r19"] .voa-clock__handoff {
+[data-product="my"][data-garuda-voa="r19"] .voa-clock__handoff {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -301,9 +336,8 @@
   transition: border-color 160ms ease;
 }
 
-[data-theme="operative-dark"][data-garuda-voa="r19"] .voa-clock__handoff:hover,
-[data-theme="operative-dark"][data-garuda-voa="r19"]
-  .voa-clock__handoff:focus-visible {
+[data-product="my"][data-garuda-voa="r19"] .voa-clock__handoff:hover,
+[data-product="my"][data-garuda-voa="r19"] .voa-clock__handoff:focus-visible {
   border-color: var(--bz-accent);
   text-decoration: underline;
   text-underline-offset: 3px;
@@ -317,7 +351,7 @@
  * instead of a transition the preference cannot reach.
  */
 @media (prefers-reduced-motion: no-preference) {
-  [data-theme="operative-dark"][data-garuda-voa="r19"] .voa-clock {
+  [data-product="my"][data-garuda-voa="r19"] .voa-clock {
     animation: voa-clock-settle 260ms ease-out both;
   }
 }
@@ -346,7 +380,7 @@
  * count — R3 of the design corner: one peak per viewport, and the peak here is
  * still the number of days.
  */
-[data-theme="operative-dark"][data-garuda-voa="r19"] .voa-next {
+[data-product="my"][data-garuda-voa="r19"] .voa-next {
   margin: 2rem 0 0;
   padding-top: 1.5rem;
   border-top: 1px solid var(--bz-border);
@@ -362,7 +396,7 @@
  * this stylesheet already uses for text (the only other --tx-tertiary here is
  * a BORDER, where the floor is 3:1). The section's own guard pins both halves.
  */
-[data-theme="operative-dark"][data-garuda-voa="r19"] .voa-next__heading {
+[data-product="my"][data-garuda-voa="r19"] .voa-next__heading {
   margin: 0;
   font-family: var(--font-sans);
   font-size: 0.72rem;
@@ -372,13 +406,12 @@
   color: var(--tx-secondary);
 }
 
-[data-theme="operative-dark"][data-garuda-voa="r19"]
-  .voa-next__heading--limits {
+[data-product="my"][data-garuda-voa="r19"] .voa-next__heading--limits {
   margin-top: 1.25rem;
 }
 
-[data-theme="operative-dark"][data-garuda-voa="r19"] .voa-next__steps,
-[data-theme="operative-dark"][data-garuda-voa="r19"] .voa-next__limits {
+[data-product="my"][data-garuda-voa="r19"] .voa-next__steps,
+[data-product="my"][data-garuda-voa="r19"] .voa-next__limits {
   margin: 0;
   padding: 0;
   list-style: none;
@@ -386,7 +419,7 @@
   gap: 0.7rem;
 }
 
-[data-theme="operative-dark"][data-garuda-voa="r19"] .voa-next__step {
+[data-product="my"][data-garuda-voa="r19"] .voa-next__step {
   display: grid;
   grid-template-columns: 1.4rem minmax(0, 1fr);
   gap: 0.7rem;
@@ -396,7 +429,7 @@
   color: var(--tx-pure);
 }
 
-[data-theme="operative-dark"][data-garuda-voa="r19"] .voa-next__n {
+[data-product="my"][data-garuda-voa="r19"] .voa-next__n {
   font-family: var(--font-serif);
   font-size: 1.05rem;
   font-weight: 450;
@@ -405,7 +438,7 @@
   color: var(--bz-data);
 }
 
-[data-theme="operative-dark"][data-garuda-voa="r19"] .voa-next__limit {
+[data-product="my"][data-garuda-voa="r19"] .voa-next__limit {
   padding-left: 0.85rem;
   border-left: 2px solid var(--bz-accent);
   font-family: var(--font-sans);
@@ -427,7 +460,7 @@
  * four digits is indistinguishable from a short hex. Spell PR numbers without
  * the hash here — this rule cost one red run to learn.
  */
-[data-theme="operative-dark"][data-garuda-voa="r19"] .voa-next__ask {
+[data-product="my"][data-garuda-voa="r19"] .voa-next__ask {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -445,9 +478,8 @@
   transition: border-color 160ms ease;
 }
 
-[data-theme="operative-dark"][data-garuda-voa="r19"] .voa-next__ask:hover,
-[data-theme="operative-dark"][data-garuda-voa="r19"]
-  .voa-next__ask:focus-visible {
+[data-product="my"][data-garuda-voa="r19"] .voa-next__ask:hover,
+[data-product="my"][data-garuda-voa="r19"] .voa-next__ask:focus-visible {
   border-color: var(--bz-accent);
   text-decoration: underline;
   text-underline-offset: 3px;
@@ -482,14 +514,14 @@
  * viewport on focus, which on a 390px screen throws the rest of the form off
  * the page — the mandate's mobile-first accent, enforced by arithmetic.
  */
-[data-theme="operative-dark"][data-garuda-voa="r19"] .voa-entry {
+[data-product="my"][data-garuda-voa="r19"] .voa-entry {
   display: grid;
   gap: 0.6rem;
   margin: 1.75rem 0 0;
   max-width: 420px;
 }
 
-[data-theme="operative-dark"][data-garuda-voa="r19"] .voa-entry__heading {
+[data-product="my"][data-garuda-voa="r19"] .voa-entry__heading {
   margin: 0;
   font-family: var(--font-sans);
   font-size: 0.72rem;
@@ -499,7 +531,7 @@
   color: var(--tx-secondary);
 }
 
-[data-theme="operative-dark"][data-garuda-voa="r19"] .voa-entry__body {
+[data-product="my"][data-garuda-voa="r19"] .voa-entry__body {
   margin: 0;
   font-family: var(--font-sans);
   font-size: 0.95rem;
@@ -507,14 +539,14 @@
   color: var(--tx-pure);
 }
 
-[data-theme="operative-dark"][data-garuda-voa="r19"] .voa-entry__label {
+[data-product="my"][data-garuda-voa="r19"] .voa-entry__label {
   font-family: var(--font-sans);
   font-size: 0.95rem;
   line-height: 1.5;
   color: var(--tx-pure);
 }
 
-[data-theme="operative-dark"][data-garuda-voa="r19"] .voa-entry__input {
+[data-product="my"][data-garuda-voa="r19"] .voa-entry__input {
   min-height: 48px;
   padding: 0 0.85rem;
   border: 1px solid var(--tx-tertiary);
@@ -525,13 +557,12 @@
   font-size: 16px;
 }
 
-[data-theme="operative-dark"][data-garuda-voa="r19"]
-  .voa-entry__input:focus-visible {
+[data-product="my"][data-garuda-voa="r19"] .voa-entry__input:focus-visible {
   outline: 2px solid var(--bz-accent);
   outline-offset: 2px;
 }
 
-[data-theme="operative-dark"][data-garuda-voa="r19"] .voa-entry__submit {
+[data-product="my"][data-garuda-voa="r19"] .voa-entry__submit {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -545,12 +576,11 @@
   cursor: pointer;
 }
 
-[data-theme="operative-dark"][data-garuda-voa="r19"]
-  .voa-entry__submit[disabled] {
+[data-product="my"][data-garuda-voa="r19"] .voa-entry__submit[disabled] {
   cursor: default;
 }
 
-[data-theme="operative-dark"][data-garuda-voa="r19"] .voa-entry__status {
+[data-product="my"][data-garuda-voa="r19"] .voa-entry__status {
   margin: 0;
   font-family: var(--font-sans);
   font-size: 0.95rem;
@@ -558,7 +588,7 @@
   color: var(--tx-pure);
 }
 
-[data-theme="operative-dark"][data-garuda-voa="r19"] .voa-entry__error {
+[data-product="my"][data-garuda-voa="r19"] .voa-entry__error {
   margin: 0;
   padding-left: 0.75rem;
   border-left: 2px solid var(--bz-accent);
@@ -568,7 +598,7 @@
   color: var(--tx-pure);
 }
 
-[data-theme="operative-dark"][data-garuda-voa="r19"] .voa-entry__form {
+[data-product="my"][data-garuda-voa="r19"] .voa-entry__form {
   display: grid;
   gap: 0.6rem;
 }

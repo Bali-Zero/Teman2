@@ -134,12 +134,11 @@ function sourceOf(file: string): string {
 /**
  * LIGHT-THEME UTILITY BAN, and it is not a style preference.
  *
- * Every screen here mounts inside `visa/voa/layout.tsx`'s
- * `data-theme="operative-dark"` wrapper, ground `--bz-base` #121016. A
- * `text-gray-900` on that ground is not "slightly off palette", it is
- * invisible — measured on the PROMOTED build at 390px by sampling the painted
- * pixels (Tailwind v4 emits `oklch()`, so a naive rgb regex over the CSS reads
- * a different colour entirely and reports nothing wrong):
+ * An absolute neutral means a different thing on every ground, which is the
+ * whole case against one. The defect that produced this guard was measured on
+ * the PROMOTED build at 390px by sampling the painted pixels (Tailwind v4
+ * emits `oklch()`, so a naive rgb regex over the CSS reads a different colour
+ * entirely and reports nothing wrong), on the ink ground the funnel wore then:
  *
  *   <h1> "Upload your passport"     rgb(16,24,40) on rgb(18,16,22)  1.06:1
  *   "Can't upload a photo now? ..." rgb(54,65,83) on rgb(18,16,22)  1.83:1
@@ -150,9 +149,23 @@ function sourceOf(file: string): string {
  * ban is the cheap half that catches the class the day it is typed; the
  * computed guard remains the expensive half.
  *
- * Scoped to the LIGHT end of each neutral ramp (50-400). The dark end is not
- * banned: it is legitimate on this ground, and convicting it would be the
- * guard-over-match this file is written to avoid.
+ * WHICH END IS BANNED, and why that sentence had to be rewritten rather than
+ * re-scoped. The ban is on the LIGHT end of each ramp (50-400), and it is
+ * correct on the daylight ground `layout.tsx` mounts today: on #f7f4ee those
+ * five steps measure 1.00:1 to 2.37:1, while the dark end is the legitimate
+ * one (gray-900 is 16.17:1 there) and convicting it would be the
+ * guard-over-match this file exists to avoid.
+ *
+ * It was INVERTED on the ink ground, and the two nodes quoted above are the
+ * proof rather than an inference: both are dark-end greys (gray-900 and
+ * gray-700), so the regex below never convicted either of the defects the
+ * docblock cites — on that ground the light end measured 7.26:1 to 18.08:1
+ * and was the safe half. The ban was written pointing at the end that was
+ * innocent. Moving the funnel to daylight is what turned it right way up,
+ * which is luck and not design: a ban whose correctness depends on the
+ * ground should read the ground. It does not yet. Extending it to convict
+ * BOTH ends and acquit neither is a separate change with its own screen
+ * audit; until then this note is the ground the green stands on.
  */
 const LIGHT_NEUTRAL_RE =
   /\b(?:text|bg|border|placeholder|divide|ring|from|via|to)-(?:gray|slate|zinc|neutral|stone)-(?:50|100|200|300|400)\b/;
@@ -173,6 +186,8 @@ describe("no light-theme neutral utility on an ink-ground funnel", () => {
     ).not.toBeNull();
   });
 
+  // "This ground" is the daylight one — see the docblock above for why that
+  // qualifier is load-bearing and was not always true.
   it("INNOCENT: the dark end of the ramp is legitimate on this ground", () => {
     expect(
       lightNeutralViolation('className="bg-gray-900 text-white"'),
