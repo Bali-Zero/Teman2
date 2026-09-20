@@ -102,21 +102,46 @@ _INTEREST = re.compile(
     anthropic | claude | bedrock | vertex | litellm | openrouter
     | langchain | llamaindex | portkey | helicone | openai
     | \bllm\b | completion | chat\.completions
-    | api_key | auth_token | _TOKEN | _KEY
-    | requests\.post | httpx | urllib\.request | fetch\(
+    | api_key | auth_token | _TOKEN | _KEY | x-api-key
+    | requests | httpx | aiohttp | urllib\.request | http\.client | axios
+    | \.post\( | \.request\( | fetch\(
     """
 )
+# The HTTP clauses above were once `requests\.post` alone, which missed
+# `requests.Session().post(...)`, `requests.request("POST", ...)`, `aiohttp` and
+# `http.client`. A file pulling URL, model and credential from config produced
+# zero prefilter hits and was judged by nobody — neither the grep nor the model.
+# Widened by the kimi-code/k3 council seat's finding, 2026-09-20. Over-inclusion
+# here costs a fraction of a cent; under-inclusion costs the whole lane.
 
 SOURCE_SUFFIXES = {".py", ".ts", ".tsx", ".js", ".mjs", ".sh", ".yml", ".yaml", ".toml"}
 
-# Mirrors catE's exclusions so the two lints agree on what is in scope.
-EXCLUDE_PARTS = (".venv", "node_modules", ".git", "vendor", "examples")
+# catE does NOT use one exclusion list — it uses a DIFFERENT one per predicate:
+#   constructor grep:  .venv/ node_modules/ .git/ tests/ test_
+#   assignment  grep:  the same PLUS examples/ vendor/
+# Collapsing them into one list excluded vendor/ and examples/ from the
+# constructor predicate, which catE scans — so `vendor/runtime.py` carrying the
+# banned constructor failed catE and was dropped here before composition. Third
+# instance in this file of the same mistake: an exclusion wider than the
+# incumbent's makes the composed verdict WEAKER than the regex alone, which is
+# precisely what Rule 3 forbids. Found by the codex-gpt-5.6-sol council seat.
+EXCLUDE_PARTS_CONSTRUCTOR = (".venv", "node_modules", ".git")
+EXCLUDE_PARTS_ASSIGNMENT = (".venv", "node_modules", ".git", "vendor", "examples")
+# The driver keeps the NARROWER set: a file only the constructor predicate
+# scans must still reach the composition.
+EXCLUDE_PARTS = EXCLUDE_PARTS_CONSTRUCTOR
 # catE excludes `tests/` and a `test_` PREFIX — and nothing else. An earlier
 # version here also excluded a `_test.` SUFFIX, which hid real repo files
 # (admission_test.py, smoke_test.py) that catE does scan. Excluding more than
 # the incumbent while claiming to mirror it is drift in the UNDER-matching
 # direction. Found by an adversarial reviewer, 2026-09-20.
-EXCLUDE_TEST = re.compile(r"(^|/)tests?/|(^|/)test_")
+# `tests?/` also matched a SINGULAR `test/` directory, which catE does not
+# exclude — so `test/smoke.py` carrying the banned constructor failed catE and
+# was never even grep-checked here. That made the composed verdict WEAKER than
+# the regex alone on that path, which Rule 3 exists to make impossible. Second
+# instance of the same mistake in one file. Found by the kimi-code/k3 council
+# seat, 2026-09-20.
+EXCLUDE_TEST = re.compile(r"(^|/)tests/|(^|/)test_")
 
 # The fixture corpus for this lint is, by construction, full of banned shapes.
 # Judging it would fire on every run. It is excluded here and exercised by
@@ -295,10 +320,16 @@ def main(argv: list[str] | None = None) -> int:
 
     targets = [p for p in args.files if in_scope(p) and Path(p).is_file()]
     if not targets:
-        print("lint_paid_llm_entity: no in-scope files in this diff.")
+        if args.json:
+            print(json.dumps({"results": []}))
+        else:
+            print("lint_paid_llm_entity: no in-scope files in this diff.")
         return 0
 
-    if not available():
+    if not available() and not args.json:
+        # Never on stdout in --json mode: a diagnostic line before the object
+        # makes the output unparseable, and a caller doing json.loads() on it
+        # gets an exception instead of a verdict. Found by codex-gpt-5.6-sol.
         print(
             "lint_paid_llm_entity: TYPESAFE_API_KEY absent — entity judgment skipped, "
             "grep predicate still applied (this is the documented degrade path)."

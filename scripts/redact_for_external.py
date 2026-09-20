@@ -23,6 +23,11 @@ budget of three, and it cannot tell prose about the pattern from a use of it —
 which is the very over-match this module's caller exists to adjudicate. Writing
 the literal here would have spent a third of that budget on a docstring.
 
+The name prefix is OPTIONAL in every rule: the first version required at
+least one character before the sensitive word, so a variable literally
+called TOKEN or SECRET was not redacted at all. Found by the
+codex-gpt-5.6-sol council seat, 2026-09-20.
+
 Stdlib only — this runs in CI.
 """
 
@@ -42,13 +47,16 @@ _SECRET_LITERALS: list[re.Pattern[str]] = [
     re.compile(r"\bxox[abprs]-[A-Za-z0-9\-]{10,}"),
     re.compile(r"\beyJ[A-Za-z0-9_\-]{10,}\.[A-Za-z0-9_\-]{10,}\.[A-Za-z0-9_\-]+"),
     re.compile(r"\bfm2_[A-Za-z0-9_\-]{20,}"),
+    # AWS access key id. Its absence was noted as ironic by a council seat,
+    # since the unquoted-assignment scar that preceded it used an AWS key.
+    re.compile(r"\bAKIA[0-9A-Z]{16}\b"),
 ]
 
 # `TOKEN = "...."` / `"password": "...."` — the name says it is a credential, so
 # the value goes regardless of its shape.
 _NAMED_ASSIGNMENT = re.compile(
     r"""(?ix)
-    (?P<name>\b[A-Za-z_][A-Za-z0-9_]*
+    (?P<name>\b[A-Za-z_]?[A-Za-z0-9_]*
         (?:KEY|TOKEN|SECRET|PASSWORD|PASSWD|CREDENTIAL|DSN)\b)
     (?P<sep>\s*[:=]\s*)
     (?P<quote>['"])
@@ -64,10 +72,28 @@ _NAMED_ASSIGNMENT = re.compile(
 # class of bug this module can have, because the module IS the §4 boundary.
 _NAMED_ASSIGNMENT_BARE = re.compile(
     r"""(?ix)
-    (?P<name>\b[A-Za-z_][A-Za-z0-9_]*
+    (?P<name>\b[A-Za-z_]?[A-Za-z0-9_]*
         (?:KEY|TOKEN|SECRET|PASSWORD|PASSWD|CREDENTIAL|DSN)\b)
     (?P<sep>\s*[:=]\s*)
     (?P<value>[^\s'"#][^\s#]{3,})
+    """
+)
+
+# A JSON or dict key puts a quote between the name and the colon, so the two
+# assignment rules above — which need the name adjacent to `[:=]` — both miss
+# `{"api_key": "opaque-value"}`. An opaque value matches no literal shape
+# either, so it left verbatim. Third redaction hole found by review rather than
+# by the author. Found by the kimi-code/k3 council seat, 2026-09-20.
+_QUOTED_KEY_ASSIGNMENT = re.compile(
+    r"""(?ix)
+    (?P<open>['"])
+    (?P<name>[A-Za-z_]?[A-Za-z0-9_]*
+        (?:KEY|TOKEN|SECRET|PASSWORD|PASSWD|CREDENTIAL|DSN))
+    (?P=open)
+    (?P<sep>\s*:\s*)
+    (?P<quote>['"])
+    (?P<value>[^'"\n]{4,})
+    (?P=quote)
     """
 )
 
@@ -85,6 +111,13 @@ def redact(text: str) -> str:
     out = _DSN_CREDENTIALS.sub(r"\g<scheme><REDACTED:dsn-credentials>@", out)
     out = _NAMED_ASSIGNMENT.sub(
         lambda m: f"{m['name']}{m['sep']}{m['quote']}<REDACTED:secret>{m['quote']}", out
+    )
+    out = _QUOTED_KEY_ASSIGNMENT.sub(
+        lambda m: (
+            f"{m['open']}{m['name']}{m['open']}{m['sep']}"
+            f"{m['quote']}<REDACTED:secret>{m['quote']}"
+        ),
+        out,
     )
     out = _NAMED_ASSIGNMENT_BARE.sub(
         lambda m: f"{m['name']}{m['sep']}<REDACTED:secret>", out

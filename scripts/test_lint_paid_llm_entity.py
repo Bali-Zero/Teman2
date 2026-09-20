@@ -359,3 +359,59 @@ def test_in_scope_does_not_exclude_more_than_the_incumbent():
     assert lint.in_scope("packages/cell-core/cell_core/admission_test.py") is True
     assert lint.in_scope("apps/backend-rag/scripts/smoke_test.py") is True
     assert lint.in_scope("apps/x/tests/test_thing.py") is False
+
+
+def test_redaction_catches_a_bare_sensitive_name():
+    """`TOKEN = "..."` — the name IS the sensitive word, with no prefix.
+
+    Every rule required at least one character before KEY/TOKEN/SECRET, so a
+    variable called exactly TOKEN was not redacted at all.
+    """
+    assert "opaque-secret-val" not in redact('TOKEN = "opaque-secret-val"')
+    assert "abc12345xyz" not in redact("SECRET: abc12345xyz")
+
+
+def test_redaction_catches_a_quoted_json_key():
+    """A quote sits between the name and the colon, so both rules missed it."""
+    assert "opaque-value-123" not in redact('{"api_key": "opaque-value-123"}')
+
+
+def test_redaction_catches_an_aws_access_key_id():
+    assert "AKIAIOSFODNN7EXAMPLE" not in redact("id = AKIAIOSFODNN7EXAMPLE")
+
+
+def test_scope_matches_cate_per_predicate_not_in_aggregate():
+    """catE excludes vendor/ and examples/ from ONE of its two predicates.
+
+    Collapsing both exclusion lists into one dropped files the constructor grep
+    does scan — making the composed verdict weaker than the regex alone, the
+    one outcome Rule 3 forbids.
+    """
+    assert lint.in_scope("vendor/runtime.py") is True
+    assert lint.in_scope("examples/demo.py") is True
+    assert lint.in_scope("apps/x/.venv/lib/thing.py") is False
+
+
+def test_singular_test_dir_is_not_excluded():
+    assert lint.in_scope("test/smoke.py") is True
+    assert lint.in_scope("apps/x/tests/t.py") is False
+
+
+def test_prefilter_sees_indirect_http_clients():
+    for snippet in (
+        "s = requests.Session()\ns.post(URL, headers=H)",
+        'requests.request("POST", url, headers=h)',
+        'import axios from "axios"',
+        "import aiohttp",
+        "import http.client",
+    ):
+        assert lint.worth_asking(snippet) is True, snippet
+
+
+def test_json_mode_emits_only_json(monkeypatch, capsys):
+    """A diagnostic line before the object makes json.loads() raise."""
+    monkeypatch.delenv("TYPESAFE_API_KEY", raising=False)
+    rc = lint.main(["--json"])
+    parsed = json.loads(capsys.readouterr().out)
+    assert rc == 0
+    assert parsed == {"results": []}
