@@ -1,118 +1,103 @@
 gear: 2
-task_id: kbli-pending-cells-20260920
+task_id: kbli-explorer-copy-burial-20260920
 lane: mouth
 host: air-m5 (M5)
-branch: agent/air-m5/mouth/kbli-pending-cells-20260920
+branch: agent/air-m5/mouth/kbli-explorer-copy-burial-20260920
 gate_class: opus
 l_level: L2
 objective: >-
-  Ledger row `kbli-page-prints-unverified-licensing-values-at-full-weight`
-  (PENDING-ARMS, opened 2026-09-19 from the Gemini 3.1 Pro UX audit). The
-  key-fact grid printed risk, licence and processing in `text-sm font-semibold`
-  for a code whose licensing provenance the dataset does NOT verify, qualifying
-  it with one `text-[11px]` line BELOW the grid — while the Foreign Ownership
-  cell in the same grid REPLACED its value. MEASURED ON THE LIVE PAGES on
-  2026-09-20, not deduced from the diff: `/kbli/93114` renders "Risk Level
-  Medium-Low / License Type NIB dan Sertifikat Standar / Foreign Ownership Not
-  verified — confirm in OSS / Processing Instant" plus the 11px footnote, and
-  `/kbli/49213` renders the same shape with NO footnote at all — on a page
-  whose own Regulatory Divergence panel states the licensing "was removed
-  because its source could not be verified as applying to this activity". The
-  same census corrected the row's premise in two ways. FIRST, the grid the row
-  names (`app/kbli/[code]/page.tsx`) is NOT the surface a reader reaches: it is
-  gated on non-gold AND on `intel.whatItMeans` being absent, and all three
-  unverified-with-rows codes are gold, so they render through
-  `LicensingSection`'s `KeyFacts` — the row named the dead twin. SECOND, the
-  predicate the row proposed (`isLicensingVerificationPending`) covers only 1
-  of the 3 reachable codes: 93114 reads `pending_crosswalk`, while 49213 and
-  93191 read `detached` (rows served anyway) and were printing full-weight
-  values with no qualifier of any kind.
+  Ledger row `kbli-explorer-copy-line-shares-a-dead-code-as-a-live-listing`
+  (PENDING-ARMS, opened 2026-09-19 by the post-#6847 sweep). The explorer's
+  copy-to-clipboard string is built from `kbliApi.inspect(code)` — the very
+  endpoint `_tombstone_result` tombstones — and it is the one artifact on this
+  surface designed to travel OUT of it, into an email or a chat where none of
+  the surrounding disclosure travels along. MEASURED, not deduced: the
+  production inspect payload for 74100 (read 2026-09-20) carries
+  `licensing_status: NOT_IN_KBLI_2025`, `title: "KBLI 74100 [KBLI 2020 — tidak
+  ada dalam KBLI 2025]"`, `risk_profile: "Not applicable — code absent from
+  KBLI 2025"`, `pma_status: NOT_VERIFIED`, `licenses: []`; run through the
+  pre-cure expression it produces `KBLI 74100 — KBLI 74100 [KBLI 2020 — tidak
+  ada dalam KBLI 2025] | PMA: PMA Not Verified | Risk: Not applicable — code
+  absent from KBLI 2025 | Licenses: Not listed in our data | Sector: N/A`.
+  ONE CORRECTION TO THE ROW: it says the line "asserts a PMA verdict and a risk
+  tier beside it". It does not — both segments decline, which is why this is
+  ledgered as a comprehension defect and not a false statement. What IS wrong:
+  the code is printed twice, the tombstone suffix lands mid-sentence in
+  Indonesian, and "Not listed in our data" reads as a gap in OUR records rather
+  than as a code that cannot be registered at all. Four segments that each
+  decline to answer are a worse artifact to paste into a client's inbox than
+  one sentence that says the code is retired.
 scope:
   - >-
-    `apps/mouth/src/components/kbli/LicensingSection.tsx` — `KeyFacts` takes
-    the POSITIVE gate `isLicensingVerifiedForBareClaim` as a required
-    `rowsVerified` prop (no default: an absent provenance block must withhold,
-    and a `true` default is the fail-open shape this cure removes). The risk,
-    licence and processing cells carry the declared gap instead of the value
-    when it does not hold; the line below the grid now says WHERE the values
-    went, in the two shapes the dataset distinguishes.
+    `apps/mouth/src/lib/kbli-licence-summary.ts` — exports
+    `STATUS_RETIRED_KBLI_2020` ("NOT_IN_KBLI_2025") beside the two status
+    tokens this module already owns, so the verdict is read as an ENTITY from a
+    structured field and never as a substring of the title (cicatrix #3).
   - >-
-    `apps/mouth/src/components/kbli/LicensingQuickFacts.tsx` (new) — the
-    non-gold twin of that grid, extracted verbatim from `page.tsx` (78 lines
-    out) so it can be RENDERED in a test, with the same cure applied. It was a
-    copy of `KeyFacts` down to the comment and no test rendered it.
+    `apps/mouth/src/app/kbli-explorer/components/KBLIInspector.tsx` — new pure
+    `buildInspectorCopyLine(data)` beside the badge helpers it needs: one
+    sentence for a retired code, the existing five-segment line otherwise.
   - >-
-    `apps/mouth/src/lib/kbli-provenance.ts` — one exported constant,
-    `UNVERIFIED_LICENSING_FACT`, so the two surfaces and the PMA cell cannot
-    drift into three dialects of the same sentence.
+    `apps/mouth/src/app/kbli-explorer/page.tsx` — `handleCopy` calls the
+    builder; the inline template, and the two imports it alone needed, are
+    gone.
   - >-
-    Tests — guilt/innocence render suites for both surfaces on the three REAL
-    records (93114 pending, 49213 detached, 56101 oss_native), plus the rowless
-    null-render case; and a stale census comment in `kbli-faq.test.ts`
-    corrected (it said 93114 reads detached; it reads `pending_crosswalk`).
+    Tests — guilt/innocence on the two REAL production payloads (74100 retired,
+    56101 live), including the impostor case that a substring guard fails.
 constraints:
   - >-
-    This REVERSES a decision a prior gate round made ("one grid-level qualifier
-    instead of per-cell noise", Codex gate round 5), and says so in the code
-    comment and the PR body rather than flipping it silently. The reversal is
-    argued on the honesty rule plus the census: the gate fires on 3 of the 1,342
-    codes that serve rows, so there is no per-cell noise to avoid.
+    The RISK half of this row was blocked on the risk doctrine until #6868
+    ruled it (one derivation, `Verify at OSS` as the floor). That cure decided
+    the doctrine, and this PR applies its consequence on the travelling
+    artifact: for a code that cannot be registered there is no risk segment to
+    qualify, so the segment goes rather than gets hedged.
   - >-
-    No licensing value is HIDDEN from the client. The withheld values stay in
-    the PP28/2025 block on the same page, which states its own provenance; what
-    changes is that the skim-level grid no longer states them as fact.
-  - >-
-    The risk badge inside the PP28 block keeps its existing inline "· pending
-    verification" marker. It qualifies rather than asserts, so it is not part of
-    this cure.
-  - >-
-    Independent of the R19 ruling — this is comprehension, not style. No token,
-    spacing or layout family changes.
+    The inspector's rendered PANELS are not touched. They sit inside our
+    surface, where the tombstone description is on screen next to them; this
+    row is about the string that leaves it.
   - >-
     Mouth is Vercel: merging does NOT make this live. The git deploy lands
     STAGED and must be promoted, so the `Bites:` observation is taken on the
-    promoted production URL, never inferred from the merge.
+    promoted production URL.
 acceptance:
   - text: >-
-      GUILT, the reachable surface: WHEN a record's licensing provenance is
-      `pending_crosswalk` with rows served (93114), the KeyFacts grid SHALL
-      carry the declared gap in the risk, licence and processing cells.
+      GUILT: WHEN the inspect payload carries `licensing_status:
+      NOT_IN_KBLI_2025`, the copied line SHALL contain no `PMA:`, `Risk:`,
+      `Licenses:` or `Sector:` segment, no `[KBLI 2020` fragment, and the code
+      exactly once — and SHALL say the code is retired and cannot be registered
+      on OSS.
     probe: >-
-      npx vitest run src/components/kbli/LicensingSection.unverified-cells.test.tsx
-      -t "93114"
+      npx vitest run
+      src/app/kbli-explorer/components/KBLIInspector.copy-line.test.ts -t
+      "drops every segment"
   - text: >-
-      GUILT, the shape the ledger row did NOT cover: WHEN the rows were
-      detached by a code-number collision (49213), the same three cells SHALL
-      withhold and the line below SHALL name the collision — pre-cure this page
-      printed "Medium-High" with no qualifier at all.
+      THE VERDICT IS AN ENTITY, NOT A SPELLING: WHERE a LIVE record's title
+      merely quotes the tombstone suffix, the line SHALL stay the normal
+      five-segment one. A `title.includes("[KBLI 2020")` guard passes the guilt
+      half and fails this one.
     probe: >-
-      npx vitest run src/components/kbli/LicensingSection.unverified-cells.test.tsx
-      -t "49213"
+      npx vitest run
+      src/app/kbli-explorer/components/KBLIInspector.copy-line.test.ts -t
+      "structured status"
   - text: >-
-      INNOCENCE: WHERE the rows are OSS-RBA KBLI-2025 native (56101, and 1,339
-      of 1,559 records), every cell SHALL keep its real value and the grid SHALL
-      grow no qualifier. A cure that withheld for everyone passes the two guilt
-      halves and fails this one.
+      INNOCENCE: WHERE the code is live (56101), the line SHALL be byte-identical
+      to the expression this cure replaced — same five segments, same order.
     probe: >-
-      npx vitest run src/components/kbli/LicensingSection.unverified-cells.test.tsx
-      -t "innocence"
+      npx vitest run
+      src/app/kbli-explorer/components/KBLIInspector.copy-line.test.ts -t
+      "byte-identical"
   - text: >-
-      THE TWIN IS COVERED TOO: the extracted non-gold grid SHALL enforce the
-      same rule on the same three records, and SHALL render nothing for a code
-      with no licensing rows.
-    probe: npx vitest run src/components/kbli/LicensingQuickFacts.test.tsx
-  - text: >-
-      THE GATE IS LOAD-BEARING: neutralising it (`rowsVerified = true`, i.e.
-      pre-cure behaviour) SHALL turn the four guilt tests RED while the three
-      innocence assertions stay GREEN.
+      BOTH MUTATIONS BITE: neutralising the burial branch SHALL red the first
+      test only; replacing the entity check with a title substring SHALL red the
+      second only; innocence SHALL stay green through both.
     probe: >-
-      manual mutation, run 2026-09-20 — 4 failed / 3 passed, both files restored
-      from a `cp` backup and confirmed byte-identical with `cmp -s`
-  - text: NO REGRESSION ACROSS THE KBLI SURFACE OR THE SHARED LIBS.
-    probe: npx vitest run src/components/kbli src/lib
+      manual mutation, run 2026-09-20 — 1 failed / 2 passed each time, file
+      restored from a `cp` backup and confirmed byte-identical with `cmp -s`
+  - text: NO REGRESSION ON THE EXPLORER OR THE SHARED LIBS.
+    probe: npx vitest run src/app/kbli-explorer src/lib
 pii: none
 local_evidence: >-
-  Two anonymous GETs of public product pages (`https://balizero.com/kbli/93114`,
-  `/kbli/49213`) saved to the session scratchpad, plus reads of the public
-  KBLI canonical artifact shipped in the repo. No client data, no credentials,
-  no authenticated surface touched.
+  Two reads of the public KBLI inspect endpoint through the PII-free
+  nuzantara-knowledge MCP (codes 74100 and 56101 — a public government
+  classification, not client data). No credentials, no authenticated surface,
+  no client records touched.
