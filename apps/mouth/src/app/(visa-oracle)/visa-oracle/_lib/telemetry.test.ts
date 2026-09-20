@@ -4,10 +4,17 @@ const trackPiiFreeEvent = vi.hoisted(() => vi.fn());
 vi.mock("@/lib/analytics", () => ({ trackPiiFreeEvent }));
 
 import {
+  VISA_ORACLE_TELEMETRY_EVENTS,
   emitVisaOracleTelemetry,
   nonReversibleHash,
   resolveFrontendVersion,
 } from "./telemetry";
+
+it("registers the unmapped review-reason telemetry event", () => {
+  expect(VISA_ORACLE_TELEMETRY_EVENTS).toContain(
+    "visa_oracle_v2_review_reason_unmapped_code",
+  );
+});
 
 describe("Visa Oracle PII-free telemetry boundary", () => {
   beforeEach(() => trackPiiFreeEvent.mockReset());

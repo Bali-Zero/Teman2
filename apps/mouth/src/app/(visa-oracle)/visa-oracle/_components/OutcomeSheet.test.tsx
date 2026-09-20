@@ -28,14 +28,14 @@ const DISCLAIMER_EN = [
   "This is a private decision-support tool, not a government service.",
   "The result reflects only the facts you entered and the dated sources shown above.",
   "It is not an approval, a guarantee, or a filing.",
-  "Complex or flagged cases always go to a human — Ditjen Imigrasi decides, not this tool.",
+  "A disclosed criminal record goes to a person before any path is confirmed; an answer the signed rules cannot assess is sent to a person or routed to a consultation. Every other disclosure stays on your result as a named condition our team checks with you before submission. Ditjen Imigrasi decides, not this tool.",
 ];
 
 const DISCLAIMER_ID = [
   "Ini alat bantu keputusan privat, bukan layanan pemerintah.",
   "Hasil ini hanya mencerminkan data yang Anda masukkan dan sumber bertanggal yang ditampilkan di atas.",
   "Ini bukan persetujuan, jaminan, atau pengajuan resmi.",
-  "Kasus kompleks atau ditandai selalu diteruskan ke manusia — Ditjen Imigrasi yang memutuskan, bukan alat ini.",
+  "Catatan kriminal yang Anda ungkapkan diteruskan ke seseorang sebelum jalur mana pun dikonfirmasi; jawaban yang tidak dapat dinilai oleh aturan yang telah disahkan diteruskan ke seseorang atau diarahkan ke konsultasi. Pengungkapan lainnya tetap melekat pada hasil Anda sebagai kondisi bernama yang diperiksa tim kami bersama Anda sebelum pengajuan. Ditjen Imigrasi yang memutuskan, bukan alat ini.",
 ];
 
 const text = (en: string, id = en) => ({ en, id });
@@ -495,6 +495,72 @@ describe("OutcomeSheet — PR-O4 review causes", () => {
     );
   }
 
+  it.each([
+    [
+      "en",
+      [
+        "Why this is held",
+        "What the reviewer checks",
+        "What to prepare",
+        "How this is handled",
+      ],
+      [
+        "This result is held because you disclosed a criminal record or an ongoing case. It is one of the two disclosures the signed rules still send to a person; the other nine now stay on your result as named conditions.",
+        "A specialist reads what you disclosed against the immigration record requirements for the route you asked about, and decides whether it can be submitted as it stands.",
+        "Have the dates and the issuing authority of any court or police record ready, together with any document showing the case is closed. Send nothing here — our team tells you where each document goes.",
+        "A specialist reviews this before we confirm a path, and our team comes back to you with the timing for your case.",
+      ],
+    ],
+    [
+      "id",
+      [
+        "Mengapa hasil ini ditahan",
+        "Apa yang diperiksa peninjau",
+        "Apa yang perlu disiapkan",
+        "Bagaimana hal ini ditangani",
+      ],
+      [
+        "Hasil ini ditahan karena Anda mengungkapkan catatan kriminal atau perkara yang masih berjalan. Ini salah satu dari dua pengungkapan yang masih diteruskan ke seseorang oleh aturan yang telah disahkan; sembilan pengungkapan lainnya kini tetap melekat pada hasil Anda sebagai kondisi bernama.",
+        "Seorang spesialis membaca apa yang Anda ungkapkan terhadap persyaratan catatan keimigrasian untuk jalur yang Anda tanyakan, lalu menilai apakah berkas tersebut dapat diajukan apa adanya.",
+        "Siapkan tanggal dan instansi penerbit dari setiap catatan pengadilan atau kepolisian, beserta dokumen apa pun yang menunjukkan perkara telah ditutup. Jangan kirimkan apa pun di sini — tim kami akan memberi tahu ke mana setiap dokumen harus dikirim.",
+        "Seorang spesialis meninjau hal ini sebelum kami mengonfirmasi jalur, dan tim kami akan mengabari Anda mengenai perkiraan waktu untuk kasus Anda.",
+      ],
+    ],
+  ] as const)(
+    "renders all four criminal review elements in %s",
+    (language, labels, texts) => {
+      renderReview(["DISCLOSED_CRIMINAL_RECORD_REVIEW"], {}, {}, language);
+      labels.forEach((label) =>
+        expect(screen.getByText(label)).toBeInTheDocument(),
+      );
+      texts.forEach((value) =>
+        expect(screen.getByText(value)).toBeInTheDocument(),
+      );
+      expect(
+        document.querySelectorAll(".oracle-review-elements dt"),
+      ).toHaveLength(4);
+      expect(
+        document.querySelectorAll(".oracle-review-elements dd"),
+      ).toHaveLength(4);
+    },
+  );
+
+  it("renders no review elements for the activity-boundary hold", () => {
+    const { container } = renderReview(
+      ["DISCLOSED_ACTIVITY_BOUNDARY_REVIEW"],
+      {},
+    );
+    expect(
+      screen.getByText("Copy for DISCLOSED_ACTIVITY_BOUNDARY_REVIEW"),
+    ).toBeInTheDocument();
+    expect(
+      container.querySelectorAll(".oracle-review-elements dt"),
+    ).toHaveLength(0);
+    expect(
+      container.querySelectorAll(".oracle-review-elements dd"),
+    ).toHaveLength(0);
+  });
+
   it("names the question the visitor answered “Not sure” and edits back to it", () => {
     const onEditMissingInput = vi.fn();
     const { container } = renderReview(
@@ -825,7 +891,7 @@ describe("OutcomeSheet — D23 Second Home Studio", () => {
   });
 
   // INNOCENCE: a mixed hold (Studio + another reason) keeps the generic
-  // "always go to a human" disclaimer line unchanged.
+  // disclaimer line.
   it("keeps the generic disclaimer line when the Studio code shares the hold with another reason", () => {
     const { container } = renderReview([
       SECOND_HOME_STUDIO_REVIEW_REASON_CODE,
@@ -833,8 +899,20 @@ describe("OutcomeSheet — D23 Second Home Studio", () => {
     ]);
     const disclaimer = container.querySelector(".oracle-disclaimer");
     expect(disclaimer).toHaveTextContent(
-      "Complex or flagged cases always go to a human — Ditjen Imigrasi decides, not this tool.",
+      "A disclosed criminal record goes to a person before any path is confirmed; an answer the signed rules cannot assess is sent to a person or routed to a consultation. Every other disclosure stays on your result as a named condition our team checks with you before submission. Ditjen Imigrasi decides, not this tool.",
     );
+  });
+
+  it("removes the old human-review footer in EN and ID", () => {
+    const { container: en } = renderReview(["DISCLOSED_UNCERTAINTY_REVIEW"]);
+    expect(en.textContent).not.toContain(
+      "Complex or flagged cases always go to a human",
+    );
+    const { container: id } = renderReview(
+      ["DISCLOSED_UNCERTAINTY_REVIEW"],
+      "id",
+    );
+    expect(id.textContent).not.toContain("selalu diteruskan ke manusia");
   });
 
   // GUILT: the share text (built from the same headline VerdictReveal
@@ -891,6 +969,16 @@ describe("OutcomeSheet — conditions on the verdict", () => {
       ).toBeInTheDocument();
     },
   );
+
+  it("shows the new footer on a supported verdict with a notice", () => {
+    const outcome = outcomeFor("SUPPORTED_CANDIDATES", [CONDITION_ONE]);
+    const { container } = renderSheet("SUPPORTED_CANDIDATES", "en", {
+      outcome,
+    });
+    expect(container.textContent).toContain(
+      "A disclosed criminal record goes to a person before any path is confirmed; an answer the signed rules cannot assess is sent to a person or routed to a consultation. Every other disclosure stays on your result as a named condition our team checks with you before submission. Ditjen Imigrasi decides, not this tool.",
+    );
+  });
 
   it("renders many conditions, in order, on the same outcome", () => {
     const outcome = outcomeFor("SUPPORTED_CANDIDATES", [

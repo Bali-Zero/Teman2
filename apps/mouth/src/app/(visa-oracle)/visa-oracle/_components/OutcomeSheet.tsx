@@ -40,6 +40,7 @@ import { ACTIVITY_BOUNDARY_DECIDABLE_ANSWERS } from "../_lib/fact-mapper";
 import {
   SECOND_HOME_STUDIO_REVIEW_REASON_CODE,
   SECOND_HOME_STUDIO_URL,
+  REVIEW_REASON_ELEMENTS,
   isSecondHomeStudioOnly,
 } from "../_lib/engine-adapter";
 import {
@@ -374,6 +375,28 @@ function ReasonList({
       {reasons.map((reason) => (
         <li key={reason.code}>
           <span>{localized(reason.message, language)}</span>
+          {REVIEW_REASON_ELEMENTS[reason.code] && (
+            <dl className="oracle-review-elements">
+              {(
+                [
+                  ["rule", "outcome.review.element.rule"],
+                  ["checked", "outcome.review.element.checked"],
+                  ["prepare", "outcome.review.element.prepare"],
+                  ["handling", "outcome.review.element.handling"],
+                ] as const
+              ).map(([field, labelKey]) => (
+                <div key={field} className="oracle-review-elements__row">
+                  <dt>{translate(language, labelKey as I18nKey)}</dt>
+                  <dd>
+                    {localized(
+                      REVIEW_REASON_ELEMENTS[reason.code]![field],
+                      language,
+                    )}
+                  </dd>
+                </div>
+              ))}
+            </dl>
+          )}
           {reason.sourceIds.length > 0 && (
             <span className="oracle-reason-list__sources">
               {reason.sourceIds.map((sourceId) => {

@@ -975,7 +975,7 @@ const en = {
   "outcome.disclaimer.not_approval":
     "It is not an approval, a guarantee, or a filing.",
   "outcome.disclaimer.complex_to_human":
-    "Complex or flagged cases always go to a human — Ditjen Imigrasi decides, not this tool.",
+    "A disclosed criminal record goes to a person before any path is confirmed; an answer the signed rules cannot assess is sent to a person or routed to a consultation. Every other disclosure stays on your result as a named condition our team checks with you before submission. Ditjen Imigrasi decides, not this tool.",
   // D23 "OPTION B-STUDIO": replaces `outcome.disclaimer.complex_to_human` on
   // a Studio-only hold, which is never a human/consultant hold.
   "outcome.disclaimer.second_home_studio":
@@ -1002,6 +1002,10 @@ const en = {
   "outcome.review_group_case.title": "What a person will check about your case",
   "outcome.review_group_system.title":
     "Checks on our side, not on your answers",
+  "outcome.review.element.rule": "Why this is held",
+  "outcome.review.element.checked": "What the reviewer checks",
+  "outcome.review.element.prepare": "What to prepare",
+  "outcome.review.element.handling": "How this is handled",
   "outcome.review_cause_unsure": "You answered “Not sure” to: {{question}}",
   "outcome.review_cause_answer": "You answered “{{answer}}” to: {{question}}",
   "outcome.review_cause_edit_aria": "Edit your answer to: {{question}}",
@@ -1982,7 +1986,7 @@ const id: Record<Keys, string> = {
   "outcome.disclaimer.not_approval":
     "Ini bukan persetujuan, jaminan, atau pengajuan resmi.",
   "outcome.disclaimer.complex_to_human":
-    "Kasus kompleks atau ditandai selalu diteruskan ke manusia — Ditjen Imigrasi yang memutuskan, bukan alat ini.",
+    "Catatan kriminal yang Anda ungkapkan diteruskan ke seseorang sebelum jalur mana pun dikonfirmasi; jawaban yang tidak dapat dinilai oleh aturan yang telah disahkan diteruskan ke seseorang atau diarahkan ke konsultasi. Pengungkapan lainnya tetap melekat pada hasil Anda sebagai kondisi bernama yang diperiksa tim kami bersama Anda sebelum pengajuan. Ditjen Imigrasi yang memutuskan, bukan alat ini.",
   // Never "penahanan" (detention) for a decision hold: this is immigration copy.
   "outcome.disclaimer.second_home_studio":
     "Hasil ini berkaitan dengan angka jaminan yang Anda nyatakan, yang masih di bawah ambang batas Rumah Kedua (E33) — Second Home Studio menampilkan jalur-jalur dan angka untuk kasus Anda.",
@@ -2002,6 +2006,10 @@ const id: Record<Keys, string> = {
     "Yang akan diperiksa seseorang pada kasus Anda",
   "outcome.review_group_system.title":
     "Pemeriksaan di pihak kami, bukan pada jawaban Anda",
+  "outcome.review.element.rule": "Mengapa hasil ini ditahan",
+  "outcome.review.element.checked": "Apa yang diperiksa peninjau",
+  "outcome.review.element.prepare": "Apa yang perlu disiapkan",
+  "outcome.review.element.handling": "Bagaimana hal ini ditangani",
   "outcome.review_cause_unsure":
     "Anda menjawab “Tidak yakin” pada: {{question}}",
   "outcome.review_cause_answer":

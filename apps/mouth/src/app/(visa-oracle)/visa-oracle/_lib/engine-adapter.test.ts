@@ -9,6 +9,7 @@ vi.mock("./telemetry", () => ({ emitVisaOracleTelemetry }));
 import {
   GENERIC_NOTICE_CONDITION,
   NOTICE_CONDITION_COPY,
+  REVIEW_REASON_ELEMENTS,
   REVIEW_REASON_COPY,
   SECOND_HOME_DEPOSIT_THRESHOLD_USD,
   SECOND_HOME_PROPERTY_THRESHOLD_USD,
@@ -24,6 +25,7 @@ import {
 } from "./visa-oracle-test-fixture";
 import { translate, type I18nKey } from "./i18n";
 import { QUESTIONS, type OracleFacts } from "./tree";
+import { VisaOracleResponseError } from "./engine-response";
 
 describe("Visa Oracle authoritative outcome adapter", () => {
   it("shows each source's own dates, not the decision's evaluation clock", () => {
@@ -305,21 +307,12 @@ describe("Visa Oracle authoritative outcome adapter", () => {
     expect(outcome.reviewReasons[0].message.en).not.toContain("KITAS/KITAP");
   });
 
-  it("falls back to an honest generic sentence for an unmapped review-reason code", () => {
+  it("throws for an unmapped review-reason code outside production", () => {
     const response = makeVisaOracleResponse("HUMAN_REVIEW_REQUIRED");
     response.decision.review_reasons[0].code = "SOME_FUTURE_RULE_CODE";
-
-    const outcome = buildEngineOutcome(response);
-    expect(outcome.state).toBe("HUMAN_REVIEW_REQUIRED");
-    if (outcome.state !== "HUMAN_REVIEW_REQUIRED")
-      throw new Error("unexpected state");
-    const message = outcome.reviewReasons[0].message;
-    expect(message.en).not.toContain("SOME_FUTURE_RULE_CODE");
-    expect(message.en).not.toContain("Verified reason:");
-    expect(message.en.toLowerCase()).not.toContain(
-      "no evaluation was submitted",
+    expect(() => buildEngineOutcome(response)).toThrow(
+      new VisaOracleResponseError("RESPONSE_INVARIANT"),
     );
-    expect(message.en.toLowerCase()).toContain("judgment");
   });
 
   it("maps missing engine facts back to editable interview questions", () => {
@@ -1261,9 +1254,14 @@ describe("review reasons cover every code the current pack can emit", () => {
   // never appear in a pack's `rules[]`, so no glob over pack JSON can
   // discover them — they have to be named here, from three sources in
   // evaluate_path.py:
-  //   - `_DISCLOSED_REVIEW_REASON_CODES` (11 `DisclosedReviewFlag` entries)
+  //   - `_DISCLOSED_REVIEW_REASON_CODES` (14 `DisclosedReviewFlag` entries as
+  //     of A3-B #6960 — PAST_OVERSTAY / BLACKLIST_ENTRY /
+  //     IMMIGRATION_INVESTIGATION appended at `evaluate_path.py:1147-1149`;
+  //     each is reachable only under the `VISA_ORACLE_HOLDING_FLAGS` kill
+  //     switch and is accounted, not copied, by `HELD_ONLY_REVIEW_CODES`
+  //     below — A5-3bis, R-A5-DRIFT-CURE)
   //   - `_apply_minor_privacy_hold`'s `MINOR_GUARDIAN_PRIVACY_REVIEW`
-  //   - the decisive-source gate (`_apply_decisive_source_gate` family,
+  //   - the decisive-source authority hold (`_apply_decisive_source_authority_hold` family,
   //     ~line 1030) and the safety-critical source hold
   //     (`_apply_safety_critical_source_hold`, ~line 1136): each forces
   //     `state: HUMAN_REVIEW_REQUIRED` with its own review reasons when a
@@ -1271,7 +1269,74 @@ describe("review reasons cover every code the current pack can emit", () => {
   //     the first cut of this test — `DECISIVE_SOURCE_STALE` is proven
   //     live-emitted in research/visa/2026-08-15-gold-replay-live-post-
   //     notice-report.json (persona 9/10, "actual").
-  const PACK_INDEPENDENT_REVIEW_REASON_CODES = [
+  const EVALUATE_PATH = path.resolve(
+    HERE,
+    "../../../../../../..",
+    "apps/backend-rag/backend/services/visa_engine/evaluate_path.py",
+  );
+  const evaluatePathText = fs.readFileSync(EVALUATE_PATH, "utf-8");
+
+  function disclosedReviewReasonCodes(): string[] {
+    const start = evaluatePathText.indexOf(
+      "_DISCLOSED_REVIEW_REASON_CODES: MappingProxyType",
+    );
+    const end = evaluatePathText.indexOf("\n\n#: The nine disclosures", start);
+    if (start < 0 || end < 0) {
+      throw new Error("could not isolate _DISCLOSED_REVIEW_REASON_CODES");
+    }
+    const codes =
+      evaluatePathText
+        .slice(start, end)
+        .match(/"[A-Z][A-Z0-9_]*"/g)
+        ?.map((code) => code.slice(1, -1)) ?? [];
+    if (codes.length !== 14) {
+      throw new Error(
+        `expected 14 disclosed review codes, found ${codes.length}`,
+      );
+    }
+    return codes;
+  }
+
+  function minorPrivacyReviewCodes(): string[] {
+    const match = evaluatePathText.match(
+      /MINOR_GUARDIAN_PRIVACY_REVIEW_CODE\s*=\s*"([A-Z][A-Z0-9_]*)"/,
+    );
+    if (!match) throw new Error("could not find minor privacy review code");
+    const codes = [match[1]];
+    if (codes.length !== 1) {
+      throw new Error(`expected 1 minor privacy code, found ${codes.length}`);
+    }
+    return codes;
+  }
+
+  function sourceGateReviewCodes(): string[] {
+    const codes: string[] = [];
+    for (const functionName of [
+      "_apply_decisive_source_authority_hold",
+      "_apply_safety_critical_source_hold",
+    ]) {
+      const start = evaluatePathText.indexOf(`def ${functionName}(`);
+      const end = evaluatePathText.indexOf("\n\ndef ", start + 1);
+      if (start < 0) throw new Error(`could not find ${functionName}`);
+      const body = evaluatePathText.slice(start, end < 0 ? undefined : end);
+      const found = Array.from(
+        body.matchAll(/code\s*=\s*"([A-Z][A-Z0-9_]*)"/g),
+        (match) => match[1],
+      );
+      if (found.length !== 3) {
+        throw new Error(
+          `expected 3 source-gate codes in ${functionName}, found ${found.length}`,
+        );
+      }
+      codes.push(...found);
+    }
+    if (codes.length !== 6) {
+      throw new Error(`expected 6 source-gate codes, found ${codes.length}`);
+    }
+    return codes;
+  }
+
+  const EXPECTED_21 = [
     "CONFLICTING_IMMIGRATION_STATUS_REVIEW",
     "DECISIVE_PRIMARY_SOURCE_NOT_APPLICABLE",
     "DECISIVE_SOURCE_FRESHNESS_UNKNOWN",
@@ -1290,6 +1355,18 @@ describe("review reasons cover every code the current pack can emit", () => {
     "SAFETY_CRITICAL_PRIMARY_SOURCE_NOT_APPLICABLE",
     "SAFETY_CRITICAL_SOURCE_FRESHNESS_UNKNOWN",
     "SAFETY_CRITICAL_SOURCE_STALE",
+    // Appended by A5-3bis (R-A5-DRIFT-CURE): A3-B (#6960) added these three
+    // to `_DISCLOSED_REVIEW_REASON_CODES`. Held-only under the
+    // `VISA_ORACLE_HOLDING_FLAGS` kill switch — accounted, not copied, by
+    // `HELD_ONLY_REVIEW_CODES` below.
+    "DISCLOSED_PAST_OVERSTAY_REVIEW",
+    "DISCLOSED_BLACKLIST_ENTRY_REVIEW",
+    "DISCLOSED_IMMIGRATION_INVESTIGATION_REVIEW",
+  ];
+  const PACK_INDEPENDENT_REVIEW_REASON_CODES = [
+    ...disclosedReviewReasonCodes(),
+    ...minorPrivacyReviewCodes(),
+    ...sourceGateReviewCodes(),
   ];
 
   // Real, currently-emittable review reason codes with no copy yet (QW-4a
@@ -1309,6 +1386,31 @@ describe("review reasons cover every code the current pack can emit", () => {
   // attach to once the list emptied, so it went with it rather than sit
   // orphaned in an empty array.
   const KNOWN_UNMAPPED_REVIEW_REASON_CODES: string[] = [];
+
+  // Held-only review codes (A5-3bis, R-A5-DRIFT-CURE amendment, 2026-09-20).
+  // A3-B (#6960) released PAST_OVERSTAY / BLACKLIST_ENTRY /
+  // IMMIGRATION_INVESTIGATION as named CONDITIONS on `origin/main` — each
+  // review code below is reachable ONLY when `VISA_ORACLE_HOLDING_FLAGS`
+  // names the flag (the kill switch, measured end to end in
+  // GATE-A3B-REPORT-6960.md check 4: env unset -> condition, env set ->
+  // HUMAN_REVIEW_REQUIRED with this exact code). No visitor-facing
+  // REVIEW_REASON_COPY exists for any of them yet: the day a flag is held
+  // for real in production, its copy is a slice of its own (A3-M, which
+  // opens after this slice merges). This list is not a parking lot: an
+  // entry naming a code the derivation stops producing is "stale" below; an
+  // entry whose code gains REVIEW_REASON_COPY without being removed here is
+  // "phantom" below — the same edit that adds the copy must delete the row.
+  const HELD_ONLY_REVIEW_CODES = [
+    "DISCLOSED_PAST_OVERSTAY_REVIEW", // evaluate_path.py:1147
+    "DISCLOSED_BLACKLIST_ENTRY_REVIEW", // evaluate_path.py:1148
+    "DISCLOSED_IMMIGRATION_INVESTIGATION_REVIEW", // evaluate_path.py:1149
+  ];
+
+  it("derives and pins every backend-independent review reason by name", () => {
+    expect(PACK_INDEPENDENT_REVIEW_REASON_CODES.slice().sort()).toEqual(
+      EXPECTED_21.slice().sort(),
+    );
+  });
 
   // EMPTY SINCE THE seq-22 ACTIVATION (2026-09-16T20:16:45Z, activation_id
   // 10937ac5, payload 3d7555af…6e37). While seq-20 was in force, the eight
@@ -1368,12 +1470,20 @@ describe("review reasons cover every code the current pack can emit", () => {
     // highest signed pack is now seq-22, which emits 13 codes (the eight
     // above retired), + 18 pack-independent = 31, measured. The eight keep
     // their copy under REVIEW_REASON_COPY_KEYS_LIVE_ON_SEQ20_ONLY below.
+    //
+    // 31 -> 34 measured after A5-3bis (R-A5-DRIFT-CURE, 2026-09-20): 13 pack
+    // + 21 pack-independent (the three A3-B held-only codes joined
+    // EXPECTED_21). Floor left at 31 — it is a regression tripwire, not a
+    // pin; the three new codes are accounted by HELD_ONLY_REVIEW_CODES, not
+    // REVIEW_REASON_COPY, so they do not change what "mapped or known gap"
+    // means for this assertion.
     expect(allRealCodes.length).toBeGreaterThanOrEqual(31);
 
     const unaccounted = allRealCodes.filter(
       (code) =>
         !(code in REVIEW_REASON_COPY) &&
-        !KNOWN_UNMAPPED_REVIEW_REASON_CODES.includes(code),
+        !KNOWN_UNMAPPED_REVIEW_REASON_CODES.includes(code) &&
+        !HELD_ONLY_REVIEW_CODES.includes(code),
     );
     expect(unaccounted).toEqual([]);
   });
@@ -1443,6 +1553,154 @@ describe("review reasons cover every code the current pack can emit", () => {
       (code) => !allRealCodes.has(code),
     );
     expect(phantomEntries).toEqual([]);
+  });
+
+  it("keeps the held-only allowlist honest: every entry is a code the derivation actually produces (stale)", () => {
+    // Mirror image of the seq-20-only honesty test above, for
+    // HELD_ONLY_REVIEW_CODES instead of REVIEW_REASON_COPY_KEYS_LIVE_ON_SEQ20_ONLY:
+    // if A3-B's release is ever reverted or the flag renamed, the derivation
+    // stops producing that name and this list would be naming a code that
+    // is not derived — a dead placeholder no other assertion here would
+    // catch (it never touches REVIEW_REASON_COPY, so the ordinary stale-key
+    // test can't see it).
+    const derived = new Set(PACK_INDEPENDENT_REVIEW_REASON_CODES);
+    const staleHeldOnlyEntries = HELD_ONLY_REVIEW_CODES.filter(
+      (code) => !derived.has(code),
+    );
+    expect(staleHeldOnlyEntries).toEqual([]);
+  });
+
+  it("keeps the held-only allowlist honest: no entry there already has copy (phantom)", () => {
+    // The day a held-only code ships real visitor-facing copy, the same
+    // change that adds it to REVIEW_REASON_COPY must delete the row here —
+    // otherwise the code would be double-accounted (both mapped AND
+    // held-only), and the row would be a phantom promise of a gap that
+    // copy has already closed.
+    const phantomHeldOnlyEntries = HELD_ONLY_REVIEW_CODES.filter(
+      (code) => code in REVIEW_REASON_COPY,
+    );
+    expect(phantomHeldOnlyEntries).toEqual([]);
+  });
+
+  it("pins the held-only allowlist to exactly the three A3-B codes", () => {
+    // Cardinality by literal, not derived — a test whose expectation shrinks
+    // with the table it judges proves nothing (GATE-A2G OBS-A2g-4, the same
+    // reasoning A5-1's four-field pin uses).
+    expect(HELD_ONLY_REVIEW_CODES).toHaveLength(3);
+  });
+});
+
+describe("criminal review elements and unmapped review reasons (slice A5)", () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    emitVisaOracleTelemetry.mockReset();
+  });
+
+  const copy = REVIEW_REASON_ELEMENTS.DISCLOSED_CRIMINAL_RECORD_REVIEW!;
+  it.each([
+    [
+      "rule",
+      "This result is held because you disclosed a criminal record or an ongoing case. It is one of the two disclosures the signed rules still send to a person; the other nine now stay on your result as named conditions.",
+      "Hasil ini ditahan karena Anda mengungkapkan catatan kriminal atau perkara yang masih berjalan. Ini salah satu dari dua pengungkapan yang masih diteruskan ke seseorang oleh aturan yang telah disahkan; sembilan pengungkapan lainnya kini tetap melekat pada hasil Anda sebagai kondisi bernama.",
+    ],
+    [
+      "checked",
+      "A specialist reads what you disclosed against the immigration record requirements for the route you asked about, and decides whether it can be submitted as it stands.",
+      "Seorang spesialis membaca apa yang Anda ungkapkan terhadap persyaratan catatan keimigrasian untuk jalur yang Anda tanyakan, lalu menilai apakah berkas tersebut dapat diajukan apa adanya.",
+    ],
+    [
+      "prepare",
+      "Have the dates and the issuing authority of any court or police record ready, together with any document showing the case is closed. Send nothing here — our team tells you where each document goes.",
+      "Siapkan tanggal dan instansi penerbit dari setiap catatan pengadilan atau kepolisian, beserta dokumen apa pun yang menunjukkan perkara telah ditutup. Jangan kirimkan apa pun di sini — tim kami akan memberi tahu ke mana setiap dokumen harus dikirim.",
+    ],
+    [
+      "handling",
+      "A specialist reviews this before we confirm a path, and our team comes back to you with the timing for your case.",
+      "Seorang spesialis meninjau hal ini sebelum kami mengonfirmasi jalur, dan tim kami akan mengabari Anda mengenai perkiraan waktu untuk kasus Anda.",
+    ],
+  ] as const)("pins %s in EN and ID", (field, en, id) => {
+    expect(copy[field]).toEqual({ en, id });
+  });
+
+  it("has exactly four criminal review element fields and exact labels", () => {
+    expect(Object.keys(copy)).toHaveLength(4);
+    expect(translate("en", "outcome.review.element.rule" as I18nKey)).toBe(
+      "Why this is held",
+    );
+    expect(translate("en", "outcome.review.element.checked" as I18nKey)).toBe(
+      "What the reviewer checks",
+    );
+    expect(translate("en", "outcome.review.element.prepare" as I18nKey)).toBe(
+      "What to prepare",
+    );
+    expect(translate("en", "outcome.review.element.handling" as I18nKey)).toBe(
+      "How this is handled",
+    );
+    expect(translate("id", "outcome.review.element.rule" as I18nKey)).toBe(
+      "Mengapa hasil ini ditahan",
+    );
+    expect(translate("id", "outcome.review.element.checked" as I18nKey)).toBe(
+      "Apa yang diperiksa peninjau",
+    );
+    expect(translate("id", "outcome.review.element.prepare" as I18nKey)).toBe(
+      "Apa yang perlu disiapkan",
+    );
+    expect(translate("id", "outcome.review.element.handling" as I18nKey)).toBe(
+      "Bagaimana hal ini ditangani",
+    );
+  });
+
+  it("keeps the activity-boundary hold as a single sentence without elements", () => {
+    const response = makeVisaOracleResponse("HUMAN_REVIEW_REQUIRED");
+    response.decision.review_reasons[0].code =
+      "DISCLOSED_ACTIVITY_BOUNDARY_REVIEW";
+    const outcome = buildEngineOutcome(response);
+    if (outcome.state !== "HUMAN_REVIEW_REQUIRED")
+      throw new Error("unexpected state");
+    expect(outcome.reviewReasons).toHaveLength(1);
+    expect(outcome.reviewReasons[0].message).toEqual({
+      en: "One of your answers about your planned activity, investment vehicle, retirement basis, or diaspora connection is not one the signed rules can decide on their own, so a person needs to confirm it before a path can be confirmed.",
+      id: "Salah satu jawaban Anda mengenai aktivitas yang direncanakan, kendaraan investasi, dasar pensiun, atau hubungan diaspora bukan jawaban yang dapat diputuskan sendiri oleh aturan yang telah disahkan, sehingga memerlukan konfirmasi oleh seseorang sebelum jalur dapat dipastikan.",
+    });
+    expect(
+      REVIEW_REASON_ELEMENTS.DISCLOSED_ACTIVITY_BOUNDARY_REVIEW,
+    ).toBeUndefined();
+  });
+
+  // This throw cannot fire in playwright.config.ts's e2e run because that
+  // runs a production build (NODE_ENV === "production").
+  it("throws for an unmapped review reason outside production (GUILT-a)", () => {
+    const response = makeVisaOracleResponse("HUMAN_REVIEW_REQUIRED");
+    response.decision.review_reasons[0].code = "NOT_A_REAL_REVIEW_CODE";
+    expect(() => buildEngineOutcome(response)).toThrow(
+      new VisaOracleResponseError("RESPONSE_INVARIANT"),
+    );
+  });
+
+  it("falls back to generic copy and reports one unmapped review code in production (GUILT-b)", () => {
+    vi.stubEnv("NODE_ENV", "production");
+    const code = "ANOTHER_NOT_REAL_REVIEW_CODE";
+    const first = makeVisaOracleResponse("HUMAN_REVIEW_REQUIRED");
+    first.decision.review_reasons[0].code = code;
+    const second = makeVisaOracleResponse("HUMAN_REVIEW_REQUIRED");
+    second.decision.review_reasons[0].code = code;
+    const firstOutcome = buildEngineOutcome(first);
+    if (firstOutcome.state !== "HUMAN_REVIEW_REQUIRED")
+      throw new Error("unexpected state");
+    const secondOutcome = buildEngineOutcome(second);
+    if (secondOutcome.state !== "HUMAN_REVIEW_REQUIRED")
+      throw new Error("unexpected state");
+    expect(firstOutcome.reviewReasons[0].message.en).toBe(
+      "Some of your answers need a person's judgment before we can confirm a path.",
+    );
+    expect(secondOutcome.reviewReasons[0].message.en).toBe(
+      "Some of your answers need a person's judgment before we can confirm a path.",
+    );
+    expect(emitVisaOracleTelemetry).toHaveBeenCalledTimes(1);
+    expect(emitVisaOracleTelemetry).toHaveBeenCalledWith({
+      event: "visa_oracle_v2_review_reason_unmapped_code",
+      code,
+    });
   });
 });
 
@@ -1937,6 +2195,63 @@ describe("notices render as named conditions (slice A2)", () => {
   it("innocence: all 28 shipped strings pass the scan clean", () => {
     const hits = scanConditionsBlock();
     expect(hits, JSON.stringify(hits)).toEqual([]);
+  });
+
+  function a5EntryBuilder(): ConditionsBlockEntry[] {
+    const entries: ConditionsBlockEntry[] = [];
+    const elements = REVIEW_REASON_ELEMENTS.DISCLOSED_CRIMINAL_RECORD_REVIEW!;
+    for (const field of ["rule", "checked", "prepare", "handling"] as const) {
+      entries.push({
+        key: `DISCLOSED_CRIMINAL_RECORD_REVIEW.${field}`,
+        language: "en",
+        text: elements[field].en,
+      });
+      entries.push({
+        key: `DISCLOSED_CRIMINAL_RECORD_REVIEW.${field}`,
+        language: "id",
+        text: elements[field].id,
+      });
+    }
+    for (const language of ["en", "id"] as const) {
+      entries.push({
+        key: "outcome.disclaimer.complex_to_human",
+        language,
+        text: translate(
+          language,
+          "outcome.disclaimer.complex_to_human" as I18nKey,
+        ),
+      });
+    }
+    for (const key of [
+      "outcome.review.element.rule",
+      "outcome.review.element.checked",
+      "outcome.review.element.prepare",
+      "outcome.review.element.handling",
+    ] as const) {
+      entries.push({
+        key,
+        language: "en",
+        text: translate("en", key as I18nKey),
+      });
+      entries.push({
+        key,
+        language: "id",
+        text: translate("id", key as I18nKey),
+      });
+    }
+    return entries;
+  }
+
+  it("pins and scans all 18 A5 strings", () => {
+    const entries = a5EntryBuilder();
+    expect(entries).toHaveLength(18);
+    expect(entries.filter((entry) => findBannedPattern(entry.text))).toEqual(
+      [],
+    );
+  });
+
+  it("a5 scan innocence: the matcher catches a certainty phrase", () => {
+    expect(findBannedPattern("does not change the result")).toBeDefined();
   });
 
   // G2/G3 — the property test enumerates the FULL 11×4×6 EN product (264

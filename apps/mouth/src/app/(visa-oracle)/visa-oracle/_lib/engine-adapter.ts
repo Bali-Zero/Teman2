@@ -1125,6 +1125,36 @@ export const REVIEW_REASON_COPY: Record<string, LocalizedText> = {
   ),
 };
 
+export interface ReviewReasonElements {
+  rule: LocalizedText;
+  checked: LocalizedText;
+  prepare: LocalizedText;
+  handling: LocalizedText;
+}
+
+export const REVIEW_REASON_ELEMENTS: Partial<
+  Record<string, ReviewReasonElements>
+> = {
+  DISCLOSED_CRIMINAL_RECORD_REVIEW: {
+    rule: text(
+      "This result is held because you disclosed a criminal record or an ongoing case. It is one of the two disclosures the signed rules still send to a person; the other nine now stay on your result as named conditions.",
+      "Hasil ini ditahan karena Anda mengungkapkan catatan kriminal atau perkara yang masih berjalan. Ini salah satu dari dua pengungkapan yang masih diteruskan ke seseorang oleh aturan yang telah disahkan; sembilan pengungkapan lainnya kini tetap melekat pada hasil Anda sebagai kondisi bernama.",
+    ),
+    checked: text(
+      "A specialist reads what you disclosed against the immigration record requirements for the route you asked about, and decides whether it can be submitted as it stands.",
+      "Seorang spesialis membaca apa yang Anda ungkapkan terhadap persyaratan catatan keimigrasian untuk jalur yang Anda tanyakan, lalu menilai apakah berkas tersebut dapat diajukan apa adanya.",
+    ),
+    prepare: text(
+      "Have the dates and the issuing authority of any court or police record ready, together with any document showing the case is closed. Send nothing here — our team tells you where each document goes.",
+      "Siapkan tanggal dan instansi penerbit dari setiap catatan pengadilan atau kepolisian, beserta dokumen apa pun yang menunjukkan perkara telah ditutup. Jangan kirimkan apa pun di sini — tim kami akan memberi tahu ke mana setiap dokumen harus dikirim.",
+    ),
+    handling: text(
+      "A specialist reviews this before we confirm a path, and our team comes back to you with the timing for your case.",
+      "Seorang spesialis meninjau hal ini sebelum kami mengonfirmasi jalur, dan tim kami akan mengabari Anda mengenai perkiraan waktu untuk kasus Anda.",
+    ),
+  },
+};
+
 const GENERIC_REVIEW_REASON: LocalizedText = text(
   "Some of your answers need a person's judgment before we can confirm a path.",
   "Beberapa jawaban Anda memerlukan penilaian dari seseorang sebelum kami dapat mengonfirmasi jalur.",
@@ -1147,10 +1177,22 @@ function reviewReason(
   sourceIds: readonly string[],
   trustedIds: ReadonlySet<string>,
 ): OutcomeReason {
-  const message = REVIEW_REASON_COPY[code] ?? GENERIC_REVIEW_REASON;
+  const message = REVIEW_REASON_COPY[code];
+  if (message === undefined) {
+    if (process.env.NODE_ENV !== "production") {
+      throw new VisaOracleResponseError("RESPONSE_INVARIANT");
+    }
+    if (!emittedUnmappedReviewReasonCodes.has(code)) {
+      emittedUnmappedReviewReasonCodes.add(code);
+      emitVisaOracleTelemetry({
+        event: "visa_oracle_v2_review_reason_unmapped_code",
+        code,
+      });
+    }
+  }
   return {
     code,
-    message,
+    message: message ?? GENERIC_REVIEW_REASON,
     sourceIds: sourceIds.filter((id) => trustedIds.has(id)),
   };
 }
@@ -1227,6 +1269,7 @@ export const GENERIC_NOTICE_CONDITION: LocalizedText = text(
  * per unmapped code, never once per render. Module-scoped by design — the
  * gap is in this table, not in one particular decision. */
 const reportedUnmappedNoticeCodes = new Set<string>();
+const emittedUnmappedReviewReasonCodes = new Set<string>();
 
 /**
  * `notices[]` → a named condition (N1-N3). A code missing from

@@ -19,6 +19,9 @@ export const VISA_ORACLE_TELEMETRY_EVENTS = [
   // itself is a fixed system identifier (the engine's `ReasonCode` open
   // pattern, `models.py:95-96`), never applicant-supplied text.
   "visa_oracle_v2_notice_unmapped_code",
+  // Slice A5: a review-reason code with no dedicated copy in
+  // `engine-adapter.ts`'s `REVIEW_REASON_COPY`.
+  "visa_oracle_v2_review_reason_unmapped_code",
 ] as const;
 
 export type VisaOracleTelemetryEvent =
@@ -53,7 +56,8 @@ export interface VisaOracleTelemetry {
    */
   frontendVersion?: string;
   /**
-   * `visa_oracle_v2_notice_unmapped_code` only. A fixed system reason code
+   * `visa_oracle_v2_notice_unmapped_code` and
+   * `visa_oracle_v2_review_reason_unmapped_code`. A fixed system reason code
    * (never applicant-supplied text) — validated against the engine's own
    * `ReasonCode` pattern (`models.py:95-96`) before it leaves the closed
    * boundary below.

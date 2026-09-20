@@ -1,0 +1,111 @@
+task_id: vo-a5-review-copy
+gear: 2
+base_sha: fbdf4ecfd9
+lane: mouth
+host: air-m5 (M5)
+branch: agent/air-m5/mouth/vo-a5-review-copy
+objective: >-
+  Slice A5 (MANDATE-vo.md, 2026-09-20 — PLAN §3 row A5, criteria G1-d/G1-e;
+  F-COPY-1 verdict half): the criminal-record disclosure hold — one of the two
+  disclosures `HOLDING_DISCLOSED_FLAGS` still sends to a person
+  (`evaluate_path.py:1031-1033`; `ACTIVITY_BOUNDARY` release is a separate
+  slice, not touched here) — now carries four named elements
+  (rule/checked/prepare/handling, EN and ID) instead of one thin sentence.
+  `reviewReason()` becomes the twin of `condition()`: an unmapped code throws
+  `RESPONSE_INVARIANT` outside production and falls back to the generic
+  sentence plus a once-per-code telemetry event in production, so the generic
+  sentence can no longer silently absorb a real gap.
+  `PACK_INDEPENDENT_REVIEW_REASON_CODES` (18 codes) is DERIVED from
+  `evaluate_path.py` through three block-scoped, fail-closed extractors
+  instead of 18 hand-typed literals — a naive per-line regex would silently
+  find the wrong 11 (the parenthesised `CONFLICTING_IMMIGRATION_STATUS_REVIEW`
+  literal), and a file-wide `code="..."` regex would over-match 7 unrelated
+  outage codes (both measured false-green/false-match traps, DRAFT-SPEC-A5-1.v2
+  F22/F23). The stale "always go to a human" footer
+  (`outcome.disclaimer.complex_to_human`) is replaced on all five outcome
+  states with a sentence that stays true after the later `ACTIVITY_BOUNDARY`
+  release. A5's own new strings are scanned by the existing
+  reassuring-certainty guard (`findBannedPattern`), widened without touching
+  its 28-string conditions pin.
+constraints:
+  - >-
+    Mouth-only: no file under apps/backend-rag/** is touched (that tree
+    deploys on merge; this slice reads evaluate_path.py from disk at test time
+    only, the same idiom PACKS_DIR already uses for the pack half).
+    oracle.css, LivingTree.tsx and OracleShell.tsx (Track C) are untouched.
+  - >-
+    Eight files only: _lib/engine-adapter.ts, its test, _lib/i18n.ts,
+    _lib/telemetry.ts, its test, _components/OutcomeSheet.tsx, its test,
+    e2e/visa-oracle-v2.spec.ts.
+  - >-
+    Visitor-facing copy (four elements EN+ID, four labels EN+ID, footer EN+ID)
+    is shipped VERBATIM from DRAFT-SPEC-A5-1.v2.md §2b/§2e — not rewritten by
+    the builder.
+  - >-
+    DISCLOSED_ACTIVITY_BOUNDARY_REVIEW's own copy (engine-adapter.ts:938-941)
+    stays byte-identical; A5-1's own innocence test pins that it renders with
+    no element block. The question-side lead (i18n.ts:616) is a different
+    slice's and is not touched.
+  - >-
+    The 28-string conditions guard (conditionsBlockEntries, its toHaveLength
+    pin, its innocence test, the AUX×NEG×EFFECT_VERBS families, the
+    allowlist) is reused, never edited — A5 adds a SECOND, separate
+    entry-builder over its own 18 strings.
+  - >-
+    PR ships UNARMED. The builder never calls production, not even a GET;
+    prove-live (A5-8) is the conductor's GET-only step after merge.
+appetite: { wall_clock_hours: 2 }
+acceptance:
+  - text: >-
+      The full visa-oracle vitest suite passes with the new element block,
+      the unreachable-generic-sentence guilt pair, the derived
+      PACK_INDEPENDENT_REVIEW_REASON_CODES name-pin, and the widened A5
+      copy-safety scan all included.
+    probe: "cd apps/mouth && ../../node_modules/.bin/vitest run --root . 'src/app/(visa-oracle)/visa-oracle'"
+  - text: >-
+      GUILT: PACK_INDEPENDENT_REVIEW_REASON_CODES is DERIVED and pinned by
+      NAME against the backend, closing the drift surface a hand-typed list
+      would reopen.
+    probe: 'cd apps/mouth && ../../node_modules/.bin/vitest run "src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter.test.ts" -t "derives and pins every backend-independent review reason by name"'
+  - text: >-
+      GUILT: the four criminal-record elements are pinned per field per
+      language — blanking any one field on a scratch copy reddens exactly
+      that (field, language) case, never a container-level match.
+    probe: 'cd apps/mouth && ../../node_modules/.bin/vitest run "src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter.test.ts" -t "in EN and ID"'
+  - text: >-
+      GUILT: an unmapped review-reason code throws RESPONSE_INVARIANT outside
+      production and falls back to the generic sentence with exactly one
+      telemetry event per code in production.
+    probe: 'cd apps/mouth && ../../node_modules/.bin/vitest run "src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter.test.ts" -t "criminal review elements and unmapped review reasons"'
+  - text: >-
+      GUILT: A5's own 18 new strings (4 elements × 2 languages + 2 footer +
+      8 labels) are scanned by the existing reassuring-certainty guard and
+      come back clean; the guard itself still catches a spliced certainty
+      phrase.
+    probe: 'cd apps/mouth && ../../node_modules/.bin/vitest run "src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter.test.ts" -t "pins and scans all 18 A5 strings"'
+  - text: >-
+      The two owed rendered proofs run under a real production build
+      (NODE_ENV=production, so the A5-2 dev-throw cannot fire): all four
+      criminal-record elements and labels render EN and ID, and the new
+      footer replaces the old one on a SUPPORTED_CANDIDATES verdict carrying
+      a notice.
+    probe: "cd apps/mouth && ../../node_modules/.bin/playwright test -c playwright.config.ts e2e/visa-oracle-v2.spec.ts --project=chromium"
+  - text: "tsc --noEmit exits 0 across the whole apps/mouth project."
+    probe: "cd apps/mouth && ../../node_modules/.bin/tsc --noEmit -p tsconfig.json"
+assumptions:
+  - text: >-
+      TWO disclosure flags hold on this base: CRIMINAL_RECORD and
+      ACTIVITY_BOUNDARY. Releasing ACTIVITY_BOUNDARY is a separate, later
+      slice — not this PR's.
+    status: verified
+    probe: "sed -n '1031,1033p' apps/backend-rag/backend/services/visa_engine/evaluate_path.py"
+  - text: >-
+      The MANDATE names the decisive-source-gate function
+      `_apply_decisive_source_gate`; that function does not exist on this
+      base. The function whose body actually carries the three DECISIVE_*
+      codes is `_apply_decisive_source_authority_hold`
+      (evaluate_path.py:1256); `_apply_safety_critical_source_hold`
+      (evaluate_path.py:1360) is named correctly. The derivation extractor
+      uses the verified name.
+    status: verified
+    probe: "grep -n '_apply_decisive_source_gate\\|_apply_decisive_source_authority_hold\\|_apply_safety_critical_source_hold' apps/backend-rag/backend/services/visa_engine/evaluate_path.py"
