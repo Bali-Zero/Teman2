@@ -477,7 +477,16 @@ def test_sigkill_inside_atomic_write_never_corrupts_the_target(tmp_path: Path) -
     try:
         _wait_for(ready_file)
 
-        deadline = time.monotonic() + 10.0
+        # 60s, not 10s: measured empirically on this shared multi-agent host under
+        # concurrent sibling load (`uptime` load average observed as high as 193 while
+        # other agents ran CI-equivalent work) -- even 30s intermittently missed the
+        # writer's subprocess spawn+first-write window under contention, never for a
+        # module reason (the module logic is untouched; every other timing-sensitive
+        # wait in this file already tolerates 15-30s for the same reason -- see
+        # `_wait_for`'s default and the barrier race's `proc.wait(timeout=30.0)`). The
+        # poll itself never sleeps or hangs; it only widens the window it is willing
+        # to wait inside.
+        deadline = time.monotonic() + 60.0
         tmp_hit: Path | None = None
         while time.monotonic() < deadline:
             matches = list(tmp_path.glob("report.json.*.tmp"))
