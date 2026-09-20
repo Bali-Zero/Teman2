@@ -545,32 +545,22 @@ describe("renderCoveringWalks — assessment_id is a per-walk deterministic UUID
     }
   });
 
-  it("guilt: restoring the fixed placeholder 'x' for the first walk's assessment_id fails the UUID-validity assertion, naming that walk", () => {
-    // Mirrors the pre-fix defect (ASSESSMENT_ID = "x" for every walk)
-    // without touching production code or the module under test: builds a
-    // walk array identical to RENDERED except the FIRST walk's
-    // assessment_id is forced back to the placeholder, then re-runs the
-    // exact assertion the guilt+innocence test above makes, so a real
-    // regression back to the placeholder is caught by the same check this
-    // suite already ships.
-    const corrupted = RENDERED.map((walk, index) =>
-      index === 0 ? { ...walk, assessment_id: "x" } : walk,
-    );
-    const firstBadIndex = corrupted.findIndex(
-      (walk) => !uuidValidate(walk.assessment_id),
-    );
-    expect(firstBadIndex).toBe(0);
-    expect(corrupted[firstBadIndex].label).toBe(RENDERED[0].label);
-    expect(() => {
-      for (const walk of corrupted) {
-        if (!uuidValidate(walk.assessment_id)) {
-          throw new Error(
-            `assessment_id is not a valid UUID for walk "${walk.label}": ${walk.assessment_id}`,
-          );
-        }
-      }
-    }).toThrow(
-      `assessment_id is not a valid UUID for walk "${RENDERED[0].label}"`,
-    );
+  it("guilt: the module's OWN first rendered walk names itself if assessment_id regresses to the pre-fix placeholder (GATE-B2C-REPORT-6972-6970.md OBS-C2-1)", () => {
+    // OBS-C2-1 found the previous version of this test tautological: it
+    // corrupted an array it built itself and re-implemented the assertion
+    // inline, so nothing it asserted depended on renderCoveringWalks at
+    // all — measured to stay GREEN under the real `assessmentIdFor`
+    // mutation while the guilt+innocence tests above went red. This
+    // version reads ONLY RENDERED[0] — the real, unmodified first element
+    // of renderCoveringWalks(REAL_SUBSET.walks) — so a real regression to
+    // `ASSESSMENT_ID = "x"` changes what THIS line reads, and the throw
+    // below fires naming the walk by its own label, not a hand-built one.
+    const firstWalk = RENDERED[0];
+    if (!uuidValidate(firstWalk.assessment_id)) {
+      throw new Error(
+        `assessment_id is not a valid UUID for walk "${firstWalk.label}": ${firstWalk.assessment_id}`,
+      );
+    }
+    expect(uuidValidate(firstWalk.assessment_id)).toBe(true);
   });
 });
