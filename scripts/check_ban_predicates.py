@@ -217,7 +217,7 @@ def grep_predicates(entries: list[tuple[str, int, str]]) -> list[str]:
     return findings
 
 
-def _materialise_staged(paths: list[str], root: Path) -> list[str]:
+def _materialise_staged(paths: list[str], root: Path) -> list[tuple[int, str]]:
     """Write each path's STAGED blob under `root`, keeping the relative path.
 
     Scanning the working tree instead would judge content this commit does not
@@ -227,8 +227,8 @@ def _materialise_staged(paths: list[str], root: Path) -> list[str]:
     Baseline keys stay repo-relative because the layout is reproduced.
     (kimi-code/k3, council pass on this PR.)
     """
-    written = []
-    for rel in paths:
+    written: list[tuple[int, str]] = []
+    for i, rel in enumerate(paths):
         blob = subprocess.run(
             ["git", "show", f":{rel}"], cwd=REPO_ROOT,
             capture_output=True, check=False,
@@ -238,22 +238,60 @@ def _materialise_staged(paths: list[str], root: Path) -> list[str]:
         target = root / rel
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_bytes(blob.stdout)
-        written.append(rel)
+        written.append((i, rel))
     return written
+
+
+# Skip reasons as CODES, not sentences. See the comment on the return type.
+SKIP_CAP = "cap"
+SKIP_NO_BINARY = "no-binary"
+SKIP_NO_BASELINE = "no-baseline"
+SKIP_NO_BLOB = "no-blob"
+SKIP_SCAN_ERROR = "scan-error"
+SKIP_BASELINE_UNREADABLE = "baseline-unreadable"
+SKIP_TRIAGED_UNREADABLE = "triaged-unreadable"
+SKIP_GATE_ERROR = "gate-error"
+SKIP_UNLOCATABLE = "unlocatable"
+
+_SKIP_TEXT = {
+    SKIP_CAP: "{n} staged files is over the {cap}-file cap",
+    SKIP_NO_BINARY: "detect-secrets is not installed",
+    SKIP_NO_BASELINE: "the secrets baseline is missing",
+    SKIP_NO_BLOB: "no staged blob could be read",
+    SKIP_SCAN_ERROR: "the scan ERRORED (exit {n})",
+    SKIP_BASELINE_UNREADABLE: "the baseline copy was unreadable",
+    SKIP_TRIAGED_UNREADABLE: "the triaged baseline was unreadable",
+    SKIP_GATE_ERROR: "the unaudited check ERRORED (exit {n})",
+    SKIP_UNLOCATABLE: "residue was reported but could not be located",
+}
 
 
 def detect_secrets_predicate(
     paths: list[str], from_index: bool
-) -> tuple[list[str], str | None]:
-    """(findings, skip-reason). Mirrors security.yml's diff-scoped job."""
+) -> tuple[list[tuple[int, int]], tuple[str, int] | None]:
+    """((index into `paths`, line number), (skip code, detail)).
+
+    NOTHING THIS RETURNS IS A STRING, and that is the whole point. An earlier
+    version returned sentences built next to `BASELINE.read_text()`, and
+    CodeQL called it py/clear-text-logging-sensitive-data — twice, high, on
+    PR #6943 — because text read out of a secrets scan reached a terminal.
+    Cutting the scanner's stdout out of the path was not enough: anything
+    assembled in this scope is downstream of that read.
+
+    So the caller gets two integers and a code from a fixed table. It looks
+    up the path in the list IT passed in and formats the message from
+    constants. There is no longer an expression here that could carry a
+    value even if someone tried. §4 is an OUTPUT boundary, and a gate that
+    reports ON secrets is the last place that should echo what it read.
+    """
     if not paths:
         return [], None
     if len(paths) > SCAN_CAP:
-        return [], f"{len(paths)} staged files is over the {SCAN_CAP}-file cap"
+        return [], (SKIP_CAP, len(paths))
     if shutil.which("detect-secrets") is None:
-        return [], "detect-secrets is not installed"
+        return [], (SKIP_NO_BINARY, 0)
     if not BASELINE.exists():
-        return [], f"{BASELINE.name} is missing"
+        return [], (SKIP_NO_BASELINE, 0)
 
     with tempfile.TemporaryDirectory() as tmp:
         tmp_path = Path(tmp)
@@ -263,27 +301,28 @@ def detect_secrets_predicate(
         if from_index:
             tree = tmp_path / "tree"
             tree.mkdir()
-            targets = _materialise_staged(paths, tree)
+            indexed = _materialise_staged(paths, tree)
             cwd = tree
         else:
-            targets = paths
+            indexed = list(enumerate(paths))
             cwd = REPO_ROOT
-        if not targets:
-            return [], "no staged blob could be read"
+        if not indexed:
+            return [], (SKIP_NO_BLOB, 0)
+        targets = [rel for _, rel in indexed]
 
         scan = subprocess.run(
             ["detect-secrets", "scan", "--baseline", str(scratch), *targets],
             cwd=cwd, capture_output=True, text=True, errors="replace", check=False,
         )
         if scan.returncode != 0:
-            return [], f"detect-secrets scan ERRORED (exit {scan.returncode})"
+            return [], (SKIP_SCAN_ERROR, scan.returncode)
 
         # Keep only the files this commit touches, so residue someone else
         # left in the tracked baseline cannot red a stranger's commit.
         try:
             data = json.loads(scratch.read_text())
         except (OSError, json.JSONDecodeError) as exc:
-            return [], f"baseline copy unreadable ({exc.__class__.__name__})"
+            return [], (SKIP_BASELINE_UNREADABLE, 0)
         wanted = set(targets)
         data["results"] = {
             k: v for k, v in data.get("results", {}).items() if k in wanted
@@ -305,7 +344,7 @@ def detect_secrets_predicate(
         if verdict.returncode == 0:
             return [], None
         if verdict.returncode != 1:
-            return [], f"unaudited check ERRORED (exit {verdict.returncode})"
+            return [], (SKIP_GATE_ERROR, verdict.returncode)
 
         # THE VERDICT is the exit code above — one definition of "unaudited",
         # and it lives in the repo's own gate script. THE LOCATION is rebuilt
@@ -322,9 +361,9 @@ def detect_secrets_predicate(
         try:
             audited = json.loads(scratch.read_text())
         except (OSError, json.JSONDecodeError) as exc:
-            return [], f"triaged baseline unreadable ({exc.__class__.__name__})"
-        located = []
-        for rel in targets:
+            return [], (SKIP_TRIAGED_UNREADABLE, 0)
+        located: list[tuple[int, int]] = []
+        for idx, rel in indexed:
             for hit in audited.get("results", {}).get(rel, []):
                 if "is_secret" in hit:
                     continue
@@ -332,11 +371,11 @@ def detect_secrets_predicate(
                     line = int(hit.get("line_number", 0))
                 except (TypeError, ValueError):
                     line = 0
-                located.append(f"P3 detect-secrets\n     {rel}:{line}")
+                located.append((idx, line))
         if not located:
             # The gate said residue, this loop found none: report the
             # disagreement rather than a green neither half voted for.
-            return [], "unaudited residue reported but not locatable"
+            return [], (SKIP_UNLOCATABLE, 0)
     return located, None
 
 
@@ -372,8 +411,14 @@ def main() -> int:
         return 0
 
     findings = grep_predicates(entries)
-    ds_findings, skipped = detect_secrets_predicate(paths, from_index)
-    findings.extend(ds_findings)
+    located, skipped = detect_secrets_predicate(paths, from_index)
+    # The scanner half is formatted HERE, from the caller's own list and an
+    # integer — see that function's docstring for why it hands back neither.
+    findings.extend(
+        f"P3 detect-secrets\n     {paths[i]}:{line}"
+        for i, line in located
+        if 0 <= i < len(paths)
+    )
 
     if unattributed:
         # Never silent: these lines were real additions whose file this parser
@@ -387,8 +432,12 @@ def main() -> int:
         # ONE line, deliberately. This prints on every commit on a machine
         # without the scanner, and a three-line notice on every commit is
         # wallpaper within a week — which is how a warning stops being read.
+        code, detail = skipped
+        reason = _SKIP_TEXT.get(code, "the scanner half did not run").format(
+            n=detail, cap=SCAN_CAP
+        )
         print(
-            f"⚠️  [ban-predicates] scanner half NOT run ({skipped}); "
+            f"⚠️  [ban-predicates] scanner half NOT run: {reason}. "
             "CI's Detect Secrets job is the net. `pip install detect-secrets` to close it here."
         )
 

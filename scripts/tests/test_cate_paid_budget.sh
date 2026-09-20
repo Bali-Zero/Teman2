@@ -153,6 +153,21 @@ case "$OUT" in
 esac
 if [ "$RC" != "0" ]; then bad "a budget of 1 with no hits should be green (rc=$RC)"; fi
 
+# ── RATCHET: the budget on disk must stay at zero ───────────────────────────
+# Raised by the gate session on PR #6943: at budget 0 the file is an empty
+# contract, and a "temporary" line added later makes the guard tolerant again
+# in silence — nothing else in CI would say a word. This case is the noise.
+# It is NOT a claim that the budget may never rise: if you are adding a line
+# you are asking for a paid call site to be tolerated on main, and updating
+# this number is the deliberate act that says so out loud, in a diff, with a
+# reason in the PR body.
+LIVE_BUDGET=$(awk '!/^[[:space:]]*(#|$)/ {n++} END {print n+0}'     "$REPO_ROOT/.github/workflows/catE-paid-anthropic-baseline.txt")
+if [ "$LIVE_BUDGET" = "0" ]; then
+    ok "the committed budget is still 0"
+else
+    bad "the committed budget is now $LIVE_BUDGET, not 0 — if that is deliberate, say why in the PR body and update this case"
+fi
+
 echo
 echo "  passed: $PASS   failed: $FAIL"
 [ "$FAIL" -eq 0 ] || exit 1
