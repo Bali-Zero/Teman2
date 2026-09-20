@@ -1,0 +1,136 @@
+brief_ref: evidence/brief.yml
+council_run: council.jsonl
+pii_scan: clean
+plan_ref:
+  "Discovered while applying the prose spec written on PR #6935, which suspended
+  under the PR contract at a fourth red for one cause. This lands the guard half
+  of that work; the entity-lint lane follows in its own PR."
+lanes:
+  - lane: ban-guard-build
+    role: build
+    seat: claude-opus-5 (conducting session — found the phantom budget, wrote the corpora, the local gate and both fixes)
+  - lane: ban-guard-refute-kimi
+    role: review
+    seat: kimi-code/k3
+  - lane: ban-guard-refute-codex
+    role: review
+    seat: codex-gpt-5.6-sol
+diff:
+  behaviour_change:
+    The paid-constructor step keeps its shape and loses its slack. The committed budget goes
+    from 3 to 0, so any hit is red; the budget is counted by awk and range-checked, because at
+    zero the old arithmetic disarmed the comparison instead of tightening it. The assignment
+    alternative gains a word boundary, which stops it flagging a strip its own comment calls
+    allowed. Two docstrings stop spelling the pattern they describe. A new pre-commit step runs
+    the same predicates over the staged diff before the commit exists. No existing check loses
+    a verdict.
+  surface:
+    Two workflow steps added, one workflow step tightened, one budget file drained, one hook
+    step added, two docstrings rewritten, two scripts given a --baseline flag and unknown-flag
+    rejection, one new script, two new corpora. No backend, no frontend, no migration, no data,
+    no credential.
+receipts:
+  - claim: the budget corpus is green, and turns red when either defect is put back
+    cmd: bash scripts/tests/test_cate_paid_budget.sh
+    result: 'passed 8 failed 0 — covers "nine hits against an empty budget" and "budget 0 + one paid call site"; with the grep -c arithmetic re-injected, 4 of the 8 fail'
+    exit: 0
+    ts: 2026-09-20T14:32:16Z
+    seat: claude-opus-5
+  - claim: the local gate corpus is green, and four cases fail when four council defects are put back
+    cmd: python3 -m pytest scripts/tests/test_ban_predicates.py -q
+    result: "23 passed — incl. test_exclusion_reads_the_whole_output_line_exactly_as_ci_does, test_a_quoted_path_header_never_blames_the_previous_file, test_non_utf8_bytes_in_a_staged_file_do_not_crash_the_gate, test_the_scanner_judges_the_staged_blob_not_the_working_tree, test_innocence_unsetenv_is_a_strip_not_an_assignment, test_guilt_a_real_setenv_assignment_still_fires, test_a_missing_scanner_is_announced_and_never_silently_green; re-injecting three defects turns 4 red"
+    exit: 0
+    ts: 2026-09-20T14:32:16Z
+    seat: claude-opus-5
+  - claim: "the six acceptance probes run by name — test_exclusion_reads_the_whole_output_line_exactly_as_ci_does, test_a_quoted_path_header_never_blames_the_previous_file, test_non_utf8_bytes_in_a_staged_file_do_not_crash_the_gate, test_the_scanner_judges_the_staged_blob_not_the_working_tree, test_innocence_unsetenv_is_a_strip_not_an_assignment, test_a_missing_scanner_is_announced_and_never_silently_green"
+    cmd: python3 -m pytest scripts/tests/test_ban_predicates.py -q -k "<the six above, or-joined>"
+    result: "6 passed, 17 deselected"
+    exit: 0
+    ts: 2026-09-20T14:36:00Z
+    seat: claude-opus-5
+  - claim: the two detect-secrets scripts still behave for their existing callers after gaining --baseline
+    cmd: python3 -m pytest scripts/tests/test_detect_secrets_auto_triage.py -q
+    result: "121 passed; the diff-scope suite 4 passed 0 failed and the nightly-alert suite 8 passed 0 failed alongside it"
+    exit: 0
+    ts: 2026-09-20T14:32:16Z
+    seat: claude-opus-5
+  - claim: the step's own shell, extracted from the workflow, is green on this tree at a zero budget
+    cmd: bash -c "$(sed -n '/CATE40_BUDGET_BEGIN/,/CATE40_BUDGET_END/p' .github/workflows/catE-sovereignty-lint.yml | sed 's/^          //')"
+    result: "baseline=0  live_count=0 / OK no paid-constructor hit (budget 0, live 0)"
+    exit: 0
+    ts: 2026-09-20T14:32:16Z
+    seat: claude-opus-5
+  - claim: the corpus had to stop using sh, because the runner's sh has no pipefail
+    cmd: /bin/dash -c "set -uo pipefail; echo reached"
+    result: "/bin/dash 1 set Illegal option -o pipefail — the echo never ran"
+    exit: 2
+    ts: 2026-09-20T14:32:16Z
+    seat: claude-opus-5
+  - claim: the tracked baseline is untouched by everything above
+    cmd: python3 scripts/detect_secrets_check_unaudited.py
+    result: "All findings audited (8316 total)"
+    exit: 0
+    ts: 2026-09-20T14:32:16Z
+    seat: claude-opus-5
+  - claim: the hook refuses both shapes that reddened CI, before the commit exists
+    cmd: git add scripts/_tmp_probe.py && python3 scripts/check_ban_predicates.py --staged
+    result: "P1 on a docstring spelling the constructor, then P3 Secret Keyword on a quoted key in a comment; both exit 1 and both print the spec"
+    exit: 1
+    ts: 2026-09-20T14:30:00Z
+    seat: claude-opus-5
+dissent:
+  - seat: kimi-code/k3
+    objection:
+      "HIGH — a `+++` header git had quoted was not recognised, so the quoted file's added lines
+      were recorded under the PREVIOUS file in the diff. Stage a paid call site in a non-ASCII
+      filename behind an excluded neighbour and the gate judged it not at all."
+    status: CONFIRMED
+  - seat: codex-gpt-5.6-sol
+    objection:
+      "HIGH — same defect, found independently and reproduced with a two-file synthetic diff:
+      the call line came back attributed to tests/a.py and the predicates then found nothing."
+    status: CONFIRMED
+  - seat: kimi-code/k3
+    objection:
+      "HIGH — text=True decodes strictly, so one Latin-1 byte in a staged file made git diff
+      undecodable and the traceback left the hook as a hard block on an innocent commit."
+    status: CONFIRMED
+  - seat: kimi-code/k3
+    objection:
+      "HIGH — the exclusion was applied to the path, while the incumbent applies it to the whole
+      path:lineno:content output line. The local copy therefore refused lines CI allows, which
+      is the direction that gets a gate switched off."
+    status: CONFIRMED
+  - seat: kimi-code/k3
+    objection:
+      "MEDIUM — the scanner half read the working tree, so after git add -p it judged content the
+      commit does not carry, contradicting the script's own scope paragraph."
+    status: CONFIRMED
+  - seat: kimi-code/k3
+    objection:
+      "LOW — --baseline on detect_secrets_check_unaudited.py was dead: the gate re-implemented the
+      residue rule rather than calling it, leaving two definitions of unaudited."
+    status: CONFIRMED
+  - seat: codex-gpt-5.6-sol
+    objection:
+      "MEDIUM — unsetenv ends in setenv, so the assignment predicate fired on a defensive strip
+      the workflow's own comment calls allowed. Latent in CI, immediate for a pre-commit gate."
+    status: CONFIRMED
+  - seat: codex-gpt-5.6-sol
+    objection:
+      "MEDIUM — the budget corpus ran the extracted CI block under sh. On an Ubuntu runner that is
+      dash, which has no pipefail, so the corpus was exercising a shell the workflow never uses."
+    status: CONFIRMED
+  - seat: kimi-code/k3
+    objection:
+      "The grep halves inherit the incumbent exclusions verbatim, so any path or line carrying the
+      test prefix as a substring is dropped by both. CARRIED, not fixed: parity in both directions
+      is the design, and narrowing only the local copy would make it disagree with the gate it
+      mirrors."
+    status: CONFIRMED
+  - seat: claude-opus-5
+    objection:
+      "A scanner ERROR, unlike a missing binary, still fails open. It says ERROR rather than
+      skipped, but the commit proceeds. CARRIED: CI is the net, and failing closed would block
+      every commit on any scanner crash — the worse failure for a pre-commit gate."
+    status: CONFIRMED
