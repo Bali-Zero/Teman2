@@ -1083,3 +1083,80 @@ describe("control boundaries clear 1.4.11's 3:1 (mandate accent 6)", () => {
     }
   });
 });
+
+// ---------------------------------------------------------------------------
+// The accent is COPPER. Ruled by the owner 2026-09-20, and pinned here at the
+// RESOLVED value rather than at the spelling.
+//
+// `voa-no-colour-literal.guard.test.ts` already scans these screens' source
+// for a hex or a red-family utility. That catches a literal typed into a
+// component; it cannot catch a TOKEN that resolves to red or blue one `var()`
+// away — which is the shape this surface actually lives with.
+// `voa-action-style.ts`'s own docblock records it: `--accent-funnel` resolves
+// to `--color-red-500` for `[data-funnel="visa"]`, and only this stylesheet's
+// bridge has ever held that red off the funnel. A ruling that lives in a
+// selector's specificity is not a ruling, it is a coincidence with a good
+// track record.
+//
+// SCOPE, so the green is never read as more than it proves: this judges the
+// TOKENS this surface declares. It does not judge the site chrome — the
+// shared "Get Started" link paints `--cta-bg` blue on every page of the site,
+// GARUDA VOA screens included, and it is nav furniture rather than a funnel
+// component (`semantic.css` says funnel-agnostic components must not read
+// `--accent-funnel`). Changing it is a site-wide decision and not this lane's.
+// ---------------------------------------------------------------------------
+
+/** Family detectors on a resolved paint value, deliberately narrow: they
+ *  answer "is this the red family / the blue family", not "is this warm". */
+function rgbOf(colour: string): [number, number, number] {
+  return toRgb(resolveColor(colour, SURFACE_TOKENS));
+}
+const isRedFamily = ([r, g, b]: [number, number, number]) =>
+  r > 150 && g < 90 && b < 90;
+const isBlueFamily = ([r, g, b]: [number, number, number]) =>
+  b > 150 && b - r > 60 && b - g > 40;
+
+/** Named literally — a token that vanishes must fail here, not drop out. */
+const ACCENT_TOKENS = ["--bz-accent", "--state-danger"] as const;
+
+describe("the accent is copper (owner ruling 2026-09-20)", () => {
+  it.each(ACCENT_TOKENS)("%s resolves to neither red nor blue", (token) => {
+    const rgb = rgbOf(`var(${token})`);
+    expect(isRedFamily(rgb), `${token} is red: ${rgb.join(",")}`).toBe(false);
+    expect(isBlueFamily(rgb), `${token} is blue: ${rgb.join(",")}`).toBe(false);
+  });
+
+  it("--state-danger is the accent itself: danger carries a WORD here, not a hue", () => {
+    expect(resolveColor("var(--state-danger)", SURFACE_TOKENS)).toBe(
+      resolveColor("var(--bz-accent)", SURFACE_TOKENS),
+    );
+  });
+
+  /**
+   * Both detectors must be able to convict, or the rows above are decoration.
+   *
+   * These two rows pass their value as a LITERAL fallback, and that is not a
+   * shortcut — `--color-red-500` and `--cta-bg` are declared outside the block
+   * `SURFACE_TOKENS` parses, so the resolver genuinely cannot see them. The
+   * literals are the values MEASURED on production
+   * (`getComputedStyle` on a probe inside `[data-garuda-voa="r19"]`:
+   * `--color-red-500` → `rgb(255, 45, 76)`, `--cta-bg` → `rgb(58, 109, 255)`).
+   * So what these two rows prove is that the detectors convict; what says
+   * those are the live values is the measurement, not this file.
+   */
+  it("GUILTY: the red the funnel token falls back to trips the red detector", () => {
+    expect(isRedFamily(rgbOf("var(--color-red-500, #ff2d4c)"))).toBe(true);
+  });
+
+  it("GUILTY: the chrome CTA's blue trips the blue detector", () => {
+    expect(isBlueFamily(rgbOf("var(--cta-bg, #3a6dff)"))).toBe(true);
+  });
+
+  it("INNOCENT: copper and the surface ink are neither", () => {
+    for (const c of ["#c46a52", "#f7f4ee", "#121016", "#f4c430"]) {
+      const rgb = toRgb(c);
+      expect(isRedFamily(rgb), `${c} red`).toBe(false);
+      expect(isBlueFamily(rgb), `${c} blue`).toBe(false);
+    }
+  });
+});
