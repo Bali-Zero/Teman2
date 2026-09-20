@@ -90,9 +90,19 @@ from datetime import datetime, timezone
 from typing import Any, NoReturn
 
 import asyncpg
+
+# This import puts `packages/research-os-core` on `sys.path`, so it MUST precede every
+# `research_os.*` import below. `# isort: split` is what holds the order against the
+# formatter -- the same guard `naga_persistence.py` uses for the same reason. Without it
+# the sorter hoists `research_os.hashing` above the bootstrap and `python -m` on this
+# module dies with ModuleNotFoundError, a failure no test in this package can observe
+# because conftest.py performs the same insert at collection time.
+from backend.services.research_os import _core_path as _core_path
+
+# isort: split
+
 from research_os.hashing import object_hash as _object_hash
 
-from backend.services.research_os import _core_path  # noqa: F401  (sys.path bootstrap)
 from backend.services.research_os.naga_admission import admit, summarize
 
 __all__ = [
