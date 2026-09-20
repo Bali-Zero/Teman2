@@ -771,6 +771,132 @@ def test_judge_disqualifies_a_never_bullet_with_no_fc_ref(tmp_path, template, cl
     assert verdicts["kimi-k3"]["disqualified"] is True
 
 
+# --------------------------------------------------------------- judge C5: entity, not spelling, and
+# the LAST gate row decides (owner ruling 2026-09-20). First real run, 2026-09-19: 3 of 3 real
+# coaches were disqualified by C5 for form, not substance — a coach's own wording of the same
+# seat/mode, or a pre-gate row listed before the real final gate, is not a defect.
+
+def _tactics_body(*rows: str) -> str:
+    header = ("| stage | seat(s) | in-script or window | parallel/serial | round cap | "
+              "exit command | hands to next stage |")
+    return "## Tactics\n" + header + "\n" + "|---|---|---|---|---|---|---|\n" + "\n".join(rows) + "\n"
+
+
+@pytest.mark.parametrize("seat", ["opus-5", "Opus 5", "opus 5", "fresh opus-5 xhigh",
+                                    "`opus-5`", "claude-opus-5", "opus-5-xhigh"])
+def test_check_c5_accepts_an_opus_5_entity_spelled_loosely(seat):
+    body = _tactics_body(f"| gate | {seat} | window | serial | 1 | sign | done |")
+    assert dw._check_c5(body) == (True, "gate row ok")
+
+
+@pytest.mark.parametrize(
+    "seat", ["opus-4-8", "opus-50", "opus-5.5", "sonnet-5", "claude-opus-4-8", "",
+             "opus-5-1", "claude-opus-5-1"])
+def test_check_c5_still_rejects_a_seat_that_only_resembles_opus_5(seat):
+    body = _tactics_body(f"| gate | {seat} | window | serial | 1 | sign | done |")
+    assert dw._check_c5(body)[0] is False
+
+
+@pytest.mark.parametrize("mode", ["window", "Window", "window (on-disk gate)", "windows",
+                                    "two windows, post-reset"])
+def test_check_c5_accepts_a_window_mode_spelled_loosely(mode):
+    body = _tactics_body(f"| gate | opus-5 | {mode} | serial | 1 | sign | done |")
+    assert dw._check_c5(body) == (True, "gate row ok")
+
+
+@pytest.mark.parametrize("mode", ["windowless", "windowed", "batch", ""])
+def test_check_c5_still_rejects_a_mode_that_only_resembles_window(mode):
+    body = _tactics_body(f"| gate | opus-5 | {mode} | serial | 1 | sign | done |")
+    assert dw._check_c5(body)[0] is False
+
+
+def test_check_c5_lets_a_wrong_pre_gate_row_be_overruled_by_a_correct_final_gate_row():
+    body = _tactics_body("| pre-gate | sonnet-5 | in-script | serial | 1 | check | gate |",
+                          "| gate | opus-5 | window | serial | 1 | sign | done |")
+    assert dw._check_c5(body) == (True, "gate row ok")
+
+
+def test_check_c5_still_rejects_a_wrong_final_gate_row_even_with_a_fine_pre_gate_row():
+    body = _tactics_body("| pre-gate | opus-5 | window | serial | 1 | check | gate |",
+                          "| gate | sonnet-5 | in-script | serial | 1 | sign | done |")
+    assert dw._check_c5(body)[0] is False
+
+
+# ------------------------------------------------------------ judge C5: gate stage is a WORD,
+# not a substring (owner ruling 2026-09-20, scar family #3: guard-over-match). "gate" as a bare
+# substring also matches "aggregate"/"delegate"/"investigate"/"mitigate", and biting on the LAST
+# matching Tactics row means a coach's post-gate stage named "aggregate results" would silently
+# outrank the real gate row.
+
+@pytest.mark.parametrize("stage", ["gate", "Final Gate", "on-disk gate", "pre-gate", "Gate 2"])
+def test_check_c5_recognises_a_gate_stage_spelled_loosely(stage):
+    body = _tactics_body(f"| {stage} | opus-5 | window | serial | 1 | sign | done |")
+    assert dw._check_c5(body) == (True, "gate row ok")
+
+
+@pytest.mark.parametrize(
+    "stage", ["aggregate results", "delegate to r2", "investigate", "mitigate risk",
+              "gatekeeper review"])
+def test_check_c5_does_not_treat_a_gate_substring_as_a_gate_stage(stage):
+    body = _tactics_body(f"| {stage} | opus-5 | window | serial | 1 | sign | done |")
+    assert dw._check_c5(body) == (False, "no gate row in Tactics")
+
+
+def test_check_c5_is_not_fooled_by_a_later_row_whose_stage_only_contains_gate_as_a_substring():
+    body = _tactics_body(
+        "| Final Gate | opus-5 | window | serial | 1 | sign | done |",
+        "| aggregate results | sonnet-5 | in-script | serial | 1 | collate | done |")
+    assert dw._check_c5(body) == (True, "gate row ok")
+
+
+# --------------------------------------------------------------- judge C1: Never-bullet citation
+# is not a use (owner ruling 2026-09-20). The brief's own C1 text invites a coach to NAME a
+# banned entity while forbidding it ("Never route through Bedrock or Vertex (C1)") — the parent
+# code disqualified exactly that citation. A match anywhere else still disqualifies, even when
+# the same string also appears, correctly, inside a Never bullet.
+
+def test_check_c1_ignores_a_banned_entity_named_only_inside_a_never_bullet():
+    body = "## Never\n- Never route through Bedrock or Vertex (C1)\n"
+    full_text = "---\nseat: x\n---\n" + body
+    assert dw._check_c1(full_text, body) == (True, "clean")
+
+
+def test_check_c1_still_disqualifies_a_banned_entity_outside_the_never_section():
+    body = "## Tactics\nWe considered Vertex for stage 2.\n## Never\n- No paid Anthropic per-token endpoint (C1)\n"
+    full_text = "---\nseat: x\n---\n" + body
+    ok, msg = dw._check_c1(full_text, body)
+    assert ok is False
+    assert "Vertex" in msg
+
+
+def test_check_c1_disqualifies_the_same_banned_string_appearing_both_inside_and_outside_never():
+    body = ("## Tactics\nDo not use Bedrock anywhere.\n"
+            "## Never\n- Never route through Bedrock (C1)\n")
+    full_text = "---\nseat: x\n---\n" + body
+    assert dw._check_c1(full_text, body)[0] is False
+
+
+def test_check_c1_disqualifies_a_bullet_byte_identical_to_a_never_bullet_but_living_outside_it():
+    """Forgiveness is by POSITION, not by line text — a bullet under `## First move` that
+    happens to read exactly like the `## Never` bullet is a USE (it names the entity outside the
+    section that exempts naming it), and must not be forgiven just because the two lines match."""
+    body = ("## Never\n- Never route through Bedrock (C1)\n"
+            "## First move\n- Never route through Bedrock (C1)\n")
+    full_text = "---\nseat: x\n---\n" + body
+    assert dw._check_c1(full_text, body)[0] is False
+
+
+def test_check_c1_disqualifies_a_banned_entity_in_the_frontmatter_even_when_never_cites_it_too():
+    """The frontmatter is never a `## Never` bullet — it has no headings at all — so a match
+    there always disqualifies, regardless of whether the same entity is also correctly cited
+    under `## Never` further down."""
+    body = "## Never\n- Never route through Bedrock (C1)\n"
+    full_text = "---\nseat: x\nfacts_cited: mentions Bedrock in scope\n---\n" + body
+    ok, msg = dw._check_c1(full_text, body)
+    assert ok is False
+    assert "Bedrock" in msg
+
+
 # --------------------------------------------------------------- judge vs the markdown separator row
 # First real r1 run, 2026-09-19: 3 of 3 real coaches wrote a standard markdown table with a
 # separator line after the header. _md_table_rows read that line as a data row (['---', ...])

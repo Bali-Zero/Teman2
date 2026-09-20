@@ -278,13 +278,25 @@ def _ledger_when(kit: Path, seat: str, status: str | None = None) -> datetime | 
 _FM_RE = re.compile(r"\A---\n(.*?)\n---\n", re.DOTALL)
 
 
-def _section_text(body: str, name: str) -> str:
+def _section_span(body: str, name: str) -> tuple[int, int] | None:
+    """(start, end) char offsets of section `name`'s BODY in `body` (heading line excluded,
+    next `## ` heading or end-of-string excluded) — or None if the heading is absent. The one
+    place that decides where a section starts/ends; `_section_text` and `_check_c1`'s
+    Never-bullet check both read it, so the two can never disagree about the boundary — judging
+    section membership by line TEXT instead of position would forgive a bullet identical to a
+    Never bullet even when it lives somewhere else; position is the only honest test."""
     m = re.search(rf"^##\s+{re.escape(name)}\s*$", body, re.MULTILINE)
     if not m:
-        return ""
-    rest = body[m.end():]
-    nxt = re.search(r"^##\s+", rest, re.MULTILINE)
-    return rest[:nxt.start()] if nxt else rest
+        return None
+    rest_start = m.end()
+    nxt = re.search(r"^##\s+", body[rest_start:], re.MULTILINE)
+    end = rest_start + nxt.start() if nxt else len(body)
+    return rest_start, end
+
+
+def _section_text(body: str, name: str) -> str:
+    span = _section_span(body, name)
+    return body[span[0]:span[1]] if span else ""
 
 
 _MD_SEPARATOR_CELL_RE = re.compile(r":?-{3,}:?")
@@ -1127,9 +1139,34 @@ _C1_BANNED_RE = re.compile(
 )
 
 
-def _check_c1(full_text: str) -> tuple[bool, str]:
-    m = _C1_BANNED_RE.search(full_text)
-    return (m is None), ("clean" if m is None else f"banned entity matched: {m.group(0)!r}")
+def _check_c1(full_text: str, body: str) -> tuple[bool, str]:
+    """A banned-entity match inside a `## Never` bullet is the coach CITING the ban, not USING
+    it — the brief's own C1 text invites exactly that citation ("Never route through Bedrock or
+    Vertex (C1)"), and disqualifying the coach for naming what it forbids punished the wrong
+    thing (owner ruling 2026-09-20). Forgiven by POSITION, never by line text — a bullet outside
+    `## Never` that happens to read byte-identical to a real Never bullet is still a USE, and the
+    same banned string appearing BOTH inside a Never bullet and elsewhere must still disqualify.
+    The frontmatter (`full_text` minus `body`) is judged separately and can never be a Never
+    bullet, so any match there disqualifies outright; the body is walked line by line against
+    `_section_span`'s own offsets — the SAME boundary `_section_text` uses — with no coordinate
+    shifting into `full_text`. `_C1_BANNED_RE` never matches across a newline (no DOTALL), so
+    per-line judging changes nothing about what counts as a match — only which matches are
+    forgiven."""
+    front = full_text[:len(full_text) - len(body)]
+    m = _C1_BANNED_RE.search(front)
+    if m:
+        return False, f"banned entity matched: {m.group(0)!r}"
+    never_span = _section_span(body, "Never")
+    offset = 0
+    for ln in body.splitlines(keepends=True):
+        stripped = ln.rstrip("\n")
+        m = _C1_BANNED_RE.search(stripped)
+        if m:
+            in_never = never_span is not None and never_span[0] <= offset < never_span[1]
+            if not (in_never and stripped.strip().startswith("-")):
+                return False, f"banned entity matched: {m.group(0)!r}"
+        offset += len(ln)
+    return True, "clean"
 
 
 def _md_table_rows(body: str, section: str) -> list[list[str]]:
@@ -1138,16 +1175,47 @@ def _md_table_rows(body: str, section: str) -> list[list[str]]:
     return [[c.strip() for c in ln.strip().strip("|").split("|")] for ln in data_lines]
 
 
+# Entity, not a spelling (scar family #3: over/under-match are symmetric). `\bopus[\s-]+5`
+# accepts "opus-5", "Opus 5", "opus 5", inside `fresh opus-5 xhigh` or backticks — anything with
+# a word boundary before "opus" and one of hyphen/space between the two tokens. The negative
+# lookahead blocks a longer entity wearing opus-5 as a prefix: "opus-50" (digit follows),
+# "opus-5.5" (dot follows) must still fail — and so must "opus-5-1"/"claude-opus-5-1", the
+# vendor's own model-suffix shape (it also names models "fable-5-1"), hence the extra `-\d`
+# branch; "opus-5-xhigh"/"opus-5 xhigh"/"claude-opus-5" (nothing, or a non-digit, after the
+# hyphen) must still pass. "opus-4-8"/"sonnet-5"/"claude-opus-4-8" never match the literal
+# "opus"+"5" pair at all.
+_C5_SEAT_ENTITY_RE = re.compile(r"\bopus[\s-]+5(?![\w.]|-\d)", re.IGNORECASE)
+# "window(s)" as a whole word: "window (on-disk gate)" and a real coach's own plural ("two
+# windows, post-reset") both pass; "windowless"/"windowed" must not (no boundary right after
+# "window" when a letter follows it — "windowed" tries "window" then "ed", still a word char
+# right after, so it fails the same way "windowless" does). Owner ruling 2026-09-20 is "contains
+# window", and "windowed" is not the word "window" or "windows", it is a different word wearing
+# it as a prefix — same reasoning as opus-50/opus-5.5 above for the seat cell.
+_C5_MODE_WINDOW_RE = re.compile(r"\bwindows?\b", re.IGNORECASE)
+# A stage NAMES a gate only as a whole word ("gate"/"gates", any case): "Final Gate", "on-disk
+# gate", "pre-gate" (hyphen is a non-word boundary too) all count. "aggregate results",
+# "delegate to r2", "investigate", "mitigate risk", "gatekeeper review" must NOT — a bare
+# substring match lets a coach's post-gate stage silently outrank the real gate row once the
+# LAST matching row is what decides.
+_C5_GATE_STAGE_RE = re.compile(r"\bgates?\b", re.IGNORECASE)
+
+
 def _check_c5(body: str) -> tuple[bool, str]:
+    """The LAST Tactics row whose stage names a gate decides, not the first — a coach is free to
+    list pre-gates before its final gate (owner ruling 2026-09-20; the parent code judged the
+    first such row and wrongly disqualified a coach whose real gate came later)."""
+    gate_row = None
     for row in _md_table_rows(body, "Tactics"):
         if len(row) < 3:
             continue
-        stage, seat, mode = row[0], row[1], row[2]
-        if "gate" in stage.lower():
-            if seat == "opus-5" and mode == "window":
-                return True, "gate row ok"
-            return False, f"gate row seat={seat!r} mode={mode!r}, want opus-5/window"
-    return False, "no gate row in Tactics"
+        if _C5_GATE_STAGE_RE.search(row[0]):
+            gate_row = row
+    if gate_row is None:
+        return False, "no gate row in Tactics"
+    stage, seat, mode = gate_row[0], gate_row[1], gate_row[2]
+    if _C5_SEAT_ENTITY_RE.search(seat) and _C5_MODE_WINDOW_RE.search(mode):
+        return True, "gate row ok"
+    return False, f"gate row (stage={stage!r}) seat={seat!r} mode={mode!r}, want opus-5/window"
 
 
 def _check_c8(body: str) -> tuple[bool, str]:
@@ -1175,7 +1243,7 @@ def cmd_judge(args: argparse.Namespace) -> dict[str, dict[str, object]]:
         text = _read_text_or_refuse(kit / "r1" / f"{_seat_key(seat)}.md")
         m = _FM_RE.match(text)
         body = text[m.end():] if m else text
-        c1_ok, c1_msg = _check_c1(text)
+        c1_ok, c1_msg = _check_c1(text, body)
         c5_ok, c5_msg = _check_c5(body)
         c8_ok, c8_msg = _check_c8(body)
         disq = not (c1_ok and c5_ok and c8_ok)
