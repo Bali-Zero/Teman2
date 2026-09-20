@@ -56,6 +56,7 @@ from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Any
+from urllib.parse import quote
 
 import asyncpg
 import httpx
@@ -1834,8 +1835,21 @@ class _StaffPageHandler:
         # Same tracker the customer email points to (`PaymentPaidEmailHandler.
         # _body`) — there is no separate staff-only order surface in this
         # codebase yet. If one is built, point this at it instead.
+        #
+        # A MARKDOWN LINK, NOT A BARE URL — measured in production 2026-09-20.
+        # Every order id is `ord_<token>`, and the bare URL put that underscore
+        # in the message body with `parse_mode=Markdown`: Telegram opened an
+        # italic entity there and never found its close (the only other `_` in
+        # the page sits inside a code span, which does not close one), so every
+        # send answered `400 can't parse entities: Can't find end of the entity
+        # starting at byte offset 1520` — non-retryable, five attempts spent,
+        # row 36 dead in the outbox with a real money anomaly behind it.
+        # Escaping the URL would fix the parse and break the link; inside
+        # `[label](url)` Telegram does not parse entities in the url at all,
+        # so the link stays clickable and the id stays readable in the label.
         base = os.getenv(TRACKER_BASE_URL_ENV, DEFAULT_TRACKER_BASE_URL).rstrip("/")
-        return f"{base}/{order_id}"
+        url = f"{base}/{quote(order_id, safe='')}"
+        return f"[{_escape_markdown(order_id)}]({url})"
 
 
 class StaffPageDuplicateChargeHandler(_StaffPageHandler):
