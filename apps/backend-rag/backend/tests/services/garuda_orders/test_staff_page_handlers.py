@@ -1767,3 +1767,121 @@ async def test_the_duplicate_charge_page_justifies_itself_with_the_empty_column(
     # and the two stale clauses are gone
     assert "never writes that column" not in text
     assert "LIVE payment" not in text
+
+
+# --------------------------------------------------------------------------
+# Markdown V1 — the page has to survive the parser it is posted under
+# --------------------------------------------------------------------------
+#
+# Pages go out with `parse_mode: Markdown` (`telegram_notifier.py`). Telegram
+# rejects the WHOLE message with HTTP 400 `can't parse entities` when an entity
+# opens and never closes, and every order id in this system starts `ord_` — so
+# one bare URL carrying the id was enough to make all six pages undeliverable,
+# with the row burning its five attempts against a token that was perfectly
+# valid (row 36, measured in PROD 2026-09-20). The recorder double accepts any
+# text, which is why no existing test saw it; this is the missing parser.
+
+
+def _unclosed_markdown_entity(text: str) -> str | None:
+    """Telegram Markdown V1, reduced to the rule that bites: `_` and `*` and
+    `` ` `` must close, `\\` escapes the next character, nothing inside a code
+    span is parsed, and the url half of `[text](url)` is not parsed either.
+    Returns a description of the first unclosed entity, or None.
+    """
+
+    i, n = 0, len(text)
+    open_marks: list[tuple[str, int]] = []
+    while i < n:
+        ch = text[i]
+        if ch == "\\":
+            i += 2
+            continue
+        if ch == "`":
+            close = text.find("`", i + 1)
+            if close == -1:
+                return f"code span opened at byte {i} never closes"
+            i = close + 1
+            continue
+        if ch == "[":
+            close = text.find("](", i)
+            if close == -1:
+                return f"link text opened at byte {i} never closes"
+            inner = _unclosed_markdown_entity(text[i + 1 : close])
+            if inner:
+                return f"inside link text: {inner}"
+            end = text.find(")", close + 2)
+            if end == -1:
+                return f"link url opened at byte {close} never closes"
+            i = end + 1  # the url is verbatim to the parser
+            continue
+        if ch in "_*":
+            if open_marks and open_marks[-1][0] == ch:
+                open_marks.pop()
+            else:
+                open_marks.append((ch, i))
+            i += 1
+            continue
+        i += 1
+    if open_marks:
+        mark, at = open_marks[0]
+        return f"{mark!r} opened at byte {at} never closes"
+    return None
+
+
+def _anomaly_facts(**over):
+    from backend.services.garuda_orders.outbox_handlers import OrderAnomalyFacts
+
+    base = {
+        # The shape every id in this system has: a `_` the parser will read.
+        "order_id": "ord_ujg4nDYSN4w9-jkJQsi7Tg",
+        "case_type": "charge_without_webhook",
+        "price_idr": 790_000,
+        "state": "awaiting_payment",
+        "late_case_open": True,
+        "late_case_charge_id": "ch_late_001",
+        "case_resolved_since_trigger": False,
+        "late_charge_already_refunded": False,
+        "detail": {
+            "charge_id": "ch_late_001",
+            "provider_status": "settled",
+            "second_charge_id": "ch_dup_999",
+            "outcome": "captured",
+            "customer_action": "none",
+        },
+    }
+    base.update(over)
+    return OrderAnomalyFacts(**base)
+
+
+_STAFF_PAGE_CLASSES = [
+    StaffPageChargeWithoutWebhookHandler,
+    StaffPageDuplicateChargeHandler,
+    StaffPageLatePaidAfterRefundHandler,
+    StaffPageLatePaidAfterTerminalHandler,
+    StaffPagePaymentFailureHandler,
+]
+
+
+@pytest.mark.parametrize("cls", _STAFF_PAGE_CLASSES, ids=lambda c: c.job_type)
+def test_no_staff_page_composes_an_entity_markdown_cannot_close(cls):
+    text = cls(None, None)._compose(_anomaly_facts())
+    problem = _unclosed_markdown_entity(text)
+    assert problem is None, f"{cls.job_type} would be refused by Telegram: {problem}"
+
+
+def test_the_tracker_link_keeps_the_id_readable_and_the_url_whole():
+    from backend.services.garuda_orders.outbox_handlers import _StaffPageHandler
+
+    order_id = "ord_ujg4nDYSN4w9-jkJQsi7Tg"
+    link = _StaffPageHandler._tracker_link(order_id)
+    assert _unclosed_markdown_entity(link) is None
+    # the url half stays verbatim — a staff member clicking it must land on the
+    # real order, not on an id with a backslash in it
+    assert f"({link.split('(', 1)[1].rstrip(')')})".strip("()").endswith(order_id)
+    assert "\\_" in link.split("](", 1)[0], "the visible id must be escaped"
+
+
+def test_the_guilt_this_replaces_is_a_bare_url():
+    # What the code did until 2026-09-20, kept as the thing that must stay red:
+    # a bare tracker url with an order id in it opens an italic entity.
+    assert _unclosed_markdown_entity("Order: https://tracker.example/ord_abc123-Xy") is not None

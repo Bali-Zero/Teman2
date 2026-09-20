@@ -1834,8 +1834,19 @@ class _StaffPageHandler:
         # Same tracker the customer email points to (`PaymentPaidEmailHandler.
         # _body`) — there is no separate staff-only order surface in this
         # codebase yet. If one is built, point this at it instead.
+        #
+        # A MARKDOWN LINK, NOT A BARE URL — and the difference is every staff
+        # page. Every order id starts `ord_`, the page is posted with
+        # `parse_mode: Markdown` (`telegram_notifier.py:216`), and a lone `_`
+        # outside a code span opens an italic entity Telegram then cannot
+        # close: `Bad Request: can't parse entities`, HTTP 400, non-retryable.
+        # Measured against the live API on 2026-09-20 — a bare
+        # `https://…/ord_abc123-Xy` is refused, `[ord\_abc123-Xy](https://…)`
+        # is accepted — after row 36 spent five attempts on it with a VALID
+        # token. The url inside `(...)` is not parsed for entities, so it stays
+        # verbatim and clickable; only the visible text needs escaping.
         base = os.getenv(TRACKER_BASE_URL_ENV, DEFAULT_TRACKER_BASE_URL).rstrip("/")
-        return f"{base}/{order_id}"
+        return f"[{_escape_markdown(order_id)}]({base}/{order_id})"
 
 
 class StaffPageDuplicateChargeHandler(_StaffPageHandler):
