@@ -347,7 +347,7 @@ speculative scaffold PR, and not deferred to whichever lane needs them second:
 
 ---
 
-## 8. What the adversarial pass broke
+## Adversarial review — 8. what the pass broke (codex, 3 raised, 3 survived)
 
 Codex reviewed this dossier as a non-author and landed three hits. All three are recorded here
 rather than silently patched, because the *class* of each error is more portable than the fix.
