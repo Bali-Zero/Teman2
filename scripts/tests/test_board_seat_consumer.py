@@ -234,3 +234,127 @@ def test_a_broken_row_does_not_take_the_run_down(world, monkeypatch):
     world.append(_routed("cron-fail:alpha", NOW - 3600))
     monkeypatch.setattr(bsc, "consume", lambda *a, **k: (_ for _ in ()).throw(RuntimeError("bad row")))
     assert bsc.main([]) == 0, "a launchd organ that dies stops draining and nobody notices"
+
+
+# ---- the council's findings, each pinned by the case that motivated it -------
+def test_a_job_name_that_is_a_path_never_becomes_one(world):
+    """`cron-fail:<name>` becomes a filesystem path. The key arrives from ~204
+    callers, so the name is validated instead of trusted."""
+    (world / "state").mkdir(exist_ok=True)
+    outside = world / "elsewhere.last.json"
+    outside.write_text(json.dumps({"job": "x", "ts": NOW + 10, "status": "ok"}), encoding="utf-8")
+    world.append(_routed("cron-fail:../elsewhere", NOW))
+
+    report = bsc.consume(max_rows=10, dry_run=False)
+
+    assert report["resolved"] == []
+    assert "refusing to build a path" in report["left"][0]["detail"]
+
+
+def test_a_state_ts_that_is_not_epoch_seconds_is_refused(world):
+    """ts_epoch reads a naive ISO string as UTC. In WITA that is 8h in the
+    future — enough to close a row whose run PRECEDED the alarm."""
+    world.append(_routed("cron-fail:alpha", NOW))
+    (world / "state" / "alpha.last.json").write_text(
+        json.dumps({"job": "alpha", "ts": "2026-09-21T12:00:00", "status": "ok"}), encoding="utf-8"
+    )
+
+    report = bsc.consume(max_rows=10, dry_run=False)
+
+    assert report["resolved"] == []
+    assert "not epoch seconds" in report["left"][0]["detail"]
+
+
+def test_a_pidfile_rewritten_between_the_probe_and_the_cure_is_left_alone(world, monkeypatch):
+    """TOCTOU: a healer that starts after the liveness probe owns this lock."""
+    world.append(_routed("healer-pro:stale-lock", NOW - 3600))
+    pidfile = world / "healer.pid"
+    pidfile.write_text("4242")
+
+    def probe_then_a_healer_starts(pid):
+        pidfile.write_text("9999")
+        return False
+
+    monkeypatch.setattr(bsc, "_pid_is_a_live_healer", probe_then_a_healer_starts)
+
+    report = bsc.consume(max_rows=10, dry_run=False)
+
+    assert report["resolved"] == []
+    assert pidfile.exists() and pidfile.read_text() == "9999"
+
+
+def test_a_row_a_peer_closed_first_is_not_claimed_as_this_run_s_work(world, monkeypatch):
+    world.append(_routed("cron-fail:alpha", NOW - 3600))
+    _run_state(world, "alpha", "ok", NOW)
+    monkeypatch.setattr(bsc, "mark_resolved", lambda job: 0)
+
+    report = bsc.consume(max_rows=10, dry_run=False)
+
+    assert report["resolved"] == []
+    assert report["left"][0]["why"] == "already_closed_by_a_peer"
+
+
+def test_the_healer_probe_reads_its_command_line_case_insensitively(monkeypatch):
+    """A live healer re-exec'd through the trampoline carries HEALER_TRAMPOLINED."""
+    monkeypatch.setattr(bsc.os, "kill", lambda pid, sig: None)
+
+    class _Out:
+        returncode = 0
+        stdout = "ssh ... HEALER_TRAMPOLINED=1 bash /Users/nuzantara/scripts/run.sh"
+
+    monkeypatch.setattr(bsc.subprocess, "run", lambda *a, **k: _Out())
+    assert bsc._pid_is_a_live_healer(4242) is True
+
+
+def test_uncurable_rows_do_not_starve_the_curable_ones_behind_them(world):
+    """The oldest rows are the ones with no cure — they never leave the board.
+    A cap applied before the filter spends itself on them forever."""
+    for i in range(3):
+        world.append(_routed(f"imigrasi-diff:{i}", NOW - 9000 + i))
+    world.append(_routed("cron-fail:alpha", NOW - 100))
+    _run_state(world, "alpha", "ok", NOW)
+
+    report = bsc.consume(max_rows=1, dry_run=False)
+
+    assert [r["job"] for r in report["resolved"]] == ["cron-fail:alpha"]
+    assert report["attempted"] == 1 and report["skipped_by_cap"] == 0
+
+
+def test_a_condition_that_re_fired_since_the_probe_is_not_closed(world, monkeypatch):
+    """The probe proved the OLD alarm was over. A resolution written now would
+    carry a newer ts and collapse the FRESH one into silence."""
+    world.append(_routed("cron-fail:alpha", NOW - 3600))
+    _run_state(world, "alpha", "ok", NOW - 60)
+    real = bsc.cure_cron_fail
+
+    def cure_then_it_fails_again(row):
+        verdict = real(row)
+        world.append(_routed("cron-fail:alpha", NOW + 30))
+        return verdict
+
+    monkeypatch.setitem(bsc.CURES, "cron-fail", lambda row, dry: cure_then_it_fails_again(row))
+
+    report = bsc.consume(max_rows=10, dry_run=False)
+
+    assert report["resolved"] == []
+    assert report["left"][0]["why"] == "re_fired_since_the_probe"
+    assert not [r for r in world.rows() if r.get("status") == "resolved"]
+
+
+def test_each_healer_family_probes_its_OWN_lock(world, monkeypatch, tmp_path):
+    """healer-run.sh (Mini) and pro-healer.sh hold different pidfiles. One shared
+    default reads 'already gone' on the machine that does not own that path."""
+    monkeypatch.delenv("BOARD_CONSUMER_HEALER_PIDFILE", raising=False)
+    mini_lock = tmp_path / "nuzantara-healer.pid"
+    pro_lock = tmp_path / "nuzantara-pro-healer.pid"
+    monkeypatch.setitem(bsc._HEALER_PIDFILES, "healer-mini", str(mini_lock))
+    monkeypatch.setitem(bsc._HEALER_PIDFILES, "healer-pro", str(pro_lock))
+    pro_lock.write_text("4242")  # Pro's healer IS stuck; Mini's lock does not exist
+    monkeypatch.setattr(bsc, "_pid_is_a_live_healer", lambda pid: True)
+
+    world.append(_routed("healer-pro:stale-lock", NOW - 3600))
+    report = bsc.consume(max_rows=10, dry_run=False)
+
+    assert report["resolved"] == [], \
+        "the row must be judged against PRO's lock, not against Mini's absent one"
+    assert pro_lock.exists()

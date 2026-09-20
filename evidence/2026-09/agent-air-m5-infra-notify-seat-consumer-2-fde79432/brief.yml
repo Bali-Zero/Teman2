@@ -1,0 +1,103 @@
+gear: 2
+task_id: kbli-inspect-error-detail-20260920
+lane: backend-rag
+host: air-m5 (M5)
+branch: agent/air-m5/backend-rag/kbli-inspect-error-detail-20260920
+gate_class: opus
+l_level: L2
+objective: >-
+  Close the second half of ledger row
+  `kbli-inspect-echoes-the-raw-driver-error-to-the-client` (PENDING-ARMS, opened
+  2026-09-19). The row's own arming step demanded two things, and only one was
+  done: `inspect_kbli`'s catch-all stopped interpolating `str(e)` into the
+  response body and grew a guilt/innocence suite, but the row explicitly warned
+  that "a cure applied to 1-of-N call sites is the W89 time bomb" and named
+  `kbli_notebook_chat.py` as the place to check before closing. Checked in this
+  turn: `chat_kbli`'s catch-all ended
+  `raise HTTPException(status_code=500, detail=f"AI Engine error: {e!s}")` —
+  the same leak, on the chat surface the WhatsApp bot and the public explorer
+  talk to, where `e` can come from Postgres (table and column names), Qdrant
+  (collection, host:port) or the model provider (an upstream error body with
+  model ids and account state). Census run in this turn: after this PR both
+  KBLI routers return 0 for the interpolated-detail shape.
+scope:
+  - >-
+    apps/backend-rag/backend/app/routers/kbli_notebook_chat.py — the catch-all
+    detail becomes the same stable `"Internal processing error"` the inspect
+    side already returns, and an `except HTTPException: raise` is added above
+    it so the opacity cure cannot absorb a deliberate status raised deeper in
+    the route. The existing `logger.error(..., exc_info=True)` one line above is
+    untouched: it is where the whole string keeps living.
+  - >-
+    Tests — new `test_kbli_chat_error_opacity.py`, guilt and innocence, built as
+    the sibling of the inspect suite so the pair reads as one fence.
+constraints:
+  - >-
+    One concern. The same shape survives at 82 sites across 28 OTHER routers
+    (`analytics.py`, `legal_ingest.py`, `memory_vector.py`, `monitoring_rag.py`
+    lead the count) — several of them authenticated, several not. That is a
+    repo-wide lane with its own blast radius and its own guard, declared here
+    and opened as a ledger row rather than swept into a KBLI PR.
+  - >-
+    The client-facing string is the inspect side's exact `"Internal processing
+    error"`, not a new wording. Two dialects of the same 500 is how a consumer
+    ends up keying on one of them.
+  - >-
+    No consumer keys on the old text: `grep -rn "AI Engine error"` over the repo
+    (py/ts/tsx/md) returned exactly the one line being deleted.
+  - >-
+    Merging this deploys it (apps/backend-rag/**). The live observation in
+    `Bites:` is taken after the deploy, never inferred from the merge.
+acceptance:
+  - text: >-
+      GUILT, the whole reason for the change: WHEN any non-HTTP exception
+      escapes the chat route, the response body SHALL carry none of the failing
+      layer's own words — not the server message, not the schema name, not the
+      host:port, not the upstream account state.
+    probe: >-
+      pytest backend/tests/unit/routers/test_kbli_chat_error_opacity.py::test_the_five_hundred_body_carries_none_of_the_engines_words
+  - text: >-
+      OPACITY IS NOT AMNESIA: WHILE the client reads nothing, the operator SHALL
+      still read the whole exception string at ERROR with its traceback.
+    probe: >-
+      pytest backend/tests/unit/routers/test_kbli_chat_error_opacity.py::test_the_operator_still_reads_the_whole_string_in_the_log
+  - text: >-
+      INNOCENCE: WHERE an `HTTPException` is raised deeper in the route, it
+      SHALL reach the client with its own status and its own detail instead of
+      being absorbed into the opaque 500.
+    probe: >-
+      pytest backend/tests/unit/routers/test_kbli_chat_error_opacity.py::test_an_http_exception_raised_deeper_in_the_route_is_not_absorbed
+  - text: >-
+      INNOCENCE: a malformed body is still a 422 that names the field, and a
+      healthy turn is still a 200 with its answer — the tests above must fail
+      for the ERROR, not for the route.
+    probe: >-
+      pytest backend/tests/unit/routers/test_kbli_chat_error_opacity.py -k "malformed or healthy"
+  - text: >-
+      THE PAIR IS ONE FENCE: the inspect suite SHALL still pass unchanged
+      alongside the new one.
+    probe: >-
+      pytest backend/tests/unit/routers/test_kbli_chat_error_opacity.py backend/tests/unit/routers/test_kbli_inspect_error_opacity.py
+  - text: >-
+      NO REGRESSION ACROSS THE KBLI SURFACE.
+    probe: pytest backend/tests -k kbli
+  - text: >-
+      PROOF-OF-ARMED for the ledger row, on origin/main after the merge:
+      `grep -c` for the interpolated-detail shape SHALL return 0 in BOTH KBLI
+      routers.
+    probe: >-
+      grep -c 'detail=f"[^"]*{\(e\|e!s\|err\|str(e)\)'
+      apps/backend-rag/backend/app/routers/kbli_notebook.py
+      apps/backend-rag/backend/app/routers/kbli_notebook_chat.py
+mutation_evidence: >-
+  Run in this turn, not asserted: reverting both halves of the cure in place
+  (detail back to `f"AI Engine error: {e!s}"`, `except HTTPException: raise`
+  removed) turned the new suite into 17 failed / 3 passed. The three survivors
+  are exactly the three innocence tests that must not depend on the cure (log,
+  422, 200). The file was restored from a `cp` backup, never from `git checkout`.
+pii: none
+local_evidence: >-
+  No production read, no client data, no credential touched. Everything in this
+  lane is unit-level: mocked pool, mocked search service, patched LLM gateway.
+  The leak strings in the test are invented fixtures (`kbli_documents_internal_v3`,
+  `qdrant-internal-3.flycast:6333`), not real topology.
