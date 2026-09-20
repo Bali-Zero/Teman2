@@ -38,13 +38,13 @@ receipts:
     seat: claude-opus-5
   - claim: the local gate corpus is green, and four cases fail when four council defects are put back
     cmd: python3 -m pytest scripts/tests/test_ban_predicates.py -q
-    result: "23 passed — incl. test_exclusion_reads_the_whole_output_line_exactly_as_ci_does, test_a_quoted_path_header_never_blames_the_previous_file, test_non_utf8_bytes_in_a_staged_file_do_not_crash_the_gate, test_the_scanner_judges_the_staged_blob_not_the_working_tree, test_innocence_unsetenv_is_a_strip_not_an_assignment, test_guilt_a_real_setenv_assignment_still_fires, test_a_missing_scanner_is_announced_and_never_silently_green; re-injecting three defects turns 4 red"
+    result: "25 passed — incl. test_exclusion_reads_the_whole_output_line_exactly_as_ci_does, test_a_quoted_path_header_never_blames_the_previous_file, test_non_utf8_bytes_in_a_staged_file_do_not_crash_the_gate, test_the_scanner_judges_the_staged_blob_not_the_working_tree, test_innocence_unsetenv_is_a_strip_not_an_assignment, test_guilt_a_real_setenv_assignment_still_fires, test_a_missing_scanner_is_announced_and_never_silently_green; re-injecting three defects turns 4 red; the two added cases assert the CodeQL cure structurally (the scanner half returns integers and a code, never a sentence)"
     exit: 0
     ts: 2026-09-20T14:32:16Z
     seat: claude-opus-5
   - claim: "the six acceptance probes run by name — test_exclusion_reads_the_whole_output_line_exactly_as_ci_does, test_a_quoted_path_header_never_blames_the_previous_file, test_non_utf8_bytes_in_a_staged_file_do_not_crash_the_gate, test_the_scanner_judges_the_staged_blob_not_the_working_tree, test_innocence_unsetenv_is_a_strip_not_an_assignment, test_a_missing_scanner_is_announced_and_never_silently_green"
     cmd: python3 -m pytest scripts/tests/test_ban_predicates.py -q -k "<the six above, or-joined>"
-    result: "6 passed, 17 deselected"
+    result: "6 passed, 19 deselected"
     exit: 0
     ts: 2026-09-20T14:36:00Z
     seat: claude-opus-5
@@ -78,6 +78,12 @@ receipts:
     exit: 1
     ts: 2026-09-20T14:30:00Z
     seat: claude-opus-5
+  - claim: the gate session re-ran the receipts itself rather than believing the pack
+    cmd: bash scripts/tests/test_cate_paid_budget.sh; python3 -m pytest scripts/tests/test_ban_predicates.py -q; /bin/dash -c "set -uo pipefail; echo reached"
+    result: "8 passed 0 failed / 23 passed / exit 2 Illegal option — plus two guilt checks of its own: re-injecting the arithmetic gives 4 of 8 red, and mutating the workflow regex fails exactly test_p1_transcription_is_the_workflow_regex"
+    exit: 0
+    ts: 2026-09-20T15:05:00Z
+    seat: claude-opus-5 (gate session, outside the contribution chain)
 dissent:
   - seat: kimi-code/k3
     objection:

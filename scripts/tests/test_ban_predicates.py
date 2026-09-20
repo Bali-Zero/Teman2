@@ -403,3 +403,35 @@ def test_the_scanner_judges_the_staged_blob_not_the_working_tree(tmp_path, monke
     finally:
         sys.argv = old
     assert rc == 0, capsys.readouterr().out
+
+
+def test_the_scanner_half_hands_back_numbers_and_never_a_string(tmp_path, monkeypatch):
+    """The structural form of the CodeQL fix, asserted rather than trusted.
+
+    Cutting the scanner's stdout out of the path was not enough: CodeQL kept
+    calling this py/clear-text-logging-sensitive-data because any sentence
+    built beside `BASELINE.read_text()` is downstream of that read. The cure
+    is a type, not a filter — so this test guards the type. If someone
+    reintroduces a message here, it fails before a reviewer has to notice.
+    """
+    d = _repo(tmp_path)
+    (d / "note.py").write_text("# " + QUOTED_KEY + "\n")
+    subprocess.run(["git", "add", "note.py"], cwd=d, check=True, capture_output=True)
+    monkeypatch.setattr(cbp, "REPO_ROOT", d)
+    baseline = d / ".secrets.baseline"
+    baseline.write_text(_empty_baseline())
+    monkeypatch.setattr(cbp, "BASELINE", baseline)
+
+    located, skipped = cbp.detect_secrets_predicate(["note.py"], True)
+    for item in located:
+        assert isinstance(item, tuple) and len(item) == 2
+        assert all(isinstance(v, int) for v in item), item
+    if skipped is not None:
+        code, detail = skipped
+        assert code in cbp._SKIP_TEXT, code
+        assert isinstance(detail, int)
+
+
+def test_every_skip_code_has_a_message_and_formats_without_raising():
+    for code, template in cbp._SKIP_TEXT.items():
+        assert template.format(n=1, cap=cbp.SCAN_CAP)
