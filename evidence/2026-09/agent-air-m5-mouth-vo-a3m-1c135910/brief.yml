@@ -27,7 +27,11 @@ objective: >-
   guard-over-match scan to the two review-gate strings (38 entries, was
   28); M6 rewrites both strings and pins the retired sentence's absence;
   M7 adds the three REVIEW_GATE_CAUSE_ITEM rows for the "edit your answer"
-  affordance.
+  affordance; M7-bis (routed from a conductor ruling on the builder's own
+  finding, R-CONTINUE-A3M 2026-09-20T22:27Z) adds two tests deriving
+  coverage of every REVIEW_GATE_CAUSE_ITEM row from REVIEW_GATE_ITEMS and
+  evaluate_path.py rather than the 4-example it.each the file's own comment
+  overstated — zero production files touched.
 constraints:
   - >-
     Mouth + one coupled backend test only: fact-mapper.ts/.test.ts,
@@ -48,8 +52,8 @@ constraints:
 appetite: { wall_clock_hours: 2 }
 acceptance:
   - text: >-
-      The full visa-oracle vitest suite passes with all seven M-clauses'
-      changes included (1126 tests, 44 files).
+      The full visa-oracle vitest suite passes with all M-clauses' and
+      M7-bis's changes included (1128 tests, 44 files).
     probe: "cd apps/mouth && ../../node_modules/.bin/vitest run --root . 'src/app/(visa-oracle)/visa-oracle'"
   - text: >-
       GUILT (M1+M2): deleting the blacklist key from REVIEW_FLAG_MAP reddens
@@ -76,6 +80,11 @@ acceptance:
     probe: "cd apps/mouth && ../../node_modules/.bin/playwright test -c playwright.config.ts e2e/visa-oracle-v2.spec.ts --project=chromium"
   - text: "tsc --noEmit exits 0 across the whole apps/mouth project."
     probe: "cd apps/mouth && ../../node_modules/.bin/tsc --noEmit -p tsconfig.json"
+  - text: >-
+      GUILT (M7-bis): deleting DISCLOSED_BLACKLIST_ENTRY_REVIEW from
+      REVIEW_GATE_CAUSE_ITEM on a scratch copy reddens both new M7-bis
+      tests, naming it.
+    probe: 'cd apps/mouth && ../../node_modules/.bin/vitest run OutcomeSheet.test.tsx -t "M7-bis|derives: every review_gate|pins the row-key set"'
 assumptions:
   - text: >-
       The backend's `_DISCLOSED_CONDITION_REASON_CODES` map
@@ -87,12 +96,21 @@ assumptions:
     status: verified
     probe: "grep -n 'PAST_OVERSTAY\\|BLACKLIST_ENTRY\\|IMMIGRATION_INVESTIGATION' apps/backend-rag/backend/services/visa_engine/evaluate_path.py"
   - text: >-
-      OutcomeSheet.test.tsx's drift `it.each` over REVIEW_GATE_CAUSE_ITEM is
-      a curated 4-example list (UNCERTAINTY, ACTIVITY_BOUNDARY,
-      MULTI_PURPOSE_TRIP, CRIMINAL_RECORD), not an exhaustive iteration over
-      every row — dropping one of M7's three new rows on a scratch copy
-      does NOT redden any existing test. Declared limit, not cured in
-      silence: the doc comment above REVIEW_GATE_CAUSE_ITEM ("re-derives
-      every row") overstates what the test actually checks.
+      M7-bis (R-CONTINUE-A3M) resolves the declared limit from the 4-example
+      drift `it.each`: two new tests derive the row set from
+      REVIEW_GATE_ITEMS (tree.ts) and evaluate_path.py's
+      _DISCLOSED_REVIEW_REASON_CODES read from disk, then pin it at exactly
+      twelve codes — not fourteen, which is DisclosedReviewFlag's own
+      cardinality (a different table); MULTI_PURPOSE_TRIP and
+      CONFLICTING_IMMIGRATION_STATUS are correctly excluded, by prior
+      design, from REVIEW_GATE_CAUSE_ITEM. Both tests use the exported
+      demonstratedReviewCauses() as an indirect probe, since
+      REVIEW_GATE_CAUSE_ITEM stays module-private (zero production files
+      touched). Delete-direction guilt is falsifiable and reddens naming
+      the deleted code; the bogus-add direction (a row appearing that maps
+      no real flag) was empirically tested on a scratch copy and stays
+      architecturally uncatchable without exporting the module-private map,
+      which the constraint forbids — kept as the honest, unweakened half
+      rather than forced green.
     status: verified
-    probe: "cd apps/mouth && ../../node_modules/.bin/vitest run OutcomeSheet.test.tsx"
+    probe: 'cd apps/mouth && ../../node_modules/.bin/vitest run OutcomeSheet.test.tsx -t "M7-bis|derives: every review_gate|pins the row-key set"'
