@@ -1,6 +1,6 @@
 version: 1
 checksum_algo: sha256
-checksum: 172801aa7ade39b67f7c8d0a000eb039d4c78680c1827e25cd8fedadba89cbd3 # pragma: allowlist secret
+checksum: 88be1f2ca7f5d4fa1e7afaf355e6b910722cbfe839c6e485d795e16d07c9c601 # pragma: allowlist secret
 organs:
 - id: infra.postgres
   runtime: fly_machine
@@ -3074,7 +3074,10 @@ organs:
 - id: pro.board_seat_consumer
   runtime: pro_launchd
   type: cron
-  expected_hb_seconds: 3600
+  # 7200 = 2x this organ's own 3600s plist cadence (self-reporting cron): one full
+  # missed run of slack before the sidecar reads stale. 3600 gave zero margin and
+  # the gate said so.
+  expected_hb_seconds: 7200
   owner_module: infra/launchagents/wrappers/pro-board-seat-consumer.sh
   dependencies: []
   recovery_action: launchctl_kickstart
