@@ -1104,6 +1104,16 @@
       "repo": "infra/claude-plugins/local-marketplace/machines/mini/typescript-lsp.plugin.json",
       "machines": ["mini"],
       "_note": "Mini half of the typescript-lsp per-machine pair — see the m5 entry above for why this plugin.json is machine-specific. No vendored files under this plugin."
+    },
+    {
+      "live": "~/scripts/pro-board-seat-consumer.sh",
+      "repo": "infra/launchagents/wrappers/pro-board-seat-consumer.sh",
+      "machines": ["pro"]
+    },
+    {
+      "live": "~/Library/LaunchAgents/com.nuzantara.board-seat-consumer.plist",
+      "repo": "infra/launchagents/com.nuzantara.board-seat-consumer.plist",
+      "machines": ["pro"]
     }
   ],
   "allow": [
