@@ -93,7 +93,7 @@ import os
 import stat
 import sys
 import time
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
@@ -259,9 +259,19 @@ def extract_walks(manifest: Mapping[str, Any]) -> list[dict[str, Any]]:
     walks = covering.get("walks") if isinstance(covering, Mapping) else None
     if not isinstance(walks, list) or not walks:
         raise EnumerateLiveError("manifest has no coveringSubset.walks to enumerate")
+    seen_labels: set[str] = set()
     for walk in walks:
         if not isinstance(walk, dict) or not walk.get("label"):
             raise EnumerateLiveError("manifest walk is missing a 'label' id")
+        label = walk["label"]
+        if label in seen_labels:
+            # Council cure (codex MEDIUM + kimi LOW on B2''-b, independently
+            # corroborated): walks_by_id is keyed on label, so a duplicate
+            # would collapse two distinct walks into one report row while
+            # both still get POSTed -- fail closed before any token load or
+            # network call instead.
+            raise EnumerateLiveError(f"manifest has a duplicate walk label: {label!r}")
+        seen_labels.add(label)
     return walks
 
 
@@ -473,6 +483,7 @@ async def run_walk(
     backoff_seconds: float,
     budget: RequestBudget,
     limiter: RateLimiter,
+    on_reserve: Callable[[], None] | None = None,
 ) -> WalkResult | None:
     """Drive one walk to a terminal result, or ``None`` if the budget ran
     out before this walk could even start its first attempt -- the caller
@@ -484,6 +495,24 @@ async def run_walk(
     That "no retry" behavior is exactly what W1's 401/403 circuit breaker
     depends on (one request spent), so it stays untouched here; W1's
     stop-the-run decision lives in the caller, ``run_live_enumeration``.
+
+    ``on_reserve`` (V1, council round on B2''-b): called synchronously after
+    every attempt whose OUTCOME is known -- a retry about to loop back, never
+    a request that has merely been reserved but not yet dispatched (a
+    pre-send flush was tried first and rejected: SIGKILL landing between the
+    flush and the actual send leaves a permanent phantom over-count that
+    resuming can never correct, since the counter only ever grows). Placed
+    at every ``continue`` inside the retry loop -- the terminal ``return``
+    paths are already covered by the caller's own per-walk flush right after
+    ``run_walk`` returns. A caller that flushes the report's counters from
+    this hook keeps the on-disk ``requests_used_this_run``/``_total`` within
+    ONE in-flight request (the CURRENT, still-unanswered attempt) of the
+    server's own count at any instant, even when a single walk burns several
+    retries between two per-walk flushes -- and never OVER-counts, because
+    every call site here reflects a request the server has already answered
+    (or a client-side exception already caught) for THIS attempt. ``None``
+    (the default) skips this -- unused by anything that does not pass it, so
+    no caller needs updating.
     """
 
     walk_id = walk["label"]
@@ -502,6 +531,8 @@ async def run_walk(
             if attempts > max_retries:
                 return _harness_result(walk_id, "timeout", http_status=None, attempts=attempts, latency_ms=latency_ms)
             logger.warning("walk=%s timeout attempt=%d: %s -- backing off", walk_id, attempts, exc)
+            if on_reserve is not None:
+                on_reserve()
             await _sleep(backoff_seconds * attempts)
             continue
         except httpx.TransportError as exc:
@@ -511,6 +542,8 @@ async def run_walk(
                     walk_id, "connection_error", http_status=None, attempts=attempts, latency_ms=latency_ms
                 )
             logger.warning("walk=%s connection error attempt=%d: %s -- backing off", walk_id, attempts, exc)
+            if on_reserve is not None:
+                on_reserve()
             await _sleep(backoff_seconds * attempts)
             continue
 
@@ -520,6 +553,8 @@ async def run_walk(
             if attempts > max_retries:
                 return _harness_result(walk_id, "http_429", http_status=429, attempts=attempts, latency_ms=latency_ms)
             logger.warning("walk=%s HTTP 429 attempt=%d -- backing off, not an engine verdict", walk_id, attempts)
+            if on_reserve is not None:
+                on_reserve()
             await _sleep(_retry_after_seconds(response, backoff_seconds * attempts))
             continue
 
@@ -528,6 +563,8 @@ async def run_walk(
                 return _harness_result(
                     walk_id, "http_5xx", http_status=response.status_code, attempts=attempts, latency_ms=latency_ms
                 )
+            if on_reserve is not None:
+                on_reserve()
             await _sleep(backoff_seconds * attempts)
             continue
 
@@ -729,8 +766,12 @@ async def run_live_enumeration(
     digest = manifest_digest(manifest)
 
     if dry_run:
-        load_driver_token(driver_token_file)  # validates the credential without sending it anywhere
+        # V2 council cure (codex MEDIUM finding on B2''-b): the version/digest
+        # refusal is checked BEFORE the token, same precedence as the live
+        # path -- a stale report_version is the more informative error and
+        # must not be masked by an unrelated bad token-file path.
         _, walks_by_id, pending_walks = _load_existing_and_pending(report_path, walks, digest)
+        load_driver_token(driver_token_file)  # validates the credential without sending it anywhere
         retryable = sum(1 for w in pending_walks if w["label"] in walks_by_id)
         return _dry_run_plan(
             manifest_path=manifest_path,
@@ -774,6 +815,22 @@ async def run_live_enumeration(
             report["requests_used_total"] = requests_used_total_before + budget.used
             atomic_write_json(report_path, report)
 
+        def _flush_counters_only() -> None:
+            """V1 council cure (codex HIGH finding on B2''-b): called from
+            ``run_walk``'s ``on_reserve`` hook, right after every RETRY
+            attempt whose outcome is already known -- not just once per
+            resolved walk. Writes ONLY the two counter fields (the current
+            walk's row is not resolved yet, so ``report["walks"]`` is
+            untouched here) so a walk that burns several retries before a
+            SIGKILL still leaves the on-disk counters within ONE in-flight
+            request of the server's real count, instead of lagging behind by
+            however many retries that walk had already spent since its last
+            per-walk flush.
+            """
+            report["requests_used_this_run"] = budget.used
+            report["requests_used_total"] = requests_used_total_before + budget.used
+            atomic_write_json(report_path, report)
+
         budget = RequestBudget(max_requests)
         limiter = RateLimiter(rate_per_minute)
         stopped_reason = "completed"
@@ -794,6 +851,7 @@ async def run_live_enumeration(
                     backoff_seconds=backoff_seconds,
                     budget=budget,
                     limiter=limiter,
+                    on_reserve=_flush_counters_only,
                 )
                 if result is None:
                     stopped_reason = "max_requests_exhausted"
@@ -810,9 +868,15 @@ async def run_live_enumeration(
                 # 429 keeps its own always-stops rule; everything else
                 # accumulates toward max_consecutive_harness_reds.
                 if result.http_status in _AUTH_CIRCUIT_BREAKER_STATUSES:
+                    # Council cure (kimi LOW finding on B2''-b): the old wording said
+                    # "stopping after exactly one request", which reads as a claim about
+                    # requests_used_this_run for the whole run -- it is not; it names the
+                    # ONE request the auth breaker itself spent on THIS walk, on top of
+                    # whatever earlier walks in the same run already cost.
                     logger.error(
                         "circuit breaker: HTTP %s on walk=%s -- the token FILE is the likely "
-                        "cause (never the token value itself); stopping after exactly one request.",
+                        "cause (never the token value itself); stopping the run after exactly "
+                        "one request spent on this walk.",
                         result.http_status,
                         result.walk_id,
                     )

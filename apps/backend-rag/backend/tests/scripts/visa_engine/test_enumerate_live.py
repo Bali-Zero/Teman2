@@ -527,6 +527,111 @@ def test_report_version_mismatch_refuses_before_any_network_call(
     assert f"REPORT_VERSION={enumerate_live.REPORT_VERSION}" in caplog.text
 
 
+def test_report_version_stale_integer_refuses_before_any_network_call(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    """Council LOW finding (kimi, on B2''-b): the sibling test above only
+    proves the "missing" branch of V2's refusal; an explicit STALE integer
+    (not just an absent key) is a separate code path through the same
+    ``!=`` comparison and was untested.
+    """
+
+    manifest = tmp_path / "manifest.json"
+    _write_manifest(manifest, [_walk("a")])
+    report = tmp_path / "report.json"
+    stale_version = enumerate_live.REPORT_VERSION - 1
+    report.write_text(
+        json.dumps(
+            {
+                "report_version": stale_version,
+                "manifest_sha256": enumerate_live.manifest_digest(enumerate_live.load_manifest(manifest)),
+                "walks": [],
+            }
+        ),
+        encoding="utf-8",
+    )
+    _write_token(tmp_path / "driver-token")
+
+    async def no_network(*_a: object, **_k: object) -> _Response:
+        raise AssertionError("version mismatch must not call evaluate or health")
+
+    monkeypatch.setattr(enumerate_live, "_post_evaluate", no_network)
+    monkeypatch.setattr(enumerate_live, "_get_health", no_network)
+    args = enumerate_live._parse_args(_args(tmp_path, manifest, report, max_requests=10, rate_per_minute=25))
+
+    with caplog.at_level(logging.ERROR, logger="visa_engine.enumerate_live"):
+        assert enumerate_live.run(args) == 2
+    assert str(report) in caplog.text
+    assert f"report_version={stale_version!r}" in caplog.text
+    assert f"REPORT_VERSION={enumerate_live.REPORT_VERSION}" in caplog.text
+
+
+def test_duplicate_walk_labels_refuse_before_any_network_call(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    """Council finding, independently corroborated (codex MEDIUM + kimi LOW
+    on B2''-b): ``walks_by_id`` is keyed on label, so two walks sharing one
+    label would collapse into a single report row while BOTH still get
+    POSTed to production. Fail closed before any token load or network call.
+    """
+
+    manifest = tmp_path / "manifest.json"
+    _write_manifest(manifest, [_walk("dup", "a"), _walk("dup", "b")])
+    report = tmp_path / "report.json"
+    _write_token(tmp_path / "driver-token")
+
+    async def no_network(*_a: object, **_k: object) -> _Response:
+        raise AssertionError("duplicate labels must not call evaluate or health")
+
+    monkeypatch.setattr(enumerate_live, "_post_evaluate", no_network)
+    monkeypatch.setattr(enumerate_live, "_get_health", no_network)
+    args = enumerate_live._parse_args(_args(tmp_path, manifest, report, max_requests=10, rate_per_minute=25))
+
+    with caplog.at_level(logging.ERROR, logger="visa_engine.enumerate_live"):
+        assert enumerate_live.run(args) == 2
+    assert "duplicate walk label" in caplog.text
+    assert "'dup'" in caplog.text
+    assert not report.exists()
+
+
+def test_dry_run_reports_version_mismatch_before_a_bad_token_file(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    """Council MEDIUM finding (codex, on B2''-b): the dry-run branch
+    previously loaded the driver token BEFORE checking report_version/digest,
+    so a version-mismatched report combined with an invalid token file
+    surfaced the unrelated token error instead of V2's own refusal line --
+    masking the more informative error. Precedence now matches the live
+    path: version/digest first, token second.
+    """
+
+    manifest = tmp_path / "manifest.json"
+    _write_manifest(manifest, [_walk("a")])
+    report = tmp_path / "report.json"
+    stale_version = enumerate_live.REPORT_VERSION - 1
+    report.write_text(
+        json.dumps(
+            {
+                "report_version": stale_version,
+                "manifest_sha256": enumerate_live.manifest_digest(enumerate_live.load_manifest(manifest)),
+                "walks": [],
+            }
+        ),
+        encoding="utf-8",
+    )
+    # No driver-token file written at all -- load_driver_token would raise
+    # EnumerateLiveError("driver token file not found: ...") if it ran first.
+
+    args = enumerate_live._parse_args(
+        _args(tmp_path, manifest, report, max_requests=10, rate_per_minute=25) + ["--dry-run"]
+    )
+
+    with caplog.at_level(logging.ERROR, logger="visa_engine.enumerate_live"):
+        assert enumerate_live.run(args) == 2
+    assert f"report_version={stale_version!r}" in caplog.text
+    assert "driver token file not found" not in caplog.text
+
+
 # ---------------------------------------------------------------------------
 # W3 -- exclusive one-runner-per-report lock
 # ---------------------------------------------------------------------------
@@ -675,6 +780,91 @@ def test_v1_counters_are_flushed_before_sigkill_and_accumulate_on_resume(tmp_pat
     assert resumed.returncode == 0
     final = json.loads(report.read_text())
     assert final["requests_used_total"] == int(count.read_text())
+
+
+def test_v1_counters_track_a_retry_still_inside_one_unresolved_walk(tmp_path: Path) -> None:
+    """Council guilt test (codex HIGH finding on B2''-b): the original
+    per-walk-only flush left the report at 0 for a walk that burned a failed
+    attempt and was then killed DURING the backoff sleep before its retry --
+    the failed attempt was real (the server saw it) but never resolved to a
+    terminal WalkResult, so the per-walk ``_flush()`` never ran. The cure
+    flushes counters at every retry's ``continue`` point (run_walk's
+    ``on_reserve`` hook), not just once per resolved walk. This test proves
+    the on-disk count reflects the ONE failed-but-settled attempt, not 0,
+    while the process is parked in the backoff sleep after it and before the
+    retry -- the exact window codex named as untested by the SIGKILL test
+    above (which only waits for two COMPLETED walks).
+    """
+
+    manifest = tmp_path / "manifest.json"
+    _write_manifest(manifest, [_walk("only-walk")])
+    report = tmp_path / "report.json"
+    token = tmp_path / "driver-token"
+    count = tmp_path / "evaluate-count"
+    backoff_started = tmp_path / "backoff-started"
+    _write_token(token)
+    child_script = tmp_path / "runner.py"
+    child_script.write_text(
+        "import asyncio, json, pathlib, sys\n"
+        "from backend.scripts.visa_engine import enumerate_live as m\n"
+        "class R:\n"
+        "  def __init__(self, status): self.status_code = status; self.headers = {}\n"
+        "  def json(self): return {'mode':'CURATED','decision':{'state':'SUPPORTED_CANDIDATES','review_reasons':[],'no_path_reasons':[],'notices':[],'rule_pack':{}}}\n"
+        "async def post(*a, **k):\n"
+        f"  p = pathlib.Path({str(count)!r}); n = int(p.read_text() or '0') + 1 if p.exists() else 1; p.write_text(str(n))\n"
+        "  return R(500 if n == 1 else 200)\n"
+        "async def health(*a, **k): return R(200)\n"
+        "async def marked_sleep(seconds):\n"
+        f"  pathlib.Path({str(backoff_started)!r}).write_text('1')\n"
+        "  await asyncio.sleep(seconds)\n"
+        "m._post_evaluate = post; m._get_health = health; m._sleep = marked_sleep\n"
+        "raise SystemExit(m.main(sys.argv[1:]))\n",
+        encoding="utf-8",
+    )
+    base = [
+        sys.executable,
+        str(child_script),
+        "--manifest",
+        str(manifest),
+        "--report",
+        str(report),
+        "--driver-token-file",
+        str(token),
+        "--max-requests",
+        "10",
+        "--rate-per-minute",
+        "29",
+        "--max-retries",
+        "1",
+        "--backoff-seconds",
+        "20",
+    ]
+    backend_root = Path(__file__).parents[4]
+    env = dict(os.environ, PYTHONPATH=str(backend_root))
+    child = subprocess.Popen(base, cwd=backend_root, env=env)
+    try:
+        deadline = time.monotonic() + 20
+        while time.monotonic() < deadline:
+            if backoff_started.exists():
+                break
+            time.sleep(0.02)
+        else:
+            raise AssertionError("subprocess never entered the post-failure backoff sleep before the deadline")
+        # The failed attempt's on_reserve flush runs BEFORE _sleep is awaited
+        # (see run_walk), so by the time marked_sleep's marker file exists,
+        # the flush for attempt 1 has already landed on disk.
+        child.kill()
+        child.wait(timeout=10)
+    finally:
+        if child.poll() is None:
+            child.kill()
+            child.wait(timeout=10)
+
+    assert count.read_text() == "1"  # server saw exactly the one failed attempt
+    saved = json.loads(report.read_text())
+    assert saved["requests_used_this_run"] == 1  # NOT 0 -- the pre-cure bug this test pins
+    assert saved["requests_used_total"] == 1
+    assert saved["walks"] == []  # the walk itself never resolved -- only the counters are ahead of it
 
 
 # ---------------------------------------------------------------------------
