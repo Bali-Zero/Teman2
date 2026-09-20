@@ -14,12 +14,18 @@ lanes:
       claude-opus-5 (conducting session — wrote the endpoint, the receptor, the
       wiring and both guilt corpora; also the session that measured the 2026-09-20
       failure this closes)
-  - lane: outbox-second-path-refute-codex
-    role: review
-    seat: codex-gpt-5.6-sol
   - lane: outbox-second-path-refute-kimi
     role: review
-    seat: kimi-code/k3
+    seat: kimi-code/k3 (the only lane that delivered — two findings, both cured here)
+  - lane: outbox-second-path-refute-codex
+    role: review
+    seat: codex-gpt-5.6-sol (dispatched, rolled over on context with zero findings — see council.jsonl)
+  - lane: outbox-second-path-refute-agy
+    role: review
+    seat: agy-gemini/flash (dispatched, rc 1 in 8s — see council.jsonl)
+  - lane: outbox-second-path-refute-qwen
+    role: review
+    seat: qwen-cloud-code (dispatched, no credential on this machine — see council.jsonl)
 diff:
   behaviour_change: |
     One new read-only HTTP route and one new receptor; no existing behaviour is
@@ -35,6 +41,72 @@ diff:
     session knows what exit 1 and exit 2 mean, one new CI job in the workflow that
     already owns this family ("an alarm must name a condition some organ will act
     on"), and two new test files. No migration, no data, no credential, no frontend.
+dissent:
+  - seat: claude-opus-5 (self-refutation, caught by the guilt twin it had just written)
+    objection: >-
+      The wiring assertion that proves the healer PAGES this finding was under-matched:
+      it asked for the string "garuda-outbox-second-path" and the string `telegram p0`
+      anywhere in healer-run.sh. Every other receptor also says `telegram p0`, so the
+      conjunction stayed GREEN when the page was downgraded to a log line — the guard
+      would have certified a finding that only reaches a log file, which is the exact
+      silence this PR exists to end (family #3, under-match half).
+    status: CONFIRMED
+    resolution: >-
+      predicate narrowed to the exact pairing 'telegram p0 "garuda-outbox-second-path"';
+      the guilt twin then fails as intended. Measured before the commit, not after.
+  - seat: claude-opus-5 (self-refutation, on the arming claim in this pack's own brief)
+    objection: >-
+      The PR's arming claim — "nothing here waits on a launchctl bootstrap, the healer
+      tick already runs" — was true and incomplete, which is worse than false. The tick
+      executes /Users/nuzantara/scripts/healer-run.sh, a HOME copy declared as a
+      home-fork pair of infra/healer/healer-run.sh for machines [mini]. Nothing
+      re-syncs that pair automatically. Merging this PR would therefore have armed
+      NOTHING on Mini, and the failure mode is a page that never comes — indistinguishable
+      from a healthy queue, i.e. the disease itself (superscar #1 feeding superscar #2).
+    status: CONFIRMED
+    resolution: >-
+      the arming step is now named as a gesture, not assumed: after merge, re-sync the
+      declared pair on Mini and prove it with scripts/lint_home_fork.py --check, then
+      run the receptor from Mini against the live endpoint. Recorded in the brief as a
+      VERIFIED assumption and in the receipts.
+  - seat: kimi-code/k3 (council, independent — ran the suites itself rather than believing the author)
+    objection: >-
+      ONE dedup key for two verdicts. `telegram p0 "garuda-outbox-second-path"` was
+      constant, and the gateway's repeat ladder makes every repeat of a key quieter —
+      so a standing "endpoint unreadable" would have muted the "rows are stuck" page
+      that followed it. Two different conditions, one of them about money, silenced by
+      the other, inside the very organ built to end a silence.
+    status: CONFIRMED
+    resolution: >-
+      one key per condition (garuda-outbox-undrained / garuda-outbox-blind), with an
+      assertion and a GUILT twin that fails when the two keys collapse back into one.
+  - seat: kimi-code/k3 (council, independent)
+    objection: >-
+      Between merging this PR and the Fly deploy that carries the route, the endpoint
+      404s while the API is perfectly healthy — and the receptor would have paged that
+      as a bare "could not read". An alarm that cries during its own rollout is an alarm
+      people learn to scroll past.
+    status: CONFIRMED
+    resolution: >-
+      on a 404 the receptor now probes /health/live on the same host and says which of
+      the two it is: "the API is UP but the route is not deployed yet" versus "the app
+      itself is the suspect". Measured live against prod right now — it prints the
+      first sentence, because that is exactly the state we are in before this merges.
+  - seat: council (four seats dispatched, one delivered)
+    objection: >-
+      Three of the four external lanes produced nothing: codex-gpt-5.6-sol spent 175.6k
+      tokens on repo context and self-checkpointed with zero findings, agy/gemini
+      answered its own tier argument with a model list, and qwen-cloud-code has no
+      credential on this machine today. Only kimi/k3 reviewed — and the watchdog cut it
+      at 902s before its verdict line, so even that lane's coverage is partial: it never
+      finished checking whether the fleet gateway's token is the same credential the API
+      uses.
+    status: CONFIRMED
+    resolution: >-
+      recorded in council.jsonl with each seat's failure mode rather than presented as
+      consensus, and the unfinished question is being measured directly before this PR
+      is called done. The fleet's council capacity is itself thin today and that is a
+      finding about the harness, not about this diff.
 receipts:
   - claim: the endpoint's tests pass, including the three GUILT cases and the no-leak shape check
     cmd: .venv/bin/python3 -m pytest backend/tests/routers/test_health_garuda_outbox.py
@@ -95,6 +167,18 @@ receipts:
     result: "Python 3.9.6 — passed: 8, failed: 0, exit 0. Checked because the file uses PEP 604 shapes (str | None, tuple[int, str]) that would be a runtime error on 3.9 WITHOUT the `from __future__ import annotations` this file carries; with it they are strings and never evaluated. A crash here would not have been silent-safe: healer-run.sh sends stderr to /dev/null and would read the crash as exit 1, i.e. a page about an outbox nobody looked at."
     exit: 0
     ts: 2026-09-20T15:42:00Z
+    seat: claude-opus-5
+  - claim: "kimi's first finding is cured and the cure has a guilt twin: one dedup key per condition"
+    cmd: python3 -m pytest scripts/tests/test_healer_receptor_garuda_outbox.py -q
+    result: "23 passed — including test_the_two_verdicts_page_under_different_dedup_keys and its twin, which fails when the blind key is collapsed back into the undrained one"
+    exit: 0
+    ts: 2026-09-20T15:52:00Z
+    seat: claude-opus-5
+  - claim: "kimi's second finding is cured, and the cure was measured against PROD in the state that produces it"
+    cmd: python3 scripts/healer_receptor_garuda_outbox.py --json
+    result: 'exit 2 with reason "the API is UP but /health/garuda-outbox is not there (404) — the route is not deployed yet, or was rolled back. Not an outbox problem; coverage is missing until the deploy lands" — the receptor now probes /health/live on the same host before naming a 404'
+    exit: 2
+    ts: 2026-09-20T15:51:00Z
     seat: claude-opus-5
   - claim: the healer script and the workflow still parse
     cmd: 'bash -n infra/healer/healer-run.sh; python3 -c ''import yaml; yaml.safe_load(open(".github/workflows/alarm-cure-alignment.yml"))'''

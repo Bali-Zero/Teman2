@@ -388,7 +388,16 @@ except Exception:
     # Paged HERE, not only folded into the tick summary: this is the one
     # receptor whose whole purpose is to be heard when the API's own alarm
     # cannot speak, so it must not depend on the summary being read.
-    telegram p0 "garuda-outbox-second-path" "GARUDA outbox (via $(hostname -s), second path): ${OUTBOX_REASON:-?}
+    #
+    # ONE KEY PER CONDITION, and the reason is the gateway's dedup ladder: a
+    # repeat of the same key gets QUIETER each time (tg_notify.py). A single
+    # key for both verdicts would let a standing "endpoint unreadable" mute
+    # the "rows are stuck" page that follows it — two different conditions,
+    # one of them about money, silenced by the other. Found by the kimi/k3
+    # council seat on this diff; the constant key was already written.
+    OUTBOX_KEY="garuda-outbox-undrained"
+    [ "$OUTBOX_EXIT" -eq 2 ] && OUTBOX_KEY="garuda-outbox-blind"
+    telegram p0 "$OUTBOX_KEY" "GARUDA outbox (via $(hostname -s), second path): ${OUTBOX_REASON:-?}
 
 Il conteggio arriva da /health/garuda-outbox, non da Telegram dell'API: se questa pagina arriva mentre l'allarme dell'API tace, il canale dell'API e' il sospetto.
 Dettaglio (credenziale richiesta): ./scripts/pg.sh -Atc \"SELECT id, job_type, attempts, created_at FROM garuda_order_outbox WHERE dispatched_at IS NULL ORDER BY created_at;\""

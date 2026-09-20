@@ -114,6 +114,35 @@ def fetch(url: str) -> tuple[object | None, str | None]:
     return None, last or "no attempt succeeded"
 
 
+def sibling_live_url(url: str) -> str:
+    """`/health/garuda-outbox` -> `/health/live` on the same host.
+
+    String surgery, not urlparse-and-rebuild: the only shape this receptor ever
+    points at is a /health/* route, and a helper that silently rewrites an
+    arbitrary URL is a bigger surface than the one question it answers.
+    """
+    return url.rsplit("/", 1)[0] + "/live"
+
+
+def explain_404(url: str) -> str:
+    """A 404 has two very different meanings, and the page must say which.
+
+    Found by the kimi/k3 council seat on this diff: between merging this PR and
+    the Fly deploy that carries the route, the endpoint 404s while the API is
+    perfectly healthy. Reporting that as a bare "unreadable" would page the
+    fleet about a deploy window — an alarm that cries during its own rollout is
+    an alarm people learn to ignore.
+    """
+    _, err = fetch(sibling_live_url(url))
+    if err is None:
+        return (
+            "the API is UP but /health/garuda-outbox is not there (404) — the route is "
+            "not deployed yet, or was rolled back. Not an outbox problem; coverage is "
+            "missing until the deploy lands"
+        )
+    return f"HTTP 404 and /health/live is also unreadable ({err}) — the app itself is the suspect"
+
+
 def selftest() -> int:
     """Guilt AND innocence, because a classifier only proves one of them.
 
@@ -162,7 +191,8 @@ def main() -> int:
 
     payload, error = fetch(args.url)
     if payload is None:
-        reason = f"could not read {args.url}: {error}"
+        detail = explain_404(args.url) if error == "HTTP 404" else error
+        reason = f"could not read {args.url}: {detail}"
         code = EXIT_BLIND
     else:
         code, reason = classify(payload)

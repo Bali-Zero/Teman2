@@ -115,7 +115,7 @@ def _pages_on_the_second_path(src: str) -> bool:
     That is the under-match half of cicatrix family #3, caught by the guilt
     control below before it ever shipped.
     """
-    return 'telegram p0 "garuda-outbox-second-path"' in src
+    return 'telegram p0 "$OUTBOX_KEY"' in src
 
 
 def test_the_healer_tick_actually_calls_this_receptor() -> None:
@@ -133,12 +133,59 @@ def test_the_healer_pages_this_finding_rather_than_only_logging_it() -> None:
 
 
 def test_GUILT_the_paging_assertion_fails_when_the_page_is_removed() -> None:
-    sabotaged = HEALER_SRC.replace(
-        'telegram p0 "garuda-outbox-second-path"', 'log "garuda-outbox-second-path"'
-    )
+    sabotaged = HEALER_SRC.replace('telegram p0 "$OUTBOX_KEY"', 'log "$OUTBOX_KEY"')
     assert not _pages_on_the_second_path(sabotaged)
+
+
+def _keys_differ_by_verdict(src: str) -> bool:
+    """One dedup key per condition.
+
+    The gateway's ladder makes every repeat of a key quieter. A single key for
+    both verdicts lets a standing "endpoint unreadable" mute the "rows are
+    stuck" page that follows — two conditions, one of them about money,
+    silenced by the other. Found by the kimi/k3 council seat on this diff,
+    against the constant key that was already written.
+    """
+    return (
+        'OUTBOX_KEY="garuda-outbox-undrained"' in src
+        and 'OUTBOX_KEY="garuda-outbox-blind"' in src
+    )
+
+
+def test_the_two_verdicts_page_under_different_dedup_keys() -> None:
+    assert _keys_differ_by_verdict(HEALER_SRC)
+
+
+def test_GUILT_the_key_assertion_fails_when_the_keys_collapse_back() -> None:
+    sabotaged = HEALER_SRC.replace(
+        'OUTBOX_KEY="garuda-outbox-blind"', 'OUTBOX_KEY="garuda-outbox-undrained"'
+    )
+    assert not _keys_differ_by_verdict(sabotaged)
 
 
 def test_the_healer_script_still_parses() -> None:
     proc = subprocess.run(["bash", "-n", str(HEALER)], capture_output=True, text=True)
     assert proc.returncode == 0, proc.stderr
+
+
+# ---------------------------------------------------------------------------
+# A 404 means two different things, and the page has to say which (kimi/k3).
+# ---------------------------------------------------------------------------
+
+
+def test_the_live_sibling_url_is_derived_from_the_one_we_probe() -> None:
+    assert mod.sibling_live_url("https://x.example/health/garuda-outbox") == "https://x.example/health/live"
+
+
+def test_a_404_while_the_app_answers_is_reported_as_a_missing_route() -> None:
+    """The window between this merge and the Fly deploy — not an outbox problem."""
+    with patch.object(mod, "fetch", return_value=({"status": "ok"}, None)):
+        reason = mod.explain_404("https://x.example/health/garuda-outbox")
+    assert "the API is UP" in reason
+    assert "not deployed yet" in reason
+
+
+def test_a_404_with_a_dead_sibling_accuses_the_app_instead() -> None:
+    with patch.object(mod, "fetch", return_value=(None, "unreachable: down")):
+        reason = mod.explain_404("https://x.example/health/garuda-outbox")
+    assert "the app itself is the suspect" in reason
