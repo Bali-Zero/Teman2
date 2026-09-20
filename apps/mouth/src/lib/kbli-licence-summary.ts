@@ -50,6 +50,14 @@ export const LICENCE_NONE_LABEL = "None (outside OSS licensing)";
 /** The only `licensing_status` under which an empty list means "none required". */
 export const STATUS_NO_LICENCE_REQUIRED = "NOT_APPLICABLE_OSS";
 
+/**
+ * The tombstone status the inspect endpoint writes for a KBLI 2020 number the
+ * 2025 catalogue does not carry (4 codes). Structured field, never a substring
+ * of the title — the title carries a human suffix and matching on it is
+ * cicatrix #3.
+ */
+export const STATUS_RETIRED_KBLI_2020 = "NOT_IN_KBLI_2025";
+
 export function summariseLicences(
   types: readonly (string | null | undefined)[],
   licensingStatus?: string | null,

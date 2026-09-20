@@ -21,6 +21,10 @@ import {
   TRUNCATION_HINT,
   TRUNCATION_NOTE,
 } from "@/lib/kbli-obligation-truncation";
+import {
+  STATUS_RETIRED_KBLI_2020,
+  summariseLicences,
+} from "@/lib/kbli-licence-summary";
 
 // =============================================================================
 // HELPERS
@@ -73,6 +77,43 @@ export function getRiskBadge(risk: string): {
   if (r.includes("rendah") || r === "low")
     return { label: "Low Risk", className: "badge badge-info" };
   return { label: risk || "Unknown", className: "badge badge-neutral" };
+}
+
+/**
+ * The one line the inspector copies to a client's clipboard — a pure function
+ * because it TRAVELS: it is pasted into emails, quotes and chat threads where
+ * none of the surrounding disclosure travels with it, so it is the one string
+ * on this surface that must stand alone. Extracted from `kbli-explorer/page.tsx`
+ * so it can be asserted in a test.
+ *
+ * For a code the 2025 catalogue does not carry, the line built from the inspect
+ * payload read (measured on prod 2026-09-20 for 74100):
+ *
+ *   KBLI 74100 — KBLI 74100 [KBLI 2020 — tidak ada dalam KBLI 2025] | PMA: PMA
+ *   Not Verified | Risk: Not applicable — code absent from KBLI 2025 |
+ *   Licenses: Not listed in our data | Sector: N/A
+ *
+ * Nothing there is FALSE — and it is still the wrong line to paste into a
+ * client's inbox: the code is printed twice, the tombstone suffix lands
+ * mid-sentence in Indonesian, and "Not listed in our data" reads as a gap in
+ * OUR records rather than a code that cannot be registered at all. So a
+ * retired code gets a sentence of its own instead of four segments that each
+ * decline to answer.
+ */
+export function buildInspectorCopyLine(data: KBLIDetail): string {
+  if (data.licensing_status === STATUS_RETIRED_KBLI_2020) {
+    return (
+      `KBLI ${data.code} — retired: this is a KBLI 2020 code and the KBLI 2025 ` +
+      `catalogue does not carry it, so it cannot be registered on OSS. No ` +
+      `licensing, risk or ownership answer applies to it. Search by business ` +
+      `activity for the KBLI 2025 code that covers what you do.`
+    );
+  }
+  const licList = summariseLicences(
+    data.licenses.map((l) => l.type),
+    data.licensing_status,
+  );
+  return `KBLI ${data.code} — ${data.title} | PMA: ${getPmaBadge(data).label} | Risk: ${getRiskBadge(data.risk_profile).label} | Licenses: ${licList} | Sector: ${data.sector}`;
 }
 
 export function getRiskLevel(

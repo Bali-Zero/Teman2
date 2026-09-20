@@ -1,123 +1,103 @@
 gear: 2
-task_id: kbli-chat-risk-one-derivation-20260920
-lane: backend-rag
+task_id: kbli-explorer-copy-burial-20260920
+lane: mouth
 host: air-m5 (M5)
-branch: agent/air-m5/backend-rag/kbli-chat-risk-one-derivation-20260920
+branch: agent/air-m5/mouth/kbli-explorer-copy-burial-20260920
 gate_class: opus
 l_level: L2
 objective: >-
-  Ledger row `kbli-chat-asserts-licensing-facts-with-no-government-source`
-  (PENDING-ARMS, opened 2026-09-19 from the 3-seat KBLI audit). Five places in
-  `kbli_notebook_chat.py` produced `risk_category` for the same code and
-  disagreed even about what ignorance is called: the `kbli_documents` branch
-  hardcoded `"Verify at OSS"` and stopped looking, the `kg_nodes` branch
-  defaulted to it, the Qdrant payload builder and the ILIKE fallback defaulted
-  to `"Unknown"`, and a hand-written answer table served tiers nobody sourced.
-  Which answer a client got depended on which store held the code, not on the
-  law. MEASURED READ-ONLY INSIDE THE RUNNING IMAGE on 2026-09-20, not recalled:
-  `kbli_documents` carries no `kategori_risiko` key on ANY of its 1,563 rows,
-  while `kg_nodes` carries a value on 1,383 of its 1,562 `kbli:` nodes — so the
-  branch that wins for almost every code was the one structurally incapable of
-  answering, and it declined to ask the store that could. The same probe killed
-  the hand-written table's premise: its own comment declared 47901 "absent by
-  construction from PostgreSQL and Qdrant — this dict was its ONLY possible
-  answer", and all nine of its codes are present in BOTH stores. The typed-code
-  path never reached it; its one live route was the activity-keyword map, which
-  bypassed the stores entirely. That measurement also dissolves the product
-  question the row put to the codeowner ("may the channel answer at all when
-  the canonical has no PMA verdict?"): there is no code here the stores cannot
-  answer, so deleting the table costs zero coverage.
+  Ledger row `kbli-explorer-copy-line-shares-a-dead-code-as-a-live-listing`
+  (PENDING-ARMS, opened 2026-09-19 by the post-#6847 sweep). The explorer's
+  copy-to-clipboard string is built from `kbliApi.inspect(code)` — the very
+  endpoint `_tombstone_result` tombstones — and it is the one artifact on this
+  surface designed to travel OUT of it, into an email or a chat where none of
+  the surrounding disclosure travels along. MEASURED, not deduced: the
+  production inspect payload for 74100 (read 2026-09-20) carries
+  `licensing_status: NOT_IN_KBLI_2025`, `title: "KBLI 74100 [KBLI 2020 — tidak
+  ada dalam KBLI 2025]"`, `risk_profile: "Not applicable — code absent from
+  KBLI 2025"`, `pma_status: NOT_VERIFIED`, `licenses: []`; run through the
+  pre-cure expression it produces `KBLI 74100 — KBLI 74100 [KBLI 2020 — tidak
+  ada dalam KBLI 2025] | PMA: PMA Not Verified | Risk: Not applicable — code
+  absent from KBLI 2025 | Licenses: Not listed in our data | Sector: N/A`.
+  ONE CORRECTION TO THE ROW: it says the line "asserts a PMA verdict and a risk
+  tier beside it". It does not — both segments decline, which is why this is
+  ledgered as a comprehension defect and not a false statement. What IS wrong:
+  the code is printed twice, the tombstone suffix lands mid-sentence in
+  Indonesian, and "Not listed in our data" reads as a gap in OUR records rather
+  than as a code that cannot be registered at all. Four segments that each
+  decline to answer are a worse artifact to paste into a client's inbox than
+  one sentence that says the code is retired.
 scope:
   - >-
-    apps/backend-rag/backend/app/routers/kbli_notebook_chat.py — new
-    `_resolve_code_from_stores(pool, code)` carrying the ONE derivation with its
-    precedence written down (`kbli_documents` -> `kg_nodes` -> Qdrant), used by
-    both the typed-code path and the activity-keyword route; new
-    `_channel_risk(*candidates)` giving this channel one word for not knowing;
-    the hand-written `KNOWN_KBLI_CODES` table deleted; `_bury_if_phantom` moved
-    BELOW the keyword route, which until now ran past it unburied; the deleted
-    table's e-commerce fork moved into the master prompt as accuracy rule 6.
+    `apps/mouth/src/lib/kbli-licence-summary.ts` — exports
+    `STATUS_RETIRED_KBLI_2020` ("NOT_IN_KBLI_2025") beside the two status
+    tokens this module already owns, so the verdict is read as an ENTITY from a
+    structured field and never as a substring of the title (cicatrix #3).
   - >-
-    Tests — new guilt/innocence suite for the derivation; the structural
-    fallback guard re-aimed from the deleted table onto the two hand-written
-    copies that survive it (the keyword map and the prompt); the burial-order
-    test re-pinned on the two paths that now exist.
+    `apps/mouth/src/app/kbli-explorer/components/KBLIInspector.tsx` — new pure
+    `buildInspectorCopyLine(data)` beside the badge helpers it needs: one
+    sentence for a retired code, the existing five-segment line otherwise.
+  - >-
+    `apps/mouth/src/app/kbli-explorer/page.tsx` — `handleCopy` calls the
+    builder; the inline template, and the two imports it alone needed, are
+    gone.
+  - >-
+    Tests — guilt/innocence on the two REAL production payloads (74100 retired,
+    56101 live), including the impostor case that a substring guard fails.
 constraints:
   - >-
-    `_result_from_payload` is NOT touched. It floors at `"Unknown"` and is
-    shared with the public `search_kbli` surface; this channel normalises its
-    output instead of changing a function two consumers read. Aligning
-    `search_kbli` is its own lane, declared rather than swept in.
+    The RISK half of this row was blocked on the risk doctrine until #6868
+    ruled it (one derivation, `Verify at OSS` as the floor). That cure decided
+    the doctrine, and this PR applies its consequence on the travelling
+    artifact: for a code that cannot be registered there is no risk segment to
+    qualify, so the segment goes rather than gets hedged.
   - >-
-    The floor stays `"Verify at OSS"`, not the inspect side's `"Not
-    classified"`. The master prompt carries an accuracy rule keyed on that
-    exact string; changing the word would silently break the rule that handles
-    it.
+    The inspector's rendered PANELS are not touched. They sit inside our
+    surface, where the tombstone description is on screen next to them; this
+    row is about the string that leaves it.
   - >-
-    No editorial knowledge is deleted silently. The table's 47901 fork was
-    pinned by an existing test, so it moves to the prompt WITH its guard rather
-    than disappearing.
-  - >-
-    Merging this deploys it (apps/backend-rag/**). The live observation in
-    `Bites:` is taken after the deploy, never inferred from the merge.
+    Mouth is Vercel: merging does NOT make this live. The git deploy lands
+    STAGED and must be promoted, so the `Bites:` observation is taken on the
+    promoted production URL.
 acceptance:
   - text: >-
-      GUILT, the whole reason for the change: WHEN `kbli_documents` answers for
-      a code AND `kg_nodes` carries a tier for it, the match SHALL carry that
-      tier. The replaced code hardcoded `"Verify at OSS"` and `break`ed.
+      GUILT: WHEN the inspect payload carries `licensing_status:
+      NOT_IN_KBLI_2025`, the copied line SHALL contain no `PMA:`, `Risk:`,
+      `Licenses:` or `Sector:` segment, no `[KBLI 2020` fragment, and the code
+      exactly once — and SHALL say the code is retired and cannot be registered
+      on OSS.
     probe: >-
-      pytest backend/tests/unit/routers/test_kbli_chat_risk_has_one_derivation.py::test_documents_row_no_longer_hardcodes_ignorance_over_a_known_tier
+      npx vitest run
+      src/app/kbli-explorer/components/KBLIInspector.copy-line.test.ts -t
+      "drops every segment"
   - text: >-
-      GUILT: WHEN the Qdrant path answers with the shared builder's
-      `"Unknown"`, this channel SHALL report `"Verify at OSS"` — one dialect of
-      ignorance, not two.
+      THE VERDICT IS AN ENTITY, NOT A SPELLING: WHERE a LIVE record's title
+      merely quotes the tombstone suffix, the line SHALL stay the normal
+      five-segment one. A `title.includes("[KBLI 2020")` guard passes the guilt
+      half and fails this one.
     probe: >-
-      pytest backend/tests/unit/routers/test_kbli_chat_risk_has_one_derivation.py::test_qdrant_unknown_is_folded_into_the_one_dialect
+      npx vitest run
+      src/app/kbli-explorer/components/KBLIInspector.copy-line.test.ts -t
+      "structured status"
   - text: >-
-      INNOCENCE: WHERE no store carries the code, or the pool is dead, or the
-      query raises, or the store holds the code but not the tier, the channel
-      SHALL abstain rather than invent — no match, or the floor.
+      INNOCENCE: WHERE the code is live (56101), the line SHALL be byte-identical
+      to the expression this cure replaced — same five segments, same order.
     probe: >-
-      pytest backend/tests/unit/routers/test_kbli_chat_risk_has_one_derivation.py -k "no_store_carries or dead_pool or raising_query or not_the_tier or empty_tier"
+      npx vitest run
+      src/app/kbli-explorer/components/KBLIInspector.copy-line.test.ts -t
+      "byte-identical"
   - text: >-
-      ASYMMETRY PINNED: WHILE a partial PMA tuple SHALL be withheld by
-      `_PMADisclosure`, an unsourced risk string SHALL pass through it verbatim
-      — which is why the risk derivation is made single at the source.
+      BOTH MUTATIONS BITE: neutralising the burial branch SHALL red the first
+      test only; replacing the entity check with a title substring SHALL red the
+      second only; innocence SHALL stay green through both.
     probe: >-
-      pytest backend/tests/unit/routers/test_kbli_chat_risk_has_one_derivation.py::test_a_partial_pma_tuple_is_withheld_while_the_risk_tier_is_not
-  - text: >-
-      THE TABLE IS GONE AND STAYS GONE: `grep -c KNOWN_KBLI_CODES` on the chat
-      router SHALL return 0, WHILE the keyword map SHALL still route and resolve
-      through the stores.
-    probe: >-
-      pytest backend/tests/unit/routers/test_kbli_hardcoded_fallback_matches_catalogue.py::test_the_router_carries_no_hand_written_answer_table backend/tests/unit/routers/test_kbli_notebook_chat.py::test_the_keyword_map_routes_without_asserting_facts
-  - text: >-
-      DEGRADATION IS NOT A REGRESSION: WHEN there is no database pool, the
-      typed-code path SHALL still ask Qdrant. `get_optional_database_pool` is
-      optional by design and Qdrant was the branch NOT gated on it; an early
-      return here would cut the whole path the moment Postgres blinks.
-    probe: >-
-      pytest backend/tests/unit/routers/test_kbli_chat_risk_has_one_derivation.py -k dead_pool
-  - text: >-
-      BURIAL ORDER: the tombstone call SHALL sit after BOTH paths that set
-      `direct_kbli_match`. It used to sit between them, so a keyword-injected
-      match skipped the tombstone entirely.
-    probe: >-
-      pytest backend/tests/unit/routers/test_kbli_chat_buries_phantom_codes.py::test_the_endpoint_actually_calls_the_burial
-  - text: >-
-      THE SURVIVING HAND-WRITTEN COPIES STAY HONEST: no keyword target and no
-      prompt line SHALL name a code the catalogue lacks, and no prompt line
-      SHALL promise foreign openness on a code the catalogue caps below 100%.
-    probe: >-
-      pytest backend/tests/unit/routers/test_kbli_hardcoded_fallback_matches_catalogue.py
-  - text: >-
-      NO REGRESSION ACROSS THE KBLI SURFACE.
-    probe: pytest backend/tests -k kbli
+      manual mutation, run 2026-09-20 — 1 failed / 2 passed each time, file
+      restored from a `cp` backup and confirmed byte-identical with `cmp -s`
+  - text: NO REGRESSION ON THE EXPLORER OR THE SHARED LIBS.
+    probe: npx vitest run src/app/kbli-explorer src/lib
 pii: none
 local_evidence: >-
-  The two production reads this session were column-scoped and carried no client
-  data: counts and `kategori_risiko`/`pma_status` values from `kbli_documents`
-  and `kg_nodes` for nine KBLI codes, plus two aggregate counts over those
-  tables. KBLI codes are a public government classification, not client data.
-  Fly access was through `scripts/lib/fly_credential.sh`; no credential value was
-  echoed, printed or committed.
+  Two reads of the public KBLI inspect endpoint through the PII-free
+  nuzantara-knowledge MCP (codes 74100 and 56101 — a public government
+  classification, not client data). No credentials, no authenticated surface,
+  no client records touched.

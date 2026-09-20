@@ -40,8 +40,8 @@ import {
   TRUNCATION_NOTE,
 } from "@/lib/kbli-obligation-truncation";
 import KBLIInspector, {
+  buildInspectorCopyLine,
   getPmaBadge,
-  getRiskBadge,
   getRiskLevel,
 } from "./components/KBLIInspector";
 import ThinkingIndicator from "./components/ThinkingIndicator";
@@ -52,7 +52,6 @@ import { useTypewriter } from "./hooks/useTypewriter";
 import LegacyAlert from "./components/LegacyAlert";
 import BlackBookModal from "./components/BlackBookModal";
 import { KBLI_CONCORDANCE_2025 } from "./concordance";
-import { summariseLicences } from "@/lib/kbli-licence-summary";
 
 // =============================================================================
 // CONSTANTS & HELPERS
@@ -677,17 +676,13 @@ const InspectorChoreographed = ({
   const pmaBadge = getPmaBadge(data);
   const riskLevel = getRiskLevel(data.risk_profile);
 
-  // Copy/Export (2C)
+  // Copy/Export (2C) — the line itself is built by
+  // `buildInspectorCopyLine`, which owns two rules this call site kept getting
+  // wrong: an empty licence list is a DECLARED gap, not "None", and a code the
+  // 2025 catalogue does not carry gets a sentence instead of four segments that
+  // each decline to answer.
   const handleCopy = () => {
-    // `|| "None"` here asserted "no licence required" out of an EMPTY list —
-    // 284 codes render `licenses: []` and canonical states obligations for 125
-    // of them. The resolver declares the gap instead. See kbli-licence-summary.
-    const licList = summariseLicences(
-      data.licenses.map((l) => l.type),
-      data.licensing_status,
-    );
-    const text = `KBLI ${data.code} — ${data.title} | PMA: ${pmaBadge.label} | Risk: ${getRiskBadge(data.risk_profile).label} | Licenses: ${licList} | Sector: ${data.sector}`;
-    navigator.clipboard.writeText(text).then(() => {
+    navigator.clipboard.writeText(buildInspectorCopyLine(data)).then(() => {
       toast.success("Copied to clipboard");
     });
   };
