@@ -950,10 +950,24 @@ def _render_pairing_md(pairing: dict[str, list[str]]) -> str:
     return "\n".join(lines) + "\n"
 
 
+# Owner ruling (2026-09-20): first real r2 run (2026-09-19) kept 0 of 16 real objections — this
+# prefix told a seat WHAT to do ("name an F/C and a test") but never stated the SHAPE the parser
+# expects, and _objection_ok wants a line starting with the literal "Test:". One seat (astra)
+# answered with a well-formed markdown table instead of prose paragraphs; every row was
+# discarded. The prefix now states the parsed shape explicitly, and the filter (below) also
+# accepts a table directly rather than only ever rejecting one.
 _R2_PROMPT_PREFIX = ("Object only where you can name an F/C and a test that would settle it. "
                       "No test, no objection. " + _SEALED_SENTENCE + " Use ONLY the answers "
-                      "below.\n\n")
+                      "below. Write one paragraph per objection, separated by a blank line; "
+                      "each paragraph must cite at least one F<n>/C<n> and contain a line that "
+                      "starts with `Test:`.\n\n")
 _FC_REF_RE = re.compile(r"\b[FC]\d+\b")
+
+# Placeholder cells that read as "no test" even though the column is non-blank. Deliberately
+# short and exact rather than fuzzy — matched case-insensitively after stripping whitespace, so
+# " N/A ", "TBD" and a bare "-"/"—" placeholder all count as empty; nothing broader (e.g. "?",
+# "unknown") is guessed at.
+_EMPTY_TABLE_TEST_CELLS = {"", "-", "—", "n/a", "none", "tbd"}
 
 
 def _split_objections(text: str) -> list[str]:
@@ -962,6 +976,69 @@ def _split_objections(text: str) -> list[str]:
 
 def _objection_ok(paragraph: str) -> bool:
     return bool(_FC_REF_RE.search(paragraph)) and bool(re.search(r"^Test:", paragraph, re.MULTILINE))
+
+
+def _objection_table_rows(paragraph: str) -> tuple[str, str, list[str]] | None:
+    """If `paragraph` is a markdown table — every line starts with `|`, and the second line is
+    a separator row — return (header_line, separator_line, data_lines). Else None. Mirrors
+    `_md_table_rows`'s header+separator+data shape, but works on a bare r2 paragraph (no `##
+    section` wrapper: r2 objections are free text split on blank lines, not judge.md's own
+    document), and returns the ORIGINAL lines rather than parsed cells so a kept/rejected table
+    can be re-emitted byte-for-byte from a subset of its own rows."""
+    lines = [ln for ln in paragraph.splitlines() if ln.strip()]
+    if len(lines) < 2 or not all(ln.strip().startswith("|") for ln in lines):
+        return None
+    if not _is_md_separator_row(lines[1]):
+        return None
+    return lines[0], lines[1], lines[2:]
+
+
+def _table_row_cells(line: str) -> list[str]:
+    return [c.strip() for c in line.strip().strip("|").split("|")]
+
+
+_TEST_HEADER_WORD_RE = re.compile(r"\btests?\b", re.IGNORECASE)
+
+
+def _table_test_column(header_cells: list[str]) -> int | None:
+    """Judge the header cell as a WORD, not a substring (scar family #3, guard over-match): a
+    plain 'test'/'tests' in "Test", "Tests", "Test that would settle it" passes, but "Latest
+    status" or "Contested by" carry the same four letters embedded in a different word and must
+    not be read as a test column."""
+    for i, cell in enumerate(header_cells):
+        if _TEST_HEADER_WORD_RE.search(cell):
+            return i
+    return None
+
+
+def _filter_objection_paragraph(paragraph: str) -> tuple[str | None, str | None, int, int]:
+    """Return (kept_text, rejected_text, kept_count, rejected_count) for ONE r2 paragraph.
+    A prose paragraph (no table, or a table with no column named 'test') takes the prose path,
+    unchanged: it goes through _objection_ok as a whole, kept or rejected as ONE unit (count 1
+    either way). A table WITH a test column explodes into one unit PER DATA ROW (owner ruling
+    2026-09-20): a row is kept iff it carries an F/C ref anywhere in the row AND its test cell
+    is non-empty after stripping (see _EMPTY_TABLE_TEST_CELLS). The separator row is never a
+    data row. kept_text/rejected_text reconstruct a VALID table — original header, original
+    separator, then only the rows that landed on that side — so a downstream reader that only
+    ever sees r2/<seat>.md still sees well-formed markdown, not a lone header with no rows."""
+    table = _objection_table_rows(paragraph)
+    if table is not None:
+        header, sep, data_lines = table
+        test_col = _table_test_column(_table_row_cells(header))
+        if test_col is not None:
+            kept_rows: list[str] = []
+            rejected_rows: list[str] = []
+            for line in data_lines:
+                cells = _table_row_cells(line)
+                test_cell = cells[test_col] if test_col < len(cells) else ""
+                has_fc = bool(_FC_REF_RE.search(line))
+                is_empty = test_cell.strip().lower() in _EMPTY_TABLE_TEST_CELLS
+                (kept_rows if has_fc and not is_empty else rejected_rows).append(line)
+            kept_text = "\n".join([header, sep, *kept_rows]) if kept_rows else None
+            rejected_text = "\n".join([header, sep, *rejected_rows]) if rejected_rows else None
+            return kept_text, rejected_text, len(kept_rows), len(rejected_rows)
+    ok = _objection_ok(paragraph)
+    return (paragraph, None, 1, 0) if ok else (None, paragraph, 0, 1)
 
 
 def _fake_r2_output(seat: str) -> str:
@@ -1008,17 +1085,32 @@ def cmd_r2(args: argparse.Namespace) -> dict[str, dict[str, int]]:
         (kit / "r2" / f"{_seat_key(seat)}.raw.md").write_text(raw_output or "")
         output = _normalise_seat_output(raw_output or "")
         paragraphs = _split_objections(output)
-        kept = [p for p in paragraphs if _objection_ok(p)]
-        rejected = [p for p in paragraphs if not _objection_ok(p)]
-        (kit / "r2" / f"{_seat_key(seat)}.md").write_text("\n\n".join(kept) + ("\n" if kept else ""))
-        if rejected:
-            (kit / "r2" / f"{_seat_key(seat)}.rejected.md").write_text("\n\n".join(rejected) + "\n")
+        # Filtering happens per-PARAGRAPH, but a table paragraph with a test column contributes
+        # per-ROW to both the kept/rejected text and the counts — see
+        # _filter_objection_paragraph's docstring for the shape.
+        kept_texts: list[str] = []
+        rejected_texts: list[str] = []
+        kept_count = 0
+        rejected_count = 0
+        for p in paragraphs:
+            kept_text, rejected_text, kc, rc = _filter_objection_paragraph(p)
+            if kept_text is not None:
+                kept_texts.append(kept_text)
+            if rejected_text is not None:
+                rejected_texts.append(rejected_text)
+            kept_count += kc
+            rejected_count += rc
+        (kit / "r2" / f"{_seat_key(seat)}.md").write_text(
+            "\n\n".join(kept_texts) + ("\n" if kept_texts else ""))
+        if rejected_texts:
+            (kit / "r2" / f"{_seat_key(seat)}.rejected.md").write_text(
+                "\n\n".join(rejected_texts) + "\n")
         dead = not (raw_output or "").strip()
         if dead:
             dead_seats.add(seat)
-        status = "r2-dead" if dead else f"r2-kept={len(kept)}-rejected={len(rejected)}"
+        status = "r2-dead" if dead else f"r2-kept={kept_count}-rejected={rejected_count}"
         ledger_append(kit, seat, status, brief_sha[:16])
-        summary[seat] = {"kept": len(kept), "rejected": len(rejected)}
+        summary[seat] = {"kept": kept_count, "rejected": rejected_count}
     for seat, counts in summary.items():
         if seat in dead_seats:
             print(f"{seat}: dead (empty output)")

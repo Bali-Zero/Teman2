@@ -621,6 +621,108 @@ def test_r2_keeps_the_kept_rejected_row_for_a_seat_whose_objections_were_all_fil
     assert rows["kimi-k3"] == "r2-kept=0-rejected=1"
 
 
+# --------------------------------------------------------------- r2 table objections (guilt + innocence)
+# Owner ruling (2026-09-20): first real r2 run kept 0/16 real objections because the prompt
+# never stated the parsed shape and the filter had no path for a markdown table (astra's real
+# answer, 2026-09-19) — only for a `Test:`-line paragraph.
+
+def test_r2_prompt_prefix_states_the_paragraph_shape_and_keeps_the_sealed_sentence():
+    assert "Test:" in dw._R2_PROMPT_PREFIX
+    assert dw._SEALED_SENTENCE in dw._R2_PROMPT_PREFIX
+
+
+def test_r2_filter_table_with_a_test_column_splits_rows_and_reassembles_valid_tables(
+        tmp_path, template, clean_objective, monkeypatch):
+    """Guilt: astra's real shape — one objection per table row, with a test column. Mixed rows:
+    F/C+real test (kept), no F/C (rejected), test cell is a placeholder (rejected) — split per
+    row, counts match, both output files stay well-formed tables (header + separator + rows)."""
+    kit = tmp_path / "k"
+    dw.cmd_brief(_brief_ns(clean_objective, template, kit))
+    _seed_convener(kit)
+    dw.cmd_r1(argparse.Namespace(kit=str(kit), seats="kimi-k3,qwen3.8-max,gemini-3.1-pro-high",
+                                  astra_fallback=False))
+    table = ("| Objection | Ref | Test |\n"
+             "|---|---|---|\n"
+             "| pairing may drift | F1 | rerun r2 twice, diff pairing.md |\n"
+             "| vague worry, no ref | | rerun it |\n"
+             "| no real test | F2 | n/a |\n")
+    monkeypatch.delenv("DW_FAKE_SEATS", raising=False)
+    monkeypatch.setattr(dw, "_launch_seat", lambda seat, prompt, timeout, kit: table)
+
+    summary = dw.cmd_r2(argparse.Namespace(kit=str(kit)))
+
+    for seat, counts in summary.items():
+        assert counts == {"kept": 1, "rejected": 2}
+        kept_text = (kit / "r2" / f"{seat}.md").read_text()
+        rejected_text = (kit / "r2" / f"{seat}.rejected.md").read_text()
+        for text in (kept_text, rejected_text):
+            lines = [ln for ln in text.splitlines() if ln.strip()]
+            assert lines[0] == "| Objection | Ref | Test |"
+            assert dw._is_md_separator_row(lines[1])
+        assert "F1" in kept_text and "F1" not in rejected_text
+        assert "F2" in rejected_text
+
+
+def test_r2_filter_table_with_no_test_column_is_still_rejected_as_one_prose_unit(
+        tmp_path, template, clean_objective, monkeypatch):
+    """Innocence: a table with no column named 'test' is not exploded per row — the paragraph
+    goes through _objection_ok whole, and a table row is not a `Test:` line, so it is rejected."""
+    kit = tmp_path / "k"
+    dw.cmd_brief(_brief_ns(clean_objective, template, kit))
+    _seed_convener(kit)
+    dw.cmd_r1(argparse.Namespace(kit=str(kit), seats="kimi-k3,qwen3.8-max,gemini-3.1-pro-high",
+                                  astra_fallback=False))
+    table = "| Objection | Ref |\n|---|---|\n| pairing may drift | F1 |\n"
+    monkeypatch.delenv("DW_FAKE_SEATS", raising=False)
+    monkeypatch.setattr(dw, "_launch_seat", lambda seat, prompt, timeout, kit: table)
+
+    summary = dw.cmd_r2(argparse.Namespace(kit=str(kit)))
+    for seat, counts in summary.items():
+        assert counts == {"kept": 0, "rejected": 1}
+
+
+def test_filter_objection_paragraph_prose_without_test_line_is_still_rejected():
+    kept, rejected, kc, rc = dw._filter_objection_paragraph("F1 something is off, no test line.")
+    assert kept is None and rejected is not None and (kc, rc) == (0, 1)
+
+
+def test_filter_objection_paragraph_prose_with_fc_and_test_is_still_kept():
+    para = "F1 something is off.\nTest: rerun it."
+    kept, rejected, kc, rc = dw._filter_objection_paragraph(para)
+    assert kept == para and rejected is None and (kc, rc) == (1, 0)
+
+
+def test_filter_objection_paragraph_table_row_with_test_cell_but_no_fc_ref_is_rejected():
+    table = "| Objection | Test |\n|---|---|\n| vague worry | rerun it |\n"
+    kept, rejected, kc, rc = dw._filter_objection_paragraph(table)
+    assert kept is None and (kc, rc) == (0, 1) and "vague worry" in rejected
+
+
+def test_filter_objection_paragraph_separator_row_is_never_counted_as_a_data_row():
+    table = "| Objection | Ref | Test |\n|---|---|---|\n| x | F1 | run it |\n"
+    _, _, kc, rc = dw._filter_objection_paragraph(table)
+    assert kc + rc == 1
+
+
+# Guard over-match (scar family #3): "test" as a whole word in the header names the column;
+# the same four letters embedded in a different word does not.
+@pytest.mark.parametrize("header_word", ["Test", "TEST", "Test that would settle it", "Tests"])
+def test_filter_objection_paragraph_recognises_test_as_a_whole_word_in_the_header(header_word):
+    table = f"| Objection | Ref | {header_word} |\n|---|---|---|\n| x | F1 | run it |\n"
+    kept, rejected, kc, rc = dw._filter_objection_paragraph(table)
+    assert kept is not None and (kc, rc) == (1, 0)
+
+
+@pytest.mark.parametrize("header_word", ["Latest status", "Contested by", "Attestation"])
+def test_filter_objection_paragraph_does_not_take_a_test_substring_as_the_test_column(header_word):
+    """Innocence twin: none of these header cells is the word 'test', so the table has no test
+    column — the whole paragraph falls to the prose path and is rejected as ONE unit, not
+    exploded per row (there is no `Test:` line anywhere in a bare table paragraph)."""
+    table = f"| Objection | Ref | {header_word} |\n|---|---|---|\n| x | F1 | run it |\n"
+    kept, rejected, kc, rc = dw._filter_objection_paragraph(table)
+    assert kept is None and (kc, rc) == (0, 1) and rejected == table
+
+
 # --------------------------------------------------------------- judge (guilt + innocence)
 
 def test_judge_passes_a_clean_canned_answer(tmp_path, template, clean_objective):
