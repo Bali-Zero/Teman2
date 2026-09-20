@@ -233,10 +233,13 @@ def _earliest_sent_when(kit: Path) -> datetime | None:
     return min((_parse_ledger_when(w) for w in whens), default=None)
 
 
-def _ledger_when(kit: Path, seat: str) -> datetime | None:
-    """Timestamp recorded on `seat`'s own ledger row (first one), or None if absent."""
+def _ledger_when(kit: Path, seat: str, status: str | None = None) -> datetime | None:
+    """Timestamp recorded on `seat`'s own ledger row (first one), or None if absent. With
+    `status`, the first row carrying THAT status: a registered window seat has an
+    `awaiting-window` row stamped at append time before its `answered` row stamped at the
+    window file's mtime, and the two only agree while both fall in the same second."""
     for r in _ledger_rows(kit):
-        if r[1] == seat:
+        if r[1] == seat and (status is None or r[2] == status):
             return _parse_ledger_when(r[0])
     return None
 
@@ -1528,7 +1531,7 @@ def run_selftest() -> None:
         )
         kit_a = work / "kit-a"
         ns = argparse.Namespace(slug="a", objective_file=str(dirty_obj), colour="BLUE",
-                                 floor=None, template=str(_fixture_template()), kit=str(kit_a))
+                                 floor=None, template=str(_fixture_template(work)), kit=str(kit_a))
         try:
             cmd_brief(ns)
             check("PII gate refuses dirty objective", False)
@@ -1542,7 +1545,7 @@ def run_selftest() -> None:
         kit_b1, kit_b2 = work / "kit-b1", work / "kit-b2"
         for k in (kit_b1, kit_b2):
             cmd_brief(argparse.Namespace(slug="b", objective_file=str(clean_obj), colour="BLUE",
-                                          floor=None, template=str(_fixture_template()), kit=str(k)))
+                                          floor=None, template=str(_fixture_template(work)), kit=str(k)))
         sha1 = (kit_b1 / "brief.sha").read_text()
         sha2 = (kit_b2 / "brief.sha").read_text()
         check("brief sha stable across identical runs", sha1 == sha2)
@@ -1550,7 +1553,7 @@ def run_selftest() -> None:
         # C. check passes on an untouched kit, fails on a hand-edited BRIEF.md (W78).
         kit_c = work / "kit-c"
         cmd_brief(argparse.Namespace(slug="c", objective_file=str(clean_obj), colour="BLUE",
-                                      floor=None, template=str(_fixture_template()), kit=str(kit_c)))
+                                      floor=None, template=str(_fixture_template(work)), kit=str(kit_c)))
         try:
             cmd_check(argparse.Namespace(kit=str(kit_c)))
             check("check passes on untouched kit", True)
@@ -1567,7 +1570,7 @@ def run_selftest() -> None:
         # D. ledger tamper is detected by check.
         kit_d = work / "kit-d"
         cmd_brief(argparse.Namespace(slug="d", objective_file=str(clean_obj), colour="BLUE",
-                                      floor=None, template=str(_fixture_template()), kit=str(kit_d)))
+                                      floor=None, template=str(_fixture_template(work)), kit=str(kit_d)))
         ledger_append(kit_d, "kimi-k3", "sent", "deadbeefcafef00d")
         lines = _ledger_path(kit_d).read_text().splitlines()
         _ledger_path(kit_d).write_text("\n".join(lines[:-1]) + "\n")  # drop last row, no re-hash
@@ -1580,7 +1583,7 @@ def run_selftest() -> None:
         # E. r1 refuses without the convener file.
         kit_e = work / "kit-e"
         cmd_brief(argparse.Namespace(slug="e", objective_file=str(clean_obj), colour="BLUE",
-                                      floor=None, template=str(_fixture_template()), kit=str(kit_e)))
+                                      floor=None, template=str(_fixture_template(work)), kit=str(kit_e)))
         try:
             cmd_r1(argparse.Namespace(kit=str(kit_e), seats="kimi-k3", astra_fallback=False))
             check("r1 refuses without convener file", False)
@@ -1591,7 +1594,7 @@ def run_selftest() -> None:
         # F. invalid answer -> dead -> one relaunch -> refusal on third sent row.
         kit_f = work / "kit-f"
         cmd_brief(argparse.Namespace(slug="f", objective_file=str(clean_obj), colour="BLUE",
-                                      floor=None, template=str(_fixture_template()), kit=str(kit_f)))
+                                      floor=None, template=str(_fixture_template(work)), kit=str(kit_f)))
         sha_f = (kit_f / "brief.sha").read_text().strip()
         (kit_f / "r1" / "fable-5-1.md").write_text(_CANNED_VALID.format(seat="fable-5-1", sha=sha_f))
         summary_f1 = cmd_r1(argparse.Namespace(kit=str(kit_f), seats="x-fakeinvalid", astra_fallback=False))
@@ -1604,7 +1607,7 @@ def run_selftest() -> None:
         # G. r2: deterministic pairing, filter drops weak objections, refuses a mutated recompute.
         kit_g = work / "kit-g"
         cmd_brief(argparse.Namespace(slug="g", objective_file=str(clean_obj), colour="BLUE",
-                                      floor=None, template=str(_fixture_template()), kit=str(kit_g)))
+                                      floor=None, template=str(_fixture_template(work)), kit=str(kit_g)))
         sha_g = (kit_g / "brief.sha").read_text().strip()
         (kit_g / "r1" / "fable-5-1.md").write_text(_CANNED_VALID.format(seat="fable-5-1", sha=sha_g))
         cmd_r1(argparse.Namespace(kit=str(kit_g), seats="kimi-k3,qwen3.8-max,gemini-3.1-pro-high",
@@ -1628,7 +1631,7 @@ def run_selftest() -> None:
         # H. judge: mechanical C1/C5/C8 disqualification — clean answer passes, C1-dirty fails.
         kit_h = work / "kit-h"
         cmd_brief(argparse.Namespace(slug="h", objective_file=str(clean_obj), colour="BLUE",
-                                      floor=None, template=str(_fixture_template()), kit=str(kit_h)))
+                                      floor=None, template=str(_fixture_template(work)), kit=str(kit_h)))
         sha_h = (kit_h / "brief.sha").read_text().strip()
         (kit_h / "r1" / "fable-5-1.md").write_text(_CANNED_VALID.format(seat="fable-5-1", sha=sha_h))
         ledger_append(kit_h, "kimi-k3", "sent", "aaaa")
@@ -1648,7 +1651,7 @@ def run_selftest() -> None:
         # (REWORK-BUILD verdict on 8ffb9bc278/PR1b: mtime was recorded, never compared).
         kit_i = work / "kit-i"
         cmd_brief(argparse.Namespace(slug="i", objective_file=str(clean_obj), colour="BLUE",
-                                      floor=None, template=str(_fixture_template()), kit=str(kit_i)))
+                                      floor=None, template=str(_fixture_template(work)), kit=str(kit_i)))
         sha_i = (kit_i / "brief.sha").read_text().strip()
         (kit_i / "r1" / "fable-5-1.md").write_text(_CANNED_VALID.format(seat="fable-5-1", sha=sha_i))
         cmd_r1(argparse.Namespace(kit=str(kit_i), seats="kimi-k3", astra_fallback=False))
@@ -1669,7 +1672,7 @@ def run_selftest() -> None:
         # (REWORK-BUILD verdict on 4c062d2e09/PR2a: unknown seat paired within its own vendor).
         kit_j = work / "kit-j"
         cmd_brief(argparse.Namespace(slug="j", objective_file=str(clean_obj), colour="BLUE",
-                                      floor=None, template=str(_fixture_template()), kit=str(kit_j)))
+                                      floor=None, template=str(_fixture_template(work)), kit=str(kit_j)))
         sha_j = (kit_j / "brief.sha").read_text().strip()
         (kit_j / "r1" / "fable-5-1.md").write_text(_CANNED_VALID.format(seat="fable-5-1", sha=sha_j))
         cmd_r1(argparse.Namespace(kit=str(kit_j), seats="kimi-k3,totally-unknown-seat",
@@ -1688,7 +1691,7 @@ def run_selftest() -> None:
         # K. jury: blind peer review, Borda + firsts, a malformed ballot is dead not partial.
         kit_k = work / "kit-k"
         cmd_brief(argparse.Namespace(slug="k", objective_file=str(clean_obj), colour="BLUE",
-                                      floor=None, template=str(_fixture_template()), kit=str(kit_k)))
+                                      floor=None, template=str(_fixture_template(work)), kit=str(kit_k)))
         sha_k = (kit_k / "brief.sha").read_text().strip()
         (kit_k / "r1" / "fable-5-1.md").write_text(_CANNED_VALID.format(seat="fable-5-1", sha=sha_k))
         cmd_r1(argparse.Namespace(
@@ -1728,7 +1731,7 @@ def run_selftest() -> None:
         # chmod 600, and a copy differs from its r1 original on ONLY the two stripped lines.
         kit_l = work / "kit-l"
         cmd_brief(argparse.Namespace(slug="l", objective_file=str(clean_obj), colour="BLUE",
-                                      floor=None, template=str(_fixture_template()), kit=str(kit_l)))
+                                      floor=None, template=str(_fixture_template(work)), kit=str(kit_l)))
         sha_l = (kit_l / "brief.sha").read_text().strip()
         (kit_l / "r1" / "fable-5-1.md").write_text(_CANNED_VALID.format(seat="fable-5-1", sha=sha_l))
         cmd_r1(argparse.Namespace(kit=str(kit_l), seats="kimi-k3,qwen3.8-max,gemini-3.1-pro-high",
@@ -1877,7 +1880,7 @@ def run_selftest() -> None:
         # addendum named: attempt 2 used to overwrite attempt 1's only copy).
         kit_p = work / "kit-p"
         cmd_brief(argparse.Namespace(slug="p", objective_file=str(clean_obj), colour="BLUE",
-                                      floor=None, template=str(_fixture_template()), kit=str(kit_p)))
+                                      floor=None, template=str(_fixture_template(work)), kit=str(kit_p)))
         sha_p = (kit_p / "brief.sha").read_text().strip()
         (kit_p / "r1" / "fable-5-1.md").write_text(_CANNED_VALID.format(seat="fable-5-1", sha=sha_p))
         cmd_r1(argparse.Namespace(kit=str(kit_p), seats="y-fakeflaky", astra_fallback=False))
@@ -1901,7 +1904,7 @@ def run_selftest() -> None:
         # seat's own output (G3, the third defect: awaiting-window used to be a dead end).
         kit_q = work / "kit-q"
         cmd_brief(argparse.Namespace(slug="q", objective_file=str(clean_obj), colour="BLUE",
-                                      floor=None, template=str(_fixture_template()), kit=str(kit_q)))
+                                      floor=None, template=str(_fixture_template(work)), kit=str(kit_q)))
         sha_q = (kit_q / "brief.sha").read_text().strip()
         (kit_q / "r1" / "fable-5-1.md").write_text(_CANNED_VALID.format(seat="fable-5-1", sha=sha_q))
 
@@ -1939,7 +1942,7 @@ def run_selftest() -> None:
         window_mtime_q = datetime.fromtimestamp(
             window_path_q.stat().st_mtime, tz=timezone.utc).replace(microsecond=0)
         check("innocence: the answered ledger row's `when` is the window file's own mtime",
-              _ledger_when(kit_q, "hand-seat") == window_mtime_q)
+              _ledger_when(kit_q, "hand-seat", status="answered") == window_mtime_q)
 
         try:
             cmd_r1(argparse.Namespace(kit=str(kit_q), seats="hand-seat", astra_fallback=False,
@@ -1980,8 +1983,13 @@ you_are: {{SEAT}}
 """
 
 
-def _fixture_template() -> Path:
-    p = Path(tempfile.gettempdir()) / "dw-selftest-template.md"
+def _fixture_template(work: Path) -> Path:
+    """The selftest's template lives inside THIS run's own temp dir. It used to be one fixed
+    path under the system temp dir, rewritten (truncate, then write) on every call: two
+    selftests running at once read each other's half-written file, and `brief sha stable
+    across identical runs` / `check passes on untouched kit` went red — measured 2026-09-19,
+    2 red in 30 concurrent runs (scar #5, a shared path between siblings)."""
+    p = work / "dw-selftest-template.md"
     p.write_text(_FIXTURE_TEMPLATE_TEXT)
     return p
 
