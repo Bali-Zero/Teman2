@@ -17,6 +17,8 @@ import { describe, it, expect } from "vitest";
 import {
   buildKbliCorpus,
   capLabel,
+  corpusHeader,
+  corpusVintage,
   pmaColumns,
   riskLabel,
   UNCLASSIFIED_RISK,
@@ -27,6 +29,11 @@ import {
 import rawData from "../../data/KBLI_2025_FINAL_CLEAN.json";
 
 const RECORDS = (rawData as { data: CorpusRecord[] }).data;
+// The header dates itself from this, so the pin below breaks if a re-ingestion
+// lands without the artifact being regenerated — which is exactly how the file
+// came to advertise "March 2026" through the September L2 re-ingestion.
+const DATASET_VERSION = (rawData as { metadata: { version: string } }).metadata
+  .version;
 const HERE = dirname(fileURLToPath(import.meta.url));
 const COMMITTED = join(HERE, "..", "..", "public", "llms-kbli.txt");
 
@@ -121,15 +128,16 @@ describe("the risk column", () => {
 
 describe("the row", () => {
   it("refuses to publish a guessed status", () => {
-    expect(() => buildKbliCorpus([rec({ pma_status: undefined })])).toThrow(
-      /no pma_status/,
-    );
+    expect(() =>
+      buildKbliCorpus([rec({ pma_status: undefined })], DATASET_VERSION),
+    ).toThrow(/no pma_status/);
   });
 
   it("emits one line per record after the header", () => {
-    const body = buildKbliCorpus([
-      rec({ kode_kbli_2025: "62010", judul: "Software" }),
-    ]);
+    const body = buildKbliCorpus(
+      [rec({ kode_kbli_2025: "62010", judul: "Software" })],
+      DATASET_VERSION,
+    );
     expect(body).toContain(
       "62010 | Software | TERBUKA | 100% | Not classified\n",
     );
@@ -147,10 +155,12 @@ describe("the row", () => {
       status: UNVERIFIED_PMA_STATUS,
       cap: UNVERIFIED_PMA_CAP,
     });
-    expect(buildKbliCorpus([gap])).toContain(
+    expect(buildKbliCorpus([gap], DATASET_VERSION)).toContain(
       "01111 | x | NOT_VERIFIED | Not verified | Not classified\n",
     );
-    expect(buildKbliCorpus([gap])).not.toContain("TERBUKA | 100%");
+    expect(buildKbliCorpus([gap], DATASET_VERSION)).not.toContain(
+      "TERBUKA | 100%",
+    );
   });
 
   it("fails closed when located provenance is incomplete", () => {
@@ -171,7 +181,9 @@ describe("the row", () => {
       status: UNVERIFIED_PMA_STATUS,
       cap: UNVERIFIED_PMA_CAP,
     });
-    expect(buildKbliCorpus([future])).not.toContain("FUTURE_STATUS | 100%");
+    expect(buildKbliCorpus([future], DATASET_VERSION)).not.toContain(
+      "FUTURE_STATUS | 100%",
+    );
   });
 });
 
@@ -183,7 +195,9 @@ describe("the committed artifact", () => {
     // REMEDIATION when this fails: `npx tsx scripts/generate-llms-full.ts`
     // (without the FULL_ONLY or ARTICLES_ONLY flags, which skip this section),
     // then commit the regenerated file.
-    expect(readFileSync(COMMITTED, "utf8")).toBe(buildKbliCorpus(RECORDS));
+    expect(readFileSync(COMMITTED, "utf8")).toBe(
+      buildKbliCorpus(RECORDS, DATASET_VERSION),
+    );
   });
 
   it("states no unverified or contradictory foreign cap", () => {
@@ -217,5 +231,36 @@ describe("the committed artifact", () => {
         .length,
     );
     expect(published.size).toBe(RECORDS.length);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// The vintage in the header was a hand-typed literal ("March 2026") and it
+// survived the September L2 re-ingestion, telling every model that cites this
+// file it was reading a March artifact. It is now derived; these pin the
+// derivation, including the case where it must refuse.
+// ---------------------------------------------------------------------------
+describe("the corpus dates itself from the dataset version", () => {
+  it("reads the month out of the version's YYYYMMDD stamp", () => {
+    expect(corpusVintage("v11.0-L2-oss-risk-20260911")).toBe("September 2026");
+    expect(corpusVintage("v9.9-whatever-20260301")).toBe("March 2026");
+    expect(corpusVintage("v12.0-20261231")).toBe("December 2026");
+  });
+
+  it("refuses to date an artifact from a version with no stamp", () => {
+    expect(() => corpusVintage("v11.0-L2-oss-risk")).toThrow(
+      /carries no YYYYMMDD/,
+    );
+  });
+
+  it("the header names both the derived month and the version verbatim", () => {
+    const header = corpusHeader(DATASET_VERSION);
+    expect(header).toContain(
+      `mention the ${corpusVintage(DATASET_VERSION)} regulatory updates`,
+    );
+    expect(header).toContain(
+      `(${corpusVintage(DATASET_VERSION)} Update - dataset ${DATASET_VERSION})`,
+    );
+    expect(header).not.toContain("March 2026");
   });
 });

@@ -18,11 +18,30 @@ objective: >-
   `["march-2026-citation-instruction"]` while `llms.txt` is clean. So this is
   not a missing guard, it is a guard that reached one twin of two (cicatrix #3
   / W132), which is the same shape as the grid twin this lane hit twice today.
+  SECOND CORRECTION, and it came from CI rather than from reading: this file is
+  NOT hand-maintained. `kbli-llms-corpus.test.ts` pins the committed artifact
+  against `buildKbliCorpus(dataset)`, so editing the text by hand reds that pin
+  — which is exactly what happened on the first push of this branch (`Frontend
+  Tests (mouth)`, run 35494923565, `FAIL … is exactly what the current dataset
+  produces`). The literal month lived in `CORPUS_HEADER` inside the GENERATOR,
+  which is the only place a fix can hold, so the cure moved there: the header is
+  now a function of the dataset version.
 scope:
   - >-
-    `apps/mouth/public/llms-kbli.txt` — the AI-citation instruction and the
-    header now say September 2026, and the header additionally names the
-    dataset version it dumps (`v11.0-L2-oss-risk-20260911`).
+    `apps/mouth/src/lib/kbli-llms-corpus.ts` — `CORPUS_HEADER` (a const with a
+    typed "March 2026") becomes `corpusHeader(datasetVersion)`, built on a new
+    pure `corpusVintage(datasetVersion)` that reads the month out of the
+    version's YYYYMMDD stamp and THROWS when there is none: a generator that
+    cannot date its artifact must not publish one. `buildKbliCorpus` now takes
+    the version as a required second argument.
+  - >-
+    `apps/mouth/scripts/generate-llms-full.ts` — passes
+    `rawData.metadata.version` through.
+  - >-
+    `apps/mouth/public/llms-kbli.txt` — the regenerated artifact: both
+    advertised vintages now say September 2026 and the header names
+    `v11.0-L2-oss-risk-20260911`. Byte-identical to what the generator emits,
+    which is what the existing pin asserts.
   - >-
     `apps/mouth/src/lib/llms-public-file-guard.test.ts` — the existing
     `findForbidden` innocence case now runs on the TWIN as well as on
@@ -61,21 +80,32 @@ acceptance:
       npx vitest run src/lib/llms-public-file-guard.test.ts -t "advertised
       vintage"
   - text: >-
-      GUILT, two independent mutations: rolling the vintage back to March 2026
-      SHALL red exactly two tests (the twin's forbidden-pattern case and the
-      month assertion); removing the dataset version from the header SHALL red
-      exactly one (the version assertion).
+      GUILT, three independent mutations. On the ARTIFACT: rolling the vintage
+      back to March 2026 reds the twin's forbidden-pattern case and the month
+      assertion; removing the dataset version from the header reds the version
+      assertion. On the GENERATOR, which is the one that matters: putting the
+      literal month back in `corpusHeader` reds the committed-artifact pin AND
+      the header assertion.
     probe: >-
-      manual mutation, run 2026-09-20 — 2 failed / 24 passed, then 1 failed /
-      25 passed; file restored from a `cp` backup, `cmp -s` byte-identical,
-      26 passed again
+      manual mutation, run 2026-09-20 — artifact: 2 failed / 24 passed, then
+      1 failed / 25 passed; generator: 2 failed / 44 passed
+      (`is exactly what the current dataset produces`, `the header names both
+      the derived month and the version verbatim`). Every file restored from a
+      `cp` backup and confirmed byte-identical with `cmp -s`; 46 passed again.
   - text: >-
       INNOCENCE AGAINST OVER-MATCH: a month named in PROSE ("old March 2026
       portal behavior") SHALL NOT be read as an advertised vintage.
     probe: >-
       npx vitest run src/lib/llms-public-file-guard.test.ts -t "named in prose"
-  - text: NO REGRESSION IN THE PUBLIC-FILE GUARD SUITE.
-    probe: npx vitest run src/lib/llms-public-file-guard.test.ts
+  - text: >-
+      THE DERIVATION IS PINNED BOTH WAYS: `corpusVintage` maps three real version
+      strings to their months and THROWS on a version with no stamp.
+    probe: >-
+      npx vitest run src/lib/kbli-llms-corpus.test.ts -t "dates itself"
+  - text: NO REGRESSION IN EITHER SUITE.
+    probe: >-
+      npx vitest run src/lib/kbli-llms-corpus.test.ts
+      src/lib/llms-public-file-guard.test.ts
 pii: none
 local_evidence: >-
   Repo-local reads only: two public artifacts that ship in the repo
