@@ -1,0 +1,210 @@
+gear: 3
+task_id: notify-seat-consumer-4
+lane: infra
+host: air-m5 (M5)
+branch: agent/air-m5/infra/notify-seat-consumer-4
+gate_class: opus
+l_level: L2
+objective: >-
+  PR #6973 gave tg_notify a fourth tier: a p0 whose dedup-key is not an
+  OWNER_FAMILY stops reaching Telegram and lands on shared/escalations_pro.jsonl
+  as `type=gateway_routed, cure_lane.owner=seat, priority=NORMAL`. NOTHING
+  drains those rows, so #6973 moved the noise from Telegram onto the board every
+  session reads at SessionStart rather than removing it. This PR ships the
+  consumer that closes what it can PROVE is over, plus the launchd organ that
+  runs it (a future cron is not a consumer).
+  SIZE OF THE TAP, re-measured in this turn over ~/.organism/tg_spool/archive-p0.jsonl
+  on Pro, 30 days to 2026-09-21 06:04 WITA: 313 p0, of which 285 are not
+  owner-reserved and route here, 28 still page the owner. `cron-fail` is 123 of
+  those 285 across 34 distinct jobs — the largest routed family by 7.7x over the
+  next one. The live board holds ONE routed row today (2026-09-21 04:06, key
+  `<16-hex>`, no family): routing went live hours ago, so this is a tap
+  just opened, not a backlog, and the first run of this organ closes zero.
+scope:
+  - >-
+    scripts/board_seat_consumer.py — reads the board through
+    sentinel_lib.escalations, collapses per job (the board is append-only:
+    mark_resolved appends rather than rewrites, so a per-line status filter
+    reports a healed job open forever), and applies one cure per dedup-key
+    FAMILY, matched as an entity and never as a substring.
+  - >-
+    Cure `cron-fail:<job>` — closes when the job's own run-state file
+    (~/.agent/decisions/state/<job>.last.json, written by the cron runner and
+    therefore an independent witness) says status=ok with a ts NEWER than the
+    alert. Replayed in this turn against Pro's live state dir: 18 of the 34
+    distinct cron-fail jobs in the window read that way — 73 of the 123 alerts.
+    The other 16 refuse for a named reason (10 have no run-state file, 6 are
+    still failing). No action is taken — the row is stale, and saying so with
+    its proof is the cure.
+  - >-
+    ONE cure, not two. The predecessor #6992 also shipped
+    `healer-*:stale-lock`, which removes a pidfile, justified by "13 owner
+    hand-cures in 30 days". Re-measured on Mini in this turn over the full
+    74-day archive (2026-07-08 -> 2026-09-20): `healer-mini:stale-lock` fired
+    ONCE. 13 was the whole `healer-mini` family (arsenal-seat-dead 14,
+    session-exit 4, stale-lock 1) — a count taken on the family and attributed
+    to the entity, superscar #3 inside the PR that declares it. And the only
+    code in this repo that emits such a key is `infra/healer/healer-run.sh:160`,
+    which runs on Mini; Pro's 30-day archive carries `healer-pro` only as
+    `arsenal-seat-dead` (5x), never `stale-lock`. Armed on Pro behind the
+    locality guard, that cure was unreachable by construction. Removed with its
+    six tests rather than corrected in place.
+  - >-
+    infra/launchagents/{com.nuzantara.board-seat-consumer.plist,
+    wrappers/pro-board-seat-consumer.sh} + organs_registry entry + the two
+    declared HOME pairs — the organ, born through scripts/organ_birth.py so it
+    carries the ten genes the conformance gate checks. Its heartbeat note
+    carries closed/left/seen, not just a pulse: an organ reporting "ok" hourly
+    while closing nothing is the exact shape this consumer exists to drain.
+  - >-
+    scripts/tests/test_nlm_alarm_gateway.py — re-tightens the pin #6973
+    loosened (see constraints).
+constraints:
+  - >-
+    NO BLIND KICKSTART — and the reason is NOT that nobody could. Checked rather
+    than repeated from the 2026-08-28 research note, which says
+    `recovery_action` is "unconsumed by any continuous loop": that is no longer
+    true. `apps/cell/cell/main.py` runs with actuators and `cell.organism`'s
+    sidecar on Pro reads `pulse_count: 4489, status: ok`. The registry declares
+    a recovery_action for 181 organs, 167 of them `launchctl_kickstart`. The
+    reason this consumer does not restart is what the RESTART would meet: every
+    healer tick that found a `dead` organ root-caused it and refused, correctly
+    — iqoo_radar_relay was failing on `Permission denied (publickey)`, which a
+    kickstart reproduces identically. A restart that does not cure is a green
+    run that fixed nothing.
+  - >-
+    A family with no registered cure stays pending and is COUNTED. Closing a row
+    to make the board shorter is the failure mode, not the goal. The single live
+    routed row is exactly such a case — its key is a bare hash with no family —
+    and it is reported, not closed.
+  - >-
+    A cure belongs here when its own ENTITY is measured where the organ runs.
+    That rule is what removed the stale-lock cure above, and it is written down
+    so the next family is admitted on the same test.
+  - >-
+    Locality. The board is ONE git-tracked file shared by three checkouts; a row
+    whose `machine` is not this host is never cured here (superscar #10). A
+    resolution is additionally refused while the SAME job is pending on another
+    machine, because every reader collapses by job alone.
+  - >-
+    Two producers, one normalisation. The board's `machine` is written by
+    tg_notify as `socket.gethostname().split(".")[0]`; the run-state `host` is
+    written by cron-state.sh as `hostname -s`. Both are compared bare here.
+    #6992 fixed the first and left the second, which in the `.local` scenario it
+    itself named would have refused every cron-fail row while the organ kept
+    running hourly and heartbeating ok.
+  - >-
+    Nothing in PR #6973's contract is touched: priority stays NORMAL, the six
+    gateway verdicts are unchanged, OWNER_FAMILIES and TG_ACT_ROUTING_ENABLED
+    are untouched, and the board's fail-OPEN is untouched.
+  - >-
+    TG_BOARD_PATH is NOT used by the new suite. It overrides the gateway's board
+    for a whole process and has already turned 21 unrelated gateway tests red;
+    the fixture monkeypatches the library's own file map instead.
+  - >-
+    Fail-open everywhere: unknown row shapes, an unreadable probe and an
+    exception inside the run all exit 0 with the board untouched. A launchd
+    organ that dies stops draining and nobody notices.
+acceptance:
+  - text: >-
+      GUILT: WHEN a cron-fail row's job has since reported ok, the row SHALL be
+      closed by a resolution carrying the SAME job (no reader collapses the pair
+      otherwise) and the proof SHALL name the run-state file.
+    probe: >-
+      python3 -m pytest scripts/tests/test_board_seat_consumer.py::test_a_cron_that_recovered_is_closed_with_its_proof
+  - text: >-
+      INNOCENCE, three ways: a job still failing, a job whose last ok PREDATES
+      the alert, and a job with no run-state file at all SHALL all stay open.
+    probe: >-
+      python3 -m pytest scripts/tests/test_board_seat_consumer.py -k "still_failing or predates or no_run_state"
+  - text: >-
+      ENTITY, NOT SUBSTRING: `cron-failure:` and `xcron-fail:` both contain the
+      family name and SHALL match no cure.
+    probe: >-
+      python3 -m pytest scripts/tests/test_board_seat_consumer.py::test_the_family_is_matched_as_an_entity_not_as_a_substring
+  - text: >-
+      THE REMOVED CURE LEAVES A COUNT, NOT A SILENCE: a `healer-mini:stale-lock`
+      row on this machine SHALL be reported as having no registered cure and
+      SHALL NOT be closed.
+    probe: >-
+      python3 -m pytest scripts/tests/test_board_seat_consumer.py::test_a_stale_lock_row_is_reported_and_counted_never_closed
+  - text: >-
+      ONE NORMALISATION FOR TWO PRODUCERS, both sides: a run-state `host` that
+      differs from socket.gethostname() only by a domain suffix SHALL still
+      close the row (three suffix combinations), and a host that is genuinely
+      another machine SHALL still be refused as a stranger's witness.
+    probe: >-
+      python3 -m pytest scripts/tests/test_board_seat_consumer.py -k "compared_the_way_its_producer or written_by_another_host"
+  - text: >-
+      SCOPE: only gateway_routed rows owned by the seat lane are touched — a
+      HIGH owner=session row and a lane-less row SHALL be invisible to it — and
+      an already-resolved job SHALL NOT be picked up again.
+    probe: >-
+      python3 -m pytest scripts/tests/test_board_seat_consumer.py -k "seat_owned or already_resolved"
+  - text: >-
+      BOUNDARIES: a foreign machine's row SHALL be left alone, --dry-run SHALL
+      mutate neither board nor filesystem, the cap SHALL report what it skipped,
+      the kill switch SHALL stop the run, and a raising run SHALL still exit 0.
+    probe: >-
+      python3 -m pytest scripts/tests/test_board_seat_consumer.py -k "another_machine or dry_run or cap or kill_switch or broken_row"
+  - text: >-
+      THE RE-TIGHTENED PIN: a routed p0 SHALL land on the board and NOT on the
+      spool, and an OWNER_FAMILY p0 SHALL still go out and NOT to the board.
+    probe: >-
+      python3 -m pytest scripts/tests/test_nlm_alarm_gateway.py::test_a_routed_p0_lands_on_the_board_and_NOT_on_the_spool
+  - text: >-
+      WHERE the pin lives, there SHALL be no regression: the 21 tests that go
+      red when TG_BOARD_PATH is exported for a whole run stay green.
+    probe: python3 -m pytest scripts/tests/test_nlm_alarm_gateway.py
+  - text: >-
+      WHEN the organ is born, it SHALL carry its genes and the registry SHALL
+      still validate.
+    probe: >-
+      python3 infra/organ-conformance/check_organ_conformance.py &&
+      PYTHONPATH=apps/organism python3 -m organism.tools.validate_organs_registry
+      apps/organism/organism/organs_registry.yaml
+council_findings: >-
+  Eleven accepted from the two non-Anthropic review seats, every one pinned by its own case: the cap
+  starved curable rows behind permanently uncurable ones; a condition that re-fired between probe and
+  close was silenced; a naive-ISO or non-numeric state ts, and an unreadable ALERT ts, both read as
+  recoveries (ts_epoch orders junk as 0.0, which is smaller than every state ts); a state file whose
+  own job/host named a stranger closed the row anyway; a run-state dated in the future closed it
+  forever; the dedup-key's job half was interpolated into a path, so `cron-fail:../..` escaped the
+  state dir; a resolution keyed on `job` alone silenced the same job pending on another machine; and
+  the board's `machine` field was compared unsplit against a gateway that splits it.
+  THEN THE ON-DISK GATE ON #6992 FOUND THREE MORE, and they are the reason this branch exists rather
+  than that one: the stale-lock justification was a family count worn as an entity count (13 vs 1),
+  the cure it justified could not fire on the node it was armed on, and the host normalisation was
+  still split three ways eight lines from where the previous commit had fixed its twin. All three are
+  cured here by removal or by a named helper, and the gate's own independent replay corrected the
+  pack's central number upward — 73 of 123, not 65 of 124. Test count 35 -> 30: six stale-lock tests
+  and one test that monkeypatched a return value to pin a branch that could not execute are gone; four
+  new ones arrived.
+mutation_evidence: >-
+  Run in this turn, not asserted. (1) Reverting `_short_host` on the run-state
+  comparison to the bare `socket.gethostname()` turns exactly the three
+  producer-suffix cases red and nothing else. (2) Dropping `state_ts > row_ts`
+  from the cron-fail cure AND deleting the locality guard turns the suite to
+  2 failed — `predates_the_alert` and `another_machine`, the two guards removed
+  — with every innocence test still green. (3) Restoring the bare
+  `glob("*.jsonl")` in `_spooled` turns
+  `test_a_routed_p0_lands_on_the_board_and_NOT_on_the_spool` red and nothing
+  else.
+pii: >-
+  none. The consumer reads dedup-keys, job names and run-state files; error
+  summaries already on the board are not re-emitted anywhere, only counted.
+predecessor: >-
+  Third attempt at the same work, and each close is recorded rather than
+  smoothed over. #6984 closed on two red deterministic checks while frozen by
+  its own arming. #6988 closed on a defect the second review seat found after
+  arming (the unsplit `machine` comparison). #6992 closed on the on-disk gate's
+  REWORK-BUILD, whose three findings are the substance of this branch. Nothing
+  about the cron-fail cure changed across the last two — the gate verified that
+  half against live data and called it sound.
+local_evidence: >-
+  Every figure in this brief was computed in THIS turn by reading
+  ~/.organism/tg_spool/archive-p0.jsonl and ~/.agent/decisions/state/*.last.json
+  over ssh on Pro, the same archive on Mini, and shared/escalations_pro.jsonl on
+  Pro — no credential read, no client data, no production write. The consumer
+  itself was run on Pro with --dry-run against the live board from a throwaway
+  /tmp tree, never from the live checkout.

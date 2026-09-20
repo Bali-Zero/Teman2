@@ -3,12 +3,19 @@
 
 PR #6973 gave the gateway a fourth tier: a p0 whose dedup-key is not an
 OWNER_FAMILY stops reaching Telegram and lands on the escalation board as
-``type=gateway_routed, cure_lane.owner=seat, priority=NORMAL``. Measured on Pro
-over the 30 days to 2026-09-21: 286 of 314 p0 take that path. NOTHING drained
-them — so until this file, #6973 had moved the noise from Telegram to the board
-rather than removed it, and the board is read by every session at SessionStart.
+``type=gateway_routed, cure_lane.owner=seat, priority=NORMAL``. That tier went
+live on Pro and the board held ONE such row when this was written (2026-09-21
+04:06 WITA) — this is a tap that has just been opened, not a backlog, and the
+distinction is stated here because the first run of this organ closes zero and
+must not be read as a broken one.
 
-What it will NOT do, decided from the measured distribution and not from taste:
+What the tap will carry is measurable from the gateway's OWN p0 archive rather
+than from the board, and that is the number this file is sized against. Over
+the 30 days to 2026-09-21 on Pro: 313 p0, of which 285 are not owner-reserved
+and therefore route here. `cron-fail` is 123 of those 285 — the largest routed
+family by a factor of 7.7 over the next one — across 34 distinct jobs.
+
+What it will NOT do, decided from that distribution and not from taste:
 
   - It does not kickstart on a whim. `organs_registry.yaml` declares a
     `recovery_action` for 170 organs (109 of them `launchctl_kickstart`) and no
@@ -17,12 +24,21 @@ What it will NOT do, decided from the measured distribution and not from taste:
     failing on `Permission denied (publickey)` and a kickstart reproduces the
     identical outcome. A restart that does not cure is a green run that fixed
     nothing (superscar #2).
-  - It does not close a row it cannot PROVE is over. Every cure below re-probes
+  - It does not close a row it cannot PROVE is over. The cure below re-probes
     the condition live in this run. The alert text is evidence of what was true
     when it was written, never of what is true now (superscar #6).
   - It never touches a row belonging to another machine. The board is one
-    git-tracked file shared by three checkouts; curing Pro's pidfile from Mini
-    is superscar #10 with extra steps.
+    git-tracked file shared by three checkouts; curing Pro's state from Mini is
+    superscar #10 with extra steps.
+  - It carries ONE cure, and the narrowness is a correction, not modesty. Its
+    predecessor (#6992, closed on the gate's REWORK-BUILD) shipped a second one
+    — `healer-*:stale-lock`, which removes a pidfile — on a count of 13 that
+    turned out to be the whole `healer-mini` FAMILY: the stale-lock ENTITY
+    itself had fired once in 74 days of archive, and the only code that emits
+    that key is `infra/healer/healer-run.sh:160`, which runs on Mini. Armed on
+    Pro, behind the locality guard above, that cure was unreachable by
+    construction. A cure belongs here when its own entity is measured where the
+    organ runs; until then it is dead code with tests around it.
 
 Cures are matched on the dedup-key's ENTITY — the family before the first ':',
 compared by equality against CURES — never by substring (superscar #3).
@@ -31,18 +47,16 @@ compared by equality against CURES — never by substring (superscar #3).
                         (~/.agent/decisions/state/<job>.last.json, written by
                         the cron runner) says status=ok with a ts newer than the
                         alert. No action is taken; the row is stale, and saying
-                        so is the cure. 65 of the 124 cron-fail alerts on Pro
-                        read that way at the time of writing.
-    healer-*:stale-lock the healer's pidfile survived its run and its pid was
-                        recycled: every 4h tick since has skipped and reported
-                        itself GREEN. The alert text already names the cure
-                        (`rm -f /tmp/nuzantara-healer.pid`) and Zero has run it
-                        by hand 13 times in 30 days. Removed here ONLY after
-                        this process confirms no live healer holds that pid.
+                        so is the cure. Replayed against Pro's live state dir,
+                        18 of the 34 distinct cron-fail jobs in that window read
+                        that way — 73 of the 123 alerts. The other 16 refuse for
+                        a reason the report names, one job at a time: 10 have no
+                        run-state file at all and 6 are still failing.
 
 A family with no cure is left pending and COUNTED. That count is the honest
 measure of what still needs a session, and it must never be closed to make a
-number look better.
+number look better. The one row on the board today is such a case: its key is a
+bare hash with no family, so it is reported, not closed.
 
 Exit 0 always (fail-open: a launchd organ that crashes stops draining and
 nobody notices). Kill switch: BOARD_SEAT_CONSUMER_ENABLED=false.
@@ -55,7 +69,6 @@ import json
 import os
 import re
 import socket
-import subprocess
 import sys
 import time
 from pathlib import Path
@@ -95,24 +108,18 @@ def _state_dir() -> Path:
     )
 
 
-# Each healer owns its OWN lock, and they are not the same file: healer-run.sh
-# (Mini, TG_SOURCE=healer-mini) holds /tmp/nuzantara-healer.pid while
-# pro-healer.sh (TG_SOURCE=healer-pro) holds /tmp/nuzantara-pro-healer.pid. One
-# shared default would read "the lock is already gone" on the machine that does
-# not own that path and close a row whose healer is still stuck — the exact
-# false cure this file exists to refuse.
-_HEALER_PIDFILES = {
-    "healer-mini": "/tmp/nuzantara-healer.pid",
-    "healer-pro": "/tmp/nuzantara-pro-healer.pid",
-}
+def _short_host(name: str) -> str:
+    """The bare host, for comparing two producers that disagree on the suffix.
 
-
-def _healer_pidfile(family: str) -> Path | None:
-    override = os.environ.get("BOARD_CONSUMER_HEALER_PIDFILE", "")
-    if override:
-        return Path(override)
-    path = _HEALER_PIDFILES.get(family)
-    return Path(path) if path else None
+    `cron-state.sh` writes the run-state `host` as `hostname -s` — already bare.
+    `socket.gethostname()` is not: the day macOS returns `Nuzantara.local` the
+    two stop matching and every cron-fail row is refused, on an organ that still
+    runs hourly and still heartbeats `ok`. The same mismatch was fixed one
+    function below for the BOARD's `machine` field and left standing here, which
+    is why it is a named function now instead of a `.split(".")[0]` a reader has
+    to notice twice.
+    """
+    return name.split(".")[0]
 
 
 def _this_machine() -> str:
@@ -161,7 +168,7 @@ def cure_cron_fail(row: dict) -> tuple[str, str]:
     if state_job is not None and str(state_job) != name:
         return NOT_CURABLE, f"{name}.last.json says job={state_job!r} — a stranger's witness"
     state_host = state.get("host")
-    if state_host is not None and str(state_host) != socket.gethostname():
+    if state_host is not None and _short_host(str(state_host)) != _short_host(socket.gethostname()):
         return NOT_CURABLE, f"{name}.last.json was written by {state_host!r}, not this host"
     status = str(state.get("status", "?"))
     raw_ts = state.get("ts")
@@ -193,79 +200,8 @@ def cure_cron_fail(row: dict) -> tuple[str, str]:
     return NOT_CURABLE, f"{name}.last.json status={status} ts={state_ts:.0f} vs alert ts={row_ts:.0f}"
 
 
-def _pid_is_a_live_healer(pid: int) -> bool | None:
-    """True/False, or None when this process cannot tell — and None never cures.
-
-    A pidfile whose pid is ALIVE is not automatically a live healer: the alert
-    that produces these rows says so in its own words ("il pid e stato
-    RICICLATO"). Removing the pidfile of a genuinely running healer would let a
-    second 4h session start beside it, so the ambiguous case refuses.
-    """
-    try:
-        os.kill(pid, 0)
-    except ProcessLookupError:
-        return False
-    except PermissionError:
-        return True  # alive and not ours — do not touch it
-    except OSError:
-        return None
-    try:
-        out = subprocess.run(
-            ["ps", "-p", str(pid), "-o", "command="],
-            capture_output=True, text=True, timeout=10,
-        )
-    except (OSError, subprocess.SubprocessError):
-        return None
-    if out.returncode != 0:
-        return None
-    # An empty successful ps is not "not a healer": the process table simply had
-    # nothing to say about a pid os.kill(pid, 0) just accepted. Undecidable, and
-    # undecidable never cures.
-    if not out.stdout.strip():
-        return None
-    return "healer" in out.stdout.lower()
-
-
-def cure_healer_stale_lock(row: dict, dry_run: bool) -> tuple[str, str]:
-    job = str(row.get("job", ""))
-    if not job.endswith(":stale-lock"):
-        return NOT_CURABLE, "healer row that is not the stale-lock condition"
-    pidfile = _healer_pidfile(job.split(":", 1)[0])
-    if pidfile is None:
-        return NOT_CURABLE, f"no lock path known for {job.split(':', 1)[0]!r}"
-    if not pidfile.exists():
-        return RESOLVED, f"{pidfile} is already gone — the lock condition is over"
-    try:
-        pid = int(pidfile.read_text(encoding="utf-8").strip())
-    except (OSError, ValueError) as exc:
-        return NOT_CURABLE, f"pidfile unreadable, refusing to remove it blind: {exc}"
-    live = _pid_is_a_live_healer(pid)
-    if live is None:
-        return NOT_CURABLE, f"cannot tell whether pid {pid} is a healer — refusing"
-    if live:
-        return NOT_CURABLE, f"pid {pid} IS a live healer — the lock is legitimate"
-    if dry_run:
-        return RESOLVED, f"would remove {pidfile} (pid {pid} is not a healer) [dry-run]"
-    # Between the liveness probe above and the unlink below, a healer may have
-    # started and rewritten this file. Removing it then would unlock a LIVE run.
-    try:
-        if int(pidfile.read_text(encoding="utf-8").strip()) != pid:
-            return NOT_CURABLE, f"{pidfile} changed under us — a run started since the probe"
-    except (OSError, ValueError):
-        return NOT_CURABLE, f"{pidfile} became unreadable between the probe and the cure"
-    try:
-        pidfile.unlink()
-    except OSError as exc:
-        return NOT_CURABLE, f"could not remove {pidfile}: {exc}"
-    if pidfile.exists():
-        return NOT_CURABLE, f"{pidfile} survived its own removal"
-    return RESOLVED, f"removed {pidfile} holding recycled pid {pid}; next healer tick can start"
-
-
 CURES = {
     "cron-fail": lambda row, dry: cure_cron_fail(row),
-    "healer-pro": cure_healer_stale_lock,
-    "healer-mini": cure_healer_stale_lock,
 }
 
 
@@ -374,11 +310,13 @@ def consume(max_rows: int, dry_run: bool) -> dict:
             if not _still_the_row_we_probed(row):
                 report["left"].append({"job": job, "why": "re_fired_since_the_probe", "detail": proof})
                 continue
-            # 0 means a peer resolved it between this run's read and now. Saying
-            # "closed" anyway would make the organ's own note a small lie.
-            if not mark_resolved(job):
-                report["left"].append({"job": job, "why": "already_closed_by_a_peer", "detail": proof})
-                continue
+            # mark_resolved's return is NOT a peer check and must not be read
+            # as one: it counts rows from read_all_escalations(), which filters
+            # per LINE on status, so the original pending row this cure was
+            # built from is always among them and the count is always >= 1. The
+            # real race — the condition re-firing — is caught by
+            # _still_the_row_we_probed above, which reads the board again.
+            mark_resolved(job)
         report["resolved"].append({"job": job, "proof": proof})
     report["attempted"] = attempted
     report["skipped_by_cap"] = skipped_by_cap

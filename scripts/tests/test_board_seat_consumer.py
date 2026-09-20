@@ -62,7 +62,6 @@ def world(tmp_path, monkeypatch):
     monkeypatch.setenv("BOARD_CONSUMER_MACHINE", MACHINE)
     monkeypatch.setenv("BOARD_CONSUMER_STATE_DIR", str(tmp_path / "state"))
     monkeypatch.setenv("BOARD_CONSUMER_LOCK_DIR", str(tmp_path / "locks"))
-    monkeypatch.setenv("BOARD_CONSUMER_HEALER_PIDFILE", str(tmp_path / "healer.pid"))
     (tmp_path / "state").mkdir()
 
     return World(tmp_path, board)
@@ -147,43 +146,6 @@ def test_the_family_is_matched_as_an_entity_not_as_a_substring(world):
     assert all("no cure registered" in item["detail"] for item in report["left"])
 
 
-# ------------------------------------------------------------------ stale lock
-def test_a_recycled_healer_pid_gets_its_pidfile_removed(world, monkeypatch):
-    world.append(_routed("healer-pro:stale-lock", NOW - 3600))
-    (world / "healer.pid").write_text("4242")
-    monkeypatch.setattr(bsc, "_pid_is_a_live_healer", lambda pid: False)
-
-    report = bsc.consume(max_rows=10, dry_run=False)
-
-    assert [r["job"] for r in report["resolved"]] == ["healer-pro:stale-lock"]
-    assert not (world / "healer.pid").exists()
-
-
-def test_a_live_healer_keeps_its_lock(world, monkeypatch):
-    world.append(_routed("healer-pro:stale-lock", NOW - 3600))
-    (world / "healer.pid").write_text("4242")
-    monkeypatch.setattr(bsc, "_pid_is_a_live_healer", lambda pid: True)
-
-    report = bsc.consume(max_rows=10, dry_run=False)
-
-    assert report["resolved"] == []
-    assert (world / "healer.pid").exists(), "removing it would let a second healer start beside it"
-
-
-def test_an_undecidable_pid_refuses_to_cure(world, monkeypatch):
-    world.append(_routed("healer-pro:stale-lock", NOW - 3600))
-    (world / "healer.pid").write_text("4242")
-    monkeypatch.setattr(bsc, "_pid_is_a_live_healer", lambda pid: None)
-
-    assert bsc.consume(max_rows=10, dry_run=False)["resolved"] == []
-    assert (world / "healer.pid").exists()
-
-
-def test_a_healer_row_that_is_not_the_lock_condition_is_left_open(world):
-    world.append(_routed("healer-pro:arsenal-seat-dead", NOW))
-    assert bsc.consume(max_rows=10, dry_run=False)["resolved"] == []
-
-
 # ------------------------------------------------------------------ boundaries
 def test_a_row_from_another_machine_is_never_cured_here(world):
     world.append(_routed("cron-fail:alpha", NOW - 3600, machine="SomeOtherHost"))
@@ -195,19 +157,15 @@ def test_a_row_from_another_machine_is_never_cured_here(world):
     assert report["left"][0]["why"] == bsc.FOREIGN
 
 
-def test_dry_run_mutates_neither_the_board_nor_the_filesystem(world, monkeypatch):
+def test_dry_run_reports_what_it_would_close_and_writes_nothing(world):
     world.append(_routed("cron-fail:alpha", NOW - 3600))
     _run_state(world, "alpha", "ok", NOW)
-    world.append(_routed("healer-pro:stale-lock", NOW - 3600))
-    (world / "healer.pid").write_text("4242")
-    monkeypatch.setattr(bsc, "_pid_is_a_live_healer", lambda pid: False)
     before = world.rows()
 
     report = bsc.consume(max_rows=10, dry_run=True)
 
-    assert len(report["resolved"]) == 2
-    assert world.rows() == before
-    assert (world / "healer.pid").exists()
+    assert [r["job"] for r in report["resolved"]] == ["cron-fail:alpha"]
+    assert world.rows() == before, "a dry run that appends a resolution is not a dry run"
 
 
 def test_the_cap_bounds_the_run_and_reports_what_it_skipped(world):
@@ -265,47 +223,6 @@ def test_a_state_ts_that_is_not_epoch_seconds_is_refused(world):
     assert "not epoch seconds" in report["left"][0]["detail"]
 
 
-def test_a_pidfile_rewritten_between_the_probe_and_the_cure_is_left_alone(world, monkeypatch):
-    """TOCTOU: a healer that starts after the liveness probe owns this lock."""
-    world.append(_routed("healer-pro:stale-lock", NOW - 3600))
-    pidfile = world / "healer.pid"
-    pidfile.write_text("4242")
-
-    def probe_then_a_healer_starts(pid):
-        pidfile.write_text("9999")
-        return False
-
-    monkeypatch.setattr(bsc, "_pid_is_a_live_healer", probe_then_a_healer_starts)
-
-    report = bsc.consume(max_rows=10, dry_run=False)
-
-    assert report["resolved"] == []
-    assert pidfile.exists() and pidfile.read_text() == "9999"
-
-
-def test_a_row_a_peer_closed_first_is_not_claimed_as_this_run_s_work(world, monkeypatch):
-    world.append(_routed("cron-fail:alpha", NOW - 3600))
-    _run_state(world, "alpha", "ok", NOW)
-    monkeypatch.setattr(bsc, "mark_resolved", lambda job: 0)
-
-    report = bsc.consume(max_rows=10, dry_run=False)
-
-    assert report["resolved"] == []
-    assert report["left"][0]["why"] == "already_closed_by_a_peer"
-
-
-def test_the_healer_probe_reads_its_command_line_case_insensitively(monkeypatch):
-    """A live healer re-exec'd through the trampoline carries HEALER_TRAMPOLINED."""
-    monkeypatch.setattr(bsc.os, "kill", lambda pid, sig: None)
-
-    class _Out:
-        returncode = 0
-        stdout = "ssh ... HEALER_TRAMPOLINED=1 bash /Users/nuzantara/scripts/run.sh"
-
-    monkeypatch.setattr(bsc.subprocess, "run", lambda *a, **k: _Out())
-    assert bsc._pid_is_a_live_healer(4242) is True
-
-
 def test_uncurable_rows_do_not_starve_the_curable_ones_behind_them(world):
     """The oldest rows are the ones with no cure — they never leave the board.
     A cap applied before the filter spends itself on them forever."""
@@ -339,25 +256,6 @@ def test_a_condition_that_re_fired_since_the_probe_is_not_closed(world, monkeypa
     assert report["resolved"] == []
     assert report["left"][0]["why"] == "re_fired_since_the_probe"
     assert not [r for r in world.rows() if r.get("status") == "resolved"]
-
-
-def test_each_healer_family_probes_its_OWN_lock(world, monkeypatch, tmp_path):
-    """healer-run.sh (Mini) and pro-healer.sh hold different pidfiles. One shared
-    default reads 'already gone' on the machine that does not own that path."""
-    monkeypatch.delenv("BOARD_CONSUMER_HEALER_PIDFILE", raising=False)
-    mini_lock = tmp_path / "nuzantara-healer.pid"
-    pro_lock = tmp_path / "nuzantara-pro-healer.pid"
-    monkeypatch.setitem(bsc._HEALER_PIDFILES, "healer-mini", str(mini_lock))
-    monkeypatch.setitem(bsc._HEALER_PIDFILES, "healer-pro", str(pro_lock))
-    pro_lock.write_text("4242")  # Pro's healer IS stuck; Mini's lock does not exist
-    monkeypatch.setattr(bsc, "_pid_is_a_live_healer", lambda pid: True)
-
-    world.append(_routed("healer-pro:stale-lock", NOW - 3600))
-    report = bsc.consume(max_rows=10, dry_run=False)
-
-    assert report["resolved"] == [], \
-        "the row must be judged against PRO's lock, not against Mini's absent one"
-    assert pro_lock.exists()
 
 
 @pytest.mark.parametrize("bad_ts", ["not-a-number", True, None, ""])
@@ -436,17 +334,6 @@ def test_a_job_still_pending_on_another_machine_is_not_closed_from_here(world):
     assert any(i["why"] == "pending_on_another_machine" for i in report["left"])
 
 
-def test_an_empty_but_successful_ps_is_undecidable_not_innocent(monkeypatch):
-    monkeypatch.setattr(bsc.os, "kill", lambda pid, sig: None)
-
-    class _Out:
-        returncode = 0
-        stdout = "   \n"
-
-    monkeypatch.setattr(bsc.subprocess, "run", lambda *a, **k: _Out())
-    assert bsc._pid_is_a_live_healer(4242) is None
-
-
 def test_the_machine_name_is_normalised_the_way_the_gateway_writes_it(world, monkeypatch):
     """tg_notify stamps socket.gethostname().split(".")[0]. If this consumer
     compares against the unsplit name, a host that starts reporting
@@ -459,3 +346,50 @@ def test_the_machine_name_is_normalised_the_way_the_gateway_writes_it(world, mon
 
     assert [r["job"] for r in report["resolved"]] == ["cron-fail:alpha"], \
         "the row was written by the same host — a domain suffix must not orphan it"
+
+
+@pytest.mark.parametrize(
+    "state_host_suffix, gethostname_suffix",
+    [("", ".local"), (".local", ""), (".lan", ".local")],
+    ids=["producer-bare", "producer-suffixed", "both-suffixed-differently"],
+)
+def test_the_run_state_host_is_compared_the_way_its_producer_writes_it(
+    world, monkeypatch, state_host_suffix, gethostname_suffix
+):
+    """`cron-state.sh` writes `host` as `hostname -s`; this process reads
+    `socket.gethostname()`. The two disagree on the domain suffix the day macOS
+    starts returning one, and an unsplit comparison then refuses EVERY cron-fail
+    row while the organ keeps running hourly and heartbeating ok — the same
+    mismatch already fixed for the board's `machine` field one commit earlier."""
+    host = "SomeHost"
+    monkeypatch.setattr(bsc.socket, "gethostname", lambda: f"{host}{gethostname_suffix}")
+    world.append(_routed("cron-fail:alpha", NOW - 3600))
+    (world / "state" / "alpha.last.json").write_text(
+        json.dumps({"job": "alpha", "ts": NOW - 60, "status": "ok",
+                    "host": f"{host}{state_host_suffix}", "exit_code": 0}),
+        encoding="utf-8",
+    )
+
+    report = bsc.consume(max_rows=10, dry_run=False)
+
+    assert [r["job"] for r in report["resolved"]] == ["cron-fail:alpha"], \
+        "same host, different suffix — the witness is not a stranger"
+
+
+def test_a_stale_lock_row_is_reported_and_counted_never_closed(world):
+    """The predecessor (#6992) shipped a cure for this family. It was removed:
+    the only emitter of the key is `infra/healer/healer-run.sh` on Mini, so on
+    Pro — where this organ is armed — the cure was unreachable behind the
+    locality guard. Absence of a cure must read as a COUNTED row, not silence:
+    the count is what tells a session the family still needs one."""
+    world.append(_routed("healer-mini:stale-lock", NOW - 3600, machine=MACHINE))
+
+    report = bsc.consume(max_rows=10, dry_run=False)
+
+    assert report["resolved"] == []
+    assert report["left"] == [{
+        "job": "healer-mini:stale-lock",
+        "why": bsc.NOT_CURABLE,
+        "detail": "no cure registered for family 'healer-mini'",
+    }]
+    assert not [r for r in world.rows() if r.get("status") == "resolved"]
