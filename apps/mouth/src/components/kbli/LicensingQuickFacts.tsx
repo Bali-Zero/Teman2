@@ -1,9 +1,22 @@
 // =============================================================================
 // Licensing quick facts — the 4-cell grid the NON-gold KBLI page shows above
-// the fold. Extracted from `app/kbli/[code]/page.tsx` so it can be RENDERED in
-// a test: it was a twin of `KeyFacts` (LicensingSection.tsx) down to the
-// comment, and the last three cures to that idiom reached one copy and not the
-// other (cicatrix #3 / W132).
+// the fold, and the grid MOST code pages actually render: 1,214 of the 1,559
+// canonical records reach this component, against 107 that reach `KeyFacts`
+// (215 serve no rows and 23 take the `intel.whatItMeans` branch; census
+// 2026-09-20 through `discloseKbliEditorial`, the predicate the page uses).
+// Extracted from `app/kbli/[code]/page.tsx` so it can be RENDERED in a test:
+// it was a twin of `KeyFacts` (LicensingSection.tsx) down to the comment, and
+// the last three cures to that idiom reached one copy and not the other
+// (cicatrix #3 / W132).
+//
+// COUNT THE BRANCH WITH THE PAGE'S OWN PREDICATE, not with `GOLD_CODES`. The
+// 428 entries of `kbli-gold-all.json` are the gold CORPUS; the page asks
+// `discloseKbliEditorial`, which returns `gold: null` whenever
+// `isPmaVerdictVerified` or `hasPublishablePmaCap` fails — so an unverified
+// PMA verdict withholds the gold layout too, and every record whose licensing
+// provenance is unverified lands HERE. PR #6910 shipped the cure to both
+// copies but described this file as the dead twin, having counted with
+// `GOLD_CODES`; the live pages said otherwise.
 //
 // HONESTY RULE: a cell states a licensing value only when the record's own
 // provenance says the rows are OSS-RBA KBLI-2025 native. Otherwise the cell
