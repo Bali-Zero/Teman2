@@ -728,13 +728,42 @@ describe("verdict — magic-link resend failure ([hash]/page.tsx:404)", () => {
 
     const user = userEvent.setup();
     await user.type(
-      screen.getByLabelText(/continue by email/i),
+      screen.getByLabelText(/your email/i),
       "customer@example.com",
     );
-    await user.click(screen.getByRole("button", { name: /email me a link/i }));
+    await user.click(
+      screen.getByRole("button", { name: /email me the link/i }),
+    );
 
     const alert = await screen.findByRole("alert");
-    assertErrorTone(alert, SURFACE_TOKENS);
+    // This one alert moved from an inline `style` to `.voa-entry__error` when
+    // the entry step took the stylesheet. `assertErrorTone` judges an inline
+    // colour and jsdom resolves no class, so judging THIS element means
+    // judging the RULE instead — and it must keep every assertion the inline
+    // check made, not just the contrast one. The load-bearing one is the
+    // IDENTITY: copper measures 4.98:1 on this ground and sails past a 4.5:1
+    // floor, so a contrast-only replacement would have let through exactly
+    // the "copper, not ink" regression this test is named after. (Caught in
+    // adversarial review before this shipped; the row below is the pin.)
+    expect(alert.className).toContain("voa-entry__error");
+    expect(alert.className).not.toMatch(RED_CLASS_RE);
+    expect(alert.getAttribute("style")).toBeNull();
+    const errColour = ruleColour(".voa-entry__error");
+    expect(
+      errColour,
+      "error text must use the ink tone, not copper or red",
+    ).toBe(SURFACE_TOKENS["--tx-pure"]);
+    expect(
+      contrastRatio(errColour, SURFACE_TOKENS["--bz-base"]),
+    ).toBeGreaterThanOrEqual(4.5);
+  });
+
+  it("GUILTY: copper clears 4.5:1 here, so contrast alone cannot police the tone", () => {
+    const copper = resolveColor("var(--bz-accent)", SURFACE_TOKENS);
+    expect(copper).not.toBe(SURFACE_TOKENS["--tx-pure"]);
+    expect(
+      contrastRatio(copper, SURFACE_TOKENS["--bz-base"]),
+    ).toBeGreaterThanOrEqual(4.5);
   });
 });
 
@@ -825,4 +854,100 @@ describe("NextSteps — the limits are not small print (mandate accent 3)", () =
   it("the limits are not fainter than the steps", () => {
     expect(ruleColour(".voa-next__limit")).toBe(ruleColour(".voa-next__step"));
   });
+});
+
+// ---------------------------------------------------------------------------
+// The entry step's field has a visible edge (SC 1.4.11, 3:1).
+//
+// 1.4.3's 4.5:1 is the floor for TEXT; the boundary of an interactive control
+// is 1.4.11's, and it is 3:1 — a distinction this surface already pays for
+// once (the Safe Clock section above) and pays for again here. The field
+// shipped at 1.40:1: legal, tokenised, and invisible.
+// ---------------------------------------------------------------------------
+
+/** Reads the `border:` shorthand's colour out of a rule, not a table. */
+function ruleBorderColour(className: string): string {
+  const m = new RegExp(`\\${className}\\s*\\{([^}]*)\\}`, "i").exec(
+    VOA_R19_CSS,
+  );
+  if (!m) throw new Error(`no rule for ${className}`);
+  const c = /border:\s*[^;]*?(var\([^)]*\)|#[0-9a-f]{3,8})\s*;/i.exec(m[1]);
+  if (!c) throw new Error(`${className} declares no border colour`);
+  return resolveColor(c[1].trim(), SURFACE_TOKENS);
+}
+
+/** The fill the boundary is judged against is the field's OWN background,
+ *  not the page ground: that is the pair the eye has to separate. */
+function ruleBackground(className: string): string {
+  const m = new RegExp(`\\${className}\\s*\\{([^}]*)\\}`, "i").exec(
+    VOA_R19_CSS,
+  );
+  if (!m) throw new Error(`no rule for ${className}`);
+  const c = /background:\s*([^;]+);/i.exec(m[1]);
+  if (!c) throw new Error(`${className} declares no background`);
+  return resolveColor(c[1].trim(), SURFACE_TOKENS);
+}
+
+describe("the entry field is visible (mandate accent 5)", () => {
+  it(".voa-entry__input's boundary clears 1.4.11's 3:1 against its own fill", () => {
+    const ratio = contrastRatio(
+      ruleBorderColour(".voa-entry__input"),
+      ruleBackground(".voa-entry__input"),
+    );
+    expect(ratio, `${ratio.toFixed(2)}:1`).toBeGreaterThanOrEqual(3);
+  });
+
+  /**
+   * What the field shipped with. `voa-r19.css` aliases
+   * `--color-border-subtle` to `--bz-border`, which is a 12%-opacity hairline
+   * — correct for a divider, and 1.40:1 under a control the customer has to
+   * find and type into.
+   */
+  it("GUILTY: --color-border-subtle, the boundary it shipped with, fails that floor", () => {
+    const ratio = contrastRatio(
+      resolveColor("var(--bz-border)", SURFACE_TOKENS),
+      resolveColor("var(--bz-elevated)", SURFACE_TOKENS),
+    );
+    expect(ratio, `${ratio.toFixed(2)}:1`).toBeLessThan(3);
+  });
+
+  it(".voa-entry__input's ink clears 4.5:1 on the same fill", () => {
+    expect(
+      contrastRatio(
+        ruleColour(".voa-entry__input"),
+        ruleBackground(".voa-entry__input"),
+      ),
+    ).toBeGreaterThanOrEqual(4.5);
+  });
+
+  it.each([".voa-entry__heading", ".voa-entry__body", ".voa-entry__label"])(
+    "%s clears 4.5:1 on the surface ground",
+    (cls) => {
+      const ratio = contrastRatio(ruleColour(cls), SURFACE_TOKENS["--bz-base"]);
+      expect(ratio, `${cls}: ${ratio.toFixed(2)}:1`).toBeGreaterThanOrEqual(
+        4.5,
+      );
+    },
+  );
+
+  /** Below 16px iOS Safari zooms the viewport on focus. Stated as a number
+   *  because the reason is a number, not a taste. */
+  it("the field is at least 16px, or a phone zooms the form off the screen", () => {
+    const m = /\.voa-entry__input\s*\{([^}]*)\}/i.exec(VOA_R19_CSS);
+    const size = /font-size:\s*(\d+)px;/i.exec(m![1]);
+    expect(size, ".voa-entry__input must declare font-size in px").toBeTruthy();
+    expect(Number(size![1])).toBeGreaterThanOrEqual(16);
+  });
+
+  /** A 48px target is the mandate's thumb-reach floor, and the submit is the
+   *  one primary action on the screen. */
+  it.each([".voa-entry__input", ".voa-entry__submit"])(
+    "%s is at least a 48px target",
+    (cls) => {
+      const m = new RegExp(`\\${cls}\\s*\\{([^}]*)\\}`, "i").exec(VOA_R19_CSS);
+      const h = /min-height:\s*(\d+)px;/i.exec(m![1]);
+      expect(h, `${cls} must declare min-height`).toBeTruthy();
+      expect(Number(h![1])).toBeGreaterThanOrEqual(48);
+    },
+  );
 });
