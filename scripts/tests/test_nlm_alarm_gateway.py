@@ -195,11 +195,40 @@ def _env(tmp_path: Path) -> dict:
     return env
 
 
+# Since PR #6973 the gateway's DRY_RUN escalation board lives INSIDE
+# TG_SPOOL_DIR (a board write must have no effect outside the process, and two
+# suites had already appended junk rows to the real board). That put a file that
+# is NOT the spool under the same glob: a bare glob("*.jsonl") reads a BOARD row
+# as a spooled one. It matters for exactly these wrappers — `alert` passes no
+# --dedup-key, so in production their p0 is routed to the board and never
+# reaches the spool at all. A helper that cannot tell the two apart stopped
+# pinning the thing its name claims.
+BOARD_IN_DRY_RUN = "escalations_local.jsonl"
+
+
 def _spooled(tmp_path: Path) -> str:
+    """The spool ALONE — the board is deliberately excluded."""
     spool = tmp_path / "spool"
     if not spool.exists():
         return ""
-    return "\n".join(f.read_text(encoding="utf-8") for f in spool.glob("*.jsonl"))
+    return "\n".join(
+        f.read_text(encoding="utf-8")
+        for f in spool.glob("*.jsonl")
+        if f.name != BOARD_IN_DRY_RUN
+    )
+
+
+def _boarded(tmp_path: Path) -> str:
+    """The escalation board ALONE — where a routed p0 goes instead of Telegram."""
+    board = tmp_path / "spool" / BOARD_IN_DRY_RUN
+    return board.read_text(encoding="utf-8") if board.exists() else ""
+
+
+def _reached_gateway(tmp_path: Path) -> str:
+    """Either destination. Used where the question is 'did it speak at all',
+    so a flipped TG_ACT_ROUTING_ENABLED cannot make these tests lie either way.
+    Which of the two a given alarm must land in is pinned by its own test."""
+    return _spooled(tmp_path) + "\n" + _boarded(tmp_path)
 
 
 def test_alert_reaches_the_gateway(tmp_path):
@@ -216,7 +245,7 @@ def test_alert_reaches_the_gateway(tmp_path):
 
     proc = subprocess.run([BASH, str(caller)], capture_output=True, text=True, env=_env(root))
     assert proc.returncode == 0, proc.stderr
-    assert "PIPELINE X FAILED (exit 7)" in _spooled(root)
+    assert "PIPELINE X FAILED (exit 7)" in _reached_gateway(root)
     assert "tg[p0] rc=0" in proc.stderr, "the outcome must be logged, not discarded"
 
 
@@ -306,10 +335,40 @@ def test_every_real_wrapper_alarms_end_to_end_when_its_job_fails(tmp_path, wrapp
     proc = subprocess.run(
         [BASH, str(scripts / wrapper)], capture_output=True, text=True, env=env, timeout=180
     )
-    spooled = _spooled(root)
-    assert spooled, (
+    spooled = _reached_gateway(root)
+    assert spooled.strip(), (
         f"{wrapper} failed and said nothing.\nrc={proc.returncode}\n"
         f"stdout={proc.stdout[-600:]}\nstderr={proc.stderr[-600:]}"
     )
     records = [json.loads(line) for line in spooled.splitlines() if line.strip()]
     assert any("FAIL" in json.dumps(r).upper() for r in records), records
+
+
+def _notify(root: Path, *args: str) -> subprocess.CompletedProcess:
+    return subprocess.run(
+        [sys.executable, str(REPO / "scripts/tg_notify.py"), *args],
+        capture_output=True, text=True, env=_env(root), timeout=60,
+    )
+
+
+def test_a_routed_p0_lands_on_the_board_and_NOT_on_the_spool(tmp_path):
+    """The pin the two helpers above exist for, stated from both sides.
+
+    These wrappers alarm through `alert`, which passes no --dedup-key, so in
+    production their p0 takes the routed path. If the board and the spool ever
+    become indistinguishable again, this fails rather than passing quietly.
+    """
+    root, _ = _fake_tree(tmp_path)
+
+    routed = _notify(root, "--tier", "p0", "--source", "cron:x",
+                     "--dedup-key", "cron-fail:run_nb5_pipeline", "NB-5 pipeline FAILED")
+    assert "tg_notify: spooled" in routed.stderr, routed.stderr
+    assert "NB-5 pipeline FAILED" in _boarded(root)
+    assert "NB-5 pipeline FAILED" not in _spooled(root), \
+        "a routed p0 never reaches the spool — the board is its whole destination"
+
+    owner = _notify(root, "--tier", "p0", "--source", "cost-breaker",
+                    "--dedup-key", "cost-breaker-deadman:meta", "the breaker tripped")
+    assert "the breaker tripped" in _spooled(root), \
+        "an OWNER_FAMILY p0 still goes out to the owner, it is not routed"
+    assert "the breaker tripped" not in _boarded(root)
