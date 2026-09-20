@@ -2,8 +2,10 @@
 
 PR #6810 taught `inspect_kbli` that ten codes in the graph are KBLI-2020 numbers
 KBLI 2025 does not carry, and to answer them with a tombstone. It taught only that
-one consumer. `chat_kbli` — the path behind the WhatsApp bot, the surface clients
-actually talk to — kept answering `74100` as a live regulated activity, because its
+one consumer. `chat_kbli` — the public explorer's chat, the surface clients
+actually talk to (consumers measured 2026-09-20: `ZantaraChat.tsx`, `kbli.api.ts`
+and the `chat_kbli` MCP tool; the WhatsApp bot, named here before it was measured,
+does not call this endpoint) — kept answering `74100` as a live regulated activity, because its
 lookup selects from `kbli_documents` with no `licensing_status` filter and falls
 back to `kg_nodes` when there is no row at all.
 
