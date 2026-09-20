@@ -1264,16 +1264,16 @@ export const NOTICE_CONDITION_COPY: Record<string, LocalizedText> = {
   // by whom, when, and what to prepare — never "cleared", "approved" or
   // "guaranteed".
   DISCLOSED_PAST_OVERSTAY_CONDITION: text(
-    "You flagged a past overstay in your disclosures. Our team reviews the overstay details with you before submission and tells you what documentation to prepare.",
-    "Anda menandai adanya riwayat overstay dalam pengungkapan Anda. Tim kami akan meninjau detail overstay tersebut bersama Anda sebelum pengajuan dan memberi tahu dokumen yang perlu disiapkan.",
+    "You flagged a past overstay in your disclosures. Our team reviews the dates and any penalty record with you before submission and tells you what to prepare.",
+    "Anda menandai riwayat overstay dalam pengungkapan Anda. Tim kami akan meninjau tanggal dan catatan sanksi terkait bersama Anda sebelum pengajuan dan memberi tahu apa yang perlu disiapkan.",
   ),
   DISCLOSED_BLACKLIST_ENTRY_CONDITION: text(
-    "You flagged a blacklist entry in your disclosures. Our team reviews the entry details with you before submission and tells you what documentation to prepare.",
-    "Anda menandai adanya pencantuman dalam daftar hitam dalam pengungkapan Anda. Tim kami akan meninjau detail pencantuman tersebut bersama Anda sebelum pengajuan dan memberi tahu dokumen yang perlu disiapkan.",
+    "You flagged a blacklist entry in your disclosures. While an entry ban is active it stops any application from being filed until it is lifted; our team verifies your status with Ditjen Imigrasi before submission and tells you what that means for the paths listed above.",
+    "Anda menandai adanya pencantuman dalam daftar hitam. Selama larangan tersebut masih aktif, pengajuan apa pun tidak dapat diproses sampai larangan itu dicabut; tim kami memverifikasi status Anda ke Ditjen Imigrasi sebelum pengajuan dan menjelaskan artinya bagi jalur yang tercantum di atas.",
   ),
   DISCLOSED_IMMIGRATION_INVESTIGATION_CONDITION: text(
-    "You flagged an immigration investigation in your disclosures. Our team reviews the investigation details with you before submission and tells you what documentation to prepare.",
-    "Anda menandai adanya pemeriksaan keimigrasian dalam pengungkapan Anda. Tim kami akan meninjau detail pemeriksaan tersebut bersama Anda sebelum pengajuan dan memberi tahu dokumen yang perlu disiapkan.",
+    "You flagged an open immigration investigation. Our team reviews its status with you before submission and tells you what supporting documentation, if any, to prepare.",
+    "Anda menandai adanya pemeriksaan keimigrasian yang sedang berjalan. Tim kami akan meninjau statusnya bersama Anda sebelum pengajuan dan memberi tahu dokumen pendukung, jika ada, yang perlu disiapkan.",
   ),
 };
 
