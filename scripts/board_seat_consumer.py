@@ -208,6 +208,11 @@ def _pid_is_a_live_healer(pid: int) -> bool | None:
         return None
     if out.returncode != 0:
         return None
+    # An empty successful ps is not "not a healer": the process table simply had
+    # nothing to say about a pid os.kill(pid, 0) just accepted. Undecidable, and
+    # undecidable never cures.
+    if not out.stdout.strip():
+        return None
     return "healer" in out.stdout.lower()
 
 
@@ -281,6 +286,23 @@ def open_seat_rows() -> list[dict]:
     return sorted(rows, key=lambda r: ts_epoch(r.get("ts")))
 
 
+def _same_job_pending_elsewhere(row: dict, machine: str) -> str:
+    """The machine name of a peer holding an open row with this exact job, if any."""
+    job = row.get("job")
+    latest: dict[str, dict] = {}
+    for candidate in read_all_escalations(include_resolved=True):
+        if candidate.get("job") != job:
+            continue
+        host = str(candidate.get("machine", "?"))
+        known = latest.get(host)
+        if known is None or ts_epoch(candidate.get("ts")) > ts_epoch(known.get("ts")):
+            latest[host] = candidate
+    for host, newest in latest.items():
+        if host != machine and newest.get("status") != RESOLVED:
+            return host
+    return ""
+
+
 def _still_the_row_we_probed(row: dict) -> bool:
     """Re-read the board and confirm nothing newer landed for this job.
 
@@ -331,6 +353,14 @@ def consume(max_rows: int, dry_run: bool) -> dict:
             report["left"].append({"job": job, "why": verdict, "detail": proof})
             continue
         if not dry_run:
+            # A resolution is keyed on `job` ALONE — every reader on this board
+            # collapses by job, so closing Pro's `cron-fail:fly-pg-backup` also
+            # silences Mini's pending row of the same name. The locality guard
+            # above protects the CURE; this protects the RESOLUTION.
+            elsewhere = _same_job_pending_elsewhere(row, machine)
+            if elsewhere:
+                report["left"].append({"job": job, "why": "pending_on_another_machine", "detail": elsewhere})
+                continue
             if not _still_the_row_we_probed(row):
                 report["left"].append({"job": job, "why": "re_fired_since_the_probe", "detail": proof})
                 continue

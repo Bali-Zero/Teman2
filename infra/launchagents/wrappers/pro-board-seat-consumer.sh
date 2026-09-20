@@ -65,7 +65,7 @@ try:
     r = json.loads(sys.stdin.read())
 except Exception:
     print('report unparseable'); sys.exit(0)
-print('closed=%d left=%d seen=%d' % (len(r.get('resolved', [])), len(r.get('left', [])), r.get('seen', 0)))
+print('closed=%d left=%d seen=%d attempted=%d' % (len(r.get('resolved', [])), len(r.get('left', [])), r.get('seen', 0), r.get('attempted', 0)))
 " 2>/dev/null) || NOTE="report unparseable"
 
 if [ $RC -eq 0 ]; then
