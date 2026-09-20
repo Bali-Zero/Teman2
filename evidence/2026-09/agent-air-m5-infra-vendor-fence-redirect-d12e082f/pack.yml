@@ -1,0 +1,182 @@
+brief_ref: evidence/brief.yml
+council_run: council.jsonl
+pii_scan: clean
+plan_ref:
+  "The successor conditions of PR #6989's Gear-3 gate verdict (PASS-WITH-CONDITIONS,
+  2026-09-21), recorded in the ledger row 'PWC-CONDITIONS for PR #6989'
+  (.claude/skills/modus/PENDING-ARMS.md, merged as #6994)."
+lanes:
+  - lane: vendor-fence-redirect
+    role: build
+    seat: claude-sonnet-5 (conducting session, dispatched from a fresh worktree off origin/main per the ledger row's owner clause — not the vendor-fence-ondisk lane that authored #6989, not the infra-jev-ban-entity-v2-* lane that authored #6968, not the backend-rag-kbli-chat-risk-one-derivation session that wrote the successor spec)
+diff:
+  behaviour_change: |
+    typesafe_client.ask() now opens its request through a module-local OpenerDirector
+    that refuses every redirect, closing the GATING condition: authorizing an endpoint
+    used to bind the first hop only, and a 302 response would carry the bearer token to
+    whatever host the Location header named, even over plain HTTP. authorized() now
+    requires a matching dict entry to carry a non-empty list of non-empty string `paths`
+    — an entry with no perimeter no longer authorizes, closing the fail-open the
+    successor spec identified one level below the file. A bare string entry is skipped
+    outright rather than entity-matched and refused, since it can never carry `paths`.
+    Four top-level JSON shapes ([], true, 42, null) that raised TypeError out of
+    authorized()'s parsing step are now covered. A new test proves ask() returns a real
+    parsed answers map when authorized, killing the "return None unconditionally"
+    mutant. test_service_silence_is_not_a_pass now actually reaches ask() instead of
+    being skipped at the availability gate. The registry ships EMPTY; no vendor is
+    authorized by this PR.
+  surface: |
+    Two edited scripts (typesafe_client.py, test_lint_paid_llm_entity.py), one edited
+    test module (test_vendor_authorization_fence.py, 34 tests total — see receipt below),
+    one edited JSON doc-string (authorized_endpoints.json, no data change — endpoints
+    stays []). No backend, no frontend, no migration, no credential, no workflow file.
+receipts:
+  - claim: the full corpus passes together after every fix in this PR
+    cmd: python3 -m pytest scripts/tests/test_vendor_authorization_fence.py scripts/test_lint_paid_llm_entity.py scripts/tests/test_typesafe_client_pin.py -q
+    result: 123 passed
+    exit: 0
+    ts: 2026-09-20T22:43:00Z
+    seat: claude-sonnet-5
+  - claim: test_vendor_authorization_fence.py carries 34 tests, all passing
+    cmd: python3 -m pytest scripts/tests/test_vendor_authorization_fence.py -q
+    result: 34 passed
+    exit: 0
+    ts: 2026-09-20T22:45:00Z
+    seat: claude-sonnet-5
+  - claim: "GATING condition 1 — a redirect from an authorized endpoint never reaches the second host, on the real Python redirect handler, not a simulation"
+    cmd: python3 -m pytest scripts/tests/test_vendor_authorization_fence.py::test_a_redirect_never_reaches_the_second_host -q
+    result: "1 passed — two real local HTTP servers, origin answers 302 naming target; origin_hits == [1] (single attempt, no retry, since 302 is outside RETRY_STATUS); target_hits == [] (never reached)"
+    exit: 0
+    ts: 2026-09-20T22:43:00Z
+    seat: claude-sonnet-5
+  - claim: "the redirect defect is real without the fix — reverting to the bare urlopen call sends the bearer to the second host"
+    cmd: mutation harness in an isolated scratch copy — replace `_OPENER.open(req, timeout=timeout)` with `urllib.request.urlopen(req, timeout=timeout)`, then rerun the redirect test
+    result: "RED — target_hits == ['Bearer a-configured-key'], proving the exact defect PR #6989's gate reported (AUTH FORWARDED True) reproduces without this fix and disappears with it"
+    exit: 1
+    ts: 2026-09-20T22:31:00Z
+    seat: claude-sonnet-5
+  - claim: "condition 5 (paths) is proof-of-armed: an entry with a correct endpoint and a real ruling, but no paths, is refused; deleting the check turns the test red"
+    cmd: mutation harness — remove the `paths` isinstance/non-empty/all-strings check from authorized(), leaving only the endpoint comparison
+    result: "RED — test_an_entry_without_paths_authorizes_nothing and test_an_entry_with_empty_paths_authorizes_nothing both fail (authorized() incorrectly returns True)"
+    exit: 1
+    ts: 2026-09-20T22:33:00Z
+    seat: claude-sonnet-5
+  - claim: "the dict-branch suffix mutant from PR #6989 finding (a)/(b) is caught"
+    cmd: mutation harness — `entry.get(\"endpoint\") != ENDPOINT` -> `not ENDPOINT.endswith(str(entry.get(\"endpoint\")))`
+    result: "RED via test_a_strict_suffix_does_not_authorize_on_the_dict_branch (the string-branch version of this mutant is no longer reachable — see assumptions in brief.yml — and the string-branch test was removed rather than left vacuous)"
+    exit: 1
+    ts: 2026-09-20T22:32:00Z
+    seat: claude-sonnet-5
+  - claim: "the four top-level-JSON TypeError cases from finding (c) are caught"
+    cmd: mutation harness — drop `TypeError` from authorized()'s except tuple
+    result: "RED on all four new parametrized cases: top-level-array, top-level-bool, top-level-number, top-level-null"
+    exit: 1
+    ts: 2026-09-20T22:32:30Z
+    seat: claude-sonnet-5
+  - claim: "the ask()-returns-None-unconditionally mutant from finding (d) is caught"
+    cmd: mutation harness — replace ask()'s body with `return None`
+    result: "RED via test_ask_returns_the_answers_for_an_authorized_endpoint (asserts a real parsed answers map, not just None)"
+    exit: 1
+    ts: 2026-09-20T22:33:30Z
+    seat: claude-sonnet-5
+  - claim: "the sixth vacuous test from finding (e) is now armed"
+    cmd: revert test_service_silence_is_not_a_pass's authorized_vendor parameter to simulate the pre-fix shape, in an isolated copy
+    result: "RED under the new asked==True assertion — confirms the fixture's absence is exactly what made this test pass on the grep alone before this PR"
+    exit: 1
+    ts: 2026-09-20T22:38:00Z
+    seat: claude-sonnet-5
+  - claim: "cross-family review (kimi, then independently codex and agy) found three real regressions this session had introduced; all three are fixed in the diff this pack describes, and each fix was itself mutation-verified"
+    cmd: "see council.jsonl for full findings; H1 (vacuous near-miss/different-endpoint/superstring tests) fixed by converting to dict-form entries via a shared _entry() helper; H2 (redirect test had no origin-hit counter) fixed by tracking origin_hits and asserting == [1]; M3 (wrong redirect mechanism in docstrings) corrected after empirically verifying HTTPError(302) is raised, not a parseable response returned"
+    result: "H1 re-verified RED under a case/whitespace-normalizing + prefix-match mutant after the fix (previously 29/29 green under the same mutant, per kimi); H2's origin_hits assertion is load-bearing on its own — an empty registry no longer makes the redirect test pass vacuously, since origin_hits == [1] requires the origin to actually be reached"
+    exit: 0
+    ts: 2026-09-20T22:41:00Z
+    seat: claude-sonnet-5
+  - claim: "the redirect mechanism claimed in the diff's docstrings is the one that actually happens on the real handler, not the one first assumed"
+    cmd: "direct probe against a real local HTTP server and urllib.request.build_opener with a redirect_request-returning-None handler"
+    result: "HTTPError raised with code 302 (not a silently-returned 302 response); origin received exactly 1 request; ask() against the same setup returned None in 0.002s with origin_hits==1, confirming zero retries since 302 is outside RETRY_STATUS={429,529}"
+    exit: 0
+    ts: 2026-09-20T22:36:00Z
+    seat: claude-sonnet-5
+  - claim: "a malshaped paths list (bare string, or a list with a None/empty-string/int element) authorizes nothing"
+    cmd: python3 -m pytest scripts/tests/test_vendor_authorization_fence.py -q -k malshaped
+    result: 5 passed
+    exit: 0
+    ts: 2026-09-20T22:41:30Z
+    seat: claude-sonnet-5
+  - claim: "the test_ask_never_serialises test's transport-side patch was pointed at a dead seam (urllib.request.urlopen) after the redirect fix moved the call to _OPENER.open; the real guarantee was always the json.dumps patch, which sits before the retry loop"
+    cmd: "direct probe: patch only the transport call (urlopen, then separately _OPENER.open) to raise, with the availability guard removed and json.dumps left unpatched"
+    result: "both patches are swallowed by ask()'s own `except Exception` inside the retry loop and ask() returns None without raising either way — confirming the test's actual protection comes from json.dumps's placement before the loop, not from which transport function is patched. The seam was repointed to _OPENER.open for an honest read of what is covered, and the comment was corrected to not overclaim enforcement it does not provide."
+    exit: 0
+    ts: 2026-09-20T22:42:30Z
+    seat: claude-sonnet-5
+  - claim: "tp1-qwen3.8-max and both its designated reserves within TP1 are QUOTA_DEAD as of this session"
+    cmd: python3 scripts/arsenal_probe.py --read-last --json
+    result: '{"findings": [{"seat": "tp1-qwen3.8-max", "status": "QUOTA_DEAD"}, {"seat": "tp1-glm-5.2", "status": "QUOTA_DEAD"}, {"seat": "tp1-deepseek-v4-pro", "status": "QUOTA_DEAD"}]}'
+    exit: 0
+    ts: 2026-09-20T22:14:00Z
+    seat: claude-sonnet-5
+unresolved:
+  - "paths is a SHAPE requirement on the entry, not a per-request perimeter: nothing threads a target file path into authorized() to check it against the entry's globs. Named as MEDIUM/HIGH by all three review seats. Deliberately out of scope for this PR per the owning session's mandate (the registry stays empty), and the docstrings in this diff were corrected to say so explicitly rather than imply enforcement that does not exist. The next entry added to the registry is the first place this needs to be wired."
+  - "ruling and use are ledger fields read by no code — a dict entry naming only {endpoint, paths} authorizes exactly as much as one that also carries a real ruling. Corrected in prose (this PR no longer claims otherwise), not mechanically enforced. Tying an entry to a real RULINGS.md citation is a further step this PR does not take, same open item PR #6989's own pack recorded."
+  - "One client, one list, still true: a second vendor client added elsewhere inherits nothing from this fence unless it reads the same file."
+  - "The pre-#6989 baseline for whether catE-sovereignty-lint's new steps are REQUIRED checks (not just running) was never established in that PR's own gate and is not re-verified here — orthogonal to this PR's scope."
+seat_fallback_reason: |
+  Two titolare seats (kimi-code/k3, codex-gpt-5.6-sol) both returned ok:true, meeting the
+  ≥2-cross-family-titolari bar on their own. agy-gemini-3.1-pro was dispatched as a THIRD,
+  independent seat standing in for tp1-qwen3.8-max, which `arsenal_probe.py --read-last
+  --json` (read this turn, 2026-09-20T22:14:00Z) reports QUOTA_DEAD — along with its own
+  two designated TP1 reserves, tp1-glm-5.2 and tp1-deepseek-v4-pro, also QUOTA_DEAD in the
+  same record, so the TP1 bench was unavailable in full and agy was the only viable
+  reserve. It is included for triangulation (it independently found and then RETRACTED a
+  hallucinated finding about a missing __enter__/__exit__ on an unrelated test's mock,
+  re-verified false against the actual file in this session), not because the quorum
+  needed it.
+dissent:
+  - seat: kimi-code/k3
+    objection: "HIGH — three pre-existing guilt tests (different-endpoint, superstring, near-miss x3) fed bare strings that the new isinstance(entry, dict) skip refuses before any entity comparison, so a prefix-match and a case-normalizing mutant both survived 29/29 green."
+    status: CONFIRMED
+  - seat: kimi-code/k3
+    objection: "HIGH — the new redirect test asserted only target_hits==[] and result is None, both trivially true if the client never spoke; no origin-hit counter to distinguish 'redirect refused' from 'client silent'."
+    status: CONFIRMED
+  - seat: kimi-code/k3
+    objection: "MEDIUM — the _NoRedirects docstring's claim that the 302 response is returned to the caller for JSON parsing is false; empirically it raises HTTPError(302), caught by except-HTTPError, zero retries since 302 is outside RETRY_STATUS."
+    status: CONFIRMED
+  - seat: kimi-code/k3
+    objection: "MEDIUM — paths as a bare string ('**') or containing non-string elements ([None, 42]) authorized under the original check."
+    status: CONFIRMED
+  - seat: kimi-code/k3
+    objection: "MEDIUM — paths is never consulted by ask(); the 'perimeter one level down' language overstates a shape check as a runtime enforcement."
+    status: CONFIRMED
+  - seat: kimi-code/k3
+    objection: "LOW — authorized()'s docstring claimed ruling/use are required for authorization; neither is read."
+    status: CONFIRMED
+  - seat: kimi-code/k3
+    objection: "LOW — test_ask_never_serialises_for_an_unauthorized_endpoint patched the dead urllib.request.urlopen seam instead of the live _OPENER.open one."
+    status: CONFIRMED
+  - seat: codex-gpt-5.6-sol
+    objection: "Independently reproduced kimi's M5/L6/H1/M3 findings from diff text alone, with a declared caveat that its read-only checkout did not reflect this branch and its verification was reconstructed in memory rather than run."
+    status: CONFIRMED
+  - seat: agy-gemini-3.1-pro
+    objection: "HIGH — claimed test_ask_returns_none_on_a_non_utf8_body's mock _Resp class lacked __enter__/__exit__ and would crash with AttributeError."
+    status: RETRACTED
+  - seat: agy-gemini-3.1-pro
+    objection: "HIGH — paths checked as boolean presence only, never matched against a target file or request."
+    status: CONFIRMED
+  - seat: agy-gemini-3.1-pro
+    objection: "HIGH — the near-miss/different-endpoint tests became vacuous via the bare-string skip."
+    status: CONFIRMED
+  - seat: agy-gemini-3.1-pro
+    objection: "MEDIUM — redirect docstring's retry-loop claim was wrong."
+    status: CONFIRMED
+  - seat: agy-gemini-3.1-pro
+    objection: "MEDIUM — the dict-branch suffix test covers only ENDPOINT.endswith(entry), not the reverse direction (entry.endswith(ENDPOINT))."
+    status: PLAUSIBLE
+  - seat: agy-gemini-3.1-pro
+    objection: "LOW — paths elements not type-checked (None, int, empty string all pass)."
+    status: CONFIRMED
+  - seat: agy-gemini-3.1-pro
+    objection: "LOW — the redirect test's TargetHandler only implements do_GET, so a 307/308 (which preserves POST) would 501 rather than record a hit if ever reached."
+    status: PLAUSIBLE
+  - seat: nuzantara-fa (the session that wrote this PR — recorded as self-criticism, not as an external refutation)
+    objection: "Every CONFIRMED finding above was re-executed by the author before being fixed and before this pack was written: the redirect mechanism against a real local server, the vacuous-test regression via a before/after mutation, the malshaped-paths cases via direct authorized() calls, and the dead-seam claim via a direct probe showing BOTH the old and the corrected patch are swallowed by ask()'s own except-Exception — which the author's own first fix comment had NOT yet caught, and was corrected again before this pack shipped."
+    status: CONFIRMED

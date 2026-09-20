@@ -1,0 +1,59 @@
+task_id: vendor-fence-redirect
+gear: 3
+l_level: L2
+gate_class: opus
+objective: Close the successor conditions of the Gear-3 gate verdict on PR #6989 (PASS-WITH-CONDITIONS), recorded in the ledger row "PWC-CONDITIONS for PR #6989" (.claude/skills/modus/PENDING-ARMS.md, merged as #6994). The GATING condition is a redirect defect that predates #6989 — urlopen's default opener follows a 302 and carries the Authorization bearer to the new host — plus four surviving mutants, one vacuous test, one prose defect, and the entry-format fail-open (an entry with no perimeter authorizes everything) the successor spec identified.
+constraints:
+  - "GATING, in order: no entry may be merged into infra/vendor-authorizations/authorized_endpoints.json until the redirect fix lands. The registry ships EMPTY in this PR regardless."
+  - Fail-closed at the entry level, same reasoning as the file: paths absent, empty or not a list authorizes NOTHING. A bare string entry can never carry paths and so never authorizes.
+  - The redirect fix must be client-local, never process-wide — urllib.request.install_opener() would strip redirects from every other caller of urlopen in the same interpreter.
+  - Entity match stays exact (==), never substring — a suffix, prefix or superstring of the real endpoint must not authorize it (cicatrix #3).
+  - A refusal is a return, never a raise, including on top-level JSON documents whose shape makes ["endpoints"] raise TypeError.
+  - Every proof is a mutation that goes RED, never a suite that stays green.
+acceptance:
+  - text: WHEN an authorized endpoint answers a redirect the client SHALL NOT issue a second request and SHALL NOT carry the bearer to the new host. Verified mechanism, not assumed — refusing the redirect makes the opener raise HTTPError(302), which is outside RETRY_STATUS, so there is exactly ONE attempt and zero retries.
+    probe: test_a_redirect_never_reaches_the_second_host (asserts origin_hits == [1] and target_hits == [])
+  - text: WHEN a listed entry's endpoint is a strict SUFFIX of the real endpoint (not a prefix, not a superstring) it SHALL NOT authorize, on the dict branch.
+    probe: test_a_strict_suffix_does_not_authorize_on_the_dict_branch
+  - text: WHEN the authorization file's top level is a JSON array, boolean, number or null, authorized() SHALL return False and SHALL NOT raise.
+    probe: "test_an_unusable_list_authorizes_nothing[top-level-array|top-level-bool|top-level-number|top-level-null]"
+  - text: WHEN an endpoint is authorized and the transport returns a valid response, ask() SHALL return the parsed answers map.
+    probe: test_ask_returns_the_answers_for_an_authorized_endpoint
+  - text: WHEN a lint's ask() is mocked to return None on a grep-condemned file, the composed verdict SHALL still be reached by an actually-invoked ask() (asked=True), not skipped at the availability gate.
+    probe: test_service_silence_is_not_a_pass (now parametrized with the authorized_vendor fixture)
+  - text: WHEN a dict entry names the correct endpoint and carries a ruling but no paths, authorized() SHALL return False.
+    probe: test_an_entry_without_paths_authorizes_nothing
+  - text: WHEN paths is an empty list, authorized() SHALL return False, same as paths absent.
+    probe: test_an_entry_with_empty_paths_authorizes_nothing
+  - text: WHEN a bare string entry exactly equals the endpoint, it SHALL NOT authorize — only {endpoint, ruling, use, paths} can.
+    probe: test_a_bare_string_entry_never_authorizes
+  - text: The shipped registry SHALL remain empty in this PR.
+    probe: test_the_shipped_list_authorizes_nothing_today
+assumptions:
+  - text: The string-branch suffix mutant named by PR #6989's gate ("entry == ENDPOINT" -> "ENDPOINT.endswith(str(entry))") became unkillable once bare string entries were made to never authorize (they have nowhere to carry paths) — so authorized() was simplified to skip non-dict entries outright rather than entity-match them and then discard the result, and no test asserts the string branch's entity-match semantics because that computation no longer exists.
+    status: verified
+    probe: applying the endswith mutation to the (now-removed) string-branch comparison changes no test outcome, because authorized() never reaches it; applying the same mutation to the dict branch turns test_a_strict_suffix_does_not_authorize_on_the_dict_branch red
+  - text: test_service_silence_is_not_a_pass was vacuous before this diff because judge_file gates on available() before calling ask(), and no fixture made the client available.
+    status: verified
+    probe: reverting the authorized_vendor parameter on that test in an isolated copy leaves it green under the OLD assertion but red under the new asked=True assertion
+  - text: The redirect defect predates PR #6989 — the base client already called urlopen with the same header and no custom opener.
+    status: inherited from PR #6989's Gear-3 gate comment thread, not re-verified against pre-#6989 history in this session
+  - text: A cross-family review round (kimi-code/k3, then independently codex-gpt-5.6-sol and agy-gemini-3.1-pro) found that this session's first draft re-introduced three defects of the exact class this PR closes — three existing guilt tests left feeding the now-dead string branch (vacuous), the new redirect test asserting only the target's silence with no origin-hit counter (also vacuous), and two docstrings describing a redirect mechanism (a returned 302 body) that does not happen (it raises HTTPError instead). All three were re-verified empirically and fixed before this pack was written.
+    status: verified
+    probe: "council.jsonl and pack.yml's dissent list carry the full findings and each fix's mutation-verified receipt"
+consumer_map:
+  - .github/workflows/catE-sovereignty-lint.yml — step "Paid-endpoint ban judged as an entity (advisory)", which calls scripts/lint_paid_llm_entity.py, which imports ask/available/unavailable_reason from typesafe_client.py; runs on this PR's own diff.
+  - infra/vendor-authorizations/authorized_endpoints.json — the registry this PR's fail-closed entry format governs; still empty, so no live consumer is authorized by this PR, but the FIRST entry ever merged will be shaped by this schema.
+risks:
+  - "The paths field is a structural gate on the ENTRY, not yet a per-request access control: nothing in this PR threads a target file path into authorized() to check it against an entry's paths globs. That wiring is future work for whenever the first entry is added — the registry stays empty here, so no live gap exists yet."
+  - Removing the string-branch suffix test (found unkillable) trades one test for a design simplification; a future session re-adding string-form authorization without re-reading this reasoning could reopen the exact fail-open this PR closes.
+  - "The redirect fix's docstrings initially misdescribed the mechanism (claiming the original 302 response is returned to the caller for JSON parsing to fail on) — verified empirically against a real local server that this is wrong: redirect_request returning None makes OpenerDirector raise HTTPError(302) instead, which ask() catches and returns None from on the FIRST attempt since 302 is outside RETRY_STATUS. The security property (no second request, no bearer forwarded) held throughout regardless of which mechanism was true; only the prose was corrected."
+grader: |
+  GENERATOR IS NOT GRADER. This session authored the diff and therefore cannot
+  sign its own Gear-3 gate. It is also NOT the vendor-fence-ondisk lane that
+  authored PR #6989, nor the infra-jev-ban-entity-v2-* lane that authored
+  #6968, nor the backend-rag-kbli-chat-risk-one-derivation session that wrote
+  the successor spec — all three are contributors to scripts/typesafe_client.py
+  or its test corpus and are excluded from signing this PR's gate for the same
+  reason PR #6989's own gate named. A fresh Opus 5 session outside all four
+  chains is required.
