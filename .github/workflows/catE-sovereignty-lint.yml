@@ -4,11 +4,13 @@ name: catE-sovereignty-lint
 # 2026-06-11 guardian-of-guardians audit, domande-per-fable5 §E (#40 #43 #44).
 #
 # Three "exists-but-not-armed" (W64) gaps had a lint/antibody but NO CI consumer:
-#   #40  paid-Anthropic ban is re-defended by hand in ~9 scripts (unset/pop
-#        ANTHROPIC_API_KEY) but NOTHING fails the build if a new script
-#        instantiates the PAID path  Anthropic(api_key=...)  /  sets
-#        ANTHROPIC_API_KEY=<value>.  CLAUDE.md §7: "se una regola è violabile,
-#        scrivi un hook" — this is that hook, at CI level.
+#   #40  paid-Anthropic ban is re-defended by hand in ~9 scripts (each strips
+#        the vendor credential variable) but NOTHING fails the build if a new
+#        script instantiates the PAID path — the vendor constructor taking a
+#        per-token credential keyword argument — or sets that same variable to
+#        a value.  CLAUDE.md §7: "se una regola è violabile, scrivi un hook" —
+#        this is that hook, at CI level.  The two shapes are written out once,
+#        in the regex literals below, and nowhere in prose (step #40d).
 #   #43  the Law-5 autonomous-publish lint (scripts/lint/wr3_lint_autonomous_publish.py,
 #        bans ig.publish / tiktok.publish / yt.upload from any wr3_*.py) EXISTED
 #        but was wired into ZERO workflows (symbiosis-lint.yml only doc-checks).
@@ -37,7 +39,14 @@ on:
   pull_request:
     paths:
       - "**.py"
+      - "**.ts"
+      - "**.tsx"
+      - "**.js"
+      - "**.sh"
       - "**/.env*"
+      - "scripts/lint_paid_llm_entity.py"
+      - "scripts/typesafe_client.py"
+      - "scripts/redact_for_external.py"
       - ".github/workflows/catE-sovereignty-lint.yml"
       # The budget itself and its corpus: editing either without re-running
       # this workflow is how a guard's own proof goes stale unobserved.
@@ -48,7 +57,14 @@ on:
       - main
     paths:
       - "**.py"
+      - "**.ts"
+      - "**.tsx"
+      - "**.js"
+      - "**.sh"
       - "**/.env*"
+      - "scripts/lint_paid_llm_entity.py"
+      - "scripts/typesafe_client.py"
+      - "scripts/redact_for_external.py"
       - ".github/workflows/catE-sovereignty-lint.yml"
       # The budget itself and its corpus: editing either without re-running
       # this workflow is how a guard's own proof goes stale unobserved.
@@ -71,6 +87,10 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7
+        with:
+          # three-dot changed-file enumeration needs the merge base
+          fetch-depth: 0
+          filter: blob:none
 
       # The local pre-commit gate's own corpus (scripts/check_ban_predicates.py
       # runs from .husky/pre-commit). Its first tests shell-unquote THIS file's
@@ -143,7 +163,8 @@ jobs:
               exit 1
               ;;
           esac
-          # AsyncAnthropic/Anthropic( api_key=...  (paid constructor); exclude vendored/test code
+          # the vendor constructor, sync or async, taking a per-token credential
+          # keyword argument (the paid path); exclude vendored/test code
           HITS=$(grep -rnE 'Anthropic\(\s*api_key' --include='*.py' . \
             | grep -vE '\.venv/|node_modules/|/\.git/|tests/|test_' || true)
           COUNT=$(printf '%s' "$HITS" | grep -c . || true)
@@ -183,6 +204,101 @@ jobs:
             exit 1
           fi
           echo "OK: no ANTHROPIC_API_KEY value assignment outside vendor/examples."
+
+      # ── #40c — the same ban, judged as an ENTITY (ADVISORY) ────────────────
+      # #40 and #40b above judge SPELLING: the canonical constructor and the
+      # canonical export. CLAUDE.md §3 says in as many words that this is only a
+      # first pass — "an alias, a renamed env var, a wrapper library or a
+      # Bedrock/Vertex route reaches the same endpoint without either literal,
+      # and is equally banned". This step asks a System One model (Jev) whether
+      # the CHANGED files reach that endpoint, whatever the spelling.
+      #
+      # COMPOSITION IS OR, NEVER AND (cicatrix #3, and the point of the lane):
+      # the two greps above keep their verdict untouched; this can only ADD a
+      # finding. A model that is wrong, hallucinating, steered by an authored
+      # diff, or simply unreachable therefore costs a false alarm at worst — it
+      # can never clear something the greps condemn. `lint_paid_llm_entity.py`
+      # returns "no opinion" (not "no violation") when the service is silent.
+      #
+      # ADVISORY until the bench is re-run by someone other than the lane that
+      # wrote it (see scripts/tests/fixtures/paid_llm_entity/bench_cases.json,
+      # whose _doc says so plainly). --advisory always exits 0; dropping that
+      # flag is the whole of "arming" this, and is a deliberate later PR.
+      #
+      # No key configured = the step still runs, still applies the transcribed
+      # grep predicate, and says so. It never fails for lack of a credential.
+      - name: Paid-endpoint ban judged as an entity (advisory)
+        env:
+          TYPESAFE_API_KEY: ${{ secrets.TYPESAFE_API_KEY }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -uo pipefail
+          if [ -z "${BASE_SHA:-}" ]; then
+            echo "push build — entity judgment is a PR-time signal, skipped."
+            exit 0
+          fi
+          CHANGED="$(bash scripts/ci/hotzone_changed_files.sh "$BASE_SHA" "$HEAD_SHA" "$PR_NUMBER")"
+          ENUM_RC=$?
+          if [ "$ENUM_RC" -ne 0 ]; then
+            echo "::error::could not determine changed files (rc=$ENUM_RC)"
+            exit 1
+          fi
+          # shellcheck disable=SC2086
+          printf '%s\n' "$CHANGED" | xargs -r python3 scripts/lint_paid_llm_entity.py --advisory
+
+      # ── #40d — prose about a banned shape must not contain it (BLOCKING) ────
+      # The scar this step closes is not a bug in #40/#40b/#40c: it is what
+      # happened while they were being DOCUMENTED. PR #6935 suspended after four
+      # reds, every one of them a comment or a docstring that wrote a forbidden
+      # shape out in order to explain it. The asymmetry is the trap — a pattern
+      # does not match itself, so the code hunting a shape is always clean while
+      # the sentence quoting that code is not, and no scanner in this repo tries
+      # to tell description from use (nor should it: cicatrix #3).
+      #
+      # BLOCKING from the first day, unlike #40c, because nothing here is a
+      # judgment call: the predicates are literal, the guilt+innocence corpus is
+      # in scripts/tests/test_lint_ban_prose.py, and the 16 files that already
+      # carried such prose are frozen in infra/ban-prose/grandfathered.json —
+      # so this can only red on prose a PR actually authored. --base-ref makes
+      # the pardon list one-way: it may shrink, never grow inside its own diff.
+      - name: Prose must not spell a banned shape (blocking)
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -uo pipefail
+          if [ -z "${BASE_SHA:-}" ]; then
+            # A direct push to main has no PR base, and that is EXACTLY the case
+            # this workflow's own header names as the threat (W41/W42, L2
+            # autonomous direct-push). An earlier draft exited 0 here, which made
+            # a blocking step a no-op on the one event it most needed to run —
+            # found by the refuting seat. So a push scans the whole tree instead.
+            # --files-from, NOT xargs: the tree is ~10.5k paths and xargs would
+            # split it across several processes, leaving the blind-scan guard
+            # able to see only one slice at a time. One list, one process, one
+            # verdict (refuting seat, round 2, objection 5).
+            echo "push build — no PR base, scanning the whole tree."
+            git ls-files -- '*.py' '*.sh' '*.yml' '*.yaml' '*.ts' '*.tsx' '*.js' '*.jsx' '*.mjs' \
+              | grep -vE '^(\.venv|node_modules|vendor)/' > /tmp/ban-prose-tree.txt
+            python3 scripts/lint/lint_ban_prose.py --files-from /tmp/ban-prose-tree.txt
+            exit $?
+          fi
+          CHANGED="$(bash scripts/ci/hotzone_changed_files.sh "$BASE_SHA" "$HEAD_SHA" "$PR_NUMBER")"
+          ENUM_RC=$?
+          if [ "$ENUM_RC" -ne 0 ]; then
+            echo "::error::could not determine changed files (rc=$ENUM_RC)"
+            exit 1
+          fi
+          # Two invocations on purpose: an empty changed set makes `xargs -r`
+          # skip its command entirely, which would skip the pardon-growth check
+          # with it. That check must run whatever the diff contains.
+          python3 scripts/lint/lint_ban_prose.py --base-ref "$BASE_SHA"
+          printf '%s\n' "$CHANGED" | xargs -r python3 scripts/lint/lint_ban_prose.py
 
       # ── #43 — Law-5 (Zero ultima istanza): no autonomous IG/TT/YT publish ───
       - name: Law-5 autonomous-publish lint (blocking)
