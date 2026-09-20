@@ -1,0 +1,98 @@
+task_id: vo-a3m
+gear: 2
+base_sha: bcb87f481d
+lane: mouth
+host: air-m5 (M5)
+branch: agent/air-m5/mouth/vo-a3m
+objective: >-
+  Slice A3-M (MANDATE-vo.md, DRAFT-SPEC-A3-1.v2-M §4.1): three review_gate
+  items (overstay, blacklist, immigration_investigation) were orphans —
+  `mapViolationHistory` already turned them into a fact, but
+  `REVIEW_FLAG_MAP` never turned them into a disclosed review flag, so their
+  `NOTICE_CONDITION_COPY` row and `REVIEW_GATE_CAUSE_ITEM` edit-affordance
+  never fired. Meanwhile the review-gate question's own lead
+  (`q.review_gate.hint`) still promised "a human reviews your case — never
+  an automated verdict", false since A1'/A3-B made most disclosures
+  conditions on an automated result rather than a human hold, and
+  `why.review_gate` still claimed only the immigration-history items map to
+  an engine fact. M1 adds the three REVIEW_FLAG_MAP keys; M2 rewrites the
+  two pinned tests that asserted the old "no" to prove BOTH channels (fact +
+  disclosure) fire from the same walk; M3 zeroes the backend orphan census
+  (test_review_hold_inventory.py); M4 adds the three NOTICE_CONDITION_COPY
+  entries the backend already emits (A3-B put them in
+  `_DISCLOSED_CONDITION_REASON_CODES`); M4-bis adds a guard that the copy
+  table carries no code the backend cannot emit and that the one
+  unreachable-by-construction exception (ACTIVITY_BOUNDARY, HOLDING-only)
+  is named and justified, not silently absent; M5 extends the
+  guard-over-match scan to the two review-gate strings (38 entries, was
+  28); M6 rewrites both strings and pins the retired sentence's absence;
+  M7 adds the three REVIEW_GATE_CAUSE_ITEM rows for the "edit your answer"
+  affordance.
+constraints:
+  - >-
+    Mouth + one coupled backend test only: fact-mapper.ts/.test.ts,
+    engine-adapter.ts/.test.ts, i18n.ts/.test.ts, OutcomeSheet.tsx, and
+    test_review_hold_inventory.py (reads the mouth files from disk, so a
+    mouth-only PR would turn it red on main). mapViolationHistory,
+    fact-mapper.ts:935, oracle.css, LivingTree.tsx, OracleShell.tsx (Track
+    C) and OutcomeSheet.tsx's disclaimer block (slice A5's) are untouched.
+  - >-
+    A5's HELD_ONLY_REVIEW_CODES phantom pin (DISCLOSED_PAST_OVERSTAY_REVIEW,
+    DISCLOSED_BLACKLIST_ENTRY_REVIEW, DISCLOSED_IMMIGRATION_INVESTIGATION_
+    REVIEW must carry no REVIEW_REASON_COPY) is not this slice's to touch —
+    only NOTICE_CONDITION_COPY (conditions) and the REVIEW_GATE_CAUSE_ITEM
+    edit-affordance rows are added.
+  - >-
+    PR ships UNARMED, never merged or promoted by the builder; production is
+    never called, not even a GET.
+appetite: { wall_clock_hours: 2 }
+acceptance:
+  - text: >-
+      The full visa-oracle vitest suite passes with all seven M-clauses'
+      changes included (1126 tests, 44 files).
+    probe: "cd apps/mouth && ../../node_modules/.bin/vitest run --root . 'src/app/(visa-oracle)/visa-oracle'"
+  - text: >-
+      GUILT (M1+M2): deleting the blacklist key from REVIEW_FLAG_MAP reddens
+      the rewritten both-channels test, naming BLACKLIST_ENTRY.
+    probe: 'cd apps/mouth && ../../node_modules/.bin/vitest run "src/app/(visa-oracle)/visa-oracle/_lib/fact-mapper.test.ts" -t "routes legal violation values"'
+  - text: >-
+      GUILT (M4-bis): NOTICE_CONDITION_COPY carries no code the backend
+      cannot emit, and the one pre-provisioned exception is named.
+    probe: 'cd apps/mouth && ../../node_modules/.bin/vitest run "src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter.test.ts" -t "NOTICE_CONDITION_COPY carries"'
+  - text: >-
+      GUILT (M5): the guard-over-match scan reddens on a plant in the new
+      EN lead, naming q.review_gate.hint/en and the EN stem: clear family.
+    probe: 'cd apps/mouth && ../../node_modules/.bin/vitest run "src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter.test.ts" -t "innocence: all 38"'
+  - text: >-
+      GUILT (M6): the retired "a human reviews your case" promise cannot
+      ship in either language table.
+    probe: 'cd apps/mouth && ../../node_modules/.bin/vitest run "src/app/(visa-oracle)/visa-oracle/_lib/i18n.test.ts" -t "M6"'
+  - text: "The backend orphan census reads zero orphans, mouth side matches."
+    probe: "PYTHONPATH=apps/backend-rag apps/backend-rag/.venv/bin/python -m pytest apps/backend-rag/backend/tests/scripts/visa_engine/test_review_hold_inventory.py -v"
+  - text: >-
+      The two owed rendered proofs run under a real production build: the
+      new EN/ID leads render, the retired sentence is absent, zero engine
+      calls before the confirmation screen.
+    probe: "cd apps/mouth && ../../node_modules/.bin/playwright test -c playwright.config.ts e2e/visa-oracle-v2.spec.ts --project=chromium"
+  - text: "tsc --noEmit exits 0 across the whole apps/mouth project."
+    probe: "cd apps/mouth && ../../node_modules/.bin/tsc --noEmit -p tsconfig.json"
+assumptions:
+  - text: >-
+      The backend's `_DISCLOSED_CONDITION_REASON_CODES` map
+      (evaluate_path.py:1161-1177) already carries PAST_OVERSTAY,
+      BLACKLIST_ENTRY and IMMIGRATION_INVESTIGATION on this base — A3-B
+      shipped them — so M4's three new frontend keys are backend-backed
+      from the moment they land, and M4-bis's guard passes them without a
+      further backend PR.
+    status: verified
+    probe: "grep -n 'PAST_OVERSTAY\\|BLACKLIST_ENTRY\\|IMMIGRATION_INVESTIGATION' apps/backend-rag/backend/services/visa_engine/evaluate_path.py"
+  - text: >-
+      OutcomeSheet.test.tsx's drift `it.each` over REVIEW_GATE_CAUSE_ITEM is
+      a curated 4-example list (UNCERTAINTY, ACTIVITY_BOUNDARY,
+      MULTI_PURPOSE_TRIP, CRIMINAL_RECORD), not an exhaustive iteration over
+      every row — dropping one of M7's three new rows on a scratch copy
+      does NOT redden any existing test. Declared limit, not cured in
+      silence: the doc comment above REVIEW_GATE_CAUSE_ITEM ("re-derives
+      every row") overstates what the test actually checks.
+    status: verified
+    probe: "cd apps/mouth && ../../node_modules/.bin/vitest run OutcomeSheet.test.tsx"
