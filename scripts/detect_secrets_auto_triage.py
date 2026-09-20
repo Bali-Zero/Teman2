@@ -1823,16 +1823,34 @@ def triage(
     return baseline, stats, residue
 
 
+def _baseline_arg(argv: list[str]) -> Path:
+    """`--baseline PATH` — triage a COPY instead of the tracked file.
+
+    A caller that wants to know what a scan WOULD say (the pre-commit gate in
+    scripts/check_ban_predicates.py) must not mutate `.secrets.baseline` as a
+    side effect of asking. Default is unchanged, so CI keeps its behaviour.
+    """
+    if "--baseline" in argv:
+        i = argv.index("--baseline")
+        if i + 1 >= len(argv):
+            print("ERROR: --baseline needs a path", file=sys.stderr)
+            raise SystemExit(2)
+        return Path(argv[i + 1])
+    return BASELINE
+
+
 def main() -> int:
-    args = set(sys.argv[1:])
+    argv = sys.argv[1:]
+    args = set(argv)
     apply = "--apply" in args
     report = "--report" in args
+    baseline_path = _baseline_arg(argv)
 
-    if not BASELINE.exists():
-        print(f"ERROR: {BASELINE} does not exist", file=sys.stderr)
+    if not baseline_path.exists():
+        print(f"ERROR: {baseline_path} does not exist", file=sys.stderr)
         return 2
 
-    baseline = json.loads(BASELINE.read_text())
+    baseline = json.loads(baseline_path.read_text())
     baseline, stats, residue = triage(baseline, apply=apply)
 
     print(f"Total findings:        {stats['total']}")
@@ -1844,8 +1862,8 @@ def main() -> int:
     )
 
     if apply:
-        BASELINE.write_text(json.dumps(baseline, indent=2, sort_keys=False) + "\n")
-        print("\n.secrets.baseline updated in place.")
+        baseline_path.write_text(json.dumps(baseline, indent=2, sort_keys=False) + "\n")
+        print(f"\n{baseline_path} updated in place.")
 
     if report:
         print("\n=== Residue by file (top 40) ===")

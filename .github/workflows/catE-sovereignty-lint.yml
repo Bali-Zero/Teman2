@@ -72,6 +72,14 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
+      # The local pre-commit gate's own corpus (scripts/check_ban_predicates.py
+      # runs from .husky/pre-commit). Its first tests shell-unquote THIS file's
+      # grep arguments and compare them to the script's transcriptions, so a
+      # regex edited here without the script fails on the next line, not in a
+      # commit six weeks from now that the local gate quietly waved through.
+      - name: ban-predicates — transcription parity + guilt/innocence
+        run: python3 -m pytest scripts/tests/test_ban_predicates.py -q
+
       # Runs BEFORE #40 so a broken budget step fails loud here rather than
       # quietly degrading the scan it exists to guard. The corpus extracts #40's
       # own shell between its CATE40_BUDGET markers and exercises it against
