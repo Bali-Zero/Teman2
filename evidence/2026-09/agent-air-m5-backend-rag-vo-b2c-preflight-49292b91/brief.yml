@@ -4,16 +4,23 @@ machine: air-m5
 base_sha: 4e472a2f82495723f54a5754f48f8ec1ba5ca1bd # pragma: allowlist secret - public Git commit ID, not a credential
 date: 2026-09-20
 
-gear: 1
+gear: 2
 gear_reason: >-
-  python3 scripts/contract_verify.py --head <this-branch-final-head> --json returned
-  {"context": "Harness floor recompute", "check": "floor-needs-brief", "status": "PASS",
-  "output": "floor 1, brief not required"} against the two touched files
-  (enumerate_live.py, test_enumerate_live.py). Net churn is 280 lines
-  (git diff --numstat origin/main...HEAD on the two files: +75/-1 code, +209/-3 test),
-  well under SIZE_GEAR3_THRESHOLD -- floor computed 1 honestly, nothing shaved to
-  stay under it. This brief is written anyway per the builder mandate's own
-  instruction, not because the floor required it.
+  python3 scripts/contract_verify.py --head <this-branch-final-head> --json, run
+  BEFORE this brief existed (only enumerate_live.py +75/-1 and
+  test_enumerate_live.py +209/-3 staged, 284 lines changed), returned
+  {"context": "Harness floor recompute", "check": "floor-needs-brief", "status":
+  "PASS", "output": "floor 1, brief not required"}. Re-run on the head that
+  actually commits this brief (brief.yml itself +116/-0, total changed lines
+  404, over SIZE_GEAR2_THRESHOLD=400 in evidence_pack_lint.py) returned
+  {"context": "Harness floor recompute", "check": "floor-needs-brief", "status":
+  "PASS", "output": "floor 2, brief present"} plus a second PASS
+  ("pack-lint": "no pack authored by this diff -- nothing to lint"). Declared
+  gear 2 here to match the SECOND (final) measurement, not the first --
+  evidence/** is not exempted from the size term (checked by reading
+  _is_size_term_excluded), so a brief measurably counts its own size, same as
+  the sibling B2''-b brief already noted for this same module. Nothing was
+  shaved to stay under either threshold.
 
 objective: >-
   Slice B2''-c C1 (MANDATE-vo.md, "the manifest is engine-parseable BY CONSTRUCTION,
