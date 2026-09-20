@@ -1,7 +1,9 @@
 """Claude via Max-plan OAuth (subprocess to ``claude -p``).
 
-Local, self-contained substitute for the banned paid path
-``anthropic.AsyncAnthropic(api_key=...)`` (CLAUDE.md §5 / Golden Rule #13).
+Local, self-contained substitute for the banned paid path — the vendor
+SDK's async client constructed with a per-token key (CLAUDE.md §5 / Golden
+Rule #13). The spelling is deliberately not written out: see
+`.github/workflows/catE-sovereignty-lint.yml` for the literal it bans.
 ``bali-intel-scraper`` is a separate app and cannot import
 ``backend.llm.claude_oauth_client`` from ``backend-rag`` — this is a
 minimal mirror of that module's contract (one-shot prompt -> text, no

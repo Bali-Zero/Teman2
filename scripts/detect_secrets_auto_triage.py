@@ -1823,16 +1823,64 @@ def triage(
     return baseline, stats, residue
 
 
+def _baseline_arg(argv: list[str]) -> Path:
+    """`--baseline PATH` — triage a COPY instead of the tracked file.
+
+    A caller that wants to know what a scan WOULD say (the pre-commit gate in
+    scripts/check_ban_predicates.py) must not mutate `.secrets.baseline` as a
+    side effect of asking. Default is unchanged, so CI keeps its behaviour.
+    """
+    if "--baseline" in argv:
+        i = argv.index("--baseline")
+        if i + 1 >= len(argv):
+            print("ERROR: --baseline needs a path", file=sys.stderr)
+            raise SystemExit(2)
+        return Path(argv[i + 1])
+    return BASELINE
+
+
+KNOWN_FLAGS = {"--apply", "--report", "--baseline"}
+
+
+def _reject_unknown(argv: list[str]) -> None:
+    """Refuse a flag this script does not know, instead of absorbing it.
+
+    Measured 2026-09-20: run as `--apply --baseline /tmp/copy.json` on a
+    checkout that predated `--baseline`, the old `set(sys.argv[1:])` parse
+    dropped the flag AND its path on the floor and rewrote the TRACKED
+    `.secrets.baseline` — 616 lines deleted, noticed only by `git status`.
+    A script that MUTATES a tracked file must not silently redirect itself.
+    """
+    skip = False
+    for i, a in enumerate(argv):
+        if skip:
+            skip = False
+            continue
+        if a == "--baseline":
+            skip = True
+            continue
+        if a.startswith("-") and a not in KNOWN_FLAGS:
+            print(f"ERROR: unknown flag {a!r}", file=sys.stderr)
+            print(f"  known: {' '.join(sorted(KNOWN_FLAGS))}", file=sys.stderr)
+            raise SystemExit(2)
+        if not a.startswith("-"):
+            print(f"ERROR: unexpected argument {a!r}", file=sys.stderr)
+            raise SystemExit(2)
+
+
 def main() -> int:
-    args = set(sys.argv[1:])
+    argv = sys.argv[1:]
+    _reject_unknown(argv)
+    args = set(argv)
     apply = "--apply" in args
     report = "--report" in args
+    baseline_path = _baseline_arg(argv)
 
-    if not BASELINE.exists():
-        print(f"ERROR: {BASELINE} does not exist", file=sys.stderr)
+    if not baseline_path.exists():
+        print(f"ERROR: {baseline_path} does not exist", file=sys.stderr)
         return 2
 
-    baseline = json.loads(BASELINE.read_text())
+    baseline = json.loads(baseline_path.read_text())
     baseline, stats, residue = triage(baseline, apply=apply)
 
     print(f"Total findings:        {stats['total']}")
@@ -1844,8 +1892,8 @@ def main() -> int:
     )
 
     if apply:
-        BASELINE.write_text(json.dumps(baseline, indent=2, sort_keys=False) + "\n")
-        print("\n.secrets.baseline updated in place.")
+        baseline_path.write_text(json.dumps(baseline, indent=2, sort_keys=False) + "\n")
+        print(f"\n{baseline_path} updated in place.")
 
     if report:
         print("\n=== Residue by file (top 40) ===")
