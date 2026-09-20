@@ -142,18 +142,69 @@ for r in range(rounds):
 os.close(log_fd)
 """
 
-_ATOMIC_WRITE_HOLD_SCRIPT = """
+_KILL_POINT_SCRIPT = """
+import os
+import pathlib
 import sys
+import time
 from pathlib import Path
 from backend.scripts.visa_engine.report_lock import atomic_write_json
 
 report = Path(sys.argv[1])
-ready_file = Path(sys.argv[2])
-size = int(sys.argv[3])
+sentinel_dir = Path(sys.argv[2])
+kill_point = sys.argv[3]
+size = int(sys.argv[4])
 
 atomic_write_json(report, {"stage": "first"})
-ready_file.write_text("ready")
-atomic_write_json(report, {"stage": "second", "blob": "x" * size})
+
+fired = False
+original_os_replace = os.replace
+original_os_rename = os.rename
+original_path_replace = pathlib.Path.replace
+original_path_rename = pathlib.Path.rename
+
+def _write_sentinel(name, content):
+    path = sentinel_dir / name
+    with path.open("w", encoding="utf-8") as handle:
+        handle.write(content)
+        handle.flush()
+        os.fsync(handle.fileno())
+
+def _hook(source, target, real_replace):
+    global fired
+    if fired:
+        return real_replace(source, target)
+    fired = True
+    if kill_point == "before_replace":
+        _write_sentinel("in_window", os.fspath(source))
+        while True:
+            time.sleep(3600)
+    result = real_replace(source, target)
+    _write_sentinel("replaced", "replaced")
+    while True:
+        time.sleep(3600)
+    return result
+
+def _os_replace(source, target, *args):
+    return _hook(source, target, lambda src, dst: original_os_replace(src, dst, *args))
+
+def _os_rename(source, target, *args):
+    return _hook(source, target, lambda src, dst: original_os_rename(src, dst, *args))
+
+def _path_replace(self, target):
+    return _hook(self, target, lambda src, dst: original_path_replace(src, dst))
+
+def _path_rename(self, target):
+    return _hook(self, target, lambda src, dst: original_path_rename(src, dst))
+
+os.replace = _os_replace
+os.rename = _os_rename
+pathlib.Path.replace = _path_replace
+pathlib.Path.rename = _path_rename
+
+atomic_write_json(report, {"blob": "x" * size, "stage": "second"})
+_write_sentinel("no_replace", "no_replace")
+sys.exit(3)
 """
 
 
@@ -163,6 +214,20 @@ def _wait_for(path: Path, timeout: float = 10.0) -> None:
         if time.monotonic() > deadline:
             raise AssertionError(f"timed out waiting for {path} to appear")
         time.sleep(0.02)
+
+
+def _wait_for_any(
+    paths: tuple[Path, ...], process: subprocess.Popen[bytes], timeout: float
+) -> Path | None:
+    deadline = time.monotonic() + timeout
+    while time.monotonic() <= deadline:
+        for path in paths:
+            if path.exists():
+                return path
+        if process.poll() is not None:
+            return None
+        time.sleep(0.02)
+    return None
 
 
 def _run_script(script: str, *args: str) -> subprocess.Popen[bytes]:
@@ -473,70 +538,59 @@ def test_a_live_holder_is_refused_promptly_not_serialized(tmp_path: Path) -> Non
 # ---------------------------------------------------------------------------
 
 
-def test_sigkill_inside_atomic_write_never_corrupts_the_target(tmp_path: Path) -> None:
-    """Gate finding (GATE-B2G-REPORT-6920.md, OBS-B): the ORIGINAL shape -- `_wait_for
-    (ready_file)` THEN a fresh glob loop -- is a race nothing synchronises: the temp file
-    exists for as little as 5-16 ms while a loop started cold after the wait can take
-    50-300+ ms to arrive, so the observer can miss a target that was never corrupted and
-    blame the module for it. A bare reorder (poll before the wait) cuts the miss rate but
-    is WRONG on its own: it can catch the FIRST, small `atomic_write_json` call's own
-    fleeting temp file and SIGKILL that instead of the SECOND, large one this test means to
-    interrupt. The fix needs BOTH properties at once: a `threading.Thread` that starts
-    polling BEFORE the writer subprocess even exists (concurrent -- no cold-start latency
-    once the target window opens) but only ACCEPTS a match after `ready_file` appears
-    (gated -- so a first-write sighting can never satisfy it). `os.path.exists`/`glob` are
-    the only calls in the loop; no sleep longer than the poll interval, so a genuine absence
-    still ends the test in a bounded time rather than hanging.
+@pytest.mark.parametrize("kill_point", ["before_replace", "after_replace"])
+def test_sigkill_inside_atomic_write_never_corrupts_the_target(
+    tmp_path: Path, kill_point: str
+) -> None:
+    """The child parks itself inside the replace hook, making SIGKILL deterministic.
+    The 60-second bound covers startup and the first write; load cannot make the bound
+    misjudge the write window. History: GATE-B2G/B2H reports.
     """
     report = tmp_path / "report.json"
-    ready_file = tmp_path / "ready"
-    size = 20_000_000  # large enough that the temp file's write is still in flight
-
-    observed: list[Path] = []
-    stop = threading.Event()
-
-    def _observer() -> None:
-        armed = False
-        while not stop.is_set():
-            if not armed and ready_file.exists():
-                armed = True  # gated: only a match found from HERE on is accepted
-            if armed:
-                matches = list(tmp_path.glob("report.json.*.tmp"))
-                if matches:
-                    observed.append(matches[0])
-                    return
-            time.sleep(0.001)  # short enough to beat a 5 ms window; never a sleep-as-hang
-
-    observer = threading.Thread(target=_observer, daemon=True)
-    observer.start()  # concurrent: already spinning before the writer is even spawned
-
-    writer = _run_script(_ATOMIC_WRITE_HOLD_SCRIPT, str(report), str(ready_file), str(size))
+    sentinel_dir = tmp_path / "sentinels"
+    sentinel_dir.mkdir()
+    size = 1_000_000
+    in_window = sentinel_dir / "in_window"
+    replaced = sentinel_dir / "replaced"
+    no_replace = sentinel_dir / "no_replace"
+    writer = _run_script(
+        _KILL_POINT_SCRIPT, str(report), str(sentinel_dir), kill_point, str(size)
+    )
     try:
-        # 5s: with a concurrent, gated observer the armed-to-match latency is loop-iteration
-        # scale (sub-millisecond to a few ms), not the 50-300+ ms the gate measured for a
-        # cold-started loop -- this is generous headroom, not a load-driven guess. Widening
-        # THIS number was never the fix (a prior, reverted attempt on this branch tried
-        # 10s -> 60s and it could not have worked: once `os.replace` runs, the temp is gone
-        # for good, so a longer deadline only spins longer before the identical failure).
-        observer.join(timeout=5.0)
-        tmp_hit = observed[0] if observed else None
-        assert tmp_hit is not None, (
-            "the observer never saw a temp file appear after the writer signalled ready -- "
-            "either atomic_write_json stopped writing through a per-process temp name, or "
-            "the detection window itself regressed; this does NOT by itself mean the target "
-            "was corrupted (that is the assertion below, checked separately)"
-        )
+        # 60s covers startup and the first write; load can only delay reaching the parked
+        # window, so this bound cannot mistake a shorter write window for a failure.
+        marker = _wait_for_any((in_window, replaced, no_replace), writer, timeout=60.0)
+        if marker is None:
+            if writer.poll() is None:
+                pytest.fail("writer never reached the write window in 60 s")
+            _, stderr = writer.communicate(timeout=10.0)
+            tail = stderr.decode(errors="replace")[-500:]
+            pytest.fail(f"writer exited before the write window (code {writer.returncode}): {tail}")
+        if marker == no_replace:
+            pytest.fail(
+                "atomic_write_json returned without ever calling replace/rename: the target "
+                "is written IN PLACE, so a SIGKILL mid-write tears it"
+            )
+        if marker == in_window:
+            data = json.loads(report.read_text())
+            assert data["stage"] == "first"
+            source = Path(in_window.read_text())
+            assert source != report
+            assert source.exists()
+            assert source.stat().st_size > 0
         os.kill(writer.pid, signal.SIGKILL)
         writer.wait(timeout=10.0)
+        assert writer.returncode == -signal.SIGKILL
+        data = json.loads(report.read_text())
+        if marker == in_window:
+            assert data["stage"] == "first", "target changed although the writer was killed BEFORE replace"
+        else:
+            assert data["stage"] == "second", "target incomplete although replace had returned"
+            assert len(data["blob"]) == size
     finally:
-        stop.set()
-        observer.join(timeout=5.0)
         if writer.poll() is None:
             writer.kill()
             writer.wait(timeout=10.0)
-
-    # os.replace never ran: the PREVIOUS write survives, parseable and unchanged.
-    assert json.loads(report.read_text()) == {"stage": "first"}
 
 
 def test_concurrent_reader_always_parses_during_repeated_large_rewrites(tmp_path: Path) -> None:
