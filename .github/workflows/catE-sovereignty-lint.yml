@@ -47,6 +47,15 @@ on:
       - "scripts/lint_paid_llm_entity.py"
       - "scripts/typesafe_client.py"
       - "scripts/redact_for_external.py"
+      # The DATA a guard reads must start the guard. Both of these were
+      # missing, and both miss the same way: the one file a bypass has to
+      # touch is the one file that did not fire the workflow. A PR adding a
+      # vendor to the authorization list, or growing the ban-prose pardon
+      # list, changes nothing else — so --base-ref never ran on exactly the
+      # diff it exists to judge. Found by a refuting seat on the fence and
+      # re-measured independently, 2026-09-21.
+      - "infra/vendor-authorizations/**"
+      - "infra/ban-prose/grandfathered.json"
       - ".github/workflows/catE-sovereignty-lint.yml"
       # The budget itself and its corpus: editing either without re-running
       # this workflow is how a guard's own proof goes stale unobserved.
@@ -65,6 +74,15 @@ on:
       - "scripts/lint_paid_llm_entity.py"
       - "scripts/typesafe_client.py"
       - "scripts/redact_for_external.py"
+      # The DATA a guard reads must start the guard. Both of these were
+      # missing, and both miss the same way: the one file a bypass has to
+      # touch is the one file that did not fire the workflow. A PR adding a
+      # vendor to the authorization list, or growing the ban-prose pardon
+      # list, changes nothing else — so --base-ref never ran on exactly the
+      # diff it exists to judge. Found by a refuting seat on the fence and
+      # re-measured independently, 2026-09-21.
+      - "infra/vendor-authorizations/**"
+      - "infra/ban-prose/grandfathered.json"
       - ".github/workflows/catE-sovereignty-lint.yml"
       # The budget itself and its corpus: editing either without re-running
       # this workflow is how a guard's own proof goes stale unobserved.

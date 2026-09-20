@@ -80,6 +80,31 @@ def test_a_different_endpoint_does_not_authorize_this_one(listing, monkeypatch):
     assert tc.authorized() is False
 
 
+def test_an_entry_containing_the_endpoint_does_not_authorize_it(listing, monkeypatch):
+    """A SUPERSTRING is not a match either, and the prefix case above does not
+    cover it: a mutation from `==` to `in` survives a corpus that only tests
+    prefixes, because a prefix does not contain what it is a prefix of. Found
+    by a refuting seat's mutation run, confirmed independently — both halves of
+    an entity match need a case, not just the cheaper one."""
+    _, write = listing
+    write({"endpoints": [tc.ENDPOINT + "/../evil", "prefix-" + tc.ENDPOINT]})
+    monkeypatch.setenv(tc.ENV_VAR, "a-configured-key")
+
+    assert tc.authorized() is False
+
+
+def test_a_dict_entry_naming_another_endpoint_does_not_authorize(listing, monkeypatch):
+    """The dict branch must check the endpoint, not merely the shape. Dropping
+    that comparison left every test green: the only dict in the corpus carried
+    the right endpoint, so `isinstance(entry, dict)` alone passed. Same
+    refuting seat, same run."""
+    _, write = listing
+    write({"endpoints": [{"endpoint": "https://api.example.com/v1", "ruling": "unrelated"}]})
+    monkeypatch.setenv(tc.ENV_VAR, "a-configured-key")
+
+    assert tc.authorized() is False
+
+
 @pytest.mark.parametrize(
     "payload",
     ["", "{", '{"endpoints": "all"}', '{"other": []}', '{"endpoints": null}'],
@@ -94,6 +119,17 @@ def test_an_unusable_list_authorizes_nothing(listing, monkeypatch, payload):
 
     assert tc.authorized() is False
     assert tc.unavailable_reason() == tc.NOT_AUTHORIZED
+
+
+def test_deeply_nested_json_does_not_escape_as_an_exception(listing, monkeypatch):
+    """A refusal is a return, never a raise. Deep nesting raises RecursionError
+    out of the parser, which is neither a ValueError nor an OSError — the same
+    class of miss as the UnicodeDecodeError that once escaped `ask`."""
+    path, _ = listing
+    path.write_text("[" * 20000 + "]" * 20000)
+    monkeypatch.setenv(tc.ENV_VAR, "a-configured-key")
+
+    assert tc.authorized() is False
 
 
 def test_an_absent_file_authorizes_nothing(listing, monkeypatch):

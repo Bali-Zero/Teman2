@@ -1,0 +1,53 @@
+task_id: vendor-fence-ondisk
+gear: 3
+l_level: L2
+gate_class: opus
+objective: Close the second half of condition 3 of the Gear-3 gate verdict on PR #6968 — the half a ruling cannot deliver. Arming a third-party per-token vendor had become a GUI act (one repository secret, no PR, no review), which Builder Contract §3 forbids in words and could not reach in mechanism. The client must refuse to speak unless its endpoint is authorized ON DISK, and the corpora that prove this lane's guards must actually execute in a gating workflow.
+constraints:
+  - Fail-closed everywhere. An absent, unreadable or malformed authorization list authorizes NOTHING — failing open would make deleting one file the way to arm every vendor, which is the ban-prose pardon list's own reasoning.
+  - The refusal must precede payload construction. Source text must never be serialised for an unauthorized endpoint, not even into a request that is discarded.
+  - Degrade path unchanged. No key, or no authorization, both mean "no opinion" — never "no violation", never a crash, never a failed build. The entity step stays advisory.
+  - The two silences must be distinguishable. A caller that cannot tell "no key" from "not authorized" prints a message that is false half the time.
+  - Matching on the endpoint is an ENTITY match, never a substring — a neighbouring endpoint or a prefix of the real one must not authorize it (cicatrix #3).
+  - The shipped list ships EMPTY. This PR authorizes nothing; it only moves where authorization can be granted.
+acceptance:
+  - text: WHEN the key is configured AND the endpoint is not listed the client SHALL be unavailable and SHALL name the authorization as the reason.
+    probe: test_a_key_alone_does_not_authorize
+  - text: WHEN the key is configured AND the endpoint IS listed the client SHALL be available — without this the fence is unfalsifiable, since a client that never speaks passes every guilt test.
+    probe: test_a_listed_endpoint_with_a_key_is_available
+  - text: WHEN the list is absent, truncated, malformed or not a list the client SHALL authorize nothing.
+    probe: test_an_unusable_list_authorizes_nothing / test_an_absent_file_authorizes_nothing
+  - text: WHEN the endpoint is unauthorized `ask` SHALL NOT serialise a payload and SHALL NOT reach the network.
+    probe: test_ask_never_serialises_for_an_unauthorized_endpoint
+  - text: WHEN a different or prefix endpoint is listed it SHALL NOT authorize this one.
+    probe: test_a_different_endpoint_does_not_authorize_this_one
+  - text: WHEN no key is configured the reason SHALL differ from the unauthorized reason.
+    probe: test_the_two_silences_are_distinguishable
+  - text: WHEN the shipped list stops being empty the suite SHALL turn red, so the change cannot be quiet.
+    probe: test_the_shipped_list_authorizes_nothing_today
+  - text: WHERE this lane's guards have a corpus, a GATING workflow SHALL execute it.
+    probe: catE-sovereignty-lint step "the guards' own corpora — the suites no gating workflow ran"
+assumptions:
+  - text: The three tests that monkeypatch `ask` needed a fixture rather than a rewrite — the property they assert (what the model contributes) is unchanged by the fence.
+    status: verified
+    probe: they fail without the fixture and pass with it; before the fixture existed, one failed outright and two passed vacuously
+  - text: No gating workflow executed this lane's corpora before this PR.
+    status: verified
+    probe: "grep -rln test_lint_paid_llm_entity .github/workflows/ returns nothing; test_lint_ban_prose.py is reached only by scripts-tests-sweep.yml, which is schedule-only, continue-on-error and required by no branch protection"
+consumer_map:
+  - .github/workflows/catE-sovereignty-lint.yml — step "the guards' own corpora", shipped in this PR and running on its own diff.
+  - .github/workflows/catE-sovereignty-lint.yml — step "Paid-endpoint ban judged as an entity (advisory)", whose degrade message this PR corrects; it runs on this PR's diff and prints the new reason.
+risks:
+  - The fence stops a secret from arming a vendor; it does not stop a PR from adding an entry without a ruling behind it. That is deliberate — the goal is to make the act pass a merge, not to make it impossible — and test_the_shipped_list_authorizes_nothing_today makes the addition loud.
+  - The authorization lives in one file for one client. A second vendor client added elsewhere would not inherit this fence unless it reads the same list; nothing yet enforces that it does.
+  - This PR touches code that landed three days ago in #6968, so its test corpus is young and its author's assumptions are still the ones being tested.
+grader: |
+  GENERATOR IS NOT GRADER, AND THE OVERLAP HERE MUST BE DECLARED RATHER THAN
+  LEFT FOR A READER TO FIND: the session writing this PR is the SAME session
+  that signed the Gear-3 gate of #6968 (PASS-WITH-CONDITIONS, 2026-09-21). That
+  verdict stands — it was reached on a frozen artifact, before any of this
+  existed. But this PR modifies the code that verdict judged, so on THIS
+  artifact the session is a material contributor and is disqualified from its
+  gate. It needs a fresh Opus 5 session outside this chain, and that session
+  must also be outside #6968's chain: the author of #6968 is a contributor to
+  `typesafe_client.py`, which this PR edits, so that seat cannot sign either.

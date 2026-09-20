@@ -62,7 +62,12 @@ def authorized() -> bool:
     """
     try:
         listed = json.loads(AUTHORIZATION.read_text())["endpoints"]
-    except (OSError, ValueError, KeyError, TypeError):
+    except (OSError, ValueError, KeyError, TypeError, RecursionError):
+        # RecursionError is neither a ValueError nor an OSError: deeply nested
+        # JSON raises it out of the parser and it would escape into a step
+        # whose whole contract is that it never fails a build. Same shape as
+        # the UnicodeDecodeError that escaped `ask` — a narrow tuple cannot
+        # keep a promise this broad. Raised by a refuting seat.
         return False
     if not isinstance(listed, list):
         return False

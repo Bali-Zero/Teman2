@@ -348,12 +348,17 @@ def test_redaction_catches_unquoted_shell_export():
     assert "abc123def456ghi789" not in out
 
 
-def test_ask_returns_none_on_a_non_utf8_body(monkeypatch):
+def test_ask_returns_none_on_a_non_utf8_body(monkeypatch, authorized_vendor):
     """ask() promises it never raises. A narrow except tuple could not keep it.
 
     UnicodeDecodeError is a ValueError, so it matched none of the original
     clauses and would have escaped into a CI step whose entire contract is that
     it always exits 0.
+
+    The `authorized_vendor` fixture is load-bearing and was added late: once the
+    on-disk fence existed, this test passed because `ask` returned None at the
+    fence and never reached the body it claims to be about. It asserted nothing
+    for exactly as long as nobody checked. Found by a refuting seat.
     """
     import typesafe_client
 
