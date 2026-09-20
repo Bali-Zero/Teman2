@@ -1,5 +1,5 @@
 council_run: council-journal.jsonl
-brief_ref: evidence/2026-09/agent-air-m5-infra-notify-seat-consumer-2-fde79432/brief.yml
+brief_ref: brief.yml
 plan_ref:
   "Lane INFRA NOTIFY-ROUTING, mandate from Zero 2026-09-21: cut the notifications that
   reach the owner, send the rest to LLM seats that ACT. PR-1 = #6973 (merged, the gateway's
