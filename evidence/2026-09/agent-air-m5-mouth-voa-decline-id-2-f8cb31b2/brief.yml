@@ -1,0 +1,160 @@
+base_sha: d4e2968835 # pragma: allowlist secret - public Git commit ID
+task_id: voa-decline-id-2
+mandate_id: GARUDA-VOA-20260919/FRONT-B
+gear: 2
+gear_reason: >-
+  Frontend-only, no rule pack, no migration, no CODEOWNERS-TIER1 path. The
+  pre-push floor check measured floor 2 on round 1 of this same slice and does
+  again here (512/199 over 4 files crosses evidence_pack_lint.py's
+  SIZE_GEAR2_THRESHOLD, far below the Gear-3 one). This brief declares gear 2,
+  matching the measured floor and not exceeding it.
+l_level: L1
+gate_class: opus
+predecessor: >-
+  PR #6969, CLOSED on a REWORK-BUILD gate verdict. Its finding is the reason
+  this successor exists and is carried in full below - the candidate is
+  otherwise the same work, cherry-picked onto fresh origin/main because an
+  armed branch is frozen.
+objective: >-
+  Finish what #6966 left: the DECLINE half of the GARUDA VOA verdict. A visitor
+  who asked the funnel in Bahasa and was refused read the whole education in
+  English, on the screen whose stated job is "this isn't a wall". Fifty-seven
+  sentences move into the EN/ID register, and the nineteen-case switch - which
+  was copy pretending to be control flow - collapses to a lookup.
+scope:
+  - >-
+    apps/mouth/src/app/visa/voa/voa-copy.ts - 63 keys per column: three
+    sentences per reason code, four purpose labels, two case-type labels.
+  - >-
+    apps/mouth/src/components/garuda/declineEducation.ts - the one judgement in
+    the switch that was not a sentence (WHERE each code routes) becomes
+    Record<DeclineCode, RouteKind>; the sentences come from the register by key.
+  - >-
+    apps/mouth/src/app/visa/voa/[hash]/page.tsx - one line: the DECLINE branch
+    passes its own t into the builder.
+  - >-
+    apps/mouth/src/app/visa/voa/voa-i18n.parity.guard.test.tsx - the decline
+    table joins the scanned consumer set, the generated key family is resolved
+    rather than exempted, the two-list cross-check is repaired (see below), and
+    two rendered proofs are added.
+constraints:
+  - >-
+    WHAT ROUND 1 GOT WRONG, stated first because it is the reason for this PR.
+    To reach the out-of-tree DECLINE table - which the claims guard names
+    through join(VOA_DIR, "..", "..", "..", ...) and therefore carries no
+    full-path literal - round 1 compared the two guards' file lists by
+    BASENAME. That silently stopped convicting [hash]/page.tsx, whose basename
+    page.tsx the wizard's own entry already satisfies. The gate proved it:
+    with the verdict screen deleted from SCREEN_FILES entirely, the cross-check
+    stayed GREEN. Cicatrix family #3 - an assertion that existed on
+    origin/main, dropped by the fix to a different one.
+  - >-
+    THE REPAIR compares resolved absolute paths on both sides, parsing the
+    claims guard's SCREEN_FILES entries and its DECLINE_EDUCATION_FILE hops and
+    joining them against the same VOA_DIR. The parse asserts it really parsed
+    (scanned.size > 10), so a changed guard shape cannot pass as an empty set
+    instead of failing.
+  - >-
+    A NEW REASON CODE WITHOUT COPY IS STILL A BUILD ERROR. The keys are
+    template literals now, so DeclineSentenceKey
+    (decline.<DeclineCode>.{mirror|forbids|alternative}) is asserted assignable
+    to VoaCopyKey. The gate verified this independently by adding a union member
+    and watching tsc exit 2.
+  - >-
+    THE ORPHAN RULE WAS NOT WEAKENED to fit the generated family: it is
+    expanded the way the code expands it and checked both ways. The gate
+    verified both directions by mutation and reported HOLDS.
+  - >-
+    buildDeclineEducation's third argument defaults to English, so the 27 tests
+    in declineEducation.test.ts - untouched - keep asserting English. The
+    default is pinned by its own test.
+  - >-
+    apps/mouth merges land STAGED on Vercel; the live observation is taken
+    after vercel promote, never inferred from the merge.
+acceptance:
+  - text: >-
+      THE REPAIRED CROSS-CHECK: every file this guard scans is scanned by the
+      claims guard too, compared as resolved paths, with the parse proven
+      non-vacuous.
+    status: verified
+    probe: >-
+      cd apps/mouth && ../../node_modules/.bin/vitest run
+      src/app/visa/voa/voa-i18n.parity.guard.test.tsx -t "scanned by the claims
+      guard"
+    probe_result: "Tests  1 passed | 36 skipped (37)"
+  - text: >-
+      GUILT, the exact mutation that exposed round 1: deleting the verdict
+      screen from the claims guard's SCREEN_FILES SHALL report exactly
+      [hash]/page.tsx - and the control asserts the mutation bit first.
+    status: verified
+    probe: >-
+      cd apps/mouth && ../../node_modules/.bin/vitest run
+      src/app/visa/voa/voa-i18n.parity.guard.test.tsx -t "dropping the verdict
+      screen"
+    probe_result: "Tests  1 passed | 36 skipped (37)"
+  - text: >-
+      GUILT, the other direction: repointing the DECLINE hop at another
+      filename SHALL report exactly the decline entry, so the out-of-tree case
+      is convicted too and not merely tolerated.
+    status: verified
+    probe: >-
+      cd apps/mouth && ../../node_modules/.bin/vitest run
+      src/app/visa/voa/voa-i18n.parity.guard.test.tsx -t "dropping the DECLINE
+      table"
+    probe_result: "Tests  1 passed | 36 skipped (37)"
+  - text: >-
+      THE SAME MUTATION ON DISK, not only synthetically: with "[hash]/page.tsx"
+      really deleted from voa-copy.guard.test.ts, the cross-check FAILS.
+    status: verified
+    probe: >-
+      remove the line from the real file, run the cross-check, restore from a
+      cp backup (never git checkout - it would wipe the uncommitted cure)
+    probe_result: >-
+      "AssertionError: expected [ '[hash]/page.tsx' ] to deeply equal []" ·
+      Tests 1 failed | 36 skipped (37) · file restored, git status clean
+  - text: >-
+      WHEN the verdict screen renders a DECLINE under ?lang=id, THEN the
+      education SHALL be Indonesian and the English sentence SHALL be absent.
+    status: verified
+    probe: >-
+      cd apps/mouth && ../../node_modules/.bin/vitest run
+      src/app/visa/voa/voa-i18n.parity.guard.test.tsx -t "DECLINE education
+      reaches the screen"
+    probe_result: "Tests  1 passed | 36 skipped (37)"
+  - text: NO REGRESSION across the funnel, the decline table and the site i18n layer.
+    status: verified
+    probe: >-
+      cd apps/mouth && ../../node_modules/.bin/vitest run src/app/visa/voa/
+      src/components/garuda/ src/i18n/
+    probe_result: "Test Files 34 passed (34) · Tests 604 passed | 2 skipped (606)"
+  - text: >-
+      A REASON CODE WITHOUT COPY IS A BUILD ERROR, the property the deleted
+      switch carried.
+    status: verified
+    probe: cd apps/mouth && npx tsc --noEmit
+    probe_result: "exit 0 (also re-run green by the pre-commit typecheck hook)"
+  - text: >-
+      PROOF-OF-LIVE, owed after the merge: a DECLINE verdict read at ?lang=id on
+      production SHALL show the Indonesian education. Observed after
+      vercel promote <dpl>, never before.
+    status: pending
+    probe: >-
+      vercel promote <dpl> && a synthetic DECLINE check (purpose=transit) read
+      at /visa/voa/<id>?lang=id shows "Visa on Arrival tidak mencakup tujuan
+      perjalanan tersebut."
+pii: none
+local_evidence: >-
+  No production read, no client data, no credential touched. Every probe is
+  unit-level under jsdom; the DECLINE render stubs global fetch with an invented
+  payload and a synthetic hash. The reason codes are the contract's own closed
+  enum, not a customer's case.
+self_report:
+  note: >-
+    Every probe was run against this PR's own head in this session with its
+    selected-test count pasted next to it. This is a SUCCESSOR, not a retry in
+    place: #6969 was armed and therefore frozen, so it was closed and the work
+    cherry-picked onto fresh origin/main with the repair on top. Round 1's gate
+    verdict is reproduced in the constraints above rather than summarised away.
+    The Indonesian wording is this session's translation, checked mechanically
+    against both guards' regexes but not native-reviewed - named here rather
+    than left implied.
