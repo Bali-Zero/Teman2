@@ -1,103 +1,83 @@
 gear: 2
-task_id: kbli-explorer-copy-burial-20260920
+task_id: kbli-llms-vintage-20260920
 lane: mouth
 host: air-m5 (M5)
-branch: agent/air-m5/mouth/kbli-explorer-copy-burial-20260920
+branch: agent/air-m5/mouth/kbli-llms-vintage-20260920
 gate_class: opus
 l_level: L2
 objective: >-
-  Ledger row `kbli-explorer-copy-line-shares-a-dead-code-as-a-live-listing`
-  (PENDING-ARMS, opened 2026-09-19 by the post-#6847 sweep). The explorer's
-  copy-to-clipboard string is built from `kbliApi.inspect(code)` — the very
-  endpoint `_tombstone_result` tombstones — and it is the one artifact on this
-  surface designed to travel OUT of it, into an email or a chat where none of
-  the surrounding disclosure travels along. MEASURED, not deduced: the
-  production inspect payload for 74100 (read 2026-09-20) carries
-  `licensing_status: NOT_IN_KBLI_2025`, `title: "KBLI 74100 [KBLI 2020 — tidak
-  ada dalam KBLI 2025]"`, `risk_profile: "Not applicable — code absent from
-  KBLI 2025"`, `pma_status: NOT_VERIFIED`, `licenses: []`; run through the
-  pre-cure expression it produces `KBLI 74100 — KBLI 74100 [KBLI 2020 — tidak
-  ada dalam KBLI 2025] | PMA: PMA Not Verified | Risk: Not applicable — code
-  absent from KBLI 2025 | Licenses: Not listed in our data | Sector: N/A`.
-  ONE CORRECTION TO THE ROW: it says the line "asserts a PMA verdict and a risk
-  tier beside it". It does not — both segments decline, which is why this is
-  ledgered as a comprehension defect and not a false statement. What IS wrong:
-  the code is printed twice, the tombstone suffix lands mid-sentence in
-  Indonesian, and "Not listed in our data" reads as a gap in OUR records rather
-  than as a code that cannot be registered at all. Four segments that each
-  decline to answer are a worse artifact to paste into a client's inbox than
-  one sentence that says the code is retired.
+  Ledger row `llms-kbli-txt-headlines-a-march-2026-vintage-against-a-september-dataset`
+  (PENDING-ARMS, opened earlier today when closing the sibling row about the
+  1,563 code count). `apps/mouth/public/llms-kbli.txt` told a crawler it was a
+  "March 2026 Update" — twice, counting the AI-citation instruction on line 1 —
+  while the dataset it dumps is `v11.0-L2-oss-risk-20260911`. MEASURED, and the
+  measurement found the real shape of the defect: the guard that already exists
+  for this exact entity, `march-2026-citation-instruction` in
+  `llms-public-file-guard.test.ts`, CONVICTS `llms-kbli.txt` today — it was
+  simply never pointed at that file. `findForbidden(llms-kbli.txt)` returns
+  `["march-2026-citation-instruction"]` while `llms.txt` is clean. So this is
+  not a missing guard, it is a guard that reached one twin of two (cicatrix #3
+  / W132), which is the same shape as the grid twin this lane hit twice today.
 scope:
   - >-
-    `apps/mouth/src/lib/kbli-licence-summary.ts` — exports
-    `STATUS_RETIRED_KBLI_2020` ("NOT_IN_KBLI_2025") beside the two status
-    tokens this module already owns, so the verdict is read as an ENTITY from a
-    structured field and never as a substring of the title (cicatrix #3).
+    `apps/mouth/public/llms-kbli.txt` — the AI-citation instruction and the
+    header now say September 2026, and the header additionally names the
+    dataset version it dumps (`v11.0-L2-oss-risk-20260911`).
   - >-
-    `apps/mouth/src/app/kbli-explorer/components/KBLIInspector.tsx` — new pure
-    `buildInspectorCopyLine(data)` beside the badge helpers it needs: one
-    sentence for a retired code, the existing five-segment line otherwise.
-  - >-
-    `apps/mouth/src/app/kbli-explorer/page.tsx` — `handleCopy` calls the
-    builder; the inline template, and the two imports it alone needed, are
-    gone.
-  - >-
-    Tests — guilt/innocence on the two REAL production payloads (74100 retired,
-    56101 live), including the impostor case that a substring guard fails.
+    `apps/mouth/src/lib/llms-public-file-guard.test.ts` — the existing
+    `findForbidden` innocence case now runs on the TWIN as well as on
+    llms.txt; plus a new describe that derives the expected vintage from
+    `metadata.version` of `KBLI_2025_FINAL_CLEAN.json` and asserts the file
+    advertises that month and names that version.
 constraints:
   - >-
-    The RISK half of this row was blocked on the risk doctrine until #6868
-    ruled it (one derivation, `Verify at OSS` as the floor). That cure decided
-    the doctrine, and this PR applies its consequence on the travelling
-    artifact: for a code that cannot be registered there is no risk segment to
-    qualify, so the segment goes rather than gets hedged.
+    The vintage assertions are SCOPED to the two places the file advertises a
+    vintage (`mention the <Month Year> regulatory updates`, `Master Data
+    (<Month Year> Update`), never to every month name in 1,583 lines. llms.txt
+    legitimately says "old March 2026 portal behavior" in prose; a guard that
+    convicted on any month would have to be deleted the first time someone
+    wrote a sentence about the past. Innocence test pins exactly that.
   - >-
-    The inspector's rendered PANELS are not touched. They sit inside our
-    surface, where the tombstone description is on screen next to them; this
-    row is about the string that leaves it.
+    Only `llms-kbli.txt` is tied to the KBLI dataset's version. llms.txt's own
+    "September 2026" refers to general regulatory news (SPP-TDLN and others),
+    not to this dataset, and coupling it to `metadata.version` would be a
+    wrong dependency dressed as a guard.
   - >-
-    Mouth is Vercel: merging does NOT make this live. The git deploy lands
-    STAGED and must be promoted, so the `Bites:` observation is taken on the
-    promoted production URL.
+    The month is derived from the date INSIDE the version string, and a version
+    that stops carrying one fails a test of its own rather than comparing
+    against undefined.
 acceptance:
   - text: >-
-      GUILT: WHEN the inspect payload carries `licensing_status:
-      NOT_IN_KBLI_2025`, the copied line SHALL contain no `PMA:`, `Risk:`,
-      `Licenses:` or `Sector:` segment, no `[KBLI 2020` fragment, and the code
-      exactly once — and SHALL say the code is retired and cannot be registered
-      on OSS.
+      THE TWIN IS GUARDED: `findForbidden` SHALL run on `llms-kbli.txt` and
+      return [] — the same innocence llms.txt has had since #6312.
     probe: >-
-      npx vitest run
-      src/app/kbli-explorer/components/KBLIInspector.copy-line.test.ts -t
-      "drops every segment"
+      npx vitest run src/lib/llms-public-file-guard.test.ts -t "llms-kbli.txt
+      carries no forbidden pattern"
   - text: >-
-      THE VERDICT IS AN ENTITY, NOT A SPELLING: WHERE a LIVE record's title
-      merely quotes the tombstone suffix, the line SHALL stay the normal
-      five-segment one. A `title.includes("[KBLI 2020")` guard passes the guilt
-      half and fails this one.
+      THE VINTAGE IS DERIVED, NOT TYPED: every advertised vintage in the file
+      SHALL equal the month inside `metadata.version`, and the file SHALL name
+      that version verbatim.
     probe: >-
-      npx vitest run
-      src/app/kbli-explorer/components/KBLIInspector.copy-line.test.ts -t
-      "structured status"
+      npx vitest run src/lib/llms-public-file-guard.test.ts -t "advertised
+      vintage"
   - text: >-
-      INNOCENCE: WHERE the code is live (56101), the line SHALL be byte-identical
-      to the expression this cure replaced — same five segments, same order.
+      GUILT, two independent mutations: rolling the vintage back to March 2026
+      SHALL red exactly two tests (the twin's forbidden-pattern case and the
+      month assertion); removing the dataset version from the header SHALL red
+      exactly one (the version assertion).
     probe: >-
-      npx vitest run
-      src/app/kbli-explorer/components/KBLIInspector.copy-line.test.ts -t
-      "byte-identical"
+      manual mutation, run 2026-09-20 — 2 failed / 24 passed, then 1 failed /
+      25 passed; file restored from a `cp` backup, `cmp -s` byte-identical,
+      26 passed again
   - text: >-
-      BOTH MUTATIONS BITE: neutralising the burial branch SHALL red the first
-      test only; replacing the entity check with a title substring SHALL red the
-      second only; innocence SHALL stay green through both.
+      INNOCENCE AGAINST OVER-MATCH: a month named in PROSE ("old March 2026
+      portal behavior") SHALL NOT be read as an advertised vintage.
     probe: >-
-      manual mutation, run 2026-09-20 — 1 failed / 2 passed each time, file
-      restored from a `cp` backup and confirmed byte-identical with `cmp -s`
-  - text: NO REGRESSION ON THE EXPLORER OR THE SHARED LIBS.
-    probe: npx vitest run src/app/kbli-explorer src/lib
+      npx vitest run src/lib/llms-public-file-guard.test.ts -t "named in prose"
+  - text: NO REGRESSION IN THE PUBLIC-FILE GUARD SUITE.
+    probe: npx vitest run src/lib/llms-public-file-guard.test.ts
 pii: none
 local_evidence: >-
-  Two reads of the public KBLI inspect endpoint through the PII-free
-  nuzantara-knowledge MCP (codes 74100 and 56101 — a public government
-  classification, not client data). No credentials, no authenticated surface,
-  no client records touched.
+  Repo-local reads only: two public artifacts that ship in the repo
+  (`public/llms.txt`, `public/llms-kbli.txt`) and the public KBLI dataset's
+  metadata. No client data, no credentials, no network calls.

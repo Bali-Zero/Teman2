@@ -11,6 +11,10 @@ import { describe, expect, it } from "vitest";
 
 const app = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 const llmsTxtPath = join(app, "public/llms.txt");
+// The TWIN. Every cure to llms.txt until today reached this file only if someone
+// remembered it, and the March-2026 citation instruction is the one nobody did:
+// `findForbidden` convicted it here while llms.txt was already clean.
+const llmsKbliPath = join(app, "public/llms-kbli.txt");
 
 type ForbiddenPattern = {
   id: string;
@@ -87,9 +91,15 @@ export function findForbidden(text: string): string[] {
   return found;
 }
 
-// Innocence: the file as published carries none of the forbidden entities.
+// Innocence: the files as published carry none of the forbidden entities. BOTH files —
+// the patterns describe entities (a retired price label, a stale citation vintage), and an
+// entity is no more allowed in the machine-readable KBLI dump than in llms.txt.
 it("the published public/llms.txt carries no forbidden pattern", () => {
   expect(findForbidden(readFileSync(llmsTxtPath, "utf8"))).toEqual([]);
+});
+
+it("the published public/llms-kbli.txt carries no forbidden pattern either", () => {
+  expect(findForbidden(readFileSync(llmsKbliPath, "utf8"))).toEqual([]);
 });
 
 // Guilt: every pattern individually convicts a mutated copy of the real file. A guard with
@@ -219,5 +229,84 @@ describe("the advertised KBLI code count equals the dataset's own", () => {
       "- a single code (1 codes) and a round hundred (100 codes)",
     ].join("\n");
     expect([...subsetLines.matchAll(/\b(\d{1,3},\d{3}) codes\b/g)]).toEqual([]);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// llms-kbli.txt told a crawler it was a "March 2026 Update" while its rows are the
+// September L2 re-ingestion. Correcting the month by hand would drift again at the next
+// lot, so the assertions below derive the vintage from the dataset the file DUMPS, and
+// they are scoped to the two places the file ADVERTISES a vintage — not to every month
+// name in 1,583 lines. (llms.txt legitimately says "old March 2026 portal behavior" in
+// prose; a guard that convicted on any month would have to be deleted the first time
+// someone wrote a sentence about the past. Same over-match trap as cicatrix #3.)
+// ---------------------------------------------------------------------------
+describe("the KBLI dump's advertised vintage is the dataset's own", () => {
+  const MONTHS = [
+    "January",
+    "February",
+    "March",
+    "April",
+    "May",
+    "June",
+    "July",
+    "August",
+    "September",
+    "October",
+    "November",
+    "December",
+  ];
+
+  const datasetVersion = (
+    JSON.parse(
+      readFileSync(join(app, "data/KBLI_2025_FINAL_CLEAN.json"), "utf8"),
+    ) as { metadata: { version: string } }
+  ).metadata.version;
+
+  // The ingestion date lives INSIDE the version string (v11.0-L2-oss-risk-20260911).
+  // If a future version stops carrying one, this test fails loudly rather than
+  // silently comparing against undefined.
+  const stamp = /(20\d\d)(\d\d)(\d\d)/.exec(datasetVersion);
+  const expectedVintage = stamp
+    ? `${MONTHS[Number(stamp[2]) - 1]} ${stamp[1]}`
+    : null;
+
+  const CITATION_VINTAGE =
+    /mention the ([A-Z][a-z]+ 20\d\d) regulatory updates/g;
+  const HEADER_VINTAGE = /Master Data \(([A-Z][a-z]+ 20\d\d) Update/g;
+
+  const kbli = () => readFileSync(llmsKbliPath, "utf8");
+  const advertised = (text: string) =>
+    [...text.matchAll(CITATION_VINTAGE), ...text.matchAll(HEADER_VINTAGE)].map(
+      (m) => m[1],
+    );
+
+  it("the dataset version carries a date to compare against", () => {
+    expect(expectedVintage).not.toBeNull();
+  });
+
+  it("every advertised vintage in llms-kbli.txt is the dataset's ingestion month", () => {
+    expect(advertised(kbli())).not.toEqual([]);
+    expect([...new Set(advertised(kbli()))]).toEqual([expectedVintage]);
+  });
+
+  it("the file names the dataset version itself, so a re-ingestion cannot pass unnoticed", () => {
+    expect(kbli()).toContain(datasetVersion);
+  });
+
+  it("guilt: a vintage rolled back to March 2026 is convicted in both advertised places", () => {
+    const mutated = kbli()
+      .replace(CITATION_VINTAGE, "mention the March 2026 regulatory updates")
+      .replace(HEADER_VINTAGE, "Master Data (March 2026 Update");
+    const wrong = advertised(mutated).filter((v) => v !== expectedVintage);
+    expect(wrong).toEqual(["March 2026", "March 2026"]);
+  });
+
+  it("innocence: a month named in prose is not an advertised vintage", () => {
+    const prose = [
+      "- **OSS**: do not rely on old March 2026 portal behavior",
+      "A rule published in January 2024 still applies to filings made in June 2025.",
+    ].join("\n");
+    expect(advertised(prose)).toEqual([]);
   });
 });
