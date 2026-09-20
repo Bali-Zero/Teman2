@@ -266,6 +266,16 @@ export function deriveProvenance(raw: KBLIRawCode): KBLIProvenance {
 // titles (measured on the 1,559-code canonical, not estimated).
 
 /**
+ * What a key-fact CELL says instead of a licensing value whose provenance the
+ * dataset does not verify. Deliberately the sentence the Foreign Ownership cell
+ * has carried since TRACK-P: risk, licence and processing now share it rather
+ * than each growing its own dialect of ignorance (the same collapse the chat
+ * channel made on the backend in #6868, where three risk derivations became
+ * one with `Verify at OSS` as the floor).
+ */
+export const UNVERIFIED_LICENSING_FACT = "Not verified — confirm in OSS";
+
+/**
  * True when the code's licensing rows are OSS-RBA KBLI-2025 native, i.e. the
  * risk tier and license type may be stated as bare fact on an unqualifiable
  * surface. False for pending-crosswalk, unverified-source, detached, rowless,
