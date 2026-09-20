@@ -1836,3 +1836,62 @@ async def test_a_staff_page_survives_telegram_markdown_parsing(pool):
     text = _last_text(rec)
     assert _markdown_leftovers(text) == [], _markdown_leftovers(text)
     assert order in text  # the id is still on the page, escaped in the label
+
+
+# --------------------------------------------------------------------------
+# The same parser, applied to ALL SIX pages
+# --------------------------------------------------------------------------
+#
+# `test_a_staff_page_survives_telegram_markdown_parsing` proves the cure on
+# `staff_page_charge_without_webhook` — the page that produced the production
+# 400. `Order: {self._tracker_link(facts.order_id)}` appears in SIX `_compose`
+# methods, and the roster that already knows all six lives a thousand lines up
+# in `test_a_missing_order_raises_for_every_handler`. This is that roster, run
+# through `_markdown_leftovers`.
+#
+# It composes from facts built here rather than from a seeded order, so it
+# needs no DSN and no pool: `_compose` is a pure function of the facts and
+# reads no instance state, which is also why `cls(None, None)` is enough. The
+# day a `_compose` starts reading `self`, this raises instead of asserting —
+# the signal to move it onto the `pool` fixture the rest of the file uses.
+
+
+def _anomaly_facts(**over):
+    from backend.services.garuda_orders.outbox_handlers import OrderAnomalyFacts
+
+    base = {
+        # The shape every id in this system has: the `_` that opened the entity.
+        "order_id": "ord_ujg4nDYSN4w9-jkJQsi7Tg",
+        "case_type": "charge_without_webhook",
+        "price_idr": 790_000,
+        "state": "awaiting_payment",
+        "late_case_open": True,
+        "late_case_charge_id": "ch_late_001",
+        "case_resolved_since_trigger": False,
+        "late_charge_already_refunded": False,
+        "detail": {
+            "charge_id": "ch_late_001",
+            "provider_status": "settled",
+            "second_charge_id": "ch_dup_999",
+            "outcome": "captured",
+            "customer_action": "none",
+        },
+    }
+    base.update(over)
+    return OrderAnomalyFacts(**base)
+
+
+_STAFF_PAGE_CLASSES = [
+    StaffPageChargeWithoutWebhookHandler,
+    StaffPageDuplicateChargeHandler,
+    StaffPageLatePaidAfterRefundHandler,
+    StaffPageLatePaidAfterTerminalHandler,
+    StaffPagePaymentFailureHandler,
+    StaffPageRefundOutOfOrderHandler,
+]
+
+
+@pytest.mark.parametrize("cls", _STAFF_PAGE_CLASSES, ids=lambda c: c.job_type)
+def test_every_staff_page_survives_markdown_parsing(cls):
+    text = cls(None, None)._compose(_anomaly_facts())
+    assert _markdown_leftovers(text) == [], f"{cls.job_type}: {_markdown_leftovers(text)}"
