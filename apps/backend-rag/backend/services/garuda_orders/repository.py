@@ -43,6 +43,7 @@ import asyncpg
 from backend.services.garuda_flow import pricing
 from backend.services.garuda_orders import idempotency, journal
 from backend.services.garuda_orders.errors import (
+    HonouredWithoutPaidPayment,
     NoOpenLateCase,
     OrderNotFound,
     OrderNotReady,
@@ -1004,6 +1005,35 @@ class GarudaOrderRepository:
                 if not row["late_case_open"]:
                     raise NoOpenLateCase(order_id)
 
+                # HONOURING NEEDS A PAYMENT TO HONOUR, and it needs its id.
+                # `practice_release` is claimed by
+                # `garuda_practices.source_paid_journal_event_id`, which only
+                # ever holds a `payment.paid` event id. Enqueuing the job
+                # against the RESOLUTION event — what this code used to do —
+                # produced a job no practice could ever match: the case closed,
+                # `PracticeNotMinted` raised on every drain until the job
+                # exhausted, and the customer's service never started. So the
+                # paid event is looked up here, before anything is written, and
+                # the job is enqueued against IT below; an order that never
+                # recorded one cannot be honoured at all, because what to mint
+                # in that case is a product decision this code must not invent.
+                paid_journal_event_id: str | None = None
+                if resolution == "honoured":
+                    paid_journal_event_id = await conn.fetchval(
+                        """
+                        SELECT event_id
+                          FROM garuda_order_journal
+                         WHERE aggregate_type = 'order'
+                           AND aggregate_id = $1
+                           AND event_name = 'payment.paid'
+                         ORDER BY occurred_at
+                         LIMIT 1
+                        """,
+                        order_id,
+                    )
+                    if paid_journal_event_id is None:
+                        raise HonouredWithoutPaidPayment(order_id)
+
                 if resolution == "refunded_in_full":
                     try:
                         await self._provider.refund(
@@ -1043,8 +1073,19 @@ class GarudaOrderRepository:
                     if resolution == "honoured"
                     else "late_refund_confirmation_email"
                 )
+                # The release is enqueued against the PAYMENT, the email against
+                # the RESOLUTION: each job is claimed by the event its reader
+                # looks it up by. `enqueue_outbox` is `ON CONFLICT DO NOTHING`
+                # over `(journal_event_id, job_type)`, so an order whose OP-02
+                # already released this practice gets nothing new here — which
+                # is the honest outcome, not a missed one.
                 await journal.enqueue_outbox(
-                    conn, order_id=order_id, journal_event_id=event_id, job_type=job_type
+                    conn,
+                    order_id=order_id,
+                    journal_event_id=(
+                        paid_journal_event_id if resolution == "honoured" else event_id
+                    ),
+                    job_type=job_type,
                 )
 
                 final_state = row["state"]
