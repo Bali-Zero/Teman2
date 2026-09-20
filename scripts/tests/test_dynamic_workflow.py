@@ -2080,7 +2080,45 @@ def test_register_passes_a_normalised_window_file_and_stamps_its_own_mtime(
     assert (kit / "r1" / f"{dw._seat_key('hand-seat')}.md").read_text() == clean
 
     want_when = datetime.fromtimestamp(window_path.stat().st_mtime, tz=timezone.utc).replace(microsecond=0)
-    assert dw._ledger_when(kit, "hand-seat") == want_when
+    assert dw._ledger_when(kit, "hand-seat", status="answered") == want_when
+
+
+def test_register_stamp_is_read_from_the_answered_row_not_the_awaiting_window_row(
+        tmp_path, template, clean_objective):
+    """PR3m, the clock made deterministic: `_ledger_when(kit, seat)` returns the seat's FIRST
+    row, which for a registered seat is `awaiting-window` (stamped at append time), not
+    `answered` (stamped at the window file's mtime). The old assertion compared the first row
+    with the mtime and held only while both fell in the same second — red under load, once in
+    the selftest's own twin of this check. Here the awaiting-window row is a year old, so the
+    two rows can never agree by luck."""
+    kit = tmp_path / "k"
+    dw.cmd_brief(_brief_ns(clean_objective, template, kit))
+    sha = _seed_convener(kit)
+    dw.ledger_append(kit, "hand-seat", "awaiting-window", "-", when="2025-01-01T00:00:00Z")
+    window_path = _window_path(kit, "hand-seat")
+    window_path.write_text(dw._CANNED_VALID.format(seat="hand-seat", sha=sha))
+
+    dw.cmd_r1(argparse.Namespace(kit=str(kit), seats="hand-seat", astra_fallback=False,
+                                  register="hand-seat"))
+
+    want_when = datetime.fromtimestamp(window_path.stat().st_mtime, tz=timezone.utc).replace(microsecond=0)
+    assert dw._ledger_when(kit, "hand-seat", status="answered") == want_when
+    assert dw._ledger_when(kit, "hand-seat") == datetime(2025, 1, 1, tzinfo=timezone.utc)
+    assert dw._ledger_when(kit, "hand-seat", status="window-invalid") is None
+
+
+def test_fixture_template_lives_in_the_callers_own_dir_never_a_shared_path(tmp_path):
+    """PR3m: the selftest's template was one fixed path under the system temp dir, rewritten
+    on every call — two selftests at once read each other's half-written file (2 red in 30
+    concurrent runs, `brief sha stable across identical runs` / `check passes on untouched
+    kit`). Two callers must get two files, each inside its own dir."""
+    a, b = tmp_path / "a", tmp_path / "b"
+    a.mkdir()
+    b.mkdir()
+    pa, pb = dw._fixture_template(a), dw._fixture_template(b)
+    assert pa != pb
+    assert pa.parent == a and pb.parent == b
+    assert pa.read_text() == pb.read_text() == dw._FIXTURE_TEMPLATE_TEXT
 
 
 def test_register_refuses_a_seat_already_answered(tmp_path, template, clean_objective):
