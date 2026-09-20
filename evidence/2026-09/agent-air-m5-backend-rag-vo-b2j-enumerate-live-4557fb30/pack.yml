@@ -39,6 +39,15 @@ lanes:
       titolare tp1-qwen3.8-max. INDEPENDENT judgement. No findings."
 seat_diversity: exempt
 seat_diversity_note: One build lane, so D3's seat-diversity requirement does not attach.
+seat_override:
+  "ground_truth (R8): `*/visa_engine/*` matches `enumerate_live.py` (its test sibling is
+  excluded by `_is_test_path`'s `/tests/` marker). This diff carries ZERO regulatory, KBLI,
+  pricing, or rule-content claims -- it is operator CLI tooling (budget/rate/circuit-breaker
+  control, lock migration, counter accuracy) around an HTTP POST to an ALREADY-DEPLOYED,
+  unmodified production endpoint; nothing in the request/response schema, the decision engine,
+  or any KB/data file changes. No domain-knowledge NLM cross-check applies because no domain
+  claim is being made or altered -- verified by `git diff --stat` showing only the two named
+  Python files (script + test) touched, and by this pack's own diff.behaviour_change note."
 seat_fallback_reason:
   "tp1-qwen3.8-max (titolare) was QUOTA_DEAD per the conductor's live arsenal_probe.py run at
   2026-09-20T14:37:57Z (codex OK, kimi OK, agy OK; tp1-qwen3.8-max/tp1-glm-5.2/tp1-deepseek-v4-pro
