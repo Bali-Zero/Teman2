@@ -187,7 +187,7 @@ export default function VoaResultPage({
   if (data.verdict === "DECLINE") {
     const answers = readSubmittedAnswers();
     const code = primaryDeclineCode(data.reason_codes);
-    const edu = code ? buildDeclineEducation(code, answers) : null;
+    const edu = code ? buildDeclineEducation(code, answers, t) : null;
 
     return (
       <AppFrame
