@@ -1258,6 +1258,23 @@ export const NOTICE_CONDITION_COPY: Record<string, LocalizedText> = {
     "Your answers about your current immigration status conflict with each other. Our team confirms which status is correct with you before submission and tells you what to prepare.",
     "Jawaban Anda tentang status keimigrasian Anda saat ini saling bertentangan. Tim kami akan memastikan status mana yang benar bersama Anda sebelum pengajuan dan memberi tahu apa yang perlu disiapkan.",
   ),
+  // Slice A3-M (DRAFT-SPEC-A3-1.v2-M §4.1, M4): three new keys beside the
+  // eleven above, backed by `_DISCLOSED_CONDITION_REASON_CODES`
+  // (evaluate_path.py:1174-1176). N2 copy rules (A2): name what is checked,
+  // by whom, when, and what to prepare — never "cleared", "approved" or
+  // "guaranteed".
+  DISCLOSED_PAST_OVERSTAY_CONDITION: text(
+    "You flagged a past overstay in your disclosures. Our team reviews the overstay details with you before submission and tells you what documentation to prepare.",
+    "Anda menandai adanya riwayat overstay dalam pengungkapan Anda. Tim kami akan meninjau detail overstay tersebut bersama Anda sebelum pengajuan dan memberi tahu dokumen yang perlu disiapkan.",
+  ),
+  DISCLOSED_BLACKLIST_ENTRY_CONDITION: text(
+    "You flagged a blacklist entry in your disclosures. Our team reviews the entry details with you before submission and tells you what documentation to prepare.",
+    "Anda menandai adanya pencantuman dalam daftar hitam dalam pengungkapan Anda. Tim kami akan meninjau detail pencantuman tersebut bersama Anda sebelum pengajuan dan memberi tahu dokumen yang perlu disiapkan.",
+  ),
+  DISCLOSED_IMMIGRATION_INVESTIGATION_CONDITION: text(
+    "You flagged an immigration investigation in your disclosures. Our team reviews the investigation details with you before submission and tells you what documentation to prepare.",
+    "Anda menandai adanya pemeriksaan keimigrasian dalam pengungkapan Anda. Tim kami akan meninjau detail pemeriksaan tersebut bersama Anda sebelum pengajuan dan memberi tahu dokumen yang perlu disiapkan.",
+  ),
 };
 
 export const GENERIC_NOTICE_CONDITION: LocalizedText = text(

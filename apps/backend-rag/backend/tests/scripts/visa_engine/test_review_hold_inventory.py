@@ -147,11 +147,11 @@ def test_minor_privacy_code_matches_the_adapter_constant() -> None:
 
 
 def test_orphan_review_gate_items_are_named() -> None:
-    assert orphan_review_gate_items() == frozenset(
-        {"overstay", "blacklist", "immigration_investigation"}
-    )
-    # When slice A3 fixes them this assertion goes red and A3 updates it —
-    # that is the intended coupling PLAN §4 describes for this test.
+    # Slice A3-M (DRAFT-SPEC-A3-1.v2-M §4.1, M3): `REVIEW_FLAG_MAP` in
+    # fact-mapper.ts now maps all three of these literals (M1), so the
+    # census reads a mouth tree with no orphans left — PLAN §4's intended
+    # coupling fired: this assertion went red on M1 and is updated here.
+    assert orphan_review_gate_items() == frozenset()
 
 
 def test_orphan_review_gate_items_fails_loud_on_a_missing_literal(tmp_path) -> None:

@@ -612,10 +612,13 @@ const en = {
     "The decision engine checks your exact planned duration instead of guessing from a broad range.",
 
   "q.review_gate": "A few honest questions before we show you anything",
+  // Slice A3-M (DRAFT-SPEC-A3-1.v2-M §4.1, M6): the lead no longer promises
+  // a human review that no longer happens after A1'/A3-B — see A5's
+  // `outcome.disclaimer.complex_to_human` for the same underlying fact.
   "q.review_gate.hint":
-    "Any of these means a human reviews your case — never an automated verdict. That’s a feature, not a penalty.",
+    "A disclosed criminal record goes to a person before any path is confirmed. Everything else here stays on your result as a named condition our team checks with you before submission — not an automatic human review.",
   "why.review_gate":
-    "Only the separate immigration-history items map to an engine fact. Every other selection stays a review signal.",
+    "The immigration-history items above also map to a legal fact the engine reads directly. Only a criminal record or an activity the signed rules cannot classify is sent to a person instead of an automated result — every other selection becomes a named condition.",
   "q.review_gate.opt.none": "None of these apply to me",
   "q.review_gate.opt.flagged": "One or more applies",
   // Finding #5 (adversarial review 2026-07-17): "none" is now a first-class
@@ -1638,9 +1641,9 @@ const id: Record<Keys, string> = {
 
   "q.review_gate": "Beberapa pertanyaan jujur sebelum kami tunjukkan hasilnya",
   "q.review_gate.hint":
-    "Salah satu dari ini berarti kasus Anda ditinjau manusia — bukan keputusan otomatis. Ini fitur, bukan hukuman.",
+    "Catatan kriminal yang Anda ungkapkan diteruskan ke seseorang sebelum jalur mana pun dikonfirmasi. Semua hal lain di sini tetap melekat pada hasil Anda sebagai kondisi bernama yang diperiksa tim kami bersama Anda sebelum pengajuan — bukan tinjauan manusia otomatis.",
   "why.review_gate":
-    "Hanya item riwayat keimigrasian yang terpisah yang dipetakan ke fakta mesin. Pilihan lainnya tetap menjadi sinyal tinjauan.",
+    "Item riwayat keimigrasian di atas juga dipetakan ke fakta hukum yang dibaca langsung oleh mesin. Hanya catatan kriminal atau kegiatan yang tidak dapat diklasifikasikan oleh aturan yang telah disahkan yang diteruskan ke seseorang, bukan hasil otomatis — pilihan lainnya menjadi kondisi bernama.",
   "q.review_gate.opt.none": "Tidak ada yang berlaku bagi saya",
   "q.review_gate.opt.flagged": "Satu atau lebih berlaku",
   "q.review_gate.item.none": "Tidak ada yang berlaku bagi saya",

@@ -199,6 +199,15 @@ const REVIEW_GATE_CAUSE_ITEM: Readonly<Record<string, string>> = {
   DISCLOSED_AMBIGUOUS_SPONSOR_REVIEW: "ambiguous_sponsor",
   DISCLOSED_UNCERTAINTY_REVIEW: "not_certain",
   DISCLOSED_ACTIVITY_BOUNDARY_REVIEW: "activity_boundary",
+  // Slice A3-M (DRAFT-SPEC-A3-1.v2-M §4.1, M7): three rows for M1's new
+  // `REVIEW_FLAG_MAP` keys — each REVIEW code is reachable only under the
+  // `VISA_ORACLE_HOLDING_FLAGS` kill switch (its own review-reason copy is
+  // a slice of its own the day a flag is held for real), but the mapping
+  // back to the ticked item must exist now so the drift test below stays
+  // green.
+  DISCLOSED_PAST_OVERSTAY_REVIEW: "overstay",
+  DISCLOSED_BLACKLIST_ENTRY_REVIEW: "blacklist",
+  DISCLOSED_IMMIGRATION_INVESTIGATION_REVIEW: "immigration_investigation",
 };
 
 /**

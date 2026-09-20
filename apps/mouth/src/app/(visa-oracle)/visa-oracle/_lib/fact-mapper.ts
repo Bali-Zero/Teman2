@@ -450,6 +450,9 @@ const REVIEW_FLAG_MAP: Readonly<
   diplomatic_passport: "DIPLOMATIC_PASSPORT",
   ambiguous_sponsor: "AMBIGUOUS_SPONSOR",
   activity_boundary: "ACTIVITY_BOUNDARY",
+  overstay: "PAST_OVERSTAY",
+  blacklist: "BLACKLIST_ENTRY",
+  immigration_investigation: "IMMIGRATION_INVESTIGATION",
 };
 
 /**
