@@ -4,7 +4,20 @@ version = "2.1.0"
 description = "Full-spectrum MCP server: 115 tools, 10 prompts, 5 resources, 8 deterministic workflow chains"
 requires-python = ">=3.11"
 dependencies = [
-    "fastmcp>=2.0.0",
+    # Upper bound deliberate. fastmcp 4.0.0 (2026-08-31) implements MCP spec
+    # 2026-07-28, which drops the `initialize` handshake and `Mcp-Session-Id`,
+    # adds a required `server/discover`, and replaces server-push with Multi
+    # Round-Trip. `>=2.0.0` let a routine `pip install -U` cross that line with
+    # nothing in any diff to show it — we were not protected by a pin, only by
+    # nobody having upgraded yet.
+    #
+    # The bound is NOT here because the migration is large. It is small: this
+    # server is stdio, and uses none of the deprecated primitives (no sampling,
+    # no roots, no logging/setLevel, no resources/subscribe — the only `elicit`
+    # matches are inside a DISABLED feature list). It is here so that crossing
+    # a protocol boundary is a decision with tests, not a side effect of an
+    # unrelated upgrade. Deprecation floor is July 2027; raise this on purpose.
+    "fastmcp>=3.4,<4.0",
     "httpx>=0.27.0",
     # Optional-but-recommended: chain observability. Module degrades to no-op
     # if the package is absent (Legge 4), but installing it turns on the
