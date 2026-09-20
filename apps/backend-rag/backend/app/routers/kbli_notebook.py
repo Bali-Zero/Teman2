@@ -747,7 +747,14 @@ async def inspect_kbli(code: str, pool=Depends(get_optional_database_pool)) -> A
     # changes — `title`, `description`, `risk_profile` and `licensing_status` all change
     # meaning on those codes, so the bump evicts them at deploy instead of leaving a
     # month of stale answers behind a per-code cache-bust somebody has to remember.
-    cache_key = f"kbli_inspect_v7_{code}"
+    # v7 -> v8 (2026-09-21): the F9 demotions. Targets the graph itself calls a
+    # parameter, a licensing_status enum, a negation or a contracting form move
+    # OUT of `licenses[]` and into `related_requirements` on 48 codes. This is
+    # the v3 -> v4 case verbatim: a cached v7 entry is fully valid on read and
+    # would keep telling a client that "Lokasi industri berada pada Provinsi
+    # bersangkutan" and "PENDING_REGULATION" are permits to obtain, for up to
+    # the 30-day TTL, with nothing in the response betraying it.
+    cache_key = f"kbli_inspect_v8_{code}"
     ttl = get_kbli_ttl(code)
 
     # Try manual cache check

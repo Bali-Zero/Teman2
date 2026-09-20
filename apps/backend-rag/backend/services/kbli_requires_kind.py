@@ -202,6 +202,64 @@ _UNKNOWN_ID_MARKERS: tuple[str, ...] = ("tidak_diketahui", "unknown", "placehold
 #: entity, not the shape.
 _OBLIGATION_ID_TOKEN = "kewajiban"
 
+#: The id token by which the graph calls a node an eligibility PARAMETER rather
+#: than a thing to obtain — "Lokasi industri berada pada Provinsi bersangkutan",
+#: "Lokasi Industri dalam Satu Hamparan", "Parameter Lokasi". A condition on
+#: WHERE you may operate is not a permit; a client reading it under "licences to
+#: obtain" is told to go and apply for their own factory's address.
+#:
+#: Same discipline as `_OBLIGATION_ID_TOKEN` and for the same reason: matched as
+#: a TOKEN of the id, never as a bare substring, so a future `izin_parameterX`
+#: is a different word and keeps its licence label (cicatrix #3).
+#:
+#: INNOCENCE MEASURED ON PROD BEFORE SHIPPING (2026-09-21, 4,713 admitted edges
+#: over 2,446 distinct targets): the token fires on 4 targets reaching 11 codes,
+#: and **zero** of them carry a permit-shaped name.
+_PARAMETER_ID_TOKEN = "parameter"
+
+#: Heads that open a CONDITION or a DUTY and can never open the name of a thing
+#: you apply for. `_OBLIGATION_VERBS` enumerates active verbs; these two are the
+#: grammatical cases no verb list reaches — a NEGATION ("Tidak menghasilkan
+#: produk senjata kimia") and the adjective "obligatory" ("Wajib Lapor
+#: Ketenagakerjaan Perusahaan"). Both were served to clients as permits.
+#:
+#: Unlike the enumerated labels below this generalises, and safely: an
+#: Indonesian permit name does not begin by saying what you must NOT produce.
+#: INNOCENCE MEASURED on the same prod dump: 3 targets over 2 codes, none of
+#: them permit-shaped.
+_CONDITION_HEADS: frozenset[str] = frozenset({"tidak", "wajib"})
+
+#: Targets read ONE BY ONE and adjudicated as not-a-permit, each mapped to the
+#: bucket it actually belongs in rather than swept into one. Matched on the
+#: WHOLE label, case-folded — an exact match cannot over-reach by construction,
+#: which is what earns them a place beside a grammatical rule.
+#:
+#: `PENDING_REGULATION` is a `licensing_status` ENUM materialised as a graph
+#: node: the graph saying it does not know which permit applies, rendered to the
+#: client as the permit itself.
+#: "Layanan keluhan pelanggan" is a complaint desk the business must run, and
+#:
+#: NOT HERE, AND DELIBERATELY: `NPWP`. The spec that sized this class tables it
+#: as a defect, and `test_short_real_acronyms_survive` pins it as a real permit
+#: acronym that must survive. Two adjudications disagree, and overturning a
+#: signed one inside a demotion PR is how a classification changes silently.
+#: It keeps its licence label until someone rules on it on purpose.
+#: "Kerja Sama Operasi (KSO)" is a contracting form — a counterparty, not a
+#: licence.
+#:
+#: DECLARED LIMIT, and it is the same one the verb list declares: a seventh node
+#: of this shape arriving tomorrow keeps its licence label until someone reads
+#: it and adds it here. That is the fail-safe direction — a mislabelled
+#: condition is visible in `related_requirements`; a real permit removed from a
+#: client's list is not.
+_NOT_A_PERMIT_LABELS: dict[str, str] = {
+    "pending_regulation": "unspecified_permits",
+    "status perizinan: pending_regulation": "unspecified_permits",
+    "layanan keluhan pelanggan": "obligations",
+    "kerja sama operasi (kso)": "entity_forms",
+    "kerja sama operasi (kso) dengan bujkn berkualifikasi besar": "entity_forms",
+}
+
 #: Enumerated from the census. A category, a header, or a truncation wreck —
 #: never an instance. Compared case-insensitively after stripping.
 _CATEGORY_LABELS: frozenset[str] = frozenset(
@@ -262,16 +320,31 @@ def permit_name_verdict(entity_id: str | None, name: str | None) -> str:
 
     # The graph calling itself a duty outranks the column that filed it as a
     # permit. Token match, not substring: `izin_kewajibanX` is a different word.
-    if _OBLIGATION_ID_TOKEN in re.split(r"[^a-z0-9]+", ident):
+    id_tokens = re.split(r"[^a-z0-9]+", ident)
+    if _OBLIGATION_ID_TOKEN in id_tokens:
         return "obligations"
+
+    # The graph calling itself an eligibility parameter outranks the column
+    # that filed it as a permit, for the same reason a duty does.
+    if _PARAMETER_ID_TOKEN in id_tokens:
+        return "parameters"
 
     if label.casefold() in _CATEGORY_LABELS:
         return "unspecified_permits"
+
+    adjudicated = _NOT_A_PERMIT_LABELS.get(label.casefold())
+    if adjudicated is not None:
+        return adjudicated
 
     # A verb phrase is a duty. Requires a SECOND word: a bare "Memiliki" would
     # be a fragment, not a sentence, and is left alone.
     head, _, rest = label.partition(" ")
     if rest.strip() and head.casefold() in _OBLIGATION_VERBS:
+        return "obligations"
+
+    # A negation or "obligatory" opening the name is a condition, not a permit.
+    # Same second-word requirement: a bare "Tidak" is a fragment, not a clause.
+    if rest.strip() and head.casefold() in _CONDITION_HEADS:
         return "obligations"
 
     return "permit"
