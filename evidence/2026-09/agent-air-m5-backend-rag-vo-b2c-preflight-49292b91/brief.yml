@@ -1,0 +1,116 @@
+task_id: vo-b2c-preflight
+lane: backend-rag
+machine: air-m5
+base_sha: 4e472a2f82495723f54a5754f48f8ec1ba5ca1bd # pragma: allowlist secret - public Git commit ID, not a credential
+date: 2026-09-20
+
+gear: 1
+gear_reason: >-
+  python3 scripts/contract_verify.py --head <this-branch-final-head> --json returned
+  {"context": "Harness floor recompute", "check": "floor-needs-brief", "status": "PASS",
+  "output": "floor 1, brief not required"} against the two touched files
+  (enumerate_live.py, test_enumerate_live.py). Net churn is 280 lines
+  (git diff --numstat origin/main...HEAD on the two files: +75/-1 code, +209/-3 test),
+  well under SIZE_GEAR3_THRESHOLD -- floor computed 1 honestly, nothing shaved to
+  stay under it. This brief is written anyway per the builder mandate's own
+  instruction, not because the floor required it.
+
+objective: >-
+  Slice B2''-c C1 (MANDATE-vo.md, "the manifest is engine-parseable BY CONSTRUCTION,
+  and the runner refuses what the engine would refuse BEFORE the network"). The
+  live runner's first production run tripped its own circuit breaker at request 3
+  on three http_422 uuid_parsing errors: the mouth emitter hardcodes
+  assessment_id="x" (apps/mouth/scripts/visa-oracle/enumerate-interview-space.ts:133)
+  while the engine's ApplicantFacts.assessment_id is a uuid.UUID
+  (backend/services/visa_engine/models.py:1283). extract_walks() -- already the
+  fail-closed pre-flight for missing/duplicate labels -- now also validates every
+  walk's WIRE SHAPE (schema_version exactly "1.0.0"; assessment_id accepted by
+  uuid.UUID(str(value)); collected_at an ISO-8601 string with an explicit zero UTC
+  offset, mirroring models.py's _validate_utc; facts a non-empty object;
+  disclosed_review_flags, when present, a list of strings) before any token load
+  or network call, in --dry-run and live alike, since extract_walks already runs
+  first in run_live_enumeration on both branches -- no call-order change was
+  needed, only the validation itself. No minting or repair: the emitter (a
+  separate mouth PR, C2) owns the wire payload; this PR only refuses.
+
+scope:
+  - "apps/backend-rag/backend/scripts/visa_engine/enumerate_live.py -- new _validate_walk_wire_shape(label, walk) called from extract_walks() for every walk, after the existing label/duplicate checks; one new module docstring sentence naming the pre-flight."
+  - 'apps/backend-rag/backend/tests/scripts/visa_engine/test_enumerate_live.py -- _walk()''s default assessment_id becomes a fixed synthetic UUID (_VALID_ASSESSMENT_ID) instead of the old "x" placeholder, so every pre-existing test still passes unchanged through the new validation; the one hardcoded "x" assertion in test_successful_walk_is_recorded_as_engine_verdict now reads the same constant; 7 new tests: 5 named guilt cases (bad assessment_id live + dry-run, collected_at without offset, wrong schema_version, empty facts), 1 extra guilt case (non-list disclosed_review_flags), 1 innocence case (uuid4 id + Z timestamp + flags list still passes and --dry-run still prints its plan).'
+  - "This brief."
+
+constraints:
+  - "No minting, no repair of a bad assessment_id or collected_at -- the runner only refuses; the emitter (C2, a separate mouth PR) is the one that fixes the wire payload."
+  - "Refusal is ONE EnumerateLiveError naming the walk LABEL and the FIELD; a facts VALUE is never echoed in any raised message."
+  - "Validation runs inside extract_walks(), which run_live_enumeration already calls before load_driver_token and before any /health or evaluate call, in both the --dry-run and live branches -- verified by reading the function, no reordering was required."
+  - "build_request_body's field set is unchanged."
+  - "Off-limits respected: report_lock.py and its test, apps/mouth/**, zantara_core.py, fly.toml, .env* were not touched."
+
+acceptance:
+  - text: >-
+      GUILT (a): WHEN the first (only) walk's assessment_id is "x" (the exact
+      production-breaking value) THEN the LIVE run exits 2, logs one line naming
+      the walk label and "assessment_id", calls evaluate 0 times and health 0
+      times, and writes no report file.
+    probe: >-
+      pytest backend/tests/scripts/visa_engine/test_enumerate_live.py::test_wire_shape_bad_assessment_id_refuses_before_token_and_network_live
+  - text: >-
+      GUILT (b): WHEN the SAME manifest runs under --dry-run THEN it refuses
+      identically (exit 2, same log line, 0 evaluate, 0 health, no report) --
+      this is the exact gap the cause names: on the merge-base (HEAD~1,
+      origin/main) this manifest instead printed "pending=1" (captured by hand,
+      see PR body proof fence).
+    probe: >-
+      pytest backend/tests/scripts/visa_engine/test_enumerate_live.py::test_wire_shape_bad_assessment_id_refuses_before_token_and_network_dry_run
+  - text: >-
+      GUILT (c): WHEN collected_at is "2026-09-06T00:00:00" (naive, no offset)
+      THEN the run refuses naming "collected_at" and the walk label, before any
+      network call.
+    probe: >-
+      pytest backend/tests/scripts/visa_engine/test_enumerate_live.py::test_wire_shape_collected_at_without_offset_refuses
+  - text: >-
+      GUILT (d): WHEN schema_version is "2.0.0" THEN the run refuses naming
+      "schema_version" and the bad value, before any network call.
+    probe: >-
+      pytest backend/tests/scripts/visa_engine/test_enumerate_live.py::test_wire_shape_wrong_schema_version_refuses
+  - text: >-
+      GUILT (e): WHEN facts is {} THEN the run refuses naming "facts" and the
+      walk label, never echoing a facts value, before any network call.
+    probe: >-
+      pytest backend/tests/scripts/visa_engine/test_enumerate_live.py::test_wire_shape_empty_facts_refuses
+  - text: >-
+      Extra guilt beyond the five named cases: WHEN disclosed_review_flags is
+      present but not a list of strings THEN the run refuses naming the field.
+    probe: >-
+      pytest backend/tests/scripts/visa_engine/test_enumerate_live.py::test_wire_shape_non_list_disclosed_review_flags_refuses
+  - text: >-
+      INNOCENCE: WHERE a walk carries a real uuid4 assessment_id, a "Z"
+      collected_at, non-empty facts and a well-typed disclosed_review_flags list
+      THEN extract_walks passes it unchanged and --dry-run still prints its
+      plan (pending=1) -- this PR narrows what a malformed manifest can do, not
+      what a well-formed one can.
+    probe: >-
+      pytest backend/tests/scripts/visa_engine/test_enumerate_live.py::test_wire_shape_valid_uuid4_and_flags_pass_preflight_and_dry_run_still_prints_plan
+  - text: >-
+      NO REGRESSION: the whole pre-existing suite (28 tests on the merge-base,
+      unchanged behavior for every valid walk) plus the 7 new tests above (35
+      total) stay green, report_lock's own 14-test suite is untouched and green
+      (49 total across both files), and ruff is clean on both touched files.
+    probe: >-
+      pytest backend/tests/scripts/visa_engine/test_enumerate_live.py backend/tests/scripts/visa_engine/test_report_lock.py && ruff check backend/scripts/visa_engine/enumerate_live.py backend/tests/scripts/visa_engine/test_enumerate_live.py
+
+mutation_proof: >-
+  Manual, not a committed test (per the builder mandate): on a working-tree copy
+  of enumerate_live.py, the uuid.UUID(str(assessment_id)) check inside
+  _validate_walk_wire_shape was removed and replaced with a no-op comment.
+  Re-running test_wire_shape_bad_assessment_id_refuses_before_token_and_network_live
+  alone then FAILS -- the walk with assessment_id="x" passes extract_walks
+  unmutated by the missing check, the run proceeds to load_driver_token, and
+  since no token file exists in that test's tmp_path, the run instead logs
+  "driver token file not found" -- proving the mutated check is load-bearing
+  (RED for a different, later reason, not a false green). The file was restored
+  immediately after via `git show HEAD:<path> > <path>` (never git checkout --
+  or git restore, per the mandate's rules); working tree was verified clean
+  (git status --porcelain empty) both before the mutation and after the
+  restore, and the full 49-test suite was re-run green post-restore.
+
+pii_scan: clean
