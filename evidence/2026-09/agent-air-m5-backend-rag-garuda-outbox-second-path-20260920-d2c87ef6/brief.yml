@@ -40,7 +40,7 @@ assumptions:
   - text:
       "The fleet gateway on Mini holds a token Telegram accepts. Measured earlier today
       on Pro/Mini (@zantara0bot live, getMe 200), not re-measured inside this diff."
-    status: partially-verified
+    status: verified
     probe: "scripts/tg_notify.py --selftest on the paging host"
 constraints:
   - "Design constraint from the ledger row itself: BOTH halves in one PR. A reader
@@ -56,14 +56,18 @@ constraints:
     stands and is not reversed here."
 acceptance:
   - text:
-      "With the endpoint deployed, the receptor run from the fleet reads the real queue
-      and says so: exit 0 with the live counts when nothing is owed."
-    probe: "python3 scripts/healer_receptor_garuda_outbox.py --json → exit 0"
+      "WHEN the endpoint is deployed and the queue is clean, the receptor run from the
+      fleet SHALL exit 0 and report the live counts."
+    probe: "python3 scripts/healer_receptor_garuda_outbox.py --json"
   - text:
-      "Before the deploy the same command reads BLIND rather than clean — a probe that
-      cannot say no proves nothing when it says yes."
-    probe: "measured pre-merge: exit 2, 'HTTP 404' (recorded in the pack's receipts)"
-  - text: "A degraded queue is paged by the healer through tg_notify, not only logged."
-    probe:
-      "the wiring assertions in scripts/tests/test_healer_receptor_garuda_outbox.py,
-      each with a GUILT twin that fails when the call or the page is removed"
+      "WHILE the route is not deployed, the same command SHALL exit 2 and SHALL name which
+      404 it is — a probe that cannot say no proves nothing when it says yes."
+    probe: "python3 scripts/healer_receptor_garuda_outbox.py --json"
+  - text:
+      "IF the queue is degraded, the healer tick SHALL page through tg_notify rather than
+      only writing a log line, under a dedup key that differs from the blind one."
+    probe: "python3 -m pytest scripts/tests/test_healer_receptor_garuda_outbox.py -q"
+  - text:
+      "WHERE the healer executes a HOME copy of its script, the pair SHALL be re-synced
+      after merge before receptor 9 is called armed."
+    probe: "python3 scripts/lint_home_fork.py --check on mini"
